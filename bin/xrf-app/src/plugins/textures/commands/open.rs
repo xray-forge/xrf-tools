@@ -9,10 +9,6 @@ use crate::plugins::textures::catalog::{TextureCatalog, TextureCatalogMode};
 use crate::plugins::textures::state::{TextureBrowseSession, TextureState};
 
 /// Open a root set and list every texture it holds.
-///
-/// Lists and returns in one call, and reads no descriptor: the catalog is a walk of the mounted index, so the tree is
-/// on screen before the sweep that badges it has started. `describe_catalog` is that sweep, asked for separately so a
-/// person browses while it runs rather than waiting on it.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "open"))]
 #[tauri::command(rename = "open")]
 pub async fn textures_open(

@@ -1,4 +1,5 @@
 //! Pins how a texture is named: the reference a file answers to, the two files it is, and which reader reaches it.
+
 use crate::plugins::textures::source::TextureSource;
 use xrf_material::fixtures::FixtureTree;
 

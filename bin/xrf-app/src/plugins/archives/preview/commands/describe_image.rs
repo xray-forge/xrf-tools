@@ -43,8 +43,6 @@ pub async fn archives_describe_image(
     .with_probe(&roots, |probe| read_located_asset(probe, &logical_path))?
     .map_err(|error: XrfError| format!("Failed to describe image '{logical_path}': {error}"))?;
 
-  // A picture whose header will not parse is still worth handing to the webview: it may know a variant this does
-  // not, and refusing the shape would take the drawable bytes down with it.
   let shape: Option<ImageShape> = ImageShape::of_bytes(&bytes);
 
   if shape.is_none() {

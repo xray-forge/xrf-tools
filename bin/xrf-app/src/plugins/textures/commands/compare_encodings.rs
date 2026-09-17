@@ -28,11 +28,6 @@ struct MeasuredComparison {
 }
 
 /// Weigh every candidate format against one texture, and keep the encodes.
-///
-/// The source is decoded once and reduced once; the candidates are then encoded from those same levels, so the
-/// comparison weighs formats rather than weighing one format against a differently built chain. Every figure is
-/// relative to the current file as decoded, which for a texture already stored in a DXT family is itself lossy - so
-/// what is reported is the loss a re-encode adds, never distance from an original.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "compare_encodings"))]
 #[tauri::command(rename = "compare_encodings")]
 pub async fn textures_compare_encodings(
@@ -86,11 +81,6 @@ pub async fn textures_compare_encodings(
 }
 
 /// The stored bytes of whatever the request names.
-///
-/// Two doors, because a texture has two kinds of address, and which door to take is what the source says rather than
-/// what can be derived from it. A file names its own bytes, whether or not a tree could place it; a reference names a
-/// texture without saying where it lives, so the roots decide which of several wins and an archived entry answers as
-/// readily as a loose one.
 fn read_texture_bytes(assets: &AssetMountState, request: &TexturesCompareRequest) -> TauriResult<Vec<u8>> {
   match &request.source {
     TextureSource::File { .. } => {

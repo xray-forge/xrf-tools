@@ -7,10 +7,6 @@ use crate::core::types::TauriResult;
 use crate::plugins::translations::state::TranslationProjectState;
 
 /// Report the first character a language cannot hold, or nothing when the value is writable.
-///
-/// Checked here rather than in the interface because the answer depends on code page tables the
-/// browser has no encoder for, and on what each language's own files declared. Called when a cell is
-/// committed, so a mistake is reported where it was made instead of at the end of a batch save.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "validate_text"))]
 #[tauri::command(rename = "validate_text")]
 pub async fn translations_validate_text(

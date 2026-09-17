@@ -12,24 +12,10 @@ use crate::plugins::configs::request::ConfigsReadSectionsRequest;
 use crate::plugins::configs::state::{ConfigsProject, ConfigsState};
 
 /// How many sections one request may ask for.
-///
-/// A page is what scrolled into view, not a slice of the document a caller chose the size of. A section is at least
-/// two lines - its header and the gap after it - so this covers a window twice as tall as any screen the application
-/// runs on; a request past it is a caller that stopped paging, and refusing it is better than quietly answering with a
-/// message it did not expect.
-///
 /// todo: Vertically tuned wide screen?
 const MAXIMUM_SECTIONS_PER_READ: usize = 64;
 
 /// Reads the bodies of the named sections of one entry point.
-///
-/// Addressed by name rather than by offset, so a page is always whole sections and a filter applied on one side never
-/// has to be mirrored on the other. A name the root does not hold is skipped rather than refused: a page request races
-/// an index the caller may have fetched before a reopen.
-///
-/// Off the async worker even though a page is usually a map lookup: the root is normally resolved by the time anything
-/// can ask for one, but "normally" is not a guarantee. A page asked for after the session was replaced would resolve a
-/// whole include tree, and doing that on the IPC handler thread would stall every other command behind it.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "read_resolved_sections"))]
 #[tauri::command(rename = "read_resolved_sections")]
 pub async fn configs_read_resolved_sections(

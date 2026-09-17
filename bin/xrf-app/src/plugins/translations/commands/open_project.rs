@@ -10,10 +10,6 @@ use crate::plugins::translations::request::TranslationsOpenRequest;
 use crate::plugins::translations::state::TranslationProjectState;
 
 /// Open a translations tree.
-///
-/// `roots` is the shared vocabulary every surface names roots with, so an installation opens as
-/// readily as a loose tree and a gamedata tree layers in front of one. The prefix is this layout's
-/// own half — where inside those trees the string tables sit — and defaults to what the mode implies.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "open_project"))]
 #[tauri::command(rename = "open_project")]
 pub async fn translations_open_project(

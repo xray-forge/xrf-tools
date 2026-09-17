@@ -34,8 +34,6 @@ pub async fn configs_verify_directory(
       .with_progress(progress),
   )?;
 
-  // Off the async worker: opening the project mounts every root and reads every config it holds, and the check then
-  // walks all of them. An `async fn` alone would leave that on an executor thread meant for short requests.
   run_job(
     &execution,
     "Configs verification",

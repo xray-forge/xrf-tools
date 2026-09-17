@@ -16,10 +16,6 @@ use crate::core::types::TauriResult;
 use crate::plugins::sprite_equipment::request::PackSpriteRequest;
 
 /// Draw every declared inventory icon into one equipment sprite sheet.
-///
-/// Holds the sheet it writes exclusively, so a second request for the same output is refused rather than allowed to
-/// race it. A cancelled run leaves nothing behind: the sheet is one image written once at the end, so stopping before
-/// that point writes no file at all.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "pack_sprite"))]
 #[tauri::command(rename = "pack_sprite")]
 pub async fn sprite_equipment_pack_sprite(
@@ -45,8 +41,6 @@ pub async fn sprite_equipment_pack_sprite(
     system_ltx.display()
   );
 
-  // Registered before the hop, and before the LTX is read: `system.ltx` pulls in the whole include tree, which on an
-  // installation is thousands of files and most of the wait.
   let (job, registration): (JobHandle, JobRegistration) = registry.register(
     start
       .with_exclusion_group(JobKind::SpriteEquipmentPack.as_str())
@@ -54,8 +48,6 @@ pub async fn sprite_equipment_pack_sprite(
       .with_progress(progress),
   )?;
 
-  // Off the async worker: reading the include tree, decoding every icon, and encoding one sheet is not work an IPC
-  // executor should be holding. It was on that executor until this became a job.
   run_job(
     &execution,
     "Equipment sprite pack",

@@ -32,9 +32,6 @@ use crate::plugins::archives::describe::thm::ArchiveThmDescription;
 #[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(tag = "kind", rename_all = "camelCase", rename_all_fields = "camelCase")]
 pub enum ArchiveFormatDescription {
-  // Boxed rather than inline: a description is large beside a refusal, and the refusal is the commoner answer by a
-  // wide margin. A line comment because a variant's doc comment travels onto the generated TypeScript member, where
-  // a note about Rust layout says nothing.
   Chunks {
     description: Box<ArchiveChunksDescription>,
   },
@@ -150,10 +147,6 @@ pub struct ArchiveFileDescription {
 
 impl ArchiveFileDescription {
   /// Describes one entry of the subject being browsed.
-  ///
-  /// Reads in the order a refusal is cheapest to reach: the entry has to be listed, a describer has to claim it, and
-  /// only then is its size weighed — because the gate is asked before the bytes are fetched, so an enormous entry is
-  /// never held in memory to be turned down.
   ///
   /// # Errors
   ///

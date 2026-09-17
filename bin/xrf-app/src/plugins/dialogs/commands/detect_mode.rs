@@ -5,10 +5,6 @@ use xrf_vfs::XrayRoots;
 use crate::core::types::TauriResult;
 
 /// Report which layout roots looks like, for the open form to preselect.
-///
-/// Advisory: `open_project` obeys whatever layout mode it is given, because the two layouts read and
-/// write different files and a heuristic must not be what decides that. This mounts the roots to
-/// answer, so it names one the same way the open does.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "detect_mode"))]
 #[tauri::command(rename = "detect_mode")]
 pub async fn dialogs_detect_mode(roots: XrayRoots) -> TauriResult<DialogProjectMode> {

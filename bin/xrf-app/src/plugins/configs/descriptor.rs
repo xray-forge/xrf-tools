@@ -29,9 +29,6 @@ pub struct ConfigsProjectDescriptor {
 }
 
 /// One config as the authored view renders it.
-///
-/// Text and structure travel together but stay separate records: the text is what a person edits and the structure is
-/// what only the parser knows, and a future edit replaces one without invalidating the shape of the other.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]

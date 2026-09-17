@@ -4,10 +4,6 @@ use serde::Serialize;
 use sysinfo::{Pid, Process, System};
 
 /// What everything below one process costs, folded in a single walk of the table.
-///
-/// A pair rather than one figure, because the total is unreadable without it: a webview runs a browser process, a GPU
-/// process and a renderer per frame tree, and "580 MB" means something different across two of those than across
-/// eight.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -19,9 +15,6 @@ pub struct DescendantUsage {
 }
 
 /// What every process descended from `root` costs, at any depth.
-///
-/// Climbs from each process towards `root` rather than descending from it, because the table is keyed by process and
-/// holds no children. That is one lookup per link rather than an index nobody else needs.
 pub fn sum_descendants(system: &System, root: Pid) -> DescendantUsage {
   let population: usize = system.processes().len();
   let mut usage: DescendantUsage = DescendantUsage::default();
@@ -41,10 +34,6 @@ fn parent_of(system: &System, pid: Pid) -> Option<Pid> {
 }
 
 /// Whether `root` is somewhere above `parent`, climbing at most `limit` links.
-///
-/// Takes the lookup rather than the table so the climb can be tested against a chain nobody has to spawn. `limit` is
-/// the number of processes in that table, which bounds the walk: a table read while processes are starting and exiting
-/// can name a parent that has already been replaced, and a cycle among those readings would otherwise spin forever.
 fn descends_from(parent: Option<Pid>, root: Pid, limit: usize, mut parent_of: impl FnMut(Pid) -> Option<Pid>) -> bool {
   let mut parent: Option<Pid> = parent;
 

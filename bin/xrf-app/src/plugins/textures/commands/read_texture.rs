@@ -7,10 +7,6 @@ use crate::core::execution::ExecutionState;
 use crate::core::types::TauriResult;
 
 /// A texture the webview's own DDS loader refuses, decoded to png here instead.
-///
-/// The fallback behind `assets|read_asset`, exactly as the visuals viewer has one: a DDS the webview can upload is
-/// uploaded as stored, and only the layouts three.js declines come through here. Bump halves never do; a packed plane
-/// re-encoded through a png path would lie about its values, so a half this loader cannot upload shows a status instead.
 #[tauri::command(rename = "read_texture")]
 pub async fn textures_read_texture(
   roots: XrayRoots,

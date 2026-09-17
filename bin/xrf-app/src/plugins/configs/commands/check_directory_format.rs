@@ -12,9 +12,6 @@ use crate::core::types::TauriResult;
 use crate::plugins::configs::request::ConfigsFormatRequest;
 
 /// Report which LTX configs roots exposes are misformatted.
-///
-/// Reads archived configs too. Shares the formatter's exclusion group while retaining a separate job kind because
-/// checking reports findings without rewriting files.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "check_directory_format"))]
 #[tauri::command(rename = "check_directory_format")]
 pub async fn configs_check_directory_format(
@@ -36,7 +33,6 @@ pub async fn configs_check_directory_format(
       .with_progress(progress),
   )?;
 
-  // Off the async worker: this mounts every root and reads every config it holds.
   run_job(
     &execution,
     "Configs format check",

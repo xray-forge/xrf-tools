@@ -8,12 +8,6 @@ use crate::core::process::{process_started_at_epoch_millis, process_uptime};
 use crate::plugins::system::diagnostics::process_tree::{DescendantUsage, sum_descendants};
 
 /// One reading of what the application costs, and of how long it has been running.
-///
-/// Every figure is a reading rather than a total: nothing here accumulates, so a caller polling this sees the current
-/// state and never a history it did not ask to keep.
-///
-/// Grouped by subject rather than flattened, because the same word means three different things depending on whose
-/// memory is being reported, and a prefix on each field is a worse way of saying so than a name around each group.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Copy, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -55,8 +49,6 @@ pub struct MachineUsage {
 
 impl RuntimeSnapshot {
   /// Reads one snapshot off a refreshed view of the machine.
-  ///
-  /// Takes the reader rather than acquiring one, so the refresh policy stays with the state that lends it.
   pub fn read(system: &System, pid: Pid) -> Self {
     Self {
       started_at: process_started_at_epoch_millis(),

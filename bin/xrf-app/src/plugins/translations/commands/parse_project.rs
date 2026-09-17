@@ -17,10 +17,6 @@ use crate::core::jobs::{JobKind, JobRegistration, JobRegistry, JobResource, JobS
 use crate::core::types::TauriResult;
 
 /// What an import was asked to do.
-///
-/// One argument rather than seven, because a Tauri command's parameters are its wire signature and seven of them plus
-/// a job's own two is more than a reader can hold. It is also exactly what the registry retains, so a window adopting
-/// this run after a reload sees the request rather than a summary of it.
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
@@ -88,8 +84,6 @@ pub async fn translations_parse_project(
     if request.is_dry_run { " (dry run)" } else { "" }
   );
 
-  // The request travels whole rather than as a hand-picked subset, so a window that adopts this job after a reload can
-  // say what it was actually asked to do rather than a summary somebody chose in advance.
   let (job, registration): (JobHandle, JobRegistration) = registry.register(
     start
       .with_exclusion_group(JobKind::TranslationsParse.as_str())
@@ -119,10 +113,6 @@ pub async fn translations_parse_project(
     is_dry_run,
   };
 
-  // Off the async worker, because this reads and writes a whole tree: 134 files and 24,000 entries on
-  // an Anomaly-sized import, which is not work an IPC executor should be holding.
-  // Concluded with the summary rather than the crate's own result, because that is what this command answers: a window
-  // that adopts this job after a reload reads the registry's copy and has to find the shape it would have been given.
   let outcome: TauriResult<TranslationParseSummary> = run_job(
     &execution,
     "Translation import",

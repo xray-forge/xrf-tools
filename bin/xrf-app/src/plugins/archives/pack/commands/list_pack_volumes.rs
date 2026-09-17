@@ -6,12 +6,6 @@ use xrf_utils::{error_to_string, format_path};
 use crate::core::types::TauriResult;
 
 /// Volumes of this configuration's set the destination already holds.
-///
-/// Asked before packing rather than after: the editor puts a pack behind a confirmation, and a run that would replace
-/// an archive the user still has is exactly what that confirmation is for. Packing refuses the same destination on its
-/// own, so this is what the user is shown, not what protects them.
-///
-/// Cheap enough to answer on the async worker — one directory listing, no file is opened.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "list_pack_volumes"))]
 #[tauri::command(rename = "list_pack_volumes")]
 pub async fn archives_list_pack_volumes(config: ArchivePackConfig) -> TauriResult<Vec<PathBuf>> {

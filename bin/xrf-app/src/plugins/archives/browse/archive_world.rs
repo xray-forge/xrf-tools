@@ -6,15 +6,6 @@ use xrf_vfs::{XrayAsset, XrayPathCollision, XrayProbe, XrayRoots, XrayShadowingE
 use crate::plugins::archives::browse::archive_world_entry::ArchiveWorldEntry;
 
 /// One mounted world the explorer browses: an installation, or any tree read as the engine would read it.
-///
-/// The other subject of the same explorer answers for one volume set and nothing else. Pointing that at a game folder
-/// lists the archives and silently omits the loose `gamedata` tree in front of them, so it shows the archived payload
-/// for files the engine would serve from disk. This one answers the other question: which copy actually wins, and what
-/// that decision hides.
-///
-/// A listing rather than a VFS. The mounts live in the application's one [`crate::core::assets::AssetMountState`],
-/// where every other surface's reads already go and where mounting one installation twice costs one index; what the
-/// session owns is the answer it published.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -44,8 +35,6 @@ pub struct ArchiveWorld {
 
 impl ArchiveWorld {
   /// Lists everything a probe reaches, folded into the shape the explorer browses.
-  ///
-  /// Bounded by the installation rather than by any gesture, so callers run it off the executor.
   pub fn list(probe: &XrayProbe, roots: XrayRoots) -> Self {
     let entries: Vec<XrayShadowingEntry> = probe.list_shadowing_entries();
 
@@ -63,9 +52,6 @@ impl ArchiveWorld {
   }
 
   /// The entry answering for one engine path, or `None` when this world holds none.
-  ///
-  /// A search rather than a scan, because [`Self::files`] is ordered by engine path and an installation puts tens of
-  /// thousands of entries in it.
   pub fn find(&self, name: &str) -> Option<&ArchiveWorldEntry> {
     self
       .files
@@ -75,9 +61,6 @@ impl ArchiveWorld {
   }
 
   /// Reads one file of this world as text, subject to the viewer's read policy.
-  ///
-  /// The gate is asked against the published listing's size rather than the filesystem's, so the size that refuses a
-  /// read is the size shown beside it.
   ///
   /// # Errors
   ///

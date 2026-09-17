@@ -13,8 +13,6 @@ use crate::plugins::sprite_equipment::metadata::EquipmentSpriteMetadata;
 use crate::plugins::sprite_equipment::source::{EquipmentConfigSource, EquipmentSheetSource, EquipmentSpriteOpen};
 
 /// One opened sheet: what the editor is told about it, and the bytes it is drawn from.
-///
-/// Metadata and bytes belong to one immutable publication, so a reload that fails replaces neither.
 pub struct EquipmentSpriteDocument {
   pub metadata: EquipmentSpriteMetadata,
   pub preview: Vec<u8>,
@@ -85,9 +83,6 @@ impl EquipmentSpriteDocument {
   }
 
   /// Reads the configuration and lists what it puts on the sheet.
-  ///
-  /// A configuration nobody asked for is no occupants and no complaint, which is why the absent case is `Ok` rather
-  /// than an error nothing went wrong to cause.
   fn read_occupants(open: &EquipmentSpriteOpen) -> Result<Vec<EquipmentSlotOccupant>, String> {
     let Some(config) = open.config.as_ref() else {
       return Ok(Vec::new());

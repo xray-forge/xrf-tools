@@ -22,8 +22,6 @@ use crate::plugins::translations::request::TranslationsVerifyRequest;
 #[serde(rename_all = "camelCase")]
 pub struct TranslationVerifySummary {
   /// Whether the run checked every source or was stopped between them.
-  ///
-  /// A stopped check reports the rows it reached; its silence about the rest is not a verdict.
   pub outcome: xrf_job::JobOutcome,
   /// The language the check was narrowed to, or `all`.
   pub language: String,
@@ -35,8 +33,6 @@ pub struct TranslationVerifySummary {
 }
 
 /// Report which translations are missing from which languages.
-///
-/// Reads only. Nothing here writes, so an installation is a legitimate subject rather than a refusal.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "verify_project"))]
 #[tauri::command(rename = "verify_project")]
 pub async fn translations_verify_project(
@@ -54,8 +50,6 @@ pub async fn translations_verify_project(
     language,
   } = request;
 
-  // `all` is accepted here, unlike the importer: a check reports every language at once, and that is
-  // the run somebody opens this screen to make.
   let language: TranslationLanguage = TranslationLanguage::from_str(&language)?;
 
   log::info!("Verifying translations: {} root(s), '{language}'", roots.roots.len());
@@ -71,15 +65,9 @@ pub async fn translations_verify_project(
     is_strict: false,
     output: xrf_output::OutputOptions::default(),
     language,
-    // The rows are the answer this surface shows. Building a finding per missing id would cost a
-    // hundred thousand allocations to describe what the counts already say.
     is_detailed: false,
   };
 
-  // Off the async worker: this parses every source in the project, which is 24,802 entries on an
-  // Anomaly-sized import and not work an IPC executor should be holding.
-  // Concluded with the summary rather than the crate's own result, because that is what this command answers: a window
-  // that adopts this job after a reload reads the registry's copy and has to find the shape it would have been given.
   let outcome: TauriResult<TranslationVerifySummary> = run_job(
     &execution,
     "Translation check",

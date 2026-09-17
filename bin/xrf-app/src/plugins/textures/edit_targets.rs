@@ -9,20 +9,11 @@ use crate::plugins::textures::files::TextureFiles;
 use crate::plugins::textures::request::TextureSaveTarget;
 
 /// Where an edit of one texture would write, and what was there when the editor read it.
-///
-/// Resolved by the command that located the files rather than derived by the frontend, for the same reason the
-/// descriptor is: a path assembled in TypeScript out of a reference and a separator is a guess about where the VFS
-/// found something, and the two disagree the moment a root is nested or a name is cased differently.
-///
-/// Absent for a texture served out of an archive, which has no file to replace at all.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TextureEditTargets {
   /// The `.thm` to write, whether or not one is there yet.
-  ///
-  /// Always present, because the editor can author a descriptor for a texture that has none: its
-  /// [`TextureSaveTarget::expected`] is what says which of the two cases this is.
   pub descriptor: TextureSaveTarget,
   /// The `.dds` to replace when a re-encode is saved.
   pub texture: TextureSaveTarget,
@@ -30,10 +21,6 @@ pub struct TextureEditTargets {
 
 impl TextureEditTargets {
   /// The two files an edit of `texture` writes, or nothing when the texture has no file on disk.
-  ///
-  /// Where the descriptor goes when the roots hold none is [`TextureFiles`]. Taking it from the located `.thm`
-  /// instead would work only for the textures that already have one, which is exactly the case the editor does not
-  /// need help with.
   ///
   /// # Errors
   ///
@@ -53,9 +40,6 @@ impl TextureEditTargets {
   }
 
   /// The two files an edit writes, named by path.
-  ///
-  /// The door a standalone texture comes through: it sits in no mount, so there is no asset to derive anything from
-  /// and the paths are the whole address.
   ///
   /// # Errors
   ///

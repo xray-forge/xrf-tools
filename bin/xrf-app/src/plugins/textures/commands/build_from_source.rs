@@ -32,11 +32,6 @@ pub struct TextureBuildOmissionReport {
 #[serde(rename_all = "camelCase")]
 pub struct TextureBuildOutcome {
   /// Whether the texture was written or the run stopped before it started.
-  ///
-  /// A cancelled build wrote nothing. There is one boundary and it is before the work: the encode writes the file
-  /// itself and is a single call with no seam inside it. That costs nothing worth having, because the encode is tens
-  /// of milliseconds - a descriptor decides the format here and `ETFormat` has no name for BC7, so the one candidate
-  /// that takes seconds cannot arise.
   pub outcome: JobOutcome,
   pub destination: String,
   /// Size of the source, which the descriptor's own width and height are refreshed from.
@@ -49,14 +44,6 @@ pub struct TextureBuildOutcome {
 }
 
 /// Rebuild a texture from a source image, the way its descriptor says to.
-///
-/// The descriptor decides everything - the layout, whether there is a mip chain and which kernel reduces it - and
-/// nothing is taken from the file being replaced, so a rebuild is reproducible from the two inputs alone. A format the
-/// build has no honest encoder for is refused rather than substituted; a field it merely does not implement yet comes
-/// back in [`TextureBuildOutcome::omissions`].
-///
-/// Holds the file it would write, so a save or a generation aimed at it is refused rather than allowed to race it, and
-/// joins the encode group for the same reason a generation does.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "build_from_source"))]
 #[tauri::command(rename = "build_from_source")]
 pub async fn textures_build_from_source(

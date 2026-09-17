@@ -1,8 +1,5 @@
 //! The vocabulary every textures test is written in: the trees it mounts, the scratch it writes to, and the pictures
 //! it measures against.
-//!
-//! Shared rather than repeated per file, because a helper spelled twice is two fixtures that can disagree about what
-//! a texture looks like - which makes two tests that appear to pin the same guarantee pin different ones.
 
 use std::fs;
 use std::path::{Path, PathBuf};

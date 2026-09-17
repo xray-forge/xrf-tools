@@ -23,11 +23,6 @@ impl EquipmentSheetSource {
 }
 
 /// Where the configuration that annotates a sheet is read from.
-///
-/// Parallel to [`EquipmentSheetSource`] and for the same reason, with one difference that matters: reading a
-/// configuration out of the roots resolves a whole include tree through the VFS, which is what reaches an
-/// installation's `db\configs` volumes. A file named directly is resolved from its own directory, which is what
-/// carries `mod_*.ltx` attachments sitting beside it.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "camelCase", rename_all_fields = "camelCase")]

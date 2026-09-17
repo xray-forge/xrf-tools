@@ -2,9 +2,6 @@ use tauri::Runtime;
 use tauri::plugin::TauriPlugin;
 
 /// Whole-project gamedata checks.
-///
-/// Stateless: a verification opens the project it was given, answers, and lets it go. Nothing is parked between
-/// commands, so there is no state slot a later call could find stale.
 pub struct GamedataPlugin {}
 
 impl GamedataPlugin {

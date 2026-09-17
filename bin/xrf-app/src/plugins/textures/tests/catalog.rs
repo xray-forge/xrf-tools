@@ -3,7 +3,6 @@
 
 use std::fs;
 use std::path::PathBuf;
-
 use xrf_db::{ThmBumpMode, ThmTextureFlag, ThmTextureType};
 use xrf_material::fixtures::{FixtureTree, ThmFixture};
 use xrf_vfs::{XrayMountId, XrayMountMode, XrayRoots, XrayVfs};
@@ -103,10 +102,10 @@ fn a_plain_directory_lists_every_texture_it_holds_rather_than_none() {
   // listed as a game tree it is an empty tree with a count beside it. Listed as itself, every file is the point.
   let root: PathBuf = loose_directory("loose_listing");
 
-  std::fs::create_dir_all(root.join("wall")).expect("nested directory");
-  std::fs::write(root.join("brick01.dds"), to_dds_bytes(4)).expect("texture is writable");
-  std::fs::write(root.join("brick01.thm"), ThmFixture::image().to_bytes()).expect("descriptor is writable");
-  std::fs::write(root.join("wall").join("brick01.dds"), to_dds_bytes(4)).expect("texture is writable");
+  fs::create_dir_all(root.join("wall")).expect("nested directory");
+  fs::write(root.join("brick01.dds"), to_dds_bytes(4)).expect("texture is writable");
+  fs::write(root.join("brick01.thm"), ThmFixture::image().to_bytes()).expect("descriptor is writable");
+  fs::write(root.join("wall").join("brick01.dds"), to_dds_bytes(4)).expect("texture is writable");
 
   let mut vfs: XrayVfs = XrayVfs::new();
   let id: XrayMountId = vfs

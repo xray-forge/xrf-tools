@@ -73,10 +73,6 @@ impl TextureMaterialSummary {
 
   /// Summarizes every descriptor a root set holds, taking the mounts in slices.
   ///
-  /// Takes a handle on the mounts rather than a probe because this is the shape a blocking thread needs: the
-  /// descriptors are listed once, then read slice by slice under the lock, and the summaries come back in listing
-  /// order.
-  ///
   /// # Errors
   ///
   /// Returns an error when the roots cannot be planned or mounted.
@@ -93,10 +89,6 @@ impl TextureMaterialSummary {
   }
 
   /// Summarizes the given descriptors the way `LoadTHM` reads them, in the order given.
-  ///
-  /// Descriptors are read in parallel on whatever pool the caller installed, because a corpus has thousands of them
-  /// and each is a small parse behind a file or volume read. A descriptor outside `textures\` has no reference and is
-  /// skipped, matching the catalog.
   pub fn sweep(probe: &XrayProbe, descriptors: &[XrayAsset]) -> Vec<Self> {
     descriptors
       .par_iter()

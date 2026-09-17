@@ -10,10 +10,6 @@ use xrf_utils::format_path;
 use crate::core::types::TauriResult;
 
 /// What the editor read at a path, so a later write cannot overwrite a change it never saw.
-///
-/// Size and modification time rather than a hash of the bytes: a texture is megabytes, the editor holds one node at a
-/// time for minutes rather than days, and the case worth catching is an SDK or a converter having rewritten the file in
-/// the meantime - which moves both.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -39,10 +35,6 @@ impl TextureFileStamp {
   }
 
   /// Refuse a path whose file is no longer the one `expected` describes.
-  ///
-  /// `None` is a claim like any other - "there was nothing here" - so a file that has appeared since the editor looked
-  /// is refused on the same terms as one that changed. Both mean the editor is holding fields derived from bytes that
-  /// are not what a write would replace.
   ///
   /// # Errors
   ///

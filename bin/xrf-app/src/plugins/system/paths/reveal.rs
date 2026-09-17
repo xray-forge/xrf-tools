@@ -1,7 +1,4 @@
 //! Showing a path in whatever file manager the desktop provides.
-//!
-//! One function per platform rather than one function with branches, because the three have nothing in common beyond
-//! their signature: each spawns a different program with a different convention for selecting an item.
 
 use std::io;
 use std::path::Path;

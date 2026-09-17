@@ -16,15 +16,6 @@ use crate::plugins::translations::request::TranslationsFormatRequest;
 use crate::plugins::translations::state::TranslationProjectState;
 
 /// Normalize the JSON translation sources under a directory.
-///
-/// A host directory rather than mounted roots, because this rewrites its sources in place and there is nowhere to
-/// put a file inside an archive volume. `configs format_directory` takes roots because an LTX project is a VFS
-/// notion — winning configs, an include graph, archived entries it declines — and none of that applies to flat JSON.
-///
-/// Holds the directory exclusively for the whole run, under the same lease a build and an import take, so a second
-/// writer over the same tree is refused rather than allowed to read files this one is midway through replacing. A
-/// cancelled run leaves the sources it had already formatted formatted and the rest untouched: each is rewritten
-/// through a staged replace, so nothing is half-written and running it again resolves the difference.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "format_project"))]
 #[tauri::command(rename = "format_project")]
 pub async fn translations_format_project(
@@ -66,9 +57,6 @@ pub async fn translations_format_project(
 }
 
 /// Walk and judge the sources off the async worker, which is where every blocking crate call belongs.
-///
-/// `is_check` picks which of the formatter's two doors is opened, rather than being handed to one door that decides
-/// for itself: whether this call rewrites the tree is the difference between the two commands above.
 pub(super) fn run(
   job: JobHandle,
   directory: PathBuf,

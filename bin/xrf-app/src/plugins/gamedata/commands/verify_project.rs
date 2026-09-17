@@ -42,8 +42,6 @@ pub struct GamedataCheckSummary {
 #[serde(rename_all = "camelCase")]
 pub struct GamedataVerifySummary {
   /// Whether every selected check finished, or the run stopped before or inside a check.
-  ///
-  /// A stopped run's checks are real verdicts; its silence about the rest is not one.
   pub outcome: JobOutcome,
   /// The aggregate verdict over the checks that ran.
   pub status: String,
@@ -67,9 +65,6 @@ pub struct GamedataVerifyRequest {
 }
 
 /// Run the selected checks over a gamedata project.
-///
-/// Holds the verification action group across windows. A full run over an installation is minutes of work that
-/// somebody may want to watch or call off.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "verify_project"))]
 #[tauri::command(rename = "verify_project")]
 pub async fn gamedata_verify_project(
@@ -97,8 +92,6 @@ pub async fn gamedata_verify_project(
       .with_progress(progress),
   )?;
 
-  // Off the async worker: this mounts an installation, indexes every asset it declares, and runs checks that
-  // parallelise internally. None of that belongs on an executor thread meant for short requests.
   run_job(
     &execution,
     "Gamedata verification",
@@ -168,7 +161,6 @@ fn to_summary(report: &GamedataVerificationReport, elapsed: Duration) -> Gamedat
         duration: check.get_duration(),
       })
       .collect(),
-    // The job's own clock rather than the report's, so opening the project is inside the number a person reads.
     duration: elapsed,
   }
 }

@@ -1,8 +1,4 @@
 //! The Tauri plugins the application exposes, one module per command domain.
-//!
-//! A domain owns its commands, the plugin that dispatches them, and whatever state they share. Wire names and
-//! command paths are declared once in `ipc::registry`, which derives runtime, Specta, and ACL registration from the
-//! same tokens. Which of these domains the application actually assembles is `registry`.
 
 pub mod archives;
 pub mod assets;

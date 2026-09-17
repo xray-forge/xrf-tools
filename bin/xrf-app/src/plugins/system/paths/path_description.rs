@@ -14,9 +14,6 @@ pub struct PathDescription {
 }
 
 /// What a path turned out to be.
-///
-/// Carried instead of a pair of booleans so the states cannot disagree. Failing to look is not a variant here: it
-/// reaches the caller as an error, which is what lets a refused check read as unknown rather than as absent.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -27,8 +24,6 @@ pub enum PathKind {
 }
 
 /// Reads what a path currently is.
-///
-/// Separated from the command so it can be tested without a runtime.
 pub fn describe_path(target: &Path) -> io::Result<PathDescription> {
   let metadata: fs::Metadata = match fs::metadata(target) {
     Ok(metadata) => metadata,

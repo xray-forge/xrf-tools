@@ -22,9 +22,6 @@ use crate::plugins::textures::request::TexturesMakeBumpRequest;
 #[serde(rename_all = "camelCase")]
 pub struct TextureMakeBumpOutcome {
   /// Whether the pair was written or the run stopped because it was asked to.
-  ///
-  /// A cancelled run wrote neither half: both are encoded before either is written, so there is no point at which
-  /// stopping could leave one half of a pair on disk with the other missing.
   pub outcome: JobOutcome,
   /// The normals and gloss, written as `<name>_bump.dds`.
   pub bump: String,
@@ -33,9 +30,6 @@ pub struct TextureMakeBumpOutcome {
   /// Mean gloss over the whole surface, in `0..=1`.
   pub gloss_power: f32,
   /// Whether the gloss is too dark for the surface to show a specular response worth having.
-  ///
-  /// A verdict rather than a failure, exactly as in the SDK: the pair is written either way, because a modder who
-  /// meant to author a matte surface is not making a mistake and one who did not wants to be told.
   pub is_gloss_too_dark: bool,
 }
 

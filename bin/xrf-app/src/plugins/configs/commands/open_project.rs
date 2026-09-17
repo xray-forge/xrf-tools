@@ -15,9 +15,6 @@ use crate::plugins::configs::request::ConfigsOpenRequest;
 use crate::plugins::configs::state::{ConfigsProject, ConfigsState};
 
 /// What opening one configs project produced, on its way back from the blocking thread.
-///
-/// The roots and prefix travel out and back rather than being cloned for the descriptor: the open owns them while it
-/// runs, and the descriptor has to report the ones it actually mounted.
 struct OpenedConfigsProject {
   project: LtxProject,
   inventory: LtxInventory,
@@ -42,12 +39,9 @@ pub async fn configs_open_project(
 
   log::info!("Opening ltx configs project in {}", roots.describe());
 
-  // Claimed before the work, so a second open superseding this one cannot be committed over by it.
   state.begin_open(session_id)?;
   let state: ConfigsState = state.inner().clone();
 
-  // Off the async worker: opening mounts every root, indexes the tree and reads the include list of every config in
-  // it, which on an installation is thousands of files.
   let opened: OpenedConfigsProject = execution
     .run_blocking("Configs project open", move || open_and_list(roots, prefix, is_dltx))
     .await?
@@ -68,8 +62,6 @@ pub async fn configs_open_project(
     session_id,
   });
 
-  // Shared rather than copied: the inventory of an installation is thousands of entries, and the session and every
-  // later restore answer with the same one.
   state.commit_open(session_id, ConfigsProject::new(opened.project, Arc::clone(&descriptor)))?;
 
   Ok(descriptor)
@@ -93,7 +85,6 @@ fn open_and_list(roots: XrayRoots, prefix: Option<String>, is_dltx: bool) -> Xrf
     },
   )?;
 
-  // Scoped, so the borrow the reader holds ends before the project moves out with the answer.
   let inventory: LtxInventory = {
     let source = project.document_source();
 

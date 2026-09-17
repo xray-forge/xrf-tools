@@ -19,10 +19,6 @@ use crate::core::jobs::{JobKind, JobRegistration, JobRegistry, JobResource, JobS
 use crate::core::types::TauriResult;
 
 /// What a build was asked to do.
-///
-/// One argument rather than five, because a Tauri command's parameters are its wire signature and five of them plus a
-/// job's own two is more than a reader can hold. It is also exactly what the registry retains, so a window adopting
-/// this run after a reload sees the request rather than a summary of it.
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
@@ -40,9 +36,6 @@ pub struct TranslationBuildRequest {
 }
 
 /// What a build reports back to the desktop surface.
-///
-/// A row per language rather than the 272 files behind a full run, which is the natural grain of a
-/// build whose job is one string table per language.
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
@@ -59,12 +52,6 @@ pub struct TranslationBuildSummary {
 }
 
 /// Compile translation sources into per-language string tables.
-///
-/// `roots` names where the sources are read from, through the VFS, so a tree layered over an
-/// installation compiles what the engine would actually load. `outputDir` is a plain host directory,
-/// because a string table is a file and a `.db` volume has nowhere to put one.
-///
-/// Refuses an output directory inside any of the source roots before writing anything.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "build_project"))]
 #[tauri::command(rename = "build_project")]
 pub async fn translations_build_project(
@@ -85,8 +72,6 @@ pub async fn translations_build_project(
     format_path(&request.output_dir)
   );
 
-  // The request travels whole rather than as a hand-picked subset, so a window that adopts this job after a reload can
-  // say what it was actually asked to do rather than a summary somebody chose in advance.
   let (job, registration): (JobHandle, JobRegistration) = registry.register(
     start
       .with_exclusion_group(JobKind::TranslationsBuild.as_str())
@@ -110,10 +95,6 @@ pub async fn translations_build_project(
     language,
   };
 
-  // Off the async worker: a full build compiles every source into eight string tables and writes all
-  // of them, which is not work an IPC executor should be holding.
-  // Concluded with the summary rather than the crate's own result, because that is what this command answers: a window
-  // that adopts this job after a reload reads the registry's copy and has to find the shape it would have been given.
   let outcome: TauriResult<TranslationBuildSummary> = run_job(
     &execution,
     "Translation build",

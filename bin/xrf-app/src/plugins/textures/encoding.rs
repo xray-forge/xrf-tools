@@ -11,10 +11,6 @@ use crate::core::types::TauriResult;
 use crate::plugins::textures::source::TextureSource;
 
 /// A format the base texture can be written in, of the five worth offering.
-///
-/// A plugin-side mirror of [`DdsEncodeCandidate`] rather than the crate's own enum, for the reason every wire type
-/// here is one: `xrf-dds` is a pure image crate and carries no bindings feature, and a surface naming a format wants
-/// a name that cannot change under it.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -95,9 +91,6 @@ pub struct TextureEncodingComparison {
   pub source: TextureSource,
   pub roots: XrayRoots,
   /// Whether every candidate was weighed or the run stopped because it was asked to.
-  ///
-  /// A cancelled comparison still reports what it managed, and the session still holds those encodes: a candidate it
-  /// reached is a real measurement and a real set of bytes, whatever happened after it.
   pub outcome: JobOutcome,
   /// The texture the encodes were made from, which a save has to name to claim them.
   pub reference: String,
@@ -111,9 +104,6 @@ pub struct TextureEncodingSession {
   pub session_id: SessionId,
   pub roots: XrayRoots,
   /// The texture these were encoded from, so a save cannot write one texture's bytes over another's file.
-  ///
-  /// The source rather than its label: two files in different trees can share an engine reference, and a label a
-  /// standalone file gets from its own stem is not unique at all.
   pub source: TextureSource,
   /// What to call it in a message, carried beside the source because a source is an address rather than a name.
   pub label: String,

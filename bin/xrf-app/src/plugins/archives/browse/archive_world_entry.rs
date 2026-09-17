@@ -23,14 +23,6 @@ impl From<XrayShadowedCopy> for ArchiveShadowedCopy {
 }
 
 /// One file of a mounted world, as the explorer lists it.
-///
-/// Shaped like [`xrf_archive::ArchiveFileDescriptor`] where the two can agree — a `name` and a `size_real` — because
-/// the tree, the filter and the preview gate above them need nothing else, and giving each subject its own spelling of
-/// those two would fork every one of those surfaces.
-///
-/// Where they cannot agree, this says less rather than inventing something. A loose file has no volume position, no
-/// stored size and no recorded CRC, so nothing here claims one; what it has instead is the copies it stands in front
-/// of, which a volume set has no way to express.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -46,9 +38,6 @@ pub struct ArchiveWorldEntry {
 }
 
 /// Measured as it already sits, rather than converted into a shape a breakdown owns.
-///
-/// The listing split in `xrf-vfs` exists to stop retaining what nothing reads; building a second copy of tens of
-/// thousands of entries to hand to `xrf-archive-stats` would give that straight back.
 impl ArchiveStatisticsEntry for ArchiveWorldEntry {
   fn get_name(&self) -> &str {
     &self.name

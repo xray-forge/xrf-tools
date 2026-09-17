@@ -6,15 +6,6 @@ use crate::core::assets::{AssetMountState, read_located_asset};
 use crate::core::types::TauriResult;
 
 /// Returns the untouched bytes of one asset of mounted roots.
-///
-/// Raw rather than typed because the callers want the bytes as authored: a DDS keeps its compressed mip chain for the
-/// loader to upload, and base64 would cost a copy and a third of the payload again.
-///
-/// Addressed by logical path rather than by reference, because the caller already resolved one: a description hands back
-/// the located asset, and reading it by path means the read cannot land on a different file than the outcome named.
-///
-/// Any asset of roots the user themselves mounted is readable, the way an opened archive's every entry is. What bounds
-/// this is the roots, not the command.
 #[tauri::command(rename = "read_asset")]
 pub async fn assets_read_asset(
   roots: XrayRoots,

@@ -34,24 +34,11 @@ impl TextureSource {
   }
 
   /// Returns the path of the `.dds` this source names, for a file that may be either half of the pair.
-  ///
-  /// Not the same question as [`Self::physical_path`], and the difference is a real one: a person opens a texture by
-  /// picking either the `.dds` or the `.thm` beside it, so the file they named is not always the file the pixels are
-  /// in. Anything reading bytes to decode wants this; anything reporting what was opened wants the other.
   pub fn to_texture_path(&self) -> Option<PathBuf> {
     Some(TextureFiles::of(self.physical_path()?).texture)
   }
 
   /// The engine reference this source names, or `None` for a file that names none.
-  ///
-  /// A file is named by its logical path inside the X-Ray root the VFS implies for it, which is the root the roots are
-  /// centred on, so a reference derived here resolves in the same tree the describe then searches. A `.dds` and the
-  /// `.thm` beside it share one reference, so either may be picked.
-  ///
-  /// `None` is an ordinary answer rather than a failure, and it has two causes: the file sits under no X-Ray root at
-  /// all, or it sits under one but outside its `textures\` directory. Both mean the same thing to a caller - there is
-  /// no name the engine would ever bind this file by - and both are files somebody may legitimately want to open. What
-  /// the description does with that is [`crate::plugins::textures::description::TextureDescription`]'s.
   pub fn to_reference(&self) -> Option<String> {
     match self {
       Self::Asset { reference } => Some(reference.clone()),
@@ -66,10 +53,6 @@ impl TextureSource {
   }
 
   /// What to call this texture on screen: its engine reference, or the file's own stem.
-  ///
-  /// Never empty and never a path. A reference is what the engine binds by and is the right label wherever one exists;
-  /// a file outside every tree has none, and its stem is the only name a person would recognise it by. Used for tree
-  /// keys, notices and titles - never to address a file, which is what the source itself is for.
   pub fn to_label(&self) -> String {
     self.to_reference().unwrap_or_else(|| match self {
       Self::Asset { reference } => reference.clone(),

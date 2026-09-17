@@ -2,11 +2,6 @@ use tauri::Runtime;
 use tauri::plugin::TauriPlugin;
 
 /// The running-work surface: what is going on, and asking it to stop.
-///
-/// A domain of its own rather than a command on each plugin that has long work, because identity, exclusion and
-/// cancellation are the same three questions whatever the work is. The registry it answers from is shared shell
-/// (`core::jobs`) and managed at the composition root, so any domain's command registers with it without depending on
-/// this plugin.
 pub struct JobsPlugin {}
 
 impl JobsPlugin {

@@ -7,10 +7,6 @@ use crate::core::types::TauriResult;
 const OUTPUT_DIRECTORY: &str = "target";
 
 /// Where tools write when no output directory has been configured.
-///
-/// Beside the executable when that directory accepts a file, and in the application's own data directory otherwise.
-/// The whole rule lives here rather than in the command, so the two candidates cannot be ordered differently by
-/// whoever asks next.
 pub fn default_output_root(local_data: Option<PathBuf>) -> TauriResult<String> {
   select_default_output_root(
     executable_directory().filter(|directory| is_writable(directory)),
@@ -19,8 +15,6 @@ pub fn default_output_root(local_data: Option<PathBuf>) -> TauriResult<String> {
 }
 
 /// Selects the preferred output root that the JavaScript caller can address without changing it.
-///
-/// Takes both candidates already resolved, so the ordering rule can be tested without a filesystem.
 fn select_default_output_root(executable: Option<PathBuf>, local_data: Option<PathBuf>) -> TauriResult<String> {
   executable
     .and_then(to_wire_output_root)
@@ -39,9 +33,6 @@ fn executable_directory() -> Option<PathBuf> {
 }
 
 /// Whether a directory accepts a file, tested by writing one and removing it again.
-///
-/// Metadata cannot answer this on Windows, where a directory under an installation root reports itself writable and
-/// still refuses the write.
 fn is_writable(directory: &Path) -> bool {
   let probe: PathBuf = directory.join(".xrf-write-probe");
 

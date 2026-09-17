@@ -10,12 +10,6 @@ use crate::plugins::visuals::pose::bake_named_motion;
 use crate::plugins::visuals::state::{SelectedVisual, VisualState};
 
 /// Pose the open visual through one of its motions, and report what came out.
-///
-/// Every frame is baked here and parked, so the `read_motion` that follows serves the same pose rather than composing
-/// it again - the same split geometry uses, and for the same reason: a typed command cannot carry the bytes.
-///
-/// Baked whole rather than sampled per frame because playback runs at thirty frames a second. A measured motion
-/// averages 78 frames, which for a fifty bone skeleton is tens of kilobytes: cheaper once than eighty times.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "open_motion"))]
 #[tauri::command(rename = "open_motion")]
 pub async fn visuals_open_motion(

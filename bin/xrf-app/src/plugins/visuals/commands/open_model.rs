@@ -15,13 +15,6 @@ use crate::plugins::visuals::skeleton::SelectedSkeleton;
 use crate::plugins::visuals::state::{SelectedVisual, SelectedVisualDescription, VisualSource, VisualState};
 
 /// Select a visual and return what it contains, with every reference it declares resolved.
-///
-/// Geometry is packed here and parked, so the `read_geometry` that follows serves the same parse rather than repeating
-/// it. The bytes are not returned: a typed command cannot carry them, which is why they are read separately.
-///
-/// Resolution happens once, for the whole dependency set, in this one call. That is what keeps a model with forty
-/// textures from costing forty round trips, and it is why the outcomes travel with the description rather than being
-/// asked for afterwards.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "open_model"))]
 #[tauri::command(rename = "open_model")]
 pub async fn visuals_open_model(
@@ -35,12 +28,8 @@ pub async fn visuals_open_model(
 
   log::info!("Opening visual: {}", source.label());
 
-  // Centred on the model unless the caller centred it elsewhere, and the effective roots is what travels back: a texture
-  // resolved through the model's own tree has to be readable through the same tree afterwards.
   let roots: XrayRoots = roots.centred_on(source.physical_path());
 
-  // Read, resolve and describe inside one probe, so the model, its references and the files behind them are all looked
-  // for in the same roots: a second probe could mount a source between the calls and answer differently.
   let (package, dependencies, textures, materials, surfaces, textures_ltx, skeleton) =
     assets.with_probe(&roots, |probe| {
       // Read once and pack from what was read: the skeleton posing needs comes off the same parse, so keeping it costs
@@ -84,9 +73,6 @@ pub async fn visuals_open_model(
 }
 
 /// Describes the file behind every located texture reference, once per file.
-///
-/// Keyed by logical path, which deduplicates as it goes: 6.5% of measured models point two submeshes at one texture, and
-/// describing it twice would make a model's texture total the weight of its references rather than of its files.
 fn describe_textures(probe: &XrayProbe, dependencies: &VisualDependencies) -> HashMap<String, AssetTextureDescriptor> {
   let mut described: HashMap<String, AssetTextureDescriptor> = HashMap::new();
 
@@ -108,11 +94,6 @@ fn describe_textures(probe: &XrayProbe, dependencies: &VisualDependencies) -> Ha
 }
 
 /// Describes the material the renderer builds for every declared texture reference, once per reference.
-///
-/// Keyed by the reference rather than by the located file, and iterated over every dependency rather than only the
-/// located ones, because the engine reads `<reference>.thm` whether or not `<reference>.dds` exists: a missing base
-/// texture with a live bump declaration binds that bump over the dummy diffuse, which is exactly what a modder opening
-/// the panel is trying to see.
 fn describe_materials(probe: &XrayProbe, dependencies: &VisualDependencies) -> HashMap<String, XrayMaterialDescriptor> {
   let mut described: HashMap<String, XrayMaterialDescriptor> = HashMap::new();
 
@@ -131,13 +112,6 @@ fn describe_materials(probe: &XrayProbe, dependencies: &VisualDependencies) -> H
 }
 
 /// Describes how the renderer draws every shader the model's submeshes declare, once per shader name.
-///
-/// The library is opened once for the whole model rather than per submesh: one `shaders.xr` answers every surface of
-/// every model in a tree, and it is a 190KB chunked file.
-///
-/// Keyed by the shader name as the mesh spells it, which is how the engine looks a blender up, so the frontend joins
-/// with `surfaces[submesh.shaderName]`. A submesh declaring no shader has no entry, which is the normal case for a
-/// skeleton's own record.
 fn describe_surfaces(probe: &XrayProbe, description: &VisualDescription) -> HashMap<String, XraySurfaceDescriptor> {
   let resolver: XraySurfaceResolver = XraySurfaceResolver::open(probe);
   let mut described: HashMap<String, XraySurfaceDescriptor> = HashMap::new();

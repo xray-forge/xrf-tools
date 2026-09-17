@@ -14,9 +14,6 @@ use crate::plugins::archives::lease::PUBLISH_ACTION_GROUP;
 use crate::plugins::archives::patch::ArchivesPatchRequest;
 
 /// Publishes added and modified entries as patch volumes.
-///
-/// Holds an exclusive destination lease and shares the publishing group with archive packing. Replacing an
-/// existing set requires `is_forced`.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "patch_archives"))]
 #[tauri::command(rename = "patch_archives")]
 pub async fn archives_patch_archives(
@@ -51,8 +48,6 @@ pub async fn archives_patch_archives(
       .with_progress(progress),
   )?;
 
-  // Off the async worker: a patch mounts two worlds, reads every payload a decision needs, and then writes volumes.
-  // An `async fn` alone would leave all of that on an executor thread meant for short requests.
   run_job(
     &execution,
     "Archive patch",

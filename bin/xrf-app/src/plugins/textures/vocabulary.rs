@@ -1,9 +1,4 @@
 //! The names the SDK gives the numbers a descriptor stores.
-//!
-//! Built from `xrf-db`'s own tables rather than transcribed into TypeScript. Every one of these enums serializes as the
-//! `u32` it is stored as, with an `Unknown(u32)` variant for a value the SDK never named, so a surface offering them
-//! has to get a list of numbers from somewhere. Getting it from here means a value gaining a name in `xrf-db` gains it
-//! in the editor with no second table to remember.
 
 use serde::Serialize;
 use xrf_db::{ThmBumpMode, ThmFormat, ThmMaterial, ThmMipFilter, ThmTextureFlag, ThmTextureType};
@@ -30,9 +25,6 @@ pub struct TextureFlagEntry {
 }
 
 /// Every named value the descriptor form's numeric fields can take.
-///
-/// Answered once when the editor opens rather than carried on every description: it is the same table for every
-/// texture in every root, and a description that repeated it would spend it thousands of times over a sweep.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -47,18 +39,11 @@ pub struct TextureVocabulary {
   /// The twelve bits the SDK names, in bit order. A word may carry others, and those have no name to show.
   pub flags: Vec<TextureFlagEntry>,
   /// The bump mode that makes the engine bind a pair.
-  ///
-  /// Named rather than left to a surface to recognise, because a tool that has just written a pair has to point the
-  /// descriptor at it and there is exactly one value that does. Matching on the display label would work until
-  /// somebody rewords it; matching on the number would work until it is spelled differently in two places.
   pub bump_mode_use: u32,
 }
 
 impl TextureVocabulary {
   /// The whole table, in the order each enum's own `NAMED` lists it.
-  ///
-  /// Order is the SDK's rather than alphabetical, because these are combo boxes in the editor it is modelled on and a
-  /// person who knows that dialog knows where its entries sit.
   pub fn describe() -> Self {
     Self {
       texture_types: to_entries(ThmTextureType::NAMED, ThmTextureType::label),
@@ -73,10 +58,6 @@ impl TextureVocabulary {
 }
 
 /// One enum's named values, each paired with the number it is stored as.
-///
-/// The label arrives as a function rather than through a trait these types implement, because every one of them
-/// already has a `label` and the only thing a trait would add is a second name for it. Passing it here also puts the
-/// spelling at the call site, so a reader of `describe` can see which of the five is which without leaving the line.
 fn to_entries<T: Copy + Into<u32>>(
   named: impl IntoIterator<Item = T>,
   label: fn(T) -> String,

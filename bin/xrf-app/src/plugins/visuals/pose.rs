@@ -7,10 +7,6 @@ use crate::plugins::visuals::skeleton::SelectedSkeleton;
 
 /// Bakes one named motion onto a selected visual's skeleton.
 ///
-/// The motion is looked for where the visual says it animates from: the motions it embeds first, then each omf its
-/// kinematics chunk references, in the order the file lists them. First match wins, which is the order the engine
-/// would resolve a name in.
-///
 /// # Errors
 ///
 /// Returns an error when no source the visual names carries the motion, or when the one that does cannot be posed onto

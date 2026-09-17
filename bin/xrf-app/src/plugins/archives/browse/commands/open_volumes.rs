@@ -23,8 +23,6 @@ pub async fn archives_open_volumes(
 
   let source: PathBuf = PathBuf::from(path);
 
-  // Off the async worker: opening walks the directory and reads every volume's whole name table, which is work bounded
-  // by the installation rather than by anything short enough for an IPC executor to hold.
   let project: ArchiveProject = execution
     .run_blocking("Opening the archive volumes", move || ArchiveProject::new(&source))
     .await?

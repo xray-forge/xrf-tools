@@ -11,10 +11,6 @@ use crate::plugins::textures::encoding::{TextureEncodingFormat, TextureEncodingS
 use crate::plugins::textures::state::TextureState;
 
 /// One weighed candidate as a picture, so a format can be looked at rather than only read about.
-///
-/// Decoded from the encode the comparison already made rather than encoded again here: the numbers beside it - its
-/// PSNR, its per-channel error - were measured from these exact bytes, and a second encode would be a different
-/// picture from the one the report describes.
 #[tauri::command(rename = "read_candidate")]
 pub async fn textures_read_candidate(
   session_id: SessionId,

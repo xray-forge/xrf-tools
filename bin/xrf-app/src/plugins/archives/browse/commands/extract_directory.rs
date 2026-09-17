@@ -35,8 +35,6 @@ pub async fn archives_extract_directory(
 
   log::info!("Extracting directory '{prefix}' to '{}'", destination.display());
 
-  // A snapshot rather than a live read: closing the subject mid-extraction leaves this run writing what it was asked
-  // for, which is sound because extraction commits nothing back.
   let subject: Arc<SessionSnapshot<ArchiveSubject>> = state.require(session_id)?;
   let assets: AssetMountState = AssetMountState::clone(&assets);
 

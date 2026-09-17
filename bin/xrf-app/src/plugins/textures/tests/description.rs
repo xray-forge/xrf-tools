@@ -1,4 +1,5 @@
 //! Pins what describing one texture answers, through the roots that name it and from the path of one that no tree can.
+
 use crate::plugins::textures::source::TextureSource;
 
 use std::path::PathBuf;

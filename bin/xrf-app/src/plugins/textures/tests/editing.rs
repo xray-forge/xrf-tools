@@ -25,10 +25,6 @@ use crate::plugins::textures::tests::fixtures::{
 };
 
 /// Move a file's modification time on, so a rewrite a test just made is one the guard can actually see.
-///
-/// The stamp is size and modification time, and these fixtures rewrite a descriptor with one float changed - same
-/// size, and, two statements apart, the same millisecond. What "somebody else rewrote it" means is that the rewrite
-/// happened afterwards, so the test says so rather than depending on the clock ticking mid-test.
 fn rewritten_later(path: &Path) {
   let file: File = File::options().write(true).open(path).expect("descriptor is writable");
   let modified: SystemTime = file

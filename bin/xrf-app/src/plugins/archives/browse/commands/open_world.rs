@@ -24,8 +24,6 @@ pub async fn archives_open_world(
 
   let assets: AssetMountState = AssetMountState::clone(&assets);
 
-  // Off the async worker: mounting indexes every volume's name table and walks every loose tree, then the listing
-  // measures each winner - work bounded by the installation rather than by anything an IPC executor should hold.
   let world: ArchiveWorld = execution
     .run_blocking("Opening the archive world", move || {
       assets.with_probe(&roots, |probe| ArchiveWorld::list(probe, roots.clone()))

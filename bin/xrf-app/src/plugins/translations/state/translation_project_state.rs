@@ -56,14 +56,6 @@ impl TranslationProjectState {
   }
 
   /// Refuse `directory` while an open editor session overlaps it.
-  ///
-  /// The editor holds buffers in memory, and a lease does not cover them because a session is not a job. Rewriting the
-  /// files under an open project would leave those buffers stale, and the next `save_file` would put the pre-format
-  /// content back — undoing the formatting without anybody being told. Closing the project is one click, so refusing
-  /// is cheap and losing a translator's view of a file is not.
-  ///
-  /// Overlap is containment either way: formatting a parent of the open root reaches its files, and formatting a
-  /// subtree of it reaches some of them.
   pub fn require_no_open_session_over(&self, directory: &Path) -> TauriResult<()> {
     let Some(project) = self.session.get()? else {
       return Ok(());

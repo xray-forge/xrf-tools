@@ -8,10 +8,6 @@ use xrf_vfs::{XrayAsset, XrayAssetType, XrayProbe, XrayRoots};
 use crate::plugins::textures::source::TextureSource;
 
 /// What a texture name is by convention, before any descriptor has been read.
-///
-/// Read off the name so a tree can fold a pair under its texture the moment the listing arrives; which pairs are
-/// declared, and by whom, is what the sweep then says. The convention itself is `xrf-material`'s, shared with the
-/// renderer's fallback rule and the companion derivation.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -37,10 +33,6 @@ impl TextureRole {
 }
 
 /// How a listing addressed what it found.
-///
-/// Two shapes rather than one because the two cases want opposite defaults. In a game tree the files that yield no
-/// engine reference are a level's lightmaps, and burying two thousand named textures in them is the bug; in a folder
-/// somebody is authoring in, those files are the entire point and there are no references to be had at all.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -58,9 +50,6 @@ pub enum TextureCatalogMode {
 #[serde(rename_all = "camelCase")]
 pub struct TextureEntry {
   /// What to call this row: an engine reference such as `ston\ston_beton05`, or a loose file's path below its root.
-  ///
-  /// Unique within one listing either way, so a tree can key on it. It is a label rather than an address; what to
-  /// open is `source`, because a loose file has no reference to be resolved back into.
   pub reference: String,
   /// How to open this row, which is the address the describe and every write take.
   pub source: TextureSource,
@@ -112,9 +101,6 @@ pub struct TextureCatalog {
   pub textures_ltx: Option<XrayAsset>,
   pub entries: Vec<TextureEntry>,
   /// `.dds` files the roots hold outside `textures\`, which no engine reference names and this catalog leaves out.
-  ///
-  /// Counted rather than dropped silently: a level's lightmaps are the usual case, and a person wondering where a file
-  /// went deserves the number.
   pub outside_textures_count: u32,
 }
 
@@ -163,10 +149,6 @@ impl TextureCatalog {
   }
 
   /// Lists every `.dds` of a plain directory, addressed by its own path.
-  ///
-  /// Keyed by the logical path without its extension rather than by the file stem alone: the stem is what a row is
-  /// labelled by, but two folders under one root may each hold a `wall01.dds`, and a listing that folded them together
-  /// would lose one of them. Nothing is counted as outside, because in this mode there is no inside.
   fn list_loose(probe: &XrayProbe, roots: XrayRoots) -> Self {
     let mut entries: BTreeMap<String, TextureEntry> = BTreeMap::new();
 

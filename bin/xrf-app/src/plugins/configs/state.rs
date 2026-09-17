@@ -30,21 +30,10 @@ impl ConfigsProject {
 
   /// The resolved root for one entry point, produced on the first ask and held until another is asked for.
   ///
-  /// One rather than a map, because a resolution with provenance is several times the size of the config and a game
-  /// tree resolves nearly everything through `system.ltx` - so one entry covers almost every file a person opens, and
-  /// caching every entry of an installation would hold hundreds of megabytes for the rare second one. Switching to
-  /// another entry point replaces it and pays one resolution, which the parsed-document cache has already read the
-  /// files for.
-  ///
-  /// Resolved with provenance, because every surface reading it has to explain a value: the structure view needs the
-  /// parents a resolved section no longer carries, and the resolved view needs the origin of every field.
-  ///
   /// # Errors
   ///
   /// Returns an error when the entry point cannot be read or resolved.
   pub fn resolve(&self, entry: &XrayLogicalPath, is_explaining: bool) -> TauriResult<Arc<ConfigsResolvedRoot>> {
-    // An explained root answers a plain ask too; the reverse is not true, which is the only reason this is not a
-    // straight equality on the entry.
     if let Some(held) = self.held_resolution()?.as_ref()
       && held.entry == *entry
       && (held.is_explained || !is_explaining)
@@ -52,11 +41,7 @@ impl ConfigsProject {
       return Ok(Arc::clone(held));
     }
 
-    // Resolved outside the lock: it reads and lowers a whole include tree, and holding the cache lock across that
-    // would block a second surface asking about a config that is already held.
     let resolved: Arc<ConfigsResolvedRoot> = Arc::new(if is_explaining {
-      // The plain one, if this root had it, is a second copy of the same document once this lands. The project holds
-      // that one; only the project can let it go.
       self.project.forget_root(entry);
 
       ConfigsResolvedRoot::explained(
@@ -67,8 +52,6 @@ impl ConfigsProject {
           .map_err(|error| format!("Cannot resolve '{}': {error}", entry.as_str()))?,
       )
     } else {
-      // Through the project, which holds it for the session: a person moving between roots and back pays for this one
-      // once rather than on every return to it.
       ConfigsResolvedRoot::plain(
         entry.clone(),
         self
@@ -84,10 +67,6 @@ impl ConfigsProject {
   }
 
   /// Lends a reader over one resolved root for the length of one call.
-  ///
-  /// Lent rather than returned, the way `AssetMountState::with_probe` lends a probe: the reader borrows the resolution
-  /// and a document source built beside it, neither of which outlives this frame. It also keeps the dialect name and
-  /// the declared schemes in one place, so three commands cannot disagree about how a root is read.
   ///
   /// # Errors
   ///
@@ -113,10 +92,6 @@ impl ConfigsProject {
   }
 
   /// Everything wrong with one root, verified once and kept beside the resolution it is about.
-  ///
-  /// Here rather than in the command because the caching is state, and state belongs with what owns its lifetime: the
-  /// resolution decides when these findings stop being true, and it is replaced here. A plain read like
-  /// `read_section_scheme` needs no such policy and goes through `with_reader` directly.
   ///
   /// # Errors
   ///

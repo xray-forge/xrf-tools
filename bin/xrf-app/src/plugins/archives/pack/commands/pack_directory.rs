@@ -14,9 +14,6 @@ use crate::plugins::archives::lease::PUBLISH_ACTION_GROUP;
 use crate::plugins::archives::pack::ArchivesPackRequest;
 
 /// Packs a directory using the supplied configuration.
-///
-/// Holds an exclusive destination lease. Replacing an existing set requires `is_forced`. Unforced runs roll
-/// back on failure or cancellation; forced runs cannot restore overwritten volumes.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "pack_directory"))]
 #[tauri::command(rename = "pack_directory")]
 pub async fn archives_pack_directory(
@@ -44,8 +41,6 @@ pub async fn archives_pack_directory(
       .with_progress(progress),
   )?;
 
-  // Off the async worker: packing walks the whole source tree, compresses what the engine expects compressed, and
-  // writes every volume. An `async fn` alone would leave all of that on an executor thread meant for short requests.
   run_job(
     &execution,
     "Archive pack",

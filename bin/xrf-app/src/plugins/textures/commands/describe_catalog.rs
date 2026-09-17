@@ -16,8 +16,6 @@ pub async fn textures_describe_catalog(
 ) -> TauriResult<Vec<TextureMaterialSummary>> {
   log::info!("Describing texture descriptors in: {}", roots.describe());
 
-  // A handle on the same mounts rather than a borrow, because the sweep outlives this command frame's borrow of the
-  // managed state once it crosses to a blocking thread.
   let mounts: AssetMountState = AssetMountState::clone(&assets);
 
   let summaries: Vec<TextureMaterialSummary> = execution

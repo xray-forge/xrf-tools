@@ -12,14 +12,6 @@ use crate::core::types::TauriResult;
 use crate::plugins::configs::request::ConfigsFormatRequest;
 
 /// Rewrite the LTX configs roots exposes.
-///
-/// Writing needs a file, so this refuses a project holding archived winners — the refusal comes from
-/// `xrf-ltx` itself. Formatting an installation is therefore a legitimate refusal, not a gap.
-///
-/// Holds the roots exclusively for the whole run, so a second request over the same set is refused rather than allowed
-/// to rewrite the files this one is walking. A cancelled run leaves the files it had already formatted formatted and
-/// the rest untouched: each file is rewritten through a staged replace, so nothing is half-written and running it
-/// again resolves the difference.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "format_directory"))]
 #[tauri::command(rename = "format_directory")]
 pub async fn configs_format_directory(
@@ -42,7 +34,6 @@ pub async fn configs_format_directory(
       .with_progress(progress),
   )?;
 
-  // Off the async worker: this mounts every root, reads every config, and rewrites the ones that need it.
   run_job(
     &execution,
     "Configs formatting",

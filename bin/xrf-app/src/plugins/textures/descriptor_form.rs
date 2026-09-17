@@ -18,9 +18,6 @@ pub struct TextureDescriptorForm {
   pub detail_name: String,
   pub detail_scale: f32,
   /// The whole `STextureParams` flag word, named bits and unnamed alike.
-  ///
-  /// One word rather than a boolean per bit: the twelve the SDK names are the ones a surface offers, and the rest are
-  /// bits somebody's tool set that this editor has no business dropping.
   pub flags: u32,
   pub format: u32,
   pub mip_filter: u32,
@@ -41,10 +38,6 @@ pub struct TextureDescriptorForm {
 
 impl TextureDescriptorForm {
   /// Reads the editable fields of a descriptor.
-  ///
-  /// A chunk the file does not carry reads as the value `STextureParams`' own constructor starts at, so a descriptor
-  /// missing one shows the SDK's default rather than a zero nobody chose. [`Self::apply_to`] puts the same reading
-  /// back, so a chunk that was absent stays absent unless somebody changes what it would have said.
   pub fn read(file: &ThmFile) -> Self {
     let param: ThmTextureParamChunk = file.texture_param.unwrap_or_default();
     let detail: ThmDetailChunk = file.detail.clone().unwrap_or_default();
@@ -74,12 +67,6 @@ impl TextureDescriptorForm {
   }
 
   /// Writes these fields onto a descriptor, leaving everything else it carries alone.
-  ///
-  /// Every chunk this touches keeps whether it was there: an existing one is overwritten in place, and a missing one
-  /// is added only when the form says something its absence would not have said. That is what makes
-  /// `read(f).apply_to(&mut f)` leave `f` byte for byte the file it was, which the round trip in this plugin's tests
-  /// pins - and it is the only reason a descriptor can be edited without the editor having to understand every chunk
-  /// the format has.
   pub fn apply_to(&self, file: &mut ThmFile) {
     apply_chunk(&mut file.texture_type, ThmTextureType::from(self.texture_type));
     apply_chunk(
@@ -132,10 +119,6 @@ impl TextureDescriptorForm {
 }
 
 /// Set one chunk without inventing a presence it did not have.
-///
-/// A descriptor the engine loads may be missing any chunk but the texture params, and `find_chunk` simply answers
-/// nothing for it. Writing the default back would add bytes the file never had, which is a difference a byte-exact
-/// round trip would report and a person editing one unrelated field never asked for.
 fn apply_chunk<T: Default + PartialEq>(slot: &mut Option<T>, value: T) {
   match slot {
     Some(existing) => *existing = value,

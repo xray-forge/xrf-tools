@@ -18,14 +18,6 @@ use crate::plugins::archives::browse::archive_world_entry::ArchiveWorldEntry;
 use crate::plugins::archives::describe::{ArchiveDescribeSource, ArchiveFileDescription};
 
 /// What the explorer has open: a set of `.db` volumes, or a whole mounted world.
-///
-/// The two are not folded into one shape. A volume set can say which volume an entry sits in, at what offset, with
-/// which recorded CRC; a world can say which copy of an engine path wins and what that decision hides. A single
-/// descriptor covering both would have a loose file claiming a volume position, which is the fiction this split
-/// exists to avoid.
-///
-/// Every difference between them is answered here, so a command stays an adapter and a reader asking how browsing an
-/// installation differs from browsing a volume set opens one file.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, Serialize)]
 #[serde(tag = "kind", rename_all = "camelCase", rename_all_fields = "camelCase")]
@@ -47,9 +39,6 @@ impl ArchiveSubject {
 
   /// The volume set this subject is, or a refusal naming what it is instead.
   ///
-  /// The one place a name-table command narrows the subject, so each states the requirement by calling this rather
-  /// than by matching the enum and inventing its own wording.
-  ///
   /// # Errors
   ///
   /// Returns a message naming the requirement when a world is open.
@@ -63,10 +52,6 @@ impl ArchiveSubject {
   }
 
   /// What this subject holds, broken down the ways a person asks about it.
-  ///
-  /// Read off the listing the session already published rather than by probing again, so the figures cannot disagree
-  /// with the tree on screen — and so a subject opened against an installation that has since changed on disk still
-  /// describes what is being browsed.
   pub fn describe_statistics(&self) -> ArchiveStatistics {
     match self {
       Self::Volumes { project } => ArchiveStatistics::of_volumes(project),

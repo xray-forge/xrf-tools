@@ -29,10 +29,6 @@ pub struct TextureDescription {
   /// What the base texture file is, when it is located and its bytes can be reached.
   pub base: Option<AssetTextureDescriptor>,
   /// What the renderer would build for this texture, or `None` for a file outside every tree.
-  ///
-  /// Absent rather than empty for a standalone file. There is no tree to resolve a bump pair or a detail against, so
-  /// answering "declares nothing" would be a claim this description is in no position to make - the descriptor beside
-  /// the file may well declare a pair, and what the engine would do with it depends on a game tree nobody has named.
   pub material: Option<XrayMaterialDescriptor>,
   /// What the bound bump file is, when the material binds one and its bytes can be reached.
   pub bump: Option<AssetTextureDescriptor>,
@@ -46,12 +42,6 @@ pub struct TextureDescription {
 
 impl TextureDescription {
   /// Describes a texture, through the roots where it has an engine reference and from its own path where it has none.
-  ///
-  /// The two shapes answer different questions, which is why they are two. A texture inside a tree is described as the
-  /// engine would find it: one probe locates the file, its descriptor and both halves of any declared pair, so all
-  /// four are looked for in the same roots and a second probe cannot mount something between the calls. A file outside
-  /// every tree has no engine reference at all, so there is nothing to resolve and nothing to resolve it against; it
-  /// is described from the bytes on disk.
   ///
   /// # Errors
   ///
@@ -108,10 +98,6 @@ impl TextureDescription {
 
   /// Describes a file that sits under no X-Ray root, from its own path.
   ///
-  /// Its two files are [`TextureFiles`], which is the only rule available where there is no tree to search. Nothing
-  /// else is resolved: a bump name this descriptor declares is an engine reference that means nothing until somebody
-  /// says which game data to read it against, and that is the editor's question rather than this one.
-  ///
   /// # Errors
   ///
   /// Returns an error when the source names no file on disk, which for a standalone description is the whole address.
@@ -152,9 +138,6 @@ impl TextureDescription {
 }
 
 /// The given roots with the file's own directory searched first.
-///
-/// Prepended rather than appended: the file the caller named is the one they mean, and a configured tree that happens
-/// to hold a texture of the same name must not answer for it.
 fn with_own_directory(roots: XrayRoots, texture_path: &Path) -> XrayRoots {
   match texture_path.parent() {
     Some(directory) => XrayRoots {
@@ -168,9 +151,6 @@ fn with_own_directory(roots: XrayRoots, texture_path: &Path) -> XrayRoots {
 }
 
 /// A loose file as the VFS would report it, rooted at its own directory.
-///
-/// Its logical path is the file name alone, which yields no engine reference - correctly, because there is none. What
-/// this carries is the physical address, so everything that describes a located file works on it unchanged.
 fn to_loose_asset(path: &Path) -> Option<XrayAsset> {
   let name: String = path.file_name()?.to_string_lossy().into_owned();
 

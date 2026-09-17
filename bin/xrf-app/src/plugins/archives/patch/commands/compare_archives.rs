@@ -13,8 +13,6 @@ use crate::core::types::TauriResult;
 use crate::plugins::archives::patch::ArchivesPatchRequest;
 
 /// Compares two roots without writing files.
-///
-/// Ignores `is_forced` and takes no destination lease.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "compare_archives"))]
 #[tauri::command(rename = "compare_archives")]
 pub async fn archives_compare_archives(
@@ -47,8 +45,6 @@ pub async fn archives_compare_archives(
       .with_progress(progress),
   )?;
 
-  // Off the async worker for the same reason a patch is: mounting two worlds and hashing what the sizes could not
-  // settle is bounded only by how much the roots hold.
   run_job(
     &execution,
     "Archive comparison",

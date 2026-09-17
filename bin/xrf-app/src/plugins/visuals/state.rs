@@ -47,10 +47,6 @@ pub struct SelectedVisual {
 }
 
 /// Where a visual is read from.
-///
-/// Both variants are self-describing, and neither is a handle into mount state: an asset is named by its engine
-/// identity, which any surface can spell without having opened anything. The roots it is looked for in travels beside
-/// the source on every command that takes one, so one call can never mix two roots.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, serde::Deserialize)]
 #[serde(tag = "kind", rename_all = "camelCase", rename_all_fields = "camelCase")]
@@ -70,9 +66,6 @@ impl VisualSource {
   }
 
   /// Returns the visual's filesystem path when its source provides one.
-  ///
-  /// An asset has none to give: it may live inside a volume, and the point of addressing it logically is not having to
-  /// care. Its own neighborhood is therefore not searched — the roots it came from already covers it.
   pub fn physical_path(&self) -> Option<&Path> {
     match self {
       Self::File { path } => Some(Path::new(path)),
@@ -82,8 +75,6 @@ impl VisualSource {
 }
 
 /// What the viewer is showing, paired with where it came from.
-///
-/// The enclosing snapshot supplies the geometry identity; source and roots describe its inputs and texture lookups.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]

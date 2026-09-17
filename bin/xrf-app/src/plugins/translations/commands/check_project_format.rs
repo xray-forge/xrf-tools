@@ -13,9 +13,6 @@ use crate::plugins::translations::commands::format_project::run;
 use crate::plugins::translations::request::TranslationsFormatRequest;
 
 /// Report which JSON translation sources under a directory are not normalized.
-///
-/// Shares the formatter's exclusion group. Open editor sessions are allowed because checking does not rewrite files
-/// or make their buffers stale; the separate job kind preserves that distinction in the reported outcome.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "check_project_format"))]
 #[tauri::command(rename = "check_project_format")]
 pub async fn translations_check_project_format(

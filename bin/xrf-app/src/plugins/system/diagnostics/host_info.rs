@@ -6,13 +6,6 @@ use serde::Serialize;
 use sysinfo::{MemoryRefreshKind, System};
 
 /// What the application is running on and with, none of which changes while it runs.
-///
-/// Split from [`RuntimeSnapshot`](super::RuntimeSnapshot) because that one is polled: re-reading the operating
-/// system's name every second to show the same string is work nobody asked for, and mixing a constant into a reading
-/// invites a surface to refresh the wrong half.
-///
-/// Every field an operating system may decline to report is `Option`, the way `BuildInfo` treats what a build could
-/// not record - naming the absence beats substituting a plausible default.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -42,9 +35,6 @@ pub struct HostInfo {
 
 impl HostInfo {
   /// Reads what the application is running on and with.
-  ///
-  /// Builds its own reader rather than borrowing the retained one: this is answered once per window, and the reader
-  /// the usage snapshot lends is refreshed for processes, which this needs none of.
   pub fn read() -> Self {
     Self {
       tauri_version: tauri::VERSION,

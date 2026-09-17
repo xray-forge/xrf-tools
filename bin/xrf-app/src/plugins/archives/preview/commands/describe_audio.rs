@@ -20,10 +20,6 @@ pub struct AudioSourceParameters {
 }
 
 /// What a sound is, once it has been located.
-///
-/// Every field is optional because there are two independent ways to know less than everything: bytes that are not a
-/// readable ogg at all, and a perfectly good ogg carrying no X-Ray comment. Reporting a zero for either would make an
-/// unreadable file indistinguishable from a silent one.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -39,9 +35,6 @@ pub struct AudioDescriptor {
 }
 
 /// Report whatever the engine would read out of a sound, without handing over the sound.
-///
-/// Paired with `assets|read_asset`, which serves the bytes the webview plays. Both are addressed by the same roots and
-/// logical path, so the numbers on screen describe the file that is playing rather than a second lookup's answer.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "describe_audio"))]
 #[tauri::command(rename = "describe_audio")]
 pub async fn archives_describe_audio(

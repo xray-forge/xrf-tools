@@ -7,9 +7,6 @@ impl AssetsPlugin {
   pub const NAME: &'static str = crate::ipc::registry::assets::NAME;
 
   /// Exposes the asset roots over IPC, without owning it.
-  ///
-  /// The one plugin with no state of its own: the roots it reads through is `core/`'s, managed by the composition root
-  /// so the domains that share it do not depend on this plugin having been initialized.
   pub fn init<R: Runtime>() -> TauriPlugin<R> {
     log::info!("Initialize plugin {}", Self::NAME);
 

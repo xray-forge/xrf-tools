@@ -12,9 +12,6 @@ use crate::plugins::archives::pack::commands::export_pack_config::archives_expor
 use crate::plugins::archives::pack::commands::import_pack_config::archives_import_pack_config;
 
 /// Drive one command to its answer.
-///
-/// The commands are declared `async` because that is how they are registered, not because either awaits anything;
-/// this runs them the way the IPC layer would rather than adding a test runtime for two synchronous bodies.
 fn run<T>(command: impl Future<Output = TauriResult<T>>) -> TauriResult<T> {
   tauri::async_runtime::block_on(command)
 }
@@ -40,7 +37,7 @@ fn open_form() -> ArchivePackConfig {
   config
 }
 
-fn blank_form() -> ArchivePackConfig {
+fn new_blank_form() -> ArchivePackConfig {
   ArchivePackConfig::new("", "", "gamedata")
 }
 
@@ -54,7 +51,7 @@ fn writes_and_reads_back_either_format() {
     run(archives_export_pack_config(&path, open_form())).unwrap_or_else(|error| panic!("{name} is exported: {error}"));
 
     // Imported over a blank form, the way the editor layers a file onto whatever it already holds.
-    let imported: ArchivePackConfig = run(archives_import_pack_config(&path, blank_form()))
+    let imported: ArchivePackConfig = run(archives_import_pack_config(&path, new_blank_form()))
       .unwrap_or_else(|error| panic!("{name} is imported: {error}"));
 
     assert_eq!(imported.include_files, open_form().include_files, "{name}");
@@ -76,8 +73,8 @@ fn both_formats_carry_the_same_rules() {
   run(archives_export_pack_config(&ltx, open_form())).expect("ltx exports");
   run(archives_export_pack_config(&json, open_form())).expect("json exports");
 
-  let from_ltx: ArchivePackConfig = run(archives_import_pack_config(&ltx, blank_form())).expect("ltx imports");
-  let from_json: ArchivePackConfig = run(archives_import_pack_config(&json, blank_form())).expect("json imports");
+  let from_ltx: ArchivePackConfig = run(archives_import_pack_config(&ltx, new_blank_form())).expect("ltx imports");
+  let from_json: ArchivePackConfig = run(archives_import_pack_config(&json, new_blank_form())).expect("json imports");
 
   assert_eq!(from_ltx.include_files, from_json.include_files);
   assert_eq!(from_ltx.exclude_extensions, from_json.exclude_extensions);

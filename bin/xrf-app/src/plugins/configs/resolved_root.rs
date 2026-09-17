@@ -42,9 +42,6 @@ impl<T> ConfigsHeldAnswer<T> {
 }
 
 /// One entry point's resolution, and whatever has been read out of it since.
-///
-/// The pair is what makes the cache answerable: a resolution whose entry nobody recorded cannot be checked against the
-/// one being asked for.
 pub struct ConfigsResolvedRoot {
   pub entry: XrayLogicalPath,
   pub resolution: Arc<LtxResolution>,
