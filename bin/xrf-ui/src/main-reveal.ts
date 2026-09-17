@@ -11,8 +11,14 @@
     }
 
     tauriInternals
-      ?.invoke?.("plugin:window|show", { label })
-      .then(() => tauriInternals?.invoke?.("plugin:window|set_focus", { label }))
+      .invoke("plugin:window|is_visible", { label })
+      .then((isVisible: boolean) =>
+        isVisible
+          ? undefined
+          : tauriInternals
+              .invoke("plugin:window|show", { label })
+              .then(() => tauriInternals.invoke("plugin:window|set_focus", { label }))
+      )
       .catch(console.error);
   }, 10);
 })();
