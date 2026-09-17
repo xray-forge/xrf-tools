@@ -43,7 +43,10 @@ describe("GamedataVerifierApplication", () => {
       jobId: id,
       progress: expect.anything(),
     });
-    expect(view.getByRole("progressbar")).toBeInTheDocument();
+
+    const indicators: Array<HTMLElement> = view.getAllByRole("progressbar");
+
+    expect(indicators.filter((it: HTMLElement) => !it.className.includes("animate-delayed-reveal"))).toHaveLength(1);
     expect(submit).toBeDisabled();
     expect(view.getByRole("checkbox", { name: "Strict" })).toBeDisabled();
 
