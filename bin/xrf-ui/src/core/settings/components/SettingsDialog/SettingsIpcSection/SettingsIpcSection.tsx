@@ -1,6 +1,6 @@
 import { Button, Divider, Stack, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
-import { ReactElement, useEffect, useState } from "react";
+import { ReactElement, useState } from "react";
 
 import { IIpcCommandMetrics, IIpcMetricsSnapshot } from "@/core/ipc/metrics";
 import { IpcMetricsService } from "@/core/ipc/services/metrics";
@@ -10,6 +10,7 @@ import { DetailSection } from "@/core/ui/layout/DetailSection";
 import { StatFigure } from "@/core/ui/stats/StatFigure";
 import { formatDuration } from "@/lib/format/duration";
 import { formatBytes } from "@/lib/memory/format";
+import { usePolledValue } from "@/lib/react";
 import { Nullable } from "@/lib/types/general";
 
 import {
@@ -37,19 +38,12 @@ const SORT_OPTIONS: ReadonlyArray<IChoiceFormRowOption<EIpcSort>> = [
 export function SettingsIpcSection(): ReactElement {
   const ipcMetricsService: IpcMetricsService = useInjection(IpcMetricsService);
 
-  const [snapshot, setSnapshot] = useState<IIpcMetricsSnapshot>(() => ipcMetricsService.read());
   const [sort, setSort] = useState<EIpcSort>(EIpcSort.DURATION);
 
+  const snapshot: IIpcMetricsSnapshot =
+    usePolledValue(() => ipcMetricsService.read(), METRICS_POLL_INTERVAL) ?? ipcMetricsService.read();
+
   const listed: Array<IIpcCommandMetrics> = sortIpcCommands(snapshot.commands, sort).slice(0, COMMAND_LIMIT);
-
-  useEffect(() => {
-    const timer: ReturnType<typeof setInterval> = setInterval(
-      () => setSnapshot(ipcMetricsService.read()),
-      METRICS_POLL_INTERVAL
-    );
-
-    return () => clearInterval(timer);
-  }, [ipcMetricsService]);
 
   return (
     <div className={"flex flex-col gap-6"}>
