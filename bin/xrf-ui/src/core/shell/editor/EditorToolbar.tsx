@@ -79,17 +79,8 @@ export function EditorToolbar({
           <EditorToolbarPathSeparator />
 
           <Box
-            sx={{
-              direction: "rtl",
-              textAlign: "left",
-              minWidth: 0,
-              overflow: "hidden",
-              whiteSpace: "nowrap",
-              textOverflow: "ellipsis",
-              fontSize: "0.75rem",
-              opacity: 0.7,
-              "& > *": { direction: "ltr" },
-            }}
+            className={"min-w-0 truncate text-left opacity-70"}
+            sx={{ direction: "rtl", fontSize: "0.75rem", "& > *": { direction: "ltr" } }}
           >
             {subtitle}
           </Box>
@@ -102,10 +93,8 @@ export function EditorToolbar({
         <>
           <Box
             data-testid={"editor-toolbar-actions"}
+            className={"flex shrink-0 items-center"}
             sx={{
-              display: "flex",
-              alignItems: "center",
-              flexShrink: 0,
               [`& .${iconButtonClasses.root}`]: {
                 width: CONTROL.editorActionSize,
                 height: CONTROL.editorActionSize,

@@ -1,11 +1,11 @@
 import { default as CircleIcon } from "@mui/icons-material/Circle";
-import { Typography } from "@mui/material";
 import { ReactElement, useCallback, useMemo } from "react";
 
 import { TranslationFile } from "@/core/ipc/types/xrf-translation";
 import { EditorSearchMenu } from "@/core/shell/editor/EditorSearchMenu";
 import { IEditorSearchResultRow } from "@/core/shell/editor/EditorSearchResults";
 import { IEditorSideMenuItem } from "@/core/shell/editor/EditorSideMenu";
+import { EmptyListing } from "@/core/ui/layout";
 import { Nullable } from "@/lib/types/general";
 
 /** One file, with enough on it to rank a search and label a row. */
@@ -71,13 +71,7 @@ export function TranslationsFilesMenu({
       onSelect={(entry) => onSelect(entry.name)}
       sections={sections}
     >
-      {entries.length ? null : (
-        <div className={"p-4 text-center"}>
-          <Typography className={"text-text-secondary"} variant={"body2"}>
-            No translation files found.
-          </Typography>
-        </div>
-      )}
+      {entries.length ? null : <EmptyListing label={"No translation files found."} />}
     </EditorSearchMenu>
   );
 }

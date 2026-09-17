@@ -1,17 +1,17 @@
-import { ListItem, ListItemButton, SxProps, Theme, Typography } from "@mui/material";
+import { ListItem, ListItemButton, Typography } from "@mui/material";
 import { ReactElement } from "react";
 
-import { ApplicationLauncherGroupLabel } from "@/core/launcher/components/ApplicationLauncherGroupLabel";
-import { ApplicationLauncherPlannedBadge } from "@/core/launcher/components/ApplicationLauncherPlannedBadge";
 import { toAccentColor, useApplicationLauncherActions } from "@/core/launcher/lib";
 import { EApplicationStatus, IApplicationDescriptor, IApplicationGroup } from "@/core/routing/application";
 import { TREE } from "@/core/theme/tokens";
 import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
+import { ApplicationLauncherGroupLabel } from "../ApplicationLauncherGroupLabel";
+import { ApplicationLauncherPlannedBadge } from "../ApplicationLauncherPlannedBadge";
+
 const ROW_COLUMNS: string = `${TREE.iconWidth}px 240px minmax(0, 1fr)`;
-const ROW_SX: SxProps<Theme> = { gridTemplateColumns: ROW_COLUMNS };
-const NAMED_ROW_SX: SxProps<Theme> = { gridTemplateColumns: `${ROW_COLUMNS} 132px` };
+const NAMED_ROW_COLUMNS: string = `${ROW_COLUMNS} 132px`;
 
 interface IApplicationLauncherRowProps extends BaseComponentProps {
   application: IApplicationDescriptor;
@@ -40,7 +40,7 @@ export function ApplicationLauncherRow({
       <ListItemButton
         aria-label={application.label}
         className={"grid h-tree-row items-center gap-2 px-2 py-0"}
-        sx={isGroupNamed ? NAMED_ROW_SX : ROW_SX}
+        style={{ gridTemplateColumns: isGroupNamed ? NAMED_ROW_COLUMNS : ROW_COLUMNS }}
         onFocus={onWarm}
         onMouseEnter={onWarm}
         onClick={onClick}

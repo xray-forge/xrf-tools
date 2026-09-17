@@ -37,12 +37,13 @@ export function ArchiveResolutionSourceRow({
       <div className={"flex min-w-0 grow flex-col gap-1"}>
         <div className={"flex flex-wrap items-center gap-2"}>
           <Chip
+            className={"p-2"}
             size={"small"}
             variant={"outlined"}
             color={isLoose ? "success" : "default"}
             icon={isLoose ? <FolderIcon /> : <ArchiveIcon />}
             label={isLoose ? "Files" : "Archives"}
-            sx={{ [`& .${chipClasses.icon}`]: { fontSize: 14 }, paddingX: 1, paddingY: 1 }}
+            sx={{ [`& .${chipClasses.icon}`]: { fontSize: 14 } }}
           />
 
           {source.origin ? (

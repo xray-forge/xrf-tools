@@ -37,9 +37,7 @@ export function ApplicationTitleBar({
 
       <WindowControls />
 
-      {isBusy ? (
-        <LinearProgress sx={[DELAYED_REVEAL_SX, { position: "absolute", right: 0, bottom: 0, left: 0, height: 2 }]} />
-      ) : null}
+      {isBusy ? <LinearProgress className={"absolute right-0 bottom-0 left-0 h-0.5"} sx={DELAYED_REVEAL_SX} /> : null}
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { Card, CardActionArea, cardActionAreaClasses, SxProps, Theme, Typography } from "@mui/material";
+import { Card, CardActionArea, Typography } from "@mui/material";
 import { ReactElement } from "react";
 
 import { ApplicationLauncherGroupLabel } from "@/core/launcher/components/ApplicationLauncherGroupLabel";
@@ -7,15 +7,6 @@ import { toAccentColor, useApplicationLauncherActions } from "@/core/launcher/li
 import { EApplicationStatus, IApplicationDescriptor, IApplicationGroup } from "@/core/routing/application";
 import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-
-/** The focus ring, which only MUI's own class can carry. */
-const ACTION_AREA_SX: SxProps<Theme> = {
-  [`&.${cardActionAreaClasses.focusVisible}`]: {
-    outline: "2px solid",
-    outlineColor: "primary.main",
-    outlineOffset: -2,
-  },
-};
 
 interface IApplicationLauncherCardProps extends BaseComponentProps {
   application: IApplicationDescriptor;
@@ -43,8 +34,7 @@ export function ApplicationLauncherCard({
     <Card data-testid={dataTestId} id={id} className={cn("h-full", className)}>
       <CardActionArea
         aria-label={application.label}
-        className={"block h-full"}
-        sx={ACTION_AREA_SX}
+        className={"block h-full focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary"}
         onFocus={onWarm}
         onMouseEnter={onWarm}
         onClick={onClick}

@@ -140,7 +140,7 @@ export function PickerForm({
         onKeyDown={onFormKeyDown}
       >
         <div className={result ? "flex shrink-0 justify-center p-6 pb-4" : "flex shrink-0 justify-center p-6"}>
-          <Card variant={"elevation"} elevation={0} sx={{ position: "relative", width: "100%", maxWidth: PANEL_WIDTH }}>
+          <Card className={"relative w-full"} variant={"elevation"} elevation={0} style={{ maxWidth: PANEL_WIDTH }}>
             <div className={"flex items-start gap-2 p-4"}>
               <div className={"min-w-0 grow"}>
                 {title ? (
@@ -150,7 +150,7 @@ export function PickerForm({
                 ) : null}
 
                 {description ? (
-                  <Typography variant={"body2"} sx={{ marginTop: 0.25, color: "text.secondary" }}>
+                  <Typography className={"mt-0.5 text-text-secondary"} variant={"body2"}>
                     {description}
                   </Typography>
                 ) : null}
@@ -160,7 +160,7 @@ export function PickerForm({
                 <Tooltip title={isCollapsed ? "Show parameters" : "Hide parameters"}>
                   <IconButton
                     aria-label={isCollapsed ? "Show parameters" : "Hide parameters"}
-                    sx={{ flexShrink: 0 }}
+                    className={"shrink-0"}
                     onClick={onToggleCollapsed}
                   >
                     {isCollapsed ? <ExpandMoreIcon /> : <ExpandLessIcon />}

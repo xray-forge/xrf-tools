@@ -1,7 +1,6 @@
 import { default as FolderIcon } from "@mui/icons-material/Folder";
 import { default as FolderOpenIcon } from "@mui/icons-material/FolderOpen";
 import { default as ViewInArIcon } from "@mui/icons-material/ViewInAr";
-import { Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useMemo } from "react";
 
@@ -11,6 +10,7 @@ import { EVisualSource, VisualSource } from "@/core/ipc/types/xrf-app";
 import { XrayAsset } from "@/core/ipc/types/xrf-vfs";
 import { EditorSearchMenu } from "@/core/shell/editor/EditorSearchMenu";
 import { IEditorSearchResultRow } from "@/core/shell/editor/EditorSearchResults";
+import { EmptyListing } from "@/core/ui/layout";
 import { IPathTreeItem, parsePathTree, splitLogicalPath, toFileItemId } from "@/core/ui/tree/path-tree";
 import { ITreeNode } from "@/core/ui/tree/tree-node";
 import { ARCHIVED_CAPTION, TreeRowLabel } from "@/core/ui/tree/TreeRowLabel";
@@ -127,11 +127,9 @@ export function VisualsMenu({
           onToggleExpanded={tree.toggleExpanded}
         />
       ) : (
-        <div className={"p-4 text-center"}>
-          <Typography className={"text-text-secondary"} variant={"body2"}>
-            {browseService.visuals.isLoading ? "Listing visuals…" : "No visuals found under this root."}
-          </Typography>
-        </div>
+        <EmptyListing
+          label={browseService.visuals.isLoading ? "Listing visuals…" : "No visuals found under this root."}
+        />
       )}
     </EditorSearchMenu>
   );

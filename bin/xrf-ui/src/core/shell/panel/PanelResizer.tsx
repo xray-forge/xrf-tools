@@ -2,6 +2,7 @@ import { Box } from "@mui/material";
 import { PointerEvent, ReactElement, useCallback, useRef } from "react";
 
 import { TEditorPanelSide } from "@/core/shell/editor-shell";
+import { cn } from "@/lib/dom/dom-name";
 
 interface IPanelResizerProps {
   side: TEditorPanelSide;
@@ -48,15 +49,11 @@ export function PanelResizer({ side, width, onResize }: IPanelResizerProps): Rea
   return (
     <Box
       aria-hidden={true}
+      className={cn(
+        "absolute top-0 bottom-0 z-2 w-1.75 cursor-col-resize",
+        side === "left" ? "-right-0.75" : "-left-0.75"
+      )}
       sx={{
-        position: "absolute",
-        top: 0,
-        bottom: 0,
-        // Centred on the border it straddles, so the target is symmetric around the line people aim at.
-        ...(side === "left" ? { right: -3 } : { left: -3 }),
-        width: 7,
-        cursor: "col-resize",
-        zIndex: 2,
         // Only shows while pointed at; at rest the panel's own border is all there is to see.
         "&:hover::after": {
           content: '""',

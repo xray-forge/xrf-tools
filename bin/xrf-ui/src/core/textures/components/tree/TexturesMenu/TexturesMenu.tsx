@@ -1,7 +1,6 @@
 import { default as FolderIcon } from "@mui/icons-material/Folder";
 import { default as FolderOpenIcon } from "@mui/icons-material/FolderOpen";
 import { default as ImageIcon } from "@mui/icons-material/Image";
-import { Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, ReactNode, useCallback, useMemo, useState } from "react";
 
@@ -19,6 +18,7 @@ import {
 import { getTextureSourceKey } from "@/core/textures/lib/texture-identity";
 import { TextureCatalogService } from "@/core/textures/services/catalog";
 import { TextureSelectionService } from "@/core/textures/services/selection";
+import { EmptyListing } from "@/core/ui/layout/EmptyListing";
 import { IPathTreeItem, parsePathTree, splitLogicalPath, toFileItemId } from "@/core/ui/tree/path-tree";
 import { ITreeNode } from "@/core/ui/tree/tree-node";
 import { IUseTreeState, useTreeState } from "@/core/ui/tree/use-tree-state";
@@ -152,11 +152,7 @@ export function TexturesMenu({
           onToggleExpanded={tree.toggleExpanded}
         />
       ) : (
-        <div className={"p-4 text-center"}>
-          <Typography className={"text-text-secondary"} variant={"body2"}>
-            {describeEmptyTextureTree(catalogService.catalog.isLoading, nodes.length, badges.size)}
-          </Typography>
-        </div>
+        <EmptyListing label={describeEmptyTextureTree(catalogService.catalog.isLoading, nodes.length, badges.size)} />
       )}
     </EditorSearchMenu>
   );

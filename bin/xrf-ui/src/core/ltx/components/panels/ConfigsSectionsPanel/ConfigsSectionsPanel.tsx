@@ -1,4 +1,3 @@
-import { Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useMemo, useState } from "react";
 
@@ -6,6 +5,7 @@ import { LtxFileStructure } from "@/core/ipc/types/xrf-ltx-inspect";
 import { ConfigsDocumentService, EConfigsDocumentMode } from "@/core/ltx/services/document";
 import { ConfigsResolvedService } from "@/core/ltx/services/resolved";
 import { EditorSearchHeader } from "@/core/shell/editor/EditorSearchHeader";
+import { EmptyListing } from "@/core/ui/layout";
 import { ITreeNode } from "@/core/ui/tree/tree-node";
 import { VirtualizedTree } from "@/core/ui/tree/VirtualizedTree";
 import { noop } from "@/lib/callbacks/noop";
@@ -94,11 +94,9 @@ export function ConfigsSectionsPanel({
           />
         </div>
       ) : (
-        <div className={"p-4 text-center"}>
-          <Typography className={"text-text-secondary"} variant={"body2"}>
-            {filter ? `No ${isList ? "entry" : "section"} matches that.` : "This document declares no sections."}
-          </Typography>
-        </div>
+        <EmptyListing
+          label={filter ? `No ${isList ? "entry" : "section"} matches that.` : "This document declares no sections."}
+        />
       )}
     </div>
   );

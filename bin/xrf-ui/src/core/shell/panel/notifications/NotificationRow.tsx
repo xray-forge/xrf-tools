@@ -14,7 +14,7 @@ import { APPLICATION_CATALOG } from "@/ApplicationCatalog";
 import { ENotificationSeverity } from "@/core/notifications/lib";
 import { IApplicationDescriptor, IApplicationGroup } from "@/core/routing/application";
 import { INotificationEntry, isAttentionSeverity } from "@/core/shell/panel/notifications/notification-list";
-import { MONOSPACE, PANEL } from "@/core/theme/tokens";
+import { cn } from "@/lib/dom/dom-name";
 import { Logger, useLogger } from "@/lib/logging";
 import { Nullable } from "@/lib/types/general";
 
@@ -91,14 +91,7 @@ export function NotificationRow({ entry, isExpanded, onToggleExpanded }: INotifi
   }, [log, notification.details]);
 
   return (
-    <Box
-      className={"border-b border-divider px-3 py-1.5"}
-      sx={{
-        // Revealed rather than laid out: a control parked beside the details holds its width for the
-        // whole height of the block, and `focus-within` keeps it reachable without a pointer.
-        "&:hover .notification-row-actions, &:focus-within .notification-row-actions": { opacity: 1 },
-      }}
-    >
+    <div className={"group border-b border-divider px-3 py-1.5"}>
       <div className={"flex items-start gap-2"}>
         <Box className={"flex shrink-0 pt-0.5"} sx={{ color: SEVERITY_COLORS[notification.severity] }}>
           {SEVERITY_ICONS[notification.severity]}
@@ -106,12 +99,9 @@ export function NotificationRow({ entry, isExpanded, onToggleExpanded }: INotifi
 
         <div className={"min-w-0 grow"}>
           <Typography
+            className={cn("wrap-anywhere", isDev && "monospace text-text-secondary")}
             variant={"body2"}
-            sx={{
-              overflowWrap: "anywhere",
-              ...(isEmphasized ? { color: SEVERITY_COLORS[notification.severity] } : {}),
-              ...(isDev ? { ...MONOSPACE, color: "text.secondary" } : {}),
-            }}
+            sx={isEmphasized ? { color: SEVERITY_COLORS[notification.severity] } : undefined}
           >
             {notification.title}
           </Typography>
@@ -119,19 +109,20 @@ export function NotificationRow({ entry, isExpanded, onToggleExpanded }: INotifi
           <div className={"flex flex-wrap items-center gap-1.5"}>
             {repeatCount > 1 ? (
               <Typography
+                className={"border border-divider px-1 text-text-secondary"}
                 variant={"caption"}
-                sx={{ paddingX: 0.5, border: 1, borderColor: "divider", borderRadius: 0.5, color: "text.secondary" }}
+                sx={{ borderRadius: 0.5 }}
               >
                 ×{repeatCount}
               </Typography>
             ) : null}
 
-            <Typography variant={"caption"} sx={{ color: "text.secondary" }}>
+            <Typography className={"text-text-secondary"} variant={"caption"}>
               {application?.label ?? group?.label ?? notification.source}
             </Typography>
 
             <Tooltip describeChild title={format(createdAt, "yyyy-MM-dd HH:mm:ss")} placement={"left"}>
-              <Typography variant={"caption"} sx={{ color: "text.secondary", opacity: 0.7 }}>
+              <Typography className={"text-text-secondary opacity-70"} variant={"caption"}>
                 {format(createdAt, "HH:mm:ss")}
               </Typography>
             </Tooltip>
@@ -140,25 +131,25 @@ export function NotificationRow({ entry, isExpanded, onToggleExpanded }: INotifi
 
         {notification.details ? (
           <div className={"flex shrink-0"}>
-            <Box className={"notification-row-actions"} sx={{ display: "flex", opacity: 0 }}>
+            <div className={"flex opacity-0 group-focus-within:opacity-100 group-hover:opacity-100"}>
               <Tooltip describeChild title={"Copy details"} placement={"left"}>
-                <IconButton aria-label={"Copy details"} size={"small"} sx={{ padding: 0.25 }} onClick={onCopyDetails}>
-                  <ContentCopyIcon sx={{ fontSize: PANEL.actionIconSize }} />
+                <IconButton aria-label={"Copy details"} className={"p-0.5"} size={"small"} onClick={onCopyDetails}>
+                  <ContentCopyIcon className={"text-panel-action-icon"} />
                 </IconButton>
               </Tooltip>
-            </Box>
+            </div>
 
             <IconButton
               aria-label={isExpanded ? "Hide details" : "Show details"}
               aria-pressed={isExpanded}
+              className={"p-0.5"}
               size={"small"}
-              sx={{ padding: 0.25 }}
               onClick={() => onToggleExpanded(notification.id)}
             >
               {isExpanded ? (
-                <ExpandLessIcon sx={{ fontSize: PANEL.actionIconSize }} />
+                <ExpandLessIcon className={"text-panel-action-icon"} />
               ) : (
-                <ExpandMoreIcon sx={{ fontSize: PANEL.actionIconSize }} />
+                <ExpandMoreIcon className={"text-panel-action-icon"} />
               )}
             </IconButton>
           </div>
@@ -168,31 +159,23 @@ export function NotificationRow({ entry, isExpanded, onToggleExpanded }: INotifi
       {isBodyShown ? (
         <div className={"mt-1 rounded-surface border border-divider bg-well p-2"}>
           <Typography
+            className={cn(
+              "monospace m-0 text-text-secondary",
+              isExpanded ? "wrap-anywhere whitespace-pre-wrap" : "overflow-hidden text-ellipsis whitespace-nowrap"
+            )}
             component={"pre"}
-            sx={{
-              margin: 0,
-              ...MONOSPACE,
-              lineHeight: 1.45,
-              color: "text.secondary",
-              ...(isExpanded
-                ? { whiteSpace: "pre-wrap", overflowWrap: "anywhere" }
-                : { whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }),
-            }}
+            sx={{ lineHeight: 1.45 }}
           >
             {body}
           </Typography>
 
           {isExpanded && isClamped ? (
-            <Button
-              size={"small"}
-              sx={{ minWidth: 0, marginTop: 0.5, paddingX: 0.5 }}
-              onClick={() => setFullShown(true)}
-            >
+            <Button className={"mt-1 min-w-0 px-1"} size={"small"} onClick={() => setFullShown(true)}>
               Show all {lines.length} lines
             </Button>
           ) : null}
         </div>
       ) : null}
-    </Box>
+    </div>
   );
 }

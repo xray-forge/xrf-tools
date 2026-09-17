@@ -4,6 +4,7 @@ import { AriaAttributes, MouseEventHandler, ReactElement, ReactNode } from "reac
 import { getControlStateSx } from "@/core/theme/control-state";
 import { mergeSx } from "@/core/theme/merge-sx";
 import { CONTROL } from "@/core/theme/tokens";
+import { cn } from "@/lib/dom/dom-name";
 import { StyledComponentProps } from "@/lib/dom/element-types";
 
 interface IEditorIconActionProps
@@ -44,17 +45,12 @@ export function EditorIconAction({
           aria-label={label}
           aria-description={description}
           id={id}
-          className={className}
+          className={cn("h-editor-action w-editor-action p-0", className)}
           disabled={isDisabled}
           size={"small"}
           sx={mergeSx(
             getControlStateSx(isActive),
-            {
-              width: CONTROL.editorActionSize,
-              height: CONTROL.editorActionSize,
-              padding: 0,
-              [`& .${svgIconClasses.root}`]: { fontSize: CONTROL.editorActionIconSize },
-            },
+            { [`& .${svgIconClasses.root}`]: { fontSize: CONTROL.editorActionIconSize } },
             sx
           )}
           onClick={onClick}

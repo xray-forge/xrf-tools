@@ -7,7 +7,6 @@ import { useJobsListing } from "@/core/jobs/lib/use-jobs-listing";
 import { JobsService } from "@/core/jobs/services/jobs";
 import { EditorPanel } from "@/core/shell/editor/EditorPanel";
 import { JobRow } from "@/core/shell/panel/jobs/JobRow";
-import { PANEL } from "@/core/theme";
 
 /**
  * What the backend is doing, and what it recently finished.
@@ -24,7 +23,7 @@ export function JobsPanel(): ReactElement {
         {listed.length ? (
           listed.map((job: JobDescription) => <JobRow key={job.id} job={job} onCancel={onCancel} />)
         ) : (
-          <Typography variant={"body2"} sx={{ color: "text.secondary", lineHeight: PANEL.contentLineHeight }}>
+          <Typography className={"leading-panel text-text-secondary"} variant={"body2"}>
             Nothing is running, and nothing has finished recently.
           </Typography>
         )}

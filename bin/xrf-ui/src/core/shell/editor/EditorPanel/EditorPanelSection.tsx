@@ -1,7 +1,6 @@
 import { Divider, Typography } from "@mui/material";
 import { ReactElement, ReactNode } from "react";
 
-import { PANEL } from "@/core/theme/tokens";
 import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
@@ -42,14 +41,14 @@ export function EditorPanelSection({
         className
       )}
     >
-      {isFirst ? null : <Divider sx={{ marginBottom: PANEL.sectionPaddingY, marginX: -PANEL.contentPadding }} />}
+      {isFirst ? null : <Divider className={"-mx-panel-content mb-panel-section"} />}
 
-      <Typography component={"h3"} variant={"overline"} sx={{ color: "text.secondary", overflowWrap: "anywhere" }}>
+      <Typography className={"wrap-anywhere text-text-secondary"} component={"h3"} variant={"overline"}>
         {title}
       </Typography>
 
       {caption ? (
-        <Typography variant={"caption"} sx={{ display: "block", color: "text.disabled", overflowWrap: "anywhere" }}>
+        <Typography className={"block wrap-anywhere text-text-disabled"} variant={"caption"}>
           {caption}
         </Typography>
       ) : null}

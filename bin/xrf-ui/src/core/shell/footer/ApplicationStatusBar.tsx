@@ -23,7 +23,7 @@ export function ApplicationStatusBar({
     >
       {segments.length
         ? segments.map((segment: string, index: number) => (
-            <Typography key={segment + index} variant={"caption"} noWrap sx={{ color: "text.secondary" }}>
+            <Typography key={segment + index} className={"text-text-secondary"} variant={"caption"} noWrap>
               {segment}
             </Typography>
           ))

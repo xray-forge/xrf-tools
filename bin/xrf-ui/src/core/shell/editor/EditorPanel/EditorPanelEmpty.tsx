@@ -1,7 +1,6 @@
 import { Typography } from "@mui/material";
 import { ReactElement } from "react";
 
-import { PANEL } from "@/core/theme/tokens";
 import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
@@ -21,7 +20,7 @@ export function EditorPanelEmpty({
 }: IEditorPanelEmptyProps): ReactElement {
   return (
     <div data-testid={dataTestId} id={id} className={cn("p-panel-content", className)}>
-      <Typography variant={"body2"} sx={{ color: "text.secondary", lineHeight: PANEL.contentLineHeight }}>
+      <Typography className={"leading-panel text-text-secondary"} variant={"body2"}>
         {label}
       </Typography>
     </div>

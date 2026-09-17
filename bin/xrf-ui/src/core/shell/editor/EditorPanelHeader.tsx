@@ -32,16 +32,12 @@ export function EditorPanelHeader({
     <div data-testid={dataTestId} id={id} className={cn("flex shrink-0 flex-col", className)}>
       <div className={"flex min-h-header items-center border-b border-divider header-band px-panel-content"}>
         <div className={"flex min-w-0 grow items-baseline justify-between gap-2"}>
-          <Typography
-            component={"h2"}
-            variant={"subtitle2"}
-            sx={{ color: "text.primary", overflowWrap: "anywhere", minWidth: 0 }}
-          >
+          <Typography className={"min-w-0 wrap-anywhere text-text-primary"} component={"h2"} variant={"subtitle2"}>
             {title}
           </Typography>
 
           {caption ? (
-            <Typography variant={"caption"} sx={{ color: "text.secondary" }}>
+            <Typography className={"text-text-secondary"} variant={"caption"}>
               {caption}
             </Typography>
           ) : null}

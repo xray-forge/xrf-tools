@@ -13,7 +13,7 @@ export function NavigationError(): ReactElement {
       <div className={"h-full w-full overflow-y-auto p-6"}>
         <Typography variant={"subtitle1"}>This route does not exist</Typography>
 
-        <Typography variant={"body2"} sx={{ color: "text.secondary", marginTop: 0.5, marginBottom: 2 }}>
+        <Typography className={"mt-1 mb-4 text-text-secondary"} variant={"body2"}>
           The link may be out of date, or the tool it pointed at has been renamed.
         </Typography>
 

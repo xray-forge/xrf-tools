@@ -26,15 +26,12 @@ export function NotificationsPanelIcon(): ReactElement {
 
   return (
     <Badge
+      className={"size-rail-button items-center justify-center"}
       badgeContent={notificationsService.unreadCount}
       color={severity ? BADGE_COLORS[severity] : "default"}
       max={99}
       overlap={"circular"}
       sx={{
-        width: LAYOUT.railButtonSize,
-        height: LAYOUT.railButtonSize,
-        alignItems: "center",
-        justifyContent: "center",
         [`& .${badgeClasses.badge}`]: {
           top: 0,
           right: 0,

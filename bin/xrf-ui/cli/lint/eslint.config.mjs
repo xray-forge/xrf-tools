@@ -213,10 +213,7 @@ export default [
       "tailwindcss/no-contradicting-classname": "error",
       // Real classes the application declares itself: `monospace` in the theme, and two markers a
       // parent selects on rather than styles directly.
-      "tailwindcss/no-custom-classname": [
-        "error",
-        { whitelist: ["monospace", "notification-row-actions", "workspace"] },
-      ],
+      "tailwindcss/no-custom-classname": ["error", { whitelist: ["monospace", "workspace"] }],
     },
   },
   {

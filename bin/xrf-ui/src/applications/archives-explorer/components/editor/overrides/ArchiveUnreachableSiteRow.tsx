@@ -1,10 +1,11 @@
-import { Chip, Typography } from "@mui/material";
+import { Chip, chipClasses, Typography } from "@mui/material";
 import { ReactElement } from "react";
 
+import { BADGE_FONT_SIZE } from "@/core/theme/tokens";
 import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
-import { ARCHIVE_OVERRIDE_CHIP_SX, ARCHIVE_OVERRIDE_ROW_HEIGHT } from "./archive-override-rows";
+import { ARCHIVE_OVERRIDE_ROW_HEIGHT } from "./archive-override-rows";
 
 export interface IArchiveUnreachableSiteRowProps extends BaseComponentProps {
   /** Where the copy physically sits, as the backend rendered it: a loose path, or a volume and the name it authored. */
@@ -47,11 +48,12 @@ export function ArchiveUnreachableSiteRow({
       </Typography>
 
       <Chip
+        className={"h-4.5 shrink-0"}
+        sx={{ [`& .${chipClasses.label}`]: { paddingX: 0.75, fontSize: BADGE_FONT_SIZE } }}
         size={"small"}
         color={isKept ? "primary" : "warning"}
         label={isKept ? "Loaded" : "Unreachable"}
         title={isKept ? "The copy the engine loads" : "No lookup reaches this copy"}
-        sx={ARCHIVE_OVERRIDE_CHIP_SX}
       />
     </div>
   );

@@ -4,7 +4,6 @@ import { Typography } from "@mui/material";
 import { ReactElement, ReactNode } from "react";
 
 import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
-import { MONOSPACE } from "@/core/theme";
 import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
@@ -36,7 +35,7 @@ export function EditorFileHeader({
   className,
   name,
   caption,
-  icon = <DescriptionOutlinedIcon fontSize={"small"} sx={{ color: "text.secondary" }} />,
+  icon = <DescriptionOutlinedIcon className={"text-text-secondary"} fontSize={"small"} />,
   actions,
   closeLabel = "Close file",
   closeDescription = "Clear the selection and close this file",
@@ -50,17 +49,12 @@ export function EditorFileHeader({
     >
       {icon}
 
-      <Typography
-        noWrap
-        variant={"body2"}
-        title={name}
-        sx={{ flexGrow: 1, minWidth: 0, fontFamily: MONOSPACE.fontFamily }}
-      >
+      <Typography className={"min-w-0 grow font-monospace"} noWrap variant={"body2"} title={name}>
         {name}
       </Typography>
 
       {caption ? (
-        <Typography noWrap variant={"caption"} sx={{ color: "text.secondary" }}>
+        <Typography className={"text-text-secondary"} noWrap variant={"caption"}>
           {caption}
         </Typography>
       ) : null}

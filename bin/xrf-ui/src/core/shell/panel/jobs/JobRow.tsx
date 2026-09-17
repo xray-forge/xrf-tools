@@ -39,8 +39,9 @@ export function JobRow({ job, onCancel }: IJobRowProps): ReactElement {
         </Typography>
 
         <Typography
+          className={"shrink-0"}
           variant={"caption"}
-          sx={{ color: job.conclusion ? CONCLUSION_COLORS[job.conclusion] : "text.secondary", flexShrink: 0 }}
+          sx={{ color: job.conclusion ? CONCLUSION_COLORS[job.conclusion] : "text.secondary" }}
         >
           {job.conclusion ?? (job.isCancelRequested ? "stopping" : "running")}
         </Typography>

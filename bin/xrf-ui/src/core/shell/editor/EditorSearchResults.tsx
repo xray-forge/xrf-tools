@@ -1,6 +1,8 @@
 import { LinearProgress, List, ListItemButton, ListItemIcon, ListItemText, Typography } from "@mui/material";
 import { ReactElement, ReactNode, useEffect, useRef } from "react";
 
+import { EmptyListing } from "@/core/ui/layout/EmptyListing";
+
 export interface IEditorSearchResultRow {
   id: string;
   label: string;
@@ -49,40 +51,36 @@ export function EditorSearchResults<T extends IEditorSearchResultRow>({
     // "nothing matches". Claiming the latter makes every first keystroke flash a false negative.
     return isStale ? (
       <div className={"h-0.5 shrink-0"}>
-        <LinearProgress sx={{ height: 2 }} />
+        <LinearProgress className={"h-0.5"} />
       </div>
     ) : (
-      <div className={"p-4 text-center"}>
-        <Typography variant={"body2"} sx={{ color: "text.secondary" }}>
-          {emptyLabel}
-        </Typography>
-      </div>
+      <EmptyListing label={emptyLabel} />
     );
   }
 
   return (
     <div className={"flex min-h-0 flex-col"}>
       {/* Only appears while the list belongs to an older query than the field. */}
-      <div className={"h-0.5 shrink-0"}>{isStale ? <LinearProgress sx={{ height: 2 }} /> : null}</div>
+      <div className={"h-0.5 shrink-0"}>{isStale ? <LinearProgress className={"h-0.5"} /> : null}</div>
 
       {total > rows.length ? (
-        <Typography variant={"caption"} sx={{ paddingX: 1.5, paddingY: 0.5, color: "text.secondary", flexShrink: 0 }}>
+        <Typography className={"shrink-0 px-3 py-1 text-text-secondary"} variant={"caption"}>
           Showing {rows.length} of {total} matches
         </Typography>
       ) : null}
 
-      <List aria-label={ariaLabel} dense={true} disablePadding={true} sx={{ minHeight: 0, overflowY: "auto" }}>
+      <List aria-label={ariaLabel} className={"min-h-0 overflow-y-auto"} dense={true} disablePadding={true}>
         {rows.map((row: T, index: number) => (
           <ListItemButton
             key={row.id}
             ref={index === activeIndex ? activeRef : undefined}
+            className={"py-0.5"}
             disabled={isDisabled}
             selected={index === activeIndex}
-            sx={{ paddingY: 0.25 }}
             onMouseEnter={() => onHoverIndex(index)}
             onClick={() => onSelect(row)}
           >
-            {row.icon ? <ListItemIcon sx={{ minWidth: 40 }}>{row.icon}</ListItemIcon> : null}
+            {row.icon ? <ListItemIcon className={"min-w-10"}>{row.icon}</ListItemIcon> : null}
 
             <ListItemText
               primary={row.label}

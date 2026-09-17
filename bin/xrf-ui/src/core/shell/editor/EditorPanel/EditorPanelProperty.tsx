@@ -1,7 +1,7 @@
-import { Box, Typography } from "@mui/material";
+import { Typography } from "@mui/material";
 import { Fragment, ReactElement, ReactNode } from "react";
 
-import { MONOSPACE, PANEL } from "@/core/theme/tokens";
+import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { splitAfterSeparators } from "@/lib/path/separator";
 
@@ -44,51 +44,31 @@ export function EditorPanelProperty({
   isMonospace = false,
 }: IEditorPanelPropertyProps): ReactElement {
   return (
-    <Box
+    <dl
       data-testid={dataTestId}
       id={id}
-      className={className}
-      component={"dl"}
-      sx={{
-        display: "flex",
-        flexDirection: "column",
-        gap: PANEL.propertyValueGap,
-        margin: 0,
-        paddingY: PANEL.propertyPaddingY,
-        minWidth: 0,
-        lineHeight: PANEL.contentLineHeight,
-      }}
+      className={cn("m-0 min-w-0 gap-panel-property-gap py-panel-property leading-panel", className)}
+      style={{ display: "flex", flexDirection: "column" }}
     >
       <Typography
+        className={"max-w-full leading-panel wrap-anywhere text-text-secondary"}
         component={"dt"}
         variant={"caption"}
-        sx={{
-          color: "text.secondary",
-          maxWidth: "100%",
-          overflowWrap: "anywhere",
-          lineHeight: "inherit",
-        }}
       >
         {label}
       </Typography>
 
       <Typography
+        className={cn(
+          "m-0 max-w-full leading-panel wrap-anywhere whitespace-pre-wrap",
+          isMonospace ? "monospace" : null
+        )}
         component={"dd"}
         variant={"body2"}
-        sx={{
-          ...(isMonospace ? MONOSPACE : null),
-          margin: 0,
-          lineHeight: "inherit",
-          whiteSpace: "pre-wrap",
-          minWidth: 0,
-          width: "100%",
-          maxWidth: "100%",
-          overflowWrap: "anywhere",
-          textAlign: "start",
-        }}
+        style={{ width: "100%", minWidth: 0, textAlign: "start" }}
       >
         {isMonospace && typeof value === "string" ? toBreakableSegments(value) : value}
       </Typography>
-    </Box>
+    </dl>
   );
 }

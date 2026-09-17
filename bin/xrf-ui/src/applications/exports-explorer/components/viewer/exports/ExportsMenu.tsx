@@ -1,12 +1,12 @@
 import { default as DataObjectIcon } from "@mui/icons-material/DataObject";
 import { default as FolderIcon } from "@mui/icons-material/Folder";
 import { default as FolderOpenIcon } from "@mui/icons-material/FolderOpen";
-import { Typography } from "@mui/material";
 import { ReactElement, useCallback, useEffect, useMemo } from "react";
 
 import { ExportDescriptor } from "@/core/ipc/types/xrf-export";
 import { EditorSearchMenu } from "@/core/shell/editor/EditorSearchMenu";
 import { IEditorSearchResultRow } from "@/core/shell/editor/EditorSearchResults";
+import { EmptyListing } from "@/core/ui/layout";
 import { IPathTreeItem, toFileItemId } from "@/core/ui/tree/path-tree";
 import { ITreeNode } from "@/core/ui/tree/tree-node";
 import { IUseTreeState, useTreeState } from "@/core/ui/tree/use-tree-state";
@@ -111,11 +111,7 @@ export function ExportsMenu({
           onToggleExpanded={tree.toggleExpanded}
         />
       ) : (
-        <div className={"p-4 text-center"}>
-          <Typography className={"text-text-secondary"} variant={"body2"}>
-            No externs found.
-          </Typography>
-        </div>
+        <EmptyListing label={"No externs found."} />
       )}
     </EditorSearchMenu>
   );

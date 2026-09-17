@@ -1,4 +1,3 @@
-import { Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useEffect, useMemo } from "react";
 
@@ -11,6 +10,7 @@ import { IArchiveEntry, IArchiveTreeItem, parseTree, toArchiveSelectionItemId } 
 import { isLooseContainer } from "@/core/assets/lib";
 import { XrayAssetContainer } from "@/core/ipc/types/xrf-vfs";
 import { EditorSearchMenu } from "@/core/shell/editor/EditorSearchMenu";
+import { EmptyListing } from "@/core/ui/layout";
 import { getDirectoryItemPath, splitLogicalPath, toFileItemId } from "@/core/ui/tree/path-tree";
 import { ITreeNode } from "@/core/ui/tree/tree-node";
 import { ARCHIVED_CAPTION, TreeRowLabel } from "@/core/ui/tree/TreeRowLabel";
@@ -133,11 +133,7 @@ export function ArchivesMenu({
           onToggleExpanded={tree.toggleExpanded}
         />
       ) : (
-        <div className={"p-4 text-center"}>
-          <Typography className={"text-text-secondary"} variant={"body2"}>
-            No archive files found.
-          </Typography>
-        </div>
+        <EmptyListing label={"No archive files found."} />
       )}
     </EditorSearchMenu>
   );

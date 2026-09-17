@@ -26,7 +26,7 @@ export function ApplicationCrash({ error, onRetry }: IErrorBoundaryFallbackProps
       <div className={"h-full w-full overflow-y-auto p-6"}>
         <Typography variant={"subtitle1"}>This tool stopped rendering</Typography>
 
-        <Typography variant={"body2"} sx={{ color: "text.secondary", marginTop: 0.5, marginBottom: 2 }}>
+        <Typography className={"mt-1 mb-4 text-text-secondary"} variant={"body2"}>
           The rest of the application is still running. Try again to re-render it, or switch to another tool from the
           rail.
         </Typography>
@@ -52,10 +52,9 @@ export function ApplicationCrash({ error, onRetry }: IErrorBoundaryFallbackProps
 
           <AccordionDetails>
             <Typography
-              className={"monospace"}
+              className={"monospace m-0 wrap-break-word whitespace-pre-wrap text-text-secondary"}
               component={"pre"}
               variant={"caption"}
-              sx={{ margin: 0, whiteSpace: "pre-wrap", wordBreak: "break-word", color: "text.secondary" }}
             >
               {error.stack ?? String(error)}
             </Typography>

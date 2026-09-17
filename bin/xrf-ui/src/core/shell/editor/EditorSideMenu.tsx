@@ -26,7 +26,7 @@ function renderItem(item: IEditorSideMenuItem): ReactElement {
   return (
     <ListItem key={item.label} disablePadding>
       <ListItemButton selected={item.isSelected} disabled={item.isDisabled} onClick={item.onClick}>
-        {item.icon ? <ListItemIcon sx={{ minWidth: 40 }}>{item.icon}</ListItemIcon> : null}
+        {item.icon ? <ListItemIcon className={"min-w-10"}>{item.icon}</ListItemIcon> : null}
         <ListItemText primary={item.label} secondary={item.description} />
       </ListItemButton>
     </ListItem>
@@ -61,7 +61,7 @@ export function EditorSideMenu({
       {actions?.length ? (
         <>
           <Divider />
-          <List disablePadding sx={{ flexShrink: 0 }}>
+          <List className={"shrink-0"} disablePadding>
             {actions.map(renderItem)}
           </List>
         </>

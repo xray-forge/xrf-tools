@@ -2,7 +2,6 @@ import { Chip, List, ListItem, ListItemButton, Typography } from "@mui/material"
 import { ReactElement } from "react";
 
 import { EditorPanel, EditorPanelEmpty } from "@/core/shell/editor/EditorPanel";
-import { MONOSPACE } from "@/core/theme/tokens";
 import { splitLogicalPath } from "@/core/ui/tree/path-tree";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { LOGICAL_PATH_SEPARATOR } from "@/lib/path/separator";
@@ -66,29 +65,26 @@ export function EditorProblemsPanel({
               <>
                 <div className={"flex min-w-0 flex-wrap items-center gap-1.5"}>
                   <Chip
+                    className={"max-w-full"}
                     size={"small"}
                     variant={"outlined"}
                     label={rule}
                     title={finding.rule}
-                    sx={{ maxWidth: "100%" }}
                   />
 
                   {subject ? (
                     <Typography
+                      className={"monospace min-w-0 wrap-anywhere text-text-secondary"}
                       component={"span"}
                       variant={"caption"}
                       title={finding.subject ?? undefined}
-                      sx={{ ...MONOSPACE, color: "text.secondary", minWidth: 0, overflowWrap: "anywhere" }}
                     >
                       {subject}
                     </Typography>
                   ) : null}
                 </div>
 
-                <Typography
-                  variant={"body2"}
-                  sx={{ color: "text.secondary", marginTop: 0.5, overflowWrap: "anywhere" }}
-                >
+                <Typography className={"mt-1 wrap-anywhere text-text-secondary"} variant={"body2"}>
                   {finding.message}
                 </Typography>
               </>
@@ -98,12 +94,12 @@ export function EditorProblemsPanel({
               <ListItem
                 key={`${finding.rule}-${finding.subject}-${index}`}
                 data-testid={"editor-problems-row"}
-                sx={{ display: "block" }}
+                className={"block"}
                 divider
                 disablePadding={Boolean(location)}
               >
                 {location ? (
-                  <ListItemButton sx={{ display: "block" }} onClick={() => onSelect?.(location)}>
+                  <ListItemButton className={"block"} onClick={() => onSelect?.(location)}>
                     {content}
                   </ListItemButton>
                 ) : (

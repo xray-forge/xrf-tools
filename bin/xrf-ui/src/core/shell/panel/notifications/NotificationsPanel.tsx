@@ -9,7 +9,6 @@ import { SettingsService } from "@/core/settings/services/settings";
 import { EditorPanel } from "@/core/shell/editor/EditorPanel";
 import { INotificationEntry, toNotificationEntries } from "@/core/shell/panel/notifications/notification-list";
 import { NotificationRow } from "@/core/shell/panel/notifications/NotificationRow";
-import { PANEL } from "@/core/theme";
 import { Nullable } from "@/lib/types/general";
 
 /**
@@ -72,7 +71,7 @@ export function NotificationsPanel(): ReactElement {
           ))
         ) : (
           <div className={"p-4"}>
-            <Typography variant={"body2"} sx={{ color: "text.secondary", lineHeight: PANEL.contentLineHeight }}>
+            <Typography className={"leading-panel text-text-secondary"} variant={"body2"}>
               Nothing has been reported yet. Command outcomes from every tool collect here.
             </Typography>
           </div>

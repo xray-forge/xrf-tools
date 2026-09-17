@@ -1,10 +1,9 @@
-import { Typography } from "@mui/material";
 import { ReactElement, useCallback, useEffect, useMemo } from "react";
 
 import { LtxInventoryFile } from "@/core/ipc/types/xrf-ltx-inspect";
-import { CONFIG_TREE_ICONS, decorateConfigIcon } from "@/core/ltx/components/ConfigsMenu/ConfigsMenu.utils";
 import { EditorSearchMenu } from "@/core/shell/editor/EditorSearchMenu";
 import { IEditorSearchResultRow } from "@/core/shell/editor/EditorSearchResults";
+import { EmptyListing } from "@/core/ui/layout";
 import { IPathTreeItem, parsePathTree, splitLogicalPath, toFileItemId } from "@/core/ui/tree/path-tree";
 import { ITreeNode } from "@/core/ui/tree/tree-node";
 import { ARCHIVED_CAPTION, TreeRowLabel } from "@/core/ui/tree/TreeRowLabel";
@@ -13,6 +12,8 @@ import { VirtualizedTree } from "@/core/ui/tree/VirtualizedTree";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { LOGICAL_PATH_SEPARATOR } from "@/lib/path/separator";
 import { Nullable } from "@/lib/types/general";
+
+import { CONFIG_TREE_ICONS, decorateConfigIcon } from "./ConfigsMenu.utils";
 
 interface IConfigsMenuProps extends BaseComponentProps {
   files: ReadonlyArray<LtxInventoryFile>;
@@ -113,11 +114,7 @@ export function ConfigsMenu({
           onActivate={onActivateNode}
         />
       ) : (
-        <div className={"p-4 text-center"}>
-          <Typography className={"text-text-secondary"} variant={"body2"}>
-            This project holds no configs.
-          </Typography>
-        </div>
+        <EmptyListing label={"This project holds no configs."} />
       )}
     </EditorSearchMenu>
   );
