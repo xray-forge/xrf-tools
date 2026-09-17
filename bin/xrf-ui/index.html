@@ -8,7 +8,7 @@
     <!-- Roboto is a fallback for platforms without Segoe, so it is declared but never preloaded. -->
     <link rel="stylesheet" href="/fonts/roboto/roboto.css" />
 
-    <script inline-source src="/src/theme-init.ts"></script>
+    <script inline-source src="/src/main-init.ts"></script>
 
     <!--
       The window paints before react mounts, and until it does the only styles that exist are these.
@@ -88,6 +88,12 @@
         <div class="preload-status-bar"></div>
       </div>
     </div>
+
+    <!--
+      Inlined after the skeleton and before the module bundle, which is deferred: the window is shown here rather than
+      from the bundle so it appears as soon as there is something themed to show.
+    -->
+    <script inline-source src="/src/main-reveal.ts"></script>
 
     <script type="module" src="/src/main.tsx"></script>
   </body>

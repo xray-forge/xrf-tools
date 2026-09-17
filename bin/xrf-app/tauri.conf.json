@@ -36,9 +36,13 @@
         "minWidth": 900,
         "minHeight": 600,
         "resizable": true,
+        "visible": false,
+        "backgroundColor": "#171717",
         "decorations": false,
         "windowEffects": {
-          "effects": ["mica"]
+          "effects": [
+            "mica"
+          ]
         }
       }
     ]

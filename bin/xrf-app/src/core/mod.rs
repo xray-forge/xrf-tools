@@ -8,3 +8,4 @@ pub mod process;
 pub mod session;
 pub mod types;
 pub mod webview_extensions;
+pub mod window_reveal;

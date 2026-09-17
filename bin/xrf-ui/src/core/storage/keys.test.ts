@@ -63,10 +63,10 @@ describe("storage keys", () => {
   });
 
   it("is repeated correctly by the one script that cannot import it", () => {
-    // `theme-init.ts` is inlined into `index.html` and runs before any module graph exists, so it spells the theme key
+    // `main-init.ts` is inlined into `index.html` and runs before any module graph exists, so it spells the theme key
     // out. Read rather than imported, because the script is an IIFE with nothing to import and a drift between the two
     // spellings shows up as a page that paints in the wrong scheme - a thing no other test would notice.
-    const script: string = readFileSync(resolve(__dirname, "../../theme-init.ts"), "utf8");
+    const script: string = readFileSync(resolve(__dirname, "../../main-init.ts"), "utf8");
 
     expect(script).toContain(`"${THEME_STORAGE_KEY}"`);
   });

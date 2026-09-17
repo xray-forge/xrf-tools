@@ -1,7 +1,7 @@
 /**
  * Color scheme modes the application offers.
  *
- * `system` is not a scheme of its own: `theme-init.ts` resolves it against the OS preference before
+ * `system` is not a scheme of its own: `main-init.ts` resolves it against the OS preference before
  * first paint, so it must stay in sync with what that script accepts.
  */
 export const COLOR_SCHEME_MODES = ["light", "dark", "system"] as const;
