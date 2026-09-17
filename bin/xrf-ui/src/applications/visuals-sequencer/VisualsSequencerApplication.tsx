@@ -2,7 +2,6 @@ import { useInjection } from "@wirestate/react";
 import { ReactElement, ReactNode, useCallback, useState } from "react";
 
 import { SequencerService } from "@/applications/visuals-sequencer/services/sequencer";
-import { EditorToolbarLocation } from "@/core/shell/editor/EditorToolbarLocation";
 import { ApplicationLoader } from "@/core/shell/loading/ApplicationLoader";
 import { IVisualPreviewViewportProps } from "@/core/visuals/components/preview";
 import { VisualPreviewLayout } from "@/core/visuals/components/preview/VisualPreviewLayout";
@@ -52,7 +51,7 @@ export function VisualsSequencerApplication({
       id={id}
       className={className}
       model={visual.views}
-      subtitle={service.sourceLabel ? <EditorToolbarLocation location={{ path: service.sourceLabel }} /> : undefined}
+      name={service.sourceLabel}
       panels={SEQUENCER_PANELS}
       textures={service.textures}
       bumps={service.bumps}

@@ -166,7 +166,7 @@ export class VisualPreviewScene {
     this.controls.enableDamping = true;
 
     this.checker = createCheckerTexture(config);
-    this.grid = new GridHelper(10, 10, config.gridColor, config.gridColor);
+    this.grid = new GridHelper(config.gridCells, config.gridCells, config.gridColor, config.gridColor);
     this.axes = new AxesHelper(1);
 
     const light: DirectionalLight = new DirectionalLight(0xffffff, 2);

@@ -41,6 +41,13 @@ describe("EditorFileHeader", () => {
     expect(close).toHaveAccessibleDescription("Clear the selection and close this config");
   });
 
+  it("names what is open with no way to close it, where there is nothing to close back to", () => {
+    const { getByText, queryByRole } = renderWithProviders(<EditorFileHeader name={"meshes\\actors\\stalker.ogf"} />);
+
+    expect(getByText("meshes\\actors\\stalker.ogf")).toBeInTheDocument();
+    expect(queryByRole("button", { name: "Close file" })).not.toBeInTheDocument();
+  });
+
   // A declaration is not a file, and the row says so rather than every surface drawing its own header to get an icon.
   it("lets a surface mark what kind of thing is open", () => {
     const { getByTestId } = renderWithProviders(

@@ -70,7 +70,7 @@ export function VisualsExplorerApplication({
       id={id}
       className={className}
       model={visual?.views ?? null}
-      subtitle={location ? <EditorToolbarLocation location={location} /> : (visualsService.sourceLabel ?? undefined)}
+      subtitle={location ? <EditorToolbarLocation location={location} /> : undefined}
       name={visualsService.sourceLabel}
       panels={VISUALS_EXPLORER_PANELS}
       textures={visualsService.textures}

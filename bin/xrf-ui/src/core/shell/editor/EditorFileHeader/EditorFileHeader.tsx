@@ -19,15 +19,12 @@ interface IEditorFileHeaderProps extends BaseComponentProps {
   /** Names the close action for a surface whose subject is not called a file. */
   closeLabel?: string;
   closeDescription?: string;
-  onClose: () => void;
+  /** Clears the selection. Absent for a surface that opened one subject and has nothing to return to. */
+  onClose?: () => void;
 }
 
 /**
  * What is open, above the view showing it, with the way to close it again.
- *
- * The row every browsing application needs and none of them should draw twice: the toolbar says where the open
- * document lives, and this says which one of them is on screen. Closing belongs here rather than on the toolbar
- * because it ends the selection, not the session - the tree stays open behind it.
  */
 export function EditorFileHeader({
   "data-testid": dataTestId = "editor-file-header",
@@ -61,13 +58,15 @@ export function EditorFileHeader({
 
       {actions}
 
-      <EditorIconAction
-        data-testid={`${dataTestId}-close`}
-        label={closeLabel}
-        description={closeDescription}
-        icon={<CloseIcon />}
-        onClick={onClose}
-      />
+      {onClose ? (
+        <EditorIconAction
+          data-testid={`${dataTestId}-close`}
+          label={closeLabel}
+          description={closeDescription}
+          icon={<CloseIcon />}
+          onClick={onClose}
+        />
+      ) : null}
     </div>
   );
 }

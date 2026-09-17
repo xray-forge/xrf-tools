@@ -25,7 +25,7 @@ interface IVisualPreviewLayoutProps extends BaseComponentProps {
   model?: Nullable<IVisualModelViews>;
   /** Shown in the toolbar beside the view toggles, usually where the model came from. */
   subtitle?: ReactNode;
-  /** What the open visual is called, for the file header. Drawn only alongside `onDeselect`. */
+  /** What the open visual is called. Its presence is what draws the file header over the viewport. */
   name?: Nullable<string>;
   /** Published as a left panel when given. Opening a single visual has nothing to browse. */
   tree?: ReactNode;
@@ -55,7 +55,7 @@ interface IVisualPreviewLayoutProps extends BaseComponentProps {
   onBack?: () => void;
   /** Promotes a single-model session to a browsed one. Absent while already browsing. */
   onBrowse?: () => void;
-  /** Ends the selection without ending the session, which is what puts the file header above the viewport. */
+  /** Ends the selection without ending the session, which is what puts the close action in the file header. */
   onDeselect?: Nullable<() => void>;
 }
 
@@ -153,13 +153,13 @@ export function VisualPreviewLayout({
       footer={footer}
     >
       <div className={"flex min-h-0 min-w-0 grow flex-col"}>
-        {onDeselect && name ? (
+        {name ? (
           <EditorFileHeader
             data-testid={"visual-file-header"}
             name={name}
             closeLabel={"Close visual"}
             closeDescription={"Clear the selection and close this visual"}
-            onClose={onDeselect}
+            onClose={onDeselect ?? undefined}
           />
         ) : null}
 
