@@ -23,7 +23,7 @@ export function ApplicationLauncherGroupHeading({
 }: IApplicationLauncherGroupHeadingProps): ReactElement {
   return (
     <div data-testid={dataTestId} id={id} className={cn("flex min-w-0 items-center gap-1.5", className)}>
-      <span aria-hidden={true} className={"flex [&>svg]:text-[1rem]"} style={{ color: toAccentColor(group.accent) }}>
+      <span aria-hidden={true} className={"flex [&>svg]:text-base"} style={{ color: toAccentColor(group.accent) }}>
         {group.icon}
       </span>
 

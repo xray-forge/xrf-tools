@@ -56,12 +56,11 @@ export function SequenceClipRow({
         <Typography
           aria-label={`Seek to ${clip.motion}`}
           className={
-            "block cursor-pointer border-0 bg-transparent p-0 text-left break-all text-inherit focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            "block cursor-pointer rounded-control border-0 bg-transparent p-0 text-left break-all text-inherit focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
           }
           component={"button"}
           type={"button"}
           variant={"body2"}
-          sx={{ borderRadius: 0.5 }}
           onClick={() => service.seek(position, 0)}
         >
           {clip.motion}

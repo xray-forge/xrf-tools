@@ -52,7 +52,7 @@ export function ApplicationHelpShortcuts({
             .filter((row: IShortcutRow) => row.command.category === category)
             .map(({ command, chords }: IShortcutRow) => (
               <div key={command.id} className={"flex items-baseline justify-between gap-2"}>
-                <Typography variant={"body2"} sx={{ lineHeight: 1.55 }}>
+                <Typography className={"leading-panel"} variant={"body2"}>
                   {command.label}
                 </Typography>
 

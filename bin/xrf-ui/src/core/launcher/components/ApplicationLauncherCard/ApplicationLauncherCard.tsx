@@ -43,7 +43,7 @@ export function ApplicationLauncherCard({
           <div className={"flex min-w-0 items-center gap-1.5"}>
             <span
               aria-hidden={true}
-              className={"flex shrink-0 [&>svg]:text-[1.125rem]"}
+              className={"flex shrink-0 [&>svg]:text-lg"}
               style={{ color: toAccentColor(group.accent) }}
             >
               {application.icon}

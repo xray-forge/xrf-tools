@@ -1,9 +1,10 @@
-import { Box, Chip, Typography } from "@mui/material";
+import { Chip, Typography } from "@mui/material";
 import { ReactElement } from "react";
 
 import { listLocatedAssets } from "@/core/assets/lib/resolution";
 import { XrayAsset } from "@/core/ipc/types/xrf-vfs";
 import { VisualMotionDependency } from "@/core/ipc/types/xrf-visual";
+import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 export interface IVisualMotionRowProps extends BaseComponentProps {
@@ -23,7 +24,7 @@ export function VisualMotionRow({
   const assets: Array<XrayAsset> = listLocatedAssets(resolution);
 
   return (
-    <Box data-testid={dataTestId} id={id} className={className} sx={{ paddingY: 0.4 }}>
+    <div data-testid={dataTestId} id={id} className={cn("py-0.75", className)}>
       <div className={"flex items-baseline justify-between gap-2"}>
         <Typography className={"min-w-0 break-all"} variant={"body2"}>
           {motion.reference}
@@ -53,6 +54,6 @@ export function VisualMotionRow({
           {asset.logicalPath}
         </Typography>
       ))}
-    </Box>
+    </div>
   );
 }

@@ -109,9 +109,8 @@ export function NotificationRow({ entry, isExpanded, onToggleExpanded }: INotifi
           <div className={"flex flex-wrap items-center gap-1.5"}>
             {repeatCount > 1 ? (
               <Typography
-                className={"border border-divider px-1 text-text-secondary"}
+                className={"rounded-control border border-divider px-1 text-text-secondary"}
                 variant={"caption"}
-                sx={{ borderRadius: 0.5 }}
               >
                 ×{repeatCount}
               </Typography>
@@ -160,11 +159,10 @@ export function NotificationRow({ entry, isExpanded, onToggleExpanded }: INotifi
         <div className={"mt-1 rounded-surface border border-divider bg-well p-2"}>
           <Typography
             className={cn(
-              "monospace m-0 text-text-secondary",
+              "monospace m-0 leading-normal text-text-secondary",
               isExpanded ? "wrap-anywhere whitespace-pre-wrap" : "overflow-hidden text-ellipsis whitespace-nowrap"
             )}
             component={"pre"}
-            sx={{ lineHeight: 1.45 }}
           >
             {body}
           </Typography>

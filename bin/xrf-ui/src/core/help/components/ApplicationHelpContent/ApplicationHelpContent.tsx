@@ -43,7 +43,7 @@ export function ApplicationHelpContent({
 
   return (
     <div data-testid={dataTestId} id={id} className={cn("flex flex-col gap-4", className)}>
-      <Typography variant={"body2"} sx={{ lineHeight: 1.55 }}>
+      <Typography className={"leading-panel"} variant={"body2"}>
         {renderHelpText(help.summary)}
       </Typography>
 

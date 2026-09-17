@@ -17,7 +17,7 @@ export function VisualMotionNames({
   return (
     <div data-testid={dataTestId} id={id} className={className}>
       {names.map((name) => (
-        <Typography key={name} className={"leading-panel break-all"} variant={"body2"} sx={{ paddingY: 0.4 }}>
+        <Typography key={name} className={"py-0.75 leading-panel break-all"} variant={"body2"}>
           {name}
         </Typography>
       ))}

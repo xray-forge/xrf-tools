@@ -13,9 +13,6 @@ import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Logger, useLogger } from "@/lib/logging";
 import { Maybe } from "@/lib/types/general";
 
-/** Wide enough for a full windows path at the monospace size the picker rows use. */
-const PANEL_WIDTH: number = 1280;
-
 interface IPickerFormProps extends BaseComponentProps {
   title?: ReactNode;
   /** What the command reads and writes, in one line. Say it before it runs, not after. */
@@ -140,7 +137,7 @@ export function PickerForm({
         onKeyDown={onFormKeyDown}
       >
         <div className={result ? "flex shrink-0 justify-center p-6 pb-4" : "flex shrink-0 justify-center p-6"}>
-          <Card className={"relative w-full"} variant={"elevation"} elevation={0} style={{ maxWidth: PANEL_WIDTH }}>
+          <Card className={"relative w-full max-w-320"} variant={"elevation"} elevation={0}>
             <div className={"flex items-start gap-2 p-4"}>
               <div className={"min-w-0 grow"}>
                 {title ? (

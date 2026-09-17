@@ -23,7 +23,7 @@ function toFileRow(entry: IFileEntry): IEditorSearchResultRow {
     description: `${entry.entryCount} entries`,
     // The 8px dot names no step of the type scale, so its size stays a raw value.
     icon: entry.isDirty ? (
-      <CircleIcon aria-label={"Unsaved changes"} className={"text-warning"} sx={{ fontSize: 8 }} />
+      <CircleIcon aria-label={"Unsaved changes"} className={"text-badge text-warning"} />
     ) : undefined,
   };
 }

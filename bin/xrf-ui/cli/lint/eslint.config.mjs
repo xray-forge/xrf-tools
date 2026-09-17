@@ -241,14 +241,14 @@ export default [
         {
           selector: String.raw`Literal[value=/#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})\b/]`,
           message:
-            "Raw colour outside `core/theme`. Use a palette path or a theme token, so the value is covered by the " +
-            "contrast matrix in `core/theme/tokens.test.ts`.",
+            "Raw colour outside `core/theme`. Use a palette path or a theme token, so the value stays inside the " +
+            "contrast rules the tokens define.",
         },
         {
           selector: String.raw`TemplateElement[value.raw=/#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})\b/]`,
           message:
-            "Raw colour outside `core/theme`. Use a palette path or a theme token, so the value is covered by the " +
-            "contrast matrix in `core/theme/tokens.test.ts`.",
+            "Raw colour outside `core/theme`. Use a palette path or a theme token, so the value stays inside the " +
+            "contrast rules the tokens define.",
         },
       ],
     },

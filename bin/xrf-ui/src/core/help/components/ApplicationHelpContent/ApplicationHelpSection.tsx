@@ -29,7 +29,7 @@ export function ApplicationHelpSection({
 
       <Box className={"m-0 pl-5"} component={isOrdered ? "ol" : "ul"}>
         {items.map((item: string, index: number) => (
-          <Typography key={index} className={"mb-1"} component={"li"} variant={"body2"} sx={{ lineHeight: 1.55 }}>
+          <Typography key={index} className={"mb-1 leading-panel"} component={"li"} variant={"body2"}>
             {renderHelpText(item)}
           </Typography>
         ))}

@@ -1,5 +1,5 @@
 import { default as AddIcon } from "@mui/icons-material/Add";
-import { Box, Typography } from "@mui/material";
+import { Typography } from "@mui/material";
 import { ReactElement } from "react";
 
 import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
@@ -22,11 +22,10 @@ export function SequenceMotionRow({
   onAdd,
 }: ISequenceMotionRowProps): ReactElement {
   return (
-    <Box
+    <div
       data-testid={dataTestId}
       id={id}
-      className={cn("flex items-center gap-2 pl-2 leading-panel", className)}
-      sx={{ paddingY: 0.2 }}
+      className={cn("flex items-center gap-2 py-0.5 pl-2 leading-panel", className)}
     >
       <Typography className={"grow break-all"} variant={"body2"}>
         {motion}
@@ -44,6 +43,6 @@ export function SequenceMotionRow({
         icon={<AddIcon />}
         onClick={() => onAdd(motion)}
       />
-    </Box>
+    </div>
   );
 }
