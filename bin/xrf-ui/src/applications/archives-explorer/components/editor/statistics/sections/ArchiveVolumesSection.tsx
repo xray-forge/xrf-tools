@@ -4,8 +4,8 @@ import { IArchiveStatisticsView } from "@/applications/archives-explorer/compone
 import { ArchiveBreakdownSection } from "@/applications/archives-explorer/components/editor/statistics/ArchiveBreakdownSection";
 import { ArchiveVolumeSummary } from "@/core/ipc/types/xrf-archive-stats";
 import { IStatBreakdownRow } from "@/core/ui/stats/StatBreakdownTable";
-import { inline } from "@/lib/callbacks/inline";
 import { BaseComponentProps } from "@/lib/dom/element-types";
+import { getPathName } from "@/lib/path/separator";
 
 export interface IArchiveVolumesSectionProps extends BaseComponentProps {
   volumes: Array<ArchiveVolumeSummary>;
@@ -27,11 +27,7 @@ export function ArchiveVolumesSection({
         // The volume's own entry count, which includes the directory records a merged listing drops.
         files: volume.entries,
         sizeReal: volume.sizeReal,
-        label: inline(() => {
-          const segments: Array<string> = volume.path.split(/[\\/]/);
-
-          return segments[segments.length - 1] || volume.path;
-        }),
+        label: getPathName(volume.path) || volume.path,
       })),
     [volumes]
   );

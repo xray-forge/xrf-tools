@@ -13,6 +13,7 @@ import { JobsService } from "@/core/jobs/services/jobs";
 import { formatDuration } from "@/lib/format/duration";
 import { Logger, Timer } from "@/lib/logging";
 import { call, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
+import { getPathName } from "@/lib/path/separator";
 import { Nullable } from "@/lib/types/general";
 
 /** Sections of the patching configuration, in the order they are edited. */
@@ -103,7 +104,7 @@ export class PatcherService {
    */
   @Computed()
   public get configName(): Nullable<string> {
-    return this.configPath ? (this.configPath.split(/[\\/]/).pop() ?? this.configPath) : null;
+    return this.configPath ? getPathName(this.configPath) : null;
   }
 
   /**

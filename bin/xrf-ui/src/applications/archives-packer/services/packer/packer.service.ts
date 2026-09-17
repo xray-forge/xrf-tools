@@ -16,6 +16,7 @@ import { EApplicationId } from "@/core/routing/application";
 import { formatDuration } from "@/lib/format/duration";
 import { Logger, Timer } from "@/lib/logging";
 import { call, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
+import { getPathName } from "@/lib/path/separator";
 import { Nullable } from "@/lib/types/general";
 
 /** Sections of the packing configuration, in the order they are edited. */
@@ -110,7 +111,7 @@ export class PackerService {
    */
   @Computed()
   public get configName(): Nullable<string> {
-    return this.configPath ? (this.configPath.split(/[\\/]/).pop() ?? this.configPath) : null;
+    return this.configPath ? getPathName(this.configPath) : null;
   }
 
   /**

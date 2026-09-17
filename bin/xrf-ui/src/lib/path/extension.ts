@@ -1,4 +1,4 @@
-import { findLastSeparator } from "@/lib/path/separator";
+import { getPathName } from "@/lib/path/separator";
 
 /**
  * Reads the extension out of a file name, in either separator style.
@@ -16,7 +16,7 @@ import { findLastSeparator } from "@/lib/path/separator";
  */
 export function getFileExtension(name: string): string {
   // Reduced to the last segment first, so a dot in a directory name is not read as the extension.
-  const segment: string = name.slice(findLastSeparator(name) + 1);
+  const segment: string = getPathName(name);
   const dot: number = segment.lastIndexOf(".");
 
   return dot < 0 ? "" : segment.slice(dot + 1);
