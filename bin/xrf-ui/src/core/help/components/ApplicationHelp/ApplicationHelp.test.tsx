@@ -9,19 +9,28 @@ import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
 describe("ApplicationHelp", () => {
-  it("offers no affordance outside an application", () => {
-    const { queryByLabelText } = renderWithProviders(<ApplicationHelp />, { route: "/" });
+  it("offers the home screen's own help outside an application", async () => {
+    const { getByLabelText, getByRole } = renderWithProviders(<ApplicationHelp />, { route: "/" });
 
-    expect(queryByLabelText("Help")).not.toBeInTheDocument();
+    await userEvent.click(getByLabelText("Help"));
+
+    expect(getByRole("dialog", { name: "Tools" })).toBeInTheDocument();
   });
 
-  it("offers no affordance where no help is authored yet", () => {
-    const { queryByLabelText } = renderWithProviders(<ApplicationHelp />, { route: "/characters-explorer" });
+  it("offers a disabled affordance on a route that is neither", () => {
+    const { getByLabelText } = renderWithProviders(<ApplicationHelp />, { route: "/not-a-tool" });
 
-    expect(queryByLabelText("Help")).not.toBeInTheDocument();
+    expect(getByLabelText("Help")).toBeDisabled();
   });
 
-  it("opens the current application's help from the caption button", async () => {
+  it("offers a disabled affordance where no help is authored yet, saying so", () => {
+    const { getByLabelText, getByTitle } = renderWithProviders(<ApplicationHelp />, { route: "/characters-explorer" });
+
+    expect(getByLabelText("Help")).toBeDisabled();
+    expect(getByTitle("No help written for this screen yet")).toBeInTheDocument();
+  });
+
+  it("opens the current application's help from the rail control", async () => {
     const { getByLabelText, getByText, getByRole } = renderWithProviders(<ApplicationHelp />, {
       route: "/archives-explorer",
     });

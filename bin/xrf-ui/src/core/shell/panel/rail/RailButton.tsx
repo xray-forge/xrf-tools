@@ -8,7 +8,10 @@ import { RAIL_BUTTON_SX } from "./RailButton.styles";
 interface IRailButtonProps {
   isSelected?: boolean;
   isDisabled?: boolean;
+  /** Stable accessible name, independent of what the control can do right now. */
   label: string;
+  /** Tooltip text; defaults to the label. Say here why a disabled control is disabled. */
+  description?: string;
   icon: ReactNode;
   appearance?: "gradient" | "primary" | "secondary";
   onClick: () => void;
@@ -21,6 +24,7 @@ export function RailButton({
   isSelected,
   isDisabled,
   label,
+  description = label,
   icon,
   appearance = "gradient",
   onClick,
@@ -32,7 +36,7 @@ export function RailButton({
   const isGradient: boolean = appearance === "gradient";
 
   return (
-    <Tooltip describeChild title={label} placement={"right"}>
+    <Tooltip describeChild title={description} placement={"right"}>
       <span>
         <IconButton
           aria-label={label}

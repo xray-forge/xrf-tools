@@ -7,6 +7,7 @@ import { open } from "@tauri-apps/plugin-shell";
 import { ReactElement, useCallback, useState } from "react";
 
 import { REPOSITORY_URL } from "@/core/configs";
+import { ApplicationHelp } from "@/core/help/components/ApplicationHelp";
 import { SettingsDialog } from "@/core/settings/components/SettingsDialog";
 import { IEditorPanel } from "@/core/shell/editor-shell";
 import { ApplicationPanelStripe } from "@/core/shell/panel/ApplicationPanelStripe";
@@ -53,6 +54,8 @@ export function ApplicationRail({ panels, activePanelId, onTogglePanel }: IAppli
             appearance={isLightMode ? "secondary" : "primary"}
             onClick={onToggleTheme}
           />
+
+          <ApplicationHelp />
 
           <RailButton label={"Source on github"} icon={<GitHubIcon />} onClick={onOpenGithubLink} />
 

@@ -96,13 +96,14 @@ describe("EditorToolbar", () => {
     expect(acting.getByTestId("editor-toolbar-separator")).toBeInTheDocument();
   });
 
-  it("carries the application's help inside its own action group rather than beside the window buttons", () => {
-    const { getByLabelText, getByTestId } = renderWithProviders(<EditorToolbar />, { route: "/archives-explorer" });
+  it("leaves help to the rail, so an application with no actions of its own draws no group at all", () => {
+    const { queryByLabelText, queryByTestId } = renderWithProviders(<EditorToolbar />, {
+      route: "/archives-explorer",
+    });
 
-    // Help is something the open application offers, so the rule divides it from the window too. It used to
-    // be dressed as a caption button, where it read as a fourth thing the window itself did.
-    expect(getByTestId("editor-toolbar-actions")).toContainElement(getByLabelText("Help"));
-    expect(getByTestId("editor-toolbar-separator")).toBeInTheDocument();
+    expect(queryByLabelText("Help")).not.toBeInTheDocument();
+    expect(queryByTestId("editor-toolbar-actions")).not.toBeInTheDocument();
+    expect(queryByTestId("editor-toolbar-separator")).not.toBeInTheDocument();
   });
 
   it("sizes its controls against the caption rather than a toolbar that no longer exists", () => {
