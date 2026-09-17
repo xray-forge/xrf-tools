@@ -34,6 +34,7 @@ import { ArchiveLevelHomView, ArchiveLevelSomView } from "./ArchiveLevelOcclusio
 import { ArchiveLevelAiView, ArchiveLevelCollisionView } from "./ArchiveLevelPartView";
 import { ArchiveLevelPsStaticView } from "./ArchiveLevelPsStaticView";
 import { ArchiveLevelSndStaticView } from "./ArchiveLevelSndStaticView";
+import { ArchiveLevelSpawnView } from "./ArchiveLevelSpawnView";
 import { ArchiveLevelWallmarksView } from "./ArchiveLevelWallmarksView";
 import { ArchiveLightAnimView } from "./ArchiveLightAnimView";
 import { ArchiveOmfDescriptionView } from "./ArchiveOmfDescriptionView";
@@ -285,6 +286,16 @@ export function ArchiveDescriptionPreview({
     case EArchiveFormatDescription.LEVEL_SOM:
       return (
         <ArchiveLevelSomView
+          data-testid={dataTestId}
+          id={id}
+          className={className}
+          description={description.format.description}
+        />
+      );
+
+    case EArchiveFormatDescription.LEVEL_SPAWN:
+      return (
+        <ArchiveLevelSpawnView
           data-testid={dataTestId}
           id={id}
           className={className}

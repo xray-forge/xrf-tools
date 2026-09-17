@@ -24,7 +24,7 @@ use crate::plugins::archives::describe::ppe::ArchivePpeDescription;
 use crate::plugins::archives::describe::shader_compiler::ArchiveShaderCompilerDescription;
 use crate::plugins::archives::describe::shaders::ArchiveShadersDescription;
 use crate::plugins::archives::describe::sound::ArchiveSoundEnvironmentDescription;
-use crate::plugins::archives::describe::spawn::ArchiveSpawnDescription;
+use crate::plugins::archives::describe::spawn::{ArchiveLevelSpawnDescription, ArchiveSpawnDescription};
 use crate::plugins::archives::describe::thm::ArchiveThmDescription;
 
 /// What the explorer can say about one entry it cannot draw.
@@ -40,6 +40,9 @@ pub enum ArchiveFormatDescription {
   },
   Spawn {
     description: Box<ArchiveSpawnDescription>,
+  },
+  LevelSpawn {
+    description: Box<ArchiveLevelSpawnDescription>,
   },
   Anm {
     description: Box<ArchiveAnmDescription>,

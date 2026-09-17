@@ -242,6 +242,7 @@ export type ArchiveFileDescription = {
 export enum EArchiveFormatDescription {
   CHUNKS = "chunks",
   SPAWN = "spawn",
+  LEVEL_SPAWN = "levelSpawn",
   ANM = "anm",
   DETAIL = "detail",
   DETAIL_LIBRARY = "detailLibrary",
@@ -275,6 +276,7 @@ export enum EArchiveFormatDescription {
 export type ArchiveFormatDescription =
   | { kind: "chunks"; description: ArchiveChunksDescription }
   | { kind: "spawn"; description: ArchiveSpawnDescription }
+  | { kind: "levelSpawn"; description: ArchiveLevelSpawnDescription }
   | { kind: "anm"; description: ArchiveAnmDescription }
   | { kind: "detail"; description: ArchiveDetailModel }
   | { kind: "detailLibrary"; description: ArchiveDetailLibraryDescription }
@@ -603,6 +605,29 @@ export type ArchiveLevelSomDescription = {
   maximumOcclusion: number | null;
   /** How much world the occluders span, absent for a mesh carrying none. */
   bounds: ArchiveBounds | null;
+};
+
+/**
+ * Everything the viewer says about the objects a level spawns.
+ *
+ * The other format under `.spawn`, and the commoner one: 131 of the 141 files in the trees are this rather than a
+ * set. There is no header to read - the engine walks the chunks and hands each one to `Process_spawn` - so
+ * everything said here is counted from the objects themselves.
+ */
+export type ArchiveLevelSpawnDescription = {
+  objects: number;
+  /** What is spawned, grouped by the section each object is built from. */
+  sections: Array<ArchiveLevelSpawnSection>;
+  /** How much of the level the objects stand in, absent for a list holding none. */
+  bounds: ArchiveBounds | null;
+  size: number;
+};
+
+/** One config section a level spawns objects from, and how many of them. */
+export type ArchiveLevelSpawnSection = {
+  /** The config section the objects are built from, which names an LTX section rather than a file. */
+  name: string;
+  objects: number;
 };
 
 /** One row of the level's shader table. */
@@ -948,12 +973,7 @@ export type ArchiveResolutionVolume = {
   outputRootPath: string;
 };
 
-/**
- * Everything the viewer says about the compiler shader library.
- *
- * Read by the level compiler rather than by the game: what it says about a surface decides how the level was built,
- * not how it is drawn. The blender of the same name in `shaders.xr` is the drawing half.
- */
+/** Everything the viewer says about the compiler shader library. */
 export type ArchiveShaderCompilerDescription = {
   shaders: Array<ArchiveShaderCompilerShader>;
 };

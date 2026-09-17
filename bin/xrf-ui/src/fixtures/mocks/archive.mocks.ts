@@ -25,6 +25,7 @@ import {
   ArchiveLevelSndStaticDescription,
   ArchiveLevelSndStaticSound,
   ArchiveLevelSomDescription,
+  ArchiveLevelSpawnDescription,
   ArchiveLevelSurface,
   ArchiveLevelWallmarksDescription,
   ArchiveLightAnimDescription,
@@ -1568,6 +1569,32 @@ export function mockArchiveShaderCompilerDescription(
         lightmapDensity: 0.25,
       },
     ],
+    ...overrides,
+  };
+}
+
+/**
+ * Creates a level spawn list of the size a large level reaches.
+ *
+ * Objects run to 2,832 across the trees while sections stop at 175, which is why a description groups them.
+ *
+ * @param overrides - Field values to override.
+ * @returns Everything the viewer says about a `level.spawn`.
+ */
+export function mockArchiveLevelSpawnDescription(
+  overrides: Partial<ArchiveLevelSpawnDescription> = {}
+): ArchiveLevelSpawnDescription {
+  return {
+    objects: 2832,
+    sections: [
+      { name: "physic_object", objects: 1204 },
+      { name: "graph_point", objects: 812 },
+      { name: "m_stalker", objects: 640 },
+      { name: "space_restrictor", objects: 175 },
+      { name: "level_changer", objects: 1 },
+    ],
+    bounds: { width: 512, height: 128, depth: 512 },
+    size: 1_732_838,
     ...overrides,
   };
 }

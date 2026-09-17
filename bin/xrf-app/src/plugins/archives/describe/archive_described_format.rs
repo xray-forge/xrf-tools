@@ -21,7 +21,7 @@ use crate::plugins::archives::describe::ppe::ArchivePpeDescription;
 use crate::plugins::archives::describe::shader_compiler::ArchiveShaderCompilerDescription;
 use crate::plugins::archives::describe::shaders::ArchiveShadersDescription;
 use crate::plugins::archives::describe::sound::ArchiveSoundEnvironmentDescription;
-use crate::plugins::archives::describe::spawn::ArchiveSpawnDescription;
+use crate::plugins::archives::describe::spawn::{ArchiveLevelSpawnDescription, ArchiveSpawnDescription};
 use crate::plugins::archives::describe::thm::ArchiveThmDescription;
 
 /// Which describer answers for an entry.
@@ -79,7 +79,8 @@ pub enum ArchiveDescribedFormat {
   Ppe,
   /// The compiled blender library, `shaders.xr`.
   Shaders,
-  /// A spawn set, `all.spawn` and whatever else carries its header.
+  /// Either format under `.spawn`: a set where the file carries a header, and a level's object list where it does
+  /// not. Which of the two an entry is cannot be told from its name, so the describer looks.
   Spawn,
   /// A texture descriptor, `ETextureThumbnail` wrapping `STextureParams`.
   Thm,
@@ -229,9 +230,17 @@ impl ArchiveDescribedFormat {
       Self::Shaders => Some(ArchiveFormatDescription::Shaders {
         description: Box::new(ArchiveShadersDescription::read(source, name)?),
       }),
-      Self::Spawn => ArchiveSpawnDescription::read(source, name)?.map(|description| ArchiveFormatDescription::Spawn {
-        description: Box::new(description),
-      }),
+      Self::Spawn => match ArchiveSpawnDescription::read(source, name)? {
+        Some(description) => Some(ArchiveFormatDescription::Spawn {
+          description: Box::new(description),
+        }),
+        // Not a set, so try the other format under this extension before giving the entry up to the container walk.
+        None => {
+          ArchiveLevelSpawnDescription::read(source, name)?.map(|description| ArchiveFormatDescription::LevelSpawn {
+            description: Box::new(description),
+          })
+        }
+      },
       Self::Thm => Some(ArchiveFormatDescription::Thm {
         description: Box::new(ArchiveThmDescription::read(source, name)?),
       }),
