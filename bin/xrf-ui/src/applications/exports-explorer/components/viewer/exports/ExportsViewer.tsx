@@ -1,11 +1,12 @@
+import { default as DataObjectIcon } from "@mui/icons-material/DataObject";
 import { ReactElement } from "react";
 
 import { ExportDescriptor } from "@/core/ipc/types/xrf-export";
+import { EmptyState } from "@/core/ui/layout/EmptyState";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
 import { ExportDeclarationView } from "./ExportDeclarationView";
-import { ExportsViewerState } from "./ExportsViewerState";
 
 export interface IExportsViewerProps extends BaseComponentProps {
   declaration: Nullable<ExportDescriptor>;
@@ -17,7 +18,8 @@ export interface IExportsViewerProps extends BaseComponentProps {
 export function ExportsViewer({ declaration, exportCount, onDeselect }: IExportsViewerProps): ReactElement {
   if (!exportCount) {
     return (
-      <ExportsViewerState
+      <EmptyState
+        icon={<DataObjectIcon className={"text-text-secondary opacity-55"} />}
         title={"No externs found"}
         description={"This project is open, but it does not currently declare any externs."}
       />
@@ -26,7 +28,8 @@ export function ExportsViewer({ declaration, exportCount, onDeselect }: IExports
 
   if (!declaration) {
     return (
-      <ExportsViewerState
+      <EmptyState
+        icon={<DataObjectIcon className={"text-text-secondary opacity-55"} />}
         title={"Select an export to inspect"}
         description={"Expand a namespace in the explorer and select one of its declarations."}
       />
