@@ -180,6 +180,8 @@ pub use crate::spawn::chunks::{
   spawn_alife_spawns_chunk::SpawnALifeSpawnsChunk, spawn_artefact_spawns_chunk::SpawnArtefactSpawnsChunk,
   spawn_graphs_chunk::SpawnGraphsChunk, spawn_header_chunk::SpawnHeaderChunk, spawn_patrols_chunk::SpawnPatrolsChunk,
 };
+pub use crate::spawn::level_spawn_file::*;
+pub use crate::spawn::level_spawn_object::*;
 pub use crate::spawn::spawn_file::*;
 pub use crate::thm::chunks::thm_bump_chunk::*;
 pub use crate::thm::chunks::thm_detail_chunk::*;
