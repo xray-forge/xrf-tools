@@ -1,10 +1,6 @@
-/// Visual kinds an OGF header can declare, `enum MT` in `xrCore/FMesh.hpp`.
-///
-/// Kept internal: a consumer only ever displays the kind, so a description carries the raw byte and
-/// the engine's own identifier for it. The packer is the only code that branches on the kind, to
-/// decide whether a submesh needs its progressive detail table to be drawn correctly.
+/// Visual kinds an OGF header can declare, `enum MT` in `xray-16/src/xrCore/FMesh.hpp:9`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum VisualModelType {
+pub enum OgfModelType {
   Normal,
   Hierarchy,
   Progressive,
@@ -20,8 +16,9 @@ pub(crate) enum VisualModelType {
   FluidVolume,
 }
 
-impl VisualModelType {
-  pub(crate) const fn from_raw(raw: u8) -> Option<Self> {
+impl OgfModelType {
+  /// The kind a raw header byte names, or `None` for a byte the engine has no kind for.
+  pub const fn from_raw(raw: u8) -> Option<Self> {
     match raw {
       0 => Some(Self::Normal),
       1 => Some(Self::Hierarchy),
@@ -42,7 +39,7 @@ impl VisualModelType {
 
   /// Engine identifier for a raw model type byte, or a labelled unknown for a byte the engine has no
   /// name for. Unknown bytes keep their value visible rather than collapsing to one label.
-  pub(crate) fn label(raw: u8) -> String {
+  pub fn label(raw: u8) -> String {
     match Self::from_raw(raw) {
       Some(model_type) => String::from(model_type.name()),
       None => format!("MT_UNKNOWN({raw})"),
@@ -50,9 +47,6 @@ impl VisualModelType {
   }
 
   /// Whether geometry of this kind is a sliding window over its index buffer.
-  ///
-  /// A progressive submesh stores every detail level in one buffer, so drawing all of it stacks the
-  /// coarse shells over the fine one. Such a submesh is only drawable through its detail table.
   pub const fn is_progressive(self) -> bool {
     matches!(self, Self::Progressive | Self::SkeletonGeomdefPm | Self::TreePm)
   }
@@ -73,5 +67,33 @@ impl VisualModelType {
       Self::TreePm => "MT_TREE_PM",
       Self::FluidVolume => "MT_3DFLUIDVOLUME",
     }
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use crate::data::ogf::ogf_model_type::OgfModelType;
+
+  #[test]
+  fn test_label_names_every_engine_kind() {
+    assert_eq!(OgfModelType::label(0), "MT_NORMAL");
+    assert_eq!(OgfModelType::label(6), "MT_LOD");
+    assert_eq!(OgfModelType::label(11), "MT_TREE_PM");
+    assert_eq!(OgfModelType::label(12), "MT_3DFLUIDVOLUME");
+  }
+
+  #[test]
+  fn test_label_keeps_an_unknown_byte_visible() {
+    assert_eq!(OgfModelType::from_raw(13), None);
+    assert_eq!(OgfModelType::label(13), "MT_UNKNOWN(13)");
+  }
+
+  #[test]
+  fn test_progressive_kinds_are_sliding_windows() {
+    assert!(OgfModelType::Progressive.is_progressive());
+    assert!(OgfModelType::SkeletonGeomdefPm.is_progressive());
+    assert!(OgfModelType::TreePm.is_progressive());
+    assert!(!OgfModelType::TreeSt.is_progressive());
+    assert!(!OgfModelType::Normal.is_progressive());
   }
 }

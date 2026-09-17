@@ -37,6 +37,7 @@ pub use crate::data::ogf::ogf_cylinder::OgfCylinder;
 pub use crate::data::ogf::ogf_geometry::*;
 pub use crate::data::ogf::ogf_joint_ik_data::OgfJointIkData;
 pub use crate::data::ogf::ogf_joint_limit::OgfJointLimit;
+pub use crate::data::ogf::ogf_model_type::OgfModelType;
 pub use crate::data::ogf::ogf_obb::OgfObb;
 pub use crate::data::ogf::ogf_slide_window::*;
 pub use crate::data::ogf::ogf_sphere::*;
@@ -135,6 +136,8 @@ pub use crate::level::level_snd_static_sound::*;
 pub use crate::level::level_snd_static_window::*;
 pub use crate::level::level_som_file::*;
 pub use crate::level::level_som_polygon::*;
+pub use crate::level::level_visual::*;
+pub use crate::level::level_visuals_chunk::*;
 pub use crate::level::level_wallmark::*;
 pub use crate::level::level_wallmark_slot::*;
 pub use crate::level::level_wallmark_vertex::*;
@@ -144,8 +147,9 @@ pub use crate::light_anim::light_anim_item::*;
 pub use crate::light_anim::light_anim_key::*;
 pub use crate::ogf::chunks::{
   ogf_bones_chunk::OgfBonesChunk, ogf_children_chunk::OgfChildrenChunk, ogf_description_chunk::OgfDescriptionChunk,
-  ogf_header_chunk::OgfHeaderChunk, ogf_ik_data_chunk::OgfIkDataChunk, ogf_kinematics_chunk::OgfKinematicsChunk,
-  ogf_swi_data_chunk::OgfSwiDataChunk, ogf_texture_chunk::OgfTextureChunk,
+  ogf_geometry_container_chunk::OgfGeometryContainerChunk, ogf_header_chunk::OgfHeaderChunk,
+  ogf_ik_data_chunk::OgfIkDataChunk, ogf_kinematics_chunk::OgfKinematicsChunk, ogf_swi_data_chunk::OgfSwiDataChunk,
+  ogf_texture_chunk::OgfTextureChunk,
 };
 pub use crate::ogf::ogf_file::*;
 pub use crate::ogf::ogf_motion_refs_processor::*;

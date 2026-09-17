@@ -14,6 +14,7 @@ pub(crate) mod ogf_kinematics_animated;
 pub(crate) mod ogf_lod_definition;
 pub(crate) mod ogf_lod_face;
 pub(crate) mod ogf_lod_vertex;
+pub(crate) mod ogf_model_type;
 pub(crate) mod ogf_obb;
 pub(crate) mod ogf_progressive;
 pub(crate) mod ogf_render_visual;

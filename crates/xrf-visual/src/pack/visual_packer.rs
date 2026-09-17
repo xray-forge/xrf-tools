@@ -1,8 +1,7 @@
-use xrf_db::{OgfFile, OgfGeometry, OgfSlideWindow, OgfVertex, Vector3d};
+use xrf_db::{OgfFile, OgfGeometry, OgfModelType, OgfSlideWindow, OgfVertex, Vector3d};
 
 use crate::data::visual_bounds::VisualBounds;
 use crate::data::visual_description::VisualDescription;
-use crate::data::visual_model_type::VisualModelType;
 use crate::data::visual_section::VisualDrawRange;
 use crate::data::visual_submesh::{VisualGeometry, VisualSkin, VisualSkipCause, VisualSubmesh, VisualSubmeshContent};
 use crate::pack::visual_buffer_builder::VisualBufferBuilder;
@@ -80,7 +79,7 @@ impl VisualPacker {
     let description: VisualDescription = VisualDescription {
       version: file.header.version,
       model_type: file.header.model_type,
-      model_type_label: VisualModelType::label(file.header.model_type),
+      model_type_label: OgfModelType::label(file.header.model_type),
       shader_id: file.header.shader_id,
       source_file: file
         .description
@@ -129,7 +128,7 @@ impl VisualPacker {
     VisualSubmesh {
       index,
       model_type,
-      model_type_label: VisualModelType::label(model_type),
+      model_type_label: OgfModelType::label(model_type),
       texture_name: source.texture.as_ref().map(|it| it.texture_name.clone()),
       shader_name: source.texture.as_ref().map(|it| it.shader_name.clone()),
       content: match Self::pack_geometry(builder, source, bone_count) {
@@ -309,7 +308,7 @@ impl VisualPacker {
     vertex_count: usize,
     model_type: u8,
   ) -> Result<Vec<VisualDrawRange>, VisualSkip> {
-    let is_progressive: bool = VisualModelType::from_raw(model_type).is_some_and(VisualModelType::is_progressive);
+    let is_progressive: bool = OgfModelType::from_raw(model_type).is_some_and(OgfModelType::is_progressive);
 
     if !is_progressive {
       let whole: VisualDrawRange = VisualDrawRange {

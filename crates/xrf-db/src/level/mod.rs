@@ -33,6 +33,8 @@ pub(crate) mod level_snd_static_sound;
 pub(crate) mod level_snd_static_window;
 pub(crate) mod level_som_file;
 pub(crate) mod level_som_polygon;
+pub(crate) mod level_visual;
+pub(crate) mod level_visuals_chunk;
 pub(crate) mod level_wallmark;
 pub(crate) mod level_wallmark_slot;
 pub(crate) mod level_wallmark_vertex;

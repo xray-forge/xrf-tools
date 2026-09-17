@@ -9,12 +9,9 @@ use xrf_utils::format_path;
 
 use crate::level::level_header_chunk::LevelHeaderChunk;
 use crate::level::level_shaders_chunk::LevelShadersChunk;
+use crate::level::level_visuals_chunk::LevelVisualsChunk;
 
 /// Descriptor of the compiled `level` file used by xray game engine.
-///
-/// Only the chunks needed to validate a built level bundle are read. Geometry, portals, sectors,
-/// glows and lights are left untouched - the engine streams them lazily and they are orders of
-/// magnitude larger than the rest of the file.
 ///
 /// Root level chunks by ID:
 /// 1 - header
@@ -66,6 +63,55 @@ impl LevelFile {
     let chunks: Vec<ChunkReader<D>> = reader.read_children()?;
 
     Self::read_from_chunks::<T, _>(&chunks)
+  }
+
+  /// Read every visual of a level from its path.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the file cannot be opened or a visual cannot be read.
+  pub fn read_visuals_from_path<T: ByteOrder, P: AsRef<Path>>(path: &P) -> XrfResult<Option<LevelVisualsChunk>> {
+    Self::read_visuals_from_file::<T>(File::open(path).map_err(|error| {
+      XrfError::new_not_found_error(format!(
+        "Level file was not read: {}, error: {}",
+        format_path(path.as_ref()),
+        error
+      ))
+    })?)
+  }
+
+  /// Read every visual of a level from an open file.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the file cannot be read or a visual cannot be read.
+  pub fn read_visuals_from_file<T: ByteOrder>(file: File) -> XrfResult<Option<LevelVisualsChunk>> {
+    Self::read_visuals_from_chunk::<T, _>(&mut ChunkReader::from_file(file)?)
+  }
+
+  /// Read every visual of a level from a chunk reader over any data source.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the source cannot be read or a visual cannot be read.
+  pub fn read_visuals_from_chunk<T: ByteOrder, D: ChunkDataSource>(
+    reader: &mut ChunkReader<D>,
+  ) -> XrfResult<Option<LevelVisualsChunk>> {
+    Self::read_visuals_from_chunks::<T, _>(&reader.read_children()?)
+  }
+
+  /// Read every visual of a level from chunks already read from it.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when a visual cannot be read.
+  pub fn read_visuals_from_chunks<T: ByteOrder, D: ChunkDataSource>(
+    chunks: &[ChunkReader<D>],
+  ) -> XrfResult<Option<LevelVisualsChunk>> {
+    match find_optional_chunk_by_id(chunks, LevelVisualsChunk::CHUNK_ID) {
+      Some(mut chunk) => Ok(Some(LevelVisualsChunk::read_from_chunk::<T, _>(&mut chunk)?)),
+      None => Ok(None),
+    }
   }
 
   /// Read level file from chunks.
