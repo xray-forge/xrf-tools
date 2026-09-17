@@ -36,6 +36,18 @@ describe("rankedSearch", () => {
     expect(ranked[0]).toBe("configs\\dialogs.xml");
   });
 
+  it("prefers an exact file name even when its directory matches first", () => {
+    const ranked: Array<string> = getNamesOf(["configs/dialogs_extra.xml", "dialogs/dialogs.xml"], "dialogs");
+
+    expect(ranked).toEqual(["dialogs/dialogs.xml", "configs/dialogs_extra.xml"]);
+  });
+
+  it("prefers a segment match even when an earlier occurrence is inside a word", () => {
+    const ranked: Array<string> = getNamesOf(["aaa_mydialogs.xml", "zzz_mydialogs.dialogs.xml"], "dialogs");
+
+    expect(ranked).toEqual(["zzz_mydialogs.dialogs.xml", "aaa_mydialogs.xml"]);
+  });
+
   it("reports every match while returning only the limit", () => {
     const names: Array<string> = Array.from({ length: 500 }, (_, index) => `configs\\file_${index}_dialogs.xml`);
 

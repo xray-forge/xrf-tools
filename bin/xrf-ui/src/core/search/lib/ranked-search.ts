@@ -76,14 +76,17 @@ function getRank(entry: ISearchIndexEntry<unknown>, query: string, matchAt: numb
     return ESearchRank.EXACT;
   }
 
-  if (matchAt === entry.leafAt) {
+  // A directory may match before the file name, but the file name still determines the stronger rank.
+  if (entry.text.startsWith(query, entry.leafAt)) {
     return entry.stemEnd - entry.leafAt === query.length ? ESearchRank.EXACT_LEAF : ESearchRank.LEAF_PREFIX;
   }
 
   // Starting right after a separator reads as naming a directory or a word, which still beats landing in
   // the middle of one - but never beats naming the file itself.
-  if (matchAt === 0 || SEGMENT_SEPARATORS.includes(entry.text[matchAt - 1])) {
-    return ESearchRank.SEGMENT;
+  for (let at: number = matchAt; at !== -1; at = entry.text.indexOf(query, at + 1)) {
+    if (at === 0 || SEGMENT_SEPARATORS.includes(entry.text[at - 1])) {
+      return ESearchRank.SEGMENT;
+    }
   }
 
   return ESearchRank.SUBSTRING;
