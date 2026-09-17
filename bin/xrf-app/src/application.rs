@@ -3,16 +3,13 @@
 use std::error::Error;
 use std::sync::Arc;
 
-use tauri::utils::config::WindowConfig;
-use tauri::webview::{WebviewWindow, WebviewWindowBuilder};
 use tauri::{App, Builder, Manager, Wry};
 use xrf_job::ExecutionRequest;
 
 use crate::core::assets::AssetMountState;
 use crate::core::execution::ExecutionState;
 use crate::core::jobs::JobRegistry;
-use crate::core::webview_extensions::DevExtensions;
-use crate::core::window_reveal::reveal_window_on_timeout;
+use crate::core::window::build_main_window;
 use crate::plugins::registry::domain_plugins;
 
 /// Assemble the application from its plugins and hand control to Tauri.
@@ -22,7 +19,8 @@ pub fn run() {
   let builder: Builder<Wry> = Builder::default()
     .plugin(tauri_plugin_fs::init())
     .plugin(tauri_plugin_dialog::init())
-    .plugin(tauri_plugin_shell::init());
+    .plugin(tauri_plugin_shell::init())
+    .plugin(tauri_plugin_store::Builder::default().build());
 
   log::info!("Registering domain plugins");
 
@@ -57,27 +55,6 @@ fn manage_shared_state(application: &mut App) -> Result<(), Box<dyn Error>> {
   );
 
   application.manage(execution);
-
-  Ok(())
-}
-
-/// Build the window `tauri.conf.json` describes.
-fn build_main_window(application: &mut App) -> Result<(), Box<dyn Error>> {
-  let config: &WindowConfig = application
-    .config()
-    .app
-    .windows
-    .first()
-    .expect("Main window has to be declared in tauri.conf.json");
-
-  let window: WebviewWindow = WebviewWindowBuilder::from_config(application.handle(), config)?
-    .with_dev_extensions()
-    .build()?;
-
-  // The configuration declares it hidden: the document reveals itself once it has resolved its colour scheme.
-  reveal_window_on_timeout(window);
-
-  log::info!("Built main window");
 
   Ok(())
 }
