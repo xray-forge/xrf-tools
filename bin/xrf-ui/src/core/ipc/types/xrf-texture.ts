@@ -27,6 +27,14 @@ export type EquipmentSlotOccupant = {
   h: number;
 };
 
+/** The size of a picture a webview renders as it stands, read from its header alone. */
+export type ImageShape = {
+  width: number;
+  height: number;
+  /** The format as the decoder recognised it, which is what the bytes say rather than what the name claims. */
+  format: string;
+};
+
 export type PackEquipmentResult = {
   /**
    * Whether the run drew every section or was stopped between them.

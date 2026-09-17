@@ -27,6 +27,7 @@ macro_rules! for_each_tauri_command_domain {
         read_file => crate::plugins::archives::browse::commands::read_file::archives_read_file,
         describe_file => crate::plugins::archives::describe::commands::describe_file::archives_describe_file,
         describe_audio => crate::plugins::archives::preview::commands::describe_audio::archives_describe_audio,
+        describe_texture => crate::plugins::archives::preview::commands::describe_texture::archives_describe_texture,
         describe_image => crate::plugins::archives::preview::commands::describe_image::archives_describe_image,
         default_pack_config => crate::plugins::archives::pack::commands::default_pack_config::archives_default_pack_config,
         export_pack_config => crate::plugins::archives::pack::commands::export_pack_config::archives_export_pack_config,
@@ -43,7 +44,7 @@ macro_rules! for_each_tauri_command_domain {
       }
       // Serves a decoded PNG rather than the stored DDS, so it stays here instead of joining the generic reads.
       @raw {
-        read_image(roots: "XrayRoots", logicalPath: "string") => crate::plugins::archives::preview::commands::read_image::archives_read_image,
+        read_texture(roots: "XrayRoots", logicalPath: "string") => crate::plugins::archives::preview::commands::read_texture::archives_read_texture,
       }
       configs => "configs" {
         check_directory_format => crate::plugins::configs::commands::check_directory_format::configs_check_directory_format,

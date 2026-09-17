@@ -7,7 +7,7 @@ import { JobOutcome, JobProgress } from "@/core/ipc/types/xrf-job";
 import { LtxAnchoredFinding, LtxFileStructure, LtxFileText, LtxInventory } from "@/core/ipc/types/xrf-ltx-inspect";
 import { XrayMaterialDescriptor, XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
 import { ArchivePackConfig, ArchivePatchConfig } from "@/core/ipc/types/xrf-pack";
-import { EquipmentSlotOccupant } from "@/core/ipc/types/xrf-texture";
+import { EquipmentSlotOccupant, ImageShape } from "@/core/ipc/types/xrf-texture";
 import {
   TranslationBuildLanguageSummary,
   TranslationParseCensus,
@@ -1404,6 +1404,8 @@ export type AudioDescriptor = {
   sampleRate: number | null;
   /** Absent for a sound carrying no recognized X-Ray comment, where the engine uses its own defaults. */
   parameters: AudioSourceParameters | null;
+  /** What to hand the bytes over as, taken from the extension rather than from the content. */
+  mediaType: string;
 };
 
 /** The X-Ray source parameters carried in a sound's first vorbis comment. */
@@ -1694,6 +1696,14 @@ export type HostInfo = {
   totalMemory: number;
   /** This process's own identifier, for pairing what is shown here with a task manager. */
   pid: number;
+};
+
+/** What a picture the webview renders itself turns out to be. */
+export type ImageDescriptor = {
+  /** Absent when the bytes carry no header this reads, which is a picture worth neither drawing nor measuring. */
+  shape: ImageShape | null;
+  /** What to hand the bytes over as, taken from the extension rather than from the content. */
+  mediaType: string;
 };
 
 /** How a job that is no longer running ended. */

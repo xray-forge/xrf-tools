@@ -5,7 +5,6 @@ import { ReactElement, useEffect, useId, useMemo, useState } from "react";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { ArchiveStatistics } from "@/core/ipc/types/xrf-archive-stats";
-import { getWellFillSx } from "@/core/theme/surface";
 import { DialogHeader } from "@/core/ui/dialog/DialogHeader";
 import { EStatMeasure } from "@/core/ui/stats/stat-measure";
 import { BaseComponentProps } from "@/lib/dom/element-types";
@@ -74,10 +73,9 @@ export function ArchiveStatisticsDialog({
 
       <DialogContent className={"flex h-115 max-h-[64vh] p-0"}>
         <List
-          className={"w-37 shrink-0 overflow-y-auto border-r border-divider"}
+          className={"w-37 shrink-0 overflow-y-auto border-r border-divider bg-well"}
           dense={true}
           disablePadding={true}
-          sx={getWellFillSx}
         >
           {sections.map((it: IArchiveStatisticsSection) => (
             <ListItemButton key={it.id} selected={selected?.id === it.id} onClick={() => setSelectedId(it.id)}>

@@ -5,8 +5,9 @@ import { ReactElement } from "react";
 import { ArchivePreviewError } from "@/applications/archives-explorer/components/editor/preview/ArchivePreviewError/ArchivePreviewError";
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { TArchiveBytes, TArchiveContent, useLastContent } from "@/core/archive/lib";
+import { describeTextureShape } from "@/core/assets/lib";
 import { useAssetUrl } from "@/core/assets/lib/use-asset-url";
-import { ImageShape } from "@/core/ipc/types/xrf-texture";
+import { AssetTextureShape } from "@/core/ipc/types/xrf-app";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
 import { ImageViewport } from "@/core/ui/media/ImageViewport";
@@ -16,27 +17,28 @@ import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
 /**
- * Shows a picture the webview draws as it stands, which the engine does not load.
+ * Shows an archived texture the backend decoded into a PNG.
  */
-export function ArchiveImagePreview({
-  "data-testid": dataTestId = "archive-image-preview",
+export function ArchiveTexturePreview({
+  "data-testid": dataTestId = "archive-texture-preview",
   id,
   className,
 }: BaseComponentProps): ReactElement {
   const archivesService: ArchivesService = useInjection(ArchivesService);
   const content: AsyncState<Nullable<TArchiveContent>> = archivesService.content;
 
-  // The previous picture stays on screen while the next one loads, the same courtesy the other previews extend.
-  const image: Nullable<TArchiveContent & { kind: "image" }> = useLastContent(
-    content.value?.kind === "image" ? content.value : null,
+  // The previous texture stays on screen while the next one decodes, rather than the panel blanking between clicks.
+  const texture: Nullable<TArchiveContent & { kind: "texture" }> = useLastContent(
+    content.value?.kind === "texture" ? content.value : null,
     content.isLoading
   );
 
-  const shape: Nullable<ImageShape> = image?.descriptor.shape ?? null;
-  const bytes: Nullable<TArchiveBytes> = image?.bytes ?? null;
+  // The shape is the source DDS's rather than the png's, so the caption can name a format and a mip chain the transcode
+  // has already thrown away. A header that would not parse leaves nothing to lay the viewport out against.
+  const shape: Nullable<AssetTextureShape> = texture?.descriptor.shape ?? null;
+  const bytes: Nullable<TArchiveBytes> = texture?.bytes ?? null;
 
-  // The type comes from the backend rather than a table here, so one spelling decides how the bytes are handed over.
-  const url: Nullable<string> = useAssetUrl(`${__MODULE_NAME__}/archive-image`, bytes, image?.descriptor.mediaType);
+  const url: Nullable<string> = useAssetUrl(`${__MODULE_NAME__}/archive-texture`, bytes, "image/png");
 
   if (content.error) {
     return (
@@ -59,7 +61,7 @@ export function ArchiveImagePreview({
         id={id}
         className={className}
         title={"Preview unavailable"}
-        description={"This picture carries no header that could be read."}
+        description={"This texture could not be decoded."}
       />
     );
   }
@@ -67,7 +69,7 @@ export function ArchiveImagePreview({
   return (
     <div data-testid={dataTestId} id={id} className={cn("flex min-h-0 min-w-0 grow flex-col", className)}>
       <ImageViewport
-        alt={archivesService.selectedEntry?.name ?? "Picture"}
+        alt={archivesService.selectedEntry?.name ?? "Texture"}
         src={url}
         width={shape.width}
         height={shape.height}
@@ -75,7 +77,7 @@ export function ArchiveImagePreview({
 
       <div className={"shrink-0 border-t border-divider px-3 py-1"}>
         <Typography className={"text-text-secondary"} variant={"caption"}>
-          {`${shape.width} x ${shape.height} · ${shape.format} · image`}
+          {describeTextureShape(shape)}
         </Typography>
       </div>
     </div>

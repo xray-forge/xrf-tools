@@ -7,14 +7,14 @@ use serde::Serialize;
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct NativeImageShape {
+pub struct ImageShape {
   pub width: u32,
   pub height: u32,
   /// The format as the decoder recognised it, which is what the bytes say rather than what the name claims.
   pub format: String,
 }
 
-impl NativeImageShape {
+impl ImageShape {
   /// The shape these bytes declare, or `None` when they are not a picture this reads.
   pub fn of_bytes(bytes: &[u8]) -> Option<Self> {
     let reader: ImageReader<Cursor<&[u8]>> = ImageReader::new(Cursor::new(bytes)).with_guessed_format().ok()?;
@@ -47,7 +47,7 @@ impl NativeImageShape {
 mod tests {
   use image::{DynamicImage, RgbaImage};
 
-  use super::NativeImageShape;
+  use super::ImageShape;
 
   /// One encoded picture of the given size.
   fn encoded(width: u32, height: u32, format: image::ImageFormat) -> Vec<u8> {
@@ -63,7 +63,7 @@ mod tests {
   #[test]
   fn reads_a_size_out_of_a_header() {
     for (format, label) in [(image::ImageFormat::Png, "PNG"), (image::ImageFormat::Bmp, "BMP")] {
-      let shape: NativeImageShape = NativeImageShape::of_bytes(&encoded(8, 4, format)).unwrap();
+      let shape: ImageShape = ImageShape::of_bytes(&encoded(8, 4, format)).unwrap();
 
       assert_eq!((shape.width, shape.height), (8, 4));
       assert_eq!(shape.format, label);
@@ -74,14 +74,14 @@ mod tests {
   fn names_the_format_the_bytes_are_rather_than_the_one_a_name_claims() {
     // The guess is made from content, so a picture saved under the wrong extension still reports what it is - which
     // is the reading a viewer wants when a tree has been through several hands.
-    let shape: NativeImageShape = NativeImageShape::of_bytes(&encoded(2, 2, image::ImageFormat::Jpeg)).unwrap();
+    let shape: ImageShape = ImageShape::of_bytes(&encoded(2, 2, image::ImageFormat::Jpeg)).unwrap();
 
     assert_eq!(shape.format, "JPEG");
   }
 
   #[test]
   fn answers_nothing_for_bytes_that_are_not_a_picture() {
-    assert_eq!(NativeImageShape::of_bytes(b"not a picture at all"), None);
-    assert_eq!(NativeImageShape::of_bytes(&[]), None);
+    assert_eq!(ImageShape::of_bytes(b"not a picture at all"), None);
+    assert_eq!(ImageShape::of_bytes(&[]), None);
   }
 }

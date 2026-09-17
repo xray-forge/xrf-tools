@@ -16,6 +16,7 @@ const FULL: AudioDescriptor = {
   channels: 2,
   sampleRate: 44100,
   parameters: { minDistance: 1, maxDistance: 50, baseVolume: 0.8, gameType: 3, maxAiDistance: 25 },
+  mediaType: "audio/ogg",
 };
 
 /**
@@ -48,13 +49,23 @@ describe("ArchiveAudioPreview", () => {
   it("says nothing rather than zero when the stream header would not parse", () => {
     // Zero channels at zero hertz is a claim about the sound; the backend reports absence precisely so the panel does
     // not have to make one.
-    const { getAllByText } = renderPreview({ channels: null, sampleRate: null, parameters: null });
+    const { getAllByText } = renderPreview({
+      channels: null,
+      sampleRate: null,
+      parameters: null,
+      mediaType: "audio/ogg",
+    });
 
     expect(getAllByText("-")).toHaveLength(2);
   });
 
   it("explains the engine defaults for a sound carrying no X-Ray comment", () => {
-    const { getByText, queryByText } = renderPreview({ channels: 1, sampleRate: 22050, parameters: null });
+    const { getByText, queryByText } = renderPreview({
+      channels: 1,
+      sampleRate: 22050,
+      parameters: null,
+      mediaType: "audio/ogg",
+    });
 
     expect(getByText("1 (mono)")).toBeTruthy();
     expect(queryByText("Min distance")).toBeNull();

@@ -29,11 +29,17 @@ import { ArchiveFileHeader } from "./ArchiveFileHeader";
 import { ArchiveImagePreview } from "./ArchiveImagePreview";
 import { ArchiveModelPreview } from "./ArchiveModelPreview";
 import { ArchivePreviewError } from "./ArchivePreviewError";
+import { ArchiveTexturePreview } from "./ArchiveTexturePreview";
 
 // Everything that renders its own preview leaves this union; what is left is a reason to explain.
 type TUnsupported = Exclude<
   ArchivePreviewSupport,
-  { kind: "supported" } | { kind: "image" } | { kind: "audio" } | { kind: "model" } | { kind: "description" }
+  | { kind: "supported" }
+  | { kind: "texture" }
+  | { kind: "image" }
+  | { kind: "audio" }
+  | { kind: "model" }
+  | { kind: "description" }
 >;
 
 export function ArchivesFilePreview({
@@ -86,6 +92,8 @@ export function ArchivesFilePreview({
       <div className={"flex min-h-0 min-w-0 grow overflow-hidden"}>
         {inline(() => {
           switch (support.kind) {
+            case "texture":
+              return <ArchiveTexturePreview />;
             case "image":
               return <ArchiveImagePreview />;
             case "audio":

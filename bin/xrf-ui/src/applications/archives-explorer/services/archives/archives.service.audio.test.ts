@@ -25,6 +25,7 @@ const DESCRIPTOR: AudioDescriptor = {
   channels: 2,
   sampleRate: 44100,
   parameters: { minDistance: 1, maxDistance: 50, baseVolume: 0.8, gameType: 3, maxAiDistance: 25 },
+  mediaType: "audio/ogg",
 };
 
 function mockService(sound: ArchiveFileDescriptor = SOUND): ArchivesService {
@@ -123,13 +124,13 @@ describe("ArchivesService audio preview", () => {
     expect(Array.from(content?.bytes ?? [])).toEqual([0x4f, 0x67, 0x67, 0x53]);
   });
 
-  it("keeps textures on the image path", async () => {
+  it("keeps textures on the texture path", async () => {
     const service: ArchivesService = mockService();
 
     await service.selectArchiveFile(TEXTURE);
 
     expect(mockInvoke).not.toHaveBeenCalledWith("plugin:archives|describe_audio", expect.anything());
-    expect(mockInvoke).toHaveBeenCalledWith("plugin:archives|describe_image", expect.anything());
+    expect(mockInvoke).toHaveBeenCalledWith("plugin:archives|describe_texture", expect.anything());
   });
 
   it("reports a failed read instead of staying loading", async () => {

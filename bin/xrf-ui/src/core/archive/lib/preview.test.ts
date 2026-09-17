@@ -33,6 +33,47 @@ describe("archive preview support", () => {
     ).toEqual({ kind: "model" });
   });
 
+  it("draws source art itself rather than sending it through the texture decode", () => {
+    // These are not textures and the engine loads none of them. Routing one as an image would hand a png to a DDS
+    // header parse; routing it as a description would say nothing about a file a webview can simply draw.
+    for (const name of ["textures\\ui\\source.png", "textures\\ui\\source.JPG", "textures\\ui\\source.bmp"]) {
+      expect(getArchivePreviewSupport(mockArchiveFileDescriptor({ name }), READ_POLICY)).toEqual({
+        kind: "image",
+      });
+    }
+  });
+
+  it("keeps the texture decode for the one picture format the engine actually loads", () => {
+    expect(getArchivePreviewSupport(mockArchiveFileDescriptor({ name: "textures\\wall.dds" }), READ_POLICY)).toEqual({
+      kind: "texture",
+    });
+  });
+
+  it("does not draw a targa itself, because no webview renders one", () => {
+    // It stays a description rather than a picture: drawing it would need the transcode the dds path takes.
+    expect(getArchivePreviewSupport(mockArchiveFileDescriptor({ name: "textures\\source.tga" }), READ_POLICY)).toEqual({
+      kind: "description",
+    });
+  });
+
+  it("plays a wav beside an ogg, since both are handed to the webview as they stand", () => {
+    expect(getArchivePreviewSupport(mockArchiveFileDescriptor({ name: "sounds\\source.wav" }), READ_POLICY)).toEqual({
+      kind: "audio",
+    });
+  });
+
+  it("refuses a picture past the native limit rather than holding it whole", () => {
+    expect(
+      getArchivePreviewSupport(
+        mockArchiveFileDescriptor({
+          name: "textures\\ui\\source.png",
+          sizeReal: READ_POLICY.maximumImageSize + 1,
+        }),
+        READ_POLICY
+      )
+    ).toEqual({ kind: "too-large", maximumSize: READ_POLICY.maximumImageSize });
+  });
+
   it("sends an unreadable extension to the backend and refuses an oversized text read", () => {
     expect(getArchivePreviewSupport(mockArchiveFileDescriptor({ name: "meshes\\actor.omf" }), READ_POLICY)).toEqual({
       kind: "description",
@@ -51,14 +92,14 @@ describe("archive preview support", () => {
         mockArchiveFileDescriptor({ name: "textures\\ui.dds", sizeReal: 2048, sizeCompressed: 512 }),
         READ_POLICY
       )
-    ).toEqual({ kind: "image" });
+    ).toEqual({ kind: "texture" });
 
     expect(
       getArchivePreviewSupport(
-        mockArchiveFileDescriptor({ name: "textures\\ui.dds", sizeReal: READ_POLICY.maximumImageSize + 1 }),
+        mockArchiveFileDescriptor({ name: "textures\\ui.dds", sizeReal: READ_POLICY.maximumTextureSize + 1 }),
         READ_POLICY
       )
-    ).toEqual({ kind: "too-large", maximumSize: READ_POLICY.maximumImageSize });
+    ).toEqual({ kind: "too-large", maximumSize: READ_POLICY.maximumTextureSize });
   });
 
   it("reads the extension from the entry name rather than from a directory above it", () => {

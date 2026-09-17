@@ -34,18 +34,18 @@ function mockService(texture: ArchiveFileDescriptor = TEXTURE): ArchivesService 
   return service;
 }
 
-describe("ArchivesService image preview", () => {
+describe("ArchivesService texture preview", () => {
   beforeEach(() => {
     setMockInvokeResponses({
-      ["plugin:archives|describe_image"]: DESCRIPTOR,
-      ["plugin:archives|read_image"]: BYTES,
+      ["plugin:archives|describe_texture"]: DESCRIPTOR,
+      ["plugin:archives|read_texture"]: BYTES,
     });
   });
 
-  it("does not describe or decode a texture above the image limit, including on retry", async () => {
+  it("does not describe or decode a texture above the texture limit, including on retry", async () => {
     const texture = mockArchiveFileDescriptor({
       ...TEXTURE,
-      sizeReal: mockArchiveReadPolicy().maximumImageSize + 1,
+      sizeReal: mockArchiveReadPolicy().maximumTextureSize + 1,
     });
     const service: ArchivesService = mockService(texture);
 
@@ -59,24 +59,24 @@ describe("ArchivesService image preview", () => {
     expect(mockInvoke).not.toHaveBeenCalled();
   });
 
-  it("describes and decodes a texture exactly at the image limit", async () => {
+  it("describes and decodes a texture exactly at the texture limit", async () => {
     const texture = mockArchiveFileDescriptor({
       ...TEXTURE,
-      sizeReal: mockArchiveReadPolicy().maximumImageSize,
+      sizeReal: mockArchiveReadPolicy().maximumTextureSize,
     });
     const service: ArchivesService = mockService(texture);
 
     await service.selectArchiveFile(texture);
 
-    expect(mockInvoke).toHaveBeenCalledWith("plugin:archives|describe_image", {
+    expect(mockInvoke).toHaveBeenCalledWith("plugin:archives|describe_texture", {
       roots: ROOTS,
       logicalPath: texture.name,
     });
-    expect(mockInvoke).toHaveBeenCalledWith("plugin:archives|read_image", {
+    expect(mockInvoke).toHaveBeenCalledWith("plugin:archives|read_texture", {
       roots: ROOTS,
       logicalPath: texture.name,
     });
-    expect(service.content.value?.kind).toBe("image");
+    expect(service.content.value?.kind).toBe("texture");
   });
 
   it("decodes a texture instead of reading it as text", async () => {
@@ -84,13 +84,13 @@ describe("ArchivesService image preview", () => {
 
     await service.selectArchiveFile(TEXTURE);
 
-    expect(mockInvoke).toHaveBeenCalledWith("plugin:archives|describe_image", {
+    expect(mockInvoke).toHaveBeenCalledWith("plugin:archives|describe_texture", {
       roots: ROOTS,
       logicalPath: TEXTURE.name,
     });
     // The text path would have refused it anyway: this entry is compressed and .dds is not readable.
     expect(mockInvoke).not.toHaveBeenCalledWith("plugin:archives|read_file", expect.anything());
-    expect(service.content.value?.kind === "image" ? service.content.value.descriptor.shape?.width : null).toBe(256);
+    expect(service.content.value?.kind === "texture" ? service.content.value.descriptor.shape?.width : null).toBe(256);
   });
 
   it("describes and reads one file, from the same roots", async () => {
@@ -101,10 +101,10 @@ describe("ArchivesService image preview", () => {
     // The dimensions the viewport lays out against come from the description, the pixels from the read. Addressed
     // apart, they could belong to different volumes of the same tree.
     const [describeArguments] = mockInvoke.mock.calls
-      .filter(([command]) => command === "plugin:archives|describe_image")
+      .filter(([command]) => command === "plugin:archives|describe_texture")
       .map(([, args]) => args);
     const [readArguments] = mockInvoke.mock.calls
-      .filter(([command]) => command === "plugin:archives|read_image")
+      .filter(([command]) => command === "plugin:archives|read_texture")
       .map(([, args]) => args);
 
     expect(describeArguments).toEqual(readArguments);
@@ -115,7 +115,7 @@ describe("ArchivesService image preview", () => {
 
     await service.selectArchiveFile(TEXTURE);
 
-    const content = service.content.value?.kind === "image" ? service.content.value : null;
+    const content = service.content.value?.kind === "texture" ? service.content.value : null;
 
     expect(content?.descriptor.shape?.format).toBe("DXT5");
     expect(Array.from(content?.bytes ?? [])).toEqual([0x89, 0x50, 0x4e, 0x47]);
@@ -126,16 +126,16 @@ describe("ArchivesService image preview", () => {
 
     await service.selectArchiveFile(TEXT);
 
-    expect(mockInvoke).not.toHaveBeenCalledWith("plugin:archives|describe_image", expect.anything());
-    expect(service.content.value?.kind).not.toBe("image");
+    expect(mockInvoke).not.toHaveBeenCalledWith("plugin:archives|describe_texture", expect.anything());
+    expect(service.content.value?.kind).not.toBe("texture");
   });
 
   it("reports a failed decode instead of staying loading", async () => {
     const service: ArchivesService = mockService();
 
     setMockInvokeResponses({
-      ["plugin:archives|describe_image"]: DESCRIPTOR,
-      ["plugin:archives|read_image"]: () => {
+      ["plugin:archives|describe_texture"]: DESCRIPTOR,
+      ["plugin:archives|read_texture"]: () => {
         throw new Error("unsupported DXT format");
       },
     });
@@ -152,17 +152,17 @@ describe("ArchivesService image preview", () => {
     await service.selectArchiveFile(TEXTURE);
     await service.retrySelectedFile();
 
-    const imageCalls = mockInvoke.mock.calls.filter(([command]) => command === "plugin:archives|read_image");
+    const imageCalls = mockInvoke.mock.calls.filter(([command]) => command === "plugin:archives|read_texture");
 
     expect(imageCalls).toHaveLength(2);
     expect(mockInvoke).not.toHaveBeenCalledWith("plugin:archives|read_file", expect.anything());
   });
 
-  it("drops the decoded image when the selection changes", async () => {
+  it("drops the decoded texture when the selection changes", async () => {
     const service: ArchivesService = mockService();
 
     await service.selectArchiveFile(TEXTURE);
-    expect(service.content.value?.kind).toBe("image");
+    expect(service.content.value?.kind).toBe("texture");
 
     // An image outliving its file would be shown beside the next selection.
     service.selectArchiveDirectory("textures");

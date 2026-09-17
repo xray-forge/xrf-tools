@@ -6,6 +6,7 @@ import { getFoldedFileExtension } from "@/lib/path/extension";
 /** A preview representation, or the policy reason an entry cannot be previewed. */
 export type ArchivePreviewSupport =
   | { kind: "supported" }
+  | { kind: "texture" }
   | { kind: "image" }
   | { kind: "audio" }
   | { kind: "model" }
@@ -33,6 +34,12 @@ export function getArchivePreviewSupport(descriptor: IArchiveEntry, policy: Arch
     return descriptor.sizeReal > policy.maximumAudioSize
       ? { kind: "too-large", maximumSize: policy.maximumAudioSize }
       : { kind: "audio" };
+  }
+
+  if (policy.textureExtensions.some((candidate: XrayExtension) => candidate === extension)) {
+    return descriptor.sizeReal > policy.maximumTextureSize
+      ? { kind: "too-large", maximumSize: policy.maximumTextureSize }
+      : { kind: "texture" };
   }
 
   if (policy.imageExtensions.some((candidate: XrayExtension) => candidate === extension)) {

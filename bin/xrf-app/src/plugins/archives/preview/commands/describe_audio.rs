@@ -1,5 +1,6 @@
 use serde::Serialize;
 use tauri::State;
+use xrf_extension::XrayExtensionOf;
 use xrf_sound::{SoundFile, SoundMetadata};
 use xrf_vfs::XrayRoots;
 
@@ -33,6 +34,8 @@ pub struct AudioDescriptor {
   pub sample_rate: Option<u32>,
   /// Absent for a sound carrying no recognized X-Ray comment, where the engine uses its own defaults.
   pub parameters: Option<AudioSourceParameters>,
+  /// What to hand the bytes over as, taken from the extension rather than from the content.
+  pub media_type: String,
 }
 
 /// Report whatever the engine would read out of a sound, without handing over the sound.
@@ -47,6 +50,11 @@ pub async fn archives_describe_audio(
   assets: State<'_, AssetMountState>,
 ) -> TauriResult<AudioDescriptor> {
   log::info!("Describing audio: {logical_path}");
+
+  let media_type: &'static str = XrayExtensionOf::of(&logical_path)
+    .known()
+    .and_then(|extension| extension.get_media_type())
+    .ok_or_else(|| format!("Failed to describe audio '{logical_path}': no webview plays this extension"))?;
 
   let bytes: Vec<u8> = assets
     .with_probe(&roots, |probe| read_located_asset(probe, &logical_path))?
@@ -76,5 +84,6 @@ pub async fn archives_describe_audio(
       }),
       SoundMetadata::EngineDefaults => None,
     }),
+    media_type: media_type.to_owned(),
   })
 }

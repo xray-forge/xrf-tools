@@ -666,6 +666,7 @@ export class ArchivesService {
 
     switch (support.kind) {
       case "audio":
+      case "texture":
       case "image":
         return yield* this.readContent(entry, support.kind, subject);
       case "supported":
@@ -697,6 +698,9 @@ export class ArchivesService {
       switch (kind) {
         case "audio":
           content = yield* call(this.readAudioContent(entry, subject));
+          break;
+        case "texture":
+          content = yield* call(this.readTextureContent(entry, subject));
           break;
         case "image":
           content = yield* call(this.readImageContent(entry, subject));
@@ -767,15 +771,33 @@ export class ArchivesService {
    * @param subject - Open subject whose tree the texture is read out of.
    * @returns The texture's shape and the decoded png bytes.
    */
-  private async readImageContent(entry: IArchiveEntry, subject: ArchiveSubject): Promise<TArchiveContent> {
+  private async readTextureContent(entry: IArchiveEntry, subject: ArchiveSubject): Promise<TArchiveContent> {
     const roots: XrayRoots = getSubjectRoots(subject);
 
     const [texture, bytes] = await Promise.all([
-      archivesCommands.describeImage(roots, entry.name),
-      archivesRawCommands.readImage(roots, entry.name),
+      archivesCommands.describeTexture(roots, entry.name),
+      archivesRawCommands.readTexture(roots, entry.name),
     ]);
 
-    return { kind: "image", descriptor: texture, bytes: new Uint8Array(bytes) };
+    return { kind: "texture", descriptor: texture, bytes: new Uint8Array(bytes) };
+  }
+
+  /**
+   * Reads a picture the webview draws itself: its shape plus the bytes exactly as stored.
+   *
+   * @param entry - Entry naming the picture.
+   * @param subject - Open subject whose tree the picture is read out of.
+   * @returns The picture's shape and its bytes as stored.
+   */
+  private async readImageContent(entry: IArchiveEntry, subject: ArchiveSubject): Promise<TArchiveContent> {
+    const roots: XrayRoots = getSubjectRoots(subject);
+
+    const [image, bytes] = await Promise.all([
+      archivesCommands.describeImage(roots, entry.name),
+      assetsRawCommands.readAsset(roots, entry.name),
+    ]);
+
+    return { kind: "image", descriptor: image, bytes: new Uint8Array(bytes) };
   }
 
   /** The session every read and write of the open subject is addressed by. */

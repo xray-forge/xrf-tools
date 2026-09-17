@@ -37,7 +37,7 @@ export function ArchiveAudioPreview({
 
   const descriptor: Nullable<AudioDescriptor> = audio?.descriptor ?? null;
   const bytes: Nullable<TArchiveBytes> = audio?.bytes ?? null;
-  const url: Nullable<string> = useAssetUrl(`${__MODULE_NAME__}/archive-audio`, bytes, "audio/ogg");
+  const url: Nullable<string> = useAssetUrl(`${__MODULE_NAME__}/archive-audio`, bytes, descriptor?.mediaType);
 
   if (content.error) {
     return (

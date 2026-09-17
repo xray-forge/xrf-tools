@@ -52,11 +52,11 @@ describe("opened archives editor", () => {
         size: TEXT_FILE.sizeReal,
       },
       ["plugin:archives|close_subject"]: undefined,
-      ["plugin:archives|describe_image"]: {
+      ["plugin:archives|describe_texture"]: {
         size: BINARY_FILE.sizeReal,
         shape: { width: 64, height: 64, mipmapLevels: 1, format: "DXT1" },
       },
-      ["plugin:archives|read_image"]: new Uint8Array([0x89, 0x50, 0x4e, 0x47]).buffer,
+      ["plugin:archives|read_texture"]: new Uint8Array([0x89, 0x50, 0x4e, 0x47]).buffer,
       ["plugin:archives|describe_file"]: {
         scope: { kind: EArchiveSubject.VOLUMES, volumes: 1 },
         format: { kind: "unsupported", reason: { kind: "noDescriber", extension: "omf" } },
@@ -290,11 +290,11 @@ describe("opened archives editor", () => {
     setMockInvokeResponses({
       ["plugin:archives|get_subject"]: mockSessionResponse(PROJECT),
       ["plugin:archives|list_shared_payloads"]: [mockArchiveSharedPayload(BINARY_FILE, ["texture_copy.dds"])],
-      ["plugin:archives|describe_image"]: {
+      ["plugin:archives|describe_texture"]: {
         size: BINARY_FILE.sizeReal,
         shape: { width: 64, height: 64, mipmapLevels: 1, format: "DXT1" },
       },
-      ["plugin:archives|read_image"]: new Uint8Array([0x89, 0x50, 0x4e, 0x47]).buffer,
+      ["plugin:archives|read_texture"]: new Uint8Array([0x89, 0x50, 0x4e, 0x47]).buffer,
       ["plugin:archives|describe_file"]: {
         scope: { kind: EArchiveSubject.VOLUMES, volumes: 1 },
         format: { kind: "unsupported", reason: { kind: "noDescriber", extension: "omf" } },
@@ -412,11 +412,11 @@ describe("opened archives editor", () => {
       ["plugin:archives|get_subject"]: mockSessionResponse(PROJECT),
       // Never settles, so the first selection is still in flight when the second one is made.
       ["plugin:archives|read_file"]: () => new Promise(() => {}),
-      ["plugin:archives|describe_image"]: {
+      ["plugin:archives|describe_texture"]: {
         size: BINARY_FILE.sizeReal,
         shape: { width: 64, height: 64, mipmapLevels: 1, format: "DXT1" },
       },
-      ["plugin:archives|read_image"]: new Uint8Array([0x89, 0x50, 0x4e, 0x47]).buffer,
+      ["plugin:archives|read_texture"]: new Uint8Array([0x89, 0x50, 0x4e, 0x47]).buffer,
       ["plugin:archives|describe_file"]: {
         scope: { kind: EArchiveSubject.VOLUMES, volumes: 1 },
         format: { kind: "unsupported", reason: { kind: "noDescriber", extension: "omf" } },

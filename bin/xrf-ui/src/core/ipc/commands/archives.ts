@@ -14,6 +14,7 @@ import {
   ArchivesUnpackRequest,
   AssetTextureDescriptor,
   AudioDescriptor,
+  ImageDescriptor,
   SessionId,
   SessionRestore,
   SessionSnapshot,
@@ -85,14 +86,24 @@ export const archivesCommands = {
   /**
    * Report the shape of a texture, without decoding it into a picture.
    *
-   * Paired with `archives|read_image`, which serves the PNG the webview displays. Both are addressed by the same roots
+   * Paired with `archives|read_texture`, which serves the PNG the webview displays. Both are addressed by the same roots
    * and logical path, so the dimensions on screen belong to the picture beside them.
    *
    * Answers with the source DDS facts rather than the PNG's: format and mip count survive the description and would not
    * survive the transcode, and a viewer of X-Ray textures wants both.
    */
+  describeTexture: (roots: XrayRoots, logicalPath: string) =>
+    __TAURI_INVOKE<AssetTextureDescriptor>("plugin:archives|describe_texture", { roots, logicalPath }),
+  /**
+   * Report the shape of a picture the webview draws as it stands.
+   *
+   * # Errors
+   *
+   * Returns an error when the path resolves to nothing, its bytes cannot be read, or its extension is not one a
+   * webview draws - which the caller decided before asking, so reaching it means the two disagree.
+   */
   describeImage: (roots: XrayRoots, logicalPath: string) =>
-    __TAURI_INVOKE<AssetTextureDescriptor>("plugin:archives|describe_image", { roots, logicalPath }),
+    __TAURI_INVOKE<ImageDescriptor>("plugin:archives|describe_image", { roots, logicalPath }),
   /**
    * Hand back a packing configuration with nothing chosen yet.
    *
