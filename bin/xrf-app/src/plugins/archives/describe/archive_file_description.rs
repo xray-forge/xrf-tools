@@ -10,16 +10,20 @@ use crate::plugins::archives::describe::archive_described_format::ArchiveDescrib
 use crate::plugins::archives::describe::chunks::ArchiveChunksDescription;
 use crate::plugins::archives::describe::detail::{ArchiveDetailLibraryDescription, ArchiveDetailModel};
 use crate::plugins::archives::describe::efd::ArchiveEfdDescription;
+use crate::plugins::archives::describe::gamemtl::ArchiveGameMtlDescription;
 use crate::plugins::archives::describe::level::{
   ArchiveLevelAiDescription, ArchiveLevelCollisionDescription, ArchiveLevelDescription, ArchiveLevelEnvModDescription,
   ArchiveLevelFogVolDescription, ArchiveLevelGameDescription, ArchiveLevelHomDescription,
-  ArchiveLevelLightsDescription, ArchiveLevelPsStaticDescription, ArchiveLevelSndStaticDescription,
-  ArchiveLevelSomDescription, ArchiveLevelWallmarksDescription,
+  ArchiveLevelGeomDescription, ArchiveLevelLightsDescription, ArchiveLevelPsStaticDescription,
+  ArchiveLevelSndStaticDescription, ArchiveLevelSomDescription, ArchiveLevelWallmarksDescription,
 };
+use crate::plugins::archives::describe::light_anim::ArchiveLightAnimDescription;
 use crate::plugins::archives::describe::omf::ArchiveOmfDescription;
 use crate::plugins::archives::describe::particles::ArchiveParticlesDescription;
 use crate::plugins::archives::describe::ppe::ArchivePpeDescription;
+use crate::plugins::archives::describe::shader_compiler::ArchiveShaderCompilerDescription;
 use crate::plugins::archives::describe::shaders::ArchiveShadersDescription;
+use crate::plugins::archives::describe::sound::ArchiveSoundEnvironmentDescription;
 use crate::plugins::archives::describe::spawn::ArchiveSpawnDescription;
 use crate::plugins::archives::describe::thm::ArchiveThmDescription;
 
@@ -55,8 +59,23 @@ pub enum ArchiveFormatDescription {
   LevelGame {
     description: Box<ArchiveLevelGameDescription>,
   },
+  GameMtl {
+    description: Box<ArchiveGameMtlDescription>,
+  },
   LevelHom {
     description: Box<ArchiveLevelHomDescription>,
+  },
+  LevelGeom {
+    description: Box<ArchiveLevelGeomDescription>,
+  },
+  LightAnim {
+    description: Box<ArchiveLightAnimDescription>,
+  },
+  ShaderCompiler {
+    description: Box<ArchiveShaderCompilerDescription>,
+  },
+  SoundEnvironment {
+    description: Box<ArchiveSoundEnvironmentDescription>,
   },
   LevelLights {
     description: Box<ArchiveLevelLightsDescription>,

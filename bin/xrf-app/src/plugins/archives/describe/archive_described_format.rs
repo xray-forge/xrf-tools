@@ -7,16 +7,20 @@ use crate::plugins::archives::describe::archive_describe_source::ArchiveDescribe
 use crate::plugins::archives::describe::archive_file_description::ArchiveFormatDescription;
 use crate::plugins::archives::describe::detail::{ArchiveDetailLibraryDescription, ArchiveDetailModel};
 use crate::plugins::archives::describe::efd::ArchiveEfdDescription;
+use crate::plugins::archives::describe::gamemtl::ArchiveGameMtlDescription;
 use crate::plugins::archives::describe::level::{
   ArchiveLevelAiDescription, ArchiveLevelCollisionDescription, ArchiveLevelDescription, ArchiveLevelEnvModDescription,
   ArchiveLevelFogVolDescription, ArchiveLevelGameDescription, ArchiveLevelHomDescription,
-  ArchiveLevelLightsDescription, ArchiveLevelPsStaticDescription, ArchiveLevelSndStaticDescription,
-  ArchiveLevelSomDescription, ArchiveLevelWallmarksDescription,
+  ArchiveLevelGeomDescription, ArchiveLevelLightsDescription, ArchiveLevelPsStaticDescription,
+  ArchiveLevelSndStaticDescription, ArchiveLevelSomDescription, ArchiveLevelWallmarksDescription,
 };
+use crate::plugins::archives::describe::light_anim::ArchiveLightAnimDescription;
 use crate::plugins::archives::describe::omf::ArchiveOmfDescription;
 use crate::plugins::archives::describe::particles::ArchiveParticlesDescription;
 use crate::plugins::archives::describe::ppe::ArchivePpeDescription;
+use crate::plugins::archives::describe::shader_compiler::ArchiveShaderCompilerDescription;
 use crate::plugins::archives::describe::shaders::ArchiveShadersDescription;
+use crate::plugins::archives::describe::sound::ArchiveSoundEnvironmentDescription;
 use crate::plugins::archives::describe::spawn::ArchiveSpawnDescription;
 use crate::plugins::archives::describe::thm::ArchiveThmDescription;
 
@@ -37,8 +41,20 @@ pub enum ArchiveDescribedFormat {
   LevelFogVol,
   /// A level's respawn points and patrol paths, `level.game`.
   LevelGame,
+  /// The game material library, `gamemtl.xr`.
+  GameMtl,
   /// A level's occlusion mesh, `level.hom`.
   LevelHom,
+  /// A level's render geometry, `level.geom`.
+  LevelGeom,
+  /// A level's detail render geometry, `level.geomX`, which is the same format drawn at distance.
+  LevelGeomDetail,
+  /// The colour animation library, `lanims.xr`.
+  LightAnim,
+  /// The compiler shader library, `shaders_xrlc.xr`.
+  ShaderCompiler,
+  /// The sound environment library, `senvironment.xr`.
+  SoundEnvironment,
   /// A level's compiled lights, `build.lights`.
   LevelLights,
   /// The particle effects a level plants, `level.ps_static`.
@@ -75,13 +91,17 @@ impl ArchiveDescribedFormat {
   /// Three reasons land here. `.xr` says only that a file is a chunked X-Ray library, and six unrelated formats share
   /// it; `level` has no extension at all; `.details` is a real format, but vanilla also ships a compiler intermediate
   /// under it, so only the file called `level.details` is the detail layer. Either way the name the engine loads the
-  /// file under is the whole of the answer. `gamemtl.xr`, `lanims.xr`, `senvironment.xr` and `shaders_xrlc.xr` are
-  /// absent because nothing reads them yet, not because they are anything else.
-  const NAMED: [(&'static str, Self); 4] = [
+  /// file under is the whole of the answer. All six `.xr` libraries are named here now, so the extension has no
+  /// unclaimed spelling left in the trees.
+  const NAMED: [(&'static str, Self); 8] = [
+    ("gamemtl.xr", Self::GameMtl),
+    ("lanims.xr", Self::LightAnim),
     ("level", Self::Level),
     ("level.details", Self::DetailLibrary),
     ("particles.xr", Self::Particles),
+    ("senvironment.xr", Self::SoundEnvironment),
     ("shaders.xr", Self::Shaders),
+    ("shaders_xrlc.xr", Self::ShaderCompiler),
   ];
 
   /// The describer for an entry name, or `None` when no describer claims it.
@@ -91,6 +111,8 @@ impl ArchiveDescribedFormat {
       Some(XrayExtension::EnvMod) => Some(Self::LevelEnvMod),
       Some(XrayExtension::FogVol) => Some(Self::LevelFogVol),
       Some(XrayExtension::Game) => Some(Self::LevelGame),
+      Some(XrayExtension::Geom) => Some(Self::LevelGeom),
+      Some(XrayExtension::GeomX) => Some(Self::LevelGeomDetail),
       Some(XrayExtension::Hom) => Some(Self::LevelHom),
       Some(XrayExtension::Lights) => Some(Self::LevelLights),
       Some(XrayExtension::PsStatic) => Some(Self::LevelPsStatic),
@@ -116,7 +138,10 @@ impl ArchiveDescribedFormat {
 
   /// Whether this describer reads by seeking rather than by holding the entry, and so answers to no size ceiling.
   pub const fn reads_by_seeking(self) -> bool {
-    matches!(self, Self::Spawn | Self::LevelAi | Self::LevelCollision)
+    matches!(
+      self,
+      Self::Spawn | Self::LevelAi | Self::LevelCollision | Self::LevelGeom | Self::LevelGeomDetail
+    )
   }
 
   /// Reads the entry this format claimed, or answers `None` where the claim does not hold after all.
@@ -144,8 +169,26 @@ impl ArchiveDescribedFormat {
       Self::LevelGame => Some(ArchiveFormatDescription::LevelGame {
         description: Box::new(ArchiveLevelGameDescription::read(source, name)?),
       }),
+      Self::GameMtl => Some(ArchiveFormatDescription::GameMtl {
+        description: Box::new(ArchiveGameMtlDescription::read(source, name)?),
+      }),
       Self::LevelHom => Some(ArchiveFormatDescription::LevelHom {
         description: Box::new(ArchiveLevelHomDescription::read(source, name)?),
+      }),
+      Self::LevelGeom => Some(ArchiveFormatDescription::LevelGeom {
+        description: Box::new(ArchiveLevelGeomDescription::read(source, name, false)?),
+      }),
+      Self::LevelGeomDetail => Some(ArchiveFormatDescription::LevelGeom {
+        description: Box::new(ArchiveLevelGeomDescription::read(source, name, true)?),
+      }),
+      Self::LightAnim => Some(ArchiveFormatDescription::LightAnim {
+        description: Box::new(ArchiveLightAnimDescription::read(source, name)?),
+      }),
+      Self::ShaderCompiler => Some(ArchiveFormatDescription::ShaderCompiler {
+        description: Box::new(ArchiveShaderCompilerDescription::read(source, name)?),
+      }),
+      Self::SoundEnvironment => Some(ArchiveFormatDescription::SoundEnvironment {
+        description: Box::new(ArchiveSoundEnvironmentDescription::read(source, name)?),
       }),
       Self::LevelLights => Some(ArchiveFormatDescription::LevelLights {
         description: Box::new(ArchiveLevelLightsDescription::read(source, name)?),
@@ -370,8 +413,10 @@ mod tests {
   }
 
   #[test]
-  fn a_library_nothing_reads_stays_unclaimed_though_it_shares_the_extension() {
-    for name in ["gamemtl.xr", "lanims.xr", "senvironment.xr", "shaders_xrlc.xr"] {
+  fn a_library_no_name_claims_stays_unclaimed_though_it_shares_the_extension() {
+    // The four libraries this used to pin as unclaimed now have readers. What it guards is unchanged: `.xr` claims
+    // nothing by its extension, so a library nobody named falls through rather than being read as another one.
+    for name in ["unknown.xr", "shaders_xrlc_backup.xr", "gamemtl2.xr"] {
       assert_eq!(ArchiveDescribedFormat::of(name), None, "'{name}' has no describer yet");
     }
   }
@@ -410,12 +455,59 @@ mod tests {
   }
 
   #[test]
-  fn everything_without_a_describer_is_left_unclaimed() {
-    for name in [
-      "meshes\\actor.ogf",
-      "textures\\act\\act_arm_1.dds",
-      "levels\\l01\\level.geom",
+  fn render_geometry_and_its_detail_twin_are_told_apart_by_their_extensions() {
+    // The same reader answers for both, but a description says which it read: `level.geomX` is the geometry the
+    // renderer draws at distance and carries no progressive meshes at all.
+    assert_eq!(
+      ArchiveDescribedFormat::of("levels\\l01_escape\\level.geom"),
+      Some(ArchiveDescribedFormat::LevelGeom)
+    );
+
+    for name in ["levels\\l01_escape\\level.geomx", "levels\\l01_escape\\level.geomX"] {
+      assert_eq!(
+        ArchiveDescribedFormat::of(name),
+        Some(ArchiveDescribedFormat::LevelGeomDetail),
+        "'{name}' is detail geometry"
+      );
+    }
+  }
+
+  #[test]
+  fn render_geometry_is_read_by_seeking_rather_than_held() {
+    // A `level.geom` reaches 143 MB, so a describer answering to the size ceiling would refuse most of them.
+    for format in [ArchiveDescribedFormat::LevelGeom, ArchiveDescribedFormat::LevelGeomDetail] {
+      assert!(format.reads_by_seeking(), "{format:?} is too large to hold whole");
+    }
+  }
+
+  #[test]
+  fn every_xr_library_is_claimed_by_its_own_name() {
+    // `.xr` names a container rather than a format, so each library is claimed by the name the engine loads it under.
+    for (name, expected) in [
+      ("gamemtl.xr", ArchiveDescribedFormat::GameMtl),
+      ("lanims.xr", ArchiveDescribedFormat::LightAnim),
+      ("particles.xr", ArchiveDescribedFormat::Particles),
+      ("senvironment.xr", ArchiveDescribedFormat::SoundEnvironment),
+      ("shaders.xr", ArchiveDescribedFormat::Shaders),
+      ("shaders_xrlc.xr", ArchiveDescribedFormat::ShaderCompiler),
     ] {
+      assert_eq!(ArchiveDescribedFormat::of(name), Some(expected), "'{name}' is a library");
+    }
+  }
+
+  #[test]
+  fn the_two_shader_libraries_are_not_the_same_format() {
+    // `shaders.xr` is the renderer's blenders and `shaders_xrlc.xr` is what the compiler was told; they share names
+    // and nothing else, and the second is not even a chunk tree.
+    assert_ne!(
+      ArchiveDescribedFormat::of("shaders.xr"),
+      ArchiveDescribedFormat::of("shaders_xrlc.xr")
+    );
+  }
+
+  #[test]
+  fn everything_without_a_describer_is_left_unclaimed() {
+    for name in ["meshes\\actor.ogf", "textures\\act\\act_arm_1.dds", "menu\\intro.ogm"] {
       assert_eq!(ArchiveDescribedFormat::of(name), None, "'{name}' has no describer yet");
     }
   }

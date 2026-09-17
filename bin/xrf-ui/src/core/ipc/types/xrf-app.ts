@@ -248,7 +248,12 @@ export enum EArchiveFormatDescription {
   LEVEL_ENV_MOD = "levelEnvMod",
   LEVEL_FOG_VOL = "levelFogVol",
   LEVEL_GAME = "levelGame",
+  GAME_MTL = "gameMtl",
   LEVEL_HOM = "levelHom",
+  LEVEL_GEOM = "levelGeom",
+  LIGHT_ANIM = "lightAnim",
+  SHADER_COMPILER = "shaderCompiler",
+  SOUND_ENVIRONMENT = "soundEnvironment",
   LEVEL_LIGHTS = "levelLights",
   LEVEL_PS_STATIC = "levelPsStatic",
   LEVEL_SND_STATIC = "levelSndStatic",
@@ -276,7 +281,12 @@ export type ArchiveFormatDescription =
   | { kind: "levelEnvMod"; description: ArchiveLevelEnvModDescription }
   | { kind: "levelFogVol"; description: ArchiveLevelFogVolDescription }
   | { kind: "levelGame"; description: ArchiveLevelGameDescription }
+  | { kind: "gameMtl"; description: ArchiveGameMtlDescription }
   | { kind: "levelHom"; description: ArchiveLevelHomDescription }
+  | { kind: "levelGeom"; description: ArchiveLevelGeomDescription }
+  | { kind: "lightAnim"; description: ArchiveLightAnimDescription }
+  | { kind: "shaderCompiler"; description: ArchiveShaderCompilerDescription }
+  | { kind: "soundEnvironment"; description: ArchiveSoundEnvironmentDescription }
   | { kind: "levelLights"; description: ArchiveLevelLightsDescription }
   | { kind: "levelPsStatic"; description: ArchiveLevelPsStaticDescription }
   | { kind: "levelSndStatic"; description: ArchiveLevelSndStaticDescription }
@@ -292,6 +302,45 @@ export type ArchiveFormatDescription =
   | { kind: "shaders"; description: ArchiveShadersDescription }
   | { kind: "thm"; description: ArchiveThmDescription }
   | { kind: "unsupported"; reason: ArchiveDescribeRefusal };
+
+/** Everything the viewer says about the game material library. */
+export type ArchiveGameMtlDescription = {
+  version: number;
+  materials: Array<ArchiveGameMtlMaterial>;
+  /** Pairings of two materials, which decide what is heard and seen where they meet. */
+  pairs: number;
+  /** Pairings that declare nothing of their own and take everything from the pairing they name as parent. */
+  inheritingPairs: number;
+  /** What the pairings declare, counted per property rather than listed. */
+  properties: Array<ArchiveGameMtlProperty>;
+};
+
+/** One game material, as the viewer reads it. */
+export type ArchiveGameMtlMaterial = {
+  /** The library's own number, which is what a collision face stores rather than the name. */
+  id: number;
+  name: string;
+  /** Absent where the material declares no description chunk at all. */
+  description: string | null;
+  /** The flags it sets, named. */
+  flags: Array<string>;
+  friction: number | null;
+  bouncing: number | null;
+  /** How freely a bullet passes, where 1 is straight through. */
+  shootFactor: number | null;
+  /** How freely it is walked through, where below 1 the engine slows the walker down. */
+  flotationFactor: number | null;
+  /** How fast standing in it costs health, which is what makes a material injurious. */
+  injuriousSpeed: number | null;
+  /** How much sound it stops, where 1 lets everything through. */
+  soundOcclusionFactor: number | null;
+};
+
+/** One thing a material pairing can declare, and how many pairings declare it. */
+export type ArchiveGameMtlProperty = {
+  name: string;
+  pairs: number;
+};
 
 /** What a level's navigation grid covers, from the 56 bytes that say so. */
 export type ArchiveLevelAiDescription = {
@@ -428,6 +477,40 @@ export type ArchiveLevelGameSpawn = {
   profiled: number;
 };
 
+/**
+ * Everything the viewer says about a level's render geometry.
+ *
+ * Read down to its shape alone: the file reaches 143 MB and the vertices themselves answer nothing a description
+ * asks, so each buffer's payload is stepped over rather than held.
+ */
+export type ArchiveLevelGeomDescription = {
+  /** Whether this is the detail twin, `level.geomX`, which the renderer draws distant geometry from. */
+  isDetail: boolean;
+  vertexBuffers: number;
+  indexBuffers: number;
+  vertices: number;
+  indices: number;
+  /** Triangles the indices draw, taking them as triangle lists. */
+  triangles: number;
+  /** Meshes that drop detail with distance, which `level.geomX` carries none of. */
+  progressiveMeshes: number;
+  /** Detail levels across every progressive mesh. */
+  detailLevels: number;
+  /** The vertex layouts the buffers are built from, grouped. */
+  layouts: Array<ArchiveLevelGeomLayout>;
+  size: number;
+};
+
+/** One vertex layout a level's geometry is built from, and how much is built with it. */
+export type ArchiveLevelGeomLayout = {
+  /** Bytes one vertex of this layout occupies. */
+  stride: number;
+  /** Elements the declaration names, which is what the stride is made of. */
+  elements: number;
+  buffers: number;
+  vertices: number;
+};
+
 /** Everything the viewer says about a level's occlusion mesh. */
 export type ArchiveLevelHomDescription = {
   version: number;
@@ -552,6 +635,27 @@ export type ArchiveLevelWallmarksDescription = {
   marks: number;
   /** Vertices across every decal, which is what the layer costs to draw. */
   vertices: number;
+};
+
+/** Everything the viewer says about the colour animation library. */
+export type ArchiveLightAnimDescription = {
+  version: number;
+  /** Whether the colours are stored channel-swapped, which the engine corrects as it loads them. */
+  isBgr: boolean;
+  items: Array<ArchiveLightAnimItem>;
+  /** Keys across every animation. */
+  keys: number;
+};
+
+/** One colour animation, as the viewer reads it. */
+export type ArchiveLightAnimItem = {
+  /** The name a light, a glow or a particle effect reaches this animation by. */
+  name: string;
+  fps: number | null;
+  frames: number;
+  /** How long it runs, absent for an animation whose rate never advances it. */
+  durationSeconds: number | null;
+  keys: number;
 };
 
 /** What a bank holds, taken over the whole of it. */
@@ -844,6 +948,28 @@ export type ArchiveResolutionVolume = {
   outputRootPath: string;
 };
 
+/**
+ * Everything the viewer says about the compiler shader library.
+ *
+ * Read by the level compiler rather than by the game: what it says about a surface decides how the level was built,
+ * not how it is drawn. The blender of the same name in `shaders.xr` is the drawing half.
+ */
+export type ArchiveShaderCompilerDescription = {
+  shaders: Array<ArchiveShaderCompilerShader>;
+};
+
+/** One compiler shader, as the viewer reads it. */
+export type ArchiveShaderCompilerShader = {
+  /** The name a surface declares, which the renderer's own blender library answers under too. */
+  name: string;
+  /** What the compiler is told to do with the surface, named. */
+  flags: Array<string>;
+  vertexTranslucency: number | null;
+  vertexAmbient: number | null;
+  /** Lightmap texels per unit, which is what a surface costs to bake. */
+  lightmapDensity: number | null;
+};
+
 /** One definition of the library: what a shader name resolves to. */
 export type ArchiveShadersBlender = {
   /** The shader name a mesh, a level surface or a config declares to reach this definition. */
@@ -893,6 +1019,27 @@ export type ArchiveShadowedCopy = {
   container: XrayAssetContainer;
   /** Payload bytes once unpacked, as the mount holding this copy records or measures them. */
   sizeReal: number;
+};
+
+/** One reverb preset, as the viewer reads it. */
+export type ArchiveSoundEnvironment = {
+  /** The name a level's sound environments reach this preset by. */
+  name: string;
+  version: number;
+  /** How long the reverb takes to fall away, in seconds. */
+  decayTime: number | null;
+  /** How much the room adds at low and at high frequencies, in hundredths of a decibel. */
+  room: number | null;
+  roomHf: number | null;
+  /** How big the space sounds, in metres. */
+  environmentSize: number | null;
+  /** The EAX preset it stands for, which only version 4 and above declares. */
+  environment: number | null;
+};
+
+/** Everything the viewer says about the sound environment library. */
+export type ArchiveSoundEnvironmentDescription = {
+  environments: Array<ArchiveSoundEnvironment>;
 };
 
 /** What a spawn set holds, taken from its header and the weight of its sections. */

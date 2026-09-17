@@ -1,6 +1,8 @@
 use xrf_chunk::{ChunkReadWrite, ChunkReader, InMemoryChunkDataSource, XRayByteOrder};
 use xrf_error::XrfResult;
 
+use crate::plugins::archives::describe::archive_entry_container::ArchiveEntryContainer;
+
 /// An entry opened for reading, positionally where the subject can manage it.
 pub enum ArchiveEntryReader {
   /// A file on disk, read where it sits.
@@ -30,6 +32,18 @@ impl ArchiveEntryReader {
     match self {
       Self::Sliced(reader) => C::read::<XRayByteOrder, _>(reader),
       Self::Held(reader) => C::read::<XRayByteOrder, _>(reader),
+    }
+  }
+
+  /// Reads the whole entry as a container that walks itself.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the entry is not that container.
+  pub fn read_container<C: ArchiveEntryContainer>(&mut self) -> XrfResult<C> {
+    match self {
+      Self::Sliced(reader) => C::read_container(reader),
+      Self::Held(reader) => C::read_container(reader),
     }
   }
 
