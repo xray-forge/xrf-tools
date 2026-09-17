@@ -24,16 +24,8 @@ export function ViewportControls({ zoom, onZoomIn, onZoomOut, onReset }: IViewpo
   return (
     <Paper
       data-testid={"viewport-controls"}
+      className={"absolute right-2 bottom-2 flex items-center gap-1 p-1"}
       variant={"outlined"}
-      sx={{
-        position: "absolute",
-        right: 8,
-        bottom: 8,
-        display: "flex",
-        alignItems: "center",
-        gap: 0.5,
-        padding: 0.5,
-      }}
     >
       <Tooltip describeChild title={"Zoom out"}>
         <IconButton aria-label={"Zoom out"} size={"small"} onClick={onZoomOut}>
@@ -43,12 +35,8 @@ export function ViewportControls({ zoom, onZoomIn, onZoomOut, onReset }: IViewpo
 
       {zoom ? (
         <Tooltip describeChild title={"Actual size"}>
-          <ButtonBase
-            aria-label={"Actual size"}
-            sx={{ borderRadius: 1, paddingX: 0.5, paddingY: 0.25 }}
-            onClick={zoom.onActualSize}
-          >
-            <Typography variant={"caption"} sx={{ minWidth: 44, textAlign: "center", color: "text.secondary" }}>
+          <ButtonBase aria-label={"Actual size"} className={"rounded-surface px-1 py-0.5"} onClick={zoom.onActualSize}>
+            <Typography className={"min-w-11 text-center text-text-secondary"} variant={"caption"}>
               {Math.round(zoom.scale * 100)}%
             </Typography>
           </ButtonBase>

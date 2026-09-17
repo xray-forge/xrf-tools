@@ -24,13 +24,13 @@ export function ApplicationHelpSection({
 }: IApplicationHelpSectionProps): ReactElement {
   return (
     <Box data-testid={dataTestId} id={id} className={className} sx={sx}>
-      <Typography variant={"subtitle2"} sx={{ color: "text.primary", marginBottom: 0.5 }}>
+      <Typography className={"mb-1 text-text-primary"} variant={"subtitle2"}>
         {title}
       </Typography>
 
-      <Box component={isOrdered ? "ol" : "ul"} sx={{ margin: 0, paddingLeft: 2.5 }}>
+      <Box className={"m-0 pl-5"} component={isOrdered ? "ol" : "ul"}>
         {items.map((item: string, index: number) => (
-          <Typography key={index} component={"li"} variant={"body2"} sx={{ marginBottom: 0.5, lineHeight: 1.55 }}>
+          <Typography key={index} className={"mb-1"} component={"li"} variant={"body2"} sx={{ lineHeight: 1.55 }}>
             {renderHelpText(item)}
           </Typography>
         ))}

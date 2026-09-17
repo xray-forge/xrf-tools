@@ -18,6 +18,7 @@ import { DEFAULT_VISUAL_PREVIEW_VIEW_OPTIONS, IVisualPreviewViewOptions } from "
 import { IVisualBumpTextures } from "@/core/visuals/lib/visual-bump";
 import { isAlphaVisualSurface } from "@/core/visuals/lib/visual-surface";
 import { countVisualTriangles, IVisualModelViews } from "@/core/visuals/lib/visual-views";
+import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
@@ -153,7 +154,7 @@ export function VisualPreviewLayout({
       }
       footer={footer}
     >
-      <Box sx={{ display: "flex", flexDirection: "column", flexGrow: 1, minWidth: 0, minHeight: 0 }}>
+      <div className={"flex min-h-0 min-w-0 grow flex-col"}>
         {onDeselect && name ? (
           <EditorFileHeader
             data-testid={"visual-file-header"}
@@ -164,11 +165,10 @@ export function VisualPreviewLayout({
           />
         ) : null}
 
-        <Box
+        <div
           data-testid={dataTestId}
           id={id}
-          className={className}
-          sx={{ position: "relative", display: "flex", flex: 1, minWidth: 0, minHeight: 0, overflow: "hidden" }}
+          className={cn("relative flex min-h-0 min-w-0 flex-1 overflow-hidden", className)}
         >
           {renderViewport ? (
             renderViewport({ bumps, detail, hiddenBones, highlightedJoint, model, options, textures })
@@ -188,13 +188,8 @@ export function VisualPreviewLayout({
 
           {isLoading ? (
             <Box
+              className={"pointer-events-none absolute inset-0 flex items-center justify-center"}
               sx={{
-                position: "absolute",
-                inset: 0,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                pointerEvents: "none",
                 // The viewport stays dark in both application themes.
                 [`& .${typographyClasses.root}`]: { color: TEXT.secondary.dark },
                 [`& .${circularProgressClasses.root}`]: { color: ACCENT.primary.main.dark },
@@ -203,8 +198,8 @@ export function VisualPreviewLayout({
               <DelayedProgress label={"Loading visual…"} />
             </Box>
           ) : null}
-        </Box>
-      </Box>
+        </div>
+      </div>
     </EditorLayout>
   );
 }

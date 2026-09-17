@@ -1,5 +1,4 @@
-import { Box, Typography } from "@mui/material";
-import { SxProps, Theme } from "@mui/material/styles";
+import { Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useMemo, useState } from "react";
 
@@ -22,7 +21,6 @@ import {
 } from "./configs-index-rows";
 
 const NOTHING_EXPANDED: ReadonlySet<string> = new Set();
-const TREE_SX: SxProps<Theme> = { height: "100%" };
 
 /**
  * Everything the open document declares, as a jump list.
@@ -71,7 +69,7 @@ export function ConfigsSectionsPanel({
   );
 
   return (
-    <Box data-testid={dataTestId} sx={{ display: "flex", flexDirection: "column", minHeight: 0, height: "100%" }}>
+    <div data-testid={dataTestId} className={"flex h-full min-h-0 flex-col"}>
       <EditorSearchHeader
         title={isList ? "Entries" : "Sections"}
         count={items.length}
@@ -83,25 +81,25 @@ export function ConfigsSectionsPanel({
       />
 
       {items.length ? (
-        <Box sx={{ flexGrow: 1, minHeight: 0 }}>
+        <div className={"min-h-0 grow"}>
           <VirtualizedTree<TConfigsIndexRow>
             ariaLabel={isList ? "Entries" : "Sections"}
+            className={"h-full"}
             items={items}
             expandedIds={NOTHING_EXPANDED}
             selectedId={null}
-            sx={TREE_SX}
             onToggleExpanded={noop}
             onSelect={onSelect}
             onActivate={onSelect}
           />
-        </Box>
+        </div>
       ) : (
-        <Box sx={{ padding: 2, textAlign: "center" }}>
-          <Typography variant={"body2"} sx={{ color: "text.secondary" }}>
+        <div className={"p-4 text-center"}>
+          <Typography className={"text-text-secondary"} variant={"body2"}>
             {filter ? `No ${isList ? "entry" : "section"} matches that.` : "This document declares no sections."}
           </Typography>
-        </Box>
+        </div>
       )}
-    </Box>
+    </div>
   );
 }

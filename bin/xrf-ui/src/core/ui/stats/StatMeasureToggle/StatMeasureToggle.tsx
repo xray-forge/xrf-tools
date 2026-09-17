@@ -40,11 +40,11 @@ export function StatMeasureToggle({
       aria-label={"Measure breakdowns by"}
       onChange={onSelect}
     >
-      <ToggleButton value={EStatMeasure.BYTES} sx={{ paddingY: 0.25, paddingX: 1, textTransform: "none" }}>
+      <ToggleButton className={"px-2 py-0.5 normal-case"} value={EStatMeasure.BYTES}>
         Bytes
       </ToggleButton>
 
-      <ToggleButton value={EStatMeasure.COUNT} sx={{ paddingY: 0.25, paddingX: 1, textTransform: "none" }}>
+      <ToggleButton className={"px-2 py-0.5 normal-case"} value={EStatMeasure.COUNT}>
         Count
       </ToggleButton>
     </ToggleButtonGroup>

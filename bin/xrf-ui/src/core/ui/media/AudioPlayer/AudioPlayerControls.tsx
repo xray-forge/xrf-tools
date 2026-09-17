@@ -37,7 +37,7 @@ export function AudioPlayerControls({
         </IconButton>
       </Tooltip>
 
-      <Typography variant={"caption"} className={"monospace"} sx={{ color: "text.secondary" }}>
+      <Typography className={"monospace text-text-secondary"} variant={"caption"}>
         {formatPlaybackTime(position)} / {formatPlaybackTime(duration)}
       </Typography>
 
@@ -55,16 +55,16 @@ export function AudioPlayerControls({
         </IconButton>
       </Tooltip>
 
-      <VolumeUpIcon fontSize={"small"} sx={{ color: "text.secondary" }} />
+      <VolumeUpIcon className={"text-text-secondary"} fontSize={"small"} />
 
       <Slider
         aria-label={"Volume"}
+        className={"w-24"}
         size={"small"}
         min={0}
         max={1}
         step={0.01}
         value={volume}
-        sx={{ width: 96 }}
         onChange={(_, value) => {
           if (typeof value === "number") {
             onVolumeChange(value);

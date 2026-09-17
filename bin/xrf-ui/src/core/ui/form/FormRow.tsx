@@ -66,22 +66,22 @@ export function FormRow({
     <div className={"min-w-0"}>
       <Typography
         id={labelId}
+        className={"block"}
         component={isGroup ? "span" : "label"}
         htmlFor={isGroup ? undefined : typeof children === "function" ? fieldId : controlId}
         variant={"subtitle2"}
-        sx={{ display: "block" }}
       >
         {label}
 
         {isRequired ? null : (
-          <Typography component={"span"} variant={"caption"} sx={{ marginLeft: 0.75, color: "text.secondary" }}>
+          <Typography className={"ml-1.5 text-text-secondary"} component={"span"} variant={"caption"}>
             Optional
           </Typography>
         )}
       </Typography>
 
       {description ? (
-        <Typography id={descriptionId} variant={"caption"} sx={{ display: "block", color: "text.secondary" }}>
+        <Typography id={descriptionId} className={"block text-text-secondary"} variant={"caption"}>
           {description}
         </Typography>
       ) : null}
@@ -108,7 +108,7 @@ export function FormRow({
       </div>
 
       {message ? (
-        <Typography id={messageId} variant={"caption"} sx={{ color: error ? "error.main" : "text.secondary" }}>
+        <Typography id={messageId} className={error ? "text-error" : "text-text-secondary"} variant={"caption"}>
           {message}
         </Typography>
       ) : null}

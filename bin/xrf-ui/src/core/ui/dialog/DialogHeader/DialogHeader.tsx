@@ -2,7 +2,7 @@ import { default as CloseIcon } from "@mui/icons-material/Close";
 import { DialogTitle, IconButton, Tooltip, Typography } from "@mui/material";
 import { ReactElement, ReactNode } from "react";
 
-import { DIALOG } from "@/core/theme/tokens";
+import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 export interface IDialogHeaderProps extends BaseComponentProps {
@@ -30,9 +30,8 @@ export function DialogHeader({
     <DialogTitle
       data-testid={dataTestId}
       id={id}
-      className={className}
+      className={cn("flex items-center gap-2", className)}
       component={"div"}
-      sx={{ display: "flex", alignItems: "center", gap: DIALOG.gap }}
     >
       {icon ? (
         <span aria-hidden={true} className={"inline-flex"}>
@@ -40,12 +39,7 @@ export function DialogHeader({
         </span>
       ) : null}
 
-      <Typography
-        id={titleId}
-        component={"h2"}
-        variant={"h6"}
-        sx={{ flexGrow: 1, minWidth: 0, overflowWrap: "anywhere" }}
-      >
+      <Typography id={titleId} className={"min-w-0 grow wrap-anywhere"} component={"h2"} variant={"h6"}>
         {title}
       </Typography>
 

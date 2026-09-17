@@ -1,7 +1,7 @@
-import { Box, Typography } from "@mui/material";
+import { Typography } from "@mui/material";
 import { ReactElement, ReactNode } from "react";
 
-import { tid, uid } from "@/lib/dom/dom-name";
+import { cn, tid, uid } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface ITexturePreviewFrameProps extends BaseComponentProps {
@@ -24,30 +24,24 @@ export function TexturePreviewFrame({
   children,
 }: ITexturePreviewFrameProps): ReactElement {
   return (
-    <Box
-      data-testid={dataTestId}
-      id={id}
-      className={className}
-      sx={{ display: "flex", flexDirection: "column", flexGrow: 1, minWidth: 0, minHeight: 0 }}
-    >
-      <Box
+    <div data-testid={dataTestId} id={id} className={cn("flex min-h-0 min-w-0 grow flex-col", className)}>
+      <div
         data-testid={tid(dataTestId, "body")}
         id={uid(id, "body")}
-        className={isCheckered ? "checkerboard" : undefined}
-        sx={{ display: "flex", flexDirection: "column", flexGrow: 1, minWidth: 0, minHeight: 0 }}
+        className={cn("flex min-h-0 min-w-0 grow flex-col", isCheckered ? "checkerboard" : null)}
       >
         {children}
-      </Box>
+      </div>
 
-      <Box
+      <div
         data-testid={tid(dataTestId, "footer")}
         id={uid(id, "footer")}
-        sx={{ borderColor: "divider", borderTop: 1, flexShrink: 0, paddingX: 1.5, paddingY: 0.5 }}
+        className={"shrink-0 border-t border-divider px-3 py-1"}
       >
-        <Typography variant={"caption"} noWrap sx={{ color: "text.secondary" }}>
+        <Typography className={"text-text-secondary"} variant={"caption"} noWrap>
           {caption}
         </Typography>
-      </Box>
-    </Box>
+      </div>
+    </div>
   );
 }

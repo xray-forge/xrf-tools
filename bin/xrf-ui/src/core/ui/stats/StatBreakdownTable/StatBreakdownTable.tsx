@@ -1,7 +1,6 @@
 import { Typography } from "@mui/material";
 import { ReactElement, ReactNode, useMemo } from "react";
 
-import { MONOSPACE } from "@/core/theme/tokens";
 import { EStatMeasure } from "@/core/ui/stats/stat-measure";
 import { StatBar } from "@/core/ui/stats/StatBar";
 import { cn } from "@/lib/dom/dom-name";
@@ -88,10 +87,7 @@ export function StatBreakdownTable({
         >
           <div className={"min-w-0"}>
             <div className={"flex min-w-0 items-baseline gap-1.5"}>
-              <Typography
-                variant={"body2"}
-                sx={{ ...MONOSPACE, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
-              >
+              <Typography className={"monospace overflow-hidden text-ellipsis whitespace-nowrap"} variant={"body2"}>
                 {row.label}
               </Typography>
 
@@ -106,17 +102,15 @@ export function StatBreakdownTable({
           </div>
 
           <Typography
-            className={"w-18"}
+            className={cn("w-18 text-right", isBytes ? "text-text-secondary" : "text-text-primary")}
             variant={"caption"}
-            sx={{ textAlign: "right", color: isBytes ? "text.secondary" : "text.primary" }}
           >
             {row.files.toLocaleString()}
           </Typography>
 
           <Typography
-            className={"w-22.5"}
+            className={cn("w-22.5 text-right", isBytes ? "text-text-primary" : "text-text-secondary")}
             variant={"caption"}
-            sx={{ textAlign: "right", color: isBytes ? "text.primary" : "text.secondary" }}
           >
             {formatBytes(row.sizeReal)}
           </Typography>

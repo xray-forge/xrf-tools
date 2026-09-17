@@ -1,4 +1,4 @@
-import { Alert, Box } from "@mui/material";
+import { Alert } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useMemo } from "react";
 
@@ -87,10 +87,7 @@ export function ConfigsAuthoredView({
   }
 
   return (
-    <Box
-      data-testid={dataTestId}
-      sx={{ display: "flex", flexDirection: "column", flexGrow: 1, minWidth: 0, minHeight: 0 }}
-    >
+    <div data-testid={dataTestId} className={"flex min-h-0 min-w-0 grow flex-col"}>
       {documentService.parseError ? (
         <Alert severity={"error"} variant={"outlined"} square>
           {`This config does not parse: ${documentService.parseError}. Its text is shown as written; nothing below ` +
@@ -101,11 +98,11 @@ export function ConfigsAuthoredView({
       <VirtualizedLines
         data-testid={"configs-authored-lines"}
         ariaLabel={`Contents of ${document.text.path}`}
+        className={"min-h-0 min-w-0 grow"}
         source={source}
         scrollToLine={revealedLine}
-        sx={{ flexGrow: 1, minWidth: 0, minHeight: 0 }}
         onSelectLine={onSelectLine}
       />
-    </Box>
+    </div>
   );
 }

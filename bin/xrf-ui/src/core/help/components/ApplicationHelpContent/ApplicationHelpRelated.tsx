@@ -29,27 +29,27 @@ export function ApplicationHelpRelated({
 
   return applications.length ? (
     <Box data-testid={dataTestId} id={id} className={className} sx={sx}>
-      <Typography variant={"subtitle2"} sx={{ color: "text.primary", marginBottom: 0.75 }}>
+      <Typography className={"mb-1.5 text-text-primary"} variant={"subtitle2"}>
         Related tools
       </Typography>
 
-      <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
+      <div className={"flex flex-wrap gap-2"}>
         {applications.map((application: IApplicationDescriptor) => (
           <Chip
             key={application.id}
+            className={"px-2 py-4"}
             icon={application.icon}
             label={application.label}
             color={"primary"}
             size={"small"}
             variant={"outlined"}
-            sx={{ paddingX: 1, paddingY: 2 }}
             onClick={() => {
               navigate(application.path);
               onNavigated?.();
             }}
           />
         ))}
-      </Box>
+      </div>
     </Box>
   ) : null;
 }

@@ -68,13 +68,7 @@ export function DataTable<T extends GridValidRowModel>({
 
   if (!rows.length) {
     return (
-      <Typography
-        data-testid={dataTestId}
-        id={id}
-        className={className}
-        variant={"body2"}
-        sx={{ color: "text.secondary" }}
-      >
+      <Typography data-testid={dataTestId} id={id} className={cn("text-text-secondary", className)} variant={"body2"}>
         {emptyLabel}
       </Typography>
     );
@@ -92,7 +86,7 @@ export function DataTable<T extends GridValidRowModel>({
         />
       ) : null}
 
-      <Typography variant={"caption"} sx={{ color: "text.secondary" }}>
+      <Typography className={"text-text-secondary"} variant={"caption"}>
         {filtered.length === rows.length
           ? `${rows.length} ${countNoun}(s)`
           : `${filtered.length} of ${rows.length} ${countNoun}(s)`}

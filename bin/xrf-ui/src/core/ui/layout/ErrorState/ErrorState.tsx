@@ -27,7 +27,7 @@ export function ErrorState({
       <EmptyState
         title={title}
         description={description}
-        icon={<ErrorOutlineIcon sx={{ color: "error.main" }} />}
+        icon={<ErrorOutlineIcon className={"text-error"} />}
         action={
           onRetry ? (
             <Button variant={"outlined"} onClick={onRetry}>

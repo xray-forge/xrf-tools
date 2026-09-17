@@ -82,6 +82,12 @@
   /* `max-w-*` reads the container namespace in v4 rather than a spacing one. */
   --container-reading: var(--xrf-reading-column);
   --container-reading-label: var(--xrf-reading-label);
+  --container-content-state-description: var(--xrf-content-state-description);
+}
+
+/* A dialog's ceiling. Viewport-relative, so it belongs to no spacing scale and has to be named on its own. */
+@utility max-h-dialog {
+  max-height: var(--xrf-dialog-max-height);
 }
 
 /* The reading plane and its wash. `bg-surface-content` is the flat fill alone, for a caller that wants no wash. */

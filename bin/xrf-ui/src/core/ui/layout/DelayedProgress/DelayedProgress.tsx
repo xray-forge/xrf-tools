@@ -22,7 +22,7 @@ export function DelayedProgress({
     <CenteredColumn data-testid={dataTestId} id={id} className={cn("gap-2 p-6", className)} sx={DELAYED_REVEAL_SX}>
       <CircularProgress aria-label={label} />
 
-      <Typography role={"status"} variant={"body2"} sx={{ color: "text.secondary" }}>
+      <Typography className={"text-text-secondary"} role={"status"} variant={"body2"}>
         {label}
       </Typography>
     </CenteredColumn>

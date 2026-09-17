@@ -111,6 +111,8 @@ export const DIALOG = {
   actionsPaddingY: 1.5,
   gap: 1,
   headerMinHeight: 56,
+  /** Ceiling on a dialog's own height, so a tall one still leaves the window it floats over visible. */
+  maxHeight: "64vh",
 } as const;
 
 /**

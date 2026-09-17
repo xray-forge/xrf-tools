@@ -63,7 +63,7 @@ export function CommandResult({
               {stat.value}
             </Typography>
 
-            <Typography variant={"caption"} sx={{ color: "text.secondary" }}>
+            <Typography className={"text-text-secondary"} variant={"caption"}>
               {stat.label}
             </Typography>
           </div>
@@ -72,7 +72,7 @@ export function CommandResult({
 
       {children ? (
         <>
-          <Divider sx={{ marginY: 2 }} />
+          <Divider className={"my-4"} />
           <div className={"flex min-h-0 grow flex-col"}>{children}</div>
         </>
       ) : null}

@@ -51,35 +51,16 @@ export function CodeView({
       <Box
         aria-hidden={true}
         component={"pre"}
-        className={"monospace"}
-        sx={{
-          flexShrink: 0,
-          margin: 0,
-          padding: 1.5,
-          borderRight: 1,
-          borderColor: "divider",
-          color: "text.secondary",
-          lineHeight: CODE_LINE_HEIGHT,
-          textAlign: "right",
-          userSelect: "none",
-        }}
+        className={"monospace m-0 shrink-0 border-r border-divider p-3 text-right text-text-secondary select-none"}
+        sx={{ lineHeight: CODE_LINE_HEIGHT }}
       >
         {lineNumbers}
       </Box>
 
       <Box
         component={"pre"}
-        className={"monospace"}
-        sx={{
-          minWidth: "max-content",
-          minHeight: "100%",
-          margin: 0,
-          padding: 1.5,
-          color: "text.primary",
-          lineHeight: CODE_LINE_HEIGHT,
-          tabSize: 2,
-          whiteSpace: "pre",
-        }}
+        className={"monospace m-0 min-h-full min-w-max p-3 whitespace-pre text-text-primary"}
+        sx={{ lineHeight: CODE_LINE_HEIGHT, tabSize: 2 }}
       >
         <SyntaxContent content={content} language={language} />
       </Box>

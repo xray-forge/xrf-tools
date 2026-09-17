@@ -58,7 +58,7 @@ export function ArchiveResolutionDialog({
         onClose={onClose}
       />
 
-      <DialogContent className={"flex h-115 max-h-[64vh] flex-col gap-4 px-dialog"}>
+      <DialogContent className={"flex h-115 max-h-dialog flex-col gap-4 px-dialog"}>
         {archivesService.resolution.error ? (
           <Alert severity={"error"}>
             {`Could not describe how this is resolved: ${archivesService.resolution.error.message}`}

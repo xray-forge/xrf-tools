@@ -1,10 +1,9 @@
 import { default as ClearIcon } from "@mui/icons-material/Clear";
 import { default as FolderOpenIcon } from "@mui/icons-material/FolderOpen";
 import { default as HistoryIcon } from "@mui/icons-material/History";
-import { IconButton, inputBaseClasses, TextField, Tooltip } from "@mui/material";
+import { IconButton, TextField, Tooltip } from "@mui/material";
 import { ChangeEvent, ReactElement, useId, useState } from "react";
 
-import { MONOSPACE } from "@/core/theme/tokens";
 import { FilePickerRecentsMenu } from "@/core/ui/form/file-picker/FilePickerRecentsMenu";
 import { IPathFieldRecents } from "@/core/ui/form/path-recents";
 import { BaseComponentProps } from "@/lib/dom/element-types";
@@ -68,10 +67,10 @@ export function FilePickerInput({
       disabled={isDisabled}
       error={isInvalid}
       value={value ?? ""}
-      sx={{ [`& .${inputBaseClasses.input}`]: MONOSPACE }}
       slotProps={{
         htmlInput: {
           "aria-describedby": describedBy,
+          className: "monospace",
           spellCheck: false,
           // Paths are compared and edited from the end far more often than from the start.
           autoComplete: "off",

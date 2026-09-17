@@ -1,4 +1,3 @@
-import { Box } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement } from "react";
 
@@ -11,6 +10,7 @@ import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
 import { ErrorState } from "@/core/ui/layout/ErrorState";
 import { inline } from "@/lib/callbacks/inline";
+import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
@@ -50,12 +50,7 @@ export function ConfigsDocumentView({
   }
 
   return (
-    <Box
-      data-testid={dataTestId}
-      id={id}
-      className={className}
-      sx={{ display: "flex", flexDirection: "column", flexGrow: 1, minWidth: 0, minHeight: 0 }}
-    >
+    <div data-testid={dataTestId} id={id} className={cn("flex min-h-0 min-w-0 grow flex-col", className)}>
       <EditorFileHeader
         data-testid={"configs-document-header"}
         name={selected}
@@ -64,7 +59,7 @@ export function ConfigsDocumentView({
         onClose={onDeselect}
       />
 
-      <Box sx={{ display: "flex", flexGrow: 1, minWidth: 0, minHeight: 0, overflow: "hidden" }}>
+      <div className={"flex min-h-0 min-w-0 grow overflow-hidden"}>
         {inline(() => {
           if (documentService.document.isFailed) {
             return (
@@ -86,7 +81,7 @@ export function ConfigsDocumentView({
             <ConfigsAuthoredView document={document} />
           );
         })}
-      </Box>
-    </Box>
+      </div>
+    </div>
   );
 }

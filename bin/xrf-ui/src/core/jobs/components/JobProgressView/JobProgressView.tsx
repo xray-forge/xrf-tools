@@ -1,10 +1,11 @@
-import { Box, Button, LinearProgress, Typography } from "@mui/material";
+import { Button, LinearProgress, Typography } from "@mui/material";
 import { ReactElement } from "react";
 
 import { ProgressLevel } from "@/core/ipc/types/xrf-job";
 import { JobProgressLevel } from "@/core/jobs/components/JobProgressView/JobProgressLevel";
 import { IJobState } from "@/core/jobs/lib";
 import { describeActiveProgress, RENDERED_PROGRESS_LEVELS } from "@/core/jobs/lib/progress-format";
+import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatDuration } from "@/lib/format/duration";
 
@@ -31,12 +32,7 @@ export function JobProgressView({
   const detail: string = describeActiveProgress(job.progress);
 
   return (
-    <Box
-      data-testid={dataTestId}
-      id={id}
-      className={className}
-      sx={{ display: "flex", flexDirection: "column", gap: 1, width: "100%" }}
-    >
+    <div data-testid={dataTestId} id={id} className={cn("flex w-full flex-col gap-2", className)}>
       {levels.length ? (
         levels
           .slice(0, RENDERED_PROGRESS_LEVELS)
@@ -45,14 +41,14 @@ export function JobProgressView({
         <LinearProgress variant={"indeterminate"} />
       )}
 
-      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1 }}>
-        <Box sx={{ minWidth: 0 }}>
+      <div className={"flex items-center justify-between gap-2"}>
+        <div className={"min-w-0"}>
           <Typography variant={"caption"} color={"text.secondary"} noWrap={true} title={detail}>
             {detail}
           </Typography>
-        </Box>
+        </div>
 
-        <Box sx={{ display: "flex", alignItems: "center", flexShrink: 0, gap: 1 }}>
+        <div className={"flex shrink-0 items-center gap-2"}>
           <Typography variant={"caption"} color={"text.secondary"}>
             {formatDuration(job.progress?.duration ?? 0)}
           </Typography>
@@ -62,8 +58,8 @@ export function JobProgressView({
               {job.isCancelRequested ? "Stopping" : "Cancel"}
             </Button>
           ) : null}
-        </Box>
-      </Box>
-    </Box>
+        </div>
+      </div>
+    </div>
   );
 }

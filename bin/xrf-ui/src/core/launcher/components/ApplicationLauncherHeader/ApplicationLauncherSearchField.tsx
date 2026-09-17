@@ -62,11 +62,10 @@ export function ApplicationLauncherSearchField({
     <TextField
       data-testid={dataTestId}
       id={id}
-      className={className}
+      className={cn("w-80 min-w-45 shrink", className)}
       value={query}
       placeholder={"Search tools"}
       inputRef={inputRef}
-      sx={{ width: 320, flexShrink: 1, minWidth: 180 }}
       slotProps={{
         htmlInput: {
           "aria-label": "Search tools",

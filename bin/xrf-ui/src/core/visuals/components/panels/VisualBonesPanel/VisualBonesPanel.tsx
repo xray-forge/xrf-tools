@@ -1,4 +1,3 @@
-import { Box } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useEffect, useMemo } from "react";
 
@@ -10,10 +9,8 @@ import { VirtualizedTree } from "@/core/ui/tree/VirtualizedTree";
 import { IVisualInspection, VISUAL_INSPECTION } from "@/core/visuals/components/panels/visual-inspection";
 import { toBoneTree } from "@/core/visuals/components/panels/VisualBonesPanel/VisualBonesPanel.utils";
 import { VisualBoneVisibility } from "@/core/visuals/components/panels/VisualBonesPanel/VisualBoneVisibility";
+import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-
-/** Height the skeleton keeps for itself before the panel starts scrolling instead. */
-const TREE_MIN_HEIGHT: number = 160;
 
 export function VisualBonesPanel({
   "data-testid": dataTestId = "visual-bones-panel",
@@ -49,29 +46,21 @@ export function VisualBonesPanel({
   }
 
   return (
-    <EditorPanel
-      data-testid={dataTestId}
-      id={id}
-      className={className}
-      title={"Bones"}
-      // At least the panel's height, so the skeleton can take what the switches below it leave; more than that
-      // when they need it, and the panel scrolls as it did before.
-      sx={{ minHeight: "100%" }}
-    >
-      {/* The panel's own content slot is a block, so the column the skeleton and the switches divide starts here. */}
-      <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
+    <EditorPanel data-testid={dataTestId} id={id} className={cn("min-h-full", className)} title={"Bones"}>
+      <div className={"flex h-full flex-col"}>
         <EditorPanelSection
           title={`Skeleton (${bones.length})`}
           caption={"Bone names, parented as ogf stores them"}
           isFirst={true}
           isFilling={true}
         >
-          <VirtualizedTree<VisualBone>
+          <VirtualizedTree
             ariaLabel={"Skeleton bones"}
+            className={"min-h-40"}
             items={items}
             expandedIds={tree.expandedIds}
             selectedId={boneControls?.highlightedBone ?? null}
-            sx={{ minHeight: TREE_MIN_HEIGHT, padding: 0 }}
+            sx={{ padding: 0 }}
             onSelect={onSelectBone}
             onActivate={onActivateBone}
             onToggleExpanded={tree.toggleExpanded}
@@ -79,7 +68,7 @@ export function VisualBonesPanel({
         </EditorPanelSection>
 
         <VisualBoneVisibility />
-      </Box>
+      </div>
     </EditorPanel>
   );
 }

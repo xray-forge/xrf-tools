@@ -1,5 +1,5 @@
 import { default as ViewQuiltIcon } from "@mui/icons-material/ViewQuilt";
-import { Box, ToggleButton, ToggleButtonGroup, Typography } from "@mui/material";
+import { ToggleButton, ToggleButtonGroup, Typography } from "@mui/material";
 import { ReactElement } from "react";
 
 import { EditorPopoverAction } from "@/core/shell/editor/EditorPopoverAction";
@@ -37,8 +37,8 @@ export function TextureBodyOptions({
       icon={<ViewQuiltIcon />}
       isDisabled={!isSurface}
     >
-      <Box sx={{ display: "flex", flexDirection: "column", gap: 1, paddingX: 2, paddingY: 1 }}>
-        <Typography variant={"overline"} sx={{ color: "text.secondary" }}>
+      <div className={"flex flex-col gap-2 px-4 py-2"}>
+        <Typography className={"text-text-secondary"} variant={"overline"}>
           Body
         </Typography>
 
@@ -56,7 +56,7 @@ export function TextureBodyOptions({
           ))}
         </ToggleButtonGroup>
 
-        <Typography variant={"overline"} sx={{ color: "text.secondary" }}>
+        <Typography className={"text-text-secondary"} variant={"overline"}>
           Tiling
         </Typography>
 
@@ -73,7 +73,7 @@ export function TextureBodyOptions({
             </ToggleButton>
           ))}
         </ToggleButtonGroup>
-      </Box>
+      </div>
     </EditorPopoverAction>
   );
 }

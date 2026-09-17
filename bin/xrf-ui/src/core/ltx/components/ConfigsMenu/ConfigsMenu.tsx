@@ -1,4 +1,4 @@
-import { Box, Typography } from "@mui/material";
+import { Typography } from "@mui/material";
 import { ReactElement, useCallback, useEffect, useMemo } from "react";
 
 import { LtxInventoryFile } from "@/core/ipc/types/xrf-ltx-inspect";
@@ -115,11 +115,11 @@ export function ConfigsMenu({
           onActivate={onActivateNode}
         />
       ) : (
-        <Box sx={{ padding: 2, textAlign: "center" }}>
-          <Typography variant={"body2"} sx={{ color: "text.secondary" }}>
+        <div className={"p-4 text-center"}>
+          <Typography className={"text-text-secondary"} variant={"body2"}>
             This project holds no configs.
           </Typography>
-        </Box>
+        </div>
       )}
     </EditorSearchMenu>
   );

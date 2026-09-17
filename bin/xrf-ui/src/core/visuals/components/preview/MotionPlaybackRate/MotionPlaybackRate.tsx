@@ -1,9 +1,8 @@
 import { default as SpeedIcon } from "@mui/icons-material/Speed";
-import { Box, Slider, Typography } from "@mui/material";
+import { Slider, Typography } from "@mui/material";
 import { ReactElement, useCallback } from "react";
 
 import { EditorPopoverAction } from "@/core/shell/editor/EditorPopoverAction";
-import { LAYOUT } from "@/core/theme/tokens";
 import { MOTION_MAX_FPS, MOTION_MIN_FPS, MOTION_SAMPLE_FPS } from "@/core/visuals/lib/visual-motion";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
@@ -42,8 +41,8 @@ export function MotionPlaybackRate({
       isActive={fps !== MOTION_SAMPLE_FPS}
       placement={"top"}
     >
-      <Box sx={{ paddingX: 2, paddingY: 1, width: LAYOUT.toolbarSliderWidth }}>
-        <Typography variant={"overline"} sx={{ color: "text.secondary" }}>
+      <div className={"w-50 px-4 py-2"}>
+        <Typography className={"text-text-secondary"} variant={"overline"}>
           Playback rate
         </Typography>
 
@@ -58,7 +57,7 @@ export function MotionPlaybackRate({
           marks={[{ value: MOTION_SAMPLE_FPS, label: String(MOTION_SAMPLE_FPS) }]}
           onChange={onChangeFps}
         />
-      </Box>
+      </div>
     </EditorPopoverAction>
   );
 }

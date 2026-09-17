@@ -25,11 +25,7 @@ export function TreeRowLabel({ label, caption = null, captionTitle }: ITreeRowLa
       <span className={"min-w-0 overflow-hidden text-ellipsis"}>{label}</span>
 
       <Tooltip title={captionTitle ?? ""}>
-        <Typography
-          component={"span"}
-          variant={"caption"}
-          sx={{ color: "text.secondary", flexShrink: 0, opacity: 0.75 }}
-        >
+        <Typography className={"shrink-0 text-text-secondary opacity-75"} component={"span"} variant={"caption"}>
           {caption}
         </Typography>
       </Tooltip>

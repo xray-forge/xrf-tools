@@ -5,7 +5,6 @@ import { Fragment, ReactElement } from "react";
 import { EKeybindCommandCategory, IKeybindCommand, KEYBIND_COMMAND_CATEGORY_LABELS } from "@/core/commands";
 import { formatChord, parseChord } from "@/core/keybinds";
 import { KeymapService } from "@/core/keybinds/services/keymap";
-import { MONOSPACE } from "@/core/theme/tokens";
 import { StyledComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
@@ -40,31 +39,28 @@ export function ApplicationHelpShortcuts({
 
   return (
     <Box data-testid={dataTestId} id={id} className={className} sx={sx}>
-      <Typography variant={"subtitle2"} sx={{ color: "text.primary", marginBottom: 0.5 }}>
+      <Typography className={"mb-1 text-text-primary"} variant={"subtitle2"}>
         Shortcuts
       </Typography>
 
       {categories.map((category: EKeybindCommandCategory) => (
         <Fragment key={category}>
-          <Typography variant={"caption"} sx={{ color: "text.secondary", display: "block", marginTop: 0.5 }}>
+          <Typography className={"mt-1 block text-text-secondary"} variant={"caption"}>
             {KEYBIND_COMMAND_CATEGORY_LABELS[category]}
           </Typography>
 
           {rows
             .filter((row: IShortcutRow) => row.command.category === category)
             .map(({ command, chords }: IShortcutRow) => (
-              <Box
-                key={command.id}
-                sx={{ display: "flex", alignItems: "baseline", gap: 1, justifyContent: "space-between" }}
-              >
+              <div key={command.id} className={"flex items-baseline justify-between gap-2"}>
                 <Typography variant={"body2"} sx={{ lineHeight: 1.55 }}>
                   {command.label}
                 </Typography>
 
-                <Typography variant={"caption"} sx={{ ...MONOSPACE, color: "primary.main", whiteSpace: "nowrap" }}>
+                <Typography className={"monospace whitespace-nowrap text-primary"} variant={"caption"}>
                   {chords.map((chord: string) => formatChord(parseChord(chord))).join("   ")}
                 </Typography>
-              </Box>
+              </div>
             ))}
         </Fragment>
       ))}

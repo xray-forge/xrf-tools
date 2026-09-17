@@ -4,7 +4,7 @@ import { IconButton, ListItemText, Menu, MenuItem, Tooltip, Typography } from "@
 import { formatDistanceToNowStrict } from "date-fns";
 import { MouseEvent, ReactElement } from "react";
 
-import { MONOSPACE, MONOSPACE_CHARACTER_WIDTH } from "@/core/theme/tokens";
+import { MONOSPACE_CHARACTER_WIDTH } from "@/core/theme/tokens";
 import { IPathFieldRecents, IPathRecord } from "@/core/ui/form/path-recents";
 import { isSamePath, truncatePathHead } from "@/lib/path/separator";
 import { Nullable } from "@/lib/types/general";
@@ -70,8 +70,8 @@ export function FilePickerRecentsMenu({
         return (
           <MenuItem
             key={it.path}
+            className={"gap-2"}
             selected={isCurrent}
-            sx={{ gap: 1 }}
             onClick={() => {
               recents.pick(it.path);
               onClose();
@@ -83,21 +83,21 @@ export function FilePickerRecentsMenu({
 
             <Tooltip describeChild placement={"top"} title={it.path}>
               <ListItemText
+                className={"min-w-0"}
                 primary={truncatePathHead(it.path, resolveLabelLimit(width))}
-                slotProps={{ primary: { sx: { ...MONOSPACE, overflow: "hidden", whiteSpace: "nowrap" } } }}
-                sx={{ minWidth: 0 }}
+                slotProps={{ primary: { className: "monospace overflow-hidden whitespace-nowrap" } }}
               />
             </Tooltip>
 
-            <Typography variant={"caption"} sx={{ color: "text.secondary", flexShrink: 0 }}>
+            <Typography className={"shrink-0 text-text-secondary"} variant={"caption"}>
               {formatDistanceToNowStrict(it.at, { addSuffix: true })}
             </Typography>
 
             <Tooltip describeChild title={"Forget"}>
               <IconButton
                 aria-label={`Forget ${it.path}`}
+                className={"shrink-0"}
                 size={"small"}
-                sx={{ flexShrink: 0 }}
                 // Stops the row underneath from also being picked, which would fill the field with what was forgotten.
                 onClick={(event: MouseEvent<HTMLElement>) => {
                   event.stopPropagation();

@@ -1,6 +1,7 @@
-import { Box, Stack, Typography } from "@mui/material";
+import { Stack, Typography } from "@mui/material";
 import { ReactElement, ReactNode } from "react";
 
+import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IArchiveSummaryRowProps extends BaseComponentProps {
@@ -17,19 +18,12 @@ export function ArchiveSummaryRow({
   children,
 }: IArchiveSummaryRowProps): ReactElement {
   return (
-    <Stack
-      data-testid={dataTestId}
-      id={id}
-      className={className}
-      direction={"row"}
-      spacing={2}
-      sx={{ alignItems: "baseline" }}
-    >
-      <Typography variant={"caption"} sx={{ width: 116, flexShrink: 0, color: "text.secondary" }}>
+    <Stack data-testid={dataTestId} id={id} className={cn("items-baseline", className)} direction={"row"} spacing={2}>
+      <Typography className={"w-29 shrink-0 text-text-secondary"} variant={"caption"}>
         {label}
       </Typography>
 
-      <Box sx={{ minWidth: 0, flexGrow: 1 }}>{children}</Box>
+      <div className={"min-w-0 grow"}>{children}</div>
     </Stack>
   );
 }

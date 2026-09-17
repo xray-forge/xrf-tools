@@ -1,4 +1,3 @@
-import { Box } from "@mui/material";
 import { ReactElement, useCallback, useEffect, useRef } from "react";
 import { Texture } from "three";
 
@@ -147,10 +146,10 @@ export function VisualPreviewViewport({
   const onReset = useCallback((): void => sceneRef.current?.resetCamera(), []);
 
   return (
-    <Box sx={{ position: "relative", width: "100%", height: "100%" }}>
-      <Box ref={containerRef} sx={{ width: "100%", height: "100%", overflow: "hidden" }} />
+    <div className={"relative size-full"}>
+      <div ref={containerRef} className={"size-full overflow-hidden"} />
 
       {model ? <ViewportControls onZoomIn={onZoomIn} onZoomOut={onZoomOut} onReset={onReset} /> : null}
-    </Box>
+    </div>
   );
 }

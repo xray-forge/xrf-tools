@@ -17,7 +17,7 @@ export function PlannedApplication({ description }: IPlannedApplicationProps): R
   return (
     <EditorLayout toolbar={<EditorToolbar />}>
       <EmptyState
-        icon={<ConstructionIcon sx={{ fontSize: 40, color: "text.secondary", opacity: 0.55 }} />}
+        icon={<ConstructionIcon className={"text-text-secondary opacity-55"} />}
         title={"Not implemented yet"}
         description={description}
       />

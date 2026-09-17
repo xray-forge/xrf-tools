@@ -1,10 +1,6 @@
 import { Box } from "@mui/material";
 import { Fragment, ReactNode } from "react";
 
-import { RADIUS } from "@/core/theme/tokens";
-
-export const HELP_MONOSPACE_FONT: string = "'Cascadia Mono', 'Consolas', monospace";
-
 /**
  * Renders one help string, with backticked spans as code.
  *
@@ -23,13 +19,8 @@ export function renderHelpText(text: string): ReactNode {
       <Box
         key={index}
         component={"code"}
-        sx={{
-          paddingX: 0.5,
-          borderRadius: `${RADIUS.sm}px`,
-          backgroundColor: "action.hover",
-          fontFamily: HELP_MONOSPACE_FONT,
-          fontSize: "0.8125em",
-        }}
+        className={"rounded-control bg-action-hover px-1 font-monospace"}
+        sx={{ fontSize: "0.8125em" }}
       >
         {segment}
       </Box>

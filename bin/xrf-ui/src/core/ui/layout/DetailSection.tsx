@@ -32,12 +32,12 @@ export function DetailSection({
   return (
     <div data-testid={dataTestId} className={className} id={id}>
       <div className={"flex items-baseline justify-between gap-2"}>
-        <Typography variant={"subtitle2"} sx={{ color: "text.primary" }}>
+        <Typography className={"text-text-primary"} variant={"subtitle2"}>
           {title}
         </Typography>
 
         {fact ? (
-          <Typography variant={"caption"} sx={{ color: "text.secondary", flexShrink: 0 }}>
+          <Typography className={"shrink-0 text-text-secondary"} variant={"caption"}>
             {fact}
           </Typography>
         ) : null}
@@ -48,7 +48,7 @@ export function DetailSection({
           children ? "mb-2 flex items-center justify-between gap-2" : "flex items-center justify-between gap-2"
         }
       >
-        <Typography variant={"caption"} sx={{ color: "text.secondary" }}>
+        <Typography className={"text-text-secondary"} variant={"caption"}>
           {description}
         </Typography>
 

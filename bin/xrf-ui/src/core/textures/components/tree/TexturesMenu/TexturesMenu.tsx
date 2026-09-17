@@ -1,7 +1,7 @@
 import { default as FolderIcon } from "@mui/icons-material/Folder";
 import { default as FolderOpenIcon } from "@mui/icons-material/FolderOpen";
 import { default as ImageIcon } from "@mui/icons-material/Image";
-import { Box, Typography } from "@mui/material";
+import { Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, ReactNode, useCallback, useMemo, useState } from "react";
 
@@ -154,11 +154,11 @@ export function TexturesMenu({
           onToggleExpanded={tree.toggleExpanded}
         />
       ) : (
-        <Box sx={{ padding: 2, textAlign: "center" }}>
-          <Typography variant={"body2"} sx={{ color: "text.secondary" }}>
+        <div className={"p-4 text-center"}>
+          <Typography className={"text-text-secondary"} variant={"body2"}>
             {describeEmptyTextureTree(catalogService.catalog.isLoading, nodes.length, badges.size)}
           </Typography>
-        </Box>
+        </div>
       )}
     </EditorSearchMenu>
   );

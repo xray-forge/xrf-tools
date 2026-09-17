@@ -1,6 +1,7 @@
 import { Typography } from "@mui/material";
 import { ReactElement } from "react";
 
+import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IArchivePathTextProps extends BaseComponentProps {
@@ -19,13 +20,7 @@ export function ArchivePathText({
   value,
 }: IArchivePathTextProps): ReactElement {
   return (
-    <Typography
-      data-testid={dataTestId}
-      id={id}
-      className={className ? `monospace ${className}` : "monospace"}
-      variant={"body2"}
-      sx={{ wordBreak: "break-all" }}
-    >
+    <Typography data-testid={dataTestId} id={id} className={cn("monospace break-all", className)} variant={"body2"}>
       {value}
     </Typography>
   );

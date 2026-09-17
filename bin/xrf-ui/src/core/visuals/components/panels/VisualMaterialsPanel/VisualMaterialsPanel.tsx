@@ -1,4 +1,4 @@
-import { Box, Typography } from "@mui/material";
+import { Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useMemo } from "react";
 
@@ -55,18 +55,18 @@ export function VisualMaterialsPanel({
   return (
     <EditorPanel data-testid={dataTestId} id={id} className={className} title={"Materials"}>
       {summary ? (
-        <Box sx={{ paddingX: 2, paddingY: 1, borderBottom: 1, borderColor: "divider" }}>
-          <Typography variant={"body2"} sx={{ color: "text.secondary" }}>
+        <div className={"border-b border-divider px-4 py-2"}>
+          <Typography className={"text-text-secondary"} variant={"body2"}>
             {describeVisualTextureSummary(summary)}
           </Typography>
 
           {selected?.texturesLtx ? (
-            <Typography variant={"caption"} sx={{ display: "block", marginTop: 0.5, color: "warning.main" }}>
+            <Typography className={"mt-1 block text-warning"} variant={"caption"}>
               {`Bump declarations are read from .thm files only. ${selected.texturesLtx.logicalPath} may declare ` +
                 "more, and is not read."}
             </Typography>
           ) : null}
-        </Box>
+        </div>
       ) : null}
 
       {description.submeshes.map((submesh, index) => (

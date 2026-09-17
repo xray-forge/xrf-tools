@@ -2,7 +2,6 @@ import { default as DescriptionOutlinedIcon } from "@mui/icons-material/Descript
 import { Typography } from "@mui/material";
 import { ReactElement, ReactNode } from "react";
 
-import { CONTENT_STATE } from "@/core/theme/tokens";
 import { CenteredColumn } from "@/core/ui/layout/CenteredColumn";
 import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
@@ -31,15 +30,12 @@ export function EmptyState({
   return (
     <CenteredColumn data-testid={dataTestId} id={id} className={cn("min-w-0 gap-2 p-6 text-center", className)}>
       <span aria-hidden={true} className={"flex [&>svg]:text-content-state-icon"}>
-        {icon ?? <DescriptionOutlinedIcon sx={{ color: "text.secondary", opacity: 0.55 }} />}
+        {icon ?? <DescriptionOutlinedIcon className={"text-text-secondary opacity-55"} />}
       </span>
 
       <Typography variant={"subtitle1"}>{title}</Typography>
 
-      <Typography
-        variant={"body2"}
-        sx={{ maxWidth: CONTENT_STATE.descriptionMaxWidth, color: "text.secondary", overflowWrap: "anywhere" }}
-      >
+      <Typography className={"max-w-content-state-description wrap-anywhere text-text-secondary"} variant={"body2"}>
         {description}
       </Typography>
 

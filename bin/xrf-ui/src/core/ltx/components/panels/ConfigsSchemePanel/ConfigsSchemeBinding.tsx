@@ -1,8 +1,7 @@
-import { Box, Chip, Stack, Typography } from "@mui/material";
+import { Chip, Stack, Typography } from "@mui/material";
 import { ReactElement } from "react";
 
 import { LtxSectionSchemeReport } from "@/core/ipc/types/xrf-ltx-inspect";
-import { MONOSPACE } from "@/core/theme/tokens";
 
 interface IConfigsSchemeBindingProps {
   report: LtxSectionSchemeReport;
@@ -13,12 +12,12 @@ interface IConfigsSchemeBindingProps {
  */
 export function ConfigsSchemeBinding({ report }: IConfigsSchemeBindingProps): ReactElement {
   return (
-    <Box sx={{ padding: 1.5, display: "flex", flexDirection: "column", gap: 0.75 }}>
-      <Typography variant={"subtitle2"} sx={{ ...MONOSPACE, overflowWrap: "anywhere" }}>
+    <div className={"flex flex-col gap-1.5 p-3"}>
+      <Typography className={"monospace wrap-anywhere"} variant={"subtitle2"}>
         [{report.section}]
       </Typography>
 
-      <Stack direction={"row"} sx={{ flexWrap: "wrap", gap: 0.5 }}>
+      <Stack className={"flex-wrap gap-1"} direction={"row"}>
         {report.scheme ? (
           <Chip
             size={"small"}
@@ -49,6 +48,6 @@ export function ConfigsSchemeBinding({ report }: IConfigsSchemeBindingProps): Re
           />
         ) : null}
       </Stack>
-    </Box>
+    </div>
   );
 }

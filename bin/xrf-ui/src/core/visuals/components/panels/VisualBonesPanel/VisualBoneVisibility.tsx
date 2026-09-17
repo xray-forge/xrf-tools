@@ -1,12 +1,13 @@
 import { default as VisibilityIcon } from "@mui/icons-material/Visibility";
 import { default as VisibilityOffIcon } from "@mui/icons-material/VisibilityOff";
-import { Box, Button, Chip, FormControlLabel, Switch, Typography } from "@mui/material";
+import { Button, Chip, FormControlLabel, Switch, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement } from "react";
 
 import { EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { IVisualInspection, VISUAL_INSPECTION } from "@/core/visuals/components/panels/visual-inspection";
 import { VISIBILITY_MASK_BONES } from "@/core/visuals/lib/visual-bones";
+import { cn } from "@/lib/dom/dom-name";
 import { Nullable } from "@/lib/types/general";
 
 /** Stable, so a surface offering no bone controls does not hand the section a new set on every render. */
@@ -40,7 +41,7 @@ export function VisualBoneVisibility(): Nullable<ReactElement> {
       {addons.map((name: string) => (
         <FormControlLabel
           key={name}
-          sx={{ display: "flex", marginLeft: 0, justifyContent: "space-between" }}
+          className={"ml-0 flex justify-between"}
           labelPlacement={"start"}
           label={<Typography variant={"body2"}>{name}</Typography>}
           control={
@@ -54,7 +55,7 @@ export function VisualBoneVisibility(): Nullable<ReactElement> {
         />
       ))}
 
-      <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap", marginTop: addons.length ? 1 : 0 }}>
+      <div className={cn("flex flex-wrap items-center gap-2", addons.length ? "mt-2" : null)}>
         {selected ? (
           <Button
             size={"small"}
@@ -64,7 +65,7 @@ export function VisualBoneVisibility(): Nullable<ReactElement> {
             {hidden.has(selected) ? `Show ${selected}` : `Hide ${selected}`}
           </Button>
         ) : (
-          <Typography variant={"caption"} sx={{ color: "text.disabled" }}>
+          <Typography className={"text-text-disabled"} variant={"caption"}>
             Pick a bone above to hide it, and everything parented to it.
           </Typography>
         )}
@@ -74,18 +75,18 @@ export function VisualBoneVisibility(): Nullable<ReactElement> {
             Show all
           </Button>
         ) : null}
-      </Box>
+      </div>
 
       {others.length ? (
-        <Box sx={{ display: "flex", gap: 0.5, flexWrap: "wrap", marginTop: 1 }}>
+        <div className={"mt-2 flex flex-wrap gap-1"}>
           {others.map((name: string) => (
             <Chip key={name} size={"small"} label={name} onDelete={() => boneControls.toggleBoneVisibility(name)} />
           ))}
-        </Box>
+        </div>
       ) : null}
 
       {bones.length > VISIBILITY_MASK_BONES ? (
-        <Typography variant={"caption"} sx={{ display: "block", marginTop: 1, color: "warning.main" }}>
+        <Typography className={"mt-2 block text-warning"} variant={"caption"}>
           {`${bones.length - VISIBILITY_MASK_BONES} of these bones sit past the engine's ` +
             `${VISIBILITY_MASK_BONES} bone visibility mask, so hiding one of them is a viewer state the engine ` +
             `cannot reach.`}

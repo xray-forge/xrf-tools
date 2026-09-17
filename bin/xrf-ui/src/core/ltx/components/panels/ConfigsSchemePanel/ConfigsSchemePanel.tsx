@@ -1,4 +1,4 @@
-import { Box, Divider } from "@mui/material";
+import { Divider } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useEffect } from "react";
 
@@ -79,10 +79,7 @@ export function ConfigsSchemePanel({
       <Divider />
 
       {report.fields.length ? (
-        <Box
-          data-testid={"configs-scheme-fields"}
-          sx={{ padding: 1.5, display: "flex", flexDirection: "column", gap: 1 }}
-        >
+        <div data-testid={"configs-scheme-fields"} className={"flex flex-col gap-2 p-3"}>
           {report.fields.map((field: LtxSchemeFieldReport) => (
             <ConfigsSchemeFieldRow
               key={field.name}
@@ -91,7 +88,7 @@ export function ConfigsSchemePanel({
               isStrict={report.isStrict}
             />
           ))}
-        </Box>
+        </div>
       ) : (
         <EditorPanelEmpty label={"This section holds no fields."} />
       )}

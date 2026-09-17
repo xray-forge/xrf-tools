@@ -48,7 +48,7 @@ export function ApplicationLauncherCatalog({
     >
       {search && !sections.length ? (
         <EmptyState
-          icon={<SearchOffIcon sx={{ fontSize: 40, color: "text.secondary", opacity: 0.55 }} />}
+          icon={<SearchOffIcon className={"text-content-state-icon text-text-secondary opacity-55"} />}
           title={"No tools match"}
           // Quoted, because an unquoted query reads as part of the sentence carrying it.
           description={`Nothing in the catalog matches "${search.query.trim()}".`}

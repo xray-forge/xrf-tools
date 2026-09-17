@@ -1,4 +1,4 @@
-import { Box, Chip } from "@mui/material";
+import { Chip } from "@mui/material";
 import { ReactElement } from "react";
 
 import { AssetTextureDescriptor } from "@/core/ipc/types/xrf-app";
@@ -57,15 +57,13 @@ export function VisualSubmeshSection({
       className={className}
       isFirst={isFirst}
       title={
-        <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
-          <Box component={"span"} sx={{ minWidth: 0, wordBreak: "break-all" }}>
-            {submesh.textureName ?? `Submesh ${submesh.index}`}
-          </Box>
+        <div className={"flex items-center gap-1.5"}>
+          <span className={"min-w-0 break-all"}>{submesh.textureName ?? `Submesh ${submesh.index}`}</span>
 
           {content.kind === "skipped" ? (
             <Chip size={"small"} color={"warning"} variant={"outlined"} label={content.cause} />
           ) : null}
-        </Box>
+        </div>
       }
     >
       <EditorPanelProperty label={"Shader"} value={submesh.shaderName ?? ABSENT_VALUE} isMonospace />

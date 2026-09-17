@@ -1,9 +1,8 @@
 import { default as TuneIcon } from "@mui/icons-material/Tune";
-import { Box, Slider, Typography } from "@mui/material";
+import { Slider, Typography } from "@mui/material";
 import { ReactElement, useCallback } from "react";
 
 import { EditorPopoverAction } from "@/core/shell/editor/EditorPopoverAction";
-import { LAYOUT } from "@/core/theme/tokens";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IVisualMeshDetailProps extends BaseComponentProps {
@@ -50,8 +49,8 @@ export function VisualMeshDetail({
       isDisabled={!hasDetailLevels}
       isActive={detail !== 0 && hasDetailLevels}
     >
-      <Box sx={{ paddingX: 2, paddingY: 1, width: LAYOUT.toolbarSliderWidth }}>
-        <Typography variant={"overline"} sx={{ color: "text.secondary" }}>
+      <div className={"w-50 px-4 py-2"}>
+        <Typography className={"text-text-secondary"} variant={"overline"}>
           Mesh detail
         </Typography>
 
@@ -65,7 +64,7 @@ export function VisualMeshDetail({
           valueLabelFormat={(value: number) => `${value}%`}
           onChange={onSlideDetail}
         />
-      </Box>
+      </div>
     </EditorPopoverAction>
   );
 }

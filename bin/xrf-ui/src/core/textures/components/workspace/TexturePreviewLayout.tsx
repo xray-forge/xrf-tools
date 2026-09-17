@@ -1,4 +1,3 @@
-import { Box } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, ReactNode, useEffect, useState } from "react";
 
@@ -94,7 +93,7 @@ export function TexturePreviewLayout({
       }
       banner={banner}
     >
-      <Box sx={{ display: "flex", flexDirection: "column", flexGrow: 1, minWidth: 0, minHeight: 0 }}>
+      <div className={"flex min-h-0 min-w-0 grow flex-col"}>
         {onDeselect && description ? (
           <EditorFileHeader
             data-testid={"texture-file-header"}
@@ -106,10 +105,10 @@ export function TexturePreviewLayout({
           />
         ) : null}
 
-        <Box sx={{ display: "flex", flexGrow: 1, minWidth: 0, minHeight: 0, overflow: "hidden" }}>
+        <div className={"flex min-h-0 min-w-0 grow overflow-hidden"}>
           <TexturePreview options={previewOptions} comparison={comparison} />
-        </Box>
-      </Box>
+        </div>
+      </div>
     </EditorLayout>
   );
 }

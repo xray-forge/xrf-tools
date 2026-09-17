@@ -1,4 +1,3 @@
-import { Box } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { PointerEvent, ReactElement, useCallback, useEffect, useRef, useState } from "react";
 
@@ -157,19 +156,18 @@ export function TextureChannelsPanel({
 
           {TEXTURE_CHANNEL_TILES.map((tile: ITextureChannelTile) => (
             <EditorPanelSection key={tile.view} title={tile.label} caption={tile.caption}>
-              <Box
-                className={"checkerboard"}
-                sx={{ aspectRatio: aspect, width: "100%" }}
+              <div
+                className={"w-full checkerboard"}
+                style={{ aspectRatio: aspect }}
                 onPointerMove={onHover}
                 onPointerLeave={() => setPosition(null)}
               >
-                <Box
-                  component={"canvas"}
-                  data-testid={`texture-channel-${tile.view}`}
+                <canvas
                   ref={registerTile(tile.view)}
-                  sx={{ display: "block", height: "100%", width: "100%" }}
+                  data-testid={`texture-channel-${tile.view}`}
+                  className={"block size-full"}
                 />
-              </Box>
+              </div>
             </EditorPanelSection>
           ))}
         </>

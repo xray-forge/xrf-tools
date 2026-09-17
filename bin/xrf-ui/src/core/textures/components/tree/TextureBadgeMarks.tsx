@@ -43,26 +43,21 @@ export function TextureBadgeMarks({ badges }: ITextureBadgeMarksProps): ReactEle
   }
 
   return (
-    <Box component={"span"} sx={{ alignItems: "center", display: "inline-flex", flexShrink: 0, gap: 0.5 }}>
+    <span className={"inline-flex shrink-0 items-center gap-1"}>
       {shown.map((badge: ETextureBadge) => {
         const descriptor: ITextureBadgeDescriptor = describeTextureBadge(badge);
 
         return (
           <Box
             key={badge}
-            component={"span"}
             aria-label={descriptor.label}
+            className={"inline-block size-1.75 rounded-full"}
+            component={"span"}
             title={`${descriptor.label}: ${descriptor.description}`}
-            sx={{
-              backgroundColor: BADGE_PALETTE[descriptor.color],
-              borderRadius: "50%",
-              display: "inline-block",
-              height: 7,
-              width: 7,
-            }}
+            sx={{ backgroundColor: BADGE_PALETTE[descriptor.color] }}
           />
         );
       })}
-    </Box>
+    </span>
   );
 }

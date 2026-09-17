@@ -1,4 +1,4 @@
-import { Box, Chip, Tooltip } from "@mui/material";
+import { Chip, Tooltip } from "@mui/material";
 import { ReactElement, useCallback } from "react";
 
 import { describeTextureBadge, ETextureBadge, ITextureBadgeDescriptor } from "@/core/textures/lib/texture-catalog";
@@ -37,17 +37,7 @@ export function TextureBadgeFilters({ counts, selected, onChange }: ITextureBadg
   }
 
   return (
-    <Box
-      sx={{
-        borderBottom: 1,
-        borderColor: "divider",
-        display: "flex",
-        flexWrap: "wrap",
-        gap: 0.5,
-        paddingX: 1.5,
-        paddingY: 1,
-      }}
-    >
+    <div className={"flex flex-wrap gap-1 border-b border-divider px-3 py-2"}>
       {shown.map((badge: ETextureBadge) => {
         const descriptor: ITextureBadgeDescriptor = describeTextureBadge(badge);
         const isSelected: boolean = selected.has(badge);
@@ -65,6 +55,6 @@ export function TextureBadgeFilters({ counts, selected, onChange }: ITextureBadg
           </Tooltip>
         );
       })}
-    </Box>
+    </div>
   );
 }

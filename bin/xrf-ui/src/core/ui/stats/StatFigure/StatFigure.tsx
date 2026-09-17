@@ -23,14 +23,14 @@ export function StatFigure({
 }: IStatFigureProps): ReactElement {
   return (
     <div data-testid={dataTestId} id={id} className={cn("min-w-26", className)}>
-      <Typography variant={"caption"} sx={{ color: "text.secondary", display: "block" }}>
+      <Typography className={"block text-text-secondary"} variant={"caption"}>
         {label}
       </Typography>
 
       <Typography variant={"body2"}>{value}</Typography>
 
       {hint ? (
-        <Typography variant={"caption"} sx={{ color: "text.secondary", display: "block", opacity: 0.7 }}>
+        <Typography className={"block text-text-secondary opacity-70"} variant={"caption"}>
           {hint}
         </Typography>
       ) : null}

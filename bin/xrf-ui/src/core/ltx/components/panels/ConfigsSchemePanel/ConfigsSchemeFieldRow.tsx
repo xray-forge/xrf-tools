@@ -1,9 +1,9 @@
-import { Box, Chip, Typography } from "@mui/material";
+import { Chip, Typography } from "@mui/material";
 import { ReactElement } from "react";
 
 import { LtxSchemeFieldReport } from "@/core/ipc/types/xrf-ltx-inspect";
 import { describeResolvedFieldOrigin } from "@/core/ltx/lib/resolved";
-import { MONOSPACE } from "@/core/theme/tokens";
+import { cn } from "@/lib/dom/dom-name";
 
 interface IConfigsSchemeFieldRowProps {
   field: LtxSchemeFieldReport;
@@ -20,18 +20,18 @@ export function ConfigsSchemeFieldRow({ field, isJudged, isStrict }: IConfigsSch
   const isMissing: boolean = !field.resolved;
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", gap: 0.25, minWidth: 0 }}>
-      <Box sx={{ display: "flex", alignItems: "baseline", flexWrap: "wrap", gap: 0.75, minWidth: 0 }}>
+    <div className={"flex min-w-0 flex-col gap-0.5"}>
+      <div className={"flex min-w-0 flex-wrap items-baseline gap-1.5"}>
         <Typography
+          className={cn("monospace wrap-anywhere", isMissing ? "text-text-disabled" : "text-text-primary")}
           component={"span"}
           variant={"body2"}
-          sx={{ ...MONOSPACE, color: isMissing ? "text.disabled" : "text.primary", overflowWrap: "anywhere" }}
         >
           {field.name}
         </Typography>
 
         {field.declared ? (
-          <Typography component={"span"} variant={"caption"} sx={{ ...MONOSPACE, color: "text.secondary" }}>
+          <Typography className={"monospace text-text-secondary"} component={"span"} variant={"caption"}>
             {field.declared.dataType}
             {field.declared.isArray ? "[]" : ""}
             {field.declared.isOptional ? "?" : ""}
@@ -50,23 +50,23 @@ export function ConfigsSchemeFieldRow({ field, isJudged, isStrict }: IConfigsSch
             }
           />
         ) : null}
-      </Box>
+      </div>
 
       {field.resolved ? (
         <>
-          <Typography variant={"body2"} sx={{ ...MONOSPACE, overflowWrap: "anywhere" }}>
+          <Typography className={"monospace wrap-anywhere"} variant={"body2"}>
             {field.resolved.value}
           </Typography>
 
-          <Typography variant={"caption"} sx={{ color: "text.secondary", overflowWrap: "anywhere" }}>
+          <Typography className={"wrap-anywhere text-text-secondary"} variant={"caption"}>
             {describeResolvedFieldOrigin(field.resolved.origin, false)}
           </Typography>
         </>
       ) : (
-        <Typography variant={"caption"} sx={{ color: isStrict ? "error.main" : "text.secondary" }}>
+        <Typography className={isStrict ? "text-error" : "text-text-secondary"} variant={"caption"}>
           {isStrict && !field.declared?.isOptional ? "required, and not supplied" : "not supplied"}
         </Typography>
       )}
-    </Box>
+    </div>
   );
 }

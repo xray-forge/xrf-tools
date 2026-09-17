@@ -1,4 +1,4 @@
-import { Box, LinearProgress, Typography } from "@mui/material";
+import { LinearProgress, Typography } from "@mui/material";
 import { ReactElement } from "react";
 
 import { ProgressLevel } from "@/core/ipc/types/xrf-job";
@@ -19,8 +19,8 @@ export function JobProgressLevel({ level }: IJobProgressLevelProps): ReactElemen
   const percent: Nullable<number> = toProgressPercent(level);
 
   return (
-    <Box>
-      <Box sx={{ display: "flex", justifyContent: "space-between", gap: 1 }}>
+    <div>
+      <div className={"flex justify-between gap-2"}>
         <Typography variant={"caption"} color={"text.secondary"}>
           {level.label ?? level.id}
         </Typography>
@@ -28,9 +28,9 @@ export function JobProgressLevel({ level }: IJobProgressLevelProps): ReactElemen
         <Typography variant={"caption"} color={"text.secondary"}>
           {formatProgressCounts(level)}
         </Typography>
-      </Box>
+      </div>
 
       <LinearProgress variant={percent === null ? "indeterminate" : "determinate"} value={percent ?? undefined} />
-    </Box>
+    </div>
   );
 }

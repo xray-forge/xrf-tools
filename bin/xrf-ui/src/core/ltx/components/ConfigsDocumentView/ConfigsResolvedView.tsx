@@ -1,4 +1,4 @@
-import { Alert, Box, Button } from "@mui/material";
+import { Alert, Button } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useMemo } from "react";
 
@@ -18,11 +18,6 @@ import { Nullable } from "@/lib/types/general";
 
 /**
  * What the open config's entry point resolves to, with every value's origin beside it.
- *
- * The index gives the document its height before a single body arrives, and bodies are asked for as they scroll into
- * view. Anomaly's `system.ltx` resolves to 11,870 sections holding 527,000 fields, so fetching it whole is not an
- * option, neither is guessing how tall it is, and neither is building its 551,000 lines - the listing is handed a
- * source that builds the forty on screen.
  */
 export function ConfigsResolvedView({
   "data-testid": dataTestId = "configs-resolved-view",
@@ -102,10 +97,7 @@ export function ConfigsResolvedView({
   }
 
   return (
-    <Box
-      data-testid={dataTestId}
-      sx={{ display: "flex", flexDirection: "column", flexGrow: 1, minWidth: 0, minHeight: 0 }}
-    >
+    <div data-testid={dataTestId} className={"flex min-h-0 min-w-0 grow flex-col"}>
       {narrowedTo ? (
         <Alert severity={"info"} variant={"outlined"} square action={showAll}>
           {`Showing the ${visibleSections.length} section(s) this config declares, resolved through ` +
@@ -116,14 +108,14 @@ export function ConfigsResolvedView({
       <VirtualizedLines
         data-testid={"configs-resolved-lines"}
         ariaLabel={`Resolved sections of ${resolvedService.entry ?? "this config"}`}
+        className={"min-h-0 min-w-0 grow"}
         source={source}
         // A line of a config means nothing here: this document is assembled out of sections and holds no line of any
         // file, which is why a jump from Problems opens the authored view instead.
         scrollToLine={revealed?.kind === "section" ? layout.getSectionLine(revealed.section) : null}
-        sx={{ flexGrow: 1, minWidth: 0, minHeight: 0 }}
         onSelectLine={onSelectLine}
         onVisibleRangeChange={onVisibleRangeChange}
       />
-    </Box>
+    </div>
   );
 }

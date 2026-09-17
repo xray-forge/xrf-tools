@@ -1,4 +1,3 @@
-import { Box, SxProps, Theme } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { PointerEvent, ReactElement, useCallback, useEffect, useRef } from "react";
 
@@ -13,23 +12,12 @@ import { TextureSurfaceService } from "@/core/textures/services/surface";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
 import { ViewportControls } from "@/core/ui/media/ViewportControls";
+import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { DOLLY_STEP } from "@/lib/media/orbit-dolly";
 import { Nullable } from "@/lib/types/general";
 
 import { TextureSurfaceScene } from "./TextureSurfaceScene";
-
-/** Covers the canvas while there is nothing on it to look at, without unmounting the scene beneath. */
-const OVERLAY_STYLES: SxProps<Theme> = {
-  alignItems: "center",
-  bottom: 0,
-  display: "flex",
-  justifyContent: "center",
-  left: 0,
-  position: "absolute",
-  right: 0,
-  top: 0,
-};
 
 /** Where a light drag started, so each move swings by its own delta rather than the whole gesture. */
 interface IDragOrigin {
@@ -121,44 +109,33 @@ export function TextureSurface({
   useEffect(() => sceneRef.current?.setOptions(options), [options]);
 
   return (
-    <Box
-      data-testid={dataTestId}
-      id={id}
-      className={className}
-      sx={{ display: "flex", flexGrow: 1, minWidth: 0, minHeight: 0, position: "relative" }}
-    >
-      <Box
+    <div data-testid={dataTestId} id={id} className={cn("relative flex min-h-0 min-w-0 grow", className)}>
+      <div
         ref={containerRef}
-        sx={{
-          flexGrow: 1,
-          minHeight: 0,
-          minWidth: 0,
-          overflow: "hidden",
-          visibility: isUploading || isUntextured ? "hidden" : "visible",
-        }}
+        className={cn("min-h-0 min-w-0 grow overflow-hidden", isUploading || isUntextured ? "invisible" : null)}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
       />
 
       {isUploading ? (
-        <Box sx={OVERLAY_STYLES}>
+        <div className={"absolute inset-0 flex items-center justify-center"}>
           <DelayedProgress label={"Preparing texture surface…"} />
-        </Box>
+        </div>
       ) : null}
 
       {isUntextured ? (
-        <Box sx={OVERLAY_STYLES}>
+        <div className={"absolute inset-0 flex items-center justify-center"}>
           <EmptyState
             title={"Nothing to lay on a surface"}
             description={"This file is a layout three.js cannot upload, so there is nothing here to light."}
           />
-        </Box>
+        </div>
       ) : null}
 
       {isUploading || isUntextured ? null : (
         <ViewportControls onZoomIn={onZoomIn} onZoomOut={onZoomOut} onReset={onReset} />
       )}
-    </Box>
+    </div>
   );
 }

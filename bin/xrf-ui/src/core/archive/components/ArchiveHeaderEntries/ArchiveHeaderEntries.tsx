@@ -64,7 +64,7 @@ export function ArchiveHeaderEntries({
               isDisabled={isDisabled}
               onRemove={() => onChange(writeHeaderValue(header, key, ""))}
             >
-              <Typography variant={"body2"} className={"monospace"} sx={{ minWidth: 200, flexShrink: 0 }}>
+              <Typography className={"monospace min-w-50 shrink-0"} variant={"body2"}>
                 {key}
               </Typography>
 
@@ -86,15 +86,15 @@ export function ArchiveHeaderEntries({
           </Typography>
         )}
 
-        <Stack direction={"row"} spacing={1} sx={{ alignItems: "center" }}>
+        <Stack className={"items-center"} direction={"row"} spacing={1}>
           <TextField
+            className={"min-w-50 shrink-0"}
             size={"small"}
             disabled={isDisabled}
             value={newKey}
             placeholder={"key"}
             error={isDuplicateKey}
             slotProps={{ htmlInput: { "aria-label": "New header key" } }}
-            sx={{ minWidth: 200, flexShrink: 0 }}
             onChange={(event: ChangeEvent<HTMLInputElement>) => setNewKey(event.target.value)}
           />
 

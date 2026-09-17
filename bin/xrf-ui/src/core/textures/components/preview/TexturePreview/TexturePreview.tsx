@@ -1,4 +1,3 @@
-import { Box } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useEffect, useState } from "react";
 
@@ -17,6 +16,7 @@ import { TextureSelectionService } from "@/core/textures/services/selection";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
 import { ErrorState } from "@/core/ui/layout/ErrorState";
+import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { PAN_ZOOM_FIT } from "@/lib/media/pan-zoom";
 import { PanZoomController } from "@/lib/media/pan-zoom-controller";
@@ -115,12 +115,7 @@ export function TexturePreview({
 
   if (comparison && isImage && !gap) {
     return (
-      <Box
-        data-testid={dataTestId}
-        id={id}
-        className={className}
-        sx={{ display: "flex", flexGrow: 1, gap: 1, minHeight: 0, minWidth: 0 }}
-      >
+      <div data-testid={dataTestId} id={id} className={cn("flex min-h-0 min-w-0 grow gap-2", className)}>
         <TextureImagePane
           data-testid={"texture-image-pane-current"}
           caption={`On disk — ${caption}`}
@@ -141,7 +136,7 @@ export function TexturePreview({
           controller={panZoom}
           hasControls={false}
         />
-      </Box>
+      </div>
     );
   }
 

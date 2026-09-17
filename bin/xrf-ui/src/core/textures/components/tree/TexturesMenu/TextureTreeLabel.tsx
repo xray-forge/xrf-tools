@@ -1,4 +1,3 @@
-import { Box } from "@mui/material";
 import { ReactElement } from "react";
 
 import { TextureBadgeMarks } from "@/core/textures/components/tree/TextureBadgeMarks";
@@ -20,12 +19,10 @@ export function TextureTreeLabel({ item }: ITextureTreeLabelProps): ReactElement
   }
 
   return (
-    <Box sx={{ alignItems: "center", display: "flex", gap: 0.75, minWidth: 0 }}>
-      <Box component={"span"} sx={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis" }}>
-        {item.label}
-      </Box>
+    <div className={"flex min-w-0 items-center gap-1.5"}>
+      <span className={"min-w-0 overflow-hidden text-ellipsis"}>{item.label}</span>
 
       <TextureBadgeMarks badges={item.payload.badges} />
-    </Box>
+    </div>
   );
 }
