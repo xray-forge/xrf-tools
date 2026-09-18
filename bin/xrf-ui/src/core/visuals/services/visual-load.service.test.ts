@@ -325,29 +325,29 @@ describe("VisualLoadService", () => {
   });
 });
 
+/** Two submeshes naming one file, which is what a shared texture looks like in a description. */
+function mockSharedVisual(): { selected: SelectedVisualDescription; buffer: ArrayBuffer } {
+  const buffer: MockVisualBuffer = new MockVisualBuffer();
+
+  return {
+    selected: mockSelectedVisual({
+      source: { kind: "asset", logicalPath: ENTRY },
+      roots: ROOTS,
+      description: mockVisualDescription({
+        submeshes: [mockPackedSubmesh(buffer), mockPackedSubmesh(buffer, { index: 1 })],
+        bufferLength: buffer.byteLength,
+      }),
+      dependencies: {
+        motions: [],
+        textures: [mockTextureDependency({ submeshIndex: 0 }), mockTextureDependency({ submeshIndex: 1 })],
+      },
+    }),
+    buffer: buffer.toArrayBuffer(),
+  };
+}
+
 describe("VisualLoadService shared textures", () => {
   beforeEach(() => resetMockInvoke());
-
-  /** Two submeshes naming one file, which is what a shared texture looks like in a description. */
-  function mockSharedVisual(): { selected: SelectedVisualDescription; buffer: ArrayBuffer } {
-    const buffer: MockVisualBuffer = new MockVisualBuffer();
-
-    return {
-      selected: mockSelectedVisual({
-        source: { kind: "asset", logicalPath: ENTRY },
-        roots: ROOTS,
-        description: mockVisualDescription({
-          submeshes: [mockPackedSubmesh(buffer), mockPackedSubmesh(buffer, { index: 1 })],
-          bufferLength: buffer.byteLength,
-        }),
-        dependencies: {
-          motions: [],
-          textures: [mockTextureDependency({ submeshIndex: 0 }), mockTextureDependency({ submeshIndex: 1 })],
-        },
-      }),
-      buffer: buffer.toArrayBuffer(),
-    };
-  }
 
   it("reads a file once however many submeshes name it", async () => {
     const { selected, buffer } = mockSharedVisual();
@@ -432,8 +432,61 @@ describe("VisualLoadService texture decoding", () => {
     jest.restoreAllMocks();
   });
 
-  it("releases a late decoded texture after clearing without restoring the model", async () => {
-    const { selected, buffer } = mockLoadable();
+  it("decodes a shared file once and publishes the same texture for both submeshes", async () => {
+    const { selected, buffer } = mockSharedVisual();
+    const { service } = mockInjectedService(VisualLoadService);
+    const readTexture = jest.fn(() => new ArrayBuffer(8));
+
+    setMockInvokeResponses({
+      ["plugin:visuals|open_model"]: mockSessionResponse(selected),
+      ["plugin:visuals|read_geometry"]: buffer,
+      ["plugin:assets|read_asset"]: mockUncompressedDdsFile({ blueMask: 0x00ff0000, redMask: 0x000000ff }),
+      ["plugin:visuals|read_texture"]: readTexture,
+    });
+
+    await service.load({ kind: "asset", logicalPath: ENTRY }, ROOTS);
+
+    expect(readTexture).toHaveBeenCalledTimes(1);
+    expect(decoder).toHaveBeenCalledTimes(1);
+    expect(service.textures.size).toBe(2);
+    expect(service.textures.get(0)).toBe(service.textures.get(1));
+    expect([...service.textureStatuses.values()]).toEqual([
+      { reason: null, state: EVisualTextureState.DECODED, submeshIndex: 0 },
+      { reason: null, state: EVisualTextureState.DECODED, submeshIndex: 1 },
+    ]);
+
+    service.clear();
+  });
+
+  it("attempts a refused shared file once and preserves both unsupported statuses", async () => {
+    const { selected, buffer } = mockSharedVisual();
+    const { service } = mockInjectedService(VisualLoadService);
+    const readTexture = jest.fn(() => {
+      throw new Error("DDS image format is not supported");
+    });
+
+    setMockInvokeResponses({
+      ["plugin:visuals|open_model"]: mockSessionResponse(selected),
+      ["plugin:visuals|read_geometry"]: buffer,
+      ["plugin:assets|read_asset"]: mockUncompressedDdsFile({ blueMask: 0x00ff0000, redMask: 0x000000ff }),
+      ["plugin:visuals|read_texture"]: readTexture,
+    });
+
+    await service.load({ kind: "asset", logicalPath: ENTRY }, ROOTS);
+
+    expect(readTexture).toHaveBeenCalledTimes(1);
+    expect(decoder).not.toHaveBeenCalled();
+    expect(service.textures.size).toBe(0);
+    expect([...service.textureStatuses.values()]).toEqual([
+      { reason: null, state: EVisualTextureState.UNSUPPORTED_FORMAT, submeshIndex: 0 },
+      { reason: null, state: EVisualTextureState.UNSUPPORTED_FORMAT, submeshIndex: 1 },
+    ]);
+
+    service.clear();
+  });
+
+  it("releases a late shared decoded texture once after clearing without restoring the model", async () => {
+    const { selected, buffer } = mockSharedVisual();
     const { service } = mockInjectedService(VisualLoadService);
     const dispose = jest.spyOn(Texture.prototype, "dispose");
     const close = jest.fn();
@@ -455,10 +508,7 @@ describe("VisualLoadService texture decoding", () => {
     });
 
     setMockInvokeResponses({
-      ["plugin:visuals|open_model"]: mockSessionResponse({
-        ...selected,
-        dependencies: { motions: [], textures: [mockTextureDependency({ submeshIndex: 0 })] },
-      }),
+      ["plugin:visuals|open_model"]: mockSessionResponse(selected),
       ["plugin:visuals|read_geometry"]: buffer,
       ["plugin:assets|read_asset"]: mockUncompressedDdsFile({ blueMask: 0x00ff0000, redMask: 0x000000ff }),
       ["plugin:visuals|read_texture"]: new ArrayBuffer(8),
@@ -480,6 +530,7 @@ describe("VisualLoadService texture decoding", () => {
 
     expect(dispose).toHaveBeenCalledTimes(1);
     expect(close).toHaveBeenCalledTimes(1);
+    expect(decoder).toHaveBeenCalledTimes(1);
     expect(service.visual.value).toBeNull();
     expect(service.visual.isLoading).toBe(false);
     expect(service.textures.size).toBe(0);

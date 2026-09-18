@@ -74,7 +74,10 @@ export class VisualTextureSet {
 
         yield* call(decoding);
 
-        loaded.log.info(`Decoded ${declined.length} textures in:`, formatDuration(timer.lap()));
+        loaded.log.info(
+          `Processed texture fallbacks for ${declined.length} submeshes in:`,
+          formatDuration(timer.lap())
+        );
       }
 
       transferred = true;
@@ -321,7 +324,7 @@ export class VisualTextureSet {
   }
 
   /**
-   * Ask the backend to decode the textures three.js declined, and fold them into what will be published.
+   * Decode each file three.js declined once, sharing the fallback texture between submeshes naming it.
    *
    * A successful fallback is reported as decoded because it has no mip chain. A refused fallback leaves the original
    * unsupported status for the materials panel to report.
@@ -330,27 +333,34 @@ export class VisualTextureSet {
    * @param declined - Submesh indices whose texture the renderer's own loader refused.
    */
   private async decodeTextures(selected: SelectedVisualDescription, declined: Array<number>): Promise<void> {
-    const references: Map<number, string> = new Map(
-      toLoadableTextures(selected.dependencies.textures).map((texture) => [texture.submeshIndex, texture.logicalPath])
-    );
+    const declinedIndices: Set<number> = new Set(declined);
+    const submeshesByPath: Map<string, Array<number>> = new Map();
+
+    for (const { submeshIndex, logicalPath } of toLoadableTextures(selected.dependencies.textures)) {
+      if (!declinedIndices.has(submeshIndex)) {
+        continue;
+      }
+
+      const submeshes: Array<number> = submeshesByPath.get(logicalPath) ?? [];
+
+      submeshes.push(submeshIndex);
+      submeshesByPath.set(logicalPath, submeshes);
+    }
 
     await Promise.all(
-      declined.map(async (submeshIndex) => {
-        const logicalPath: Optional<string> = references.get(submeshIndex);
-
-        if (!logicalPath) {
-          return;
-        }
-
+      [...submeshesByPath].map(async ([logicalPath, submeshes]) => {
         try {
           const png: ArrayBuffer = await visualsRawCommands.readTexture(selected.roots, logicalPath);
+          const texture: Texture = await createDecodedTexture(png);
 
-          this.textureMap.set(submeshIndex, await createDecodedTexture(png));
-          this.textureStatusMap.set(submeshIndex, {
-            reason: null,
-            state: EVisualTextureState.DECODED,
-            submeshIndex,
-          });
+          for (const submeshIndex of submeshes) {
+            this.textureMap.set(submeshIndex, texture);
+            this.textureStatusMap.set(submeshIndex, {
+              reason: null,
+              state: EVisualTextureState.DECODED,
+              submeshIndex,
+            });
+          }
         } catch (error: unknown) {
           // Left as unsupported rather than failed: nothing broke, the format simply decodes nowhere.
           this.log.info(`Texture '${logicalPath}' decodes nowhere:`, transformError(error).message);
