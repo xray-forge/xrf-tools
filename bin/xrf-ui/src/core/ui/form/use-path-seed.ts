@@ -1,4 +1,4 @@
-import { useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 
 import { Nullable, Optional } from "@/lib/types/general";
 
@@ -21,11 +21,6 @@ export interface IPathSeed {
 
 /**
  * A guess at a path that can be superseded before it arrives.
- *
- * Guessing is asynchronous and a user is not obliged to wait for it, so the answer may be worthless by the time it
- * comes back: they may have chosen a path, typed one, or emptied the field meanwhile. Each guess therefore carries the
- * generation it started in and writes only while that generation is still current. A guess that fails writes nothing
- * at all rather than clearing the field, for the same reason.
  *
  * @param options - The guess and where its answer goes.
  * @param options.seed - Produces the guess.
@@ -64,6 +59,8 @@ export function usePathSeed({ seed, onSeeded }: IPathSeedOptions): IPathSeed {
       })
       .catch(() => undefined);
   }, []);
+
+  useEffect(() => supersede, [supersede]);
 
   return { request, supersede };
 }
