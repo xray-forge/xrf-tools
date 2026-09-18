@@ -61,6 +61,8 @@ describe("TexturePreview", () => {
     expect(getByTestId("texture-preview")).toBeTruthy();
     expect(getByText("Reading…")).toBeTruthy();
     expect(queryByText("256 x 128 · DXT5 · 9 mips")).toBeNull();
+    expect(getByTestId("texture-preview-body")).toHaveClass("bg-viewport-backdrop");
+    expect(getByTestId("texture-preview-body")).not.toHaveClass("checkerboard");
   });
 
   it("says nothing is open when nothing is", () => {
@@ -81,6 +83,7 @@ describe("TexturePreview", () => {
     );
 
     expect(getByTestId("texture-surface")).toBeTruthy();
+    expect(getByTestId("texture-preview-body")).toHaveClass("checkerboard");
     expect(queryByText("Reading…")).toBeNull();
   });
 
@@ -90,10 +93,12 @@ describe("TexturePreview", () => {
     service.selected = AsyncState.ready(SHAPED);
     service.preview = AsyncState.loading();
 
-    const { getByText, queryByTestId } = renderWithProviders(<TexturePreview />, { container });
+    const { getByText, getByTestId, queryByTestId } = renderWithProviders(<TexturePreview />, { container });
 
     expect(getByText("Reading…")).toBeTruthy();
     expect(queryByTestId("texture-surface")).toBeNull();
+    expect(getByTestId("texture-preview-body")).toHaveClass("bg-viewport-backdrop");
+    expect(getByTestId("texture-preview-body")).not.toHaveClass("checkerboard");
   });
 
   it("keeps surface mode waiting while the next description is loading", () => {

@@ -20,7 +20,7 @@ export function TexturePreviewFrame({
   id,
   className,
   caption,
-  isCheckered = true,
+  isCheckered = false,
   children,
 }: ITexturePreviewFrameProps): ReactElement {
   return (
@@ -28,7 +28,7 @@ export function TexturePreviewFrame({
       <div
         data-testid={tid(dataTestId, "body")}
         id={uid(id, "body")}
-        className={cn("flex min-h-0 min-w-0 grow flex-col", isCheckered ? "checkerboard" : null)}
+        className={cn("flex min-h-0 min-w-0 grow flex-col", isCheckered ? "checkerboard" : "bg-viewport-backdrop")}
       >
         {children}
       </div>
