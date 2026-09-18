@@ -74,13 +74,21 @@ export function TextureSurface({
     dragRef.current = { x: event.clientX, y: event.clientY };
   }, []);
 
-  const onPointerUp = useCallback((event: PointerEvent<HTMLDivElement>): void => {
+  const onPointerEnd = useCallback((event: PointerEvent<HTMLDivElement>): void => {
+    // The child canvas also captures pointers through OrbitControls; its capture loss is not ours.
+    if (event.type === "lostpointercapture" && event.target !== event.currentTarget) {
+      return;
+    }
+
     if (!dragRef.current) {
       return;
     }
 
     dragRef.current = null;
-    event.currentTarget.releasePointerCapture(event.pointerId);
+
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
   }, []);
 
   useEffect(() => {
@@ -115,7 +123,9 @@ export function TextureSurface({
         className={cn("min-h-0 min-w-0 grow overflow-hidden", isUploading || isUntextured ? "invisible" : null)}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
-        onPointerUp={onPointerUp}
+        onPointerUp={onPointerEnd}
+        onPointerCancel={onPointerEnd}
+        onLostPointerCapture={onPointerEnd}
       />
 
       {isUploading ? (
