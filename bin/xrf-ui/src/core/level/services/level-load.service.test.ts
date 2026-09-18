@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
-import { isObservableProp } from "@wirestate/mobx";
+import { isObservableProp, reaction } from "@wirestate/mobx";
 
 import { createRoots } from "@/core/assets/lib";
 import { SelectedLevelDescription } from "@/core/ipc/types/xrf-app";
@@ -11,7 +11,7 @@ import { mockInvoke, resetMockInvoke, setMockInvokeResponses } from "@/fixtures/
 import { MockVisualBuffer } from "@/fixtures/mocks/visual.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 
-import { LevelLoadService } from "./level-load.service";
+import { IDLE_LEVEL_STREAM, LevelLoadService } from "./level-load.service";
 
 const ROOTS: XrayRoots = createRoots(["C:\\game\\db"]);
 const ORIGIN = { x: 0, y: 0, z: 0 };
@@ -194,5 +194,74 @@ describe("LevelLoadService", () => {
 
     expect(service.level.value).toBeNull();
     expect(service.level.error?.message).toBe("level carries no visuals chunk, so it draws nothing");
+  });
+});
+
+describe("LevelLoadService streaming progress", () => {
+  beforeEach(() => {
+    resetMockInvoke();
+  });
+
+  it("reports nothing in flight before anything is asked for", () => {
+    const { service } = mockInjectedService(LevelLoadService);
+
+    expect(service.streaming).toEqual(IDLE_LEVEL_STREAM);
+    expect(service.isStreaming).toBe(false);
+  });
+
+  it("counts the sectors of a plan as they arrive", async () => {
+    const { level, description, buffer } = mockStreamable([outlineAt(0, 1), outlineAt(1, 2), outlineAt(2, 3)]);
+    const { service } = mockInjectedService(LevelLoadService);
+    const seen: Array<string> = [];
+
+    armLevel(level, description, buffer);
+
+    await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS);
+
+    const stop = reaction(
+      () => service.streaming,
+      (progress) => seen.push(`${progress.loaded}/${progress.total}`)
+    );
+
+    await service.stream(ORIGIN);
+
+    stop();
+
+    // The last increment and the reset land in one tick, so the count runs out at the sector before the last and
+    // then goes idle rather than showing a full bar nobody sees.
+    expect(seen).toEqual(["0/3", "1/3", "2/3", "0/0"]);
+  });
+
+  it("stops reporting a read that is not coming once the plan is done", async () => {
+    const { level, description, buffer } = mockStreamable([outlineAt(0, 1)]);
+    const { service } = mockInjectedService(LevelLoadService);
+
+    armLevel(level, description, buffer);
+
+    await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS);
+    await service.stream(ORIGIN);
+
+    expect(service.streaming).toEqual(IDLE_LEVEL_STREAM);
+    expect(service.isStreaming).toBe(false);
+  });
+
+  // A failed read would otherwise leave a viewer showing progress towards sectors that will never land.
+  it("stops reporting when a read fails", async () => {
+    const { level, description, buffer } = mockStreamable([outlineAt(0, 1)]);
+    const { service } = mockInjectedService(LevelLoadService);
+
+    armLevel(level, description, buffer);
+
+    await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS);
+
+    setMockInvokeResponses({
+      ["plugin:levels|open_sector"]: mockSessionResponse(() => {
+        throw new Error("sector geometry was not read");
+      }),
+    });
+
+    await expect(service.stream(ORIGIN)).rejects.toThrow();
+
+    expect(service.streaming).toEqual(IDLE_LEVEL_STREAM);
   });
 });

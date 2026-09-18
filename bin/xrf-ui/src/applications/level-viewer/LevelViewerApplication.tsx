@@ -1,14 +1,14 @@
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useState } from "react";
 
-import { LevelPreviewViewport } from "@/core/level/components/preview/LevelPreviewViewport";
+import { SelectedLevelDescription } from "@/core/ipc/types/xrf-app";
+import { LevelPreviewLayout } from "@/core/level/components/preview/LevelPreviewLayout";
 import { ILevelPoint } from "@/core/level/lib/level-residency";
-import { EMPTY_LEVEL_STATS, ILevelStats } from "@/core/level/lib/level-stats";
 import { LevelLoadService } from "@/core/level/services";
 import { BaseComponentProps } from "@/lib/dom/element-types";
+import { Nullable } from "@/lib/types/general";
 
 import { LevelViewerOpenForm } from "./components/LevelViewerOpenForm";
-import { LevelViewerStats } from "./components/LevelViewerStats";
 
 /**
  * Fly a compiled level, streaming its sectors as the camera reaches them.
@@ -20,29 +20,40 @@ export function LevelViewerApplication({
 }: BaseComponentProps): ReactElement {
   const loadService: LevelLoadService = useInjection(LevelLoadService);
 
-  const [stats, setStats] = useState<ILevelStats>(EMPTY_LEVEL_STATS);
+  const [isPickerOpen, setPickerOpen] = useState(false);
+
+  const description: Nullable<SelectedLevelDescription> = loadService.level.value?.selected.value ?? null;
+
+  const onDescribeLevelName = useCallback((description: SelectedLevelDescription) => {
+    return description.source.kind === "directory" ? description.source.path : description.source.logicalPath;
+  }, []);
 
   const onCameraMoved = useCallback((point: ILevelPoint) => void loadService.stream(point), [loadService]);
 
-  if (!loadService.level.value) {
-    return <LevelViewerOpenForm />;
+  const onBack = useCallback(() => setPickerOpen(true), []);
+
+  const onFinished = useCallback(() => setPickerOpen(false), []);
+
+  const onDeselect = useCallback(() => void loadService.close(), [loadService]);
+
+  if (isPickerOpen || (!description && !loadService.level.isLoading)) {
+    return <LevelViewerOpenForm onFinished={onFinished} />;
   }
 
   return (
-    <div
+    <LevelPreviewLayout
       data-testid={dataTestId}
       id={id}
       className={className}
-      style={{ display: "flex", flexDirection: "column", height: "100%", position: "relative" }}
-    >
-      <LevelPreviewViewport
-        sectors={loadService.sectors}
-        bounds={loadService.level.value.selected.value.bounds}
-        onCameraMoved={onCameraMoved}
-        onStats={setStats}
-      />
-
-      <LevelViewerStats stats={stats} />
-    </div>
+      sectors={loadService.sectors}
+      bounds={description?.bounds ?? null}
+      name={description ? onDescribeLevelName(description) : null}
+      streaming={loadService.streaming}
+      isLoading={loadService.level.isLoading}
+      error={loadService.level.error?.message}
+      onCameraMoved={onCameraMoved}
+      onBack={onBack}
+      onDeselect={onDeselect}
+    />
   );
 }

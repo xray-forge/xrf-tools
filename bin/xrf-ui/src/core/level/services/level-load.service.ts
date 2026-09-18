@@ -1,5 +1,5 @@
 import { Injectable, OnDeactivation } from "@wirestate/core";
-import { BoundAction, Observable, runInAction } from "@wirestate/mobx";
+import { BoundAction, Computed, Observable, runInAction } from "@wirestate/mobx";
 
 import { transformError } from "@/core/error/lib";
 import { levelsCommands } from "@/core/ipc/commands/levels";
@@ -25,9 +25,20 @@ import { Logger, Timer } from "@/lib/logging";
 import { call, cancelFlow, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 import { Nullable } from "@/lib/types/general";
 
+/** Nothing in flight, which is also what a viewer sees before it has asked for anything. */
+export const IDLE_LEVEL_STREAM: ILevelStreamProgress = { loaded: 0, total: 0 };
+
 /** A level that is open: what it is, and where its sectors are. */
 export interface IOpenLevel {
   selected: SessionSnapshot<SelectedLevelDescription>;
+}
+
+/** How far through the sectors a camera asked for the loader has got. */
+export interface ILevelStreamProgress {
+  /** Sectors the current plan asked for, or zero when nothing is streaming. */
+  total: number;
+  /** Sectors of it that have arrived. */
+  loaded: number;
 }
 
 /**
@@ -52,6 +63,17 @@ export class LevelLoadService {
   /** How much of the level is held at once, and how far out it is worth holding. */
   @Observable()
   public residency: ILevelResidencyOptions = DEFAULT_LEVEL_RESIDENCY;
+
+  @Observable()
+  public streaming: ILevelStreamProgress = IDLE_LEVEL_STREAM;
+
+  /**
+   * @returns Whether sectors are on their way.
+   */
+  @Computed()
+  public get isStreaming(): boolean {
+    return this.streaming.total > 0;
+  }
 
   @OnDeactivation()
   public onDeactivation(): void {
@@ -141,10 +163,25 @@ export class LevelLoadService {
       this.held.release(sector);
     }
 
+    runInAction(() => {
+      this.streaming = { loaded: 0, total: plan.load.length };
+    });
+
     // Nearest first, and published as each arrives: a viewer draws what is nearest while the rest is still reading,
     // rather than waiting for the whole plan.
-    for (const sector of plan.load) {
-      yield* this.readSector(sessionId, sector);
+    try {
+      for (const sector of plan.load) {
+        yield* this.readSector(sessionId, sector);
+
+        runInAction(() => {
+          this.streaming = { loaded: this.streaming.loaded + 1, total: this.streaming.total };
+        });
+      }
+    } finally {
+      // Cleared however the flow ends, so a cancelled move does not leave a viewer reporting a read that is not coming.
+      runInAction(() => {
+        this.streaming = IDLE_LEVEL_STREAM;
+      });
     }
 
     this.publishSectors();
@@ -209,6 +246,7 @@ export class LevelLoadService {
   private clearView(): void {
     runInAction(() => {
       this.level = this.level.asIdle();
+      this.streaming = IDLE_LEVEL_STREAM;
       this.releaseSectors();
     });
   }

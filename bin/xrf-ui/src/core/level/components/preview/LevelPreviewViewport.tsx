@@ -94,5 +94,5 @@ export function LevelPreviewViewport({
     }
   }, [bounds]);
 
-  return <div data-testid={dataTestId} id={id} className={cn(className, "h-full")} ref={containerRef} />;
+  return <div data-testid={dataTestId} id={id} className={cn(className, "h-full w-full")} ref={containerRef} />;
 }

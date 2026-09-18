@@ -1,0 +1,59 @@
+import { useInjection } from "@wirestate/react";
+import { ReactElement } from "react";
+
+import { ILevelStats } from "@/core/level/lib/level-stats";
+import { LevelLoadService } from "@/core/level/services";
+import {
+  EditorPanel,
+  EditorPanelEmpty,
+  EditorPanelProperty,
+  EditorPanelSection,
+} from "@/core/shell/editor/EditorPanel";
+import { BaseComponentProps } from "@/lib/dom/element-types";
+import { formatBytes } from "@/lib/memory/format";
+
+interface ILevelStreamPanelProps extends BaseComponentProps {
+  stats: ILevelStats;
+}
+
+/**
+ * What the viewport is holding and what it costs, measured rather than estimated.
+ */
+export function LevelStreamPanel({
+  "data-testid": dataTestId = "level-stream-panel",
+  id,
+  className,
+  stats,
+}: ILevelStreamPanelProps): ReactElement {
+  const service: LevelLoadService = useInjection(LevelLoadService);
+
+  if (!service.level.value) {
+    return (
+      <EditorPanel data-testid={dataTestId} id={id} className={className} title={"Streaming"}>
+        <EditorPanelEmpty label={"No level open. Open one to see what it costs to draw."} />
+      </EditorPanel>
+    );
+  }
+
+  return (
+    <EditorPanel data-testid={dataTestId} id={id} className={className} title={"Streaming"}>
+      <EditorPanelSection title={"Resident"} isFirst>
+        <EditorPanelProperty label={"Sectors"} value={stats.sectors} />
+        <EditorPanelProperty label={"Draw calls"} value={stats.draws} />
+        <EditorPanelProperty label={"Triangles"} value={stats.triangles} />
+        <EditorPanelProperty label={"Geometry"} value={formatBytes(stats.bytes)} />
+      </EditorPanelSection>
+
+      <EditorPanelSection title={"Frame"}>
+        <EditorPanelProperty label={"Frame time"} value={`${stats.frameTime.toFixed(1)} ms`} />
+        <EditorPanelProperty label={"Frames a second"} value={stats.framesPerSecond.toFixed(0)} />
+      </EditorPanelSection>
+
+      <EditorPanelSection title={"Budget"}>
+        <EditorPanelProperty label={"Sector budget"} value={service.residency.maxSectors} />
+        <EditorPanelProperty label={"Load distance"} value={`${service.residency.loadDistance.toFixed(0)} m`} />
+        <EditorPanelProperty label={"Keep distance"} value={`${service.residency.keepDistance.toFixed(0)} m`} />
+      </EditorPanelSection>
+    </EditorPanel>
+  );
+}
