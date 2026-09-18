@@ -5,6 +5,8 @@ use serde::{Deserialize, Serialize};
 #[serde(rename_all = "camelCase")]
 pub struct LevelGeomIndexBuffer {
   pub index_count: u32,
+  /// Where the indices start, as an offset into the chunk that holds them.
+  pub payload_offset: u64,
 }
 
 impl LevelGeomIndexBuffer {

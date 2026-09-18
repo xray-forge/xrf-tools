@@ -9,6 +9,8 @@ pub struct LevelGeomVertexBuffer {
   /// The elements a vertex is made of, without the terminator that ends them in the file.
   pub declaration: Vec<LevelGeomVertexElement>,
   pub vertex_count: u32,
+  /// Where the vertices start, as an offset into the chunk that holds them.
+  pub payload_offset: u64,
 }
 
 impl LevelGeomVertexBuffer {

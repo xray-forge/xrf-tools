@@ -3,6 +3,7 @@ mod level_details_tests;
 mod level_env_mod_tests;
 mod level_fog_vol_tests;
 mod level_game_tests;
+mod level_geom_source_tests;
 mod level_geom_tests;
 mod level_hom_tests;
 mod level_lights_tests;

@@ -73,20 +73,28 @@ impl LevelGeomFile {
   /// Returns an error when a required chunk is absent, a declaration names a type `D3DDECLTYPE` does not, or a
   /// chunk does not end exactly where its buffers say it should.
   pub fn read_from_chunk<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
-    let chunks: Vec<ChunkReader<D>> = reader.read_children()?;
+    Self::read_from_children::<T, _>(&reader.read_children()?)
+  }
 
-    let mut vertices: ChunkReader<D> = find_required_chunk_by_id(&chunks, Self::VERTEX_BUFFERS_CHUNK_ID)?;
+  /// Reads render geometry from children already read from it.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when a required chunk is absent, a declaration names a type `D3DDECLTYPE` does not, or a
+  /// chunk does not end exactly where its buffers say it should.
+  pub fn read_from_children<T: ByteOrder, D: ChunkDataSource>(chunks: &[ChunkReader<D>]) -> XrfResult<Self> {
+    let mut vertices: ChunkReader<D> = find_required_chunk_by_id(chunks, Self::VERTEX_BUFFERS_CHUNK_ID)?;
     let vertex_buffers: Vec<LevelGeomVertexBuffer> = Self::read_vertex_buffers::<T, D>(&mut vertices)?;
 
     vertices.assert_read("Expect all data to be read from level render geometry vertex buffers chunk")?;
 
-    let mut indices: ChunkReader<D> = find_required_chunk_by_id(&chunks, Self::INDEX_BUFFERS_CHUNK_ID)?;
+    let mut indices: ChunkReader<D> = find_required_chunk_by_id(chunks, Self::INDEX_BUFFERS_CHUNK_ID)?;
     let index_buffers: Vec<LevelGeomIndexBuffer> = Self::read_index_buffers::<T, D>(&mut indices)?;
 
     indices.assert_read("Expect all data to be read from level render geometry index buffers chunk")?;
 
     let slide_windows: Vec<LevelGeomSlideWindowItem> =
-      match find_optional_chunk_by_id(&chunks, Self::SLIDE_WINDOWS_CHUNK_ID) {
+      match find_optional_chunk_by_id(chunks, Self::SLIDE_WINDOWS_CHUNK_ID) {
         Some(mut chunk) => {
           let windows: Vec<LevelGeomSlideWindowItem> = Self::read_slide_windows::<T, D>(&mut chunk)?;
 
@@ -117,9 +125,12 @@ impl LevelGeomFile {
 
     for _ in 0..count {
       let declaration: Vec<LevelGeomVertexElement> = Self::read_declaration::<T, D>(reader)?;
+      let vertex_count: u32 = reader.read_u32::<T>()?;
+
       let buffer: LevelGeomVertexBuffer = LevelGeomVertexBuffer {
         declaration,
-        vertex_count: reader.read_u32::<T>()?,
+        payload_offset: reader.read_bytes_len(),
+        vertex_count,
       };
 
       let payload: u64 = buffer.get_payload_size().ok_or_else(|| {
@@ -169,8 +180,11 @@ impl LevelGeomFile {
       reader.new_bounded_vec(count as u64, 4, "level render geometry index buffers")?;
 
     for _ in 0..count {
+      let index_count: u32 = reader.read_u32::<T>()?;
+
       let buffer: LevelGeomIndexBuffer = LevelGeomIndexBuffer {
-        index_count: reader.read_u32::<T>()?,
+        index_count,
+        payload_offset: reader.read_bytes_len(),
       };
 
       Self::skip::<D>(reader, buffer.get_payload_size(), "indices")?;

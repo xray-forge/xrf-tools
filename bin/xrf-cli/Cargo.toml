@@ -50,6 +50,7 @@ xrf-shaders = { workspace = true }
 xrf-sound = { workspace = true }
 xrf-spawn = { workspace = true }
 xrf-particles = { workspace = true }
+xrf-chunk = { workspace = true }
 
 [dev-dependencies]
 xrf-chunk = { workspace = true }

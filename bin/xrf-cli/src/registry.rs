@@ -64,7 +64,10 @@ pub fn setup_command_groups() -> Vec<CommandGroup> {
       slug: "level",
       label: "Level",
       about: "Compiled level tools",
-      commands: vec![level::info::InfoCommand::new_box()],
+      commands: vec![
+        level::info::InfoCommand::new_box(),
+        level::verify::VerifyCommand::new_box(),
+      ],
     },
     CommandGroup {
       slug: "ltx",
