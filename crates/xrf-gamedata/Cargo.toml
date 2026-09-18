@@ -12,10 +12,12 @@ uuid = { workspace = true, features = ["v4"] }
 xrf-chunk = { workspace = true }
 xrf-db = { workspace = true }
 xrf-math = { workspace = true }
+xrf-ogf = { workspace = true }
 xrf-dds = { workspace = true }
 xrf-error = { workspace = true }
 xrf-extension = { workspace = true }
 xrf-job = { workspace = true }
+xrf-level = { workspace = true }
 xrf-ltx = { workspace = true }
 xrf-lua = { workspace = true }
 xrf-material = { workspace = true }

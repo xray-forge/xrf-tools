@@ -1,9 +1,10 @@
 use std::collections::{HashMap, HashSet};
 
 use rayon::prelude::*;
-use xrf_db::{OgfFile, OgfResidueCause, OmfFile, ShaderLibraryFile, XRayByteOrder};
+use xrf_db::{OmfFile, ShaderLibraryFile, XRayByteOrder};
 use xrf_error::{XrfError, XrfResult};
 use xrf_job::JobHandle;
+use xrf_ogf::{OgfFile, OgfResidueCause};
 use xrf_output::{OutputOptions, OutputSequence, OutputSlot};
 use xrf_vfs::XrayAssetType as AssetType;
 
@@ -553,11 +554,6 @@ impl<'a> MeshAssetsVerifier<'a> {
   }
 
   /// Reports payload labels that no longer name the motion they are stored with.
-  ///
-  /// A motion is named by its definition and reached through its ordinal, so a divergent label costs release playback
-  /// nothing - but a `_DEBUG` engine build asserts on it, and it marks a bank an editor rewrote without keeping the
-  /// two in step. Reported once per file: the file is the unit that gets fixed, and `xrf-cli omf info` names the
-  /// individual motions on demand.
   fn verify_motion_label_findings(diverging_count: usize, motions_count: usize, path: Option<&str>) -> Vec<Finding> {
     if diverging_count == 0 {
       return Vec::new();
@@ -571,10 +567,6 @@ impl<'a> MeshAssetsVerifier<'a> {
   }
 
   /// A visual the reader accepts only because the engine never reads the bytes it ends with.
-  ///
-  /// Reported rather than tolerated silently: the file is malformed, and this is the one place a modder learns so
-  /// before a patch normalizes it away. Nested children never carry residue, which is a property of the byte stream, so
-  /// this yields nothing for them.
   fn verify_mesh_residue_findings(ogf: &OgfFile, mesh_path: Option<&str>) -> Vec<Finding> {
     let Some(residue) = &ogf.residue else {
       return Vec::new();

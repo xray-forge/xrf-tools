@@ -1,12 +1,15 @@
 //! Synthetic visuals built in code, so the bytes a test reasons about are visible in the test.
 
-use xrf_db::{
+use xrf_math::Vector3d;
+use xrf_ogf::OgfVertexLink;
+use xrf_ogf::{
   OgfBoneIkData, OgfBoneShape, OgfBonesChunk, OgfBox, OgfChildrenChunk, OgfCylinder, OgfDescriptionChunk, OgfFile,
   OgfGeometry, OgfHeaderChunk, OgfJointIkData, OgfJointLimit, OgfKinematicsChunk, OgfObb, OgfSlideWindow, OgfSphere,
-  OgfSwiDataChunk, OgfTextureChunk, OgfVertex, OgfVertexLink, SkeletonMotion, SkeletonMotionDefinition,
-  SkeletonMotionParametersChunk, SkeletonMotionsChunk, SkeletonPart,
+  OgfSwiDataChunk, OgfTextureChunk, OgfVertex,
 };
-use xrf_math::Vector3d;
+use xrf_skeleton::{
+  SkeletonMotion, SkeletonMotionDefinition, SkeletonMotionParametersChunk, SkeletonMotionsChunk, SkeletonPart,
+};
 
 pub(crate) const MODEL_TYPE_SKELETON_ANIM: u8 = 3;
 pub(crate) const MODEL_TYPE_GEOMDEF_PM: u8 = 4;
@@ -146,10 +149,6 @@ pub(crate) const PROGRESSIVE_FINE_TRIANGLES: u16 = 2;
 const PROGRESSIVE_COARSE_ONLY_VERTEX: u16 = 3;
 
 /// A progressive child whose finest detail level is the tail of its index buffer.
-///
-/// The measured case in `gamedata` has 17,850 indices with level zero at offset 14,982, so drawing the
-/// whole buffer draws six times the triangles as stacked shells. This is that shape in miniature: the
-/// leading six indices are the coarse level and must not be drawn.
 pub(crate) fn progressive_child() -> OgfFile {
   progressive_child_with_windows(vec![
     window(PROGRESSIVE_FINE_OFFSET, PROGRESSIVE_FINE_TRIANGLES, 6),
@@ -183,7 +182,7 @@ pub(crate) fn bones(names: &[(&str, &str)]) -> OgfBonesChunk {
   OgfBonesChunk {
     bones: names
       .iter()
-      .map(|(name, parent)| xrf_db::OgfBone {
+      .map(|(name, parent)| xrf_ogf::OgfBone {
         name: String::from(*name),
         parent: String::from(*parent),
         rotation: (vector(0.0, 0.0, 0.0), vector(0.0, 0.0, 0.0), vector(0.0, 0.0, 0.0)),
@@ -195,9 +194,6 @@ pub(crate) fn bones(names: &[(&str, &str)]) -> OgfBonesChunk {
 }
 
 /// One bone's bind record, carrying nothing but the transform a pose is composed from.
-///
-/// Every physics field is the "none" value: shape type 0 and joint type 4 are what the engine reads as a bone with no
-/// collision primitive and no joint, so a fixture states a bind pose without also stating physics it does not test.
 pub(crate) fn bind(rotation: Vector3d, position: Vector3d) -> OgfBoneIkData {
   OgfBoneIkData {
     version: 1,
@@ -252,9 +248,6 @@ pub(crate) fn kinematics(motion_refs: &[&str]) -> OgfKinematicsChunk {
 }
 
 /// The two chunks a self-animated visual embeds, which a visual carries together or not at all.
-///
-/// Payload labels are intentionally not the motion names: a bank is named by its definitions, and real files carry
-/// stale or non-text labels beside them.
 pub(crate) fn embedded_motions(names: &[&str]) -> (SkeletonMotionsChunk, SkeletonMotionParametersChunk) {
   (
     SkeletonMotionsChunk {

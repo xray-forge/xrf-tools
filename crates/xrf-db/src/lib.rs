@@ -5,15 +5,12 @@ pub(crate) mod efd;
 pub(crate) mod export;
 pub(crate) mod file_import;
 pub(crate) mod gamemtl;
-pub(crate) mod level;
 pub(crate) mod light_anim;
-pub(crate) mod ogf;
 pub(crate) mod omf;
 pub(crate) mod particles;
 pub(crate) mod ppe;
 pub(crate) mod shader_compiler;
 pub(crate) mod shader_library;
-pub(crate) mod skeleton;
 pub(crate) mod sound;
 pub(crate) mod spawn;
 pub(crate) mod thm;
@@ -27,33 +24,12 @@ pub use xrf_chunk::XRayByteOrder;
 pub use crate::anm::anm_file::{ANM_CHANNELS, ANM_DEFAULT_FPS, AnmFile};
 pub use crate::data::animation::animation_envelope::AnimationEnvelope;
 pub use crate::data::animation::animation_key::{AnimationInterpolation, AnimationKey};
-pub use crate::data::detail::detail_model::DetailModel;
-pub use crate::data::detail::detail_vertex::DetailVertex;
-pub use crate::data::ogf::ogf_bone::OgfBone;
-pub use crate::data::ogf::ogf_bone_ik_data::OgfBoneIkData;
-pub use crate::data::ogf::ogf_bone_shape::OgfBoneShape;
-pub use crate::data::ogf::ogf_box::*;
-pub use crate::data::ogf::ogf_cylinder::OgfCylinder;
-pub use crate::data::ogf::ogf_geometry::*;
-pub use crate::data::ogf::ogf_joint_ik_data::OgfJointIkData;
-pub use crate::data::ogf::ogf_joint_limit::OgfJointLimit;
-pub use crate::data::ogf::ogf_model_type::OgfModelType;
-pub use crate::data::ogf::ogf_obb::OgfObb;
-pub use crate::data::ogf::ogf_slide_window::*;
-pub use crate::data::ogf::ogf_sphere::*;
-pub use crate::data::ogf::ogf_vertex::*;
-pub use crate::data::ogf::ogf_vertices::*;
 pub use crate::data::particles::particle_action::ParticleAction;
 pub use crate::data::particles::particle_action_type::ParticleActionType;
 pub use crate::data::particles::particle_effect::ParticleEffect;
 pub use crate::data::particles::particle_effect_sprite::ParticleEffectSprite;
 pub use crate::data::particles::particle_group::ParticleGroup;
 pub use crate::data::particles::particle_group_effect::ParticleGroupEffect;
-pub use crate::data::skeleton::skeleton_motion::*;
-pub use crate::data::skeleton::skeleton_motion_definition::SkeletonMotionDefinition;
-pub use crate::data::skeleton::skeleton_motion_keys::{Quaternion, SAMPLE_FPS, SkeletonBoneMotion};
-pub use crate::data::skeleton::skeleton_motion_mark::SkeletonMotionMark;
-pub use crate::data::skeleton::skeleton_part::SkeletonPart;
 pub use crate::data::{
   alife::{
     alife_object::AlifeObject,
@@ -84,7 +60,7 @@ pub use crate::data::{
     },
   },
   artefact_spawn::artefact_spawn_point::ArtefactSpawnPoint,
-  generic::{rgb_color::RgbColor, shape::Shape, time::Time, u32_bytes::U32Bytes},
+  generic::{shape::Shape, time::Time, u32_bytes::U32Bytes},
   graph::{
     graph_cross_table::GraphCrossTable, graph_edge::GraphEdge, graph_header::GraphHeader, graph_level::GraphLevel,
     graph_level_point::GraphLevelPoint, graph_vertex::GraphVertex,
@@ -99,62 +75,9 @@ pub use crate::gamemtl::gamemtl_acoustics::*;
 pub use crate::gamemtl::gamemtl_file::*;
 pub use crate::gamemtl::gamemtl_material::*;
 pub use crate::gamemtl::gamemtl_pair::*;
-pub use crate::level::level_ai_file::*;
-pub use crate::level::level_cform_file::*;
-pub use crate::level::level_details_file::*;
-pub use crate::level::level_details_slot::*;
-pub use crate::level::level_env_mod_file::*;
-pub use crate::level::level_env_modifier::*;
-pub use crate::level::level_file::*;
-pub use crate::level::level_fog_vol_file::*;
-pub use crate::level::level_fog_volume::*;
-pub use crate::level::level_game_file::*;
-pub use crate::level::level_game_rpoint::*;
-pub use crate::level::level_game_way::*;
-pub use crate::level::level_game_way_link::*;
-pub use crate::level::level_game_way_point::*;
-pub use crate::level::level_geom_file::*;
-pub use crate::level::level_geom_index_buffer::*;
-pub use crate::level::level_geom_slide_window::*;
-pub use crate::level::level_geom_slide_window_item::*;
-pub use crate::level::level_geom_vertex_buffer::*;
-pub use crate::level::level_geom_vertex_element::*;
-pub use crate::level::level_header_chunk::*;
-pub use crate::level::level_hom_file::*;
-pub use crate::level::level_hom_polygon::*;
-pub use crate::level::level_light::*;
-pub use crate::level::level_lights_chunk::*;
-pub use crate::level::level_lights_file::*;
-pub use crate::level::level_ps_static_file::*;
-pub use crate::level::level_ps_static_placement::*;
-pub use crate::level::level_shader_entry::*;
-pub use crate::level::level_shaders_chunk::*;
-pub use crate::level::level_snd_static_file::*;
-pub use crate::level::level_snd_static_sound::*;
-pub use crate::level::level_snd_static_window::*;
-pub use crate::level::level_som_file::*;
-pub use crate::level::level_som_polygon::*;
-pub use crate::level::level_visual::*;
-pub use crate::level::level_visuals_chunk::*;
-pub use crate::level::level_wallmark::*;
-pub use crate::level::level_wallmark_slot::*;
-pub use crate::level::level_wallmark_vertex::*;
-pub use crate::level::level_wallmarks_file::*;
 pub use crate::light_anim::light_anim_file::*;
 pub use crate::light_anim::light_anim_item::*;
 pub use crate::light_anim::light_anim_key::*;
-pub use crate::ogf::chunks::{
-  ogf_bones_chunk::OgfBonesChunk, ogf_children_chunk::OgfChildrenChunk, ogf_description_chunk::OgfDescriptionChunk,
-  ogf_geometry_container_chunk::OgfGeometryContainerChunk, ogf_header_chunk::OgfHeaderChunk,
-  ogf_ik_data_chunk::OgfIkDataChunk, ogf_kinematics_chunk::OgfKinematicsChunk, ogf_swi_data_chunk::OgfSwiDataChunk,
-  ogf_texture_chunk::OgfTextureChunk,
-};
-pub use crate::ogf::ogf_file::*;
-pub use crate::ogf::ogf_motion_refs_processor::*;
-pub use crate::ogf::ogf_refs_patch_report::*;
-pub use crate::ogf::ogf_texture_refs_processor::*;
-pub use crate::ogf::residue::*;
-pub use crate::ogf::survey::*;
 pub use crate::omf::omf_file::*;
 pub use crate::omf::omf_motions_processor::*;
 pub use crate::particles::chunks::{
@@ -174,8 +97,6 @@ pub use crate::shader_library::shader_blender_property_kind::*;
 pub use crate::shader_library::shader_blender_property_value::*;
 pub use crate::shader_library::shader_blender_token::*;
 pub use crate::shader_library::shader_library_file::*;
-pub use crate::skeleton::chunks::skeleton_motion_parameters_chunk::SkeletonMotionParametersChunk;
-pub use crate::skeleton::chunks::skeleton_motions_chunk::SkeletonMotionsChunk;
 pub use crate::sound::sound_environment::*;
 pub use crate::sound::sound_environment_file::*;
 pub use crate::spawn::chunks::{

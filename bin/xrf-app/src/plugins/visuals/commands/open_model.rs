@@ -2,8 +2,8 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use tauri::State;
-use xrf_db::OgfFile;
 use xrf_material::{XrayMaterialDescriptor, XrayMaterialResolver, XraySurfaceDescriptor, XraySurfaceResolver};
+use xrf_ogf::OgfFile;
 use xrf_vfs::{XrayAsset, XrayProbe, XrayRoots};
 use xrf_visual::{VisualDependencies, VisualDescription, VisualPackage, VisualPacker};
 

@@ -1,41 +1,24 @@
 use serde::Serialize;
-use xrf_db::{
-  OgfBone, OgfBoneIkData, SAMPLE_FPS, SkeletonBoneMotion, SkeletonMotion, SkeletonMotionDefinition, SkeletonPart,
-  XRayByteOrder,
-};
+use xrf_db::XRayByteOrder;
 use xrf_error::{XrfError, XrfResult};
+use xrf_ogf::{OgfBone, OgfBoneIkData};
+use xrf_skeleton::{SAMPLE_FPS, SkeletonBoneMotion, SkeletonMotion, SkeletonMotionDefinition, SkeletonPart};
 
 use crate::data::visual_description::VisualTransform;
 use crate::pack::visual_transform::BindTransform;
 
 /// What one baked motion is, beside the frames themselves.
-///
-/// Baked rather than sampled on demand because playback runs at thirty frames a second and every frame would otherwise
-/// be a round trip. A measured motion averages 78 frames, so a 47 bone skeleton bakes to about 44 kilobytes - cheaper
-/// to send once than to ask for repeatedly.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct VisualMotionBake {
   pub name: String,
   /// Frames the buffer holds: the longest key stream the payload carries, not the count the motion declares.
-  ///
-  /// The two agree whenever any bone is keyed, because a keyed stream stores one key a frame. They part only for a
-  /// motion of nothing but held bones, which is constant however many frames it declares and so bakes to the one
-  /// frame that answers all of them. `duration` follows the frames baked rather than the frames declared, as it
-  /// already does for a motion declaring none.
   pub frame_count: u32,
   pub bone_count: u32,
   /// Seconds playing the motion takes: its frames at the format's sample rate, over its playback speed.
-  ///
-  /// The time the engine spends on it rather than the span of its keyframes, so two motions of the same length that
-  /// play at different speeds report different durations. The raw span is `frame_count` over the sample rate, which a
-  /// consumer indexing frames already holds, so only the speed it was divided by is reported beside this.
   pub duration: f32,
   /// The playback speed the motion's definition declares, as stored.
-  ///
-  /// A value that is not positive is not what `duration` was divided by; see
-  /// [`SkeletonMotionDefinition::get_playback_speed`].
   pub speed: f32,
   /// How many bones the motion actually drives, the rest holding their bind pose.
   pub animated_bone_count: u32,
@@ -44,14 +27,6 @@ pub struct VisualMotionBake {
 }
 
 /// Bone transforms of one baked motion, frame major: frame 0's bones, then frame 1's.
-///
-/// Each bone contributes [`FLOATS_PER_BONE`] floats - the basis `i`, `j`, `k` and the translation `c`, in that order -
-/// which is a column-major 4x4 without its constant fourth row. Whole transforms rather than joint positions because
-/// skinning needs the rotation as well, and a skeleton overlay reads the translation out of the same buffer rather than
-/// being sent a second one.
-///
-/// Kept beside the description rather than inside it because it crosses to a renderer as raw bytes, the same split the
-/// geometry buffer uses.
 #[derive(Clone, Debug, PartialEq)]
 pub struct VisualMotionPose {
   pub description: VisualMotionBake,
@@ -62,16 +37,6 @@ pub struct VisualMotionPose {
 pub const FLOATS_PER_BONE: usize = 12;
 
 /// Bakes every frame of one motion into model-space bone transforms.
-///
-/// Composed in engine space and mirrored only on the way out, exactly as the bind pose is, so every formula here reads
-/// against the engine rather than against a mirrored copy of it.
-///
-/// A bone the motion does not drive keeps its bind transform rather than snapping to the origin, which is what the
-/// engine's remap leaves untouched for a bone no partition names.
-///
-/// The definition and the payload are one motion's two halves, paired by ordinal: the definition names it and says how
-/// to play it, the payload carries its keys. The payload's own label is not its name, so identity comes from the
-/// definition alone.
 ///
 /// # Errors
 ///
@@ -148,11 +113,6 @@ pub fn bake_motion(
 }
 
 /// Frames the decoded runs can tell apart, which is how many distinct poses the payload paid for.
-///
-/// Every stream holds either one key or one a frame, so the longest of them is the motion's real resolution, and the
-/// decoder has already proven a keyed stream against the bytes that follow it. [`SkeletonMotion::count`] carries no such
-/// proof: a held bone costs twenty bytes however many frames the motion declares, so a payload of held bones balances
-/// against any count at all. Reserving by the declared count would ask for a buffer that payload never paid for.
 fn posed_frame_count(runs: &[SkeletonBoneMotion]) -> usize {
   runs
     .iter()
@@ -167,10 +127,6 @@ pub fn total_part_bones(parts: &[SkeletonPart]) -> usize {
 }
 
 /// Which bone each key run drives, resolved by name.
-///
-/// Indexed by bone rather than by run, because that is the order a pose is composed in. A partition naming a bone the
-/// skeleton does not have contributes nothing rather than failing: an omf shared between similar models is normal, and
-/// the bones it does match still animate.
 fn resolve_animated_bones(bones: &[OgfBone], parts: &[SkeletonPart], run_count: usize) -> Vec<Option<usize>> {
   let mut animated: Vec<Option<usize>> = vec![None; bones.len()];
 
@@ -192,9 +148,6 @@ fn resolve_animated_bones(bones: &[OgfBone], parts: &[SkeletonPart], run_count: 
 }
 
 /// Composes local transforms into model space, root downwards.
-///
-/// Iterative for the same reason the bind pose is: the format does not promise parents precede children, and a cycle
-/// has to terminate rather than recurse forever.
 fn compose_chain(locals: &[BindTransform], parents: &[Option<usize>]) -> Vec<Option<BindTransform>> {
   let mut model: Vec<Option<BindTransform>> = vec![None; locals.len()];
 

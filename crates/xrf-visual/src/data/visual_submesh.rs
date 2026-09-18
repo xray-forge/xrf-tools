@@ -1,5 +1,5 @@
 use serde::Serialize;
-use xrf_db::OgfModelType;
+use xrf_ogf::OgfModelType;
 
 use crate::data::visual_bounds::VisualBounds;
 use crate::data::visual_section::{VisualDrawRange, VisualSection};
@@ -85,9 +85,6 @@ pub struct VisualSubmesh {
 
 impl VisualSubmesh {
   /// Whether the submesh stores its geometry as a progressive mesh, which its model type decides.
-  ///
-  /// Asked here rather than inferred from the detail table: a static submesh that happens to carry a slide-window
-  /// chunk is not progressive, and a progressive one whose coarse levels were all unusable still is.
   pub fn is_progressive(&self) -> bool {
     OgfModelType::from_raw(self.model_type).is_some_and(OgfModelType::is_progressive)
   }

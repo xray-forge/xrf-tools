@@ -40,6 +40,8 @@ xrf-job = { workspace = true, features = ["rayon"] }
 xrf-vfs = { workspace = true }
 xrf-db = { workspace = true }
 xrf-math = { workspace = true }
+xrf-ogf = { workspace = true }
+xrf-skeleton = { workspace = true }
 xrf-dds = { workspace = true }
 xrf-dialog = { workspace = true }
 xrf-error = { workspace = true }
@@ -48,6 +50,7 @@ xrf-extension = { workspace = true }
 xrf-gamedata = { workspace = true }
 xrf-ipc-typescript = { workspace = true, optional = true }
 xrf-dltx = { workspace = true }
+xrf-level = { workspace = true }
 xrf-ltx = { workspace = true }
 xrf-ltx-inspect = { workspace = true }
 xrf-material = { workspace = true }

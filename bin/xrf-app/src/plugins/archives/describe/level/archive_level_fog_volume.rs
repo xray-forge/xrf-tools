@@ -1,5 +1,5 @@
 use serde::Serialize;
-use xrf_db::FogVolume;
+use xrf_level::FogVolume;
 use xrf_vfs::XrayAssetType;
 
 use crate::plugins::archives::describe::archive_describe_source::ArchiveDescribeSource;

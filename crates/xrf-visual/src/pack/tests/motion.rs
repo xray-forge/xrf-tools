@@ -1,7 +1,8 @@
 //! Holds what a baked motion reports about itself: the frames it poses, and how long playing them takes.
 
-use xrf_db::{OgfBone, OgfBoneIkData, SAMPLE_FPS, SkeletonMotion, SkeletonMotionDefinition, SkeletonPart};
 use xrf_error::XrfResult;
+use xrf_ogf::{OgfBone, OgfBoneIkData};
+use xrf_skeleton::{SAMPLE_FPS, SkeletonMotion, SkeletonMotionDefinition, SkeletonPart};
 
 use crate::pack::tests::fixtures::{bind, bones, vector};
 use crate::pack::visual_motion::{FLOATS_PER_BONE, VisualMotionPose, bake_motion};
@@ -11,8 +12,6 @@ const RELOAD_FRAMES: u32 = 269;
 const RELOAD_SPEED: f32 = 1.2;
 
 /// One bone's held run: a rotation key and an offset, with the flags that say to read only those.
-///
-/// Twenty bytes whatever the motion's count says, which is the payload independence the frame count is derived around.
 fn held_run() -> (u8, Vec<u8>) {
   // `FL_R_KEY_ABSENT`, so the bone stores one key rather than one per frame, and no checksum precedes it.
   (1 << 1, vec![0; 8 + 12])

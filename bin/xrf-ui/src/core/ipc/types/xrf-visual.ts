@@ -3,38 +3,17 @@
 import { Vector3d } from "@/core/ipc/types/xrf-math";
 import { XrayResolution } from "@/core/ipc/types/xrf-vfs";
 
-/**
- * One bone of a visual's skeleton, as a name and the name of its parent.
- *
- * A root bone carries an empty parent. Names rather than indices, because that is how OGF stores the
- * hierarchy and a tree can be rebuilt from them without further work.
- */
+/** One bone of a visual's skeleton, as a name and the name of its parent. */
 export type VisualBone = {
   name: string;
   parent: string;
   /** Index of the parent in this same list, or `None` for a root or a parent no bone carries. */
   parentIndex: number | null;
-  /**
-   * The bone's whole bind transform in model space, or `None` when the file carries no IK chunk.
-   *
-   * The whole transform rather than only the joint position, because skinning needs its inverse: a vertex is posed as
-   * `animated_model * inverse(bind_model)` (`SkeletonCustom.cpp:508`), and the position alone cannot produce that.
-   * `c` is the joint, which is what a skeleton overlay draws.
-   */
+  /** The bone's whole bind transform in model space, or `None` when the file carries no IK chunk. */
   bindTransform: VisualTransform | null;
 };
 
-/**
- * A visual's extent, as a box and a sphere.
- *
- * A description carries this twice, unreconciled: once as the values the OGF header declares and
- * once as the values its geometry actually spans. A file whose declared extent disagrees with its
- * vertices then shows the disagreement instead of silently mis-framing a camera.
- *
- * A computed sphere is centred on the computed box and reaches the furthest vertex from that
- * centre. That is an enclosing sphere rather than the minimal one, so a small disagreement with a
- * declared sphere is expected and only a large one is interesting.
- */
+/** A visual's extent, as a box and a sphere. */
 export type VisualBounds = {
   boundingBox: VisualBox;
   boundingSphere: VisualSphere;
@@ -58,13 +37,7 @@ export type VisualDependencies = {
   motions: Array<VisualMotionDependency>;
 };
 
-/**
- * Everything about a packed visual except the bytes themselves.
- *
- * The counterpart of the geometry buffer: a consumer reads this first, then asks for the buffer and
- * builds views from the byte ranges each submesh carries. The reported total buffer length makes a
- * mismatched description and buffer detectable.
- */
+/** Everything about a packed visual except the bytes themselves. */
 export type VisualDescription = {
   version: number;
   modelType: number;
@@ -114,39 +87,15 @@ export type VisualGeometry = {
   bounds: VisualBounds;
 };
 
-/**
- * What one baked motion is, beside the frames themselves.
- *
- * Baked rather than sampled on demand because playback runs at thirty frames a second and every frame would otherwise
- * be a round trip. A measured motion averages 78 frames, so a 47 bone skeleton bakes to about 44 kilobytes - cheaper
- * to send once than to ask for repeatedly.
- */
+/** What one baked motion is, beside the frames themselves. */
 export type VisualMotionBake = {
   name: string;
-  /**
-   * Frames the buffer holds: the longest key stream the payload carries, not the count the motion declares.
-   *
-   * The two agree whenever any bone is keyed, because a keyed stream stores one key a frame. They part only for a
-   * motion of nothing but held bones, which is constant however many frames it declares and so bakes to the one
-   * frame that answers all of them. `duration` follows the frames baked rather than the frames declared, as it
-   * already does for a motion declaring none.
-   */
+  /** Frames the buffer holds: the longest key stream the payload carries, not the count the motion declares. */
   frameCount: number;
   boneCount: number;
-  /**
-   * Seconds playing the motion takes: its frames at the format's sample rate, over its playback speed.
-   *
-   * The time the engine spends on it rather than the span of its keyframes, so two motions of the same length that
-   * play at different speeds report different durations. The raw span is `frame_count` over the sample rate, which a
-   * consumer indexing frames already holds, so only the speed it was divided by is reported beside this.
-   */
+  /** Seconds playing the motion takes: its frames at the format's sample rate, over its playback speed. */
   duration: number | null;
-  /**
-   * The playback speed the motion's definition declares, as stored.
-   *
-   * A value that is not positive is not what `duration` was divided by; see
-   * [`SkeletonMotionDefinition::get_playback_speed`].
-   */
+  /** The playback speed the motion's definition declares, as stored. */
   speed: number | null;
   /** How many bones the motion actually drives, the rest holding their bind pose. */
   animatedBoneCount: number;
@@ -242,14 +191,7 @@ export type VisualTextureDependency = {
   resolution: XrayResolution;
 };
 
-/**
- * One transform in renderer space: three basis vectors and a translation.
- *
- * Four vectors rather than sixteen floats because that is what it is - the fourth row of a 4x4 is never anything but
- * `0 0 0 1` here - and because `i`, `j`, `k`, `c` are the names the engine's own `Fmatrix` uses, so a value crossing
- * the wire reads against the source it was composed from. Laid out in this order, the floats are already a
- * column-major 4x4's first three columns and its translation, which is the layout a renderer's matrix expects.
- */
+/** One transform in renderer space: three basis vectors and a translation. */
 export type VisualTransform = {
   i: Vector3d;
   j: Vector3d;

@@ -1,9 +1,8 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use serde::Serialize;
-use xrf_db::{
-  LevelFile, LevelGeomFile, LevelGeomVertexBuffer, LevelShaderEntry, LevelVisual, LevelVisualsChunk, OgfModelType,
-};
+use xrf_level::{LevelFile, LevelGeomFile, LevelGeomVertexBuffer, LevelShaderEntry, LevelVisual, LevelVisualsChunk};
+use xrf_ogf::OgfModelType;
 
 /// What `level info` read out of a compiled level.
 #[derive(Debug, Serialize)]

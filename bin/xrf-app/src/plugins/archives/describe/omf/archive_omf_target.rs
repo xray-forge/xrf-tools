@@ -1,5 +1,5 @@
 use serde::Serialize;
-use xrf_db::SkeletonPart;
+use xrf_skeleton::SkeletonPart;
 
 /// The index a definition uses to say it names nothing, `BI_NONE` (`xrCore/Animation/Bone.hpp`).
 const UNNAMED_INDEX: u16 = u16::MAX;
@@ -50,7 +50,7 @@ impl ArchiveOmfTarget {
 
 #[cfg(test)]
 mod tests {
-  use xrf_db::SkeletonPart;
+  use xrf_skeleton::SkeletonPart;
 
   use super::ArchiveOmfTarget;
 

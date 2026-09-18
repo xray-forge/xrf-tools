@@ -1,4 +1,5 @@
-use xrf_db::{OgfBone, OgfBoneIkData, OgfFile, SkeletonMotion, SkeletonMotionDefinition, SkeletonPart};
+use xrf_ogf::{OgfBone, OgfBoneIkData, OgfFile};
+use xrf_skeleton::{SkeletonMotion, SkeletonMotionDefinition, SkeletonPart};
 
 /// What posing a visual needs from its file, kept beside the selection so a motion costs no re-read.
 pub struct SelectedSkeleton {

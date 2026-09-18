@@ -1,15 +1,12 @@
 use serde::Serialize;
-use xrf_db::LevelGeomFile;
 use xrf_error::XrfResult;
+use xrf_level::LevelGeomFile;
 
 use crate::plugins::archives::describe::archive_describe_source::ArchiveDescribeSource;
 use crate::plugins::archives::describe::archive_entry_reader::ArchiveEntryReader;
 use crate::plugins::archives::describe::level::archive_level_geom_layout::ArchiveLevelGeomLayout;
 
 /// Everything the viewer says about a level's render geometry.
-///
-/// Read down to its shape alone: the file reaches 143 MB and the vertices themselves answer nothing a description
-/// asks, so each buffer's payload is stepped over rather than held.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]

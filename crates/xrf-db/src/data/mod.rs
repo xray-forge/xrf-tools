@@ -1,11 +1,8 @@
 pub(crate) mod alife;
 pub(crate) mod animation;
 pub(crate) mod artefact_spawn;
-pub(crate) mod detail;
 pub(crate) mod generic;
 pub(crate) mod graph;
 pub(crate) mod meta;
-pub(crate) mod ogf;
 pub(crate) mod particles;
 pub(crate) mod patrols;
-pub(crate) mod skeleton;

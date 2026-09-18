@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use serde::Serialize;
-use xrf_db::LevelGeomVertexBuffer;
+use xrf_level::LevelGeomVertexBuffer;
 
 /// One vertex layout a level's geometry is built from, and how much is built with it.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]

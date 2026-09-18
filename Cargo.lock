@@ -6851,12 +6851,15 @@ dependencies = [
  "xrf-gamedata",
  "xrf-ipc-typescript",
  "xrf-job",
+ "xrf-level",
  "xrf-ltx",
  "xrf-ltx-inspect",
  "xrf-material",
  "xrf-math",
+ "xrf-ogf",
  "xrf-output",
  "xrf-pack",
+ "xrf-skeleton",
  "xrf-sound",
  "xrf-test-utils",
  "xrf-texture",
@@ -6945,9 +6948,11 @@ dependencies = [
  "xrf-extension",
  "xrf-gamedata",
  "xrf-job",
+ "xrf-level",
  "xrf-ltx",
  "xrf-ltx-inspect",
  "xrf-math",
+ "xrf-ogf",
  "xrf-output",
  "xrf-pack",
  "xrf-report",
@@ -6977,6 +6982,7 @@ dependencies = [
  "xrf-error",
  "xrf-ltx",
  "xrf-math",
+ "xrf-skeleton",
  "xrf-test-utils",
  "xrf-utils",
 ]
@@ -7084,10 +7090,12 @@ dependencies = [
  "xrf-error",
  "xrf-extension",
  "xrf-job",
+ "xrf-level",
  "xrf-ltx",
  "xrf-lua",
  "xrf-material",
  "xrf-math",
+ "xrf-ogf",
  "xrf-output",
  "xrf-report",
  "xrf-shaders",
@@ -7123,6 +7131,22 @@ dependencies = [
  "serde_json",
  "specta",
  "xrf-error",
+ "xrf-utils",
+]
+
+[[package]]
+name = "xrf-level"
+version = "0.1.0"
+dependencies = [
+ "byteorder",
+ "serde",
+ "specta",
+ "uuid",
+ "xrf-chunk",
+ "xrf-error",
+ "xrf-math",
+ "xrf-ogf",
+ "xrf-test-utils",
  "xrf-utils",
 ]
 
@@ -7201,6 +7225,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "xrf-ogf"
+version = "0.1.0"
+dependencies = [
+ "byteorder",
+ "derive_more 2.1.1",
+ "log",
+ "serde",
+ "specta",
+ "xrf-chunk",
+ "xrf-error",
+ "xrf-math",
+ "xrf-skeleton",
+ "xrf-test-utils",
+ "xrf-utils",
+]
+
+[[package]]
 name = "xrf-output"
 version = "0.1.0"
 
@@ -7245,6 +7286,21 @@ dependencies = [
  "xrf-error",
  "xrf-extension",
  "xrf-lua",
+ "xrf-utils",
+]
+
+[[package]]
+name = "xrf-skeleton"
+version = "0.1.0"
+dependencies = [
+ "byteorder",
+ "log",
+ "serde",
+ "specta",
+ "xrf-chunk",
+ "xrf-error",
+ "xrf-math",
+ "xrf-test-utils",
  "xrf-utils",
 ]
 
@@ -7365,6 +7421,8 @@ dependencies = [
  "xrf-db",
  "xrf-error",
  "xrf-math",
+ "xrf-ogf",
+ "xrf-skeleton",
  "xrf-test-utils",
  "xrf-vfs",
 ]

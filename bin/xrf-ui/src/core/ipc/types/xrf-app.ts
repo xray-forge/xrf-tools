@@ -380,13 +380,7 @@ export type ArchiveLevelBundle = {
   hasShaderTable: boolean;
 };
 
-/**
- * What a level's collision mesh weighs, from the 36 bytes that say so.
- *
- * `level.cform` is not chunked: `CDB` casts the file's leading bytes straight onto a header and streams the mesh
- * behind it. So everything here is the first 36 bytes of a file that reaches 191 MB in Anomaly, and the mesh itself
- * is never touched - which is the only reason describing one is affordable at all.
- */
+/** What a level's collision mesh weighs, from the 36 bytes that say so. */
 export type ArchiveLevelCollisionDescription = {
   version: number;
   vertices: number;
@@ -479,12 +473,7 @@ export type ArchiveLevelGameSpawn = {
   profiled: number;
 };
 
-/**
- * Everything the viewer says about a level's render geometry.
- *
- * Read down to its shape alone: the file reaches 143 MB and the vertices themselves answer nothing a description
- * asks, so each buffer's payload is stepped over rather than held.
- */
+/** Everything the viewer says about a level's render geometry. */
 export type ArchiveLevelGeomDescription = {
   /** Whether this is the detail twin, `level.geomX`, which the renderer draws distant geometry from. */
   isDetail: boolean;

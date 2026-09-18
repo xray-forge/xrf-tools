@@ -23,6 +23,7 @@ xrf-chunk = { workspace = true }
 xrf-error = { workspace = true }
 xrf-ltx = { workspace = true }
 xrf-math = { workspace = true }
+xrf-skeleton = { workspace = true }
 xrf-utils = { workspace = true }
 
 [features]
@@ -33,6 +34,7 @@ fixtures = []
 
 [dev-dependencies]
 xrf-math = { workspace = true, features = ["fixtures"] }
+xrf-skeleton = { workspace = true, features = ["fixtures"] }
 xrf-test-utils = { workspace = true }
 
 [lints]

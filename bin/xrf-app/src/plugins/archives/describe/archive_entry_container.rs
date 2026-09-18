@@ -1,6 +1,6 @@
 use xrf_chunk::{ChunkDataSource, ChunkReader, XRayByteOrder};
-use xrf_db::LevelGeomFile;
 use xrf_error::XrfResult;
+use xrf_level::LevelGeomFile;
 
 /// A container an entry can be read as wherever it sits.
 pub trait ArchiveEntryContainer: Sized {

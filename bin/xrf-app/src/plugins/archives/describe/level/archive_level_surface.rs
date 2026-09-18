@@ -1,7 +1,8 @@
 use std::collections::HashMap;
 
 use serde::Serialize;
-use xrf_db::{LevelShaderEntry, ShaderLibraryFile};
+use xrf_db::ShaderLibraryFile;
+use xrf_level::LevelShaderEntry;
 use xrf_vfs::XrayAssetType;
 
 use crate::plugins::archives::describe::archive_describe_source::ArchiveDescribeSource;

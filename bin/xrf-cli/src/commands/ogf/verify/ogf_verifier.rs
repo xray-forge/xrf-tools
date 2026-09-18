@@ -9,8 +9,9 @@ use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
 use walkdir::WalkDir;
-use xrf_db::{OgfFile, XRayByteOrder};
+use xrf_db::XRayByteOrder;
 use xrf_extension::XrayExtension;
+use xrf_ogf::OgfFile;
 use xrf_report::{CheckId, CheckReport, Finding, Report, RuleId, Status};
 use xrf_utils::{format_path, to_portable_path_string};
 use xrf_visual::{VisualBounds, VisualDescription, VisualPackage, VisualPacker, VisualSkipCause, VisualSubmesh};
@@ -24,10 +25,6 @@ const BOUNDS_TOLERANCE_RATIO: f32 = 0.01;
 const BOUNDS_TOLERANCE_FLOOR: f32 = 0.001;
 
 /// What a sweep counted, beside what it found.
-///
-/// These are the numbers that decide whether the premises this work rests on hold: that loose visuals
-/// are uniformly version 4 skeletons with skinned vertices, and that a progressive submesh's finest
-/// detail level is usually not its whole index buffer.
 #[derive(Debug, Default)]
 pub struct OgfVerificationCensus {
   pub files: usize,
@@ -256,11 +253,6 @@ impl<'a> OgfVerifier<'a> {
   }
 
   /// Count skinned submeshes, and the vertices among them whose weights do not sum to one.
-  ///
-  /// Read out of the packed buffer rather than off the parsed vertices, because the buffer is what a renderer skins
-  /// with: the last weight of a set is reconstructed by the reader, so a sum that drifts is a statement about the
-  /// arithmetic this crate performs and not only about the file. A vertex whose weights sum to less than one is drawn
-  /// pulled toward the origin, which is why the count is worth having rather than assumed.
   fn census_skin(census: &mut OgfVerificationCensus, package: &VisualPackage) {
     for submesh in &package.description.submeshes {
       let Some(skin) = submesh.geometry().and_then(|it| it.skin.as_ref()) else {
@@ -288,9 +280,6 @@ impl<'a> OgfVerifier<'a> {
   }
 
   /// Resolve every submesh's texture reference, counting formats and reporting what did not resolve.
-  ///
-  /// A miss is not a defect: the engine substitutes its own dummy for exactly this case, so the interesting output is the
-  /// distribution rather than a pass or fail. What would change the design is a format no renderer can upload.
   fn texture_findings(
     &self,
     census: &mut OgfVerificationCensus,
@@ -382,10 +371,6 @@ impl<'a> OgfVerifier<'a> {
   }
 
   /// Report geometry that reaches outside the extent its header declares.
-  ///
-  /// Only that direction matters: declared bounds are routinely padded, so geometry sitting well
-  /// inside them says nothing, while geometry outside them means the engine would cull a model before
-  /// it left the screen.
   fn bounds_finding(&self, path: &Path, description: &VisualDescription) -> Option<Finding> {
     let computed: &VisualBounds = description.computed_bounds.as_ref()?;
     let declared: &VisualBounds = &description.declared_bounds;

@@ -1,7 +1,8 @@
 use std::path::{Path, PathBuf};
 
 use clap::{Arg, ArgMatches, Command, value_parser};
-use xrf_db::{LevelFile, LevelGeomFile, LevelVisualsChunk, XRayByteOrder};
+use xrf_db::XRayByteOrder;
+use xrf_level::{LevelFile, LevelGeomFile, LevelVisualsChunk};
 use xrf_output::OutputOptions;
 use xrf_utils::format_path;
 

@@ -1,15 +1,13 @@
 //! Visuals in the shapes `ogf fix` meets, laid out the way `xrf-db`'s own residue fixtures are.
-//!
-//! Well-formed scaffolding comes from [`ChunkWriter`]; every defect is raw bytes, so the fixture cannot inherit a
-//! mistake from the writer whose output the command is judged against.
 
 use std::fs;
 use std::path::PathBuf;
 
 use xrf_chunk::ChunkWriter;
-use xrf_db::{OgfBox, OgfHeaderChunk, OgfKinematicsChunk, OgfSphere, XRayByteOrder};
+use xrf_db::XRayByteOrder;
 use xrf_error::XrfResult;
 use xrf_math::Vector3d;
+use xrf_ogf::{OgfBox, OgfHeaderChunk, OgfKinematicsChunk, OgfSphere};
 use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 
 /// The four references shipped Anomaly zombied faces declare.

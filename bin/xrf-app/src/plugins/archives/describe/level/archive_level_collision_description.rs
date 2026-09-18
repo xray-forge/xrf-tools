@@ -1,16 +1,12 @@
 use serde::Serialize;
-use xrf_db::LevelCformHeader;
 use xrf_error::XrfResult;
+use xrf_level::LevelCformHeader;
 
 use crate::plugins::archives::describe::archive_bounds::ArchiveBounds;
 use crate::plugins::archives::describe::archive_describe_source::ArchiveDescribeSource;
 use crate::plugins::archives::describe::archive_entry_reader::ArchiveEntryReader;
 
 /// What a level's collision mesh weighs, from the 36 bytes that say so.
-///
-/// `level.cform` is not chunked: `CDB` casts the file's leading bytes straight onto a header and streams the mesh
-/// behind it. So everything here is the first 36 bytes of a file that reaches 191 MB in Anomaly, and the mesh itself
-/// is never touched - which is the only reason describing one is affordable at all.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Copy, Debug, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]

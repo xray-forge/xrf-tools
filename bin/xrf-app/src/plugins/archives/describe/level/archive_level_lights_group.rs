@@ -1,5 +1,5 @@
 use serde::Serialize;
-use xrf_db::{LevelLight, LevelLightsChunk};
+use xrf_level::{LevelLight, LevelLightsChunk};
 
 /// One chunk of a level's compiled light list, as the viewer reads it.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]

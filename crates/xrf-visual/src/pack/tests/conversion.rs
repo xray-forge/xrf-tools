@@ -1,6 +1,6 @@
 //! Holds the handedness contract: what mirroring Z does to a vector, a uv pair, and a box.
 
-use xrf_db::{OgfBox, OgfSphere};
+use xrf_ogf::{OgfBox, OgfSphere};
 
 use crate::data::visual_bounds::VisualBounds;
 use crate::pack::tests::fixtures::vector;

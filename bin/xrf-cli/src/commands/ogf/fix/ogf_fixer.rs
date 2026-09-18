@@ -1,17 +1,14 @@
 //! Rewrites every visual under a path into well-formed bytes and accounts for what went.
-//!
-//! Lives in the CLI rather than in `xrf-db` because everything here is the command's own: the walk over a host
-//! directory, the staged write that keeps a previous file whole, and the report a caller reads back. What a well-formed
-//! visual *is* stays with the crate — `OgfNormalization` produces the bytes and proves the engine reads them identically.
 
 use std::fs;
 use std::path::{Path, PathBuf};
 
 use rayon::prelude::*;
 use walkdir::{DirEntry, WalkDir};
-use xrf_db::{OgfNormalization, XRayByteOrder};
+use xrf_db::XRayByteOrder;
 use xrf_error::{XrfError, XrfResult};
 use xrf_extension::XrayExtension;
+use xrf_ogf::OgfNormalization;
 use xrf_output::{OutputOptions, OutputSequence, OutputSlot};
 use xrf_utils::{format_path, write_file_staged};
 
@@ -28,8 +25,6 @@ impl<'a> OgfFixer<'a> {
   }
 
   /// Fix the visual at `path`, or every visual under it, into `destination` or in place.
-  ///
-  /// A sweep fixes what it can and reports what it could not; deciding that a refusal fails the run is the caller's.
   ///
   /// # Errors
   ///
@@ -118,8 +113,6 @@ impl<'a> OgfFixer<'a> {
   }
 
   /// Normalize one visual: read, normalize, prove the engine still reads the same, say what goes, then write.
-  ///
-  /// With a destination of its own, the visual is written even when nothing changed, so the output exists either way.
   fn fix_visual(&self, output: &OutputOptions, source: &Path, destination: &Path) -> OgfFixOutcome {
     let original: Vec<u8> = match fs::read(source) {
       Ok(original) => original,

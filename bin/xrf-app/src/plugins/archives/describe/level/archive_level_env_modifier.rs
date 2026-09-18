@@ -1,5 +1,5 @@
 use serde::Serialize;
-use xrf_db::EnvModifier;
+use xrf_level::EnvModifier;
 
 /// One local weather override of a level, as the viewer reads it.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]

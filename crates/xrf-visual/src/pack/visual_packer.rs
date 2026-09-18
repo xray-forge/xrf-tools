@@ -1,5 +1,5 @@
-use xrf_db::{OgfFile, OgfGeometry, OgfModelType, OgfSlideWindow, OgfVertex};
 use xrf_math::Vector3d;
+use xrf_ogf::{OgfFile, OgfGeometry, OgfModelType, OgfSlideWindow, OgfVertex};
 
 use crate::data::visual_bounds::VisualBounds;
 use crate::data::visual_description::VisualDescription;
@@ -219,9 +219,6 @@ impl VisualPacker {
   }
 
   /// One direction of every vertex, converted into renderer space and laid out flat.
-  ///
-  /// Normals, tangents and binormals all go through the same mirror as positions: the basis has to stay a basis of the
-  /// mirrored surface, and the winding correction the packer applies afterwards is what keeps it right handed.
   fn flatten_directions(vertices: &[OgfVertex], direction: impl Fn(&OgfVertex) -> &Vector3d) -> Vec<f32> {
     vertices
       .iter()
@@ -234,13 +231,6 @@ impl VisualPacker {
   }
 
   /// Every vertex's skinning links, widened to four, or `None` when the geometry carries none.
-  ///
-  /// Widened rather than stored at their natural width because a renderer's skin attributes are `vec4` whatever the
-  /// source layout was, and a padding link at weight zero moves nothing. Whether a submesh is skinned at all is read
-  /// off the vertices rather than off the vertex format, so a layout added to the reader later needs no change here.
-  ///
-  /// A visual with no bone list gets no skin either: a link is an index into that list, so without one it names
-  /// nothing, and geometry that cannot be posed is better drawn as it is stored than bound to a skeleton of no bones.
   ///
   /// # Errors
   ///
@@ -285,10 +275,6 @@ impl VisualPacker {
   }
 
   /// The index range that draws a submesh at full detail.
-  ///
-  /// Static geometry draws its whole buffer. Progressive geometry stores every detail level in that
-  /// same buffer with the finest one at level zero, which `FSkinned.cpp:419` selects when it wants
-  /// full geometry, so drawing all of it would stack the coarse shells over the fine mesh.
   fn resolve_detail_levels(
     source: &OgfFile,
     indices: &[u16],
@@ -346,9 +332,6 @@ impl VisualPacker {
   }
 
   /// Reject a range that leaves the index buffer or addresses a vertex the submesh does not have.
-  ///
-  /// Returns the reason rather than a skip, because whether an unusable level fails its submesh or merely
-  /// disappears from the choices depends on which level it is, which the caller knows and this does not.
   fn assert_level_in_range(indices: &[u16], range: VisualDrawRange, vertex_count: usize) -> Result<(), String> {
     let start: usize = range.start as usize;
     let count: usize = range.count as usize;
@@ -374,11 +357,6 @@ impl VisualPacker {
 }
 
 /// Reverse the winding of every triangle in place.
-///
-/// Mirroring Z to reach three.js space flips the orientation of every triangle, and swapping the
-/// second and third index of each triple restores it. Reversing the array as a whole would give the
-/// same per triangle winding while moving every triangle, which silently invalidates every detail
-/// table offset into the buffer.
 pub(crate) fn reverse_triangle_winding(indices: &mut [u16]) {
   for triangle in indices.as_chunks_mut::<3>().0 {
     triangle.swap(1, 2);

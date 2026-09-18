@@ -1,5 +1,5 @@
 use serde::Serialize;
-use xrf_db::SkeletonMotionMark;
+use xrf_skeleton::SkeletonMotionMark;
 
 /// One named set of moments within a motion, `motion_marks`.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]

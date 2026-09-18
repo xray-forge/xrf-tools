@@ -1,5 +1,5 @@
-use xrf_db::Quaternion;
 use xrf_math::Vector3d;
+use xrf_skeleton::Quaternion;
 
 use crate::data::visual_description::VisualTransform;
 
@@ -153,7 +153,7 @@ impl BindTransform {
 mod tests {
   use std::f32::consts::FRAC_PI_2;
 
-  use xrf_db::Quaternion;
+  use xrf_skeleton::Quaternion;
 
   use super::{BindTransform, Vector3d};
   use crate::pack::visual_conversion::convert_vector;

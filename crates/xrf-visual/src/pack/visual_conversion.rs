@@ -1,5 +1,5 @@
-use xrf_db::{OgfBox, OgfSphere};
 use xrf_math::Vector3d;
+use xrf_ogf::{OgfBox, OgfSphere};
 
 use crate::data::visual_bounds::{VisualBounds, VisualBox, VisualSphere};
 

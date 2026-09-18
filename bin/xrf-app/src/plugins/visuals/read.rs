@@ -1,4 +1,5 @@
-use xrf_db::{OgfFile, XRayByteOrder};
+use xrf_db::XRayByteOrder;
+use xrf_ogf::OgfFile;
 use xrf_vfs::{XrayProbe, XrayResolution};
 
 use crate::core::types::TauriResult;

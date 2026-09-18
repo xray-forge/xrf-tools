@@ -1,5 +1,5 @@
 use serde::Serialize;
-use xrf_db::{SkeletonMotionDefinition, SkeletonPart};
+use xrf_skeleton::{SkeletonMotionDefinition, SkeletonPart};
 
 use crate::plugins::archives::describe::omf::archive_omf_motion_flag::ArchiveOmfMotionFlag;
 
@@ -39,7 +39,7 @@ impl ArchiveOmfPart {
 
 #[cfg(test)]
 mod tests {
-  use xrf_db::{SkeletonMotionDefinition, SkeletonPart};
+  use xrf_skeleton::{SkeletonMotionDefinition, SkeletonPart};
 
   use super::ArchiveOmfPart;
 

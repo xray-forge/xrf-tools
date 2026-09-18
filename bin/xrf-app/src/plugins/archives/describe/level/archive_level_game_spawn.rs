@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use serde::Serialize;
-use xrf_db::LevelGameRPoint;
+use xrf_level::LevelGameRPoint;
 
 /// One kind of respawn point a level declares, and how many of them there are.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]

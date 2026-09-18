@@ -1,12 +1,9 @@
 use std::path::Path;
 
 use serde::Serialize;
-use xrf_db::OgfResidue;
+use xrf_ogf::OgfResidue;
 
 /// One visual whose bytes `ogf fix` changed, or would change on a dry run.
-///
-/// Listed per file because the discarded reference is the reason the command reports at all: after the write, this and
-/// the console line are the only record of what the source carried.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct OgfFixFileReport {
@@ -73,9 +70,6 @@ pub enum OgfFixOutcome {
 }
 
 /// What `ogf fix` did to the visuals it was pointed at.
-///
-/// Unchanged visuals are counted rather than listed: a sweep over an installation checks thousands of files to change a
-/// few dozen, and a report naming every one would bury the ones that matter.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct OgfFixReport {

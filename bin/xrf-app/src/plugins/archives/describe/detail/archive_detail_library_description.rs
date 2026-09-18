@@ -1,6 +1,7 @@
 use serde::Serialize;
-use xrf_db::{DetailModel, LevelDetailsFile, XRayByteOrder};
+use xrf_db::XRayByteOrder;
 use xrf_error::XrfResult;
+use xrf_level::{DetailModel, LevelDetailsFile};
 
 use crate::plugins::archives::describe::archive_describe_source::ArchiveDescribeSource;
 use crate::plugins::archives::describe::detail::archive_detail_model::ArchiveDetailModel;

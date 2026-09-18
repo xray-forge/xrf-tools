@@ -1,7 +1,8 @@
 use std::path::PathBuf;
 
 use clap::{Arg, ArgMatches, Command, value_parser};
-use xrf_db::{OgfChunksProcessor, OgfFile, XRayByteOrder};
+use xrf_db::XRayByteOrder;
+use xrf_ogf::{OgfChunksProcessor, OgfFile};
 use xrf_output::OutputOptions;
 use xrf_utils::format_path;
 

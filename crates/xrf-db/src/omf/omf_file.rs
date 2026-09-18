@@ -6,12 +6,11 @@ use std::path::Path;
 use byteorder::ByteOrder;
 use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter, find_required_chunk_by_id};
 use xrf_error::{XrfError, XrfResult};
+use xrf_skeleton::SkeletonMotion;
+use xrf_skeleton::SkeletonMotionDefinition;
+use xrf_skeleton::SkeletonMotionParametersChunk;
+use xrf_skeleton::SkeletonMotionsChunk;
 use xrf_utils::{assert_equal, format_path, open_export_file};
-
-use crate::data::skeleton::skeleton_motion::SkeletonMotion;
-use crate::data::skeleton::skeleton_motion_definition::SkeletonMotionDefinition;
-use crate::skeleton::chunks::skeleton_motion_parameters_chunk::SkeletonMotionParametersChunk;
-use crate::skeleton::chunks::skeleton_motions_chunk::SkeletonMotionsChunk;
 
 // c++ CKinematicsAnimated
 #[derive(Debug)]
@@ -21,8 +20,6 @@ pub struct OmfFile {
 }
 
 impl OmfFile {
-  pub const SUPPORTED_VERSIONS: [u16; 2] = [3, 4];
-
   pub fn read_from_path<T: ByteOrder, P: AsRef<Path>>(path: &P) -> XrfResult<Self> {
     Self::read_from_file::<T>(File::open(path).map_err(|error| {
       XrfError::new_not_found_error(format!(
@@ -165,18 +162,18 @@ impl OmfFile {
 mod tests {
   use xrf_chunk::{ChunkReader, XRayByteOrder};
   use xrf_error::XrfResult;
+  use xrf_skeleton::SkeletonMotion;
+  use xrf_skeleton::SkeletonMotionDefinition;
+  use xrf_skeleton::SkeletonMotionParametersChunk;
+  use xrf_skeleton::SkeletonMotionsChunk;
+  use xrf_skeleton::SkeletonPart;
   use xrf_test_utils::FileSlice;
   use xrf_test_utils::utils::{
     build_absolute_generated_test_resource_path, build_relative_test_sample_file_path,
     open_generated_test_resource_as_slice,
   };
 
-  use crate::data::skeleton::skeleton_motion::SkeletonMotion;
-  use crate::data::skeleton::skeleton_motion_definition::SkeletonMotionDefinition;
-  use crate::data::skeleton::skeleton_part::SkeletonPart;
   use crate::omf::omf_file::OmfFile;
-  use crate::skeleton::chunks::skeleton_motion_parameters_chunk::SkeletonMotionParametersChunk;
-  use crate::skeleton::chunks::skeleton_motions_chunk::SkeletonMotionsChunk;
 
   fn new_mock(version: u16) -> OmfFile {
     OmfFile {

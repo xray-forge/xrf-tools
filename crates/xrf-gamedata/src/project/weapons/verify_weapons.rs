@@ -2,9 +2,10 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use rayon::iter::{IndexedParallelIterator, IntoParallelRefIterator, ParallelIterator};
-use xrf_db::{OgfFile, OmfFile, XRayByteOrder};
+use xrf_db::{OmfFile, XRayByteOrder};
 use xrf_error::XrfResult;
 use xrf_ltx::{LTX_SYMBOL_SCHEME, Ltx, LtxResolution, Section};
+use xrf_ogf::OgfFile;
 use xrf_output::{OutputSequence, OutputSlot};
 use xrf_vfs::XrayAssetType;
 use xrf_vfs::XrayAssetType as AssetType;
@@ -149,12 +150,6 @@ impl GamedataProject {
   }
 
   /// Verify that a launcher capable weapon keeps its grenade launcher bore animations defined.
-  ///
-  /// `CWeaponMagazinedWGrenade::PlayAnimBore` switches to `anm_bore_g` or `anm_bore_w_gl` as soon as
-  /// a launcher is attached. The Anomaly engine detects a missing bore and returns to idle, but
-  /// OpenXRay only falls back to `anim_` prefixed aliases that this project never defines. With
-  /// nothing to play the animation end callback never fires and the weapon stays in the bore state,
-  /// so these keys cannot be dropped the way Anomaly content drops them.
   pub fn verify_weapon_bore_animations(
     &self,
     options: &GamedataProjectVerifyOptions,

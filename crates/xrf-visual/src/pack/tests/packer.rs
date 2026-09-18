@@ -1,7 +1,8 @@
 //! Holds what a packed visual promises: the right triangles, in the right space, with a reason for
 //! every piece that produced none.
 
-use xrf_db::{OgfFile, OgfGeometry, OgfVertex, OgfVertexLink};
+use xrf_ogf::OgfVertexLink;
+use xrf_ogf::{OgfFile, OgfGeometry, OgfVertex};
 
 use crate::data::visual_section::VisualDrawRange;
 use crate::data::visual_submesh::{VisualGeometry, VisualSkin, VisualSkipCause, VisualSubmesh};

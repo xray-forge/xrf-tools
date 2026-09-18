@@ -1,8 +1,7 @@
 use std::sync::Arc;
 
-use xrf_db::{
-  LevelAiFile, LevelAiHeader, LevelCformFile, LevelCformHeader, LevelFile, LevelShadersChunk, XRayByteOrder,
-};
+use xrf_db::XRayByteOrder;
+use xrf_level::{LevelAiFile, LevelAiHeader, LevelCformFile, LevelCformHeader, LevelFile, LevelShadersChunk};
 use xrf_vfs::XrayAssetType as AssetType;
 
 use crate::GamedataFindingFactory;
@@ -22,9 +21,6 @@ pub(crate) struct LevelBinariesOutcome {
 }
 
 /// Reproduces the engine assertions raised while loading a level bundle.
-///
-/// Every rule here corresponds to an `R_ASSERT` in the engine, so a finding means the game refuses
-/// to load the level rather than that the data is merely unusual.
 pub(crate) struct LevelBinariesVerifier<'a> {
   bundle: &'a LevelBundle<'a>,
 }

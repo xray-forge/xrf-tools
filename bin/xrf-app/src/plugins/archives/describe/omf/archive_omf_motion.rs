@@ -1,5 +1,5 @@
 use serde::Serialize;
-use xrf_db::{SAMPLE_FPS, SkeletonMotion, SkeletonMotionDefinition, SkeletonPart};
+use xrf_skeleton::{SAMPLE_FPS, SkeletonMotion, SkeletonMotionDefinition, SkeletonPart};
 
 use crate::plugins::archives::describe::omf::archive_omf_blend::ArchiveOmfBlend;
 use crate::plugins::archives::describe::omf::archive_omf_mark::ArchiveOmfMark;
@@ -65,7 +65,7 @@ impl ArchiveOmfMotion {
 
 #[cfg(test)]
 mod tests {
-  use xrf_db::{SkeletonMotion, SkeletonMotionDefinition, SkeletonMotionMark};
+  use xrf_skeleton::{SkeletonMotion, SkeletonMotionDefinition, SkeletonMotionMark};
 
   use super::ArchiveOmfMotion;
   use crate::plugins::archives::describe::omf::archive_omf_mark::ArchiveOmfMarkInterval;

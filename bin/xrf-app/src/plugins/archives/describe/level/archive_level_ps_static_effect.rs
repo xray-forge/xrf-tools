@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use serde::Serialize;
-use xrf_db::PsStaticPlacement;
+use xrf_level::PsStaticPlacement;
 
 /// One particle effect a level plants, and how widely.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]

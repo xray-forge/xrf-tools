@@ -1,5 +1,5 @@
 use serde::Serialize;
-use xrf_db::{OgfBox, OgfFile, OgfSphere};
+use xrf_ogf::{OgfBox, OgfFile, OgfSphere};
 
 /// A bounding volume, reported as the numbers the file carries rather than as debug text.
 #[derive(Debug, Serialize)]
@@ -43,9 +43,6 @@ pub struct OgfBoneReport {
 }
 
 /// Bytes a visual ends with that the engine's loader never reads.
-///
-/// Present only for a malformed visual the engine loads anyway. A patch discards these bytes, so this is the record
-/// that they were there and what they held.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct OgfResidueReport {
@@ -58,11 +55,6 @@ pub struct OgfResidueReport {
 }
 
 /// What `ogf info` read out of a visual.
-///
-/// Everything the command tells a human, including the per-bone and per-child detail it only prints
-/// in full at higher verbosity: a machine consumer has no `--verbose` to raise. `unknownChunks`
-/// carries the chunk ids the reader did not parse, which is how an unsupported visual is told apart
-/// from an empty one; it is absent when the survey itself could not run.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct OgfInfoReport {

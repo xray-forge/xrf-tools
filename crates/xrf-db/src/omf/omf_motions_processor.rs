@@ -170,16 +170,15 @@ impl OmfMotionsProcessor {
 #[cfg(test)]
 mod tests {
   use std::collections::HashMap;
-
   use xrf_error::XrfResult;
+  use xrf_skeleton::SkeletonMotion;
+  use xrf_skeleton::SkeletonMotionDefinition;
+  use xrf_skeleton::SkeletonMotionParametersChunk;
+  use xrf_skeleton::SkeletonMotionsChunk;
+  use xrf_skeleton::SkeletonPart;
 
-  use crate::data::skeleton::skeleton_motion::SkeletonMotion;
-  use crate::data::skeleton::skeleton_motion_definition::SkeletonMotionDefinition;
-  use crate::data::skeleton::skeleton_part::SkeletonPart;
   use crate::omf::omf_file::OmfFile;
   use crate::omf::omf_motions_processor::OmfMotionsProcessor;
-  use crate::skeleton::chunks::skeleton_motion_parameters_chunk::SkeletonMotionParametersChunk;
-  use crate::skeleton::chunks::skeleton_motions_chunk::SkeletonMotionsChunk;
 
   /// Build a file whose motions are named after the provided list.
   fn new_named_mock(names: &[&str]) -> OmfFile {
