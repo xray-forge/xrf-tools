@@ -40,7 +40,7 @@ export interface IPathFieldRecents {
  * @returns The stored records, newest first, at most {@link RECENT_PATHS_LIMIT} of them.
  */
 export function readRecentPaths(key: string): Array<IPathRecord> {
-  const stored: Nullable<unknown> = parseLocalStorageValueSafe<unknown>(key);
+  const stored: unknown = parseLocalStorageValueSafe(key);
 
   if (!Array.isArray(stored)) {
     return [];

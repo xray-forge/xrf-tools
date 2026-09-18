@@ -39,12 +39,10 @@ export function setLocalStorageValue(key: string, value: Nullable<string>): void
 /**
  * Parses a JSON value from local storage.
  *
- * Invalid JSON propagates the `SyntaxError` thrown by `JSON.parse`.
- *
  * @param key - Storage key to read.
  * @returns The parsed value, or `null` when storage is unavailable or the key is absent.
  */
-export function parseLocalStorageValue<T>(key: string): Nullable<T> {
+export function parseLocalStorageValue(key: string): unknown {
   if (!window.localStorage) {
     return null;
   }
@@ -57,16 +55,12 @@ export function parseLocalStorageValue<T>(key: string): Nullable<T> {
 /**
  * Parses a JSON value that the application can do without.
  *
- * The counterpart to {@link parseLocalStorageValue} for data that is a convenience rather than configuration: unusable
- * content reads as absent instead of throwing. Deliberately not the default, because a key carrying something the
- * application needs is better read loudly than quietly discarded.
- *
  * @param key - Storage key to read.
  * @returns The parsed value, or `null` when storage is unavailable, the key is absent, or the content does not parse.
  */
-export function parseLocalStorageValueSafe<T>(key: string): Nullable<T> {
+export function parseLocalStorageValueSafe(key: string): unknown {
   try {
-    return parseLocalStorageValue<T>(key);
+    return parseLocalStorageValue(key);
   } catch (error: unknown) {
     Logger.warn("Discarding unreadable local storage value:", key, error);
 
@@ -76,9 +70,6 @@ export function parseLocalStorageValueSafe<T>(key: string): Nullable<T> {
 
 /**
  * Stores a value the application can do without, reporting failure rather than raising it.
- *
- * Writes fail for reasons a caller of this kind cannot act on - an exhausted quota, a mode that refuses storage - and
- * the work that asked for the write is worth finishing anyway.
  *
  * @param key - Storage key to write.
  * @param value - Value to persist, or `null` to clear the key.

@@ -34,7 +34,7 @@ export class KeymapService {
    * @returns Usable overrides, or an empty map.
    */
   private static readOverrides(): TKeybindOverrides {
-    const stored: Nullable<unknown> = parseLocalStorageValueSafe<unknown>(KEYBINDS_STORAGE_KEY);
+    const stored: unknown = parseLocalStorageValueSafe(KEYBINDS_STORAGE_KEY);
 
     if (stored === null || typeof stored !== "object" || Array.isArray(stored)) {
       return {};
