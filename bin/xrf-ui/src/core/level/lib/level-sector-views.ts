@@ -22,6 +22,8 @@ export interface ISectorViews {
   sector: number;
   vertexCount: number;
   indexCount: number;
+  /** Bytes the sector's buffer holds, which is what residency is really spending. */
+  bufferLength: number;
   positions: Float32Array;
   /** Absent when no declaration in the sector carried one, as a positions-only fast path does not. */
   normals: Nullable<Float32Array>;
@@ -74,6 +76,7 @@ export function createSectorViews(description: SectorDescription, buffer: ArrayB
 
   return {
     binormals: toOptionalFloatView(buffer, description.binormals),
+    bufferLength: description.bufferLength,
     colors: toOptionalFloatView(buffer, description.colors),
     hemi: toOptionalFloatView(buffer, description.hemi),
     indexCount: description.indexCount,
