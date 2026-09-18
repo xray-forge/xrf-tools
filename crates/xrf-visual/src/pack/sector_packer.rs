@@ -12,14 +12,16 @@ use xrf_ogf::OgfGeometryContainerChunk;
 
 use crate::data::sector_attributes::SectorAttributes;
 use crate::data::sector_description::SectorDescription;
+use crate::data::sector_geometry::SectorGeometry;
 use crate::data::sector_instance_group::SectorInstanceGroup;
 use crate::data::sector_section::SectorSection;
 use crate::data::sector_skip::SectorSkip;
-use crate::data::visual_section::{VisualDrawRange, VisualSection};
+use crate::data::sector_surface::SectorSurface;
+use crate::data::visual_bounds::VisualBounds;
+use crate::data::visual_section::VisualDrawRange;
 use crate::data::visual_submesh::VisualSkipCause;
 use crate::pack::sector_package::SectorPackage;
 use crate::pack::sector_vertex_arrays::SectorVertexArrays;
-use crate::pack::sector_vertex_sections::SectorVertexSections;
 use crate::pack::visual_buffer_builder::VisualBufferBuilder;
 use crate::pack::visual_conversion::{convert_placement, reverse_triangle_winding};
 
@@ -209,8 +211,6 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
     skipped: &mut Vec<SectorSkip>,
   ) -> SectorPackage {
     let mut builder: VisualBufferBuilder = VisualBufferBuilder::new();
-    let vertices: SectorVertexSections = arrays.write_into(&mut builder);
-
     let mut indices: Vec<u32> = Vec::new();
     let mut sections: Vec<SectorSection> = Vec::new();
 
@@ -221,38 +221,26 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
           start: indices.len() as u32,
         },
         drawables,
-        lightmaps: self.get_lightmaps(shader_id),
-        shader_id,
-        shader_name: self.get_shader_name(shader_id),
-        texture_name: self.get_texture_name(shader_id),
+        surface: self.get_surface(shader_id),
       });
 
       indices.extend(group);
     }
 
-    let index_section: VisualSection = builder.push_u32_section(&indices);
-    let instances: Vec<SectorInstanceGroup> =
-      self.pack_instances::<T>(gathered, arrays.get_attributes(), &mut builder, skipped);
+    let bounds: Option<VisualBounds> = arrays.get_bounds();
+    let attributes: SectorAttributes = arrays.get_attributes();
+    let geometry: SectorGeometry = arrays.write_into(&indices, &mut builder);
+    let instances: Vec<SectorInstanceGroup> = self.pack_instances::<T>(gathered, attributes, &mut builder, skipped);
 
     SectorPackage {
       description: SectorDescription {
-        binormals: vertices.binormals,
-        bounds: arrays.get_bounds(),
+        bounds,
         buffer_length: builder.length(),
-        colors: vertices.colors,
-        hemi: vertices.hemi,
-        index_count: indices.len() as u32,
-        indices: index_section,
-        lightmap_coordinates: vertices.lightmap_coordinates,
-        normals: vertices.normals,
-        positions: vertices.positions,
+        geometry,
         instances,
         sections,
         sector,
         skipped: std::mem::take(skipped),
-        tangents: vertices.tangents,
-        texture_coordinates: vertices.texture_coordinates,
-        vertex_count: arrays.count(),
       },
       buffer: builder.into_buffer(),
     }
@@ -282,66 +270,60 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
     let mut instances: Vec<SectorInstanceGroup> = Vec::new();
 
     for (key, gathering) in gathered {
-      let (vertex_buffer, vertex_base, vertex_count, index_buffer, index_base, index_count, shader_id) = key;
-
-      let mut arrays: SectorVertexArrays = SectorVertexArrays::new(attributes);
-
-      // Packed unplaced: the mesh is in its own space and each instance's transform stands a copy of it.
-      match self.source.read_vertices::<T>(vertex_buffer, vertex_base, vertex_count) {
-        Ok(vertices) => {
-          for vertex in &vertices {
-            arrays.push(vertex, None);
-          }
-        }
-        Err(error) => {
-          Self::skip_all(&gathering, &error, skipped);
-
-          continue;
-        }
+      match self.pack_instance::<T>(key, &gathering, attributes, builder) {
+        Ok(group) => instances.push(group),
+        Err(error) => Self::skip_all(&gathering, &error, skipped),
       }
-
-      let mut indices: Vec<u32> = match self.source.read_indices::<T>(index_buffer, index_base, index_count) {
-        Ok(read) => read.iter().map(|index| u32::from(*index)).collect(),
-        Err(error) => {
-          Self::skip_all(&gathering, &error, skipped);
-
-          continue;
-        }
-      };
-
-      reverse_triangle_winding(&mut indices);
-
-      let sections: SectorVertexSections = arrays.write_into(builder);
-      let index_section: VisualSection = builder.push_u32_section(&indices);
-      let transforms: Vec<f32> = gathering
-        .placements
-        .iter()
-        .flat_map(|placement| placement.values)
-        .collect();
-
-      instances.push(SectorInstanceGroup {
-        binormals: sections.binormals,
-        colors: sections.colors,
-        drawables: gathering.drawables,
-        hemi: sections.hemi,
-        index_count: indices.len() as u32,
-        indices: index_section,
-        instance_count: gathering.placements.len() as u32,
-        lightmap_coordinates: sections.lightmap_coordinates,
-        lightmaps: self.get_lightmaps(shader_id),
-        normals: sections.normals,
-        positions: sections.positions,
-        shader_id,
-        shader_name: self.get_shader_name(shader_id),
-        tangents: sections.tangents,
-        texture_coordinates: sections.texture_coordinates,
-        texture_name: self.get_texture_name(shader_id),
-        transforms: builder.push_f32_section(&transforms),
-        vertex_count: arrays.count(),
-      });
     }
 
     instances
+  }
+
+  /// Packs one mesh, in its own space, beside the transforms that stand it.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the mesh's own range cannot be read, which leaves every instance of it undrawable.
+  fn pack_instance<T: ByteOrder>(
+    &mut self,
+    key: InstanceKey,
+    gathering: &InstanceGathering,
+    attributes: SectorAttributes,
+    builder: &mut VisualBufferBuilder,
+  ) -> XrfResult<SectorInstanceGroup> {
+    let (vertex_buffer, vertex_base, vertex_count, index_buffer, index_base, index_count, shader_id) = key;
+    let mut arrays: SectorVertexArrays = SectorVertexArrays::new(attributes);
+
+    // Packed unplaced: the mesh is in its own space, and each instance's transform stands a copy of it.
+    for vertex in &self
+      .source
+      .read_vertices::<T>(vertex_buffer, vertex_base, vertex_count)?
+    {
+      arrays.push(vertex, None);
+    }
+
+    let mut indices: Vec<u32> = self
+      .source
+      .read_indices::<T>(index_buffer, index_base, index_count)?
+      .iter()
+      .map(|index| u32::from(*index))
+      .collect();
+
+    reverse_triangle_winding(&mut indices);
+
+    let transforms: Vec<f32> = gathering
+      .placements
+      .iter()
+      .flat_map(|placement| placement.values)
+      .collect();
+
+    Ok(SectorInstanceGroup {
+      drawables: gathering.drawables.clone(),
+      geometry: arrays.write_into(&indices, builder),
+      instance_count: gathering.placements.len() as u32,
+      surface: self.get_surface(shader_id),
+      transforms: builder.push_f32_section(&transforms),
+    })
   }
 
   /// Records every instance of a mesh that could not be read, since none of them can be drawn without it.
@@ -351,32 +333,22 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
     }
   }
 
-  /// The shader a table entry names, when the level carries a table that resolves.
-  fn get_shader_name(&self, shader_id: u16) -> Option<String> {
-    match self.get_entry(shader_id)? {
-      LevelShaderEntry::Reference(reference) => Some(reference.shader.clone()),
-      _ => None,
-    }
-  }
+  /// How one table entry dresses a surface: its shader, its base texture, and the lightmaps after it.
+  fn get_surface(&self, shader_id: u16) -> SectorSurface {
+    let Some(LevelShaderEntry::Reference(reference)) = self.shaders.and_then(|it| it.entries.get(shader_id as usize))
+    else {
+      return SectorSurface {
+        shader_id,
+        ..SectorSurface::default()
+      };
+    };
 
-  /// The first texture a table entry names, which is the one a surface is dressed with.
-  fn get_texture_name(&self, shader_id: u16) -> Option<String> {
-    match self.get_entry(shader_id)? {
-      LevelShaderEntry::Reference(reference) => reference.textures.first().cloned(),
-      _ => None,
+    SectorSurface {
+      lightmaps: reference.textures.iter().skip(1).cloned().collect(),
+      shader_id,
+      shader_name: Some(reference.shader.clone()),
+      texture_name: reference.textures.first().cloned(),
     }
-  }
-
-  /// The lightmaps a table entry names after its base texture.
-  fn get_lightmaps(&self, shader_id: u16) -> Vec<String> {
-    match self.get_entry(shader_id) {
-      Some(LevelShaderEntry::Reference(reference)) => reference.textures.iter().skip(1).cloned().collect(),
-      _ => Vec::new(),
-    }
-  }
-
-  fn get_entry(&self, shader_id: u16) -> Option<&LevelShaderEntry> {
-    self.shaders?.entries.get(shader_id as usize)
   }
 
   /// Grades a drawable that produced nothing by whether the geometry is stored in a form the reader handles.

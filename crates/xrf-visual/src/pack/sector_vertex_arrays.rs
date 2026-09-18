@@ -3,9 +3,9 @@ use xrf_math::Matrix4x4;
 use xrf_math::Vector3d;
 
 use crate::data::sector_attributes::SectorAttributes;
+use crate::data::sector_geometry::SectorGeometry;
 use crate::data::visual_bounds::VisualBounds;
 use crate::data::visual_section::VisualSection;
-use crate::pack::sector_vertex_sections::SectorVertexSections;
 use crate::pack::visual_buffer_builder::VisualBufferBuilder;
 use crate::pack::visual_conversion::{convert_texture_coordinates, convert_vector};
 
@@ -110,9 +110,11 @@ impl SectorVertexArrays {
     VisualBounds::from_positions(&positions)
   }
 
-  /// Writes every declared array into the buffer and says where each landed.
-  pub fn write_into(&self, builder: &mut VisualBufferBuilder) -> SectorVertexSections {
-    SectorVertexSections {
+  /// Writes every declared array and the indices into the buffer, and says where each landed.
+  pub fn write_into(&self, indices: &[u32], builder: &mut VisualBufferBuilder) -> SectorGeometry {
+    SectorGeometry {
+      vertex_count: self.count(),
+      index_count: indices.len() as u32,
       positions: builder.push_f32_section(&self.positions),
       normals: self.push_declared(builder, self.attributes.normals, &self.normals),
       tangents: self.push_declared(builder, self.attributes.tangents, &self.tangents),
@@ -125,6 +127,7 @@ impl SectorVertexArrays {
       ),
       colors: self.push_declared(builder, self.attributes.colors, &self.colors),
       hemi: self.push_declared(builder, self.attributes.normals, &self.hemi),
+      indices: builder.push_u32_section(indices),
     }
   }
 

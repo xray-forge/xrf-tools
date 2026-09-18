@@ -3,10 +3,12 @@ pub(crate) mod pack;
 pub(crate) mod resolve;
 
 pub use crate::data::sector_description::SectorDescription;
+pub use crate::data::sector_geometry::SectorGeometry;
 pub use crate::data::sector_instance_group::SectorInstanceGroup;
 pub use crate::data::sector_outline::SectorOutline;
 pub use crate::data::sector_section::SectorSection;
 pub use crate::data::sector_skip::SectorSkip;
+pub use crate::data::sector_surface::SectorSurface;
 pub use crate::data::visual_bounds::{VisualBounds, VisualBox, VisualSphere};
 pub use crate::data::visual_description::{VisualBone, VisualDescription, VisualTransform};
 pub use crate::data::visual_section::{VisualDrawRange, VisualSection};

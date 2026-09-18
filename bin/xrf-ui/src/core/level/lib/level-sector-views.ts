@@ -1,56 +1,13 @@
-import { SectorDescription, SectorInstanceGroup, SectorSection, VisualSection } from "@/core/ipc/types/xrf-visual";
+import { SectorDescription, SectorGeometry, SectorSurface, VisualSection } from "@/core/ipc/types/xrf-visual";
 import { Nullable } from "@/lib/types/general";
 
 /**
- * One draw of a sector: the indices to draw, and the surface they are drawn with.
+ * One packed mesh as views over the buffer it arrived in.
  */
-export interface ISectorSectionViews {
-  shaderId: number;
-  shaderName: Nullable<string>;
-  textureName: Nullable<string>;
-  /** The lightmaps the same entry names, which a lightmapped surface samples with its second uv set. */
-  lightmaps: Array<string>;
-  /** Drawables this section draws, by their index in the visuals run, for inspection rather than for drawing. */
-  drawables: Array<number>;
-  start: number;
-  count: number;
-  triangleCount: number;
-}
-
-/**
- * One packed sector as views over the single buffer it arrived in, plus the draws that consume them.
- */
-/** One mesh a sector stands in many places, as views over the buffer it arrived in. */
-export interface ISectorInstanceViews {
-  shaderId: number;
-  shaderName: Nullable<string>;
-  textureName: Nullable<string>;
-  lightmaps: Array<string>;
-  drawables: Array<number>;
+export interface ISectorGeometryViews {
   vertexCount: number;
   indexCount: number;
-  instanceCount: number;
   positions: Float32Array;
-  normals: Nullable<Float32Array>;
-  tangents: Nullable<Float32Array>;
-  binormals: Nullable<Float32Array>;
-  uvs: Nullable<Float32Array>;
-  lightmapUvs: Nullable<Float32Array>;
-  colors: Nullable<Float32Array>;
-  hemi: Nullable<Float32Array>;
-  indices: Uint32Array;
-  /** Sixteen floats for each place the mesh stands, in the order a renderer uploads a matrix in. */
-  transforms: Float32Array;
-}
-
-export interface ISectorViews {
-  sector: number;
-  vertexCount: number;
-  indexCount: number;
-  /** Bytes the sector's buffer holds, which is what residency is really spending. */
-  bufferLength: number;
-  positions: Float32Array;
-  /** Absent when no declaration in the sector carried one, as a positions-only fast path does not. */
   normals: Nullable<Float32Array>;
   tangents: Nullable<Float32Array>;
   binormals: Nullable<Float32Array>;
@@ -63,8 +20,36 @@ export interface ISectorViews {
   hemi: Nullable<Float32Array>;
   /** Thirty-two bit, unlike a model's. */
   indices: Uint32Array;
+}
+
+/** One draw of a sector's own geometry: the range to draw, and the surface it is drawn with. */
+export interface ISectorSectionViews {
+  surface: SectorSurface;
+  /** Drawables this section draws, by their index in the visuals run, for inspection rather than for drawing. */
+  drawables: Array<number>;
+  start: number;
+  count: number;
+  triangleCount: number;
+}
+
+/** One mesh a sector stands in many places, as views over the buffer it arrived in. */
+export interface ISectorInstanceViews {
+  surface: SectorSurface;
+  drawables: Array<number>;
+  geometry: ISectorGeometryViews;
+  instanceCount: number;
+  /** Sixteen floats for each place the mesh stands, in the order a renderer uploads a matrix in. */
+  transforms: Float32Array;
+}
+
+/**
+ * One packed sector as views over the single buffer it arrived in, plus the draws that consume them.
+ */
+export interface ISectorViews {
+  sector: number;
+  bufferLength: number;
+  geometry: ISectorGeometryViews;
   sections: Array<ISectorSectionViews>;
-  /** Meshes the sector stands in many places, each packed once. */
   instances: Array<ISectorInstanceViews>;
   /** Drawables the packer could not read, named so a viewer can say what is missing rather than quietly omit it. */
   skipped: Array<{ drawable: number; reason: string }>;
@@ -87,6 +72,29 @@ function toIndexView(buffer: ArrayBuffer, section: VisualSection): Uint32Array {
 }
 
 /**
+ * Turns one packed mesh's described sections into views over the bytes they describe.
+ *
+ * @param buffer - The sector's buffer.
+ * @param geometry - Where the mesh's attributes sit in it.
+ * @returns Views over each attribute the mesh carries.
+ */
+function toGeometryViews(buffer: ArrayBuffer, geometry: SectorGeometry): ISectorGeometryViews {
+  return {
+    binormals: toOptionalFloatView(buffer, geometry.binormals),
+    colors: toOptionalFloatView(buffer, geometry.colors),
+    hemi: toOptionalFloatView(buffer, geometry.hemi),
+    indexCount: geometry.indexCount,
+    indices: toIndexView(buffer, geometry.indices),
+    lightmapUvs: toOptionalFloatView(buffer, geometry.lightmapCoordinates),
+    normals: toOptionalFloatView(buffer, geometry.normals),
+    positions: toFloatView(buffer, geometry.positions),
+    tangents: toOptionalFloatView(buffer, geometry.tangents),
+    uvs: toOptionalFloatView(buffer, geometry.textureCoordinates),
+    vertexCount: geometry.vertexCount,
+  };
+}
+
+/**
  * Turns one packed sector and the bytes it was described against into views a renderer can upload.
  *
  * @param description - What `open_sector` reported about the pack.
@@ -102,51 +110,47 @@ export function createSectorViews(description: SectorDescription, buffer: ArrayB
   }
 
   return {
-    binormals: toOptionalFloatView(buffer, description.binormals),
     bufferLength: description.bufferLength,
-    colors: toOptionalFloatView(buffer, description.colors),
-    hemi: toOptionalFloatView(buffer, description.hemi),
-    indexCount: description.indexCount,
-    indices: toIndexView(buffer, description.indices),
-    lightmapUvs: toOptionalFloatView(buffer, description.lightmapCoordinates),
-    normals: toOptionalFloatView(buffer, description.normals),
-    positions: toFloatView(buffer, description.positions),
-    sector: description.sector,
-    instances: description.instances.map((group: SectorInstanceGroup): ISectorInstanceViews => ({
-      binormals: toOptionalFloatView(buffer, group.binormals),
-      colors: toOptionalFloatView(buffer, group.colors),
+    geometry: toGeometryViews(buffer, description.geometry),
+    instances: description.instances.map((group) => ({
       drawables: group.drawables,
-      hemi: toOptionalFloatView(buffer, group.hemi),
-      indexCount: group.indexCount,
-      indices: toIndexView(buffer, group.indices),
+      geometry: toGeometryViews(buffer, group.geometry),
       instanceCount: group.instanceCount,
-      lightmapUvs: toOptionalFloatView(buffer, group.lightmapCoordinates),
-      lightmaps: group.lightmaps,
-      normals: toOptionalFloatView(buffer, group.normals),
-      positions: toFloatView(buffer, group.positions),
-      shaderId: group.shaderId,
-      shaderName: group.shaderName,
-      tangents: toOptionalFloatView(buffer, group.tangents),
-      textureName: group.textureName,
+      surface: group.surface,
       transforms: toFloatView(buffer, group.transforms),
-      uvs: toOptionalFloatView(buffer, group.textureCoordinates),
-      vertexCount: group.vertexCount,
     })),
-    sections: description.sections.map((section: SectorSection) => ({
+    sections: description.sections.map((section) => ({
       count: section.draw.count,
       drawables: section.drawables,
-      lightmaps: section.lightmaps,
-      shaderId: section.shaderId,
-      shaderName: section.shaderName,
       start: section.draw.start,
-      textureName: section.textureName,
+      surface: section.surface,
       triangleCount: section.draw.count / 3,
     })),
+    sector: description.sector,
     skipped: description.skipped.map((skip) => ({ drawable: skip.drawable, reason: skip.reason })),
-    tangents: toOptionalFloatView(buffer, description.tangents),
-    uvs: toOptionalFloatView(buffer, description.textureCoordinates),
-    vertexCount: description.vertexCount,
   };
+}
+
+/**
+ * Every texture reference a sector names, base textures and lightmaps alike, from both kinds of surface.
+ *
+ * @param views - The sector.
+ * @returns Its references, without repeats.
+ */
+export function listSectorTextures(views: ISectorViews): Array<string> {
+  const references: Set<string> = new Set();
+
+  for (const { surface } of [...views.sections, ...views.instances]) {
+    if (surface.textureName) {
+      references.add(surface.textureName);
+    }
+
+    for (const lightmap of surface.lightmaps) {
+      references.add(lightmap);
+    }
+  }
+
+  return Array.from(references);
 }
 
 /** Triangles a sector draws in total, instanced meshes counted once for every place they stand. */
@@ -157,29 +161,7 @@ export function countSectorTriangles(views: ISectorViews): number {
   );
 
   return views.instances.reduce(
-    (total: number, group: ISectorInstanceViews) => total + (group.indexCount / 3) * group.instanceCount,
+    (total: number, group: ISectorInstanceViews) => total + (group.geometry.indexCount / 3) * group.instanceCount,
     baked
   );
-}
-
-/**
- * Every texture reference a sector names, base textures and lightmaps alike.
- *
- * @param views - The sector.
- * @returns Its references, without repeats.
- */
-export function listSectorTextures(views: ISectorViews): Array<string> {
-  const references: Set<string> = new Set();
-
-  for (const section of [...views.sections, ...views.instances]) {
-    if (section.textureName) {
-      references.add(section.textureName);
-    }
-
-    for (const lightmap of section.lightmaps) {
-      references.add(lightmap);
-    }
-  }
-
-  return Array.from(references);
 }

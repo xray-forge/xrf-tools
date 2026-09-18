@@ -2,7 +2,8 @@ import { describe, expect, it } from "@jest/globals";
 import { BufferGeometry, InstancedMesh, Matrix4, MeshStandardMaterial, Vector3 } from "three";
 
 import { SectorDescription } from "@/core/ipc/types/xrf-visual";
-import { createInstancedMesh, createInstanceGeometry } from "@/core/level/lib/level-instance-geometry";
+import { createInstancedMesh } from "@/core/level/lib/level-instance-geometry";
+import { createGeometry } from "@/core/level/lib/level-sector-geometry";
 import { createSectorViews, ISectorInstanceViews, ISectorViews } from "@/core/level/lib/level-sector-views";
 import { mockSectorDescription, mockSectorInstanceGroup } from "@/fixtures/mocks/level.mocks";
 import { MockVisualBuffer } from "@/fixtures/mocks/visual.mocks";
@@ -24,7 +25,7 @@ function instancesAt(places: Array<number>): ISectorInstanceViews {
 describe("level instance geometry", () => {
   it("builds one geometry for a mesh however many places it stands", () => {
     const group: ISectorInstanceViews = instancesAt([0, 100, 200]);
-    const geometry: BufferGeometry = createInstanceGeometry(group);
+    const geometry: BufferGeometry = createGeometry(group.geometry);
 
     expect(geometry.getAttribute("position").count).toBe(3);
     expect(geometry.getIndex()?.count).toBe(3);
@@ -33,7 +34,7 @@ describe("level instance geometry", () => {
 
   it("stands the mesh in every place the level puts it", () => {
     const group: ISectorInstanceViews = instancesAt([0, 100, -50]);
-    const mesh: InstancedMesh = createInstancedMesh(group, createInstanceGeometry(group), new MeshStandardMaterial());
+    const mesh: InstancedMesh = createInstancedMesh(group, createGeometry(group.geometry), new MeshStandardMaterial());
 
     expect(mesh.count).toBe(3);
 
@@ -53,7 +54,7 @@ describe("level instance geometry", () => {
   // somewhere else entirely.
   it("reads the engine's matrix without rearranging it", () => {
     const group: ISectorInstanceViews = instancesAt([42]);
-    const mesh: InstancedMesh = createInstancedMesh(group, createInstanceGeometry(group), new MeshStandardMaterial());
+    const mesh: InstancedMesh = createInstancedMesh(group, createGeometry(group.geometry), new MeshStandardMaterial());
     const matrix: Matrix4 = new Matrix4();
 
     mesh.getMatrixAt(0, matrix);
@@ -69,7 +70,7 @@ describe("level instance geometry", () => {
   // unmoved bounding sphere would cull the whole stand the moment the origin left the view.
   it("leaves culling to the viewer rather than to an unmoved bounding sphere", () => {
     const group: ISectorInstanceViews = instancesAt([1000]);
-    const mesh: InstancedMesh = createInstancedMesh(group, createInstanceGeometry(group), new MeshStandardMaterial());
+    const mesh: InstancedMesh = createInstancedMesh(group, createGeometry(group.geometry), new MeshStandardMaterial());
 
     expect(mesh.frustumCulled).toBe(false);
   });

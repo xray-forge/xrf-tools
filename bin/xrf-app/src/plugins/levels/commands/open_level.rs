@@ -10,7 +10,7 @@ use crate::core::session::{Session, SessionId, SessionSnapshot};
 use crate::core::types::TauriResult;
 use crate::plugins::levels::read::{ReadLevel, read_source, resolve_textures};
 use crate::plugins::levels::state::{
-  LevelSource, LevelState, LevelTextureReference, SelectedLevel, SelectedLevelDescription, sectors_of,
+  LevelSource, LevelState, LevelTextureReference, SelectedLevel, SelectedLevelDescription,
 };
 
 /// Select a compiled level and report what it is built out of, without reading any of its geometry.
@@ -37,7 +37,11 @@ pub async fn levels_open_level(
     TauriResult::Ok((read, textures))
   })??;
 
-  let outlines: Vec<SectorOutline> = sectors_of(&read.level)
+  let outlines: Vec<SectorOutline> = read
+    .level
+    .sectors
+    .as_ref()
+    .map_or(&[][..], |chunk| &chunk.sectors)
     .iter()
     .enumerate()
     .map(|(index, sector)| SectorOutline::of(&read.visuals, index as u32, sector.root))

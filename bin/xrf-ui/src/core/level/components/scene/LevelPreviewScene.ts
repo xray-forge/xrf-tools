@@ -4,15 +4,12 @@ import {
   DEFAULT_LEVEL_PREVIEW_SCENE_CONFIG,
   ILevelPreviewSceneConfig,
 } from "@/core/level/components/scene/level-scene-config";
-import {
-  DEFAULT_LEVEL_SECTOR_VIEW_OPTIONS,
-  ILevelSectorViewOptions,
-  LevelPreviewSectors,
-} from "@/core/level/components/scene/LevelPreviewSectors";
+import { LevelPreviewSectors } from "@/core/level/components/scene/LevelPreviewSectors";
 import { getFlyBinding, ILevelFlyInput, LevelFlyCamera } from "@/core/level/lib/level-fly-camera";
 import { ILevelPoint } from "@/core/level/lib/level-residency";
 import { ILoadedSector } from "@/core/level/lib/level-sector-set";
 import { ILevelStats, LevelFrameTimer, measureLevelStats } from "@/core/level/lib/level-stats";
+import { DEFAULT_LEVEL_SURFACE_OPTIONS, ILevelSurfaceOptions } from "@/core/level/lib/level-surface-material";
 import { LevelTextureSet } from "@/core/level/lib/level-texture-set";
 import { Nullable } from "@/lib/types/general";
 
@@ -132,7 +129,7 @@ export class LevelPreviewScene {
     this.reportCamera();
   }
 
-  public applyViewOptions(options: ILevelSectorViewOptions = DEFAULT_LEVEL_SECTOR_VIEW_OPTIONS): void {
+  public applyViewOptions(options: ILevelSurfaceOptions = DEFAULT_LEVEL_SURFACE_OPTIONS): void {
     this.sectors.applyViewOptions(options);
   }
 

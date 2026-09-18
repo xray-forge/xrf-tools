@@ -8,7 +8,7 @@ use xrf_visual::{SectorDescription, SectorInstanceGroup, SectorPackage, SectorPa
 
 use crate::core::session::{SessionId, SessionSnapshot};
 use crate::core::types::TauriResult;
-use crate::plugins::levels::state::{LevelState, PackedSector, SelectedLevel, sectors_of};
+use crate::plugins::levels::state::{LevelState, PackedSector, SelectedLevel};
 
 /// Bytes past which a packed sector is worth saying something about: it is a level whose sectors are not a streaming
 /// unit, and a viewer holding several of them is in trouble before it runs out of memory.
@@ -24,7 +24,7 @@ pub async fn levels_open_sector(
   state: State<'_, LevelState>,
 ) -> TauriResult<SessionSnapshot<SectorDescription>> {
   let current: Arc<SessionSnapshot<SelectedLevel>> = state.selected.require(session_id)?;
-  let sectors: &[LevelSector] = sectors_of(&current.level);
+  let sectors: &[LevelSector] = current.get_sectors();
 
   let Some(named) = sectors.get(sector as usize) else {
     return Err(format!(
@@ -81,8 +81,8 @@ fn report(package: &SectorPackage, started: Instant) {
     "Packed sector {} in {}: {} vertices, {} indices, {} draws, {} instanced meshes standing {} times, {}",
     description.sector,
     xrf_utils::format_duration(started.elapsed()),
-    description.vertex_count,
-    description.index_count,
+    description.geometry.vertex_count,
+    description.geometry.index_count,
     description.sections.len(),
     description.instances.len(),
     instances,

@@ -8,13 +8,10 @@ import { LevelStreamPanel } from "@/core/level/components/panels/LevelStreamPane
 import { LevelPreviewEmpty } from "@/core/level/components/preview/LevelPreviewEmpty";
 import { LevelPreviewToolbar } from "@/core/level/components/preview/LevelPreviewToolbar";
 import { ILevelPreviewViewportProps, LevelPreviewViewport } from "@/core/level/components/preview/LevelPreviewViewport";
-import {
-  DEFAULT_LEVEL_SECTOR_VIEW_OPTIONS,
-  ILevelSectorViewOptions,
-} from "@/core/level/components/scene/LevelPreviewSectors";
 import { ILevelPoint } from "@/core/level/lib/level-residency";
 import { ILoadedSector } from "@/core/level/lib/level-sector-set";
 import { EMPTY_LEVEL_STATS, ILevelStats } from "@/core/level/lib/level-stats";
+import { DEFAULT_LEVEL_SURFACE_OPTIONS, ILevelSurfaceOptions } from "@/core/level/lib/level-surface-material";
 import { LevelTextureSet } from "@/core/level/lib/level-texture-set";
 import { ILevelStreamProgress } from "@/core/level/services";
 import { EditorFileHeader } from "@/core/shell/editor/EditorFileHeader";
@@ -70,7 +67,7 @@ export function LevelPreviewLayout({
   onBack,
   onDeselect = null,
 }: ILevelPreviewLayoutProps): ReactElement {
-  const [options, setOptions] = useState<ILevelSectorViewOptions>(DEFAULT_LEVEL_SECTOR_VIEW_OPTIONS);
+  const [options, setOptions] = useState<ILevelSurfaceOptions>(DEFAULT_LEVEL_SURFACE_OPTIONS);
   const [stats, setStats] = useState<ILevelStats>(EMPTY_LEVEL_STATS);
 
   const isOpen: boolean = Boolean(name);

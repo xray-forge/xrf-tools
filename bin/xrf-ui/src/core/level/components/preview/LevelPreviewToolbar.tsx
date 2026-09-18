@@ -3,15 +3,15 @@ import { default as PaletteIcon } from "@mui/icons-material/Palette";
 import { default as TextureIcon } from "@mui/icons-material/Texture";
 import { ReactElement, ReactNode, useCallback } from "react";
 
-import { ILevelSectorViewOptions } from "@/core/level/components/scene/LevelPreviewSectors";
+import { ILevelSurfaceOptions } from "@/core/level/lib/level-surface-material";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
 import { EditorViewToggle } from "@/core/shell/editor/EditorViewToggle";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface ILevelPreviewToolbarProps extends BaseComponentProps {
   subtitle?: ReactNode;
-  options: ILevelSectorViewOptions;
-  onChangeOptions: (options: ILevelSectorViewOptions) => void;
+  options: ILevelSurfaceOptions;
+  onChangeOptions: (options: ILevelSurfaceOptions) => void;
   onBack?: () => void;
 }
 
@@ -28,7 +28,7 @@ export function LevelPreviewToolbar({
   onBack,
 }: ILevelPreviewToolbarProps): ReactElement {
   const onToggle = useCallback(
-    (option: keyof ILevelSectorViewOptions) => {
+    (option: keyof ILevelSurfaceOptions) => {
       onChangeOptions({ ...options, [option]: !options[option] });
     },
     [options, onChangeOptions]

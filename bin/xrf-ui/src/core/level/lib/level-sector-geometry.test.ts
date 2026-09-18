@@ -4,7 +4,7 @@ import { BufferGeometry } from "three";
 import { SectorDescription } from "@/core/ipc/types/xrf-visual";
 import { createSectorGeometry, HEMI_ATTRIBUTE, LIGHTMAP_ATTRIBUTE } from "@/core/level/lib/level-sector-geometry";
 import { createSectorViews, ISectorViews } from "@/core/level/lib/level-sector-views";
-import { mockSectorDescription, mockSectorSection } from "@/fixtures/mocks/level.mocks";
+import { mockSectorDescription, mockSectorSection, mockSectorSurface } from "@/fixtures/mocks/level.mocks";
 import { MockVisualBuffer } from "@/fixtures/mocks/visual.mocks";
 
 function createViews(
@@ -42,8 +42,8 @@ describe("level sector geometry", () => {
     const geometry: BufferGeometry = createSectorGeometry(
       createViews({
         sections: [
-          mockSectorSection({ shaderId: 1, draw: { start: 0, count: 3 } }),
-          mockSectorSection({ shaderId: 2, draw: { start: 3, count: 6 } }),
+          mockSectorSection({ draw: { start: 0, count: 3 }, surface: mockSectorSurface({ shaderId: 1 }) }),
+          mockSectorSection({ draw: { start: 3, count: 6 }, surface: mockSectorSurface({ shaderId: 2 }) }),
         ],
       })
     );

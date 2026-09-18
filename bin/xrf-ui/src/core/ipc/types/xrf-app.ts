@@ -1655,7 +1655,7 @@ export type LevelEntry = {
 export enum ELevelSource {
   /** A compiled level directory on disk, named by its filesystem path. */
   DIRECTORY = "directory",
-  /** A level of the mounted roots, named by its engine identity, `levels\<name>`. */
+  /** A level of the mounted roots, named by its engine identity. */
   ASSET = "asset",
 }
 
@@ -1663,12 +1663,12 @@ export enum ELevelSource {
 export type LevelSource =
   /** A compiled level directory on disk, named by its filesystem path. */
   | { kind: "directory"; path: string }
-  /** A level of the mounted roots, named by its engine identity, `levels\<name>`. */
+  /** A level of the mounted roots, named by its engine identity. */
   | { kind: "asset"; logicalPath: string };
 
 /** One texture a level's shader table names, and what it came to. */
 export type LevelTextureReference = {
-  /** The reference as the shader table spells it, which is what a section names. */
+  /** The reference as the shader table spells it, which is what a surface names. */
   reference: string;
   /** What it resolved to, or `None` for a reference the roots hold nothing for. */
   logicalPath: string | null;

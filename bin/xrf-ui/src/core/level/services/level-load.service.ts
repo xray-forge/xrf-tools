@@ -241,8 +241,9 @@ export class LevelLoadService {
       "Sector read in:",
       formatDuration(timer.elapsed()),
       `sector ${sector},`,
-      `${views.vertexCount} vertices,`,
-      `${views.sections.length} draws`
+      `${views.geometry.vertexCount} vertices,`,
+      `${views.sections.length} draws,`,
+      `${views.instances.length} instanced meshes`
     );
   }
 

@@ -1,10 +1,72 @@
-import { SelectedLevelDescription } from "@/core/ipc/types/xrf-app";
-import { SectorDescription, SectorInstanceGroup, SectorOutline, SectorSection } from "@/core/ipc/types/xrf-visual";
+import { LevelEntry, LevelTextureReference, SelectedLevelDescription } from "@/core/ipc/types/xrf-app";
+import {
+  SectorDescription,
+  SectorGeometry,
+  SectorInstanceGroup,
+  SectorOutline,
+  SectorSection,
+  SectorSurface,
+} from "@/core/ipc/types/xrf-visual";
 import { mockVisualBounds, MockVisualBuffer } from "@/fixtures/mocks/visual.mocks";
 
 /**
- * A sector packed the way the rust packer packs one: positions and thirty-two bit indices in one buffer, and a
- * section naming the surface that draws them.
+ * One packed mesh: positions and thirty-two bit indices written into the buffer.
+ *
+ * @param buffer - Buffer the attributes are written into, so the offsets a test reads are real ones.
+ * @returns Where they landed.
+ */
+export function mockSectorGeometry(buffer: MockVisualBuffer): SectorGeometry {
+  const positions = buffer.pushFloats([0, 0, 0, 1, 0, 0, 0, 1, 0]);
+  const indices = buffer.pushIndices32([0, 1, 2]);
+
+  return {
+    binormals: null,
+    colors: null,
+    hemi: null,
+    indexCount: 3,
+    indices,
+    lightmapCoordinates: null,
+    normals: null,
+    positions,
+    tangents: null,
+    textureCoordinates: null,
+    vertexCount: 3,
+  };
+}
+
+/**
+ * How one part of a sector is dressed.
+ *
+ * @param overrides - Fields to replace on the surface.
+ * @returns A surface fixture naming one shader table entry.
+ */
+export function mockSectorSurface(overrides: Partial<SectorSurface> = {}): SectorSurface {
+  return {
+    lightmaps: [],
+    shaderId: 1,
+    shaderName: "default",
+    textureName: "stone",
+    ...overrides,
+  };
+}
+
+/**
+ * One draw of a sector's own geometry.
+ *
+ * @param overrides - Fields to replace on the section.
+ * @returns A section fixture drawing one triangle.
+ */
+export function mockSectorSection(overrides: Partial<SectorSection> = {}): SectorSection {
+  return {
+    draw: { start: 0, count: 3 },
+    drawables: [1],
+    surface: mockSectorSurface(),
+    ...overrides,
+  };
+}
+
+/**
+ * A sector packed the way the rust packer packs one.
  *
  * @param buffer - Buffer the sections are written into, so the offsets a test reads are real ones.
  * @param overrides - Fields to replace on the description.
@@ -14,45 +76,45 @@ export function mockSectorDescription(
   buffer: MockVisualBuffer,
   overrides: Partial<SectorDescription> = {}
 ): SectorDescription {
-  const positions = buffer.pushFloats([0, 0, 0, 1, 0, 0, 0, 1, 0]);
-  const indices = buffer.pushIndices32([0, 1, 2]);
+  const geometry: SectorGeometry = mockSectorGeometry(buffer);
 
   return {
-    binormals: null,
     bounds: mockVisualBounds(),
-    bufferLength: buffer.byteLength,
-    colors: null,
-    hemi: null,
-    indexCount: 3,
-    indices,
+    geometry,
     instances: [],
-    lightmapCoordinates: null,
-    normals: null,
-    positions,
     sections: [mockSectorSection()],
     sector: 0,
     skipped: [],
-    tangents: null,
-    textureCoordinates: null,
-    vertexCount: 3,
     ...overrides,
+    // Last, so a caller that wrote more into the buffer still gets a length covering all of it.
+    bufferLength: overrides.bufferLength ?? buffer.byteLength,
   };
 }
 
 /**
- * One draw of a sector, dressed by a shader table entry.
+ * One mesh a sector stands in several places, packed once beside the transforms that place it.
  *
- * @param overrides - Fields to replace on the section.
- * @returns A section fixture drawing one triangle.
+ * @param buffer - Buffer the mesh and its transforms are written into.
+ * @param places - Where each copy stands along x.
+ * @param overrides - Fields to replace on the group.
+ * @returns A group covering exactly what was written.
  */
-export function mockSectorSection(overrides: Partial<SectorSection> = {}): SectorSection {
+export function mockSectorInstanceGroup(
+  buffer: MockVisualBuffer,
+  places: Array<number>,
+  overrides: Partial<SectorInstanceGroup> = {}
+): SectorInstanceGroup {
+  const geometry: SectorGeometry = mockSectorGeometry(buffer);
+  const transforms = buffer.pushFloats(
+    places.flatMap((at: number) => [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, at, 0, 0, 1])
+  );
+
   return {
-    draw: { start: 0, count: 3 },
-    drawables: [1],
-    lightmaps: [],
-    shaderId: 1,
-    shaderName: "default",
-    textureName: "stone",
+    drawables: places.map((_, index: number) => index + 1),
+    geometry,
+    instanceCount: places.length,
+    surface: mockSectorSurface(),
+    transforms,
     ...overrides,
   };
 }
@@ -74,6 +136,28 @@ export function mockSectorOutline(overrides: Partial<SectorOutline> = {}): Secto
 }
 
 /**
+ * One texture a level's shader table names.
+ *
+ * @param name - The reference as the table spells it.
+ * @param isPresent - Whether the roots hold anything for it.
+ * @returns A reference fixture.
+ */
+export function mockLevelTextureReference(name: string, isPresent: boolean = true): LevelTextureReference {
+  return { logicalPath: isPresent ? `textures\${name}.dds` : null, reference: name };
+}
+
+/**
+ * One compiled level a picker lists.
+ *
+ * @param name - What the installation knows it by.
+ * @param hasGeometry - Whether `level.geom` sits beside its bundle.
+ * @returns An entry fixture.
+ */
+export function mockLevelEntry(name: string, hasGeometry: boolean = true): LevelEntry {
+  return { hasGeometry, logicalPath: `levels\${name}`, name };
+}
+
+/**
  * A level as `open_level` describes one.
  *
  * @param overrides - Fields to replace on the description.
@@ -90,53 +174,11 @@ export function mockSelectedLevelDescription(
     portals: 0,
     sectors: [mockSectorOutline()],
     shaderEntries: 4,
-    textures: [],
     source: { kind: "directory", path: "C:\\levels\\zaton" },
+    textures: [],
     visuals: 2,
     xrlcQuality: 1,
     xrlcVersion: 14,
-    ...overrides,
-  };
-}
-
-/**
- * One mesh a sector stands in several places, packed once beside the transforms that place it.
- *
- * @param buffer - Buffer the mesh and its transforms are written into.
- * @param places - Where each copy stands along x.
- * @param overrides - Fields to replace on the group.
- * @returns A group covering exactly what was written.
- */
-export function mockSectorInstanceGroup(
-  buffer: MockVisualBuffer,
-  places: Array<number>,
-  overrides: Partial<SectorInstanceGroup> = {}
-): SectorInstanceGroup {
-  const positions = buffer.pushFloats([0, 0, 0, 1, 0, 0, 0, 1, 0]);
-  const indices = buffer.pushIndices32([0, 1, 2]);
-  const transforms = buffer.pushFloats(
-    places.flatMap((at: number) => [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, at, 0, 0, 1])
-  );
-
-  return {
-    binormals: null,
-    colors: null,
-    drawables: places.map((_, index: number) => index + 1),
-    hemi: null,
-    indexCount: 3,
-    indices,
-    instanceCount: places.length,
-    lightmapCoordinates: null,
-    lightmaps: [],
-    normals: null,
-    positions,
-    shaderId: 1,
-    shaderName: "default",
-    tangents: null,
-    textureCoordinates: null,
-    textureName: "stone",
-    transforms,
-    vertexCount: 3,
     ...overrides,
   };
 }

@@ -3,7 +3,7 @@ import { describe, expect, it } from "@jest/globals";
 import { ILoadedSector } from "@/core/level/lib/level-sector-set";
 import { createSectorViews } from "@/core/level/lib/level-sector-views";
 import { EMPTY_LEVEL_STATS, ILevelStats, LevelFrameTimer, measureLevelStats } from "@/core/level/lib/level-stats";
-import { mockSectorDescription, mockSectorSection } from "@/fixtures/mocks/level.mocks";
+import { mockSectorDescription, mockSectorSection, mockSectorSurface } from "@/fixtures/mocks/level.mocks";
 import { MockVisualBuffer } from "@/fixtures/mocks/visual.mocks";
 
 /** One resident sector drawing the given surfaces, without a renderer to upload it. */
@@ -12,7 +12,7 @@ function loadedSector(sector: number, sections: number): ILoadedSector {
   const description = mockSectorDescription(buffer, {
     sector,
     sections: Array.from({ length: sections }, (_, index) =>
-      mockSectorSection({ draw: { count: 3, start: index * 3 }, shaderId: index })
+      mockSectorSection({ draw: { count: 3, start: index * 3 }, surface: mockSectorSurface({ shaderId: index }) })
     ),
   });
 

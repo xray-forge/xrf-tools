@@ -1,15 +1,17 @@
 import { describe, expect, it } from "@jest/globals";
 import { Group, InstancedMesh, Mesh, MeshStandardMaterial } from "three";
 
-import {
-  DEFAULT_LEVEL_SECTOR_VIEW_OPTIONS,
-  getShaderColor,
-  LevelPreviewSectors,
-} from "@/core/level/components/scene/LevelPreviewSectors";
+import { LevelPreviewSectors } from "@/core/level/components/scene/LevelPreviewSectors";
 import { createSectorGeometry } from "@/core/level/lib/level-sector-geometry";
 import { ILoadedSector } from "@/core/level/lib/level-sector-set";
 import { createSectorViews, ISectorViews } from "@/core/level/lib/level-sector-views";
-import { mockSectorDescription, mockSectorInstanceGroup, mockSectorSection } from "@/fixtures/mocks/level.mocks";
+import { DEFAULT_LEVEL_SURFACE_OPTIONS, getShaderColor } from "@/core/level/lib/level-surface-material";
+import {
+  mockSectorDescription,
+  mockSectorInstanceGroup,
+  mockSectorSection,
+  mockSectorSurface,
+} from "@/fixtures/mocks/level.mocks";
 import { MockVisualBuffer } from "@/fixtures/mocks/visual.mocks";
 
 /** One resident sector drawing the given shader table entries. */
@@ -18,7 +20,7 @@ function loadedSector(sector: number, shaderIds: Array<number>): ILoadedSector {
   const description = mockSectorDescription(buffer, {
     sector,
     sections: shaderIds.map((shaderId: number, index: number) =>
-      mockSectorSection({ draw: { count: 3, start: index * 3 }, shaderId })
+      mockSectorSection({ draw: { count: 3, start: index * 3 }, surface: mockSectorSurface({ shaderId }) })
     ),
   });
   const views: ISectorViews = createSectorViews(
@@ -66,7 +68,7 @@ describe("LevelPreviewSectors", () => {
     const parent: Group = new Group();
     const sectors: LevelPreviewSectors = new LevelPreviewSectors(parent);
 
-    sectors.applyViewOptions({ ...DEFAULT_LEVEL_SECTOR_VIEW_OPTIONS, isSurfaceColored: true });
+    sectors.applyViewOptions({ ...DEFAULT_LEVEL_SURFACE_OPTIONS, isSurfaceColored: true });
     sectors.sync(
       new Map([
         [0, loadedSector(0, [7])],
@@ -134,7 +136,7 @@ describe("LevelPreviewSectors", () => {
     const sectors: LevelPreviewSectors = new LevelPreviewSectors(parent);
 
     sectors.sync(new Map([[0, loadedSector(0, [1, 2])]]));
-    sectors.applyViewOptions({ ...DEFAULT_LEVEL_SECTOR_VIEW_OPTIONS, isSurfaceColored: false, isWireframe: true });
+    sectors.applyViewOptions({ ...DEFAULT_LEVEL_SURFACE_OPTIONS, isSurfaceColored: false, isWireframe: true });
 
     for (const material of materialsOf(parent.children[0] as Mesh)) {
       expect(material.wireframe).toBe(true);

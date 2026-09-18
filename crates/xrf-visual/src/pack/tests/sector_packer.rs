@@ -37,7 +37,7 @@ fn composition(run: &LevelVisualsChunk) -> LevelSectorComposition {
 
 /// The 32-bit indices a package wrote, read back out of its buffer.
 fn read_indices(package: &SectorPackage) -> Vec<u32> {
-  let section = package.description.indices;
+  let section = package.description.geometry.indices;
   let start: usize = section.byte_offset as usize;
 
   package.buffer[start..start + section.byte_length as usize]
@@ -72,13 +72,14 @@ fn test_packs_a_sector_into_one_buffer_of_parallel_arrays() {
 
   assert_eq!(description.sector, 0);
   assert_eq!(
-    description.vertex_count, 4,
+    description.geometry.vertex_count, 4,
     "each drawable brought its own two vertices"
   );
-  assert_eq!(description.index_count, 6);
-  assert_eq!(description.positions.byte_length, 4 * 3 * 4);
+  assert_eq!(description.geometry.index_count, 6);
+  assert_eq!(description.geometry.positions.byte_length, 4 * 3 * 4);
   assert_eq!(
     description
+      .geometry
       .normals
       .expect("a lightmapped sector carries normals")
       .byte_length,
@@ -86,6 +87,7 @@ fn test_packs_a_sector_into_one_buffer_of_parallel_arrays() {
   );
   assert_eq!(
     description
+      .geometry
       .hemi
       .expect("the hemisphere term rides in the normal")
       .byte_length,
@@ -103,10 +105,10 @@ fn test_packs_a_range_two_drawables_share_only_once() {
   let package: SectorPackage = SectorPacker::new(&run, None, &mut source).pack::<XRayByteOrder>(0, &composition(&run));
 
   assert_eq!(
-    package.description.vertex_count, 2,
+    package.description.geometry.vertex_count, 2,
     "one range, packed once rather than once for each of the two drawables that name it"
   );
-  assert_eq!(package.description.index_count, 6, "both drawables still draw");
+  assert_eq!(package.description.geometry.index_count, 6, "both drawables still draw");
 }
 
 // A stored index counts from its own visual's vertex base, because the renderer passes that base as the draw call's
@@ -143,17 +145,20 @@ fn test_groups_drawables_by_the_shader_entry_that_dresses_them() {
   let sections = &package.description.sections;
 
   assert_eq!(sections.len(), 2, "two surfaces, two draws");
-  assert_eq!(sections[0].shader_id, 1);
+  assert_eq!(sections[0].surface.shader_id, 1);
   assert_eq!(
     sections[0].drawables,
     vec![1, 3],
     "both visuals of one surface draw together"
   );
-  assert_eq!(sections[0].shader_name.as_deref(), Some("def_shaders\\def_vertex"));
-  assert_eq!(sections[0].texture_name.as_deref(), Some("wall"));
+  assert_eq!(
+    sections[0].surface.shader_name.as_deref(),
+    Some("def_shaders\\def_vertex")
+  );
+  assert_eq!(sections[0].surface.texture_name.as_deref(), Some("wall"));
   assert_eq!(sections[0].draw.start, 0);
   assert_eq!(sections[0].draw.count, 6);
-  assert_eq!(sections[1].shader_id, 2);
+  assert_eq!(sections[1].surface.shader_id, 2);
   assert_eq!(
     sections[1].draw.start, 6,
     "one section begins where the one before it ended"
@@ -172,10 +177,10 @@ fn test_leaves_out_a_drawable_whose_range_it_cannot_read() {
   assert_eq!(package.description.skipped[0].drawable, 2);
   assert_eq!(package.description.skipped[0].cause, VisualSkipCause::Malformed);
   assert_eq!(
-    package.description.vertex_count, 2,
+    package.description.geometry.vertex_count, 2,
     "the rest of the sector still packs"
   );
-  assert_eq!(package.description.index_count, 3);
+  assert_eq!(package.description.geometry.index_count, 3);
 }
 
 // One array holds an attribute for every vertex or for none, so a range that carries no lightmap coordinate still
@@ -205,10 +210,11 @@ fn test_carries_an_attribute_any_range_of_the_sector_declares() {
   let package: SectorPackage = SectorPacker::new(&run, None, &mut source).pack::<XRayByteOrder>(0, &composition(&run));
   let lightmap = package
     .description
+    .geometry
     .lightmap_coordinates
     .expect("a sector one of whose ranges is lightmapped");
 
-  assert_eq!(package.description.vertex_count, 4);
+  assert_eq!(package.description.geometry.vertex_count, 4);
   assert_eq!(
     lightmap.byte_length,
     4 * 2 * 4,
@@ -230,7 +236,7 @@ fn test_mirrors_the_level_into_renderer_space() {
   let mut source = open_geometry(new_geometry());
 
   let package: SectorPackage = SectorPacker::new(&run, None, &mut source).pack::<XRayByteOrder>(0, &composition(&run));
-  let positions: Vec<f32> = read_floats(&package, package.description.positions);
+  let positions: Vec<f32> = read_floats(&package, package.description.geometry.positions);
 
   assert_eq!(positions, vec![0.0, 0.0, -1.0, 1.0, 0.0, -2.0]);
 }
@@ -243,8 +249,8 @@ fn test_packs_a_sector_that_reaches_nothing_into_an_empty_package() {
   let package: SectorPackage = SectorPacker::new(&run, None, &mut source).pack::<XRayByteOrder>(7, &composition(&run));
 
   assert_eq!(package.description.sector, 7);
-  assert_eq!(package.description.vertex_count, 0);
-  assert_eq!(package.description.index_count, 0);
+  assert_eq!(package.description.geometry.vertex_count, 0);
+  assert_eq!(package.description.geometry.index_count, 0);
   assert!(package.description.sections.is_empty());
   assert!(package.description.bounds.is_none(), "nothing packed spans nothing");
 }
@@ -259,7 +265,7 @@ fn test_packs_a_visual_stored_in_its_own_space_as_an_instance() {
   let package: SectorPackage = SectorPacker::new(&run, None, &mut source).pack::<XRayByteOrder>(0, &composition(&run));
 
   assert_eq!(
-    package.description.vertex_count, 0,
+    package.description.geometry.vertex_count, 0,
     "a placed visual is not baked into the sector"
   );
   assert_eq!(package.description.instances.len(), 1);
@@ -267,7 +273,7 @@ fn test_packs_a_visual_stored_in_its_own_space_as_an_instance() {
   let group: &SectorInstanceGroup = &package.description.instances[0];
 
   assert_eq!(group.instance_count, 1);
-  assert_eq!(group.vertex_count, 2, "the mesh itself, in its own space");
+  assert_eq!(group.geometry.vertex_count, 2, "the mesh itself, in its own space");
   assert_eq!(group.drawables, vec![1]);
 
   // Row major with the translation in the fourth row, mirrored into renderer space along the way.
@@ -291,7 +297,7 @@ fn test_packs_one_mesh_for_every_place_it_stands() {
   let group: &SectorInstanceGroup = &package.description.instances[0];
 
   assert_eq!(group.instance_count, 2, "two places");
-  assert_eq!(group.vertex_count, 2, "packed once, not once for each place");
+  assert_eq!(group.geometry.vertex_count, 2, "packed once, not once for each place");
   assert_eq!(group.drawables, vec![1, 2]);
 
   let transforms: Vec<f32> = read_floats(&package, group.transforms);
@@ -310,8 +316,8 @@ fn test_keeps_instances_of_different_surfaces_apart() {
   let package: SectorPackage = SectorPacker::new(&run, None, &mut source).pack::<XRayByteOrder>(0, &composition(&run));
 
   assert_eq!(package.description.instances.len(), 2);
-  assert_eq!(package.description.instances[0].shader_id, 1);
-  assert_eq!(package.description.instances[1].shader_id, 2);
+  assert_eq!(package.description.instances[0].surface.shader_id, 1);
+  assert_eq!(package.description.instances[1].surface.shader_id, 2);
 }
 
 // A range already baked into the level is still shared, which is what the sharing was always for.
@@ -322,6 +328,6 @@ fn test_still_shares_a_range_no_transform_places() {
 
   let package: SectorPackage = SectorPacker::new(&run, None, &mut source).pack::<XRayByteOrder>(0, &composition(&run));
 
-  assert_eq!(package.description.vertex_count, 2);
+  assert_eq!(package.description.geometry.vertex_count, 2);
   assert!(package.description.instances.is_empty());
 }

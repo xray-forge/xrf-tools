@@ -2,13 +2,10 @@ import { ReactElement, useCallback, useEffect, useRef } from "react";
 
 import { VisualBounds } from "@/core/ipc/types/xrf-visual";
 import { LevelPreviewScene } from "@/core/level/components/scene/LevelPreviewScene";
-import {
-  DEFAULT_LEVEL_SECTOR_VIEW_OPTIONS,
-  ILevelSectorViewOptions,
-} from "@/core/level/components/scene/LevelPreviewSectors";
 import { ILevelPoint } from "@/core/level/lib/level-residency";
 import { ILoadedSector } from "@/core/level/lib/level-sector-set";
 import { ILevelStats } from "@/core/level/lib/level-stats";
+import { DEFAULT_LEVEL_SURFACE_OPTIONS, ILevelSurfaceOptions } from "@/core/level/lib/level-surface-material";
 import { LevelTextureSet } from "@/core/level/lib/level-texture-set";
 import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
@@ -21,7 +18,7 @@ export interface ILevelPreviewViewportProps extends BaseComponentProps {
   bounds: Nullable<VisualBounds>;
   /** Where surfaces take their textures from, owned by the loader rather than by the scene. */
   textures?: Nullable<LevelTextureSet>;
-  options?: ILevelSectorViewOptions;
+  options?: ILevelSurfaceOptions;
   /** Where the camera has gone, for the loader to stream against. */
   onCameraMoved: (point: ILevelPoint) => void;
   onStats?: (stats: ILevelStats) => void;
@@ -37,7 +34,7 @@ export function LevelPreviewViewport({
   sectors,
   bounds,
   textures = null,
-  options = DEFAULT_LEVEL_SECTOR_VIEW_OPTIONS,
+  options = DEFAULT_LEVEL_SURFACE_OPTIONS,
   onCameraMoved,
   onStats,
 }: ILevelPreviewViewportProps): ReactElement {
