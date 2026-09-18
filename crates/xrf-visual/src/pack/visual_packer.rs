@@ -6,7 +6,9 @@ use crate::data::visual_description::VisualDescription;
 use crate::data::visual_section::VisualDrawRange;
 use crate::data::visual_submesh::{VisualGeometry, VisualSkin, VisualSkipCause, VisualSubmesh, VisualSubmeshContent};
 use crate::pack::visual_buffer_builder::VisualBufferBuilder;
-use crate::pack::visual_conversion::{convert_declared_bounds, convert_texture_coordinates, convert_vector};
+use crate::pack::visual_conversion::{
+  convert_declared_bounds, convert_texture_coordinates, convert_vector, reverse_triangle_winding,
+};
 use crate::pack::visual_package::VisualPackage;
 use crate::pack::visual_skeleton::convert_bones;
 
@@ -353,12 +355,5 @@ impl VisualPacker {
       )),
       None => Ok(()),
     }
-  }
-}
-
-/// Reverse the winding of every triangle in place.
-pub(crate) fn reverse_triangle_winding(indices: &mut [u16]) {
-  for triangle in indices.as_chunks_mut::<3>().0 {
-    triangle.swap(1, 2);
   }
 }

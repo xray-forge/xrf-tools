@@ -7,6 +7,10 @@ use xrf_math::Vector3d;
 pub struct LevelVertex {
   pub position: Vector3d,
   pub normal: Vector3d,
+  /// The authored tangent, absent for a declaration that carries none.
+  pub tangent: Option<Vector3d>,
+  /// The authored binormal, mirrored with the tangent.
+  pub binormal: Option<Vector3d>,
   /// The base texture coordinate, reassembled from its 16-bit part and the low byte the tangent and binormal carry.
   pub texture_coordinate: (f32, f32),
   /// The lightmap coordinate, for a surface xrLC lit from a lightmap.

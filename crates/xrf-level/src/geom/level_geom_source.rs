@@ -150,14 +150,18 @@ impl<D: ChunkDataSource> LevelGeomSource<D> {
 
     // The low byte of each base coordinate rides in a tangent or binormal alpha, so the coordinate is rebuilt from
     // two elements rather than one. A tree carries neither, and zero is exact there.
-    let fraction_u: u8 = layout
+    let tangent: Option<(Vector3d, u8)> = layout
       .get_tangent_offset()
-      .map_or(0, |offset| Self::take_four(vertex, offset)[3]);
-    let fraction_v: u8 = layout
+      .map(|offset| LevelVertex::decode_direction(Self::take_four(vertex, offset)));
+    let binormal: Option<(Vector3d, u8)> = layout
       .get_binormal_offset()
-      .map_or(0, |offset| Self::take_four(vertex, offset)[3]);
+      .map(|offset| LevelVertex::decode_direction(Self::take_four(vertex, offset)));
+
+    let fraction_u: u8 = tangent.as_ref().map_or(0, |(_, fraction)| *fraction);
+    let fraction_v: u8 = binormal.as_ref().map_or(0, |(_, fraction)| *fraction);
 
     LevelVertex {
+      binormal: binormal.map(|(direction, _)| direction),
       color: layout
         .get_color_offset()
         .map(|offset| LevelVertex::decode_color(Self::take_four(vertex, offset))),
@@ -170,6 +174,7 @@ impl<D: ChunkDataSource> LevelGeomSource<D> {
       }),
       normal,
       position: Self::take_position::<T>(vertex, layout.get_position_offset()),
+      tangent: tangent.map(|(direction, _)| direction),
       texture_coordinate: layout.get_texture_coordinate_offset().map_or((0.0, 0.0), |offset| {
         (
           layout.rebuild_coordinate(Self::take_short::<T>(vertex, offset), fraction_u),

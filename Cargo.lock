@@ -7562,10 +7562,13 @@ dependencies = [
 name = "xrf-visual"
 version = "0.1.0"
 dependencies = [
+ "byteorder",
  "log",
  "serde",
  "specta",
+ "xrf-chunk",
  "xrf-error",
+ "xrf-level",
  "xrf-math",
  "xrf-ogf",
  "xrf-particles",

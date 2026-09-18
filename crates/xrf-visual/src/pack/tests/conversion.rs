@@ -4,8 +4,9 @@ use xrf_ogf::{OgfBox, OgfSphere};
 
 use crate::data::visual_bounds::VisualBounds;
 use crate::pack::tests::fixtures::vector;
-use crate::pack::visual_conversion::{convert_declared_bounds, convert_texture_coordinates, convert_vector};
-use crate::pack::visual_packer::reverse_triangle_winding;
+use crate::pack::visual_conversion::{
+  convert_declared_bounds, convert_texture_coordinates, convert_vector, reverse_triangle_winding,
+};
 
 #[test]
 fn mirrors_z_and_leaves_the_other_axes_alone() {

@@ -41,3 +41,10 @@ pub fn convert_declared_bounds(bounding_box: &OgfBox, bounding_sphere: &OgfSpher
     },
   }
 }
+
+/// Reverse the winding of every triangle in place.
+pub(crate) fn reverse_triangle_winding<T>(indices: &mut [T]) {
+  for triangle in indices.as_chunks_mut::<3>().0 {
+    triangle.swap(1, 2);
+  }
+}

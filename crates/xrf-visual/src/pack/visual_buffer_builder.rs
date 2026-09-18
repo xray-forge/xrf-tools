@@ -46,6 +46,15 @@ impl VisualBufferBuilder {
     })
   }
 
+  /// Appends `u32` values as little-endian bytes and returns their aligned byte range.
+  pub fn push_u32_section(&mut self, values: &[u32]) -> VisualSection {
+    self.push_section(size_of_val(values), |buffer| {
+      for value in values {
+        buffer.extend_from_slice(&value.to_le_bytes());
+      }
+    })
+  }
+
   /// Returns the total packed buffer length, including alignment padding.
   pub fn length(&self) -> u32 {
     Self::usize_to_u32(self.buffer.len())

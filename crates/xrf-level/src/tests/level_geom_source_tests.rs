@@ -1,5 +1,6 @@
 use xrf_chunk::XRayByteOrder;
 use xrf_error::XrfResult;
+use xrf_math::Vector3d;
 
 use crate::geom::level_geom_file::LevelGeomFile;
 use crate::geom::level_geom_source::LevelGeomSource;
@@ -54,9 +55,10 @@ fn new_lightmapped_vertex() -> Vec<u8> {
   bytes.extend_from_slice(&3.5f32.to_le_bytes());
   // Normal, written blue, green, red, alpha: x = 255, y = 128, z = 0, and hemi in the alpha.
   bytes.extend_from_slice(&[0, 128, 255, 77]);
-  // Tangent and binormal: the alpha of each is the low byte of a base coordinate.
-  bytes.extend_from_slice(&[0, 0, 0, 128]);
-  bytes.extend_from_slice(&[0, 0, 0, 64]);
+  // Tangent and binormal: a direction in the same packing as the normal, whose alpha is the low byte of a base
+  // coordinate rather than a component.
+  bytes.extend_from_slice(&[0, 128, 255, 128]);
+  bytes.extend_from_slice(&[255, 128, 0, 64]);
   // Base coordinate: one whole tile across, quantized by 1024.
   bytes.extend_from_slice(&1024i16.to_le_bytes());
   bytes.extend_from_slice(&512i16.to_le_bytes());
@@ -139,6 +141,27 @@ fn test_reads_a_vertex_of_the_lightmapped_declaration() -> XrfResult {
   assert!((lightmap.0 - 0.5).abs() < 1e-6);
   assert!((lightmap.1 + 0.5).abs() < 1e-6);
   assert_eq!(vertex.color, None, "a lightmapped surface carries no vertex colour");
+
+  Ok(())
+}
+
+#[test]
+fn test_reads_the_tangent_frame_beside_the_coordinate_its_alpha_carries() -> XrfResult {
+  let mut source: LevelGeomSource<_> = LevelGeomSource::open_from_bytes::<XRayByteOrder>(new_geometry(
+    &new_lightmapped_declaration(),
+    &new_lightmapped_vertex(),
+    1,
+    &[0, 0, 0],
+  )?)?;
+
+  let vertices: Vec<LevelVertex> = source.read_vertices::<XRayByteOrder>(0, 0, 1)?;
+  let tangent: &Vector3d = vertices[0].tangent.as_ref().expect("a declared tangent");
+  let binormal: &Vector3d = vertices[0].binormal.as_ref().expect("a declared binormal");
+
+  assert!((tangent.x - 1.0).abs() < 0.01, "tangent x comes from the red byte");
+  assert!((tangent.z + 1.0).abs() < 0.01, "tangent z comes from the blue byte");
+  assert!((binormal.x + 1.0).abs() < 0.01);
+  assert!((binormal.z - 1.0).abs() < 0.01);
 
   Ok(())
 }

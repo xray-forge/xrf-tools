@@ -40,7 +40,7 @@ impl VisualBounds {
   }
 
   /// Extent of a set of already converted positions, or `None` when the set is empty.
-  fn from_positions(positions: &[Vector3d]) -> Option<Self> {
+  pub(crate) fn from_positions(positions: &[Vector3d]) -> Option<Self> {
     let (first, rest) = positions.split_first()?;
 
     let mut min: Vector3d = first.clone();

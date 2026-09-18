@@ -1,3 +1,7 @@
+pub(crate) mod sector_package;
+pub(crate) mod sector_packer;
+pub(crate) mod sector_vertex_arrays;
+pub(crate) mod sector_vertex_sections;
 pub(crate) mod visual_buffer_builder;
 pub(crate) mod visual_conversion;
 pub(crate) mod visual_motion;
