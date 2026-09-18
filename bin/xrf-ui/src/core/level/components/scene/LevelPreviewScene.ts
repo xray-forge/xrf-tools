@@ -4,8 +4,8 @@ import {
   DEFAULT_LEVEL_PREVIEW_SCENE_CONFIG,
   ILevelPreviewSceneConfig,
 } from "@/core/level/components/scene/level-scene-config";
+import { LevelFlyControls } from "@/core/level/components/scene/LevelFlyControls";
 import { LevelPreviewSectors } from "@/core/level/components/scene/LevelPreviewSectors";
-import { getFlyBinding, ILevelFlyInput, LevelFlyCamera } from "@/core/level/lib/level-fly-camera";
 import { ILevelPoint } from "@/core/level/lib/level-residency";
 import { ILoadedSector } from "@/core/level/lib/level-sector-set";
 import { ILevelStats, LevelFrameTimer, measureLevelStats } from "@/core/level/lib/level-stats";
@@ -38,20 +38,10 @@ export class LevelPreviewScene {
   private readonly renderer: WebGLRenderer;
   private readonly root: Group = new Group();
   private readonly sectors: LevelPreviewSectors;
-  private readonly fly: LevelFlyCamera = new LevelFlyCamera();
+  private controls: Nullable<LevelFlyControls> = null;
   private readonly timer: LevelFrameTimer = new LevelFrameTimer();
   private readonly resizeObserver: ResizeObserver;
   private readonly handlers: ILevelPreviewSceneHandlers;
-
-  private readonly input: ILevelFlyInput = {
-    back: false,
-    down: false,
-    fast: false,
-    forward: false,
-    left: false,
-    right: false,
-    up: false,
-  };
 
   private container: Nullable<HTMLElement> = null;
   private frameHandle: number = 0;
@@ -59,7 +49,6 @@ export class LevelPreviewScene {
   private isResizePending: boolean = false;
   private renderedWidth: number = 0;
   private renderedHeight: number = 0;
-  private isLooking: boolean = false;
   private resident: ReadonlyMap<number, ILoadedSector> = new Map();
   private streamedFrom: Nullable<Vector3> = null;
   private statsReportedAt: number = 0;
@@ -123,7 +112,7 @@ export class LevelPreviewScene {
     const distance: number = Math.max(radius, 1) * (1 + this.config.cameraFitMargin);
 
     this.camera.position.set(target.x, target.y + distance * 0.35, target.z + distance);
-    this.fly.lookAt(this.camera, target);
+    this.controls?.camera.lookAt(this.camera, target);
 
     this.streamedFrom = null;
     this.reportCamera();
@@ -142,13 +131,7 @@ export class LevelPreviewScene {
     this.container = container;
     container.appendChild(this.renderer.domElement);
 
-    this.renderer.domElement.addEventListener("pointerdown", this.onPointerDown);
-    this.renderer.domElement.addEventListener("pointermove", this.onPointerMove);
-    this.renderer.domElement.addEventListener("keydown", this.onKeyDown);
-    this.renderer.domElement.addEventListener("keyup", this.onKeyUp);
-    this.renderer.domElement.addEventListener("blur", this.onBlur);
-
-    window.addEventListener("pointerup", this.onPointerUp);
+    this.controls = new LevelFlyControls(this.renderer.domElement);
 
     this.resizeObserver.observe(container);
     this.resize();
@@ -159,13 +142,8 @@ export class LevelPreviewScene {
   public dispose(): void {
     cancelAnimationFrame(this.frameHandle);
 
-    this.renderer.domElement.removeEventListener("pointerdown", this.onPointerDown);
-    this.renderer.domElement.removeEventListener("pointermove", this.onPointerMove);
-    this.renderer.domElement.removeEventListener("keydown", this.onKeyDown);
-    this.renderer.domElement.removeEventListener("keyup", this.onKeyUp);
-    this.renderer.domElement.removeEventListener("blur", this.onBlur);
-
-    window.removeEventListener("pointerup", this.onPointerUp);
+    this.controls?.dispose();
+    this.controls = null;
 
     this.resizeObserver.disconnect();
 
@@ -177,48 +155,6 @@ export class LevelPreviewScene {
     this.renderer.domElement.remove();
 
     this.container = null;
-  }
-
-  private readonly onPointerDown = (event: PointerEvent): void => {
-    this.isLooking = true;
-    this.renderer.domElement.setPointerCapture(event.pointerId);
-    this.renderer.domElement.focus();
-  };
-
-  private readonly onPointerUp = (): void => {
-    this.isLooking = false;
-  };
-
-  private readonly onPointerMove = (event: PointerEvent): void => {
-    if (this.isLooking) {
-      this.fly.look(event.movementX, event.movementY);
-    }
-  };
-
-  private readonly onKeyDown = (event: KeyboardEvent): void => {
-    this.setInput(event, true);
-  };
-
-  private readonly onKeyUp = (event: KeyboardEvent): void => {
-    this.setInput(event, false);
-  };
-
-  /** A viewport that loses focus keeps no key held, which would otherwise fly the camera away unattended. */
-  private readonly onBlur = (): void => {
-    this.isLooking = false;
-
-    for (const key of Object.keys(this.input) as Array<keyof ILevelFlyInput>) {
-      this.input[key] = false;
-    }
-  };
-
-  private setInput(event: KeyboardEvent, held: boolean): void {
-    const binding: Nullable<keyof ILevelFlyInput> = getFlyBinding(event.code);
-
-    if (binding) {
-      event.preventDefault();
-      this.input[binding] = held;
-    }
   }
 
   private resize(): void {
@@ -284,7 +220,7 @@ export class LevelPreviewScene {
 
     this.lastFrame = now;
 
-    if (this.fly.update(this.camera, this.input, delta)) {
+    if (this.controls?.update(this.camera, delta)) {
       this.reportCamera();
     }
 
