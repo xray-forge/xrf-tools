@@ -124,7 +124,13 @@ describe("useApplicationCatalog", () => {
     const { result } = renderCatalog(onSelect);
 
     act(() => result.current.search.setQuery("spawn"));
-    act(() => result.current.search.onInputKeyDown({ key: "Enter", preventDefault: jest.fn() } as never));
+    act(() =>
+      result.current.search.onInputKeyDown({
+        key: "Enter",
+        nativeEvent: new KeyboardEvent("keydown"),
+        preventDefault: jest.fn(),
+      } as never)
+    );
 
     expect(onSelect).toHaveBeenCalledTimes(1);
     expect(onSelect).toHaveBeenCalledWith({

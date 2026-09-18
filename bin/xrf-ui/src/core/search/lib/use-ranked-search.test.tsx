@@ -1,5 +1,5 @@
 import { describe, expect, it, jest } from "@jest/globals";
-import { RenderResult } from "@testing-library/react";
+import { fireEvent, RenderResult } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { ReactElement, useState } from "react";
 
@@ -141,6 +141,45 @@ describe("useRankedSearch", () => {
     expect(input).toHaveFocus();
     expect(onSelect).toHaveBeenCalledTimes(1);
     expect(onSelect).toHaveBeenCalledWith(FILES[2]);
+  });
+
+  it("leaves Enter to confirm composed text without activating a result", () => {
+    const onSelect = jest.fn();
+    const { getByLabelText } = renderHarness(onSelect);
+    const input: HTMLElement = getByLabelText("search");
+
+    fireEvent.change(input, { target: { value: "dialogs" } });
+
+    const event: KeyboardEvent = new KeyboardEvent("keydown", {
+      bubbles: true,
+      cancelable: true,
+      isComposing: true,
+      key: "Enter",
+    });
+
+    fireEvent(input, event);
+
+    expect(onSelect).not.toHaveBeenCalled();
+    expect(event.defaultPrevented).toBe(false);
+  });
+
+  it("leaves ArrowDown to composition without moving the active result", () => {
+    const { getByLabelText, getByTestId } = renderHarness(jest.fn());
+    const input: HTMLElement = getByLabelText("search");
+
+    fireEvent.change(input, { target: { value: "dialogs" } });
+
+    const event: KeyboardEvent = new KeyboardEvent("keydown", {
+      bubbles: true,
+      cancelable: true,
+      isComposing: true,
+      key: "ArrowDown",
+    });
+
+    fireEvent(input, event);
+
+    expect(getByTestId("active")).toHaveTextContent("0");
+    expect(event.defaultPrevented).toBe(false);
   });
 
   it("wraps around at both ends of the list", async () => {

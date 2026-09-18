@@ -100,7 +100,7 @@ export function useRankedSearch<T>({
     (event: KeyboardEvent<HTMLElement>) => {
       const { results } = outcome;
 
-      if (!results.length) {
+      if (event.nativeEvent.isComposing || !results.length) {
         return;
       }
 
