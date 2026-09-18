@@ -1,7 +1,9 @@
-import { beforeAll, beforeEach, describe, expect, it, jest } from "@jest/globals";
-import { RenderResult } from "@testing-library/react";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, jest } from "@jest/globals";
+import { act, fireEvent, RenderResult } from "@testing-library/react";
 
 import { AssetService } from "@/core/assets/services";
+import { texturesCommands } from "@/core/ipc/commands/textures";
+import { texturesRawCommands } from "@/core/ipc/commands/textures-raw";
 import { TextureDescription } from "@/core/ipc/types/xrf-app";
 import {
   DEFAULT_TEXTURE_PREVIEW_OPTIONS,
@@ -47,6 +49,10 @@ describe("TexturePreview", () => {
   beforeEach(() => {
     jest.spyOn(URL, "createObjectURL").mockImplementation(() => "blob:texture");
     jest.spyOn(URL, "revokeObjectURL").mockImplementation(() => undefined);
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   it("captions what the texture is once it has been read", () => {
@@ -114,6 +120,59 @@ describe("TexturePreview", () => {
 
     expect(getByText("Reading…")).toBeTruthy();
     expect(queryByTestId("texture-surface")).toBeNull();
+  });
+
+  it("shows the actual PNG read error in the gray preview frame", () => {
+    const { service, container } = mockInjectedService(TextureSelectionService);
+
+    service.selected = AsyncState.ready(SHAPED);
+    service.preview = AsyncState.failed(new Error("Archive is temporarily unavailable"));
+
+    const { getByRole, getByTestId, queryByText } = renderWithProviders(<TexturePreview />, { container });
+
+    expect(getByRole("alert")).toHaveTextContent("Archive is temporarily unavailable");
+    expect(getByTestId("texture-preview-body")).toHaveClass("bg-viewport-backdrop");
+    expect(queryByText("Preview unavailable")).toBeNull();
+  });
+
+  it("retries the original request after a PNG failure and displays the recovered image", async () => {
+    const { service, container } = mockInjectedService(TextureSelectionService, [AssetService]);
+    const describeTexture = jest.spyOn(texturesCommands, "describe").mockResolvedValue(SHAPED);
+    const readTexture = jest
+      .spyOn(texturesRawCommands, "readTexture")
+      .mockRejectedValueOnce(new Error("Archive is temporarily unavailable"))
+      .mockResolvedValue(new ArrayBuffer(4));
+
+    await service.open(SHAPED.source, SHAPED.roots);
+
+    const { getByRole, queryByRole } = renderWithProviders(<TexturePreview />, { container });
+
+    await act(async () => {
+      fireEvent.click(getByRole("button", { name: "Retry" }));
+    });
+
+    expect(describeTexture.mock.calls).toEqual([
+      [SHAPED.source, SHAPED.roots],
+      [SHAPED.source, SHAPED.roots],
+    ]);
+    expect(readTexture).toHaveBeenCalledTimes(2);
+    expect(getByRole("img", { name: SHAPED.reference })).toBeTruthy();
+    expect(queryByRole("alert")).toBeNull();
+  });
+
+  it("keeps surface mode available after the PNG preview fails", () => {
+    const { service, container } = mockInjectedService(TextureSelectionService);
+
+    service.selected = AsyncState.ready(SHAPED);
+    service.preview = AsyncState.failed(new Error("Archive is temporarily unavailable"));
+
+    const { getByTestId, queryByRole } = renderWithProviders(
+      <TexturePreview options={{ ...DEFAULT_TEXTURE_PREVIEW_OPTIONS, mode: ETexturePreviewMode.SURFACE }} />,
+      { container }
+    );
+
+    expect(getByTestId("texture-surface")).toBeTruthy();
+    expect(queryByRole("alert")).toBeNull();
   });
 
   it("shows one picture when there is nothing to compare it with", () => {

@@ -103,13 +103,25 @@ export function TexturePreview({
   }
 
   const shape: Nullable<AssetTextureShape> = description.base?.shape ?? null;
+  const caption: string = shape ? describeTextureShape(shape) : description.reference;
+
+  if (isImage && selectionService.preview.error) {
+    return (
+      <TexturePreviewFrame data-testid={dataTestId} id={id} className={className} caption={caption}>
+        <ErrorState
+          title={"Could not show this texture"}
+          description={selectionService.preview.error.message}
+          onRetry={selectionService.retry}
+        />
+      </TexturePreviewFrame>
+    );
+  }
+
   const gap: Nullable<ITexturePreviewGap> = describeTexturePreviewGap(
     options.mode,
     description.texture !== null,
     Boolean(shape && selectionService.preview.value)
   );
-
-  const caption: string = shape ? describeTextureShape(shape) : description.reference;
 
   if (comparison && isImage && !gap) {
     return (
