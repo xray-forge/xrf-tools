@@ -94,9 +94,12 @@ export class TextureSurfaceService {
       const bump: Nullable<ITextureBumpHalf> = bumpAssets
         ? yield* call(this.readBumpHalf(uploads, roots, bumpAssets.bump.logicalPath))
         : null;
-      const companion: Nullable<ITextureBumpHalf> = bumpAssets
-        ? yield* call(this.readBumpHalf(uploads, roots, bumpAssets.companion.logicalPath))
-        : null;
+      const companion: Nullable<ITextureBumpHalf> =
+        bump && bumpAssets ? yield* call(this.readBumpHalf(uploads, roots, bumpAssets.companion.logicalPath)) : null;
+
+      if (bump && !companion) {
+        bump.texture.dispose();
+      }
 
       published = {
         aspect: toTextureAspect(description),

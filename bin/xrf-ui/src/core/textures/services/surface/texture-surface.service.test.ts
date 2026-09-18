@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, jest } from "@jest/globals";
+import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { isObservableProp } from "@wirestate/mobx";
 import { Texture } from "three";
 
@@ -9,6 +9,7 @@ import { mockDdsFile } from "@/fixtures/mocks/dds.mocks";
 import { resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { MOCK_TEXTURE, mockTextureDescription } from "@/fixtures/mocks/texture.mocks";
 import { mockMaterialDescriptor } from "@/fixtures/mocks/visual.mocks";
+import { muteConsole } from "@/fixtures/utils/console";
 import { mockInjectedService } from "@/fixtures/utils/container";
 
 /** A four by four DXT1 file, which is the smallest thing `createDdsTexture` will actually upload. */
@@ -22,9 +23,15 @@ function mockBumpedDescription(): TextureDescription {
 }
 
 describe("TextureSurfaceService", () => {
+  muteConsole("error");
+
   beforeEach(() => {
     resetMockInvoke();
     setMockInvokeResponses({ ["plugin:assets|read_asset"]: mockUploadableTexture() });
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   it("applies its mobx annotations", () => {
@@ -54,6 +61,66 @@ describe("TextureSurfaceService", () => {
 
     expect((service.textures.value ?? EMPTY_TEXTURE_SURFACE).base).toBeInstanceOf(Texture);
     expect((service.textures.value ?? EMPTY_TEXTURE_SURFACE).bump).toBeNull();
+  });
+
+  it("keeps the base and skips the companion when the bump read fails", async () => {
+    const { service } = mockInjectedService(TextureSurfaceService);
+    const reads: Array<string> = [];
+
+    setMockInvokeResponses({
+      ["plugin:assets|read_asset"]: (args?: Record<string, unknown>) => {
+        const path: string = String(args?.logicalPath);
+
+        reads.push(path);
+
+        if (path.endsWith("_bump.dds")) {
+          throw new Error("Unreadable bump");
+        }
+
+        return mockUploadableTexture();
+      },
+    });
+
+    await service.load(mockBumpedDescription());
+
+    expect(service.textures.value?.base).toBeInstanceOf(Texture);
+    expect(service.textures.value?.bump).toBeNull();
+    expect(service.bumpTexels).toBeNull();
+    expect(service.uploaded).toBe(MOCK_TEXTURE);
+    expect(reads).toEqual([`textures\\${MOCK_TEXTURE}.dds`, "textures\\wpn\\wpn_ak74_bump.dds"]);
+
+    service.clear();
+  });
+
+  it("releases the unused bump when its companion fails and retains the base until cleared", async () => {
+    const { service } = mockInjectedService(TextureSurfaceService);
+    const dispose = jest.spyOn(Texture.prototype, "dispose");
+
+    setMockInvokeResponses({
+      ["plugin:assets|read_asset"]: (args?: Record<string, unknown>) => {
+        if (String(args?.logicalPath).endsWith("_bump#.dds")) {
+          throw new Error("Unreadable companion");
+        }
+
+        return mockUploadableTexture();
+      },
+    });
+
+    await service.load(mockBumpedDescription());
+
+    const base = service.textures.value?.base;
+
+    expect(base).toBeInstanceOf(Texture);
+    expect(service.textures.value?.bump).toBeNull();
+    expect(service.bumpTexels).toBeNull();
+    expect(service.uploaded).toBe(MOCK_TEXTURE);
+    expect(dispose).toHaveBeenCalledTimes(1);
+    expect(dispose.mock.contexts).not.toContain(base);
+
+    service.clear();
+
+    expect(dispose).toHaveBeenCalledTimes(2);
+    expect(dispose.mock.contexts[1]).toBe(base);
   });
 
   it("releases what it uploaded when cleared", async () => {
