@@ -241,7 +241,7 @@ export function ImageViewport({
   }, [ownController, sharedController, src]);
 
   return (
-    <div className={"flex min-h-0 min-w-0 grow flex-col"}>
+    <div className={"relative flex min-h-0 min-w-0 grow flex-col"}>
       <div
         ref={viewportRef}
         className={"relative min-h-0 grow overflow-hidden bg-viewport-backdrop active:cursor-grabbing"}
@@ -264,11 +264,11 @@ export function ImageViewport({
             {renderOverlay({ content: { width, height }, controller, viewport: measured ?? UNMEASURED })}
           </div>
         ) : null}
-
-        {hasControls ? (
-          <ViewportControls zoom={{ scale, onActualSize }} onZoomIn={onZoomIn} onZoomOut={onZoomOut} onReset={onFit} />
-        ) : null}
       </div>
+
+      {hasControls ? (
+        <ViewportControls zoom={{ scale, onActualSize }} onZoomIn={onZoomIn} onZoomOut={onZoomOut} onReset={onFit} />
+      ) : null}
     </div>
   );
 }

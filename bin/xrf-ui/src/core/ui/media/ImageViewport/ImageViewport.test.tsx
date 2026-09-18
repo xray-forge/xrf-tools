@@ -329,4 +329,38 @@ describe("ImageViewport annotation", () => {
 
     expect(clicked).toHaveLength(0);
   });
+
+  it("zooms through a camera button without reporting an image click", async () => {
+    const clicked: Array<IPanZoomPoint> = [];
+    const render: RenderResult = renderWithProviders(
+      <ImageViewport
+        src={"texture.png"}
+        alt={"texture"}
+        width={WIDTH}
+        height={HEIGHT}
+        onContentClick={(point: IPanZoomPoint) => clicked.push(point)}
+      />
+    );
+
+    const button: HTMLElement = render.getByLabelText("Zoom in");
+
+    await act(async () => {
+      fireEvent.mouseDown(button, { clientX: 400, clientY: 300 });
+      fireEvent.mouseUp(button, { clientX: 400, clientY: 300 });
+      fireEvent.click(button);
+    });
+
+    expect(readTransform(render).scale).toBeGreaterThan(FITTED.scale);
+    expect(clicked).toHaveLength(0);
+  });
+
+  it("does not pan when a drag starts on a camera button", async () => {
+    const { render } = renderViewport();
+
+    await act(async () => {
+      drag(render.getByLabelText("Zoom in"), 10, 0);
+    });
+
+    expect(readTransform(render)).toEqual(FITTED);
+  });
 });
