@@ -10,7 +10,6 @@ derive_more = { workspace = true, features = ["display"] }
 rayon = { workspace = true }
 uuid = { workspace = true, features = ["v4"] }
 xrf-chunk = { workspace = true }
-xrf-db = { workspace = true }
 xrf-math = { workspace = true }
 xrf-ogf = { workspace = true }
 xrf-dds = { workspace = true }
@@ -28,6 +27,10 @@ xrf-shaders = { workspace = true }
 xrf-sound = { workspace = true }
 xrf-utils = { workspace = true }
 xrf-xml = { workspace = true }
+xrf-omf = { workspace = true }
+xrf-thm = { workspace = true }
+xrf-spawn = { workspace = true }
+xrf-particles = { workspace = true }
 
 [dev-dependencies]
 criterion = { workspace = true }

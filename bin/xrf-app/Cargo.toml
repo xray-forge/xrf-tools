@@ -38,7 +38,6 @@ xrf-archive-stats = { workspace = true }
 xrf-build-info = { workspace = true }
 xrf-job = { workspace = true, features = ["rayon"] }
 xrf-vfs = { workspace = true }
-xrf-db = { workspace = true }
 xrf-math = { workspace = true }
 xrf-ogf = { workspace = true }
 xrf-skeleton = { workspace = true }
@@ -62,6 +61,17 @@ xrf-translation = { workspace = true }
 xrf-typescript = { workspace = true, optional = true }
 xrf-visual = { workspace = true }
 xrf-pack = { workspace = true }
+xrf-animation = { workspace = true }
+xrf-anm = { workspace = true }
+xrf-efd = { workspace = true }
+xrf-gamemtl = { workspace = true }
+xrf-light-anim = { workspace = true }
+xrf-omf = { workspace = true }
+xrf-ppe = { workspace = true }
+xrf-thm = { workspace = true }
+xrf-shaders = { workspace = true }
+xrf-spawn = { workspace = true }
+xrf-particles = { workspace = true }
 
 [dev-dependencies]
 xrf-material = { workspace = true, features = ["fixtures"] }
@@ -83,7 +93,7 @@ typescript-bindings = [
   "xrf-build-info/typescript-bindings",
   "xrf-job/typescript-bindings",
   "xrf-vfs/typescript-bindings",
-  "xrf-db/typescript-bindings",
+  "xrf-spawn/typescript-bindings",
   "xrf-math/typescript-bindings",
   "xrf-dialog/typescript-bindings",
   "xrf-error/typescript-bindings",

@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use tauri::State;
-use xrf_db::SpawnHeaderChunk;
+use xrf_spawn::SpawnHeaderChunk;
 
 use crate::core::execution::ExecutionState;
 use crate::core::session::{SessionId, SessionSnapshot};

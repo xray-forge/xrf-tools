@@ -1,6 +1,7 @@
 use serde::Serialize;
-use xrf_db::{ThmFile, ThmTextureParamChunk, XRayByteOrder};
 use xrf_error::XrfResult;
+use xrf_spawn::XRayByteOrder;
+use xrf_thm::{ThmFile, ThmTextureParamChunk};
 use xrf_vfs::XrayAssetType;
 
 use crate::plugins::archives::describe::archive_describe_source::ArchiveDescribeSource;
@@ -14,14 +15,6 @@ use crate::plugins::archives::describe::thm::archive_thm_texture::ArchiveThmText
 use crate::plugins::archives::describe::thm::archive_thm_texture_type::ArchiveThmTextureType;
 
 /// Everything the viewer says about one texture descriptor.
-///
-/// Field order is reading order, and reading order is the engine's rather than the file's: what the descriptor
-/// describes, whether the engine reads it at all, what it names, how it shades, and only then the build recipe the
-/// converter already consumed. The file's own chunk order puts the recipe third, which is the order to write it back
-/// in and not the order to read it in.
-///
-/// Every chunk stays optional, because an absent chunk and a chunk holding a default are different files: a descriptor
-/// with no bump chunk is not one declaring `bump mode: None`.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]

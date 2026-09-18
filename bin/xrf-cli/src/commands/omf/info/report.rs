@@ -1,12 +1,7 @@
 use serde::Serialize;
-use xrf_db::OmfFile;
+use xrf_omf::OmfFile;
 
 /// One motion, joining what the parameters declare to what the motion data holds.
-///
-/// A definition names a motion and how to play it; the keyframe count lives in the payload at the same ordinal, and
-/// together they give the effective duration. `labelDiverges` reports that the payload carries a label which is not
-/// this motion's name - a stale editing artifact the engine ignores outside `_DEBUG`, and the reason the label is
-/// never reported as an identity.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct OmfMotionReport {
@@ -29,9 +24,6 @@ pub struct OmfPartReport {
 }
 
 /// What `omf info` read out of a motion container.
-///
-/// Motions and parts are listed in full whatever the verbosity: a machine consumer has no
-/// `--verbose` to raise, so the per-motion detail a human asks for belongs here unconditionally.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct OmfInfoReport {

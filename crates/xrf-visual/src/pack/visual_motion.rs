@@ -1,8 +1,8 @@
 use serde::Serialize;
-use xrf_db::XRayByteOrder;
 use xrf_error::{XrfError, XrfResult};
 use xrf_ogf::{OgfBone, OgfBoneIkData};
 use xrf_skeleton::{SAMPLE_FPS, SkeletonBoneMotion, SkeletonMotion, SkeletonMotionDefinition, SkeletonPart};
+use xrf_spawn::XRayByteOrder;
 
 use crate::data::visual_description::VisualTransform;
 use crate::pack::visual_transform::BindTransform;

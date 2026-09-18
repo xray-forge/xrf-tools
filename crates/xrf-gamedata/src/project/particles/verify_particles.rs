@@ -1,10 +1,11 @@
 use std::time::{Duration, Instant};
 
 use rayon::prelude::*;
-use xrf_db::{ParticlesFile, XRayByteOrder};
 use xrf_error::{XrfError, XrfResult};
 use xrf_job::JobHandle;
 use xrf_output::{OutputOptions, OutputSequence, OutputSlot};
+use xrf_particles::ParticlesFile;
+use xrf_spawn::XRayByteOrder;
 use xrf_vfs::XrayAssetType as AssetType;
 
 use crate::GamedataFindingFactory;

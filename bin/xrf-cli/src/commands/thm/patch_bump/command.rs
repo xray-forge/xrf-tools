@@ -1,9 +1,10 @@
 use std::path::{Path, PathBuf};
 
 use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
-use xrf_db::{ThmBumpPatchReport, ThmBumpProcessor, XRayByteOrder};
 use xrf_error::{XrfError, XrfResult};
 use xrf_output::OutputOptions;
+use xrf_spawn::XRayByteOrder;
+use xrf_thm::{ThmBumpPatchReport, ThmBumpProcessor};
 use xrf_utils::format_path;
 
 use crate::core::command_context::CommandContext;

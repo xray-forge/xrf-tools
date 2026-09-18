@@ -1,8 +1,9 @@
 use std::sync::Arc;
 
 use xrf_chunk::ChunkReader;
-use xrf_db::{ThmBumpChunk, ThmFile, ThmTextureType, XRayByteOrder};
 use xrf_error::XrfResult;
+use xrf_spawn::XRayByteOrder;
+use xrf_thm::{ThmBumpChunk, ThmFile, ThmTextureType};
 use xrf_vfs::{XrayAsset, XrayAssetType, XrayProbe, XrayResolution};
 
 use crate::data::xray_bump_fallback::XrayBumpFallback;
@@ -16,14 +17,6 @@ use crate::data::xray_material_descriptor::XrayMaterialDescriptor;
 use crate::data::xray_material_detail::XrayMaterialDetail;
 
 /// Reads a texture's descriptor and resolves what the renderer would bind from it.
-///
-/// Two doors on one classification. [`Self::describe_texture`] starts from a texture reference and finds its `.thm`,
-/// which is what a viewer holding a mesh's texture names wants and what `CTexture::Preload` does.
-/// [`Self::describe_descriptor`] starts from a `.thm` already in hand, which is what a sweep enumerating descriptors
-/// wants: the engine's `LoadTHM` walks descriptors, not textures, so a descriptor with no texture beside it is still
-/// checked.
-///
-/// Resolves through a borrowed probe and never mounts: which roots exist, in what order, is the caller's policy.
 pub struct XrayMaterialResolver;
 
 impl XrayMaterialResolver {
@@ -32,9 +25,6 @@ impl XrayMaterialResolver {
   pub const TEXTURES_LTX_LOGICAL_PATH: &'static str = "textures\\textures.ltx";
 
   /// The `textures.ltx` the engine would load beside the descriptors, when the roots hold one.
-  ///
-  /// This crate does not read it, so a texture declared only there comes back undeclared. Naming the file lets a consumer
-  /// say the answer may be incomplete exactly when it may be, and stay silent on the roots where it cannot be.
   pub fn find_textures_ltx(probe: &XrayProbe) -> Option<XrayAsset> {
     probe
       .find(Self::TEXTURES_LTX_LOGICAL_PATH)
@@ -54,9 +44,6 @@ impl XrayMaterialResolver {
   }
 
   /// Describes the material a located descriptor declares.
-  ///
-  /// Reads in the engine's order: the file has to parse, its type has to be one `LoadTHM` reads, and only then do the
-  /// bump and detail chunks mean anything.
   pub fn describe_descriptor(probe: &XrayProbe, descriptor: &XrayAsset) -> XrayMaterialDescriptor {
     let file: Arc<ThmFile> = match Self::read(probe, descriptor) {
       Ok(file) => file,
@@ -153,8 +140,6 @@ impl XrayMaterialResolver {
   }
 
   /// Resolves one bound input, substituting what `texture_load` would for its name.
-  ///
-  /// A name no logical path can be made of is a rejected outcome for that input alone.
   fn resolve_input(probe: &XrayProbe, reference: String, is_companion: bool) -> XrayMaterialBumpInput {
     let fallback: XrayBumpFallback = XrayBumpFallback::for_input(&reference, is_companion);
     let resolution: XrayResolution = probe

@@ -1,5 +1,5 @@
 use serde::Serialize;
-use xrf_db::SpawnFile;
+use xrf_spawn::SpawnFile;
 
 /// The level graph a spawn file carries, which is a census of its own.
 #[derive(Debug, Serialize)]
@@ -12,9 +12,6 @@ pub struct SpawnGraphReport {
 }
 
 /// What `spawn info` read out of a spawn file.
-///
-/// The counts and the identity, which is what the command already tells a human. Nothing here is
-/// derived: every field is read straight off the file, so the report says what the file says.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SpawnInfoReport {

@@ -1,6 +1,7 @@
 use serde::Serialize;
-use xrf_db::{ANM_CHANNELS, AnmFile, XRayByteOrder};
+use xrf_anm::{ANM_CHANNELS, AnmFile};
 use xrf_error::XrfResult;
+use xrf_spawn::XRayByteOrder;
 
 use crate::plugins::archives::describe::animation::ArchiveAnimationChannel;
 use crate::plugins::archives::describe::archive_describe_source::ArchiveDescribeSource;
@@ -65,7 +66,8 @@ impl ArchiveAnmDescription {
 
 #[cfg(test)]
 mod tests {
-  use xrf_db::{AnimationEnvelope, AnimationKey, AnmFile};
+  use xrf_animation::{AnimationEnvelope, AnimationKey};
+  use xrf_anm::AnmFile;
 
   use super::ArchiveAnmDescription;
 

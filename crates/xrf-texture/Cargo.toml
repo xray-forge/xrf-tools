@@ -13,7 +13,6 @@ log = { workspace = true }
 rayon = { workspace = true }
 serde = { workspace = true }
 specta = { workspace = true, optional = true }
-xrf-db = { workspace = true }
 xrf-dds = { workspace = true }
 xrf-error = { workspace = true }
 xrf-extension = { workspace = true }
@@ -23,6 +22,9 @@ xrf-output = { workspace = true }
 xrf-utils = { workspace = true }
 xrf-vfs = { workspace = true }
 xrf-xml = { workspace = true }
+xrf-thm = { workspace = true }
+xrf-spawn = { workspace = true }
+xrf-particles = { workspace = true }
 
 [dev-dependencies]
 xrf-test-utils = { workspace = true }

@@ -4,11 +4,12 @@ use std::sync::Arc;
 
 use rayon::prelude::*;
 use xrf_chunk::{ChunkReader, InMemoryChunkDataSource};
-use xrf_db::{OmfFile, XRayByteOrder};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{Ltx, LtxResolution, Section};
 use xrf_ogf::OgfFile;
+use xrf_omf::OmfFile;
 use xrf_output::{OutputOptions, OutputSequence, OutputSlot};
+use xrf_spawn::XRayByteOrder;
 use xrf_vfs::XrayAssetType as AssetType;
 
 use crate::GamedataFindingFactory;

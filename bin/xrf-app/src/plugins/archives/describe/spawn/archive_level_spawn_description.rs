@@ -1,6 +1,6 @@
 use serde::Serialize;
-use xrf_db::{LevelSpawnFile, XRayByteOrder};
 use xrf_error::XrfResult;
+use xrf_spawn::{LevelSpawnFile, XRayByteOrder};
 
 use crate::plugins::archives::describe::archive_bounds::ArchiveBounds;
 use crate::plugins::archives::describe::archive_describe_source::ArchiveDescribeSource;

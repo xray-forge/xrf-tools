@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use xrf_db::ShaderLibraryFile;
+use xrf_shaders::ShaderLibraryFile;
 
 use crate::{Finding, GamedataCheckResult, GamedataVerificationStatus};
 

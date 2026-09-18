@@ -1,11 +1,8 @@
 use serde::Serialize;
-use xrf_db::ThmBumpMode;
+use xrf_thm::ThmBumpMode;
 
 /// Which bump shader family a declaration selects, `STextureParams::ETBumpMode` without the two values that mean no
 /// bump at all (`ETextureParams.h`).
-///
-/// Parallax changes the pixel shader only: `uber_deffer.cpp` compiles `_steep` for it in HQ mode and the same
-/// `_bump` variant as [`Self::Use`] otherwise. The inputs bound are the same pair either way.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]

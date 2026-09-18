@@ -1,5 +1,5 @@
 use serde::Serialize;
-use xrf_db::PpeColorMap;
+use xrf_ppe::PpeColorMap;
 use xrf_vfs::XrayAssetType;
 
 use crate::plugins::archives::describe::animation::ArchiveAnimationChannel;

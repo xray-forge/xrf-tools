@@ -1,7 +1,7 @@
 //! What a shader name comes to, one test per state and one per class the renderer draws a mesh with.
 
-use xrf_db::ShaderBlenderClass;
-use xrf_db::fixtures::ShaderBlenderFixture;
+use xrf_shaders::ShaderBlenderClass;
+use xrf_shaders::fixtures::ShaderBlenderFixture;
 use xrf_vfs::{XrayMountId, XrayProbe, XrayVfs};
 
 use crate::fixtures::FixtureTree;

@@ -6,8 +6,8 @@ use super::loading::{SpawnInput, open_spawn};
 use super::state::SpawnFileState;
 use serde_json::json;
 use uuid::Uuid;
-use xrf_db::{SpawnFile, XRayByteOrder};
 use xrf_job::ExecutionRequest;
+use xrf_spawn::{SpawnFile, XRayByteOrder};
 use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 
 use crate::core::execution::ExecutionState;

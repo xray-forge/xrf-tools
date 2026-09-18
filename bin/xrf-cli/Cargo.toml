@@ -24,7 +24,6 @@ walkdir = { workspace = true }
 sysinfo = { workspace = true }
 xrf-archive = { workspace = true }
 xrf-vfs = { workspace = true }
-xrf-db = { workspace = true }
 xrf-math = { workspace = true }
 xrf-ogf = { workspace = true }
 xrf-dds = { workspace = true }
@@ -45,6 +44,12 @@ xrf-translation = { workspace = true }
 xrf-utils = { workspace = true }
 xrf-visual = { workspace = true }
 xrf-pack = { workspace = true }
+xrf-omf = { workspace = true }
+xrf-thm = { workspace = true }
+xrf-shaders = { workspace = true }
+xrf-sound = { workspace = true }
+xrf-spawn = { workspace = true }
+xrf-particles = { workspace = true }
 
 [dev-dependencies]
 xrf-chunk = { workspace = true }

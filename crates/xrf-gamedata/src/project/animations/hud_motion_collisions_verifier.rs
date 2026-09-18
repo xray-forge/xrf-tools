@@ -4,10 +4,11 @@ use std::sync::Arc;
 
 use rayon::prelude::*;
 use xrf_chunk::{ChunkReader, InMemoryChunkDataSource};
-use xrf_db::{OmfFile, XRayByteOrder};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{Ltx, LtxResolution, Section};
 use xrf_ogf::OgfFile;
+use xrf_omf::OmfFile;
+use xrf_spawn::XRayByteOrder;
 use xrf_vfs::XrayAssetType as AssetType;
 
 use crate::GamedataFindingFactory;
@@ -16,8 +17,6 @@ use crate::project::weapons::weapons_utils::is_player_hud_section;
 use crate::{Finding, GamedataProject, GamedataProjectVerifyOptions, GamedataVerificationRule};
 
 /// Verifies that motion names stay unique within the set of banks a hands model loads.
-///
-/// The usual cause is a bank that was superseded but left in place next to its replacement.
 pub struct HudMotionCollisionsVerifier<'a> {
   options: &'a GamedataProjectVerifyOptions,
   project: &'a GamedataProject,

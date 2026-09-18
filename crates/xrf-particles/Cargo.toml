@@ -1,0 +1,30 @@
+[package]
+name = "xrf-particles"
+version = "0.1.0"
+publish = false
+edition.workspace = true
+rust-version.workspace = true
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+byteorder = { workspace = true }
+enum-map = "3.1.0"
+log = { workspace = true }
+derive_more = { workspace = true, features = ["display", "from_str"] }
+serde = { workspace = true }
+serde_json = { workspace = true }
+uuid = { workspace = true, features = ["v4", "serde"] }
+xrf-chunk = { workspace = true }
+xrf-error = { workspace = true }
+xrf-ltx = { workspace = true }
+xrf-math = { workspace = true }
+xrf-utils = { workspace = true }
+
+[dev-dependencies]
+xrf-math = { workspace = true, features = ["fixtures"] }
+xrf-test-utils = { workspace = true }
+
+[lints]
+workspace = true

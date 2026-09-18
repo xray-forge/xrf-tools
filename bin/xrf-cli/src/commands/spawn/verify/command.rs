@@ -1,9 +1,9 @@
 use std::path::PathBuf;
 
 use clap::{Arg, ArgMatches, Command, value_parser};
-use xrf_db::{SpawnFile, XRayByteOrder};
 use xrf_error::XrfError;
 use xrf_output::OutputOptions;
+use xrf_spawn::{SpawnFile, XRayByteOrder};
 use xrf_utils::format_path;
 
 use crate::core::command_context::CommandContext;

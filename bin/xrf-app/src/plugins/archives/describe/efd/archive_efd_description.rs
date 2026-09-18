@@ -1,6 +1,7 @@
 use serde::Serialize;
-use xrf_db::{EfdFile, EfdVariable, XRayByteOrder};
+use xrf_efd::{EfdFile, EfdVariable};
 use xrf_error::XrfResult;
+use xrf_spawn::XRayByteOrder;
 
 use crate::plugins::archives::describe::archive_describe_source::ArchiveDescribeSource;
 use crate::plugins::archives::describe::efd::archive_efd_pattern::ArchiveEfdPattern;

@@ -1,18 +1,14 @@
 //! Packs every visual under a path and accounts for what came out.
-//!
-//! Lives in the CLI rather than in `xrf-visual` so that crate stays a pure renderer projection with no
-//! filesystem or reporting surface. A gamedata wide visual check belongs with the other gamedata
-//! verifiers, not here.
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
 use walkdir::WalkDir;
-use xrf_db::XRayByteOrder;
 use xrf_extension::XrayExtension;
 use xrf_ogf::OgfFile;
 use xrf_report::{CheckId, CheckReport, Finding, Report, RuleId, Status};
+use xrf_spawn::XRayByteOrder;
 use xrf_utils::{format_path, to_portable_path_string};
 use xrf_visual::{VisualBounds, VisualDescription, VisualPackage, VisualPacker, VisualSkipCause, VisualSubmesh};
 

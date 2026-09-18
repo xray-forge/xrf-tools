@@ -1,6 +1,7 @@
 use serde::Serialize;
-use xrf_db::{PPE_COLORS, PPE_VALUES, PpeFile, XRayByteOrder};
 use xrf_error::XrfResult;
+use xrf_ppe::{PPE_COLORS, PPE_VALUES, PpeFile};
+use xrf_spawn::XRayByteOrder;
 
 use crate::plugins::archives::describe::animation::ArchiveAnimationChannel;
 use crate::plugins::archives::describe::archive_describe_source::ArchiveDescribeSource;

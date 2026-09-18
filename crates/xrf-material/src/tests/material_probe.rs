@@ -1,6 +1,6 @@
 //! The tree, probe and names every test in this module shares.
 
-use xrf_db::ThmBumpMode;
+use xrf_thm::ThmBumpMode;
 use xrf_vfs::{XrayLookupScope, XrayMountId, XrayProbe, XrayResolution, XrayVfs};
 
 use crate::fixtures::{FixtureTree, ThmFixture};

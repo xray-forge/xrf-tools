@@ -13,8 +13,9 @@
 //! - `project` — a whole tree of configs, and the verify and format passes over it.
 //!
 //! `scheme` and `condlist` are the two value languages a field may be written in, read on demand rather than as a
-//! stage.
+//! stage. `binding` is how a typed record is read out of a config and written back into one.
 
+pub(crate) mod binding;
 pub(crate) mod condlist;
 pub(crate) mod dialect;
 pub(crate) mod document;
@@ -38,3 +39,6 @@ pub use crate::project::{
 pub use crate::scheme::{LtxFieldDataType, LtxFieldScheme, LtxSchemeParser, LtxSectionScheme};
 pub use crate::source::LtxDocumentSource;
 pub use crate::syntax::{LTX_SCHEME_FIELD, LTX_SYMBOL_ANY, LTX_SYMBOL_INCLUDE_WILDCARD, LTX_SYMBOL_SCHEME};
+
+pub use crate::binding::ltx_field::{read_ltx_field, read_ltx_optional_field};
+pub use crate::binding::ltx_import_export::{FileImportExport, LtxImportExport, META_TYPE_FIELD};

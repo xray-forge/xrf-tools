@@ -1,8 +1,8 @@
 use std::path::Path;
 use std::time::{Duration, Instant};
 
-use xrf_db::{SpawnFile, XRayByteOrder};
 use xrf_error::XrfResult;
+use xrf_spawn::{SpawnFile, XRayByteOrder};
 use xrf_vfs::XrayAssetType as AssetType;
 
 use crate::GamedataFindingFactory;

@@ -6,9 +6,9 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 use uuid::{Uuid, uuid};
 use xrf_chunk::{ChunkReadWrite, ChunkWriter, XRayByteOrder};
-use xrf_db::{GraphCrossTable, GraphHeader, GraphLevel, SpawnGraphsChunk};
 use xrf_level::{LevelAiHeader, LevelCformHeader, LevelHeaderChunk, LevelShaderEntry, LevelShadersChunk};
 use xrf_math::Vector3d;
+use xrf_spawn::{GraphCrossTable, GraphHeader, GraphLevel, SpawnGraphsChunk};
 use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 
 use crate::project::levels::level_engine_constants::{

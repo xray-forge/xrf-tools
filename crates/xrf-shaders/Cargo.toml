@@ -10,6 +10,16 @@ xrf-error = { workspace = true }
 xrf-extension = { workspace = true }
 xrf-utils = { workspace = true }
 xrf-lua = { workspace = true }
+byteorder = { workspace = true }
+serde = { workspace = true }
+xrf-chunk = { workspace = true }
+
+[features]
+# Exports the blender fixtures this crate's tests use, so a dependant tests against the same shapes.
+fixtures = []
+
+[dev-dependencies]
+xrf-test-utils = { workspace = true }
 
 [lints]
 workspace = true

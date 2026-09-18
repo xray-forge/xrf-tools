@@ -1,9 +1,7 @@
 use serde::Serialize;
-use xrf_db::ThmMaterialChunk;
+use xrf_thm::ThmMaterialChunk;
 
 /// The shading declaration of a descriptor, `THM_CHUNK_MATERIAL`.
-///
-/// The one piece of authoring data that reaches the renderer through the descriptor rather than through the DDS.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]

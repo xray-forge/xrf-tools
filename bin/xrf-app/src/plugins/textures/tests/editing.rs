@@ -4,11 +4,12 @@ use std::fs::File;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime};
 
-use xrf_db::{ThmBumpMode, ThmFile, ThmFormat, ThmTextureFlag, ThmTextureFlags, ThmTextureType, XRayByteOrder};
 use xrf_dds::{DdsEncoding, DdsFile, DdsMipChain, DdsMipFilter, DdsMipmaps, ImageFormat, Quality};
 use xrf_job::{JobHandle, JobOutcome};
 use xrf_material::fixtures::{FixtureTree, ThmFixture};
+use xrf_spawn::XRayByteOrder;
 use xrf_texture::{GenerateBumpGloss, GenerateBumpOptions, GenerateBumpProcessor, GenerateBumpResult};
+use xrf_thm::{ThmBumpMode, ThmFile, ThmFormat, ThmTextureFlag, ThmTextureFlags, ThmTextureType};
 use xrf_vfs::{XrayAsset, XrayAssetContainer, XrayLogicalPath};
 
 use crate::core::session::SessionId;

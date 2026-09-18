@@ -1,5 +1,5 @@
 use serde::Serialize;
-use xrf_db::SoundEnvironment;
+use xrf_sound::SoundEnvironment;
 
 /// One reverb preset, as the viewer reads it.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]

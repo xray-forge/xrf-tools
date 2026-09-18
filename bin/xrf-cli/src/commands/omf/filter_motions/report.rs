@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use serde::Serialize;
-use xrf_db::OmfFile;
+use xrf_omf::OmfFile;
 
 /// What `omf filter-motions` kept.
 #[derive(Debug, Serialize)]

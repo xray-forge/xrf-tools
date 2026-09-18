@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
-use xrf_db::ShaderLibraryFile;
 use xrf_level::{LevelShaderReference, LevelShadersChunk};
+use xrf_shaders::ShaderLibraryFile;
 
 use crate::GamedataFindingFactory;
 use crate::project::levels::level_bundle::LevelBundle;

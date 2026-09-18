@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use serde::Serialize;
-use xrf_db::{ShaderBlenderProperty, ShaderBlenderPropertyKind, ShaderBlenderPropertyValue, ShaderBlenderToken};
+use xrf_shaders::{ShaderBlenderProperty, ShaderBlenderPropertyKind, ShaderBlenderPropertyValue, ShaderBlenderToken};
 use xrf_vfs::XrayAssetType;
 
 use crate::plugins::archives::describe::archive_describe_source::ArchiveDescribeSource;
@@ -123,7 +123,7 @@ impl ArchiveShadersProperty {
 
 #[cfg(test)]
 mod tests {
-  use xrf_db::{ShaderBlenderPropertyValue, ShaderBlenderToken};
+  use xrf_shaders::{ShaderBlenderPropertyValue, ShaderBlenderToken};
 
   use super::ArchiveShadersProperty;
 

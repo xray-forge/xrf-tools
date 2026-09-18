@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use serde::Serialize;
-use xrf_db::SpawnHeaderChunk;
+use xrf_spawn::SpawnHeaderChunk;
 
 use crate::core::session::SessionId;
 

@@ -1,7 +1,7 @@
 //! The names the SDK gives the numbers a descriptor stores.
 
 use serde::Serialize;
-use xrf_db::{ThmBumpMode, ThmFormat, ThmMaterial, ThmMipFilter, ThmTextureFlag, ThmTextureType};
+use xrf_thm::{ThmBumpMode, ThmFormat, ThmMaterial, ThmMipFilter, ThmTextureFlag, ThmTextureType};
 
 /// One value a descriptor field can take, under the name the SDK gives it.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]

@@ -3,8 +3,9 @@
 use std::path::{Path, PathBuf};
 
 use serde::Serialize;
-use xrf_db::{ThmFile, ThmFormat, ThmTextureFlag, ThmTextureFlags, XRayByteOrder};
 use xrf_job::{JobHandle, JobOutcome};
+use xrf_spawn::XRayByteOrder;
+use xrf_thm::{ThmFile, ThmFormat, ThmTextureFlag, ThmTextureFlags};
 use xrf_utils::{error_to_string, format_path, write_file_staged};
 
 use crate::core::types::TauriResult;

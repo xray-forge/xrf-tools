@@ -1,6 +1,6 @@
 //! What a bound pair comes to: the files the renderer binds and the outcome the worse half decides.
 
-use xrf_db::ThmBumpMode;
+use xrf_thm::ThmBumpMode;
 use xrf_vfs::XrayResolution;
 
 use crate::fixtures::{FixtureTree, ThmFixture};

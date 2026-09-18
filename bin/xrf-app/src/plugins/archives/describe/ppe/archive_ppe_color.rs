@@ -1,5 +1,5 @@
 use serde::Serialize;
-use xrf_db::PpeColor;
+use xrf_ppe::PpeColor;
 
 use crate::plugins::archives::describe::animation::ArchiveAnimationChannel;
 
@@ -50,7 +50,8 @@ impl ArchivePpeColor {
 
 #[cfg(test)]
 mod tests {
-  use xrf_db::{AnimationEnvelope, AnimationKey, PPE_COLORS, PpeColor};
+  use xrf_animation::{AnimationEnvelope, AnimationKey};
+  use xrf_ppe::{PPE_COLORS, PpeColor};
 
   use super::ArchivePpeColor;
 

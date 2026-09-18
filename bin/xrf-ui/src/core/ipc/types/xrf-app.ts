@@ -1,12 +1,12 @@
 // Auto-generated rust bindings. Do not edit it manually.
 
 import { ArchiveProject, ArchiveReadPolicy } from "@/core/ipc/types/xrf-archive";
-import { SpawnHeaderChunk } from "@/core/ipc/types/xrf-db";
 import { DialogProjectMode } from "@/core/ipc/types/xrf-dialog";
 import { JobOutcome, JobProgress } from "@/core/ipc/types/xrf-job";
 import { LtxAnchoredFinding, LtxFileStructure, LtxFileText, LtxInventory } from "@/core/ipc/types/xrf-ltx-inspect";
 import { XrayMaterialDescriptor, XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
 import { ArchivePackConfig, ArchivePatchConfig } from "@/core/ipc/types/xrf-pack";
+import { SpawnHeaderChunk } from "@/core/ipc/types/xrf-spawn";
 import { EquipmentSlotOccupant, ImageShape } from "@/core/ipc/types/xrf-texture";
 import {
   TranslationBuildLanguageSummary,
@@ -633,11 +633,7 @@ export type ArchiveLevelWallmarkSlot = {
   vertices: number;
 };
 
-/**
- * Everything the viewer says about a level's baked decals.
- *
- * Authored by the level editor and read by nothing in the runtime, which places its own wallmarks at play time.
- */
+/** Everything the viewer says about a level's baked decals. */
 export type ArchiveLevelWallmarksDescription = {
   slots: Array<ArchiveLevelWallmarkSlot>;
   marks: number;
@@ -1090,21 +1086,11 @@ export type ArchiveThmBump = {
   virtualHeight: number | null;
   /** The bump texture named, absent when the chunk names none. */
   texture: ArchiveReference | null;
-  /**
-   * Whether the engine would try to resolve the name: a mode that uses one, and a name to use.
-   *
-   * A name that resolves to nothing does not turn bump mapping off. `bump_exist` tests only that the name is
-   * non-empty, so the renderer still takes the `_bump` variant and the loader substitutes `ed\ed_dummy_bump`.
-   */
+  /** Whether the engine would try to resolve the name: a mode that uses one, and a name to use. */
   isUsed: boolean;
 };
 
-/**
- * A declared size the texture beside the descriptor does not match.
- *
- * Reported as two facts rather than as a fault: the descriptor's width and height are authoring data and the file is
- * the authority, so a disagreement is worth seeing and is not by itself wrong.
- */
+/** A declared size the texture beside the descriptor does not match. */
 export type ArchiveThmDeclaredSize = {
   width: number;
   height: number;
@@ -1112,17 +1098,7 @@ export type ArchiveThmDeclaredSize = {
   isCubeStrip: boolean;
 };
 
-/**
- * Everything the viewer says about one texture descriptor.
- *
- * Field order is reading order, and reading order is the engine's rather than the file's: what the descriptor
- * describes, whether the engine reads it at all, what it names, how it shades, and only then the build recipe the
- * converter already consumed. The file's own chunk order puts the recipe third, which is the order to write it back
- * in and not the order to read it in.
- *
- * Every chunk stays optional, because an absent chunk and a chunk holding a default are different files: a descriptor
- * with no bump chunk is not one declaring `bump mode: None`.
- */
+/** Everything the viewer says about one texture descriptor. */
 export type ArchiveThmDescription = {
   texture: ArchiveThmTexture;
   textureType: ArchiveThmTextureType;
@@ -1142,12 +1118,7 @@ export type ArchiveThmDetail = {
   scale: number | null;
   /** The detail texture named, absent when the chunk names none. */
   texture: ArchiveReference | null;
-  /**
-   * The flags that switch this association on, by the SDK's own spelling.
-   *
-   * Empty when the engine reads past the association. Repeated here as well as in the flag word because the
-   * association means nothing without them.
-   */
+  /** The flags that switch this association on, by the SDK's own spelling. */
   enabledBy: Array<string>;
 };
 
@@ -1170,11 +1141,7 @@ export type ArchiveThmFlag = {
   isSet: boolean;
 };
 
-/**
- * The shading declaration of a descriptor, `THM_CHUNK_MATERIAL`.
- *
- * The one piece of authoring data that reaches the renderer through the descriptor rather than through the DDS.
- */
+/** The shading declaration of a descriptor, `THM_CHUNK_MATERIAL`. */
 export type ArchiveThmMaterial = {
   /** The two lighting models the surface sits between. */
   label: string;
@@ -1183,12 +1150,7 @@ export type ArchiveThmMaterial = {
   weight: number | null;
 };
 
-/**
- * The conversion parameters a descriptor carries, `THM_CHUNK_TEXTUREPARAM`.
- *
- * Authoring data the converter consumed and the runtime does not read, with two exceptions that live in
- * the detail section, which reports them where they take effect.
- */
+/** The conversion parameters a descriptor carries, `THM_CHUNK_TEXTUREPARAM`. */
 export type ArchiveThmParameters = {
   formatLabel: string;
   format: number;
@@ -1199,18 +1161,9 @@ export type ArchiveThmParameters = {
   fadeAmount: number;
   width: number;
   height: number;
-  /**
-   * Every bit the SDK names, in bit order, set or not.
-   *
-   * All twelve rather than the set ones: a recipe is read to see what the converter was told to do, and "dither is
-   * off" answers that as well as "dither is on".
-   */
+  /** Every bit the SDK names, in bit order, set or not. */
   flags: Array<ArchiveThmFlag>;
-  /**
-   * Bits the word carries that the SDK has no name for.
-   *
-   * Two vanilla descriptors carry one, so dropping the residue would silently lose what somebody's tool set.
-   */
+  /** Bits the word carries that the SDK has no name for. */
   unnamedFlags: number;
 };
 
@@ -1229,23 +1182,13 @@ export type ArchiveThmTextureType = {
   /** Engine token for the type, or the raw number for one the SDK does not name. */
   label: string;
   value: number;
-  /**
-   * Whether `CTextureDescrMngr::LoadTHM` reads the bump, detail and material of a descriptor of this type at all.
-   *
-   * False for 743 of vanilla's 2,736 descriptors - every cube map and every bump map - whose declarations the engine
-   * never looks at however complete they are.
-   */
+  /** Whether `CTextureDescrMngr::LoadTHM` reads the bump, detail and material of a descriptor of this type at all. */
   isReadByEngine: boolean;
   /** Whether the file declares a type, or the engine's zeroed default is what applies. */
   isDeclared: boolean;
 };
 
-/**
- * The preview picture a descriptor carries, `THM_CHUNK_DATA`.
- *
- * Reported by size and never decoded. The trunk SDK stopped writing the chunk - its `w_chunk` call is commented out
- * in `ETextureThumbnail::Save` - and 11 of the 19,849 descriptors across the workspace trees still carry one.
- */
+/** The preview picture a descriptor carries, `THM_CHUNK_DATA`. */
 export type ArchiveThmThumbnail = {
   /** Whether the payload is the engine's own compressed stream, which is the only form seen in the wild. */
   isCompressed: boolean;

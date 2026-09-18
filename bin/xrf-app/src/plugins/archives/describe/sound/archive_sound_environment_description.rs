@@ -1,6 +1,7 @@
 use serde::Serialize;
-use xrf_db::{SoundEnvironmentFile, XRayByteOrder};
 use xrf_error::XrfResult;
+use xrf_sound::SoundEnvironmentFile;
+use xrf_spawn::XRayByteOrder;
 
 use crate::plugins::archives::describe::archive_describe_source::ArchiveDescribeSource;
 use crate::plugins::archives::describe::sound::archive_sound_environment::ArchiveSoundEnvironment;

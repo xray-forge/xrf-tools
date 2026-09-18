@@ -1,5 +1,5 @@
 use serde::Serialize;
-use xrf_db::{ThmFile, ThmTextureType};
+use xrf_thm::{ThmFile, ThmTextureType};
 
 /// The kind of texture a descriptor describes, `STextureParams::ETType`.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -10,9 +10,6 @@ pub struct ArchiveThmTextureType {
   pub label: String,
   pub value: u32,
   /// Whether `CTextureDescrMngr::LoadTHM` reads the bump, detail and material of a descriptor of this type at all.
-  ///
-  /// False for 743 of vanilla's 2,736 descriptors - every cube map and every bump map - whose declarations the engine
-  /// never looks at however complete they are.
   pub is_read_by_engine: bool,
   /// Whether the file declares a type, or the engine's zeroed default is what applies.
   pub is_declared: bool,

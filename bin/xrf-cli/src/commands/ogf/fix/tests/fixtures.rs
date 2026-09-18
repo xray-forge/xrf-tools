@@ -4,10 +4,10 @@ use std::fs;
 use std::path::PathBuf;
 
 use xrf_chunk::ChunkWriter;
-use xrf_db::XRayByteOrder;
 use xrf_error::XrfResult;
 use xrf_math::Vector3d;
 use xrf_ogf::{OgfBox, OgfHeaderChunk, OgfKinematicsChunk, OgfSphere};
+use xrf_spawn::XRayByteOrder;
 use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 
 /// The four references shipped Anomaly zombied faces declare.

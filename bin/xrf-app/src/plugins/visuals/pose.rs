@@ -1,4 +1,5 @@
-use xrf_db::{OmfFile, XRayByteOrder};
+use xrf_omf::OmfFile;
+use xrf_spawn::XRayByteOrder;
 use xrf_vfs::{XrayAsset, XrayProbe, XrayResolution};
 use xrf_visual::{VisualDependencies, VisualMotionPose, bake_motion};
 
@@ -61,10 +62,6 @@ pub fn bake_named_motion(
 }
 
 /// Every motion name the visual can play, embedded ones first then each referenced file's.
-///
-/// Listed by reading the referenced files rather than from the reference alone, because a reference names a file and a
-/// file carries many motions. Duplicates are dropped so the first source that offers a name is the one a later bake
-/// finds, which keeps the list and the bake in agreement.
 pub fn list_motion_names(
   probe: &XrayProbe,
   skeleton: &SelectedSkeleton,

@@ -1,6 +1,7 @@
 use serde::Serialize;
-use xrf_db::{ShaderCompilerFile, XRayByteOrder};
 use xrf_error::XrfResult;
+use xrf_shaders::ShaderCompilerFile;
+use xrf_spawn::XRayByteOrder;
 
 use crate::plugins::archives::describe::archive_describe_source::ArchiveDescribeSource;
 use crate::plugins::archives::describe::shader_compiler::archive_shader_compiler_shader::ArchiveShaderCompilerShader;

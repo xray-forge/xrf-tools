@@ -3,8 +3,8 @@ use std::sync::Arc;
 use std::collections::BTreeSet;
 use std::time::Instant;
 
-use xrf_db::ShaderLibraryFile;
 use xrf_error::XrfResult;
+use xrf_shaders::ShaderLibraryFile;
 
 use crate::GamedataFindingFactory;
 use crate::project::levels::level_binaries_verifier::{LevelBinariesOutcome, LevelBinariesVerifier};

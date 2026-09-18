@@ -1,5 +1,5 @@
 use serde::Serialize;
-use xrf_db::LightAnimItem;
+use xrf_light_anim::LightAnimItem;
 
 /// One colour animation, as the viewer reads it.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]

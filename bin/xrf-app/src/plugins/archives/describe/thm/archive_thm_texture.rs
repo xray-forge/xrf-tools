@@ -1,5 +1,5 @@
 use serde::Serialize;
-use xrf_db::{ThmTextureParamChunk, ThmTextureType};
+use xrf_thm::{ThmTextureParamChunk, ThmTextureType};
 use xrf_vfs::XrayLogicalPath;
 
 use crate::core::assets::AssetTextureShape;
@@ -20,9 +20,6 @@ pub struct ArchiveThmTexture {
 }
 
 /// A declared size the texture beside the descriptor does not match.
-///
-/// Reported as two facts rather than as a fault: the descriptor's width and height are authoring data and the file is
-/// the authority, so a disagreement is worth seeing and is not by itself wrong.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -85,10 +82,6 @@ impl ArchiveThmDeclaredSize {
 }
 
 /// The `.dds` beside a descriptor, addressed by where it sits rather than by a name the descriptor carries.
-///
-/// A descriptor names its bump and its detail; it does not name its own texture. The engine pairs the two by path, so
-/// the sibling is the same path with the loaded extension — which also answers for a descriptor outside `textures\`,
-/// where no engine reference exists to resolve.
 fn to_sibling_texture_path(name: &str) -> Option<String> {
   let path: XrayLogicalPath = XrayLogicalPath::new(name).ok()?;
 
@@ -97,7 +90,7 @@ fn to_sibling_texture_path(name: &str) -> Option<String> {
 
 #[cfg(test)]
 mod tests {
-  use xrf_db::{ThmTextureParamChunk, ThmTextureType};
+  use xrf_thm::{ThmTextureParamChunk, ThmTextureType};
 
   use super::{ArchiveThmDeclaredSize, to_sibling_texture_path};
   use crate::core::assets::AssetTextureShape;

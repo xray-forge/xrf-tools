@@ -1,16 +1,12 @@
 use std::path::{Path, PathBuf};
 
-use xrf_db::fixtures::{ShaderBlenderFixture, ShaderLibraryFixture};
+use xrf_shaders::fixtures::{ShaderBlenderFixture, ShaderLibraryFixture};
 use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 
 use crate::fixtures::thm_fixture::ThmFixture;
 use crate::resolve::xray_surface_resolver::XraySurfaceResolver;
 
 /// A gamedata-shaped tree under the generated test resources, with descriptors that parse and textures that exist.
-///
-/// Texture files are placeholders — resolution looks for existence, never inside a DDS — while descriptor files are
-/// real chunked bytes, because a descriptor that does not parse is one of the states under test rather than an
-/// accident. The root is cleared first, so a tree means exactly what its calls say.
 pub struct FixtureTree {
   root: PathBuf,
 }

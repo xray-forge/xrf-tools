@@ -1,5 +1,5 @@
 use serde::Serialize;
-use xrf_db::ThmFile;
+use xrf_thm::ThmFile;
 
 /// What the file is, apart from what it declares.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -17,9 +17,6 @@ pub struct ArchiveThmFile {
 }
 
 /// The preview picture a descriptor carries, `THM_CHUNK_DATA`.
-///
-/// Reported by size and never decoded. The trunk SDK stopped writing the chunk - its `w_chunk` call is commented out
-/// in `ETextureThumbnail::Save` - and 11 of the 19,849 descriptors across the workspace trees still carry one.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]

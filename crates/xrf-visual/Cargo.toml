@@ -12,16 +12,17 @@ path = "src/lib.rs"
 log = { workspace = true }
 serde = { workspace = true }
 specta = { workspace = true, optional = true }
-xrf-db = { workspace = true }
 xrf-math = { workspace = true }
 xrf-ogf = { workspace = true }
 xrf-skeleton = { workspace = true }
 xrf-error = { workspace = true }
 xrf-vfs = { workspace = true }
+xrf-spawn = { workspace = true }
+xrf-particles = { workspace = true }
 
 [features]
 # Emits TypeScript mirrors of the serialized types. Nothing in a normal build turns this on.
-typescript-bindings = ["specta", "xrf-db/typescript-bindings", "xrf-vfs/typescript-bindings"]
+typescript-bindings = ["specta", "xrf-math/typescript-bindings", "xrf-vfs/typescript-bindings"]
 
 [lints]
 workspace = true

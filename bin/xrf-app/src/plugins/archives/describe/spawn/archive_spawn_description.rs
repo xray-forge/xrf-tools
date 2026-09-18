@@ -1,6 +1,6 @@
 use serde::Serialize;
-use xrf_db::SpawnHeaderChunk;
 use xrf_error::XrfResult;
+use xrf_spawn::SpawnHeaderChunk;
 
 use crate::plugins::archives::describe::archive_describe_source::ArchiveDescribeSource;
 use crate::plugins::archives::describe::archive_entry_reader::ArchiveEntryReader;

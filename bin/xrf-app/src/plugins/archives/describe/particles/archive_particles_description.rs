@@ -1,8 +1,9 @@
 use std::collections::HashSet;
 
 use serde::Serialize;
-use xrf_db::{ParticlesFile, XRayByteOrder};
 use xrf_error::XrfResult;
+use xrf_particles::ParticlesFile;
+use xrf_spawn::XRayByteOrder;
 
 use crate::plugins::archives::describe::archive_describe_source::ArchiveDescribeSource;
 use crate::plugins::archives::describe::particles::archive_particles_effect::ArchiveParticlesEffect;

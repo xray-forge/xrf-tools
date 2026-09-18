@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
-use xrf_db::XRayByteOrder;
 use xrf_level::{LevelAiFile, LevelAiHeader, LevelCformFile, LevelCformHeader, LevelFile, LevelShadersChunk};
+use xrf_spawn::XRayByteOrder;
 use xrf_vfs::XrayAssetType as AssetType;
 
 use crate::GamedataFindingFactory;

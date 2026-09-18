@@ -1,6 +1,6 @@
 use serde::Serialize;
-use xrf_db::ShaderLibraryFile;
 use xrf_error::XrfResult;
+use xrf_shaders::ShaderLibraryFile;
 
 use crate::plugins::archives::describe::archive_describe_source::ArchiveDescribeSource;
 use crate::plugins::archives::describe::shaders::archive_shaders_blender::ArchiveShadersBlender;

@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { flowResult } from "@wirestate/mobx";
 
 import { SpawnSessionDescriptor } from "@/core/ipc/types/xrf-app";
-import { SpawnGraphsChunk } from "@/core/ipc/types/xrf-db";
+import { SpawnGraphsChunk } from "@/core/ipc/types/xrf-spawn";
 import { SpawnFileService } from "@/core/spawn/services/spawn-file.service";
 import { mockSpawnFile, mockSpawnSession } from "@/fixtures/mocks/spawn.mocks";
 import { mockInvoke, resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";

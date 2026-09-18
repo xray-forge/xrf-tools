@@ -6815,6 +6815,31 @@ dependencies = [
 ]
 
 [[package]]
+name = "xrf-animation"
+version = "0.1.0"
+dependencies = [
+ "byteorder",
+ "serde",
+ "xrf-chunk",
+ "xrf-error",
+ "xrf-test-utils",
+ "xrf-utils",
+]
+
+[[package]]
+name = "xrf-anm"
+version = "0.1.0"
+dependencies = [
+ "byteorder",
+ "serde",
+ "xrf-animation",
+ "xrf-chunk",
+ "xrf-error",
+ "xrf-test-utils",
+ "xrf-utils",
+]
+
+[[package]]
 name = "xrf-app"
 version = "0.1.0"
 dependencies = [
@@ -6837,32 +6862,42 @@ dependencies = [
  "tauri-plugin-store",
  "tauri-specta",
  "uuid",
+ "xrf-animation",
+ "xrf-anm",
  "xrf-archive",
  "xrf-archive-stats",
  "xrf-build-info",
  "xrf-chunk",
- "xrf-db",
  "xrf-dds",
  "xrf-dialog",
  "xrf-dltx",
+ "xrf-efd",
  "xrf-error",
  "xrf-export",
  "xrf-extension",
  "xrf-gamedata",
+ "xrf-gamemtl",
  "xrf-ipc-typescript",
  "xrf-job",
  "xrf-level",
+ "xrf-light-anim",
  "xrf-ltx",
  "xrf-ltx-inspect",
  "xrf-material",
  "xrf-math",
  "xrf-ogf",
+ "xrf-omf",
  "xrf-output",
  "xrf-pack",
+ "xrf-particles",
+ "xrf-ppe",
+ "xrf-shaders",
  "xrf-skeleton",
  "xrf-sound",
+ "xrf-spawn",
  "xrf-test-utils",
  "xrf-texture",
+ "xrf-thm",
  "xrf-translation",
  "xrf-typescript",
  "xrf-utils",
@@ -6939,7 +6974,6 @@ dependencies = [
  "xrf-archive",
  "xrf-build-info",
  "xrf-chunk",
- "xrf-db",
  "xrf-dds",
  "xrf-dialog",
  "xrf-dltx",
@@ -6953,38 +6987,21 @@ dependencies = [
  "xrf-ltx-inspect",
  "xrf-math",
  "xrf-ogf",
+ "xrf-omf",
  "xrf-output",
  "xrf-pack",
+ "xrf-particles",
  "xrf-report",
+ "xrf-shaders",
+ "xrf-sound",
+ "xrf-spawn",
  "xrf-test-utils",
  "xrf-texture",
+ "xrf-thm",
  "xrf-translation",
  "xrf-utils",
  "xrf-vfs",
  "xrf-visual",
-]
-
-[[package]]
-name = "xrf-db"
-version = "0.1.0"
-dependencies = [
- "byteorder",
- "derive_more 2.1.1",
- "enum-map",
- "lazy_static",
- "log",
- "phf 0.14.0",
- "serde",
- "serde_json",
- "specta",
- "uuid",
- "xrf-chunk",
- "xrf-error",
- "xrf-ltx",
- "xrf-math",
- "xrf-skeleton",
- "xrf-test-utils",
- "xrf-utils",
 ]
 
 [[package]]
@@ -7025,6 +7042,18 @@ dependencies = [
  "xrf-ltx",
  "xrf-test-utils",
  "xrf-vfs",
+]
+
+[[package]]
+name = "xrf-efd"
+version = "0.1.0"
+dependencies = [
+ "byteorder",
+ "serde",
+ "xrf-chunk",
+ "xrf-error",
+ "xrf-test-utils",
+ "xrf-utils",
 ]
 
 [[package]]
@@ -7085,7 +7114,6 @@ dependencies = [
  "rayon",
  "uuid",
  "xrf-chunk",
- "xrf-db",
  "xrf-dds",
  "xrf-error",
  "xrf-extension",
@@ -7096,14 +7124,30 @@ dependencies = [
  "xrf-material",
  "xrf-math",
  "xrf-ogf",
+ "xrf-omf",
  "xrf-output",
+ "xrf-particles",
  "xrf-report",
  "xrf-shaders",
  "xrf-sound",
+ "xrf-spawn",
  "xrf-test-utils",
+ "xrf-thm",
  "xrf-utils",
  "xrf-vfs",
  "xrf-xml",
+]
+
+[[package]]
+name = "xrf-gamemtl"
+version = "0.1.0"
+dependencies = [
+ "byteorder",
+ "serde",
+ "xrf-chunk",
+ "xrf-error",
+ "xrf-test-utils",
+ "xrf-utils",
 ]
 
 [[package]]
@@ -7146,6 +7190,18 @@ dependencies = [
  "xrf-error",
  "xrf-math",
  "xrf-ogf",
+ "xrf-test-utils",
+ "xrf-utils",
+]
+
+[[package]]
+name = "xrf-light-anim"
+version = "0.1.0"
+dependencies = [
+ "byteorder",
+ "serde",
+ "xrf-chunk",
+ "xrf-error",
  "xrf-test-utils",
  "xrf-utils",
 ]
@@ -7204,9 +7260,12 @@ dependencies = [
  "serde",
  "specta",
  "xrf-chunk",
- "xrf-db",
  "xrf-error",
+ "xrf-particles",
+ "xrf-shaders",
+ "xrf-spawn",
  "xrf-test-utils",
+ "xrf-thm",
  "xrf-vfs",
 ]
 
@@ -7242,6 +7301,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "xrf-omf"
+version = "0.1.0"
+dependencies = [
+ "byteorder",
+ "xrf-chunk",
+ "xrf-error",
+ "xrf-skeleton",
+ "xrf-test-utils",
+ "xrf-utils",
+]
+
+[[package]]
 name = "xrf-output"
 version = "0.1.0"
 
@@ -7271,6 +7342,38 @@ dependencies = [
 ]
 
 [[package]]
+name = "xrf-particles"
+version = "0.1.0"
+dependencies = [
+ "byteorder",
+ "derive_more 2.1.1",
+ "enum-map",
+ "log",
+ "serde",
+ "serde_json",
+ "uuid",
+ "xrf-chunk",
+ "xrf-error",
+ "xrf-ltx",
+ "xrf-math",
+ "xrf-test-utils",
+ "xrf-utils",
+]
+
+[[package]]
+name = "xrf-ppe"
+version = "0.1.0"
+dependencies = [
+ "byteorder",
+ "serde",
+ "xrf-animation",
+ "xrf-chunk",
+ "xrf-error",
+ "xrf-test-utils",
+ "xrf-utils",
+]
+
+[[package]]
 name = "xrf-report"
 version = "0.1.0"
 dependencies = [
@@ -7283,9 +7386,13 @@ dependencies = [
 name = "xrf-shaders"
 version = "0.1.0"
 dependencies = [
+ "byteorder",
+ "serde",
+ "xrf-chunk",
  "xrf-error",
  "xrf-extension",
  "xrf-lua",
+ "xrf-test-utils",
  "xrf-utils",
 ]
 
@@ -7308,9 +7415,34 @@ dependencies = [
 name = "xrf-sound"
 version = "0.1.0"
 dependencies = [
+ "byteorder",
  "ogg",
+ "serde",
  "symphonia",
+ "xrf-chunk",
  "xrf-error",
+ "xrf-utils",
+]
+
+[[package]]
+name = "xrf-spawn"
+version = "0.1.0"
+dependencies = [
+ "byteorder",
+ "derive_more 2.1.1",
+ "enum-map",
+ "lazy_static",
+ "log",
+ "phf 0.14.0",
+ "serde",
+ "serde_json",
+ "specta",
+ "uuid",
+ "xrf-chunk",
+ "xrf-error",
+ "xrf-ltx",
+ "xrf-math",
+ "xrf-test-utils",
  "xrf-utils",
 ]
 
@@ -7330,17 +7462,32 @@ dependencies = [
  "rayon",
  "serde",
  "specta",
- "xrf-db",
  "xrf-dds",
  "xrf-error",
  "xrf-extension",
  "xrf-job",
  "xrf-ltx",
  "xrf-output",
+ "xrf-particles",
+ "xrf-spawn",
  "xrf-test-utils",
+ "xrf-thm",
  "xrf-utils",
  "xrf-vfs",
  "xrf-xml",
+]
+
+[[package]]
+name = "xrf-thm"
+version = "0.1.0"
+dependencies = [
+ "byteorder",
+ "serde",
+ "serde_json",
+ "xrf-chunk",
+ "xrf-error",
+ "xrf-test-utils",
+ "xrf-utils",
 ]
 
 [[package]]
@@ -7418,11 +7565,12 @@ dependencies = [
  "log",
  "serde",
  "specta",
- "xrf-db",
  "xrf-error",
  "xrf-math",
  "xrf-ogf",
+ "xrf-particles",
  "xrf-skeleton",
+ "xrf-spawn",
  "xrf-test-utils",
  "xrf-vfs",
 ]

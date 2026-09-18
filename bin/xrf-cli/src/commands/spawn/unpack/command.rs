@@ -3,8 +3,8 @@ use std::time::{Duration, Instant};
 use std::{fs, io};
 
 use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
-use xrf_db::{SpawnFile, XRayByteOrder};
 use xrf_output::OutputOptions;
+use xrf_spawn::{SpawnFile, XRayByteOrder};
 use xrf_utils::format_path;
 
 use crate::core::command_context::CommandContext;

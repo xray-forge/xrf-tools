@@ -1,4 +1,4 @@
-use xrf_db::ShaderLibraryFile;
+use xrf_shaders::ShaderLibraryFile;
 use xrf_vfs::XrayAssetType as AssetType;
 
 use crate::GamedataFindingFactory;

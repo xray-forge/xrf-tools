@@ -2,11 +2,12 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use rayon::iter::{IndexedParallelIterator, IntoParallelRefIterator, ParallelIterator};
-use xrf_db::{OmfFile, XRayByteOrder};
 use xrf_error::XrfResult;
 use xrf_ltx::{LTX_SYMBOL_SCHEME, Ltx, LtxResolution, Section};
 use xrf_ogf::OgfFile;
+use xrf_omf::OmfFile;
 use xrf_output::{OutputSequence, OutputSlot};
+use xrf_spawn::XRayByteOrder;
 use xrf_vfs::XrayAssetType;
 use xrf_vfs::XrayAssetType as AssetType;
 

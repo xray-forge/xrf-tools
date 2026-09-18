@@ -4,10 +4,11 @@ use std::time::{Duration, Instant};
 
 use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
 use walkdir::WalkDir;
-use xrf_db::{OmfFile, XRayByteOrder};
 use xrf_error::{XrfError, XrfResult};
 use xrf_extension::XrayExtension;
+use xrf_omf::OmfFile;
 use xrf_output::OutputOptions;
+use xrf_spawn::XRayByteOrder;
 use xrf_utils::format_path;
 
 use super::report::{OmfRepackFindingReport, OmfRepackVerifyReport};
@@ -168,9 +169,6 @@ impl RepackCommand {
   }
 
   /// Read and re-serialize single omf file, comparing the result with source bytes.
-  ///
-  /// A file that did not come back is appended to `findings` as well as counted, so the report says
-  /// which file failed and how, not only how many did.
   fn verify_single(
     output: &OutputOptions,
     path: &Path,

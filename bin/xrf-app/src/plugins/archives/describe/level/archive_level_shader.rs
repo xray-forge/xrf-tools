@@ -1,5 +1,5 @@
 use serde::Serialize;
-use xrf_db::ShaderLibraryFile;
+use xrf_shaders::ShaderLibraryFile;
 
 use crate::plugins::archives::describe::archive_reference::ArchiveReferenceStatus;
 
@@ -28,7 +28,7 @@ impl ArchiveLevelShader {
 
 #[cfg(test)]
 mod tests {
-  use xrf_db::ShaderLibraryFile;
+  use xrf_shaders::ShaderLibraryFile;
 
   use super::ArchiveLevelShader;
   use crate::plugins::archives::describe::archive_reference::ArchiveReferenceStatus;

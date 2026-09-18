@@ -1,5 +1,5 @@
 use serde::Serialize;
-use xrf_db::ThmBumpChunk;
+use xrf_thm::ThmBumpChunk;
 use xrf_vfs::XrayAssetType;
 
 use crate::plugins::archives::describe::archive_describe_source::ArchiveDescribeSource;
@@ -17,9 +17,6 @@ pub struct ArchiveThmBump {
   /// The bump texture named, absent when the chunk names none.
   pub texture: Option<ArchiveReference>,
   /// Whether the engine would try to resolve the name: a mode that uses one, and a name to use.
-  ///
-  /// A name that resolves to nothing does not turn bump mapping off. `bump_exist` tests only that the name is
-  /// non-empty, so the renderer still takes the `_bump` variant and the loader substitutes `ed\ed_dummy_bump`.
   pub is_used: bool,
 }
 

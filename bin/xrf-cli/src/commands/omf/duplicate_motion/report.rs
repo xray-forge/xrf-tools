@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use serde::Serialize;
-use xrf_db::OmfFile;
+use xrf_omf::OmfFile;
 
 /// What `omf duplicate-motion` copied.
 #[derive(Debug, Serialize)]

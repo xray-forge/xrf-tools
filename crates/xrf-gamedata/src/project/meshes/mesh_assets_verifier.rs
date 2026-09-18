@@ -1,11 +1,13 @@
 use std::collections::{HashMap, HashSet};
 
 use rayon::prelude::*;
-use xrf_db::{OmfFile, ShaderLibraryFile, XRayByteOrder};
 use xrf_error::{XrfError, XrfResult};
 use xrf_job::JobHandle;
 use xrf_ogf::{OgfFile, OgfResidueCause};
+use xrf_omf::OmfFile;
 use xrf_output::{OutputOptions, OutputSequence, OutputSlot};
+use xrf_shaders::ShaderLibraryFile;
+use xrf_spawn::XRayByteOrder;
 use xrf_vfs::XrayAssetType as AssetType;
 
 use crate::GamedataFindingFactory;

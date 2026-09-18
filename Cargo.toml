@@ -3,21 +3,26 @@ resolver = "3"
 members = [
   "bin/xrf-app",
   "bin/xrf-cli",
+  "crates/xrf-animation",
+  "crates/xrf-anm",
   "crates/xrf-archive",
+  "crates/xrf-archive-stats",
   "crates/xrf-build-info",
   "crates/xrf-chunk",
-  "crates/xrf-db",
   "crates/xrf-dds",
   "crates/xrf-dialog",
   "crates/xrf-dltx",
+  "crates/xrf-efd",
   "crates/xrf-error",
   "crates/xrf-error-derive",
   "crates/xrf-export",
   "crates/xrf-extension",
-  "crates/xrf-ipc-typescript",
   "crates/xrf-gamedata",
+  "crates/xrf-gamemtl",
+  "crates/xrf-ipc-typescript",
   "crates/xrf-job",
   "crates/xrf-level",
+  "crates/xrf-light-anim",
   "crates/xrf-ltx",
   "crates/xrf-ltx-inspect",
   "crates/xrf-lua",
@@ -25,17 +30,21 @@ members = [
   "crates/xrf-material",
   "crates/xrf-math",
   "crates/xrf-ogf",
+  "crates/xrf-omf",
   "crates/xrf-output",
   "crates/xrf-pack",
+  "crates/xrf-particles",
+  "crates/xrf-ppe",
   "crates/xrf-report",
   "crates/xrf-shaders",
   "crates/xrf-skeleton",
   "crates/xrf-sound",
-  "crates/xrf-archive-stats",
+  "crates/xrf-spawn",
   "crates/xrf-test-utils",
   "crates/xrf-texture",
-  "crates/xrf-typescript",
+  "crates/xrf-thm",
   "crates/xrf-translation",
+  "crates/xrf-typescript",
   "crates/xrf-utils",
   "crates/xrf-vfs",
   "crates/xrf-visual",
@@ -70,21 +79,26 @@ specta-util = "0.0.12"
 tauri-specta = { version = "=2.0.0-rc.25", features = ["typescript"] }
 uuid = "1.26.1"
 walkdir = "2.5.0"
+xrf-animation = { path = "crates/xrf-animation" }
+xrf-anm = { path = "crates/xrf-anm" }
 xrf-archive = { path = "crates/xrf-archive" }
+xrf-archive-stats = { path = "crates/xrf-archive-stats" }
 xrf-build-info = { path = "crates/xrf-build-info" }
 xrf-chunk = { path = "crates/xrf-chunk" }
-xrf-db = { path = "crates/xrf-db" }
 xrf-dds = { path = "crates/xrf-dds" }
 xrf-dialog = { path = "crates/xrf-dialog" }
 xrf-dltx = { path = "crates/xrf-dltx" }
+xrf-efd = { path = "crates/xrf-efd" }
 xrf-error = { path = "crates/xrf-error" }
 xrf-error-derive = { path = "crates/xrf-error-derive" }
 xrf-export = { path = "crates/xrf-export" }
 xrf-extension = { path = "crates/xrf-extension" }
-xrf-ipc-typescript = { path = "crates/xrf-ipc-typescript" }
 xrf-gamedata = { path = "crates/xrf-gamedata" }
+xrf-gamemtl = { path = "crates/xrf-gamemtl" }
+xrf-ipc-typescript = { path = "crates/xrf-ipc-typescript" }
 xrf-job = { path = "crates/xrf-job" }
 xrf-level = { path = "crates/xrf-level" }
+xrf-light-anim = { path = "crates/xrf-light-anim" }
 xrf-ltx = { path = "crates/xrf-ltx" }
 xrf-ltx-inspect = { path = "crates/xrf-ltx-inspect" }
 xrf-lua = { path = "crates/xrf-lua" }
@@ -92,15 +106,19 @@ xrf-lzhuf = { path = "crates/xrf-lzhuf" }
 xrf-material = { path = "crates/xrf-material" }
 xrf-math = { path = "crates/xrf-math" }
 xrf-ogf = { path = "crates/xrf-ogf" }
+xrf-omf = { path = "crates/xrf-omf" }
 xrf-output = { path = "crates/xrf-output" }
 xrf-pack = { path = "crates/xrf-pack" }
+xrf-particles = { path = "crates/xrf-particles" }
+xrf-ppe = { path = "crates/xrf-ppe" }
 xrf-report = { path = "crates/xrf-report" }
 xrf-shaders = { path = "crates/xrf-shaders" }
 xrf-skeleton = { path = "crates/xrf-skeleton" }
 xrf-sound = { path = "crates/xrf-sound" }
-xrf-archive-stats = { path = "crates/xrf-archive-stats" }
+xrf-spawn = { path = "crates/xrf-spawn" }
 xrf-test-utils = { path = "crates/xrf-test-utils" }
 xrf-texture = { path = "crates/xrf-texture" }
+xrf-thm = { path = "crates/xrf-thm" }
 xrf-translation = { path = "crates/xrf-translation" }
 xrf-typescript = { path = "crates/xrf-typescript" }
 xrf-utils = { path = "crates/xrf-utils" }

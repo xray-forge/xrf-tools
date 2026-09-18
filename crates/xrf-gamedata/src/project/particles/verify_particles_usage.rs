@@ -4,9 +4,10 @@ use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
-use xrf_db::{ParticlesFile, SpawnFile, XRayByteOrder};
 use xrf_error::XrfResult;
 use xrf_ltx::{Ltx, LtxProject};
+use xrf_particles::ParticlesFile;
+use xrf_spawn::{SpawnFile, XRayByteOrder};
 use xrf_utils::format_path;
 use xrf_vfs::XrayAssetType as AssetType;
 

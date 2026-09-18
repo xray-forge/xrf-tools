@@ -2,7 +2,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use tauri::State;
-use xrf_db::XRayByteOrder;
+use xrf_spawn::XRayByteOrder;
 use xrf_utils::error_to_string;
 
 use crate::core::execution::ExecutionState;

@@ -2,7 +2,7 @@ use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
 use clap::{Arg, ArgMatches, Command, value_parser};
-use xrf_db::ParticlesFile;
+use xrf_particles::ParticlesFile;
 use xrf_utils::format_path;
 
 use crate::core::command_context::CommandContext;

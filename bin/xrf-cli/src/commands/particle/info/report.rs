@@ -1,5 +1,5 @@
 use serde::Serialize;
-use xrf_db::ParticlesFile;
+use xrf_particles::ParticlesFile;
 
 /// What `particle info` read out of a particle library.
 #[derive(Debug, Serialize)]

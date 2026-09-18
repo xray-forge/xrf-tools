@@ -1,6 +1,7 @@
 use serde::Serialize;
-use xrf_db::{OmfFile, XRayByteOrder};
 use xrf_error::XrfResult;
+use xrf_omf::OmfFile;
+use xrf_spawn::XRayByteOrder;
 
 use crate::plugins::archives::describe::archive_describe_source::ArchiveDescribeSource;
 use crate::plugins::archives::describe::omf::archive_omf_bank::ArchiveOmfBank;
@@ -20,10 +21,6 @@ pub struct ArchiveOmfDescription {
 
 impl ArchiveOmfDescription {
   /// Reads the bank an entry holds.
-  ///
-  /// The whole file is parsed, keyframes included: the frame count of a motion lives in its payload and there is no
-  /// prefix of the container that holds one list without the other. That makes describing an 18 MB bank cost 18 MB,
-  /// which is the standing price of the format and the reason the policy's describe ceiling exists.
   ///
   /// # Errors
   ///

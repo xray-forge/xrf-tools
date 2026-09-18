@@ -1,4 +1,4 @@
-use xrf_db::ThmTextureFlag;
+use xrf_thm::ThmTextureFlag;
 
 /// A requested descriptor feature the texture builder does not implement.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

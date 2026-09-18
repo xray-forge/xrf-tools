@@ -1,6 +1,7 @@
 use serde::Serialize;
-use xrf_db::{GameMtlFile, XRayByteOrder};
 use xrf_error::XrfResult;
+use xrf_gamemtl::GameMtlFile;
+use xrf_spawn::XRayByteOrder;
 
 use crate::plugins::archives::describe::archive_describe_source::ArchiveDescribeSource;
 use crate::plugins::archives::describe::gamemtl::archive_game_mtl_material::ArchiveGameMtlMaterial;

@@ -4,9 +4,9 @@ use serde::Serialize;
 use tauri::State;
 use tauri::ipc::Channel;
 use uuid::Uuid;
-use xrf_db::ThmFile;
 use xrf_job::{JobHandle, JobOutcome, JobProgress};
 use xrf_texture::{BuildTextureOptions, BuildTextureProcessor, BuildTextureResult, read_image_as_rgba};
+use xrf_thm::ThmFile;
 use xrf_utils::{error_to_string, to_portable_path_string};
 
 use crate::core::execution::ExecutionState;

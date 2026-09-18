@@ -1,6 +1,7 @@
 use serde::Serialize;
-use xrf_db::{LightAnimFile, XRayByteOrder};
 use xrf_error::XrfResult;
+use xrf_light_anim::LightAnimFile;
+use xrf_spawn::XRayByteOrder;
 
 use crate::plugins::archives::describe::archive_describe_source::ArchiveDescribeSource;
 use crate::plugins::archives::describe::light_anim::archive_light_anim_item::ArchiveLightAnimItem;

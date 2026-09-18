@@ -5,7 +5,7 @@ import { transformError } from "@/core/error/lib";
 import { spawnCommands } from "@/core/ipc/commands/spawn";
 import { Session } from "@/core/ipc/session";
 import { SessionId, SpawnSessionDescriptor } from "@/core/ipc/types/xrf-app";
-import { SpawnFile } from "@/core/ipc/types/xrf-db";
+import { SpawnFile } from "@/core/ipc/types/xrf-spawn";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
 import { EApplicationGroupId } from "@/core/routing/application";
 import { AsyncState } from "@/lib/async-state";

@@ -2,9 +2,9 @@ use std::collections::BTreeSet;
 
 use uuid::Uuid;
 use xrf_chunk::ChunkReader;
-use xrf_db::{GraphCrossTable, GraphLevel, SpawnFile, SpawnGraphsChunk, XRayByteOrder};
 use xrf_error::{XrfError, XrfResult};
 use xrf_job::JobHandle;
+use xrf_spawn::{GraphCrossTable, GraphLevel, SpawnFile, SpawnGraphsChunk, XRayByteOrder};
 use xrf_vfs::XrayAssetType as AssetType;
 
 use crate::GamedataFindingFactory;
@@ -34,13 +34,6 @@ pub(crate) struct LevelRoster {
 
 impl LevelRoster {
   /// Collect the level roster from every spawn asset carrying a game graph.
-  ///
-  /// Only the graph chunk is parsed, so an ALife object class without a CLSID mapping cannot
-  /// prevent the roster from being determined. Whole spawn file validity belongs to `verify_spawns`.
-  ///
-  /// A spawn file that cannot be read at all is a checker error rather than a finding: the roster
-  /// is unknown, and falling back to the directory listing would make every reconciliation rule
-  /// vacuously pass.
   pub(crate) fn read(project: &GamedataProject, job: &JobHandle) -> XrfResult<Self> {
     job.check_cancelled()?;
     let mut roster: Self = Self {
@@ -136,11 +129,6 @@ impl LevelRoster {
   }
 
   /// Order levels the way the engine does.
-  ///
-  /// `CGameGraph::set_current_level` walks `header().levels()`, a map keyed by level id, advancing
-  /// the cross table pointer once per level. Cross tables are therefore addressed by the level's
-  /// rank in ascending id order - not by the id itself, and not by the order levels appear in the
-  /// file.
   fn ranked_levels(graphs: &SpawnGraphsChunk) -> Vec<&GraphLevel> {
     let mut levels: Vec<&GraphLevel> = graphs.levels.iter().collect();
 

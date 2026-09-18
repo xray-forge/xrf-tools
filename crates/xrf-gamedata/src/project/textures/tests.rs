@@ -1,12 +1,9 @@
 //! The bump half of the textures check, against descriptor trees built from `xrf-material`'s own fixtures.
-//!
-//! Every texture file here is a placeholder, so the DDS half reports each as unreadable; the assertions read the bump
-//! counts and the bump rules, which is what this file pins.
 
 use std::fs;
 
-use xrf_db::{ThmBumpMode, ThmTextureType};
 use xrf_material::fixtures::{FixtureTree, ThmFixture};
+use xrf_thm::{ThmBumpMode, ThmTextureType};
 
 use crate::project::textures::verify_textures_result::GamedataTexturesVerificationResult;
 use crate::{

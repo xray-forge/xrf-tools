@@ -3,9 +3,10 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
-use xrf_db::{OmfFile, OmfMotionsProcessor, XRayByteOrder};
 use xrf_error::{XrfError, XrfResult};
+use xrf_omf::{OmfFile, OmfMotionsProcessor};
 use xrf_output::OutputOptions;
+use xrf_spawn::XRayByteOrder;
 use xrf_utils::format_path;
 
 use super::report::OmfRenameMotionsReport;

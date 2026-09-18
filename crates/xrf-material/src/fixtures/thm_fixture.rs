@@ -1,16 +1,9 @@
-use xrf_db::{
+use xrf_spawn::XRayByteOrder;
+use xrf_thm::{
   ThmBumpChunk, ThmBumpMode, ThmDetailChunk, ThmFile, ThmTextureFlag, ThmTextureParamChunk, ThmTextureType,
-  XRayByteOrder,
 };
 
 /// A descriptor file, built by changing one thing at a time about the one the SDK writes for a plain image.
-///
-/// Each `with_*` changes a single declaration, so a test reads as the difference from that baseline, and an `Option`
-/// left `None` writes no chunk at all, which is how the absent-chunk states are produced.
-///
-/// The bytes come from [`ThmFile::write_to`], which is the one serializer in the workspace and is itself pinned
-/// against the corpus by `xrf-db`. Its own round-trip tests lay their descriptors down by hand instead, because a
-/// writer cannot be judged against fixtures it produced.
 #[derive(Clone, Debug)]
 pub struct ThmFixture {
   pub file: ThmFile,

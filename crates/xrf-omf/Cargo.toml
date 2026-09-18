@@ -1,0 +1,27 @@
+[package]
+name = "xrf-omf"
+version = "0.1.0"
+publish = false
+edition.workspace = true
+rust-version.workspace = true
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+byteorder = { workspace = true }
+xrf-chunk = { workspace = true }
+xrf-error = { workspace = true }
+xrf-skeleton = { workspace = true }
+xrf-utils = { workspace = true }
+
+[features]
+# Emits TypeScript mirrors of the serialized types. Nothing in a normal build turns this on.
+
+
+[dev-dependencies]
+xrf-skeleton = { workspace = true, features = ["fixtures"] }
+xrf-test-utils = { workspace = true }
+
+[lints]
+workspace = true

@@ -1,16 +1,9 @@
-use xrf_db::{ShaderBlender, ShaderBlenderClass};
+use xrf_shaders::{ShaderBlender, ShaderBlenderClass};
 
 use crate::data::xray_surface_draw::XraySurfaceDraw;
 use crate::resolve::xray_surface_alpha::XraySurfaceAlpha;
 
 /// The alpha rule a blender class follows: which knobs it reads, and what the deferred renderer compiles from them.
-///
-/// One variant per distinct `Compile` shape rather than one per class, because several classes share a rule exactly -
-/// `B_DEFAULT_AREF` and `B_VERT_AREF` are both `CBlender_deffer_aref`, and `B_MODEL_EbB` and `B_LmEbB` both compile
-/// the switch into a forward pass with no reference of its own.
-///
-/// This is the one place classes are enumerated. Both halves of an answer - the knobs a panel reports and the pass a
-/// viewer draws - come off the same variant, so a class cannot be described from one table and drawn from another.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum XraySurfaceRule {
   /// `B_MODEL`, what almost every mesh surface names, and the only rule whose reference decides the pass
@@ -38,18 +31,11 @@ impl XraySurfaceRule {
   /// The level and scenery classes' alpha switch (`blenders/blender_deffer_aref.cpp`, `blenders/Blender_tree.cpp`).
   const LEVEL_SWITCH: &'static str = "Alpha-blend";
   /// The environment mapped classes' alpha switch (`blenders/Blender_Model_EbB.cpp`), spelled with a capital B.
-  ///
-  /// Kept apart from [`Self::LEVEL_SWITCH`] rather than compared case-insensitively: the spellings are what say which
-  /// class's `Save` wrote a property, and folding them would hide a misread class instead of exposing it.
   const ENVIRONMENT_SWITCH: &'static str = "Alpha-Blend";
   /// The authored reference, for the classes that write one (`blenders/Blender_Model.cpp`).
   const REFERENCE: &'static str = "Alpha ref";
 
   /// The reference below which an alpha blended model surface leaves the deferred path for a forward pass.
-  ///
-  /// `if (oBlend.value && oAREF.value < 16) bForward = TRUE`
-  /// (`blenders/blender_deffer_model.cpp`). An author asking to keep nearly every texel is asking for translucency
-  /// rather than a cut-out, and the g-buffer cannot hold that.
   const FORWARD_REFERENCE_LIMIT: i32 = 16;
 
   /// What a forward pass tests against for the rules that pass no reference of their own, both `r_Pass(..., TRUE, 0)`
@@ -57,10 +43,6 @@ impl XraySurfaceRule {
   const BLENDED_DEFAULT_REFERENCE: u8 = 0;
 
   /// The rule a class follows, or `None` for one this crate does not model.
-  ///
-  /// Refused rather than guessed at: an effect or screen space class a mesh has no business naming, and one a mod's
-  /// renderer added, are both drawn by a pass nothing here knows, and an invented answer would be indistinguishable
-  /// from a read one.
   pub(crate) fn of(class: ShaderBlenderClass) -> Option<Self> {
     match class {
       ShaderBlenderClass::MODEL => Some(Self::Model),

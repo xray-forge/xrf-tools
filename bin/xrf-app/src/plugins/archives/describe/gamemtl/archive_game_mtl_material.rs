@@ -1,5 +1,5 @@
 use serde::Serialize;
-use xrf_db::GameMtlMaterial;
+use xrf_gamemtl::GameMtlMaterial;
 
 /// One game material, as the viewer reads it.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]

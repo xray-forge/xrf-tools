@@ -5,8 +5,8 @@ use std::sync::Arc;
 use serde_json::json;
 use tauri::ipc::{Channel, InvokeResponseBody};
 use uuid::Uuid;
-use xrf_db::XRayByteOrder;
 use xrf_job::{ExecutionRequest, JobHandle, JobOutcome};
+use xrf_spawn::XRayByteOrder;
 use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 
 use super::{SpawnConversion, convert, register_conversion, run_conversion};

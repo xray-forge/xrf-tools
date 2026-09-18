@@ -4,8 +4,8 @@ use std::sync::Arc;
 use serde::Serialize;
 use tauri::ipc::Channel;
 use uuid::Uuid;
-use xrf_db::{SpawnFile, XRayByteOrder};
 use xrf_job::{JobHandle, JobOutcome, JobProgress};
+use xrf_spawn::{SpawnFile, XRayByteOrder};
 use xrf_utils::error_to_string;
 
 use crate::core::execution::ExecutionState;

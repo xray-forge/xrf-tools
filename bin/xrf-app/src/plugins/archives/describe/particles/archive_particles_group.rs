@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use serde::Serialize;
-use xrf_db::{ParticleGroup, ParticleGroupEffect};
+use xrf_particles::{ParticleGroup, ParticleGroupEffect};
 
 /// One sequence of the library: the effects it plays and what each one starts alongside itself.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -88,7 +88,7 @@ impl ArchiveParticlesEffectName {
 mod tests {
   use std::collections::HashSet;
 
-  use xrf_db::{ParticleGroup, ParticleGroupEffect};
+  use xrf_particles::{ParticleGroup, ParticleGroupEffect};
 
   use super::ArchiveParticlesGroup;
 

@@ -1,13 +1,10 @@
-use xrf_db::{ThmFile, ThmFormat, ThmMipFilter, ThmTextureFlag, ThmTextureParamChunk};
 use xrf_dds::{DdsMipFilter, DdsMipmaps, ImageFormat};
 use xrf_error::{XrfError, XrfResult};
+use xrf_thm::{ThmFile, ThmFormat, ThmMipFilter, ThmTextureFlag, ThmTextureParamChunk};
 
 use crate::build::build_texture_omission::BuildTextureOmission;
 
 /// How a descriptor says its texture should be written, as far as this build can carry it out.
-///
-/// The whole decision, taken from the descriptor alone and before a single pixel is touched, so that a surface can
-/// show what a rebuild would do - and what it would leave out - without doing it.
 #[derive(Clone, Debug, PartialEq)]
 pub struct BuildTextureRecipe {
   /// The layout to write, from the descriptor's own format.
@@ -38,16 +35,6 @@ impl BuildTextureRecipe {
   }
 
   /// The layout the descriptor's format names, for the four this build can write.
-  ///
-  /// Those four cover 12,254 of the 13,061 descriptors in the workspace corpus. Three formats are refused rather than
-  /// approximated, each for its own reason.
-  ///
-  /// `tfA8` and `tf565`, 274 descriptors between them, are packings `image_dds` has no encoder for at all.
-  ///
-  /// `tfADXT1`, 533 of them, is the harder one: it is BC1 carrying a one-bit cutout, and `image_dds`'s BC1 encoder
-  /// discards alpha outright - a source with alpha alternating inside every block comes back fully opaque. Writing it
-  /// anyway would turn every transparent texel of a fence or a leaf solid, which is a visible change rather than a
-  /// recipe field left out, so it is refused until an encoder that does punchthrough is available.
   fn to_image_format(format: ThmFormat) -> XrfResult<ImageFormat> {
     match format {
       // BC1 with no alpha, which is what the descriptor asked for: the encoder discards the source's own.
@@ -67,10 +54,6 @@ impl BuildTextureRecipe {
   }
 
   /// What the texture carries below its base level.
-  ///
-  /// `Advanced` is not a kernel and is not treated as one, but it is not unknown either: it selects the SDK's own
-  /// chain, and that chain box-averages every level (`Build32MipLevel`, `xrDXT/DXT.cpp`). So the levels come out the
-  /// same and only the fade applied on the way down is missing, which is reported rather than guessed at.
   fn to_mipmaps(param: &ThmTextureParamChunk) -> DdsMipmaps {
     if !param.flags.has(ThmTextureFlag::GenerateMipMaps) {
       return DdsMipmaps::Disabled;
@@ -99,9 +82,6 @@ impl BuildTextureRecipe {
   }
 
   /// Every recipe field the descriptor sets that this build does not carry out.
-  ///
-  /// Only fields the descriptor actually asks for are listed, so a texture that asks for nothing beyond a format and
-  /// a filter reports nothing and can be rebuilt with confidence.
   fn to_omissions(param: &ThmTextureParamChunk) -> Vec<BuildTextureOmission> {
     let mut omissions: Vec<BuildTextureOmission> = Vec::new();
 

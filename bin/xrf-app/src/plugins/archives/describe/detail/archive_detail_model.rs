@@ -1,8 +1,8 @@
 use serde::Serialize;
-use xrf_db::XRayByteOrder;
 use xrf_error::XrfResult;
 use xrf_level::DetailModel;
 use xrf_math::Vector3d;
+use xrf_spawn::XRayByteOrder;
 use xrf_vfs::XrayAssetType;
 
 use crate::plugins::archives::describe::archive_bounds::ArchiveBounds;

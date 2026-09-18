@@ -4,10 +4,11 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use xrf_db::{ThmBumpMode, ThmFile, XRayByteOrder};
 use xrf_dds::{DdsEncoding, DdsMipChain, DdsMipmaps, ImageFormat, Quality, Rgba, RgbaImage};
 use xrf_material::fixtures::{FixtureTree, ThmFixture};
+use xrf_spawn::XRayByteOrder;
 use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+use xrf_thm::{ThmBumpMode, ThmFile};
 use xrf_vfs::{
   XrayAsset, XrayAssetContainer, XrayAssetType, XrayLogicalPath, XrayLookupScope, XrayMountId, XrayMountMode,
   XrayProbe, XrayRoots, XrayVfs,
@@ -94,9 +95,6 @@ pub fn file_source(path: PathBuf) -> TextureSource {
 }
 
 /// A scratch directory of its own per case, so a save that writes files cannot reach another's.
-///
-/// Kept apart from [`loose_directory`] by more than a name: the two prefixes are what let a writing test and a
-/// standalone one use the same case name without clearing each other's files out from under a parallel run.
 pub fn editing_directory(case: &str) -> PathBuf {
   to_scratch_directory("textures_editing", case)
 }

@@ -47,10 +47,10 @@ mod tests {
   use std::path::PathBuf;
 
   use image::{Rgba, RgbaImage};
-  use xrf_db::{ThmFile, ThmFormat, ThmMipFilter, ThmTextureFlag, ThmTextureFlags, ThmTextureParamChunk};
   use xrf_dds::{DdsFile, Quality};
   use xrf_error::XrfResult;
   use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+  use xrf_thm::{ThmFile, ThmFormat, ThmMipFilter, ThmTextureFlag, ThmTextureFlags, ThmTextureParamChunk};
 
   use super::BuildTextureProcessor;
   use crate::build::build_texture_omission::BuildTextureOmission;

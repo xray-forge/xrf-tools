@@ -1,6 +1,6 @@
 //! The questions a surface asks of a resolved material, answered here once so no consumer re-derives them.
 
-use xrf_db::{ThmTextureFlag, ThmTextureType};
+use xrf_thm::{ThmTextureFlag, ThmTextureType};
 
 use crate::fixtures::{FixtureTree, ThmFixture};
 use crate::tests::material_probe::{BASE, BUMP, COMPANION, describe, used_bump};

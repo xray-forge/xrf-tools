@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use xrf_db::{SpawnFile, XRayByteOrder};
+use xrf_spawn::{SpawnFile, XRayByteOrder};
 
 use crate::core::execution::ExecutionState;
 use crate::core::session::SessionId;

@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use xrf_db::SpawnFile;
+use xrf_spawn::SpawnFile;
 
 use crate::core::session::{Session, SessionId};
 use crate::core::types::TauriResult;

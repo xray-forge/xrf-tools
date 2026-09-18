@@ -12,18 +12,21 @@ path = "src/lib.rs"
 serde = { workspace = true }
 specta = { workspace = true, optional = true }
 xrf-chunk = { workspace = true }
-xrf-db = { workspace = true }
 xrf-error = { workspace = true }
 xrf-test-utils = { workspace = true, optional = true }
 xrf-vfs = { workspace = true }
+xrf-thm = { workspace = true }
+xrf-shaders = { workspace = true }
+xrf-spawn = { workspace = true }
+xrf-particles = { workspace = true }
 
 [dev-dependencies]
-xrf-db = { workspace = true, features = ["fixtures"] }
+xrf-shaders = { workspace = true, features = ["fixtures"] }
 xrf-test-utils = { workspace = true }
 
 [features]
 typescript-bindings = ["specta", "xrf-vfs/typescript-bindings"]
-fixtures = ["xrf-test-utils", "xrf-db/fixtures"]
+fixtures = ["xrf-test-utils", "xrf-shaders/fixtures"]
 
 [lints]
 workspace = true

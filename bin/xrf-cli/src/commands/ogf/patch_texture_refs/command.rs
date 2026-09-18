@@ -1,10 +1,10 @@
 use std::path::{Path, PathBuf};
 
 use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
-use xrf_db::XRayByteOrder;
 use xrf_error::XrfResult;
 use xrf_ogf::{OgfFile, OgfRefsPatchReport, OgfTextureRefsProcessor};
 use xrf_output::OutputOptions;
+use xrf_spawn::XRayByteOrder;
 use xrf_utils::format_path;
 
 use crate::core::command_context::CommandContext;

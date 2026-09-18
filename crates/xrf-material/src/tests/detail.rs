@@ -1,6 +1,6 @@
 //! The detail association, live or dead, and the type gate in front of it.
 
-use xrf_db::{ThmTextureFlag, ThmTextureType};
+use xrf_thm::{ThmTextureFlag, ThmTextureType};
 
 use crate::fixtures::{FixtureTree, ThmFixture};
 use crate::tests::material_probe::{BASE, describe};

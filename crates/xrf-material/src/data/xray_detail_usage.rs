@@ -1,10 +1,7 @@
 use serde::Serialize;
-use xrf_db::ThmDetailUsage;
+use xrf_thm::ThmDetailUsage;
 
 /// How a detail texture is applied, from the two texture param flags (`TextureDescrManager.cpp`).
-///
-/// A bump detail brings its own bump and bump# pair, looked up through the detail texture's own descriptor
-/// (`uber_deffer.cpp`); that pair is not resolved here.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]

@@ -1,7 +1,8 @@
 use serde::Serialize;
-use xrf_db::{ShaderLibraryFile, XRayByteOrder};
 use xrf_error::XrfResult;
 use xrf_level::{LevelFile, LevelShaderEntry};
+use xrf_shaders::ShaderLibraryFile;
+use xrf_spawn::XRayByteOrder;
 
 use crate::plugins::archives::describe::archive_describe_source::ArchiveDescribeSource;
 use crate::plugins::archives::describe::archive_reference::ArchiveReference;

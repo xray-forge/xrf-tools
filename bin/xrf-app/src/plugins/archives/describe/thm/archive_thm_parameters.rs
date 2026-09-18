@@ -1,10 +1,7 @@
 use serde::Serialize;
-use xrf_db::{ThmTextureFlag, ThmTextureParamChunk};
+use xrf_thm::{ThmTextureFlag, ThmTextureParamChunk};
 
 /// The conversion parameters a descriptor carries, `THM_CHUNK_TEXTUREPARAM`.
-///
-/// Authoring data the converter consumed and the runtime does not read, with two exceptions that live in
-/// the detail section, which reports them where they take effect.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -19,13 +16,8 @@ pub struct ArchiveThmParameters {
   pub width: u32,
   pub height: u32,
   /// Every bit the SDK names, in bit order, set or not.
-  ///
-  /// All twelve rather than the set ones: a recipe is read to see what the converter was told to do, and "dither is
-  /// off" answers that as well as "dither is on".
   pub flags: Vec<ArchiveThmFlag>,
   /// Bits the word carries that the SDK has no name for.
-  ///
-  /// Two vanilla descriptors carry one, so dropping the residue would silently lose what somebody's tool set.
   pub unnamed_flags: u32,
 }
 

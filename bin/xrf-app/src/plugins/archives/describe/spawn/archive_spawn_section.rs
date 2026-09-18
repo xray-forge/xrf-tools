@@ -1,5 +1,7 @@
 use serde::Serialize;
-use xrf_db::{SpawnALifeSpawnsChunk, SpawnArtefactSpawnsChunk, SpawnGraphsChunk, SpawnHeaderChunk, SpawnPatrolsChunk};
+use xrf_spawn::{
+  SpawnALifeSpawnsChunk, SpawnArtefactSpawnsChunk, SpawnGraphsChunk, SpawnHeaderChunk, SpawnPatrolsChunk,
+};
 
 /// One top-level section of a spawn set, by id and weight.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]

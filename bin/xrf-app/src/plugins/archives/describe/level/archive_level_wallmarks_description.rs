@@ -1,14 +1,12 @@
 use serde::Serialize;
-use xrf_db::XRayByteOrder;
 use xrf_error::XrfResult;
 use xrf_level::LevelWallmarksFile;
+use xrf_spawn::XRayByteOrder;
 
 use crate::plugins::archives::describe::archive_describe_source::ArchiveDescribeSource;
 use crate::plugins::archives::describe::level::archive_level_wallmark_slot::ArchiveLevelWallmarkSlot;
 
 /// Everything the viewer says about a level's baked decals.
-///
-/// Authored by the level editor and read by nothing in the runtime, which places its own wallmarks at play time.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]

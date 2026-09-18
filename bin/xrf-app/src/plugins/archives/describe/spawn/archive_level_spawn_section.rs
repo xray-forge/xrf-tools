@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use serde::Serialize;
-use xrf_db::LevelSpawnFile;
+use xrf_spawn::LevelSpawnFile;
 
 /// One config section a level spawns objects from, and how many of them.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]

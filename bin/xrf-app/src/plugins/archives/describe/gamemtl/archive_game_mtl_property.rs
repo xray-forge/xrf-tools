@@ -1,5 +1,5 @@
 use serde::Serialize;
-use xrf_db::{GAMEMTL_PAIR_PROPERTIES, GameMtlPair};
+use xrf_gamemtl::{GAMEMTL_PAIR_PROPERTIES, GameMtlPair};
 
 /// One thing a material pairing can declare, and how many pairings declare it.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]

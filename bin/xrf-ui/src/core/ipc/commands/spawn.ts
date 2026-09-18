@@ -9,6 +9,7 @@ import {
   SpawnConversionResult,
   SpawnSessionDescriptor,
 } from "@/core/ipc/types/xrf-app";
+import { JobProgress } from "@/core/ipc/types/xrf-job";
 import {
   SpawnALifeSpawnsChunk,
   SpawnArtefactSpawnsChunk,
@@ -16,8 +17,7 @@ import {
   SpawnGraphsChunk,
   SpawnHeaderChunk,
   SpawnPatrolsChunk,
-} from "@/core/ipc/types/xrf-db";
-import { JobProgress } from "@/core/ipc/types/xrf-job";
+} from "@/core/ipc/types/xrf-spawn";
 
 /** Commands */
 export const spawnCommands = {

@@ -1,5 +1,5 @@
 use serde::Serialize;
-use xrf_db::OmfFile;
+use xrf_omf::OmfFile;
 
 use crate::plugins::archives::describe::omf::archive_omf_motion::ArchiveOmfMotion;
 use crate::plugins::archives::describe::omf::archive_omf_motion_flag::ArchiveOmfMotionFlag;

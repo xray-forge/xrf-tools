@@ -1,8 +1,8 @@
 use std::path::PathBuf;
 
 use image::RgbaImage;
-use xrf_db::ThmFile;
 use xrf_dds::Quality;
+use xrf_thm::ThmFile;
 
 /// What a texture is rebuilt from.
 pub struct BuildTextureOptions {

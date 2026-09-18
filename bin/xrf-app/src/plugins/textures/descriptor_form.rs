@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use xrf_db::{
+use xrf_thm::{
   ThmBumpChunk, ThmBumpMode, ThmDetailChunk, ThmFile, ThmFormat, ThmMaterial, ThmMaterialChunk, ThmMipFilter,
   ThmTextureFlags, ThmTextureParamChunk, ThmTextureType,
 };

@@ -5,9 +5,6 @@ import { XrayAsset, XrayResolution } from "@/core/ipc/types/xrf-vfs";
 /**
  * Which bump shader family a declaration selects, `STextureParams::ETBumpMode` without the two values that mean no
  * bump at all (`ETextureParams.h`).
- *
- * Parallax changes the pixel shader only: `uber_deffer.cpp` compiles `_steep` for it in HQ mode and the same
- * `_bump` variant as [`Self::Use`] otherwise. The inputs bound are the same pair either way.
  */
 export enum EXrayBumpMode {
   USE = "use",
@@ -44,12 +41,7 @@ export enum EXrayBumpOutcome {
 /** Every `EXrayBumpOutcome` as the spelling it crosses IPC as, for a value no member has narrowed. */
 export type XrayBumpOutcome = `${EXrayBumpOutcome}`;
 
-/**
- * How a detail texture is applied, from the two texture param flags (`TextureDescrManager.cpp`).
- *
- * A bump detail brings its own bump and bump# pair, looked up through the detail texture's own descriptor
- * (`uber_deffer.cpp`); that pair is not resolved here.
- */
+/** How a detail texture is applied, from the two texture param flags (`TextureDescrManager.cpp`). */
 export enum EXrayDetailUsage {
   DIFFUSE = "diffuse",
   BUMP = "bump",

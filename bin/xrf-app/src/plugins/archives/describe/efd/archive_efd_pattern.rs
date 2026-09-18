@@ -1,5 +1,5 @@
 use serde::Serialize;
-use xrf_db::{EfdPattern, EfdVariable};
+use xrf_efd::{EfdPattern, EfdVariable};
 
 /// One term of an evaluation function, as the viewer reads it.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]

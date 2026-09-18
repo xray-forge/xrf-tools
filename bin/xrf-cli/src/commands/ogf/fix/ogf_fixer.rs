@@ -5,11 +5,11 @@ use std::path::{Path, PathBuf};
 
 use rayon::prelude::*;
 use walkdir::{DirEntry, WalkDir};
-use xrf_db::XRayByteOrder;
 use xrf_error::{XrfError, XrfResult};
 use xrf_extension::XrayExtension;
 use xrf_ogf::OgfNormalization;
 use xrf_output::{OutputOptions, OutputSequence, OutputSlot};
+use xrf_spawn::XRayByteOrder;
 use xrf_utils::{format_path, write_file_staged};
 
 use crate::commands::ogf::fix::report::{OgfFixFileReport, OgfFixFindingReport, OgfFixOutcome, OgfFixReport};

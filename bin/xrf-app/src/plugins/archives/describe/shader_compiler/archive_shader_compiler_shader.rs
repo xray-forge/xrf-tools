@@ -1,5 +1,5 @@
 use serde::Serialize;
-use xrf_db::ShaderCompilerShader;
+use xrf_shaders::ShaderCompilerShader;
 
 /// One compiler shader, as the viewer reads it.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]

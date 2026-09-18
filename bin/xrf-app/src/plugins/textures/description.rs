@@ -1,8 +1,9 @@
 use std::path::{Path, PathBuf};
 
 use serde::Serialize;
-use xrf_db::{ThmFile, XRayByteOrder};
 use xrf_material::{XrayMaterialBumpInput, XrayMaterialDescriptor, XrayMaterialResolver};
+use xrf_spawn::XRayByteOrder;
+use xrf_thm::ThmFile;
 use xrf_vfs::{
   XrayAsset, XrayAssetContainer, XrayAssetType, XrayLogicalPath, XrayMountMode, XrayProbe, XrayRoot, XrayRoots,
 };

@@ -1,6 +1,6 @@
 //! The seven declaration states, one test each, so a change that collapses two of them fails by name.
 
-use xrf_db::{ThmBumpMode, ThmTextureType};
+use xrf_thm::{ThmBumpMode, ThmTextureType};
 use xrf_vfs::{XrayMountId, XrayProbe, XrayVfs};
 
 use crate::fixtures::{FixtureTree, ThmFixture};
