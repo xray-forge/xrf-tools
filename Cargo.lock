@@ -6854,6 +6854,7 @@ dependencies = [
  "xrf-ltx",
  "xrf-ltx-inspect",
  "xrf-material",
+ "xrf-math",
  "xrf-output",
  "xrf-pack",
  "xrf-sound",
@@ -6946,6 +6947,7 @@ dependencies = [
  "xrf-job",
  "xrf-ltx",
  "xrf-ltx-inspect",
+ "xrf-math",
  "xrf-output",
  "xrf-pack",
  "xrf-report",
@@ -6974,6 +6976,7 @@ dependencies = [
  "xrf-chunk",
  "xrf-error",
  "xrf-ltx",
+ "xrf-math",
  "xrf-test-utils",
  "xrf-utils",
 ]
@@ -7084,6 +7087,7 @@ dependencies = [
  "xrf-ltx",
  "xrf-lua",
  "xrf-material",
+ "xrf-math",
  "xrf-output",
  "xrf-report",
  "xrf-shaders",
@@ -7180,6 +7184,20 @@ dependencies = [
  "xrf-error",
  "xrf-test-utils",
  "xrf-vfs",
+]
+
+[[package]]
+name = "xrf-math"
+version = "0.1.0"
+dependencies = [
+ "byteorder",
+ "derive_more 2.1.1",
+ "serde",
+ "serde_json",
+ "specta",
+ "xrf-chunk",
+ "xrf-error",
+ "xrf-test-utils",
 ]
 
 [[package]]
@@ -7346,6 +7364,7 @@ dependencies = [
  "specta",
  "xrf-db",
  "xrf-error",
+ "xrf-math",
  "xrf-test-utils",
  "xrf-vfs",
 ]

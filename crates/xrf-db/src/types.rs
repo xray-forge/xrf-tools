@@ -1,4 +1,4 @@
-use crate::data::generic::vector_3d::Vector3d;
+use xrf_math::Vector3d;
 
 pub type Sphere3d<T = f32> = (Vector3d<T>, T);
 

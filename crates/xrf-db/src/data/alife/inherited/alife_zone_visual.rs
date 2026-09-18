@@ -94,6 +94,7 @@ impl LtxImportExport for AlifeZoneVisual {
 mod tests {
   use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
   use xrf_error::XrfResult;
+  use xrf_math::Vector3d;
   use xrf_test_utils::FileSlice;
   use xrf_test_utils::utils::{
     build_relative_test_sample_file_path, open_generated_test_resource_as_slice,
@@ -109,7 +110,6 @@ mod tests {
   use crate::data::generic::last_spawn_time::LastSpawnTime;
   use crate::data::generic::shape::Shape;
   use crate::data::generic::time::Time;
-  use crate::data::generic::vector_3d::Vector3d;
 
   #[test]
   fn test_read_write_empty() -> XrfResult {

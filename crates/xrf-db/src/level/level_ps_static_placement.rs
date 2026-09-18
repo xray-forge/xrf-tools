@@ -2,9 +2,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
-
-use crate::data::generic::matrix_4x4::Matrix4x4;
-use crate::data::generic::vector_3d::Vector3d;
+use xrf_math::{Matrix4x4, Vector3d};
 
 /// The gametype word that admits every mode, which is what a single-player placement carries.
 pub const PS_STATIC_ALL_GAME_TYPES: u16 = u16::MAX;

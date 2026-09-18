@@ -2,8 +2,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
-
-use crate::data::generic::vector_3d::Vector3d;
+use xrf_math::Vector3d;
 
 /// What a respawn point spawns, `ERPpointType` (`Common/LevelGameDef.h`).
 pub const RPOINT_TYPES: [(u8, &str); 3] = [(0, "actor spawn"), (1, "artefact spawn"), (2, "item spawn")];

@@ -286,8 +286,8 @@ impl OgfFile {
 mod tests {
   use xrf_chunk::{ChunkReadWrite, ChunkWriter, XRayByteOrder};
   use xrf_error::XrfResult;
+  use xrf_math::Vector3d;
 
-  use crate::data::generic::vector_3d::Vector3d;
   use crate::data::ogf::ogf_box::OgfBox;
   use crate::data::ogf::ogf_sphere::OgfSphere;
   use crate::data::skeleton::skeleton_motion::SkeletonMotion;

@@ -6,9 +6,8 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
+use xrf_math::Vector3d;
 use xrf_utils::format_path;
-
-use crate::data::generic::vector_3d::Vector3d;
 
 /// `hdrNODES` in c++ codebase, stored raw at the very start of the `level.ai` file.
 ///
@@ -104,12 +103,12 @@ mod tests {
   use uuid::uuid;
   use xrf_chunk::{ChunkReadWrite, ChunkWriter, XRayByteOrder};
   use xrf_error::XrfResult;
+  use xrf_math::Vector3d;
   use xrf_test_utils::utils::{
     build_relative_test_sample_file_path, open_generated_test_resource_as_file,
     overwrite_generated_test_resource_as_file,
   };
 
-  use crate::data::generic::vector_3d::Vector3d;
   use crate::level::level_ai_file::{LevelAiFile, LevelAiHeader};
 
   fn sample() -> LevelAiHeader {

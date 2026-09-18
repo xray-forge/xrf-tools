@@ -1,15 +1,12 @@
 //! Synthetic visuals built in code, so the bytes a test reasons about are visible in the test.
-//!
-//! Shapes here mirror what walking the reference trees measured: a loose visual is a version 4
-//! skeleton whose children hold the geometry, and a progressive child's finest detail level sits at a
-//! non zero offset rather than covering the whole index buffer.
 
 use xrf_db::{
   OgfBoneIkData, OgfBoneShape, OgfBonesChunk, OgfBox, OgfChildrenChunk, OgfCylinder, OgfDescriptionChunk, OgfFile,
   OgfGeometry, OgfHeaderChunk, OgfJointIkData, OgfJointLimit, OgfKinematicsChunk, OgfObb, OgfSlideWindow, OgfSphere,
   OgfSwiDataChunk, OgfTextureChunk, OgfVertex, OgfVertexLink, SkeletonMotion, SkeletonMotionDefinition,
-  SkeletonMotionParametersChunk, SkeletonMotionsChunk, SkeletonPart, Vector3d,
+  SkeletonMotionParametersChunk, SkeletonMotionsChunk, SkeletonPart,
 };
+use xrf_math::Vector3d;
 
 pub(crate) const MODEL_TYPE_SKELETON_ANIM: u8 = 3;
 pub(crate) const MODEL_TYPE_GEOMDEF_PM: u8 = 4;

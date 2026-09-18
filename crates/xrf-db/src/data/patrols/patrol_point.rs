@@ -5,9 +5,9 @@ use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkIterator, ChunkReadWrite, ChunkReadWriteList, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{Ltx, Section};
+use xrf_math::Vector3d;
 use xrf_utils::{assert_equal, to_format_size};
 
-use crate::data::generic::vector_3d::Vector3d;
 use crate::export::LtxImportExport;
 use crate::file_import::read_ltx_field;
 
@@ -178,6 +178,7 @@ mod tests {
   use xrf_chunk::{ChunkReadWrite, ChunkReadWriteList, ChunkReader, ChunkWriter, XRayByteOrder};
   use xrf_error::XrfResult;
   use xrf_ltx::Ltx;
+  use xrf_math::Vector3d;
   use xrf_test_utils::FileSlice;
   use xrf_test_utils::file::read_file_as_string;
   use xrf_test_utils::utils::{
@@ -185,7 +186,6 @@ mod tests {
     open_generated_test_resource_as_slice, overwrite_file, overwrite_generated_test_resource_as_file,
   };
 
-  use crate::data::generic::vector_3d::Vector3d;
   use crate::data::patrols::patrol_point::PatrolPoint;
   use crate::export::LtxImportExport;
 

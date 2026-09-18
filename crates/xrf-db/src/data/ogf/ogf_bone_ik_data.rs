@@ -1,8 +1,8 @@
 use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
+use xrf_math::Vector3d;
 
-use crate::data::generic::vector_3d::Vector3d;
 use crate::data::ogf::ogf_bone_shape::OgfBoneShape;
 use crate::data::ogf::ogf_joint_ik_data::OgfJointIkData;
 

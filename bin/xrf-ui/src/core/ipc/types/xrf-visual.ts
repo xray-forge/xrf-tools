@@ -1,6 +1,6 @@
 // Auto-generated rust bindings. Do not edit it manually.
 
-import { Vector3d } from "@/core/ipc/types/xrf-db";
+import { Vector3d } from "@/core/ipc/types/xrf-math";
 import { XrayResolution } from "@/core/ipc/types/xrf-vfs";
 
 /**
@@ -95,14 +95,7 @@ export type VisualDrawRange = {
   count: number;
 };
 
-/**
- * Where one submesh's attributes sit inside the geometry buffer, and what to draw from them.
- *
- * Every section is a byte range into the one buffer the model ships as, so a consumer builds views
- * over it without copying. `indices` covers the whole index buffer, including the coarser detail
- * levels a progressive submesh carries; [`Self::detail_levels`] names which slices of it are
- * drawable, and a consumer that does not want to choose draws [`Self::get_default_level`].
- */
+/** Where one submesh's attributes sit inside the geometry buffer, and what to draw from them. */
 export type VisualGeometry = {
   vertexCount: number;
   indexCount: number;
@@ -116,15 +109,7 @@ export type VisualGeometry = {
   indices: VisualSection;
   /** Skinning links, or `None` for geometry that carries none and is therefore drawn as it is stored. */
   skin: VisualSkin | null;
-  /**
-   * Every range a consumer may draw, finest first, and never empty.
-   *
-   * A static submesh has exactly one: its whole index buffer. A progressive one has a range per detail level of
-   * its slide-window table, coarsening as the index rises. Each is validated here — inside the index buffer, and
-   * reaching no vertex the submesh lacks — so choosing a level is a choice between drawable ranges rather than a
-   * range check the consumer has to remember. A coarse level that fails validation is left out rather than
-   * failing the submesh, so a model with one bad level still renders at the levels that are sound.
-   */
+  /** Every range a consumer may draw, finest first, and never empty. */
   detailLevels: Array<VisualDrawRange>;
   bounds: VisualBounds;
 };
@@ -192,26 +177,13 @@ export type VisualSection = {
   byteLength: number;
 };
 
-/**
- * Where one submesh's skinning links sit in the geometry buffer.
- *
- * Four per vertex whatever the source layout stores, because that is the width a renderer's skin attributes have:
- * a vertex with fewer links is padded with bone zero at weight zero, which contributes nothing. Indices are `u16`
- * into the visual's own bone list - the engine looks a link up as `LL_GetBoneInstance(v.matrix)`
- * (`xray-16/src/Layers/xrRender/SkeletonX.cpp:359`), so they are global to the model rather than local to the
- * submesh - and each vertex's weights sum to one, the last one having been reconstructed by the reader.
- */
+/** Where one submesh's skinning links sit in the geometry buffer. */
 export type VisualSkin = {
   indices: VisualSection;
   weights: VisualSection;
 };
 
-/**
- * Why a submesh produced no geometry, graded so a caller does not read the message to find out.
- *
- * The distinction is what separates a gap in this crate's coverage from a file that contradicts
- * itself, which is the difference between a sweep noting something and a sweep failing.
- */
+/** Why a submesh produced no geometry, graded so a caller does not read the message to find out. */
 export enum EVisualSkipCause {
   /**
    * Geometry is stored in a form the packer does not handle, such as a shared vertex or index
@@ -251,12 +223,7 @@ export enum EVisualSubmeshContent {
   SKIPPED = "skipped",
 }
 
-/**
- * Whether a submesh produced drawable geometry, and why not when it did not.
- *
- * A child that cannot be packed is a value rather than an error so the rest of a model still
- * renders, and so the reason reaches the panel that lists it.
- */
+/** Whether a submesh produced drawable geometry, and why not when it did not. */
 export type VisualSubmeshContent =
   { kind: "packed"; geometry: VisualGeometry } | { kind: "skipped"; cause: VisualSkipCause; reason: string };
 

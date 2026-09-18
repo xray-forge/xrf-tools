@@ -3,8 +3,8 @@ use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{Ltx, Section};
+use xrf_math::Vector3d;
 
-use crate::data::generic::vector_3d::Vector3d;
 use crate::export::LtxImportExport;
 use crate::file_import::read_ltx_field;
 
@@ -82,6 +82,7 @@ mod tests {
   use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
   use xrf_error::XrfResult;
   use xrf_ltx::Ltx;
+  use xrf_math::Vector3d;
   use xrf_test_utils::FileSlice;
   use xrf_test_utils::file::read_file_as_string;
   use xrf_test_utils::utils::{
@@ -90,7 +91,6 @@ mod tests {
   };
 
   use crate::data::artefact_spawn::artefact_spawn_point::ArtefactSpawnPoint;
-  use crate::data::generic::vector_3d::Vector3d;
   use crate::export::LtxImportExport;
 
   #[test]

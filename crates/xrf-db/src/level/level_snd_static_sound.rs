@@ -2,8 +2,8 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
+use xrf_math::Vector3d;
 
-use crate::data::generic::vector_3d::Vector3d;
 use crate::level::level_snd_static_window::SndStaticWindow;
 
 /// One sound the level plants, `SStaticSound` (`xrGame/level_sounds.cpp`).

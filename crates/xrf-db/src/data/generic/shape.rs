@@ -167,6 +167,7 @@ mod tests {
   use xrf_chunk::{ChunkReadWrite, ChunkReadWriteList, ChunkReader, ChunkWriter, XRayByteOrder};
   use xrf_error::XrfResult;
   use xrf_ltx::Ltx;
+  use xrf_math::Vector3d;
   use xrf_test_utils::FileSlice;
   use xrf_test_utils::file::read_file_as_string;
   use xrf_test_utils::utils::{
@@ -175,7 +176,6 @@ mod tests {
   };
 
   use crate::data::generic::shape::Shape;
-  use crate::data::generic::vector_3d::Vector3d;
 
   #[test]
   fn rejects_a_shape_list_past_its_count_field() {

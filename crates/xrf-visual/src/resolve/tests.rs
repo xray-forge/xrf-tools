@@ -1,11 +1,8 @@
 //! Resolution of a visual's own references, against small trees built in the test.
-//!
-//! The description is assembled directly rather than packed from bytes: what is under test is which references are asked
-//! for and what each outcome says, not how a header parses.
 
 use std::path::PathBuf;
 
-use xrf_db::Vector3d;
+use xrf_math::Vector3d;
 use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 use xrf_vfs::{XrayLookupScope, XrayMountId, XrayProbe, XrayResolution, XrayVfs};
 

@@ -1,8 +1,8 @@
 use byteorder::{ByteOrder, ReadBytesExt};
 use xrf_error::{XrfError, XrfResult};
+use xrf_math::Vector3d;
 use xrf_utils::{assert_count_fits, new_bounded_vec};
 
-use crate::data::generic::vector_3d::Vector3d;
 use crate::data::skeleton::skeleton_motion::SkeletonMotion;
 
 /// Divisor the format quantises rotation components by, from `SkeletonMotionDefs.hpp:11`.
@@ -396,7 +396,7 @@ mod tests {
     assert_eq!(bones[0].translations.len(), 2);
     assert_eq!(
       bones[0].translations[0],
-      crate::Vector3d {
+      xrf_math::Vector3d {
         x: 100.0,
         y: 204.0,
         z: 316.0
@@ -404,7 +404,7 @@ mod tests {
     );
     assert_eq!(
       bones[0].translations[1],
-      crate::Vector3d {
+      xrf_math::Vector3d {
         x: 120.0,
         y: 244.0,
         z: 396.0
@@ -420,7 +420,10 @@ mod tests {
     let bones: Vec<SkeletonBoneMotion> = motion.decode_bone_motions::<LittleEndian>(1).expect("one bone decodes");
 
     assert_eq!(bones[0].rotations.len(), 1);
-    assert_eq!(bones[0].translations, vec![crate::Vector3d { x: 7.0, y: 8.0, z: 9.0 }]);
+    assert_eq!(
+      bones[0].translations,
+      vec![xrf_math::Vector3d { x: 7.0, y: 8.0, z: 9.0 }]
+    );
     assert_eq!(
       bones[0].get_rotation(99),
       bones[0].rotations[0],
@@ -534,7 +537,10 @@ mod tests {
     let bones: Vec<SkeletonBoneMotion> = motion.decode_bone_motions::<LittleEndian>(1).expect("one bone decodes");
 
     assert_eq!(bones[0].rotations.len(), 1);
-    assert_eq!(bones[0].translations, vec![crate::Vector3d { x: 7.0, y: 8.0, z: 9.0 }]);
+    assert_eq!(
+      bones[0].translations,
+      vec![xrf_math::Vector3d { x: 7.0, y: 8.0, z: 9.0 }]
+    );
   }
 
   #[test]

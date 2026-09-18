@@ -1086,17 +1086,7 @@ export enum EArchiveSubject {
   WORLD = "world",
 }
 
-/**
- * What the explorer has open: a set of `.db` volumes, or a whole mounted world.
- *
- * The two are not folded into one shape. A volume set can say which volume an entry sits in, at what offset, with
- * which recorded CRC; a world can say which copy of an engine path wins and what that decision hides. A single
- * descriptor covering both would have a loose file claiming a volume position, which is the fiction this split
- * exists to avoid.
- *
- * Every difference between them is answered here, so a command stays an adapter and a reader asking how browsing an
- * installation differs from browsing a volume set opens one file.
- */
+/** What the explorer has open: a set of `.db` volumes, or a whole mounted world. */
 export type ArchiveSubject =
   /** The volumes at one path, merged into a single name table. */
   | { kind: "volumes"; project: ArchiveProject }
@@ -1283,18 +1273,7 @@ export type ArchiveUnreadSource = {
   reason: string;
 };
 
-/**
- * One mounted world the explorer browses: an installation, or any tree read as the engine would read it.
- *
- * The other subject of the same explorer answers for one volume set and nothing else. Pointing that at a game folder
- * lists the archives and silently omits the loose `gamedata` tree in front of them, so it shows the archived payload
- * for files the engine would serve from disk. This one answers the other question: which copy actually wins, and what
- * that decision hides.
- *
- * A listing rather than a VFS. The mounts live in the application's one [`crate::core::assets::AssetMountState`],
- * where every other surface's reads already go and where mounting one installation twice costs one index; what the
- * session owns is the answer it published.
- */
+/** One mounted world the explorer browses: an installation, or any tree read as the engine would read it. */
 export type ArchiveWorld = {
   /** How the world was opened, so every later read of it addresses exactly these mounts. */
   roots: XrayRoots;
@@ -1311,17 +1290,7 @@ export type ArchiveWorld = {
   shadowedSizeReal: number;
 };
 
-/**
- * One file of a mounted world, as the explorer lists it.
- *
- * Shaped like [`xrf_archive::ArchiveFileDescriptor`] where the two can agree — a `name` and a `size_real` — because
- * the tree, the filter and the preview gate above them need nothing else, and giving each subject its own spelling of
- * those two would fork every one of those surfaces.
- *
- * Where they cannot agree, this says less rather than inventing something. A loose file has no volume position, no
- * stored size and no recorded CRC, so nothing here claims one; what it has instead is the copies it stands in front
- * of, which a volume set has no way to express.
- */
+/** One file of a mounted world, as the explorer lists it. */
 export type ArchiveWorldEntry = {
   /** Engine identity: lower-case and backslash separated, which is what every read of this world is addressed by. */
   name: string;
@@ -1333,11 +1302,7 @@ export type ArchiveWorldEntry = {
   shadowed: Array<ArchiveShadowedCopy>;
 };
 
-/**
- * Directory extraction request for whichever subject the explorer has open.
- *
- * One shape for both: the two differ in where the bytes come from, never in what a person asked for.
- */
+/** Directory extraction request for whichever subject the explorer has open. */
 export type ArchivesExtractRequest = {
   sessionId: SessionId;
   /** Directory inside the opened tree to extract. An empty prefix means everything. */
@@ -1390,13 +1355,7 @@ export type AssetTextureShape = {
   format: string;
 };
 
-/**
- * What a sound is, once it has been located.
- *
- * Every field is optional because there are two independent ways to know less than everything: bytes that are not a
- * readable ogg at all, and a perfectly good ogg carrying no X-Ray comment. Reporting a zero for either would make an
- * unreadable file indistinguishable from a silent one.
- */
+/** What a sound is, once it has been located. */
 export type AudioDescriptor = {
   /** Absent when the bytes carry no readable stream header. */
   channels: number | null;
@@ -1417,12 +1376,7 @@ export type AudioSourceParameters = {
   maxAiDistance: number | null;
 };
 
-/**
- * One config as the authored view renders it.
- *
- * Text and structure travel together but stay separate records: the text is what a person edits and the structure is
- * what only the parser knows, and a future edit replaces one without invalidating the shape of the other.
- */
+/** One config as the authored view renders it. */
 export type ConfigsDocument = {
   text: LtxFileText;
   structure: LtxFileStructure;
@@ -1518,13 +1472,7 @@ export type ConfigsVerifyRequest = {
   isDltx: boolean;
 };
 
-/**
- * What everything below one process costs, folded in a single walk of the table.
- *
- * A pair rather than one figure, because the total is unreadable without it: a webview runs a browser process, a GPU
- * process and a renderer per frame tree, and "580 MB" means something different across two of those than across
- * eight.
- */
+/** What everything below one process costs, folded in a single walk of the table. */
 export type DescendantUsage = {
   /** Resident set of every process descended from the root, at any depth. */
   residentMemory: number;
@@ -1561,14 +1509,7 @@ export enum EEquipmentConfigSource {
   ASSET = "asset",
 }
 
-/**
- * Where the configuration that annotates a sheet is read from.
- *
- * Parallel to [`EquipmentSheetSource`] and for the same reason, with one difference that matters: reading a
- * configuration out of the roots resolves a whole include tree through the VFS, which is what reaches an
- * installation's `db\configs` volumes. A file named directly is resolved from its own directory, which is what
- * carries `mod_*.ltx` attachments sitting beside it.
- */
+/** Where the configuration that annotates a sheet is read from. */
 export type EquipmentConfigSource =
   /** A `system.ltx` on disk, named by its filesystem path. */
   | { kind: "file"; path: string }
@@ -1650,11 +1591,7 @@ export type GamedataVerifyRequest = {
 
 /** What a whole verification reports back to the desktop surface. */
 export type GamedataVerifySummary = {
-  /**
-   * Whether every selected check finished, or the run stopped before or inside a check.
-   *
-   * A stopped run's checks are real verdicts; its silence about the rest is not one.
-   */
+  /** Whether every selected check finished, or the run stopped before or inside a check. */
   outcome: JobOutcome;
   /** The aggregate verdict over the checks that ran. */
   status: string;
@@ -1662,16 +1599,7 @@ export type GamedataVerifySummary = {
   duration: number;
 };
 
-/**
- * What the application is running on and with, none of which changes while it runs.
- *
- * Split from [`RuntimeSnapshot`](super::RuntimeSnapshot) because that one is polled: re-reading the operating
- * system's name every second to show the same string is work nobody asked for, and mixing a constant into a reading
- * invites a surface to refresh the wrong half.
- *
- * Every field an operating system may decline to report is `Option`, the way `BuildInfo` treats what a build could
- * not record - naming the absence beats substituting a plausible default.
- */
+/** What the application is running on and with, none of which changes while it runs. */
 export type HostInfo = {
   /** Tauri the application was linked against. */
   tauriVersion: string;
@@ -1811,12 +1739,7 @@ export type PathDescription = {
   entryCount: number | null;
 };
 
-/**
- * What a path turned out to be.
- *
- * Carried instead of a pair of booleans so the states cannot disagree. Failing to look is not a variant here: it
- * reaches the caller as an error, which is what lets a refused check read as unknown rather than as absent.
- */
+/** What a path turned out to be. */
 export enum EPathKind {
   MISSING = "missing",
   FILE = "file",
@@ -1834,15 +1757,7 @@ export type ProcessUsage = {
   virtualMemory: number;
 };
 
-/**
- * One reading of what the application costs, and of how long it has been running.
- *
- * Every figure is a reading rather than a total: nothing here accumulates, so a caller polling this sees the current
- * state and never a history it did not ask to keep.
- *
- * Grouped by subject rather than flattened, because the same word means three different things depending on whose
- * memory is being reported, and a prefix on each field is a worse way of saying so than a name around each group.
- */
+/** One reading of what the application costs, and of how long it has been running. */
 export type RuntimeSnapshot = {
   /** Milliseconds since the epoch at which the process began, stamped in `main`. */
   startedAt: number;
@@ -1856,11 +1771,7 @@ export type RuntimeSnapshot = {
   machine: MachineUsage;
 };
 
-/**
- * What the viewer is showing, paired with where it came from.
- *
- * The enclosing snapshot supplies the geometry identity; source and roots describe its inputs and texture lookups.
- */
+/** What the viewer is showing, paired with where it came from. */
 export type SelectedVisualDescription = {
   source: VisualSource;
   /** The roots used to resolve this selection's texture files. */
@@ -1953,14 +1864,7 @@ export type TextureBuildOmissionReport = {
 
 /** What a rebuilt texture came to. */
 export type TextureBuildOutcome = {
-  /**
-   * Whether the texture was written or the run stopped before it started.
-   *
-   * A cancelled build wrote nothing. There is one boundary and it is before the work: the encode writes the file
-   * itself and is a single call with no seam inside it. That costs nothing worth having, because the encode is tens
-   * of milliseconds - a descriptor decides the format here and `ETFormat` has no name for BC7, so the one candidate
-   * that takes seconds cannot arise.
-   */
+  /** Whether the texture was written or the run stopped before it started. */
   outcome: JobOutcome;
   destination: string;
   /** Size of the source, which the descriptor's own width and height are refreshed from. */
@@ -1987,22 +1891,11 @@ export type TextureCatalog = {
   /** A `textures.ltx` the roots hold, or `None`. Its declarations are not read, so a surface says where it matters. */
   texturesLtx: XrayAsset | null;
   entries: Array<TextureEntry>;
-  /**
-   * `.dds` files the roots hold outside `textures\`, which no engine reference names and this catalog leaves out.
-   *
-   * Counted rather than dropped silently: a level's lightmaps are the usual case, and a person wondering where a file
-   * went deserves the number.
-   */
+  /** `.dds` files the roots hold outside `textures\`, which no engine reference names and this catalog leaves out. */
   outsideTexturesCount: number;
 };
 
-/**
- * How a listing addressed what it found.
- *
- * Two shapes rather than one because the two cases want opposite defaults. In a game tree the files that yield no
- * engine reference are a level's lightmaps, and burying two thousand named textures in them is the bug; in a folder
- * somebody is authoring in, those files are the entire point and there are no references to be had at all.
- */
+/** How a listing addressed what it found. */
 export enum ETextureCatalogMode {
   /** The game tree: listed by engine reference, archives included, files outside `textures\` counted not listed. */
   ROOTS = "roots",
@@ -2024,13 +1917,7 @@ export type TextureDescription = {
   texture: XrayAsset | null;
   /** What the base texture file is, when it is located and its bytes can be reached. */
   base: AssetTextureDescriptor | null;
-  /**
-   * What the renderer would build for this texture, or `None` for a file outside every tree.
-   *
-   * Absent rather than empty for a standalone file. There is no tree to resolve a bump pair or a detail against, so
-   * answering "declares nothing" would be a claim this description is in no position to make - the descriptor beside
-   * the file may well declare a pair, and what the engine would do with it depends on a game tree nobody has named.
-   */
+  /** What the renderer would build for this texture, or `None` for a file outside every tree. */
   material: XrayMaterialDescriptor | null;
   /** What the bound bump file is, when the material binds one and its bytes can be reached. */
   bump: AssetTextureDescriptor | null;
@@ -2052,12 +1939,7 @@ export type TextureDescriptorForm = {
   /** Detail texture path on the same terms. */
   detailName: string;
   detailScale: number | null;
-  /**
-   * The whole `STextureParams` flag word, named bits and unnamed alike.
-   *
-   * One word rather than a boolean per bit: the twelve the SDK names are the ones a surface offers, and the rest are
-   * bits somebody's tool set that this editor has no business dropping.
-   */
+  /** The whole `STextureParams` flag word, named bits and unnamed alike. */
   flags: number;
   format: number;
   mipFilter: number;
@@ -2082,22 +1964,9 @@ export type TextureDescriptorSave = {
   form: TextureDescriptorForm;
 };
 
-/**
- * Where an edit of one texture would write, and what was there when the editor read it.
- *
- * Resolved by the command that located the files rather than derived by the frontend, for the same reason the
- * descriptor is: a path assembled in TypeScript out of a reference and a separator is a guess about where the VFS
- * found something, and the two disagree the moment a root is nested or a name is cased differently.
- *
- * Absent for a texture served out of an archive, which has no file to replace at all.
- */
+/** Where an edit of one texture would write, and what was there when the editor read it. */
 export type TextureEditTargets = {
-  /**
-   * The `.thm` to write, whether or not one is there yet.
-   *
-   * Always present, because the editor can author a descriptor for a texture that has none: its
-   * [`TextureSaveTarget::expected`] is what says which of the two cases this is.
-   */
+  /** The `.thm` to write, whether or not one is there yet. */
   descriptor: TextureSaveTarget;
   /** The `.dds` to replace when a re-encode is saved. */
   texture: TextureSaveTarget;
@@ -2108,12 +1977,7 @@ export type TextureEncodingComparison = {
   sessionId: SessionId;
   source: TextureSource;
   roots: XrayRoots;
-  /**
-   * Whether every candidate was weighed or the run stopped because it was asked to.
-   *
-   * A cancelled comparison still reports what it managed, and the session still holds those encodes: a candidate it
-   * reached is a real measurement and a real set of bytes, whatever happened after it.
-   */
+  /** Whether every candidate was weighed or the run stopped because it was asked to. */
   outcome: JobOutcome;
   /** The texture the encodes were made from, which a save has to name to claim them. */
   reference: string;
@@ -2133,13 +1997,7 @@ export type TextureEncodingCurrent = {
   mipmapLevels: number;
 };
 
-/**
- * A format the base texture can be written in, of the five worth offering.
- *
- * A plugin-side mirror of [`DdsEncodeCandidate`] rather than the crate's own enum, for the reason every wire type
- * here is one: `xrf-dds` is a pure image crate and carries no bindings feature, and a surface naming a format wants
- * a name that cannot change under it.
- */
+/** A format the base texture can be written in, of the five worth offering. */
 export enum ETextureEncodingFormat {
   BC1 = "bc1",
   BC2 = "bc2",
@@ -2190,12 +2048,7 @@ export type TextureEncodingSave = {
 
 /** One texture name and the files the roots hold for it. */
 export type TextureEntry = {
-  /**
-   * What to call this row: an engine reference such as `ston\ston_beton05`, or a loose file's path below its root.
-   *
-   * Unique within one listing either way, so a tree can key on it. It is a label rather than an address; what to
-   * open is `source`, because a loose file has no reference to be resolved back into.
-   */
+  /** What to call this row: an engine reference such as `ston\ston_beton05`, or a loose file's path below its root. */
   reference: string;
   /** How to open this row, which is the address the describe and every write take. */
   source: TextureSource;
@@ -2206,13 +2059,7 @@ export type TextureEntry = {
   descriptor: XrayAsset | null;
 };
 
-/**
- * What the editor read at a path, so a later write cannot overwrite a change it never saw.
- *
- * Size and modification time rather than a hash of the bytes: a texture is megabytes, the editor holds one node at a
- * time for minutes rather than days, and the case worth catching is an SDK or a converter having rewritten the file in
- * the meantime - which moves both.
- */
+/** What the editor read at a path, so a later write cannot overwrite a change it never saw. */
 export type TextureFileStamp = {
   size: number;
   /** Milliseconds since the Unix epoch, as the platform reports the file's modification time. */
@@ -2228,12 +2075,7 @@ export type TextureFlagEntry = {
 
 /** What a generated pair came to. */
 export type TextureMakeBumpOutcome = {
-  /**
-   * Whether the pair was written or the run stopped because it was asked to.
-   *
-   * A cancelled run wrote neither half: both are encoded before either is written, so there is no point at which
-   * stopping could leave one half of a pair on disk with the other missing.
-   */
+  /** Whether the pair was written or the run stopped because it was asked to. */
   outcome: JobOutcome;
   /** The normals and gloss, written as `<name>_bump.dds`. */
   bump: string;
@@ -2241,12 +2083,7 @@ export type TextureMakeBumpOutcome = {
   companion: string;
   /** Mean gloss over the whole surface, in `0..=1`. */
   glossPower: number | null;
-  /**
-   * Whether the gloss is too dark for the surface to show a specular response worth having.
-   *
-   * A verdict rather than a failure, exactly as in the SDK: the pair is written either way, because a modder who
-   * meant to author a matte surface is not making a mistake and one who did not wants to be told.
-   */
+  /** Whether the gloss is too dark for the surface to show a specular response worth having. */
   isGlossTooDark: boolean;
 };
 
@@ -2266,13 +2103,7 @@ export type TextureRendererSupport = {
   support: string;
 };
 
-/**
- * What a texture name is by convention, before any descriptor has been read.
- *
- * Read off the name so a tree can fold a pair under its texture the moment the listing arrives; which pairs are
- * declared, and by whom, is what the sweep then says. The convention itself is `xrf-material`'s, shared with the
- * renderer's fallback rule and the companion derivation.
- */
+/** What a texture name is by convention, before any descriptor has been read. */
 export enum ETextureRole {
   /** A texture a mesh or a level binds by name. */
   TEXTURE = "texture",
@@ -2287,23 +2118,11 @@ export type TextureRole = `${ETextureRole}`;
 
 /** What a save left on disk. */
 export type TextureSaveOutcome = {
-  /**
-   * Whether the save wrote what it was asked to or stopped because it was asked to.
-   *
-   * A cancelled save wrote nothing. Cancellation is read once, after both files have been prepared and before either
-   * is written, because there is no useful boundary inside two staged writes: stopping between them would leave a
-   * texture whose descriptor still describes the old one, which is the state a save exists to avoid.
-   */
+  /** Whether the save wrote what it was asked to or stopped because it was asked to. */
   outcome: JobOutcome;
   /** The files written, in the order they were written. */
   written: Array<string>;
-  /**
-   * The format the descriptor ended up naming, when writing a texture changed it.
-   *
-   * Reported rather than left to the caller to infer, because the rule is the SDK's: `tfDXT1` and `tfADXT1` are one
-   * encoder distinguished by the alpha flag, so only the descriptor's own flags can say which of them a BC1 texture
-   * is. Absent when nothing synced - no texture was written, or its format has no name in `ETFormat`.
-   */
+  /** The format the descriptor ended up naming, when writing a texture changed it. */
   descriptorFormat: number | null;
 };
 
@@ -2330,12 +2149,7 @@ export type TextureSource =
   /** A texture of the roots, loose or archived, named by its engine reference such as `ston\ston_beton05`. */
   | { kind: "asset"; reference: string };
 
-/**
- * Every named value the descriptor form's numeric fields can take.
- *
- * Answered once when the editor opens rather than carried on every description: it is the same table for every
- * texture in every root, and a description that repeated it would spend it thousands of times over a sweep.
- */
+/** Every named value the descriptor form's numeric fields can take. */
 export type TextureVocabulary = {
   /** The gate `LoadTHM` reads before anything else. */
   textureTypes: Array<TextureVocabularyEntry>;
@@ -2346,13 +2160,7 @@ export type TextureVocabulary = {
   bumpModes: Array<TextureVocabularyEntry>;
   /** The twelve bits the SDK names, in bit order. A word may carry others, and those have no name to show. */
   flags: Array<TextureFlagEntry>;
-  /**
-   * The bump mode that makes the engine bind a pair.
-   *
-   * Named rather than left to a surface to recognise, because a tool that has just written a pair has to point the
-   * descriptor at it and there is exactly one value that does. Matching on the display label would work until
-   * somebody rewords it; matching on the number would work until it is spelled differently in two places.
-   */
+  /** The bump mode that makes the engine bind a pair. */
   bumpModeUse: number;
 };
 
@@ -2370,12 +2178,7 @@ export type TexturesBuildRequest = {
   destination: string;
   /** Path of the image to encode, of whatever kind `image` decodes. */
   source: string;
-  /**
-   * The descriptor to read as a recipe, as the editor currently has it rather than as it is on disk.
-   *
-   * The form rather than the file, because a build should produce what the editor's own format and flags describe. A
-   * person who has changed the format and not saved yet wants to see that format built.
-   */
+  /** The descriptor to read as a recipe, as the editor currently has it rather than as it is on disk. */
   descriptor: TextureDescriptorForm;
   quality: TextureEncodingQuality;
 };
@@ -2383,20 +2186,10 @@ export type TexturesBuildRequest = {
 /** What a format comparison was asked to weigh. */
 export type TexturesCompareRequest = {
   sessionId: SessionId;
-  /**
-   * The texture to re-encode, named the way `describe` names one.
-   *
-   * A source rather than an engine reference, because a file outside every tree has no reference and is addressed by
-   * its path. The label a surface shows still comes from the description; this is the address.
-   */
+  /** The texture to re-encode, named the way `describe` names one. */
   source: TextureSource;
   roots: XrayRoots;
-  /**
-   * Kernel the chain is reduced with, by its SDK name, or `None` to weigh the base level alone.
-   *
-   * Not read from the descriptor. A comparison answers "what would this texture cost in each format", and the answer
-   * has to be about one chain built one way, or the figures are not comparable with each other.
-   */
+  /** Kernel the chain is reduced with, by its SDK name, or `None` to weigh the base level alone. */
   mipFilter: string | null;
   quality: TextureEncodingQuality;
 };
@@ -2412,47 +2205,25 @@ export type TexturesMakeBumpRequest = {
   destination: string;
   /** Path of the image the relief is read from, averaged across its colour channels. */
   height: string;
-  /**
-   * Path of a gloss mask, averaged the same way.
-   *
-   * When absent the whole surface takes [`Self::gloss_constant`], which is what a texture authored without a mask
-   * needs and what the SDK's own dialog offers.
-   */
+  /** Path of a gloss mask, averaged the same way. */
   gloss: string | null;
   glossConstant: number | null;
   /** Path of a normal map to use instead of deriving one from the height, of the same size. */
   normalMap: string | null;
   /** `bump_virtual_height` of the descriptor, read here and nowhere at runtime. */
   virtualHeight: number | null;
-  /**
-   * Kernel the pair's chain is reduced with, by its SDK name.
-   *
-   * Defaults to `Box` at the caller, because that is what the SDK's generator leaves it at: `DXTCompressBump` builds
-   * its `STextureParams` and overrides only the flags, the type and the format.
-   */
+  /** Kernel the pair's chain is reduced with, by its SDK name. */
   mipFilter: string | null;
   quality: TextureEncodingQuality;
 };
 
-/**
- * What one node's save was asked to write.
- *
- * Both halves are optional and independent: a node may be dirty in its descriptor, in its pixels, or in both, and a
- * save that could only do the pair would make the common case - a flag changed on a texture nobody re-encoded -
- * impossible to express.
- */
+/** What one node's save was asked to write. */
 export type TexturesSaveRequest = {
   descriptor: TextureDescriptorSave | null;
   texture: TextureEncodingSave | null;
 };
 
-/**
- * What a build was asked to do.
- *
- * One argument rather than five, because a Tauri command's parameters are its wire signature and five of them plus a
- * job's own two is more than a reader can hold. It is also exactly what the registry retains, so a window adopting
- * this run after a reload sees the request rather than a summary of it.
- */
+/** What a build was asked to do. */
 export type TranslationBuildRequest = {
   /** Where the sources are read from, through the VFS. */
   roots: XrayRoots;
@@ -2466,12 +2237,7 @@ export type TranslationBuildRequest = {
   isSorted: boolean;
 };
 
-/**
- * What a build reports back to the desktop surface.
- *
- * A row per language rather than the 272 files behind a full run, which is the natural grain of a
- * build whose job is one string table per language.
- */
+/** What a build reports back to the desktop surface. */
 export type TranslationBuildSummary = {
   /** Whether the run compiled every source or was stopped between them. */
   outcome: JobOutcome;
@@ -2491,13 +2257,7 @@ export type TranslationParseFinding = {
   message: string;
 };
 
-/**
- * What an import was asked to do.
- *
- * One argument rather than seven, because a Tauri command's parameters are its wire signature and seven of them plus
- * a job's own two is more than a reader can hold. It is also exactly what the registry retains, so a window adopting
- * this run after a reload sees the request rather than a summary of it.
- */
+/** What an import was asked to do. */
 export type TranslationParseRequest = {
   /** Roots holding the raw XML, read through the VFS so an installation imports like a loose tree. */
   roots: XrayRoots;
@@ -2544,11 +2304,7 @@ export type TranslationSaveOutcome =
 
 /** What a completeness check reports back to the desktop surface. */
 export type TranslationVerifySummary = {
-  /**
-   * Whether the run checked every source or was stopped between them.
-   *
-   * A stopped check reports the rows it reached; its silence about the rest is not a verdict.
-   */
+  /** Whether the run checked every source or was stopped between them. */
   outcome: JobOutcome;
   /** The language the check was narrowed to, or `all`. */
   language: string;
@@ -2593,13 +2349,7 @@ export enum EVisualSource {
   ASSET = "asset",
 }
 
-/**
- * Where a visual is read from.
- *
- * Both variants are self-describing, and neither is a handle into mount state: an asset is named by its engine
- * identity, which any surface can spell without having opened anything. The roots it is looked for in travels beside
- * the source on every command that takes one, so one call can never mix two roots.
- */
+/** Where a visual is read from. */
 export type VisualSource =
   /** A loose `.ogf` file on disk, named by its filesystem path. */
   | { kind: "file"; path: string }

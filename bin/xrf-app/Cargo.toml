@@ -39,6 +39,7 @@ xrf-build-info = { workspace = true }
 xrf-job = { workspace = true, features = ["rayon"] }
 xrf-vfs = { workspace = true }
 xrf-db = { workspace = true }
+xrf-math = { workspace = true }
 xrf-dds = { workspace = true }
 xrf-dialog = { workspace = true }
 xrf-error = { workspace = true }
@@ -80,6 +81,7 @@ typescript-bindings = [
   "xrf-job/typescript-bindings",
   "xrf-vfs/typescript-bindings",
   "xrf-db/typescript-bindings",
+  "xrf-math/typescript-bindings",
   "xrf-dialog/typescript-bindings",
   "xrf-error/typescript-bindings",
   "xrf-export/typescript-bindings",

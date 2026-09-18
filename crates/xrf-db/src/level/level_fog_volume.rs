@@ -2,9 +2,8 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkLine, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
+use xrf_math::Matrix4x4;
 use xrf_utils::to_format_size;
-
-use crate::data::generic::matrix_4x4::Matrix4x4;
 
 /// One volumetric fog body of a level, `dx113DFluidData::Load`.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]

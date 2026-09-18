@@ -2,8 +2,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
-
-use crate::data::generic::vector_3d::Vector3d;
+use xrf_math::Vector3d;
 
 /// One node of a patrol path as the level editor authored it.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]

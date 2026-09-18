@@ -99,6 +99,7 @@ impl LtxImportExport for AlifeObjectSmartCover {
 mod tests {
   use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
   use xrf_error::XrfResult;
+  use xrf_math::Vector3d;
   use xrf_test_utils::FileSlice;
   use xrf_test_utils::utils::{
     build_relative_test_sample_file_path, open_generated_test_resource_as_slice,
@@ -109,7 +110,6 @@ mod tests {
   use crate::data::alife::inherited::alife_object_dynamic::AlifeObjectDynamic;
   use crate::data::alife::inherited::alife_object_smart_cover::AlifeObjectSmartCover;
   use crate::data::generic::shape::Shape;
-  use crate::data::generic::vector_3d::Vector3d;
 
   #[test]
   fn test_read_write() -> XrfResult {

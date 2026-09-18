@@ -1,4 +1,4 @@
-import { Vector3d } from "@/core/ipc/types/xrf-db";
+import { Vector3d } from "@/core/ipc/types/xrf-math";
 import {
   VisualBone,
   VisualBounds,

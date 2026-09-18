@@ -22,6 +22,7 @@ members = [
   "crates/xrf-lua",
   "crates/xrf-lzhuf",
   "crates/xrf-material",
+  "crates/xrf-math",
   "crates/xrf-output",
   "crates/xrf-pack",
   "crates/xrf-report",
@@ -85,6 +86,7 @@ xrf-ltx-inspect = { path = "crates/xrf-ltx-inspect" }
 xrf-lua = { path = "crates/xrf-lua" }
 xrf-lzhuf = { path = "crates/xrf-lzhuf" }
 xrf-material = { path = "crates/xrf-material" }
+xrf-math = { path = "crates/xrf-math" }
 xrf-output = { path = "crates/xrf-output" }
 xrf-pack = { path = "crates/xrf-pack" }
 xrf-report = { path = "crates/xrf-report" }

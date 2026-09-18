@@ -1,5 +1,5 @@
 [package]
-name = "xrf-db"
+name = "xrf-math"
 version = "0.1.0"
 publish = false
 edition.workspace = true
@@ -11,28 +11,19 @@ path = "src/lib.rs"
 [dependencies]
 byteorder = { workspace = true }
 derive_more = { workspace = true, features = ["display", "from_str"] }
-enum-map = "3.1.0"
-lazy_static = "1.5.0"
-log = { workspace = true }
-phf = { version = "0.14.0", features = ["macros"] }
 serde = { workspace = true }
-serde_json = { workspace = true }
 specta = { workspace = true, optional = true }
-uuid = { workspace = true, features = ["v4", "serde"] }
 xrf-chunk = { workspace = true }
 xrf-error = { workspace = true }
-xrf-ltx = { workspace = true }
-xrf-math = { workspace = true }
-xrf-utils = { workspace = true }
 
 [features]
 # Emits TypeScript mirrors of the serialized types. Nothing in a normal build turns this on.
-typescript-bindings = ["specta", "xrf-math/typescript-bindings"]
-# Exports the file builders this crate's own tests use, so a dependant tests against the same shapes.
+typescript-bindings = ["specta"]
+# Exports the mock values this crate's own tests use, so a dependant tests against the same shapes.
 fixtures = []
 
 [dev-dependencies]
-xrf-math = { workspace = true, features = ["fixtures"] }
+serde_json = { workspace = true }
 xrf-test-utils = { workspace = true }
 
 [lints]

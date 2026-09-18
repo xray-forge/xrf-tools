@@ -28,38 +28,15 @@ import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 
 /** Commands */
 export const configsCommands = {
-  /**
-   * Report which LTX configs roots exposes are misformatted.
-   *
-   * Reads archived configs too. Shares the formatter's exclusion group while retaining a separate job kind because
-   * checking reports findings without rewriting files.
-   */
+  /** Report which LTX configs roots exposes are misformatted. */
   checkDirectoryFormat: (request: ConfigsFormatRequest, jobId: string, progress: Channel<JobProgress>) =>
     __TAURI_INVOKE<LtxProjectFormatResult>("plugin:configs|check_directory_format", { request, jobId, progress }),
-  /**
-   * Closes the configs project, releasing its mounts and whatever it had resolved.
-   *
-   * Reissues the session identity, so a read already in flight cannot commit against the project that follows.
-   */
+  /** Closes the configs project, releasing its mounts and whatever it had resolved. */
   closeProject: (sessionIds: Array<SessionId>) => __TAURI_INVOKE<null>("plugin:configs|close_project", { sessionIds }),
-  /**
-   * Rewrite the LTX configs roots exposes.
-   *
-   * Writing needs a file, so this refuses a project holding archived winners — the refusal comes from
-   * `xrf-ltx` itself. Formatting an installation is therefore a legitimate refusal, not a gap.
-   *
-   * Holds the roots exclusively for the whole run, so a second request over the same set is refused rather than allowed
-   * to rewrite the files this one is walking. A cancelled run leaves the files it had already formatted formatted and
-   * the rest untouched: each file is rewritten through a staged replace, so nothing is half-written and running it
-   * again resolves the difference.
-   */
+  /** Rewrite the LTX configs roots exposes. */
   formatDirectory: (request: ConfigsFormatRequest, jobId: string, progress: Channel<JobProgress>) =>
     __TAURI_INVOKE<LtxProjectFormatResult>("plugin:configs|format_directory", { request, jobId, progress }),
-  /**
-   * What configs project is open, for a frontend restoring itself after a reload.
-   *
-   * Inline rather than blocking: it hands back a handle on what is already held and reads nothing.
-   */
+  /** What configs project is open, for a frontend restoring itself after a reload. */
   getProject: () =>
     __TAURI_INVOKE<{
       /** Identity every later read is addressed by. */
@@ -82,22 +59,10 @@ export const configsCommands = {
        */
       declaredSchemes: Array<string>;
     } | null>("plugin:configs|get_project"),
-  /**
-   * Everything wrong with one resolved root, anchored to the file and line a person has to open.
-   *
-   * Held with the resolution, so opening the panel a second time is a lookup rather than a second walk of every section
-   * the root holds.
-   */
+  /** Everything wrong with one resolved root, anchored to the file and line a person has to open. */
   listFindings: (request: ConfigsResolvedRequest) =>
     __TAURI_INVOKE<Array<LtxAnchoredFinding>>("plugin:configs|list_findings", { request }),
-  /**
-   * Lists every section one entry point resolves to, named and counted.
-   *
-   * The index, not the bodies: a vanilla `system.ltx` resolves to 23,500 sections holding 293,000 fields, and sending
-   * those together would be a message of tens of megabytes for a screen showing forty lines. What travels is enough to
-   * lay the document out - how many fields each section has, so the view knows its own height - and bodies are asked
-   * for a page at a time as they scroll into view.
-   */
+  /** Lists every section one entry point resolves to, named and counted. */
   listResolvedSections: (request: ConfigsResolvedRequest) =>
     __TAURI_INVOKE<LtxResolvedIndex>("plugin:configs|list_resolved_sections", { request }),
   /** Opens a configs project for browsing, and lists what it holds. */
@@ -106,25 +71,10 @@ export const configsCommands = {
   /** Reads one config as the authored view renders it: its lines, and what only the parser knows about them. */
   readDocument: (request: ConfigsReadDocumentRequest) =>
     __TAURI_INVOKE<ConfigsDocument>("plugin:configs|read_document", { request }),
-  /**
-   * Reads the bodies of the named sections of one entry point.
-   *
-   * Addressed by name rather than by offset, so a page is always whole sections and a filter applied on one side never
-   * has to be mirrored on the other. A name the root does not hold is skipped rather than refused: a page request races
-   * an index the caller may have fetched before a reopen.
-   *
-   * Off the async worker even though a page is usually a map lookup: the root is normally resolved by the time anything
-   * can ask for one, but "normally" is not a guarantee. A page asked for after the session was replaced would resolve a
-   * whole include tree, and doing that on the IPC handler thread would stall every other command behind it.
-   */
+  /** Reads the bodies of the named sections of one entry point. */
   readResolvedSections: (request: ConfigsReadSectionsRequest) =>
     __TAURI_INVOKE<Array<LtxResolvedSection>>("plugin:configs|read_resolved_sections", { request }),
-  /**
-   * What one section is judged by, and how it measures against that.
-   *
-   * `None` means the root does not hold the section, which a panel reaches by asking about a selection the index no
-   * longer holds.
-   */
+  /** What one section is judged by, and how it measures against that. */
   readSectionScheme: (request: ConfigsSectionRequest) =>
     __TAURI_INVOKE<{
       /** Engine identity of the entry point whose resolution this was read from. */

@@ -1,5 +1,6 @@
 import { SpawnSessionDescriptor } from "@/core/ipc/types/xrf-app";
-import { AlifeObject, Patrol, SpawnFile, Vector3d } from "@/core/ipc/types/xrf-db";
+import { AlifeObject, Patrol, SpawnFile } from "@/core/ipc/types/xrf-db";
+import { Vector3d } from "@/core/ipc/types/xrf-math";
 
 /**
  * Creates a vector fixture.

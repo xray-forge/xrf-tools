@@ -2,9 +2,9 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
+use xrf_math::Vector3d;
 use xrf_utils::to_format_size;
 
-use crate::data::generic::vector_3d::Vector3d;
 use crate::level::level_wallmark_vertex::LevelWallmarkVertex;
 
 /// One baked decal of a level, `ESceneWallmarkTool::wallmark`.

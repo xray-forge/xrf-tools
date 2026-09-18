@@ -12,21 +12,10 @@ export const systemCommands = {
   getBuildInfo: () => __TAURI_INVOKE<BuildInfo>("plugin:system|get_build_info"),
   /** Where tools write when no output directory has been configured. */
   getDefaultOutputRoot: () => __TAURI_INVOKE<string>("plugin:system|get_default_output_root"),
-  /**
-   * Report what the application is running on and with.
-   *
-   * Cannot fail: every reading it cannot get is reported as absent, so there is no result for a caller to unwrap.
-   */
+  /** Report what the application is running on and with. */
   getHostInfo: () => __TAURI_INVOKE<HostInfo>("plugin:system|get_host_info"),
   /** Report what the application currently costs the machine, and how long it has been running. */
   getRuntimeSnapshot: () => __TAURI_INVOKE<RuntimeSnapshot>("plugin:system|get_runtime_snapshot"),
-  /**
-   * Show a path in the desktop's own file manager.
-   *
-   * This exists instead of the shell plugin's `open` because that command validates what it is handed
-   * against a regex which only matches `http`, `mailto` and `tel`, so a filesystem path is always
-   * rejected. Widening that scope would allow opening any file with its default handler, executables
-   * included, while this only ever hands a path to the file manager.
-   */
+  /** Show a path in the desktop's own file manager. */
   revealPath: (path: string) => __TAURI_INVOKE<null>("plugin:system|reveal_path", { path }),
 };

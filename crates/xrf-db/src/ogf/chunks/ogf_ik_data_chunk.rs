@@ -49,6 +49,7 @@ mod tests {
 
   use xrf_chunk::{ChunkReader, ChunkWriter, XRayByteOrder};
   use xrf_error::XrfResult;
+  use xrf_math::Vector3d;
   use xrf_test_utils::FileSlice;
   use xrf_test_utils::utils::{
     build_relative_test_sample_file_path, open_generated_test_resource_as_slice,
@@ -56,7 +57,6 @@ mod tests {
   };
 
   use super::OgfIkDataChunk;
-  use crate::data::generic::vector_3d::Vector3d;
   use crate::data::ogf::ogf_bone_ik_data::OgfBoneIkData;
   use crate::data::ogf::ogf_bone_shape::OgfBoneShape;
   use crate::data::ogf::ogf_cylinder::OgfCylinder;

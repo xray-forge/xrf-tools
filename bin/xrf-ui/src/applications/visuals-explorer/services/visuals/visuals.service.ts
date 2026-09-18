@@ -5,7 +5,7 @@ import { Texture } from "three";
 import { createRoots } from "@/core/assets/lib";
 import { transformError } from "@/core/error/lib";
 import { EVisualSource, SelectedVisualDescription, VisualSource } from "@/core/ipc/types/xrf-app";
-import { Vector3d } from "@/core/ipc/types/xrf-db";
+import { Vector3d } from "@/core/ipc/types/xrf-math";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { VisualBone } from "@/core/ipc/types/xrf-visual";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";

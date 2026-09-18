@@ -98,6 +98,7 @@ impl LtxImportExport for AlifeSmartCover {
 mod tests {
   use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
   use xrf_error::XrfResult;
+  use xrf_math::Vector3d;
   use xrf_test_utils::FileSlice;
   use xrf_test_utils::utils::{
     build_relative_test_sample_file_path, open_generated_test_resource_as_slice,
@@ -110,7 +111,6 @@ mod tests {
   use crate::data::alife::inherited::alife_smart_cover::AlifeSmartCover;
   use crate::data::alife::inherited::alife_smart_cover_loophole::AlifeSmartCoverLoophole;
   use crate::data::generic::shape::Shape;
-  use crate::data::generic::vector_3d::Vector3d;
 
   #[test]
   fn rejects_a_loophole_list_past_its_count_field() {

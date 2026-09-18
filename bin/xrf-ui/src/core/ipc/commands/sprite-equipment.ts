@@ -26,13 +26,7 @@ export const spriteEquipmentCommands = {
       sessionId,
       openingId,
     }),
-  /**
-   * Draw every declared inventory icon into one equipment sprite sheet.
-   *
-   * Holds the sheet it writes exclusively, so a second request for the same output is refused rather than allowed to
-   * race it. A cancelled run leaves nothing behind: the sheet is one image written once at the end, so stopping before
-   * that point writes no file at all.
-   */
+  /** Draw every declared inventory icon into one equipment sprite sheet. */
   packSprite: (request: PackSpriteRequest, jobId: string, progress: Channel<JobProgress>) =>
     __TAURI_INVOKE<PackEquipmentResult>("plugin:sprite-equipment|pack_sprite", { request, jobId, progress }),
 };

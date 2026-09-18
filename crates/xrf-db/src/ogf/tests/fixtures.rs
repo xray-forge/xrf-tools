@@ -1,13 +1,9 @@
 //! Visuals carrying the malformed shapes issue 0014 is about, and the well-formed one they are judged against.
-//!
-//! Well-formed scaffolding comes from [`ChunkWriter`], but every defect is laid down as raw bytes. A fixture built by
-//! the writer under test matches whatever that writer does, including whatever it does wrong, so the one thing these
-//! files exist to prove would be the one thing they could not catch.
 
 use xrf_chunk::{ChunkWriter, XRayByteOrder};
 use xrf_error::XrfResult;
+use xrf_math::Vector3d;
 
-use crate::data::generic::vector_3d::Vector3d;
 use crate::data::ogf::ogf_box::OgfBox;
 use crate::data::ogf::ogf_sphere::OgfSphere;
 use crate::ogf::chunks::ogf_header_chunk::OgfHeaderChunk;

@@ -1,4 +1,5 @@
-use xrf_db::{OgfFile, OgfGeometry, OgfModelType, OgfSlideWindow, OgfVertex, Vector3d};
+use xrf_db::{OgfFile, OgfGeometry, OgfModelType, OgfSlideWindow, OgfVertex};
+use xrf_math::Vector3d;
 
 use crate::data::visual_bounds::VisualBounds;
 use crate::data::visual_description::VisualDescription;
@@ -42,10 +43,6 @@ struct FlatSkin {
 }
 
 /// Flattens a parsed OGF visual into renderer ready buffers.
-///
-/// Packing never fails. A child that carries nothing drawable becomes a submesh holding the reason it
-/// was skipped, so one broken piece neither hides the rest of a model nor turns into an error the
-/// caller has to interpret.
 pub struct VisualPacker {}
 
 impl VisualPacker {
@@ -54,9 +51,6 @@ impl VisualPacker {
   const SKIN_LINKS: usize = 4;
 
   /// Converts an OGF visual into a description and one interleaved byte buffer.
-  ///
-  /// Submeshes retain source order. Unsupported or malformed geometry is represented in the
-  /// description as `Skipped`, while drawable submeshes reference aligned ranges in the returned buffer.
   pub fn pack(file: &OgfFile) -> VisualPackage {
     let mut builder: VisualBufferBuilder = VisualBufferBuilder::new();
 
@@ -111,10 +105,6 @@ impl VisualPacker {
   }
 
   /// Drawable pieces of a visual, in the order the file stores them.
-  ///
-  /// A skeleton keeps its geometry on children and carries none itself; a single level visual is its
-  /// own only piece. Submesh order is the child order, because a texture or shader reference is only
-  /// meaningful against the child it came from.
   fn submesh_sources(file: &OgfFile) -> Vec<&OgfFile> {
     match file.children.as_ref().map(|it| it.nested.as_slice()) {
       Some(nested) if !nested.is_empty() => nested.iter().collect(),
@@ -142,9 +132,6 @@ impl VisualPacker {
   }
 
   /// Convert and append one submesh's attributes, or say why it has none.
-  ///
-  /// The error type is the reason a consumer displays, not a failure: every early return here ends up
-  /// beside the submesh in the description.
   fn pack_geometry(
     builder: &mut VisualBufferBuilder,
     source: &OgfFile,

@@ -8,8 +8,9 @@ use uuid::{Uuid, uuid};
 use xrf_chunk::{ChunkReadWrite, ChunkWriter, XRayByteOrder};
 use xrf_db::{
   GraphCrossTable, GraphHeader, GraphLevel, LevelAiHeader, LevelCformHeader, LevelHeaderChunk, LevelShaderEntry,
-  LevelShadersChunk, SpawnGraphsChunk, Vector3d,
+  LevelShadersChunk, SpawnGraphsChunk,
 };
+use xrf_math::Vector3d;
 use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 
 use crate::project::levels::level_engine_constants::{

@@ -84,9 +84,7 @@ pub use crate::data::{
     },
   },
   artefact_spawn::artefact_spawn_point::ArtefactSpawnPoint,
-  generic::{
-    matrix_4x4::Matrix4x4, rgb_color::RgbColor, shape::Shape, time::Time, u32_bytes::U32Bytes, vector_3d::Vector3d,
-  },
+  generic::{rgb_color::RgbColor, shape::Shape, time::Time, u32_bytes::U32Bytes},
   graph::{
     graph_cross_table::GraphCrossTable, graph_edge::GraphEdge, graph_header::GraphHeader, graph_level::GraphLevel,
     graph_level_point::GraphLevelPoint, graph_vertex::GraphVertex,

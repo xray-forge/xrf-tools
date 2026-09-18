@@ -75,23 +75,10 @@ export const archivesCommands = {
    */
   describeFile: (sessionId: SessionId, path: string) =>
     __TAURI_INVOKE<ArchiveFileDescription>("plugin:archives|describe_file", { sessionId, path }),
-  /**
-   * Report whatever the engine would read out of a sound, without handing over the sound.
-   *
-   * Paired with `assets|read_asset`, which serves the bytes the webview plays. Both are addressed by the same roots and
-   * logical path, so the numbers on screen describe the file that is playing rather than a second lookup's answer.
-   */
+  /** Report whatever the engine would read out of a sound, without handing over the sound. */
   describeAudio: (roots: XrayRoots, logicalPath: string) =>
     __TAURI_INVOKE<AudioDescriptor>("plugin:archives|describe_audio", { roots, logicalPath }),
-  /**
-   * Report the shape of a texture, without decoding it into a picture.
-   *
-   * Paired with `archives|read_texture`, which serves the PNG the webview displays. Both are addressed by the same roots
-   * and logical path, so the dimensions on screen belong to the picture beside them.
-   *
-   * Answers with the source DDS facts rather than the PNG's: format and mip count survive the description and would not
-   * survive the transcode, and a viewer of X-Ray textures wants both.
-   */
+  /** Report the shape of a texture, without decoding it into a picture. */
   describeTexture: (roots: XrayRoots, logicalPath: string) =>
     __TAURI_INVOKE<AssetTextureDescriptor>("plugin:archives|describe_texture", { roots, logicalPath }),
   /**
@@ -104,98 +91,38 @@ export const archivesCommands = {
    */
   describeImage: (roots: XrayRoots, logicalPath: string) =>
     __TAURI_INVOKE<ImageDescriptor>("plugin:archives|describe_image", { roots, logicalPath }),
-  /**
-   * Hand back a packing configuration with nothing chosen yet.
-   *
-   * The editor starts from this rather than from its own literals, so defaults that belong to the format
-   * - the volume ceiling, the skip list, the mode - have one definition, in the packer.
-   */
+  /** Hand back a packing configuration with nothing chosen yet. */
   defaultPackConfig: () => __TAURI_INVOKE<ArchivePackConfig>("plugin:archives|default_pack_config"),
-  /**
-   * Write the selection rules of a configuration out as a packing configuration file.
-   *
-   * The writer is chosen from the destination's extension, so a surface offering both gets the format it asked for.
-   * Only what such a file can carry is written, so a round trip through import returns what was exported.
-   * Paths, name, mode, and volume size belong to the run rather than to the file.
-   */
+  /** Write the selection rules of a configuration out as a packing configuration file. */
   exportPackConfig: (path: string, config: ArchivePackConfig) =>
     __TAURI_INVOKE<null>("plugin:archives|export_pack_config", { path, config }),
-  /**
-   * Read a packing configuration file over the configuration the caller holds.
-   *
-   * The codec is chosen from the path's extension, so one command reads an `ltx` and a `json` alike.
-   *
-   * Layers rather than replaces, matching how the command line applies `--config`: a configuration file
-   * carries selection rules and a header, never the source, destination, name, mode, or volume size, so
-   * those stay as the caller had them.
-   */
+  /** Read a packing configuration file over the configuration the caller holds. */
   importPackConfig: (path: string, config: ArchivePackConfig) =>
     __TAURI_INVOKE<ArchivePackConfig>("plugin:archives|import_pack_config", { path, config }),
-  /**
-   * Volumes of this configuration's set the destination already holds.
-   *
-   * Asked before packing rather than after: the editor puts a pack behind a confirmation, and a run that would replace
-   * an archive the user still has is exactly what that confirmation is for. Packing refuses the same destination on its
-   * own, so this is what the user is shown, not what protects them.
-   *
-   * Cheap enough to answer on the async worker — one directory listing, no file is opened.
-   */
+  /** Volumes of this configuration's set the destination already holds. */
   listPackVolumes: (config: ArchivePackConfig) =>
     __TAURI_INVOKE<Array<string>>("plugin:archives|list_pack_volumes", { config }),
-  /**
-   * Packs a directory using the supplied configuration.
-   *
-   * Holds an exclusive destination lease. Replacing an existing set requires `is_forced`. Unforced runs roll
-   * back on failure or cancellation; forced runs cannot restore overwritten volumes.
-   */
+  /** Packs a directory using the supplied configuration. */
   packDirectory: (request: ArchivesPackRequest, jobId: string, progress: Channel<JobProgress>) =>
     __TAURI_INVOKE<ArchivePackResult>("plugin:archives|pack_directory", { request, jobId, progress }),
-  /**
-   * Compares two roots without writing files.
-   *
-   * Ignores `is_forced` and takes no destination lease.
-   */
+  /** Compares two roots without writing files. */
   compareArchives: (request: ArchivesPatchRequest, jobId: string, progress: Channel<JobProgress>) =>
     __TAURI_INVOKE<ArchivePatchResult>("plugin:archives|compare_archives", { request, jobId, progress }),
   /** Returns the format defaults with empty paths and the volume name `patch`. */
   defaultPatchConfig: () => __TAURI_INVOKE<ArchivePatchConfig>("plugin:archives|default_patch_config"),
-  /**
-   * Write the comparison scope and header of a configuration out as a patching configuration file.
-   *
-   * Only what such a file can carry is written, so a round trip through import returns what was exported. What is
-   * compared, where it is published and under what name belong to the run rather than to the file.
-   */
+  /** Write the comparison scope and header of a configuration out as a patching configuration file. */
   exportPatchConfig: (path: string, config: ArchivePatchConfig) =>
     __TAURI_INVOKE<null>("plugin:archives|export_patch_config", { path, config }),
   /** Read a patching configuration file over the configuration the caller holds. */
   importPatchConfig: (path: string, config: ArchivePatchConfig) =>
     __TAURI_INVOKE<ArchivePatchConfig>("plugin:archives|import_patch_config", { path, config }),
-  /**
-   * Volumes of this configuration's set the output already holds.
-   *
-   * The patcher's twin of `list_pack_volumes`, and asked for the same reason: the editor puts publishing behind a
-   * confirmation, and a run that would replace volumes the user still has is exactly what that confirmation is for.
-   * Publishing refuses the same output on its own, so this is what the user is shown, not what protects them.
-   *
-   * Cheap enough to answer on the async worker — one directory listing, no file is opened.
-   */
+  /** Volumes of this configuration's set the output already holds. */
   listPatchVolumes: (config: ArchivePatchConfig) =>
     __TAURI_INVOKE<Array<string>>("plugin:archives|list_patch_volumes", { config }),
-  /**
-   * Publishes added and modified entries as patch volumes.
-   *
-   * Holds an exclusive destination lease and shares the publishing group with archive packing. Replacing an
-   * existing set requires `is_forced`.
-   */
+  /** Publishes added and modified entries as patch volumes. */
   patchArchives: (request: ArchivesPatchRequest, jobId: string, progress: Channel<JobProgress>) =>
     __TAURI_INVOKE<ArchivePatchResult>("plugin:archives|patch_archives", { request, jobId, progress }),
-  /**
-   * Unpack every archive of a directory into a destination tree, reporting progress and stopping on request.
-   *
-   * A cancelled run answers with a result rather than an error. It leaves the files it had already written where they
-   * are — deleting them is not an option, because the destination may have held the user's own files and nothing here
-   * can tell those apart from this run's — so the caller needs the counts to say what is now on disk.
-   */
+  /** Unpack every archive of a directory into a destination tree, reporting progress and stopping on request. */
   unpackDirectory: (request: ArchivesUnpackRequest, jobId: string, progress: Channel<JobProgress>) =>
     __TAURI_INVOKE<ArchiveUnpackResult>("plugin:archives|unpack_directory", { request, jobId, progress }),
 };

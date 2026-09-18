@@ -2,9 +2,9 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
+use xrf_math::Vector3d;
 
 use crate::constants::NET_ACTION_SPAWN;
-use crate::data::generic::vector_3d::Vector3d;
 
 /// One object a level spawns, as `CSE_Abstract::Spawn_Write` frames it.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]

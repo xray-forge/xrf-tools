@@ -1,6 +1,5 @@
 use byteorder::ByteOrder;
-
-use crate::data::generic::vector_3d::Vector3d;
+use xrf_math::Vector3d;
 
 /// One bone a vertex is skinned to, and how strongly.
 #[derive(Clone, Debug, PartialEq)]

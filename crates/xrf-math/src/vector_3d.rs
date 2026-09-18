@@ -77,8 +77,9 @@ impl FromStr for Vector3d<f32> {
   }
 }
 
-#[cfg(test)]
+#[cfg(any(test, feature = "fixtures"))]
 impl Vector3d {
+  /// The vector this crate's own tests and its dependants' fixtures build against.
   pub fn new_mock() -> Self {
     Self {
       x: 1.1150,
@@ -104,7 +105,7 @@ mod tests {
     overwrite_generated_test_resource_as_file,
   };
 
-  use crate::data::generic::vector_3d::Vector3d;
+  use crate::vector_3d::Vector3d;
 
   #[test]
   fn test_read_write() -> XrfResult {

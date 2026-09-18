@@ -1,15 +1,9 @@
-use xrf_db::{Quaternion, Vector3d};
+use xrf_db::Quaternion;
+use xrf_math::Vector3d;
 
 use crate::data::visual_description::VisualTransform;
 
 /// A bone's transform: a rotation basis in row-vector order, and a translation.
-///
-/// Mirrors `Fmatrix`'s 4x3 use, whose rows `i`, `j`, `k` are the basis and `c` the translation, because that is the
-/// layout every formula below is copied from. A point is transformed as `p * R + c`, not `R * p`.
-///
-/// One type for the bind pose and for an animated pose, because the engine composes both the same way: an animated
-/// bone's local transform replaces its bind transform rather than multiplying it (`SkeletonAnimated.cpp:914`), and
-/// both go through `mul_43(parent, local)`.
 #[derive(Clone, Debug)]
 pub(crate) struct BindTransform {
   pub(crate) i: Vector3d,
@@ -30,10 +24,6 @@ impl BindTransform {
   }
 
   /// One bone's bind transform, exactly as the engine composes it.
-  ///
-  /// `SkeletonCustom.cpp:306` does `setXYZi(bind_rotation)` then `translate_over(bind_position)`, and
-  /// `setXYZi(x, y, z)` is `setHPB(-y, -x, -z)` (`_matrix.h:504`). `translate_over` overwrites the translation rather
-  /// than accumulating, which is why the rotation is built first and the position simply assigned.
   pub(crate) fn from_bind(rotation: &Vector3d, position: &Vector3d) -> Self {
     // The engine's own argument order, kept verbatim so this reads against `_matrix.h` rather than against intuition.
     let (h, p, b) = (-rotation.y, -rotation.x, -rotation.z);
@@ -65,9 +55,6 @@ impl BindTransform {
   }
 
   /// One bone's animated transform, from a motion key.
-  ///
-  /// `Fmatrix::mk_xform` verbatim (`matrix.cpp:41`), whose rows are the basis in the same order [`Self::from_bind`]
-  /// builds them. An animated key carries the whole local transform, so nothing of the bind pose enters here.
   pub(crate) fn from_key(rotation: &Quaternion, translation: &Vector3d) -> Self {
     let (x, y, z, w) = (rotation.x, rotation.y, rotation.z, rotation.w);
 
@@ -96,9 +83,6 @@ impl BindTransform {
   }
 
   /// This transform followed by `parent`, which is `Fmatrix::mul_43(parent, self)`.
-  ///
-  /// Written out rather than expressed as a generic matrix product because the operand order is the thing that goes
-  /// wrong: `mul_43(A, B)` composes so that a point passes through `B` first (`matrix.cpp:120`).
   pub(crate) fn then(&self, parent: &Self) -> Self {
     Self {
       i: parent.rotate(&self.i),
@@ -109,12 +93,6 @@ impl BindTransform {
   }
 
   /// The same transform expressed in the renderer's mirrored space.
-  ///
-  /// Geometry reaches the renderer with Z negated (`convert_vector`), so a transform that is to act on it has to be
-  /// mirrored too - and mirroring a transform is not mirroring its parts. Conjugating by `S = diag(1, 1, -1)` gives
-  /// `S M S`, which negates the z of the first two basis vectors, the x and y of the third, and the z of the
-  /// translation. Negating every z instead leaves a rotation that turns the wrong way about x and y, which looks
-  /// plausible on a symmetric pose and wrong on every other frame.
   pub(crate) fn mirrored(&self) -> Self {
     Self {
       i: Vector3d {
@@ -141,9 +119,6 @@ impl BindTransform {
   }
 
   /// The mirrored transform as the wire carries it, which is the only form that leaves this crate.
-  ///
-  /// Mirroring happens here rather than at the call sites so a transform cannot reach a renderer in engine space:
-  /// there is one way out, and it converts.
   pub(crate) fn to_renderer_space(&self) -> VisualTransform {
     let mirrored: Self = self.mirrored();
 

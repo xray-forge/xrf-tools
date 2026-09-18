@@ -8,12 +8,7 @@ import { JobProgress } from "@/core/ipc/types/xrf-job";
 
 /** Commands */
 export const gamedataCommands = {
-  /**
-   * Run the selected checks over a gamedata project.
-   *
-   * Holds the verification action group across windows. A full run over an installation is minutes of work that
-   * somebody may want to watch or call off.
-   */
+  /** Run the selected checks over a gamedata project. */
   verifyProject: (request: GamedataVerifyRequest, jobId: string, progress: Channel<JobProgress>) =>
     __TAURI_INVOKE<GamedataVerifySummary>("plugin:gamedata|verify_project", { request, jobId, progress }),
 };

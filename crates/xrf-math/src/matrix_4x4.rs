@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
 
-use crate::data::generic::vector_3d::Vector3d;
+use crate::vector_3d::Vector3d;
 
 /// A full `Fmatrix`, row major, as the engine blits it in and out of a file.
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]

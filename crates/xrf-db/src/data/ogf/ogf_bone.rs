@@ -1,8 +1,7 @@
 use byteorder::ByteOrder;
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
-
-use crate::data::generic::vector_3d::Vector3d;
+use xrf_math::Vector3d;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct OgfBone {

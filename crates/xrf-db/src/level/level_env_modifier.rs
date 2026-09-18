@@ -2,8 +2,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
-
-use crate::data::generic::vector_3d::Vector3d;
+use xrf_math::Vector3d;
 
 /// Which of a modifier's values the engine mixes in, `EEnvModUsedParams` (`Common/LevelGameDef.h`).
 pub const ENV_MOD_PARAMETERS: [(u16, &str); 6] = [

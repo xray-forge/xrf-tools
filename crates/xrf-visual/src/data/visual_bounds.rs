@@ -1,5 +1,5 @@
 use serde::Serialize;
-use xrf_db::Vector3d;
+use xrf_math::Vector3d;
 
 /// Axis aligned box in three.js space.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -20,14 +20,6 @@ pub struct VisualSphere {
 }
 
 /// A visual's extent, as a box and a sphere.
-///
-/// A description carries this twice, unreconciled: once as the values the OGF header declares and
-/// once as the values its geometry actually spans. A file whose declared extent disagrees with its
-/// vertices then shows the disagreement instead of silently mis-framing a camera.
-///
-/// A computed sphere is centred on the computed box and reaches the furthest vertex from that
-/// centre. That is an enclosing sphere rather than the minimal one, so a small disagreement with a
-/// declared sphere is expected and only a large one is interesting.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -38,10 +30,6 @@ pub struct VisualBounds {
 
 impl VisualBounds {
   /// Extent of the positions a set of indices actually reaches, or `None` when it reaches none.
-  ///
-  /// Measured over the drawn indices rather than over the whole vertex buffer, because a progressive
-  /// submesh's buffer also holds vertices that only its coarser levels reference. Those sit wherever
-  /// the collapse left them, so including them inflates the box well past the mesh on screen.
   pub(crate) fn from_indexed_positions(positions: &[Vector3d], indices: &[u16]) -> Option<Self> {
     let referenced: Vec<Vector3d> = indices
       .iter()

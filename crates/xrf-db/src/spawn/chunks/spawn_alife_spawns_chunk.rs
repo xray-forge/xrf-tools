@@ -181,6 +181,7 @@ mod tests {
   use byteorder::WriteBytesExt;
   use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
   use xrf_error::XrfResult;
+  use xrf_math::Vector3d;
   use xrf_test_utils::FileSlice;
   use xrf_test_utils::utils::{
     build_relative_test_sample_file_path, open_generated_test_resource_as_slice,
@@ -194,7 +195,6 @@ mod tests {
   use crate::data::alife::inherited::alife_object_item::AlifeObjectItem;
   use crate::data::alife::inherited::alife_object_item_custom_outfit::AlifeObjectItemCustomOutfit;
   use crate::data::alife::inherited::alife_object_space_restrictor::AlifeObjectSpaceRestrictor;
-  use crate::data::generic::vector_3d::Vector3d;
   use crate::data::meta::cls_id::ClsId;
   use crate::spawn::chunks::spawn_alife_spawns_chunk::SpawnALifeSpawnsChunk;
 

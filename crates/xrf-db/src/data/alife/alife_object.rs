@@ -5,13 +5,13 @@ use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{Ltx, Section};
+use xrf_math::Vector3d;
 use xrf_utils::{
   assert, assert_equal, assert_not_equal, decode_bytes_from_base64, encode_bytes_to_base64, to_format_size,
 };
 
 use crate::constants::{FLAG_SPAWN_DESTROY_ON_SPAWN, MINIMAL_SUPPORTED_SPAWN_VERSION, NET_ACTION_SPAWN};
 use crate::data::alife::alife_object_inherited::AlifeObjectInherited;
-use crate::data::generic::vector_3d::Vector3d;
 use crate::data::meta::alife_class::AlifeClass;
 use crate::data::meta::cls_id::ClsId;
 use crate::export::LtxImportExport;
@@ -315,6 +315,7 @@ mod tests {
   use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
   use xrf_error::{XrfError, XrfResult};
   use xrf_ltx::Ltx;
+  use xrf_math::Vector3d;
   use xrf_test_utils::FileSlice;
   use xrf_test_utils::file::read_file_as_string;
   use xrf_test_utils::utils::{
@@ -329,7 +330,6 @@ mod tests {
   use crate::data::alife::inherited::alife_object_dynamic_visual::AlifeObjectDynamicVisual;
   use crate::data::alife::inherited::alife_object_item::AlifeObjectItem;
   use crate::data::alife::inherited::alife_object_item_custom_outfit::AlifeObjectItemCustomOutfit;
-  use crate::data::generic::vector_3d::Vector3d;
   use crate::data::meta::cls_id::ClsId;
   use crate::export::LtxImportExport;
 

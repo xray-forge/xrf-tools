@@ -1,5 +1,7 @@
 // Auto-generated rust bindings. Do not edit it manually.
 
+import { Vector3d } from "@/core/ipc/types/xrf-math";
+
 export type AlifeActor = {
   base: AlifeObjectActor;
   startPositionFilled: number;
@@ -739,9 +741,3 @@ export type Time = {
 };
 
 export type U32Bytes = [number, number, number, number];
-
-export type Vector3d<T = number | null> = {
-  x: T;
-  y: T;
-  z: T;
-};

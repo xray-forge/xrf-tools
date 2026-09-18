@@ -1,5 +1,5 @@
 use serde::Serialize;
-use xrf_db::Vector3d;
+use xrf_math::Vector3d;
 
 /// How much space something covers, as the extent of the box it declares rather than where that box sits.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -44,7 +44,7 @@ impl ArchiveBounds {
 
 #[cfg(test)]
 mod tests {
-  use xrf_db::Vector3d;
+  use xrf_math::Vector3d;
 
   use super::ArchiveBounds;
 
