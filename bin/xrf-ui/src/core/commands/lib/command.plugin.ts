@@ -50,12 +50,9 @@ export class KeybindCommandBindingPlugin implements WirestatePlugin {
       }
 
       addDisposer(commandBus.register(handler.descriptor.id, (method as (payload: unknown) => unknown).bind(instance)));
-
-      const isEnabled = handler.isEnabled;
-
-      if (isEnabled) {
-        addDisposer(queryBus.register(toKeybindCommandEnabledQuery(handler.descriptor), () => isEnabled(instance)));
-      }
+      addDisposer(
+        queryBus.register(toKeybindCommandEnabledQuery(handler.descriptor), () => handler.isEnabled?.(instance) ?? true)
+      );
     }
   }
 }

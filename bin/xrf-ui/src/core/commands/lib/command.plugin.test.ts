@@ -60,6 +60,16 @@ class GuardedHandlerService {
   }
 }
 
+@Injectable()
+class UnguardedHandlerService {
+  public calls: number = 0;
+
+  @KeybindCommand(GUARDED)
+  public act(): void {
+    this.calls += 1;
+  }
+}
+
 describe("KeybindCommandBindingPlugin", () => {
   it("binds a decorated method for the lifetime of its container, with no registration of its own", () => {
     const container: Container = mockContainer([OuterHandlerService]).provision();
@@ -99,6 +109,46 @@ describe("KeybindCommandBindingPlugin", () => {
 
     expect(child.get(InnerHandlerService).calls).toBe(1);
     expect(root.get(OuterHandlerService).calls).toBe(1);
+  });
+
+  it("lets an unguarded inner handler shadow a disabled outer handler", () => {
+    const root: Container = mockContainer([GuardedHandlerService]).provision();
+    const child: Container = new Container({ bindings: [UnguardedHandlerService], parent: root }).provision();
+    const commandsService: KeybindCommandsService = root.get(KeybindCommandsService);
+
+    try {
+      expect(commandsService.isAvailable(GUARDED)).toBe(true);
+      expect(commandsService.execute(GUARDED)).toBe(true);
+      expect(child.get(UnguardedHandlerService).calls).toBe(1);
+      expect(root.get(GuardedHandlerService).calls).toBe(0);
+    } finally {
+      child.deprovision();
+      root.deprovision();
+    }
+  });
+
+  it("restores the outer handler's live guard when an unguarded inner handler releases", () => {
+    const root: Container = mockContainer([GuardedHandlerService]).provision();
+    const child: Container = new Container({ bindings: [UnguardedHandlerService], parent: root }).provision();
+    const commandsService: KeybindCommandsService = root.get(KeybindCommandsService);
+    const guarded: GuardedHandlerService = root.get(GuardedHandlerService);
+
+    child.deprovision();
+
+    try {
+      expect(commandsService.isAvailable(GUARDED)).toBe(false);
+      expect(commandsService.execute(GUARDED)).toBe(false);
+      expect(guarded.calls).toBe(0);
+
+      guarded.setReady(true);
+
+      expect(commandsService.isAvailable(GUARDED)).toBe(true);
+      expect(commandsService.execute(GUARDED)).toBe(true);
+      expect(guarded.calls).toBe(1);
+      expect(child.get(UnguardedHandlerService).calls).toBe(0);
+    } finally {
+      root.deprovision();
+    }
   });
 
   it("refuses a command its own handler guards, without the caller knowing the condition", () => {

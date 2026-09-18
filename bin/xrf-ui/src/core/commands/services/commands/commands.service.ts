@@ -57,23 +57,21 @@ export class KeybindCommandsService {
 
     this.log.info("Executing command:", descriptor.id);
 
-    Promise.resolve(this.commandBus.executeAsync(descriptor.id, undefined, { optional: true })).catch(
-      (error: unknown) => {
-        // A superseded flow rejects on purpose; reporting it would name the command that replaced this one a failure.
-        if (isCancellation(error)) {
-          return;
-        }
-
-        this.log.error("Command failed:", descriptor.id, error);
-
-        emitNotification(this.eventBus, {
-          details: transformError(error).message,
-          severity: ENotificationSeverity.ERROR,
-          source: APPLICATION_SOURCE,
-          title: `Could not ${descriptor.label.toLowerCase()}`,
-        });
+    this.commandBus.executeAsync(descriptor.id, undefined, { optional: true }).catch((error: unknown) => {
+      // A superseded flow rejects on purpose; reporting it would name the command that replaced this one a failure.
+      if (isCancellation(error)) {
+        return;
       }
-    );
+
+      this.log.error("Command failed:", descriptor.id, error);
+
+      emitNotification(this.eventBus, {
+        details: transformError(error).message,
+        severity: ENotificationSeverity.ERROR,
+        source: APPLICATION_SOURCE,
+        title: `Could not ${descriptor.label.toLowerCase()}`,
+      });
+    });
 
     return true;
   }
