@@ -5,7 +5,6 @@ import {
   Mesh,
   MeshStandardMaterial,
   PerspectiveCamera,
-  RepeatWrapping,
   Scene,
   WebGLRenderer,
 } from "three";
@@ -52,7 +51,6 @@ const CAMERA_DISTANCE: number = 5;
 
 /**
  * One texture on a lit body, shaded the way the engine shades it.
- *
  * The canvas is transparent and the scene has no background, so the alpha checkerboard behind it is the frame's own.
  */
 export class TextureSurfaceScene {
@@ -131,9 +129,6 @@ export class TextureSurfaceScene {
 
   /**
    * Takes the canvas off screen and releases everything it holds.
-   *
-   * The uploaded textures are not disposed here: they belong to whatever loaded them, and are shared with a scene
-   * rebuilt for the next shape.
    */
   public dispose(): void {
     cancelAnimationFrame(this.frameHandle);
@@ -206,8 +201,6 @@ export class TextureSurfaceScene {
     this.options = options;
 
     this.applyOptions();
-
-    this.material.needsUpdate = true;
   }
 
   /**
@@ -316,11 +309,8 @@ export class TextureSurfaceScene {
   /** Repeats every texture the surface samples, the base through three.js and the pair through the patch. */
   private applyTiling(): void {
     for (const texture of listTextureSurfaceTextures(this.textures)) {
-      texture.wrapS = RepeatWrapping;
-      texture.wrapT = RepeatWrapping;
       texture.repeat.set(this.options.tiling, this.options.tiling);
       texture.updateMatrix();
-      texture.needsUpdate = true;
     }
 
     // The patch samples the pair itself, so nothing else would carry the repeat to it: without this the base tiles
