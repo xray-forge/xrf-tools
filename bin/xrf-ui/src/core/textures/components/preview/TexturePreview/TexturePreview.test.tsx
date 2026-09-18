@@ -1,9 +1,13 @@
-import { beforeEach, describe, expect, it, jest } from "@jest/globals";
+import { beforeAll, beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { RenderResult } from "@testing-library/react";
 
 import { AssetService } from "@/core/assets/services";
 import { TextureDescription } from "@/core/ipc/types/xrf-app";
-import { ITexturePreviewComparison } from "@/core/textures/lib/texture-preview";
+import {
+  DEFAULT_TEXTURE_PREVIEW_OPTIONS,
+  ETexturePreviewMode,
+  ITexturePreviewComparison,
+} from "@/core/textures/lib/texture-preview";
 import { TextureSelectionService } from "@/core/textures/services/selection";
 import { mockTextureDescription } from "@/fixtures/mocks/texture.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
@@ -11,7 +15,16 @@ import { renderWithProviders } from "@/fixtures/utils/render";
 import { AsyncState } from "@/lib/async-state";
 import { Nullable } from "@/lib/types/general";
 
-import { TexturePreview } from "./TexturePreview";
+let TexturePreview: typeof import("./TexturePreview").TexturePreview;
+
+beforeAll(async () => {
+  // Only the preview's choice of surface is under test; its WebGL scene cannot run in jsdom.
+  jest.doMock("@/core/textures/components/preview/TextureSurface", () => ({
+    TextureSurface: () => <div data-testid={"texture-surface"} />,
+  }));
+
+  ({ TexturePreview } = await import("./TexturePreview"));
+});
 
 const SHAPED: TextureDescription = mockTextureDescription("ston\\ston_beton05", {
   base: { size: 2048, shape: { width: 256, height: 128, mipmapLevels: 9, format: "DXT5" } },
@@ -54,6 +67,48 @@ describe("TexturePreview", () => {
     const { getByText } = renderPreview(null);
 
     expect(getByText("No texture open")).toBeTruthy();
+  });
+
+  it("shows surface mode while the independent PNG preview is still loading", () => {
+    const { service, container } = mockInjectedService(TextureSelectionService);
+
+    service.selected = AsyncState.ready(SHAPED);
+    service.preview = AsyncState.loading();
+
+    const { getByTestId, queryByText } = renderWithProviders(
+      <TexturePreview options={{ ...DEFAULT_TEXTURE_PREVIEW_OPTIONS, mode: ETexturePreviewMode.SURFACE }} />,
+      { container }
+    );
+
+    expect(getByTestId("texture-surface")).toBeTruthy();
+    expect(queryByText("Reading…")).toBeNull();
+  });
+
+  it("keeps image mode waiting for its PNG preview", () => {
+    const { service, container } = mockInjectedService(TextureSelectionService);
+
+    service.selected = AsyncState.ready(SHAPED);
+    service.preview = AsyncState.loading();
+
+    const { getByText, queryByTestId } = renderWithProviders(<TexturePreview />, { container });
+
+    expect(getByText("Reading…")).toBeTruthy();
+    expect(queryByTestId("texture-surface")).toBeNull();
+  });
+
+  it("keeps surface mode waiting while the next description is loading", () => {
+    const { service, container } = mockInjectedService(TextureSelectionService);
+
+    service.selected = AsyncState.loading(SHAPED);
+    service.preview = AsyncState.ready(new ArrayBuffer(4));
+
+    const { getByText, queryByTestId } = renderWithProviders(
+      <TexturePreview options={{ ...DEFAULT_TEXTURE_PREVIEW_OPTIONS, mode: ETexturePreviewMode.SURFACE }} />,
+      { container }
+    );
+
+    expect(getByText("Reading…")).toBeTruthy();
+    expect(queryByTestId("texture-surface")).toBeNull();
   });
 
   it("shows one picture when there is nothing to compare it with", () => {

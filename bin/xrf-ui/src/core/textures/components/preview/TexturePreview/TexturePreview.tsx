@@ -60,9 +60,8 @@ export function TexturePreview({
   // other still centred is the one thing a comparison must not do.
   const [panZoom] = useState<PanZoomController>(() => new PanZoomController());
 
-  // The description of the texture being replaced is still here while the next one is read, so what says a read is in
-  // progress is the async state rather than the absence of a description.
-  const isReading: boolean = selectionService.selected.isLoading || selectionService.preview.isLoading;
+  const isImage: boolean = options.mode === ETexturePreviewMode.IMAGE;
+  const isReading: boolean = selectionService.selected.isLoading || (isImage && selectionService.preview.isLoading);
   const description: Nullable<TextureDescription> = selectionService.selected.value;
 
   // Keyed on the texture rather than on either pane's url, which is what holding the camera for a pair means here: the
@@ -110,7 +109,6 @@ export function TexturePreview({
     Boolean(shape && selectionService.preview.value)
   );
 
-  const isImage: boolean = options.mode === ETexturePreviewMode.IMAGE;
   const caption: string = shape ? describeTextureShape(shape) : description.reference;
 
   if (comparison && isImage && !gap) {
