@@ -98,6 +98,15 @@ impl LevelFile {
     Self::read_visuals_from_chunk::<T, _>(&mut ChunkReader::from_file(file)?)
   }
 
+  /// Read every visual of a level from bytes already in hand, which is how an archived level arrives.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the bytes are not a level, or a visual cannot be read.
+  pub fn read_visuals_from_bytes<T: ByteOrder>(bytes: Vec<u8>) -> XrfResult<Option<LevelVisualsChunk>> {
+    Self::read_visuals_from_chunk::<T, _>(&mut ChunkReader::from_vec(bytes)?)
+  }
+
   /// Read every visual of a level from a chunk reader over any data source.
   ///
   /// # Errors

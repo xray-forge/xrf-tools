@@ -1,7 +1,9 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use serde::Serialize;
-use xrf_level::{LevelFile, LevelGeomFile, LevelGeomVertexBuffer, LevelShaderEntry, LevelVisual, LevelVisualsChunk};
+use xrf_level::{
+  LevelFile, LevelGeomFile, LevelGeomVertexBuffer, LevelSector, LevelShaderEntry, LevelVisual, LevelVisualsChunk,
+};
 use xrf_ogf::OgfModelType;
 
 /// What `level info` read out of a compiled level.
@@ -16,6 +18,34 @@ pub struct LevelInfoReport {
   pub geometry: Option<LevelGeomReport>,
   /// `level.geomx`, the fast-path twin, absent when the directory holds none.
   pub detail_geometry: Option<LevelGeomReport>,
+  pub structure: LevelStructureReport,
+}
+
+/// What the level is built out of beside its geometry: the sectors it culls by and the lights it loads.
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LevelStructureReport {
+  pub sectors: usize,
+  pub portals: usize,
+  /// Portals named by a sector, which is twice the portals when every one joins two of them.
+  pub sector_portal_references: usize,
+  pub lights: usize,
+  /// Whether the compiler wrote the directional light the loader keeps as the sun.
+  pub has_sun: bool,
+}
+
+impl LevelStructureReport {
+  fn of(level: &LevelFile) -> Self {
+    let sectors: &[LevelSector] = level.sectors.as_ref().map_or(&[], |chunk| &chunk.sectors);
+
+    Self {
+      has_sun: level.lights.as_ref().is_some_and(|chunk| chunk.get_sun().is_some()),
+      lights: level.lights.as_ref().map_or(0, |chunk| chunk.lights.len()),
+      portals: level.portals.as_ref().map_or(0, |chunk| chunk.portals.len()),
+      sector_portal_references: sectors.iter().map(|sector| sector.portals.len()).sum(),
+      sectors: sectors.len(),
+    }
+  }
 }
 
 impl LevelInfoReport {
@@ -34,6 +64,7 @@ impl LevelInfoReport {
       visuals: visuals.map(LevelVisualsReport::of),
       geometry: geometry.map(LevelGeomReport::of),
       detail_geometry: detail_geometry.map(LevelGeomReport::of),
+      structure: LevelStructureReport::of(level),
     }
   }
 }

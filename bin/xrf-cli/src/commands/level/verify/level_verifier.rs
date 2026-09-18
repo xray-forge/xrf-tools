@@ -1,6 +1,5 @@
 //! Reads every drawable visual of a compiled level and accounts for what could not be drawn.
 
-use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
 use xrf_chunk::{ChunkDataSource, InMemoryChunkDataSource};
@@ -10,19 +9,19 @@ use xrf_level::{
 use xrf_ogf::OgfGeometryContainerChunk;
 use xrf_report::{Finding, Report, RuleId};
 use xrf_spawn::XRayByteOrder;
-use xrf_utils::to_portable_path_string;
 
+use crate::commands::level::level_assets::LevelAssets;
 use crate::commands::level::verify::level_verification_census::LevelVerificationCensus;
 use crate::commands::level::verify::level_verification_result::LevelVerificationResult;
 use crate::commands::level::verify::level_verification_state::LevelVerificationState;
 
 /// Reads a compiled level's geometry the way the renderer would address it.
 /// Every check here is an invariant the engine relies on without testing.
-pub struct LevelVerifier {
-  path: PathBuf,
+pub struct LevelVerifier<'a> {
+  assets: &'a LevelAssets<'a>,
 }
 
-impl LevelVerifier {
+impl<'a> LevelVerifier<'a> {
   /// The bundle every compiled level has.
   const LEVEL_FILE: &'static str = "level";
 
@@ -32,10 +31,8 @@ impl LevelVerifier {
   /// The alternative buffers a visual's fast path addresses.
   const DETAIL_GEOMETRY_FILE: &'static str = "level.geomx";
 
-  pub fn new(path: &Path) -> Self {
-    Self {
-      path: path.to_path_buf(),
-    }
+  pub fn new(assets: &'a LevelAssets<'a>) -> Self {
+    Self { assets }
   }
 
   /// Sweeps the level and reports every range the renderer could not draw.
@@ -45,8 +42,8 @@ impl LevelVerifier {
 
     let level: Option<LevelFile> = self.read_level(&mut state);
     let visuals: Option<LevelVisualsChunk> = self.read_visuals(&mut state);
-    let mut geometry: Option<LevelGeomSource<_>> = self.open(Self::GEOMETRY_FILE, &mut state.read);
-    let mut detail: Option<LevelGeomSource<_>> = self.open(Self::DETAIL_GEOMETRY_FILE, &mut state.read);
+    let mut geometry: Option<LevelGeomSource<_>> = self.open(Self::GEOMETRY_FILE, &mut state);
+    let mut detail: Option<LevelGeomSource<_>> = self.open(Self::DETAIL_GEOMETRY_FILE, &mut state);
 
     if let Some(visuals) = &visuals {
       for (index, visual) in visuals.visuals.iter().enumerate() {
@@ -80,7 +77,8 @@ impl LevelVerifier {
 
   /// Reads the bundle, reporting an absent shader table as the defect the renderer asserts on.
   fn read_level(&self, state: &mut LevelVerificationState) -> Option<LevelFile> {
-    let level: LevelFile = match LevelFile::read_from_path::<XRayByteOrder, _>(&self.path.join(Self::LEVEL_FILE)) {
+    let bytes: Vec<u8> = self.require_file(Self::LEVEL_FILE, "level.read", state)?;
+    let level: LevelFile = match LevelFile::read_from_bytes::<XRayByteOrder>(bytes) {
       Ok(level) => level,
       Err(error) => {
         state
@@ -106,7 +104,9 @@ impl LevelVerifier {
 
   /// Reads the visuals run, which is the bulk of the bundle and a separate door for that reason.
   fn read_visuals(&self, state: &mut LevelVerificationState) -> Option<LevelVisualsChunk> {
-    match LevelFile::read_visuals_from_path::<XRayByteOrder, _>(&self.path.join(Self::LEVEL_FILE)) {
+    let bytes: Vec<u8> = self.require_file(Self::LEVEL_FILE, "level.visuals.read", state)?;
+
+    match LevelFile::read_visuals_from_bytes::<XRayByteOrder>(bytes) {
       Ok(visuals) => visuals,
       Err(error) => {
         state
@@ -339,17 +339,52 @@ impl LevelVerifier {
   }
 
   /// Opens one render geometry file, reporting a read failure rather than stopping the sweep.
-  fn open(&self, name: &str, findings: &mut Vec<Finding>) -> Option<LevelGeomSource<InMemoryChunkDataSource>> {
-    let path: PathBuf = self.path.join(name);
+  fn open(&self, name: &str, state: &mut LevelVerificationState) -> Option<LevelGeomSource<InMemoryChunkDataSource>> {
+    let bytes: Vec<u8> = self.read_file(name, "level.geometry.read", state)?;
 
-    if !path.is_file() {
-      return None;
-    }
-
-    match LevelGeomSource::open_from_path::<XRayByteOrder, _>(&path) {
+    match LevelGeomSource::open_from_bytes::<XRayByteOrder>(bytes) {
       Ok(source) => Some(source),
       Err(error) => {
-        findings.push(self.finding("level.geometry.read", name, error.to_string()));
+        state
+          .read
+          .push(self.finding("level.geometry.read", name, error.to_string()));
+
+        None
+      }
+    }
+  }
+
+  /// Reads one of the level's files, where the level not having it is a finding.
+  ///
+  /// The bundle is not optional: a level without one is what a path naming no level at all looks like, and reporting
+  /// nothing would let it pass every check by having nothing to check.
+  fn require_file(&self, name: &str, rule: &str, state: &mut LevelVerificationState) -> Option<Vec<u8>> {
+    match self.assets.read(name) {
+      Ok(Some(bytes)) => Some(bytes),
+      Ok(None) => {
+        state.read.push(self.finding(
+          rule,
+          name,
+          format!("Level file was not found: {}", self.assets.describe_file(name)),
+        ));
+
+        None
+      }
+      Err(error) => {
+        state.read.push(self.finding(rule, name, error.to_string()));
+
+        None
+      }
+    }
+  }
+
+  /// Reads one of the level's files, where the level not having it is ordinary, as `level.geomx` is.
+  fn read_file(&self, name: &str, rule: &str, state: &mut LevelVerificationState) -> Option<Vec<u8>> {
+    match self.assets.read(name) {
+      Ok(Some(bytes)) => Some(bytes),
+      Ok(None) => None,
+      Err(error) => {
+        state.read.push(self.finding(rule, name, error.to_string()));
 
         None
       }
@@ -359,7 +394,7 @@ impl LevelVerifier {
   fn finding(&self, rule: &str, file: &str, message: String) -> Finding {
     Finding::new(
       RuleId::new(rule).expect("Expected a non-empty rule id"),
-      Some(to_portable_path_string(self.path.join(file))),
+      Some(self.assets.describe_file(file)),
       message,
     )
   }

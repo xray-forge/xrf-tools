@@ -1,11 +1,11 @@
-use std::path::PathBuf;
-
-use clap::{Arg, ArgMatches, Command, value_parser};
+use clap::{ArgMatches, Command};
 use xrf_error::XrfError;
 use xrf_output::OutputOptions;
 use xrf_report::Status;
-use xrf_utils::format_path;
+use xrf_vfs::{XrayLookupScope, XrayVfs};
 
+use crate::commands::level::level_assets::LevelAssets;
+use crate::commands::level::level_selection::LevelSelection;
 use crate::commands::level::verify::level_verification_result::LevelVerificationResult;
 use crate::commands::level::verify::level_verifier::LevelVerifier;
 use crate::core::command_context::CommandContext;
@@ -21,29 +21,25 @@ impl GenericCommand for VerifyCommand {
   }
 
   fn init(&self) -> Command {
-    Command::new(self.operation())
-      .about("Command to verify a compiled level's geometry can be drawn the way the renderer addresses it")
-      .arg(
-        Arg::new("path")
-          .help("Path to a compiled level directory, the one holding `level` and `level.geom`")
-          .short('p')
-          .long("path")
-          .required(true)
-          .value_parser(value_parser!(PathBuf)),
-      )
+    LevelSelection::declare(
+      Command::new(self.operation())
+        .about("Command to verify a compiled level's geometry can be drawn the way the renderer addresses it"),
+    )
   }
 
   /// Read every drawable visual's range and report what the renderer could not draw.
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
-    let path: &PathBuf = matches
-      .get_one::<_>("path")
-      .expect("Expected valid path to be provided");
-
+    let selection: LevelSelection = LevelSelection::of(matches)?;
     let output: OutputOptions = context.get_output().clone();
 
-    xrf_output::info!(output, "Verifying compiled level {}", format_path(path));
+    // The mount outlives the assets that borrow from it, so it is taken before the level is opened.
+    let vfs: Option<XrayVfs> = selection.mount()?;
+    let scope: XrayLookupScope = XrayLookupScope::all();
+    let assets: LevelAssets = selection.open(vfs.as_ref(), &scope)?;
 
-    let result: LevelVerificationResult = LevelVerifier::new(path).run();
+    xrf_output::info!(output, "Verifying compiled level {}", assets.describe());
+
+    let result: LevelVerificationResult = LevelVerifier::new(&assets).run();
 
     Self::print_census(&output, &result);
     Self::print_findings(&output, &result);

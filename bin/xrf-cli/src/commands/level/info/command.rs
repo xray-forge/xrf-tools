@@ -1,12 +1,12 @@
-use std::path::{Path, PathBuf};
-
-use clap::{Arg, ArgMatches, Command, value_parser};
+use clap::{ArgMatches, Command};
 use xrf_level::{LevelFile, LevelGeomFile, LevelVisualsChunk};
 use xrf_output::OutputOptions;
 use xrf_spawn::XRayByteOrder;
-use xrf_utils::format_path;
+use xrf_vfs::{XrayLookupScope, XrayVfs};
 
 use super::report::{LevelInfoReport, LevelVisualsReport};
+use crate::commands::level::level_assets::LevelAssets;
+use crate::commands::level::level_selection::LevelSelection;
 use crate::core::command_context::CommandContext;
 use crate::core::generic_command::{CommandResult, GenericCommand};
 
@@ -31,40 +31,51 @@ impl GenericCommand for InfoCommand {
 
   /// Create command for printing compiled level info.
   fn init(&self) -> Command {
-    Command::new(self.operation())
-      .about("Command to print information about a compiled level directory")
-      .arg(
-        Arg::new("path")
-          .help("Path to a compiled level directory, the one holding `level` and `level.geom`")
-          .short('p')
-          .long("path")
-          .required(true)
-          .value_parser(value_parser!(PathBuf)),
-      )
+    LevelSelection::declare(Command::new(self.operation()).about("Command to print information about a compiled level"))
   }
 
   /// Print information about a compiled level.
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
-    let path: &PathBuf = matches
-      .get_one::<_>("path")
-      .expect("Expected valid path to be provided");
-
+    let selection: LevelSelection = LevelSelection::of(matches)?;
     let output: OutputOptions = context.get_output().clone();
 
-    xrf_output::info!(output, "Read compiled level {}", format_path(path));
+    // The mount outlives the assets that borrow from it, so it is taken before the level is opened.
+    let vfs: Option<XrayVfs> = selection.mount()?;
+    let scope: XrayLookupScope = XrayLookupScope::all();
+    let assets: LevelAssets = selection.open(vfs.as_ref(), &scope)?;
 
-    let level: LevelFile = LevelFile::read_from_path::<XRayByteOrder, _>(&path.join(Self::LEVEL_FILE))?;
-    let visuals: Option<LevelVisualsChunk> =
-      LevelFile::read_visuals_from_path::<XRayByteOrder, _>(&path.join(Self::LEVEL_FILE))?;
+    xrf_output::info!(output, "Read compiled level {}", assets.describe());
 
-    let geometry: Option<LevelGeomFile> = Self::read_geometry(path, Self::GEOMETRY_FILE, &output)?;
-    let detail_geometry: Option<LevelGeomFile> = Self::read_geometry(path, Self::DETAIL_GEOMETRY_FILE, &output)?;
+    let bundle: Vec<u8> = assets.read(Self::LEVEL_FILE)?.ok_or_else(|| {
+      xrf_error::XrfError::new_not_found_error(format!(
+        "Level bundle was not found: {}",
+        assets.describe_file(Self::LEVEL_FILE)
+      ))
+    })?;
+
+    let level: LevelFile = LevelFile::read_from_bytes::<XRayByteOrder>(bundle.clone())?;
+    let visuals: Option<LevelVisualsChunk> = LevelFile::read_visuals_from_bytes::<XRayByteOrder>(bundle)?;
+
+    let geometry: Option<LevelGeomFile> = Self::read_geometry(&assets, Self::GEOMETRY_FILE, &output)?;
+    let detail_geometry: Option<LevelGeomFile> = Self::read_geometry(&assets, Self::DETAIL_GEOMETRY_FILE, &output)?;
 
     xrf_output::info!(
       output,
       "Built by xrLC version {}, quality {}",
       level.header.xrlc_version,
       level.header.xrlc_quality
+    );
+
+    xrf_output::info!(
+      output,
+      "{} sectors, {} portals, {} static lights{}",
+      level.sectors.as_ref().map_or(0, |it| it.sectors.len()),
+      level.portals.as_ref().map_or(0, |it| it.portals.len()),
+      level.lights.as_ref().map_or(0, |it| it.lights.len()),
+      match level.lights.as_ref().and_then(|it| it.get_sun()) {
+        Some(_) => ", one of them the sun",
+        None => "",
+      }
     );
 
     match &level.shaders {
@@ -114,15 +125,13 @@ impl GenericCommand for InfoCommand {
 
 impl InfoCommand {
   /// Read one render geometry file of a level, or `None` when the level ships without it.
-  fn read_geometry(path: &Path, name: &str, output: &OutputOptions) -> CommandResult<Option<LevelGeomFile>> {
-    let path: PathBuf = path.join(name);
-
-    if !path.is_file() {
+  fn read_geometry(assets: &LevelAssets, name: &str, output: &OutputOptions) -> CommandResult<Option<LevelGeomFile>> {
+    let Some(bytes) = assets.read(name)? else {
       xrf_output::verbose!(output, "No {} beside the level", name);
 
       return Ok(None);
-    }
+    };
 
-    Ok(Some(LevelGeomFile::read_from_path::<XRayByteOrder, _>(&path)?))
+    Ok(Some(LevelGeomFile::read_from_bytes::<XRayByteOrder>(bytes)?))
   }
 }
