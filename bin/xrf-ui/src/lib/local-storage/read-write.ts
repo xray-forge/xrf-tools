@@ -43,11 +43,7 @@ export function setLocalStorageValue(key: string, value: Nullable<string>): void
  * @returns The parsed value, or `null` when storage is unavailable or the key is absent.
  */
 export function parseLocalStorageValue(key: string): unknown {
-  if (!window.localStorage) {
-    return null;
-  }
-
-  const raw: Nullable<string> = window.localStorage.getItem(key) ?? null;
+  const raw: Nullable<string> = getLocalStorageValue(key);
 
   return raw === null ? null : JSON.parse(raw);
 }
