@@ -18,7 +18,7 @@ export const LEVEL_VIEWER_APPLICATION: IApplicationDescriptor = createApplicatio
     id: EApplicationId.LEVEL_VIEWER,
     label: "Level viewer",
     path: "/level-viewer",
-    status: EApplicationStatus.PLANNED,
+    status: EApplicationStatus.READY,
   },
   {
     load: () => import("./runtime"),
