@@ -3,6 +3,7 @@ import { BoundAction, Computed, Observable } from "@wirestate/mobx";
 
 import { IKeybindCommand } from "@/core/commands";
 import { ROOT_KEYBIND_COMMANDS } from "@/core/commands/root-commands";
+import { parseChord } from "@/core/keybinds/lib/chord";
 import { buildKeymap, IKeymap } from "@/core/keybinds/lib/keymap";
 import { LAUNCHER_KEYBIND_COMMANDS } from "@/core/launcher/commands";
 import { IApplicationDescriptor } from "@/core/routing/application";
@@ -43,11 +44,23 @@ export class KeymapService {
     const usable: Record<string, ReadonlyArray<string>> = {};
 
     for (const [id, chords] of Object.entries(stored as Record<string, unknown>)) {
-      if (Array.isArray(chords) && chords.every((chord: unknown) => typeof chord === "string")) {
-        usable[id] = chords as Array<string>;
-      } else {
+      if (!Array.isArray(chords) || !chords.every((chord: unknown) => typeof chord === "string")) {
         Logger.warn("Discarding unusable keybind override:", id);
+
+        continue;
       }
+
+      try {
+        for (const chord of chords) {
+          parseChord(chord);
+        }
+      } catch (error: unknown) {
+        Logger.warn("Discarding unusable keybind override:", id, error);
+
+        continue;
+      }
+
+      usable[id] = chords;
     }
 
     return usable;

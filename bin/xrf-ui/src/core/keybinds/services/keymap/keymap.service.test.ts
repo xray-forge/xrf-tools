@@ -55,6 +55,34 @@ describe("KeymapService", () => {
     expect(service.getChords(RELOAD)).toEqual(["mod+r"]);
   });
 
+  it("discards an override containing an invalid chord without losing a valid neighbor", () => {
+    window.localStorage.setItem(
+      KEYBINDS_STORAGE_KEY,
+      JSON.stringify({
+        [FOCUS_SEARCH_KEYBIND_COMMAND.id]: ["mod+j", "mod"],
+        [RELOAD.id]: ["mod+r"],
+      })
+    );
+
+    const { service } = mockInjectedService(KeymapService);
+
+    expect(service.getChords(FOCUS_SEARCH_KEYBIND_COMMAND)).toEqual(FOCUS_SEARCH_KEYBIND_COMMAND.chords);
+    expect(service.getChords(RELOAD)).toEqual(["mod+r"]);
+    expect(() => service.keymap).not.toThrow();
+  });
+
+  it("keeps an empty stored override as a disabled command", () => {
+    window.localStorage.setItem(KEYBINDS_STORAGE_KEY, JSON.stringify({ [FOCUS_SEARCH_KEYBIND_COMMAND.id]: [] }));
+
+    const { service } = mockInjectedService(KeymapService);
+    const keymap: IKeymap = service.keymap;
+
+    expect(service.getChords(FOCUS_SEARCH_KEYBIND_COMMAND)).toEqual([]);
+    expect(
+      toIds([...keymap.anywhere, ...keymap.outsideTextEntry].map((binding: IKeybinding) => binding.command))
+    ).not.toContain(FOCUS_SEARCH_KEYBIND_COMMAND.id);
+  });
+
   it("falls back to declarations when the whole map is unreadable", () => {
     window.localStorage.setItem(KEYBINDS_STORAGE_KEY, "{ not json");
 
