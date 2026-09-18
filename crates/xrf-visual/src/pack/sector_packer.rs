@@ -50,22 +50,14 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
     let mut packed: BTreeMap<VertexRange, u32> = BTreeMap::new();
     let mut groups: BTreeMap<u16, (Vec<u32>, Vec<u32>)> = BTreeMap::new();
     let mut skipped: Vec<SectorSkip> = Vec::new();
-    let mut shared_ranges: u32 = 0;
-    let mut unshared_vertex_count: u32 = 0;
 
     for drawable in &composition.drawables {
       let Some((visual, container)) = Self::get_drawable(self.visuals, *drawable) else {
         continue;
       };
 
-      unshared_vertex_count = unshared_vertex_count.saturating_add(container.vertex_count);
-
       let base: u32 = match self.pack_range::<T>(container, &mut arrays, &mut packed) {
-        Ok((base, reused)) => {
-          shared_ranges += u32::from(reused);
-
-          base
-        }
+        Ok(base) => base,
         Err(error) => {
           skipped.push(Self::skip(*drawable, &error));
 
@@ -84,7 +76,7 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
       }
     }
 
-    self.build(sector, arrays, groups, skipped, shared_ranges, unshared_vertex_count)
+    self.build(sector, arrays, groups, skipped)
   }
 
   /// What every declaration in the sector together carries, which decides the arrays it packs.
@@ -123,13 +115,13 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
     visual.geometry.as_ref().map(|container| (visual, container))
   }
 
-  /// Packs the vertex range a drawable names, unless another drawable already did, and says which happened.
+  /// Packs the vertex range a drawable names, unless another drawable already did, and says where it sits.
   fn pack_range<T: ByteOrder>(
     &mut self,
     container: &OgfGeometryContainerChunk,
     arrays: &mut SectorVertexArrays,
     packed: &mut BTreeMap<VertexRange, u32>,
-  ) -> XrfResult<(u32, bool)> {
+  ) -> XrfResult<u32> {
     let range: VertexRange = (
       container.vertex_buffer_id,
       container.vertex_base,
@@ -137,7 +129,7 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
     );
 
     if let Some(base) = packed.get(&range) {
-      return Ok((*base, true));
+      return Ok(*base);
     }
 
     let vertices: Vec<LevelVertex> = self.source.read_vertices::<T>(
@@ -153,7 +145,7 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
 
     packed.insert(range, base);
 
-    Ok((base, false))
+    Ok(base)
   }
 
   /// Reads a drawable's indices and moves them onto the vertices it was packed at.
@@ -187,8 +179,6 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
     arrays: SectorVertexArrays,
     groups: BTreeMap<u16, (Vec<u32>, Vec<u32>)>,
     skipped: Vec<SectorSkip>,
-    shared_ranges: u32,
-    unshared_vertex_count: u32,
   ) -> SectorPackage {
     let mut builder: VisualBufferBuilder = VisualBufferBuilder::new();
     let vertices: SectorVertexSections = arrays.write_into(&mut builder);
@@ -227,11 +217,9 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
         positions: vertices.positions,
         sections,
         sector,
-        shared_ranges,
         skipped,
         tangents: vertices.tangents,
         texture_coordinates: vertices.texture_coordinates,
-        unshared_vertex_count,
         vertex_count: arrays.count(),
       },
       buffer: builder.into_buffer(),

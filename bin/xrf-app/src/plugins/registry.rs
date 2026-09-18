@@ -10,6 +10,7 @@ use crate::plugins::dialogs::plugin::DialogsPlugin;
 use crate::plugins::exports::plugin::ExportsPlugin;
 use crate::plugins::gamedata::plugin::GamedataPlugin;
 use crate::plugins::jobs::plugin::JobsPlugin;
+use crate::plugins::levels::plugin::LevelsPlugin;
 use crate::plugins::spawn::plugin::SpawnPlugin;
 use crate::plugins::sprite_equipment::plugin::SpriteEquipmentPlugin;
 use crate::plugins::system::plugin::SystemPlugin;
@@ -27,6 +28,7 @@ pub(crate) fn domain_plugins<R: Runtime>() -> Vec<TauriPlugin<R>> {
     ExportsPlugin::init(),
     GamedataPlugin::init(),
     JobsPlugin::init(),
+    LevelsPlugin::init(),
     SpawnPlugin::init(),
     SpriteEquipmentPlugin::init(),
     SystemPlugin::init(),

@@ -41,6 +41,11 @@ export class MockVisualBuffer {
     return this.push(bytes);
   }
 
+  /** Thirty-two bit indices, which is what a packed sector carries rather than a model's sixteen. */
+  public pushIndices32(values: Array<number>): VisualSection {
+    return this.push(new Uint8Array(new Uint32Array(values).buffer));
+  }
+
   public toArrayBuffer(): ArrayBuffer {
     // Allocated as an `ArrayBuffer` and written through a view, rather than taking `.buffer` off a typed
     // array, because that property is `ArrayBufferLike` and could be shared memory.

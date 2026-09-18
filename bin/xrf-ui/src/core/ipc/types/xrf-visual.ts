@@ -3,6 +3,68 @@
 import { Vector3d } from "@/core/ipc/types/xrf-math";
 import { XrayResolution } from "@/core/ipc/types/xrf-vfs";
 
+/** Everything about a packed sector except the bytes themselves. */
+export type SectorDescription = {
+  /** The sector packed, by its index in the sectors chunk. */
+  sector: number;
+  vertexCount: number;
+  indexCount: number;
+  positions: VisualSection;
+  normals: VisualSection | null;
+  /** The authored tangent of every vertex, mirrored with the normal. */
+  tangents: VisualSection | null;
+  /** The authored binormal of every vertex, mirrored with the normal. */
+  binormals: VisualSection | null;
+  textureCoordinates: VisualSection | null;
+  /** The lightmap coordinate of every vertex, for a sector xrLC lit from lightmaps. */
+  lightmapCoordinates: VisualSection | null;
+  /** The baked vertex colour of every vertex, as three floats in zero to one. */
+  colors: VisualSection | null;
+  /** The hemisphere term of every vertex, which rides in the normal and is present with it. */
+  hemi: VisualSection | null;
+  /** Every index of the sector, as 32-bit elements, laid out section by section. */
+  indices: VisualSection;
+  sections: Array<SectorSection>;
+  /** Drawables that produced no geometry, which is none for every level measured. */
+  skipped: Array<SectorSkip>;
+  /** Extent the packed vertices span, absent when the sector packed none. */
+  bounds: VisualBounds | null;
+  bufferLength: number;
+};
+
+/** What one sector is and where it sits, before any of its geometry is read. */
+export type SectorOutline = {
+  /** The sector, by its index in the sectors chunk. */
+  sector: number;
+  /** The visual the sector names, which is the root its drawables are reached through. */
+  root: number;
+  /** Drawables the root reaches, which is what packing the sector would pack. */
+  drawables: number;
+  /** Extent the sector declares, absent when it reaches no drawable. */
+  bounds: VisualBounds | null;
+};
+
+/** One draw of a packed sector: the indices to draw, and the surface they are drawn with. */
+export type SectorSection = {
+  /** Entry of the level's shader table every drawable in this section is dressed by. */
+  shaderId: number;
+  /** The engine shader that entry names, absent when the level carries no table. */
+  shaderName: string | null;
+  /** The texture that entry names, absent for the same reason. */
+  textureName: string | null;
+  /** Drawables packed into this section, by their index in the visuals run. */
+  drawables: Array<number>;
+  draw: VisualDrawRange;
+};
+
+/** A drawable of a sector that produced no geometry, and why. */
+export type SectorSkip = {
+  /** The visual left out, by its index in the visuals run. */
+  drawable: number;
+  cause: VisualSkipCause;
+  reason: string;
+};
+
 /** One bone of a visual's skeleton, as a name and the name of its parent. */
 export type VisualBone = {
   name: string;

@@ -16,7 +16,7 @@ import {
   TranslationVerifyLanguageSummary,
 } from "@/core/ipc/types/xrf-translation";
 import { XrayAsset, XrayAssetContainer, XrayPathCollision, XrayRoots, XraySourceKind } from "@/core/ipc/types/xrf-vfs";
-import { VisualDependencies, VisualDescription } from "@/core/ipc/types/xrf-visual";
+import { SectorOutline, VisualBounds, VisualDependencies, VisualDescription } from "@/core/ipc/types/xrf-visual";
 
 /** Every `kind` the `ArchiveAnimationBehavior` union is told apart by, so a switch or a comparison names one. */
 export enum EArchiveAnimationBehavior {
@@ -1641,6 +1641,21 @@ export enum EJobKind {
 /** Every `EJobKind` as the spelling it crosses IPC as, for a value no member has narrowed. */
 export type JobKind = `${EJobKind}`;
 
+/** Every `kind` the `LevelSource` union is told apart by, so a switch or a comparison names one. */
+export enum ELevelSource {
+  /** A compiled level directory on disk, named by its filesystem path. */
+  DIRECTORY = "directory",
+  /** A level of the mounted roots, named by its engine identity, `levels\<name>`. */
+  ASSET = "asset",
+}
+
+/** Where a compiled level is read from. */
+export type LevelSource =
+  /** A compiled level directory on disk, named by its filesystem path. */
+  | { kind: "directory"; path: string }
+  /** A level of the mounted roots, named by its engine identity, `levels\<name>`. */
+  | { kind: "asset"; logicalPath: string };
+
 /** What the machine as a whole is using. */
 export type MachineUsage = {
   /** Physical memory in use across every process. */
@@ -1701,6 +1716,22 @@ export type RuntimeSnapshot = {
   descendants: DescendantUsage;
   /** What the whole machine is using, for reading the two above against. */
   machine: MachineUsage;
+};
+
+/** What the viewer is showing, paired with where it came from. */
+export type SelectedLevelDescription = {
+  source: LevelSource;
+  xrlcVersion: number;
+  xrlcQuality: number;
+  visuals: number;
+  drawables: number;
+  shaderEntries: number;
+  portals: number;
+  lights: number;
+  hasSun: boolean;
+  sectors: Array<SectorOutline>;
+  /** Extent every sector together covers, which is where a camera is framed from. */
+  bounds: VisualBounds | null;
 };
 
 /** What the viewer is showing, paired with where it came from. */

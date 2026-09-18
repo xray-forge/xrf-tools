@@ -37,6 +37,7 @@
     "exports:default",
     "gamedata:default",
     "jobs:default",
+    "levels:default",
     "spawn:default",
     "sprite-equipment:default",
     "system:default",

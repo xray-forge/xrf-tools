@@ -83,6 +83,15 @@ macro_rules! for_each_tauri_command_domain {
         cancel => crate::plugins::jobs::commands::cancel::jobs_cancel,
         list => crate::plugins::jobs::commands::list::jobs_list,
       }
+      levels => "levels" {
+        close_level => crate::plugins::levels::commands::close_level::levels_close_level,
+        get_level => crate::plugins::levels::commands::get_level::levels_get_level,
+        open_level => crate::plugins::levels::commands::open_level::levels_open_level,
+        open_sector => crate::plugins::levels::commands::open_sector::levels_open_sector,
+      }
+      @raw {
+        read_sector(sessionId: "SessionId", sectorId: "SessionId") => crate::plugins::levels::commands::read_sector::levels_read_sector,
+      }
       spawn => "spawn" {
         save_unpacked_directory => crate::plugins::spawn::commands::save_unpacked_directory::spawn_save_unpacked_directory,
         close_file => crate::plugins::spawn::commands::close_file::spawn_close_file,

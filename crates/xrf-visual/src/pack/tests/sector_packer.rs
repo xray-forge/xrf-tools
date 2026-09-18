@@ -101,11 +101,9 @@ fn test_packs_a_range_two_drawables_share_only_once() {
 
   let package: SectorPackage = SectorPacker::new(&run, None, &mut source).pack::<XRayByteOrder>(0, &composition(&run));
 
-  assert_eq!(package.description.vertex_count, 2, "one range, packed once");
-  assert_eq!(package.description.shared_ranges, 1);
   assert_eq!(
-    package.description.unshared_vertex_count, 4,
-    "what the sector would hold if the range were packed for each drawable that names it"
+    package.description.vertex_count, 2,
+    "one range, packed once rather than once for each of the two drawables that name it"
   );
   assert_eq!(package.description.index_count, 6, "both drawables still draw");
 }

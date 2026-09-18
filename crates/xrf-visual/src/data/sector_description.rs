@@ -34,10 +34,5 @@ pub struct SectorDescription {
   pub skipped: Vec<SectorSkip>,
   /// Extent the packed vertices span, absent when the sector packed none.
   pub bounds: Option<VisualBounds>,
-  /// Vertex ranges more than one drawable named, and so packed once rather than once each.
-  pub shared_ranges: u32,
-  /// Vertices the sector would hold if every drawable brought its own copy of the range it names, which is what the
-  /// sharing saves.
-  pub unshared_vertex_count: u32,
   pub buffer_length: u32,
 }
