@@ -41,10 +41,6 @@ export function PanelResizer({ side, width, onResize }: IPanelResizerProps): Rea
     [onResize, side]
   );
 
-  const onPointerUp = useCallback((event: PointerEvent<HTMLDivElement>) => {
-    event.currentTarget.releasePointerCapture(event.pointerId);
-  }, []);
-
   return (
     <div
       aria-hidden={true}
@@ -55,7 +51,6 @@ export function PanelResizer({ side, width, onResize }: IPanelResizerProps): Rea
       )}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
-      onPointerUp={onPointerUp}
     />
   );
 }
