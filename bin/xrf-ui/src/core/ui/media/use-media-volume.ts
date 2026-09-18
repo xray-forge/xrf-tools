@@ -15,9 +15,6 @@ export interface IMediaVolume {
 /**
  * Remembers how loud playback should be, across selections and across restarts.
  *
- * Persisted rather than held in component state because the preview panel unmounts between selections - it swaps itself
- * for a progress indicator while the next file loads - so anything the player owned would reset on every click.
- *
  * @returns The stored level and a setter that persists it.
  */
 export function useMediaVolume(): IMediaVolume {
@@ -36,14 +33,11 @@ export function useMediaVolume(): IMediaVolume {
 /**
  * Reads the stored level, falling back to full volume.
  *
- * Anything unparseable or out of range is treated as absent rather than corrected into silence: a zero recovered from a
- * bad value would look like broken playback and send the user hunting for a mute button.
- *
  * @returns The stored level, or the default when there is nothing usable to read.
  */
 function readStoredVolume(): number {
   const raw: Nullable<string> = getLocalStorageValue(MEDIA_VOLUME_STORAGE_KEY);
-  const parsed: number = raw === null ? Number.NaN : Number.parseFloat(raw);
+  const parsed: number = raw?.trim() ? Number(raw) : Number.NaN;
 
   return Number.isFinite(parsed) && parsed >= 0 && parsed <= 1 ? parsed : DEFAULT_VOLUME;
 }

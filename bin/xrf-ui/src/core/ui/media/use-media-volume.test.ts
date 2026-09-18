@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { act, renderHook } from "@testing-library/react";
 
+import { MEDIA_VOLUME_STORAGE_KEY } from "@/core/storage";
 import { IMediaVolume, useMediaVolume } from "@/core/ui/media/use-media-volume";
 
 describe("useMediaVolume", () => {
@@ -49,5 +50,17 @@ describe("useMediaVolume", () => {
 
       expect(volume.value).toBe(1);
     }
+  });
+
+  it("rejects stored text with a numeric prefix and trailing garbage", () => {
+    window.localStorage.setItem(MEDIA_VOLUME_STORAGE_KEY, "0junk");
+
+    expect(renderHook(() => useMediaVolume()).result.current.value).toBe(1);
+  });
+
+  it("treats whitespace-only storage as absent rather than zero", () => {
+    window.localStorage.setItem(MEDIA_VOLUME_STORAGE_KEY, " \t\n ");
+
+    expect(renderHook(() => useMediaVolume()).result.current.value).toBe(1);
   });
 });
