@@ -90,20 +90,42 @@ describe("LevelLoadService", () => {
     armLevel(level, description, buffer);
 
     await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS);
+
+    // Without the floor, so this is about the distances rather than about never drawing nothing.
+    service.residency = { ...service.residency, minSectors: 0 };
+
     await service.stream(ORIGIN);
 
     expect(Array.from(service.sectors.keys())).toEqual([0]);
     expect(service.sectors.get(0)?.geometry.getAttribute("position").count).toBe(3);
   });
 
-  // The geometry is device memory, so dropping the reference is not enough: leaving the level behind has to dispose it.
-  it("disposes the geometry of a sector the camera has left", async () => {
-    const { level, description, buffer } = mockStreamable([outlineAt(0, 5)]);
+  // Framing a level puts the camera outside it, so a policy that loaded only what was within a fixed distance opened
+  // every level larger than that distance on an empty screen. That is what shipped, and this is the guard.
+  it("draws something even when the camera is outside the whole level", async () => {
+    const { level, description, buffer } = mockStreamable([outlineAt(0, 100_000), outlineAt(1, 200_000)]);
     const { service } = mockInjectedService(LevelLoadService);
 
     armLevel(level, description, buffer);
 
     await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS);
+    await service.stream(ORIGIN);
+
+    expect(service.sectors.size).toBeGreaterThan(0);
+    expect(Array.from(service.sectors.keys())).toContain(0);
+  });
+
+  // The geometry is device memory, so dropping the reference is not enough: what the camera leaves has to be disposed.
+  it("disposes the geometry of a sector the camera has left", async () => {
+    const { level, description, buffer } = mockStreamable([outlineAt(0, 0), outlineAt(1, 20_000)]);
+    const { service } = mockInjectedService(LevelLoadService);
+
+    armLevel(level, description, buffer);
+
+    await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS);
+
+    service.residency = { ...service.residency, maxSectors: 1, minSectors: 1 };
+
     await service.stream(ORIGIN);
 
     const geometry = service.sectors.get(0)?.geometry;
@@ -114,9 +136,10 @@ describe("LevelLoadService", () => {
       disposed = true;
     });
 
-    await service.stream({ x: 10_000, y: 0, z: 0 });
+    // Flown to the far sector, which is now the nearest and takes the only place in the budget.
+    await service.stream({ x: 20_000, y: 0, z: 0 });
 
-    expect(service.sectors.size).toBe(0);
+    expect(Array.from(service.sectors.keys())).toEqual([1]);
     expect(disposed).toBe(true);
   });
 

@@ -8,7 +8,8 @@ use xrf_level::{
   LevelFile, LevelGeomSource, LevelPortal, LevelSector, LevelSectorComposition, LevelShaderEntry, LevelVertex,
   LevelVisual, LevelVisualsChunk,
 };
-use xrf_ogf::OgfGeometryContainerChunk;
+use xrf_math::{Matrix4x4, Vector3d};
+use xrf_ogf::{OgfBox, OgfGeometryContainerChunk};
 use xrf_report::{Finding, Report, RuleId};
 use xrf_spawn::XRayByteOrder;
 
@@ -26,6 +27,9 @@ pub struct LevelVerifier<'a> {
 impl<'a> LevelVerifier<'a> {
   /// The bundle every compiled level has.
   const LEVEL_FILE: &'static str = "level";
+
+  /// Slack allowed when a decoded position sits outside its declared box, which quantization alone can cost it.
+  const BOUNDS_TOLERANCE: f32 = 0.05;
 
   /// The render geometry a visual's ordinary container addresses.
   const GEOMETRY_FILE: &'static str = "level.geom";
@@ -53,12 +57,12 @@ impl<'a> LevelVerifier<'a> {
 
         if let (Some(container), Some(source)) = (&visual.geometry, geometry.as_mut()) {
           state.census.record_drawable(container);
-          self.verify_container(index, Self::GEOMETRY_FILE, container, source, &mut state);
+          self.verify_container(index, Self::GEOMETRY_FILE, container, Some(visual), source, &mut state);
         }
 
         if let (Some(container), Some(source)) = (&visual.fastpath, detail.as_mut()) {
           state.census.fastpath_visuals += 1;
-          self.verify_container(index, Self::DETAIL_GEOMETRY_FILE, container, source, &mut state);
+          self.verify_container(index, Self::DETAIL_GEOMETRY_FILE, container, None, source, &mut state);
         }
 
         self.verify_shader(index, visual, level.as_ref(), &mut state.ranges);
@@ -121,11 +125,13 @@ impl<'a> LevelVerifier<'a> {
   }
 
   /// Reads one visual's range the way the renderer addresses it, and reports what could not be read.
+  #[allow(clippy::too_many_arguments)]
   fn verify_container<D: ChunkDataSource>(
     &self,
     index: usize,
     file: &str,
     container: &OgfGeometryContainerChunk,
+    declared: Option<&LevelVisual>,
     source: &mut LevelGeomSource<D>,
     state: &mut LevelVerificationState,
   ) {
@@ -180,7 +186,65 @@ impl<'a> LevelVerifier<'a> {
       }
     };
 
+    if let Some(visual) = declared {
+      self.verify_declared_bounds(index, file, visual, &vertices, state);
+    }
+
     self.verify_geometry(index, file, container, &vertices, &indices, has_normal, state);
+  }
+
+  /// Judges whether a visual sits where its own header says it does.
+  fn verify_declared_bounds(
+    &self,
+    index: usize,
+    file: &str,
+    visual: &LevelVisual,
+    vertices: &[LevelVertex],
+    state: &mut LevelVerificationState,
+  ) {
+    let declared: &OgfBox = &visual.header.bounding_box;
+
+    // A box of no extent declares nothing rather than contradicting the geometry. Every visual of every shipped level
+    // declares a real one, so this only skips a hand-built fixture that never set one.
+    if declared.min == declared.max {
+      return;
+    }
+
+    let placement: Option<&Matrix4x4> = visual.get_placement();
+
+    let stray: Option<Vector3d> = vertices
+      .iter()
+      .map(|vertex| match placement {
+        Some(transform) => transform.transform_point(&vertex.position),
+        None => vertex.position.clone(),
+      })
+      .find(|position| {
+        position.x < declared.min.x - Self::BOUNDS_TOLERANCE
+          || position.y < declared.min.y - Self::BOUNDS_TOLERANCE
+          || position.z < declared.min.z - Self::BOUNDS_TOLERANCE
+          || position.x > declared.max.x + Self::BOUNDS_TOLERANCE
+          || position.y > declared.max.y + Self::BOUNDS_TOLERANCE
+          || position.z > declared.max.z + Self::BOUNDS_TOLERANCE
+      });
+
+    if let Some(position) = stray {
+      state.geometry.push(self.finding(
+        "level.visuals.bounds.mismatch",
+        file,
+        format!(
+          "Visual {index} carries a vertex at ({:.1}, {:.1}, {:.1}), outside the ({:.1}, {:.1}, {:.1}) to ({:.1}, {:.1}, {:.1}) its header declares",
+          position.x,
+          position.y,
+          position.z,
+          declared.min.x,
+          declared.min.y,
+          declared.min.z,
+          declared.max.x,
+          declared.max.y,
+          declared.max.z
+        ),
+      ));
+    }
   }
 
   /// Judges what a decoded range holds, once it is known to be readable.

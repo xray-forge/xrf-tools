@@ -18,12 +18,7 @@ export const levelsCommands = {
   closeLevel: (sessionIds: Array<SessionId>) => __TAURI_INVOKE<null>("plugin:levels|close_level", { sessionIds }),
   /** Restore the committed level descriptor without reading the level again. */
   getLevel: () => __TAURI_INVOKE<SessionRestore<SelectedLevelDescription>>("plugin:levels|get_level"),
-  /**
-   * Every compiled level the mounted roots hold, loose or archived alike.
-   *
-   * A name is a level when it holds a `level` file. A directory of only lightmaps is not one, and an installation has
-   * several of those.
-   */
+  /** Every compiled level the mounted roots hold, loose or archived alike. */
   listLevels: (roots: XrayRoots) => __TAURI_INVOKE<Array<LevelEntry>>("plugin:levels|list_levels", { roots }),
   /** Select a compiled level and report what it is built out of, without reading any of its geometry. */
   openLevel: (sessionId: SessionId, source: LevelSource, roots: XrayRoots) =>

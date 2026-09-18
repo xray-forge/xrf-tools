@@ -1,8 +1,11 @@
 use byteorder::ByteOrder;
 use xrf_chunk::{ChunkDataSource, ChunkReader, find_optional_chunk_by_id, find_required_chunk_by_id};
 use xrf_error::XrfResult;
+use xrf_math::Matrix4x4;
 
-use xrf_ogf::{OgfChildrenLinkChunk, OgfGeometryContainerChunk, OgfHeaderChunk, OgfTextureChunk};
+use xrf_ogf::{
+  OgfChildrenLinkChunk, OgfGeometryContainerChunk, OgfHeaderChunk, OgfTextureChunk, OgfTreeDefinitionChunk,
+};
 
 /// One visual of a compiled level, as `fsL_VISUALS` stores it.
 #[derive(Debug)]
@@ -17,6 +20,8 @@ pub struct LevelVisual {
   pub fastpath: Option<OgfGeometryContainerChunk>,
   /// Visuals this one composes, by their index in the run, for a hierarchy visual.
   pub children: Vec<u32>,
+  /// Where a tree stands and how it is lit, absent for every visual that is not one.
+  pub tree: Option<OgfTreeDefinitionChunk>,
 }
 
 impl LevelVisual {
@@ -44,12 +49,24 @@ impl LevelVisual {
         None => None,
       },
       fastpath: Self::read_fastpath::<T, D>(&chunks)?,
+      tree: match find_optional_chunk_by_id(&chunks, OgfTreeDefinitionChunk::CHUNK_ID) {
+        Some(mut chunk) => Some(chunk.read_xr::<T, _>()?),
+        None => None,
+      },
     })
   }
 
   /// Whether the visual draws from the level's shared buffers at all.
   pub const fn is_drawable(&self) -> bool {
     self.geometry.is_some()
+  }
+
+  /// The transform placing this visual in the level, for one stored in its own space.
+  pub const fn get_placement(&self) -> Option<&Matrix4x4> {
+    match &self.tree {
+      Some(definition) => Some(&definition.transform),
+      None => None,
+    }
   }
 
   /// `OGF_FASTPATH` wraps a geometry container rather than being one, so its record is one level deeper than the

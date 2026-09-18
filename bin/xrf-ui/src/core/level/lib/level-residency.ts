@@ -12,6 +12,8 @@ export interface ILevelPoint {
 export interface ILevelResidencyOptions {
   /** Sectors held at once, whatever the distances say. */
   maxSectors: number;
+  /** Nearest sectors held whatever the distances say. */
+  minSectors: number;
   /** A sector nearer than this is loaded. */
   loadDistance: number;
   /** A sector already held is kept until it passes this, which has to be the larger of the two. */
@@ -39,7 +41,25 @@ export const DEFAULT_LEVEL_RESIDENCY: ILevelResidencyOptions = {
   keepDistance: 400,
   loadDistance: 250,
   maxSectors: 24,
+  minSectors: 4,
 };
+
+const LOAD_FRACTION: number = 0.75;
+const KEEP_FRACTION: number = 1.25;
+
+/**
+ * Residency scaled to the level it is for.
+ *
+ * @param radius - How far the level reaches, from the extent its sectors declare.
+ * @returns Residency options for a level that size.
+ */
+export function createLevelResidency(radius: number): ILevelResidencyOptions {
+  return {
+    ...DEFAULT_LEVEL_RESIDENCY,
+    keepDistance: Math.max(DEFAULT_LEVEL_RESIDENCY.keepDistance, radius * KEEP_FRACTION),
+    loadDistance: Math.max(DEFAULT_LEVEL_RESIDENCY.loadDistance, radius * LOAD_FRACTION),
+  };
+}
 
 /**
  * Distance from a point to a sector's enclosing sphere, which is zero for a camera inside it.
@@ -79,6 +99,8 @@ export function planLevelResidency(
 ): ILevelResidencyPlan {
   const ranked: Array<IRankedSector> = [];
 
+  let within: number = 0;
+
   for (const outline of outlines) {
     const distance: Nullable<number> = getSectorDistance(outline, point);
 
@@ -90,8 +112,10 @@ export function planLevelResidency(
     const isHeld: boolean = held.has(outline.sector);
     const limit: number = isHeld ? options.keepDistance : options.loadDistance;
 
+    ranked.push({ distance, held: isHeld, sector: outline.sector });
+
     if (distance <= limit) {
-      ranked.push({ distance, held: isHeld, sector: outline.sector });
+      within += 1;
     }
   }
 
@@ -100,7 +124,10 @@ export function planLevelResidency(
     return left.distance - right.distance || Number(right.held) - Number(left.held);
   });
 
-  const resident: Array<number> = ranked.slice(0, Math.max(0, options.maxSectors)).map((it) => it.sector);
+  // The distances decide how much is worth holding; the two counts decide how much is held regardless. A camera
+  // outside the whole level still draws its nearest sectors rather than nothing.
+  const take: number = Math.min(Math.max(within, options.minSectors), Math.max(0, options.maxSectors));
+  const resident: Array<number> = ranked.slice(0, take).map((it) => it.sector);
   const wanted: Set<number> = new Set(resident);
 
   return {

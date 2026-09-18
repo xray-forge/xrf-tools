@@ -7,6 +7,7 @@ use xrf_level::{
   LevelGeomSource, LevelSectorComposition, LevelShaderEntry, LevelShadersChunk, LevelVertex, LevelVertexLayout,
   LevelVisual, LevelVisualsChunk,
 };
+use xrf_math::Matrix4x4;
 use xrf_ogf::OgfGeometryContainerChunk;
 
 use crate::data::sector_attributes::SectorAttributes;
@@ -56,7 +57,7 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
         continue;
       };
 
-      let base: u32 = match self.pack_range::<T>(container, &mut arrays, &mut packed) {
+      let base: u32 = match self.pack_range::<T>(container, visual.get_placement(), &mut arrays, &mut packed) {
         Ok(base) => base,
         Err(error) => {
           skipped.push(Self::skip(*drawable, &error));
@@ -119,6 +120,7 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
   fn pack_range<T: ByteOrder>(
     &mut self,
     container: &OgfGeometryContainerChunk,
+    placement: Option<&Matrix4x4>,
     arrays: &mut SectorVertexArrays,
     packed: &mut BTreeMap<VertexRange, u32>,
   ) -> XrfResult<u32> {
@@ -128,7 +130,11 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
       container.vertex_count,
     );
 
-    if let Some(base) = packed.get(&range) {
+    // Only a range already baked into the level is shared. A placed one is an instance: two trees name the same mesh
+    // and stand in different places, so packing it once would put both of them in one of the two.
+    if placement.is_none()
+      && let Some(base) = packed.get(&range)
+    {
       return Ok(*base);
     }
 
@@ -140,10 +146,12 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
     let base: u32 = arrays.count();
 
     for vertex in &vertices {
-      arrays.push(vertex);
+      arrays.push(vertex, placement);
     }
 
-    packed.insert(range, base);
+    if placement.is_none() {
+      packed.insert(range, base);
+    }
 
     Ok(base)
   }

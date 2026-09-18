@@ -10,6 +10,7 @@ import { LevelSource, SelectedLevelDescription, SessionSnapshot } from "@/core/i
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { SectorDescription } from "@/core/ipc/types/xrf-visual";
 import {
+  createLevelResidency,
   DEFAULT_LEVEL_RESIDENCY,
   ILevelPoint,
   ILevelResidencyOptions,
@@ -78,6 +79,7 @@ export class LevelLoadService {
 
       this.releaseSectors();
 
+      this.residency = createLevelResidency(selected.value.bounds?.boundingSphere.radius ?? 0);
       this.level = this.level.asReady({ selected });
 
       this.log.info(

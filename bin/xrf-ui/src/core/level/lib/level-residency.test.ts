@@ -3,10 +3,17 @@ import { describe, expect, it } from "@jest/globals";
 import { SectorOutline } from "@/core/ipc/types/xrf-visual";
 import { mockSectorOutline } from "@/fixtures/mocks/level.mocks";
 
-import { getSectorDistance, ILevelResidencyOptions, ILevelResidencyPlan, planLevelResidency } from "./level-residency";
+import {
+  createLevelResidency,
+  DEFAULT_LEVEL_RESIDENCY,
+  getSectorDistance,
+  ILevelResidencyOptions,
+  ILevelResidencyPlan,
+  planLevelResidency,
+} from "./level-residency";
 
 const ORIGIN = { x: 0, y: 0, z: 0 };
-const OPTIONS: ILevelResidencyOptions = { keepDistance: 20, loadDistance: 10, maxSectors: 2 };
+const OPTIONS: ILevelResidencyOptions = { keepDistance: 20, loadDistance: 10, maxSectors: 2, minSectors: 0 };
 
 /**
  * A sector sitting at one distance along x, with a unit sphere around it.
@@ -98,5 +105,54 @@ describe("level residency", () => {
     const plan: ILevelResidencyPlan = planLevelResidency([outlineAt(0, 1000)], ORIGIN, new Set(), OPTIONS);
 
     expect(plan).toEqual({ evict: [], load: [], resident: [] });
+  });
+});
+
+describe("level residency against a real level", () => {
+  it("loads something when the camera frames a level far larger than the default distance", () => {
+    const radius: number = 1008;
+    const framed = { x: 0, y: radius * 0.56, z: radius * 1.6 };
+    const outlines: Array<SectorOutline> = [outlineAt(0, 0), outlineAt(1, 200), outlineAt(2, -200)];
+
+    const fixed: ILevelResidencyPlan = planLevelResidency(outlines, framed, new Set(), DEFAULT_LEVEL_RESIDENCY);
+    const scaled: ILevelResidencyPlan = planLevelResidency(outlines, framed, new Set(), createLevelResidency(radius));
+
+    expect(fixed.load.length).toBeGreaterThan(0);
+    expect(scaled.load.length).toBeGreaterThan(0);
+  });
+
+  it("scales the distances to the level rather than holding them fixed", () => {
+    const large = createLevelResidency(1008);
+
+    expect(large.loadDistance).toBeGreaterThan(DEFAULT_LEVEL_RESIDENCY.loadDistance);
+    expect(large.keepDistance).toBeGreaterThan(large.loadDistance);
+  });
+
+  // A level small enough that a fraction of it is nothing keeps the defaults, which are already generous for it.
+  it("keeps the defaults as a floor for a small level", () => {
+    expect(createLevelResidency(14)).toEqual(DEFAULT_LEVEL_RESIDENCY);
+  });
+
+  // The floor is what makes a blank screen impossible: whatever the distances say, the nearest sectors are held.
+  it("holds the nearest sectors however far away the camera is", () => {
+    const plan: ILevelResidencyPlan = planLevelResidency(
+      [outlineAt(0, 100_000), outlineAt(1, 200_000)],
+      ORIGIN,
+      new Set(),
+      { ...OPTIONS, minSectors: 1 }
+    );
+
+    expect(plan.resident).toEqual([0]);
+  });
+
+  it("never holds more than the budget, whatever the floor asks for", () => {
+    const plan: ILevelResidencyPlan = planLevelResidency(
+      [outlineAt(0, 100_000), outlineAt(1, 200_000), outlineAt(2, 300_000)],
+      ORIGIN,
+      new Set(),
+      { ...OPTIONS, maxSectors: 2, minSectors: 9 }
+    );
+
+    expect(plan.resident).toEqual([0, 1]);
   });
 });

@@ -4,7 +4,7 @@ use xrf_chunk::XRayByteOrder;
 use xrf_level::{
   LevelFile, LevelGeomFile, LevelGeomSource, LevelGeomVertexElement, LevelShadersChunk, LevelVisualsChunk,
 };
-use xrf_ogf::{OgfChildrenLinkChunk, OgfGeometryContainerChunk, OgfHeaderChunk};
+use xrf_ogf::{OgfChildrenLinkChunk, OgfGeometryContainerChunk, OgfHeaderChunk, OgfTreeDefinitionChunk};
 
 /// One chunk as a file stores it: its identifier, its length, and its payload.
 pub(crate) fn chunk(id: u32, payload: &[u8]) -> Vec<u8> {
@@ -209,4 +209,29 @@ pub(crate) fn shaders(entries: &[&str]) -> LevelShadersChunk {
       .map(|entry| xrf_level::LevelShaderEntry::parse(entry))
       .collect(),
   }
+}
+
+/// A tree: the same range of the shared buffers, stood where its own transform puts it.
+pub(crate) fn tree(shader_id: u16, vertex_base: u32, vertex_count: u32, index_count: u32, at: f32) -> Vec<u8> {
+  let mut bytes: Vec<u8> = drawable_of_buffer(shader_id, 0, vertex_base, vertex_count, 0, index_count);
+  let mut definition: Vec<u8> = Vec::new();
+
+  // Row major, translation in the fourth row, as the engine stores one.
+  for value in [
+    1.0f32, 0.0, 0.0, 0.0, //
+    0.0, 1.0, 0.0, 0.0, //
+    0.0, 0.0, 1.0, 0.0, //
+    at, 0.0, 0.0, 1.0,
+  ] {
+    definition.extend_from_slice(&value.to_le_bytes());
+  }
+
+  // Scale and bias, five floats each, which packing does not read but the chunk carries.
+  for value in [0.0f32; 10] {
+    definition.extend_from_slice(&value.to_le_bytes());
+  }
+
+  bytes.extend(chunk(OgfTreeDefinitionChunk::CHUNK_ID, &definition));
+
+  bytes
 }
