@@ -8,7 +8,6 @@ import { Nullable } from "@/lib/types/general";
 export interface IPanelSelection {
   activePanel: Nullable<IEditorPanel>;
   activePanelId: Nullable<string>;
-  /** Shows a panel whether or not it is already the open one. */
   onOpenPanel: (id: string) => void;
   onTogglePanel: (id: string) => void;
 }
@@ -30,14 +29,11 @@ export function usePanelSelection(
 
   const [activeId, setActiveId] = useState<Nullable<string>>(null);
 
-  const defaultPanelId: Nullable<string> = panels.find((panel) => panel.isOpenByDefault !== false)?.id ?? null;
+  const selectedId: Nullable<string> = activeId ?? panels.find((panel) => panel.isOpenByDefault !== false)?.id ?? null;
+  const activePanel: Nullable<IEditorPanel> = panels.find((panel) => panel.id === selectedId) ?? null;
+  const activePanelId: Nullable<string> = activePanel?.id ?? null;
 
-  const resolvedPanelId: Nullable<string> =
-    activeId === null ? defaultPanelId : panels.some((panel) => panel.id === activeId) ? activeId : null;
-
-  const activePanel: Nullable<IEditorPanel> = panels.find((panel) => panel.id === resolvedPanelId) ?? null;
-
-  const select = useCallback(
+  const onOpenPanel = useCallback(
     (next: string) => {
       setActiveId(next);
       setLocalStorageValue(storageKey, next);
@@ -45,16 +41,14 @@ export function usePanelSelection(
     [storageKey]
   );
 
-  const onOpenPanel = useCallback((id: string) => select(id), [select]);
-
   const onTogglePanel = useCallback(
-    (id: string) => select(resolvedPanelId === id ? "" : id),
-    [resolvedPanelId, select]
+    (id: string) => onOpenPanel(activePanelId === id ? "" : id),
+    [activePanelId, onOpenPanel]
   );
 
   useEffect(() => {
     setActiveId(getLocalStorageValue(storageKey));
   }, [storageKey]);
 
-  return { activePanel, activePanelId: resolvedPanelId, onOpenPanel, onTogglePanel };
+  return { activePanel, activePanelId, onOpenPanel: onOpenPanel, onTogglePanel };
 }
