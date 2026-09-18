@@ -20,8 +20,6 @@ impl OgfHeaderChunk {
 
 impl ChunkReadWrite for OgfHeaderChunk {
   fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
-    log::info!("Reading header chunk: {} bytes", reader.read_bytes_remain());
-
     let version: u8 = reader.read_u8()?;
 
     if version != 4 {

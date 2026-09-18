@@ -1,5 +1,5 @@
 import { SelectedLevelDescription } from "@/core/ipc/types/xrf-app";
-import { SectorDescription, SectorOutline, SectorSection } from "@/core/ipc/types/xrf-visual";
+import { SectorDescription, SectorInstanceGroup, SectorOutline, SectorSection } from "@/core/ipc/types/xrf-visual";
 import { mockVisualBounds, MockVisualBuffer } from "@/fixtures/mocks/visual.mocks";
 
 /**
@@ -25,6 +25,7 @@ export function mockSectorDescription(
     hemi: null,
     indexCount: 3,
     indices,
+    instances: [],
     lightmapCoordinates: null,
     normals: null,
     positions,
@@ -48,6 +49,7 @@ export function mockSectorSection(overrides: Partial<SectorSection> = {}): Secto
   return {
     draw: { start: 0, count: 3 },
     drawables: [1],
+    lightmaps: [],
     shaderId: 1,
     shaderName: "default",
     textureName: "stone",
@@ -88,10 +90,53 @@ export function mockSelectedLevelDescription(
     portals: 0,
     sectors: [mockSectorOutline()],
     shaderEntries: 4,
+    textures: [],
     source: { kind: "directory", path: "C:\\levels\\zaton" },
     visuals: 2,
     xrlcQuality: 1,
     xrlcVersion: 14,
+    ...overrides,
+  };
+}
+
+/**
+ * One mesh a sector stands in several places, packed once beside the transforms that place it.
+ *
+ * @param buffer - Buffer the mesh and its transforms are written into.
+ * @param places - Where each copy stands along x.
+ * @param overrides - Fields to replace on the group.
+ * @returns A group covering exactly what was written.
+ */
+export function mockSectorInstanceGroup(
+  buffer: MockVisualBuffer,
+  places: Array<number>,
+  overrides: Partial<SectorInstanceGroup> = {}
+): SectorInstanceGroup {
+  const positions = buffer.pushFloats([0, 0, 0, 1, 0, 0, 0, 1, 0]);
+  const indices = buffer.pushIndices32([0, 1, 2]);
+  const transforms = buffer.pushFloats(
+    places.flatMap((at: number) => [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, at, 0, 0, 1])
+  );
+
+  return {
+    binormals: null,
+    colors: null,
+    drawables: places.map((_, index: number) => index + 1),
+    hemi: null,
+    indexCount: 3,
+    indices,
+    instanceCount: places.length,
+    lightmapCoordinates: null,
+    lightmaps: [],
+    normals: null,
+    positions,
+    shaderId: 1,
+    shaderName: "default",
+    tangents: null,
+    textureCoordinates: null,
+    textureName: "stone",
+    transforms,
+    vertexCount: 3,
     ...overrides,
   };
 }

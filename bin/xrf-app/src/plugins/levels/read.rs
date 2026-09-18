@@ -1,13 +1,14 @@
+use std::collections::BTreeSet;
 use std::fs;
 use std::path::Path;
 
 use xrf_chunk::InMemoryChunkDataSource;
 use xrf_level::{LevelFile, LevelGeomSource, LevelVisualsChunk};
 use xrf_spawn::XRayByteOrder;
-use xrf_vfs::{XrayProbe, XrayResolution};
+use xrf_vfs::{XrayAssetType, XrayProbe, XrayResolution};
 
 use crate::core::types::TauriResult;
-use crate::plugins::levels::state::{GEOMETRY_FILE, LEVEL_FILE, LevelSource};
+use crate::plugins::levels::state::{GEOMETRY_FILE, LEVEL_FILE, LevelSource, LevelTextureReference};
 
 /// What one compiled level is read as: the bundle, its visuals, and geometry left where it lies.
 pub struct ReadLevel {
@@ -72,4 +73,36 @@ fn read_asset(probe: &XrayProbe, logical_path: &str) -> TauriResult<Vec<u8>> {
 
 fn failure(source: &LevelSource, file: &str, error: &impl std::fmt::Display) -> String {
   format!("Failed to read '{file}' of level '{}': {error}", source.label())
+}
+
+/// Resolves every texture a level's shader table names, base textures and lightmaps alike.
+pub fn resolve_textures(level: &LevelFile, probe: &XrayProbe) -> Vec<LevelTextureReference> {
+  let Some(shaders) = level.shaders.as_ref() else {
+    return Vec::new();
+  };
+
+  let mut references: BTreeSet<&str> = BTreeSet::new();
+
+  for entry in shaders.references() {
+    for texture in &entry.textures {
+      if !texture.is_empty() {
+        references.insert(texture.as_str());
+      }
+    }
+  }
+
+  references
+    .into_iter()
+    .map(|reference| LevelTextureReference {
+      logical_path: probe
+        .resolve(XrayAssetType::Dds, reference)
+        .ok()
+        .and_then(|resolution| {
+          resolution
+            .get_asset()
+            .map(|asset| asset.get_logical_path().as_str().to_owned())
+        }),
+      reference: reference.to_owned(),
+    })
+    .collect()
 }

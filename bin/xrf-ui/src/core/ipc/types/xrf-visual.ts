@@ -25,11 +25,39 @@ export type SectorDescription = {
   /** Every index of the sector, as 32-bit elements, laid out section by section. */
   indices: VisualSection;
   sections: Array<SectorSection>;
+  /** Meshes the sector draws many times over, each packed once with the places it stands. */
+  instances: Array<SectorInstanceGroup>;
   /** Drawables that produced no geometry, which is none for every level measured. */
   skipped: Array<SectorSkip>;
   /** Extent the packed vertices span, absent when the sector packed none. */
   bounds: VisualBounds | null;
   bufferLength: number;
+};
+
+/** One mesh a sector draws many times, packed once with the places it stands. */
+export type SectorInstanceGroup = {
+  /** Entry of the level's shader table every instance is dressed by. */
+  shaderId: number;
+  shaderName: string | null;
+  textureName: string | null;
+  lightmaps: Array<string>;
+  /** The drawables this group stands in for, by their index in the visuals run. */
+  drawables: Array<number>;
+  vertexCount: number;
+  indexCount: number;
+  instanceCount: number;
+  positions: VisualSection;
+  normals: VisualSection | null;
+  tangents: VisualSection | null;
+  binormals: VisualSection | null;
+  textureCoordinates: VisualSection | null;
+  lightmapCoordinates: VisualSection | null;
+  colors: VisualSection | null;
+  hemi: VisualSection | null;
+  /** The mesh's own indices, counting from its own first vertex. */
+  indices: VisualSection;
+  /** Sixteen floats for each instance, column major, which is the order a renderer uploads a matrix in. */
+  transforms: VisualSection;
 };
 
 /** What one sector is and where it sits, before any of its geometry is read. */
@@ -50,8 +78,10 @@ export type SectorSection = {
   shaderId: number;
   /** The engine shader that entry names, absent when the level carries no table. */
   shaderName: string | null;
-  /** The texture that entry names, absent for the same reason. */
+  /** The base texture that entry names, absent for the same reason. */
   textureName: string | null;
+  /** The lightmaps the same entry names after it, which a lightmapped surface samples with its second uv set. */
+  lightmaps: Array<string>;
   /** Drawables packed into this section, by their index in the visuals run. */
   drawables: Array<number>;
   draw: VisualDrawRange;

@@ -5,6 +5,7 @@ use xrf_chunk::XRayByteOrder;
 use xrf_level::{LevelSectorComposition, LevelShadersChunk, LevelVisualsChunk};
 
 use crate::data::sector_description::SectorDescription;
+use crate::data::sector_instance_group::SectorInstanceGroup;
 use crate::data::visual_submesh::VisualSkipCause;
 use crate::pack::sector_package::SectorPackage;
 use crate::pack::sector_packer::SectorPacker;
@@ -248,37 +249,69 @@ fn test_packs_a_sector_that_reaches_nothing_into_an_empty_package() {
   assert!(package.description.bounds.is_none(), "nothing packed spans nothing");
 }
 
-// A tree keeps its mesh in its own space and carries the transform that stands it in the level. Packed as it is read,
-// every tree of a level would be stacked at the origin.
+// A tree keeps its mesh in its own space and carries the transform that stands it in the level, so it is packed as a
+// mesh plus the places it stands rather than as geometry of its own.
 #[test]
-fn test_places_a_visual_stored_in_its_own_space() {
+fn test_packs_a_visual_stored_in_its_own_space_as_an_instance() {
   let run: LevelVisualsChunk = visuals(&[hierarchy(&[1]), tree(1, 0, 2, 3, 100.0)]);
   let mut source = open_geometry(new_geometry());
 
   let package: SectorPackage = SectorPacker::new(&run, None, &mut source).pack::<XRayByteOrder>(0, &composition(&run));
-  let positions: Vec<f32> = read_floats(&package, package.description.positions);
 
-  // The fixture's first two vertices are at x 0 and 1, stood a hundred along x.
-  assert_eq!(positions[0], 100.0);
-  assert_eq!(positions[3], 101.0);
+  assert_eq!(
+    package.description.vertex_count, 0,
+    "a placed visual is not baked into the sector"
+  );
+  assert_eq!(package.description.instances.len(), 1);
+
+  let group: &SectorInstanceGroup = &package.description.instances[0];
+
+  assert_eq!(group.instance_count, 1);
+  assert_eq!(group.vertex_count, 2, "the mesh itself, in its own space");
+  assert_eq!(group.drawables, vec![1]);
+
+  // Row major with the translation in the fourth row, mirrored into renderer space along the way.
+  let transforms: Vec<f32> = read_floats(&package, group.transforms);
+
+  assert_eq!(transforms.len(), SectorInstanceGroup::FLOATS_PER_INSTANCE);
+  assert_eq!(transforms[12], 100.0);
 }
 
-// Two trees naming one mesh are two trees. Sharing the range would pack it once and leave both of them standing in
-// whichever place was read first.
+// The whole point: one mesh in many places is one mesh and many places. Packing a copy each is what made a sector of
+// a swamp cost a gigabyte.
 #[test]
-fn test_packs_an_instance_of_a_shared_range_for_each_place_it_stands() {
+fn test_packs_one_mesh_for_every_place_it_stands() {
   let run: LevelVisualsChunk = visuals(&[hierarchy(&[1, 2]), tree(1, 0, 2, 3, 100.0), tree(1, 0, 2, 3, -100.0)]);
   let mut source = open_geometry(new_geometry());
 
   let package: SectorPackage = SectorPacker::new(&run, None, &mut source).pack::<XRayByteOrder>(0, &composition(&run));
-  let positions: Vec<f32> = read_floats(&package, package.description.positions);
 
-  assert_eq!(package.description.vertex_count, 4, "one mesh, two places, two copies");
-  assert_eq!(positions[0], 100.0);
-  assert_eq!(
-    positions[6], -100.0,
-    "the second instance stands where its own transform puts it"
-  );
+  assert_eq!(package.description.instances.len(), 1, "one mesh");
+
+  let group: &SectorInstanceGroup = &package.description.instances[0];
+
+  assert_eq!(group.instance_count, 2, "two places");
+  assert_eq!(group.vertex_count, 2, "packed once, not once for each place");
+  assert_eq!(group.drawables, vec![1, 2]);
+
+  let transforms: Vec<f32> = read_floats(&package, group.transforms);
+
+  assert_eq!(transforms.len(), 2 * SectorInstanceGroup::FLOATS_PER_INSTANCE);
+  assert_eq!(transforms[12], 100.0);
+  assert_eq!(transforms[12 + SectorInstanceGroup::FLOATS_PER_INSTANCE], -100.0);
+}
+
+// Two meshes dressed by different surfaces cannot share one instanced draw, whatever else they have in common.
+#[test]
+fn test_keeps_instances_of_different_surfaces_apart() {
+  let run: LevelVisualsChunk = visuals(&[hierarchy(&[1, 2]), tree(1, 0, 2, 3, 100.0), tree(2, 0, 2, 3, -100.0)]);
+  let mut source = open_geometry(new_geometry());
+
+  let package: SectorPackage = SectorPacker::new(&run, None, &mut source).pack::<XRayByteOrder>(0, &composition(&run));
+
+  assert_eq!(package.description.instances.len(), 2);
+  assert_eq!(package.description.instances[0].shader_id, 1);
+  assert_eq!(package.description.instances[1].shader_id, 2);
 }
 
 // A range already baked into the level is still shared, which is what the sharing was always for.
@@ -290,4 +323,5 @@ fn test_still_shares_a_range_no_transform_places() {
   let package: SectorPackage = SectorPacker::new(&run, None, &mut source).pack::<XRayByteOrder>(0, &composition(&run));
 
   assert_eq!(package.description.vertex_count, 2);
+  assert!(package.description.instances.is_empty());
 }

@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 use tauri::State;
 use xrf_vfs::{XrayDirectoryListing, XrayProbe, XrayRoots};
 
@@ -9,9 +11,16 @@ use crate::plugins::levels::state::{GEOMETRY_FILE, LEVEL_FILE, LEVELS_DIRECTORY,
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "list_levels"))]
 #[tauri::command(rename = "list_levels")]
 pub async fn levels_list_levels(roots: XrayRoots, assets: State<'_, AssetMountState>) -> TauriResult<Vec<LevelEntry>> {
+  let started: Instant = Instant::now();
   let entries: Vec<LevelEntry> = assets.with_probe(&roots, list_levels)??;
+  let drawable: usize = entries.iter().filter(|entry| entry.has_geometry).count();
 
-  log::info!("Listed {} levels in the mounted roots", entries.len());
+  log::info!(
+    "Listed {} levels in {}, {} of them with render geometry",
+    entries.len(),
+    xrf_utils::format_duration(started.elapsed()),
+    drawable
+  );
 
   Ok(entries)
 }

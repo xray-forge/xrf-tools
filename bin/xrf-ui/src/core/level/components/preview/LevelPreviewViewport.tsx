@@ -9,6 +9,7 @@ import {
 import { ILevelPoint } from "@/core/level/lib/level-residency";
 import { ILoadedSector } from "@/core/level/lib/level-sector-set";
 import { ILevelStats } from "@/core/level/lib/level-stats";
+import { LevelTextureSet } from "@/core/level/lib/level-texture-set";
 import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
@@ -18,6 +19,8 @@ export interface ILevelPreviewViewportProps extends BaseComponentProps {
   sectors: ReadonlyMap<number, ILoadedSector>;
   /** The level's extent, used once to place the camera when a level opens. */
   bounds: Nullable<VisualBounds>;
+  /** Where surfaces take their textures from, owned by the loader rather than by the scene. */
+  textures?: Nullable<LevelTextureSet>;
   options?: ILevelSectorViewOptions;
   /** Where the camera has gone, for the loader to stream against. */
   onCameraMoved: (point: ILevelPoint) => void;
@@ -33,6 +36,7 @@ export function LevelPreviewViewport({
   className,
   sectors,
   bounds,
+  textures = null,
   options = DEFAULT_LEVEL_SECTOR_VIEW_OPTIONS,
   onCameraMoved,
   onStats,
@@ -70,6 +74,10 @@ export function LevelPreviewViewport({
       scene.dispose();
     };
   }, [handleCameraMoved, handleStats]);
+
+  useEffect(() => {
+    sceneRef.current?.setTextures(textures);
+  }, [textures]);
 
   useEffect(() => {
     sceneRef.current?.setSectors(sectors);

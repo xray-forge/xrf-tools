@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
-import { Group, Mesh, MeshStandardMaterial } from "three";
+import { Group, InstancedMesh, Mesh, MeshStandardMaterial } from "three";
 
 import {
   DEFAULT_LEVEL_SECTOR_VIEW_OPTIONS,
@@ -9,7 +9,7 @@ import {
 import { createSectorGeometry } from "@/core/level/lib/level-sector-geometry";
 import { ILoadedSector } from "@/core/level/lib/level-sector-set";
 import { createSectorViews, ISectorViews } from "@/core/level/lib/level-sector-views";
-import { mockSectorDescription, mockSectorSection } from "@/fixtures/mocks/level.mocks";
+import { mockSectorDescription, mockSectorInstanceGroup, mockSectorSection } from "@/fixtures/mocks/level.mocks";
 import { MockVisualBuffer } from "@/fixtures/mocks/visual.mocks";
 
 /** One resident sector drawing the given shader table entries. */
@@ -66,6 +66,7 @@ describe("LevelPreviewSectors", () => {
     const parent: Group = new Group();
     const sectors: LevelPreviewSectors = new LevelPreviewSectors(parent);
 
+    sectors.applyViewOptions({ ...DEFAULT_LEVEL_SECTOR_VIEW_OPTIONS, isSurfaceColored: true });
     sectors.sync(
       new Map([
         [0, loadedSector(0, [7])],
@@ -149,6 +150,57 @@ describe("LevelPreviewSectors", () => {
     sectors.dispose();
 
     expect(sectors.size).toBe(0);
+    expect(parent.children).toHaveLength(0);
+  });
+});
+
+describe("LevelPreviewSectors instances", () => {
+  /** One resident sector standing a mesh in the given places. */
+  function loadedInstances(sector: number, places: Array<number>): ILoadedSector {
+    const buffer: MockVisualBuffer = new MockVisualBuffer();
+    const description = mockSectorDescription(buffer, {
+      instances: [mockSectorInstanceGroup(buffer, places)],
+      sector,
+    });
+    const views: ISectorViews = createSectorViews(
+      { ...description, bufferLength: buffer.byteLength },
+      buffer.toArrayBuffer()
+    );
+
+    return { geometry: createSectorGeometry(views), sector, views };
+  }
+
+  it("draws an instanced mesh beside the sector's own geometry", () => {
+    const parent: Group = new Group();
+    const sectors: LevelPreviewSectors = new LevelPreviewSectors(parent);
+
+    sectors.sync(new Map([[0, loadedInstances(0, [0, 100])]]));
+
+    const instanced = parent.children.filter((child): child is InstancedMesh => child instanceof InstancedMesh);
+
+    expect(instanced).toHaveLength(1);
+    expect(instanced[0]?.count).toBe(2);
+  });
+
+  // The loader owns the sector's geometry, but an instanced mesh built its own here: leaving it behind leaks one
+  // upload per stand of trees every time the camera moves on.
+  it("disposes the geometry it built for an instanced mesh", () => {
+    const parent: Group = new Group();
+    const sectors: LevelPreviewSectors = new LevelPreviewSectors(parent);
+
+    sectors.sync(new Map([[0, loadedInstances(0, [0])]]));
+
+    const instanced = parent.children.find((child): child is InstancedMesh => child instanceof InstancedMesh);
+
+    let disposed: boolean = false;
+
+    instanced?.geometry.addEventListener("dispose", () => {
+      disposed = true;
+    });
+
+    sectors.sync(new Map());
+
+    expect(disposed).toBe(true);
     expect(parent.children).toHaveLength(0);
   });
 });

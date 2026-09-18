@@ -15,6 +15,7 @@ import {
 import { ILevelPoint } from "@/core/level/lib/level-residency";
 import { ILoadedSector } from "@/core/level/lib/level-sector-set";
 import { EMPTY_LEVEL_STATS, ILevelStats } from "@/core/level/lib/level-stats";
+import { LevelTextureSet } from "@/core/level/lib/level-texture-set";
 import { ILevelStreamProgress } from "@/core/level/services";
 import { EditorFileHeader } from "@/core/shell/editor/EditorFileHeader";
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
@@ -30,6 +31,8 @@ interface ILevelPreviewLayoutProps extends BaseComponentProps {
   sectors: ReadonlyMap<number, ILoadedSector>;
   /** The level's extent, which frames the camera once when a level opens. */
   bounds: Nullable<VisualBounds>;
+  /** Where surfaces take their textures from, owned by the loader. */
+  textures?: Nullable<LevelTextureSet>;
   /** What the open level is called. Its presence is what draws the file header over the viewport. */
   name?: Nullable<string>;
   subtitle?: ReactNode;
@@ -55,6 +58,7 @@ export function LevelPreviewLayout({
   className,
   sectors,
   bounds,
+  textures = null,
   name = null,
   subtitle,
   streaming,
@@ -130,11 +134,12 @@ export function LevelPreviewLayout({
           className={cn("relative flex min-h-0 min-w-0 flex-1 overflow-hidden", className)}
         >
           {renderViewport ? (
-            renderViewport({ bounds, onCameraMoved, onStats: setStats, options, sectors })
+            renderViewport({ bounds, onCameraMoved, onStats: setStats, options, sectors, textures })
           ) : (
             <LevelPreviewViewport
               sectors={sectors}
               bounds={bounds}
+              textures={textures}
               options={options}
               onCameraMoved={onCameraMoved}
               onStats={setStats}

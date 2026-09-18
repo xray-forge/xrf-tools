@@ -41,6 +41,11 @@ impl SectorVertexArrays {
     }
   }
 
+  /// What the sector declared, so a mesh packed on its own packs the same attributes as the sector around it.
+  pub const fn get_attributes(&self) -> SectorAttributes {
+    self.attributes
+  }
+
   /// Vertices packed so far, which is the base the next range is rebased onto.
   pub fn count(&self) -> u32 {
     (self.positions.len() / 3) as u32

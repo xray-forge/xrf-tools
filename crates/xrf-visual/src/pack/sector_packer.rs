@@ -12,6 +12,7 @@ use xrf_ogf::OgfGeometryContainerChunk;
 
 use crate::data::sector_attributes::SectorAttributes;
 use crate::data::sector_description::SectorDescription;
+use crate::data::sector_instance_group::SectorInstanceGroup;
 use crate::data::sector_section::SectorSection;
 use crate::data::sector_skip::SectorSkip;
 use crate::data::visual_section::{VisualDrawRange, VisualSection};
@@ -20,10 +21,20 @@ use crate::pack::sector_package::SectorPackage;
 use crate::pack::sector_vertex_arrays::SectorVertexArrays;
 use crate::pack::sector_vertex_sections::SectorVertexSections;
 use crate::pack::visual_buffer_builder::VisualBufferBuilder;
-use crate::pack::visual_conversion::reverse_triangle_winding;
+use crate::pack::visual_conversion::{convert_placement, reverse_triangle_winding};
 
 /// The range of `level.geom` one drawable names, which is the key two drawables share geometry by.
 type VertexRange = (u32, u32, u32);
+
+/// One instanced mesh: the geometry it draws and the surface it is dressed by, which is what makes two copies one.
+type InstanceKey = (u32, u32, u32, u32, u32, u32, u16);
+
+/// The instances of one mesh, gathered while the sector is walked.
+#[derive(Default)]
+struct InstanceGathering {
+  drawables: Vec<u32>,
+  placements: Vec<Matrix4x4>,
+}
 
 /// Packs one sector's drawables into the single buffer a renderer draws it from.
 pub struct SectorPacker<'a, D: ChunkDataSource> {
@@ -52,12 +63,27 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
     let mut groups: BTreeMap<u16, (Vec<u32>, Vec<u32>)> = BTreeMap::new();
     let mut skipped: Vec<SectorSkip> = Vec::new();
 
+    let mut gathered: BTreeMap<InstanceKey, InstanceGathering> = BTreeMap::new();
+
     for drawable in &composition.drawables {
       let Some((visual, container)) = Self::get_drawable(self.visuals, *drawable) else {
         continue;
       };
 
-      let base: u32 = match self.pack_range::<T>(container, visual.get_placement(), &mut arrays, &mut packed) {
+      // A visual the level places is an instance of a mesh rather than geometry of its own: the mesh is packed once
+      // below and stood in every place that names it.
+      if let Some(placement) = visual.get_placement() {
+        let gathering: &mut InstanceGathering = gathered
+          .entry(Self::instance_key(container, visual.header.shader_id))
+          .or_default();
+
+        gathering.drawables.push(*drawable);
+        gathering.placements.push(convert_placement(placement));
+
+        continue;
+      }
+
+      let base: u32 = match self.pack_range::<T>(container, &mut arrays, &mut packed) {
         Ok(base) => base,
         Err(error) => {
           skipped.push(Self::skip(*drawable, &error));
@@ -77,7 +103,7 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
       }
     }
 
-    self.build(sector, arrays, groups, skipped)
+    self.build::<T>(sector, arrays, groups, gathered, &mut skipped)
   }
 
   /// What every declaration in the sector together carries, which decides the arrays it packs.
@@ -120,7 +146,6 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
   fn pack_range<T: ByteOrder>(
     &mut self,
     container: &OgfGeometryContainerChunk,
-    placement: Option<&Matrix4x4>,
     arrays: &mut SectorVertexArrays,
     packed: &mut BTreeMap<VertexRange, u32>,
   ) -> XrfResult<u32> {
@@ -130,11 +155,7 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
       container.vertex_count,
     );
 
-    // Only a range already baked into the level is shared. A placed one is an instance: two trees name the same mesh
-    // and stand in different places, so packing it once would put both of them in one of the two.
-    if placement.is_none()
-      && let Some(base) = packed.get(&range)
-    {
+    if let Some(base) = packed.get(&range) {
       return Ok(*base);
     }
 
@@ -146,12 +167,10 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
     let base: u32 = arrays.count();
 
     for vertex in &vertices {
-      arrays.push(vertex, placement);
+      arrays.push(vertex, None);
     }
 
-    if placement.is_none() {
-      packed.insert(range, base);
-    }
+    packed.insert(range, base);
 
     Ok(base)
   }
@@ -181,12 +200,13 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
   }
 
   /// Writes the arrays and the grouped indices into one buffer and describes what landed where.
-  fn build(
-    &self,
+  fn build<T: ByteOrder>(
+    &mut self,
     sector: u32,
     arrays: SectorVertexArrays,
     groups: BTreeMap<u16, (Vec<u32>, Vec<u32>)>,
-    skipped: Vec<SectorSkip>,
+    gathered: BTreeMap<InstanceKey, InstanceGathering>,
+    skipped: &mut Vec<SectorSkip>,
   ) -> SectorPackage {
     let mut builder: VisualBufferBuilder = VisualBufferBuilder::new();
     let vertices: SectorVertexSections = arrays.write_into(&mut builder);
@@ -201,6 +221,7 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
           start: indices.len() as u32,
         },
         drawables,
+        lightmaps: self.get_lightmaps(shader_id),
         shader_id,
         shader_name: self.get_shader_name(shader_id),
         texture_name: self.get_texture_name(shader_id),
@@ -210,6 +231,8 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
     }
 
     let index_section: VisualSection = builder.push_u32_section(&indices);
+    let instances: Vec<SectorInstanceGroup> =
+      self.pack_instances::<T>(gathered, arrays.get_attributes(), &mut builder, skipped);
 
     SectorPackage {
       description: SectorDescription {
@@ -223,14 +246,108 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
         lightmap_coordinates: vertices.lightmap_coordinates,
         normals: vertices.normals,
         positions: vertices.positions,
+        instances,
         sections,
         sector,
-        skipped,
+        skipped: std::mem::take(skipped),
         tangents: vertices.tangents,
         texture_coordinates: vertices.texture_coordinates,
         vertex_count: arrays.count(),
       },
       buffer: builder.into_buffer(),
+    }
+  }
+
+  /// The key two copies of one mesh are the same instance by: the geometry, and the surface drawing it.
+  fn instance_key(container: &OgfGeometryContainerChunk, shader_id: u16) -> InstanceKey {
+    (
+      container.vertex_buffer_id,
+      container.vertex_base,
+      container.vertex_count,
+      container.index_buffer_id,
+      container.index_base,
+      container.index_count,
+      shader_id,
+    )
+  }
+
+  /// Packs each gathered mesh once and writes the places it stands beside it.
+  fn pack_instances<T: ByteOrder>(
+    &mut self,
+    gathered: BTreeMap<InstanceKey, InstanceGathering>,
+    attributes: SectorAttributes,
+    builder: &mut VisualBufferBuilder,
+    skipped: &mut Vec<SectorSkip>,
+  ) -> Vec<SectorInstanceGroup> {
+    let mut instances: Vec<SectorInstanceGroup> = Vec::new();
+
+    for (key, gathering) in gathered {
+      let (vertex_buffer, vertex_base, vertex_count, index_buffer, index_base, index_count, shader_id) = key;
+
+      let mut arrays: SectorVertexArrays = SectorVertexArrays::new(attributes);
+
+      // Packed unplaced: the mesh is in its own space and each instance's transform stands a copy of it.
+      match self.source.read_vertices::<T>(vertex_buffer, vertex_base, vertex_count) {
+        Ok(vertices) => {
+          for vertex in &vertices {
+            arrays.push(vertex, None);
+          }
+        }
+        Err(error) => {
+          Self::skip_all(&gathering, &error, skipped);
+
+          continue;
+        }
+      }
+
+      let mut indices: Vec<u32> = match self.source.read_indices::<T>(index_buffer, index_base, index_count) {
+        Ok(read) => read.iter().map(|index| u32::from(*index)).collect(),
+        Err(error) => {
+          Self::skip_all(&gathering, &error, skipped);
+
+          continue;
+        }
+      };
+
+      reverse_triangle_winding(&mut indices);
+
+      let sections: SectorVertexSections = arrays.write_into(builder);
+      let index_section: VisualSection = builder.push_u32_section(&indices);
+      let transforms: Vec<f32> = gathering
+        .placements
+        .iter()
+        .flat_map(|placement| placement.values)
+        .collect();
+
+      instances.push(SectorInstanceGroup {
+        binormals: sections.binormals,
+        colors: sections.colors,
+        drawables: gathering.drawables,
+        hemi: sections.hemi,
+        index_count: indices.len() as u32,
+        indices: index_section,
+        instance_count: gathering.placements.len() as u32,
+        lightmap_coordinates: sections.lightmap_coordinates,
+        lightmaps: self.get_lightmaps(shader_id),
+        normals: sections.normals,
+        positions: sections.positions,
+        shader_id,
+        shader_name: self.get_shader_name(shader_id),
+        tangents: sections.tangents,
+        texture_coordinates: sections.texture_coordinates,
+        texture_name: self.get_texture_name(shader_id),
+        transforms: builder.push_f32_section(&transforms),
+        vertex_count: arrays.count(),
+      });
+    }
+
+    instances
+  }
+
+  /// Records every instance of a mesh that could not be read, since none of them can be drawn without it.
+  fn skip_all(gathering: &InstanceGathering, error: &XrfError, skipped: &mut Vec<SectorSkip>) {
+    for drawable in &gathering.drawables {
+      skipped.push(Self::skip(*drawable, error));
     }
   }
 
@@ -247,6 +364,14 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
     match self.get_entry(shader_id)? {
       LevelShaderEntry::Reference(reference) => reference.textures.first().cloned(),
       _ => None,
+    }
+  }
+
+  /// The lightmaps a table entry names after its base texture.
+  fn get_lightmaps(&self, shader_id: u16) -> Vec<String> {
+    match self.get_entry(shader_id) {
+      Some(LevelShaderEntry::Reference(reference)) => reference.textures.iter().skip(1).cloned().collect(),
+      _ => Vec::new(),
     }
   }
 

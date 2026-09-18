@@ -1,4 +1,4 @@
-import { SectorDescription, SectorSection, VisualSection } from "@/core/ipc/types/xrf-visual";
+import { SectorDescription, SectorInstanceGroup, SectorSection, VisualSection } from "@/core/ipc/types/xrf-visual";
 import { Nullable } from "@/lib/types/general";
 
 /**
@@ -8,6 +8,8 @@ export interface ISectorSectionViews {
   shaderId: number;
   shaderName: Nullable<string>;
   textureName: Nullable<string>;
+  /** The lightmaps the same entry names, which a lightmapped surface samples with its second uv set. */
+  lightmaps: Array<string>;
   /** Drawables this section draws, by their index in the visuals run, for inspection rather than for drawing. */
   drawables: Array<number>;
   start: number;
@@ -18,6 +20,29 @@ export interface ISectorSectionViews {
 /**
  * One packed sector as views over the single buffer it arrived in, plus the draws that consume them.
  */
+/** One mesh a sector stands in many places, as views over the buffer it arrived in. */
+export interface ISectorInstanceViews {
+  shaderId: number;
+  shaderName: Nullable<string>;
+  textureName: Nullable<string>;
+  lightmaps: Array<string>;
+  drawables: Array<number>;
+  vertexCount: number;
+  indexCount: number;
+  instanceCount: number;
+  positions: Float32Array;
+  normals: Nullable<Float32Array>;
+  tangents: Nullable<Float32Array>;
+  binormals: Nullable<Float32Array>;
+  uvs: Nullable<Float32Array>;
+  lightmapUvs: Nullable<Float32Array>;
+  colors: Nullable<Float32Array>;
+  hemi: Nullable<Float32Array>;
+  indices: Uint32Array;
+  /** Sixteen floats for each place the mesh stands, in the order a renderer uploads a matrix in. */
+  transforms: Float32Array;
+}
+
 export interface ISectorViews {
   sector: number;
   vertexCount: number;
@@ -39,6 +64,8 @@ export interface ISectorViews {
   /** Thirty-two bit, unlike a model's. */
   indices: Uint32Array;
   sections: Array<ISectorSectionViews>;
+  /** Meshes the sector stands in many places, each packed once. */
+  instances: Array<ISectorInstanceViews>;
   /** Drawables the packer could not read, named so a viewer can say what is missing rather than quietly omit it. */
   skipped: Array<{ drawable: number; reason: string }>;
 }
@@ -85,9 +112,30 @@ export function createSectorViews(description: SectorDescription, buffer: ArrayB
     normals: toOptionalFloatView(buffer, description.normals),
     positions: toFloatView(buffer, description.positions),
     sector: description.sector,
+    instances: description.instances.map((group: SectorInstanceGroup): ISectorInstanceViews => ({
+      binormals: toOptionalFloatView(buffer, group.binormals),
+      colors: toOptionalFloatView(buffer, group.colors),
+      drawables: group.drawables,
+      hemi: toOptionalFloatView(buffer, group.hemi),
+      indexCount: group.indexCount,
+      indices: toIndexView(buffer, group.indices),
+      instanceCount: group.instanceCount,
+      lightmapUvs: toOptionalFloatView(buffer, group.lightmapCoordinates),
+      lightmaps: group.lightmaps,
+      normals: toOptionalFloatView(buffer, group.normals),
+      positions: toFloatView(buffer, group.positions),
+      shaderId: group.shaderId,
+      shaderName: group.shaderName,
+      tangents: toOptionalFloatView(buffer, group.tangents),
+      textureName: group.textureName,
+      transforms: toFloatView(buffer, group.transforms),
+      uvs: toOptionalFloatView(buffer, group.textureCoordinates),
+      vertexCount: group.vertexCount,
+    })),
     sections: description.sections.map((section: SectorSection) => ({
       count: section.draw.count,
       drawables: section.drawables,
+      lightmaps: section.lightmaps,
       shaderId: section.shaderId,
       shaderName: section.shaderName,
       start: section.draw.start,
@@ -101,7 +149,37 @@ export function createSectorViews(description: SectorDescription, buffer: ArrayB
   };
 }
 
-/** Triangles a sector draws in total, which is what a viewer reports rather than its index count. */
+/** Triangles a sector draws in total, instanced meshes counted once for every place they stand. */
 export function countSectorTriangles(views: ISectorViews): number {
-  return views.sections.reduce((total: number, section: ISectorSectionViews) => total + section.triangleCount, 0);
+  const baked: number = views.sections.reduce(
+    (total: number, section: ISectorSectionViews) => total + section.triangleCount,
+    0
+  );
+
+  return views.instances.reduce(
+    (total: number, group: ISectorInstanceViews) => total + (group.indexCount / 3) * group.instanceCount,
+    baked
+  );
+}
+
+/**
+ * Every texture reference a sector names, base textures and lightmaps alike.
+ *
+ * @param views - The sector.
+ * @returns Its references, without repeats.
+ */
+export function listSectorTextures(views: ISectorViews): Array<string> {
+  const references: Set<string> = new Set();
+
+  for (const section of [...views.sections, ...views.instances]) {
+    if (section.textureName) {
+      references.add(section.textureName);
+    }
+
+    for (const lightmap of section.lightmaps) {
+      references.add(lightmap);
+    }
+  }
+
+  return Array.from(references);
 }

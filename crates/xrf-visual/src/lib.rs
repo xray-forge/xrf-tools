@@ -3,6 +3,7 @@ pub(crate) mod pack;
 pub(crate) mod resolve;
 
 pub use crate::data::sector_description::SectorDescription;
+pub use crate::data::sector_instance_group::SectorInstanceGroup;
 pub use crate::data::sector_outline::SectorOutline;
 pub use crate::data::sector_section::SectorSection;
 pub use crate::data::sector_skip::SectorSkip;

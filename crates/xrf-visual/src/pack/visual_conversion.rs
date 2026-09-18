@@ -1,4 +1,4 @@
-use xrf_math::Vector3d;
+use xrf_math::{Matrix4x4, Vector3d};
 use xrf_ogf::{OgfBox, OgfSphere};
 
 use crate::data::visual_bounds::{VisualBounds, VisualBox, VisualSphere};
@@ -47,4 +47,21 @@ pub(crate) fn reverse_triangle_winding<T>(indices: &mut [T]) {
   for triangle in indices.as_chunks_mut::<3>().0 {
     triangle.swap(1, 2);
   }
+}
+
+/// Convert a placement into renderer space, so it places already converted vertices.
+pub fn convert_placement(placement: &Matrix4x4) -> Matrix4x4 {
+  const Z: usize = 2;
+
+  let mut values: [f32; Matrix4x4::ELEMENTS] = placement.values;
+
+  for row in 0..4 {
+    for column in 0..4 {
+      if (row == Z) != (column == Z) {
+        values[row * 4 + column] = -values[row * 4 + column];
+      }
+    }
+  }
+
+  Matrix4x4 { values }
 }

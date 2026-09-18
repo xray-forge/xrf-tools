@@ -210,12 +210,6 @@ impl XrayMountPlan {
       };
 
       if !path.is_dir() {
-        log::info!(
-          "Skipping fsgame alias {}: {} is not a directory",
-          declaration.alias,
-          format_path(&path)
-        );
-
         continue;
       }
 

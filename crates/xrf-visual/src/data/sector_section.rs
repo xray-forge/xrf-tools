@@ -11,8 +11,10 @@ pub struct SectorSection {
   pub shader_id: u16,
   /// The engine shader that entry names, absent when the level carries no table.
   pub shader_name: Option<String>,
-  /// The texture that entry names, absent for the same reason.
+  /// The base texture that entry names, absent for the same reason.
   pub texture_name: Option<String>,
+  /// The lightmaps the same entry names after it, which a lightmapped surface samples with its second uv set.
+  pub lightmaps: Vec<String>,
   /// Drawables packed into this section, by their index in the visuals run.
   pub drawables: Vec<u32>,
   pub draw: VisualDrawRange,

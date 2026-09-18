@@ -1,11 +1,12 @@
 //! Holds the handedness contract: what mirroring Z does to a vector, a uv pair, and a box.
 
+use xrf_math::{Matrix4x4, Vector3d};
 use xrf_ogf::{OgfBox, OgfSphere};
 
 use crate::data::visual_bounds::VisualBounds;
 use crate::pack::tests::fixtures::vector;
 use crate::pack::visual_conversion::{
-  convert_declared_bounds, convert_texture_coordinates, convert_vector, reverse_triangle_winding,
+  convert_declared_bounds, convert_placement, convert_texture_coordinates, convert_vector, reverse_triangle_winding,
 };
 
 #[test]
@@ -76,4 +77,42 @@ fn keeps_every_triangle_at_its_own_offset() {
 
   assert_eq!(&indices[0..3], &[0, 2, 1], "expect the first triangle to stay first");
   assert_eq!(&indices[3..6], &[3, 5, 4], "expect the second triangle to stay second");
+}
+
+// A placed vertex has to land in the same place whether it is placed and then converted, or converted and then placed
+// by the converted transform. Getting this wrong mirrors every tree of a level about the level's own z axis, which
+// looks plausible until it is compared with the game.
+#[test]
+fn places_a_converted_vertex_where_converting_a_placed_one_lands() {
+  let placement: Matrix4x4 = Matrix4x4 {
+    values: [
+      0.0, 0.0, 1.0, 0.0, //
+      0.0, 2.0, 0.0, 0.0, //
+      -1.0, 0.0, 0.0, 0.0, //
+      10.0, 20.0, 30.0, 1.0,
+    ],
+  };
+
+  let local: Vector3d = vector(1.0, 2.0, 3.0);
+
+  let placed_then_converted: Vector3d = convert_vector(&placement.transform_point(&local));
+  let converted_then_placed: Vector3d = convert_placement(&placement).transform_point(&convert_vector(&local));
+
+  assert_eq!(placed_then_converted, converted_then_placed);
+}
+
+#[test]
+fn leaves_a_placement_of_no_rotation_alone_except_where_it_moves_along_z() {
+  let placement: Matrix4x4 = Matrix4x4 {
+    values: [
+      1.0, 0.0, 0.0, 0.0, //
+      0.0, 1.0, 0.0, 0.0, //
+      0.0, 0.0, 1.0, 0.0, //
+      5.0, 6.0, 7.0, 1.0,
+    ],
+  };
+
+  let converted: Matrix4x4 = convert_placement(&placement);
+
+  assert_eq!(converted.get_translation(), vector(5.0, 6.0, -7.0));
 }

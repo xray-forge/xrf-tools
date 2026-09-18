@@ -1,5 +1,6 @@
 use serde::Serialize;
 
+use crate::data::sector_instance_group::SectorInstanceGroup;
 use crate::data::sector_section::SectorSection;
 use crate::data::sector_skip::SectorSkip;
 use crate::data::visual_bounds::VisualBounds;
@@ -30,6 +31,8 @@ pub struct SectorDescription {
   /// Every index of the sector, as 32-bit elements, laid out section by section.
   pub indices: VisualSection,
   pub sections: Vec<SectorSection>,
+  /// Meshes the sector draws many times over, each packed once with the places it stands.
+  pub instances: Vec<SectorInstanceGroup>,
   /// Drawables that produced no geometry, which is none for every level measured.
   pub skipped: Vec<SectorSkip>,
   /// Extent the packed vertices span, absent when the sector packed none.

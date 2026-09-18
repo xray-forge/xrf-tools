@@ -1,5 +1,6 @@
 import { default as HexagonIcon } from "@mui/icons-material/Hexagon";
 import { default as PaletteIcon } from "@mui/icons-material/Palette";
+import { default as TextureIcon } from "@mui/icons-material/Texture";
 import { ReactElement, ReactNode, useCallback } from "react";
 
 import { ILevelSectorViewOptions } from "@/core/level/components/scene/LevelPreviewSectors";
@@ -47,6 +48,13 @@ export function LevelPreviewToolbar({
             icon={<HexagonIcon />}
             isOn={options.isWireframe}
             onToggle={() => onToggle("isWireframe")}
+          />
+
+          <EditorViewToggle
+            label={"Textures"}
+            icon={<TextureIcon />}
+            isOn={options.isTextured}
+            onToggle={() => onToggle("isTextured")}
           />
 
           <EditorViewToggle

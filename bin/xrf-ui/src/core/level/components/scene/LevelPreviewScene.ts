@@ -13,6 +13,7 @@ import { getFlyBinding, ILevelFlyInput, LevelFlyCamera } from "@/core/level/lib/
 import { ILevelPoint } from "@/core/level/lib/level-residency";
 import { ILoadedSector } from "@/core/level/lib/level-sector-set";
 import { ILevelStats, LevelFrameTimer, measureLevelStats } from "@/core/level/lib/level-stats";
+import { LevelTextureSet } from "@/core/level/lib/level-texture-set";
 import { Nullable } from "@/lib/types/general";
 
 /** What the scene reports back out, once a frame at most. */
@@ -103,6 +104,15 @@ export class LevelPreviewScene {
   public setSectors(sectors: ReadonlyMap<number, ILoadedSector>): void {
     this.resident = sectors;
     this.sectors.sync(sectors);
+  }
+
+  /**
+   * Takes the textures a surface is dressed from, which the loader owns.
+   *
+   * @param textures - The open level's textures, or null while none is open.
+   */
+  public setTextures(textures: Nullable<LevelTextureSet>): void {
+    this.sectors.setTextures(textures);
   }
 
   /**

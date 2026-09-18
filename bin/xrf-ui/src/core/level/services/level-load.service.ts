@@ -18,7 +18,8 @@ import {
   planLevelResidency,
 } from "@/core/level/lib/level-residency";
 import { ILoadedSector, LevelSectorSet } from "@/core/level/lib/level-sector-set";
-import { createSectorViews, ISectorViews } from "@/core/level/lib/level-sector-views";
+import { createSectorViews, ISectorViews, listSectorTextures } from "@/core/level/lib/level-sector-views";
+import { LevelTextureSet } from "@/core/level/lib/level-texture-set";
 import { AsyncState } from "@/lib/async-state";
 import { formatDuration } from "@/lib/format/duration";
 import { Logger, Timer } from "@/lib/logging";
@@ -52,6 +53,9 @@ export class LevelLoadService {
 
   /** The sectors held, and the geometry each owns. */
   private readonly held: LevelSectorSet = new LevelSectorSet();
+
+  /** The level's uploaded textures, shared between the sectors that name them. */
+  public readonly textures: LevelTextureSet = new LevelTextureSet();
 
   @Observable()
   public level: AsyncState<IOpenLevel> = AsyncState.idle();
@@ -102,6 +106,7 @@ export class LevelLoadService {
       this.releaseSectors();
 
       this.residency = createLevelResidency(selected.value.bounds?.boundingSphere.radius ?? 0);
+      this.textures.open(roots, selected.value.textures);
       this.level = this.level.asReady({ selected });
 
       this.log.info(
@@ -161,6 +166,7 @@ export class LevelLoadService {
 
     for (const sector of plan.evict) {
       this.held.release(sector);
+      this.textures.release(sector);
     }
 
     runInAction(() => {
@@ -225,6 +231,9 @@ export class LevelLoadService {
     const buffer: ArrayBuffer = yield* call(levelsRawCommands.readSector(sessionId, snapshot.sessionId));
     const views: ISectorViews = createSectorViews(snapshot.value, buffer);
 
+    // Before the sector is published, so a surface is never drawn untextured for a frame and then corrected.
+    yield* call(this.textures.acquire(sector, listSectorTextures(views)));
+
     this.held.adopt(views);
     this.publishSectors();
 
@@ -253,6 +262,7 @@ export class LevelLoadService {
 
   private releaseSectors(): void {
     this.held.dispose();
+    this.textures.dispose();
     this.sectors = new Map();
   }
 }

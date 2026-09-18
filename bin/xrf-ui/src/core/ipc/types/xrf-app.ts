@@ -1666,6 +1666,14 @@ export type LevelSource =
   /** A level of the mounted roots, named by its engine identity, `levels\<name>`. */
   | { kind: "asset"; logicalPath: string };
 
+/** One texture a level's shader table names, and what it came to. */
+export type LevelTextureReference = {
+  /** The reference as the shader table spells it, which is what a section names. */
+  reference: string;
+  /** What it resolved to, or `None` for a reference the roots hold nothing for. */
+  logicalPath: string | null;
+};
+
 /** What the machine as a whole is using. */
 export type MachineUsage = {
   /** Physical memory in use across every process. */
@@ -1740,6 +1748,8 @@ export type SelectedLevelDescription = {
   lights: number;
   hasSun: boolean;
   sectors: Array<SectorOutline>;
+  /** Every texture the shader table names, resolved once so a sector arriving later is a lookup rather than a search. */
+  textures: Array<LevelTextureReference>;
   /** Extent every sector together covers, which is where a camera is framed from. */
   bounds: VisualBounds | null;
 };
