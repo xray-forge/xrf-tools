@@ -14,10 +14,10 @@ pub mod survey;
 mod tests;
 
 pub use crate::chunks::{
-  ogf_bones_chunk::OgfBonesChunk, ogf_children_chunk::OgfChildrenChunk, ogf_description_chunk::OgfDescriptionChunk,
-  ogf_geometry_container_chunk::OgfGeometryContainerChunk, ogf_header_chunk::OgfHeaderChunk,
-  ogf_ik_data_chunk::OgfIkDataChunk, ogf_kinematics_chunk::OgfKinematicsChunk, ogf_swi_data_chunk::OgfSwiDataChunk,
-  ogf_texture_chunk::OgfTextureChunk,
+  ogf_bones_chunk::OgfBonesChunk, ogf_children_chunk::OgfChildrenChunk, ogf_children_link_chunk::OgfChildrenLinkChunk,
+  ogf_description_chunk::OgfDescriptionChunk, ogf_geometry_container_chunk::OgfGeometryContainerChunk,
+  ogf_header_chunk::OgfHeaderChunk, ogf_ik_data_chunk::OgfIkDataChunk, ogf_kinematics_chunk::OgfKinematicsChunk,
+  ogf_swi_data_chunk::OgfSwiDataChunk, ogf_texture_chunk::OgfTextureChunk,
 };
 pub use crate::data::ogf_bone::OgfBone;
 pub use crate::data::ogf_bone_ik_data::OgfBoneIkData;

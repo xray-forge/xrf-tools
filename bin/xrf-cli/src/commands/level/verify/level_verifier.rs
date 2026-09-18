@@ -1,10 +1,12 @@
 //! Reads every drawable visual of a compiled level and accounts for what could not be drawn.
 
+use std::collections::BTreeMap;
 use std::time::{Duration, Instant};
 
 use xrf_chunk::{ChunkDataSource, InMemoryChunkDataSource};
 use xrf_level::{
-  LevelFile, LevelGeomSource, LevelPortal, LevelSector, LevelShaderEntry, LevelVertex, LevelVisual, LevelVisualsChunk,
+  LevelFile, LevelGeomSource, LevelPortal, LevelSector, LevelSectorComposition, LevelShaderEntry, LevelVertex,
+  LevelVisual, LevelVisualsChunk,
 };
 use xrf_ogf::OgfGeometryContainerChunk;
 use xrf_report::{Finding, Report, RuleId};
@@ -244,8 +246,14 @@ impl<'a> LevelVerifier<'a> {
     state.census.lights = level.lights.as_ref().map_or(0, |chunk| chunk.lights.len());
     state.census.has_sun = level.lights.as_ref().is_some_and(|chunk| chunk.get_sun().is_some());
 
+    let mut reached: BTreeMap<u32, usize> = BTreeMap::new();
+
     for (index, sector) in sectors.iter().enumerate() {
       state.census.sector_portal_references += sector.portals.len();
+
+      if let Some(visuals) = visuals {
+        self.verify_composition(index, sector, visuals, &mut reached, state);
+      }
 
       if visuals.is_some() && sector.root as usize >= visual_count {
         state.ranges.push(self.finding(
@@ -268,6 +276,16 @@ impl<'a> LevelVerifier<'a> {
           ),
         ));
       }
+    }
+
+    if let Some(visuals) = visuals {
+      state.census.orphaned_drawables = visuals
+        .visuals
+        .iter()
+        .enumerate()
+        .filter(|(index, visual)| visual.is_drawable() && !reached.contains_key(&(*index as u32)))
+        .count();
+      state.census.shared_drawables = reached.values().filter(|count| **count > 1).count();
     }
 
     for (index, portal) in portals.iter().enumerate() {
@@ -294,6 +312,45 @@ impl<'a> LevelVerifier<'a> {
           ));
         }
       }
+    }
+  }
+
+  /// Walks one sector from its root and reports the links that lead nowhere.
+  fn verify_composition(
+    &self,
+    index: usize,
+    sector: &LevelSector,
+    visuals: &LevelVisualsChunk,
+    reached: &mut BTreeMap<u32, usize>,
+    state: &mut LevelVerificationState,
+  ) {
+    let composition: LevelSectorComposition = LevelSectorComposition::of(visuals, sector.root);
+
+    state.census.sector_visuals += composition.count_reached();
+
+    for drawable in &composition.drawables {
+      *reached.entry(*drawable).or_default() += 1;
+    }
+
+    // The root is judged by the caller, which names the relationship rather than the walk that found it, so
+    // reporting it again here would make one defect two findings.
+    if let Some(unknown) = composition.unknown.iter().find(|index| **index != sector.root) {
+      state.ranges.push(self.finding(
+        "level.sectors.child.out_of_range",
+        Self::LEVEL_FILE,
+        format!(
+          "Sector {index} reaches visual {unknown} through its links, past the {} the level holds",
+          visuals.visuals.len()
+        ),
+      ));
+    }
+
+    if let Some(revisited) = composition.revisited.first() {
+      state.ranges.push(self.finding(
+        "level.sectors.child.revisited",
+        Self::LEVEL_FILE,
+        format!("Sector {index} reaches visual {revisited} twice, so its links are not a tree"),
+      ));
     }
   }
 

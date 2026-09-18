@@ -8,6 +8,7 @@ mod level_geom_tests;
 mod level_hom_tests;
 mod level_lights_tests;
 mod level_ps_static_tests;
+mod level_sector_composition_tests;
 mod level_sectors_tests;
 mod level_snd_static_tests;
 mod level_som_tests;

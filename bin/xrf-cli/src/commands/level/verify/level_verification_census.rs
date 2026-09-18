@@ -32,6 +32,12 @@ pub struct LevelVerificationCensus {
   /// Portals named by a sector, counting one named by two sectors twice, which is what a portal joining two is.
   pub sector_portal_references: usize,
   pub lights: usize,
+  /// Visuals a sector reaches from its root, counting one reached by two sectors twice.
+  pub sector_visuals: usize,
+  /// Drawable visuals no sector reaches, which nothing culled by sector would ever draw.
+  pub orphaned_drawables: usize,
+  /// Drawable visuals reached from more than one sector, which a packer keyed by sector would pack twice.
+  pub shared_drawables: usize,
   /// Whether the compiler wrote the directional light the loader keeps as the sun.
   pub has_sun: bool,
 }

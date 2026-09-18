@@ -101,6 +101,14 @@ impl VerifyCommand {
 
     xrf_output::info!(
       output,
+      "Sectors reach {} visuals, {} drawables reached by more than one, {} reached by none",
+      result.census.sector_visuals,
+      result.census.shared_drawables,
+      result.census.orphaned_drawables
+    );
+
+    xrf_output::info!(
+      output,
       "{} static lights{}",
       result.census.lights,
       if result.census.has_sun {

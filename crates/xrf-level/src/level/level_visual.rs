@@ -2,7 +2,7 @@ use byteorder::ByteOrder;
 use xrf_chunk::{ChunkDataSource, ChunkReader, find_optional_chunk_by_id, find_required_chunk_by_id};
 use xrf_error::XrfResult;
 
-use xrf_ogf::{OgfGeometryContainerChunk, OgfHeaderChunk, OgfTextureChunk};
+use xrf_ogf::{OgfChildrenLinkChunk, OgfGeometryContainerChunk, OgfHeaderChunk, OgfTextureChunk};
 
 /// One visual of a compiled level, as `fsL_VISUALS` stores it.
 #[derive(Debug)]
@@ -15,6 +15,8 @@ pub struct LevelVisual {
   pub geometry: Option<OgfGeometryContainerChunk>,
   /// The same for `level.geomX`, present only for a visual the compiler gave a fast path.
   pub fastpath: Option<OgfGeometryContainerChunk>,
+  /// Visuals this one composes, by their index in the run, for a hierarchy visual.
+  pub children: Vec<u32>,
 }
 
 impl LevelVisual {
@@ -32,6 +34,10 @@ impl LevelVisual {
       texture: match find_optional_chunk_by_id(&chunks, OgfTextureChunk::CHUNK_ID) {
         Some(mut chunk) => Some(chunk.read_xr::<T, _>()?),
         None => None,
+      },
+      children: match find_optional_chunk_by_id(&chunks, OgfChildrenLinkChunk::CHUNK_ID) {
+        Some(mut chunk) => chunk.read_xr::<T, OgfChildrenLinkChunk>()?.children,
+        None => Vec::new(),
       },
       geometry: match find_optional_chunk_by_id(&chunks, OgfGeometryContainerChunk::CHUNK_ID) {
         Some(mut chunk) => Some(chunk.read_xr::<T, _>()?),

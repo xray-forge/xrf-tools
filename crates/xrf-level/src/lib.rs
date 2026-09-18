@@ -55,6 +55,7 @@ pub use crate::level::level_light_color::*;
 pub use crate::level::level_portal::*;
 pub use crate::level::level_portals_chunk::*;
 pub use crate::level::level_sector::*;
+pub use crate::level::level_sector_composition::*;
 pub use crate::level::level_sectors_chunk::*;
 pub use crate::level::level_shader_entry::*;
 pub use crate::level::level_shaders_chunk::*;
