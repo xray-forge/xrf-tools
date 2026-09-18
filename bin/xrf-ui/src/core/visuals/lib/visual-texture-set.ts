@@ -348,7 +348,7 @@ export class VisualTextureSet {
     }
 
     await Promise.all(
-      [...submeshesByPath].map(async ([logicalPath, submeshes]) => {
+      Array.from(submeshesByPath, async ([logicalPath, submeshes]) => {
         try {
           const png: ArrayBuffer = await visualsRawCommands.readTexture(selected.roots, logicalPath);
           const texture: Texture = await createDecodedTexture(png);
