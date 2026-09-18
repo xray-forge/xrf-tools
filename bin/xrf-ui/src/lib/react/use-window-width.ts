@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from "react";
 
-/** One resize subscription shared by every caller, rather than one per hook instance. */
+/** Stable across renders; each hook instance owns a resize listener and its cleanup. */
 function subscribe(onChange: () => void): () => void {
   window.addEventListener("resize", onChange);
 

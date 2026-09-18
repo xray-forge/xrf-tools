@@ -1,4 +1,4 @@
-import { RefCallback, useCallback, useLayoutEffect, useState } from "react";
+import { RefCallback, useLayoutEffect, useState } from "react";
 
 import { Nullable } from "@/lib/types/general";
 
@@ -11,20 +11,11 @@ export interface IElementSize {
 /**
  * Tracks how large an element is.
  *
- * Measured in a layout effect and again on every resize, so the first render a caller lays anything out on is already
- * the right one and no frame is composed against a stale box.
- *
- * A box reporting nothing - collapsed, detached, or a panel someone closed - leaves the last real measurement in place
- * rather than replacing it with zero: that keeps a size the caller can still lay out against, and the element comes
- * back the size it went away at.
- *
  * @returns A ref to put on the element, and its size, or null until it has been measured.
  */
 export function useElementSize<T extends HTMLElement>(): [RefCallback<T>, Nullable<IElementSize>] {
   const [element, setElement] = useState<Nullable<T>>(null);
   const [size, setSize] = useState<Nullable<IElementSize>>(null);
-
-  const ref = useCallback<RefCallback<T>>((next: Nullable<T>): void => setElement(next), []);
 
   useLayoutEffect(() => {
     if (!element) {
@@ -56,5 +47,5 @@ export function useElementSize<T extends HTMLElement>(): [RefCallback<T>, Nullab
     return () => observer.disconnect();
   }, [element]);
 
-  return [ref, size];
+  return [setElement, size];
 }
