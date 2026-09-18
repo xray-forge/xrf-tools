@@ -81,6 +81,37 @@ afterEach(() => {
 });
 
 describe("AudioWaveform", () => {
+  it("redraws playback progress without resetting unchanged canvas dimensions", async () => {
+    const { getByRole, rerender } = renderWithProviders(
+      <AudioWaveform src={"first"} bytes={BYTES} position={0} duration={10} onSeek={noop} onTogglePlay={noop} />
+    );
+
+    await act(async () => contexts[0].resolve(samples(0.5)));
+
+    const canvas = getByRole("slider", { name: "Seek" });
+    const observer: MutationObserver = new MutationObserver(noop);
+
+    observer.observe(canvas, { attributes: true, attributeFilter: ["width", "height"] });
+    clearRect.mockClear();
+    fillRect.mockClear();
+
+    rerender(
+      <>
+        <AudioWaveform src={"first"} bytes={BYTES} position={5} duration={10} onSeek={noop} onTogglePlay={noop} />
+      </>
+    );
+
+    const mutations: Array<MutationRecord> = observer.takeRecords();
+
+    observer.disconnect();
+
+    expect(getByRole("slider", { name: "Seek" })).toBe(canvas);
+    expect(canvas).toHaveAttribute("aria-valuenow", "5");
+    expect(clearRect).toHaveBeenCalledTimes(1);
+    expect(fillRect).toHaveBeenCalledTimes(50);
+    expect(mutations).toHaveLength(0);
+  });
+
   it("redraws a paused waveform at its new resolution without decoding again", async () => {
     const { getByRole } = renderWithProviders(
       <AudioWaveform src={"first"} bytes={BYTES} position={0} duration={10} onSeek={noop} onTogglePlay={noop} />

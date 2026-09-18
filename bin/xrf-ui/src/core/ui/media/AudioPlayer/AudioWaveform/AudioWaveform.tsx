@@ -102,8 +102,6 @@ export function AudioWaveform({
       return;
     }
 
-    canvas.width = size.width;
-    canvas.height = size.height;
     context.clearRect(0, 0, size.width, size.height);
 
     const middle: number = size.height / 2;
@@ -139,6 +137,8 @@ export function AudioWaveform({
         "h-24 w-full cursor-pointer rounded-surface border border-divider bg-well",
         "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
       )}
+      width={size?.width}
+      height={size?.height}
       role={"slider"}
       tabIndex={0}
       onClick={onClick}
