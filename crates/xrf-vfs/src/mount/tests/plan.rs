@@ -298,3 +298,50 @@ fn a_mounted_plan_names_each_source_by_the_alias_that_declared_it() {
     "a source the plan named but could not open is reported rather than silently absent"
   );
 }
+
+#[test]
+fn a_probe_lists_what_sits_directly_inside_a_directory() {
+  let root: PathBuf = install(
+    "children",
+    &[
+      "gamedata\\levels\\zaton\\level",
+      "gamedata\\levels\\zaton\\level.geom",
+      "gamedata\\levels\\jupiter\\level",
+      "gamedata\\levels\\lmaps\\lmap#0.dds",
+      "gamedata\\configs\\system.ltx",
+    ],
+  );
+
+  let mut vfs: XrayVfs = XrayVfs::new();
+  let steps: Vec<XrayProbeStep> = XrayRoots::one(root, XrayMountMode::Installation)
+    .to_probe_plan()
+    .expect("roots plan")
+    .mount_into(&mut vfs)
+    .expect("roots mount");
+
+  let probe: XrayProbe = vfs.probe().with_steps(steps);
+  let listing: crate::XrayDirectoryListing = probe.list_children("levels").expect("levels listed");
+
+  assert_eq!(
+    listing.directories,
+    ["jupiter", "lmaps", "zaton"],
+    "every directory under levels, sorted, whether or not it is a level"
+  );
+  assert!(listing.files.is_empty(), "levels holds directories rather than files");
+
+  // What tells a level from a directory of lightmaps is the bundle, which is why a caller asks for it by name.
+  assert!(
+    probe
+      .find("levels\\zaton\\level")
+      .expect("zaton resolves")
+      .get_asset()
+      .is_some()
+  );
+  assert!(
+    probe
+      .find("levels\\lmaps\\level")
+      .expect("lmaps resolves")
+      .get_asset()
+      .is_none()
+  );
+}

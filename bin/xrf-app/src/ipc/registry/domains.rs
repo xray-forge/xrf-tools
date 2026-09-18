@@ -86,6 +86,7 @@ macro_rules! for_each_tauri_command_domain {
       levels => "levels" {
         close_level => crate::plugins::levels::commands::close_level::levels_close_level,
         get_level => crate::plugins::levels::commands::get_level::levels_get_level,
+        list_levels => crate::plugins::levels::commands::list_levels::levels_list_levels,
         open_level => crate::plugins::levels::commands::open_level::levels_open_level,
         open_sector => crate::plugins::levels::commands::open_sector::levels_open_sector,
       }

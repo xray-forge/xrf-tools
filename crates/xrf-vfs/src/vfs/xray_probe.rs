@@ -4,7 +4,9 @@ use std::sync::Arc;
 use xrf_archive::ArchiveDescriptor;
 use xrf_error::XrfResult;
 
-use crate::vfs::{XrayMountedEntry, XrayResolution, XrayScopedVfs, XrayShadowedCopy, XrayShadowingEntry};
+use crate::vfs::{
+  XrayDirectoryListing, XrayMountedEntry, XrayResolution, XrayScopedVfs, XrayShadowedCopy, XrayShadowingEntry,
+};
 use crate::{
   XrayAsset, XrayAssetType, XrayLookupScope, XrayMount, XrayMountId, XrayPathCollision, XraySkippedMount, XrayVfs,
 };
@@ -273,6 +275,45 @@ impl<'a> XrayProbe<'a> {
     Ok(XrayResolution::Missing {
       roots: self.list_roots(),
     })
+  }
+
+  /// What sits directly inside one directory, merged across the steps this probe searches.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the directory is not a valid X-Ray logical path.
+  pub fn list_children(&self, directory: &str) -> XrfResult<XrayDirectoryListing> {
+    let mut listing: XrayDirectoryListing = XrayDirectoryListing::default();
+    let mut seen_directories: HashSet<String> = HashSet::new();
+    let mut seen_files: HashSet<String> = HashSet::new();
+
+    for step in &self.steps {
+      if !self.has_mounts(step) {
+        continue;
+      }
+
+      let step_listing: XrayDirectoryListing = self.vfs.scoped(step.get_scope()).list_children(directory)?;
+
+      for name in step_listing.directories {
+        if seen_directories.insert(name.clone()) {
+          listing.directories.push(name);
+        }
+      }
+
+      // Deduped the way a lookup resolves: an entry two steps hold is the one the earlier step holds.
+      for asset in step_listing.files {
+        if seen_files.insert(asset.get_logical_path().as_str().to_string()) {
+          listing.files.push(asset);
+        }
+      }
+    }
+
+    listing.directories.sort();
+    listing
+      .files
+      .sort_by(|first, second| first.get_logical_path().cmp(second.get_logical_path()));
+
+    Ok(listing)
   }
 
   /// Every asset of one kind this probe can reach, in step order and once per engine identity.

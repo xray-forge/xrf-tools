@@ -1641,6 +1641,16 @@ export enum EJobKind {
 /** Every `EJobKind` as the spelling it crosses IPC as, for a value no member has narrowed. */
 export type JobKind = `${EJobKind}`;
 
+/** One compiled level the roots hold, as a picker lists it. */
+export type LevelEntry = {
+  /** The name the installation knows the level by, which is its directory under `levels`. */
+  name: string;
+  /** Its engine identity, which is what opening it takes. */
+  logicalPath: string;
+  /** Whether `level.geom` sits beside the bundle; a level without it draws nothing. */
+  hasGeometry: boolean;
+};
+
 /** Every `kind` the `LevelSource` union is told apart by, so a switch or a comparison names one. */
 export enum ELevelSource {
   /** A compiled level directory on disk, named by its filesystem path. */
