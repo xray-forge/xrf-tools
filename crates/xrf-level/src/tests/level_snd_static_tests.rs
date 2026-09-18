@@ -1,8 +1,8 @@
 use xrf_chunk::{ChunkWriter, XRayByteOrder};
 use xrf_error::XrfResult;
 
-use crate::level_snd_static_file::LevelSndStaticFile;
-use crate::level_snd_static_sound::SndStaticSound;
+use crate::snd_static::level_snd_static_file::LevelSndStaticFile;
+use crate::snd_static::level_snd_static_sound::SndStaticSound;
 use crate::tests::fixtures::{chunk, floats, string};
 
 /// One static sound record, wrapped in the chunk its payload sits in.

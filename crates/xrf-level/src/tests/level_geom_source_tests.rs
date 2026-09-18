@@ -1,11 +1,11 @@
 use xrf_chunk::XRayByteOrder;
 use xrf_error::XrfResult;
 
-use crate::level_geom_file::LevelGeomFile;
-use crate::level_geom_source::LevelGeomSource;
-use crate::level_geom_vertex_element::LevelGeomVertexElement;
-use crate::level_vertex::LevelVertex;
-use crate::level_vertex_layout::LevelVertexLayout;
+use crate::geom::level_geom_file::LevelGeomFile;
+use crate::geom::level_geom_source::LevelGeomSource;
+use crate::geom::level_geom_vertex_element::LevelGeomVertexElement;
+use crate::geom::level_vertex::LevelVertex;
+use crate::geom::level_vertex_layout::LevelVertexLayout;
 use crate::tests::fixtures::chunk;
 
 /// One declaration element as the file stores it: stream, offset, type, method, usage, usage index.

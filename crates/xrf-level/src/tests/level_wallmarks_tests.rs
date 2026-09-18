@@ -1,9 +1,9 @@
 use xrf_chunk::{ChunkWriter, XRayByteOrder};
 use xrf_error::XrfResult;
 
-use crate::level_wallmark_vertex::LevelWallmarkVertex;
-use crate::level_wallmarks_file::LevelWallmarksFile;
 use crate::tests::fixtures::{chunk, floats, string};
+use crate::wallmarks::level_wallmark_vertex::LevelWallmarkVertex;
+use crate::wallmarks::level_wallmarks_file::LevelWallmarksFile;
 
 /// One baked decal: a bounding sphere, a vertex count, then the lit vertices.
 fn mark_bytes(vertices: usize) -> Vec<u8> {

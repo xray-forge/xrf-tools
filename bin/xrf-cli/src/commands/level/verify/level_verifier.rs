@@ -4,7 +4,9 @@ use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
 use xrf_chunk::{ChunkDataSource, InMemoryChunkDataSource};
-use xrf_level::{LevelFile, LevelGeomSource, LevelShaderEntry, LevelVertex, LevelVisual, LevelVisualsChunk};
+use xrf_level::{
+  LevelFile, LevelGeomSource, LevelPortal, LevelSector, LevelShaderEntry, LevelVertex, LevelVisual, LevelVisualsChunk,
+};
 use xrf_ogf::OgfGeometryContainerChunk;
 use xrf_report::{Finding, Report, RuleId};
 use xrf_spawn::XRayByteOrder;
@@ -63,6 +65,8 @@ impl LevelVerifier {
         self.verify_shader(index, visual, level.as_ref(), &mut state.ranges);
       }
     }
+
+    self.verify_sectors(level.as_ref(), visuals.as_ref(), &mut state);
 
     let duration: Duration = started.elapsed();
     let (census, report): (LevelVerificationCensus, Report) = state.into_report(duration);
@@ -217,6 +221,79 @@ impl LevelVerifier {
         file,
         format!("Visual {index} carries a vertex at {position} whose position is not a finite number"),
       ));
+    }
+  }
+
+  /// Checks that every sector and portal names something that exists.
+  fn verify_sectors(
+    &self,
+    level: Option<&LevelFile>,
+    visuals: Option<&LevelVisualsChunk>,
+    state: &mut LevelVerificationState,
+  ) {
+    let Some(level) = level else {
+      return;
+    };
+
+    let sectors: &[LevelSector] = level.sectors.as_ref().map_or(&[], |chunk| &chunk.sectors);
+    let portals: &[LevelPortal] = level.portals.as_ref().map_or(&[], |chunk| &chunk.portals);
+    let visual_count: usize = visuals.map_or(0, |visuals| visuals.visuals.len());
+
+    state.census.sectors = sectors.len();
+    state.census.portals = portals.len();
+    state.census.lights = level.lights.as_ref().map_or(0, |chunk| chunk.lights.len());
+    state.census.has_sun = level.lights.as_ref().is_some_and(|chunk| chunk.get_sun().is_some());
+
+    for (index, sector) in sectors.iter().enumerate() {
+      state.census.sector_portal_references += sector.portals.len();
+
+      if visuals.is_some() && sector.root as usize >= visual_count {
+        state.ranges.push(self.finding(
+          "level.sectors.root.out_of_range",
+          Self::LEVEL_FILE,
+          format!(
+            "Sector {index} draws visual {}, past the {visual_count} the level holds",
+            sector.root
+          ),
+        ));
+      }
+
+      if let Some(stray) = sector.portals.iter().find(|id| **id as usize >= portals.len()) {
+        state.ranges.push(self.finding(
+          "level.sectors.portal.out_of_range",
+          Self::LEVEL_FILE,
+          format!(
+            "Sector {index} names portal {stray}, past the {} the level holds",
+            portals.len()
+          ),
+        ));
+      }
+    }
+
+    for (index, portal) in portals.iter().enumerate() {
+      if !portal.is_polygon() {
+        state.geometry.push(self.finding(
+          "level.portals.not_a_polygon",
+          Self::LEVEL_FILE,
+          format!(
+            "Portal {index} spans {} vertices, where a polygon takes three and the record holds six",
+            portal.vertex_count
+          ),
+        ));
+      }
+
+      for (side, sector) in [("front", portal.sector_front), ("back", portal.sector_back)] {
+        if sector as usize >= sectors.len() {
+          state.ranges.push(self.finding(
+            "level.portals.sector.out_of_range",
+            Self::LEVEL_FILE,
+            format!(
+              "Portal {index} joins sector {sector} on its {side}, past the {} the level holds",
+              sectors.len()
+            ),
+          ));
+        }
+      }
     }
   }
 

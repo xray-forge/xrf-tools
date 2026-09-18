@@ -1,9 +1,9 @@
 use xrf_chunk::{ChunkReadWrite, ChunkWriter, XRayByteOrder};
 use xrf_error::XrfResult;
 
-use crate::detail_model::DetailModel;
-use crate::level_details_file::{DETAIL_SLOT_METERS, LevelDetailsFile, LevelDetailsHeader};
-use crate::level_details_slot::LevelDetailsSlot;
+use crate::details::detail_model::DetailModel;
+use crate::details::level_details_file::{DETAIL_SLOT_METERS, LevelDetailsFile, LevelDetailsHeader};
+use crate::details::level_details_slot::LevelDetailsSlot;
 
 /// One detail object, as `CDetail::Load` lays it out.
 fn model_bytes(shader: &str, texture: &str, flags: u32, vertices: u32, indices: u32) -> Vec<u8> {

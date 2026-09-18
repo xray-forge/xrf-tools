@@ -1,8 +1,8 @@
 use xrf_chunk::XRayByteOrder;
 use xrf_error::XrfResult;
 
-use crate::level_geom_file::LevelGeomFile;
-use crate::level_geom_vertex_element::LevelGeomVertexElement;
+use crate::geom::level_geom_file::LevelGeomFile;
+use crate::geom::level_geom_vertex_element::LevelGeomVertexElement;
 use crate::tests::fixtures::chunk;
 
 /// One declaration element as the file stores it.

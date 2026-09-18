@@ -1,8 +1,8 @@
 use xrf_chunk::{ChunkWriter, XRayByteOrder};
 use xrf_error::XrfResult;
 
-use crate::level_game_file::LevelGameFile;
-use crate::level_game_way::LevelGameWay;
+use crate::game::level_game_file::LevelGameFile;
+use crate::game::level_game_way::LevelGameWay;
 use crate::tests::fixtures::{chunk, floats, string};
 
 /// One patrol path, in the chunk order the editor emits: version, name, points, links.

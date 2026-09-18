@@ -1,9 +1,9 @@
 use xrf_chunk::{ChunkWriter, XRayByteOrder};
 use xrf_error::XrfResult;
 
-use crate::level_light::LevelLight;
-use crate::level_lights_chunk::LevelLightsChunk;
-use crate::level_lights_file::LevelLightsFile;
+use crate::lights::level_light::LevelLight;
+use crate::lights::level_lights_chunk::LevelLightsChunk;
+use crate::lights::level_lights_file::LevelLightsFile;
 use crate::tests::fixtures::{chunk, floats};
 
 /// One compiled light, laid out exactly as the compiler blits `R_Light`.

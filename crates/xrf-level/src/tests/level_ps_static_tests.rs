@@ -1,8 +1,8 @@
 use xrf_chunk::{ChunkWriter, XRayByteOrder};
 use xrf_error::XrfResult;
 
-use crate::level_ps_static_file::LevelPsStaticFile;
-use crate::level_ps_static_placement::PS_STATIC_ALL_GAME_TYPES;
+use crate::ps_static::level_ps_static_file::LevelPsStaticFile;
+use crate::ps_static::level_ps_static_placement::PS_STATIC_ALL_GAME_TYPES;
 use crate::tests::fixtures::{chunk, string};
 
 /// One static particle placement, at the width its version gives it.

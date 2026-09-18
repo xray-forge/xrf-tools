@@ -1,8 +1,8 @@
 use xrf_chunk::{ChunkWriter, XRayByteOrder};
 use xrf_error::XrfResult;
 
-use crate::level_hom_file::LevelHomFile;
-use crate::level_hom_polygon::HomPolygon;
+use crate::hom::level_hom_file::LevelHomFile;
+use crate::hom::level_hom_polygon::HomPolygon;
 use crate::tests::fixtures::{chunk, triangle};
 
 /// An occlusion mesh: a version chunk and a packed run of triangles.

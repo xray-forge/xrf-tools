@@ -1,8 +1,8 @@
 use xrf_chunk::{ChunkWriter, XRayByteOrder};
 use xrf_error::XrfResult;
 
-use crate::level_env_mod_file::LevelEnvModFile;
-use crate::level_env_modifier::EnvModifier;
+use crate::env_mod::level_env_mod_file::LevelEnvModFile;
+use crate::env_mod::level_env_modifier::EnvModifier;
 use crate::tests::fixtures::{chunk, floats};
 
 /// One environment modifier, at the width its version gives it.

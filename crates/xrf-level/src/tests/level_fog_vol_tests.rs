@@ -1,7 +1,7 @@
 use xrf_chunk::{ChunkWriter, XRayByteOrder};
 use xrf_error::XrfResult;
 
-use crate::level_fog_vol_file::LevelFogVolFile;
+use crate::fog_vol::level_fog_vol_file::LevelFogVolFile;
 use crate::tests::fixtures::floats;
 
 /// A 4x4 transform, as the engine blits one, translating to a readable place.

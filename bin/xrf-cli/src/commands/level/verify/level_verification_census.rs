@@ -27,6 +27,13 @@ pub struct LevelVerificationCensus {
   pub stray_normals: u64,
   /// The widest base texture coordinate decoded, against the 32 tiles the quantization allows.
   pub widest_coordinate: f32,
+  pub sectors: usize,
+  pub portals: usize,
+  /// Portals named by a sector, counting one named by two sectors twice, which is what a portal joining two is.
+  pub sector_portal_references: usize,
+  pub lights: usize,
+  /// Whether the compiler wrote the directional light the loader keeps as the sun.
+  pub has_sun: bool,
 }
 
 impl LevelVerificationCensus {

@@ -1,8 +1,8 @@
 use xrf_chunk::{ChunkWriter, XRayByteOrder};
 use xrf_error::XrfResult;
 
-use crate::level_som_file::LevelSomFile;
-use crate::level_som_polygon::SomPolygon;
+use crate::som::level_som_file::LevelSomFile;
+use crate::som::level_som_polygon::SomPolygon;
 use crate::tests::fixtures::{chunk, floats, triangle};
 
 /// A sound occlusion mesh: a version chunk and a packed run of triangles.

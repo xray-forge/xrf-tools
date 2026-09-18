@@ -95,6 +95,25 @@ impl VerifyCommand {
       result.census.shader_entries
     );
 
+    xrf_output::info!(
+      output,
+      "{} sectors joined by {} portals, named {} times between them",
+      result.census.sectors,
+      result.census.portals,
+      result.census.sector_portal_references
+    );
+
+    xrf_output::info!(
+      output,
+      "{} static lights{}",
+      result.census.lights,
+      if result.census.has_sun {
+        ", one of them the sun"
+      } else {
+        ", none of them a sun"
+      }
+    );
+
     if let Some((min, max)) = &result.census.bounds {
       xrf_output::info!(
         output,
