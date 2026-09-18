@@ -1,0 +1,175 @@
+import { beforeEach, describe, expect, it } from "@jest/globals";
+import { isObservableProp } from "@wirestate/mobx";
+
+import { createRoots } from "@/core/assets/lib";
+import { SelectedLevelDescription } from "@/core/ipc/types/xrf-app";
+import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
+import { SectorDescription, SectorOutline } from "@/core/ipc/types/xrf-visual";
+import { mockSectorDescription, mockSectorOutline, mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
+import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
+import { mockInvoke, resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
+import { MockVisualBuffer } from "@/fixtures/mocks/visual.mocks";
+import { mockInjectedService } from "@/fixtures/utils/container";
+
+import { LevelLoadService } from "./level-load.service";
+
+const ROOTS: XrayRoots = createRoots(["C:\\game\\db"]);
+const ORIGIN = { x: 0, y: 0, z: 0 };
+
+/** A sector sitting at one distance along x, with a unit sphere around it. */
+function outlineAt(sector: number, x: number): SectorOutline {
+  return mockSectorOutline({
+    bounds: {
+      boundingBox: { max: { x: x + 1, y: 1, z: 1 }, min: { x: x - 1, y: -1, z: -1 } },
+      boundingSphere: { center: { x, y: 0, z: 0 }, radius: 1 },
+    },
+    sector,
+  });
+}
+
+/** A level of the given sectors, and one packed sector every read answers with. */
+function mockStreamable(sectors: Array<SectorOutline>): {
+  level: SelectedLevelDescription;
+  description: SectorDescription;
+  buffer: ArrayBuffer;
+} {
+  const buffer: MockVisualBuffer = new MockVisualBuffer();
+  const description: SectorDescription = mockSectorDescription(buffer);
+
+  return { buffer: buffer.toArrayBuffer(), description, level: mockSelectedLevelDescription({ sectors }) };
+}
+
+/** Arms the three commands a stream makes, answering every sector read with the same pack. */
+function armLevel(level: SelectedLevelDescription, description: SectorDescription, buffer: ArrayBuffer): void {
+  setMockInvokeResponses({
+    ["plugin:levels|open_level"]: mockSessionResponse(level),
+    ["plugin:levels|open_sector"]: mockSessionResponse((args?: Record<string, unknown>) => ({
+      ...description,
+      sector: args?.sector as number,
+    })),
+    ["plugin:levels|read_sector"]: buffer,
+  });
+}
+
+function countCalls(command: string): number {
+  return mockInvoke.mock.calls.filter(([name]) => name === command).length;
+}
+
+describe("LevelLoadService", () => {
+  beforeEach(() => {
+    resetMockInvoke();
+  });
+
+  it("applies its mobx annotations", () => {
+    const { service } = mockInjectedService(LevelLoadService);
+
+    expect(isObservableProp(service, "level")).toBe(true);
+    expect(isObservableProp(service, "sectors")).toBe(true);
+    expect(isObservableProp(service, "residency")).toBe(true);
+  });
+
+  // The whole point of the open: a quarter of a gigabyte of geometry stays on disk until a camera asks for a piece.
+  it("opens a level without reading any geometry", async () => {
+    const { level, description, buffer } = mockStreamable([outlineAt(0, 5)]);
+    const { service } = mockInjectedService(LevelLoadService);
+
+    armLevel(level, description, buffer);
+
+    await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS);
+
+    expect(service.level.value?.selected.value.sectors).toHaveLength(1);
+    expect(service.sectors.size).toBe(0);
+    expect(countCalls("plugin:levels|open_sector")).toBe(0);
+    expect(countCalls("plugin:levels|read_sector")).toBe(0);
+  });
+
+  it("brings the sectors near the camera into residency", async () => {
+    const { level, description, buffer } = mockStreamable([outlineAt(0, 5), outlineAt(1, 1000)]);
+    const { service } = mockInjectedService(LevelLoadService);
+
+    armLevel(level, description, buffer);
+
+    await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS);
+    await service.stream(ORIGIN);
+
+    expect(Array.from(service.sectors.keys())).toEqual([0]);
+    expect(service.sectors.get(0)?.geometry.getAttribute("position").count).toBe(3);
+  });
+
+  // The geometry is device memory, so dropping the reference is not enough: leaving the level behind has to dispose it.
+  it("disposes the geometry of a sector the camera has left", async () => {
+    const { level, description, buffer } = mockStreamable([outlineAt(0, 5)]);
+    const { service } = mockInjectedService(LevelLoadService);
+
+    armLevel(level, description, buffer);
+
+    await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS);
+    await service.stream(ORIGIN);
+
+    const geometry = service.sectors.get(0)?.geometry;
+
+    let disposed: boolean = false;
+
+    geometry?.addEventListener("dispose", () => {
+      disposed = true;
+    });
+
+    await service.stream({ x: 10_000, y: 0, z: 0 });
+
+    expect(service.sectors.size).toBe(0);
+    expect(disposed).toBe(true);
+  });
+
+  // A camera that has not moved far enough to change what is resident should cost nothing at all.
+  it("reads nothing when the plan asks for no change", async () => {
+    const { level, description, buffer } = mockStreamable([outlineAt(0, 5)]);
+    const { service } = mockInjectedService(LevelLoadService);
+
+    armLevel(level, description, buffer);
+
+    await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS);
+    await service.stream(ORIGIN);
+    await service.stream(ORIGIN);
+
+    expect(countCalls("plugin:levels|open_sector")).toBe(1);
+  });
+
+  it("holds no more sectors than its budget allows", async () => {
+    const { level, description, buffer } = mockStreamable([outlineAt(0, 2), outlineAt(1, 3), outlineAt(2, 4)]);
+    const { service } = mockInjectedService(LevelLoadService);
+
+    armLevel(level, description, buffer);
+
+    await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS);
+
+    service.residency = { ...service.residency, maxSectors: 2 };
+
+    await service.stream(ORIGIN);
+
+    expect(service.sectors.size).toBe(2);
+  });
+
+  it("streams nothing when no level is open", async () => {
+    const { service } = mockInjectedService(LevelLoadService);
+
+    await service.stream(ORIGIN);
+
+    expect(service.sectors.size).toBe(0);
+    expect(countCalls("plugin:levels|open_sector")).toBe(0);
+  });
+
+  it("records a failure as state rather than throwing it at the caller", async () => {
+    const { service } = mockInjectedService(LevelLoadService);
+
+    setMockInvokeResponses({
+      ["plugin:levels|open_level"]: mockSessionResponse(() => {
+        throw new Error("level carries no visuals chunk, so it draws nothing");
+      }),
+    });
+
+    await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS);
+
+    expect(service.level.value).toBeNull();
+    expect(service.level.error?.message).toBe("level carries no visuals chunk, so it draws nothing");
+  });
+});
