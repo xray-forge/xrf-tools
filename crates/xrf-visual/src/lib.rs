@@ -18,7 +18,7 @@ pub use crate::data::visual_submesh::{
 pub use crate::pack::sector_package::SectorPackage;
 pub use crate::pack::sector_packer::SectorPacker;
 pub use crate::pack::visual_buffer_builder::VisualBufferBuilder;
-pub use crate::pack::visual_conversion::{convert_declared_bounds, convert_texture_coordinates, convert_vector};
+pub use crate::pack::visual_conversion::{convert_declared_bounds, convert_uvs, convert_vector};
 pub use crate::pack::visual_motion::{
   FLOATS_PER_BONE, VisualMotionBake, VisualMotionPose, bake_motion, total_part_bones,
 };

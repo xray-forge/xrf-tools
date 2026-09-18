@@ -6,7 +6,7 @@ use xrf_ogf::{OgfBox, OgfSphere};
 use crate::data::visual_bounds::VisualBounds;
 use crate::pack::tests::fixtures::vector;
 use crate::pack::visual_conversion::{
-  convert_declared_bounds, convert_placement, convert_texture_coordinates, convert_vector, reverse_triangle_winding,
+  convert_declared_bounds, convert_placement, convert_uvs, convert_vector, reverse_triangle_winding,
 };
 
 #[test]
@@ -15,10 +15,10 @@ fn mirrors_z_and_leaves_the_other_axes_alone() {
 }
 
 #[test]
-fn leaves_texture_coordinates_as_the_file_stores_them() {
+fn leaves_uvs_as_the_file_stores_them() {
   // A compressed texture cannot be flipped on upload, so its rows stay top first and Direct3D V already samples them
   // correctly. Flipping here would render every texture upside down.
-  assert_eq!(convert_texture_coordinates(0.25, 0.75), (0.25, 0.75));
+  assert_eq!(convert_uvs(0.25, 0.75), (0.25, 0.75));
 }
 
 #[test]

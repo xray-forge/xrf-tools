@@ -10,7 +10,7 @@ use xrf_level::{
 use xrf_math::Matrix4x4;
 use xrf_ogf::OgfGeometryContainerChunk;
 
-use crate::data::sector_attributes::SectorAttributes;
+use crate::pack::sector_attributes::SectorAttributes;
 use crate::data::sector_description::SectorDescription;
 use crate::data::sector_geometry::SectorGeometry;
 use crate::data::sector_instance_group::SectorInstanceGroup;
@@ -173,7 +173,7 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
       container.vertex_base,
       container.vertex_count,
     )?;
-    let base: u32 = arrays.count();
+    let base: u32 = arrays.get_vertex_count();
 
     for vertex in &vertices {
       arrays.push(vertex, None);

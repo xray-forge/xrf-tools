@@ -47,7 +47,7 @@ export function getShaderColor(shaderId: number): Color {
  * @returns A material, already dressed.
  */
 export function createSurfaceMaterial(
-  surface: Nullable<SectorSurface>,
+  surface: SectorSurface,
   textures: Nullable<LevelTextureSet>,
   options: ILevelSurfaceOptions
 ): MeshStandardMaterial {
@@ -71,21 +71,20 @@ export function createSurfaceMaterial(
  */
 export function dressSurfaceMaterial(
   material: MeshStandardMaterial,
-  surface: Nullable<SectorSurface>,
+  surface: SectorSurface,
   textures: Nullable<LevelTextureSet>,
   options: ILevelSurfaceOptions
 ): void {
   const base: Nullable<ILevelTexture> =
-    options.isTextured && textures && surface?.textureName ? textures.get(surface.textureName) : null;
+    options.isTextured && textures && surface.textureName ? textures.get(surface.textureName) : null;
   const lightmap: Nullable<ILevelTexture> =
-    options.isTextured && textures && surface?.lightmaps[0] ? textures.get(surface.lightmaps[0]) : null;
+    options.isTextured && textures && surface.lightmaps[0] ? textures.get(surface.lightmaps[0]) : null;
 
   material.wireframe = options.isWireframe;
   material.map = base?.texture ?? null;
   material.lightMap = lightmap?.texture ?? null;
   material.lightMapIntensity = LIGHTMAP_INTENSITY;
   // A textured surface takes its colour from the texture, so the tint comes off or every surface is dyed.
-  material.color =
-    material.map || !options.isSurfaceColored ? new Color(0xffffff) : getShaderColor(surface?.shaderId ?? 0);
+  material.color = material.map || !options.isSurfaceColored ? new Color(0xffffff) : getShaderColor(surface.shaderId);
   material.needsUpdate = true;
 }

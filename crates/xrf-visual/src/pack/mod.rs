@@ -1,3 +1,4 @@
+pub(crate) mod sector_attributes;
 pub(crate) mod sector_package;
 pub(crate) mod sector_packer;
 pub(crate) mod sector_vertex_arrays;

@@ -13,7 +13,7 @@ pub fn convert_vector(vector: &Vector3d) -> Vector3d {
 }
 
 /// Convert one texture coordinate pair, which is to leave it alone.
-pub fn convert_texture_coordinates(u: f32, v: f32) -> (f32, f32) {
+pub fn convert_uvs(u: f32, v: f32) -> (f32, f32) {
   (u, v)
 }
 

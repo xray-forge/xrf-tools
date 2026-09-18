@@ -7,7 +7,7 @@ use crate::data::visual_section::VisualDrawRange;
 use crate::data::visual_submesh::{VisualGeometry, VisualSkin, VisualSkipCause, VisualSubmesh, VisualSubmeshContent};
 use crate::pack::visual_buffer_builder::VisualBufferBuilder;
 use crate::pack::visual_conversion::{
-  convert_declared_bounds, convert_texture_coordinates, convert_vector, reverse_triangle_winding,
+  convert_declared_bounds, convert_uvs, convert_vector, reverse_triangle_winding,
 };
 use crate::pack::visual_package::VisualPackage;
 use crate::pack::visual_skeleton::convert_bones;
@@ -190,7 +190,7 @@ impl VisualPacker {
     let flat_uvs: Vec<f32> = vertices
       .iter()
       .flat_map(|it| {
-        let (u, v) = convert_texture_coordinates(it.texture_u, it.texture_v);
+        let (u, v) = convert_uvs(it.texture_u, it.texture_v);
 
         [u, v]
       })

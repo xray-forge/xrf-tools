@@ -2,12 +2,12 @@ use xrf_level::LevelVertex;
 use xrf_math::Matrix4x4;
 use xrf_math::Vector3d;
 
-use crate::data::sector_attributes::SectorAttributes;
+use crate::pack::sector_attributes::SectorAttributes;
 use crate::data::sector_geometry::SectorGeometry;
 use crate::data::visual_bounds::VisualBounds;
 use crate::data::visual_section::VisualSection;
 use crate::pack::visual_buffer_builder::VisualBufferBuilder;
-use crate::pack::visual_conversion::{convert_texture_coordinates, convert_vector};
+use crate::pack::visual_conversion::{convert_uvs, convert_vector};
 
 /// The attribute arrays of a sector under construction, one entry per packed vertex.
 #[derive(Debug)]
@@ -17,8 +17,8 @@ pub(crate) struct SectorVertexArrays {
   normals: Vec<f32>,
   tangents: Vec<f32>,
   binormals: Vec<f32>,
-  texture_coordinates: Vec<f32>,
-  lightmap_coordinates: Vec<f32>,
+  uvs: Vec<f32>,
+  lightmap_uvs: Vec<f32>,
   colors: Vec<f32>,
   hemi: Vec<f32>,
 }
@@ -33,11 +33,11 @@ impl SectorVertexArrays {
       binormals: Vec::new(),
       colors: Vec::new(),
       hemi: Vec::new(),
-      lightmap_coordinates: Vec::new(),
+      lightmap_uvs: Vec::new(),
       normals: Vec::new(),
       positions: Vec::new(),
       tangents: Vec::new(),
-      texture_coordinates: Vec::new(),
+      uvs: Vec::new(),
     }
   }
 
@@ -47,7 +47,7 @@ impl SectorVertexArrays {
   }
 
   /// Vertices packed so far, which is the base the next range is rebased onto.
-  pub fn count(&self) -> u32 {
+  pub fn get_vertex_count(&self) -> u32 {
     (self.positions.len() / 3) as u32
   }
 
@@ -74,18 +74,18 @@ impl SectorVertexArrays {
       Self::push_direction(&mut self.binormals, vertex.binormal.as_ref(), placement);
     }
 
-    if self.attributes.texture_coordinates {
-      let (u, v): (f32, f32) = convert_texture_coordinates(vertex.texture_coordinate.0, vertex.texture_coordinate.1);
+    if self.attributes.uvs {
+      let (u, v): (f32, f32) = convert_uvs(vertex.texture_coordinate.0, vertex.texture_coordinate.1);
 
-      self.texture_coordinates.push(u);
-      self.texture_coordinates.push(v);
+      self.uvs.push(u);
+      self.uvs.push(v);
     }
 
-    if self.attributes.lightmap_coordinates {
+    if self.attributes.lightmap_uvs {
       let (u, v): (f32, f32) = vertex.lightmap_coordinate.unwrap_or((0.0, 0.0));
 
-      self.lightmap_coordinates.push(u);
-      self.lightmap_coordinates.push(v);
+      self.lightmap_uvs.push(u);
+      self.lightmap_uvs.push(v);
     }
 
     if self.attributes.colors {
@@ -113,17 +113,17 @@ impl SectorVertexArrays {
   /// Writes every declared array and the indices into the buffer, and says where each landed.
   pub fn write_into(&self, indices: &[u32], builder: &mut VisualBufferBuilder) -> SectorGeometry {
     SectorGeometry {
-      vertex_count: self.count(),
+      vertex_count: self.get_vertex_count(),
       index_count: indices.len() as u32,
       positions: builder.push_f32_section(&self.positions),
       normals: self.push_declared(builder, self.attributes.normals, &self.normals),
       tangents: self.push_declared(builder, self.attributes.tangents, &self.tangents),
       binormals: self.push_declared(builder, self.attributes.binormals, &self.binormals),
-      texture_coordinates: self.push_declared(builder, self.attributes.texture_coordinates, &self.texture_coordinates),
-      lightmap_coordinates: self.push_declared(
+      uvs: self.push_declared(builder, self.attributes.uvs, &self.uvs),
+      lightmap_uvs: self.push_declared(
         builder,
-        self.attributes.lightmap_coordinates,
-        &self.lightmap_coordinates,
+        self.attributes.lightmap_uvs,
+        &self.lightmap_uvs,
       ),
       colors: self.push_declared(builder, self.attributes.colors, &self.colors),
       hemi: self.push_declared(builder, self.attributes.normals, &self.hemi),

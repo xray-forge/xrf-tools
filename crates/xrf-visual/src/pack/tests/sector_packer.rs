@@ -211,7 +211,7 @@ fn test_carries_an_attribute_any_range_of_the_sector_declares() {
   let lightmap = package
     .description
     .geometry
-    .lightmap_coordinates
+    .lightmap_uvs
     .expect("a sector one of whose ranges is lightmapped");
 
   assert_eq!(package.description.geometry.vertex_count, 4);

@@ -1,4 +1,10 @@
-import { SectorDescription, SectorGeometry, SectorSurface, VisualSection } from "@/core/ipc/types/xrf-visual";
+import {
+  SectorDescription,
+  SectorGeometry,
+  SectorSkip,
+  SectorSurface,
+  VisualSection,
+} from "@/core/ipc/types/xrf-visual";
 import { Nullable } from "@/lib/types/general";
 
 /**
@@ -52,7 +58,7 @@ export interface ISectorViews {
   sections: Array<ISectorSectionViews>;
   instances: Array<ISectorInstanceViews>;
   /** Drawables the packer could not read, named so a viewer can say what is missing rather than quietly omit it. */
-  skipped: Array<{ drawable: number; reason: string }>;
+  skipped: Array<SectorSkip>;
 }
 
 /**
@@ -85,11 +91,11 @@ function toGeometryViews(buffer: ArrayBuffer, geometry: SectorGeometry): ISector
     hemi: toOptionalFloatView(buffer, geometry.hemi),
     indexCount: geometry.indexCount,
     indices: toIndexView(buffer, geometry.indices),
-    lightmapUvs: toOptionalFloatView(buffer, geometry.lightmapCoordinates),
+    lightmapUvs: toOptionalFloatView(buffer, geometry.lightmapUvs),
     normals: toOptionalFloatView(buffer, geometry.normals),
     positions: toFloatView(buffer, geometry.positions),
     tangents: toOptionalFloatView(buffer, geometry.tangents),
-    uvs: toOptionalFloatView(buffer, geometry.textureCoordinates),
+    uvs: toOptionalFloatView(buffer, geometry.uvs),
     vertexCount: geometry.vertexCount,
   };
 }
@@ -127,7 +133,7 @@ export function createSectorViews(description: SectorDescription, buffer: ArrayB
       triangleCount: section.draw.count / 3,
     })),
     sector: description.sector,
-    skipped: description.skipped.map((skip) => ({ drawable: skip.drawable, reason: skip.reason })),
+    skipped: description.skipped,
   };
 }
 

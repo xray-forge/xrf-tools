@@ -15,9 +15,9 @@ pub struct SectorGeometry {
   pub tangents: Option<VisualSection>,
   /// The authored binormal of every vertex, mirrored with the normal.
   pub binormals: Option<VisualSection>,
-  pub texture_coordinates: Option<VisualSection>,
+  pub uvs: Option<VisualSection>,
   /// The lightmap coordinate of every vertex, for a surface xrLC lit from lightmaps.
-  pub lightmap_coordinates: Option<VisualSection>,
+  pub lightmap_uvs: Option<VisualSection>,
   /// The baked vertex colour of every vertex, as three floats in zero to one.
   pub colors: Option<VisualSection>,
   /// The hemisphere term of every vertex, which rides in the normal and is present with it.

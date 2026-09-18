@@ -175,7 +175,7 @@ fn mirrors_z_on_positions_and_every_basis_vector() {
 }
 
 #[test]
-fn keeps_the_texture_coordinates_of_every_vertex() {
+fn keeps_the_uvs_of_every_vertex() {
   let child: OgfFile = OgfFile {
     geometry: Some(geometry(
       vec![

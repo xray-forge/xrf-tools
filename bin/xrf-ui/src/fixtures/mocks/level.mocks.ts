@@ -25,11 +25,11 @@ export function mockSectorGeometry(buffer: MockVisualBuffer): SectorGeometry {
     hemi: null,
     indexCount: 3,
     indices,
-    lightmapCoordinates: null,
+    lightmapUvs: null,
     normals: null,
     positions,
     tangents: null,
-    textureCoordinates: null,
+    uvs: null,
     vertexCount: 3,
   };
 }

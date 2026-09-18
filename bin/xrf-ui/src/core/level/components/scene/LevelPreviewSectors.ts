@@ -17,13 +17,14 @@ import { Maybe, Nullable } from "@/lib/types/general";
 /** One drawn surface: the material it uses, and what the shader table says dresses it. */
 interface IDrawnSurface {
   material: MeshStandardMaterial;
-  surface: Nullable<SectorSurface>;
+  surface: SectorSurface;
 }
 
 /** One drawn sector: the mesh of everything baked in place, the meshes it stands, and their materials. */
 interface IDrawnSector {
   sector: number;
-  mesh: Mesh;
+  /** Absent for a sector the level bakes nothing of, which is every one whose drawables it all places. */
+  mesh: Nullable<Mesh>;
   /** One per mesh the sector stands in many places, each already holding every place. */
   instanced: Array<InstancedMesh>;
   /** The sector's own sections first, then its instanced meshes, in the order their materials were made. */
@@ -101,19 +102,12 @@ export class LevelPreviewSectors {
   }
 
   private add(sector: number, loaded: ILoadedSector): void {
-    // A sector with no surface still gets one material, because a mesh whose groups have no material draws nothing
-    // and says nothing about why.
-    const sections: Array<Nullable<SectorSurface>> = loaded.views.sections.length
-      ? loaded.views.sections.map((section: ISectorSectionViews) => section.surface)
-      : [null];
-    const surfaces: Array<IDrawnSurface> = sections.map((surface) => this.createSurface(surface));
-    const mesh: Mesh = new Mesh(
-      loaded.geometry,
-      surfaces.map(({ material }) => material)
+    const surfaces: Array<IDrawnSurface> = loaded.views.sections.map((section: ISectorSectionViews) =>
+      this.createSurface(section.surface)
     );
-
-    mesh.name = `sector-${sector}`;
-    mesh.matrixAutoUpdate = false;
+    // Only where the level bakes something in place. A sector whose drawables it all places has an empty index array,
+    // and a mesh drawing none of it would be a draw call to say nothing.
+    const mesh: Nullable<Mesh> = surfaces.length ? this.createMesh(sector, loaded, surfaces) : null;
 
     const instanced: Array<InstancedMesh> = loaded.views.instances.map((group: ISectorInstanceViews) => {
       const drawn: IDrawnSurface = this.createSurface(group.surface);
@@ -124,11 +118,23 @@ export class LevelPreviewSectors {
     });
 
     this.drawn.set(sector, { instanced, mesh, sector, surfaces });
-    this.parent.add(mesh);
 
-    for (const tree of instanced) {
-      this.parent.add(tree);
+    for (const drawn of mesh ? [mesh, ...instanced] : instanced) {
+      this.parent.add(drawn);
     }
+  }
+
+  /** The one mesh everything the level bakes in place is drawn from, a group to each of its surfaces. */
+  private createMesh(sector: number, loaded: ILoadedSector, surfaces: Array<IDrawnSurface>): Mesh {
+    const mesh: Mesh = new Mesh(
+      loaded.geometry,
+      surfaces.map(({ material }) => material)
+    );
+
+    mesh.name = `sector-${sector}`;
+    mesh.matrixAutoUpdate = false;
+
+    return mesh;
   }
 
   private remove(sector: number): void {
@@ -138,7 +144,9 @@ export class LevelPreviewSectors {
       return;
     }
 
-    this.parent.remove(drawn.mesh);
+    if (drawn.mesh) {
+      this.parent.remove(drawn.mesh);
+    }
 
     // The sector's own geometry belongs to the loader, but an instanced mesh took its own here and has to free it.
     for (const tree of drawn.instanced) {
@@ -154,7 +162,7 @@ export class LevelPreviewSectors {
     this.drawn.delete(sector);
   }
 
-  private createSurface(surface: Nullable<SectorSurface>): IDrawnSurface {
+  private createSurface(surface: SectorSurface): IDrawnSurface {
     return { material: createSurfaceMaterial(surface, this.textures, this.options), surface };
   }
 }

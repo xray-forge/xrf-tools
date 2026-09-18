@@ -50,13 +50,13 @@ describe("level sector views", () => {
   it("carries an attribute the sector did declare", () => {
     const buffer: MockVisualBuffer = new MockVisualBuffer();
     const description: SectorDescription = mockSectorDescription(buffer);
-    const lightmapCoordinates = buffer.pushFloats([0, 0, 1, 0, 0, 1]);
+    const lightmapUvs = buffer.pushFloats([0, 0, 1, 0, 0, 1]);
 
     const views: ISectorViews = createSectorViews(
       {
         ...description,
         bufferLength: buffer.byteLength,
-        geometry: { ...description.geometry, lightmapCoordinates },
+        geometry: { ...description.geometry, lightmapUvs },
       },
       buffer.toArrayBuffer()
     );

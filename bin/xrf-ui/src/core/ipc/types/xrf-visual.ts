@@ -19,13 +19,7 @@ export type SectorDescription = {
   bufferLength: number;
 };
 
-/**
- * Where one packed mesh's attributes sit inside a sector's buffer, and what to draw from them.
- *
- * A sector's own geometry and each mesh it stands in many places are packed the same way, so they are described the
- * same way rather than restating it. An attribute beside the position is present only where a declaration of the
- * sector carried it; where it is present it spans every vertex, zero where the range it came from carried nothing.
- */
+/** Where one packed mesh's attributes sit inside a sector's buffer, and what to draw from them. */
 export type SectorGeometry = {
   vertexCount: number;
   indexCount: number;
@@ -35,9 +29,9 @@ export type SectorGeometry = {
   tangents: VisualSection | null;
   /** The authored binormal of every vertex, mirrored with the normal. */
   binormals: VisualSection | null;
-  textureCoordinates: VisualSection | null;
+  uvs: VisualSection | null;
   /** The lightmap coordinate of every vertex, for a surface xrLC lit from lightmaps. */
-  lightmapCoordinates: VisualSection | null;
+  lightmapUvs: VisualSection | null;
   /** The baked vertex colour of every vertex, as three floats in zero to one. */
   colors: VisualSection | null;
   /** The hemisphere term of every vertex, which rides in the normal and is present with it. */
@@ -46,13 +40,7 @@ export type SectorGeometry = {
   indices: VisualSection;
 };
 
-/**
- * One mesh a sector draws many times, packed once with the places it stands.
- *
- * A level keeps a tree as a mesh in its own space and stands the same mesh in hundreds of places. Packing a copy for
- * each is what makes a sector of a swamp cost a gigabyte; packing it once and handing over the transforms is what
- * the engine does and what an instanced draw takes.
- */
+/** One mesh a sector draws many times, packed once with the places it stands. */
 export type SectorInstanceGroup = {
   surface: SectorSurface;
   /** The drawables this group stands in for, by their index in the visuals run. */
@@ -60,12 +48,7 @@ export type SectorInstanceGroup = {
   /** The mesh itself, in its own space, its indices counting from its own first vertex. */
   geometry: SectorGeometry;
   instanceCount: number;
-  /**
-   * Sixteen floats for each instance, exactly as the engine stores a matrix.
-   *
-   * Row major with the translation in the fourth row, which a renderer reading column major reads as the same
-   * transform: the two conventions are transposes, so nothing is rearranged on the way over.
-   */
+  /** Sixteen floats for each instance, exactly as the engine stores a matrix. */
   transforms: VisualSection;
 };
 
@@ -81,12 +64,7 @@ export type SectorOutline = {
   bounds: VisualBounds | null;
 };
 
-/**
- * One draw of a sector's own geometry: the indices to draw, and the surface they are drawn with.
- *
- * Every drawable of the sector dressed by the same table entry lands in one section, so a sector of a hundred
- * visuals draws in as many calls as it has distinct surfaces.
- */
+/** One draw of a sector's own geometry: the indices to draw, and the surface they are drawn with. */
 export type SectorSection = {
   surface: SectorSurface;
   /** Drawables packed into this section, by their index in the visuals run. */
@@ -102,12 +80,7 @@ export type SectorSkip = {
   reason: string;
 };
 
-/**
- * How one part of a sector is dressed, as the level's shader table names it.
- *
- * A level dresses a surface through the table rather than through names of its own, so the entry is the material
- * identity: two parts naming the same entry are the same material, in this sector and in every other.
- */
+/** How one part of a sector is dressed, as the level's shader table names it. */
 export type SectorSurface = {
   /** Entry of the level's shader table this is dressed by. */
   shaderId: number;
@@ -115,12 +88,7 @@ export type SectorSurface = {
   shaderName: string | null;
   /** The base texture that entry names, absent for the same reason. */
   textureName: string | null;
-  /**
-   * The lightmaps the same entry names after the base, sampled with the second uv set.
-   *
-   * An entry reads `shader/texture,lmap#N_1,lmap#N_2`, so everything after the base is baked lighting rather than
-   * another surface texture.
-   */
+  /** The lightmaps the same entry names after the base, sampled with the second uv set. */
   lightmaps: Array<string>;
 };
 
