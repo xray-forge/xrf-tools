@@ -436,6 +436,7 @@ describe("VisualLoadService texture decoding", () => {
     const { selected, buffer } = mockLoadable();
     const { service } = mockInjectedService(VisualLoadService);
     const dispose = jest.spyOn(Texture.prototype, "dispose");
+    const close = jest.fn();
 
     let finishDecode: (bitmap: ImageBitmap) => void = noop;
     let onDecoding: () => void = noop;
@@ -473,11 +474,12 @@ describe("VisualLoadService texture decoding", () => {
 
     expect(dispose).not.toHaveBeenCalled();
 
-    finishDecode({ close: noop, height: 4, width: 4 } as ImageBitmap);
+    finishDecode({ close, height: 4, width: 4 } as ImageBitmap);
     // The cancelled flow has settled already; let the late decode reach its own cleanup.
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(dispose).toHaveBeenCalledTimes(1);
+    expect(close).toHaveBeenCalledTimes(1);
     expect(service.visual.value).toBeNull();
     expect(service.visual.isLoading).toBe(false);
     expect(service.textures.size).toBe(0);

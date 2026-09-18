@@ -1,4 +1,4 @@
-import { describe, expect, it } from "@jest/globals";
+import { afterEach, describe, expect, it, jest } from "@jest/globals";
 import {
   CompressedTexture,
   LinearFilter,
@@ -6,11 +6,13 @@ import {
   RGB_S3TC_DXT1_Format,
   RGBA_S3TC_DXT1_Format,
   RGBA_S3TC_DXT5_Format,
+  Texture,
 } from "three";
 
 import { VisualTextureDependency } from "@/core/ipc/types/xrf-visual";
 import {
   createDdsTexture,
+  createDecodedTexture,
   EVisualTextureState,
   toInitialTextureState,
   toLoadableTextures,
@@ -19,6 +21,37 @@ import { mockDdsFile, mockDx10DdsFile, mockUncompressedDdsFile } from "@/fixture
 import { mockTextureDependency } from "@/fixtures/mocks/visual.mocks";
 import { muteConsole } from "@/fixtures/utils/console";
 import { Nullable } from "@/lib/types/general";
+
+describe("createDecodedTexture", () => {
+  const originalDecoder = Object.getOwnPropertyDescriptor(globalThis, "createImageBitmap");
+
+  afterEach(() => {
+    if (originalDecoder) {
+      Object.defineProperty(globalThis, "createImageBitmap", originalDecoder);
+    } else {
+      Reflect.deleteProperty(globalThis, "createImageBitmap");
+    }
+  });
+
+  it("keeps its bitmap available until the texture is disposed", async () => {
+    const close = jest.fn();
+    const bitmap = { close, height: 4, width: 4 };
+
+    Object.defineProperty(globalThis, "createImageBitmap", {
+      configurable: true,
+      value: async () => bitmap,
+    });
+
+    const texture: Texture = await createDecodedTexture(new ArrayBuffer(0));
+
+    expect(texture.image).toBe(bitmap);
+    expect(close).not.toHaveBeenCalled();
+
+    texture.dispose();
+
+    expect(close).toHaveBeenCalledTimes(1);
+  });
+});
 
 describe("toLoadableTextures", () => {
   it("keeps the submeshes whose reference located a file, addressed by that file", () => {

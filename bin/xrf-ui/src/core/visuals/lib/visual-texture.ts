@@ -224,7 +224,7 @@ export function readVisualTexel(texels: IVisualTextureTexels, x: number, y: numb
  * disagreed with the rest would be the only one on the model rendered upside down.
  *
  * @param bytes - Png bytes as the backend decoded them.
- * @returns An uploadable texture.
+ * @returns An uploadable texture that closes its owned bitmap when disposed.
  */
 export async function createDecodedTexture(bytes: ArrayBuffer): Promise<Texture> {
   const bitmap: ImageBitmap = await createImageBitmap(new Blob([bytes], { type: "image/png" }));
@@ -236,6 +236,8 @@ export async function createDecodedTexture(bytes: ArrayBuffer): Promise<Texture>
   // A decoded png carries no mip chain, and an incomplete texture samples black without this.
   texture.minFilter = LinearFilter;
   texture.needsUpdate = true;
+
+  texture.addEventListener("dispose", (): void => bitmap.close());
 
   return texture;
 }
