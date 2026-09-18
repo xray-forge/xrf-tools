@@ -24,8 +24,6 @@ export function runLatestFlow<T>(
   slot: PropertyKey,
   start: () => TCancellablePromise<T>
 ): Promise<T | void> {
-  Logger.info("Run latest flow:", slot);
-
   cancelLane(instance, slot);
 
   return trackFlow(instance, slot, start());
@@ -44,8 +42,6 @@ export function runExclusiveFlow<T>(
   slot: PropertyKey,
   start: () => TCancellablePromise<T>
 ): Promise<T | void> {
-  Logger.info("Run exclusive flow:", slot);
-
   const running: Nullable<TCancellablePromise<T>> = RUNNING.get(instance)?.get(slot) ?? null;
 
   if (running) {

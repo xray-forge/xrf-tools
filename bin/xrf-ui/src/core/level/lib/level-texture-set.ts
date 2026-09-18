@@ -7,7 +7,7 @@ import { LevelTextureReference } from "@/core/ipc/types/xrf-app";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { createDdsTexture, createDecodedTexture } from "@/core/visuals/lib/visual-texture";
 import { Logger } from "@/lib/logging";
-import { Nullable } from "@/lib/types/general";
+import { Maybe, Nullable } from "@/lib/types/general";
 
 /** What became of one reference, so a surface it dresses can say why it is untextured. */
 export interface ILevelTexture {
@@ -17,13 +17,15 @@ export interface ILevelTexture {
 
 /**
  * Owns a level's uploaded textures, keyed by the reference the shader table spells.
+ *
+ * Keyed by reference rather than by sector, because a level's surfaces are shared: one ground texture dresses dozens
+ * of sectors, and uploading it once per sector would spend the memory the streaming budget is there to save.
  */
 export class LevelTextureSet {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
   private readonly loaded: Map<string, ILevelTexture> = new Map();
   private readonly pending: Map<string, Promise<ILevelTexture>> = new Map();
-  private readonly users: Map<string, Set<number>> = new Map();
 
   /** Where each reference resolved to at open, so a load is a read rather than a second search. */
   private paths: ReadonlyMap<string, string> = new Map();
@@ -31,7 +33,7 @@ export class LevelTextureSet {
   private roots: Nullable<XrayRoots> = null;
 
   /**
-   * Takes the level a later load reads against.
+   * Takes the level a later load reads against, releasing whatever the last one held.
    *
    * @param roots - Roots the level was opened in.
    * @param references - What each texture reference came to, from the open.
@@ -50,7 +52,7 @@ export class LevelTextureSet {
   }
 
   /**
-   * @param reference - Texture reference as a section spells it.
+   * @param reference - Texture reference as a surface spells it.
    * @returns What became of it, or null while it has never been asked for.
    */
   public get(reference: string): Nullable<ILevelTexture> {
@@ -62,36 +64,30 @@ export class LevelTextureSet {
   }
 
   /**
-   * Loads every reference one sector names, sharing whatever is already loaded.
+   * Loads every reference given, sharing whatever is already loaded or already being read.
    *
-   * @param sector - Sector asking, which is what keeps the textures alive.
-   * @param references - What its sections name, base textures and lightmaps alike.
-   * @returns What became of each, once they have all settled.
+   * @param references - What a sector's surfaces name, base textures and lightmaps alike.
    */
-  public async acquire(sector: number, references: ReadonlyArray<string>): Promise<void> {
+  public async load(references: ReadonlyArray<string>): Promise<void> {
     const wanted: Set<string> = new Set(references.filter(Boolean));
 
-    for (const reference of wanted) {
-      this.users.set(reference, (this.users.get(reference) ?? new Set()).add(sector));
-    }
-
-    await Promise.all(Array.from(wanted, (reference: string) => this.load(reference)));
+    await Promise.all(Array.from(wanted, (reference: string) => this.read(reference)));
   }
 
   /**
-   * Gives up one sector's claim, disposing whatever nothing else still names.
+   * Disposes every texture outside the given set.
    *
-   * @param sector - Sector going away.
+   * Called after any change to what is resident, with the references those sectors name. Idempotent, and self
+   * healing: a texture orphaned by a cancelled read goes on the next call rather than lingering for the level's life.
+   *
+   * @param references - Everything the resident sectors still name.
    */
-  public release(sector: number): void {
-    for (const [reference, users] of this.users) {
-      if (!users.delete(sector) || users.size) {
-        continue;
+  public retain(references: ReadonlySet<string>): void {
+    for (const [reference, loaded] of Array.from(this.loaded)) {
+      if (!references.has(reference)) {
+        loaded.texture?.dispose();
+        this.loaded.delete(reference);
       }
-
-      this.users.delete(reference);
-      this.loaded.get(reference)?.texture?.dispose();
-      this.loaded.delete(reference);
     }
   }
 
@@ -103,13 +99,12 @@ export class LevelTextureSet {
 
     this.loaded.clear();
     this.pending.clear();
-    this.users.clear();
   }
 
   /**
    * Reads and uploads one reference, or joins the read already in flight for it.
    */
-  private async load(reference: string): Promise<ILevelTexture> {
+  private async read(reference: string): Promise<ILevelTexture> {
     const held: ILevelTexture | undefined = this.loaded.get(reference);
 
     if (held) {
@@ -123,7 +118,7 @@ export class LevelTextureSet {
       return inFlight;
     }
 
-    const reading: Promise<ILevelTexture> = this.read(reference);
+    const reading: Promise<ILevelTexture> = this.upload(reference);
 
     this.pending.set(reference, reading);
 
@@ -138,8 +133,8 @@ export class LevelTextureSet {
     }
   }
 
-  private async read(reference: string): Promise<ILevelTexture> {
-    const logicalPath: string | undefined = this.paths.get(reference);
+  private async upload(reference: string): Promise<ILevelTexture> {
+    const logicalPath: Maybe<string> = this.paths.get(reference);
 
     if (!this.roots || !logicalPath) {
       return { reason: `Nothing in the mounted roots answers to '${reference}'`, texture: null };

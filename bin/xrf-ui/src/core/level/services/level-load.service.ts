@@ -166,7 +166,6 @@ export class LevelLoadService {
 
     for (const sector of plan.evict) {
       this.held.release(sector);
-      this.textures.release(sector);
     }
 
     runInAction(() => {
@@ -184,7 +183,10 @@ export class LevelLoadService {
         });
       }
     } finally {
-      // Cleared however the flow ends, so a cancelled move does not leave a viewer reporting a read that is not coming.
+      // Both however the flow ends: a cancelled move must not leave a viewer reporting a read that is not coming, nor
+      // leave the textures of a sector that never arrived holding memory until the level closes.
+      this.textures.retain(this.listResidentTextures());
+
       runInAction(() => {
         this.streaming = IDLE_LEVEL_STREAM;
       });
@@ -232,7 +234,7 @@ export class LevelLoadService {
     const views: ISectorViews = createSectorViews(snapshot.value, buffer);
 
     // Before the sector is published, so a surface is never drawn untextured for a frame and then corrected.
-    yield* call(this.textures.acquire(sector, listSectorTextures(views)));
+    yield* call(this.textures.load(listSectorTextures(views)));
 
     this.held.adopt(views);
     this.publishSectors();
@@ -245,6 +247,21 @@ export class LevelLoadService {
       `${views.sections.length} draws,`,
       `${views.instances.length} instanced meshes`
     );
+  }
+
+  /**
+   * @returns Every texture reference the resident sectors name, which is what is worth keeping uploaded.
+   */
+  private listResidentTextures(): Set<string> {
+    const references: Set<string> = new Set();
+
+    for (const loaded of this.held.snapshot().values()) {
+      for (const reference of listSectorTextures(loaded.views)) {
+        references.add(reference);
+      }
+    }
+
+    return references;
   }
 
   private publishSectors(): void {

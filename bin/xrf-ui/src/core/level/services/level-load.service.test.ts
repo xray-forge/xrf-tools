@@ -5,6 +5,7 @@ import { createRoots } from "@/core/assets/lib";
 import { SelectedLevelDescription } from "@/core/ipc/types/xrf-app";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { SectorDescription, SectorOutline } from "@/core/ipc/types/xrf-visual";
+import { mockDdsFile } from "@/fixtures/mocks/dds.mocks";
 import { mockSectorDescription, mockSectorOutline, mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { mockInvoke, resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
@@ -170,6 +171,59 @@ describe("LevelLoadService", () => {
     await service.stream(ORIGIN);
 
     expect(service.sectors.size).toBe(2);
+  });
+
+  // Streaming is a latest-wins flow, so a camera that keeps moving cancels reads midway. What those reads had
+  // already uploaded must not outlive the sectors that never arrived.
+  it("keeps only the textures its resident sectors name", async () => {
+    const { level, description, buffer } = mockStreamable([outlineAt(0, 0), outlineAt(1, 20_000)]);
+    const { service } = mockInjectedService(LevelLoadService);
+
+    armLevel(level, description, buffer);
+    setMockInvokeResponses({
+      ["plugin:assets|read_asset"]: mockDdsFile(),
+      ["plugin:levels|open_level"]: mockSessionResponse(level),
+      ["plugin:levels|open_sector"]: mockSessionResponse((args?: Record<string, unknown>) => ({
+        ...description,
+        sector: args?.sector as number,
+      })),
+      ["plugin:levels|read_sector"]: buffer,
+    });
+
+    await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS);
+
+    service.residency = { ...service.residency, maxSectors: 1, minSectors: 1 };
+
+    await service.stream(ORIGIN);
+
+    expect(service.textures.size).toBeGreaterThan(0);
+
+    await service.stream({ x: 20_000, y: 0, z: 0 });
+
+    // The second sector names the same fixture surface, so what survives is what it names rather than what the first
+    // one left behind.
+    expect(service.textures.size).toBe(1);
+  });
+
+  it("releases every texture when the level is closed", async () => {
+    const { level, description, buffer } = mockStreamable([outlineAt(0, 0)]);
+    const { service } = mockInjectedService(LevelLoadService);
+
+    armLevel(level, description, buffer);
+    setMockInvokeResponses({
+      ["plugin:assets|read_asset"]: mockDdsFile(),
+      ["plugin:levels|open_level"]: mockSessionResponse(level),
+      ["plugin:levels|open_sector"]: mockSessionResponse(description),
+      ["plugin:levels|read_sector"]: buffer,
+    });
+
+    await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS);
+    await service.stream(ORIGIN);
+
+    service.clear();
+
+    expect(service.textures.size).toBe(0);
+    expect(service.sectors.size).toBe(0);
   });
 
   it("streams nothing when no level is open", async () => {

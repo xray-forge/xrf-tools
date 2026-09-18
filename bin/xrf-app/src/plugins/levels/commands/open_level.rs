@@ -8,10 +8,11 @@ use xrf_visual::SectorOutline;
 use crate::core::assets::AssetMountState;
 use crate::core::session::{Session, SessionId, SessionSnapshot};
 use crate::core::types::TauriResult;
-use crate::plugins::levels::read::{ReadLevel, read_source, resolve_textures};
+use crate::plugins::levels::read::{ReadLevel, read_source};
 use crate::plugins::levels::state::{
   LevelSource, LevelState, LevelTextureReference, SelectedLevel, SelectedLevelDescription,
 };
+use crate::plugins::levels::textures::resolve_textures;
 
 /// Select a compiled level and report what it is built out of, without reading any of its geometry.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "open_level"))]

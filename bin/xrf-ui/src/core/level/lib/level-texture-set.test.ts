@@ -1,17 +1,13 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 
 import { createRoots } from "@/core/assets/lib";
-import { LevelTextureReference } from "@/core/ipc/types/xrf-app";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { ILevelTexture, LevelTextureSet } from "@/core/level/lib/level-texture-set";
 import { mockDdsFile } from "@/fixtures/mocks/dds.mocks";
+import { mockLevelTextureReference } from "@/fixtures/mocks/level.mocks";
 import { mockInvoke, resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 
 const ROOTS: XrayRoots = createRoots(["C:/game/db"]);
-
-function reference(name: string, isPresent: boolean = true): LevelTextureReference {
-  return { logicalPath: isPresent ? `textures/${name}.dds` : null, reference: name };
-}
 
 function countReads(): number {
   return mockInvoke.mock.calls.filter(([command]) => command === "plugin:assets|read_asset").length;
@@ -26,9 +22,9 @@ describe("LevelTextureSet", () => {
   it("loads the textures a sector names", async () => {
     const set: LevelTextureSet = new LevelTextureSet();
 
-    set.open(ROOTS, [reference("stone")]);
+    set.open(ROOTS, [mockLevelTextureReference("stone")]);
 
-    await set.acquire(0, ["stone"]);
+    await set.load(["stone"]);
 
     expect(set.get("stone")?.texture).not.toBeNull();
     expect(set.size).toBe(1);
@@ -39,10 +35,10 @@ describe("LevelTextureSet", () => {
   it("uploads a texture two sectors share only once", async () => {
     const set: LevelTextureSet = new LevelTextureSet();
 
-    set.open(ROOTS, [reference("stone")]);
+    set.open(ROOTS, [mockLevelTextureReference("stone")]);
 
-    await set.acquire(0, ["stone"]);
-    await set.acquire(1, ["stone"]);
+    await set.load(["stone"]);
+    await set.load(["stone"]);
 
     expect(countReads()).toBe(1);
     expect(set.size).toBe(1);
@@ -51,37 +47,30 @@ describe("LevelTextureSet", () => {
   it("joins a read already in flight rather than starting a second", async () => {
     const set: LevelTextureSet = new LevelTextureSet();
 
-    set.open(ROOTS, [reference("stone")]);
+    set.open(ROOTS, [mockLevelTextureReference("stone")]);
 
-    await Promise.all([set.acquire(0, ["stone"]), set.acquire(1, ["stone"])]);
+    await Promise.all([set.load(["stone"]), set.load(["stone"])]);
 
     expect(countReads()).toBe(1);
   });
 
-  // The texture is device memory, so it has to go when nothing names it - but not while another sector still does.
-  it("keeps a texture while another sector still names it", async () => {
+  it("keeps a texture the resident sectors still name", async () => {
     const set: LevelTextureSet = new LevelTextureSet();
 
-    set.open(ROOTS, [reference("stone")]);
+    set.open(ROOTS, [mockLevelTextureReference("stone")]);
 
-    await set.acquire(0, ["stone"]);
-    await set.acquire(1, ["stone"]);
-
-    set.release(0);
+    await set.load(["stone"]);
+    set.retain(new Set(["stone"]));
 
     expect(set.get("stone")?.texture).not.toBeNull();
-
-    set.release(1);
-
-    expect(set.get("stone")).toBeNull();
   });
 
-  it("disposes the texture of the last sector that named it", async () => {
+  it("disposes a texture nothing resident names any more", async () => {
     const set: LevelTextureSet = new LevelTextureSet();
 
-    set.open(ROOTS, [reference("stone")]);
+    set.open(ROOTS, [mockLevelTextureReference("stone")]);
 
-    await set.acquire(0, ["stone"]);
+    await set.load(["stone"]);
 
     const loaded: ILevelTexture | null = set.get("stone");
 
@@ -91,18 +80,49 @@ describe("LevelTextureSet", () => {
       disposed = true;
     });
 
-    set.release(0);
+    set.retain(new Set());
 
     expect(disposed).toBe(true);
+    expect(set.get("stone")).toBeNull();
   });
 
-  // A surface whose texture the roots do not hold should say so rather than looking like one that was never asked for.
+  // The two ways counting claims per sector leaked: a sector evicted while its read was in flight left the finished
+  // texture owned by nobody, and a cancelled stream left a claim for a sector that never arrived. Deriving what to
+  // keep from what is resident makes both unreachable - whatever the reads did, the next reconcile is the truth.
+  it("disposes a texture whose sector was gone before the read finished", async () => {
+    const set: LevelTextureSet = new LevelTextureSet();
+
+    set.open(ROOTS, [mockLevelTextureReference("stone")]);
+
+    const reading: Promise<void> = set.load(["stone"]);
+
+    // The camera moved on: nothing is resident by the time the read lands.
+    await reading;
+    set.retain(new Set());
+
+    expect(set.size).toBe(0);
+  });
+
+  it("is safe to reconcile against the same set twice", async () => {
+    const set: LevelTextureSet = new LevelTextureSet();
+
+    set.open(ROOTS, [mockLevelTextureReference("stone")]);
+
+    await set.load(["stone"]);
+
+    set.retain(new Set(["stone"]));
+    set.retain(new Set(["stone"]));
+
+    expect(set.size).toBe(1);
+  });
+
+  // A surface whose texture the roots do not hold should say so rather than looking like one never asked for.
   it("says why a reference the roots hold nothing for has no texture", async () => {
     const set: LevelTextureSet = new LevelTextureSet();
 
-    set.open(ROOTS, [reference("missing", false)]);
+    set.open(ROOTS, [mockLevelTextureReference("missing", false)]);
 
-    await set.acquire(0, ["missing"]);
+    await set.load(["missing"]);
 
     expect(set.get("missing")?.texture).toBeNull();
     expect(set.get("missing")?.reason).toContain("missing");
@@ -111,11 +131,11 @@ describe("LevelTextureSet", () => {
   it("releases everything when the level is swapped", async () => {
     const set: LevelTextureSet = new LevelTextureSet();
 
-    set.open(ROOTS, [reference("stone")]);
+    set.open(ROOTS, [mockLevelTextureReference("stone")]);
 
-    await set.acquire(0, ["stone"]);
+    await set.load(["stone"]);
 
-    set.open(ROOTS, [reference("other")]);
+    set.open(ROOTS, [mockLevelTextureReference("other")]);
 
     expect(set.size).toBe(0);
   });

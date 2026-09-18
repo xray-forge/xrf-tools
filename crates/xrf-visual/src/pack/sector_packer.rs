@@ -31,7 +31,15 @@ type VertexRange = (u32, u32, u32);
 /// One instanced mesh: the geometry it draws and the surface it is dressed by, which is what makes two copies one.
 type InstanceKey = (u32, u32, u32, u32, u32, u32, u16);
 
-/// The instances of one mesh, gathered while the sector is walked.
+/// The drawables of one surface, gathered while the sector is walked.
+#[derive(Default)]
+struct SectionGathering {
+  drawables: Vec<u32>,
+  /// Their indices, already rebased onto where each range was packed.
+  indices: Vec<u32>,
+}
+
+/// The instances of one mesh, gathered the same way.
 #[derive(Default)]
 struct InstanceGathering {
   drawables: Vec<u32>,
@@ -62,10 +70,9 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
   pub fn pack<T: ByteOrder>(&mut self, sector: u32, composition: &LevelSectorComposition) -> SectorPackage {
     let mut arrays: SectorVertexArrays = SectorVertexArrays::new(self.widen_attributes(composition));
     let mut packed: BTreeMap<VertexRange, u32> = BTreeMap::new();
-    let mut groups: BTreeMap<u16, (Vec<u32>, Vec<u32>)> = BTreeMap::new();
-    let mut skipped: Vec<SectorSkip> = Vec::new();
-
+    let mut sections: BTreeMap<u16, SectionGathering> = BTreeMap::new();
     let mut gathered: BTreeMap<InstanceKey, InstanceGathering> = BTreeMap::new();
+    let mut skipped: Vec<SectorSkip> = Vec::new();
 
     for drawable in &composition.drawables {
       let Some((visual, container)) = Self::get_drawable(self.visuals, *drawable) else {
@@ -96,16 +103,16 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
 
       match self.read_indices::<T>(container, base) {
         Ok(indices) => {
-          let (drawables, packed_indices) = groups.entry(visual.header.shader_id).or_default();
+          let gathering: &mut SectionGathering = sections.entry(visual.header.shader_id).or_default();
 
-          drawables.push(*drawable);
-          packed_indices.extend(indices);
+          gathering.drawables.push(*drawable);
+          gathering.indices.extend(indices);
         }
         Err(error) => skipped.push(Self::skip(*drawable, &error)),
       }
     }
 
-    self.build::<T>(sector, arrays, groups, gathered, &mut skipped)
+    self.build::<T>(sector, arrays, sections, gathered, &mut skipped)
   }
 
   /// What every declaration in the sector together carries, which decides the arrays it packs.
@@ -206,7 +213,7 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
     &mut self,
     sector: u32,
     arrays: SectorVertexArrays,
-    groups: BTreeMap<u16, (Vec<u32>, Vec<u32>)>,
+    gathered_sections: BTreeMap<u16, SectionGathering>,
     gathered: BTreeMap<InstanceKey, InstanceGathering>,
     skipped: &mut Vec<SectorSkip>,
   ) -> SectorPackage {
@@ -214,17 +221,17 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
     let mut indices: Vec<u32> = Vec::new();
     let mut sections: Vec<SectorSection> = Vec::new();
 
-    for (shader_id, (drawables, group)) in groups {
+    for (shader_id, gathering) in gathered_sections {
       sections.push(SectorSection {
         draw: VisualDrawRange {
-          count: group.len() as u32,
+          count: gathering.indices.len() as u32,
           start: indices.len() as u32,
         },
-        drawables,
+        drawables: gathering.drawables,
         surface: self.get_surface(shader_id),
       });
 
-      indices.extend(group);
+      indices.extend(gathering.indices);
     }
 
     let bounds: Option<VisualBounds> = arrays.get_bounds();
