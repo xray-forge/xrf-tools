@@ -11,7 +11,6 @@ use xrf_ltx::read_ltx_field;
 use xrf_ltx::{Ltx, Section};
 use xrf_utils::assert_equal;
 
-
 use crate::data::particle_effect_description::ParticleDescription;
 use crate::data::particle_group_effect::ParticleGroupEffect;
 use crate::data::particle_group_effect_old::ParticleGroupEffectOld;
