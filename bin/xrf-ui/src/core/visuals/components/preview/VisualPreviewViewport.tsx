@@ -35,8 +35,8 @@ export interface IVisualPreviewViewportProps {
  * Mounts the imperative preview scene and disposes it on unmount.
  *
  * The scene is created per mount rather than kept in state, so react strict mode remounting rebuilds a
- * clean webgl context instead of leaking the previous one. View options are read through a ref on mount
- * so a remount restores whatever the toolbar currently shows.
+ * clean webgl context instead of leaking the previous one. The prop effects initialize each new scene
+ * and keep it synchronized with the current model and toolbar settings.
  *
  * A new model replaces the geometry in place rather than recreating the scene, so opening one visual
  * after another keeps the webgl context and the renderer alive.
@@ -55,24 +55,17 @@ export function VisualPreviewViewport({
 }: IVisualPreviewViewportProps): ReactElement {
   const containerRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<Nullable<VisualPreviewScene>>(null);
-  const optionsRef = useRef<IVisualPreviewViewOptions>(options);
-  const detailRef = useRef<number>(detail);
-  const modelRef = useRef<Nullable<IVisualModelViews>>(model);
-
-  modelRef.current = model;
 
   useEffect(() => {
     if (!containerRef.current) {
       return;
     }
 
-    const scene: VisualPreviewScene = new VisualPreviewScene(modelRef.current);
+    const scene: VisualPreviewScene = new VisualPreviewScene(null);
 
     sceneRef.current = scene;
 
     scene.mount(containerRef.current);
-    scene.applyViewOptions(optionsRef.current);
-    scene.setDetailLevel(detailRef.current);
 
     return () => {
       sceneRef.current = null;
@@ -80,19 +73,16 @@ export function VisualPreviewViewport({
     };
   }, []);
 
-  // The scene keeps the selected level across a model change, so this does not re-apply it.
+  // The scene keeps view options and detail across model changes.
   useEffect(() => {
     sceneRef.current?.setModel(model);
-    sceneRef.current?.applyViewOptions(optionsRef.current);
   }, [model]);
 
   useEffect(() => {
-    optionsRef.current = options;
     sceneRef.current?.applyViewOptions(options);
   }, [options]);
 
   useEffect(() => {
-    detailRef.current = detail;
     sceneRef.current?.setDetailLevel(detail);
   }, [detail]);
 
