@@ -64,3 +64,104 @@ impl AnimationInterpolation {
     Ok(())
   }
 }
+
+#[cfg(test)]
+mod tests {
+  use xrf_chunk::{ChunkReader, ChunkWriter, XRayByteOrder};
+  use xrf_error::XrfResult;
+
+  use crate::AnimationInterpolation;
+
+  #[test]
+  fn test_read_write() -> XrfResult {
+    let original: AnimationInterpolation = AnimationInterpolation {
+      tension: -32.0,
+      continuity: 32.0,
+      bias: -32.0,
+      parameters: [32.0, -32.0, 32.0, -32.0],
+    };
+    let mut writer: ChunkWriter = ChunkWriter::new();
+
+    original.write::<XRayByteOrder>(&mut writer)?;
+
+    assert_eq!(writer.bytes_written(), 14);
+    assert_eq!(writer.buffer, [0, 0, 255, 255, 0, 0, 255, 255, 0, 0, 255, 255, 0, 0]);
+
+    let mut reader = ChunkReader::from_vec(writer.buffer)?;
+
+    assert_eq!(AnimationInterpolation::read::<XRayByteOrder, _>(&mut reader)?, original);
+    reader.assert_read("Expect all interpolation parameters to be read")?;
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_quantized_bytes_round_trip() -> XrfResult {
+    let bytes: Vec<u8> = vec![0, 0, 1, 0, 255, 127, 0, 128, 254, 255, 255, 255, 0, 64];
+    let mut reader = ChunkReader::from_vec(bytes.clone())?;
+    let interpolation: AnimationInterpolation = AnimationInterpolation::read::<XRayByteOrder, _>(&mut reader)?;
+    let values: [f32; 7] = [
+      interpolation.tension,
+      interpolation.continuity,
+      interpolation.bias,
+      interpolation.parameters[0],
+      interpolation.parameters[1],
+      interpolation.parameters[2],
+      interpolation.parameters[3],
+    ];
+    let expected: [f32; 7] = [-32.0, -31.999_023, -0.000_488, 0.000_488, 31.999_023, 32.0, -15.999_756];
+
+    for (value, expected) in values.into_iter().zip(expected) {
+      assert!((value - expected).abs() < 0.000_01, "Expected {expected}, got {value}");
+    }
+
+    reader.assert_read("Expect all quantized parameters to be read")?;
+
+    let mut writer: ChunkWriter = ChunkWriter::new();
+
+    interpolation.write::<XRayByteOrder>(&mut writer)?;
+
+    assert_eq!(writer.buffer, bytes);
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_read_wide() -> XrfResult {
+    let bytes: Vec<u8> = [-1.25_f32, 2.5, -3.75, 4.0, -5.5, 6.25, 33.5]
+      .into_iter()
+      .flat_map(f32::to_le_bytes)
+      .collect();
+    let mut reader = ChunkReader::from_vec(bytes)?;
+
+    assert_eq!(
+      AnimationInterpolation::read_wide::<XRayByteOrder, _>(&mut reader)?,
+      AnimationInterpolation {
+        tension: -1.25,
+        continuity: 2.5,
+        bias: -3.75,
+        parameters: [4.0, -5.5, 6.25, 33.5],
+      }
+    );
+    reader.assert_read("Expect all wide interpolation parameters to be read")?;
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_read_truncated_parameters() -> XrfResult {
+    for length in 1..14 {
+      let mut reader = ChunkReader::from_vec(vec![0; length])?;
+
+      assert!(AnimationInterpolation::read::<XRayByteOrder, _>(&mut reader).is_err());
+    }
+
+    for length in 1..28 {
+      let mut reader = ChunkReader::from_vec(vec![0; length])?;
+
+      assert!(AnimationInterpolation::read_wide::<XRayByteOrder, _>(&mut reader).is_err());
+    }
+
+    Ok(())
+  }
+}
