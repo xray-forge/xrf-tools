@@ -1,4 +1,4 @@
-//! `.anm` object motion: an envelope per channel over a fixed frame range.
+#![doc = include_str!("../README.md")]
 
 pub(crate) mod anm_file;
 

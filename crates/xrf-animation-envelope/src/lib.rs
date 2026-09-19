@@ -1,4 +1,4 @@
-//! Keyframe envelopes, the `xrCore/Animation` primitives shared by object motion and post-process effects.
+#![doc = include_str!("../README.md")]
 
 pub(crate) mod animation_envelope;
 pub(crate) mod animation_interpolation;

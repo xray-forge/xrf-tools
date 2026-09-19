@@ -1,4 +1,4 @@
-//! `.ppe` post-process effects, as envelopes over colour and value channels.
+#![doc = include_str!("../README.md")]
 
 pub(crate) mod ppe_color;
 pub(crate) mod ppe_color_map;
