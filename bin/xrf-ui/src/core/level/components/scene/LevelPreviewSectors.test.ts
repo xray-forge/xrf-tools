@@ -184,6 +184,27 @@ describe("LevelPreviewSectors instances", () => {
     expect(instanced[0]?.count).toBe(2);
   });
 
+  // A sector of a swamp bakes nothing in place: every drawable it reaches is a tree the level stands. Adding a mesh
+  // over its empty index array would be a draw call to say nothing.
+  it("adds no baked mesh for a sector the level bakes nothing of", () => {
+    const parent: Group = new Group();
+    const sectors: LevelPreviewSectors = new LevelPreviewSectors(parent);
+    const buffer: MockVisualBuffer = new MockVisualBuffer();
+    const description = mockSectorDescription(buffer, {
+      instances: [mockSectorInstanceGroup(buffer, [0, 100])],
+      sections: [],
+    });
+    const views: ISectorViews = createSectorViews(
+      { ...description, bufferLength: buffer.byteLength },
+      buffer.toArrayBuffer()
+    );
+
+    sectors.sync(new Map([[0, { geometry: createSectorGeometry(views), sector: 0, views }]]));
+
+    expect(parent.children).toHaveLength(1);
+    expect(parent.children[0]).toBeInstanceOf(InstancedMesh);
+  });
+
   // The loader owns the sector's geometry, but an instanced mesh built its own here: leaving it behind leaks one
   // upload per stand of trees every time the camera moves on.
   it("disposes the geometry it built for an instanced mesh", () => {
