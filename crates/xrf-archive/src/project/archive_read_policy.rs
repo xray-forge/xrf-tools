@@ -2,7 +2,7 @@ use serde::Serialize;
 use xrf_error::{XrfError, XrfResult};
 use xrf_extension::{XrayExtension, XrayExtensionOf};
 
-use crate::project::constants::{
+use crate::project::archive_read_policy_constants::{
   ALLOWED_AUDIO_EXTENSIONS, ALLOWED_AUDIO_SIZE, ALLOWED_CHUNK_TREE_SIZE, ALLOWED_DESCRIBE_SIZE,
   ALLOWED_IMAGE_EXTENSIONS, ALLOWED_IMAGE_SIZE, ALLOWED_TEXT_EXTENSIONS, ALLOWED_TEXT_SIZE, ALLOWED_TEXTURE_EXTENSIONS,
   ALLOWED_TEXTURE_SIZE,
@@ -38,12 +38,22 @@ impl ArchiveReadPolicy {
       .is_some_and(|extension| self.extensions.contains(&extension))
   }
 
+  /// Whether an entry of `size` bytes may be read whole so its format can be described.
+  pub const fn allows_describe_read(&self, size: u32) -> bool {
+    size <= self.maximum_describe_size
+  }
+
+  /// Whether an entry of `size` bytes may be read whole only to walk the container it is.
+  pub const fn allows_chunk_tree_read(&self, size: u32) -> bool {
+    size <= self.maximum_chunk_tree_size
+  }
+
   /// Admits a text read of `size` bytes, or names why it is refused.
   ///
   /// # Errors
   ///
   /// Returns a read error when the extension is not one this policy reads as text, or the file exceeds its limit.
-  pub fn require_text_read(&self, filename: &str, size: u32) -> XrfResult {
+  pub fn assert_can_read_as_text(&self, filename: &str, size: u32) -> XrfResult {
     if !self.supports_file(filename) {
       return Err(XrfError::new_read_error(format!(
         "File '{filename}' cannot be read, file extension is not allowed to be read"
@@ -58,16 +68,6 @@ impl ArchiveReadPolicy {
     }
 
     Ok(())
-  }
-
-  /// Whether an entry of `size` bytes may be read whole so its format can be described.
-  pub const fn allows_describe_read(&self, size: u32) -> bool {
-    size <= self.maximum_describe_size
-  }
-
-  /// Whether an entry of `size` bytes may be read whole only to walk the container it is.
-  pub const fn allows_chunk_tree_read(&self, size: u32) -> bool {
-    size <= self.maximum_chunk_tree_size
   }
 }
 
@@ -143,13 +143,13 @@ mod tests {
 
     assert!(
       policy
-        .require_text_read("configs\\system.ltx", policy.maximum_size)
+        .assert_can_read_as_text("configs\\system.ltx", policy.maximum_size)
         .is_ok()
     );
-    assert!(policy.require_text_read("textures\\a.dds", 1).is_err());
+    assert!(policy.assert_can_read_as_text("textures\\a.dds", 1).is_err());
     assert!(
       policy
-        .require_text_read("configs\\system.ltx", policy.maximum_size + 1)
+        .assert_can_read_as_text("configs\\system.ltx", policy.maximum_size + 1)
         .is_err()
     );
   }

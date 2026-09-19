@@ -179,7 +179,7 @@ impl XrayMountPlan {
   fn with_volumes_beneath(self, path: &Path, origin: &str) -> XrfResult<Self> {
     let mut plan: Self = self;
 
-    for volume in ArchiveProject::discover_volumes(path)?.into_iter().rev() {
+    for volume in ArchiveProject::get_discover_volumes(path)?.into_iter().rev() {
       plan = plan.with_kind(volume, "", origin, XraySourceKind::Archive)?;
     }
 

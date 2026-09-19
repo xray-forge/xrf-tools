@@ -72,7 +72,7 @@ impl ArchiveWorld {
       .ok_or_else(|| XrfError::new_not_found_error(format!("File '{name}' is not found in the opened game folder")))?;
     let size: u32 = entry.size_real.try_into().unwrap_or(u32::MAX);
 
-    self.read_policy.require_text_read(name, size)?;
+    self.read_policy.assert_can_read_as_text(name, size)?;
 
     let asset: XrayAsset = probe
       .find(name)?
