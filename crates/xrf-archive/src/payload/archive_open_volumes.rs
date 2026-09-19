@@ -3,8 +3,8 @@ use std::path::Path;
 
 use xrf_error::XrfResult;
 
-use crate::project::archive_located_entry::ArchiveLocatedEntry;
-use crate::project::archive_open_volume::ArchiveOpenVolume;
+use crate::payload::archive_located_entry::ArchiveLocatedEntry;
+use crate::payload::archive_open_volume::ArchiveOpenVolume;
 use crate::{ArchiveDescriptor, ArchiveFileDescriptor, ArchiveProject};
 
 /// Every volume of one project, open, positioned to serve any entry of it.
@@ -15,7 +15,7 @@ pub struct ArchiveOpenVolumes<'a> {
 }
 
 impl<'a> ArchiveOpenVolumes<'a> {
-  pub(super) fn open(project: &'a ArchiveProject) -> XrfResult<Self> {
+  pub(crate) fn open(project: &'a ArchiveProject) -> XrfResult<Self> {
     let mut files: Vec<ArchiveOpenVolume> = Vec::with_capacity(project.archives.len());
 
     for archive in &project.archives {

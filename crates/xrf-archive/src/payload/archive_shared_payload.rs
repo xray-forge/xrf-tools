@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use serde::Serialize;
 
-use crate::archive_file_descriptor::ArchiveFileDescriptor;
+use crate::volume::ArchiveFileDescriptor;
 
 /// The fields a reader locates and checks a payload by: volume, offset, stored size, real size, and CRC.
 type PayloadLocation = (u32, u32, u32, u32, u32);
@@ -91,7 +91,7 @@ impl ArchiveSharedPayload {
 mod tests {
   use std::sync::Arc;
 
-  use crate::archive_file_descriptor::ArchiveFileDescriptor;
+  use crate::volume::ArchiveFileDescriptor;
 
   use super::ArchiveSharedPayload;
 

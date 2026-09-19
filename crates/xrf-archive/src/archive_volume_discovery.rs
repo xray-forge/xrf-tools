@@ -177,7 +177,7 @@ mod tests {
     fs::set_permissions(&locked, fs::Permissions::from_mode(0o000))?;
 
     let is_enforced: bool = fs::read_dir(&locked).is_err();
-    let discovered: XrfResult<Vec<PathBuf>> = ArchiveProject::discover_volumes(&root);
+    let discovered: XrfResult<Vec<PathBuf>> = ArchiveProject::get_discover_volumes(&root);
 
     // Restored before asserting, or the failure leaves a directory the run cannot clean up.
     fs::set_permissions(&locked, fs::Permissions::from_mode(0o700))?;

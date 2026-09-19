@@ -7,14 +7,14 @@ use serde::Serialize;
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::{format_path, to_format_size};
 
-use crate::archive_descriptor::ArchiveDescriptor;
-use crate::archive_file_descriptor::ArchiveFileDescriptor;
-use crate::archive_shared_payload::ArchiveSharedPayload;
-use crate::project::archive_open_volumes::ArchiveOpenVolumes;
-use crate::project::archive_read_policy::ArchiveReadPolicy;
-use crate::project::archive_read_result::ArchiveReadResult;
-use crate::project::archive_volume_discovery::ArchiveVolumeDiscovery;
-use crate::reader::ArchiveReader;
+use crate::archive_read_policy::ArchiveReadPolicy;
+use crate::archive_read_result::ArchiveReadResult;
+use crate::archive_volume_discovery::ArchiveVolumeDiscovery;
+use crate::payload::ArchiveOpenVolumes;
+use crate::payload::ArchiveSharedPayload;
+use crate::volume::ArchiveDescriptor;
+use crate::volume::ArchiveFileDescriptor;
+use crate::volume::ArchiveReader;
 
 /// One volume set at a path the caller names, merged into a single name table.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]

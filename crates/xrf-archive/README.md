@@ -27,7 +27,7 @@ Opening reads the volume headers and name tables. File payloads are read on dema
 that every file can be decompressed.
 
 | Method                                   | Input and discovery                                                        |
-|------------------------------------------|----------------------------------------------------------------------------|
+| ---------------------------------------- | -------------------------------------------------------------------------- |
 | `ArchiveProject::new(path)`              | One file, or archive volumes recursively beneath a directory               |
 | `ArchiveProject::new_shallow(path)`      | One file, or archive volumes directly inside a directory                   |
 | `ArchiveProject::discover_volumes(path)` | The paths `new` would open, in merge order, without parsing their contents |
@@ -51,7 +51,7 @@ use `xrf-vfs` when the input is an engine logical path that needs normalization 
 The project exposes three collections:
 
 | Collection | Contents                                                                                      |
-|------------|-----------------------------------------------------------------------------------------------|
+| ---------- | --------------------------------------------------------------------------------------------- |
 | `files`    | The merged name table, including file and directory entries; iteration order is unspecified   |
 | `archives` | Volume descriptors in merge order, including paths, timestamps, unpack roots, and size totals |
 | `shadowed` | File entries displaced by later volumes; displaced directory entries are excluded             |
@@ -107,8 +107,8 @@ checks the unpacked size. A size exactly equal to the limit is allowed.
 
 The policy also carries texture, image, audio, format-description, and chunk-tree preview limits for consumers. Those
 fields do not automatically constrain byte reads or copies; consumers must apply the relevant limits themselves. See
-the [policy](src/project/archive_read_policy.rs) and
-[default limits and extensions](src/project/archive_read_policy_constants.rs).
+the [policy](src/archive_read_policy.rs) and
+[default limits and extensions](src/archive_read_policy_constants.rs).
 
 ## Reuse open volumes for multiple reads
 
@@ -163,5 +163,5 @@ cargo doc --locked -p xrf-archive --no-deps
 ```
 
 The README is included in the crate documentation, so its Rust examples are checked as doctests. See the
-[project operations](src/project/archive_project.rs), [payload reads and copies](src/project/archive_open_volumes.rs),
+[project operations](src/archive_project.rs), [payload reads and copies](src/payload/archive_open_volumes.rs),
 and [public exports](src/lib.rs).

@@ -17,12 +17,12 @@ use xrf_utils::{
   new_windows1251_encoder,
 };
 
-use crate::archive_descriptor::ArchiveDescriptor;
-use crate::archive_file_descriptor::ArchiveFileDescriptor;
-use crate::archive_header::ArchiveHeader;
-use crate::constants::{
+use crate::volume::ArchiveDescriptor;
+use crate::volume::ArchiveFileDescriptor;
+use crate::volume::archive_constants::{
   CHUNK_ID_FILE_DESCRIPTORS_READ, CHUNK_ID_METADATA_READ, DESCRIPTOR_ROW_FIELDS_SIZE, MAXIMUM_ENTRY_NAME_SIZE,
 };
+use crate::volume::archive_header::ArchiveHeader;
 
 /// Patterns of the `[header]` metadata chunk, compiled once.
 static SECTION_PATTERN: LazyLock<Regex> =

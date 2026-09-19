@@ -2,7 +2,7 @@ use serde::Serialize;
 use xrf_error::{XrfError, XrfResult};
 use xrf_extension::{XrayExtension, XrayExtensionOf};
 
-use crate::project::archive_read_policy_constants::{
+use crate::archive_read_policy_constants::{
   ALLOWED_AUDIO_EXTENSIONS, ALLOWED_AUDIO_SIZE, ALLOWED_CHUNK_TREE_SIZE, ALLOWED_DESCRIBE_SIZE,
   ALLOWED_IMAGE_EXTENSIONS, ALLOWED_IMAGE_SIZE, ALLOWED_TEXT_EXTENSIONS, ALLOWED_TEXT_SIZE, ALLOWED_TEXTURE_EXTENSIONS,
   ALLOWED_TEXTURE_SIZE,

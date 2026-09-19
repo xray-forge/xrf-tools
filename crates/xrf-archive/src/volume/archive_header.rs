@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use crate::archive_file_descriptor::ArchiveFileDescriptor;
+use crate::volume::ArchiveFileDescriptor;
 
 pub struct ArchiveHeader {
   pub archive_path: PathBuf,

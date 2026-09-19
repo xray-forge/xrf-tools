@@ -3,7 +3,7 @@ use std::path::Path;
 
 use xrf_error::{XrfError, XrfResult};
 
-use crate::project::archive_located_entry::ArchiveLocatedEntry;
+use crate::payload::archive_located_entry::ArchiveLocatedEntry;
 use crate::{ArchiveDescriptor, ArchiveFileDescriptor};
 
 /// One open volume, with the length every entry of it is bounded by.
