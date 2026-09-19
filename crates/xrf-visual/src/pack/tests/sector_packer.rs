@@ -10,20 +10,21 @@ use crate::data::visual_submesh::VisualSkipCause;
 use crate::pack::sector_package::SectorPackage;
 use crate::pack::sector_packer::SectorPacker;
 use crate::pack::tests::level_fixtures::{
-  GeomBuffer, drawable, drawable_of_buffer, geometry, hierarchy, lightmapped_declaration, lightmapped_vertex,
-  open_geometry, position_vertex, positions_declaration, shaders, tree, visuals,
+  GeomBuffer, new_drawable, new_drawable_of_buffer, new_geometry_fixture, new_hierarchy, new_lightmapped_declaration,
+  new_lightmapped_vertex, new_open_geometry, new_position_vertex, new_positions_declaration, new_shaders, new_tree,
+  new_visuals,
 };
 
 /// Four lightmapped vertices in one buffer, and six indices that draw two triangles out of them.
 fn new_geometry() -> Vec<u8> {
-  geometry(
+  new_geometry_fixture(
     &[GeomBuffer {
-      declaration: lightmapped_declaration(),
+      declaration: new_lightmapped_declaration(),
       vertices: vec![
-        lightmapped_vertex(0.0, 0.0, 1.0),
-        lightmapped_vertex(1.0, 0.0, 2.0),
-        lightmapped_vertex(0.0, 1.0, 3.0),
-        lightmapped_vertex(1.0, 1.0, 4.0),
+        new_lightmapped_vertex(0.0, 0.0, 1.0),
+        new_lightmapped_vertex(1.0, 0.0, 2.0),
+        new_lightmapped_vertex(0.0, 1.0, 3.0),
+        new_lightmapped_vertex(1.0, 1.0, 4.0),
       ],
     }],
     &[0, 1, 0, 1, 1, 0],
@@ -31,12 +32,12 @@ fn new_geometry() -> Vec<u8> {
 }
 
 /// Everything one sector reaches, which is what the packer takes.
-fn composition(run: &LevelVisualsChunk) -> LevelSectorComposition {
+fn new_composition(run: &LevelVisualsChunk) -> LevelSectorComposition {
   LevelSectorComposition::of(run, 0)
 }
 
 /// The 32-bit indices a package wrote, read back out of its buffer.
-fn read_indices(package: &SectorPackage) -> Vec<u32> {
+fn new_read_indices(package: &SectorPackage) -> Vec<u32> {
   let section = package.description.geometry.indices;
   let start: usize = section.byte_offset as usize;
 
@@ -49,7 +50,7 @@ fn read_indices(package: &SectorPackage) -> Vec<u32> {
 }
 
 /// The floats a section wrote, read back out of the buffer.
-fn read_floats(package: &SectorPackage, section: crate::data::visual_section::VisualSection) -> Vec<f32> {
+fn new_read_floats(package: &SectorPackage, section: crate::data::visual_section::VisualSection) -> Vec<f32> {
   let start: usize = section.byte_offset as usize;
 
   package.buffer[start..start + section.byte_length as usize]
@@ -62,12 +63,16 @@ fn read_floats(package: &SectorPackage, section: crate::data::visual_section::Vi
 
 #[test]
 fn test_packs_a_sector_into_one_buffer_of_parallel_arrays() {
-  let run: LevelVisualsChunk = visuals(&[hierarchy(&[1, 2]), drawable(1, 0, 2, 0, 3), drawable(1, 2, 2, 3, 3)]);
-  let table: LevelShadersChunk = shaders(&["", "default/stone,lmap"]);
-  let mut source = open_geometry(new_geometry());
+  let run: LevelVisualsChunk = new_visuals(&[
+    new_hierarchy(&[1, 2]),
+    new_drawable(1, 0, 2, 0, 3),
+    new_drawable(1, 2, 2, 3, 3),
+  ]);
+  let table: LevelShadersChunk = new_shaders(&["", "default/stone,lmap"]);
+  let mut source = new_open_geometry(new_geometry());
 
   let package: SectorPackage =
-    SectorPacker::new(&run, Some(&table), &mut source).pack::<XRayByteOrder>(0, &composition(&run));
+    SectorPacker::new(&run, Some(&table), &mut source).pack::<XRayByteOrder>(0, &new_composition(&run));
   let description: &SectorDescription = &package.description;
 
   assert_eq!(description.sector, 0);
@@ -99,10 +104,15 @@ fn test_packs_a_sector_into_one_buffer_of_parallel_arrays() {
 
 #[test]
 fn test_packs_a_range_two_drawables_share_only_once() {
-  let run: LevelVisualsChunk = visuals(&[hierarchy(&[1, 2]), drawable(1, 0, 2, 0, 3), drawable(1, 0, 2, 0, 3)]);
-  let mut source = open_geometry(new_geometry());
+  let run: LevelVisualsChunk = new_visuals(&[
+    new_hierarchy(&[1, 2]),
+    new_drawable(1, 0, 2, 0, 3),
+    new_drawable(1, 0, 2, 0, 3),
+  ]);
+  let mut source = new_open_geometry(new_geometry());
 
-  let package: SectorPackage = SectorPacker::new(&run, None, &mut source).pack::<XRayByteOrder>(0, &composition(&run));
+  let package: SectorPackage =
+    SectorPacker::new(&run, None, &mut source).pack::<XRayByteOrder>(0, &new_composition(&run));
 
   assert_eq!(
     package.description.geometry.vertex_count, 2,
@@ -115,33 +125,38 @@ fn test_packs_a_range_two_drawables_share_only_once() {
 // base vertex. Packing moves the range, so the base moves with it.
 #[test]
 fn test_moves_indices_onto_the_vertices_a_range_was_packed_at() {
-  let run: LevelVisualsChunk = visuals(&[hierarchy(&[1, 2]), drawable(1, 0, 2, 0, 3), drawable(1, 2, 2, 3, 3)]);
-  let mut source = open_geometry(new_geometry());
+  let run: LevelVisualsChunk = new_visuals(&[
+    new_hierarchy(&[1, 2]),
+    new_drawable(1, 0, 2, 0, 3),
+    new_drawable(1, 2, 2, 3, 3),
+  ]);
+  let mut source = new_open_geometry(new_geometry());
 
-  let package: SectorPackage = SectorPacker::new(&run, None, &mut source).pack::<XRayByteOrder>(0, &composition(&run));
+  let package: SectorPackage =
+    SectorPacker::new(&run, None, &mut source).pack::<XRayByteOrder>(0, &new_composition(&run));
 
   // The first drawable stores 0, 1, 0 and the second 1, 1, 0; each is moved onto the vertices it was packed at,
   // and the winding of every triangle is reversed on the way in.
-  assert_eq!(read_indices(&package), vec![0, 0, 1, 3, 2, 3]);
+  assert_eq!(new_read_indices(&package), vec![0, 0, 1, 3, 2, 3]);
 }
 
 #[test]
 fn test_groups_drawables_by_the_shader_entry_that_dresses_them() {
-  let run: LevelVisualsChunk = visuals(&[
-    hierarchy(&[1, 2, 3]),
-    drawable(1, 0, 2, 0, 3),
-    drawable(2, 0, 2, 0, 3),
-    drawable(1, 2, 2, 3, 3),
+  let run: LevelVisualsChunk = new_visuals(&[
+    new_hierarchy(&[1, 2, 3]),
+    new_drawable(1, 0, 2, 0, 3),
+    new_drawable(2, 0, 2, 0, 3),
+    new_drawable(1, 2, 2, 3, 3),
   ]);
-  let table: LevelShadersChunk = shaders(&[
+  let table: LevelShadersChunk = new_shaders(&[
     "",
     "def_shaders\\def_vertex/wall,wall_lm",
     "def_shaders\\def_aref/glass",
   ]);
-  let mut source = open_geometry(new_geometry());
+  let mut source = new_open_geometry(new_geometry());
 
   let package: SectorPackage =
-    SectorPacker::new(&run, Some(&table), &mut source).pack::<XRayByteOrder>(0, &composition(&run));
+    SectorPacker::new(&run, Some(&table), &mut source).pack::<XRayByteOrder>(0, &new_composition(&run));
   let sections = &package.description.sections;
 
   assert_eq!(sections.len(), 2, "two surfaces, two draws");
@@ -168,10 +183,15 @@ fn test_groups_drawables_by_the_shader_entry_that_dresses_them() {
 
 #[test]
 fn test_leaves_out_a_drawable_whose_range_it_cannot_read() {
-  let run: LevelVisualsChunk = visuals(&[hierarchy(&[1, 2]), drawable(1, 0, 2, 0, 3), drawable(1, 3, 9, 0, 3)]);
-  let mut source = open_geometry(new_geometry());
+  let run: LevelVisualsChunk = new_visuals(&[
+    new_hierarchy(&[1, 2]),
+    new_drawable(1, 0, 2, 0, 3),
+    new_drawable(1, 3, 9, 0, 3),
+  ]);
+  let mut source = new_open_geometry(new_geometry());
 
-  let package: SectorPackage = SectorPacker::new(&run, None, &mut source).pack::<XRayByteOrder>(0, &composition(&run));
+  let package: SectorPackage =
+    SectorPacker::new(&run, None, &mut source).pack::<XRayByteOrder>(0, &new_composition(&run));
 
   assert_eq!(package.description.skipped.len(), 1);
   assert_eq!(package.description.skipped[0].drawable, 2);
@@ -187,27 +207,31 @@ fn test_leaves_out_a_drawable_whose_range_it_cannot_read() {
 // leaves room for one when another range of the same sector does.
 #[test]
 fn test_carries_an_attribute_any_range_of_the_sector_declares() {
-  let bytes: Vec<u8> = geometry(
+  let bytes: Vec<u8> = new_geometry_fixture(
     &[
       GeomBuffer {
-        declaration: lightmapped_declaration(),
-        vertices: vec![lightmapped_vertex(0.0, 0.0, 0.0), lightmapped_vertex(1.0, 0.0, 0.0)],
+        declaration: new_lightmapped_declaration(),
+        vertices: vec![
+          new_lightmapped_vertex(0.0, 0.0, 0.0),
+          new_lightmapped_vertex(1.0, 0.0, 0.0),
+        ],
       },
       GeomBuffer {
-        declaration: positions_declaration(),
-        vertices: vec![position_vertex(0.0, 1.0, 0.0), position_vertex(1.0, 1.0, 0.0)],
+        declaration: new_positions_declaration(),
+        vertices: vec![new_position_vertex(0.0, 1.0, 0.0), new_position_vertex(1.0, 1.0, 0.0)],
       },
     ],
     &[0, 1, 0],
   );
-  let run: LevelVisualsChunk = visuals(&[
-    hierarchy(&[1, 2]),
-    drawable(1, 0, 2, 0, 3),
-    drawable_of_buffer(1, 1, 0, 2, 0, 3),
+  let run: LevelVisualsChunk = new_visuals(&[
+    new_hierarchy(&[1, 2]),
+    new_drawable(1, 0, 2, 0, 3),
+    new_drawable_of_buffer(1, 1, 0, 2, 0, 3),
   ]);
-  let mut source = open_geometry(bytes);
+  let mut source = new_open_geometry(bytes);
 
-  let package: SectorPackage = SectorPacker::new(&run, None, &mut source).pack::<XRayByteOrder>(0, &composition(&run));
+  let package: SectorPackage =
+    SectorPacker::new(&run, None, &mut source).pack::<XRayByteOrder>(0, &new_composition(&run));
   let lightmap = package
     .description
     .geometry
@@ -221,7 +245,7 @@ fn test_carries_an_attribute_any_range_of_the_sector_declares() {
     "every vertex of the sector, not only the lit ones"
   );
 
-  let coordinates: Vec<f32> = read_floats(&package, lightmap);
+  let coordinates: Vec<f32> = new_read_floats(&package, lightmap);
 
   assert_eq!(
     &coordinates[4..],
@@ -232,21 +256,23 @@ fn test_carries_an_attribute_any_range_of_the_sector_declares() {
 
 #[test]
 fn test_mirrors_the_level_into_renderer_space() {
-  let run: LevelVisualsChunk = visuals(&[hierarchy(&[1]), drawable(1, 0, 2, 0, 3)]);
-  let mut source = open_geometry(new_geometry());
+  let run: LevelVisualsChunk = new_visuals(&[new_hierarchy(&[1]), new_drawable(1, 0, 2, 0, 3)]);
+  let mut source = new_open_geometry(new_geometry());
 
-  let package: SectorPackage = SectorPacker::new(&run, None, &mut source).pack::<XRayByteOrder>(0, &composition(&run));
-  let positions: Vec<f32> = read_floats(&package, package.description.geometry.positions);
+  let package: SectorPackage =
+    SectorPacker::new(&run, None, &mut source).pack::<XRayByteOrder>(0, &new_composition(&run));
+  let positions: Vec<f32> = new_read_floats(&package, package.description.geometry.positions);
 
   assert_eq!(positions, vec![0.0, 0.0, -1.0, 1.0, 0.0, -2.0]);
 }
 
 #[test]
 fn test_packs_a_sector_that_reaches_nothing_into_an_empty_package() {
-  let run: LevelVisualsChunk = visuals(&[hierarchy(&[])]);
-  let mut source = open_geometry(new_geometry());
+  let run: LevelVisualsChunk = new_visuals(&[new_hierarchy(&[])]);
+  let mut source = new_open_geometry(new_geometry());
 
-  let package: SectorPackage = SectorPacker::new(&run, None, &mut source).pack::<XRayByteOrder>(7, &composition(&run));
+  let package: SectorPackage =
+    SectorPacker::new(&run, None, &mut source).pack::<XRayByteOrder>(7, &new_composition(&run));
 
   assert_eq!(package.description.sector, 7);
   assert_eq!(package.description.geometry.vertex_count, 0);
@@ -259,10 +285,11 @@ fn test_packs_a_sector_that_reaches_nothing_into_an_empty_package() {
 // mesh plus the places it stands rather than as geometry of its own.
 #[test]
 fn test_packs_a_visual_stored_in_its_own_space_as_an_instance() {
-  let run: LevelVisualsChunk = visuals(&[hierarchy(&[1]), tree(1, 0, 2, 3, 100.0)]);
-  let mut source = open_geometry(new_geometry());
+  let run: LevelVisualsChunk = new_visuals(&[new_hierarchy(&[1]), new_tree(1, 0, 2, 3, 100.0)]);
+  let mut source = new_open_geometry(new_geometry());
 
-  let package: SectorPackage = SectorPacker::new(&run, None, &mut source).pack::<XRayByteOrder>(0, &composition(&run));
+  let package: SectorPackage =
+    SectorPacker::new(&run, None, &mut source).pack::<XRayByteOrder>(0, &new_composition(&run));
 
   assert_eq!(
     package.description.geometry.vertex_count, 0,
@@ -277,7 +304,7 @@ fn test_packs_a_visual_stored_in_its_own_space_as_an_instance() {
   assert_eq!(group.drawables, vec![1]);
 
   // Row major with the translation in the fourth row, mirrored into renderer space along the way.
-  let transforms: Vec<f32> = read_floats(&package, group.transforms);
+  let transforms: Vec<f32> = new_read_floats(&package, group.transforms);
 
   assert_eq!(transforms.len(), SectorInstanceGroup::FLOATS_PER_INSTANCE);
   assert_eq!(transforms[12], 100.0);
@@ -287,10 +314,15 @@ fn test_packs_a_visual_stored_in_its_own_space_as_an_instance() {
 // a swamp cost a gigabyte.
 #[test]
 fn test_packs_one_mesh_for_every_place_it_stands() {
-  let run: LevelVisualsChunk = visuals(&[hierarchy(&[1, 2]), tree(1, 0, 2, 3, 100.0), tree(1, 0, 2, 3, -100.0)]);
-  let mut source = open_geometry(new_geometry());
+  let run: LevelVisualsChunk = new_visuals(&[
+    new_hierarchy(&[1, 2]),
+    new_tree(1, 0, 2, 3, 100.0),
+    new_tree(1, 0, 2, 3, -100.0),
+  ]);
+  let mut source = new_open_geometry(new_geometry());
 
-  let package: SectorPackage = SectorPacker::new(&run, None, &mut source).pack::<XRayByteOrder>(0, &composition(&run));
+  let package: SectorPackage =
+    SectorPacker::new(&run, None, &mut source).pack::<XRayByteOrder>(0, &new_composition(&run));
 
   assert_eq!(package.description.instances.len(), 1, "one mesh");
 
@@ -300,7 +332,7 @@ fn test_packs_one_mesh_for_every_place_it_stands() {
   assert_eq!(group.geometry.vertex_count, 2, "packed once, not once for each place");
   assert_eq!(group.drawables, vec![1, 2]);
 
-  let transforms: Vec<f32> = read_floats(&package, group.transforms);
+  let transforms: Vec<f32> = new_read_floats(&package, group.transforms);
 
   assert_eq!(transforms.len(), 2 * SectorInstanceGroup::FLOATS_PER_INSTANCE);
   assert_eq!(transforms[12], 100.0);
@@ -310,10 +342,15 @@ fn test_packs_one_mesh_for_every_place_it_stands() {
 // Two meshes dressed by different surfaces cannot share one instanced draw, whatever else they have in common.
 #[test]
 fn test_keeps_instances_of_different_surfaces_apart() {
-  let run: LevelVisualsChunk = visuals(&[hierarchy(&[1, 2]), tree(1, 0, 2, 3, 100.0), tree(2, 0, 2, 3, -100.0)]);
-  let mut source = open_geometry(new_geometry());
+  let run: LevelVisualsChunk = new_visuals(&[
+    new_hierarchy(&[1, 2]),
+    new_tree(1, 0, 2, 3, 100.0),
+    new_tree(2, 0, 2, 3, -100.0),
+  ]);
+  let mut source = new_open_geometry(new_geometry());
 
-  let package: SectorPackage = SectorPacker::new(&run, None, &mut source).pack::<XRayByteOrder>(0, &composition(&run));
+  let package: SectorPackage =
+    SectorPacker::new(&run, None, &mut source).pack::<XRayByteOrder>(0, &new_composition(&run));
 
   assert_eq!(package.description.instances.len(), 2);
   assert_eq!(package.description.instances[0].surface.shader_id, 1);
@@ -323,10 +360,15 @@ fn test_keeps_instances_of_different_surfaces_apart() {
 // A range already baked into the level is still shared, which is what the sharing was always for.
 #[test]
 fn test_still_shares_a_range_no_transform_places() {
-  let run: LevelVisualsChunk = visuals(&[hierarchy(&[1, 2]), drawable(1, 0, 2, 0, 3), drawable(1, 0, 2, 0, 3)]);
-  let mut source = open_geometry(new_geometry());
+  let run: LevelVisualsChunk = new_visuals(&[
+    new_hierarchy(&[1, 2]),
+    new_drawable(1, 0, 2, 0, 3),
+    new_drawable(1, 0, 2, 0, 3),
+  ]);
+  let mut source = new_open_geometry(new_geometry());
 
-  let package: SectorPackage = SectorPacker::new(&run, None, &mut source).pack::<XRayByteOrder>(0, &composition(&run));
+  let package: SectorPackage =
+    SectorPacker::new(&run, None, &mut source).pack::<XRayByteOrder>(0, &new_composition(&run));
 
   assert_eq!(package.description.geometry.vertex_count, 2);
   assert!(package.description.instances.is_empty());

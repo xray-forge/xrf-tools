@@ -5,4 +5,5 @@ pub(crate) mod level_fixtures;
 mod motion;
 mod packer;
 mod reader;
+mod sector_outline;
 mod sector_packer;

@@ -7,7 +7,7 @@ use xrf_level::{
 use xrf_ogf::{OgfChildrenLinkChunk, OgfGeometryContainerChunk, OgfHeaderChunk, OgfTreeDefinitionChunk};
 
 /// One chunk as a file stores it: its identifier, its length, and its payload.
-pub(crate) fn chunk(id: u32, payload: &[u8]) -> Vec<u8> {
+pub(crate) fn new_chunk(id: u32, payload: &[u8]) -> Vec<u8> {
   let mut bytes: Vec<u8> = id.to_le_bytes().to_vec();
 
   bytes.extend_from_slice(&(payload.len() as u32).to_le_bytes());
@@ -17,7 +17,7 @@ pub(crate) fn chunk(id: u32, payload: &[u8]) -> Vec<u8> {
 }
 
 /// One declaration element: stream, offset, type, method, usage, usage index.
-fn element(offset: u16, kind: u8, usage: u8, usage_index: u8) -> Vec<u8> {
+fn new_element(offset: u16, kind: u8, usage: u8, usage_index: u8) -> Vec<u8> {
   let mut bytes: Vec<u8> = 0u16.to_le_bytes().to_vec();
 
   bytes.extend_from_slice(&offset.to_le_bytes());
@@ -27,7 +27,7 @@ fn element(offset: u16, kind: u8, usage: u8, usage_index: u8) -> Vec<u8> {
 }
 
 /// `D3DDECL_END`, which ends a declaration rather than describing an element.
-fn terminator() -> Vec<u8> {
+fn new_terminator() -> Vec<u8> {
   let mut bytes: Vec<u8> = LevelGeomVertexElement::TERMINATOR_STREAM.to_le_bytes().to_vec();
 
   bytes.extend_from_slice(&0u16.to_le_bytes());
@@ -37,30 +37,30 @@ fn terminator() -> Vec<u8> {
 }
 
 /// `r1_decl_lmap`, the declaration xrLC writes for a lightmapped surface.
-pub(crate) fn lightmapped_declaration() -> Vec<u8> {
-  let mut bytes: Vec<u8> = element(0, 2, 0, 0);
+pub(crate) fn new_lightmapped_declaration() -> Vec<u8> {
+  let mut bytes: Vec<u8> = new_element(0, 2, 0, 0);
 
-  bytes.extend(element(12, 4, 3, 0));
-  bytes.extend(element(16, 4, 6, 0));
-  bytes.extend(element(20, 4, 7, 0));
-  bytes.extend(element(24, 6, 5, 0));
-  bytes.extend(element(28, 6, 5, 1));
-  bytes.extend(terminator());
+  bytes.extend(new_element(12, 4, 3, 0));
+  bytes.extend(new_element(16, 4, 6, 0));
+  bytes.extend(new_element(20, 4, 7, 0));
+  bytes.extend(new_element(24, 6, 5, 0));
+  bytes.extend(new_element(28, 6, 5, 1));
+  bytes.extend(new_terminator());
 
   bytes
 }
 
 /// The declaration that carries a position and nothing else, which is what a fast path stores.
-pub(crate) fn positions_declaration() -> Vec<u8> {
-  let mut bytes: Vec<u8> = element(0, 2, 0, 0);
+pub(crate) fn new_positions_declaration() -> Vec<u8> {
+  let mut bytes: Vec<u8> = new_element(0, 2, 0, 0);
 
-  bytes.extend(terminator());
+  bytes.extend(new_terminator());
 
   bytes
 }
 
 /// One lightmapped vertex, whose every field decodes to something the test can recognise.
-pub(crate) fn lightmapped_vertex(x: f32, y: f32, z: f32) -> Vec<u8> {
+pub(crate) fn new_lightmapped_vertex(x: f32, y: f32, z: f32) -> Vec<u8> {
   let mut bytes: Vec<u8> = x.to_le_bytes().to_vec();
 
   bytes.extend_from_slice(&y.to_le_bytes());
@@ -79,7 +79,7 @@ pub(crate) fn lightmapped_vertex(x: f32, y: f32, z: f32) -> Vec<u8> {
 }
 
 /// One vertex of the positions-only declaration.
-pub(crate) fn position_vertex(x: f32, y: f32, z: f32) -> Vec<u8> {
+pub(crate) fn new_position_vertex(x: f32, y: f32, z: f32) -> Vec<u8> {
   let mut bytes: Vec<u8> = x.to_le_bytes().to_vec();
 
   bytes.extend_from_slice(&y.to_le_bytes());
@@ -95,7 +95,7 @@ pub(crate) struct GeomBuffer {
 }
 
 /// A whole `level.geom` of the given vertex buffers and one index buffer.
-pub(crate) fn geometry(buffers: &[GeomBuffer], indices: &[u16]) -> Vec<u8> {
+pub(crate) fn new_geometry_fixture(buffers: &[GeomBuffer], indices: &[u16]) -> Vec<u8> {
   let mut vertex_chunk: Vec<u8> = (buffers.len() as u32).to_le_bytes().to_vec();
 
   for buffer in buffers {
@@ -115,44 +115,63 @@ pub(crate) fn geometry(buffers: &[GeomBuffer], indices: &[u16]) -> Vec<u8> {
     index_chunk.extend_from_slice(&index.to_le_bytes());
   }
 
-  let mut bytes: Vec<u8> = chunk(LevelGeomFile::VERTEX_BUFFERS_CHUNK_ID, &vertex_chunk);
+  let mut bytes: Vec<u8> = new_chunk(LevelGeomFile::VERTEX_BUFFERS_CHUNK_ID, &vertex_chunk);
 
-  bytes.extend(chunk(LevelGeomFile::INDEX_BUFFERS_CHUNK_ID, &index_chunk));
+  bytes.extend(new_chunk(LevelGeomFile::INDEX_BUFFERS_CHUNK_ID, &index_chunk));
 
   bytes
 }
 
 /// Opens render geometry the same way the tool does, from bytes already in hand.
-pub(crate) fn open_geometry(bytes: Vec<u8>) -> LevelGeomSource<xrf_chunk::InMemoryChunkDataSource> {
+pub(crate) fn new_open_geometry(bytes: Vec<u8>) -> LevelGeomSource<xrf_chunk::InMemoryChunkDataSource> {
   LevelGeomSource::open_from_bytes::<XRayByteOrder>(bytes).expect("readable render geometry")
 }
 
 /// An OGF header of the given model type and shader entry.
-fn header(model_type: u8, shader_id: u16) -> Vec<u8> {
+fn new_header(model_type: u8, shader_id: u16) -> Vec<u8> {
+  new_header_at(model_type, shader_id, [0.0, 0.0, 0.0], [1.0, 1.0, 1.0])
+}
+
+/// The same, declaring where in the level the visual says it is.
+fn new_header_at(model_type: u8, shader_id: u16, min: [f32; 3], max: [f32; 3]) -> Vec<u8> {
   let mut bytes: Vec<u8> = vec![4, model_type];
 
   bytes.extend_from_slice(&shader_id.to_le_bytes());
 
-  for value in [0.0f32, 0.0, 0.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 1.0] {
+  for value in [min[0], min[1], min[2], max[0], max[1], max[2], 0.0, 0.0, 0.0, 1.0] {
     bytes.extend_from_slice(&value.to_le_bytes());
   }
 
-  chunk(OgfHeaderChunk::CHUNK_ID, &bytes)
+  new_chunk(OgfHeaderChunk::CHUNK_ID, &bytes)
+}
+
+/// A drawable declaring the extent it occupies in the level.
+pub(crate) fn new_drawable_at(shader_id: u16, min: [f32; 3], max: [f32; 3]) -> Vec<u8> {
+  let mut bytes: Vec<u8> = new_header_at(0, shader_id, min, max);
+  let mut container: Vec<u8> = Vec::new();
+
+  for value in [0u32, 0, 2, 0, 0, 3] {
+    container.extend_from_slice(&value.to_le_bytes());
+  }
+
+  bytes.extend(new_chunk(OgfGeometryContainerChunk::CHUNK_ID, &container));
+
+  bytes
 }
 
 /// A visual that draws the given range of the level's shared buffers.
-pub(crate) fn drawable(
+pub(crate) fn new_drawable(
   shader_id: u16,
   vertex_base: u32,
   vertex_count: u32,
   index_base: u32,
   index_count: u32,
 ) -> Vec<u8> {
-  drawable_of_buffer(shader_id, 0, vertex_base, vertex_count, index_base, index_count)
+  new_drawable_of_buffer(shader_id, 0, vertex_base, vertex_count, index_base, index_count)
 }
 
 /// The same, drawing out of a named vertex buffer rather than the first.
-pub(crate) fn drawable_of_buffer(
+pub(crate) fn new_drawable_of_buffer(
   shader_id: u16,
   vertex_buffer: u32,
   vertex_base: u32,
@@ -160,41 +179,41 @@ pub(crate) fn drawable_of_buffer(
   index_base: u32,
   index_count: u32,
 ) -> Vec<u8> {
-  let mut bytes: Vec<u8> = header(0, shader_id);
+  let mut bytes: Vec<u8> = new_header(0, shader_id);
   let mut container: Vec<u8> = Vec::new();
 
   for value in [vertex_buffer, vertex_base, vertex_count, 0, index_base, index_count] {
     container.extend_from_slice(&value.to_le_bytes());
   }
 
-  bytes.extend(chunk(OgfGeometryContainerChunk::CHUNK_ID, &container));
+  bytes.extend(new_chunk(OgfGeometryContainerChunk::CHUNK_ID, &container));
 
   bytes
 }
 
 /// A visual that draws nothing itself and links the visuals that do.
-pub(crate) fn hierarchy(children: &[u32]) -> Vec<u8> {
-  let mut bytes: Vec<u8> = header(1, 0);
+pub(crate) fn new_hierarchy(children: &[u32]) -> Vec<u8> {
+  let mut bytes: Vec<u8> = new_header(1, 0);
   let mut links: Vec<u8> = (children.len() as u32).to_le_bytes().to_vec();
 
   for child in children {
     links.extend_from_slice(&child.to_le_bytes());
   }
 
-  bytes.extend(chunk(OgfChildrenLinkChunk::CHUNK_ID, &links));
+  bytes.extend(new_chunk(OgfChildrenLinkChunk::CHUNK_ID, &links));
 
   bytes
 }
 
 /// A visuals run of the given visuals, each already framed as its own numbered chunk payload.
-pub(crate) fn visuals(run: &[Vec<u8>]) -> LevelVisualsChunk {
+pub(crate) fn new_visuals(run: &[Vec<u8>]) -> LevelVisualsChunk {
   let mut body: Vec<u8> = Vec::new();
 
   for (index, visual) in run.iter().enumerate() {
-    body.extend(chunk(index as u32, visual));
+    body.extend(new_chunk(index as u32, visual));
   }
 
-  let level: Vec<u8> = chunk(LevelVisualsChunk::CHUNK_ID, &body);
+  let level: Vec<u8> = new_chunk(LevelVisualsChunk::CHUNK_ID, &body);
 
   LevelFile::read_visuals_from_bytes::<XRayByteOrder>(level)
     .expect("readable visuals")
@@ -202,7 +221,7 @@ pub(crate) fn visuals(run: &[Vec<u8>]) -> LevelVisualsChunk {
 }
 
 /// A shader table of the given raw entries, as the level stores them.
-pub(crate) fn shaders(entries: &[&str]) -> LevelShadersChunk {
+pub(crate) fn new_shaders(entries: &[&str]) -> LevelShadersChunk {
   LevelShadersChunk {
     entries: entries
       .iter()
@@ -212,8 +231,8 @@ pub(crate) fn shaders(entries: &[&str]) -> LevelShadersChunk {
 }
 
 /// A tree: the same range of the shared buffers, stood where its own transform puts it.
-pub(crate) fn tree(shader_id: u16, vertex_base: u32, vertex_count: u32, index_count: u32, at: f32) -> Vec<u8> {
-  let mut bytes: Vec<u8> = drawable_of_buffer(shader_id, 0, vertex_base, vertex_count, 0, index_count);
+pub(crate) fn new_tree(shader_id: u16, vertex_base: u32, vertex_count: u32, index_count: u32, at: f32) -> Vec<u8> {
+  let mut bytes: Vec<u8> = new_drawable_of_buffer(shader_id, 0, vertex_base, vertex_count, 0, index_count);
   let mut definition: Vec<u8> = Vec::new();
 
   // Row major, translation in the fourth row, as the engine stores one.
@@ -231,7 +250,7 @@ pub(crate) fn tree(shader_id: u16, vertex_base: u32, vertex_count: u32, index_co
     definition.extend_from_slice(&value.to_le_bytes());
   }
 
-  bytes.extend(chunk(OgfTreeDefinitionChunk::CHUNK_ID, &definition));
+  bytes.extend(new_chunk(OgfTreeDefinitionChunk::CHUNK_ID, &definition));
 
   bytes
 }

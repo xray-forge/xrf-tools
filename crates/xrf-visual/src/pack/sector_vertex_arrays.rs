@@ -2,10 +2,10 @@ use xrf_level::LevelVertex;
 use xrf_math::Matrix4x4;
 use xrf_math::Vector3d;
 
-use crate::pack::sector_attributes::SectorAttributes;
 use crate::data::sector_geometry::SectorGeometry;
 use crate::data::visual_bounds::VisualBounds;
 use crate::data::visual_section::VisualSection;
+use crate::pack::sector_attributes::SectorAttributes;
 use crate::pack::visual_buffer_builder::VisualBufferBuilder;
 use crate::pack::visual_conversion::{convert_uvs, convert_vector};
 
@@ -120,11 +120,7 @@ impl SectorVertexArrays {
       tangents: self.push_declared(builder, self.attributes.tangents, &self.tangents),
       binormals: self.push_declared(builder, self.attributes.binormals, &self.binormals),
       uvs: self.push_declared(builder, self.attributes.uvs, &self.uvs),
-      lightmap_uvs: self.push_declared(
-        builder,
-        self.attributes.lightmap_uvs,
-        &self.lightmap_uvs,
-      ),
+      lightmap_uvs: self.push_declared(builder, self.attributes.lightmap_uvs, &self.lightmap_uvs),
       colors: self.push_declared(builder, self.attributes.colors, &self.colors),
       hemi: self.push_declared(builder, self.attributes.normals, &self.hemi),
       indices: builder.push_u32_section(indices),

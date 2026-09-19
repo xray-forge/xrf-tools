@@ -10,7 +10,6 @@ use xrf_level::{
 use xrf_math::Matrix4x4;
 use xrf_ogf::OgfGeometryContainerChunk;
 
-use crate::pack::sector_attributes::SectorAttributes;
 use crate::data::sector_description::SectorDescription;
 use crate::data::sector_geometry::SectorGeometry;
 use crate::data::sector_instance_group::SectorInstanceGroup;
@@ -20,6 +19,7 @@ use crate::data::sector_surface::SectorSurface;
 use crate::data::visual_bounds::VisualBounds;
 use crate::data::visual_section::VisualDrawRange;
 use crate::data::visual_submesh::VisualSkipCause;
+use crate::pack::sector_attributes::SectorAttributes;
 use crate::pack::sector_package::SectorPackage;
 use crate::pack::sector_vertex_arrays::SectorVertexArrays;
 use crate::pack::visual_buffer_builder::VisualBufferBuilder;
