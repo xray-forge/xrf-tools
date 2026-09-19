@@ -6,7 +6,7 @@ import { ILevelPoint } from "@/core/level/lib/level-residency";
 import { ILoadedSector } from "@/core/level/lib/level-sector-set";
 import { ILevelStats } from "@/core/level/lib/level-stats";
 import { DEFAULT_LEVEL_SURFACE_OPTIONS, ILevelSurfaceOptions } from "@/core/level/lib/level-surface-material";
-import { LevelTextureSet } from "@/core/level/lib/level-texture-set";
+import { ILevelTextureLookup } from "@/core/level/lib/level-texture-set";
 import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
@@ -17,7 +17,7 @@ export interface ILevelPreviewViewportProps extends BaseComponentProps {
   /** The level's extent, used once to place the camera when a level opens. */
   bounds: Nullable<VisualBounds>;
   /** Where surfaces take their textures from, owned by the loader rather than by the scene. */
-  textures?: Nullable<LevelTextureSet>;
+  textures?: Nullable<ILevelTextureLookup>;
   options?: ILevelSurfaceOptions;
   /** Where the camera has gone, for the loader to stream against. */
   onCameraMoved: (point: ILevelPoint) => void;

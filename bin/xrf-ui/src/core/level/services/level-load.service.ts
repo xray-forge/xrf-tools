@@ -19,7 +19,7 @@ import {
 } from "@/core/level/lib/level-residency";
 import { ILoadedSector, LevelSectorSet } from "@/core/level/lib/level-sector-set";
 import { createSectorViews, ISectorViews, listSectorTextures } from "@/core/level/lib/level-sector-views";
-import { LevelTextureSet } from "@/core/level/lib/level-texture-set";
+import { ILevelTextureLookup, LevelTextureSet } from "@/core/level/lib/level-texture-set";
 import { AsyncState } from "@/lib/async-state";
 import { formatDuration } from "@/lib/format/duration";
 import { Logger, Timer } from "@/lib/logging";
@@ -54,8 +54,8 @@ export class LevelLoadService {
   /** The sectors held, and the geometry each owns. */
   private readonly held: LevelSectorSet = new LevelSectorSet();
 
-  /** The level's uploaded textures, shared between the sectors that name them. */
-  public readonly textures: LevelTextureSet = new LevelTextureSet();
+  /** The level's uploaded textures, owned here and shared between the sectors that name them. */
+  private readonly loaded: LevelTextureSet = new LevelTextureSet();
 
   @Observable()
   public level: AsyncState<IOpenLevel> = AsyncState.idle();
@@ -70,6 +70,13 @@ export class LevelLoadService {
 
   @Observable()
   public streaming: ILevelStreamProgress = IDLE_LEVEL_STREAM;
+
+  /**
+   * @returns The level's textures, to read rather than to manage: their lifetime is this service's.
+   */
+  public get textures(): ILevelTextureLookup {
+    return this.loaded;
+  }
 
   /**
    * @returns Whether sectors are on their way.
@@ -106,7 +113,7 @@ export class LevelLoadService {
       this.releaseSectors();
 
       this.residency = createLevelResidency(selected.value.bounds?.boundingSphere.radius ?? 0);
-      this.textures.open(roots, selected.value.textures);
+      this.loaded.open(roots, selected.value.textures);
       this.level = this.level.asReady({ selected });
 
       this.log.info(
@@ -185,7 +192,7 @@ export class LevelLoadService {
     } finally {
       // Both however the flow ends: a cancelled move must not leave a viewer reporting a read that is not coming, nor
       // leave the textures of a sector that never arrived holding memory until the level closes.
-      this.textures.retain(this.listResidentTextures());
+      this.loaded.retain(this.listResidentTextures());
 
       runInAction(() => {
         this.streaming = IDLE_LEVEL_STREAM;
@@ -234,7 +241,7 @@ export class LevelLoadService {
     const views: ISectorViews = createSectorViews(snapshot.value, buffer);
 
     // Before the sector is published, so a surface is never drawn untextured for a frame and then corrected.
-    yield* call(this.textures.load(listSectorTextures(views)));
+    yield* call(this.loaded.load(listSectorTextures(views)));
 
     this.held.adopt(views);
     this.publishSectors();
@@ -280,7 +287,7 @@ export class LevelLoadService {
 
   private releaseSectors(): void {
     this.held.dispose();
-    this.textures.dispose();
+    this.loaded.dispose();
     this.sectors = new Map();
   }
 }

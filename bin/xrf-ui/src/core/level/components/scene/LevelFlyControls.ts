@@ -4,7 +4,6 @@ import {
   EMPTY_LEVEL_FLY_INPUT,
   getFlyBinding,
   ILevelFlyInput,
-  ILevelFlyOptions,
   LevelFlyCamera,
 } from "@/core/level/lib/level-fly-camera";
 
@@ -12,17 +11,19 @@ import {
  * Binds a viewport's pointer and keyboard to a fly camera.
  */
 export class LevelFlyControls {
-  public readonly camera: LevelFlyCamera = new LevelFlyCamera();
-
+  private readonly camera: LevelFlyCamera;
   private readonly element: HTMLElement;
   private readonly input: ILevelFlyInput = { ...EMPTY_LEVEL_FLY_INPUT };
 
   private isLooking: boolean = false;
 
   /**
+   * @param camera - The fly camera to drive, which outlives these controls: where it is looking survives a viewport
+   *   being unmounted and mounted again, as react's strict mode does on every render pass.
    * @param element - Element the viewport draws into, which is what takes focus and receives the events.
    */
-  public constructor(element: HTMLElement) {
+  public constructor(camera: LevelFlyCamera, element: HTMLElement) {
+    this.camera = camera;
     this.element = element;
 
     this.element.addEventListener("pointerdown", this.onPointerDown);
@@ -33,10 +34,6 @@ export class LevelFlyControls {
 
     // On the window rather than the element: a drag that ends outside it would otherwise leave the camera turning.
     window.addEventListener("pointerup", this.onPointerUp);
-  }
-
-  public set options(options: ILevelFlyOptions) {
-    this.camera.options = options;
   }
 
   /**

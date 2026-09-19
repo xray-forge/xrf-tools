@@ -1,7 +1,7 @@
 import { Color, MeshStandardMaterial } from "three";
 
 import { SectorSurface } from "@/core/ipc/types/xrf-visual";
-import { ILevelTexture, LevelTextureSet } from "@/core/level/lib/level-texture-set";
+import { ILevelTexture, ILevelTextureLookup } from "@/core/level/lib/level-texture-set";
 import { Nullable } from "@/lib/types/general";
 
 const SURFACE_METALNESS: number = 0.0;
@@ -48,7 +48,7 @@ export function getShaderColor(shaderId: number): Color {
  */
 export function createSurfaceMaterial(
   surface: SectorSurface,
-  textures: Nullable<LevelTextureSet>,
+  textures: Nullable<ILevelTextureLookup>,
   options: ILevelSurfaceOptions
 ): MeshStandardMaterial {
   const material: MeshStandardMaterial = new MeshStandardMaterial({
@@ -72,7 +72,7 @@ export function createSurfaceMaterial(
 export function dressSurfaceMaterial(
   material: MeshStandardMaterial,
   surface: SectorSurface,
-  textures: Nullable<LevelTextureSet>,
+  textures: Nullable<ILevelTextureLookup>,
   options: ILevelSurfaceOptions
 ): void {
   const base: Nullable<ILevelTexture> =

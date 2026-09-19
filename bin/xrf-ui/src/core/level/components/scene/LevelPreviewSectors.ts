@@ -11,7 +11,7 @@ import {
   dressSurfaceMaterial,
   ILevelSurfaceOptions,
 } from "@/core/level/lib/level-surface-material";
-import { LevelTextureSet } from "@/core/level/lib/level-texture-set";
+import { ILevelTextureLookup } from "@/core/level/lib/level-texture-set";
 import { Maybe, Nullable } from "@/lib/types/general";
 
 /** One drawn surface: the material it uses, and what the shader table says dresses it. */
@@ -41,7 +41,7 @@ export class LevelPreviewSectors {
   private options: ILevelSurfaceOptions = DEFAULT_LEVEL_SURFACE_OPTIONS;
 
   /** Where a surface's textures come from, borrowed rather than owned: the loader disposes them. */
-  private textures: Nullable<LevelTextureSet> = null;
+  private textures: Nullable<ILevelTextureLookup> = null;
 
   public constructor(parent: Object3D) {
     this.parent = parent;
@@ -56,7 +56,7 @@ export class LevelPreviewSectors {
    *
    * @param textures - The open level's textures, owned by the loader.
    */
-  public setTextures(textures: Nullable<LevelTextureSet>): void {
+  public setTextures(textures: Nullable<ILevelTextureLookup>): void {
     this.textures = textures;
   }
 

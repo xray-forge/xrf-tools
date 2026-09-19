@@ -12,7 +12,7 @@ import { ILevelPoint } from "@/core/level/lib/level-residency";
 import { ILoadedSector } from "@/core/level/lib/level-sector-set";
 import { EMPTY_LEVEL_STATS, ILevelStats } from "@/core/level/lib/level-stats";
 import { DEFAULT_LEVEL_SURFACE_OPTIONS, ILevelSurfaceOptions } from "@/core/level/lib/level-surface-material";
-import { LevelTextureSet } from "@/core/level/lib/level-texture-set";
+import { ILevelTextureLookup } from "@/core/level/lib/level-texture-set";
 import { ILevelStreamProgress } from "@/core/level/services";
 import { EditorFileHeader } from "@/core/shell/editor/EditorFileHeader";
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
@@ -29,7 +29,7 @@ interface ILevelPreviewLayoutProps extends BaseComponentProps {
   /** The level's extent, which frames the camera once when a level opens. */
   bounds: Nullable<VisualBounds>;
   /** Where surfaces take their textures from, owned by the loader. */
-  textures?: Nullable<LevelTextureSet>;
+  textures?: Nullable<ILevelTextureLookup>;
   /** What the open level is called. Its presence is what draws the file header over the viewport. */
   name?: Nullable<string>;
   subtitle?: ReactNode;

@@ -16,12 +16,20 @@ export interface ILevelTexture {
 }
 
 /**
+ * Reading a level's uploaded textures, which is all a surface being dressed needs.
+ */
+export interface ILevelTextureLookup {
+  readonly size: number;
+  get(reference: string): Nullable<ILevelTexture>;
+}
+
+/**
  * Owns a level's uploaded textures, keyed by the reference the shader table spells.
  *
  * Keyed by reference rather than by sector, because a level's surfaces are shared: one ground texture dresses dozens
  * of sectors, and uploading it once per sector would spend the memory the streaming budget is there to save.
  */
-export class LevelTextureSet {
+export class LevelTextureSet implements ILevelTextureLookup {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
   private readonly loaded: Map<string, ILevelTexture> = new Map();

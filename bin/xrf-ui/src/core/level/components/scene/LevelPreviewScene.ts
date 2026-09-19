@@ -6,11 +6,12 @@ import {
 } from "@/core/level/components/scene/level-scene-config";
 import { LevelFlyControls } from "@/core/level/components/scene/LevelFlyControls";
 import { LevelPreviewSectors } from "@/core/level/components/scene/LevelPreviewSectors";
+import { LevelFlyCamera } from "@/core/level/lib/level-fly-camera";
 import { ILevelPoint } from "@/core/level/lib/level-residency";
 import { ILoadedSector } from "@/core/level/lib/level-sector-set";
 import { ILevelStats, LevelFrameTimer, measureLevelStats } from "@/core/level/lib/level-stats";
 import { DEFAULT_LEVEL_SURFACE_OPTIONS, ILevelSurfaceOptions } from "@/core/level/lib/level-surface-material";
-import { LevelTextureSet } from "@/core/level/lib/level-texture-set";
+import { ILevelTextureLookup } from "@/core/level/lib/level-texture-set";
 import { Nullable } from "@/lib/types/general";
 
 /** What the scene reports back out, once a frame at most. */
@@ -38,6 +39,9 @@ export class LevelPreviewScene {
   private readonly renderer: WebGLRenderer;
   private readonly root: Group = new Group();
   private readonly sectors: LevelPreviewSectors;
+  /** Where the camera is looking, which is the scene's for as long as the scene is: the controls only drive it. */
+  private readonly fly: LevelFlyCamera = new LevelFlyCamera();
+
   private controls: Nullable<LevelFlyControls> = null;
   private readonly timer: LevelFrameTimer = new LevelFrameTimer();
   private readonly resizeObserver: ResizeObserver;
@@ -97,7 +101,7 @@ export class LevelPreviewScene {
    *
    * @param textures - The open level's textures, or null while none is open.
    */
-  public setTextures(textures: Nullable<LevelTextureSet>): void {
+  public setTextures(textures: Nullable<ILevelTextureLookup>): void {
     this.sectors.setTextures(textures);
   }
 
@@ -112,7 +116,7 @@ export class LevelPreviewScene {
     const distance: number = Math.max(radius, 1) * (1 + this.config.cameraFitMargin);
 
     this.camera.position.set(target.x, target.y + distance * 0.35, target.z + distance);
-    this.controls?.camera.lookAt(this.camera, target);
+    this.fly.lookAt(this.camera, target);
 
     this.streamedFrom = null;
     this.reportCamera();
@@ -131,7 +135,7 @@ export class LevelPreviewScene {
     this.container = container;
     container.appendChild(this.renderer.domElement);
 
-    this.controls = new LevelFlyControls(this.renderer.domElement);
+    this.controls = new LevelFlyControls(this.fly, this.renderer.domElement);
 
     this.resizeObserver.observe(container);
     this.resize();
