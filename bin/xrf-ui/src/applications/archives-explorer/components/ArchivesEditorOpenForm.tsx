@@ -11,14 +11,17 @@ import {
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { createRoot } from "@/core/assets/lib";
 import { useRootProbe } from "@/core/assets/lib/use-root-probe";
+import { EXrayMountMode } from "@/core/ipc/types/xrf-vfs";
 import { EApplicationId } from "@/core/routing/application";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
 import { ChoiceFormRow, IPathField, PathFormRow, usePathField, useRememberedValue } from "@/core/ui/form";
+import { inline } from "@/lib/callbacks/inline";
 import { Logger, useLogger } from "@/lib/logging";
+import { assertExhaustive } from "@/lib/types/exhaustive";
 import { Nullable } from "@/lib/types/general";
 
 /**
- * The way into the explorer: index a whole game folder, a directory of volumes, or one volume on its own.
+ * Opens a game folder, loose gamedata, a directory of volumes, or one volume for browsing.
  */
 export function ArchivesEditorOpenForm(): ReactElement {
   const log: Logger = useLogger(__MODULE_NAME__);
@@ -27,8 +30,7 @@ export function ArchivesEditorOpenForm(): ReactElement {
 
   const isLoading: boolean = archivesService.subject.isLoading;
 
-  // Browsing a directory is the primary workflow, so it is the fallback - and after that, whichever of the three was
-  // last used, because someone who opens single volumes they downloaded does so every time.
+  // Keep the archive-directory default until the user chooses a mode.
   const [mode, setMode] = useRememberedValue<EArchiveOpenMode>({
     id: "mode",
     application: EApplicationId.ARCHIVES_EXPLORER,
@@ -60,12 +62,25 @@ export function ArchivesEditorOpenForm(): ReactElement {
     isDisabled: isLoading,
   });
 
+  const gamedata: IPathField = usePathField({
+    id: "gamedata",
+    application: EApplicationId.ARCHIVES_EXPLORER,
+    title: "Select gamedata directory",
+    isDirectory: true,
+    isDisabled: isLoading,
+  });
+
   // A folder named by hand is a guess until something confirms it, and this is the mode where guessing wrong is
   // quiet: a game folder named one level too high mounts nothing and reads as an installation with no files.
   const gameFact: Nullable<string> = useRootProbe(mode === EArchiveOpenMode.GAME && !game.error ? game.value : null);
 
-  const field: IPathField =
-    mode === EArchiveOpenMode.DIRECTORY ? directory : mode === EArchiveOpenMode.ARCHIVE ? archive : game;
+  const fields: Record<EArchiveOpenMode, IPathField> = {
+    [EArchiveOpenMode.DIRECTORY]: directory,
+    [EArchiveOpenMode.ARCHIVE]: archive,
+    [EArchiveOpenMode.GAME]: game,
+    [EArchiveOpenMode.GAMEDATA]: gamedata,
+  };
+  const field: IPathField = fields[mode];
 
   const onOpen = useCallback(() => {
     if (!field.value) {
@@ -76,6 +91,8 @@ export function ArchivesEditorOpenForm(): ReactElement {
 
     if (mode === EArchiveOpenMode.GAME) {
       archivesService.openWorld({ asset: null, roots: [createRoot(field.value)] });
+    } else if (mode === EArchiveOpenMode.GAMEDATA) {
+      archivesService.openWorld({ asset: null, roots: [createRoot(field.value, EXrayMountMode.DIRECTORY)] });
     } else {
       archivesService.openVolumes(field.value);
     }
@@ -93,36 +110,60 @@ export function ArchivesEditorOpenForm(): ReactElement {
     >
       <ChoiceFormRow
         label={"Open"}
-        description={"The game as the engine mounts it, a whole directory of volumes, or one archive on its own"}
+        description={"A game folder, loose gamedata, a directory of volumes, or one archive"}
         options={OPEN_MODE_OPTIONS}
         value={mode}
         isDisabled={isLoading}
         onChange={setMode}
       />
 
-      {mode === EArchiveOpenMode.DIRECTORY ? (
-        <PathFormRow
-          isDisabled={isLoading}
-          label={"Archives directory"}
-          description={"Directory holding the packed game archives"}
-          field={directory}
-        />
-      ) : mode === EArchiveOpenMode.ARCHIVE ? (
-        <PathFormRow
-          isDisabled={isLoading}
-          label={"Archive volume"}
-          description={"Single packed archive to open"}
-          field={archive}
-        />
-      ) : (
-        <PathFormRow
-          isDisabled={isLoading}
-          label={"Game folder"}
-          description={"Folder holding fsgame.ltx, or a game data tree on its own"}
-          fact={gameFact}
-          field={game}
-        />
-      )}
+      {inline(() => {
+        switch (mode) {
+          case EArchiveOpenMode.GAME:
+            return (
+              <PathFormRow
+                isDisabled={isLoading}
+                label={"Game folder"}
+                description={"Folder holding fsgame.ltx, or a game data tree on its own"}
+                fact={gameFact}
+                field={game}
+              />
+            );
+
+          case EArchiveOpenMode.GAMEDATA:
+            return (
+              <PathFormRow
+                isDisabled={isLoading}
+                label={"Gamedata directory"}
+                description={"Folder containing loose game files, such as configs, textures and meshes"}
+                field={gamedata}
+              />
+            );
+
+          case EArchiveOpenMode.DIRECTORY:
+            return (
+              <PathFormRow
+                isDisabled={isLoading}
+                label={"Archives directory"}
+                description={"Directory holding the packed game archives"}
+                field={directory}
+              />
+            );
+
+          case EArchiveOpenMode.ARCHIVE:
+            return (
+              <PathFormRow
+                isDisabled={isLoading}
+                label={"Archive volume"}
+                description={"Single packed archive to open"}
+                field={archive}
+              />
+            );
+
+          default:
+            return assertExhaustive(mode);
+        }
+      })}
     </PickerForm>
   );
 }

@@ -15,6 +15,7 @@ import { renderWithProviders } from "@/fixtures/utils/render";
 const ARCHIVES_DIRECTORY: string = "C:\\game\\database";
 const ARCHIVE_VOLUME: string = "C:\\downloads\\gamedata.db0";
 const INSTALLATION: string = "C:\\game";
+const GAMEDATA: string = "C:\\game\\gamedata";
 
 describe("ArchivesEditorOpenForm", () => {
   const mockOpen = jest.mocked(open<{ multiple: false }>);
@@ -57,7 +58,7 @@ describe("ArchivesEditorOpenForm", () => {
     const { findByRole } = renderForm();
 
     expect(await findByRole("group", { name: "Open" })).toHaveAccessibleDescription(
-      "The game as the engine mounts it, a whole directory of volumes, or one archive on its own"
+      "A game folder, loose gamedata, a directory of volumes, or one archive"
     );
   });
 
@@ -203,5 +204,65 @@ describe("ArchivesEditorOpenForm", () => {
     await userEvent.click(getByLabelText("Open directory"));
 
     expect(getByDisplayValue(ARCHIVES_DIRECTORY)).toBeInTheDocument();
+  });
+
+  it("opens gamedata as a loose directory without detecting installation or archive mounts", async () => {
+    mockOpen.mockResolvedValue(GAMEDATA);
+
+    const { getByLabelText, getByRole, getByText } = renderForm();
+
+    await userEvent.click(getByLabelText("Open gamedata"));
+
+    expect(getByText("Indexes the loose files in a gamedata directory for browsing.")).toBeInTheDocument();
+    expect(getByRole("button", { name: "Open" })).toBeDisabled();
+
+    await userEvent.click(getByLabelText("Browse"));
+
+    expect(open).toHaveBeenCalledWith({
+      title: "Select gamedata directory",
+      directory: true,
+      filters: undefined,
+      defaultPath: undefined,
+    });
+
+    await userEvent.click(getByRole("button", { name: "Open" }));
+
+    expect(mockInvoke).toHaveBeenCalledWith("plugin:archives|open_world", {
+      sessionId: expect.any(String),
+      roots: { asset: null, roots: [{ mode: "directory", path: GAMEDATA }] },
+    });
+    expect(mockInvoke).not.toHaveBeenCalledWith("plugin:archives|open_volumes", expect.anything());
+  });
+
+  it("remembers gamedata independently of the game and archives directories", async () => {
+    const first = renderForm();
+
+    mockOpen.mockResolvedValue(ARCHIVES_DIRECTORY);
+    await userEvent.click(first.getByLabelText("Browse"));
+    await userEvent.click(first.getByLabelText("Open game"));
+
+    mockOpen.mockResolvedValue(INSTALLATION);
+    await userEvent.click(first.getByLabelText("Browse"));
+    await userEvent.click(first.getByLabelText("Open gamedata"));
+
+    expect(first.queryByDisplayValue(INSTALLATION)).not.toBeInTheDocument();
+
+    mockOpen.mockResolvedValue(GAMEDATA);
+    await userEvent.click(first.getByLabelText("Browse"));
+    first.unmount();
+
+    const second = renderForm();
+
+    expect(second.getByLabelText("Open gamedata")).toHaveAttribute("aria-pressed", "true");
+    expect(second.getByDisplayValue(GAMEDATA)).toBeInTheDocument();
+
+    await userEvent.click(second.getByLabelText("Open game"));
+    expect(second.getByDisplayValue(INSTALLATION)).toBeInTheDocument();
+
+    await userEvent.click(second.getByLabelText("Open directory"));
+    expect(second.getByDisplayValue(ARCHIVES_DIRECTORY)).toBeInTheDocument();
+
+    await userEvent.click(second.getByLabelText("Open gamedata"));
+    expect(second.getByDisplayValue(GAMEDATA)).toBeInTheDocument();
   });
 });

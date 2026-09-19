@@ -12,7 +12,7 @@ import { createApplicationDescriptor } from "@/core/routing/application-descript
 
 export const ARCHIVES_EXPLORER_APPLICATION: IApplicationDescriptor = createApplicationDescriptor(
   {
-    description: "Browse files stored in game archives",
+    description: "Browse game archives and loose gamedata files",
     group: EApplicationGroupId.ARCHIVES,
     help: ARCHIVES_EXPLORER_HELP,
     icon: <ArchiveIcon />,

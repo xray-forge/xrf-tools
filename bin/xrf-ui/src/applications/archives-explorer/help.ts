@@ -1,16 +1,18 @@
 import { EApplicationId, IApplicationHelp } from "@/core/routing/application";
 
 export const ARCHIVES_EXPLORER_HELP: IApplicationHelp = {
-  summary: "Browse, preview and extract game files from a game folder or `.db*` / `.xdb*` archives.",
+  summary: "Browse, preview and extract game files from a game folder, loose gamedata or `.db*` / `.xdb*` archives.",
   workflow: [
-    "Choose `Game` for a game folder or gamedata tree, `Directory` for all archives below a folder, " +
-      "or `Archive` for one volume.",
+    "Choose `Game` for a game folder, `Gamedata` for loose game files, `Directory` for all archives below a " +
+      "folder, or `Archive` for one volume.",
     "Browse or filter the file tree. Double-click a file or press `Enter` to preview it; open `File details` " +
       "to inspect its source and metadata.",
     "Use `Extract file` for one file, or select a directory to extract its contents. Select the tree root " +
       "to extract everything with the full folder layout.",
   ],
   nuances: [
+    "`Gamedata` opens the selected directory as a loose file tree, with paths relative to that directory. " +
+      "It does not follow `fsgame.ltx` or load files from packed archives.",
     "`Game` reads `fsgame.ltx` when present; otherwise it treats the folder as a gamedata tree. The tree, previews " +
       "and extraction use the copy the engine would load, including loose files that override archives.",
     "`Directory` and `Archive` show archives only, ignoring loose files. `Directory` loads volumes in path order; " +
@@ -33,8 +35,8 @@ export const ARCHIVES_EXPLORER_HELP: IApplicationHelp = {
       "between files; files already written remain on disk.",
     "Preview limits are 10 MB for text, 32 MB for `dds` and 64 MB for `ogg`. Larger files can still be " +
       "inspected in `File details` and extracted.",
-    "`Game` mode omits volume metadata such as offsets, stored sizes and CRCs. Open archives through `Directory` " +
-      "or `Archive` to inspect those details and shared payloads.",
+    "`Game` and `Gamedata` modes omit volume metadata such as offsets, stored sizes and CRCs. Open archives " +
+      "through `Directory` or `Archive` to inspect those details and shared payloads.",
     "The explorer does not edit or repack archives. Binary descriptions are summaries, not validation reports; " +
       "use `gamedata verify` to check game data.",
   ],
