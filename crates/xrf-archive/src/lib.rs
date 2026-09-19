@@ -4,7 +4,6 @@ mod archive_descriptor;
 mod archive_file_descriptor;
 mod archive_header;
 mod archive_shared_payload;
-mod byte_order;
 mod constants;
 mod project;
 mod reader;

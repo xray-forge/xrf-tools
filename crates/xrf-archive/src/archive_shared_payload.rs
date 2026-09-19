@@ -9,10 +9,6 @@ use crate::archive_file_descriptor::ArchiveFileDescriptor;
 type PayloadLocation = (u32, u32, u32, u32, u32);
 
 /// Stored bytes that several file entries of one volume set locate at once.
-///
-/// Derived from the descriptors, never recorded by a writer: the format has no alias field, so a packer that stored a
-/// file once and pointed a second row at it left only equal fields behind. Calling this "aliased" would claim to know
-/// what the packer did; it knows only what a reader does, which is read the same bytes for every name here.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -34,10 +30,6 @@ pub struct ArchiveSharedPayload {
 
 impl ArchiveSharedPayload {
   /// The payloads more than one file entry locates, in volume and offset order.
-  ///
-  /// Grouped by every field a reader locates and checks a payload with, so two entries in one group read identical
-  /// bytes whatever wrote them. Directory rows are left out: they carry no payload, and every one in a volume would
-  /// otherwise "share" the same nothing.
   pub fn derive<'a>(entries: impl IntoIterator<Item = &'a ArchiveFileDescriptor>) -> Vec<Self> {
     let mut groups: HashMap<PayloadLocation, Vec<Arc<str>>> = HashMap::new();
 

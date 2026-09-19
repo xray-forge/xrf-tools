@@ -14,12 +14,6 @@ use crate::project::archive_read_policy::ArchiveReadPolicy;
 use crate::reader::ArchiveReader;
 
 /// One volume set at a path the caller names, merged into a single name table.
-///
-/// Scoped to a path on purpose: which directories of an installation hold volumes is a question the mount planner in
-/// `xrf-vfs` answers (`XrayMountPlan::from_fsgame`), and answering it here too would put `fsgame.ltx` knowledge in the
-/// volume-format layer and give the same declaration two readers.
-///
-/// Later volumes win the merge, so a patch volume shadows the entry it replaces, which is kept in [`Self::shadowed`].
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -52,9 +46,6 @@ impl ArchiveProject {
 
   /// Reads one archive file or archive volumes directly under a directory.
   ///
-  /// Use this for nonrecursive `fsgame.ltx` archive aliases; recursive discovery would include subdirectories planned as
-  /// separate mounts.
-  ///
   /// # Errors
   ///
   /// Returns an error when the path cannot be walked, no archive volume is found, or a volume cannot be read.
@@ -63,10 +54,6 @@ impl ArchiveProject {
   }
 
   /// The volumes [`Self::new`] would read at a path, in the order it merges them.
-  ///
-  /// Published so a caller mounting the same path as sources of its own reads the identical volume set — the archives
-  /// explorer lists a project and then mounts its root to preview an entry, and a shallower discovery there offers a
-  /// file the preview cannot reach.
   ///
   /// # Errors
   ///
@@ -90,10 +77,6 @@ impl ArchiveProject {
   }
 
   /// The volumes among walked entries, in merge order, failing on the first entry the walk could not reach.
-  ///
-  /// Discovery fails closed because an unreachable descendant may hold volumes: dropping the failure would open a
-  /// project silently missing them, while every caller reads a successful open as the complete volume set. A volume the
-  /// walk does reach fails the open in `ArchiveReader`, so both halves of one contract answer the same way.
   fn collect_volumes(entries: impl IntoIterator<Item = XrfResult<PathBuf>>) -> XrfResult<Vec<PathBuf>> {
     let mut volumes: Vec<PathBuf> = Vec::new();
 
@@ -111,10 +94,6 @@ impl ArchiveProject {
   }
 
   /// Keeps the failing path and the io kind, which `walkdir` carries only as display text.
-  ///
-  /// The cause is taken from the io error rather than from `error`, whose own rendering repeats the path this already
-  /// names through the one host-path boundary. A failure with no entry to name, such as a directory read that recorded
-  /// none, keeps `walkdir`'s wording instead.
   fn describe_walk_failure(error: WalkError) -> XrfError {
     let at: String = format_path_or(error.path(), "an unnamed entry").to_string();
 
@@ -189,10 +168,6 @@ impl ArchiveProject {
 
   /// The volume an entry's payload sits in.
   ///
-  /// An entry records its volume as a position in [`Self::archives`], so this is a bounds-checked index rather than a
-  /// search. It fails only for a descriptor that belongs to some other project, which is the one way the position can
-  /// be wrong.
-  ///
   /// # Errors
   ///
   /// Returns a read error when the entry names a volume outside this project.
@@ -208,8 +183,6 @@ impl ArchiveProject {
   }
 
   /// Bytes the merged name table's entries occupy once unpacked.
-  ///
-  /// Summed over the merged table rather than over the volumes, so an entry a later volume overrides is counted once.
   pub fn get_real_size(&self) -> u64 {
     self.size_real
   }
@@ -220,14 +193,6 @@ impl ArchiveProject {
   }
 
   /// Orders volumes the way the engine registers them, so the last one merged is the one it would answer with.
-  ///
-  /// `CLocatorAPI::Recurse` sorts a directory's entries by name and processes them in place, descending into a
-  /// subdirectory as its name comes up (`xray-16/src/xrCore/LocatorAPI.cpp`, and identically in `xray-monolith`). That
-  /// is component-wise path order, which is what `Path`'s own ordering already is.
-  ///
-  /// No volume is special. A `patches` directory used to be forced last here, which no engine does: precedence between
-  /// declared archive directories is their `fsgame.ltx` declaration order, and Anomaly declares `$arch_dir_addons$`
-  /// after `$arch_dir_patches$`. Open the installation rather than its `db` directory to get that order.
   fn sort_volumes(volumes: &mut [PathBuf]) {
     volumes.sort();
   }

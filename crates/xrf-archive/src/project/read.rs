@@ -6,10 +6,6 @@ use crate::project::archive_read_result::ArchiveReadResult;
 
 impl ArchiveProject {
   /// Read one archived file into memory, decompressing it when it is stored compressed.
-  ///
-  /// A query about what the project holds rather than an unpacking step: nothing reaches the filesystem
-  /// beyond the archive itself. Callers that need the bytes have to hold them, so any size limit belongs
-  /// with the caller; [`Self::read_file_as_string`] applies the project's read policy for that reason.
   pub fn read_file_bytes(&self, name: &str) -> XrfResult<Vec<u8>> {
     let descriptor: &ArchiveFileDescriptor = self
       .files
@@ -22,9 +18,6 @@ impl ArchiveProject {
   }
 
   /// Read one archived file as text, subject to the project's read policy.
-  ///
-  /// Unlike [`Self::read_file_bytes`], the extension and size gates apply: this exists for a viewer that shows a config,
-  /// so refusing a binary or an enormous entry by name is the point rather than a limitation.
   ///
   /// # Errors
   ///

@@ -9,7 +9,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use byteorder::ReadBytesExt;
 use regex::Regex;
-use xrf_chunk::{CHUNK_ID_COMPRESSED_MASK, CHUNK_ID_MASK};
+use xrf_chunk::{CHUNK_ID_COMPRESSED_MASK, CHUNK_ID_MASK, XRayByteOrder};
 use xrf_error::{XrfError, XrfResult};
 use xrf_lzhuf::decompress;
 use xrf_utils::{
@@ -20,16 +20,11 @@ use xrf_utils::{
 use crate::archive_descriptor::ArchiveDescriptor;
 use crate::archive_file_descriptor::ArchiveFileDescriptor;
 use crate::archive_header::ArchiveHeader;
-use crate::byte_order::XRayByteOrder;
 use crate::constants::{
   CHUNK_ID_FILE_DESCRIPTORS_READ, CHUNK_ID_METADATA_READ, DESCRIPTOR_ROW_FIELDS_SIZE, MAXIMUM_ENTRY_NAME_SIZE,
 };
 
 /// Patterns of the `[header]` metadata chunk, compiled once.
-///
-/// A volume set opens one reader per volume — seven for Anomaly's textures alone — and these never vary, so compiling
-/// them per reader was pure waste. `expect` is sound on a literal pattern: it cannot fail at runtime without the source
-/// having been edited into something invalid.
 static SECTION_PATTERN: LazyLock<Regex> =
   LazyLock::new(|| Regex::new(r"^.*\[(?P<name>\w*)\]$").expect("section pattern is valid"));
 static VARIABLE_PATTERN: LazyLock<Regex> =
@@ -38,9 +33,6 @@ static ROOT_ALIAS_PATTERN: LazyLock<Regex> =
   LazyLock::new(|| Regex::new(r"^\$\w+?\$\\").expect("root alias pattern is valid"));
 
 /// Reads one archive volume's header chunks.
-///
-/// Crate-internal: a consumer opens a volume set through [`crate::ArchiveProject`], which is what merges volumes into one
-/// name table.
 pub(crate) struct ArchiveReader {
   path: PathBuf,
   file: File,
@@ -68,10 +60,6 @@ impl ArchiveReader {
   }
 
   /// Encoding of a volume's header strings.
-  ///
-  /// A property of the format, not a caller's choice: the engine writes the archive header and entry names in the system
-  /// ANSI codepage — windows-1251 for the original localization — so non-ASCII names are not valid UTF-8 and a reader that
-  /// let the caller pick could only pick wrong.
   fn header_encoding() -> XRayEncoding {
     new_windows1251_encoder()
   }
@@ -84,9 +72,6 @@ impl ArchiveReader {
   /// no file descriptors chunk. Malformed volumes are errors, never panics: a corrupt `.db` must become a skipped or
   /// reported mount rather than aborting the tool.
   /// Returns the volume alongside its entries, which the project merges and then owns alone.
-  ///
-  /// Separate halves rather than one nested value: a set's merged table is the only place an entry needs to live, and
-  /// handing the map over lets the project move it in instead of cloning out of a copy it would then retain.
   pub(crate) fn read_archive(&mut self) -> XrfResult<(ArchiveDescriptor, HashMap<Arc<str>, ArchiveFileDescriptor>)> {
     let header: ArchiveHeader = self.read_archive_header()?.ok_or_else(|| {
       XrfError::new_read_error(format!(

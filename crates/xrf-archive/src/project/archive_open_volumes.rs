@@ -22,11 +22,6 @@ const COPY_BUFFER_SIZE: usize = 256 * 1024;
 impl ArchiveProject {
   /// Opens every volume of the set, once, for as long as the returned value lives.
   ///
-  /// Reading an entry needs the volume its payload sits in, and opening that volume per entry costs an open, an
-  /// `fstat` and a seek for each of the tens of thousands of files a set holds. Callers that read more than one entry
-  /// hold this instead; [`Self::read_file_bytes`] opens one for its single read, which is the same code paying the
-  /// open it actually needs.
-  ///
   /// # Errors
   ///
   /// Returns an IO error when a volume cannot be opened or its length cannot be read.
@@ -45,10 +40,6 @@ impl ArchiveProject {
 }
 
 /// Every volume of one project, open, positioned to serve any entry of it.
-///
-/// An entry names its volume by position, so serving one is an index rather than a search, and an entry the project
-/// does not hold cannot be expressed. The handles are read positionally, so this is shared by reference across an
-/// unpack's workers without a lock and without a cursor for them to race over.
 pub struct ArchiveOpenVolumes<'a> {
   project: &'a ArchiveProject,
   /// One open handle per volume, positionally matching [`ArchiveProject::archives`].
@@ -56,9 +47,6 @@ pub struct ArchiveOpenVolumes<'a> {
 }
 
 /// One open volume, with the length every entry of it is bounded by.
-///
-/// The length is taken from the handle rather than from the volume's descriptor, so the bound belongs to the file
-/// actually being read rather than to what it measured when the set was indexed.
 struct OpenVolume {
   file: File,
   size: u64,
@@ -88,9 +76,6 @@ impl ArchiveOpenVolumes<'_> {
   }
 
   /// Reads one entry into memory, decompressing it when it is stored compressed.
-  ///
-  /// The caller holds the whole entry. A caller that cannot afford to should use [`Self::write_contents`], which
-  /// streams a stored entry straight through instead.
   ///
   /// # Errors
   ///
@@ -149,10 +134,6 @@ impl ArchiveOpenVolumes<'_> {
   }
 
   /// The handle holding an entry's payload and the offset it starts at, once the entry is known to fit its volume.
-  ///
-  /// The one place a declared extent is checked, so every read is bounded by what the volume can actually hold rather
-  /// than by what a descriptor claims. Sizes read out of an archive are untrusted; this is what makes the allocation
-  /// each caller performs next safe to size from one.
   fn locate(&self, descriptor: &ArchiveFileDescriptor) -> XrfResult<LocatedEntry<'_>> {
     let volume: &ArchiveDescriptor = self.project.get_volume_of(descriptor)?;
     let open: &OpenVolume = &self.files[descriptor.volume as usize];
@@ -174,9 +155,6 @@ impl ArchiveOpenVolumes<'_> {
   }
 
   /// Decompress an entry's payload and verify it against the checksum the archive recorded.
-  ///
-  /// The decoder is bounds checked and writes into a buffer sized from the descriptor, so a corrupt entry
-  /// is an error rather than a read past the end of it.
   fn decompress(raw: &[u8], descriptor: &ArchiveFileDescriptor, volume: &Path) -> XrfResult<Vec<u8>> {
     let mut decompressed: Vec<u8> = new_declared_vec(descriptor.size_real as usize, "a decompressed archive entry")?;
 

@@ -18,9 +18,6 @@ pub struct ArchiveReadResult {
 impl ArchiveReadResult {
   /// Decodes what a viewer will show from the bytes a source answered with.
   ///
-  /// The one place engine text becomes a string for display, because both readers behind it — a volume set's name
-  /// table and a mounted world's winner — meet the same encoding and used to each decide it for themselves.
-  ///
   /// # Errors
   ///
   /// Returns an encoding error when the bytes are not decodable Windows-1251.

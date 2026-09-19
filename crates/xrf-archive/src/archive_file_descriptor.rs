@@ -3,8 +3,6 @@ use std::sync::Arc;
 use serde::Serialize;
 
 /// One entry of a volume's name table: where its payload sits and how to verify it.
-///
-/// Equal `size_real` and `size_compressed` is how the format says "stored uncompressed".
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -12,14 +10,8 @@ pub struct ArchiveFileDescriptor {
   /// CRC32 of the unpacked payload, recorded by the packer and verified on decompression.
   pub crc: u32,
   /// Whether the entry names a directory rather than a file with bytes.
-  ///
-  /// A volume records the directories it contains so an unpacker can recreate them. X-Ray marks those entries with a
-  /// trailing separator; a zero-length entry without one is an empty file.
   pub is_directory: bool,
   /// Entry name as authored, which the engine registers verbatim.
-  ///
-  /// Shared rather than owned outright: the merged name table keys entries by this same name and a mounted archive
-  /// maps its engine identity back to it, so an owned copy per structure meant three allocations for one name.
   #[cfg_attr(feature = "typescript-bindings", specta(type = String))]
   pub name: Arc<str>,
   /// Byte offset of the payload inside its volume.
@@ -29,21 +21,11 @@ pub struct ArchiveFileDescriptor {
   /// Payload bytes once unpacked.
   pub size_real: u32,
   /// Which volume holds the payload, as a position in [`crate::ArchiveProject::archives`].
-  ///
-  /// A position rather than a path, because an entry belongs to a project and the project already describes each
-  /// volume once. Naming the volume again per entry would make every read a search for it, and would let an entry
-  /// claim a volume its own project does not hold. The position is also the volume's merge rank, which is what
-  /// decides between two entries claiming one name.
-  ///
-  /// Set by [`crate::ArchiveProject`] as it merges each volume, and stable for the life of that project.
   pub volume: u32,
 }
 
 impl ArchiveFileDescriptor {
   /// Creates a descriptor from the fields a name table records.
-  ///
-  /// The volume is left at zero: a name table says where a payload sits inside its own volume and nothing about which
-  /// volume that is, so only the project merging them can answer. [`Self::in_volume`] is where that happens.
   pub fn new(crc: u32, name: Arc<str>, offset: u32, size_compressed: u32, size_real: u32) -> Self {
     Self {
       crc,

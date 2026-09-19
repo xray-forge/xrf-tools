@@ -9,13 +9,6 @@ use crate::project::constants::{
 };
 
 /// What a viewer may read out of a mounted tree, by extension and size.
-///
-/// A gate for interactive consumers rather than a format rule: [`crate::ArchiveProject::read_file_bytes`] ignores it,
-/// while every text read asks [`Self::require_text_read`] first. Both of the archives explorer's subjects answer to
-/// this one policy, so a file too large to preview is refused the same way whichever tree it came from.
-///
-/// Only the text lists are enforced here. The picture and sound lists are routing hints for the viewer, which reads
-/// both through the shared mounted assets and so answers to no limit of its own.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Copy, Debug, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -46,8 +39,6 @@ impl ArchiveReadPolicy {
   }
 
   /// Admits a text read of `size` bytes, or names why it is refused.
-  ///
-  /// Asked before the bytes are fetched, so an enormous entry is never held in memory to be rejected.
   ///
   /// # Errors
   ///
