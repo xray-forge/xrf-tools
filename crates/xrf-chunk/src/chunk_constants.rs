@@ -1,7 +1,4 @@
 //! The chunk header, as every chunked X-Ray format lays it out.
-//!
-//! Eight bytes of id and size open every chunk of every format the engine reads, a `.db` volume included, so the
-//! numbers live with the reader that cuts them rather than with any one format built on top.
 
 /// Width of a chunk's id field.
 pub const CHUNK_ID_FIELD_SIZE: u64 = 4;

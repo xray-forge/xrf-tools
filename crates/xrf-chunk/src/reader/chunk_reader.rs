@@ -53,11 +53,6 @@ impl ChunkReader<FileSlice> {
 impl ChunkReader<InMemoryChunkDataSource> {
   /// Creates a reader spanning the whole file, held in memory.
   ///
-  /// Reading a chunked format is per field — a `u32` here, an `f32` there — and a file-backed source answers each one
-  /// with its own positioned read: 296k of them, 167ms, to read the 1.2MB particles library that costs two reads to
-  /// hold. The bytes are taken through a [`FileSlice`] rather than off the handle so the file's own cursor is left where
-  /// the caller had it, and reading still starts at offset 0. Use [`Self::from_slice`] for the windowed form.
-  ///
   /// # Errors
   ///
   /// Returns an error when the file cannot be read, or is empty; see [`Self::from_source`] for the rule.
@@ -99,8 +94,6 @@ impl ChunkReader<InMemoryChunkDataSource> {
   /// a rule that held only for the file-backed constructors would make the answer depend on whether the caller reached
   /// the asset loose or through a `.db` volume. An empty *child* is unaffected — [`ChunkIterator`] cuts children
   /// directly and a chunk declaring no payload is ordinary.
-  ///
-  /// A zero-byte file is still a legal asset and the VFS resolves one; it is only not a chunked asset.
   pub fn from_source(source: InMemoryChunkDataSource) -> XrfResult<Self> {
     if source.is_empty() {
       return Err(XrfError::new_invalid_error("Failed to create chunk from empty source"));
@@ -201,12 +194,6 @@ impl<T: ChunkDataSource> ChunkReader<T> {
 
   /// Returns all children, and on the first malformed header the bytes from the last good boundary rather than an
   /// error.
-  ///
-  /// [`Self::read_children`] is this call with every trailing byte rejected, so the two cannot disagree about what a
-  /// well-formed child sequence is. Only the handling of what follows one differs, and only for a caller that knows the
-  /// format well enough to account for those bytes; see [`ChunkTrailing`].
-  ///
-  /// The cursor is left at the end of the last well-formed child, not at the end of the source.
   pub fn read_children_with_trailing(&mut self) -> XrfResult<(Vec<Self>, Option<ChunkTrailing<T>>)> {
     let total: u64 = self.data.end_pos().saturating_sub(self.data.start_pos());
     let mut chunks: Vec<Self> = Vec::new();

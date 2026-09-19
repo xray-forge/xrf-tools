@@ -5,10 +5,6 @@ use serde::{Deserialize, Serialize};
 use crate::build_kind::BuildKind;
 
 /// Where a binary came from, as recorded when it was compiled.
-///
-/// Every field is `Option` because a build script may not have run, or a value may be unavailable - a
-/// build outside a Git checkout has no commit, and a local build has no workflow run. Reporting the
-/// absence is more useful than substituting a plausible-looking default.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
@@ -46,8 +42,6 @@ impl BuildInfo {
 
 impl fmt::Display for BuildInfo {
   /// One `field: value` per line, skipping what this build could not record.
-  ///
-  /// The first line carries no label because clap prints the binary name in front of it.
   fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
     writeln!(formatter, "{} ({})", self.version, self.kind.as_str())?;
 
@@ -76,9 +70,6 @@ impl fmt::Display for BuildInfo {
 }
 
 /// Read back the description this crate's [`emit`] wrote for the binary being compiled.
-///
-/// `option_env!` throughout, so a crate whose build script never ran still compiles and simply reports
-/// less rather than failing to build.
 #[macro_export]
 macro_rules! build_info {
   () => {

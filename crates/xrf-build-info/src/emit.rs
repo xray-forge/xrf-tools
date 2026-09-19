@@ -1,16 +1,9 @@
 //! The build-script half: records what a binary should be able to say about itself.
-//!
-//! Values come from the environment first and Git second. Continuous integration knows things a checkout
-//! cannot - which workflow run this was, and whether the build was meant for turnaround or for release -
-//! while a developer machine is the only place a dirty tree exists.
 
 use std::env;
 use std::process::Command;
 
 /// Write the build description into the compiling crate's environment.
-///
-/// Call from a binary's `build.rs`. Reading it back needs `build_info!` in that same crate, because
-/// `env!` resolves where it is written rather than here.
 pub fn emit() {
   // Any `rerun-if` directive replaces cargo's default of re-running whenever a package file changes, so
   // every input has to be named. Without the Git log a local commit would leave a stale hash embedded.
@@ -66,10 +59,6 @@ fn emit_variable(name: &str, value: Option<String>) {
 }
 
 /// How hard the compiler was asked to work, as cargo resolved it for this build.
-///
-/// Link-time optimisation and codegen units are not handed to build scripts, so they can only be named
-/// when something overrode them in the environment. A build using the profile as committed says so
-/// rather than guessing values it cannot see.
 fn optimization() -> String {
   let level: String = env::var("OPT_LEVEL").unwrap_or_else(|_| String::from("unknown"));
   let lto: String = env::var("CARGO_PROFILE_RELEASE_LTO").unwrap_or_else(|_| String::from("profile default"));
@@ -95,9 +84,6 @@ fn is_dirty() -> bool {
 }
 
 /// Run a Git command, treating any failure as an absent answer.
-///
-/// A build can legitimately happen outside a checkout - from a source archive, or in a container that
-/// carries no Git - and none of that should fail a compile.
 fn git_output(arguments: &[&str]) -> Option<String> {
   let output = Command::new("git").args(arguments).output().ok()?;
 
@@ -108,9 +94,6 @@ fn git_output(arguments: &[&str]) -> Option<String> {
 }
 
 /// The current instant, to a whole second.
-///
-/// `Timestamp` renders RFC 3339 in UTC, and rounding drops the sub-second digits that would otherwise
-/// make the value noisier than anything reading it needs.
 fn built_at() -> String {
   jiff::Timestamp::now()
     .round(jiff::Unit::Second)

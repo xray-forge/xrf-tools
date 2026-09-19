@@ -29,10 +29,6 @@ impl<T: ChunkDataSource> ChunkIterator<'_, T> {
   }
 
   /// Iterates from the start, handing over a compressed chunk as the bytes it is stored as.
-  ///
-  /// For a format that carries one and can account for it without decompressing - a descriptor copying its preview
-  /// picture through, say. Every other walk refuses one, because reading a compressed payload as though it were the
-  /// data it stands for produces silence rather than an error.
   pub fn from_start_including_compressed(reader: &mut ChunkReader<T>) -> XrfResult<ChunkIterator<'_, T>> {
     reader.reset_pos()?;
 
