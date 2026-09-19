@@ -3,11 +3,10 @@ use std::path::Path;
 
 use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
+use xrf_animation_envelope::AnimationEnvelope;
 use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter, find_required_chunk_by_id};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::format_path;
-
-use xrf_animation::AnimationEnvelope;
 
 /// Channels a motion animates, in the order the file stores them.
 pub const ANM_CHANNELS: [&str; 6] = [

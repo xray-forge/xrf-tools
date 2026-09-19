@@ -1,5 +1,5 @@
 use serde::Serialize;
-use xrf_animation::{AnimationEnvelope, AnimationKey};
+use xrf_animation_envelope::{AnimationEnvelope, AnimationKey};
 
 use crate::plugins::archives::describe::animation::archive_animation_behavior::ArchiveAnimationBehavior;
 use crate::plugins::archives::describe::animation::archive_animation_shape::ArchiveAnimationShape;
@@ -76,7 +76,7 @@ fn fold_values(envelope: &AnimationEnvelope, fold: fn(f32, f32) -> f32) -> Optio
 
 #[cfg(test)]
 mod tests {
-  use xrf_animation::{AnimationEnvelope, AnimationKey};
+  use xrf_animation_envelope::{AnimationEnvelope, AnimationKey};
   use xrf_anm::ANM_CHANNELS;
 
   use super::ArchiveAnimationChannel;

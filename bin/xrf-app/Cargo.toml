@@ -61,7 +61,7 @@ xrf-translation = { workspace = true }
 xrf-typescript = { workspace = true, optional = true }
 xrf-visual = { workspace = true }
 xrf-pack = { workspace = true }
-xrf-animation = { workspace = true }
+xrf-animation-envelope = { workspace = true }
 xrf-anm = { workspace = true }
 xrf-efd = { workspace = true }
 xrf-gamemtl = { workspace = true }

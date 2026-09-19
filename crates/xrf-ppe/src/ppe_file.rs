@@ -3,7 +3,7 @@ use std::path::Path;
 
 use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_animation::AnimationEnvelope;
+use xrf_animation_envelope::AnimationEnvelope;
 use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::format_path;

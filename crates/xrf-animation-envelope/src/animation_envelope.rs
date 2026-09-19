@@ -4,7 +4,7 @@ use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
 use xrf_utils::to_format_size;
 
-use crate::animation_key::AnimationKey;
+use crate::AnimationKey;
 
 /// One animated channel, `CEnvelope` (`xrCore/Animation/Envelope.hpp`): how it behaves outside its keys, and the
 /// keys themselves.

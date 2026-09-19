@@ -66,7 +66,7 @@ impl ArchiveAnmDescription {
 
 #[cfg(test)]
 mod tests {
-  use xrf_animation::{AnimationEnvelope, AnimationKey};
+  use xrf_animation_envelope::{AnimationEnvelope, AnimationKey};
   use xrf_anm::AnmFile;
 
   use super::ArchiveAnmDescription;

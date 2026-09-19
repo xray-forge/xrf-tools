@@ -1,6 +1,6 @@
 use std::io::Write;
 
-use xrf_animation::AnimationEnvelope;
+use xrf_animation_envelope::AnimationEnvelope;
 use xrf_chunk::{ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
 use xrf_error::XrfResult;
 

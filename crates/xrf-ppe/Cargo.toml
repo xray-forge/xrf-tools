@@ -11,7 +11,7 @@ path = "src/lib.rs"
 [dependencies]
 byteorder = { workspace = true }
 serde = { workspace = true }
-xrf-animation = { workspace = true }
+xrf-animation-envelope = { workspace = true }
 xrf-chunk = { workspace = true }
 xrf-error = { workspace = true }
 xrf-utils = { workspace = true }

@@ -50,7 +50,7 @@ impl ArchivePpeColor {
 
 #[cfg(test)]
 mod tests {
-  use xrf_animation::{AnimationEnvelope, AnimationKey};
+  use xrf_animation_envelope::{AnimationEnvelope, AnimationKey};
   use xrf_ppe::{PPE_COLORS, PpeColor};
 
   use super::ArchivePpeColor;
