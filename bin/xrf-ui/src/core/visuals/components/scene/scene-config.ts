@@ -18,6 +18,9 @@ export interface IVisualPreviewSceneConfig {
   highlightSize: number;
   /** Vertical field of view in degrees, which also sets how far a fitted camera has to stand back. */
   cameraFieldOfView: number;
+  /** Where the camera starts seeing, before a fit replaces both from the model's own extent. */
+  cameraNear: number;
+  cameraFar: number;
   /** How much room to leave around a fitted model, so it does not touch the viewport edges. */
   cameraFitMargin: number;
   /** Direction the camera is placed in, scaled by the fitted distance. */
@@ -37,6 +40,8 @@ export const DEFAULT_VISUAL_PREVIEW_SCENE_CONFIG: IVisualPreviewSceneConfig = {
   highlightColor: 0xffb300,
   highlightSize: 9,
   cameraFieldOfView: 50,
+  cameraNear: 0.001,
+  cameraFar: 10000,
   cameraFitMargin: 1.6,
   cameraDirection: [0.6, 0.5, 0.8],
   checkerSize: 8,

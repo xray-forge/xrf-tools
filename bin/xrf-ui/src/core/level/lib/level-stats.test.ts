@@ -2,8 +2,13 @@ import { describe, expect, it } from "@jest/globals";
 
 import { ILoadedSector } from "@/core/level/lib/level-sector-set";
 import { createSectorViews } from "@/core/level/lib/level-sector-views";
-import { EMPTY_LEVEL_STATS, ILevelStats, LevelFrameTimer, measureLevelStats } from "@/core/level/lib/level-stats";
-import { mockSectorDescription, mockSectorSection, mockSectorSurface } from "@/fixtures/mocks/level.mocks";
+import { EMPTY_LEVEL_STATS, ILevelStats, measureLevelStats } from "@/core/level/lib/level-stats";
+import {
+  mockSectorDescription,
+  mockSectorInstanceGroup,
+  mockSectorSection,
+  mockSectorSurface,
+} from "@/fixtures/mocks/level.mocks";
 import { MockVisualBuffer } from "@/fixtures/mocks/visual.mocks";
 
 /** One resident sector drawing the given surfaces, without a renderer to upload it. */
@@ -52,33 +57,35 @@ describe("level stats", () => {
   });
 });
 
-describe("LevelFrameTimer", () => {
-  // The first frame has nothing to measure against, so reporting one would be inventing it.
-  it("reports nothing until it has seen two frames", () => {
-    const timer: LevelFrameTimer = new LevelFrameTimer();
+describe("instanced geometry", () => {
+  /** One resident sector standing one triangle in `places` places, beside `sections` baked surfaces. */
+  function standingSector(sections: number, places: number): ILoadedSector {
+    const buffer: MockVisualBuffer = new MockVisualBuffer();
+    const description = mockSectorDescription(buffer, {
+      instances: [
+        mockSectorInstanceGroup(
+          buffer,
+          Array.from({ length: places }, (_, at: number) => at)
+        ),
+      ],
+      sections: Array.from({ length: sections }, (_, index) =>
+        mockSectorSection({ draw: { count: 3, start: index * 3 }, surface: mockSectorSurface({ shaderId: index }) })
+      ),
+    });
 
-    timer.sample(1000);
+    return {
+      geometry: { dispose: () => undefined } as never,
+      sector: 0,
+      views: createSectorViews({ ...description, bufferLength: buffer.byteLength }, buffer.toArrayBuffer()),
+    };
+  }
 
-    expect(timer.frameTime).toBe(0);
-  });
+  // The panel counted sections alone, so marsh's 358 instanced meshes and the 10,973 places they stand were invisible
+  // to the one measurement the streaming work exists to make.
+  it("counts an instanced mesh as a draw, and its triangles once for every place it stands", () => {
+    const stats: ILevelStats = measureLevelStats(new Map([[0, standingSector(2, 7)]]), 16);
 
-  it("averages the frames it has seen", () => {
-    const timer: LevelFrameTimer = new LevelFrameTimer();
-
-    timer.sample(0);
-    timer.sample(10);
-    timer.sample(30);
-
-    expect(timer.frameTime).toBe(15);
-  });
-
-  it("forgets the window when the viewport does", () => {
-    const timer: LevelFrameTimer = new LevelFrameTimer();
-
-    timer.sample(0);
-    timer.sample(10);
-    timer.reset();
-
-    expect(timer.frameTime).toBe(0);
+    expect(stats.draws).toBe(3);
+    expect(stats.triangles).toBe(2 + 7);
   });
 });

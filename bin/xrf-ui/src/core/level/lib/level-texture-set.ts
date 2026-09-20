@@ -5,7 +5,7 @@ import { assetsRawCommands } from "@/core/ipc/commands/assets-raw";
 import { texturesRawCommands } from "@/core/ipc/commands/textures-raw";
 import { LevelTextureReference } from "@/core/ipc/types/xrf-app";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
-import { createDdsTexture, createDecodedTexture } from "@/core/visuals/lib/visual-texture";
+import { createDdsTexture, createDecodedTexture, IRenderTextureOptions } from "@/core/render/lib/render-texture";
 import { Logger } from "@/lib/logging";
 import { Maybe, Nullable } from "@/lib/types/general";
 
@@ -13,6 +13,14 @@ import { Maybe, Nullable } from "@/lib/types/general";
 export interface ILevelTexture {
   texture: Nullable<Texture>;
   reason: Nullable<string>;
+}
+
+/** One texture a sector needs, and what it has to survive upload with. */
+export interface ILevelTextureRequest {
+  /** The reference as the shader table spells it, which is what the set is keyed by. */
+  reference: string;
+  /** Whether any surface drawn with this file samples its alpha channel. */
+  isAlphaRead: boolean;
 }
 
 /**
@@ -74,12 +82,10 @@ export class LevelTextureSet implements ILevelTextureLookup {
   /**
    * Loads every reference given, sharing whatever is already loaded or already being read.
    *
-   * @param references - What a sector's surfaces name, base textures and lightmaps alike.
+   * @param requests - What a sector's surfaces name, base textures and lightmaps alike.
    */
-  public async load(references: ReadonlyArray<string>): Promise<void> {
-    const wanted: Set<string> = new Set(references.filter(Boolean));
-
-    await Promise.all(Array.from(wanted, (reference: string) => this.read(reference)));
+  public async load(requests: ReadonlyArray<ILevelTextureRequest>): Promise<void> {
+    await Promise.all(requests.filter((it) => it.reference).map((request) => this.read(request)));
   }
 
   /**
@@ -112,21 +118,22 @@ export class LevelTextureSet implements ILevelTextureLookup {
   /**
    * Reads and uploads one reference, or joins the read already in flight for it.
    */
-  private async read(reference: string): Promise<ILevelTexture> {
-    const held: ILevelTexture | undefined = this.loaded.get(reference);
+  private async read(request: ILevelTextureRequest): Promise<ILevelTexture> {
+    const reference: string = request.reference;
+    const held: Maybe<ILevelTexture> = this.loaded.get(reference);
 
     if (held) {
       return held;
     }
 
     // Two sectors arriving together name the same ground texture, and reading it twice would upload it twice.
-    const inFlight: Promise<ILevelTexture> | undefined = this.pending.get(reference);
+    const inFlight: Maybe<Promise<ILevelTexture>> = this.pending.get(reference);
 
     if (inFlight) {
       return inFlight;
     }
 
-    const reading: Promise<ILevelTexture> = this.upload(reference);
+    const reading: Promise<ILevelTexture> = this.upload(request);
 
     this.pending.set(reference, reading);
 
@@ -141,7 +148,8 @@ export class LevelTextureSet implements ILevelTextureLookup {
     }
   }
 
-  private async upload(reference: string): Promise<ILevelTexture> {
+  private async upload(request: ILevelTextureRequest): Promise<ILevelTexture> {
+    const reference: string = request.reference;
     const logicalPath: Maybe<string> = this.paths.get(reference);
 
     if (!this.roots || !logicalPath) {
@@ -150,13 +158,17 @@ export class LevelTextureSet implements ILevelTextureLookup {
 
     try {
       const bytes: ArrayBuffer = await assetsRawCommands.readAsset(this.roots, logicalPath);
-      const compressed: Nullable<Texture> = createDdsTexture(bytes);
+      // Every file a level's shader table names is a picture - a base texture or a lightmap - so both are decoded from
+      // sRGB. Only whether the alpha survives varies, and that is the surfaces' answer rather than the file's.
+      const options: IRenderTextureOptions = { isAlphaRead: request.isAlphaRead, isColor: true };
+      const compressed: Nullable<Texture> = createDdsTexture(bytes, options);
 
       // The renderer refuses some layouts the game ships; the backend decodes those to png instead.
       return {
         reason: null,
         texture:
-          compressed ?? (await createDecodedTexture(await texturesRawCommands.readTexture(this.roots, logicalPath))),
+          compressed ??
+          (await createDecodedTexture(await texturesRawCommands.readTexture(this.roots, logicalPath), options)),
       };
     } catch (error: unknown) {
       const transformed: Error = transformError(error);

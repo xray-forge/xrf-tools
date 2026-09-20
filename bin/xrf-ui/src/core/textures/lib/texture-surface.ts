@@ -3,8 +3,8 @@ import { Texture } from "three";
 import { getLocatedAsset } from "@/core/assets/lib";
 import { AssetTextureShape, TextureDescription } from "@/core/ipc/types/xrf-app";
 import { XrayAsset } from "@/core/ipc/types/xrf-vfs";
+import { IRenderTextureTexels } from "@/core/render/lib/render-texture";
 import { IVisualBumpTextures } from "@/core/visuals/lib/visual-bump";
-import { IVisualTextureTexels } from "@/core/visuals/lib/visual-texture";
 import { Maybe, Nullable } from "@/lib/types/general";
 
 /**
@@ -80,8 +80,8 @@ export function listTextureSurfaceTextures(textures: Nullable<ITextureSurfaceTex
  * The pair's texels on the cpu, for a pair whose layout stores them plainly.
  */
 export interface ITextureBumpTexels {
-  bump: IVisualTextureTexels;
-  companion: IVisualTextureTexels;
+  bump: IRenderTextureTexels;
+  companion: IRenderTextureTexels;
 }
 
 /** The two located files behind a bump declaration, which are only ever fetched together. */

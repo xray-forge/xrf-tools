@@ -1,3 +1,4 @@
+import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
 import {
   SectorDescription,
   SectorGeometry,
@@ -5,7 +6,9 @@ import {
   SectorSurface,
   VisualSection,
 } from "@/core/ipc/types/xrf-visual";
-import { Nullable } from "@/lib/types/general";
+import { ILevelTextureRequest } from "@/core/level/lib/level-texture-set";
+import { getRenderSurface, IRenderSurface, isAlphaRenderSurface } from "@/core/render/lib/render-surface";
+import { Maybe, Nullable } from "@/lib/types/general";
 
 /**
  * One packed mesh as views over the buffer it arrived in.
@@ -31,6 +34,8 @@ export interface ISectorGeometryViews {
 /** One draw of a sector's own geometry: the range to draw, and the surface it is drawn with. */
 export interface ISectorSectionViews {
   surface: SectorSurface;
+  /** What that surface's blender compiles to, joined from the level's shader table as the sector arrives. */
+  render: IRenderSurface;
   /** Drawables this section draws, by their index in the visuals run, for inspection rather than for drawing. */
   drawables: Array<number>;
   start: number;
@@ -41,6 +46,8 @@ export interface ISectorSectionViews {
 /** One mesh a sector stands in many places, as views over the buffer it arrived in. */
 export interface ISectorInstanceViews {
   surface: SectorSurface;
+  /** What that surface's blender compiles to, joined the same way a section's is. */
+  render: IRenderSurface;
   drawables: Array<number>;
   geometry: ISectorGeometryViews;
   instanceCount: number;
@@ -105,9 +112,14 @@ function toGeometryViews(buffer: ArrayBuffer, geometry: SectorGeometry): ISector
  *
  * @param description - What `open_sector` reported about the pack.
  * @param buffer - The bytes `read_sector` served for that same pack.
+ * @param surfaces - How the renderer draws each shader the level's table names, from the open.
  * @returns Views over the buffer, and the draws that consume them.
  */
-export function createSectorViews(description: SectorDescription, buffer: ArrayBuffer): ISectorViews {
+export function createSectorViews(
+  description: SectorDescription,
+  buffer: ArrayBuffer,
+  surfaces: Readonly<Record<string, XraySurfaceDescriptor>> = {}
+): ISectorViews {
   if (buffer.byteLength !== description.bufferLength) {
     throw new Error(
       `Sector buffer is ${buffer.byteLength} bytes but its description covers ${description.bufferLength}. ` +
@@ -122,12 +134,14 @@ export function createSectorViews(description: SectorDescription, buffer: ArrayB
       drawables: group.drawables,
       geometry: toGeometryViews(buffer, group.geometry),
       instanceCount: group.instanceCount,
+      render: getRenderSurface(surfaces, group.surface.shaderName),
       surface: group.surface,
       transforms: toFloatView(buffer, group.transforms),
     })),
     sections: description.sections.map((section) => ({
       count: section.draw.count,
       drawables: section.drawables,
+      render: getRenderSurface(surfaces, section.surface.shaderName),
       start: section.draw.start,
       surface: section.surface,
       triangleCount: section.draw.count / 3,
@@ -143,20 +157,42 @@ export function createSectorViews(description: SectorDescription, buffer: ArrayB
  * @param views - The sector.
  * @returns Its references, without repeats.
  */
-export function listSectorTextures(views: ISectorViews): Array<string> {
-  const references: Set<string> = new Set();
+export function listSectorTextures(views: ISectorViews): Array<ILevelTextureRequest> {
+  const requests: Map<string, ILevelTextureRequest> = new Map();
 
-  for (const { surface } of [...views.sections, ...views.instances]) {
+  for (const { surface, render } of [...views.sections, ...views.instances]) {
     if (surface.textureName) {
-      references.add(surface.textureName);
+      requestTexture(requests, surface.textureName, isAlphaRenderSurface(render));
     }
 
+    // A lightmap is sampled for its light rather than tested for coverage, whatever the surface over it does.
     for (const lightmap of surface.lightmaps) {
-      references.add(lightmap);
+      requestTexture(requests, lightmap, false);
     }
   }
 
-  return Array.from(references);
+  return Array.from(requests.values());
+}
+
+/** Records one reference, keeping the alpha answer of whichever surface naming it needs it. */
+function requestTexture(requests: Map<string, ILevelTextureRequest>, reference: string, isAlphaRead: boolean): void {
+  const held: Maybe<ILevelTextureRequest> = requests.get(reference);
+
+  if (held) {
+    held.isAlphaRead ||= isAlphaRead;
+  } else {
+    requests.set(reference, { isAlphaRead, reference });
+  }
+}
+
+/** Whether any surface of a sector reads its texture's alpha channel, which is what makes the toggle worth offering. */
+export function hasAlphaSurfaces(views: ISectorViews): boolean {
+  return [...views.sections, ...views.instances].some((it) => isAlphaRenderSurface(it.render));
+}
+
+/** Draw calls a sector costs: one per surface of its own mesh, plus one per instanced mesh however often it stands. */
+export function countSectorDraws(views: ISectorViews): number {
+  return views.sections.length + views.instances.length;
 }
 
 /** Triangles a sector draws in total, instanced meshes counted once for every place they stand. */

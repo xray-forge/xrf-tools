@@ -6,10 +6,10 @@ import {
   MeshStandardMaterial,
   PerspectiveCamera,
   Scene,
-  WebGLRenderer,
 } from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
+import { RenderViewport } from "@/core/render/lib/render-viewport";
 import {
   EMPTY_TEXTURE_SURFACE,
   ETextureSurfaceShape,
@@ -54,15 +54,12 @@ const CAMERA_DISTANCE: number = 5;
  * The canvas is transparent and the scene has no background, so the alpha checkerboard behind it is the frame's own.
  */
 export class TextureSurfaceScene {
-  private readonly scene: Scene;
-  private readonly camera: PerspectiveCamera;
-  private readonly renderer: WebGLRenderer;
+  private readonly viewport: RenderViewport;
   private readonly controls: OrbitControls;
   private readonly light: DirectionalLight;
   private readonly ambient: AmbientLight;
   private readonly material: MeshStandardMaterial;
   private readonly edgeMaterial: MeshStandardMaterial;
-  private readonly resizeObserver: ResizeObserver;
 
   /** Stops the canvas answering drags with the drag cursor, called when the scene goes. */
   private readonly unbindDragCursor: () => void;
@@ -78,21 +75,17 @@ export class TextureSurfaceScene {
   };
 
   private lightAngles: ILightAngles = { ...INITIAL_LIGHT };
-  private container: Nullable<HTMLElement> = null;
-  private frameHandle: number = 0;
 
   public constructor() {
-    // Transparent, so the checkerboard the frame already draws shows through wherever the texture's alpha does.
-    this.renderer = new WebGLRenderer({ alpha: true, antialias: true });
-    this.renderer.setPixelRatio(window.devicePixelRatio);
-    this.renderer.domElement.style.display = "block";
-
-    this.scene = new Scene();
-
-    this.camera = new PerspectiveCamera(45, 1, 0.01, 100);
+    // No background colour, so the canvas is transparent and the checkerboard the frame already draws shows through
+    // wherever the texture's alpha does.
+    this.viewport = new RenderViewport(
+      { backgroundColor: null, cameraFar: 100, cameraFieldOfView: 45, cameraNear: 0.01 },
+      { onFrame: () => this.controls.update() }
+    );
     this.camera.position.set(0, 0, CAMERA_DISTANCE);
 
-    this.controls = new OrbitControls(this.camera, this.renderer.domElement);
+    this.controls = new OrbitControls(this.camera, this.viewport.domElement);
     this.controls.enableDamping = true;
 
     this.light = new DirectionalLight(0xffffff, LIT_INTENSITY.directional);
@@ -108,10 +101,18 @@ export class TextureSurfaceScene {
     // Dark and plain, so a rotated slab reads as a slab: its four edges and its back are not the texture.
     this.edgeMaterial = new MeshStandardMaterial({ color: 0x1a1a1a, metalness: 0, roughness: 0.9 });
 
-    this.resizeObserver = new ResizeObserver(() => this.resize());
-
     this.setShape(this.options.shape);
-    this.unbindDragCursor = bindDragCursor(this.controls, this.renderer.domElement);
+    this.unbindDragCursor = bindDragCursor(this.controls, this.viewport.domElement);
+  }
+
+  /** The scene the body stands in, which the viewport draws. */
+  private get scene(): Scene {
+    return this.viewport.scene;
+  }
+
+  /** The camera the orbit controls drive. */
+  private get camera(): PerspectiveCamera {
+    return this.viewport.camera;
   }
 
   /**
@@ -120,28 +121,19 @@ export class TextureSurfaceScene {
    * @param container - Element the canvas fills.
    */
   public mount(container: HTMLElement): void {
-    this.container = container;
-    container.appendChild(this.renderer.domElement);
-    this.resizeObserver.observe(container);
-    this.resize();
-    this.start();
+    this.viewport.mount(container);
   }
 
   /**
    * Takes the canvas off screen and releases everything it holds.
    */
   public dispose(): void {
-    cancelAnimationFrame(this.frameHandle);
     this.unbindDragCursor();
-    this.resizeObserver.disconnect();
     this.controls.dispose();
     this.mesh?.geometry.dispose();
     this.material.dispose();
     this.edgeMaterial.dispose();
-    this.renderer.dispose();
-    this.renderer.forceContextLoss();
-    this.renderer.domElement.remove();
-    this.container = null;
+    this.viewport.dispose();
   }
 
   /**
@@ -210,8 +202,8 @@ export class TextureSurfaceScene {
    * @param deltaY - Vertical movement in pixels.
    */
   public dragLight(deltaX: number, deltaY: number): void {
-    const width: number = this.container?.clientWidth || 1;
-    const height: number = this.container?.clientHeight || 1;
+    const width: number = this.viewport.width || 1;
+    const height: number = this.viewport.height || 1;
     const limit: number = Math.PI / 2 - 0.05;
 
     this.lightAngles = {
@@ -318,37 +310,5 @@ export class TextureSurfaceScene {
     if (this.textures.bump) {
       this.shading?.setUvTransform(this.textures.bump.bump.matrix);
     }
-  }
-
-  private resize(): void {
-    const width: number = this.container?.clientWidth ?? 0;
-    const height: number = this.container?.clientHeight ?? 0;
-
-    if (!width || !height) {
-      return;
-    }
-
-    this.camera.aspect = width / height;
-    this.camera.updateProjectionMatrix();
-    // Styled as well as sized: the drawing buffer is the css size times the device pixel ratio, and a canvas left to
-    // lay itself out at its buffer size overflows its container by exactly that ratio.
-    this.renderer.setSize(width, height);
-    // Drawn again at once, because resizing clears the buffer and observers run after this frame's animation callback:
-    // without this every step of a drag composites one empty frame, which reads as the surface fading in and out.
-    this.draw();
-  }
-
-  private start(): void {
-    const step = (): void => {
-      this.frameHandle = requestAnimationFrame(step);
-      this.draw();
-    };
-
-    step();
-  }
-
-  private draw(): void {
-    this.controls.update();
-    this.renderer.render(this.scene, this.camera);
   }
 }

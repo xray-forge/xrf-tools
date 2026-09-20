@@ -1,8 +1,8 @@
 import { describe, expect, it } from "@jest/globals";
 import { BufferGeometry, Mesh, MeshStandardMaterial, Object3D, Skeleton, SkinnedMesh, Texture } from "three";
 
+import { IRenderSurface, OPAQUE_RENDER_SURFACE } from "@/core/render/lib/render-surface";
 import { IVisualPreviewMeshesOptions, VisualPreviewMeshes } from "@/core/visuals/components/scene/VisualPreviewMeshes";
-import { IVisualSurface, OPAQUE_VISUAL_SURFACE } from "@/core/visuals/lib/visual-surface";
 import { IVisualModelViews, IVisualSubmeshViews } from "@/core/visuals/lib/visual-views";
 import { mockVisualModelViews } from "@/fixtures/mocks/visual.mocks";
 import { Nullable } from "@/lib/types/general";
@@ -20,7 +20,7 @@ const CHECKER: Texture = new Texture();
 function mockSubmesh(
   index: number,
   isSkinned: boolean = false,
-  surface: IVisualSurface = OPAQUE_VISUAL_SURFACE
+  surface: IRenderSurface = OPAQUE_RENDER_SURFACE
 ): IVisualSubmeshViews {
   return {
     index,
@@ -319,8 +319,8 @@ describe("VisualPreviewMeshes bump shading", () => {
 });
 
 describe("VisualPreviewMeshes surfaces", () => {
-  const cutOut: IVisualSurface = { alphaTest: 200 / 255, isDepthWritten: true, isTransparent: false };
-  const blended: IVisualSurface = { alphaTest: 32 / 255, isDepthWritten: false, isTransparent: true };
+  const cutOut: IRenderSurface = { alphaTest: 200 / 255, isDepthWritten: true, isTransparent: false };
+  const blended: IRenderSurface = { alphaTest: 32 / 255, isDepthWritten: false, isTransparent: true };
 
   it("cuts a surface out before it is ever drawn", () => {
     // Applied at build time rather than with the texture, because the shader's answer arrives with the description:

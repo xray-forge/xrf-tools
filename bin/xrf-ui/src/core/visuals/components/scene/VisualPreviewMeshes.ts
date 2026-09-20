@@ -10,6 +10,8 @@ import {
   Texture,
 } from "three";
 
+import { applyRenderSurface } from "@/core/render/lib/render-material";
+import { IRenderSurface, OPAQUE_RENDER_SURFACE } from "@/core/render/lib/render-surface";
 import { createSubmeshGeometry } from "@/core/visuals/components/scene/VisualPreviewScene.utils";
 import {
   applyXrayBumpShading,
@@ -18,7 +20,6 @@ import {
   XRAY_BINORMAL_ATTRIBUTE,
   XRAY_TANGENT_ATTRIBUTE,
 } from "@/core/visuals/lib/visual-bump";
-import { IVisualSurface, OPAQUE_VISUAL_SURFACE } from "@/core/visuals/lib/visual-surface";
 import {
   getVisualSubmeshLevel,
   IVisualModelViews,
@@ -38,12 +39,7 @@ export interface IVisualMeshMaterialOptions {
   isCheckerVisible: boolean;
   /** Whether a submesh whose material bound a bump pair is shaded with it, or drawn flat for comparison. */
   isBumpVisible: boolean;
-  /**
-   * Whether a submesh whose shader reads alpha is cut out and blended as the engine does, or drawn solid.
-   *
-   * Solid is the comparison rather than the truth: it shows the geometry a cut-out surface is authored on, which is
-   * what makes a hole in the alpha channel tellable from a hole in the mesh.
-   */
+  /** Whether a submesh whose shader reads alpha is cut out and blended as the engine does, or drawn solid. */
   isAlphaVisible: boolean;
 }
 
@@ -113,11 +109,6 @@ export class VisualPreviewMeshes {
   /**
    * Draws every mesh at a different point along its collapse chain.
    *
-   * Only a draw range changes: all levels are already in the uploaded index buffer, so this touches no attribute and
-   * costs no upload — which is what makes dragging the control smooth on a model carrying nine hundred levels.
-   * Bounding spheres are left alone deliberately: they describe the same geometry, and refitting the camera on every
-   * step would make comparing detail impossible.
-   *
    * @param detail - How far down each chain to go: 0 is full detail, 1 is the coarsest each submesh has.
    */
   public setDetailLevel(detail: number): void {
@@ -134,12 +125,6 @@ export class VisualPreviewMeshes {
 
   /**
    * Draws one submesh with a texture, borrowing it.
-   *
-   * Applied per submesh rather than per model because a visual's children each declare their own reference and they
-   * arrive one at a time, so a model shows its first texture without waiting for its last.
-   *
-   * Never freed here, on replacement or on disposal: one upload is drawn by every submesh naming that file, and a
-   * scene placing several models would share it further still. Whoever loaded it frees it.
    *
    * @param submeshIndex - Index the submesh reports, which is what the backend resolved against.
    * @param texture - Uploaded texture to draw with, owned by whoever loaded it.
@@ -163,10 +148,6 @@ export class VisualPreviewMeshes {
   /**
    * Shades one submesh with its bump pair, borrowing both textures.
    *
-   * The authored tangent basis goes onto the geometry here rather than at build time, because most submeshes bind no
-   * pair and would carry two attributes nothing reads. The material is patched once; the view toggle then switches a
-   * uniform, so comparing flat and bumped costs neither a recompile nor a re-upload.
-   *
    * @param submeshIndex - Index the submesh reports, which is what the backend resolved against.
    * @param textures - The uploaded pair, owned by whoever loaded it.
    */
@@ -186,9 +167,6 @@ export class VisualPreviewMeshes {
   /**
    * Applies the view toggles that change how a surface is drawn.
    *
-   * Retained as well as applied, because a texture or a bump pair arriving later has to know whether the checkerboard
-   * is currently standing in for it and whether the bump is being compared away.
-   *
    * @param options - Whether to draw as wireframe, whether the checkerboard covers every texture, whether bumps are
    *   shaded, and whether alpha is read.
    */
@@ -207,19 +185,12 @@ export class VisualPreviewMeshes {
   /**
    * Puts one submesh's material into the state its shader compiles to, or into the solid comparison.
    *
-   * `alphaTest` changes the compiled program, so a material that has drawn already needs its recompile flagged; the
-   * caller does that once for every change it makes rather than once per field.
-   *
    * @param material - Material being configured.
    * @param surface - Material state the submesh's shader comes to.
    * @param isAlphaVisible - Whether to honour it, or draw the surface solid for comparison.
    */
-  private static applySurface(material: MeshStandardMaterial, surface: IVisualSurface, isAlphaVisible: boolean): void {
-    const applied: IVisualSurface = isAlphaVisible ? surface : OPAQUE_VISUAL_SURFACE;
-
-    material.alphaTest = applied.alphaTest;
-    material.transparent = applied.isTransparent;
-    material.depthWrite = applied.isDepthWritten;
+  private static applySurface(material: MeshStandardMaterial, surface: IRenderSurface, isAlphaVisible: boolean): void {
+    applyRenderSurface(material, isAlphaVisible ? surface : OPAQUE_RENDER_SURFACE);
   }
 
   /**

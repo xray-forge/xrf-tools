@@ -8,9 +8,10 @@ import { visualsRawCommands } from "@/core/ipc/commands/visuals-raw";
 import { Session } from "@/core/ipc/session";
 import { SelectedVisualDescription, SessionSnapshot, VisualSource } from "@/core/ipc/types/xrf-app";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
+import { IRenderSurface } from "@/core/render/lib/render-surface";
 import { IVisualBumpStatus, IVisualBumpTextures } from "@/core/visuals/lib/visual-bump";
 import { describeVisualSource } from "@/core/visuals/lib/visual-source";
-import { createVisualSurfaces, IVisualSurface } from "@/core/visuals/lib/visual-surface";
+import { createVisualSurfaces } from "@/core/visuals/lib/visual-surface";
 import { IVisualTextureStatus } from "@/core/visuals/lib/visual-texture";
 import { VisualTextureSet } from "@/core/visuals/lib/visual-texture-set";
 import { createVisualViews, IVisualModelViews } from "@/core/visuals/lib/visual-views";
@@ -187,7 +188,7 @@ export class VisualLoadService {
     this.log.info("Visual geometry read in:", formatDuration(timer.lap()));
 
     // Joined once, and read by both the meshes that draw the surfaces and the uploads that have to carry their alpha.
-    const surfaces: Map<number, IVisualSurface> = createVisualSurfaces(
+    const surfaces: Map<number, IRenderSurface> = createVisualSurfaces(
       selected.description.submeshes,
       selected.surfaces
     );

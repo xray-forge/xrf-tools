@@ -3,7 +3,6 @@ import {
   AxesHelper,
   BufferAttribute,
   BufferGeometry,
-  Color,
   DataTexture,
   DirectionalLight,
   GridHelper,
@@ -12,10 +11,10 @@ import {
   PointsMaterial,
   Scene,
   Texture,
-  WebGLRenderer,
 } from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
+import { RenderViewport } from "@/core/render/lib/render-viewport";
 import {
   DEFAULT_VISUAL_PREVIEW_SCENE_CONFIG,
   IVisualPreviewSceneConfig,
@@ -96,14 +95,11 @@ export interface IVisualPreviewViewOptions {
  */
 export class VisualPreviewScene {
   private readonly config: IVisualPreviewSceneConfig;
-  private readonly scene: Scene;
-  private readonly camera: PerspectiveCamera;
-  private readonly renderer: WebGLRenderer;
+  private readonly viewport: RenderViewport;
   private readonly controls: OrbitControls;
   private readonly checker: DataTexture;
   private readonly grid: GridHelper;
   private readonly axes: AxesHelper;
-  private readonly resizeObserver: ResizeObserver;
 
   /** Stops the canvas answering drags with the drag cursor, called when the scene goes. */
   private readonly unbindDragCursor: () => void;
@@ -131,11 +127,16 @@ export class VisualPreviewScene {
     transforms: null,
   };
   private hiddenBones: ReadonlySet<number> = new Set();
-  private container: Nullable<HTMLElement> = null;
-  private frameHandle: number = 0;
-  private isResizePending: boolean = false;
-  private renderedWidth: number = 0;
-  private renderedHeight: number = 0;
+
+  /** The scene the model and the helpers stand in, which the viewport draws. */
+  private get scene(): Scene {
+    return this.viewport.scene;
+  }
+
+  /** The camera the orbit controls drive, whose aspect the viewport keeps in step with the canvas. */
+  private get camera(): PerspectiveCamera {
+    return this.viewport.camera;
+  }
 
   public constructor(
     model: Nullable<IVisualModelViews>,
@@ -143,16 +144,13 @@ export class VisualPreviewScene {
   ) {
     this.config = config;
 
-    this.renderer = new WebGLRenderer({ antialias: true });
-    this.renderer.setPixelRatio(window.devicePixelRatio);
-    this.renderer.domElement.style.display = "block";
+    this.viewport = new RenderViewport(config, {
+      onFrame: () => this.controls.update(),
+      // A fit measured against a viewport with no size yet is wrong, and this is the first chance to repeat it.
+      onResized: () => this.applyUnmeasuredFit(),
+    });
 
-    this.scene = new Scene();
-    this.scene.background = new Color(config.backgroundColor);
-
-    this.camera = new PerspectiveCamera(config.cameraFieldOfView, 1, 0.001, 10000);
-
-    this.controls = new OrbitControls(this.camera, this.renderer.domElement);
+    this.controls = new OrbitControls(this.camera, this.viewport.domElement);
     this.controls.enableDamping = true;
 
     this.checker = createCheckerTexture(config);
@@ -168,10 +166,8 @@ export class VisualPreviewScene {
     this.scene.add(this.grid);
     this.scene.add(this.axes);
 
-    this.resizeObserver = new ResizeObserver(() => this.resize());
-
     this.setModel(model);
-    this.unbindDragCursor = bindDragCursor(this.controls, this.renderer.domElement);
+    this.unbindDragCursor = bindDragCursor(this.controls, this.viewport.domElement);
   }
 
   /**
@@ -208,11 +204,6 @@ export class VisualPreviewScene {
   /**
    * Draw every mesh at a different point along its collapse chain.
    *
-   * Only a draw range changes: all levels are already in the uploaded index buffer, so this touches no attribute and
-   * costs no upload — which is what makes dragging the control smooth on a model carrying nine hundred levels.
-   * Bounding spheres are left alone deliberately: they describe the same geometry, and refitting the camera on every
-   * step would make comparing detail impossible.
-   *
    * @param detail - How far down each chain to go: 0 is full detail, 1 is the coarsest each submesh has.
    */
   public setDetailLevel(detail: number): void {
@@ -223,9 +214,6 @@ export class VisualPreviewScene {
 
   /**
    * Poses the model from one frame of a baked motion, or returns it to its bind pose.
-   *
-   * Recorded as well as forwarded, because a model opened later has to arrive wearing it. What a frame costs and how it
-   * is indexed belongs to `VisualPreviewSkeleton`.
    *
    * @param transforms - Every frame's bone transforms, frame major, or null to show the bind pose again.
    * @param frame - Which frame of that buffer to show.
@@ -239,8 +227,6 @@ export class VisualPreviewScene {
 
   /**
    * Collapses some of the model's bones, the way the engine hides a part that is not attached.
-   *
-   * Recorded as well as forwarded, for the same reason the pose is.
    *
    * @param bones - Indices of bones to collapse, already including their descendants.
    */
@@ -293,9 +279,6 @@ export class VisualPreviewScene {
 
   /**
    * Shows the joint marker only when there is one to show and the overlay it belongs to is on.
-   *
-   * One place decides it, because two inputs govern it - the selection and the toggle - and either can change without
-   * the other.
    */
   private applyHighlightVisibility(): void {
     if (this.highlight) {
@@ -363,15 +346,12 @@ export class VisualPreviewScene {
 
   /**
    * Frame the model from its measured extent.
-   *
-   * A constant distance cannot serve this viewer: loose visuals run from a pistol a few centimetres across to an actor
-   * two metres tall, so resetting the camera re-fits rather than returning to a fixed point.
    */
   public resetCamera(): void {
     const { cameraFieldOfView, cameraFitMargin, cameraDirection } = this.config;
 
     this.hasFramed = true;
-    this.isFitUnmeasured = !this.renderedWidth || !this.renderedHeight;
+    this.isFitUnmeasured = !this.viewport.isMeasured;
 
     const radius: number = this.views?.fit.radius ?? FALLBACK_RADIUS;
     const [x, y, z] = this.views?.fit.center ?? [0, 0, 0];
@@ -397,19 +377,11 @@ export class VisualPreviewScene {
    * @param container - Element whose dimensions drive the renderer and camera aspect ratio.
    */
   public mount(container: HTMLElement): void {
-    this.container = container;
-    container.appendChild(this.renderer.domElement);
-
-    this.resizeObserver.observe(container);
-    this.resize();
-    this.renderFrame();
+    this.viewport.mount(container);
   }
 
   /** Stops rendering, detaches the canvas, and releases the scene's WebGL resources. */
   public dispose(): void {
-    cancelAnimationFrame(this.frameHandle);
-
-    this.resizeObserver.disconnect();
     this.controls.dispose();
     this.unbindDragCursor();
     this.clearModel();
@@ -422,18 +394,11 @@ export class VisualPreviewScene {
     }
 
     this.checker.dispose();
-    this.renderer.dispose();
-    this.renderer.forceContextLoss();
-    this.renderer.domElement.remove();
-
-    this.container = null;
+    this.viewport.dispose();
   }
 
   /**
    * Take the current model off the scene and free everything it owns.
-   *
-   * Materials and textures are per submesh now, so they are the model's to free rather than the scene's: leaving them
-   * behind would leak one upload per submesh every time the user opens another visual.
    */
   private clearModel(): void {
     this.model?.dispose();
@@ -454,42 +419,8 @@ export class VisualPreviewScene {
     this.axes.scale.setScalar(radius);
   }
 
-  /**
-   * Note a size change without acting on it.
-   *
-   * `setSize` clears the drawing buffer, and doing that in the observer callback can paint before the frame that
-   * refills it. Recording the request and applying it immediately before the next render keeps both in one frame, and
-   * needs no timer: the frame loop is already the rate limit.
-   */
-  private resize(): void {
-    this.isResizePending = true;
-  }
-
-  private applyPendingResize(): void {
-    if (!this.isResizePending || !this.container) {
-      return;
-    }
-
-    const width: number = this.container.clientWidth;
-    const height: number = this.container.clientHeight;
-
-    if (!width || !height) {
-      return;
-    }
-
-    this.isResizePending = false;
-
-    if (width === this.renderedWidth && height === this.renderedHeight) {
-      return;
-    }
-
-    this.renderedWidth = width;
-    this.renderedHeight = height;
-
-    this.camera.aspect = width / height;
-    this.camera.updateProjectionMatrix();
-    this.renderer.setSize(width, height);
-
+  /** Repeats a fit that was measured before the viewport had a size, now that it has one. */
+  private applyUnmeasuredFit(): void {
     if (this.isFitUnmeasured) {
       this.resetCamera();
     }
@@ -497,21 +428,9 @@ export class VisualPreviewScene {
 
   /**
    * Dresses a newly built skeleton in the pose and the hidden bones the scene is holding.
-   *
-   * The scene holds them rather than the skeleton, because a skeleton lives and dies with one model while these outlive
-   * it: both are stated against bones rather than against one model's geometry.
    */
   private applySkeletonState(): void {
     this.model?.setPose(this.pose.transforms, this.pose.frame, this.pose.floatsPerBone);
     this.model?.setHiddenBones(this.hiddenBones);
-  }
-
-  private renderFrame(): void {
-    this.frameHandle = requestAnimationFrame(() => this.renderFrame());
-
-    this.applyPendingResize();
-
-    this.controls.update();
-    this.renderer.render(this.scene, this.camera);
   }
 }

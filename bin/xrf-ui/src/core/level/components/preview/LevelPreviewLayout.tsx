@@ -10,6 +10,7 @@ import { LevelPreviewToolbar } from "@/core/level/components/preview/LevelPrevie
 import { ILevelPreviewViewportProps, LevelPreviewViewport } from "@/core/level/components/preview/LevelPreviewViewport";
 import { ILevelPoint } from "@/core/level/lib/level-residency";
 import { ILoadedSector } from "@/core/level/lib/level-sector-set";
+import { hasAlphaSurfaces } from "@/core/level/lib/level-sector-views";
 import { EMPTY_LEVEL_STATS, ILevelStats } from "@/core/level/lib/level-stats";
 import { DEFAULT_LEVEL_SURFACE_OPTIONS, ILevelSurfaceOptions } from "@/core/level/lib/level-surface-material";
 import { ILevelTextureLookup } from "@/core/level/lib/level-texture-set";
@@ -73,6 +74,11 @@ export function LevelPreviewLayout({
   const isOpen: boolean = Boolean(name);
   const isStreaming: boolean = streaming.total > 0;
 
+  const hasAlpha: boolean = useMemo(
+    () => [...sectors.values()].some((it: ILoadedSector) => hasAlphaSurfaces(it.views)),
+    [sectors]
+  );
+
   const status: Array<string> = useMemo(() => {
     if (isLoading) {
       return ["Opening level"];
@@ -111,7 +117,13 @@ export function LevelPreviewLayout({
   return (
     <EditorLayout
       toolbar={
-        <LevelPreviewToolbar subtitle={subtitle} options={options} onChangeOptions={setOptions} onBack={onBack} />
+        <LevelPreviewToolbar
+          subtitle={subtitle}
+          options={options}
+          hasAlpha={hasAlpha}
+          onChangeOptions={setOptions}
+          onBack={onBack}
+        />
       }
     >
       <div className={"flex min-h-0 min-w-0 grow flex-col"}>

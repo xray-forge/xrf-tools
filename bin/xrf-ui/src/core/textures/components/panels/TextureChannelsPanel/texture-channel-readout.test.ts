@@ -1,15 +1,15 @@
 import { describe, expect, it } from "@jest/globals";
 
+import { IRenderTextureTexels } from "@/core/render/lib/render-texture";
 import {
   describeTextureTexel,
   ITextureTexelReadout,
   toTextureTexelPosition,
 } from "@/core/textures/components/panels/TextureChannelsPanel/texture-channel-readout";
 import { ITextureBumpTexels } from "@/core/textures/lib/texture-surface";
-import { IVisualTextureTexels } from "@/core/visuals/lib/visual-texture";
 
 /** A two by two plane whose four texels are told apart by their red channel. */
-function mockPlane(texels: ReadonlyArray<[number, number, number, number]>): IVisualTextureTexels {
+function mockPlane(texels: ReadonlyArray<[number, number, number, number]>): IRenderTextureTexels {
   return { data: new Uint8Array(texels.flat()), height: 2, width: 2 };
 }
 

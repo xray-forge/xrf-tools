@@ -7,6 +7,7 @@ import { levelsRawCommands } from "@/core/ipc/commands/levels-raw";
 import { Session } from "@/core/ipc/session";
 import { requireSessionId } from "@/core/ipc/session/session.utils";
 import { LevelSource, SelectedLevelDescription, SessionSnapshot } from "@/core/ipc/types/xrf-app";
+import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { SectorDescription } from "@/core/ipc/types/xrf-visual";
 import {
@@ -183,7 +184,7 @@ export class LevelLoadService {
     // rather than waiting for the whole plan.
     try {
       for (const sector of plan.load) {
-        yield* this.readSector(sessionId, sector);
+        yield* this.readSector(sessionId, sector, open.selected.value.surfaces);
 
         runInAction(() => {
           this.streaming = { loaded: this.streaming.loaded + 1, total: this.streaming.total };
@@ -230,7 +231,11 @@ export class LevelLoadService {
    * @param sessionId - The level opening the sector belongs to.
    * @param sector - Sector to read, by its index in the sectors chunk.
    */
-  private *readSector(sessionId: string, sector: number): TFlow {
+  private *readSector(
+    sessionId: string,
+    sector: number,
+    surfaces: Readonly<Record<string, XraySurfaceDescriptor>>
+  ): TFlow {
     const timer: Timer = new Timer();
 
     const snapshot: SessionSnapshot<SectorDescription> = yield* call(
@@ -238,7 +243,8 @@ export class LevelLoadService {
     );
 
     const buffer: ArrayBuffer = yield* call(levelsRawCommands.readSector(sessionId, snapshot.sessionId));
-    const views: ISectorViews = createSectorViews(snapshot.value, buffer);
+    // Joined against the table the open resolved, so a surface arrives already knowing whether it is cut out.
+    const views: ISectorViews = createSectorViews(snapshot.value, buffer, surfaces);
 
     // Before the sector is published, so a surface is never drawn untextured for a frame and then corrected.
     yield* call(this.loaded.load(listSectorTextures(views)));
@@ -263,8 +269,8 @@ export class LevelLoadService {
     const references: Set<string> = new Set();
 
     for (const loaded of this.held.snapshot().values()) {
-      for (const reference of listSectorTextures(loaded.views)) {
-        references.add(reference);
+      for (const request of listSectorTextures(loaded.views)) {
+        references.add(request.reference);
       }
     }
 

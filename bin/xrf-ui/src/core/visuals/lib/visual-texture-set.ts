@@ -4,12 +4,12 @@ import { transformError } from "@/core/error/lib";
 import { assetsRawCommands } from "@/core/ipc/commands/assets-raw";
 import { visualsRawCommands } from "@/core/ipc/commands/visuals-raw";
 import { SelectedVisualDescription } from "@/core/ipc/types/xrf-app";
+import { IRenderSurface } from "@/core/render/lib/render-surface";
+import { createDdsTexture, createDecodedTexture } from "@/core/render/lib/render-texture";
 import { ILoadableBump, IVisualBumpStatus, IVisualBumpTextures, toLoadableBumps } from "@/core/visuals/lib/visual-bump";
 import { describeVisualSource } from "@/core/visuals/lib/visual-source";
-import { IVisualSurface, toAlphaTexturePaths } from "@/core/visuals/lib/visual-surface";
+import { toAlphaTexturePaths } from "@/core/visuals/lib/visual-surface";
 import {
-  createDdsTexture,
-  createDecodedTexture,
   EVisualTextureState,
   ILoadableTexture,
   IVisualTextureStatus,
@@ -50,7 +50,7 @@ export class VisualTextureSet {
    */
   public static *load(
     selected: SelectedVisualDescription,
-    surfaces: ReadonlyMap<number, IVisualSurface>
+    surfaces: ReadonlyMap<number, IRenderSurface>
   ): TFlow<VisualTextureSet> {
     const timer: Timer = new Timer();
     const loaded: VisualTextureSet = new VisualTextureSet();
@@ -207,7 +207,7 @@ export class VisualTextureSet {
    */
   private uploadTextures(
     selected: SelectedVisualDescription,
-    surfaces: ReadonlyMap<number, IVisualSurface>,
+    surfaces: ReadonlyMap<number, IRenderSurface>,
     reads: Map<string, IVisualTextureRead>
   ): void {
     for (const texture of selected.dependencies.textures) {
@@ -238,7 +238,8 @@ export class VisualTextureSet {
       }
 
       if (!uploads.has(logicalPath)) {
-        uploads.set(logicalPath, createDdsTexture(read.bytes, alpha.has(logicalPath)));
+        // A base texture is a picture, so it is decoded from sRGB; whether its alpha survives is the surface's answer.
+        uploads.set(logicalPath, createDdsTexture(read.bytes, { isAlphaRead: alpha.has(logicalPath), isColor: true }));
       }
 
       const uploaded: Nullable<Texture> = uploads.get(logicalPath) ?? null;
@@ -311,6 +312,7 @@ export class VisualTextureSet {
     }
 
     if (!uploads.has(logicalPath)) {
+      // No colour decode: a bump pair's channels are a packed normal, and decoding one would bend every vector in it.
       uploads.set(logicalPath, createDdsTexture(read.bytes));
     }
 
@@ -351,7 +353,7 @@ export class VisualTextureSet {
       Array.from(submeshesByPath, async ([logicalPath, submeshes]) => {
         try {
           const png: ArrayBuffer = await visualsRawCommands.readTexture(selected.roots, logicalPath);
-          const texture: Texture = await createDecodedTexture(png);
+          const texture: Texture = await createDecodedTexture(png, { isColor: true });
 
           for (const submeshIndex of submeshes) {
             this.textureMap.set(submeshIndex, texture);

@@ -1,6 +1,5 @@
 import { InstancedMesh, Mesh, MeshStandardMaterial, Object3D } from "three";
 
-import { SectorSurface } from "@/core/ipc/types/xrf-visual";
 import { createInstancedMesh } from "@/core/level/lib/level-instance-geometry";
 import { createGeometry } from "@/core/level/lib/level-sector-geometry";
 import { ILoadedSector } from "@/core/level/lib/level-sector-set";
@@ -9,15 +8,16 @@ import {
   createSurfaceMaterial,
   DEFAULT_LEVEL_SURFACE_OPTIONS,
   dressSurfaceMaterial,
+  ILevelSurface,
   ILevelSurfaceOptions,
 } from "@/core/level/lib/level-surface-material";
 import { ILevelTextureLookup } from "@/core/level/lib/level-texture-set";
 import { Maybe, Nullable } from "@/lib/types/general";
 
-/** One drawn surface: the material it uses, and what the shader table says dresses it. */
+/** One drawn surface: the material it uses, and everything that decides how that material is dressed. */
 interface IDrawnSurface {
   material: MeshStandardMaterial;
-  surface: SectorSurface;
+  surface: ILevelSurface;
 }
 
 /** One drawn sector: the mesh of everything baked in place, the meshes it stands, and their materials. */
@@ -102,15 +102,22 @@ export class LevelPreviewSectors {
   }
 
   private add(sector: number, loaded: ILoadedSector): void {
+    // The sector's own mesh is one geometry for every section, so whether it carries baked vertex colour is the
+    // sector's answer rather than each section's.
+    const hasVertexColors: boolean = loaded.views.geometry.colors !== null;
     const surfaces: Array<IDrawnSurface> = loaded.views.sections.map((section: ISectorSectionViews) =>
-      this.createSurface(section.surface)
+      this.createSurface({ hasVertexColors, render: section.render, surface: section.surface })
     );
     // Only where the level bakes something in place. A sector whose drawables it all places has an empty index array,
     // and a mesh drawing none of it would be a draw call to say nothing.
     const mesh: Nullable<Mesh> = surfaces.length ? this.createMesh(sector, loaded, surfaces) : null;
 
     const instanced: Array<InstancedMesh> = loaded.views.instances.map((group: ISectorInstanceViews) => {
-      const drawn: IDrawnSurface = this.createSurface(group.surface);
+      const drawn: IDrawnSurface = this.createSurface({
+        hasVertexColors: group.geometry.colors !== null,
+        render: group.render,
+        surface: group.surface,
+      });
 
       surfaces.push(drawn);
 
@@ -162,7 +169,7 @@ export class LevelPreviewSectors {
     this.drawn.delete(sector);
   }
 
-  private createSurface(surface: SectorSurface): IDrawnSurface {
+  private createSurface(surface: ILevelSurface): IDrawnSurface {
     return { material: createSurfaceMaterial(surface, this.textures, this.options), surface };
   }
 }

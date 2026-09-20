@@ -1,4 +1,6 @@
 import { default as HexagonIcon } from "@mui/icons-material/Hexagon";
+import { default as LightbulbIcon } from "@mui/icons-material/Lightbulb";
+import { default as OpacityIcon } from "@mui/icons-material/Opacity";
 import { default as PaletteIcon } from "@mui/icons-material/Palette";
 import { default as TextureIcon } from "@mui/icons-material/Texture";
 import { ReactElement, ReactNode, useCallback } from "react";
@@ -11,6 +13,8 @@ import { BaseComponentProps } from "@/lib/dom/element-types";
 interface ILevelPreviewToolbarProps extends BaseComponentProps {
   subtitle?: ReactNode;
   options: ILevelSurfaceOptions;
+  /** Whether any surface of the open level reads its texture's alpha channel. */
+  hasAlpha?: boolean;
   onChangeOptions: (options: ILevelSurfaceOptions) => void;
   onBack?: () => void;
 }
@@ -24,6 +28,7 @@ export function LevelPreviewToolbar({
   className,
   subtitle,
   options,
+  hasAlpha = true,
   onChangeOptions,
   onBack,
 }: ILevelPreviewToolbarProps): ReactElement {
@@ -55,6 +60,22 @@ export function LevelPreviewToolbar({
             icon={<TextureIcon />}
             isOn={options.isTextured}
             onToggle={() => onToggle("isTextured")}
+          />
+
+          <EditorViewToggle
+            label={"Alpha"}
+            icon={<OpacityIcon />}
+            isOn={options.isAlphaVisible}
+            isDisabled={!hasAlpha}
+            unavailableTitle={"No surface of this level reads alpha"}
+            onToggle={() => onToggle("isAlphaVisible")}
+          />
+
+          <EditorViewToggle
+            label={"Baked light"}
+            icon={<LightbulbIcon />}
+            isOn={options.isLit}
+            onToggle={() => onToggle("isLit")}
           />
 
           <EditorViewToggle

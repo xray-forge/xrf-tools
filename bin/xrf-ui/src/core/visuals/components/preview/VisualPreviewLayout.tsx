@@ -2,6 +2,7 @@ import { default as AccountTreeIcon } from "@mui/icons-material/AccountTree";
 import { ReactElement, ReactNode, useMemo, useState } from "react";
 import { Texture } from "three";
 
+import { isAlphaRenderSurface } from "@/core/render/lib/render-surface";
 import { EditorFileHeader } from "@/core/shell/editor/EditorFileHeader";
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { IEditorPanel, useEditorPanels, useEditorStatus } from "@/core/shell/editor-shell";
@@ -14,7 +15,6 @@ import {
 } from "@/core/visuals/components/preview";
 import { DEFAULT_VISUAL_PREVIEW_VIEW_OPTIONS, IVisualPreviewViewOptions } from "@/core/visuals/components/scene";
 import { IVisualBumpTextures } from "@/core/visuals/lib/visual-bump";
-import { isAlphaVisualSurface } from "@/core/visuals/lib/visual-surface";
 import { countVisualTriangles, IVisualModelViews } from "@/core/visuals/lib/visual-views";
 import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
@@ -101,7 +101,7 @@ export function VisualPreviewLayout({
   const hasSkeleton: boolean = Boolean(model?.skeleton);
   // A dummy pair counts: it is uploaded and shaded, and comparing it flat is how a modder sees that it adds nothing.
   const hasBump: boolean = Boolean(model && bumps && bumps.size > 0);
-  const hasAlpha: boolean = Boolean(model?.submeshes.some((submesh) => isAlphaVisualSurface(submesh.surface)));
+  const hasAlpha: boolean = Boolean(model?.submeshes.some((submesh) => isAlphaRenderSurface(submesh.surface)));
 
   useEditorPanels(() => {
     const stripe: Array<IEditorPanel> = panels ? [...panels] : [];

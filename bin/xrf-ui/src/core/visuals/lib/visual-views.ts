@@ -8,15 +8,10 @@ import {
   VisualSubmesh,
   VisualTransform,
 } from "@/core/ipc/types/xrf-visual";
-import { IVisualSurface, OPAQUE_VISUAL_SURFACE } from "@/core/visuals/lib/visual-surface";
+import { IRenderSurface, OPAQUE_RENDER_SURFACE } from "@/core/render/lib/render-surface";
 import { Nullable, Optional } from "@/lib/types/general";
 
-/**
- * Floats one bone transform occupies: three basis vectors and a translation.
- *
- * The same layout a baked motion uses, which `VisualMotionBake.floatsPerBone` states on the wire. Named here because a
- * bind transform arrives as a value rather than in that buffer, and the two are read by the same arithmetic.
- */
+/** Floats one bone transform occupies: three basis vectors and a translation. */
 export const FLOATS_PER_BONE: number = 12;
 
 /** Where a transform's translation starts within its floats, the basis occupying the nine before it. */
@@ -41,34 +36,18 @@ export interface IVisualSubmeshViews {
   label: string;
   positions: Float32Array;
   normals: Float32Array;
-  /**
-   * The authored tangent basis, three floats per vertex each, mirrored with the normals.
-   *
-   * The engine's bumped vertex shader reads these rather than deriving them, so a material shading an X-Ray bump has to
-   * as well; a Three.js-computed basis agrees with the authored one only by coincidence.
-   */
+  /** The authored tangent basis, three floats per vertex each, mirrored with the normals. */
   tangents: Float32Array;
   binormals: Float32Array;
   uvs: Float32Array;
   indices: Uint16Array;
-  /**
-   * Four bone indices and four weights per vertex, or null for geometry that carries no links.
-   *
-   * Both or neither: the packer emits the pair together, because a renderer's skin attributes are useless one without
-   * the other.
-   */
+  /** Four bone indices and four weights per vertex, or null for geometry that carries no links. */
   skinIndices: Nullable<Uint16Array>;
   skinWeights: Nullable<Float32Array>;
   /** Finest first, never empty. A submesh with one entry has no choice to offer. */
   levels: Array<IVisualSubmeshLevel>;
-  /**
-   * The material state its shader compiles to: whether alpha is read, and how.
-   *
-   * Carried with the geometry rather than applied later like a texture, because it arrives with the description: the
-   * shader name and the library answer are both in hand before a mesh is built, so a cut-out is never drawn solid for
-   * a frame.
-   */
-  surface: IVisualSurface;
+  /** The material state its shader compiles to: whether alpha is read, and how. */
+  surface: IRenderSurface;
 }
 
 /** Segment endpoints of a skeleton, which bones each segment joins, and every bone's bind transform. */
@@ -82,35 +61,14 @@ export interface IVisualSkeletonViews {
 export interface IVisualModelViews {
   submeshes: Array<IVisualSubmeshViews>;
   fit: IVisualCameraFit;
-  /**
-   * Bind pose joints as line-segment endpoints, or null when the model carries no bind data.
-   *
-   * One pair of positions per bone that has a placed parent, ready for `LineSegments` without further arithmetic. The
-   * positions are already in renderer space: the backend composed the chain and mirrored it the same way the mesh is,
-   * so the skeleton sits inside the geometry rather than beside it.
-   */
+  /** Bind pose joints as line-segment endpoints, or null when the model carries no bind data. */
   skeleton: Nullable<Float32Array>;
-  /**
-   * Bone and parent index of each segment the skeleton draws, in the order `skeleton` lays them out.
-   *
-   * What lets a posed frame reuse the same buffer: a motion arrives as joint positions per bone, and these say which
-   * two joints each drawn segment joins. Null exactly when `skeleton` is.
-   */
+  /** Bone and parent index of each segment the skeleton draws, in the order `skeleton` lays them out. */
   skeletonPairs: Nullable<Uint16Array>;
-  /**
-   * Every bone's bind transform, twelve floats each - basis then translation - or null with no bind data.
-   *
-   * What skinning inverts: a vertex is posed by its bone's animated transform times the inverse of this one, so a
-   * renderer builds its bone inverses from here once per model. One flat array rather than a matrix per bone because
-   * that is the shape both the wire and a renderer's matrix want, and indexing it needs no bone objects.
-   */
+  /** Every bone's bind transform, twelve floats each - basis then translation - or null with no bind data. */
   skeletonBinds: Nullable<Float32Array>;
   vertexCount: number;
-  /**
-   * Longest collapse chain any submesh carries, which is how many distinct steps the detail control can reach.
-   *
-   * One means every submesh is static and there is nothing to decimate.
-   */
+  /** Longest collapse chain any submesh carries, which is how many distinct steps the detail control can reach. */
   levelCount: number;
 }
 
@@ -121,10 +79,6 @@ const FALLBACK_FIT_RADIUS: number = 1;
 
 /**
  * Reads one coordinate triple, or null when any component is absent.
- *
- * Rust `f32` crosses as `number | null` because a non-finite float serialises to null, and such values
- * do occur: two visuals in the reference trees declare bounds of `f32::MAX`. Treating null as zero would
- * quietly place a model at the origin, so it is treated as no value at all.
  *
  * @param vector - Coordinate triple received from the backend.
  * @returns Finite coordinates, or `null` when any component is absent or non-finite.
@@ -142,10 +96,6 @@ function toFiniteTriple(vector: Vector3d): Nullable<[number, number, number]> {
 /**
  * Builds a typed array view over one packed section.
  *
- * Views rather than copies: the whole point of transferring one buffer is that the attributes are used
- * where they landed. Byte offsets are aligned by the packer, which is what makes these constructors
- * legal at all.
- *
  * @param buffer - Packed geometry buffer.
  * @param section - Byte range containing `f32` values.
  * @returns A view over the section without copying its bytes.
@@ -160,9 +110,6 @@ function toIndexView(buffer: ArrayBuffer, section: VisualSection): Uint16Array {
 
 /**
  * Framing for a model, preferring what its geometry spans over what its header claims.
- *
- * Measured bounds are the honest ones. Declared bounds are the fallback for a model that produced no
- * geometry, so an empty viewport still frames where the model says it is.
  *
  * @param description - Packed visual description containing declared and computed bounds.
  * @returns Finite camera framing with a non-zero fallback radius.
@@ -181,10 +128,6 @@ export function createVisualCameraFit(description: VisualDescription): IVisualCa
 /**
  * Turn a description and its buffer into the views a scene uploads.
  *
- * Deliberately pure and free of three.js, because the offset arithmetic here is the riskiest code in the
- * viewer and the only kind of mistake that renders as a plausible but wrong mesh rather than as an
- * error. Keeping it a function means it is tested without a gpu.
- *
  * @param description - What the backend said the buffer contains.
  * @param buffer - The packed attribute bytes.
  * @param surfaces - Material state per submesh index, as `createVisualSurfaces` joined it. A submesh with no entry
@@ -194,7 +137,7 @@ export function createVisualCameraFit(description: VisualDescription): IVisualCa
 export function createVisualViews(
   description: VisualDescription,
   buffer: ArrayBuffer,
-  surfaces: ReadonlyMap<number, IVisualSurface> = new Map()
+  surfaces: ReadonlyMap<number, IRenderSurface> = new Map()
 ): IVisualModelViews {
   if (buffer.byteLength !== description.bufferLength) {
     throw new Error(
@@ -236,7 +179,7 @@ export function createVisualViews(
       skinIndices: geometry.skin ? toIndexView(buffer, geometry.skin.indices) : null,
       skinWeights: geometry.skin ? toFloatView(buffer, geometry.skin.weights) : null,
       levels,
-      surface: surfaces.get(submesh.index) ?? OPAQUE_VISUAL_SURFACE,
+      surface: surfaces.get(submesh.index) ?? OPAQUE_RENDER_SURFACE,
     });
   }
 
@@ -253,13 +196,6 @@ export function createVisualViews(
 
 /**
  * Turn a bone hierarchy into the line segments that draw it.
- *
- * A segment per bone that has a placed parent, so a root contributes nothing and a chain draws as a connected run.
- * Returns null rather than an empty buffer when nothing can be drawn - a model with no IK chunk, or a single bone with
- * no parent to reach - so the caller can tell "no skeleton to show" from "a skeleton of no bones".
- *
- * Bind transforms come back beside them, one per bone in bone order, because skinning needs every bone's - including a
- * root's, which draws no segment at all.
  *
  * @param bones - Bones the backend reported, with composed bind transforms.
  * @returns Segment endpoints for `LineSegments`, the bone pairs they join, and every bone's bind transform.
@@ -327,12 +263,6 @@ function toTransformFloats(transform: VisualTransform): Array<number> {
 
 /**
  * The range one submesh draws at a chosen point along its collapse chain.
- *
- * Detail is a fraction rather than a level index because an X-Ray slide-window table is one entry per edge collapse,
- * not a handful of authored LODs: a measured `stalker_bandit_1` carries 230 entries on one submesh and 948 on the
- * other, each step shedding about two triangles. A shared index would drive the first submesh to its coarsest while
- * the second was a quarter of the way down, so the same fraction of each chain is what keeps a model decimating
- * evenly — and what makes the setting mean the same thing across models with different chain lengths.
  *
  * @param submesh - Submesh whose range is being resolved.
  * @param detail - How far down the chain to go: 0 is full detail, 1 is the coarsest level the submesh has.

@@ -1,6 +1,6 @@
+import { readRenderTexel } from "@/core/render/lib/render-texture";
 import { ITextureBumpTexels } from "@/core/textures/lib/texture-surface";
 import { decodeXrayBumpTexel, IVisualBumpTexel } from "@/core/visuals/lib/visual-bump";
-import { readVisualTexel } from "@/core/visuals/lib/visual-texture";
 
 /** How many digits a reconstructed value is shown to, which is enough to see a quantisation step. */
 const DECIMALS: number = 3;
@@ -38,8 +38,8 @@ export function describeTextureTexel(
   texels: ITextureBumpTexels,
   position: ITextureTexelPosition
 ): ITextureTexelReadout {
-  const bump: [number, number, number, number] = readVisualTexel(texels.bump, position.x, position.y);
-  const companion: [number, number, number, number] = readVisualTexel(texels.companion, position.x, position.y);
+  const bump: [number, number, number, number] = readRenderTexel(texels.bump, position.x, position.y);
+  const companion: [number, number, number, number] = readRenderTexel(texels.companion, position.x, position.y);
   const decoded: IVisualBumpTexel = decodeXrayBumpTexel(bump, companion);
 
   return {

@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from "@jest/globals";
 
 import { createRoots } from "@/core/assets/lib";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
-import { ILevelTexture, LevelTextureSet } from "@/core/level/lib/level-texture-set";
+import { ILevelTexture, ILevelTextureRequest, LevelTextureSet } from "@/core/level/lib/level-texture-set";
 import { mockDdsFile } from "@/fixtures/mocks/dds.mocks";
 import { mockLevelTextureReference } from "@/fixtures/mocks/level.mocks";
 import { mockInvoke, resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
@@ -11,6 +11,11 @@ const ROOTS: XrayRoots = createRoots(["C:/game/db"]);
 
 function countReads(): number {
   return mockInvoke.mock.calls.filter(([command]) => command === "plugin:assets|read_asset").length;
+}
+
+/** References as a sector names them, none of them read for alpha unless a case says otherwise. */
+function requests(...references: Array<string>): Array<ILevelTextureRequest> {
+  return references.map((reference: string) => ({ isAlphaRead: false, reference }));
 }
 
 describe("LevelTextureSet", () => {
@@ -24,7 +29,7 @@ describe("LevelTextureSet", () => {
 
     set.open(ROOTS, [mockLevelTextureReference("stone")]);
 
-    await set.load(["stone"]);
+    await set.load(requests("stone"));
 
     expect(set.get("stone")?.texture).not.toBeNull();
     expect(set.size).toBe(1);
@@ -37,8 +42,8 @@ describe("LevelTextureSet", () => {
 
     set.open(ROOTS, [mockLevelTextureReference("stone")]);
 
-    await set.load(["stone"]);
-    await set.load(["stone"]);
+    await set.load(requests("stone"));
+    await set.load(requests("stone"));
 
     expect(countReads()).toBe(1);
     expect(set.size).toBe(1);
@@ -49,7 +54,7 @@ describe("LevelTextureSet", () => {
 
     set.open(ROOTS, [mockLevelTextureReference("stone")]);
 
-    await Promise.all([set.load(["stone"]), set.load(["stone"])]);
+    await Promise.all([set.load(requests("stone")), set.load(requests("stone"))]);
 
     expect(countReads()).toBe(1);
   });
@@ -59,7 +64,7 @@ describe("LevelTextureSet", () => {
 
     set.open(ROOTS, [mockLevelTextureReference("stone")]);
 
-    await set.load(["stone"]);
+    await set.load(requests("stone"));
     set.retain(new Set(["stone"]));
 
     expect(set.get("stone")?.texture).not.toBeNull();
@@ -70,7 +75,7 @@ describe("LevelTextureSet", () => {
 
     set.open(ROOTS, [mockLevelTextureReference("stone")]);
 
-    await set.load(["stone"]);
+    await set.load(requests("stone"));
 
     const loaded: ILevelTexture | null = set.get("stone");
 
@@ -94,7 +99,7 @@ describe("LevelTextureSet", () => {
 
     set.open(ROOTS, [mockLevelTextureReference("stone")]);
 
-    const reading: Promise<void> = set.load(["stone"]);
+    const reading: Promise<void> = set.load(requests("stone"));
 
     // The camera moved on: nothing is resident by the time the read lands.
     await reading;
@@ -108,7 +113,7 @@ describe("LevelTextureSet", () => {
 
     set.open(ROOTS, [mockLevelTextureReference("stone")]);
 
-    await set.load(["stone"]);
+    await set.load(requests("stone"));
 
     set.retain(new Set(["stone"]));
     set.retain(new Set(["stone"]));
@@ -122,7 +127,7 @@ describe("LevelTextureSet", () => {
 
     set.open(ROOTS, [mockLevelTextureReference("missing", false)]);
 
-    await set.load(["missing"]);
+    await set.load(requests("missing"));
 
     expect(set.get("missing")?.texture).toBeNull();
     expect(set.get("missing")?.reason).toContain("missing");
@@ -133,7 +138,7 @@ describe("LevelTextureSet", () => {
 
     set.open(ROOTS, [mockLevelTextureReference("stone")]);
 
-    await set.load(["stone"]);
+    await set.load(requests("stone"));
 
     set.open(ROOTS, [mockLevelTextureReference("other")]);
 

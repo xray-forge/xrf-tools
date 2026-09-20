@@ -1,12 +1,18 @@
 import { Injectable, OnDeactivation } from "@wirestate/core";
 import { Observable, runInAction } from "@wirestate/mobx";
-import { SRGBColorSpace, Texture } from "three";
+import { Texture } from "three";
 
 import { transformError } from "@/core/error/lib";
 import { assetsRawCommands } from "@/core/ipc/commands/assets-raw";
 import { texturesRawCommands } from "@/core/ipc/commands/textures-raw";
 import { TextureDescription } from "@/core/ipc/types/xrf-app";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
+import {
+  createDdsTexture,
+  createDecodedTexture,
+  IRenderTextureTexels,
+  readDdsTexels,
+} from "@/core/render/lib/render-texture";
 import {
   EMPTY_TEXTURE_SURFACE,
   ITextureBumpAssets,
@@ -16,12 +22,6 @@ import {
   selectTextureBumpAssets,
   toTextureAspect,
 } from "@/core/textures/lib/texture-surface";
-import {
-  createDdsTexture,
-  createDecodedTexture,
-  IVisualTextureTexels,
-  readDdsTexels,
-} from "@/core/visuals/lib/visual-texture";
 import { AsyncState } from "@/lib/async-state";
 import { Logger } from "@/lib/logging";
 import { call, cancelFlow, LatestFlow, TFlow } from "@/lib/mobx";
@@ -30,7 +30,7 @@ import { Nullable } from "@/lib/types/general";
 /** One half of the pair as it arrived: on the gpu always, and on the cpu when its layout stores texels plainly. */
 interface ITextureBumpHalf {
   texture: Texture;
-  texels: Nullable<IVisualTextureTexels>;
+  texels: Nullable<IRenderTextureTexels>;
 }
 
 /**
@@ -83,13 +83,6 @@ export class TextureSurfaceService {
       const base: Nullable<Texture> = description.texture
         ? yield* call(this.readBase(uploads, roots, description.texture.logicalPath))
         : null;
-
-      // Colour, not data: a base texture holds sRGB values, and saying so is what makes the unlit body match the flat
-      // picture of the same file. The pair is left alone on purpose - a packed normal is numbers, and linearising it
-      // would move every one of them.
-      if (base) {
-        base.colorSpace = SRGBColorSpace;
-      }
 
       const bump: Nullable<ITextureBumpHalf> = bumpAssets
         ? yield* call(this.readBumpHalf(uploads, roots, bumpAssets.bump.logicalPath))
@@ -163,9 +156,14 @@ export class TextureSurfaceService {
     const upload: Promise<Nullable<Texture>> = this.guard(logicalPath, async () => {
       const bytes: ArrayBuffer = await assetsRawCommands.readAsset(roots, logicalPath);
 
-      const compressed: Nullable<Texture> = createDdsTexture(bytes);
+      // Colour, not data: a base texture holds sRGB values, and saying so is what makes the unlit body match the flat
+      // picture of the same file. Said at the upload so both paths agree, rather than patched onto whichever wins.
+      const compressed: Nullable<Texture> = createDdsTexture(bytes, { isColor: true });
 
-      return compressed ?? (await createDecodedTexture(await texturesRawCommands.readTexture(roots, logicalPath)));
+      return (
+        compressed ??
+        (await createDecodedTexture(await texturesRawCommands.readTexture(roots, logicalPath), { isColor: true }))
+      );
     });
 
     uploads.push(upload);
