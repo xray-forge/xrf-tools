@@ -16,6 +16,17 @@ import {
 import { Logger } from "@/lib/logging";
 import { Maybe, Nullable } from "@/lib/types/general";
 
+/**
+ * What a reference comes to when it cannot come to its own texture: the reason, and a checker to draw instead.
+ *
+ * @param isAlphaRead - What the upload was asked for, kept so a later caller can tell whether to ask again.
+ * @param reason - Why there is no texture.
+ * @returns The stand-in.
+ */
+function faulty(isAlphaRead: boolean, reason: string): ILevelTexture {
+  return { isAlphaRead, reason, texture: createCheckerTexture() };
+}
+
 /** What became of one reference, so a surface it dresses can say why it is untextured or why it looks wrong. */
 export interface ILevelTexture {
   texture: Nullable<Texture>;
@@ -215,15 +226,4 @@ export class LevelTextureSet implements ILevelTextureLookup {
       return faulty(isAlphaRead, transformed.message);
     }
   }
-}
-
-/**
- * What a reference comes to when it cannot come to its own texture: the reason, and a checker to draw instead.
- *
- * @param isAlphaRead - What the upload was asked for, kept so a later caller can tell whether to ask again.
- * @param reason - Why there is no texture.
- * @returns The stand-in.
- */
-function faulty(isAlphaRead: boolean, reason: string): ILevelTexture {
-  return { isAlphaRead, reason, texture: createCheckerTexture() };
 }

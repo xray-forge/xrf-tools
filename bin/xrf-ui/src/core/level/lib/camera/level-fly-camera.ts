@@ -1,16 +1,6 @@
 import { Camera, Euler, Vector3 } from "three";
 
-/** Which way the camera is being asked to move, as keys held rather than events. */
-export interface ILevelFlyInput {
-  forward: boolean;
-  back: boolean;
-  left: boolean;
-  right: boolean;
-  up: boolean;
-  down: boolean;
-  /** Held to move faster, which a level the size of Zaton needs to cross at all. */
-  fast: boolean;
-}
+import { ILevelFlyInput } from "./level-fly-input";
 
 /** How the camera answers input. */
 export interface ILevelFlyOptions {
@@ -22,16 +12,6 @@ export interface ILevelFlyOptions {
   sensitivity: number;
 }
 
-export const EMPTY_LEVEL_FLY_INPUT: ILevelFlyInput = {
-  back: false,
-  down: false,
-  fast: false,
-  forward: false,
-  left: false,
-  right: false,
-  up: false,
-};
-
 export const DEFAULT_LEVEL_FLY_OPTIONS: ILevelFlyOptions = {
   boost: 5,
   sensitivity: 0.002,
@@ -40,30 +20,6 @@ export const DEFAULT_LEVEL_FLY_OPTIONS: ILevelFlyOptions = {
 
 /** Just short of straight up, so looking at the sky never flips the horizon over. */
 const MAX_PITCH: number = Math.PI / 2 - 0.001;
-
-/** Keyboard codes each direction answers to, laid out for both WASD and the arrow keys. */
-const KEY_BINDINGS: Readonly<Record<string, keyof ILevelFlyInput>> = {
-  ArrowDown: "back",
-  ArrowLeft: "left",
-  ArrowRight: "right",
-  ArrowUp: "forward",
-  KeyA: "left",
-  KeyD: "right",
-  KeyE: "up",
-  KeyQ: "down",
-  KeyS: "back",
-  KeyW: "forward",
-  ShiftLeft: "fast",
-  ShiftRight: "fast",
-};
-
-/**
- * @param code - `KeyboardEvent.code`, which is layout independent so `W` is the same key on azerty.
- * @returns The direction that key drives, or null for a key the camera ignores.
- */
-export function getFlyBinding(code: string): keyof ILevelFlyInput | null {
-  return KEY_BINDINGS[code] ?? null;
-}
 
 /**
  * Free camera for walking a level: yaw and pitch from the pointer, translation from the keys.

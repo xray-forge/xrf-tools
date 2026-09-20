@@ -1,11 +1,6 @@
 import { Camera } from "three";
 
-import {
-  EMPTY_LEVEL_FLY_INPUT,
-  getFlyBinding,
-  ILevelFlyInput,
-  LevelFlyCamera,
-} from "@/core/level/lib/camera/level-fly-camera";
+import { EMPTY_LEVEL_FLY_INPUT, getFlyBinding, ILevelFlyInput, LevelFlyCamera } from "@/core/level/lib/camera";
 
 /**
  * Binds a viewport's pointer and keyboard to a fly camera.
