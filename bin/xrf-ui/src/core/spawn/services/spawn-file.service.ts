@@ -75,9 +75,6 @@ export class SpawnFileService {
   /**
    * Whether something is in flight that a second command would race.
    *
-   * Read by the editor to lock rail navigation and to disable its own commands. Derived here so the
-   * toolbar, the rail and the forms cannot disagree about it.
-   *
    * @returns Whether an operation is in progress.
    */
   @Computed()
@@ -96,8 +93,6 @@ export class SpawnFileService {
 
   /**
    * Restore whatever the backend already had open.
-   *
-   * Restores identity, path and header from one backend snapshot; heavy chunks remain lazy.
    *
    * @param provisionId - Identifier for the current provisioning attempt.
    * @returns Completes after restoring the backend's open-file state.
@@ -131,6 +126,10 @@ export class SpawnFileService {
   private *restore(): TFlow {
     try {
       this.adoptSession(yield* call(spawnCommands.getSession()));
+
+      if (this.sessionDescriptor) {
+        this.log.info("Spawn file restored:", this.path, this.sessionId);
+      }
     } catch (error: unknown) {
       this.log.error("Failed to check for an existing spawn file:", error);
     } finally {
@@ -142,6 +141,8 @@ export class SpawnFileService {
 
   @LatestFlow("isOpening")
   public *openFile(path: string): TFlow {
+    const timer: Timer = new Timer();
+
     this.log.info("Opening spawn file:", path);
 
     this.isOpening = true;
@@ -152,9 +153,9 @@ export class SpawnFileService {
 
     try {
       this.adoptSession(yield* call(this.session.open(spawnCommands.openFile, path)));
-      this.log.info("Spawn file opened");
+      this.log.info("Spawn file opened:", path, "in", formatDuration(timer.elapsed()));
     } catch (error: unknown) {
-      this.log.error("Failed to open spawn file:", error);
+      this.log.error("Failed to open spawn file:", path, "after", formatDuration(timer.elapsed()), error);
 
       if (!this.sessionDescriptor) {
         this.setChunk("header", this.chunks.header.asFailed(transformError(error), null));
@@ -173,15 +174,19 @@ export class SpawnFileService {
 
   @LatestFlow("isOpening")
   public *closeFile(): TFlow {
-    this.log.info("Closing existing spawn file");
+    const path: Nullable<string> = this.path;
+
+    this.log.info("Closing existing spawn file:", path);
 
     try {
       yield* call(this.session.close());
 
       this.adoptSession(null);
       this.operation = this.operation.asIdle();
+
+      this.log.info("Spawn file closed:", path);
     } catch (error: unknown) {
-      this.log.error("Failed to close spawn file:", error);
+      this.log.error("Failed to close spawn file:", path, error);
 
       emitNotification(this.eventBus, {
         details: transformError(error).message,
@@ -310,12 +315,6 @@ export class SpawnFileService {
   /**
    * Fetch one chunk, at most once.
    *
-   * Views ask for their chunk on mount, and moving between chunk tabs remounts them, so without the
-   * already-loaded guard every tab click would refetch what it is about to render.
-   *
-   * A generator rather than an async method, so a chunk abandoned by a reset is abandoned here too: cancelling the
-   * caller resumes this with a return completion, and the write below the yield never happens.
-   *
    * @param key - State field that stores the requested chunk.
    * @param read - Command returning that chunk for the committed session.
    */
@@ -328,15 +327,20 @@ export class SpawnFileService {
     }
 
     const loading = current.asLoading(null);
+    const timer: Timer = new Timer();
+    const path: Nullable<string> = this.path;
 
+    this.log.info("Reading spawn chunk:", path, key);
     this.setChunk(key, loading);
 
     try {
       const chunk: SpawnFile[K] = yield* call(read(session.sessionId));
 
       this.setChunk(key, loading.asReady(chunk));
+
+      this.log.info("Spawn chunk read:", path, key, "in", formatDuration(timer.elapsed()));
     } catch (error: unknown) {
-      this.log.error("Failed to read spawn chunk:", key, error);
+      this.log.error("Failed to read spawn chunk:", path, key, "after", formatDuration(timer.elapsed()), error);
 
       this.setChunk(key, loading.asFailed(transformError(error)));
 

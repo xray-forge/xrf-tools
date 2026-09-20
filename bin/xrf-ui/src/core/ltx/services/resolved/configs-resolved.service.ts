@@ -6,7 +6,8 @@ import { configsCommands } from "@/core/ipc/commands/configs";
 import { LtxResolvedIndex, LtxResolvedIndexEntry, LtxResolvedSection } from "@/core/ipc/types/xrf-ltx-inspect";
 import { ConfigsProjectService } from "@/core/ltx/services/project";
 import { AsyncState } from "@/lib/async-state";
-import { Logger } from "@/lib/logging";
+import { formatDuration } from "@/lib/format/duration";
+import { Logger, Timer } from "@/lib/logging";
 import { call, cancelFlow, LatestFlow, TFlow } from "@/lib/mobx";
 import { Nullable } from "@/lib/types/general";
 
@@ -81,9 +82,6 @@ export class ConfigsResolvedService {
   /**
    * Read one entry point's resolution, replacing whatever was open.
    *
-   * Superseding is right here: a different entry point is a different document, and pages already fetched describe the
-   * one being replaced.
-   *
    * @param entry - Engine identity of the entry point to resolve.
    */
   @LatestFlow("index")
@@ -100,17 +98,20 @@ export class ConfigsResolvedService {
       return;
     }
 
+    const timer: Timer = new Timer();
+
+    this.log.info("Resolving config entry point:", entry);
     this.reset(entry);
     this.index = this.index.asLoading();
 
     try {
       const index: LtxResolvedIndex = yield* call(configsCommands.listResolvedSections({ entry, sessionId }));
 
-      this.log.info("Resolved", entry, "to", index.sections.length, "sections");
+      this.log.info("Resolved", entry, "to", index.sections.length, "sections, in", formatDuration(timer.elapsed()));
 
       this.index = this.index.asReady(index);
     } catch (error) {
-      this.log.error("Failed to resolve the entry point:", entry, error);
+      this.log.error("Failed to resolve the entry point:", entry, "after", formatDuration(timer.elapsed()), error);
 
       this.index = this.index.asFailed(transformError(error));
     }
@@ -184,9 +185,6 @@ export class ConfigsResolvedService {
 
   /**
    * Abandon previous page requests and drop everything held for the previous entry point.
-   *
-   * Narrowing survives, because it is a decision about the config someone selected rather than about the root that
-   * resolves it: clearing it here made opening a root undo the narrowing the selection had just asked for.
    *
    * @param entry - Entry point taking its place, or null when none is.
    */

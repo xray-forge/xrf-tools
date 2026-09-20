@@ -19,7 +19,8 @@ import {
   toTextureAspect,
 } from "@/core/textures/lib/texture-surface";
 import { AsyncState } from "@/lib/async-state";
-import { Logger } from "@/lib/logging";
+import { formatDuration } from "@/lib/format/duration";
+import { Logger, Timer } from "@/lib/logging";
 import { call, cancelFlow, LatestFlow, TFlow } from "@/lib/mobx";
 import { Nullable } from "@/lib/types/general";
 
@@ -63,6 +64,8 @@ export class TextureSurfaceService {
    */
   @LatestFlow("textures")
   public *load(description: TextureDescription): TFlow {
+    const timer: Timer = new Timer();
+
     this.disposeTextures(listTextureSurfaceTextures(this.textures.value));
 
     this.textures = this.textures.asLoading(EMPTY_TEXTURE_SURFACE);
@@ -100,10 +103,24 @@ export class TextureSurfaceService {
       this.textures = this.textures.asReady(published);
       this.uploaded = description.reference;
       this.bumpTexels = bump?.texels && companion?.texels ? { bump: bump.texels, companion: companion.texels } : null;
+
+      this.log.info(
+        "Texture surface loaded:",
+        description.reference,
+        { base: Boolean(base), bump: Boolean(bump), companion: Boolean(companion) },
+        "in",
+        formatDuration(timer.elapsed())
+      );
     } catch (error: unknown) {
       const transformed: Error = transformError(error);
 
-      this.log.error("Failed to upload the texture surface:", transformed);
+      this.log.error(
+        "Failed to upload the texture surface:",
+        description.reference,
+        "after",
+        formatDuration(timer.elapsed()),
+        transformed
+      );
 
       this.textures = this.textures.asFailed(transformed, EMPTY_TEXTURE_SURFACE);
       this.uploaded = description.reference;
@@ -121,9 +138,6 @@ export class TextureSurfaceService {
 
   /**
    * Drops whatever is uploaded, for a session that is ending or a texture that is no longer selected.
-   *
-   * Plain rather than a flow, because nothing here waits: the one asynchronous thing in reach is an upload still in
-   * flight, and this abandons it rather than joining it.
    */
   public clear(): void {
     cancelFlow(this, "textures");
@@ -169,9 +183,6 @@ export class TextureSurfaceService {
 
   /**
    * Reads one half of the pair, and its texels where the layout stores them plainly.
-   *
-   * Never the backend's png fallback, unlike the base: a packed plane re-encoded through an srgb path would report
-   * values it does not hold, and a bump drawn from those is worse than no bump at all.
    *
    * @param uploads - Where the read is recorded, so a run that never publishes can still release it.
    * @param roots - Roots the description was resolved in, so the read reaches the same file.

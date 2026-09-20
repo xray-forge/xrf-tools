@@ -91,6 +91,7 @@ export class ConfigsProjectService {
   public *open(root: string, isDltx: boolean, prefix: Nullable<string> = null): TFlow {
     const timer: Timer = new Timer();
 
+    this.log.info("Opening configs project:", root, { isDltx, prefix });
     this.project = this.project.asLoading();
 
     try {
@@ -109,7 +110,7 @@ export class ConfigsProjectService {
 
       this.project = this.project.asReady(descriptor);
     } catch (error) {
-      this.log.error("Failed to open the configs project:", error);
+      this.log.error("Failed to open the configs project:", root, "after", formatDuration(timer.elapsed()), error);
 
       this.project = this.project.asFailed(transformError(error));
     } finally {
@@ -122,12 +123,18 @@ export class ConfigsProjectService {
    */
   @LatestFlow("project")
   public *close(): TFlow {
+    const root: Nullable<string> = this.project.value?.root ?? null;
+
     try {
       yield* call(this.session.close());
 
       this.project = this.project.asIdle(null);
+
+      if (root) {
+        this.log.info("Configs project closed:", root);
+      }
     } catch (error) {
-      this.log.error("Failed to close the configs project:", error);
+      this.log.error("Failed to close the configs project:", root, error);
     }
   }
 
@@ -141,6 +148,10 @@ export class ConfigsProjectService {
 
       this.session.adopt(descriptor);
       this.project = this.project.asReady(descriptor);
+
+      if (descriptor) {
+        this.log.info("Configs project restored:", descriptor.root, descriptor.sessionId);
+      }
     } catch (error) {
       this.log.error("Failed to restore the configs project:", error);
     } finally {

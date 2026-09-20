@@ -17,16 +17,13 @@ import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { buildTextureNodes, ITextureNode } from "@/core/textures/lib/texture-catalog";
 import { TextureSelectionService } from "@/core/textures/services/selection";
 import { AsyncState } from "@/lib/async-state";
-import { Logger } from "@/lib/logging";
+import { formatDuration } from "@/lib/format/duration";
+import { Logger, Timer } from "@/lib/logging";
 import { call, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 import { Nullable } from "@/lib/types/general";
 
 /**
  * A browsed root set: every texture the engine would find in it, and what each descriptor makes of its own.
- *
- * The explorer's, and only the explorer's. A tool that works one texture at a time binds
- * [`TextureSelectionService`] alone and never lists anything, which is what keeps the two applications different tools
- * rather than one tool with a longer menu.
  */
 @Injectable()
 export class TextureCatalogService {
@@ -81,9 +78,6 @@ export class TextureCatalogService {
 
   /**
    * Restore whatever roots the backend is still browsing.
-   *
-   * A reload loses the tree but not the session. The selection is not restored with it, because the backend parks none:
-   * every read is addressed by roots and reference, so re-choosing a row costs one describe.
    */
   @OnProvision()
   public async onProvision(): Promise<void> {
@@ -130,18 +124,21 @@ export class TextureCatalogService {
 
   /**
    * End the session: stop browsing, and drop whatever texture was being inspected.
-   *
-   * One ending rather than two, because nothing here wants a texture on screen that the tree beside it no longer
-   * contains, which is the disagreement this explorer exists to prevent.
    */
   @LatestFlow("catalog")
   public *close(): TFlow {
+    const roots: Nullable<XrayRoots> = this.roots;
+
     try {
       yield* call(this.session.close());
 
       this.catalogState = this.catalogState.asIdle();
       this.summaries = this.summaries.asIdle([]);
       this.selectionService.clear();
+
+      if (roots) {
+        this.log.info("Texture catalog closed:", describeRoots(roots));
+      }
     } catch (error) {
       this.log.error("Failed to close browsed texture roots:", error);
     }
@@ -149,9 +146,6 @@ export class TextureCatalogService {
 
   /**
    * Inspect a texture of the browsed session.
-   *
-   * Addressed by the source the listing put on the row rather than by what it is labelled: a loose file has no
-   * reference to resolve back into, and the row is the only thing that knows which of the two it is.
    *
    * @param source - Where the row said its texture is.
    */
@@ -169,7 +163,6 @@ export class TextureCatalogService {
 
   /**
    * Puts an already browsed session back on screen, for one the backend still holds.
-   *
    */
   @ExclusiveFlow("catalog")
   private *restore(): TFlow {
@@ -179,6 +172,7 @@ export class TextureCatalogService {
       this.session.adopt(session);
 
       if (session) {
+        this.log.info("Restoring texture catalog:", describeRoots(session.value.roots), session.value.mode);
         yield* this.list(session.value.roots, toEnumMember(ETextureCatalogMode, session.value.mode));
       }
     } catch (error) {
@@ -191,13 +185,13 @@ export class TextureCatalogService {
   /**
    * Lists a root set, then reads every descriptor it holds.
    *
-   * The sweep runs inside this flow rather than beside it, so a superseding open cancels it along with the listing it
-   * belongs to, and a sweep that fails leaves the tree browsable with no badges rather than closing it.
-   *
    * @param roots - Roots to list and sweep.
    * @param mode - How to address what is found, which also decides whether a sweep can say anything.
    */
   private *list(roots: XrayRoots, mode: ETextureCatalogMode): TFlow {
+    const timer: Timer = new Timer();
+
+    this.log.info("Listing textures:", describeRoots(roots), mode);
     this.catalogState = this.catalogState.asLoading();
     this.summaries = this.summaries.asIdle([]);
 
@@ -212,7 +206,12 @@ export class TextureCatalogService {
       // reaches this line, which is what keeps a superseded restore from announcing a screen it no longer owns.
       this.isReady = true;
 
-      this.log.info(`Listed ${catalog.value.entries.length} textures in:`, describeRoots(catalog.value.roots));
+      this.log.info(
+        `Listed ${catalog.value.entries.length} textures:`,
+        describeRoots(catalog.value.roots),
+        "in",
+        formatDuration(timer.elapsed())
+      );
 
       // The sweep reads descriptors by engine reference, which a loose listing has none of. Skipped rather than run
       // and ignored, so a folder of one's own textures lists at once instead of waiting on a sweep with nothing to say.
@@ -222,7 +221,14 @@ export class TextureCatalogService {
     } catch (error: unknown) {
       const transformed: Error = transformError(error);
 
-      this.log.error("Failed to list textures:", transformed);
+      this.log.error(
+        "Failed to list textures:",
+        describeRoots(roots),
+        mode,
+        "after",
+        formatDuration(timer.elapsed()),
+        transformed
+      );
 
       this.catalogState = this.catalogState.asFailed(transformed);
       this.isReady = true;
@@ -235,6 +241,9 @@ export class TextureCatalogService {
    * @param roots - The roots the listing came from, so both read the same world.
    */
   private *sweep(roots: XrayRoots): TFlow {
+    const timer: Timer = new Timer();
+
+    this.log.info("Reading texture descriptors:", describeRoots(roots));
     this.summaries = this.summaries.asLoading();
 
     try {
@@ -242,11 +251,22 @@ export class TextureCatalogService {
 
       this.summaries = this.summaries.asReady(summaries);
 
-      this.log.info(`Described ${summaries.length} texture descriptors`);
+      this.log.info(
+        `Described ${summaries.length} texture descriptors:`,
+        describeRoots(roots),
+        "in",
+        formatDuration(timer.elapsed())
+      );
     } catch (error: unknown) {
       const transformed: Error = transformError(error);
 
-      this.log.error("Failed to describe texture descriptors:", transformed);
+      this.log.error(
+        "Failed to describe texture descriptors:",
+        describeRoots(roots),
+        "after",
+        formatDuration(timer.elapsed()),
+        transformed
+      );
 
       this.summaries = this.summaries.asFailed(transformed, []);
     }

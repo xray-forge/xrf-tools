@@ -9,15 +9,13 @@ import { Session } from "@/core/ipc/session";
 import { SessionSnapshot } from "@/core/ipc/types/xrf-app";
 import { EXrayAssetType, XrayAsset, XrayRoot, XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { AsyncState } from "@/lib/async-state";
-import { Logger } from "@/lib/logging";
+import { formatDuration } from "@/lib/format/duration";
+import { Logger, Timer } from "@/lib/logging";
 import { call, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 import { Nullable } from "@/lib/types/general";
 
 /**
  * The roots being browsed, and every visual in them.
- *
- * Separate from the service that owns the open model because the two have different lifetimes: a root outlives the
- * dozens of models opened under it, and a model can be open with no root at all.
  */
 @Injectable()
 export class VisualsBrowseService {
@@ -58,9 +56,6 @@ export class VisualsBrowseService {
 
   /**
    * Restore whatever roots the backend is still browsing.
-   *
-   * A reload loses the tree but not the session, and coming back to an empty panel beside a model that is still open
-   * reads as a failure rather than a fresh start.
    */
   @OnProvision()
   public async onProvision(): Promise<void> {
@@ -96,7 +91,15 @@ export class VisualsBrowseService {
 
     this.log.info("Browsing root:", root);
 
-    const opened = yield* call(this.session.open(visualsCommands.openBrowse, roots));
+    let opened: SessionSnapshot<XrayRoots>;
+
+    try {
+      opened = yield* call(this.session.open(visualsCommands.openBrowse, roots));
+    } catch (error: unknown) {
+      this.log.error("Failed to open visual roots:", describeRoots(roots), error);
+
+      throw error;
+    }
 
     yield* this.list(opened);
   }
@@ -104,13 +107,19 @@ export class VisualsBrowseService {
   /** Stop browsing, leaving whatever model is open on screen. */
   @LatestFlow("visuals")
   public *close(): TFlow {
+    const roots: Nullable<string> = this.rootsLabel;
+
     try {
       yield* call(this.session.close());
 
       this.browsed = null;
       this.visuals = this.visuals.asIdle([]);
+
+      if (roots) {
+        this.log.info("Visual roots closed:", roots);
+      }
     } catch (error) {
-      this.log.error("Failed to close browsed roots:", error);
+      this.log.error("Failed to close browsed roots:", roots, error);
     }
   }
 
@@ -125,6 +134,7 @@ export class VisualsBrowseService {
       this.session.adopt(snapshot);
 
       if (snapshot) {
+        this.log.info("Restoring visual roots:", describeRoots(snapshot.value));
         yield* this.list(snapshot);
       }
     } catch (error) {
@@ -135,13 +145,11 @@ export class VisualsBrowseService {
   /**
    * Lists roots and puts the result on screen.
    *
-   * A generator so a listing the user has moved past is abandoned rather than published: the write below the yield
-   * cannot run once another root has taken the lane.
-   *
    * @param opened - Roots and identity already committed by the backend.
    */
   private *list(opened: SessionSnapshot<XrayRoots>): TFlow {
     const roots: XrayRoots = opened.value;
+    const timer: Timer = new Timer();
 
     this.browsed = opened;
     this.visuals = this.visuals.asLoading();
@@ -151,11 +159,17 @@ export class VisualsBrowseService {
 
       this.visuals = this.visuals.asReady(visuals);
 
-      this.log.info(`Listed ${visuals.length} visuals in:`, describeRoots(roots));
+      this.log.info(`Listed ${visuals.length} visuals:`, describeRoots(roots), "in", formatDuration(timer.elapsed()));
     } catch (error: unknown) {
       const transformed: Error = transformError(error);
 
-      this.log.error("Failed to list visuals:", transformed);
+      this.log.error(
+        "Failed to list visuals:",
+        describeRoots(roots),
+        "after",
+        formatDuration(timer.elapsed()),
+        transformed
+      );
 
       this.visuals = this.visuals.asFailed(transformed, []);
     }

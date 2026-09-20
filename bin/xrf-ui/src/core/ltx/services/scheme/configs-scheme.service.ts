@@ -6,7 +6,8 @@ import { configsCommands } from "@/core/ipc/commands/configs";
 import { LtxSectionSchemeReport } from "@/core/ipc/types/xrf-ltx-inspect";
 import { ConfigsProjectService } from "@/core/ltx/services/project";
 import { AsyncState } from "@/lib/async-state";
-import { Logger } from "@/lib/logging";
+import { formatDuration } from "@/lib/format/duration";
+import { Logger, Timer } from "@/lib/logging";
 import { call, cancelFlow, LatestFlow, TFlow } from "@/lib/mobx";
 import { Nullable } from "@/lib/types/general";
 
@@ -27,9 +28,6 @@ export class ConfigsSchemeService {
 
   /**
    * What the selected section is judged by.
-   *
-   * A ready `null` is an answer rather than an absence: the root no longer holds the section, which a selection made
-   * before a reopen reaches.
    */
   @Observable()
   public report: AsyncState<LtxSectionSchemeReport> = AsyncState.idle();
@@ -57,6 +55,8 @@ export class ConfigsSchemeService {
       return;
     }
 
+    const timer: Timer = new Timer();
+
     this.entry = entry;
     this.section = section;
     this.report = this.report.asLoading();
@@ -67,8 +67,17 @@ export class ConfigsSchemeService {
       );
 
       this.report = this.report.asReady(report);
+
+      this.log.info(
+        "Section scheme read:",
+        entry,
+        section,
+        report ? "found" : "absent",
+        "in",
+        formatDuration(timer.elapsed())
+      );
     } catch (error) {
-      this.log.error("Failed to explain the section:", section, error);
+      this.log.error("Failed to explain the section:", entry, section, "after", formatDuration(timer.elapsed()), error);
 
       this.report = this.report.asFailed(transformError(error));
     }

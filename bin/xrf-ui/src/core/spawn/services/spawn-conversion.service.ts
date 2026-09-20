@@ -32,6 +32,8 @@ export class SpawnConversionService {
       return;
     }
 
+    this.log.info("Packing spawn:", source, "to", destination);
+
     yield* this.operation.run({
       kind: EJobKind.SPAWN_PACK,
       invoke: (id, progress) => spawnCommands.packFile({ source, destination }, id, progress),
@@ -50,6 +52,8 @@ export class SpawnConversionService {
     if (this.operation.isRunning) {
       return;
     }
+
+    this.log.info("Unpacking spawn:", source, "to", destination);
 
     yield* this.operation.run({
       kind: EJobKind.SPAWN_UNPACK,

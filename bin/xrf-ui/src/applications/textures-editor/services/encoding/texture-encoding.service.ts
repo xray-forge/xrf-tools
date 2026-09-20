@@ -22,7 +22,8 @@ import { JobsService } from "@/core/jobs/services/jobs";
 import { getTextureIdentity } from "@/core/textures/lib/texture-identity";
 import { TextureSelectionService } from "@/core/textures/services/selection";
 import { AsyncState } from "@/lib/async-state";
-import { Logger } from "@/lib/logging";
+import { formatDuration } from "@/lib/format/duration";
+import { Logger, Timer } from "@/lib/logging";
 import { call, cancelFlow, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 import { Nullable } from "@/lib/types/general";
 
@@ -115,9 +116,6 @@ export class TextureEncodingService {
   /**
    * Choose a candidate to write, or clear the choice by naming the one already chosen, and read its picture.
    *
-   * Superseding rather than exclusive: clicking down a list of candidates is an ordinary way to look at them, and
-   * only the last one asked for is the one anybody is waiting to see.
-   *
    * @param format - The candidate to hold, or the held one to release.
    */
   @LatestFlow("preview")
@@ -143,6 +141,8 @@ export class TextureEncodingService {
       return;
     }
 
+    const timer: Timer = new Timer();
+
     this.preview = this.preview.asLoading(null);
 
     try {
@@ -152,11 +152,27 @@ export class TextureEncodingService {
 
       if (this.comparison?.sessionId === comparison.sessionId) {
         this.preview = this.preview.asReady(bytes);
+
+        this.log.info(
+          "Encoding preview decoded:",
+          comparison.reference,
+          chosen,
+          bytes.byteLength,
+          "bytes, in",
+          formatDuration(timer.elapsed())
+        );
       }
     } catch (error: unknown) {
       const transformed: Error = transformError(error);
 
-      this.log.error("Failed to decode the chosen candidate:", comparison.reference, chosen, transformed);
+      this.log.error(
+        "Failed to decode the chosen candidate:",
+        comparison.reference,
+        chosen,
+        "after",
+        formatDuration(timer.elapsed()),
+        transformed
+      );
 
       if (this.comparison?.sessionId === comparison.sessionId) {
         this.preview = this.preview.asFailed(transformed, null);
@@ -166,9 +182,6 @@ export class TextureEncodingService {
 
   /**
    * Weigh every candidate format against the texture on screen.
-   *
-   * Chosen candidates do not survive it. The backend keeps one comparison at a time and this replaces it, so a name
-   * held from the previous one would address bytes that are gone.
    *
    * @param mipFilter - Kernel the chain is reduced with, by its SDK name, or null to weigh the base level alone.
    */

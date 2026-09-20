@@ -8,7 +8,8 @@ import { texturesRawCommands } from "@/core/ipc/commands/textures-raw";
 import { ETextureSource, TextureDescription, TextureSource } from "@/core/ipc/types/xrf-app";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { AsyncState } from "@/lib/async-state";
-import { Logger } from "@/lib/logging";
+import { formatDuration } from "@/lib/format/duration";
+import { Logger, Timer } from "@/lib/logging";
 import { call, cancelFlow, LatestFlow, TFlow } from "@/lib/mobx";
 import { Nullable } from "@/lib/types/general";
 
@@ -93,10 +94,6 @@ export class TextureSelectionService {
   /**
    * Open a loose texture or descriptor from disk.
    *
-   * Centred on the file, so its own root and installation are searched for its descriptor and its pair, with the
-   * configured roots behind them. That is what lets a bump name written here be resolved against real game data even
-   * though the file itself sits outside one.
-   *
    * @param path - Filesystem path of the `.dds` or `.thm`.
    */
   @LatestFlow("selected")
@@ -147,6 +144,8 @@ export class TextureSelectionService {
    * @param roots - Roots the source is resolved in.
    */
   private *describe(source: TextureSource, roots: XrayRoots): TFlow {
+    const timer: Timer = new Timer();
+
     this.attempt = { source, roots };
     this.selected = this.selected.asLoading();
 
@@ -155,7 +154,7 @@ export class TextureSelectionService {
 
       this.selected = this.selected.asReady(description);
 
-      this.log.info("Inspecting texture:", description.reference);
+      this.log.info("Texture described:", description.reference, "in", formatDuration(timer.elapsed()));
 
       yield* this.decode(description);
     } catch (error: unknown) {
@@ -164,6 +163,8 @@ export class TextureSelectionService {
       this.log.error(
         "Failed to inspect texture:",
         source.kind === ETextureSource.FILE ? source.path : source.reference,
+        "after",
+        formatDuration(timer.elapsed()),
         transformed
       );
 
@@ -174,10 +175,6 @@ export class TextureSelectionService {
 
   /**
    * Decode the selected texture into the png a webview can show.
-   *
-   * Inside the describe rather than beside it, so choosing another texture abandons this read with the description it
-   * belonged to. A layout the backend cannot decode fails here alone and leaves the descriptor on screen, which is the
-   * half of the answer that does not depend on the picture.
    *
    * @param description - The texture just resolved.
    */
@@ -190,16 +187,33 @@ export class TextureSelectionService {
       return;
     }
 
+    const timer: Timer = new Timer();
+
     this.preview = this.preview.asLoading(null);
 
     try {
       const bytes: ArrayBuffer = yield* call(texturesRawCommands.readTexture(description.roots, logicalPath));
 
       this.preview = this.preview.asReady(bytes);
+
+      this.log.info(
+        "Texture preview decoded:",
+        description.reference,
+        bytes.byteLength,
+        "bytes, in",
+        formatDuration(timer.elapsed())
+      );
     } catch (error: unknown) {
       const transformed: Error = transformError(error);
 
-      this.log.error("Failed to decode texture:", description.reference, logicalPath, transformed);
+      this.log.error(
+        "Failed to decode texture:",
+        description.reference,
+        logicalPath,
+        "after",
+        formatDuration(timer.elapsed()),
+        transformed
+      );
 
       this.preview = this.preview.asFailed(transformed, null);
     }

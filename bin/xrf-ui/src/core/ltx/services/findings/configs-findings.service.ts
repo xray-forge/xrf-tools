@@ -7,7 +7,8 @@ import { LtxAnchoredFinding } from "@/core/ipc/types/xrf-ltx-inspect";
 import { toOrderedFindings } from "@/core/ltx/lib/findings";
 import { ConfigsProjectService } from "@/core/ltx/services/project";
 import { AsyncState } from "@/lib/async-state";
-import { Logger } from "@/lib/logging";
+import { formatDuration } from "@/lib/format/duration";
+import { Logger, Timer } from "@/lib/logging";
 import { call, cancelFlow, LatestFlow, TFlow } from "@/lib/mobx";
 import { Nullable } from "@/lib/types/general";
 
@@ -31,9 +32,6 @@ export class ConfigsFindingsService {
   /**
    * Verify one entry point, replacing whatever was held.
    *
-   * Superseding: a different entry point is a different root, and the findings of the one being replaced describe a
-   * document nobody is looking at.
-   *
    * @param entry - Engine identity of the entry point to verify.
    */
   @LatestFlow("findings")
@@ -50,17 +48,20 @@ export class ConfigsFindingsService {
       return;
     }
 
+    const timer: Timer = new Timer();
+
+    this.log.info("Verifying config entry point:", entry);
     this.entry = entry;
     this.findings = this.findings.asLoading();
 
     try {
       const found: Array<LtxAnchoredFinding> = yield* call(configsCommands.listFindings({ entry, sessionId }));
 
-      this.log.info("Verified", entry, "with", found.length, "finding(s)");
+      this.log.info("Verified", entry, "with", found.length, "finding(s), in", formatDuration(timer.elapsed()));
 
       this.findings = this.findings.asReady(toOrderedFindings(found));
     } catch (error) {
-      this.log.error("Failed to verify the entry point:", entry, error);
+      this.log.error("Failed to verify the entry point:", entry, "after", formatDuration(timer.elapsed()), error);
 
       this.findings = this.findings.asFailed(transformError(error));
     }
