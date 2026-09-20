@@ -79,7 +79,7 @@ export function VisualMaterialsPanel({
           bumpStatus={bumpStatuses.get(submesh.index) ?? null}
           textures={described}
           materials={selected?.materials}
-          surfaces={selected?.surfaces}
+          surface={selected?.surfaces[index] ?? null}
         />
       ))}
     </EditorPanel>

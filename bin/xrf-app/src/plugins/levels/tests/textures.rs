@@ -1,10 +1,14 @@
 //! What a level's texture references come to, beside the level and in the shared tree.
 
 use xrf_level::{LevelFile, LevelHeaderChunk, LevelShaderEntry, LevelShadersChunk};
-use xrf_material::fixtures::FixtureTree;
+use xrf_material::fixtures::{FixtureTree, ThmFixture};
+use xrf_shaders::ShaderBlenderClass;
+use xrf_shaders::fixtures::ShaderBlenderFixture;
+use xrf_thm::ThmTextureFlag;
 use xrf_vfs::{XrayLookupScope, XrayMountId, XrayProbe, XrayVfs};
 
 use crate::plugins::levels::state::LevelTextureReference;
+use crate::plugins::levels::surfaces::resolve_surfaces;
 use crate::plugins::levels::textures::resolve_textures;
 
 const LEVEL: &str = "k00_marsh";
@@ -31,7 +35,7 @@ fn new_resolved(tree: &FixtureTree, level: &LevelFile, directory: Option<&str>) 
   let id: XrayMountId = vfs.mount_directory("", tree.root()).expect("tree mounts");
   let probe: XrayProbe = vfs.probe().with_step("tree", XrayLookupScope::only([id]));
 
-  resolve_textures(level, &probe, directory)
+  resolve_textures(level, &resolve_surfaces(level, &probe), &probe, directory)
 }
 
 fn get_path_of<'a>(references: &'a [LevelTextureReference], reference: &str) -> Option<&'a str> {
@@ -135,6 +139,28 @@ fn names_every_reference_once_however_many_entries_share_it() {
   );
 
   assert_eq!(references.len(), 1);
+}
+
+// The detail texture is named nowhere in the level: the shader table lists the base and the lightmaps, and the
+// detail comes off the base texture's descriptor. Resolving only what the table names leaves the ground undetailed.
+#[test]
+fn resolves_the_detail_texture_a_surface_binds_though_the_table_never_names_it() {
+  let tree: FixtureTree = FixtureTree::new("level_textures_detail")
+    .with_shader_library(&[ShaderBlenderFixture::of(ShaderBlenderClass::DEFAULT, "levels\\ground")])
+    .with_descriptor(
+      "grnd\\grnd_dirt",
+      &ThmFixture::image().with_detail("detail\\detail_dirt_det1", 8.0, &[ThmTextureFlag::DiffuseDetail]),
+    )
+    .with_texture("grnd\\grnd_dirt")
+    .with_texture("detail\\detail_dirt_det1");
+
+  let references: Vec<LevelTextureReference> =
+    new_resolved(&tree, &new_level(&["levels\\ground/grnd\\grnd_dirt"]), Some(DIRECTORY));
+
+  assert_eq!(
+    get_path_of(&references, "detail\\detail_dirt_det1"),
+    Some("textures\\detail\\detail_dirt_det1.dds")
+  );
 }
 
 #[test]

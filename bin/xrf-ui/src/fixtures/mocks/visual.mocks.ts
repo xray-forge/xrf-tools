@@ -231,7 +231,7 @@ export function mockSelectedVisual(overrides: Partial<SelectedVisualDescription>
     roots: createRoots([]),
     textures: {},
     materials: {},
-    surfaces: {},
+    surfaces: [],
     texturesLtx: null,
     ...overrides,
   };
@@ -257,6 +257,7 @@ export function mockSurfaceDescriptor(overrides: Partial<XraySurfaceDescriptor> 
       isStrictSorting: false,
     },
     draw: { kind: "opaque" },
+    detail: null,
     ...overrides,
   };
 }

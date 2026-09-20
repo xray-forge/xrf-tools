@@ -4,8 +4,13 @@ import { MeshStandardMaterial } from "three";
 import { applyRenderSurface, createRenderMaterial } from "@/core/render/lib/render-material";
 import { IRenderSurface, OPAQUE_RENDER_SURFACE } from "@/core/render/lib/render-surface";
 
-const CUT_OUT: IRenderSurface = { alphaTest: 200 / 255, isDepthWritten: true, isTransparent: false };
-const BLENDED: IRenderSurface = { alphaTest: 32 / 255, isDepthWritten: false, isTransparent: true };
+const CUT_OUT: IRenderSurface = { ...OPAQUE_RENDER_SURFACE, alphaTest: 200 / 255 };
+const BLENDED: IRenderSurface = {
+  ...OPAQUE_RENDER_SURFACE,
+  alphaTest: 32 / 255,
+  isDepthWritten: false,
+  isTransparent: true,
+};
 
 describe("applyRenderSurface", () => {
   // The one place render state is set, for a model submesh and a level surface alike. Two places for it is how the

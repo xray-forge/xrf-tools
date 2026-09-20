@@ -35,6 +35,19 @@ impl ShaderBlenderProperty {
     }
   }
 
+  /// The texture a texture property names; see [`Self::integer`].
+  pub fn texture(&self) -> Option<&str> {
+    match &self.value {
+      ShaderBlenderPropertyValue::Texture(value) => Some(value.as_str()),
+      _ => None,
+    }
+  }
+
+  /// Whether this property is a heading rather than a value, which is what separates one group from the next.
+  pub const fn is_marker(&self) -> bool {
+    matches!(self.value, ShaderBlenderPropertyValue::Marker)
+  }
+
   /// Reads the payload of one type, which is the only part of a property whose width the type does not fix outright.
   fn read_value<T: ByteOrder, D: ChunkDataSource>(
     reader: &mut ChunkReader<D>,

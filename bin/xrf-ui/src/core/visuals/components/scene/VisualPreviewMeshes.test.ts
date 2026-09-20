@@ -319,8 +319,13 @@ describe("VisualPreviewMeshes bump shading", () => {
 });
 
 describe("VisualPreviewMeshes surfaces", () => {
-  const cutOut: IRenderSurface = { alphaTest: 200 / 255, isDepthWritten: true, isTransparent: false };
-  const blended: IRenderSurface = { alphaTest: 32 / 255, isDepthWritten: false, isTransparent: true };
+  const cutOut: IRenderSurface = { ...OPAQUE_RENDER_SURFACE, alphaTest: 200 / 255 };
+  const blended: IRenderSurface = {
+    ...OPAQUE_RENDER_SURFACE,
+    alphaTest: 32 / 255,
+    isDepthWritten: false,
+    isTransparent: true,
+  };
 
   it("cuts a surface out before it is ever drawn", () => {
     // Applied at build time rather than with the texture, because the shader's answer arrives with the description:

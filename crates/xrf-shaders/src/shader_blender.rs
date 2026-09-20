@@ -40,6 +40,17 @@ impl ShaderBlender {
   pub const PRIORITY_PROPERTY: &'static str = "Priority";
   /// `IBlender::oStrictSorting`, written for every class by the base `Save`.
   pub const STRICT_SORTING_PROPERTY: &'static str = "Strict sorting";
+  /// The group `IBlender::Save` writes the base texture under, which every class carries.
+  pub const BASE_TEXTURE_MARKER: &'static str = "Base Texture";
+  /// The texture of a texture group, spelled the same under every marker that opens one.
+  pub const TEXTURE_NAME_PROPERTY: &'static str = "Name";
+  /// What a texture slot carries when nothing is bound to it (`Layers/xrRender/Blender_Recorder.cpp`).
+  pub const NULL_TEXTURE: &'static str = "$null";
+
+  /// The highest slot `ParseName` reads a `$base` spelling as (`Layers/xrRender/Blender_Recorder.cpp`).
+  const MAXIMUM_BASE_SLOT: usize = 7;
+  /// What a slot spelling starts with, the rest of it being the slot.
+  const BASE_SLOT_PREFIX: &'static str = "$base";
 
   /// What `#pragma pack(push, 4)` leaves after the two byte version to round the description out.
   const DESCRIPTION_PADDING_SIZE: usize = 2;
@@ -47,6 +58,24 @@ impl ShaderBlender {
   /// The property of that name, or `None` for a class that writes none.
   pub fn find_property(&self, name: &str) -> Option<&ShaderBlenderProperty> {
     self.properties.iter().find(|property| property.name == name)
+  }
+
+  /// The properties one marker opens, up to the marker that opens the next.
+  pub fn group<'a>(&'a self, marker: &'a str) -> impl Iterator<Item = &'a ShaderBlenderProperty> {
+    self
+      .properties
+      .iter()
+      .skip_while(move |property| !(property.is_marker() && property.name == marker))
+      .skip(1)
+      .take_while(|property| !property.is_marker())
+  }
+
+  /// The texture a property of that name under that marker names, when it is one.
+  pub fn texture<'a>(&'a self, marker: &'a str, name: &str) -> Option<&'a str> {
+    self
+      .group(marker)
+      .find(|property| property.name == name)
+      .and_then(ShaderBlenderProperty::texture)
   }
 
   /// The value of an integer property of that name, when it is one.
@@ -62,6 +91,25 @@ impl ShaderBlender {
   /// Whether the author asked for this surface to be drawn in the sorted pass rather than with the rest.
   pub fn is_strict_sorting(&self) -> bool {
     self.boolean(Self::STRICT_SORTING_PROPERTY).unwrap_or(false)
+  }
+
+  /// The texture the base slot comes to for a shader compiled against this texture list.
+  pub fn base_texture<'a>(&'a self, textures: &'a [String]) -> Option<&'a str> {
+    let declared: &str = self.texture(Self::BASE_TEXTURE_MARKER, Self::TEXTURE_NAME_PROPERTY)?;
+
+    match Self::to_base_slot(declared) {
+      Some(slot) => textures.get(slot).map(String::as_str),
+      None => Some(declared).filter(|name| !name.is_empty() && *name != Self::NULL_TEXTURE),
+    }
+  }
+
+  /// The slot a `$base<N>` spelling names, or `None` for a name standing for itself.
+  fn to_base_slot(declared: &str) -> Option<usize> {
+    declared
+      .strip_prefix(Self::BASE_SLOT_PREFIX)?
+      .parse::<usize>()
+      .ok()
+      .filter(|slot| *slot <= Self::MAXIMUM_BASE_SLOT)
   }
 }
 

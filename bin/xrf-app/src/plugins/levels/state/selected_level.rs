@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::sync::Mutex;
 
 use xrf_chunk::InMemoryChunkDataSource;
@@ -16,10 +15,10 @@ use crate::plugins::levels::state::selected_level_description::SelectedLevelDesc
 /// The level a viewer has open, and everything a later call reads without opening it again.
 pub struct SelectedLevel {
   pub source: LevelSource,
-  /// What each texture reference of the shader table came to, decided at open.
+  /// What each texture reference the level's surfaces bind came to, decided at open.
   pub textures: Vec<LevelTextureReference>,
-  /// How the renderer draws each shader the table names, by shader name, decided at open.
-  pub surfaces: HashMap<String, XraySurfaceDescriptor>,
+  /// How the renderer draws each entry of the shader table, in its order, decided at open.
+  pub surfaces: Vec<XraySurfaceDescriptor>,
   /// The roots the level was opened in, kept so a later read searches what the open searched.
   pub roots: XrayRoots,
   pub level: LevelFile,

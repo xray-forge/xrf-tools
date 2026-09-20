@@ -1,6 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
 
 import { VisualDescription, VisualSubmesh } from "@/core/ipc/types/xrf-visual";
+import { OPAQUE_RENDER_SURFACE } from "@/core/render/lib/render-surface";
 import { createVisualSurfaces } from "@/core/visuals/lib/visual-surface";
 import {
   countVisualTriangles,
@@ -52,12 +53,12 @@ describe("visual views", () => {
     const views: IVisualModelViews = createVisualViews(
       description,
       buffer.toArrayBuffer(),
-      createVisualSurfaces(description.submeshes, { "models\\model_aref": mockAlphaSurfaceDescriptor() })
+      createVisualSurfaces(description.submeshes, [mockAlphaSurfaceDescriptor()])
     );
 
     expect(views.submeshes[0].surface.alphaTest).toBeCloseTo(200 / 255);
-    // A shader the map has no answer for is opaque, which is what a model opened without a library gets.
-    expect(views.submeshes[1].surface).toEqual({ alphaTest: 0, isDepthWritten: true, isTransparent: false });
+    // A submesh the table has no answer for is opaque, which is what a model opened without a library gets.
+    expect(views.submeshes[1].surface).toEqual(OPAQUE_RENDER_SURFACE);
   });
 
   it("rejects a buffer whose length disagrees with its description", () => {

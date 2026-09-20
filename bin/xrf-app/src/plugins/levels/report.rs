@@ -1,8 +1,8 @@
 //! What the level plugin says to the log, in one place rather than beside each command that says it.
 
-use std::collections::HashMap;
 use std::time::Instant;
 
+use xrf_level::LevelShaderEntry;
 use xrf_material::{XraySurfaceDeclaration, XraySurfaceDescriptor, XraySurfaceDraw};
 use xrf_visual::{SectorDescription, SectorInstanceGroup, SectorOutline, SectorPackage};
 
@@ -31,7 +31,24 @@ pub fn report_open(selected: &SelectedLevel, started: Instant) {
 
   report_sectors(source, &selected.outlines);
   report_unresolved(source, &selected.textures);
-  report_surfaces(source, &selected.surfaces);
+  report_surfaces(source, &named_surfaces(selected));
+}
+
+/// The surfaces the table actually dresses something with, each beside the shader it names.
+fn named_surfaces(selected: &SelectedLevel) -> Vec<(&str, &XraySurfaceDescriptor)> {
+  let Some(shaders) = selected.level.shaders.as_ref() else {
+    return Vec::new();
+  };
+
+  shaders
+    .entries
+    .iter()
+    .zip(&selected.surfaces)
+    .filter_map(|(entry, surface)| match entry {
+      LevelShaderEntry::Reference(reference) => Some((reference.shader.as_str(), surface)),
+      LevelShaderEntry::Empty | LevelShaderEntry::Malformed(_) => None,
+    })
+    .collect()
 }
 
 /// Says how a level divides, because a level whose sectors are few and huge is one a viewer cannot stream.
@@ -72,23 +89,25 @@ fn report_unresolved(source: &LevelSource, textures: &[LevelTextureReference]) {
   );
 }
 
-/// Says how many surfaces read alpha, and how many the shader library could say nothing about.
-fn report_surfaces(source: &LevelSource, surfaces: &HashMap<String, XraySurfaceDescriptor>) {
+/// Says how many surfaces read alpha, how many are detailed, and how many the library could say nothing about.
+fn report_surfaces(source: &LevelSource, surfaces: &[(&str, &XraySurfaceDescriptor)]) {
   let alpha: usize = surfaces
-    .values()
-    .filter(|it| it.draw != XraySurfaceDraw::Opaque)
+    .iter()
+    .filter(|(_, surface)| surface.draw != XraySurfaceDraw::Opaque)
     .count();
+  let detailed: usize = surfaces.iter().filter(|(_, surface)| surface.detail.is_some()).count();
   let undescribed: Vec<&str> = surfaces
     .iter()
-    .filter(|(_, descriptor)| !matches!(descriptor.declaration, XraySurfaceDeclaration::Described { .. }))
-    .map(|(shader, _)| shader.as_str())
+    .filter(|(_, surface)| !matches!(surface.declaration, XraySurfaceDeclaration::Described { .. }))
+    .map(|(shader, _)| *shader)
     .collect();
 
   log::info!(
-    "Level {} draws {} of {} surfaces with alpha",
+    "Level {} draws {} of {} surfaces with alpha and {} with a detail texture",
     source.get_label(),
     alpha,
-    surfaces.len()
+    surfaces.len(),
+    detailed
   );
 
   if !undescribed.is_empty() {

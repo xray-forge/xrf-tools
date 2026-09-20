@@ -18,7 +18,7 @@ fn describe(tree: &FixtureTree, shader: &str) -> XraySurfaceDescriptor {
   let id: XrayMountId = vfs.mount_directory("", tree.root()).expect("tree mounts");
   let probe: XrayProbe<'_> = probe_over(&vfs, id);
 
-  XraySurfaceResolver::open(&probe).describe(shader)
+  XraySurfaceResolver::open(&probe).describe(shader, &[])
 }
 
 /// A tree whose library defines exactly `blenders`.
@@ -290,14 +290,14 @@ fn the_library_is_read_once_and_answers_every_surface_of_a_model() {
   );
 
   let mut vfs: XrayVfs = XrayVfs::new();
+
   let id: XrayMountId = vfs.mount_directory("", tree.root()).expect("tree mounts");
   let probe: XrayProbe<'_> = probe_over(&vfs, id);
-  let resolver: XraySurfaceResolver = XraySurfaceResolver::open(&probe);
-
-  let opaque: XraySurfaceDescriptor = resolver.describe("models\\model");
+  let resolver: XraySurfaceResolver<'_, '_> = XraySurfaceResolver::open(&probe);
+  let opaque: XraySurfaceDescriptor = resolver.describe("models\\model", &[]);
 
   assert_eq!(opaque.draw, XraySurfaceDraw::Opaque);
-  assert_eq!(resolver.describe("models\\model_fur").draw, CUT_OUT);
+  assert_eq!(resolver.describe("models\\model_fur", &[]).draw, CUT_OUT);
   // Every answer names the library it came from, which is what a panel says once for the whole model.
   assert_eq!(
     opaque.library.map(|it| it.get_logical_path().to_string()),

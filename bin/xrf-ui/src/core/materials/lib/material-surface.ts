@@ -26,6 +26,9 @@ const ALPHA_REFERENCE_SCALE: number = 255;
  */
 export function describeSurfaceOutcome(descriptor: XraySurfaceDescriptor): IMaterialStateDescriptor {
   switch (descriptor.declaration.kind) {
+    case EXraySurfaceDeclaration.UNDECLARED:
+      return { color: "default", label: "No shader" };
+
     case EXraySurfaceDeclaration.NO_LIBRARY:
       return { color: "warning", label: "No shader library" };
 
@@ -85,6 +88,9 @@ export function describeSurfaceDeclaration(declaration: XraySurfaceDeclaration, 
   const source: string = library ? library.logicalPath : "shaders.xr";
 
   switch (declaration.kind) {
+    case EXraySurfaceDeclaration.UNDECLARED:
+      return "nothing is dressed by this entry, so no shader was looked up for it";
+
     case EXraySurfaceDeclaration.NO_LIBRARY:
       return "no searched root holds shaders.xr, so nothing is known about this surface";
 

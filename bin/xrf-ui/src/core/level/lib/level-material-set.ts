@@ -5,6 +5,7 @@ import {
   DEFAULT_LEVEL_SURFACE_OPTIONS,
   dressSurfaceMaterial,
   ILevelSurface,
+  ILevelSurfaceMaterial,
   ILevelSurfaceOptions,
 } from "@/core/level/lib/level-surface-material";
 import { ILevelTextureLookup } from "@/core/level/lib/level-texture-set";
@@ -19,7 +20,7 @@ function getSurfaceKey(surface: ILevelSurface): string {
 
 /** One material, and the surface it was dressed from, so a view toggle can dress it again. */
 interface IHeldMaterial {
-  material: MeshStandardMaterial;
+  dressed: ILevelSurfaceMaterial;
   surface: ILevelSurface;
 }
 
@@ -63,14 +64,14 @@ export class LevelMaterialSet {
     const held: Maybe<IHeldMaterial> = this.held.get(key);
 
     if (held) {
-      return held.material;
+      return held.dressed.material;
     }
 
-    const material: MeshStandardMaterial = createSurfaceMaterial(surface, this.textures, this.options);
+    const dressed: ILevelSurfaceMaterial = createSurfaceMaterial(surface, this.textures, this.options);
 
-    this.held.set(key, { material, surface });
+    this.held.set(key, { dressed, surface });
 
-    return material;
+    return dressed.material;
   }
 
   /**
@@ -83,7 +84,7 @@ export class LevelMaterialSet {
 
     for (const [key, held] of Array.from(this.held)) {
       if (!wanted.has(key)) {
-        held.material.dispose();
+        held.dressed.material.dispose();
         this.held.delete(key);
       }
     }
@@ -103,15 +104,15 @@ export class LevelMaterialSet {
   /** Releases every material, for teardown and for swapping levels. */
   public dispose(): void {
     for (const held of this.held.values()) {
-      held.material.dispose();
+      held.dressed.material.dispose();
     }
 
     this.held.clear();
   }
 
   private dressAll(): void {
-    for (const { material, surface } of this.held.values()) {
-      dressSurfaceMaterial(material, surface, this.textures, this.options);
+    for (const { dressed, surface } of this.held.values()) {
+      dressSurfaceMaterial(dressed, surface, this.textures, this.options);
     }
   }
 }

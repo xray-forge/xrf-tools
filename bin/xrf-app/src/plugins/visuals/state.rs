@@ -40,8 +40,8 @@ pub struct SelectedVisual {
   pub textures: HashMap<String, AssetTextureDescriptor>,
   /// What the renderer builds for each declared texture, keyed by the reference as the mesh declares it.
   pub materials: HashMap<String, XrayMaterialDescriptor>,
-  /// How the renderer draws each declared shader, keyed by the shader name as the mesh declares it.
-  pub surfaces: HashMap<String, XraySurfaceDescriptor>,
+  /// How the renderer draws each submesh, in the order the model declares them.
+  pub surfaces: Vec<XraySurfaceDescriptor>,
   /// The `textures.ltx` the roots hold, when they hold one, since its declarations are not read.
   pub textures_ltx: Option<XrayAsset>,
 }
@@ -88,8 +88,8 @@ pub struct SelectedVisualDescription {
   pub textures: HashMap<String, AssetTextureDescriptor>,
   /// What the renderer builds for each declared texture, keyed by the reference as the mesh declares it.
   pub materials: HashMap<String, XrayMaterialDescriptor>,
-  /// How the renderer draws each declared shader, keyed by the shader name as the mesh declares it.
-  pub surfaces: HashMap<String, XraySurfaceDescriptor>,
+  /// How the renderer draws each submesh, in the order the model declares them.
+  pub surfaces: Vec<XraySurfaceDescriptor>,
   /// A `textures.ltx` the searched roots hold, or `None`.
   pub textures_ltx: Option<XrayAsset>,
 }

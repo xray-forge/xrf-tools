@@ -152,6 +152,13 @@ export type XrayMaterialDetail = {
 
 /** Every `kind` the `XraySurfaceDeclaration` union is told apart by, so a switch or a comparison names one. */
 export enum EXraySurfaceDeclaration {
+  /**
+   * The surface names no shader at all, so there is nothing to look up.
+   *
+   * A level's shader table is addressed by index and is allowed to hold entries nothing is dressed by - the first
+   * one always is - so the answer for those is kept in place rather than left out and shifting every index after it.
+   */
+  UNDECLARED = "undeclared",
   /** No `shaders.xr` in any searched root, so nothing can be said about any surface of this model. */
   NO_LIBRARY = "noLibrary",
   /** A library was located and could not be read as one. */
@@ -174,6 +181,13 @@ export enum EXraySurfaceDeclaration {
 
 /** What the shader library says about a surface, as the renderer would read it. */
 export type XraySurfaceDeclaration =
+  /**
+   * The surface names no shader at all, so there is nothing to look up.
+   *
+   * A level's shader table is addressed by index and is allowed to hold entries nothing is dressed by - the first
+   * one always is - so the answer for those is kept in place rather than left out and shifting every index after it.
+   */
+  | { kind: "undeclared" }
   /** No `shaders.xr` in any searched root, so nothing can be said about any surface of this model. */
   | { kind: "noLibrary" }
   /** A library was located and could not be read as one. */
@@ -213,11 +227,11 @@ export type XraySurfaceDeclaration =
     };
 
 /**
- * How the renderer draws one surface, resolved from the shader name it declares.
+ * How the renderer draws one surface, resolved from the shader name it declares and the textures it dresses with.
  *
- * The counterpart of [`crate::XrayMaterialDescriptor`], which answers the same question for a texture from its `.thm`.
- * Between them they are what a surface is made of: the shader decides whether alpha is read and how, the descriptor
- * decides what is bound beside the diffuse.
+ * The counterpart of [`crate::XrayMaterialDescriptor`], which answers the same question for a texture from its
+ * `.thm`. Between them they are what a surface is made of: the shader decides whether alpha is read and how, the
+ * descriptor decides what is bound beside the diffuse.
  */
 export type XraySurfaceDescriptor = {
   /** The `shaders.xr` the answer was read from, or `None` when no root holds one. */
@@ -228,6 +242,26 @@ export type XraySurfaceDescriptor = {
    * shader it could not resolve, which is opaque.
    */
   draw: XraySurfaceDraw;
+  /**
+   * The detail texture modulating its diffuse, `None` for a class the engine never details or a base texture whose
+   * descriptor associates none. Answered here rather than beside the texture because only the shader knows whether
+   * its class is detailed at all, and `B_BmmD` names its own.
+   */
+  detail: XraySurfaceDetail | null;
+};
+
+/**
+ * The detail texture a surface modulates its diffuse with, and how densely it is laid over it.
+ *
+ * The high frequency half of an X-Ray level surface. A base texture covers a whole terrain or a whole wall at a
+ * resolution no close camera survives, and the engine multiplies this over it at a tiling the texture's own
+ * descriptor sets, fading it out to neutral with distance (`shaders/r1/lmap_dt.ps`, `shaders/r1/impl_dt.ps`).
+ */
+export type XraySurfaceDetail = {
+  /** Detail texture reference, engine-style, without extension. */
+  reference: string;
+  /** Times it repeats across the surface's base coordinate, `dt_params.xyz` (`TextureDescrManager.cpp`). */
+  scale: number | null;
 };
 
 /** Every `kind` the `XraySurfaceDraw` union is told apart by, so a switch or a comparison names one. */

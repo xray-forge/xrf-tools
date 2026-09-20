@@ -1,5 +1,15 @@
 import { EXraySurfaceDraw, XraySurfaceDescriptor, XraySurfaceDraw } from "@/core/ipc/types/xrf-material";
-import { Nullable } from "@/lib/types/general";
+import { Maybe, Nullable } from "@/lib/types/general";
+
+/**
+ * The detail texture a surface modulates its diffuse with, as the shader table's answer named it.
+ */
+export interface IRenderDetail {
+  /** Texture reference, engine-style, to be looked up wherever the drawer's textures come from. */
+  reference: string;
+  /** Times it repeats across the surface's base coordinate. */
+  scale: number;
+}
 
 /**
  * The material state one surface is drawn with, translated out of what the engine compiles for its shader.
@@ -11,11 +21,14 @@ export interface IRenderSurface {
   isTransparent: boolean;
   /**  Whether the surface writes depth. */
   isDepthWritten: boolean;
+  /**  The detail texture bound beside the diffuse, or null for a surface the engine details with none. */
+  detail: Nullable<IRenderDetail>;
 }
 
 /** How a surface with nothing said about it is drawn, which is how the engine draws one whose shader it cannot find. */
 export const OPAQUE_RENDER_SURFACE: IRenderSurface = {
   alphaTest: 0,
+  detail: null,
   isDepthWritten: true,
   isTransparent: false,
 };
@@ -26,18 +39,20 @@ const ALPHA_REFERENCE_SCALE: number = 255;
 /**
  * Turn one resolved surface into the material state that draws it.
  *
- * @param descriptor - What the backend resolved for the shader name, or null when none was declared or resolved.
- * @returns The material state, opaque for anything the backend could not describe.
+ * @param descriptor - What the backend resolved for the surface, or null when none was declared or resolved.
+ * @returns The material state, opaque and undetailed for anything the backend could not describe.
  */
 export function toRenderSurface(descriptor: Nullable<XraySurfaceDescriptor>): IRenderSurface {
   const draw: Nullable<XraySurfaceDraw> = descriptor?.draw ?? null;
+  const detail: Nullable<IRenderDetail> = toRenderDetail(descriptor);
 
   if (!draw || draw.kind === EXraySurfaceDraw.OPAQUE) {
-    return OPAQUE_RENDER_SURFACE;
+    return detail ? { ...OPAQUE_RENDER_SURFACE, detail } : OPAQUE_RENDER_SURFACE;
   }
 
   return {
     alphaTest: draw.reference / ALPHA_REFERENCE_SCALE,
+    detail,
     isDepthWritten: draw.kind !== EXraySurfaceDraw.BLENDED,
     isTransparent: draw.kind === EXraySurfaceDraw.BLENDED,
   };
@@ -54,15 +69,19 @@ export function isAlphaRenderSurface(surface: IRenderSurface): boolean {
 }
 
 /**
- * The state a shader name comes to, for a caller holding the whole table the backend resolved.
+ * The state one surface comes to, for a caller holding the whole table the backend resolved.
  *
- * @param surfaces - What the backend resolved, by shader name.
- * @param shaderName - The name a surface declares, or null for one that declares none.
- * @returns The material state, opaque when the name is absent from the table.
+ * @param surfaces - What the backend resolved, in the order of whatever declared them.
+ * @param index - Position of the declaring thing, which is a level surface's shader id.
+ * @returns The material state, opaque for an index the table does not reach.
  */
-export function getRenderSurface(
-  surfaces: Readonly<Record<string, XraySurfaceDescriptor>>,
-  shaderName: Nullable<string>
-): IRenderSurface {
-  return toRenderSurface(shaderName ? (surfaces[shaderName] ?? null) : null);
+export function getRenderSurface(surfaces: ReadonlyArray<XraySurfaceDescriptor>, index: number): IRenderSurface {
+  return toRenderSurface(surfaces[index] ?? null);
+}
+
+/** The detail the descriptor names, dropped where it carries no tiling, since none can be invented for it. */
+function toRenderDetail(descriptor: Nullable<XraySurfaceDescriptor>): Nullable<IRenderDetail> {
+  const detail: Maybe<XraySurfaceDescriptor["detail"]> = descriptor?.detail;
+
+  return detail && detail.scale !== null ? { reference: detail.reference, scale: detail.scale } : null;
 }

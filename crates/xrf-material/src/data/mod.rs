@@ -10,4 +10,5 @@ pub(crate) mod xray_material_descriptor;
 pub(crate) mod xray_material_detail;
 pub(crate) mod xray_surface_declaration;
 pub(crate) mod xray_surface_descriptor;
+pub(crate) mod xray_surface_detail;
 pub(crate) mod xray_surface_draw;

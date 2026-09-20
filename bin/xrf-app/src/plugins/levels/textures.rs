@@ -4,24 +4,32 @@ use std::collections::BTreeSet;
 
 use xrf_error::XrfResult;
 use xrf_level::LevelFile;
+use xrf_material::XraySurfaceDescriptor;
 use xrf_vfs::{XrayAssetRules, XrayAssetType, XrayProbe, XrayResolution};
 
 use crate::plugins::levels::state::LevelTextureReference;
 
-/// Resolves every texture a level's shader table names, base textures and lightmaps alike.
-pub fn resolve_textures(level: &LevelFile, probe: &XrayProbe, directory: Option<&str>) -> Vec<LevelTextureReference> {
-  let Some(shaders) = level.shaders.as_ref() else {
-    return Vec::new();
-  };
-
+/// Resolves every texture a level's surfaces bind: base textures, lightmaps and detail textures alike.
+pub fn resolve_textures(
+  level: &LevelFile,
+  surfaces: &[XraySurfaceDescriptor],
+  probe: &XrayProbe,
+  directory: Option<&str>,
+) -> Vec<LevelTextureReference> {
   let mut references: BTreeSet<&str> = BTreeSet::new();
 
-  for entry in shaders.references() {
-    for texture in &entry.textures {
-      if !texture.is_empty() {
-        references.insert(texture.as_str());
+  if let Some(shaders) = level.shaders.as_ref() {
+    for entry in shaders.references() {
+      for texture in &entry.textures {
+        if !texture.is_empty() {
+          references.insert(texture.as_str());
+        }
       }
     }
+  }
+
+  for detail in surfaces.iter().filter_map(|surface| surface.detail.as_ref()) {
+    references.insert(detail.reference.as_str());
   }
 
   references

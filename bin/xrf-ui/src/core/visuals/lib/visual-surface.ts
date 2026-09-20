@@ -8,26 +8,21 @@ import { Nullable } from "@/lib/types/general";
 /**
  * The material state of every submesh, by the index the submesh reports.
  *
- * @param submeshes - Submeshes as the backend described them.
- * @param surfaces - What the renderer draws for each declared shader name.
+ * @param submeshes - Submeshes as the backend described them, in the order the model declares them.
+ * @param surfaces - What the renderer draws for each submesh, answered in that same order.
  * @returns One material state per submesh.
  */
 export function createVisualSurfaces(
   submeshes: Array<VisualSubmesh>,
-  surfaces: Record<string, XraySurfaceDescriptor> = {}
+  surfaces: ReadonlyArray<XraySurfaceDescriptor> = []
 ): Map<number, IRenderSurface> {
   return new Map(
-    submeshes.map((submesh: VisualSubmesh) => [submesh.index, getRenderSurface(surfaces, submesh.shaderName)])
+    submeshes.map((submesh: VisualSubmesh, position: number) => [submesh.index, getRenderSurface(surfaces, position)])
   );
 }
 
 /**
  * Logical paths of the texture files a model reads alpha out of.
- *
- * Needed because uploads are per **file** while alpha is per **surface**: a DXT1 file has to be uploaded in a format
- * that carries its one bit of alpha, and that decision belongs to the file rather than to each submesh naming it.
- * Answering "any submesh reads it" is sound in both directions - a submesh whose surface is opaque never samples
- * alpha, whatever format the file arrived in.
  *
  * @param surfaces - Material state per submesh index, as {@link createVisualSurfaces} joined it, keyed by index.
  * @param textures - The model's texture references, resolved or not.

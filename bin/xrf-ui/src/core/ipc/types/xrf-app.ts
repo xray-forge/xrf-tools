@@ -1748,13 +1748,16 @@ export type SelectedLevelDescription = {
   lights: number;
   hasSun: boolean;
   sectors: Array<SectorOutline>;
-  /** Every texture the shader table names, resolved once so a sector arriving later is a lookup rather than a search. */
+  /**
+   * Every texture the level's surfaces bind, resolved once so a sector arriving later is a lookup rather than a
+   * search.
+   */
   textures: Array<LevelTextureReference>;
   /**
-   * How the renderer draws each shader the table names, by shader name, so a surface is cut out or blended the way
-   * its blender says rather than drawn solid.
+   * How the renderer draws each entry of the shader table, in its order, so a surface is cut out, blended and
+   * detailed the way its blender says rather than drawn flat. Indexed by the shader id a packed surface carries.
    */
-  surfaces: { [key in string]: XraySurfaceDescriptor };
+  surfaces: Array<XraySurfaceDescriptor>;
   /** Extent every sector together covers, which is where a camera is framed from. */
   bounds: VisualBounds | null;
 };
@@ -1770,8 +1773,8 @@ export type SelectedVisualDescription = {
   textures: { [key in string]: AssetTextureDescriptor };
   /** What the renderer builds for each declared texture, keyed by the reference as the mesh declares it. */
   materials: { [key in string]: XrayMaterialDescriptor };
-  /** How the renderer draws each declared shader, keyed by the shader name as the mesh declares it. */
-  surfaces: { [key in string]: XraySurfaceDescriptor };
+  /** How the renderer draws each submesh, in the order the model declares them. */
+  surfaces: Array<XraySurfaceDescriptor>;
   /** A `textures.ltx` the searched roots hold, or `None`. */
   texturesLtx: XrayAsset | null;
 };

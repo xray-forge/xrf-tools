@@ -232,11 +232,7 @@ export class LevelLoadService {
    * @param sessionId - The level opening the sector belongs to.
    * @param sector - Sector to read, by its index in the sectors chunk.
    */
-  private *readSector(
-    sessionId: string,
-    sector: number,
-    surfaces: Readonly<Record<string, XraySurfaceDescriptor>>
-  ): TFlow {
+  private *readSector(sessionId: string, sector: number, surfaces: ReadonlyArray<XraySurfaceDescriptor>): TFlow {
     const timer: Timer = new Timer();
 
     const snapshot: SessionSnapshot<SectorDescription> = yield* call(

@@ -111,13 +111,13 @@ function toGeometryViews(buffer: ArrayBuffer, geometry: SectorGeometry): ISector
  *
  * @param description - What `open_sector` reported about the pack.
  * @param buffer - The bytes `read_sector` served for that same pack.
- * @param surfaces - How the renderer draws each shader the level's table names, from the open.
+ * @param surfaces - How the renderer draws each row of the level's shader table, from the open.
  * @returns Views over the buffer, and the draws that consume them.
  */
 export function createSectorViews(
   description: SectorDescription,
   buffer: ArrayBuffer,
-  surfaces: Readonly<Record<string, XraySurfaceDescriptor>> = {}
+  surfaces: ReadonlyArray<XraySurfaceDescriptor> = []
 ): ISectorViews {
   if (buffer.byteLength !== description.bufferLength) {
     throw new Error(
@@ -133,14 +133,14 @@ export function createSectorViews(
       drawables: group.drawables,
       geometry: toGeometryViews(buffer, group.geometry),
       instanceCount: group.instanceCount,
-      render: getRenderSurface(surfaces, group.surface.shaderName),
+      render: getRenderSurface(surfaces, group.surface.shaderId),
       surface: group.surface,
       transforms: toFloatView(buffer, group.transforms),
     })),
     sections: description.sections.map((section) => ({
       count: section.draw.count,
       drawables: section.drawables,
-      render: getRenderSurface(surfaces, section.surface.shaderName),
+      render: getRenderSurface(surfaces, section.surface.shaderId),
       start: section.draw.start,
       surface: section.surface,
       triangleCount: section.draw.count / 3,

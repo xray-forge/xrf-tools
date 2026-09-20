@@ -28,8 +28,8 @@ interface IVisualSubmeshSectionProps extends BaseComponentProps {
   textures?: Record<string, AssetTextureDescriptor>;
   /** What the renderer builds for each declared texture, keyed by the reference as the mesh declares it. */
   materials?: Record<string, XrayMaterialDescriptor>;
-  /** How the renderer draws each declared shader, keyed by the shader name as the mesh declares it. */
-  surfaces?: Record<string, XraySurfaceDescriptor>;
+  /** How the renderer draws this submesh, from the answer the open resolved for it. */
+  surface?: Nullable<XraySurfaceDescriptor>;
 }
 
 /**
@@ -46,7 +46,7 @@ export function VisualSubmeshSection({
   bumpStatus = null,
   textures,
   materials,
-  surfaces,
+  surface = null,
 }: IVisualSubmeshSectionProps): ReactElement {
   const { content } = submesh;
 
@@ -68,7 +68,7 @@ export function VisualSubmeshSection({
     >
       <EditorPanelProperty label={"Shader"} value={submesh.shaderName ?? ABSENT_VALUE} isMonospace />
 
-      <VisualSubmeshSurface surface={submesh.shaderName ? (surfaces?.[submesh.shaderName] ?? null) : null} />
+      <VisualSubmeshSurface surface={surface} />
 
       <EditorPanelProperty label={"Type"} value={submesh.modelTypeLabel} />
 

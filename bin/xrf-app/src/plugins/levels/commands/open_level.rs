@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
@@ -38,8 +37,8 @@ pub async fn levels_open_level(
   let directory: Option<String> = source.get_logical_directory();
   let (read, textures, surfaces) = assets.with_probe(&roots, |probe| {
     let read: ReadLevel = read_source(&source, probe)?;
-    let textures: Vec<LevelTextureReference> = resolve_textures(&read.level, probe, directory.as_deref());
-    let surfaces: HashMap<String, XraySurfaceDescriptor> = resolve_surfaces(&read.level, probe);
+    let surfaces: Vec<XraySurfaceDescriptor> = resolve_surfaces(&read.level, probe);
+    let textures: Vec<LevelTextureReference> = resolve_textures(&read.level, &surfaces, probe, directory.as_deref());
 
     TauriResult::Ok((read, textures, surfaces))
   })??;

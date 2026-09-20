@@ -5,34 +5,45 @@ use xrf_error::XrfResult;
 use xrf_shaders::{ShaderBlender, ShaderLibraryFile};
 use xrf_vfs::{XrayAsset, XrayAssetType, XrayProbe};
 
+use crate::data::xray_material_descriptor::XrayMaterialDescriptor;
+use crate::data::xray_material_detail::XrayMaterialDetail;
 use crate::data::xray_surface_declaration::XraySurfaceDeclaration;
 use crate::data::xray_surface_descriptor::XraySurfaceDescriptor;
+use crate::data::xray_surface_detail::XraySurfaceDetail;
+use crate::resolve::xray_material_resolver::XrayMaterialResolver;
 use crate::resolve::xray_surface_alpha::XraySurfaceAlpha;
+use crate::resolve::xray_surface_detail_rule::XraySurfaceDetailRule;
 use crate::resolve::xray_surface_rule::XraySurfaceRule;
 
-/// Answers how a surface is drawn from the shader name it declares.
-pub struct XraySurfaceResolver {
+/// Answers how a surface is drawn from the shader name it declares and the textures it dresses with.
+pub struct XraySurfaceResolver<'probe, 'vfs> {
+  /// Kept because a surface is not answerable from `shaders.xr` alone: what details it is read from the descriptor
+  /// of its own base texture, the way `CBlender_Compile` reads it before compiling
+  /// (`Layers/xrRender/Blender_Recorder.cpp`).
+  probe: &'probe XrayProbe<'vfs>,
   source: XraySurfaceSource,
 }
 
-impl XraySurfaceResolver {
+impl<'probe, 'vfs> XraySurfaceResolver<'probe, 'vfs> {
   /// Where the engine loads the blender library from: the game data root, beside `gamemtl.xr`
   /// (`Layers/xrRender/ResourceManager_Loader.cpp`).
   pub const SHADER_LIBRARY_LOGICAL_PATH: &'static str = XrayAssetType::SHADER_LIBRARY_PATH;
 
   /// Locates and reads the shader library once, recording why it could not rather than failing.
-  pub fn open(probe: &XrayProbe) -> Self {
+  pub fn open(probe: &'probe XrayProbe<'vfs>) -> Self {
     let Some(asset) = probe
       .find(Self::SHADER_LIBRARY_LOGICAL_PATH)
       .ok()
       .and_then(|resolution| resolution.get_asset().cloned())
     else {
       return Self {
+        probe,
         source: XraySurfaceSource::Absent,
       };
     };
 
     Self {
+      probe,
       source: match Self::read(probe, &asset) {
         Ok(library) => XraySurfaceSource::Read { asset, library },
         Err(error) => XraySurfaceSource::Unreadable {
@@ -43,8 +54,12 @@ impl XraySurfaceResolver {
     }
   }
 
-  /// How the renderer draws a surface naming this shader.
-  pub fn describe(&self, shader_name: &str) -> XraySurfaceDescriptor {
+  /// How the renderer draws a surface naming this shader and dressed with these textures.
+  pub fn describe(&self, shader_name: &str, textures: &[String]) -> XraySurfaceDescriptor {
+    if shader_name.is_empty() {
+      return XraySurfaceDescriptor::opaque(None, XraySurfaceDeclaration::Undeclared);
+    }
+
     let (asset, library): (&XrayAsset, &ShaderLibraryFile) = match &self.source {
       XraySurfaceSource::Absent => return XraySurfaceDescriptor::opaque(None, XraySurfaceDeclaration::NoLibrary),
       XraySurfaceSource::Unreadable { asset, reason } => {
@@ -59,11 +74,11 @@ impl XraySurfaceResolver {
       return XraySurfaceDescriptor::opaque(Some(asset.clone()), XraySurfaceDeclaration::Undefined);
     };
 
-    Self::describe_blender(asset, blender)
+    self.describe_blender(asset, blender, textures)
   }
 
   /// What one blender declares, and what the deferred renderer compiles from it.
-  fn describe_blender(asset: &XrayAsset, blender: &ShaderBlender) -> XraySurfaceDescriptor {
+  fn describe_blender(&self, asset: &XrayAsset, blender: &ShaderBlender, textures: &[String]) -> XraySurfaceDescriptor {
     let class: String = blender.class.tag();
     let Some(rule) = XraySurfaceRule::of(blender.class) else {
       return XraySurfaceDescriptor::opaque(Some(asset.clone()), XraySurfaceDeclaration::Unmodelled { class });
@@ -80,7 +95,24 @@ impl XraySurfaceResolver {
         is_strict_sorting: alpha.is_strict_sorting,
       },
       draw: rule.draw(alpha),
+      detail: self.describe_detail(blender, textures),
     }
+  }
+
+  /// The detail texture the blender's class binds, laid out at the tiling its base texture's descriptor sets.
+  fn describe_detail(&self, blender: &ShaderBlender, textures: &[String]) -> Option<XraySurfaceDetail> {
+    let rule: XraySurfaceDetailRule = XraySurfaceDetailRule::of(blender.class)?;
+    let base: &str = blender.base_texture(textures)?;
+    let descriptor: XrayMaterialDescriptor = XrayMaterialResolver::describe_texture(self.probe, base);
+    let associated: &XrayMaterialDetail = descriptor
+      .detail
+      .as_ref()
+      .filter(|_| descriptor.is_detail_associated())?;
+
+    Some(XraySurfaceDetail {
+      reference: rule.reference(blender, Some(associated.name.as_str()))?.to_owned(),
+      scale: associated.scale,
+    })
   }
 
   fn read(probe: &XrayProbe, asset: &XrayAsset) -> XrfResult<Arc<ShaderLibraryFile>> {

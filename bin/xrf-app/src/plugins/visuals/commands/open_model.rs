@@ -39,7 +39,7 @@ pub async fn visuals_open_model(
       let dependencies: VisualDependencies = VisualDependencies::resolve(&package.description, probe);
       let textures: HashMap<String, AssetTextureDescriptor> = describe_textures(probe, &dependencies);
       let materials: HashMap<String, XrayMaterialDescriptor> = describe_materials(probe, &dependencies);
-      let surfaces: HashMap<String, XraySurfaceDescriptor> = describe_surfaces(probe, &package.description);
+      let surfaces: Vec<XraySurfaceDescriptor> = describe_surfaces(probe, &package.description);
       let textures_ltx: Option<XrayAsset> = XrayMaterialResolver::find_textures_ltx(probe);
 
       TauriResult::Ok((
@@ -111,22 +111,18 @@ fn describe_materials(probe: &XrayProbe, dependencies: &VisualDependencies) -> H
   described
 }
 
-/// Describes how the renderer draws every shader the model's submeshes declare, once per shader name.
-fn describe_surfaces(probe: &XrayProbe, description: &VisualDescription) -> HashMap<String, XraySurfaceDescriptor> {
+/// Describes how the renderer draws each submesh of the model, in the order the model declares them.
+fn describe_surfaces(probe: &XrayProbe, description: &VisualDescription) -> Vec<XraySurfaceDescriptor> {
   let resolver: XraySurfaceResolver = XraySurfaceResolver::open(probe);
-  let mut described: HashMap<String, XraySurfaceDescriptor> = HashMap::new();
 
-  for submesh in &description.submeshes {
-    let Some(shader) = submesh.shader_name.as_ref() else {
-      continue;
-    };
+  description
+    .submeshes
+    .iter()
+    .map(|submesh| {
+      // A submesh dresses with the one texture it names, which is the list the engine compiles its shader against.
+      let textures: Vec<String> = submesh.texture_name.clone().into_iter().collect();
 
-    if described.contains_key(shader) {
-      continue;
-    }
-
-    described.insert(shader.clone(), resolver.describe(shader));
-  }
-
-  described
+      resolver.describe(submesh.shader_name.as_deref().unwrap_or_default(), &textures)
+    })
+    .collect()
 }

@@ -30,6 +30,13 @@ export function listSectorTextures(views: ISectorViews): Array<ISectorTextureReq
     for (const lightmap of surface.lightmaps) {
       request(requests, lightmap, false);
     }
+
+    // Named by the surface's blender or by its base texture's descriptor rather than by the shader table, so a sector
+    // that only fetched what its table names would draw its ground as the bare aerial photograph the base texture is.
+    // Its alpha is never read: the modulation is a multiply of three channels.
+    if (render.detail) {
+      request(requests, render.detail.reference, false);
+    }
   }
 
   return Array.from(requests.values());
@@ -45,6 +52,18 @@ export function hasAlphaSurfaces(views: ISectorViews): boolean {
   const drawn: Array<ISectorSectionViews | ISectorInstanceViews> = [...views.sections, ...views.instances];
 
   return drawn.some((it) => isAlphaRenderSurface(it.render));
+}
+
+/**
+ * Whether any surface of a sector is modulated by a detail texture.
+ *
+ * @param views - The sector.
+ * @returns Whether anything in it carries the high frequency half of an X-Ray surface.
+ */
+export function hasDetailedSurfaces(views: ISectorViews): boolean {
+  const drawn: Array<ISectorSectionViews | ISectorInstanceViews> = [...views.sections, ...views.instances];
+
+  return drawn.some((it) => Boolean(it.render.detail));
 }
 
 /** Records one reference, keeping the alpha answer of whichever surface naming it needs it. */

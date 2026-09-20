@@ -99,6 +99,33 @@ impl ShaderBlenderFixture {
     }
   }
 
+  /// `B_BmmD`, the level terrain class, which names its own detail texture under its own marker.
+  pub fn level_detailed(name: &str, detail: &str) -> Self {
+    Self {
+      blender: Self::describe(
+        ShaderBlenderClass::BMM_D_OLD,
+        name,
+        3,
+        vec![
+          ShaderBlenderProperty {
+            name: String::from("Detail map"),
+            value: ShaderBlenderPropertyValue::Marker,
+          },
+          Self::texture(ShaderBlender::TEXTURE_NAME_PROPERTY, detail),
+          ShaderBlenderProperty {
+            name: String::from("Transform"),
+            value: ShaderBlenderPropertyValue::Matrix(String::from("$null")),
+          },
+          Self::texture("R2-R", "detail\\detail_grnd_grass"),
+          Self::texture("R2-G", "detail\\detail_grnd_asphalt"),
+          Self::texture("R2-B", "detail\\detail_grnd_earth"),
+          Self::texture("R2-A", "detail\\detail_grnd_yantar"),
+        ],
+      ),
+      alpha_property: None,
+    }
+  }
+
   /// A blender of any class carrying only the properties every class writes.
   pub fn of(class: ShaderBlenderClass, name: &str) -> Self {
     Self {
@@ -206,6 +233,13 @@ impl ShaderBlenderFixture {
     ShaderBlenderProperty {
       name: String::from(name),
       value: ShaderBlenderPropertyValue::Bool(value),
+    }
+  }
+
+  fn texture(name: &str, value: &str) -> ShaderBlenderProperty {
+    ShaderBlenderProperty {
+      name: String::from(name),
+      value: ShaderBlenderPropertyValue::Texture(String::from(value)),
     }
   }
 

@@ -13,7 +13,7 @@ import {
 } from "@/fixtures/mocks/visual.mocks";
 
 describe("createVisualSurfaces", () => {
-  it("joins each submesh on the shader name it declares", () => {
+  it("joins each submesh on its own position, which is what the backend answered in", () => {
     const buffer: MockVisualBuffer = new MockVisualBuffer();
     const submeshes: Array<VisualSubmesh> = [
       mockPackedSubmesh(buffer, { index: 0, shaderName: "models\\model" }),
@@ -21,10 +21,7 @@ describe("createVisualSurfaces", () => {
       mockPackedSubmesh(buffer, { index: 2, shaderName: null }),
       mockPackedSubmesh(buffer, { index: 3, shaderName: "models\\never_answered" }),
     ];
-    const surfaces: Record<string, XraySurfaceDescriptor> = {
-      "models\\model": mockSurfaceDescriptor(),
-      "models\\model_aref": mockAlphaSurfaceDescriptor(),
-    };
+    const surfaces: Array<XraySurfaceDescriptor> = [mockSurfaceDescriptor(), mockAlphaSurfaceDescriptor()];
 
     const states: Map<number, IRenderSurface> = createVisualSurfaces(submeshes, surfaces);
 
@@ -71,10 +68,10 @@ describe("toAlphaTexturePaths", () => {
       }),
     ];
 
-    const surfaces: Map<number, IRenderSurface> = createVisualSurfaces(submeshes, {
-      "models\\model": mockSurfaceDescriptor(),
-      "models\\model_aref": mockAlphaSurfaceDescriptor(),
-    });
+    const surfaces: Map<number, IRenderSurface> = createVisualSurfaces(submeshes, [
+      mockSurfaceDescriptor(),
+      mockAlphaSurfaceDescriptor(),
+    ]);
 
     expect([...toAlphaTexturePaths(surfaces, textures)]).toEqual(["textures\\veg\\veg_fluff.dds"]);
   });
@@ -83,7 +80,7 @@ describe("toAlphaTexturePaths", () => {
     const buffer: MockVisualBuffer = new MockVisualBuffer();
     const surfaces: Map<number, IRenderSurface> = createVisualSurfaces(
       [mockPackedSubmesh(buffer, { index: 0, shaderName: "models\\model_aref" })],
-      { "models\\model_aref": mockAlphaSurfaceDescriptor() }
+      [mockAlphaSurfaceDescriptor()]
     );
 
     expect(

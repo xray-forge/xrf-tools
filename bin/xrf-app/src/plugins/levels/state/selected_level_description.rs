@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use serde::Serialize;
 use xrf_material::XraySurfaceDescriptor;
 use xrf_visual::{SectorOutline, VisualBounds};
@@ -22,11 +20,12 @@ pub struct SelectedLevelDescription {
   pub lights: u32,
   pub has_sun: bool,
   pub sectors: Vec<SectorOutline>,
-  /// Every texture the shader table names, resolved once so a sector arriving later is a lookup rather than a search.
+  /// Every texture the level's surfaces bind, resolved once so a sector arriving later is a lookup rather than a
+  /// search.
   pub textures: Vec<LevelTextureReference>,
-  /// How the renderer draws each shader the table names, by shader name, so a surface is cut out or blended the way
-  /// its blender says rather than drawn solid.
-  pub surfaces: HashMap<String, XraySurfaceDescriptor>,
+  /// How the renderer draws each entry of the shader table, in its order, so a surface is cut out, blended and
+  /// detailed the way its blender says rather than drawn flat. Indexed by the shader id a packed surface carries.
+  pub surfaces: Vec<XraySurfaceDescriptor>,
   /// Extent every sector together covers, which is where a camera is framed from.
   pub bounds: Option<VisualBounds>,
 }
