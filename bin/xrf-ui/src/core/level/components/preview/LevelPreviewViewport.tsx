@@ -23,6 +23,8 @@ export interface ILevelPreviewViewportProps extends BaseComponentProps {
   bounds: Nullable<VisualBounds>;
   /** Where surfaces take their textures from, owned by the loader rather than by the scene. */
   textures?: Nullable<ILevelTextureLookup>;
+  /** Counts changes to that set, which keeps one identity for the life of a level. */
+  textureRevision?: number;
   options?: ILevelViewOptions;
   /** What the camera sees and how it answers input. */
   camera?: ILevelCameraOptions;
@@ -44,6 +46,7 @@ export function LevelPreviewViewport({
   sectors,
   bounds,
   textures = null,
+  textureRevision = 0,
   options = DEFAULT_LEVEL_VIEW_OPTIONS,
   camera = DEFAULT_LEVEL_CAMERA_OPTIONS,
   lighting = DEFAULT_LEVEL_LIGHTING,
@@ -90,7 +93,7 @@ export function LevelPreviewViewport({
 
   useEffect(() => {
     sceneRef.current?.setTextures(textures);
-  }, [textures]);
+  }, [textures, textureRevision]);
 
   useEffect(() => {
     sceneRef.current?.setSectors(sectors);

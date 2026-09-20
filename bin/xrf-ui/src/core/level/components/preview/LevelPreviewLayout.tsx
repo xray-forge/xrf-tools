@@ -39,6 +39,8 @@ interface ILevelPreviewLayoutProps extends BaseComponentProps {
   bounds: Nullable<VisualBounds>;
   /** Where surfaces take their textures from, owned by the loader. */
   textures?: Nullable<ILevelTextureLookup>;
+  /** Counts changes to that set, since it keeps one identity for the life of a level. */
+  textureRevision?: number;
   /** What the open level is called. Its presence is what draws the file header over the viewport. */
   name?: Nullable<string>;
   subtitle?: ReactNode;
@@ -65,6 +67,7 @@ export function LevelPreviewLayout({
   sectors,
   bounds,
   textures = null,
+  textureRevision = 0,
   name = null,
   subtitle,
   streaming,
@@ -171,6 +174,7 @@ export function LevelPreviewLayout({
               sectors={sectors}
               bounds={bounds}
               textures={textures}
+              textureRevision={textureRevision}
               options={options}
               lighting={lighting}
               camera={camera}

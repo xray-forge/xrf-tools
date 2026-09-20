@@ -1,7 +1,7 @@
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
 /** What the pointer shows while it is dragging a scene, matching the picture viewport's own drag cursor. */
-const DRAG_CURSOR: string = "grabbing";
+export const DRAG_CURSOR: string = "grabbing";
 
 /**
  * Shows a scene's drag on the cursor, for as long as the drag lasts.

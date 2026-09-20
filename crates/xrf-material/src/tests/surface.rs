@@ -324,7 +324,10 @@ end
 fn a_shader_with_a_script_is_drawn_by_the_script_rather_than_by_its_class() {
   let tree: FixtureTree = library(
     "surface_script_wins",
-    &[ShaderBlenderFixture::of(ShaderBlenderClass::VERT, "effects\\lightplanes")],
+    &[ShaderBlenderFixture::of(
+      ShaderBlenderClass::VERT,
+      "effects\\lightplanes",
+    )],
   )
   .with_shader_script("effects\\lightplanes", LIGHT_PLANES_SCRIPT);
 
@@ -342,14 +345,20 @@ fn a_shader_with_a_script_is_drawn_by_the_script_rather_than_by_its_class() {
 fn a_shader_without_a_script_is_still_drawn_by_its_class() {
   let tree: FixtureTree = library(
     "surface_script_absent",
-    &[ShaderBlenderFixture::of(ShaderBlenderClass::VERT, "effects\\lightplanes")],
+    &[ShaderBlenderFixture::of(
+      ShaderBlenderClass::VERT,
+      "effects\\lightplanes",
+    )],
   )
   .with_shader_script("something\\else", LIGHT_PLANES_SCRIPT);
 
   let descriptor: XraySurfaceDescriptor = describe(&tree, "effects\\lightplanes");
 
   assert_eq!(descriptor.draw, XraySurfaceDraw::Opaque);
-  assert!(matches!(descriptor.declaration, XraySurfaceDeclaration::Described { .. }));
+  assert!(matches!(
+    descriptor.declaration,
+    XraySurfaceDeclaration::Described { .. }
+  ));
 }
 
 // `selflight.s`: source times zero over destination times one keeps the destination, so nothing of the surface lands.

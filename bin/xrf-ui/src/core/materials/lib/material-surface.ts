@@ -41,6 +41,7 @@ export function describeSurfaceOutcome(descriptor: XraySurfaceDescriptor): IMate
     case EXraySurfaceDeclaration.UNMODELLED:
       return { color: "warning", label: "Class not modelled" };
 
+    case EXraySurfaceDeclaration.SCRIPTED:
     case EXraySurfaceDeclaration.DESCRIBED:
       return describeDrawState(descriptor.draw);
 
@@ -83,6 +84,9 @@ export function describeSurfaceDraw(draw: XraySurfaceDraw): Nullable<string> {
         ? "multiplied both ways into the background, doubling it · depth tested and not written"
         : "multiplied into the background · depth tested and not written";
 
+    case EXraySurfaceDraw.INVISIBLE:
+      return "the background times one and the surface times zero · submitted, drawn, and contributing nothing";
+
     default:
       return assertExhaustive(draw);
   }
@@ -113,6 +117,18 @@ export function describeSurfaceDeclaration(declaration: XraySurfaceDeclaration, 
 
     case EXraySurfaceDeclaration.UNMODELLED:
       return `${source}, class '${declaration.class}' · this viewer derives no pass from that class`;
+
+    case EXraySurfaceDeclaration.SCRIPTED:
+      return [
+        `${declaration.script}, function '${declaration.function}'`,
+        // The whole point of saying so: a shader with a script is that script, and whatever class shaders.xr gives
+        // the same name never reaches the screen.
+        "read instead of the blender library, as the engine reads it",
+        declaration.isBlended ? "composited" : "written",
+        ...(declaration.isAlphaTested ? ["alpha tested"] : []),
+        declaration.isDepthWritten ? "depth written" : "depth not written",
+        ...(declaration.isWallmark ? ["wall mark"] : []),
+      ].join(" · ");
 
     case EXraySurfaceDeclaration.DESCRIBED:
       return [
@@ -161,6 +177,9 @@ function describeDrawState(draw: XraySurfaceDraw): IMaterialStateDescriptor {
 
     case EXraySurfaceDraw.MULTIPLIED:
       return { color: "success", label: draw.isDoubled ? "Multiplied 2x" : "Multiplied" };
+
+    case EXraySurfaceDraw.INVISIBLE:
+      return { color: "default", label: "Draws nothing" };
 
     default:
       return assertExhaustive(draw);

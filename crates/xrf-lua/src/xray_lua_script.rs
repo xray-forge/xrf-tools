@@ -110,7 +110,10 @@ end
     let blend: &XRayLuaChainedCall = begin.chained_call("blend").expect("a blend in the chain");
 
     assert!(blend.argument(0).expect("the switch").is_true());
-    assert_eq!(blend.argument(1).and_then(XRayLuaValue::as_name), Some("blend.srcalpha"));
+    assert_eq!(
+      blend.argument(1).and_then(XRayLuaValue::as_name),
+      Some("blend.srcalpha")
+    );
     assert_eq!(blend.argument(2).and_then(XRayLuaValue::as_name), Some("blend.one"));
 
     let zb: &XRayLuaChainedCall = begin.chained_call("zb").expect("a zb in the chain");

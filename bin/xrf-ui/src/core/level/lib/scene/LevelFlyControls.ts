@@ -1,6 +1,7 @@
 import { Camera } from "three";
 
 import { EMPTY_LEVEL_FLY_INPUT, getFlyBinding, ILevelFlyInput, LevelFlyCamera } from "@/core/level/lib/camera";
+import { DRAG_CURSOR } from "@/lib/media/drag-cursor";
 
 /**
  * Binds a viewport's pointer and keyboard to a fly camera.
@@ -11,6 +12,8 @@ export class LevelFlyControls {
   private readonly input: ILevelFlyInput = { ...EMPTY_LEVEL_FLY_INPUT };
 
   private isLooking: boolean = false;
+  /** The cursor the element had before a drag took it, so letting go puts back whatever was there. */
+  private restingCursor: string = "";
 
   /**
    * @param camera - The fly camera to drive, which outlives these controls: where it is looking survives a viewport
@@ -51,16 +54,23 @@ export class LevelFlyControls {
     this.element.removeEventListener("blur", this.onBlur);
 
     window.removeEventListener("pointerup", this.onPointerUp);
+
+    this.element.style.cursor = this.restingCursor;
   }
 
   private readonly onPointerDown = (event: PointerEvent): void => {
     this.isLooking = true;
     this.element.setPointerCapture(event.pointerId);
     this.element.focus();
+
+    // The same answer the orbit previews give the same gesture: a drag that turns the view says so on the pointer.
+    this.restingCursor = this.element.style.cursor;
+    this.element.style.cursor = DRAG_CURSOR;
   };
 
   private readonly onPointerUp = (): void => {
     this.isLooking = false;
+    this.element.style.cursor = this.restingCursor;
   };
 
   private readonly onPointerMove = (event: PointerEvent): void => {

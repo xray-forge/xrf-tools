@@ -533,3 +533,54 @@ describe("LevelLoadService streaming progress", () => {
     expect(service.textures.get("stone")?.texture).toBeTruthy();
   });
 });
+
+describe("LevelLoadService texture revision", () => {
+  beforeEach(() => {
+    resetMockInvoke();
+  });
+
+  // The set keeps one identity for the life of a level, because it owns uploads. That leaves a view nothing to watch,
+  // and a surface dressed before its texture arrived stays undressed until something else happens to re-dress it.
+  it("counts a texture arriving, so a surface drawn before it can be dressed again", async () => {
+    const { level, description, buffer } = mockStreamable([outlineAt(0, 1)]);
+    const { service } = mockInjectedService(LevelLoadService);
+
+    armLevel(level, description, buffer);
+
+    await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS);
+
+    const opened: number = service.textureRevision;
+
+    await service.stream(ORIGIN);
+
+    expect(service.textureRevision).toBeGreaterThan(opened);
+  });
+
+  // A restore releases whatever the last level held, so everything drawn from the set is undressed at that moment.
+  it("counts the open that released the last level's textures", async () => {
+    const { level, description, buffer } = mockStreamable([outlineAt(0, 1)]);
+    const { service } = mockInjectedService(LevelLoadService);
+
+    armLevel(level, description, buffer);
+
+    expect(service.textureRevision).toBe(0);
+
+    await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS);
+
+    expect(service.textureRevision).toBeGreaterThan(0);
+  });
+
+  it("keeps the set itself at one identity, since it owns what is uploaded", async () => {
+    const { level, description, buffer } = mockStreamable([outlineAt(0, 1)]);
+    const { service } = mockInjectedService(LevelLoadService);
+
+    armLevel(level, description, buffer);
+
+    const before = service.textures;
+
+    await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS);
+    await service.stream(ORIGIN);
+
+    expect(service.textures).toBe(before);
+  });
+});

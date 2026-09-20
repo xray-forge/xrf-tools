@@ -6,6 +6,7 @@ import {
   CustomBlending,
   DstColorFactor,
   NormalBlending,
+  OneFactor,
   SrcColorFactor,
   ZeroFactor,
 } from "three";
@@ -34,6 +35,15 @@ export interface IRenderBlending {
 }
 
 const NORMAL_BLENDING: IRenderBlending = { blendDst: undefined, blendSrc: undefined, blending: NormalBlending };
+
+/**
+ * Source times zero over destination times one: what is behind the surface, and nothing of the surface.
+ */
+const BLANK_BLENDING: IRenderBlending = {
+  blendDst: OneFactor,
+  blendSrc: ZeroFactor,
+  blending: CustomBlending,
+};
 
 /**
  * The material state one surface is drawn with, translated out of what the engine compiles for its shader.
@@ -81,6 +91,16 @@ export function toRenderSurface(descriptor: Nullable<XraySurfaceDescriptor>): IR
 
   if (!draw || draw.kind === EXraySurfaceDraw.OPAQUE) {
     return detail ? { ...OPAQUE_RENDER_SURFACE, detail } : OPAQUE_RENDER_SURFACE;
+  }
+
+  if (draw.kind === EXraySurfaceDraw.INVISIBLE) {
+    return {
+      alphaTest: 0,
+      blend: BLANK_BLENDING,
+      detail,
+      isDepthWritten: false,
+      isTransparent: true,
+    };
   }
 
   if (draw.kind === EXraySurfaceDraw.ALPHA_TESTED) {

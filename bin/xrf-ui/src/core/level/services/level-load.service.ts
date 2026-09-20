@@ -67,7 +67,11 @@ export class LevelLoadService {
       this.publishSectors();
     },
     isOpen: (sessionId: string): boolean => this.isOpen(sessionId),
-    load: (requests: ReadonlyArray<ISectorTextureRequest>): Promise<void> => this.loaded.load(requests),
+    load: async (requests: ReadonlyArray<ISectorTextureRequest>): Promise<void> => {
+      await this.loaded.load(requests);
+
+      this.noteTextures();
+    },
   });
 
   @Observable()
@@ -83,6 +87,9 @@ export class LevelLoadService {
 
   @Observable()
   public streaming: ILevelStreamProgress = IDLE_LEVEL_STREAM;
+
+  @Observable()
+  public textureRevision: number = 0;
 
   /**
    * Whether the restore below has settled, one way or the other.
@@ -205,6 +212,9 @@ export class LevelLoadService {
     // what finds a texture shipped beside it, and a restore has no other way to know them.
     this.loaded.open(selected.value.roots, selected.value.textures);
     this.level = this.level.asReady({ selected });
+
+    // The open released whatever the last level held, so everything drawn from the set is now undressed.
+    this.textureRevision += 1;
   }
 
   /**
@@ -254,6 +264,7 @@ export class LevelLoadService {
       // Both however the flow ends: a cancelled move must not leave a viewer reporting a read that is not coming, nor
       // leave the textures of a sector that never arrived holding memory until the level closes.
       this.loaded.retain(this.listResidentTextures());
+      this.noteTextures();
 
       runInAction(() => {
         this.streaming = IDLE_LEVEL_STREAM;
@@ -261,6 +272,12 @@ export class LevelLoadService {
     }
 
     this.publishSectors();
+  }
+
+  /** Records that the texture set is not what anything drawing from it last saw. */
+  @BoundAction()
+  private noteTextures(): void {
+    this.textureRevision += 1;
   }
 
   /**
