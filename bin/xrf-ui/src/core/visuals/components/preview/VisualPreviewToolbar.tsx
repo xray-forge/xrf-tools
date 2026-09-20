@@ -12,7 +12,7 @@ import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
 import { EditorToolbarSeparator } from "@/core/shell/editor/EditorToolbarSeparator";
 import { EditorViewToggle } from "@/core/shell/editor/EditorViewToggle";
-import { IVisualPreviewViewOptions } from "@/core/visuals/components/scene";
+import { IVisualPreviewViewOptions } from "@/core/visuals/lib/scene";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { VisualMeshDetail } from "./VisualMeshDetail";

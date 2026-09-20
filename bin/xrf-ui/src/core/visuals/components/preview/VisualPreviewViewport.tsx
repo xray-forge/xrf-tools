@@ -4,7 +4,7 @@ import { Texture } from "three";
 
 import { SettingsService } from "@/core/settings/services/settings";
 import { ViewportControls } from "@/core/ui/media/ViewportControls";
-import { IVisualPreviewViewOptions, VisualPreviewScene } from "@/core/visuals/components/scene";
+import { IVisualPreviewViewOptions, VisualPreviewScene } from "@/core/visuals/lib/scene";
 import { IVisualBumpTextures } from "@/core/visuals/lib/visual-bump";
 import { IVisualModelViews } from "@/core/visuals/lib/visual-views";
 import { DOLLY_STEP } from "@/lib/media/orbit-dolly";

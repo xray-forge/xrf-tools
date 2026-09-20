@@ -14,10 +14,6 @@ import { Nullable, Optional } from "@/lib/types/general";
 
 /**
  * Where one frame's bone transforms are read from.
- *
- * Which buffer and how far apart its bones sit is one decision, not two: a motion too short for the frame asked for
- * falls back to the bind pose, and the bind pose has a stride and an origin of its own. Resolved once so the mesh and
- * the overlay index the same way instead of each re-deriving it.
  */
 interface IPosedFrame {
   source: Float32Array;
@@ -34,9 +30,6 @@ export interface IVisualPreviewSkeletonConfig {
 
 /**
  * One model's skeleton: the bones skinning binds to, the overlay that draws them, and the pose both are showing.
- *
- * Built per model and thrown away with it. The pose and the hidden set are the caller's to re-apply, because both
- * outlive any one model: they are stated against a skeleton rather than against one model's geometry.
  */
 export class VisualPreviewSkeleton {
   /**
@@ -55,13 +48,7 @@ export class VisualPreviewSkeleton {
     return model.skeletonBinds ? new VisualPreviewSkeleton(model, parent, config) : null;
   }
 
-  /**
-   * One bone per bind transform, in bone order.
-   *
-   * Flat rather than parented: the backend already composed every bone into model space, so a hierarchy here would
-   * compose it a second time. Their matrices are set directly and never derived, which is why they carry
-   * `matrixAutoUpdate = false`.
-   */
+  /** One bone per bind transform, in bone order. */
   private readonly bones: Array<Bone> = [];
   private readonly skin: Skeleton;
   private readonly binds: Float32Array;
@@ -127,9 +114,6 @@ export class VisualPreviewSkeleton {
   /**
    * Poses every bone from one frame of a baked motion, or returns them to the bind pose.
    *
-   * Passing `null`, or a buffer too short for the frame asked for, restores the bind pose rather than posing from
-   * whatever happens to sit at that offset.
-   *
    * @param transforms - Every frame's bone transforms, frame major, or null to show the bind pose again.
    * @param frame - Which frame of that buffer to show.
    * @param floatsPerBone - Floats one bone occupies, as the bake reported it.
@@ -142,9 +126,6 @@ export class VisualPreviewSkeleton {
 
   /**
    * Collapses some of the bones, the way the engine hides a part that is not attached.
-   *
-   * Hiding is a pose rather than a draw rule, so this re-applies the current one. Indices rather than names keep the
-   * descendant rule - a hidden bone hides what hangs off it - with whoever knows the hierarchy.
    *
    * @param bones - Indices of bones to collapse, already including their descendants.
    */
@@ -172,9 +153,6 @@ export class VisualPreviewSkeleton {
 
   /**
    * Builds the overlay, when the model's bones form a segment to draw at all.
-   *
-   * `depthTest` off so the skeleton shows through the mesh it sits inside, which is the only way it answers where a
-   * bone is.
    *
    * @param positions - Bind pose segment endpoints, or null when nothing can be drawn.
    * @param config - How the overlay is drawn.
@@ -209,9 +187,6 @@ export class VisualPreviewSkeleton {
 
   /**
    * Writes the current pose into the bones, then collapses the hidden ones.
-   *
-   * Hiding happens after posing rather than instead of it, because a hidden bone still has to be written before it is
-   * zeroed: nothing else clears the frame it was showing when it was visible.
    */
   private applyPose(): void {
     const boneCount: number = this.binds.length / FLOATS_PER_BONE;
@@ -233,10 +208,6 @@ export class VisualPreviewSkeleton {
   /**
    * Decides which buffer this pose reads from.
    *
-   * A motion buffer too short for the frame asked for is refused rather than indexed: the frame the owner named may
-   * belong to a motion baked against another skeleton, and posing from whatever happens to sit at that offset would
-   * show a mangled model instead of an honest bind pose.
-   *
    * @param boneCount - Bones this skeleton carries, which is what makes a motion frame's stride.
    * @returns The buffer to pose from and how to index it.
    */
@@ -252,10 +223,6 @@ export class VisualPreviewSkeleton {
 
   /**
    * Collapses one bone to nothing.
-   *
-   * The engine's own operation: hiding a bone sets its transform to `scale(0, 0, 0)`, an identity with its diagonal
-   * zeroed (`xray-16/src/Layers/xrRender/SkeletonCustom.cpp:494`). Every vertex weighted to it then lands on the origin
-   * and its triangles are degenerate, which is what makes the part disappear - there is no visibility flag in the draw.
    *
    * @param bone - Bone index to collapse.
    */
@@ -273,10 +240,6 @@ export class VisualPreviewSkeleton {
 
   /**
    * Writes one bone's transform out of a frame into its matrix.
-   *
-   * The twelve floats are already a column-major 4x4's three basis columns and its translation, so they are written
-   * straight into `elements` rather than through `Matrix4.set`, which takes its arguments row major and would silently
-   * transpose them. `matrixWorldNeedsUpdate` because these bones do not derive their matrices.
    *
    * @param bone - Bone index, which is also its index in the frame.
    * @param frame - Frame to read this bone's transform out of.
@@ -310,9 +273,6 @@ export class VisualPreviewSkeleton {
 
   /**
    * Moves the overlay's segment endpoints to where the posed bones now are.
-   *
-   * The pairs say which two bones each drawn segment joins, and a bone's translation is the last three of its twelve
-   * floats, so this reads the same frame the matrices came from rather than being sent positions of its own.
    *
    * @param frame - Frame the bones were posed from, read again here for their translations.
    */

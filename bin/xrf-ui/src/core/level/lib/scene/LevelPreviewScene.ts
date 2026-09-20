@@ -1,14 +1,6 @@
 import { Group, PerspectiveCamera, Vector3 } from "three";
 
 import { VisualBounds } from "@/core/ipc/types/xrf-visual";
-import {
-  DEFAULT_LEVEL_PREVIEW_SCENE_CONFIG,
-  ILevelPreviewSceneConfig,
-} from "@/core/level/components/scene/level-scene-config";
-import { LevelFlyControls } from "@/core/level/components/scene/LevelFlyControls";
-import { LevelPreviewFrame } from "@/core/level/components/scene/LevelPreviewFrame";
-import { LevelPreviewLighting } from "@/core/level/components/scene/LevelPreviewLighting";
-import { LevelPreviewSectors } from "@/core/level/components/scene/LevelPreviewSectors";
 import { ILevelCamera, toLevelCamera } from "@/core/level/lib/camera/level-camera";
 import { LevelFlyCamera } from "@/core/level/lib/camera/level-fly-camera";
 import { ILevelViewpoint, toLevelStartViewpoint } from "@/core/level/lib/camera/level-viewpoint";
@@ -21,6 +13,12 @@ import { DEFAULT_LEVEL_VIEW_OPTIONS, ILevelViewOptions } from "@/core/level/lib/
 import { TFrameRateLimit } from "@/core/render/lib/frame/render-frame-limit";
 import { RenderViewport } from "@/core/render/lib/frame/render-viewport";
 import { Nullable } from "@/lib/types/general";
+
+import { DEFAULT_LEVEL_PREVIEW_SCENE_CONFIG, ILevelPreviewSceneConfig } from "./level-scene-config";
+import { LevelFlyControls } from "./LevelFlyControls";
+import { LevelPreviewFrame } from "./LevelPreviewFrame";
+import { LevelPreviewLighting } from "./LevelPreviewLighting";
+import { LevelPreviewSectors } from "./LevelPreviewSectors";
 
 /** What the scene reports back out, once a frame at most. */
 export interface ILevelPreviewSceneHandlers {

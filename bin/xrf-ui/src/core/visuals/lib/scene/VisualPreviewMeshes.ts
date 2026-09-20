@@ -12,7 +12,6 @@ import {
 
 import { applyRenderSurface, createRenderMaterial } from "@/core/render/lib/surface/render-material";
 import { IRenderSurface, OPAQUE_RENDER_SURFACE } from "@/core/render/lib/surface/render-surface";
-import { createSubmeshGeometry } from "@/core/visuals/components/scene/VisualPreviewScene.utils";
 import {
   applyXrayBumpShading,
   IVisualBumpShading,
@@ -27,6 +26,8 @@ import {
   IVisualSubmeshViews,
 } from "@/core/visuals/lib/visual-views";
 import { Nullable, Optional } from "@/lib/types/general";
+
+import { createSubmeshGeometry } from "./VisualPreviewScene.utils";
 
 const MESH_METALNESS: number = 0.05;
 const MESH_ROUGHNESS: number = 0.75;

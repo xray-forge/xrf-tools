@@ -1,13 +1,11 @@
 import { describe, expect, it, jest } from "@jest/globals";
 
-import { IEquipmentGridPalette } from "@/applications/sprite-equipment-editor/components/sprite-view/EquipmentGridCanvas/equipment-grid-palette";
-import {
-  IEquipmentGridFrame,
-  paintEquipmentGrid,
-} from "@/applications/sprite-equipment-editor/components/sprite-view/EquipmentGridCanvas/EquipmentGridPainter";
 import { EEquipmentSlotClaim } from "@/core/ipc/types/xrf-texture";
 import { toEquipmentLayout } from "@/core/sprite-equipment/lib";
 import { mockEquipmentOccupant } from "@/fixtures/mocks/sprite.mocks";
+
+import { IEquipmentGridPalette } from "./equipment-grid-palette";
+import { IEquipmentGridFrame, paintEquipmentGrid } from "./EquipmentGridPainter";
 
 /** Named rather than themed, so an assertion says which mark it is looking at. */
 const PALETTE: IEquipmentGridPalette = {

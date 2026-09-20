@@ -11,7 +11,7 @@ import { IPanZoomRect, IPanZoomSize, IPanZoomTransform, toViewportRect } from "@
 import { Nullable } from "@/lib/types/general";
 
 import { IEquipmentGridPalette, toClaimFill } from "./equipment-grid-palette";
-import { fillRect, strokeRect, toHairline } from "./EquipmentGridCanvas.utils";
+import { fillRect, strokeRect, toHairline } from "./EquipmentGridPainter.utils";
 
 /** Below this many viewport pixels a cell is narrower than the lines around it, so the lattice stops being drawn. */
 const MINIMUM_LEGIBLE_CELL: number = 4;

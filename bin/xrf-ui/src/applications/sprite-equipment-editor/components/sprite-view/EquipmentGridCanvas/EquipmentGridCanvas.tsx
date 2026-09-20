@@ -1,16 +1,18 @@
 import { Theme, useTheme } from "@mui/material";
 import { ReactElement, useCallback, useLayoutEffect, useMemo, useRef } from "react";
 
+import {
+  IEquipmentGridPalette,
+  paintEquipmentGrid,
+  prepareCanvas,
+  toEquipmentGridPalette,
+} from "@/applications/sprite-equipment-editor/lib/scene";
 import { IEquipmentLayout, TEquipmentCell } from "@/core/sprite-equipment/lib";
 import { IImageViewportView } from "@/core/ui/media/ImageViewport";
 import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { toPanZoomTransform } from "@/lib/media/pan-zoom";
 import { Nullable } from "@/lib/types/general";
-
-import { IEquipmentGridPalette, toEquipmentGridPalette } from "./equipment-grid-palette";
-import { prepareCanvas } from "./EquipmentGridCanvas.utils";
-import { paintEquipmentGrid } from "./EquipmentGridPainter";
 
 interface IEquipmentGridCanvasProps extends BaseComponentProps {
   view: IImageViewportView;

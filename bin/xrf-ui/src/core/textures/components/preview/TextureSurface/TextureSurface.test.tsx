@@ -12,7 +12,7 @@ let TextureSurface: typeof import("./TextureSurface").TextureSurface;
 
 beforeAll(async () => {
   // Load the component after stubbing its GPU boundary; jsdom cannot construct a WebGL renderer.
-  jest.doMock("./TextureSurfaceScene", () => ({
+  jest.doMock("@/core/textures/lib/scene/TextureSurfaceScene", () => ({
     TextureSurfaceScene: jest.fn(() => ({
       mount: (container: HTMLElement) => container.appendChild(document.createElement("canvas")),
       dispose: jest.fn(),

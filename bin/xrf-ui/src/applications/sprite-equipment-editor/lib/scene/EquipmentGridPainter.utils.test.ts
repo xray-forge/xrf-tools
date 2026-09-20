@@ -1,12 +1,8 @@
 import { afterEach, describe, expect, it, jest } from "@jest/globals";
 
-import {
-  fillRect,
-  prepareCanvas,
-  strokeRect,
-  toHairline,
-} from "@/applications/sprite-equipment-editor/components/sprite-view/EquipmentGridCanvas/EquipmentGridCanvas.utils";
 import { Nullable } from "@/lib/types/general";
+
+import { fillRect, prepareCanvas, strokeRect, toHairline } from "./EquipmentGridPainter.utils";
 
 /** A context that records what it was asked to do, since jsdom draws nothing. */
 function mockContext(): CanvasRenderingContext2D {

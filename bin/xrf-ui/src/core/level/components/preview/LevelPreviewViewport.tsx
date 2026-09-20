@@ -2,10 +2,10 @@ import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useEffect, useRef } from "react";
 
 import { VisualBounds } from "@/core/ipc/types/xrf-visual";
-import { LevelPreviewScene } from "@/core/level/components/scene/LevelPreviewScene";
 import { ILevelCamera } from "@/core/level/lib/camera/level-camera";
 import { DEFAULT_LEVEL_LIGHTING, ILevelLighting } from "@/core/level/lib/lighting/level-lighting";
 import { ILevelPoint } from "@/core/level/lib/residency/level-residency";
+import { LevelPreviewScene } from "@/core/level/lib/scene";
 import { ILoadedSector } from "@/core/level/lib/sector/level-sector-set";
 import { ILevelStats } from "@/core/level/lib/stats/level-stats";
 import { ILevelTextureLookup } from "@/core/level/lib/texture/level-texture-set";

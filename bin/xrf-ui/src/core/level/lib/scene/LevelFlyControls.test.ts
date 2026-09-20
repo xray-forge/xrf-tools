@@ -1,8 +1,9 @@
 import { describe, expect, it } from "@jest/globals";
 import { PerspectiveCamera, Vector3 } from "three";
 
-import { LevelFlyControls } from "@/core/level/components/scene/LevelFlyControls";
 import { LevelFlyCamera } from "@/core/level/lib/camera/level-fly-camera";
+
+import { LevelFlyControls } from "./LevelFlyControls";
 
 /** A canvas the controls can take focus on and receive events from, as the viewport's own is. */
 function createElement(): HTMLElement {

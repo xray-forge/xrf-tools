@@ -8,6 +8,7 @@ import {
   EditorPanelProperty,
   EditorPanelSection,
 } from "@/core/shell/editor/EditorPanel";
+import { TextureChannelRenderer } from "@/core/textures/lib/scene/TextureChannelRenderer";
 import { ITextureBumpTexels, ITextureSurfaceTextures } from "@/core/textures/lib/texture-surface";
 import { TextureSelectionService } from "@/core/textures/services/selection";
 import { TextureSurfaceService } from "@/core/textures/services/surface";
@@ -22,7 +23,6 @@ import {
   ITextureTexelReadout,
   toTextureTexelPosition,
 } from "./texture-channel-readout";
-import { TextureChannelRenderer } from "./TextureChannelRenderer";
 import {
   describeTextureChannelsGap,
   ITextureChannelTile,

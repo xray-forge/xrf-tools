@@ -1,13 +1,11 @@
 import { Group, Object3D, Texture } from "three";
 
-import { IVisualMeshMaterialOptions, VisualPreviewMeshes } from "@/core/visuals/components/scene/VisualPreviewMeshes";
-import {
-  IVisualPreviewSkeletonConfig,
-  VisualPreviewSkeleton,
-} from "@/core/visuals/components/scene/VisualPreviewSkeleton";
 import { IVisualBumpTextures } from "@/core/visuals/lib/visual-bump";
 import { IVisualModelViews } from "@/core/visuals/lib/visual-views";
 import { Nullable } from "@/lib/types/general";
+
+import { IVisualMeshMaterialOptions, VisualPreviewMeshes } from "./VisualPreviewMeshes";
+import { IVisualPreviewSkeletonConfig, VisualPreviewSkeleton } from "./VisualPreviewSkeleton";
 
 /** What drawing one model needs beyond the model itself. */
 export interface IVisualPreviewModelOptions extends IVisualPreviewSkeletonConfig {

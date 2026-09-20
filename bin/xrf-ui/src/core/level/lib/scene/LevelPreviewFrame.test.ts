@@ -2,11 +2,12 @@ import { describe, expect, it } from "@jest/globals";
 import { AxesHelper, Box3Helper, Group, Object3D } from "three";
 
 import { VisualBounds } from "@/core/ipc/types/xrf-visual";
-import { DEFAULT_LEVEL_PREVIEW_SCENE_CONFIG } from "@/core/level/components/scene/level-scene-config";
-import { LevelPreviewFrame } from "@/core/level/components/scene/LevelPreviewFrame";
 import { DEFAULT_LEVEL_VIEW_OPTIONS, ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
 import { mockVisualBounds } from "@/fixtures/mocks/visual.mocks";
 import { Nullable } from "@/lib/types/general";
+
+import { DEFAULT_LEVEL_PREVIEW_SCENE_CONFIG } from "./level-scene-config";
+import { LevelPreviewFrame } from "./LevelPreviewFrame";
 
 function options(overrides: Partial<ILevelViewOptions> = {}): ILevelViewOptions {
   return { ...DEFAULT_LEVEL_VIEW_OPTIONS, ...overrides };

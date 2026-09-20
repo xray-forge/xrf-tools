@@ -1,11 +1,8 @@
 import { describe, expect, it } from "@jest/globals";
 import { DataTexture, NearestFilter, RepeatWrapping } from "three";
 
-import {
-  DEFAULT_VISUAL_PREVIEW_SCENE_CONFIG,
-  IVisualPreviewSceneConfig,
-} from "@/core/visuals/components/scene/scene-config";
-import { createCheckerTexture } from "@/core/visuals/components/scene/VisualPreviewScene.utils";
+import { DEFAULT_VISUAL_PREVIEW_SCENE_CONFIG, IVisualPreviewSceneConfig } from "./scene-config";
+import { createCheckerTexture } from "./VisualPreviewScene.utils";
 
 /** A board small enough to assert every pixel of. */
 const TINY_BOARD: IVisualPreviewSceneConfig = {

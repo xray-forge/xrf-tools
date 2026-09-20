@@ -1,8 +1,9 @@
 import { AmbientLight, Color, DirectionalLight, Object3D } from "three";
 
-import { DEFAULT_SUN_DISTANCE, SUN_DISTANCE_MARGIN } from "@/core/level/components/scene/level-lighting-config";
 import { DEFAULT_LEVEL_LIGHTING, ILevelLighting } from "@/core/level/lib/lighting/level-lighting";
 import { toSunPosition } from "@/core/level/lib/lighting/level-sun";
+
+import { DEFAULT_SUN_DISTANCE, SUN_DISTANCE_MARGIN } from "./level-lighting-config";
 
 /**
  * The light a level preview is drawn under, which belongs to the viewer rather than to the level.

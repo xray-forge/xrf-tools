@@ -13,7 +13,7 @@ import {
   VisualPreviewMotionViewport,
   VisualPreviewToolbar,
 } from "@/core/visuals/components/preview";
-import { DEFAULT_VISUAL_PREVIEW_VIEW_OPTIONS, IVisualPreviewViewOptions } from "@/core/visuals/components/scene";
+import { DEFAULT_VISUAL_PREVIEW_VIEW_OPTIONS, IVisualPreviewViewOptions } from "@/core/visuals/lib/scene";
 import { IVisualBumpTextures } from "@/core/visuals/lib/visual-bump";
 import { countVisualTriangles, IVisualModelViews } from "@/core/visuals/lib/visual-views";
 import { cn } from "@/lib/dom/dom-name";

@@ -1,10 +1,11 @@
 import { describe, expect, it } from "@jest/globals";
 import { Bone, LineSegments, Matrix4, Object3D } from "three";
 
-import { VisualPreviewSkeleton } from "@/core/visuals/components/scene/VisualPreviewSkeleton";
 import { FLOATS_PER_BONE, IVisualModelViews } from "@/core/visuals/lib/visual-views";
 import { mockVisualBoneFloats, mockVisualModelViews } from "@/fixtures/mocks/visual.mocks";
 import { Nullable } from "@/lib/types/general";
+
+import { VisualPreviewSkeleton } from "./VisualPreviewSkeleton";
 
 const CONFIG = { skeletonColor: 0x00ff00 };
 

@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it, jest } from "@jest/globals";
 
-import { DEFAULT_VISUAL_PREVIEW_VIEW_OPTIONS } from "@/core/visuals/components/scene";
+import { DEFAULT_VISUAL_PREVIEW_VIEW_OPTIONS } from "@/core/visuals/lib/scene";
 import { IVisualModelViews } from "@/core/visuals/lib/visual-views";
 import { mockVisualModelViews } from "@/fixtures/mocks/visual.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
@@ -23,7 +23,7 @@ let VisualPreviewViewport: typeof import("./VisualPreviewViewport").VisualPrevie
 
 beforeAll(async () => {
   // Load the viewport after replacing its WebGL boundary; jsdom cannot create a renderer.
-  jest.doMock("@/core/visuals/components/scene", () => ({ VisualPreviewScene: createScene }));
+  jest.doMock("@/core/visuals/lib/scene", () => ({ VisualPreviewScene: createScene }));
   ({ VisualPreviewViewport } = await import("./VisualPreviewViewport"));
 });
 

@@ -89,9 +89,6 @@ export enum EApplicationGroupId {
 
 /**
  * Whether an application does anything yet.
- *
- * `PLANNED` surfaces exist as signposts on the home page: the roster is the roadmap, so an unbuilt
- * screen is visible but inert rather than silently missing. Developer mode opens them anyway.
  */
 export enum EApplicationStatus {
   PLANNED = "planned",
