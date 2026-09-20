@@ -7,7 +7,7 @@ import { SelectedVisualDescription } from "@/core/ipc/types/xrf-app";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { EVisualTextureState } from "@/core/visuals/lib/visual-texture";
 import { IOpenVisual, VisualLoadService } from "@/core/visuals/services/visual-load.service";
-import { mockDdsFile, mockUncompressedDdsFile } from "@/fixtures/mocks/dds.mocks";
+import { mockDdsFile, mockUndecodableDdsFile } from "@/fixtures/mocks/dds.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { InvokeHandler, resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import {
@@ -417,7 +417,7 @@ describe("VisualLoadService shared textures", () => {
 describe("VisualLoadService texture decoding", () => {
   const decoder: jest.Mock = jest.fn(async () => ({ close: () => {}, height: 4, width: 4 }) as unknown as ImageBitmap);
 
-  // Reaching the backend at all means `DDSLoader` refused the file first, and it reports every refusal itself.
+  // Reaching the backend at all means the dds reader refused the file first, which it now does by reason.
   muteConsole("error");
 
   beforeEach(() => {
@@ -440,7 +440,7 @@ describe("VisualLoadService texture decoding", () => {
     setMockInvokeResponses({
       ["plugin:visuals|open_model"]: mockSessionResponse(selected),
       ["plugin:visuals|read_geometry"]: buffer,
-      ["plugin:assets|read_asset"]: mockUncompressedDdsFile({ blueMask: 0x00ff0000, redMask: 0x000000ff }),
+      ["plugin:assets|read_asset"]: mockUndecodableDdsFile(),
       ["plugin:visuals|read_texture"]: readTexture,
     });
 
@@ -468,7 +468,7 @@ describe("VisualLoadService texture decoding", () => {
     setMockInvokeResponses({
       ["plugin:visuals|open_model"]: mockSessionResponse(selected),
       ["plugin:visuals|read_geometry"]: buffer,
-      ["plugin:assets|read_asset"]: mockUncompressedDdsFile({ blueMask: 0x00ff0000, redMask: 0x000000ff }),
+      ["plugin:assets|read_asset"]: mockUndecodableDdsFile(),
       ["plugin:visuals|read_texture"]: readTexture,
     });
 
@@ -510,7 +510,7 @@ describe("VisualLoadService texture decoding", () => {
     setMockInvokeResponses({
       ["plugin:visuals|open_model"]: mockSessionResponse(selected),
       ["plugin:visuals|read_geometry"]: buffer,
-      ["plugin:assets|read_asset"]: mockUncompressedDdsFile({ blueMask: 0x00ff0000, redMask: 0x000000ff }),
+      ["plugin:assets|read_asset"]: mockUndecodableDdsFile(),
       ["plugin:visuals|read_texture"]: new ArrayBuffer(8),
     });
 
@@ -568,7 +568,7 @@ describe("VisualLoadService texture decoding", () => {
         dependencies: { motions: [], textures: [mockTextureDependency({ submeshIndex: 0 })] },
       }),
       ["plugin:visuals|read_geometry"]: buffer,
-      ["plugin:assets|read_asset"]: mockUncompressedDdsFile({ blueMask: 0x00ff0000, redMask: 0x000000ff }),
+      ["plugin:assets|read_asset"]: mockUndecodableDdsFile(),
       ["plugin:visuals|read_texture"]: new ArrayBuffer(8),
     });
 
@@ -611,9 +611,9 @@ describe("VisualLoadService texture decoding", () => {
     expect(dispose).toHaveBeenCalledTimes(2);
   });
 
-  it("asks the backend to decode a texture three.js declines", async () => {
-    // A channel order `DDSLoader` has no branch for, which is 62 files across the reference trees and 24 of Anomaly's
-    // model texture references.
+  it("asks the backend to decode a texture the reader declines", async () => {
+    // A layout whose channels are not whole bytes, which is decoding rather than reordering and so stays the
+    // backend's job. Every block format the gpu can take is read on this side instead.
     const { selected, buffer } = mockLoadable();
     const { service } = mockInjectedService(VisualLoadService);
 
@@ -625,7 +625,7 @@ describe("VisualLoadService texture decoding", () => {
         dependencies: { motions: [], textures: [mockTextureDependency({ submeshIndex: 0 })] },
       }),
       ["plugin:visuals|read_geometry"]: buffer,
-      ["plugin:assets|read_asset"]: mockUncompressedDdsFile({ blueMask: 0x00ff0000, redMask: 0x000000ff }),
+      ["plugin:assets|read_asset"]: mockUndecodableDdsFile(),
       ["plugin:visuals|read_texture"]: (parameters?: Record<string, unknown>) => {
         decodedPath = (parameters?.logicalPath as string) ?? null;
 
@@ -678,7 +678,7 @@ describe("VisualLoadService texture decoding", () => {
         dependencies: { motions: [], textures: [mockTextureDependency({ submeshIndex: 0 })] },
       }),
       ["plugin:visuals|read_geometry"]: buffer,
-      ["plugin:assets|read_asset"]: mockUncompressedDdsFile({ blueMask: 0x00ff0000, redMask: 0x000000ff }),
+      ["plugin:assets|read_asset"]: mockUndecodableDdsFile(),
       ["plugin:visuals|read_texture"]: () => {
         throw new Error("DDS image format is not supported");
       },

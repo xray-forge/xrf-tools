@@ -6,7 +6,7 @@ import { XrayMaterialDescriptor } from "@/core/ipc/types/xrf-material";
 import { XrayAsset, XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { EVisualTextureState } from "@/core/visuals/lib/visual-texture";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
-import { mockDdsFile, mockDx10DdsFile } from "@/fixtures/mocks/dds.mocks";
+import { mockDdsFile, mockDx10DdsFile, mockUndecodableDdsFile } from "@/fixtures/mocks/dds.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { InvokeHandler, resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import {
@@ -142,6 +142,33 @@ describe("VisualLoadService bump pairs", () => {
     expect(service.bumps.get(0)).toBeDefined();
   });
 
+  it("shades a pair stored in a block format three uploads natively", async () => {
+    // BC7 and BC5 used to be refused by the loader this reader replaced, and a bump half never takes the backend's
+    // png fallback - so a pair stored in either was silently unshaded rather than degraded. Both are block formats
+    // three has always been able to upload; only the parse was missing.
+    const { selected, buffer } = mockBumpedVisual(mockMaterialDescriptor());
+
+    setMockInvokeResponses({
+      ["plugin:visuals|open_model"]: mockSessionResponse(selected),
+      ["plugin:visuals|read_geometry"]: buffer,
+      ["plugin:assets|read_asset"]: ((args) => {
+        return args?.logicalPath === BASE ? mockDdsFile({ fourCC: "DXT5" }) : mockDx10DdsFile(98);
+      }) as InvokeHandler,
+    });
+
+    const { service } = mockInjectedService(VisualLoadService);
+
+    await service.load({ kind: "asset", logicalPath: ENTRY }, ROOTS);
+
+    expect(service.bumps.get(0)).toBeDefined();
+    expect(service.bumpStatuses.get(0)).toEqual({
+      submeshIndex: 0,
+      bump: EVisualTextureState.APPLIED,
+      companion: EVisualTextureState.APPLIED,
+      reason: null,
+    });
+  });
+
   it("keeps the base texture and names the half that failed when one input cannot be uploaded", async () => {
     // The pair is all or nothing on the surface, since the sampler reads both; the report is per half, since the fix
     // is.
@@ -151,8 +178,9 @@ describe("VisualLoadService bump pairs", () => {
       ["plugin:visuals|open_model"]: mockSessionResponse(selected),
       ["plugin:visuals|read_geometry"]: buffer,
       ["plugin:assets|read_asset"]: ((args) => {
-        // BC7 is a layout the renderer's loader has no branch for, and it logs the refusal itself.
-        return args?.logicalPath === COMPANION ? mockDx10DdsFile(98) : mockDdsFile({ fourCC: "DXT5" });
+        // A layout the reader does not model. A bump half never takes the backend's png fallback - a packed plane
+        // re-encoded through an srgb path would report values it does not hold - so this half has nowhere else to go.
+        return args?.logicalPath === COMPANION ? mockUndecodableDdsFile() : mockDdsFile({ fourCC: "DXT5" });
       }) as InvokeHandler,
     });
 

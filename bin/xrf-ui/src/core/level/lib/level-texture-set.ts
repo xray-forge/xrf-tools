@@ -5,7 +5,12 @@ import { assetsRawCommands } from "@/core/ipc/commands/assets-raw";
 import { texturesRawCommands } from "@/core/ipc/commands/textures-raw";
 import { LevelTextureReference } from "@/core/ipc/types/xrf-app";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
-import { createDdsTexture, createDecodedTexture, IRenderTextureOptions } from "@/core/render/lib/render-texture";
+import {
+  createDdsTexture,
+  createDecodedTexture,
+  IRenderTextureOptions,
+  IRenderTextureUpload,
+} from "@/core/render/lib/render-texture";
 import { Logger } from "@/lib/logging";
 import { Maybe, Nullable } from "@/lib/types/general";
 
@@ -161,14 +166,19 @@ export class LevelTextureSet implements ILevelTextureLookup {
       // Every file a level's shader table names is a picture - a base texture or a lightmap - so both are decoded from
       // sRGB. Only whether the alpha survives varies, and that is the surfaces' answer rather than the file's.
       const options: IRenderTextureOptions = { isAlphaRead: request.isAlphaRead, isColor: true };
-      const compressed: Nullable<Texture> = createDdsTexture(bytes, options);
+      const upload: IRenderTextureUpload = createDdsTexture(bytes, options);
 
-      // The renderer refuses some layouts the game ships; the backend decodes those to png instead.
+      if (upload.texture) {
+        return { reason: null, texture: upload.texture };
+      }
+
+      // A layout the reader does not model; the backend expands those to png instead. The refusal is kept rather
+      // than dropped, so a surface drawn from a decoded png can say which layout put it on that path.
+      this.log.info(`Texture '${reference}' is decoded rather than uploaded:`, upload.refusal);
+
       return {
         reason: null,
-        texture:
-          compressed ??
-          (await createDecodedTexture(await texturesRawCommands.readTexture(this.roots, logicalPath), options)),
+        texture: await createDecodedTexture(await texturesRawCommands.readTexture(this.roots, logicalPath), options),
       };
     } catch (error: unknown) {
       const transformed: Error = transformError(error);

@@ -5,9 +5,6 @@ import { Nullable } from "@/lib/types/general";
 
 /**
  * The run each flow decorated method currently has in flight, per instance.
- *
- * Held outside the instance so a service does not carry a field per lane whose only job is to be cancelled, which is
- * the hand-kept request counter this replaces.
  */
 const RUNNING: WeakMap<object, Map<PropertyKey, TCancellablePromise<any>>> = new WeakMap();
 
@@ -53,9 +50,6 @@ export function runExclusiveFlow<T>(
 
 /**
  * Cancels whatever a flow decorated method left running on one instance.
- *
- * What `clear`, `close` and deactivation call: the in-flight run is abandoned where it stands rather than allowed to
- * finish and write into state nobody is looking at any more.
  *
  * @param instance - Instance owning the run.
  * @param lane - Member the lane is named after: the field the run publishes to, or the method that owns it.

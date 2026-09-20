@@ -1,62 +1,69 @@
 import {
   CompressedPixelFormat,
   CompressedTexture,
-  CompressedTextureMipmap,
   LinearFilter,
   RepeatWrapping,
-  RGB_S3TC_DXT1_Format,
-  RGBA_S3TC_DXT1_Format,
   RGBAFormat,
   SRGBColorSpace,
   Texture,
 } from "three";
-import { DDS, DDSLoader } from "three/examples/jsm/loaders/DDSLoader.js";
 
+import { EDdsLayout, IDdsFile, IDdsMipmap, readDdsFile, TDdsRead } from "@/core/render/lib/dds";
 import { Nullable, Optional } from "@/lib/types/general";
-
-/** Shared parser, since `DDSLoader.parse` keeps no state between calls and constructing one per texture is waste. */
-const DDS_LOADER: DDSLoader = new DDSLoader();
 
 /**
  * What a file has to survive upload with, which the file cannot answer for itself.
  */
 export interface IRenderTextureOptions {
-  /**
-   * Whether any surface drawn with this file samples its alpha channel; see {@link toDdsFormat}.
-   */
+  /** Whether any surface drawn with this file samples its alpha channel. */
   isAlphaRead?: boolean;
-  /**  Whether the file holds colour rather than numbers. */
+  /** Whether the file holds colour rather than numbers. */
   isColor?: boolean;
 }
 
 /**
- * Turn DDS bytes into an uploadable texture, or say that three.js cannot.
+ * What became of one upload: the texture, or why the file could not be uploaded as it is stored.
+ */
+export interface IRenderTextureUpload {
+  texture: Nullable<CompressedTexture>;
+  /** Present exactly when `texture` is null, naming the layout that was refused. */
+  refusal: Nullable<string>;
+}
+
+/**
+ * Turn DDS bytes into an uploadable texture, or say why not.
  *
  * @param bytes - The file as read.
  * @param options - What the file has to survive upload with.
- * @returns The texture, or null when three.js cannot upload this file.
+ * @returns The texture, or the reason there is none.
  */
-export function createDdsTexture(bytes: ArrayBuffer, options: IRenderTextureOptions = {}): Nullable<CompressedTexture> {
-  const parsed: DDS = DDS_LOADER.parse(bytes, true);
+export function createDdsTexture(bytes: ArrayBuffer, options: IRenderTextureOptions = {}): IRenderTextureUpload {
+  const read: TDdsRead = readDdsFile(bytes, options.isAlphaRead ?? false);
 
-  // The declared type is not nullable, but the parser initialises `format` to null and leaves it there when it refuses.
-  if (parsed.format === null || parsed.mipmaps.length === 0) {
-    return null;
+  if (read.kind === "refused") {
+    return { refusal: `${read.reason}: ${read.detail}`, texture: null };
   }
 
-  // A cubemap needs its faces split apart, which no model texture requires; rendering it flat would show one face
-  // stretched over the mesh, so it is refused rather than guessed at.
-  if (parsed.isCubemap) {
-    return null;
+  const file: IDdsFile = read.file;
+
+  // A cubemap needs its faces split apart, which no surface of a level or a model requires; drawing it flat would
+  // show one face stretched over the mesh, so it is refused rather than guessed at.
+  if (file.isCubemap) {
+    return { refusal: "incompleteCubemap: a cubemap is not drawn on a surface", texture: null };
+  }
+
+  if (!file.mipmaps.length) {
+    return { refusal: "truncated: the file carries no mip to upload", texture: null };
   }
 
   const texture: CompressedTexture = new CompressedTexture(
-    parsed.mipmaps,
-    parsed.width,
-    parsed.height,
-    // `DDSLoader` reports `RGBAFormat` for an uncompressed file, which the typings do not admit here even though
-    // three's own `CompressedTextureLoader` assigns exactly that to a `CompressedTexture`.
-    toDdsFormat(parsed.format as CompressedPixelFormat, options.isAlphaRead ?? false)
+    // `CompressedTexture` takes an expanded rgba mip the same way three's own loader hands it one.
+    file.mipmaps as Array<CompressedTextureMipmapLike>,
+    file.width,
+    file.height,
+    // The typings admit only a compressed format here, even though three's own `CompressedTextureLoader` assigns
+    // `RGBAFormat` to a `CompressedTexture` for exactly the uncompressed layouts this expands.
+    (file.layout.kind === EDdsLayout.BLOCK ? file.layout.format : RGBAFormat) as CompressedPixelFormat
   );
 
   // X-Ray samples base diffuse with wrap addressing: `r_Sampler` defaults to `D3DTADDRESS_WRAP`
@@ -69,25 +76,19 @@ export function createDdsTexture(bytes: ArrayBuffer, options: IRenderTextureOpti
     texture.colorSpace = SRGBColorSpace;
   }
 
-  if (parsed.mipmapCount === 1) {
+  if (file.mipmapCount === 1) {
     texture.minFilter = LinearFilter;
   }
 
   texture.needsUpdate = true;
 
-  return texture;
+  return { refusal: null, texture };
 }
 
 /**
- * The upload format for a parsed file, recovering DXT1's one bit of alpha for the surfaces that read it.
- *
- * @param format - What `DDSLoader` reported.
- * @param isAlphaRead - Whether any surface drawn with this file samples its alpha channel.
- * @returns The format to upload with.
+ * The shape three's `CompressedTexture` takes its mips in, which is what {@link IDdsMipmap} already is.
  */
-function toDdsFormat(format: CompressedPixelFormat, isAlphaRead: boolean): CompressedPixelFormat {
-  return isAlphaRead && format === RGB_S3TC_DXT1_Format ? RGBA_S3TC_DXT1_Format : format;
-}
+type CompressedTextureMipmapLike = IDdsMipmap;
 
 /** A texture's top mip on the cpu, for a layout that stores its texels plainly. */
 export interface IRenderTextureTexels {
@@ -104,15 +105,15 @@ export interface IRenderTextureTexels {
  * @returns Its top mip, or null for a layout stored as blocks.
  */
 export function readDdsTexels(bytes: ArrayBuffer): Nullable<IRenderTextureTexels> {
-  const parsed: DDS = DDS_LOADER.parse(bytes, true);
-  const mip: Optional<CompressedTextureMipmap> = parsed.mipmaps[0];
+  const read: TDdsRead = readDdsFile(bytes);
 
-  // `DDSLoader` reports `RGBAFormat` only for a file it expanded rather than left as blocks.
-  if (!mip || parsed.isCubemap || (parsed.format as number) !== (RGBAFormat as number)) {
+  if (read.kind === "refused" || read.file.layout.kind !== EDdsLayout.TEXELS) {
     return null;
   }
 
-  return { data: new Uint8Array(mip.data), height: mip.height, width: mip.width };
+  const mip: Optional<IDdsMipmap> = read.file.mipmaps[0];
+
+  return mip ? { data: mip.data, height: mip.height, width: mip.width } : null;
 }
 
 /**
@@ -132,7 +133,7 @@ export function readRenderTexel(texels: IRenderTextureTexels, x: number, y: numb
 }
 
 /**
- * Turn decoded png bytes into an uploadable texture, for a file three.js would not read itself.
+ * Turn decoded png bytes into an uploadable texture, for a file the reader will not take.
  *
  * @param bytes - Png bytes as the backend decoded them.
  * @param options - What the file has to survive upload with; only its colour answer applies, since a png carries its

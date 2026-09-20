@@ -11,6 +11,7 @@ import {
   createDdsTexture,
   createDecodedTexture,
   IRenderTextureTexels,
+  IRenderTextureUpload,
   readDdsTexels,
 } from "@/core/render/lib/render-texture";
 import {
@@ -158,10 +159,10 @@ export class TextureSurfaceService {
 
       // Colour, not data: a base texture holds sRGB values, and saying so is what makes the unlit body match the flat
       // picture of the same file. Said at the upload so both paths agree, rather than patched onto whichever wins.
-      const compressed: Nullable<Texture> = createDdsTexture(bytes, { isColor: true });
+      const upload: IRenderTextureUpload = createDdsTexture(bytes, { isColor: true });
 
       return (
-        compressed ??
+        upload.texture ??
         (await createDecodedTexture(await texturesRawCommands.readTexture(roots, logicalPath), { isColor: true }))
       );
     });
@@ -189,9 +190,9 @@ export class TextureSurfaceService {
   ): Promise<Nullable<ITextureBumpHalf>> {
     const half: Promise<Nullable<ITextureBumpHalf>> = this.guard(logicalPath, async () => {
       const bytes: ArrayBuffer = await assetsRawCommands.readAsset(roots, logicalPath);
-      const texture: Nullable<Texture> = createDdsTexture(bytes);
+      const upload: IRenderTextureUpload = createDdsTexture(bytes);
 
-      return texture ? { texels: readDdsTexels(bytes), texture } : null;
+      return upload.texture ? { texels: readDdsTexels(bytes), texture: upload.texture } : null;
     });
 
     uploads.push(half.then((it: Nullable<ITextureBumpHalf>) => it?.texture ?? null));

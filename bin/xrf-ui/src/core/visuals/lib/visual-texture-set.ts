@@ -239,7 +239,10 @@ export class VisualTextureSet {
 
       if (!uploads.has(logicalPath)) {
         // A base texture is a picture, so it is decoded from sRGB; whether its alpha survives is the surface's answer.
-        uploads.set(logicalPath, createDdsTexture(read.bytes, { isAlphaRead: alpha.has(logicalPath), isColor: true }));
+        uploads.set(
+          logicalPath,
+          createDdsTexture(read.bytes, { isAlphaRead: alpha.has(logicalPath), isColor: true }).texture
+        );
       }
 
       const uploaded: Nullable<Texture> = uploads.get(logicalPath) ?? null;
@@ -313,7 +316,7 @@ export class VisualTextureSet {
 
     if (!uploads.has(logicalPath)) {
       // No colour decode: a bump pair's channels are a packed normal, and decoding one would bend every vector in it.
-      uploads.set(logicalPath, createDdsTexture(read.bytes));
+      uploads.set(logicalPath, createDdsTexture(read.bytes).texture);
     }
 
     const texture: Nullable<Texture> = uploads.get(logicalPath) ?? null;
