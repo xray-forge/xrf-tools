@@ -2,8 +2,8 @@ import { useInjection } from "@wirestate/react";
 import { ReactElement, useMemo } from "react";
 
 import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
-import { listLevelProblems } from "@/core/level/lib/level-problems";
-import { ILoadedSector } from "@/core/level/lib/level-sector-set";
+import { listLevelProblems } from "@/core/level/lib/problems";
+import { ILoadedSector } from "@/core/level/lib/sector/level-sector-set";
 import { LevelLoadService } from "@/core/level/services";
 import { EditorPanel, EditorPanelEmpty } from "@/core/shell/editor/EditorPanel";
 import { EditorProblemsPanel, IEditorProblem } from "@/core/shell/editor/EditorProblemsPanel";

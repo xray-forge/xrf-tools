@@ -1,8 +1,8 @@
 import { useInjection } from "@wirestate/react";
 import { ReactElement } from "react";
 
-import { ILevelStats } from "@/core/level/lib/level-stats";
-import { ILevelTextureProblem } from "@/core/level/lib/level-texture-set";
+import { ILevelStats } from "@/core/level/lib/stats/level-stats";
+import { ILevelTextureProblem } from "@/core/level/lib/texture/level-texture-set";
 import { LevelLoadService, LevelViewportService } from "@/core/level/services";
 import {
   EditorPanel,

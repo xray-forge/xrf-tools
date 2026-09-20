@@ -3,7 +3,7 @@ import { ReactElement, useCallback, useState } from "react";
 
 import { SelectedLevelDescription } from "@/core/ipc/types/xrf-app";
 import { LevelPreviewLayout } from "@/core/level/components/preview/LevelPreviewLayout";
-import { ILevelPoint } from "@/core/level/lib/level-residency";
+import { ILevelPoint } from "@/core/level/lib/residency/level-residency";
 import { LevelLoadService } from "@/core/level/services";
 import { ApplicationLoader } from "@/core/shell/loading/ApplicationLoader";
 import { BaseComponentProps } from "@/lib/dom/element-types";

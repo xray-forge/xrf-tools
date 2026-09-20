@@ -9,7 +9,7 @@ import { default as PaletteIcon } from "@mui/icons-material/Palette";
 import { default as TextureIcon } from "@mui/icons-material/Texture";
 import { ReactElement, ReactNode, useCallback } from "react";
 
-import { ILevelViewOptions } from "@/core/level/lib/level-view-options";
+import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
 import { EditorViewToggle } from "@/core/shell/editor/EditorViewToggle";
 import { BaseComponentProps } from "@/lib/dom/element-types";

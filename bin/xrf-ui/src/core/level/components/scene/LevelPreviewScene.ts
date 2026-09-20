@@ -1,4 +1,4 @@
-import { AmbientLight, Color, DirectionalLight, Group, PerspectiveCamera, Vector3 } from "three";
+import { Group, PerspectiveCamera, Vector3 } from "three";
 
 import { VisualBounds } from "@/core/ipc/types/xrf-visual";
 import {
@@ -7,16 +7,17 @@ import {
 } from "@/core/level/components/scene/level-scene-config";
 import { LevelFlyControls } from "@/core/level/components/scene/LevelFlyControls";
 import { LevelPreviewFrame } from "@/core/level/components/scene/LevelPreviewFrame";
+import { LevelPreviewLighting } from "@/core/level/components/scene/LevelPreviewLighting";
 import { LevelPreviewSectors } from "@/core/level/components/scene/LevelPreviewSectors";
-import { ILevelCamera, toLevelCamera } from "@/core/level/lib/level-camera";
-import { LevelFlyCamera } from "@/core/level/lib/level-fly-camera";
-import { DEFAULT_LEVEL_LIGHTING, ILevelLighting, toSunPosition } from "@/core/level/lib/level-lighting";
-import { ILevelPoint } from "@/core/level/lib/level-residency";
-import { ILoadedSector } from "@/core/level/lib/level-sector-set";
-import { ILevelStats, measureLevelStats } from "@/core/level/lib/level-stats";
-import { ILevelTextureLookup } from "@/core/level/lib/level-texture-set";
-import { DEFAULT_LEVEL_VIEW_OPTIONS, ILevelViewOptions } from "@/core/level/lib/level-view-options";
-import { ILevelViewpoint, toLevelStartViewpoint } from "@/core/level/lib/level-viewpoint";
+import { ILevelCamera, toLevelCamera } from "@/core/level/lib/camera/level-camera";
+import { LevelFlyCamera } from "@/core/level/lib/camera/level-fly-camera";
+import { ILevelViewpoint, toLevelStartViewpoint } from "@/core/level/lib/camera/level-viewpoint";
+import { ILevelLighting } from "@/core/level/lib/lighting/level-lighting";
+import { ILevelPoint } from "@/core/level/lib/residency/level-residency";
+import { ILoadedSector } from "@/core/level/lib/sector/level-sector-set";
+import { ILevelStats, measureLevelStats } from "@/core/level/lib/stats/level-stats";
+import { ILevelTextureLookup } from "@/core/level/lib/texture/level-texture-set";
+import { DEFAULT_LEVEL_VIEW_OPTIONS, ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
 import { TFrameRateLimit } from "@/core/render/lib/render-frame-limit";
 import { RenderViewport } from "@/core/render/lib/render-viewport";
 import { Nullable } from "@/lib/types/general";
@@ -34,12 +35,6 @@ export interface ILevelPreviewSceneHandlers {
   onReport: (stats: ILevelStats, camera: ILevelCamera) => void;
 }
 
-/** Where the sun sits for a level that has reported no extent yet, in metres. */
-const DEFAULT_SUN_DISTANCE: number = 500;
-
-/** Times the level's own radius the sun is put at, so it clears the geometry it lights. */
-const SUN_DISTANCE_MARGIN: number = 2;
-
 /** Metres the camera has to move before the loader is asked again, which keeps streaming off every frame. */
 const STREAM_THRESHOLD: number = 8;
 /** Milliseconds between stat reports. Reporting every frame would re-render the panel reading them sixty times a second. */
@@ -55,11 +50,7 @@ export class LevelPreviewScene {
   private readonly frame: LevelPreviewFrame;
   /** Where the camera is looking, which is the scene's for as long as the scene is: the controls only drive it. */
   private readonly fly: LevelFlyCamera = new LevelFlyCamera();
-  private readonly sun: DirectionalLight;
-  private readonly ambient: AmbientLight;
-  /** How far out the sun is put, which only has to clear whatever the level turns out to span. */
-  private sunDistance: number = DEFAULT_SUN_DISTANCE;
-  private lighting: ILevelLighting = DEFAULT_LEVEL_LIGHTING;
+  private readonly lighting: LevelPreviewLighting;
   private readonly handlers: ILevelPreviewSceneHandlers;
 
   private controls: Nullable<LevelFlyControls> = null;
@@ -80,20 +71,14 @@ export class LevelPreviewScene {
     // Focusable, because the fly controls read the keyboard and a canvas is not focusable by default.
     this.viewport.domElement.tabIndex = 0;
 
-    // The viewer's own light, not the level's: a compiled level carries occlusion and no lighting at all, so what
-    // lights it has to be stated rather than read. See `level-lighting.ts`.
-    this.sun = new DirectionalLight(0xffffff, DEFAULT_LEVEL_LIGHTING.sunIntensity);
-    this.ambient = new AmbientLight(0xffffff, DEFAULT_LEVEL_LIGHTING.ambientIntensity);
+    this.lighting = new LevelPreviewLighting(this.viewport.scene);
 
-    this.viewport.scene.add(this.ambient);
-    this.viewport.scene.add(this.sun);
     this.viewport.scene.add(this.root);
 
     this.sectors = new LevelPreviewSectors(this.root);
     this.frame = new LevelPreviewFrame(this.root, config);
 
     this.applyViewOptions();
-    this.setLighting(DEFAULT_LEVEL_LIGHTING);
   }
 
   /**
@@ -123,9 +108,7 @@ export class LevelPreviewScene {
   public setBounds(bounds: Nullable<VisualBounds>): void {
     this.frame.setBounds(bounds);
 
-    // Put out past the level, so the one directional light reaches all of it rather than only what it was framed on.
-    this.sunDistance = Math.max(DEFAULT_SUN_DISTANCE, (bounds?.boundingSphere.radius ?? 0) * SUN_DISTANCE_MARGIN);
-    this.applySunPosition();
+    this.lighting.setReach(bounds?.boundingSphere.radius ?? 0);
 
     const viewpoint: ILevelViewpoint = toLevelStartViewpoint(bounds);
     const camera: PerspectiveCamera = this.viewport.camera;
@@ -151,14 +134,7 @@ export class LevelPreviewScene {
    * @param lighting - The sun and the hemisphere standing in for one.
    */
   public setLighting(lighting: ILevelLighting): void {
-    this.lighting = lighting;
-
-    this.sun.intensity = lighting.sunIntensity;
-    this.sun.color = new Color(lighting.sunColor);
-    this.ambient.intensity = lighting.ambientIntensity;
-    this.ambient.color = new Color(lighting.ambientColor);
-
-    this.applySunPosition();
+    this.lighting.apply(lighting);
     this.sectors.setHemiStrength(lighting.hemiStrength);
   }
 
@@ -189,16 +165,13 @@ export class LevelPreviewScene {
     // Materials only: the geometry belongs to the loader, which disposes it when a sector stops being resident.
     this.sectors.dispose();
     this.frame.dispose();
+    this.lighting.dispose();
     this.viewport.dispose();
   }
 
   /**
    * Asks the loader to stream, but only once the camera has gone far enough to change what is near.
    */
-  private applySunPosition(): void {
-    this.sun.position.set(...toSunPosition(this.lighting, this.sunDistance));
-  }
-
   private reportCamera(): void {
     const position: Vector3 = this.viewport.camera.position;
 

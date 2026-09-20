@@ -1,16 +1,16 @@
 import { InstancedMesh, Mesh, Object3D } from "three";
 
-import { createInstancedMesh } from "@/core/level/lib/level-instance-geometry";
-import { LevelMaterialSet } from "@/core/level/lib/level-material-set";
-import { createGeometry } from "@/core/level/lib/level-sector-geometry";
-import { ILoadedSector } from "@/core/level/lib/level-sector-set";
-import { ISectorInstanceViews, ISectorSectionViews } from "@/core/level/lib/level-sector-views";
+import { createInstancedMesh } from "@/core/level/lib/sector/level-instance-geometry";
+import { createGeometry } from "@/core/level/lib/sector/level-sector-geometry";
+import { ILoadedSector } from "@/core/level/lib/sector/level-sector-set";
+import { ISectorInstanceViews, ISectorSectionViews } from "@/core/level/lib/sector/level-sector-views";
+import { LevelMaterialSet } from "@/core/level/lib/surface/level-material-set";
 import {
   DEFAULT_LEVEL_SURFACE_OPTIONS,
   ILevelSurface,
   ILevelSurfaceOptions,
-} from "@/core/level/lib/level-surface-material";
-import { ILevelTextureLookup } from "@/core/level/lib/level-texture-set";
+} from "@/core/level/lib/surface/level-surface-material";
+import { ILevelTextureLookup } from "@/core/level/lib/texture/level-texture-set";
 import { Maybe, Nullable } from "@/lib/types/general";
 
 /** One drawn sector: the mesh of everything baked in place, the meshes it stands, and the surfaces drawing them. */

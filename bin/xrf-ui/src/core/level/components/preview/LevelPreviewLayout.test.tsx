@@ -2,9 +2,9 @@ import { describe, expect, it, jest } from "@jest/globals";
 import { act, fireEvent, RenderResult } from "@testing-library/react";
 
 import { LevelPreviewLayout } from "@/core/level/components/preview/LevelPreviewLayout";
-import { ILevelCamera } from "@/core/level/lib/level-camera";
-import { ILevelPoint } from "@/core/level/lib/level-residency";
-import { EMPTY_LEVEL_STATS, ILevelStats } from "@/core/level/lib/level-stats";
+import { ILevelCamera } from "@/core/level/lib/camera/level-camera";
+import { ILevelPoint } from "@/core/level/lib/residency/level-residency";
+import { EMPTY_LEVEL_STATS, ILevelStats } from "@/core/level/lib/stats/level-stats";
 import { ILevelStreamProgress, LevelLoadService, LevelViewportService } from "@/core/level/services";
 import { ApplicationStatusBar } from "@/core/shell/footer/ApplicationStatusBar";
 import { mockVisualBounds } from "@/fixtures/mocks/visual.mocks";

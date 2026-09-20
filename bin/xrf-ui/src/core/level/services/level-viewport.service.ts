@@ -1,8 +1,8 @@
 import { Injectable, OnDeactivation } from "@wirestate/core";
 import { BoundAction, Observable } from "@wirestate/mobx";
 
-import { ILevelCamera } from "@/core/level/lib/level-camera";
-import { EMPTY_LEVEL_STATS, ILevelStats } from "@/core/level/lib/level-stats";
+import { ILevelCamera } from "@/core/level/lib/camera/level-camera";
+import { EMPTY_LEVEL_STATS, ILevelStats } from "@/core/level/lib/stats/level-stats";
 import { Nullable } from "@/lib/types/general";
 
 /**

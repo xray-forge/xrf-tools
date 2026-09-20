@@ -5,7 +5,7 @@ import { createRoots } from "@/core/assets/lib";
 import { SelectedLevelDescription } from "@/core/ipc/types/xrf-app";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { SectorDescription, SectorOutline } from "@/core/ipc/types/xrf-visual";
-import { createLevelResidency } from "@/core/level/lib/level-residency";
+import { createLevelResidency } from "@/core/level/lib/residency/level-residency";
 import { mockDdsFile } from "@/fixtures/mocks/dds.mocks";
 import {
   mockLevelTextureReference,

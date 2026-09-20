@@ -5,7 +5,7 @@ import {
   getFlyBinding,
   ILevelFlyInput,
   LevelFlyCamera,
-} from "@/core/level/lib/level-fly-camera";
+} from "@/core/level/lib/camera/level-fly-camera";
 
 /**
  * Binds a viewport's pointer and keyboard to a fly camera.

@@ -1,5 +1,5 @@
 /**
- * Everything about how a level preview looks, as one value.
+ * Everything about how a level preview is framed, as one value.
  */
 export interface ILevelPreviewSceneConfig {
   backgroundColor: number;
@@ -16,14 +16,9 @@ export interface ILevelPreviewSceneConfig {
   gridCells: number;
   /** Colour of the box outlining the extent the level claims. */
   boundsColor: number;
-  ambientIntensity: number;
-  sunIntensity: number;
-  /** Where the directional light comes from, which is only a stand-in until levels light themselves. */
-  sunDirection: [number, number, number];
 }
 
 export const DEFAULT_LEVEL_PREVIEW_SCENE_CONFIG: ILevelPreviewSceneConfig = {
-  ambientIntensity: 1.1,
   backgroundColor: 0x202428,
   cameraFar: 5000,
   cameraFieldOfView: 65,
@@ -32,6 +27,4 @@ export const DEFAULT_LEVEL_PREVIEW_SCENE_CONFIG: ILevelPreviewSceneConfig = {
   gridOriginColor: 0x7a8894,
   boundsColor: 0xffb300,
   cameraNear: 0.1,
-  sunDirection: [0.5, 1, 0.35],
-  sunIntensity: 1.8,
 };

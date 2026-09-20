@@ -14,12 +14,12 @@ import { LevelPreviewEmpty } from "@/core/level/components/preview/LevelPreviewE
 import { LevelPreviewStatus } from "@/core/level/components/preview/LevelPreviewStatus";
 import { LevelPreviewToolbar } from "@/core/level/components/preview/LevelPreviewToolbar";
 import { ILevelPreviewViewportProps, LevelPreviewViewport } from "@/core/level/components/preview/LevelPreviewViewport";
-import { DEFAULT_LEVEL_LIGHTING, ILevelLighting } from "@/core/level/lib/level-lighting";
-import { ILevelPoint } from "@/core/level/lib/level-residency";
-import { ILoadedSector } from "@/core/level/lib/level-sector-set";
-import { hasAlphaSurfaces, hasDetailedSurfaces } from "@/core/level/lib/level-sector-textures";
-import { ILevelTextureLookup } from "@/core/level/lib/level-texture-set";
-import { DEFAULT_LEVEL_VIEW_OPTIONS, ILevelViewOptions } from "@/core/level/lib/level-view-options";
+import { DEFAULT_LEVEL_LIGHTING, ILevelLighting } from "@/core/level/lib/lighting/level-lighting";
+import { ILevelPoint } from "@/core/level/lib/residency/level-residency";
+import { ILoadedSector } from "@/core/level/lib/sector/level-sector-set";
+import { hasAlphaSurfaces, hasDetailedSurfaces } from "@/core/level/lib/sector/level-sector-textures";
+import { ILevelTextureLookup } from "@/core/level/lib/texture/level-texture-set";
+import { DEFAULT_LEVEL_VIEW_OPTIONS, ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
 import { ILevelStreamProgress, LevelViewportService } from "@/core/level/services";
 import { EditorFileHeader } from "@/core/shell/editor/EditorFileHeader";
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";

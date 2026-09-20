@@ -2,10 +2,10 @@ import { describe, expect, it } from "@jest/globals";
 import { Group, InstancedMesh, Mesh, MeshStandardMaterial } from "three";
 
 import { LevelPreviewSectors } from "@/core/level/components/scene/LevelPreviewSectors";
-import { createSectorGeometry } from "@/core/level/lib/level-sector-geometry";
-import { ILoadedSector } from "@/core/level/lib/level-sector-set";
-import { createSectorViews, ISectorViews } from "@/core/level/lib/level-sector-views";
-import { DEFAULT_LEVEL_SURFACE_OPTIONS, getShaderColor } from "@/core/level/lib/level-surface-material";
+import { createSectorGeometry } from "@/core/level/lib/sector/level-sector-geometry";
+import { ILoadedSector } from "@/core/level/lib/sector/level-sector-set";
+import { createSectorViews, ISectorViews } from "@/core/level/lib/sector/level-sector-views";
+import { DEFAULT_LEVEL_SURFACE_OPTIONS, getShaderColor } from "@/core/level/lib/surface/level-surface-material";
 import {
   mockSectorDescription,
   mockSectorInstanceGroup,

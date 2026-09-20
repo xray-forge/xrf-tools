@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { ILevelCamera, UNPLACED_LEVEL_CAMERA } from "@/core/level/lib/level-camera";
-import { EMPTY_LEVEL_STATS, ILevelStats } from "@/core/level/lib/level-stats";
+import { ILevelCamera, UNPLACED_LEVEL_CAMERA } from "@/core/level/lib/camera/level-camera";
+import { EMPTY_LEVEL_STATS, ILevelStats } from "@/core/level/lib/stats/level-stats";
 import { LevelViewportService } from "@/core/level/services/level-viewport.service";
 import { mockInjectedService } from "@/fixtures/utils/container";
 

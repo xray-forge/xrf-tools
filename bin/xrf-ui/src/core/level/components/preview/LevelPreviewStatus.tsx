@@ -1,8 +1,8 @@
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useMemo } from "react";
 
-import { ILevelCamera } from "@/core/level/lib/level-camera";
-import { ILevelStats } from "@/core/level/lib/level-stats";
+import { ILevelCamera } from "@/core/level/lib/camera/level-camera";
+import { ILevelStats } from "@/core/level/lib/stats/level-stats";
 import { LevelViewportService } from "@/core/level/services";
 import { useEditorStatus } from "@/core/shell/editor-shell";
 import { formatBytes } from "@/lib/memory/format";
