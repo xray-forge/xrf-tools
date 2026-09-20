@@ -7,6 +7,7 @@ import { ILevelTexture, LevelTextureSet } from "@/core/level/lib/level-texture-s
 import { mockDdsFile } from "@/fixtures/mocks/dds.mocks";
 import { mockLevelTextureReference } from "@/fixtures/mocks/level.mocks";
 import { mockInvoke, resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
+import { Nullable } from "@/lib/types/general";
 
 const ROOTS: XrayRoots = createRoots(["C:/game/db"]);
 
@@ -122,16 +123,60 @@ describe("LevelTextureSet", () => {
     expect(set.size).toBe(1);
   });
 
-  // A surface whose texture the roots do not hold should say so rather than looking like one never asked for.
-  it("says why a reference the roots hold nothing for has no texture", async () => {
+  // A surface whose texture the roots do not hold should say so rather than looking like one never asked for. Left
+  // untextured it takes its material's tint and reads as a plain surface; dressed in the checker it reads as a fault.
+  it("draws a checker for a reference the roots hold nothing for, and says why", async () => {
     const set: LevelTextureSet = new LevelTextureSet();
 
     set.open(ROOTS, [mockLevelTextureReference("missing", false)]);
 
     await set.load(requests("missing"));
 
-    expect(set.get("missing")?.texture).toBeNull();
+    expect(set.get("missing")?.texture).toBeTruthy();
     expect(set.get("missing")?.reason).toContain("missing");
+  });
+
+  // A file is uploaded once for the whole level, and whether its alpha survives is its callers' answer rather than
+  // its own. Uploaded first for a sector of opaque surfaces, a cut-out file reached the surfaces that do test its
+  // alpha with no alpha channel bound, which draws its transparent black as solid black.
+  it("uploads a texture again when a later surface reads the alpha the first one did not", async () => {
+    const set: LevelTextureSet = new LevelTextureSet();
+
+    set.open(ROOTS, [mockLevelTextureReference("leaf")]);
+
+    await set.load([{ isAlphaRead: false, reference: "leaf" }]);
+
+    const opaque: Nullable<ILevelTexture> = set.get("leaf");
+
+    await set.load([{ isAlphaRead: true, reference: "leaf" }]);
+
+    expect(set.get("leaf")?.isAlphaRead).toBe(true);
+    expect(set.get("leaf")?.texture).not.toBe(opaque?.texture);
+    expect(set.size).toBe(1);
+  });
+
+  it("keeps a texture already uploaded with its alpha", async () => {
+    const set: LevelTextureSet = new LevelTextureSet();
+
+    set.open(ROOTS, [mockLevelTextureReference("leaf")]);
+
+    await set.load([{ isAlphaRead: true, reference: "leaf" }]);
+
+    const held: Nullable<ILevelTexture> = set.get("leaf");
+
+    await set.load([{ isAlphaRead: false, reference: "leaf" }]);
+
+    expect(set.get("leaf")?.texture).toBe(held?.texture);
+  });
+
+  it("reports nothing about a texture that is a picture", async () => {
+    const set: LevelTextureSet = new LevelTextureSet();
+
+    set.open(ROOTS, [mockLevelTextureReference("stone")]);
+
+    await set.load(requests("stone"));
+
+    expect(set.listProblems()).toEqual([]);
   });
 
   it("releases everything when the level is swapped", async () => {

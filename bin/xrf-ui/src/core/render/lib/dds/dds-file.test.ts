@@ -165,4 +165,20 @@ describe("refusals", () => {
 
     expect(refusalOf(complete.slice(0, complete.byteLength - 1)).reason).toBe(EDdsRefusal.TRUNCATED);
   });
+
+  // The defect this exists for: `compressedTexImage2D` answers `INVALID_OPERATION` for a block compressed level
+  // narrower than its block, and a texture that failed to upload samples as opaque black. Anomaly ships seven leaf
+  // sprays as 2x2 fully transparent DXT1 files to switch that geometry off, and every one of them drew as a solid
+  // black card instead of vanishing. Direct3D takes them, which is why the game does not show this.
+  it("refuses a block compressed picture smaller than one block, so the backend expands it instead", () => {
+    const read: IDdsRead = readDdsFile(mockDdsFile({ fourCC: "DXT1", height: 2, width: 2 }), true);
+
+    expect(read.file).toBeNull();
+    expect(read.refusal?.reason).toBe(EDdsRefusal.SUB_BLOCK);
+    expect(read.refusal?.detail).toContain("2x2");
+  });
+
+  it("takes a picture of exactly one block", () => {
+    expect(readFile(mockDdsFile({ fourCC: "DXT1", height: 4, width: 4 })).width).toBe(4);
+  });
 });

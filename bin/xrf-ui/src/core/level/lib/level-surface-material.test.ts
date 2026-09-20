@@ -19,10 +19,11 @@ import { Nullable } from "@/lib/types/general";
 /** A lookup answering with a distinct texture for each reference it is given. */
 function lookup(...references: Array<string>): ILevelTextureLookup {
   const held: Map<string, ILevelTexture> = new Map(
-    references.map((reference: string) => [reference, { reason: null, texture: new Texture() }])
+    references.map((reference: string) => [reference, { isAlphaRead: false, reason: null, texture: new Texture() }])
   );
 
   return {
+    listProblems: () => [],
     get: (reference: string): Nullable<ILevelTexture> => held.get(reference) ?? null,
     size: held.size,
   };
@@ -94,6 +95,26 @@ describe("level surface material", () => {
     const dressed: ILevelSurfaceMaterial = createSurfaceMaterial(surface(), lookup("stone"), options());
 
     expect(dressed.material.vertexColors).toBe(false);
+  });
+
+  // A checker dimmed by a night sky is just another dark surface, and the whole point of it is to be noticed.
+  it("draws a surface dressed in a stand-in at full brightness", () => {
+    const textures: ILevelTextureLookup = {
+      get: () => ({ isAlphaRead: false, reason: "placeholder", texture: new Texture() }),
+      listProblems: () => [],
+      size: 1,
+    };
+    const dressed: ILevelSurfaceMaterial = createSurfaceMaterial(surface(), textures, options());
+
+    expect(dressed.material.emissiveMap).toBe(dressed.material.map);
+    expect(dressed.material.emissive.getHex()).toBe(0xffffff);
+  });
+
+  it("leaves a surface with its own texture lit by the scene alone", () => {
+    const dressed: ILevelSurfaceMaterial = createSurfaceMaterial(surface(), lookup("stone"), options());
+
+    expect(dressed.material.emissiveMap).toBeNull();
+    expect(dressed.material.emissive.getHex()).toBe(0x000000);
   });
 
   // `def_gloss` is two of two hundred and fifty five, so a level surface has no specular to speak of.

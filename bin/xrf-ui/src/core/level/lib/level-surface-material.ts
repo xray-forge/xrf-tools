@@ -135,6 +135,10 @@ export function dressSurfaceMaterial(
 
   material.wireframe = options.isWireframe;
   material.map = base?.texture ?? null;
+  // A stand-in draws at full brightness whatever the level's own light does, because a checker dimmed by a night sky
+  // is just another dark surface. Lit like the rest it would say nothing; this is the one thing here that should.
+  material.emissiveMap = base?.reason ? base.texture : null;
+  material.emissive = new Color(material.emissiveMap ? 0xffffff : 0x000000);
   // Bound as occlusion rather than as light, which is what the deferred renderer reads out of it. See
   // `render-baked.ts` for why the file a level calls its lightmap is not one.
   material.aoMap = hemi?.texture ?? null;

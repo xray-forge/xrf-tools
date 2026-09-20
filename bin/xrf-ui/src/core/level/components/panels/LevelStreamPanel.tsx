@@ -2,6 +2,7 @@ import { useInjection } from "@wirestate/react";
 import { ReactElement } from "react";
 
 import { ILevelStats } from "@/core/level/lib/level-stats";
+import { ILevelTextureProblem } from "@/core/level/lib/level-texture-set";
 import { LevelLoadService, LevelViewportService } from "@/core/level/services";
 import {
   EditorPanel,
@@ -24,6 +25,7 @@ export function LevelStreamPanel({
   const levelViewportService: LevelViewportService = useInjection(LevelViewportService);
 
   const stats: ILevelStats = levelViewportService.stats;
+  const problems: ReadonlyArray<ILevelTextureProblem> = service.textures.listProblems();
 
   if (!service.level.value) {
     return (
@@ -45,6 +47,11 @@ export function LevelStreamPanel({
         <EditorPanelProperty label={"Frames a second"} value={stats.framesPerSecond.toFixed(0)} />
         <EditorPanelProperty label={"Draw calls"} value={stats.draws} />
         <EditorPanelProperty label={"Triangles"} value={stats.triangles} />
+      </EditorPanelSection>
+
+      <EditorPanelSection title={"Textures"}>
+        <EditorPanelProperty label={"Uploaded"} value={service.textures.size} />
+        <EditorPanelProperty label={"Unusable"} value={problems.length} />
       </EditorPanelSection>
 
       <EditorPanelSection title={"Budget"}>

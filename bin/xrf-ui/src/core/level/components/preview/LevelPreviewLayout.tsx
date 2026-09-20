@@ -1,10 +1,12 @@
 import { default as InfoOutlinedIcon } from "@mui/icons-material/InfoOutlined";
 import { default as SpeedIcon } from "@mui/icons-material/Speed";
+import { default as WarningIcon } from "@mui/icons-material/WarningAmber";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, ReactNode, useMemo, useState } from "react";
 
 import { VisualBounds } from "@/core/ipc/types/xrf-visual";
 import { LevelHeaderPanel } from "@/core/level/components/panels/LevelHeaderPanel";
+import { LevelProblemsPanel } from "@/core/level/components/panels/LevelProblemsPanel";
 import { LevelStreamPanel } from "@/core/level/components/panels/LevelStreamPanel";
 import { LevelPreviewEmpty } from "@/core/level/components/preview/LevelPreviewEmpty";
 import { LevelPreviewStatus } from "@/core/level/components/preview/LevelPreviewStatus";
@@ -110,6 +112,12 @@ export function LevelPreviewLayout({
         id: "streaming",
         label: "Streaming",
         render: () => <LevelStreamPanel />,
+      },
+      {
+        icon: <WarningIcon />,
+        id: "problems",
+        label: "Problems",
+        render: () => <LevelProblemsPanel />,
       },
     ],
     []

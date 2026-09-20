@@ -26,6 +26,8 @@ export enum EDdsRefusal {
   CUBEMAP = "cubemap",
   /** A texture array or a volume, which a surface has no way to draw either. */
   UNSUPPORTED_DIMENSION = "unsupportedDimension",
+  /** Block compressed and smaller than one block, which WebGL will not take, so the backend expands it instead. */
+  SUB_BLOCK = "subBlock",
 }
 
 /** Why one file was refused, in the terms whoever reports it needs. */
@@ -34,6 +36,9 @@ export interface IDdsRefusal {
   /** What was actually in the header, so a report can name the layout rather than only its category. */
   detail: string;
 }
+
+/** Texels a block compressed level covers on each side, which is also the smallest level WebGL will take. */
+const DDS_BLOCK_SIZE: number = 4;
 
 /** One mip as it will be uploaded: block bytes untouched, or texels already expanded to rgba. */
 export interface IDdsMipmap {
@@ -191,6 +196,14 @@ export function readDdsFile(bytes: ArrayBuffer, isAlphaRead: boolean = false): I
   const width: number = header[OFF_WIDTH];
   const height: number = header[OFF_HEIGHT];
   const mipmapCount: number = header[OFF_FLAGS] & DDSD_MIPMAPCOUNT ? Math.max(1, header[OFF_MIPMAP_COUNT]) : 1;
+
+  // Refused rather than uploaded: `compressedTexImage2D` answers `INVALID_OPERATION` for a block compressed level
+  // narrower than its block, and a texture that failed to upload samples as opaque black - which is a surface drawn
+  // solid where its file said to draw nothing at all. Direct3D takes these, which is why the game shows them and a
+  // browser does not. The backend expands them to png instead, where the alpha survives.
+  if (layout.kind === EDdsLayout.BLOCK && (width < DDS_BLOCK_SIZE || height < DDS_BLOCK_SIZE)) {
+    return refuse(EDdsRefusal.SUB_BLOCK, `the picture is ${width}x${height}, under the ${DDS_BLOCK_SIZE} of a block`);
+  }
 
   const mipmaps: Array<IDdsMipmap> | EDdsRefusal.TRUNCATED = readMipmaps(bytes, dataOffset, {
     height,

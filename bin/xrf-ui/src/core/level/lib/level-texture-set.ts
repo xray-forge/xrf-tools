@@ -7,6 +7,7 @@ import { LevelTextureReference } from "@/core/ipc/types/xrf-app";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { ISectorTextureRequest } from "@/core/level/lib/level-sector-textures";
 import {
+  createCheckerTexture,
   createDdsTexture,
   createDecodedTexture,
   IRenderTextureOptions,
@@ -15,10 +16,18 @@ import {
 import { Logger } from "@/lib/logging";
 import { Maybe, Nullable } from "@/lib/types/general";
 
-/** What became of one reference, so a surface it dresses can say why it is untextured. */
+/** What became of one reference, so a surface it dresses can say why it is untextured or why it looks wrong. */
 export interface ILevelTexture {
   texture: Nullable<Texture>;
   reason: Nullable<string>;
+  /** Whether it was uploaded in a layout that keeps its alpha, which is not the file's answer but its callers'. */
+  isAlphaRead: boolean;
+}
+
+/** One reference the set has something to say about, for a viewer reporting what a level is missing. */
+export interface ILevelTextureProblem {
+  reference: string;
+  reason: string;
 }
 
 /**
@@ -27,6 +36,8 @@ export interface ILevelTexture {
 export interface ILevelTextureLookup {
   readonly size: number;
   get(reference: string): Nullable<ILevelTexture>;
+  /** Every reference the set could not answer for properly, in the order they were read. */
+  listProblems(): ReadonlyArray<ILevelTextureProblem>;
 }
 
 /**
@@ -78,6 +89,15 @@ export class LevelTextureSet implements ILevelTextureLookup {
   }
 
   /**
+   * @returns Every reference this set has something to say about, which is what a viewer reports.
+   */
+  public listProblems(): ReadonlyArray<ILevelTextureProblem> {
+    return Array.from(this.loaded)
+      .filter(([, loaded]) => loaded.reason)
+      .map(([reference, loaded]) => ({ reason: loaded.reason as string, reference }));
+  }
+
+  /**
    * Loads every reference given, sharing whatever is already loaded or already being read.
    *
    * @param requests - What a sector's surfaces name, base textures and lightmaps alike.
@@ -120,8 +140,19 @@ export class LevelTextureSet implements ILevelTextureLookup {
     const reference: string = request.reference;
     const held: Maybe<ILevelTexture> = this.loaded.get(reference);
 
-    if (held) {
+    // Held unless it was uploaded without the alpha this caller needs. Whether a file keeps its alpha is decided by
+    // the surfaces drawn with it, and a texture is uploaded once for the whole level by whichever sector asked first:
+    // a sector of opaque surfaces uploading a cut-out file as `RGB_S3TC_DXT1` left every cut-out surface reached
+    // later testing an alpha channel that is not there, which draws the file's transparent black as solid black.
+    if (held && (!request.isAlphaRead || held.isAlphaRead)) {
       return held;
+    }
+
+    if (held) {
+      this.log.info(`Texture '${reference}' is uploaded again, for a surface that reads its alpha`);
+
+      held.texture?.dispose();
+      this.loaded.delete(reference);
     }
 
     // Two sectors arriving together name the same ground texture, and reading it twice would upload it twice.
@@ -150,8 +181,10 @@ export class LevelTextureSet implements ILevelTextureLookup {
     const reference: string = request.reference;
     const logicalPath: Maybe<string> = this.paths.get(reference);
 
+    const isAlphaRead: boolean = request.isAlphaRead;
+
     if (!this.roots || !logicalPath) {
-      return { reason: `Nothing in the mounted roots answers to '${reference}'`, texture: null };
+      return faulty(isAlphaRead, `Nothing in the mounted roots answers to '${reference}'`);
     }
 
     try {
@@ -162,7 +195,7 @@ export class LevelTextureSet implements ILevelTextureLookup {
       const upload: IRenderTextureUpload = createDdsTexture(bytes, options);
 
       if (upload.texture) {
-        return { reason: null, texture: upload.texture };
+        return { isAlphaRead, reason: null, texture: upload.texture };
       }
 
       // A layout the reader does not model; the backend expands those to png instead. The refusal is kept rather
@@ -170,6 +203,7 @@ export class LevelTextureSet implements ILevelTextureLookup {
       this.log.info(`Texture '${reference}' is decoded rather than uploaded:`, upload.refusal);
 
       return {
+        isAlphaRead,
         reason: null,
         texture: await createDecodedTexture(await texturesRawCommands.readTexture(this.roots, logicalPath), options),
       };
@@ -178,7 +212,18 @@ export class LevelTextureSet implements ILevelTextureLookup {
 
       this.log.error(`Failed to load level texture '${reference}':`, transformed);
 
-      return { reason: transformed.message, texture: null };
+      return faulty(isAlphaRead, transformed.message);
     }
   }
+}
+
+/**
+ * What a reference comes to when it cannot come to its own texture: the reason, and a checker to draw instead.
+ *
+ * @param isAlphaRead - What the upload was asked for, kept so a later caller can tell whether to ask again.
+ * @param reason - Why there is no texture.
+ * @returns The stand-in.
+ */
+function faulty(isAlphaRead: boolean, reason: string): ILevelTexture {
+  return { isAlphaRead, reason, texture: createCheckerTexture() };
 }

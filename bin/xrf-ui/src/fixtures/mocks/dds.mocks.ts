@@ -105,7 +105,7 @@ function toCompressedDataSize(width: number, height: number, mipmapCount: number
  * @returns The file as bytes.
  */
 export function mockDdsFile(options: IMockDdsOptions = {}): ArrayBuffer {
-  const { fourCC = "DXT1", width = 4, height = 4, mipmapCount = 1 } = options;
+  const { fourCC = "DXT1", width = 8, height = 8, mipmapCount = 1 } = options;
 
   const blockBytes: number = BLOCK_BYTES[fourCC] ?? DEFAULT_BLOCK_BYTES;
   const dataSize: number = toCompressedDataSize(width, height, mipmapCount, blockBytes);

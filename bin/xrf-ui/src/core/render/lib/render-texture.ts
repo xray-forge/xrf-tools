@@ -1,4 +1,13 @@
-import { CompressedTexture, LinearFilter, RepeatWrapping, RGBAFormat, SRGBColorSpace, Texture } from "three";
+import {
+  CompressedTexture,
+  DataTexture,
+  LinearFilter,
+  NearestFilter,
+  RepeatWrapping,
+  RGBAFormat,
+  SRGBColorSpace,
+  Texture,
+} from "three";
 
 import { EDdsLayout, IDdsFile, IDdsRead, IDdsRefusal, readDdsFile } from "@/core/render/lib/dds";
 import { Nullable } from "@/lib/types/general";
@@ -87,6 +96,70 @@ export async function createDecodedTexture(bytes: ArrayBuffer, options: IRenderT
   texture.needsUpdate = true;
 
   texture.addEventListener("dispose", (): void => bitmap.close());
+
+  return texture;
+}
+
+/**
+ * Side of the generated checker, in texels. Small because it is tiled: what matters is that it reads as a pattern at
+ * any distance, not that it carries detail.
+ */
+const CHECKER_SIZE: number = 16;
+
+/** Magenta and black, the colours a missing texture has meant since before any of this. */
+const CHECKER_COLORS: ReadonlyArray<ReadonlyArray<number>> = [
+  [255, 0, 255],
+  [16, 16, 16],
+];
+
+/**
+ * Built once and shared by every texture that wraps it: the pixels never change, and generating them per reference
+ * would be the same kilobyte again for each.
+ */
+let checkerData: Nullable<Uint8Array> = null;
+
+function toCheckerData(): Uint8Array {
+  if (checkerData) {
+    return checkerData;
+  }
+
+  const data: Uint8Array = new Uint8Array(CHECKER_SIZE * CHECKER_SIZE * 4);
+
+  for (let y = 0; y < CHECKER_SIZE; y += 1) {
+    for (let x = 0; x < CHECKER_SIZE; x += 1) {
+      const at: number = (y * CHECKER_SIZE + x) * 4;
+      const [red, green, blue] = CHECKER_COLORS[((x >> 1) + (y >> 1)) % 2];
+
+      data[at] = red;
+      data[at + 1] = green;
+      data[at + 2] = blue;
+      // Fully opaque, because the surfaces that most need this are the cut-out ones: anything below their reference
+      // would be discarded and the surface would go on saying nothing.
+      data[at + 3] = 255;
+    }
+  }
+
+  checkerData = data;
+
+  return data;
+}
+
+/**
+ * A checker to stand in for a texture that is missing or is not a texture.
+ *
+ * @returns An uploadable texture, owned by the caller and disposed with the rest.
+ */
+export function createCheckerTexture(): DataTexture {
+  const texture: DataTexture = new DataTexture(toCheckerData(), CHECKER_SIZE, CHECKER_SIZE, RGBAFormat);
+
+  texture.wrapS = RepeatWrapping;
+  texture.wrapT = RepeatWrapping;
+  // Nearest, so the squares stay squares: a filtered checker at distance averages to flat grey, which is the one
+  // thing this must never look like.
+  texture.magFilter = NearestFilter;
+  texture.minFilter = NearestFilter;
+  texture.colorSpace = SRGBColorSpace;
+  texture.needsUpdate = true;
 
   return texture;
 }
