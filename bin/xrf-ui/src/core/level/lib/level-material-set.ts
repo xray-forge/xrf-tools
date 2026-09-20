@@ -91,12 +91,25 @@ export class LevelMaterialSet {
   }
 
   /**
+   * Takes how much of the baked hemisphere term to apply, which the lighting owns rather than the toolbar.
+   *
+   * @param strength - Zero ignoring the term, one applying it whole.
+   */
+  public setHemiStrength(strength: number): void {
+    this.options = { ...this.options, hemiStrength: strength };
+
+    this.dressAll();
+  }
+
+  /**
    * Applies the view toggles to every material held.
    *
    * @param options - What the toolbar has switched on.
    */
   public applyViewOptions(options: ILevelSurfaceOptions): void {
-    this.options = options;
+    // The hemisphere strength is the lighting's and reaches here through `setHemiStrength`; a toolbar toggle carries
+    // whatever the defaults had in it, and taking that would put the slider back every time a checkbox moved.
+    this.options = { ...options, hemiStrength: this.options.hemiStrength };
 
     this.dressAll();
   }

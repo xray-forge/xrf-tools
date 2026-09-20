@@ -1,4 +1,5 @@
 import { default as InfoOutlinedIcon } from "@mui/icons-material/InfoOutlined";
+import { default as LightModeIcon } from "@mui/icons-material/LightModeOutlined";
 import { default as SpeedIcon } from "@mui/icons-material/Speed";
 import { default as WarningIcon } from "@mui/icons-material/WarningAmber";
 import { useInjection } from "@wirestate/react";
@@ -6,12 +7,14 @@ import { ReactElement, ReactNode, useMemo, useState } from "react";
 
 import { VisualBounds } from "@/core/ipc/types/xrf-visual";
 import { LevelHeaderPanel } from "@/core/level/components/panels/LevelHeaderPanel";
+import { LevelLightingPanel } from "@/core/level/components/panels/LevelLightingPanel";
 import { LevelProblemsPanel } from "@/core/level/components/panels/LevelProblemsPanel";
 import { LevelStreamPanel } from "@/core/level/components/panels/LevelStreamPanel";
 import { LevelPreviewEmpty } from "@/core/level/components/preview/LevelPreviewEmpty";
 import { LevelPreviewStatus } from "@/core/level/components/preview/LevelPreviewStatus";
 import { LevelPreviewToolbar } from "@/core/level/components/preview/LevelPreviewToolbar";
 import { ILevelPreviewViewportProps, LevelPreviewViewport } from "@/core/level/components/preview/LevelPreviewViewport";
+import { DEFAULT_LEVEL_LIGHTING, ILevelLighting } from "@/core/level/lib/level-lighting";
 import { ILevelPoint } from "@/core/level/lib/level-residency";
 import { ILoadedSector } from "@/core/level/lib/level-sector-set";
 import { hasAlphaSurfaces, hasDetailedSurfaces } from "@/core/level/lib/level-sector-textures";
@@ -71,6 +74,7 @@ export function LevelPreviewLayout({
   onDeselect = null,
 }: ILevelPreviewLayoutProps): ReactElement {
   const [options, setOptions] = useState<ILevelViewOptions>(DEFAULT_LEVEL_VIEW_OPTIONS);
+  const [lighting, setLighting] = useState<ILevelLighting>(DEFAULT_LEVEL_LIGHTING);
   const viewport: LevelViewportService = useInjection(LevelViewportService);
 
   const isOpen: boolean = Boolean(name);
@@ -114,13 +118,19 @@ export function LevelPreviewLayout({
         render: () => <LevelStreamPanel />,
       },
       {
+        icon: <LightModeIcon />,
+        id: "lighting",
+        label: "Lighting",
+        render: () => <LevelLightingPanel lighting={lighting} onChange={setLighting} />,
+      },
+      {
         icon: <WarningIcon />,
         id: "problems",
         label: "Problems",
         render: () => <LevelProblemsPanel />,
       },
     ],
-    []
+    [lighting]
   );
 
   return (
@@ -153,13 +163,14 @@ export function LevelPreviewLayout({
           className={cn("relative flex min-h-0 min-w-0 flex-1 overflow-hidden", className)}
         >
           {renderViewport ? (
-            renderViewport({ bounds, onCameraMoved, onReport: viewport.report, options, sectors, textures })
+            renderViewport({ bounds, lighting, onCameraMoved, onReport: viewport.report, options, sectors, textures })
           ) : (
             <LevelPreviewViewport
               sectors={sectors}
               bounds={bounds}
               textures={textures}
               options={options}
+              lighting={lighting}
               onCameraMoved={onCameraMoved}
               onReport={viewport.report}
             />

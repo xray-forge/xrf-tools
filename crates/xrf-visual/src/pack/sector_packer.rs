@@ -54,6 +54,9 @@ pub struct SectorPacker<'a, D: ChunkDataSource> {
 }
 
 impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
+  /// What `uber_deffer` requires the third texture to be spelled before it compiles a lightmapped variant.
+  const HEMI_TEXTURE_PREFIX: &'static str = "lmap";
+
   pub fn new(
     visuals: &'a LevelVisualsChunk,
     shaders: Option<&'a LevelShadersChunk>,
@@ -356,11 +359,20 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
     };
 
     SectorSurface {
+      hemi: Self::get_hemi(&reference.textures),
       lightmaps: reference.textures.iter().skip(1).cloned().collect(),
       shader_id,
       shader_name: Some(reference.shader.clone()),
       texture_name: reference.textures.first().cloned(),
     }
+  }
+
+  /// The texture the deferred renderer binds as `s_hemi`, which is the row's third and only when it is a lightmap.
+  fn get_hemi(textures: &[String]) -> Option<String> {
+    textures
+      .get(2)
+      .filter(|name| name.starts_with(Self::HEMI_TEXTURE_PREFIX))
+      .cloned()
   }
 
   /// Grades a drawable that produced nothing by whether the geometry is stored in a form the reader handles.

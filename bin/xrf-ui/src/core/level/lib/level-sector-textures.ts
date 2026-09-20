@@ -26,9 +26,10 @@ export function listSectorTextures(views: ISectorViews): Array<ISectorTextureReq
       request(requests, surface.textureName, isAlphaRenderSurface(render));
     }
 
-    // A lightmap is sampled for its light rather than tested for coverage, whatever the surface over it does.
-    for (const lightmap of surface.lightmaps) {
-      request(requests, lightmap, false);
+    // Only the one the renderer samples. The other half of the pair is R1's baked colour, and reading it was a
+    // megabyte a lightmap for a texture nothing binds.
+    if (surface.hemi) {
+      request(requests, surface.hemi, false);
     }
 
     // Named by the surface's blender or by its base texture's descriptor rather than by the shader table, so a sector

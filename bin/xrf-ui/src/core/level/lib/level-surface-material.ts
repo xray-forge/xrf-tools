@@ -21,9 +21,6 @@ const SURFACE_ROUGHNESS: number = 1.0;
 /** Turns of the golden angle, which spreads consecutive shader ids rather than grouping them into near hues. */
 const HUE_STEP: number = 137.508;
 
-/** The hemisphere term is an occlusion factor in its own right, so it is applied whole. */
-const HEMI_INTENSITY: number = 1.0;
-
 /** How the surfaces of a level are drawn while a toggle is on. */
 export interface ILevelSurfaceOptions {
   isWireframe: boolean;
@@ -40,9 +37,12 @@ export interface ILevelSurfaceOptions {
   isLit: boolean;
   /** Whether the tiled detail texture the engine modulates a surface with is applied, or the base texture stands alone. */
   isDetailed: boolean;
+  /** How much the baked hemisphere term darkens the ambient, `0` ignoring it and `1` applying it whole. */
+  hemiStrength: number;
 }
 
 export const DEFAULT_LEVEL_SURFACE_OPTIONS: ILevelSurfaceOptions = {
+  hemiStrength: 0.65,
   isAlphaVisible: true,
   isDetailed: true,
   isLit: true,
@@ -130,8 +130,9 @@ export function dressSurfaceMaterial(
   const { surface } = drawn;
   const base: Nullable<ILevelTexture> =
     options.isTextured && textures && surface.textureName ? textures.get(surface.textureName) : null;
-  const hemi: Nullable<ILevelTexture> =
-    options.isLit && textures && surface.lightmaps[0] ? textures.get(surface.lightmaps[0]) : null;
+  // The row's third texture, which is the one `uber_deffer` binds as `s_hemi`. The second is R1's baked colour and
+  // no deferred shader samples it; binding that one drew every lightmapped surface by an alpha that is not occlusion.
+  const hemi: Nullable<ILevelTexture> = options.isLit && textures && surface.hemi ? textures.get(surface.hemi) : null;
 
   material.wireframe = options.isWireframe;
   material.map = base?.texture ?? null;
@@ -142,7 +143,7 @@ export function dressSurfaceMaterial(
   // Bound as occlusion rather than as light, which is what the deferred renderer reads out of it. See
   // `render-baked.ts` for why the file a level calls its lightmap is not one.
   material.aoMap = hemi?.texture ?? null;
-  material.aoMapIntensity = HEMI_INTENSITY;
+  material.aoMapIntensity = options.hemiStrength;
   // Never: `v_static.color` is `(r,g,b,dir-occlusion)` and the deferred renderer reads the fourth component alone, so
   // multiplying a surface by the other three dyes it with a colour the game never shows.
   material.vertexColors = false;

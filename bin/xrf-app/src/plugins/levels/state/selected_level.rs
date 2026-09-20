@@ -6,6 +6,7 @@ use xrf_visual::SectorOutline;
 
 use crate::core::session::Session;
 use crate::plugins::levels::state::level_source::LevelSource;
+use crate::plugins::levels::state::level_sun_description::LevelSunDescription;
 use crate::plugins::levels::state::level_texture_reference::LevelTextureReference;
 use crate::plugins::levels::state::packed_sector::PackedSector;
 use crate::plugins::levels::state::selected_level_description::SelectedLevelDescription;
@@ -40,6 +41,7 @@ impl SelectedLevel {
       bounds: SectorOutline::merge_bounds(&self.outlines),
       drawables: self.visuals.count_drawable() as u32,
       has_sun: level.lights.as_ref().is_some_and(|it| it.get_sun().is_some()),
+      sun: LevelSunDescription::of(level.lights.as_ref().and_then(|it| it.get_sun())),
       lights: level.lights.as_ref().map_or(0, |it| it.lights.len()) as u32,
       portals: level.portals.as_ref().map_or(0, |it| it.portals.len()) as u32,
       roots: self.roots.clone(),

@@ -4,6 +4,7 @@ import { ReactElement, useCallback, useEffect, useRef } from "react";
 import { VisualBounds } from "@/core/ipc/types/xrf-visual";
 import { LevelPreviewScene } from "@/core/level/components/scene/LevelPreviewScene";
 import { ILevelCamera } from "@/core/level/lib/level-camera";
+import { DEFAULT_LEVEL_LIGHTING, ILevelLighting } from "@/core/level/lib/level-lighting";
 import { ILevelPoint } from "@/core/level/lib/level-residency";
 import { ILoadedSector } from "@/core/level/lib/level-sector-set";
 import { ILevelStats } from "@/core/level/lib/level-stats";
@@ -22,6 +23,8 @@ export interface ILevelPreviewViewportProps extends BaseComponentProps {
   /** Where surfaces take their textures from, owned by the loader rather than by the scene. */
   textures?: Nullable<ILevelTextureLookup>;
   options?: ILevelViewOptions;
+  /** What the viewer is lighting with, which is the viewer's answer rather than anything the level carries. */
+  lighting?: ILevelLighting;
   /** Where the camera has gone, for the loader to stream against. */
   onCameraMoved: (point: ILevelPoint) => void;
   /** What the viewport costs and where its camera is, a few times a second while a level is open. */
@@ -39,6 +42,7 @@ export function LevelPreviewViewport({
   bounds,
   textures = null,
   options = DEFAULT_LEVEL_VIEW_OPTIONS,
+  lighting = DEFAULT_LEVEL_LIGHTING,
   onCameraMoved,
   onReport,
 }: ILevelPreviewViewportProps): ReactElement {
@@ -91,6 +95,10 @@ export function LevelPreviewViewport({
   useEffect(() => {
     sceneRef.current?.applyViewOptions(options);
   }, [options]);
+
+  useEffect(() => {
+    sceneRef.current?.setLighting(lighting);
+  }, [lighting]);
 
   // Taken when the extent changes, which is when a level opens rather than when a sector arrives, so streaming never
   // moves the camera out from under the person flying it.

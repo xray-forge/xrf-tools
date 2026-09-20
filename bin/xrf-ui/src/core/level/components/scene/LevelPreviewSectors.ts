@@ -88,6 +88,13 @@ export class LevelPreviewSectors {
     this.materials.applyViewOptions(options);
   }
 
+  /**
+   * @param strength - How much of the baked hemisphere term to apply, from the lighting.
+   */
+  public setHemiStrength(strength: number): void {
+    this.materials.setHemiStrength(strength);
+  }
+
   /** Removes every mesh and disposes everything it made. */
   public dispose(): void {
     for (const sector of Array.from(this.drawn.keys())) {

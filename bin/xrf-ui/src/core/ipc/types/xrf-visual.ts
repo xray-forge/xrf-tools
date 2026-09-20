@@ -90,6 +90,10 @@ export type SectorSurface = {
   textureName: string | null;
   /** The lightmaps the same entry names after the base, sampled with the second uv set. */
   lightmaps: Array<string>;
+  /**
+   * The one the deferred renderer binds as `s_hemi`, out of which it reads hemisphere and sun occlusion.
+   */
+  hemi: string | null;
 };
 
 /** One bone of a visual's skeleton, as a name and the name of its parent. */

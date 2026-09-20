@@ -74,16 +74,29 @@ describe("level surface material", () => {
     expect(dressed.material.alphaTest).toBe(0);
   });
 
-  it("binds the second texture as occlusion, and takes it off again", () => {
-    const lit: ILevelSurface = surface({ surface: mockSectorSurface({ lightmaps: ["lmap#1_1", "lmap#1_2"] }) });
-    const textures: ILevelTextureLookup = lookup("stone", "lmap#1_1");
+  // The second of the pair, which is what `uber_deffer` binds as `s_hemi`. The first is R1's baked colour and no
+  // deferred shader samples it, so binding that one shaded every lightmapped surface by an alpha that is not
+  // occlusion at all.
+  it("binds the texture the renderer reads occlusion out of, and takes it off again", () => {
+    const lit: ILevelSurface = surface({
+      surface: mockSectorSurface({ hemi: "lmap#1_2", lightmaps: ["lmap#1_1", "lmap#1_2"] }),
+    });
+    const textures: ILevelTextureLookup = lookup("stone", "lmap#1_2");
     const dressed: ILevelSurfaceMaterial = createSurfaceMaterial(lit, textures, options());
 
-    // The first of the pair only: xrLC writes two and this samples one, which is the approximation this viewer makes.
-    expect(dressed.material.aoMap).toBe(textures.get("lmap#1_1")?.texture);
+    expect(dressed.material.aoMap).toBe(textures.get("lmap#1_2")?.texture);
     expect(dressed.material.lightMap).toBeNull();
 
     dressSurfaceMaterial(dressed, lit, textures, options({ isLit: false }));
+
+    expect(dressed.material.aoMap).toBeNull();
+  });
+
+  // A row the engine's own test rejects - fewer than three textures, or a third that is not spelled `lmap` - is lit
+  // with no baked occlusion rather than with whatever its second texture happens to be.
+  it("shades a row the renderer would not call lightmapped without any occlusion", () => {
+    const unlit: ILevelSurface = surface({ surface: mockSectorSurface({ hemi: null, lightmaps: ["lmap#1_1"] }) });
+    const dressed: ILevelSurfaceMaterial = createSurfaceMaterial(unlit, lookup("stone", "lmap#1_1"), options());
 
     expect(dressed.material.aoMap).toBeNull();
   });

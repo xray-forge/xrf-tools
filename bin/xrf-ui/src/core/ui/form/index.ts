@@ -4,6 +4,7 @@
 
 export * from "./CheckboxFormRow";
 export * from "./ChoiceFormRow";
+export * from "./ChoiceListFormRow";
 export * from "./EditableList";
 export * from "./FormRow";
 export * from "./PathFormRow";

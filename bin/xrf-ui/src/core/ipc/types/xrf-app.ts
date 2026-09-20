@@ -5,6 +5,7 @@ import { DialogProjectMode } from "@/core/ipc/types/xrf-dialog";
 import { JobOutcome, JobProgress } from "@/core/ipc/types/xrf-job";
 import { LtxAnchoredFinding, LtxFileStructure, LtxFileText, LtxInventory } from "@/core/ipc/types/xrf-ltx-inspect";
 import { XrayMaterialDescriptor, XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
+import { Vector3d } from "@/core/ipc/types/xrf-math";
 import { ArchivePackConfig, ArchivePatchConfig } from "@/core/ipc/types/xrf-pack";
 import { SpawnHeaderChunk } from "@/core/ipc/types/xrf-spawn";
 import { EquipmentSlotOccupant, ImageShape } from "@/core/ipc/types/xrf-texture";
@@ -1666,6 +1667,16 @@ export type LevelSource =
   /** A level of the mounted roots, named by its engine identity. */
   | { kind: "asset"; logicalPath: string };
 
+/**
+ * The sun xrLC compiled the level against, as the light chunk records it.
+ */
+export type LevelSunDescription = {
+  /** Where the light travels, in the level's own axes. */
+  direction: Vector3d;
+  /** Its diffuse colour, as the compiler stored it. */
+  color: [number | null, number | null, number | null];
+};
+
 /** One texture a level's shader table names, and what it came to. */
 export type LevelTextureReference = {
   /** The reference as the shader table spells it, which is what a surface names. */
@@ -1749,6 +1760,8 @@ export type SelectedLevelDescription = {
   portals: number;
   lights: number;
   hasSun: boolean;
+  /** The directional light the level names its sun, which is what its baked occlusion was computed for. */
+  sun: LevelSunDescription | null;
   sectors: Array<SectorOutline>;
   /**
    * Every texture the level's surfaces bind, resolved once so a sector arriving later is a lookup rather than a

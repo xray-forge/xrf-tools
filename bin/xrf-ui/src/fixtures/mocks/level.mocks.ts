@@ -43,6 +43,7 @@ export function mockSectorGeometry(buffer: MockVisualBuffer): SectorGeometry {
  */
 export function mockSectorSurface(overrides: Partial<SectorSurface> = {}): SectorSurface {
   return {
+    hemi: null,
     lightmaps: [],
     shaderId: 1,
     shaderName: "default",
@@ -172,6 +173,7 @@ export function mockSelectedLevelDescription(
   return {
     bounds: mockVisualBounds(),
     drawables: 1,
+    sun: null,
     hasSun: true,
     lights: 2,
     portals: 0,

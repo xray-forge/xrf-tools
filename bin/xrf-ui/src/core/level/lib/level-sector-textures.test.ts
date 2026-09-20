@@ -25,6 +25,8 @@ describe("level sector surfaces", () => {
   function sectorDrawing(lightmaps: Array<string>): SectorDescription {
     const buffer: MockVisualBuffer = new MockVisualBuffer();
     const surface = mockSectorSurface({
+      // What the renderer binds is the row's third texture, and only when it is spelled `lmap`.
+      hemi: lightmaps[1] ?? null,
       lightmaps,
       shaderId: SHADER_ID,
       shaderName: "levels\\aref",
@@ -68,12 +70,20 @@ describe("level sector surfaces", () => {
 
   // The upload is per file while alpha is per surface: a DXT1 base drawn by a cut-out surface has to keep the alpha
   // bit its blocks carry, and its lightmap is sampled for light rather than tested for coverage.
-  it("asks for alpha on a cut-out surface's base texture and never on its lightmap", () => {
-    const views: ISectorViews = viewsOf(sectorDrawing(["lmap#1_1"]), table(mockAlphaSurfaceDescriptor()));
+  it("asks for alpha on a cut-out surface's base texture and never on its occlusion map", () => {
+    const views: ISectorViews = viewsOf(sectorDrawing(["lmap#1_1", "lmap#1_2"]), table(mockAlphaSurfaceDescriptor()));
     const requests: Array<ISectorTextureRequest> = listSectorTextures(views);
 
     expect(requests).toContainEqual({ isAlphaRead: true, reference: "veg\veg_reed" });
-    expect(requests).toContainEqual({ isAlphaRead: false, reference: "lmap#1_1" });
+    expect(requests).toContainEqual({ isAlphaRead: false, reference: "lmap#1_2" });
+  });
+
+  // Only the one the renderer samples. Reading the other half of every pair was a megabyte a lightmap for a texture
+  // nothing binds.
+  it("does not ask for the half of the lightmap pair no deferred shader reads", () => {
+    const views: ISectorViews = viewsOf(sectorDrawing(["lmap#1_1", "lmap#1_2"]), table(mockSurfaceDescriptor()));
+
+    expect(listSectorTextures(views).map((it) => it.reference)).not.toContain("lmap#1_1");
   });
 
   // Nothing in the level names it: a sector fetching only what its shader table spells would draw its ground as the

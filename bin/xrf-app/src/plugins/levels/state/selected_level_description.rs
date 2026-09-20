@@ -4,6 +4,7 @@ use xrf_vfs::XrayRoots;
 use xrf_visual::{SectorOutline, VisualBounds};
 
 use crate::plugins::levels::state::level_source::LevelSource;
+use crate::plugins::levels::state::level_sun_description::LevelSunDescription;
 use crate::plugins::levels::state::level_texture_reference::LevelTextureReference;
 
 /// What the viewer is showing, paired with where it came from.
@@ -22,6 +23,8 @@ pub struct SelectedLevelDescription {
   pub portals: u32,
   pub lights: u32,
   pub has_sun: bool,
+  /// The directional light the level names its sun, which is what its baked occlusion was computed for.
+  pub sun: Option<LevelSunDescription>,
   pub sectors: Vec<SectorOutline>,
   /// Every texture the level's surfaces bind, resolved once so a sector arriving later is a lookup rather than a
   /// search.

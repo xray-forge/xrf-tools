@@ -6,7 +6,7 @@ import { LevelEntry } from "@/core/ipc/types/xrf-app";
 import { LevelListService, LevelLoadService } from "@/core/level/services";
 import { EApplicationId } from "@/core/routing/application";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
-import { ChoiceFormRow, IPathField, PathFormRow, usePathField } from "@/core/ui/form";
+import { ChoiceListFormRow, IPathField, PathFormRow, usePathField } from "@/core/ui/form";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface ILevelViewerOpenFormProps extends BaseComponentProps {
@@ -93,7 +93,7 @@ export function LevelViewerOpenForm({
       />
 
       {isListed ? (
-        <ChoiceFormRow
+        <ChoiceListFormRow
           label={"Level"}
           description={
             options.length ? "Compiled levels these roots hold" : "These roots hold no level with render geometry"

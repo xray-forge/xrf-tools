@@ -3,6 +3,7 @@
 pub(crate) mod level_entry;
 pub(crate) mod level_source;
 pub(crate) mod level_state;
+pub(crate) mod level_sun_description;
 pub(crate) mod level_texture_reference;
 pub(crate) mod packed_sector;
 pub(crate) mod selected_level;
