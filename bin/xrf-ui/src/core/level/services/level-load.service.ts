@@ -123,11 +123,7 @@ export class LevelLoadService {
         this.session.open(levelsCommands.openLevel, source, roots)
       );
 
-      this.releaseSectors();
-
-      this.residency = createLevelResidency(selected.value.bounds?.boundingSphere.radius ?? 0);
-      this.loaded.open(roots, selected.value.textures);
-      this.level = this.level.asReady({ selected });
+      this.adopt(selected);
 
       this.log.info(
         "Level opened in:",
@@ -170,9 +166,24 @@ export class LevelLoadService {
     this.session.adopt(snapshot);
 
     if (snapshot) {
-      this.releaseSectors();
-      this.level = this.level.asReady({ selected: snapshot });
+      this.adopt(snapshot);
     }
+  }
+
+  /**
+   * Takes one opening as the level this loader holds.
+   *
+   * @param selected - The opening the backend holds, from an open or from a restore.
+   */
+  @BoundAction()
+  private adopt(selected: SessionSnapshot<SelectedLevelDescription>): void {
+    this.releaseSectors();
+
+    this.residency = createLevelResidency(selected.value.bounds?.boundingSphere.radius ?? 0);
+    // The roots the **open** searched, not the ones a caller happens to hold: they are centred on the level, which is
+    // what finds a texture shipped beside it, and a restore has no other way to know them.
+    this.loaded.open(selected.value.roots, selected.value.textures);
+    this.level = this.level.asReady({ selected });
   }
 
   /**

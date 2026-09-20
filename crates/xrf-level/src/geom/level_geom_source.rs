@@ -1,5 +1,4 @@
 use std::fs::File;
-use std::io::{Read, SeekFrom};
 use std::path::Path;
 
 use byteorder::ByteOrder;
@@ -84,7 +83,7 @@ impl<D: ChunkDataSource> LevelGeomSource<D> {
   ///
   /// Returns an error when the buffer does not exist, the range reaches past its vertices, or its declaration is
   /// one xrLC does not write.
-  pub fn read_vertices<T: ByteOrder>(&mut self, buffer: u32, base: u32, count: u32) -> XrfResult<Vec<LevelVertex>> {
+  pub fn read_vertices<T: ByteOrder>(&self, buffer: u32, base: u32, count: u32) -> XrfResult<Vec<LevelVertex>> {
     let declared: &LevelGeomVertexBuffer = self
       .file
       .vertex_buffers
@@ -96,7 +95,7 @@ impl<D: ChunkDataSource> LevelGeomSource<D> {
     let layout: LevelVertexLayout = LevelVertexLayout::of(declared)?;
     let stride: usize = layout.stride as usize;
     let payload: Vec<u8> = Self::read_payload(
-      &mut self.vertices,
+      &self.vertices,
       declared.payload_offset + u64::from(base) * u64::from(layout.stride),
       count as usize * stride,
       "vertices",
@@ -115,7 +114,7 @@ impl<D: ChunkDataSource> LevelGeomSource<D> {
   /// # Errors
   ///
   /// Returns an error when the buffer does not exist or the range reaches past its indices.
-  pub fn read_indices<T: ByteOrder>(&mut self, buffer: u32, base: u32, count: u32) -> XrfResult<Vec<u16>> {
+  pub fn read_indices<T: ByteOrder>(&self, buffer: u32, base: u32, count: u32) -> XrfResult<Vec<u16>> {
     let declared: &LevelGeomIndexBuffer = self
       .file
       .index_buffers
@@ -125,7 +124,7 @@ impl<D: ChunkDataSource> LevelGeomSource<D> {
     Self::require_range("index", buffer, base, count, declared.index_count)?;
 
     let payload: Vec<u8> = Self::read_payload(
-      &mut self.indices,
+      &self.indices,
       declared.payload_offset + u64::from(base) * LevelGeomIndexBuffer::INDEX_SIZE,
       count as usize * LevelGeomIndexBuffer::INDEX_SIZE as usize,
       "indices",
@@ -212,19 +211,13 @@ impl<D: ChunkDataSource> LevelGeomSource<D> {
     }
   }
 
-  /// Seeks a chunk to one payload and takes the bytes of it that a range covers.
-  fn read_payload(reader: &mut ChunkReader<D>, offset: u64, size: usize, what: &str) -> XrfResult<Vec<u8>> {
-    reader.data.set_seek(SeekFrom::Start(offset))?;
-
-    let mut payload: Vec<u8> = vec![0; size];
-
-    reader.read_exact(&mut payload).map_err(|error| {
+  /// Takes the bytes of one payload that a range covers, leaving the chunk where it was.
+  fn read_payload(reader: &ChunkReader<D>, offset: u64, size: usize, what: &str) -> XrfResult<Vec<u8>> {
+    reader.data.read_at(offset, size).map_err(|error| {
       XrfError::new_read_error(format!(
         "Level render geometry {what} were not read at offset {offset}: {error}"
       ))
-    })?;
-
-    Ok(payload)
+    })
   }
 
   /// Refuses a range that reaches past what the buffer declared, rather than reading a neighbour's bytes.

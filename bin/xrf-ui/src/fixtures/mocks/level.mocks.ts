@@ -1,3 +1,4 @@
+import { createRoots } from "@/core/assets/lib";
 import { LevelEntry, LevelTextureReference, SelectedLevelDescription } from "@/core/ipc/types/xrf-app";
 import {
   SectorDescription,
@@ -172,6 +173,7 @@ export function mockSelectedLevelDescription(
     hasSun: true,
     lights: 2,
     portals: 0,
+    roots: createRoots([]),
     sectors: [mockSectorOutline()],
     shaderEntries: 4,
     source: { kind: "directory", path: "C:\\levels\\zaton" },

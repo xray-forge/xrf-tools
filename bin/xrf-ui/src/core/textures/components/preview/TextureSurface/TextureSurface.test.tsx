@@ -18,6 +18,7 @@ beforeAll(async () => {
       dispose: jest.fn(),
       setTextures: jest.fn(),
       setOptions: jest.fn(),
+      setFrameRateLimit: jest.fn(),
       dragLight,
     })),
   }));

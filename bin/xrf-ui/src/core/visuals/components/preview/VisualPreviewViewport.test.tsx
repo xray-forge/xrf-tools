@@ -1,9 +1,9 @@
 import { beforeAll, describe, expect, it, jest } from "@jest/globals";
-import { render } from "@testing-library/react";
 
 import { DEFAULT_VISUAL_PREVIEW_VIEW_OPTIONS } from "@/core/visuals/components/scene";
 import { IVisualModelViews } from "@/core/visuals/lib/visual-views";
 import { mockVisualModelViews } from "@/fixtures/mocks/visual.mocks";
+import { renderWithProviders } from "@/fixtures/utils/render";
 import { Nullable } from "@/lib/types/general";
 
 const createScene = jest.fn((initialModel: Nullable<IVisualModelViews>) => ({
@@ -16,6 +16,7 @@ const createScene = jest.fn((initialModel: Nullable<IVisualModelViews>) => ({
   setHighlightedJoint: jest.fn(),
   setPose: jest.fn(),
   setHiddenBones: jest.fn(),
+  setFrameRateLimit: jest.fn(),
 }));
 
 let VisualPreviewViewport: typeof import("./VisualPreviewViewport").VisualPreviewViewport;
@@ -40,7 +41,7 @@ describe("VisualPreviewViewport", () => {
   it("initializes the model and toolbar settings once", () => {
     const model = mockVisualModelViews();
     const options = { ...DEFAULT_VISUAL_PREVIEW_VIEW_OPTIONS, isWireframe: true };
-    const { unmount } = render(<VisualPreviewViewport model={model} options={options} detail={0.5} />);
+    const { unmount } = renderWithProviders(<VisualPreviewViewport model={model} options={options} detail={0.5} />);
     const scene = getScene(0);
 
     expect(createScene).toHaveBeenCalledTimes(1);
@@ -59,7 +60,7 @@ describe("VisualPreviewViewport", () => {
     const first = mockVisualModelViews();
     const second = mockVisualModelViews();
     const options = { ...DEFAULT_VISUAL_PREVIEW_VIEW_OPTIONS, isWireframe: true };
-    const { rerender } = render(<VisualPreviewViewport model={first} options={options} detail={0.5} />);
+    const { rerender } = renderWithProviders(<VisualPreviewViewport model={first} options={options} detail={0.5} />);
     const scene = getScene(0);
 
     scene.setModel.mockClear();
@@ -78,8 +79,8 @@ describe("VisualPreviewViewport", () => {
   it("restores the model and toolbar settings after a Strict Mode effect remount", () => {
     const model = mockVisualModelViews();
     const options = { ...DEFAULT_VISUAL_PREVIEW_VIEW_OPTIONS, isWireframe: true };
-    const { unmount } = render(<VisualPreviewViewport model={model} options={options} detail={0.5} />, {
-      reactStrictMode: true,
+    const { unmount } = renderWithProviders(<VisualPreviewViewport model={model} options={options} detail={0.5} />, {
+      isStrict: true,
     });
 
     expect(createScene).toHaveBeenCalledTimes(2);

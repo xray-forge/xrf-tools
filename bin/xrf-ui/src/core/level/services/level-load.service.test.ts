@@ -5,8 +5,14 @@ import { createRoots } from "@/core/assets/lib";
 import { SelectedLevelDescription } from "@/core/ipc/types/xrf-app";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { SectorDescription, SectorOutline } from "@/core/ipc/types/xrf-visual";
+import { createLevelResidency } from "@/core/level/lib/level-residency";
 import { mockDdsFile } from "@/fixtures/mocks/dds.mocks";
-import { mockSectorDescription, mockSectorOutline, mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
+import {
+  mockLevelTextureReference,
+  mockSectorDescription,
+  mockSectorOutline,
+  mockSelectedLevelDescription,
+} from "@/fixtures/mocks/level.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { mockInvoke, resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { MockVisualBuffer } from "@/fixtures/mocks/visual.mocks";
@@ -80,6 +86,35 @@ describe("LevelLoadService", () => {
 
     expect(service.level.value?.selected.value.sectors).toHaveLength(1);
     expect(countCalls("plugin:levels|open_level")).toBe(0);
+  });
+
+  // The defect a restore first shipped with: it took the description and not the textures, so every surface of a
+  // restored level was drawn flat grey. A restore has to arrive at the same state an open does.
+  it("dresses a restored level from the roots the open searched", async () => {
+    const { level, description, buffer } = mockStreamable([outlineAt(0, 5)]);
+    const { service } = mockInjectedService(LevelLoadService);
+    const textures = [mockLevelTextureReference("stone")];
+
+    setMockInvokeResponses({
+      ["plugin:assets|read_asset"]: mockDdsFile(),
+      ["plugin:levels|get_level"]: mockSessionResponse({
+        ...level,
+        bounds: { ...level.bounds!, boundingSphere: { center: { x: 0, y: 0, z: 0 }, radius: 2000 } },
+        textures,
+      }),
+      ["plugin:levels|open_sector"]: mockSessionResponse((args?: Record<string, unknown>) => ({
+        ...description,
+        sector: args?.sector as number,
+      })),
+      ["plugin:levels|read_sector"]: buffer,
+    });
+
+    await service.restore();
+    await service.stream(ORIGIN);
+
+    expect(service.textures.get("stone")?.texture).toBeTruthy();
+    // Sized from the description's own extent, which is the only place a restore can learn it from.
+    expect(service.residency).toEqual(createLevelResidency(2000));
   });
 
   // Adopted with its session id, so the sector reads that follow a restore belong to the opening the backend holds

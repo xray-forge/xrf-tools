@@ -23,4 +23,9 @@ pub trait ChunkDataSource: ReadBytesExt + Read + Clone {
 
     Ok(buffer)
   }
+
+  /// Reads `count` bytes at a window-local offset without moving this source's own cursor.
+  fn read_at(&self, offset: u64, count: usize) -> IoResult<Vec<u8>> {
+    self.slice(offset..offset + count as u64).read_bytes(count)
+  }
 }

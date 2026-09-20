@@ -27,11 +27,7 @@ impl VisualBufferBuilder {
   /// The returned offset is suitable for a `Float32Array` view; padding before the section is
   /// included in the buffer but not in its range.
   pub fn push_f32_section(&mut self, values: &[f32]) -> VisualSection {
-    self.push_section(size_of_val(values), |buffer| {
-      for value in values {
-        buffer.extend_from_slice(&value.to_le_bytes());
-      }
-    })
+    self.push_encoded(values, f32::to_le_bytes)
   }
 
   /// Appends `u16` values as little-endian bytes and returns their aligned byte range.
@@ -39,20 +35,12 @@ impl VisualBufferBuilder {
   /// The returned offset is suitable for a `Uint16Array` view; padding before the section is
   /// included in the buffer but not in its range.
   pub fn push_u16_section(&mut self, values: &[u16]) -> VisualSection {
-    self.push_section(size_of_val(values), |buffer| {
-      for value in values {
-        buffer.extend_from_slice(&value.to_le_bytes());
-      }
-    })
+    self.push_encoded(values, u16::to_le_bytes)
   }
 
   /// Appends `u32` values as little-endian bytes and returns their aligned byte range.
   pub fn push_u32_section(&mut self, values: &[u32]) -> VisualSection {
-    self.push_section(size_of_val(values), |buffer| {
-      for value in values {
-        buffer.extend_from_slice(&value.to_le_bytes());
-      }
-    })
+    self.push_encoded(values, u32::to_le_bytes)
   }
 
   /// Returns the total packed buffer length, including alignment padding.
@@ -63,6 +51,19 @@ impl VisualBufferBuilder {
   /// Returns the packed bytes, including alignment padding between sections.
   pub fn into_buffer(self) -> Vec<u8> {
     self.buffer
+  }
+
+  /// Appends one section by writing each value's bytes into room made for all of them at once.
+  fn push_encoded<const N: usize, V: Copy>(&mut self, values: &[V], encode: impl Fn(V) -> [u8; N]) -> VisualSection {
+    self.push_section(size_of_val(values), |buffer| {
+      let at: usize = buffer.len();
+
+      buffer.resize(at + values.len() * N, 0);
+
+      for (slot, value) in buffer[at..].as_chunks_mut::<N>().0.iter_mut().zip(values) {
+        *slot = encode(*value);
+      }
+    })
   }
 
   fn push_section(&mut self, byte_length: usize, write: impl FnOnce(&mut Vec<u8>)) -> VisualSection {

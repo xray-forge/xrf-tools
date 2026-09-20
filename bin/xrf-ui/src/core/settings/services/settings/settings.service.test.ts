@@ -59,4 +59,20 @@ describe("SettingsService", () => {
     expect(window.localStorage.getItem("xrf.preference.catalog-view")).toBe("grid");
     expect(mockInjectedService(SettingsService).service.catalogView).toBe("grid");
   });
+
+  it("caps viewports at sixty until something says otherwise", () => {
+    const { service } = mockInjectedService(SettingsService);
+
+    expect(service.frameRateLimit).toBe("60");
+  });
+
+  it("gives back the frame rate limit it was told to keep", () => {
+    const { service } = mockInjectedService(SettingsService);
+
+    service.setFrameRateLimit("30");
+
+    expect(service.frameRateLimit).toBe("30");
+    expect(window.localStorage.getItem("xrf.preference.frame-rate-limit")).toBe("30");
+    expect(mockInjectedService(SettingsService).service.frameRateLimit).toBe("30");
+  });
 });

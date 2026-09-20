@@ -13,6 +13,7 @@ import {
 } from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
+import { TFrameRateLimit } from "@/core/render/lib/render-frame-limit";
 import { RenderGrid } from "@/core/render/lib/render-grid";
 import { RenderViewport } from "@/core/render/lib/render-viewport";
 import {
@@ -373,6 +374,15 @@ export class VisualPreviewScene {
 
     this.controls.target.set(x, y, z);
     this.controls.update();
+  }
+
+  /**
+   * Caps how often the scene redraws.
+   *
+   * @param limit - Frames a second to allow, as the application setting states it.
+   */
+  public setFrameRateLimit(limit: TFrameRateLimit): void {
+    this.viewport.setFrameRateLimit(limit);
   }
 
   /**

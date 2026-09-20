@@ -1,6 +1,8 @@
+import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useEffect, useRef } from "react";
 import { Texture } from "three";
 
+import { SettingsService } from "@/core/settings/services/settings";
 import { ViewportControls } from "@/core/ui/media/ViewportControls";
 import { IVisualPreviewViewOptions, VisualPreviewScene } from "@/core/visuals/components/scene";
 import { IVisualBumpTextures } from "@/core/visuals/lib/visual-bump";
@@ -54,6 +56,7 @@ export function VisualPreviewViewport({
   bumps,
 }: IVisualPreviewViewportProps): ReactElement {
   const containerRef = useRef<HTMLDivElement>(null);
+  const settingsService: SettingsService = useInjection(SettingsService);
   const sceneRef = useRef<Nullable<VisualPreviewScene>>(null);
 
   useEffect(() => {
@@ -134,6 +137,10 @@ export function VisualPreviewViewport({
   const onZoomOut = useCallback((): void => sceneRef.current?.dolly(DOLLY_STEP), []);
 
   const onReset = useCallback((): void => sceneRef.current?.resetCamera(), []);
+
+  useEffect(() => {
+    sceneRef.current?.setFrameRateLimit(settingsService.frameRateLimit);
+  }, [settingsService.frameRateLimit]);
 
   return (
     <div className={"relative size-full"}>

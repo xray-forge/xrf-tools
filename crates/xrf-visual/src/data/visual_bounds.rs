@@ -31,22 +31,22 @@ pub struct VisualBounds {
 impl VisualBounds {
   /// Extent of the positions a set of indices actually reaches, or `None` when it reaches none.
   pub(crate) fn from_indexed_positions(positions: &[Vector3d], indices: &[u16]) -> Option<Self> {
-    let referenced: Vec<Vector3d> = indices
-      .iter()
-      .filter_map(|index| positions.get(*index as usize).cloned())
-      .collect();
-
-    Self::from_positions(&referenced)
+    Self::from_positions(
+      indices
+        .iter()
+        .filter_map(|index| positions.get(*index as usize).cloned()),
+    )
   }
 
-  /// Extent of a set of already converted positions, or `None` when the set is empty.
-  pub(crate) fn from_positions(positions: &[Vector3d]) -> Option<Self> {
-    let (first, rest) = positions.split_first()?;
+  /// Extent of already converted positions, or `None` when there are none.
+  pub(crate) fn from_positions(positions: impl Iterator<Item = Vector3d> + Clone) -> Option<Self> {
+    let mut extent = positions.clone();
+    let first: Vector3d = extent.next()?;
 
     let mut min: Vector3d = first.clone();
-    let mut max: Vector3d = first.clone();
+    let mut max: Vector3d = first;
 
-    for position in rest {
+    for position in extent {
       min.x = min.x.min(position.x);
       min.y = min.y.min(position.y);
       min.z = min.z.min(position.z);
@@ -88,11 +88,10 @@ impl VisualBounds {
     }
   }
 
-  fn from_box_and_positions(bounding_box: VisualBox, positions: &[Vector3d]) -> Self {
+  fn from_box_and_positions(bounding_box: VisualBox, positions: impl Iterator<Item = Vector3d>) -> Self {
     let center: Vector3d = box_center(&bounding_box);
     let radius: f32 = positions
-      .iter()
-      .map(|position| distance(&center, position))
+      .map(|position| distance(&center, &position))
       .fold(0.0, f32::max);
 
     Self {

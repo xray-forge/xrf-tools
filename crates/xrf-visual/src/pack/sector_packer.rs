@@ -50,14 +50,14 @@ struct InstanceGathering {
 pub struct SectorPacker<'a, D: ChunkDataSource> {
   visuals: &'a LevelVisualsChunk,
   shaders: Option<&'a LevelShadersChunk>,
-  source: &'a mut LevelGeomSource<D>,
+  source: &'a LevelGeomSource<D>,
 }
 
 impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
   pub fn new(
     visuals: &'a LevelVisualsChunk,
     shaders: Option<&'a LevelShadersChunk>,
-    source: &'a mut LevelGeomSource<D>,
+    source: &'a LevelGeomSource<D>,
   ) -> Self {
     Self {
       shaders,
@@ -68,7 +68,7 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
 
   /// Packs everything one sector reaches into one buffer of attribute arrays and one index array.
   pub fn pack<T: ByteOrder>(
-    &mut self,
+    &self,
     sector: u32,
     composition: &LevelSectorComposition,
     wanted: SectorAttributes,
@@ -158,7 +158,7 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
 
   /// Packs the vertex range a drawable names, unless another drawable already did, and says where it sits.
   fn pack_range<T: ByteOrder>(
-    &mut self,
+    &self,
     container: &OgfGeometryContainerChunk,
     arrays: &mut SectorVertexArrays,
     packed: &mut BTreeMap<VertexRange, u32>,
@@ -190,7 +190,7 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
   }
 
   /// Reads a drawable's indices and moves them onto the vertices it was packed at.
-  fn read_indices<T: ByteOrder>(&mut self, container: &OgfGeometryContainerChunk, base: u32) -> XrfResult<Vec<u32>> {
+  fn read_indices<T: ByteOrder>(&self, container: &OgfGeometryContainerChunk, base: u32) -> XrfResult<Vec<u32>> {
     let indices: Vec<u16> =
       self
         .source
@@ -215,7 +215,7 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
 
   /// Writes the arrays and the grouped indices into one buffer and describes what landed where.
   fn build<T: ByteOrder>(
-    &mut self,
+    &self,
     sector: u32,
     arrays: SectorVertexArrays,
     gathered_sections: BTreeMap<u16, SectionGathering>,
@@ -273,7 +273,7 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
 
   /// Packs each gathered mesh once and writes the places it stands beside it.
   fn pack_instances<T: ByteOrder>(
-    &mut self,
+    &self,
     gathered: BTreeMap<InstanceKey, InstanceGathering>,
     attributes: SectorAttributes,
     builder: &mut VisualBufferBuilder,
@@ -297,7 +297,7 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
   ///
   /// Returns an error when the mesh's own range cannot be read, which leaves every instance of it undrawable.
   fn pack_instance<T: ByteOrder>(
-    &mut self,
+    &self,
     key: InstanceKey,
     gathering: &InstanceGathering,
     attributes: SectorAttributes,

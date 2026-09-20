@@ -2,6 +2,7 @@ import { useInjection } from "@wirestate/react";
 import { PointerEvent, ReactElement, useCallback, useEffect, useRef } from "react";
 
 import { TextureDescription } from "@/core/ipc/types/xrf-app";
+import { SettingsService } from "@/core/settings/services/settings";
 import {
   EMPTY_TEXTURE_SURFACE,
   ITextureSurfaceOptions,
@@ -42,6 +43,7 @@ export function TextureSurface({
   const surfaceService: TextureSurfaceService = useInjection(TextureSurfaceService);
 
   const containerRef = useRef<Nullable<HTMLDivElement>>(null);
+  const settingsService: SettingsService = useInjection(SettingsService);
   const sceneRef = useRef<Nullable<TextureSurfaceScene>>(null);
   const dragRef = useRef<Nullable<IDragOrigin>>(null);
 
@@ -115,6 +117,10 @@ export function TextureSurface({
   useEffect(() => sceneRef.current?.setTextures(textures), [textures]);
 
   useEffect(() => sceneRef.current?.setOptions(options), [options]);
+
+  useEffect(() => {
+    sceneRef.current?.setFrameRateLimit(settingsService.frameRateLimit);
+  }, [settingsService.frameRateLimit]);
 
   return (
     <div data-testid={dataTestId} id={id} className={cn("relative flex min-h-0 min-w-0 grow", className)}>

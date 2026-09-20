@@ -1,5 +1,3 @@
-use std::sync::Mutex;
-
 use xrf_chunk::InMemoryChunkDataSource;
 use xrf_level::{LevelFile, LevelGeomSource, LevelSector, LevelVisualsChunk};
 use xrf_material::XraySurfaceDescriptor;
@@ -27,8 +25,8 @@ pub struct SelectedLevel {
   /// stream before reading any geometry.
   pub outlines: Vec<SectorOutline>,
   /// Render geometry with its payloads still on the heap where they were read, serving whichever range a sector
-  /// names. Behind a lock because serving a range advances the reader, and a session snapshot is shared.
-  pub geometry: Mutex<LevelGeomSource<InMemoryChunkDataSource>>,
+  /// names. Shared rather than locked: a range is read without moving the source, so sectors pack side by side.
+  pub geometry: LevelGeomSource<InMemoryChunkDataSource>,
   /// The sector packed by the last `open_sector`, so reading its bytes serves that pack rather than packing again.
   pub packed: Session<PackedSector>,
 }
@@ -44,6 +42,7 @@ impl SelectedLevel {
       has_sun: level.lights.as_ref().is_some_and(|it| it.get_sun().is_some()),
       lights: level.lights.as_ref().map_or(0, |it| it.lights.len()) as u32,
       portals: level.portals.as_ref().map_or(0, |it| it.portals.len()) as u32,
+      roots: self.roots.clone(),
       sectors: self.outlines.clone(),
       shader_entries: level.shaders.as_ref().map_or(0, |it| it.entries.len()) as u32,
       source: self.source.clone(),

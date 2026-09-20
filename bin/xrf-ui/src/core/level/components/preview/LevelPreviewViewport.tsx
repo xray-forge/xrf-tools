@@ -1,3 +1,4 @@
+import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useEffect, useRef } from "react";
 
 import { VisualBounds } from "@/core/ipc/types/xrf-visual";
@@ -8,6 +9,7 @@ import { ILoadedSector } from "@/core/level/lib/level-sector-set";
 import { ILevelStats } from "@/core/level/lib/level-stats";
 import { ILevelTextureLookup } from "@/core/level/lib/level-texture-set";
 import { DEFAULT_LEVEL_VIEW_OPTIONS, ILevelViewOptions } from "@/core/level/lib/level-view-options";
+import { SettingsService } from "@/core/settings/services/settings";
 import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
@@ -41,6 +43,7 @@ export function LevelPreviewViewport({
   onReport,
 }: ILevelPreviewViewportProps): ReactElement {
   const containerRef = useRef<HTMLDivElement>(null);
+  const settingsService: SettingsService = useInjection(SettingsService);
   const sceneRef = useRef<Nullable<LevelPreviewScene>>(null);
 
   // Held in refs so the scene is built once: rebuilding it because a handler identity changed would drop the webgl
@@ -94,6 +97,10 @@ export function LevelPreviewViewport({
   useEffect(() => {
     sceneRef.current?.setBounds(bounds);
   }, [bounds]);
+
+  useEffect(() => {
+    sceneRef.current?.setFrameRateLimit(settingsService.frameRateLimit);
+  }, [settingsService.frameRateLimit]);
 
   return <div data-testid={dataTestId} id={id} className={cn(className, "h-full w-full")} ref={containerRef} />;
 }

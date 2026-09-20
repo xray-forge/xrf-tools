@@ -22,6 +22,8 @@ export interface IRenderOptions {
   container?: Container;
   /** The subject renders shell outlets itself; omit the fixture's panel and leave-dialog hosts. */
   hasShell?: boolean;
+  /** Mount everything twice, the way a development build does, for subjects that hold something across a remount. */
+  isStrict?: boolean;
 }
 
 /**
@@ -48,11 +50,12 @@ function LeftPanelsOutlet(): ReactElement {
  * @param options.bindings - Service bindings added to the test container.
  * @param options.container - Existing service container to provide instead of creating one from bindings.
  * @param options.hasShell - Whether the subject supplies its own shell outlets.
+ * @param options.isStrict - Whether to mount twice, as a development build does.
  * @returns The Testing Library render result.
  */
 export function renderWithProviders(
   ui: ReactNode,
-  { route = "/", bindings = [], container, hasShell = false }: IRenderOptions = {}
+  { route = "/", bindings = [], container, hasShell = false, isStrict = false }: IRenderOptions = {}
 ): RenderResult {
   const config: ContainerConfig = {
     bindings: [...ROOT_BINDINGS, ...bindings.filter((it) => !ROOT_BINDINGS.includes(it))],
@@ -94,5 +97,9 @@ export function renderWithProviders(
     );
   }
 
-  return render(<>{ui}</>, { wrapper: Wrapper });
+  const result: RenderResult = render(<>{ui}</>, { wrapper: Wrapper, reactStrictMode: isStrict });
+
+  // Re-wrapped the way the first render was: handed the subject bare, React would see a different element in that
+  // position and remount it, losing whatever the subject was keeping across the update being tested.
+  return { ...result, rerender: (next: ReactNode): void => result.rerender(<>{next}</>) };
 }

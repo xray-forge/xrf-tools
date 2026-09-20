@@ -2,6 +2,7 @@ import { useColorScheme } from "@mui/material/styles";
 import { useInjection } from "@wirestate/react";
 import { ReactElement } from "react";
 
+import { FRAME_RATE_LIMITS, TFrameRateLimit } from "@/core/render/lib/render-frame-limit";
 import { SettingsService } from "@/core/settings/services/settings";
 import { COLOR_SCHEME_MODES, ColorSchemeMode, DEFAULT_COLOR_SCHEME_MODE } from "@/core/theme";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
@@ -18,6 +19,11 @@ const COLOR_SCHEME_OPTIONS: ReadonlyArray<IChoiceFormRowOption<ColorSchemeMode>>
   label: COLOR_SCHEME_MODE_LABELS[value],
 }));
 
+const FRAME_RATE_OPTIONS: ReadonlyArray<IChoiceFormRowOption<TFrameRateLimit>> = FRAME_RATE_LIMITS.map((value) => ({
+  value,
+  label: value === "unlimited" ? "Unlimited" : `${value} fps`,
+}));
+
 /** Switches that belong to the application rather than to any one editor. */
 export function SettingsGeneralSection(): ReactElement {
   const settingsService: SettingsService = useInjection(SettingsService);
@@ -32,6 +38,14 @@ export function SettingsGeneralSection(): ReactElement {
         options={COLOR_SCHEME_OPTIONS}
         value={mode ?? DEFAULT_COLOR_SCHEME_MODE}
         onChange={setMode}
+      />
+
+      <ChoiceFormRow
+        label={"Frame rate limit"}
+        description={"How often a viewport redraws. A display faster than this costs power for frames nobody sees."}
+        options={FRAME_RATE_OPTIONS}
+        value={settingsService.frameRateLimit}
+        onChange={settingsService.setFrameRateLimit}
       />
 
       <CheckboxFormRow

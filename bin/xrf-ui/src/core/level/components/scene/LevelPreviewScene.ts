@@ -16,6 +16,7 @@ import { ILevelStats, measureLevelStats } from "@/core/level/lib/level-stats";
 import { ILevelTextureLookup } from "@/core/level/lib/level-texture-set";
 import { DEFAULT_LEVEL_VIEW_OPTIONS, ILevelViewOptions } from "@/core/level/lib/level-view-options";
 import { ILevelViewpoint, toLevelStartViewpoint } from "@/core/level/lib/level-viewpoint";
+import { TFrameRateLimit } from "@/core/render/lib/render-frame-limit";
 import { RenderViewport } from "@/core/render/lib/render-viewport";
 import { Nullable } from "@/lib/types/general";
 
@@ -126,6 +127,15 @@ export class LevelPreviewScene {
   public applyViewOptions(options: ILevelViewOptions = DEFAULT_LEVEL_VIEW_OPTIONS): void {
     this.sectors.applyViewOptions(options);
     this.frame.applyViewOptions(options);
+  }
+
+  /**
+   * Caps how often the scene redraws.
+   *
+   * @param limit - Frames a second to allow, as the application setting states it.
+   */
+  public setFrameRateLimit(limit: TFrameRateLimit): void {
+    this.viewport.setFrameRateLimit(limit);
   }
 
   /**

@@ -53,20 +53,10 @@ pub async fn levels_open_sector(
     composition.hierarchies.len()
   );
 
-  let package: SectorPackage = {
-    let mut geometry = current
-      .geometry
-      .lock()
-      .map_err(|error| format!("Failed to read the level's geometry: {error}"))?;
+  current.packed.require_opening(sector_id)?;
 
-    current.packed.require_opening(sector_id)?;
-
-    SectorPacker::new(&current.visuals, current.level.shaders.as_ref(), &mut geometry).pack::<XRayByteOrder>(
-      sector,
-      &composition,
-      DRAWN_ATTRIBUTES,
-    )
-  };
+  let package: SectorPackage = SectorPacker::new(&current.visuals, current.level.shaders.as_ref(), &current.geometry)
+    .pack::<XRayByteOrder>(sector, &composition, DRAWN_ATTRIBUTES);
 
   report_packed_sector(&package, started);
 

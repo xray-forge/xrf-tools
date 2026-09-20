@@ -152,23 +152,13 @@ export type XrayMaterialDetail = {
 
 /** Every `kind` the `XraySurfaceDeclaration` union is told apart by, so a switch or a comparison names one. */
 export enum EXraySurfaceDeclaration {
-  /**
-   * The surface names no shader at all, so there is nothing to look up.
-   *
-   * A level's shader table is addressed by index and is allowed to hold entries nothing is dressed by - the first
-   * one always is - so the answer for those is kept in place rather than left out and shifting every index after it.
-   */
+  /** The surface names no shader at all, so there is nothing to look up. */
   UNDECLARED = "undeclared",
   /** No `shaders.xr` in any searched root, so nothing can be said about any surface of this model. */
   NO_LIBRARY = "noLibrary",
   /** A library was located and could not be read as one. */
   UNREADABLE = "unreadable",
-  /**
-   * The library holds no blender of that name.
-   *
-   * What the engine reports as `! Shader '%s' not found in library` before falling back to the default shader
-   * (`Layers/xrRender/ResourceManager.cpp:40`), so the surface still draws - opaque, and not as authored.
-   */
+  /** The library holds no blender of that name. */
   UNDEFINED = "undefined",
   /**
    * A blender whose class this crate does not derive a draw mode for, such as a particle or screen space class a
@@ -181,23 +171,13 @@ export enum EXraySurfaceDeclaration {
 
 /** What the shader library says about a surface, as the renderer would read it. */
 export type XraySurfaceDeclaration =
-  /**
-   * The surface names no shader at all, so there is nothing to look up.
-   *
-   * A level's shader table is addressed by index and is allowed to hold entries nothing is dressed by - the first
-   * one always is - so the answer for those is kept in place rather than left out and shifting every index after it.
-   */
+  /** The surface names no shader at all, so there is nothing to look up. */
   | { kind: "undeclared" }
   /** No `shaders.xr` in any searched root, so nothing can be said about any surface of this model. */
   | { kind: "noLibrary" }
   /** A library was located and could not be read as one. */
   | { kind: "unreadable"; reason: string }
-  /**
-   * The library holds no blender of that name.
-   *
-   * What the engine reports as `! Shader '%s' not found in library` before falling back to the default shader
-   * (`Layers/xrRender/ResourceManager.cpp:40`), so the surface still draws - opaque, and not as authored.
-   */
+  /** The library holds no blender of that name. */
   | { kind: "undefined" }
   /**
    * A blender whose class this crate does not derive a draw mode for, such as a particle or screen space class a
@@ -209,30 +189,15 @@ export type XraySurfaceDeclaration =
       kind: "described";
       /** The class tag, as `Blender_CLSID.h` spells it: `MODEL`, `MODELEbB`, `LM_AREF`. */
       class: string;
-      /**
-       * The class's own alpha switch, or `None` for a class that writes none and is therefore always opaque.
-       *
-       * The engine spells it differently per class - `Use alpha-channel` for `B_MODEL`, `Alpha-blend` for
-       * `B_DEFAULT_AREF`, `Alpha-Blend` for `B_MODEL_EbB` - and the reader keeps those apart.
-       */
+      /** The class's own alpha switch, or `None` for a class that writes none and is therefore always opaque. */
       isAlphaUsed: boolean | null;
-      /**
-       * The authored `Alpha ref`, or `None` for a class that writes none.
-       *
-       * Not necessarily what the surface tests against: see [`crate::XraySurfaceDraw::AlphaTested`].
-       */
+      /** The authored `Alpha ref`, or `None` for a class that writes none. */
       alphaReference: number | null;
       /** `Strict sorting`, which every class writes and which pushes a model surface out of the deferred path. */
       isStrictSorting: boolean;
     };
 
-/**
- * How the renderer draws one surface, resolved from the shader name it declares and the textures it dresses with.
- *
- * The counterpart of [`crate::XrayMaterialDescriptor`], which answers the same question for a texture from its
- * `.thm`. Between them they are what a surface is made of: the shader decides whether alpha is read and how, the
- * descriptor decides what is bound beside the diffuse.
- */
+/** How the renderer draws one surface, resolved from the shader name it declares and the textures it dresses with. */
 export type XraySurfaceDescriptor = {
   /** The `shaders.xr` the answer was read from, or `None` when no root holds one. */
   library: XrayAsset | null;
@@ -244,19 +209,12 @@ export type XraySurfaceDescriptor = {
   draw: XraySurfaceDraw;
   /**
    * The detail texture modulating its diffuse, `None` for a class the engine never details or a base texture whose
-   * descriptor associates none. Answered here rather than beside the texture because only the shader knows whether
-   * its class is detailed at all, and `B_BmmD` names its own.
+   * descriptor associates none.
    */
   detail: XraySurfaceDetail | null;
 };
 
-/**
- * The detail texture a surface modulates its diffuse with, and how densely it is laid over it.
- *
- * The high frequency half of an X-Ray level surface. A base texture covers a whole terrain or a whole wall at a
- * resolution no close camera survives, and the engine multiplies this over it at a tiling the texture's own
- * descriptor sets, fading it out to neutral with distance (`shaders/r1/lmap_dt.ps`, `shaders/r1/impl_dt.ps`).
- */
+/** The detail texture a surface modulates its diffuse with, and how densely it is laid over it. */
 export type XraySurfaceDetail = {
   /** Detail texture reference, engine-style, without extension. */
   reference: string;

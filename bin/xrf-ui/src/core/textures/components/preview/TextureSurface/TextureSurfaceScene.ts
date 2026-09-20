@@ -9,6 +9,7 @@ import {
 } from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
+import { TFrameRateLimit } from "@/core/render/lib/render-frame-limit";
 import { RenderViewport } from "@/core/render/lib/render-viewport";
 import {
   EMPTY_TEXTURE_SURFACE,
@@ -113,6 +114,15 @@ export class TextureSurfaceScene {
   /** The camera the orbit controls drive. */
   private get camera(): PerspectiveCamera {
     return this.viewport.camera;
+  }
+
+  /**
+   * Caps how often the scene redraws.
+   *
+   * @param limit - Frames a second to allow, as the application setting states it.
+   */
+  public setFrameRateLimit(limit: TFrameRateLimit): void {
+    this.viewport.setFrameRateLimit(limit);
   }
 
   /**

@@ -133,6 +133,10 @@ lto = true
 opt-level = "s"
 strip = true
 
+# A development build is optimized lightly rather than not at all.
+[profile.dev]
+opt-level = 1
+
 [workspace.lints.rust]
 dead_code = "allow"
 

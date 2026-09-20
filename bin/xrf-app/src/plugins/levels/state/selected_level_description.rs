@@ -1,5 +1,6 @@
 use serde::Serialize;
 use xrf_material::XraySurfaceDescriptor;
+use xrf_vfs::XrayRoots;
 use xrf_visual::{SectorOutline, VisualBounds};
 
 use crate::plugins::levels::state::level_source::LevelSource;
@@ -11,6 +12,8 @@ use crate::plugins::levels::state::level_texture_reference::LevelTextureReferenc
 #[serde(rename_all = "camelCase")]
 pub struct SelectedLevelDescription {
   pub source: LevelSource,
+  /// The roots the level and its textures were resolved in, centred on the level itself.
+  pub roots: XrayRoots,
   pub xrlc_version: u16,
   pub xrlc_quality: u16,
   pub visuals: u32,

@@ -1,5 +1,6 @@
 import { Color, PerspectiveCamera, Scene, WebGLRenderer } from "three";
 
+import { DEFAULT_FRAME_RATE_LIMIT, shouldDrawFrame, TFrameRateLimit } from "@/core/render/lib/render-frame-limit";
 import { RenderFrameTimer } from "@/core/render/lib/render-frame-timer";
 import { Nullable } from "@/lib/types/general";
 
@@ -66,6 +67,8 @@ export class RenderViewport {
   private readonly resizeObserver: ResizeObserver;
 
   private container: Nullable<HTMLElement> = null;
+  private frameRateLimit: TFrameRateLimit = DEFAULT_FRAME_RATE_LIMIT;
+  private drawnAt: Nullable<number> = null;
   private frameHandle: number = 0;
   private lastFrame: Nullable<number> = null;
   private isResizePending: boolean = false;
@@ -126,6 +129,15 @@ export class RenderViewport {
    */
   public get isMeasured(): boolean {
     return this.renderedWidth > 0 && this.renderedHeight > 0;
+  }
+
+  /**
+   * Caps how often the scene is redrawn.
+   *
+   * @param limit - Frames a second to allow, or `unlimited` to draw every animation frame.
+   */
+  public setFrameRateLimit(limit: TFrameRateLimit): void {
+    this.frameRateLimit = limit;
   }
 
   /**
@@ -195,13 +207,21 @@ export class RenderViewport {
    */
   private renderFrame(): void {
     this.frameHandle = requestAnimationFrame((now: number) => {
+      this.renderFrame();
+
+      if (!shouldDrawFrame(now, this.drawnAt, this.frameRateLimit)) {
+        return;
+      }
+
+      this.drawnAt = now;
+
+      // Sampled and advanced only for frames that are drawn, so the reported frame time stays the time between the
+      // frames a person sees rather than the rate the display happens to run at.
       this.timer.sample(now);
       this.advance(now);
-      this.renderFrame();
+      this.applyPendingResize();
+      this.renderer.render(this.scene, this.camera);
     });
-
-    this.applyPendingResize();
-    this.renderer.render(this.scene, this.camera);
   }
 
   private advance(now: number): void {

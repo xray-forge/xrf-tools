@@ -94,7 +94,7 @@ fn new_geometry(declaration: &[u8], vertices: &[u8], vertex_count: u32, indices:
 
 #[test]
 fn test_reads_a_vertex_of_the_lightmapped_declaration() -> XrfResult {
-  let mut source: LevelGeomSource<_> = LevelGeomSource::open_from_bytes::<XRayByteOrder>(new_geometry(
+  let source: LevelGeomSource<_> = LevelGeomSource::open_from_bytes::<XRayByteOrder>(new_geometry(
     &new_lightmapped_declaration(),
     &new_lightmapped_vertex(),
     1,
@@ -147,7 +147,7 @@ fn test_reads_a_vertex_of_the_lightmapped_declaration() -> XrfResult {
 
 #[test]
 fn test_reads_the_tangent_frame_beside_the_coordinate_its_alpha_carries() -> XrfResult {
-  let mut source: LevelGeomSource<_> = LevelGeomSource::open_from_bytes::<XRayByteOrder>(new_geometry(
+  let source: LevelGeomSource<_> = LevelGeomSource::open_from_bytes::<XRayByteOrder>(new_geometry(
     &new_lightmapped_declaration(),
     &new_lightmapped_vertex(),
     1,
@@ -177,7 +177,7 @@ fn test_reads_a_range_from_the_middle_of_a_buffer() -> XrfResult {
     vertices.extend(vertex);
   }
 
-  let mut source: LevelGeomSource<_> = LevelGeomSource::open_from_bytes::<XRayByteOrder>(new_geometry(
+  let source: LevelGeomSource<_> = LevelGeomSource::open_from_bytes::<XRayByteOrder>(new_geometry(
     &new_lightmapped_declaration(),
     &vertices,
     4,
@@ -197,7 +197,7 @@ fn test_reads_a_range_from_the_middle_of_a_buffer() -> XrfResult {
 
 #[test]
 fn test_refuses_a_range_past_what_a_buffer_declares() -> XrfResult {
-  let mut source: LevelGeomSource<_> = LevelGeomSource::open_from_bytes::<XRayByteOrder>(new_geometry(
+  let source: LevelGeomSource<_> = LevelGeomSource::open_from_bytes::<XRayByteOrder>(new_geometry(
     &new_lightmapped_declaration(),
     &new_lightmapped_vertex(),
     1,
@@ -227,7 +227,7 @@ fn test_reads_the_fastpath_declaration_that_carries_positions_alone() -> XrfResu
 
   declaration.extend(new_terminator());
 
-  let mut source: LevelGeomSource<_> = LevelGeomSource::open_from_bytes::<XRayByteOrder>(new_geometry(
+  let source: LevelGeomSource<_> = LevelGeomSource::open_from_bytes::<XRayByteOrder>(new_geometry(
     &declaration,
     &[
       0, 0, 128, 63, // 1.0
@@ -262,7 +262,7 @@ fn test_refuses_an_element_xrlc_does_not_write() -> XrfResult {
 
   let source: XrfResult<LevelGeomSource<_>> =
     LevelGeomSource::open_from_bytes::<XRayByteOrder>(new_geometry(&declaration, &[0; 24], 1, &[0])?);
-  let mut source: LevelGeomSource<_> = source?;
+  let source: LevelGeomSource<_> = source?;
 
   assert!(
     source.read_vertices::<XRayByteOrder>(0, 0, 1).is_err(),
@@ -287,7 +287,7 @@ fn test_tree_coordinates_use_the_tree_quantization() -> XrfResult {
   vertex.extend_from_slice(&0i16.to_le_bytes());
   vertex.extend_from_slice(&0i16.to_le_bytes());
 
-  let mut source: LevelGeomSource<_> =
+  let source: LevelGeomSource<_> =
     LevelGeomSource::open_from_bytes::<XRayByteOrder>(new_geometry(&declaration, &vertex, 1, &[0])?)?;
 
   let layout: LevelVertexLayout = LevelVertexLayout::of(&source.get_file().vertex_buffers[0])?;

@@ -70,9 +70,9 @@ fn test_packs_a_sector_into_one_buffer_of_parallel_arrays() {
     new_drawable(1, 2, 2, 3, 3),
   ]);
   let table: LevelShadersChunk = new_shaders(&["", "default/stone,lmap"]);
-  let mut source = new_open_geometry(new_geometry());
+  let source = new_open_geometry(new_geometry());
 
-  let package: SectorPackage = SectorPacker::new(&run, Some(&table), &mut source).pack::<XRayByteOrder>(
+  let package: SectorPackage = SectorPacker::new(&run, Some(&table), &source).pack::<XRayByteOrder>(
     0,
     &new_composition(&run),
     SectorAttributes::all(),
@@ -113,13 +113,10 @@ fn test_packs_a_range_two_drawables_share_only_once() {
     new_drawable(1, 0, 2, 0, 3),
     new_drawable(1, 0, 2, 0, 3),
   ]);
-  let mut source = new_open_geometry(new_geometry());
+  let source = new_open_geometry(new_geometry());
 
-  let package: SectorPackage = SectorPacker::new(&run, None, &mut source).pack::<XRayByteOrder>(
-    0,
-    &new_composition(&run),
-    SectorAttributes::all(),
-  );
+  let package: SectorPackage =
+    SectorPacker::new(&run, None, &source).pack::<XRayByteOrder>(0, &new_composition(&run), SectorAttributes::all());
 
   assert_eq!(
     package.description.geometry.vertex_count, 2,
@@ -137,13 +134,10 @@ fn test_moves_indices_onto_the_vertices_a_range_was_packed_at() {
     new_drawable(1, 0, 2, 0, 3),
     new_drawable(1, 2, 2, 3, 3),
   ]);
-  let mut source = new_open_geometry(new_geometry());
+  let source = new_open_geometry(new_geometry());
 
-  let package: SectorPackage = SectorPacker::new(&run, None, &mut source).pack::<XRayByteOrder>(
-    0,
-    &new_composition(&run),
-    SectorAttributes::all(),
-  );
+  let package: SectorPackage =
+    SectorPacker::new(&run, None, &source).pack::<XRayByteOrder>(0, &new_composition(&run), SectorAttributes::all());
 
   // The first drawable stores 0, 1, 0 and the second 1, 1, 0; each is moved onto the vertices it was packed at,
   // and the winding of every triangle is reversed on the way in.
@@ -163,9 +157,9 @@ fn test_groups_drawables_by_the_shader_entry_that_dresses_them() {
     "def_shaders\\def_vertex/wall,wall_lm",
     "def_shaders\\def_aref/glass",
   ]);
-  let mut source = new_open_geometry(new_geometry());
+  let source = new_open_geometry(new_geometry());
 
-  let package: SectorPackage = SectorPacker::new(&run, Some(&table), &mut source).pack::<XRayByteOrder>(
+  let package: SectorPackage = SectorPacker::new(&run, Some(&table), &source).pack::<XRayByteOrder>(
     0,
     &new_composition(&run),
     SectorAttributes::all(),
@@ -201,13 +195,10 @@ fn test_leaves_out_a_drawable_whose_range_it_cannot_read() {
     new_drawable(1, 0, 2, 0, 3),
     new_drawable(1, 3, 9, 0, 3),
   ]);
-  let mut source = new_open_geometry(new_geometry());
+  let source = new_open_geometry(new_geometry());
 
-  let package: SectorPackage = SectorPacker::new(&run, None, &mut source).pack::<XRayByteOrder>(
-    0,
-    &new_composition(&run),
-    SectorAttributes::all(),
-  );
+  let package: SectorPackage =
+    SectorPacker::new(&run, None, &source).pack::<XRayByteOrder>(0, &new_composition(&run), SectorAttributes::all());
 
   assert_eq!(package.description.skipped.len(), 1);
   assert_eq!(package.description.skipped[0].drawable, 2);
@@ -244,13 +235,10 @@ fn test_carries_an_attribute_any_range_of_the_sector_declares() {
     new_drawable(1, 0, 2, 0, 3),
     new_drawable_of_buffer(1, 1, 0, 2, 0, 3),
   ]);
-  let mut source = new_open_geometry(bytes);
+  let source = new_open_geometry(bytes);
 
-  let package: SectorPackage = SectorPacker::new(&run, None, &mut source).pack::<XRayByteOrder>(
-    0,
-    &new_composition(&run),
-    SectorAttributes::all(),
-  );
+  let package: SectorPackage =
+    SectorPacker::new(&run, None, &source).pack::<XRayByteOrder>(0, &new_composition(&run), SectorAttributes::all());
   let lightmap = package
     .description
     .geometry
@@ -276,13 +264,10 @@ fn test_carries_an_attribute_any_range_of_the_sector_declares() {
 #[test]
 fn test_mirrors_the_level_into_renderer_space() {
   let run: LevelVisualsChunk = new_visuals(&[new_hierarchy(&[1]), new_drawable(1, 0, 2, 0, 3)]);
-  let mut source = new_open_geometry(new_geometry());
+  let source = new_open_geometry(new_geometry());
 
-  let package: SectorPackage = SectorPacker::new(&run, None, &mut source).pack::<XRayByteOrder>(
-    0,
-    &new_composition(&run),
-    SectorAttributes::all(),
-  );
+  let package: SectorPackage =
+    SectorPacker::new(&run, None, &source).pack::<XRayByteOrder>(0, &new_composition(&run), SectorAttributes::all());
   let positions: Vec<f32> = new_read_floats(&package, package.description.geometry.positions);
 
   assert_eq!(positions, vec![0.0, 0.0, -1.0, 1.0, 0.0, -2.0]);
@@ -291,13 +276,10 @@ fn test_mirrors_the_level_into_renderer_space() {
 #[test]
 fn test_packs_a_sector_that_reaches_nothing_into_an_empty_package() {
   let run: LevelVisualsChunk = new_visuals(&[new_hierarchy(&[])]);
-  let mut source = new_open_geometry(new_geometry());
+  let source = new_open_geometry(new_geometry());
 
-  let package: SectorPackage = SectorPacker::new(&run, None, &mut source).pack::<XRayByteOrder>(
-    7,
-    &new_composition(&run),
-    SectorAttributes::all(),
-  );
+  let package: SectorPackage =
+    SectorPacker::new(&run, None, &source).pack::<XRayByteOrder>(7, &new_composition(&run), SectorAttributes::all());
 
   assert_eq!(package.description.sector, 7);
   assert_eq!(package.description.geometry.vertex_count, 0);
@@ -311,13 +293,10 @@ fn test_packs_a_sector_that_reaches_nothing_into_an_empty_package() {
 #[test]
 fn test_packs_a_visual_stored_in_its_own_space_as_an_instance() {
   let run: LevelVisualsChunk = new_visuals(&[new_hierarchy(&[1]), new_tree(1, 0, 2, 3, 100.0)]);
-  let mut source = new_open_geometry(new_geometry());
+  let source = new_open_geometry(new_geometry());
 
-  let package: SectorPackage = SectorPacker::new(&run, None, &mut source).pack::<XRayByteOrder>(
-    0,
-    &new_composition(&run),
-    SectorAttributes::all(),
-  );
+  let package: SectorPackage =
+    SectorPacker::new(&run, None, &source).pack::<XRayByteOrder>(0, &new_composition(&run), SectorAttributes::all());
 
   assert_eq!(
     package.description.geometry.vertex_count, 0,
@@ -347,13 +326,10 @@ fn test_packs_one_mesh_for_every_place_it_stands() {
     new_tree(1, 0, 2, 3, 100.0),
     new_tree(1, 0, 2, 3, -100.0),
   ]);
-  let mut source = new_open_geometry(new_geometry());
+  let source = new_open_geometry(new_geometry());
 
-  let package: SectorPackage = SectorPacker::new(&run, None, &mut source).pack::<XRayByteOrder>(
-    0,
-    &new_composition(&run),
-    SectorAttributes::all(),
-  );
+  let package: SectorPackage =
+    SectorPacker::new(&run, None, &source).pack::<XRayByteOrder>(0, &new_composition(&run), SectorAttributes::all());
 
   assert_eq!(package.description.instances.len(), 1, "one mesh");
 
@@ -378,13 +354,10 @@ fn test_keeps_instances_of_different_surfaces_apart() {
     new_tree(1, 0, 2, 3, 100.0),
     new_tree(2, 0, 2, 3, -100.0),
   ]);
-  let mut source = new_open_geometry(new_geometry());
+  let source = new_open_geometry(new_geometry());
 
-  let package: SectorPackage = SectorPacker::new(&run, None, &mut source).pack::<XRayByteOrder>(
-    0,
-    &new_composition(&run),
-    SectorAttributes::all(),
-  );
+  let package: SectorPackage =
+    SectorPacker::new(&run, None, &source).pack::<XRayByteOrder>(0, &new_composition(&run), SectorAttributes::all());
 
   assert_eq!(package.description.instances.len(), 2);
   assert_eq!(package.description.instances[0].surface.shader_id, 1);
@@ -399,13 +372,10 @@ fn test_still_shares_a_range_no_transform_places() {
     new_drawable(1, 0, 2, 0, 3),
     new_drawable(1, 0, 2, 0, 3),
   ]);
-  let mut source = new_open_geometry(new_geometry());
+  let source = new_open_geometry(new_geometry());
 
-  let package: SectorPackage = SectorPacker::new(&run, None, &mut source).pack::<XRayByteOrder>(
-    0,
-    &new_composition(&run),
-    SectorAttributes::all(),
-  );
+  let package: SectorPackage =
+    SectorPacker::new(&run, None, &source).pack::<XRayByteOrder>(0, &new_composition(&run), SectorAttributes::all());
 
   assert_eq!(package.description.geometry.vertex_count, 2);
   assert!(package.description.instances.is_empty());
@@ -434,13 +404,10 @@ fn test_widens_a_missing_vertex_colour_to_white_rather_than_black() {
     new_drawable(1, 0, 1, 0, 3),
     new_drawable_of_buffer(1, 1, 0, 1, 0, 3),
   ]);
-  let mut source = new_open_geometry(bytes);
+  let source = new_open_geometry(bytes);
 
-  let package: SectorPackage = SectorPacker::new(&run, None, &mut source).pack::<XRayByteOrder>(
-    0,
-    &new_composition(&run),
-    SectorAttributes::all(),
-  );
+  let package: SectorPackage =
+    SectorPacker::new(&run, None, &source).pack::<XRayByteOrder>(0, &new_composition(&run), SectorAttributes::all());
   let colors = package
     .description
     .geometry
@@ -466,7 +433,7 @@ fn test_widens_a_missing_vertex_colour_to_white_rather_than_black() {
 fn test_packs_only_the_attributes_the_caller_draws_with() {
   let bytes: Vec<u8> = new_geometry();
   let run: LevelVisualsChunk = new_visuals(&[new_hierarchy(&[1]), new_drawable(0, 0, 4, 0, 6)]);
-  let mut source = new_open_geometry(bytes);
+  let source = new_open_geometry(bytes);
 
   let wanted: SectorAttributes = SectorAttributes {
     normals: true,
@@ -475,7 +442,7 @@ fn test_packs_only_the_attributes_the_caller_draws_with() {
   };
 
   let package: SectorPackage =
-    SectorPacker::new(&run, None, &mut source).pack::<XRayByteOrder>(0, &new_composition(&run), wanted);
+    SectorPacker::new(&run, None, &source).pack::<XRayByteOrder>(0, &new_composition(&run), wanted);
   let geometry = &package.description.geometry;
 
   assert!(geometry.normals.is_some(), "what the caller asked for is packed");
@@ -500,13 +467,10 @@ fn test_packs_only_the_attributes_the_caller_draws_with() {
 fn test_packs_everything_a_sector_declares_for_a_caller_that_wants_it_all() {
   let bytes: Vec<u8> = new_geometry();
   let run: LevelVisualsChunk = new_visuals(&[new_hierarchy(&[1]), new_drawable(0, 0, 4, 0, 6)]);
-  let mut source = new_open_geometry(bytes);
+  let source = new_open_geometry(bytes);
 
-  let package: SectorPackage = SectorPacker::new(&run, None, &mut source).pack::<XRayByteOrder>(
-    0,
-    &new_composition(&run),
-    SectorAttributes::all(),
-  );
+  let package: SectorPackage =
+    SectorPacker::new(&run, None, &source).pack::<XRayByteOrder>(0, &new_composition(&run), SectorAttributes::all());
   let geometry = &package.description.geometry;
 
   assert!(geometry.normals.is_some() && geometry.tangents.is_some() && geometry.binormals.is_some());

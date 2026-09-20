@@ -1,8 +1,9 @@
 import { Injectable, OnDeprovision, OnProvision, ProvisionId } from "@wirestate/core";
 import { BoundAction, Observable } from "@wirestate/mobx";
 
+import { TFrameRateLimit, toFrameRateLimit } from "@/core/render/lib/render-frame-limit";
 import { TCatalogView, toCatalogView } from "@/core/settings/lib/catalog-view";
-import { CATALOG_VIEW_STORAGE_KEY, DEV_MODE_STORAGE_KEY } from "@/core/storage";
+import { CATALOG_VIEW_STORAGE_KEY, DEV_MODE_STORAGE_KEY, FRAME_RATE_LIMIT_STORAGE_KEY } from "@/core/storage";
 import { isDevelopmentBuild } from "@/lib/env";
 import { getLocalStorageValue, setLocalStorageValue } from "@/lib/local-storage";
 import { Logger } from "@/lib/logging";
@@ -22,6 +23,12 @@ export class SettingsService {
   /** How the root catalog draws its tools. */
   @Observable()
   public catalogView: TCatalogView = toCatalogView(getLocalStorageValue(CATALOG_VIEW_STORAGE_KEY));
+
+  /**
+   * Frames a second every viewport is allowed to draw.
+   */
+  @Observable()
+  public frameRateLimit: TFrameRateLimit = toFrameRateLimit(getLocalStorageValue(FRAME_RATE_LIMIT_STORAGE_KEY));
 
   /**
    * @returns The stored choice, or whether this is a development build when there is none.
@@ -48,6 +55,14 @@ export class SettingsService {
 
     this.isDevModeEnabled = isEnabled;
     setLocalStorageValue(DEV_MODE_STORAGE_KEY, String(isEnabled));
+  }
+
+  @BoundAction()
+  public setFrameRateLimit(limit: TFrameRateLimit): void {
+    this.log.info("Set frame rate limit:", limit);
+
+    this.frameRateLimit = limit;
+    setLocalStorageValue(FRAME_RATE_LIMIT_STORAGE_KEY, limit);
   }
 
   @BoundAction()

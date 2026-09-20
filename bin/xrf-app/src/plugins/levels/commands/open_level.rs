@@ -1,4 +1,4 @@
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use std::time::Instant;
 
 use tauri::State;
@@ -56,7 +56,7 @@ pub async fn levels_open_level(
   let selected: Arc<SessionSnapshot<SelectedLevel>> = state.selected.commit_open(
     session_id,
     SelectedLevel {
-      geometry: Mutex::new(read.geometry),
+      geometry: read.geometry,
       level: read.level,
       outlines,
       packed: Session::new("level sector"),

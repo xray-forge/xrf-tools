@@ -104,15 +104,11 @@ impl SectorVertexArrays {
 
   /// The extent the packed positions span, or `None` when nothing was packed.
   pub fn get_bounds(&self) -> Option<VisualBounds> {
-    let positions: Vec<Vector3d> = self
-      .positions
-      .as_chunks::<3>()
-      .0
-      .iter()
-      .map(|[x, y, z]| Vector3d { x: *x, y: *y, z: *z })
-      .collect();
-
-    VisualBounds::from_positions(&positions)
+    VisualBounds::from_positions(self.positions.as_chunks::<3>().0.iter().map(|[x, y, z]| Vector3d {
+      x: *x,
+      y: *y,
+      z: *z,
+    }))
   }
 
   /// Writes every declared array and the indices into the buffer, and says where each landed.
