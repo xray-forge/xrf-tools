@@ -8,6 +8,7 @@ import {
 import { LevelFlyControls } from "@/core/level/components/scene/LevelFlyControls";
 import { LevelPreviewFrame } from "@/core/level/components/scene/LevelPreviewFrame";
 import { LevelPreviewSectors } from "@/core/level/components/scene/LevelPreviewSectors";
+import { ILevelCamera, toLevelCamera } from "@/core/level/lib/level-camera";
 import { LevelFlyCamera } from "@/core/level/lib/level-fly-camera";
 import { ILevelPoint } from "@/core/level/lib/level-residency";
 import { ILoadedSector } from "@/core/level/lib/level-sector-set";
@@ -15,7 +16,6 @@ import { ILevelStats, measureLevelStats } from "@/core/level/lib/level-stats";
 import { ILevelTextureLookup } from "@/core/level/lib/level-texture-set";
 import { DEFAULT_LEVEL_VIEW_OPTIONS, ILevelViewOptions } from "@/core/level/lib/level-view-options";
 import { ILevelViewpoint, toLevelStartViewpoint } from "@/core/level/lib/level-viewpoint";
-import { toXraySpace } from "@/core/render/lib/render-space";
 import { RenderViewport } from "@/core/render/lib/render-viewport";
 import { Nullable } from "@/lib/types/general";
 
@@ -23,10 +23,13 @@ import { Nullable } from "@/lib/types/general";
 export interface ILevelPreviewSceneHandlers {
   /** Where the camera is, for the loader to stream against. Called only once it has moved far enough to matter. */
   onCameraMoved: (point: ILevelPoint) => void;
-  /** Where the camera is, for a person to read, **in the coordinates the level's own data is written in**. */
-  onCameraChanged: (point: ILevelPoint) => void;
-  /** What the viewport is costing, so a panel can show it rather than a developer guessing. */
-  onStats: (stats: ILevelStats) => void;
+  /**
+   * What the viewport costs and where its camera is, together, a few times a second.
+   *
+   * @param stats - What the viewport is holding, against what its last frame cost.
+   * @param camera - Where the camera is, in the coordinates the level's own data is written in.
+   */
+  onReport: (stats: ILevelStats, camera: ILevelCamera) => void;
 }
 
 /** Metres the camera has to move before the loader is asked again, which keeps streaming off every frame. */
@@ -50,6 +53,9 @@ export class LevelPreviewScene {
   private resident: ReadonlyMap<number, ILoadedSector> = new Map();
   private streamedFrom: Nullable<Vector3> = null;
   private statsReportedAt: number = 0;
+
+  /** Read into rather than allocated, because the camera is measured on every report. */
+  private readonly facing: Vector3 = new Vector3();
 
   public constructor(
     handlers: ILevelPreviewSceneHandlers,
@@ -164,11 +170,13 @@ export class LevelPreviewScene {
     }
 
     if (now - this.statsReportedAt >= STATS_INTERVAL) {
-      const position: Vector3 = this.viewport.camera.position;
-
       this.statsReportedAt = now;
-      this.handlers.onStats(measureLevelStats(this.resident, this.viewport.frameCost));
-      this.handlers.onCameraChanged(toXraySpace(position));
+      // Converted here rather than where it is drawn, so a reader of the handler cannot take it for a renderer
+      // placement and a second consumer cannot forget the sign.
+      this.handlers.onReport(
+        measureLevelStats(this.resident, this.viewport.frameCost),
+        toLevelCamera(this.viewport.camera, this.facing)
+      );
     }
   }
 }

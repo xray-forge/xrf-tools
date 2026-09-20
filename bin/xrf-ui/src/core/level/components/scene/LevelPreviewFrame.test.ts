@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
-import { Box3Helper, Group, Object3D } from "three";
+import { AxesHelper, Box3Helper, Group, Object3D } from "three";
 
 import { VisualBounds } from "@/core/ipc/types/xrf-visual";
 import { DEFAULT_LEVEL_PREVIEW_SCENE_CONFIG } from "@/core/level/components/scene/level-scene-config";
@@ -14,6 +14,14 @@ function options(overrides: Partial<ILevelViewOptions> = {}): ILevelViewOptions 
 
 function extentOf(parent: Object3D): Box3Helper {
   return parent.children.find((it): it is Box3Helper => it instanceof Box3Helper) as Box3Helper;
+}
+
+function axesOf(parent: Object3D): AxesHelper {
+  return parent.children.find((it): it is AxesHelper => it instanceof AxesHelper) as AxesHelper;
+}
+
+function gridOf(parent: Object3D): Group {
+  return parent.children.find((it): it is Group => it.type === "Group") as Group;
 }
 
 function framed(parent: Object3D): Array<Object3D> {
@@ -62,18 +70,31 @@ describe("LevelPreviewFrame", () => {
     expect([1, 2, 5].map((it) => it * 10 ** Math.floor(Math.log10(frame.gridStep)))).toContain(frame.gridStep);
   });
 
-  it("shows and hides the ground, the origin and the extent together", () => {
+  // Three questions, three answers: a floor to judge scale against, a landmark, and what the level claims. Wanting
+  // one is no reason to be shown the other two.
+  it("switches the ground, the origin and the extent on their own", () => {
     const parent: Group = new Group();
     const frame: LevelPreviewFrame = new LevelPreviewFrame(parent, DEFAULT_LEVEL_PREVIEW_SCENE_CONFIG);
 
     frame.setBounds(level());
-    frame.applyViewOptions(options({ isGridVisible: false }));
 
-    expect(framed(parent).every((it) => !it.visible)).toBe(true);
+    frame.applyViewOptions(options({ isAxesVisible: false, isBoundsVisible: false, isGridVisible: true }));
 
-    frame.applyViewOptions(options({ isGridVisible: true }));
+    expect(gridOf(parent).visible).toBe(true);
+    expect(axesOf(parent).visible).toBe(false);
+    expect(extentOf(parent).visible).toBe(false);
 
-    expect(framed(parent).every((it) => it.visible)).toBe(true);
+    frame.applyViewOptions(options({ isAxesVisible: true, isBoundsVisible: false, isGridVisible: false }));
+
+    expect(gridOf(parent).visible).toBe(false);
+    expect(axesOf(parent).visible).toBe(true);
+    expect(extentOf(parent).visible).toBe(false);
+
+    frame.applyViewOptions(options({ isAxesVisible: false, isBoundsVisible: true, isGridVisible: false }));
+
+    expect(gridOf(parent).visible).toBe(false);
+    expect(axesOf(parent).visible).toBe(false);
+    expect(extentOf(parent).visible).toBe(true);
   });
 
   // A box around nothing is a dot at the origin, which reads as a level sitting there rather than as no measurement.

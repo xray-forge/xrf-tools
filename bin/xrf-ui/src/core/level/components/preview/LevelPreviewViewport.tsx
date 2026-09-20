@@ -2,6 +2,7 @@ import { ReactElement, useCallback, useEffect, useRef } from "react";
 
 import { VisualBounds } from "@/core/ipc/types/xrf-visual";
 import { LevelPreviewScene } from "@/core/level/components/scene/LevelPreviewScene";
+import { ILevelCamera } from "@/core/level/lib/level-camera";
 import { ILevelPoint } from "@/core/level/lib/level-residency";
 import { ILoadedSector } from "@/core/level/lib/level-sector-set";
 import { ILevelStats } from "@/core/level/lib/level-stats";
@@ -21,9 +22,8 @@ export interface ILevelPreviewViewportProps extends BaseComponentProps {
   options?: ILevelViewOptions;
   /** Where the camera has gone, for the loader to stream against. */
   onCameraMoved: (point: ILevelPoint) => void;
-  /** Where the camera is, in the level's own coordinates, for a person flying it to read. */
-  onCameraChanged?: (point: ILevelPoint) => void;
-  onStats?: (stats: ILevelStats) => void;
+  /** What the viewport costs and where its camera is, a few times a second while a level is open. */
+  onReport?: (stats: ILevelStats, camera: ILevelCamera) => void;
 }
 
 /**
@@ -38,8 +38,7 @@ export function LevelPreviewViewport({
   textures = null,
   options = DEFAULT_LEVEL_VIEW_OPTIONS,
   onCameraMoved,
-  onCameraChanged,
-  onStats,
+  onReport,
 }: ILevelPreviewViewportProps): ReactElement {
   const containerRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<Nullable<LevelPreviewScene>>(null);
@@ -47,16 +46,16 @@ export function LevelPreviewViewport({
   // Held in refs so the scene is built once: rebuilding it because a handler identity changed would drop the webgl
   // context and everything uploaded into it.
   const cameraRef = useRef(onCameraMoved);
-  const readoutRef = useRef(onCameraChanged);
-  const statsRef = useRef(onStats);
+  const reportRef = useRef(onReport);
 
   cameraRef.current = onCameraMoved;
-  readoutRef.current = onCameraChanged;
-  statsRef.current = onStats;
+  reportRef.current = onReport;
 
   const handleCameraMoved = useCallback((point: ILevelPoint) => cameraRef.current(point), []);
-  const handleCameraChanged = useCallback((point: ILevelPoint) => readoutRef.current?.(point), []);
-  const handleStats = useCallback((stats: ILevelStats) => statsRef.current?.(stats), []);
+  const handleReport = useCallback(
+    (stats: ILevelStats, camera: ILevelCamera) => reportRef.current?.(stats, camera),
+    []
+  );
 
   useEffect(() => {
     if (!containerRef.current) {
@@ -64,9 +63,8 @@ export function LevelPreviewViewport({
     }
 
     const scene: LevelPreviewScene = new LevelPreviewScene({
-      onCameraChanged: handleCameraChanged,
       onCameraMoved: handleCameraMoved,
-      onStats: handleStats,
+      onReport: handleReport,
     });
 
     sceneRef.current = scene;
@@ -77,7 +75,7 @@ export function LevelPreviewViewport({
       sceneRef.current = null;
       scene.dispose();
     };
-  }, [handleCameraChanged, handleCameraMoved, handleStats]);
+  }, [handleCameraMoved, handleReport]);
 
   useEffect(() => {
     sceneRef.current?.setTextures(textures);

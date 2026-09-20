@@ -2,7 +2,7 @@ import { useInjection } from "@wirestate/react";
 import { ReactElement } from "react";
 
 import { ILevelStats } from "@/core/level/lib/level-stats";
-import { LevelLoadService } from "@/core/level/services";
+import { LevelLoadService, LevelViewportService } from "@/core/level/services";
 import {
   EditorPanel,
   EditorPanelEmpty,
@@ -12,10 +12,6 @@ import {
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatBytes } from "@/lib/memory/format";
 
-interface ILevelStreamPanelProps extends BaseComponentProps {
-  stats: ILevelStats;
-}
-
 /**
  * What the viewport is holding and what it costs, measured rather than estimated.
  */
@@ -23,9 +19,11 @@ export function LevelStreamPanel({
   "data-testid": dataTestId = "level-stream-panel",
   id,
   className,
-  stats,
-}: ILevelStreamPanelProps): ReactElement {
+}: BaseComponentProps): ReactElement {
   const service: LevelLoadService = useInjection(LevelLoadService);
+  const levelViewportService: LevelViewportService = useInjection(LevelViewportService);
+
+  const stats: ILevelStats = levelViewportService.stats;
 
   if (!service.level.value) {
     return (

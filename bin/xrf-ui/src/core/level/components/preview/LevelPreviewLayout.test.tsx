@@ -2,8 +2,10 @@ import { describe, expect, it, jest } from "@jest/globals";
 import { act, fireEvent, RenderResult } from "@testing-library/react";
 
 import { LevelPreviewLayout } from "@/core/level/components/preview/LevelPreviewLayout";
+import { ILevelCamera } from "@/core/level/lib/level-camera";
 import { ILevelPoint } from "@/core/level/lib/level-residency";
-import { ILevelStreamProgress } from "@/core/level/services";
+import { EMPTY_LEVEL_STATS, ILevelStats } from "@/core/level/lib/level-stats";
+import { ILevelStreamProgress, LevelLoadService, LevelViewportService } from "@/core/level/services";
 import { ApplicationStatusBar } from "@/core/shell/footer/ApplicationStatusBar";
 import { mockVisualBounds } from "@/fixtures/mocks/visual.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
@@ -14,6 +16,46 @@ const IDLE: ILevelStreamProgress = { loaded: 0, total: 0 };
 /**
  * Renders the layout over a stub viewport, since a test has no webgl context to give it a real one.
  */
+/** What the viewport hands back on every report. */
+type TReport = (stats: ILevelStats, camera: ILevelCamera) => void;
+
+/** A camera placed where a readout has something to say about every axis. */
+function camera(position: Partial<ILevelPoint> = {}): ILevelCamera {
+  return {
+    // A quarter turn, which reads as 90 degrees rather than as a signed radian.
+    heading: Math.PI / 2,
+    pitch: 0,
+    position: { x: -243.75, y: 12.5, z: 87.25, ...position },
+  };
+}
+
+/**
+ * Renders the layout beside the real status bar, handing the viewport's report callback to `take`.
+ *
+ * `take` is called on every render of the stub viewport, so a test can count them: that is what says whether the
+ * telemetry reaches anything that draws.
+ */
+function renderReporting(take: (report: TReport) => void): RenderResult {
+  return renderWithProviders(
+    <>
+      <LevelPreviewLayout
+        sectors={new Map()}
+        bounds={mockVisualBounds()}
+        name={"levels\\zaton"}
+        streaming={IDLE}
+        onCameraMoved={jest.fn()}
+        renderViewport={({ onReport }) => {
+          take(onReport!);
+
+          return <div data-testid={"stub-viewport"} />;
+        }}
+      />
+      <ApplicationStatusBar />
+    </>,
+    { bindings: [LevelLoadService, LevelViewportService], route: "/level-viewer" }
+  );
+}
+
 function renderLayout(overrides: Partial<Parameters<typeof LevelPreviewLayout>[0]> = {}): RenderResult {
   return renderWithProviders(
     <LevelPreviewLayout
@@ -25,7 +67,7 @@ function renderLayout(overrides: Partial<Parameters<typeof LevelPreviewLayout>[0
       renderViewport={() => <div data-testid={"stub-viewport"} />}
       {...overrides}
     />,
-    { route: "/level-viewer" }
+    { bindings: [LevelLoadService, LevelViewportService], route: "/level-viewer" }
   );
 }
 
@@ -96,29 +138,37 @@ describe("LevelPreviewLayout", () => {
 
   // Flying a level is the whole interaction, and a level is a kilometre of ground that looks the same from most of
   // it: without a readout there is no way to say where you are, or to go back to where you were.
-  it("says where the camera is, labelled by axis", async () => {
-    let report: Maybe<(point: ILevelPoint) => void> = null;
-    const view: RenderResult = renderWithProviders(
-      <>
-        <LevelPreviewLayout
-          sectors={new Map()}
-          bounds={mockVisualBounds()}
-          name={"levels\\zaton"}
-          streaming={IDLE}
-          onCameraMoved={jest.fn()}
-          renderViewport={({ onCameraChanged }) => {
-            report = onCameraChanged;
+  it("says where the camera is and which way it faces", async () => {
+    let report: Maybe<TReport> = null;
+    const view: RenderResult = renderReporting((it) => {
+      report = it;
+    });
 
-            return <div data-testid={"stub-viewport"} />;
-          }}
-        />
-        <ApplicationStatusBar />
-      </>,
-      { route: "/level-viewer" }
-    );
-
-    act(() => report?.({ x: -243.75, y: 12.5, z: 87.25 }));
+    act(() => report?.(EMPTY_LEVEL_STATS, camera()));
 
     expect(await view.findByText("x -243.8 y 12.5 z 87.3")).toBeInTheDocument();
+    expect(view.getByText("h 90.0° p 0.0°")).toBeInTheDocument();
+  });
+
+  // The readout arrives four times a second for as long as a level is open. Held in this layout it re-rendered the
+  // toolbar, the viewport element and the panel registration with it, which is a lot of React for two lines of text.
+  it("redraws nothing that draws the level when the viewport reports", async () => {
+    let report: Maybe<TReport> = null;
+    let renders: number = 0;
+    const view: RenderResult = renderReporting((it) => {
+      report = it;
+      renders += 1;
+    });
+
+    await view.findByTestId("stub-viewport");
+
+    const before: number = renders;
+
+    for (let tick = 0; tick < 20; tick += 1) {
+      act(() => report?.(EMPTY_LEVEL_STATS, camera({ x: tick })));
+    }
+
+    expect(await view.findByText("x 19.0 y 12.5 z 87.3")).toBeInTheDocument();
+    expect(renders).toBe(before);
   });
 });

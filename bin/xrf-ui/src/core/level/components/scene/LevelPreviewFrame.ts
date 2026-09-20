@@ -6,6 +6,9 @@ import { ILevelViewOptions } from "@/core/level/lib/level-view-options";
 import { RenderGrid } from "@/core/render/lib/render-grid";
 import { Nullable } from "@/lib/types/general";
 
+/** Which of the three the viewer is asking for; each answers where a level is in a different way. */
+type ILevelFrameVisibility = Pick<ILevelViewOptions, "isAxesVisible" | "isBoundsVisible" | "isGridVisible">;
+
 /** Cells of the grid the axis marker spans, so which way is which is legible without dwarfing the level. */
 const AXES_CELLS: number = 2;
 
@@ -23,7 +26,7 @@ export class LevelPreviewFrame {
 
   /** The last extent taken, kept because whether the box can be shown is a property of it rather than of the toggle. */
   private box: Box3 = new Box3();
-  private isRequested: boolean = false;
+  private requested: ILevelFrameVisibility = { isAxesVisible: false, isBoundsVisible: false, isGridVisible: false };
 
   public constructor(parent: Object3D, config: ILevelPreviewSceneConfig) {
     this.parent = parent;
@@ -75,7 +78,7 @@ export class LevelPreviewFrame {
    * @param options - What the toolbar has switched on.
    */
   public applyViewOptions(options: ILevelViewOptions): void {
-    this.isRequested = options.isGridVisible;
+    this.requested = options;
 
     this.applyVisibility();
   }
@@ -93,10 +96,9 @@ export class LevelPreviewFrame {
 
   /** A box nothing was measured for is not drawn, however the toggle stands: it would be a dot at the origin. */
   private applyVisibility(): void {
-    this.grid.setVisible(this.isRequested);
-
-    this.axes.visible = this.isRequested;
-    this.extent.visible = this.isRequested && !this.box.isEmpty();
+    this.grid.setVisible(this.requested.isGridVisible);
+    this.axes.visible = this.requested.isAxesVisible;
+    this.extent.visible = this.requested.isBoundsVisible && !this.box.isEmpty();
   }
 }
 

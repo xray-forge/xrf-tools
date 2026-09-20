@@ -1,3 +1,5 @@
+import { default as CropFreeIcon } from "@mui/icons-material/CropFree";
+import { default as FilterCenterFocusIcon } from "@mui/icons-material/FilterCenterFocus";
 import { default as GrainIcon } from "@mui/icons-material/Grain";
 import { default as GridOnIcon } from "@mui/icons-material/GridOn";
 import { default as HexagonIcon } from "@mui/icons-material/Hexagon";
@@ -97,6 +99,20 @@ export function LevelPreviewToolbar({
             icon={<GridOnIcon />}
             isOn={options.isGridVisible}
             onToggle={() => onToggle("isGridVisible")}
+          />
+
+          <EditorViewToggle
+            label={"Origin"}
+            icon={<FilterCenterFocusIcon />}
+            isOn={options.isAxesVisible}
+            onToggle={() => onToggle("isAxesVisible")}
+          />
+
+          <EditorViewToggle
+            label={"Bounds"}
+            icon={<CropFreeIcon />}
+            isOn={options.isBoundsVisible}
+            onToggle={() => onToggle("isBoundsVisible")}
           />
 
           <EditorViewToggle

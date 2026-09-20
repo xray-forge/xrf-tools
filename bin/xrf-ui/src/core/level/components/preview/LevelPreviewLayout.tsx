@@ -1,27 +1,27 @@
 import { default as InfoOutlinedIcon } from "@mui/icons-material/InfoOutlined";
 import { default as SpeedIcon } from "@mui/icons-material/Speed";
+import { useInjection } from "@wirestate/react";
 import { ReactElement, ReactNode, useMemo, useState } from "react";
 
 import { VisualBounds } from "@/core/ipc/types/xrf-visual";
 import { LevelHeaderPanel } from "@/core/level/components/panels/LevelHeaderPanel";
 import { LevelStreamPanel } from "@/core/level/components/panels/LevelStreamPanel";
 import { LevelPreviewEmpty } from "@/core/level/components/preview/LevelPreviewEmpty";
+import { LevelPreviewStatus } from "@/core/level/components/preview/LevelPreviewStatus";
 import { LevelPreviewToolbar } from "@/core/level/components/preview/LevelPreviewToolbar";
 import { ILevelPreviewViewportProps, LevelPreviewViewport } from "@/core/level/components/preview/LevelPreviewViewport";
 import { ILevelPoint } from "@/core/level/lib/level-residency";
 import { ILoadedSector } from "@/core/level/lib/level-sector-set";
 import { hasAlphaSurfaces, hasDetailedSurfaces } from "@/core/level/lib/level-sector-textures";
-import { EMPTY_LEVEL_STATS, ILevelStats } from "@/core/level/lib/level-stats";
 import { ILevelTextureLookup } from "@/core/level/lib/level-texture-set";
 import { DEFAULT_LEVEL_VIEW_OPTIONS, ILevelViewOptions } from "@/core/level/lib/level-view-options";
-import { ILevelStreamProgress } from "@/core/level/services";
+import { ILevelStreamProgress, LevelViewportService } from "@/core/level/services";
 import { EditorFileHeader } from "@/core/shell/editor/EditorFileHeader";
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
-import { IEditorPanel, useEditorPanels, useEditorStatus } from "@/core/shell/editor-shell";
+import { IEditorPanel, useEditorPanels } from "@/core/shell/editor-shell";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { formatBytes } from "@/lib/memory/format";
 import { Nullable } from "@/lib/types/general";
 
 interface ILevelPreviewLayoutProps extends BaseComponentProps {
@@ -69,8 +69,7 @@ export function LevelPreviewLayout({
   onDeselect = null,
 }: ILevelPreviewLayoutProps): ReactElement {
   const [options, setOptions] = useState<ILevelViewOptions>(DEFAULT_LEVEL_VIEW_OPTIONS);
-  const [stats, setStats] = useState<ILevelStats>(EMPTY_LEVEL_STATS);
-  const [camera, setCamera] = useState<Nullable<ILevelPoint>>(null);
+  const viewport: LevelViewportService = useInjection(LevelViewportService);
 
   const isOpen: boolean = Boolean(name);
   const isStreaming: boolean = streaming.total > 0;
@@ -85,25 +84,17 @@ export function LevelPreviewLayout({
     [sectors]
   );
 
-  const status: Array<string> = useMemo(() => {
+  const activity: Nullable<string> = useMemo(() => {
     if (isLoading) {
-      return ["Opening level"];
+      return "Opening level";
     }
 
     if (isStreaming) {
-      return [`Streaming sector ${Math.min(streaming.loaded + 1, streaming.total)} of ${streaming.total}`];
+      return `Streaming sector ${Math.min(streaming.loaded + 1, streaming.total)} of ${streaming.total}`;
     }
 
-    return isOpen
-      ? [
-          ...(camera ? [`x ${camera.x.toFixed(1)} y ${camera.y.toFixed(1)} z ${camera.z.toFixed(1)}`] : []),
-          `${stats.sectors} sectors`,
-          `${stats.draws} draws`,
-          `${stats.triangles} triangles`,
-          formatBytes(stats.bytes),
-        ]
-      : ["No level open"];
-  }, [camera, isLoading, isOpen, isStreaming, stats, streaming]);
+    return isOpen ? null : "No level open";
+  }, [isLoading, isOpen, isStreaming, streaming]);
 
   useEditorPanels(
     (): Array<IEditorPanel> => [
@@ -118,13 +109,11 @@ export function LevelPreviewLayout({
         icon: <SpeedIcon />,
         id: "streaming",
         label: "Streaming",
-        render: () => <LevelStreamPanel stats={stats} />,
+        render: () => <LevelStreamPanel />,
       },
     ],
-    [stats]
+    []
   );
-
-  useEditorStatus(status);
 
   return (
     <EditorLayout
@@ -156,15 +145,7 @@ export function LevelPreviewLayout({
           className={cn("relative flex min-h-0 min-w-0 flex-1 overflow-hidden", className)}
         >
           {renderViewport ? (
-            renderViewport({
-              bounds,
-              onCameraChanged: setCamera,
-              onCameraMoved,
-              onStats: setStats,
-              options,
-              sectors,
-              textures,
-            })
+            renderViewport({ bounds, onCameraMoved, onReport: viewport.report, options, sectors, textures })
           ) : (
             <LevelPreviewViewport
               sectors={sectors}
@@ -172,8 +153,7 @@ export function LevelPreviewLayout({
               textures={textures}
               options={options}
               onCameraMoved={onCameraMoved}
-              onCameraChanged={setCamera}
-              onStats={setStats}
+              onReport={viewport.report}
             />
           )}
 
@@ -196,6 +176,8 @@ export function LevelPreviewLayout({
           ) : null}
         </div>
       </div>
+
+      <LevelPreviewStatus activity={activity} />
     </EditorLayout>
   );
 }
