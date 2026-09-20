@@ -1,3 +1,5 @@
+import { toRadians } from "@/lib/math/angle";
+
 /**
  * How a preview is lit, which is the viewer's own answer rather than anything an X-Ray file carries.
  */
@@ -14,9 +16,6 @@ export interface IRenderLighting {
   ambientColor: number;
 }
 
-/** Degrees in a half turn, for the conversion below. */
-const HALF_TURN: number = 180;
-
 /**
  * Where the light comes from, in the renderer's own axes.
  *
@@ -25,8 +24,8 @@ const HALF_TURN: number = 180;
  * @returns The position, ready to assign.
  */
 export function toRenderSunPosition(lighting: IRenderLighting, distance: number): [number, number, number] {
-  const elevation: number = (lighting.sunElevation * Math.PI) / HALF_TURN;
-  const azimuth: number = (lighting.sunAzimuth * Math.PI) / HALF_TURN;
+  const elevation: number = toRadians(lighting.sunElevation);
+  const azimuth: number = toRadians(lighting.sunAzimuth);
   const horizontal: number = Math.cos(elevation) * distance;
 
   return [horizontal * Math.sin(azimuth), Math.sin(elevation) * distance, horizontal * Math.cos(azimuth)];

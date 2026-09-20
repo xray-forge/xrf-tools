@@ -8,11 +8,14 @@ export interface ILevelViewOptions extends ILevelSurfaceOptions {
   isAxesVisible: boolean;
   /** Draws the sun in the sky, which is the only thing that says where the light is coming from. */
   isSunVisible: boolean;
+  /** Draws the two readouts over the viewport: what the frame cost, and where the camera stands. */
+  isStatsVisible: boolean;
 }
 
 export const DEFAULT_LEVEL_VIEW_OPTIONS: ILevelViewOptions = {
   ...DEFAULT_LEVEL_SURFACE_OPTIONS,
   isAxesVisible: true,
   isGridVisible: true,
+  isStatsVisible: true,
   isSunVisible: true,
 };

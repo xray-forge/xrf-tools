@@ -179,7 +179,7 @@ export function LevelPreviewLayout({
             />
           )}
 
-          {isOpen ? (
+          {isOpen && options.isStatsVisible ? (
             <>
               <LevelPreviewMetrics />
               <LevelPreviewCoordinates />

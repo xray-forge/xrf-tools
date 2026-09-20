@@ -2,6 +2,7 @@ import { default as FilterCenterFocusIcon } from "@mui/icons-material/FilterCent
 import { default as GridOnIcon } from "@mui/icons-material/GridOn";
 import { default as HexagonIcon } from "@mui/icons-material/Hexagon";
 import { default as LightbulbIcon } from "@mui/icons-material/Lightbulb";
+import { default as QueryStatsIcon } from "@mui/icons-material/QueryStats";
 import { default as TextureIcon } from "@mui/icons-material/Texture";
 import { default as WbSunnyIcon } from "@mui/icons-material/WbSunny";
 import { ReactElement, ReactNode, useCallback } from "react";
@@ -94,6 +95,13 @@ export function LevelPreviewToolbar({
             icon={<FilterCenterFocusIcon />}
             isOn={options.isAxesVisible}
             onToggle={() => onToggle("isAxesVisible")}
+          />
+
+          <EditorViewToggle
+            label={"Readout"}
+            icon={<QueryStatsIcon />}
+            isOn={options.isStatsVisible}
+            onToggle={() => onToggle("isStatsVisible")}
           />
 
           {actions ? (

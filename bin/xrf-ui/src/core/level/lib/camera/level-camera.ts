@@ -3,6 +3,7 @@ import { Camera, Vector3 } from "three";
 import { ILevelPoint } from "@/core/level/lib/residency/level-residency";
 import { IXrayHeading, toXrayHeading, toXraySpace } from "@/core/render/lib/scene/render-space";
 import { formatDegrees } from "@/lib/format/angle";
+import { toDegrees } from "@/lib/math/angle";
 
 /**
  * Where the camera is and which way it faces, in the coordinates the level's own data is written in.
@@ -51,8 +52,4 @@ export function formatLevelPosition(camera: ILevelCamera): string {
  */
 export function formatLevelFacing(camera: ILevelCamera): string {
   return `h ${formatDegrees(toDegrees(camera.heading), 1)} p ${formatDegrees(toDegrees(camera.pitch), 1)}`;
-}
-
-function toDegrees(radians: number): number {
-  return (radians * 180) / Math.PI;
 }

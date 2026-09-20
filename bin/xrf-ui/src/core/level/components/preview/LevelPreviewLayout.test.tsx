@@ -150,6 +150,25 @@ describe("LevelPreviewLayout", () => {
     expect(view.getByText("h 90.0° p 0.0°")).toBeInTheDocument();
   });
 
+  // A clean view of the level is the reason to turn them off, and half a clean view is no use, so one switch takes
+  // both away.
+  it("takes both readouts off the viewport together", () => {
+    let report: Maybe<TReport> = null;
+    const view: RenderResult = renderReporting((it) => {
+      report = it;
+    });
+
+    act(() => report?.(EMPTY_LEVEL_STATS, camera()));
+
+    expect(view.getByTestId("level-preview-metrics")).toBeInTheDocument();
+    expect(view.getByTestId("level-preview-coordinates")).toBeInTheDocument();
+
+    fireEvent.click(view.getByRole("button", { name: "Readout" }));
+
+    expect(view.queryByTestId("level-preview-metrics")).not.toBeInTheDocument();
+    expect(view.queryByTestId("level-preview-coordinates")).not.toBeInTheDocument();
+  });
+
   // The readout arrives four times a second for as long as a level is open. Held in this layout it re-rendered the
   // toolbar, the viewport element and the panel registration with it, which is a lot of React for two lines of text.
   it("redraws nothing that draws the level when the viewport reports", async () => {

@@ -1,9 +1,7 @@
 import { Vector3d } from "@/core/ipc/types/xrf-math";
 import { toRendererSpace } from "@/core/render/lib/scene/render-space";
+import { toDegrees } from "@/lib/math/angle";
 import { Nullable } from "@/lib/types/general";
-
-/** Degrees in a half turn, for the conversions below. */
-const HALF_TURN: number = 180;
 
 /**
  * The elevation and azimuth a level's own sun comes to, for a viewer offering to light it the way xrLC did.
@@ -28,7 +26,7 @@ export function toSunAngles(direction: Nullable<Vector3d>): Nullable<{ elevation
   const toSun = { x: -x / length, y: -y / length, z: -z / length };
 
   return {
-    azimuth: (Math.atan2(toSun.x, toSun.z) * HALF_TURN) / Math.PI,
-    elevation: (Math.asin(Math.max(-1, Math.min(1, toSun.y))) * HALF_TURN) / Math.PI,
+    azimuth: toDegrees(Math.atan2(toSun.x, toSun.z)),
+    elevation: toDegrees(Math.asin(Math.max(-1, Math.min(1, toSun.y)))),
   };
 }
