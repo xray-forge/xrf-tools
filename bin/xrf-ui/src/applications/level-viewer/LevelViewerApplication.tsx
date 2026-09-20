@@ -5,6 +5,7 @@ import { SelectedLevelDescription } from "@/core/ipc/types/xrf-app";
 import { LevelPreviewLayout } from "@/core/level/components/preview/LevelPreviewLayout";
 import { ILevelPoint } from "@/core/level/lib/level-residency";
 import { LevelLoadService } from "@/core/level/services";
+import { ApplicationLoader } from "@/core/shell/loading/ApplicationLoader";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
@@ -35,6 +36,10 @@ export function LevelViewerApplication({
   const onFinished = useCallback(() => setPickerOpen(false), []);
 
   const onDeselect = useCallback(() => void loadService.close(), [loadService]);
+
+  if (!loadService.isReady) {
+    return <ApplicationLoader />;
+  }
 
   if (isPickerOpen || (!description && !loadService.level.isLoading)) {
     return <LevelViewerOpenForm onFinished={onFinished} />;

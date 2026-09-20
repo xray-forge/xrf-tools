@@ -1,5 +1,5 @@
-import { Injectable, OnDeactivation } from "@wirestate/core";
-import { BoundAction, Computed, Observable, runInAction } from "@wirestate/mobx";
+import { Injectable, OnDeactivation, OnProvision } from "@wirestate/core";
+import { BoundAction, Computed, flowResult, Observable, runInAction } from "@wirestate/mobx";
 
 import { transformError } from "@/core/error/lib";
 import { levelsCommands } from "@/core/ipc/commands/levels";
@@ -26,7 +26,7 @@ import { AsyncState } from "@/lib/async-state";
 import { formatDuration } from "@/lib/format/duration";
 import { Logger, Timer } from "@/lib/logging";
 import { call, cancelFlow, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
-import { Nullable } from "@/lib/types/general";
+import { Maybe, Nullable } from "@/lib/types/general";
 
 /** Nothing in flight, which is also what a viewer sees before it has asked for anything. */
 export const IDLE_LEVEL_STREAM: ILevelStreamProgress = { loaded: 0, total: 0 };
@@ -59,6 +59,11 @@ export class LevelLoadService {
   /** The level's uploaded textures, owned here and shared between the sectors that name them. */
   private readonly loaded: LevelTextureSet = new LevelTextureSet();
 
+  /**
+   * The read in flight for each sector, so a second ask joins it rather than starting another.
+   */
+  private readonly reading: Map<string, Promise<void>> = new Map();
+
   @Observable()
   public level: AsyncState<IOpenLevel> = AsyncState.idle();
 
@@ -72,6 +77,12 @@ export class LevelLoadService {
 
   @Observable()
   public streaming: ILevelStreamProgress = IDLE_LEVEL_STREAM;
+
+  /**
+   * Whether the restore below has settled, one way or the other.
+   */
+  @Observable()
+  public isReady: boolean = false;
 
   /**
    * @returns The level's textures, to read rather than to manage: their lifetime is this service's.
@@ -134,6 +145,22 @@ export class LevelLoadService {
   }
 
   /**
+   * Takes back whatever level the backend still has open.
+   */
+  @OnProvision()
+  public async onProvision(): Promise<void> {
+    try {
+      await flowResult(this.restore());
+    } catch (error: unknown) {
+      this.log.error("Failed to restore the selected level:", transformError(error));
+    } finally {
+      runInAction(() => {
+        this.isReady = true;
+      });
+    }
+  }
+
+  /**
    * Restores the native selection unless a user action has taken the level flow.
    */
   @ExclusiveFlow("level")
@@ -185,7 +212,7 @@ export class LevelLoadService {
     // rather than waiting for the whole plan.
     try {
       for (const sector of plan.load) {
-        yield* this.readSector(sessionId, sector, open.selected.value.surfaces);
+        yield* call(this.readOnce(sessionId, sector, open.selected.value.surfaces));
 
         runInAction(() => {
           this.streaming = { loaded: this.streaming.loaded + 1, total: this.streaming.total };
@@ -227,24 +254,68 @@ export class LevelLoadService {
   }
 
   /**
+   * Reads one sector, or joins the read already in flight for it.
+   *
+   * @param sessionId - The level opening the sector belongs to.
+   * @param sector - Sector to read, by its index in the sectors chunk.
+   * @param surfaces - The level's resolved shader table, for the sector to join its surfaces against.
+   * @returns A promise that settles when the sector has been read, or when it has failed and said so.
+   */
+  private readOnce(sessionId: string, sector: number, surfaces: ReadonlyArray<XraySurfaceDescriptor>): Promise<void> {
+    const key: string = `${sessionId}:${sector}`;
+    const reading: Maybe<Promise<void>> = this.reading.get(key);
+
+    if (reading) {
+      return reading;
+    }
+
+    const started: Promise<void> = this.readSector(sessionId, sector, surfaces)
+      .catch((error: unknown) => {
+        this.log.error(`Failed to read sector ${sector}:`, transformError(error));
+      })
+      .finally(() => {
+        this.reading.delete(key);
+      });
+
+    this.reading.set(key, started);
+
+    return started;
+  }
+
+  /**
    * Packs one sector on the backend and takes ownership of what comes back.
    *
    * @param sessionId - The level opening the sector belongs to.
    * @param sector - Sector to read, by its index in the sectors chunk.
+   * @param surfaces - The level's resolved shader table.
    */
-  private *readSector(sessionId: string, sector: number, surfaces: ReadonlyArray<XraySurfaceDescriptor>): TFlow {
+  private async readSector(
+    sessionId: string,
+    sector: number,
+    surfaces: ReadonlyArray<XraySurfaceDescriptor>
+  ): Promise<void> {
     const timer: Timer = new Timer();
 
-    const snapshot: SessionSnapshot<SectorDescription> = yield* call(
-      levelsCommands.openSector(sessionId, crypto.randomUUID(), sector)
+    const snapshot: SessionSnapshot<SectorDescription> = await levelsCommands.openSector(
+      sessionId,
+      crypto.randomUUID(),
+      sector
     );
 
-    const buffer: ArrayBuffer = yield* call(levelsRawCommands.readSector(sessionId, snapshot.sessionId));
+    const buffer: ArrayBuffer = await levelsRawCommands.readSector(sessionId, snapshot.sessionId);
     // Joined against the table the open resolved, so a surface arrives already knowing whether it is cut out.
     const views: ISectorViews = createSectorViews(snapshot.value, buffer, surfaces);
 
     // Before the sector is published, so a surface is never drawn untextured for a frame and then corrected.
-    yield* call(this.loaded.load(listSectorTextures(views)));
+    await this.loaded.load(listSectorTextures(views));
+
+    // A read outlives the plan that asked for it, so it can outlive the level too: a sector of a level nobody has
+    // open any more is dropped rather than adopted into whatever is open now.
+    if (!this.isOpen(sessionId)) {
+      this.log.info(`Dropping sector ${sector} of a level that is no longer open`);
+
+      return;
+    }
 
     this.held.adopt(views);
     this.publishSectors();
@@ -257,6 +328,16 @@ export class LevelLoadService {
       `${views.sections.length} draws,`,
       `${views.instances.length} instanced meshes`
     );
+  }
+
+  /**
+   * @param sessionId - The level opening a read belongs to.
+   * @returns Whether that level is still the one this loader holds.
+   */
+  private isOpen(sessionId: string): boolean {
+    const open: Nullable<IOpenLevel> = this.level.value;
+
+    return Boolean(open && open.selected.sessionId === sessionId);
   }
 
   /**

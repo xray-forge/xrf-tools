@@ -118,3 +118,57 @@ fn reloading_checks_the_previous_identity_before_reserving_publication() {
 
   assert!(session.require(first).is_err());
 }
+
+// Long work asks before it starts as well as before it publishes: a sector pack that has queued behind others is
+// usually answering a question nobody is asking any more, and packing anyway is how a queue grows faster than it
+// drains.
+#[test]
+fn a_superseded_opening_can_be_told_before_its_work_is_done() {
+  let session: Session<&str> = Session::new("test");
+  let first: SessionId = SessionId::new();
+  let second: SessionId = SessionId::new();
+
+  session.begin_open(first).unwrap();
+
+  assert!(session.require_opening(first).is_ok());
+
+  session.begin_open(second).unwrap();
+
+  assert!(session.require_opening(first).is_err());
+  assert!(session.require_opening(second).is_ok());
+}
+
+#[test]
+fn an_opening_that_was_closed_or_published_is_no_longer_the_one_to_do_work_for() {
+  let session: Session<&str> = Session::new("test");
+  let id: SessionId = SessionId::new();
+
+  session.begin_open(id).unwrap();
+  session.commit_open(id, "value").unwrap();
+
+  assert!(
+    session.require_opening(id).is_err(),
+    "a published opening is finished, not pending"
+  );
+
+  let closed: SessionId = SessionId::new();
+
+  session.begin_open(closed).unwrap();
+  session.close(&[closed]).unwrap();
+
+  assert!(session.require_opening(closed).is_err());
+}
+
+#[test]
+fn the_early_check_and_the_commit_refuse_a_superseded_opening_the_same_way() {
+  let session: Session<&str> = Session::new("test");
+  let first: SessionId = SessionId::new();
+
+  session.begin_open(first).unwrap();
+  session.begin_open(SessionId::new()).unwrap();
+
+  let early: String = session.require_opening(first).unwrap_err();
+  let late: String = session.commit_open(first, "first").unwrap_err();
+
+  assert_eq!(early, late, "a caller cannot tell the two apart and should not have to");
+}

@@ -57,6 +57,19 @@ impl<T> Session<T> {
     Ok(opened)
   }
 
+  /// Whether this opening is still the one that would be published, for work that is worth abandoning when it is not.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when a newer open or a close has taken the opening, or when the lock is poisoned.
+  pub fn require_opening(&self, id: SessionId) -> TauriResult<()> {
+    if self.lock()?.opening == Some(id) {
+      return Ok(());
+    }
+
+    Err(self.superseded())
+  }
+
   /// Publishes only the newest opening; parsing and resource acquisition happen before this call.
   pub fn commit_open(&self, id: SessionId, value: T) -> TauriResult<Arc<SessionSnapshot<T>>> {
     let opened: Arc<SessionSnapshot<T>> = Arc::new(SessionSnapshot { session_id: id, value });
@@ -64,10 +77,7 @@ impl<T> Session<T> {
     let mut state: MutexGuard<SessionState<T>> = self.lock()?;
 
     if state.opening != Some(id) {
-      return Err(format!(
-        "The {} opening was superseded by another open or close",
-        self.name
-      ));
+      return Err(self.superseded());
     }
 
     let previous: Option<Arc<SessionSnapshot<T>>> = state.opened.replace(Arc::clone(&opened));
@@ -78,6 +88,11 @@ impl<T> Session<T> {
     drop(previous);
 
     Ok(opened)
+  }
+
+  /// What both the early check and the commit say, so a caller cannot tell them apart and need not.
+  fn superseded(&self) -> String {
+    format!("The {} opening was superseded by another open or close", self.name)
   }
 
   /// Restores the committed value without copying its content or exposing the session lock.

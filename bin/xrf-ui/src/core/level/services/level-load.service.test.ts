@@ -56,9 +56,65 @@ function countCalls(command: string): number {
   return mockInvoke.mock.calls.filter(([name]) => name === command).length;
 }
 
+function createHeldCall(): { held: Promise<void>; release: () => void } {
+  const release: Array<() => void> = [];
+  const held: Promise<void> = new Promise((resolve) => release.push(resolve));
+
+  return { held, release: () => release[0]() };
+}
+
 describe("LevelLoadService", () => {
   beforeEach(() => {
     resetMockInvoke();
+  });
+
+  // A refresh re-provisions the service while the backend keeps its session, which is the whole reason the backend
+  // keeps it: coming back to an empty picker beside a level that is still open reads as having lost it.
+  it("takes back the level the backend still has open, without opening it again", async () => {
+    const { level } = mockStreamable([outlineAt(0, 5)]);
+    const { service } = mockInjectedService(LevelLoadService);
+
+    setMockInvokeResponses({ ["plugin:levels|get_level"]: mockSessionResponse(level) });
+
+    await service.restore();
+
+    expect(service.level.value?.selected.value.sectors).toHaveLength(1);
+    expect(countCalls("plugin:levels|open_level")).toBe(0);
+  });
+
+  // Adopted with its session id, so the sector reads that follow a restore belong to the opening the backend holds
+  // rather than to nothing.
+  it("reads sectors against the session it restored", async () => {
+    const { level, description, buffer } = mockStreamable([outlineAt(0, 5)]);
+    const { service } = mockInjectedService(LevelLoadService);
+
+    setMockInvokeResponses({
+      ["plugin:levels|get_level"]: mockSessionResponse(level),
+      ["plugin:levels|open_sector"]: mockSessionResponse((args?: Record<string, unknown>) => ({
+        ...description,
+        sector: args?.sector as number,
+      })),
+      ["plugin:levels|read_sector"]: buffer,
+    });
+
+    await service.restore();
+    await service.stream(ORIGIN);
+
+    const opened = mockInvoke.mock.calls.find(([name]) => name === "plugin:levels|open_sector");
+
+    expect((opened?.[1] as { sessionId: string }).sessionId).toBe(service.level.value?.selected.sessionId);
+    expect([...service.sectors.keys()]).toEqual([0]);
+  });
+
+  it("reports itself ready even when there is nothing to restore", async () => {
+    const { service } = mockInjectedService(LevelLoadService);
+
+    setMockInvokeResponses({ ["plugin:levels|get_level"]: null });
+
+    await service.onProvision();
+
+    expect(service.isReady).toBe(true);
+    expect(service.level.value).toBeNull();
   });
 
   it("applies its mobx annotations", () => {
@@ -314,8 +370,67 @@ describe("LevelLoadService streaming progress", () => {
       }),
     });
 
-    await expect(service.stream(ORIGIN)).rejects.toThrow();
+    await service.stream(ORIGIN);
 
     expect(service.streaming).toEqual(IDLE_LEVEL_STREAM);
+    expect(service.sectors.size).toBe(0);
+  });
+
+  // One sector that cannot be read is one sector missing, not a reason to abandon the rest of what the camera is
+  // standing in.
+  it("reads the rest of a plan past a sector that fails", async () => {
+    const { level, description, buffer } = mockStreamable([outlineAt(0, 1), outlineAt(1, 2)]);
+    const { service } = mockInjectedService(LevelLoadService);
+
+    armLevel(level, description, buffer);
+
+    await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS);
+
+    setMockInvokeResponses({
+      ["plugin:levels|open_sector"]: mockSessionResponse((args?: Record<string, unknown>) => {
+        if (args?.sector === 0) {
+          throw new Error("sector geometry was not read");
+        }
+
+        return { ...description, sector: args?.sector as number };
+      }),
+      ["plugin:levels|read_sector"]: buffer,
+    });
+
+    await service.stream(ORIGIN);
+
+    expect([...service.sectors.keys()]).toEqual([1]);
+  });
+
+  // The defect this exists for: a camera moving while a big sector packs used to cancel the read it was waiting on,
+  // leave the backend packing anyway, and ask again on the next move - so the queue grew faster than it drained and
+  // the level never appeared.
+  it("joins the read already in flight rather than asking for the same sector again", async () => {
+    const { level, description, buffer } = mockStreamable([outlineAt(0, 1)]);
+    const { service } = mockInjectedService(LevelLoadService);
+    const { held, release } = createHeldCall();
+
+    armLevel(level, description, buffer);
+
+    await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS);
+
+    setMockInvokeResponses({
+      ["plugin:levels|open_sector"]: mockSessionResponse(async (args?: Record<string, unknown>) => {
+        await held;
+
+        return { ...description, sector: args?.sector as number };
+      }),
+      ["plugin:levels|read_sector"]: buffer,
+    });
+
+    // Three camera reports while the first pack is still in flight, which is what flying through a level does.
+    const streams: Array<unknown> = [service.stream(ORIGIN), service.stream(ORIGIN), service.stream(ORIGIN)];
+
+    release();
+
+    await Promise.all(streams);
+
+    expect(countCalls("plugin:levels|open_sector")).toBe(1);
+    expect([...service.sectors.keys()]).toEqual([0]);
   });
 });

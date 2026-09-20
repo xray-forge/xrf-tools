@@ -59,6 +59,8 @@ pub async fn levels_open_sector(
       .lock()
       .map_err(|error| format!("Failed to read the level's geometry: {error}"))?;
 
+    current.packed.require_opening(sector_id)?;
+
     SectorPacker::new(&current.visuals, current.level.shaders.as_ref(), &mut geometry).pack::<XRayByteOrder>(
       sector,
       &composition,
