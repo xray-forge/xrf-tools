@@ -2,6 +2,7 @@ import { inject, Injectable, OnEvent, OnProvision, WireEvent } from "@wirestate/
 import { BoundAction, Computed, Observable } from "@wirestate/mobx";
 
 import { describePatchOutcome } from "@/applications/archives-patcher/lib/describe-patch-outcome";
+import { toSavedState } from "@/applications/archives-patcher/services/patcher/patcher.service.utils";
 import { IResolvedArchiveVolumeSize, resolveArchiveVolumeSize } from "@/core/archive/lib/volume-size";
 import { transformError } from "@/core/error/lib";
 import { archivesCommands } from "@/core/ipc/commands/archives";
@@ -26,20 +27,7 @@ export enum EPatcherSection {
 }
 
 /**
- * What a configuration file actually carries, as one comparable value.
- *
- * What is compared, where it is published and under what name are deliberately left out: they are chosen per run and
- * never written to a file, so counting them as edits would mark a freshly imported configuration as unsaved.
- */
-function toSavedState(config: ArchivePatchConfig): string {
-  return JSON.stringify([config.include, config.ignore, config.excludeExtensions, config.header]);
-}
-
-/**
  * The patching configuration being edited, and what was done with it.
- *
- * A service rather than editor state because the shell draws the section navigation outside this application's tree,
- * and because import, export and the dirty rule are worth testing without a rendered editor around them.
  */
 @Injectable()
 export class PatcherService {
@@ -70,12 +58,7 @@ export class PatcherService {
   @Observable()
   public configPath: Nullable<string> = null;
 
-  /**
-   * Volumes of the configured set the output already held when it was last looked at.
-   *
-   * What the confirmation shows before a run that would replace a patch the user still has. A view of the filesystem
-   * at one moment rather than a guarantee: publishing refuses such an output on its own.
-   */
+  /** Volumes of the configured set the output already held when it was last looked at. */
   @Observable()
   public publishedVolumes: Array<string> = [];
 

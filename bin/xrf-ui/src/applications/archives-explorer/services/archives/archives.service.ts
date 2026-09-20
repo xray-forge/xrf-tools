@@ -2,12 +2,12 @@ import { EventBus, inject, Injectable, OnDeactivation, OnDeprovision, OnProvisio
 import { BoundAction, Computed, flowResult, Observable } from "@wirestate/mobx";
 
 import { describeExtractOutcome } from "@/applications/archives-explorer/lib/describe-extract-outcome";
+import { ArchiveContentReader } from "@/applications/archives-explorer/services/archives/archives.service.content";
 import {
   ArchivePreviewSupport,
   getArchivePreviewSupport,
   getArchiveVolumeOf,
   getSubjectReadPolicy,
-  getSubjectRoots,
   IArchiveEntry,
   listSubjectEntries,
   TArchiveContent,
@@ -16,8 +16,6 @@ import {
 } from "@/core/archive/lib";
 import { transformError } from "@/core/error/lib";
 import { archivesCommands } from "@/core/ipc/commands/archives";
-import { archivesRawCommands } from "@/core/ipc/commands/archives-raw";
-import { assetsRawCommands } from "@/core/ipc/commands/assets-raw";
 import { requireSessionId, Session } from "@/core/ipc/session";
 import {
   ArchiveOverrideReport,
@@ -211,6 +209,9 @@ export class ArchivesService {
   public get isWriting(): boolean {
     return this.operation.isLoading || this.job !== null;
   }
+
+  /** What each previewable kind has to be asked for, which is a table rather than state. */
+  private readonly reader: ArchiveContentReader = new ArchiveContentReader(() => this.requireSubjectSession());
 
   public constructor(
     private readonly eventBus: EventBus = inject(EventBus),
@@ -693,25 +694,7 @@ export class ArchivesService {
     this.content = this.content.asLoading(null);
 
     try {
-      let content: TArchiveContent;
-
-      switch (kind) {
-        case "audio":
-          content = yield* call(this.readAudioContent(entry, subject));
-          break;
-        case "texture":
-          content = yield* call(this.readTextureContent(entry, subject));
-          break;
-        case "image":
-          content = yield* call(this.readImageContent(entry, subject));
-          break;
-        case "text":
-          content = yield* call(this.readTextContent(entry));
-          break;
-        case "description":
-          content = yield* call(this.readDescriptionContent(entry));
-          break;
-      }
+      const content: TArchiveContent = yield* call(this.reader.read(entry, kind, subject));
 
       this.log.info("Archive content read in:", formatDuration(timer.elapsed()));
 
@@ -721,83 +704,6 @@ export class ArchivesService {
 
       this.content = this.content.asFailed(transformError(error), null);
     }
-  }
-
-  /**
-   * Reads a file as the Windows-1251 text an engine surface shows.
-   *
-   * @param entry - Entry naming the file.
-   * @returns The decoded text.
-   */
-  private async readTextContent(entry: IArchiveEntry): Promise<TArchiveContent> {
-    return { kind: "text", result: await archivesCommands.readFile(this.requireSubjectSession(), entry.name) };
-  }
-
-  /**
-   * Reads what the backend can say about a binary format in words.
-   *
-   * @param entry - Entry naming the file.
-   * @returns The description, which may be the backend saying it has no describer for this format yet.
-   */
-  private async readDescriptionContent(entry: IArchiveEntry): Promise<TArchiveContent> {
-    return {
-      kind: "description",
-      description: await archivesCommands.describeFile(this.requireSubjectSession(), entry.name),
-    };
-  }
-
-  /**
-   * Reads a sound as the description the engine would read plus the bytes the webview plays.
-   *
-   * @param entry - Entry naming the sound.
-   * @param subject - Open subject whose tree the sound is read out of.
-   * @returns The sound's description and its bytes as stored.
-   */
-  private async readAudioContent(entry: IArchiveEntry, subject: ArchiveSubject): Promise<TArchiveContent> {
-    const roots: XrayRoots = getSubjectRoots(subject);
-
-    const [audio, bytes] = await Promise.all([
-      archivesCommands.describeAudio(roots, entry.name),
-      assetsRawCommands.readAsset(roots, entry.name),
-    ]);
-
-    return { kind: "audio", descriptor: audio, bytes: new Uint8Array(bytes) };
-  }
-
-  /**
-   * Reads a texture as its source shape plus the png the backend decoded it into.
-   *
-   * @param entry - Entry naming the texture.
-   * @param subject - Open subject whose tree the texture is read out of.
-   * @returns The texture's shape and the decoded png bytes.
-   */
-  private async readTextureContent(entry: IArchiveEntry, subject: ArchiveSubject): Promise<TArchiveContent> {
-    const roots: XrayRoots = getSubjectRoots(subject);
-
-    const [texture, bytes] = await Promise.all([
-      archivesCommands.describeTexture(roots, entry.name),
-      archivesRawCommands.readTexture(roots, entry.name),
-    ]);
-
-    return { kind: "texture", descriptor: texture, bytes: new Uint8Array(bytes) };
-  }
-
-  /**
-   * Reads a picture the webview draws itself: its shape plus the bytes exactly as stored.
-   *
-   * @param entry - Entry naming the picture.
-   * @param subject - Open subject whose tree the picture is read out of.
-   * @returns The picture's shape and its bytes as stored.
-   */
-  private async readImageContent(entry: IArchiveEntry, subject: ArchiveSubject): Promise<TArchiveContent> {
-    const roots: XrayRoots = getSubjectRoots(subject);
-
-    const [image, bytes] = await Promise.all([
-      archivesCommands.describeImage(roots, entry.name),
-      assetsRawCommands.readAsset(roots, entry.name),
-    ]);
-
-    return { kind: "image", descriptor: image, bytes: new Uint8Array(bytes) };
   }
 
   /** The session every read and write of the open subject is addressed by. */

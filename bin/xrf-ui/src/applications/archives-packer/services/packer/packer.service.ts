@@ -3,6 +3,7 @@ import { BoundAction, Computed, flowResult, Observable } from "@wirestate/mobx";
 
 import { describePackOutcome } from "@/applications/archives-packer/lib/describe-pack-outcome";
 import { FALLBACK_PACK_CONFIG } from "@/applications/archives-packer/lib/pack-config";
+import { toSavedState } from "@/applications/archives-packer/services/packer/packer.service.utils";
 import { IResolvedArchiveVolumeSize, resolveArchiveVolumeSize } from "@/core/archive/lib/volume-size";
 import { transformError } from "@/core/error/lib";
 import { archivesCommands } from "@/core/ipc/commands/archives";
@@ -25,22 +26,6 @@ export enum EPackerSection {
   SELECTION = "selection",
   HEADER = "header",
   OPTIONS = "options",
-}
-
-/**
- * What a configuration file actually carries, as one comparable value.
- *
- * Paths and volume name are deliberately left out: they are chosen per run and never written to a
- * configuration, so counting them as edits would mark a freshly imported file as unsaved.
- */
-function toSavedState(config: ArchivePackConfig): string {
-  return JSON.stringify([
-    config.includeDirectories,
-    config.includeFiles,
-    config.excludeDirectories,
-    config.excludeExtensions,
-    config.header,
-  ]);
 }
 
 /**
