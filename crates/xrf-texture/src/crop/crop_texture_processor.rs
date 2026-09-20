@@ -138,7 +138,7 @@ mod tests {
   /// Unix only because the file has to exist: NTFS refuses the Windows form of an unreadable name. The rule itself is
   /// pinned on both platforms in `xrf-extension`.
   #[test]
-  #[cfg(linux)]
+  #[cfg(target_os = "linux")]
   fn writes_a_png_under_a_parent_directory_that_is_not_valid_text() {
     use xrf_test_utils::utils::{build_absolute_generated_test_resource_path, build_non_unicode_file_name};
 
