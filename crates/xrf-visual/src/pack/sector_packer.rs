@@ -10,6 +10,7 @@ use xrf_level::{
 use xrf_math::Matrix4x4;
 use xrf_ogf::OgfGeometryContainerChunk;
 
+use crate::data::sector_attributes::SectorAttributes;
 use crate::data::sector_description::SectorDescription;
 use crate::data::sector_geometry::SectorGeometry;
 use crate::data::sector_instance_group::SectorInstanceGroup;
@@ -19,7 +20,6 @@ use crate::data::sector_surface::SectorSurface;
 use crate::data::visual_bounds::VisualBounds;
 use crate::data::visual_section::VisualDrawRange;
 use crate::data::visual_submesh::VisualSkipCause;
-use crate::pack::sector_attributes::SectorAttributes;
 use crate::pack::sector_package::SectorPackage;
 use crate::pack::sector_vertex_arrays::SectorVertexArrays;
 use crate::pack::visual_buffer_builder::VisualBufferBuilder;
@@ -67,8 +67,13 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
   }
 
   /// Packs everything one sector reaches into one buffer of attribute arrays and one index array.
-  pub fn pack<T: ByteOrder>(&mut self, sector: u32, composition: &LevelSectorComposition) -> SectorPackage {
-    let mut arrays: SectorVertexArrays = SectorVertexArrays::new(self.widen_attributes(composition));
+  pub fn pack<T: ByteOrder>(
+    &mut self,
+    sector: u32,
+    composition: &LevelSectorComposition,
+    wanted: SectorAttributes,
+  ) -> SectorPackage {
+    let mut arrays: SectorVertexArrays = SectorVertexArrays::new(self.widen_attributes(composition).intersect(wanted));
     let mut packed: BTreeMap<VertexRange, u32> = BTreeMap::new();
     let mut sections: BTreeMap<u16, SectionGathering> = BTreeMap::new();
     let mut gathered: BTreeMap<InstanceKey, InstanceGathering> = BTreeMap::new();

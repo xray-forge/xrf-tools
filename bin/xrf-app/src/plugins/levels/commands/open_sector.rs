@@ -4,12 +4,23 @@ use std::time::Instant;
 use tauri::State;
 use xrf_level::{LevelSector, LevelSectorComposition};
 use xrf_spawn::XRayByteOrder;
-use xrf_visual::{SectorDescription, SectorPackage, SectorPacker};
+use xrf_visual::{SectorAttributes, SectorDescription, SectorPackage, SectorPacker};
 
 use crate::core::session::{SessionId, SessionSnapshot};
 use crate::core::types::TauriResult;
 use crate::plugins::levels::report::report_packed_sector;
 use crate::plugins::levels::state::{LevelState, PackedSector, SelectedLevel};
+
+/// What the viewer draws a level surface with, which is what a pack is worth carrying.
+const DRAWN_ATTRIBUTES: SectorAttributes = SectorAttributes {
+  binormals: false,
+  colors: true,
+  hemi: false,
+  lightmap_uvs: true,
+  normals: true,
+  tangents: false,
+  uvs: true,
+};
 
 /// Pack one sector of the open level and report what it became.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "open_sector"))]
@@ -48,8 +59,11 @@ pub async fn levels_open_sector(
       .lock()
       .map_err(|error| format!("Failed to read the level's geometry: {error}"))?;
 
-    SectorPacker::new(&current.visuals, current.level.shaders.as_ref(), &mut geometry)
-      .pack::<XRayByteOrder>(sector, &composition)
+    SectorPacker::new(&current.visuals, current.level.shaders.as_ref(), &mut geometry).pack::<XRayByteOrder>(
+      sector,
+      &composition,
+      DRAWN_ATTRIBUTES,
+    )
   };
 
   report_packed_sector(&package, started);

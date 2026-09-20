@@ -2,6 +2,7 @@ pub(crate) mod data;
 pub(crate) mod pack;
 pub(crate) mod resolve;
 
+pub use crate::data::sector_attributes::SectorAttributes;
 pub use crate::data::sector_description::SectorDescription;
 pub use crate::data::sector_geometry::SectorGeometry;
 pub use crate::data::sector_instance_group::SectorInstanceGroup;
