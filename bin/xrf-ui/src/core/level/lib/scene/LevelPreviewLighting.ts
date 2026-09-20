@@ -1,27 +1,22 @@
-import { AmbientLight, Color, DirectionalLight, Object3D } from "three";
+import { Object3D, Vector3 } from "three";
 
 import { DEFAULT_LEVEL_LIGHTING, ILevelLighting } from "@/core/level/lib/lighting/level-lighting";
-import { toSunPosition } from "@/core/level/lib/lighting/level-sun";
+import { RenderPreviewLighting } from "@/core/render/lib/lighting/RenderPreviewLighting";
 
-import { DEFAULT_SUN_DISTANCE, SUN_DISTANCE_MARGIN } from "./level-lighting-config";
+import { LevelSunMarker } from "./LevelSunMarker";
 
 /**
  * The light a level preview is drawn under, which belongs to the viewer rather than to the level.
  */
 export class LevelPreviewLighting {
-  private readonly parent: Object3D;
-  private readonly sun: DirectionalLight = new DirectionalLight();
-  private readonly ambient: AmbientLight = new AmbientLight();
-
-  /** How far out the sun is put, which only has to clear whatever the level turns out to span. */
-  private distance: number = DEFAULT_SUN_DISTANCE;
-  private lighting: ILevelLighting = DEFAULT_LEVEL_LIGHTING;
+  private readonly lights: RenderPreviewLighting;
+  /** The sun made visible, since a light itself draws nothing and its angles are read off the surfaces alone. */
+  private readonly marker: LevelSunMarker;
 
   public constructor(parent: Object3D) {
-    this.parent = parent;
+    this.lights = new RenderPreviewLighting(parent, DEFAULT_LEVEL_LIGHTING);
+    this.marker = new LevelSunMarker(parent);
 
-    this.parent.add(this.ambient);
-    this.parent.add(this.sun);
     this.apply(DEFAULT_LEVEL_LIGHTING);
   }
 
@@ -31,14 +26,8 @@ export class LevelPreviewLighting {
    * @param lighting - The sun and the hemisphere standing in for one.
    */
   public apply(lighting: ILevelLighting): void {
-    this.lighting = lighting;
-
-    this.sun.intensity = lighting.sunIntensity;
-    this.sun.color = new Color(lighting.sunColor);
-    this.ambient.intensity = lighting.ambientIntensity;
-    this.ambient.color = new Color(lighting.ambientColor);
-
-    this.place();
+    this.lights.apply(lighting);
+    this.marker.setSun(this.lights.direction, lighting.sunColor);
   }
 
   /**
@@ -48,20 +37,30 @@ export class LevelPreviewLighting {
    * @param radius - The level's own radius, or zero for a level that reports none.
    */
   public setReach(radius: number): void {
-    this.distance = Math.max(DEFAULT_SUN_DISTANCE, radius * SUN_DISTANCE_MARGIN);
-
-    this.place();
+    this.lights.setReach(radius);
   }
 
-  /** Takes the lights out of the scene. Nothing else here owns anything to dispose. */
+  /**
+   * Whether the sun is drawn as well as shone.
+   *
+   * @param isVisible - What the toolbar asks for.
+   */
+  public setSunVisible(isVisible: boolean): void {
+    this.marker.setVisible(isVisible);
+  }
+
+  /**
+   * Keeps the sun marker in the sky over wherever the camera has flown to.
+   *
+   * @param position - Where the camera is now.
+   */
+  public follow(position: Vector3): void {
+    this.marker.follow(position);
+  }
+
+  /** Takes the lights and the marker out of the scene. */
   public dispose(): void {
-    this.parent.remove(this.ambient);
-    this.parent.remove(this.sun);
-  }
-
-  private place(): void {
-    const [x, y, z] = toSunPosition(this.lighting, this.distance);
-
-    this.sun.position.set(x, y, z);
+    this.lights.dispose();
+    this.marker.dispose();
   }
 }

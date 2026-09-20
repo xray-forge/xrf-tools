@@ -276,7 +276,8 @@ describe("VisualPreviewMeshes bump shading", () => {
     // The basis goes on only now: most submeshes bind no pair and would carry two attributes nothing reads.
     expect(mesh.geometry.getAttribute("xrayTangent").count).toBe(3);
     expect(mesh.geometry.getAttribute("xrayBinormal").count).toBe(3);
-    expect(mesh.material.customProgramCacheKey()).toBe("xray-bump");
+    // Last of the material's patches, because it writes the gloss the one before it declared.
+    expect(mesh.material.customProgramCacheKey().split("|").pop()).toBe("xray-bump");
   });
 
   it("switches a shaded surface flat and back through the view options", () => {

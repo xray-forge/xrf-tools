@@ -3,6 +3,7 @@ import { ReactElement, useEffect, useState } from "react";
 
 import { describeTextureShape } from "@/core/assets/lib";
 import { AssetTextureShape, TextureDescription } from "@/core/ipc/types/xrf-app";
+import { IRenderLighting } from "@/core/render/lib/lighting/render-lighting";
 import { TextureSurface } from "@/core/textures/components/preview/TextureSurface";
 import {
   DEFAULT_TEXTURE_PREVIEW_OPTIONS,
@@ -34,7 +35,9 @@ const TEXTURE_COMPARISON_ASSET_KEY: string = "texture-preview-comparison";
 interface ITexturePreviewProps extends BaseComponentProps {
   /** What the toolbar is asking for. Defaulted, so the preview stands on its own outside the editor. */
   options?: ITexturePreviewOptions;
-  /** Changes whenever the toolbar asks the lit body to put its camera and light back. */
+  /** What the lit body is lit with, which a drag over it also changes. */
+  lighting?: IRenderLighting;
+  onChangeLighting?: (lighting: IRenderLighting) => void;
   /**
    * Another encoding of this texture to show beside it, or null to show the file alone.
    *
@@ -52,6 +55,8 @@ export function TexturePreview({
   id,
   className,
   options = DEFAULT_TEXTURE_PREVIEW_OPTIONS,
+  lighting,
+  onChangeLighting,
   comparison = null,
 }: ITexturePreviewProps): ReactElement {
   const selectionService: TextureSelectionService = useInjection(TextureSelectionService);
@@ -174,7 +179,11 @@ export function TexturePreview({
       // The lit surface is a transparent canvas and needs the frame's checkerboard; a gap needs no ground at all.
       isCheckered={!gap}
     >
-      {gap ? <EmptyState title={gap.title} description={gap.description} /> : <TextureSurface options={options} />}
+      {gap ? (
+        <EmptyState title={gap.title} description={gap.description} />
+      ) : (
+        <TextureSurface options={options} lighting={lighting} onChangeLighting={onChangeLighting} />
+      )}
     </TexturePreviewFrame>
   );
 }

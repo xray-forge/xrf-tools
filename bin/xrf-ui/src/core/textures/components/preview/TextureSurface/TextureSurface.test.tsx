@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it, jest } from "@jest/globals";
 import { fireEvent } from "@testing-library/react";
 
-import { ETextureSurfaceShape } from "@/core/textures/lib/texture-surface";
+import { ETextureSurfaceAlpha, ETextureSurfaceShape } from "@/core/textures/lib/texture-surface";
 import { TextureSelectionService } from "@/core/textures/services/selection";
 import { TextureSurfaceService } from "@/core/textures/services/surface";
 import { renderWithProviders } from "@/fixtures/utils/render";
@@ -19,6 +19,7 @@ beforeAll(async () => {
       setTextures: jest.fn(),
       setOptions: jest.fn(),
       setFrameRateLimit: jest.fn(),
+      setLighting: jest.fn(),
       dragLight,
     })),
   }));
@@ -35,7 +36,15 @@ function sendPointer(target: HTMLElement, type: string, options: MouseEventInit 
 
 function startDrag(): HTMLElement {
   const { getByTestId } = renderWithProviders(
-    <TextureSurface options={{ isBumped: true, isLit: true, shape: ETextureSurfaceShape.PLANE, tiling: 1 }} />,
+    <TextureSurface
+      options={{
+        alpha: ETextureSurfaceAlpha.CUT_OUT,
+        isBumped: true,
+        isLit: true,
+        shape: ETextureSurfaceShape.PLANE,
+        tiling: 1,
+      }}
+    />,
     { bindings: [TextureSelectionService, TextureSurfaceService] }
   );
   const surface: HTMLElement = getByTestId("texture-surface").firstElementChild as HTMLElement;

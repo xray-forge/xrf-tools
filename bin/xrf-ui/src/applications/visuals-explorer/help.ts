@@ -50,6 +50,9 @@ export const VISUALS_EXPLORER_HELP: IApplicationHelp = {
       "`Bump` toggle draws the same surface flat for comparison; on a dummy pair the two look alike, which is the " +
       "point. Parallax (`r2_parallax_h`, `0.02` in the game) and detail textures are not drawn, and the Materials " +
       "panel says so on the materials that ask for them.",
+    "A surface with no bump is shaded with the gloss the engine writes for one, `def_gloss`, two of two hundred " +
+      "and fifty five, so it carries no sheen at any angle of the light. A bumped surface takes its own gloss " +
+      "from the pair instead, which is the one thing that puts a specular response on a model.",
     "The type a `.thm` declares gates the whole descriptor: a `Bump Map` or `Cube Map` typed descriptor is skipped " +
       "by the engine however complete its bump declaration, and the panel says so rather than reporting a bump.",
     "`Height` on a bumped material is the authored virtual height, which the renderer never reads; parallax depth " +

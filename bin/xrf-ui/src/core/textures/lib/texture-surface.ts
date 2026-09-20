@@ -48,6 +48,35 @@ export function describeTextureSurfaceShape(shape: ETextureSurfaceShape): string
   return SHAPE_LABELS[shape];
 }
 
+/**
+ * How a texture's alpha channel is read, in the three answers the engine has for one.
+ */
+export enum ETextureSurfaceAlpha {
+  /** Not read at all, which is what the plain deferred base shader does. */
+  IGNORED = "ignored",
+  /** Clipped against `def_aref`, which is what every `_aref` shader does. */
+  CUT_OUT = "cut-out",
+  /** Composited over what is behind it, which the deferred pass never does. */
+  BLENDED = "blended",
+}
+
+/** What each answer is called, where a person chooses one. */
+const ALPHA_LABELS: Record<ETextureSurfaceAlpha, string> = {
+  [ETextureSurfaceAlpha.IGNORED]: "Ignored",
+  [ETextureSurfaceAlpha.CUT_OUT]: "Cut out",
+  [ETextureSurfaceAlpha.BLENDED]: "Blended",
+};
+
+/**
+ * Names one way of reading alpha.
+ *
+ * @param alpha - The reading to name.
+ * @returns Its label.
+ */
+export function describeTextureSurfaceAlpha(alpha: ETextureSurfaceAlpha): string {
+  return ALPHA_LABELS[alpha];
+}
+
 /** How the surface is being looked at. */
 export interface ITextureSurfaceOptions {
   shape: ETextureSurfaceShape;
@@ -62,6 +91,8 @@ export interface ITextureSurfaceOptions {
   isLit: boolean;
   /** How many times the texture repeats across the body, which is how a tiling seam becomes visible. */
   tiling: number;
+  /** Which of the engine's three readings of the alpha channel the body is drawn with. */
+  alpha: ETextureSurfaceAlpha;
 }
 
 /**

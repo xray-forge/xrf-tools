@@ -20,3 +20,14 @@ export const ABSENT_VALUE: string = "—";
 export function formatNumber(value: Nullable<number>, digits: number, fallback: string = ABSENT_VALUE): string {
   return value === null || !Number.isFinite(value) ? fallback : value.toFixed(digits);
 }
+
+/**
+ * Formats a fraction as a percentage.
+ *
+ * @param value - The fraction, where `1` is the whole.
+ * @param digits - Fixed decimal places to render, none by default.
+ * @returns The percentage with its sign.
+ */
+export function formatPercent(value: number, digits: number = 0): string {
+  return `${(value * 100).toFixed(digits)}%`;
+}

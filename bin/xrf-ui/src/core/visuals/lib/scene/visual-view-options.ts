@@ -21,7 +21,7 @@ export interface IVisualPreviewViewOptions {
 export const DEFAULT_VISUAL_PREVIEW_VIEW_OPTIONS: IVisualPreviewViewOptions = {
   isWireframe: false,
   isGridVisible: true,
-  isAxesVisible: true,
+  isAxesVisible: false,
   isCheckerVisible: false,
   isSkeletonVisible: false,
   isBumpVisible: true,

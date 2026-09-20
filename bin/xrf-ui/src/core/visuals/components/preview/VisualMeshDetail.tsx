@@ -4,6 +4,7 @@ import { ReactElement, useCallback } from "react";
 
 import { EditorPopoverAction } from "@/core/shell/editor/EditorPopoverAction";
 import { BaseComponentProps } from "@/lib/dom/element-types";
+import { formatPercent } from "@/lib/format/number";
 
 interface IVisualMeshDetailProps extends BaseComponentProps {
   /** Position in each submesh's collapse chain: 0 is full detail, 1 is coarsest. */
@@ -44,7 +45,7 @@ export function VisualMeshDetail({
       id={id}
       className={className}
       label={"Mesh detail"}
-      description={hasDetailLevels ? `Mesh detail: ${Math.round((1 - detail) * 100)}%` : "Nothing to decimate"}
+      description={hasDetailLevels ? `Mesh detail: ${formatPercent(1 - detail)}` : "Nothing to decimate"}
       icon={<TuneIcon />}
       isDisabled={!hasDetailLevels}
       isActive={detail !== 0 && hasDetailLevels}

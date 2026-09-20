@@ -2,9 +2,11 @@ import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useEffect, useRef } from "react";
 import { Texture } from "three";
 
+import { IRenderLighting } from "@/core/render/lib/lighting/render-lighting";
 import { SettingsService } from "@/core/settings/services/settings";
 import { ViewportControls } from "@/core/ui/media/ViewportControls";
 import { IVisualPreviewViewOptions, VisualPreviewScene } from "@/core/visuals/lib/scene";
+import { DEFAULT_VISUAL_LIGHTING } from "@/core/visuals/lib/scene/visual-lighting";
 import { IVisualBumpTextures } from "@/core/visuals/lib/visual-bump";
 import { IVisualModelViews } from "@/core/visuals/lib/visual-views";
 import { DOLLY_STEP } from "@/lib/media/orbit-dolly";
@@ -16,6 +18,8 @@ const EMPTY_BONES: ReadonlySet<number> = new Set();
 export interface IVisualPreviewViewportProps {
   model: Nullable<IVisualModelViews>;
   options: IVisualPreviewViewOptions;
+  /** What the model is lit by, the viewer's own default until a surface states otherwise. */
+  lighting?: IRenderLighting;
   /** How far down each submesh collapse chain to draw: 0 is full detail, 1 is coarsest. */
   detail: number;
   /** Baked bone transforms of a playing motion, or null when the model should show its bind pose. */
@@ -46,6 +50,7 @@ export interface IVisualPreviewViewportProps {
 export function VisualPreviewViewport({
   model,
   options,
+  lighting = DEFAULT_VISUAL_LIGHTING,
   detail,
   highlightedJoint = null,
   hiddenBones,
@@ -84,6 +89,10 @@ export function VisualPreviewViewport({
   useEffect(() => {
     sceneRef.current?.applyViewOptions(options);
   }, [options]);
+
+  useEffect(() => {
+    sceneRef.current?.setLighting(lighting);
+  }, [lighting]);
 
   useEffect(() => {
     sceneRef.current?.setDetailLevel(detail);

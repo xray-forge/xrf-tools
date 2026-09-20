@@ -64,6 +64,12 @@ export const OPAQUE_RENDER_SURFACE: IRenderSurface = {
 const ALPHA_REFERENCE_SCALE: number = 255;
 
 /**
+ * The alpha every cut-out deferred shader tests against, `def_aref`, two hundred of two hundred and fifty five
+ * (`shaders/r2/common.h`).
+ */
+export const XRAY_DEFAULT_AREF: number = 200 / ALPHA_REFERENCE_SCALE;
+
+/**
  * Turn one resolved surface into the material state that draws it.
  *
  * @param descriptor - What the backend resolved for the surface, or null when none was declared or resolved.

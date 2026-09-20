@@ -3,7 +3,7 @@ import { ReactElement } from "react";
 
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
-export interface ILevelLightingSliderProps extends BaseComponentProps {
+export interface IRenderLightingSliderProps extends BaseComponentProps {
   label: string;
   value: number;
   min: number;
@@ -17,8 +17,8 @@ export interface ILevelLightingSliderProps extends BaseComponentProps {
 /**
  * One lighting value, with what it currently reads beside its name.
  */
-export function LevelLightingSlider({
-  "data-testid": dataTestId = "level-lighting-slider",
+export function RenderLightingSlider({
+  "data-testid": dataTestId = "render-lighting-slider",
   id,
   className,
   label,
@@ -28,7 +28,7 @@ export function LevelLightingSlider({
   step,
   format,
   onChange,
-}: ILevelLightingSliderProps): ReactElement {
+}: IRenderLightingSliderProps): ReactElement {
   return (
     <div data-testid={dataTestId} id={id} className={className}>
       <div className={"flex items-baseline justify-between gap-2"}>

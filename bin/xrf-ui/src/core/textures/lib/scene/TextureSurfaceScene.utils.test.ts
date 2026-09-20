@@ -3,7 +3,7 @@ import { BufferAttribute, BufferGeometry, Vector3 } from "three";
 
 import { ETextureSurfaceShape } from "@/core/textures/lib/texture-surface";
 
-import { createTextureSurfaceGeometry, toLightPosition } from "./TextureSurfaceScene.utils";
+import { createTextureSurfaceGeometry } from "./TextureSurfaceScene.utils";
 
 /**
  * The first vertex of the face the camera starts in front of, which is the one carrying the texture.
@@ -95,22 +95,5 @@ describe("createTextureSurfaceGeometry", () => {
     expect(depth).toBeGreaterThan(0);
     // Thin enough that the face a person is reading is not competing with the sides of a box.
     expect(depth).toBeLessThan(0.2);
-  });
-});
-
-describe("toLightPosition", () => {
-  it("should put the light in front at the origin of both angles", () => {
-    const position: Vector3 = toLightPosition(0, 0);
-
-    expect(position.x).toBeCloseTo(0, 5);
-    expect(position.y).toBeCloseTo(0, 5);
-    expect(position.z).toBeGreaterThan(0);
-  });
-
-  it("should keep the light at one distance whichever way it is swung", () => {
-    const distance: number = toLightPosition(0, 0).length();
-
-    expect(toLightPosition(Math.PI / 3, Math.PI / 7).length()).toBeCloseTo(distance, 5);
-    expect(toLightPosition(-2, -1).length()).toBeCloseTo(distance, 5);
   });
 });

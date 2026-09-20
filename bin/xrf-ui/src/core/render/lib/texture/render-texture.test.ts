@@ -10,7 +10,12 @@ import {
 } from "three";
 
 import { EDdsRefusal } from "@/core/render/lib/dds";
-import { createDdsTexture, createDecodedTexture, IRenderTextureUpload } from "@/core/render/lib/texture/render-texture";
+import {
+  createDdsTexture,
+  createDecodedTexture,
+  hasRenderTextureAlpha,
+  IRenderTextureUpload,
+} from "@/core/render/lib/texture/render-texture";
 import { mockDdsFile, mockDx10DdsFile, mockUncompressedDdsFile } from "@/fixtures/mocks/dds.mocks";
 
 function uploaded(bytes: ArrayBuffer, options = {}): NonNullable<IRenderTextureUpload["texture"]> {
@@ -105,5 +110,20 @@ describe("createDdsTexture", () => {
     expect(upload.texture).toBeNull();
     expect(upload.refusal?.reason).toBe(EDdsRefusal.UNSUPPORTED_MASKS);
     expect(upload.refusal?.detail).toContain("16 bit");
+  });
+});
+
+describe("hasRenderTextureAlpha", () => {
+  it("has nothing to say about a texture that was never uploaded", () => {
+    expect(hasRenderTextureAlpha(null)).toBe(false);
+  });
+
+  // The upload decides: a DXT1 read without alpha is `RGB_S3TC_DXT1` and has no channel to sample, whatever the file
+  // stores. Everything else the reader takes carries one.
+  it("reads the alpha off the format the upload settled on", () => {
+    expect(hasRenderTextureAlpha(uploaded(mockDdsFile({ fourCC: "DXT1" })))).toBe(false);
+    expect(hasRenderTextureAlpha(uploaded(mockDdsFile({ fourCC: "DXT1" }), { isAlphaRead: true }))).toBe(true);
+    expect(hasRenderTextureAlpha(uploaded(mockDdsFile({ fourCC: "DXT5" })))).toBe(true);
+    expect(hasRenderTextureAlpha(uploaded(mockUncompressedDdsFile()))).toBe(true);
   });
 });

@@ -1,17 +1,9 @@
+import { IRenderLighting } from "@/core/render/lib/lighting/render-lighting";
+
 /**
  * How a level preview is lit.
  */
-export interface ILevelLighting {
-  /** Degrees above the horizon the sun sits at, `90` being directly overhead. */
-  sunElevation: number;
-  /** Degrees around the vertical axis, `0` looking along the level's own `+z`. */
-  sunAzimuth: number;
-  sunIntensity: number;
-  /** Hex colour of the directional light. */
-  sunColor: number;
-  /** Uniform light standing in for the hemisphere the deferred pass samples. */
-  ambientIntensity: number;
-  ambientColor: number;
+export interface ILevelLighting extends IRenderLighting {
   /** How much the baked hemisphere term darkens the ambient, `0` ignoring it and `1` applying it whole. */
   hemiStrength: number;
 }

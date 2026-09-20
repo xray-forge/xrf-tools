@@ -1,51 +1,33 @@
-import {
-  AmbientLight,
-  BufferGeometry,
-  DirectionalLight,
-  Mesh,
-  MeshStandardMaterial,
-  PerspectiveCamera,
-  Scene,
-} from "three";
+import { BufferGeometry, Mesh, MeshStandardMaterial, PerspectiveCamera, Scene } from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
 import { TFrameRateLimit } from "@/core/render/lib/frame/render-frame-limit";
 import { RenderViewport } from "@/core/render/lib/frame/render-viewport";
+import { IRenderLighting } from "@/core/render/lib/lighting/render-lighting";
+import { RenderPreviewLighting } from "@/core/render/lib/lighting/RenderPreviewLighting";
+import { applyXrayGlossShading } from "@/core/render/lib/surface/render-gloss";
+import { XRAY_DEFAULT_AREF } from "@/core/render/lib/surface/render-surface";
+import { hasRenderTextureAlpha } from "@/core/render/lib/texture/render-texture";
 import {
   EMPTY_TEXTURE_SURFACE,
+  ETextureSurfaceAlpha,
   ETextureSurfaceShape,
   ITextureSurfaceOptions,
   ITextureSurfaceTextures,
   listTextureSurfaceTextures,
 } from "@/core/textures/lib/texture-surface";
-import { applyXrayBumpShading, IVisualBumpShading } from "@/core/visuals/lib/visual-bump";
+import { applyXrayBumpShading, IVisualBumpShading, removeXrayBumpShading } from "@/core/visuals/lib/visual-bump";
 import { bindDragCursor } from "@/lib/media/drag-cursor";
 import { toDolliedPosition } from "@/lib/media/orbit-dolly";
 import { Nullable } from "@/lib/types/general";
 
-import { createTextureSurfaceGeometry, toLightPosition } from "./TextureSurfaceScene.utils";
-
-/** Where the light stands, in the angles a drag moves. */
-interface ILightAngles {
-  azimuth: number;
-  elevation: number;
-}
-
-const INITIAL_LIGHT: ILightAngles = { azimuth: Math.PI / 4, elevation: Math.PI / 5 };
-
-/** How far a drag across the whole viewport swings the light, in radians. */
-const LIGHT_DRAG_SPEED: number = Math.PI;
-
-/** How hard the light and the fill are driven, in the two states the switch has. */
-interface ILightIntensity {
-  ambient: number;
-  directional: number;
-}
-
-const LIT_INTENSITY: ILightIntensity = { ambient: 0.35, directional: 2.6 };
-
-/** A flat ambient at full strength, which reproduces the flat picture of the same file. */
-const UNLIT_INTENSITY: ILightIntensity = { ambient: 1, directional: 0 };
+import {
+  DEFAULT_TEXTURE_LIGHTING,
+  TEXTURE_LIGHT_DRAG_SPEED,
+  TEXTURE_LIGHT_ELEVATION_LIMIT,
+  UNLIT_TEXTURE_LIGHTING,
+} from "./texture-lighting";
+import { createTextureSurfaceGeometry } from "./TextureSurfaceScene.utils";
 
 /** Where the camera starts and returns to. */
 const CAMERA_DISTANCE: number = 5;
@@ -57,8 +39,7 @@ const CAMERA_DISTANCE: number = 5;
 export class TextureSurfaceScene {
   private readonly viewport: RenderViewport;
   private readonly controls: OrbitControls;
-  private readonly light: DirectionalLight;
-  private readonly ambient: AmbientLight;
+  private readonly lights: RenderPreviewLighting;
   private readonly material: MeshStandardMaterial;
   private readonly edgeMaterial: MeshStandardMaterial;
 
@@ -69,13 +50,15 @@ export class TextureSurfaceScene {
   private shading: Nullable<IVisualBumpShading> = null;
   private textures: ITextureSurfaceTextures = EMPTY_TEXTURE_SURFACE;
   private options: ITextureSurfaceOptions = {
+    alpha: ETextureSurfaceAlpha.CUT_OUT,
     isBumped: true,
     isLit: true,
     shape: ETextureSurfaceShape.PLANE,
     tiling: 1,
   };
 
-  private lightAngles: ILightAngles = { ...INITIAL_LIGHT };
+  /** What the surface is lit with, which its owner holds and a drag over the body reports back. */
+  private lighting: IRenderLighting = DEFAULT_TEXTURE_LIGHTING;
 
   public constructor() {
     // No background colour, so the canvas is transparent and the checkerboard the frame already draws shows through
@@ -89,16 +72,12 @@ export class TextureSurfaceScene {
     this.controls = new OrbitControls(this.camera, this.viewport.domElement);
     this.controls.enableDamping = true;
 
-    this.light = new DirectionalLight(0xffffff, LIT_INTENSITY.directional);
-    this.light.position.copy(toLightPosition(this.lightAngles.azimuth, this.lightAngles.elevation));
-
-    // Low rather than absent, so the unlit side of a sphere is readable without washing the bump response out.
-    this.ambient = new AmbientLight(0xffffff, LIT_INTENSITY.ambient);
-
-    this.scene.add(this.ambient);
-    this.scene.add(this.light);
+    this.lights = new RenderPreviewLighting(this.scene, DEFAULT_TEXTURE_LIGHTING);
 
     this.material = new MeshStandardMaterial({ metalness: 0, roughness: 1 });
+    // The same gloss rule the rest of the viewer draws by: nothing X-Ray ships is reflective until its bump says so,
+    // and the patch below writes the pair's own gloss over this default wherever one is bound.
+    applyXrayGlossShading(this.material);
     // Dark and plain, so a rotated slab reads as a slab: its four edges and its back are not the texture.
     this.edgeMaterial = new MeshStandardMaterial({ color: 0x1a1a1a, metalness: 0, roughness: 0.9 });
 
@@ -143,6 +122,7 @@ export class TextureSurfaceScene {
     this.mesh?.geometry.dispose();
     this.material.dispose();
     this.edgeMaterial.dispose();
+    this.lights.dispose();
     this.viewport.dispose();
   }
 
@@ -178,11 +158,10 @@ export class TextureSurfaceScene {
       // Re-patched per pair rather than kept, because the patch closes over the two samplers it was given.
       this.shading = applyXrayBumpShading(this.material, textures.bump);
     } else {
-      // Unpatched rather than switched off: a texture declaring no pair must compile the stock program, or it keeps
+      // Taken off rather than switched off: a texture declaring no pair must compile the stock program, or it keeps
       // sampling the last texture's bump through a patch nothing is left to disable.
       this.shading = null;
-      this.material.onBeforeCompile = () => undefined;
-      this.material.customProgramCacheKey = () => "";
+      removeXrayBumpShading(this.material);
     }
 
     this.applyOptions();
@@ -206,23 +185,33 @@ export class TextureSurfaceScene {
   }
 
   /**
+   * Takes what the surface is lit with.
+   *
+   * @param lighting - The direction, its strength and colour, and the fill.
+   */
+  public setLighting(lighting: IRenderLighting): void {
+    this.lighting = lighting;
+
+    this.applyLighting();
+  }
+
+  /**
    * Swings the light by a drag across the viewport.
    *
    * @param deltaX - Horizontal movement in pixels.
    * @param deltaY - Vertical movement in pixels.
+   * @returns Where the drag has put the light.
    */
-  public dragLight(deltaX: number, deltaY: number): void {
+  public dragLight(deltaX: number, deltaY: number): IRenderLighting {
     const width: number = this.viewport.width || 1;
     const height: number = this.viewport.height || 1;
-    const limit: number = Math.PI / 2 - 0.05;
+    const elevation: number = this.lighting.sunElevation - (deltaY / height) * TEXTURE_LIGHT_DRAG_SPEED;
 
-    this.lightAngles = {
-      azimuth: this.lightAngles.azimuth + (deltaX / width) * LIGHT_DRAG_SPEED,
-      // Clamped short of the poles, where a directional light stops telling a bumped surface from a flat one.
-      elevation: Math.max(-limit, Math.min(limit, this.lightAngles.elevation - (deltaY / height) * LIGHT_DRAG_SPEED)),
+    return {
+      ...this.lighting,
+      sunAzimuth: this.lighting.sunAzimuth + (deltaX / width) * TEXTURE_LIGHT_DRAG_SPEED,
+      sunElevation: Math.max(-TEXTURE_LIGHT_ELEVATION_LIMIT, Math.min(TEXTURE_LIGHT_ELEVATION_LIMIT, elevation)),
     };
-
-    this.light.position.copy(toLightPosition(this.lightAngles.azimuth, this.lightAngles.elevation));
   }
 
   /**
@@ -247,14 +236,11 @@ export class TextureSurfaceScene {
     this.controls.update();
   }
 
-  /** Puts the camera and the light back where they started. */
+  /** Puts the camera back where it started. The light is its owner's, and the panel offering it puts that back. */
   public reset(): void {
     this.camera.position.set(0, 0, CAMERA_DISTANCE);
     this.controls.target.set(0, 0, 0);
     this.controls.update();
-
-    this.lightAngles = { ...INITIAL_LIGHT };
-    this.light.position.copy(toLightPosition(this.lightAngles.azimuth, this.lightAngles.elevation));
   }
 
   /**
@@ -282,13 +268,37 @@ export class TextureSurfaceScene {
     // so rather than pretending the surface is still being compared.
     this.shading?.setEnabled(this.options.isBumped && this.options.isLit);
 
-    const intensity: ILightIntensity = this.options.isLit ? LIT_INTENSITY : UNLIT_INTENSITY;
-
-    this.light.intensity = intensity.directional;
-    this.ambient.intensity = intensity.ambient;
-
+    this.applyAlpha();
+    this.applyLighting();
     this.applyTiling();
     this.applyAspect();
+  }
+
+  /**
+   * Reads the alpha channel the way the chosen shader would, or leaves it unread the way the plain one does.
+   */
+  private applyAlpha(): void {
+    const isRead: boolean = hasRenderTextureAlpha(this.textures.base);
+    const alpha: ETextureSurfaceAlpha = isRead ? this.options.alpha : ETextureSurfaceAlpha.IGNORED;
+    const alphaTest: number = alpha === ETextureSurfaceAlpha.CUT_OUT ? XRAY_DEFAULT_AREF : 0;
+    // Still in the opaque pass when it is cut out, which is where the engine's `clip` happens: only the forward
+    // blenders composite, and those are the third answer rather than a softer version of the second.
+    const isTransparent: boolean = alpha === ETextureSurfaceAlpha.BLENDED;
+
+    // Both of these change the compiled program, so a change to either asks for it - and only a change does, or
+    // every drag of the light slider would recompile the shader the body is drawn with.
+    if (this.material.alphaTest === alphaTest && this.material.transparent === isTransparent) {
+      return;
+    }
+
+    this.material.alphaTest = alphaTest;
+    this.material.transparent = isTransparent;
+    this.material.needsUpdate = true;
+  }
+
+  /** The light the body actually stands under, which the switch turns over to a flat fill and back. */
+  private applyLighting(): void {
+    this.lights.apply(this.options.isLit ? this.lighting : UNLIT_TEXTURE_LIGHTING);
   }
 
   /**

@@ -3,10 +3,13 @@ import { default as LightbulbIcon } from "@mui/icons-material/Lightbulb";
 import { default as ViewInArIcon } from "@mui/icons-material/ViewInAr";
 import { ReactElement, useCallback } from "react";
 
+import { RenderLightingAction } from "@/core/render/components/lighting/RenderLightingAction";
+import { IRenderLighting } from "@/core/render/lib/lighting/render-lighting";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
 import { EditorToolbarLocation, IEditorLocation } from "@/core/shell/editor/EditorToolbarLocation";
 import { EditorToolbarSeparator } from "@/core/shell/editor/EditorToolbarSeparator";
 import { EditorViewToggle } from "@/core/shell/editor/EditorViewToggle";
+import { DEFAULT_TEXTURE_LIGHTING } from "@/core/textures/lib/scene/texture-lighting";
 import { ETexturePreviewMode, ITexturePreviewOptions } from "@/core/textures/lib/texture-preview";
 import { Nullable } from "@/lib/types/general";
 
@@ -17,9 +20,12 @@ interface ITextureWorkspaceToolbarProps {
   /** Where the open texture is, as the last breadcrumb segment. */
   location: Nullable<IEditorLocation>;
   options: ITexturePreviewOptions;
+  /** What the lit body is lit with, which a drag over it also changes. */
+  lighting: IRenderLighting;
   /** Whether the open texture declares a bump pair, which is what makes shading with one worth offering. */
   hasBump: boolean;
   onChangeOptions: (options: ITexturePreviewOptions) => void;
+  onChangeLighting: (lighting: IRenderLighting) => void;
   /** Closes the open texture and returns to the tree. */
   onBack: () => void;
 }
@@ -30,8 +36,10 @@ interface ITextureWorkspaceToolbarProps {
 export function TextureWorkspaceToolbar({
   location,
   options,
+  lighting,
   hasBump,
   onChangeOptions,
+  onChangeLighting,
   onBack,
 }: ITextureWorkspaceToolbarProps): ReactElement {
   const isSurface: boolean = options.mode === ETexturePreviewMode.SURFACE;
@@ -72,6 +80,14 @@ export function TextureWorkspaceToolbar({
           />
 
           <TextureBodyOptions options={options} onChangeOptions={onChangeOptions} />
+
+          <RenderLightingAction
+            lighting={lighting}
+            fallback={DEFAULT_TEXTURE_LIGHTING}
+            isDisabled={!isSurface}
+            unavailableDescription={SURFACE_ONLY}
+            onChange={onChangeLighting}
+          />
         </>
       }
     />

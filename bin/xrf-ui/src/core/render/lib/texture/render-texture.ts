@@ -4,6 +4,7 @@ import {
   LinearFilter,
   NearestFilter,
   RepeatWrapping,
+  RGB_S3TC_DXT1_Format,
   RGBAFormat,
   SRGBColorSpace,
   Texture,
@@ -162,4 +163,14 @@ export function createCheckerTexture(): DataTexture {
   texture.needsUpdate = true;
 
   return texture;
+}
+
+/**
+ * Whether an uploaded texture carries an alpha channel at all.
+ *
+ * @param texture - An uploaded texture, or nothing uploaded.
+ * @returns Whether anything drawing it can read alpha from it.
+ */
+export function hasRenderTextureAlpha(texture: Nullable<Texture>): boolean {
+  return Boolean(texture) && texture?.format !== RGB_S3TC_DXT1_Format;
 }

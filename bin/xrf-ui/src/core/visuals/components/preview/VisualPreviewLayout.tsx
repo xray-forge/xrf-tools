@@ -2,6 +2,7 @@ import { default as AccountTreeIcon } from "@mui/icons-material/AccountTree";
 import { ReactElement, ReactNode, useMemo, useState } from "react";
 import { Texture } from "three";
 
+import { IRenderLighting } from "@/core/render/lib/lighting/render-lighting";
 import { isAlphaRenderSurface } from "@/core/render/lib/surface/render-surface";
 import { EditorFileHeader } from "@/core/shell/editor/EditorFileHeader";
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
@@ -13,7 +14,11 @@ import {
   VisualPreviewMotionViewport,
   VisualPreviewToolbar,
 } from "@/core/visuals/components/preview";
-import { DEFAULT_VISUAL_PREVIEW_VIEW_OPTIONS, IVisualPreviewViewOptions } from "@/core/visuals/lib/scene";
+import {
+  DEFAULT_VISUAL_LIGHTING,
+  DEFAULT_VISUAL_PREVIEW_VIEW_OPTIONS,
+  IVisualPreviewViewOptions,
+} from "@/core/visuals/lib/scene";
 import { IVisualBumpTextures } from "@/core/visuals/lib/visual-bump";
 import { countVisualTriangles, IVisualModelViews } from "@/core/visuals/lib/visual-views";
 import { cn } from "@/lib/dom/dom-name";
@@ -89,6 +94,7 @@ export function VisualPreviewLayout({
   onDeselect = null,
 }: IVisualPreviewLayoutProps): ReactElement {
   const [options, setOptions] = useState<IVisualPreviewViewOptions>(DEFAULT_VISUAL_PREVIEW_VIEW_OPTIONS);
+  const [lighting, setLighting] = useState<IRenderLighting>(DEFAULT_VISUAL_LIGHTING);
   const [detail, setDetail] = useState(0);
 
   /**
@@ -143,8 +149,10 @@ export function VisualPreviewLayout({
           hasAlpha={hasAlpha}
           subtitle={subtitle}
           options={options}
+          lighting={lighting}
           detail={detail}
           onChangeOptions={setOptions}
+          onChangeLighting={setLighting}
           onChangeDetail={setDetail}
           onBack={onBack}
           onBrowse={onBrowse}
@@ -169,11 +177,12 @@ export function VisualPreviewLayout({
           className={cn("relative flex min-h-0 min-w-0 flex-1 overflow-hidden", className)}
         >
           {renderViewport ? (
-            renderViewport({ bumps, detail, hiddenBones, highlightedJoint, model, options, textures })
+            renderViewport({ bumps, detail, hiddenBones, highlightedJoint, lighting, model, options, textures })
           ) : (
             <VisualPreviewMotionViewport
               model={model}
               options={options}
+              lighting={lighting}
               detail={detail}
               highlightedJoint={highlightedJoint}
               hiddenBones={hiddenBones}

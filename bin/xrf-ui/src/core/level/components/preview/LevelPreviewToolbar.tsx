@@ -1,4 +1,3 @@
-import { default as CropFreeIcon } from "@mui/icons-material/CropFree";
 import { default as FilterCenterFocusIcon } from "@mui/icons-material/FilterCenterFocus";
 import { default as GrainIcon } from "@mui/icons-material/Grain";
 import { default as GridOnIcon } from "@mui/icons-material/GridOn";
@@ -7,10 +6,12 @@ import { default as LightbulbIcon } from "@mui/icons-material/Lightbulb";
 import { default as OpacityIcon } from "@mui/icons-material/Opacity";
 import { default as PaletteIcon } from "@mui/icons-material/Palette";
 import { default as TextureIcon } from "@mui/icons-material/Texture";
+import { default as WbSunnyIcon } from "@mui/icons-material/WbSunny";
 import { ReactElement, ReactNode, useCallback } from "react";
 
 import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
+import { EditorToolbarSeparator } from "@/core/shell/editor/EditorToolbarSeparator";
 import { EditorViewToggle } from "@/core/shell/editor/EditorViewToggle";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
@@ -88,11 +89,29 @@ export function LevelPreviewToolbar({
           />
 
           <EditorViewToggle
+            label={"Surface colours"}
+            icon={<PaletteIcon />}
+            isOn={options.isSurfaceColored}
+            onToggle={() => onToggle("isSurfaceColored")}
+          />
+
+          <EditorToolbarSeparator />
+
+          <EditorViewToggle
             label={"Baked light"}
             icon={<LightbulbIcon />}
             isOn={options.isLit}
             onToggle={() => onToggle("isLit")}
           />
+
+          <EditorViewToggle
+            label={"Sun"}
+            icon={<WbSunnyIcon />}
+            isOn={options.isSunVisible}
+            onToggle={() => onToggle("isSunVisible")}
+          />
+
+          <EditorToolbarSeparator />
 
           <EditorViewToggle
             label={"Grid"}
@@ -106,20 +125,6 @@ export function LevelPreviewToolbar({
             icon={<FilterCenterFocusIcon />}
             isOn={options.isAxesVisible}
             onToggle={() => onToggle("isAxesVisible")}
-          />
-
-          <EditorViewToggle
-            label={"Bounds"}
-            icon={<CropFreeIcon />}
-            isOn={options.isBoundsVisible}
-            onToggle={() => onToggle("isBoundsVisible")}
-          />
-
-          <EditorViewToggle
-            label={"Surface colours"}
-            icon={<PaletteIcon />}
-            isOn={options.isSurfaceColored}
-            onToggle={() => onToggle("isSurfaceColored")}
           />
         </>
       }

@@ -1,4 +1,8 @@
-import { ETextureSurfaceShape, ITextureSurfaceOptions } from "@/core/textures/lib/texture-surface";
+import {
+  ETextureSurfaceAlpha,
+  ETextureSurfaceShape,
+  ITextureSurfaceOptions,
+} from "@/core/textures/lib/texture-surface";
 import { AsyncState } from "@/lib/async-state";
 import { Nullable } from "@/lib/types/general";
 
@@ -22,6 +26,7 @@ export const TEXTURE_TILING_STEPS: ReadonlyArray<number> = [1, 2, 4];
  * What the preview shows before anyone touches it.
  */
 export const DEFAULT_TEXTURE_PREVIEW_OPTIONS: ITexturePreviewOptions = {
+  alpha: ETextureSurfaceAlpha.CUT_OUT,
   isBumped: true,
   isLit: true,
   mode: ETexturePreviewMode.IMAGE,

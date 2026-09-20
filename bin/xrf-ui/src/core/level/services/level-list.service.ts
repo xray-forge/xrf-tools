@@ -1,5 +1,5 @@
 import { Injectable } from "@wirestate/core";
-import { Computed, Observable } from "@wirestate/mobx";
+import { BoundAction, Computed, Observable } from "@wirestate/mobx";
 
 import { describeRoots } from "@/core/assets/lib";
 import { transformError } from "@/core/error/lib";
@@ -27,6 +27,12 @@ export class LevelListService {
   @Computed()
   public get drawable(): Array<LevelEntry> {
     return (this.levels.value ?? []).filter((entry: LevelEntry) => entry.hasGeometry);
+  }
+
+  /** Forgets a listing, which is what roots that are no longer the ones it was made for makes it. */
+  @BoundAction()
+  public reset(): void {
+    this.levels = AsyncState.idle();
   }
 
   /**

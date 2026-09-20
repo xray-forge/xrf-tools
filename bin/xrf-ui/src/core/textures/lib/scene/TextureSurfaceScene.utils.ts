@@ -121,26 +121,6 @@ function createVectors(count: number): Array<Vector3> {
   return Array.from({ length: count }, () => new Vector3());
 }
 
-/**
- * Where a light sits for one pair of angles, at a fixed distance from the body.
- *
- * Spherical rather than a position, because what a person drags is a direction: the distance a directional light sits
- * at changes nothing it does, and letting the drag change it would only move the highlight for no stated reason.
- *
- * @param azimuth - Angle around the body, in radians.
- * @param elevation - Angle above its equator, in radians.
- * @returns Where to put the light.
- */
-export function toLightPosition(azimuth: number, elevation: number): Vector3 {
-  const radius: number = SHAPE_EXTENT * 3;
-
-  return new Vector3(
-    radius * Math.cos(elevation) * Math.sin(azimuth),
-    radius * Math.sin(elevation),
-    radius * Math.cos(elevation) * Math.cos(azimuth)
-  );
-}
-
 /** The body itself, before it is given a tangent basis. */
 function createShapeGeometry(shape: ETextureSurfaceShape): BufferGeometry {
   switch (shape) {

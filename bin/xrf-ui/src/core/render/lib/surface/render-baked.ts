@@ -1,5 +1,7 @@
 import { MeshStandardMaterial, WebGLProgramParametersWithUniforms } from "three";
 
+import { applyRenderPatch } from "@/core/render/lib/surface/render-patch";
+
 /**  What a compiled level's second texture actually carries, and why it is not a light map. */
 export const XRAY_HEMI_CHANNEL: string = "a";
 
@@ -27,16 +29,7 @@ const AO_FRAGMENT: string = `
  * @param material - Material of a surface whose shader table names a second texture.
  */
 export function applyXrayHemiShading(material: MeshStandardMaterial): void {
-  const compile = material.onBeforeCompile;
-  const key = material.customProgramCacheKey;
-
-  material.onBeforeCompile = (shader: WebGLProgramParametersWithUniforms, renderer: never): void => {
-    compile?.call(material, shader, renderer);
-
+  applyRenderPatch(material, { name: "xray-hemi" }, (shader: WebGLProgramParametersWithUniforms): void => {
     shader.fragmentShader = shader.fragmentShader.replace("#include <aomap_fragment>", AO_FRAGMENT);
-  };
-
-  // Named in the key, because three.js caches a program by its parameters and this one: two materials that agree on
-  // every parameter but not on their patches would otherwise be handed each other's compiled shader.
-  material.customProgramCacheKey = (): string => `${key.call(material)}|xray-hemi`;
+  });
 }

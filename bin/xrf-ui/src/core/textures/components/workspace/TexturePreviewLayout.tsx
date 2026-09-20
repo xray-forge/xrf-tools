@@ -2,11 +2,13 @@ import { useInjection } from "@wirestate/react";
 import { ReactElement, ReactNode, useEffect, useState } from "react";
 
 import { TextureDescription } from "@/core/ipc/types/xrf-app";
+import { IRenderLighting } from "@/core/render/lib/lighting/render-lighting";
 import { EditorFileHeader } from "@/core/shell/editor/EditorFileHeader";
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { IEditorLocation } from "@/core/shell/editor/EditorToolbarLocation";
 import { IEditorPanel, useEditorPanels, useEditorStatus } from "@/core/shell/editor-shell";
 import { TexturePreview } from "@/core/textures/components/preview/TexturePreview";
+import { DEFAULT_TEXTURE_LIGHTING } from "@/core/textures/lib/scene/texture-lighting";
 import { describeTextureCaption, describeTextureName } from "@/core/textures/lib/texture-caption";
 import {
   DEFAULT_TEXTURE_PREVIEW_OPTIONS,
@@ -58,6 +60,9 @@ export function TexturePreviewLayout({
   const surfaceService: TextureSurfaceService = useInjection(TextureSurfaceService);
 
   const [previewOptions, setPreviewOptions] = useState<ITexturePreviewOptions>(DEFAULT_TEXTURE_PREVIEW_OPTIONS);
+  // Beside the view options rather than in them: a drag over the body changes it too, and the two are set from
+  // different places for different reasons.
+  const [lighting, setLighting] = useState<IRenderLighting>(DEFAULT_TEXTURE_LIGHTING);
 
   const description: Nullable<TextureDescription> = selectionService.selected.value;
 
@@ -86,8 +91,10 @@ export function TexturePreviewLayout({
         <TextureWorkspaceToolbar
           location={sessionLocation}
           options={previewOptions}
+          lighting={lighting}
           hasBump={Boolean(description?.material?.bump)}
           onChangeOptions={setPreviewOptions}
+          onChangeLighting={setLighting}
           onBack={onBack}
         />
       }
@@ -106,7 +113,12 @@ export function TexturePreviewLayout({
         ) : null}
 
         <div className={"flex min-h-0 min-w-0 grow overflow-hidden"}>
-          <TexturePreview options={previewOptions} comparison={comparison} />
+          <TexturePreview
+            options={previewOptions}
+            lighting={lighting}
+            comparison={comparison}
+            onChangeLighting={setLighting}
+          />
         </div>
       </div>
     </EditorLayout>

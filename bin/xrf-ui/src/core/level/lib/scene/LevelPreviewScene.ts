@@ -124,6 +124,7 @@ export class LevelPreviewScene {
   public applyViewOptions(options: ILevelViewOptions = DEFAULT_LEVEL_VIEW_OPTIONS): void {
     this.sectors.applyViewOptions(options);
     this.frame.applyViewOptions(options);
+    this.lighting.setSunVisible(options.isSunVisible);
   }
 
   /**
@@ -186,6 +187,10 @@ export class LevelPreviewScene {
     if (this.controls?.update(this.viewport.camera, delta)) {
       this.reportCamera();
     }
+
+    // Every frame rather than only on the frames the camera moved, because the marker is placed from the camera and
+    // the lighting can change without it.
+    this.lighting.follow(this.viewport.camera.position);
 
     if (now - this.statsReportedAt >= STATS_INTERVAL) {
       this.statsReportedAt = now;

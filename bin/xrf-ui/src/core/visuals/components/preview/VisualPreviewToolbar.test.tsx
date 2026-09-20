@@ -3,7 +3,11 @@ import { popoverClasses } from "@mui/material";
 import { fireEvent, RenderResult, waitFor } from "@testing-library/react";
 
 import { VisualPreviewToolbar } from "@/core/visuals/components/preview/VisualPreviewToolbar";
-import { DEFAULT_VISUAL_PREVIEW_VIEW_OPTIONS, IVisualPreviewViewOptions } from "@/core/visuals/lib/scene";
+import {
+  DEFAULT_VISUAL_LIGHTING,
+  DEFAULT_VISUAL_PREVIEW_VIEW_OPTIONS,
+  IVisualPreviewViewOptions,
+} from "@/core/visuals/lib/scene";
 import { renderWithProviders } from "@/fixtures/utils/render";
 import { Nullable } from "@/lib/types/general";
 
@@ -15,12 +19,14 @@ function renderToolbar(
   return renderWithProviders(
     <VisualPreviewToolbar
       options={DEFAULT_VISUAL_PREVIEW_VIEW_OPTIONS}
+      lighting={DEFAULT_VISUAL_LIGHTING}
       detail={detail}
       hasDetailLevels={hasDetailLevels}
       hasSkeleton={true}
       hasBump={true}
       hasAlpha={true}
       onChangeOptions={jest.fn()}
+      onChangeLighting={jest.fn()}
       onChangeDetail={onChangeDetail}
     />
   );
@@ -31,12 +37,14 @@ describe("VisualPreviewToolbar order", () => {
     const { getByTestId } = renderWithProviders(
       <VisualPreviewToolbar
         options={DEFAULT_VISUAL_PREVIEW_VIEW_OPTIONS}
+        lighting={DEFAULT_VISUAL_LIGHTING}
         detail={0}
         hasDetailLevels
         hasSkeleton={true}
         hasBump={true}
         hasAlpha={true}
         onChangeOptions={jest.fn()}
+        onChangeLighting={jest.fn()}
         onChangeDetail={jest.fn()}
         onBrowse={jest.fn()}
       />
@@ -57,6 +65,7 @@ describe("VisualPreviewToolbar order", () => {
       "Grid",
       "Axes",
       "Mesh detail",
+      "Lighting",
     ]);
   });
 
@@ -74,12 +83,14 @@ describe("VisualPreviewToolbar order", () => {
     const single: RenderResult = renderWithProviders(
       <VisualPreviewToolbar
         options={DEFAULT_VISUAL_PREVIEW_VIEW_OPTIONS}
+        lighting={DEFAULT_VISUAL_LIGHTING}
         detail={0}
         hasDetailLevels
         hasSkeleton={true}
         hasBump={true}
         hasAlpha={true}
         onChangeOptions={jest.fn()}
+        onChangeLighting={jest.fn()}
         onChangeDetail={jest.fn()}
         onBrowse={jest.fn()}
       />
@@ -98,12 +109,14 @@ describe("VisualPreviewToolbar skeleton toggle", () => {
     const render: RenderResult = renderWithProviders(
       <VisualPreviewToolbar
         options={DEFAULT_VISUAL_PREVIEW_VIEW_OPTIONS}
+        lighting={DEFAULT_VISUAL_LIGHTING}
         detail={0}
         hasDetailLevels
         hasSkeleton={false}
         hasBump={true}
         hasAlpha={true}
         onChangeOptions={jest.fn()}
+        onChangeLighting={jest.fn()}
         onChangeDetail={jest.fn()}
       />
     );
@@ -116,12 +129,14 @@ describe("VisualPreviewToolbar skeleton toggle", () => {
     const render: RenderResult = renderWithProviders(
       <VisualPreviewToolbar
         options={DEFAULT_VISUAL_PREVIEW_VIEW_OPTIONS}
+        lighting={DEFAULT_VISUAL_LIGHTING}
         detail={0}
         hasDetailLevels={true}
         hasSkeleton={true}
         hasBump={true}
         hasAlpha={true}
         onChangeOptions={(options: IVisualPreviewViewOptions) => changes.push(options)}
+        onChangeLighting={jest.fn()}
         onChangeDetail={jest.fn()}
       />
     );
@@ -139,12 +154,14 @@ describe("VisualPreviewToolbar bump toggle", () => {
     const { getByRole } = renderWithProviders(
       <VisualPreviewToolbar
         options={DEFAULT_VISUAL_PREVIEW_VIEW_OPTIONS}
+        lighting={DEFAULT_VISUAL_LIGHTING}
         detail={0}
         hasDetailLevels={true}
         hasSkeleton={true}
         hasBump={false}
         hasAlpha={true}
         onChangeOptions={jest.fn()}
+        onChangeLighting={jest.fn()}
         onChangeDetail={jest.fn()}
       />
     );
@@ -157,12 +174,14 @@ describe("VisualPreviewToolbar bump toggle", () => {
     const { getByRole } = renderWithProviders(
       <VisualPreviewToolbar
         options={DEFAULT_VISUAL_PREVIEW_VIEW_OPTIONS}
+        lighting={DEFAULT_VISUAL_LIGHTING}
         detail={0}
         hasDetailLevels={true}
         hasSkeleton={true}
         hasBump={true}
         hasAlpha={true}
         onChangeOptions={(options: IVisualPreviewViewOptions) => changes.push(options)}
+        onChangeLighting={jest.fn()}
         onChangeDetail={jest.fn()}
       />
     );
@@ -181,12 +200,14 @@ describe("VisualPreviewToolbar alpha toggle", () => {
     const render: RenderResult = renderWithProviders(
       <VisualPreviewToolbar
         options={DEFAULT_VISUAL_PREVIEW_VIEW_OPTIONS}
+        lighting={DEFAULT_VISUAL_LIGHTING}
         detail={0}
         hasDetailLevels={true}
         hasSkeleton={true}
         hasBump={true}
         hasAlpha={false}
         onChangeOptions={jest.fn()}
+        onChangeLighting={jest.fn()}
         onChangeDetail={jest.fn()}
       />
     );
@@ -200,12 +221,14 @@ describe("VisualPreviewToolbar alpha toggle", () => {
     const { getByRole } = renderWithProviders(
       <VisualPreviewToolbar
         options={DEFAULT_VISUAL_PREVIEW_VIEW_OPTIONS}
+        lighting={DEFAULT_VISUAL_LIGHTING}
         detail={0}
         hasDetailLevels={true}
         hasSkeleton={true}
         hasBump={true}
         hasAlpha={true}
         onChangeOptions={(options: IVisualPreviewViewOptions) => changes.push(options)}
+        onChangeLighting={jest.fn()}
         onChangeDetail={jest.fn()}
       />
     );

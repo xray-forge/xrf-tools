@@ -6,4 +6,5 @@ export * from "./VisualPreviewScene";
 export * from "./VisualPreviewScene.utils";
 export * from "./VisualPreviewSkeleton";
 export * from "./scene-config";
+export * from "./visual-lighting";
 export * from "./visual-view-options";

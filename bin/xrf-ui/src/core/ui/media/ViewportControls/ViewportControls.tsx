@@ -4,6 +4,8 @@ import { default as ZoomOutIcon } from "@mui/icons-material/ZoomOut";
 import { ButtonBase, IconButton, Paper, Tooltip, Typography } from "@mui/material";
 import { ReactElement } from "react";
 
+import { formatPercent } from "@/lib/format/number";
+
 interface IViewportControlsProps {
   /**
    * Current magnification and how to return to one to one, for a viewport where that means something.
@@ -37,7 +39,7 @@ export function ViewportControls({ zoom, onZoomIn, onZoomOut, onReset }: IViewpo
         <Tooltip describeChild title={"Actual size"}>
           <ButtonBase aria-label={"Actual size"} className={"rounded-surface px-1 py-0.5"} onClick={zoom.onActualSize}>
             <Typography className={"min-w-11 text-center text-text-secondary"} variant={"caption"}>
-              {Math.round(zoom.scale * 100)}%
+              {formatPercent(zoom.scale)}
             </Typography>
           </ButtonBase>
         </Tooltip>

@@ -3,5 +3,6 @@ export * from "./LevelPreviewFrame";
 export * from "./LevelPreviewLighting";
 export * from "./LevelPreviewScene";
 export * from "./LevelPreviewSectors";
+export * from "./LevelSunMarker";
 export * from "./level-lighting-config";
 export * from "./level-scene-config";

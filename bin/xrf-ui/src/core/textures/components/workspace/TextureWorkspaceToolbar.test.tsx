@@ -2,6 +2,7 @@ import { describe, expect, it, jest } from "@jest/globals";
 import { fireEvent, RenderResult } from "@testing-library/react";
 
 import { TextureWorkspaceToolbar } from "@/core/textures/components/workspace/TextureWorkspaceToolbar";
+import { DEFAULT_TEXTURE_LIGHTING } from "@/core/textures/lib/scene/texture-lighting";
 import {
   DEFAULT_TEXTURE_PREVIEW_OPTIONS,
   ETexturePreviewMode,
@@ -20,8 +21,10 @@ function renderToolbar(
     <TextureWorkspaceToolbar
       location={null}
       options={options}
+      lighting={DEFAULT_TEXTURE_LIGHTING}
       hasBump={hasBump}
       onChangeOptions={onChangeOptions}
+      onChangeLighting={jest.fn()}
       onBack={jest.fn()}
     />
   );

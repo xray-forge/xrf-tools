@@ -47,6 +47,19 @@ describe("LevelListService", () => {
     expect(service.drawable.map((it: LevelEntry) => it.name)).toEqual(["zaton"]);
   });
 
+  // A listing is only about the roots it was made from, so a picker pointed somewhere else has it forget.
+  it("forgets a listing when asked", async () => {
+    const { service } = mockInjectedService(LevelListService);
+
+    setMockInvokeResponses({ ["plugin:levels|list_levels"]: [mockEntry("zaton")] });
+
+    await service.list(ROOTS);
+    service.reset();
+
+    expect(service.levels.value).toBeNull();
+    expect(service.drawable).toEqual([]);
+  });
+
   it("records a failure as state rather than throwing it at the caller", async () => {
     const { service } = mockInjectedService(LevelListService);
 

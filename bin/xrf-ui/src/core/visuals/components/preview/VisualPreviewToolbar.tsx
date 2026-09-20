@@ -8,11 +8,13 @@ import { default as TextureIcon } from "@mui/icons-material/Texture";
 import { default as ThreeDRotationIcon } from "@mui/icons-material/ThreeDRotation";
 import { ReactElement, ReactNode, useCallback } from "react";
 
+import { RenderLightingAction } from "@/core/render/components/lighting/RenderLightingAction";
+import { IRenderLighting } from "@/core/render/lib/lighting/render-lighting";
 import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
 import { EditorToolbarSeparator } from "@/core/shell/editor/EditorToolbarSeparator";
 import { EditorViewToggle } from "@/core/shell/editor/EditorViewToggle";
-import { IVisualPreviewViewOptions } from "@/core/visuals/lib/scene";
+import { DEFAULT_VISUAL_LIGHTING, IVisualPreviewViewOptions } from "@/core/visuals/lib/scene";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { VisualMeshDetail } from "./VisualMeshDetail";
@@ -20,6 +22,8 @@ import { VisualMeshDetail } from "./VisualMeshDetail";
 interface IVisualPreviewToolbarProps extends BaseComponentProps {
   subtitle?: ReactNode;
   options: IVisualPreviewViewOptions;
+  /** What the model is lit by, which nothing in the file states. */
+  lighting: IRenderLighting;
   /** How far down each submesh's collapse chain the viewport is drawing: 0 is full detail, 1 is coarsest. */
   detail: number;
   /** Whether the open model carries a bind pose to draw. */
@@ -31,6 +35,7 @@ interface IVisualPreviewToolbarProps extends BaseComponentProps {
   /** Whether the open model has anything to decimate. */
   hasDetailLevels: boolean;
   onChangeOptions: (options: IVisualPreviewViewOptions) => void;
+  onChangeLighting: (lighting: IRenderLighting) => void;
   onChangeDetail: (detail: number) => void;
   onBack?: () => void;
   onBrowse?: () => void;
@@ -45,12 +50,14 @@ export function VisualPreviewToolbar({
   className,
   subtitle,
   options,
+  lighting,
   detail,
   hasDetailLevels,
   hasSkeleton,
   hasBump,
   hasAlpha,
   onChangeOptions,
+  onChangeLighting,
   onChangeDetail,
   onBack,
   onBrowse,
@@ -150,6 +157,8 @@ export function VisualPreviewToolbar({
           <EditorToolbarSeparator />
 
           <VisualMeshDetail detail={detail} hasDetailLevels={hasDetailLevels} onChange={onChangeDetail} />
+
+          <RenderLightingAction lighting={lighting} fallback={DEFAULT_VISUAL_LIGHTING} onChange={onChangeLighting} />
         </>
       }
     />

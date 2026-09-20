@@ -3,6 +3,8 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
 import { TFrameRateLimit } from "@/core/render/lib/frame/render-frame-limit";
 import { RenderViewport } from "@/core/render/lib/frame/render-viewport";
+import { IRenderLighting } from "@/core/render/lib/lighting/render-lighting";
+import { RenderPreviewLighting } from "@/core/render/lib/lighting/RenderPreviewLighting";
 import { IVisualBumpTextures } from "@/core/visuals/lib/visual-bump";
 import { IVisualModelViews } from "@/core/visuals/lib/visual-views";
 import { bindDragCursor } from "@/lib/media/drag-cursor";
@@ -10,6 +12,7 @@ import { toDolliedPosition } from "@/lib/media/orbit-dolly";
 import { Nullable } from "@/lib/types/general";
 
 import { DEFAULT_VISUAL_PREVIEW_SCENE_CONFIG, IVisualPreviewSceneConfig } from "./scene-config";
+import { DEFAULT_VISUAL_LIGHTING } from "./visual-lighting";
 import { IVisualPreviewViewOptions } from "./visual-view-options";
 import { VisualPreviewFrame } from "./VisualPreviewFrame";
 import { VisualPreviewHighlight } from "./VisualPreviewHighlight";
@@ -32,6 +35,7 @@ export class VisualPreviewScene {
   private readonly controls: OrbitControls;
   private readonly checker: DataTexture;
   private readonly frame: VisualPreviewFrame;
+  private readonly lighting: RenderPreviewLighting;
   private readonly highlight: VisualPreviewHighlight;
 
   /** Stops the canvas answering drags with the drag cursor, called when the scene goes. */
@@ -84,6 +88,7 @@ export class VisualPreviewScene {
 
     this.checker = createCheckerTexture(config);
     this.frame = new VisualPreviewFrame(this.scene, config);
+    this.lighting = new RenderPreviewLighting(this.scene, DEFAULT_VISUAL_LIGHTING);
     this.highlight = new VisualPreviewHighlight(this.scene, config);
 
     this.setModel(model);
@@ -186,6 +191,15 @@ export class VisualPreviewScene {
   }
 
   /**
+   * Takes what the model is lit with, which is the viewer's own answer: nothing a model file carries states a light.
+   *
+   * @param lighting - The direction, its strength and colour, and the fill.
+   */
+  public setLighting(lighting: IRenderLighting): void {
+    this.lighting.apply(lighting);
+  }
+
+  /**
    * Applies toolbar view toggles to every mesh and helper in the scene.
    *
    * @param options - Wireframe, checkerboard, grid, and axes visibility to retain for later texture arrivals.
@@ -275,6 +289,7 @@ export class VisualPreviewScene {
     this.highlight.dispose();
     this.checker.dispose();
     this.frame.dispose();
+    this.lighting.dispose();
     this.viewport.dispose();
   }
 
@@ -293,7 +308,10 @@ export class VisualPreviewScene {
 
   /** Size the helpers to the model, so the grid reads as ground rather than as a backdrop. */
   private applyScale(): void {
-    this.frame.setReach(this.views?.fit.radius ?? FALLBACK_RADIUS);
+    const radius: number = this.views?.fit.radius ?? FALLBACK_RADIUS;
+
+    this.frame.setReach(radius);
+    this.lighting.setReach(radius);
   }
 
   /** Repeats a fit that was measured before the viewport had a size, now that it has one. */

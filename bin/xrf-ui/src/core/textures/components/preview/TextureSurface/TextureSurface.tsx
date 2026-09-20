@@ -2,7 +2,9 @@ import { useInjection } from "@wirestate/react";
 import { PointerEvent, ReactElement, useCallback, useEffect, useRef } from "react";
 
 import { TextureDescription } from "@/core/ipc/types/xrf-app";
+import { IRenderLighting } from "@/core/render/lib/lighting/render-lighting";
 import { SettingsService } from "@/core/settings/services/settings";
+import { DEFAULT_TEXTURE_LIGHTING } from "@/core/textures/lib/scene/texture-lighting";
 import { TextureSurfaceScene } from "@/core/textures/lib/scene/TextureSurfaceScene";
 import {
   EMPTY_TEXTURE_SURFACE,
@@ -17,7 +19,7 @@ import { ViewportControls } from "@/core/ui/media/ViewportControls";
 import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { DOLLY_STEP } from "@/lib/media/orbit-dolly";
-import { Nullable } from "@/lib/types/general";
+import { Maybe, Nullable } from "@/lib/types/general";
 
 /** Where a light drag started, so each move swings by its own delta rather than the whole gesture. */
 interface IDragOrigin {
@@ -27,6 +29,9 @@ interface IDragOrigin {
 
 interface ITextureSurfaceProps extends BaseComponentProps {
   options: ITextureSurfaceOptions;
+  /** What the body is lit with, which a drag over it also changes. */
+  lighting?: IRenderLighting;
+  onChangeLighting?: (lighting: IRenderLighting) => void;
 }
 
 /**
@@ -37,6 +42,8 @@ export function TextureSurface({
   id,
   className,
   options,
+  lighting = DEFAULT_TEXTURE_LIGHTING,
+  onChangeLighting,
 }: ITextureSurfaceProps): ReactElement {
   const selectionService: TextureSelectionService = useInjection(TextureSelectionService);
   const surfaceService: TextureSurfaceService = useInjection(TextureSurfaceService);
@@ -64,16 +71,27 @@ export function TextureSurface({
     event.currentTarget.setPointerCapture(event.pointerId);
   }, []);
 
-  const onPointerMove = useCallback((event: PointerEvent<HTMLDivElement>): void => {
-    const origin: Nullable<IDragOrigin> = dragRef.current;
+  const onPointerMove = useCallback(
+    (event: PointerEvent<HTMLDivElement>): void => {
+      const origin: Nullable<IDragOrigin> = dragRef.current;
 
-    if (!origin) {
-      return;
-    }
+      if (!origin) {
+        return;
+      }
 
-    sceneRef.current?.dragLight(event.clientX - origin.x, event.clientY - origin.y);
-    dragRef.current = { x: event.clientX, y: event.clientY };
-  }, []);
+      const swung: Maybe<IRenderLighting> = sceneRef.current?.dragLight(
+        event.clientX - origin.x,
+        event.clientY - origin.y
+      );
+
+      dragRef.current = { x: event.clientX, y: event.clientY };
+
+      if (swung) {
+        onChangeLighting?.(swung);
+      }
+    },
+    [onChangeLighting]
+  );
 
   const onPointerEnd = useCallback((event: PointerEvent<HTMLDivElement>): void => {
     // The child canvas also captures pointers through OrbitControls; its capture loss is not ours.
@@ -116,6 +134,8 @@ export function TextureSurface({
   useEffect(() => sceneRef.current?.setTextures(textures), [textures]);
 
   useEffect(() => sceneRef.current?.setOptions(options), [options]);
+
+  useEffect(() => sceneRef.current?.setLighting(lighting), [lighting]);
 
   useEffect(() => {
     sceneRef.current?.setFrameRateLimit(settingsService.frameRateLimit);

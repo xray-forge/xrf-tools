@@ -168,7 +168,7 @@ export class TextureSurfaceService {
 
       // Colour, not data: a base texture holds sRGB values, and saying so is what makes the unlit body match the flat
       // picture of the same file. Said at the upload so both paths agree, rather than patched onto whichever wins.
-      const upload: IRenderTextureUpload = createDdsTexture(bytes, { isColor: true });
+      const upload: IRenderTextureUpload = createDdsTexture(bytes, { isAlphaRead: true, isColor: true });
 
       return (
         upload.texture ??

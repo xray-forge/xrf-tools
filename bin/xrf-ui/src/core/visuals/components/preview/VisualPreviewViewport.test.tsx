@@ -13,6 +13,7 @@ const createScene = jest.fn((initialModel: Nullable<IVisualModelViews>) => ({
   setModel: jest.fn(),
   applyViewOptions: jest.fn(),
   setDetailLevel: jest.fn(),
+  setLighting: jest.fn(),
   setHighlightedJoint: jest.fn(),
   setPose: jest.fn(),
   setHiddenBones: jest.fn(),

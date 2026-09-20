@@ -1,12 +1,7 @@
 import { IUniform, MeshStandardMaterial, Texture, WebGLProgramParametersWithUniforms } from "three";
 
+import { applyRenderPatch } from "@/core/render/lib/surface/render-patch";
 import { Nullable } from "@/lib/types/general";
-
-/**
- * Metres past which R1's detail modulation has faded to neutral, `r__dtex_range`
- * (`Layers/xrRender/TextureDescrManager.cpp`).
- */
-export const XRAY_R1_DETAIL_RANGE: number = 50;
 
 /**
  * The detail texture a surface modulates its diffuse with, uploaded, and how densely it lies over it.
@@ -77,7 +72,7 @@ export function applyXrayDetailShading(material: MeshStandardMaterial): IXrayDet
   const scale: IUniform<number> = { value: 1 };
   const enabled: IUniform<number> = { value: 0 };
 
-  material.onBeforeCompile = (shader: WebGLProgramParametersWithUniforms): void => {
+  applyRenderPatch(material, { name: "xray-detail" }, (shader: WebGLProgramParametersWithUniforms): void => {
     shader.uniforms.xrayDetail = texture;
     shader.uniforms.xrayDetailScale = scale;
     shader.uniforms.xrayDetailEnabled = enabled;
@@ -85,10 +80,7 @@ export function applyXrayDetailShading(material: MeshStandardMaterial): IXrayDet
     shader.fragmentShader = shader.fragmentShader
       .replace("#include <common>", `#include <common>\n${FRAGMENT_PARS}`)
       .replace("#include <map_fragment>", FRAGMENT_MAP);
-  };
-
-  material.customProgramCacheKey = (): string => "xray-detail";
-  material.needsUpdate = true;
+  });
 
   return {
     setDetail(detail: Nullable<IXrayDetail>): void {

@@ -4,7 +4,12 @@ import { ReactElement } from "react";
 
 import { EditorPopoverAction } from "@/core/shell/editor/EditorPopoverAction";
 import { ETexturePreviewMode, ITexturePreviewOptions, TEXTURE_TILING_STEPS } from "@/core/textures/lib/texture-preview";
-import { describeTextureSurfaceShape, ETextureSurfaceShape } from "@/core/textures/lib/texture-surface";
+import {
+  describeTextureSurfaceAlpha,
+  describeTextureSurfaceShape,
+  ETextureSurfaceAlpha,
+  ETextureSurfaceShape,
+} from "@/core/textures/lib/texture-surface";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
@@ -33,7 +38,13 @@ export function TextureBodyOptions({
       id={id}
       className={className}
       label={"Body"}
-      description={isSurface ? `Body: ${describeTextureSurfaceShape(options.shape)}, ${options.tiling}×` : SURFACE_ONLY}
+      description={
+        isSurface
+          ? `Body: ${describeTextureSurfaceShape(options.shape)}, ${options.tiling}×, alpha ${describeTextureSurfaceAlpha(
+              options.alpha
+            ).toLowerCase()}`
+          : SURFACE_ONLY
+      }
       icon={<ViewQuiltIcon />}
       isDisabled={!isSurface}
     >
@@ -70,6 +81,24 @@ export function TextureBodyOptions({
           {TEXTURE_TILING_STEPS.map((value: number) => (
             <ToggleButton key={value} value={value} aria-label={`Tile ${value} by ${value}`}>
               {`${value}×`}
+            </ToggleButton>
+          ))}
+        </ToggleButtonGroup>
+
+        <Typography className={"text-text-secondary"} variant={"overline"}>
+          Alpha
+        </Typography>
+
+        <ToggleButtonGroup
+          exclusive
+          size={"small"}
+          value={options.alpha}
+          aria-label={"Alpha"}
+          onChange={(_, next: Nullable<ETextureSurfaceAlpha>) => next && onChangeOptions({ ...options, alpha: next })}
+        >
+          {Object.values(ETextureSurfaceAlpha).map((value: ETextureSurfaceAlpha) => (
+            <ToggleButton key={value} value={value}>
+              {describeTextureSurfaceAlpha(value)}
             </ToggleButton>
           ))}
         </ToggleButtonGroup>

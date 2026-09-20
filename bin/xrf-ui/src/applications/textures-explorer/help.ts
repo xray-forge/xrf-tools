@@ -17,8 +17,15 @@ export const TEXTURES_EXPLORER_HELP: IApplicationHelp = {
       "the texture, the bump, and its `bump#` companion - and the `Channels` panel for the two bump planes and the " +
       "three values the engine reads out of them.",
     "Turn `Lit surface` on in the toolbar to see what the engine makes of the pair. `Body` chooses what the texture " +
-      "is laid on and how many times it repeats; drag to orbit, hold `Shift` and drag to move the light, and turn " +
-      "`Bump` off to compare the same body flat.",
+      "is laid on, how many times it repeats and how its alpha is read; `Lighting` sets the light, drag to orbit, " +
+      "hold `Shift` and drag to move the light, and turn `Bump` off to compare the same body flat.",
+    "A texture carries no answer about its own alpha, so `Body` offers the engine's three. `Ignored` is the plain " +
+      "deferred shader, which takes three components of `tbase` and never samples the fourth - a texel marked " +
+      "transparent is drawn in whatever colour sits under it, which for a DXT1 block in one bit alpha mode is " +
+      "black. `Cut out` is every `_aref` shader: `clip(D.w - def_aref)`, a hard cut at `200 / 255`, still in the " +
+      "opaque pass and never blended. `Blended` is the forward path, for the blenders that leave the base pass. " +
+      "Which one applies to a file is decided by the blender of whatever surface binds it, and the same texture is " +
+      "cut out on a fence and ignored on a crate.",
   ],
   nuances: [
     "A row is placed where its file is, at the logical path the engine holds it under, so the tree starts at " +

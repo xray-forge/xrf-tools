@@ -3,12 +3,14 @@ import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useMemo } from "react";
 
 import { LevelSunDescription } from "@/core/ipc/types/xrf-app";
-import { LevelLightingSlider } from "@/core/level/components/panels/LevelLightingPanel/LevelLightingSlider";
 import { DEFAULT_LEVEL_LIGHTING, ILevelLighting } from "@/core/level/lib/lighting/level-lighting";
 import { toSunAngles } from "@/core/level/lib/lighting/level-sun";
 import { LevelLoadService } from "@/core/level/services";
+import { RenderLightingControls, RenderLightingSlider } from "@/core/render/components/lighting";
+import { IRenderLighting } from "@/core/render/lib/lighting/render-lighting";
 import { EditorPanel, EditorPanelEmpty, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
+import { formatPercent } from "@/lib/format/number";
 import { Nullable } from "@/lib/types/general";
 
 interface ILevelLightingPanelProps extends BaseComponentProps {
@@ -51,57 +53,22 @@ export function LevelLightingPanel({
 
   return (
     <EditorPanel data-testid={dataTestId} id={id} className={className} title={"Lighting"}>
-      <EditorPanelSection title={"Sun"} isFirst>
-        <LevelLightingSlider
-          label={"Elevation"}
-          value={lighting.sunElevation}
-          min={-15}
-          max={90}
-          step={1}
-          format={(value) => `${value}°`}
-          onChange={(sunElevation) => set({ sunElevation })}
-        />
-        <LevelLightingSlider
-          label={"Azimuth"}
-          value={lighting.sunAzimuth}
-          min={-180}
-          max={180}
-          step={1}
-          format={(value) => `${value}°`}
-          onChange={(sunAzimuth) => set({ sunAzimuth })}
-        />
-        <LevelLightingSlider
-          label={"Intensity"}
-          value={lighting.sunIntensity}
-          min={0}
-          max={5}
-          step={0.05}
-          format={(value) => value.toFixed(2)}
-          onChange={(sunIntensity) => set({ sunIntensity })}
-        />
+      <EditorPanelSection title={"Light"} isFirst>
+        <RenderLightingControls lighting={lighting} onChange={(next: IRenderLighting) => set(next)} />
 
         <Button size={"small"} disabled={!angles} onClick={onUseLevelSun}>
           {angles ? "Use the level's own sun" : "This level names no sun"}
         </Button>
       </EditorPanelSection>
 
-      <EditorPanelSection title={"Ambient"}>
-        <LevelLightingSlider
-          label={"Intensity"}
-          value={lighting.ambientIntensity}
-          min={0}
-          max={4}
-          step={0.05}
-          format={(value) => value.toFixed(2)}
-          onChange={(ambientIntensity) => set({ ambientIntensity })}
-        />
-        <LevelLightingSlider
-          label={"Baked occlusion"}
+      <EditorPanelSection title={"Baked"}>
+        <RenderLightingSlider
+          label={"Occlusion"}
           value={lighting.hemiStrength}
           min={0}
           max={1}
           step={0.05}
-          format={(value) => `${Math.round(value * 100)}%`}
+          format={formatPercent}
           onChange={(hemiStrength) => set({ hemiStrength })}
         />
       </EditorPanelSection>

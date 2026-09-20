@@ -71,31 +71,25 @@ describe("LevelPreviewFrame", () => {
     expect([1, 2, 5].map((it) => it * 10 ** Math.floor(Math.log10(frame.gridStep)))).toContain(frame.gridStep);
   });
 
-  // Three questions, three answers: a floor to judge scale against, a landmark, and what the level claims. Wanting
-  // one is no reason to be shown the other two.
-  it("switches the ground, the origin and the extent on their own", () => {
+  // Two questions, two answers: where the level is and how far it goes, against where its own zero sits. The grid
+  // and the extent are one answer, because the extent is the same grid over the level's own footprint.
+  it("switches the ground and the origin on their own", () => {
     const parent: Group = new Group();
     const frame: LevelPreviewFrame = new LevelPreviewFrame(parent, DEFAULT_LEVEL_PREVIEW_SCENE_CONFIG);
 
     frame.setBounds(level());
 
-    frame.applyViewOptions(options({ isAxesVisible: false, isBoundsVisible: false, isGridVisible: true }));
+    frame.applyViewOptions(options({ isAxesVisible: false, isGridVisible: true }));
 
     expect(gridOf(parent).visible).toBe(true);
     expect(axesOf(parent).visible).toBe(false);
-    expect(extentOf(parent).visible).toBe(false);
+    expect(extentOf(parent).visible).toBe(true);
 
-    frame.applyViewOptions(options({ isAxesVisible: true, isBoundsVisible: false, isGridVisible: false }));
+    frame.applyViewOptions(options({ isAxesVisible: true, isGridVisible: false }));
 
     expect(gridOf(parent).visible).toBe(false);
     expect(axesOf(parent).visible).toBe(true);
     expect(extentOf(parent).visible).toBe(false);
-
-    frame.applyViewOptions(options({ isAxesVisible: false, isBoundsVisible: true, isGridVisible: false }));
-
-    expect(gridOf(parent).visible).toBe(false);
-    expect(axesOf(parent).visible).toBe(false);
-    expect(extentOf(parent).visible).toBe(true);
   });
 
   // A box around nothing is a dot at the origin, which reads as a level sitting there rather than as no measurement.

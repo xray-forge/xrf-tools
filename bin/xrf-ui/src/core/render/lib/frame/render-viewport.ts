@@ -2,6 +2,7 @@ import { Color, PerspectiveCamera, Scene, WebGLRenderer } from "three";
 
 import { DEFAULT_FRAME_RATE_LIMIT, shouldDrawFrame, TFrameRateLimit } from "@/core/render/lib/frame/render-frame-limit";
 import { RenderFrameTimer } from "@/core/render/lib/frame/render-frame-timer";
+import { bindSelectionReset } from "@/lib/dom/selection";
 import { Nullable } from "@/lib/types/general";
 
 /** Seconds a frame may be worth, so a tab returning from the background does not teleport whatever moves by time. */
@@ -65,6 +66,8 @@ export class RenderViewport {
   private readonly handlers: IRenderViewportHandlers;
   private readonly timer: RenderFrameTimer = new RenderFrameTimer();
   private readonly resizeObserver: ResizeObserver;
+  /** Stops the canvas clearing the window's text selection, called when the viewport goes. */
+  private readonly unbindSelectionReset: () => void;
 
   private container: Nullable<HTMLElement> = null;
   private frameRateLimit: TFrameRateLimit = DEFAULT_FRAME_RATE_LIMIT;
@@ -88,6 +91,9 @@ export class RenderViewport {
     this.camera = new PerspectiveCamera(config.cameraFieldOfView, 1, config.cameraNear, config.cameraFar);
 
     this.resizeObserver = new ResizeObserver(() => this.requestResize());
+    // Bound here rather than per scene: pressing a canvas is the one gesture every preview shares, and a
+    // selection left standing behind one belongs to no scene in particular.
+    this.unbindSelectionReset = bindSelectionReset(this.renderer.domElement);
   }
 
   /** The canvas, for binding input to and for a scene that wants it focusable. */
@@ -159,6 +165,7 @@ export class RenderViewport {
     cancelAnimationFrame(this.frameHandle);
 
     this.resizeObserver.disconnect();
+    this.unbindSelectionReset();
 
     this.renderer.dispose();
     this.renderer.forceContextLoss();

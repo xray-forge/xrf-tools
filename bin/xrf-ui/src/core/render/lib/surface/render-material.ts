@@ -1,5 +1,6 @@
 import { MeshStandardMaterial, OneMinusSrcAlphaFactor, SrcAlphaFactor } from "three";
 
+import { applyXrayGlossShading, XRAY_DEFAULT_GLOSS } from "@/core/render/lib/surface/render-gloss";
 import { IRenderSurface, OPAQUE_RENDER_SURFACE } from "@/core/render/lib/surface/render-surface";
 
 /** What a surface is made of, beyond what its shader says. X-Ray authors no metalness, so nothing here is guessed. */
@@ -8,6 +9,8 @@ export interface IRenderMaterialOptions {
   roughness: number;
   /** Tint under the base texture, white wherever one is bound or the surface would be dyed by it. */
   color?: number;
+  /** What the surface's own shader writes into the gloss channel, `def_gloss` for everything that writes no other. */
+  gloss?: number;
 }
 
 /**
@@ -26,6 +29,10 @@ export function createRenderMaterial(
     metalness: options.metalness,
     roughness: options.roughness,
   });
+
+  // Every X-Ray surface, because every one of them has a gloss and none of them has the reflectance three.js would
+  // otherwise give it. First of the patches, so a later one can write the gloss it reads for itself.
+  applyXrayGlossShading(material, options.gloss ?? XRAY_DEFAULT_GLOSS);
 
   applyRenderSurface(material, surface);
 

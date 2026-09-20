@@ -1,25 +1,9 @@
 import { Vector3d } from "@/core/ipc/types/xrf-math";
-import { ILevelLighting } from "@/core/level/lib/lighting/level-lighting";
 import { toRendererSpace } from "@/core/render/lib/scene/render-space";
 import { Nullable } from "@/lib/types/general";
 
 /** Degrees in a half turn, for the conversions below. */
 const HALF_TURN: number = 180;
-
-/**
- * Where the light comes from, in the renderer's own axes.
- *
- * @param lighting - The lighting to read.
- * @param distance - How far out to put it, which only has to clear the level.
- * @returns The position, ready to assign.
- */
-export function toSunPosition(lighting: ILevelLighting, distance: number): [number, number, number] {
-  const elevation: number = (lighting.sunElevation * Math.PI) / HALF_TURN;
-  const azimuth: number = (lighting.sunAzimuth * Math.PI) / HALF_TURN;
-  const horizontal: number = Math.cos(elevation) * distance;
-
-  return [horizontal * Math.sin(azimuth), Math.sin(elevation) * distance, horizontal * Math.cos(azimuth)];
-}
 
 /**
  * The elevation and azimuth a level's own sun comes to, for a viewer offering to light it the way xrLC did.

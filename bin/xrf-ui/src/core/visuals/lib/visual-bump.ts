@@ -4,6 +4,8 @@ import { getLocatedAsset } from "@/core/assets/lib/resolution";
 import { XrayMaterialDescriptor } from "@/core/ipc/types/xrf-material";
 import { XrayAsset } from "@/core/ipc/types/xrf-vfs";
 import { VisualTextureDependency } from "@/core/ipc/types/xrf-visual";
+import { toXrayGlossDeclaration, XRAY_GLOSS_VARIABLE } from "@/core/render/lib/surface/render-gloss";
+import { applyRenderPatch, removeRenderPatch } from "@/core/render/lib/surface/render-patch";
 import { EVisualTextureState } from "@/core/visuals/lib/visual-texture";
 import { Nullable } from "@/lib/types/general";
 
@@ -56,6 +58,9 @@ export type TVisualTexel = readonly [number, number, number, number];
  */
 export const XRAY_TANGENT_ATTRIBUTE: string = "xrayTangent";
 export const XRAY_BINORMAL_ATTRIBUTE: string = "xrayBinormal";
+
+/** What the bump patch is called on a material, so a surface that stops binding a pair can take it off. */
+const XRAY_BUMP_PATCH: string = "xray-bump";
 
 /**
  * The bump decode of `gl/sload.h`, in the shader's own spelling.
@@ -186,17 +191,15 @@ uniform float xrayBumpEnabled;
 
 /**
  * Samples the pair once, before three.js reads roughness, so both the roughness and the normal below see one texel.
- *
- * Gloss stands in for roughness inverted: the engine feeds it to a specular power, and the closest the standard
- * material offers is a smoother surface where the bump says glossy.
  */
 const FRAGMENT_ROUGHNESS: string = `
+${toXrayGlossDeclaration()}
 vec4 xrayNu = texture2D( xrayBump, vXrayUv );
 vec4 xrayNuE = texture2D( xrayBumpX, vXrayUv );
-float xrayGloss = ${XRAY_BUMP_GLOSS_GLSL};
 #include <roughnessmap_fragment>
 if ( xrayBumpEnabled > 0.5 ) {
-  roughnessFactor = 1.0 - xrayGloss;
+  ${XRAY_GLOSS_VARIABLE} = ${XRAY_BUMP_GLOSS_GLSL};
+  roughnessFactor = 1.0 - ${XRAY_GLOSS_VARIABLE};
 }
 `;
 
@@ -219,14 +222,6 @@ if ( xrayBumpEnabled > 0.5 ) {
 /**
  * Shades a standard material the way the engine shades a bumped X-Ray surface.
  *
- * An `onBeforeCompile` patch rather than a `ShaderMaterial`, so the viewer's lights, tone mapping, wireframe and
- * checkerboard keep working and the toggle compares like with like: exactly two things change, the normal and the
- * roughness, both read from the pair through `sload.h`'s decode. Never assigns the bump to `normalMap`, whose packing
- * is not X-Ray's.
- *
- * The switch is a uniform, so toggling costs no recompile and no re-upload; the patched program is cached under its
- * own key so it never shares one with an unpatched standard material.
- *
  * @param material - Material of a mesh whose geometry carries `xrayTangent` and `xrayBinormal` attributes.
  * @param textures - The uploaded pair to sample.
  * @returns The switch between the flat and the bumped surface.
@@ -238,7 +233,7 @@ export function applyXrayBumpShading(
   const enabled: IUniform<number> = { value: 1 };
   const uvTransform: IUniform<Matrix3> = { value: new Matrix3() };
 
-  material.onBeforeCompile = (shader: WebGLProgramParametersWithUniforms): void => {
+  applyRenderPatch(material, { name: XRAY_BUMP_PATCH }, (shader: WebGLProgramParametersWithUniforms): void => {
     shader.uniforms.xrayBump = { value: textures.bump };
     shader.uniforms.xrayBumpX = { value: textures.companion };
     shader.uniforms.xrayBumpEnabled = enabled;
@@ -254,10 +249,7 @@ export function applyXrayBumpShading(
       .replace("#include <common>", `#include <common>\n${FRAGMENT_PARS}`)
       .replace("#include <roughnessmap_fragment>", FRAGMENT_ROUGHNESS)
       .replace("#include <normal_fragment_maps>", FRAGMENT_NORMAL);
-  };
-
-  material.customProgramCacheKey = (): string => "xray-bump";
-  material.needsUpdate = true;
+  });
 
   return {
     setEnabled(isEnabled: boolean): void {
@@ -267,4 +259,13 @@ export function applyXrayBumpShading(
       uvTransform.value.copy(matrix);
     },
   };
+}
+
+/**
+ * Takes the bump patch off a material, for a surface that no longer binds a pair.
+ *
+ * @param material - Material that was shaded with a pair.
+ */
+export function removeXrayBumpShading(material: MeshStandardMaterial): void {
+  removeRenderPatch(material, XRAY_BUMP_PATCH);
 }
