@@ -5,6 +5,7 @@ use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 
 use crate::fixtures::thm_fixture::ThmFixture;
 use crate::resolve::xray_surface_resolver::XraySurfaceResolver;
+use crate::resolve::xray_surface_script::XraySurfaceScript;
 
 /// A gamedata-shaped tree under the generated test resources, with descriptors that parse and textures that exist.
 pub struct FixtureTree {
@@ -72,6 +73,13 @@ impl FixtureTree {
     let bytes: Vec<u8> = ShaderLibraryFixture::library(blenders).expect("shader library is writable");
 
     self.write(XraySurfaceResolver::SHADER_LIBRARY_LOGICAL_PATH, &bytes);
+
+    self
+  }
+
+  /// A renderer shader script where the engine would load one for `shader`, holding `source`.
+  pub fn with_shader_script(self, shader: &str, source: &str) -> Self {
+    self.write(&XraySurfaceScript::to_logical_path(shader), source.as_bytes());
 
     self
   }

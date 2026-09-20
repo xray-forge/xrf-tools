@@ -304,3 +304,123 @@ fn the_library_is_read_once_and_answers_every_surface_of_a_model() {
     Some(String::from(XraySurfaceResolver::SHADER_LIBRARY_LOGICAL_PATH))
   );
 }
+
+/// The pass `shaders/r2/effects_lightplanes.s` declares, which is what a lamp's light planes are drawn with.
+const LIGHT_PLANES_SCRIPT: &str = r#"
+function normal (shader, t_base, t_second, t_detail)
+  shader:begin ("base_lplanes","base_lplanes")
+      : fog   (false)
+      : zb    (true,false)
+      : blend (true,blend.srcalpha,blend.one)
+      : aref  (true,0)
+  shader:sampler ("s_base") :texture (t_base)
+end
+"#;
+
+// The whole reason this path exists: `effects\lightplanes` is class `V` in every shipped `shaders.xr`, which R2
+// maps to the opaque deferred blender, and its script makes it additive. Reading the class alone drew a lamp's
+// light planes as a black cross.
+#[test]
+fn a_shader_with_a_script_is_drawn_by_the_script_rather_than_by_its_class() {
+  let tree: FixtureTree = library(
+    "surface_script_wins",
+    &[ShaderBlenderFixture::of(ShaderBlenderClass::VERT, "effects\\lightplanes")],
+  )
+  .with_shader_script("effects\\lightplanes", LIGHT_PLANES_SCRIPT);
+
+  let descriptor: XraySurfaceDescriptor = describe(&tree, "effects\\lightplanes");
+
+  assert_eq!(descriptor.draw, XraySurfaceDraw::Added { reference: 0 });
+  assert!(matches!(
+    descriptor.declaration,
+    XraySurfaceDeclaration::Scripted { is_blended: true, .. }
+  ));
+}
+
+// The engine only looks for a script of the undecorated name, so a class keeps answering for every shader without one.
+#[test]
+fn a_shader_without_a_script_is_still_drawn_by_its_class() {
+  let tree: FixtureTree = library(
+    "surface_script_absent",
+    &[ShaderBlenderFixture::of(ShaderBlenderClass::VERT, "effects\\lightplanes")],
+  )
+  .with_shader_script("something\\else", LIGHT_PLANES_SCRIPT);
+
+  let descriptor: XraySurfaceDescriptor = describe(&tree, "effects\\lightplanes");
+
+  assert_eq!(descriptor.draw, XraySurfaceDraw::Opaque);
+  assert!(matches!(descriptor.declaration, XraySurfaceDeclaration::Described { .. }));
+}
+
+// `selflight.s`: source times zero over destination times one keeps the destination, so nothing of the surface lands.
+#[test]
+fn a_script_that_keeps_the_destination_draws_nothing() {
+  let tree: FixtureTree = library(
+    "surface_script_invisible",
+    &[ShaderBlenderFixture::of(ShaderBlenderClass::VERT, "selflight")],
+  )
+  .with_shader_script(
+    "selflight",
+    r#"
+function normal (shader, t_base, t_second, t_detail)
+  shader:begin ("dumb","dumb") : zb (false,false) : blend (true,blend.zero,blend.one) : aref (false,0)
+end
+"#,
+  );
+
+  assert_eq!(describe(&tree, "selflight").draw, XraySurfaceDraw::Invisible);
+}
+
+// `effects_wallmarkblend.s` and `effects_wallmarkmult.s`, the two a level lays its marks with.
+#[test]
+fn a_wall_mark_script_composites_the_way_it_says() {
+  let blended: FixtureTree = library("surface_script_wmark_blend", &[]).with_shader_script(
+    "effects\\wallmarkblend",
+    r#"
+function normal (shader, t_base, t_second, t_detail)
+  shader:begin ("wmark","simple") : blend (true,blend.srcalpha,blend.invsrcalpha) : aref (true,0) : zb (true,false) : wmark (true)
+end
+"#,
+  );
+
+  assert_eq!(
+    describe(&blended, "effects\\wallmarkblend").draw,
+    XraySurfaceDraw::Blended { reference: 0 }
+  );
+
+  let multiplied: FixtureTree = library("surface_script_wmark_mult", &[]).with_shader_script(
+    "effects\\wallmarkmult",
+    r#"
+function normal (shader, t_base, t_second, t_detail)
+  shader:begin ("wmark","simple") : blend (true,blend.destcolor,blend.srccolor) : zb (true,false) : wmark (true)
+end
+"#,
+  );
+
+  assert_eq!(
+    describe(&multiplied, "effects\\wallmarkmult").draw,
+    XraySurfaceDraw::Multiplied { is_doubled: true }
+  );
+}
+
+// A script with no `normal` declares no base element, and `_lua_Create` compiles one only from that function.
+#[test]
+fn a_script_without_a_base_pass_leaves_the_class_to_answer() {
+  let tree: FixtureTree = library(
+    "surface_script_no_base",
+    &[ShaderBlenderFixture::of(ShaderBlenderClass::VERT, "details\\lod")],
+  )
+  .with_shader_script(
+    "details\\lod",
+    r#"
+function l_special (shader, t_base, t_second, t_detail)
+  shader:begin ("lod","lod") : blend (false, blend.one, blend.zero) : zb (true, true)
+end
+"#,
+  );
+
+  assert!(matches!(
+    describe(&tree, "details\\lod").declaration,
+    XraySurfaceDeclaration::Described { .. }
+  ));
+}

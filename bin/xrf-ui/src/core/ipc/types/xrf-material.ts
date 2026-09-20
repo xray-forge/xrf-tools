@@ -165,6 +165,11 @@ export enum EXraySurfaceDeclaration {
    * mesh has no business naming, or one a mod's renderer added.
    */
   UNMODELLED = "unmodelled",
+  /**
+   * A renderer shader script, which the engine looks up before the library and uses instead of it when it is
+   * there (`CResourceManager::Create` asks `_lua_HasShader` first).
+   */
+  SCRIPTED = "scripted",
   /** A blender whose class decides the surface from the knobs below. */
   DESCRIBED = "described",
 }
@@ -184,6 +189,25 @@ export type XraySurfaceDeclaration =
    * mesh has no business naming, or one a mod's renderer added.
    */
   | { kind: "unmodelled"; class: string }
+  /**
+   * A renderer shader script, which the engine looks up before the library and uses instead of it when it is
+   * there (`CResourceManager::Create` asks `_lua_HasShader` first).
+   */
+  | {
+      kind: "scripted";
+      /** Logical path of the script the pass was read from, so a reader can open the same file. */
+      script: string;
+      /** The pass the engine compiles as the base element, named by its function. */
+      function: string;
+      /** Whether the pass is composited rather than written. */
+      isBlended: boolean;
+      /** Whether the pass discards texels below its reference. */
+      isAlphaTested: boolean;
+      /** Whether the pass writes depth, which a mark laid on a wall does not. */
+      isDepthWritten: boolean;
+      /** Whether the pass is a wall mark, which the engine draws with a depth bias of its own. */
+      isWallmark: boolean;
+    }
   /** A blender whose class decides the surface from the knobs below. */
   | {
       kind: "described";
@@ -237,6 +261,11 @@ export enum EXraySurfaceDraw {
    * it. `is_doubled` is `MUL_2X`, whose destination factor is the source colour rather than zero.
    */
   MULTIPLIED = "multiplied",
+  /**
+   * Composited by an equation that keeps the destination and discards the source, so the surface contributes
+   * nothing at all.
+   */
+  INVISIBLE = "invisible",
 }
 
 /** How the renderer draws a surface once its blender is compiled. */
@@ -253,4 +282,9 @@ export type XraySurfaceDraw =
    * Multiplied into what is behind it, which is how a decal darkens the surface it is laid on rather than replacing
    * it. `is_doubled` is `MUL_2X`, whose destination factor is the source colour rather than zero.
    */
-  | { kind: "multiplied"; isDoubled: boolean };
+  | { kind: "multiplied"; isDoubled: boolean }
+  /**
+   * Composited by an equation that keeps the destination and discards the source, so the surface contributes
+   * nothing at all.
+   */
+  | { kind: "invisible" };

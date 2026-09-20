@@ -14,6 +14,7 @@ use crate::resolve::xray_material_resolver::XrayMaterialResolver;
 use crate::resolve::xray_surface_alpha::XraySurfaceAlpha;
 use crate::resolve::xray_surface_detail_rule::XraySurfaceDetailRule;
 use crate::resolve::xray_surface_rule::XraySurfaceRule;
+use crate::resolve::xray_surface_script::XraySurfaceScript;
 
 /// Answers how a surface is drawn from the shader name it declares and the textures it dresses with.
 pub struct XraySurfaceResolver<'probe, 'vfs> {
@@ -55,6 +56,13 @@ impl<'probe, 'vfs> XraySurfaceResolver<'probe, 'vfs> {
   pub fn describe(&self, shader_name: &str, textures: &[String]) -> XraySurfaceDescriptor {
     if shader_name.is_empty() {
       return XraySurfaceDescriptor::opaque(None, XraySurfaceDeclaration::Undeclared);
+    }
+
+    // Before the library, because that is the order the engine asks in: a shader with a renderer script **is** that
+    // script, and what `shaders.xr` calls its class never reaches the screen. Reading the class alone drew X-Ray's
+    // additive glows and its wall marks as opaque black.
+    if let Some(scripted) = XraySurfaceScript::describe(self.probe, shader_name) {
+      return scripted;
     }
 
     let (asset, library): (&XrayAsset, &ShaderLibraryFile) = match &self.source {

@@ -16,6 +16,9 @@ pub enum XraySurfaceDraw {
   /// Multiplied into what is behind it, which is how a decal darkens the surface it is laid on rather than replacing
   /// it. `is_doubled` is `MUL_2X`, whose destination factor is the source colour rather than zero.
   Multiplied { is_doubled: bool },
+  /// Composited by an equation that keeps the destination and discards the source, so the surface contributes
+  /// nothing at all.
+  Invisible,
 }
 
 impl XraySurfaceDraw {
