@@ -1,5 +1,5 @@
 import { useInjection } from "@wirestate/react";
-import { ReactElement, useCallback, useMemo, useState } from "react";
+import { ReactElement, useCallback, useEffect, useMemo, useState } from "react";
 
 import { createRoots } from "@/core/assets/lib";
 import { LevelEntry } from "@/core/ipc/types/xrf-app";
@@ -8,6 +8,7 @@ import { EApplicationId } from "@/core/routing/application";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
 import { ChoiceListFormRow, IPathField, PathFormRow, usePathField } from "@/core/ui/form";
 import { BaseComponentProps } from "@/lib/dom/element-types";
+import { Nullable } from "@/lib/types/general";
 
 interface ILevelViewerOpenFormProps extends BaseComponentProps {
   /** Called once a level has been opened. */
@@ -27,6 +28,7 @@ export function LevelViewerOpenForm({
   const loadService: LevelLoadService = useInjection(LevelLoadService);
 
   const [selected, setSelected] = useState<string>("");
+  const [listedRoot, setListedRoot] = useState<Nullable<string>>(null);
 
   const isLoading: boolean = listService.levels.isLoading || loadService.level.isLoading;
 
@@ -45,7 +47,7 @@ export function LevelViewerOpenForm({
     [levels]
   );
 
-  const isListed: boolean = Boolean(listService.levels.value);
+  const isListed: boolean = listedRoot !== null;
 
   const onList = useCallback(async () => {
     if (!root.value) {
@@ -54,8 +56,14 @@ export function LevelViewerOpenForm({
 
     await listService.list(createRoots([root.value]));
 
-    // Preselected, so listing an installation leaves a choice that can be submitted rather than an empty one.
-    setSelected(listService.drawable[0]?.logicalPath ?? "");
+    // Nothing is chosen for the person listing: which level is opened is the one decision this form exists to take,
+    // and a preselected first entry is one that gets submitted without being read.
+    setSelected("");
+
+    // Only a listing that answered: a failed one leaves the form on its own button, which is what a retry is.
+    if (listService.levels.value) {
+      setListedRoot(root.value);
+    }
   }, [listService, root.value]);
 
   const onOpen = useCallback(async () => {
@@ -67,6 +75,14 @@ export function LevelViewerOpenForm({
 
     onFinished?.();
   }, [loadService, onFinished, root.value, selected]);
+
+  useEffect(() => {
+    if (listedRoot !== null && listedRoot !== root.value) {
+      setListedRoot(null);
+      setSelected("");
+      listService.reset();
+    }
+  }, [listService, listedRoot, root.value]);
 
   return (
     <PickerForm
