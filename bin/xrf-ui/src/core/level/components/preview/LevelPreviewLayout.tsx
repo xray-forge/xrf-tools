@@ -17,7 +17,7 @@ import { ILevelPreviewViewportProps, LevelPreviewViewport } from "@/core/level/c
 import { DEFAULT_LEVEL_LIGHTING, ILevelLighting } from "@/core/level/lib/lighting/level-lighting";
 import { ILevelPoint } from "@/core/level/lib/residency/level-residency";
 import { ILoadedSector } from "@/core/level/lib/sector/level-sector-set";
-import { hasAlphaSurfaces, hasDetailedSurfaces } from "@/core/level/lib/sector/level-sector-textures";
+import { hasDetailedSurfaces } from "@/core/level/lib/sector/level-sector-textures";
 import { ILevelTextureLookup } from "@/core/level/lib/texture/level-texture-set";
 import { DEFAULT_LEVEL_VIEW_OPTIONS, ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
 import { ILevelStreamProgress, LevelViewportService } from "@/core/level/services";
@@ -80,11 +80,6 @@ export function LevelPreviewLayout({
   const isOpen: boolean = Boolean(name);
   const isStreaming: boolean = streaming.total > 0;
 
-  const hasAlpha: boolean = useMemo(
-    () => [...sectors.values()].some((it: ILoadedSector) => hasAlphaSurfaces(it.views)),
-    [sectors]
-  );
-
   const hasDetail: boolean = useMemo(
     () => [...sectors.values()].some((it: ILoadedSector) => hasDetailedSurfaces(it.views)),
     [sectors]
@@ -139,7 +134,6 @@ export function LevelPreviewLayout({
         <LevelPreviewToolbar
           subtitle={subtitle}
           options={options}
-          hasAlpha={hasAlpha}
           hasDetail={hasDetail}
           onChangeOptions={setOptions}
           onBack={onBack}

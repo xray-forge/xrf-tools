@@ -3,6 +3,11 @@ import { MeshStandardMaterial, OneMinusSrcAlphaFactor, SrcAlphaFactor } from "th
 import { applyXrayGlossShading, XRAY_DEFAULT_GLOSS } from "@/core/render/lib/surface/render-gloss";
 import { IRenderSurface, OPAQUE_RENDER_SURFACE } from "@/core/render/lib/surface/render-surface";
 
+/**
+ * How far towards the viewer a composited surface is pulled, in the depth buffer's own slope-scaled units.
+ */
+const DECAL_POLYGON_OFFSET: number = -1;
+
 /** What a surface is made of, beyond what its shader says. X-Ray authors no metalness, so nothing here is guessed. */
 export interface IRenderMaterialOptions {
   metalness: number;
@@ -50,6 +55,14 @@ export function applyRenderSurface(material: MeshStandardMaterial, surface: IRen
   material.transparent = surface.isTransparent;
   material.depthWrite = surface.isDepthWritten;
   material.blending = surface.blend.blending;
+
+  // A composited surface is a mark laid on another one - a stain, a crack, a poster - and a level author lays it in
+  // the wall's own plane. Two triangles at one depth make the depth test a coin toss the camera flips on every step,
+  // which reads as the mark flickering. Pulled towards the viewer rather than pushed back, so a mark is never the
+  // thing that loses, and by the smallest slope-scaled amount that settles it.
+  material.polygonOffset = surface.isTransparent;
+  material.polygonOffsetFactor = DECAL_POLYGON_OFFSET;
+  material.polygonOffsetUnits = DECAL_POLYGON_OFFSET;
 
   // Set unconditionally so a material re-dressed from a custom equation to a named one does not keep the old factors,
   // which three.js reads whenever `blending` is `CustomBlending` and ignores otherwise.

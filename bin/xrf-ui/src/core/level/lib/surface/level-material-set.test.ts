@@ -88,11 +88,13 @@ describe("LevelMaterialSet", () => {
       surfaceOf(7, { render: toRenderSurface(mockAlphaSurfaceDescriptor()) })
     );
 
+    expect(material.wireframe).toBe(false);
+
+    set.applyViewOptions({ ...DEFAULT_LEVEL_SURFACE_OPTIONS, isWireframe: true });
+
+    expect(material.wireframe).toBe(true);
+    // What its blender says is not a view state: a surface that cuts out keeps cutting out through every toggle.
     expect(material.alphaTest).toBeCloseTo(200 / 255);
-
-    set.applyViewOptions({ ...DEFAULT_LEVEL_SURFACE_OPTIONS, isAlphaVisible: false });
-
-    expect(material.alphaTest).toBe(0);
   });
 
   it("dresses what it already holds when the textures arrive", () => {

@@ -5,7 +5,7 @@ export interface ILevelPreviewSceneConfig {
   backgroundColor: number;
   /** Vertical field of view in degrees. */
   cameraFieldOfView: number;
-  /** How far the camera sees. */
+  /** Where the camera starts seeing, `VIEWPORT_NEAR` (`xrEngine/device.h`). */
   cameraNear: number;
   cameraFar: number;
   /** Colour of the ground grid's ordinary lines. */
@@ -26,5 +26,5 @@ export const DEFAULT_LEVEL_PREVIEW_SCENE_CONFIG: ILevelPreviewSceneConfig = {
   gridColor: 0x3a4148,
   gridOriginColor: 0x7a8894,
   boundsColor: 0xffb300,
-  cameraNear: 0.1,
+  cameraNear: 0.2,
 };

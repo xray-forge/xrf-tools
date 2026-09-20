@@ -14,6 +14,12 @@ import { EDdsLayout, IDdsFile, IDdsRead, IDdsRefusal, readDdsFile } from "@/core
 import { Nullable } from "@/lib/types/general";
 
 /**
+ * How many samples the engine takes across a texture seen at an angle, `ps_r__tf_Anisotropic`
+ * (`Layers/xrRender/xrRender_console.cpp`), which the console offers between one and sixteen.
+ */
+export const XRAY_TEXTURE_ANISOTROPY: number = 8;
+
+/**
  * What a file has to survive upload with, which the file cannot answer for itself.
  */
 export interface IRenderTextureOptions {
@@ -58,6 +64,7 @@ export function createDdsTexture(bytes: ArrayBuffer, options: IRenderTextureOpti
   // smears the edge texel across every face whose uv leaves [0,1].
   texture.wrapS = RepeatWrapping;
   texture.wrapT = RepeatWrapping;
+  texture.anisotropy = XRAY_TEXTURE_ANISOTROPY;
 
   if (options.isColor) {
     texture.colorSpace = SRGBColorSpace;
@@ -86,6 +93,7 @@ export async function createDecodedTexture(bytes: ArrayBuffer, options: IRenderT
 
   texture.wrapS = RepeatWrapping;
   texture.wrapT = RepeatWrapping;
+  texture.anisotropy = XRAY_TEXTURE_ANISOTROPY;
   texture.flipY = false;
 
   if (options.isColor) {

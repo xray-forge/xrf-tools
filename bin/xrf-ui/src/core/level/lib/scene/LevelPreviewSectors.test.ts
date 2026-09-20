@@ -69,7 +69,7 @@ describe("LevelPreviewSectors", () => {
     const parent: Group = new Group();
     const sectors: LevelPreviewSectors = new LevelPreviewSectors(parent);
 
-    sectors.applyViewOptions({ ...DEFAULT_LEVEL_SURFACE_OPTIONS, isSurfaceColored: true });
+    sectors.applyViewOptions(DEFAULT_LEVEL_SURFACE_OPTIONS);
     sectors.sync(
       new Map([
         [0, loadedSector(0, [7])],
@@ -137,11 +137,10 @@ describe("LevelPreviewSectors", () => {
     const sectors: LevelPreviewSectors = new LevelPreviewSectors(parent);
 
     sectors.sync(new Map([[0, loadedSector(0, [1, 2])]]));
-    sectors.applyViewOptions({ ...DEFAULT_LEVEL_SURFACE_OPTIONS, isSurfaceColored: false, isWireframe: true });
+    sectors.applyViewOptions({ ...DEFAULT_LEVEL_SURFACE_OPTIONS, isWireframe: true });
 
     for (const material of materialsOf(parent.children[0] as Mesh)) {
       expect(material.wireframe).toBe(true);
-      expect(material.color.getHex()).toBe(0xffffff);
     }
   });
 

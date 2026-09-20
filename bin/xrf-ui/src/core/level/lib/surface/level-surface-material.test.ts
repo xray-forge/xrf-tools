@@ -13,7 +13,7 @@ import {
 import { ILevelTexture, ILevelTextureLookup } from "@/core/level/lib/texture/level-texture-set";
 import { IRenderDetail, OPAQUE_RENDER_SURFACE, toRenderSurface } from "@/core/render/lib/surface/render-surface";
 import { mockSectorSurface } from "@/fixtures/mocks/level.mocks";
-import { mockAlphaSurfaceDescriptor } from "@/fixtures/mocks/visual.mocks";
+import { mockAlphaSurfaceDescriptor, mockBlendedSurfaceDescriptor } from "@/fixtures/mocks/visual.mocks";
 import { Nullable } from "@/lib/types/general";
 
 /** A lookup answering with a distinct texture for each reference it is given. */
@@ -67,11 +67,13 @@ describe("level surface material", () => {
     expect(dressed.material.depthWrite).toBe(true);
   });
 
-  it("draws an alpha surface solid while the comparison is on", () => {
-    const cutOut: ILevelSurface = surface({ render: toRenderSurface(mockAlphaSurfaceDescriptor()) });
-    const dressed: ILevelSurfaceMaterial = createSurfaceMaterial(cutOut, null, options({ isAlphaVisible: false }));
+  // A mark is laid in the plane of the wall it marks, so the two are at one depth and the test between them is a
+  // coin the camera flips on every step.
+  it("pulls a composited surface towards the viewer, and leaves an opaque one where it is", () => {
+    const blended: ILevelSurface = surface({ render: toRenderSurface(mockBlendedSurfaceDescriptor()) });
 
-    expect(dressed.material.alphaTest).toBe(0);
+    expect(createSurfaceMaterial(blended, null, options()).material.polygonOffset).toBe(true);
+    expect(createSurfaceMaterial(surface(), null, options()).material.polygonOffset).toBe(false);
   });
 
   // The second of the pair, which is what `uber_deffer` binds as `s_hemi`. The first is R1's baked colour and no
@@ -143,12 +145,10 @@ describe("level surface material", () => {
     expect(dressed.material.color.getHex()).toBe(0xffffff);
   });
 
-  it("colours an untextured surface by its shader entry when asked", () => {
-    const dressed: ILevelSurfaceMaterial = createSurfaceMaterial(
-      surface(),
-      null,
-      options({ isSurfaceColored: true, isTextured: false })
-    );
+  // Always, with no switch: an untextured level in one flat white says only that it is untextured, and a surface
+  // that has its texture takes its colour from it, so the two never compete.
+  it("colours an untextured surface by its shader entry", () => {
+    const dressed: ILevelSurfaceMaterial = createSurfaceMaterial(surface(), null, options({ isTextured: false }));
 
     expect(dressed.material.color.getHex()).toBe(getShaderColor(mockSectorSurface().shaderId).getHex());
   });

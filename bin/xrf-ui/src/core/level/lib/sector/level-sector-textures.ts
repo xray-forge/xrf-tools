@@ -44,18 +44,6 @@ export function listSectorTextures(views: ISectorViews): Array<ISectorTextureReq
 }
 
 /**
- * Whether any surface of a sector reads its texture's alpha channel.
- *
- * @param views - The sector.
- * @returns Whether anything in it is cut out or blended.
- */
-export function hasAlphaSurfaces(views: ISectorViews): boolean {
-  const drawn: Array<ISectorSectionViews | ISectorInstanceViews> = [...views.sections, ...views.instances];
-
-  return drawn.some((it) => isAlphaRenderSurface(it.render));
-}
-
-/**
  * Whether any surface of a sector is modulated by a detail texture.
  *
  * @param views - The sector.

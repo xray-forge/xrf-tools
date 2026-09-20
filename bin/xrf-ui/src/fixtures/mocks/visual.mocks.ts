@@ -283,6 +283,26 @@ export function mockAlphaSurfaceDescriptor(overrides: Partial<XraySurfaceDescrip
 }
 
 /**
+ * Creates a surface descriptor fixture that is composited, the way a mark laid on a wall is.
+ *
+ * @param overrides - Field values to override.
+ * @returns A surface descriptor fixture whose draw blends.
+ */
+export function mockBlendedSurfaceDescriptor(overrides: Partial<XraySurfaceDescriptor> = {}): XraySurfaceDescriptor {
+  return mockSurfaceDescriptor({
+    declaration: {
+      kind: "described",
+      class: "S_SET",
+      isAlphaUsed: true,
+      alphaReference: 32,
+      isStrictSorting: false,
+    },
+    draw: { kind: "blended", reference: 32 },
+    ...overrides,
+  });
+}
+
+/**
  * Creates a material descriptor fixture: a bumped declaration whose pair resolved.
  *
  * @param overrides - Field values to override.

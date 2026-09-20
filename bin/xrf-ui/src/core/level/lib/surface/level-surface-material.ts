@@ -5,7 +5,7 @@ import { ILevelTexture, ILevelTextureLookup } from "@/core/level/lib/texture/lev
 import { applyXrayHemiShading } from "@/core/render/lib/surface/render-baked";
 import { applyXrayDetailShading, IXrayDetail, IXrayDetailShading } from "@/core/render/lib/surface/render-detail";
 import { applyRenderSurface, createRenderMaterial } from "@/core/render/lib/surface/render-material";
-import { IRenderDetail, IRenderSurface, OPAQUE_RENDER_SURFACE } from "@/core/render/lib/surface/render-surface";
+import { IRenderDetail, IRenderSurface } from "@/core/render/lib/surface/render-surface";
 import { Nullable } from "@/lib/types/general";
 
 /** Nothing a compiled level declares is metal, so the surfaces are shaded as the dielectrics xrLC assumes. */
@@ -26,10 +26,6 @@ export interface ILevelSurfaceOptions {
   isWireframe: boolean;
   /** Draws the surfaces with the textures the level dresses them in, or flat for comparison. */
   isTextured: boolean;
-  /** Draws each shader table entry in its own colour. */
-  isSurfaceColored: boolean;
-  /** Whether a surface whose shader reads alpha is cut out and blended as the engine does, or drawn solid. */
-  isAlphaVisible: boolean;
   /**
    * Whether the hemisphere occlusion xrLC baked into the level is applied, or the level is drawn under the viewer's
    * own light alone.
@@ -43,10 +39,8 @@ export interface ILevelSurfaceOptions {
 
 export const DEFAULT_LEVEL_SURFACE_OPTIONS: ILevelSurfaceOptions = {
   hemiStrength: 0.65,
-  isAlphaVisible: true,
   isDetailed: true,
   isLit: true,
-  isSurfaceColored: false,
   isTextured: true,
   isWireframe: false,
 };
@@ -148,11 +142,11 @@ export function dressSurfaceMaterial(
   // multiplying a surface by the other three dyes it with a colour the game never shows.
   material.vertexColors = false;
   // A textured surface takes its colour from the texture, so the tint comes off or every surface is dyed.
-  material.color = material.map || !options.isSurfaceColored ? new Color(0xffffff) : getShaderColor(surface.shaderId);
+  material.color = material.map ? new Color(0xffffff) : getShaderColor(surface.shaderId);
 
   dressed.detail?.setDetail(toDetailTexture(drawn, textures, options));
 
-  applyRenderSurface(material, options.isAlphaVisible ? drawn.render : OPAQUE_RENDER_SURFACE);
+  applyRenderSurface(material, drawn.render);
 
   // One flag for every change above: `alphaTest` and whether an occlusion map is bound both change the compiled
   // program, and a material that has already drawn keeps its old one otherwise.

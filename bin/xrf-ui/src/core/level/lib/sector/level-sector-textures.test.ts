@@ -3,7 +3,6 @@ import { describe, expect, it } from "@jest/globals";
 import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
 import { SectorDescription } from "@/core/ipc/types/xrf-visual";
 import {
-  hasAlphaSurfaces,
   hasDetailedSurfaces,
   ISectorTextureRequest,
   listSectorTextures,
@@ -56,14 +55,12 @@ describe("level sector surfaces", () => {
 
     expect(views.sections[0]?.render.alphaTest).toBeCloseTo(200 / 255);
     expect(views.instances[0]?.render.alphaTest).toBeCloseTo(200 / 255);
-    expect(hasAlphaSurfaces(views)).toBe(true);
   });
 
   it("draws a surface the table has no answer for opaque rather than leaving it without a state", () => {
     const views: ISectorViews = viewsOf(sectorDrawing([]), []);
 
     expect(views.sections[0]?.render).toEqual(OPAQUE_RENDER_SURFACE);
-    expect(hasAlphaSurfaces(views)).toBe(false);
     expect(hasDetailedSurfaces(views)).toBe(false);
   });
 

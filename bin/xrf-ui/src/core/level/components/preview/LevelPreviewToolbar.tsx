@@ -3,8 +3,6 @@ import { default as GrainIcon } from "@mui/icons-material/Grain";
 import { default as GridOnIcon } from "@mui/icons-material/GridOn";
 import { default as HexagonIcon } from "@mui/icons-material/Hexagon";
 import { default as LightbulbIcon } from "@mui/icons-material/Lightbulb";
-import { default as OpacityIcon } from "@mui/icons-material/Opacity";
-import { default as PaletteIcon } from "@mui/icons-material/Palette";
 import { default as TextureIcon } from "@mui/icons-material/Texture";
 import { default as WbSunnyIcon } from "@mui/icons-material/WbSunny";
 import { ReactElement, ReactNode, useCallback } from "react";
@@ -18,8 +16,6 @@ import { BaseComponentProps } from "@/lib/dom/element-types";
 interface ILevelPreviewToolbarProps extends BaseComponentProps {
   subtitle?: ReactNode;
   options: ILevelViewOptions;
-  /** Whether any surface of the open level reads its texture's alpha channel. */
-  hasAlpha?: boolean;
   /** Whether any surface of the open level is modulated by a detail texture. */
   hasDetail?: boolean;
   onChangeOptions: (options: ILevelViewOptions) => void;
@@ -35,7 +31,6 @@ export function LevelPreviewToolbar({
   className,
   subtitle,
   options,
-  hasAlpha = true,
   hasDetail = true,
   onChangeOptions,
   onBack,
@@ -71,28 +66,12 @@ export function LevelPreviewToolbar({
           />
 
           <EditorViewToggle
-            label={"Alpha"}
-            icon={<OpacityIcon />}
-            isOn={options.isAlphaVisible}
-            isDisabled={!hasAlpha}
-            unavailableTitle={"No surface of this level reads alpha"}
-            onToggle={() => onToggle("isAlphaVisible")}
-          />
-
-          <EditorViewToggle
             label={"Detail"}
             icon={<GrainIcon />}
             isOn={options.isDetailed}
             isDisabled={!hasDetail}
             unavailableTitle={"No surface of this level is detailed"}
             onToggle={() => onToggle("isDetailed")}
-          />
-
-          <EditorViewToggle
-            label={"Surface colours"}
-            icon={<PaletteIcon />}
-            isOn={options.isSurfaceColored}
-            onToggle={() => onToggle("isSurfaceColored")}
           />
 
           <EditorToolbarSeparator />
