@@ -6,9 +6,12 @@ use xrf_math::Vector3d;
 use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 use xrf_vfs::{XrayLookupScope, XrayMountId, XrayProbe, XrayResolution, XrayVfs};
 
-use crate::data::visual_bounds::{VisualBounds, VisualBox, VisualSphere};
+use crate::data::visual_bounds::VisualBounds;
+use crate::data::visual_box::VisualBox;
 use crate::data::visual_description::VisualDescription;
-use crate::data::visual_submesh::{VisualSubmesh, VisualSubmeshContent};
+use crate::data::visual_sphere::VisualSphere;
+use crate::data::visual_submesh::VisualSubmesh;
+use crate::data::visual_submesh_content::VisualSubmeshContent;
 use crate::resolve::visual_dependencies::VisualDependencies;
 
 fn tree(case: &str, files: &[&str]) -> PathBuf {
@@ -34,7 +37,7 @@ fn submesh(index: u32, texture: Option<&str>) -> VisualSubmesh {
     texture_name: texture.map(str::to_string),
     shader_name: None,
     content: VisualSubmeshContent::Skipped {
-      cause: crate::data::visual_submesh::VisualSkipCause::Unsupported,
+      cause: crate::data::visual_skip_cause::VisualSkipCause::Unsupported,
       reason: "geometry is irrelevant to resolution".into(),
     },
   }

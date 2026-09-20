@@ -1,32 +1,8 @@
 use serde::Serialize;
-use xrf_math::Vector3d;
 
+use crate::data::visual_bone::VisualBone;
 use crate::data::visual_bounds::VisualBounds;
 use crate::data::visual_submesh::VisualSubmesh;
-
-/// One transform in renderer space: three basis vectors and a translation.
-#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct VisualTransform {
-  pub i: Vector3d,
-  pub j: Vector3d,
-  pub k: Vector3d,
-  pub c: Vector3d,
-}
-
-/// One bone of a visual's skeleton, as a name and the name of its parent.
-#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct VisualBone {
-  pub name: String,
-  pub parent: String,
-  /// Index of the parent in this same list, or `None` for a root or a parent no bone carries.
-  pub parent_index: Option<u32>,
-  /// The bone's whole bind transform in model space, or `None` when the file carries no IK chunk.
-  pub bind_transform: Option<VisualTransform>,
-}
 
 /// Everything about a packed visual except the bytes themselves.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]

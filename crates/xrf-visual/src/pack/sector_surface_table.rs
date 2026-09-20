@@ -31,7 +31,6 @@ impl<'a> SectorSurfaceTable<'a> {
 
     SectorSurface {
       hemi: Self::get_hemi(&reference.textures),
-      lightmaps: reference.textures.iter().skip(1).cloned().collect(),
       shader_id,
       shader_name: Some(reference.shader.clone()),
       texture_name: reference.textures.first().cloned(),

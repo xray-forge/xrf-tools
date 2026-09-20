@@ -1,7 +1,7 @@
 use xrf_math::Vector3d;
 use xrf_skeleton::Quaternion;
 
-use crate::data::visual_description::VisualTransform;
+use crate::data::visual_transform::VisualTransform;
 
 /// A bone's transform: a rotation basis in row-vector order, and a translation.
 #[derive(Clone, Debug)]

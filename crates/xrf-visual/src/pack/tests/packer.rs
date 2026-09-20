@@ -3,8 +3,11 @@
 
 use xrf_ogf::{OgfFile, OgfGeometry, OgfVertex, OgfVertexLink};
 
-use crate::data::visual_section::VisualDrawRange;
-use crate::data::visual_submesh::{VisualGeometry, VisualSkin, VisualSkipCause, VisualSubmesh};
+use crate::data::visual_draw_range::VisualDrawRange;
+use crate::data::visual_geometry::VisualGeometry;
+use crate::data::visual_skin::VisualSkin;
+use crate::data::visual_skip_cause::VisualSkipCause;
+use crate::data::visual_submesh::VisualSubmesh;
 use crate::pack::tests::fixtures::{
   MODEL_TYPE_GEOMDEF_PM, MODEL_TYPE_GEOMDEF_ST, PROGRESSIVE_FINE_OFFSET, PROGRESSIVE_FINE_TRIANGLES,
   PROGRESSIVE_INDICES, bones, description, embedded_motions, geometry, geometry_of_unknown_format, kinematics,
@@ -349,13 +352,13 @@ fn reports_bones_motion_refs_and_embedded_motions() {
   assert_eq!(
     package.description.bones,
     vec![
-      crate::data::visual_description::VisualBone {
+      crate::data::visual_bone::VisualBone {
         name: String::from("wpn_body"),
         parent: String::new(),
         parent_index: None,
         bind_transform: None,
       },
-      crate::data::visual_description::VisualBone {
+      crate::data::visual_bone::VisualBone {
         name: String::from("magazin"),
         parent: String::from("wpn_body"),
         parent_index: Some(0),

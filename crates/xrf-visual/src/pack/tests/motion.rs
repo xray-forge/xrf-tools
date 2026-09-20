@@ -5,7 +5,8 @@ use xrf_ogf::{OgfBone, OgfBoneIkData};
 use xrf_skeleton::{SAMPLE_FPS, SkeletonMotion, SkeletonMotionDefinition, SkeletonPart};
 
 use crate::pack::tests::fixtures::{bind, bones, vector};
-use crate::pack::visual_motion::{FLOATS_PER_BONE, VisualMotionPose, bake_motion};
+use crate::pack::visual_motion::{FLOATS_PER_BONE, bake_motion};
+use crate::pack::visual_motion_pose::VisualMotionPose;
 
 /// The measured case behind the reported duration: `s98b_reload` of Anomaly's `ceasar_hand_am98b_hud_animation.omf`.
 const RELOAD_FRAMES: u32 = 269;

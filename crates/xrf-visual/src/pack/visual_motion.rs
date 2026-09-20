@@ -1,37 +1,12 @@
-use serde::Serialize;
 use xrf_error::{XrfError, XrfResult};
 use xrf_ogf::{OgfBone, OgfBoneIkData};
 use xrf_skeleton::{SAMPLE_FPS, SkeletonBoneMotion, SkeletonMotion, SkeletonMotionDefinition, SkeletonPart};
 use xrf_spawn::XRayByteOrder;
 
-use crate::data::visual_description::VisualTransform;
+use crate::data::visual_transform::VisualTransform;
+use crate::pack::visual_motion_bake::VisualMotionBake;
+use crate::pack::visual_motion_pose::VisualMotionPose;
 use crate::pack::visual_transform::BindTransform;
-
-/// What one baked motion is, beside the frames themselves.
-#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct VisualMotionBake {
-  pub name: String,
-  /// Frames the buffer holds: the longest key stream the payload carries, not the count the motion declares.
-  pub frame_count: u32,
-  pub bone_count: u32,
-  /// Seconds playing the motion takes: its frames at the format's sample rate, over its playback speed.
-  pub duration: f32,
-  /// The playback speed the motion's definition declares, as stored.
-  pub speed: f32,
-  /// How many bones the motion actually drives, the rest holding their bind pose.
-  pub animated_bone_count: u32,
-  /// Floats one bone's transform occupies in the baked buffer, so a consumer indexes it without agreeing a constant.
-  pub floats_per_bone: u32,
-}
-
-/// Bone transforms of one baked motion, frame major: frame 0's bones, then frame 1's.
-#[derive(Clone, Debug, PartialEq)]
-pub struct VisualMotionPose {
-  pub description: VisualMotionBake,
-  pub transforms: Vec<f32>,
-}
 
 /// Floats one baked bone transform occupies: three basis vectors and a translation.
 pub const FLOATS_PER_BONE: usize = 12;

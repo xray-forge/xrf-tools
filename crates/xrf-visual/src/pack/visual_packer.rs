@@ -3,44 +3,17 @@ use xrf_ogf::{OgfFile, OgfGeometry, OgfModelType, OgfSlideWindow, OgfVertex};
 
 use crate::data::visual_bounds::VisualBounds;
 use crate::data::visual_description::VisualDescription;
-use crate::data::visual_section::VisualDrawRange;
-use crate::data::visual_submesh::{VisualGeometry, VisualSkin, VisualSkipCause, VisualSubmesh, VisualSubmeshContent};
+use crate::data::visual_draw_range::VisualDrawRange;
+use crate::data::visual_geometry::VisualGeometry;
+use crate::data::visual_skin::VisualSkin;
+use crate::data::visual_submesh::VisualSubmesh;
+use crate::data::visual_submesh_content::VisualSubmeshContent;
+use crate::pack::flat_skin::FlatSkin;
 use crate::pack::visual_buffer_builder::VisualBufferBuilder;
 use crate::pack::visual_conversion::{convert_declared_bounds, convert_uvs, convert_vector, reverse_triangle_winding};
 use crate::pack::visual_package::VisualPackage;
 use crate::pack::visual_skeleton::convert_bones;
-
-/// A submesh that produced no geometry, as the packer's internal early return.
-///
-/// Becomes [`VisualSubmeshContent::Skipped`] verbatim, so every reason below is one a consumer reads.
-struct VisualSkip {
-  cause: VisualSkipCause,
-  reason: String,
-}
-
-impl VisualSkip {
-  /// Geometry the packer cannot read, which is a gap in coverage rather than a broken file.
-  fn unsupported(reason: impl Into<String>) -> Self {
-    Self {
-      cause: VisualSkipCause::Unsupported,
-      reason: reason.into(),
-    }
-  }
-
-  /// Geometry that contradicts itself, which no amount of added coverage would fix.
-  fn malformed(reason: impl Into<String>) -> Self {
-    Self {
-      cause: VisualSkipCause::Malformed,
-      reason: reason.into(),
-    }
-  }
-}
-
-/// One submesh's skinning links, flattened four per vertex and paired so neither can be pushed without the other.
-struct FlatSkin {
-  indices: Vec<u16>,
-  weights: Vec<f32>,
-}
+use crate::pack::visual_skip::VisualSkip;
 
 /// Flattens a parsed OGF visual into renderer ready buffers.
 pub struct VisualPacker {}

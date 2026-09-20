@@ -1,5 +1,5 @@
 use xrf_level::LevelVertex;
-use xrf_math::{Matrix4x4, Vector3d};
+use xrf_math::Vector3d;
 
 use crate::data::sector_attributes::SectorAttributes;
 use crate::data::sector_geometry::SectorGeometry;
@@ -53,18 +53,15 @@ impl SectorVertexArrays {
     (self.positions.len() / 3) as u32
   }
 
-  /// Appends one decoded vertex, placed and converted into renderer space.
-  pub fn push(&mut self, vertex: &LevelVertex, placement: Option<&Matrix4x4>) {
-    Self::push_vector(
-      &mut self.positions,
-      &convert_vector(&Self::place(&vertex.position, placement)),
-    );
+  /// Appends one decoded vertex, converted into renderer space.
+  ///
+  /// Unplaced, and there is nothing to place it by: a sector's own geometry is already in the level's space, and a
+  /// visual the level places is packed once in its own space and stood by the transforms of its instance group.
+  pub fn push(&mut self, vertex: &LevelVertex) {
+    Self::push_vector(&mut self.positions, &convert_vector(&vertex.position));
 
     if self.attributes.normals {
-      Self::push_vector(
-        &mut self.normals,
-        &convert_vector(&Self::turn(&vertex.normal, placement)),
-      );
+      Self::push_vector(&mut self.normals, &convert_vector(&vertex.normal));
     }
 
     if self.attributes.hemi {
@@ -72,11 +69,11 @@ impl SectorVertexArrays {
     }
 
     if self.attributes.tangents {
-      Self::push_direction(&mut self.tangents, vertex.tangent.as_ref(), placement);
+      Self::push_direction(&mut self.tangents, vertex.tangent.as_ref());
     }
 
     if self.attributes.binormals {
-      Self::push_direction(&mut self.binormals, vertex.binormal.as_ref(), placement);
+      Self::push_direction(&mut self.binormals, vertex.binormal.as_ref());
     }
 
     if self.attributes.uvs {
@@ -133,26 +130,10 @@ impl SectorVertexArrays {
   }
 
   /// A direction the range declared but this vertex may not carry, which packs as a zero rather than a gap.
-  fn push_direction(values: &mut Vec<f32>, direction: Option<&Vector3d>, placement: Option<&Matrix4x4>) {
+  fn push_direction(values: &mut Vec<f32>, direction: Option<&Vector3d>) {
     match direction {
-      Some(direction) => Self::push_vector(values, &convert_vector(&Self::turn(direction, placement))),
+      Some(direction) => Self::push_vector(values, &convert_vector(direction)),
       None => values.extend_from_slice(&[0.0, 0.0, 0.0]),
-    }
-  }
-
-  /// One position, put where the level puts it.
-  fn place(position: &Vector3d, placement: Option<&Matrix4x4>) -> Vector3d {
-    match placement {
-      Some(transform) => transform.transform_point(position),
-      None => position.clone(),
-    }
-  }
-
-  /// One direction, turned the way the placement turns it, translation left out of it.
-  fn turn(direction: &Vector3d, placement: Option<&Matrix4x4>) -> Vector3d {
-    match placement {
-      Some(transform) => transform.transform_direction(direction),
-      None => direction.clone(),
     }
   }
 

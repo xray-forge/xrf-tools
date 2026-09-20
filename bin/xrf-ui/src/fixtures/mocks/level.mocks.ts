@@ -44,7 +44,6 @@ export function mockSectorGeometry(buffer: MockVisualBuffer): SectorGeometry {
 export function mockSectorSurface(overrides: Partial<SectorSurface> = {}): SectorSurface {
   return {
     hemi: null,
-    lightmaps: [],
     shaderId: 1,
     shaderName: "default",
     textureName: "stone",

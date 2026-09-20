@@ -10,19 +10,28 @@ pub use crate::data::sector_outline::SectorOutline;
 pub use crate::data::sector_section::SectorSection;
 pub use crate::data::sector_skip::SectorSkip;
 pub use crate::data::sector_surface::SectorSurface;
-pub use crate::data::visual_bounds::{VisualBounds, VisualBox, VisualSphere};
-pub use crate::data::visual_description::{VisualBone, VisualDescription, VisualTransform};
-pub use crate::data::visual_section::{VisualDrawRange, VisualSection};
-pub use crate::data::visual_submesh::{
-  VisualGeometry, VisualSkin, VisualSkipCause, VisualSubmesh, VisualSubmeshContent,
-};
+pub use crate::data::visual_bone::VisualBone;
+pub use crate::data::visual_bounds::VisualBounds;
+pub use crate::data::visual_box::VisualBox;
+pub use crate::data::visual_description::VisualDescription;
+pub use crate::data::visual_draw_range::VisualDrawRange;
+pub use crate::data::visual_geometry::VisualGeometry;
+pub use crate::data::visual_section::VisualSection;
+pub use crate::data::visual_skin::VisualSkin;
+pub use crate::data::visual_skip_cause::VisualSkipCause;
+pub use crate::data::visual_sphere::VisualSphere;
+pub use crate::data::visual_submesh::VisualSubmesh;
+pub use crate::data::visual_submesh_content::VisualSubmeshContent;
+pub use crate::data::visual_transform::VisualTransform;
 pub use crate::pack::sector_package::SectorPackage;
 pub use crate::pack::sector_packer::SectorPacker;
 pub use crate::pack::visual_buffer_builder::VisualBufferBuilder;
 pub use crate::pack::visual_conversion::{convert_declared_bounds, convert_uvs, convert_vector};
-pub use crate::pack::visual_motion::{
-  FLOATS_PER_BONE, VisualMotionBake, VisualMotionPose, bake_motion, total_part_bones,
-};
+pub use crate::pack::visual_motion::{FLOATS_PER_BONE, bake_motion, total_part_bones};
+pub use crate::pack::visual_motion_bake::VisualMotionBake;
+pub use crate::pack::visual_motion_pose::VisualMotionPose;
 pub use crate::pack::visual_package::VisualPackage;
 pub use crate::pack::visual_packer::VisualPacker;
-pub use crate::resolve::visual_dependencies::{VisualDependencies, VisualMotionDependency, VisualTextureDependency};
+pub use crate::resolve::visual_dependencies::VisualDependencies;
+pub use crate::resolve::visual_motion_dependency::VisualMotionDependency;
+pub use crate::resolve::visual_texture_dependency::VisualTextureDependency;

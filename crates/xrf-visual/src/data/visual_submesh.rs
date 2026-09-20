@@ -1,72 +1,9 @@
 use serde::Serialize;
 use xrf_ogf::OgfModelType;
 
-use crate::data::visual_bounds::VisualBounds;
-use crate::data::visual_section::{VisualDrawRange, VisualSection};
-
-/// Where one submesh's skinning links sit in the geometry buffer.
-#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct VisualSkin {
-  pub indices: VisualSection,
-  pub weights: VisualSection,
-}
-
-/// Where one submesh's attributes sit inside the geometry buffer, and what to draw from them.
-#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct VisualGeometry {
-  pub vertex_count: u32,
-  pub index_count: u32,
-  pub positions: VisualSection,
-  pub normals: VisualSection,
-  /// The authored tangent of every vertex, mirrored with the normal.
-  pub tangents: VisualSection,
-  /// The authored binormal of every vertex, mirrored with the normal; see [`Self::tangents`].
-  pub binormals: VisualSection,
-  pub uvs: VisualSection,
-  pub indices: VisualSection,
-  /// Skinning links, or `None` for geometry that carries none and is therefore drawn as it is stored.
-  pub skin: Option<VisualSkin>,
-  /// Every range a consumer may draw, finest first, and never empty.
-  pub detail_levels: Vec<VisualDrawRange>,
-  pub bounds: VisualBounds,
-}
-
-impl VisualGeometry {
-  /// The range drawn unless a consumer picks another level: the finest one.
-  ///
-  /// # Panics
-  ///
-  /// Never in practice. [`Self::detail_levels`] is non-empty by construction - a submesh whose finest level does
-  /// not validate is reported as skipped rather than packed - and this states that invariant where it is relied on.
-  pub fn get_default_level(&self) -> VisualDrawRange {
-    self.detail_levels[0]
-  }
-}
-
-/// Why a submesh produced no geometry, graded so a caller does not read the message to find out.
-#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub enum VisualSkipCause {
-  /// Geometry is stored in a form the packer does not handle, such as a shared vertex or index
-  /// container living outside the file.
-  Unsupported,
-  /// Geometry contradicts itself, such as a detail level reaching past the index buffer it indexes.
-  Malformed,
-}
-
-/// Whether a submesh produced drawable geometry, and why not when it did not.
-#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, PartialEq, Serialize)]
-#[serde(tag = "kind", rename_all = "camelCase")]
-pub enum VisualSubmeshContent {
-  Packed { geometry: VisualGeometry },
-  Skipped { cause: VisualSkipCause, reason: String },
-}
+use crate::data::visual_geometry::VisualGeometry;
+use crate::data::visual_skip_cause::VisualSkipCause;
+use crate::data::visual_submesh_content::VisualSubmeshContent;
 
 /// One drawable piece of a visual: a child of a skeleton, or a whole single level visual.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]

@@ -27,7 +27,6 @@ describe("level sector surfaces", () => {
     const surface = mockSectorSurface({
       // What the renderer binds is the row's third texture, and only when it is spelled `lmap`.
       hemi: lightmaps[1] ?? null,
-      lightmaps,
       shaderId: SHADER_ID,
       shaderName: "levels\\aref",
       textureName: "veg\veg_reed",

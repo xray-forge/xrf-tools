@@ -16,8 +16,8 @@ use crate::data::sector_instance_group::SectorInstanceGroup;
 use crate::data::sector_section::SectorSection;
 use crate::data::sector_skip::SectorSkip;
 use crate::data::visual_bounds::VisualBounds;
-use crate::data::visual_section::VisualDrawRange;
-use crate::data::visual_submesh::VisualSkipCause;
+use crate::data::visual_draw_range::VisualDrawRange;
+use crate::data::visual_skip_cause::VisualSkipCause;
 use crate::pack::sector_instance_gathering::SectorInstanceGathering;
 use crate::pack::sector_instance_key::SectorInstanceKey;
 use crate::pack::sector_package::SectorPackage;
@@ -159,7 +159,7 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
     let base: u32 = arrays.get_vertex_count();
 
     for vertex in &vertices {
-      arrays.push(vertex, None);
+      arrays.push(vertex);
     }
 
     packed.insert(range, base);
@@ -275,7 +275,7 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
       .source
       .read_vertices::<T>(key.vertices.buffer, key.vertices.base, key.vertices.count)?
     {
-      arrays.push(vertex, None);
+      arrays.push(vertex);
     }
 
     let mut indices: Vec<u32> = self

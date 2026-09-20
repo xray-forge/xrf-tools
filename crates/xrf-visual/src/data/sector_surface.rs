@@ -11,8 +11,6 @@ pub struct SectorSurface {
   pub shader_name: Option<String>,
   /// The base texture that entry names, absent for the same reason.
   pub texture_name: Option<String>,
-  /// The lightmaps the same entry names after the base, sampled with the second uv set.
-  pub lightmaps: Vec<String>,
   /// The one the deferred renderer binds as `s_hemi`, out of which it reads hemisphere and sun occlusion.
   pub hemi: Option<String>,
 }

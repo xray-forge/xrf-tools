@@ -1,10 +1,10 @@
 use serde::Serialize;
 
-/// Byte range of one packed attribute inside a visual's geometry buffer.
+/// The slice of an index buffer that draws one detail level.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct VisualSection {
-  pub byte_offset: u32,
-  pub byte_length: u32,
+pub struct VisualDrawRange {
+  pub start: u32,
+  pub count: u32,
 }

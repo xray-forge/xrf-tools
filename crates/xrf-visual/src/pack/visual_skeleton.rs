@@ -1,6 +1,6 @@
 use xrf_ogf::{OgfBone, OgfBoneIkData};
 
-use crate::data::visual_description::VisualBone;
+use crate::data::visual_bone::VisualBone;
 use crate::pack::visual_transform::BindTransform;
 
 /// Converts a bone list into the renderer-facing skeleton, resolving the bind pose when the file carries one.

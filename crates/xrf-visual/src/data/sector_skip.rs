@@ -1,6 +1,6 @@
 use serde::Serialize;
 
-use crate::data::visual_submesh::VisualSkipCause;
+use crate::data::visual_skip_cause::VisualSkipCause;
 
 /// A drawable of a sector that produced no geometry, and why.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]

@@ -7,7 +7,7 @@ use xrf_level::{LevelSectorComposition, LevelShadersChunk, LevelVisualsChunk};
 use crate::data::sector_attributes::SectorAttributes;
 use crate::data::sector_description::SectorDescription;
 use crate::data::sector_instance_group::SectorInstanceGroup;
-use crate::data::visual_submesh::VisualSkipCause;
+use crate::data::visual_skip_cause::VisualSkipCause;
 use crate::pack::sector_package::SectorPackage;
 use crate::pack::sector_packer::SectorPacker;
 use crate::pack::tests::level_fixtures::{

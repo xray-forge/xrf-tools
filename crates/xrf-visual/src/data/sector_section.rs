@@ -1,7 +1,7 @@
 use serde::Serialize;
 
 use crate::data::sector_surface::SectorSurface;
-use crate::data::visual_section::VisualDrawRange;
+use crate::data::visual_draw_range::VisualDrawRange;
 
 /// One draw of a sector's own geometry: the indices to draw, and the surface they are drawn with.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]

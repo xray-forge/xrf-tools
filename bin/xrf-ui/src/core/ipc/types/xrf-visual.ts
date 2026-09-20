@@ -88,11 +88,7 @@ export type SectorSurface = {
   shaderName: string | null;
   /** The base texture that entry names, absent for the same reason. */
   textureName: string | null;
-  /** The lightmaps the same entry names after the base, sampled with the second uv set. */
-  lightmaps: Array<string>;
-  /**
-   * The one the deferred renderer binds as `s_hemi`, out of which it reads hemisphere and sun occlusion.
-   */
+  /** The one the deferred renderer binds as `s_hemi`, out of which it reads hemisphere and sun occlusion. */
   hemi: string | null;
 };
 
@@ -118,13 +114,7 @@ export type VisualBox = {
   max: Vector3d;
 };
 
-/**
- * Everything a visual needs from outside itself, resolved.
- *
- * The crate that parses a visual is the crate that knows what it references, so extraction lives beside the parser. It
- * resolves through a borrowed probe and never mounts or plans: which sources exist, and in what order, is the calling
- * binary's policy, and a viewer, a sweep and a level editor each answer it differently.
- */
+/** Everything a visual needs from outside itself, resolved. */
 export type VisualDependencies = {
   textures: Array<VisualTextureDependency>;
   motions: Array<VisualMotionDependency>;
@@ -151,11 +141,7 @@ export type VisualDescription = {
   bufferLength: number;
 };
 
-/**
- * The slice of an index buffer that draws one detail level.
- *
- * Element offsets into the index buffer, not bytes, because that is what a draw call takes.
- */
+/** The slice of an index buffer that draws one detail level. */
 export type VisualDrawRange = {
   start: number;
   count: number;
@@ -196,24 +182,13 @@ export type VisualMotionBake = {
   floatsPerBone: number;
 };
 
-/**
- * One motion file set a visual animates from, and what the reference came to.
- *
- * A reference may be a mask — `wpn\wpn_ak74_*.omf` names every matching file — so one entry can hold several located
- * assets. Embedded motions are not here: they are inside the visual and there is nothing to resolve.
- */
+/** One motion file set a visual animates from, and what the reference came to. */
 export type VisualMotionDependency = {
   reference: string;
   resolution: XrayResolution;
 };
 
-/**
- * Byte range of one packed attribute inside a visual's geometry buffer.
- *
- * Both values are byte counts rather than element counts, so a consumer builds a typed array view
- * directly from them. The packer aligns every offset to four bytes for `Float32Array` and
- * `Uint16Array` views.
- */
+/** Byte range of one packed attribute inside a visual's geometry buffer. */
 export type VisualSection = {
   byteOffset: number;
   byteLength: number;
@@ -269,15 +244,7 @@ export enum EVisualSubmeshContent {
 export type VisualSubmeshContent =
   { kind: "packed"; geometry: VisualGeometry } | { kind: "skipped"; cause: VisualSkipCause; reason: string };
 
-/**
- * One texture a visual's submesh declares, and what the reference came to.
- *
- * Paired with the submesh index rather than positioned in a list, so an outcome cannot be joined to the wrong
- * submesh by a caller that reorders or resolves in parallel.
- *
- * A submesh declaring no texture has no entry here at all — that is the normal case for a skeleton's own record, and
- * absence says it more plainly than a variant meaning "nothing was asked".
- */
+/** One texture a visual's submesh declares, and what the reference came to. */
 export type VisualTextureDependency = {
   submeshIndex: number;
   reference: string;

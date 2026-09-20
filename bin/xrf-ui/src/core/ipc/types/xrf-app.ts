@@ -1667,9 +1667,7 @@ export type LevelSource =
   /** A level of the mounted roots, named by its engine identity. */
   | { kind: "asset"; logicalPath: string };
 
-/**
- * The sun xrLC compiled the level against, as the light chunk records it.
- */
+/** The sun xrLC compiled the level against, as the light chunk records it. */
 export type LevelSunDescription = {
   /** Where the light travels, in the level's own axes. */
   direction: Vector3d;
