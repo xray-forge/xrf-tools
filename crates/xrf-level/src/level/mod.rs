@@ -9,6 +9,7 @@ pub(crate) mod level_sector;
 pub(crate) mod level_sector_composition;
 pub(crate) mod level_sectors_chunk;
 pub(crate) mod level_shader_entry;
+pub(crate) mod level_shader_reference;
 pub(crate) mod level_shaders_chunk;
 pub(crate) mod level_visual;
 pub(crate) mod level_visuals_chunk;

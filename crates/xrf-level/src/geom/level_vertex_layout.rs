@@ -3,6 +3,7 @@ use xrf_error::{XrfError, XrfResult};
 
 use crate::geom::level_geom_vertex_buffer::LevelGeomVertexBuffer;
 use crate::geom::level_geom_vertex_element::LevelGeomVertexElement;
+use crate::geom::level_vertex_coordinate::LevelVertexCoordinate;
 
 /// Where each attribute of a level vertex sits, and how to turn its bytes back into what xrLC had.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -16,14 +17,6 @@ pub struct LevelVertexLayout {
   texture_coordinate: Option<LevelVertexCoordinate>,
   lightmap_coordinate: Option<u16>,
   color: Option<u16>,
-}
-
-/// Where a texture coordinate sits and how wide the element holding it is.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct LevelVertexCoordinate {
-  offset: u16,
-  is_tree: bool,
 }
 
 impl LevelVertexLayout {

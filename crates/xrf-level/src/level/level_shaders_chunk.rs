@@ -4,7 +4,8 @@ use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
 use xrf_utils::to_format_size;
 
-use crate::level::level_shader_entry::{LevelShaderEntry, LevelShaderReference};
+use crate::level::level_shader_entry::LevelShaderEntry;
+use crate::level::level_shader_reference::LevelShaderReference;
 
 /// `fsL_SHADERS` chunk of the `level` file, listing every shader and texture set the level geometry
 /// references.
@@ -75,7 +76,8 @@ mod tests {
     overwrite_generated_test_resource_as_file,
   };
 
-  use crate::level::level_shader_entry::{LevelShaderEntry, LevelShaderReference};
+  use crate::level::level_shader_entry::LevelShaderEntry;
+  use crate::level::level_shader_reference::LevelShaderReference;
   use crate::level::level_shaders_chunk::LevelShadersChunk;
 
   #[test]

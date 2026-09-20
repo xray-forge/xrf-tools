@@ -1,11 +1,8 @@
 use serde::{Deserialize, Serialize};
 
+use crate::level::level_shader_reference::LevelShaderReference;
+
 /// Single entry of the level shader table.
-///
-/// The renderer stores each entry as `shader_name/texture,texture,...`, skips entries with an empty
-/// name, and splits the remainder on the first `/`. Entries without the delimiter are represented
-/// separately because the engine dereferences the result of `strchr` without a null check, so such
-/// an entry is a crash rather than a resolvable reference.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", tag = "type", content = "value")]
 pub enum LevelShaderEntry {
@@ -15,14 +12,6 @@ pub enum LevelShaderEntry {
   Malformed(String),
   /// Resolvable shader reference with its texture list.
   Reference(LevelShaderReference),
-}
-
-/// Parsed `shader_name/texture,texture,...` level shader table entry.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct LevelShaderReference {
-  pub shader: String,
-  pub textures: Vec<String>,
 }
 
 impl LevelShaderEntry {
@@ -60,7 +49,8 @@ impl LevelShaderEntry {
 
 #[cfg(test)]
 mod tests {
-  use crate::level::level_shader_entry::{LevelShaderEntry, LevelShaderReference};
+  use crate::level::level_shader_entry::LevelShaderEntry;
+  use crate::level::level_shader_reference::LevelShaderReference;
 
   #[test]
   fn parses_empty_entry_as_skipped_by_renderer() {

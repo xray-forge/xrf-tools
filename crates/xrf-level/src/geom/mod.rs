@@ -6,4 +6,5 @@ pub(crate) mod level_geom_source;
 pub(crate) mod level_geom_vertex_buffer;
 pub(crate) mod level_geom_vertex_element;
 pub(crate) mod level_vertex;
+pub(crate) mod level_vertex_coordinate;
 pub(crate) mod level_vertex_layout;
