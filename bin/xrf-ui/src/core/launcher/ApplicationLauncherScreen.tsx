@@ -44,7 +44,12 @@ export function ApplicationLauncherScreen({
 
   const onSelectResult = useCallback(({ application }: ICatalogEntry) => onOpen(application), [onOpen]);
 
-  const catalog: IUseApplicationCatalog = useApplicationCatalog({ applications, groups, onSelect: onSelectResult });
+  const catalog: IUseApplicationCatalog = useApplicationCatalog({
+    applications,
+    groups,
+    isDevModeEnabled: settingsService.isDevModeEnabled,
+    onSelect: onSelectResult,
+  });
 
   const search: Nullable<IApplicationLauncherCatalogSearch> = useMemo(
     () =>
@@ -66,7 +71,7 @@ export function ApplicationLauncherScreen({
             query={catalog.search.query}
             selectedGroupId={catalog.selectedGroupId}
             summary={catalog.summary}
-            totalCount={applications.length}
+            totalCount={catalog.totalCount}
             view={settingsService.catalogView}
             onClear={catalog.search.clear}
             onKeyDown={catalog.search.onInputKeyDown}

@@ -1,9 +1,4 @@
-import {
-  EApplicationGroupId,
-  EApplicationStatus,
-  IApplicationDescriptor,
-  IApplicationGroup,
-} from "@/core/routing/application";
+import { EApplicationGroupId, IApplicationDescriptor, IApplicationGroup } from "@/core/routing/application";
 import { Nullable } from "@/lib/types/general";
 
 /** One application together with the group it was found under, which a ranked result no longer implies. */
@@ -83,12 +78,8 @@ export function getCatalogSummary(
   sections: ReadonlyArray<ICatalogSection>,
   selectedGroupId: Nullable<EApplicationGroupId>
 ): string {
-  const entries: Array<ICatalogEntry> = getCatalogEntries(sections);
-  const readyCount: number = entries.filter(
-    ({ application }: ICatalogEntry) => application.status === EApplicationStatus.READY
-  ).length;
-
-  const parts: Array<string> = [`${entries.length} ${entries.length === 1 ? "tool" : "tools"}`, `${readyCount} ready`];
+  const count: number = sections.reduce((total: number, section: ICatalogSection) => total + section.entries.length, 0);
+  const parts: Array<string> = [`${count} ${count === 1 ? "tool" : "tools"}`];
 
   // While one group is chosen this could only ever read "1 group", which its own chip already says.
   if (!selectedGroupId) {

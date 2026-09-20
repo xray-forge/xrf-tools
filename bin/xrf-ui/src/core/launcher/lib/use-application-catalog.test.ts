@@ -42,7 +42,9 @@ const APPLICATIONS: Array<IApplicationDescriptor> = [
 function renderCatalog(
   onSelect: (entry: ICatalogEntry) => void = jest.fn()
 ): RenderHookResult<IUseApplicationCatalog, unknown> {
-  return renderHook(() => useApplicationCatalog({ applications: APPLICATIONS, groups: GROUPS, onSelect }));
+  return renderHook(() =>
+    useApplicationCatalog({ applications: APPLICATIONS, groups: GROUPS, isDevModeEnabled: true, onSelect })
+  );
 }
 
 /** Tool labels in the order the sections hold them, which is the order the body draws. */
@@ -69,7 +71,7 @@ describe("useApplicationCatalog", () => {
     act(() => result.current.onSelectGroup(EApplicationGroupId.SPAWNS));
 
     expect(getLabels(result.current.sections)).toEqual(["Spawn editor"]);
-    expect(result.current.summary).toBe("1 tool · 1 ready");
+    expect(result.current.summary).toBe("1 tool");
 
     act(() => result.current.onSelectGroup(null));
 
@@ -116,7 +118,7 @@ describe("useApplicationCatalog", () => {
   it("counts the catalog it is showing, not the one it came from", () => {
     const { result } = renderCatalog();
 
-    expect(result.current.summary).toBe("3 tools · 3 ready · 2 groups");
+    expect(result.current.summary).toBe("3 tools · 2 groups");
   });
 
   it("hands an accepted result back whole, group included", () => {

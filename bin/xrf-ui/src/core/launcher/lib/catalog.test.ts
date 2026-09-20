@@ -92,16 +92,16 @@ describe("toRankedSections", () => {
 });
 
 describe("getCatalogSummary", () => {
-  it("counts the tools, the ready ones, and the groups they came from", () => {
+  it("counts the tools and the groups they came from", () => {
     const sections: Array<ICatalogSection> = toCatalogSections(APPLICATIONS, [ARCHIVES, SPAWNS]);
 
-    expect(getCatalogSummary(sections, null)).toBe("3 tools · 2 ready · 2 groups");
+    expect(getCatalogSummary(sections, null)).toBe("3 tools · 2 groups");
   });
 
   it("drops the group count once one group is chosen, which its own chip already says", () => {
     const sections: Array<ICatalogSection> = toCatalogSections(APPLICATIONS, [ARCHIVES]);
 
-    expect(getCatalogSummary(sections, EApplicationGroupId.ARCHIVES)).toBe("2 tools · 1 ready");
+    expect(getCatalogSummary(sections, EApplicationGroupId.ARCHIVES)).toBe("2 tools");
   });
 
   it("says tool and group in the singular", () => {
@@ -110,7 +110,7 @@ describe("getCatalogSummary", () => {
       [SPAWNS]
     );
 
-    expect(getCatalogSummary(sections, null)).toBe("1 tool · 1 ready · 1 group");
+    expect(getCatalogSummary(sections, null)).toBe("1 tool · 1 group");
   });
 });
 

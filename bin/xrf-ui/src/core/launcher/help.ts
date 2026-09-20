@@ -17,13 +17,13 @@ export const LAUNCHER_HELP: IApplicationHelp = {
       "case but matches the whole phrase without correcting typos. Try a shorter term if nothing matches.",
     "The counts beside `Tools` describe the selected group or full catalog. The match count above search results " +
       "shows how many tools match your query.",
-    "A tool marked `Planned` is not implemented yet. Opening it shows its intended purpose.",
+    "Developer mode also shows tools marked `Planned`. They are not implemented yet; opening one shows its " +
+      "intended purpose. With developer mode off, only implemented tools and their groups appear.",
     "Returning home asks for confirmation when a tool has unsaved changes. Navigation is disabled while a " +
       "blocking operation runs.",
   ],
   limitations: [
-    "The catalog is fixed for this build: tools cannot be reordered, hidden or pinned. There is no filter " +
-      "for ready or planned tools.",
+    "The catalog is fixed for this build: individual tools cannot be reordered, hidden or pinned.",
     "Only one tool is open at a time. Return here to choose another.",
   ],
 };

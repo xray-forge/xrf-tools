@@ -12,6 +12,9 @@ import {
   IApplicationGroup,
 } from "@/core/routing/application";
 import { FOCUS_SEARCH_KEYBIND_COMMAND } from "@/core/search/commands";
+import { TCatalogView } from "@/core/settings/lib/catalog-view";
+import { SettingsService } from "@/core/settings/services/settings";
+import { DEV_MODE_STORAGE_KEY } from "@/core/storage";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
@@ -80,6 +83,112 @@ function getToolNames(catalog: HTMLElement): Array<string> {
 describe("ApplicationLauncher", () => {
   beforeEach(() => {
     window.localStorage.clear();
+    window.localStorage.setItem(DEV_MODE_STORAGE_KEY, "true");
+  });
+
+  it.each<TCatalogView>(["rows", "grid"])(
+    "hides planned tools and empty groups in %s outside dev mode",
+    async (view) => {
+      const container: Container = mockContainer();
+      const settings: SettingsService = container.get(SettingsService);
+      const applications: Array<IApplicationDescriptor> = APPLICATIONS.map((application) =>
+        application.group === EApplicationGroupId.SPAWNS
+          ? { ...application, status: EApplicationStatus.PLANNED }
+          : application
+      );
+
+      settings.setDevModeEnabled(false);
+      settings.setCatalogView(view);
+
+      const { getByLabelText, getByRole, getByTestId, getByText, queryByRole, queryByText } = renderWithProviders(
+        <ApplicationLauncher applications={applications} groups={GROUPS} />,
+        { container }
+      );
+
+      expect(getToolNames(getByTestId("application-launcher-catalog"))).toEqual(["Archives editor"]);
+      expect(getByText("1 tool · 1 group")).toBeInTheDocument();
+      expect(getByRole("button", { name: "All 1" })).toHaveAttribute("aria-pressed", "true");
+      expect(getByRole("button", { name: "Archives 1" })).toBeInTheDocument();
+      expect(queryByRole("button", { name: "Spawns 1" })).not.toBeInTheDocument();
+      expect(queryByText("Spawns")).not.toBeInTheDocument();
+
+      await userEvent.type(getByLabelText("Search tools"), "archives");
+
+      expect(getByText("1 match")).toBeInTheDocument();
+      expect(queryByRole("button", { name: "Archives packer" })).not.toBeInTheDocument();
+
+      fireEvent.change(getByLabelText("Search tools"), { target: { value: "spawn" } });
+
+      expect(getByText("No tools match")).toBeInTheDocument();
+    }
+  );
+
+  it.each<TCatalogView>(["rows", "grid"])("returns to All when a selected group disappears in %s", async (view) => {
+    const container: Container = mockContainer();
+    const settings: SettingsService = container.get(SettingsService);
+    const applications: Array<IApplicationDescriptor> = APPLICATIONS.map((application) =>
+      application.group === EApplicationGroupId.SPAWNS
+        ? { ...application, status: EApplicationStatus.PLANNED }
+        : application
+    );
+
+    settings.setCatalogView(view);
+
+    const { getByLabelText, getByRole, getByTestId, getByText, queryByRole } = renderWithProviders(
+      <ApplicationLauncher applications={applications} groups={GROUPS} />,
+      { container }
+    );
+
+    await userEvent.click(getByRole("button", { name: "Spawns 1" }));
+    await userEvent.type(getByLabelText("Search tools"), "editor");
+
+    expect(getToolNames(getByTestId("application-launcher-catalog"))).toEqual(["Spawn editor"]);
+
+    act(() => settings.setDevModeEnabled(false));
+
+    expect(getByRole("button", { name: "All 1" })).toHaveAttribute("aria-pressed", "true");
+    expect(queryByRole("button", { name: "Spawns 1" })).not.toBeInTheDocument();
+    expect(getByLabelText("Search tools")).toHaveValue("editor");
+    expect(getToolNames(getByTestId("application-launcher-catalog"))).toEqual(["Archives editor"]);
+    expect(getByText("1 tool · 1 group")).toBeInTheDocument();
+
+    act(() => settings.setDevModeEnabled(true));
+
+    expect(getByRole("button", { name: "All 3" })).toHaveAttribute("aria-pressed", "true");
+    expect(getByRole("button", { name: "Spawns 1" })).toHaveAttribute("aria-pressed", "false");
+    expect(getByRole("button", { name: "Archives 2" })).toBeInTheDocument();
+    expect(getByLabelText("Search tools")).toHaveValue("editor");
+    expect(getByText("2 matches")).toBeInTheDocument();
+    expect(getByText("3 tools · 2 groups")).toBeInTheDocument();
+  });
+
+  it("preserves an available group and excludes planned search results when dev mode changes", async () => {
+    const container: Container = mockContainer();
+    const settings: SettingsService = container.get(SettingsService);
+    const { getByLabelText, getByRole, getByText, queryByRole } = renderWithProviders(
+      <ApplicationLauncher applications={APPLICATIONS} groups={GROUPS} />,
+      { container }
+    );
+
+    await userEvent.click(getByRole("button", { name: "Archives 2" }));
+    await userEvent.type(getByLabelText("Search tools"), "packer");
+
+    expect(getByRole("button", { name: "Archives packer" })).toBeInTheDocument();
+
+    act(() => settings.setDevModeEnabled(false));
+
+    expect(getByRole("button", { name: "Archives 1" })).toHaveAttribute("aria-pressed", "true");
+    expect(getByRole("button", { name: "All 2" })).toHaveAttribute("aria-pressed", "false");
+    expect(getByLabelText("Search tools")).toHaveValue("packer");
+    expect(getByText("1 tool")).toBeInTheDocument();
+    expect(getByText("No tools match")).toBeInTheDocument();
+    expect(queryByRole("button", { name: "Archives packer" })).not.toBeInTheDocument();
+
+    act(() => settings.setDevModeEnabled(true));
+
+    expect(getByRole("button", { name: "Archives 2" })).toHaveAttribute("aria-pressed", "true");
+    expect(getByRole("button", { name: "Archives packer" })).toBeInTheDocument();
+    expect(getByText("2 tools")).toBeInTheDocument();
   });
 
   it("packs the caller's catalog in stable group order", () => {
@@ -100,10 +209,10 @@ describe("ApplicationLauncher", () => {
     expect(getByRole("heading", { level: 1 })).toHaveTextContent("Tools");
   });
 
-  it("counts what is ready separately, since almost half the roster is not", () => {
+  it("summarizes the available tools and groups without a readiness count", () => {
     const { getByText } = renderLauncher();
 
-    expect(getByText("3 tools · 2 ready · 2 groups")).toBeInTheDocument();
+    expect(getByText("3 tools · 2 groups")).toBeInTheDocument();
   });
 
   it("counts the group it was narrowed to rather than the catalog it came from", async () => {
@@ -112,7 +221,7 @@ describe("ApplicationLauncher", () => {
     await userEvent.click(getByRole("button", { name: "Archives 2" }));
 
     // No group count: with one chosen it could only say "1 group", which the chip already says.
-    expect(getByText("2 tools · 1 ready")).toBeInTheDocument();
+    expect(getByText("2 tools")).toBeInTheDocument();
   });
 
   it("heads each group's run of cards, so the taxonomy is visible without reading colours", async () => {

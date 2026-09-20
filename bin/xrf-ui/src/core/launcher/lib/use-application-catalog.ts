@@ -1,6 +1,11 @@
 import { useCallback, useMemo, useState } from "react";
 
-import { EApplicationGroupId, IApplicationDescriptor, IApplicationGroup } from "@/core/routing/application";
+import {
+  EApplicationGroupId,
+  EApplicationStatus,
+  IApplicationDescriptor,
+  IApplicationGroup,
+} from "@/core/routing/application";
 import { IUseRankedSearch, useRankedSearch } from "@/core/search/lib";
 import { Nullable } from "@/lib/types/general";
 
@@ -20,11 +25,15 @@ import {
 export interface IUseApplicationCatalogOptions {
   applications: ReadonlyArray<IApplicationDescriptor>;
   groups: ReadonlyArray<IApplicationGroup>;
+  /** Includes planned tools when enabled. */
+  isDevModeEnabled: boolean;
   /** Invoked when a result is accepted with the enter key; opening one is the surface's business. */
   onSelect: (entry: ICatalogEntry) => void;
 }
 
 export interface IUseApplicationCatalog {
+  /** Tools available in the current mode, before group or search filtering. */
+  totalCount: number;
   /** One chip per group the catalog offers, counted before any narrowing. */
   filters: Array<ICatalogGroupFilter>;
   /** `null` is every group rather than none. */
@@ -38,24 +47,39 @@ export interface IUseApplicationCatalog {
 
 /**
  * Narrows the catalog down to what the launcher should be showing.
+ * A group that becomes unavailable resets to all groups without clearing the search.
  *
  * @param options - Catalog inputs and selection behavior.
  * @param options.applications - Every application the catalog offers.
  * @param options.groups - Groups in the order the catalog presents them.
+ * @param options.isDevModeEnabled - Whether planned tools are available.
  * @param options.onSelect - Receives the accepted result.
  * @returns The narrowed catalog, its summary, and the controls that narrow it.
  */
 export function useApplicationCatalog({
   applications,
   groups,
+  isDevModeEnabled,
   onSelect,
 }: IUseApplicationCatalogOptions): IUseApplicationCatalog {
   const [selectedGroupId, setSelectedGroupId] = useState<Nullable<EApplicationGroupId>>(null);
 
   const catalogSections: Array<ICatalogSection> = useMemo(
-    () => toCatalogSections(applications, groups),
-    [applications, groups]
+    () =>
+      toCatalogSections(
+        isDevModeEnabled
+          ? applications
+          : applications.filter(
+              (application: IApplicationDescriptor) => application.status === EApplicationStatus.READY
+            ),
+        groups
+      ),
+    [applications, groups, isDevModeEnabled]
   );
+
+  if (selectedGroupId !== null && !catalogSections.some((section) => section.group?.id === selectedGroupId)) {
+    setSelectedGroupId(null);
+  }
 
   const visibleSections: Array<ICatalogSection> = useMemo(
     () =>
@@ -89,6 +113,7 @@ export function useApplicationCatalog({
   const onSelectGroup = useCallback((groupId: Nullable<EApplicationGroupId>) => setSelectedGroupId(groupId), []);
 
   return {
+    totalCount: filters.reduce((total: number, filter: ICatalogGroupFilter) => total + filter.count, 0),
     filters,
     selectedGroupId,
     onSelectGroup,
