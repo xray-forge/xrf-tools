@@ -1,4 +1,5 @@
 import { default as GrainIcon } from "@mui/icons-material/Grain";
+import { default as GridOnIcon } from "@mui/icons-material/GridOn";
 import { default as HexagonIcon } from "@mui/icons-material/Hexagon";
 import { default as LightbulbIcon } from "@mui/icons-material/Lightbulb";
 import { default as OpacityIcon } from "@mui/icons-material/Opacity";
@@ -6,19 +7,19 @@ import { default as PaletteIcon } from "@mui/icons-material/Palette";
 import { default as TextureIcon } from "@mui/icons-material/Texture";
 import { ReactElement, ReactNode, useCallback } from "react";
 
-import { ILevelSurfaceOptions } from "@/core/level/lib/level-surface-material";
+import { ILevelViewOptions } from "@/core/level/lib/level-view-options";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
 import { EditorViewToggle } from "@/core/shell/editor/EditorViewToggle";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface ILevelPreviewToolbarProps extends BaseComponentProps {
   subtitle?: ReactNode;
-  options: ILevelSurfaceOptions;
+  options: ILevelViewOptions;
   /** Whether any surface of the open level reads its texture's alpha channel. */
   hasAlpha?: boolean;
   /** Whether any surface of the open level is modulated by a detail texture. */
   hasDetail?: boolean;
-  onChangeOptions: (options: ILevelSurfaceOptions) => void;
+  onChangeOptions: (options: ILevelViewOptions) => void;
   onBack?: () => void;
 }
 
@@ -37,7 +38,7 @@ export function LevelPreviewToolbar({
   onBack,
 }: ILevelPreviewToolbarProps): ReactElement {
   const onToggle = useCallback(
-    (option: keyof ILevelSurfaceOptions) => {
+    (option: keyof ILevelViewOptions) => {
       onChangeOptions({ ...options, [option]: !options[option] });
     },
     [options, onChangeOptions]
@@ -89,6 +90,13 @@ export function LevelPreviewToolbar({
             icon={<LightbulbIcon />}
             isOn={options.isLit}
             onToggle={() => onToggle("isLit")}
+          />
+
+          <EditorViewToggle
+            label={"Grid"}
+            icon={<GridOnIcon />}
+            isOn={options.isGridVisible}
+            onToggle={() => onToggle("isGridVisible")}
           />
 
           <EditorViewToggle

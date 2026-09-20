@@ -8,6 +8,8 @@
 export interface IVisualPreviewSceneConfig {
   backgroundColor: number;
   gridColor: number;
+  /** Colour of the two grid lines crossing at the origin, so a model's own zero is never guessed. */
+  gridOriginColor: number;
   gridCells: number;
   meshColor: number;
   /** Colour of the bind pose overlay, chosen to read against both the mesh and the background. */
@@ -34,6 +36,7 @@ export interface IVisualPreviewSceneConfig {
 export const DEFAULT_VISUAL_PREVIEW_SCENE_CONFIG: IVisualPreviewSceneConfig = {
   backgroundColor: 0x353535,
   gridColor: 0x505050,
+  gridOriginColor: 0x787878,
   gridCells: 25,
   meshColor: 0xb0a999,
   skeletonColor: 0x4fc3f7,

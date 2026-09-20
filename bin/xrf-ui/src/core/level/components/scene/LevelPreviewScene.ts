@@ -1,24 +1,30 @@
 import { AmbientLight, DirectionalLight, Group, PerspectiveCamera, Vector3 } from "three";
 
+import { VisualBounds } from "@/core/ipc/types/xrf-visual";
 import {
   DEFAULT_LEVEL_PREVIEW_SCENE_CONFIG,
   ILevelPreviewSceneConfig,
 } from "@/core/level/components/scene/level-scene-config";
 import { LevelFlyControls } from "@/core/level/components/scene/LevelFlyControls";
+import { LevelPreviewFrame } from "@/core/level/components/scene/LevelPreviewFrame";
 import { LevelPreviewSectors } from "@/core/level/components/scene/LevelPreviewSectors";
 import { LevelFlyCamera } from "@/core/level/lib/level-fly-camera";
 import { ILevelPoint } from "@/core/level/lib/level-residency";
 import { ILoadedSector } from "@/core/level/lib/level-sector-set";
 import { ILevelStats, measureLevelStats } from "@/core/level/lib/level-stats";
-import { DEFAULT_LEVEL_SURFACE_OPTIONS, ILevelSurfaceOptions } from "@/core/level/lib/level-surface-material";
 import { ILevelTextureLookup } from "@/core/level/lib/level-texture-set";
+import { DEFAULT_LEVEL_VIEW_OPTIONS, ILevelViewOptions } from "@/core/level/lib/level-view-options";
+import { ILevelViewpoint, toLevelStartViewpoint } from "@/core/level/lib/level-viewpoint";
+import { toXraySpace } from "@/core/render/lib/render-space";
 import { RenderViewport } from "@/core/render/lib/render-viewport";
 import { Nullable } from "@/lib/types/general";
 
 /** What the scene reports back out, once a frame at most. */
 export interface ILevelPreviewSceneHandlers {
-  /** Where the camera is, for the loader to stream against. Called only when it has actually moved. */
+  /** Where the camera is, for the loader to stream against. Called only once it has moved far enough to matter. */
   onCameraMoved: (point: ILevelPoint) => void;
+  /** Where the camera is, for a person to read, **in the coordinates the level's own data is written in**. */
+  onCameraChanged: (point: ILevelPoint) => void;
   /** What the viewport is costing, so a panel can show it rather than a developer guessing. */
   onStats: (stats: ILevelStats) => void;
 }
@@ -32,10 +38,10 @@ const STATS_INTERVAL: number = 250;
  * Draws a compiled level and flies a camera through it.
  */
 export class LevelPreviewScene {
-  private readonly config: ILevelPreviewSceneConfig;
   private readonly viewport: RenderViewport;
   private readonly root: Group = new Group();
   private readonly sectors: LevelPreviewSectors;
+  private readonly frame: LevelPreviewFrame;
   /** Where the camera is looking, which is the scene's for as long as the scene is: the controls only drive it. */
   private readonly fly: LevelFlyCamera = new LevelFlyCamera();
   private readonly handlers: ILevelPreviewSceneHandlers;
@@ -49,7 +55,6 @@ export class LevelPreviewScene {
     handlers: ILevelPreviewSceneHandlers,
     config: ILevelPreviewSceneConfig = DEFAULT_LEVEL_PREVIEW_SCENE_CONFIG
   ) {
-    this.config = config;
     this.handlers = handlers;
 
     this.viewport = new RenderViewport(config, { onFrame: (delta: number, now: number) => this.advance(delta, now) });
@@ -67,6 +72,9 @@ export class LevelPreviewScene {
     this.viewport.scene.add(this.root);
 
     this.sectors = new LevelPreviewSectors(this.root);
+    this.frame = new LevelPreviewFrame(this.root, config);
+
+    this.applyViewOptions();
   }
 
   /**
@@ -89,25 +97,29 @@ export class LevelPreviewScene {
   }
 
   /**
-   * Places the camera to see a whole level at once.
+   * Takes the level's extent, which is what the grid is sized against and where the camera opens.
    *
-   * @param center - Middle of the level's extent.
-   * @param radius - How far it reaches.
+   * @param bounds - What the backend measured, or null for no level.
    */
-  public frame(center: ILevelPoint, radius: number): void {
-    const camera: PerspectiveCamera = this.viewport.camera;
-    const target: Vector3 = new Vector3(center.x, center.y, center.z);
-    const distance: number = Math.max(radius, 1) * (1 + this.config.cameraFitMargin);
+  public setBounds(bounds: Nullable<VisualBounds>): void {
+    this.frame.setBounds(bounds);
 
-    camera.position.set(target.x, target.y + distance * 0.35, target.z + distance);
-    this.fly.lookAt(camera, target);
+    const viewpoint: ILevelViewpoint = toLevelStartViewpoint(bounds);
+    const camera: PerspectiveCamera = this.viewport.camera;
+
+    camera.position.set(viewpoint.position.x, viewpoint.position.y, viewpoint.position.z);
+    this.fly.lookAt(camera, new Vector3(viewpoint.target.x, viewpoint.target.y, viewpoint.target.z));
 
     this.streamedFrom = null;
     this.reportCamera();
   }
 
-  public applyViewOptions(options: ILevelSurfaceOptions = DEFAULT_LEVEL_SURFACE_OPTIONS): void {
+  /**
+   * @param options - What the toolbar has switched on, for the surfaces and for what they are read against alike.
+   */
+  public applyViewOptions(options: ILevelViewOptions = DEFAULT_LEVEL_VIEW_OPTIONS): void {
     this.sectors.applyViewOptions(options);
+    this.frame.applyViewOptions(options);
   }
 
   /**
@@ -127,6 +139,7 @@ export class LevelPreviewScene {
 
     // Materials only: the geometry belongs to the loader, which disposes it when a sector stops being resident.
     this.sectors.dispose();
+    this.frame.dispose();
     this.viewport.dispose();
   }
 
@@ -151,8 +164,11 @@ export class LevelPreviewScene {
     }
 
     if (now - this.statsReportedAt >= STATS_INTERVAL) {
+      const position: Vector3 = this.viewport.camera.position;
+
       this.statsReportedAt = now;
       this.handlers.onStats(measureLevelStats(this.resident, this.viewport.frameCost));
+      this.handlers.onCameraChanged(toXraySpace(position));
     }
   }
 }

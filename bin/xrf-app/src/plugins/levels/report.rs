@@ -12,7 +12,7 @@ use crate::plugins::levels::state::{LevelSource, LevelTextureReference, Selected
 const LISTED_NAMES: usize = 6;
 
 /// Bytes past which a packed sector is worth saying something about.
-const LARGE_SECTOR_BYTES: usize = 128 * 1024 * 1024;
+const LARGE_SECTOR_BYTES: usize = 256 * 1024 * 1024;
 
 /// What one open came to, and what about it is worth a warning.
 pub fn report_open(selected: &SelectedLevel, started: Instant) {

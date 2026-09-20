@@ -12,8 +12,8 @@ import { ILevelPoint } from "@/core/level/lib/level-residency";
 import { ILoadedSector } from "@/core/level/lib/level-sector-set";
 import { hasAlphaSurfaces, hasDetailedSurfaces } from "@/core/level/lib/level-sector-textures";
 import { EMPTY_LEVEL_STATS, ILevelStats } from "@/core/level/lib/level-stats";
-import { DEFAULT_LEVEL_SURFACE_OPTIONS, ILevelSurfaceOptions } from "@/core/level/lib/level-surface-material";
 import { ILevelTextureLookup } from "@/core/level/lib/level-texture-set";
+import { DEFAULT_LEVEL_VIEW_OPTIONS, ILevelViewOptions } from "@/core/level/lib/level-view-options";
 import { ILevelStreamProgress } from "@/core/level/services";
 import { EditorFileHeader } from "@/core/shell/editor/EditorFileHeader";
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
@@ -68,8 +68,9 @@ export function LevelPreviewLayout({
   onBack,
   onDeselect = null,
 }: ILevelPreviewLayoutProps): ReactElement {
-  const [options, setOptions] = useState<ILevelSurfaceOptions>(DEFAULT_LEVEL_SURFACE_OPTIONS);
+  const [options, setOptions] = useState<ILevelViewOptions>(DEFAULT_LEVEL_VIEW_OPTIONS);
   const [stats, setStats] = useState<ILevelStats>(EMPTY_LEVEL_STATS);
+  const [camera, setCamera] = useState<Nullable<ILevelPoint>>(null);
 
   const isOpen: boolean = Boolean(name);
   const isStreaming: boolean = streaming.total > 0;
@@ -94,9 +95,15 @@ export function LevelPreviewLayout({
     }
 
     return isOpen
-      ? [`${stats.sectors} sectors`, `${stats.draws} draws`, `${stats.triangles} triangles`, formatBytes(stats.bytes)]
+      ? [
+          ...(camera ? [`x ${camera.x.toFixed(1)} y ${camera.y.toFixed(1)} z ${camera.z.toFixed(1)}`] : []),
+          `${stats.sectors} sectors`,
+          `${stats.draws} draws`,
+          `${stats.triangles} triangles`,
+          formatBytes(stats.bytes),
+        ]
       : ["No level open"];
-  }, [isLoading, isOpen, isStreaming, stats, streaming]);
+  }, [camera, isLoading, isOpen, isStreaming, stats, streaming]);
 
   useEditorPanels(
     (): Array<IEditorPanel> => [
@@ -149,7 +156,15 @@ export function LevelPreviewLayout({
           className={cn("relative flex min-h-0 min-w-0 flex-1 overflow-hidden", className)}
         >
           {renderViewport ? (
-            renderViewport({ bounds, onCameraMoved, onStats: setStats, options, sectors, textures })
+            renderViewport({
+              bounds,
+              onCameraChanged: setCamera,
+              onCameraMoved,
+              onStats: setStats,
+              options,
+              sectors,
+              textures,
+            })
           ) : (
             <LevelPreviewViewport
               sectors={sectors}
@@ -157,6 +172,7 @@ export function LevelPreviewLayout({
               textures={textures}
               options={options}
               onCameraMoved={onCameraMoved}
+              onCameraChanged={setCamera}
               onStats={setStats}
             />
           )}

@@ -1,10 +1,13 @@
 import { describe, expect, it, jest } from "@jest/globals";
-import { fireEvent, RenderResult } from "@testing-library/react";
+import { act, fireEvent, RenderResult } from "@testing-library/react";
 
 import { LevelPreviewLayout } from "@/core/level/components/preview/LevelPreviewLayout";
+import { ILevelPoint } from "@/core/level/lib/level-residency";
 import { ILevelStreamProgress } from "@/core/level/services";
+import { ApplicationStatusBar } from "@/core/shell/footer/ApplicationStatusBar";
 import { mockVisualBounds } from "@/fixtures/mocks/visual.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
+import { Maybe } from "@/lib/types/general";
 
 const IDLE: ILevelStreamProgress = { loaded: 0, total: 0 };
 
@@ -89,5 +92,33 @@ describe("LevelPreviewLayout", () => {
     fireEvent.click(view.getByRole("button", { name: "Close level" }));
 
     expect(onDeselect).toHaveBeenCalledTimes(1);
+  });
+
+  // Flying a level is the whole interaction, and a level is a kilometre of ground that looks the same from most of
+  // it: without a readout there is no way to say where you are, or to go back to where you were.
+  it("says where the camera is, labelled by axis", async () => {
+    let report: Maybe<(point: ILevelPoint) => void> = null;
+    const view: RenderResult = renderWithProviders(
+      <>
+        <LevelPreviewLayout
+          sectors={new Map()}
+          bounds={mockVisualBounds()}
+          name={"levels\\zaton"}
+          streaming={IDLE}
+          onCameraMoved={jest.fn()}
+          renderViewport={({ onCameraChanged }) => {
+            report = onCameraChanged;
+
+            return <div data-testid={"stub-viewport"} />;
+          }}
+        />
+        <ApplicationStatusBar />
+      </>,
+      { route: "/level-viewer" }
+    );
+
+    act(() => report?.({ x: -243.75, y: 12.5, z: 87.25 }));
+
+    expect(await view.findByText("x -243.8 y 12.5 z 87.3")).toBeInTheDocument();
   });
 });

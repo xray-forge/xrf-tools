@@ -5,7 +5,6 @@ import {
   BufferGeometry,
   DataTexture,
   DirectionalLight,
-  GridHelper,
   PerspectiveCamera,
   Points,
   PointsMaterial,
@@ -14,6 +13,7 @@ import {
 } from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
+import { RenderGrid } from "@/core/render/lib/render-grid";
 import { RenderViewport } from "@/core/render/lib/render-viewport";
 import {
   DEFAULT_VISUAL_PREVIEW_SCENE_CONFIG,
@@ -98,7 +98,7 @@ export class VisualPreviewScene {
   private readonly viewport: RenderViewport;
   private readonly controls: OrbitControls;
   private readonly checker: DataTexture;
-  private readonly grid: GridHelper;
+  private readonly grid: RenderGrid;
   private readonly axes: AxesHelper;
 
   /** Stops the canvas answering drags with the drag cursor, called when the scene goes. */
@@ -154,7 +154,11 @@ export class VisualPreviewScene {
     this.controls.enableDamping = true;
 
     this.checker = createCheckerTexture(config);
-    this.grid = new GridHelper(config.gridCells, config.gridCells, config.gridColor, config.gridColor);
+    this.grid = new RenderGrid({
+      cells: config.gridCells,
+      color: config.gridColor,
+      originColor: config.gridOriginColor,
+    });
     this.axes = new AxesHelper(1);
 
     const light: DirectionalLight = new DirectionalLight(0xffffff, 2);
@@ -163,7 +167,7 @@ export class VisualPreviewScene {
 
     this.scene.add(new AmbientLight(0xffffff, 1.4));
     this.scene.add(light);
-    this.scene.add(this.grid);
+    this.scene.add(this.grid.object);
     this.scene.add(this.axes);
 
     this.setModel(model);
@@ -316,7 +320,7 @@ export class VisualPreviewScene {
 
     this.model?.applyViewOptions(options);
 
-    this.grid.visible = options.isGridVisible;
+    this.grid.setVisible(options.isGridVisible);
     this.axes.visible = options.isAxesVisible;
 
     this.applyHighlightVisibility();
@@ -394,6 +398,8 @@ export class VisualPreviewScene {
     }
 
     this.checker.dispose();
+    this.grid.dispose();
+    this.axes.dispose();
     this.viewport.dispose();
   }
 
@@ -415,7 +421,7 @@ export class VisualPreviewScene {
   private applyScale(): void {
     const radius: number = this.views?.fit.radius ?? FALLBACK_RADIUS;
 
-    this.grid.scale.setScalar(radius / 2);
+    this.grid.setExtent(radius);
     this.axes.scale.setScalar(radius);
   }
 
