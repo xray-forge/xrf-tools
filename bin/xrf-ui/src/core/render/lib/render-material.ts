@@ -1,4 +1,4 @@
-import { MeshStandardMaterial } from "three";
+import { MeshStandardMaterial, OneMinusSrcAlphaFactor, SrcAlphaFactor } from "three";
 
 import { IRenderSurface, OPAQUE_RENDER_SURFACE } from "@/core/render/lib/render-surface";
 
@@ -42,4 +42,10 @@ export function applyRenderSurface(material: MeshStandardMaterial, surface: IRen
   material.alphaTest = surface.alphaTest;
   material.transparent = surface.isTransparent;
   material.depthWrite = surface.isDepthWritten;
+  material.blending = surface.blend.blending;
+
+  // Set unconditionally so a material re-dressed from a custom equation to a named one does not keep the old factors,
+  // which three.js reads whenever `blending` is `CustomBlending` and ignores otherwise.
+  material.blendSrc = surface.blend.blendSrc ?? SrcAlphaFactor;
+  material.blendDst = surface.blend.blendDst ?? OneMinusSrcAlphaFactor;
 }

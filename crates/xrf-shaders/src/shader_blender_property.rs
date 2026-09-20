@@ -36,6 +36,14 @@ impl ShaderBlenderProperty {
   }
 
   /// The texture a texture property names; see [`Self::integer`].
+  /// The item a token property selects, when it is one.
+  pub fn token(&self) -> Option<u32> {
+    match self.value {
+      ShaderBlenderPropertyValue::Token { selected, .. } => Some(selected),
+      _ => None,
+    }
+  }
+
   pub fn texture(&self) -> Option<&str> {
     match &self.value {
       ShaderBlenderPropertyValue::Texture(value) => Some(value.as_str()),

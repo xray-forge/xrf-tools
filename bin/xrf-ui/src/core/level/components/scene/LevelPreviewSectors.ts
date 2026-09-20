@@ -98,11 +98,7 @@ export class LevelPreviewSectors {
   }
 
   private add(sector: number, loaded: ILoadedSector): void {
-    // The sector's own mesh is one geometry for every section, so whether it carries baked vertex colour is the
-    // sector's answer rather than each section's.
-    const hasVertexColors: boolean = loaded.views.geometry.colors !== null;
     const surfaces: Array<ILevelSurface> = loaded.views.sections.map((section: ISectorSectionViews) => ({
-      hasVertexColors,
       render: section.render,
       surface: section.surface,
     }));
@@ -112,7 +108,6 @@ export class LevelPreviewSectors {
 
     const instanced: Array<InstancedMesh> = loaded.views.instances.map((group: ISectorInstanceViews) => {
       const surface: ILevelSurface = {
-        hasVertexColors: group.geometry.colors !== null,
         render: group.render,
         surface: group.surface,
       };

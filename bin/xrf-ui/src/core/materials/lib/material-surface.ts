@@ -72,6 +72,17 @@ export function describeSurfaceDraw(draw: XraySurfaceDraw): Nullable<string> {
         "depth tested and not written"
       );
 
+    case EXraySurfaceDraw.ADDED:
+      return (
+        `added to the background, killed below ${draw.reference}/${ALPHA_REFERENCE_SCALE} · ` +
+        "depth tested and not written"
+      );
+
+    case EXraySurfaceDraw.MULTIPLIED:
+      return draw.isDoubled
+        ? "multiplied both ways into the background, doubling it · depth tested and not written"
+        : "multiplied into the background · depth tested and not written";
+
     default:
       return assertExhaustive(draw);
   }
@@ -144,6 +155,12 @@ function describeDrawState(draw: XraySurfaceDraw): IMaterialStateDescriptor {
 
     case EXraySurfaceDraw.BLENDED:
       return { color: "success", label: "Blended" };
+
+    case EXraySurfaceDraw.ADDED:
+      return { color: "success", label: "Added" };
+
+    case EXraySurfaceDraw.MULTIPLIED:
+      return { color: "success", label: draw.isDoubled ? "Multiplied 2x" : "Multiplied" };
 
     default:
       return assertExhaustive(draw);

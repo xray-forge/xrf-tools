@@ -144,7 +144,9 @@ export function mockSectorOutline(overrides: Partial<SectorOutline> = {}): Secto
  * @returns A reference fixture.
  */
 export function mockLevelTextureReference(name: string, isPresent: boolean = true): LevelTextureReference {
-  return { logicalPath: isPresent ? `textures\${name}.dds` : null, reference: name };
+  // `\\` rather than `\`, which in a template literal escapes the interpolation and gave every reference the one
+  // logical path `textures${name}.dds`.
+  return { logicalPath: isPresent ? `textures\\${name}.dds` : null, reference: name };
 }
 
 /**

@@ -1,4 +1,4 @@
-import { ColorRepresentation, GridHelper, Group } from "three";
+import { ColorRepresentation, GridHelper, Group, Vector3 } from "three";
 
 /** The mantissas a round step is allowed to take, so a grid is always countable in ones, twos or fives. */
 const STEP_MANTISSAS: ReadonlyArray<number> = [1, 2, 5];
@@ -62,7 +62,7 @@ export class RenderGrid {
   /**
    * Sizes the grid to what it is drawn under.
    *
-   * @param extent - How far the grid has to reach from the origin, in the scene's own unit.
+   * @param extent - How far the grid has to reach from its centre, in the scene's own unit.
    */
   public setExtent(extent: number): void {
     const step: number = toRenderGridStep(extent * 2, this.options.cells);
@@ -73,6 +73,15 @@ export class RenderGrid {
 
     this.gridStep = step;
     this.replaceGrid(this.createGrid(step));
+  }
+
+  /**
+   * Moves the grid off the origin, for one marking something that is not there.
+   *
+   * @param center - Where the middle of the grid sits, in the scene's own coordinates.
+   */
+  public setCenter(center: Vector3): void {
+    this.object.position.copy(center);
   }
 
   /**

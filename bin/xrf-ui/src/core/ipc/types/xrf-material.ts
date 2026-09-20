@@ -228,38 +228,29 @@ export enum EXraySurfaceDraw {
   OPAQUE = "opaque",
   /** Texels below the reference are killed and the rest are drawn opaque, in the g-buffer pass. */
   ALPHA_TESTED = "alphaTested",
-  /**
-   * Drawn in a forward pass, source alpha over inverse source alpha, testing against the authored reference.
-   *
-   * Reached when the author asked for something the g-buffer cannot hold - a partly transparent surface, or one it
-   * wants sorted - so the surface leaves the deferred path entirely. Depth is tested and not written
-   * (`Layers/xrRender/blenders/blender_deffer_model.cpp`), which is what lets one blended surface show through
-   * another.
-   */
+  /** Drawn in a forward pass, source alpha over inverse source alpha, testing against the authored reference. */
   BLENDED = "blended",
+  /** Added to what is behind it, which is how a glow lights the air rather than covering it. */
+  ADDED = "added",
+  /**
+   * Multiplied into what is behind it, which is how a decal darkens the surface it is laid on rather than replacing
+   * it. `is_doubled` is `MUL_2X`, whose destination factor is the source colour rather than zero.
+   */
+  MULTIPLIED = "multiplied",
 }
 
-/**
- * How the renderer draws a surface once its blender is compiled: opaque, cut out, or blended.
- *
- * The three cases a viewer has to reproduce, and the only three a mesh surface reaches. Which one a blender comes to
- * is [`crate::XraySurfaceResolver`]'s answer; what each one means is here.
- *
- * Modelled for the deferred renderer, R2 and above, because that is what the game runs and what a preview is compared
- * against. R1 differs in one place and the descriptor carries the knobs to say so: there the switch alone selects an
- * alpha blended pass and the authored reference is the test, where the deferred path tests against a constant.
- */
+/** How the renderer draws a surface once its blender is compiled. */
 export type XraySurfaceDraw =
   /** Alpha is not read: whatever the texture carries in its fourth channel is ignored, and every texel is drawn. */
   | { kind: "opaque" }
   /** Texels below the reference are killed and the rest are drawn opaque, in the g-buffer pass. */
   | { kind: "alphaTested"; reference: number }
+  /** Drawn in a forward pass, source alpha over inverse source alpha, testing against the authored reference. */
+  | { kind: "blended"; reference: number }
+  /** Added to what is behind it, which is how a glow lights the air rather than covering it. */
+  | { kind: "added"; reference: number }
   /**
-   * Drawn in a forward pass, source alpha over inverse source alpha, testing against the authored reference.
-   *
-   * Reached when the author asked for something the g-buffer cannot hold - a partly transparent surface, or one it
-   * wants sorted - so the surface leaves the deferred path entirely. Depth is tested and not written
-   * (`Layers/xrRender/blenders/blender_deffer_model.cpp`), which is what lets one blended surface show through
-   * another.
+   * Multiplied into what is behind it, which is how a decal darkens the surface it is laid on rather than replacing
+   * it. `is_doubled` is `MUL_2X`, whose destination factor is the source colour rather than zero.
    */
-  | { kind: "blended"; reference: number };
+  | { kind: "multiplied"; isDoubled: boolean };

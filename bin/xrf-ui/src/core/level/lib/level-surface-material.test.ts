@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
-import { Texture, Vector2 } from "three";
+import { Texture } from "three";
 
 import {
   createSurfaceMaterial,
@@ -30,7 +30,6 @@ function lookup(...references: Array<string>): ILevelTextureLookup {
 
 function surface(overrides: Partial<ILevelSurface> = {}): ILevelSurface {
   return {
-    hasVertexColors: false,
     render: OPAQUE_RENDER_SURFACE,
     surface: mockSectorSurface(),
     ...overrides,
@@ -51,7 +50,7 @@ function applied(dressed: ILevelSurfaceMaterial): Nullable<{ scale: number; text
   const uniforms = shader.uniforms as Record<string, { value: unknown }>;
 
   return uniforms.xrayDetailEnabled?.value
-    ? { scale: (uniforms.xrayDetailParams.value as Vector2).x, texture: uniforms.xrayDetail.value as Texture }
+    ? { scale: uniforms.xrayDetailScale.value as number, texture: uniforms.xrayDetail.value as Texture }
     : null;
 }
 
@@ -74,30 +73,32 @@ describe("level surface material", () => {
     expect(dressed.material.alphaTest).toBe(0);
   });
 
-  it("binds a lightmap and the baked vertex colour, and takes both off together", () => {
-    const lit: ILevelSurface = surface({
-      hasVertexColors: true,
-      surface: mockSectorSurface({ lightmaps: ["lmap#1_1", "lmap#1_2"] }),
-    });
+  it("binds the second texture as occlusion, and takes it off again", () => {
+    const lit: ILevelSurface = surface({ surface: mockSectorSurface({ lightmaps: ["lmap#1_1", "lmap#1_2"] }) });
     const textures: ILevelTextureLookup = lookup("stone", "lmap#1_1");
     const dressed: ILevelSurfaceMaterial = createSurfaceMaterial(lit, textures, options());
 
     // The first of the pair only: xrLC writes two and this samples one, which is the approximation this viewer makes.
-    expect(dressed.material.lightMap).toBe(textures.get("lmap#1_1")?.texture);
-    expect(dressed.material.vertexColors).toBe(true);
+    expect(dressed.material.aoMap).toBe(textures.get("lmap#1_1")?.texture);
+    expect(dressed.material.lightMap).toBeNull();
 
     dressSurfaceMaterial(dressed, lit, textures, options({ isLit: false }));
 
-    expect(dressed.material.lightMap).toBeNull();
-    expect(dressed.material.vertexColors).toBe(false);
+    expect(dressed.material.aoMap).toBeNull();
   });
 
-  it("never switches vertex colour on for geometry that carries none", () => {
-    // Switching it on without the attribute leaves the shader reading a buffer that is not bound, which draws
-    // nothing at all rather than drawing the surface unlit.
+  // `v_static.color` is `(r,g,b,dir-occlusion)` and every deferred vertex shader reads the fourth component alone, so
+  // the three the viewer used to multiply by are R1's baked light. Multiplying by them drew a level grey wherever
+  // xrLC had baked a shadow, and the surface's own texture with it.
+  it("never multiplies a surface by the vertex colour the deferred renderer ignores", () => {
     const dressed: ILevelSurfaceMaterial = createSurfaceMaterial(surface(), lookup("stone"), options());
 
     expect(dressed.material.vertexColors).toBe(false);
+  });
+
+  // `def_gloss` is two of two hundred and fifty five, so a level surface has no specular to speak of.
+  it("draws a surface fully rough, as the gloss the g-buffer writes comes to", () => {
+    expect(createSurfaceMaterial(surface(), lookup("stone"), options()).material.roughness).toBe(1);
   });
 
   it("dresses a surface with its base texture and clears the tint", () => {

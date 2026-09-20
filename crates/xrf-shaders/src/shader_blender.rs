@@ -83,6 +83,11 @@ impl ShaderBlender {
     self.find_property(name).and_then(ShaderBlenderProperty::integer)
   }
 
+  /// The item a token property of that name selects, when it is one.
+  pub fn token(&self, name: &str) -> Option<u32> {
+    self.find_property(name).and_then(ShaderBlenderProperty::token)
+  }
+
   /// The value of a boolean property of that name, when it is one.
   pub fn boolean(&self, name: &str) -> Option<bool> {
     self.find_property(name).and_then(ShaderBlenderProperty::boolean)

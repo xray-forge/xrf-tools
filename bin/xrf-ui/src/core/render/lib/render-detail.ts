@@ -1,11 +1,12 @@
-import { IUniform, MeshStandardMaterial, Texture, Vector2, WebGLProgramParametersWithUniforms } from "three";
+import { IUniform, MeshStandardMaterial, Texture, WebGLProgramParametersWithUniforms } from "three";
 
 import { Nullable } from "@/lib/types/general";
 
 /**
- * Metres past which a detail texture has faded to neutral, `r__dtex_range` (`Layers/xrRender/TextureDescrManager.cpp`).
+ * Metres past which R1's detail modulation has faded to neutral, `r__dtex_range`
+ * (`Layers/xrRender/TextureDescrManager.cpp`).
  */
-export const XRAY_DETAIL_RANGE: number = 50;
+export const XRAY_R1_DETAIL_RANGE: number = 50;
 
 /**
  * The detail texture a surface modulates its diffuse with, uploaded, and how densely it lies over it.
@@ -28,22 +29,22 @@ export interface IXrayDetailShading {
 
 const FRAGMENT_PARS: string = `
 uniform sampler2D xrayDetail;
-uniform vec2 xrayDetailParams;
+uniform float xrayDetailScale;
 uniform float xrayDetailEnabled;
 `;
 
 /**
- * `calc_detail` and the modulation the `_dt` shaders apply with it, in the shader's own spelling.
+ * The modulation the deferred `_d` shaders apply, in the shader's own spelling.
+ *
+ * `S.base.rgb = S.base.rgb * detail.rgb * 2` (`shaders/r2/sload.h`), over `tcdbump`, which the vertex shader builds as
+ * `tcdh * dt_params` - the base coordinate times the descriptor's tiling, with no distance term in it.
  */
 export const XRAY_DETAIL_FACTOR_GLSL: string = `
-float xrayDetailRange = length( vViewPosition ) * xrayDetailParams.y;
-float xrayDetailFade = min( xrayDetailRange * xrayDetailRange, 1.0 );
-vec3 xrayDetailTexel = texture2D( xrayDetail, vMapUv * xrayDetailParams.x ).rgb;
-vec3 xrayDetailFactor = ( xrayDetailTexel * ( 1.0 - xrayDetailFade ) + 0.5 * xrayDetailFade ) * 2.0;
+vec3 xrayDetailFactor = texture2D( xrayDetail, vMapUv * xrayDetailScale ).rgb * 2.0;
 `;
 
 /**
- * Modulates the diffuse the base texture just produced, which is where the engine's own `_dt` shaders modulate it.
+ * Modulates the diffuse the base texture just produced, which is where the engine's own `_d` shaders modulate it.
  */
 const FRAGMENT_MAP: string = `
 #include <map_fragment>
@@ -56,17 +57,13 @@ ${XRAY_DETAIL_FACTOR_GLSL}
 `;
 
 /**
- * What one texel of a detail texture multiplies the diffuse by at a distance, as the shader computes it.
+ * What one texel of a detail texture multiplies the diffuse by, as the deferred shader computes it.
  *
  * @param texel - One channel of the detail texel, in `[0, 1]`.
- * @param distance - Distance from the camera to the surface, in metres.
- * @returns The factor the channel is multiplied by, which is one wherever the detail has faded out.
+ * @returns The factor the channel is multiplied by, one for the mid grey an average detail texture averages to.
  */
-export function toXrayDetailFactor(texel: number, distance: number): number {
-  const range: number = distance / XRAY_DETAIL_RANGE;
-  const fade: number = Math.min(range * range, 1);
-
-  return (texel * (1 - fade) + 0.5 * fade) * 2;
+export function toXrayDetailFactor(texel: number): number {
+  return texel * 2;
 }
 
 /**
@@ -77,12 +74,12 @@ export function toXrayDetailFactor(texel: number, distance: number): number {
  */
 export function applyXrayDetailShading(material: MeshStandardMaterial): IXrayDetailShading {
   const texture: IUniform<Nullable<Texture>> = { value: null };
-  const params: IUniform<Vector2> = { value: new Vector2(1, 1 / XRAY_DETAIL_RANGE) };
+  const scale: IUniform<number> = { value: 1 };
   const enabled: IUniform<number> = { value: 0 };
 
   material.onBeforeCompile = (shader: WebGLProgramParametersWithUniforms): void => {
     shader.uniforms.xrayDetail = texture;
-    shader.uniforms.xrayDetailParams = params;
+    shader.uniforms.xrayDetailScale = scale;
     shader.uniforms.xrayDetailEnabled = enabled;
 
     shader.fragmentShader = shader.fragmentShader
@@ -99,7 +96,7 @@ export function applyXrayDetailShading(material: MeshStandardMaterial): IXrayDet
       enabled.value = detail ? 1 : 0;
 
       if (detail) {
-        params.value.setX(detail.scale);
+        scale.value = detail.scale;
       }
     },
   };

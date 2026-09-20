@@ -1739,12 +1739,7 @@ export type RuntimeSnapshot = {
 /** What the viewer is showing, paired with where it came from. */
 export type SelectedLevelDescription = {
   source: LevelSource;
-  /**
-   * The roots the level and its textures were resolved in, centred on the level itself.
-   *
-   * Reported rather than left to the caller so that a viewer restoring this selection reads its textures out of
-   * exactly what the open searched, which is the only way a restored level is dressed the way the opened one was.
-   */
+  /** The roots the level and its textures were resolved in, centred on the level itself. */
   roots: XrayRoots;
   xrlcVersion: number;
   xrlcQuality: number;

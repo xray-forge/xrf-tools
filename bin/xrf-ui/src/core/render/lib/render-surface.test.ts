@@ -1,4 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
+import { AdditiveBlending, CustomBlending, DstColorFactor, NormalBlending, SrcColorFactor, ZeroFactor } from "three";
 
 import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
 import {
@@ -22,7 +23,7 @@ describe("toRenderSurface", () => {
     // A cut-out is opaque everywhere it is not discarded, so it keeps writing depth and stays out of the sorted pass.
     const surface: IRenderSurface = toRenderSurface(mockAlphaSurfaceDescriptor());
 
-    expect(surface).toEqual({ alphaTest: 200 / 255, detail: null, isDepthWritten: true, isTransparent: false });
+    expect(surface).toEqual({ ...OPAQUE_RENDER_SURFACE, alphaTest: 200 / 255 });
   });
 
   it("composites a blended surface and stops it writing depth", () => {
@@ -30,17 +31,51 @@ describe("toRenderSurface", () => {
       mockAlphaSurfaceDescriptor({ draw: { kind: "blended", reference: 32 } })
     );
 
-    expect(surface).toEqual({ alphaTest: 32 / 255, detail: null, isDepthWritten: false, isTransparent: true });
+    expect(surface).toEqual({
+      ...OPAQUE_RENDER_SURFACE,
+      alphaTest: 32 / 255,
+      isDepthWritten: false,
+      isTransparent: true,
+    });
+    expect(surface.blend.blending).toBe(NormalBlending);
   });
 
   it("keeps a blended surface with no reference sampling everything it draws", () => {
     // `models\window` and every other `MODELEbB`: the class passes no reference, so nothing is discarded.
     expect(toRenderSurface(mockAlphaSurfaceDescriptor({ draw: { kind: "blended", reference: 0 } }))).toEqual({
-      alphaTest: 0,
-      detail: null,
+      ...OPAQUE_RENDER_SURFACE,
       isDepthWritten: false,
       isTransparent: true,
     });
+  });
+
+  // `effects\glow`, which a level names for every lamp: added rather than composited, so it brightens what is
+  // behind it. Drawn opaque it was a black rectangle standing in the air.
+  it("adds a glow to what is behind it", () => {
+    const surface: IRenderSurface = toRenderSurface(
+      mockAlphaSurfaceDescriptor({ draw: { kind: "added", reference: 255 } })
+    );
+
+    expect(surface.blend.blending).toBe(AdditiveBlending);
+    expect(surface.alphaTest).toBeCloseTo(1);
+    expect(surface.isDepthWritten).toBe(false);
+    expect(surface.isTransparent).toBe(true);
+  });
+
+  // `effects\wallmarkmult`, which a level names for every decal. Three.js has no named blending for either
+  // multiply, so both are stated as factors.
+  it("multiplies a decal into the surface it is laid on", () => {
+    const single: IRenderSurface = toRenderSurface(
+      mockAlphaSurfaceDescriptor({ draw: { isDoubled: false, kind: "multiplied" } })
+    );
+    const doubled: IRenderSurface = toRenderSurface(
+      mockAlphaSurfaceDescriptor({ draw: { isDoubled: true, kind: "multiplied" } })
+    );
+
+    expect(single.blend).toEqual({ blendDst: ZeroFactor, blendSrc: DstColorFactor, blending: CustomBlending });
+    expect(doubled.blend).toEqual({ blendDst: SrcColorFactor, blendSrc: DstColorFactor, blending: CustomBlending });
+    // The multiplying equations state no reference, so nothing is discarded before the multiply.
+    expect(doubled.alphaTest).toBe(0);
   });
 
   it("carries the detail texture an opaque surface is modulated with", () => {
@@ -49,10 +84,8 @@ describe("toRenderSurface", () => {
     );
 
     expect(surface).toEqual({
-      alphaTest: 0,
+      ...OPAQUE_RENDER_SURFACE,
       detail: { reference: "detail\\detail_grnd_earth", scale: 150 },
-      isDepthWritten: true,
-      isTransparent: false,
     });
   });
 

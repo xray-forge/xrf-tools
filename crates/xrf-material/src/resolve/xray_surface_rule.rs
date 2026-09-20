@@ -1,6 +1,7 @@
 use xrf_shaders::{ShaderBlender, ShaderBlenderClass};
 
 use crate::data::xray_surface_draw::XraySurfaceDraw;
+use crate::resolve::xray_screen_set_blending::XrayScreenSetBlending;
 use crate::resolve::xray_surface_alpha::XraySurfaceAlpha;
 
 /// The alpha rule a blender class follows: which knobs it reads, and what the deferred renderer compiles from them.
@@ -21,6 +22,9 @@ pub(crate) enum XraySurfaceRule {
   /// `B_DETAIL`: always the `_aref` shader variant, whatever the switch says
   /// (`blenders/Blender_detail_still_deferred.cpp`).
   Detail,
+  /// `B_SCREEN_SET`: a blend equation chosen outright by a token rather than derived from a switch
+  /// (`blenders/Blender_Screen_SET.cpp`). A level reaches it through its decals, its glows and its LOD imposters.
+  ScreenSet,
   /// The classes whose compile reads no alpha at all, so their surfaces are opaque however the texture is authored.
   Opaque,
 }
@@ -50,6 +54,7 @@ impl XraySurfaceRule {
       ShaderBlenderClass::DEFAULT_AREF | ShaderBlenderClass::VERT_AREF => Some(Self::LevelAref),
       ShaderBlenderClass::TREE => Some(Self::Tree),
       ShaderBlenderClass::DETAIL => Some(Self::Detail),
+      ShaderBlenderClass::SCREEN_SET => Some(Self::ScreenSet),
       ShaderBlenderClass::DEFAULT
       | ShaderBlenderClass::VERT
       | ShaderBlenderClass::LM_BMM_D
@@ -63,8 +68,24 @@ impl XraySurfaceRule {
     XraySurfaceAlpha::read(blender, self.switch(), self.reference())
   }
 
-  /// The pass the deferred renderer compiles for these knobs.
-  pub(crate) fn draw(self, alpha: XraySurfaceAlpha) -> XraySurfaceDraw {
+  /// The pass the renderer compiles for one blender, which is the knobs this rule reads out of it.
+  pub(crate) fn draw(self, blender: &ShaderBlender, alpha: XraySurfaceAlpha) -> XraySurfaceDraw {
+    // The one class that names its equation outright. An index no build of it defines leaves the surface drawn as
+    // written, which is what the engine's own `switch` does with one.
+    if self == Self::ScreenSet {
+      return blender
+        .token(XrayScreenSetBlending::PROPERTY)
+        .and_then(XrayScreenSetBlending::of)
+        .map_or(XraySurfaceDraw::Opaque, |blending| {
+          blending.draw(alpha.reference.unwrap_or(Self::BLENDED_DEFAULT_REFERENCE))
+        });
+    }
+
+    self.compile(alpha)
+  }
+
+  /// The pass the deferred renderer compiles for the classes whose alpha is a switch and a reference.
+  fn compile(self, alpha: XraySurfaceAlpha) -> XraySurfaceDraw {
     let cut_out: XraySurfaceDraw = XraySurfaceDraw::AlphaTested {
       reference: XraySurfaceDraw::DEFERRED_ALPHA_REFERENCE,
     };
@@ -96,8 +117,8 @@ impl XraySurfaceRule {
       Self::Tree if alpha.is_switched_on() => cut_out,
       // The one rule that reports a switch and ignores it: the `_aref` variant is compiled either way.
       Self::Detail => cut_out,
-      // Every rule whose switch is off, and the classes that read no alpha at all.
-      Self::Model | Self::EnvironmentMapped | Self::Tree | Self::Opaque => XraySurfaceDraw::Opaque,
+      // Every rule whose switch is off, the classes that read no alpha at all, and the token rule `draw` answered.
+      Self::Model | Self::EnvironmentMapped | Self::Tree | Self::ScreenSet | Self::Opaque => XraySurfaceDraw::Opaque,
     }
   }
 
@@ -107,14 +128,14 @@ impl XraySurfaceRule {
       Self::Model => Some(Self::MODEL_SWITCH),
       Self::EnvironmentMapped => Some(Self::ENVIRONMENT_SWITCH),
       Self::LevelAref | Self::Tree | Self::Detail => Some(Self::LEVEL_SWITCH),
-      Self::Opaque => None,
+      Self::ScreenSet | Self::Opaque => None,
     }
   }
 
   /// The class's alpha reference, or `None` for a rule whose classes write none.
   fn reference(self) -> Option<&'static str> {
     match self {
-      Self::Model | Self::LevelAref => Some(Self::REFERENCE),
+      Self::Model | Self::LevelAref | Self::ScreenSet => Some(Self::REFERENCE),
       Self::EnvironmentMapped | Self::Tree | Self::Detail | Self::Opaque => None,
     }
   }

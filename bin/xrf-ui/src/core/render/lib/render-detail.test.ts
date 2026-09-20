@@ -1,12 +1,11 @@
 import { describe, expect, it } from "@jest/globals";
-import { MeshStandardMaterial, Texture, Vector2, WebGLProgramParametersWithUniforms } from "three";
+import { MeshStandardMaterial, Texture, WebGLProgramParametersWithUniforms } from "three";
 
 import {
   applyXrayDetailShading,
   IXrayDetailShading,
   toXrayDetailFactor,
   XRAY_DETAIL_FACTOR_GLSL,
-  XRAY_DETAIL_RANGE,
 } from "@/core/render/lib/render-detail";
 
 function mockShader(): WebGLProgramParametersWithUniforms {
@@ -35,24 +34,16 @@ describe("toXrayDetailFactor", () => {
   // Mid grey is the neutral element of a doubled modulate, which is what makes an average detail texture leave the
   // surface it lies over at the brightness the base texture authored.
   it("leaves mid grey neutral and doubles what is brighter", () => {
-    expect(toXrayDetailFactor(0.5, 0)).toBeCloseTo(1);
-    expect(toXrayDetailFactor(1, 0)).toBeCloseTo(2);
-    expect(toXrayDetailFactor(0, 0)).toBeCloseTo(0);
+    expect(toXrayDetailFactor(0.5)).toBeCloseTo(1);
+    expect(toXrayDetailFactor(1)).toBeCloseTo(2);
+    expect(toXrayDetailFactor(0)).toBeCloseTo(0);
   });
 
-  // The fade is what stops a texture tiled 150 times across a terrain from turning into noise at the horizon: past
-  // the range every texel reads as neutral, so a distant surface is drawn exactly as an undetailed one is.
-  it("fades every texel to neutral by the end of the range", () => {
-    expect(toXrayDetailFactor(0, XRAY_DETAIL_RANGE)).toBeCloseTo(1);
-    expect(toXrayDetailFactor(1, XRAY_DETAIL_RANGE)).toBeCloseTo(1);
-    expect(toXrayDetailFactor(1, XRAY_DETAIL_RANGE * 4)).toBeCloseTo(1);
-  });
-
-  it("fades with the square of the distance, as the engine does", () => {
-    // Half the range is a quarter of the way faded, which is what `min( dtl * dtl, 1 )` comes to.
-    const fade: number = 0.25;
-
-    expect(toXrayDetailFactor(1, XRAY_DETAIL_RANGE / 2)).toBeCloseTo((1 * (1 - fade) + 0.5 * fade) * 2);
+  // The deferred renderer applies the modulation whatever the distance. R1 fades it out by `r__dtex_range`, and
+  // reproducing that fade here drew a level detailed for fifty metres and flat past it - which is what the report
+  // "details show only at the closest distance" was.
+  it("does not fade with distance, because the renderer this reproduces does not", () => {
+    expect(toXrayDetailFactor(1)).toBeCloseTo(2);
   });
 });
 
@@ -67,7 +58,7 @@ describe("applyXrayDetailShading", () => {
     );
     // Only where three.js carries the base coordinate, which is the coordinate the detail is laid out in.
     expect(shader.fragmentShader).toContain("#ifdef USE_MAP");
-    expect(Object.keys(shader.uniforms).sort()).toEqual(["xrayDetail", "xrayDetailEnabled", "xrayDetailParams"]);
+    expect(Object.keys(shader.uniforms).sort()).toEqual(["xrayDetail", "xrayDetailEnabled", "xrayDetailScale"]);
     expect(material.customProgramCacheKey()).toBe("xray-detail");
   });
 
@@ -89,16 +80,16 @@ describe("applyXrayDetailShading", () => {
 
     expect(shader.uniforms.xrayDetail.value).toBe(texture);
     expect(shader.uniforms.xrayDetailEnabled.value).toBe(1);
-    expect((shader.uniforms.xrayDetailParams.value as Vector2).x).toBe(150);
+    expect(shader.uniforms.xrayDetailScale.value).toBe(150);
     expect(material.version).toBe(version);
   });
 
-  it("keeps the fade range the engine's own, whatever tiling a surface asks for", () => {
-    const { shader, shading } = patched();
+  // `tcdbump` is `tcdh * dt_params` and nothing else: no view position reaches the detail coordinate.
+  it("lays the detail out on the base coordinate alone", () => {
+    const { shader } = patched();
 
-    shading.setDetail({ scale: 8, texture: new Texture() });
-
-    expect((shader.uniforms.xrayDetailParams.value as Vector2).y).toBeCloseTo(1 / XRAY_DETAIL_RANGE);
+    expect(shader.fragmentShader).toContain("vMapUv * xrayDetailScale");
+    expect(shader.fragmentShader).not.toContain("vViewPosition");
   });
 
   it("takes the modulation off without unbinding what it was modulating with", () => {

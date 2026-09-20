@@ -468,4 +468,68 @@ describe("LevelLoadService streaming progress", () => {
     expect(countCalls("plugin:levels|open_sector")).toBe(1);
     expect([...service.sectors.keys()]).toEqual([0]);
   });
+
+  // The defect: a read uploads its textures one at a time and adopts its sector only once every one of them has
+  // landed, so between the first upload and the adoption the sector is in no residency. Any other flow settling in
+  // that window computed what to keep without it and disposed exactly what it had just uploaded, and the sector then
+  // arrived dressed in disposed textures and drew white. A refresh hid it, because a restore reads it all again.
+  it("keeps the textures of a read still in flight, which are not resident yet", async () => {
+    const { level, description, buffer } = mockStreamable([outlineAt(0, 0), outlineAt(1, 20_000)]);
+    const { service } = mockInjectedService(LevelLoadService);
+    const { held, release } = createHeldCall();
+    const { held: reached, release: reach } = createHeldCall();
+
+    // Sector 0 names two, because the window only exists while one of a sector's textures is up and another is not.
+    // Sector 1 names neither, so what it keeps resident cannot be what sector 0 is waiting on.
+    function textured(sector: number): Array<SectorDescription["sections"][number]> {
+      return (sector === 0 ? ["stone", "grass"] : ["rock"]).map((textureName) => ({
+        ...description.sections[0],
+        surface: { ...description.sections[0].surface, textureName },
+      }));
+    }
+
+    setMockInvokeResponses({
+      ["plugin:assets|read_asset"]: async (args?: Record<string, unknown>) => {
+        if (String(args?.logicalPath).includes("grass")) {
+          reach();
+
+          await held;
+        }
+
+        return mockDdsFile();
+      },
+      ["plugin:levels|open_level"]: mockSessionResponse({
+        ...level,
+        textures: ["stone", "grass", "rock"].map((it) => mockLevelTextureReference(it)),
+      }),
+      ["plugin:levels|open_sector"]: mockSessionResponse((args?: Record<string, unknown>) => ({
+        ...description,
+        sections: textured(args?.sector as number),
+        sector: args?.sector as number,
+      })),
+      ["plugin:levels|read_sector"]: buffer,
+    });
+
+    await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS);
+
+    service.residency = { ...service.residency, maxSectors: 1, minSectors: 1 };
+
+    // Left running, and never awaited: the move below supersedes this flow, so its own promise is not what settles
+    // when the read it started finishes.
+    void service.stream(ORIGIN);
+
+    await reached;
+    // Two turns past the ask, so `stone` has resolved and been recorded while `grass` is still outstanding.
+    await Promise.resolve();
+    await Promise.resolve();
+
+    // A second move settles while that read is still in the window, and takes everything not resident with it.
+    await service.stream({ x: 20_000, y: 0, z: 0 });
+
+    release();
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(service.textures.get("stone")?.texture).toBeTruthy();
+  });
 });

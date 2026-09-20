@@ -2,6 +2,7 @@ import { Color, MeshStandardMaterial } from "three";
 
 import { SectorSurface } from "@/core/ipc/types/xrf-visual";
 import { ILevelTexture, ILevelTextureLookup } from "@/core/level/lib/level-texture-set";
+import { applyXrayHemiShading } from "@/core/render/lib/render-baked";
 import { applyXrayDetailShading, IXrayDetail, IXrayDetailShading } from "@/core/render/lib/render-detail";
 import { applyRenderSurface, createRenderMaterial } from "@/core/render/lib/render-material";
 import { IRenderDetail, IRenderSurface, OPAQUE_RENDER_SURFACE } from "@/core/render/lib/render-surface";
@@ -9,13 +10,19 @@ import { Nullable } from "@/lib/types/general";
 
 /** Nothing a compiled level declares is metal, so the surfaces are shaded as the dielectrics xrLC assumes. */
 const SURFACE_METALNESS: number = 0.0;
-const SURFACE_ROUGHNESS: number = 0.9;
+
+/**
+ * Fully rough, because the deferred renderer writes one gloss for every level surface and it is `def_gloss`, two of
+ * two hundred and fifty five (`shaders/r2/common.h`). A level's surfaces carry no specular worth the name, and drawing
+ * them with one puts a sheen on ground and bark that the game has nowhere.
+ */
+const SURFACE_ROUGHNESS: number = 1.0;
 
 /** Turns of the golden angle, which spreads consecutive shader ids rather than grouping them into near hues. */
 const HUE_STEP: number = 137.508;
 
-/** Lightmaps are baked light rather than a texture, so they multiply the surface rather than replacing it. */
-const LIGHTMAP_INTENSITY: number = 1.0;
+/** The hemisphere term is an occlusion factor in its own right, so it is applied whole. */
+const HEMI_INTENSITY: number = 1.0;
 
 /** How the surfaces of a level are drawn while a toggle is on. */
 export interface ILevelSurfaceOptions {
@@ -26,7 +33,10 @@ export interface ILevelSurfaceOptions {
   isSurfaceColored: boolean;
   /** Whether a surface whose shader reads alpha is cut out and blended as the engine does, or drawn solid. */
   isAlphaVisible: boolean;
-  /** Whether the light xrLC baked into the level is applied, or the level is drawn under the viewer's own light alone. */
+  /**
+   * Whether the hemisphere occlusion xrLC baked into the level is applied, or the level is drawn under the viewer's
+   * own light alone.
+   */
   isLit: boolean;
   /** Whether the tiled detail texture the engine modulates a surface with is applied, or the base texture stands alone. */
   isDetailed: boolean;
@@ -47,8 +57,6 @@ export interface ILevelSurface {
   surface: SectorSurface;
   /** What that entry's blender compiles to. */
   render: IRenderSurface;
-  /** Whether the geometry drawn with it carries the vertex colour xrLC baked, which not every declaration does. */
-  hasVertexColors: boolean;
 }
 
 /**
@@ -94,6 +102,11 @@ export function createSurfaceMaterial(
     material,
   };
 
+  // Every level surface, whether or not its table names a second texture: the patch reads the channel the engine
+  // reads and does nothing at all where nothing is bound, and one patch over the whole level keeps its materials on
+  // one program key.
+  applyXrayHemiShading(material);
+
   dressSurfaceMaterial(dressed, surface, textures, options);
 
   return dressed;
@@ -117,16 +130,18 @@ export function dressSurfaceMaterial(
   const { surface } = drawn;
   const base: Nullable<ILevelTexture> =
     options.isTextured && textures && surface.textureName ? textures.get(surface.textureName) : null;
-  const lightmap: Nullable<ILevelTexture> =
+  const hemi: Nullable<ILevelTexture> =
     options.isLit && textures && surface.lightmaps[0] ? textures.get(surface.lightmaps[0]) : null;
 
   material.wireframe = options.isWireframe;
   material.map = base?.texture ?? null;
-  material.lightMap = lightmap?.texture ?? null;
-  material.lightMapIntensity = LIGHTMAP_INTENSITY;
-  // Only where the geometry carries the attribute: switching it on without one leaves the shader reading a buffer
-  // that is not bound, which draws nothing at all rather than drawing it unlit.
-  material.vertexColors = options.isLit && drawn.hasVertexColors;
+  // Bound as occlusion rather than as light, which is what the deferred renderer reads out of it. See
+  // `render-baked.ts` for why the file a level calls its lightmap is not one.
+  material.aoMap = hemi?.texture ?? null;
+  material.aoMapIntensity = HEMI_INTENSITY;
+  // Never: `v_static.color` is `(r,g,b,dir-occlusion)` and the deferred renderer reads the fourth component alone, so
+  // multiplying a surface by the other three dyes it with a colour the game never shows.
+  material.vertexColors = false;
   // A textured surface takes its colour from the texture, so the tint comes off or every surface is dyed.
   material.color = material.map || !options.isSurfaceColored ? new Color(0xffffff) : getShaderColor(surface.shaderId);
 
@@ -134,8 +149,8 @@ export function dressSurfaceMaterial(
 
   applyRenderSurface(material, options.isAlphaVisible ? drawn.render : OPAQUE_RENDER_SURFACE);
 
-  // One flag for every change above: `alphaTest` and `vertexColors` both change the compiled program, and a material
-  // that has already drawn keeps its old one otherwise.
+  // One flag for every change above: `alphaTest` and whether an occlusion map is bound both change the compiled
+  // program, and a material that has already drawn keeps its old one otherwise.
   material.needsUpdate = true;
 }
 

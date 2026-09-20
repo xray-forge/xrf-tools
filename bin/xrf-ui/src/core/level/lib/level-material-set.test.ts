@@ -12,7 +12,6 @@ import { Nullable } from "@/lib/types/general";
 /** A surface of one shader table entry, as two different sectors would each name it. */
 function surfaceOf(shaderId: number, overrides: Partial<ILevelSurface> = {}): ILevelSurface {
   return {
-    hasVertexColors: false,
     render: OPAQUE_RENDER_SURFACE,
     surface: mockSectorSurface({ shaderId }),
     ...overrides,
@@ -40,14 +39,15 @@ describe("LevelMaterialSet", () => {
     expect(set.size).toBe(1);
   });
 
-  it("keeps a surface whose geometry carries baked colour apart from one whose does not", () => {
-    // A material reading a vertex colour that is not bound draws nothing at all, so the two cannot share one.
+  // One row, one material, whatever geometry names it: what a surface is drawn with is the row's answer, and
+  // nothing about a sector's attributes changes it now that no attribute is read as light.
+  it("shares one material between two sectors naming one row", () => {
     const set: LevelMaterialSet = new LevelMaterialSet();
 
     set.claim(surfaceOf(7));
-    set.claim(surfaceOf(7, { hasVertexColors: true }));
+    set.claim(surfaceOf(7));
 
-    expect(set.size).toBe(2);
+    expect(set.size).toBe(1);
   });
 
   it("tells two shader table entries apart", () => {

@@ -19,7 +19,7 @@ import {
   planLevelResidency,
 } from "@/core/level/lib/level-residency";
 import { ILoadedSector, LevelSectorSet } from "@/core/level/lib/level-sector-set";
-import { listSectorTextures } from "@/core/level/lib/level-sector-textures";
+import { ISectorTextureRequest, listSectorTextures } from "@/core/level/lib/level-sector-textures";
 import { createSectorViews, ISectorViews } from "@/core/level/lib/level-sector-views";
 import { ILevelTextureLookup, LevelTextureSet } from "@/core/level/lib/level-texture-set";
 import { AsyncState } from "@/lib/async-state";
@@ -63,6 +63,9 @@ export class LevelLoadService {
    * The read in flight for each sector, so a second ask joins it rather than starting another.
    */
   private readonly reading: Map<string, Promise<void>> = new Map();
+
+  /** What each read in flight has claimed, so nothing evicts a texture a sector on its way is about to draw with. */
+  private readonly claimed: Map<string, ReadonlyArray<ISectorTextureRequest>> = new Map();
 
   @Observable()
   public level: AsyncState<IOpenLevel> = AsyncState.idle();
@@ -280,12 +283,14 @@ export class LevelLoadService {
       return reading;
     }
 
-    const started: Promise<void> = this.readSector(sessionId, sector, surfaces)
+    const started: Promise<void> = this.readSector(key, sessionId, sector, surfaces)
       .catch((error: unknown) => {
         this.log.error(`Failed to read sector ${sector}:`, transformError(error));
       })
       .finally(() => {
         this.reading.delete(key);
+        // Released only once the sector is resident or has been dropped, which is what closes the window above.
+        this.claimed.delete(key);
       });
 
     this.reading.set(key, started);
@@ -296,11 +301,13 @@ export class LevelLoadService {
   /**
    * Packs one sector on the backend and takes ownership of what comes back.
    *
+   * @param key - What this read is tracked under, which is also what its texture claim is held under.
    * @param sessionId - The level opening the sector belongs to.
    * @param sector - Sector to read, by its index in the sectors chunk.
    * @param surfaces - The level's resolved shader table.
    */
   private async readSector(
+    key: string,
     sessionId: string,
     sector: number,
     surfaces: ReadonlyArray<XraySurfaceDescriptor>
@@ -317,8 +324,14 @@ export class LevelLoadService {
     // Joined against the table the open resolved, so a surface arrives already knowing whether it is cut out.
     const views: ISectorViews = createSectorViews(snapshot.value, buffer, surfaces);
 
+    // Claimed before the upload rather than after it: what protects these textures has to be in place before
+    // anything can be disposed for not being resident.
+    const requested: ReadonlyArray<ISectorTextureRequest> = listSectorTextures(views);
+
+    this.claimed.set(key, requested);
+
     // Before the sector is published, so a surface is never drawn untextured for a frame and then corrected.
-    await this.loaded.load(listSectorTextures(views));
+    await this.loaded.load(requested);
 
     // A read outlives the plan that asked for it, so it can outlive the level too: a sector of a level nobody has
     // open any more is dropped rather than adopted into whatever is open now.
@@ -352,13 +365,20 @@ export class LevelLoadService {
   }
 
   /**
-   * @returns Every texture reference the resident sectors name, which is what is worth keeping uploaded.
+   * @returns Every texture reference a resident sector names or a read in flight has claimed, which is what is worth
+   *   keeping uploaded.
    */
   private listResidentTextures(): Set<string> {
     const references: Set<string> = new Set();
 
     for (const loaded of this.held.snapshot().values()) {
       for (const request of listSectorTextures(loaded.views)) {
+        references.add(request.reference);
+      }
+    }
+
+    for (const requests of this.claimed.values()) {
+      for (const request of requests) {
         references.add(request.reference);
       }
     }

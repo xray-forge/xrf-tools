@@ -17,9 +17,6 @@ use crate::resolve::xray_surface_rule::XraySurfaceRule;
 
 /// Answers how a surface is drawn from the shader name it declares and the textures it dresses with.
 pub struct XraySurfaceResolver<'probe, 'vfs> {
-  /// Kept because a surface is not answerable from `shaders.xr` alone: what details it is read from the descriptor
-  /// of its own base texture, the way `CBlender_Compile` reads it before compiling
-  /// (`Layers/xrRender/Blender_Recorder.cpp`).
   probe: &'probe XrayProbe<'vfs>,
   source: XraySurfaceSource,
 }
@@ -94,7 +91,7 @@ impl<'probe, 'vfs> XraySurfaceResolver<'probe, 'vfs> {
         alpha_reference: alpha.reference,
         is_strict_sorting: alpha.is_strict_sorting,
       },
-      draw: rule.draw(alpha),
+      draw: rule.draw(blender, alpha),
       detail: self.describe_detail(blender, textures),
     }
   }

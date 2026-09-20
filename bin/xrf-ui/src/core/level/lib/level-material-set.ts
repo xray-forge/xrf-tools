@@ -12,10 +12,10 @@ import { ILevelTextureLookup } from "@/core/level/lib/level-texture-set";
 import { Maybe, Nullable } from "@/lib/types/general";
 
 /**
- * What makes two surfaces the same material.
+ * What makes two surfaces the same material, which is the shader table row they were dressed from.
  */
 function getSurfaceKey(surface: ILevelSurface): string {
-  return `${surface.surface.shaderId}:${surface.hasVertexColors ? 1 : 0}`;
+  return String(surface.surface.shaderId);
 }
 
 /** One material, and the surface it was dressed from, so a view toggle can dress it again. */

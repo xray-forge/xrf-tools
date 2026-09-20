@@ -14,7 +14,7 @@ use crate::plugins::levels::state::{LevelState, PackedSector, SelectedLevel};
 /// What the viewer draws a level surface with, which is what a pack is worth carrying.
 const DRAWN_ATTRIBUTES: SectorAttributes = SectorAttributes {
   binormals: false,
-  colors: true,
+  colors: false,
   hemi: false,
   lightmap_uvs: true,
   normals: true,

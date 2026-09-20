@@ -1,3 +1,15 @@
+import {
+  AdditiveBlending,
+  Blending,
+  BlendingDstFactor,
+  BlendingSrcFactor,
+  CustomBlending,
+  DstColorFactor,
+  NormalBlending,
+  SrcColorFactor,
+  ZeroFactor,
+} from "three";
+
 import { EXraySurfaceDraw, XraySurfaceDescriptor, XraySurfaceDraw } from "@/core/ipc/types/xrf-material";
 import { Maybe, Nullable } from "@/lib/types/general";
 
@@ -12,6 +24,18 @@ export interface IRenderDetail {
 }
 
 /**
+ * How a surface is composited over what is already drawn.
+ */
+export interface IRenderBlending {
+  blending: Blending;
+  /** Set only for {@link CustomBlending}, where three.js takes the factors rather than naming the equation. */
+  blendSrc: Maybe<BlendingSrcFactor>;
+  blendDst: Maybe<BlendingDstFactor>;
+}
+
+const NORMAL_BLENDING: IRenderBlending = { blendDst: undefined, blendSrc: undefined, blending: NormalBlending };
+
+/**
  * The material state one surface is drawn with, translated out of what the engine compiles for its shader.
  */
 export interface IRenderSurface {
@@ -21,6 +45,8 @@ export interface IRenderSurface {
   isTransparent: boolean;
   /**  Whether the surface writes depth. */
   isDepthWritten: boolean;
+  /**  How it is composited, for the surfaces that are. */
+  blend: IRenderBlending;
   /**  The detail texture bound beside the diffuse, or null for a surface the engine details with none. */
   detail: Nullable<IRenderDetail>;
 }
@@ -28,6 +54,7 @@ export interface IRenderSurface {
 /** How a surface with nothing said about it is drawn, which is how the engine draws one whose shader it cannot find. */
 export const OPAQUE_RENDER_SURFACE: IRenderSurface = {
   alphaTest: 0,
+  blend: NORMAL_BLENDING,
   detail: null,
   isDepthWritten: true,
   isTransparent: false,
@@ -50,11 +77,22 @@ export function toRenderSurface(descriptor: Nullable<XraySurfaceDescriptor>): IR
     return detail ? { ...OPAQUE_RENDER_SURFACE, detail } : OPAQUE_RENDER_SURFACE;
   }
 
+  if (draw.kind === EXraySurfaceDraw.ALPHA_TESTED) {
+    return {
+      ...OPAQUE_RENDER_SURFACE,
+      alphaTest: draw.reference / ALPHA_REFERENCE_SCALE,
+      detail,
+    };
+  }
+
+  // Everything else leaves the opaque pass, so none of it writes depth: a mark laid on a wall that wrote depth would
+  // hide the wall it is a mark on, and two glows would cut holes in each other.
   return {
-    alphaTest: draw.reference / ALPHA_REFERENCE_SCALE,
+    alphaTest: toAlphaTest(draw),
+    blend: toRenderBlending(draw),
     detail,
-    isDepthWritten: draw.kind !== EXraySurfaceDraw.BLENDED,
-    isTransparent: draw.kind === EXraySurfaceDraw.BLENDED,
+    isDepthWritten: false,
+    isTransparent: true,
   };
 }
 
@@ -77,6 +115,30 @@ export function isAlphaRenderSurface(surface: IRenderSurface): boolean {
  */
 export function getRenderSurface(surfaces: ReadonlyArray<XraySurfaceDescriptor>, index: number): IRenderSurface {
   return toRenderSurface(surfaces[index] ?? null);
+}
+
+/** What a composited surface discards, which the multiplying equations state no reference for. */
+function toAlphaTest(draw: XraySurfaceDraw): number {
+  return "reference" in draw ? draw.reference / ALPHA_REFERENCE_SCALE : 0;
+}
+
+/** The equation a composited surface is drawn with. */
+function toRenderBlending(draw: XraySurfaceDraw): IRenderBlending {
+  switch (draw.kind) {
+    case EXraySurfaceDraw.ADDED:
+      return { blendDst: undefined, blendSrc: undefined, blending: AdditiveBlending };
+
+    case EXraySurfaceDraw.MULTIPLIED:
+      // `MUL` is `DESTCOLOR, ZERO` and `MUL_2X` is `DESTCOLOR, SRCCOLOR`, which three.js has no named blending for.
+      return {
+        blendDst: draw.isDoubled ? SrcColorFactor : ZeroFactor,
+        blendSrc: DstColorFactor,
+        blending: CustomBlending,
+      };
+
+    default:
+      return NORMAL_BLENDING;
+  }
 }
 
 /** The detail the descriptor names, dropped where it carries no tiling, since none can be invented for it. */
