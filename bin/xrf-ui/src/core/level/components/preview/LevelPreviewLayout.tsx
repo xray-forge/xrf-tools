@@ -10,14 +10,17 @@ import { LevelHeaderPanel } from "@/core/level/components/panels/LevelHeaderPane
 import { LevelLightingPanel } from "@/core/level/components/panels/LevelLightingPanel";
 import { LevelProblemsPanel } from "@/core/level/components/panels/LevelProblemsPanel";
 import { LevelStreamPanel } from "@/core/level/components/panels/LevelStreamPanel";
+import { LevelCameraAction } from "@/core/level/components/preview/LevelCameraAction";
+import { LevelPreviewCoordinates } from "@/core/level/components/preview/LevelPreviewCoordinates";
 import { LevelPreviewEmpty } from "@/core/level/components/preview/LevelPreviewEmpty";
+import { LevelPreviewMetrics } from "@/core/level/components/preview/LevelPreviewMetrics";
 import { LevelPreviewStatus } from "@/core/level/components/preview/LevelPreviewStatus";
 import { LevelPreviewToolbar } from "@/core/level/components/preview/LevelPreviewToolbar";
 import { ILevelPreviewViewportProps, LevelPreviewViewport } from "@/core/level/components/preview/LevelPreviewViewport";
+import { DEFAULT_LEVEL_CAMERA_OPTIONS, ILevelCameraOptions } from "@/core/level/lib/camera/level-camera-options";
 import { DEFAULT_LEVEL_LIGHTING, ILevelLighting } from "@/core/level/lib/lighting/level-lighting";
 import { ILevelPoint } from "@/core/level/lib/residency/level-residency";
 import { ILoadedSector } from "@/core/level/lib/sector/level-sector-set";
-import { hasDetailedSurfaces } from "@/core/level/lib/sector/level-sector-textures";
 import { ILevelTextureLookup } from "@/core/level/lib/texture/level-texture-set";
 import { DEFAULT_LEVEL_VIEW_OPTIONS, ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
 import { ILevelStreamProgress, LevelViewportService } from "@/core/level/services";
@@ -75,15 +78,11 @@ export function LevelPreviewLayout({
 }: ILevelPreviewLayoutProps): ReactElement {
   const [options, setOptions] = useState<ILevelViewOptions>(DEFAULT_LEVEL_VIEW_OPTIONS);
   const [lighting, setLighting] = useState<ILevelLighting>(DEFAULT_LEVEL_LIGHTING);
+  const [camera, setCamera] = useState<ILevelCameraOptions>(DEFAULT_LEVEL_CAMERA_OPTIONS);
   const viewport: LevelViewportService = useInjection(LevelViewportService);
 
   const isOpen: boolean = Boolean(name);
   const isStreaming: boolean = streaming.total > 0;
-
-  const hasDetail: boolean = useMemo(
-    () => [...sectors.values()].some((it: ILoadedSector) => hasDetailedSurfaces(it.views)),
-    [sectors]
-  );
 
   const activity: Nullable<string> = useMemo(() => {
     if (isLoading) {
@@ -134,9 +133,9 @@ export function LevelPreviewLayout({
         <LevelPreviewToolbar
           subtitle={subtitle}
           options={options}
-          hasDetail={hasDetail}
           onChangeOptions={setOptions}
           onBack={onBack}
+          actions={<LevelCameraAction camera={camera} onChange={setCamera} />}
         />
       }
     >
@@ -157,7 +156,16 @@ export function LevelPreviewLayout({
           className={cn("relative flex min-h-0 min-w-0 flex-1 overflow-hidden", className)}
         >
           {renderViewport ? (
-            renderViewport({ bounds, lighting, onCameraMoved, onReport: viewport.report, options, sectors, textures })
+            renderViewport({
+              bounds,
+              camera,
+              lighting,
+              onCameraMoved,
+              onReport: viewport.report,
+              options,
+              sectors,
+              textures,
+            })
           ) : (
             <LevelPreviewViewport
               sectors={sectors}
@@ -165,10 +173,18 @@ export function LevelPreviewLayout({
               textures={textures}
               options={options}
               lighting={lighting}
+              camera={camera}
               onCameraMoved={onCameraMoved}
               onReport={viewport.report}
             />
           )}
+
+          {isOpen ? (
+            <>
+              <LevelPreviewMetrics />
+              <LevelPreviewCoordinates />
+            </>
+          ) : null}
 
           {!isOpen && !isLoading ? <LevelPreviewEmpty error={error} onRetry={onRetry} /> : null}
 

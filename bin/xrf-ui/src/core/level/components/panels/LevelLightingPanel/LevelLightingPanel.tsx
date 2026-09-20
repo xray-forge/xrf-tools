@@ -6,7 +6,8 @@ import { LevelSunDescription } from "@/core/ipc/types/xrf-app";
 import { DEFAULT_LEVEL_LIGHTING, ILevelLighting } from "@/core/level/lib/lighting/level-lighting";
 import { toSunAngles } from "@/core/level/lib/lighting/level-sun";
 import { LevelLoadService } from "@/core/level/services";
-import { RenderLightingControls, RenderLightingSlider } from "@/core/render/components/lighting";
+import { RenderValueSlider } from "@/core/render/components/controls";
+import { RenderLightingControls } from "@/core/render/components/lighting";
 import { IRenderLighting } from "@/core/render/lib/lighting/render-lighting";
 import { EditorPanel, EditorPanelEmpty, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
@@ -62,14 +63,14 @@ export function LevelLightingPanel({
       </EditorPanelSection>
 
       <EditorPanelSection title={"Baked"}>
-        <RenderLightingSlider
+        <RenderValueSlider
           label={"Occlusion"}
           value={lighting.hemiStrength}
           min={0}
           max={1}
           step={0.05}
           format={formatPercent}
-          onChange={(hemiStrength) => set({ hemiStrength })}
+          onChange={(hemiStrength: number) => set({ hemiStrength })}
         />
       </EditorPanelSection>
 

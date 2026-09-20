@@ -181,17 +181,15 @@ describe("level surface material", () => {
     expect(applied(dressed)).toBeNull();
   });
 
-  it("takes the modulation off with its own toggle and with the textures it modulates", () => {
+  it("takes the modulation off with the textures it modulates", () => {
     const detailed: ILevelSurface = surface({ render: { ...OPAQUE_RENDER_SURFACE, detail: DETAIL } });
     const textures: ILevelTextureLookup = lookup("stone", DETAIL.reference);
     const dressed: ILevelSurfaceMaterial = createSurfaceMaterial(detailed, textures, options());
 
-    dressSurfaceMaterial(dressed, detailed, textures, options({ isDetailed: false }));
+    expect(applied(dressed)).not.toBeNull();
 
-    expect(applied(dressed)).toBeNull();
-
-    // And with the base texture, since the modulation is of what the base texture produced and is laid out in its
-    // coordinate: a surface drawn flat has nothing for it to modulate.
+    // The modulation is of what the base texture produced and is laid out in its coordinate, so a surface drawn flat
+    // has nothing for it to modulate. It has no switch of its own: it is half of what an X-Ray surface is.
     dressSurfaceMaterial(dressed, detailed, textures, options({ isTextured: false }));
 
     expect(applied(dressed)).toBeNull();

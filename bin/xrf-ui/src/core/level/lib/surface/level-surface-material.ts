@@ -31,15 +31,12 @@ export interface ILevelSurfaceOptions {
    * own light alone.
    */
   isLit: boolean;
-  /** Whether the tiled detail texture the engine modulates a surface with is applied, or the base texture stands alone. */
-  isDetailed: boolean;
   /** How much the baked hemisphere term darkens the ambient, `0` ignoring it and `1` applying it whole. */
   hemiStrength: number;
 }
 
 export const DEFAULT_LEVEL_SURFACE_OPTIONS: ILevelSurfaceOptions = {
   hemiStrength: 0.65,
-  isDetailed: true,
   isLit: true,
   isTextured: true,
   isWireframe: false,
@@ -163,7 +160,7 @@ function toDetailTexture(
 ): Nullable<IXrayDetail> {
   const detail: Nullable<IRenderDetail> = drawn.render.detail;
 
-  if (!detail || !textures || !options.isDetailed || !options.isTextured) {
+  if (!detail || !textures || !options.isTextured) {
     return null;
   }
 

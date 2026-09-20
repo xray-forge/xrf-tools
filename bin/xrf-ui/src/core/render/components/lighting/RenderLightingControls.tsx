@@ -1,6 +1,6 @@
 import { ReactElement, useCallback } from "react";
 
-import { RenderLightingSlider } from "@/core/render/components/lighting/RenderLightingSlider";
+import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
 import { IRenderLighting, RENDER_LIGHTING_LIMITS } from "@/core/render/lib/lighting/render-lighting";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatDegrees } from "@/lib/format/angle";
@@ -28,7 +28,7 @@ export function RenderLightingControls({
 
   return (
     <div data-testid={dataTestId} id={id} className={className}>
-      <RenderLightingSlider
+      <RenderValueSlider
         label={"Elevation"}
         value={lighting.sunElevation}
         {...RENDER_LIGHTING_LIMITS.sunElevation}
@@ -36,7 +36,7 @@ export function RenderLightingControls({
         onChange={(sunElevation) => set({ sunElevation })}
       />
 
-      <RenderLightingSlider
+      <RenderValueSlider
         label={"Azimuth"}
         value={lighting.sunAzimuth}
         {...RENDER_LIGHTING_LIMITS.sunAzimuth}
@@ -44,7 +44,7 @@ export function RenderLightingControls({
         onChange={(sunAzimuth) => set({ sunAzimuth })}
       />
 
-      <RenderLightingSlider
+      <RenderValueSlider
         label={"Light"}
         value={lighting.sunIntensity}
         {...RENDER_LIGHTING_LIMITS.sunIntensity}
@@ -52,7 +52,7 @@ export function RenderLightingControls({
         onChange={(sunIntensity) => set({ sunIntensity })}
       />
 
-      <RenderLightingSlider
+      <RenderValueSlider
         label={"Ambient"}
         value={lighting.ambientIntensity}
         {...RENDER_LIGHTING_LIMITS.ambientIntensity}

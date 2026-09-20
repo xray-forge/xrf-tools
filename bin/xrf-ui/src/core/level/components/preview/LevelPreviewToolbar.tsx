@@ -1,5 +1,4 @@
 import { default as FilterCenterFocusIcon } from "@mui/icons-material/FilterCenterFocus";
-import { default as GrainIcon } from "@mui/icons-material/Grain";
 import { default as GridOnIcon } from "@mui/icons-material/GridOn";
 import { default as HexagonIcon } from "@mui/icons-material/Hexagon";
 import { default as LightbulbIcon } from "@mui/icons-material/Lightbulb";
@@ -16,8 +15,8 @@ import { BaseComponentProps } from "@/lib/dom/element-types";
 interface ILevelPreviewToolbarProps extends BaseComponentProps {
   subtitle?: ReactNode;
   options: ILevelViewOptions;
-  /** Whether any surface of the open level is modulated by a detail texture. */
-  hasDetail?: boolean;
+  /** Value pickers the surface contributes, drawn last, as every toolbar in this application orders them. */
+  actions?: ReactNode;
   onChangeOptions: (options: ILevelViewOptions) => void;
   onBack?: () => void;
 }
@@ -31,7 +30,7 @@ export function LevelPreviewToolbar({
   className,
   subtitle,
   options,
-  hasDetail = true,
+  actions,
   onChangeOptions,
   onBack,
 }: ILevelPreviewToolbarProps): ReactElement {
@@ -65,15 +64,6 @@ export function LevelPreviewToolbar({
             onToggle={() => onToggle("isTextured")}
           />
 
-          <EditorViewToggle
-            label={"Detail"}
-            icon={<GrainIcon />}
-            isOn={options.isDetailed}
-            isDisabled={!hasDetail}
-            unavailableTitle={"No surface of this level is detailed"}
-            onToggle={() => onToggle("isDetailed")}
-          />
-
           <EditorToolbarSeparator />
 
           <EditorViewToggle
@@ -105,6 +95,13 @@ export function LevelPreviewToolbar({
             isOn={options.isAxesVisible}
             onToggle={() => onToggle("isAxesVisible")}
           />
+
+          {actions ? (
+            <>
+              <EditorToolbarSeparator />
+              {actions}
+            </>
+          ) : null}
         </>
       }
     />

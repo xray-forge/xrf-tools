@@ -2,6 +2,7 @@ import { Group, PerspectiveCamera, Vector3 } from "three";
 
 import { VisualBounds } from "@/core/ipc/types/xrf-visual";
 import { ILevelCamera, toLevelCamera } from "@/core/level/lib/camera/level-camera";
+import { DEFAULT_LEVEL_CAMERA_OPTIONS, ILevelCameraOptions } from "@/core/level/lib/camera/level-camera-options";
 import { LevelFlyCamera } from "@/core/level/lib/camera/level-fly-camera";
 import { ILevelViewpoint, toLevelStartViewpoint } from "@/core/level/lib/camera/level-viewpoint";
 import { ILevelLighting } from "@/core/level/lib/lighting/level-lighting";
@@ -125,6 +126,20 @@ export class LevelPreviewScene {
     this.sectors.applyViewOptions(options);
     this.frame.applyViewOptions(options);
     this.lighting.setSunVisible(options.isSunVisible);
+  }
+
+  /**
+   * Takes what the camera sees and how it answers input.
+   *
+   * @param camera - Field of view, and the speeds and sensitivity the fly controls read.
+   */
+  public setCameraOptions(camera: ILevelCameraOptions = DEFAULT_LEVEL_CAMERA_OPTIONS): void {
+    this.fly.options = camera;
+
+    if (this.viewport.camera.fov !== camera.fieldOfView) {
+      this.viewport.camera.fov = camera.fieldOfView;
+      this.viewport.camera.updateProjectionMatrix();
+    }
   }
 
   /**
