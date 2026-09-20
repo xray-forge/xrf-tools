@@ -1,13 +1,11 @@
 use rayon::prelude::*;
 use xrf_material::{XrayMaterialBumpInput, XrayMaterialDeclaration, XrayMaterialDescriptor, XrayMaterialResolver};
 use xrf_output::{OutputOptions, OutputSequence, OutputSlot};
-use xrf_vfs::XrayAssetType as AssetType;
-use xrf_vfs::{XrayAsset, XrayProbe, XrayResolution};
+use xrf_vfs::{XrayAsset, XrayAssetType as AssetType, XrayProbe, XrayResolution};
 
-use crate::GamedataFindingFactory;
 use crate::project::textures::texture_bump_verification::{TextureBumpVerdict, TextureBumpVerification};
 use crate::project::textures::texture_bumps_verification_result::GamedataTextureBumpsVerificationResult;
-use crate::{GamedataProject, GamedataProjectVerifyOptions, GamedataVerificationRule};
+use crate::{GamedataFindingFactory, GamedataProject, GamedataProjectVerifyOptions, GamedataVerificationRule};
 
 /// Every bump a texture descriptor asks for is the bump the engine will bind.
 ///

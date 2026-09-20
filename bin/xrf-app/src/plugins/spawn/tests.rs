@@ -2,14 +2,14 @@ use std::fs;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use super::loading::{SpawnInput, open_spawn};
-use super::state::SpawnFileState;
 use serde_json::json;
 use uuid::Uuid;
 use xrf_job::ExecutionRequest;
 use xrf_spawn::{SpawnFile, XRayByteOrder};
 use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 
+use super::loading::{SpawnInput, open_spawn};
+use super::state::SpawnFileState;
 use crate::core::execution::ExecutionState;
 use crate::core::session::SessionId;
 

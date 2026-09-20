@@ -4,9 +4,8 @@ use std::time::Instant;
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{LtxFormatOptions, LtxProjectFormatResult, LtxProjectVerifyResult, LtxVerifyOptions};
 
-use crate::GamedataFindingFactory;
 use crate::project::ltx::verify_ltx_result::GamedataLtxVerificationResult;
-use crate::{Finding, GamedataProject, GamedataProjectVerifyOptions, GamedataVerificationRule};
+use crate::{Finding, GamedataFindingFactory, GamedataProject, GamedataProjectVerifyOptions, GamedataVerificationRule};
 
 impl GamedataProject {
   pub fn verify_ltx(&self, options: &GamedataProjectVerifyOptions) -> XrfResult<GamedataLtxVerificationResult> {
@@ -112,8 +111,7 @@ mod tests {
   use xrf_ltx::{LtxProjectFormatResult, LtxProjectVerifyResult};
 
   use super::GamedataProject;
-  use crate::GamedataFindingFactory;
-  use crate::{Finding, GamedataVerificationRule};
+  use crate::{Finding, GamedataFindingFactory, GamedataVerificationRule};
 
   #[test]
   fn collects_format_and_scheme_findings_with_source_paths() {

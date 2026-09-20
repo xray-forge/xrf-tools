@@ -1,9 +1,8 @@
 use xrf_shaders::ShaderLibraryFile;
 use xrf_vfs::XrayAssetType as AssetType;
 
-use crate::GamedataFindingFactory;
 use crate::project::meshes::shader_library_verification_result::GamedataShaderLibraryVerificationResult;
-use crate::{GamedataProject, GamedataVerificationRule};
+use crate::{GamedataFindingFactory, GamedataProject, GamedataVerificationRule};
 
 pub(crate) struct ShaderLibraryVerifier<'a> {
   project: &'a GamedataProject,

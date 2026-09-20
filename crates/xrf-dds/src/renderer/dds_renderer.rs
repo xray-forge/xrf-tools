@@ -1,7 +1,6 @@
 use ddsfile::{D3DFormat, DxgiFormat};
 
 use crate::renderer::dds_format_family::{is_block_compressed, is_legacy_block_compressed, is_uncompressed};
-
 use crate::renderer::dds_format_support::DdsFormatSupport;
 
 /// A renderer path of the engine, as far as what it will load off disk.

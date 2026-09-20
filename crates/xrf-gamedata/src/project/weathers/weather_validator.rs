@@ -9,8 +9,7 @@ use xrf_vfs::XrayLogicalPath;
 
 use super::weather_definitions::WeatherDefinitions;
 use super::weather_field_rules::{WEATHER_REQUIRED_FIELDS, is_valid_weather_field_value, parse_weather_time};
-use crate::GamedataFindingFactory;
-use crate::{Finding, GamedataProject, GamedataProjectVerifyOptions, GamedataVerificationRule};
+use crate::{Finding, GamedataFindingFactory, GamedataProject, GamedataProjectVerifyOptions, GamedataVerificationRule};
 
 /// Validates one weather-cycle LTX file against assembled project assets and definitions.
 ///

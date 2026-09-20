@@ -5,10 +5,7 @@ use xrf_chunk::{
   read_f32_chunk, read_f32_vector_chunk, read_u16_chunk, read_u32_chunk, read_w1251_string_chunk,
 };
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::LtxImportExport;
-use xrf_ltx::META_TYPE_FIELD;
-use xrf_ltx::{Ltx, Section};
-use xrf_ltx::{read_ltx_field, read_ltx_optional_field};
+use xrf_ltx::{Ltx, LtxImportExport, META_TYPE_FIELD, Section, read_ltx_field, read_ltx_optional_field};
 use xrf_math::Vector3d;
 use xrf_utils::assert_equal;
 
@@ -327,8 +324,7 @@ mod tests {
   use serde_json::to_string_pretty;
   use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
   use xrf_error::XrfResult;
-  use xrf_ltx::Ltx;
-  use xrf_ltx::LtxImportExport;
+  use xrf_ltx::{Ltx, LtxImportExport};
   use xrf_math::Vector3d;
   use xrf_test_utils::FileSlice;
   use xrf_test_utils::file::read_file_as_string;

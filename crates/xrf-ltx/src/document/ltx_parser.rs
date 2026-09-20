@@ -1,10 +1,9 @@
 use std::str::Chars;
 
 use xrf_error::{XrfError, XrfResult};
-
-use crate::document::{LtxCheck, LtxDocument, LtxItem, LtxItemKind, LtxKeyOperation, LtxSectionOperation, LtxSpan};
 use xrf_extension::XrayExtension;
 
+use crate::document::{LtxCheck, LtxDocument, LtxItem, LtxItemKind, LtxKeyOperation, LtxSectionOperation, LtxSpan};
 use crate::syntax::{
   LTX_SYMBOL_COMMENT, LTX_SYMBOL_INCLUDE, LTX_SYMBOL_INHERIT, LTX_SYMBOL_SECTION_CLOSE, LTX_SYMBOL_SECTION_OPEN,
 };
@@ -481,8 +480,7 @@ impl LtxParser<'_> {
 
 #[cfg(test)]
 mod test {
-  use crate::document::LtxCheck;
-  use crate::document::LtxParser;
+  use crate::document::{LtxCheck, LtxParser};
   use crate::ltx::Ltx;
 
   #[test]

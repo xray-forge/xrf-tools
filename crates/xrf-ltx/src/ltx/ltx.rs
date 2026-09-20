@@ -250,8 +250,7 @@ impl<'q> IndexMut<&'q str> for Ltx {
 mod test {
   use xrf_error::{XrfError, XrfResult};
 
-  use crate::ltx::Ltx;
-  use crate::ltx::Section;
+  use crate::ltx::{Ltx, Section};
   use crate::syntax::ROOT_SECTION;
 
   #[test]

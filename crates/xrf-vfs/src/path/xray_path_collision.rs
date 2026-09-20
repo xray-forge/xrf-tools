@@ -103,9 +103,8 @@ mod tests {
 
   use serde_json::{Value, json};
 
-  use crate::path::XrayLogicalPath;
-
   use super::{XrayCollisionSite, XrayPathCollision};
+  use crate::path::XrayLogicalPath;
 
   /// The shape every surface reports, pinned here because it is the crate's answer rather than any one command's.
   #[test]

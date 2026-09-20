@@ -1,7 +1,5 @@
-use std::env;
-use std::fs;
-use std::io;
 use std::path::PathBuf;
+use std::{env, fs, io};
 
 #[path = "src/ipc/registry/build.rs"]
 mod registry;

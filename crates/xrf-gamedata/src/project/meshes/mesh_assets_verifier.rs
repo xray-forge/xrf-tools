@@ -10,9 +10,8 @@ use xrf_shaders::ShaderLibraryFile;
 use xrf_spawn::XRayByteOrder;
 use xrf_vfs::XrayAssetType as AssetType;
 
-use crate::GamedataFindingFactory;
 use crate::project::meshes::mesh_assets_verification_result::GamedataMeshAssetsVerificationResult;
-use crate::{Finding, GamedataProject, GamedataProjectVerifyOptions, GamedataVerificationRule};
+use crate::{Finding, GamedataFindingFactory, GamedataProject, GamedataProjectVerifyOptions, GamedataVerificationRule};
 
 pub(crate) struct MeshAssetsVerifier<'a> {
   options: &'a GamedataProjectVerifyOptions,

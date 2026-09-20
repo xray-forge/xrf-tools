@@ -5,9 +5,8 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_output::{OutputOptions, OutputSequence, OutputSlot};
 use xrf_sound::SoundFile;
 
-use crate::GamedataFindingFactory;
 use crate::project::sounds::sound_files_verification_result::GamedataSoundFilesVerificationResult;
-use crate::{Finding, GamedataProject, GamedataProjectVerifyOptions, GamedataVerificationRule};
+use crate::{Finding, GamedataFindingFactory, GamedataProject, GamedataProjectVerifyOptions, GamedataVerificationRule};
 
 pub(crate) struct SoundFilesVerifier<'a> {
   options: &'a GamedataProjectVerifyOptions,

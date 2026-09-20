@@ -41,7 +41,6 @@ pub use crate::shader_blender_property::*;
 pub use crate::shader_blender_property_kind::*;
 pub use crate::shader_blender_property_value::*;
 pub use crate::shader_blender_token::*;
-pub use crate::shader_library_file::*;
-
 pub use crate::shader_compiler_file::*;
 pub use crate::shader_compiler_shader::*;
+pub use crate::shader_library_file::*;

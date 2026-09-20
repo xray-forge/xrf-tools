@@ -1,14 +1,13 @@
 //! Pins how a texture is named: the reference a file answers to, the two files it is, and which reader reaches it.
 
-use crate::plugins::textures::source::TextureSource;
-use xrf_material::fixtures::FixtureTree;
-
 use std::path::{Path, PathBuf};
 
+use xrf_material::fixtures::FixtureTree;
 use xrf_vfs::{XrayAssetType, XrayProbe};
 
 use crate::core::assets::{read_located_asset, read_referenced_asset};
 use crate::plugins::textures::files::TextureFiles;
+use crate::plugins::textures::source::TextureSource;
 use crate::plugins::textures::tests::fixtures::{
   BASE, file_source, implied_root_tree, loose_directory, mount, probe_over,
 };

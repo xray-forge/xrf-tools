@@ -1,7 +1,6 @@
 use std::time::Duration;
 
-use crate::GamedataFindingFactory;
-use crate::{Finding, GamedataCheckResult, GamedataVerificationStatus};
+use crate::{Finding, GamedataCheckResult, GamedataFindingFactory, GamedataVerificationStatus};
 
 #[derive(Default)]
 pub struct GamedataShadersVerificationResult {
@@ -57,10 +56,9 @@ impl GamedataCheckResult for GamedataShadersVerificationResult {
 #[cfg(test)]
 mod tests {
   use super::GamedataShadersVerificationResult;
-  use crate::GamedataFindingFactory;
   use crate::{
-    Finding, GamedataCheckResult, GamedataVerificationReport, GamedataVerificationRule, GamedataVerificationStatus,
-    GamedataVerificationType,
+    Finding, GamedataCheckResult, GamedataFindingFactory, GamedataVerificationReport, GamedataVerificationRule,
+    GamedataVerificationStatus, GamedataVerificationType,
   };
 
   #[test]

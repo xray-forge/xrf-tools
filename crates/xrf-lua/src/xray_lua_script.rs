@@ -1,6 +1,7 @@
 use std::path::{Path, PathBuf};
 
-use full_moon::{LuaVersion, ast::Ast, parse_fallible};
+use full_moon::ast::Ast;
+use full_moon::{LuaVersion, parse_fallible};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::format_path;
 

@@ -1,11 +1,10 @@
 //! Synthetic visuals built in code, so the bytes a test reasons about are visible in the test.
 
 use xrf_math::Vector3d;
-use xrf_ogf::OgfVertexLink;
 use xrf_ogf::{
   OgfBoneIkData, OgfBoneShape, OgfBonesChunk, OgfBox, OgfChildrenChunk, OgfCylinder, OgfDescriptionChunk, OgfFile,
   OgfGeometry, OgfHeaderChunk, OgfJointIkData, OgfJointLimit, OgfKinematicsChunk, OgfObb, OgfSlideWindow, OgfSphere,
-  OgfSwiDataChunk, OgfTextureChunk, OgfVertex,
+  OgfSwiDataChunk, OgfTextureChunk, OgfVertex, OgfVertexLink,
 };
 use xrf_skeleton::{
   SkeletonMotion, SkeletonMotionDefinition, SkeletonMotionParametersChunk, SkeletonMotionsChunk, SkeletonPart,

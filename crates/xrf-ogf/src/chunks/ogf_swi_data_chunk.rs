@@ -57,9 +57,8 @@ impl ChunkReadWrite for OgfSwiDataChunk {
 #[cfg(test)]
 mod tests {
   use std::io::Write;
-  use xrf_chunk::InMemoryChunkDataSource;
 
-  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
+  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
   use xrf_error::XrfResult;
   use xrf_test_utils::FileSlice;
   use xrf_test_utils::utils::{

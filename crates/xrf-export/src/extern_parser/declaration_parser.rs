@@ -4,7 +4,8 @@ use std::path::Path;
 use xrf_error::XrfResult;
 use xrf_typescript::TypeScriptSymbolResolver;
 use xrf_typescript::ast::{expression_callee_name, expression_string_argument};
-use xrf_typescript::swc_common::{SourceMap, Spanned, comments::Comments};
+use xrf_typescript::swc_common::comments::Comments;
+use xrf_typescript::swc_common::{SourceMap, Spanned};
 use xrf_typescript::swc_ecma_ast::{Expr, ModuleItem, Program, Prop, PropName, Stmt};
 
 use super::diagnostics::{invalid_at, source_span_location};

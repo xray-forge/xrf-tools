@@ -1,6 +1,5 @@
 use xrf_level::LevelVertex;
-use xrf_math::Matrix4x4;
-use xrf_math::Vector3d;
+use xrf_math::{Matrix4x4, Vector3d};
 
 use crate::data::sector_attributes::SectorAttributes;
 use crate::data::sector_geometry::SectorGeometry;

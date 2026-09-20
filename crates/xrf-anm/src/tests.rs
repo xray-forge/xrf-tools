@@ -1,8 +1,7 @@
 use std::io::Write;
 
 use byteorder::WriteBytesExt;
-use xrf_animation_envelope::AnimationEnvelope;
-use xrf_animation_envelope::{AnimationInterpolation, AnimationKey};
+use xrf_animation_envelope::{AnimationEnvelope, AnimationInterpolation, AnimationKey};
 use xrf_chunk::{ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
 use xrf_error::XrfResult;
 

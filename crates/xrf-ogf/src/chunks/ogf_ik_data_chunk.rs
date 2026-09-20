@@ -41,9 +41,8 @@ impl OgfIkDataChunk {
 #[cfg(test)]
 mod tests {
   use std::io::Write;
-  use xrf_chunk::InMemoryChunkDataSource;
 
-  use xrf_chunk::{ChunkReader, ChunkWriter, XRayByteOrder};
+  use xrf_chunk::{ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
   use xrf_error::XrfResult;
   use xrf_math::Vector3d;
   use xrf_test_utils::FileSlice;

@@ -122,9 +122,8 @@ mod tests {
 
   use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 
-  use crate::XraySourceKind;
-
   use super::XrayMountMode;
+  use crate::XraySourceKind;
 
   fn install(name: &str) -> PathBuf {
     let root: PathBuf = build_absolute_generated_test_resource_path(&format!("xray_mount_mode/{name}"));

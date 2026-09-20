@@ -4,8 +4,7 @@ use std::path::Path;
 use byteorder::ByteOrder;
 use xrf_chunk::{ChunkDataSource, ChunkReader, InMemoryChunkDataSource};
 use xrf_error::{XrfError, XrfResult};
-use xrf_skeleton::SkeletonMotionParametersChunk;
-use xrf_skeleton::SkeletonMotionsChunk;
+use xrf_skeleton::{SkeletonMotionParametersChunk, SkeletonMotionsChunk};
 use xrf_utils::format_path;
 
 use crate::chunks::ogf_bones_chunk::OgfBonesChunk;

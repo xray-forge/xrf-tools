@@ -400,8 +400,7 @@ impl LtxFieldScheme {
 mod tests {
   use super::LtxFieldScheme;
   use crate::Ltx;
-  use crate::scheme::LtxFieldDataType;
-  use crate::scheme::TupleSeparator;
+  use crate::scheme::{LtxFieldDataType, TupleSeparator};
 
   #[test]
   fn test_u32_validation() {

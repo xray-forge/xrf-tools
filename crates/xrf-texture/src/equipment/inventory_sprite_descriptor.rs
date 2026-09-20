@@ -2,13 +2,13 @@ use std::cmp::max;
 
 use image::{ImageBuffer, Rgba, RgbaImage};
 use serde::Serialize;
+use xrf_dds::DDS_BLOCK_SIZE;
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{Ltx, Section};
 
 use crate::equipment::{
   EquipmentGridRect, EquipmentSlotClaim, INVENTORY_ICON_GRID_SQUARE_BASE, LTX_FIELD_INVENTORY_ICON_PATH,
 };
-use xrf_dds::DDS_BLOCK_SIZE;
 
 #[derive(Clone, Debug, PartialEq, Serialize)]
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]

@@ -1,9 +1,8 @@
 use std::num::NonZeroUsize;
 
-use serde::Serialize;
-
 #[cfg(feature = "rayon")]
 use rayon::{ThreadPool, ThreadPoolBuilder};
+use serde::Serialize;
 #[cfg(feature = "rayon")]
 use xrf_error::{XrfError, XrfResult};
 

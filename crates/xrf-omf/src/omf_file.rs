@@ -6,10 +6,7 @@ use std::path::Path;
 use byteorder::ByteOrder;
 use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter, find_required_chunk_by_id};
 use xrf_error::{XrfError, XrfResult};
-use xrf_skeleton::SkeletonMotion;
-use xrf_skeleton::SkeletonMotionDefinition;
-use xrf_skeleton::SkeletonMotionParametersChunk;
-use xrf_skeleton::SkeletonMotionsChunk;
+use xrf_skeleton::{SkeletonMotion, SkeletonMotionDefinition, SkeletonMotionParametersChunk, SkeletonMotionsChunk};
 use xrf_utils::{assert_equal, format_path, open_export_file};
 
 // c++ CKinematicsAnimated
@@ -151,11 +148,9 @@ impl OmfFile {
 mod tests {
   use xrf_chunk::{ChunkReader, XRayByteOrder};
   use xrf_error::XrfResult;
-  use xrf_skeleton::SkeletonMotion;
-  use xrf_skeleton::SkeletonMotionDefinition;
-  use xrf_skeleton::SkeletonMotionParametersChunk;
-  use xrf_skeleton::SkeletonMotionsChunk;
-  use xrf_skeleton::SkeletonPart;
+  use xrf_skeleton::{
+    SkeletonMotion, SkeletonMotionDefinition, SkeletonMotionParametersChunk, SkeletonMotionsChunk, SkeletonPart,
+  };
   use xrf_test_utils::FileSlice;
   use xrf_test_utils::utils::{
     build_absolute_generated_test_resource_path, build_relative_test_sample_file_path,

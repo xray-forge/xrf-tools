@@ -5,9 +5,7 @@ use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
-use xrf_ltx::Ltx;
-use xrf_ltx::META_TYPE_FIELD;
-use xrf_ltx::{FileImportExport, LtxImportExport};
+use xrf_ltx::{FileImportExport, Ltx, LtxImportExport, META_TYPE_FIELD};
 use xrf_utils::{assert, format_path, open_export_file, to_format_size};
 
 use crate::data::particle_effect::ParticleEffect;

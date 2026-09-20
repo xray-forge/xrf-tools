@@ -7,10 +7,7 @@ use xrf_chunk::{
   find_optional_chunk_by_id, find_required_chunk_by_id,
 };
 use xrf_error::{XrfError, XrfResult};
-use xrf_skeleton::SkeletonMotion;
-use xrf_skeleton::SkeletonMotionDefinition;
-use xrf_skeleton::SkeletonMotionParametersChunk;
-use xrf_skeleton::SkeletonMotionsChunk;
+use xrf_skeleton::{SkeletonMotion, SkeletonMotionDefinition, SkeletonMotionParametersChunk, SkeletonMotionsChunk};
 use xrf_utils::format_path;
 
 use crate::chunks::ogf_bones_chunk::OgfBonesChunk;
@@ -257,11 +254,9 @@ mod tests {
   use xrf_chunk::{ChunkReadWrite, ChunkWriter, XRayByteOrder};
   use xrf_error::XrfResult;
   use xrf_math::Vector3d;
-  use xrf_skeleton::SkeletonMotion;
-  use xrf_skeleton::SkeletonMotionDefinition;
-  use xrf_skeleton::SkeletonMotionParametersChunk;
-  use xrf_skeleton::SkeletonMotionsChunk;
-  use xrf_skeleton::SkeletonPart;
+  use xrf_skeleton::{
+    SkeletonMotion, SkeletonMotionDefinition, SkeletonMotionParametersChunk, SkeletonMotionsChunk, SkeletonPart,
+  };
 
   use crate::chunks::ogf_header_chunk::OgfHeaderChunk;
   use crate::data::ogf_box::OgfBox;

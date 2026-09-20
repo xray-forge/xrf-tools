@@ -1,7 +1,6 @@
 use std::ffi::{OsStr, OsString};
-use std::fs;
-use std::io;
 use std::path::{MAIN_SEPARATOR_STR, Path, PathBuf};
+use std::{fs, io};
 
 use xrf_error::{XrfError, XrfResult};
 use xrf_extension::XrayExtension;

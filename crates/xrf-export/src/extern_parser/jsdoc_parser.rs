@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 
-use xrf_typescript::swc_common::{BytePos, comments::Comments};
+use xrf_typescript::swc_common::BytePos;
+use xrf_typescript::swc_common::comments::Comments;
 
 use crate::extern_manifest::ExternDocumentation;
 

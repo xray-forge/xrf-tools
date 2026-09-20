@@ -43,9 +43,9 @@ mod tests {
   use xrf_ltx::LtxProjectVerifyResult;
 
   use super::GamedataLtxVerificationResult;
-  use crate::GamedataFindingFactory;
   use crate::{
-    Finding, GamedataVerificationReport, GamedataVerificationRule, GamedataVerificationStatus, GamedataVerificationType,
+    Finding, GamedataFindingFactory, GamedataVerificationReport, GamedataVerificationRule, GamedataVerificationStatus,
+    GamedataVerificationType,
   };
 
   #[test]

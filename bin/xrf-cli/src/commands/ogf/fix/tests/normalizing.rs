@@ -5,12 +5,12 @@ use std::path::{Path, PathBuf};
 
 use serde_json::Value;
 use xrf_error::XrfResult;
+use xrf_utils::staging_faults::fail_next_staged_write;
 
 use super::fixtures;
 use crate::commands::ogf::fix::command::FixCommand;
 use crate::core::command_testing::run_command_with_result;
 use crate::core::generic_command::CommandResult;
-use xrf_utils::staging_faults::fail_next_staged_write;
 
 /// Runs the command with a result requested, the way a caller reading the report would.
 fn fix(arguments: &[&str]) -> (CommandResult, Option<Value>) {

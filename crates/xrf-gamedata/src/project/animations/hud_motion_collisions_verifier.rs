@@ -11,10 +11,9 @@ use xrf_omf::OmfFile;
 use xrf_spawn::XRayByteOrder;
 use xrf_vfs::XrayAssetType as AssetType;
 
-use crate::GamedataFindingFactory;
 use crate::project::animations::hud_motion_collisions_verification_result::GamedataHudMotionCollisionsVerificationResult;
 use crate::project::weapons::weapons_utils::is_player_hud_section;
-use crate::{Finding, GamedataProject, GamedataProjectVerifyOptions, GamedataVerificationRule};
+use crate::{Finding, GamedataFindingFactory, GamedataProject, GamedataProjectVerifyOptions, GamedataVerificationRule};
 
 /// Verifies that motion names stay unique within the set of banks a hands model loads.
 pub struct HudMotionCollisionsVerifier<'a> {

@@ -111,8 +111,7 @@ mod test {
   use xrf_utils::{encode_string_to_w1251_bytes, encode_w1251_bytes_to_string};
 
   use crate::ltx::Ltx;
-  use crate::syntax::LTX_LINE_SEPARATOR;
-  use crate::syntax::ROOT_SECTION;
+  use crate::syntax::{LTX_LINE_SEPARATOR, ROOT_SECTION};
 
   #[test]
   fn preserve_order_write() {

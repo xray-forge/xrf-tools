@@ -2,7 +2,6 @@ use byteorder::ByteOrder;
 use xrf_chunk::{ChunkDataSource, ChunkReader, find_optional_chunk_by_id, find_required_chunk_by_id};
 use xrf_error::XrfResult;
 use xrf_math::Matrix4x4;
-
 use xrf_ogf::{
   OgfChildrenLinkChunk, OgfGeometryContainerChunk, OgfHeaderChunk, OgfTextureChunk, OgfTreeDefinitionChunk,
 };

@@ -2,8 +2,7 @@ use tauri::State;
 
 use crate::core::session::SessionRestore;
 use crate::core::types::TauriResult;
-use crate::plugins::visuals::state::VisualState;
-use crate::plugins::visuals::state::{SelectedVisual, SelectedVisualDescription};
+use crate::plugins::visuals::state::{SelectedVisual, SelectedVisualDescription, VisualState};
 
 /// Restore the committed model descriptor and its exact geometry identity.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "get_model"))]

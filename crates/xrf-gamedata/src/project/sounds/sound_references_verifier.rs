@@ -5,14 +5,12 @@ use xrf_error::XrfResult;
 use xrf_extension::XrayExtension;
 use xrf_ltx::{Ltx, LtxProject};
 use xrf_utils::format_path;
-use xrf_vfs::XrayAssetType;
-use xrf_vfs::XrayLogicalPath;
+use xrf_vfs::{XrayAssetType, XrayLogicalPath};
 use xrf_xml::{XmlDocument, XmlParseOptions};
 
-use crate::GamedataFindingFactory;
 use crate::project::gamedata_project::CONFIGS_DIRECTORY;
 use crate::project::sounds::sound_references_verification_result::GamedataSoundReferencesVerificationResult;
-use crate::{GamedataProject, GamedataProjectVerifyOptions, GamedataVerificationRule};
+use crate::{GamedataFindingFactory, GamedataProject, GamedataProjectVerifyOptions, GamedataVerificationRule};
 
 pub(crate) struct SoundReferencesVerifier<'a> {
   options: &'a GamedataProjectVerifyOptions,
@@ -244,8 +242,9 @@ impl<'a> SoundReferencesVerifier<'a> {
 mod tests {
   use std::collections::HashSet;
 
-  use super::SoundReferencesVerifier;
   use xrf_vfs::XrayAssetType;
+
+  use super::SoundReferencesVerifier;
 
   #[test]
   fn resolves_exact_and_randomized_sound_references() {

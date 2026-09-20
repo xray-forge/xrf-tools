@@ -1,11 +1,11 @@
 use std::cmp::max;
 use std::path::PathBuf;
 
+use xrf_dds::DDS_BLOCK_SIZE;
 use xrf_error::XrfResult;
 use xrf_vfs::XrayLogicalPath;
 
 use crate::description::TextureSpriteDescriptor;
-use xrf_dds::DDS_BLOCK_SIZE;
 
 pub struct TextureFileDescriptor {
   pub name: String,

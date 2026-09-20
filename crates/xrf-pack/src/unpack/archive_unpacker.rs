@@ -7,9 +7,7 @@ use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use std::time::Duration;
 
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
-use xrf_archive::ArchiveFileDescriptor;
-use xrf_archive::ArchiveOpenVolumes;
-use xrf_archive::ArchiveProject;
+use xrf_archive::{ArchiveFileDescriptor, ArchiveOpenVolumes, ArchiveProject};
 use xrf_error::{XrfError, XrfResult};
 use xrf_job::{JobOutcome, JobScope};
 use xrf_utils::format_path;

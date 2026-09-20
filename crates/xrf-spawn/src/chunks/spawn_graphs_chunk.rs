@@ -6,8 +6,7 @@ use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
 use xrf_error::XrfResult;
-use xrf_ltx::Ltx;
-use xrf_ltx::{FileImportExport, LtxImportExport};
+use xrf_ltx::{FileImportExport, Ltx, LtxImportExport};
 use xrf_utils::{assert_length, open_export_file};
 
 use crate::data::graph::graph_cross_table::GraphCrossTable;

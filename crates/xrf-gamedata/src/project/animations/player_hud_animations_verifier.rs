@@ -12,10 +12,9 @@ use xrf_output::{OutputOptions, OutputSequence, OutputSlot};
 use xrf_spawn::XRayByteOrder;
 use xrf_vfs::XrayAssetType as AssetType;
 
-use crate::GamedataFindingFactory;
 use crate::project::animations::player_hud_animations_verification_result::GamedataPlayerHudAnimationsVerificationResult;
 use crate::project::weapons::weapons_utils::{get_weapon_animation_name, is_player_hud_section, is_weapon_section};
-use crate::{Finding, GamedataProject, GamedataProjectVerifyOptions, GamedataVerificationRule};
+use crate::{Finding, GamedataFindingFactory, GamedataProject, GamedataProjectVerifyOptions, GamedataVerificationRule};
 
 pub(crate) struct PlayerHudAnimationsVerifier<'a> {
   options: &'a GamedataProjectVerifyOptions,

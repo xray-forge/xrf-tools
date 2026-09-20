@@ -127,9 +127,8 @@ impl ListCommand {
 
 #[cfg(test)]
 mod tests {
-  use crate::core::generic_command::GenericCommand;
-
   use super::ListCommand;
+  use crate::core::generic_command::GenericCommand;
 
   #[test]
   fn rejects_conflicting_entry_kind_filters() {

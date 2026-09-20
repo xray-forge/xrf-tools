@@ -8,7 +8,8 @@ use swc_common::sync::Lrc;
 use swc_common::{SourceFile, SourceMap, Spanned};
 use swc_ecma_ast::Program;
 use swc_ecma_parser::error::Error as SyntaxError;
-use swc_ecma_parser::{Parser, StringInput, Syntax, lexer::Lexer};
+use swc_ecma_parser::lexer::Lexer;
+use swc_ecma_parser::{Parser, StringInput, Syntax};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::format_path;
 

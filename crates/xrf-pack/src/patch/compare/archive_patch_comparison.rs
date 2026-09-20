@@ -2,7 +2,6 @@ use std::cmp::Ordering;
 
 use rayon::ThreadPoolBuilder;
 use rayon::prelude::*;
-
 use xrf_error::XrfResult;
 use xrf_job::{JobHandle, JobScope};
 use xrf_vfs::XrayAsset;

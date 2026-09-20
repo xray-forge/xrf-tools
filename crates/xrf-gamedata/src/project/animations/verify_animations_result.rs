@@ -45,12 +45,12 @@ mod tests {
   use std::time::Duration;
 
   use super::GamedataAnimationsVerificationResult;
-  use crate::GamedataFindingFactory;
   use crate::project::animations::hud_item_animations_verification_result::GamedataHudItemAnimationsVerificationResult;
   use crate::project::animations::hud_motion_collisions_verification_result::GamedataHudMotionCollisionsVerificationResult;
   use crate::project::animations::player_hud_animations_verification_result::GamedataPlayerHudAnimationsVerificationResult;
   use crate::{
-    Finding, GamedataVerificationReport, GamedataVerificationRule, GamedataVerificationStatus, GamedataVerificationType,
+    Finding, GamedataFindingFactory, GamedataVerificationReport, GamedataVerificationRule, GamedataVerificationStatus,
+    GamedataVerificationType,
   };
 
   #[test]

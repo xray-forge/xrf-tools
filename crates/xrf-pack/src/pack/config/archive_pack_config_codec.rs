@@ -6,8 +6,7 @@ use xrf_ltx::Ltx;
 use xrf_utils::{format_path, write_file_staged};
 
 use crate::archive_config_format::ArchiveConfigFormat;
-use crate::pack::config::ArchivePackConfig;
-use crate::pack::config::ArchivePackConfigJson;
+use crate::pack::config::{ArchivePackConfig, ArchivePackConfigJson};
 
 impl ArchivePackConfig {
   /// Apply a packing configuration file, in whichever format its extension names.

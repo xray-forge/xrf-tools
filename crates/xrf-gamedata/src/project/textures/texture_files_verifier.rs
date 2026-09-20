@@ -3,9 +3,8 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_output::{OutputOptions, OutputSequence, OutputSlot};
 use xrf_vfs::XrayAssetType as AssetType;
 
-use crate::GamedataFindingFactory;
 use crate::project::textures::texture_files_verification_result::GamedataTextureFilesVerificationResult;
-use crate::{Finding, GamedataProject, GamedataProjectVerifyOptions, GamedataVerificationRule};
+use crate::{Finding, GamedataFindingFactory, GamedataProject, GamedataProjectVerifyOptions, GamedataVerificationRule};
 
 /// Every `.dds` the project holds reads as a texture the engine can upload.
 pub(crate) struct TextureFilesVerifier<'a> {

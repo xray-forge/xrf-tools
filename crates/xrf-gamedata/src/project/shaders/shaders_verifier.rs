@@ -7,10 +7,9 @@ use xrf_extension::XrayExtension;
 use xrf_shaders::{ShaderRenderer, XRayShader, XRayShaderScript, is_shader_source_path};
 use xrf_vfs::{XrayLookupScope, XrayVfs};
 
-use crate::GamedataFindingFactory;
 use crate::project::shaders::gamedata_shader_source_loader::GamedataShaderSourceLoader;
 use crate::project::shaders::verify_shaders_result::GamedataShadersVerificationResult;
-use crate::{GamedataCheckResult, GamedataProjectVerifyOptions, GamedataVerificationRule};
+use crate::{GamedataCheckResult, GamedataFindingFactory, GamedataProjectVerifyOptions, GamedataVerificationRule};
 
 /// Logical directory holding the renderer shader trees.
 pub(crate) const SHADERS_DIRECTORY: &str = "shaders";

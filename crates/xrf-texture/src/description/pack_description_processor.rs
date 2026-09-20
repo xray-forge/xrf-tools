@@ -7,11 +7,8 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_extension::XrayExtension;
 use xrf_utils::{assert_equal, format_path};
 
-use crate::description::TextureFileDescriptor;
-use crate::description::{PackDescriptionOptions, XmlDescriptionCollection};
-use crate::image_file::save_image_as_ui_dds;
-use crate::image_file::warn_on_reshaped_ui_dds;
-use crate::image_file::{UI_MIPMAP_LEVELS, UI_MIPMAPS};
+use crate::description::{PackDescriptionOptions, TextureFileDescriptor, XmlDescriptionCollection};
+use crate::image_file::{UI_MIPMAP_LEVELS, UI_MIPMAPS, save_image_as_ui_dds, warn_on_reshaped_ui_dds};
 
 pub struct PackDescriptionProcessor {}
 

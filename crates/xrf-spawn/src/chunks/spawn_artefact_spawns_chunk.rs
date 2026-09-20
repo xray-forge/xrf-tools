@@ -5,11 +5,10 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
-use xrf_ltx::Ltx;
+use xrf_ltx::{FileImportExport, Ltx, LtxImportExport};
 use xrf_utils::{assert_length, open_export_file, to_format_size};
 
 use crate::data::artefact_spawn::artefact_spawn_point::ArtefactSpawnPoint;
-use xrf_ltx::{FileImportExport, LtxImportExport};
 
 /// Artefacts spawns samples.
 /// Is single plain chunk with nodes list in it.

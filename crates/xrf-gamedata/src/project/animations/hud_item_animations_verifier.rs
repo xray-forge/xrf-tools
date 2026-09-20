@@ -11,10 +11,9 @@ use xrf_omf::OmfFile;
 use xrf_spawn::XRayByteOrder;
 use xrf_vfs::XrayAssetType as AssetType;
 
-use crate::GamedataFindingFactory;
 use crate::project::animations::hud_item_animations_verification_result::GamedataHudItemAnimationsVerificationResult;
 use crate::project::weapons::weapons_utils::is_hud_item_section;
-use crate::{Finding, GamedataProject, GamedataProjectVerifyOptions, GamedataVerificationRule};
+use crate::{Finding, GamedataFindingFactory, GamedataProject, GamedataProjectVerifyOptions, GamedataVerificationRule};
 
 /// Motion the engine plays on the item model, and the `anm_*` field that asked for it.
 struct ExpectedItemMotion {

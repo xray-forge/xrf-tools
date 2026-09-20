@@ -4,10 +4,7 @@ use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::LtxImportExport;
-use xrf_ltx::META_TYPE_FIELD;
-use xrf_ltx::read_ltx_field;
-use xrf_ltx::{Ltx, Section};
+use xrf_ltx::{Ltx, LtxImportExport, META_TYPE_FIELD, Section, read_ltx_field};
 use xrf_utils::{assert_equal, decode_bytes_from_base64, encode_bytes_to_base64};
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]

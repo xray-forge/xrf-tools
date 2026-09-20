@@ -4,14 +4,12 @@
 //! link the destination already contained. Each test therefore puts a sentinel outside the destination and asserts
 //! nothing reached it, rather than only that the call failed.
 
+use std::ffi::OsStr;
 use std::fs;
 use std::num::NonZeroUsize;
 use std::path::{Path, PathBuf};
 
 use xrf_archive::ArchiveProject;
-
-use std::ffi::OsStr;
-
 use xrf_error::XrfError;
 
 use super::fixtures::{Entry, create_project, create_temporary_directory, link_directory, link_file, unpack_with};

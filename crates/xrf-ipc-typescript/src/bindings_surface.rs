@@ -2,7 +2,8 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use xrf_typescript::swc_common::{SourceMap, sync::Lrc};
+use xrf_typescript::swc_common::SourceMap;
+use xrf_typescript::swc_common::sync::Lrc;
 use xrf_typescript::swc_ecma_ast::{Decl, ModuleDecl, ModuleItem, Pat, Program};
 use xrf_typescript::{parse_typescript_file, render_module_item};
 use xrf_utils::format_path;

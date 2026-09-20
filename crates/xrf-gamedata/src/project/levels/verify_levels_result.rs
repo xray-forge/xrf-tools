@@ -63,10 +63,9 @@ mod tests {
   use std::time::Duration;
 
   use super::GamedataLevelsVerificationResult;
-  use crate::GamedataFindingFactory;
   use crate::{
-    Finding, GamedataCheckResult, GamedataVerificationReport, GamedataVerificationRule, GamedataVerificationStatus,
-    GamedataVerificationType,
+    Finding, GamedataCheckResult, GamedataFindingFactory, GamedataVerificationReport, GamedataVerificationRule,
+    GamedataVerificationStatus, GamedataVerificationType,
   };
 
   #[test]

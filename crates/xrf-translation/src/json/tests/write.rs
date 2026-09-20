@@ -1,4 +1,5 @@
 use std::fs;
+
 use xrf_error::XrfResult;
 use xrf_test_utils::utils::write_generated_test_resource;
 

@@ -1,13 +1,12 @@
 use xrf_ltx::Ltx;
 
-use crate::GamedataFindingFactory;
 use crate::project::levels::level_bundle::LevelBundle;
 use crate::project::levels::level_engine_constants::{
   LEVEL_AI_FILE, LEVEL_DETAILS_FILE, LEVEL_DETAILS_TEXTURE_FILE, LEVEL_LTX_FILE, LEVEL_MAP_SECTION,
   LEVEL_MAP_TEXTURE_FIELD, REQUIRED_LEVEL_FILES,
 };
 use crate::project::levels::level_roster::RosterLevel;
-use crate::{Finding, GamedataVerificationRule};
+use crate::{Finding, GamedataFindingFactory, GamedataVerificationRule};
 
 /// Verifies that a bundle contains the files a built level is made of, and that its own
 /// configuration is readable and resolvable.

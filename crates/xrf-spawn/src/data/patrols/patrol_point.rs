@@ -4,9 +4,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkIterator, ChunkReadWrite, ChunkReadWriteList, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::LtxImportExport;
-use xrf_ltx::read_ltx_field;
-use xrf_ltx::{Ltx, Section};
+use xrf_ltx::{Ltx, LtxImportExport, Section, read_ltx_field};
 use xrf_math::Vector3d;
 use xrf_utils::{assert_equal, to_format_size};
 
@@ -176,8 +174,7 @@ mod tests {
   use serde_json::to_string_pretty;
   use xrf_chunk::{ChunkReadWrite, ChunkReadWriteList, ChunkReader, ChunkWriter, XRayByteOrder};
   use xrf_error::XrfResult;
-  use xrf_ltx::Ltx;
-  use xrf_ltx::LtxImportExport;
+  use xrf_ltx::{Ltx, LtxImportExport};
   use xrf_math::Vector3d;
   use xrf_test_utils::FileSlice;
   use xrf_test_utils::file::read_file_as_string;

@@ -10,11 +10,8 @@ use xrf_utils::{format_path, to_format_size};
 use crate::archive_read_policy::ArchiveReadPolicy;
 use crate::archive_read_result::ArchiveReadResult;
 use crate::archive_volume_discovery::ArchiveVolumeDiscovery;
-use crate::payload::ArchiveOpenVolumes;
-use crate::payload::ArchiveSharedPayload;
-use crate::volume::ArchiveDescriptor;
-use crate::volume::ArchiveFileDescriptor;
-use crate::volume::ArchiveReader;
+use crate::payload::{ArchiveOpenVolumes, ArchiveSharedPayload};
+use crate::volume::{ArchiveDescriptor, ArchiveFileDescriptor, ArchiveReader};
 
 /// One volume set at a path the caller names, merged into a single name table.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]

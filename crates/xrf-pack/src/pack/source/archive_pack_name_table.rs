@@ -6,8 +6,7 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_vfs::XrayLogicalPath;
 
 use crate::pack::config::ArchivePackConfig;
-use crate::pack::source::ArchivePackNameCollision;
-use crate::pack::source::{ArchivePackEntry, ArchivePackOrigin};
+use crate::pack::source::{ArchivePackEntry, ArchivePackNameCollision, ArchivePackOrigin};
 
 /// Every file and directory one packing run writes, under the name `CLocatorAPI::Register` folds it to, once each, in
 /// the order the engine's own table iterates.

@@ -5,12 +5,12 @@ use std::path::{Path, PathBuf};
 
 use xrf_error::XrfResult;
 use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+use xrf_utils::staging_faults::fail_next_staged_write;
 
 use crate::commands::externs::export::command::ExportCommand;
 use crate::core::command_error::CommandError;
 use crate::core::command_testing::run_command_with_result;
 use crate::core::generic_command::CommandResult;
-use xrf_utils::staging_faults::fail_next_staged_write;
 
 const PREVIOUS: &str = "{\n  \"exports\": { \"sentinel\": true }\n}\n";
 

@@ -10,10 +10,9 @@ use xrf_output::{OutputOptions, OutputSequence, OutputSlot};
 use xrf_utils::read_as_string_from_w1251_encoded;
 use xrf_vfs::XrayAssetType as AssetType;
 
-use crate::GamedataFindingFactory;
 use crate::project::scripts::runtime_script::is_runtime_script;
 use crate::project::scripts::verify_scripts_result::GamedataScriptsVerificationResult;
-use crate::{Finding, GamedataProject, GamedataProjectVerifyOptions, GamedataVerificationRule};
+use crate::{Finding, GamedataFindingFactory, GamedataProject, GamedataProjectVerifyOptions, GamedataVerificationRule};
 
 impl GamedataProject {
   pub fn verify_scripts(&self, options: &GamedataProjectVerifyOptions) -> XrfResult<GamedataScriptsVerificationResult> {

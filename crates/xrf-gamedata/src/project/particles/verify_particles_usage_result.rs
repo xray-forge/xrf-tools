@@ -47,10 +47,9 @@ impl GamedataCheckResult for GamedataParticlesUsageVerificationResult {
 #[cfg(test)]
 mod tests {
   use super::GamedataParticlesUsageVerificationResult;
-  use crate::GamedataFindingFactory;
   use crate::{
-    Finding, GamedataCheckResult, GamedataVerificationReport, GamedataVerificationRule, GamedataVerificationStatus,
-    GamedataVerificationType,
+    Finding, GamedataCheckResult, GamedataFindingFactory, GamedataVerificationReport, GamedataVerificationRule,
+    GamedataVerificationStatus, GamedataVerificationType,
   };
 
   #[test]

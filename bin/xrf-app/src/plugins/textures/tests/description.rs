@@ -1,7 +1,5 @@
 //! Pins what describing one texture answers, through the roots that name it and from the path of one that no tree can.
 
-use crate::plugins::textures::source::TextureSource;
-
 use std::path::PathBuf;
 
 use xrf_material::XrayMaterialDescriptor;
@@ -9,6 +7,7 @@ use xrf_material::fixtures::{FixtureTree, ThmFixture};
 use xrf_vfs::{XrayProbe, XrayRoots, XrayVfs};
 
 use crate::plugins::textures::description::TextureDescription;
+use crate::plugins::textures::source::TextureSource;
 use crate::plugins::textures::tests::fixtures::{
   BASE, BUMP, COMPANION, bumped_tree, file_source, loose_directory, mount, probe_over, roots_of, to_dds_bytes,
 };

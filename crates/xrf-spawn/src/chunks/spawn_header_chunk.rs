@@ -5,9 +5,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
-use xrf_ltx::FileImportExport;
-use xrf_ltx::read_ltx_field;
-use xrf_ltx::{Ltx, Section};
+use xrf_ltx::{FileImportExport, Ltx, Section, read_ltx_field};
 use xrf_utils::open_export_file;
 
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]

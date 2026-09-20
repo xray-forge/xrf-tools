@@ -1,5 +1,4 @@
 use serde::Serialize;
-
 use xrf_dds::{DdsFile, DdsMetadata};
 
 /// Pixel layout a DDS header declares.

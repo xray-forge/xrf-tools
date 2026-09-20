@@ -5,10 +5,9 @@ use xrf_error::XrfResult;
 use xrf_spawn::{SpawnFile, XRayByteOrder};
 use xrf_vfs::XrayAssetType as AssetType;
 
-use crate::GamedataFindingFactory;
 use crate::project::levels::level_engine_constants::SPAWNS_DIRECTORY;
 use crate::project::spawns::verify_spawns_result::GamedataSpawnsVerificationResult;
-use crate::{Finding, GamedataProject, GamedataProjectVerifyOptions, GamedataVerificationRule};
+use crate::{Finding, GamedataFindingFactory, GamedataProject, GamedataProjectVerifyOptions, GamedataVerificationRule};
 
 impl GamedataProject {
   /// Verify spawn files in spawns directories, not levels spawn files.

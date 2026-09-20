@@ -1,9 +1,8 @@
 use std::time::Duration;
 
-use crate::GamedataFindingFactory;
 use crate::project::textures::texture_bumps_verification_result::GamedataTextureBumpsVerificationResult;
 use crate::project::textures::texture_files_verification_result::GamedataTextureFilesVerificationResult;
-use crate::{Finding, GamedataCheckResult, GamedataVerificationStatus};
+use crate::{Finding, GamedataCheckResult, GamedataFindingFactory, GamedataVerificationStatus};
 
 pub struct GamedataTexturesVerificationResult {
   pub(crate) duration: Duration,
@@ -63,12 +62,11 @@ mod tests {
   use std::time::Duration;
 
   use super::GamedataTexturesVerificationResult;
-  use crate::GamedataFindingFactory;
   use crate::project::textures::texture_bumps_verification_result::GamedataTextureBumpsVerificationResult;
   use crate::project::textures::texture_files_verification_result::GamedataTextureFilesVerificationResult;
   use crate::{
-    Finding, GamedataCheckResult, GamedataVerificationReport, GamedataVerificationRule, GamedataVerificationStatus,
-    GamedataVerificationType,
+    Finding, GamedataCheckResult, GamedataFindingFactory, GamedataVerificationReport, GamedataVerificationRule,
+    GamedataVerificationStatus, GamedataVerificationType,
   };
 
   #[test]

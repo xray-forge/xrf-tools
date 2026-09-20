@@ -5,10 +5,7 @@ use xrf_chunk::{
   read_f32_chunk, read_u16_chunk, read_u32_chunk, read_w1251_string_chunk,
 };
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::LtxImportExport;
-use xrf_ltx::META_TYPE_FIELD;
-use xrf_ltx::read_ltx_field;
-use xrf_ltx::{Ltx, Section};
+use xrf_ltx::{Ltx, LtxImportExport, META_TYPE_FIELD, Section, read_ltx_field};
 use xrf_utils::assert_equal;
 
 use crate::data::particle_effect_description::ParticleDescription;

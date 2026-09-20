@@ -3,9 +3,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::LtxImportExport;
-use xrf_ltx::read_ltx_field;
-use xrf_ltx::{Ltx, Section};
+use xrf_ltx::{Ltx, LtxImportExport, Section, read_ltx_field};
 
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -91,8 +89,7 @@ mod tests {
   use uuid::uuid;
   use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
   use xrf_error::XrfResult;
-  use xrf_ltx::Ltx;
-  use xrf_ltx::LtxImportExport;
+  use xrf_ltx::{Ltx, LtxImportExport};
   use xrf_test_utils::FileSlice;
   use xrf_test_utils::file::read_file_as_string;
   use xrf_test_utils::utils::{

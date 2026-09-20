@@ -1,9 +1,8 @@
 use std::time::Duration;
 
-use crate::GamedataFindingFactory;
 use crate::project::sounds::sound_files_verification_result::GamedataSoundFilesVerificationResult;
 use crate::project::sounds::sound_references_verification_result::GamedataSoundReferencesVerificationResult;
-use crate::{Finding, GamedataCheckResult, GamedataVerificationStatus};
+use crate::{Finding, GamedataCheckResult, GamedataFindingFactory, GamedataVerificationStatus};
 
 pub struct GamedataSoundsVerificationResult {
   pub(crate) duration: Duration,
@@ -63,12 +62,11 @@ mod tests {
   use std::time::Duration;
 
   use super::GamedataSoundsVerificationResult;
-  use crate::GamedataFindingFactory;
   use crate::project::sounds::sound_files_verification_result::GamedataSoundFilesVerificationResult;
   use crate::project::sounds::sound_references_verification_result::GamedataSoundReferencesVerificationResult;
   use crate::{
-    Finding, GamedataCheckResult, GamedataVerificationReport, GamedataVerificationRule, GamedataVerificationStatus,
-    GamedataVerificationType,
+    Finding, GamedataCheckResult, GamedataFindingFactory, GamedataVerificationReport, GamedataVerificationRule,
+    GamedataVerificationStatus, GamedataVerificationType,
   };
 
   #[test]

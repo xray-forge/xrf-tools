@@ -4,14 +4,13 @@ use xrf_level::{LevelAiFile, LevelAiHeader, LevelCformFile, LevelCformHeader, Le
 use xrf_spawn::XRayByteOrder;
 use xrf_vfs::XrayAssetType as AssetType;
 
-use crate::GamedataFindingFactory;
 use crate::project::levels::level_bundle::LevelBundle;
 use crate::project::levels::level_engine_constants::{
   AI_CURRENT_VERSION, AI_VERSION_ALLOWED, CFORM_CURRENT_VERSION, LEVEL_AI_FILE, LEVEL_CFORM_FILE, LEVEL_FILE,
   LEVEL_PRODUCTION_VERSION,
 };
 use crate::project::levels::level_roster::RosterLevel;
-use crate::{Finding, GamedataVerificationRule};
+use crate::{Finding, GamedataFindingFactory, GamedataVerificationRule};
 
 /// Findings from the binary level files, plus the shader table left for reference closure.
 #[derive(Default)]

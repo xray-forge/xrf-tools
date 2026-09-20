@@ -1,8 +1,7 @@
 use xrf_error::XrfResult;
 use xrf_ltx::Ltx;
 
-use crate::pack::config::ArchivePackHeaderEntry;
-use crate::pack::config::{ArchivePackConfig, ArchivePackDirectory};
+use crate::pack::config::{ArchivePackConfig, ArchivePackDirectory, ArchivePackHeaderEntry};
 
 /// Section holding the extension patterns that keep a file out.
 const SECTION_OPTIONS: &str = "options";

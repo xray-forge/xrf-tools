@@ -3,13 +3,12 @@ use std::io::ErrorKind;
 use std::path::Path;
 
 use xrf_error::{XrfError, XrfResult};
-use xrf_utils::{LineEndings, format_path};
+use xrf_utils::{LineEndings, format_path, write_file_staged, write_new_file_staged};
 
 use crate::edit::TranslationEdit;
 use crate::json::normalize::{resolve_line_endings, to_canonical_bytes};
 use crate::json::read::read_json;
 use crate::types::TranslationJson;
-use xrf_utils::{write_file_staged, write_new_file_staged};
 
 /// What a canonical rewrite of one source would produce, beside what is there now.
 pub(crate) struct CanonicalRender {

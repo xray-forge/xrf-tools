@@ -3,8 +3,7 @@ use std::fs::File;
 use std::io::ErrorKind::UnexpectedEof;
 use std::io::{Cursor, Read, Seek, SeekFrom};
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
-use std::sync::LazyLock;
+use std::sync::{Arc, LazyLock};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use byteorder::ReadBytesExt;
@@ -17,12 +16,11 @@ use xrf_utils::{
   new_windows1251_encoder,
 };
 
-use crate::volume::ArchiveDescriptor;
-use crate::volume::ArchiveFileDescriptor;
 use crate::volume::archive_constants::{
   CHUNK_ID_FILE_DESCRIPTORS_READ, CHUNK_ID_METADATA_READ, DESCRIPTOR_ROW_FIELDS_SIZE, MAXIMUM_ENTRY_NAME_SIZE,
 };
 use crate::volume::archive_header::ArchiveHeader;
+use crate::volume::{ArchiveDescriptor, ArchiveFileDescriptor};
 
 /// Patterns of the `[header]` metadata chunk, compiled once.
 static SECTION_PATTERN: LazyLock<Regex> =

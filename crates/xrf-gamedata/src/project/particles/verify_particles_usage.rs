@@ -1,7 +1,6 @@
-use std::sync::Arc;
-
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 use std::time::Instant;
 
 use xrf_error::XrfResult;
@@ -11,10 +10,9 @@ use xrf_spawn::{SpawnFile, XRayByteOrder};
 use xrf_utils::format_path;
 use xrf_vfs::XrayAssetType as AssetType;
 
-use crate::GamedataFindingFactory;
 use crate::project::levels::level_engine_constants::SPAWNS_DIRECTORY;
 use crate::project::particles::verify_particles_usage_result::GamedataParticlesUsageVerificationResult;
-use crate::{GamedataProject, GamedataProjectVerifyOptions, GamedataVerificationRule};
+use crate::{GamedataFindingFactory, GamedataProject, GamedataProjectVerifyOptions, GamedataVerificationRule};
 
 /// Values that appear in particle-typed keys but are not particle names.
 const SKIPPED_REFERENCE_VALUES: [&str; 7] = ["true", "false", "on", "off", "0", "1", "nil"];

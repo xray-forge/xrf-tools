@@ -147,12 +147,11 @@ impl OmfMotionsProcessor {
 #[cfg(test)]
 mod tests {
   use std::collections::HashMap;
+
   use xrf_error::XrfResult;
-  use xrf_skeleton::SkeletonMotion;
-  use xrf_skeleton::SkeletonMotionDefinition;
-  use xrf_skeleton::SkeletonMotionParametersChunk;
-  use xrf_skeleton::SkeletonMotionsChunk;
-  use xrf_skeleton::SkeletonPart;
+  use xrf_skeleton::{
+    SkeletonMotion, SkeletonMotionDefinition, SkeletonMotionParametersChunk, SkeletonMotionsChunk, SkeletonPart,
+  };
 
   use crate::omf_file::OmfFile;
   use crate::omf_motions_processor::OmfMotionsProcessor;

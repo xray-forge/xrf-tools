@@ -9,8 +9,7 @@ use xrf_vfs::XrayLogicalPath;
 use super::verify_weathers_result::GamedataWeathersVerificationResult;
 use super::weather_definitions::WeatherDefinitions;
 use super::weather_validator::verify_weather_findings_with_definitions;
-use crate::GamedataFindingFactory;
-use crate::{Finding, GamedataProject, GamedataProjectVerifyOptions, GamedataVerificationRule};
+use crate::{Finding, GamedataFindingFactory, GamedataProject, GamedataProjectVerifyOptions, GamedataVerificationRule};
 
 /// Logical directory holding assembled weather cycles.
 ///

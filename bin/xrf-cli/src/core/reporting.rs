@@ -282,10 +282,9 @@ impl ReportingArguments for Command {
 #[cfg(test)]
 mod tests {
   use std::fs;
+  use std::num::NonZeroUsize;
   use std::path::PathBuf;
   use std::time::Duration;
-
-  use std::num::NonZeroUsize;
 
   use clap::{ArgMatches, Command};
   use serde_json::{Value, json};
@@ -294,6 +293,7 @@ mod tests {
   use xrf_job::{ExecutionPlan, ExecutionRequest};
   use xrf_output::OutputVerbosity;
   use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+  use xrf_utils::staging_faults::fail_next_staged_write;
 
   use super::{
     CommandEnvelope, CommandOutcome, ReportDestination, ReportingArguments, ReportingOptions,
@@ -301,7 +301,6 @@ mod tests {
   };
   use crate::core::command_error::CommandError;
   use crate::core::generic_command::CommandResult;
-  use xrf_utils::staging_faults::fail_next_staged_write;
 
   fn parse(arguments: &[&str]) -> Result<ArgMatches, clap::Error> {
     Command::new("xrf-cli")

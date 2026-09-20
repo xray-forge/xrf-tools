@@ -91,9 +91,8 @@ impl ArchiveSharedPayload {
 mod tests {
   use std::sync::Arc;
 
-  use crate::volume::ArchiveFileDescriptor;
-
   use super::ArchiveSharedPayload;
+  use crate::volume::ArchiveFileDescriptor;
 
   fn entry(
     name: &str,

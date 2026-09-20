@@ -1,8 +1,7 @@
 use xrf_error::XrfResult;
 use xrf_utils::format_path;
 
-use crate::source::XrayArchiveSource;
-use crate::source::XrayDirectorySource;
+use crate::source::{XrayArchiveSource, XrayDirectorySource};
 use crate::{XrayMountId, XrayMountPlan, XrayPlannedMount, XraySkippedMount, XraySourceKind, XrayVfs};
 
 impl XrayVfs {

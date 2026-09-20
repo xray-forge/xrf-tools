@@ -8,17 +8,15 @@ use xrf_ogf::OgfFile;
 use xrf_omf::OmfFile;
 use xrf_output::{OutputSequence, OutputSlot};
 use xrf_spawn::XRayByteOrder;
-use xrf_vfs::XrayAssetType;
-use xrf_vfs::XrayAssetType as AssetType;
+use xrf_vfs::{XrayAssetType, XrayAssetType as AssetType};
 
-use crate::GamedataFindingFactory;
 use crate::project::weapons::constants::NO_SOUND;
 use crate::project::weapons::verify_weapons_result::GamedataWeaponVerificationResult;
 use crate::project::weapons::weapon_sound_layer_issues::{WeaponSoundLayerIssue, weapon_sound_layer_issues};
 use crate::project::weapons::weapon_sound_source::WeaponSoundSource;
 use crate::project::weapons::weapon_sound_value::WeaponSoundValue;
 use crate::project::weapons::weapons_utils::{get_weapon_animation_name, is_weapon_section};
-use crate::{Finding, GamedataProject, GamedataProjectVerifyOptions, GamedataVerificationRule};
+use crate::{Finding, GamedataFindingFactory, GamedataProject, GamedataProjectVerifyOptions, GamedataVerificationRule};
 
 impl GamedataProject {
   pub fn verify_weapons(&self, options: &GamedataProjectVerifyOptions) -> XrfResult<GamedataWeaponVerificationResult> {

@@ -64,9 +64,8 @@ mod tests {
 
   use xrf_error::{XrfError, XrfResult};
 
-  use crate::{ArchiveDescriptor, ArchiveProject};
-
   use super::ArchiveVolumeDiscovery;
+  use crate::ArchiveDescriptor;
 
   #[test]
   fn volumes_merge_in_the_order_the_engine_registers_them() {

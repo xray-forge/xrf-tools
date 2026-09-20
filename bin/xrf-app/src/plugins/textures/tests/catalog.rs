@@ -3,6 +3,7 @@
 
 use std::fs;
 use std::path::PathBuf;
+
 use xrf_material::fixtures::{FixtureTree, ThmFixture};
 use xrf_thm::{ThmBumpMode, ThmTextureFlag, ThmTextureType};
 use xrf_vfs::{XrayMountId, XrayMountMode, XrayRoots, XrayVfs};

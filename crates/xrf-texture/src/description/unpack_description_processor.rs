@@ -10,9 +10,7 @@ use xrf_extension::XrayExtension;
 use xrf_output::{OutputOptions, OutputSequence, OutputSlot};
 use xrf_utils::format_path;
 
-use crate::description::PackDescriptionOptions;
-use crate::description::TextureFileDescriptor;
-use crate::description::XmlDescriptionCollection;
+use crate::description::{PackDescriptionOptions, TextureFileDescriptor, XmlDescriptionCollection};
 use crate::image_file::save_image_as_ui_dds;
 
 pub struct UnpackDescriptionProcessor {}

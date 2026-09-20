@@ -8,10 +8,9 @@ use std::path::PathBuf;
 
 use xrf_archive::ArchiveProject;
 use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
-use xrf_vfs::XrayArchiveSource;
 use xrf_vfs::{
-  XrayAsset, XrayAssetContainer, XrayAssetSource, XrayAssetType, XrayDeclaredRoot, XrayLookupScope, XrayMountPlan,
-  XrayProbe, XrayProbePlan, XrayProbeStep, XrayShadowedCopy, XraySourceKind, XrayVfs,
+  XrayArchiveSource, XrayAsset, XrayAssetContainer, XrayAssetSource, XrayAssetType, XrayDeclaredRoot, XrayLookupScope,
+  XrayMountPlan, XrayProbe, XrayProbePlan, XrayProbeStep, XrayShadowedCopy, XraySourceKind, XrayVfs,
 };
 
 use crate::pack::ArchivePacker;

@@ -3,14 +3,13 @@ use std::ops::Range;
 use std::path::Path;
 
 use xrf_error::{XrfError, XrfResult};
-use xrf_utils::{XRayEncoding, encode_string_to_bytes, format_path};
+use xrf_utils::{XRayEncoding, encode_string_to_bytes, format_path, write_file_staged};
 use xrf_xml::{XmlElementSpan, XmlParseOptions, XmlSourceDocument, escape_xml_text};
 
 use crate::edit::TranslationEdit;
 use crate::language::find_unencodable_character;
 use crate::xml::encoding::{DecodedTranslation, read_decoded};
 use crate::xml::layout::{XmlLayout, removal_range};
-use xrf_utils::write_file_staged;
 
 /// Apply edits to one string table file, leaving every untouched byte as it was found.
 ///

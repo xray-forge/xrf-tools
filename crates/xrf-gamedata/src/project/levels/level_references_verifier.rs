@@ -3,10 +3,9 @@ use std::sync::Arc;
 use xrf_level::{LevelShaderReference, LevelShadersChunk};
 use xrf_shaders::ShaderLibraryFile;
 
-use crate::GamedataFindingFactory;
 use crate::project::levels::level_bundle::LevelBundle;
 use crate::project::levels::level_engine_constants::LEVEL_FILE;
-use crate::{Finding, GamedataProject, GamedataVerificationRule};
+use crate::{Finding, GamedataFindingFactory, GamedataProject, GamedataVerificationRule};
 
 /// Findings and counters from resolving what a level's geometry references.
 #[derive(Default)]

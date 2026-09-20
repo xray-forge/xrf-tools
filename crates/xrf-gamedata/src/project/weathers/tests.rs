@@ -9,9 +9,9 @@ use xrf_vfs::XrayLogicalPath;
 use super::verify_weathers_result::GamedataWeathersVerificationResult;
 use super::weather_definitions::WeatherDefinitions;
 use super::weather_validator::verify_weather_with_definitions;
-use crate::GamedataProject;
 use crate::{
-  GamedataCheckResult, GamedataProjectReadOptions, GamedataProjectVerifyOptions, GamedataVerificationStatus,
+  GamedataCheckResult, GamedataProject, GamedataProjectReadOptions, GamedataProjectVerifyOptions,
+  GamedataVerificationStatus,
 };
 
 static NEXT_TEST_DIRECTORY_ID: AtomicU64 = AtomicU64::new(0);

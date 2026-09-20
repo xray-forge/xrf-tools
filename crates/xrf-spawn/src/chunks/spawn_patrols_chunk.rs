@@ -6,8 +6,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
-use xrf_ltx::FileImportExport;
-use xrf_ltx::Ltx;
+use xrf_ltx::{FileImportExport, Ltx};
 use xrf_utils::{assert_length, open_export_file, to_format_size};
 
 use crate::data::patrols::patrol::Patrol;

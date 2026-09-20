@@ -2,9 +2,9 @@ use std::cmp::Ordering;
 use std::path::Path;
 
 use xrf_report::RuleId;
+use xrf_utils::to_portable_path_string;
 
 use crate::{Finding, GamedataVerificationRule};
-use xrf_utils::to_portable_path_string;
 
 /// Constructs shared report findings from gamedata verification inputs.
 pub(crate) struct GamedataFindingFactory;

@@ -1,6 +1,5 @@
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
-
 use xrf_vfs::XrayRoots;
 
 use crate::types::TranslationEntry;

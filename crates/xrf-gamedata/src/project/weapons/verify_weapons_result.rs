@@ -35,9 +35,9 @@ impl GamedataCheckResult for GamedataWeaponVerificationResult {
 #[cfg(test)]
 mod tests {
   use super::GamedataWeaponVerificationResult;
-  use crate::GamedataFindingFactory;
   use crate::{
-    Finding, GamedataVerificationReport, GamedataVerificationRule, GamedataVerificationStatus, GamedataVerificationType,
+    Finding, GamedataFindingFactory, GamedataVerificationReport, GamedataVerificationRule, GamedataVerificationStatus,
+    GamedataVerificationType,
   };
 
   #[test]

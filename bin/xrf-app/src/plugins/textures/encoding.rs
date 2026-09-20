@@ -7,7 +7,6 @@ use xrf_vfs::XrayRoots;
 
 use crate::core::session::SessionId;
 use crate::core::types::TauriResult;
-
 use crate::plugins::textures::source::TextureSource;
 
 /// A format the base texture can be written in, of the five worth offering.

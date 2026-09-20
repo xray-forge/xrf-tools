@@ -57,11 +57,11 @@ mod tests {
   use std::time::Duration;
 
   use super::GamedataMeshesVerificationResult;
-  use crate::GamedataFindingFactory;
   use crate::project::meshes::mesh_assets_verification_result::GamedataMeshAssetsVerificationResult;
   use crate::project::meshes::shader_library_verification_result::GamedataShaderLibraryVerificationResult;
   use crate::{
-    Finding, GamedataVerificationReport, GamedataVerificationRule, GamedataVerificationStatus, GamedataVerificationType,
+    Finding, GamedataFindingFactory, GamedataVerificationReport, GamedataVerificationRule, GamedataVerificationStatus,
+    GamedataVerificationType,
   };
 
   #[test]

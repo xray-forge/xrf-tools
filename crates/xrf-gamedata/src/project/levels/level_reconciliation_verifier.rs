@@ -2,14 +2,13 @@ use std::collections::BTreeSet;
 
 use xrf_error::XrfResult;
 
-use crate::GamedataFindingFactory;
 use crate::project::levels::level_bundle::LevelBundle;
 use crate::project::levels::level_engine_constants::{
   LEVELS_DIRECTORY, MULTIPLAYER_MAPS_FILE, MULTIPLAYER_MAPS_SECTION, SINGLE_PLAYER_MAPS_FILE,
   SINGLE_PLAYER_MAPS_SECTION,
 };
 use crate::project::levels::level_roster::LevelRoster;
-use crate::{Finding, GamedataProject, GamedataProjectVerifyOptions, GamedataVerificationRule};
+use crate::{Finding, GamedataFindingFactory, GamedataProject, GamedataProjectVerifyOptions, GamedataVerificationRule};
 
 /// Reconciles the game graph roster, the bundles on disk, and level map declarations.
 pub(crate) struct LevelReconciliationVerifier<'a> {

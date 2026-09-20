@@ -7,9 +7,8 @@ use xrf_job::JobHandle;
 use xrf_spawn::{GraphCrossTable, GraphLevel, SpawnFile, SpawnGraphsChunk, XRayByteOrder};
 use xrf_vfs::XrayAssetType as AssetType;
 
-use crate::GamedataFindingFactory;
 use crate::project::levels::level_engine_constants::SPAWNS_DIRECTORY;
-use crate::{Finding, GamedataProject, GamedataVerificationRule};
+use crate::{Finding, GamedataFindingFactory, GamedataProject, GamedataVerificationRule};
 
 /// Single level the game graph can send the player to.
 pub(crate) struct RosterLevel {

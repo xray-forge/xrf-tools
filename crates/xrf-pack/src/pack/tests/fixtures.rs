@@ -9,9 +9,8 @@ use xrf_archive::{ArchiveFileDescriptor, ArchiveProject};
 use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 use xrf_utils::format_path;
 
-use crate::pack::ArchivePackResult;
-use crate::pack::ArchivePacker;
 use crate::pack::config::{ArchivePackConfig, ArchivePackDirectory};
+use crate::pack::{ArchivePackResult, ArchivePacker};
 
 /// A configuration fragment large enough that compressing it actually pays off.
 pub(crate) const CONFIG: &[u8] =

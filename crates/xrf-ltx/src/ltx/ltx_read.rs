@@ -190,8 +190,7 @@ mod test {
 
   use xrf_test_utils::utils::{build_relative_test_sample_file_path, write_generated_test_resource};
 
-  use crate::ltx::Ltx;
-  use crate::ltx::LtxIncluded;
+  use crate::ltx::{Ltx, LtxIncluded};
 
   #[test]
   fn load_from_file() {

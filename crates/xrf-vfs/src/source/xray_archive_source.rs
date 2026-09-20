@@ -457,9 +457,8 @@ mod tests {
 
   use xrf_archive::{ArchiveDescriptor, ArchiveFileDescriptor, ArchiveProject, ArchiveReadPolicy};
 
-  use crate::{XrayAssetContainer, XrayAssetSource, XrayCollisionSite, XrayPathCollision, XrayShadowedCopy};
-
   use super::XrayArchiveSource;
+  use crate::{XrayAssetContainer, XrayAssetSource, XrayCollisionSite, XrayPathCollision, XrayShadowedCopy};
 
   const BASE: &str = "C:\\game\\db\\base.db0";
   const PATCH: &str = "C:\\game\\db\\patch.db1";
