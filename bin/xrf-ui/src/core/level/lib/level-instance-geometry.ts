@@ -29,9 +29,11 @@ export function createInstancedMesh(
   }
 
   mesh.instanceMatrix.needsUpdate = true;
-  // Instances are placed by their own matrices rather than by the mesh's, so a frustum test against its unmoved
-  // bounding sphere would cull the whole stand the moment the mesh's own origin left the view.
-  mesh.frustumCulled = false;
+  // Over the places rather than over the mesh: instances stand by their own matrices, so a sphere around the mesh's
+  // own origin would cull a whole stand the moment that origin left the view. `InstancedMesh` measures the instance
+  // matrices, which is the extent a frustum test actually wants - and computed here, where the matrices have just
+  // been written, rather than lazily inside the first frame that tests it.
+  mesh.computeBoundingSphere();
 
   return mesh;
 }

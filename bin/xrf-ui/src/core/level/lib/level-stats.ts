@@ -1,7 +1,9 @@
 import { ILoadedSector } from "@/core/level/lib/level-sector-set";
-import { ISectorInstanceViews, ISectorSectionViews, ISectorViews } from "@/core/level/lib/level-sector-views";
+import { IRenderFrameCost } from "@/core/render/lib/render-viewport";
 
-/** What a viewport costs, sampled rather than guessed. */
+/**
+ * What a viewport is holding, against what a frame of it costs.
+ */
 export interface ILevelStats {
   /** Mean frame time over the window, in milliseconds. */
   frameTime: number;
@@ -9,9 +11,9 @@ export interface ILevelStats {
   framesPerSecond: number;
   /** Sectors resident. */
   sectors: number;
-  /** Draw calls the resident sectors cost: one per surface of each, and one per instanced mesh. */
+  /** Draw calls the last frame issued, which is what survived culling rather than what is held. */
   draws: number;
-  /** Triangles drawn, an instanced mesh counted once for every place it stands. */
+  /** Triangles the last frame drew, instanced geometry counted once for every place it stood. */
   triangles: number;
   /** Bytes of geometry held, which is what a residency budget is really spending. */
   bytes: number;
@@ -26,48 +28,26 @@ export const EMPTY_LEVEL_STATS: ILevelStats = {
   triangles: 0,
 };
 
-/** Draw calls a sector costs: one per surface of its own mesh, plus one per instanced mesh however often it stands. */
-function countSectorDraws(views: ISectorViews): number {
-  return views.sections.length + views.instances.length;
-}
-
-/** Triangles a sector draws in total, instanced meshes counted once for every place they stand. */
-function countSectorTriangles(views: ISectorViews): number {
-  const baked: number = views.sections.reduce(
-    (total: number, section: ISectorSectionViews) => total + section.triangleCount,
-    0
-  );
-
-  return views.instances.reduce(
-    (total: number, group: ISectorInstanceViews) => total + (group.geometry.indexCount / 3) * group.instanceCount,
-    baked
-  );
-}
-
 /**
- * Measures what the resident sectors cost, without asking the renderer.
+ * Measures what the viewport is holding, against what its last frame cost.
  *
  * @param sectors - What the loader currently holds.
- * @param frameTime - Mean frame time, from the viewport's own timer.
+ * @param frame - What the viewport's renderer counted for the frame just drawn.
  * @returns What the viewport is spending.
  */
-export function measureLevelStats(sectors: ReadonlyMap<number, ILoadedSector>, frameTime: number): ILevelStats {
-  let draws: number = 0;
-  let triangles: number = 0;
+export function measureLevelStats(sectors: ReadonlyMap<number, ILoadedSector>, frame: IRenderFrameCost): ILevelStats {
   let bytes: number = 0;
 
   for (const loaded of sectors.values()) {
-    draws += countSectorDraws(loaded.views);
-    triangles += countSectorTriangles(loaded.views);
     bytes += loaded.views.bufferLength;
   }
 
   return {
     bytes,
-    draws,
-    frameTime,
-    framesPerSecond: frameTime > 0 ? 1000 / frameTime : 0,
+    draws: frame.draws,
+    frameTime: frame.frameTime,
+    framesPerSecond: frame.framesPerSecond,
     sectors: sectors.size,
-    triangles,
+    triangles: frame.triangles,
   };
 }

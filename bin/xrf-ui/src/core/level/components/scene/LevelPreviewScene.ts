@@ -152,7 +152,7 @@ export class LevelPreviewScene {
 
     if (now - this.statsReportedAt >= STATS_INTERVAL) {
       this.statsReportedAt = now;
-      this.handlers.onStats(measureLevelStats(this.resident, this.viewport.frameTime));
+      this.handlers.onStats(measureLevelStats(this.resident, this.viewport.frameCost));
     }
   }
 }

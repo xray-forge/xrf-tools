@@ -39,14 +39,14 @@ export function LevelStreamPanel({
     <EditorPanel data-testid={dataTestId} id={id} className={className} title={"Streaming"}>
       <EditorPanelSection title={"Resident"} isFirst>
         <EditorPanelProperty label={"Sectors"} value={stats.sectors} />
-        <EditorPanelProperty label={"Draw calls"} value={stats.draws} />
-        <EditorPanelProperty label={"Triangles"} value={stats.triangles} />
         <EditorPanelProperty label={"Geometry"} value={formatBytes(stats.bytes)} />
       </EditorPanelSection>
 
       <EditorPanelSection title={"Frame"}>
         <EditorPanelProperty label={"Frame time"} value={`${stats.frameTime.toFixed(1)} ms`} />
         <EditorPanelProperty label={"Frames a second"} value={stats.framesPerSecond.toFixed(0)} />
+        <EditorPanelProperty label={"Draw calls"} value={stats.draws} />
+        <EditorPanelProperty label={"Triangles"} value={stats.triangles} />
       </EditorPanelSection>
 
       <EditorPanelSection title={"Budget"}>

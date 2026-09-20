@@ -66,12 +66,18 @@ describe("level instance geometry", () => {
     expect(placed.z).toBe(0);
   });
 
-  // Instances are placed by their own matrices rather than by the tree's world position, so a frustum test against an
-  // unmoved bounding sphere would cull the whole stand the moment the origin left the view.
-  it("leaves culling to the viewer rather than to an unmoved bounding sphere", () => {
-    const group: ISectorInstanceViews = instancesAt([1000]);
+  // Instances stand by their own matrices, so a sphere around the mesh's own origin would cull a whole stand the
+  // moment that origin left the view. Measuring the matrices is what lets the stand be culled correctly instead of
+  // never: on marsh that is 102 of 358 stands the camera cannot see.
+  it("measures its bounding sphere over every place it stands, so it can be culled", () => {
+    const group: ISectorInstanceViews = instancesAt([0, 1000]);
     const mesh: InstancedMesh = createInstancedMesh(group, createGeometry(group.geometry), new MeshStandardMaterial());
 
-    expect(mesh.frustumCulled).toBe(false);
+    expect(mesh.frustumCulled).toBe(true);
+    expect(mesh.boundingSphere).not.toBeNull();
+    // The property that matters: every place the mesh stands is inside the sphere a frustum will test.
+    for (const place of [new Vector3(0, 0, 0), new Vector3(1000, 0, 0)]) {
+      expect(mesh.boundingSphere!.containsPoint(place)).toBe(true);
+    }
   });
 });

@@ -19,6 +19,19 @@ export interface IRenderViewportConfig {
 }
 
 /**
+ * What one frame cost, as the renderer itself counted it.
+ */
+export interface IRenderFrameCost {
+  /** Mean frame time over the window, in milliseconds. */
+  frameTime: number;
+  framesPerSecond: number;
+  /** Draw calls the last frame issued. */
+  draws: number;
+  /** Triangles the last frame drew, instanced geometry counted once for every place it stood. */
+  triangles: number;
+}
+
+/**
  * What a viewport asks of the scene standing on it, once a frame at most.
  */
 export interface IRenderViewportHandlers {
@@ -87,6 +100,15 @@ export class RenderViewport {
   /** Frames a second over the same window. */
   public get framesPerSecond(): number {
     return this.timer.framesPerSecond;
+  }
+
+  /**
+   * What the last frame cost.
+   */
+  public get frameCost(): IRenderFrameCost {
+    const { calls, triangles } = this.renderer.info.render;
+
+    return { draws: calls, frameTime: this.timer.frameTime, framesPerSecond: this.timer.framesPerSecond, triangles };
   }
 
   /** Canvas width in css pixels, zero before it has been measured, for a scene that scales input by it. */
