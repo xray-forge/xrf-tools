@@ -1,6 +1,6 @@
-import { default as ContentCopyIcon } from "@mui/icons-material/ContentCopy";
+import { default as BarChartIcon } from "@mui/icons-material/BarChart";
+import { default as FileCopyIcon } from "@mui/icons-material/FileCopy";
 import { default as LayersIcon } from "@mui/icons-material/Layers";
-import { default as QueryStatsIcon } from "@mui/icons-material/QueryStats";
 import { Alert } from "@mui/material";
 import { CommandBus } from "@wirestate/core";
 import { useInjection } from "@wirestate/react";
@@ -128,7 +128,7 @@ export function ArchivesEditor(): ReactElement {
                 aria-expanded={isOverridesOpen}
                 label={"Overrides"}
                 description={"Engine paths held more than once, and what each contest buries"}
-                icon={<ContentCopyIcon />}
+                icon={<FileCopyIcon />}
                 onClick={() => setOverridesOpen(true)}
               />
 
@@ -137,7 +137,7 @@ export function ArchivesEditor(): ReactElement {
                 aria-expanded={isStatisticsOpen}
                 label={"Statistics"}
                 description={"What this archive holds, broken down"}
-                icon={<QueryStatsIcon />}
+                icon={<BarChartIcon />}
                 onClick={() => setStatisticsOpen(true)}
               />
             </>
