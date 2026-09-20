@@ -167,6 +167,8 @@ mod tests {
 
     use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 
+    use crate::ArchiveProject;
+
     let root: PathBuf = build_absolute_generated_test_resource_path("archive_project_unreadable");
     let locked: PathBuf = root.join("locked");
 
