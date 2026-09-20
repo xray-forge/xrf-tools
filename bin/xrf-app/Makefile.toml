@@ -23,6 +23,10 @@ dependencies = ["setup"]
 command = "cargo"
 args = ["tauri", "dev"]
 
+[tasks.dev-optimized]
+extend = "dev"
+env = { CARGO_PROFILE_DEV_OPT_LEVEL = "1" }
+
 [tasks.serve-backend]
 command = "cargo"
 args = ["run", "--no-default-features"]

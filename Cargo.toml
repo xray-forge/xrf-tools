@@ -133,9 +133,9 @@ lto = true
 opt-level = "s"
 strip = true
 
-# A development build is optimized lightly rather than not at all.
+# Keep development builds fast; the optimized app task overrides this for Tauri.
 [profile.dev]
-opt-level = 1
+opt-level = 0
 
 [workspace.lints.rust]
 dead_code = "allow"

@@ -133,6 +133,14 @@ dependencies = [
   { name = "dev", path = "bin/xrf-app" },
 ]
 
+[tasks.dev-app-optimized]
+description = "Run UI application in watch mode with Rust optimization level 1."
+category = "Development"
+workspace = false
+dependencies = [
+  { name = "dev-optimized", path = "bin/xrf-app" },
+]
+
 [tasks.serve-backend]
 description = "Run UI application backend in watch mode."
 category = "Development"
