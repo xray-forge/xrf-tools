@@ -82,10 +82,13 @@ export function createSurfaceMaterial(
   textures: Nullable<ILevelTextureLookup>,
   options: ILevelSurfaceOptions
 ): ILevelSurfaceMaterial {
-  const material: MeshStandardMaterial = createRenderMaterial({
-    metalness: SURFACE_METALNESS,
-    roughness: SURFACE_ROUGHNESS,
-  });
+  const material: MeshStandardMaterial = createRenderMaterial(
+    {
+      metalness: SURFACE_METALNESS,
+      roughness: SURFACE_ROUGHNESS,
+    },
+    surface.render
+  );
   // Whether a surface is detailed is fixed by its blender, so the patch is installed once here rather than every time
   // the toolbar or a texture arrival re-dresses it. What changes later is the texture, which is a uniform.
   const dressed: ILevelSurfaceMaterial = {

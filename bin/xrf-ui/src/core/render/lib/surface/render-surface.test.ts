@@ -131,3 +131,38 @@ describe("getRenderSurface", () => {
     expect(getRenderSurface(surfaces, 1).detail?.reference).toBe("detail\\detail_grnd_grass");
   });
 });
+
+describe("toRenderSurface lighting", () => {
+  /** A descriptor as the backend answers for a shader it read a renderer script for. */
+  function scripted(isBlended: boolean): XraySurfaceDescriptor {
+    return mockSurfaceDescriptor({
+      declaration: {
+        function: "normal",
+        isAlphaTested: true,
+        isBlended,
+        isDepthWritten: false,
+        isWallmark: true,
+        kind: "scripted",
+        script: "shaders\\r2\\effects_wallmarkmult.s",
+      },
+      draw: { isDoubled: true, kind: "multiplied" },
+    });
+  }
+
+  // A script's blended pass names its own shaders and is drawn after the light accumulation rather than into it.
+  // Lit anyway, a wall mark multiplies into a *lit* wall and brightens the rectangle it covers.
+  it("does not light a composited pass a script declares", () => {
+    expect(toRenderSurface(scripted(true)).isLit).toBe(false);
+  });
+
+  it("lights a script's own pass when it is written rather than composited", () => {
+    expect(toRenderSurface(scripted(false)).isLit).toBe(true);
+  });
+
+  // Every other surface here is a deferred base pass, which is exactly what the light accumulates onto.
+  it("lights everything the blender library answers for", () => {
+    expect(toRenderSurface(mockAlphaSurfaceDescriptor()).isLit).toBe(true);
+    expect(toRenderSurface(mockAlphaSurfaceDescriptor({ draw: { kind: "blended", reference: 0 } })).isLit).toBe(true);
+    expect(toRenderSurface(null).isLit).toBe(true);
+  });
+});

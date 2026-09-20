@@ -13,7 +13,11 @@ import {
 import { ILevelTexture, ILevelTextureLookup } from "@/core/level/lib/texture/level-texture-set";
 import { IRenderDetail, OPAQUE_RENDER_SURFACE, toRenderSurface } from "@/core/render/lib/surface/render-surface";
 import { mockSectorSurface } from "@/fixtures/mocks/level.mocks";
-import { mockAlphaSurfaceDescriptor, mockBlendedSurfaceDescriptor } from "@/fixtures/mocks/visual.mocks";
+import {
+  mockAlphaSurfaceDescriptor,
+  mockBlendedSurfaceDescriptor,
+  mockSurfaceDescriptor,
+} from "@/fixtures/mocks/visual.mocks";
 import { Nullable } from "@/lib/types/general";
 
 /** A lookup answering with a distinct texture for each reference it is given. */
@@ -193,5 +197,49 @@ describe("level surface material", () => {
     dressSurfaceMaterial(dressed, detailed, textures, options({ isTextured: false }));
 
     expect(applied(dressed)).toBeNull();
+  });
+});
+
+describe("createSurfaceMaterial shading", () => {
+  function scriptedSurface(isBlended: boolean): ILevelSurface {
+    return surface({
+      render: toRenderSurface(
+        mockSurfaceDescriptor({
+          declaration: {
+            function: "normal",
+            isAlphaTested: true,
+            isBlended,
+            isDepthWritten: false,
+            isWallmark: true,
+            kind: "scripted",
+            script: "shaders\\r2\\effects_wallmarkmult.s",
+          },
+          draw: { isDoubled: true, kind: "multiplied" },
+        })
+      ),
+    });
+  }
+
+  // The regression this exists for: the material was built from the options alone, so every level surface got the
+  // opaque default and the forward passes stayed lit. A wall mark multiplied into a lit wall brightens the rectangle
+  // it covers instead of being neutral.
+  it("builds a composited script pass unlit", () => {
+    const dressed: ILevelSurfaceMaterial = createSurfaceMaterial(scriptedSurface(true), null, options());
+
+    expect(dressed.material.customProgramCacheKey()).toContain("xray-unlit");
+  });
+
+  it("leaves an ordinary level surface lit", () => {
+    const dressed: ILevelSurfaceMaterial = createSurfaceMaterial(surface(), null, options());
+
+    expect(dressed.material.customProgramCacheKey()).not.toContain("xray-unlit");
+  });
+
+  // Built with the surface, so what its shader compiles to is on the material before it has ever drawn.
+  it("carries what its shader compiles to from the moment it is built", () => {
+    const dressed: ILevelSurfaceMaterial = createSurfaceMaterial(scriptedSurface(true), null, options());
+
+    expect(dressed.material.transparent).toBe(true);
+    expect(dressed.material.depthWrite).toBe(false);
   });
 });

@@ -2,6 +2,7 @@ import { MeshStandardMaterial, OneMinusSrcAlphaFactor, SrcAlphaFactor } from "th
 
 import { applyXrayGlossShading, XRAY_DEFAULT_GLOSS } from "@/core/render/lib/surface/render-gloss";
 import { IRenderSurface, OPAQUE_RENDER_SURFACE } from "@/core/render/lib/surface/render-surface";
+import { applyXrayUnlitShading } from "@/core/render/lib/surface/render-unlit";
 
 /**
  * How far towards the viewer a composited surface is pulled, in the depth buffer's own slope-scaled units.
@@ -38,6 +39,12 @@ export function createRenderMaterial(
   // Every X-Ray surface, because every one of them has a gloss and none of them has the reflectance three.js would
   // otherwise give it. First of the patches, so a later one can write the gloss it reads for itself.
   applyXrayGlossShading(material, options.gloss ?? XRAY_DEFAULT_GLOSS);
+
+  // Once, at build: whether a pass is lit is its shader's answer rather than a view state, and the patch changes
+  // the compiled program.
+  if (!surface.isLit) {
+    applyXrayUnlitShading(material);
+  }
 
   applyRenderSurface(material, surface);
 

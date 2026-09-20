@@ -226,8 +226,10 @@ export class VisualPreviewMeshes {
     // the texture: a cut-out surface is never shown solid on the way in.
     const material: MeshStandardMaterial = createRenderMaterial(
       { color: options.meshColor, metalness: MESH_METALNESS, roughness: MESH_ROUGHNESS },
-      (this.materialOptions?.isAlphaVisible ?? true) ? submesh.surface : OPAQUE_RENDER_SURFACE
+      submesh.surface
     );
+
+    VisualPreviewMeshes.applySurface(material, submesh.surface, this.materialOptions?.isAlphaVisible ?? true);
 
     // Skinned only when this submesh carries links and the model carries bones to bind them to.
     const isSkinned: boolean = Boolean(submesh.skinIndices && submesh.skinWeights && options.skin);

@@ -4,3 +4,4 @@ export * from "./render-gloss";
 export * from "./render-material";
 export * from "./render-patch";
 export * from "./render-surface";
+export * from "./render-unlit";

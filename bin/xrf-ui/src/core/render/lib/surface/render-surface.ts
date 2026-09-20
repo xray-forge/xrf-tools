@@ -11,7 +11,13 @@ import {
   ZeroFactor,
 } from "three";
 
-import { EXraySurfaceDraw, XraySurfaceDescriptor, XraySurfaceDraw } from "@/core/ipc/types/xrf-material";
+import {
+  EXraySurfaceDeclaration,
+  EXraySurfaceDraw,
+  XraySurfaceDeclaration,
+  XraySurfaceDescriptor,
+  XraySurfaceDraw,
+} from "@/core/ipc/types/xrf-material";
 import { Maybe, Nullable } from "@/lib/types/general";
 
 /**
@@ -59,6 +65,8 @@ export interface IRenderSurface {
   blend: IRenderBlending;
   /**  The detail texture bound beside the diffuse, or null for a surface the engine details with none. */
   detail: Nullable<IRenderDetail>;
+  /**  Whether the scene's light reaches the surface at all. */
+  isLit: boolean;
 }
 
 /** How a surface with nothing said about it is drawn, which is how the engine draws one whose shader it cannot find. */
@@ -67,6 +75,7 @@ export const OPAQUE_RENDER_SURFACE: IRenderSurface = {
   blend: NORMAL_BLENDING,
   detail: null,
   isDepthWritten: true,
+  isLit: true,
   isTransparent: false,
 };
 
@@ -88,9 +97,10 @@ export const XRAY_DEFAULT_AREF: number = 200 / ALPHA_REFERENCE_SCALE;
 export function toRenderSurface(descriptor: Nullable<XraySurfaceDescriptor>): IRenderSurface {
   const draw: Nullable<XraySurfaceDraw> = descriptor?.draw ?? null;
   const detail: Nullable<IRenderDetail> = toRenderDetail(descriptor);
+  const isLit: boolean = isLitRenderSurface(descriptor);
 
   if (!draw || draw.kind === EXraySurfaceDraw.OPAQUE) {
-    return detail ? { ...OPAQUE_RENDER_SURFACE, detail } : OPAQUE_RENDER_SURFACE;
+    return detail || !isLit ? { ...OPAQUE_RENDER_SURFACE, detail, isLit } : OPAQUE_RENDER_SURFACE;
   }
 
   if (draw.kind === EXraySurfaceDraw.INVISIBLE) {
@@ -99,6 +109,7 @@ export function toRenderSurface(descriptor: Nullable<XraySurfaceDescriptor>): IR
       blend: BLANK_BLENDING,
       detail,
       isDepthWritten: false,
+      isLit,
       isTransparent: true,
     };
   }
@@ -108,6 +119,7 @@ export function toRenderSurface(descriptor: Nullable<XraySurfaceDescriptor>): IR
       ...OPAQUE_RENDER_SURFACE,
       alphaTest: draw.reference / ALPHA_REFERENCE_SCALE,
       detail,
+      isLit,
     };
   }
 
@@ -118,6 +130,7 @@ export function toRenderSurface(descriptor: Nullable<XraySurfaceDescriptor>): IR
     blend: toRenderBlending(draw),
     detail,
     isDepthWritten: false,
+    isLit,
     isTransparent: true,
   };
 }
@@ -141,6 +154,18 @@ export function isAlphaRenderSurface(surface: IRenderSurface): boolean {
  */
 export function getRenderSurface(surfaces: ReadonlyArray<XraySurfaceDescriptor>, index: number): IRenderSurface {
   return toRenderSurface(surfaces[index] ?? null);
+}
+
+/**
+ * Whether the scene's light reaches a surface, which only a scripted pass answers no to.
+ *
+ * @param descriptor - What the backend resolved for the surface.
+ * @returns Whether to shade it with the scene's lights.
+ */
+function isLitRenderSurface(descriptor: Nullable<XraySurfaceDescriptor>): boolean {
+  const declaration: Maybe<XraySurfaceDeclaration> = descriptor?.declaration;
+
+  return !(declaration?.kind === EXraySurfaceDeclaration.SCRIPTED && declaration.isBlended);
 }
 
 /** What a composited surface discards, which the multiplying equations state no reference for. */
