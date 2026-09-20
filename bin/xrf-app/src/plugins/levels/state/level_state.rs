@@ -1,5 +1,5 @@
 use crate::core::session::Session;
-use crate::plugins::levels::state::selected_level::SelectedLevel;
+use crate::plugins::levels::state::selection::selected_level::SelectedLevel;
 
 /// Ownership for the level a viewer has open.
 pub struct LevelState {

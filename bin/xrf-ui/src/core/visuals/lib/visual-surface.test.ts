@@ -2,7 +2,7 @@ import { describe, expect, it } from "@jest/globals";
 
 import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
 import { VisualSubmesh, VisualTextureDependency } from "@/core/ipc/types/xrf-visual";
-import { IRenderSurface, OPAQUE_RENDER_SURFACE } from "@/core/render/lib/render-surface";
+import { IRenderSurface, OPAQUE_RENDER_SURFACE } from "@/core/render/lib/surface/render-surface";
 import { createVisualSurfaces, toAlphaTexturePaths } from "@/core/visuals/lib/visual-surface";
 import {
   mockAlphaSurfaceDescriptor,

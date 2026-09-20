@@ -1,4 +1,4 @@
-use crate::data::visual_section::VisualSection;
+use crate::data::visual::geometry::visual_section::VisualSection;
 
 /// Accumulates a visual's attribute buffers into one blob and reports where each landed.
 ///

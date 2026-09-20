@@ -8,11 +8,11 @@ use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, find_optional_chun
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::format_path;
 
-use crate::geom::level_geom_index_buffer::LevelGeomIndexBuffer;
-use crate::geom::level_geom_slide_window::LevelGeomSlideWindow;
-use crate::geom::level_geom_slide_window_item::LevelGeomSlideWindowItem;
-use crate::geom::level_geom_vertex_buffer::LevelGeomVertexBuffer;
-use crate::geom::level_geom_vertex_element::LevelGeomVertexElement;
+use crate::geom::buffers::level_geom_index_buffer::LevelGeomIndexBuffer;
+use crate::geom::buffers::level_geom_vertex_buffer::LevelGeomVertexBuffer;
+use crate::geom::buffers::level_geom_vertex_element::LevelGeomVertexElement;
+use crate::geom::window::level_geom_slide_window::LevelGeomSlideWindow;
+use crate::geom::window::level_geom_slide_window_item::LevelGeomSlideWindowItem;
 
 /// The render geometry of a level, `level.geom` and its detail twin `level.geomX`.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]

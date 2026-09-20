@@ -4,7 +4,7 @@ import { MeshStandardMaterial, Texture } from "three";
 import { LevelMaterialSet } from "@/core/level/lib/surface/level-material-set";
 import { DEFAULT_LEVEL_SURFACE_OPTIONS, ILevelSurface } from "@/core/level/lib/surface/level-surface-material";
 import { ILevelTexture, ILevelTextureLookup } from "@/core/level/lib/texture/level-texture-set";
-import { OPAQUE_RENDER_SURFACE, toRenderSurface } from "@/core/render/lib/render-surface";
+import { OPAQUE_RENDER_SURFACE, toRenderSurface } from "@/core/render/lib/surface/render-surface";
 import { mockSectorSurface } from "@/fixtures/mocks/level.mocks";
 import { mockAlphaSurfaceDescriptor } from "@/fixtures/mocks/visual.mocks";
 import { Nullable } from "@/lib/types/general";

@@ -4,8 +4,8 @@ import { VisualBounds } from "@/core/ipc/types/xrf-visual";
 import { ILevelPreviewSceneConfig } from "@/core/level/components/scene/level-scene-config";
 import { toBoxFloor, toBoxReach, toLevelBox, toOriginReach } from "@/core/level/lib/extent/level-extent";
 import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
-import { RenderGrid } from "@/core/render/lib/render-grid";
-import { markThrough } from "@/core/render/lib/render-marker";
+import { RenderGrid } from "@/core/render/lib/scene/render-grid";
+import { markThrough } from "@/core/render/lib/scene/render-marker";
 import { Nullable } from "@/lib/types/general";
 
 /** Which of the three the viewer is asking for; each answers where a level is in a different way. */

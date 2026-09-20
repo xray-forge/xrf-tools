@@ -1,6 +1,6 @@
 import { Vector3d } from "@/core/ipc/types/xrf-math";
 import { ILevelLighting } from "@/core/level/lib/lighting/level-lighting";
-import { toRendererSpace } from "@/core/render/lib/render-space";
+import { toRendererSpace } from "@/core/render/lib/scene/render-space";
 import { Nullable } from "@/lib/types/general";
 
 /** Degrees in a half turn, for the conversions below. */

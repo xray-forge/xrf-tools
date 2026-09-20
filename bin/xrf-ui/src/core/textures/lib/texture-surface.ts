@@ -3,7 +3,7 @@ import { Texture } from "three";
 import { getLocatedAsset } from "@/core/assets/lib";
 import { AssetTextureShape, TextureDescription } from "@/core/ipc/types/xrf-app";
 import { XrayAsset } from "@/core/ipc/types/xrf-vfs";
-import { IRenderTextureTexels } from "@/core/render/lib/render-texels";
+import { IRenderTextureTexels } from "@/core/render/lib/texture/render-texels";
 import { IVisualBumpTextures } from "@/core/visuals/lib/visual-bump";
 import { Maybe, Nullable } from "@/lib/types/general";
 

@@ -3,7 +3,7 @@ import { describe, expect, it } from "@jest/globals";
 import { ILoadedSector } from "@/core/level/lib/sector/level-sector-set";
 import { createSectorViews } from "@/core/level/lib/sector/level-sector-views";
 import { EMPTY_LEVEL_STATS, ILevelStats, measureLevelStats } from "@/core/level/lib/stats/level-stats";
-import { IRenderFrameCost } from "@/core/render/lib/render-viewport";
+import { IRenderFrameCost } from "@/core/render/lib/frame/render-viewport";
 import {
   mockSectorDescription,
   mockSectorInstanceGroup,

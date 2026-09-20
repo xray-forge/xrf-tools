@@ -1,7 +1,7 @@
 import { Injectable, OnDeprovision, OnProvision, ProvisionId } from "@wirestate/core";
 import { BoundAction, Observable } from "@wirestate/mobx";
 
-import { TFrameRateLimit, toFrameRateLimit } from "@/core/render/lib/render-frame-limit";
+import { TFrameRateLimit, toFrameRateLimit } from "@/core/render/lib/frame/render-frame-limit";
 import { TCatalogView, toCatalogView } from "@/core/settings/lib/catalog-view";
 import { CATALOG_VIEW_STORAGE_KEY, DEV_MODE_STORAGE_KEY, FRAME_RATE_LIMIT_STORAGE_KEY } from "@/core/storage";
 import { isDevelopmentBuild } from "@/lib/env";

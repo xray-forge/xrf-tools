@@ -13,9 +13,9 @@ import {
 } from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
-import { TFrameRateLimit } from "@/core/render/lib/render-frame-limit";
-import { RenderGrid } from "@/core/render/lib/render-grid";
-import { RenderViewport } from "@/core/render/lib/render-viewport";
+import { TFrameRateLimit } from "@/core/render/lib/frame/render-frame-limit";
+import { RenderViewport } from "@/core/render/lib/frame/render-viewport";
+import { RenderGrid } from "@/core/render/lib/scene/render-grid";
 import {
   DEFAULT_VISUAL_PREVIEW_SCENE_CONFIG,
   IVisualPreviewSceneConfig,

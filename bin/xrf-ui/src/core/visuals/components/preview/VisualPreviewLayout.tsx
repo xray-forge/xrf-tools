@@ -2,7 +2,7 @@ import { default as AccountTreeIcon } from "@mui/icons-material/AccountTree";
 import { ReactElement, ReactNode, useMemo, useState } from "react";
 import { Texture } from "three";
 
-import { isAlphaRenderSurface } from "@/core/render/lib/render-surface";
+import { isAlphaRenderSurface } from "@/core/render/lib/surface/render-surface";
 import { EditorFileHeader } from "@/core/shell/editor/EditorFileHeader";
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { IEditorPanel, useEditorPanels, useEditorStatus } from "@/core/shell/editor-shell";

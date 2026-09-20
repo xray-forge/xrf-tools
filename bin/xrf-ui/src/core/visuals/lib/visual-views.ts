@@ -8,7 +8,7 @@ import {
   VisualSubmesh,
   VisualTransform,
 } from "@/core/ipc/types/xrf-visual";
-import { IRenderSurface, OPAQUE_RENDER_SURFACE } from "@/core/render/lib/render-surface";
+import { IRenderSurface, OPAQUE_RENDER_SURFACE } from "@/core/render/lib/surface/render-surface";
 import { Nullable, Optional } from "@/lib/types/general";
 
 /** Floats one bone transform occupies: three basis vectors and a translation. */

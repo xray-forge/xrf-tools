@@ -8,7 +8,7 @@ import { visualsRawCommands } from "@/core/ipc/commands/visuals-raw";
 import { Session } from "@/core/ipc/session";
 import { SelectedVisualDescription, SessionSnapshot, VisualSource } from "@/core/ipc/types/xrf-app";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
-import { IRenderSurface } from "@/core/render/lib/render-surface";
+import { IRenderSurface } from "@/core/render/lib/surface/render-surface";
 import { IVisualBumpStatus, IVisualBumpTextures } from "@/core/visuals/lib/visual-bump";
 import { describeVisualSource } from "@/core/visuals/lib/visual-source";
 import { createVisualSurfaces } from "@/core/visuals/lib/visual-surface";

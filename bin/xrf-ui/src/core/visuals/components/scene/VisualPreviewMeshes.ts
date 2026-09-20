@@ -10,8 +10,8 @@ import {
   Texture,
 } from "three";
 
-import { applyRenderSurface, createRenderMaterial } from "@/core/render/lib/render-material";
-import { IRenderSurface, OPAQUE_RENDER_SURFACE } from "@/core/render/lib/render-surface";
+import { applyRenderSurface, createRenderMaterial } from "@/core/render/lib/surface/render-material";
+import { IRenderSurface, OPAQUE_RENDER_SURFACE } from "@/core/render/lib/surface/render-surface";
 import { createSubmeshGeometry } from "@/core/visuals/components/scene/VisualPreviewScene.utils";
 import {
   applyXrayBumpShading,

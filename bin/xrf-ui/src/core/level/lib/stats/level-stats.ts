@@ -1,5 +1,5 @@
 import { ILoadedSector } from "@/core/level/lib/sector/level-sector-set";
-import { IRenderFrameCost } from "@/core/render/lib/render-viewport";
+import { IRenderFrameCost } from "@/core/render/lib/frame/render-viewport";
 
 /**
  * What a viewport is holding, against what a frame of it costs.

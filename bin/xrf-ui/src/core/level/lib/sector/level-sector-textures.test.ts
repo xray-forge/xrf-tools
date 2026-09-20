@@ -9,7 +9,7 @@ import {
   listSectorTextures,
 } from "@/core/level/lib/sector/level-sector-textures";
 import { createSectorViews, ISectorViews } from "@/core/level/lib/sector/level-sector-views";
-import { OPAQUE_RENDER_SURFACE } from "@/core/render/lib/render-surface";
+import { OPAQUE_RENDER_SURFACE } from "@/core/render/lib/surface/render-surface";
 import {
   mockSectorDescription,
   mockSectorInstanceGroup,

@@ -7,12 +7,12 @@ use xrf_chunk::{ChunkDataSource, ChunkReader, find_optional_chunk_by_id, find_re
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::format_path;
 
-use crate::level::level_dynamic_lights_chunk::LevelDynamicLightsChunk;
+use crate::level::dynamic_lights::level_dynamic_lights_chunk::LevelDynamicLightsChunk;
 use crate::level::level_header_chunk::LevelHeaderChunk;
-use crate::level::level_portals_chunk::LevelPortalsChunk;
-use crate::level::level_sectors_chunk::LevelSectorsChunk;
-use crate::level::level_shaders_chunk::LevelShadersChunk;
-use crate::level::level_visuals_chunk::LevelVisualsChunk;
+use crate::level::portals::level_portals_chunk::LevelPortalsChunk;
+use crate::level::sectors::level_sectors_chunk::LevelSectorsChunk;
+use crate::level::shaders::level_shaders_chunk::LevelShadersChunk;
+use crate::level::visuals::level_visuals_chunk::LevelVisualsChunk;
 
 /// Descriptor of the compiled `level` file used by xray game engine.
 ///

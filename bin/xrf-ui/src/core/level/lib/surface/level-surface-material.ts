@@ -2,10 +2,10 @@ import { Color, MeshStandardMaterial } from "three";
 
 import { SectorSurface } from "@/core/ipc/types/xrf-visual";
 import { ILevelTexture, ILevelTextureLookup } from "@/core/level/lib/texture/level-texture-set";
-import { applyXrayHemiShading } from "@/core/render/lib/render-baked";
-import { applyXrayDetailShading, IXrayDetail, IXrayDetailShading } from "@/core/render/lib/render-detail";
-import { applyRenderSurface, createRenderMaterial } from "@/core/render/lib/render-material";
-import { IRenderDetail, IRenderSurface, OPAQUE_RENDER_SURFACE } from "@/core/render/lib/render-surface";
+import { applyXrayHemiShading } from "@/core/render/lib/surface/render-baked";
+import { applyXrayDetailShading, IXrayDetail, IXrayDetailShading } from "@/core/render/lib/surface/render-detail";
+import { applyRenderSurface, createRenderMaterial } from "@/core/render/lib/surface/render-material";
+import { IRenderDetail, IRenderSurface, OPAQUE_RENDER_SURFACE } from "@/core/render/lib/surface/render-surface";
 import { Nullable } from "@/lib/types/general";
 
 /** Nothing a compiled level declares is metal, so the surfaces are shaded as the dielectrics xrLC assumes. */

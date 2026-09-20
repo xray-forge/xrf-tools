@@ -18,8 +18,8 @@ import { ILoadedSector } from "@/core/level/lib/sector/level-sector-set";
 import { ILevelStats, measureLevelStats } from "@/core/level/lib/stats/level-stats";
 import { ILevelTextureLookup } from "@/core/level/lib/texture/level-texture-set";
 import { DEFAULT_LEVEL_VIEW_OPTIONS, ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
-import { TFrameRateLimit } from "@/core/render/lib/render-frame-limit";
-import { RenderViewport } from "@/core/render/lib/render-viewport";
+import { TFrameRateLimit } from "@/core/render/lib/frame/render-frame-limit";
+import { RenderViewport } from "@/core/render/lib/frame/render-viewport";
 import { Nullable } from "@/lib/types/general";
 
 /** What the scene reports back out, once a frame at most. */

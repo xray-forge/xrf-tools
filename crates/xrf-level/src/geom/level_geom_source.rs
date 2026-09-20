@@ -7,11 +7,11 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_math::Vector3d;
 use xrf_utils::format_path;
 
+use crate::geom::buffers::level_geom_index_buffer::LevelGeomIndexBuffer;
+use crate::geom::buffers::level_geom_vertex_buffer::LevelGeomVertexBuffer;
 use crate::geom::level_geom_file::LevelGeomFile;
-use crate::geom::level_geom_index_buffer::LevelGeomIndexBuffer;
-use crate::geom::level_geom_vertex_buffer::LevelGeomVertexBuffer;
-use crate::geom::level_vertex::LevelVertex;
-use crate::geom::level_vertex_layout::LevelVertexLayout;
+use crate::geom::vertex::level_vertex::LevelVertex;
+use crate::geom::vertex::level_vertex_layout::LevelVertexLayout;
 
 /// A level's render geometry with its payloads still where they were, able to serve any range a visual names.
 pub struct LevelGeomSource<D: ChunkDataSource> {

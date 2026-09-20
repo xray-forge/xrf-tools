@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
 import { BufferGeometry, Mesh, MeshStandardMaterial, Object3D, Skeleton, SkinnedMesh, Texture } from "three";
 
-import { IRenderSurface, OPAQUE_RENDER_SURFACE } from "@/core/render/lib/render-surface";
+import { IRenderSurface, OPAQUE_RENDER_SURFACE } from "@/core/render/lib/surface/render-surface";
 import { IVisualPreviewMeshesOptions, VisualPreviewMeshes } from "@/core/visuals/components/scene/VisualPreviewMeshes";
 import { IVisualModelViews, IVisualSubmeshViews } from "@/core/visuals/lib/visual-views";
 import { mockVisualModelViews } from "@/fixtures/mocks/visual.mocks";

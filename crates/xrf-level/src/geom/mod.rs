@@ -1,10 +1,8 @@
+pub(crate) mod buffers;
 pub(crate) mod level_geom_file;
-pub(crate) mod level_geom_index_buffer;
-pub(crate) mod level_geom_slide_window;
-pub(crate) mod level_geom_slide_window_item;
 pub(crate) mod level_geom_source;
-pub(crate) mod level_geom_vertex_buffer;
-pub(crate) mod level_geom_vertex_element;
-pub(crate) mod level_vertex;
-pub(crate) mod level_vertex_coordinate;
-pub(crate) mod level_vertex_layout;
+pub(crate) mod vertex;
+pub(crate) mod window;
+
+#[cfg(test)]
+mod tests;

@@ -9,8 +9,8 @@ import {
 } from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
-import { TFrameRateLimit } from "@/core/render/lib/render-frame-limit";
-import { RenderViewport } from "@/core/render/lib/render-viewport";
+import { TFrameRateLimit } from "@/core/render/lib/frame/render-frame-limit";
+import { RenderViewport } from "@/core/render/lib/frame/render-viewport";
 import {
   EMPTY_TEXTURE_SURFACE,
   ETextureSurfaceShape,

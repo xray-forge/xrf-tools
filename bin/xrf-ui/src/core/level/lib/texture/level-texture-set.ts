@@ -12,7 +12,7 @@ import {
   createDecodedTexture,
   IRenderTextureOptions,
   IRenderTextureUpload,
-} from "@/core/render/lib/render-texture";
+} from "@/core/render/lib/texture/render-texture";
 import { Logger } from "@/lib/logging";
 import { Maybe, Nullable } from "@/lib/types/general";
 

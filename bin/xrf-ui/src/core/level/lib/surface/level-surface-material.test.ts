@@ -11,7 +11,7 @@ import {
   ILevelSurfaceOptions,
 } from "@/core/level/lib/surface/level-surface-material";
 import { ILevelTexture, ILevelTextureLookup } from "@/core/level/lib/texture/level-texture-set";
-import { IRenderDetail, OPAQUE_RENDER_SURFACE, toRenderSurface } from "@/core/render/lib/render-surface";
+import { IRenderDetail, OPAQUE_RENDER_SURFACE, toRenderSurface } from "@/core/render/lib/surface/render-surface";
 import { mockSectorSurface } from "@/fixtures/mocks/level.mocks";
 import { mockAlphaSurfaceDescriptor } from "@/fixtures/mocks/visual.mocks";
 import { Nullable } from "@/lib/types/general";

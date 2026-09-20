@@ -7,8 +7,8 @@ import { assetsRawCommands } from "@/core/ipc/commands/assets-raw";
 import { texturesRawCommands } from "@/core/ipc/commands/textures-raw";
 import { TextureDescription } from "@/core/ipc/types/xrf-app";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
-import { IRenderTextureTexels, readDdsTexels } from "@/core/render/lib/render-texels";
-import { createDdsTexture, createDecodedTexture, IRenderTextureUpload } from "@/core/render/lib/render-texture";
+import { IRenderTextureTexels, readDdsTexels } from "@/core/render/lib/texture/render-texels";
+import { createDdsTexture, createDecodedTexture, IRenderTextureUpload } from "@/core/render/lib/texture/render-texture";
 import {
   EMPTY_TEXTURE_SURFACE,
   ITextureBumpAssets,

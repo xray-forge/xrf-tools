@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
 
 import { VisualDescription, VisualSubmesh } from "@/core/ipc/types/xrf-visual";
-import { OPAQUE_RENDER_SURFACE } from "@/core/render/lib/render-surface";
+import { OPAQUE_RENDER_SURFACE } from "@/core/render/lib/surface/render-surface";
 import { createVisualSurfaces } from "@/core/visuals/lib/visual-surface";
 import {
   countVisualTriangles,

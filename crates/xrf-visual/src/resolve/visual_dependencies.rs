@@ -1,7 +1,7 @@
 use serde::Serialize;
 use xrf_vfs::{XrayAssetType, XrayProbe, XrayResolution};
 
-use crate::data::visual_description::VisualDescription;
+use crate::data::visual::visual_description::VisualDescription;
 use crate::resolve::visual_motion_dependency::VisualMotionDependency;
 use crate::resolve::visual_texture_dependency::VisualTextureDependency;
 

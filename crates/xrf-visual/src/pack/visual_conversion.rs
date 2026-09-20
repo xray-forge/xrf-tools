@@ -1,9 +1,9 @@
 use xrf_math::{Matrix4x4, Vector3d};
 use xrf_ogf::{OgfBox, OgfSphere};
 
-use crate::data::visual_bounds::VisualBounds;
-use crate::data::visual_box::VisualBox;
-use crate::data::visual_sphere::VisualSphere;
+use crate::data::visual::bounds::visual_bounds::VisualBounds;
+use crate::data::visual::bounds::visual_box::VisualBox;
+use crate::data::visual::bounds::visual_sphere::VisualSphere;
 
 /// Convert one X-Ray position or direction into three.js space.
 pub fn convert_vector(vector: &Vector3d) -> Vector3d {

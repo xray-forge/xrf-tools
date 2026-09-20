@@ -2,7 +2,7 @@ import { useColorScheme } from "@mui/material/styles";
 import { useInjection } from "@wirestate/react";
 import { ReactElement } from "react";
 
-import { FRAME_RATE_LIMITS, TFrameRateLimit } from "@/core/render/lib/render-frame-limit";
+import { FRAME_RATE_LIMITS, TFrameRateLimit } from "@/core/render/lib/frame/render-frame-limit";
 import { SettingsService } from "@/core/settings/services/settings";
 import { COLOR_SCHEME_MODES, ColorSchemeMode, DEFAULT_COLOR_SCHEME_MODE } from "@/core/theme";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";

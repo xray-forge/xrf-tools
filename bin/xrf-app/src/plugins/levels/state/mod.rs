@@ -3,19 +3,16 @@
 pub(crate) mod level_entry;
 pub(crate) mod level_source;
 pub(crate) mod level_state;
-pub(crate) mod level_sun_description;
-pub(crate) mod level_texture_reference;
 pub(crate) mod packed_sector;
-pub(crate) mod selected_level;
-pub(crate) mod selected_level_description;
+pub(crate) mod selection;
 
 pub(crate) use level_entry::LevelEntry;
 pub(crate) use level_source::LevelSource;
 pub(crate) use level_state::LevelState;
-pub(crate) use level_texture_reference::LevelTextureReference;
 pub(crate) use packed_sector::PackedSector;
-pub(crate) use selected_level::SelectedLevel;
-pub(crate) use selected_level_description::SelectedLevelDescription;
+pub(crate) use selection::level_texture_reference::LevelTextureReference;
+pub(crate) use selection::selected_level::SelectedLevel;
+pub(crate) use selection::selected_level_description::SelectedLevelDescription;
 
 /// The file every compiled level has, which is the bundle itself.
 pub const LEVEL_FILE: &str = "level";

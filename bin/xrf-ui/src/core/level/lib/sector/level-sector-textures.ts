@@ -1,5 +1,5 @@
 import { ISectorInstanceViews, ISectorSectionViews, ISectorViews } from "@/core/level/lib/sector/level-sector-views";
-import { isAlphaRenderSurface } from "@/core/render/lib/render-surface";
+import { isAlphaRenderSurface } from "@/core/render/lib/surface/render-surface";
 import { Maybe } from "@/lib/types/general";
 
 /**

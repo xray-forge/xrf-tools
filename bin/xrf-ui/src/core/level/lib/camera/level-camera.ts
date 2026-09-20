@@ -1,7 +1,7 @@
 import { Camera, Vector3 } from "three";
 
 import { ILevelPoint } from "@/core/level/lib/residency/level-residency";
-import { IXrayHeading, toXrayHeading, toXraySpace } from "@/core/render/lib/render-space";
+import { IXrayHeading, toXrayHeading, toXraySpace } from "@/core/render/lib/scene/render-space";
 
 /**
  * Where the camera is and which way it faces, in the coordinates the level's own data is written in.

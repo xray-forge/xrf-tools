@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { IRenderTextureTexels } from "@/core/render/lib/render-texels";
+import { IRenderTextureTexels } from "@/core/render/lib/texture/render-texels";
 import {
   describeTextureTexel,
   ITextureTexelReadout,

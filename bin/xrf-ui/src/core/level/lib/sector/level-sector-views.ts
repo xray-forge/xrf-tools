@@ -6,7 +6,7 @@ import {
   SectorSurface,
   VisualSection,
 } from "@/core/ipc/types/xrf-visual";
-import { getRenderSurface, IRenderSurface } from "@/core/render/lib/render-surface";
+import { getRenderSurface, IRenderSurface } from "@/core/render/lib/surface/render-surface";
 import { Nullable } from "@/lib/types/general";
 
 /**
