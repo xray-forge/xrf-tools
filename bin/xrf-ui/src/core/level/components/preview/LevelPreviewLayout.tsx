@@ -10,7 +10,7 @@ import { LevelPreviewToolbar } from "@/core/level/components/preview/LevelPrevie
 import { ILevelPreviewViewportProps, LevelPreviewViewport } from "@/core/level/components/preview/LevelPreviewViewport";
 import { ILevelPoint } from "@/core/level/lib/level-residency";
 import { ILoadedSector } from "@/core/level/lib/level-sector-set";
-import { hasAlphaSurfaces } from "@/core/level/lib/level-sector-views";
+import { hasAlphaSurfaces } from "@/core/level/lib/level-sector-textures";
 import { EMPTY_LEVEL_STATS, ILevelStats } from "@/core/level/lib/level-stats";
 import { DEFAULT_LEVEL_SURFACE_OPTIONS, ILevelSurfaceOptions } from "@/core/level/lib/level-surface-material";
 import { ILevelTextureLookup } from "@/core/level/lib/level-texture-set";

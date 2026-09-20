@@ -1,0 +1,59 @@
+import { ISectorInstanceViews, ISectorSectionViews, ISectorViews } from "@/core/level/lib/level-sector-views";
+import { isAlphaRenderSurface } from "@/core/render/lib/render-surface";
+import { Maybe } from "@/lib/types/general";
+
+/**
+ * One texture a sector needs, and what it has to survive upload with.
+ */
+export interface ISectorTextureRequest {
+  /** The reference as the shader table spells it, which is what the set is keyed by. */
+  reference: string;
+  /** Whether any surface drawn with this file samples its alpha channel. */
+  isAlphaRead: boolean;
+}
+
+/**
+ * Every texture reference a sector names, base textures and lightmaps alike, from both kinds of surface.
+ *
+ * @param views - The sector.
+ * @returns Its references, without repeats.
+ */
+export function listSectorTextures(views: ISectorViews): Array<ISectorTextureRequest> {
+  const requests: Map<string, ISectorTextureRequest> = new Map();
+
+  for (const { surface, render } of [...views.sections, ...views.instances]) {
+    if (surface.textureName) {
+      request(requests, surface.textureName, isAlphaRenderSurface(render));
+    }
+
+    // A lightmap is sampled for its light rather than tested for coverage, whatever the surface over it does.
+    for (const lightmap of surface.lightmaps) {
+      request(requests, lightmap, false);
+    }
+  }
+
+  return Array.from(requests.values());
+}
+
+/**
+ * Whether any surface of a sector reads its texture's alpha channel.
+ *
+ * @param views - The sector.
+ * @returns Whether anything in it is cut out or blended.
+ */
+export function hasAlphaSurfaces(views: ISectorViews): boolean {
+  const drawn: Array<ISectorSectionViews | ISectorInstanceViews> = [...views.sections, ...views.instances];
+
+  return drawn.some((it) => isAlphaRenderSurface(it.render));
+}
+
+/** Records one reference, keeping the alpha answer of whichever surface naming it needs it. */
+function request(requests: Map<string, ISectorTextureRequest>, reference: string, isAlphaRead: boolean): void {
+  const held: Maybe<ISectorTextureRequest> = requests.get(reference);
+
+  if (held) {
+    held.isAlphaRead ||= isAlphaRead;
+  } else {
+    requests.set(reference, { isAlphaRead, reference });
+  }
+}

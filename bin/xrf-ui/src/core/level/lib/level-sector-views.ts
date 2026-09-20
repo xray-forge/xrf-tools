@@ -6,9 +6,8 @@ import {
   SectorSurface,
   VisualSection,
 } from "@/core/ipc/types/xrf-visual";
-import { ILevelTextureRequest } from "@/core/level/lib/level-texture-set";
-import { getRenderSurface, IRenderSurface, isAlphaRenderSurface } from "@/core/render/lib/render-surface";
-import { Maybe, Nullable } from "@/lib/types/general";
+import { getRenderSurface, IRenderSurface } from "@/core/render/lib/render-surface";
+import { Nullable } from "@/lib/types/general";
 
 /**
  * One packed mesh as views over the buffer it arrived in.
@@ -149,61 +148,4 @@ export function createSectorViews(
     sector: description.sector,
     skipped: description.skipped,
   };
-}
-
-/**
- * Every texture reference a sector names, base textures and lightmaps alike, from both kinds of surface.
- *
- * @param views - The sector.
- * @returns Its references, without repeats.
- */
-export function listSectorTextures(views: ISectorViews): Array<ILevelTextureRequest> {
-  const requests: Map<string, ILevelTextureRequest> = new Map();
-
-  for (const { surface, render } of [...views.sections, ...views.instances]) {
-    if (surface.textureName) {
-      requestTexture(requests, surface.textureName, isAlphaRenderSurface(render));
-    }
-
-    // A lightmap is sampled for its light rather than tested for coverage, whatever the surface over it does.
-    for (const lightmap of surface.lightmaps) {
-      requestTexture(requests, lightmap, false);
-    }
-  }
-
-  return Array.from(requests.values());
-}
-
-/** Records one reference, keeping the alpha answer of whichever surface naming it needs it. */
-function requestTexture(requests: Map<string, ILevelTextureRequest>, reference: string, isAlphaRead: boolean): void {
-  const held: Maybe<ILevelTextureRequest> = requests.get(reference);
-
-  if (held) {
-    held.isAlphaRead ||= isAlphaRead;
-  } else {
-    requests.set(reference, { isAlphaRead, reference });
-  }
-}
-
-/** Whether any surface of a sector reads its texture's alpha channel, which is what makes the toggle worth offering. */
-export function hasAlphaSurfaces(views: ISectorViews): boolean {
-  return [...views.sections, ...views.instances].some((it) => isAlphaRenderSurface(it.render));
-}
-
-/** Draw calls a sector costs: one per surface of its own mesh, plus one per instanced mesh however often it stands. */
-export function countSectorDraws(views: ISectorViews): number {
-  return views.sections.length + views.instances.length;
-}
-
-/** Triangles a sector draws in total, instanced meshes counted once for every place they stand. */
-export function countSectorTriangles(views: ISectorViews): number {
-  const baked: number = views.sections.reduce(
-    (total: number, section: ISectorSectionViews) => total + section.triangleCount,
-    0
-  );
-
-  return views.instances.reduce(
-    (total: number, group: ISectorInstanceViews) => total + (group.geometry.indexCount / 3) * group.instanceCount,
-    baked
-  );
 }

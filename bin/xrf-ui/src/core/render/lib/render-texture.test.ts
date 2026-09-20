@@ -9,6 +9,7 @@ import {
   Texture,
 } from "three";
 
+import { EDdsRefusal } from "@/core/render/lib/dds";
 import { createDdsTexture, createDecodedTexture, IRenderTextureUpload } from "@/core/render/lib/render-texture";
 import { mockDdsFile, mockDx10DdsFile, mockUncompressedDdsFile } from "@/fixtures/mocks/dds.mocks";
 
@@ -16,7 +17,7 @@ function uploaded(bytes: ArrayBuffer, options = {}): NonNullable<IRenderTextureU
   const upload: IRenderTextureUpload = createDdsTexture(bytes, options);
 
   if (!upload.texture) {
-    throw new Error(`expected an uploadable texture, got ${upload.refusal}`);
+    throw new Error(`expected an uploadable texture, got ${upload.refusal?.reason}`);
   }
 
   return upload.texture;
@@ -96,20 +97,13 @@ describe("createDdsTexture", () => {
     expect(createDdsTexture(mockDx10DdsFile(98)).texture).not.toBeNull();
   });
 
-  it("names the layout it refused rather than answering with a bare nothing", () => {
-    // The whole point of the result: a caller falling back to the backend can now say which layout put it there.
+  it("hands the reader's own refusal on, rather than rewording it", () => {
+    // The whole point of the result: a caller falling back to the backend matches on the category instead of on
+    // prose, and still has the detail to show a person.
     const upload: IRenderTextureUpload = createDdsTexture(mockUncompressedDdsFile({ bitCount: 16, blueMask: 0x1f }));
 
     expect(upload.texture).toBeNull();
-    expect(upload.refusal).toContain("unsupportedMasks");
-  });
-
-  it("refuses a cubemap rather than drawing one face stretched over a surface", () => {
-    const bytes: ArrayBuffer = mockDdsFile();
-
-    // `DDSCAPS2_CUBEMAP` and its six faces.
-    new Uint32Array(bytes)[28] = 0x200 | 0x400 | 0x800 | 0x1000 | 0x2000 | 0x4000 | 0x8000;
-
-    expect(createDdsTexture(bytes).texture).toBeNull();
+    expect(upload.refusal?.reason).toBe(EDdsRefusal.UNSUPPORTED_MASKS);
+    expect(upload.refusal?.detail).toContain("16 bit");
   });
 });

@@ -4,15 +4,12 @@ use std::time::Instant;
 use tauri::State;
 use xrf_level::{LevelSector, LevelSectorComposition};
 use xrf_spawn::XRayByteOrder;
-use xrf_visual::{SectorDescription, SectorInstanceGroup, SectorPackage, SectorPacker};
+use xrf_visual::{SectorDescription, SectorPackage, SectorPacker};
 
 use crate::core::session::{SessionId, SessionSnapshot};
 use crate::core::types::TauriResult;
+use crate::plugins::levels::report::report_packed_sector;
 use crate::plugins::levels::state::{LevelState, PackedSector, SelectedLevel};
-
-/// Bytes past which a packed sector is worth saying something about: it is a level whose sectors are not a streaming
-/// unit, and a viewer holding several of them is in trouble before it runs out of memory.
-const LARGE_SECTOR_BYTES: usize = 128 * 1024 * 1024;
 
 /// Pack one sector of the open level and report what it became.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "open_sector"))]
@@ -55,7 +52,7 @@ pub async fn levels_open_sector(
       .pack::<XRayByteOrder>(sector, &composition)
   };
 
-  report(&package, started);
+  report_packed_sector(&package, started);
 
   let opened: Arc<SessionSnapshot<PackedSector>> = current.packed.commit_open(
     sector_id,
@@ -66,43 +63,4 @@ pub async fn levels_open_sector(
   )?;
 
   Ok(opened.map(|packed| packed.description.clone()))
-}
-
-/// Says what one sector came to, and says it louder when it came to too much.
-fn report(package: &SectorPackage, started: Instant) {
-  let description: &SectorDescription = &package.description;
-  let instances: u32 = description
-    .instances
-    .iter()
-    .map(|group: &SectorInstanceGroup| group.instance_count)
-    .sum();
-
-  log::info!(
-    "Packed sector {} in {}: {} vertices, {} indices, {} draws, {} instanced meshes standing {} times, {}",
-    description.sector,
-    xrf_utils::format_duration(started.elapsed()),
-    description.geometry.vertex_count,
-    description.geometry.index_count,
-    description.sections.len(),
-    description.instances.len(),
-    instances,
-    xrf_utils::format_bytes(package.buffer.len() as u64)
-  );
-
-  if !description.skipped.is_empty() {
-    log::warn!(
-      "Sector {} left out {} drawables, first: {}",
-      description.sector,
-      description.skipped.len(),
-      description.skipped[0].reason
-    );
-  }
-
-  if package.buffer.len() >= LARGE_SECTOR_BYTES {
-    log::warn!(
-      "Sector {} packed to {}, which is past what a viewer should hold several of: this level's sectors are not a streaming unit",
-      description.sector,
-      xrf_utils::format_bytes(package.buffer.len() as u64)
-    );
-  }
 }

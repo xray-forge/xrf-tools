@@ -19,7 +19,8 @@ import {
   planLevelResidency,
 } from "@/core/level/lib/level-residency";
 import { ILoadedSector, LevelSectorSet } from "@/core/level/lib/level-sector-set";
-import { createSectorViews, ISectorViews, listSectorTextures } from "@/core/level/lib/level-sector-views";
+import { listSectorTextures } from "@/core/level/lib/level-sector-textures";
+import { createSectorViews, ISectorViews } from "@/core/level/lib/level-sector-views";
 import { ILevelTextureLookup, LevelTextureSet } from "@/core/level/lib/level-texture-set";
 import { AsyncState } from "@/lib/async-state";
 import { formatDuration } from "@/lib/format/duration";

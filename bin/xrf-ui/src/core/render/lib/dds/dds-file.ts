@@ -22,10 +22,17 @@ export enum EDdsRefusal {
   UNSUPPORTED_DXGI = "unsupportedDxgi",
   /** An uncompressed layout whose channels are not whole bytes, which the backend expands instead. */
   UNSUPPORTED_MASKS = "unsupportedMasks",
-  /** A cubemap missing faces, which would draw as whichever face happened to be first. */
-  INCOMPLETE_CUBEMAP = "incompleteCubemap",
-  /** A texture array or a volume, which a surface has no way to draw. */
+  /** Six faces rather than one picture, which no surface of a level or a model draws. */
+  CUBEMAP = "cubemap",
+  /** A texture array or a volume, which a surface has no way to draw either. */
   UNSUPPORTED_DIMENSION = "unsupportedDimension",
+}
+
+/** Why one file was refused, in the terms whoever reports it needs. */
+export interface IDdsRefusal {
+  reason: EDdsRefusal;
+  /** What was actually in the header, so a report can name the layout rather than only its category. */
+  detail: string;
 }
 
 /** One mip as it will be uploaded: block bytes untouched, or texels already expanded to rgba. */
@@ -39,15 +46,19 @@ export interface IDdsMipmap {
 export interface IDdsFile {
   width: number;
   height: number;
-  /** Mips of one face, in order, largest first. A cubemap carries six faces' worth in sequence. */
+  /** Mips in order, largest first. */
   mipmaps: Array<IDdsMipmap>;
   mipmapCount: number;
-  isCubemap: boolean;
   layout: TDdsLayout;
 }
 
-/** What a read came to. */
-export type TDdsRead = { kind: "read"; file: IDdsFile } | { kind: "refused"; reason: EDdsRefusal; detail: string };
+/**
+ * What a read came to: exactly one of the two is present.
+ */
+export interface IDdsRead {
+  file: Nullable<IDdsFile>;
+  refusal: Nullable<IDdsRefusal>;
+}
 
 /** `DDS `, little endian. */
 const DDS_MAGIC: number = 0x20534444;
@@ -63,7 +74,6 @@ const TEXTURE_3D: number = 4;
 /** `DDSCAPS2_CUBEMAP` and the six faces that have to accompany it. */
 const DDSCAPS2_CUBEMAP: number = 0x200;
 const CUBEMAP_FACES: ReadonlyArray<number> = [0x400, 0x800, 0x1000, 0x2000, 0x4000, 0x8000];
-const CUBEMAP_FACE_COUNT: number = 6;
 
 /** Offsets into the header, counted in `u32`. */
 const OFF_MAGIC: number = 0;
@@ -96,7 +106,7 @@ const EXPANDED_STRIDE: number = 4;
  *   that decides how `DXT1`'s identical blocks are uploaded.
  * @returns The file, or the reason it was refused.
  */
-export function readDdsFile(bytes: ArrayBuffer, isAlphaRead: boolean = false): TDdsRead {
+export function readDdsFile(bytes: ArrayBuffer, isAlphaRead: boolean = false): IDdsRead {
   if (bytes.byteLength < HEADER_INTS * 4) {
     return refuse(EDdsRefusal.TRUNCATED, `the file is ${bytes.byteLength} bytes, short of a dds header`);
   }
@@ -168,10 +178,14 @@ export function readDdsFile(bytes: ArrayBuffer, isAlphaRead: boolean = false): T
   }
 
   const caps2: number = header[OFF_CAPS2];
-  const isCubemap: boolean = Boolean(caps2 & DDSCAPS2_CUBEMAP);
 
-  if (isCubemap && CUBEMAP_FACES.some((face: number) => !(caps2 & face))) {
-    return refuse(EDdsRefusal.INCOMPLETE_CUBEMAP, "the file declares a cubemap and carries fewer than six faces");
+  // Refused rather than read: a cubemap is six faces, and drawing one flat would stretch whichever face came first
+  // over the surface. Whether its faces are all there is said in the detail, because a malformed cubemap is a broken
+  // file while a whole one is simply the wrong kind of picture.
+  if (caps2 & DDSCAPS2_CUBEMAP) {
+    const isWhole: boolean = CUBEMAP_FACES.every((face: number) => caps2 & face);
+
+    return refuse(EDdsRefusal.CUBEMAP, `the file is a cubemap, ${isWhole ? "six faces" : "missing faces"}`);
   }
 
   const width: number = header[OFF_WIDTH];
@@ -180,7 +194,6 @@ export function readDdsFile(bytes: ArrayBuffer, isAlphaRead: boolean = false): T
 
   const mipmaps: Array<IDdsMipmap> | EDdsRefusal.TRUNCATED = readMipmaps(bytes, dataOffset, {
     height,
-    isCubemap,
     layout,
     mipmapCount,
     width,
@@ -190,7 +203,7 @@ export function readDdsFile(bytes: ArrayBuffer, isAlphaRead: boolean = false): T
     return refuse(EDdsRefusal.TRUNCATED, "the file stops before the texels its header declares");
   }
 
-  return { file: { height, isCubemap, layout, mipmapCount, mipmaps, width }, kind: "read" };
+  return { file: { height, layout, mipmapCount, mipmaps, width }, refusal: null };
 }
 
 /** What a mip walk needs to know about the file it is walking. */
@@ -198,7 +211,6 @@ interface IDdsShape {
   width: number;
   height: number;
   mipmapCount: number;
-  isCubemap: boolean;
   layout: TDdsLayout;
 }
 
@@ -210,34 +222,30 @@ interface IDdsShape {
  */
 function readMipmaps(bytes: ArrayBuffer, start: number, shape: IDdsShape): Array<IDdsMipmap> | EDdsRefusal.TRUNCATED {
   const mipmaps: Array<IDdsMipmap> = [];
-  const faces: number = shape.isCubemap ? CUBEMAP_FACE_COUNT : 1;
 
   let offset: number = start;
+  let width: number = shape.width;
+  let height: number = shape.height;
 
-  for (let face = 0; face < faces; face += 1) {
-    let width: number = shape.width;
-    let height: number = shape.height;
+  for (let level = 0; level < shape.mipmapCount; level += 1) {
+    const stored: number = getStoredLength(shape.layout, width, height);
 
-    for (let level = 0; level < shape.mipmapCount; level += 1) {
-      const stored: number = getStoredLength(shape.layout, width, height);
-
-      if (offset + stored > bytes.byteLength) {
-        return EDdsRefusal.TRUNCATED;
-      }
-
-      mipmaps.push({
-        data:
-          shape.layout.kind === EDdsLayout.BLOCK
-            ? new Uint8Array(bytes, offset, stored)
-            : expandTexels(bytes, offset, width, height, shape.layout.channels),
-        height,
-        width,
-      });
-
-      offset += stored;
-      width = Math.max(width >> 1, 1);
-      height = Math.max(height >> 1, 1);
+    if (offset + stored > bytes.byteLength) {
+      return EDdsRefusal.TRUNCATED;
     }
+
+    mipmaps.push({
+      data:
+        shape.layout.kind === EDdsLayout.BLOCK
+          ? new Uint8Array(bytes, offset, stored)
+          : expandTexels(bytes, offset, width, height, shape.layout.channels),
+      height,
+      width,
+    });
+
+    offset += stored;
+    width = Math.max(width >> 1, 1);
+    height = Math.max(height >> 1, 1);
   }
 
   return mipmaps;
@@ -321,6 +329,6 @@ function toMask(mask: number): string {
   return `0x${(mask >>> 0).toString(16).padStart(8, "0")}`;
 }
 
-function refuse(reason: EDdsRefusal, detail: string): TDdsRead {
-  return { detail, kind: "refused", reason };
+function refuse(reason: EDdsRefusal, detail: string): IDdsRead {
+  return { file: null, refusal: { detail, reason } };
 }

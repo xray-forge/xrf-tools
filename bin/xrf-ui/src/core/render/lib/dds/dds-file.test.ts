@@ -7,30 +7,30 @@ import {
   RGBA_S3TC_DXT5_Format,
 } from "three";
 
-import { EDdsRefusal, IDdsFile, readDdsFile, TDdsRead } from "@/core/render/lib/dds/dds-file";
+import { EDdsRefusal, IDdsFile, IDdsRead, IDdsRefusal, readDdsFile } from "@/core/render/lib/dds/dds-file";
 import { EDdsChannels, EDdsLayout } from "@/core/render/lib/dds/dds-format";
 import { mockDdsFile, mockDx10DdsFile, mockUncompressedDdsFile } from "@/fixtures/mocks/dds.mocks";
 
 /** The file a read produced, failing the case rather than the assertion when it was refused. */
 function readFile(bytes: ArrayBuffer, isAlphaRead: boolean = false): IDdsFile {
-  const read: TDdsRead = readDdsFile(bytes, isAlphaRead);
+  const read: IDdsRead = readDdsFile(bytes, isAlphaRead);
 
-  if (read.kind === "refused") {
-    throw new Error(`expected a readable file, got ${read.reason}: ${read.detail}`);
+  if (!read.file) {
+    throw new Error(`expected a readable file, got ${read.refusal?.reason}: ${read.refusal?.detail}`);
   }
 
   return read.file;
 }
 
-/** The reason a read refused, failing the case rather than the assertion when it did not. */
-function refusalOf(bytes: ArrayBuffer): EDdsRefusal {
-  const read: TDdsRead = readDdsFile(bytes);
+/** Why a read refused, failing the case rather than the assertion when it did not. */
+function refusalOf(bytes: ArrayBuffer): IDdsRefusal {
+  const read: IDdsRead = readDdsFile(bytes);
 
-  if (read.kind === "read") {
+  if (read.file || !read.refusal) {
     throw new Error("expected the file to be refused");
   }
 
-  return read.reason;
+  return read.refusal;
 }
 
 describe("readDdsFile", () => {
@@ -79,14 +79,15 @@ describe("dx10 layouts the example loader refused", () => {
   });
 
   it("refuses a dxgi code it does not model, and says which", () => {
-    const read: TDdsRead = readDdsFile(mockDx10DdsFile(1));
-
-    expect(read).toMatchObject({ kind: "refused", reason: EDdsRefusal.UNSUPPORTED_DXGI });
-    expect(read.kind === "refused" && read.detail).toContain("DXGI_FORMAT 1");
+    // The category is what a caller matches on; the detail is what a report shows a person.
+    expect(refusalOf(mockDx10DdsFile(1))).toEqual({
+      detail: "DXGI_FORMAT 1 is not modelled",
+      reason: EDdsRefusal.UNSUPPORTED_DXGI,
+    });
   });
 
   it("refuses a texture array, which a surface has no way to draw", () => {
-    expect(refusalOf(mockDx10DdsFile(77, { arraySize: 6 }))).toBe(EDdsRefusal.UNSUPPORTED_DIMENSION);
+    expect(refusalOf(mockDx10DdsFile(77, { arraySize: 6 })).reason).toBe(EDdsRefusal.UNSUPPORTED_DIMENSION);
   });
 });
 
@@ -117,36 +118,51 @@ describe("uncompressed layouts", () => {
 
   it("refuses a layout whose channels are not whole bytes, and names the masks", () => {
     // `R5G6B5`: unpacking it is decoding rather than reordering, which is the backend's job.
-    const read: TDdsRead = readDdsFile(mockUncompressedDdsFile({ bitCount: 16, blueMask: 0x001f, redMask: 0xf800 }));
+    const refusal: IDdsRefusal = refusalOf(
+      mockUncompressedDdsFile({ bitCount: 16, blueMask: 0x001f, redMask: 0xf800 })
+    );
 
-    expect(read).toMatchObject({ kind: "refused", reason: EDdsRefusal.UNSUPPORTED_MASKS });
-    expect(read.kind === "refused" && read.detail).toContain("16 bit");
+    expect(refusal.reason).toBe(EDdsRefusal.UNSUPPORTED_MASKS);
+    expect(refusal.detail).toContain("16 bit");
   });
 });
 
 describe("refusals", () => {
   it("tells a file that is not a dds from one that stops short", () => {
     // The two used to look identical from outside, and they are opposite fixes.
-    expect(refusalOf(new Uint8Array([1, 2, 3, 4]).buffer)).toBe(EDdsRefusal.TRUNCATED);
+    expect(refusalOf(new Uint8Array([1, 2, 3, 4]).buffer).reason).toBe(EDdsRefusal.TRUNCATED);
 
     const notADds: ArrayBuffer = mockDdsFile();
 
     new Int32Array(notADds)[0] = 0;
 
-    expect(refusalOf(notADds)).toBe(EDdsRefusal.NOT_A_DDS);
+    expect(refusalOf(notADds).reason).toBe(EDdsRefusal.NOT_A_DDS);
+  });
+
+  it("refuses a cubemap where it recognises one, and says whether its faces are all there", () => {
+    // Refused by the reader rather than by the upload above it: six faces are not a surface texture whichever way
+    // they are drawn, so there is no readable outcome to hand on.
+    const whole: ArrayBuffer = mockDdsFile();
+    const partial: ArrayBuffer = mockDdsFile();
+
+    new Uint32Array(whole)[28] = 0x200 | 0x400 | 0x800 | 0x1000 | 0x2000 | 0x4000 | 0x8000;
+    new Uint32Array(partial)[28] = 0x200 | 0x400;
+
+    expect(refusalOf(whole)).toEqual({ detail: "the file is a cubemap, six faces", reason: EDdsRefusal.CUBEMAP });
+    expect(refusalOf(partial).detail).toContain("missing faces");
   });
 
   it("refuses a four character tag it does not model, and says which", () => {
-    const read: TDdsRead = readDdsFile(mockDdsFile({ fourCC: "YUY2" }));
+    const refusal: IDdsRefusal = refusalOf(mockDdsFile({ fourCC: "YUY2" }));
 
-    expect(read).toMatchObject({ kind: "refused", reason: EDdsRefusal.UNSUPPORTED_FOURCC });
-    expect(read.kind === "refused" && read.detail).toContain("'YUY2'");
+    expect(refusal.reason).toBe(EDdsRefusal.UNSUPPORTED_FOURCC);
+    expect(refusal.detail).toContain("'YUY2'");
   });
 
   it("refuses a file that stops before the texels its header declares", () => {
     // A view over a buffer that is one block short throws; refusing it is what keeps a bad file from taking the app.
     const complete: ArrayBuffer = mockDdsFile({ fourCC: "DXT5", height: 8, mipmapCount: 1, width: 8 });
 
-    expect(refusalOf(complete.slice(0, complete.byteLength - 1))).toBe(EDdsRefusal.TRUNCATED);
+    expect(refusalOf(complete.slice(0, complete.byteLength - 1)).reason).toBe(EDdsRefusal.TRUNCATED);
   });
 });

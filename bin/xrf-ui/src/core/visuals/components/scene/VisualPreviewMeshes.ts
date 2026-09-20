@@ -10,7 +10,7 @@ import {
   Texture,
 } from "three";
 
-import { applyRenderSurface } from "@/core/render/lib/render-material";
+import { applyRenderSurface, createRenderMaterial } from "@/core/render/lib/render-material";
 import { IRenderSurface, OPAQUE_RENDER_SURFACE } from "@/core/render/lib/render-surface";
 import { createSubmeshGeometry } from "@/core/visuals/components/scene/VisualPreviewScene.utils";
 import {
@@ -221,15 +221,12 @@ export class VisualPreviewMeshes {
     options: IVisualPreviewMeshesOptions
   ): Mesh<BufferGeometry, MeshStandardMaterial> {
     const geometry: BufferGeometry = createSubmeshGeometry(submesh, options.detail);
-    const material: MeshStandardMaterial = new MeshStandardMaterial({
-      color: options.meshColor,
-      metalness: MESH_METALNESS,
-      roughness: MESH_ROUGHNESS,
-    });
-
-    // Before the mesh is ever drawn, since the shader's answer arrives with the description rather than with the
-    // texture: a cut-out surface is never shown solid on the way in.
-    VisualPreviewMeshes.applySurface(material, submesh.surface, this.materialOptions?.isAlphaVisible ?? true);
+    // Dressed before the mesh is ever drawn, since the shader's answer arrives with the description rather than with
+    // the texture: a cut-out surface is never shown solid on the way in.
+    const material: MeshStandardMaterial = createRenderMaterial(
+      { color: options.meshColor, metalness: MESH_METALNESS, roughness: MESH_ROUGHNESS },
+      (this.materialOptions?.isAlphaVisible ?? true) ? submesh.surface : OPAQUE_RENDER_SURFACE
+    );
 
     // Skinned only when this submesh carries links and the model carries bones to bind them to.
     const isSkinned: boolean = Boolean(submesh.skinIndices && submesh.skinWeights && options.skin);

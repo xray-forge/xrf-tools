@@ -5,6 +5,7 @@ import { assetsRawCommands } from "@/core/ipc/commands/assets-raw";
 import { texturesRawCommands } from "@/core/ipc/commands/textures-raw";
 import { LevelTextureReference } from "@/core/ipc/types/xrf-app";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
+import { ISectorTextureRequest } from "@/core/level/lib/level-sector-textures";
 import {
   createDdsTexture,
   createDecodedTexture,
@@ -18,14 +19,6 @@ import { Maybe, Nullable } from "@/lib/types/general";
 export interface ILevelTexture {
   texture: Nullable<Texture>;
   reason: Nullable<string>;
-}
-
-/** One texture a sector needs, and what it has to survive upload with. */
-export interface ILevelTextureRequest {
-  /** The reference as the shader table spells it, which is what the set is keyed by. */
-  reference: string;
-  /** Whether any surface drawn with this file samples its alpha channel. */
-  isAlphaRead: boolean;
 }
 
 /**
@@ -89,7 +82,7 @@ export class LevelTextureSet implements ILevelTextureLookup {
    *
    * @param requests - What a sector's surfaces name, base textures and lightmaps alike.
    */
-  public async load(requests: ReadonlyArray<ILevelTextureRequest>): Promise<void> {
+  public async load(requests: ReadonlyArray<ISectorTextureRequest>): Promise<void> {
     await Promise.all(requests.filter((it) => it.reference).map((request) => this.read(request)));
   }
 
@@ -123,7 +116,7 @@ export class LevelTextureSet implements ILevelTextureLookup {
   /**
    * Reads and uploads one reference, or joins the read already in flight for it.
    */
-  private async read(request: ILevelTextureRequest): Promise<ILevelTexture> {
+  private async read(request: ISectorTextureRequest): Promise<ILevelTexture> {
     const reference: string = request.reference;
     const held: Maybe<ILevelTexture> = this.loaded.get(reference);
 
@@ -153,7 +146,7 @@ export class LevelTextureSet implements ILevelTextureLookup {
     }
   }
 
-  private async upload(request: ILevelTextureRequest): Promise<ILevelTexture> {
+  private async upload(request: ISectorTextureRequest): Promise<ILevelTexture> {
     const reference: string = request.reference;
     const logicalPath: Maybe<string> = this.paths.get(reference);
 

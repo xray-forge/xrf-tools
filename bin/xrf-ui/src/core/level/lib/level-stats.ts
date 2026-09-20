@@ -1,5 +1,5 @@
 import { ILoadedSector } from "@/core/level/lib/level-sector-set";
-import { countSectorDraws, countSectorTriangles } from "@/core/level/lib/level-sector-views";
+import { ISectorInstanceViews, ISectorSectionViews, ISectorViews } from "@/core/level/lib/level-sector-views";
 
 /** What a viewport costs, sampled rather than guessed. */
 export interface ILevelStats {
@@ -25,6 +25,24 @@ export const EMPTY_LEVEL_STATS: ILevelStats = {
   sectors: 0,
   triangles: 0,
 };
+
+/** Draw calls a sector costs: one per surface of its own mesh, plus one per instanced mesh however often it stands. */
+function countSectorDraws(views: ISectorViews): number {
+  return views.sections.length + views.instances.length;
+}
+
+/** Triangles a sector draws in total, instanced meshes counted once for every place they stand. */
+function countSectorTriangles(views: ISectorViews): number {
+  const baked: number = views.sections.reduce(
+    (total: number, section: ISectorSectionViews) => total + section.triangleCount,
+    0
+  );
+
+  return views.instances.reduce(
+    (total: number, group: ISectorInstanceViews) => total + (group.geometry.indexCount / 3) * group.instanceCount,
+    baked
+  );
+}
 
 /**
  * Measures what the resident sectors cost, without asking the renderer.

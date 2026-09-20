@@ -2,7 +2,8 @@ import { beforeEach, describe, expect, it } from "@jest/globals";
 
 import { createRoots } from "@/core/assets/lib";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
-import { ILevelTexture, ILevelTextureRequest, LevelTextureSet } from "@/core/level/lib/level-texture-set";
+import { ISectorTextureRequest } from "@/core/level/lib/level-sector-textures";
+import { ILevelTexture, LevelTextureSet } from "@/core/level/lib/level-texture-set";
 import { mockDdsFile } from "@/fixtures/mocks/dds.mocks";
 import { mockLevelTextureReference } from "@/fixtures/mocks/level.mocks";
 import { mockInvoke, resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
@@ -14,7 +15,7 @@ function countReads(): number {
 }
 
 /** References as a sector names them, none of them read for alpha unless a case says otherwise. */
-function requests(...references: Array<string>): Array<ILevelTextureRequest> {
+function requests(...references: Array<string>): Array<ISectorTextureRequest> {
   return references.map((reference: string) => ({ isAlphaRead: false, reference }));
 }
 

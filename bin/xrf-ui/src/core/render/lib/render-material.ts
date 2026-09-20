@@ -33,7 +33,7 @@ export function createRenderMaterial(
 }
 
 /**
- * Puts a material into the state its surface's shader compiles to.
+ * Puts a material into the state its surface's shader compiles to, leaving the recompile flag to the caller.
  *
  * @param material - Material being configured.
  * @param surface - Material state the surface's shader comes to.

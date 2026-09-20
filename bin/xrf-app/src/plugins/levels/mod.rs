@@ -1,6 +1,7 @@
 pub mod commands;
 pub mod plugin;
 pub mod read;
+pub mod report;
 pub mod state;
 pub mod surfaces;
 pub mod textures;

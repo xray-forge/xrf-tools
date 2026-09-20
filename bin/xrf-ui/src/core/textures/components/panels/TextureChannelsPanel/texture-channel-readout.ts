@@ -1,4 +1,4 @@
-import { readRenderTexel } from "@/core/render/lib/render-texture";
+import { readRenderTexel } from "@/core/render/lib/render-texels";
 import { ITextureBumpTexels } from "@/core/textures/lib/texture-surface";
 import { decodeXrayBumpTexel, IVisualBumpTexel } from "@/core/visuals/lib/visual-bump";
 
