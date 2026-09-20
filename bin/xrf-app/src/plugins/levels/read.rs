@@ -29,7 +29,7 @@ pub fn read_source(source: &LevelSource, probe: &XrayProbe) -> TauriResult<ReadL
     .ok_or_else(|| {
       format!(
         "Level '{}' carries no visuals chunk, so it draws nothing",
-        source.label()
+        source.get_label()
       )
     })?;
 
@@ -71,5 +71,5 @@ fn read_asset(probe: &XrayProbe, logical_path: &str) -> TauriResult<Vec<u8>> {
 }
 
 fn failure(source: &LevelSource, file: &str, error: &impl std::fmt::Display) -> String {
-  format!("Failed to read '{file}' of level '{}': {error}", source.label())
+  format!("Failed to read '{file}' of level '{}': {error}", source.get_label())
 }

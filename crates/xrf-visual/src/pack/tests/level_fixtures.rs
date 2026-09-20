@@ -254,3 +254,30 @@ pub(crate) fn new_tree(shader_id: u16, vertex_base: u32, vertex_count: u32, inde
 
   bytes
 }
+
+/// `r1_decl_vert`, the declaration xrLC writes for a vertex lit surface: a baked colour in place of a lightmap.
+pub(crate) fn new_vertex_lit_declaration() -> Vec<u8> {
+  let mut bytes: Vec<u8> = new_element(0, 2, 0, 0);
+
+  bytes.extend(new_element(12, 4, 3, 0));
+  bytes.extend(new_element(16, 4, 10, 0));
+  bytes.extend(new_element(20, 6, 5, 0));
+  bytes.extend(new_terminator());
+
+  bytes
+}
+
+/// One vertex lit vertex, carrying the colour the compiler baked into it.
+pub(crate) fn new_vertex_lit_vertex(x: f32, y: f32, z: f32, color: [u8; 4]) -> Vec<u8> {
+  let mut bytes: Vec<u8> = x.to_le_bytes().to_vec();
+
+  bytes.extend_from_slice(&y.to_le_bytes());
+  bytes.extend_from_slice(&z.to_le_bytes());
+  // Normal, written blue, green, red, alpha.
+  bytes.extend_from_slice(&[0, 128, 255, 77]);
+  bytes.extend_from_slice(&color);
+  bytes.extend_from_slice(&1024i16.to_le_bytes());
+  bytes.extend_from_slice(&512i16.to_le_bytes());
+
+  bytes
+}

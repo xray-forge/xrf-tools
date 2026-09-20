@@ -1,7 +1,9 @@
+use std::collections::HashMap;
 use std::sync::Mutex;
 
 use xrf_chunk::InMemoryChunkDataSource;
 use xrf_level::{LevelFile, LevelGeomSource, LevelSector, LevelVisualsChunk};
+use xrf_material::XraySurfaceDescriptor;
 use xrf_vfs::XrayRoots;
 use xrf_visual::SectorOutline;
 
@@ -16,6 +18,8 @@ pub struct SelectedLevel {
   pub source: LevelSource,
   /// What each texture reference of the shader table came to, decided at open.
   pub textures: Vec<LevelTextureReference>,
+  /// How the renderer draws each shader the table names, by shader name, decided at open.
+  pub surfaces: HashMap<String, XraySurfaceDescriptor>,
   /// The roots the level was opened in, kept so a later read searches what the open searched.
   pub roots: XrayRoots,
   pub level: LevelFile,
@@ -44,6 +48,7 @@ impl SelectedLevel {
       sectors: self.outlines.clone(),
       shader_entries: level.shaders.as_ref().map_or(0, |it| it.entries.len()) as u32,
       source: self.source.clone(),
+      surfaces: self.surfaces.clone(),
       textures: self.textures.clone(),
       visuals: self.visuals.visuals.len() as u32,
       xrlc_quality: level.header.xrlc_quality,

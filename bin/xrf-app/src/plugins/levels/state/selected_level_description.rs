@@ -1,4 +1,7 @@
+use std::collections::HashMap;
+
 use serde::Serialize;
+use xrf_material::XraySurfaceDescriptor;
 use xrf_visual::{SectorOutline, VisualBounds};
 
 use crate::plugins::levels::state::level_source::LevelSource;
@@ -21,6 +24,9 @@ pub struct SelectedLevelDescription {
   pub sectors: Vec<SectorOutline>,
   /// Every texture the shader table names, resolved once so a sector arriving later is a lookup rather than a search.
   pub textures: Vec<LevelTextureReference>,
+  /// How the renderer draws each shader the table names, by shader name, so a surface is cut out or blended the way
+  /// its blender says rather than drawn solid.
+  pub surfaces: HashMap<String, XraySurfaceDescriptor>,
   /// Extent every sector together covers, which is where a camera is framed from.
   pub bounds: Option<VisualBounds>,
 }

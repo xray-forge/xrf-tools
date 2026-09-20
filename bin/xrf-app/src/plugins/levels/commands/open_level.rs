@@ -1,7 +1,9 @@
+use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
 use tauri::State;
+use xrf_material::{XraySurfaceDeclaration, XraySurfaceDescriptor, XraySurfaceDraw};
 use xrf_vfs::XrayRoots;
 use xrf_visual::SectorOutline;
 
@@ -12,7 +14,11 @@ use crate::plugins::levels::read::{ReadLevel, read_source};
 use crate::plugins::levels::state::{
   LevelSource, LevelState, LevelTextureReference, SelectedLevel, SelectedLevelDescription,
 };
+use crate::plugins::levels::surfaces::resolve_surfaces;
 use crate::plugins::levels::textures::resolve_textures;
+
+/// How many names a log line about a set of them carries before it stops listing and starts counting.
+const LISTED_NAMES: usize = 6;
 
 /// Select a compiled level and report what it is built out of, without reading any of its geometry.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "open_level"))]
@@ -28,14 +34,16 @@ pub async fn levels_open_level(
 
   let started: Instant = Instant::now();
 
-  log::info!("Opening level: {}", source.label());
+  log::info!("Opening level: {}", source.get_label());
 
-  let roots: XrayRoots = roots.centred_on(source.physical_path());
-  let (read, textures) = assets.with_probe(&roots, |probe| {
+  let roots: XrayRoots = roots.centred_on(source.get_physical_path());
+  let directory: Option<String> = source.get_logical_directory();
+  let (read, textures, surfaces) = assets.with_probe(&roots, |probe| {
     let read: ReadLevel = read_source(&source, probe)?;
-    let textures: Vec<LevelTextureReference> = resolve_textures(&read.level, probe);
+    let textures: Vec<LevelTextureReference> = resolve_textures(&read.level, probe, directory.as_deref());
+    let surfaces: HashMap<String, XraySurfaceDescriptor> = resolve_surfaces(&read.level, probe);
 
-    TauriResult::Ok((read, textures))
+    TauriResult::Ok((read, textures, surfaces))
   })??;
 
   let outlines: Vec<SectorOutline> = read
@@ -52,13 +60,14 @@ pub async fn levels_open_level(
   let reached: usize = outlines.iter().map(|outline| outline.drawables as usize).sum();
 
   log::info!(
-    "Opened level {} in {}: {} sectors, {} visuals, {} drawable, {} textures",
-    source.label(),
+    "Opened level {} in {}: {} sectors, {} visuals, {} drawable, {} textures, {} surfaces",
+    source.get_label(),
     xrf_utils::format_duration(started.elapsed()),
     outlines.len(),
     read.visuals.visuals.len(),
     drawables,
-    textures.len()
+    textures.len(),
+    surfaces.len()
   );
 
   // A level whose sectors are few and huge is one a viewer cannot stream, and it is worth knowing before the first
@@ -66,22 +75,15 @@ pub async fn levels_open_level(
   if !outlines.is_empty() {
     log::info!(
       "Sectors of {} reach {} drawables, {} each on average, largest {}",
-      source.label(),
+      source.get_label(),
       reached,
       reached / outlines.len(),
       outlines.iter().map(|outline| outline.drawables).max().unwrap_or(0)
     );
   }
 
-  let unresolved: usize = textures.iter().filter(|it| it.logical_path.is_none()).count();
-
-  if unresolved > 0 {
-    log::warn!(
-      "Level {} names {} textures the mounted roots hold nothing for",
-      source.label(),
-      unresolved
-    );
-  }
+  report_unresolved(&source, &textures);
+  report_surfaces(&source, &surfaces);
 
   let selected: Arc<SessionSnapshot<SelectedLevel>> = state.selected.commit_open(
     session_id,
@@ -92,10 +94,76 @@ pub async fn levels_open_level(
       packed: Session::new("level sector"),
       roots,
       source,
+      surfaces,
       textures,
       visuals: read.visuals,
     },
   )?;
 
   Ok(selected.map(SelectedLevel::describe))
+}
+
+/// Says which references the roots answer nothing for, and names a few.
+fn report_unresolved(source: &LevelSource, textures: &[LevelTextureReference]) {
+  let unresolved: Vec<&str> = textures
+    .iter()
+    .filter(|it| it.logical_path.is_none())
+    .map(|it| it.reference.as_str())
+    .collect();
+
+  if unresolved.is_empty() {
+    return;
+  }
+
+  log::warn!(
+    "Level {} names {} of {} textures the searched roots hold nothing for: {}",
+    source.get_label(),
+    unresolved.len(),
+    textures.len(),
+    name_a_few(&unresolved)
+  );
+}
+
+/// Says how many surfaces read alpha, and how many the shader library could say nothing about.
+fn report_surfaces(source: &LevelSource, surfaces: &HashMap<String, XraySurfaceDescriptor>) {
+  let alpha: usize = surfaces
+    .values()
+    .filter(|it| it.draw != XraySurfaceDraw::Opaque)
+    .count();
+  let undescribed: Vec<&str> = surfaces
+    .iter()
+    .filter(|(_, descriptor)| !matches!(descriptor.declaration, XraySurfaceDeclaration::Described { .. }))
+    .map(|(shader, _)| shader.as_str())
+    .collect();
+
+  log::info!(
+    "Level {} draws {} of {} surfaces with alpha",
+    source.get_label(),
+    alpha,
+    surfaces.len()
+  );
+
+  if !undescribed.is_empty() {
+    log::warn!(
+      "Level {} names {} shaders the library could not describe, so they draw opaque: {}",
+      source.get_label(),
+      undescribed.len(),
+      name_a_few(&undescribed)
+    );
+  }
+}
+
+/// Names the first few of a set and says how many more there are, for a log line that has to stay one line.
+fn name_a_few(names: &[&str]) -> String {
+  let listed: String = names
+    .iter()
+    .take(LISTED_NAMES)
+    .copied()
+    .collect::<Vec<&str>>()
+    .join(", ");
+
+  match names.len().saturating_sub(LISTED_NAMES) {
+    0 => listed,
+    rest => format!("{listed} and {rest} more"),
+  }
 }

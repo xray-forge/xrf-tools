@@ -2,13 +2,7 @@
 
 import { XrayExtension } from "@/core/ipc/types/xrf-extension";
 
-/**
- * One volume of a set: where it is, where it mounts, and what it holds, counted at read time.
- *
- * The entries themselves live in [`crate::ArchiveProject::files`] and nowhere else. Retaining a per-volume copy cost
- * one full duplicate of every descriptor in the set, and the only thing that ever read it back was these three
- * totals.
- */
+/** One volume of a set: where it is, where it mounts, and what it holds, counted at read time. */
 export type ArchiveDescriptor = {
   /** Volume file creation time in Unix milliseconds, when the filesystem reports one. */
   createdAt: number | null;
@@ -26,27 +20,13 @@ export type ArchiveDescriptor = {
   sizeReal: number;
 };
 
-/**
- * One entry of a volume's name table: where its payload sits and how to verify it.
- *
- * Equal `size_real` and `size_compressed` is how the format says "stored uncompressed".
- */
+/** One entry of a volume's name table: where its payload sits and how to verify it. */
 export type ArchiveFileDescriptor = {
   /** CRC32 of the unpacked payload, recorded by the packer and verified on decompression. */
   crc: number;
-  /**
-   * Whether the entry names a directory rather than a file with bytes.
-   *
-   * A volume records the directories it contains so an unpacker can recreate them. X-Ray marks those entries with a
-   * trailing separator; a zero-length entry without one is an empty file.
-   */
+  /** Whether the entry names a directory rather than a file with bytes. */
   isDirectory: boolean;
-  /**
-   * Entry name as authored, which the engine registers verbatim.
-   *
-   * Shared rather than owned outright: the merged name table keys entries by this same name and a mounted archive
-   * maps its engine identity back to it, so an owned copy per structure meant three allocations for one name.
-   */
+  /** Entry name as authored, which the engine registers verbatim. */
   name: string;
   /** Byte offset of the payload inside its volume. */
   offset: number;
@@ -54,28 +34,11 @@ export type ArchiveFileDescriptor = {
   sizeCompressed: number;
   /** Payload bytes once unpacked. */
   sizeReal: number;
-  /**
-   * Which volume holds the payload, as a position in [`crate::ArchiveProject::archives`].
-   *
-   * A position rather than a path, because an entry belongs to a project and the project already describes each
-   * volume once. Naming the volume again per entry would make every read a search for it, and would let an entry
-   * claim a volume its own project does not hold. The position is also the volume's merge rank, which is what
-   * decides between two entries claiming one name.
-   *
-   * Set by [`crate::ArchiveProject`] as it merges each volume, and stable for the life of that project.
-   */
+  /** Which volume holds the payload, as a position in [`crate::ArchiveProject::archives`]. */
   volume: number;
 };
 
-/**
- * One volume set at a path the caller names, merged into a single name table.
- *
- * Scoped to a path on purpose: which directories of an installation hold volumes is a question the mount planner in
- * `xrf-vfs` answers (`XrayMountPlan::from_fsgame`), and answering it here too would put `fsgame.ltx` knowledge in the
- * volume-format layer and give the same declaration two readers.
- *
- * Later volumes win the merge, so a patch volume shadows the entry it replaces, which is kept in [`Self::shadowed`].
- */
+/** One volume set at a path the caller names, merged into a single name table. */
 export type ArchiveProject = {
   /**
    * Volumes in merge order: a later one wins the name table, so a caller searching them as separate sources must
@@ -96,16 +59,7 @@ export type ArchiveProject = {
   sizeReal: number;
 };
 
-/**
- * What a viewer may read out of a mounted tree, by extension and size.
- *
- * A gate for interactive consumers rather than a format rule: [`crate::ArchiveProject::read_file_bytes`] ignores it,
- * while every text read asks [`Self::require_text_read`] first. Both of the archives explorer's subjects answer to
- * this one policy, so a file too large to preview is refused the same way whichever tree it came from.
- *
- * Only the text lists are enforced here. The picture and sound lists are routing hints for the viewer, which reads
- * both through the shared mounted assets and so answers to no limit of its own.
- */
+/** What a viewer may read out of a mounted tree, by extension and size. */
 export type ArchiveReadPolicy = {
   extensions: Array<XrayExtension>;
   maximumSize: number;
@@ -134,13 +88,7 @@ export type ArchiveReadResult = {
   size: number;
 };
 
-/**
- * Stored bytes that several file entries of one volume set locate at once.
- *
- * Derived from the descriptors, never recorded by a writer: the format has no alias field, so a packer that stored a
- * file once and pointed a second row at it left only equal fields behind. Calling this "aliased" would claim to know
- * what the packer did; it knows only what a reader does, which is read the same bytes for every name here.
- */
+/** Stored bytes that several file entries of one volume set locate at once. */
 export type ArchiveSharedPayload = {
   /** Which volume holds the bytes, as a position in [`crate::ArchiveProject::archives`]. */
   volume: number;

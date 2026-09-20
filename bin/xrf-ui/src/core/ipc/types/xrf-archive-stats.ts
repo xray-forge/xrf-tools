@@ -14,10 +14,7 @@ export type ArchiveCompression = {
 export type ArchiveExtensionUsage = {
   /** The spelling as found, lower-cased, or `None` for a name carrying no extension at all. */
   extension: string | null;
-  /**
-   * Whether [`xrf_extension::XrayExtension`] declares this spelling.
-   * Always `false` when there is no extension, where there is nothing to recognize rather than something unrecognized.
-   */
+  /** Whether [`xrf_extension::XrayExtension`] declares this spelling. */
   isDeclared: boolean;
   measure: ArchiveMeasure;
   /** Stored bytes these entries occupy, for a subject that records them. */

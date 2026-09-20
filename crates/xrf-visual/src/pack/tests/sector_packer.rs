@@ -12,7 +12,7 @@ use crate::pack::sector_packer::SectorPacker;
 use crate::pack::tests::level_fixtures::{
   GeomBuffer, new_drawable, new_drawable_of_buffer, new_geometry_fixture, new_hierarchy, new_lightmapped_declaration,
   new_lightmapped_vertex, new_open_geometry, new_position_vertex, new_positions_declaration, new_shaders, new_tree,
-  new_visuals,
+  new_vertex_lit_declaration, new_vertex_lit_vertex, new_visuals,
 };
 
 /// Four lightmapped vertices in one buffer, and six indices that draw two triangles out of them.
@@ -372,4 +372,49 @@ fn test_still_shares_a_range_no_transform_places() {
 
   assert_eq!(package.description.geometry.vertex_count, 2);
   assert!(package.description.instances.is_empty());
+}
+
+// The colour channel multiplies, so the neutral value for a vertex that carries none is white. Filling those with
+// black instead told a renderer every lightmapped and every tree surface of the sector was unlit, and a level
+// drawing its baked colour came out a silhouette.
+#[test]
+fn test_widens_a_missing_vertex_colour_to_white_rather_than_black() {
+  let bytes: Vec<u8> = new_geometry_fixture(
+    &[
+      GeomBuffer {
+        declaration: new_vertex_lit_declaration(),
+        vertices: vec![new_vertex_lit_vertex(0.0, 0.0, 0.0, [16, 32, 64, 255])],
+      },
+      GeomBuffer {
+        declaration: new_lightmapped_declaration(),
+        vertices: vec![new_lightmapped_vertex(1.0, 0.0, 0.0)],
+      },
+    ],
+    &[0, 0, 0],
+  );
+  let run: LevelVisualsChunk = new_visuals(&[
+    new_hierarchy(&[1, 2]),
+    new_drawable(1, 0, 1, 0, 3),
+    new_drawable_of_buffer(1, 1, 0, 1, 0, 3),
+  ]);
+  let mut source = new_open_geometry(bytes);
+
+  let package: SectorPackage =
+    SectorPacker::new(&run, None, &mut source).pack::<XRayByteOrder>(0, &new_composition(&run));
+  let colors = package
+    .description
+    .geometry
+    .colors
+    .expect("a sector one of whose ranges is vertex lit");
+  let values: Vec<f32> = new_read_floats(&package, colors);
+
+  assert_eq!(
+    values.len(),
+    6,
+    "three components for each of the sector's two vertices"
+  );
+  // Written blue, green, red: the vertex lit one keeps what the compiler baked.
+  assert_eq!(&values[0..3], &[64.0 / 255.0, 32.0 / 255.0, 16.0 / 255.0]);
+  // The lightmapped one carries no colour and must contribute nothing to the multiply.
+  assert_eq!(&values[3..6], &[1.0, 1.0, 1.0]);
 }

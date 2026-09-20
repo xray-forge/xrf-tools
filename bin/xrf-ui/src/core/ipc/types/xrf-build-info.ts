@@ -1,12 +1,6 @@
 // Auto-generated rust bindings. Do not edit it manually.
 
-/**
- * Where a binary came from, as recorded when it was compiled.
- *
- * Every field is `Option` because a build script may not have run, or a value may be unavailable - a
- * build outside a Git checkout has no commit, and a local build has no workflow run. Reporting the
- * absence is more useful than substituting a plausible-looking default.
- */
+/** Where a binary came from, as recorded when it was compiled. */
 export type BuildInfo = {
   /** Crate version of the binary itself. */
   version: string;

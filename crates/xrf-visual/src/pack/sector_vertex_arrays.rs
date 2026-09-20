@@ -27,6 +27,9 @@ impl SectorVertexArrays {
   /// A byte the engine packs a normalized value into, which is how a colour and the hemisphere term arrive.
   const BYTE_SCALE: f32 = 255.0;
 
+  /// What a vertex carrying no baked colour contributes, which is nothing.
+  const UNLIT_COLOR: (u8, u8, u8) = (255, 255, 255);
+
   pub fn new(attributes: SectorAttributes) -> Self {
     Self {
       attributes,
@@ -89,7 +92,7 @@ impl SectorVertexArrays {
     }
 
     if self.attributes.colors {
-      let (red, green, blue): (u8, u8, u8) = vertex.color.unwrap_or((0, 0, 0));
+      let (red, green, blue): (u8, u8, u8) = vertex.color.unwrap_or(Self::UNLIT_COLOR);
 
       for component in [red, green, blue] {
         self.colors.push(f32::from(component) / Self::BYTE_SCALE);

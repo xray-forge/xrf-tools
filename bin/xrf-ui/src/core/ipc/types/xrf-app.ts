@@ -1750,6 +1750,11 @@ export type SelectedLevelDescription = {
   sectors: Array<SectorOutline>;
   /** Every texture the shader table names, resolved once so a sector arriving later is a lookup rather than a search. */
   textures: Array<LevelTextureReference>;
+  /**
+   * How the renderer draws each shader the table names, by shader name, so a surface is cut out or blended the way
+   * its blender says rather than drawn solid.
+   */
+  surfaces: { [key in string]: XraySurfaceDescriptor };
   /** Extent every sector together covers, which is where a camera is framed from. */
   bounds: VisualBounds | null;
 };

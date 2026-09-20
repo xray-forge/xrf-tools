@@ -36,6 +36,17 @@ impl FixtureTree {
       &format!("textures/{}.dds", reference.replace('\\', "/")),
       reference.as_bytes(),
     );
+
+    self
+  }
+
+  /// A placeholder `.dds` beside a level, at `levels\<level>\<reference>.dds`.
+  pub fn with_level_texture(self, level: &str, reference: &str) -> Self {
+    self.write(
+      &format!("levels/{level}/{}.dds", reference.replace('\\', "/")),
+      reference.as_bytes(),
+    );
+
     self
   }
 
@@ -45,12 +56,14 @@ impl FixtureTree {
       &format!("textures/{}.thm", reference.replace('\\', "/")),
       &fixture.to_bytes(),
     );
+
     self
   }
 
   /// Bytes at `textures\<reference>.thm` that are not a descriptor.
   pub fn with_unreadable_descriptor(self, reference: &str) -> Self {
     self.write(&format!("textures/{}.thm", reference.replace('\\', "/")), b"not a thm");
+
     self
   }
 
@@ -59,12 +72,14 @@ impl FixtureTree {
     let bytes: Vec<u8> = ShaderLibraryFixture::library(blenders).expect("shader library is writable");
 
     self.write(XraySurfaceResolver::SHADER_LIBRARY_LOGICAL_PATH, &bytes);
+
     self
   }
 
   /// Bytes at the library's path that are not a library.
   pub fn with_unreadable_shader_library(self) -> Self {
     self.write(XraySurfaceResolver::SHADER_LIBRARY_LOGICAL_PATH, b"not a library");
+
     self
   }
 
