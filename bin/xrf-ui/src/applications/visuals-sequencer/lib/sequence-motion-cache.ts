@@ -7,7 +7,8 @@ import { requireSessionId } from "@/core/ipc/session";
 import { SessionSnapshot } from "@/core/ipc/types/xrf-app";
 import { VisualMotionBake } from "@/core/ipc/types/xrf-visual";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
-import { Logger } from "@/lib/logging";
+import { formatDuration } from "@/lib/format/duration";
+import { Logger, Timer } from "@/lib/logging";
 import { Nullable } from "@/lib/types/general";
 
 /**
@@ -102,6 +103,10 @@ export class SequenceMotionCache {
       return;
     }
 
+    const timer: Timer = new Timer();
+
+    this.log.info("Baking sequencer motion:", motion);
+
     try {
       const sessionId: string = requireSessionId(this.loadService.visual.value?.selected ?? null);
       const snapshot: SessionSnapshot<VisualMotionBake> = await visualsCommands.openMotion(
@@ -128,11 +133,21 @@ export class SequenceMotionCache {
           state: ESequenceMotionState.READY,
           transforms: new Float32Array(bytes),
         });
+
+        this.log.info(
+          "Sequencer motion baked:",
+          motion,
+          bake.frameCount,
+          "frames,",
+          bake.boneCount,
+          "bones, in",
+          formatDuration(timer.elapsed())
+        );
       }
     } catch (error: unknown) {
       const transformed: Error = transformError(error);
 
-      this.log.error(`Failed to bake motion '${motion}':`, transformed);
+      this.log.error(`Failed to bake motion '${motion}':`, "after", formatDuration(timer.elapsed()), transformed);
 
       if (generation === this.generation) {
         this.setMotion(motion, {

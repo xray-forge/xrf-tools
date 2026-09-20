@@ -136,6 +136,10 @@ export class EditorLifecycleService {
   @BoundAction()
   public stay(): void {
     if (!this.isSaving) {
+      if (this.pendingLeave) {
+        this.log.info("Kept editor open with unsaved changes:", this.draftOwner, this.dirtyCount);
+      }
+
       this.pendingLeave = null;
     }
   }
@@ -148,6 +152,10 @@ export class EditorLifecycleService {
     }
 
     const leave = this.pendingLeave;
+
+    if (leave) {
+      this.log.info("Discarding changes before leaving:", this.draftOwner, this.dirtyCount);
+    }
 
     this.pendingLeave = null;
     leave?.();
@@ -166,8 +174,14 @@ export class EditorLifecycleService {
     this.isSaving = true;
     this.savingRequest = request;
 
+    const owner: Nullable<string> = this.draftOwner;
+
+    this.log.info("Saving before leaving:", owner, this.dirtyCount);
+
     try {
       const isWritten: boolean = await save();
+
+      this.log.info("Save before leaving finished:", owner, { isWritten, isCurrent: this.pendingLeave === request });
 
       runInAction(() => {
         if (isWritten && this.pendingLeave === request) {
@@ -176,6 +190,8 @@ export class EditorLifecycleService {
         }
       });
     } catch (error: unknown) {
+      this.log.error("Failed to save before leaving:", owner, error);
+
       if (this.pendingLeave === request) {
         emitNotification(this.eventBus, {
           details: transformError(error).message,

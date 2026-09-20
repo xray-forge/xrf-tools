@@ -17,7 +17,8 @@ import { describeVisualSource } from "@/core/visuals/lib/visual-source";
 import { IVisualTextureStatus } from "@/core/visuals/lib/visual-texture";
 import { IOpenVisual, VisualLoadService } from "@/core/visuals/services/visual-load.service";
 import { AsyncState } from "@/lib/async-state";
-import { Logger } from "@/lib/logging";
+import { formatDuration } from "@/lib/format/duration";
+import { Logger, Timer } from "@/lib/logging";
 import { Nullable } from "@/lib/types/general";
 
 /**
@@ -205,6 +206,10 @@ export class SequencerService implements IVisualInspection {
       return;
     }
 
+    const timer: Timer = new Timer();
+
+    this.log.info("Listing sequencer motions:", sessionId);
+
     runInAction(() => {
       this.motions = this.motions.asLoading();
     });
@@ -218,11 +223,19 @@ export class SequencerService implements IVisualInspection {
         }
 
         this.motions = this.motions.asReady(names);
+
+        this.log.info(
+          "Sequencer motions listed:",
+          sessionId,
+          names.length,
+          "motions, in",
+          formatDuration(timer.elapsed())
+        );
       });
     } catch (error: unknown) {
       const transformed: Error = transformError(error);
 
-      this.log.error("Failed to list motions:", transformed);
+      this.log.error("Failed to list motions:", sessionId, "after", formatDuration(timer.elapsed()), transformed);
 
       runInAction(() => {
         if (this.visual.value?.selected.sessionId !== sessionId) {

@@ -6,6 +6,7 @@ import { systemCommands } from "@/core/ipc/commands/system";
 import { ENotificationSeverity, TEmitNotification, useEmitNotification } from "@/core/notifications/lib";
 import { EApplicationId } from "@/core/routing/application";
 import { BaseComponentProps } from "@/lib/dom/element-types";
+import { Logger, useLogger } from "@/lib/logging";
 import { Nullable } from "@/lib/types/general";
 
 interface IRevealPathButtonProps extends BaseComponentProps {
@@ -19,9 +20,6 @@ interface IRevealPathButtonProps extends BaseComponentProps {
 
 /**
  * Opens a produced path in the desktop's file manager.
- *
- * A command that wrote something is only half useful if finding what it wrote means retyping the path,
- * so every surface that reports an output offers the same way to reach it.
  */
 export function RevealPathButton({
   "data-testid": dataTestId = "reveal-path-button",
@@ -33,6 +31,7 @@ export function RevealPathButton({
   isDisabled,
 }: IRevealPathButtonProps): ReactElement {
   const notify: TEmitNotification = useEmitNotification();
+  const log: Logger = useLogger(__MODULE_NAME__);
 
   const [isRevealing, setIsRevealing] = useState<boolean>(false);
 
@@ -45,7 +44,11 @@ export function RevealPathButton({
       setIsRevealing(true);
 
       await systemCommands.revealPath(path);
+
+      log.info("Path revealed in file manager:", path);
     } catch (error: unknown) {
+      log.error("Failed to reveal path in file manager:", path, error);
+
       // Reported rather than thrown: failing to show a directory says nothing about the command that
       // filled it, and the result beside this button is still the answer the user came for.
       notify({
@@ -57,7 +60,7 @@ export function RevealPathButton({
     } finally {
       setIsRevealing(false);
     }
-  }, [application, notify, path]);
+  }, [application, log, notify, path]);
 
   return (
     <Button

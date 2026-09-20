@@ -95,7 +95,13 @@ export class DialogsService {
 
   @OnProvision()
   public async onProvision(): Promise<void> {
-    await flowResult(this.restore());
+    try {
+      await flowResult(this.restore());
+    } catch (error: unknown) {
+      this.log.error("Failed to restore dialogs project:", error);
+
+      throw error;
+    }
   }
 
   @OnDeactivation()
@@ -112,7 +118,10 @@ export class DialogsService {
   private *restore(): TFlow {
     const response: Nullable<SessionSnapshot<DialogProjectDescriptor>> = yield* call(dialogsCommands.getProject());
 
-    this.log.info(response ? "Existing dialogs project detected" : "No existing dialogs project");
+    this.log.info(
+      response ? "Dialogs project restored:" : "No existing dialogs project",
+      response ? describeRoots(response.value.roots) : null
+    );
 
     this.session.adopt(response);
 
@@ -134,6 +143,8 @@ export class DialogsService {
 
   @LatestFlow("project")
   public *openProject(roots: XrayRoots, mode: DialogProjectMode): TFlow {
+    const timer: Timer = new Timer();
+
     this.log.info("Opening dialogs project:", describeRoots(roots), mode);
 
     try {
@@ -147,10 +158,12 @@ export class DialogsService {
 
       this.log.info(
         "Dialogs project opened:",
+        describeRoots(roots),
         Object.keys(response.value.files).length,
         "files,",
         response.value.textKeys,
-        "text keys"
+        "text keys, in",
+        formatDuration(timer.elapsed())
       );
 
       cancelFlow(this, "dialog");
@@ -161,7 +174,14 @@ export class DialogsService {
       this.inspectedNodeId = null;
       this.language = null;
     } catch (error) {
-      this.log.error("Failed to open dialogs project:", error);
+      this.log.error(
+        "Failed to open dialogs project:",
+        describeRoots(roots),
+        mode,
+        "after",
+        formatDuration(timer.elapsed()),
+        error
+      );
 
       this.projectState = this.projectState.asFailed(error as Error);
 
@@ -177,7 +197,16 @@ ${transformError(error).message}`,
 
   @LatestFlow("project")
   public *closeProject(): TFlow {
-    yield* call(this.session.close());
+    const roots = this.projectState.value?.value.roots;
+    const subject = roots ? describeRoots(roots) : null;
+
+    try {
+      yield* call(this.session.close());
+    } catch (error: unknown) {
+      this.log.error("Failed to close dialogs project:", subject, error);
+
+      throw error;
+    }
 
     cancelFlow(this, "dialog");
     this.projectState = this.projectState.asIdle();
@@ -185,6 +214,10 @@ ${transformError(error).message}`,
     this.selection = null;
     this.inspectedNodeId = null;
     this.language = null;
+
+    if (subject) {
+      this.log.info("Dialogs project closed:", subject);
+    }
   }
 
   /**
@@ -255,9 +288,6 @@ ${transformError(error).message}`,
 
   /**
    * Show phrase text in another language.
-   *
-   * Re-fetches the open dialog rather than carrying every language in the response: the backend holds
-   * the text index in memory, so this costs a lookup and no file reads.
    */
   @BoundAction()
   public setLanguage(language: Nullable<string>): void {

@@ -306,7 +306,12 @@ export class PatcherService {
 
     const config: ArchivePatchConfig = request.config;
 
-    this.log.info("Comparing:", config.input, "against", config.target ?? "its own loose gamedata");
+    this.log.info(
+      kind === EJobKind.ARCHIVES_PATCH ? "Patching:" : "Comparing:",
+      config.input,
+      "against",
+      config.target ?? "its own loose gamedata"
+    );
     this.configError = null;
 
     yield* this.operation.run({

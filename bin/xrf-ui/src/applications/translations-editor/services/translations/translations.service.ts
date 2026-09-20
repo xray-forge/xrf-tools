@@ -55,7 +55,13 @@ export class TranslationsService {
 
   @OnProvision()
   public async onProvision(): Promise<void> {
-    await flowResult(this.restore());
+    try {
+      await flowResult(this.restore());
+    } catch (error: unknown) {
+      this.log.error("Failed to restore translations project:", error);
+
+      throw error;
+    }
   }
 
   @OnDeactivation()
@@ -74,7 +80,10 @@ export class TranslationsService {
       translationsCommands.getProject()
     );
 
-    this.log.info(response ? "Existing translations project detected" : "No existing translations project");
+    this.log.info(
+      response ? "Translations project restored:" : "No existing translations project",
+      response ? describeRoots(response.value.roots) : null
+    );
 
     this.isReady = true;
     this.session.adopt(response);
@@ -148,6 +157,8 @@ export class TranslationsService {
 
   @LatestFlow("project")
   public *openProject(roots: XrayRoots, mode: TranslationProjectMode, prefix: Nullable<string> = null): TFlow {
+    const timer: Timer = new Timer();
+
     this.log.info("Opening translations project:", describeRoots(roots), mode, prefix);
 
     try {
@@ -157,12 +168,26 @@ export class TranslationsService {
         this.session.open((sessionId) => translationsCommands.openProject({ sessionId, roots, mode, prefix }))
       );
 
-      this.log.info("Translations project opened:", Object.keys(response.value.files).length, "files");
+      this.log.info(
+        "Translations project opened:",
+        describeRoots(roots),
+        Object.keys(response.value.files).length,
+        "files, in",
+        formatDuration(timer.elapsed())
+      );
 
       this.projectState = this.projectState.asReady(response);
       this.draft = TranslationDraft.empty();
     } catch (error) {
-      this.log.error("Failed to open translations project:", error);
+      this.log.error(
+        "Failed to open translations project:",
+        describeRoots(roots),
+        mode,
+        prefix,
+        "after",
+        formatDuration(timer.elapsed()),
+        error
+      );
 
       this.projectState = this.projectState.asFailed(error as Error);
 
@@ -178,9 +203,6 @@ ${transformError(error).message}`,
 
   /**
    * Writes one logical file's pending edits and adopts the project as it is on disk afterwards.
-   *
-   * The refreshed descriptor comes back from the write rather than being patched in here: a save can
-   * add or drop entries, and what is on disk is the only version worth showing.
    */
   @LatestFlow("project")
   public *saveFile(file: string): TFlow<boolean> {

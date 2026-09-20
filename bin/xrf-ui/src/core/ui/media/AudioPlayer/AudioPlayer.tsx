@@ -2,6 +2,7 @@ import { Alert } from "@mui/material";
 import { ReactElement, SyntheticEvent, useCallback, useEffect, useRef, useState } from "react";
 
 import { IMediaVolume, useMediaVolume } from "@/core/ui/media/use-media-volume";
+import { Logger, useLogger } from "@/lib/logging";
 import { Nullable } from "@/lib/types/general";
 
 import { describeAudioError, describePlaybackError } from "./AudioPlayer.errors";
@@ -15,6 +16,7 @@ interface IAudioPlayerProps {
 
 /** Transport for a single sound, following the media element's playback state. */
 export function AudioPlayer({ src, bytes }: IAudioPlayerProps): ReactElement {
+  const log: Logger = useLogger(__MODULE_NAME__);
   const audioRef = useRef<Nullable<HTMLAudioElement>>(null);
   const volume: IMediaVolume = useMediaVolume();
   const [isPlaying, setPlaying] = useState<boolean>(false);
@@ -43,6 +45,7 @@ export function AudioPlayer({ src, bytes }: IAudioPlayerProps): ReactElement {
 
       void audio.play().catch((error: unknown) => {
         if (request === playRequestRef.current && audioRef.current === audio && audio.src === source) {
+          log.error("Failed to play audio:", source, error);
           setPlaying(false);
           setError(describePlaybackError(error));
         }
@@ -50,7 +53,7 @@ export function AudioPlayer({ src, bytes }: IAudioPlayerProps): ReactElement {
     } else {
       audio.pause();
     }
-  }, []);
+  }, [log]);
 
   const onSeek = useCallback(
     (next: number) => {
@@ -73,12 +76,16 @@ export function AudioPlayer({ src, bytes }: IAudioPlayerProps): ReactElement {
   }, []);
   const onStopped = useCallback(() => setPlaying(false), []);
 
-  const onError = useCallback((event: SyntheticEvent<HTMLAudioElement>) => {
-    // The media error is more specific than the rejection of a pending play request.
-    playRequestRef.current += 1;
-    setPlaying(false);
-    setError(describeAudioError(event.currentTarget.error));
-  }, []);
+  const onError = useCallback(
+    (event: SyntheticEvent<HTMLAudioElement>) => {
+      log.error("Audio media failed:", event.currentTarget.src, event.currentTarget.error);
+      // The media error is more specific than the rejection of a pending play request.
+      playRequestRef.current += 1;
+      setPlaying(false);
+      setError(describeAudioError(event.currentTarget.error));
+    },
+    [log]
+  );
 
   const onTimeUpdate = useCallback((event: SyntheticEvent<HTMLAudioElement>) => {
     const next: number = event.currentTarget.currentTime;

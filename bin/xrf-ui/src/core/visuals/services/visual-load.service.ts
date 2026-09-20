@@ -119,11 +119,17 @@ export class VisualLoadService {
 
       yield* this.view(selected);
 
-      this.log.info("Visual loaded in:", formatDuration(timer.elapsed()));
+      this.log.info("Visual loaded:", describeVisualSource(source), "in", formatDuration(timer.elapsed()));
     } catch (error: unknown) {
       const transformed: Error = transformError(error);
 
-      this.log.error("Load error after:", formatDuration(timer.elapsed()), transformed);
+      this.log.error(
+        "Failed to load visual:",
+        describeVisualSource(source),
+        "after",
+        formatDuration(timer.elapsed()),
+        transformed
+      );
 
       this.visual = this.visual.asFailed(transformed);
     }
@@ -134,12 +140,21 @@ export class VisualLoadService {
    */
   @ExclusiveFlow("visual")
   public *restore(): TFlow {
+    const timer: Timer = new Timer();
     const snapshot = yield* call(visualsCommands.getModel());
 
     this.session.adopt(snapshot);
 
     if (snapshot) {
+      this.log.info("Restoring visual:", describeVisualSource(snapshot.value.source));
       yield* this.view(snapshot);
+
+      this.log.info(
+        "Visual restored:",
+        describeVisualSource(snapshot.value.source),
+        "in",
+        formatDuration(timer.elapsed())
+      );
     }
   }
 
@@ -148,9 +163,15 @@ export class VisualLoadService {
    */
   @LatestFlow("visual")
   public *close(): TFlow {
+    const selected = this.visual.value?.selected;
+
     yield* call(this.session.close());
 
     this.clearView();
+
+    if (selected) {
+      this.log.info("Visual closed:", describeVisualSource(selected.value.source));
+    }
   }
 
   /**

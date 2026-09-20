@@ -24,7 +24,8 @@ import { EApplicationGroupId } from "@/core/routing/application";
 import { describeEquipmentSheet, ENGINE_GRID_SQUARE } from "@/core/sprite-equipment/lib";
 import { SpriteEquipmentPackerService } from "@/core/sprite-equipment/services/packer";
 import { AsyncState } from "@/lib/async-state";
-import { Logger } from "@/lib/logging";
+import { formatDuration } from "@/lib/format/duration";
+import { Logger, Timer } from "@/lib/logging";
 import { all, call, cancelFlow, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 import { Nullable } from "@/lib/types/general";
 
@@ -105,7 +106,13 @@ export class SpriteEquipmentEditorService {
 
   @OnProvision()
   public async onProvision(): Promise<void> {
-    await flowResult(this.restore());
+    try {
+      await flowResult(this.restore());
+    } catch (error: unknown) {
+      this.log.error("Failed to restore equipment sprite:", error);
+
+      throw error;
+    }
   }
 
   /**
@@ -142,6 +149,13 @@ export class SpriteEquipmentEditorService {
     this.isReady = true;
 
     yield* this.viewSprite(response);
+
+    this.log.info(
+      "Equipment sprite restored:",
+      response.value.location.path,
+      response.value.occupants.length,
+      "occupants"
+    );
   }
 
   @BoundAction()
@@ -177,7 +191,9 @@ export class SpriteEquipmentEditorService {
    */
   @LatestFlow("spriteImage")
   public *openEquipmentProject(open: EquipmentSpriteOpen): TFlow {
-    this.log.info("Opening equipment project:", open);
+    const timer: Timer = new Timer();
+
+    this.log.info("Opening equipment project:", describeEquipmentSheet(open.sheet));
 
     try {
       this.spriteImage = this.spriteImage.asLoading();
@@ -186,11 +202,23 @@ export class SpriteEquipmentEditorService {
         this.session.open((sessionId) => spriteEquipmentCommands.openSprite({ sessionId, ...open }))
       );
 
-      this.log.info("Equipment project opened:", response);
-
       yield* this.viewSprite(response);
+
+      this.log.info(
+        "Equipment project opened:",
+        response.value.location.path,
+        response.value.occupants.length,
+        "occupants, in",
+        formatDuration(timer.elapsed())
+      );
     } catch (error) {
-      this.log.error("Failed to open equipment editor project:", error);
+      this.log.error(
+        "Failed to open equipment editor project:",
+        describeEquipmentSheet(open.sheet),
+        "after",
+        formatDuration(timer.elapsed()),
+        error
+      );
 
       this.spriteImage = this.spriteImage.asFailed(error as Error);
 
@@ -217,11 +245,10 @@ export class SpriteEquipmentEditorService {
 
   /**
    * Reads the sprite the backend holds and puts it back on screen.
-   *
-   * Undecorated on purpose: a repack finishes by reopening, and a decorated call would take the same lane and cancel
-   * the repack that made it. Delegating with `yield*` keeps both in one run.
    */
   private *reopen(): TFlow {
+    const timer: Timer = new Timer();
+
     this.log.info("Reopening equipment editor project");
 
     try {
@@ -233,11 +260,17 @@ export class SpriteEquipmentEditorService {
         )
       );
 
-      this.log.info("Equipment project reopened:", response);
-
       yield* this.viewSprite(response);
+
+      this.log.info(
+        "Equipment project reopened:",
+        response.value.location.path,
+        response.value.occupants.length,
+        "occupants, in",
+        formatDuration(timer.elapsed())
+      );
     } catch (error) {
-      this.log.error("Failed to reopen equipment editor project:", error);
+      this.log.error("Failed to reopen equipment editor project:", "after", formatDuration(timer.elapsed()), error);
 
       // Left loading, this disables every command in the editor for the rest of the session, and the
       // only way out is closing the project. The previous sprite stays on screen behind the error.
@@ -319,9 +352,6 @@ export class SpriteEquipmentEditorService {
 
   /**
    * Work out whether this sprite has an unpacked icons directory beside it.
-   *
-   * The convention is a sibling directory named after the sprite without its extension, which is what the
-   * unpacker writes and what the packer reads back.
    *
    * @param spritePath - Path of the open equipment sprite.
    * @returns Resolves whether an unpacked sibling directory is available.

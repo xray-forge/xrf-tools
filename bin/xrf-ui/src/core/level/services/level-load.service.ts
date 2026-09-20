@@ -134,13 +134,20 @@ export class LevelLoadService {
       this.log.info(
         "Level opened in:",
         formatDuration(timer.elapsed()),
+        source.kind === "directory" ? source.path : source.logicalPath,
         `${selected.value.sectors.length} sectors,`,
         `${selected.value.visuals} visuals`
       );
     } catch (error: unknown) {
       const transformed: Error = transformError(error);
 
-      this.log.error("Load error after:", formatDuration(timer.elapsed()), transformed);
+      this.log.error(
+        "Failed to load level:",
+        source.kind === "directory" ? source.path : source.logicalPath,
+        "after",
+        formatDuration(timer.elapsed()),
+        transformed
+      );
 
       this.level = this.level.asFailed(transformed);
     }
@@ -173,6 +180,14 @@ export class LevelLoadService {
 
     if (snapshot) {
       this.adopt(snapshot);
+
+      const source: LevelSource = snapshot.value.source;
+
+      this.log.info(
+        "Level restored:",
+        source.kind === "directory" ? source.path : source.logicalPath,
+        snapshot.sessionId
+      );
     }
   }
 
@@ -253,9 +268,15 @@ export class LevelLoadService {
    */
   @LatestFlow("level")
   public *close(): TFlow {
+    const source = this.level.value?.selected.value.source;
+
     yield* call(this.session.close());
 
     this.clearView();
+
+    if (source) {
+      this.log.info("Level closed:", source.kind === "directory" ? source.path : source.logicalPath);
+    }
   }
 
   /**

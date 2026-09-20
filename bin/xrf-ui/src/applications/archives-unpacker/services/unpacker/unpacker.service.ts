@@ -12,9 +12,6 @@ import { ExclusiveFlow, TFlow } from "@/lib/mobx";
 
 /**
  * The unpacking run and what it produced.
- *
- * A service rather than component state because an unpack outlives the view that started it: a user who navigates
- * away mid-run must be able to come back to it rather than find an idle form over work that is still writing files.
  */
 @Injectable()
 export class UnpackerService {
@@ -39,7 +36,7 @@ export class UnpackerService {
       return;
     }
 
-    this.log.info("Unpacking:", source);
+    this.log.info("Unpacking:", source, "to", destination);
 
     yield* this.operation.run({
       kind: EJobKind.ARCHIVES_UNPACK,
