@@ -12,19 +12,21 @@ interface IRailButtonProps {
   label: string;
   /** Tooltip text; defaults to the label. Say here why a disabled control is disabled. */
   description?: string;
+  tooltipPlacement?: "left" | "right";
   icon: ReactNode;
   appearance?: "gradient" | "primary" | "secondary";
   onClick: () => void;
 }
 
 /**
- * A control on the rail that acts rather than opening a panel.
+ * A shell control on either rail, with the shared gradient and optional selected state.
  */
 export function RailButton({
   isSelected,
   isDisabled,
   label,
   description = label,
+  tooltipPlacement = "right",
   icon,
   appearance = "gradient",
   onClick,
@@ -36,12 +38,13 @@ export function RailButton({
   const isGradient: boolean = appearance === "gradient";
 
   return (
-    <Tooltip describeChild title={description} placement={"right"}>
+    <Tooltip describeChild title={description} placement={tooltipPlacement}>
       <span>
         <IconButton
           aria-label={label}
+          aria-pressed={isSelected}
           disabled={isDisabled}
-          style={{ fill: isDisabled || !isGradient ? "currentColor" : `url("#${gradientId}")` }}
+          style={{ fill: isDisabled || isSelected || !isGradient ? "currentColor" : `url("#${gradientId}")` }}
           sx={[
             RAIL_BUTTON_SX,
             getControlStateSx(Boolean(isSelected)),

@@ -26,7 +26,7 @@ import {
   PANEL_CLOSE_COMMAND,
   PANEL_SET_ACTIVE_COMMAND,
 } from "@/core/shell/panel/panel-messages";
-import { ApplicationRail, PanelStripeButton } from "@/core/shell/panel/rail";
+import { ApplicationRail, RailButton } from "@/core/shell/panel/rail";
 import { IPanelSelection, usePanelSelection } from "@/core/shell/panel/use-panel-selection";
 import { IPanelWidth, usePanelWidth } from "@/core/shell/panel/use-panel-width";
 import { ApplicationTitleBar } from "@/core/shell/title-bar/ApplicationTitleBar";
@@ -163,19 +163,21 @@ export function ApplicationShellFrame({
             footer={
               <>
                 {settingsService.isDevModeEnabled ? (
-                  <PanelStripeButton
-                    panel={JOBS_PANEL}
-                    side={"right"}
-                    isActive={rightSelection.activePanelId === JOBS_PANEL.id}
-                    onTogglePanel={rightSelection.onTogglePanel}
+                  <RailButton
+                    label={JOBS_PANEL.label}
+                    icon={JOBS_PANEL.icon}
+                    tooltipPlacement={"left"}
+                    isSelected={rightSelection.activePanelId === JOBS_PANEL.id}
+                    onClick={() => rightSelection.onTogglePanel(JOBS_PANEL.id)}
                   />
                 ) : null}
 
-                <PanelStripeButton
-                  panel={NOTIFICATIONS_PANEL}
-                  side={"right"}
-                  isActive={rightSelection.activePanelId === NOTIFICATIONS_PANEL.id}
-                  onTogglePanel={rightSelection.onTogglePanel}
+                <RailButton
+                  label={NOTIFICATIONS_PANEL.label}
+                  icon={NOTIFICATIONS_PANEL.icon}
+                  tooltipPlacement={"left"}
+                  isSelected={rightSelection.activePanelId === NOTIFICATIONS_PANEL.id}
+                  onClick={() => rightSelection.onTogglePanel(NOTIFICATIONS_PANEL.id)}
                 />
               </>
             }
