@@ -19,7 +19,8 @@ import {
 } from "@/core/jobs/lib/jobs-types";
 import { JOB_PROFILES } from "@/core/jobs/metrics";
 import { emitNotification } from "@/core/notifications/lib";
-import { Logger } from "@/lib/logging";
+import { formatDuration } from "@/lib/format/duration";
+import { Logger, Timer } from "@/lib/logging";
 import { all, call, cancelFlow, LatestFlow, TFlow } from "@/lib/mobx";
 import { Maybe, Nullable } from "@/lib/types/general";
 
@@ -79,6 +80,7 @@ export class JobsService {
   public run<T>(descriptor: IJobDescriptor<T>): IJobRun<T> {
     const id: string = crypto.randomUUID();
     const progress: Channel<JobProgress> = new Channel<JobProgress>();
+    const timer: Timer = new Timer();
 
     progress.onmessage = (message: JobProgress): void => this.onProgress(id, message);
 
@@ -88,12 +90,12 @@ export class JobsService {
 
     const promise: Promise<T> = descriptor.invoke(id, progress).then(
       (result: T): T => {
-        this.onSettled(id, descriptor, result, null);
+        this.onSettled(id, descriptor, result, null, timer.elapsed());
 
         return result;
       },
       (error: unknown): never => {
-        this.onSettled(id, descriptor, null, transformError(error));
+        this.onSettled(id, descriptor, null, transformError(error), timer.elapsed());
 
         throw error;
       }
@@ -366,7 +368,13 @@ export class JobsService {
    * and a run finishing in silence is the worst outcome for the one case where the user is not watching it.
    */
   @BoundAction()
-  private onSettled<T>(id: string, descriptor: IJobDescriptor<T>, result: Nullable<T>, error: Nullable<Error>): void {
+  private onSettled<T>(
+    id: string,
+    descriptor: IJobDescriptor<T>,
+    result: Nullable<T>,
+    error: Nullable<Error>,
+    duration: number
+  ): void {
     const job: Nullable<IJobState> = this.getJob(id);
 
     const outcome: IJobOutcome<T> = { isCancelRequested: Boolean(job?.isCancelRequested), result, error };
@@ -385,7 +393,9 @@ export class JobsService {
 
     this.publishSettlement(
       { id, kind: descriptor.kind, conclusion, error: error?.message ?? null, result },
-      descriptor.describe(outcome)
+      descriptor.describe(outcome),
+      duration,
+      error
     );
   }
 
@@ -394,9 +404,29 @@ export class JobsService {
    *
    * @param settled - Result from the command or the backend's retained listing.
    * @param notice - Notification describing the outcome.
+   * @param duration - Elapsed time for a locally started job; unavailable after a reload.
+   * @param error - Original local failure, preserving its stack when available.
    */
   @BoundAction()
-  private publishSettlement(settled: IJobSettledPayload, notice: IJobNotice): void {
+  private publishSettlement(
+    settled: IJobSettledPayload,
+    notice: IJobNotice,
+    duration: Nullable<number> = null,
+    error: Nullable<Error> = null
+  ): void {
+    const summary = {
+      id: settled.id,
+      kind: settled.kind,
+      outcome: settled.conclusion ?? "unknown",
+      duration: duration === null ? null : formatDuration(duration),
+    };
+
+    if (settled.error !== null || settled.conclusion === EJobConclusion.FAILED) {
+      this.log.error("Job settled:", summary, error ?? settled.error);
+    } else {
+      this.log.info("Job settled:", summary);
+    }
+
     JOB_PROFILES.finish(settled.id);
 
     this.jobs = this.jobs.filter((job: IJobState) => job.id !== settled.id);

@@ -10,7 +10,8 @@ import { VisualMotionBake } from "@/core/ipc/types/xrf-visual";
 import { clampMotionFps, MOTION_SAMPLE_FPS } from "@/core/visuals/lib/visual-motion";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
 import { AsyncState } from "@/lib/async-state";
-import { Logger } from "@/lib/logging";
+import { formatDuration } from "@/lib/format/duration";
+import { Logger, Timer } from "@/lib/logging";
 import { call, cancelFlows, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 import { Nullable } from "@/lib/types/general";
 
@@ -97,6 +98,10 @@ export class VisualMotionService {
       return;
     }
 
+    const timer: Timer = new Timer();
+    const sessionId: Nullable<string> = this.loadService.visual.value?.selected.sessionId ?? null;
+
+    this.log.info("Listing visual motions:", sessionId);
     this.motions = this.motions.asLoading();
 
     try {
@@ -105,10 +110,12 @@ export class VisualMotionService {
       );
 
       this.motions = this.motions.asReady(names);
+
+      this.log.info("Visual motions listed:", sessionId, names.length, "motions, in", formatDuration(timer.elapsed()));
     } catch (error: unknown) {
       const transformed: Error = transformError(error);
 
-      this.log.error("Failed to list motions:", transformed);
+      this.log.error("Failed to list motions:", sessionId, "after", formatDuration(timer.elapsed()), transformed);
 
       this.motions = this.motions.asFailed(transformed, []);
     }
@@ -125,7 +132,10 @@ export class VisualMotionService {
    */
   @LatestFlow()
   public *open(name: string): TFlow {
+    const timer: Timer = new Timer();
     const resume: boolean = this.isPlaying || !this.posed.value;
+
+    this.log.info("Loading motion:", name);
 
     this.stopTicker();
 
@@ -158,13 +168,23 @@ export class VisualMotionService {
       this.frame = 0;
       this.posed = this.posed.asReady({ bake, transforms: new Float32Array(bytes) });
 
+      this.log.info(
+        "Motion loaded:",
+        name,
+        bake.frameCount,
+        "frames,",
+        bake.boneCount,
+        "bones, in",
+        formatDuration(timer.elapsed())
+      );
+
       if (resume) {
         this.play();
       }
     } catch (error: unknown) {
       const transformed: Error = transformError(error);
 
-      this.log.error(`Failed to pose motion '${name}':`, transformed);
+      this.log.error(`Failed to pose motion '${name}':`, "after", formatDuration(timer.elapsed()), transformed);
 
       this.posed = this.posed.asFailed(transformed, null);
     }

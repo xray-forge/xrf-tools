@@ -12,7 +12,8 @@ import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
 import { EApplicationId } from "@/core/routing/application";
 import { AsyncState } from "@/lib/async-state";
-import { Logger } from "@/lib/logging";
+import { formatDuration } from "@/lib/format/duration";
+import { Logger, Timer } from "@/lib/logging";
 import { call, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 import { Nullable } from "@/lib/types/general";
 
@@ -210,6 +211,8 @@ ${transformError(error).message}`,
       return true;
     }
 
+    const timer: Timer = new Timer();
+
     this.log.info("Saving translations file:", file);
 
     this.savingFile = file;
@@ -224,7 +227,12 @@ ${transformError(error).message}`,
       this.discardFile(file);
 
       if (response.kind === ETranslationSaveOutcome.STALE) {
-        this.log.warn("Translations file saved into a project that is no longer open:", file);
+        this.log.warn(
+          "Translations file saved into a project that is no longer open:",
+          file,
+          "in",
+          formatDuration(timer.elapsed())
+        );
 
         emitNotification(this.eventBus, {
           details: `${file}\nThe edits were written, but another project was opened while saving.`,
@@ -238,9 +246,11 @@ ${transformError(error).message}`,
 
       this.projectState = this.projectState.asReady(response.project);
 
+      this.log.info("Translations file saved:", file, "in", formatDuration(timer.elapsed()));
+
       return true;
     } catch (error) {
-      this.log.error("Failed to save translations file:", error);
+      this.log.error("Failed to save translations file:", file, "after", formatDuration(timer.elapsed()), error);
 
       emitNotification(this.eventBus, {
         details: `${file}\n${transformError(error).message}`,

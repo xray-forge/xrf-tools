@@ -9,7 +9,8 @@ import { ExportSourceContent, ExportsProject } from "@/core/ipc/types/xrf-export
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
 import { EApplicationId } from "@/core/routing/application";
 import { AsyncState } from "@/lib/async-state";
-import { Logger } from "@/lib/logging";
+import { formatDuration } from "@/lib/format/duration";
+import { Logger, Timer } from "@/lib/logging";
 import { call, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 import { Nullable } from "@/lib/types/general";
 
@@ -86,9 +87,22 @@ export class ExportsService {
    */
   @BoundAction()
   public async readExportSource(name: string): Promise<ExportSourceContent> {
-    this.log.info("Reading export source:", name);
+    const timer: Timer = new Timer();
 
-    return exportsCommands.getSource(requireSessionId(this.projectState.value), name);
+    try {
+      const source: ExportSourceContent = await exportsCommands.getSource(
+        requireSessionId(this.projectState.value),
+        name
+      );
+
+      this.log.info("Export source read:", name, "in", formatDuration(timer.elapsed()));
+
+      return source;
+    } catch (error: unknown) {
+      this.log.error("Failed to read export source:", name, "after", formatDuration(timer.elapsed()), error);
+
+      throw error;
+    }
   }
 
   /**
@@ -104,6 +118,8 @@ export class ExportsService {
       return;
     }
 
+    const timer: Timer = new Timer();
+
     this.log.info("Exporting externs manifest:", path);
     this.manifest = this.manifest.asLoading();
 
@@ -111,6 +127,14 @@ export class ExportsService {
       yield* call(exportsCommands.exportManifest(project.sessionId, path));
 
       this.manifest = this.manifest.asReady(path);
+
+      this.log.info(
+        "Externs manifest exported:",
+        path,
+        project.value.declarations.length,
+        "externs, in",
+        formatDuration(timer.elapsed())
+      );
 
       emitNotification(this.eventBus, {
         details: path,
@@ -121,7 +145,7 @@ export class ExportsService {
     } catch (error: unknown) {
       const transformed: Error = transformError(error);
 
-      this.log.error("Failed to export externs manifest:", transformed);
+      this.log.error("Failed to export externs manifest:", path, "after", formatDuration(timer.elapsed()), transformed);
 
       this.manifest = this.manifest.asFailed(transformed);
 
@@ -136,6 +160,8 @@ export class ExportsService {
 
   @LatestFlow("project")
   public *openExportsProject(path: string): TFlow {
+    const timer: Timer = new Timer();
+
     this.log.info("Parsing exports from project:", path);
     this.projectState = this.projectState.asLoading();
 
@@ -143,10 +169,18 @@ export class ExportsService {
       const result: SessionSnapshot<ExportsProject> = yield* call(this.session.open(exportsCommands.openProject, path));
 
       this.projectState = this.projectState.asReady(result);
+
+      this.log.info(
+        "Exports project opened:",
+        path,
+        result.value.declarations.length,
+        "externs, in",
+        formatDuration(timer.elapsed())
+      );
     } catch (error: unknown) {
       const transformed: Error = transformError(error);
 
-      this.log.error("Failed to parse exports:", transformed);
+      this.log.error("Failed to parse exports:", path, "after", formatDuration(timer.elapsed()), transformed);
 
       this.projectState = this.projectState.asFailed(transformed);
 
@@ -167,6 +201,8 @@ export class ExportsService {
       return;
     }
 
+    const timer: Timer = new Timer();
+
     this.log.info("Refreshing exports project:", existing.value.root);
     this.projectState = this.projectState.asLoading(existing);
 
@@ -176,10 +212,24 @@ export class ExportsService {
       );
 
       this.projectState = this.projectState.asReady(result);
+
+      this.log.info(
+        "Exports project refreshed:",
+        existing.value.root,
+        result.value.declarations.length,
+        "externs, in",
+        formatDuration(timer.elapsed())
+      );
     } catch (error: unknown) {
       const transformed: Error = transformError(error);
 
-      this.log.error("Failed to refresh exports project:", transformed);
+      this.log.error(
+        "Failed to refresh exports project:",
+        existing.value.root,
+        "after",
+        formatDuration(timer.elapsed()),
+        transformed
+      );
 
       this.projectState = this.projectState.asFailed(transformed, existing);
 
@@ -195,6 +245,7 @@ export class ExportsService {
   @LatestFlow("project")
   public *closeExportsProject(): TFlow {
     const previous: AsyncState<SessionSnapshot<ExportsProject>> = this.projectState;
+    const timer: Timer = new Timer();
 
     this.log.info("Closing exports project");
     this.projectState = this.projectState.asLoading();
@@ -205,10 +256,18 @@ export class ExportsService {
       this.projectState = this.projectState.asIdle();
       // The artifact described the project that just closed, so the next one starts without its outcome.
       this.manifest = this.manifest.asIdle();
+
+      this.log.info("Exports project closed:", previous.value?.value.root, "in", formatDuration(timer.elapsed()));
     } catch (error: unknown) {
       const transformed: Error = transformError(error);
 
-      this.log.error("Failed to close exports project:", transformed);
+      this.log.error(
+        "Failed to close exports project:",
+        previous.value?.value.root,
+        "after",
+        formatDuration(timer.elapsed()),
+        transformed
+      );
 
       this.projectState = previous;
 

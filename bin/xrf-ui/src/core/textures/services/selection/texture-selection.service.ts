@@ -161,7 +161,11 @@ export class TextureSelectionService {
     } catch (error: unknown) {
       const transformed: Error = transformError(error);
 
-      this.log.error("Failed to inspect texture:", transformed);
+      this.log.error(
+        "Failed to inspect texture:",
+        source.kind === ETextureSource.FILE ? source.path : source.reference,
+        transformed
+      );
 
       this.selected = this.selected.asFailed(transformed, null);
       this.preview = this.preview.asIdle();
@@ -195,7 +199,7 @@ export class TextureSelectionService {
     } catch (error: unknown) {
       const transformed: Error = transformError(error);
 
-      this.log.error("Failed to decode texture:", transformed);
+      this.log.error("Failed to decode texture:", description.reference, logicalPath, transformed);
 
       this.preview = this.preview.asFailed(transformed, null);
     }

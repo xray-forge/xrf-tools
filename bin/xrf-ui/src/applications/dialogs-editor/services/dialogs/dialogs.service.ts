@@ -12,7 +12,8 @@ import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
 import { EApplicationId } from "@/core/routing/application";
 import { AsyncState } from "@/lib/async-state";
-import { Logger } from "@/lib/logging";
+import { formatDuration } from "@/lib/format/duration";
+import { Logger, Timer } from "@/lib/logging";
 import { call, cancelFlow, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 import { Nullable } from "@/lib/types/general";
 
@@ -195,6 +196,8 @@ ${transformError(error).message}`,
    */
   @LatestFlow("dialog")
   public *selectDialog(logicalPath: string, id: string): TFlow {
+    const timer: Timer = new Timer();
+
     // Only when the dialog actually changes. A language switch re-fetches the same one through here,
     // and dropping the inspection then would close the panel the reader is comparing languages in.
     if (this.selection?.logicalPath !== logicalPath || this.selection.id !== id) {
@@ -215,8 +218,18 @@ ${transformError(error).message}`,
       );
 
       this.dialog = this.dialog.asReady(response);
+
+      this.log.info(
+        "Dialog read:",
+        logicalPath,
+        id,
+        response.language,
+        response.phrases.length,
+        "phrases, in",
+        formatDuration(timer.elapsed())
+      );
     } catch (error) {
-      this.log.error("Failed to read dialog:", logicalPath, id, error);
+      this.log.error("Failed to read dialog:", logicalPath, id, "after", formatDuration(timer.elapsed()), error);
 
       this.dialog = this.dialog.asFailed(error as Error, null);
     }

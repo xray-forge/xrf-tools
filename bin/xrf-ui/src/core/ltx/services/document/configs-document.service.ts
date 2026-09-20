@@ -10,7 +10,8 @@ import { ConfigsProjectService } from "@/core/ltx/services/project";
 import { ConfigsResolvedService } from "@/core/ltx/services/resolved";
 import { ConfigsSchemeService } from "@/core/ltx/services/scheme";
 import { AsyncState } from "@/lib/async-state";
-import { Logger } from "@/lib/logging";
+import { formatDuration } from "@/lib/format/duration";
+import { Logger, Timer } from "@/lib/logging";
 import { call, cancelFlow, LatestFlow, TFlow } from "@/lib/mobx";
 import { Nullable } from "@/lib/types/general";
 
@@ -108,6 +109,8 @@ export class ConfigsDocumentService {
       return;
     }
 
+    const timer: Timer = new Timer();
+
     this.selected = path;
     this.document = this.document.asLoading();
 
@@ -115,8 +118,10 @@ export class ConfigsDocumentService {
       const document: ConfigsDocument = yield* call(configsCommands.readDocument({ path, sessionId }));
 
       this.document = this.document.asReady(document);
+
+      this.log.info("Config read:", path, document.findings.length, "findings, in", formatDuration(timer.elapsed()));
     } catch (error) {
-      this.log.error("Failed to read the config:", path, error);
+      this.log.error("Failed to read the config:", path, "after", formatDuration(timer.elapsed()), error);
 
       // The path stays selected on a failure, so the row a person clicked keeps its highlight and a retry needs no
       // second search through the tree.

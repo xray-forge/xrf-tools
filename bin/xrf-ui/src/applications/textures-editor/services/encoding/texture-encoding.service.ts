@@ -156,7 +156,7 @@ export class TextureEncodingService {
     } catch (error: unknown) {
       const transformed: Error = transformError(error);
 
-      this.log.error("Failed to decode the chosen candidate:", transformed);
+      this.log.error("Failed to decode the chosen candidate:", comparison.reference, chosen, transformed);
 
       if (this.comparison?.sessionId === comparison.sessionId) {
         this.preview = this.preview.asFailed(transformed, null);

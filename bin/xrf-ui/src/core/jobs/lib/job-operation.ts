@@ -5,8 +5,7 @@ import { EJobKind } from "@/core/ipc/types/xrf-app";
 import { IJobDescriptor, IJobRun, IJobSettledPayload, IJobState } from "@/core/jobs/lib/jobs-types";
 import { JobsService } from "@/core/jobs/services/jobs";
 import { AsyncState } from "@/lib/async-state";
-import { formatDuration } from "@/lib/format/duration";
-import { Logger, Timer } from "@/lib/logging";
+import { Logger } from "@/lib/logging";
 import { call, TFlow } from "@/lib/mobx";
 import { Nullable, Optional } from "@/lib/types/general";
 
@@ -93,8 +92,6 @@ export class JobOperation<T> {
 
   /** Runs inside the owner's flow so superseding or deactivating it cannot publish a late answer. */
   public *run(descriptor: IJobDescriptor<T>): TFlow<JobCompletion<T>> {
-    const timer: Timer = new Timer();
-
     this.state = this.state.asLoading(null);
 
     try {
@@ -105,14 +102,16 @@ export class JobOperation<T> {
       const result: T = yield* call(run.promise);
 
       this.state = this.state.asReady(result);
-      this.log.info("Job finished:", descriptor.kind, formatDuration(timer.elapsed()));
 
       return { result, error: null };
     } catch (caught: unknown) {
       const error: Error = transformError(caught);
 
+      if (this.jobId === null) {
+        this.log.error("Failed to start job:", descriptor.kind, error);
+      }
+
       this.state = this.state.asFailed(error, null);
-      this.log.error("Job failed:", descriptor.kind, formatDuration(timer.elapsed()), error);
 
       return { result: null, error };
     } finally {

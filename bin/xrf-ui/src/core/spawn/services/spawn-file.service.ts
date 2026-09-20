@@ -9,7 +9,8 @@ import { SpawnFile } from "@/core/ipc/types/xrf-spawn";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
 import { EApplicationGroupId } from "@/core/routing/application";
 import { AsyncState } from "@/lib/async-state";
-import { Logger } from "@/lib/logging";
+import { formatDuration } from "@/lib/format/duration";
+import { Logger, Timer } from "@/lib/logging";
 import { call, cancelFlow, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 import { AnyObject, Nullable } from "@/lib/types/general";
 
@@ -199,6 +200,8 @@ export class SpawnFileService {
       return;
     }
 
+    const timer: Timer = new Timer();
+
     this.log.info("Saving spawn file:", path);
 
     this.operation = this.operation.asLoading(null);
@@ -208,6 +211,8 @@ export class SpawnFileService {
 
       this.operation = this.operation.asReady("save");
 
+      this.log.info("Spawn file saved:", path, "in", formatDuration(timer.elapsed()));
+
       emitNotification(this.eventBus, {
         details: path,
         severity: ENotificationSeverity.SUCCESS,
@@ -215,7 +220,7 @@ export class SpawnFileService {
         title: "Saved spawn file",
       });
     } catch (error: unknown) {
-      this.log.error("Failed to save spawn file:", error);
+      this.log.error("Failed to save spawn file:", path, "after", formatDuration(timer.elapsed()), error);
 
       this.operation = this.operation.asFailed(transformError(error), null);
 
@@ -236,6 +241,8 @@ export class SpawnFileService {
       return;
     }
 
+    const timer: Timer = new Timer();
+
     this.log.info("Exporting spawn file:", path);
 
     this.operation = this.operation.asLoading(null);
@@ -245,6 +252,8 @@ export class SpawnFileService {
 
       this.operation = this.operation.asReady("export");
 
+      this.log.info("Spawn file exported:", path, "in", formatDuration(timer.elapsed()));
+
       emitNotification(this.eventBus, {
         details: path,
         severity: ENotificationSeverity.SUCCESS,
@@ -252,7 +261,7 @@ export class SpawnFileService {
         title: "Exported spawn file",
       });
     } catch (error: unknown) {
-      this.log.error("Failed to export spawn file:", error);
+      this.log.error("Failed to export spawn file:", path, "after", formatDuration(timer.elapsed()), error);
 
       this.operation = this.operation.asFailed(transformError(error), null);
 
