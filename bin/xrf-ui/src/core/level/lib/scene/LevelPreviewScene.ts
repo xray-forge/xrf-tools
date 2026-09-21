@@ -6,6 +6,7 @@ import { ILevelCamera } from "@/core/level/lib/camera/level-camera";
 import { DEFAULT_LEVEL_CAMERA_OPTIONS, ILevelCameraOptions } from "@/core/level/lib/camera/level-camera-options";
 import { toLevelCamera } from "@/core/level/lib/camera/level-camera-reading";
 import { LevelFlyCamera } from "@/core/level/lib/camera/level-fly-camera";
+import { EMPTY_LEVEL_FLY_MOTION, ILevelFlyMotion, ILevelMotionSource } from "@/core/level/lib/camera/level-fly-motion";
 import { ILevelViewpoint, toLevelStartViewpoint } from "@/core/level/lib/camera/level-viewpoint";
 import { ILevelLighting } from "@/core/level/lib/lighting/level-lighting";
 import {
@@ -23,11 +24,11 @@ import { ILevelTextureReport } from "@/core/level/lib/texture/level-texture-repo
 import { LevelTextureSet } from "@/core/level/lib/texture/level-texture-set";
 import { DEFAULT_LEVEL_VIEW_OPTIONS, ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
 import { TFrameRateLimit } from "@/core/render/lib/frame/render-frame-limit";
+import { IRenderTarget } from "@/core/render/lib/frame/render-target";
 import { RenderViewport } from "@/core/render/lib/frame/render-viewport";
 import { Nullable } from "@/lib/types/general";
 
 import { DEFAULT_LEVEL_PREVIEW_SCENE_CONFIG, ILevelPreviewSceneConfig } from "./level-scene-config";
-import { LevelFlyControls } from "./LevelFlyControls";
 import { LevelPreviewFrame } from "./LevelPreviewFrame";
 import { LevelPreviewLighting } from "./LevelPreviewLighting";
 import { LevelPreviewSectors } from "./LevelPreviewSectors";
@@ -71,7 +72,7 @@ export class LevelPreviewScene {
   /** The level's uploaded textures, which belong on the same side for the same reason. */
   private readonly textures: LevelTextureSet = new LevelTextureSet();
 
-  private controls: Nullable<LevelFlyControls> = null;
+  private motion: Nullable<ILevelMotionSource> = null;
   /** The level's shader table, which every arriving sector joins its surfaces against. */
   private surfaces: ReadonlyArray<XraySurfaceDescriptor> = [];
   /** Stops this scene hearing about the sectors it last took, for when it takes another level's. */
@@ -82,14 +83,15 @@ export class LevelPreviewScene {
   private readonly facing: Vector3 = new Vector3();
 
   public constructor(
+    target: IRenderTarget,
     handlers: ILevelPreviewSceneHandlers,
     config: ILevelPreviewSceneConfig = DEFAULT_LEVEL_PREVIEW_SCENE_CONFIG
   ) {
     this.handlers = handlers;
 
-    this.viewport = new RenderViewport(config, { onFrame: (delta: number, now: number) => this.advance(delta, now) });
-    // Focusable, because the fly controls read the keyboard and a canvas is not focusable by default.
-    this.viewport.domElement.tabIndex = 0;
+    this.viewport = new RenderViewport(target, config, {
+      onFrame: (delta: number, now: number) => this.advance(delta, now),
+    });
 
     this.lighting = new LevelPreviewLighting(this.viewport.scene);
 
@@ -214,20 +216,16 @@ export class LevelPreviewScene {
   }
 
   /**
-   * Attaches the canvas and starts rendering.
+   * Takes where the frame reads what the person is doing.
    *
-   * @param container - Element the canvas fills.
+   * @param motion - The source, or null for a scene nobody is flying.
    */
-  public mount(container: HTMLElement): void {
-    this.controls = new LevelFlyControls(this.fly, this.viewport.domElement);
-    this.viewport.mount(container);
+  public setMotion(motion: Nullable<ILevelMotionSource>): void {
+    this.motion = motion;
   }
 
-  /** Stops rendering, detaches the canvas, and releases what the scene owns. */
+  /** Stops rendering, releases the target, and releases what the scene owns. */
   public dispose(): void {
-    this.controls?.dispose();
-    this.controls = null;
-
     // Materials only: the geometry belongs to the loader, which disposes it when a sector stops being resident.
     this.textures.dispose();
     this.held.dispose();
@@ -260,7 +258,12 @@ export class LevelPreviewScene {
   }
 
   private advance(delta: number, now: number): void {
-    if (this.controls?.update(this.viewport.camera, delta)) {
+    const motion: ILevelFlyMotion = this.motion?.drain() ?? EMPTY_LEVEL_FLY_MOTION;
+
+    // Looking before moving, because where the camera walks is where it is facing.
+    this.fly.look(motion.lookX, motion.lookY);
+
+    if (this.fly.update(this.viewport.camera, motion.keys, delta)) {
       this.reportCamera();
     }
 

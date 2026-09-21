@@ -1,27 +1,26 @@
-import { Camera } from "three";
-
-import { EMPTY_LEVEL_FLY_INPUT, getFlyBinding, ILevelFlyInput, LevelFlyCamera } from "@/core/level/lib/camera";
+import { EMPTY_LEVEL_FLY_INPUT, getFlyBinding, ILevelFlyInput } from "@/core/level/lib/camera";
+import { ILevelFlyMotion, ILevelMotionSource } from "@/core/level/lib/camera/level-fly-motion";
 import { DRAG_CURSOR } from "@/lib/media/drag-cursor";
 
 /**
- * Binds a viewport's pointer and keyboard to a fly camera.
+ * Binds a viewport's pointer and keyboard to whatever reads them.
  */
-export class LevelFlyControls {
-  private readonly camera: LevelFlyCamera;
+export class LevelFlyControls implements ILevelMotionSource {
   private readonly element: HTMLElement;
   private readonly input: ILevelFlyInput = { ...EMPTY_LEVEL_FLY_INPUT };
+
+  /** Pointer movement gathered since the last drain, because a frame is what applies it. */
+  private lookX: number = 0;
+  private lookY: number = 0;
 
   private isLooking: boolean = false;
   /** The cursor the element had before a drag took it, so letting go puts back whatever was there. */
   private restingCursor: string = "";
 
   /**
-   * @param camera - The fly camera to drive, which outlives these controls: where it is looking survives a viewport
-   *   being unmounted and mounted again, as react's strict mode does on every render pass.
    * @param element - Element the viewport draws into, which is what takes focus and receives the events.
    */
-  public constructor(camera: LevelFlyCamera, element: HTMLElement) {
-    this.camera = camera;
+  public constructor(element: HTMLElement) {
     this.element = element;
 
     this.element.addEventListener("pointerdown", this.onPointerDown);
@@ -35,14 +34,15 @@ export class LevelFlyControls {
   }
 
   /**
-   * Moves the camera for one frame.
-   *
-   * @param camera - Camera to drive.
-   * @param delta - Seconds since the previous frame.
-   * @returns Whether the camera moved.
+   * @returns What has happened since the last call, the look forgotten as it is handed over.
    */
-  public update(camera: Camera, delta: number): boolean {
-    return this.camera.update(camera, this.input, delta);
+  public drain(): ILevelFlyMotion {
+    const motion: ILevelFlyMotion = { keys: { ...this.input }, lookX: this.lookX, lookY: this.lookY };
+
+    this.lookX = 0;
+    this.lookY = 0;
+
+    return motion;
   }
 
   /** Stops listening, for a viewport being torn down. */
@@ -75,7 +75,8 @@ export class LevelFlyControls {
 
   private readonly onPointerMove = (event: PointerEvent): void => {
     if (this.isLooking) {
-      this.camera.look(event.movementX, event.movementY);
+      this.lookX += event.movementX;
+      this.lookY += event.movementY;
     }
   };
 
@@ -90,6 +91,8 @@ export class LevelFlyControls {
   /** A viewport that loses focus holds no key, which would otherwise fly the camera away unattended. */
   private readonly onBlur = (): void => {
     this.isLooking = false;
+    this.lookX = 0;
+    this.lookY = 0;
 
     for (const key of Object.keys(this.input) as Array<keyof ILevelFlyInput>) {
       this.input[key] = false;

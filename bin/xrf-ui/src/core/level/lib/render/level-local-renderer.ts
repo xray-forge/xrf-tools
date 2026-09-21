@@ -5,8 +5,9 @@ import {
   ILevelRenderLevel,
   ILevelRenderView,
 } from "@/core/level/lib/render/level-renderer";
-import { LevelPreviewScene } from "@/core/level/lib/scene";
+import { LevelFlyControls, LevelPreviewScene } from "@/core/level/lib/scene";
 import { ILevelSurfaceGeometry } from "@/core/level/lib/surface/level-surface-geometry";
+import { DomRenderTarget } from "@/core/render/lib/frame/dom-render-target";
 import { Nullable } from "@/lib/types/general";
 
 /** What a renderer needs to exist at all: somewhere to draw, and somewhere to report to. */
@@ -24,14 +25,21 @@ export class LevelLocalRenderer implements ILevelRenderer {
   /** The last view applied, so only what moved is applied again. */
   private view: Nullable<ILevelRenderView> = null;
 
+  /** Reads the pointer and the keys, which are this thread's whatever draws. */
+  private readonly controls: LevelFlyControls;
+
   public constructor({ container, events }: ILevelLocalRendererOptions) {
-    this.scene = new LevelPreviewScene({
+    const target: DomRenderTarget = new DomRenderTarget(container);
+
+    this.scene = new LevelPreviewScene(target, {
       onCameraMoved: (point) => events.onCameraMoved(point),
       onReport: (stats, camera) => events.onReport(stats, camera),
       onTextures: (report) => events.onTextures(report),
     });
 
-    this.scene.mount(container);
+    // On the canvas rather than the container: it is what takes focus and what the pointer is captured on.
+    this.controls = new LevelFlyControls(target.canvas);
+    this.scene.setMotion(this.controls);
   }
 
   public open(level: Nullable<ILevelRenderLevel>): void {
@@ -77,6 +85,7 @@ export class LevelLocalRenderer implements ILevelRenderer {
   }
 
   public dispose(): void {
+    this.controls.dispose();
     this.scene.dispose();
   }
 }

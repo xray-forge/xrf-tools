@@ -1,6 +1,7 @@
 import { BufferGeometry, Mesh, MeshStandardMaterial, PerspectiveCamera, Scene } from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
+import { DomRenderTarget } from "@/core/render/lib/frame/dom-render-target";
 import { TFrameRateLimit } from "@/core/render/lib/frame/render-frame-limit";
 import { RenderViewport } from "@/core/render/lib/frame/render-viewport";
 import { IRenderLighting } from "@/core/render/lib/lighting/render-lighting";
@@ -60,16 +61,17 @@ export class TextureSurfaceScene {
   /** What the surface is lit with, which its owner holds and a drag over the body reports back. */
   private lighting: IRenderLighting = DEFAULT_TEXTURE_LIGHTING;
 
-  public constructor() {
+  public constructor(target: DomRenderTarget) {
     // No background colour, so the canvas is transparent and the checkerboard the frame already draws shows through
     // wherever the texture's alpha does.
     this.viewport = new RenderViewport(
+      target,
       { backgroundColor: null, cameraFar: 100, cameraFieldOfView: 45, cameraNear: 0.01 },
       { onFrame: () => this.controls.update() }
     );
     this.camera.position.set(0, 0, CAMERA_DISTANCE);
 
-    this.controls = new OrbitControls(this.camera, this.viewport.domElement);
+    this.controls = new OrbitControls(this.camera, target.canvas);
     this.controls.enableDamping = true;
 
     this.lights = new RenderPreviewLighting(this.scene, DEFAULT_TEXTURE_LIGHTING);
@@ -82,7 +84,7 @@ export class TextureSurfaceScene {
     this.edgeMaterial = new MeshStandardMaterial({ color: 0x1a1a1a, metalness: 0, roughness: 0.9 });
 
     this.setShape(this.options.shape);
-    this.unbindDragCursor = bindDragCursor(this.controls, this.viewport.domElement);
+    this.unbindDragCursor = bindDragCursor(this.controls, target.canvas);
   }
 
   /** The scene the body stands in, which the viewport draws. */
@@ -102,15 +104,6 @@ export class TextureSurfaceScene {
    */
   public setFrameRateLimit(limit: TFrameRateLimit): void {
     this.viewport.setFrameRateLimit(limit);
-  }
-
-  /**
-   * Puts the canvas on screen and starts drawing.
-   *
-   * @param container - Element the canvas fills.
-   */
-  public mount(container: HTMLElement): void {
-    this.viewport.mount(container);
   }
 
   /**

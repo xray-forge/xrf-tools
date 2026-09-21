@@ -10,6 +10,7 @@ import {
   Vector2,
 } from "three";
 
+import { DomRenderTarget } from "@/core/render/lib/frame/dom-render-target";
 import { ETextureSurfaceAlpha, ETextureSurfaceShape } from "@/core/textures/lib/texture-surface";
 
 let TextureSurfaceScene: typeof import("./TextureSurfaceScene").TextureSurfaceScene;
@@ -50,7 +51,7 @@ function materialOf(scene: InstanceType<typeof TextureSurfaceScene>): Material {
 
 describe("TextureSurfaceScene", () => {
   it("changes lighting without invalidating texture data or materials", () => {
-    const scene = new TextureSurfaceScene();
+    const scene = new TextureSurfaceScene(new DomRenderTarget(document.createElement("div")));
     const base = new Texture();
     const bump = new Texture();
     const companion = new Texture();
@@ -77,7 +78,7 @@ describe("TextureSurfaceScene", () => {
   });
 
   it("updates texture UV matrices when tiling changes without invalidating texture data or materials", () => {
-    const scene = new TextureSurfaceScene();
+    const scene = new TextureSurfaceScene(new DomRenderTarget(document.createElement("div")));
     const base = new Texture();
     const bump = new Texture();
     const companion = new Texture();
@@ -115,7 +116,7 @@ describe("TextureSurfaceScene", () => {
      * @returns The material state the body comes to.
      */
     function shade(alpha: ETextureSurfaceAlpha, format: PixelFormat | CompressedPixelFormat = RGBAFormat): Material {
-      const scene = new TextureSurfaceScene();
+      const scene = new TextureSurfaceScene(new DomRenderTarget(document.createElement("div")));
       const base = new Texture();
 
       // The typings admit only an uncompressed format, though three's own loader assigns a compressed one here.

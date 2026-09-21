@@ -1,14 +1,14 @@
 import { beforeAll, describe, expect, it, jest } from "@jest/globals";
 
+import { DomRenderTarget } from "@/core/render/lib/frame/dom-render-target";
 import { DEFAULT_VISUAL_PREVIEW_VIEW_OPTIONS } from "@/core/visuals/lib/scene";
 import { IVisualModelViews } from "@/core/visuals/lib/visual-views";
 import { mockVisualModelViews } from "@/fixtures/mocks/visual.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
 import { Nullable } from "@/lib/types/general";
 
-const createScene = jest.fn((initialModel: Nullable<IVisualModelViews>) => ({
+const createScene = jest.fn((_target: unknown, initialModel: Nullable<IVisualModelViews>) => ({
   initialModel,
-  mount: jest.fn(),
   dispose: jest.fn(),
   setModel: jest.fn(),
   applyViewOptions: jest.fn(),
@@ -46,8 +46,7 @@ describe("VisualPreviewViewport", () => {
     const scene = getScene(0);
 
     expect(createScene).toHaveBeenCalledTimes(1);
-    expect(createScene).toHaveBeenCalledWith(null);
-    expect(scene.mount).toHaveBeenCalledTimes(1);
+    expect(createScene).toHaveBeenCalledWith(expect.any(DomRenderTarget), null);
     expect(scene.setModel.mock.calls).toEqual([[model]]);
     expect(scene.applyViewOptions.mock.calls).toEqual([[options]]);
     expect(scene.setDetailLevel.mock.calls).toEqual([[0.5]]);
@@ -90,7 +89,6 @@ describe("VisualPreviewViewport", () => {
     const active = getScene(1);
 
     expect(discarded.dispose).toHaveBeenCalledTimes(1);
-    expect(active.mount).toHaveBeenCalledTimes(1);
     expect(active.setModel.mock.calls).toEqual([[model]]);
     expect(active.applyViewOptions.mock.calls).toEqual([[options]]);
     expect(active.setDetailLevel.mock.calls).toEqual([[0.5]]);

@@ -1,6 +1,7 @@
 import { DataTexture, PerspectiveCamera, Scene, Texture } from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
+import { DomRenderTarget } from "@/core/render/lib/frame/dom-render-target";
 import { TFrameRateLimit } from "@/core/render/lib/frame/render-frame-limit";
 import { RenderViewport } from "@/core/render/lib/frame/render-viewport";
 import { IRenderLighting } from "@/core/render/lib/lighting/render-lighting";
@@ -19,15 +20,8 @@ import { VisualPreviewHighlight } from "./VisualPreviewHighlight";
 import { VisualPreviewModel } from "./VisualPreviewModel";
 import { createCheckerTexture } from "./VisualPreviewScene.utils";
 
-/** Radius assumed when a model reports no usable extent, so the camera and helpers still have a scale. */
-const FALLBACK_RADIUS: number = 1;
-
 /**
  * Owns the three.js scene imperatively, outside of react state.
- *
- * An editor scene graph is long lived and mutated by direct manipulation, so it is deliberately not expressed as react
- * elements: react only mounts it into a container and disposes it again. Everything webgl touches stays behind this
- * class.
  */
 export class VisualPreviewScene {
   private readonly config: IVisualPreviewSceneConfig;
@@ -72,18 +66,19 @@ export class VisualPreviewScene {
   }
 
   public constructor(
+    target: DomRenderTarget,
     model: Nullable<IVisualModelViews>,
     config: IVisualPreviewSceneConfig = DEFAULT_VISUAL_PREVIEW_SCENE_CONFIG
   ) {
     this.config = config;
 
-    this.viewport = new RenderViewport(config, {
+    this.viewport = new RenderViewport(target, config, {
       onFrame: () => this.controls.update(),
       // A fit measured against a viewport with no size yet is wrong, and this is the first chance to repeat it.
       onResized: () => this.applyUnmeasuredFit(),
     });
 
-    this.controls = new OrbitControls(this.camera, this.viewport.domElement);
+    this.controls = new OrbitControls(this.camera, target.canvas);
     this.controls.enableDamping = true;
 
     this.checker = createCheckerTexture(config);
@@ -92,7 +87,7 @@ export class VisualPreviewScene {
     this.highlight = new VisualPreviewHighlight(this.scene, config);
 
     this.setModel(model);
-    this.unbindDragCursor = bindDragCursor(this.controls, this.viewport.domElement);
+    this.unbindDragCursor = bindDragCursor(this.controls, target.canvas);
   }
 
   /**
@@ -244,7 +239,7 @@ export class VisualPreviewScene {
     this.hasFramed = true;
     this.isFitUnmeasured = !this.viewport.isMeasured;
 
-    const radius: number = this.views?.fit.radius ?? FALLBACK_RADIUS;
+    const radius: number = this.views?.fit.radius ?? 1;
     const [x, y, z] = this.views?.fit.center ?? [0, 0, 0];
     const distance: number = (radius / Math.sin((cameraFieldOfView * Math.PI) / 360)) * cameraFitMargin;
     const length: number = Math.hypot(cameraDirection[0], cameraDirection[1], cameraDirection[2]);
@@ -269,15 +264,6 @@ export class VisualPreviewScene {
    */
   public setFrameRateLimit(limit: TFrameRateLimit): void {
     this.viewport.setFrameRateLimit(limit);
-  }
-
-  /**
-   * Attaches the renderer to a viewport and starts its render loop.
-   *
-   * @param container - Element whose dimensions drive the renderer and camera aspect ratio.
-   */
-  public mount(container: HTMLElement): void {
-    this.viewport.mount(container);
   }
 
   /** Stops rendering, detaches the canvas, and releases the scene's WebGL resources. */
@@ -308,7 +294,7 @@ export class VisualPreviewScene {
 
   /** Size the helpers to the model, so the grid reads as ground rather than as a backdrop. */
   private applyScale(): void {
-    const radius: number = this.views?.fit.radius ?? FALLBACK_RADIUS;
+    const radius: number = this.views?.fit.radius ?? 1;
 
     this.frame.setReach(radius);
     this.lighting.setReach(radius);

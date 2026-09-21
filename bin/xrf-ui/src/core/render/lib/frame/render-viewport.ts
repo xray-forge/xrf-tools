@@ -1,11 +1,11 @@
 import { Color, PerspectiveCamera, Scene, WebGLRenderer } from "three";
 
-import { bindSelectionReset } from "@/lib/dom/selection";
 import { Nullable } from "@/lib/types/general";
 
 import { IRenderFrameCost } from "./render-frame-cost";
 import { DEFAULT_FRAME_RATE_LIMIT, shouldDrawFrame, TFrameRateLimit } from "./render-frame-limit";
 import { RenderFrameTimer } from "./render-frame-timer";
+import { IRenderTarget } from "./render-target";
 
 /** Seconds a frame may be worth, so a tab returning from the background does not teleport whatever moves by time. */
 const MAX_FRAME_DELTA: number = 0.1;
@@ -54,11 +54,10 @@ export class RenderViewport {
 
   private readonly handlers: IRenderViewportHandlers;
   private readonly timer: RenderFrameTimer = new RenderFrameTimer();
-  private readonly resizeObserver: ResizeObserver;
-  /** Stops the canvas clearing the window's text selection, called when the viewport goes. */
-  private readonly unbindSelectionReset: () => void;
+  /** Where it draws and how big that is, which is the only thing here that knows whether a document exists. */
+  private readonly target: IRenderTarget;
+  private readonly unobserve: () => void;
 
-  private container: Nullable<HTMLElement> = null;
   private frameRateLimit: TFrameRateLimit = DEFAULT_FRAME_RATE_LIMIT;
   private drawnAt: Nullable<number> = null;
   private frameHandle: number = 0;
@@ -67,27 +66,31 @@ export class RenderViewport {
   private renderedWidth: number = 0;
   private renderedHeight: number = 0;
 
-  public constructor(config: IRenderViewportConfig, handlers: IRenderViewportHandlers = {}) {
+  public constructor(target: IRenderTarget, config: IRenderViewportConfig, handlers: IRenderViewportHandlers = {}) {
     this.handlers = handlers;
+    this.target = target;
 
-    this.renderer = new WebGLRenderer({ alpha: config.backgroundColor === null, antialias: true });
-    this.renderer.setPixelRatio(window.devicePixelRatio);
-    this.renderer.domElement.style.display = "block";
+    this.renderer = new WebGLRenderer({
+      alpha: config.backgroundColor === null,
+      antialias: true,
+      canvas: target.canvas,
+    });
+    this.renderer.setPixelRatio(target.pixelRatio);
 
     this.scene = new Scene();
     this.scene.background = config.backgroundColor === null ? null : new Color(config.backgroundColor);
 
     this.camera = new PerspectiveCamera(config.cameraFieldOfView, 1, config.cameraNear, config.cameraFar);
 
-    this.resizeObserver = new ResizeObserver(() => this.requestResize());
-    // Bound here rather than per scene: pressing a canvas is the one gesture every preview shares, and a
-    // selection left standing behind one belongs to no scene in particular.
-    this.unbindSelectionReset = bindSelectionReset(this.renderer.domElement);
+    this.unobserve = target.observe(() => this.requestResize());
+
+    this.requestResize();
+    this.renderFrame();
   }
 
   /** The canvas, for binding input to and for a scene that wants it focusable. */
-  public get domElement(): HTMLCanvasElement {
-    return this.renderer.domElement;
+  public get domElement(): HTMLCanvasElement | OffscreenCanvas {
+    return this.target.canvas;
   }
 
   /** Mean frame time in milliseconds, or zero before two frames have been drawn. */
@@ -143,32 +146,16 @@ export class RenderViewport {
     this.frameRateLimit = limit;
   }
 
-  /**
-   * Attaches the canvas to a container and starts the render loop.
-   *
-   * @param container - Element the canvas fills, whose size drives the renderer and the camera's aspect.
-   */
-  public mount(container: HTMLElement): void {
-    this.container = container;
-    container.appendChild(this.renderer.domElement);
-
-    this.resizeObserver.observe(container);
-    this.requestResize();
-    this.renderFrame();
-  }
-
   /** Stops the loop, detaches the canvas, and releases the webgl context. Whatever is in the scene is not this one's. */
   public dispose(): void {
     cancelAnimationFrame(this.frameHandle);
 
-    this.resizeObserver.disconnect();
-    this.unbindSelectionReset();
+    this.unobserve();
 
     this.renderer.dispose();
     this.renderer.forceContextLoss();
-    this.renderer.domElement.remove();
 
-    this.container = null;
+    this.target.dispose();
   }
 
   /**
@@ -179,12 +166,11 @@ export class RenderViewport {
   }
 
   private applyPendingResize(): void {
-    if (!this.isResizePending || !this.container) {
+    if (!this.isResizePending) {
       return;
     }
 
-    const width: number = this.container.clientWidth;
-    const height: number = this.container.clientHeight;
+    const { width, height } = this.target;
 
     if (!width || !height) {
       return;

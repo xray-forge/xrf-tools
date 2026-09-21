@@ -2,6 +2,7 @@ import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useEffect, useRef } from "react";
 import { Texture } from "three";
 
+import { DomRenderTarget } from "@/core/render/lib/frame/dom-render-target";
 import { IRenderLighting } from "@/core/render/lib/lighting/render-lighting";
 import { SettingsService } from "@/core/settings/services/settings";
 import { ViewportControls } from "@/core/ui/media/ViewportControls";
@@ -69,11 +70,9 @@ export function VisualPreviewViewport({
       return;
     }
 
-    const scene: VisualPreviewScene = new VisualPreviewScene(null);
+    const scene: VisualPreviewScene = new VisualPreviewScene(new DomRenderTarget(containerRef.current), null);
 
     sceneRef.current = scene;
-
-    scene.mount(containerRef.current);
 
     return () => {
       sceneRef.current = null;

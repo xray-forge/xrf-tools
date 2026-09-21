@@ -2,6 +2,7 @@ import { useInjection } from "@wirestate/react";
 import { PointerEvent, ReactElement, useCallback, useEffect, useRef } from "react";
 
 import { TextureDescription } from "@/core/ipc/types/xrf-app";
+import { DomRenderTarget } from "@/core/render/lib/frame/dom-render-target";
 import { IRenderLighting } from "@/core/render/lib/lighting/render-lighting";
 import { SettingsService } from "@/core/settings/services/settings";
 import { DEFAULT_TEXTURE_LIGHTING } from "@/core/textures/lib/scene/texture-lighting";
@@ -111,13 +112,13 @@ export function TextureSurface({
   }, []);
 
   useEffect(() => {
-    const scene: TextureSurfaceScene = new TextureSurfaceScene();
+    if (!containerRef.current) {
+      return;
+    }
+
+    const scene: TextureSurfaceScene = new TextureSurfaceScene(new DomRenderTarget(containerRef.current));
 
     sceneRef.current = scene;
-
-    if (containerRef.current) {
-      scene.mount(containerRef.current);
-    }
 
     return () => {
       scene.dispose();
