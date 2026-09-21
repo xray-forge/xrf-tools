@@ -1,4 +1,5 @@
 import { default as InfoOutlinedIcon } from "@mui/icons-material/InfoOutlined";
+import { default as LayersIcon } from "@mui/icons-material/Layers";
 import { default as LightModeIcon } from "@mui/icons-material/LightModeOutlined";
 import { default as SpeedIcon } from "@mui/icons-material/Speed";
 import { default as WarningIcon } from "@mui/icons-material/WarningAmber";
@@ -10,6 +11,7 @@ import { LevelHeaderPanel } from "@/core/level/components/panels/LevelHeaderPane
 import { LevelLightingPanel } from "@/core/level/components/panels/LevelLightingPanel";
 import { LevelProblemsPanel } from "@/core/level/components/panels/LevelProblemsPanel";
 import { LevelStreamPanel } from "@/core/level/components/panels/LevelStreamPanel";
+import { LevelSurfacesPanel } from "@/core/level/components/panels/LevelSurfacesPanel";
 import { LevelCameraAction } from "@/core/level/components/preview/LevelCameraAction";
 import { LevelPreviewCoordinates } from "@/core/level/components/preview/LevelPreviewCoordinates";
 import { LevelPreviewEmpty } from "@/core/level/components/preview/LevelPreviewEmpty";
@@ -119,6 +121,12 @@ export function LevelPreviewLayout({
         id: "lighting",
         label: "Lighting",
         render: () => <LevelLightingPanel lighting={lighting} onChange={setLighting} />,
+      },
+      {
+        icon: <LayersIcon />,
+        id: "surfaces",
+        label: "Surfaces",
+        render: () => <LevelSurfacesPanel />,
       },
       {
         icon: <WarningIcon />,

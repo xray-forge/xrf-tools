@@ -58,6 +58,11 @@ impl<'probe, 'vfs> XraySurfaceResolver<'probe, 'vfs> {
       return XraySurfaceDescriptor::opaque(None, XraySurfaceDeclaration::Undeclared);
     }
 
+    self.describe_named(shader_name, textures).named(shader_name)
+  }
+
+  /// The same answer, before it is told which name it answered for.
+  fn describe_named(&self, shader_name: &str, textures: &[String]) -> XraySurfaceDescriptor {
     // Before the library, because that is the order the engine asks in: a shader with a renderer script **is** that
     // script, and what `shaders.xr` calls its class never reaches the screen. Reading the class alone drew X-Ray's
     // additive glows and its wall marks as opaque black.
@@ -92,6 +97,7 @@ impl<'probe, 'vfs> XraySurfaceResolver<'probe, 'vfs> {
     let alpha: XraySurfaceAlpha = rule.read(blender);
 
     XraySurfaceDescriptor {
+      shader: None,
       library: Some(asset.clone()),
       declaration: XraySurfaceDeclaration::Described {
         class,

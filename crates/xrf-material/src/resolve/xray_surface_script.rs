@@ -45,6 +45,7 @@ impl XraySurfaceScript {
     let state: &XRayShaderPassState = pass.state();
 
     Some(XraySurfaceDescriptor {
+      shader: None,
       library: Some(asset),
       declaration: XraySurfaceDeclaration::Scripted {
         function: XRayShaderPass::BASE_FUNCTION.to_owned(),

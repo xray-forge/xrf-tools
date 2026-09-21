@@ -245,6 +245,7 @@ export function mockSelectedVisual(overrides: Partial<SelectedVisualDescription>
  */
 export function mockSurfaceDescriptor(overrides: Partial<XraySurfaceDescriptor> = {}): XraySurfaceDescriptor {
   return {
+    shader: "models\\model",
     library: {
       container: { kind: "directory", relativePath: "shaders.xr", root: "C:\\gamedata" },
       logicalPath: "shaders.xr",

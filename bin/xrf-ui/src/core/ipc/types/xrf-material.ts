@@ -223,6 +223,8 @@ export type XraySurfaceDeclaration =
 
 /** How the renderer draws one surface, resolved from the shader name it declares and the textures it dresses with. */
 export type XraySurfaceDescriptor = {
+  /** The shader the surface named, as its level or mesh spells it, or `None` where it named none. */
+  shader: string | null;
   /** The `shaders.xr` the answer was read from, or `None` when no root holds one. */
   library: XrayAsset | null;
   declaration: XraySurfaceDeclaration;
