@@ -2,6 +2,11 @@ import { Chip } from "@mui/material";
 import { ReactElement } from "react";
 
 import { describeLevelSurfaceDressing, ILevelSurfaceDressing } from "@/core/level/lib/surface/level-surface-dressing";
+import {
+  describeLevelSurfaceGeometry,
+  describeLevelSurfaceSpan,
+  ILevelSurfaceGeometry,
+} from "@/core/level/lib/surface/level-surface-geometry";
 import { describeLevelSurface, ILevelSurfaceSummary } from "@/core/level/lib/surface/level-surface-summary";
 import {
   describeSurfaceDeclaration,
@@ -17,6 +22,8 @@ interface ILevelSurfaceRowProps extends BaseComponentProps {
   summary: ILevelSurfaceSummary;
   /** What the renderer got for each texture the entry names, which is not always what the entry asked for. */
   dressing: ReadonlyArray<ILevelSurfaceDressing>;
+  /** How much the entry draws across the resident sectors, which is the shape its shader cannot say. */
+  geometry: ILevelSurfaceGeometry;
   isFirst?: boolean;
 }
 
@@ -29,6 +36,7 @@ export function LevelSurfaceRow({
   className,
   summary,
   dressing,
+  geometry,
   isFirst = false,
 }: ILevelSurfaceRowProps): ReactElement {
   const { descriptor } = summary;
@@ -57,6 +65,12 @@ export function LevelSurfaceRow({
             <div key={it.reference}>{describeLevelSurfaceDressing(it)}</div>
           ))}
         />
+      ) : null}
+
+      <EditorPanelProperty label={"Draws"} value={describeLevelSurfaceGeometry(geometry)} />
+
+      {geometry.drawables ? (
+        <EditorPanelProperty label={"Over"} value={describeLevelSurfaceSpan(geometry.span)} />
       ) : null}
 
       <EditorPanelProperty

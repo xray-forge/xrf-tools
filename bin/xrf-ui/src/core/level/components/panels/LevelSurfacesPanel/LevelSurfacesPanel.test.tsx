@@ -136,6 +136,14 @@ describe("LevelSurfacesPanel", () => {
     expect(getByText("wall\\wall_panel · not read yet")).toBeInTheDocument();
   });
 
+  // The shape of the geometry is what a shader table entry cannot say, and it is what tells a mark that follows a
+  // surface from a quad laid over it. Nothing is resident in this test, so every row says so rather than nothing.
+  it("says how much geometry each entry draws", async () => {
+    const { getAllByText } = await renderPanel();
+
+    expect(getAllByText("nothing resident draws it")).toHaveLength(3);
+  });
+
   // The table keeps the places of the entries naming nothing, so the count is said once rather than listed.
   it("counts the whole table and lists only what names a shader", async () => {
     const { getByText, queryByText } = await renderPanel();
