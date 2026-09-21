@@ -51,6 +51,7 @@ export function LevelViewerApplication({
       id={id}
       className={className}
       sectors={loadService.sectors}
+      surfaces={description?.surfaces}
       bounds={description?.bounds ?? null}
       textures={loadService.textures}
       name={description ? onDescribeLevelName(description) : null}

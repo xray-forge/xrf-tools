@@ -2,30 +2,23 @@ import { transformError } from "@/core/error/lib";
 import { levelsCommands } from "@/core/ipc/commands/levels";
 import { levelsRawCommands } from "@/core/ipc/commands/levels-raw";
 import { SessionSnapshot } from "@/core/ipc/types/xrf-app";
-import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
 import { SectorDescription } from "@/core/ipc/types/xrf-visual";
-import { ISectorTextureRequest, listSectorTextures } from "@/core/level/lib/sector/level-sector-textures";
-import { createSectorViews, ISectorViews } from "@/core/level/lib/sector/level-sector-views";
+import { ILevelSectorDelivery } from "@/core/level/lib/render/level-render-protocol";
+import { ISectorTextureRequest } from "@/core/level/lib/sector/level-sector-textures";
 import { ILevelStreamReading } from "@/core/level/lib/stream/level-stream-profile";
 import { Logger, Timer } from "@/lib/logging";
 import { Maybe } from "@/lib/types/general";
-
-/** What taking one sector cost, split because the two halves are fixed by entirely different things. */
-export interface ILevelSectorAdoption {
-  /** Binding the geometry, which is proportional to the sector. */
-  geometry: number;
-  /** Publishing it, which is proportional to whatever is listening. */
-  publish: number;
-}
 
 /** What one sector read needs of whoever owns the level, so the reader owns none of it. */
 export interface ILevelSectorReaderHost {
   /** The level's uploaded textures, which the reader adds to and never disposes. */
   load(requests: ReadonlyArray<ISectorTextureRequest>): Promise<void>;
+  /** What one sector's surfaces name, joined against the level's shader table. */
+  listTextures(description: SectorDescription): ReadonlyArray<ISectorTextureRequest>;
   /** Whether that level opening is still the one held, checked once the read has everything in hand. */
   isOpen(sessionId: string): boolean;
-  /** Takes a sector that arrived for a level still open, and says what each half of that cost. */
-  adopt(views: ISectorViews): ILevelSectorAdoption;
+  /** Takes a sector that arrived for a level still open, as the pack and the bytes it was packed into. */
+  deliver(delivery: ILevelSectorDelivery): void;
   /** Takes what that sector cost, stage by stage. */
   record(reading: ILevelStreamReading): void;
 }
@@ -53,10 +46,9 @@ export class LevelSectorReader {
    *
    * @param sessionId - The level opening the sector belongs to.
    * @param sector - Sector to read, by its index in the sectors chunk.
-   * @param surfaces - The level's resolved shader table, for the sector to join its surfaces against.
    * @returns A promise that settles when the sector has been read, or when it has failed and said so.
    */
-  public read(sessionId: string, sector: number, surfaces: ReadonlyArray<XraySurfaceDescriptor>): Promise<void> {
+  public read(sessionId: string, sector: number): Promise<void> {
     const key: string = `${sessionId}:${sector}`;
     const reading: Maybe<Promise<void>> = this.reading.get(key);
 
@@ -64,7 +56,7 @@ export class LevelSectorReader {
       return reading;
     }
 
-    const started: Promise<void> = this.readSector(key, sessionId, sector, surfaces)
+    const started: Promise<void> = this.readSector(key, sessionId, sector)
       .catch((error: unknown) => {
         this.log.error(`Failed to read sector ${sector}:`, transformError(error));
       })
@@ -87,12 +79,7 @@ export class LevelSectorReader {
     return Array.from(this.claimed.values()).flatMap((requests) => requests.map((it) => it.reference));
   }
 
-  private async readSector(
-    key: string,
-    sessionId: string,
-    sector: number,
-    surfaces: ReadonlyArray<XraySurfaceDescriptor>
-  ): Promise<void> {
+  private async readSector(key: string, sessionId: string, sector: number): Promise<void> {
     const timer: Timer = new Timer();
     const stage: Timer = new Timer();
 
@@ -105,13 +92,10 @@ export class LevelSectorReader {
     const pack: number = stage.lap();
     const buffer: ArrayBuffer = await levelsRawCommands.readSector(sessionId, snapshot.sessionId);
     const transfer: number = stage.lap();
-    // Joined against the table the open resolved, so a surface arrives already knowing whether it is cut out.
-    const views: ISectorViews = createSectorViews(snapshot.value, buffer, surfaces);
+    // Read from the description rather than from views over the bytes: what a sector's surfaces name is the
+    // shader table's answer, and this side of the boundary never looks inside the pack.
+    const requested: ReadonlyArray<ISectorTextureRequest> = this.host.listTextures(snapshot.value);
     const built: number = stage.lap();
-
-    // Claimed before the upload rather than after it: what protects these textures has to be in place before
-    // anything can be disposed for not being resident.
-    const requested: ReadonlyArray<ISectorTextureRequest> = listSectorTextures(views);
 
     this.claimed.set(key, requested);
 
@@ -128,18 +112,19 @@ export class LevelSectorReader {
       return;
     }
 
-    const adoption: ILevelSectorAdoption = this.host.adopt(views);
+    const stage2: Timer = new Timer();
+
+    this.host.deliver({ buffer, description: snapshot.value, sector });
 
     this.host.record({
-      draws: views.sections.length + views.instances.length,
-      geometry: adoption.geometry,
+      deliver: stage2.elapsed(),
+      draws: snapshot.value.sections.length + snapshot.value.instances.length,
       pack,
-      publish: adoption.publish,
       sector,
       textures,
       total: timer.elapsed(),
       transfer,
-      vertices: views.geometry.vertexCount,
+      vertices: snapshot.value.geometry.vertexCount,
       views: built,
     });
   }

@@ -5,6 +5,7 @@ import { createRoots } from "@/core/assets/lib";
 import { SelectedLevelDescription } from "@/core/ipc/types/xrf-app";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { SectorDescription, SectorOutline } from "@/core/ipc/types/xrf-visual";
+import { ILevelSectorDelivery } from "@/core/level/lib/render/level-render-protocol";
 import { createLevelResidency } from "@/core/level/lib/residency/level-residency";
 import { TLevelTextureChange } from "@/core/level/lib/texture/level-texture-set";
 import { mockDdsFile } from "@/fixtures/mocks/dds.mocks";
@@ -139,7 +140,7 @@ describe("LevelLoadService", () => {
     const opened = mockInvoke.mock.calls.find(([name]) => name === "plugin:levels|open_sector");
 
     expect((opened?.[1] as { sessionId: string }).sessionId).toBe(service.level.value?.selected.sessionId);
-    expect([...service.sectors.keys()]).toEqual([0]);
+    expect(service.sectorReport.held).toEqual([0]);
   });
 
   it("reports itself ready even when there is nothing to restore", async () => {
@@ -157,7 +158,7 @@ describe("LevelLoadService", () => {
     const { service } = mockInjectedService(LevelLoadService);
 
     expect(isObservableProp(service, "level")).toBe(true);
-    expect(isObservableProp(service, "sectors")).toBe(true);
+    expect(isObservableProp(service, "sectorReport")).toBe(true);
     expect(isObservableProp(service, "residency")).toBe(true);
   });
 
@@ -171,7 +172,7 @@ describe("LevelLoadService", () => {
     await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS);
 
     expect(service.level.value?.selected.value.sectors).toHaveLength(1);
-    expect(service.sectors.size).toBe(0);
+    expect(service.sectorReport.held).toHaveLength(0);
     expect(countCalls("plugin:levels|open_sector")).toBe(0);
     expect(countCalls("plugin:levels|read_sector")).toBe(0);
   });
@@ -187,10 +188,17 @@ describe("LevelLoadService", () => {
     // Without the floor, so this is about the distances rather than about never drawing nothing.
     service.residency = { ...service.residency, minSectors: 0 };
 
+    const delivered: Array<ILevelSectorDelivery> = [];
+
+    service.sectors.subscribe((change) => delivered.push(...change.delivered));
+
     await service.stream(ORIGIN);
 
-    expect(Array.from(service.sectors.keys())).toEqual([0]);
-    expect(service.sectors.get(0)?.geometry.getAttribute("position").count).toBe(3);
+    expect(service.sectorReport.held).toEqual([0]);
+    // Handed on as the pack and its bytes. Building a geometry from them belongs to whichever side draws, which
+    // is why nothing here holds one.
+    expect(delivered.map((it) => it.sector)).toEqual([0]);
+    expect(delivered[0].buffer.byteLength).toBe(description.bufferLength);
   });
 
   // Framing a level puts the camera outside it, so a policy that loaded only what was within a fixed distance opened
@@ -204,12 +212,13 @@ describe("LevelLoadService", () => {
     await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS);
     await service.stream(ORIGIN);
 
-    expect(service.sectors.size).toBeGreaterThan(0);
-    expect(Array.from(service.sectors.keys())).toContain(0);
+    expect(service.sectorReport.held.length).toBeGreaterThan(0);
+    expect(service.sectorReport.held).toContain(0);
   });
 
-  // The geometry is device memory, so dropping the reference is not enough: what the camera leaves has to be disposed.
-  it("disposes the geometry of a sector the camera has left", async () => {
+  // The geometry is device memory, and it is held by whichever side draws. What this side owes that side is to
+  // say which sector went, so it can dispose it.
+  it("says which sector the camera has left", async () => {
     const { level, description, buffer } = mockStreamable([outlineAt(0, 0), outlineAt(1, 20_000)]);
     const { service } = mockInjectedService(LevelLoadService);
 
@@ -221,19 +230,15 @@ describe("LevelLoadService", () => {
 
     await service.stream(ORIGIN);
 
-    const geometry = service.sectors.get(0)?.geometry;
+    const released: Array<number> = [];
 
-    let disposed: boolean = false;
-
-    geometry?.addEventListener("dispose", () => {
-      disposed = true;
-    });
+    service.sectors.subscribe((change) => released.push(...(change.released ?? [])));
 
     // Flown to the far sector, which is now the nearest and takes the only place in the budget.
     await service.stream({ x: 20_000, y: 0, z: 0 });
 
-    expect(Array.from(service.sectors.keys())).toEqual([1]);
-    expect(disposed).toBe(true);
+    expect(service.sectorReport.held).toEqual([1]);
+    expect(released).toEqual([0]);
   });
 
   // A camera that has not moved far enough to change what is resident should cost nothing at all.
@@ -262,7 +267,7 @@ describe("LevelLoadService", () => {
 
     await service.stream(ORIGIN);
 
-    expect(service.sectors.size).toBe(2);
+    expect(service.sectorReport.held).toHaveLength(2);
   });
 
   // Streaming is a latest-wins flow, so a camera that keeps moving cancels reads midway. What those reads had
@@ -315,7 +320,7 @@ describe("LevelLoadService", () => {
     service.clear();
 
     expect(service.textures.size).toBe(0);
-    expect(service.sectors.size).toBe(0);
+    expect(service.sectorReport.held).toHaveLength(0);
   });
 
   it("streams nothing when no level is open", async () => {
@@ -323,7 +328,7 @@ describe("LevelLoadService", () => {
 
     await service.stream(ORIGIN);
 
-    expect(service.sectors.size).toBe(0);
+    expect(service.sectorReport.held).toHaveLength(0);
     expect(countCalls("plugin:levels|open_sector")).toBe(0);
   });
 
@@ -409,7 +414,7 @@ describe("LevelLoadService streaming progress", () => {
     await service.stream(ORIGIN);
 
     expect(service.streaming).toEqual(IDLE_LEVEL_STREAM);
-    expect(service.sectors.size).toBe(0);
+    expect(service.sectorReport.held).toHaveLength(0);
   });
 
   // One sector that cannot be read is one sector missing, not a reason to abandon the rest of what the camera is
@@ -435,7 +440,7 @@ describe("LevelLoadService streaming progress", () => {
 
     await service.stream(ORIGIN);
 
-    expect([...service.sectors.keys()]).toEqual([1]);
+    expect(service.sectorReport.held).toEqual([1]);
   });
 
   // Stage 2's win, and the reason the flow became a scheduler: pack, transfer and adoption of different sectors
@@ -470,7 +475,7 @@ describe("LevelLoadService streaming progress", () => {
 
     await streaming;
 
-    expect([...service.sectors.keys()].sort()).toEqual([0, 1, 2]);
+    expect([...service.sectorReport.held].sort()).toEqual([0, 1, 2]);
   });
 
   // The defect that broke opening a level once one had already been open. The reads of the last level were still
@@ -507,7 +512,7 @@ describe("LevelLoadService streaming progress", () => {
 
     release();
 
-    expect([...service.sectors.keys()].sort()).toEqual([0, 1]);
+    expect([...service.sectorReport.held].sort()).toEqual([0, 1]);
   });
 
   // What the owner asked for: a camera at full boost crosses 2400 metres a second, so the only way to have a
@@ -529,13 +534,13 @@ describe("LevelLoadService streaming progress", () => {
 
     await service.stream(ORIGIN);
 
-    expect([...service.sectors.keys()]).toEqual([0]);
+    expect(service.sectorReport.held).toEqual([0]);
 
     // The two far sectors are nowhere near the camera and are read anyway, because the level fits and a sector
     // already held is one the camera never waits for.
     await new Promise((resolve) => setTimeout(resolve, 0));
 
-    expect([...service.sectors.keys()].sort()).toEqual([0, 1, 2]);
+    expect([...service.sectorReport.held].sort()).toEqual([0, 1, 2]);
   });
 
   it("does not fill the level in when it is told not to", async () => {
@@ -551,7 +556,7 @@ describe("LevelLoadService streaming progress", () => {
     await service.stream(ORIGIN);
     await new Promise((resolve) => setTimeout(resolve, 0));
 
-    expect([...service.sectors.keys()]).toEqual([0]);
+    expect(service.sectorReport.held).toEqual([0]);
   });
 
   // A report no longer ends in the level's housekeeping, so one that changes nothing costs a plan and nothing else.
@@ -608,7 +613,7 @@ describe("LevelLoadService streaming progress", () => {
     await Promise.all(streams);
 
     expect(countCalls("plugin:levels|open_sector")).toBe(1);
-    expect([...service.sectors.keys()]).toEqual([0]);
+    expect(service.sectorReport.held).toEqual([0]);
   });
 
   // The defect: a read uploads its textures one at a time and adopts its sector only once every one of them has

@@ -170,6 +170,11 @@ export function planLevelResidency(
   };
 }
 
+/** Whatever knows which sectors are already held, which is a ledger on one side and a set on the other. */
+export interface ILevelHeldSectors {
+  has(sector: number): boolean;
+}
+
 /**
  * The order the rest of a level is worth reading in, once the camera has what it asked for.
  *
@@ -181,7 +186,7 @@ export function planLevelResidency(
 export function listLevelPreload(
   outlines: ReadonlyArray<SectorOutline>,
   point: ILevelPoint,
-  held: ReadonlySet<number> | ReadonlyMap<number, number>
+  held: ILevelHeldSectors
 ): Array<number> {
   const ranked: Array<IRankedSector> = [];
 

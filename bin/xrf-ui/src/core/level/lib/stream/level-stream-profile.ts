@@ -13,10 +13,8 @@ export interface ILevelStreamStages {
   views: number;
   /** Reading and uploading every texture it names that was not already held. */
   textures: number;
-  /** Binding its geometry, which walks every vertex once to enclose it. */
-  geometry: number;
-  /** Handing it to whatever draws it, which is an observable write and whatever reads it. */
-  publish: number;
+  /** Handing it on to whatever draws it, which is what builds its geometry. */
+  deliver: number;
   /** The whole read, which is the four above plus whatever is between them. */
   total: number;
 }
@@ -73,8 +71,7 @@ export const LEVEL_STREAM_STAGES: ReadonlyArray<keyof ILevelStreamStages> = [
   "transfer",
   "views",
   "textures",
-  "geometry",
-  "publish",
+  "deliver",
 ];
 
 /**
@@ -137,9 +134,8 @@ export class LevelStreamProfile {
     }
 
     const mean: ILevelStreamStages = {
-      geometry: 0,
+      deliver: 0,
       pack: 0,
-      publish: 0,
       textures: 0,
       total: 0,
       transfer: 0,

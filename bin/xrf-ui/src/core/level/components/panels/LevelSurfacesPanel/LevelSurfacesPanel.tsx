@@ -1,6 +1,5 @@
-import { untracked } from "@wirestate/mobx";
 import { useInjection } from "@wirestate/react";
-import { ReactElement, useMemo } from "react";
+import { ReactElement, useEffect, useMemo, useState } from "react";
 
 import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
 import { LevelSurfaceRow } from "@/core/level/components/panels/LevelSurfacesPanel/LevelSurfaceRow";
@@ -9,17 +8,13 @@ import {
   ILevelTextureReport,
   listLevelSurfaceDressing,
 } from "@/core/level/lib/surface/level-surface-dressing";
-import {
-  countLevelSurfaceGeometry,
-  ILevelSurfaceGeometry,
-  NO_LEVEL_SURFACE_GEOMETRY,
-} from "@/core/level/lib/surface/level-surface-geometry";
+import { ILevelSurfaceGeometry, NO_LEVEL_SURFACE_GEOMETRY } from "@/core/level/lib/surface/level-surface-geometry";
 import {
   ILevelSurfaceSummary,
   listLevelSurfaces,
   listNamedLevelSurfaces,
 } from "@/core/level/lib/surface/level-surface-summary";
-import { LevelLoadService } from "@/core/level/services";
+import { LevelLoadService, LevelViewportService } from "@/core/level/services";
 import {
   EditorPanel,
   EditorPanelEmpty,
@@ -37,10 +32,16 @@ export function LevelSurfacesPanel({
   id,
   className,
 }: BaseComponentProps): ReactElement {
-  const service: LevelLoadService = useInjection(LevelLoadService);
+  const loadService: LevelLoadService = useInjection(LevelLoadService);
+  const viewportService: LevelViewportService = useInjection(LevelViewportService);
 
-  const report: ILevelTextureReport = service.textureReport;
-  const surfaces: Maybe<ReadonlyArray<XraySurfaceDescriptor>> = service.level.value?.selected.value.surfaces;
+  const held: ReadonlyArray<number> = loadService.sectorReport.held;
+  const report: ILevelTextureReport = loadService.textureReport;
+  const surfaces: Maybe<ReadonlyArray<XraySurfaceDescriptor>> = loadService.level.value?.selected.value.surfaces;
+
+  // Asked for rather than read: measuring it samples the coordinates of every draw of every sector held, and
+  // the viewport that holds them may not be on this thread.
+  const [drawn, setDrawn] = useState<ReadonlyMap<number, ILevelSurfaceGeometry>>(new Map());
 
   const { named, total } = useMemo(() => {
     const summaries: Array<ILevelSurfaceSummary> = listLevelSurfaces(surfaces ?? []);
@@ -59,9 +60,21 @@ export function LevelSurfacesPanel({
     [named, report]
   );
 
-  const drawn: ReadonlyMap<number, ILevelSurfaceGeometry> = untracked(() => countLevelSurfaceGeometry(service.sectors));
+  useEffect(() => {
+    let isCurrent: boolean = true;
 
-  if (!service.level.value) {
+    void viewportService.measureSurfaceGeometry().then((measured) => {
+      if (isCurrent) {
+        setDrawn(measured);
+      }
+    });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [viewportService, held]);
+
+  if (!loadService.level.value) {
     return (
       <EditorPanel data-testid={dataTestId} id={id} className={className} title={"Surfaces"}>
         <EditorPanelEmpty label={"No level open. Open one to see how its surfaces are drawn."} />

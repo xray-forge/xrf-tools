@@ -3,7 +3,7 @@ import { ReactElement, useMemo } from "react";
 
 import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
 import { listLevelProblems } from "@/core/level/lib/problems";
-import { ILoadedSector } from "@/core/level/lib/sector/level-sector-set";
+import { ILevelSectorReport } from "@/core/level/lib/sector/level-sector-report";
 import { ILevelTextureReport } from "@/core/level/lib/surface/level-surface-dressing";
 import { LevelLoadService } from "@/core/level/services";
 import { EditorPanel, EditorPanelEmpty } from "@/core/shell/editor/EditorPanel";
@@ -19,18 +19,18 @@ export function LevelProblemsPanel({
   id,
   className,
 }: BaseComponentProps): ReactElement {
-  const service: LevelLoadService = useInjection(LevelLoadService);
+  const loadService: LevelLoadService = useInjection(LevelLoadService);
 
-  const surfaces: Maybe<ReadonlyArray<XraySurfaceDescriptor>> = service.level.value?.selected.value.surfaces;
-  const sectors: ReadonlyMap<number, ILoadedSector> = service.sectors;
-  const report: ILevelTextureReport = service.textureReport;
+  const surfaces: Maybe<ReadonlyArray<XraySurfaceDescriptor>> = loadService.level.value?.selected.value.surfaces;
+  const sectors: ILevelSectorReport = loadService.sectorReport;
+  const report: ILevelTextureReport = loadService.textureReport;
 
   const problems: Array<IEditorProblem> = useMemo(
-    () => listLevelProblems(report.problems, surfaces ?? [], sectors),
+    () => listLevelProblems(report.problems, surfaces ?? [], sectors.skipped),
     [report, surfaces, sectors]
   );
 
-  if (!service.level.value) {
+  if (!loadService.level.value) {
     return (
       <EditorPanel data-testid={dataTestId} id={id} className={className} title={"Problems"}>
         <EditorPanelEmpty label={"No level open. Open one to see what it could not be drawn from."} />

@@ -36,12 +36,40 @@ function materialsOf(mesh: Mesh): Array<MeshStandardMaterial> {
   return (Array.isArray(mesh.material) ? mesh.material : [mesh.material]) as Array<MeshStandardMaterial>;
 }
 
+/**
+ * What the scene does with a change, as one call: drop what went, take what came, settle once for the batch.
+ *
+ * @param sectors - The drawn sectors under test.
+ * @returns Takes the whole set that should be drawn, as the scene's own subscription does piecemeal.
+ */
+function syncing(sectors: LevelPreviewSectors): (held: ReadonlyMap<number, ILoadedSector>) => void {
+  let drawn: ReadonlyMap<number, ILoadedSector> = new Map();
+
+  return (held: ReadonlyMap<number, ILoadedSector>): void => {
+    for (const sector of drawn.keys()) {
+      if (!held.has(sector)) {
+        sectors.drop(sector);
+      }
+    }
+
+    for (const [sector, loaded] of held) {
+      if (!drawn.has(sector)) {
+        sectors.take(loaded);
+      }
+    }
+
+    sectors.settle();
+    drawn = held;
+  };
+}
+
 describe("LevelPreviewSectors", () => {
   it("adds a mesh for each resident sector", () => {
     const parent: Group = new Group();
     const sectors: LevelPreviewSectors = new LevelPreviewSectors(parent);
+    const sync = syncing(sectors);
 
-    sectors.sync(
+    sync(
       new Map([
         [0, loadedSector(0, [1])],
         [1, loadedSector(1, [2])],
@@ -57,8 +85,9 @@ describe("LevelPreviewSectors", () => {
   it("gives each surface of a sector its own material", () => {
     const parent: Group = new Group();
     const sectors: LevelPreviewSectors = new LevelPreviewSectors(parent);
+    const sync = syncing(sectors);
 
-    sectors.sync(new Map([[0, loadedSector(0, [1, 2, 3])]]));
+    sync(new Map([[0, loadedSector(0, [1, 2, 3])]]));
 
     expect(materialsOf(parent.children[0] as Mesh)).toHaveLength(3);
   });
@@ -68,9 +97,10 @@ describe("LevelPreviewSectors", () => {
   it("colours a shader table entry the same way in every sector", () => {
     const parent: Group = new Group();
     const sectors: LevelPreviewSectors = new LevelPreviewSectors(parent);
+    const sync = syncing(sectors);
 
     sectors.applyViewOptions(DEFAULT_LEVEL_SURFACE_OPTIONS);
-    sectors.sync(
+    sync(
       new Map([
         [0, loadedSector(0, [7])],
         [1, loadedSector(1, [4, 7])],
@@ -87,10 +117,11 @@ describe("LevelPreviewSectors", () => {
   it("removes the mesh of a sector that is no longer resident", () => {
     const parent: Group = new Group();
     const sectors: LevelPreviewSectors = new LevelPreviewSectors(parent);
+    const sync = syncing(sectors);
     const resident: Map<number, ILoadedSector> = new Map([[0, loadedSector(0, [1])]]);
 
-    sectors.sync(resident);
-    sectors.sync(new Map());
+    sync(resident);
+    sync(new Map());
 
     expect(sectors.size).toBe(0);
     expect(parent.children).toHaveLength(0);
@@ -100,8 +131,9 @@ describe("LevelPreviewSectors", () => {
   it("disposes the materials of a sector it removes", () => {
     const parent: Group = new Group();
     const sectors: LevelPreviewSectors = new LevelPreviewSectors(parent);
+    const sync = syncing(sectors);
 
-    sectors.sync(new Map([[0, loadedSector(0, [1])]]));
+    sync(new Map([[0, loadedSector(0, [1])]]));
 
     const material: MeshStandardMaterial = materialsOf(parent.children[0] as Mesh)[0] as MeshStandardMaterial;
 
@@ -111,7 +143,7 @@ describe("LevelPreviewSectors", () => {
       disposed = true;
     });
 
-    sectors.sync(new Map());
+    sync(new Map());
 
     expect(disposed).toBe(true);
   });
@@ -121,13 +153,14 @@ describe("LevelPreviewSectors", () => {
   it("leaves a sector that is still resident alone", () => {
     const parent: Group = new Group();
     const sectors: LevelPreviewSectors = new LevelPreviewSectors(parent);
+    const sync = syncing(sectors);
     const resident: Map<number, ILoadedSector> = new Map([[0, loadedSector(0, [1])]]);
 
-    sectors.sync(resident);
+    sync(resident);
 
     const mesh = parent.children[0];
 
-    sectors.sync(resident);
+    sync(resident);
 
     expect(parent.children[0]).toBe(mesh);
   });
@@ -135,8 +168,9 @@ describe("LevelPreviewSectors", () => {
   it("applies the view toggles to every drawn surface", () => {
     const parent: Group = new Group();
     const sectors: LevelPreviewSectors = new LevelPreviewSectors(parent);
+    const sync = syncing(sectors);
 
-    sectors.sync(new Map([[0, loadedSector(0, [1, 2])]]));
+    sync(new Map([[0, loadedSector(0, [1, 2])]]));
     sectors.applyViewOptions({ ...DEFAULT_LEVEL_SURFACE_OPTIONS, isWireframe: true });
 
     for (const material of materialsOf(parent.children[0] as Mesh)) {
@@ -147,8 +181,9 @@ describe("LevelPreviewSectors", () => {
   it("releases everything it drew on disposal", () => {
     const parent: Group = new Group();
     const sectors: LevelPreviewSectors = new LevelPreviewSectors(parent);
+    const sync = syncing(sectors);
 
-    sectors.sync(new Map([[0, loadedSector(0, [1])]]));
+    sync(new Map([[0, loadedSector(0, [1])]]));
     sectors.dispose();
 
     expect(sectors.size).toBe(0);
@@ -175,8 +210,9 @@ describe("LevelPreviewSectors instances", () => {
   it("draws an instanced mesh beside the sector's own geometry", () => {
     const parent: Group = new Group();
     const sectors: LevelPreviewSectors = new LevelPreviewSectors(parent);
+    const sync = syncing(sectors);
 
-    sectors.sync(new Map([[0, loadedInstances(0, [0, 100])]]));
+    sync(new Map([[0, loadedInstances(0, [0, 100])]]));
 
     const instanced = parent.children.filter((child): child is InstancedMesh => child instanceof InstancedMesh);
 
@@ -189,6 +225,7 @@ describe("LevelPreviewSectors instances", () => {
   it("adds no baked mesh for a sector the level bakes nothing of", () => {
     const parent: Group = new Group();
     const sectors: LevelPreviewSectors = new LevelPreviewSectors(parent);
+    const sync = syncing(sectors);
     const buffer: MockVisualBuffer = new MockVisualBuffer();
     const description = mockSectorDescription(buffer, {
       instances: [mockSectorInstanceGroup(buffer, [0, 100])],
@@ -199,7 +236,7 @@ describe("LevelPreviewSectors instances", () => {
       buffer.toArrayBuffer()
     );
 
-    sectors.sync(new Map([[0, { geometry: createSectorGeometry(views), sector: 0, views }]]));
+    sync(new Map([[0, { geometry: createSectorGeometry(views), sector: 0, views }]]));
 
     expect(parent.children).toHaveLength(1);
     expect(parent.children[0]).toBeInstanceOf(InstancedMesh);
@@ -210,8 +247,9 @@ describe("LevelPreviewSectors instances", () => {
   it("disposes the geometry it built for an instanced mesh", () => {
     const parent: Group = new Group();
     const sectors: LevelPreviewSectors = new LevelPreviewSectors(parent);
+    const sync = syncing(sectors);
 
-    sectors.sync(new Map([[0, loadedInstances(0, [0])]]));
+    sync(new Map([[0, loadedInstances(0, [0])]]));
 
     const instanced = parent.children.find((child): child is InstancedMesh => child instanceof InstancedMesh);
 
@@ -221,7 +259,7 @@ describe("LevelPreviewSectors instances", () => {
       disposed = true;
     });
 
-    sectors.sync(new Map());
+    sync(new Map());
 
     expect(disposed).toBe(true);
     expect(parent.children).toHaveLength(0);

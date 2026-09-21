@@ -2,25 +2,25 @@ import { describe, expect, it } from "@jest/globals";
 
 import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
 import { ELevelProblemRule, listLevelProblems } from "@/core/level/lib/problems";
-import { ILoadedSector } from "@/core/level/lib/sector/level-sector-set";
+import { ILevelSectorSkip } from "@/core/level/lib/sector/level-sector-report";
 import { ISectorViews } from "@/core/level/lib/sector/level-sector-views";
 import { IEditorProblem } from "@/core/shell/editor/EditorProblemsPanel";
 import { mockSurfaceDescriptor } from "@/fixtures/mocks/visual.mocks";
 
-function sectorOf(sector: number, skipped: ISectorViews["skipped"]): ReadonlyMap<number, ILoadedSector> {
-  return new Map([[sector, { views: { skipped } } as ILoadedSector]]);
+function sectorOf(sector: number, skipped: ISectorViews["skipped"]): ReadonlyArray<ILevelSectorSkip> {
+  return skipped.map((skip) => ({ sector, skip }));
 }
 
 describe("listLevelProblems", () => {
   it("says nothing about a level that read cleanly", () => {
-    expect(listLevelProblems([], [mockSurfaceDescriptor()], new Map())).toEqual([]);
+    expect(listLevelProblems([], [mockSurfaceDescriptor()], [])).toEqual([]);
   });
 
   it("names every texture the set could not answer for", () => {
     const problems: Array<IEditorProblem> = listLevelProblems(
       [{ reason: "The file in the mounted roots is 2x2", reference: "trees\\frond" }],
       [],
-      new Map()
+      []
     );
 
     expect(problems).toEqual([
@@ -37,7 +37,7 @@ describe("listLevelProblems", () => {
   it("passes over a table entry that declares nothing", () => {
     const surfaces: Array<XraySurfaceDescriptor> = [mockSurfaceDescriptor({ declaration: { kind: "undeclared" } })];
 
-    expect(listLevelProblems([], surfaces, new Map())).toEqual([]);
+    expect(listLevelProblems([], surfaces, [])).toEqual([]);
   });
 
   it("names the table entry a class was not modelled for, by its index", () => {
@@ -45,7 +45,7 @@ describe("listLevelProblems", () => {
       mockSurfaceDescriptor(),
       mockSurfaceDescriptor({ declaration: { class: "S_SET", kind: "unmodelled" } }),
     ];
-    const problems: Array<IEditorProblem> = listLevelProblems([], surfaces, new Map());
+    const problems: Array<IEditorProblem> = listLevelProblems([], surfaces, []);
 
     expect(problems).toHaveLength(1);
     expect(problems[0].subject).toBe("shader table entry 1");
@@ -58,13 +58,13 @@ describe("listLevelProblems", () => {
       mockSurfaceDescriptor({ declaration: { kind: "unreadable", reason: "truncated chunk" } }),
     ];
 
-    expect(listLevelProblems([], surfaces, new Map())[0].message).toContain("truncated chunk");
+    expect(listLevelProblems([], surfaces, [])[0].message).toContain("truncated chunk");
   });
 
   // Geometry the packer could not read is simply absent from the picture, which is the hardest kind of wrong to
   // notice: nothing is drawn oddly, something is not drawn at all.
   it("names what a resident sector could not pack, and why it counts as missing", () => {
-    const sectors: ReadonlyMap<number, ILoadedSector> = sectorOf(4, [
+    const sectors: ReadonlyArray<ILevelSectorSkip> = sectorOf(4, [
       { cause: "unsupported", drawable: 91, reason: "progressive geometry" },
     ]);
     const problems: Array<IEditorProblem> = listLevelProblems([], [], sectors);

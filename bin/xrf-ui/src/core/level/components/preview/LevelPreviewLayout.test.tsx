@@ -39,7 +39,7 @@ function renderReporting(take: (report: TReport) => void): RenderResult {
   return renderWithProviders(
     <>
       <LevelPreviewLayout
-        sectors={new Map()}
+        sectors={null}
         bounds={mockVisualBounds()}
         name={"levels\\zaton"}
         streaming={IDLE}
@@ -59,7 +59,7 @@ function renderReporting(take: (report: TReport) => void): RenderResult {
 function renderLayout(overrides: Partial<Parameters<typeof LevelPreviewLayout>[0]> = {}): RenderResult {
   return renderWithProviders(
     <LevelPreviewLayout
-      sectors={new Map()}
+      sectors={null}
       bounds={mockVisualBounds()}
       name={"levels\\zaton"}
       streaming={IDLE}

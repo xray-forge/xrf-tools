@@ -1,14 +1,16 @@
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useEffect, useRef } from "react";
 
+import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
 import { VisualBounds } from "@/core/ipc/types/xrf-visual";
 import { ILevelCamera } from "@/core/level/lib/camera/level-camera";
 import { DEFAULT_LEVEL_CAMERA_OPTIONS, ILevelCameraOptions } from "@/core/level/lib/camera/level-camera-options";
 import { DEFAULT_LEVEL_LIGHTING, ILevelLighting } from "@/core/level/lib/lighting/level-lighting";
+import { ILevelSectorSource } from "@/core/level/lib/render/level-render-protocol";
 import { ILevelPoint } from "@/core/level/lib/residency/level-residency";
 import { LevelPreviewScene } from "@/core/level/lib/scene";
-import { ILoadedSector } from "@/core/level/lib/sector/level-sector-set";
 import { ILevelStats } from "@/core/level/lib/stats/level-stats";
+import { ILevelSurfaceGeometry } from "@/core/level/lib/surface/level-surface-geometry";
 import { ILevelTextureSource } from "@/core/level/lib/texture/level-texture-set";
 import { DEFAULT_LEVEL_VIEW_OPTIONS, ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
 import { SettingsService } from "@/core/settings/services/settings";
@@ -17,8 +19,10 @@ import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
 export interface ILevelPreviewViewportProps extends BaseComponentProps {
-  /** Resident sectors, as the loader publishes them. */
-  sectors: ReadonlyMap<number, ILoadedSector>;
+  /** The level's sectors, which deliver themselves as bytes for the scene to build from. */
+  sectors: Nullable<ILevelSectorSource>;
+  /** The level's shader table, which every arriving sector joins its surfaces against. */
+  surfaces?: ReadonlyArray<XraySurfaceDescriptor>;
   /** The level's extent: what the grid is sized against, and where the camera opens. */
   bounds: Nullable<VisualBounds>;
   /**
@@ -35,6 +39,8 @@ export interface ILevelPreviewViewportProps extends BaseComponentProps {
   onCameraMoved: (point: ILevelPoint) => void;
   /** What the viewport costs and where its camera is, a few times a second while a level is open. */
   onReport?: (stats: ILevelStats, camera: ILevelCamera) => void;
+  /** Takes how to ask the scene what it draws, for as long as there is a scene to ask. */
+  onMeasurable?: (measure: Nullable<() => Promise<ReadonlyMap<number, ILevelSurfaceGeometry>>>) => void;
 }
 
 /**
@@ -45,6 +51,7 @@ export function LevelPreviewViewport({
   id,
   className,
   sectors,
+  surfaces,
   bounds,
   textures = null,
   options = DEFAULT_LEVEL_VIEW_OPTIONS,
@@ -52,6 +59,7 @@ export function LevelPreviewViewport({
   lighting = DEFAULT_LEVEL_LIGHTING,
   onCameraMoved,
   onReport,
+  onMeasurable,
 }: ILevelPreviewViewportProps): ReactElement {
   const containerRef = useRef<HTMLDivElement>(null);
   const settingsService: SettingsService = useInjection(SettingsService);
@@ -61,9 +69,11 @@ export function LevelPreviewViewport({
   // context and everything uploaded into it.
   const cameraRef = useRef(onCameraMoved);
   const reportRef = useRef(onReport);
+  const measurableRef = useRef(onMeasurable);
 
   cameraRef.current = onCameraMoved;
   reportRef.current = onReport;
+  measurableRef.current = onMeasurable;
 
   const handleCameraMoved = useCallback((point: ILevelPoint) => cameraRef.current(point), []);
   const handleReport = useCallback(
@@ -84,9 +94,11 @@ export function LevelPreviewViewport({
     sceneRef.current = scene;
 
     scene.mount(containerRef.current);
+    measurableRef.current?.(() => Promise.resolve(scene.measureSurfaceGeometry()));
 
     return () => {
       sceneRef.current = null;
+      measurableRef.current?.(null);
       scene.dispose();
     };
   }, [handleCameraMoved, handleReport]);
@@ -94,6 +106,11 @@ export function LevelPreviewViewport({
   useEffect(() => {
     sceneRef.current?.setTextures(textures);
   }, [textures]);
+
+  // The table before the sectors: a sector arriving with no table to join against would draw untextured.
+  useEffect(() => {
+    sceneRef.current?.setSurfaces(surfaces ?? []);
+  }, [surfaces]);
 
   useEffect(() => {
     sceneRef.current?.setSectors(sectors);

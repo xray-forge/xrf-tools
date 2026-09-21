@@ -7,6 +7,13 @@ import { Session } from "@/core/ipc/session";
 import { requireSessionId } from "@/core/ipc/session/session.utils";
 import { LevelSource, SelectedLevelDescription, SessionSnapshot } from "@/core/ipc/types/xrf-app";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
+import { SectorDescription } from "@/core/ipc/types/xrf-visual";
+import {
+  ILevelSectorChange,
+  ILevelSectorDelivery,
+  ILevelSectorSource,
+  TLevelSectorListener,
+} from "@/core/level/lib/render/level-render-protocol";
 import {
   createLevelResidency,
   DEFAULT_LEVEL_RESIDENCY,
@@ -16,10 +23,13 @@ import {
   listLevelPreload,
   planLevelResidency,
 } from "@/core/level/lib/residency/level-residency";
-import { ILevelSectorAdoption, LevelSectorReader } from "@/core/level/lib/sector/level-sector-reader";
-import { ILoadedSector, LevelSectorSet } from "@/core/level/lib/sector/level-sector-set";
-import { ISectorTextureRequest, listSectorTextures } from "@/core/level/lib/sector/level-sector-textures";
-import { ISectorViews } from "@/core/level/lib/sector/level-sector-views";
+import { LevelSectorReader } from "@/core/level/lib/sector/level-sector-reader";
+import {
+  EMPTY_LEVEL_SECTOR_REPORT,
+  ILevelSectorReport,
+  ILevelSectorSkip,
+} from "@/core/level/lib/sector/level-sector-report";
+import { ISectorTextureRequest, listDescriptionTextures } from "@/core/level/lib/sector/level-sector-textures";
 import {
   EMPTY_LEVEL_STREAM_SUMMARY,
   ILevelStreamReading,
@@ -43,6 +53,16 @@ export interface IOpenLevel {
   selected: SessionSnapshot<SelectedLevelDescription>;
 }
 
+/** What the loader keeps of a sector it has handed on, which is everything it needs to plan against. */
+interface ILevelSectorEntry {
+  /** Bytes of the pack, which is what the memory budget is spent on. */
+  bytes: number;
+  /** What its surfaces name, so retention can be decided without looking inside the pack. */
+  textures: ReadonlyArray<ISectorTextureRequest>;
+  /** What the pack could not read. */
+  skipped: ReadonlyArray<ILevelSectorSkip>;
+}
+
 /** How far through the sectors a camera asked for the loader has got. */
 export interface ILevelStreamProgress {
   /** Sectors the current plan asked for, or zero when nothing is streaming. */
@@ -60,8 +80,11 @@ export class LevelLoadService {
 
   private readonly session: Session = new Session(levelsCommands.closeLevel);
 
-  /** The sectors held, and the geometry each owns. */
-  private readonly held: LevelSectorSet = new LevelSectorSet();
+  /** What has been handed on, and what each of them cost. */
+  private readonly ledger: Map<number, ILevelSectorEntry> = new Map();
+
+  /** Told what has been delivered and what has gone, which is how whatever draws the level hears of it. */
+  private readonly watchers: Set<TLevelSectorListener> = new Set();
 
   /** The level's uploaded textures, owned here and shared between the sectors that name them. */
   private readonly loaded: LevelTextureSet = new LevelTextureSet();
@@ -80,18 +103,10 @@ export class LevelLoadService {
    * sector it read is resident or dropped.
    */
   private readonly reader: LevelSectorReader = new LevelSectorReader({
-    adopt: (views: ISectorViews): ILevelSectorAdoption => {
-      const stage: Timer = new Timer();
-
-      this.held.adopt(views);
-
-      const geometry: number = stage.lap();
-
-      this.publishSectors();
-
-      return { geometry, publish: stage.lap() };
-    },
+    deliver: (delivery: ILevelSectorDelivery): void => this.takeDelivery(delivery),
     isOpen: (sessionId: string): boolean => this.isOpen(sessionId),
+    listTextures: (description: SectorDescription): ReadonlyArray<ISectorTextureRequest> =>
+      this.listTextures(description),
     load: (requests: ReadonlyArray<ISectorTextureRequest>): Promise<void> => this.loaded.load(requests),
     record: (reading: ILevelStreamReading): void => this.noteReading(reading),
   });
@@ -103,7 +118,7 @@ export class LevelLoadService {
    * a flight from spending every frame abandoning the read it asked for on the frame before.
    */
   private readonly scheduler: LevelStreamScheduler = new LevelStreamScheduler({
-    isResident: (sector: number): boolean => this.held.has(sector),
+    isResident: (sector: number): boolean => this.ledger.has(sector),
     read: (sector: number): Promise<void> => this.readSector(sector),
     report: (loaded: number, total: number): void => this.noteProgress(loaded, total),
     settle: (): void => this.onSettled(),
@@ -112,9 +127,9 @@ export class LevelLoadService {
   @Observable()
   public level: AsyncState<IOpenLevel> = AsyncState.idle();
 
-  /** Resident sectors for a viewport to draw, replaced whole so a view re-renders on any change. */
+  /** What is held, for a viewer to report: how many, how much, and what their packs could not read. */
   @Observable()
-  public sectors: ReadonlyMap<number, ILoadedSector> = new Map();
+  public sectorReport: ILevelSectorReport = EMPTY_LEVEL_SECTOR_REPORT;
 
   /** How much of the level is held at once, and how far out it is worth holding. */
   @Observable()
@@ -143,6 +158,21 @@ export class LevelLoadService {
    */
   public get textures(): ILevelTextureSource {
     return this.loaded;
+  }
+
+  /**
+   * @returns The level's sectors, to draw rather than to read: a description and its bytes, never a geometry.
+   */
+  public get sectors(): ILevelSectorSource {
+    return {
+      subscribe: (listener: TLevelSectorListener): (() => void) => {
+        this.watchers.add(listener);
+
+        return (): void => {
+          this.watchers.delete(listener);
+        };
+      },
+    };
   }
 
   /**
@@ -287,16 +317,17 @@ export class LevelLoadService {
     const plan: ILevelResidencyPlan = planLevelResidency(
       open.selected.value.sectors,
       point,
-      this.held.sizes(),
+      this.listSizes(),
       this.residency
     );
 
     if (plan.evict.length) {
       for (const sector of plan.evict) {
-        this.held.release(sector);
+        this.ledger.delete(sector);
       }
 
-      this.publishSectors();
+      this.notifySectors({ delivered: [], released: plan.evict });
+      this.publishSectorReport();
     }
 
     // The whole target, not the part of it that is missing: what is already held is what tells the scheduler which
@@ -319,9 +350,44 @@ export class LevelLoadService {
   private readSector(sector: number): Promise<void> {
     const open: Nullable<IOpenLevel> = this.level.value;
 
-    return open
-      ? this.reader.read(requireSessionId(open.selected), sector, open.selected.value.surfaces)
-      : Promise.resolve();
+    return open ? this.reader.read(requireSessionId(open.selected), sector) : Promise.resolve();
+  }
+
+  /**
+   * Takes one sector that has been read and hands it on.
+   *
+   * @param delivery - The pack and the bytes it was packed into.
+   */
+  private takeDelivery(delivery: ILevelSectorDelivery): void {
+    const description: SectorDescription = delivery.description;
+
+    this.ledger.set(delivery.sector, {
+      bytes: description.bufferLength,
+      skipped: description.skipped.map((skip) => ({ sector: delivery.sector, skip })),
+      textures: this.listTextures(description),
+    });
+
+    this.notifySectors({ delivered: [delivery], released: [] });
+    this.publishSectorReport();
+  }
+
+  /**
+   * @param description - What `open_sector` reported about a pack.
+   * @returns What its surfaces name, joined against the level's shader table.
+   */
+  private listTextures(description: SectorDescription): ReadonlyArray<ISectorTextureRequest> {
+    return listDescriptionTextures(description, this.level.value?.selected.value.surfaces ?? []);
+  }
+
+  /** What each held sector cost, which is what a memory budget is planned against. */
+  private listSizes(): ReadonlyMap<number, number> {
+    return new Map(Array.from(this.ledger, ([sector, entry]) => [sector, entry.bytes]));
+  }
+
+  private notifySectors(change: ILevelSectorChange): void {
+    for (const watcher of Array.from(this.watchers)) {
+      watcher(change);
+    }
   }
 
   /**
@@ -341,9 +407,7 @@ export class LevelLoadService {
       const open: Nullable<IOpenLevel> = this.level.value;
 
       this.scheduler.setBackground(
-        open && this.streamedFrom
-          ? listLevelPreload(open.selected.value.sectors, this.streamedFrom, this.held.keys())
-          : []
+        open && this.streamedFrom ? listLevelPreload(open.selected.value.sectors, this.streamedFrom, this.ledger) : []
       );
     }
   }
@@ -420,8 +484,8 @@ export class LevelLoadService {
   private listResidentTextures(): Set<string> {
     const references: Set<string> = new Set();
 
-    for (const loaded of this.held.snapshot().values()) {
-      for (const request of listSectorTextures(loaded.views)) {
+    for (const entry of this.ledger.values()) {
+      for (const request of entry.textures) {
         references.add(request.reference);
       }
     }
@@ -433,9 +497,18 @@ export class LevelLoadService {
     return references;
   }
 
-  private publishSectors(): void {
+  private publishSectorReport(): void {
+    let bytes: number = 0;
+
+    const skipped: Array<ILevelSectorSkip> = [];
+
+    for (const entry of this.ledger.values()) {
+      bytes += entry.bytes;
+      skipped.push(...entry.skipped);
+    }
+
     runInAction(() => {
-      this.sectors = this.held.snapshot();
+      this.sectorReport = { bytes, held: Array.from(this.ledger.keys()), skipped };
     });
   }
 
@@ -454,7 +527,8 @@ export class LevelLoadService {
   }
 
   private releaseSectors(): void {
-    this.held.dispose();
-    this.sectors = new Map();
+    this.ledger.clear();
+    this.sectorReport = EMPTY_LEVEL_SECTOR_REPORT;
+    this.notifySectors({ delivered: [], released: null });
   }
 }

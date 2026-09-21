@@ -1,6 +1,8 @@
+import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
+import { SectorDescription } from "@/core/ipc/types/xrf-visual";
 import { ISectorInstanceViews, ISectorSectionViews, ISectorViews } from "@/core/level/lib/sector/level-sector-views";
 import { ILevelSurface } from "@/core/level/lib/surface/level-surface-material";
-import { isAlphaRenderSurface } from "@/core/render/lib/surface/render-surface";
+import { getRenderSurface, isAlphaRenderSurface } from "@/core/render/lib/surface/render-surface";
 import { Maybe } from "@/lib/types/general";
 
 /**
@@ -26,6 +28,29 @@ export function listSectorTextures(views: ISectorViews): Array<ISectorTextureReq
 
   for (const drawn of [...views.sections, ...views.instances]) {
     collectSurfaceTextures(requests, drawn);
+  }
+
+  return Array.from(requests.values());
+}
+
+/**
+ * Every texture reference a sector's pack names, read from the description alone.
+ *
+ * @param description - What `open_sector` reported about the pack.
+ * @param surfaces - The level's resolved shader table.
+ * @returns Its references, without repeats.
+ */
+export function listDescriptionTextures(
+  description: SectorDescription,
+  surfaces: ReadonlyArray<XraySurfaceDescriptor>
+): Array<ISectorTextureRequest> {
+  const requests: Map<string, ISectorTextureRequest> = new Map();
+
+  for (const drawn of [...description.sections, ...description.instances]) {
+    collectSurfaceTextures(requests, {
+      render: getRenderSurface(surfaces, drawn.surface.shaderId),
+      surface: drawn.surface,
+    });
   }
 
   return Array.from(requests.values());

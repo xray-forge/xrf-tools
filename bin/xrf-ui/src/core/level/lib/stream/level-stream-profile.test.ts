@@ -10,10 +10,9 @@ import {
 
 function mockReading(sector: number, total: number, stages: Partial<ILevelStreamReading> = {}): ILevelStreamReading {
   return {
+    deliver: 0,
     draws: 1,
-    geometry: 0,
     pack: 0,
-    publish: 0,
     sector,
     textures: 0,
     total,

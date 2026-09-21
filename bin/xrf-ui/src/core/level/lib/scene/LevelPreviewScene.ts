@@ -1,14 +1,22 @@
 import { Group, PerspectiveCamera, Vector3 } from "three";
 
+import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
 import { VisualBounds } from "@/core/ipc/types/xrf-visual";
 import { ILevelCamera, toLevelCamera } from "@/core/level/lib/camera/level-camera";
 import { DEFAULT_LEVEL_CAMERA_OPTIONS, ILevelCameraOptions } from "@/core/level/lib/camera/level-camera-options";
 import { LevelFlyCamera } from "@/core/level/lib/camera/level-fly-camera";
 import { ILevelViewpoint, toLevelStartViewpoint } from "@/core/level/lib/camera/level-viewpoint";
 import { ILevelLighting } from "@/core/level/lib/lighting/level-lighting";
+import {
+  ILevelSectorChange,
+  ILevelSectorDelivery,
+  ILevelSectorSource,
+} from "@/core/level/lib/render/level-render-protocol";
 import { ILevelPoint } from "@/core/level/lib/residency/level-residency";
-import { ILoadedSector } from "@/core/level/lib/sector/level-sector-set";
+import { ILoadedSector, LevelSectorSet } from "@/core/level/lib/sector/level-sector-set";
+import { createSectorViews, ISectorViews } from "@/core/level/lib/sector/level-sector-views";
 import { ILevelStats, measureLevelStats } from "@/core/level/lib/stats/level-stats";
+import { countLevelSurfaceGeometry, ILevelSurfaceGeometry } from "@/core/level/lib/surface/level-surface-geometry";
 import { ILevelTextureSource } from "@/core/level/lib/texture/level-texture-set";
 import { DEFAULT_LEVEL_VIEW_OPTIONS, ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
 import { TFrameRateLimit } from "@/core/render/lib/frame/render-frame-limit";
@@ -52,8 +60,15 @@ export class LevelPreviewScene {
   private readonly lighting: LevelPreviewLighting;
   private readonly handlers: ILevelPreviewSceneHandlers;
 
+  /** The sectors held and the geometry built for each, which belongs on whichever thread owns the context. */
+  private readonly held: LevelSectorSet = new LevelSectorSet();
+
   private controls: Nullable<LevelFlyControls> = null;
   private resident: ReadonlyMap<number, ILoadedSector> = new Map();
+  /** The level's shader table, which every arriving sector joins its surfaces against. */
+  private surfaces: ReadonlyArray<XraySurfaceDescriptor> = [];
+  /** Stops this scene hearing about the sectors it last took, for when it takes another level's. */
+  private unsubscribeSectors: Nullable<() => void> = null;
   private streamedFrom: Nullable<Vector3> = null;
   private statsReportedAt: number = 0;
 
@@ -81,13 +96,29 @@ export class LevelPreviewScene {
   }
 
   /**
-   * Draws whatever the loader currently holds.
+   * Takes the level's shader table, which every arriving sector joins its surfaces against.
    *
-   * @param sectors - Resident sectors, keyed by sector.
+   * @param surfaces - How the renderer draws each row, from the open.
    */
-  public setSectors(sectors: ReadonlyMap<number, ILoadedSector>): void {
-    this.resident = sectors;
-    this.sectors.sync(sectors);
+  public setSurfaces(surfaces: ReadonlyArray<XraySurfaceDescriptor>): void {
+    this.surfaces = surfaces;
+  }
+
+  /**
+   * Takes the sectors a level delivers.
+   *
+   * @param sectors - The open level's sectors, or null while none is open.
+   */
+  public setSectors(sectors: Nullable<ILevelSectorSource>): void {
+    this.unsubscribeSectors?.();
+    this.unsubscribeSectors = sectors?.subscribe(this.onSectorsChanged) ?? null;
+  }
+
+  /**
+   * @returns What each shader table entry draws across the sectors held.
+   */
+  public measureSurfaceGeometry(): ReadonlyMap<number, ILevelSurfaceGeometry> {
+    return countLevelSurfaceGeometry(this.held.snapshot());
   }
 
   /**
@@ -177,10 +208,35 @@ export class LevelPreviewScene {
     this.controls = null;
 
     // Materials only: the geometry belongs to the loader, which disposes it when a sector stops being resident.
+    this.unsubscribeSectors?.();
+    this.unsubscribeSectors = null;
+    this.held.dispose();
     this.sectors.dispose();
     this.frame.dispose();
     this.lighting.dispose();
     this.viewport.dispose();
+  }
+
+  /** Takes what arrived and drops what went, then lets the materials settle once for the batch. */
+  private readonly onSectorsChanged = (change: ILevelSectorChange): void => {
+    for (const sector of change.released ?? Array.from(this.held.keys())) {
+      this.held.release(sector);
+      this.sectors.drop(sector);
+    }
+
+    for (const delivery of change.delivered) {
+      this.take(delivery);
+    }
+
+    this.sectors.settle();
+    this.resident = this.held.snapshot();
+  };
+
+  /** Builds one delivered sector where the geometry belongs, which is here. */
+  private take(delivery: ILevelSectorDelivery): void {
+    const views: ISectorViews = createSectorViews(delivery.description, delivery.buffer, this.surfaces);
+
+    this.sectors.take(this.held.adopt(views));
   }
 
   /**

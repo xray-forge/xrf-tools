@@ -72,28 +72,31 @@ export class LevelPreviewSectors {
   }
 
   /**
-   * Adds a mesh for every sector newly resident and removes the meshes of sectors that are not.
+   * Draws one sector that has arrived.
    *
-   * @param sectors - What the loader currently holds, keyed by sector.
+   * @param loaded - The sector and the geometry built for it.
    */
-  public sync(sectors: ReadonlyMap<number, ILoadedSector>): void {
-    for (const sector of Array.from(this.drawn.keys())) {
-      if (!sectors.has(sector)) {
-        this.remove(sector);
-      }
-    }
+  public take(loaded: ILoadedSector): void {
+    const timer: Timer = new Timer();
 
-    for (const [sector, loaded] of sectors) {
-      if (!this.drawn.has(sector)) {
-        const timer: Timer = new Timer();
+    this.remove(loaded.sector);
+    this.add(loaded.sector, loaded);
+    this.note(timer.elapsed());
+  }
 
-        this.add(sector, loaded);
-        this.note(timer.elapsed());
-      }
-    }
+  /**
+   * Stops drawing one sector.
+   *
+   * @param sector - Sector to drop; dropping one that is not drawn does nothing.
+   */
+  public drop(sector: number): void {
+    this.remove(sector);
+  }
 
-    // After both, so a surface a departing sector named and an arriving one still names is never disposed and then
-    // built again between the two.
+  /**
+   * Disposes the materials no drawn sector names any more.
+   */
+  public settle(): void {
     this.materials.retain(this.listDrawnSurfaces());
   }
 
