@@ -1,14 +1,16 @@
 import { inject, Injectable, OnDeactivation } from "@wirestate/core";
-import { reaction } from "@wirestate/mobx";
+import { BoundAction, reaction } from "@wirestate/mobx";
 
 import { SelectedLevelDescription } from "@/core/ipc/types/xrf-app";
 import { LevelLocalRenderer } from "@/core/level/lib/render/level-local-renderer";
 import { LevelRenderBridge } from "@/core/level/lib/render/level-render-bridge";
 import { ILevelRenderer, ILevelRendererEvents, ILevelRenderView } from "@/core/level/lib/render/level-renderer";
 import { ILevelPoint } from "@/core/level/lib/residency/level-residency";
+import { ILevelSurfaceGeometry } from "@/core/level/lib/surface/level-surface-geometry";
 import { LevelLoadService } from "@/core/level/services/level-load.service";
 import { LevelViewService } from "@/core/level/services/level-view.service";
 import { LevelViewportService } from "@/core/level/services/level-viewport.service";
+import { IRenderSurfaceHost } from "@/core/render/lib/surface/render-surface-host";
 import { SettingsService } from "@/core/settings/services/settings";
 import { Logger } from "@/lib/logging";
 import { Maybe, Nullable } from "@/lib/types/general";
@@ -17,7 +19,7 @@ import { Maybe, Nullable } from "@/lib/types/general";
  * Owns the renderer of the open level, and everything said to it.
  */
 @Injectable()
-export class LevelRenderService {
+export class LevelRenderService implements IRenderSurfaceHost {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
   private renderer: Nullable<ILevelRenderer> = null;
@@ -52,8 +54,6 @@ export class LevelRenderService {
       textures: this.loadService.textures,
     });
 
-    this.viewportService.setMeasure(() => renderer.measure());
-
     // Told the level and the view as they are now, then again whenever either moves. A renderer attached after a
     // level was opened would otherwise draw nothing until something happened to change.
     this.reactions.push(
@@ -72,18 +72,26 @@ export class LevelRenderService {
     this.reactions.length = 0;
     this.bridge?.dispose();
     this.bridge = null;
-    this.viewportService.setMeasure(null);
     this.renderer?.dispose();
     this.renderer = null;
   }
 
-  private readonly openLevel = (level: Maybe<SelectedLevelDescription>): void => {
+  @BoundAction()
+  private openLevel(level: Maybe<SelectedLevelDescription>): void {
     this.renderer?.open(level ? { bounds: level.bounds ?? null, surfaces: level.surfaces } : null);
-  };
+  }
 
-  private readonly setView = (view: ILevelRenderView): void => {
+  @BoundAction()
+  private setView(view: ILevelRenderView): void {
     this.renderer?.setView(view);
-  };
+  }
+
+  /**
+   * @returns What each shader table entry draws, or nothing while there is nothing drawing.
+   */
+  public measureSurfaceGeometry(): Promise<ReadonlyMap<number, ILevelSurfaceGeometry>> {
+    return this.renderer?.measure() ?? Promise.resolve(new Map());
+  }
 
   private getView(): ILevelRenderView {
     return {

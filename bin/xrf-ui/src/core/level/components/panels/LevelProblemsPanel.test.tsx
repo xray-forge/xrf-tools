@@ -2,7 +2,7 @@ import { describe, expect, it } from "@jest/globals";
 import { RenderResult } from "@testing-library/react";
 import { Container } from "@wirestate/core";
 
-import { EMPTY_LEVEL_TEXTURE_REPORT } from "@/core/level/lib/surface/level-surface-dressing";
+import { EMPTY_LEVEL_TEXTURE_REPORT } from "@/core/level/lib/texture/level-texture-report";
 import { LevelLoadService, LevelViewportService } from "@/core/level/services";
 import { mockDdsFile } from "@/fixtures/mocks/dds.mocks";
 import {

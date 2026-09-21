@@ -2,8 +2,9 @@ import { Group, PerspectiveCamera, Vector3 } from "three";
 
 import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
 import { VisualBounds } from "@/core/ipc/types/xrf-visual";
-import { ILevelCamera, toLevelCamera } from "@/core/level/lib/camera/level-camera";
+import { ILevelCamera } from "@/core/level/lib/camera/level-camera";
 import { DEFAULT_LEVEL_CAMERA_OPTIONS, ILevelCameraOptions } from "@/core/level/lib/camera/level-camera-options";
+import { toLevelCamera } from "@/core/level/lib/camera/level-camera-reading";
 import { LevelFlyCamera } from "@/core/level/lib/camera/level-fly-camera";
 import { ILevelViewpoint, toLevelStartViewpoint } from "@/core/level/lib/camera/level-viewpoint";
 import { ILevelLighting } from "@/core/level/lib/lighting/level-lighting";
@@ -13,11 +14,12 @@ import {
   ILevelTextureSupplyChange,
 } from "@/core/level/lib/render/level-render-protocol";
 import { ILevelPoint } from "@/core/level/lib/residency/level-residency";
-import { ILoadedSector, LevelSectorSet } from "@/core/level/lib/sector/level-sector-set";
+import { LevelSectorSet } from "@/core/level/lib/sector/level-sector-set";
 import { createSectorViews, ISectorViews } from "@/core/level/lib/sector/level-sector-views";
 import { ILevelStats, measureLevelStats } from "@/core/level/lib/stats/level-stats";
-import { ILevelTextureReport } from "@/core/level/lib/surface/level-surface-dressing";
-import { countLevelSurfaceGeometry, ILevelSurfaceGeometry } from "@/core/level/lib/surface/level-surface-geometry";
+import { countLevelSurfaceGeometry } from "@/core/level/lib/surface/level-surface-count";
+import { ILevelSurfaceGeometry } from "@/core/level/lib/surface/level-surface-geometry";
+import { ILevelTextureReport } from "@/core/level/lib/texture/level-texture-report";
 import { LevelTextureSet } from "@/core/level/lib/texture/level-texture-set";
 import { DEFAULT_LEVEL_VIEW_OPTIONS, ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
 import { TFrameRateLimit } from "@/core/render/lib/frame/render-frame-limit";
@@ -70,7 +72,6 @@ export class LevelPreviewScene {
   private readonly textures: LevelTextureSet = new LevelTextureSet();
 
   private controls: Nullable<LevelFlyControls> = null;
-  private resident: ReadonlyMap<number, ILoadedSector> = new Map();
   /** The level's shader table, which every arriving sector joins its surfaces against. */
   private surfaces: ReadonlyArray<XraySurfaceDescriptor> = [];
   /** Stops this scene hearing about the sectors it last took, for when it takes another level's. */
@@ -128,7 +129,6 @@ export class LevelPreviewScene {
     }
 
     this.sectors.settle();
-    this.resident = this.held.snapshot();
   }
 
   /**
@@ -273,7 +273,7 @@ export class LevelPreviewScene {
       // Converted here rather than where it is drawn, so a reader of the handler cannot take it for a renderer
       // placement and a second consumer cannot forget the sign.
       this.handlers.onReport(
-        measureLevelStats(this.resident, this.viewport.frameCost, this.sectors.meanAddTime),
+        measureLevelStats(this.held.measure(), this.viewport.frameCost, this.sectors.meanAddTime),
         toLevelCamera(this.viewport.camera, this.facing)
       );
     }

@@ -1,6 +1,6 @@
 import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
 import { ILevelSectorSkip } from "@/core/level/lib/sector/level-sector-report";
-import { ILevelTextureProblem } from "@/core/level/lib/surface/level-surface-dressing";
+import { ILevelTextureProblem } from "@/core/level/lib/texture/level-texture-report";
 import { IEditorProblem } from "@/core/shell/editor/EditorProblemsPanel";
 
 import { listDrawableProblems } from "./level-drawable-problems";

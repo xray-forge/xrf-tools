@@ -1,4 +1,4 @@
-import { DEFAULT_LEVEL_FLY_OPTIONS, ILevelFlyOptions } from "@/core/level/lib/camera/level-fly-camera";
+import { DEFAULT_LEVEL_FLY_OPTIONS, ILevelFlyOptions } from "@/core/level/lib/camera/level-fly-options";
 
 /**
  * How the camera sees and how it answers input, as one value the toolbar owns.

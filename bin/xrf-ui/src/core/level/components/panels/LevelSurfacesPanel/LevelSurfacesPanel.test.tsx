@@ -1,11 +1,11 @@
-import { beforeEach, describe, expect, it } from "@jest/globals";
+import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { RenderResult, waitFor } from "@testing-library/react";
 import { Container } from "@wirestate/core";
 
 import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
 import { LevelSurfacesPanel } from "@/core/level/components/panels/LevelSurfacesPanel";
 import { ILevelTextureSource } from "@/core/level/lib/texture/level-texture-set";
-import { LevelLoadService, LevelViewportService } from "@/core/level/services";
+import { LevelLoadService, LevelRenderService, LevelViewportService, LevelViewService } from "@/core/level/services";
 import { mockLevelTextureSource, mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
@@ -50,13 +50,18 @@ const TABLE: Array<XraySurfaceDescriptor> = [
 
 async function renderPanel(
   textures?: ILevelTextureSource,
-  arrange?: (viewport: LevelViewportService) => void
+  arrange?: (render: LevelRenderService) => void
 ): Promise<RenderResult> {
   setMockInvokeResponses({
     ["plugin:levels|get_level"]: mockSessionResponse(mockSelectedLevelDescription({ surfaces: TABLE })),
   });
 
-  const container: Container = mockContainer([LevelLoadService, LevelViewportService]);
+  const container: Container = mockContainer([
+    LevelLoadService,
+    LevelRenderService,
+    LevelViewService,
+    LevelViewportService,
+  ]);
   const service: LevelLoadService = container.get(LevelLoadService);
 
   await service.restore();
@@ -66,7 +71,7 @@ async function renderPanel(
     container.get(LevelViewportService).noteTextures(textures.describe());
   }
 
-  arrange?.(container.get(LevelViewportService));
+  arrange?.(container.get(LevelRenderService));
 
   return renderWithProviders(<LevelSurfacesPanel />, { container, route: "/level-viewer" });
 }
@@ -77,7 +82,12 @@ describe("LevelSurfacesPanel", () => {
   });
 
   it("says nothing is open before a level is", () => {
-    const container: Container = mockContainer([LevelLoadService, LevelViewportService]);
+    const container: Container = mockContainer([
+      LevelLoadService,
+      LevelRenderService,
+      LevelViewService,
+      LevelViewportService,
+    ]);
     const { getByText } = renderWithProviders(<LevelSurfacesPanel />, { container, route: "/level-viewer" });
 
     expect(getByText("No level open. Open one to see how its surfaces are drawn.")).toBeInTheDocument();
@@ -145,15 +155,15 @@ describe("LevelSurfacesPanel", () => {
   // Measuring what a surface draws samples the coordinates of every draw of every sector held, so it is asked
   // for rather than published - and the viewport holding them may not be on this thread.
   it("shows what the viewport answers when asked what each entry draws", async () => {
-    const { getAllByText } = await renderPanel(undefined, (viewport: LevelViewportService) =>
-      viewport.setMeasure(() =>
-        Promise.resolve(
+    const { getAllByText } = await renderPanel(undefined, (render: LevelRenderService) => {
+      jest
+        .spyOn(render, "measureSurfaceGeometry")
+        .mockResolvedValue(
           new Map(
             [0, 1, 2, 3].map((shaderId) => [shaderId, { drawables: 2, narrowest: null, span: null, triangles: 70 }])
           )
-        )
-      )
-    );
+        );
+    });
 
     await waitFor(() => expect(getAllByText("2 drawables · 70 triangles · 35.0 each").length).toBeGreaterThan(0));
   });

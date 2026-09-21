@@ -8,6 +8,8 @@ import { applyRenderSurface, createRenderMaterial } from "@/core/render/lib/surf
 import { IRenderDetail, IRenderSurface } from "@/core/render/lib/surface/render-surface";
 import { Nullable } from "@/lib/types/general";
 
+import { ILevelSurfaceOptions } from "./level-surface-options";
+
 /** Nothing a compiled level declares is metal, so the surfaces are shaded as the dielectrics xrLC assumes. */
 const SURFACE_METALNESS: number = 0.0;
 
@@ -32,27 +34,6 @@ const PROGRAM_MAP: number = 1;
 const PROGRAM_EMISSIVE_MAP: number = 2;
 const PROGRAM_AO_MAP: number = 4;
 const PROGRAM_ALPHA_TEST: number = 8;
-
-/** How the surfaces of a level are drawn while a toggle is on. */
-export interface ILevelSurfaceOptions {
-  isWireframe: boolean;
-  /** Draws the surfaces with the textures the level dresses them in, or flat for comparison. */
-  isTextured: boolean;
-  /**
-   * Whether the hemisphere occlusion xrLC baked into the level is applied, or the level is drawn under the viewer's
-   * own light alone.
-   */
-  isLit: boolean;
-  /** How much the baked hemisphere term darkens the ambient, `0` ignoring it and `1` applying it whole. */
-  hemiStrength: number;
-}
-
-export const DEFAULT_LEVEL_SURFACE_OPTIONS: ILevelSurfaceOptions = {
-  hemiStrength: 0.65,
-  isLit: true,
-  isTextured: true,
-  isWireframe: false,
-};
 
 /** Everything about one drawn surface that decides how it looks. */
 export interface ILevelSurface {

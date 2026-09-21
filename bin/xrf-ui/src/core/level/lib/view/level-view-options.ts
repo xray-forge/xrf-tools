@@ -1,4 +1,4 @@
-import { DEFAULT_LEVEL_SURFACE_OPTIONS, ILevelSurfaceOptions } from "@/core/level/lib/surface/level-surface-material";
+import { DEFAULT_LEVEL_SURFACE_OPTIONS, ILevelSurfaceOptions } from "@/core/level/lib/surface/level-surface-options";
 
 /** Everything the level viewer's toolbar switches, which is more than what a surface is drawn with. */
 export interface ILevelViewOptions extends ILevelSurfaceOptions {

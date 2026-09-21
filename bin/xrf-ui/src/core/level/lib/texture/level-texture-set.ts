@@ -2,12 +2,8 @@ import { Texture } from "three";
 
 import { transformError } from "@/core/error/lib";
 import { ILevelTextureDelivery } from "@/core/level/lib/render/level-render-protocol";
-import {
-  ELevelSurfaceDressing,
-  ILevelSurfaceDressing,
-  ILevelTextureProblem,
-  ILevelTextureReport,
-} from "@/core/level/lib/surface/level-surface-dressing";
+import { ISectorTextureRequest } from "@/core/level/lib/sector/level-sector-textures";
+import { ELevelSurfaceDressing, ILevelSurfaceDressing } from "@/core/level/lib/surface/level-surface-dressing";
 import {
   createCheckerTexture,
   createDdsTexture,
@@ -18,6 +14,8 @@ import {
 } from "@/core/render/lib/texture/render-texture";
 import { Logger } from "@/lib/logging";
 import { Maybe, Nullable } from "@/lib/types/general";
+
+import { ILevelTextureProblem, ILevelTextureReport } from "./level-texture-report";
 
 /**
  * What a reference comes to when it cannot come to its own texture: the reason, and a checker to draw instead.
@@ -84,8 +82,8 @@ export class LevelTextureSet implements ILevelTextureSource {
   private readonly pending: Map<string, Promise<ILevelTexture>> = new Map();
   private readonly listeners: Set<TLevelTextureListener> = new Set();
 
-  /** Releases the last level's textures and says so, which is all an open means on this side. */
-  public open(): void {
+  /** Releases the last level's textures and says so, which is all a level opening means on this side. */
+  public reset(): void {
     this.release();
     this.notify(null);
   }
@@ -159,15 +157,13 @@ export class LevelTextureSet implements ILevelTextureSource {
   }
 
   /**
-   * @param reference - The reference as the shader table spells it.
-   * @param isAlphaRead - Whether the surfaces drawn with it sample its alpha channel.
-   * @param isMipped - Whether they sample its mip chain.
-   * @returns Whether what is held already satisfies them, so nothing need be read for it at all.
+   * @param need - A reference, and what the surfaces drawn with it need of it.
+   * @returns Whether what is held already satisfies it, so nothing need be uploaded for it at all.
    */
-  public holds(reference: string, isAlphaRead: boolean, isMipped: boolean): boolean {
-    const held: Maybe<ILevelTexture> = this.loaded.get(reference);
+  public holds(need: ISectorTextureRequest): boolean {
+    const held: Maybe<ILevelTexture> = this.loaded.get(need.reference);
 
-    return Boolean(held && (!isAlphaRead || held.isAlphaRead) && (isMipped || !held.isMipped));
+    return Boolean(held && (!need.isAlphaRead || held.isAlphaRead) && (need.isMipped || !held.isMipped));
   }
 
   /**
@@ -231,7 +227,7 @@ export class LevelTextureSet implements ILevelTextureSource {
     // the surfaces drawn with it, and a texture is uploaded once for the whole level by whichever sector asked first:
     // a sector of opaque surfaces uploading a cut-out file as `RGB_S3TC_DXT1` left every cut-out surface reached
     // later testing an alpha channel that is not there, which draws the file's transparent black as solid black.
-    if (this.holds(reference, delivery.isAlphaRead, delivery.isMipped)) {
+    if (this.holds(delivery)) {
       return false;
     }
 

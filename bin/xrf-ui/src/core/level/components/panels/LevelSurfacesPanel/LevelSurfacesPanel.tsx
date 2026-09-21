@@ -2,18 +2,15 @@ import { useInjection } from "@wirestate/react";
 import { ReactElement, useEffect, useMemo, useState } from "react";
 
 import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
-import {
-  ILevelSurfaceDressing,
-  ILevelTextureReport,
-  listLevelSurfaceDressing,
-} from "@/core/level/lib/surface/level-surface-dressing";
+import { ILevelSurfaceDressing } from "@/core/level/lib/surface/level-surface-dressing";
 import { ILevelSurfaceGeometry, NO_LEVEL_SURFACE_GEOMETRY } from "@/core/level/lib/surface/level-surface-geometry";
 import {
   ILevelSurfaceSummary,
   listLevelSurfaces,
   listNamedLevelSurfaces,
 } from "@/core/level/lib/surface/level-surface-summary";
-import { LevelLoadService, LevelViewportService } from "@/core/level/services";
+import { ILevelTextureReport, listLevelSurfaceDressing } from "@/core/level/lib/texture/level-texture-report";
+import { LevelLoadService, LevelRenderService, LevelViewportService } from "@/core/level/services";
 import {
   EditorPanel,
   EditorPanelEmpty,
@@ -34,6 +31,7 @@ export function LevelSurfacesPanel({
   className,
 }: BaseComponentProps): ReactElement {
   const loadService: LevelLoadService = useInjection(LevelLoadService);
+  const renderService: LevelRenderService = useInjection(LevelRenderService);
   const viewportService: LevelViewportService = useInjection(LevelViewportService);
 
   const held: ReadonlyArray<number> = loadService.sectorReport.held;
@@ -64,7 +62,7 @@ export function LevelSurfacesPanel({
   useEffect(() => {
     let isCurrent: boolean = true;
 
-    void viewportService.measureSurfaceGeometry().then((measured) => {
+    void renderService.measureSurfaceGeometry().then((measured: ReadonlyMap<number, ILevelSurfaceGeometry>) => {
       if (isCurrent) {
         setDrawn(measured);
       }
@@ -73,7 +71,7 @@ export function LevelSurfacesPanel({
     return () => {
       isCurrent = false;
     };
-  }, [viewportService, held]);
+  }, [renderService, held]);
 
   if (!loadService.level.value) {
     return (

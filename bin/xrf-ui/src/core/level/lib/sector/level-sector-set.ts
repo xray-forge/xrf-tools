@@ -1,7 +1,9 @@
 import { BufferGeometry } from "three";
 
-import { createSectorGeometry } from "@/core/level/lib/sector/level-sector-geometry";
-import { ISectorViews } from "@/core/level/lib/sector/level-sector-views";
+import { ILevelHeld } from "@/core/level/lib/stats/level-stats";
+
+import { createSectorGeometry } from "./level-sector-geometry";
+import { ISectorViews } from "./level-sector-views";
 
 /** One resident sector: what it holds, and what the renderer uploaded for it. */
 export interface ILoadedSector {
@@ -33,6 +35,19 @@ export class LevelSectorSet {
    */
   public sizes(): ReadonlyMap<number, number> {
     return this.bytes;
+  }
+
+  /**
+   * @returns How much is held, which is what a viewer reports and a budget is spent against.
+   */
+  public measure(): ILevelHeld {
+    let bytes: number = 0;
+
+    for (const held of this.bytes.values()) {
+      bytes += held;
+    }
+
+    return { bytes, sectors: this.loaded.size };
   }
 
   public has(sector: number): boolean {

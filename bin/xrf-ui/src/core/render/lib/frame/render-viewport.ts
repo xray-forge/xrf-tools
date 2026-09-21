@@ -1,9 +1,11 @@
 import { Color, PerspectiveCamera, Scene, WebGLRenderer } from "three";
 
-import { DEFAULT_FRAME_RATE_LIMIT, shouldDrawFrame, TFrameRateLimit } from "@/core/render/lib/frame/render-frame-limit";
-import { RenderFrameTimer } from "@/core/render/lib/frame/render-frame-timer";
 import { bindSelectionReset } from "@/lib/dom/selection";
 import { Nullable } from "@/lib/types/general";
+
+import { IRenderFrameCost } from "./render-frame-cost";
+import { DEFAULT_FRAME_RATE_LIMIT, shouldDrawFrame, TFrameRateLimit } from "./render-frame-limit";
+import { RenderFrameTimer } from "./render-frame-timer";
 
 /** Seconds a frame may be worth, so a tab returning from the background does not teleport whatever moves by time. */
 const MAX_FRAME_DELTA: number = 0.1;
@@ -18,25 +20,6 @@ export interface IRenderViewportConfig {
   cameraFieldOfView: number;
   cameraNear: number;
   cameraFar: number;
-}
-
-/**
- * What one frame cost, as the renderer itself counted it.
- */
-export interface IRenderFrameCost {
-  /** Mean frame time over the window, in milliseconds. */
-  frameTime: number;
-  /** The longest frame of the window, which is what a stutter actually is. */
-  worstFrameTime: number;
-  /** Mean of what `render` itself took, which is where uploads and shader compiles land. */
-  drawTime: number;
-  /** The longest draw of the window: a spike here is inside `render`, and a spike only in the frame is not. */
-  worstDrawTime: number;
-  framesPerSecond: number;
-  /** Draw calls the last frame issued. */
-  draws: number;
-  /** Triangles the last frame drew, instanced geometry counted once for every place it stood. */
-  triangles: number;
 }
 
 /**

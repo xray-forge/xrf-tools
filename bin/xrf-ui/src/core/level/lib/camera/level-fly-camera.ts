@@ -1,22 +1,7 @@
 import { Camera, Euler, Vector3 } from "three";
 
 import { ILevelFlyInput } from "./level-fly-input";
-
-/** How the camera answers input. */
-export interface ILevelFlyOptions {
-  /** Metres a second at a walk. */
-  speed: number;
-  /** What holding the modifier multiplies the speed by. */
-  boost: number;
-  /** Radians of pitch and yaw per pixel of pointer movement. */
-  sensitivity: number;
-}
-
-export const DEFAULT_LEVEL_FLY_OPTIONS: ILevelFlyOptions = {
-  boost: 5,
-  sensitivity: 0.002,
-  speed: 12,
-};
+import { DEFAULT_LEVEL_FLY_OPTIONS, ILevelFlyOptions } from "./level-fly-options";
 
 /** Just short of straight up, so looking at the sky never flips the horizon over. */
 const MAX_PITCH: number = Math.PI / 2 - 0.001;

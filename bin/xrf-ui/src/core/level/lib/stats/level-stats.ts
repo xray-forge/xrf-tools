@@ -1,5 +1,4 @@
-import { ILoadedSector } from "@/core/level/lib/sector/level-sector-set";
-import { IRenderFrameCost } from "@/core/render/lib/frame/render-viewport";
+import { IRenderFrameCost } from "@/core/render/lib/frame/render-frame-cost";
 
 /**
  * What a viewport is holding, against what a frame of it costs.
@@ -40,33 +39,31 @@ export const EMPTY_LEVEL_STATS: ILevelStats = {
   worstFrameTime: 0,
 };
 
+/** What is held, which only whoever holds it can say. */
+export interface ILevelHeld {
+  /** Sectors resident. */
+  sectors: number;
+  /** Bytes of geometry they came to. */
+  bytes: number;
+}
+
 /**
  * Measures what the viewport is holding, against what its last frame cost.
  *
- * @param sectors - What the loader currently holds.
+ * @param held - How many sectors are resident and what they came to.
  * @param frame - What the viewport's renderer counted for the frame just drawn.
  * @param sceneTime - What the scene has been paying to take one arriving sector.
  * @returns What the viewport is spending.
  */
-export function measureLevelStats(
-  sectors: ReadonlyMap<number, ILoadedSector>,
-  frame: IRenderFrameCost,
-  sceneTime: number = 0
-): ILevelStats {
-  let bytes: number = 0;
-
-  for (const loaded of sectors.values()) {
-    bytes += loaded.views.bufferLength;
-  }
-
+export function measureLevelStats(held: ILevelHeld, frame: IRenderFrameCost, sceneTime: number = 0): ILevelStats {
   return {
-    bytes,
+    bytes: held.bytes,
     drawTime: frame.drawTime,
     draws: frame.draws,
     frameTime: frame.frameTime,
     framesPerSecond: frame.framesPerSecond,
     sceneTime,
-    sectors: sectors.size,
+    sectors: held.sectors,
     triangles: frame.triangles,
     worstDrawTime: frame.worstDrawTime,
     worstFrameTime: frame.worstFrameTime,

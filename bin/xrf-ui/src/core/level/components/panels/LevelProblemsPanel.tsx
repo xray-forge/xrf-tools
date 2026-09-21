@@ -4,7 +4,7 @@ import { ReactElement, useMemo } from "react";
 import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
 import { listLevelProblems } from "@/core/level/lib/problems";
 import { ILevelSectorReport } from "@/core/level/lib/sector/level-sector-report";
-import { ILevelTextureReport } from "@/core/level/lib/surface/level-surface-dressing";
+import { ILevelTextureReport } from "@/core/level/lib/texture/level-texture-report";
 import { LevelLoadService, LevelViewportService } from "@/core/level/services";
 import { EditorPanel, EditorPanelEmpty } from "@/core/shell/editor/EditorPanel";
 import { EditorProblemsPanel, IEditorProblem } from "@/core/shell/editor/EditorProblemsPanel";

@@ -1,12 +1,8 @@
 import { describe, expect, it } from "@jest/globals";
 
-import {
-  describeLevelSurfaceDressing,
-  ELevelSurfaceDressing,
-  ILevelSurfaceDressing,
-  ILevelTextureReport,
-  listLevelSurfaceDressing,
-} from "./level-surface-dressing";
+import { ILevelTextureReport, listLevelSurfaceDressing } from "@/core/level/lib/texture/level-texture-report";
+
+import { describeLevelSurfaceDressing, ELevelSurfaceDressing, ILevelSurfaceDressing } from "./level-surface-dressing";
 
 function mockReport(...dressing: Array<ILevelSurfaceDressing>): ILevelTextureReport {
   return {

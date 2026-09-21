@@ -2,8 +2,9 @@ import { describe, expect, it } from "@jest/globals";
 
 import { ILevelTextureDelivery } from "@/core/level/lib/render/level-render-protocol";
 import { ELevelSurfaceDressing } from "@/core/level/lib/surface/level-surface-dressing";
-import { LevelTextureSet } from "@/core/level/lib/texture/level-texture-set";
 import { mockDdsFile } from "@/fixtures/mocks/dds.mocks";
+
+import { LevelTextureSet } from "./level-texture-set";
 
 function delivered(
   references: Array<string>,
@@ -87,10 +88,10 @@ describe("LevelTextureSet", () => {
 
     await set.take(delivered(["stone"]));
 
-    expect(set.holds("stone", false, true)).toBe(true);
+    expect(set.holds({ isAlphaRead: false, isMipped: true, reference: "stone" })).toBe(true);
     // The same file, but a surface that reads its alpha needs it uploaded differently.
-    expect(set.holds("stone", true, true)).toBe(false);
-    expect(set.holds("grass", false, true)).toBe(false);
+    expect(set.holds({ isAlphaRead: true, isMipped: true, reference: "stone" })).toBe(false);
+    expect(set.holds({ isAlphaRead: false, isMipped: true, reference: "grass" })).toBe(false);
   });
 
   it("keeps a texture the resident sectors still name", async () => {
@@ -145,7 +146,7 @@ describe("LevelTextureSet", () => {
 
     await set.take(delivered(["stone"]));
 
-    set.open();
+    set.reset();
 
     expect(set.size).toBe(0);
   });

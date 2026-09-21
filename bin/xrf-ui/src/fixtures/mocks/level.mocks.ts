@@ -8,7 +8,8 @@ import {
   SectorSection,
   SectorSurface,
 } from "@/core/ipc/types/xrf-visual";
-import { ELevelSurfaceDressing, ILevelTextureReport } from "@/core/level/lib/surface/level-surface-dressing";
+import { ELevelSurfaceDressing } from "@/core/level/lib/surface/level-surface-dressing";
+import { ILevelTextureReport } from "@/core/level/lib/texture/level-texture-report";
 import {
   ILevelTexture,
   ILevelTextureSource,

@@ -1,8 +1,9 @@
 import { describe, expect, it } from "@jest/globals";
 import { PerspectiveCamera, Vector3 } from "three";
 
-import { DEFAULT_LEVEL_FLY_OPTIONS, LevelFlyCamera } from "./level-fly-camera";
+import { LevelFlyCamera } from "./level-fly-camera";
 import { EMPTY_LEVEL_FLY_INPUT, getFlyBinding, ILevelFlyInput } from "./level-fly-input";
+import { DEFAULT_LEVEL_FLY_OPTIONS } from "./level-fly-options";
 
 function input(overrides: Partial<ILevelFlyInput> = {}): ILevelFlyInput {
   return { ...EMPTY_LEVEL_FLY_INPUT, ...overrides };

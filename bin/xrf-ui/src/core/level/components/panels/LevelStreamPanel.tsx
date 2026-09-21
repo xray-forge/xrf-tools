@@ -7,7 +7,7 @@ import {
   ILevelStreamSummary,
   LEVEL_STREAM_STAGES,
 } from "@/core/level/lib/stream/level-stream-profile";
-import { ILevelTextureProblem, ILevelTextureReport } from "@/core/level/lib/surface/level-surface-dressing";
+import { ILevelTextureProblem, ILevelTextureReport } from "@/core/level/lib/texture/level-texture-report";
 import { LevelLoadService, LevelViewportService } from "@/core/level/services";
 import {
   EditorPanel,

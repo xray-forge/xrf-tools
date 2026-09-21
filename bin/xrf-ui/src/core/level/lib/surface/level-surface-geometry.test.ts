@@ -6,14 +6,15 @@ import {
   ISectorInstanceViews,
   ISectorSectionViews,
 } from "@/core/level/lib/sector/level-sector-views";
+import { OPAQUE_RENDER_SURFACE } from "@/core/render/lib/surface/render-surface";
+import { mockSectorSurface } from "@/fixtures/mocks/level.mocks";
+
+import { countLevelSurfaceGeometry } from "./level-surface-count";
 import {
-  countLevelSurfaceGeometry,
   describeLevelSurfaceGeometry,
   describeLevelSurfaceSpan,
   NO_LEVEL_SURFACE_GEOMETRY,
-} from "@/core/level/lib/surface/level-surface-geometry";
-import { OPAQUE_RENDER_SURFACE } from "@/core/render/lib/surface/render-surface";
-import { mockSectorSurface } from "@/fixtures/mocks/level.mocks";
+} from "./level-surface-geometry";
 
 function section(shaderId: number, drawables: number, triangleCount: number): ISectorSectionViews {
   return {

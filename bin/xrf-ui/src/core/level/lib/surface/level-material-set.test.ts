@@ -1,11 +1,13 @@
 import { describe, expect, it } from "@jest/globals";
 import { MeshStandardMaterial, Texture } from "three";
 
-import { LevelMaterialSet } from "@/core/level/lib/surface/level-material-set";
-import { DEFAULT_LEVEL_SURFACE_OPTIONS, ILevelSurface } from "@/core/level/lib/surface/level-surface-material";
 import { OPAQUE_RENDER_SURFACE, toRenderSurface } from "@/core/render/lib/surface/render-surface";
 import { IMockLevelTextureSource, mockLevelTextureSource, mockSectorSurface } from "@/fixtures/mocks/level.mocks";
 import { mockAlphaSurfaceDescriptor } from "@/fixtures/mocks/visual.mocks";
+
+import { LevelMaterialSet } from "./level-material-set";
+import { ILevelSurface } from "./level-surface-material";
+import { DEFAULT_LEVEL_SURFACE_OPTIONS } from "./level-surface-options";
 
 /** A surface of one shader table entry, as two different sectors would each name it. */
 function surfaceOf(shaderId: number, overrides: Partial<ILevelSurface> = {}): ILevelSurface {

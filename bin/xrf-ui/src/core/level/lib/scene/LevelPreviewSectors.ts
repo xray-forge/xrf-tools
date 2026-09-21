@@ -5,11 +5,8 @@ import { createGeometry } from "@/core/level/lib/sector/level-sector-geometry";
 import { ILoadedSector } from "@/core/level/lib/sector/level-sector-set";
 import { ISectorInstanceViews, ISectorSectionViews } from "@/core/level/lib/sector/level-sector-views";
 import { LevelMaterialSet } from "@/core/level/lib/surface/level-material-set";
-import {
-  DEFAULT_LEVEL_SURFACE_OPTIONS,
-  ILevelSurface,
-  ILevelSurfaceOptions,
-} from "@/core/level/lib/surface/level-surface-material";
+import { ILevelSurface } from "@/core/level/lib/surface/level-surface-material";
+import { DEFAULT_LEVEL_SURFACE_OPTIONS, ILevelSurfaceOptions } from "@/core/level/lib/surface/level-surface-options";
 import { ILevelTextureSource } from "@/core/level/lib/texture/level-texture-set";
 import { Timer } from "@/lib/logging";
 import { toMean } from "@/lib/math/series";

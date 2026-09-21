@@ -1,17 +1,17 @@
 import { MeshStandardMaterial } from "three";
 
 import { listSurfaceTextures } from "@/core/level/lib/sector/level-sector-textures";
+import { ILevelTextureSource, TLevelTextureChange } from "@/core/level/lib/texture/level-texture-set";
+import { Maybe, Nullable } from "@/lib/types/general";
+
 import {
   applySurfaceDressing,
   createSurfaceMaterial,
-  DEFAULT_LEVEL_SURFACE_OPTIONS,
   getSurfaceDressing,
   ILevelSurface,
   ILevelSurfaceMaterial,
-  ILevelSurfaceOptions,
-} from "@/core/level/lib/surface/level-surface-material";
-import { ILevelTextureSource, TLevelTextureChange } from "@/core/level/lib/texture/level-texture-set";
-import { Maybe, Nullable } from "@/lib/types/general";
+} from "./level-surface-material";
+import { DEFAULT_LEVEL_SURFACE_OPTIONS, ILevelSurfaceOptions } from "./level-surface-options";
 
 /**
  * What makes two surfaces the same material, which is the shader table row they were dressed from.
@@ -61,7 +61,7 @@ export class LevelMaterialSet {
     this.unsubscribe?.();
 
     this.textures = textures;
-    this.unsubscribe = textures?.subscribe(this.onTexturesChanged) ?? null;
+    this.unsubscribe = textures?.subscribe((changed: TLevelTextureChange) => this.redress(changed)) ?? null;
 
     this.dressAll();
   }
@@ -155,8 +155,10 @@ export class LevelMaterialSet {
 
   /**
    * Re-dresses the materials a texture change reaches.
+   *
+   * @param changed - References whose upload moved, or null where the whole set went.
    */
-  private readonly onTexturesChanged = (changed: TLevelTextureChange): void => {
+  private redress(changed: TLevelTextureChange): void {
     // The whole set went, which is a level opening or closing: there is no reference to look anything up by.
     if (!changed) {
       this.dressAll();
@@ -175,7 +177,7 @@ export class LevelMaterialSet {
     for (const key of keys) {
       this.dress(key);
     }
-  };
+  }
 
   private dressAll(): void {
     for (const key of this.held.keys()) {

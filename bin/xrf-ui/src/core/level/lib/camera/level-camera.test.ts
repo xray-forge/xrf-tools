@@ -1,7 +1,8 @@
 import { describe, expect, it } from "@jest/globals";
 import { PerspectiveCamera, Vector3 } from "three";
 
-import { ILevelCamera, toLevelCamera } from "@/core/level/lib/camera/level-camera";
+import { ILevelCamera } from "./level-camera";
+import { toLevelCamera } from "./level-camera-reading";
 
 function placed(at: [number, number, number], towards: [number, number, number]): PerspectiveCamera {
   const camera: PerspectiveCamera = new PerspectiveCamera();

@@ -1,15 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 import { Texture } from "three";
 
-import {
-  createSurfaceMaterial,
-  DEFAULT_LEVEL_SURFACE_OPTIONS,
-  dressSurfaceMaterial,
-  getShaderColor,
-  ILevelSurface,
-  ILevelSurfaceMaterial,
-  ILevelSurfaceOptions,
-} from "@/core/level/lib/surface/level-surface-material";
 import { ILevelTexture, ILevelTextureLookup } from "@/core/level/lib/texture/level-texture-set";
 import { IRenderDetail, OPAQUE_RENDER_SURFACE, toRenderSurface } from "@/core/render/lib/surface/render-surface";
 import { mockSectorSurface } from "@/fixtures/mocks/level.mocks";
@@ -19,6 +10,15 @@ import {
   mockSurfaceDescriptor,
 } from "@/fixtures/mocks/visual.mocks";
 import { Nullable } from "@/lib/types/general";
+
+import {
+  createSurfaceMaterial,
+  dressSurfaceMaterial,
+  getShaderColor,
+  ILevelSurface,
+  ILevelSurfaceMaterial,
+} from "./level-surface-material";
+import { DEFAULT_LEVEL_SURFACE_OPTIONS, ILevelSurfaceOptions } from "./level-surface-options";
 
 /** A lookup answering with a distinct texture for each reference it is given. */
 function lookup(...references: Array<string>): ILevelTextureLookup {

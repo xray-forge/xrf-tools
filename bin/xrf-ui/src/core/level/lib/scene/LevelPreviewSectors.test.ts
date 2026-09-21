@@ -4,7 +4,8 @@ import { Group, InstancedMesh, Mesh, MeshStandardMaterial } from "three";
 import { createSectorGeometry } from "@/core/level/lib/sector/level-sector-geometry";
 import { ILoadedSector } from "@/core/level/lib/sector/level-sector-set";
 import { createSectorViews, ISectorViews } from "@/core/level/lib/sector/level-sector-views";
-import { DEFAULT_LEVEL_SURFACE_OPTIONS, getShaderColor } from "@/core/level/lib/surface/level-surface-material";
+import { getShaderColor } from "@/core/level/lib/surface/level-surface-material";
+import { DEFAULT_LEVEL_SURFACE_OPTIONS } from "@/core/level/lib/surface/level-surface-options";
 import {
   mockSectorDescription,
   mockSectorInstanceGroup,

@@ -3,8 +3,7 @@ import { BoundAction, Observable } from "@wirestate/mobx";
 
 import { ILevelCamera } from "@/core/level/lib/camera/level-camera";
 import { EMPTY_LEVEL_STATS, ILevelStats } from "@/core/level/lib/stats/level-stats";
-import { EMPTY_LEVEL_TEXTURE_REPORT, ILevelTextureReport } from "@/core/level/lib/surface/level-surface-dressing";
-import { ILevelSurfaceGeometry } from "@/core/level/lib/surface/level-surface-geometry";
+import { EMPTY_LEVEL_TEXTURE_REPORT, ILevelTextureReport } from "@/core/level/lib/texture/level-texture-report";
 import { Nullable } from "@/lib/types/general";
 
 /**
@@ -31,26 +30,6 @@ export class LevelViewportService {
   @BoundAction()
   public noteTextures(report: ILevelTextureReport): void {
     this.textureReport = report;
-  }
-
-  /** How to ask the viewport what it is drawing, while there is one. */
-  private measure: Nullable<() => Promise<ReadonlyMap<number, ILevelSurfaceGeometry>>> = null;
-
-  /**
-   * Takes the viewport's answer to what each surface draws.
-   *
-   * @param measure - How to ask, or null once the viewport has gone.
-   */
-  @BoundAction()
-  public setMeasure(measure: Nullable<() => Promise<ReadonlyMap<number, ILevelSurfaceGeometry>>>): void {
-    this.measure = measure;
-  }
-
-  /**
-   * @returns What each shader table entry draws, or nothing while there is no viewport to ask.
-   */
-  public async measureSurfaceGeometry(): Promise<ReadonlyMap<number, ILevelSurfaceGeometry>> {
-    return (await this.measure?.()) ?? new Map();
   }
 
   /**
