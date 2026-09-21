@@ -7,7 +7,7 @@ import {
   ILevelStreamSummary,
   LEVEL_STREAM_STAGES,
 } from "@/core/level/lib/stream/level-stream-profile";
-import { ILevelTextureProblem } from "@/core/level/lib/texture/level-texture-set";
+import { ILevelTextureProblem, ILevelTextureReport } from "@/core/level/lib/surface/level-surface-dressing";
 import { LevelLoadService, LevelViewportService } from "@/core/level/services";
 import {
   EditorPanel,
@@ -31,7 +31,8 @@ export function LevelStreamPanel({
   const levelViewportService: LevelViewportService = useInjection(LevelViewportService);
 
   const stats: ILevelStats = levelViewportService.stats;
-  const problems: ReadonlyArray<ILevelTextureProblem> = service.textures.listProblems();
+  const textures: ILevelTextureReport = service.textureReport;
+  const problems: ReadonlyArray<ILevelTextureProblem> = textures.problems;
   const stream: ILevelStreamSummary = service.streamProfile;
 
   if (!service.level.value) {
@@ -88,7 +89,7 @@ export function LevelStreamPanel({
       </EditorPanelSection>
 
       <EditorPanelSection title={"Textures"}>
-        <EditorPanelProperty label={"Uploaded"} value={service.textures.size} />
+        <EditorPanelProperty label={"Uploaded"} value={textures.uploaded} />
         <EditorPanelProperty label={"Unusable"} value={problems.length} />
       </EditorPanelSection>
 

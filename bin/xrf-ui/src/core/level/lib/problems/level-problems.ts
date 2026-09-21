@@ -1,10 +1,11 @@
 import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
-import { listDrawableProblems } from "@/core/level/lib/problems/level-drawable-problems";
-import { listSurfaceProblems } from "@/core/level/lib/problems/level-surface-problems";
-import { listTextureProblems } from "@/core/level/lib/problems/level-texture-problems";
 import { ILoadedSector } from "@/core/level/lib/sector/level-sector-set";
-import { ILevelTextureProblem } from "@/core/level/lib/texture/level-texture-set";
+import { ILevelTextureProblem } from "@/core/level/lib/surface/level-surface-dressing";
 import { IEditorProblem } from "@/core/shell/editor/EditorProblemsPanel";
+
+import { listDrawableProblems } from "./level-drawable-problems";
+import { listSurfaceProblems } from "./level-surface-problems";
+import { listTextureProblems } from "./level-texture-problems";
 
 /**
  * Everything the viewer could not draw as the level asked, as rows.

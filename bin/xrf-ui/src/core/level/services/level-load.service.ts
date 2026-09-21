@@ -27,6 +27,7 @@ import {
   LevelStreamProfile,
 } from "@/core/level/lib/stream/level-stream-profile";
 import { LevelStreamScheduler } from "@/core/level/lib/stream/level-stream-scheduler";
+import { EMPTY_LEVEL_TEXTURE_REPORT, ILevelTextureReport } from "@/core/level/lib/surface/level-surface-dressing";
 import { ILevelTextureSource, LevelTextureSet } from "@/core/level/lib/texture/level-texture-set";
 import { AsyncState } from "@/lib/async-state";
 import { formatDuration } from "@/lib/format/duration";
@@ -64,6 +65,9 @@ export class LevelLoadService {
 
   /** The level's uploaded textures, owned here and shared between the sectors that name them. */
   private readonly loaded: LevelTextureSet = new LevelTextureSet();
+
+  /** Republishes what those textures came to whenever they change. */
+  private readonly unwatchTextures: () => void = this.loaded.subscribe(() => this.noteTextures());
 
   /** What the reads have cost, kept here because the loader is what owns a read from end to end. */
   private readonly profile: LevelStreamProfile = new LevelStreamProfile();
@@ -123,6 +127,10 @@ export class LevelLoadService {
   @Observable()
   public streamProfile: ILevelStreamSummary = EMPTY_LEVEL_STREAM_SUMMARY;
 
+  /** What the level's textures came to, for everything that reports on them and holds none of them. */
+  @Observable()
+  public textureReport: ILevelTextureReport = EMPTY_LEVEL_TEXTURE_REPORT;
+
   /**
    * Whether the restore below has settled, one way or the other.
    */
@@ -147,7 +155,14 @@ export class LevelLoadService {
 
   @OnDeactivation()
   public onDeactivation(): void {
+    this.unwatchTextures();
     this.clear();
+  }
+
+  /** Takes what the textures now come to, which is what every panel reading them reads. */
+  @BoundAction()
+  private noteTextures(): void {
+    this.textureReport = this.loaded.describe();
   }
 
   /**

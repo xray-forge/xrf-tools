@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from "@jest/globals";
 import { createRoots } from "@/core/assets/lib";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { ISectorTextureRequest } from "@/core/level/lib/sector/level-sector-textures";
+import { ELevelSurfaceDressing } from "@/core/level/lib/surface/level-surface-dressing";
 import { ILevelTexture, LevelTextureSet } from "@/core/level/lib/texture/level-texture-set";
 import { mockDdsFile } from "@/fixtures/mocks/dds.mocks";
 import { mockLevelTextureReference } from "@/fixtures/mocks/level.mocks";
@@ -176,7 +177,7 @@ describe("LevelTextureSet", () => {
 
     await set.load(requests("stone"));
 
-    expect(set.listProblems()).toEqual([]);
+    expect(set.describe().problems).toEqual([]);
   });
 
   it("releases everything when the level is swapped", async () => {
@@ -189,5 +190,21 @@ describe("LevelTextureSet", () => {
     set.open(ROOTS, [mockLevelTextureReference("other")]);
 
     expect(set.size).toBe(0);
+  });
+
+  it("says what became of each reference, without handing any of them over", async () => {
+    const set: LevelTextureSet = new LevelTextureSet();
+
+    set.open(ROOTS, [mockLevelTextureReference("stone")]);
+
+    await set.load(requests("stone", "missing"));
+
+    const report = set.describe();
+
+    expect(report.uploaded).toBe(2);
+    expect(report.dressing.get("stone")?.state).toBe(ELevelSurfaceDressing.UPLOADED);
+    expect(report.dressing.get("stone")?.upload).toBe("1 level · linear · wrapped · aniso 8");
+    expect(report.dressing.get("missing")?.state).toBe(ELevelSurfaceDressing.STOOD_IN);
+    expect(report.problems.map((it) => it.reference)).toEqual(["missing"]);
   });
 });

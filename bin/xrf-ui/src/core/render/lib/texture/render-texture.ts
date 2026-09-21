@@ -3,7 +3,11 @@ import {
   CompressedTexture,
   DataTexture,
   LinearFilter,
+  LinearMipmapLinearFilter,
+  LinearMipmapNearestFilter,
   NearestFilter,
+  NearestMipmapLinearFilter,
+  NearestMipmapNearestFilter,
   RepeatWrapping,
   RGB_S3TC_DXT1_Format,
   RGBAFormat,
@@ -187,4 +191,28 @@ export function createCheckerTexture(): DataTexture {
  */
 export function hasRenderTextureAlpha(texture: Nullable<Texture>): boolean {
   return Boolean(texture) && texture?.format !== RGB_S3TC_DXT1_Format;
+}
+
+/** Three's filters by number, so a reader sees what the sampler does rather than a constant. */
+const MIN_FILTERS: Readonly<Record<number, string>> = {
+  [LinearFilter]: "linear",
+  [LinearMipmapLinearFilter]: "linear between mips",
+  [LinearMipmapNearestFilter]: "linear, nearest between mips",
+  [NearestFilter]: "nearest",
+  [NearestMipmapLinearFilter]: "nearest, linear between mips",
+  [NearestMipmapNearestFilter]: "nearest between mips",
+};
+
+/**
+ * How one texture was uploaded, in a line.
+ *
+ * @param texture - The texture the renderer holds.
+ * @returns Its levels, filter, addressing and anisotropy.
+ */
+export function describeTextureUpload(texture: Texture): string {
+  const levels: number = texture.mipmaps?.length || 1;
+  const filter: string = MIN_FILTERS[texture.minFilter] ?? String(texture.minFilter);
+  const wrap: string = texture.wrapS === ClampToEdgeWrapping ? "clamped" : "wrapped";
+
+  return `${levels} ${levels === 1 ? "level" : "levels"} · ${filter} · ${wrap} · aniso ${texture.anisotropy}`;
 }

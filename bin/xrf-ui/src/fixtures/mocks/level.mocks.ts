@@ -8,6 +8,7 @@ import {
   SectorSection,
   SectorSurface,
 } from "@/core/ipc/types/xrf-visual";
+import { ELevelSurfaceDressing, ILevelTextureReport } from "@/core/level/lib/surface/level-surface-dressing";
 import {
   ILevelTexture,
   ILevelTextureSource,
@@ -217,8 +218,24 @@ export function mockLevelTextureSource(entries: Record<string, ILevelTexture> = 
         listener(changed);
       }
     },
+    describe: (): ILevelTextureReport => ({
+      dressing: new Map(
+        Object.entries(entries).map(([reference, loaded]) => [
+          reference,
+          {
+            reason: loaded.reason,
+            reference,
+            state: loaded.reason ? ELevelSurfaceDressing.STOOD_IN : ELevelSurfaceDressing.UPLOADED,
+            upload: loaded.upload,
+          },
+        ])
+      ),
+      problems: Object.entries(entries)
+        .filter(([, loaded]) => loaded.reason)
+        .map(([reference, loaded]) => ({ reason: loaded.reason as string, reference })),
+      uploaded: Object.keys(entries).length,
+    }),
     get: (reference: string): Nullable<ILevelTexture> => entries[reference] ?? null,
-    listProblems: () => [],
     size: Object.keys(entries).length,
     subscribe: (listener: TLevelTextureListener): (() => void) => {
       listeners.add(listener);

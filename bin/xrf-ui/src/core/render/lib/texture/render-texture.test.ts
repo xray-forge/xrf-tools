@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, jest } from "@jest/globals";
 import {
   ClampToEdgeWrapping,
   LinearFilter,
+  LinearMipmapLinearFilter,
   NoColorSpace,
   RepeatWrapping,
   RGBA_S3TC_DXT5_Format,
@@ -14,6 +15,7 @@ import { EDdsRefusal } from "@/core/render/lib/dds";
 import {
   createDdsTexture,
   createDecodedTexture,
+  describeTextureUpload,
   hasRenderTextureAlpha,
   IRenderTextureUpload,
   XRAY_TEXTURE_ANISOTROPY,
@@ -151,5 +153,29 @@ describe("hasRenderTextureAlpha", () => {
     expect(hasRenderTextureAlpha(uploaded(mockDdsFile({ fourCC: "DXT1" }), { isAlphaRead: true }))).toBe(true);
     expect(hasRenderTextureAlpha(uploaded(mockDdsFile({ fourCC: "DXT5" })))).toBe(true);
     expect(hasRenderTextureAlpha(uploaded(mockUncompressedDdsFile()))).toBe(true);
+  });
+});
+
+describe("describeTextureUpload", () => {
+  it("says a texture was uploaded the way a wall mark samples one", () => {
+    const texture: Texture = new Texture();
+
+    texture.mipmaps = [];
+    texture.minFilter = LinearFilter;
+    texture.wrapS = ClampToEdgeWrapping;
+    texture.anisotropy = 1;
+
+    expect(describeTextureUpload(texture)).toBe("1 level · linear · clamped · aniso 1");
+  });
+
+  it("says a texture kept the chain and the anisotropy of an ordinary surface", () => {
+    const texture: Texture = new Texture();
+
+    texture.mipmaps = [{}, {}, {}] as never;
+    texture.minFilter = LinearMipmapLinearFilter;
+    texture.wrapS = RepeatWrapping;
+    texture.anisotropy = 8;
+
+    expect(describeTextureUpload(texture)).toBe("3 levels · linear between mips · wrapped · aniso 8");
   });
 });

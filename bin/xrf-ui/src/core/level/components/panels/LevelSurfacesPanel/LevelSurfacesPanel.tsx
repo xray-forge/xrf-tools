@@ -4,7 +4,11 @@ import { ReactElement, useMemo } from "react";
 
 import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
 import { LevelSurfaceRow } from "@/core/level/components/panels/LevelSurfacesPanel/LevelSurfaceRow";
-import { ILevelSurfaceDressing, listLevelSurfaceDressing } from "@/core/level/lib/surface/level-surface-dressing";
+import {
+  ILevelSurfaceDressing,
+  ILevelTextureReport,
+  listLevelSurfaceDressing,
+} from "@/core/level/lib/surface/level-surface-dressing";
 import {
   countLevelSurfaceGeometry,
   ILevelSurfaceGeometry,
@@ -35,6 +39,7 @@ export function LevelSurfacesPanel({
 }: BaseComponentProps): ReactElement {
   const service: LevelLoadService = useInjection(LevelLoadService);
 
+  const report: ILevelTextureReport = service.textureReport;
   const surfaces: Maybe<ReadonlyArray<XraySurfaceDescriptor>> = service.level.value?.selected.value.surfaces;
 
   const { named, total } = useMemo(() => {
@@ -48,10 +53,10 @@ export function LevelSurfacesPanel({
       new Map(
         named.map((summary: ILevelSurfaceSummary) => [
           summary.shaderId,
-          listLevelSurfaceDressing(summary.textures, service.textures),
+          listLevelSurfaceDressing(summary.textures, report),
         ])
       ),
-    [named, service]
+    [named, report]
   );
 
   const drawn: ReadonlyMap<number, ILevelSurfaceGeometry> = untracked(() => countLevelSurfaceGeometry(service.sectors));

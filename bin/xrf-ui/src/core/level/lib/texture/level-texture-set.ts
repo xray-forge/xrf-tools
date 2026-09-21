@@ -7,9 +7,16 @@ import { LevelTextureReference } from "@/core/ipc/types/xrf-app";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { ISectorTextureRequest } from "@/core/level/lib/sector/level-sector-textures";
 import {
+  ELevelSurfaceDressing,
+  ILevelSurfaceDressing,
+  ILevelTextureProblem,
+  ILevelTextureReport,
+} from "@/core/level/lib/surface/level-surface-dressing";
+import {
   createCheckerTexture,
   createDdsTexture,
   createDecodedTexture,
+  describeTextureUpload,
   IRenderTextureOptions,
   IRenderTextureUpload,
 } from "@/core/render/lib/texture/render-texture";
@@ -24,7 +31,7 @@ import { Maybe, Nullable } from "@/lib/types/general";
  * @returns The stand-in.
  */
 function faulty(isAlphaRead: boolean, reason: string): ILevelTexture {
-  return { isAlphaRead, isMipped: true, reason, texture: createCheckerTexture() };
+  return { isAlphaRead, isMipped: true, reason, texture: createCheckerTexture(), upload: null };
 }
 
 /** What became of one reference, so a surface it dresses can say why it is untextured or why it looks wrong. */
@@ -35,12 +42,8 @@ export interface ILevelTexture {
   isAlphaRead: boolean;
   /** Whether it was uploaded with the mip chain its callers sample, which a wall mark's texture is not. */
   isMipped: boolean;
-}
-
-/** One reference the set has something to say about, for a viewer reporting what a level is missing. */
-export interface ILevelTextureProblem {
-  reference: string;
-  reason: string;
+  /** How it was uploaded, described here so nothing reporting on it has to hold the texture. */
+  upload: Nullable<string>;
 }
 
 /**
@@ -49,8 +52,6 @@ export interface ILevelTextureProblem {
 export interface ILevelTextureLookup {
   readonly size: number;
   get(reference: string): Nullable<ILevelTexture>;
-  /** Every reference the set could not answer for properly, in the order they were read. */
-  listProblems(): ReadonlyArray<ILevelTextureProblem>;
 }
 
 /** References whose upload changed, or `null` where the whole set went, which is a level opening or closing. */
@@ -68,6 +69,10 @@ export interface ILevelTextureSource extends ILevelTextureLookup {
    * @returns Stops the telling.
    */
   subscribe(listener: TLevelTextureListener): () => void;
+  /**
+   * @returns What the set came to, as data, for everything that reports on it and holds no texture of its own.
+   */
+  describe(): ILevelTextureReport;
 }
 
 /**
@@ -137,12 +142,22 @@ export class LevelTextureSet implements ILevelTextureSource {
   }
 
   /**
-   * @returns Every reference this set has something to say about, which is what a viewer reports.
+   * @returns What this set came to: how much of it there is, what it could not answer for, and what became of
+   *   each reference. Built rather than exposed, so a reader of it holds no texture.
    */
-  public listProblems(): ReadonlyArray<ILevelTextureProblem> {
-    return Array.from(this.loaded)
-      .filter(([, loaded]) => loaded.reason)
-      .map(([reference, loaded]) => ({ reason: loaded.reason as string, reference }));
+  public describe(): ILevelTextureReport {
+    const dressing: Map<string, ILevelSurfaceDressing> = new Map();
+    const problems: Array<ILevelTextureProblem> = [];
+
+    for (const [reference, loaded] of this.loaded) {
+      if (loaded.reason) {
+        problems.push({ reason: loaded.reason, reference });
+      }
+
+      dressing.set(reference, toSurfaceDressing(reference, loaded));
+    }
+
+    return { dressing, problems, uploaded: this.loaded.size };
   }
 
   /**
@@ -290,19 +305,25 @@ export class LevelTextureSet implements ILevelTextureSource {
       const upload: IRenderTextureUpload = createDdsTexture(bytes, options);
 
       if (upload.texture) {
-        return { isAlphaRead, isMipped, reason: null, texture: upload.texture };
+        return {
+          isAlphaRead,
+          isMipped,
+          reason: null,
+          texture: upload.texture,
+          upload: describeTextureUpload(upload.texture),
+        };
       }
 
       // A layout the reader does not model; the backend expands those to png instead. The refusal is kept rather
       // than dropped, so a surface drawn from a decoded png can say which layout put it on that path.
       this.log.info(`Texture '${reference}' is decoded rather than uploaded:`, upload.refusal);
 
-      return {
-        isAlphaRead,
-        isMipped,
-        reason: null,
-        texture: await createDecodedTexture(await texturesRawCommands.readTexture(this.roots, logicalPath), options),
-      };
+      const decoded: Texture = await createDecodedTexture(
+        await texturesRawCommands.readTexture(this.roots, logicalPath),
+        options
+      );
+
+      return { isAlphaRead, isMipped, reason: null, texture: decoded, upload: describeTextureUpload(decoded) };
     } catch (error: unknown) {
       const transformed: Error = transformError(error);
 
@@ -311,4 +332,20 @@ export class LevelTextureSet implements ILevelTextureSource {
       return faulty(isAlphaRead, transformed.message);
     }
   }
+}
+
+/** What one reference came to, as a panel reads it. */
+function toSurfaceDressing(reference: string, loaded: ILevelTexture): ILevelSurfaceDressing {
+  // A stand-in carries its reason; one carrying neither a texture nor a reason is still a surface drawn from
+  // nothing, and saying so is better than calling it uploaded.
+  if (loaded.reason || !loaded.texture) {
+    return {
+      reason: loaded.reason ?? "Nothing was uploaded for it",
+      reference,
+      state: ELevelSurfaceDressing.STOOD_IN,
+      upload: null,
+    };
+  }
+
+  return { reason: null, reference, state: ELevelSurfaceDressing.UPLOADED, upload: loaded.upload };
 }

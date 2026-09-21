@@ -1,6 +1,7 @@
-import { beforeEach, describe, expect, it, jest } from "@jest/globals";
+import { beforeEach, describe, expect, it } from "@jest/globals";
 import { RenderResult } from "@testing-library/react";
 import { Container } from "@wirestate/core";
+import { runInAction } from "@wirestate/mobx";
 
 import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
 import { LevelSurfacesPanel } from "@/core/level/components/panels/LevelSurfacesPanel";
@@ -58,9 +59,11 @@ async function renderPanel(textures?: ILevelTextureSource): Promise<RenderResult
 
   await service.restore();
 
-  // The set a level fills by streaming, which no test here streams: given one, the panel reads it instead.
+  // What a level's textures came to, which no test here streams for itself: given one, the panel reads it.
   if (textures) {
-    jest.spyOn(service, "textures", "get").mockReturnValue(textures);
+    runInAction(() => {
+      service.textureReport = textures.describe();
+    });
   }
 
   return renderWithProviders(<LevelSurfacesPanel />, { container, route: "/level-viewer" });
@@ -113,6 +116,7 @@ describe("LevelSurfacesPanel", () => {
           isMipped: true,
           reason: "Nothing in the mounted roots answers to it",
           texture: null,
+          upload: null,
         },
       })
     );

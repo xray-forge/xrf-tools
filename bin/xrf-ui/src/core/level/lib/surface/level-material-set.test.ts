@@ -21,7 +21,7 @@ function lookup(...references: Array<string>): IMockLevelTextureSource {
     Object.fromEntries(
       references.map((reference: string) => [
         reference,
-        { isAlphaRead: false, isMipped: true, reason: null, texture: new Texture() },
+        { isAlphaRead: false, isMipped: true, reason: null, texture: new Texture(), upload: null },
       ])
     )
   );

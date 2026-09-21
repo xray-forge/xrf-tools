@@ -4,6 +4,7 @@ import { ReactElement, useMemo } from "react";
 import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
 import { listLevelProblems } from "@/core/level/lib/problems";
 import { ILoadedSector } from "@/core/level/lib/sector/level-sector-set";
+import { ILevelTextureReport } from "@/core/level/lib/surface/level-surface-dressing";
 import { LevelLoadService } from "@/core/level/services";
 import { EditorPanel, EditorPanelEmpty } from "@/core/shell/editor/EditorPanel";
 import { EditorProblemsPanel, IEditorProblem } from "@/core/shell/editor/EditorProblemsPanel";
@@ -22,11 +23,11 @@ export function LevelProblemsPanel({
 
   const surfaces: Maybe<ReadonlyArray<XraySurfaceDescriptor>> = service.level.value?.selected.value.surfaces;
   const sectors: ReadonlyMap<number, ILoadedSector> = service.sectors;
-  // The texture set is not observable, so this is recomputed whenever the resident sectors change - which is the only
-  // thing that adds a texture to it.
+  const report: ILevelTextureReport = service.textureReport;
+
   const problems: Array<IEditorProblem> = useMemo(
-    () => listLevelProblems(service.textures.listProblems(), surfaces ?? [], sectors),
-    [service, surfaces, sectors]
+    () => listLevelProblems(report.problems, surfaces ?? [], sectors),
+    [report, surfaces, sectors]
   );
 
   if (!service.level.value) {

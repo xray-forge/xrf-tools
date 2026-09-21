@@ -1,6 +1,7 @@
-import { ELevelProblemRule } from "@/core/level/lib/problems/level-problem-rule";
-import { ILevelTextureProblem } from "@/core/level/lib/texture/level-texture-set";
+import { ILevelTextureProblem } from "@/core/level/lib/surface/level-surface-dressing";
 import { IEditorProblem } from "@/core/shell/editor/EditorProblemsPanel";
+
+import { ELevelProblemRule } from "./level-problem-rule";
 
 /**
  * What the texture set has to say, as rows.

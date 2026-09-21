@@ -1,15 +1,3 @@
-import {
-  ClampToEdgeWrapping,
-  LinearFilter,
-  LinearMipmapLinearFilter,
-  LinearMipmapNearestFilter,
-  NearestFilter,
-  NearestMipmapLinearFilter,
-  NearestMipmapNearestFilter,
-  Texture,
-} from "three";
-
-import { ILevelTexture, ILevelTextureLookup } from "@/core/level/lib/texture/level-texture-set";
 import { Nullable } from "@/lib/types/general";
 
 /**
@@ -35,70 +23,50 @@ export interface ILevelSurfaceDressing {
   state: ELevelSurfaceDressing;
   /** Why there is no texture, for the one state that has a reason. */
   reason: Nullable<string>;
-  /** How it was uploaded, read off the texture the renderer holds. */
+  /** How it was uploaded, described where it was uploaded rather than read off the texture here. */
   upload: Nullable<string>;
 }
 
-/** Three's filters by number, so a reader sees what the sampler does rather than a constant. */
-const MIN_FILTERS: Readonly<Record<number, string>> = {
-  [LinearFilter]: "linear",
-  [LinearMipmapLinearFilter]: "linear between mips",
-  [LinearMipmapNearestFilter]: "linear, nearest between mips",
-  [NearestFilter]: "nearest",
-  [NearestMipmapLinearFilter]: "nearest, linear between mips",
-  [NearestMipmapNearestFilter]: "nearest between mips",
+/** One reference the textures have something to say about, for a viewer reporting what a level is missing. */
+export interface ILevelTextureProblem {
+  reference: string;
+  reason: string;
+}
+
+/**
+ * What a level's textures came to, as data.
+ */
+export interface ILevelTextureReport {
+  /** References uploaded, which is what a viewer counts. */
+  uploaded: number;
+  /** Every reference that could not be answered for properly, in the order they were read. */
+  problems: ReadonlyArray<ILevelTextureProblem>;
+  /** What became of each reference that has been asked for, keyed by it. */
+  dressing: ReadonlyMap<string, ILevelSurfaceDressing>;
+}
+
+/** Nothing read yet, which is also what a closed level reports. */
+export const EMPTY_LEVEL_TEXTURE_REPORT: ILevelTextureReport = {
+  dressing: new Map(),
+  problems: [],
+  uploaded: 0,
 };
 
 /**
  * What became of each texture an entry dresses with.
  *
  * @param references - The textures the entry names, in the order it names them.
- * @param textures - The level's uploaded textures, or null before a level is open.
+ * @param report - What the level's textures came to.
  * @returns One answer per reference, in the same order.
  */
 export function listLevelSurfaceDressing(
   references: ReadonlyArray<string>,
-  textures: Nullable<ILevelTextureLookup>
+  report: ILevelTextureReport = EMPTY_LEVEL_TEXTURE_REPORT
 ): Array<ILevelSurfaceDressing> {
-  return references.map((reference: string) => {
-    const loaded: Nullable<ILevelTexture> = textures?.get(reference) ?? null;
-
-    if (!loaded) {
-      return { reason: null, reference, state: ELevelSurfaceDressing.UNREAD, upload: null };
-    }
-
-    // A stand-in carries its reason; one carrying neither a texture nor a reason is still a surface drawn from
-    // nothing, and saying so is better than calling it uploaded.
-    if (loaded.reason || !loaded.texture) {
-      return {
-        reason: loaded.reason ?? "Nothing was uploaded for it",
-        reference,
-        state: ELevelSurfaceDressing.STOOD_IN,
-        upload: null,
-      };
-    }
-
-    return {
-      reason: null,
-      reference,
-      state: ELevelSurfaceDressing.UPLOADED,
-      upload: describeUpload(loaded.texture),
-    };
-  });
-}
-
-/**
- * How one texture was uploaded, in a line.
- *
- * @param texture - The texture the renderer holds.
- * @returns Its levels, filter, addressing and anisotropy.
- */
-function describeUpload(texture: Texture): string {
-  const levels: number = texture.mipmaps?.length || 1;
-  const filter: string = MIN_FILTERS[texture.minFilter] ?? String(texture.minFilter);
-  const wrap: string = texture.wrapS === ClampToEdgeWrapping ? "clamped" : "wrapped";
-
-  return `${levels} ${levels === 1 ? "level" : "levels"} · ${filter} · ${wrap} · aniso ${texture.anisotropy}`;
+  return references.map(
+    (reference: string) =>
+      report.dressing.get(reference) ?? { reason: null, reference, state: ELevelSurfaceDressing.UNREAD, upload: null }
+  );
 }
 
 /**
