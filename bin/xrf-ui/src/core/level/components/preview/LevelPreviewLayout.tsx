@@ -23,7 +23,7 @@ import { DEFAULT_LEVEL_CAMERA_OPTIONS, ILevelCameraOptions } from "@/core/level/
 import { DEFAULT_LEVEL_LIGHTING, ILevelLighting } from "@/core/level/lib/lighting/level-lighting";
 import { ILevelPoint } from "@/core/level/lib/residency/level-residency";
 import { ILoadedSector } from "@/core/level/lib/sector/level-sector-set";
-import { ILevelTextureLookup } from "@/core/level/lib/texture/level-texture-set";
+import { ILevelTextureSource } from "@/core/level/lib/texture/level-texture-set";
 import { DEFAULT_LEVEL_VIEW_OPTIONS, ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
 import { ILevelStreamProgress, LevelViewportService } from "@/core/level/services";
 import { EditorFileHeader } from "@/core/shell/editor/EditorFileHeader";
@@ -40,9 +40,7 @@ interface ILevelPreviewLayoutProps extends BaseComponentProps {
   /** The level's extent, which frames the camera once when a level opens. */
   bounds: Nullable<VisualBounds>;
   /** Where surfaces take their textures from, owned by the loader. */
-  textures?: Nullable<ILevelTextureLookup>;
-  /** Counts changes to that set, since it keeps one identity for the life of a level. */
-  textureRevision?: number;
+  textures?: Nullable<ILevelTextureSource>;
   /** What the open level is called. Its presence is what draws the file header over the viewport. */
   name?: Nullable<string>;
   subtitle?: ReactNode;
@@ -69,7 +67,6 @@ export function LevelPreviewLayout({
   sectors,
   bounds,
   textures = null,
-  textureRevision = 0,
   name = null,
   subtitle,
   streaming,
@@ -182,7 +179,6 @@ export function LevelPreviewLayout({
               sectors={sectors}
               bounds={bounds}
               textures={textures}
-              textureRevision={textureRevision}
               options={options}
               lighting={lighting}
               camera={camera}

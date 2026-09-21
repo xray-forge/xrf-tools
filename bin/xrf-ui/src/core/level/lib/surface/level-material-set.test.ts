@@ -3,11 +3,9 @@ import { MeshStandardMaterial, Texture } from "three";
 
 import { LevelMaterialSet } from "@/core/level/lib/surface/level-material-set";
 import { DEFAULT_LEVEL_SURFACE_OPTIONS, ILevelSurface } from "@/core/level/lib/surface/level-surface-material";
-import { ILevelTexture, ILevelTextureLookup } from "@/core/level/lib/texture/level-texture-set";
 import { OPAQUE_RENDER_SURFACE, toRenderSurface } from "@/core/render/lib/surface/render-surface";
-import { mockSectorSurface } from "@/fixtures/mocks/level.mocks";
+import { IMockLevelTextureSource, mockLevelTextureSource, mockSectorSurface } from "@/fixtures/mocks/level.mocks";
 import { mockAlphaSurfaceDescriptor } from "@/fixtures/mocks/visual.mocks";
-import { Nullable } from "@/lib/types/general";
 
 /** A surface of one shader table entry, as two different sectors would each name it. */
 function surfaceOf(shaderId: number, overrides: Partial<ILevelSurface> = {}): ILevelSurface {
@@ -18,19 +16,15 @@ function surfaceOf(shaderId: number, overrides: Partial<ILevelSurface> = {}): IL
   };
 }
 
-function lookup(...references: Array<string>): ILevelTextureLookup {
-  const held: Map<string, ILevelTexture> = new Map(
-    references.map((reference: string) => [
-      reference,
-      { isAlphaRead: false, isMipped: true, reason: null, texture: new Texture() },
-    ])
+function lookup(...references: Array<string>): IMockLevelTextureSource {
+  return mockLevelTextureSource(
+    Object.fromEntries(
+      references.map((reference: string) => [
+        reference,
+        { isAlphaRead: false, isMipped: true, reason: null, texture: new Texture() },
+      ])
+    )
   );
-
-  return {
-    get: (reference: string): Nullable<ILevelTexture> => held.get(reference) ?? null,
-    listProblems: () => [],
-    size: held.size,
-  };
 }
 
 describe("LevelMaterialSet", () => {
@@ -108,7 +102,7 @@ describe("LevelMaterialSet", () => {
 
     expect(material.map).toBeNull();
 
-    const textures: ILevelTextureLookup = lookup("stone");
+    const textures: IMockLevelTextureSource = lookup("stone");
 
     set.setTextures(textures);
 
@@ -123,5 +117,77 @@ describe("LevelMaterialSet", () => {
     set.dispose();
 
     expect(set.size).toBe(0);
+  });
+
+  // The reason the change is a set of references rather than a count: a sector arriving names a handful of textures,
+  // and every material of the level that does not name one of them is already dressed correctly.
+  it("re-dresses only the materials a change names", () => {
+    const set: LevelMaterialSet = new LevelMaterialSet();
+    const textures: IMockLevelTextureSource = lookup("stone", "rust");
+
+    set.setTextures(mockLevelTextureSource());
+
+    const stone: MeshStandardMaterial = set.claim(surfaceOf(1, { surface: mockSectorSurface({ shaderId: 1 }) }));
+    const rust: MeshStandardMaterial = set.claim(
+      surfaceOf(2, { surface: mockSectorSurface({ shaderId: 2, textureName: "rust" }) })
+    );
+
+    set.setTextures(textures);
+
+    const untouched: number = rust.version;
+
+    rust.map = null;
+    textures.change(new Set(["stone"]));
+
+    expect(stone.map).toBe(textures.get("stone")?.texture);
+    // Left exactly as the caller put it: nothing re-dressed it, which is the whole point of the index.
+    expect(rust.map).toBeNull();
+    expect(rust.version).toBe(untouched);
+  });
+
+  it("re-dresses everything when the whole set goes", () => {
+    const set: LevelMaterialSet = new LevelMaterialSet();
+    const textures: IMockLevelTextureSource = lookup("stone");
+
+    set.setTextures(textures);
+
+    const material: MeshStandardMaterial = set.claim(surfaceOf(7));
+
+    material.map = null;
+    textures.change(null);
+
+    expect(material.map).toBe(textures.get("stone")?.texture);
+  });
+
+  it("stops hearing about a set it no longer holds", () => {
+    const set: LevelMaterialSet = new LevelMaterialSet();
+    const first: IMockLevelTextureSource = lookup("stone");
+
+    set.setTextures(first);
+
+    const material: MeshStandardMaterial = set.claim(surfaceOf(7));
+
+    set.setTextures(mockLevelTextureSource());
+    first.change(null);
+
+    expect(material.map).toBeNull();
+  });
+
+  // A material a departed sector was the last to name is disposed, and the index has to let go of it too or a later
+  // change re-dresses a material three.js has already freed.
+  it("forgets a material's references when it is released", () => {
+    const set: LevelMaterialSet = new LevelMaterialSet();
+    const textures: IMockLevelTextureSource = lookup("stone");
+
+    set.setTextures(textures);
+
+    const material: MeshStandardMaterial = set.claim(surfaceOf(7));
+
+    set.retain([]);
+
+    material.map = null;
+    textures.change(new Set(["stone"]));
+
+    expect(material.map).toBeNull();
   });
 });

@@ -4,15 +4,14 @@ import { Container } from "@wirestate/core";
 
 import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
 import { LevelSurfacesPanel } from "@/core/level/components/panels/LevelSurfacesPanel";
-import { ILevelTexture, ILevelTextureLookup } from "@/core/level/lib/texture/level-texture-set";
+import { ILevelTextureSource } from "@/core/level/lib/texture/level-texture-set";
 import { LevelLoadService } from "@/core/level/services";
-import { mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
+import { mockLevelTextureSource, mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockSurfaceDescriptor } from "@/fixtures/mocks/visual.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
-import { Nullable } from "@/lib/types/general";
 
 /** A table holding a scripted wall mark, an ordinary surface, and an entry naming nothing. */
 const TABLE: Array<XraySurfaceDescriptor> = [
@@ -49,7 +48,7 @@ const TABLE: Array<XraySurfaceDescriptor> = [
   }),
 ];
 
-async function renderPanel(textures?: ILevelTextureLookup): Promise<RenderResult> {
+async function renderPanel(textures?: ILevelTextureSource): Promise<RenderResult> {
   setMockInvokeResponses({
     ["plugin:levels|get_level"]: mockSessionResponse(mockSelectedLevelDescription({ surfaces: TABLE })),
   });
@@ -65,14 +64,6 @@ async function renderPanel(textures?: ILevelTextureLookup): Promise<RenderResult
   }
 
   return renderWithProviders(<LevelSurfacesPanel />, { container, route: "/level-viewer" });
-}
-
-function mockTextures(entries: Record<string, ILevelTexture>): ILevelTextureLookup {
-  return {
-    get: (reference: string): Nullable<ILevelTexture> => entries[reference] ?? null,
-    listProblems: () => [],
-    size: Object.keys(entries).length,
-  };
 }
 
 describe("LevelSurfacesPanel", () => {
@@ -116,7 +107,7 @@ describe("LevelSurfacesPanel", () => {
   // asked for; without this the panel never says what the renderer actually got.
   it("says when a checker stands in for what a row dresses with", async () => {
     const { getByText } = await renderPanel(
-      mockTextures({
+      mockLevelTextureSource({
         ["decal\\decal_poteki"]: {
           isAlphaRead: true,
           isMipped: true,

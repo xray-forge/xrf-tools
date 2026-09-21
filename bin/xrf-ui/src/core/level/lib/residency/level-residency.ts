@@ -1,4 +1,5 @@
 import { SectorOutline } from "@/core/ipc/types/xrf-visual";
+import { DEFAULT_LEVEL_STREAM_CONCURRENCY } from "@/core/level/lib/stream/level-stream-scheduler";
 import { Nullable } from "@/lib/types/general";
 
 /** A point in renderer space, which is where the camera is asked from. */
@@ -18,6 +19,8 @@ export interface ILevelResidencyOptions {
   loadDistance: number;
   /** A sector already held is kept until it passes this, which has to be the larger of the two. */
   keepDistance: number;
+  /** Reads in flight at once, so overlapping is a declared number rather than the shape of a loop. */
+  concurrency: number;
 }
 
 /** What to open, what to release, and what is held once both are done. */
@@ -38,6 +41,7 @@ interface IRankedSector {
 }
 
 export const DEFAULT_LEVEL_RESIDENCY: ILevelResidencyOptions = {
+  concurrency: DEFAULT_LEVEL_STREAM_CONCURRENCY,
   keepDistance: 400,
   loadDistance: 250,
   maxSectors: 24,

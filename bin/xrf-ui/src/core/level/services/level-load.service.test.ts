@@ -6,6 +6,7 @@ import { SelectedLevelDescription } from "@/core/ipc/types/xrf-app";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { SectorDescription, SectorOutline } from "@/core/ipc/types/xrf-visual";
 import { createLevelResidency } from "@/core/level/lib/residency/level-residency";
+import { TLevelTextureChange } from "@/core/level/lib/texture/level-texture-set";
 import { mockDdsFile } from "@/fixtures/mocks/dds.mocks";
 import {
   mockLevelTextureReference,
@@ -437,6 +438,103 @@ describe("LevelLoadService streaming progress", () => {
     expect([...service.sectors.keys()]).toEqual([1]);
   });
 
+  // Stage 2's win, and the reason the flow became a scheduler: pack, transfer and adoption of different sectors
+  // now overlap. Read one at a time they came to 48 ms each, which capped streaming at about twenty sectors a
+  // second however fast the camera moved.
+  it("reads several sectors at once", async () => {
+    const { level, description, buffer } = mockStreamable([outlineAt(0, 1), outlineAt(1, 2), outlineAt(2, 3)]);
+    const { service } = mockInjectedService(LevelLoadService);
+    const { held, release } = createHeldCall();
+
+    armLevel(level, description, buffer);
+
+    await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS);
+
+    setMockInvokeResponses({
+      ["plugin:levels|open_sector"]: mockSessionResponse(async (args?: Record<string, unknown>) => {
+        await held;
+
+        return { ...description, sector: args?.sector as number };
+      }),
+      ["plugin:levels|read_sector"]: buffer,
+    });
+
+    const streaming: Promise<void> = service.stream(ORIGIN);
+
+    await Promise.resolve();
+
+    // All three are packing before any of them has come back, which is what the default concurrency is for.
+    expect(countCalls("plugin:levels|open_sector")).toBe(3);
+
+    release();
+
+    await streaming;
+
+    expect([...service.sectors.keys()].sort()).toEqual([0, 1, 2]);
+  });
+
+  // The defect that broke opening a level once one had already been open. The reads of the last level were still
+  // in flight, holding its sector numbers - and the new level's sectors carry the same numbers, so they were
+  // filtered out of its own queue and then waited for reads the reader had already dropped. Nothing near the
+  // camera arrived; flying somewhere with different numbers was the only thing that looked like it worked.
+  it("reads the sectors of a level opened while the last one was still arriving", async () => {
+    const { level, description, buffer } = mockStreamable([outlineAt(0, 1), outlineAt(1, 2)]);
+    const { service } = mockInjectedService(LevelLoadService);
+    const { held, release } = createHeldCall();
+
+    setMockInvokeResponses({
+      ["plugin:levels|open_level"]: mockSessionResponse(level),
+      ["plugin:levels|open_sector"]: mockSessionResponse(async (args?: Record<string, unknown>) => {
+        await held;
+
+        return { ...description, sector: args?.sector as number };
+      }),
+      ["plugin:levels|read_sector"]: buffer,
+    });
+
+    await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS);
+
+    // Left running: its reads are still packing when the next level opens, which is what a person clicking
+    // through the picker does.
+    void service.stream(ORIGIN);
+
+    await Promise.resolve();
+
+    armLevel(level, description, buffer);
+
+    await service.load({ kind: "asset", logicalPath: "levels\\jupiter" }, ROOTS);
+    await service.stream(ORIGIN);
+
+    release();
+
+    expect([...service.sectors.keys()].sort()).toEqual([0, 1]);
+  });
+
+  // A report no longer ends in the level's housekeeping, so one that changes nothing costs a plan and nothing else.
+  it("does nothing at all for a camera report that changes what is wanted not at all", async () => {
+    const { level, description, buffer } = mockStreamable([outlineAt(0, 1)]);
+    const { service } = mockInjectedService(LevelLoadService);
+
+    armLevel(level, description, buffer);
+
+    await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS);
+    await service.stream(ORIGIN);
+
+    const reads: number = countCalls("plugin:levels|open_sector");
+    const seen: Array<unknown> = [];
+    const stop = reaction(
+      () => service.streaming,
+      (progress) => seen.push(progress)
+    );
+
+    await service.stream(ORIGIN);
+
+    stop();
+
+    expect(countCalls("plugin:levels|open_sector")).toBe(reads);
+    expect(seen).toEqual([]);
+  });
+
   // The defect this exists for: a camera moving while a big sector packs used to cancel the read it was waiting on,
   // leave the backend packing anyway, and ask again on the next move - so the queue grew faster than it drained and
   // the level never appeared.
@@ -534,14 +632,23 @@ describe("LevelLoadService streaming progress", () => {
   });
 });
 
-describe("LevelLoadService texture revision", () => {
+describe("LevelLoadService texture changes", () => {
   beforeEach(() => {
     resetMockInvoke();
   });
 
+  function recordChanges(service: LevelLoadService): Array<TLevelTextureChange> {
+    const changes: Array<TLevelTextureChange> = [];
+
+    service.textures.subscribe((changed: TLevelTextureChange) => changes.push(changed));
+
+    return changes;
+  }
+
   // The set keeps one identity for the life of a level, because it owns uploads. That leaves a view nothing to watch,
-  // and a surface dressed before its texture arrived stays undressed until something else happens to re-dress it.
-  it("counts a texture arriving, so a surface drawn before it can be dressed again", async () => {
+  // so the set says for itself what moved - and says which references, because re-dressing every material of a level
+  // on every sector that arrives is the only answer a counter could ever have asked for.
+  it("names the textures a sector brought rather than saying that something changed", async () => {
     const { level, description, buffer } = mockStreamable([outlineAt(0, 1)]);
     const { service } = mockInjectedService(LevelLoadService);
 
@@ -549,25 +656,44 @@ describe("LevelLoadService texture revision", () => {
 
     await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS);
 
-    const opened: number = service.textureRevision;
+    const changes: Array<TLevelTextureChange> = recordChanges(service);
 
     await service.stream(ORIGIN);
 
-    expect(service.textureRevision).toBeGreaterThan(opened);
+    expect(changes).toContainEqual(new Set(["stone"]));
   });
 
   // A restore releases whatever the last level held, so everything drawn from the set is undressed at that moment.
-  it("counts the open that released the last level's textures", async () => {
+  // There is no reference to name for that one: the answer is the whole set.
+  it("says the whole set went when a level opens", async () => {
     const { level, description, buffer } = mockStreamable([outlineAt(0, 1)]);
     const { service } = mockInjectedService(LevelLoadService);
 
     armLevel(level, description, buffer);
 
-    expect(service.textureRevision).toBe(0);
+    const changes: Array<TLevelTextureChange> = recordChanges(service);
 
     await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS);
 
-    expect(service.textureRevision).toBeGreaterThan(0);
+    expect(changes).toEqual([null]);
+  });
+
+  // Nothing arrived and nothing was released, so nothing is re-dressed. Under the counter every camera move ended in
+  // a bump, whether or not a single texture had moved, and every bump re-dressed the level.
+  it("says nothing when a camera has not moved far enough to change anything", async () => {
+    const { level, description, buffer } = mockStreamable([outlineAt(0, 1)]);
+    const { service } = mockInjectedService(LevelLoadService);
+
+    armLevel(level, description, buffer);
+
+    await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS);
+    await service.stream(ORIGIN);
+
+    const changes: Array<TLevelTextureChange> = recordChanges(service);
+
+    await service.stream(ORIGIN);
+
+    expect(changes).toEqual([]);
   });
 
   it("keeps the set itself at one identity, since it owns what is uploaded", async () => {

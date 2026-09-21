@@ -6844,6 +6844,7 @@ name = "xrf-app"
 version = "0.1.0"
 dependencies = [
  "env_logger",
+ "indexmap 2.14.2",
  "log",
  "percent-encoding",
  "rayon",

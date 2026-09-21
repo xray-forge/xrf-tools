@@ -41,8 +41,6 @@ pub async fn levels_open_sector(
     ));
   };
 
-  current.packed.begin_open(sector_id)?;
-
   let started: Instant = Instant::now();
   let composition: LevelSectorComposition = LevelSectorComposition::of(&current.visuals, named.root);
 
@@ -53,14 +51,12 @@ pub async fn levels_open_sector(
     composition.hierarchies.len()
   );
 
-  current.packed.require_opening(sector_id)?;
-
   let package: SectorPackage = SectorPacker::new(&current.visuals, current.level.shaders.as_ref(), &current.geometry)
     .pack::<XRayByteOrder>(sector, &composition, DRAWN_ATTRIBUTES);
 
   report_packed_sector(&package, started);
 
-  let opened: Arc<SessionSnapshot<PackedSector>> = current.packed.commit_open(
+  let parked: Arc<PackedSector> = current.packed.park(
     sector_id,
     PackedSector {
       buffer: Mutex::new(Some(package.buffer)),
@@ -68,5 +64,8 @@ pub async fn levels_open_sector(
     },
   )?;
 
-  Ok(opened.map(|packed| packed.description.clone()))
+  Ok(SessionSnapshot {
+    session_id: sector_id,
+    value: parked.description.clone(),
+  })
 }

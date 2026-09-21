@@ -8,7 +8,14 @@ import {
   SectorSection,
   SectorSurface,
 } from "@/core/ipc/types/xrf-visual";
+import {
+  ILevelTexture,
+  ILevelTextureSource,
+  TLevelTextureChange,
+  TLevelTextureListener,
+} from "@/core/level/lib/texture/level-texture-set";
 import { mockVisualBounds, MockVisualBuffer } from "@/fixtures/mocks/visual.mocks";
+import { Nullable } from "@/lib/types/general";
 
 /**
  * One packed mesh: positions and thirty-two bit indices written into the buffer.
@@ -186,5 +193,39 @@ export function mockSelectedLevelDescription(
     xrlcQuality: 1,
     xrlcVersion: 14,
     ...overrides,
+  };
+}
+
+/** A texture set standing in for a level's, which reports what a caller hands it rather than uploading anything. */
+export interface IMockLevelTextureSource extends ILevelTextureSource {
+  /** Says a change happened, as an upload or a release would. */
+  change(changed: TLevelTextureChange): void;
+}
+
+/**
+ * A texture source holding exactly what it is given.
+ *
+ * @param entries - What each reference came to.
+ * @returns The source, and the handle that tells its listeners something moved.
+ */
+export function mockLevelTextureSource(entries: Record<string, ILevelTexture> = {}): IMockLevelTextureSource {
+  const listeners: Set<TLevelTextureListener> = new Set();
+
+  return {
+    change: (changed: TLevelTextureChange): void => {
+      for (const listener of Array.from(listeners)) {
+        listener(changed);
+      }
+    },
+    get: (reference: string): Nullable<ILevelTexture> => entries[reference] ?? null,
+    listProblems: () => [],
+    size: Object.keys(entries).length,
+    subscribe: (listener: TLevelTextureListener): (() => void) => {
+      listeners.add(listener);
+
+      return (): void => {
+        listeners.delete(listener);
+      };
+    },
   };
 }

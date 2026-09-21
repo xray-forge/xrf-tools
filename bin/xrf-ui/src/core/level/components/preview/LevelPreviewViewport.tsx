@@ -9,7 +9,7 @@ import { ILevelPoint } from "@/core/level/lib/residency/level-residency";
 import { LevelPreviewScene } from "@/core/level/lib/scene";
 import { ILoadedSector } from "@/core/level/lib/sector/level-sector-set";
 import { ILevelStats } from "@/core/level/lib/stats/level-stats";
-import { ILevelTextureLookup } from "@/core/level/lib/texture/level-texture-set";
+import { ILevelTextureSource } from "@/core/level/lib/texture/level-texture-set";
 import { DEFAULT_LEVEL_VIEW_OPTIONS, ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
 import { SettingsService } from "@/core/settings/services/settings";
 import { cn } from "@/lib/dom/dom-name";
@@ -21,10 +21,11 @@ export interface ILevelPreviewViewportProps extends BaseComponentProps {
   sectors: ReadonlyMap<number, ILoadedSector>;
   /** The level's extent: what the grid is sized against, and where the camera opens. */
   bounds: Nullable<VisualBounds>;
-  /** Where surfaces take their textures from, owned by the loader rather than by the scene. */
-  textures?: Nullable<ILevelTextureLookup>;
-  /** Counts changes to that set, which keeps one identity for the life of a level. */
-  textureRevision?: number;
+  /**
+   * Where surfaces take their textures from, owned by the loader rather than by the scene. One identity for the
+   * life of a level: what changes in it, the set says for itself, to whatever subscribed.
+   */
+  textures?: Nullable<ILevelTextureSource>;
   options?: ILevelViewOptions;
   /** What the camera sees and how it answers input. */
   camera?: ILevelCameraOptions;
@@ -46,7 +47,6 @@ export function LevelPreviewViewport({
   sectors,
   bounds,
   textures = null,
-  textureRevision = 0,
   options = DEFAULT_LEVEL_VIEW_OPTIONS,
   camera = DEFAULT_LEVEL_CAMERA_OPTIONS,
   lighting = DEFAULT_LEVEL_LIGHTING,
@@ -93,7 +93,7 @@ export function LevelPreviewViewport({
 
   useEffect(() => {
     sceneRef.current?.setTextures(textures);
-  }, [textures, textureRevision]);
+  }, [textures]);
 
   useEffect(() => {
     sceneRef.current?.setSectors(sectors);

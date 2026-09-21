@@ -10,14 +10,22 @@ import { ILevelStreamReading } from "@/core/level/lib/stream/level-stream-profil
 import { Logger, Timer } from "@/lib/logging";
 import { Maybe } from "@/lib/types/general";
 
+/** What taking one sector cost, split because the two halves are fixed by entirely different things. */
+export interface ILevelSectorAdoption {
+  /** Binding the geometry, which is proportional to the sector. */
+  geometry: number;
+  /** Publishing it, which is proportional to whatever is listening. */
+  publish: number;
+}
+
 /** What one sector read needs of whoever owns the level, so the reader owns none of it. */
 export interface ILevelSectorReaderHost {
   /** The level's uploaded textures, which the reader adds to and never disposes. */
   load(requests: ReadonlyArray<ISectorTextureRequest>): Promise<void>;
   /** Whether that level opening is still the one held, checked once the read has everything in hand. */
   isOpen(sessionId: string): boolean;
-  /** Takes a sector that arrived for a level still open. */
-  adopt(views: ISectorViews): void;
+  /** Takes a sector that arrived for a level still open, and says what each half of that cost. */
+  adopt(views: ISectorViews): ILevelSectorAdoption;
   /** Takes what that sector cost, stage by stage. */
   record(reading: ILevelStreamReading): void;
 }
@@ -120,12 +128,13 @@ export class LevelSectorReader {
       return;
     }
 
-    this.host.adopt(views);
+    const adoption: ILevelSectorAdoption = this.host.adopt(views);
 
     this.host.record({
-      adopt: stage.lap(),
       draws: views.sections.length + views.instances.length,
+      geometry: adoption.geometry,
       pack,
+      publish: adoption.publish,
       sector,
       textures,
       total: timer.elapsed(),

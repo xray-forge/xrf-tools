@@ -10,9 +10,10 @@ import {
 
 function mockReading(sector: number, total: number, stages: Partial<ILevelStreamReading> = {}): ILevelStreamReading {
   return {
-    adopt: 0,
     draws: 1,
+    geometry: 0,
     pack: 0,
+    publish: 0,
     sector,
     textures: 0,
     total,
@@ -76,6 +77,37 @@ describe("LevelStreamProfile", () => {
     const profile: LevelStreamProfile = new LevelStreamProfile();
 
     profile.record(mockReading(1, 100));
+    profile.clear();
+
+    expect(profile.summarise()).toEqual(EMPTY_LEVEL_STREAM_SUMMARY);
+  });
+
+  // A camera report is paid on a different schedule to a reading: once per sector against once per frame of a
+  // flight, so averaging the two together would hide whichever is the cheaper.
+  it("means what answering the camera costs, apart from what reading costs", () => {
+    const profile: LevelStreamProfile = new LevelStreamProfile();
+
+    profile.recordReport(4);
+    profile.recordReport(2);
+
+    expect(profile.summarise().planning).toEqual({ mean: 3, reports: 2 });
+  });
+
+  it("reports what the camera cost before any sector has been read", () => {
+    const profile: LevelStreamProfile = new LevelStreamProfile();
+
+    profile.recordReport(5);
+
+    const summary: ILevelStreamSummary = profile.summarise();
+
+    expect(summary.mean).toBeNull();
+    expect(summary.planning).toEqual({ mean: 5, reports: 1 });
+  });
+
+  it("forgets the reports too when a level goes", () => {
+    const profile: LevelStreamProfile = new LevelStreamProfile();
+
+    profile.recordReport(5);
     profile.clear();
 
     expect(profile.summarise()).toEqual(EMPTY_LEVEL_STREAM_SUMMARY);

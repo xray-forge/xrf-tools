@@ -9,7 +9,7 @@ import { ILevelLighting } from "@/core/level/lib/lighting/level-lighting";
 import { ILevelPoint } from "@/core/level/lib/residency/level-residency";
 import { ILoadedSector } from "@/core/level/lib/sector/level-sector-set";
 import { ILevelStats, measureLevelStats } from "@/core/level/lib/stats/level-stats";
-import { ILevelTextureLookup } from "@/core/level/lib/texture/level-texture-set";
+import { ILevelTextureSource } from "@/core/level/lib/texture/level-texture-set";
 import { DEFAULT_LEVEL_VIEW_OPTIONS, ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
 import { TFrameRateLimit } from "@/core/render/lib/frame/render-frame-limit";
 import { RenderViewport } from "@/core/render/lib/frame/render-viewport";
@@ -95,7 +95,7 @@ export class LevelPreviewScene {
    *
    * @param textures - The open level's textures, or null while none is open.
    */
-  public setTextures(textures: Nullable<ILevelTextureLookup>): void {
+  public setTextures(textures: Nullable<ILevelTextureSource>): void {
     this.sectors.setTextures(textures);
   }
 
@@ -212,7 +212,7 @@ export class LevelPreviewScene {
       // Converted here rather than where it is drawn, so a reader of the handler cannot take it for a renderer
       // placement and a second consumer cannot forget the sign.
       this.handlers.onReport(
-        measureLevelStats(this.resident, this.viewport.frameCost),
+        measureLevelStats(this.resident, this.viewport.frameCost, this.sectors.meanAddTime),
         toLevelCamera(this.viewport.camera, this.facing)
       );
     }

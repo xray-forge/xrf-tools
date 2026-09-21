@@ -15,7 +15,7 @@ pub async fn levels_read_sector(
   state: State<'_, LevelState>,
 ) -> TauriResult<Response> {
   let selected: Arc<SessionSnapshot<SelectedLevel>> = state.selected.require(session_id)?;
-  let packed: Arc<SessionSnapshot<PackedSector>> = selected.packed.require(sector_id)?;
+  let packed: Arc<PackedSector> = selected.packed.take(sector_id)?;
   let bytes: Vec<u8> = packed.take_buffer()?;
 
   log::debug!(

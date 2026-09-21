@@ -7,12 +7,12 @@ use xrf_vfs::XrayRoots;
 use xrf_visual::SectorOutline;
 
 use crate::core::assets::AssetMountState;
-use crate::core::session::{Session, SessionId, SessionSnapshot};
+use crate::core::session::{SessionId, SessionSnapshot};
 use crate::core::types::TauriResult;
 use crate::plugins::levels::read::{ReadLevel, read_source};
 use crate::plugins::levels::report::report_open;
 use crate::plugins::levels::state::{
-  LevelSource, LevelState, LevelTextureReference, SelectedLevel, SelectedLevelDescription,
+  LevelSource, LevelState, LevelTextureReference, PackedSectors, SelectedLevel, SelectedLevelDescription,
 };
 use crate::plugins::levels::surfaces::resolve_surfaces;
 use crate::plugins::levels::textures::resolve_textures;
@@ -59,7 +59,7 @@ pub async fn levels_open_level(
       geometry: read.geometry,
       level: read.level,
       outlines,
-      packed: Session::new("level sector"),
+      packed: PackedSectors::new(),
       roots,
       source,
       surfaces,

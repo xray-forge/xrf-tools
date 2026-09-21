@@ -245,4 +245,46 @@ describe("createSurfaceMaterial shading", () => {
     expect(dressed.material.transparent).toBe(true);
     expect(dressed.material.depthWrite).toBe(false);
   });
+
+  // The stage's whole point. Every sector that arrives changes the level's textures, and under the old dressing each
+  // of those re-flagged every material in the level. Three.js answers a flag by re-deriving the program parameters,
+  // rebuilding the cache key and re-reading every uniform - for a program it then finds is the one already bound.
+  it("does not ask for a recompile where nothing the program depends on moved", () => {
+    const textures: ILevelTextureLookup = lookup("stone", "lmap#1_2");
+    const lit: ILevelSurface = surface({ surface: mockSectorSurface({ hemi: "lmap#1_2" }) });
+    const dressed: ILevelSurfaceMaterial = createSurfaceMaterial(lit, textures, options());
+
+    const compiled: number = dressed.material.version;
+
+    dressSurfaceMaterial(dressed, lit, textures, options());
+    dressSurfaceMaterial(dressed, lit, textures, options({ hemiStrength: 0.2, isWireframe: true }));
+
+    expect(dressed.material.version).toBe(compiled);
+    // Still dressed, which is the other half: cheap is only worth anything if it is also correct.
+    expect(dressed.material.wireframe).toBe(true);
+    expect(dressed.material.aoMapIntensity).toBe(0.2);
+  });
+
+  it("asks for one where a texture arrives, since the program is compiled around whether one is bound", () => {
+    const lit: ILevelSurface = surface({ surface: mockSectorSurface({ hemi: "lmap#1_2" }) });
+    const dressed: ILevelSurfaceMaterial = createSurfaceMaterial(lit, lookup(), options());
+
+    const compiled: number = dressed.material.version;
+
+    dressSurfaceMaterial(dressed, lit, lookup("stone", "lmap#1_2"), options());
+
+    expect(dressed.material.version).toBeGreaterThan(compiled);
+  });
+
+  it("asks for one where the textures are switched off, since that unbinds them", () => {
+    const textures: ILevelTextureLookup = lookup("stone");
+    const drawn: ILevelSurface = surface();
+    const dressed: ILevelSurfaceMaterial = createSurfaceMaterial(drawn, textures, options());
+
+    const compiled: number = dressed.material.version;
+
+    dressSurfaceMaterial(dressed, drawn, textures, options({ isTextured: false }));
+
+    expect(dressed.material.version).toBeGreaterThan(compiled);
+  });
 });

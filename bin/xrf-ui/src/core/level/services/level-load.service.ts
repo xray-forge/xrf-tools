@@ -15,7 +15,7 @@ import {
   ILevelResidencyPlan,
   planLevelResidency,
 } from "@/core/level/lib/residency/level-residency";
-import { LevelSectorReader } from "@/core/level/lib/sector/level-sector-reader";
+import { ILevelSectorAdoption, LevelSectorReader } from "@/core/level/lib/sector/level-sector-reader";
 import { ILoadedSector, LevelSectorSet } from "@/core/level/lib/sector/level-sector-set";
 import { ISectorTextureRequest, listSectorTextures } from "@/core/level/lib/sector/level-sector-textures";
 import { ISectorViews } from "@/core/level/lib/sector/level-sector-views";
@@ -25,7 +25,8 @@ import {
   ILevelStreamSummary,
   LevelStreamProfile,
 } from "@/core/level/lib/stream/level-stream-profile";
-import { ILevelTextureLookup, LevelTextureSet } from "@/core/level/lib/texture/level-texture-set";
+import { LevelStreamScheduler } from "@/core/level/lib/stream/level-stream-scheduler";
+import { ILevelTextureSource, LevelTextureSet } from "@/core/level/lib/texture/level-texture-set";
 import { AsyncState } from "@/lib/async-state";
 import { formatDuration } from "@/lib/format/duration";
 import { Logger, Timer } from "@/lib/logging";
@@ -71,17 +72,33 @@ export class LevelLoadService {
    * sector it read is resident or dropped.
    */
   private readonly reader: LevelSectorReader = new LevelSectorReader({
-    adopt: (views: ISectorViews): void => {
+    adopt: (views: ISectorViews): ILevelSectorAdoption => {
+      const stage: Timer = new Timer();
+
       this.held.adopt(views);
+
+      const geometry: number = stage.lap();
+
       this.publishSectors();
+
+      return { geometry, publish: stage.lap() };
     },
     isOpen: (sessionId: string): boolean => this.isOpen(sessionId),
-    load: async (requests: ReadonlyArray<ISectorTextureRequest>): Promise<void> => {
-      await this.loaded.load(requests);
-
-      this.noteTextures();
-    },
+    load: (requests: ReadonlyArray<ISectorTextureRequest>): Promise<void> => this.loaded.load(requests),
     record: (reading: ILevelStreamReading): void => this.noteReading(reading),
+  });
+
+  /**
+   * Brings what the camera wants into residency.
+   *
+   * A camera report sets its target and returns; it starts nothing itself and cancels nothing, which is what keeps
+   * a flight from spending every frame abandoning the read it asked for on the frame before.
+   */
+  private readonly scheduler: LevelStreamScheduler = new LevelStreamScheduler({
+    isResident: (sector: number): boolean => this.held.has(sector),
+    read: (sector: number): Promise<void> => this.readSector(sector),
+    report: (loaded: number, total: number): void => this.noteProgress(loaded, total),
+    settle: (): void => this.onSettled(),
   });
 
   @Observable()
@@ -98,9 +115,6 @@ export class LevelLoadService {
   @Observable()
   public streaming: ILevelStreamProgress = IDLE_LEVEL_STREAM;
 
-  @Observable()
-  public textureRevision: number = 0;
-
   /** What the recent sector reads cost, stage by stage, for a viewer to report and a change to be judged against. */
   @Observable()
   public streamProfile: ILevelStreamSummary = EMPTY_LEVEL_STREAM_SUMMARY;
@@ -112,9 +126,10 @@ export class LevelLoadService {
   public isReady: boolean = false;
 
   /**
-   * @returns The level's textures, to read rather than to manage: their lifetime is this service's.
+   * @returns The level's textures, to read and to hear about rather than to manage: their lifetime is this
+   *   service's, and the set says for itself what changed.
    */
-  public get textures(): ILevelTextureLookup {
+  public get textures(): ILevelTextureSource {
     return this.loaded;
   }
 
@@ -221,14 +236,17 @@ export class LevelLoadService {
   private adopt(selected: SessionSnapshot<SelectedLevelDescription>): void {
     this.releaseSectors();
 
+    // Before anything else: a target belongs to the level it was planned against, and so does every sector number
+    // in it. The level about to open inherits neither.
+    this.scheduler.clear();
+
     this.residency = createLevelResidency(selected.value.bounds?.boundingSphere.radius ?? 0);
+    this.scheduler.setConcurrency(this.residency.concurrency);
     // The roots the **open** searched, not the ones a caller happens to hold: they are centred on the level, which is
-    // what finds a texture shipped beside it, and a restore has no other way to know them.
+    // what finds a texture shipped beside it, and a restore has no other way to know them. Releases the last level's
+    // textures itself, and says so once rather than once for the release and again for the open.
     this.loaded.open(selected.value.roots, selected.value.textures);
     this.level = this.level.asReady({ selected });
-
-    // The open released whatever the last level held, so everything drawn from the set is now undressed.
-    this.textureRevision += 1;
   }
 
   /**
@@ -236,15 +254,14 @@ export class LevelLoadService {
    *
    * @param point - Where the camera is, in renderer space.
    */
-  @LatestFlow("stream")
-  public *stream(point: ILevelPoint): TFlow {
+  public stream(point: ILevelPoint): Promise<void> {
     const open: Nullable<IOpenLevel> = this.level.value;
 
     if (!open) {
-      return;
+      return Promise.resolve();
     }
 
-    const sessionId: string = requireSessionId(open.selected);
+    const timer: Timer = new Timer();
     const plan: ILevelResidencyPlan = planLevelResidency(
       open.selected.value.sectors,
       point,
@@ -252,46 +269,65 @@ export class LevelLoadService {
       this.residency
     );
 
-    if (!plan.load.length && !plan.evict.length) {
-      return;
-    }
-
-    for (const sector of plan.evict) {
-      this.held.release(sector);
-    }
-
-    runInAction(() => {
-      this.streaming = { loaded: 0, total: plan.load.length };
-    });
-
-    // Nearest first, and published as each arrives: a viewer draws what is nearest while the rest is still reading,
-    // rather than waiting for the whole plan.
-    try {
-      for (const sector of plan.load) {
-        yield* call(this.reader.read(sessionId, sector, open.selected.value.surfaces));
-
-        runInAction(() => {
-          this.streaming = { loaded: this.streaming.loaded + 1, total: this.streaming.total };
-        });
+    if (plan.evict.length) {
+      for (const sector of plan.evict) {
+        this.held.release(sector);
       }
-    } finally {
-      // Both however the flow ends: a cancelled move must not leave a viewer reporting a read that is not coming, nor
-      // leave the textures of a sector that never arrived holding memory until the level closes.
-      this.loaded.retain(this.listResidentTextures());
-      this.noteTextures();
 
-      runInAction(() => {
-        this.streaming = IDLE_LEVEL_STREAM;
-      });
+      this.publishSectors();
     }
 
-    this.publishSectors();
+    // The whole target, not the part of it that is missing: what is already held is what tells the scheduler which
+    // of its reads are still worth finishing.
+    const settled: Promise<void> = this.scheduler.setTarget(plan.resident);
+
+    // Measured here rather than around the plan alone, because what a camera report costs the frame it lands on is
+    // everything this method does - and answering one used to include abandoning whatever was in flight.
+    this.noteReport(timer.elapsed());
+
+    return settled;
   }
 
-  /** Records that the texture set is not what anything drawing from it last saw. */
+  /**
+   * Reads one sector of the level this loader holds.
+   *
+   * @param sector - Sector to read, by its index in the sectors chunk.
+   * @returns Settles when it is resident or has failed and said so.
+   */
+  private readSector(sector: number): Promise<void> {
+    const open: Nullable<IOpenLevel> = this.level.value;
+
+    return open
+      ? this.reader.read(requireSessionId(open.selected), sector, open.selected.value.surfaces)
+      : Promise.resolve();
+  }
+
+  /**
+   * Everything the camera wants is resident or has failed.
+   *
+   * Retention happens here and nowhere else. It reads every resident sector's surfaces, which is far too much to
+   * pay on a camera report - and under boost a report lands every frame.
+   */
   @BoundAction()
-  private noteTextures(): void {
-    this.textureRevision += 1;
+  private onSettled(): void {
+    this.loaded.retain(this.listResidentTextures());
+    this.streaming = IDLE_LEVEL_STREAM;
+  }
+
+  @BoundAction()
+  private noteProgress(loaded: number, total: number): void {
+    this.streaming = { loaded, total };
+  }
+
+  /**
+   * Takes what one camera report cost and republishes the summary.
+   *
+   * @param elapsed - Milliseconds it took on the thread that draws.
+   */
+  @BoundAction()
+  private noteReport(elapsed: number): void {
+    this.profile.recordReport(elapsed);
+    this.streamProfile = this.profile.summarise();
   }
 
   /**
@@ -327,7 +363,7 @@ export class LevelLoadService {
   @BoundAction()
   public clear(): void {
     cancelFlow(this, "level");
-    cancelFlow(this, "stream");
+    this.scheduler.clear();
     this.session.release();
 
     this.clearView();
@@ -370,6 +406,7 @@ export class LevelLoadService {
   }
 
   private clearView(): void {
+    this.scheduler.clear();
     this.profile.clear();
     this.streamProfile = EMPTY_LEVEL_STREAM_SUMMARY;
 
@@ -377,12 +414,12 @@ export class LevelLoadService {
       this.level = this.level.asIdle();
       this.streaming = IDLE_LEVEL_STREAM;
       this.releaseSectors();
+      this.loaded.dispose();
     });
   }
 
   private releaseSectors(): void {
     this.held.dispose();
-    this.loaded.dispose();
     this.sectors = new Map();
   }
 }

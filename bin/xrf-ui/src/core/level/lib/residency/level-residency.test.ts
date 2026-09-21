@@ -13,7 +13,13 @@ import {
 } from "./level-residency";
 
 const ORIGIN = { x: 0, y: 0, z: 0 };
-const OPTIONS: ILevelResidencyOptions = { keepDistance: 20, loadDistance: 10, maxSectors: 2, minSectors: 0 };
+const OPTIONS: ILevelResidencyOptions = {
+  concurrency: 3,
+  keepDistance: 20,
+  loadDistance: 10,
+  maxSectors: 2,
+  minSectors: 0,
+};
 
 /**
  * A sector sitting at one distance along x, with a unit sphere around it.

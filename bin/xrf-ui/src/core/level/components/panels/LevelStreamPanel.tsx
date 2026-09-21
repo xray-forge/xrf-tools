@@ -67,9 +67,17 @@ export function LevelStreamPanel({
         </EditorPanelSection>
       ) : null}
 
+      {stream.planning.reports ? (
+        <EditorPanelSection title={"Answering the camera"}>
+          <EditorPanelProperty label={"Mean"} value={formatDuration(stream.planning.mean)} />
+          <EditorPanelProperty label={"Reports"} value={stream.planning.reports} />
+        </EditorPanelSection>
+      ) : null}
+
       <EditorPanelSection title={"Frame"}>
         <EditorPanelProperty label={"Frame time"} value={`${stats.frameTime.toFixed(1)} ms`} />
         <EditorPanelProperty label={"Frames a second"} value={stats.framesPerSecond.toFixed(0)} />
+        <EditorPanelProperty label={"Taking a sector in"} value={formatDuration(stats.sceneTime)} />
         <EditorPanelProperty label={"Draw calls"} value={stats.draws} />
         <EditorPanelProperty label={"Triangles"} value={stats.triangles} />
       </EditorPanelSection>
@@ -81,6 +89,7 @@ export function LevelStreamPanel({
 
       <EditorPanelSection title={"Budget"}>
         <EditorPanelProperty label={"Sector budget"} value={service.residency.maxSectors} />
+        <EditorPanelProperty label={"Reads at once"} value={service.residency.concurrency} />
         <EditorPanelProperty label={"Load distance"} value={`${service.residency.loadDistance.toFixed(0)} m`} />
         <EditorPanelProperty label={"Keep distance"} value={`${service.residency.keepDistance.toFixed(0)} m`} />
       </EditorPanelSection>

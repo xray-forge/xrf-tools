@@ -12,7 +12,7 @@ export interface ILevelLighting extends IRenderLighting {
 export const DEFAULT_LEVEL_LIGHTING: ILevelLighting = {
   ambientColor: 0xffffff,
   ambientIntensity: 1.1,
-  hemiStrength: 0.65,
+  hemiStrength: 0.25,
   sunAzimuth: 35,
   sunColor: 0xffffff,
   sunElevation: 55,

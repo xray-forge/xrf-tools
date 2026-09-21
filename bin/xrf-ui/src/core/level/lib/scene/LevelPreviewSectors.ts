@@ -10,8 +10,12 @@ import {
   ILevelSurface,
   ILevelSurfaceOptions,
 } from "@/core/level/lib/surface/level-surface-material";
-import { ILevelTextureLookup } from "@/core/level/lib/texture/level-texture-set";
+import { ILevelTextureSource } from "@/core/level/lib/texture/level-texture-set";
+import { Timer } from "@/lib/logging";
 import { Maybe, Nullable } from "@/lib/types/general";
+
+/** Arrivals the mean is taken over, which matches the read profile's window so the two numbers are comparable. */
+const ADD_WINDOW: number = 32;
 
 /** One drawn sector: the mesh of everything baked in place, the meshes it stands, and the surfaces drawing them. */
 interface IDrawnSector {
@@ -32,12 +36,22 @@ export class LevelPreviewSectors {
   private readonly drawn: Map<number, IDrawnSector> = new Map();
   private readonly materials: LevelMaterialSet = new LevelMaterialSet();
 
+  /** What the recent arrivals cost to put in, which is the half of a sector's arrival no read stage covers. */
+  private readonly added: Array<number> = [];
+
   public constructor(parent: Object3D) {
     this.parent = parent;
   }
 
   public get size(): number {
     return this.drawn.size;
+  }
+
+  /**
+   * @returns Mean milliseconds one arriving sector has been costing to take in, or zero before any has.
+   */
+  public get meanAddTime(): number {
+    return this.added.length ? this.added.reduce((total, it) => total + it, 0) / this.added.length : 0;
   }
 
   /**
@@ -52,7 +66,7 @@ export class LevelPreviewSectors {
    *
    * @param textures - The open level's textures, owned by the loader.
    */
-  public setTextures(textures: Nullable<ILevelTextureLookup>): void {
+  public setTextures(textures: Nullable<ILevelTextureSource>): void {
     this.materials.setTextures(textures);
   }
 
@@ -70,7 +84,10 @@ export class LevelPreviewSectors {
 
     for (const [sector, loaded] of sectors) {
       if (!this.drawn.has(sector)) {
+        const timer: Timer = new Timer();
+
         this.add(sector, loaded);
+        this.note(timer.elapsed());
       }
     }
 
@@ -102,6 +119,15 @@ export class LevelPreviewSectors {
     }
 
     this.materials.dispose();
+  }
+
+  /** Keeps what the recent arrivals cost, over the same window the read profile means its stages over. */
+  private note(elapsed: number): void {
+    this.added.push(elapsed);
+
+    if (this.added.length > ADD_WINDOW) {
+      this.added.shift();
+    }
   }
 
   private add(sector: number, loaded: ILoadedSector): void {

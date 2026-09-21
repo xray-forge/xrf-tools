@@ -17,6 +17,8 @@ export interface ILevelStats {
   triangles: number;
   /** Bytes of geometry held, which is what a residency budget is really spending. */
   bytes: number;
+  /** Mean milliseconds one arriving sector costs to put into the scene. */
+  sceneTime: number;
 }
 
 export const EMPTY_LEVEL_STATS: ILevelStats = {
@@ -24,6 +26,7 @@ export const EMPTY_LEVEL_STATS: ILevelStats = {
   draws: 0,
   frameTime: 0,
   framesPerSecond: 0,
+  sceneTime: 0,
   sectors: 0,
   triangles: 0,
 };
@@ -33,9 +36,14 @@ export const EMPTY_LEVEL_STATS: ILevelStats = {
  *
  * @param sectors - What the loader currently holds.
  * @param frame - What the viewport's renderer counted for the frame just drawn.
+ * @param sceneTime - What the scene has been paying to take one arriving sector.
  * @returns What the viewport is spending.
  */
-export function measureLevelStats(sectors: ReadonlyMap<number, ILoadedSector>, frame: IRenderFrameCost): ILevelStats {
+export function measureLevelStats(
+  sectors: ReadonlyMap<number, ILoadedSector>,
+  frame: IRenderFrameCost,
+  sceneTime: number = 0
+): ILevelStats {
   let bytes: number = 0;
 
   for (const loaded of sectors.values()) {
@@ -47,6 +55,7 @@ export function measureLevelStats(sectors: ReadonlyMap<number, ILoadedSector>, f
     draws: frame.draws,
     frameTime: frame.frameTime,
     framesPerSecond: frame.framesPerSecond,
+    sceneTime,
     sectors: sectors.size,
     triangles: frame.triangles,
   };

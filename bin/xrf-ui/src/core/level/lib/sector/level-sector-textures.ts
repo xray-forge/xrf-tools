@@ -1,4 +1,5 @@
 import { ISectorInstanceViews, ISectorSectionViews, ISectorViews } from "@/core/level/lib/sector/level-sector-views";
+import { ILevelSurface } from "@/core/level/lib/surface/level-surface-material";
 import { isAlphaRenderSurface } from "@/core/render/lib/surface/render-surface";
 import { Maybe } from "@/lib/types/general";
 
@@ -23,26 +24,47 @@ export interface ISectorTextureRequest {
 export function listSectorTextures(views: ISectorViews): Array<ISectorTextureRequest> {
   const requests: Map<string, ISectorTextureRequest> = new Map();
 
-  for (const { surface, render } of [...views.sections, ...views.instances]) {
-    if (surface.textureName) {
-      request(requests, surface.textureName, isAlphaRenderSurface(render), !render.isWallmark);
-    }
-
-    // Only the one the renderer samples. The other half of the pair is R1's baked colour, and reading it was a
-    // megabyte a lightmap for a texture nothing binds.
-    if (surface.hemi) {
-      request(requests, surface.hemi, false, true);
-    }
-
-    // Named by the surface's blender or by its base texture's descriptor rather than by the shader table, so a sector
-    // that only fetched what its table names would draw its ground as the bare aerial photograph the base texture is.
-    // Its alpha is never read: the modulation is a multiply of three channels.
-    if (render.detail) {
-      request(requests, render.detail.reference, false, true);
-    }
+  for (const drawn of [...views.sections, ...views.instances]) {
+    collectSurfaceTextures(requests, drawn);
   }
 
   return Array.from(requests.values());
+}
+
+/**
+ * Every texture reference one surface names, which is what decides the materials a texture change re-dresses.
+ *
+ * @param drawn - The surface and what its blender compiles to.
+ * @returns Its references, without repeats.
+ */
+export function listSurfaceTextures(drawn: ILevelSurface): Array<ISectorTextureRequest> {
+  const requests: Map<string, ISectorTextureRequest> = new Map();
+
+  collectSurfaceTextures(requests, drawn);
+
+  return Array.from(requests.values());
+}
+
+/** What one surface names, folded into whatever the caller is collecting. */
+function collectSurfaceTextures(requests: Map<string, ISectorTextureRequest>, drawn: ILevelSurface): void {
+  const { surface, render } = drawn;
+
+  if (surface.textureName) {
+    request(requests, surface.textureName, isAlphaRenderSurface(render), !render.isWallmark);
+  }
+
+  // Only the one the renderer samples. The other half of the pair is R1's baked colour, and reading it was a
+  // megabyte a lightmap for a texture nothing binds.
+  if (surface.hemi) {
+    request(requests, surface.hemi, false, true);
+  }
+
+  // Named by the surface's blender or by its base texture's descriptor rather than by the shader table, so a sector
+  // that only fetched what its table names would draw its ground as the bare aerial photograph the base texture is.
+  // Its alpha is never read: the modulation is a multiply of three channels.
+  if (render.detail) {
+    request(requests, render.detail.reference, false, true);
+  }
 }
 
 /**

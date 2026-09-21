@@ -6,7 +6,7 @@ use uuid::Uuid;
 
 /// A single opening, allocated by its caller before dispatch so it can also be closed while pending.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
 #[serde(transparent)]
 pub(crate) struct SessionId(Uuid);
 

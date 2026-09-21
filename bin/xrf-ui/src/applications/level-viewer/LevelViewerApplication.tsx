@@ -53,7 +53,6 @@ export function LevelViewerApplication({
       sectors={loadService.sectors}
       bounds={description?.bounds ?? null}
       textures={loadService.textures}
-      textureRevision={loadService.textureRevision}
       name={description ? onDescribeLevelName(description) : null}
       streaming={loadService.streaming}
       isLoading={loadService.level.isLoading}

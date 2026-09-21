@@ -4,9 +4,8 @@ use xrf_material::XraySurfaceDescriptor;
 use xrf_vfs::XrayRoots;
 use xrf_visual::SectorOutline;
 
-use crate::core::session::Session;
 use crate::plugins::levels::state::level_source::LevelSource;
-use crate::plugins::levels::state::packed_sector::PackedSector;
+use crate::plugins::levels::state::packed_sectors::PackedSectors;
 use crate::plugins::levels::state::selection::level_sun_description::LevelSunDescription;
 use crate::plugins::levels::state::selection::level_texture_reference::LevelTextureReference;
 use crate::plugins::levels::state::selection::selected_level_description::SelectedLevelDescription;
@@ -28,8 +27,9 @@ pub struct SelectedLevel {
   /// Render geometry with its payloads still on the heap where they were read, serving whichever range a sector
   /// names. Shared rather than locked: a range is read without moving the source, so sectors pack side by side.
   pub geometry: LevelGeomSource<InMemoryChunkDataSource>,
-  /// The sector packed by the last `open_sector`, so reading its bytes serves that pack rather than packing again.
-  pub packed: Session<PackedSector>,
+  /// The sectors packed by an `open_sector` and not yet served, so reading their bytes serves the pack the read
+  /// was described rather than packing again. One entry per read, because reads overlap.
+  pub packed: PackedSectors,
 }
 
 impl SelectedLevel {
