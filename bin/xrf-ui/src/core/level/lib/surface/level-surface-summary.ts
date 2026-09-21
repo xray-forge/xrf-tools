@@ -8,6 +8,8 @@ export interface ILevelSurfaceSummary {
   shaderId: number;
   /** The shader the entry names, or a stand-in for an entry that names none. */
   shader: string;
+  /** The textures it dresses with, which is what tells two entries of one shader apart. */
+  textures: ReadonlyArray<string>;
   descriptor: XraySurfaceDescriptor;
 }
 
@@ -25,6 +27,7 @@ export function listLevelSurfaces(surfaces: ReadonlyArray<XraySurfaceDescriptor>
     descriptor,
     shader: descriptor.shader ?? UNNAMED_LEVEL_SURFACE,
     shaderId,
+    textures: descriptor.textures,
   }));
 }
 
@@ -36,4 +39,16 @@ export function listLevelSurfaces(surfaces: ReadonlyArray<XraySurfaceDescriptor>
  */
 export function listNamedLevelSurfaces(summaries: ReadonlyArray<ILevelSurfaceSummary>): Array<ILevelSurfaceSummary> {
   return summaries.filter((summary: ILevelSurfaceSummary) => summary.descriptor.shader !== null);
+}
+
+/**
+ * What one entry is called where it has to be told from its neighbours.
+ *
+ * @param summary - The entry.
+ * @returns Its shader and the texture it dresses with.
+ */
+export function describeLevelSurface(summary: ILevelSurfaceSummary): string {
+  const [base] = summary.textures;
+
+  return base ? `${summary.shader} · ${base}` : summary.shader;
 }

@@ -46,6 +46,7 @@ impl XraySurfaceScript {
 
     Some(XraySurfaceDescriptor {
       shader: None,
+      textures: Vec::new(),
       library: Some(asset),
       declaration: XraySurfaceDeclaration::Scripted {
         function: XRayShaderPass::BASE_FUNCTION.to_owned(),

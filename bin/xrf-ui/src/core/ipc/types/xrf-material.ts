@@ -225,6 +225,13 @@ export type XraySurfaceDeclaration =
 export type XraySurfaceDescriptor = {
   /** The shader the surface named, as its level or mesh spells it, or `None` where it named none. */
   shader: string | null;
+  /**
+   * The textures the entry dresses with, in the order it names them: the base, then whatever its class binds.
+   *
+   * Carried for the same reason as the name. A level's table holds one entry per shader **and** texture set, so
+   * five wall marks of one shader are five rows, and the textures are the only thing telling them apart.
+   */
+  textures: Array<string>;
   /** The `shaders.xr` the answer was read from, or `None` when no root holds one. */
   library: XrayAsset | null;
   declaration: XraySurfaceDeclaration;

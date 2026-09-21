@@ -1,7 +1,7 @@
 import { Chip } from "@mui/material";
 import { ReactElement } from "react";
 
-import { ILevelSurfaceSummary } from "@/core/level/lib/surface/level-surface-summary";
+import { describeLevelSurface, ILevelSurfaceSummary } from "@/core/level/lib/surface/level-surface-summary";
 import {
   describeSurfaceDeclaration,
   describeSurfaceDraw,
@@ -36,7 +36,7 @@ export function LevelSurfaceRow({
       data-testid={dataTestId}
       id={id}
       className={className}
-      title={`${summary.shaderId} · ${summary.shader}`}
+      title={`${summary.shaderId} · ${describeLevelSurface(summary)}`}
       isFirst={isFirst}
     >
       <EditorPanelProperty
@@ -45,6 +45,10 @@ export function LevelSurfaceRow({
       />
 
       {draw ? <EditorPanelProperty label={"Which is"} value={draw} /> : null}
+
+      {summary.textures.length ? (
+        <EditorPanelProperty label={"Dresses with"} value={summary.textures.join(", ")} />
+      ) : null}
 
       <EditorPanelProperty
         label={"Read from"}

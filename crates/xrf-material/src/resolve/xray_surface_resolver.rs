@@ -58,7 +58,9 @@ impl<'probe, 'vfs> XraySurfaceResolver<'probe, 'vfs> {
       return XraySurfaceDescriptor::opaque(None, XraySurfaceDeclaration::Undeclared);
     }
 
-    self.describe_named(shader_name, textures).named(shader_name)
+    self
+      .describe_named(shader_name, textures)
+      .resolved_from(shader_name, textures)
   }
 
   /// The same answer, before it is told which name it answered for.
@@ -98,6 +100,7 @@ impl<'probe, 'vfs> XraySurfaceResolver<'probe, 'vfs> {
 
     XraySurfaceDescriptor {
       shader: None,
+      textures: Vec::new(),
       library: Some(asset.clone()),
       declaration: XraySurfaceDeclaration::Described {
         class,

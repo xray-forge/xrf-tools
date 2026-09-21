@@ -12,6 +12,8 @@ use crate::data::xray_surface_draw::XraySurfaceDraw;
 pub struct XraySurfaceDescriptor {
   /// The shader the surface named, as its level or mesh spells it, or `None` where it named none.
   pub shader: Option<String>,
+  /// The textures the entry dresses with, in the order it names them: the base, then whatever its class binds.
+  pub textures: Vec<String>,
   /// The `shaders.xr` the answer was read from, or `None` when no root holds one.
   pub library: Option<XrayAsset>,
   pub declaration: XraySurfaceDeclaration,
@@ -28,6 +30,7 @@ impl XraySurfaceDescriptor {
   pub fn opaque(library: Option<XrayAsset>, declaration: XraySurfaceDeclaration) -> Self {
     Self {
       shader: None,
+      textures: Vec::new(),
       library,
       declaration,
       draw: XraySurfaceDraw::Opaque,
@@ -35,9 +38,10 @@ impl XraySurfaceDescriptor {
     }
   }
 
-  /// The same surface, saying which shader name answered for it.
-  pub fn named(mut self, shader: &str) -> Self {
+  /// The same surface, saying which table entry it answered for.
+  pub fn resolved_from(mut self, shader: &str, textures: &[String]) -> Self {
     self.shader = Some(shader.to_owned());
+    self.textures = textures.to_vec();
 
     self
   }
