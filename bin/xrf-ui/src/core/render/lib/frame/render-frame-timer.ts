@@ -1,3 +1,4 @@
+import { toMean, toWorst } from "@/lib/math/series";
 import { Nullable } from "@/lib/types/general";
 
 /** Frames averaged over. Short enough to react to a camera entering dense geometry, long enough not to flicker. */
@@ -8,6 +9,9 @@ const WINDOW: number = 30;
  */
 export class RenderFrameTimer {
   private readonly samples: Array<number> = [];
+
+  /** What `render` itself took, kept apart because it is the half a mean cannot tell you the cause of. */
+  private readonly draws: Array<number> = [];
 
   /** Null rather than zero: a render loop whose clock starts at zero would otherwise lose its first frame. */
   private last: Nullable<number> = null;
@@ -30,14 +34,47 @@ export class RenderFrameTimer {
   }
 
   /**
+   * Records what drawing one frame cost, which is where uploads and shader compiles land.
+   *
+   * @param elapsed - Milliseconds `WebGLRenderer.render` took.
+   */
+  public sampleDraw(elapsed: number): void {
+    this.draws.push(elapsed);
+
+    if (this.draws.length > WINDOW) {
+      this.draws.shift();
+    }
+  }
+
+  /**
    * @returns Mean frame time over the window, or zero before two frames have been seen.
    */
   public get frameTime(): number {
-    if (!this.samples.length) {
-      return 0;
-    }
+    return toMean(this.samples);
+  }
 
-    return this.samples.reduce((total: number, sample: number) => total + sample, 0) / this.samples.length;
+  /**
+   * @returns The longest frame of the window.
+   *
+   * A stutter is a worst case, and a mean over thirty frames is exactly the statistic that hides one: sixty
+   * milliseconds once a second reads as four milliseconds added to every frame.
+   */
+  public get worstFrameTime(): number {
+    return toWorst(this.samples);
+  }
+
+  /**
+   * @returns Mean of what drawing cost over the window.
+   */
+  public get drawTime(): number {
+    return toMean(this.draws);
+  }
+
+  /**
+   * @returns The longest draw of the window, which says whether a spike was inside `render` or outside it.
+   */
+  public get worstDrawTime(): number {
+    return toWorst(this.draws);
   }
 
   /**
@@ -52,6 +89,7 @@ export class RenderFrameTimer {
   /** Forgets the window, for a viewport that was hidden or has swapped subjects. */
   public reset(): void {
     this.samples.length = 0;
+    this.draws.length = 0;
     this.last = null;
   }
 }

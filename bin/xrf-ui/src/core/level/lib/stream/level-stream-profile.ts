@@ -1,3 +1,4 @@
+import { toMean } from "@/lib/math/series";
 import { Nullable } from "@/lib/types/general";
 
 /**
@@ -127,7 +128,7 @@ export class LevelStreamProfile {
    */
   public summarise(): ILevelStreamSummary {
     const planning: ILevelStreamPlanning = {
-      mean: this.reports.length ? this.reports.reduce((total, it) => total + it, 0) / this.reports.length : 0,
+      mean: toMean(this.reports),
       reports: this.reported,
     };
 

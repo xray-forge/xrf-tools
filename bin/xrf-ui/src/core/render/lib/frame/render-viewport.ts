@@ -26,6 +26,12 @@ export interface IRenderViewportConfig {
 export interface IRenderFrameCost {
   /** Mean frame time over the window, in milliseconds. */
   frameTime: number;
+  /** The longest frame of the window, which is what a stutter actually is. */
+  worstFrameTime: number;
+  /** Mean of what `render` itself took, which is where uploads and shader compiles land. */
+  drawTime: number;
+  /** The longest draw of the window: a spike here is inside `render`, and a spike only in the frame is not. */
+  worstDrawTime: number;
   framesPerSecond: number;
   /** Draw calls the last frame issued. */
   draws: number;
@@ -117,7 +123,15 @@ export class RenderViewport {
   public get frameCost(): IRenderFrameCost {
     const { calls, triangles } = this.renderer.info.render;
 
-    return { draws: calls, frameTime: this.timer.frameTime, framesPerSecond: this.timer.framesPerSecond, triangles };
+    return {
+      draws: calls,
+      drawTime: this.timer.drawTime,
+      frameTime: this.timer.frameTime,
+      framesPerSecond: this.timer.framesPerSecond,
+      triangles,
+      worstDrawTime: this.timer.worstDrawTime,
+      worstFrameTime: this.timer.worstFrameTime,
+    };
   }
 
   /** Canvas width in css pixels, zero before it has been measured, for a scene that scales input by it. */
@@ -227,7 +241,14 @@ export class RenderViewport {
       this.timer.sample(now);
       this.advance(now);
       this.applyPendingResize();
+
+      const drawnFrom: number = performance.now();
+
       this.renderer.render(this.scene, this.camera);
+
+      // Inside the call rather than around the frame: what a first draw uploads and what a new material compiles
+      // both happen here, and nothing outside `render` can be blamed for them.
+      this.timer.sampleDraw(performance.now() - drawnFrom);
     });
   }
 

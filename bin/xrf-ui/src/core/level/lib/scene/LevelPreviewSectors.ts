@@ -12,6 +12,7 @@ import {
 } from "@/core/level/lib/surface/level-surface-material";
 import { ILevelTextureSource } from "@/core/level/lib/texture/level-texture-set";
 import { Timer } from "@/lib/logging";
+import { toMean } from "@/lib/math/series";
 import { Maybe, Nullable } from "@/lib/types/general";
 
 /** Arrivals the mean is taken over, which matches the read profile's window so the two numbers are comparable. */
@@ -51,7 +52,7 @@ export class LevelPreviewSectors {
    * @returns Mean milliseconds one arriving sector has been costing to take in, or zero before any has.
    */
   public get meanAddTime(): number {
-    return this.added.length ? this.added.reduce((total, it) => total + it, 0) / this.added.length : 0;
+    return toMean(this.added);
   }
 
   /**

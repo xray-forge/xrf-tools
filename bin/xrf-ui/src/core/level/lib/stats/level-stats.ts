@@ -7,6 +7,12 @@ import { IRenderFrameCost } from "@/core/render/lib/frame/render-viewport";
 export interface ILevelStats {
   /** Mean frame time over the window, in milliseconds. */
   frameTime: number;
+  /** The longest frame of the window, which is the stutter rather than the average of it. */
+  worstFrameTime: number;
+  /** Mean of what drawing cost, which is where uploads and shader compiles land. */
+  drawTime: number;
+  /** The longest draw of the window, which says whether a spike was inside `render` or outside it. */
+  worstDrawTime: number;
   /** Frames a second, derived from the mean rather than counted, so a short window still reports. */
   framesPerSecond: number;
   /** Sectors resident. */
@@ -23,12 +29,15 @@ export interface ILevelStats {
 
 export const EMPTY_LEVEL_STATS: ILevelStats = {
   bytes: 0,
+  drawTime: 0,
   draws: 0,
   frameTime: 0,
   framesPerSecond: 0,
   sceneTime: 0,
   sectors: 0,
   triangles: 0,
+  worstDrawTime: 0,
+  worstFrameTime: 0,
 };
 
 /**
@@ -52,11 +61,14 @@ export function measureLevelStats(
 
   return {
     bytes,
+    drawTime: frame.drawTime,
     draws: frame.draws,
     frameTime: frame.frameTime,
     framesPerSecond: frame.framesPerSecond,
     sceneTime,
     sectors: sectors.size,
     triangles: frame.triangles,
+    worstDrawTime: frame.worstDrawTime,
+    worstFrameTime: frame.worstFrameTime,
   };
 }

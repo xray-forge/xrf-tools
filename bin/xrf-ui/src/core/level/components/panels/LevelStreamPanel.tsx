@@ -76,6 +76,11 @@ export function LevelStreamPanel({
 
       <EditorPanelSection title={"Frame"}>
         <EditorPanelProperty label={"Frame time"} value={`${stats.frameTime.toFixed(1)} ms`} />
+        <EditorPanelProperty label={"Worst frame"} value={`${stats.worstFrameTime.toFixed(1)} ms`} />
+        <EditorPanelProperty
+          label={"Drawing"}
+          value={`${stats.drawTime.toFixed(1)} ms · worst ${stats.worstDrawTime.toFixed(1)} ms`}
+        />
         <EditorPanelProperty label={"Frames a second"} value={stats.framesPerSecond.toFixed(0)} />
         <EditorPanelProperty label={"Taking a sector in"} value={formatDuration(stats.sceneTime)} />
         <EditorPanelProperty label={"Draw calls"} value={stats.draws} />

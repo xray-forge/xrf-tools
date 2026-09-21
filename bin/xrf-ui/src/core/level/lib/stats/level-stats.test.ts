@@ -14,7 +14,16 @@ import { MockVisualBuffer } from "@/fixtures/mocks/visual.mocks";
 
 /** What a renderer counted for the frame just drawn. */
 function frameCost(overrides: Partial<IRenderFrameCost> = {}): IRenderFrameCost {
-  return { draws: 0, frameTime: 0, framesPerSecond: 0, triangles: 0, ...overrides };
+  return {
+    drawTime: 0,
+    draws: 0,
+    frameTime: 0,
+    framesPerSecond: 0,
+    triangles: 0,
+    worstDrawTime: 0,
+    worstFrameTime: 0,
+    ...overrides,
+  };
 }
 
 /** One resident sector, without a renderer to upload it. */
