@@ -1,3 +1,14 @@
+import {
+  ClampToEdgeWrapping,
+  LinearFilter,
+  LinearMipmapLinearFilter,
+  LinearMipmapNearestFilter,
+  NearestFilter,
+  NearestMipmapLinearFilter,
+  NearestMipmapNearestFilter,
+  Texture,
+} from "three";
+
 import { ILevelTexture, ILevelTextureLookup } from "@/core/level/lib/texture/level-texture-set";
 import { Nullable } from "@/lib/types/general";
 
@@ -24,7 +35,19 @@ export interface ILevelSurfaceDressing {
   state: ELevelSurfaceDressing;
   /** Why there is no texture, for the one state that has a reason. */
   reason: Nullable<string>;
+  /** How it was uploaded, read off the texture the renderer holds. */
+  upload: Nullable<string>;
 }
+
+/** Three's filters by number, so a reader sees what the sampler does rather than a constant. */
+const MIN_FILTERS: Readonly<Record<number, string>> = {
+  [LinearFilter]: "linear",
+  [LinearMipmapLinearFilter]: "linear between mips",
+  [LinearMipmapNearestFilter]: "linear, nearest between mips",
+  [NearestFilter]: "nearest",
+  [NearestMipmapLinearFilter]: "nearest, linear between mips",
+  [NearestMipmapNearestFilter]: "nearest between mips",
+};
 
 /**
  * What became of each texture an entry dresses with.
@@ -41,7 +64,7 @@ export function listLevelSurfaceDressing(
     const loaded: Nullable<ILevelTexture> = textures?.get(reference) ?? null;
 
     if (!loaded) {
-      return { reason: null, reference, state: ELevelSurfaceDressing.UNREAD };
+      return { reason: null, reference, state: ELevelSurfaceDressing.UNREAD, upload: null };
     }
 
     // A stand-in carries its reason; one carrying neither a texture nor a reason is still a surface drawn from
@@ -51,11 +74,31 @@ export function listLevelSurfaceDressing(
         reason: loaded.reason ?? "Nothing was uploaded for it",
         reference,
         state: ELevelSurfaceDressing.STOOD_IN,
+        upload: null,
       };
     }
 
-    return { reason: null, reference, state: ELevelSurfaceDressing.UPLOADED };
+    return {
+      reason: null,
+      reference,
+      state: ELevelSurfaceDressing.UPLOADED,
+      upload: describeUpload(loaded.texture),
+    };
   });
+}
+
+/**
+ * How one texture was uploaded, in a line.
+ *
+ * @param texture - The texture the renderer holds.
+ * @returns Its levels, filter, addressing and anisotropy.
+ */
+function describeUpload(texture: Texture): string {
+  const levels: number = texture.mipmaps?.length || 1;
+  const filter: string = MIN_FILTERS[texture.minFilter] ?? String(texture.minFilter);
+  const wrap: string = texture.wrapS === ClampToEdgeWrapping ? "clamped" : "wrapped";
+
+  return `${levels} ${levels === 1 ? "level" : "levels"} · ${filter} · ${wrap} · aniso ${texture.anisotropy}`;
 }
 
 /**
@@ -73,6 +116,6 @@ export function describeLevelSurfaceDressing(dressing: ILevelSurfaceDressing): s
       return `${dressing.reference} · not read yet`;
 
     default:
-      return dressing.reference;
+      return dressing.upload ? `${dressing.reference} · ${dressing.upload}` : dressing.reference;
   }
 }

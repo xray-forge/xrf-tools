@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
-import { Texture } from "three";
+import { ClampToEdgeWrapping, LinearFilter, LinearMipmapLinearFilter, RepeatWrapping, Texture } from "three";
 
 import {
   describeLevelSurfaceDressing,
@@ -28,7 +28,11 @@ describe("listLevelSurfaceDressing", () => {
       mockLookup({ "decal\\decal_poteki": UPLOADED })
     );
 
-    expect(dressing).toEqual({ reason: null, reference: "decal\\decal_poteki", state: ELevelSurfaceDressing.UPLOADED });
+    expect(dressing).toMatchObject({
+      reason: null,
+      reference: "decal\\decal_poteki",
+      state: ELevelSurfaceDressing.UPLOADED,
+    });
   });
 
   // The whole point of the answer: a surface drawn from a checker looks like a blending fault and is not one, and
@@ -48,6 +52,7 @@ describe("listLevelSurfaceDressing", () => {
         reason: "Nothing in the mounted roots answers to it",
         reference: "decal\\decal_poteki",
         state: ELevelSurfaceDressing.STOOD_IN,
+        upload: null,
       },
     ]);
   });
@@ -61,8 +66,43 @@ describe("listLevelSurfaceDressing", () => {
 
   it("reads nothing before a level is open", () => {
     expect(listLevelSurfaceDressing(["wall\\wall_panel"], null)).toEqual([
-      { reason: null, reference: "wall\\wall_panel", state: ELevelSurfaceDressing.UNREAD },
+      { reason: null, reference: "wall\\wall_panel", state: ELevelSurfaceDressing.UNREAD, upload: null },
     ]);
+  });
+
+  // Read off the texture rather than from what was asked for. A wall mark's decal is sampled through
+  // `smp_rtlinear` - one level, clamped, unanisotropic - and an upload that quietly kept its mip chain smears the
+  // marks over the neutral field it sits on as soon as the decal is minified.
+  it("reads how the texture was uploaded off the texture", () => {
+    const texture: Texture = new Texture();
+
+    texture.mipmaps = [];
+    texture.minFilter = LinearFilter;
+    texture.wrapS = ClampToEdgeWrapping;
+    texture.anisotropy = 1;
+
+    const [dressing] = listLevelSurfaceDressing(
+      ["decal\\decal_poteki"],
+      mockLookup({ "decal\\decal_poteki": { isAlphaRead: true, isMipped: false, reason: null, texture } })
+    );
+
+    expect(dressing.upload).toBe("1 level · linear · clamped · aniso 1");
+  });
+
+  it("says when a texture kept the chain and the anisotropy of an ordinary surface", () => {
+    const texture: Texture = new Texture();
+
+    texture.mipmaps = [{}, {}, {}] as never;
+    texture.minFilter = LinearMipmapLinearFilter;
+    texture.wrapS = RepeatWrapping;
+    texture.anisotropy = 8;
+
+    const [dressing] = listLevelSurfaceDressing(
+      ["wall\\wall_panel"],
+      mockLookup({ "wall\\wall_panel": { isAlphaRead: false, isMipped: true, reason: null, texture } })
+    );
+
+    expect(dressing.upload).toBe("3 levels · linear between mips · wrapped · aniso 8");
   });
 
   // A set answering with neither a texture nor a reason still leaves the surface drawn from nothing.
@@ -98,8 +138,23 @@ describe("describeLevelSurfaceDressing", () => {
         reason: null,
         reference: "decal\\decal_poteki",
         state: ELevelSurfaceDressing.UPLOADED,
+        upload: null,
       })
     ).toBe("decal\\decal_poteki");
+  });
+
+  // The last link between a file that reads correctly and a surface that draws wrong. A wall mark's decal is
+  // sampled through `smp_rtlinear` - one level, clamped, unanisotropic - and nothing else in the viewer says
+  // whether the upload actually came out that way.
+  it("says how an uploaded texture was sampled", () => {
+    expect(
+      describeLevelSurfaceDressing({
+        reason: null,
+        reference: "decal\\decal_poteki",
+        state: ELevelSurfaceDressing.UPLOADED,
+        upload: "1 level · linear · clamped · aniso 1",
+      })
+    ).toBe("decal\\decal_poteki · 1 level · linear · clamped · aniso 1");
   });
 
   it("carries the reason a checker stands in", () => {
@@ -108,13 +163,19 @@ describe("describeLevelSurfaceDressing", () => {
         reason: "Nothing in the mounted roots answers to it",
         reference: "decal\\decal_poteki",
         state: ELevelSurfaceDressing.STOOD_IN,
+        upload: null,
       })
     ).toBe("decal\\decal_poteki · a checker stands in: Nothing in the mounted roots answers to it");
   });
 
   it("says a texture has not been read yet", () => {
     expect(
-      describeLevelSurfaceDressing({ reason: null, reference: "wall\\wall_panel", state: ELevelSurfaceDressing.UNREAD })
+      describeLevelSurfaceDressing({
+        reason: null,
+        reference: "wall\\wall_panel",
+        state: ELevelSurfaceDressing.UNREAD,
+        upload: null,
+      })
     ).toBe("wall\\wall_panel · not read yet");
   });
 });
