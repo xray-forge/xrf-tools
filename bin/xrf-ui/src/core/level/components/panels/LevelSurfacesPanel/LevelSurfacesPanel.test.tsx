@@ -1,9 +1,10 @@
-import { beforeEach, describe, expect, it } from "@jest/globals";
+import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { RenderResult } from "@testing-library/react";
 import { Container } from "@wirestate/core";
 
 import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
 import { LevelSurfacesPanel } from "@/core/level/components/panels/LevelSurfacesPanel";
+import { ILevelTexture, ILevelTextureLookup } from "@/core/level/lib/texture/level-texture-set";
 import { LevelLoadService } from "@/core/level/services";
 import { mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
@@ -11,6 +12,7 @@ import { resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.
 import { mockSurfaceDescriptor } from "@/fixtures/mocks/visual.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
+import { Nullable } from "@/lib/types/general";
 
 /** A table holding a scripted wall mark, an ordinary surface, and an entry naming nothing. */
 const TABLE: Array<XraySurfaceDescriptor> = [
@@ -47,7 +49,7 @@ const TABLE: Array<XraySurfaceDescriptor> = [
   }),
 ];
 
-async function renderPanel(): Promise<RenderResult> {
+async function renderPanel(textures?: ILevelTextureLookup): Promise<RenderResult> {
   setMockInvokeResponses({
     ["plugin:levels|get_level"]: mockSessionResponse(mockSelectedLevelDescription({ surfaces: TABLE })),
   });
@@ -57,7 +59,20 @@ async function renderPanel(): Promise<RenderResult> {
 
   await service.restore();
 
+  // The set a level fills by streaming, which no test here streams: given one, the panel reads it instead.
+  if (textures) {
+    jest.spyOn(service, "textures", "get").mockReturnValue(textures);
+  }
+
   return renderWithProviders(<LevelSurfacesPanel />, { container, route: "/level-viewer" });
+}
+
+function mockTextures(entries: Record<string, ILevelTexture>): ILevelTextureLookup {
+  return {
+    get: (reference: string): Nullable<ILevelTexture> => entries[reference] ?? null,
+    listProblems: () => [],
+    size: Object.keys(entries).length,
+  };
 }
 
 describe("LevelSurfacesPanel", () => {
@@ -95,6 +110,30 @@ describe("LevelSurfacesPanel", () => {
 
     expect(getByText("2 · effects\\wallmarkmult · decal\\decal_poteki")).toBeInTheDocument();
     expect(getByText("3 · effects\\wallmarkmult · decal\\decal_rza_a")).toBeInTheDocument();
+  });
+
+  // A surface drawn from a checker looks exactly like a blending fault and is not one. The entry says what the level
+  // asked for; without this the panel never says what the renderer actually got.
+  it("says when a checker stands in for what a row dresses with", async () => {
+    const { getByText } = await renderPanel(
+      mockTextures({
+        ["decal\\decal_poteki"]: {
+          isAlphaRead: true,
+          reason: "Nothing in the mounted roots answers to it",
+          texture: null,
+        },
+      })
+    );
+
+    expect(
+      getByText("decal\\decal_poteki · a checker stands in: Nothing in the mounted roots answers to it")
+    ).toBeInTheDocument();
+  });
+
+  it("says a texture no resident sector has asked for has not been read", async () => {
+    const { getByText } = await renderPanel();
+
+    expect(getByText("wall\\wall_panel · not read yet")).toBeInTheDocument();
   });
 
   // The table keeps the places of the entries naming nothing, so the count is said once rather than listed.

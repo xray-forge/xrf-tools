@@ -3,6 +3,7 @@ import { ReactElement, useMemo } from "react";
 
 import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
 import { LevelSurfaceRow } from "@/core/level/components/panels/LevelSurfacesPanel/LevelSurfaceRow";
+import { ILevelSurfaceDressing, listLevelSurfaceDressing } from "@/core/level/lib/surface/level-surface-dressing";
 import {
   ILevelSurfaceSummary,
   listLevelSurfaces,
@@ -36,6 +37,20 @@ export function LevelSurfacesPanel({
     return { named: listNamedLevelSurfaces(summaries), total: summaries.length };
   }, [surfaces]);
 
+  const dressed: ReadonlyMap<number, Array<ILevelSurfaceDressing>> = useMemo(
+    () =>
+      new Map(
+        named.map((summary: ILevelSurfaceSummary) => [
+          summary.shaderId,
+          listLevelSurfaceDressing(summary.textures, service.textures),
+        ])
+      ),
+    // The revision is the dependency: the set behind `service.textures` is mutated in place, so nothing else here
+    // changes when a read adds to it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [named, service, service.textureRevision]
+  );
+
   if (!service.level.value) {
     return (
       <EditorPanel data-testid={dataTestId} id={id} className={className} title={"Surfaces"}>
@@ -52,7 +67,7 @@ export function LevelSurfacesPanel({
       </EditorPanelSection>
 
       {named.map((summary: ILevelSurfaceSummary) => (
-        <LevelSurfaceRow key={summary.shaderId} summary={summary} />
+        <LevelSurfaceRow key={summary.shaderId} summary={summary} dressing={dressed.get(summary.shaderId) ?? []} />
       ))}
     </EditorPanel>
   );

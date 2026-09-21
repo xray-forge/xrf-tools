@@ -1,6 +1,7 @@
 import { Chip } from "@mui/material";
 import { ReactElement } from "react";
 
+import { describeLevelSurfaceDressing, ILevelSurfaceDressing } from "@/core/level/lib/surface/level-surface-dressing";
 import { describeLevelSurface, ILevelSurfaceSummary } from "@/core/level/lib/surface/level-surface-summary";
 import {
   describeSurfaceDeclaration,
@@ -14,6 +15,8 @@ import { Nullable } from "@/lib/types/general";
 
 interface ILevelSurfaceRowProps extends BaseComponentProps {
   summary: ILevelSurfaceSummary;
+  /** What the renderer got for each texture the entry names, which is not always what the entry asked for. */
+  dressing: ReadonlyArray<ILevelSurfaceDressing>;
   isFirst?: boolean;
 }
 
@@ -25,6 +28,7 @@ export function LevelSurfaceRow({
   id,
   className,
   summary,
+  dressing,
   isFirst = false,
 }: ILevelSurfaceRowProps): ReactElement {
   const { descriptor } = summary;
@@ -46,8 +50,13 @@ export function LevelSurfaceRow({
 
       {draw ? <EditorPanelProperty label={"Which is"} value={draw} /> : null}
 
-      {summary.textures.length ? (
-        <EditorPanelProperty label={"Dresses with"} value={summary.textures.join(", ")} />
+      {dressing.length ? (
+        <EditorPanelProperty
+          label={"Dresses with"}
+          value={dressing.map((it: ILevelSurfaceDressing) => (
+            <div key={it.reference}>{describeLevelSurfaceDressing(it)}</div>
+          ))}
+        />
       ) : null}
 
       <EditorPanelProperty
