@@ -1,6 +1,5 @@
 import { default as AccountTreeIcon } from "@mui/icons-material/AccountTree";
 
-import { SPAWN_COMPILER_HELP } from "@/applications/spawn-compiler/help";
 import {
   EApplicationGroupId,
   EApplicationId,
@@ -8,6 +7,8 @@ import {
   IApplicationDescriptor,
 } from "@/core/routing/application";
 import { createApplicationDescriptor } from "@/core/routing/application-descriptor";
+
+import { SPAWN_COMPILER_HELP } from "./help";
 
 export const SPAWN_COMPILER_APPLICATION: IApplicationDescriptor = createApplicationDescriptor(
   {

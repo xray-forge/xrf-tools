@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 
-import { describeRootProbe } from "@/core/assets/lib/root-probe";
 import { assetsCommands } from "@/core/ipc/commands/assets";
 import { XrayRootProbe } from "@/core/ipc/types/xrf-vfs";
 import { Nullable } from "@/lib/types/general";
+
+import { describeRootProbe } from "./root-probe";
 
 /**
  * What the backend makes of a directory a person named as an asset root.

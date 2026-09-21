@@ -1,7 +1,8 @@
-import { IpcCallMeasurement } from "@/core/ipc/metrics/metrics.measurement";
-import { isIpcProfilingEnabled } from "@/core/ipc/metrics/metrics.profiling";
-import { IIpcCallSink, IIpcCommandMetrics, IIpcMetricsSnapshot } from "@/core/ipc/metrics/metrics.types";
 import { Nullable, Optional } from "@/lib/types/general";
+
+import { IpcCallMeasurement } from "./metrics.measurement";
+import { isIpcProfilingEnabled } from "./metrics.profiling";
+import { IIpcCallSink, IIpcCommandMetrics, IIpcMetricsSnapshot } from "./metrics.types";
 
 /** How a command names itself on the wire, which is not how it is counted. */
 const WIRE_PREFIX: string = "plugin:";

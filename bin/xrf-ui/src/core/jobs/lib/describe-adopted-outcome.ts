@@ -1,8 +1,9 @@
 import { JobConclusion } from "@/core/ipc/types/xrf-app";
-import { findJobKind, IJobKindDescriptor } from "@/core/jobs/lib/job-kinds";
-import { IJobNotice, IJobState } from "@/core/jobs/lib/jobs-types";
 import { ENotificationSeverity } from "@/core/notifications/lib";
 import { Nullable } from "@/lib/types/general";
+
+import { findJobKind, IJobKindDescriptor } from "./job-kinds";
+import { IJobNotice, IJobState } from "./jobs-types";
 
 const ADOPTED_SEVERITIES: Record<JobConclusion, ENotificationSeverity> = {
   completed: ENotificationSeverity.SUCCESS,

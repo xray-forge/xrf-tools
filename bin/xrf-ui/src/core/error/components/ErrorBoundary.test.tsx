@@ -3,8 +3,9 @@ import { RenderResult } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { ReactElement, useState } from "react";
 
-import { ErrorBoundary, IErrorBoundaryFallbackProps } from "@/core/error/components/ErrorBoundary";
 import { renderWithProviders } from "@/fixtures/utils/render";
+
+import { ErrorBoundary, IErrorBoundaryFallbackProps } from "./ErrorBoundary";
 
 function Boom(): ReactElement {
   throw new Error("render exploded");

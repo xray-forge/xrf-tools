@@ -5,7 +5,6 @@ import { userEvent } from "@testing-library/user-event";
 import { ReactElement } from "react";
 import { Route, Routes } from "react-router-dom";
 
-import { SpawnEditor } from "@/applications/spawn-editor/components/editor/SpawnEditor";
 import { SpawnFile, SpawnHeaderChunk } from "@/core/ipc/types/xrf-spawn";
 import { IEditorPanel, useEditorPanelsRegistry } from "@/core/shell/editor-shell";
 import { ApplicationStatusBar } from "@/core/shell/footer/ApplicationStatusBar";
@@ -14,6 +13,8 @@ import { mockSpawnFile, mockSpawnSession } from "@/fixtures/mocks/spawn.mocks";
 import { setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
+
+import { SpawnEditor } from "./SpawnEditor";
 
 const SPAWN_PATH: string = "C:\\game\\gamedata\\spawns\\all.spawn";
 

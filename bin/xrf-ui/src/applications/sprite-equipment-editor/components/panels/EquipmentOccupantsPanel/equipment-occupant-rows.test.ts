@@ -1,11 +1,9 @@
 import { describe, expect, it } from "@jest/globals";
 
-import {
-  IEquipmentOccupantRow,
-  toEquipmentOccupantRows,
-} from "@/applications/sprite-equipment-editor/components/panels/EquipmentOccupantsPanel/equipment-occupant-rows";
 import { toEquipmentLayout } from "@/core/sprite-equipment/lib";
 import { mockEquipmentOccupant } from "@/fixtures/mocks/sprite.mocks";
+
+import { IEquipmentOccupantRow, toEquipmentOccupantRows } from "./equipment-occupant-rows";
 
 const LAYOUT = toEquipmentLayout(1000, 500, 50, [
   mockEquipmentOccupant("wpn_ak74", { x: 2, y: 1, origin: "items\\weapons\\w_ak74.ltx" }),

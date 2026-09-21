@@ -1,6 +1,7 @@
-import { isIpcProfilingEnabled } from "@/core/ipc/metrics/metrics.profiling";
-import { IIpcCallSink } from "@/core/ipc/metrics/metrics.types";
 import { Nullable } from "@/lib/types/general";
+
+import { isIpcProfilingEnabled } from "./metrics.profiling";
+import { IIpcCallSink } from "./metrics.types";
 
 export class IpcCallMeasurement {
   /** Whether this call weighs its payloads, as the switch stood when it started. */

@@ -3,12 +3,13 @@ import { autorun, flow } from "@wirestate/mobx";
 
 import { EJobKind } from "@/core/ipc/types/xrf-app";
 import { IJobDescriptor, IJobSettledPayload } from "@/core/jobs/lib";
-import { JobOperation } from "@/core/jobs/lib/job-operation";
 import { JobsService } from "@/core/jobs/services/jobs";
 import { ENotificationSeverity } from "@/core/notifications/lib";
 import { mockInvoke, resetMockInvoke } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { noop } from "@/lib/callbacks/noop";
+
+import { JobOperation } from "./job-operation";
 
 interface IResult {
   count: number;

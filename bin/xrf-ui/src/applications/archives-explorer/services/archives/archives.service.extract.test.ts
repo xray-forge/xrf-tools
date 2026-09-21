@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 
-import { ArchivesService } from "@/applications/archives-explorer/services/archives/archives.service";
 import { ArchiveFileDescriptor } from "@/core/ipc/types/xrf-archive";
 import { mockArchiveFileDescriptor, mockArchivesVolumes } from "@/fixtures/mocks/archive.mocks";
 import { mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
@@ -8,6 +7,8 @@ import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { AsyncState } from "@/lib/async-state";
 import { Nullable } from "@/lib/types/general";
+
+import { ArchivesService } from "./archives.service";
 
 const FILE: ArchiveFileDescriptor = mockArchiveFileDescriptor({ name: "configs\\system.ltx" });
 

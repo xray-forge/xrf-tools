@@ -3,8 +3,6 @@ import { act, RenderResult, waitFor } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { Binding, Container } from "@wirestate/core";
 
-import { TEXTURES_EXPLORER_APPLICATION } from "@/applications/textures-explorer/application";
-import { TexturesExplorerApplication } from "@/applications/textures-explorer/TexturesExplorerApplication";
 import { TextureCatalogService } from "@/core/textures/services/catalog";
 import { TextureSelectionService } from "@/core/textures/services/selection";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
@@ -18,6 +16,9 @@ import {
 } from "@/fixtures/mocks/texture.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
+
+import { TEXTURES_EXPLORER_APPLICATION } from "./application";
+import { TexturesExplorerApplication } from "./TexturesExplorerApplication";
 
 /**
  * Builds the container out of the application's deferred runtime bindings.

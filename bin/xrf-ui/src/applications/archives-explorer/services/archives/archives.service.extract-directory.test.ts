@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 
-import { ArchivesService } from "@/applications/archives-explorer/services/archives/archives.service";
 import { ArchiveExtractDirectoryResult } from "@/core/ipc/types/xrf-pack";
 import { EPathEntryKind } from "@/core/path/entry-kind";
 import { mockArchiveFileDescriptor, mockArchivesVolumes } from "@/fixtures/mocks/archive.mocks";
@@ -9,6 +8,8 @@ import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { AsyncState } from "@/lib/async-state";
 import { Nullable } from "@/lib/types/general";
+
+import { ArchivesService } from "./archives.service";
 
 function getExtractedDirectory(service: ArchivesService): Nullable<ArchiveExtractDirectoryResult> {
   return service.operation.value?.kind === "extract-directory" ? service.operation.value.result : null;

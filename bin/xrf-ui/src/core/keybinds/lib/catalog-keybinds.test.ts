@@ -3,9 +3,10 @@ import { describe, expect, it } from "@jest/globals";
 import { APPLICATION_CATALOG } from "@/ApplicationCatalog";
 import { IKeybindCommand } from "@/core/commands";
 import { ROOT_KEYBIND_COMMANDS } from "@/core/commands/root-commands";
-import { findChordConflicts, IChordConflict } from "@/core/keybinds/lib/keymap";
 import { LAUNCHER_KEYBIND_COMMANDS } from "@/core/launcher/commands";
 import { IApplicationDescriptor } from "@/core/routing/application";
+
+import { findChordConflicts, IChordConflict } from "./keymap";
 
 describe("the command catalog", () => {
   it("declares each command id once, so two owners cannot answer to one id", () => {

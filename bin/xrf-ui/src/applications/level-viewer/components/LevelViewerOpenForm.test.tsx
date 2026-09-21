@@ -3,13 +3,14 @@ import { fireEvent, RenderResult } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { Container } from "@wirestate/core";
 
-import { LevelViewerOpenForm } from "@/applications/level-viewer/components/LevelViewerOpenForm";
 import { AssetService } from "@/core/assets/services";
 import { LevelEntry } from "@/core/ipc/types/xrf-app";
 import { LevelListService, LevelLoadService } from "@/core/level/services";
 import { resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
+
+import { LevelViewerOpenForm } from "./LevelViewerOpenForm";
 
 const INSTALLATION: string = "C:\\game";
 const OTHER_INSTALLATION: string = "C:\\anomaly";

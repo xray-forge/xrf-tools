@@ -2,7 +2,6 @@ import { inject, Injectable, OnEvent, OnProvision, WireEvent } from "@wirestate/
 import { BoundAction, Computed, Observable } from "@wirestate/mobx";
 
 import { describePatchOutcome } from "@/applications/archives-patcher/lib/describe-patch-outcome";
-import { toSavedState } from "@/applications/archives-patcher/services/patcher/patcher.service.utils";
 import { IResolvedArchiveVolumeSize, resolveArchiveVolumeSize } from "@/core/archive/lib/volume-size";
 import { transformError } from "@/core/error/lib";
 import { archivesCommands } from "@/core/ipc/commands/archives";
@@ -16,6 +15,8 @@ import { Logger, Timer } from "@/lib/logging";
 import { call, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 import { getPathName } from "@/lib/path/separator";
 import { Nullable } from "@/lib/types/general";
+
+import { toSavedState } from "./patcher.service.utils";
 
 /** Sections of the patching configuration, in the order they are edited. */
 export enum EPatcherSection {

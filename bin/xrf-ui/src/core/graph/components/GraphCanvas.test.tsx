@@ -1,8 +1,9 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { GraphCanvas } from "@/core/graph/components/GraphCanvas";
 import { TGraphEdge, TGraphNode } from "@/core/graph/lib/graph.types";
 import { renderWithProviders } from "@/fixtures/utils/render";
+
+import { GraphCanvas } from "./GraphCanvas";
 
 const NODES: Array<TGraphNode> = [
   { data: { label: "first" }, id: "first", position: { x: 0, y: 0 } },

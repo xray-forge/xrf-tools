@@ -1,6 +1,7 @@
 import { IKeybindCommand } from "@/core/commands";
-import { IKeyChord, isSuppressedInTextEntry, matchesChord, parseChord, toChordKey } from "@/core/keybinds/lib/chord";
 import { Nullable, Optional } from "@/lib/types/general";
+
+import { IKeyChord, isSuppressedInTextEntry, matchesChord, parseChord, toChordKey } from "./chord";
 
 /** One chord bound to one command. */
 export interface IKeybinding {

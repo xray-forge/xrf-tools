@@ -1,7 +1,8 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { IDialogTreeEntry, toDialogTreeEntries } from "@/applications/dialogs-editor/lib/dialog-tree";
 import { DialogProjectDescriptor } from "@/core/ipc/types/xrf-dialog";
+
+import { IDialogTreeEntry, toDialogTreeEntries } from "./dialog-tree";
 
 const SEPARATOR: string = "\\";
 

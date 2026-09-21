@@ -1,4 +1,3 @@
-import { IArchiveEntry } from "@/core/archive/lib/entry";
 import {
   ArchiveFileDescription,
   AssetTextureDescriptor,
@@ -8,6 +7,8 @@ import {
 import { ArchiveReadResult } from "@/core/ipc/types/xrf-archive";
 import { ArchiveExtractDirectoryResult } from "@/core/ipc/types/xrf-pack";
 import { EPathEntryKind } from "@/core/path/entry-kind";
+
+import { IArchiveEntry } from "./entry";
 
 /**
  * What the explorer currently points at.

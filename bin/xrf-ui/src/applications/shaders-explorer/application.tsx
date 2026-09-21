@@ -1,6 +1,5 @@
 import { default as GradientIcon } from "@mui/icons-material/Gradient";
 
-import { SHADERS_EXPLORER_HELP } from "@/applications/shaders-explorer/help";
 import {
   EApplicationGroupId,
   EApplicationId,
@@ -8,6 +7,8 @@ import {
   IApplicationDescriptor,
 } from "@/core/routing/application";
 import { createApplicationDescriptor } from "@/core/routing/application-descriptor";
+
+import { SHADERS_EXPLORER_HELP } from "./help";
 
 export const SHADERS_EXPLORER_APPLICATION: IApplicationDescriptor = createApplicationDescriptor(
   {

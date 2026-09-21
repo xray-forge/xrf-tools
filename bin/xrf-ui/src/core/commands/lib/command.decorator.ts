@@ -1,7 +1,8 @@
-import { IKeybindCommand } from "@/core/commands/lib/command-descriptor";
-import { appendKeybindCommandHandler } from "@/core/commands/lib/command-metadata";
 import { XrfApplicationError } from "@/core/error/lib";
 import { Optional } from "@/lib/types/general";
+
+import { IKeybindCommand } from "./command-descriptor";
+import { appendKeybindCommandHandler } from "./command-metadata";
 
 /** How a handler qualifies the keybind command it answers. */
 export interface IKeybindCommandHandlerOptions<T> {

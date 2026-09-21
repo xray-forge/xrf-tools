@@ -3,7 +3,6 @@ import { RenderResult, waitFor } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { Injectable } from "@wirestate/core";
 
-import { EquipmentRepackAction } from "@/applications/sprite-equipment-editor/components/editor/EquipmentRepackAction";
 import { SpriteEquipmentEditorService } from "@/applications/sprite-equipment-editor/services/editor";
 import { AssetService } from "@/core/assets/services";
 import { EquipmentSpriteMetadata } from "@/core/ipc/types/xrf-app";
@@ -11,6 +10,8 @@ import { SpriteEquipmentPackerService } from "@/core/sprite-equipment/services/p
 import { mockEquipmentSpriteMetadata, mockEquipmentSpriteOpen } from "@/fixtures/mocks/sprite.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
 import { Nullable } from "@/lib/types/general";
+
+import { EquipmentRepackAction } from "./EquipmentRepackAction";
 
 /** What the service under test starts holding, which each case varies before rendering. */
 const seed: { repackSourcePath: Nullable<string>; metadata: EquipmentSpriteMetadata } = {

@@ -2,7 +2,6 @@ import { beforeEach, describe, expect, it } from "@jest/globals";
 import { act, waitFor } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 
-import { ExportSourceView } from "@/applications/exports-explorer/components/viewer/exports/ExportSourceView";
 import { ExportsService } from "@/applications/exports-explorer/services/exports";
 import { ExportSourceContent } from "@/core/ipc/types/xrf-export";
 import { mockExportsProject } from "@/fixtures/mocks/project.mocks";
@@ -11,6 +10,8 @@ import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 import { Nullable } from "@/lib/types/general";
+
+import { ExportSourceView } from "./ExportSourceView";
 
 function mockSource(name: string, content: string, line: number = 18): ExportSourceContent {
   return { name, path: "effects/sound.ts", line, endLine: line + 2, content };

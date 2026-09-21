@@ -6,7 +6,7 @@ import {
   ITextureOpenModeDescriptor,
   ITextureOpenSession,
   TEXTURE_OPEN_MODES,
-} from "@/applications/textures-explorer/lib/texture-open-mode";
+} from "./texture-open-mode";
 
 const PATH: string = "C:\\gamedata";
 const ASSET_ROOT: string = "C:\\Games\\stalker";

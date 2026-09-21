@@ -1,6 +1,5 @@
 import { default as AutoAwesomeIcon } from "@mui/icons-material/AutoAwesome";
 
-import { PARTICLES_EDITOR_HELP } from "@/applications/particles-editor/help";
 import {
   EApplicationGroupId,
   EApplicationId,
@@ -8,6 +7,8 @@ import {
   IApplicationDescriptor,
 } from "@/core/routing/application";
 import { createApplicationDescriptor } from "@/core/routing/application-descriptor";
+
+import { PARTICLES_EDITOR_HELP } from "./help";
 
 export const PARTICLES_EDITOR_APPLICATION: IApplicationDescriptor = createApplicationDescriptor(
   {

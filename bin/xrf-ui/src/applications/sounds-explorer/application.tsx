@@ -1,6 +1,5 @@
 import { default as LibraryMusicIcon } from "@mui/icons-material/LibraryMusic";
 
-import { SOUNDS_EXPLORER_HELP } from "@/applications/sounds-explorer/help";
 import {
   EApplicationGroupId,
   EApplicationId,
@@ -8,6 +7,8 @@ import {
   IApplicationDescriptor,
 } from "@/core/routing/application";
 import { createApplicationDescriptor } from "@/core/routing/application-descriptor";
+
+import { SOUNDS_EXPLORER_HELP } from "./help";
 
 export const SOUNDS_EXPLORER_APPLICATION: IApplicationDescriptor = createApplicationDescriptor(
   {

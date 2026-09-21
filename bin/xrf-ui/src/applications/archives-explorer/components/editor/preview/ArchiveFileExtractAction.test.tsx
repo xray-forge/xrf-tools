@@ -4,13 +4,14 @@ import { RenderResult, waitFor } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { Injectable } from "@wirestate/core";
 
-import { ArchiveFileExtractAction } from "@/applications/archives-explorer/components/editor/preview/ArchiveFileExtractAction";
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { ArchiveFileDescriptor } from "@/core/ipc/types/xrf-archive";
 import { mockArchiveFileDescriptor, mockArchivesVolumes } from "@/fixtures/mocks/archive.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
+
+import { ArchiveFileExtractAction } from "./ArchiveFileExtractAction";
 
 const FILE: ArchiveFileDescriptor = mockArchiveFileDescriptor({
   name: "configs\\gameplay\\dialogs.xml",

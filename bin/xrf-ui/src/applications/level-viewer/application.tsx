@@ -1,6 +1,5 @@
 import { default as TerrainIcon } from "@mui/icons-material/Terrain";
 
-import { LEVEL_VIEWER_HELP } from "@/applications/level-viewer/help";
 import {
   EApplicationGroupId,
   EApplicationId,
@@ -8,6 +7,8 @@ import {
   IApplicationDescriptor,
 } from "@/core/routing/application";
 import { createApplicationDescriptor } from "@/core/routing/application-descriptor";
+
+import { LEVEL_VIEWER_HELP } from "./help";
 
 export const LEVEL_VIEWER_APPLICATION: IApplicationDescriptor = createApplicationDescriptor(
   {

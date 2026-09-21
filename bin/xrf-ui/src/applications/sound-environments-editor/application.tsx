@@ -1,6 +1,5 @@
 import { default as SurroundSoundIcon } from "@mui/icons-material/SurroundSound";
 
-import { SOUND_ENVIRONMENTS_EDITOR_HELP } from "@/applications/sound-environments-editor/help";
 import {
   EApplicationGroupId,
   EApplicationId,
@@ -8,6 +7,8 @@ import {
   IApplicationDescriptor,
 } from "@/core/routing/application";
 import { createApplicationDescriptor } from "@/core/routing/application-descriptor";
+
+import { SOUND_ENVIRONMENTS_EDITOR_HELP } from "./help";
 
 export const SOUND_ENVIRONMENTS_EDITOR_APPLICATION: IApplicationDescriptor = createApplicationDescriptor(
   {

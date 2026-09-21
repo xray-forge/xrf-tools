@@ -1,9 +1,10 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { describeGamedataVerifyOutcome } from "@/applications/gamedata-verifier/lib/describe-gamedata-verify-outcome";
 import { GamedataCheckSummary, GamedataVerifySummary } from "@/core/ipc/types/xrf-app";
 import { IJobNotice, IJobOutcome } from "@/core/jobs/lib";
 import { ENotificationSeverity } from "@/core/notifications/lib";
+
+import { describeGamedataVerifyOutcome } from "./describe-gamedata-verify-outcome";
 
 const ROOT: string = "C:\\Games\\Anomaly\\gamedata";
 

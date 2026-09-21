@@ -1,8 +1,9 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { findSharedPayloadOf, listPayloadSharersOf } from "@/core/archive/lib/files";
 import { ArchiveFileDescriptor, ArchiveSharedPayload } from "@/core/ipc/types/xrf-archive";
 import { mockArchiveFileDescriptor, mockArchiveSharedPayload } from "@/fixtures/mocks/archive.mocks";
+
+import { findSharedPayloadOf, listPayloadSharersOf } from "./files";
 
 const FIRST: ArchiveFileDescriptor = mockArchiveFileDescriptor({ name: "configs\\first.ltx", offset: 64 });
 const SECOND: ArchiveFileDescriptor = mockArchiveFileDescriptor({ name: "configs\\second.ltx", offset: 64 });

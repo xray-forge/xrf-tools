@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { weighIpcPayload } from "@/core/ipc/metrics/metrics.weigh";
+import { weighIpcPayload } from "./metrics.weigh";
 
 describe("weighIpcPayload", () => {
   it("weighs a payload as the bytes it crosses as, not as the characters it is written with", () => {

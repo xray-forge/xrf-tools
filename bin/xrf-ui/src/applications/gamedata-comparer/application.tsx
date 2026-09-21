@@ -1,6 +1,5 @@
 import { default as CompareArrowsIcon } from "@mui/icons-material/CompareArrows";
 
-import { GAMEDATA_COMPARER_HELP } from "@/applications/gamedata-comparer/help";
 import {
   EApplicationGroupId,
   EApplicationId,
@@ -8,6 +7,8 @@ import {
   IApplicationDescriptor,
 } from "@/core/routing/application";
 import { createApplicationDescriptor } from "@/core/routing/application-descriptor";
+
+import { GAMEDATA_COMPARER_HELP } from "./help";
 
 export const GAMEDATA_COMPARER_APPLICATION: IApplicationDescriptor = createApplicationDescriptor(
   {

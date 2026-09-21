@@ -1,8 +1,9 @@
-import { IArchiveEntry } from "@/core/archive/lib/entry";
-import { TArchiveSelection } from "@/core/archive/lib/selection";
 import { EPathEntryKind } from "@/core/path/entry-kind";
 import { IPathTreeItem, parsePathTree, toDirectoryItemId, toFileItemId } from "@/core/ui/tree/path-tree";
 import { Nullable } from "@/lib/types/general";
+
+import { IArchiveEntry } from "./entry";
+import { TArchiveSelection } from "./selection";
 
 /**
  * Whether a browsed file would be written when its directory is extracted.

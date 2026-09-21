@@ -2,7 +2,6 @@ import { useInjection } from "@wirestate/react";
 import { ReactElement, useEffect, useMemo, useState } from "react";
 
 import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
-import { LevelSurfaceRow } from "@/core/level/components/panels/LevelSurfacesPanel/LevelSurfaceRow";
 import {
   ILevelSurfaceDressing,
   ILevelTextureReport,
@@ -23,6 +22,8 @@ import {
 } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Maybe } from "@/lib/types/general";
+
+import { LevelSurfaceRow } from "./LevelSurfaceRow";
 
 /**
  * How every surface of the open level is drawn, one row per entry of its shader table.

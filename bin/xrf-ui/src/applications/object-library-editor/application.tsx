@@ -1,6 +1,5 @@
 import { default as CollectionsBookmarkIcon } from "@mui/icons-material/CollectionsBookmark";
 
-import { OBJECT_LIBRARY_EDITOR_HELP } from "@/applications/object-library-editor/help";
 import {
   EApplicationGroupId,
   EApplicationId,
@@ -8,6 +7,8 @@ import {
   IApplicationDescriptor,
 } from "@/core/routing/application";
 import { createApplicationDescriptor } from "@/core/routing/application-descriptor";
+
+import { OBJECT_LIBRARY_EDITOR_HELP } from "./help";
 
 export const OBJECT_LIBRARY_EDITOR_APPLICATION: IApplicationDescriptor = createApplicationDescriptor(
   {

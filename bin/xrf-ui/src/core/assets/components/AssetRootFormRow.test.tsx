@@ -1,10 +1,11 @@
 import { describe, expect, it, jest } from "@jest/globals";
 
-import { AssetRootFormRow } from "@/core/assets/components/AssetRootFormRow";
 import { IPathField } from "@/core/ui/form/use-path-field";
 import { setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
 import { Nullable } from "@/lib/types/general";
+
+import { AssetRootFormRow } from "./AssetRootFormRow";
 
 const INSTALLATION: string = "C:\\Games\\stalker";
 

@@ -1,14 +1,15 @@
 import { describe, expect, it } from "@jest/globals";
 
 import { JobProgress, ProgressLevel, ProgressUnit } from "@/core/ipc/types/xrf-job";
+import { Nullable } from "@/lib/types/general";
+
 import {
   describeActiveProgress,
   formatProgressCounts,
   formatProgressRate,
   formatProgressUnits,
   toProgressPercent,
-} from "@/core/jobs/lib/progress-format";
-import { Nullable } from "@/lib/types/general";
+} from "./progress-format";
 
 function level(
   id: string,

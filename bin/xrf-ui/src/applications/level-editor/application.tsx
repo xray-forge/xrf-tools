@@ -1,6 +1,5 @@
 import { default as EditLocationAltIcon } from "@mui/icons-material/EditLocationAlt";
 
-import { LEVEL_EDITOR_HELP } from "@/applications/level-editor/help";
 import {
   EApplicationGroupId,
   EApplicationId,
@@ -8,6 +7,8 @@ import {
   IApplicationDescriptor,
 } from "@/core/routing/application";
 import { createApplicationDescriptor } from "@/core/routing/application-descriptor";
+
+import { LEVEL_EDITOR_HELP } from "./help";
 
 export const LEVEL_EDITOR_APPLICATION: IApplicationDescriptor = createApplicationDescriptor(
   {

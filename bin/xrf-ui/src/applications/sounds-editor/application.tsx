@@ -1,6 +1,5 @@
 import { default as TuneIcon } from "@mui/icons-material/Tune";
 
-import { SOUNDS_EDITOR_HELP } from "@/applications/sounds-editor/help";
 import {
   EApplicationGroupId,
   EApplicationId,
@@ -8,6 +7,8 @@ import {
   IApplicationDescriptor,
 } from "@/core/routing/application";
 import { createApplicationDescriptor } from "@/core/routing/application-descriptor";
+
+import { SOUNDS_EDITOR_HELP } from "./help";
 
 export const SOUNDS_EDITOR_APPLICATION: IApplicationDescriptor = createApplicationDescriptor(
   {

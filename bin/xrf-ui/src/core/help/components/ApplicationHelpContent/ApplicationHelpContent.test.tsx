@@ -1,9 +1,10 @@
 import { describe, expect, it, jest } from "@jest/globals";
 import { userEvent } from "@testing-library/user-event";
 
-import { ApplicationHelpContent } from "@/core/help/components/ApplicationHelpContent/ApplicationHelpContent";
 import { EApplicationId, IApplicationHelp } from "@/core/routing/application";
 import { renderWithProviders } from "@/fixtures/utils/render";
+
+import { ApplicationHelpContent } from "./ApplicationHelpContent";
 
 describe("ApplicationHelpContent", () => {
   it("renders only the sections the entry actually has, in rubric order", () => {

@@ -1,6 +1,5 @@
 import { default as SwapHorizIcon } from "@mui/icons-material/SwapHoriz";
 
-import { VISUALS_CONVERTER_HELP } from "@/applications/visuals-converter/help";
 import {
   EApplicationGroupId,
   EApplicationId,
@@ -8,6 +7,8 @@ import {
   IApplicationDescriptor,
 } from "@/core/routing/application";
 import { createApplicationDescriptor } from "@/core/routing/application-descriptor";
+
+import { VISUALS_CONVERTER_HELP } from "./help";
 
 export const VISUALS_CONVERTER_APPLICATION: IApplicationDescriptor = createApplicationDescriptor(
   {

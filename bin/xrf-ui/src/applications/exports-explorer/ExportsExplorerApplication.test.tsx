@@ -3,12 +3,13 @@ import { act, RenderResult } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { Route, Routes } from "react-router-dom";
 
-import { ExportsExplorerApplication } from "@/applications/exports-explorer/ExportsExplorerApplication";
 import { ApplicationShell } from "@/core/shell/ApplicationShell";
 import { mockExportsProject } from "@/fixtures/mocks/project.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
+
+import { ExportsExplorerApplication } from "./ExportsExplorerApplication";
 
 describe("ExportsExplorerApplication", () => {
   beforeEach(() => {

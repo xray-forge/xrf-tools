@@ -1,6 +1,5 @@
 import { default as WbSunnyIcon } from "@mui/icons-material/WbSunny";
 
-import { WEATHER_EDITOR_HELP } from "@/applications/weather-editor/help";
 import {
   EApplicationGroupId,
   EApplicationId,
@@ -8,6 +7,8 @@ import {
   IApplicationDescriptor,
 } from "@/core/routing/application";
 import { createApplicationDescriptor } from "@/core/routing/application-descriptor";
+
+import { WEATHER_EDITOR_HELP } from "./help";
 
 export const WEATHER_EDITOR_APPLICATION: IApplicationDescriptor = createApplicationDescriptor(
   {

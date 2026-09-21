@@ -1,8 +1,9 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { describeAdoptedOutcome } from "@/core/jobs/lib/describe-adopted-outcome";
-import { IJobState } from "@/core/jobs/lib/jobs-types";
 import { ENotificationSeverity } from "@/core/notifications/lib";
+
+import { describeAdoptedOutcome } from "./describe-adopted-outcome";
+import { IJobState } from "./jobs-types";
 
 const JOB: IJobState = {
   id: "b8f0",

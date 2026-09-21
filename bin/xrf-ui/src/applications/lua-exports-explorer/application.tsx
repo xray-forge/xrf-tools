@@ -1,6 +1,5 @@
 import { default as CodeIcon } from "@mui/icons-material/Code";
 
-import { LUA_EXPORTS_EXPLORER_HELP } from "@/applications/lua-exports-explorer/help";
 import {
   EApplicationGroupId,
   EApplicationId,
@@ -8,6 +7,8 @@ import {
   IApplicationDescriptor,
 } from "@/core/routing/application";
 import { createApplicationDescriptor } from "@/core/routing/application-descriptor";
+
+import { LUA_EXPORTS_EXPLORER_HELP } from "./help";
 
 export const LUA_EXPORTS_EXPLORER_APPLICATION: IApplicationDescriptor = createApplicationDescriptor(
   {

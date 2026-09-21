@@ -1,7 +1,8 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { toAssetLocation } from "@/core/assets/lib/asset-location";
 import { mockArchivedTextureAsset, mockTextureAsset } from "@/fixtures/mocks/texture.mocks";
+
+import { toAssetLocation } from "./asset-location";
 
 describe("toAssetLocation", () => {
   it("has nothing to say about nothing", () => {

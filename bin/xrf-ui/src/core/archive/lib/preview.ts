@@ -1,7 +1,8 @@
-import { IArchiveEntry } from "@/core/archive/lib/entry";
 import { ArchiveReadPolicy } from "@/core/ipc/types/xrf-archive";
 import { EXrayExtension, XrayExtension } from "@/core/ipc/types/xrf-extension";
 import { getFoldedFileExtension } from "@/lib/path/extension";
+
+import { IArchiveEntry } from "./entry";
 
 /** A preview representation, or the policy reason an entry cannot be previewed. */
 export type ArchivePreviewSupport =

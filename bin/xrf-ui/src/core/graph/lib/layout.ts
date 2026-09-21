@@ -1,6 +1,6 @@
 import { EdgeLabel, Graph, GraphLabel, layout, NodeLabel } from "@dagrejs/dagre";
 
-import { GRAPH_LAYOUT_DEFAULTS, IGraphLayoutOptions, TGraphEdge, TGraphNode } from "@/core/graph/lib/graph.types";
+import { GRAPH_LAYOUT_DEFAULTS, IGraphLayoutOptions, TGraphEdge, TGraphNode } from "./graph.types";
 
 /**
  * Positions nodes as a layered graph, in one pass.

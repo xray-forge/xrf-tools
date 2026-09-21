@@ -1,13 +1,6 @@
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback } from "react";
 
-import {
-  ARCHIVE_FILTERS,
-  EArchiveOpenMode,
-  OPEN_MODE_DESCRIPTIONS,
-  OPEN_MODE_OPTIONS,
-  OPEN_MODES,
-} from "@/applications/archives-explorer/components/ArchivesEditorOpenForm.utils";
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { createRoot } from "@/core/assets/lib";
 import { useRootProbe } from "@/core/assets/lib/use-root-probe";
@@ -19,6 +12,14 @@ import { inline } from "@/lib/callbacks/inline";
 import { Logger, useLogger } from "@/lib/logging";
 import { assertExhaustive } from "@/lib/types/exhaustive";
 import { Nullable } from "@/lib/types/general";
+
+import {
+  ARCHIVE_FILTERS,
+  EArchiveOpenMode,
+  OPEN_MODE_DESCRIPTIONS,
+  OPEN_MODE_OPTIONS,
+  OPEN_MODES,
+} from "./ArchivesEditorOpenForm.utils";
 
 /**
  * Opens a game folder, loose gamedata, a directory of volumes, or one volume for browsing.

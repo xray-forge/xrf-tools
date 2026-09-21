@@ -1,8 +1,9 @@
 import { describe, expect, it } from "@jest/globals";
 import { ReactElement } from "react";
 
-import { TChunkTabChange, useChunkTab } from "@/applications/spawn-editor/components/editor/chunks/use-chunk-tab";
 import { renderWithProviders } from "@/fixtures/utils/render";
+
+import { TChunkTabChange, useChunkTab } from "./use-chunk-tab";
 
 const BASE_PATH: string = "/spawn-editor/graph";
 const TABS: Array<string> = ["header", "levels", "vertices"];

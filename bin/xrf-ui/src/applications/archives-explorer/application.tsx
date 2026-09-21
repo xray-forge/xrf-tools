@@ -1,7 +1,5 @@
 import { default as ArchiveIcon } from "@mui/icons-material/Archive";
 
-import { ARCHIVES_EXPLORER_KEYBIND_COMMANDS } from "@/applications/archives-explorer/commands";
-import { ARCHIVES_EXPLORER_HELP } from "@/applications/archives-explorer/help";
 import {
   EApplicationGroupId,
   EApplicationId,
@@ -9,6 +7,9 @@ import {
   IApplicationDescriptor,
 } from "@/core/routing/application";
 import { createApplicationDescriptor } from "@/core/routing/application-descriptor";
+
+import { ARCHIVES_EXPLORER_KEYBIND_COMMANDS } from "./commands";
+import { ARCHIVES_EXPLORER_HELP } from "./help";
 
 export const ARCHIVES_EXPLORER_APPLICATION: IApplicationDescriptor = createApplicationDescriptor(
   {

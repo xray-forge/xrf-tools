@@ -1,7 +1,6 @@
 import { Alert, Checkbox, FormControlLabel, Stack, Typography } from "@mui/material";
 import { ReactElement } from "react";
 
-import { PackerDirectoryChips } from "@/applications/archives-packer/components/packing/PackerDirectoryChips";
 import { isWholeDirectory } from "@/applications/archives-packer/lib/pack-config";
 import { ArchivePathText } from "@/core/archive/components/ArchivePathText";
 import { ArchiveSummaryRow } from "@/core/archive/components/ArchiveSummaryRow";
@@ -10,6 +9,8 @@ import { ArchivePackConfig, EArchivePackMode, EArchiveVolumeExtension } from "@/
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { bytesToWholeMegabytes } from "@/lib/memory/size";
 import { Nullable } from "@/lib/types/general";
+
+import { PackerDirectoryChips } from "./PackerDirectoryChips";
 
 interface IPackerConfirmSummaryProps extends BaseComponentProps {
   config: ArchivePackConfig;

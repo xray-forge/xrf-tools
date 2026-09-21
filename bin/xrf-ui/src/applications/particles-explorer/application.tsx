@@ -1,6 +1,5 @@
 import { default as BlurOnIcon } from "@mui/icons-material/BlurOn";
 
-import { PARTICLES_EXPLORER_HELP } from "@/applications/particles-explorer/help";
 import {
   EApplicationGroupId,
   EApplicationId,
@@ -8,6 +7,8 @@ import {
   IApplicationDescriptor,
 } from "@/core/routing/application";
 import { createApplicationDescriptor } from "@/core/routing/application-descriptor";
+
+import { PARTICLES_EXPLORER_HELP } from "./help";
 
 export const PARTICLES_EXPLORER_APPLICATION: IApplicationDescriptor = createApplicationDescriptor(
   {

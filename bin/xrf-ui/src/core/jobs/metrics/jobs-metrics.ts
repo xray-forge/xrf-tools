@@ -1,6 +1,7 @@
 import { JobProgress, ProgressLevel } from "@/core/ipc/types/xrf-job";
-import { IJobPhase, IJobProfile } from "@/core/jobs/metrics/jobs-metrics.types";
 import { Maybe, Nullable, Optional } from "@/lib/types/general";
+
+import { IJobPhase, IJobProfile } from "./jobs-metrics.types";
 
 /** Matched to the backend's own `RETAINED_JOBS`. */
 const RETAINED_PROFILES: number = 20;

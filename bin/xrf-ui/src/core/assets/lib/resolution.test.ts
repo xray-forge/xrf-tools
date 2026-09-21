@@ -1,7 +1,8 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { describeResolution, getLocatedAsset, listLocatedAssets } from "@/core/assets/lib/resolution";
 import { XrayAsset } from "@/core/ipc/types/xrf-vfs";
+
+import { describeResolution, getLocatedAsset, listLocatedAssets } from "./resolution";
 
 const DUMMY: XrayAsset = {
   container: {

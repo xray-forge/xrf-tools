@@ -1,6 +1,7 @@
-import { ISessionIdentity } from "@/core/ipc/session/session.types";
 import { SessionId } from "@/core/ipc/types/xrf-app";
 import { Nullable } from "@/lib/types/general";
+
+import { ISessionIdentity } from "./session.types";
 
 /**
  * Requires an opening's identity before a session-addressed command can run.

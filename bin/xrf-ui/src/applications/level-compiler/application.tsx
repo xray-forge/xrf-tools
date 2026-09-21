@@ -1,6 +1,5 @@
 import { default as BuildIcon } from "@mui/icons-material/Build";
 
-import { LEVEL_COMPILER_HELP } from "@/applications/level-compiler/help";
 import {
   EApplicationGroupId,
   EApplicationId,
@@ -8,6 +7,8 @@ import {
   IApplicationDescriptor,
 } from "@/core/routing/application";
 import { createApplicationDescriptor } from "@/core/routing/application-descriptor";
+
+import { LEVEL_COMPILER_HELP } from "./help";
 
 export const LEVEL_COMPILER_APPLICATION: IApplicationDescriptor = createApplicationDescriptor(
   {

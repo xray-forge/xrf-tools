@@ -1,10 +1,11 @@
-import { IArchiveEntry } from "@/core/archive/lib/entry";
-import { listArchiveFiles } from "@/core/archive/lib/files";
-import { createArchiveRoots } from "@/core/archive/lib/roots";
 import { ArchiveSubject, EArchiveSubject } from "@/core/ipc/types/xrf-app";
 import { ArchiveReadPolicy } from "@/core/ipc/types/xrf-archive";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { Nullable } from "@/lib/types/general";
+
+import { IArchiveEntry } from "./entry";
+import { listArchiveFiles } from "./files";
+import { createArchiveRoots } from "./roots";
 
 /**
  * How many sources a subject answers from: volumes for a volume set, mounts for a world.

@@ -1,12 +1,13 @@
 import { CommandBus, Container, QueryBus, ServiceToken, WirestatePlugin } from "@wirestate/core";
 
-import { toKeybindCommandEnabledQuery } from "@/core/commands/lib/command-descriptor";
+import { XrfApplicationError } from "@/core/error/lib";
+
+import { toKeybindCommandEnabledQuery } from "./command-descriptor";
 import {
   collectKeybindCommandHandlers,
   hasKeybindCommandHandlers,
   IKeybindCommandHandlerMetadata,
-} from "@/core/commands/lib/command-metadata";
-import { XrfApplicationError } from "@/core/error/lib";
+} from "./command-metadata";
 
 /**
  * Wires `@KeybindCommand` methods onto the command and query buses for one provision cycle.

@@ -1,13 +1,14 @@
 import { Typography } from "@mui/material";
 import { ReactElement, ReactNode } from "react";
 
-import { ApplicationHelpRelated } from "@/core/help/components/ApplicationHelpContent/ApplicationHelpRelated";
-import { ApplicationHelpSection } from "@/core/help/components/ApplicationHelpContent/ApplicationHelpSection";
-import { ApplicationHelpShortcuts } from "@/core/help/components/ApplicationHelpContent/ApplicationHelpShortcuts";
 import { renderHelpText } from "@/core/help/lib/help-text";
 import { IApplicationHelp } from "@/core/routing/application";
 import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
+
+import { ApplicationHelpRelated } from "./ApplicationHelpRelated";
+import { ApplicationHelpSection } from "./ApplicationHelpSection";
+import { ApplicationHelpShortcuts } from "./ApplicationHelpShortcuts";
 
 export interface IApplicationHelpContentProps extends BaseComponentProps {
   help: IApplicationHelp;

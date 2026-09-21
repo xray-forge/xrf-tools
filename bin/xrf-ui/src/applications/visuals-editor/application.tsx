@@ -1,6 +1,5 @@
 import { default as AccessibilityNewIcon } from "@mui/icons-material/AccessibilityNew";
 
-import { VISUALS_EDITOR_HELP } from "@/applications/visuals-editor/help";
 import {
   EApplicationGroupId,
   EApplicationId,
@@ -8,6 +7,8 @@ import {
   IApplicationDescriptor,
 } from "@/core/routing/application";
 import { createApplicationDescriptor } from "@/core/routing/application-descriptor";
+
+import { VISUALS_EDITOR_HELP } from "./help";
 
 export const VISUALS_EDITOR_APPLICATION: IApplicationDescriptor = createApplicationDescriptor(
   {

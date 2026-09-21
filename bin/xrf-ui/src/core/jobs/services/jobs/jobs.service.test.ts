@@ -4,7 +4,6 @@ import { EventBus, WireEvent } from "@wirestate/core";
 import { EJobKind } from "@/core/ipc/types/xrf-app";
 import { JobProgress } from "@/core/ipc/types/xrf-job";
 import { IJobNotice, IJobOutcome, IJobSettledPayload, IJobState, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
-import { JobsService } from "@/core/jobs/services/jobs/jobs.service";
 import { EMIT_NOTIFICATION_EVENT, ENotificationSeverity, INotificationPayload } from "@/core/notifications/lib";
 import {
   emitMockChannelMessage,
@@ -16,6 +15,8 @@ import {
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { noop } from "@/lib/callbacks/noop";
 import { Nullable } from "@/lib/types/general";
+
+import { JobsService } from "./jobs.service";
 
 const CANCEL_COMMAND: string = "plugin:jobs|cancel";
 

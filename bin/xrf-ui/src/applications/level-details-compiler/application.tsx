@@ -1,6 +1,5 @@
 import { default as GrassIcon } from "@mui/icons-material/Grass";
 
-import { LEVEL_DETAILS_COMPILER_HELP } from "@/applications/level-details-compiler/help";
 import {
   EApplicationGroupId,
   EApplicationId,
@@ -8,6 +7,8 @@ import {
   IApplicationDescriptor,
 } from "@/core/routing/application";
 import { createApplicationDescriptor } from "@/core/routing/application-descriptor";
+
+import { LEVEL_DETAILS_COMPILER_HELP } from "./help";
 
 export const LEVEL_DETAILS_COMPILER_APPLICATION: IApplicationDescriptor = createApplicationDescriptor(
   {

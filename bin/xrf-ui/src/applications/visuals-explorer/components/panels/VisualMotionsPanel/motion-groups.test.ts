@@ -1,12 +1,8 @@
 import { describe, expect, it } from "@jest/globals";
 
-import {
-  getMotionNodeName,
-  groupMotionNames,
-  listMotionGroupIds,
-  toMotionNodeId,
-} from "@/applications/visuals-explorer/components/panels/VisualMotionsPanel/motion-groups";
 import { ITreeNode } from "@/core/ui/tree/tree-node";
+
+import { getMotionNodeName, groupMotionNames, listMotionGroupIds, toMotionNodeId } from "./motion-groups";
 
 describe("groupMotionNames", () => {
   it("gathers a family under the token its names start with, counted", () => {

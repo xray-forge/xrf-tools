@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 
 import { IIpcCommandMetrics, IPC_METRICS } from "@/core/ipc/metrics";
-import { invokeRaw } from "@/core/ipc/raw";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { Optional } from "@/lib/types/general";
+
+import { invokeRaw } from "./raw";
 
 const COMMAND: string = "plugin:visuals|read_geometry";
 

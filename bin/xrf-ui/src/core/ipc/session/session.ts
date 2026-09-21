@@ -1,9 +1,10 @@
 import { isTauri } from "@tauri-apps/api/core";
 
-import { ISessionIdentity } from "@/core/ipc/session/session.types";
 import { SessionId } from "@/core/ipc/types/xrf-app";
 import { Logger } from "@/lib/logging";
 import { Maybe } from "@/lib/types/general";
+
+import { ISessionIdentity } from "./session.types";
 
 /**
  * Owns native openings through completion and teardown, including cancelled frontend flows.

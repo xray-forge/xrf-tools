@@ -1,14 +1,15 @@
 import { describe, expect, it } from "@jest/globals";
 
+import { TGraphEdge, TGraphNode } from "@/core/graph/lib";
+import { DialogDescriptor, DialogPhraseDescriptor } from "@/core/ipc/types/xrf-dialog";
+
 import {
   buildDialogGraph,
   DIALOG_NODE_ID,
   EDialogGraphNodeType,
   IDialogGraph,
   IDialogGraphNodeData,
-} from "@/applications/dialogs-editor/lib/dialog-graph";
-import { TGraphEdge, TGraphNode } from "@/core/graph/lib";
-import { DialogDescriptor, DialogPhraseDescriptor } from "@/core/ipc/types/xrf-dialog";
+} from "./dialog-graph";
 
 function phrase(overrides: Partial<DialogPhraseDescriptor> = {}): DialogPhraseDescriptor {
   return {

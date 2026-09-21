@@ -1,6 +1,5 @@
 import { default as AccountTreeIcon } from "@mui/icons-material/AccountTree";
 
-import { LEVEL_DECOMPILER_HELP } from "@/applications/level-decompiler/help";
 import {
   EApplicationGroupId,
   EApplicationId,
@@ -8,6 +7,8 @@ import {
   IApplicationDescriptor,
 } from "@/core/routing/application";
 import { createApplicationDescriptor } from "@/core/routing/application-descriptor";
+
+import { LEVEL_DECOMPILER_HELP } from "./help";
 
 export const LEVEL_DECOMPILER_APPLICATION: IApplicationDescriptor = createApplicationDescriptor(
   {

@@ -3,10 +3,11 @@ import { act, waitFor } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { Container } from "@wirestate/core";
 
-import { ApplicationHelp } from "@/core/help/components/ApplicationHelp/ApplicationHelp";
 import { HelpService } from "@/core/help/services/help";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
+
+import { ApplicationHelp } from "./ApplicationHelp";
 
 describe("ApplicationHelp", () => {
   it("offers the home screen's own help outside an application", async () => {

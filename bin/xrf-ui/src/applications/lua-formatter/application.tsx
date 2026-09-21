@@ -1,6 +1,5 @@
 import { default as FormatAlignLeftIcon } from "@mui/icons-material/FormatAlignLeft";
 
-import { LUA_FORMATTER_HELP } from "@/applications/lua-formatter/help";
 import {
   EApplicationGroupId,
   EApplicationId,
@@ -8,6 +7,8 @@ import {
   IApplicationDescriptor,
 } from "@/core/routing/application";
 import { createApplicationDescriptor } from "@/core/routing/application-descriptor";
+
+import { LUA_FORMATTER_HELP } from "./help";
 
 export const LUA_FORMATTER_APPLICATION: IApplicationDescriptor = createApplicationDescriptor(
   {

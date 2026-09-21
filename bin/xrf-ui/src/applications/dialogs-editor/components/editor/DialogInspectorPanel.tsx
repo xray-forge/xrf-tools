@@ -2,7 +2,6 @@ import { Chip, Stack } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useMemo } from "react";
 
-import { DialogInspectorSection } from "@/applications/dialogs-editor/components/editor/DialogInspectorSection";
 import { DIALOG_NODE_ID } from "@/applications/dialogs-editor/lib";
 import { groupDialogElements, IDialogElementGroup } from "@/applications/dialogs-editor/lib/dialog-elements";
 import { DialogsService } from "@/applications/dialogs-editor/services/dialogs";
@@ -15,6 +14,8 @@ import {
 } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
+
+import { DialogInspectorSection } from "./DialogInspectorSection";
 
 /**
  * What one node of the open dialog carries.

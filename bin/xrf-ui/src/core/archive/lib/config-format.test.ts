@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { DEFAULT_ARCHIVE_CONFIG_EXTENSION, withArchiveConfigExtension } from "@/core/archive/lib/config-format";
+import { DEFAULT_ARCHIVE_CONFIG_EXTENSION, withArchiveConfigExtension } from "./config-format";
 
 describe("withArchiveConfigExtension", () => {
   it("leaves a destination that already names a format exactly as it was typed", () => {

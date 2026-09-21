@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 
-import { ArchivesService } from "@/applications/archives-explorer/services/archives/archives.service";
 import { createRoot } from "@/core/assets/lib";
 import { AudioDescriptor } from "@/core/ipc/types/xrf-app";
 import { ArchiveFileDescriptor } from "@/core/ipc/types/xrf-archive";
@@ -10,6 +9,8 @@ import { mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { AsyncState } from "@/lib/async-state";
+
+import { ArchivesService } from "./archives.service";
 
 const ROOTS: XrayRoots = { asset: null, roots: [createRoot("C:\\game\\database", "volumes")] };
 const BYTES: ArrayBuffer = new Uint8Array([0x4f, 0x67, 0x67, 0x53]).buffer;

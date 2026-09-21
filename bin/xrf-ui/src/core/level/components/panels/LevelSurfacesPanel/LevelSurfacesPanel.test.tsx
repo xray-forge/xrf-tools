@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
-import { RenderResult } from "@testing-library/react";
+import { RenderResult, waitFor } from "@testing-library/react";
 import { Container } from "@wirestate/core";
 import { runInAction } from "@wirestate/mobx";
 
 import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
 import { LevelSurfacesPanel } from "@/core/level/components/panels/LevelSurfacesPanel";
 import { ILevelTextureSource } from "@/core/level/lib/texture/level-texture-set";
-import { LevelLoadService } from "@/core/level/services";
+import { LevelLoadService, LevelViewportService } from "@/core/level/services";
 import { mockLevelTextureSource, mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
@@ -49,12 +49,15 @@ const TABLE: Array<XraySurfaceDescriptor> = [
   }),
 ];
 
-async function renderPanel(textures?: ILevelTextureSource): Promise<RenderResult> {
+async function renderPanel(
+  textures?: ILevelTextureSource,
+  arrange?: (viewport: LevelViewportService) => void
+): Promise<RenderResult> {
   setMockInvokeResponses({
     ["plugin:levels|get_level"]: mockSessionResponse(mockSelectedLevelDescription({ surfaces: TABLE })),
   });
 
-  const container: Container = mockContainer([LevelLoadService]);
+  const container: Container = mockContainer([LevelLoadService, LevelViewportService]);
   const service: LevelLoadService = container.get(LevelLoadService);
 
   await service.restore();
@@ -66,6 +69,8 @@ async function renderPanel(textures?: ILevelTextureSource): Promise<RenderResult
     });
   }
 
+  arrange?.(container.get(LevelViewportService));
+
   return renderWithProviders(<LevelSurfacesPanel />, { container, route: "/level-viewer" });
 }
 
@@ -75,7 +80,7 @@ describe("LevelSurfacesPanel", () => {
   });
 
   it("says nothing is open before a level is", () => {
-    const container: Container = mockContainer([LevelLoadService]);
+    const container: Container = mockContainer([LevelLoadService, LevelViewportService]);
     const { getByText } = renderWithProviders(<LevelSurfacesPanel />, { container, route: "/level-viewer" });
 
     expect(getByText("No level open. Open one to see how its surfaces are drawn.")).toBeInTheDocument();
@@ -138,6 +143,22 @@ describe("LevelSurfacesPanel", () => {
     const { getAllByText } = await renderPanel();
 
     expect(getAllByText("nothing resident draws it")).toHaveLength(3);
+  });
+
+  // Measuring what a surface draws samples the coordinates of every draw of every sector held, so it is asked
+  // for rather than published - and the viewport holding them may not be on this thread.
+  it("shows what the viewport answers when asked what each entry draws", async () => {
+    const { getAllByText } = await renderPanel(undefined, (viewport: LevelViewportService) =>
+      viewport.setMeasure(() =>
+        Promise.resolve(
+          new Map(
+            [0, 1, 2, 3].map((shaderId) => [shaderId, { drawables: 2, narrowest: null, span: null, triangles: 70 }])
+          )
+        )
+      )
+    );
+
+    await waitFor(() => expect(getAllByText("2 drawables · 70 triangles · 35.0 each").length).toBeGreaterThan(0));
   });
 
   // The table keeps the places of the entries naming nothing, so the count is said once rather than listed.

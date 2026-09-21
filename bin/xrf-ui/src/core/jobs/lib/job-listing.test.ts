@@ -1,7 +1,8 @@
 import { describe, expect, it } from "@jest/globals";
 
 import { EJobConclusion, JobConclusion, JobDescription } from "@/core/ipc/types/xrf-app";
-import { listHeldLeases, summarizeJobKinds } from "@/core/jobs/lib/job-listing";
+
+import { listHeldLeases, summarizeJobKinds } from "./job-listing";
 
 function mockJob(overrides: Partial<JobDescription> = {}): JobDescription {
   return {

@@ -1,5 +1,6 @@
-import { IKeybindCommand } from "@/core/commands/lib/command-descriptor";
 import { Nullable, Optional } from "@/lib/types/general";
+
+import { IKeybindCommand } from "./command-descriptor";
 
 /** One decorated method, as recorded against the class that declares it. */
 export interface IKeybindCommandHandlerMetadata {

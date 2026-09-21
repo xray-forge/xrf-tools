@@ -2,7 +2,6 @@ import { describe, expect, it } from "@jest/globals";
 import { act, fireEvent, RenderResult, waitFor } from "@testing-library/react";
 import { Container } from "@wirestate/core";
 
-import { VisualMotionsPanel } from "@/applications/visuals-explorer/components/panels/VisualMotionsPanel/VisualMotionsPanel";
 import { VisualsService } from "@/applications/visuals-explorer/services/visuals";
 import { SelectedVisualDescription } from "@/core/ipc/types/xrf-app";
 import { VisualMotionBake, VisualMotionDependency } from "@/core/ipc/types/xrf-visual";
@@ -20,6 +19,8 @@ import {
 } from "@/fixtures/mocks/visual.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
+
+import { VisualMotionsPanel } from "./VisualMotionsPanel";
 
 /** One resolved omf reference, which is what makes a visual animated as far as the panel is concerned. */
 function mockMotionRef(reference: string = "actors\\stalker_animation"): VisualMotionDependency {

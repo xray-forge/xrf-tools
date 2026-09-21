@@ -3,7 +3,6 @@ import { act, fireEvent, RenderResult, waitFor } from "@testing-library/react";
 import { Container } from "@wirestate/core";
 import { runInAction } from "@wirestate/mobx";
 
-import { ArchivesMenu } from "@/applications/archives-explorer/components/editor/tree/ArchivesMenu";
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { ArchiveFileDescriptor } from "@/core/ipc/types/xrf-archive";
 import { EPathEntryKind } from "@/core/path/entry-kind";
@@ -12,6 +11,8 @@ import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
+
+import { ArchivesMenu } from "./ArchivesMenu";
 
 interface IRenderedMenu {
   render: RenderResult;

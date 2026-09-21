@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 
-import { isIpcProfilingEnabled, setIpcProfilingEnabled } from "@/core/ipc/metrics/metrics.profiling";
 import { IPC_PROFILING_STORAGE_KEY } from "@/core/storage";
+
+import { isIpcProfilingEnabled, setIpcProfilingEnabled } from "./metrics.profiling";
 
 describe("ipc profiling", () => {
   beforeEach(() => {

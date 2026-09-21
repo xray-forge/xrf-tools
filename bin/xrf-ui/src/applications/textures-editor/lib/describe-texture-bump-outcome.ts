@@ -1,7 +1,8 @@
-import { MINIMUM_GLOSS_POWER } from "@/applications/textures-editor/lib/texture-bump-gloss";
 import { TextureMakeBumpOutcome } from "@/core/ipc/types/xrf-app";
 import { IJobNotice, IJobOutcome } from "@/core/jobs/lib";
 import { ENotificationSeverity } from "@/core/notifications/lib";
+
+import { MINIMUM_GLOSS_POWER } from "./texture-bump-gloss";
 
 /**
  * What the notification centre says when a bump generation ends.

@@ -3,11 +3,6 @@ import { Tooltip } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, ReactNode, useCallback, useEffect, useMemo } from "react";
 
-import {
-  getMotionNodeName,
-  groupMotionNames,
-  listMotionGroupIds,
-} from "@/applications/visuals-explorer/components/panels/VisualMotionsPanel/motion-groups";
 import { EditorPanelEmpty } from "@/core/shell/editor/EditorPanel";
 import { ITreeNode } from "@/core/ui/tree/tree-node";
 import { IUseTreeState, useTreeState } from "@/core/ui/tree/use-tree-state";
@@ -16,6 +11,8 @@ import { VisualMotionService } from "@/core/visuals/services/visual-motion.servi
 import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
+
+import { getMotionNodeName, groupMotionNames, listMotionGroupIds } from "./motion-groups";
 
 export interface IVisualMotionListProps extends BaseComponentProps {
   /** What the panel's filter field holds, already the user's whole query. */

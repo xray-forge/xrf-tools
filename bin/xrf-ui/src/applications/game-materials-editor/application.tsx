@@ -1,6 +1,5 @@
 import { default as LayersIcon } from "@mui/icons-material/Layers";
 
-import { GAME_MATERIALS_EDITOR_HELP } from "@/applications/game-materials-editor/help";
 import {
   EApplicationGroupId,
   EApplicationId,
@@ -8,6 +7,8 @@ import {
   IApplicationDescriptor,
 } from "@/core/routing/application";
 import { createApplicationDescriptor } from "@/core/routing/application-descriptor";
+
+import { GAME_MATERIALS_EDITOR_HELP } from "./help";
 
 export const GAME_MATERIALS_EDITOR_APPLICATION: IApplicationDescriptor = createApplicationDescriptor(
   {

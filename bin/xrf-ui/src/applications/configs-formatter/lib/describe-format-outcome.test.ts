@@ -1,9 +1,10 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { describeFormatOutcome } from "@/applications/configs-formatter/lib/describe-format-outcome";
 import { LtxProjectFormatResult } from "@/core/ipc/types/xrf-ltx";
 import { IJobNotice, IJobOutcome } from "@/core/jobs/lib";
 import { ENotificationSeverity } from "@/core/notifications/lib";
+
+import { describeFormatOutcome } from "./describe-format-outcome";
 
 const DIRECTORY: string = "C:\\work\\gamedata\\configs";
 

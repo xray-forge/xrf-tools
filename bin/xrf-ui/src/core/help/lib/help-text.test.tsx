@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
 import { render } from "@testing-library/react";
 
-import { renderHelpText } from "@/core/help/lib/help-text";
+import { renderHelpText } from "./help-text";
 
 describe("renderHelpText", () => {
   it("renders backticked spans as code without losing the text around them", () => {

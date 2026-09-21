@@ -1,9 +1,10 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { describePackOutcome } from "@/applications/archives-packer/lib/describe-pack-outcome";
 import { ArchivePackConfig, ArchivePackResult } from "@/core/ipc/types/xrf-pack";
 import { IJobNotice, IJobOutcome } from "@/core/jobs/lib";
 import { ENotificationSeverity } from "@/core/notifications/lib";
+
+import { describePackOutcome } from "./describe-pack-outcome";
 
 const CONFIG: ArchivePackConfig = {
   source: "C:\\work\\gamedata",

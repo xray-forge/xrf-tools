@@ -1,6 +1,14 @@
 import { describe, expect, it } from "@jest/globals";
 
 import {
+  EApplicationGroupId,
+  EApplicationId,
+  EApplicationStatus,
+  IApplicationDescriptor,
+  IApplicationGroup,
+} from "@/core/routing/application";
+
+import {
   getCatalogSummary,
   ICatalogEntry,
   ICatalogSection,
@@ -9,14 +17,7 @@ import {
   toCatalogSecondaryText,
   toCatalogSections,
   toRankedSections,
-} from "@/core/launcher/lib/catalog";
-import {
-  EApplicationGroupId,
-  EApplicationId,
-  EApplicationStatus,
-  IApplicationDescriptor,
-  IApplicationGroup,
-} from "@/core/routing/application";
+} from "./catalog";
 
 function mockGroup(id: EApplicationGroupId, label: string): IApplicationGroup {
   return { accent: { light: "#000000", dark: "#ffffff" }, id, icon: null as never, label };

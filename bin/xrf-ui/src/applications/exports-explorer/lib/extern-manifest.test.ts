@@ -1,9 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 
-import {
-  EXTERN_MANIFEST_FORMATS,
-  withExternManifestExtension,
-} from "@/applications/exports-explorer/lib/extern-manifest";
+import { EXTERN_MANIFEST_FORMATS, withExternManifestExtension } from "./extern-manifest";
 
 describe("withExternManifestExtension", () => {
   it("keeps a destination naming a format the backend reads", () => {

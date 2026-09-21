@@ -3,7 +3,6 @@ import { BoundAction, Computed, flowResult, Observable } from "@wirestate/mobx";
 
 import { describePackOutcome } from "@/applications/archives-packer/lib/describe-pack-outcome";
 import { FALLBACK_PACK_CONFIG } from "@/applications/archives-packer/lib/pack-config";
-import { toSavedState } from "@/applications/archives-packer/services/packer/packer.service.utils";
 import { IResolvedArchiveVolumeSize, resolveArchiveVolumeSize } from "@/core/archive/lib/volume-size";
 import { transformError } from "@/core/error/lib";
 import { archivesCommands } from "@/core/ipc/commands/archives";
@@ -19,6 +18,8 @@ import { Logger, Timer } from "@/lib/logging";
 import { call, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 import { getPathName } from "@/lib/path/separator";
 import { Nullable } from "@/lib/types/general";
+
+import { toSavedState } from "./packer.service.utils";
 
 /** Sections of the packing configuration, in the order they are edited. */
 export enum EPackerSection {

@@ -2,7 +2,6 @@ import { describe, expect, it } from "@jest/globals";
 import { fireEvent, RenderResult, waitFor } from "@testing-library/react";
 import { Container } from "@wirestate/core";
 
-import { VisualsMenu } from "@/applications/visuals-explorer/components/tree/VisualsMenu";
 import { VisualsBrowseService } from "@/applications/visuals-explorer/services/browse";
 import { VisualsService } from "@/applications/visuals-explorer/services/visuals";
 import { createRoots } from "@/core/assets/lib";
@@ -13,6 +12,8 @@ import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
+
+import { VisualsMenu } from "./VisualsMenu";
 
 function mockLooseVisual(logicalPath: string): XrayAsset {
   return { container: { kind: "directory", relativePath: logicalPath, root: "C:\\gamedata" }, logicalPath };

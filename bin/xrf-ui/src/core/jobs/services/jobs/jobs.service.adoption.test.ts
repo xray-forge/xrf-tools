@@ -3,7 +3,6 @@ import { EventBus, WireEvent } from "@wirestate/core";
 
 import { EJobKind, JobDescription } from "@/core/ipc/types/xrf-app";
 import { IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
-import { JobsService } from "@/core/jobs/services/jobs/jobs.service";
 import { EMIT_NOTIFICATION_EVENT, INotificationPayload } from "@/core/notifications/lib";
 import { EApplicationId } from "@/core/routing/application";
 import {
@@ -13,6 +12,8 @@ import {
   setMockInvokeResponses,
 } from "@/fixtures/mocks/tauri.mocks";
 import { IInjectedServiceMockDescriptor, mockInjectedService } from "@/fixtures/utils/container";
+
+import { JobsService } from "./jobs.service";
 
 const LIST_COMMAND: string = "plugin:jobs|list";
 const ATTACH_COMMAND: string = "plugin:jobs|attach";

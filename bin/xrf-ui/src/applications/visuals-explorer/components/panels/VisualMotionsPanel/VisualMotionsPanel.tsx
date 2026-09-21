@@ -1,10 +1,6 @@
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useEffect, useState } from "react";
 
-import { VisualMotionList } from "@/applications/visuals-explorer/components/panels/VisualMotionsPanel/VisualMotionList";
-import { VisualMotionNames } from "@/applications/visuals-explorer/components/panels/VisualMotionsPanel/VisualMotionNames";
-import { VisualMotionRow } from "@/applications/visuals-explorer/components/panels/VisualMotionsPanel/VisualMotionRow";
-import { VisualMotionTransport } from "@/applications/visuals-explorer/components/panels/VisualMotionsPanel/VisualMotionTransport";
 import { VisualsService } from "@/applications/visuals-explorer/services/visuals";
 import { SelectedVisualDescription } from "@/core/ipc/types/xrf-app";
 import { VisualMotionDependency } from "@/core/ipc/types/xrf-visual";
@@ -14,6 +10,11 @@ import { VisualMotionService } from "@/core/visuals/services/visual-motion.servi
 import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
+
+import { VisualMotionList } from "./VisualMotionList";
+import { VisualMotionNames } from "./VisualMotionNames";
+import { VisualMotionRow } from "./VisualMotionRow";
+import { VisualMotionTransport } from "./VisualMotionTransport";
 
 /**
  * What this visual animates from, and playing it.

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 
-import { AssetService } from "@/core/assets/services/asset.service";
+import { AssetService } from "./asset.service";
 
 describe("AssetService", () => {
   let revoked: Array<string> = [];

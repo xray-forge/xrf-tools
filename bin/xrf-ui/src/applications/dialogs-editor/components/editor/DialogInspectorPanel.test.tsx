@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { RenderResult } from "@testing-library/react";
 
-import { DialogInspectorPanel } from "@/applications/dialogs-editor/components/editor/DialogInspectorPanel";
 import { DIALOG_NODE_ID } from "@/applications/dialogs-editor/lib";
 import { DialogsService } from "@/applications/dialogs-editor/services/dialogs";
 import { DialogDescriptor } from "@/core/ipc/types/xrf-dialog";
@@ -11,6 +10,8 @@ import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 import { AsyncState } from "@/lib/async-state";
 import { Nullable } from "@/lib/types/general";
+
+import { DialogInspectorPanel } from "./DialogInspectorPanel";
 
 const DIALOG: DialogDescriptor = {
   logicalPath: "configs\\gameplay\\dialogs.xml",

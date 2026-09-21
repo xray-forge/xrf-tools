@@ -3,8 +3,8 @@ import { render } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { ReactElement } from "react";
 
-import { ErrorBoundary } from "@/core/error/components/ErrorBoundary";
-import { RootCrash } from "@/core/error/components/RootCrash";
+import { ErrorBoundary } from "./ErrorBoundary";
+import { RootCrash } from "./RootCrash";
 
 function FailingComponent(): ReactElement {
   throw new Error("root exploded");

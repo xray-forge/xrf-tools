@@ -2,12 +2,13 @@ import { BoundAction, Computed, makeObservable, Observable } from "@wirestate/mo
 
 import { transformError } from "@/core/error/lib";
 import { EJobKind } from "@/core/ipc/types/xrf-app";
-import { IJobDescriptor, IJobRun, IJobSettledPayload, IJobState } from "@/core/jobs/lib/jobs-types";
 import { JobsService } from "@/core/jobs/services/jobs";
 import { AsyncState } from "@/lib/async-state";
 import { Logger } from "@/lib/logging";
 import { call, TFlow } from "@/lib/mobx";
 import { Nullable, Optional } from "@/lib/types/general";
+
+import { IJobDescriptor, IJobRun, IJobSettledPayload, IJobState } from "./jobs-types";
 
 /** A reported failure, or the typed answer a follow-up operation can use. */
 export type JobCompletion<T> = { result: T; error: null } | { result: null; error: Error };

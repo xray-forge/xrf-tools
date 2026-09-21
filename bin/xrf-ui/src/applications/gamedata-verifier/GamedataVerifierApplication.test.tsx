@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { act, fireEvent, waitFor } from "@testing-library/react";
 
-import { GamedataVerifierApplication } from "@/applications/gamedata-verifier/GamedataVerifierApplication";
 import { GamedataVerifierService } from "@/applications/gamedata-verifier/services/verifier";
 import { GamedataVerifySummary } from "@/core/ipc/types/xrf-app";
 import { JobsService } from "@/core/jobs/services/jobs";
@@ -9,6 +8,8 @@ import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 import { noop } from "@/lib/callbacks/noop";
+
+import { GamedataVerifierApplication } from "./GamedataVerifierApplication";
 
 describe("GamedataVerifierApplication", () => {
   beforeEach(() => {

@@ -1,9 +1,10 @@
 import { describe, expect, it } from "@jest/globals";
 import { RenderResult } from "@testing-library/react";
 
-import { VisualMotionRow } from "@/applications/visuals-explorer/components/panels/VisualMotionsPanel/VisualMotionRow";
 import { XrayAsset } from "@/core/ipc/types/xrf-vfs";
 import { renderWithProviders } from "@/fixtures/utils/render";
+
+import { VisualMotionRow } from "./VisualMotionRow";
 
 function mockMotion(logicalPath: string): XrayAsset {
   return { container: { kind: "archive", path: "C:\\game\\db" }, logicalPath };

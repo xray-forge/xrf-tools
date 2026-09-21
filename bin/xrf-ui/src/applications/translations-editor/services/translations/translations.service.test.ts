@@ -2,7 +2,6 @@ import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { EventBus } from "@wirestate/core";
 import { flowResult } from "@wirestate/mobx";
 
-import { TranslationsService } from "@/applications/translations-editor/services/translations/translations.service";
 import { createRoots } from "@/core/assets/lib/roots";
 import { ETranslationSaveOutcome, TranslationSaveOutcome } from "@/core/ipc/types/xrf-app";
 import { TranslationProjectDescriptor } from "@/core/ipc/types/xrf-translation";
@@ -11,6 +10,8 @@ import { mockSessionResponse, mockSessionSnapshot } from "@/fixtures/mocks/sessi
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { noop } from "@/lib/callbacks/noop";
+
+import { TranslationsService } from "./translations.service";
 
 /** The one file, entry and language every project here holds; which project they came from is what is under test. */
 const FILE: string = "st_test.json";

@@ -2,7 +2,6 @@ import { describe, expect, it } from "@jest/globals";
 import { RenderResult } from "@testing-library/react";
 import { Container } from "@wirestate/core";
 
-import { LevelProblemsPanel } from "@/core/level/components/panels/LevelProblemsPanel";
 import { LevelLoadService } from "@/core/level/services";
 import { mockDdsFile } from "@/fixtures/mocks/dds.mocks";
 import {
@@ -16,6 +15,8 @@ import { setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { MockVisualBuffer } from "@/fixtures/mocks/visual.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
+
+import { LevelProblemsPanel } from "./LevelProblemsPanel";
 
 async function renderProblems(isPresent: boolean): Promise<RenderResult> {
   const buffer: MockVisualBuffer = new MockVisualBuffer();

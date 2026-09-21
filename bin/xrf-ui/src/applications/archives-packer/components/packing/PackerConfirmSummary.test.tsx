@@ -2,9 +2,10 @@ import { describe, expect, it, jest } from "@jest/globals";
 import { render, RenderResult } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 
-import { PackerConfirmSummary } from "@/applications/archives-packer/components/packing/PackerConfirmSummary";
 import { FALLBACK_PACK_CONFIG } from "@/applications/archives-packer/lib/pack-config";
 import { ArchivePackConfig } from "@/core/ipc/types/xrf-pack";
+
+import { PackerConfirmSummary } from "./PackerConfirmSummary";
 
 const CONFIG: ArchivePackConfig = {
   ...FALLBACK_PACK_CONFIG,

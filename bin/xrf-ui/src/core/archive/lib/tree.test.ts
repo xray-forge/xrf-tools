@@ -1,16 +1,12 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { listArchiveFiles } from "@/core/archive/lib/files";
-import {
-  IArchiveTreeItem,
-  isUnderArchiveDirectory,
-  parseTree,
-  toArchiveSelectionItemId,
-} from "@/core/archive/lib/tree";
 import { ArchiveProject } from "@/core/ipc/types/xrf-archive";
 import { EPathEntryKind } from "@/core/path/entry-kind";
 import { toDirectoryItemId, toFileItemId } from "@/core/ui/tree/path-tree";
 import { mockArchiveFileDescriptor, mockArchivesProject } from "@/fixtures/mocks/archive.mocks";
+
+import { listArchiveFiles } from "./files";
+import { IArchiveTreeItem, isUnderArchiveDirectory, parseTree, toArchiveSelectionItemId } from "./tree";
 
 const CONFIGS_DIALOGS: string = ["configs", "gameplay", "dialogs.xml"].join("\\");
 const CONFIGS_BACKUP: string = ["configs_backup", "a.ltx"].join("\\");

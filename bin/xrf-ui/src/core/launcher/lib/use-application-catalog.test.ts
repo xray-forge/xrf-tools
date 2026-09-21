@@ -1,8 +1,6 @@
 import { describe, expect, it, jest } from "@jest/globals";
 import { act, renderHook, RenderHookResult } from "@testing-library/react";
 
-import { ICatalogEntry, ICatalogSection } from "@/core/launcher/lib/catalog";
-import { IUseApplicationCatalog, useApplicationCatalog } from "@/core/launcher/lib/use-application-catalog";
 import {
   EApplicationGroupId,
   EApplicationId,
@@ -10,6 +8,9 @@ import {
   IApplicationDescriptor,
   IApplicationGroup,
 } from "@/core/routing/application";
+
+import { ICatalogEntry, ICatalogSection } from "./catalog";
+import { IUseApplicationCatalog, useApplicationCatalog } from "./use-application-catalog";
 
 function mockGroup(id: EApplicationGroupId, label: string): IApplicationGroup {
   return { accent: { light: "#000000", dark: "#ffffff" }, id, icon: null as never, label };

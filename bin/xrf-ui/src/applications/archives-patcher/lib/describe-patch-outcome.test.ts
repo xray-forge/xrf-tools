@@ -1,9 +1,10 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { describePatchOutcome } from "@/applications/archives-patcher/lib/describe-patch-outcome";
 import { ArchivePatchChange, ArchivePatchConfig, ArchivePatchResult } from "@/core/ipc/types/xrf-pack";
 import { IJobNotice, IJobOutcome } from "@/core/jobs/lib";
 import { ENotificationSeverity } from "@/core/notifications/lib";
+
+import { describePatchOutcome } from "./describe-patch-outcome";
 
 const CONFIG: ArchivePatchConfig = {
   input: "C:\\Games\\Anomaly",

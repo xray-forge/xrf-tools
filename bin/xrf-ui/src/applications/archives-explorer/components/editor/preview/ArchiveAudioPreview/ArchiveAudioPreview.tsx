@@ -2,7 +2,6 @@ import { Divider, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement } from "react";
 
-import { formatAudioChannels } from "@/applications/archives-explorer/components/editor/preview/ArchiveAudioPreview/ArchiveAudioPreview.utils";
 import { ArchivePreviewError } from "@/applications/archives-explorer/components/editor/preview/ArchivePreviewError/ArchivePreviewError";
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { TArchiveBytes, TArchiveContent, useLastContent } from "@/core/archive/lib";
@@ -17,6 +16,8 @@ import { AsyncState } from "@/lib/async-state";
 import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
+
+import { formatAudioChannels } from "./ArchiveAudioPreview.utils";
 
 /**
  * Plays an archived sound and reports what the engine would read from it.

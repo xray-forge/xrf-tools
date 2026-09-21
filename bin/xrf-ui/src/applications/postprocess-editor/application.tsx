@@ -1,6 +1,5 @@
 import { default as FilterIcon } from "@mui/icons-material/Filter";
 
-import { POSTPROCESS_EDITOR_HELP } from "@/applications/postprocess-editor/help";
 import {
   EApplicationGroupId,
   EApplicationId,
@@ -8,6 +7,8 @@ import {
   IApplicationDescriptor,
 } from "@/core/routing/application";
 import { createApplicationDescriptor } from "@/core/routing/application-descriptor";
+
+import { POSTPROCESS_EDITOR_HELP } from "./help";
 
 export const POSTPROCESS_EDITOR_APPLICATION: IApplicationDescriptor = createApplicationDescriptor(
   {

@@ -1,6 +1,5 @@
 import { default as PaletteIcon } from "@mui/icons-material/Palette";
 
-import { SHADERS_EDITOR_HELP } from "@/applications/shaders-editor/help";
 import {
   EApplicationGroupId,
   EApplicationId,
@@ -8,6 +7,8 @@ import {
   IApplicationDescriptor,
 } from "@/core/routing/application";
 import { createApplicationDescriptor } from "@/core/routing/application-descriptor";
+
+import { SHADERS_EDITOR_HELP } from "./help";
 
 export const SHADERS_EDITOR_APPLICATION: IApplicationDescriptor = createApplicationDescriptor(
   {

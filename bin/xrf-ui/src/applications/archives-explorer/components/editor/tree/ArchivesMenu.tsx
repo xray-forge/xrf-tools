@@ -1,10 +1,6 @@
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useEffect, useMemo } from "react";
 
-import {
-  ARCHIVE_TREE_ICONS,
-  toSearchText,
-} from "@/applications/archives-explorer/components/editor/tree/ArchivesMenu.utils";
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { IArchiveEntry, IArchiveTreeItem, parseTree, toArchiveSelectionItemId } from "@/core/archive/lib";
 import { isLooseContainer } from "@/core/assets/lib";
@@ -19,6 +15,8 @@ import { VirtualizedTree } from "@/core/ui/tree/VirtualizedTree";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { LOGICAL_PATH_SEPARATOR } from "@/lib/path/separator";
 import { Nullable, Optional } from "@/lib/types/general";
+
+import { ARCHIVE_TREE_ICONS, toSearchText } from "./ArchivesMenu.utils";
 
 /**
  * Browses archive files and selects extraction directories through a searchable tree.

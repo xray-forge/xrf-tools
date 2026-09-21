@@ -1,7 +1,6 @@
 import { useInjection } from "@wirestate/react";
 import { ReactElement } from "react";
 
-import { SequenceClipRow } from "@/applications/visuals-sequencer/components/panels/SequenceTrackPanel/SequenceClipRow";
 import { ISequenceClip, VisualSequenceService } from "@/applications/visuals-sequencer/services/sequence";
 import {
   EditorPanel,
@@ -11,6 +10,8 @@ import {
 } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatDuration } from "@/lib/format/duration";
+
+import { SequenceClipRow } from "./SequenceClipRow";
 
 /**
  * The ordered track: every clip in the order it plays, and what the whole of it adds up to.

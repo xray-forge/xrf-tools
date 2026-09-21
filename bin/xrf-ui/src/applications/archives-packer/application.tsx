@@ -1,6 +1,5 @@
 import { default as ArchiveIcon } from "@mui/icons-material/Archive";
 
-import { ARCHIVES_PACKER_HELP } from "@/applications/archives-packer/help";
 import {
   EApplicationGroupId,
   EApplicationId,
@@ -8,6 +7,8 @@ import {
   IApplicationDescriptor,
 } from "@/core/routing/application";
 import { createApplicationDescriptor } from "@/core/routing/application-descriptor";
+
+import { ARCHIVES_PACKER_HELP } from "./help";
 
 export const ARCHIVES_PACKER_APPLICATION: IApplicationDescriptor = createApplicationDescriptor(
   {

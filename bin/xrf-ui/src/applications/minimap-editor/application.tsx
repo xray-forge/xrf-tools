@@ -1,6 +1,5 @@
 import { default as MapIcon } from "@mui/icons-material/Map";
 
-import { MINIMAP_EDITOR_HELP } from "@/applications/minimap-editor/help";
 import {
   EApplicationGroupId,
   EApplicationId,
@@ -8,6 +7,8 @@ import {
   IApplicationDescriptor,
 } from "@/core/routing/application";
 import { createApplicationDescriptor } from "@/core/routing/application-descriptor";
+
+import { MINIMAP_EDITOR_HELP } from "./help";
 
 export const MINIMAP_EDITOR_APPLICATION: IApplicationDescriptor = createApplicationDescriptor(
   {

@@ -3,9 +3,10 @@ import { Container, Injectable } from "@wirestate/core";
 import { BoundAction, Observable } from "@wirestate/mobx";
 
 import { defineKeybindCommand, EKeybindCommandCategory, IKeybindCommand } from "@/core/commands";
-import { KeybindCommand } from "@/core/commands/lib/command.decorator";
 import { KeybindCommandsService } from "@/core/commands/services/commands";
 import { mockContainer } from "@/fixtures/utils/container";
+
+import { KeybindCommand } from "./command.decorator";
 
 const SHADOWED: IKeybindCommand = defineKeybindCommand({
   category: EKeybindCommandCategory.APPLICATION,

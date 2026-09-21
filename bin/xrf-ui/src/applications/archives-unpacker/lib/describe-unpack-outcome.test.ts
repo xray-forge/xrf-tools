@@ -1,9 +1,10 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { describeUnpackOutcome } from "@/applications/archives-unpacker/lib/describe-unpack-outcome";
 import { ArchiveUnpackResult } from "@/core/ipc/types/xrf-pack";
 import { IJobNotice, IJobOutcome } from "@/core/jobs/lib";
 import { ENotificationSeverity } from "@/core/notifications/lib";
+
+import { describeUnpackOutcome } from "./describe-unpack-outcome";
 
 const SOURCE: string = "C:\\Games\\Anomaly\\db";
 const DESTINATION: string = "C:\\work\\unpacked";

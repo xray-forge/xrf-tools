@@ -5,12 +5,13 @@ import { Container, Injectable } from "@wirestate/core";
 import { RELOAD_EQUIPMENT_SPRITE_KEYBIND_COMMAND } from "@/applications/sprite-equipment-editor/commands";
 import { KeybindCommand } from "@/core/commands";
 import { HelpService } from "@/core/help/services/help";
-import { KeybindsDispatcher } from "@/core/keybinds/KeybindsDispatcher";
 import { FOCUS_SEARCH_KEYBIND_COMMAND } from "@/core/search/commands";
 import { SettingsService } from "@/core/settings/services/settings";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 import { Logger } from "@/lib/logging";
+
+import { KeybindsDispatcher } from "./KeybindsDispatcher";
 
 /** Stands in for the service a screen binds to answer the search chord. */
 @Injectable()

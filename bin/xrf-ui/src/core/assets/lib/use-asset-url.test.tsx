@@ -3,11 +3,12 @@ import { RenderResult } from "@testing-library/react";
 import { Container } from "@wirestate/core";
 import { ReactElement } from "react";
 
-import { useAssetUrl } from "@/core/assets/lib/use-asset-url";
 import { AssetService } from "@/core/assets/services";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 import { Nullable } from "@/lib/types/general";
+
+import { useAssetUrl } from "./use-asset-url";
 
 const KEY: string = "texture-preview";
 

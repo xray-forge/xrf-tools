@@ -2,7 +2,6 @@ import { EventBus, inject, Injectable, OnDeactivation, OnDeprovision, OnProvisio
 import { BoundAction, Computed, flowResult, Observable } from "@wirestate/mobx";
 
 import { describeExtractOutcome } from "@/applications/archives-explorer/lib/describe-extract-outcome";
-import { ArchiveContentReader } from "@/applications/archives-explorer/services/archives/archives.service.content";
 import {
   ArchivePreviewSupport,
   getArchivePreviewSupport,
@@ -46,6 +45,8 @@ import { formatDuration } from "@/lib/format/duration";
 import { Logger, Timer } from "@/lib/logging";
 import { call, cancelFlow, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 import { Nullable, Optional } from "@/lib/types/general";
+
+import { ArchiveContentReader } from "./archives.service.content";
 
 /** What a subject answers before one has been folded, so an idle state carries a shape rather than a null. */
 const EMPTY_OVERRIDES: ArchiveOverrideReport = { overridden: [], unreachable: [] };

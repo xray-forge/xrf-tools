@@ -1,6 +1,5 @@
 import { default as LightbulbIcon } from "@mui/icons-material/Lightbulb";
 
-import { LIGHT_ANIMATIONS_EDITOR_HELP } from "@/applications/light-animations-editor/help";
 import {
   EApplicationGroupId,
   EApplicationId,
@@ -8,6 +7,8 @@ import {
   IApplicationDescriptor,
 } from "@/core/routing/application";
 import { createApplicationDescriptor } from "@/core/routing/application-descriptor";
+
+import { LIGHT_ANIMATIONS_EDITOR_HELP } from "./help";
 
 export const LIGHT_ANIMATIONS_EDITOR_APPLICATION: IApplicationDescriptor = createApplicationDescriptor(
   {

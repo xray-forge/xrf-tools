@@ -1,7 +1,8 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { describeTexturesStatus } from "@/applications/textures-explorer/components/TexturesExplorerWorkspace.utils";
 import { MOCK_TEXTURE, mockTextureCatalog, mockTextureEntry } from "@/fixtures/mocks/texture.mocks";
+
+import { describeTexturesStatus } from "./TexturesExplorerWorkspace.utils";
 
 describe("describeTexturesStatus", () => {
   it("says one texture when a single file is open rather than a root set", () => {
