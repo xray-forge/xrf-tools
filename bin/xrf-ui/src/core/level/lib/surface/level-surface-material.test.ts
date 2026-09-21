@@ -23,7 +23,10 @@ import { Nullable } from "@/lib/types/general";
 /** A lookup answering with a distinct texture for each reference it is given. */
 function lookup(...references: Array<string>): ILevelTextureLookup {
   const held: Map<string, ILevelTexture> = new Map(
-    references.map((reference: string) => [reference, { isAlphaRead: false, reason: null, texture: new Texture() }])
+    references.map((reference: string) => [
+      reference,
+      { isAlphaRead: false, isMipped: true, reason: null, texture: new Texture() },
+    ])
   );
 
   return {
@@ -119,7 +122,7 @@ describe("level surface material", () => {
   // A checker dimmed by a night sky is just another dark surface, and the whole point of it is to be noticed.
   it("draws a surface dressed in a stand-in at full brightness", () => {
     const textures: ILevelTextureLookup = {
-      get: () => ({ isAlphaRead: false, reason: "placeholder", texture: new Texture() }),
+      get: () => ({ isAlphaRead: false, isMipped: true, reason: "placeholder", texture: new Texture() }),
       listProblems: () => [],
       size: 1,
     };

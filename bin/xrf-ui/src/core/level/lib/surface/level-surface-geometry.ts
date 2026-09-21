@@ -19,12 +19,19 @@ export interface ILevelSurfaceGeometry {
   /** Drawables of the level's visuals run that name the entry. */
   drawables: number;
   triangles: number;
-  /** What its base coordinate covers. */
+  /** What its base coordinate covers over every draw together. */
   span: Nullable<ILevelSurfaceSpan>;
+  /** The narrowest range any single draw covers. */
+  narrowest: Nullable<ILevelSurfaceSpan>;
 }
 
 /** What an entry no resident sector draws comes to, so a reader is told rather than left to guess. */
-export const NO_LEVEL_SURFACE_GEOMETRY: ILevelSurfaceGeometry = { drawables: 0, span: null, triangles: 0 };
+export const NO_LEVEL_SURFACE_GEOMETRY: ILevelSurfaceGeometry = {
+  drawables: 0,
+  narrowest: null,
+  span: null,
+  triangles: 0,
+};
 
 /** Indices looked at per draw when measuring a coordinate's range. */
 const SPAN_SAMPLES: number = 2048;
@@ -48,11 +55,18 @@ export function countLevelSurfaceGeometry(
     start: number,
     count: number
   ): void {
-    const held: ILevelSurfaceGeometry = counted.get(shaderId) ?? { drawables: 0, span: null, triangles: 0 };
+    const held: ILevelSurfaceGeometry = counted.get(shaderId) ?? {
+      drawables: 0,
+      narrowest: null,
+      span: null,
+      triangles: 0,
+    };
+    const drawn: Nullable<ILevelSurfaceSpan> = widen(null, geometry, start, count);
 
     held.drawables += drawables;
     held.triangles += triangles;
-    held.span = widen(held.span, geometry, start, count);
+    held.span = merge(held.span, drawn);
+    held.narrowest = narrower(held.narrowest, drawn);
 
     counted.set(shaderId, held);
   }
@@ -84,6 +98,33 @@ export function countLevelSurfaceGeometry(
   }
 
   return counted;
+}
+
+/** The range covering both, for the union over an entry's draws. */
+function merge(span: Nullable<ILevelSurfaceSpan>, drawn: Nullable<ILevelSurfaceSpan>): Nullable<ILevelSurfaceSpan> {
+  if (!span || !drawn) {
+    return span ?? drawn;
+  }
+
+  return {
+    uMax: Math.max(span.uMax, drawn.uMax),
+    uMin: Math.min(span.uMin, drawn.uMin),
+    vMax: Math.max(span.vMax, drawn.vMax),
+    vMin: Math.min(span.vMin, drawn.vMin),
+  };
+}
+
+/** Whichever of the two covers less of the texture, by area. */
+function narrower(span: Nullable<ILevelSurfaceSpan>, drawn: Nullable<ILevelSurfaceSpan>): Nullable<ILevelSurfaceSpan> {
+  if (!span || !drawn) {
+    return span ?? drawn;
+  }
+
+  return area(drawn) < area(span) ? drawn : span;
+}
+
+function area(span: ILevelSurfaceSpan): number {
+  return (span.uMax - span.uMin) * (span.vMax - span.vMin);
 }
 
 /**

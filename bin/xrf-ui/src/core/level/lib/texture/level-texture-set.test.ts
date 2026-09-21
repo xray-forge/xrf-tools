@@ -17,7 +17,7 @@ function countReads(): number {
 
 /** References as a sector names them, none of them read for alpha unless a case says otherwise. */
 function requests(...references: Array<string>): Array<ISectorTextureRequest> {
-  return references.map((reference: string) => ({ isAlphaRead: false, reference }));
+  return references.map((reference: string) => ({ isAlphaRead: false, isMipped: true, reference }));
 }
 
 describe("LevelTextureSet", () => {
@@ -144,11 +144,11 @@ describe("LevelTextureSet", () => {
 
     set.open(ROOTS, [mockLevelTextureReference("leaf")]);
 
-    await set.load([{ isAlphaRead: false, reference: "leaf" }]);
+    await set.load([{ isAlphaRead: false, isMipped: true, reference: "leaf" }]);
 
     const opaque: Nullable<ILevelTexture> = set.get("leaf");
 
-    await set.load([{ isAlphaRead: true, reference: "leaf" }]);
+    await set.load([{ isAlphaRead: true, isMipped: true, reference: "leaf" }]);
 
     expect(set.get("leaf")?.isAlphaRead).toBe(true);
     expect(set.get("leaf")?.texture).not.toBe(opaque?.texture);
@@ -160,11 +160,11 @@ describe("LevelTextureSet", () => {
 
     set.open(ROOTS, [mockLevelTextureReference("leaf")]);
 
-    await set.load([{ isAlphaRead: true, reference: "leaf" }]);
+    await set.load([{ isAlphaRead: true, isMipped: true, reference: "leaf" }]);
 
     const held: Nullable<ILevelTexture> = set.get("leaf");
 
-    await set.load([{ isAlphaRead: false, reference: "leaf" }]);
+    await set.load([{ isAlphaRead: false, isMipped: true, reference: "leaf" }]);
 
     expect(set.get("leaf")?.texture).toBe(held?.texture);
   });

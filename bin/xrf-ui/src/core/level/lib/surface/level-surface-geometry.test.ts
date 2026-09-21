@@ -110,13 +110,13 @@ describe("describeLevelSurfaceGeometry", () => {
   // The number worth reading: a baked decal is a clipped fan of dozens of triangles, and a quad laid over the same
   // place is two. The average per drawable is what tells them apart.
   it("says how many triangles each drawable averages", () => {
-    expect(describeLevelSurfaceGeometry({ drawables: 70, span: null, triangles: 4807 })).toBe(
+    expect(describeLevelSurfaceGeometry({ drawables: 70, narrowest: null, span: null, triangles: 4807 })).toBe(
       "70 drawables · 4807 triangles · 68.7 each"
     );
   });
 
   it("names a quad for what it is", () => {
-    expect(describeLevelSurfaceGeometry({ drawables: 70, span: null, triangles: 140 })).toBe(
+    expect(describeLevelSurfaceGeometry({ drawables: 70, narrowest: null, span: null, triangles: 140 })).toBe(
       "70 drawables · 140 triangles · 2.0 each"
     );
   });

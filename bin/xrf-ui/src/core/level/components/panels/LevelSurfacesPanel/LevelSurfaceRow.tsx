@@ -73,6 +73,10 @@ export function LevelSurfaceRow({
         <EditorPanelProperty label={"Over"} value={describeLevelSurfaceSpan(geometry.span)} />
       ) : null}
 
+      {geometry.drawables ? (
+        <EditorPanelProperty label={"Narrowest draw"} value={describeLevelSurfaceSpan(geometry.narrowest)} />
+      ) : null}
+
       <EditorPanelProperty
         label={"Read from"}
         value={describeSurfaceDeclaration(descriptor.declaration, descriptor.library)}

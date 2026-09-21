@@ -10,6 +10,8 @@ export interface ISectorTextureRequest {
   reference: string;
   /** Whether any surface drawn with this file samples its alpha channel. */
   isAlphaRead: boolean;
+  /** Whether the surfaces drawn with it sample its mip chain. */
+  isMipped: boolean;
 }
 
 /**
@@ -23,20 +25,20 @@ export function listSectorTextures(views: ISectorViews): Array<ISectorTextureReq
 
   for (const { surface, render } of [...views.sections, ...views.instances]) {
     if (surface.textureName) {
-      request(requests, surface.textureName, isAlphaRenderSurface(render));
+      request(requests, surface.textureName, isAlphaRenderSurface(render), !render.isWallmark);
     }
 
     // Only the one the renderer samples. The other half of the pair is R1's baked colour, and reading it was a
     // megabyte a lightmap for a texture nothing binds.
     if (surface.hemi) {
-      request(requests, surface.hemi, false);
+      request(requests, surface.hemi, false, true);
     }
 
     // Named by the surface's blender or by its base texture's descriptor rather than by the shader table, so a sector
     // that only fetched what its table names would draw its ground as the bare aerial photograph the base texture is.
     // Its alpha is never read: the modulation is a multiply of three channels.
     if (render.detail) {
-      request(requests, render.detail.reference, false);
+      request(requests, render.detail.reference, false, true);
     }
   }
 
@@ -55,13 +57,19 @@ export function hasDetailedSurfaces(views: ISectorViews): boolean {
   return drawn.some((it) => Boolean(it.render.detail));
 }
 
-/** Records one reference, keeping the alpha answer of whichever surface naming it needs it. */
-function request(requests: Map<string, ISectorTextureRequest>, reference: string, isAlphaRead: boolean): void {
+/** Records one reference, keeping the answer of whichever surface naming it needs the most of the file. */
+function request(
+  requests: Map<string, ISectorTextureRequest>,
+  reference: string,
+  isAlphaRead: boolean,
+  isMipped: boolean
+): void {
   const held: Maybe<ISectorTextureRequest> = requests.get(reference);
 
   if (held) {
     held.isAlphaRead ||= isAlphaRead;
+    held.isMipped &&= isMipped;
   } else {
-    requests.set(reference, { isAlphaRead, reference });
+    requests.set(reference, { isAlphaRead, isMipped, reference });
   }
 }

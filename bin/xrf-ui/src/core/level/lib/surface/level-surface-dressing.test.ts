@@ -19,7 +19,7 @@ function mockLookup(entries: Record<string, ILevelTexture>): ILevelTextureLookup
   };
 }
 
-const UPLOADED: ILevelTexture = { isAlphaRead: true, reason: null, texture: new Texture() };
+const UPLOADED: ILevelTexture = { isAlphaRead: true, isMipped: true, reason: null, texture: new Texture() };
 
 describe("listLevelSurfaceDressing", () => {
   it("says a texture arrived", () => {
@@ -35,7 +35,12 @@ describe("listLevelSurfaceDressing", () => {
   // nothing else in the viewer says which of the two happened.
   it("says a checker stands in, and why", () => {
     const lookup: ILevelTextureLookup = mockLookup({
-      "decal\\decal_poteki": { isAlphaRead: true, reason: "Nothing in the mounted roots answers to it", texture: null },
+      "decal\\decal_poteki": {
+        isAlphaRead: true,
+        isMipped: true,
+        reason: "Nothing in the mounted roots answers to it",
+        texture: null,
+      },
     });
 
     expect(listLevelSurfaceDressing(["decal\\decal_poteki"], lookup)).toEqual([
@@ -63,7 +68,7 @@ describe("listLevelSurfaceDressing", () => {
   // A set answering with neither a texture nor a reason still leaves the surface drawn from nothing.
   it("counts an empty answer as a stand-in rather than an arrival", () => {
     const lookup: ILevelTextureLookup = mockLookup({
-      "wall\\wall_panel": { isAlphaRead: false, reason: null, texture: null },
+      "wall\\wall_panel": { isAlphaRead: false, isMipped: true, reason: null, texture: null },
     });
     const [dressing] = listLevelSurfaceDressing(["wall\\wall_panel"], lookup);
 

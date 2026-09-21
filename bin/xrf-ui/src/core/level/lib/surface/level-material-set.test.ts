@@ -20,7 +20,10 @@ function surfaceOf(shaderId: number, overrides: Partial<ILevelSurface> = {}): IL
 
 function lookup(...references: Array<string>): ILevelTextureLookup {
   const held: Map<string, ILevelTexture> = new Map(
-    references.map((reference: string) => [reference, { isAlphaRead: false, reason: null, texture: new Texture() }])
+    references.map((reference: string) => [
+      reference,
+      { isAlphaRead: false, isMipped: true, reason: null, texture: new Texture() },
+    ])
   );
 
   return {

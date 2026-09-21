@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, jest } from "@jest/globals";
 import {
+  ClampToEdgeWrapping,
   LinearFilter,
   NoColorSpace,
   RepeatWrapping,
@@ -15,6 +16,7 @@ import {
   createDecodedTexture,
   hasRenderTextureAlpha,
   IRenderTextureUpload,
+  XRAY_TEXTURE_ANISOTROPY,
 } from "@/core/render/lib/texture/render-texture";
 import { mockDdsFile, mockDx10DdsFile, mockUncompressedDdsFile } from "@/fixtures/mocks/dds.mocks";
 
@@ -86,6 +88,30 @@ describe("createDdsTexture", () => {
 
     expect(texture.wrapS).toBe(RepeatWrapping);
     expect(texture.wrapT).toBe(RepeatWrapping);
+  });
+
+  // `smp_rtlinear`, which a wall mark pass binds: `D3DTADDRESS_CLAMP` and `D3DTEXF_NONE` between mips, against the
+  // `smp_base` every other surface gets (`Blender_Recorder_R3.cpp`). A decal is dark marks on a neutral field, and
+  // mipping one spreads the marks over the field as soon as it is minified: the footprint fills with a grey the
+  // engine never draws, which is what a wall looked like it had a rectangle on.
+  it("samples an unmipped texture the way the wall mark sampler does", () => {
+    const texture = uploaded(mockDdsFile({ height: 8, mipmapCount: 4, width: 8 }), { isMipped: false });
+
+    expect(texture.minFilter).toBe(LinearFilter);
+    expect(texture.anisotropy).toBe(1);
+    expect(texture.wrapS).toBe(ClampToEdgeWrapping);
+    expect(texture.wrapT).toBe(ClampToEdgeWrapping);
+  });
+
+  it("uploads only the level an unmipped texture samples", () => {
+    expect(uploaded(mockDdsFile({ height: 8, mipmapCount: 4, width: 8 }), { isMipped: false }).mipmaps).toHaveLength(1);
+  });
+
+  it("keeps the chain and the anisotropy of everything else", () => {
+    const texture = uploaded(mockDdsFile({ height: 8, mipmapCount: 4, width: 8 }));
+
+    expect(texture.mipmaps).toHaveLength(4);
+    expect(texture.anisotropy).toBe(XRAY_TEXTURE_ANISOTROPY);
   });
 
   it("decodes a picture from srgb and leaves packed data alone", () => {

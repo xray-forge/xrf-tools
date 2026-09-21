@@ -15,7 +15,12 @@ import {
   mockSectorSection,
   mockSectorSurface,
 } from "@/fixtures/mocks/level.mocks";
-import { mockAlphaSurfaceDescriptor, mockSurfaceDescriptor, MockVisualBuffer } from "@/fixtures/mocks/visual.mocks";
+import {
+  mockAlphaSurfaceDescriptor,
+  mockBlendedSurfaceDescriptor,
+  mockSurfaceDescriptor,
+  MockVisualBuffer,
+} from "@/fixtures/mocks/visual.mocks";
 
 describe("level sector surfaces", () => {
   const SHADER_ID: number = 3;
@@ -70,8 +75,8 @@ describe("level sector surfaces", () => {
     const views: ISectorViews = viewsOf(sectorDrawing(["lmap#1_1", "lmap#1_2"]), table(mockAlphaSurfaceDescriptor()));
     const requests: Array<ISectorTextureRequest> = listSectorTextures(views);
 
-    expect(requests).toContainEqual({ isAlphaRead: true, reference: "veg\veg_reed" });
-    expect(requests).toContainEqual({ isAlphaRead: false, reference: "lmap#1_2" });
+    expect(requests).toContainEqual({ isAlphaRead: true, isMipped: true, reference: "veg\veg_reed" });
+    expect(requests).toContainEqual({ isAlphaRead: false, isMipped: true, reference: "lmap#1_2" });
   });
 
   // Only the one the renderer samples. Reading the other half of every pair was a megabyte a lightmap for a texture
@@ -92,6 +97,7 @@ describe("level sector surfaces", () => {
 
     expect(listSectorTextures(views)).toContainEqual({
       isAlphaRead: false,
+      isMipped: true,
       reference: "detail\\detail_grnd_earth",
     });
     expect(hasDetailedSurfaces(views)).toBe(true);
@@ -112,6 +118,35 @@ describe("level sector surfaces", () => {
       table(mockAlphaSurfaceDescriptor())
     );
 
-    expect(listSectorTextures(views)).toEqual([{ isAlphaRead: true, reference: "shared" }]);
+    expect(listSectorTextures(views)).toEqual([{ isAlphaRead: true, isMipped: true, reference: "shared" }]);
+  });
+
+  // The engine binds a wall mark's decal through `smp_rtlinear`, which filters nothing between mips
+  // (`Blender_Recorder_R3.cpp`). A decal is dark marks on a neutral field, so mipping one spreads the marks over
+  // the field as soon as it is minified, and the footprint fills with a grey the engine never draws.
+  it("asks for a wall mark's decal without the mip chain", () => {
+    const wallmark: XraySurfaceDescriptor = mockBlendedSurfaceDescriptor({
+      declaration: {
+        alphaReference: 0,
+        function: "normal",
+        isAlphaTested: true,
+        isBlended: true,
+        isDepthWritten: false,
+        isWallmark: true,
+        kind: "scripted",
+        script: "shaders\\r2\\effects_wallmarkmult.s",
+      },
+      draw: { isDoubled: true, kind: "multiplied" },
+    });
+    const [base] = listSectorTextures(viewsOf(sectorDrawing([]), table(wallmark)));
+
+    expect(base.isMipped).toBe(false);
+    expect(base.isAlphaRead).toBe(true);
+  });
+
+  it("keeps the mip chain for every surface that is not one", () => {
+    const views: ISectorViews = viewsOf(sectorDrawing([]), table(mockSurfaceDescriptor()));
+
+    expect(listSectorTextures(views).every((it: ISectorTextureRequest) => it.isMipped)).toBe(true);
   });
 });

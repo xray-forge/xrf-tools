@@ -67,6 +67,8 @@ export interface IRenderSurface {
   detail: Nullable<IRenderDetail>;
   /**  Whether the scene's light reaches the surface at all. */
   isLit: boolean;
+  /** Whether the surface is a wall mark, which decides how its texture is sampled rather than how it is drawn. */
+  isWallmark: boolean;
 }
 
 /** How a surface with nothing said about it is drawn, which is how the engine draws one whose shader it cannot find. */
@@ -77,6 +79,7 @@ export const OPAQUE_RENDER_SURFACE: IRenderSurface = {
   isDepthWritten: true,
   isLit: true,
   isTransparent: false,
+  isWallmark: false,
 };
 
 /** The range an alpha reference is stated in on the wire, so `200` becomes `200 / 255`. */
@@ -113,9 +116,12 @@ export function toRenderSurface(descriptor: Nullable<XraySurfaceDescriptor>): IR
   const draw: Nullable<XraySurfaceDraw> = descriptor?.draw ?? null;
   const detail: Nullable<IRenderDetail> = toRenderDetail(descriptor);
   const isLit: boolean = isLitRenderSurface(descriptor);
+  const isWallmark: boolean = isWallmarkRenderSurface(descriptor);
 
   if (!draw || draw.kind === EXraySurfaceDraw.OPAQUE) {
-    return detail || !isLit ? { ...OPAQUE_RENDER_SURFACE, detail, isLit } : OPAQUE_RENDER_SURFACE;
+    return detail || !isLit || isWallmark
+      ? { ...OPAQUE_RENDER_SURFACE, detail, isLit, isWallmark }
+      : OPAQUE_RENDER_SURFACE;
   }
 
   if (draw.kind === EXraySurfaceDraw.INVISIBLE) {
@@ -126,6 +132,7 @@ export function toRenderSurface(descriptor: Nullable<XraySurfaceDescriptor>): IR
       isDepthWritten: false,
       isLit,
       isTransparent: true,
+      isWallmark,
     };
   }
 
@@ -135,6 +142,7 @@ export function toRenderSurface(descriptor: Nullable<XraySurfaceDescriptor>): IR
       alphaTest: toAlphaTest(draw, descriptor?.declaration),
       detail,
       isLit,
+      isWallmark,
     };
   }
 
@@ -147,6 +155,7 @@ export function toRenderSurface(descriptor: Nullable<XraySurfaceDescriptor>): IR
     isDepthWritten: false,
     isLit,
     isTransparent: true,
+    isWallmark,
   };
 }
 
@@ -169,6 +178,18 @@ export function isAlphaRenderSurface(surface: IRenderSurface): boolean {
  */
 export function getRenderSurface(surfaces: ReadonlyArray<XraySurfaceDescriptor>, index: number): IRenderSurface {
   return toRenderSurface(surfaces[index] ?? null);
+}
+
+/**
+ * Whether the surface is a wall mark, which its script says and which decides how its texture is sampled.
+ *
+ * @param descriptor - What the backend resolved for the surface.
+ * @returns Whether the engine would bind it through the wall mark sampler.
+ */
+function isWallmarkRenderSurface(descriptor: Nullable<XraySurfaceDescriptor>): boolean {
+  const declaration: Maybe<XraySurfaceDeclaration> = descriptor?.declaration;
+
+  return declaration?.kind === EXraySurfaceDeclaration.SCRIPTED && declaration.isWallmark;
 }
 
 /**

@@ -24,7 +24,7 @@ import { Maybe, Nullable } from "@/lib/types/general";
  * @returns The stand-in.
  */
 function faulty(isAlphaRead: boolean, reason: string): ILevelTexture {
-  return { isAlphaRead, reason, texture: createCheckerTexture() };
+  return { isAlphaRead, isMipped: true, reason, texture: createCheckerTexture() };
 }
 
 /** What became of one reference, so a surface it dresses can say why it is untextured or why it looks wrong. */
@@ -33,6 +33,8 @@ export interface ILevelTexture {
   reason: Nullable<string>;
   /** Whether it was uploaded in a layout that keeps its alpha, which is not the file's answer but its callers'. */
   isAlphaRead: boolean;
+  /** Whether it was uploaded with the mip chain its callers sample, which a wall mark's texture is not. */
+  isMipped: boolean;
 }
 
 /** One reference the set has something to say about, for a viewer reporting what a level is missing. */
@@ -155,12 +157,12 @@ export class LevelTextureSet implements ILevelTextureLookup {
     // the surfaces drawn with it, and a texture is uploaded once for the whole level by whichever sector asked first:
     // a sector of opaque surfaces uploading a cut-out file as `RGB_S3TC_DXT1` left every cut-out surface reached
     // later testing an alpha channel that is not there, which draws the file's transparent black as solid black.
-    if (held && (!request.isAlphaRead || held.isAlphaRead)) {
+    if (held && (!request.isAlphaRead || held.isAlphaRead) && (request.isMipped || !held.isMipped)) {
       return held;
     }
 
     if (held) {
-      this.log.info(`Texture '${reference}' is uploaded again, for a surface that reads its alpha`);
+      this.log.info(`Texture '${reference}' is uploaded again, for a surface that samples it differently`);
 
       held.texture?.dispose();
       this.loaded.delete(reference);
@@ -193,6 +195,7 @@ export class LevelTextureSet implements ILevelTextureLookup {
     const logicalPath: Maybe<string> = this.paths.get(reference);
 
     const isAlphaRead: boolean = request.isAlphaRead;
+    const isMipped: boolean = request.isMipped;
 
     if (!this.roots || !logicalPath) {
       return faulty(isAlphaRead, `Nothing in the mounted roots answers to '${reference}'`);
@@ -202,11 +205,15 @@ export class LevelTextureSet implements ILevelTextureLookup {
       const bytes: ArrayBuffer = await assetsRawCommands.readAsset(this.roots, logicalPath);
       // Every file a level's shader table names is a picture - a base texture or a lightmap - so both are decoded from
       // sRGB. Only whether the alpha survives varies, and that is the surfaces' answer rather than the file's.
-      const options: IRenderTextureOptions = { isAlphaRead: request.isAlphaRead, isColor: true };
+      const options: IRenderTextureOptions = {
+        isAlphaRead: request.isAlphaRead,
+        isColor: true,
+        isMipped: request.isMipped,
+      };
       const upload: IRenderTextureUpload = createDdsTexture(bytes, options);
 
       if (upload.texture) {
-        return { isAlphaRead, reason: null, texture: upload.texture };
+        return { isAlphaRead, isMipped, reason: null, texture: upload.texture };
       }
 
       // A layout the reader does not model; the backend expands those to png instead. The refusal is kept rather
@@ -215,6 +222,7 @@ export class LevelTextureSet implements ILevelTextureLookup {
 
       return {
         isAlphaRead,
+        isMipped,
         reason: null,
         texture: await createDecodedTexture(await texturesRawCommands.readTexture(this.roots, logicalPath), options),
       };

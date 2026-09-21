@@ -121,6 +121,7 @@ describe("LevelSurfacesPanel", () => {
       mockTextures({
         ["decal\\decal_poteki"]: {
           isAlphaRead: true,
+          isMipped: true,
           reason: "Nothing in the mounted roots answers to it",
           texture: null,
         },

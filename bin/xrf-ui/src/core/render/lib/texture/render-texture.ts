@@ -1,4 +1,5 @@
 import {
+  ClampToEdgeWrapping,
   CompressedTexture,
   DataTexture,
   LinearFilter,
@@ -27,6 +28,8 @@ export interface IRenderTextureOptions {
   isAlphaRead?: boolean;
   /** Whether the file holds colour rather than numbers. */
   isColor?: boolean;
+  /** Whether the surfaces drawn with it sample its mip chain, which a wall mark does not. */
+  isMipped?: boolean;
 }
 
 /** What became of one upload: exactly one of the two is present. */
@@ -50,8 +53,10 @@ export function createDdsTexture(bytes: ArrayBuffer, options: IRenderTextureOpti
   }
 
   const file: IDdsFile = read.file;
+  const isMipped: boolean = options.isMipped ?? true;
   const texture: CompressedTexture = new CompressedTexture(
-    file.mipmaps,
+    // Only the level the engine samples, so an unmipped texture costs the gpu no chain it never reads.
+    isMipped ? file.mipmaps : file.mipmaps.slice(0, 1),
     file.width,
     file.height,
     // The typings admit only a compressed format, even though three's own `CompressedTextureLoader` assigns
@@ -62,15 +67,16 @@ export function createDdsTexture(bytes: ArrayBuffer, options: IRenderTextureOpti
   // X-Ray samples base diffuse with wrap addressing: `r_Sampler` defaults to `D3DTADDRESS_WRAP`
   // (`Layers/xrRender/Blender_Recorder.h`) and the model blender overrides nothing. three.js defaults to clamp, which
   // smears the edge texel across every face whose uv leaves [0,1].
-  texture.wrapS = RepeatWrapping;
-  texture.wrapT = RepeatWrapping;
-  texture.anisotropy = XRAY_TEXTURE_ANISOTROPY;
+  // The wall mark sampler clamps where the base sampler wraps, and takes one sample where it takes eight.
+  texture.wrapS = isMipped ? RepeatWrapping : ClampToEdgeWrapping;
+  texture.wrapT = isMipped ? RepeatWrapping : ClampToEdgeWrapping;
+  texture.anisotropy = isMipped ? XRAY_TEXTURE_ANISOTROPY : 1;
 
   if (options.isColor) {
     texture.colorSpace = SRGBColorSpace;
   }
 
-  if (file.mipmapCount === 1) {
+  if (!isMipped || file.mipmapCount === 1) {
     texture.minFilter = LinearFilter;
   }
 
