@@ -12,7 +12,11 @@ import {
   ILevelSectorChange,
   ILevelSectorDelivery,
   ILevelSectorSource,
+  ILevelTextureDelivery,
+  ILevelTextureSupply,
+  ILevelTextureSupplyChange,
   TLevelSectorListener,
+  TLevelTextureSupplyListener,
 } from "@/core/level/lib/render/level-render-protocol";
 import {
   createLevelResidency,
@@ -37,13 +41,12 @@ import {
   LevelStreamProfile,
 } from "@/core/level/lib/stream/level-stream-profile";
 import { LevelStreamScheduler } from "@/core/level/lib/stream/level-stream-scheduler";
-import { EMPTY_LEVEL_TEXTURE_REPORT, ILevelTextureReport } from "@/core/level/lib/surface/level-surface-dressing";
-import { ILevelTextureSource, LevelTextureSet } from "@/core/level/lib/texture/level-texture-set";
+import { LevelTextureReader } from "@/core/level/lib/texture/level-texture-reader";
 import { AsyncState } from "@/lib/async-state";
 import { formatDuration } from "@/lib/format/duration";
 import { Logger, Timer } from "@/lib/logging";
 import { call, cancelFlow, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
-import { Nullable } from "@/lib/types/general";
+import { Maybe, Nullable } from "@/lib/types/general";
 
 /** Nothing in flight, which is also what a viewer sees before it has asked for anything. */
 export const IDLE_LEVEL_STREAM: ILevelStreamProgress = { loaded: 0, total: 0 };
@@ -86,11 +89,14 @@ export class LevelLoadService {
   /** Told what has been delivered and what has gone, which is how whatever draws the level hears of it. */
   private readonly watchers: Set<TLevelSectorListener> = new Set();
 
-  /** The level's uploaded textures, owned here and shared between the sectors that name them. */
-  private readonly loaded: LevelTextureSet = new LevelTextureSet();
+  /** Reads the files a level's textures come from, which is an `invoke` and so belongs on this side. */
+  private readonly reading: LevelTextureReader = new LevelTextureReader();
 
-  /** Republishes what those textures came to whenever they change. */
-  private readonly unwatchTextures: () => void = this.loaded.subscribe(() => this.noteTextures());
+  /** Told what files have been read and what is still worth keeping. */
+  private readonly textureWatchers: Set<TLevelTextureSupplyListener> = new Set();
+
+  /** References already supplied, so a second sector naming one does not read the file again. */
+  private readonly supplied: Map<string, ISectorTextureRequest> = new Map();
 
   /** What the reads have cost, kept here because the loader is what owns a read from end to end. */
   private readonly profile: LevelStreamProfile = new LevelStreamProfile();
@@ -107,7 +113,7 @@ export class LevelLoadService {
     isOpen: (sessionId: string): boolean => this.isOpen(sessionId),
     listTextures: (description: SectorDescription): ReadonlyArray<ISectorTextureRequest> =>
       this.listTextures(description),
-    load: (requests: ReadonlyArray<ISectorTextureRequest>): Promise<void> => this.loaded.load(requests),
+    load: (requests: ReadonlyArray<ISectorTextureRequest>): Promise<void> => this.supply(requests),
     record: (reading: ILevelStreamReading): void => this.noteReading(reading),
   });
 
@@ -142,10 +148,6 @@ export class LevelLoadService {
   @Observable()
   public streamProfile: ILevelStreamSummary = EMPTY_LEVEL_STREAM_SUMMARY;
 
-  /** What the level's textures came to, for everything that reports on them and holds none of them. */
-  @Observable()
-  public textureReport: ILevelTextureReport = EMPTY_LEVEL_TEXTURE_REPORT;
-
   /**
    * Whether the restore below has settled, one way or the other.
    */
@@ -156,8 +158,16 @@ export class LevelLoadService {
    * @returns The level's textures, to read and to hear about rather than to manage: their lifetime is this
    *   service's, and the set says for itself what changed.
    */
-  public get textures(): ILevelTextureSource {
-    return this.loaded;
+  public get textures(): ILevelTextureSupply {
+    return {
+      subscribe: (listener: TLevelTextureSupplyListener): (() => void) => {
+        this.textureWatchers.add(listener);
+
+        return (): void => {
+          this.textureWatchers.delete(listener);
+        };
+      },
+    };
   }
 
   /**
@@ -185,14 +195,43 @@ export class LevelLoadService {
 
   @OnDeactivation()
   public onDeactivation(): void {
-    this.unwatchTextures();
     this.clear();
   }
 
-  /** Takes what the textures now come to, which is what every panel reading them reads. */
-  @BoundAction()
-  private noteTextures(): void {
-    this.textureReport = this.loaded.describe();
+  /**
+   * Reads the files a sector's surfaces name, and supplies them to whatever uploads them.
+   *
+   * @param requests - What the sector names, base textures and lightmaps alike.
+   */
+  private async supply(requests: ReadonlyArray<ISectorTextureRequest>): Promise<void> {
+    const wanted: Array<ISectorTextureRequest> = requests.filter((request: ISectorTextureRequest) => {
+      const supplied: Maybe<ISectorTextureRequest> = this.supplied.get(request.reference);
+
+      return (
+        Boolean(request.reference) &&
+        (!supplied || (request.isAlphaRead && !supplied.isAlphaRead) || (!request.isMipped && supplied.isMipped))
+      );
+    });
+
+    if (!wanted.length) {
+      return;
+    }
+
+    for (const request of wanted) {
+      this.supplied.set(request.reference, request);
+    }
+
+    const delivered: Array<ILevelTextureDelivery> = await Promise.all(
+      wanted.map((request: ISectorTextureRequest) => this.reading.read(request))
+    );
+
+    this.notifyTextures({ delivered, retained: null });
+  }
+
+  private notifyTextures(change: ILevelTextureSupplyChange): void {
+    for (const watcher of Array.from(this.textureWatchers)) {
+      watcher(change);
+    }
   }
 
   /**
@@ -294,7 +333,9 @@ export class LevelLoadService {
     // The roots the **open** searched, not the ones a caller happens to hold: they are centred on the level, which is
     // what finds a texture shipped beside it, and a restore has no other way to know them. Releases the last level's
     // textures itself, and says so once rather than once for the release and again for the open.
-    this.loaded.open(selected.value.roots, selected.value.textures);
+    this.supplied.clear();
+    this.reading.open(selected.value.roots, selected.value.textures);
+    this.notifyTextures({ delivered: [], retained: null });
     this.level = this.level.asReady({ selected });
   }
 
@@ -398,7 +439,16 @@ export class LevelLoadService {
    */
   @BoundAction()
   private onSettled(): void {
-    this.loaded.retain(this.listResidentTextures());
+    const retained: Set<string> = this.listResidentTextures();
+
+    for (const reference of Array.from(this.supplied.keys())) {
+      if (!retained.has(reference)) {
+        this.supplied.delete(reference);
+      }
+    }
+
+    this.notifyTextures({ delivered: [], retained });
+
     this.streaming = IDLE_LEVEL_STREAM;
 
     // Only now, and only from here: it walks every sector of the level, which is far too much for a camera
@@ -522,7 +572,9 @@ export class LevelLoadService {
       this.level = this.level.asIdle();
       this.streaming = IDLE_LEVEL_STREAM;
       this.releaseSectors();
-      this.loaded.dispose();
+      this.supplied.clear();
+      this.reading.close();
+      this.notifyTextures({ delivered: [], retained: null });
     });
   }
 

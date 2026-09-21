@@ -1,11 +1,7 @@
 import { Texture } from "three";
 
 import { transformError } from "@/core/error/lib";
-import { assetsRawCommands } from "@/core/ipc/commands/assets-raw";
-import { texturesRawCommands } from "@/core/ipc/commands/textures-raw";
-import { LevelTextureReference } from "@/core/ipc/types/xrf-app";
-import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
-import { ISectorTextureRequest } from "@/core/level/lib/sector/level-sector-textures";
+import { ILevelTextureDelivery } from "@/core/level/lib/render/level-render-protocol";
 import {
   ELevelSurfaceDressing,
   ILevelSurfaceDressing,
@@ -88,30 +84,9 @@ export class LevelTextureSet implements ILevelTextureSource {
   private readonly pending: Map<string, Promise<ILevelTexture>> = new Map();
   private readonly listeners: Set<TLevelTextureListener> = new Set();
 
-  /** Where each reference resolved to at open, so a load is a read rather than a second search. */
-  private paths: ReadonlyMap<string, string> = new Map();
-
-  private roots: Nullable<XrayRoots> = null;
-
-  /**
-   * Takes the level a later load reads against, releasing whatever the last one held.
-   *
-   * @param roots - Roots the level was opened in.
-   * @param references - What each texture reference came to, from the open.
-   */
-  public open(roots: XrayRoots, references: ReadonlyArray<LevelTextureReference>): void {
+  /** Releases the last level's textures and says so, which is all an open means on this side. */
+  public open(): void {
     this.release();
-
-    this.roots = roots;
-    this.paths = new Map(
-      references
-        .filter((it: LevelTextureReference): it is LevelTextureReference & { logicalPath: string } =>
-          Boolean(it.logicalPath)
-        )
-        .map((it) => [it.reference, it.logicalPath])
-    );
-
-    // Everything the last level held has gone, so everything drawn from the set is now dressed in nothing.
     this.notify(null);
   }
 
@@ -161,28 +136,38 @@ export class LevelTextureSet implements ILevelTextureSource {
   }
 
   /**
-   * Loads every reference given, sharing whatever is already loaded or already being read.
+   * Uploads every file given, keeping whatever is already uploaded the way its callers need it.
    *
-   * @param requests - What a sector's surfaces name, base textures and lightmaps alike.
+   * @param deliveries - The files, and what the surfaces drawn with them sample.
    */
-  public async load(requests: ReadonlyArray<ISectorTextureRequest>): Promise<void> {
+  public async take(deliveries: ReadonlyArray<ILevelTextureDelivery>): Promise<void> {
     const changed: Set<string> = new Set();
 
     await Promise.all(
-      requests
-        .filter((it) => it.reference)
-        .map(async (request: ISectorTextureRequest): Promise<void> => {
-          if (await this.read(request)) {
-            changed.add(request.reference);
-          }
-        })
+      deliveries.map(async (delivery: ILevelTextureDelivery): Promise<void> => {
+        if (await this.accept(delivery)) {
+          changed.add(delivery.reference);
+        }
+      })
     );
 
-    // Once for the sector rather than once per texture: a sector arriving is one change to whatever draws from here,
-    // and the references it brought are what that change touched.
+    // Once for the batch rather than once per texture: a sector arriving is one change to whatever draws from
+    // here, and the references it brought are what that change touched.
     if (changed.size) {
       this.notify(changed);
     }
+  }
+
+  /**
+   * @param reference - The reference as the shader table spells it.
+   * @param isAlphaRead - Whether the surfaces drawn with it sample its alpha channel.
+   * @param isMipped - Whether they sample its mip chain.
+   * @returns Whether what is held already satisfies them, so nothing need be read for it at all.
+   */
+  public holds(reference: string, isAlphaRead: boolean, isMipped: boolean): boolean {
+    const held: Maybe<ILevelTexture> = this.loaded.get(reference);
+
+    return Boolean(held && (!isAlphaRead || held.isAlphaRead) && (isMipped || !held.isMipped));
   }
 
   /**
@@ -234,22 +219,23 @@ export class LevelTextureSet implements ILevelTextureSource {
   }
 
   /**
-   * Reads and uploads one reference, or joins the read already in flight for it.
+   * Uploads one delivered file, or joins the upload already in flight for it.
    *
-   * @returns Whether what the set holds for the reference is not what it held before the call, which is what makes
-   *   the change a delta rather than a rumour.
+   * @returns Whether what the set holds for the reference is not what it held before, which is what makes the
+   *   change a delta rather than a rumour.
    */
-  private async read(request: ISectorTextureRequest): Promise<boolean> {
-    const reference: string = request.reference;
-    const held: Maybe<ILevelTexture> = this.loaded.get(reference);
+  private async accept(delivery: ILevelTextureDelivery): Promise<boolean> {
+    const reference: string = delivery.reference;
 
     // Held unless it was uploaded without the alpha this caller needs. Whether a file keeps its alpha is decided by
     // the surfaces drawn with it, and a texture is uploaded once for the whole level by whichever sector asked first:
     // a sector of opaque surfaces uploading a cut-out file as `RGB_S3TC_DXT1` left every cut-out surface reached
     // later testing an alpha channel that is not there, which draws the file's transparent black as solid black.
-    if (held && (!request.isAlphaRead || held.isAlphaRead) && (request.isMipped || !held.isMipped)) {
+    if (this.holds(reference, delivery.isAlphaRead, delivery.isMipped)) {
       return false;
     }
+
+    const held: Maybe<ILevelTexture> = this.loaded.get(reference);
 
     if (held) {
       this.log.info(`Texture '${reference}' is uploaded again, for a surface that samples it differently`);
@@ -258,23 +244,21 @@ export class LevelTextureSet implements ILevelTextureSource {
       this.loaded.delete(reference);
     }
 
-    // Two sectors arriving together name the same ground texture, and reading it twice would upload it twice.
+    // Two sectors arriving together name the same ground texture, and uploading it twice would upload it twice.
     const inFlight: Maybe<Promise<ILevelTexture>> = this.pending.get(reference);
 
-    // A joiner reports the change too: it has no way to know whether whoever asked it has already seen the upload
-    // the other read is making, and a second delta naming a reference that is already right costs one comparison.
     if (inFlight) {
       await inFlight;
 
       return true;
     }
 
-    const reading: Promise<ILevelTexture> = this.upload(request);
+    const uploading: Promise<ILevelTexture> = this.upload(delivery);
 
-    this.pending.set(reference, reading);
+    this.pending.set(reference, uploading);
 
     try {
-      this.loaded.set(reference, await reading);
+      this.loaded.set(reference, await uploading);
 
       return true;
     } finally {
@@ -282,52 +266,43 @@ export class LevelTextureSet implements ILevelTextureSource {
     }
   }
 
-  private async upload(request: ISectorTextureRequest): Promise<ILevelTexture> {
-    const reference: string = request.reference;
-    const logicalPath: Maybe<string> = this.paths.get(reference);
+  private async upload(delivery: ILevelTextureDelivery): Promise<ILevelTexture> {
+    const isAlphaRead: boolean = delivery.isAlphaRead;
+    const isMipped: boolean = delivery.isMipped;
 
-    const isAlphaRead: boolean = request.isAlphaRead;
-    const isMipped: boolean = request.isMipped;
-
-    if (!this.roots || !logicalPath) {
-      return faulty(isAlphaRead, `Nothing in the mounted roots answers to '${reference}'`);
+    if (delivery.reason) {
+      return faulty(isAlphaRead, delivery.reason);
     }
 
     try {
-      const bytes: ArrayBuffer = await assetsRawCommands.readAsset(this.roots, logicalPath);
-      // Every file a level's shader table names is a picture - a base texture or a lightmap - so both are decoded from
-      // sRGB. Only whether the alpha survives varies, and that is the surfaces' answer rather than the file's.
-      const options: IRenderTextureOptions = {
-        isAlphaRead: request.isAlphaRead,
-        isColor: true,
-        isMipped: request.isMipped,
-      };
-      const upload: IRenderTextureUpload = createDdsTexture(bytes, options);
+      // Every file a level's shader table names is a picture - a base texture or a lightmap - so both are decoded
+      // from sRGB. Only whether the alpha survives varies, and that is the surfaces' answer rather than the file's.
+      const options: IRenderTextureOptions = { isAlphaRead, isColor: true, isMipped };
 
-      if (upload.texture) {
-        return {
-          isAlphaRead,
-          isMipped,
-          reason: null,
-          texture: upload.texture,
-          upload: describeTextureUpload(upload.texture),
-        };
+      // Already a picture where the reader would not have modelled the layout, which whoever read it settled.
+      if (delivery.isDecoded) {
+        const decoded: Texture = await createDecodedTexture(delivery.bytes, options);
+
+        return { isAlphaRead, isMipped, reason: null, texture: decoded, upload: describeTextureUpload(decoded) };
       }
 
-      // A layout the reader does not model; the backend expands those to png instead. The refusal is kept rather
-      // than dropped, so a surface drawn from a decoded png can say which layout put it on that path.
-      this.log.info(`Texture '${reference}' is decoded rather than uploaded:`, upload.refusal);
+      const upload: IRenderTextureUpload = createDdsTexture(delivery.bytes, options);
 
-      const decoded: Texture = await createDecodedTexture(
-        await texturesRawCommands.readTexture(this.roots, logicalPath),
-        options
-      );
+      if (!upload.texture) {
+        return faulty(isAlphaRead, String(upload.refusal ?? "The dds reader would not read it"));
+      }
 
-      return { isAlphaRead, isMipped, reason: null, texture: decoded, upload: describeTextureUpload(decoded) };
+      return {
+        isAlphaRead,
+        isMipped,
+        reason: null,
+        texture: upload.texture,
+        upload: describeTextureUpload(upload.texture),
+      };
     } catch (error: unknown) {
       const transformed: Error = transformError(error);
 
-      this.log.error(`Failed to load level texture '${reference}':`, transformed);
+      this.log.error(`Failed to upload level texture '${delivery.reference}':`, transformed);
 
       return faulty(isAlphaRead, transformed.message);
     }

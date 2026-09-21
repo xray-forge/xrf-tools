@@ -27,15 +27,15 @@ export function LevelStreamPanel({
   id,
   className,
 }: BaseComponentProps): ReactElement {
-  const service: LevelLoadService = useInjection(LevelLoadService);
-  const levelViewportService: LevelViewportService = useInjection(LevelViewportService);
+  const loadService: LevelLoadService = useInjection(LevelLoadService);
+  const viewportService: LevelViewportService = useInjection(LevelViewportService);
 
-  const stats: ILevelStats = levelViewportService.stats;
-  const textures: ILevelTextureReport = service.textureReport;
+  const stats: ILevelStats = viewportService.stats;
+  const textures: ILevelTextureReport = viewportService.textureReport;
   const problems: ReadonlyArray<ILevelTextureProblem> = textures.problems;
-  const stream: ILevelStreamSummary = service.streamProfile;
+  const stream: ILevelStreamSummary = loadService.streamProfile;
 
-  if (!service.level.value) {
+  if (!loadService.level.value) {
     return (
       <EditorPanel data-testid={dataTestId} id={id} className={className} title={"Streaming"}>
         <EditorPanelEmpty label={"No level open. Open one to see what it costs to draw."} />
@@ -96,13 +96,13 @@ export function LevelStreamPanel({
       <EditorPanelSection title={"Budget"}>
         <EditorPanelProperty
           label={"Memory"}
-          value={`${formatBytes(stats.bytes)} of ${formatBytes(service.residency.memoryBudget)}`}
+          value={`${formatBytes(stats.bytes)} of ${formatBytes(loadService.residency.memoryBudget)}`}
         />
-        <EditorPanelProperty label={"Sector cap"} value={service.residency.maxSectors} />
-        <EditorPanelProperty label={"Reads at once"} value={service.residency.concurrency} />
-        <EditorPanelProperty label={"Fills the level in"} value={service.residency.isPreloaded ? "yes" : "no"} />
-        <EditorPanelProperty label={"Load distance"} value={`${service.residency.loadDistance.toFixed(0)} m`} />
-        <EditorPanelProperty label={"Keep distance"} value={`${service.residency.keepDistance.toFixed(0)} m`} />
+        <EditorPanelProperty label={"Sector cap"} value={loadService.residency.maxSectors} />
+        <EditorPanelProperty label={"Reads at once"} value={loadService.residency.concurrency} />
+        <EditorPanelProperty label={"Fills the level in"} value={loadService.residency.isPreloaded ? "yes" : "no"} />
+        <EditorPanelProperty label={"Load distance"} value={`${loadService.residency.loadDistance.toFixed(0)} m`} />
+        <EditorPanelProperty label={"Keep distance"} value={`${loadService.residency.keepDistance.toFixed(0)} m`} />
       </EditorPanelSection>
     </EditorPanel>
   );

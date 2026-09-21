@@ -2,7 +2,8 @@ import { describe, expect, it } from "@jest/globals";
 import { RenderResult } from "@testing-library/react";
 import { Container } from "@wirestate/core";
 
-import { LevelLoadService } from "@/core/level/services";
+import { EMPTY_LEVEL_TEXTURE_REPORT } from "@/core/level/lib/surface/level-surface-dressing";
+import { LevelLoadService, LevelViewportService } from "@/core/level/services";
 import { mockDdsFile } from "@/fixtures/mocks/dds.mocks";
 import {
   mockLevelTextureReference,
@@ -33,11 +34,23 @@ async function renderProblems(isPresent: boolean): Promise<RenderResult> {
     ["plugin:levels|read_sector"]: buffer.toArrayBuffer(),
   });
 
-  const container: Container = mockContainer([LevelLoadService]);
+  const container: Container = mockContainer([LevelLoadService, LevelViewportService]);
   const service: LevelLoadService = container.get(LevelLoadService);
 
   await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, level.roots);
   await service.stream({ x: 0, y: 0, z: 0 });
+
+  // What the textures came to is the answer of whichever side uploaded them, so the panel is given it rather
+  // than reaching for a set it can no longer see.
+  container.get(LevelViewportService).noteTextures(
+    isPresent
+      ? EMPTY_LEVEL_TEXTURE_REPORT
+      : {
+          dressing: new Map(),
+          problems: [{ reason: "Nothing in the mounted roots answers to 'stone'", reference: "stone" }],
+          uploaded: 0,
+        }
+  );
 
   return renderWithProviders(<LevelProblemsPanel />, { container });
 }
@@ -61,7 +74,7 @@ describe("LevelProblemsPanel", () => {
 
   it("stands empty until a level is open", () => {
     const { getByTestId } = renderWithProviders(<LevelProblemsPanel />, {
-      container: mockContainer([LevelLoadService]),
+      container: mockContainer([LevelLoadService, LevelViewportService]),
     });
 
     expect(getByTestId("level-problems-panel").textContent).toContain("No level open");

@@ -29,3 +29,43 @@ export interface ILevelSectorSource {
    */
   subscribe(listener: TLevelSectorListener): () => void;
 }
+
+/** One texture's file, handed to whatever uploads it. */
+export interface ILevelTextureDelivery {
+  /** The reference as the shader table spells it. */
+  reference: string;
+  /** The file itself, which is the only thing here worth transferring rather than copying. */
+  bytes: ArrayBuffer;
+  /** Whether the surfaces drawn with it sample its alpha channel. */
+  isAlphaRead: boolean;
+  /** Whether they sample its mip chain. */
+  isMipped: boolean;
+  /**
+   * Whether the bytes are a picture rather than the file the level names.
+   *
+   * Decided by whoever read it, because deciding it is reading and not drawing: a layout the dds reader does not
+   * model is fetched already expanded, so the side that uploads never has to ask for anything.
+   */
+  isDecoded: boolean;
+  /** Why there is no file, for a reference that could not be read at all. */
+  reason: Nullable<string>;
+}
+
+/** What changed about the textures a level holds. */
+export interface ILevelTextureSupplyChange {
+  delivered: ReadonlyArray<ILevelTextureDelivery>;
+  /** References still worth keeping, everything else being released, or null where the whole set went. */
+  retained: Nullable<ReadonlySet<string>>;
+}
+
+/** Told what changed, so whatever uploads them uploads exactly that and releases the rest. */
+export type TLevelTextureSupplyListener = (change: ILevelTextureSupplyChange) => void;
+
+/** Textures as whatever uploads them takes them: a file and what to sample it as, never a texture. */
+export interface ILevelTextureSupply {
+  /**
+   * @param listener - Told what changed, from inside the call that changed it.
+   * @returns Stops the telling.
+   */
+  subscribe(listener: TLevelTextureSupplyListener): () => void;
+}

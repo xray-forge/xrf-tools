@@ -10,14 +10,15 @@ import { ILevelLighting } from "@/core/level/lib/lighting/level-lighting";
 import {
   ILevelSectorChange,
   ILevelSectorDelivery,
-  ILevelSectorSource,
+  ILevelTextureSupplyChange,
 } from "@/core/level/lib/render/level-render-protocol";
 import { ILevelPoint } from "@/core/level/lib/residency/level-residency";
 import { ILoadedSector, LevelSectorSet } from "@/core/level/lib/sector/level-sector-set";
 import { createSectorViews, ISectorViews } from "@/core/level/lib/sector/level-sector-views";
 import { ILevelStats, measureLevelStats } from "@/core/level/lib/stats/level-stats";
+import { ILevelTextureReport } from "@/core/level/lib/surface/level-surface-dressing";
 import { countLevelSurfaceGeometry, ILevelSurfaceGeometry } from "@/core/level/lib/surface/level-surface-geometry";
-import { ILevelTextureSource } from "@/core/level/lib/texture/level-texture-set";
+import { LevelTextureSet } from "@/core/level/lib/texture/level-texture-set";
 import { DEFAULT_LEVEL_VIEW_OPTIONS, ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
 import { TFrameRateLimit } from "@/core/render/lib/frame/render-frame-limit";
 import { RenderViewport } from "@/core/render/lib/frame/render-viewport";
@@ -40,6 +41,8 @@ export interface ILevelPreviewSceneHandlers {
    * @param camera - Where the camera is, in the coordinates the level's own data is written in.
    */
   onReport: (stats: ILevelStats, camera: ILevelCamera) => void;
+  /** What the level's textures came to, whenever uploading changes it. */
+  onTextures?: (report: ILevelTextureReport) => void;
 }
 
 /** Metres the camera has to move before the loader is asked again, which keeps streaming off every frame. */
@@ -63,12 +66,14 @@ export class LevelPreviewScene {
   /** The sectors held and the geometry built for each, which belongs on whichever thread owns the context. */
   private readonly held: LevelSectorSet = new LevelSectorSet();
 
+  /** The level's uploaded textures, which belong on the same side for the same reason. */
+  private readonly textures: LevelTextureSet = new LevelTextureSet();
+
   private controls: Nullable<LevelFlyControls> = null;
   private resident: ReadonlyMap<number, ILoadedSector> = new Map();
   /** The level's shader table, which every arriving sector joins its surfaces against. */
   private surfaces: ReadonlyArray<XraySurfaceDescriptor> = [];
   /** Stops this scene hearing about the sectors it last took, for when it takes another level's. */
-  private unsubscribeSectors: Nullable<() => void> = null;
   private streamedFrom: Nullable<Vector3> = null;
   private statsReportedAt: number = 0;
 
@@ -90,6 +95,9 @@ export class LevelPreviewScene {
     this.viewport.scene.add(this.root);
 
     this.sectors = new LevelPreviewSectors(this.root);
+    // The set the scene owns, handed over once: the materials read what has been uploaded, and hear from it
+    // directly whenever an upload changes what they should be wearing.
+    this.sectors.setTextures(this.textures);
     this.frame = new LevelPreviewFrame(this.root, config);
 
     this.applyViewOptions();
@@ -105,13 +113,22 @@ export class LevelPreviewScene {
   }
 
   /**
-   * Takes the sectors a level delivers.
+   * Takes sectors that have arrived and sectors that have gone.
    *
-   * @param sectors - The open level's sectors, or null while none is open.
+   * @param change - What was delivered, and what was released.
    */
-  public setSectors(sectors: Nullable<ILevelSectorSource>): void {
-    this.unsubscribeSectors?.();
-    this.unsubscribeSectors = sectors?.subscribe(this.onSectorsChanged) ?? null;
+  public deliver(change: ILevelSectorChange): void {
+    for (const sector of change.released ?? Array.from(this.held.keys())) {
+      this.held.release(sector);
+      this.sectors.drop(sector);
+    }
+
+    for (const delivery of change.delivered) {
+      this.take(delivery);
+    }
+
+    this.sectors.settle();
+    this.resident = this.held.snapshot();
   }
 
   /**
@@ -122,12 +139,16 @@ export class LevelPreviewScene {
   }
 
   /**
-   * Takes the textures a surface is dressed from, which the loader owns.
+   * Takes texture files that have been read, and what is still worth keeping.
    *
-   * @param textures - The open level's textures, or null while none is open.
+   * @param change - What was delivered, and what to retain.
    */
-  public setTextures(textures: Nullable<ILevelTextureSource>): void {
-    this.sectors.setTextures(textures);
+  public supply(change: ILevelTextureSupplyChange): void {
+    if (change.retained) {
+      this.textures.retain(change.retained);
+    }
+
+    void this.textures.take(change.delivered).then(() => this.handlers.onTextures?.(this.textures.describe()));
   }
 
   /**
@@ -208,29 +229,13 @@ export class LevelPreviewScene {
     this.controls = null;
 
     // Materials only: the geometry belongs to the loader, which disposes it when a sector stops being resident.
-    this.unsubscribeSectors?.();
-    this.unsubscribeSectors = null;
+    this.textures.dispose();
     this.held.dispose();
     this.sectors.dispose();
     this.frame.dispose();
     this.lighting.dispose();
     this.viewport.dispose();
   }
-
-  /** Takes what arrived and drops what went, then lets the materials settle once for the batch. */
-  private readonly onSectorsChanged = (change: ILevelSectorChange): void => {
-    for (const sector of change.released ?? Array.from(this.held.keys())) {
-      this.held.release(sector);
-      this.sectors.drop(sector);
-    }
-
-    for (const delivery of change.delivered) {
-      this.take(delivery);
-    }
-
-    this.sectors.settle();
-    this.resident = this.held.snapshot();
-  };
 
   /** Builds one delivered sector where the geometry belongs, which is here. */
   private take(delivery: ILevelSectorDelivery): void {

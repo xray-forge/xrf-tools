@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { RenderResult, waitFor } from "@testing-library/react";
 import { Container } from "@wirestate/core";
-import { runInAction } from "@wirestate/mobx";
 
 import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
 import { LevelSurfacesPanel } from "@/core/level/components/panels/LevelSurfacesPanel";
@@ -64,9 +63,7 @@ async function renderPanel(
 
   // What a level's textures came to, which no test here streams for itself: given one, the panel reads it.
   if (textures) {
-    runInAction(() => {
-      service.textureReport = textures.describe();
-    });
+    container.get(LevelViewportService).noteTextures(textures.describe());
   }
 
   arrange?.(container.get(LevelViewportService));

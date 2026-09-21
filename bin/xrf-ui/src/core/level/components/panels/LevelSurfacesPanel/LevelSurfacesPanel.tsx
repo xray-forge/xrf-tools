@@ -37,7 +37,7 @@ export function LevelSurfacesPanel({
   const viewportService: LevelViewportService = useInjection(LevelViewportService);
 
   const held: ReadonlyArray<number> = loadService.sectorReport.held;
-  const report: ILevelTextureReport = loadService.textureReport;
+  const report: ILevelTextureReport = viewportService.textureReport;
   const surfaces: Maybe<ReadonlyArray<XraySurfaceDescriptor>> = loadService.level.value?.selected.value.surfaces;
 
   // Asked for rather than read: measuring it samples the coordinates of every draw of every sector held, and

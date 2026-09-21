@@ -1,0 +1,82 @@
+import { ILevelSectorChange, ILevelTextureSupplyChange } from "@/core/level/lib/render/level-render-protocol";
+import {
+  ILevelRenderer,
+  ILevelRendererEvents,
+  ILevelRenderLevel,
+  ILevelRenderView,
+} from "@/core/level/lib/render/level-renderer";
+import { LevelPreviewScene } from "@/core/level/lib/scene";
+import { ILevelSurfaceGeometry } from "@/core/level/lib/surface/level-surface-geometry";
+import { Nullable } from "@/lib/types/general";
+
+/** What a renderer needs to exist at all: somewhere to draw, and somewhere to report to. */
+export interface ILevelLocalRendererOptions {
+  container: HTMLElement;
+  events: ILevelRendererEvents;
+}
+
+/**
+ * Draws the level on the thread that asked.
+ */
+export class LevelLocalRenderer implements ILevelRenderer {
+  private readonly scene: LevelPreviewScene;
+
+  /** The last view applied, so only what moved is applied again. */
+  private view: Nullable<ILevelRenderView> = null;
+
+  public constructor({ container, events }: ILevelLocalRendererOptions) {
+    this.scene = new LevelPreviewScene({
+      onCameraMoved: (point) => events.onCameraMoved(point),
+      onReport: (stats, camera) => events.onReport(stats, camera),
+      onTextures: (report) => events.onTextures(report),
+    });
+
+    this.scene.mount(container);
+  }
+
+  public open(level: Nullable<ILevelRenderLevel>): void {
+    // The table first: a sector arriving with nothing to join against would draw untextured.
+    this.scene.setSurfaces(level?.surfaces ?? []);
+    this.scene.setBounds(level?.bounds ?? null);
+  }
+
+  public deliver(change: ILevelSectorChange): void {
+    this.scene.deliver(change);
+  }
+
+  public supply(change: ILevelTextureSupplyChange): void {
+    this.scene.supply(change);
+  }
+
+  public setView(view: ILevelRenderView): void {
+    const last: Nullable<ILevelRenderView> = this.view;
+
+    this.view = view;
+
+    // One value in, four questions out. Applying all of them on every change would re-dress every material of
+    // the level whenever the sun moved.
+    if (last?.options !== view.options) {
+      this.scene.applyViewOptions(view.options);
+    }
+
+    if (last?.lighting !== view.lighting) {
+      this.scene.setLighting(view.lighting);
+    }
+
+    if (last?.camera !== view.camera) {
+      this.scene.setCameraOptions(view.camera);
+    }
+
+    if (last?.frameRateLimit !== view.frameRateLimit) {
+      this.scene.setFrameRateLimit(view.frameRateLimit);
+    }
+  }
+
+  public measure(): Promise<ReadonlyMap<number, ILevelSurfaceGeometry>> {
+    return Promise.resolve(this.scene.measureSurfaceGeometry());
+  }
+
+  public dispose(): void {
+    this.scene.dispose();
+  }
+}

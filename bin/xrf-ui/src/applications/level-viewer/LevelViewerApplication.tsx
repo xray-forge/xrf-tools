@@ -3,7 +3,6 @@ import { ReactElement, useCallback, useState } from "react";
 
 import { SelectedLevelDescription } from "@/core/ipc/types/xrf-app";
 import { LevelPreviewLayout } from "@/core/level/components/preview/LevelPreviewLayout";
-import { ILevelPoint } from "@/core/level/lib/residency/level-residency";
 import { LevelLoadService } from "@/core/level/services";
 import { ApplicationLoader } from "@/core/shell/loading/ApplicationLoader";
 import { BaseComponentProps } from "@/lib/dom/element-types";
@@ -29,8 +28,6 @@ export function LevelViewerApplication({
     return description.source.kind === "directory" ? description.source.path : description.source.logicalPath;
   }, []);
 
-  const onCameraMoved = useCallback((point: ILevelPoint) => void loadService.stream(point), [loadService]);
-
   const onBack = useCallback(() => setPickerOpen(true), []);
 
   const onFinished = useCallback(() => setPickerOpen(false), []);
@@ -50,15 +47,10 @@ export function LevelViewerApplication({
       data-testid={dataTestId}
       id={id}
       className={className}
-      sectors={loadService.sectors}
-      surfaces={description?.surfaces}
-      bounds={description?.bounds ?? null}
-      textures={loadService.textures}
       name={description ? onDescribeLevelName(description) : null}
       streaming={loadService.streaming}
       isLoading={loadService.level.isLoading}
       error={loadService.level.error?.message}
-      onCameraMoved={onCameraMoved}
       onBack={onBack}
       onDeselect={onDeselect}
     />

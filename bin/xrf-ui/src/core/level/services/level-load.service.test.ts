@@ -5,9 +5,12 @@ import { createRoots } from "@/core/assets/lib";
 import { SelectedLevelDescription } from "@/core/ipc/types/xrf-app";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { SectorDescription, SectorOutline } from "@/core/ipc/types/xrf-visual";
-import { ILevelSectorDelivery } from "@/core/level/lib/render/level-render-protocol";
+import {
+  ILevelSectorDelivery,
+  ILevelTextureDelivery,
+  ILevelTextureSupplyChange,
+} from "@/core/level/lib/render/level-render-protocol";
 import { createLevelResidency } from "@/core/level/lib/residency/level-residency";
-import { TLevelTextureChange } from "@/core/level/lib/texture/level-texture-set";
 import { mockDdsFile } from "@/fixtures/mocks/dds.mocks";
 import {
   mockLevelTextureReference,
@@ -19,6 +22,7 @@ import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { mockInvoke, resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { MockVisualBuffer } from "@/fixtures/mocks/visual.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
+import { Nullable } from "@/lib/types/general";
 
 import { IDLE_LEVEL_STREAM, LevelLoadService } from "./level-load.service";
 
@@ -62,6 +66,21 @@ function armLevel(level: SelectedLevelDescription, description: SectorDescriptio
 
 function countCalls(command: string): number {
   return mockInvoke.mock.calls.filter(([name]) => name === command).length;
+}
+
+function recordSupply(service: LevelLoadService): {
+  delivered: Array<ILevelTextureDelivery>;
+  retained: Array<Nullable<ReadonlySet<string>>>;
+} {
+  const delivered: Array<ILevelTextureDelivery> = [];
+  const retained: Array<Nullable<ReadonlySet<string>>> = [];
+
+  service.textures.subscribe((change: ILevelTextureSupplyChange) => {
+    delivered.push(...change.delivered);
+    retained.push(change.retained);
+  });
+
+  return { delivered, retained };
 }
 
 function createHeldCall(): { held: Promise<void>; release: () => void } {
@@ -111,10 +130,14 @@ describe("LevelLoadService", () => {
       ["plugin:levels|read_sector"]: buffer,
     });
 
+    const supply = recordSupply(service);
+
     await service.restore();
     await service.stream(ORIGIN);
 
-    expect(service.textures.get("stone")?.texture).toBeTruthy();
+    // Read on this side and handed on as bytes: uploading it belongs to whichever side draws.
+    expect(supply.delivered.map((it) => it.reference)).toContain("stone");
+    expect(supply.delivered[0].bytes.byteLength).toBeGreaterThan(0);
     // Sized from the description's own extent, which is the only place a restore can learn it from.
     expect(service.residency).toEqual(createLevelResidency(2000));
   });
@@ -291,15 +314,17 @@ describe("LevelLoadService", () => {
 
     service.residency = { ...service.residency, maxSectors: 1, minSectors: 1 };
 
+    const supply = recordSupply(service);
+
     await service.stream(ORIGIN);
 
-    expect(service.textures.size).toBeGreaterThan(0);
+    expect(supply.delivered.map((it) => it.reference)).toEqual(["stone"]);
 
     await service.stream({ x: 20_000, y: 0, z: 0 });
 
-    // The second sector names the same fixture surface, so what survives is what it names rather than what the first
-    // one left behind.
-    expect(service.textures.size).toBe(1);
+    // The second sector names the same fixture surface, so what it says to keep is what that one names rather
+    // than what the first one left behind.
+    expect(Array.from(supply.retained.at(-1) ?? [])).toEqual(["stone"]);
   });
 
   it("releases every texture when the level is closed", async () => {
@@ -317,9 +342,12 @@ describe("LevelLoadService", () => {
     await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS);
     await service.stream(ORIGIN);
 
+    const supply = recordSupply(service);
+
     service.clear();
 
-    expect(service.textures.size).toBe(0);
+    // Null rather than an empty set: the whole set went, which is a different thing from keeping none of it.
+    expect(supply.retained).toEqual([null]);
     expect(service.sectorReport.held).toHaveLength(0);
   });
 
@@ -661,6 +689,8 @@ describe("LevelLoadService streaming progress", () => {
 
     service.residency = { ...service.residency, maxSectors: 1, minSectors: 1 };
 
+    const supply = recordSupply(service);
+
     // Left running, and never awaited: the move below supersedes this flow, so its own promise is not what settles
     // when the read it started finishes.
     void service.stream(ORIGIN);
@@ -677,27 +707,21 @@ describe("LevelLoadService streaming progress", () => {
 
     await new Promise((resolve) => setTimeout(resolve, 0));
 
-    expect(service.textures.get("stone")?.texture).toBeTruthy();
+    // The file was read before the move and is still supplied, so the sector arrives with something to draw
+    // with rather than with a texture released out from under it.
+    expect(supply.delivered.map((it) => it.reference)).toContain("stone");
+    expect(supply.retained.some((it) => it?.has("stone"))).toBe(true);
   });
 });
 
-describe("LevelLoadService texture changes", () => {
+describe("LevelLoadService texture supply", () => {
   beforeEach(() => {
     resetMockInvoke();
   });
 
-  function recordChanges(service: LevelLoadService): Array<TLevelTextureChange> {
-    const changes: Array<TLevelTextureChange> = [];
-
-    service.textures.subscribe((changed: TLevelTextureChange) => changes.push(changed));
-
-    return changes;
-  }
-
-  // The set keeps one identity for the life of a level, because it owns uploads. That leaves a view nothing to watch,
-  // so the set says for itself what moved - and says which references, because re-dressing every material of a level
-  // on every sector that arrives is the only answer a counter could ever have asked for.
-  it("names the textures a sector brought rather than saying that something changed", async () => {
+  // The files are read here and uploaded wherever the level is drawn, so what crosses is which references moved
+  // and their bytes - never a texture, and never a count that means only that something changed.
+  it("names the files a sector needed rather than saying that something changed", async () => {
     const { level, description, buffer } = mockStreamable([outlineAt(0, 1)]);
     const { service } = mockInjectedService(LevelLoadService);
 
@@ -705,31 +729,48 @@ describe("LevelLoadService texture changes", () => {
 
     await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS);
 
-    const changes: Array<TLevelTextureChange> = recordChanges(service);
+    const supply = recordSupply(service);
 
     await service.stream(ORIGIN);
 
-    expect(changes).toContainEqual(new Set(["stone"]));
+    expect(supply.delivered.map((it) => it.reference)).toEqual(["stone"]);
   });
 
-  // A restore releases whatever the last level held, so everything drawn from the set is undressed at that moment.
-  // There is no reference to name for that one: the answer is the whole set.
+  // There is no reference to name for a level opening: the answer is the whole set.
   it("says the whole set went when a level opens", async () => {
     const { level, description, buffer } = mockStreamable([outlineAt(0, 1)]);
     const { service } = mockInjectedService(LevelLoadService);
 
     armLevel(level, description, buffer);
 
-    const changes: Array<TLevelTextureChange> = recordChanges(service);
+    const supply = recordSupply(service);
 
     await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS);
 
-    expect(changes).toEqual([null]);
+    expect(supply.retained).toEqual([null]);
+    expect(supply.delivered).toEqual([]);
   });
 
-  // Nothing arrived and nothing was released, so nothing is re-dressed. Under the counter every camera move ended in
-  // a bump, whether or not a single texture had moved, and every bump re-dressed the level.
-  it("says nothing when a camera has not moved far enough to change anything", async () => {
+  // A file is read once for the level. Reading it again for every sector that names it would spend the round trip
+  // the whole ledger exists to avoid.
+  it("reads a file once however many sectors name it", async () => {
+    const { level, description, buffer } = mockStreamable([outlineAt(0, 1), outlineAt(1, 2)]);
+    const { service } = mockInjectedService(LevelLoadService);
+
+    armLevel(level, description, buffer);
+
+    await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS);
+
+    const supply = recordSupply(service);
+
+    await service.stream(ORIGIN);
+
+    // One delivery for two sectors that name the same reference, which is the read that did not happen twice.
+    expect(supply.delivered.map((it) => it.reference)).toEqual(["stone"]);
+  });
+
+  // Nothing arrived and nothing was released, so nothing is re-dressed.
+  it("supplies nothing when a camera has not moved far enough to change anything", async () => {
     const { level, description, buffer } = mockStreamable([outlineAt(0, 1)]);
     const { service } = mockInjectedService(LevelLoadService);
 
@@ -738,24 +779,11 @@ describe("LevelLoadService texture changes", () => {
     await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS);
     await service.stream(ORIGIN);
 
-    const changes: Array<TLevelTextureChange> = recordChanges(service);
+    const supply = recordSupply(service);
 
     await service.stream(ORIGIN);
 
-    expect(changes).toEqual([]);
-  });
-
-  it("keeps the set itself at one identity, since it owns what is uploaded", async () => {
-    const { level, description, buffer } = mockStreamable([outlineAt(0, 1)]);
-    const { service } = mockInjectedService(LevelLoadService);
-
-    armLevel(level, description, buffer);
-
-    const before = service.textures;
-
-    await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS);
-    await service.stream(ORIGIN);
-
-    expect(service.textures).toBe(before);
+    expect(supply.delivered).toEqual([]);
+    expect(supply.retained).toEqual([]);
   });
 });

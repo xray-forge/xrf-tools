@@ -3,6 +3,7 @@ import { BoundAction, Observable } from "@wirestate/mobx";
 
 import { ILevelCamera } from "@/core/level/lib/camera/level-camera";
 import { EMPTY_LEVEL_STATS, ILevelStats } from "@/core/level/lib/stats/level-stats";
+import { EMPTY_LEVEL_TEXTURE_REPORT, ILevelTextureReport } from "@/core/level/lib/surface/level-surface-dressing";
 import { ILevelSurfaceGeometry } from "@/core/level/lib/surface/level-surface-geometry";
 import { Nullable } from "@/lib/types/general";
 
@@ -17,6 +18,20 @@ export class LevelViewportService {
   /** Where the camera is and where it faces, or null until the viewport has drawn a frame. */
   @Observable()
   public camera: Nullable<ILevelCamera> = null;
+
+  /** What the level's textures came to, which is the answer of whichever side uploaded them. */
+  @Observable()
+  public textureReport: ILevelTextureReport = EMPTY_LEVEL_TEXTURE_REPORT;
+
+  /**
+   * Takes what the textures came to.
+   *
+   * @param report - What each reference became, once the renderer had uploaded it.
+   */
+  @BoundAction()
+  public noteTextures(report: ILevelTextureReport): void {
+    this.textureReport = report;
+  }
 
   /** How to ask the viewport what it is drawing, while there is one. */
   private measure: Nullable<() => Promise<ReadonlyMap<number, ILevelSurfaceGeometry>>> = null;
@@ -55,6 +70,7 @@ export class LevelViewportService {
   public clear(): void {
     this.stats = EMPTY_LEVEL_STATS;
     this.camera = null;
+    this.textureReport = EMPTY_LEVEL_TEXTURE_REPORT;
   }
 
   @OnDeactivation()
