@@ -19,6 +19,12 @@ import { LevelSectorReader } from "@/core/level/lib/sector/level-sector-reader";
 import { ILoadedSector, LevelSectorSet } from "@/core/level/lib/sector/level-sector-set";
 import { ISectorTextureRequest, listSectorTextures } from "@/core/level/lib/sector/level-sector-textures";
 import { ISectorViews } from "@/core/level/lib/sector/level-sector-views";
+import {
+  EMPTY_LEVEL_STREAM_SUMMARY,
+  ILevelStreamReading,
+  ILevelStreamSummary,
+  LevelStreamProfile,
+} from "@/core/level/lib/stream/level-stream-profile";
 import { ILevelTextureLookup, LevelTextureSet } from "@/core/level/lib/texture/level-texture-set";
 import { AsyncState } from "@/lib/async-state";
 import { formatDuration } from "@/lib/format/duration";
@@ -57,6 +63,9 @@ export class LevelLoadService {
   /** The level's uploaded textures, owned here and shared between the sectors that name them. */
   private readonly loaded: LevelTextureSet = new LevelTextureSet();
 
+  /** What the reads have cost, kept here because the loader is what owns a read from end to end. */
+  private readonly profile: LevelStreamProfile = new LevelStreamProfile();
+
   /**
    * Reads sectors on this loader's behalf, joining a read already in flight and holding its textures until the
    * sector it read is resident or dropped.
@@ -72,6 +81,7 @@ export class LevelLoadService {
 
       this.noteTextures();
     },
+    record: (reading: ILevelStreamReading): void => this.noteReading(reading),
   });
 
   @Observable()
@@ -90,6 +100,10 @@ export class LevelLoadService {
 
   @Observable()
   public textureRevision: number = 0;
+
+  /** What the recent sector reads cost, stage by stage, for a viewer to report and a change to be judged against. */
+  @Observable()
+  public streamProfile: ILevelStreamSummary = EMPTY_LEVEL_STREAM_SUMMARY;
 
   /**
    * Whether the restore below has settled, one way or the other.
@@ -281,6 +295,17 @@ export class LevelLoadService {
   }
 
   /**
+   * Takes what one sector cost and republishes the summary.
+   *
+   * @param reading - What that sector's read came to, stage by stage.
+   */
+  @BoundAction()
+  private noteReading(reading: ILevelStreamReading): void {
+    this.profile.record(reading);
+    this.streamProfile = this.profile.summarise();
+  }
+
+  /**
    * Closes this loader's level without clearing a newer one.
    */
   @LatestFlow("level")
@@ -345,6 +370,9 @@ export class LevelLoadService {
   }
 
   private clearView(): void {
+    this.profile.clear();
+    this.streamProfile = EMPTY_LEVEL_STREAM_SUMMARY;
+
     runInAction(() => {
       this.level = this.level.asIdle();
       this.streaming = IDLE_LEVEL_STREAM;

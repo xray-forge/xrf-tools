@@ -6,7 +6,7 @@ import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
 import { SectorDescription } from "@/core/ipc/types/xrf-visual";
 import { ISectorTextureRequest, listSectorTextures } from "@/core/level/lib/sector/level-sector-textures";
 import { createSectorViews, ISectorViews } from "@/core/level/lib/sector/level-sector-views";
-import { formatDuration } from "@/lib/format/duration";
+import { ILevelStreamReading } from "@/core/level/lib/stream/level-stream-profile";
 import { Logger, Timer } from "@/lib/logging";
 import { Maybe } from "@/lib/types/general";
 
@@ -18,6 +18,8 @@ export interface ILevelSectorReaderHost {
   isOpen(sessionId: string): boolean;
   /** Takes a sector that arrived for a level still open. */
   adopt(views: ISectorViews): void;
+  /** Takes what that sector cost, stage by stage. */
+  record(reading: ILevelStreamReading): void;
 }
 
 /**
@@ -84,6 +86,7 @@ export class LevelSectorReader {
     surfaces: ReadonlyArray<XraySurfaceDescriptor>
   ): Promise<void> {
     const timer: Timer = new Timer();
+    const stage: Timer = new Timer();
 
     const snapshot: SessionSnapshot<SectorDescription> = await levelsCommands.openSector(
       sessionId,
@@ -91,9 +94,12 @@ export class LevelSectorReader {
       sector
     );
 
+    const pack: number = stage.lap();
     const buffer: ArrayBuffer = await levelsRawCommands.readSector(sessionId, snapshot.sessionId);
+    const transfer: number = stage.lap();
     // Joined against the table the open resolved, so a surface arrives already knowing whether it is cut out.
     const views: ISectorViews = createSectorViews(snapshot.value, buffer, surfaces);
+    const built: number = stage.lap();
 
     // Claimed before the upload rather than after it: what protects these textures has to be in place before
     // anything can be disposed for not being resident.
@@ -103,6 +109,8 @@ export class LevelSectorReader {
 
     // Before the sector is published, so a surface is never drawn untextured for a frame and then corrected.
     await this.host.load(requested);
+
+    const textures: number = stage.lap();
 
     // A read outlives the plan that asked for it, so it can outlive the level too: a sector of a level nobody has
     // open any more is dropped rather than adopted into whatever is open now.
@@ -114,13 +122,16 @@ export class LevelSectorReader {
 
     this.host.adopt(views);
 
-    this.log.info(
-      "Sector read in:",
-      formatDuration(timer.elapsed()),
-      `sector ${sector},`,
-      `${views.geometry.vertexCount} vertices,`,
-      `${views.sections.length} draws,`,
-      `${views.instances.length} instanced meshes`
-    );
+    this.host.record({
+      adopt: stage.lap(),
+      draws: views.sections.length + views.instances.length,
+      pack,
+      sector,
+      textures,
+      total: timer.elapsed(),
+      transfer,
+      vertices: views.geometry.vertexCount,
+      views: built,
+    });
   }
 }
