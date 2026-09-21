@@ -412,12 +412,12 @@ end
   );
 }
 
-// `aref(true, 0)` is not a test of nothing. The engine compares with `D3DCMP_GREATER`, so it keeps a texel whose
-// alpha is greater than zero and discards every fully transparent one. A decal's outer band is authored fully
-// transparent over mid grey, and drawing it instead of discarding it lays a two percent step along the footprint -
-// the rectangle a wall mark should not have.
+// `aref(true, 0)` grants no discard. DX10 and DX11 have no alpha test state: the reference is bound as a shader
+// constant and a pass cuts only where its pixel shader calls `clip`, which the `*_aref_*` deferred shaders do and
+// `simple.ps` - the shader every wall mark pass names - does not. A wall mark multiplies anyway, and `MUL_2X` never
+// reads alpha.
 #[test]
-fn a_wall_mark_carries_the_reference_it_discards_against() {
+fn a_wall_mark_asks_for_a_test_and_is_granted_none() {
   let tree: FixtureTree = library("surface_script_wmark_aref", &[]).with_shader_script(
     "effects\\wallmarkmult",
     r#"
@@ -427,22 +427,21 @@ end
 "#,
   );
 
-  let XraySurfaceDeclaration::Scripted {
-    is_alpha_tested,
-    alpha_reference,
-    ..
-  } = describe(&tree, "effects\\wallmarkmult").declaration
-  else {
+  let descriptor: XraySurfaceDescriptor = describe(&tree, "effects\\wallmarkmult");
+
+  let XraySurfaceDeclaration::Scripted { is_alpha_tested, .. } = descriptor.declaration else {
     panic!("Expect the wall mark to be read from its script");
   };
 
+  // Reported, because the pass does ask for one and a reader of the panel should see that it did.
   assert!(is_alpha_tested);
-  assert_eq!(alpha_reference, 0);
+  // Drawn without one, because the renderer the game runs grants it nothing.
+  assert_eq!(descriptor.draw, XraySurfaceDraw::Multiplied { is_doubled: true });
 }
 
-// The same reading for a pass that writes rather than composites: a reference of zero is still a discard.
+// The same for a pass that writes rather than composites: a reference of zero leaves nothing to cut.
 #[test]
-fn an_opaque_pass_tested_against_zero_still_discards() {
+fn an_opaque_pass_tested_against_zero_discards_nothing() {
   let tree: FixtureTree = library("surface_script_opaque_aref", &[]).with_shader_script(
     "details\\blend",
     r#"
@@ -452,10 +451,7 @@ end
 "#,
   );
 
-  assert_eq!(
-    describe(&tree, "details\\blend").draw,
-    XraySurfaceDraw::AlphaTested { reference: 0 }
-  );
+  assert_eq!(describe(&tree, "details\\blend").draw, XraySurfaceDraw::Opaque);
 }
 
 // A script with no `normal` declares no base element, and `_lua_Create` compiles one only from that function.

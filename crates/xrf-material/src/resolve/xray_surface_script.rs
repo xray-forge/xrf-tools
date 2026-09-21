@@ -49,7 +49,6 @@ impl XraySurfaceScript {
       textures: Vec::new(),
       library: Some(asset),
       declaration: XraySurfaceDeclaration::Scripted {
-        alpha_reference: state.alpha_reference.unwrap_or(0),
         function: XRayShaderPass::BASE_FUNCTION.to_owned(),
         is_alpha_tested: state.is_alpha_tested,
         is_blended: state.is_blended,
@@ -68,9 +67,10 @@ impl XraySurfaceScript {
     let reference: u8 = state.alpha_reference.unwrap_or(0);
 
     if !state.is_blended {
-      // A reference of zero still discards: the engine compares with `D3DCMP_GREATER`, so `aref(true, 0)` keeps only
-      // what has some alpha at all.
-      return if state.is_alpha_tested {
+      // A reference of zero discards nothing. DX10 and DX11 have no alpha test state at all - the reference is bound
+      // as a shader constant and only a pixel shader calling `clip` acts on it - and a reference of zero would leave
+      // even the D3D9 path with nothing to cut but fully transparent texels.
+      return if state.is_alpha_tested && reference > 0 {
         XraySurfaceDraw::AlphaTested { reference }
       } else {
         XraySurfaceDraw::Opaque

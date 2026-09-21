@@ -92,21 +92,6 @@ const ALPHA_REFERENCE_SCALE: number = 255;
 export const XRAY_DEFAULT_AREF: number = 200 / ALPHA_REFERENCE_SCALE;
 
 /**
- * An engine alpha reference, as the threshold three.js discards against.
- *
- * The engine compares with `D3DCMP_GREATER` and keeps a texel whose alpha is greater than the reference; three.js
- * discards below `alphaTest` and keeps what is equal to it. One step of the eight bit channel is the difference, and
- * it is the whole difference at a reference of zero: `aref(true, 0)` discards every fully transparent texel, where
- * an `alphaTest` of zero discards nothing at all.
- *
- * @param reference - What the pass tests against.
- * @returns The threshold to discard below.
- */
-export function toXrayAlphaTest(reference: number): number {
-  return (reference + 1) / ALPHA_REFERENCE_SCALE;
-}
-
-/**
  * Turn one resolved surface into the material state that draws it.
  *
  * @param descriptor - What the backend resolved for the surface, or null when none was declared or resolved.
@@ -139,7 +124,7 @@ export function toRenderSurface(descriptor: Nullable<XraySurfaceDescriptor>): IR
   if (draw.kind === EXraySurfaceDraw.ALPHA_TESTED) {
     return {
       ...OPAQUE_RENDER_SURFACE,
-      alphaTest: toAlphaTest(draw, descriptor?.declaration),
+      alphaTest: toAlphaTest(draw),
       detail,
       isLit,
       isWallmark,
@@ -149,7 +134,7 @@ export function toRenderSurface(descriptor: Nullable<XraySurfaceDescriptor>): IR
   // Everything else leaves the opaque pass, so none of it writes depth: a mark laid on a wall that wrote depth would
   // hide the wall it is a mark on, and two glows would cut holes in each other.
   return {
-    alphaTest: toAlphaTest(draw, descriptor?.declaration),
+    alphaTest: toAlphaTest(draw),
     blend: toRenderBlending(draw),
     detail,
     isDepthWritten: false,
@@ -205,13 +190,9 @@ function isLitRenderSurface(descriptor: Nullable<XraySurfaceDescriptor>): boolea
 }
 
 /**
- * What a surface discards.
+ * What a surface discards, which is what its blender class states and nothing else.
  */
-function toAlphaTest(draw: XraySurfaceDraw, declaration: Maybe<XraySurfaceDeclaration>): number {
-  if (declaration?.kind === EXraySurfaceDeclaration.SCRIPTED) {
-    return declaration.isAlphaTested ? toXrayAlphaTest(declaration.alphaReference) : 0;
-  }
-
+function toAlphaTest(draw: XraySurfaceDraw): number {
   return "reference" in draw ? draw.reference / ALPHA_REFERENCE_SCALE : 0;
 }
 

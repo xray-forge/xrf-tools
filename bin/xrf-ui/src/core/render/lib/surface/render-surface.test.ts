@@ -138,7 +138,6 @@ describe("toRenderSurface lighting", () => {
     return mockSurfaceDescriptor({
       declaration: {
         function: "normal",
-        alphaReference: 0,
         isAlphaTested: true,
         isBlended,
         isDepthWritten: false,
@@ -160,18 +159,18 @@ describe("toRenderSurface lighting", () => {
     expect(toRenderSurface(scripted(false)).isLit).toBe(true);
   });
 
-  // The defect this pins: `aref(true, 0)` is a discard, not a test of nothing. The engine compares with
-  // `D3DCMP_GREATER` and keeps only what has some alpha; three.js discards below `alphaTest`, and an `alphaTest` of
-  // zero discards nothing. A decal's outer band is authored fully transparent over mid grey, so drawing it multiplied
-  // the whole footprint by 0.98 and laid a hard edged rectangle over the wall the mark sits on.
-  it("discards the fully transparent band a wall mark is authored with", () => {
-    expect(toRenderSurface(scripted(true)).alphaTest).toBe(1 / 255);
+  // A wall mark's `aref` is deliberately not honoured. DX10 and DX11 have no alpha test state at all: the reference
+  // is bound as a shader constant and a pass cuts only where its pixel shader calls `clip`, which the `*_aref_*`
+  // deferred shaders do and `simple.ps` - the shader every wall mark pass names - does not. Honouring it discarded
+  // texels the engine draws. It was never the lever anyway: `MUL_2X` reads no alpha, and what decides whether a
+  // decal's field shows is its colour against the 127.5 a multiply is neutral at.
+  it("grants a wall mark no discard, whatever its script asks for", () => {
+    expect(toRenderSurface(scripted(true)).alphaTest).toBe(0);
   });
 
   it("discards nothing where the pass tests nothing", () => {
     const untested: XraySurfaceDescriptor = mockSurfaceDescriptor({
       declaration: {
-        alphaReference: 0,
         function: "normal",
         isAlphaTested: false,
         isBlended: true,

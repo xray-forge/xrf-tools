@@ -127,7 +127,6 @@ describe("level sector surfaces", () => {
   it("asks for a wall mark's decal without the mip chain", () => {
     const wallmark: XraySurfaceDescriptor = mockBlendedSurfaceDescriptor({
       declaration: {
-        alphaReference: 0,
         function: "normal",
         isAlphaTested: true,
         isBlended: true,
