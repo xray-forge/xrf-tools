@@ -130,7 +130,7 @@ xrf-xml = { path = "crates/xrf-xml" }
 panic = "abort"
 codegen-units = 1
 lto = true
-opt-level = "s"
+opt-level = 3
 strip = true
 
 # Keep development builds fast; the optimized app task overrides this for Tauri.
