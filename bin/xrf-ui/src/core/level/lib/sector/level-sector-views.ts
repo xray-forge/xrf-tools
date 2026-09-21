@@ -4,6 +4,7 @@ import {
   SectorGeometry,
   SectorSkip,
   SectorSurface,
+  VisualBounds,
   VisualSection,
 } from "@/core/ipc/types/xrf-visual";
 import { getRenderSurface, IRenderSurface } from "@/core/render/lib/surface/render-surface";
@@ -60,6 +61,8 @@ export interface ISectorInstanceViews {
 export interface ISectorViews {
   sector: number;
   bufferLength: number;
+  /** What the packed positions span, measured by the packer, or null where the sector packed nothing. */
+  bounds: Nullable<VisualBounds>;
   geometry: ISectorGeometryViews;
   sections: Array<ISectorSectionViews>;
   instances: Array<ISectorInstanceViews>;
@@ -127,6 +130,7 @@ export function createSectorViews(
   }
 
   return {
+    bounds: description.bounds,
     bufferLength: description.bufferLength,
     geometry: toGeometryViews(buffer, description.geometry),
     instances: description.instances.map((group) => ({

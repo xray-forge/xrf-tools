@@ -1,6 +1,8 @@
-import { BufferAttribute, BufferGeometry } from "three";
+import { BufferAttribute, BufferGeometry, Sphere, Vector3 } from "three";
 
+import { VisualBounds } from "@/core/ipc/types/xrf-visual";
 import { ISectorGeometryViews, ISectorSectionViews, ISectorViews } from "@/core/level/lib/sector/level-sector-views";
+import { Nullable } from "@/lib/types/general";
 
 /** The second uv set a lightmapped surface samples, which three.js names `uv1`. */
 export const LIGHTMAP_ATTRIBUTE: string = "uv1";
@@ -12,9 +14,10 @@ export const HEMI_ATTRIBUTE: string = "hemi";
  * Builds the geometry of one packed mesh, binding only the attributes it carries.
  *
  * @param geometry - The mesh's attribute views.
+ * @param bounds - What the packer measured the positions to span, where it measured them.
  * @returns Geometry ready to draw.
  */
-export function createGeometry(geometry: ISectorGeometryViews): BufferGeometry {
+export function createGeometry(geometry: ISectorGeometryViews, bounds: Nullable<VisualBounds> = null): BufferGeometry {
   const built: BufferGeometry = new BufferGeometry();
 
   built.setAttribute("position", new BufferAttribute(geometry.positions, 3));
@@ -48,9 +51,31 @@ export function createGeometry(geometry: ISectorGeometryViews): BufferGeometry {
     built.setAttribute(HEMI_ATTRIBUTE, new BufferAttribute(geometry.hemi, 1));
   }
 
-  built.computeBoundingSphere();
+  setBoundingSphere(built, bounds);
 
   return built;
+}
+
+/**
+ * Gives a geometry the sphere three.js culls it by.
+ *
+ * @param geometry - Geometry to enclose.
+ * @param bounds - What the packer measured, or null to measure it here after all.
+ */
+function setBoundingSphere(geometry: BufferGeometry, bounds: Nullable<VisualBounds>): void {
+  const sphere: Nullable<VisualBounds["boundingSphere"]> = bounds?.boundingSphere ?? null;
+
+  // A non-finite radius crosses the wire as null, and a sphere without one culls everything.
+  if (!sphere || sphere.radius === null || sphere.radius === undefined) {
+    geometry.computeBoundingSphere();
+
+    return;
+  }
+
+  geometry.boundingSphere = new Sphere(
+    new Vector3(sphere.center.x ?? 0, sphere.center.y ?? 0, sphere.center.z ?? 0),
+    sphere.radius
+  );
 }
 
 /**
@@ -60,7 +85,7 @@ export function createGeometry(geometry: ISectorGeometryViews): BufferGeometry {
  * @returns A geometry whose group `i` is drawn by material `i`, in the order the sections are given.
  */
 export function createSectorGeometry(views: ISectorViews): BufferGeometry {
-  const geometry: BufferGeometry = createGeometry(views.geometry);
+  const geometry: BufferGeometry = createGeometry(views.geometry, views.bounds);
 
   views.sections.forEach((section: ISectorSectionViews, index: number) => {
     geometry.addGroup(section.start, section.count, index);

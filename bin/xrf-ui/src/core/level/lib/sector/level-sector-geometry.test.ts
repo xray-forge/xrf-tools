@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
-import { BufferGeometry } from "three";
+import { BufferGeometry, Vector3 } from "three";
 
-import { SectorDescription } from "@/core/ipc/types/xrf-visual";
+import { SectorDescription, VisualBounds } from "@/core/ipc/types/xrf-visual";
 import {
   createSectorGeometry,
   HEMI_ATTRIBUTE,
@@ -9,7 +9,7 @@ import {
 } from "@/core/level/lib/sector/level-sector-geometry";
 import { createSectorViews, ISectorViews } from "@/core/level/lib/sector/level-sector-views";
 import { mockSectorDescription, mockSectorSection, mockSectorSurface } from "@/fixtures/mocks/level.mocks";
-import { MockVisualBuffer } from "@/fixtures/mocks/visual.mocks";
+import { mockVisualBounds, MockVisualBuffer } from "@/fixtures/mocks/visual.mocks";
 
 function createViews(
   overrides: Partial<SectorDescription> = {},
@@ -62,6 +62,49 @@ describe("level sector geometry", () => {
     const geometry: BufferGeometry = createSectorGeometry(createViews());
 
     expect(geometry.boundingSphere).not.toBeNull();
+    expect(geometry.boundingSphere?.radius).toBeGreaterThan(0);
+  });
+
+  // The packer measures the sphere from the same positions by the same method three.js would - the centre of the
+  // box, and the furthest position from it - on a thread that is not the one drawing. Recomputing it here walked
+  // every vertex twice for an answer already on the wire.
+  it("takes the enclosing sphere from the pack rather than measuring it again", () => {
+    const views: ISectorViews = createViews();
+    const measured: BufferGeometry = createSectorGeometry({ ...views, bounds: null });
+
+    measured.computeBoundingSphere();
+
+    const declared: VisualBounds = mockVisualBounds({
+      boundingSphere: {
+        center: measured.boundingSphere?.center as Vector3,
+        radius: measured.boundingSphere?.radius as number,
+      },
+    });
+
+    const geometry: BufferGeometry = createSectorGeometry({ ...views, bounds: declared });
+
+    // The same answer, which is the only reason taking it is safe: a sphere that did not enclose the sector would
+    // cull it the moment the camera looked along its edge.
+    expect(geometry.boundingSphere?.center.toArray()).toEqual(measured.boundingSphere?.center.toArray());
+    expect(geometry.boundingSphere?.radius).toBe(measured.boundingSphere?.radius);
+  });
+
+  it("uses what the pack declares rather than what the vertices say", () => {
+    const views: ISectorViews = createViews();
+    const declared: VisualBounds = mockVisualBounds({
+      boundingSphere: { center: { x: 7, y: 8, z: 9 }, radius: 40 },
+    });
+
+    const geometry: BufferGeometry = createSectorGeometry({ ...views, bounds: declared });
+
+    expect(geometry.boundingSphere?.center.toArray()).toEqual([7, 8, 9]);
+    expect(geometry.boundingSphere?.radius).toBe(40);
+  });
+
+  // A sector that packed nothing declares no extent, and a geometry with no sphere at all is culled always.
+  it("measures the sphere itself where the pack declares none", () => {
+    const geometry: BufferGeometry = createSectorGeometry({ ...createViews(), bounds: null });
+
     expect(geometry.boundingSphere?.radius).toBeGreaterThan(0);
   });
 });
