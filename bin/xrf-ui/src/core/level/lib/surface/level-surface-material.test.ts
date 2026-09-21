@@ -207,6 +207,7 @@ describe("createSurfaceMaterial shading", () => {
         mockSurfaceDescriptor({
           declaration: {
             function: "normal",
+            alphaReference: 0,
             isAlphaTested: true,
             isBlended,
             isDepthWritten: false,

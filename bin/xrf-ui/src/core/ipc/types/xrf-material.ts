@@ -201,8 +201,14 @@ export type XraySurfaceDeclaration =
       function: string;
       /** Whether the pass is composited rather than written. */
       isBlended: boolean;
-      /** Whether the pass discards texels below its reference. */
+      /** Whether the pass discards texels against its reference. */
       isAlphaTested: boolean;
+      /**
+       * The reference it discards against, which the engine compares with `D3DCMP_GREATER`: a texel is kept where its
+       * alpha is greater than this, so the usual `aref(true, 0)` of a wall mark discards every fully transparent one
+       * rather than discarding nothing.
+       */
+      alphaReference: number;
       /** Whether the pass writes depth, which a mark laid on a wall does not. */
       isDepthWritten: boolean;
       /** Whether the pass is a wall mark, which the engine draws with a depth bias of its own. */
@@ -225,12 +231,7 @@ export type XraySurfaceDeclaration =
 export type XraySurfaceDescriptor = {
   /** The shader the surface named, as its level or mesh spells it, or `None` where it named none. */
   shader: string | null;
-  /**
-   * The textures the entry dresses with, in the order it names them: the base, then whatever its class binds.
-   *
-   * Carried for the same reason as the name. A level's table holds one entry per shader **and** texture set, so
-   * five wall marks of one shader are five rows, and the textures are the only thing telling them apart.
-   */
+  /** The textures the entry dresses with, in the order it names them: the base, then whatever its class binds. */
   textures: Array<string>;
   /** The `shaders.xr` the answer was read from, or `None` when no root holds one. */
   library: XrayAsset | null;

@@ -412,6 +412,52 @@ end
   );
 }
 
+// `aref(true, 0)` is not a test of nothing. The engine compares with `D3DCMP_GREATER`, so it keeps a texel whose
+// alpha is greater than zero and discards every fully transparent one. A decal's outer band is authored fully
+// transparent over mid grey, and drawing it instead of discarding it lays a two percent step along the footprint -
+// the rectangle a wall mark should not have.
+#[test]
+fn a_wall_mark_carries_the_reference_it_discards_against() {
+  let tree: FixtureTree = library("surface_script_wmark_aref", &[]).with_shader_script(
+    "effects\\wallmarkmult",
+    r#"
+function normal (shader, t_base, t_second, t_detail)
+  shader:begin ("wmark","simple") : blend (true,blend.destcolor,blend.srccolor) : aref (true,0) : zb (true,false) : wmark (true)
+end
+"#,
+  );
+
+  let XraySurfaceDeclaration::Scripted {
+    is_alpha_tested,
+    alpha_reference,
+    ..
+  } = describe(&tree, "effects\\wallmarkmult").declaration
+  else {
+    panic!("Expect the wall mark to be read from its script");
+  };
+
+  assert!(is_alpha_tested);
+  assert_eq!(alpha_reference, 0);
+}
+
+// The same reading for a pass that writes rather than composites: a reference of zero is still a discard.
+#[test]
+fn an_opaque_pass_tested_against_zero_still_discards() {
+  let tree: FixtureTree = library("surface_script_opaque_aref", &[]).with_shader_script(
+    "details\\blend",
+    r#"
+function normal (shader, t_base, t_second, t_detail)
+  shader:begin ("detail","detail") : aref (true,0) : zb (true,true)
+end
+"#,
+  );
+
+  assert_eq!(
+    describe(&tree, "details\\blend").draw,
+    XraySurfaceDraw::AlphaTested { reference: 0 }
+  );
+}
+
 // A script with no `normal` declares no base element, and `_lua_Create` compiles one only from that function.
 #[test]
 fn a_script_without_a_base_pass_leaves_the_class_to_answer() {

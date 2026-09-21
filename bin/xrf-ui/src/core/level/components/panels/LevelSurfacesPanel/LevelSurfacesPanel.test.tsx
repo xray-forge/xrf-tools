@@ -21,6 +21,7 @@ const TABLE: Array<XraySurfaceDescriptor> = [
   mockSurfaceDescriptor({
     declaration: {
       function: "normal",
+      alphaReference: 0,
       isAlphaTested: true,
       isBlended: true,
       isDepthWritten: false,
@@ -36,6 +37,7 @@ const TABLE: Array<XraySurfaceDescriptor> = [
   mockSurfaceDescriptor({
     declaration: {
       function: "normal",
+      alphaReference: 0,
       isAlphaTested: true,
       isBlended: true,
       isDepthWritten: false,

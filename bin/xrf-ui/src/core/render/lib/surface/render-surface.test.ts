@@ -138,6 +138,7 @@ describe("toRenderSurface lighting", () => {
     return mockSurfaceDescriptor({
       declaration: {
         function: "normal",
+        alphaReference: 0,
         isAlphaTested: true,
         isBlended,
         isDepthWritten: false,
@@ -157,6 +158,32 @@ describe("toRenderSurface lighting", () => {
 
   it("lights a script's own pass when it is written rather than composited", () => {
     expect(toRenderSurface(scripted(false)).isLit).toBe(true);
+  });
+
+  // The defect this pins: `aref(true, 0)` is a discard, not a test of nothing. The engine compares with
+  // `D3DCMP_GREATER` and keeps only what has some alpha; three.js discards below `alphaTest`, and an `alphaTest` of
+  // zero discards nothing. A decal's outer band is authored fully transparent over mid grey, so drawing it multiplied
+  // the whole footprint by 0.98 and laid a hard edged rectangle over the wall the mark sits on.
+  it("discards the fully transparent band a wall mark is authored with", () => {
+    expect(toRenderSurface(scripted(true)).alphaTest).toBe(1 / 255);
+  });
+
+  it("discards nothing where the pass tests nothing", () => {
+    const untested: XraySurfaceDescriptor = mockSurfaceDescriptor({
+      declaration: {
+        alphaReference: 0,
+        function: "normal",
+        isAlphaTested: false,
+        isBlended: true,
+        isDepthWritten: false,
+        isWallmark: false,
+        kind: "scripted",
+        script: "shaders\\r2\\effects_lightplanes.s",
+      },
+      draw: { kind: "added", reference: 0 },
+    });
+
+    expect(toRenderSurface(untested).alphaTest).toBe(0);
   });
 
   // Every other surface here is a deferred base pass, which is exactly what the light accumulates onto.

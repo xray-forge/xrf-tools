@@ -25,8 +25,12 @@ pub enum XraySurfaceDeclaration {
     function: String,
     /// Whether the pass is composited rather than written.
     is_blended: bool,
-    /// Whether the pass discards texels below its reference.
+    /// Whether the pass discards texels against its reference.
     is_alpha_tested: bool,
+    /// The reference it discards against, which the engine compares with `D3DCMP_GREATER`: a texel is kept where its
+    /// alpha is greater than this, so the usual `aref(true, 0)` of a wall mark discards every fully transparent one
+    /// rather than discarding nothing.
+    alpha_reference: u8,
     /// Whether the pass writes depth, which a mark laid on a wall does not.
     is_depth_written: bool,
     /// Whether the pass is a wall mark, which the engine draws with a depth bias of its own.
