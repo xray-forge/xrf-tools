@@ -16,11 +16,23 @@ export interface ILoadedSector {
 export class LevelSectorSet {
   private readonly loaded: Map<number, ILoadedSector> = new Map();
 
+  /** What each held sector costs, kept in step with the sectors themselves. */
+  private readonly bytes: Map<number, number> = new Map();
+
   /**
    * @returns Sectors currently held, which is what a residency plan is computed against.
    */
   public keys(): Set<number> {
     return new Set(this.loaded.keys());
+  }
+
+  /**
+   * What each held sector costs, in bytes of the buffer it arrived in.
+   *
+   * @returns The sizes, which the caller must not modify.
+   */
+  public sizes(): ReadonlyMap<number, number> {
+    return this.bytes;
   }
 
   public has(sector: number): boolean {
@@ -43,6 +55,7 @@ export class LevelSectorSet {
     const loaded: ILoadedSector = { geometry: createSectorGeometry(views), sector: views.sector, views };
 
     this.loaded.set(views.sector, loaded);
+    this.bytes.set(views.sector, views.bufferLength);
 
     return loaded;
   }
@@ -55,6 +68,7 @@ export class LevelSectorSet {
   public release(sector: number): void {
     this.loaded.get(sector)?.geometry.dispose();
     this.loaded.delete(sector);
+    this.bytes.delete(sector);
   }
 
   /** Releases every sector, for teardown and for swapping levels. */

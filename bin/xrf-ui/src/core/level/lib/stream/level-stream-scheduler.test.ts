@@ -277,4 +277,69 @@ describe("LevelStreamScheduler", () => {
     expect(started).toEqual([0, 1, 2, 3]);
     expect(settled()).toBe(1);
   });
+
+  // Flying at the maximum boost crosses 2400 metres a second, which no read rate reaches. The only way to have a
+  // sector when the camera arrives is to have read it before it asked.
+  it("reads the rest of the level once the camera has what it wanted", async () => {
+    const { host, reads, arrive } = mockHost();
+    const scheduler: LevelStreamScheduler = new LevelStreamScheduler(host);
+
+    void scheduler.setTarget([0]);
+    scheduler.setBackground([5, 6]);
+
+    // Nothing yet: what the camera asked for is still in the air.
+    expect(asked(reads)).toEqual([0]);
+
+    await arrive(0);
+
+    expect(asked(reads)).toEqual([0, 5]);
+
+    await arrive(5);
+
+    expect(asked(reads)).toEqual([0, 5, 6]);
+  });
+
+  // The fill must never be the reason a sector the camera is waiting on is queued behind something it is not.
+  it("stands aside the moment the camera asks for something", async () => {
+    const { host, reads, arrive } = mockHost();
+    const scheduler: LevelStreamScheduler = new LevelStreamScheduler(host);
+
+    scheduler.setBackground([5, 6, 7]);
+
+    expect(asked(reads)).toEqual([5]);
+
+    void scheduler.setTarget([0, 1]);
+
+    expect(asked(reads)).toEqual([5, 0, 1]);
+
+    await arrive(0);
+    await arrive(1);
+
+    // Five was already away and six waits: what the camera wanted went first and settled without it.
+    expect(asked(reads)).toEqual([5, 0, 1]);
+  });
+
+  it("does not count the fill as progress, nor settle on it", async () => {
+    const { host, settled, progress, arrive } = mockHost();
+    const scheduler: LevelStreamScheduler = new LevelStreamScheduler(host);
+
+    scheduler.setBackground([5]);
+
+    await arrive(5);
+
+    expect(settled()).toBe(0);
+    expect(progress).toEqual([]);
+  });
+
+  it("stops filling when the level goes", async () => {
+    const { host, reads, arrive } = mockHost();
+    const scheduler: LevelStreamScheduler = new LevelStreamScheduler(host);
+
+    scheduler.setBackground([5, 6]);
+    scheduler.clear();
+
+    await arrive(5);
+
+    expect(asked(reads)).toEqual([5]);
+  });
 });

@@ -88,8 +88,13 @@ export function LevelStreamPanel({
       </EditorPanelSection>
 
       <EditorPanelSection title={"Budget"}>
-        <EditorPanelProperty label={"Sector budget"} value={service.residency.maxSectors} />
+        <EditorPanelProperty
+          label={"Memory"}
+          value={`${formatBytes(stats.bytes)} of ${formatBytes(service.residency.memoryBudget)}`}
+        />
+        <EditorPanelProperty label={"Sector cap"} value={service.residency.maxSectors} />
         <EditorPanelProperty label={"Reads at once"} value={service.residency.concurrency} />
+        <EditorPanelProperty label={"Fills the level in"} value={service.residency.isPreloaded ? "yes" : "no"} />
         <EditorPanelProperty label={"Load distance"} value={`${service.residency.loadDistance.toFixed(0)} m`} />
         <EditorPanelProperty label={"Keep distance"} value={`${service.residency.keepDistance.toFixed(0)} m`} />
       </EditorPanelSection>

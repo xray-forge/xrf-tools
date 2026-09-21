@@ -11,9 +11,11 @@ export interface ILevelPoint {
 
 /** How much of a level is held at once, and how far from the camera it is worth holding. */
 export interface ILevelResidencyOptions {
-  /** Sectors held at once, whatever the distances say. */
+  /**  Bytes of packed geometry held at once, which is what decides how much of a level survives a flight. */
+  memoryBudget: number;
+  /** Sectors held at once whatever the budget says, a guard against a bad estimate rather than a budget. */
   maxSectors: number;
-  /** Nearest sectors held whatever the distances say. */
+  /** Nearest sectors held whatever the distances or the budget say. */
   minSectors: number;
   /** A sector nearer than this is loaded. */
   loadDistance: number;
@@ -21,6 +23,8 @@ export interface ILevelResidencyOptions {
   keepDistance: number;
   /** Reads in flight at once, so overlapping is a declared number rather than the shape of a loop. */
   concurrency: number;
+  /** Whether idle time is spent reading the rest of the level, nearest first. */
+  isPreloaded: boolean;
 }
 
 /** What to open, what to release, and what is held once both are done. */
@@ -40,11 +44,19 @@ interface IRankedSector {
   held: boolean;
 }
 
+/** What a sector not yet read is assumed to cost, until enough have been read to say better. */
+export const ESTIMATED_SECTOR_BYTES: number = 1024 * 1024;
+
 export const DEFAULT_LEVEL_RESIDENCY: ILevelResidencyOptions = {
   concurrency: DEFAULT_LEVEL_STREAM_CONCURRENCY,
+  isPreloaded: true,
   keepDistance: 400,
   loadDistance: 250,
-  maxSectors: 24,
+  // The editor may spend what the game spends, and this is geometry's share of it. Flying at the maximum boost
+  // crosses 2400 metres a second, which no read rate reaches: the only way to have a sector when the camera
+  // arrives is to have kept it from last time.
+  memoryBudget: 768 * 1024 * 1024,
+  maxSectors: 512,
   minSectors: 4,
 };
 
@@ -91,14 +103,14 @@ export function getSectorDistance(outline: SectorOutline, point: ILevelPoint): N
  *
  * @param outlines - What the level's sectors are and where, from `open_level`.
  * @param point - Where the camera is.
- * @param held - Sectors currently resident.
+ * @param held - Sectors currently resident, against what each of them costs in bytes.
  * @param options - Budget and the two distances.
  * @returns What to load, what to evict, and what is resident afterwards.
  */
 export function planLevelResidency(
   outlines: ReadonlyArray<SectorOutline>,
   point: ILevelPoint,
-  held: ReadonlySet<number>,
+  held: ReadonlyMap<number, number>,
   options: ILevelResidencyOptions = DEFAULT_LEVEL_RESIDENCY
 ): ILevelResidencyPlan {
   const ranked: Array<IRankedSector> = [];
@@ -131,12 +143,70 @@ export function planLevelResidency(
   // The distances decide how much is worth holding; the two counts decide how much is held regardless. A camera
   // outside the whole level still draws its nearest sectors rather than nothing.
   const take: number = Math.min(Math.max(within, options.minSectors), Math.max(0, options.maxSectors));
-  const resident: Array<number> = ranked.slice(0, take).map((it) => it.sector);
+  const estimate: number = getSectorEstimate(held);
+  const resident: Array<number> = [];
+
+  let spent: number = 0;
+
+  for (const it of ranked.slice(0, take)) {
+    const cost: number = held.get(it.sector) ?? estimate;
+
+    // The floor comes first: a budget too small for what the camera is standing in draws nothing at all, which is
+    // worse than going over it.
+    if (resident.length >= options.minSectors && spent + cost > options.memoryBudget) {
+      break;
+    }
+
+    spent += cost;
+    resident.push(it.sector);
+  }
+
   const wanted: Set<number> = new Set(resident);
 
   return {
-    evict: Array.from(held).filter((sector: number) => !wanted.has(sector)),
+    evict: Array.from(held.keys()).filter((sector: number) => !wanted.has(sector)),
     load: resident.filter((sector: number) => !held.has(sector)),
     resident,
   };
+}
+
+/**
+ * The order the rest of a level is worth reading in, once the camera has what it asked for.
+ *
+ * @param outlines - What the level's sectors are and where.
+ * @param point - Where the camera is.
+ * @param held - Sectors currently resident, which need no reading.
+ * @returns Every other sector that declares an extent, nearest first.
+ */
+export function listLevelPreload(
+  outlines: ReadonlyArray<SectorOutline>,
+  point: ILevelPoint,
+  held: ReadonlySet<number> | ReadonlyMap<number, number>
+): Array<number> {
+  const ranked: Array<IRankedSector> = [];
+
+  for (const outline of outlines) {
+    const distance: Nullable<number> = getSectorDistance(outline, point);
+
+    if (distance !== null && !held.has(outline.sector)) {
+      ranked.push({ distance, held: false, sector: outline.sector });
+    }
+  }
+
+  return ranked.sort((left, right) => left.distance - right.distance).map((it) => it.sector);
+}
+
+/** What a sector is worth assuming to cost, from the ones already read. */
+function getSectorEstimate(held: ReadonlyMap<number, number>): number {
+  if (!held.size) {
+    return ESTIMATED_SECTOR_BYTES;
+  }
+
+  let total: number = 0;
+
+  for (const bytes of held.values()) {
+    total += bytes;
+  }
+
+  return total / held.size;
 }

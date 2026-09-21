@@ -13,6 +13,7 @@ import {
   ILevelPoint,
   ILevelResidencyOptions,
   ILevelResidencyPlan,
+  listLevelPreload,
   planLevelResidency,
 } from "@/core/level/lib/residency/level-residency";
 import { ILevelSectorAdoption, LevelSectorReader } from "@/core/level/lib/sector/level-sector-reader";
@@ -66,6 +67,9 @@ export class LevelLoadService {
 
   /** What the reads have cost, kept here because the loader is what owns a read from end to end. */
   private readonly profile: LevelStreamProfile = new LevelStreamProfile();
+
+  /** Where the camera last reported from, which is what the level is filled in around once it settles. */
+  private streamedFrom: Nullable<ILevelPoint> = null;
 
   /**
    * Reads sectors on this loader's behalf, joining a read already in flight and holding its textures until the
@@ -262,10 +266,13 @@ export class LevelLoadService {
     }
 
     const timer: Timer = new Timer();
+
+    this.streamedFrom = point;
+
     const plan: ILevelResidencyPlan = planLevelResidency(
       open.selected.value.sectors,
       point,
-      this.held.keys(),
+      this.held.sizes(),
       this.residency
     );
 
@@ -312,6 +319,18 @@ export class LevelLoadService {
   private onSettled(): void {
     this.loaded.retain(this.listResidentTextures());
     this.streaming = IDLE_LEVEL_STREAM;
+
+    // Only now, and only from here: it walks every sector of the level, which is far too much for a camera
+    // report, and there is nothing to fill in with until the camera has what it asked for.
+    if (this.residency.isPreloaded) {
+      const open: Nullable<IOpenLevel> = this.level.value;
+
+      this.scheduler.setBackground(
+        open && this.streamedFrom
+          ? listLevelPreload(open.selected.value.sectors, this.streamedFrom, this.held.keys())
+          : []
+      );
+    }
   }
 
   @BoundAction()
@@ -408,6 +427,7 @@ export class LevelLoadService {
   private clearView(): void {
     this.scheduler.clear();
     this.profile.clear();
+    this.streamedFrom = null;
     this.streamProfile = EMPTY_LEVEL_STREAM_SUMMARY;
 
     runInAction(() => {

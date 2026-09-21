@@ -510,6 +510,50 @@ describe("LevelLoadService streaming progress", () => {
     expect([...service.sectors.keys()].sort()).toEqual([0, 1]);
   });
 
+  // What the owner asked for: a camera at full boost crosses 2400 metres a second, so the only way to have a
+  // sector when it arrives is to have read it beforehand. Once what the camera asked for has landed, the rest of
+  // the level follows, nearest first.
+  it("reads the rest of the level once the camera has what it asked for", async () => {
+    const { level, description, buffer } = mockStreamable([
+      outlineAt(0, 1),
+      outlineAt(1, 20_000),
+      outlineAt(2, 40_000),
+    ]);
+    const { service } = mockInjectedService(LevelLoadService);
+
+    armLevel(level, description, buffer);
+
+    await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS);
+
+    service.residency = { ...service.residency, maxSectors: 1, minSectors: 1 };
+
+    await service.stream(ORIGIN);
+
+    expect([...service.sectors.keys()]).toEqual([0]);
+
+    // The two far sectors are nowhere near the camera and are read anyway, because the level fits and a sector
+    // already held is one the camera never waits for.
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect([...service.sectors.keys()].sort()).toEqual([0, 1, 2]);
+  });
+
+  it("does not fill the level in when it is told not to", async () => {
+    const { level, description, buffer } = mockStreamable([outlineAt(0, 1), outlineAt(1, 20_000)]);
+    const { service } = mockInjectedService(LevelLoadService);
+
+    armLevel(level, description, buffer);
+
+    await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS);
+
+    service.residency = { ...service.residency, isPreloaded: false, maxSectors: 1, minSectors: 1 };
+
+    await service.stream(ORIGIN);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect([...service.sectors.keys()]).toEqual([0]);
+  });
+
   // A report no longer ends in the level's housekeeping, so one that changes nothing costs a plan and nothing else.
   it("does nothing at all for a camera report that changes what is wanted not at all", async () => {
     const { level, description, buffer } = mockStreamable([outlineAt(0, 1)]);

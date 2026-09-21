@@ -35,6 +35,9 @@ export class LevelStreamScheduler {
   /** What is left to start, nearest first. */
   private queue: Array<number> = [];
 
+  /** The rest of the level, nearest first, read only when the camera is asking for nothing. */
+  private background: Array<number> = [];
+
   private readonly inFlight: Set<number> = new Set();
 
   /** Whether a target is being worked towards, so a report that changes nothing settles nothing. */
@@ -107,6 +110,7 @@ export class LevelStreamScheduler {
 
     this.wanted = new Set();
     this.queue = [];
+    this.background = [];
     this.inFlight.clear();
     this.isRunning = false;
     this.loaded = 0;
@@ -116,10 +120,31 @@ export class LevelStreamScheduler {
     settlement?.resolve();
   }
 
+  /**
+   * Takes the rest of the level, to read when there is nothing else to do.
+   *
+   * @param sectors - Sectors worth having before the camera asks for them, nearest first.
+   */
+  public setBackground(sectors: ReadonlyArray<number>): void {
+    this.background = sectors.slice();
+
+    this.pump();
+  }
+
   /** Starts reads until the target is drained or the concurrency is reached. */
   private pump(): void {
-    while (this.inFlight.size < this.concurrency && this.queue.length) {
-      const sector: number = this.queue.shift() as number;
+    this.start(this.queue, this.concurrency);
+
+    // One at a time, and only with nothing else in the air. A camera that wants something always goes first, and
+    // the fill is never the reason a sector the camera is waiting on is queued behind something it is not.
+    if (!this.queue.length && !this.inFlight.size) {
+      this.start(this.background, 1);
+    }
+  }
+
+  private start(queue: Array<number>, limit: number): void {
+    while (this.inFlight.size < limit && queue.length) {
+      const sector: number = queue.shift() as number;
 
       // Both can have become true since the target was taken: a sector arrives, or a second target queues one that
       // the first already started.
@@ -149,19 +174,21 @@ export class LevelStreamScheduler {
   private onRead(sector: number): void {
     this.inFlight.delete(sector);
 
-    // A read outlives the target that asked for it, and can outlive the level: the cycle it belonged to is over,
-    // so there is nothing left to count it towards and nothing to settle on its account.
-    if (!this.isRunning) {
-      return;
-    }
-
     // A sector the camera left while it was packing still arrived, and the plan that dropped it will evict it. It
     // is not progress towards what is wanted now, so it is not counted as any.
-    if (this.wanted.has(sector)) {
+    if (this.isRunning && this.wanted.has(sector)) {
       this.loaded += 1;
     }
 
+    // Before the guard below, because the fill keeps going when no target is running - that is the only time it
+    // runs at all.
     this.pump();
+
+    // A read outlives the target that asked for it, and can outlive the level: with no cycle running there is
+    // nothing left to count it towards and nothing to settle on its account.
+    if (!this.isRunning) {
+      return;
+    }
 
     if (this.isSatisfied()) {
       this.finish();
