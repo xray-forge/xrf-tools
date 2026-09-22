@@ -1,5 +1,6 @@
 use std::borrow::Cow;
 use std::collections::BTreeMap;
+use std::ops::Bound;
 use std::path::Path;
 
 use xrf_error::XrfResult;
@@ -9,10 +10,6 @@ use crate::source::{DirectoryAssetIndex, IndexedAsset};
 use crate::{XrayCollisionSite, XrayPathCollision};
 
 /// Maps X-Ray logical paths onto the files of one physical directory.
-///
-/// Crate-internal on purpose: [`crate::XrayDirectorySource`] is the only thing built on it, and [`crate::XrayVfs`] is the
-/// one place assets are resolved. An index that also resolved references is how the same `with_extension` defect reached
-/// four separate resolvers.
 #[derive(Debug)]
 pub(crate) struct XrayAssetIndex {
   directory: DirectoryAssetIndex,
@@ -22,12 +19,6 @@ pub(crate) struct XrayAssetIndex {
 
 impl XrayAssetIndex {
   /// Builds a logical-path index over a directory index.
-  ///
-  /// `ignored` contains logical prefixes to omit, normalized before comparison.
-  ///
-  /// Two files normalizing to one X-Ray path are **recorded rather than rejected**: the first indexed is kept and the
-  /// second is reported through [`Self::collisions`]. Refusing to build would stop a tool from opening a project to explain
-  /// what is wrong with it, and an editor has to open it.
   ///
   /// # Errors
   ///
@@ -87,6 +78,15 @@ impl XrayAssetIndex {
   /// Iterates over indexed assets in normalized logical-path order.
   pub(crate) fn assets(&self) -> impl Iterator<Item = IndexedAsset<'_>> {
     self.assets.iter().map(|(path, index)| self.asset(path, *index))
+  }
+
+  /// Iterates over the indexed assets that start with `prefix`, in normalized logical-path order.
+  pub(crate) fn assets_starting_with<'a>(&'a self, prefix: &'a str) -> impl Iterator<Item = IndexedAsset<'a>> {
+    self
+      .assets
+      .range::<str, _>((Bound::Included(prefix), Bound::Unbounded))
+      .take_while(move |(path, _)| path.starts_with(prefix))
+      .map(|(path, index)| self.asset(path, *index))
   }
 
   /// Finds an asset by a path normalized to the engine's lower-case backslash form.

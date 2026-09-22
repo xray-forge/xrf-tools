@@ -1,7 +1,8 @@
-use std::collections::HashMap;
-use std::collections::hash_map::Entry;
+use std::collections::btree_map::Entry;
+use std::collections::{BTreeMap, HashMap};
 use std::fmt;
 use std::fmt::{Debug, Formatter};
+use std::ops::Bound;
 use std::path::Path;
 use std::sync::Arc;
 
@@ -18,24 +19,11 @@ use crate::{
 };
 
 /// Mounts an archive volume set as a read-only asset source.
-///
-/// Directory paths are scanned nonrecursively, matching `recurs = false` archive aliases and avoiding duplicate
-/// subdirectory mounts.
-///
-/// [`ArchiveProject`] already merges a volume set into one name table with the later volume winning, which matches how the
-/// engine registers them, so this adds only the logical-path keying a VFS lookup needs.
 pub struct XrayArchiveSource {
   label: String,
   project: ArchiveProject,
   /// Normalized logical path to the key `project.files` stores.
-  ///
-  /// Archive headers keep names as authored, so the normalized form is derived once here rather than per lookup.
-  /// Engine identity to the authored name it folds from.
-  ///
-  /// The key is this source's own value: a normalized logical path exists nowhere else. The value is the archive's
-  /// name for the same entry, shared with the descriptor that owns it rather than cloned, since it is only ever used
-  /// to address that descriptor again.
-  entries: HashMap<String, IndexedEntry>,
+  entries: BTreeMap<String, IndexedEntry>,
   collisions: Vec<XrayPathCollision>,
   /// Copies a later volume overrode, in engine-path order.
   shadowed: Vec<XrayShadowedCopy>,
@@ -44,7 +32,7 @@ pub struct XrayArchiveSource {
 /// What one fold of a volume set onto engine identities produced.
 struct XrayArchiveIndex {
   /// The copy each engine identity resolves to.
-  entries: HashMap<String, IndexedEntry>,
+  entries: BTreeMap<String, IndexedEntry>,
   /// Copies no lookup reaches, because another entry of the same volume claims their identity.
   collisions: Vec<XrayPathCollision>,
   /// Copies a higher-ranked volume overrode, in engine-path order.
@@ -84,18 +72,6 @@ impl XrayArchiveSource {
   }
 
   /// Every engine path a volume set answers with more than one copy, and every copy it cannot reach.
-  ///
-  /// Both halves of one fold, because they are one walk: a caller asking for them separately folded an
-  /// installation-sized name table twice to answer two halves of the same question.
-  ///
-  /// For a caller holding a volume set it has already read: `archive verify` reads every payload out of an
-  /// [`ArchiveProject`] and then asks what it overrides and what it cannot reach. Mounting the same path through
-  /// [`Self::read`] would read every name table a second time, and discover volumes nonrecursively, so it would
-  /// answer over a different volume set than the one just verified.
-  ///
-  /// The fold stays here rather than in `xrf-archive`, which cannot reach it: an archive keys entries by the name its
-  /// header authored, and what those names fold to is the engine identity this crate's `path` module is the sole owner
-  /// of.
   pub fn describe_overrides_of(project: &ArchiveProject) -> (Vec<XrayShadowingEntry>, Vec<XrayPathCollision>) {
     let index: XrayArchiveIndex = Self::index(project);
     let mut overrides: Vec<XrayShadowingEntry> = Vec::new();
@@ -131,9 +107,6 @@ impl XrayArchiveSource {
   }
 
   /// Keys an already-read volume set by engine identity.
-  ///
-  /// Separate from [`Self::read`] because a case-only collision inside one volume cannot exist on a case-insensitive
-  /// filesystem, so the ordering rule below is only reachable from a name table built in a test.
   fn from_project(project: ArchiveProject, label: String) -> Self {
     let XrayArchiveIndex {
       entries,
@@ -151,22 +124,9 @@ impl XrayArchiveSource {
   }
 
   /// Folds authored names to engine identities, ranking every copy of one identity and classifying what lost.
-  ///
-  /// **Last wins**, as `CLocatorAPI::Register` resolves it: it lower-cases a name before its name-table lookup and
-  /// overwrites on a hit, so the later registration answers (`xray-16/src/xrCore/LocatorAPI.cpp`). Later here means the
-  /// later volume in [`ArchiveProject`] order, so a patch volume overrides `Textures\A.DDS` exactly as it overrides
-  /// `textures\a.dds`.
-  ///
-  /// A loser is an **override** when the copy ahead of it sits in another volume, and **unreachable** only when that
-  /// copy sits in the same one — where no volume order separated them, which is what `XrayPathCollision` means by
-  /// having no priority to appeal to. Within one volume the engine order is the header chunk order and the authored
-  /// name stands in for it, which is why that arm is the one reported as an authoring error.
-  ///
-  /// Neither is refused: a person has to be able to open a volume set to learn what is wrong with it, and the engine
-  /// does not refuse it either.
   // todo: Header order is dropped by the reader, so the within-volume rule is an approximation.
   fn index(project: &ArchiveProject) -> XrayArchiveIndex {
-    let mut entries: HashMap<String, IndexedEntry> = HashMap::with_capacity(project.files.len());
+    let mut entries: BTreeMap<String, IndexedEntry> = BTreeMap::new();
     // Losers only, so an uncontested identity - which is nearly all of them - allocates nothing here at all.
     let mut losers: Vec<(String, &ArchiveFileDescriptor)> = Vec::new();
 
@@ -223,7 +183,7 @@ impl XrayArchiveSource {
   /// Sorts each contested identity into the copies a patch buried and the copies nothing can reach.
   fn classify(
     project: &ArchiveProject,
-    entries: &HashMap<String, IndexedEntry>,
+    entries: &BTreeMap<String, IndexedEntry>,
     losers: Vec<(String, &ArchiveFileDescriptor)>,
   ) -> (Vec<XrayPathCollision>, Vec<XrayShadowedCopy>) {
     let mut collisions: Vec<XrayPathCollision> = Vec::new();
@@ -281,9 +241,6 @@ impl XrayArchiveSource {
   }
 
   /// What decides between two copies of one identity: volume order first, then the authored name.
-  ///
-  /// Read off the descriptor rather than recovered by matching names back to the table, because a displaced copy is
-  /// not in that table and shares its name with the entry that displaced it.
   fn to_precedence(descriptor: &ArchiveFileDescriptor) -> (u32, &str) {
     (descriptor.volume, &descriptor.name)
   }
@@ -431,11 +388,19 @@ impl XrayAssetSource for XrayArchiveSource {
   }
 
   fn list_entries<'a>(&'a self, prefix: Option<&'a str>) -> Box<dyn Iterator<Item = String> + 'a> {
+    let Some(prefix) = prefix else {
+      return Box::new(self.entries.keys().cloned());
+    };
+
+    // Ordered keys put everything under a prefix in one run starting at it, so a listing reads its own subtree
+    // instead of every entry the volume set holds.
     Box::new(
       self
         .entries
-        .keys()
-        .filter(move |path| prefix.is_none_or(|prefix| is_component_prefix(path, prefix)))
+        .range::<str, _>((Bound::Included(prefix), Bound::Unbounded))
+        .map(|(path, _)| path)
+        .take_while(move |path| path.starts_with(prefix))
+        .filter(move |path| is_component_prefix(path, prefix))
         .cloned(),
     )
   }
@@ -464,10 +429,6 @@ mod tests {
   const PATCH: &str = "C:\\game\\db\\patch.db1";
 
   /// A merged name table, as [`ArchiveProject`] hands one over: volumes in merge order, entries keyed as authored.
-  ///
-  /// Built rather than packed because a case-only pair cannot exist in one directory on a case-insensitive filesystem,
-  /// which is the only way to reach the within-volume half of the rule. The packed round trip is covered by
-  /// `xrf-pack`'s `asset_source_tests`.
   fn project(volumes: &[&str], files: &[(&str, &str, u32)]) -> ArchiveProject {
     let merged: (HashMap<Arc<str>, ArchiveFileDescriptor>, Vec<ArchiveFileDescriptor>) = merge(volumes, files);
 
@@ -677,6 +638,32 @@ mod tests {
 
     assert!(source.get_collisions().is_empty());
     assert_eq!(source.list_entries(None).count(), 3);
+  }
+
+  #[test]
+  fn a_prefix_lists_its_own_subtree_on_component_boundaries() {
+    // `configs-old` and `configs.ltx` sort between `configs` and `configs\`, inside the range a listing walks, and
+    // `configs_backup` sorts after it.
+    let source: XrayArchiveSource = source(
+      &[BASE],
+      &[
+        (BASE, "configs\\system.ltx", 10),
+        (BASE, "configs\\items\\ammo.ltx", 20),
+        (BASE, "configs-old\\system.ltx", 30),
+        (BASE, "configs.ltx", 40),
+        (BASE, "configs_backup\\system.ltx", 50),
+        (BASE, "textures\\a.dds", 60),
+      ],
+    );
+
+    let mut configs: Vec<String> = source.list_entries(Some("configs")).collect();
+
+    configs.sort();
+
+    assert_eq!(configs, vec!["configs\\items\\ammo.ltx", "configs\\system.ltx"]);
+    assert_eq!(source.list_entries(Some("configs\\items")).count(), 1);
+    assert_eq!(source.list_entries(Some("sounds")).count(), 0);
+    assert_eq!(source.list_entries(None).count(), 6);
   }
 
   #[test]

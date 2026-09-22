@@ -137,12 +137,16 @@ impl XrayAssetSource for XrayDirectorySource {
   }
 
   fn list_entries<'a>(&'a self, prefix: Option<&'a str>) -> Box<dyn Iterator<Item = String> + 'a> {
+    let Some(prefix) = prefix else {
+      return Box::new(self.index.assets().map(|asset| asset.logical_path().to_string()));
+    };
+
     Box::new(
       self
         .index
-        .assets()
+        .assets_starting_with(prefix)
         .map(|asset| asset.logical_path().to_string())
-        .filter(move |path| prefix.is_none_or(|prefix| is_component_prefix(path, prefix))),
+        .filter(move |path| is_component_prefix(path, prefix)),
     )
   }
 
@@ -249,8 +253,19 @@ mod tests {
   #[test]
   fn a_prefix_matches_on_component_boundaries_only() {
     // `configs_backup` must not be swept up by a `configs` prefix, or a scoped operation would touch a sibling tree.
-    let source: XrayDirectorySource = source("boundaries", &["configs/system.ltx", "configs_backup/system.ltx"]);
+    // `configs-old` and `configs.ltx` sort between `configs` and `configs\`, inside the range a listing walks.
+    let source: XrayDirectorySource = source(
+      "boundaries",
+      &[
+        "configs/system.ltx",
+        "configs_backup/system.ltx",
+        "configs-old/system.ltx",
+        "configs.ltx",
+      ],
+    );
 
-    assert_eq!(source.list_entries(Some("configs")).count(), 1);
+    let configs: Vec<String> = source.list_entries(Some("configs")).collect();
+
+    assert_eq!(configs, vec![String::from("configs\\system.ltx")]);
   }
 }

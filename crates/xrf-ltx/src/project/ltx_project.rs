@@ -12,7 +12,7 @@ use crate::document::LtxDocument;
 use crate::ltx::{Ltx, LtxSectionSchemes};
 use crate::project::{LtxProjectOptions, LtxReadCounters, LtxReadCountersSnapshot, LtxResolvedRoot};
 use crate::scheme::LtxSchemeParser;
-use crate::source::{LtxDocumentSource, LtxIncludeSource, LtxVfsSource};
+use crate::source::{LtxDocumentSource, LtxIncludeSource, LtxListingCache, LtxVfsSource};
 use crate::syntax::{LTX_SCHEME_EXTENSION, LTX_SCHEME_LTX_FILENAME, SYSTEM_LTX_FILENAME};
 
 /// An LTX project over one VFS scope. Files use logical paths for both loose and archived configs.
@@ -31,9 +31,6 @@ pub struct LtxProject {
   /// Section schemes declared by scheme entry points.
   pub ltx_scheme_declarations: LtxSectionSchemes,
   /// Configs the dialect says patch another rather than standing alone, planned once while assembling.
-  ///
-  /// Kept rather than recomputed: planning them lists a directory per config, and every consumer wanting the answer
-  /// would otherwise pay that walk again. Standard LTX plans none, so this is empty for every tree it reads.
   pub ltx_attachments: Vec<String>,
   /// Mounted sources that resolve project files.
   vfs: XrayVfs,
@@ -46,6 +43,8 @@ pub struct LtxProject {
   is_caching_resolutions: bool,
   /// Roots resolved so far, one cell per root so two threads asking at once produce one resolution between them.
   resolved: Mutex<HashMap<XrayLogicalPath, Arc<LtxResolvedRoot>>>,
+  /// Directory listings every source of this project shares, since DLTX asks for one per root.
+  listings: LtxListingCache,
 }
 
 impl LtxProject {
@@ -107,6 +106,7 @@ impl LtxProject {
       dialect: Arc::new(LtxStandardDialect),
       is_caching_resolutions: false,
       resolved: Mutex::default(),
+      listings: LtxListingCache::default(),
       ltx_file_entries: Vec::new(),
       ltx_files: Vec::new(),
       ltx_attachments: Vec::new(),
@@ -122,7 +122,8 @@ impl LtxProject {
   /// Collects files, identifies entry points from includes, and parses scheme declarations.
   fn assemble(root: PathBuf, vfs: XrayVfs, scope: XrayLookupScope, options: LtxProjectOptions) -> XrfResult<Self> {
     let counters: Arc<LtxReadCounters> = LtxReadCounters::new_shared();
-    let source: LtxVfsSource = LtxVfsSource::new_counted(&vfs, &scope, &counters);
+    let listings: LtxListingCache = LtxListingCache::default();
+    let source: LtxVfsSource = LtxVfsSource::new_counted(&vfs, &scope, &counters).with_listings(&listings);
 
     let ltx_files: Vec<XrayLogicalPath> = Self::collect_logical_paths(&vfs, &scope)?;
 
@@ -219,10 +220,6 @@ impl LtxProject {
       // To make checks more strict and consistent, verify typos with case-insensitive Windows OS.
       // Linux / sane logics fail when assuming that `ExAmPlE.TxT` is same as `example.txt`.
       // Part of strict checking because original gamedata has such failures.
-      //
-      // Currently unreachable: an [`XrayLogicalPath`] is normalized to lower case on both sides, so a case-only mismatch is already
-      // equal above and never reaches here. Catching it again needs the spelling as authored, which the VFS does not carry
-      // yet.
       if options.is_strict_check
         && let Some(matching_path) = included
           .iter()
@@ -268,6 +265,7 @@ impl LtxProject {
       dialect: options.dialect.clone(),
       is_caching_resolutions: options.is_caching_resolutions,
       resolved: Mutex::default(),
+      listings,
       ltx_attachments: attachments,
       ltx_file_entries,
       ltx_files,
@@ -331,8 +329,6 @@ impl LtxProject {
   }
 
   /// Returns a filesystem path when a loose config resolves.
-  ///
-  /// Returns `None` for archived or missing configs, so in-place operations can reject them.
   pub fn physical_path_of(&self, logical_path: &XrayLogicalPath) -> Option<PathBuf> {
     self
       .vfs
@@ -344,13 +340,6 @@ impl LtxProject {
   }
 
   /// Resolves one project config under this project's dialect, including includes and inheritance.
-  ///
-  /// Retained for the life of the project only when the caller asked for that
-  /// ([`LtxProjectOptions::is_caching_resolutions`]). A resolved Anomaly `system.ltx` is tens of megabytes, so a sweep
-  /// that reads every root once would hold the whole tree resolved for nothing, while a session that reopens the same
-  /// root all day wants exactly that. The caller knows which it is; this cannot.
-  ///
-  /// Plain, with no provenance: use [`Self::resolve_explained`] where a value has to be accounted for.
   ///
   /// # Errors
   ///
@@ -409,7 +398,7 @@ impl LtxProject {
 
   /// Reads one root and applies this project's dialect to it, retaining nothing.
   fn resolve(&self, logical_path: &XrayLogicalPath) -> XrfResult<LtxResolution> {
-    let source: LtxVfsSource = LtxVfsSource::new_counted(&self.vfs, &self.scope, &self.counters);
+    let source: LtxVfsSource = self.source();
 
     self
       .dialect
@@ -422,7 +411,7 @@ impl LtxProject {
   ///
   /// Returns an error if the config is outside the scope or cannot be read or resolved.
   pub fn resolve_explained(&self, logical_path: &XrayLogicalPath) -> XrfResult<LtxResolution> {
-    let source: LtxVfsSource = LtxVfsSource::new_counted(&self.vfs, &self.scope, &self.counters);
+    let source: LtxVfsSource = self.source();
 
     self.counters.record_resolution();
 
@@ -432,12 +421,6 @@ impl LtxProject {
   }
 
   /// Drops one root's cached resolution, so the next read produces it again.
-  ///
-  /// Answers whether anything was held. The parsed documents behind it stay cached: this forgets a conclusion, not
-  /// the reading it was drawn from, and a caller that changed a file on disk has to say so to the VFS as well.
-  ///
-  /// Nothing in a read-only pass needs this. It exists for a surface that edits a config and must not be served the
-  /// resolution from before the edit.
   pub fn forget_root(&self, logical_path: &XrayLogicalPath) -> bool {
     self
       .resolved
@@ -453,16 +436,13 @@ impl LtxProject {
   }
 
   /// The port this project reads documents through, for a caller that has to read some itself.
-  ///
-  /// An inspecting surface needs documents a resolution cannot answer for - a section's declared parents, which
-  /// resolving flattens away, and the line a statement sits on. It must read them the way this project does or it will
-  /// disagree with it: an installation keeps nearly every config in an archive volume, so a caller reaching for the
-  /// filesystem would find almost nothing, and reads made outside this door go uncounted.
-  ///
-  /// Reads are served from the same parsed-document cache the resolution used, so a caller re-reading a config it has
-  /// already resolved through pays a lookup rather than a parse.
   pub fn document_source(&self) -> impl LtxDocumentSource + '_ {
-    LtxVfsSource::new_counted(&self.vfs, &self.scope, &self.counters)
+    self.source()
+  }
+
+  /// A counted source over this project's own scope, sharing its directory listings.
+  fn source(&self) -> LtxVfsSource<'_> {
+    LtxVfsSource::new_counted(&self.vfs, &self.scope, &self.counters).with_listings(&self.listings)
   }
 
   /// Resolves a config in the supplied scope using this project's dialect, without caching the result.

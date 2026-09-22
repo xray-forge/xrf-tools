@@ -9,38 +9,42 @@ use crate::dialect::LtxStandardDialect;
 use crate::document::LtxDocument;
 use crate::ltx::{Ltx, LtxIncludeConvertor};
 use crate::project::LtxReadCounters;
-use crate::source::{LtxDocumentSource, LtxIncludeSource};
+use crate::source::{LtxDocumentSource, LtxIncludeSource, LtxListingCache};
 
 /// Resolves and reads includes through a mounted VFS.
-///
-/// This is what lets configs be read out of an installation, where they live inside `db\configs` volumes. A wildcard include
-/// cannot be answered by `read_dir` there, so it becomes prefix enumeration over the VFS instead - the same operation, asked
-/// of a logical tree rather than a directory.
 pub(crate) struct LtxVfsSource<'a> {
   vfs: &'a XrayVfs,
   scope: &'a XrayLookupScope,
   /// Where this source reports its reads, when a project is counting them.
   counters: Option<&'a LtxReadCounters>,
+  /// Where this source keeps directory listings, when a project shares them across the sources it creates.
+  listings: Option<&'a LtxListingCache>,
 }
 
 impl<'a> LtxVfsSource<'a> {
   pub fn new(vfs: &'a XrayVfs, scope: &'a XrayLookupScope) -> Self {
     Self {
       counters: None,
+      listings: None,
       scope,
       vfs,
     }
   }
 
   /// A source that reports every read and parse it performs.
-  ///
-  /// Only a project counts, because only a project owns the span the counts describe.
   pub fn new_counted(vfs: &'a XrayVfs, scope: &'a XrayLookupScope, counters: &'a LtxReadCounters) -> Self {
     Self {
       counters: Some(counters),
+      listings: None,
       scope,
       vfs,
     }
+  }
+
+  /// This source, answering directory listings from a cache shared with other sources over the same VFS and scope.
+  pub fn with_listings(mut self, listings: &'a LtxListingCache) -> Self {
+    self.listings = Some(listings);
+    self
   }
 
   /// Reads one logical path as a document, through whatever the mounted world retains.
@@ -77,9 +81,6 @@ impl<'a> LtxVfsSource<'a> {
   }
 
   /// Reads only a config's include statements, without parsing its sections.
-  ///
-  /// Project assembly needs every config's include list to work out which files nothing includes, so this pass is
-  /// counted separately: it is a whole read of every config in the project performed before any content is parsed.
   pub fn read_included(&self, logical_path: &str) -> XrfResult<crate::ltx::LtxIncluded> {
     if let Some(counters) = self.counters {
       counters.record_include_scan();
@@ -96,10 +97,24 @@ impl<'a> LtxVfsSource<'a> {
   }
 
   /// A logical path as the VFS spells it.
-  ///
-  /// `PathBuf` may have normalized separators for the host, so this converts back rather than trusting `to_string_lossy`.
   fn to_logical(path: &Path) -> String {
     path.to_string_lossy().replace('/', "\\")
+  }
+
+  /// The sorted file names directly in `directory`, asked of the VFS every time.
+  fn list_file_names_uncached(&self, directory: &str) -> XrfResult<Vec<String>> {
+    let mut names: Vec<String> = self
+      .vfs
+      .scoped(self.scope)
+      .list_children(directory)?
+      .files
+      .into_iter()
+      .map(|location| String::from(location.get_logical_path().file_name()))
+      .collect();
+
+    names.sort();
+
+    Ok(names)
   }
 }
 
@@ -122,18 +137,14 @@ impl LtxDocumentSource for LtxVfsSource<'_> {
   }
 
   fn list_file_names(&self, directory: &str) -> XrfResult<Vec<String>> {
-    let mut names: Vec<String> = self
-      .vfs
-      .scoped(self.scope)
-      .list_children(directory)?
-      .files
-      .into_iter()
-      .map(|location| String::from(location.get_logical_path().file_name()))
-      .collect();
-
-    names.sort();
-
-    Ok(names)
+    match self.listings {
+      Some(listings) => Ok(
+        listings
+          .get_or_list(directory, || self.list_file_names_uncached(directory))?
+          .to_vec(),
+      ),
+      None => self.list_file_names_uncached(directory),
+    }
   }
 }
 
