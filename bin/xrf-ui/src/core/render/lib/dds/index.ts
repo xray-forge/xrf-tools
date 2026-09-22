@@ -1,2 +1,1 @@
-export * from "./dds-file";
-export * from "./dds-format";
+export * from "./webgl-dds-file";

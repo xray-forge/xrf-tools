@@ -7,7 +7,7 @@ import { LevelTextureReference } from "@/core/ipc/types/xrf-app";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { ILevelTextureDelivery } from "@/core/level/lib/render/level-render-protocol";
 import { ISectorTextureRequest } from "@/core/level/lib/sector/level-sector-textures";
-import { IDdsRead, readDdsFile } from "@/core/render/lib/dds";
+import { IWebGlDdsRead, readWebGlDdsFile } from "@/core/render/lib/dds";
 import { Logger } from "@/lib/logging";
 
 /**
@@ -62,7 +62,7 @@ export class LevelTextureReader {
       const bytes: ArrayBuffer = await assetsRawCommands.readAsset(this.roots, logicalPath);
       // Read here rather than where it is uploaded, because whether the reader models the layout is a question
       // about the file and not about the graphics context. Deciding it on the far side would mean asking back.
-      const read: IDdsRead = readDdsFile(bytes, request.isAlphaRead);
+      const read: IWebGlDdsRead = readWebGlDdsFile(bytes, request.isAlphaRead);
 
       if (read.file) {
         return {

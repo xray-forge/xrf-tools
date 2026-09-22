@@ -6,7 +6,8 @@
   "description": "The deferred renderer every xrf-tools viewer draws through.",
   "exports": {
     ".": "./src/index.ts",
-    "./worker": "./src/client/renderer-worker.ts"
+    "./fixtures": "./src/fixtures.ts",
+    "./worker": "./src/worker.ts"
   },
   "imports": {
     "#/*": "./src/*.ts"

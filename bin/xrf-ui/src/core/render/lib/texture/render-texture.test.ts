@@ -1,4 +1,6 @@
 import { afterEach, describe, expect, it, jest } from "@jest/globals";
+import { EDdsRefusal } from "@xrf/renderer";
+import { mockDdsFile, mockDx10DdsFile, mockUncompressedDdsFile } from "@xrf/renderer/fixtures";
 import {
   ClampToEdgeWrapping,
   LinearFilter,
@@ -11,7 +13,6 @@ import {
   Texture,
 } from "three";
 
-import { EDdsRefusal } from "@/core/render/lib/dds";
 import {
   createDdsTexture,
   createDecodedTexture,
@@ -20,7 +21,6 @@ import {
   IRenderTextureUpload,
   XRAY_TEXTURE_ANISOTROPY,
 } from "@/core/render/lib/texture/render-texture";
-import { mockDdsFile, mockDx10DdsFile, mockUncompressedDdsFile } from "@/fixtures/mocks/dds.mocks";
 
 function uploaded(bytes: ArrayBuffer, options = {}): NonNullable<IRenderTextureUpload["texture"]> {
   const upload: IRenderTextureUpload = createDdsTexture(bytes, options);

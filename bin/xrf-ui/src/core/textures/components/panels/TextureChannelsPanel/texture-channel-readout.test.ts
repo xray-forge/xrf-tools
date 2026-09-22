@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
+import { IDdsTexels } from "@xrf/renderer";
 
-import { IRenderTextureTexels } from "@/core/render/lib/texture/render-texels";
 import {
   describeTextureTexel,
   ITextureTexelReadout,
@@ -9,7 +9,7 @@ import {
 import { ITextureBumpTexels } from "@/core/textures/lib/texture-surface";
 
 /** A two by two plane whose four texels are told apart by their red channel. */
-function mockPlane(texels: ReadonlyArray<[number, number, number, number]>): IRenderTextureTexels {
+function mockPlane(texels: ReadonlyArray<[number, number, number, number]>): IDdsTexels {
   return { data: new Uint8Array(texels.flat()), height: 2, width: 2 };
 }
 

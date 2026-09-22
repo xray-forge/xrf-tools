@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { isObservableProp } from "@wirestate/mobx";
+import { mockDdsFile } from "@xrf/renderer/fixtures";
 
 import { TextureDescription } from "@/core/ipc/types/xrf-app";
 import { EMPTY_TEXTURE_SURFACE } from "@/core/textures/lib/texture-surface";
 import { TextureSurfaceService } from "@/core/textures/services/surface";
-import { mockDdsFile } from "@/fixtures/mocks/dds.mocks";
 import { resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { MOCK_TEXTURE, mockTextureDescription } from "@/fixtures/mocks/texture.mocks";
 import { mockMaterialDescriptor } from "@/fixtures/mocks/visual.mocks";

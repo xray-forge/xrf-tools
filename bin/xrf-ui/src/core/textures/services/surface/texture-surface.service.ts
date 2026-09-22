@@ -1,5 +1,6 @@
 import { Injectable, OnDeactivation } from "@wirestate/core";
 import { Observable, RefObservable, runInAction } from "@wirestate/mobx";
+import { IDdsTexels, readDdsTexels } from "@xrf/renderer";
 import { Nullable } from "@xrf/types";
 
 import { transformError } from "@/core/error/lib";
@@ -7,8 +8,7 @@ import { assetsRawCommands } from "@/core/ipc/commands/assets-raw";
 import { texturesRawCommands } from "@/core/ipc/commands/textures-raw";
 import { TextureDescription } from "@/core/ipc/types/xrf-app";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
-import { IDdsRead, readDdsFile } from "@/core/render/lib/dds";
-import { IRenderTextureTexels, readDdsTexels } from "@/core/render/lib/texture/render-texels";
+import { IWebGlDdsRead, readWebGlDdsFile } from "@/core/render/lib/dds";
 import {
   EMPTY_TEXTURE_SURFACE,
   ITextureBumpAssets,
@@ -26,7 +26,7 @@ import { call, cancelFlow, LatestFlow, TFlow } from "@/lib/mobx";
 /** One half of the pair as it was read: the file always, and its texels when the layout stores them plainly. */
 interface ITextureBumpHalf {
   file: ITextureSurfaceFile;
-  texels: Nullable<IRenderTextureTexels>;
+  texels: Nullable<IDdsTexels>;
 }
 
 /**
@@ -138,7 +138,7 @@ export class TextureSurfaceService {
   private readBase(roots: XrayRoots, logicalPath: string): Promise<Nullable<ITextureSurfaceFile>> {
     return this.guard(logicalPath, async () => {
       const bytes: ArrayBuffer = await assetsRawCommands.readAsset(roots, logicalPath);
-      const read: IDdsRead = readDdsFile(bytes, true);
+      const read: IWebGlDdsRead = readWebGlDdsFile(bytes, true);
 
       if (read.file) {
         return { bytes, height: read.file.height, isDecoded: false, width: read.file.width };
@@ -166,7 +166,7 @@ export class TextureSurfaceService {
   private readBumpHalf(roots: XrayRoots, logicalPath: string): Promise<Nullable<ITextureBumpHalf>> {
     return this.guard(logicalPath, async () => {
       const bytes: ArrayBuffer = await assetsRawCommands.readAsset(roots, logicalPath);
-      const read: IDdsRead = readDdsFile(bytes);
+      const read: IWebGlDdsRead = readWebGlDdsFile(bytes);
 
       // No fallback for a pair: the decode reads its packed values, and a picture of them shades nothing.
       return read.file

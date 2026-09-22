@@ -30,6 +30,8 @@ const OFFSET_DXGI_FORMAT: number = 32;
 const OFFSET_RESOURCE_DIMENSION: number = 33;
 const OFFSET_ARRAY_SIZE: number = 35;
 
+/** What an unmodelled tag costs, since nothing reads its payload. */
+const DEFAULT_BLOCK_BYTES: number = 16;
 /** Bytes one compressed block occupies, by the fourCC that declares it. */
 const BLOCK_BYTES: Record<string, number> = {
   ATI1: 8,
@@ -39,9 +41,6 @@ const BLOCK_BYTES: Record<string, number> = {
   DXT3: 16,
   DXT5: 16,
 };
-
-/** What an unmodelled tag costs, since nothing reads its payload. */
-const DEFAULT_BLOCK_BYTES: number = 16;
 
 export interface IMockDdsOptions {
   fourCC?: string;

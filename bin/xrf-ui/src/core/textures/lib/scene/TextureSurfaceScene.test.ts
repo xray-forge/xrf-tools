@@ -1,4 +1,5 @@
 import { afterEach, beforeAll, describe, expect, it, jest } from "@jest/globals";
+import { mockDdsFile } from "@xrf/renderer/fixtures";
 import {
   CompressedPixelFormat,
   Material,
@@ -17,7 +18,6 @@ import {
   ITextureSurfaceFile,
   ITextureSurfaceFiles,
 } from "@/core/textures/lib/texture-surface";
-import { mockDdsFile } from "@/fixtures/mocks/dds.mocks";
 
 let TextureSurfaceScene: typeof import("./TextureSurfaceScene").TextureSurfaceScene;
 

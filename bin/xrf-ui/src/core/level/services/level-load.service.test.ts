@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { isObservableProp, reaction } from "@wirestate/mobx";
+import { mockDdsFile } from "@xrf/renderer/fixtures";
 import { Nullable } from "@xrf/types";
 
 import { createRoots } from "@/core/assets/lib";
@@ -12,7 +13,6 @@ import {
   ILevelTextureSupplyChange,
 } from "@/core/level/lib/render/level-render-protocol";
 import { createLevelResidency } from "@/core/level/lib/residency/level-residency";
-import { mockDdsFile } from "@/fixtures/mocks/dds.mocks";
 import {
   mockLevelTextureReference,
   mockSectorDescription,

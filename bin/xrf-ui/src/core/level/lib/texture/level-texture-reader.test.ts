@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
+import { mockDdsFile } from "@xrf/renderer/fixtures";
 
 import { createRoots } from "@/core/assets/lib";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { ILevelTextureDelivery } from "@/core/level/lib/render/level-render-protocol";
 import { ISectorTextureRequest } from "@/core/level/lib/sector/level-sector-textures";
 import { LevelTextureReader } from "@/core/level/lib/texture/level-texture-reader";
-import { mockDdsFile } from "@/fixtures/mocks/dds.mocks";
 import { mockLevelTextureReference } from "@/fixtures/mocks/level.mocks";
 import { mockInvoke, resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 

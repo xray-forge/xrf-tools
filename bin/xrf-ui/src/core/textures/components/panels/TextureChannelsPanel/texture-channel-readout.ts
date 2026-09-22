@@ -1,4 +1,5 @@
-import { readRenderTexel } from "@/core/render/lib/texture/render-texels";
+import { readDdsTexel } from "@xrf/renderer";
+
 import { ITextureBumpTexels } from "@/core/textures/lib/texture-surface";
 import { decodeXrayBumpTexel, IVisualBumpTexel } from "@/core/visuals/lib/visual-bump";
 
@@ -38,8 +39,8 @@ export function describeTextureTexel(
   texels: ITextureBumpTexels,
   position: ITextureTexelPosition
 ): ITextureTexelReadout {
-  const bump: [number, number, number, number] = readRenderTexel(texels.bump, position.x, position.y);
-  const companion: [number, number, number, number] = readRenderTexel(texels.companion, position.x, position.y);
+  const bump: [number, number, number, number] = readDdsTexel(texels.bump, position.x, position.y);
+  const companion: [number, number, number, number] = readDdsTexel(texels.companion, position.x, position.y);
   const decoded: IVisualBumpTexel = decodeXrayBumpTexel(bump, companion);
 
   return {

@@ -1,10 +1,10 @@
 import { describe, expect, it } from "@jest/globals";
 import { RenderResult } from "@testing-library/react";
 import { Container } from "@wirestate/core";
+import { mockDdsFile } from "@xrf/renderer/fixtures";
 
 import { EMPTY_LEVEL_TEXTURE_REPORT } from "@/core/level/lib/texture/level-texture-report";
 import { LevelLoadService, LevelViewportService } from "@/core/level/services";
-import { mockDdsFile } from "@/fixtures/mocks/dds.mocks";
 import {
   mockLevelTextureReference,
   mockSectorDescription,

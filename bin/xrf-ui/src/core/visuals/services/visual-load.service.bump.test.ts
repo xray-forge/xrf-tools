@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
+import { mockDdsFile, mockDx10DdsFile, mockUndecodableDdsFile } from "@xrf/renderer/fixtures";
 
 import { createRoots } from "@/core/assets/lib";
 import { SelectedVisualDescription } from "@/core/ipc/types/xrf-app";
@@ -6,7 +7,6 @@ import { XrayMaterialDescriptor } from "@/core/ipc/types/xrf-material";
 import { XrayAsset, XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { EVisualTextureState } from "@/core/visuals/lib/visual-texture";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
-import { mockDdsFile, mockDx10DdsFile, mockUndecodableDdsFile } from "@/fixtures/mocks/dds.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { InvokeHandler, resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import {

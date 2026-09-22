@@ -1,8 +1,8 @@
 import { describe, expect, it } from "@jest/globals";
+import { mockDdsFile } from "@xrf/renderer/fixtures";
 
 import { ILevelTextureDelivery } from "@/core/level/lib/render/level-render-protocol";
 import { ELevelSurfaceDressing } from "@/core/level/lib/surface/level-surface-dressing";
-import { mockDdsFile } from "@/fixtures/mocks/dds.mocks";
 
 import { LevelTextureSet } from "./level-texture-set";
 

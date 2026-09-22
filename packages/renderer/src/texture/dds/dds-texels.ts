@@ -1,11 +1,13 @@
 import { Nullable, Optional } from "@xrf/types";
 
-import { EDdsLayout, IDdsMipmap, IDdsRead, readDdsFile } from "@/core/render/lib/dds";
+import { IDdsRead, readDdsFile } from "#/texture/dds/dds-file";
+import { EDdsLayout } from "#/texture/dds/dds-layout";
+import { IDdsMipmap } from "#/texture/dds/dds-mipmaps";
 
 /**
  * A texture's top mip on the cpu, for a layout that stores its texels plainly.
  */
-export interface IRenderTextureTexels {
+export interface IDdsTexels {
   width: number;
   height: number;
   /** Rgba bytes, row major, the row X-Ray stores first coming first. */
@@ -18,7 +20,7 @@ export interface IRenderTextureTexels {
  * @param bytes - The file as read.
  * @returns Its top mip, or null for a layout stored as blocks.
  */
-export function readDdsTexels(bytes: ArrayBuffer): Nullable<IRenderTextureTexels> {
+export function readDdsTexels(bytes: ArrayBuffer): Nullable<IDdsTexels> {
   const read: IDdsRead = readDdsFile(bytes);
 
   if (!read.file || read.file.layout.kind !== EDdsLayout.TEXELS) {
@@ -38,7 +40,7 @@ export function readDdsTexels(bytes: ArrayBuffer): Nullable<IRenderTextureTexels
  * @param y - Row, from the top, as the file stores them.
  * @returns Its four channels, each in `[0, 1]`.
  */
-export function readRenderTexel(texels: IRenderTextureTexels, x: number, y: number): [number, number, number, number] {
+export function readDdsTexel(texels: IDdsTexels, x: number, y: number): [number, number, number, number] {
   const column: number = Math.min(Math.max(x, 0), texels.width - 1);
   const row: number = Math.min(Math.max(y, 0), texels.height - 1);
   const at: number = (row * texels.width + column) * 4;

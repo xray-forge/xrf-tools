@@ -1,3 +1,4 @@
+import { IDdsRefusal } from "@xrf/renderer";
 import { Nullable } from "@xrf/types";
 import {
   ClampToEdgeWrapping,
@@ -16,7 +17,7 @@ import {
   Texture,
 } from "three";
 
-import { EDdsLayout, IDdsFile, IDdsRead, IDdsRefusal, readDdsFile } from "@/core/render/lib/dds";
+import { IWebGlDdsFile, IWebGlDdsRead, readWebGlDdsFile } from "@/core/render/lib/dds";
 
 /**
  * How many samples the engine takes across a texture seen at an angle, `ps_r__tf_Anisotropic`
@@ -50,13 +51,13 @@ export interface IRenderTextureUpload {
  * @returns The texture, or the reason there is none.
  */
 export function createDdsTexture(bytes: ArrayBuffer, options: IRenderTextureOptions = {}): IRenderTextureUpload {
-  const read: IDdsRead = readDdsFile(bytes, options.isAlphaRead ?? false);
+  const read: IWebGlDdsRead = readWebGlDdsFile(bytes, options.isAlphaRead ?? false);
 
   if (!read.file) {
     return { refusal: read.refusal, texture: null };
   }
 
-  const file: IDdsFile = read.file;
+  const file: IWebGlDdsFile = read.file;
   const isMipped: boolean = options.isMipped ?? true;
   const texture: CompressedTexture = new CompressedTexture(
     // Only the level the engine samples, so an unmipped texture costs the gpu no chain it never reads.
@@ -65,7 +66,7 @@ export function createDdsTexture(bytes: ArrayBuffer, options: IRenderTextureOpti
     file.height,
     // The typings admit only a compressed format, even though three's own `CompressedTextureLoader` assigns
     // `RGBAFormat` to a `CompressedTexture` for exactly the uncompressed layouts the reader expands.
-    file.layout.kind === EDdsLayout.BLOCK ? file.layout.format : (RGBAFormat as never)
+    file.format ?? (RGBAFormat as never)
   );
 
   // X-Ray samples base diffuse with wrap addressing: `r_Sampler` defaults to `D3DTADDRESS_WRAP`

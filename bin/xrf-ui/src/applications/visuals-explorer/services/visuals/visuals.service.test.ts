@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { waitFor } from "@testing-library/react";
 import { isComputedProp, isObservableProp } from "@wirestate/mobx";
+import { mockDdsFile } from "@xrf/renderer/fixtures";
 import { Nullable } from "@xrf/types";
 
 import { VisualsService } from "@/applications/visuals-explorer/services/visuals/index";
@@ -11,7 +12,6 @@ import { describeVisualSource } from "@/core/visuals/lib/visual-source";
 import { EVisualTextureState } from "@/core/visuals/lib/visual-texture";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
 import { VisualMotionService } from "@/core/visuals/services/visual-motion.service";
-import { mockDdsFile } from "@/fixtures/mocks/dds.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import {
