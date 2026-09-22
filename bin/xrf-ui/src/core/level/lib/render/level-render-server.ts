@@ -7,54 +7,48 @@ import {
 } from "@/core/level/lib/render/level-render-messages";
 import { LevelPreviewScene } from "@/core/level/lib/scene";
 import { OffscreenRenderTarget } from "@/core/render/lib/frame/offscreen-render-target";
-import { Logger } from "@/lib/logging";
-import { Nullable } from "@/lib/types/general";
-
-/** Where a served renderer sends what it has to say. */
-export type TLevelRenderReply = (response: TLevelRenderResponse) => void;
+import { IRenderWorkerScene, TRenderWorkerReply } from "@/core/render/lib/worker/render-worker-host";
 
 /**
  * Draws a level for somebody else's thread.
  */
-export class LevelRenderServer implements ILevelMotionSource {
-  public readonly log: Logger = new Logger(__MODULE_NAME__);
-
-  private readonly reply: TLevelRenderReply;
-
-  private scene: Nullable<LevelPreviewScene> = null;
-  private target: Nullable<OffscreenRenderTarget> = null;
+export class LevelRenderServer implements IRenderWorkerScene<TLevelRenderRequest>, ILevelMotionSource {
+  private readonly scene: LevelPreviewScene;
+  private readonly reply: TRenderWorkerReply<TLevelRenderResponse>;
 
   /** What the page last said the person was doing, applied by whichever frame reads it next. */
   private motion: ILevelFlyMotion = EMPTY_LEVEL_FLY_MOTION;
 
-  public constructor(reply: TLevelRenderReply) {
+  public constructor(target: OffscreenRenderTarget, reply: TRenderWorkerReply<TLevelRenderResponse>) {
     this.reply = reply;
+
+    this.scene = new LevelPreviewScene(target, {
+      onCameraMoved: (point) => this.reply({ kind: ELevelRenderResponse.CAMERA, point }),
+      onReport: (stats, camera) => this.reply({ camera, kind: ELevelRenderResponse.REPORT, stats }),
+      onTextures: (report) => this.reply({ kind: ELevelRenderResponse.TEXTURES, report }),
+    });
+
+    this.scene.setMotion(this);
   }
 
   /**
-   * Takes one message.
+   * Takes one message about the level.
    *
    * @param request - What the page said.
    */
   public take(request: TLevelRenderRequest): void {
     switch (request.kind) {
-      case ELevelRenderRequest.START:
-        return this.start(request);
-
-      case ELevelRenderRequest.RESIZE:
-        return this.target?.resize(request);
-
       case ELevelRenderRequest.OPEN:
-        return this.scene?.open(request.level);
+        return this.scene.open(request.level);
 
       case ELevelRenderRequest.DELIVER:
-        return this.scene?.deliver(request.change);
+        return this.scene.deliver(request.change);
 
       case ELevelRenderRequest.SUPPLY:
-        return this.scene?.supply(request.change);
+        return this.scene.supply(request.change);
 
       case ELevelRenderRequest.VIEW:
-        return this.scene?.setView(request.view);
+        return this.scene.setView(request.view);
 
       case ELevelRenderRequest.MOTION:
         this.motion = request.motion;
@@ -62,14 +56,12 @@ export class LevelRenderServer implements ILevelMotionSource {
         return;
 
       case ELevelRenderRequest.MEASURE:
+        // Whoever asked is waiting on the number they asked with, so an answer goes back either way.
         return this.reply({
-          geometry: this.scene?.measureSurfaceGeometry() ?? new Map(),
+          geometry: this.scene.measureSurfaceGeometry(),
           id: request.id,
           kind: ELevelRenderResponse.MEASURED,
         });
-
-      case ELevelRenderRequest.DISPOSE:
-        return this.dispose();
     }
   }
 
@@ -85,29 +77,7 @@ export class LevelRenderServer implements ILevelMotionSource {
     return motion;
   }
 
-  private start(request: Extract<TLevelRenderRequest, { kind: ELevelRenderRequest.START }>): void {
-    this.dispose();
-
-    this.log.info("Drawing on a canvas of", request.width, "x", request.height, "at", request.pixelRatio);
-
-    this.target = new OffscreenRenderTarget(request.canvas, request);
-    this.scene = new LevelPreviewScene(this.target, {
-      onCameraMoved: (point) => this.reply({ kind: ELevelRenderResponse.CAMERA, point }),
-      onReport: (stats, camera) => this.reply({ camera, kind: ELevelRenderResponse.REPORT, stats }),
-      onTextures: (report) => this.reply({ kind: ELevelRenderResponse.TEXTURES, report }),
-    });
-
-    this.scene.setMotion(this);
-  }
-
-  private dispose(): void {
-    if (this.scene) {
-      this.log.info("Releasing everything the renderer held");
-    }
-
-    this.scene?.dispose();
-    this.scene = null;
-    this.target = null;
-    this.motion = EMPTY_LEVEL_FLY_MOTION;
+  public dispose(): void {
+    this.scene.dispose();
   }
 }

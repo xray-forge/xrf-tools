@@ -1,6 +1,8 @@
 import { beforeAll, beforeEach, describe, expect, it, jest } from "@jest/globals";
 
+import { OffscreenRenderTarget } from "@/core/render/lib/frame/offscreen-render-target";
 import { EMPTY_RENDER_FRAME_COST } from "@/core/render/lib/frame/render-frame-cost";
+import { RenderProxyElement } from "@/core/render/lib/worker/render-proxy-element";
 import {
   ETextureSurfaceRequest,
   ETextureSurfaceResponse,
@@ -21,6 +23,8 @@ const scene = {
   setTextures: jest.fn(),
 };
 
+const SIZE = { height: 540, pixelRatio: 1, width: 960 };
+
 let TextureSurfaceServer: typeof import("./texture-surface-server").TextureSurfaceServer;
 
 beforeAll(async () => {
@@ -34,18 +38,10 @@ function mockServer(): {
   said: Array<TTextureSurfaceResponse>;
 } {
   const said: Array<TTextureSurfaceResponse> = [];
+  const target: OffscreenRenderTarget = new OffscreenRenderTarget({} as OffscreenCanvas, SIZE);
+  const element: RenderProxyElement = new RenderProxyElement(SIZE, jest.fn());
 
-  return { said, server: new TextureSurfaceServer((response: TTextureSurfaceResponse) => said.push(response)) };
-}
-
-function started(server: InstanceType<typeof TextureSurfaceServer>): void {
-  server.take({
-    canvas: {} as OffscreenCanvas,
-    height: 540,
-    kind: ETextureSurfaceRequest.START,
-    pixelRatio: 1,
-    width: 960,
-  });
+  return { said, server: new TextureSurfaceServer(target, element, (response) => said.push(response)) };
 }
 
 describe("TextureSurfaceServer", () => {
@@ -55,26 +51,8 @@ describe("TextureSurfaceServer", () => {
     }
   });
 
-  // Every message may arrive before the canvas does, and a server that threw on one would take the worker down.
-  it("takes anything said before it has somewhere to draw", () => {
-    const { server, said } = mockServer();
-
-    expect(() => {
-      server.take({ files: EMPTY_TEXTURE_SURFACE, kind: ETextureSurfaceRequest.TEXTURES });
-      server.take({ height: 1, kind: ETextureSurfaceRequest.RESIZE, pixelRatio: 1, width: 1 });
-      server.take({ kind: ETextureSurfaceRequest.DOLLY, step: 2 });
-      server.take({ kind: ETextureSurfaceRequest.RESET });
-      server.take({ deltaX: 1, deltaY: 1, kind: ETextureSurfaceRequest.DRAG_LIGHT });
-      server.take({ kind: ETextureSurfaceRequest.DISPOSE });
-    }).not.toThrow();
-
-    expect(said).toEqual([]);
-  });
-
-  it("carries what it is told to the scene it started", () => {
+  it("carries what it is told to the scene it draws with", () => {
     const { server } = mockServer();
-
-    started(server);
 
     server.take({ files: EMPTY_TEXTURE_SURFACE, kind: ETextureSurfaceRequest.TEXTURES });
     server.take({
@@ -104,7 +82,6 @@ describe("TextureSurfaceServer", () => {
   it("answers a drag with where it put the light", () => {
     const { server, said } = mockServer();
 
-    started(server);
     server.take({ deltaX: 10, deltaY: 4, kind: ETextureSurfaceRequest.DRAG_LIGHT });
 
     expect(scene.dragLight).toHaveBeenCalledWith(10, 4);
@@ -115,9 +92,7 @@ describe("TextureSurfaceServer", () => {
   });
 
   it("says what frames cost, for a readout it cannot draw", () => {
-    const { server, said } = mockServer();
-
-    started(server);
+    const { said } = mockServer();
 
     const report = scene.setReporter.mock.calls[0][0] as (cost: typeof EMPTY_RENDER_FRAME_COST) => void;
 
@@ -129,17 +104,12 @@ describe("TextureSurfaceServer", () => {
     });
   });
 
-  it("releases the scene it started", () => {
+  it("stops reporting when it is released", () => {
     const { server } = mockServer();
 
-    started(server);
-    server.take({ kind: ETextureSurfaceRequest.DISPOSE });
+    server.dispose();
 
+    expect(scene.setReporter).toHaveBeenLastCalledWith(null);
     expect(scene.dispose).toHaveBeenCalledTimes(1);
-
-    // Nothing is drawing any more, and saying so again is not an error.
-    server.take({ kind: ETextureSurfaceRequest.RESET });
-
-    expect(scene.reset).not.toHaveBeenCalled();
   });
 });

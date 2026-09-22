@@ -1,6 +1,8 @@
 import { beforeAll, beforeEach, describe, expect, it, jest } from "@jest/globals";
 
+import { OffscreenRenderTarget } from "@/core/render/lib/frame/offscreen-render-target";
 import { EMPTY_RENDER_FRAME_COST } from "@/core/render/lib/frame/render-frame-cost";
+import { RenderProxyElement } from "@/core/render/lib/worker/render-proxy-element";
 import {
   EVisualPreviewRequest,
   EVisualPreviewResponse,
@@ -27,22 +29,16 @@ const scene = {
   setReporter: jest.fn(),
 };
 
+const SIZE = { height: 540, pixelRatio: 1, width: 960 };
+
 let VisualPreviewServer: typeof import("./visual-preview-server").VisualPreviewServer;
 
 function mockServer(): { server: InstanceType<typeof VisualPreviewServer>; said: Array<TVisualPreviewResponse> } {
   const said: Array<TVisualPreviewResponse> = [];
+  const target: OffscreenRenderTarget = new OffscreenRenderTarget({} as OffscreenCanvas, SIZE);
+  const element: RenderProxyElement = new RenderProxyElement(SIZE, jest.fn());
 
-  return { said, server: new VisualPreviewServer((response: TVisualPreviewResponse) => said.push(response)) };
-}
-
-function started(server: InstanceType<typeof VisualPreviewServer>): void {
-  server.take({
-    canvas: {} as OffscreenCanvas,
-    height: 540,
-    kind: EVisualPreviewRequest.START,
-    pixelRatio: 1,
-    width: 960,
-  });
+  return { said, server: new VisualPreviewServer(target, element, (response) => said.push(response)) };
 }
 
 beforeAll(async () => {
@@ -58,26 +54,9 @@ describe("VisualPreviewServer", () => {
     }
   });
 
-  // Every message may arrive before the canvas does, and a server that threw on one would take the worker down.
-  it("takes anything said before it has somewhere to draw", () => {
-    const { server, said } = mockServer();
-
-    expect(() => {
-      server.take({ kind: EVisualPreviewRequest.MODEL, model: null });
-      server.take({ detail: 1, kind: EVisualPreviewRequest.DETAIL });
-      server.take({ height: 1, kind: EVisualPreviewRequest.RESIZE, pixelRatio: 1, width: 1 });
-      server.take({ kind: EVisualPreviewRequest.RESET });
-      server.take({ kind: EVisualPreviewRequest.DISPOSE });
-    }).not.toThrow();
-
-    expect(said).toEqual([]);
-  });
-
-  it("carries what it is told to the scene it started", () => {
+  it("carries what it is told to the scene it draws with", () => {
     const { server } = mockServer();
     const model = mockVisualModelViews();
-
-    started(server);
 
     server.take({ kind: EVisualPreviewRequest.MODEL, model });
     server.take({ kind: EVisualPreviewRequest.OPTIONS, options: DEFAULT_VISUAL_PREVIEW_VIEW_OPTIONS });
@@ -101,7 +80,6 @@ describe("VisualPreviewServer", () => {
     const { server } = mockServer();
     const transforms: Float32Array = new Float32Array(12);
 
-    started(server);
     server.take({ kind: EVisualPreviewRequest.POSE, pose: { floatsPerBone: 12, frame: 4, transforms } });
 
     expect(scene.setPose).toHaveBeenCalledWith(transforms, 4, 12);
@@ -112,9 +90,7 @@ describe("VisualPreviewServer", () => {
   });
 
   it("says what frames cost, for a readout it cannot draw", () => {
-    const { server, said } = mockServer();
-
-    started(server);
+    const { said } = mockServer();
 
     const report = scene.setReporter.mock.calls[0][0] as (cost: typeof EMPTY_RENDER_FRAME_COST) => void;
 
@@ -126,16 +102,12 @@ describe("VisualPreviewServer", () => {
     });
   });
 
-  it("releases the scene it started", () => {
+  it("stops reporting when it is released", () => {
     const { server } = mockServer();
 
-    started(server);
-    server.take({ kind: EVisualPreviewRequest.DISPOSE });
+    server.dispose();
 
+    expect(scene.setReporter).toHaveBeenLastCalledWith(null);
     expect(scene.dispose).toHaveBeenCalledTimes(1);
-
-    server.take({ kind: EVisualPreviewRequest.RESET });
-
-    expect(scene.resetCamera).not.toHaveBeenCalled();
   });
 });

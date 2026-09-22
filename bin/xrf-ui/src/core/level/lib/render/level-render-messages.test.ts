@@ -48,20 +48,9 @@ describe("listRenderTransfers", () => {
     expect(transfers).toEqual([file.bytes]);
   });
 
-  // The canvas is the one thing that cannot be copied at all: transferring it is what gives the other thread
-  // something to draw on.
-  it("moves the canvas when the renderer starts", () => {
-    const canvas = {} as OffscreenCanvas;
-
-    expect(
-      listRenderTransfers({ canvas, height: 1, kind: ELevelRenderRequest.START, pixelRatio: 1, width: 1 })
-    ).toEqual([canvas]);
-  });
-
   it("moves nothing for a message that carries nothing", () => {
-    expect(listRenderTransfers({ kind: ELevelRenderRequest.DISPOSE })).toEqual([]);
-    expect(listRenderTransfers({ height: 2, kind: ELevelRenderRequest.RESIZE, pixelRatio: 1, width: 3 })).toEqual([]);
     expect(listRenderTransfers({ id: 1, kind: ELevelRenderRequest.MEASURE })).toEqual([]);
+    expect(listRenderTransfers({ kind: ELevelRenderRequest.OPEN, level: null })).toEqual([]);
   });
 
   // A release names sectors by number and carries no pack, so there is nothing to move and nothing to lose.

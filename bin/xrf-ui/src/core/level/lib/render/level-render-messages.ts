@@ -6,15 +6,12 @@ import { ILevelPoint } from "@/core/level/lib/residency/level-residency";
 import { ILevelStats } from "@/core/level/lib/stats/level-stats";
 import { ILevelSurfaceGeometry } from "@/core/level/lib/surface/level-surface-geometry";
 import { ILevelTextureReport } from "@/core/level/lib/texture/level-texture-report";
-import { IOffscreenRenderSize } from "@/core/render/lib/frame/offscreen-render-target";
 import { Nullable } from "@/lib/types/general";
 
-/** What a renderer on another thread can be told. */
+/**
+ * What a renderer on another thread can be told about the level it draws.
+ */
 export enum ELevelRenderRequest {
-  /** Here is the canvas, and how big it is: everything before this has nowhere to go. */
-  START = "start",
-  /** The element the canvas fills is a different size, which only a thread with a document can notice. */
-  RESIZE = "resize",
   /** Draw this level, or no level at all. */
   OPEN = "open",
   /** These sectors have arrived, and these have gone. */
@@ -27,8 +24,6 @@ export enum ELevelRenderRequest {
   MOTION = "motion",
   /** What does each shader table entry draw? Answered with `MEASURED`. */
   MEASURE = "measure",
-  /** Let everything go. */
-  DISPOSE = "dispose",
 }
 
 /** What it says back. */
@@ -47,15 +42,12 @@ export enum ELevelRenderResponse {
  * What a renderer on another thread is told, as messages.
  */
 export type TLevelRenderRequest =
-  | ({ kind: ELevelRenderRequest.START; canvas: OffscreenCanvas } & IOffscreenRenderSize)
-  | ({ kind: ELevelRenderRequest.RESIZE } & IOffscreenRenderSize)
   | { kind: ELevelRenderRequest.OPEN; level: Nullable<ILevelRenderLevel> }
   | { kind: ELevelRenderRequest.DELIVER; change: ILevelSectorChange }
   | { kind: ELevelRenderRequest.SUPPLY; change: ILevelTextureSupplyChange }
   | { kind: ELevelRenderRequest.VIEW; view: ILevelRenderView }
   | { kind: ELevelRenderRequest.MOTION; motion: ILevelFlyMotion }
-  | { kind: ELevelRenderRequest.MEASURE; id: number }
-  | { kind: ELevelRenderRequest.DISPOSE };
+  | { kind: ELevelRenderRequest.MEASURE; id: number };
 
 /** What it says back, as messages. */
 export type TLevelRenderResponse =
@@ -72,9 +64,6 @@ export type TLevelRenderResponse =
  */
 export function listRenderTransfers(request: TLevelRenderRequest): Array<Transferable> {
   switch (request.kind) {
-    case ELevelRenderRequest.START:
-      return [request.canvas];
-
     case ELevelRenderRequest.DELIVER:
       return request.change.delivered.map((it) => it.buffer);
 

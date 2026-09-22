@@ -1,8 +1,6 @@
-import { IOffscreenRenderSize } from "@/core/render/lib/frame/offscreen-render-target";
 import { IRenderFrameCost } from "@/core/render/lib/frame/render-frame-cost";
 import { TFrameRateLimit } from "@/core/render/lib/frame/render-frame-limit";
 import { IRenderLighting } from "@/core/render/lib/lighting/render-lighting";
-import { IRenderInputEvent } from "@/core/render/lib/worker/render-input";
 import { IVisualPose } from "@/core/visuals/lib/render/visual-render-source";
 import { IVisualPreviewViewOptions } from "@/core/visuals/lib/scene";
 import { IVisualBumpFiles } from "@/core/visuals/lib/visual-bump";
@@ -10,12 +8,10 @@ import { IVisualTextureFile } from "@/core/visuals/lib/visual-texture";
 import { IVisualModelViews } from "@/core/visuals/lib/visual-views";
 import { Nullable } from "@/lib/types/general";
 
-/** What a model preview on another thread can be told. */
+/**
+ * What a model preview on another thread can be told about what it draws.
+ */
 export enum EVisualPreviewRequest {
-  /** Here is the canvas, and how big it is: everything before this has nowhere to go. */
-  START = "start",
-  /** The element the canvas fills is a different size, or draws a different number of pixels. */
-  RESIZE = "resize",
   /** Draw this model, or none. */
   MODEL = "model",
   /** Draw this submesh with this file. */
@@ -36,30 +32,22 @@ export enum EVisualPreviewRequest {
   LIGHTING = "lighting",
   /** Redraw no more often than this. */
   FRAME_RATE = "frameRate",
-  /** Somebody did this to the canvas. */
-  INPUT = "input",
   /** Move the camera towards the model or away from it. */
   DOLLY = "dolly",
   /** Back to the distance and angle the model is first framed from. */
   RESET = "reset",
-  /** Let everything go. */
-  DISPOSE = "dispose",
 }
 
-/** What it says back. */
+/** What it says back about what it draws. */
 export enum EVisualPreviewResponse {
   /** What frames are costing. */
   REPORT = "report",
-  /** What the controls want the cursor to be, which only the side with a canvas can show. */
-  CURSOR = "cursor",
 }
 
 /**
  * What a model preview on another thread is told, as messages.
  */
 export type TVisualPreviewRequest =
-  | ({ kind: EVisualPreviewRequest.START; canvas: OffscreenCanvas } & IOffscreenRenderSize)
-  | ({ kind: EVisualPreviewRequest.RESIZE } & IOffscreenRenderSize)
   | { kind: EVisualPreviewRequest.MODEL; model: Nullable<IVisualModelViews> }
   | { kind: EVisualPreviewRequest.TEXTURE; submeshIndex: number; file: IVisualTextureFile }
   | { kind: EVisualPreviewRequest.BUMP; submeshIndex: number; files: IVisualBumpFiles }
@@ -70,22 +58,8 @@ export type TVisualPreviewRequest =
   | { kind: EVisualPreviewRequest.OPTIONS; options: IVisualPreviewViewOptions }
   | { kind: EVisualPreviewRequest.LIGHTING; lighting: IRenderLighting }
   | { kind: EVisualPreviewRequest.FRAME_RATE; limit: TFrameRateLimit }
-  | { kind: EVisualPreviewRequest.INPUT; event: IRenderInputEvent }
   | { kind: EVisualPreviewRequest.DOLLY; step: number }
-  | { kind: EVisualPreviewRequest.RESET }
-  | { kind: EVisualPreviewRequest.DISPOSE };
+  | { kind: EVisualPreviewRequest.RESET };
 
 /** What it says back, as messages. */
-export type TVisualPreviewResponse =
-  | { kind: EVisualPreviewResponse.REPORT; cost: IRenderFrameCost }
-  | { kind: EVisualPreviewResponse.CURSOR; cursor: string };
-
-/**
- * What a request carries that has to be moved rather than copied.
- *
- * @param request - The message about to be posted.
- * @returns What to move with it.
- */
-export function listVisualPreviewTransfers(request: TVisualPreviewRequest): Array<Transferable> {
-  return request.kind === EVisualPreviewRequest.START ? [request.canvas] : [];
-}
+export type TVisualPreviewResponse = { kind: EVisualPreviewResponse.REPORT; cost: IRenderFrameCost };

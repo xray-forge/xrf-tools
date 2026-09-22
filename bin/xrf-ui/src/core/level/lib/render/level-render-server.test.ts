@@ -1,4 +1,4 @@
-import { describe, expect, it } from "@jest/globals";
+import { beforeAll, beforeEach, describe, expect, it, jest } from "@jest/globals";
 
 import { EMPTY_LEVEL_FLY_INPUT } from "@/core/level/lib/camera/level-fly-input";
 import { ILevelFlyMotion } from "@/core/level/lib/camera/level-fly-motion";
@@ -7,23 +7,60 @@ import {
   ELevelRenderResponse,
   TLevelRenderResponse,
 } from "@/core/level/lib/render/level-render-messages";
-import { LevelRenderServer } from "@/core/level/lib/render/level-render-server";
+import { OffscreenRenderTarget } from "@/core/render/lib/frame/offscreen-render-target";
 
-function mockServer(): { server: LevelRenderServer; said: Array<TLevelRenderResponse> } {
+const scene = {
+  deliver: jest.fn(),
+  dispose: jest.fn(),
+  measureSurfaceGeometry: jest.fn(() => new Map()),
+  open: jest.fn(),
+  setMotion: jest.fn(),
+  setView: jest.fn(),
+  supply: jest.fn(),
+};
+
+let LevelRenderServer: typeof import("./level-render-server").LevelRenderServer;
+
+function mockServer(): { server: InstanceType<typeof LevelRenderServer>; said: Array<TLevelRenderResponse> } {
   const said: Array<TLevelRenderResponse> = [];
+  const target: OffscreenRenderTarget = new OffscreenRenderTarget({} as OffscreenCanvas, {
+    height: 540,
+    pixelRatio: 1,
+    width: 960,
+  });
 
-  return { said, server: new LevelRenderServer((response: TLevelRenderResponse) => said.push(response)) };
+  return { said, server: new LevelRenderServer(target, (response) => said.push(response)) };
 }
 
 function motion(lookX: number, isForward: boolean = false): ILevelFlyMotion {
-  return {
-    keys: { ...EMPTY_LEVEL_FLY_INPUT, forward: isForward },
-    lookX,
-    lookY: 0,
-  };
+  return { keys: { ...EMPTY_LEVEL_FLY_INPUT, forward: isForward }, lookX, lookY: 0 };
 }
 
+beforeAll(async () => {
+  jest.doMock("@/core/level/lib/scene", () => ({ LevelPreviewScene: jest.fn(() => scene) }));
+
+  ({ LevelRenderServer } = await import("./level-render-server"));
+});
+
 describe("LevelRenderServer", () => {
+  beforeEach(() => {
+    for (const mock of Object.values(scene)) {
+      mock.mockClear();
+    }
+  });
+
+  it("carries what it is told to the scene it draws with", () => {
+    const { server } = mockServer();
+
+    server.take({ kind: ELevelRenderRequest.OPEN, level: null });
+    server.take({ change: { delivered: [], released: null }, kind: ELevelRenderRequest.DELIVER });
+    server.take({ change: { delivered: [], retained: null }, kind: ELevelRenderRequest.SUPPLY });
+
+    expect(scene.open).toHaveBeenCalledWith(null);
+    expect(scene.deliver).toHaveBeenCalled();
+    expect(scene.supply).toHaveBeenCalled();
+  });
+
   it("forgets a look once a frame has taken it", () => {
     const { server } = mockServer();
 
@@ -53,29 +90,18 @@ describe("LevelRenderServer", () => {
     expect(server.drain()).toEqual({ keys: expect.any(Object), lookX: 0, lookY: 0 });
   });
 
-  // Every message may arrive before the canvas does, and a renderer that threw on one would take the worker
-  // down with it.
-  it("takes anything said before it has somewhere to draw", () => {
-    const { server, said } = mockServer();
-
-    expect(() => {
-      server.take({ kind: ELevelRenderRequest.OPEN, level: null });
-      server.take({ change: { delivered: [], released: null }, kind: ELevelRenderRequest.DELIVER });
-      server.take({ change: { delivered: [], retained: null }, kind: ELevelRenderRequest.SUPPLY });
-      server.take({ height: 1, kind: ELevelRenderRequest.RESIZE, pixelRatio: 1, width: 1 });
-      server.take({ kind: ELevelRenderRequest.DISPOSE });
-    }).not.toThrow();
-
-    expect(said).toEqual([]);
-  });
-
-  // Whoever asked is waiting on the number they asked with, so an answer has to come back even when there is
-  // nothing to measure.
-  it("answers a measurement it cannot make", () => {
+  // Whoever asked is waiting on the number they asked with, so an answer has to come back either way.
+  it("answers a measurement with the number it was asked with", () => {
     const { server, said } = mockServer();
 
     server.take({ id: 7, kind: ELevelRenderRequest.MEASURE });
 
     expect(said).toEqual([{ geometry: new Map(), id: 7, kind: ELevelRenderResponse.MEASURED }]);
+  });
+
+  it("is the motion source of the scene it built", () => {
+    const { server } = mockServer();
+
+    expect(scene.setMotion).toHaveBeenCalledWith(server);
   });
 });
