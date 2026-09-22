@@ -1,6 +1,5 @@
 import { inject, Injectable, OnDeactivation } from "@wirestate/core";
-import { BoundAction, comparer, reaction } from "@wirestate/mobx";
-import { Texture } from "three";
+import { BoundAction, reaction } from "@wirestate/mobx";
 
 import { DomRenderTarget } from "@/core/render/lib/frame/dom-render-target";
 import { TFrameRateLimit } from "@/core/render/lib/frame/render-frame-limit";
@@ -15,7 +14,6 @@ import {
   VISUAL_RENDER_SOURCE,
 } from "@/core/visuals/lib/render";
 import { IVisualPreviewViewOptions, VisualPreviewScene } from "@/core/visuals/lib/scene";
-import { IVisualBumpTextures } from "@/core/visuals/lib/visual-bump";
 import { IVisualModelViews } from "@/core/visuals/lib/visual-views";
 import { VisualViewService } from "@/core/visuals/services/visual-view.service";
 import { Logger } from "@/lib/logging";
@@ -59,20 +57,9 @@ export class VisualRenderService implements IRenderSurfaceHost {
         fireImmediately: true,
       }),
       reaction(() => this.settingsService.frameRateLimit, this.applyFrameRateLimit, { fireImmediately: true }),
-      // Against the model as well as the mark: a new model rebuilds the meshes, and both the joint and every
-      // texture have to be put back onto the ones that replaced them.
-      reaction(() => [this.source.model, this.source.highlightedJoint ?? null] as const, this.applyHighlightedJoint, {
-        equals: comparer.shallow,
-        fireImmediately: true,
-      }),
-      reaction(() => [this.source.model, this.source.textures] as const, this.applyTextures, {
-        equals: comparer.shallow,
-        fireImmediately: true,
-      }),
-      reaction(() => [this.source.model, this.source.bumps] as const, this.applyBumps, {
-        equals: comparer.shallow,
-        fireImmediately: true,
-      })
+      reaction(() => this.source.textures, this.dress, { fireImmediately: true }),
+      reaction(() => this.source.bumps, this.dress),
+      reaction(() => this.source.highlightedJoint ?? null, this.applyHighlightedJoint)
     );
   }
 
@@ -105,6 +92,9 @@ export class VisualRenderService implements IRenderSurfaceHost {
   @BoundAction()
   private applyModel(model: Nullable<IVisualModelViews>): void {
     this.scene?.setModel(model);
+
+    // A new model is new meshes, and everything hung on the old ones went with them.
+    this.dress();
   }
 
   @BoundAction()
@@ -138,21 +128,23 @@ export class VisualRenderService implements IRenderSurfaceHost {
   }
 
   @BoundAction()
-  private applyHighlightedJoint([, joint]: readonly [unknown, Nullable<[number, number, number]>]): void {
+  private applyHighlightedJoint(joint: Nullable<[number, number, number]>): void {
     this.scene?.setHighlightedJoint(joint);
   }
 
+  /**
+   * Hangs everything the source has onto the meshes that are there now.
+   */
   @BoundAction()
-  private applyTextures([, textures]: readonly [unknown, ReadonlyMap<number, Texture>]): void {
-    for (const [submeshIndex, texture] of textures) {
+  private dress(): void {
+    for (const [submeshIndex, texture] of this.source.textures) {
       this.scene?.applyTexture(submeshIndex, texture);
     }
-  }
 
-  @BoundAction()
-  private applyBumps([, bumps]: readonly [unknown, ReadonlyMap<number, IVisualBumpTextures>]): void {
-    for (const [submeshIndex, pair] of bumps) {
+    for (const [submeshIndex, pair] of this.source.bumps) {
       this.scene?.applyBump(submeshIndex, pair);
     }
+
+    this.applyHighlightedJoint(this.source.highlightedJoint ?? null);
   }
 }

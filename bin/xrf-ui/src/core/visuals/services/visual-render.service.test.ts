@@ -99,6 +99,29 @@ describe("VisualRenderService", () => {
     service.detach();
   });
 
+  // The loader publishes geometry and textures in one commit, so the two land in the same mobx batch: the meshes
+  // have to be built before anything is hung on them.
+  it("dresses a model published together with its textures", () => {
+    const texture: Texture = new Texture();
+    const model = mockVisualModelViews();
+    const source: IVisualRenderSource = mockSource();
+    const { service } = mockAttached(source);
+
+    scene.applyTexture.mockClear();
+    scene.setModel.mockClear();
+
+    runInAction(() => {
+      source.model = model;
+      source.textures = new Map([[3, texture]]);
+    });
+
+    expect(scene.setModel).toHaveBeenCalledWith(model);
+    expect(scene.applyTexture).toHaveBeenCalledWith(3, texture);
+    expect(scene.setModel.mock.invocationCallOrder[0]).toBeLessThan(scene.applyTexture.mock.invocationCallOrder[0]);
+
+    service.detach();
+  });
+
   it("releases the scene and stops carrying anything to it", () => {
     const source: IVisualRenderSource = mockSource();
     const { service, viewService } = mockAttached(source);

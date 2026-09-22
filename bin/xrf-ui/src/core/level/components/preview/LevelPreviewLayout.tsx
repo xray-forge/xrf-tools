@@ -60,8 +60,7 @@ export function LevelPreviewLayout({
   onBack,
   onDeselect = null,
 }: ILevelPreviewLayoutProps): ReactElement {
-  const view: LevelViewService = useInjection(LevelViewService);
-  const { options, lighting, camera } = view;
+  const viewService: LevelViewService = useInjection(LevelViewService);
 
   const isOpen: boolean = Boolean(name);
   const isStreaming: boolean = streaming.total > 0;
@@ -97,7 +96,7 @@ export function LevelPreviewLayout({
         icon: <LightModeIcon />,
         id: "lighting",
         label: "Lighting",
-        render: () => <LevelLightingPanel lighting={lighting} onChange={view.setLighting} />,
+        render: () => <LevelLightingPanel lighting={viewService.lighting} onChange={viewService.setLighting} />,
       },
       {
         icon: <LayersIcon />,
@@ -112,7 +111,7 @@ export function LevelPreviewLayout({
         render: () => <LevelProblemsPanel />,
       },
     ],
-    [lighting, view.setLighting]
+    [viewService.lighting, viewService.setLighting]
   );
 
   return (
@@ -120,9 +119,9 @@ export function LevelPreviewLayout({
       toolbar={
         <LevelPreviewToolbar
           subtitle={subtitle}
-          options={options}
-          actions={<LevelCameraAction camera={camera} onChange={view.setCamera} />}
-          onChangeOptions={view.setOptions}
+          options={viewService.options}
+          actions={<LevelCameraAction camera={viewService.camera} onChange={viewService.setCamera} />}
+          onChangeOptions={viewService.setOptions}
           onBack={onBack}
         />
       }
@@ -145,7 +144,7 @@ export function LevelPreviewLayout({
         >
           {renderViewport ? renderViewport({}) : <LevelPreviewViewport />}
 
-          {isOpen && options.isStatsVisible ? (
+          {isOpen && viewService.options.isStatsVisible ? (
             <>
               <LevelPreviewMetrics />
               <LevelPreviewCoordinates />
