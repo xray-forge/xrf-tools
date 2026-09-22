@@ -60,6 +60,24 @@ describe("SettingsService", () => {
     expect(mockInjectedService(SettingsService).service.catalogView).toBe("grid");
   });
 
+  // The thread it draws on is what keeps the interface answering while a level streams, so it is what a
+  // viewer gets without asking.
+  it("draws on a thread of its own until something says otherwise", () => {
+    const { service } = mockInjectedService(SettingsService);
+
+    expect(service.isOffscreenRenderEnabled).toBe(true);
+  });
+
+  it("gives back the thread choice it was told to keep", () => {
+    const { service } = mockInjectedService(SettingsService);
+
+    service.setOffscreenRenderEnabled(false);
+
+    expect(service.isOffscreenRenderEnabled).toBe(false);
+    expect(window.localStorage.getItem("xrf.preference.offscreen-render")).toBe("false");
+    expect(mockInjectedService(SettingsService).service.isOffscreenRenderEnabled).toBe(false);
+  });
+
   it("caps viewports at sixty until something says otherwise", () => {
     const { service } = mockInjectedService(SettingsService);
 

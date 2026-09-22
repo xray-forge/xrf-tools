@@ -9,11 +9,13 @@ import { SettingsAboutSection } from "./SettingsAboutSection";
 import { SettingsGeneralSection } from "./SettingsGeneralSection";
 import { SettingsIpcSection } from "./SettingsIpcSection";
 import { SettingsJobsSection } from "./SettingsJobsSection";
+import { SettingsRenderSection } from "./SettingsRenderSection";
 import { SettingsStorageSection } from "./SettingsStorageSection";
 
 /** The sections settings are grouped into, in the order the rail lists them. */
 enum EDetailSection {
   GENERAL = "general",
+  RENDER = "render",
   STORAGE = "storage",
   IPC = "ipc",
   JOBS = "jobs",
@@ -22,6 +24,7 @@ enum EDetailSection {
 
 const SECTION_LABELS: Record<EDetailSection, string> = {
   [EDetailSection.GENERAL]: "General",
+  [EDetailSection.RENDER]: "Rendering",
   [EDetailSection.STORAGE]: "Storage",
   [EDetailSection.IPC]: "IPC",
   [EDetailSection.JOBS]: "Jobs",
@@ -30,6 +33,7 @@ const SECTION_LABELS: Record<EDetailSection, string> = {
 
 const SECTIONS: ReadonlyArray<EDetailSection> = [
   EDetailSection.GENERAL,
+  EDetailSection.RENDER,
   EDetailSection.STORAGE,
   EDetailSection.IPC,
   EDetailSection.JOBS,
@@ -66,6 +70,8 @@ export function SettingsDialog({ isOpen, onClose }: ISettingsDialogProps): React
             switch (section) {
               case EDetailSection.GENERAL:
                 return <SettingsGeneralSection />;
+              case EDetailSection.RENDER:
+                return <SettingsRenderSection />;
               case EDetailSection.STORAGE:
                 return <SettingsStorageSection />;
               case EDetailSection.IPC:

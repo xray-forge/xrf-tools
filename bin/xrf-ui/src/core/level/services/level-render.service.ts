@@ -11,9 +11,9 @@ import { ILevelSurfaceGeometry } from "@/core/level/lib/surface/level-surface-ge
 import { LevelLoadService } from "@/core/level/services/level-load.service";
 import { LevelViewService } from "@/core/level/services/level-view.service";
 import { LevelViewportService } from "@/core/level/services/level-viewport.service";
-import { canRenderOffscreen } from "@/core/render/lib/frame/offscreen-render-target";
 import { IRenderSurfaceHost } from "@/core/render/lib/surface/render-surface-host";
 import { SettingsService } from "@/core/settings/services/settings";
+import { canRenderOffscreen } from "@/lib/dom/canvas";
 import { Logger } from "@/lib/logging";
 import { Maybe, Nullable } from "@/lib/types/general";
 

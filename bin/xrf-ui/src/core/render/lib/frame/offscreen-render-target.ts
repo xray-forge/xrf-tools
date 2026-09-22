@@ -9,15 +9,6 @@ export interface IOffscreenRenderSize {
 }
 
 /**
- * Whether this browser will hand a canvas to another thread at all.
- *
- * @returns Whether a page canvas can have its drawing transferred away.
- */
-export function canRenderOffscreen(): boolean {
-  return typeof HTMLCanvasElement !== "undefined" && "transferControlToOffscreen" in HTMLCanvasElement.prototype;
-}
-
-/**
  * A canvas transferred away from the page.
  */
 export class OffscreenRenderTarget implements IRenderTarget {

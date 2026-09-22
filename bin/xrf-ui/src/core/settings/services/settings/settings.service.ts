@@ -29,9 +29,9 @@ export class SettingsService {
   @Observable()
   public catalogView: TCatalogView = toCatalogView(getLocalStorageValue(CATALOG_VIEW_STORAGE_KEY));
 
-  /** Whether a level draws on a thread of its own. */
+  /** Whether a level draws on a thread of its own, which it does unless somebody has said not to. */
   @Observable()
-  public isOffscreenRenderEnabled: boolean = getLocalStorageValue(OFFSCREEN_RENDER_STORAGE_KEY) === String(true);
+  public isOffscreenRenderEnabled: boolean = getLocalStorageValue(OFFSCREEN_RENDER_STORAGE_KEY) !== String(false);
 
   /**
    * Frames a second every viewport is allowed to draw.
