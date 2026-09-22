@@ -91,7 +91,8 @@ export default defineConfig({
     reactObserverPlugin(),
   ],
   build: {
-    outDir: path.resolve(__dirname, "./target"),
+    // Beside, not over, the tool caches in `target/`: Tauri embeds this whole directory and this build empties it.
+    outDir: path.resolve(__dirname, "./target/dist"),
     emptyOutDir: true,
     rolldownOptions: {
       output: {

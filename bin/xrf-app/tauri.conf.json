@@ -11,7 +11,7 @@
       "script": "pnpm run build",
       "cwd": "../xrf-ui"
     },
-    "frontendDist": "../xrf-ui/target",
+    "frontendDist": "../xrf-ui/target/dist",
     "devUrl": "http://localhost:1420"
   },
   "bundle": {
