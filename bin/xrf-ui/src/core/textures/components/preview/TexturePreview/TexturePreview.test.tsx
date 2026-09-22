@@ -11,6 +11,7 @@ import {
   ITexturePreviewComparison,
 } from "@/core/textures/lib/texture-preview";
 import { TextureSelectionService } from "@/core/textures/services/selection";
+import { TextureViewService } from "@/core/textures/services/view";
 import { mockTextureDescription } from "@/fixtures/mocks/texture.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
@@ -37,7 +38,7 @@ function renderPreview(
   isReading: boolean = false,
   comparison: Nullable<ITexturePreviewComparison> = null
 ): RenderResult {
-  const { service, container } = mockInjectedService(TextureSelectionService, [AssetService]);
+  const { service, container } = mockInjectedService(TextureSelectionService, [AssetService, TextureViewService]);
 
   service.selected = isReading ? AsyncState.loading(selected) : AsyncState.ready(selected);
   service.preview = AsyncState.ready(selected ? new ArrayBuffer(4) : null);
@@ -78,15 +79,16 @@ describe("TexturePreview", () => {
   });
 
   it("shows surface mode while the independent PNG preview is still loading", () => {
-    const { service, container } = mockInjectedService(TextureSelectionService);
+    const { service, container } = mockInjectedService(TextureSelectionService, [TextureViewService]);
 
     service.selected = AsyncState.ready(SHAPED);
     service.preview = AsyncState.loading();
 
-    const { getByTestId, queryByText } = renderWithProviders(
-      <TexturePreview options={{ ...DEFAULT_TEXTURE_PREVIEW_OPTIONS, mode: ETexturePreviewMode.SURFACE }} />,
-      { container }
-    );
+    container
+      .get(TextureViewService)
+      .setOptions({ ...DEFAULT_TEXTURE_PREVIEW_OPTIONS, mode: ETexturePreviewMode.SURFACE });
+
+    const { getByTestId, queryByText } = renderWithProviders(<TexturePreview />, { container });
 
     expect(getByTestId("texture-surface")).toBeTruthy();
     expect(getByTestId("texture-preview-body")).toHaveClass("checkerboard");
@@ -94,7 +96,7 @@ describe("TexturePreview", () => {
   });
 
   it("keeps image mode waiting for its PNG preview", () => {
-    const { service, container } = mockInjectedService(TextureSelectionService);
+    const { service, container } = mockInjectedService(TextureSelectionService, [TextureViewService]);
 
     service.selected = AsyncState.ready(SHAPED);
     service.preview = AsyncState.loading();
@@ -108,22 +110,23 @@ describe("TexturePreview", () => {
   });
 
   it("keeps surface mode waiting while the next description is loading", () => {
-    const { service, container } = mockInjectedService(TextureSelectionService);
+    const { service, container } = mockInjectedService(TextureSelectionService, [TextureViewService]);
 
     service.selected = AsyncState.loading(SHAPED);
     service.preview = AsyncState.ready(new ArrayBuffer(4));
 
-    const { getByText, queryByTestId } = renderWithProviders(
-      <TexturePreview options={{ ...DEFAULT_TEXTURE_PREVIEW_OPTIONS, mode: ETexturePreviewMode.SURFACE }} />,
-      { container }
-    );
+    container
+      .get(TextureViewService)
+      .setOptions({ ...DEFAULT_TEXTURE_PREVIEW_OPTIONS, mode: ETexturePreviewMode.SURFACE });
+
+    const { getByText, queryByTestId } = renderWithProviders(<TexturePreview />, { container });
 
     expect(getByText("Reading…")).toBeTruthy();
     expect(queryByTestId("texture-surface")).toBeNull();
   });
 
   it("shows the actual PNG read error in the gray preview frame", () => {
-    const { service, container } = mockInjectedService(TextureSelectionService);
+    const { service, container } = mockInjectedService(TextureSelectionService, [TextureViewService]);
 
     service.selected = AsyncState.ready(SHAPED);
     service.preview = AsyncState.failed(new Error("Archive is temporarily unavailable"));
@@ -136,7 +139,7 @@ describe("TexturePreview", () => {
   });
 
   it("retries the original request after a PNG failure and displays the recovered image", async () => {
-    const { service, container } = mockInjectedService(TextureSelectionService, [AssetService]);
+    const { service, container } = mockInjectedService(TextureSelectionService, [AssetService, TextureViewService]);
     const describeTexture = jest.spyOn(texturesCommands, "describe").mockResolvedValue(SHAPED);
     const readTexture = jest
       .spyOn(texturesRawCommands, "readTexture")
@@ -161,15 +164,16 @@ describe("TexturePreview", () => {
   });
 
   it("keeps surface mode available after the PNG preview fails", () => {
-    const { service, container } = mockInjectedService(TextureSelectionService);
+    const { service, container } = mockInjectedService(TextureSelectionService, [TextureViewService]);
 
     service.selected = AsyncState.ready(SHAPED);
     service.preview = AsyncState.failed(new Error("Archive is temporarily unavailable"));
 
-    const { getByTestId, queryByRole } = renderWithProviders(
-      <TexturePreview options={{ ...DEFAULT_TEXTURE_PREVIEW_OPTIONS, mode: ETexturePreviewMode.SURFACE }} />,
-      { container }
-    );
+    container
+      .get(TextureViewService)
+      .setOptions({ ...DEFAULT_TEXTURE_PREVIEW_OPTIONS, mode: ETexturePreviewMode.SURFACE });
+
+    const { getByTestId, queryByRole } = renderWithProviders(<TexturePreview />, { container });
 
     expect(getByTestId("texture-surface")).toBeTruthy();
     expect(queryByRole("alert")).toBeNull();

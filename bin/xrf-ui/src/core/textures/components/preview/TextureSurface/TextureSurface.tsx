@@ -1,17 +1,10 @@
 import { useInjection } from "@wirestate/react";
-import { PointerEvent, ReactElement, useCallback, useEffect, useRef } from "react";
+import { PointerEvent, ReactElement, useCallback, useRef } from "react";
 
 import { TextureDescription } from "@/core/ipc/types/xrf-app";
-import { DomRenderTarget } from "@/core/render/lib/frame/dom-render-target";
-import { IRenderLighting } from "@/core/render/lib/lighting/render-lighting";
-import { SettingsService } from "@/core/settings/services/settings";
-import { DEFAULT_TEXTURE_LIGHTING } from "@/core/textures/lib/scene/texture-lighting";
-import { TextureSurfaceScene } from "@/core/textures/lib/scene/TextureSurfaceScene";
-import {
-  EMPTY_TEXTURE_SURFACE,
-  ITextureSurfaceOptions,
-  ITextureSurfaceTextures,
-} from "@/core/textures/lib/texture-surface";
+import { RenderSurface } from "@/core/render/components/RenderSurface";
+import { EMPTY_TEXTURE_SURFACE, ITextureSurfaceTextures } from "@/core/textures/lib/texture-surface";
+import { TextureRenderService } from "@/core/textures/services/render";
 import { TextureSelectionService } from "@/core/textures/services/selection";
 import { TextureSurfaceService } from "@/core/textures/services/surface";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
@@ -20,19 +13,12 @@ import { ViewportControls } from "@/core/ui/media/ViewportControls";
 import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { DOLLY_STEP } from "@/lib/media/orbit-dolly";
-import { Maybe, Nullable } from "@/lib/types/general";
+import { Nullable } from "@/lib/types/general";
 
 /** Where a light drag started, so each move swings by its own delta rather than the whole gesture. */
 interface IDragOrigin {
   x: number;
   y: number;
-}
-
-interface ITextureSurfaceProps extends BaseComponentProps {
-  options: ITextureSurfaceOptions;
-  /** What the body is lit with, which a drag over it also changes. */
-  lighting?: IRenderLighting;
-  onChangeLighting?: (lighting: IRenderLighting) => void;
 }
 
 /**
@@ -42,16 +28,11 @@ export function TextureSurface({
   "data-testid": dataTestId = "texture-surface",
   id,
   className,
-  options,
-  lighting = DEFAULT_TEXTURE_LIGHTING,
-  onChangeLighting,
-}: ITextureSurfaceProps): ReactElement {
+}: BaseComponentProps): ReactElement {
   const selectionService: TextureSelectionService = useInjection(TextureSelectionService);
   const surfaceService: TextureSurfaceService = useInjection(TextureSurfaceService);
+  const renderService: TextureRenderService = useInjection(TextureRenderService);
 
-  const containerRef = useRef<Nullable<HTMLDivElement>>(null);
-  const settingsService: SettingsService = useInjection(SettingsService);
-  const sceneRef = useRef<Nullable<TextureSurfaceScene>>(null);
   const dragRef = useRef<Nullable<IDragOrigin>>(null);
 
   const description: Nullable<TextureDescription> = selectionService.selected.value;
@@ -80,18 +61,11 @@ export function TextureSurface({
         return;
       }
 
-      const swung: Maybe<IRenderLighting> = sceneRef.current?.dragLight(
-        event.clientX - origin.x,
-        event.clientY - origin.y
-      );
+      renderService.dragLight(event.clientX - origin.x, event.clientY - origin.y);
 
       dragRef.current = { x: event.clientX, y: event.clientY };
-
-      if (swung) {
-        onChangeLighting?.(swung);
-      }
     },
-    [onChangeLighting]
+    [renderService]
   );
 
   const onPointerEnd = useCallback((event: PointerEvent<HTMLDivElement>): void => {
@@ -111,48 +85,24 @@ export function TextureSurface({
     }
   }, []);
 
-  useEffect(() => {
-    if (!containerRef.current) {
-      return;
-    }
+  const onZoomIn = useCallback((): void => renderService.dolly(1 / DOLLY_STEP), [renderService]);
 
-    const scene: TextureSurfaceScene = new TextureSurfaceScene(new DomRenderTarget(containerRef.current));
+  const onZoomOut = useCallback((): void => renderService.dolly(DOLLY_STEP), [renderService]);
 
-    sceneRef.current = scene;
-
-    return () => {
-      scene.dispose();
-      sceneRef.current = null;
-    };
-  }, []);
-
-  const onZoomIn = useCallback((): void => sceneRef.current?.dolly(1 / DOLLY_STEP), []);
-
-  const onZoomOut = useCallback((): void => sceneRef.current?.dolly(DOLLY_STEP), []);
-
-  const onReset = useCallback((): void => sceneRef.current?.reset(), []);
-
-  useEffect(() => sceneRef.current?.setTextures(textures), [textures]);
-
-  useEffect(() => sceneRef.current?.setOptions(options), [options]);
-
-  useEffect(() => sceneRef.current?.setLighting(lighting), [lighting]);
-
-  useEffect(() => {
-    sceneRef.current?.setFrameRateLimit(settingsService.frameRateLimit);
-  }, [settingsService.frameRateLimit]);
+  const onReset = useCallback((): void => renderService.reset(), [renderService]);
 
   return (
     <div data-testid={dataTestId} id={id} className={cn("relative flex min-h-0 min-w-0 grow", className)}>
       <div
-        ref={containerRef}
         className={cn("min-h-0 min-w-0 grow overflow-hidden", isUploading || isUntextured ? "invisible" : null)}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerEnd}
         onPointerCancel={onPointerEnd}
         onLostPointerCapture={onPointerEnd}
-      />
+      >
+        <RenderSurface host={renderService} />
+      </div>
 
       {isUploading ? (
         <div className={"absolute inset-0 flex items-center justify-center"}>

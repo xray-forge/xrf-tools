@@ -1,20 +1,22 @@
 import { beforeAll, describe, expect, it, jest } from "@jest/globals";
 import { fireEvent } from "@testing-library/react";
 
-import { ETextureSurfaceAlpha, ETextureSurfaceShape } from "@/core/textures/lib/texture-surface";
 import { TextureSelectionService } from "@/core/textures/services/selection";
 import { TextureSurfaceService } from "@/core/textures/services/surface";
+import { TextureViewService } from "@/core/textures/services/view";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
 const dragLight = jest.fn<(deltaX: number, deltaY: number) => void>();
 
 let TextureSurface: typeof import("./TextureSurface").TextureSurface;
+// Imported with the component rather than above it: the service is what builds the scene, so it has to be the
+// stubbed one too.
+let TextureRenderService: typeof import("@/core/textures/services/render").TextureRenderService;
 
 beforeAll(async () => {
   // Load the component after stubbing its GPU boundary; jsdom cannot construct a WebGL renderer.
   jest.doMock("@/core/textures/lib/scene/TextureSurfaceScene", () => ({
     TextureSurfaceScene: jest.fn(() => ({
-      mount: (container: HTMLElement) => container.appendChild(document.createElement("canvas")),
       dispose: jest.fn(),
       setTextures: jest.fn(),
       setOptions: jest.fn(),
@@ -25,6 +27,7 @@ beforeAll(async () => {
   }));
 
   ({ TextureSurface } = await import("./TextureSurface"));
+  ({ TextureRenderService } = await import("@/core/textures/services/render"));
 });
 
 function sendPointer(target: HTMLElement, type: string, options: MouseEventInit = {}): void {
@@ -35,18 +38,9 @@ function sendPointer(target: HTMLElement, type: string, options: MouseEventInit 
 }
 
 function startDrag(): HTMLElement {
-  const { getByTestId } = renderWithProviders(
-    <TextureSurface
-      options={{
-        alpha: ETextureSurfaceAlpha.CUT_OUT,
-        isBumped: true,
-        isLit: true,
-        shape: ETextureSurfaceShape.PLANE,
-        tiling: 1,
-      }}
-    />,
-    { bindings: [TextureSelectionService, TextureSurfaceService] }
-  );
+  const { getByTestId } = renderWithProviders(<TextureSurface />, {
+    bindings: [TextureSelectionService, TextureSurfaceService, TextureViewService, TextureRenderService],
+  });
   const surface: HTMLElement = getByTestId("texture-surface").firstElementChild as HTMLElement;
   const captured: Set<number> = new Set();
 

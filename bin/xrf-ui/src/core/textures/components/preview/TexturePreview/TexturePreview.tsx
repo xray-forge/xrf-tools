@@ -3,10 +3,8 @@ import { ReactElement, useEffect, useState } from "react";
 
 import { describeTextureShape } from "@/core/assets/lib";
 import { AssetTextureShape, TextureDescription } from "@/core/ipc/types/xrf-app";
-import { IRenderLighting } from "@/core/render/lib/lighting/render-lighting";
 import { TextureSurface } from "@/core/textures/components/preview/TextureSurface";
 import {
-  DEFAULT_TEXTURE_PREVIEW_OPTIONS,
   describeTexturePreviewGap,
   ETexturePreviewMode,
   ITexturePreviewComparison,
@@ -14,6 +12,7 @@ import {
   ITexturePreviewOptions,
 } from "@/core/textures/lib/texture-preview";
 import { TextureSelectionService } from "@/core/textures/services/selection";
+import { TextureViewService } from "@/core/textures/services/view";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
 import { ErrorState } from "@/core/ui/layout/ErrorState";
@@ -33,11 +32,6 @@ const TEXTURE_PREVIEW_ASSET_KEY: string = "texture-preview";
 const TEXTURE_COMPARISON_ASSET_KEY: string = "texture-preview-comparison";
 
 interface ITexturePreviewProps extends BaseComponentProps {
-  /** What the toolbar is asking for. Defaulted, so the preview stands on its own outside the editor. */
-  options?: ITexturePreviewOptions;
-  /** What the lit body is lit with, which a drag over it also changes. */
-  lighting?: IRenderLighting;
-  onChangeLighting?: (lighting: IRenderLighting) => void;
   /**
    * Another encoding of this texture to show beside it, or null to show the file alone.
    *
@@ -54,12 +48,12 @@ export function TexturePreview({
   "data-testid": dataTestId = "texture-preview",
   id,
   className,
-  options = DEFAULT_TEXTURE_PREVIEW_OPTIONS,
-  lighting,
-  onChangeLighting,
   comparison = null,
 }: ITexturePreviewProps): ReactElement {
   const selectionService: TextureSelectionService = useInjection(TextureSelectionService);
+  const viewService: TextureViewService = useInjection(TextureViewService);
+
+  const options: ITexturePreviewOptions = viewService.options;
 
   // Held here rather than in either pane, so a pair moves together: panning one picture to a corner and finding the
   // other still centred is the one thing a comparison must not do.
@@ -179,11 +173,7 @@ export function TexturePreview({
       // The lit surface is a transparent canvas and needs the frame's checkerboard; a gap needs no ground at all.
       isCheckered={!gap}
     >
-      {gap ? (
-        <EmptyState title={gap.title} description={gap.description} />
-      ) : (
-        <TextureSurface options={options} lighting={lighting} onChangeLighting={onChangeLighting} />
-      )}
+      {gap ? <EmptyState title={gap.title} description={gap.description} /> : <TextureSurface />}
     </TexturePreviewFrame>
   );
 }

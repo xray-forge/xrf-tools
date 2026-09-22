@@ -1,22 +1,17 @@
 import { useInjection } from "@wirestate/react";
-import { ReactElement, ReactNode, useEffect, useState } from "react";
+import { ReactElement, ReactNode, useEffect } from "react";
 
 import { TextureDescription } from "@/core/ipc/types/xrf-app";
-import { IRenderLighting } from "@/core/render/lib/lighting/render-lighting";
 import { EditorFileHeader } from "@/core/shell/editor/EditorFileHeader";
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { IEditorLocation } from "@/core/shell/editor/EditorToolbarLocation";
 import { IEditorPanel, useEditorPanels, useEditorStatus } from "@/core/shell/editor-shell";
 import { TexturePreview } from "@/core/textures/components/preview/TexturePreview";
-import { DEFAULT_TEXTURE_LIGHTING } from "@/core/textures/lib/scene/texture-lighting";
 import { describeTextureCaption, describeTextureName } from "@/core/textures/lib/texture-caption";
-import {
-  DEFAULT_TEXTURE_PREVIEW_OPTIONS,
-  ITexturePreviewComparison,
-  ITexturePreviewOptions,
-} from "@/core/textures/lib/texture-preview";
+import { ITexturePreviewComparison } from "@/core/textures/lib/texture-preview";
 import { TextureSelectionService } from "@/core/textures/services/selection";
 import { TextureSurfaceService } from "@/core/textures/services/surface";
+import { TextureViewService } from "@/core/textures/services/view";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Nullable } from "@/lib/types/general";
 
@@ -58,11 +53,7 @@ export function TexturePreviewLayout({
 }: ITexturePreviewLayoutProps): ReactElement {
   const selectionService: TextureSelectionService = useInjection(TextureSelectionService);
   const surfaceService: TextureSurfaceService = useInjection(TextureSurfaceService);
-
-  const [previewOptions, setPreviewOptions] = useState<ITexturePreviewOptions>(DEFAULT_TEXTURE_PREVIEW_OPTIONS);
-  // Beside the view options rather than in them: a drag over the body changes it too, and the two are set from
-  // different places for different reasons.
-  const [lighting, setLighting] = useState<IRenderLighting>(DEFAULT_TEXTURE_LIGHTING);
+  const viewService: TextureViewService = useInjection(TextureViewService);
 
   const description: Nullable<TextureDescription> = selectionService.selected.value;
 
@@ -90,11 +81,11 @@ export function TexturePreviewLayout({
       toolbar={
         <TextureWorkspaceToolbar
           location={sessionLocation}
-          options={previewOptions}
-          lighting={lighting}
+          options={viewService.options}
+          lighting={viewService.lighting}
           hasBump={Boolean(description?.material?.bump)}
-          onChangeOptions={setPreviewOptions}
-          onChangeLighting={setLighting}
+          onChangeOptions={viewService.setOptions}
+          onChangeLighting={viewService.setLighting}
           onBack={onBack}
         />
       }
@@ -113,12 +104,7 @@ export function TexturePreviewLayout({
         ) : null}
 
         <div className={"flex min-h-0 min-w-0 grow overflow-hidden"}>
-          <TexturePreview
-            options={previewOptions}
-            lighting={lighting}
-            comparison={comparison}
-            onChangeLighting={setLighting}
-          />
+          <TexturePreview comparison={comparison} />
         </div>
       </div>
     </EditorLayout>
