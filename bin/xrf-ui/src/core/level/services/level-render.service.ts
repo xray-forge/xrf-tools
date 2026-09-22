@@ -55,7 +55,7 @@ export class LevelRenderService extends RenderSurfaceService {
   public onSettingsChanged(event: WireEvent<ISettingsChangedPayload<unknown>>): void {
     if (event.payload?.setting === ESetting.OFFSCREEN_RENDER && this.isAttached) {
       this.remount();
-      this.loadService.restream();
+      void this.loadService.restream();
     }
   }
 

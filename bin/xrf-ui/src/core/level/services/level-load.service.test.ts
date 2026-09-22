@@ -142,6 +142,55 @@ describe("LevelLoadService", () => {
     expect(service.residency).toEqual(createLevelResidency(2000));
   });
 
+  // The same defect, one thread over: a level handed to a renderer on another thread is read again from scratch,
+  // and the first attempt forgot where the texture files were along with what had been supplied. Every surface of
+  // the level came back in the missing-texture checkerboard.
+  it("dresses the level again when it is read for a second renderer", async () => {
+    const { level, description, buffer } = mockStreamable([outlineAt(0, 5)]);
+    const { service } = mockInjectedService(LevelLoadService);
+
+    setMockInvokeResponses({
+      ["plugin:assets|read_asset"]: mockDdsFile(),
+      ["plugin:levels|get_level"]: mockSessionResponse({ ...level, textures: [mockLevelTextureReference("stone")] }),
+      ["plugin:levels|open_sector"]: mockSessionResponse((args?: Record<string, unknown>) => ({
+        ...description,
+        sector: args?.sector as number,
+      })),
+      ["plugin:levels|read_sector"]: buffer,
+    });
+
+    await service.restore();
+    await service.stream(ORIGIN);
+
+    const supply = recordSupply(service);
+
+    await service.restream();
+
+    expect(supply.delivered.map((it) => it.reference)).toContain("stone");
+    expect(supply.delivered.every((it) => it.reason === null)).toBe(true);
+    expect(supply.delivered[0].bytes.byteLength).toBeGreaterThan(0);
+  });
+
+  // Nothing is held any more, so whatever draws now is told so before it is given anything.
+  it("tells whatever draws that everything it held is gone", async () => {
+    const { level, description, buffer } = mockStreamable([outlineAt(0, 5)]);
+    const { service } = mockInjectedService(LevelLoadService);
+
+    armLevel(level, description, buffer);
+
+    await service.load({ kind: "level", path: "levels\\zaton" } as never, ROOTS);
+    await service.stream(ORIGIN);
+
+    const released: Array<Nullable<ReadonlyArray<number>>> = [];
+
+    service.sectors.subscribe((change) => released.push(change.released));
+
+    await service.restream();
+
+    expect(released[0]).toBeNull();
+    expect(service.sectorReport.held).toEqual([0]);
+  });
+
   // Adopted with its session id, so the sector reads that follow a restore belong to the opening the backend holds
   // rather than to nothing.
   it("reads sectors against the session it restored", async () => {

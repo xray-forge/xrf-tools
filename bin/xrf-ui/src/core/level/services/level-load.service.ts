@@ -509,19 +509,16 @@ export class LevelLoadService {
    * Forgets what is resident and reads it again, for a level that has to be handed to a different renderer.
    */
   @BoundAction()
-  public restream(): void {
+  public restream(): Promise<void> {
     const from: Nullable<ILevelPoint> = this.streamedFrom;
 
     this.scheduler.clear();
     this.supplied.clear();
-    this.reading.close();
     this.releaseSectors();
 
     this.streamedFrom = null;
 
-    if (from) {
-      void this.stream(from);
-    }
+    return from ? this.stream(from) : Promise.resolve();
   }
 
   /**
