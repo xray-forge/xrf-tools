@@ -12,6 +12,7 @@ function mockReading(sector: number, total: number, stages: Partial<ILevelStream
   return {
     deliver: 0,
     draws: 1,
+    files: 0,
     pack: 0,
     sector,
     textures: 0,

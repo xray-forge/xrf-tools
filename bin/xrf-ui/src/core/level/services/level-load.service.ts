@@ -113,7 +113,7 @@ export class LevelLoadService {
     isOpen: (sessionId: string): boolean => this.isOpen(sessionId),
     listTextures: (description: SectorDescription): ReadonlyArray<ISectorTextureRequest> =>
       this.listTextures(description),
-    load: (requests: ReadonlyArray<ISectorTextureRequest>): Promise<void> => this.supply(requests),
+    load: (requests: ReadonlyArray<ISectorTextureRequest>): Promise<number> => this.supply(requests),
     record: (reading: ILevelStreamReading): void => this.noteReading(reading),
   });
 
@@ -203,7 +203,7 @@ export class LevelLoadService {
    *
    * @param requests - What the sector names, base textures and lightmaps alike.
    */
-  private async supply(requests: ReadonlyArray<ISectorTextureRequest>): Promise<void> {
+  private async supply(requests: ReadonlyArray<ISectorTextureRequest>): Promise<number> {
     const wanted: Array<ISectorTextureRequest> = requests.filter((request: ISectorTextureRequest) => {
       const supplied: Maybe<ISectorTextureRequest> = this.supplied.get(request.reference);
 
@@ -214,7 +214,7 @@ export class LevelLoadService {
     });
 
     if (!wanted.length) {
-      return;
+      return 0;
     }
 
     for (const request of wanted) {
@@ -226,6 +226,8 @@ export class LevelLoadService {
     );
 
     this.notifyTextures({ delivered, retained: null });
+
+    return wanted.length;
   }
 
   private notifyTextures(change: ILevelTextureSupplyChange): void {

@@ -100,21 +100,6 @@ export class RenderViewport {
     this.renderFrame();
   }
 
-  /** The canvas, for binding input to and for a scene that wants it focusable. */
-  public get domElement(): HTMLCanvasElement | OffscreenCanvas {
-    return this.target.canvas;
-  }
-
-  /** Mean frame time in milliseconds, or zero before two frames have been drawn. */
-  public get frameTime(): number {
-    return this.timer.frameTime;
-  }
-
-  /** Frames a second over the same window. */
-  public get framesPerSecond(): number {
-    return this.timer.framesPerSecond;
-  }
-
   /**
    * What the last frame cost.
    */

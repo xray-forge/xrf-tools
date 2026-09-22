@@ -11,8 +11,13 @@ import { Maybe } from "@/lib/types/general";
 
 /** What one sector read needs of whoever owns the level, so the reader owns none of it. */
 export interface ILevelSectorReaderHost {
-  /** The level's uploaded textures, which the reader adds to and never disposes. */
-  load(requests: ReadonlyArray<ISectorTextureRequest>): Promise<void>;
+  /**
+   * Reads the files a sector's surfaces name, for whoever draws them to upload.
+   *
+   * @param requests - What its surfaces name, base textures and lightmaps alike.
+   * @returns How many files it actually fetched, which is what the round trips were spent on.
+   */
+  load(requests: ReadonlyArray<ISectorTextureRequest>): Promise<number>;
   /** What one sector's surfaces name, joined against the level's shader table. */
   listTextures(description: SectorDescription): ReadonlyArray<ISectorTextureRequest>;
   /** Whether that level opening is still the one held, checked once the read has everything in hand. */
@@ -100,7 +105,7 @@ export class LevelSectorReader {
     this.claimed.set(key, requested);
 
     // Before the sector is published, so a surface is never drawn untextured for a frame and then corrected.
-    await this.host.load(requested);
+    const files: number = await this.host.load(requested);
 
     const textures: number = stage.lap();
 
@@ -118,6 +123,7 @@ export class LevelSectorReader {
 
     this.host.record({
       deliver: stage2.elapsed(),
+      files,
       draws: snapshot.value.sections.length + snapshot.value.instances.length,
       pack,
       sector,

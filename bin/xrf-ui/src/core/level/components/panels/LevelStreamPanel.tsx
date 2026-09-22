@@ -55,6 +55,14 @@ export function LevelStreamPanel({
           {LEVEL_STREAM_STAGES.map((stage: keyof ILevelStreamStages) => (
             <EditorPanelProperty key={stage} label={stage} value={formatDuration(stream.mean?.[stage] ?? 0)} />
           ))}
+          <EditorPanelProperty
+            label={"per texture file"}
+            value={
+              stream.last?.files
+                ? `${formatDuration(stream.last.textures / stream.last.files)} · ${stream.last.files} files`
+                : "none read"
+            }
+          />
           <EditorPanelProperty label={"Mean"} value={formatDuration(stream.mean.total)} />
           <EditorPanelProperty
             label={"Worst"}

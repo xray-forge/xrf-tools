@@ -11,7 +11,7 @@ export interface ILevelStreamStages {
   transfer: number;
   /** Binding views over those bytes, which copies nothing and should stay near zero. */
   views: number;
-  /** Reading and uploading every texture it names that was not already held. */
+  /** Reading every texture it names that was not already held. */
   textures: number;
   /** Handing it on to whatever draws it, which is what builds its geometry. */
   deliver: number;
@@ -22,6 +22,8 @@ export interface ILevelStreamStages {
 /** What one sector cost, and how much of it there was to pay for. */
 export interface ILevelStreamReading extends ILevelStreamStages {
   sector: number;
+  /** Texture files this sector was the first to ask for, which is what its `textures` stage bought. */
+  files: number;
   vertices: number;
   /** Draws the sector adds, its own sections and its instanced meshes together. */
   draws: number;
