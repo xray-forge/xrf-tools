@@ -1,7 +1,5 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
-import { EventBus, WireEvent } from "@wirestate/core";
 
-import { ESetting, ISettingsChangedPayload, SETTINGS_CHANGED_EVENT } from "@/core/settings/lib/settings-changed";
 import { SettingsService } from "@/core/settings/services/settings/settings.service";
 import { mockInjectedService } from "@/fixtures/utils/container";
 
@@ -94,32 +92,5 @@ describe("SettingsService", () => {
     expect(service.frameRateLimit).toBe("30");
     expect(window.localStorage.getItem("xrf.preference.frame-rate-limit")).toBe("30");
     expect(mockInjectedService(SettingsService).service.frameRateLimit).toBe("30");
-  });
-
-  // Announced as well as observable, so something that has to be rebuilt rather than re-read - a viewport on a
-  // different thread - hears about it without this service knowing there is such a thing.
-  it("announces what changed", () => {
-    const { service, container } = mockInjectedService(SettingsService);
-    const announced: Array<ISettingsChangedPayload<unknown>> = [];
-
-    container
-      .get(EventBus)
-      .subscribe(SETTINGS_CHANGED_EVENT, (event: WireEvent<ISettingsChangedPayload<unknown>>) =>
-        announced.push(event.payload as ISettingsChangedPayload<unknown>)
-      );
-
-    service.setOffscreenRenderEnabled(false);
-    service.setFrameRateLimit("30");
-    service.setDevModeEnabled(false);
-    service.setCatalogView("grid");
-
-    // The value travels with the name, so a handler that only has to act on what it became does not have to
-    // reach back into this service to find out.
-    expect(announced).toEqual([
-      { setting: ESetting.OFFSCREEN_RENDER, value: false },
-      { setting: ESetting.FRAME_RATE_LIMIT, value: "30" },
-      { setting: ESetting.DEV_MODE, value: false },
-      { setting: ESetting.CATALOG_VIEW, value: "grid" },
-    ]);
   });
 });

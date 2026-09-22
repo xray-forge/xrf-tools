@@ -22,7 +22,7 @@ import { Maybe, Nullable } from "@/lib/types/general";
 
 /** What a renderer on another thread needs: somewhere to draw, and somewhere to report to. */
 export interface ILevelWorkerRendererOptions {
-  container: HTMLElement;
+  target: DomRenderTarget;
   events: ILevelRendererEvents;
 }
 
@@ -47,11 +47,9 @@ export class LevelWorkerRenderer implements ILevelRenderer {
   /** Whether the last motion posted said anything, so a stop is posted once rather than sixty times a second. */
   private isMoving: boolean = false;
 
-  public constructor({ container, events }: ILevelWorkerRendererOptions) {
+  public constructor({ target, events }: ILevelWorkerRendererOptions) {
     this.events = events;
-
-    // The same canvas the local renderer draws on, made the same way: only the thread that draws on it differs.
-    this.target = new DomRenderTarget(container);
+    this.target = target;
     this.controls = new LevelFlyControls(this.target.canvas);
 
     this.worker = new Worker(new URL("./level-render.worker.ts", import.meta.url), { type: "module" });

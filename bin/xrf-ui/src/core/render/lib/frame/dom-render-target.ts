@@ -1,3 +1,8 @@
+import {
+  DEFAULT_RENDER_RESOLUTION,
+  ERenderResolution,
+  toRenderPixelRatio,
+} from "@/core/render/lib/frame/render-resolution";
 import { IRenderTarget } from "@/core/render/lib/frame/render-target";
 import { bindSelectionReset } from "@/lib/dom/selection";
 import { Nullable } from "@/lib/types/general";
@@ -15,8 +20,10 @@ export class DomRenderTarget implements IRenderTarget {
   private readonly unbindSelectionReset: () => void;
 
   private onResized: Nullable<() => void> = null;
+  private resolution: ERenderResolution = DEFAULT_RENDER_RESOLUTION;
 
-  public constructor(container: HTMLElement) {
+  public constructor(container: HTMLElement, resolution: ERenderResolution = DEFAULT_RENDER_RESOLUTION) {
+    this.resolution = resolution;
     this.container = container;
     this.canvas.style.display = "block";
     // Filled by css rather than by whatever draws on it: a canvas whose drawing has been handed to another
@@ -37,7 +44,20 @@ export class DomRenderTarget implements IRenderTarget {
   }
 
   public get pixelRatio(): number {
-    return window.devicePixelRatio;
+    return toRenderPixelRatio(this.resolution, this.height, window.devicePixelRatio);
+  }
+
+  /**
+   * Takes how many pixels to draw.
+   *
+   * @param resolution - What the viewer asked for.
+   */
+  public setResolution(resolution: ERenderResolution): void {
+    if (this.resolution !== resolution) {
+      this.resolution = resolution;
+
+      this.onResized?.();
+    }
   }
 
   public get width(): number {

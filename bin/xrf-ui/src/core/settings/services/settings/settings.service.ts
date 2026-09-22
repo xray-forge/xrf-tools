@@ -1,14 +1,15 @@
-import { EventBus, inject, Injectable, OnDeprovision, OnProvision, ProvisionId } from "@wirestate/core";
+import { Injectable, OnDeprovision, OnProvision, ProvisionId } from "@wirestate/core";
 import { BoundAction, Observable } from "@wirestate/mobx";
 
 import { TFrameRateLimit, toFrameRateLimit } from "@/core/render/lib/frame/render-frame-limit";
+import { ERenderResolution, toRenderResolution } from "@/core/render/lib/frame/render-resolution";
 import { TCatalogView, toCatalogView } from "@/core/settings/lib/catalog-view";
-import { ESetting, ISettingsChangedPayload, SETTINGS_CHANGED_EVENT } from "@/core/settings/lib/settings-changed";
 import {
   CATALOG_VIEW_STORAGE_KEY,
   DEV_MODE_STORAGE_KEY,
   FRAME_RATE_LIMIT_STORAGE_KEY,
   OFFSCREEN_RENDER_STORAGE_KEY,
+  RENDER_RESOLUTION_STORAGE_KEY,
 } from "@/core/storage";
 import { isDevelopmentBuild } from "@/lib/env";
 import { getLocalStorageValue, setLocalStorageValue } from "@/lib/local-storage";
@@ -40,7 +41,8 @@ export class SettingsService {
   @Observable()
   public frameRateLimit: TFrameRateLimit = toFrameRateLimit(getLocalStorageValue(FRAME_RATE_LIMIT_STORAGE_KEY));
 
-  public constructor(private readonly eventBus: EventBus = inject(EventBus)) {}
+  @Observable()
+  public renderResolution: ERenderResolution = toRenderResolution(getLocalStorageValue(RENDER_RESOLUTION_STORAGE_KEY));
 
   /**
    * @returns The stored choice, or whether this is a development build when there is none.
@@ -66,11 +68,6 @@ export class SettingsService {
     this.log.info("Set dev mode:", isEnabled);
 
     this.isDevModeEnabled = isEnabled;
-    this.eventBus.emit<ISettingsChangedPayload<boolean>>(SETTINGS_CHANGED_EVENT, {
-      setting: ESetting.DEV_MODE,
-      value: isEnabled,
-    });
-
     setLocalStorageValue(DEV_MODE_STORAGE_KEY, String(isEnabled));
   }
 
@@ -79,11 +76,6 @@ export class SettingsService {
     this.log.info("Set offscreen render:", isEnabled);
 
     this.isOffscreenRenderEnabled = isEnabled;
-    this.eventBus.emit<ISettingsChangedPayload<boolean>>(SETTINGS_CHANGED_EVENT, {
-      setting: ESetting.OFFSCREEN_RENDER,
-      value: isEnabled,
-    });
-
     setLocalStorageValue(OFFSCREEN_RENDER_STORAGE_KEY, String(isEnabled));
   }
 
@@ -92,12 +84,15 @@ export class SettingsService {
     this.log.info("Set frame rate limit:", limit);
 
     this.frameRateLimit = limit;
-    this.eventBus.emit<ISettingsChangedPayload<TFrameRateLimit>>(SETTINGS_CHANGED_EVENT, {
-      setting: ESetting.FRAME_RATE_LIMIT,
-      value: limit,
-    });
-
     setLocalStorageValue(FRAME_RATE_LIMIT_STORAGE_KEY, limit);
+  }
+
+  @BoundAction()
+  public setRenderResolution(resolution: ERenderResolution): void {
+    this.log.info("Set render resolution:", resolution);
+
+    this.renderResolution = resolution;
+    setLocalStorageValue(RENDER_RESOLUTION_STORAGE_KEY, resolution);
   }
 
   @BoundAction()
@@ -105,11 +100,6 @@ export class SettingsService {
     this.log.info("Set catalog view:", view);
 
     this.catalogView = view;
-    this.eventBus.emit<ISettingsChangedPayload<TCatalogView>>(SETTINGS_CHANGED_EVENT, {
-      setting: ESetting.CATALOG_VIEW,
-      value: view,
-    });
-
     setLocalStorageValue(CATALOG_VIEW_STORAGE_KEY, view);
   }
 }

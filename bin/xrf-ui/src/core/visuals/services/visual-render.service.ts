@@ -1,12 +1,12 @@
-import { inject, Injectable, OnDeactivation, OnEvent, WireEvent } from "@wirestate/core";
+import { inject, Injectable, OnDeactivation } from "@wirestate/core";
 import { BoundAction, Observable, reaction, RefObservable } from "@wirestate/mobx";
 
 import { DomRenderTarget } from "@/core/render/lib/frame/dom-render-target";
 import { EMPTY_RENDER_FRAME_COST, IRenderFrameCost } from "@/core/render/lib/frame/render-frame-cost";
 import { TFrameRateLimit } from "@/core/render/lib/frame/render-frame-limit";
+import { ERenderResolution } from "@/core/render/lib/frame/render-resolution";
 import { IRenderLighting } from "@/core/render/lib/lighting/render-lighting";
 import { RenderSurfaceService } from "@/core/render/lib/surface/render-surface-service";
-import { ESetting, ISettingsChangedPayload, SETTINGS_CHANGED_EVENT } from "@/core/settings/lib/settings-changed";
 import { SettingsService } from "@/core/settings/services/settings";
 import {
   BIND_POSE,
@@ -37,6 +37,8 @@ export class VisualRenderService extends RenderSurfaceService {
   public isOffscreen: boolean = false;
 
   private scene: Nullable<VisualPreviewScene> = null;
+  private target: Nullable<DomRenderTarget> = null;
+
   private readonly reactions: Array<() => void> = [];
 
   public constructor(
@@ -55,20 +57,12 @@ export class VisualRenderService extends RenderSurfaceService {
     super.detach();
   }
 
-  /**
-   * Draws again on whichever thread the setting now names.
-   *
-   * @param event - The setting that changed.
-   */
-  @OnEvent(SETTINGS_CHANGED_EVENT)
-  public onSettingsChanged(event: WireEvent<ISettingsChangedPayload<unknown>>): void {
-    if (event.payload?.setting === ESetting.OFFSCREEN_RENDER && this.isAttached) {
-      this.remount();
-    }
-  }
-
   protected mount(container: HTMLElement): void {
-    this.scene = new VisualPreviewScene(new DomRenderTarget(container), null);
+    const target: DomRenderTarget = new DomRenderTarget(container, this.settingsService.renderResolution);
+
+    this.scene = new VisualPreviewScene(target, null);
+
+    this.target = target;
     this.scene.setReporter(this.takeCost);
 
     // Nothing else can be said yet: a scene that only draws on this thread is the only one there is.
@@ -86,6 +80,8 @@ export class VisualRenderService extends RenderSurfaceService {
         fireImmediately: true,
       }),
       reaction(() => this.settingsService.frameRateLimit, this.applyFrameRateLimit, { fireImmediately: true }),
+      reaction(() => this.settingsService.renderResolution, this.applyResolution),
+      reaction(() => this.settingsService.isOffscreenRenderEnabled, this.rebuild),
       reaction(() => this.source.textures, this.dress, { fireImmediately: true }),
       reaction(() => this.source.bumps, this.dress),
       reaction(() => this.source.highlightedJoint ?? null, this.applyHighlightedJoint)
@@ -101,8 +97,20 @@ export class VisualRenderService extends RenderSurfaceService {
     this.scene?.setReporter(null);
     this.scene?.dispose();
     this.scene = null;
+    this.target = null;
 
     this.takeCost(EMPTY_RENDER_FRAME_COST);
+  }
+
+  /** Draws again on whichever thread the setting now names, which only a second scene can answer. */
+  @BoundAction()
+  private rebuild(): void {
+    this.remount();
+  }
+
+  @BoundAction()
+  private applyResolution(resolution: ERenderResolution): void {
+    this.target?.setResolution(resolution);
   }
 
   @BoundAction()

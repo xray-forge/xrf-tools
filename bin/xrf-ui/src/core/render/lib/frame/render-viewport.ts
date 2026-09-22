@@ -76,6 +76,7 @@ export class RenderViewport {
   private readonly drawnSize: Vector2 = new Vector2();
   private renderedWidth: number = 0;
   private renderedHeight: number = 0;
+  private renderedRatio: number = 0;
 
   public constructor(target: IRenderTarget, config: IRenderViewportConfig, handlers: IRenderViewportHandlers = {}) {
     this.handlers = handlers;
@@ -185,7 +186,7 @@ export class RenderViewport {
       return;
     }
 
-    const { width, height } = this.target;
+    const { width, height, pixelRatio } = this.target;
 
     if (!width || !height) {
       return;
@@ -193,15 +194,19 @@ export class RenderViewport {
 
     this.isResizePending = false;
 
-    if (width === this.renderedWidth && height === this.renderedHeight) {
+    // The ratio as well as the size: the element can stay exactly as it is while how much is drawn into it
+    // changes, and a display the window was dragged onto changes it without the element moving either.
+    if (width === this.renderedWidth && height === this.renderedHeight && pixelRatio === this.renderedRatio) {
       return;
     }
 
     this.renderedWidth = width;
     this.renderedHeight = height;
+    this.renderedRatio = pixelRatio;
 
     this.camera.aspect = width / height;
     this.camera.updateProjectionMatrix();
+    this.renderer.setPixelRatio(pixelRatio);
     this.renderer.setSize(width, height, this.target.isStyled);
 
     this.handlers.onResized?.(width, height);

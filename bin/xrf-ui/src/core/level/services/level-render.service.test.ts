@@ -49,8 +49,6 @@ function mockAttached(): {
   ]);
   const service = container.get(LevelRenderService);
 
-  // Event handlers are wired when a container is provisioned, which is what an application does to it.
-  container.provision();
   service.attach(document.createElement("div"));
 
   return { container, service, settingsService: container.get(SettingsService) };
@@ -138,7 +136,6 @@ describe("LevelRenderService", () => {
     ]);
 
     container.get(LevelRenderService);
-    container.provision();
     container.get(SettingsService).setOffscreenRenderEnabled(false);
 
     expect(local).not.toHaveBeenCalled();

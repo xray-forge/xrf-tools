@@ -1,4 +1,4 @@
-import { inject, Injectable, OnDeactivation, OnEvent, WireEvent } from "@wirestate/core";
+import { inject, Injectable, OnDeactivation } from "@wirestate/core";
 import { BoundAction, reaction } from "@wirestate/mobx";
 
 import { SelectedLevelDescription } from "@/core/ipc/types/xrf-app";
@@ -11,8 +11,9 @@ import { ILevelSurfaceGeometry } from "@/core/level/lib/surface/level-surface-ge
 import { LevelLoadService } from "@/core/level/services/level-load.service";
 import { LevelViewService } from "@/core/level/services/level-view.service";
 import { LevelViewportService } from "@/core/level/services/level-viewport.service";
+import { DomRenderTarget } from "@/core/render/lib/frame/dom-render-target";
+import { ERenderResolution } from "@/core/render/lib/frame/render-resolution";
 import { RenderSurfaceService } from "@/core/render/lib/surface/render-surface-service";
-import { ESetting, ISettingsChangedPayload, SETTINGS_CHANGED_EVENT } from "@/core/settings/lib/settings-changed";
 import { SettingsService } from "@/core/settings/services/settings";
 import { canRenderOffscreen } from "@/lib/dom/canvas";
 import { Logger } from "@/lib/logging";
@@ -26,7 +27,9 @@ export class LevelRenderService extends RenderSurfaceService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
   private renderer: Nullable<ILevelRenderer> = null;
+  private target: Nullable<DomRenderTarget> = null;
   private bridge: Nullable<LevelRenderBridge> = null;
+
   private readonly reactions: Array<() => void> = [];
 
   public constructor(
@@ -46,19 +49,6 @@ export class LevelRenderService extends RenderSurfaceService {
     super.detach();
   }
 
-  /**
-   * Draws the level again on whichever thread the setting now names.
-   *
-   * @param event - The setting that changed.
-   */
-  @OnEvent(SETTINGS_CHANGED_EVENT)
-  public onSettingsChanged(event: WireEvent<ISettingsChangedPayload<unknown>>): void {
-    if (event.payload?.setting === ESetting.OFFSCREEN_RENDER && this.isAttached) {
-      this.remount();
-      void this.loadService.restream();
-    }
-  }
-
   protected mount(container: HTMLElement): void {
     const events: ILevelRendererEvents = {
       onCameraMoved: (point: ILevelPoint): void => void this.loadService.stream(point),
@@ -67,9 +57,13 @@ export class LevelRenderService extends RenderSurfaceService {
     };
 
     const isOffscreen: boolean = this.settingsService.isOffscreenRenderEnabled && canRenderOffscreen();
+
+    const target: DomRenderTarget = new DomRenderTarget(container, this.settingsService.renderResolution);
     const renderer: ILevelRenderer = isOffscreen
-      ? new LevelWorkerRenderer({ container, events })
-      : new LevelLocalRenderer({ container, events });
+      ? new LevelWorkerRenderer({ events, target })
+      : new LevelLocalRenderer({ events, target });
+
+    this.target = target;
 
     this.log.info("Drawing the level", isOffscreen ? "on a thread of its own" : "on this thread");
 
@@ -85,7 +79,9 @@ export class LevelRenderService extends RenderSurfaceService {
     // level was opened would otherwise draw nothing until something happened to change.
     this.reactions.push(
       reaction(() => this.loadService.level.value?.selected.value, this.openLevel, { fireImmediately: true }),
-      reaction(() => this.getView(), this.setView, { fireImmediately: true })
+      reaction(() => this.getView(), this.setView, { fireImmediately: true }),
+      reaction(() => this.settingsService.renderResolution, this.setResolution),
+      reaction(() => this.settingsService.isOffscreenRenderEnabled, this.rebuild)
     );
   }
 
@@ -99,6 +95,7 @@ export class LevelRenderService extends RenderSurfaceService {
     this.bridge = null;
     this.renderer?.dispose();
     this.renderer = null;
+    this.target = null;
   }
 
   @BoundAction()
@@ -109,6 +106,21 @@ export class LevelRenderService extends RenderSurfaceService {
   @BoundAction()
   private setView(view: ILevelRenderView): void {
     this.renderer?.setView(view);
+  }
+
+  /**
+   * Draws the level again on whichever thread the setting now names.
+   */
+  @BoundAction()
+  private rebuild(): void {
+    this.remount();
+
+    void this.loadService.restream();
+  }
+
+  @BoundAction()
+  private setResolution(resolution: ERenderResolution): void {
+    this.target?.setResolution(resolution);
   }
 
   /**

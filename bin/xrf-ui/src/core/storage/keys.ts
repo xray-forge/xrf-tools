@@ -24,6 +24,9 @@ export const MEDIA_VOLUME_STORAGE_KEY: string = buildStorageKey(EStorageNamespac
 export const FRAME_RATE_LIMIT_STORAGE_KEY: string = buildStorageKey(EStorageNamespace.PREFERENCE, "frame-rate-limit");
 /** Whether a level draws on a thread of its own, which the platform may not allow and a person may not want. */
 export const OFFSCREEN_RENDER_STORAGE_KEY: string = buildStorageKey(EStorageNamespace.PREFERENCE, "offscreen-render");
+
+/** How many pixels every viewport draws, whatever size it is shown at. */
+export const RENDER_RESOLUTION_STORAGE_KEY: string = buildStorageKey(EStorageNamespace.PREFERENCE, "render-resolution");
 /** Chords a person bound themselves, as one command id to chords map. */
 export const KEYBINDS_STORAGE_KEY: string = buildStorageKey(EStorageNamespace.PREFERENCE, "keybinds");
 

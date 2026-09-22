@@ -12,7 +12,7 @@ import { Nullable } from "@/lib/types/general";
 
 /** What a renderer needs to exist at all: somewhere to draw, and somewhere to report to. */
 export interface ILevelLocalRendererOptions {
-  container: HTMLElement;
+  target: DomRenderTarget;
   events: ILevelRendererEvents;
 }
 
@@ -23,9 +23,7 @@ export class LevelLocalRenderer implements ILevelRenderer {
   private readonly scene: LevelPreviewScene;
   private readonly controls: LevelFlyControls;
 
-  public constructor({ container, events }: ILevelLocalRendererOptions) {
-    const target: DomRenderTarget = new DomRenderTarget(container);
-
+  public constructor({ target, events }: ILevelLocalRendererOptions) {
     this.scene = new LevelPreviewScene(target, {
       onCameraMoved: (point) => events.onCameraMoved(point),
       onReport: (stats, camera) => events.onReport(stats, camera),

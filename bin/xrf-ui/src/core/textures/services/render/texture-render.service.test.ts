@@ -43,12 +43,11 @@ function mockAttached(): {
 } {
   const container: Container = mockContainer([TextureViewService, TextureSurfaceService, TextureRenderService]);
 
-  const service = container.get(TextureRenderService);
-
-  // Event handlers are wired when a container is provisioned, which is what an application does to it.
-  container.provision();
-
-  return { container, service, viewService: container.get(TextureViewService) };
+  return {
+    container,
+    service: container.get(TextureRenderService),
+    viewService: container.get(TextureViewService),
+  };
 }
 
 describe("TextureRenderService", () => {
