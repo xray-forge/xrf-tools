@@ -45,13 +45,8 @@ export function TexturesEditorWorkspace({
 
   const onBack = useCallback(() => selectionService.clear(), [selectionService]);
 
-  // The draft belongs to the texture that is open rather than to whichever panel is on screen, so it is bound here.
-  // Bound from a panel it would exist only while that panel is mounted, and everything downstream of it - the save,
-  // the leave prompt - would be answering about a draft that may not have been made yet.
   useEffect(() => editorService.bind(description), [editorService, description]);
 
-  // One texture, so the count is one or none. The saver is published only when there is somewhere to write: a texture
-  // served out of an archive can be edited and read, and the prompt says so by offering nothing but discarding.
   useEditorLifecycle({
     isBusy: editorService.save.isRunning,
     dirtyCount: editorService.isDirty ? 1 : 0,

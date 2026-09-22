@@ -16,11 +16,6 @@ import { TexturesEditorApplication } from "./TexturesEditorApplication";
 
 const VOCABULARY: TextureVocabulary = mockTextureVocabulary();
 
-/**
- * Builds the container out of the application's deferred runtime bindings.
- *
- * @returns A test container with the application's services.
- */
 async function mockApplicationContainer(): Promise<Container> {
   const runtime = await TEXTURES_EDITOR_APPLICATION.load?.();
 
