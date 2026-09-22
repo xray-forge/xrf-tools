@@ -506,6 +506,25 @@ export class LevelLoadService {
   }
 
   /**
+   * Forgets what is resident and reads it again, for a level that has to be handed to a different renderer.
+   */
+  @BoundAction()
+  public restream(): void {
+    const from: Nullable<ILevelPoint> = this.streamedFrom;
+
+    this.scheduler.clear();
+    this.supplied.clear();
+    this.reading.close();
+    this.releaseSectors();
+
+    this.streamedFrom = null;
+
+    if (from) {
+      void this.stream(from);
+    }
+  }
+
+  /**
    * Abandons pending work and releases the level and every sector it held.
    */
   @BoundAction()

@@ -4,7 +4,7 @@ import { BoundAction, reaction } from "@wirestate/mobx";
 import { DomRenderTarget } from "@/core/render/lib/frame/dom-render-target";
 import { TFrameRateLimit } from "@/core/render/lib/frame/render-frame-limit";
 import { IRenderLighting } from "@/core/render/lib/lighting/render-lighting";
-import { IRenderSurfaceHost } from "@/core/render/lib/surface/render-surface-host";
+import { RenderSurfaceService } from "@/core/render/lib/surface/render-surface-service";
 import { SettingsService } from "@/core/settings/services/settings";
 import { TextureSurfaceScene } from "@/core/textures/lib/scene/TextureSurfaceScene";
 import {
@@ -21,7 +21,7 @@ import { Nullable } from "@/lib/types/general";
  * Owns the scene the open texture is laid on, and everything said to it.
  */
 @Injectable()
-export class TextureRenderService implements IRenderSurfaceHost {
+export class TextureRenderService extends RenderSurfaceService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
   private scene: Nullable<TextureSurfaceScene> = null;
@@ -31,16 +31,19 @@ export class TextureRenderService implements IRenderSurfaceHost {
     private readonly viewService: TextureViewService = inject(TextureViewService),
     private readonly surfaceService: TextureSurfaceService = inject(TextureSurfaceService),
     private readonly settingsService: SettingsService = inject(SettingsService)
-  ) {}
+  ) {
+    super();
+  }
 
   /**
-   * Takes somewhere to draw, and starts telling a scene about the texture.
-   *
-   * @param container - The element the viewport fills.
+   * Releases the scene and stops telling it anything.
    */
-  public attach(container: HTMLElement): void {
-    this.detach();
+  @OnDeactivation()
+  public override detach(): void {
+    super.detach();
+  }
 
+  protected mount(container: HTMLElement): void {
     this.scene = new TextureSurfaceScene(new DomRenderTarget(container));
 
     // Told what is open as it is now, then again whenever any of it changes. A scene attached after a texture was
@@ -53,9 +56,7 @@ export class TextureRenderService implements IRenderSurfaceHost {
     );
   }
 
-  /** Releases the scene and stops telling it anything. */
-  @OnDeactivation()
-  public detach(): void {
+  protected unmount(): void {
     for (const stop of this.reactions) {
       stop();
     }

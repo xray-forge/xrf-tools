@@ -1,4 +1,4 @@
-import { inject, Injectable, OnDeactivation } from "@wirestate/core";
+import { inject, Injectable, OnDeactivation, OnEvent, WireEvent } from "@wirestate/core";
 import { BoundAction, reaction } from "@wirestate/mobx";
 
 import { SelectedLevelDescription } from "@/core/ipc/types/xrf-app";
@@ -11,7 +11,8 @@ import { ILevelSurfaceGeometry } from "@/core/level/lib/surface/level-surface-ge
 import { LevelLoadService } from "@/core/level/services/level-load.service";
 import { LevelViewService } from "@/core/level/services/level-view.service";
 import { LevelViewportService } from "@/core/level/services/level-viewport.service";
-import { IRenderSurfaceHost } from "@/core/render/lib/surface/render-surface-host";
+import { RenderSurfaceService } from "@/core/render/lib/surface/render-surface-service";
+import { ESetting, ISettingsChangedPayload, SETTINGS_CHANGED_EVENT } from "@/core/settings/lib/settings-changed";
 import { SettingsService } from "@/core/settings/services/settings";
 import { canRenderOffscreen } from "@/lib/dom/canvas";
 import { Logger } from "@/lib/logging";
@@ -21,7 +22,7 @@ import { Maybe, Nullable } from "@/lib/types/general";
  * Owns the renderer of the open level, and everything said to it.
  */
 @Injectable()
-export class LevelRenderService implements IRenderSurfaceHost {
+export class LevelRenderService extends RenderSurfaceService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
   private renderer: Nullable<ILevelRenderer> = null;
@@ -33,16 +34,32 @@ export class LevelRenderService implements IRenderSurfaceHost {
     private readonly viewService: LevelViewService = inject(LevelViewService),
     private readonly viewportService: LevelViewportService = inject(LevelViewportService),
     private readonly settingsService: SettingsService = inject(SettingsService)
-  ) {}
+  ) {
+    super();
+  }
 
   /**
-   * Takes somewhere to draw, and starts telling a renderer about the level.
-   *
-   * @param container - The element the viewport fills.
+   * Releases the renderer and stops telling it anything.
    */
-  public attach(container: HTMLElement): void {
-    this.detach();
+  @OnDeactivation()
+  public override detach(): void {
+    super.detach();
+  }
 
+  /**
+   * Draws the level again on whichever thread the setting now names.
+   *
+   * @param event - The setting that changed.
+   */
+  @OnEvent(SETTINGS_CHANGED_EVENT)
+  public onSettingsChanged(event: WireEvent<ISettingsChangedPayload<unknown>>): void {
+    if (event.payload?.setting === ESetting.OFFSCREEN_RENDER && this.isAttached) {
+      this.remount();
+      this.loadService.restream();
+    }
+  }
+
+  protected mount(container: HTMLElement): void {
     const events: ILevelRendererEvents = {
       onCameraMoved: (point: ILevelPoint): void => void this.loadService.stream(point),
       onReport: (stats, camera): void => this.viewportService.report(stats, camera),
@@ -70,9 +87,7 @@ export class LevelRenderService implements IRenderSurfaceHost {
     );
   }
 
-  /** Releases the renderer and stops telling it anything. */
-  @OnDeactivation()
-  public detach(): void {
+  protected unmount(): void {
     for (const stop of this.reactions) {
       stop();
     }

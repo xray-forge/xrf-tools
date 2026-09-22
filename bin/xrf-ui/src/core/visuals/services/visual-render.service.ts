@@ -4,7 +4,7 @@ import { BoundAction, reaction } from "@wirestate/mobx";
 import { DomRenderTarget } from "@/core/render/lib/frame/dom-render-target";
 import { TFrameRateLimit } from "@/core/render/lib/frame/render-frame-limit";
 import { IRenderLighting } from "@/core/render/lib/lighting/render-lighting";
-import { IRenderSurfaceHost } from "@/core/render/lib/surface/render-surface-host";
+import { RenderSurfaceService } from "@/core/render/lib/surface/render-surface-service";
 import { SettingsService } from "@/core/settings/services/settings";
 import {
   BIND_POSE,
@@ -23,7 +23,7 @@ import { Nullable } from "@/lib/types/general";
  * Owns the scene the open visual stands in, and everything said to it.
  */
 @Injectable()
-export class VisualRenderService implements IRenderSurfaceHost {
+export class VisualRenderService extends RenderSurfaceService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
   private scene: Nullable<VisualPreviewScene> = null;
@@ -33,16 +33,19 @@ export class VisualRenderService implements IRenderSurfaceHost {
     private readonly source: IVisualRenderSource = inject(VISUAL_RENDER_SOURCE),
     private readonly viewService: VisualViewService = inject(VisualViewService),
     private readonly settingsService: SettingsService = inject(SettingsService)
-  ) {}
+  ) {
+    super();
+  }
 
   /**
-   * Takes somewhere to draw, and starts telling a scene about the visual.
-   *
-   * @param container - The element the viewport fills.
+   * Releases the scene and stops telling it anything.
    */
-  public attach(container: HTMLElement): void {
-    this.detach();
+  @OnDeactivation()
+  public override detach(): void {
+    super.detach();
+  }
 
+  protected mount(container: HTMLElement): void {
     this.scene = new VisualPreviewScene(new DomRenderTarget(container), null);
 
     // Told what is open as it is now, then again whenever any of it changes. A scene attached after a model was
@@ -63,9 +66,7 @@ export class VisualRenderService implements IRenderSurfaceHost {
     );
   }
 
-  /** Releases the scene and stops telling it anything. */
-  @OnDeactivation()
-  public detach(): void {
+  protected unmount(): void {
     for (const stop of this.reactions) {
       stop();
     }
