@@ -126,11 +126,12 @@ xrf-vfs = { path = "crates/xrf-vfs" }
 xrf-visual = { path = "crates/xrf-visual" }
 xrf-xml = { path = "crates/xrf-xml" }
 
+# Size-optimised: level 3 measured 3.7% faster for 36-40% larger binaries.
 [profile.release]
 panic = "abort"
 codegen-units = 1
 lto = true
-opt-level = 3
+opt-level = "s"
 strip = true
 
 # Keep development builds fast; the optimized app task overrides this for Tauri.
