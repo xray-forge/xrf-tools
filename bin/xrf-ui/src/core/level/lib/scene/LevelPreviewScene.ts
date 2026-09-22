@@ -14,6 +14,7 @@ import {
   ILevelSectorDelivery,
   ILevelTextureSupplyChange,
 } from "@/core/level/lib/render/level-render-protocol";
+import { ILevelRenderLevel, ILevelRenderView } from "@/core/level/lib/render/level-renderer";
 import { ILevelPoint } from "@/core/level/lib/residency/level-residency";
 import { LevelSectorSet } from "@/core/level/lib/sector/level-sector-set";
 import { createSectorViews, ISectorViews } from "@/core/level/lib/sector/level-sector-views";
@@ -75,6 +76,8 @@ export class LevelPreviewScene {
   private motion: Nullable<ILevelMotionSource> = null;
   /** The level's shader table, which every arriving sector joins its surfaces against. */
   private surfaces: ReadonlyArray<XraySurfaceDescriptor> = [];
+  /** The last view applied, so only what moved is applied again. */
+  private view: Nullable<ILevelRenderView> = null;
   /** Stops this scene hearing about the sectors it last took, for when it takes another level's. */
   private streamedFrom: Nullable<Vector3> = null;
   private statsReportedAt: number = 0;
@@ -107,12 +110,45 @@ export class LevelPreviewScene {
   }
 
   /**
-   * Takes the level's shader table, which every arriving sector joins its surfaces against.
+   * Takes the level to draw, or null for none.
    *
-   * @param surfaces - How the renderer draws each row, from the open.
+   * @param level - What the level is, from the open.
    */
-  public setSurfaces(surfaces: ReadonlyArray<XraySurfaceDescriptor>): void {
-    this.surfaces = surfaces;
+  public open(level: Nullable<ILevelRenderLevel>): void {
+    // The table before the extent: a sector arriving with nothing to join against would draw untextured, and
+    // taking the extent is what frames the camera and starts it asking for sectors.
+    this.surfaces = level?.surfaces ?? [];
+
+    this.setBounds(level?.bounds ?? null);
+  }
+
+  /**
+   * Takes how the level should be drawn.
+   *
+   * @param view - Everything the viewer has switched on.
+   */
+  public setView(view: ILevelRenderView): void {
+    const last: Nullable<ILevelRenderView> = this.view;
+
+    this.view = view;
+
+    // One value in, four questions out. Applying all of them on every change would re-dress every material of
+    // the level whenever the sun moved.
+    if (last?.options !== view.options) {
+      this.applyViewOptions(view.options);
+    }
+
+    if (last?.lighting !== view.lighting) {
+      this.setLighting(view.lighting);
+    }
+
+    if (last?.camera !== view.camera) {
+      this.setCameraOptions(view.camera);
+    }
+
+    if (last?.frameRateLimit !== view.frameRateLimit) {
+      this.setFrameRateLimit(view.frameRateLimit);
+    }
   }
 
   /**
@@ -158,7 +194,7 @@ export class LevelPreviewScene {
    *
    * @param bounds - What the backend measured, or null for no level.
    */
-  public setBounds(bounds: Nullable<VisualBounds>): void {
+  private setBounds(bounds: Nullable<VisualBounds>): void {
     this.frame.setBounds(bounds);
 
     this.lighting.setReach(bounds?.boundingSphere.radius ?? 0);
@@ -176,7 +212,7 @@ export class LevelPreviewScene {
   /**
    * @param options - What the toolbar has switched on, for the surfaces and for what they are read against alike.
    */
-  public applyViewOptions(options: ILevelViewOptions = DEFAULT_LEVEL_VIEW_OPTIONS): void {
+  private applyViewOptions(options: ILevelViewOptions = DEFAULT_LEVEL_VIEW_OPTIONS): void {
     this.sectors.applyViewOptions(options);
     this.frame.applyViewOptions(options);
     this.lighting.setSunVisible(options.isSunVisible);
@@ -187,7 +223,7 @@ export class LevelPreviewScene {
    *
    * @param camera - Field of view, and the speeds and sensitivity the fly controls read.
    */
-  public setCameraOptions(camera: ILevelCameraOptions = DEFAULT_LEVEL_CAMERA_OPTIONS): void {
+  private setCameraOptions(camera: ILevelCameraOptions = DEFAULT_LEVEL_CAMERA_OPTIONS): void {
     this.fly.options = camera;
 
     if (this.viewport.camera.fov !== camera.fieldOfView) {
@@ -201,7 +237,7 @@ export class LevelPreviewScene {
    *
    * @param lighting - The sun and the hemisphere standing in for one.
    */
-  public setLighting(lighting: ILevelLighting): void {
+  private setLighting(lighting: ILevelLighting): void {
     this.lighting.apply(lighting);
     this.sectors.setHemiStrength(lighting.hemiStrength);
   }
@@ -211,7 +247,7 @@ export class LevelPreviewScene {
    *
    * @param limit - Frames a second to allow, as the application setting states it.
    */
-  public setFrameRateLimit(limit: TFrameRateLimit): void {
+  private setFrameRateLimit(limit: TFrameRateLimit): void {
     this.viewport.setFrameRateLimit(limit);
   }
 

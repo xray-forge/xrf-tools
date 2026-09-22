@@ -187,7 +187,7 @@ export class RenderViewport {
 
     this.camera.aspect = width / height;
     this.camera.updateProjectionMatrix();
-    this.renderer.setSize(width, height);
+    this.renderer.setSize(width, height, this.target.isStyled);
 
     this.handlers.onResized?.(width, height);
   }

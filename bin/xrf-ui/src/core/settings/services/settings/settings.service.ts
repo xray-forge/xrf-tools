@@ -3,7 +3,12 @@ import { BoundAction, Observable } from "@wirestate/mobx";
 
 import { TFrameRateLimit, toFrameRateLimit } from "@/core/render/lib/frame/render-frame-limit";
 import { TCatalogView, toCatalogView } from "@/core/settings/lib/catalog-view";
-import { CATALOG_VIEW_STORAGE_KEY, DEV_MODE_STORAGE_KEY, FRAME_RATE_LIMIT_STORAGE_KEY } from "@/core/storage";
+import {
+  CATALOG_VIEW_STORAGE_KEY,
+  DEV_MODE_STORAGE_KEY,
+  FRAME_RATE_LIMIT_STORAGE_KEY,
+  OFFSCREEN_RENDER_STORAGE_KEY,
+} from "@/core/storage";
 import { isDevelopmentBuild } from "@/lib/env";
 import { getLocalStorageValue, setLocalStorageValue } from "@/lib/local-storage";
 import { Logger } from "@/lib/logging";
@@ -23,6 +28,10 @@ export class SettingsService {
   /** How the root catalog draws its tools. */
   @Observable()
   public catalogView: TCatalogView = toCatalogView(getLocalStorageValue(CATALOG_VIEW_STORAGE_KEY));
+
+  /** Whether a level draws on a thread of its own. */
+  @Observable()
+  public isOffscreenRenderEnabled: boolean = getLocalStorageValue(OFFSCREEN_RENDER_STORAGE_KEY) === String(true);
 
   /**
    * Frames a second every viewport is allowed to draw.
@@ -55,6 +64,14 @@ export class SettingsService {
 
     this.isDevModeEnabled = isEnabled;
     setLocalStorageValue(DEV_MODE_STORAGE_KEY, String(isEnabled));
+  }
+
+  @BoundAction()
+  public setOffscreenRenderEnabled(isEnabled: boolean): void {
+    this.log.info("Set offscreen render:", isEnabled);
+
+    this.isOffscreenRenderEnabled = isEnabled;
+    setLocalStorageValue(OFFSCREEN_RENDER_STORAGE_KEY, String(isEnabled));
   }
 
   @BoundAction()

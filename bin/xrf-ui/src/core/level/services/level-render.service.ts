@@ -5,11 +5,13 @@ import { SelectedLevelDescription } from "@/core/ipc/types/xrf-app";
 import { LevelLocalRenderer } from "@/core/level/lib/render/level-local-renderer";
 import { LevelRenderBridge } from "@/core/level/lib/render/level-render-bridge";
 import { ILevelRenderer, ILevelRendererEvents, ILevelRenderView } from "@/core/level/lib/render/level-renderer";
+import { LevelWorkerRenderer } from "@/core/level/lib/render/level-worker-renderer";
 import { ILevelPoint } from "@/core/level/lib/residency/level-residency";
 import { ILevelSurfaceGeometry } from "@/core/level/lib/surface/level-surface-geometry";
 import { LevelLoadService } from "@/core/level/services/level-load.service";
 import { LevelViewService } from "@/core/level/services/level-view.service";
 import { LevelViewportService } from "@/core/level/services/level-viewport.service";
+import { canRenderOffscreen } from "@/core/render/lib/frame/offscreen-render-target";
 import { IRenderSurfaceHost } from "@/core/render/lib/surface/render-surface-host";
 import { SettingsService } from "@/core/settings/services/settings";
 import { Logger } from "@/lib/logging";
@@ -46,7 +48,13 @@ export class LevelRenderService implements IRenderSurfaceHost {
       onReport: (stats, camera): void => this.viewportService.report(stats, camera),
       onTextures: (report): void => this.viewportService.noteTextures(report),
     };
-    const renderer: ILevelRenderer = new LevelLocalRenderer({ container, events });
+
+    const isOffscreen: boolean = this.settingsService.isOffscreenRenderEnabled && canRenderOffscreen();
+    const renderer: ILevelRenderer = isOffscreen
+      ? new LevelWorkerRenderer({ container, events })
+      : new LevelLocalRenderer({ container, events });
+
+    this.log.info("Drawing the level", isOffscreen ? "on a thread of its own" : "on this thread");
 
     this.renderer = renderer;
     this.bridge = new LevelRenderBridge(renderer, {

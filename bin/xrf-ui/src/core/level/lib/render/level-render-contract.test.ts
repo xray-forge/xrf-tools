@@ -13,6 +13,7 @@ const CONTRACT: ReadonlyArray<string> = [
   "core/level/lib/render/level-renderer.ts",
   "core/level/lib/render/level-render-protocol.ts",
   "core/level/lib/render/level-render-bridge.ts",
+  "core/level/lib/render/level-render-messages.ts",
 ];
 
 const IMPORT = /^\s*(?:import|export)[^"']*from\s+["']([^"']+)["']/gm;

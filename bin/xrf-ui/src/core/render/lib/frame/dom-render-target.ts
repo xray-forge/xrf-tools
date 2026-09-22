@@ -7,6 +7,7 @@ import { Nullable } from "@/lib/types/general";
  */
 export class DomRenderTarget implements IRenderTarget {
   public readonly canvas: HTMLCanvasElement = document.createElement("canvas");
+  public readonly isStyled: boolean = true;
 
   private readonly container: HTMLElement;
   private readonly resizeObserver: ResizeObserver;
@@ -18,6 +19,10 @@ export class DomRenderTarget implements IRenderTarget {
   public constructor(container: HTMLElement) {
     this.container = container;
     this.canvas.style.display = "block";
+    // Filled by css rather than by whatever draws on it: a canvas whose drawing has been handed to another
+    // thread is still laid out here, and nothing there can reach its style to size it.
+    this.canvas.style.width = "100%";
+    this.canvas.style.height = "100%";
     // Focusable, because a scene reading the keyboard needs somewhere for the focus to be.
     this.canvas.tabIndex = 0;
 

@@ -21,11 +21,6 @@ export interface ILevelLocalRendererOptions {
  */
 export class LevelLocalRenderer implements ILevelRenderer {
   private readonly scene: LevelPreviewScene;
-
-  /** The last view applied, so only what moved is applied again. */
-  private view: Nullable<ILevelRenderView> = null;
-
-  /** Reads the pointer and the keys, which are this thread's whatever draws. */
   private readonly controls: LevelFlyControls;
 
   public constructor({ container, events }: ILevelLocalRendererOptions) {
@@ -43,9 +38,7 @@ export class LevelLocalRenderer implements ILevelRenderer {
   }
 
   public open(level: Nullable<ILevelRenderLevel>): void {
-    // The table first: a sector arriving with nothing to join against would draw untextured.
-    this.scene.setSurfaces(level?.surfaces ?? []);
-    this.scene.setBounds(level?.bounds ?? null);
+    this.scene.open(level);
   }
 
   public deliver(change: ILevelSectorChange): void {
@@ -57,27 +50,7 @@ export class LevelLocalRenderer implements ILevelRenderer {
   }
 
   public setView(view: ILevelRenderView): void {
-    const last: Nullable<ILevelRenderView> = this.view;
-
-    this.view = view;
-
-    // One value in, four questions out. Applying all of them on every change would re-dress every material of
-    // the level whenever the sun moved.
-    if (last?.options !== view.options) {
-      this.scene.applyViewOptions(view.options);
-    }
-
-    if (last?.lighting !== view.lighting) {
-      this.scene.setLighting(view.lighting);
-    }
-
-    if (last?.camera !== view.camera) {
-      this.scene.setCameraOptions(view.camera);
-    }
-
-    if (last?.frameRateLimit !== view.frameRateLimit) {
-      this.scene.setFrameRateLimit(view.frameRateLimit);
-    }
+    this.scene.setView(view);
   }
 
   public measure(): Promise<ReadonlyMap<number, ILevelSurfaceGeometry>> {

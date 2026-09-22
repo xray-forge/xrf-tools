@@ -2,6 +2,7 @@ import { useColorScheme } from "@mui/material/styles";
 import { useInjection } from "@wirestate/react";
 import { ReactElement } from "react";
 
+import { canRenderOffscreen } from "@/core/render/lib/frame/offscreen-render-target";
 import { FRAME_RATE_LIMITS, TFrameRateLimit } from "@/core/render/lib/frame/render-frame-limit";
 import { SettingsService } from "@/core/settings/services/settings";
 import { COLOR_SCHEME_MODES, ColorSchemeMode, DEFAULT_COLOR_SCHEME_MODE } from "@/core/theme";
@@ -46,6 +47,17 @@ export function SettingsGeneralSection(): ReactElement {
         options={FRAME_RATE_OPTIONS}
         value={settingsService.frameRateLimit}
         onChange={settingsService.setFrameRateLimit}
+      />
+
+      <CheckboxFormRow
+        label={"Draw levels on their own thread"}
+        description={
+          "Keeps the interface responsive while a level streams. The same picture either way, and off unless " +
+          "this display can hand a canvas to another thread."
+        }
+        isChecked={settingsService.isOffscreenRenderEnabled && canRenderOffscreen()}
+        isDisabled={!canRenderOffscreen()}
+        onChange={settingsService.setOffscreenRenderEnabled}
       />
 
       <CheckboxFormRow

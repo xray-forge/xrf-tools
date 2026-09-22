@@ -1,5 +1,5 @@
 import { Injectable, OnDeactivation } from "@wirestate/core";
-import { BoundAction, Observable } from "@wirestate/mobx";
+import { BoundAction, RefObservable } from "@wirestate/mobx";
 
 import { DEFAULT_LEVEL_CAMERA_OPTIONS, ILevelCameraOptions } from "@/core/level/lib/camera/level-camera-options";
 import { DEFAULT_LEVEL_LIGHTING, ILevelLighting } from "@/core/level/lib/lighting/level-lighting";
@@ -11,15 +11,15 @@ import { DEFAULT_LEVEL_VIEW_OPTIONS, ILevelViewOptions } from "@/core/level/lib/
 @Injectable()
 export class LevelViewService {
   /** What the toolbar has switched on. */
-  @Observable()
+  @RefObservable()
   public options: ILevelViewOptions = DEFAULT_LEVEL_VIEW_OPTIONS;
 
   /** What the viewer is lighting with, which is its own answer rather than anything the level carries. */
-  @Observable()
+  @RefObservable()
   public lighting: ILevelLighting = DEFAULT_LEVEL_LIGHTING;
 
   /** What the camera sees and how it answers input. */
-  @Observable()
+  @RefObservable()
   public camera: ILevelCameraOptions = DEFAULT_LEVEL_CAMERA_OPTIONS;
 
   @BoundAction()
