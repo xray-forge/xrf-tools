@@ -54,6 +54,7 @@ export class LevelWorkerRenderer implements ILevelRenderer {
 
     this.worker = new Worker(new URL("./level-render.worker.ts", import.meta.url), { type: "module" });
     this.worker.onmessage = (event: MessageEvent<TLevelRenderResponse>): void => this.receive(event.data);
+    this.worker.onerror = (event: ErrorEvent): void => this.log.error("The level render worker failed:", event.message);
 
     this.log.info("Started a render worker");
 
@@ -103,7 +104,6 @@ export class LevelWorkerRenderer implements ILevelRenderer {
     // not on a worker, and is said first so the two are released the same way.
     this.post({ kind: ELevelRenderRequest.DISPOSE });
     this.worker.terminate();
-    this.target.dispose();
 
     this.log.info("Terminated the render worker");
 

@@ -150,6 +150,25 @@ describe("TextureRenderService", () => {
     service.detach();
   });
 
+  // Whoever put the canvas on the page is the one that can take it off: the viewport draws on a target it was
+  // handed, and one path used to leave the element behind, so a remount stacked a second canvas on the first.
+  it("leaves no canvas behind when it is detached", () => {
+    const { service } = mockAttached();
+    const container: HTMLElement = document.createElement("div");
+
+    service.attach(container);
+
+    expect(container.querySelectorAll("canvas")).toHaveLength(1);
+
+    service.attach(container);
+
+    expect(container.querySelectorAll("canvas")).toHaveLength(1);
+
+    service.detach();
+
+    expect(container.querySelectorAll("canvas")).toHaveLength(0);
+  });
+
   it("answers the viewport controls before anything is attached", () => {
     const { service } = mockAttached();
 

@@ -95,6 +95,7 @@ export class LevelRenderService extends RenderSurfaceService {
     this.bridge = null;
     this.renderer?.dispose();
     this.renderer = null;
+    this.target?.dispose();
     this.target = null;
   }
 

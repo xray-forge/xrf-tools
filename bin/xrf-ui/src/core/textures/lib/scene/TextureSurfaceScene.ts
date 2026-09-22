@@ -1,10 +1,10 @@
 import { BufferGeometry, Matrix3, Mesh, MeshStandardMaterial, PerspectiveCamera, Scene, Texture } from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
-import { DomRenderTarget } from "@/core/render/lib/frame/dom-render-target";
 import { IRenderFrameCost } from "@/core/render/lib/frame/render-frame-cost";
 import { TFrameRateLimit } from "@/core/render/lib/frame/render-frame-limit";
 import { TRenderCostReporter } from "@/core/render/lib/frame/render-reporter";
+import { IRenderTarget } from "@/core/render/lib/frame/render-target";
 import { RenderViewport } from "@/core/render/lib/frame/render-viewport";
 import { IRenderLighting } from "@/core/render/lib/lighting/render-lighting";
 import { RenderPreviewLighting } from "@/core/render/lib/lighting/RenderPreviewLighting";
@@ -15,6 +15,7 @@ import {
   createDecodedTexture,
   hasRenderTextureAlpha,
 } from "@/core/render/lib/texture/render-texture";
+import { TRenderInputElement } from "@/core/render/lib/worker/render-proxy-element";
 import {
   EMPTY_TEXTURE_SURFACE,
   ETextureSurfaceAlpha,
@@ -80,7 +81,7 @@ export class TextureSurfaceScene {
   /** What the surface is lit with, which its owner holds and a drag over the body reports back. */
   private lighting: IRenderLighting = DEFAULT_TEXTURE_LIGHTING;
 
-  public constructor(target: DomRenderTarget) {
+  public constructor(target: IRenderTarget, element: TRenderInputElement) {
     // No background colour, so the canvas is transparent and the checkerboard the frame already draws shows through
     // wherever the texture's alpha does.
     this.viewport = new RenderViewport(
@@ -93,7 +94,9 @@ export class TextureSurfaceScene {
     );
     this.camera.position.set(0, 0, CAMERA_DISTANCE);
 
-    this.controls = new OrbitControls(this.camera, target.canvas);
+    // Cast because three types an element it only ever listens to, measures and writes a cursor on - which is
+    // exactly what a stand-in for one answers.
+    this.controls = new OrbitControls(this.camera, element as HTMLElement);
     this.controls.enableDamping = true;
 
     this.lights = new RenderPreviewLighting(this.scene, DEFAULT_TEXTURE_LIGHTING);
@@ -106,7 +109,7 @@ export class TextureSurfaceScene {
     this.edgeMaterial = new MeshStandardMaterial({ color: 0x1a1a1a, metalness: 0, roughness: 0.9 });
 
     this.setShape(this.options.shape);
-    this.unbindDragCursor = bindDragCursor(this.controls, target.canvas);
+    this.unbindDragCursor = bindDragCursor(this.controls, element);
   }
 
   /** The scene the body stands in, which the viewport draws. */

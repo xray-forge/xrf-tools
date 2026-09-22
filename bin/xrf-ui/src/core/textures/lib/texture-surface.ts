@@ -1,4 +1,4 @@
-import { getLocatedAsset } from "@/core/assets/lib";
+import { getLocatedAsset } from "@/core/assets/lib/resolution";
 import { AssetTextureShape, TextureDescription } from "@/core/ipc/types/xrf-app";
 import { XrayAsset } from "@/core/ipc/types/xrf-vfs";
 import { IRenderTextureTexels } from "@/core/render/lib/texture/render-texels";

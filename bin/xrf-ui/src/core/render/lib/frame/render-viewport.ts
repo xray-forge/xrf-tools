@@ -162,7 +162,7 @@ export class RenderViewport {
     this.frameRateLimit = limit;
   }
 
-  /** Stops the loop, detaches the canvas, and releases the webgl context. Whatever is in the scene is not this one's. */
+  /** Stops the loop and releases the webgl context. */
   public dispose(): void {
     cancelAnimationFrame(this.frameHandle);
 
@@ -170,8 +170,6 @@ export class RenderViewport {
 
     this.renderer.dispose();
     this.renderer.forceContextLoss();
-
-    this.target.dispose();
   }
 
   /**

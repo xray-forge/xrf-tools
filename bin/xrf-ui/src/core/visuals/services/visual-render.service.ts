@@ -97,6 +97,7 @@ export class VisualRenderService extends RenderSurfaceService {
     this.scene?.setReporter(null);
     this.scene?.dispose();
     this.scene = null;
+    this.target?.dispose();
     this.target = null;
 
     this.takeCost(EMPTY_RENDER_FRAME_COST);

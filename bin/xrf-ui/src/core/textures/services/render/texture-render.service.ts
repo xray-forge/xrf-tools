@@ -8,7 +8,12 @@ import { ERenderResolution } from "@/core/render/lib/frame/render-resolution";
 import { IRenderLighting } from "@/core/render/lib/lighting/render-lighting";
 import { RenderSurfaceService } from "@/core/render/lib/surface/render-surface-service";
 import { SettingsService } from "@/core/settings/services/settings";
-import { TextureSurfaceScene } from "@/core/textures/lib/scene/TextureSurfaceScene";
+import { TextureLocalRenderer } from "@/core/textures/lib/render/texture-local-renderer";
+import {
+  ITextureSurfaceRenderer,
+  ITextureSurfaceRendererEvents,
+} from "@/core/textures/lib/render/texture-surface-renderer";
+import { TextureWorkerRenderer } from "@/core/textures/lib/render/texture-worker-renderer";
 import {
   EMPTY_TEXTURE_SURFACE,
   ITextureSurfaceFiles,
@@ -16,6 +21,7 @@ import {
 } from "@/core/textures/lib/texture-surface";
 import { TextureSurfaceService } from "@/core/textures/services/surface";
 import { TextureViewService } from "@/core/textures/services/view";
+import { canRenderOffscreen } from "@/lib/dom/canvas";
 import { Logger } from "@/lib/logging";
 import { Nullable } from "@/lib/types/general";
 
@@ -34,7 +40,7 @@ export class TextureRenderService extends RenderSurfaceService {
   @Observable()
   public isOffscreen: boolean = false;
 
-  private scene: Nullable<TextureSurfaceScene> = null;
+  private renderer: Nullable<ITextureSurfaceRenderer> = null;
   private target: Nullable<DomRenderTarget> = null;
 
   private readonly reactions: Array<() => void> = [];
@@ -57,13 +63,21 @@ export class TextureRenderService extends RenderSurfaceService {
 
   protected mount(container: HTMLElement): void {
     const target: DomRenderTarget = new DomRenderTarget(container, this.settingsService.renderResolution);
+    const events: ITextureSurfaceRendererEvents = {
+      onLighting: (lighting: IRenderLighting): void => this.viewService.setLighting(lighting),
+      onReport: (cost: IRenderFrameCost): void => this.takeCost(cost),
+    };
 
-    this.scene = new TextureSurfaceScene(target);
+    const isOffscreen: boolean = this.settingsService.isOffscreenRenderEnabled && canRenderOffscreen();
+
+    this.log.info("Drawing the surface", isOffscreen ? "on a thread of its own" : "on this thread");
+
+    this.renderer = isOffscreen
+      ? new TextureWorkerRenderer({ events, target })
+      : new TextureLocalRenderer({ events, target });
     this.target = target;
-    this.scene.setReporter(this.takeCost);
 
-    // Nothing else can be said yet: a scene that only draws on this thread is the only one there is.
-    this.takeOffscreen(false);
+    this.takeOffscreen(isOffscreen);
 
     // Told what is open as it is now, then again whenever any of it changes. A scene attached after a texture was
     // uploaded would otherwise show an empty body until something happened to change.
@@ -83,9 +97,12 @@ export class TextureRenderService extends RenderSurfaceService {
     }
 
     this.reactions.length = 0;
-    this.scene?.setReporter(null);
-    this.scene?.dispose();
-    this.scene = null;
+    this.renderer?.dispose();
+    this.renderer = null;
+
+    // Released here because it was made here: the canvas on the page is this service's, whichever
+    // renderer was drawing on it.
+    this.target?.dispose();
     this.target = null;
 
     this.takeCost(EMPTY_RENDER_FRAME_COST);
@@ -119,11 +136,7 @@ export class TextureRenderService extends RenderSurfaceService {
    * @param deltaY - The same, down.
    */
   public dragLight(deltaX: number, deltaY: number): void {
-    const swung: Nullable<IRenderLighting> = this.scene?.dragLight(deltaX, deltaY) ?? null;
-
-    if (swung) {
-      this.viewService.setLighting(swung);
-    }
+    this.renderer?.dragLight(deltaX, deltaY);
   }
 
   /**
@@ -132,31 +145,31 @@ export class TextureRenderService extends RenderSurfaceService {
    * @param step - What to multiply the distance by.
    */
   public dolly(step: number): void {
-    this.scene?.dolly(step);
+    this.renderer?.dolly(step);
   }
 
   /** Back to the distance and the angle the body is first seen from. */
   public reset(): void {
-    this.scene?.reset();
+    this.renderer?.reset();
   }
 
   @BoundAction()
   private applyTextures(files: Nullable<ITextureSurfaceFiles>): void {
-    this.scene?.setTextures(files ?? EMPTY_TEXTURE_SURFACE);
+    this.renderer?.setTextures(files ?? EMPTY_TEXTURE_SURFACE);
   }
 
   @BoundAction()
   private applyOptions(options: ITextureSurfaceOptions): void {
-    this.scene?.setOptions(options);
+    this.renderer?.setOptions(options);
   }
 
   @BoundAction()
   private applyLighting(lighting: IRenderLighting): void {
-    this.scene?.setLighting(lighting);
+    this.renderer?.setLighting(lighting);
   }
 
   @BoundAction()
   private applyFrameRateLimit(limit: TFrameRateLimit): void {
-    this.scene?.setFrameRateLimit(limit);
+    this.renderer?.setFrameRateLimit(limit);
   }
 }

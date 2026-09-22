@@ -21,53 +21,24 @@ import { mockDdsFile } from "@/fixtures/mocks/dds.mocks";
 
 let TextureSurfaceScene: typeof import("./TextureSurfaceScene").TextureSurfaceScene;
 
-beforeAll(async () => {
-  const three = jest.requireActual<typeof import("three")>("three");
+function mockScene(): InstanceType<typeof TextureSurfaceScene> {
+  const target: DomRenderTarget = new DomRenderTarget(document.createElement("div"));
 
-  // Keep real textures, materials and controls; only the GPU boundary is unavailable in jsdom.
-  jest.doMock("three", () => ({
-    ...three,
-    WebGLRenderer: jest.fn(() => ({
-      domElement: document.createElement("canvas"),
-      setPixelRatio: jest.fn(),
-      dispose: jest.fn(),
-      forceContextLoss: jest.fn(),
-    })),
-  }));
+  return new TextureSurfaceScene(target, target.canvas);
+}
 
-  ({ TextureSurfaceScene } = await import("./TextureSurfaceScene"));
-});
-
-afterEach(() => {
-  jest.restoreAllMocks();
-});
-
-/** One file as the surface service would have read it. */
 function file(fourCC: string = "DXT5"): ITextureSurfaceFile {
   return { bytes: mockDdsFile({ fourCC }), height: 8, isDecoded: false, width: 8 };
 }
 
-/** A base and its pair, which the scene uploads for itself. */
 function files(overrides: Partial<ITextureSurfaceFiles> = {}): ITextureSurfaceFiles {
   return { aspect: 1, base: file(), bump: { bump: file(), companion: file() }, ...overrides };
 }
 
-/**
- * What the scene uploaded, in the order it uploaded it: the base, then the pair.
- *
- * @param scene - A scene that has been given files.
- * @returns Its textures.
- */
 function uploadsOf(scene: InstanceType<typeof TextureSurfaceScene>): Array<Texture> {
   return (scene as unknown as { uploaded: Array<Texture> }).uploaded;
 }
 
-/**
- * The material the textured face of the body is drawn with, which is the one every alpha answer lands on.
- *
- * @param scene - A mounted scene.
- * @returns Its base material.
- */
 function materialOf(scene: InstanceType<typeof TextureSurfaceScene>): Material {
   const mesh = (scene as unknown as { mesh: Mesh<never, Array<Material> | Material> }).mesh;
 
@@ -76,8 +47,29 @@ function materialOf(scene: InstanceType<typeof TextureSurfaceScene>): Material {
 }
 
 describe("TextureSurfaceScene", () => {
+  beforeAll(async () => {
+    const three = jest.requireActual<typeof import("three")>("three");
+
+    // Keep real textures, materials and controls; only the GPU boundary is unavailable in jsdom.
+    jest.doMock("three", () => ({
+      ...three,
+      WebGLRenderer: jest.fn(() => ({
+        domElement: document.createElement("canvas"),
+        setPixelRatio: jest.fn(),
+        dispose: jest.fn(),
+        forceContextLoss: jest.fn(),
+      })),
+    }));
+
+    ({ TextureSurfaceScene } = await import("./TextureSurfaceScene"));
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   it("changes lighting without invalidating texture data or materials", () => {
-    const scene = new TextureSurfaceScene(new DomRenderTarget(document.createElement("div")));
+    const scene = mockScene();
 
     try {
       scene.setTextures(files());
@@ -102,7 +94,7 @@ describe("TextureSurfaceScene", () => {
   });
 
   it("updates texture UV matrices when tiling changes without invalidating texture data or materials", () => {
-    const scene = new TextureSurfaceScene(new DomRenderTarget(document.createElement("div")));
+    const scene = mockScene();
 
     try {
       scene.setTextures(files());
@@ -134,7 +126,7 @@ describe("TextureSurfaceScene", () => {
   // A texture belongs to the context that made it, so this scene is the only thing that can release what it
   // uploaded - and the service that read the files no longer has any gpu memory to answer for.
   it("releases what it uploaded, for the next texture and for itself", () => {
-    const scene = new TextureSurfaceScene(new DomRenderTarget(document.createElement("div")));
+    const scene = mockScene();
 
     scene.setTextures(files());
 
@@ -168,7 +160,7 @@ describe("TextureSurfaceScene", () => {
      * @returns The material state the body comes to.
      */
     function shade(alpha: ETextureSurfaceAlpha, format: PixelFormat | CompressedPixelFormat = RGBAFormat): Material {
-      const scene = new TextureSurfaceScene(new DomRenderTarget(document.createElement("div")));
+      const scene = mockScene();
 
       try {
         scene.setTextures(files({ bump: null }));
