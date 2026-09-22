@@ -1,3 +1,4 @@
+import { Nullable } from "@xrf/types";
 import { IUniform, Matrix3, MeshStandardMaterial, Texture, WebGLProgramParametersWithUniforms } from "three";
 
 import { getLocatedAsset } from "@/core/assets/lib/resolution";
@@ -7,7 +8,6 @@ import { VisualTextureDependency } from "@/core/ipc/types/xrf-visual";
 import { toXrayGlossDeclaration, XRAY_GLOSS_VARIABLE } from "@/core/render/lib/surface/render-gloss";
 import { applyRenderPatch, removeRenderPatch } from "@/core/render/lib/surface/render-patch";
 import { EVisualTextureState, IVisualTextureFile } from "@/core/visuals/lib/visual-texture";
-import { Nullable } from "@/lib/types/general";
 
 /**
  * The two textures a bump declaration binds, uploaded.

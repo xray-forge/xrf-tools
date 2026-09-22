@@ -1,6 +1,7 @@
 import { default as DataObjectIcon } from "@mui/icons-material/DataObject";
 import { default as FolderIcon } from "@mui/icons-material/Folder";
 import { default as FolderOpenIcon } from "@mui/icons-material/FolderOpen";
+import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useEffect, useMemo } from "react";
 
 import { ExportDescriptor } from "@/core/ipc/types/xrf-export";
@@ -12,7 +13,6 @@ import { ITreeNode } from "@/core/ui/tree/tree-node";
 import { IUseTreeState, useTreeState } from "@/core/ui/tree/use-tree-state";
 import { IVirtualizedTreeIcons, VirtualizedTree } from "@/core/ui/tree/VirtualizedTree";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { Nullable } from "@/lib/types/general";
 
 import { exportGroupsToTree, getExportSearchText, IExportGroup } from "./exports-groups";
 

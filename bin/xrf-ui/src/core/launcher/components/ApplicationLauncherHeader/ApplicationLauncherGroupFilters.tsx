@@ -1,11 +1,11 @@
 import { Chip } from "@mui/material";
+import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
 import { ICatalogGroupFilter } from "@/core/launcher/lib";
 import { EApplicationGroupId } from "@/core/routing/application";
 import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { Nullable } from "@/lib/types/general";
 
 interface IApplicationLauncherGroupFiltersProps extends BaseComponentProps {
   filters: ReadonlyArray<ICatalogGroupFilter>;

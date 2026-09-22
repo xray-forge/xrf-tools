@@ -1,3 +1,4 @@
+import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 import { Route, Routes, useLocation } from "react-router-dom";
 
@@ -6,7 +7,6 @@ import { IApplicationDescriptor } from "@/core/routing/application";
 import { CurrentApplicationProvider } from "@/core/routing/current-application.context";
 import { ApplicationShell } from "@/core/shell/ApplicationShell";
 import { NavigationError } from "@/core/shell/error/NavigationError";
-import { Nullable } from "@/lib/types/general";
 
 import { APPLICATION_CATALOG } from "./ApplicationCatalog";
 

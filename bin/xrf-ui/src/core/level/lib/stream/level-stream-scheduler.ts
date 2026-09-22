@@ -1,4 +1,4 @@
-import { Nullable } from "@/lib/types/general";
+import { Nullable } from "@xrf/types";
 
 /** What the scheduler needs of whoever owns the level, so it owns none of it. */
 export interface ILevelStreamSchedulerHost {

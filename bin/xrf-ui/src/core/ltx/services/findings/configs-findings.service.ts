@@ -1,5 +1,6 @@
 import { inject, Injectable } from "@wirestate/core";
 import { Observable, runInAction } from "@wirestate/mobx";
+import { Nullable } from "@xrf/types";
 
 import { transformError } from "@/core/error/lib";
 import { configsCommands } from "@/core/ipc/commands/configs";
@@ -10,7 +11,6 @@ import { AsyncState } from "@/lib/async-state";
 import { formatDuration } from "@/lib/format/duration";
 import { Logger, Timer } from "@/lib/logging";
 import { call, cancelFlow, LatestFlow, TFlow } from "@/lib/mobx";
-import { Nullable } from "@/lib/types/general";
 
 /**
  * Everything wrong with one resolved root.

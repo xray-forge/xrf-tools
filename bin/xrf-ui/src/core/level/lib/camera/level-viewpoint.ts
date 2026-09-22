@@ -1,6 +1,7 @@
+import { Maybe } from "@xrf/types";
+
 import { VisualBounds } from "@/core/ipc/types/xrf-visual";
 import { ILevelPoint } from "@/core/level/lib/residency/level-residency";
-import { Maybe } from "@/lib/types/general";
 
 /** Where the camera stands and what it looks at, both in renderer space. */
 export interface ILevelViewpoint {

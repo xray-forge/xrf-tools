@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { act, renderHook } from "@testing-library/react";
+import { Nullable } from "@xrf/types";
 
 import { type IPathStateOptions, type TPathState, usePathState } from "@/core/ui/form/file-picker/use-path-state";
 import { mockIsTauri } from "@/fixtures/mocks/tauri.mocks";
-import { Nullable } from "@/lib/types/general";
 
 const mockOpen = jest.mocked(open<{ multiple: false }>);
 

@@ -1,12 +1,12 @@
 import { Link } from "@mui/material";
 import { useInjection } from "@wirestate/react";
+import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback } from "react";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { ArchiveReference } from "@/core/ipc/types/xrf-app";
 import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { Nullable } from "@/lib/types/general";
 
 interface IArchiveDescriptionReferenceLinkProps extends BaseComponentProps {
   reference: ArchiveReference;

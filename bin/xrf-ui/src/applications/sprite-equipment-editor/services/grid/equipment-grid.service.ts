@@ -1,5 +1,6 @@
 import { inject, Injectable } from "@wirestate/core";
 import { BoundAction, Computed, Observable } from "@wirestate/mobx";
+import { Nullable } from "@xrf/types";
 
 import { SpriteEquipmentEditorService } from "@/applications/sprite-equipment-editor/services/editor";
 import {
@@ -9,7 +10,6 @@ import {
   TEquipmentCell,
   toEquipmentLayout,
 } from "@/core/sprite-equipment/lib";
-import { Nullable } from "@/lib/types/general";
 
 /**
  * The lattice over the open sheet, and which cell of it is being explained.

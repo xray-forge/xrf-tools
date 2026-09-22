@@ -1,9 +1,9 @@
 import { Alert } from "@mui/material";
+import { Nullable } from "@xrf/types";
 import { ReactElement, SyntheticEvent, useCallback, useEffect, useRef, useState } from "react";
 
 import { IMediaVolume, useMediaVolume } from "@/core/ui/media/use-media-volume";
 import { Logger, useLogger } from "@/lib/logging";
-import { Nullable } from "@/lib/types/general";
 
 import { describeAudioError, describePlaybackError } from "./AudioPlayer.errors";
 import { AudioPlayerControls } from "./AudioPlayerControls";

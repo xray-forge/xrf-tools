@@ -1,3 +1,5 @@
+import { OffscreenRenderTarget } from "@xrf/renderer";
+
 import { EMPTY_LEVEL_FLY_MOTION, ILevelFlyMotion, ILevelMotionSource } from "@/core/level/lib/camera/level-fly-motion";
 import {
   ELevelRenderRequest,
@@ -6,7 +8,6 @@ import {
   TLevelRenderResponse,
 } from "@/core/level/lib/render/level-render-messages";
 import { LevelPreviewScene } from "@/core/level/lib/scene";
-import { OffscreenRenderTarget } from "@/core/render/lib/frame/offscreen-render-target";
 import { IRenderWorkerScene, TRenderWorkerReply } from "@/core/render/lib/worker/render-worker-host";
 
 /**

@@ -2,6 +2,7 @@ import { default as TuneIcon } from "@mui/icons-material/Tune";
 import { Alert, Divider, Stack, Typography } from "@mui/material";
 import { DialogFilter, open, save } from "@tauri-apps/plugin-dialog";
 import { useInjection } from "@wirestate/react";
+import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useEffect, useMemo, useState } from "react";
 
 import { EPatcherSection, PatcherService } from "@/applications/archives-patcher/services/patcher";
@@ -21,7 +22,6 @@ import { ApplicationLoader } from "@/core/shell/loading/ApplicationLoader";
 import { ConfirmDialog } from "@/core/ui/dialog/ConfirmDialog";
 import { IPathField, usePathField } from "@/core/ui/form";
 import { Logger, useLogger } from "@/lib/logging";
-import { Nullable } from "@/lib/types/general";
 
 import { ArchivesPatchResult } from "./components/ArchivesPatchResult";
 import { PATCHER_SECTIONS_PANEL_LABEL, PatcherSectionsMenu } from "./components/PatcherSectionsMenu";

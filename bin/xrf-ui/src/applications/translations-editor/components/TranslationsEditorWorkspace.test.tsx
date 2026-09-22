@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { act, RenderResult, waitFor } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
+import { Nullable } from "@xrf/types";
 
 import { TranslationsService } from "@/applications/translations-editor/services/translations";
 import { TranslationsEditorApplication } from "@/applications/translations-editor/TranslationsEditorApplication";
@@ -9,7 +10,6 @@ import { mockSessionResponse, mockSessionSnapshot } from "@/fixtures/mocks/sessi
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
-import { Nullable } from "@/lib/types/general";
 
 const FIRST_FILE: string = "configs\\text\\ui_st_first.xml";
 const SECOND_FILE: string = "configs\\text\\ui_st_second.xml";

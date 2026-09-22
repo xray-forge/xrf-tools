@@ -1,5 +1,6 @@
 import { inject, Injectable, OnEvent, OnProvision, WireEvent } from "@wirestate/core";
 import { BoundAction, Computed, flowResult, Observable, runInAction } from "@wirestate/mobx";
+import { Nullable } from "@xrf/types";
 
 import { describeTextureSaveOutcome } from "@/applications/textures-editor/lib/describe-texture-save-outcome";
 import { isSameDescriptorForm, toEditableForm } from "@/applications/textures-editor/lib/texture-descriptor-form";
@@ -22,7 +23,6 @@ import { TextureSelectionService } from "@/core/textures/services/selection";
 import { AsyncState } from "@/lib/async-state";
 import { Logger } from "@/lib/logging";
 import { call, ExclusiveFlow, TFlow } from "@/lib/mobx";
-import { Nullable } from "@/lib/types/general";
 
 /**
  * The descriptor being edited: what is on disk, what has been typed over it, and the save that publishes the two.

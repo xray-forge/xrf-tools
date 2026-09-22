@@ -1,6 +1,7 @@
 import { default as ContentCopyIcon } from "@mui/icons-material/ContentCopy";
 import { Alert, CircularProgress, Dialog, DialogContent, TextField } from "@mui/material";
 import { useInjection } from "@wirestate/react";
+import { Nullable } from "@xrf/types";
 import { ChangeEvent, ReactElement, useCallback, useEffect, useId, useMemo, useState } from "react";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
@@ -14,7 +15,6 @@ import { StatMeasureToggle } from "@/core/ui/stats/StatMeasureToggle";
 import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatBytes } from "@/lib/memory/format";
-import { Nullable } from "@/lib/types/general";
 
 import { filterOverrides, flattenOverrides, TArchiveOverrideRow } from "./archive-override-rows";
 import { ArchiveOverrideList } from "./ArchiveOverrideList";

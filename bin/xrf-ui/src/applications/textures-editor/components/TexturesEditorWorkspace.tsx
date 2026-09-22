@@ -1,4 +1,5 @@
 import { useInjection } from "@wirestate/react";
+import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useEffect, useMemo } from "react";
 
 import { TEXTURES_EDITOR_PANELS } from "@/applications/textures-editor/components/panels/textures-editor-panels";
@@ -11,7 +12,6 @@ import { TexturePreviewLayout } from "@/core/textures/components/workspace/Textu
 import { ITexturePreviewComparison } from "@/core/textures/lib/texture-preview";
 import { TextureSelectionService } from "@/core/textures/services/selection";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { Nullable } from "@/lib/types/general";
 
 import { describeEditedTextureStatus } from "./TexturesEditorWorkspace.utils";
 

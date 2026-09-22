@@ -1,5 +1,6 @@
+import { Nullable } from "@xrf/types";
+
 import { ENotificationSeverity, INotification } from "@/core/notifications/lib";
-import { Nullable } from "@/lib/types/general";
 
 /**
  * Severities that colour their own title and show a line of `details` before anyone asks for it.

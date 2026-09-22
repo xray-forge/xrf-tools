@@ -1,4 +1,5 @@
 import { useInjection } from "@wirestate/react";
+import { Nullable } from "@xrf/types";
 import { ReactElement, useEffect } from "react";
 
 import { IKeybindCommand, KeybindCommandsService } from "@/core/commands";
@@ -10,7 +11,6 @@ import { SettingsService } from "@/core/settings/services/settings";
 import { isModalOpen } from "@/lib/dom/modal";
 import { isTextEntryTarget } from "@/lib/dom/text-entry";
 import { Logger } from "@/lib/logging";
-import { Nullable } from "@/lib/types/general";
 
 /**
  * Turns key events into commands, for the whole window.

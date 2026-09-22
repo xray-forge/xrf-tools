@@ -1,4 +1,5 @@
 import { useInjection } from "@wirestate/react";
+import { assertExhaustive, Nullable } from "@xrf/types";
 import { ReactElement, useCallback } from "react";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
@@ -14,8 +15,6 @@ import { EmptyState } from "@/core/ui/layout/EmptyState";
 import { AsyncState } from "@/lib/async-state";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatBytes } from "@/lib/memory/format";
-import { assertExhaustive } from "@/lib/types/exhaustive";
-import { Nullable } from "@/lib/types/general";
 
 import { ArchivePreviewError } from "../ArchivePreviewError";
 import { ArchiveAnmDescriptionView } from "./ArchiveAnmDescriptionView";

@@ -1,4 +1,5 @@
 import { BoundAction, Computed, makeObservable, Observable } from "@wirestate/mobx";
+import { Nullable } from "@xrf/types";
 
 import { transformError, XrfApplicationError } from "@/core/error/lib";
 import { visualsCommands } from "@/core/ipc/commands/visuals";
@@ -9,7 +10,6 @@ import { VisualMotionBake } from "@/core/ipc/types/xrf-visual";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
 import { formatDuration } from "@/lib/format/duration";
 import { Logger, Timer } from "@/lib/logging";
-import { Nullable } from "@/lib/types/general";
 
 /**
  * Availability of a motion's baked frames.

@@ -1,7 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
+import { Nullable } from "@xrf/types";
 
 import { IPC_METRICS, IpcCallMeasurement, weighIpcPayload } from "@/core/ipc/metrics";
-import { Nullable } from "@/lib/types/general";
 
 /**
  * Call a command that answers with bytes rather than a typed value.

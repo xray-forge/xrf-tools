@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { EventBus, WireEvent } from "@wirestate/core";
+import { Nullable } from "@xrf/types";
 
 import { EJobKind } from "@/core/ipc/types/xrf-app";
 import { JobProgress } from "@/core/ipc/types/xrf-job";
@@ -14,7 +15,6 @@ import {
 } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { noop } from "@/lib/callbacks/noop";
-import { Nullable } from "@/lib/types/general";
 
 import { JobsService } from "./jobs.service";
 

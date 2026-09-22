@@ -1,6 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
 import { act } from "@testing-library/react";
 import { Container } from "@wirestate/core";
+import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
 import { useRevealed } from "@/core/ltx/components/ConfigsDocumentView/use-revealed";
@@ -12,7 +13,6 @@ import { ConfigsResolvedService } from "@/core/ltx/services/resolved";
 import { ConfigsSchemeService } from "@/core/ltx/services/scheme";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
-import { Nullable } from "@/lib/types/general";
 
 /** The section a request names, since these cases are about section reveals. */
 function revealedName(reveal: Nullable<TConfigsReveal>): Nullable<string> {

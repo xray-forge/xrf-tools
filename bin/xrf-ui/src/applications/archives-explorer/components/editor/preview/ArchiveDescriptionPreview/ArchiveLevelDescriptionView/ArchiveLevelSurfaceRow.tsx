@@ -1,4 +1,5 @@
 import { Typography } from "@mui/material";
+import { assertExhaustive } from "@xrf/types";
 import { Fragment, ReactElement } from "react";
 
 import {
@@ -11,7 +12,6 @@ import {
 import { inline } from "@/lib/callbacks/inline";
 import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { assertExhaustive } from "@/lib/types/exhaustive";
 
 import { describeReferenceStatus } from "../ArchiveDescriptionPreview.utils";
 import { ArchiveDescriptionReferenceLink } from "../ArchiveDescriptionReferenceLink";

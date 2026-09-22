@@ -1,0 +1,9 @@
+{
+  "extends": "@xrf/toolchain/tsconfig.base.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "./target/tsconfig.tsbuildinfo",
+    // The page half runs against a document and the worker half against a worker scope; both are typed as the page.
+    "lib": ["ES2022", "DOM", "DOM.Iterable"]
+  },
+  "include": ["src"]
+}

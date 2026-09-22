@@ -1,10 +1,10 @@
 import { Channel } from "@tauri-apps/api/core";
 import { EventType } from "@wirestate/core";
+import { Nullable } from "@xrf/types";
 
 import { EJobKind, JobConclusion } from "@/core/ipc/types/xrf-app";
 import { JobProgress } from "@/core/ipc/types/xrf-job";
 import { INotificationPayload } from "@/core/notifications/lib";
-import { Nullable } from "@/lib/types/general";
 
 /**
  * What to say about a run that ended, before it is attributed to anything.

@@ -1,5 +1,6 @@
 import { EventBus, inject, Injectable, OnDeactivation, OnProvision } from "@wirestate/core";
 import { BoundAction, Computed, flowResult, Observable, runInAction } from "@wirestate/mobx";
+import { Nullable } from "@xrf/types";
 
 import { VisualSequenceService } from "@/applications/visuals-sequencer/services/sequence";
 import { createRoots } from "@/core/assets/lib";
@@ -20,7 +21,6 @@ import { IOpenVisual, VisualLoadService } from "@/core/visuals/services/visual-l
 import { AsyncState } from "@/lib/async-state";
 import { formatDuration } from "@/lib/format/duration";
 import { Logger, Timer } from "@/lib/logging";
-import { Nullable } from "@/lib/types/general";
 
 /**
  * The visual a sequence is being written against, and the motions it can be written out of.

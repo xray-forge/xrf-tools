@@ -1,5 +1,7 @@
+import { TFrameRateLimit } from "@xrf/renderer";
+import { Nullable } from "@xrf/types";
+
 import { DomRenderTarget } from "@/core/render/lib/frame/dom-render-target";
-import { TFrameRateLimit } from "@/core/render/lib/frame/render-frame-limit";
 import { IRenderLighting } from "@/core/render/lib/lighting/render-lighting";
 import { RenderWorkerClient } from "@/core/render/lib/worker/render-worker-client";
 import {
@@ -14,7 +16,6 @@ import { IVisualBumpFiles } from "@/core/visuals/lib/visual-bump";
 import { IVisualTextureFile } from "@/core/visuals/lib/visual-texture";
 import { IVisualModelViews } from "@/core/visuals/lib/visual-views";
 import { Logger } from "@/lib/logging";
-import { Nullable } from "@/lib/types/general";
 
 /** What a renderer on another thread needs: somewhere to draw, and somewhere to report to. */
 export interface IVisualWorkerRendererOptions {

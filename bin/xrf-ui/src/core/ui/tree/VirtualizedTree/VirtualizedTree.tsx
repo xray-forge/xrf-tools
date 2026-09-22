@@ -1,5 +1,6 @@
 import { useForkRef } from "@mui/material/utils";
 import { LayoutList, useVirtualizer } from "@mui/x-virtualizer";
+import { Nullable } from "@xrf/types";
 import { KeyboardEvent, ReactElement, ReactNode, useCallback, useEffect, useId, useMemo, useRef } from "react";
 
 import { TREE } from "@/core/theme/tokens";
@@ -8,7 +9,6 @@ import { ITreeNode } from "@/core/ui/tree/tree-node";
 import { VirtualizedTreeRow } from "@/core/ui/tree/VirtualizedTree/VirtualizedTreeRow";
 import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { Nullable } from "@/lib/types/general";
 
 /**
  * How one row's icon is tinted, and what the tint says.

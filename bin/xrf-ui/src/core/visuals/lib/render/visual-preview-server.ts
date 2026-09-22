@@ -1,4 +1,5 @@
-import { OffscreenRenderTarget } from "@/core/render/lib/frame/offscreen-render-target";
+import { OffscreenRenderTarget } from "@xrf/renderer";
+
 import { RenderProxyElement } from "@/core/render/lib/worker/render-proxy-element";
 import { IRenderWorkerScene, TRenderWorkerReply } from "@/core/render/lib/worker/render-worker-host";
 import {

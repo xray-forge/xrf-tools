@@ -1,4 +1,5 @@
 import { CommandBus, inject, Injectable, QueryBus } from "@wirestate/core";
+import { Nullable } from "@xrf/types";
 
 import { EArchivePanelId } from "@/applications/archives-explorer/components/editor/archive-panels";
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
@@ -11,7 +12,6 @@ import {
   PANEL_ACTIVE_QUERY,
   PANEL_SET_ACTIVE_COMMAND,
 } from "@/core/shell/panel/panel-messages";
-import { Nullable } from "@/lib/types/general";
 
 /**
  * Answers the archives explorer's commands, shadowing whatever a wider scope binds to the same ones.

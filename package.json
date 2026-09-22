@@ -1,0 +1,27 @@
+{
+  "name": "xrf-tools",
+  "private": true,
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/xray-forge/xrf-tools.git"
+  },
+  "packageManager": "pnpm@12.3.4",
+  "engines": {
+    "node": ">=24.15.0"
+  },
+  "scripts": {
+    "prepare": "node cli/hooks/install.mjs",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "lint": "pnpm -r lint",
+    "format": "prettier --write \"*.(json|mjs|yaml)\" && pnpm -r format",
+    "lint:staged": "lint-staged --config cli/hooks/lint-staged.config.mjs --max-arg-length 7000"
+  },
+  "devDependencies": {
+    "eslint": "catalog:",
+    "lint-staged": "^17.5.1",
+    "prettier": "catalog:",
+    "@xrf/toolchain": "workspace:*"
+  }
+}

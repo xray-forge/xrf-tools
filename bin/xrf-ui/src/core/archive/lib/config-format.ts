@@ -1,6 +1,7 @@
+import { Nullable } from "@xrf/types";
+
 import { EXrayExtension } from "@/core/ipc/types/xrf-extension";
 import { getXrayExtension } from "@/core/path/extension";
-import { Nullable } from "@/lib/types/general";
 
 /**
  * Formats an archive configuration can be written as, in the order a save dialog offers them.

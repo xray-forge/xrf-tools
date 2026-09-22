@@ -1,4 +1,5 @@
 import { Typography } from "@mui/material";
+import { Nullable } from "@xrf/types";
 import { KeyboardEvent, ReactElement, RefObject } from "react";
 
 import { ICatalogGroupFilter } from "@/core/launcher/lib";
@@ -6,7 +7,6 @@ import { EApplicationGroupId } from "@/core/routing/application";
 import { TCatalogView } from "@/core/settings/lib/catalog-view";
 import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { Nullable } from "@/lib/types/general";
 
 import { ApplicationLauncherGroupFilters } from "./ApplicationLauncherGroupFilters";
 import { ApplicationLauncherSearchField } from "./ApplicationLauncherSearchField";

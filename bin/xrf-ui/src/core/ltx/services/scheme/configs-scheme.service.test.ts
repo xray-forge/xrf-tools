@@ -1,4 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
+import { Nullable } from "@xrf/types";
 
 import { ConfigsProjectDescriptor } from "@/core/ipc/types/xrf-app";
 import { LtxSectionSchemeReport } from "@/core/ipc/types/xrf-ltx-inspect";
@@ -7,7 +8,6 @@ import { ConfigsSchemeService } from "@/core/ltx/services/scheme";
 import { setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { noop } from "@/lib/callbacks/noop";
-import { Nullable } from "@/lib/types/general";
 
 describe("ConfigsSchemeService", () => {
   it("keeps a cleared report idle when its read finishes", async () => {

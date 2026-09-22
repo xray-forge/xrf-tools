@@ -2,12 +2,12 @@ import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { exists } from "@tauri-apps/plugin-fs";
 import { act, renderHook } from "@testing-library/react";
+import { Nullable } from "@xrf/types";
 import { StrictMode } from "react";
 
 import { EApplicationId } from "@/core/routing/application";
 import { IPathRecord } from "@/core/ui/form/path-recents";
 import { IPathField, usePathField } from "@/core/ui/form/use-path-field";
-import { Nullable } from "@/lib/types/general";
 
 const mockOpen = jest.mocked(open<{ multiple: false }>);
 

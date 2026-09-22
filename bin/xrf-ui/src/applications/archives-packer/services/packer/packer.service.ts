@@ -1,5 +1,6 @@
 import { EventBus, inject, Injectable, OnEvent, OnProvision, WireEvent } from "@wirestate/core";
 import { BoundAction, Computed, flowResult, Observable } from "@wirestate/mobx";
+import { Nullable } from "@xrf/types";
 
 import { describePackOutcome } from "@/applications/archives-packer/lib/describe-pack-outcome";
 import { FALLBACK_PACK_CONFIG } from "@/applications/archives-packer/lib/pack-config";
@@ -17,7 +18,6 @@ import { formatDuration } from "@/lib/format/duration";
 import { Logger, Timer } from "@/lib/logging";
 import { call, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 import { getPathName } from "@/lib/path/separator";
-import { Nullable } from "@/lib/types/general";
 
 import { toSavedState } from "./packer.service.utils";
 

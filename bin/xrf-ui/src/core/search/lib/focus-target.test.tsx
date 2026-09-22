@@ -1,12 +1,12 @@
 import { describe, expect, it } from "@jest/globals";
 import { act } from "@testing-library/react";
 import { CommandBus, Container } from "@wirestate/core";
+import { Nullable } from "@xrf/types";
 import { ReactElement, useRef } from "react";
 
 import { FOCUS_SEARCH_FIELD_MESSAGE, useSearchFocusTarget } from "@/core/search/lib";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
-import { Nullable } from "@/lib/types/general";
 
 function SearchField(): ReactElement {
   const inputRef = useRef<Nullable<HTMLInputElement>>(null);

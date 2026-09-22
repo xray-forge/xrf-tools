@@ -1,5 +1,6 @@
 import { EventBus, inject, Injectable, OnDeactivation, OnDeprovision, OnProvision, ProvisionId } from "@wirestate/core";
 import { BoundAction, Computed, flowResult, Observable } from "@wirestate/mobx";
+import { Nullable, Optional } from "@xrf/types";
 
 import { describeExtractOutcome } from "@/applications/archives-explorer/lib/describe-extract-outcome";
 import {
@@ -44,7 +45,6 @@ import { AsyncState } from "@/lib/async-state";
 import { formatDuration } from "@/lib/format/duration";
 import { Logger, Timer } from "@/lib/logging";
 import { call, cancelFlow, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
-import { Nullable, Optional } from "@/lib/types/general";
 
 import { ArchiveContentReader } from "./archives.service.content";
 

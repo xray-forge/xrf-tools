@@ -1,8 +1,8 @@
+import { Nullable } from "@xrf/types";
 import { Group, Object3D, Texture } from "three";
 
 import { IVisualBumpTextures } from "@/core/visuals/lib/visual-bump";
 import { IVisualModelViews } from "@/core/visuals/lib/visual-views";
-import { Nullable } from "@/lib/types/general";
 
 import { IVisualMeshMaterialOptions, VisualPreviewMeshes } from "./VisualPreviewMeshes";
 import { IVisualPreviewSkeletonConfig, VisualPreviewSkeleton } from "./VisualPreviewSkeleton";

@@ -1,11 +1,11 @@
 import { Chip, List, ListItem, ListItemButton, Typography } from "@mui/material";
+import { Nullable, Optional } from "@xrf/types";
 import { ReactElement } from "react";
 
 import { EditorPanel, EditorPanelEmpty } from "@/core/shell/editor/EditorPanel";
 import { splitLogicalPath } from "@/core/ui/tree/path-tree";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { LOGICAL_PATH_SEPARATOR } from "@/lib/path/separator";
-import { Nullable, Optional } from "@/lib/types/general";
 
 /** Where a problem can be opened, for a surface that can take a reader there. */
 export interface IEditorProblemLocation {

@@ -1,4 +1,5 @@
 import { useInjection } from "@wirestate/react";
+import { Nullable } from "@xrf/types";
 import { ReactElement, ReactNode, useEffect } from "react";
 
 import { TextureDescription } from "@/core/ipc/types/xrf-app";
@@ -13,7 +14,6 @@ import { TextureSelectionService } from "@/core/textures/services/selection";
 import { TextureSurfaceService } from "@/core/textures/services/surface";
 import { TextureViewService } from "@/core/textures/services/view";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { Nullable } from "@/lib/types/general";
 
 import { TextureWorkspaceToolbar } from "./TextureWorkspaceToolbar";
 

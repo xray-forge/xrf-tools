@@ -1,8 +1,9 @@
+import { Nullable } from "@xrf/types";
+
 import { getLocatedAsset } from "@/core/assets/lib/resolution";
 import { AssetTextureShape, TextureDescription } from "@/core/ipc/types/xrf-app";
 import { XrayAsset } from "@/core/ipc/types/xrf-vfs";
 import { IRenderTextureTexels } from "@/core/render/lib/texture/render-texels";
-import { Nullable } from "@/lib/types/general";
 
 /**
  * One file the surface is drawn from, as it was read.

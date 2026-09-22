@@ -1,5 +1,6 @@
+import { Optional } from "@xrf/types";
+
 import { ITreeNode } from "@/core/ui/tree/tree-node";
-import { Optional } from "@/lib/types/general";
 
 /** Separates a motion name's tokens, which is the only structure the format gives them. */
 const NAME_SEPARATOR: string = "_";

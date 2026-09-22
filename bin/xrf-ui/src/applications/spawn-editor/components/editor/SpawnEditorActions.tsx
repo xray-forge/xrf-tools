@@ -2,6 +2,7 @@ import { default as ImportExportIcon } from "@mui/icons-material/ImportExport";
 import { default as SaveIcon } from "@mui/icons-material/Save";
 import * as dialog from "@tauri-apps/plugin-dialog";
 import { useInjection } from "@wirestate/react";
+import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useState } from "react";
 
 import { EXrayExtension } from "@/core/ipc/types/xrf-extension";
@@ -10,7 +11,6 @@ import { SpawnFileService } from "@/core/spawn/services";
 import { ConfirmDialog } from "@/core/ui/dialog/ConfirmDialog";
 import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { Nullable } from "@/lib/types/general";
 
 /**
  * Commands that act on the open spawn file.

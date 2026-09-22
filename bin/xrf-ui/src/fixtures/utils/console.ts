@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, jest } from "@jest/globals";
+import { Nullable } from "@xrf/types";
 
 import { noop } from "@/lib/callbacks/noop";
-import { Nullable } from "@/lib/types/general";
 
 export type TConsoleChannel = "debug" | "error" | "info" | "log" | "warn";
 

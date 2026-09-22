@@ -1,4 +1,4 @@
-import { Nullable } from "@/lib/types/general";
+import { Nullable } from "@xrf/types";
 
 export interface IIpcCommandMetrics {
   /** Command as the panel names it, with the `plugin:` prefix stripped. */

@@ -1,3 +1,5 @@
+import { Maybe } from "@xrf/types";
+
 import { transformError } from "@/core/error/lib";
 import { levelsCommands } from "@/core/ipc/commands/levels";
 import { levelsRawCommands } from "@/core/ipc/commands/levels-raw";
@@ -7,7 +9,6 @@ import { ILevelSectorDelivery } from "@/core/level/lib/render/level-render-proto
 import { ISectorTextureRequest } from "@/core/level/lib/sector/level-sector-textures";
 import { ILevelStreamReading } from "@/core/level/lib/stream/level-stream-profile";
 import { Logger, Timer } from "@/lib/logging";
-import { Maybe } from "@/lib/types/general";
 
 /** What one sector read needs of whoever owns the level, so the reader owns none of it. */
 export interface ILevelSectorReaderHost {

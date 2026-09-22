@@ -1,9 +1,9 @@
 import { Popover } from "@mui/material";
+import { Nullable } from "@xrf/types";
 import { MouseEvent, ReactElement, ReactNode, useCallback, useEffect, useId, useState } from "react";
 
 import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { Nullable } from "@/lib/types/general";
 
 interface IEditorPopoverActionProps extends BaseComponentProps {
   label: string;

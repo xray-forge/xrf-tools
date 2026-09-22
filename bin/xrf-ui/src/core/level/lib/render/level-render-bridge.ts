@@ -1,6 +1,7 @@
+import { Nullable } from "@xrf/types";
+
 import { ILevelSectorSource, ILevelTextureSupply } from "@/core/level/lib/render/level-render-protocol";
 import { ILevelRenderer } from "@/core/level/lib/render/level-renderer";
-import { Nullable } from "@/lib/types/general";
 
 /** Where a level's sectors and texture files come from, which is the loader. */
 export interface ILevelRenderSources {

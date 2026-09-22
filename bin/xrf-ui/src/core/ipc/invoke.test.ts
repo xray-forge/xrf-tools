@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
+import { Optional } from "@xrf/types";
 
 import { IIpcCommandMetrics, IPC_METRICS, setIpcProfilingEnabled } from "@/core/ipc/metrics";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
-import { Optional } from "@/lib/types/general";
 
 import { invoke } from "./invoke";
 

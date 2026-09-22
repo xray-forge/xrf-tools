@@ -1,7 +1,7 @@
+import { Nullable } from "@xrf/types";
 import { ReactElement, ReactNode } from "react";
 
 import { IEditorPanel, TEditorPanelSide } from "@/core/shell/editor-shell";
-import { Nullable } from "@/lib/types/general";
 
 import { PanelStripeButton } from "./rail";
 

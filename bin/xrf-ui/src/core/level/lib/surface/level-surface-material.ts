@@ -1,3 +1,4 @@
+import { Nullable } from "@xrf/types";
 import { Color, MeshStandardMaterial, Texture } from "three";
 
 import { SectorSurface } from "@/core/ipc/types/xrf-visual";
@@ -6,7 +7,6 @@ import { applyXrayHemiShading } from "@/core/render/lib/surface/render-baked";
 import { applyXrayDetailShading, IXrayDetail, IXrayDetailShading } from "@/core/render/lib/surface/render-detail";
 import { applyRenderSurface, createRenderMaterial } from "@/core/render/lib/surface/render-material";
 import { IRenderDetail, IRenderSurface } from "@/core/render/lib/surface/render-surface";
-import { Nullable } from "@/lib/types/general";
 
 import { ILevelSurfaceOptions } from "./level-surface-options";
 

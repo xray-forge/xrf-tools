@@ -1,4 +1,5 @@
 import { Button, Chip, LinearProgress, Typography } from "@mui/material";
+import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
 import { JobConclusion, JobDescription } from "@/core/ipc/types/xrf-app";
@@ -6,7 +7,6 @@ import { ProgressLevel } from "@/core/ipc/types/xrf-job";
 import { findJobKind, IJobKindDescriptor } from "@/core/jobs/lib";
 import { formatProgressCounts, toProgressPercent } from "@/core/jobs/lib/progress-format";
 import { formatDuration } from "@/lib/format/duration";
-import { Nullable } from "@/lib/types/general";
 
 const CONCLUSION_COLORS: Record<JobConclusion, string> = {
   completed: "success.main",

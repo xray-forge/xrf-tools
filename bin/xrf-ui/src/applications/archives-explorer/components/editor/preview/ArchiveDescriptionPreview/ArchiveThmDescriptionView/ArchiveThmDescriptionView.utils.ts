@@ -1,6 +1,7 @@
+import { Nullable } from "@xrf/types";
+
 import { ArchiveThmDetail, ArchiveThmTexture } from "@/core/ipc/types/xrf-app";
 import { ABSENT_VALUE } from "@/lib/format/number";
-import { Nullable } from "@/lib/types/general";
 
 import { NOT_DECLARED } from "../ArchiveDescriptionPreview.utils";
 

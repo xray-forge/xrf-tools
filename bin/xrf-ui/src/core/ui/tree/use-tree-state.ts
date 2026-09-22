@@ -1,7 +1,7 @@
+import { Nullable } from "@xrf/types";
 import { useCallback, useState } from "react";
 
 import { getAncestorDirectoryIds } from "@/core/ui/tree/path-tree";
-import { Nullable } from "@/lib/types/general";
 
 export interface IUseTreeState {
   expandedIds: ReadonlySet<string>;

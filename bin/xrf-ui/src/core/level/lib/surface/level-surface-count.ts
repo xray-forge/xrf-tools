@@ -1,10 +1,11 @@
+import { Nullable } from "@xrf/types";
+
 import { ILoadedSector } from "@/core/level/lib/sector/level-sector-set";
 import {
   ISectorGeometryViews,
   ISectorInstanceViews,
   ISectorSectionViews,
 } from "@/core/level/lib/sector/level-sector-views";
-import { Nullable } from "@/lib/types/general";
 
 import { ILevelSurfaceGeometry, ILevelSurfaceSpan } from "./level-surface-geometry";
 

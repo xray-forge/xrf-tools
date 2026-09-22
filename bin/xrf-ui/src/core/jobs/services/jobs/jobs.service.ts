@@ -1,6 +1,7 @@
 import { Channel } from "@tauri-apps/api/core";
 import { EventBus, inject, Injectable, OnDeprovision, OnProvision, ProvisionId } from "@wirestate/core";
 import { BoundAction, flowResult, Observable } from "@wirestate/mobx";
+import { Maybe, Nullable } from "@xrf/types";
 
 import { transformError } from "@/core/error/lib";
 import { jobsCommands } from "@/core/ipc/commands/jobs";
@@ -22,7 +23,6 @@ import { emitNotification } from "@/core/notifications/lib";
 import { formatDuration } from "@/lib/format/duration";
 import { Logger, Timer } from "@/lib/logging";
 import { all, call, cancelFlow, LatestFlow, TFlow } from "@/lib/mobx";
-import { Maybe, Nullable } from "@/lib/types/general";
 
 /**
  * Every backend job this window started, while it is running.

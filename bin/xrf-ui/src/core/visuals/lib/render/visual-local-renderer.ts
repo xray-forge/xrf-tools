@@ -1,5 +1,7 @@
+import { TFrameRateLimit } from "@xrf/renderer";
+import { Nullable } from "@xrf/types";
+
 import { DomRenderTarget } from "@/core/render/lib/frame/dom-render-target";
-import { TFrameRateLimit } from "@/core/render/lib/frame/render-frame-limit";
 import { IRenderLighting } from "@/core/render/lib/lighting/render-lighting";
 import { IVisualPose } from "@/core/visuals/lib/render/visual-render-source";
 import { IVisualRenderer, IVisualRendererEvents } from "@/core/visuals/lib/render/visual-renderer";
@@ -7,7 +9,6 @@ import { IVisualPreviewViewOptions, VisualPreviewScene } from "@/core/visuals/li
 import { IVisualBumpFiles } from "@/core/visuals/lib/visual-bump";
 import { IVisualTextureFile } from "@/core/visuals/lib/visual-texture";
 import { IVisualModelViews } from "@/core/visuals/lib/visual-views";
-import { Nullable } from "@/lib/types/general";
 
 /** What a renderer needs to exist at all: somewhere to draw, and somewhere to report to. */
 export interface IVisualLocalRendererOptions {

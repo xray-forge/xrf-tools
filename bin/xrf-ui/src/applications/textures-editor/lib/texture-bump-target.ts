@@ -1,6 +1,7 @@
+import { Nullable } from "@xrf/types";
+
 import { TextureDescription } from "@/core/ipc/types/xrf-app";
 import { findLastSeparator } from "@/lib/path/separator";
-import { Nullable } from "@/lib/types/general";
 
 /** What the engine appends to a bump name to reach the other half of the pair. */
 const COMPANION_SUFFIX: string = "#";

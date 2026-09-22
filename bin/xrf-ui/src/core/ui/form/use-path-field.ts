@@ -1,5 +1,6 @@
 import { DialogFilter } from "@tauri-apps/plugin-dialog";
 import { exists } from "@tauri-apps/plugin-fs";
+import { Nullable } from "@xrf/types";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { EApplicationId } from "@/core/routing/application";
@@ -10,7 +11,6 @@ import { IPathFieldRecents } from "@/core/ui/form/path-recents";
 import { IPathRecents, usePathRecents } from "@/core/ui/form/use-path-recents";
 import { IPathSeed, TPathSeed, usePathSeed } from "@/core/ui/form/use-path-seed";
 import { getLocalStorageValue, setLocalStorageValue } from "@/lib/local-storage";
-import { Nullable } from "@/lib/types/general";
 
 const VALIDATE_DEBOUNCE_MS: number = 250;
 

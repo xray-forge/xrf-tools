@@ -1,10 +1,9 @@
+import { IRenderFrameCost, IRenderTarget, TFrameRateLimit } from "@xrf/renderer";
+import { Nullable } from "@xrf/types";
 import { BufferGeometry, Matrix3, Mesh, MeshStandardMaterial, PerspectiveCamera, Scene, Texture } from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
-import { IRenderFrameCost } from "@/core/render/lib/frame/render-frame-cost";
-import { TFrameRateLimit } from "@/core/render/lib/frame/render-frame-limit";
 import { TRenderCostReporter } from "@/core/render/lib/frame/render-reporter";
-import { IRenderTarget } from "@/core/render/lib/frame/render-target";
 import { RenderViewport } from "@/core/render/lib/frame/render-viewport";
 import { IRenderLighting } from "@/core/render/lib/lighting/render-lighting";
 import { RenderPreviewLighting } from "@/core/render/lib/lighting/RenderPreviewLighting";
@@ -32,7 +31,6 @@ import {
 } from "@/core/visuals/lib/visual-bump";
 import { bindDragCursor } from "@/lib/media/drag-cursor";
 import { toDolliedPosition } from "@/lib/media/orbit-dolly";
-import { Nullable } from "@/lib/types/general";
 
 import {
   DEFAULT_TEXTURE_LIGHTING,

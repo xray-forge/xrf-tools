@@ -1,5 +1,6 @@
 import { inject, Injectable, OnDeactivation } from "@wirestate/core";
 import { BoundAction, Computed, Observable } from "@wirestate/mobx";
+import { Nullable } from "@xrf/types";
 
 import { transformError } from "@/core/error/lib";
 import { visualsCommands } from "@/core/ipc/commands/visuals";
@@ -13,7 +14,6 @@ import { AsyncState } from "@/lib/async-state";
 import { formatDuration } from "@/lib/format/duration";
 import { Logger, Timer } from "@/lib/logging";
 import { call, cancelFlows, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
-import { Nullable } from "@/lib/types/general";
 
 /** A posed motion: what the backend said it is, and every frame's bone transforms. */
 export interface IPosedMotion {

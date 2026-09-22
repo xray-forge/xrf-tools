@@ -1,10 +1,10 @@
 import { inject, Injectable, OnDeactivation } from "@wirestate/core";
 import { BoundAction, Computed, Observable } from "@wirestate/mobx";
+import { Nullable, Optional } from "@xrf/types";
 
 import { ISequenceMotion, SequenceMotionCache } from "@/applications/visuals-sequencer/lib/sequence-motion-cache";
 import { clampMotionFps, MOTION_SAMPLE_FPS } from "@/core/visuals/lib/visual-motion";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
-import { Nullable, Optional } from "@/lib/types/general";
 
 /** One clip of the track: a motion, at the position its author put it. */
 export interface ISequenceClip {

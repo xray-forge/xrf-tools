@@ -1,4 +1,5 @@
 import { useInjection } from "@wirestate/react";
+import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useEffect, useState } from "react";
 
 import { DialogsService } from "@/applications/dialogs-editor/services/dialogs";
@@ -8,7 +9,6 @@ import { EApplicationId } from "@/core/routing/application";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
 import { ChoiceFormRow, IPathField, PathFormRow, usePathField } from "@/core/ui/form";
 import { Logger, useLogger } from "@/lib/logging";
-import { Nullable } from "@/lib/types/general";
 
 import { MODE_DESCRIPTIONS, MODE_OPTIONS } from "./DialogsEditorOpenForm.utils";
 

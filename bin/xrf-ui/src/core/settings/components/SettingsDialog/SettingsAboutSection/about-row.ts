@@ -1,4 +1,4 @@
-import { Nullable } from "@/lib/types/general";
+import { Nullable } from "@xrf/types";
 
 /** One stated fact: what it is, what it says, and where it can be followed to. */
 export interface IAboutRow {

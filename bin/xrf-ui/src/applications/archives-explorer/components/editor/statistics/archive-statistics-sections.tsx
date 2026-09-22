@@ -1,5 +1,6 @@
+import { Nullable } from "@xrf/types";
+
 import { ArchiveStatistics } from "@/core/ipc/types/xrf-archive-stats";
-import { Nullable } from "@/lib/types/general";
 
 import {
   defineArchiveStatisticsSection,

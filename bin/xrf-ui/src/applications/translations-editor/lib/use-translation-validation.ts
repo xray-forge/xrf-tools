@@ -1,7 +1,7 @@
+import { Nullable } from "@xrf/types";
 import { useCallback, useRef, useState } from "react";
 
 import { Logger, useLogger } from "@/lib/logging";
-import { Nullable } from "@/lib/types/general";
 
 /** Reports the first character a language cannot hold, or `null` when the value is writable. */
 export type TValidateText = (language: string, text: string) => Promise<Nullable<string>>;

@@ -1,5 +1,6 @@
 import { Injectable, OnDeprovision } from "@wirestate/core";
 import { BoundAction, Computed, Observable } from "@wirestate/mobx";
+import { Nullable } from "@xrf/types";
 
 import { IKeybindCommand } from "@/core/commands";
 import { ROOT_KEYBIND_COMMANDS } from "@/core/commands/root-commands";
@@ -11,7 +12,6 @@ import { KEYBINDS_STORAGE_KEY } from "@/core/storage";
 import { parseLocalStorageValueSafe, setLocalStorageValueSafe } from "@/lib/local-storage";
 import { Logger } from "@/lib/logging";
 import { EMPTY_ARRAY } from "@/lib/types/array";
-import { Nullable } from "@/lib/types/general";
 
 /** Stored shape of the overlay: command id to the chords bound in its place. */
 type TKeybindOverrides = Readonly<Record<string, ReadonlyArray<string>>>;

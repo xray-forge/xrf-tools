@@ -1,11 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it } from "@jest/globals";
 import { act, fireEvent, RenderResult } from "@testing-library/react";
+import { Nullable } from "@xrf/types";
 
 import { ImageViewport } from "@/core/ui/media/ImageViewport";
 import { renderWithProviders } from "@/fixtures/utils/render";
 import { IPanZoomPoint, IPanZoomTransform } from "@/lib/media/pan-zoom";
 import { PanZoomController } from "@/lib/media/pan-zoom-controller";
-import { Nullable } from "@/lib/types/general";
 
 /** The picture under test, wider than it is tall so a fit letterboxes it and the centring is visible. */
 const WIDTH: number = 1024;

@@ -1,9 +1,9 @@
 import { Tooltip, Typography } from "@mui/material";
 import { DataGrid, GridColDef, GridRenderCellParams, GridRowParams } from "@mui/x-data-grid";
+import { Nullable } from "@xrf/types";
 import { ReactElement, useMemo, useState } from "react";
 
 import { EditorFilterInput } from "@/core/shell/editor/EditorFilterInput";
-import { Nullable } from "@/lib/types/general";
 
 /** One id, as the pair of languages currently in view sees it. */
 export interface ITranslationRow {

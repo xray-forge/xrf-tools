@@ -1,5 +1,6 @@
 import { List, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
+import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useMemo, useState } from "react";
 
 import { EquipmentGridService } from "@/applications/sprite-equipment-editor/services/grid";
@@ -7,7 +8,6 @@ import { EditorSearchHeader } from "@/core/shell/editor/EditorSearchHeader";
 import { isSameCell, TEquipmentCell } from "@/core/sprite-equipment/lib";
 import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { Nullable } from "@/lib/types/general";
 
 import { IEquipmentOccupantRow, toEquipmentOccupantRows } from "./equipment-occupant-rows";
 import { EquipmentOccupantRow } from "./EquipmentOccupantRow";

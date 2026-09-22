@@ -1,4 +1,5 @@
 import { default as CircleIcon } from "@mui/icons-material/Circle";
+import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useMemo } from "react";
 
 import { TranslationFile } from "@/core/ipc/types/xrf-translation";
@@ -6,7 +7,6 @@ import { EditorSearchMenu } from "@/core/shell/editor/EditorSearchMenu";
 import { IEditorSearchResultRow } from "@/core/shell/editor/EditorSearchResults";
 import { IEditorSideMenuItem } from "@/core/shell/editor/EditorSideMenu";
 import { EmptyListing } from "@/core/ui/layout";
-import { Nullable } from "@/lib/types/general";
 
 /** One file, with enough on it to rank a search and label a row. */
 interface IFileEntry {

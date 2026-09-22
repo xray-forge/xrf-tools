@@ -1,11 +1,11 @@
 import { GridColDef, GridRowId, GridValidRowModel } from "@mui/x-data-grid";
 import { useInjection } from "@wirestate/react";
+import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback } from "react";
 
 import { SpawnFileService } from "@/core/spawn/services";
 import { DataTable } from "@/core/ui/table";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { Nullable } from "@/lib/types/general";
 
 interface ISpawnTableProps<T extends GridValidRowModel> extends BaseComponentProps {
   /** What one row is, for the details panel heading. */

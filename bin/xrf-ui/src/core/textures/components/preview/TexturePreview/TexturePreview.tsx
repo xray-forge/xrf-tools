@@ -1,4 +1,5 @@
 import { useInjection } from "@wirestate/react";
+import { Nullable } from "@xrf/types";
 import { ReactElement, useEffect, useState } from "react";
 
 import { describeTextureShape } from "@/core/assets/lib";
@@ -20,7 +21,6 @@ import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { PAN_ZOOM_FIT } from "@/lib/media/pan-zoom";
 import { PanZoomController } from "@/lib/media/pan-zoom-controller";
-import { Nullable } from "@/lib/types/general";
 
 import { TextureImagePane } from "./TextureImagePane";
 import { TexturePreviewFrame } from "./TexturePreviewFrame";

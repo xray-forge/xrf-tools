@@ -1,6 +1,7 @@
+import { Nullable } from "@xrf/types";
+
 import { EquipmentSheetLocation, EquipmentSpriteMetadata, EquipmentSpriteOpen } from "@/core/ipc/types/xrf-app";
 import { EEquipmentSlotClaim, EquipmentSlotOccupant } from "@/core/ipc/types/xrf-texture";
-import { Nullable } from "@/lib/types/general";
 
 /**
  * One section occupying a slot, measured in grid cells.

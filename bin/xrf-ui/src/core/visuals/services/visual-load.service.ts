@@ -1,5 +1,6 @@
 import { Injectable, OnDeactivation } from "@wirestate/core";
 import { BoundAction, Computed, Observable, RefObservable, runInAction } from "@wirestate/mobx";
+import { Nullable } from "@xrf/types";
 
 import { transformError } from "@/core/error/lib";
 import { visualsCommands } from "@/core/ipc/commands/visuals";
@@ -18,7 +19,6 @@ import { AsyncState } from "@/lib/async-state";
 import { formatDuration } from "@/lib/format/duration";
 import { Logger, Timer } from "@/lib/logging";
 import { call, cancelFlow, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
-import { Nullable } from "@/lib/types/general";
 
 /** A visual that is loaded: what it is, where it came from, and the views the scene draws. */
 export interface IOpenVisual {

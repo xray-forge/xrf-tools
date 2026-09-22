@@ -1,6 +1,7 @@
 import { default as GrainIcon } from "@mui/icons-material/Grain";
 import { default as LightbulbIcon } from "@mui/icons-material/Lightbulb";
 import { default as ViewInArIcon } from "@mui/icons-material/ViewInAr";
+import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback } from "react";
 
 import { RenderLightingAction } from "@/core/render/components/lighting/RenderLightingAction";
@@ -11,7 +12,6 @@ import { EditorToolbarSeparator } from "@/core/shell/editor/EditorToolbarSeparat
 import { EditorViewToggle } from "@/core/shell/editor/EditorViewToggle";
 import { DEFAULT_TEXTURE_LIGHTING } from "@/core/textures/lib/scene/texture-lighting";
 import { ETexturePreviewMode, ITexturePreviewOptions } from "@/core/textures/lib/texture-preview";
-import { Nullable } from "@/lib/types/general";
 
 import { TextureBodyOptions } from "./TextureBodyOptions";
 import { describeUnavailableBump, SURFACE_ONLY } from "./TextureWorkspaceToolbar.utils";

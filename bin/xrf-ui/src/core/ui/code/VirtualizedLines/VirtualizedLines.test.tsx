@@ -1,13 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { RenderResult } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
+import { Nullable } from "@xrf/types";
 
 import { ESyntaxToken } from "@/core/syntax/lib";
 import { CODE } from "@/core/theme/tokens";
 import { ECodeLineMark, ICodeLine, ICodeLineRange, ICodeLineSource, toCodeLineSource } from "@/core/ui/code/code-line";
 import { VirtualizedLines } from "@/core/ui/code/VirtualizedLines/VirtualizedLines";
 import { renderWithProviders } from "@/fixtures/utils/render";
-import { Nullable } from "@/lib/types/general";
 
 const VIEWPORT_HEIGHT: number = 400;
 

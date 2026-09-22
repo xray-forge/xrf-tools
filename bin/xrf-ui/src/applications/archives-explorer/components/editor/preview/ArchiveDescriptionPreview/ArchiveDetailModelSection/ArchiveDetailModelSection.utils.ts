@@ -1,6 +1,7 @@
+import { Nullable } from "@xrf/types";
+
 import { ArchiveBounds, ArchiveDetailModel } from "@/core/ipc/types/xrf-app";
 import { formatNumber } from "@/lib/format/number";
-import { Nullable } from "@/lib/types/general";
 
 /**
  * How much space a detail model occupies as authored.

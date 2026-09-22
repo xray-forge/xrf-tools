@@ -1,4 +1,5 @@
 import { Typography } from "@mui/material";
+import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
 import { systemCommands } from "@/core/ipc/commands/system";
@@ -10,7 +11,6 @@ import { formatInstant } from "@/lib/format/instant";
 import { Logger, useLogger } from "@/lib/logging";
 import { formatBytes } from "@/lib/memory/format";
 import { usePolledValue } from "@/lib/react";
-import { Nullable } from "@/lib/types/general";
 
 /**
  * When this session started, and what it is costing the machine right now.

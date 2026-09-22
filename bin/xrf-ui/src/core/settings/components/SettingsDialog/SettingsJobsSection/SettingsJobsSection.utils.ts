@@ -1,5 +1,6 @@
+import { Nullable } from "@xrf/types";
+
 import { JobConclusion, JobDescription } from "@/core/ipc/types/xrf-app";
-import { Nullable } from "@/lib/types/general";
 
 /** How a conclusion is painted, in the palette the rest of the application uses for the same meanings. */
 export type TJobOutcomeColor = "success.main" | "warning.main" | "error.main" | "text.secondary";

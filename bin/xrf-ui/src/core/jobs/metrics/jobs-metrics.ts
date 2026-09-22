@@ -1,5 +1,6 @@
+import { Maybe, Nullable, Optional } from "@xrf/types";
+
 import { JobProgress, ProgressLevel } from "@/core/ipc/types/xrf-job";
-import { Maybe, Nullable, Optional } from "@/lib/types/general";
 
 import { IJobPhase, IJobProfile } from "./jobs-metrics.types";
 

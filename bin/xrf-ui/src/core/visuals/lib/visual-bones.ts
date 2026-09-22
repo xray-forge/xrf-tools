@@ -1,5 +1,6 @@
+import { Optional } from "@xrf/types";
+
 import { VisualBone } from "@/core/ipc/types/xrf-visual";
-import { Optional } from "@/lib/types/general";
 
 /**
  * Bones a weapon hides when its addon is absent.

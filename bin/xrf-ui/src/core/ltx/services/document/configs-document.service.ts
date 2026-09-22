@@ -1,5 +1,6 @@
 import { inject, Injectable } from "@wirestate/core";
 import { Computed, Observable, runInAction } from "@wirestate/mobx";
+import { Nullable } from "@xrf/types";
 
 import { transformError } from "@/core/error/lib";
 import { configsCommands } from "@/core/ipc/commands/configs";
@@ -13,7 +14,6 @@ import { AsyncState } from "@/lib/async-state";
 import { formatDuration } from "@/lib/format/duration";
 import { Logger, Timer } from "@/lib/logging";
 import { call, cancelFlow, LatestFlow, TFlow } from "@/lib/mobx";
-import { Nullable } from "@/lib/types/general";
 
 /** The two ways one config can be read. */
 export enum EConfigsDocumentMode {

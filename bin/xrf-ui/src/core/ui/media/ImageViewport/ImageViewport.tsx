@@ -1,3 +1,4 @@
+import { Nullable } from "@xrf/types";
 import {
   MouseEvent,
   ReactElement,
@@ -31,7 +32,6 @@ import {
 } from "@/lib/media/pan-zoom";
 import { PanZoomController } from "@/lib/media/pan-zoom-controller";
 import { IElementSize, useElementSize } from "@/lib/react";
-import { Nullable } from "@/lib/types/general";
 
 /** Stands in for the viewport until it has been measured, when there is nowhere to place anything anyway. */
 const UNMEASURED: IPanZoomSize = { width: 0, height: 0 };

@@ -1,6 +1,7 @@
+import { Nullable } from "@xrf/types";
+
 import { APPLICATION_CATALOG } from "@/ApplicationCatalog";
 import { EApplicationId, EApplicationStatus, IApplicationDescriptor } from "@/core/routing/application";
-import { Nullable } from "@/lib/types/general";
 
 /**
  * Resolves a help entry's related tools to their descriptors.

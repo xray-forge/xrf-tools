@@ -1,3 +1,4 @@
+import { Maybe, Nullable } from "@xrf/types";
 import {
   AdditiveBlending,
   Blending,
@@ -18,7 +19,6 @@ import {
   XraySurfaceDescriptor,
   XraySurfaceDraw,
 } from "@/core/ipc/types/xrf-material";
-import { Maybe, Nullable } from "@/lib/types/general";
 
 /**
  * The detail texture a surface modulates its diffuse with, as the shader table's answer named it.

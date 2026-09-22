@@ -1,4 +1,4 @@
-import { Nullable } from "@/lib/types/general";
+import { Nullable } from "@xrf/types";
 
 /**
  * Targets whose own menu is the only clipboard UI they have. Matched by attribute rather than by the

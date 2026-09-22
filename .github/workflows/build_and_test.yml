@@ -89,7 +89,7 @@ jobs:
 
       - uses: pnpm/action-setup@v6
         with:
-          package_json_file: bin/xrf-ui/package.json
+          package_json_file: package.json
           run_install: false
 
       - name: Use Node.js 24.x
@@ -97,7 +97,7 @@ jobs:
         with:
           node-version: 24.x
           cache: pnpm
-          cache-dependency-path: bin/xrf-ui/pnpm-lock.yaml
+          cache-dependency-path: pnpm-lock.yaml
 
       - name: Restore frontend tool state
         id: frontend-tools
@@ -108,22 +108,26 @@ jobs:
             bin/xrf-ui/target/eslint
             bin/xrf-ui/target/tsconfig.tsbuildinfo
             bin/xrf-ui/target/tsconfig.node.tsbuildinfo
-          key: frontend-tools-${{ runner.os }}-${{ hashFiles('bin/xrf-ui/pnpm-lock.yaml') }}-${{ github.sha }}
+            cli/target/eslint
+            packages/*/target/jest-cache
+            packages/*/target/eslint
+            packages/*/target/tsconfig.tsbuildinfo
+          key: frontend-tools-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-${{ github.sha }}
           restore-keys: |
-            frontend-tools-${{ runner.os }}-${{ hashFiles('bin/xrf-ui/pnpm-lock.yaml') }}-
+            frontend-tools-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-
             frontend-tools-${{ runner.os }}-
 
-      - name: Install UI dependencies
-        run: pnpm --dir bin/xrf-ui install --frozen-lockfile
+      - name: Install TypeScript dependencies
+        run: pnpm install --frozen-lockfile
 
-      - name: Typecheck UI
-        run: pnpm --dir bin/xrf-ui typecheck
+      - name: Typecheck TypeScript members
+        run: pnpm -r typecheck
 
-      - name: Run UI tests
-        run: pnpm --dir bin/xrf-ui test --maxWorkers=100%
+      - name: Run TypeScript tests
+        run: pnpm -r test --maxWorkers=100%
 
-      - name: Lint UI
-        run: pnpm --dir bin/xrf-ui lint
+      - name: Lint TypeScript members
+        run: pnpm run lint
 
       - name: Save frontend tool state
         if: ${{ github.ref == 'refs/heads/main' && steps.frontend-tools.outputs.cache-hit != 'true' }}
@@ -134,7 +138,11 @@ jobs:
             bin/xrf-ui/target/eslint
             bin/xrf-ui/target/tsconfig.tsbuildinfo
             bin/xrf-ui/target/tsconfig.node.tsbuildinfo
-          key: frontend-tools-${{ runner.os }}-${{ hashFiles('bin/xrf-ui/pnpm-lock.yaml') }}-${{ github.sha }}
+            cli/target/eslint
+            packages/*/target/jest-cache
+            packages/*/target/eslint
+            packages/*/target/tsconfig.tsbuildinfo
+          key: frontend-tools-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-${{ github.sha }}
 
   build-app-windows:
     runs-on: windows-latest
@@ -148,7 +156,7 @@ jobs:
 
       - uses: pnpm/action-setup@v6
         with:
-          package_json_file: bin/xrf-ui/package.json
+          package_json_file: package.json
           run_install: false
 
       - name: Use Node.js 24.x
@@ -156,7 +164,7 @@ jobs:
         with:
           node-version: 24.x
           cache: pnpm
-          cache-dependency-path: bin/xrf-ui/pnpm-lock.yaml
+          cache-dependency-path: pnpm-lock.yaml
 
       - uses: ./.github/actions/pinned-toolchain
 
@@ -165,8 +173,8 @@ jobs:
           cache-workspace-crates: true
           save-if: ${{ github.ref == 'refs/heads/main' }}
 
-      - name: Install UI dependencies
-        run: pnpm.cmd --dir bin/xrf-ui install --frozen-lockfile
+      - name: Install TypeScript dependencies
+        run: pnpm.cmd install --frozen-lockfile
 
       - name: Build UI
         run: pnpm.cmd --dir bin/xrf-ui build

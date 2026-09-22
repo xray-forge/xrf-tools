@@ -1,3 +1,5 @@
+import { Nullable } from "@xrf/types";
+
 import { createRoots } from "@/core/assets/lib";
 import { LevelEntry, LevelTextureReference, SelectedLevelDescription } from "@/core/ipc/types/xrf-app";
 import {
@@ -17,7 +19,6 @@ import {
   TLevelTextureListener,
 } from "@/core/level/lib/texture/level-texture-set";
 import { mockVisualBounds, MockVisualBuffer } from "@/fixtures/mocks/visual.mocks";
-import { Nullable } from "@/lib/types/general";
 
 /**
  * One packed mesh: positions and thirty-two bit indices written into the buffer.

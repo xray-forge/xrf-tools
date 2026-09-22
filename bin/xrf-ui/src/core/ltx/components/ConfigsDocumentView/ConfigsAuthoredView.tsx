@@ -1,5 +1,6 @@
 import { Alert } from "@mui/material";
 import { useInjection } from "@wirestate/react";
+import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useMemo } from "react";
 
 import { ConfigsDocument } from "@/core/ipc/types/xrf-app";
@@ -14,7 +15,6 @@ import { ECodeLineMark, ICodeLine, ICodeLineSource } from "@/core/ui/code/code-l
 import { VirtualizedLines } from "@/core/ui/code/VirtualizedLines";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { Nullable } from "@/lib/types/general";
 
 interface IConfigsAuthoredViewProps extends BaseComponentProps {
   document: ConfigsDocument;

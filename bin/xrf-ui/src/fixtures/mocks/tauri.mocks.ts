@@ -1,6 +1,5 @@
 import { jest } from "@jest/globals";
-
-import { Optional } from "@/lib/types/general";
+import { Optional } from "@xrf/types";
 
 export type InvokeHandler = (args?: Record<string, unknown>) => unknown;
 

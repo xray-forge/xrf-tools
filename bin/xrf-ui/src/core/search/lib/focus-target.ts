@@ -1,8 +1,7 @@
 import { CommandType } from "@wirestate/core";
 import { useOnCommand } from "@wirestate/react";
+import { Nullable } from "@xrf/types";
 import { RefObject } from "react";
-
-import { Nullable } from "@/lib/types/general";
 
 /**  Asks the search field that is on screen for the caret. */
 export const FOCUS_SEARCH_FIELD_MESSAGE: CommandType = Symbol("@/search/focus-field");

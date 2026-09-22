@@ -1,3 +1,5 @@
+import { Maybe, Nullable } from "@xrf/types";
+
 import { transformError } from "@/core/error/lib";
 import { assetsRawCommands } from "@/core/ipc/commands/assets-raw";
 import { texturesRawCommands } from "@/core/ipc/commands/textures-raw";
@@ -7,7 +9,6 @@ import { ILevelTextureDelivery } from "@/core/level/lib/render/level-render-prot
 import { ISectorTextureRequest } from "@/core/level/lib/sector/level-sector-textures";
 import { IDdsRead, readDdsFile } from "@/core/render/lib/dds";
 import { Logger } from "@/lib/logging";
-import { Maybe, Nullable } from "@/lib/types/general";
 
 /**
  * Reads the files a level's textures come from.

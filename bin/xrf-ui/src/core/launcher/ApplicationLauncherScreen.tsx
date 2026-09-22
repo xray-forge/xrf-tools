@@ -1,4 +1,5 @@
 import { useInjection } from "@wirestate/react";
+import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useMemo, useRef } from "react";
 import { NavigateFunction, useNavigate } from "react-router-dom";
 
@@ -8,7 +9,6 @@ import { SettingsService } from "@/core/settings/services/settings";
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { Nullable } from "@/lib/types/general";
 
 import { ApplicationLauncherCatalog, IApplicationLauncherCatalogSearch } from "./components/ApplicationLauncherCatalog";
 import { ApplicationLauncherHeader } from "./components/ApplicationLauncherHeader";

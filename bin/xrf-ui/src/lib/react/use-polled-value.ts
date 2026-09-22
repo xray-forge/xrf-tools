@@ -1,7 +1,7 @@
+import { Nullable } from "@xrf/types";
 import { useEffect, useRef, useState } from "react";
 
 import { Logger } from "@/lib/logging";
-import { Nullable } from "@/lib/types/general";
 
 /**
  * Re-reads a value on an interval for as long as the component is mounted.

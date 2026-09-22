@@ -1,5 +1,6 @@
 import { inject, Injectable, OnDeactivation, OnEvent, WireEvent } from "@wirestate/core";
 import { BoundAction, Computed, Observable } from "@wirestate/mobx";
+import { Nullable } from "@xrf/types";
 
 import { describeTextureCompareOutcome } from "@/applications/textures-editor/lib/describe-texture-compare-outcome";
 import { transformError } from "@/core/error/lib";
@@ -25,7 +26,6 @@ import { AsyncState } from "@/lib/async-state";
 import { formatDuration } from "@/lib/format/duration";
 import { Logger, Timer } from "@/lib/logging";
 import { call, cancelFlow, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
-import { Nullable } from "@/lib/types/general";
 
 /**
  * What every format would cost this texture, and which one the editor is holding for a save.

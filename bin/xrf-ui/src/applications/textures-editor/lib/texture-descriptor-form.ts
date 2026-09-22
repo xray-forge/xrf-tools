@@ -1,5 +1,6 @@
+import { Nullable } from "@xrf/types";
+
 import { TextureDescription, TextureDescriptorForm } from "@/core/ipc/types/xrf-app";
-import { Nullable } from "@/lib/types/general";
 
 /**
  * The relief depth a descriptor starts at.

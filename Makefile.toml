@@ -65,18 +65,16 @@ command = "cargo"
 args = ["test", "-p", "xrf-error-derive", "--test", "ui", "--locked"]
 
 [tasks.test-ui]
-description = "Run UI application typescript tests."
+description = "Run the tests of every TypeScript workspace member."
 category = "Development"
 workspace = false
-cwd = "bin/xrf-ui"
 script_runner = "@shell"
 script = 'pnpm run test'
 
 [tasks.verify-ui]
-description = "Install frontend dependencies, then typecheck, test and lint the UI."
+description = "Install locked TypeScript dependencies, then typecheck, test and lint every workspace member."
 category = "Verification"
 workspace = false
-cwd = "bin/xrf-ui"
 script_runner = "@shell"
 script = 'pnpm install --frozen-lockfile && pnpm run typecheck && pnpm run test && pnpm run lint'
 

@@ -1,3 +1,5 @@
+import { assertExhaustive, Nullable } from "@xrf/types";
+
 import { describeResolution, getLocatedAsset } from "@/core/assets/lib/resolution";
 import {
   EXrayBumpMode,
@@ -14,8 +16,6 @@ import {
 } from "@/core/ipc/types/xrf-material";
 import { XrayAsset } from "@/core/ipc/types/xrf-vfs";
 import { formatNumber } from "@/lib/format/number";
-import { assertExhaustive } from "@/lib/types/exhaustive";
-import { Nullable } from "@/lib/types/general";
 
 /** How a material state reads, and how loudly. */
 export interface IMaterialStateDescriptor {

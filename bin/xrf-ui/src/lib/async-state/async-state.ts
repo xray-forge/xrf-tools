@@ -1,4 +1,4 @@
-import { Nullable } from "@/lib/types/general";
+import { Nullable } from "@xrf/types";
 
 /** Lifecycle status, independent of whether a resource has a value. */
 export enum EAsyncStatus {

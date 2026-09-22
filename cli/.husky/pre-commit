@@ -1,0 +1,18 @@
+#!/usr/bin/env sh
+
+# Git runs hooks from the working tree root, which is also the TypeScript workspace root.
+members="bin/xrf-ui cli packages"
+
+# Most commits here are Rust only, and they must not need an installed frontend to land.
+# shellcheck disable=SC2086
+if ! git diff --cached --name-only --diff-filter=ACMR -- $members | grep -Eq '\.(cjs|js|mjs|ts|tsx)$'; then
+  exit 0
+fi
+
+if [ ! -d "node_modules" ]; then
+  printf >&2 "\n%s\n\n" "TypeScript sources are staged but the workspace has no node_modules: run 'pnpm install'."
+  exit 1
+fi
+
+# No `--` before the flags: pnpm forwards it to the script verbatim, and lint-staged then stops parsing.
+pnpm run lint:staged --hide-all --concurrent false

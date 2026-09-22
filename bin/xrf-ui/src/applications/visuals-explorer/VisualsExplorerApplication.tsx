@@ -1,4 +1,5 @@
 import { useInjection } from "@wirestate/react";
+import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useMemo, useState } from "react";
 
 import { toVisualSessionLocation } from "@/applications/visuals-explorer/lib/visual-location";
@@ -9,7 +10,6 @@ import { ApplicationLoader } from "@/core/shell/loading/ApplicationLoader";
 import { VisualPreviewLayout } from "@/core/visuals/components/preview/VisualPreviewLayout";
 import { IOpenVisual } from "@/core/visuals/services";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { Nullable } from "@/lib/types/general";
 
 import { VISUALS_EXPLORER_PANELS } from "./components/panels";
 import { VisualsMenu } from "./components/tree";

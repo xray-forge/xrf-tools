@@ -1,4 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
+import { Nullable } from "@xrf/types";
 import { Texture } from "three";
 
 import { ILevelTexture, ILevelTextureLookup } from "@/core/level/lib/texture/level-texture-set";
@@ -9,7 +10,6 @@ import {
   mockBlendedSurfaceDescriptor,
   mockSurfaceDescriptor,
 } from "@/fixtures/mocks/visual.mocks";
-import { Nullable } from "@/lib/types/general";
 
 import {
   createSurfaceMaterial,

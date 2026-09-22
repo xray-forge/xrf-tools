@@ -1,5 +1,6 @@
+import { TFrameRateLimit } from "@xrf/renderer";
+
 import { DomRenderTarget } from "@/core/render/lib/frame/dom-render-target";
-import { TFrameRateLimit } from "@/core/render/lib/frame/render-frame-limit";
 import { IRenderLighting } from "@/core/render/lib/lighting/render-lighting";
 import {
   ITextureSurfaceRenderer,

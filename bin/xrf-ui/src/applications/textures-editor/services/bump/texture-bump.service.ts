@@ -1,5 +1,6 @@
 import { inject, Injectable, OnEvent, WireEvent } from "@wirestate/core";
 import { Computed, flowResult } from "@wirestate/mobx";
+import { Nullable } from "@xrf/types";
 
 import { describeTextureBumpOutcome } from "@/applications/textures-editor/lib/describe-texture-bump-outcome";
 import { toBumpReference, toBumpTarget } from "@/applications/textures-editor/lib/texture-bump-target";
@@ -12,7 +13,6 @@ import { JobsService } from "@/core/jobs/services/jobs";
 import { TextureSelectionService } from "@/core/textures/services/selection";
 import { Logger } from "@/lib/logging";
 import { call, ExclusiveFlow, TFlow } from "@/lib/mobx";
-import { Nullable } from "@/lib/types/general";
 
 /** What a generation was asked to build the pair from. */
 export interface ITextureBumpSources {

@@ -1,5 +1,6 @@
+import { Optional } from "@xrf/types";
+
 import { isApplePlatform } from "@/lib/env";
-import { Optional } from "@/lib/types/general";
 
 /**
  * Modifier spelled in a chord, resolved per platform when the chord is matched.

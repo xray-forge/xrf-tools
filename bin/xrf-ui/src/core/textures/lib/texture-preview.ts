@@ -1,10 +1,11 @@
+import { Nullable } from "@xrf/types";
+
 import {
   ETextureSurfaceAlpha,
   ETextureSurfaceShape,
   ITextureSurfaceOptions,
 } from "@/core/textures/lib/texture-surface";
 import { AsyncState } from "@/lib/async-state";
-import { Nullable } from "@/lib/types/general";
 
 /** The two ways one texture file can be looked at here. */
 export enum ETexturePreviewMode {

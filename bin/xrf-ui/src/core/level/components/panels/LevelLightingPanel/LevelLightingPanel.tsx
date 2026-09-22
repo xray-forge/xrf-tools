@@ -1,5 +1,6 @@
 import { Button } from "@mui/material";
 import { useInjection } from "@wirestate/react";
+import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useMemo } from "react";
 
 import { LevelSunDescription } from "@/core/ipc/types/xrf-app";
@@ -12,7 +13,6 @@ import { IRenderLighting } from "@/core/render/lib/lighting/render-lighting";
 import { EditorPanel, EditorPanelEmpty, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatPercent } from "@/lib/format/number";
-import { Nullable } from "@/lib/types/general";
 
 interface ILevelLightingPanelProps extends BaseComponentProps {
   lighting: ILevelLighting;

@@ -2,6 +2,7 @@ import { default as FolderIcon } from "@mui/icons-material/Folder";
 import { default as FolderOpenIcon } from "@mui/icons-material/FolderOpen";
 import { default as ViewInArIcon } from "@mui/icons-material/ViewInAr";
 import { useInjection } from "@wirestate/react";
+import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useMemo } from "react";
 
 import { VisualsBrowseService } from "@/applications/visuals-explorer/services/browse";
@@ -19,7 +20,6 @@ import { IVirtualizedTreeIcons, VirtualizedTree } from "@/core/ui/tree/Virtualiz
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { LOGICAL_PATH_SEPARATOR } from "@/lib/path/separator";
 import { EMPTY_ARRAY } from "@/lib/types/array";
-import { Nullable } from "@/lib/types/general";
 
 /** Hoisted so the tree is handed the same icons every render rather than a fresh set. */
 const VISUAL_TREE_ICONS: IVirtualizedTreeIcons = {

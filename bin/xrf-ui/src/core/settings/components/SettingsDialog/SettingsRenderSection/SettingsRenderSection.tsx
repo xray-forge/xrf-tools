@@ -1,8 +1,7 @@
 import { useInjection } from "@wirestate/react";
+import { ERenderResolution, FRAME_RATE_LIMITS, RENDER_RESOLUTIONS, TFrameRateLimit } from "@xrf/renderer";
 import { ReactElement } from "react";
 
-import { FRAME_RATE_LIMITS, TFrameRateLimit } from "@/core/render/lib/frame/render-frame-limit";
-import { ERenderResolution, RENDER_RESOLUTIONS } from "@/core/render/lib/frame/render-resolution";
 import { SettingsService } from "@/core/settings/services/settings";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 import { ChoiceFormRow, IChoiceFormRowOption } from "@/core/ui/form/ChoiceFormRow";

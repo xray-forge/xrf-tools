@@ -1,4 +1,5 @@
 import { useInjection } from "@wirestate/react";
+import { Nullable } from "@xrf/types";
 import { ReactElement, useEffect, useState } from "react";
 
 import { VisualsService } from "@/applications/visuals-explorer/services/visuals";
@@ -9,7 +10,6 @@ import { EditorPanel, EditorPanelEmpty, EditorPanelSection } from "@/core/shell/
 import { VisualMotionService } from "@/core/visuals/services/visual-motion.service";
 import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { Nullable } from "@/lib/types/general";
 
 import { VisualMotionList } from "./VisualMotionList";
 import { VisualMotionNames } from "./VisualMotionNames";

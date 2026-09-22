@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
-
-import { Optional } from "@/lib/types/general";
+import { Optional } from "@xrf/types";
 
 import {
   clearStorageGroup,

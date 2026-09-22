@@ -1,5 +1,6 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { act, fireEvent, RenderResult } from "@testing-library/react";
+import { Nullable } from "@xrf/types";
 
 import { AssetService } from "@/core/assets/services";
 import { texturesCommands } from "@/core/ipc/commands/textures";
@@ -16,7 +17,6 @@ import { mockTextureDescription } from "@/fixtures/mocks/texture.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 import { AsyncState } from "@/lib/async-state";
-import { Nullable } from "@/lib/types/general";
 
 let TexturePreview: typeof import("./TexturePreview").TexturePreview;
 

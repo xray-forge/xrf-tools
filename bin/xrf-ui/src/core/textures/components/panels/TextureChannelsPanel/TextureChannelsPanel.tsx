@@ -1,4 +1,5 @@
 import { useInjection } from "@wirestate/react";
+import { Nullable } from "@xrf/types";
 import { PointerEvent, ReactElement, useCallback, useEffect, useRef, useState } from "react";
 
 import { TextureDescription } from "@/core/ipc/types/xrf-app";
@@ -15,7 +16,6 @@ import { TextureSurfaceService } from "@/core/textures/services/surface";
 import { EVisualBumpView } from "@/core/visuals/lib/visual-bump-channels";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { ABSENT_VALUE } from "@/lib/format/number";
-import { Nullable } from "@/lib/types/general";
 
 import {
   describeTextureTexel,

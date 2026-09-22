@@ -1,10 +1,10 @@
 import { default as DataObjectIcon } from "@mui/icons-material/DataObject";
+import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
 import { ExportDescriptor } from "@/core/ipc/types/xrf-export";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { Nullable } from "@/lib/types/general";
 
 import { ExportDeclarationView } from "./ExportDeclarationView";
 

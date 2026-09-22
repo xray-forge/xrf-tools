@@ -1,11 +1,11 @@
 import { useInjection } from "@wirestate/react";
+import { Nullable } from "@xrf/types";
 import { ReactElement, useMemo } from "react";
 
 import { ILevelStats } from "@/core/level/lib/stats/level-stats";
 import { LevelViewportService } from "@/core/level/services";
 import { useEditorStatus } from "@/core/shell/editor-shell";
 import { formatBytes } from "@/lib/memory/format";
-import { Nullable } from "@/lib/types/general";
 
 interface ILevelPreviewStatusProps {
   /** What the viewer is doing, when that is worth saying instead of what it is drawing. */

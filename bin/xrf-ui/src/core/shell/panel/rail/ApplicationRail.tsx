@@ -4,6 +4,7 @@ import { default as LightModeIcon } from "@mui/icons-material/LightMode";
 import { default as SettingsIcon } from "@mui/icons-material/Settings";
 import { useColorScheme } from "@mui/material/styles";
 import { open } from "@tauri-apps/plugin-shell";
+import { Maybe, Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useState } from "react";
 
 import { REPOSITORY_URL } from "@/core/configs";
@@ -12,7 +13,6 @@ import { SettingsDialog } from "@/core/settings/components/SettingsDialog";
 import { IEditorPanel } from "@/core/shell/editor-shell";
 import { ApplicationPanelStripe } from "@/core/shell/panel/ApplicationPanelStripe";
 import { Logger } from "@/lib/logging";
-import { Maybe, Nullable } from "@/lib/types/general";
 
 import { RailButton } from "./RailButton";
 

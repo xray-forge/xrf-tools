@@ -1,9 +1,10 @@
+import { Maybe } from "@xrf/types";
+
 import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
 import { SectorDescription } from "@/core/ipc/types/xrf-visual";
 import { ISectorInstanceViews, ISectorSectionViews, ISectorViews } from "@/core/level/lib/sector/level-sector-views";
 import { ILevelSurface } from "@/core/level/lib/surface/level-surface-material";
 import { getRenderSurface, isAlphaRenderSurface } from "@/core/render/lib/surface/render-surface";
-import { Maybe } from "@/lib/types/general";
 
 /**
  * One texture a sector needs, and what it has to survive upload with.

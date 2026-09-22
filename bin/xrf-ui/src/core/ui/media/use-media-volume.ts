@@ -1,8 +1,8 @@
+import { Nullable } from "@xrf/types";
 import { useCallback, useState } from "react";
 
 import { MEDIA_VOLUME_STORAGE_KEY } from "@/core/storage";
 import { getLocalStorageValue, setLocalStorageValue } from "@/lib/local-storage";
-import { Nullable } from "@/lib/types/general";
 
 const DEFAULT_VOLUME: number = 1;
 

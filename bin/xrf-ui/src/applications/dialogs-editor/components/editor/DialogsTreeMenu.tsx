@@ -2,6 +2,7 @@ import { default as DescriptionIcon } from "@mui/icons-material/Description";
 import { default as FolderOpenIcon } from "@mui/icons-material/FolderOpen";
 import { default as ForumIcon } from "@mui/icons-material/Forum";
 import { useInjection } from "@wirestate/react";
+import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useEffect, useMemo } from "react";
 
 import { IDialogTreeEntry, IDialogTreeLeaf } from "@/applications/dialogs-editor/lib/dialog-tree";
@@ -14,7 +15,6 @@ import { IUseTreeState, useTreeState } from "@/core/ui/tree/use-tree-state";
 import { IVirtualizedTreeIcons, VirtualizedTree } from "@/core/ui/tree/VirtualizedTree";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { LOGICAL_PATH_SEPARATOR } from "@/lib/path/separator";
-import { Nullable } from "@/lib/types/general";
 
 /**
  * Hoisted so the tree is handed the same icons every render rather than a fresh set.

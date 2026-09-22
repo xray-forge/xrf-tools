@@ -1,11 +1,11 @@
 import { default as DescriptionIcon } from "@mui/icons-material/Description";
 import { default as FolderIcon } from "@mui/icons-material/Folder";
 import { default as FolderOpenIcon } from "@mui/icons-material/FolderOpen";
+import { Nullable } from "@xrf/types";
 
 import { LtxInventoryFile } from "@/core/ipc/types/xrf-ltx-inspect";
 import { ITreeNode } from "@/core/ui/tree/tree-node";
 import { ITreeIconDecoration, IVirtualizedTreeIcons } from "@/core/ui/tree/VirtualizedTree";
-import { Nullable } from "@/lib/types/general";
 
 /** Hoisted so the tree is handed the same icons every render rather than a fresh set. */
 export const CONFIG_TREE_ICONS: IVirtualizedTreeIcons = {

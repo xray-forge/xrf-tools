@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
+import { Maybe } from "@xrf/types";
 
 import { ILevelStreamSchedulerHost, LevelStreamScheduler } from "@/core/level/lib/stream/level-stream-scheduler";
-import { Maybe } from "@/lib/types/general";
 
 /** A read that is finished when the test says so, which is how concurrency is observable at all. */
 interface IHeldRead {

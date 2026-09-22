@@ -1,4 +1,5 @@
 import { useInjection } from "@wirestate/react";
+import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
 import { DialogsService, IDialogSelection } from "@/applications/dialogs-editor/services/dialogs";
@@ -9,7 +10,6 @@ import { EmptyState } from "@/core/ui/layout/EmptyState";
 import { ErrorState } from "@/core/ui/layout/ErrorState";
 import { AsyncState } from "@/lib/async-state";
 import { inline } from "@/lib/callbacks/inline";
-import { Nullable } from "@/lib/types/general";
 
 import { DialogGraph } from "./editor/DialogGraph";
 

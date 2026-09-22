@@ -1,12 +1,12 @@
 import { default as CloseIcon } from "@mui/icons-material/Close";
 import { CommandBus } from "@wirestate/core";
 import { useInjection } from "@wirestate/react";
+import { Nullable } from "@xrf/types";
 import { ReactElement, useEffect, useRef, useState } from "react";
 
 import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
 import { TEditorPanelSide } from "@/core/shell/editor-shell";
 import { IPanelSideCommand, PANEL_CLOSE_COMMAND } from "@/core/shell/panel/panel-messages";
-import { Nullable } from "@/lib/types/general";
 
 /**
  * Closes the panel it is drawn in, and draws nothing anywhere else.

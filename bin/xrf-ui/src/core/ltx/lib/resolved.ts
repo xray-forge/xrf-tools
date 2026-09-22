@@ -1,3 +1,5 @@
+import { Nullable } from "@xrf/types";
+
 import {
   ELtxResolvedFieldOrigin,
   LtxResolvedField,
@@ -7,7 +9,6 @@ import {
 } from "@/core/ipc/types/xrf-ltx-inspect";
 import { ESyntaxToken, ISyntaxSpan } from "@/core/syntax/lib";
 import { ICodeLine, ICodeLineSource } from "@/core/ui/code/code-line";
-import { Nullable } from "@/lib/types/general";
 
 /** The unnamed section a resolution carries whatever was written before the first header in. */
 export const ROOT_SECTION: string = "";

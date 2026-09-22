@@ -1,4 +1,5 @@
 import { Theme, useTheme } from "@mui/material";
+import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useLayoutEffect, useMemo, useRef } from "react";
 
 import {
@@ -12,7 +13,6 @@ import { IImageViewportView } from "@/core/ui/media/ImageViewport";
 import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { toPanZoomTransform } from "@/lib/media/pan-zoom";
-import { Nullable } from "@/lib/types/general";
 
 interface IEquipmentGridCanvasProps extends BaseComponentProps {
   view: IImageViewportView;

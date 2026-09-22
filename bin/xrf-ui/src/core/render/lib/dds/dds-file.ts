@@ -1,3 +1,5 @@
+import { Nullable } from "@xrf/types";
+
 import {
   EDdsChannels,
   EDdsLayout,
@@ -8,7 +10,6 @@ import {
   IDdsChannelMasks,
   TDdsLayout,
 } from "@/core/render/lib/dds/dds-format";
-import { Nullable } from "@/lib/types/general";
 
 /** Why a dds file cannot be uploaded as it is stored. */
 export enum EDdsRefusal {

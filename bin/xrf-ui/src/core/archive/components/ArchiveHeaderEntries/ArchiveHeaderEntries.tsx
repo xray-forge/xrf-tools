@@ -1,12 +1,12 @@
 import { default as AddIcon } from "@mui/icons-material/Add";
 import { Stack, TextField, Typography } from "@mui/material";
+import { Nullable } from "@xrf/types";
 import { ChangeEvent, ReactElement, useCallback, useState } from "react";
 
 import { readHeaderEntries, RESERVED_HEADER_KEYS, writeHeaderValue } from "@/core/archive/lib";
 import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
 import { EditableListItem, FormRow } from "@/core/ui/form";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { Nullable } from "@/lib/types/general";
 
 interface IArchiveHeaderEntriesProps extends BaseComponentProps {
   header: Nullable<string>;

@@ -1,10 +1,9 @@
 import { inject, Injectable, OnDeactivation } from "@wirestate/core";
 import { BoundAction, Observable, reaction, RefObservable } from "@wirestate/mobx";
+import { EMPTY_RENDER_FRAME_COST, ERenderResolution, IRenderFrameCost, TFrameRateLimit } from "@xrf/renderer";
+import { Nullable } from "@xrf/types";
 
 import { DomRenderTarget } from "@/core/render/lib/frame/dom-render-target";
-import { EMPTY_RENDER_FRAME_COST, IRenderFrameCost } from "@/core/render/lib/frame/render-frame-cost";
-import { TFrameRateLimit } from "@/core/render/lib/frame/render-frame-limit";
-import { ERenderResolution } from "@/core/render/lib/frame/render-resolution";
 import { IRenderLighting } from "@/core/render/lib/lighting/render-lighting";
 import { RenderSurfaceService } from "@/core/render/lib/surface/render-surface-service";
 import { SettingsService } from "@/core/settings/services/settings";
@@ -23,7 +22,6 @@ import { IVisualModelViews } from "@/core/visuals/lib/visual-views";
 import { VisualViewService } from "@/core/visuals/services/visual-view.service";
 import { canRenderOffscreen } from "@/lib/dom/canvas";
 import { Logger } from "@/lib/logging";
-import { Nullable } from "@/lib/types/general";
 
 /**
  * Owns the scene the open visual stands in, and everything said to it.

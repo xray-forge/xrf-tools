@@ -1,4 +1,5 @@
 import { useInjection } from "@wirestate/react";
+import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
 import { SelectedLevelDescription } from "@/core/ipc/types/xrf-app";
@@ -10,7 +11,6 @@ import {
   EditorPanelSection,
 } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { Nullable } from "@/lib/types/general";
 
 /**
  * What the open level is built out of, which is everything the open read without touching its geometry.

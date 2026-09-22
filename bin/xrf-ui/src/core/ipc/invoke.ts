@@ -1,7 +1,7 @@
 import { InvokeArgs, InvokeOptions, invoke as invokeTauri } from "@tauri-apps/api/core";
+import { Nullable } from "@xrf/types";
 
 import { IPC_METRICS, IpcCallMeasurement, weighIpcPayload } from "@/core/ipc/metrics";
-import { Nullable } from "@/lib/types/general";
 
 /**
  * Calls a command, counting what it cost.

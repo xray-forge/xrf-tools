@@ -1,7 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, it, jest } from "@jest/globals";
+import { EMPTY_RENDER_FRAME_COST, OffscreenRenderTarget } from "@xrf/renderer";
 
-import { OffscreenRenderTarget } from "@/core/render/lib/frame/offscreen-render-target";
-import { EMPTY_RENDER_FRAME_COST } from "@/core/render/lib/frame/render-frame-cost";
 import { RenderProxyElement } from "@/core/render/lib/worker/render-proxy-element";
 import {
   EVisualPreviewRequest,

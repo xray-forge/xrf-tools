@@ -1,9 +1,9 @@
 import { Injectable, OnDeprovision } from "@wirestate/core";
 import { BoundAction, RefObservable, runInAction } from "@wirestate/mobx";
+import { Nullable } from "@xrf/types";
 
 import { IEditorPanel } from "@/core/shell/editor-shell/editor-panel";
 import { EMPTY_ARRAY } from "@/lib/types/array";
-import { Nullable } from "@/lib/types/general";
 
 interface IEditorShellRegistration<T> {
   owner: string;

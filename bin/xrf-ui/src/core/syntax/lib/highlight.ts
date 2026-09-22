@@ -1,6 +1,7 @@
+import { Nullable } from "@xrf/types";
+
 import { getSyntaxRules } from "@/core/syntax/lib/syntax-rules";
 import { ESyntaxLanguage, ESyntaxToken, ISyntaxRule, ISyntaxSpan } from "@/core/syntax/lib/syntax.types";
-import { Nullable } from "@/lib/types/general";
 
 const SCANNERS: Map<ESyntaxLanguage, Nullable<RegExp>> = new Map();
 

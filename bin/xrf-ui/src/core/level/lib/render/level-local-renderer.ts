@@ -1,3 +1,5 @@
+import { Nullable } from "@xrf/types";
+
 import { ILevelSectorChange, ILevelTextureSupplyChange } from "@/core/level/lib/render/level-render-protocol";
 import {
   ILevelRenderer,
@@ -8,7 +10,6 @@ import {
 import { LevelFlyControls, LevelPreviewScene } from "@/core/level/lib/scene";
 import { ILevelSurfaceGeometry } from "@/core/level/lib/surface/level-surface-geometry";
 import { DomRenderTarget } from "@/core/render/lib/frame/dom-render-target";
-import { Nullable } from "@/lib/types/general";
 
 /** What a renderer needs to exist at all: somewhere to draw, and somewhere to report to. */
 export interface ILevelLocalRendererOptions {

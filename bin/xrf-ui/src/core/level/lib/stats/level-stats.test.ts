@@ -1,6 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
-
-import { IRenderFrameCost } from "@/core/render/lib/frame/render-frame-cost";
+import { IRenderFrameCost } from "@xrf/renderer";
 
 import { EMPTY_LEVEL_STATS, ILevelStats, measureLevelStats } from "./level-stats";
 

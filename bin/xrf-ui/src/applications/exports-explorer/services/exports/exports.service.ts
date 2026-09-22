@@ -1,5 +1,6 @@
 import { EventBus, inject, Injectable, OnDeactivation, OnProvision } from "@wirestate/core";
 import { BoundAction, Computed, flowResult, Observable } from "@wirestate/mobx";
+import { Nullable } from "@xrf/types";
 
 import { transformError } from "@/core/error/lib";
 import { exportsCommands } from "@/core/ipc/commands/exports";
@@ -12,7 +13,6 @@ import { AsyncState } from "@/lib/async-state";
 import { formatDuration } from "@/lib/format/duration";
 import { Logger, Timer } from "@/lib/logging";
 import { call, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
-import { Nullable } from "@/lib/types/general";
 
 @Injectable()
 export class ExportsService {

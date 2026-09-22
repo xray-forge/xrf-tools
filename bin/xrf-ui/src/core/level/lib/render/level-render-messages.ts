@@ -1,3 +1,5 @@
+import { Nullable } from "@xrf/types";
+
 import { ILevelCamera } from "@/core/level/lib/camera/level-camera";
 import { ILevelFlyMotion } from "@/core/level/lib/camera/level-fly-motion";
 import { ILevelSectorChange, ILevelTextureSupplyChange } from "@/core/level/lib/render/level-render-protocol";
@@ -6,7 +8,6 @@ import { ILevelPoint } from "@/core/level/lib/residency/level-residency";
 import { ILevelStats } from "@/core/level/lib/stats/level-stats";
 import { ILevelSurfaceGeometry } from "@/core/level/lib/surface/level-surface-geometry";
 import { ILevelTextureReport } from "@/core/level/lib/texture/level-texture-report";
-import { Nullable } from "@/lib/types/general";
 
 /**
  * What a renderer on another thread can be told about the level it draws.

@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { isObservableProp, reaction } from "@wirestate/mobx";
+import { Nullable } from "@xrf/types";
 
 import { createRoots } from "@/core/assets/lib";
 import { SelectedLevelDescription } from "@/core/ipc/types/xrf-app";
@@ -22,7 +23,6 @@ import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { mockInvoke, resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { MockVisualBuffer } from "@/fixtures/mocks/visual.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
-import { Nullable } from "@/lib/types/general";
 
 import { IDLE_LEVEL_STREAM, LevelLoadService } from "./level-load.service";
 

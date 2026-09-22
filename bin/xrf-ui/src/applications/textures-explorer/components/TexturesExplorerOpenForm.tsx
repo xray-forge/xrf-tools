@@ -1,4 +1,5 @@
 import { useInjection } from "@wirestate/react";
+import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback } from "react";
 
 import {
@@ -25,7 +26,6 @@ import {
   useRememberedValue,
 } from "@/core/ui/form";
 import { Logger, useLogger } from "@/lib/logging";
-import { Nullable } from "@/lib/types/general";
 
 const OPEN_MODE_OPTIONS: ReadonlyArray<IChoiceFormRowOption<ETextureOpenMode>> = TEXTURE_OPEN_MODES.map(
   (mode: ITextureOpenModeDescriptor) => ({

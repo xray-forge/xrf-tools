@@ -1,4 +1,4 @@
-import { IRenderFrameCost } from "@/core/render/lib/frame/render-frame-cost";
+import { IRenderFrameCost } from "@xrf/renderer";
 
 /**
  * What a viewport is holding, against what a frame of it costs.

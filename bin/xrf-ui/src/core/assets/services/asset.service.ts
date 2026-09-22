@@ -1,7 +1,7 @@
 import { Injectable, OnDeactivation } from "@wirestate/core";
+import { Nullable } from "@xrf/types";
 
 import { Logger } from "@/lib/logging";
-import { Nullable } from "@/lib/types/general";
 
 /**
  * Owns the lifetime of every object url an editor hands to the webview.

@@ -1,4 +1,5 @@
 import { Alert, Checkbox, FormControlLabel, Stack, Typography } from "@mui/material";
+import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
 import { isWholeDirectory } from "@/applications/archives-packer/lib/pack-config";
@@ -8,7 +9,6 @@ import { ARCHIVE_VOLUME_SUFFIX, HEADER_ENTRY_POINT, readHeaderValue } from "@/co
 import { ArchivePackConfig, EArchivePackMode, EArchiveVolumeExtension } from "@/core/ipc/types/xrf-pack";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { bytesToWholeMegabytes } from "@/lib/memory/size";
-import { Nullable } from "@/lib/types/general";
 
 import { PackerDirectoryChips } from "./PackerDirectoryChips";
 

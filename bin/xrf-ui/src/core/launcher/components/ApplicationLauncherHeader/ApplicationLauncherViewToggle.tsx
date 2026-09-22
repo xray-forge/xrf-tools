@@ -1,11 +1,11 @@
 import { default as GridViewIcon } from "@mui/icons-material/GridView";
 import { default as TableRowsIcon } from "@mui/icons-material/TableRows";
 import { ToggleButton, ToggleButtonGroup, Tooltip } from "@mui/material";
+import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
 import { TCatalogView } from "@/core/settings/lib/catalog-view";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { Nullable } from "@/lib/types/general";
 
 interface IApplicationLauncherViewToggleProps extends BaseComponentProps {
   view: TCatalogView;

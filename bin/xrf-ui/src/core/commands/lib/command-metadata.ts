@@ -1,4 +1,4 @@
-import { Nullable, Optional } from "@/lib/types/general";
+import { Nullable, Optional } from "@xrf/types";
 
 import { IKeybindCommand } from "./command-descriptor";
 

@@ -1,5 +1,6 @@
+import { Nullable, Optional } from "@xrf/types";
+
 import { IKeybindCommand } from "@/core/commands";
-import { Nullable, Optional } from "@/lib/types/general";
 
 import { IKeyChord, isSuppressedInTextEntry, matchesChord, parseChord, toChordKey } from "./chord";
 

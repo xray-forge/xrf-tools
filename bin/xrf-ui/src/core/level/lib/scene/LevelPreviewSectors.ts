@@ -1,3 +1,4 @@
+import { Maybe, Nullable } from "@xrf/types";
 import { InstancedMesh, Mesh, Object3D } from "three";
 
 import { createInstancedMesh } from "@/core/level/lib/sector/level-instance-geometry";
@@ -10,7 +11,6 @@ import { DEFAULT_LEVEL_SURFACE_OPTIONS, ILevelSurfaceOptions } from "@/core/leve
 import { ILevelTextureSource } from "@/core/level/lib/texture/level-texture-set";
 import { Timer } from "@/lib/logging";
 import { toMean } from "@/lib/math/series";
-import { Maybe, Nullable } from "@/lib/types/general";
 
 /** Arrivals the mean is taken over, which matches the read profile's window so the two numbers are comparable. */
 const ADD_WINDOW: number = 32;

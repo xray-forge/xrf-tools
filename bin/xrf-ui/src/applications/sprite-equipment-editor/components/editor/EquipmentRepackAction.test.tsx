@@ -2,6 +2,7 @@ import { describe, expect, it } from "@jest/globals";
 import { RenderResult, waitFor } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { Injectable } from "@wirestate/core";
+import { Nullable } from "@xrf/types";
 
 import { SpriteEquipmentEditorService } from "@/applications/sprite-equipment-editor/services/editor";
 import { AssetService } from "@/core/assets/services";
@@ -9,7 +10,6 @@ import { EquipmentSpriteMetadata } from "@/core/ipc/types/xrf-app";
 import { SpriteEquipmentPackerService } from "@/core/sprite-equipment/services/packer";
 import { mockEquipmentSpriteMetadata, mockEquipmentSpriteOpen } from "@/fixtures/mocks/sprite.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
-import { Nullable } from "@/lib/types/general";
 
 import { EquipmentRepackAction } from "./EquipmentRepackAction";
 

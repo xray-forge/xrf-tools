@@ -1,4 +1,5 @@
 import { useInjection } from "@wirestate/react";
+import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback } from "react";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
@@ -14,7 +15,6 @@ import {
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatBytes } from "@/lib/memory/format";
 import { getFileExtension } from "@/lib/path/extension";
-import { Nullable } from "@/lib/types/general";
 
 import { ArchiveOriginDetail } from "./ArchiveOriginDetail";
 import { ArchiveSharedPayloadDetail } from "./ArchiveSharedPayloadDetail";

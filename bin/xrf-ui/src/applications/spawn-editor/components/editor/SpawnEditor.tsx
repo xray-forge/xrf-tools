@@ -1,5 +1,6 @@
 import { default as ViewListIcon } from "@mui/icons-material/ViewList";
 import { useInjection } from "@wirestate/react";
+import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback } from "react";
 import { Route, Routes } from "react-router-dom";
 
@@ -11,7 +12,6 @@ import { useEditorBusy } from "@/core/shell/editor-lifecycle";
 import { useEditorPanels, useEditorStatus } from "@/core/shell/editor-shell";
 import { SpawnFileService } from "@/core/spawn/services";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { Nullable } from "@/lib/types/general";
 
 import { SpawnEditorAlife } from "./chunks/alife/SpawnEditorAlife";
 import { SpawnEditorArtefacts } from "./chunks/artefacts/SpawnEditorArtefacts";

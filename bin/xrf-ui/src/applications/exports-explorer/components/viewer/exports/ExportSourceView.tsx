@@ -1,4 +1,5 @@
 import { useInjection } from "@wirestate/react";
+import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useEffect, useState } from "react";
 
 import { ExportsService } from "@/applications/exports-explorer/services/exports";
@@ -12,7 +13,6 @@ import { ErrorState } from "@/core/ui/layout/ErrorState";
 import { AsyncState } from "@/lib/async-state";
 import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { Nullable } from "@/lib/types/general";
 
 export interface IExportSourceViewProps extends BaseComponentProps {
   name: string;

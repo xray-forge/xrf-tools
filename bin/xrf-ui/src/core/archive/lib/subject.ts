@@ -1,7 +1,8 @@
+import { Nullable } from "@xrf/types";
+
 import { ArchiveSubject, EArchiveSubject } from "@/core/ipc/types/xrf-app";
 import { ArchiveReadPolicy } from "@/core/ipc/types/xrf-archive";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
-import { Nullable } from "@/lib/types/general";
 
 import { IArchiveEntry } from "./entry";
 import { listArchiveFiles } from "./files";

@@ -1,7 +1,8 @@
+import { Nullable } from "@xrf/types";
+
 import { EXraySurfaceDeclaration, XraySurfaceDeclaration, XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
 import { ELevelProblemRule } from "@/core/level/lib/problems/level-problem-rule";
 import { IEditorProblem } from "@/core/shell/editor/EditorProblemsPanel";
-import { Nullable } from "@/lib/types/general";
 
 /**
  * The shader table entries the library answered nothing useful for.

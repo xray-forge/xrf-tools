@@ -1,6 +1,7 @@
 import { describe, expect, it, jest } from "@jest/globals";
 import { waitFor } from "@testing-library/react";
 import { Container } from "@wirestate/core";
+import { Nullable } from "@xrf/types";
 
 import { AssetService } from "@/core/assets/services";
 import { EquipmentSpriteMetadata } from "@/core/ipc/types/xrf-app";
@@ -10,7 +11,6 @@ import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { mockEquipmentSpriteMetadata, mockEquipmentSpriteOpen } from "@/fixtures/mocks/sprite.mocks";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
-import { Nullable } from "@/lib/types/general";
 
 import { SpriteEquipmentEditorService } from "./editor.service";
 

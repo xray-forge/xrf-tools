@@ -1,4 +1,4 @@
-import { Nullable } from "@/lib/types/general";
+import { Nullable } from "@xrf/types";
 
 /**
  * Layouts the root catalog offers, in the order its switch presents them.

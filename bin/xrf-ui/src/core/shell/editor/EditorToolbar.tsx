@@ -1,4 +1,5 @@
 import { Box, iconButtonClasses, svgIconClasses } from "@mui/material";
+import { Nullable } from "@xrf/types";
 import { ReactElement, ReactNode, useCallback } from "react";
 import { NavigateFunction, useNavigate } from "react-router-dom";
 
@@ -11,7 +12,6 @@ import { useIsEditorBusy, useRequestLeave } from "@/core/shell/editor-lifecycle"
 import { CONTROL } from "@/core/theme/tokens";
 import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { Nullable } from "@/lib/types/general";
 
 interface IEditorToolbarProps extends BaseComponentProps {
   /** Overrides the application name resolved from the route. Rarely needed. */

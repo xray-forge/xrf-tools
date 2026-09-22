@@ -1,5 +1,6 @@
 import { TextField } from "@mui/material";
 import { useInjection } from "@wirestate/react";
+import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useMemo, useState } from "react";
 
 import { SpriteEquipmentEditorService } from "@/applications/sprite-equipment-editor/services/editor";
@@ -12,7 +13,6 @@ import { PickerForm } from "@/core/shell/editor/PickerForm";
 import { ChoiceFormRow, FormRow, IPathField, PathFormRow, usePathField, useRememberedValue } from "@/core/ui/form";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Logger, useLogger } from "@/lib/logging";
-import { Nullable } from "@/lib/types/general";
 
 import {
   DEFAULT_SHEET_REFERENCE,

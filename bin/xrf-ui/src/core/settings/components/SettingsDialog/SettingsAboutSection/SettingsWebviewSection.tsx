@@ -1,3 +1,4 @@
+import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
 import { DetailSection } from "@/core/ui/layout/DetailSection";
@@ -5,7 +6,6 @@ import { StatFigure } from "@/core/ui/stats/StatFigure";
 import { formatDuration } from "@/lib/format/duration";
 import { formatBytes, formatBytesPair } from "@/lib/memory/format";
 import { usePolledValue } from "@/lib/react";
-import { Nullable } from "@/lib/types/general";
 
 import { IWebviewStats, readWebviewStats } from "./webview-stats";
 

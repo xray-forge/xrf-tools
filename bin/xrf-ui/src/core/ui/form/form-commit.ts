@@ -1,6 +1,5 @@
+import { Nullable } from "@xrf/types";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef } from "react";
-
-import { Nullable } from "@/lib/types/general";
 
 /** What a form offers its fields: a way to be told when the form was actually run. */
 export interface IFormCommitRegistry {

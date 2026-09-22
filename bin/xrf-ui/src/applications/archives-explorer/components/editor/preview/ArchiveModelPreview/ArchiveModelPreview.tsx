@@ -1,4 +1,5 @@
 import { useInjection } from "@wirestate/react";
+import { Nullable } from "@xrf/types";
 import { ReactElement, useEffect } from "react";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
@@ -11,7 +12,6 @@ import { IOpenVisual, VisualLoadService } from "@/core/visuals/services";
 import { AsyncState } from "@/lib/async-state";
 import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { Nullable } from "@/lib/types/general";
 
 interface IArchiveModelPreviewProps extends BaseComponentProps {
   name: string;

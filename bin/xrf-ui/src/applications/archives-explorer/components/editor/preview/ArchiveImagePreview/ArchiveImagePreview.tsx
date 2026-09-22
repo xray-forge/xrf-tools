@@ -1,5 +1,6 @@
 import { Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
+import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
 import { ArchivePreviewError } from "@/applications/archives-explorer/components/editor/preview/ArchivePreviewError/ArchivePreviewError";
@@ -13,7 +14,6 @@ import { ImageViewport } from "@/core/ui/media/ImageViewport";
 import { AsyncState } from "@/lib/async-state";
 import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { Nullable } from "@/lib/types/general";
 
 /**
  * Shows a picture the webview draws as it stands, which the engine does not load.

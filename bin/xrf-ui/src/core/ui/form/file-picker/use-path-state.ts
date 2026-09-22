@@ -1,8 +1,7 @@
 import { isTauri } from "@tauri-apps/api/core";
 import { DialogFilter, open, save } from "@tauri-apps/plugin-dialog";
+import { Nullable, Optional } from "@xrf/types";
 import { useCallback, useRef, useState } from "react";
-
-import { Nullable, Optional } from "@/lib/types/general";
 
 export interface IPathStateOptions {
   title?: string;

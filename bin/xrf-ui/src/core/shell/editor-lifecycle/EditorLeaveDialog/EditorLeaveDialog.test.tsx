@@ -1,11 +1,11 @@
 import { describe, expect, it, jest } from "@jest/globals";
 import { waitFor } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
+import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
 import { EditorSaver, useEditorDirty, useRequestLeave } from "@/core/shell/editor-lifecycle";
 import { renderWithProviders } from "@/fixtures/utils/render";
-import { Nullable } from "@/lib/types/general";
 
 function Leaver({
   dirtyCount,

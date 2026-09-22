@@ -1,5 +1,6 @@
+import { Nullable } from "@xrf/types";
+
 import { ArchiveLevelGameSpawn } from "@/core/ipc/types/xrf-app";
-import { Nullable } from "@/lib/types/general";
 
 import { formatCount } from "../ArchiveDescriptionPreview.utils";
 

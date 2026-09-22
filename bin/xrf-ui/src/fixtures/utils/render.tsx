@@ -1,6 +1,7 @@
 import { render, RenderResult } from "@testing-library/react";
 import { Container, ContainerConfig } from "@wirestate/core";
 import { ContainerProvider } from "@wirestate/react";
+import { Nullable } from "@xrf/types";
 import { Fragment, PropsWithChildren, ReactElement, ReactNode } from "react";
 import { MemoryRouter, useLocation } from "react-router-dom";
 
@@ -11,7 +12,6 @@ import { IApplicationDescriptor } from "@/core/routing/application";
 import { CurrentApplicationProvider } from "@/core/routing/current-application.context";
 import { EditorLeaveDialog } from "@/core/shell/editor-lifecycle";
 import { IEditorPanel, selectPanelsOnSide, useEditorPanelsRegistry } from "@/core/shell/editor-shell";
-import { Nullable } from "@/lib/types/general";
 
 export interface IRenderOptions {
   /** Initial route. Components resolve their application name from it, so it is rarely irrelevant. */

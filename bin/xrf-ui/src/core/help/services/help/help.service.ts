@@ -1,9 +1,9 @@
 import { Injectable, OnDeprovision } from "@wirestate/core";
 import { BoundAction, Observable, runInAction } from "@wirestate/mobx";
+import { Nullable } from "@xrf/types";
 
 import { KeybindCommand } from "@/core/commands";
 import { OPEN_APPLICATION_HELP_KEYBIND_COMMAND } from "@/core/help/commands";
-import { Nullable } from "@/lib/types/general";
 
 /**
  * Owns whether help is on screen, and which application it belongs to.

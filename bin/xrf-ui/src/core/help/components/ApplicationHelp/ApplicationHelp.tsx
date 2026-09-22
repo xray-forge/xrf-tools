@@ -1,4 +1,5 @@
 import { useInjection } from "@wirestate/react";
+import { Nullable } from "@xrf/types";
 import { ReactElement, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 
@@ -8,7 +9,6 @@ import { HelpService } from "@/core/help/services/help";
 import { LAUNCHER_HELP } from "@/core/launcher/help";
 import { IApplicationDescriptor, IApplicationHelp } from "@/core/routing/application";
 import { useCurrentApplication } from "@/core/routing/current-application.context";
-import { Nullable } from "@/lib/types/general";
 
 /**
  * The current screen's help: the rail control and the dialog.

@@ -1,12 +1,12 @@
 import { Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
+import { Nullable } from "@xrf/types";
 import { Fragment, ReactElement } from "react";
 
 import { EKeybindCommandCategory, IKeybindCommand, KEYBIND_COMMAND_CATEGORY_LABELS } from "@/core/commands";
 import { formatChord, parseChord } from "@/core/keybinds";
 import { KeymapService } from "@/core/keybinds/services/keymap";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { Nullable } from "@/lib/types/general";
 
 /** One command and the chords it currently answers to. */
 interface IShortcutRow {

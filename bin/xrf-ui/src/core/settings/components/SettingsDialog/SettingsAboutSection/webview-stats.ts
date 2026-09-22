@@ -1,4 +1,4 @@
-import { Nullable } from "@/lib/types/general";
+import { Nullable } from "@xrf/types";
 
 /** What the JavaScript heap of a Chromium-based webview currently holds. */
 export interface IWebviewHeap {

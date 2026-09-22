@@ -2,6 +2,7 @@ import { default as ClearIcon } from "@mui/icons-material/Clear";
 import { default as SearchIcon } from "@mui/icons-material/Search";
 import { IconButton, InputAdornment, TextField, Tooltip } from "@mui/material";
 import { useInjection } from "@wirestate/react";
+import { Nullable, Optional } from "@xrf/types";
 import { ChangeEvent, KeyboardEvent, ReactElement, RefObject, useCallback } from "react";
 
 import { formatChord, parseChord } from "@/core/keybinds";
@@ -9,7 +10,6 @@ import { KeymapService } from "@/core/keybinds/services/keymap";
 import { FOCUS_SEARCH_KEYBIND_COMMAND } from "@/core/search/commands";
 import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { Nullable, Optional } from "@/lib/types/general";
 
 interface IApplicationLauncherSearchFieldProps extends BaseComponentProps {
   /** Lets the launcher's keyboard shortcut reach the field it does not own. */

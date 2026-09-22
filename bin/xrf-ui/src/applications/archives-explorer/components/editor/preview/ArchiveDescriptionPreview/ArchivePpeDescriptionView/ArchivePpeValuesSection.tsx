@@ -1,9 +1,9 @@
+import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
 import { ArchiveAnimationChannel, ArchivePpeColorMap } from "@/core/ipc/types/xrf-app";
 import { EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { Nullable } from "@/lib/types/general";
 
 import { ArchiveAnimationChannelRow } from "../ArchiveAnimationChannelRow";
 

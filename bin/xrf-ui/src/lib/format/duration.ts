@@ -1,5 +1,6 @@
+import { Nullable } from "@xrf/types";
+
 import { formatNumber } from "@/lib/format/number";
-import { Nullable } from "@/lib/types/general";
 
 /**
  * Formats a measurement already taken in seconds, keeping an absent one visibly absent.

@@ -1,4 +1,5 @@
 import { Chip } from "@mui/material";
+import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
 import { XrayMaterialDescriptor } from "@/core/ipc/types/xrf-material";
@@ -14,7 +15,6 @@ import {
 import { EditorPanelProperty } from "@/core/shell/editor/EditorPanel";
 import { IVisualBumpStatus } from "@/core/visuals/lib/visual-bump";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { Nullable } from "@/lib/types/general";
 
 import { describeBumpUpload } from "./VisualSubmeshMaterial.utils";
 

@@ -1,10 +1,9 @@
+import { IRenderFrameCost, IRenderTarget, TFrameRateLimit } from "@xrf/renderer";
+import { Nullable, Optional } from "@xrf/types";
 import { DataTexture, PerspectiveCamera, Scene, Texture } from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
-import { IRenderFrameCost } from "@/core/render/lib/frame/render-frame-cost";
-import { TFrameRateLimit } from "@/core/render/lib/frame/render-frame-limit";
 import { TRenderCostReporter } from "@/core/render/lib/frame/render-reporter";
-import { IRenderTarget } from "@/core/render/lib/frame/render-target";
 import { RenderViewport } from "@/core/render/lib/frame/render-viewport";
 import { IRenderLighting } from "@/core/render/lib/lighting/render-lighting";
 import { RenderPreviewLighting } from "@/core/render/lib/lighting/RenderPreviewLighting";
@@ -15,7 +14,6 @@ import { IVisualTextureFile } from "@/core/visuals/lib/visual-texture";
 import { IVisualModelViews } from "@/core/visuals/lib/visual-views";
 import { bindDragCursor } from "@/lib/media/drag-cursor";
 import { toDolliedPosition } from "@/lib/media/orbit-dolly";
-import { Nullable, Optional } from "@/lib/types/general";
 
 import { DEFAULT_VISUAL_PREVIEW_SCENE_CONFIG, IVisualPreviewSceneConfig } from "./scene-config";
 import { DEFAULT_VISUAL_LIGHTING } from "./visual-lighting";

@@ -1,10 +1,10 @@
+import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
 import { useRootProbe } from "@/core/assets/lib/use-root-probe";
 import { PathFormRow } from "@/core/ui/form/PathFormRow";
 import { IPathField } from "@/core/ui/form/use-path-field";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { Nullable } from "@/lib/types/general";
 
 interface IAssetRootFormRowProps extends BaseComponentProps {
   field: IPathField;

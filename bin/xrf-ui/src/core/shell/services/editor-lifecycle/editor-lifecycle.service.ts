@@ -1,11 +1,11 @@
 import { EventBus, inject, Injectable, OnDeprovision, OnProvision, ProvisionId } from "@wirestate/core";
 import { BoundAction, Computed, Observable, runInAction } from "@wirestate/mobx";
+import { Nullable } from "@xrf/types";
 
 import { transformError } from "@/core/error/lib";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
 import { APPLICATION_SOURCE } from "@/core/routing/application";
 import { Logger } from "@/lib/logging";
-import { Nullable } from "@/lib/types/general";
 
 /** Writes all pending edits; false keeps the editor open. */
 export type EditorSaver = () => Promise<boolean>;

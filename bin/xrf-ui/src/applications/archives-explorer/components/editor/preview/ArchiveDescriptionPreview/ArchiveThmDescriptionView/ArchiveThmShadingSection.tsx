@@ -1,10 +1,10 @@
+import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
 import { ArchiveThmMaterial } from "@/core/ipc/types/xrf-app";
 import { EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatNumber } from "@/lib/format/number";
-import { Nullable } from "@/lib/types/general";
 
 import { NOT_DECLARED } from "../ArchiveDescriptionPreview.utils";
 import { ArchiveDescriptionRow } from "../ArchiveDescriptionRow";

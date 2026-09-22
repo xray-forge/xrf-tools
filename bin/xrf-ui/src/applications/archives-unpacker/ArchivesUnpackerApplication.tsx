@@ -1,4 +1,5 @@
 import { useInjection } from "@wirestate/react";
+import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useEffect } from "react";
 
 import { UnpackerService } from "@/applications/archives-unpacker/services/unpacker";
@@ -9,7 +10,6 @@ import { resolveOutputPath } from "@/core/settings/lib/output-path";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
 import { IPathField, PathFormRow, usePathField } from "@/core/ui/form";
 import { Logger, useLogger } from "@/lib/logging";
-import { Nullable } from "@/lib/types/general";
 
 import { ArchivesUnpackResult } from "./components/ArchivesUnpackResult";
 

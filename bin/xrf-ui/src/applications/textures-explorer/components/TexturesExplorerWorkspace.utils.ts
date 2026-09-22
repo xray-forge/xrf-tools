@@ -1,5 +1,6 @@
+import { Nullable } from "@xrf/types";
+
 import { TextureCatalog } from "@/core/ipc/types/xrf-app";
-import { Nullable } from "@/lib/types/general";
 
 /**
  * What the status bar says about the open root set.

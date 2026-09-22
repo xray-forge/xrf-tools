@@ -1,9 +1,9 @@
 import { InjectionToken } from "@wirestate/core";
+import { Nullable } from "@xrf/types";
 
 import { IVisualBumpFiles } from "@/core/visuals/lib/visual-bump";
 import { IVisualTextureFile } from "@/core/visuals/lib/visual-texture";
 import { IVisualModelViews } from "@/core/visuals/lib/visual-views";
-import { Nullable } from "@/lib/types/general";
 
 /** How a model stands this frame: baked bone transforms, and which frame of them to show. */
 export interface IVisualPose {

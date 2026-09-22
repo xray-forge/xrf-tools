@@ -1,11 +1,7 @@
-import {
-  DEFAULT_RENDER_RESOLUTION,
-  ERenderResolution,
-  toRenderPixelRatio,
-} from "@/core/render/lib/frame/render-resolution";
-import { IRenderTarget } from "@/core/render/lib/frame/render-target";
+import { DEFAULT_RENDER_RESOLUTION, ERenderResolution, IRenderTarget, toRenderPixelRatio } from "@xrf/renderer";
+import { Nullable } from "@xrf/types";
+
 import { bindSelectionReset } from "@/lib/dom/selection";
-import { Nullable } from "@/lib/types/general";
 
 /**
  * A canvas filling an element of the page.

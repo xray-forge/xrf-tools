@@ -1,8 +1,8 @@
 import { Typography } from "@mui/material";
+import { Nullable } from "@xrf/types";
 import { ReactElement, ReactNode } from "react";
 
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { Nullable } from "@/lib/types/general";
 
 export interface IDetailSectionProps extends BaseComponentProps {
   title: string;

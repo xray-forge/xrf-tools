@@ -1,11 +1,11 @@
 import { Stack, Switch } from "@mui/material";
+import { Nullable } from "@xrf/types";
 import { ChangeEvent, ReactElement } from "react";
 
 import { ArchiveVolumeOptionsFields } from "@/core/archive/components/ArchiveVolumeOptionsFields";
 import { ArchivePackConfig } from "@/core/ipc/types/xrf-pack";
 import { FormRow } from "@/core/ui/form";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { Nullable } from "@/lib/types/general";
 
 interface IPackerOptionsSectionProps extends BaseComponentProps {
   config: ArchivePackConfig;

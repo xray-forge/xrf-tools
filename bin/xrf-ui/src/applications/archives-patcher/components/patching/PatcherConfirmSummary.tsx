@@ -1,4 +1,5 @@
 import { Alert, Checkbox, FormControlLabel, Stack, Typography } from "@mui/material";
+import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
 import { ArchivePathText } from "@/core/archive/components/ArchivePathText";
@@ -7,7 +8,6 @@ import { ARCHIVE_VOLUME_SUFFIX, HEADER_ENTRY_POINT, readHeaderValue } from "@/co
 import { ArchivePatchConfig, EArchivePackMode } from "@/core/ipc/types/xrf-pack";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { bytesToWholeMegabytes } from "@/lib/memory/size";
-import { Nullable } from "@/lib/types/general";
 
 interface IPatcherConfirmSummaryProps extends BaseComponentProps {
   config: ArchivePatchConfig;

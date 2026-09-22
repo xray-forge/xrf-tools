@@ -4,6 +4,7 @@ import { default as LightModeIcon } from "@mui/icons-material/LightModeOutlined"
 import { default as SpeedIcon } from "@mui/icons-material/Speed";
 import { default as WarningIcon } from "@mui/icons-material/WarningAmber";
 import { useInjection } from "@wirestate/react";
+import { Nullable } from "@xrf/types";
 import { ReactElement, ReactNode, useMemo } from "react";
 
 import { LevelHeaderPanel } from "@/core/level/components/panels/LevelHeaderPanel";
@@ -25,7 +26,6 @@ import { IEditorPanel, useEditorPanels } from "@/core/shell/editor-shell";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { Nullable } from "@/lib/types/general";
 
 interface ILevelPreviewLayoutProps extends BaseComponentProps {
   /** What the open level is called. Its presence is what draws the file header over the viewport. */

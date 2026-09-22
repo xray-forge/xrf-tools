@@ -1,3 +1,4 @@
+import { Nullable } from "@xrf/types";
 import {
   CompressedPixelFormat,
   RED_GREEN_RGTC2_Format,
@@ -12,8 +13,6 @@ import {
   SIGNED_RED_GREEN_RGTC2_Format,
   SIGNED_RED_RGTC1_Format,
 } from "three";
-
-import { Nullable } from "@/lib/types/general";
 
 /**
  * How the texels of one dds layout are stored.

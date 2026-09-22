@@ -1,5 +1,6 @@
 import { Button, Switch } from "@mui/material";
 import { useInjection } from "@wirestate/react";
+import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useEffect, useState } from "react";
 
 import { TranslationsParserService } from "@/applications/translations-parser/services/parser";
@@ -10,7 +11,6 @@ import { PickerForm } from "@/core/shell/editor/PickerForm";
 import { TranslationLanguageField } from "@/core/translations/components/TranslationLanguageField";
 import { DEFAULT_TRANSLATION_LANGUAGE, TRANSLATION_LANGUAGES } from "@/core/translations/translations.config";
 import { FormRow, IPathField, PathFormRow, usePathField, useRememberedValue } from "@/core/ui/form";
-import { Nullable } from "@/lib/types/general";
 
 import { TranslationsParseResult } from "./components/TranslationsParseResult";
 

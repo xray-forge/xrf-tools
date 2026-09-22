@@ -1,6 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
 import { fireEvent, RenderResult, waitFor } from "@testing-library/react";
 import { Container } from "@wirestate/core";
+import { Nullable } from "@xrf/types";
 
 import { TextureCatalog, TextureDescription, TextureEntry, TextureMaterialSummary } from "@/core/ipc/types/xrf-app";
 import { TextureCatalogService } from "@/core/textures/services/catalog";
@@ -21,7 +22,6 @@ import {
 } from "@/fixtures/mocks/texture.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
-import { Nullable } from "@/lib/types/general";
 
 import { TexturesMenu } from "./TexturesMenu";
 

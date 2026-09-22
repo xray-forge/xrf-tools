@@ -1,5 +1,6 @@
+import { Nullable } from "@xrf/types";
+
 import { IRenderSurfaceHost } from "@/core/render/lib/surface/render-surface-host";
-import { Nullable } from "@/lib/types/general";
 
 /**
  * A host that builds whatever draws, when it is given somewhere to draw.

@@ -1,5 +1,6 @@
 import { Injectable, OnDeprovision, OnEvent, OnProvision, ProvisionId, WireEvent } from "@wirestate/core";
 import { BoundAction, Computed, Observable } from "@wirestate/mobx";
+import { Nullable } from "@xrf/types";
 
 import {
   EMIT_NOTIFICATION_EVENT,
@@ -9,7 +10,6 @@ import {
   NOTIFICATION_SEVERITY_RANK,
 } from "@/core/notifications/lib";
 import { Logger } from "@/lib/logging";
-import { Nullable } from "@/lib/types/general";
 
 /**
  * The application wide record of what commands did.

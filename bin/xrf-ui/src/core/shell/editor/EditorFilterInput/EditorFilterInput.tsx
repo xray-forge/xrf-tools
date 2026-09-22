@@ -2,10 +2,10 @@ import { default as ClearIcon } from "@mui/icons-material/Clear";
 import { default as SearchIcon } from "@mui/icons-material/Search";
 import { IconButton, InputAdornment, TextField, Tooltip } from "@mui/material";
 import { useForkRef } from "@mui/material/utils";
+import { Nullable } from "@xrf/types";
 import { KeyboardEvent, ReactElement, Ref, RefObject, useRef } from "react";
 
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { Nullable } from "@/lib/types/general";
 
 export interface IEditorFilterInputProps extends BaseComponentProps {
   ariaLabel: string;

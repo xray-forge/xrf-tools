@@ -1,6 +1,7 @@
+import { Maybe } from "@xrf/types";
+
 import { VisualBone } from "@/core/ipc/types/xrf-visual";
 import { ITreeNode } from "@/core/ui/tree/tree-node";
-import { Maybe } from "@/lib/types/general";
 
 /** A skeleton node, mutable while the hierarchy is being assembled from parent names. */
 interface IBoneTreeNode extends ITreeNode<VisualBone> {

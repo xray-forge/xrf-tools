@@ -1,5 +1,7 @@
 import { inject, Injectable, OnDeactivation } from "@wirestate/core";
 import { BoundAction, reaction } from "@wirestate/mobx";
+import { ERenderResolution } from "@xrf/renderer";
+import { Maybe, Nullable } from "@xrf/types";
 
 import { SelectedLevelDescription } from "@/core/ipc/types/xrf-app";
 import { LevelLocalRenderer } from "@/core/level/lib/render/level-local-renderer";
@@ -12,12 +14,10 @@ import { LevelLoadService } from "@/core/level/services/level-load.service";
 import { LevelViewService } from "@/core/level/services/level-view.service";
 import { LevelViewportService } from "@/core/level/services/level-viewport.service";
 import { DomRenderTarget } from "@/core/render/lib/frame/dom-render-target";
-import { ERenderResolution } from "@/core/render/lib/frame/render-resolution";
 import { RenderSurfaceService } from "@/core/render/lib/surface/render-surface-service";
 import { SettingsService } from "@/core/settings/services/settings";
 import { canRenderOffscreen } from "@/lib/dom/canvas";
 import { Logger } from "@/lib/logging";
-import { Maybe, Nullable } from "@/lib/types/general";
 
 /**
  * Owns the renderer of the open level, and everything said to it.

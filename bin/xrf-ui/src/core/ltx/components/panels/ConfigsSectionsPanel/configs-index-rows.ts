@@ -1,7 +1,8 @@
+import { Nullable } from "@xrf/types";
+
 import { LtxFileStructure, LtxResolvedIndexEntry, LtxStructureEntry } from "@/core/ipc/types/xrf-ltx-inspect";
 import { ROOT_SECTION, ROOT_SECTION_LABEL } from "@/core/ltx/lib/resolved";
 import { ITreeNode } from "@/core/ui/tree/tree-node";
-import { Nullable } from "@/lib/types/general";
 
 /**
  * One row of the index, and where clicking it goes.

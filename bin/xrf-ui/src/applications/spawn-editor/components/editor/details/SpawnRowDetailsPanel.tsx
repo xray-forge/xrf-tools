@@ -1,4 +1,5 @@
 import { useInjection } from "@wirestate/react";
+import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
 import {
@@ -9,7 +10,6 @@ import {
 } from "@/core/shell/editor/EditorPanel";
 import { ISpawnRowSelection, SpawnFileService } from "@/core/spawn/services";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { Nullable } from "@/lib/types/general";
 
 import { formatSpawnRowDetailsValue } from "./SpawnRowDetailsPanel.utils";
 

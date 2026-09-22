@@ -50,7 +50,7 @@ for faster backend execution and sets the optimization override only for its pro
 | `test`              | Runs Cargo Make's workspace test flow.                                                                |
 | `test-workspace`    | Runs workspace library and binary tests and checks generated frontend bindings.                       |
 | `test-error-derive` | Runs the `xrf-error-derive` UI diagnostic snapshots.                                                  |
-| `verify-ui`         | Installs locked UI dependencies, then typechecks, tests, and lints the UI.                            |
+| `verify-ui`         | Installs locked TypeScript dependencies, then typechecks, tests, and lints every workspace member.    |
 | `verify`            | Runs the full CI-gated suite: format check, lint, workspace tests, derive diagnostics, and UI checks. |
 
 ### Documentation and generated code

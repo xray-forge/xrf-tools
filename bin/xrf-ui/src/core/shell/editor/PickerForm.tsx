@@ -1,6 +1,7 @@
 import { default as ExpandLessIcon } from "@mui/icons-material/ExpandLess";
 import { default as ExpandMoreIcon } from "@mui/icons-material/ExpandMore";
 import { Alert, Button, Card, CircularProgress, IconButton, Tooltip, Typography } from "@mui/material";
+import { Maybe } from "@xrf/types";
 import { FormEvent, KeyboardEvent, ReactElement, ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { NavigateFunction, useNavigate } from "react-router-dom";
 
@@ -11,7 +12,6 @@ import { FORM_SURFACE_SX } from "@/core/theme/form-surface";
 import { FormCommitContext, IFormCommitRegistry, useFormCommitRegistry } from "@/core/ui/form/form-commit";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Logger, useLogger } from "@/lib/logging";
-import { Maybe } from "@/lib/types/general";
 
 interface IPickerFormProps extends BaseComponentProps {
   title?: ReactNode;

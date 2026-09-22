@@ -1,5 +1,6 @@
 import { inject, Injectable, OnEvent, OnProvision, WireEvent } from "@wirestate/core";
 import { BoundAction, Computed, Observable } from "@wirestate/mobx";
+import { Nullable } from "@xrf/types";
 
 import { describePatchOutcome } from "@/applications/archives-patcher/lib/describe-patch-outcome";
 import { IResolvedArchiveVolumeSize, resolveArchiveVolumeSize } from "@/core/archive/lib/volume-size";
@@ -14,7 +15,6 @@ import { formatDuration } from "@/lib/format/duration";
 import { Logger, Timer } from "@/lib/logging";
 import { call, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 import { getPathName } from "@/lib/path/separator";
-import { Nullable } from "@/lib/types/general";
 
 import { toSavedState } from "./patcher.service.utils";
 

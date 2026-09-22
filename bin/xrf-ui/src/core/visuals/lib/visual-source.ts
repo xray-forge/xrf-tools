@@ -1,5 +1,6 @@
+import { assertExhaustive } from "@xrf/types";
+
 import { EVisualSource, VisualSource } from "@/core/ipc/types/xrf-app";
-import { assertExhaustive } from "@/lib/types/exhaustive";
 
 /**
  * Human readable name of where a visual came from.

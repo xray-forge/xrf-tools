@@ -1,6 +1,7 @@
+import { Nullable } from "@xrf/types";
+
 import { IVisualBumpStatus } from "@/core/visuals/lib/visual-bump";
 import { EVisualTextureState } from "@/core/visuals/lib/visual-texture";
-import { Nullable } from "@/lib/types/general";
 
 import { describeTextureState } from "./VisualSubmeshTexture.utils";
 

@@ -1,6 +1,5 @@
 import { default as createCache, EmotionCache } from "@emotion/cache";
-
-import { Nullable, Optional } from "@/lib/types/general";
+import { Nullable, Optional } from "@xrf/types";
 
 const INSERTION_POINT_NAME: string = "emotion-insertion-point";
 

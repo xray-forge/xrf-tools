@@ -1,4 +1,5 @@
-import { IOffscreenRenderSize } from "@/core/render/lib/frame/offscreen-render-target";
+import { IOffscreenRenderSize } from "@xrf/renderer";
+
 import { IRenderInputEvent } from "@/core/render/lib/worker/render-input";
 import { noop } from "@/lib/callbacks/noop";
 

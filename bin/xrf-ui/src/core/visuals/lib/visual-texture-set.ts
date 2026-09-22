@@ -1,3 +1,5 @@
+import { Nullable, Optional } from "@xrf/types";
+
 import { transformError } from "@/core/error/lib";
 import { assetsRawCommands } from "@/core/ipc/commands/assets-raw";
 import { visualsRawCommands } from "@/core/ipc/commands/visuals-raw";
@@ -18,7 +20,6 @@ import {
 import { formatDuration } from "@/lib/format/duration";
 import { Logger, Timer } from "@/lib/logging";
 import { call, TFlow } from "@/lib/mobx";
-import { Nullable, Optional } from "@/lib/types/general";
 
 /** One file's bytes as read, or the reason there are none. Decoding happens later, and only if still wanted. */
 interface IVisualTextureRead {

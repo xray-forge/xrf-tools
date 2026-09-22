@@ -1,4 +1,5 @@
 import { useInjection } from "@wirestate/react";
+import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useEffect, useMemo } from "react";
 
 import { LtxAnchoredFinding } from "@/core/ipc/types/xrf-ltx-inspect";
@@ -9,7 +10,6 @@ import { EditorProblemsPanel, IEditorProblem, IEditorProblemLocation } from "@/c
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { ErrorState } from "@/core/ui/layout/ErrorState";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { Nullable } from "@/lib/types/general";
 
 /**
  * One finding as a row: what broke, where it is written, and where opening it leads.

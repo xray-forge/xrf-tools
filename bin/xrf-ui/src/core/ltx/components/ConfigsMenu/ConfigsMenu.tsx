@@ -1,3 +1,4 @@
+import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useEffect, useMemo } from "react";
 
 import { LtxInventoryFile } from "@/core/ipc/types/xrf-ltx-inspect";
@@ -11,7 +12,6 @@ import { IUseTreeState, useTreeState } from "@/core/ui/tree/use-tree-state";
 import { VirtualizedTree } from "@/core/ui/tree/VirtualizedTree";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { LOGICAL_PATH_SEPARATOR } from "@/lib/path/separator";
-import { Nullable } from "@/lib/types/general";
 
 import { CONFIG_TREE_ICONS, decorateConfigIcon } from "./ConfigsMenu.utils";
 

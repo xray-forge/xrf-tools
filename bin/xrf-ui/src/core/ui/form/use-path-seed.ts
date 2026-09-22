@@ -1,6 +1,5 @@
+import { Nullable, Optional } from "@xrf/types";
 import { useCallback, useEffect, useRef } from "react";
-
-import { Nullable, Optional } from "@/lib/types/general";
 
 /** Produces a first guess at a path, which today is only ever an application's own output directory. */
 export type TPathSeed = () => Promise<Nullable<string>>;

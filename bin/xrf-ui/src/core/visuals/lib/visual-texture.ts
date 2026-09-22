@@ -1,7 +1,8 @@
+import { Nullable } from "@xrf/types";
+
 import { getLocatedAsset } from "@/core/assets/lib/resolution";
 import { EXrayResolution, XrayAsset, XrayResolution } from "@/core/ipc/types/xrf-vfs";
 import { VisualTextureDependency } from "@/core/ipc/types/xrf-visual";
-import { Nullable } from "@/lib/types/general";
 
 /**
  * Why a submesh ended up without a texture on screen, or that it has one.

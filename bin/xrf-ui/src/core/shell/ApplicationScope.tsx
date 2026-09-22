@@ -1,9 +1,9 @@
 import { Container, ContainerConfig } from "@wirestate/core";
 import { ContainerProvider, useContainer } from "@wirestate/react";
+import { Nullable } from "@xrf/types";
 import { Fragment, ReactElement, ReactNode, use, useMemo } from "react";
 
 import { IApplicationDescriptor } from "@/core/routing/application";
-import { Nullable } from "@/lib/types/general";
 
 interface IApplicationScopeProps {
   application: Nullable<IApplicationDescriptor>;

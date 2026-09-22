@@ -1,4 +1,4 @@
-import { Nullable } from "@/lib/types/general";
+import { Nullable } from "@xrf/types";
 
 /** The range a coordinate covers over one entry's geometry, or null where its geometry carries none. */
 export interface ILevelSurfaceSpan {

@@ -1,6 +1,5 @@
 import { afterEach, describe, expect, it, jest } from "@jest/globals";
-
-import { Nullable } from "@/lib/types/general";
+import { Nullable } from "@xrf/types";
 
 import { fillRect, prepareCanvas, strokeRect, toHairline } from "./EquipmentGridPainter.utils";
 

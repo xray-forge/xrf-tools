@@ -1,4 +1,5 @@
 import { useInjection } from "@wirestate/react";
+import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useEffect, useState } from "react";
 
 import { TranslationsService } from "@/applications/translations-editor/services/translations";
@@ -8,7 +9,6 @@ import { EApplicationId } from "@/core/routing/application";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
 import { ChoiceFormRow, IChoiceFormRowOption, IPathField, PathFormRow, usePathField } from "@/core/ui/form";
 import { Logger, useLogger } from "@/lib/logging";
-import { Nullable } from "@/lib/types/general";
 
 const MODE_OPTIONS: ReadonlyArray<IChoiceFormRowOption<TranslationProjectMode>> = [
   { value: "source", label: "Project sources" },

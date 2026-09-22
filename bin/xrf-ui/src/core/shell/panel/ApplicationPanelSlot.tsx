@@ -1,9 +1,9 @@
+import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
 import { IEditorPanel, TEditorPanelSide } from "@/core/shell/editor-shell";
 import { PanelResizer } from "@/core/shell/panel/PanelResizer";
 import { cn } from "@/lib/dom/dom-name";
-import { Nullable } from "@/lib/types/general";
 
 interface IApplicationPanelSlotProps {
   side: TEditorPanelSide;

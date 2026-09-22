@@ -1,11 +1,11 @@
 import { describe, expect, it, jest } from "@jest/globals";
 import { fireEvent, RenderResult } from "@testing-library/react";
+import { Nullable } from "@xrf/types";
 
 import { LtxInventoryFile } from "@/core/ipc/types/xrf-ltx-inspect";
 import { ConfigsMenu } from "@/core/ltx/components/ConfigsMenu/ConfigsMenu";
 import { ARCHIVED_CAPTION } from "@/core/ui/tree/TreeRowLabel";
 import { renderWithProviders } from "@/fixtures/utils/render";
-import { Nullable } from "@/lib/types/general";
 
 /** The committed fixture's shape: an entry point and the config it includes, one directory deep. */
 const FILES: Array<LtxInventoryFile> = [

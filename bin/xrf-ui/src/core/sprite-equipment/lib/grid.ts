@@ -1,6 +1,7 @@
+import { Nullable } from "@xrf/types";
+
 import { EquipmentSlotOccupant } from "@/core/ipc/types/xrf-texture";
 import { TEquipmentCell } from "@/core/sprite-equipment/lib/equipment";
-import { Nullable } from "@/lib/types/general";
 
 /** Side of one inventory grid square, in sheet pixels. */
 export const ENGINE_GRID_SQUARE: number = 50;

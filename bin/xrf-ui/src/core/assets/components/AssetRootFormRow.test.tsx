@@ -1,9 +1,9 @@
 import { describe, expect, it, jest } from "@jest/globals";
+import { Nullable } from "@xrf/types";
 
 import { IPathField } from "@/core/ui/form/use-path-field";
 import { setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
-import { Nullable } from "@/lib/types/general";
 
 import { AssetRootFormRow } from "./AssetRootFormRow";
 

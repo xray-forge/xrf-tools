@@ -1,3 +1,4 @@
+import { Nullable } from "@xrf/types";
 import { AxesHelper, Box3, Box3Helper, Color, Object3D } from "three";
 
 import { VisualBounds } from "@/core/ipc/types/xrf-visual";
@@ -5,7 +6,6 @@ import { toBoxFloor, toBoxReach, toLevelBox, toOriginReach } from "@/core/level/
 import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
 import { RenderGrid } from "@/core/render/lib/scene/render-grid";
 import { markThrough } from "@/core/render/lib/scene/render-marker";
-import { Nullable } from "@/lib/types/general";
 
 import { ILevelPreviewSceneConfig } from "./level-scene-config";
 

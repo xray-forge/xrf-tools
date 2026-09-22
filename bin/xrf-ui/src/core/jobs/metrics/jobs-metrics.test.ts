@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
+import { Nullable } from "@xrf/types";
 
 import { JobProgress, ProgressLevel } from "@/core/ipc/types/xrf-job";
 import { IJobProfile, JOB_PROFILES } from "@/core/jobs/metrics";
-import { Nullable } from "@/lib/types/general";
 
 function mockLevel(id: string, completed: number): ProgressLevel {
   return { id, label: null, completed, total: null, unit: "items" };

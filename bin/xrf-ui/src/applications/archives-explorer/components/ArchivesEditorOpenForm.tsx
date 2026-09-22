@@ -1,4 +1,5 @@
 import { useInjection } from "@wirestate/react";
+import { assertExhaustive, Nullable } from "@xrf/types";
 import { ReactElement, useCallback } from "react";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
@@ -10,8 +11,6 @@ import { PickerForm } from "@/core/shell/editor/PickerForm";
 import { ChoiceFormRow, IPathField, PathFormRow, usePathField, useRememberedValue } from "@/core/ui/form";
 import { inline } from "@/lib/callbacks/inline";
 import { Logger, useLogger } from "@/lib/logging";
-import { assertExhaustive } from "@/lib/types/exhaustive";
-import { Nullable } from "@/lib/types/general";
 
 import {
   ARCHIVE_FILTERS,

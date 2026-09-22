@@ -1,3 +1,4 @@
+import { Nullable } from "@xrf/types";
 import { useCallback, useState } from "react";
 
 import { TEditorPanelSide } from "@/core/shell/editor-shell";
@@ -6,7 +7,6 @@ import { getPanelWidthStorageKey } from "@/core/storage";
 import { PANEL } from "@/core/theme/tokens";
 import { getLocalStorageValue, setLocalStorageValue } from "@/lib/local-storage";
 import { useWindowWidth } from "@/lib/react";
-import { Nullable } from "@/lib/types/general";
 
 export interface IPanelWidth {
   width: number;

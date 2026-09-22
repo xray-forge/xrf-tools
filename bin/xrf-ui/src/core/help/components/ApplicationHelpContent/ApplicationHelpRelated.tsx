@@ -1,11 +1,11 @@
 import { Chip, Typography } from "@mui/material";
+import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 import { NavigateFunction, useNavigate } from "react-router-dom";
 
 import { selectRelatedApplications } from "@/core/help/lib/related";
 import { EApplicationId, IApplicationDescriptor } from "@/core/routing/application";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { Nullable } from "@/lib/types/general";
 
 export interface IApplicationHelpRelatedProps extends BaseComponentProps {
   relatedTools: ReadonlyArray<EApplicationId>;

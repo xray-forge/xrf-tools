@@ -1,6 +1,7 @@
+import { Nullable } from "@xrf/types";
+
 import { JobConclusion } from "@/core/ipc/types/xrf-app";
 import { ENotificationSeverity } from "@/core/notifications/lib";
-import { Nullable } from "@/lib/types/general";
 
 import { findJobKind, IJobKindDescriptor } from "./job-kinds";
 import { IJobNotice, IJobState } from "./jobs-types";

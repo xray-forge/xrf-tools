@@ -1,3 +1,5 @@
+import { Maybe, Nullable } from "@xrf/types";
+
 import { ILevelFlyMotion } from "@/core/level/lib/camera/level-fly-motion";
 import {
   ELevelRenderRequest,
@@ -18,7 +20,6 @@ import { ILevelSurfaceGeometry } from "@/core/level/lib/surface/level-surface-ge
 import { DomRenderTarget } from "@/core/render/lib/frame/dom-render-target";
 import { RenderWorkerClient } from "@/core/render/lib/worker/render-worker-client";
 import { Logger } from "@/lib/logging";
-import { Maybe, Nullable } from "@/lib/types/general";
 
 /** What a renderer on another thread needs: somewhere to draw, and somewhere to report to. */
 export interface ILevelWorkerRendererOptions {

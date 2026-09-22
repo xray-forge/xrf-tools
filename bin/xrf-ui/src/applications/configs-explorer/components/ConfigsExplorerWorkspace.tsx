@@ -1,5 +1,6 @@
 import { default as AccountTreeIcon } from "@mui/icons-material/AccountTree";
 import { useInjection } from "@wirestate/react";
+import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useEffect, useMemo } from "react";
 
 import { ConfigsProjectDescriptor } from "@/core/ipc/types/xrf-app";
@@ -13,7 +14,6 @@ import { EditorToolbarLocation } from "@/core/shell/editor/EditorToolbarLocation
 import { EditorViewToggle } from "@/core/shell/editor/EditorViewToggle";
 import { useEditorPanels, useEditorStatus } from "@/core/shell/editor-shell";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { Nullable } from "@/lib/types/general";
 
 import { CONFIGS_EXPLORER_PANELS } from "./panels";
 

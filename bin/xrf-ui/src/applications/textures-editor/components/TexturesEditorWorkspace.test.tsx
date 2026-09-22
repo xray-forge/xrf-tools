@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from "@jest/globals";
 import { act, RenderResult, waitFor } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { Binding, Container } from "@wirestate/core";
+import { Nullable } from "@xrf/types";
 
 import { TEXTURES_EDITOR_APPLICATION } from "@/applications/textures-editor/application";
 import { TextureEditorService } from "@/applications/textures-editor/services/editor";
@@ -16,7 +17,6 @@ import { resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.
 import { MOCK_TEXTURE, mockTextureDescription, mockTextureVocabulary } from "@/fixtures/mocks/texture.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
-import { Nullable } from "@/lib/types/general";
 
 import { TexturesEditorWorkspace } from "./TexturesEditorWorkspace";
 

@@ -1,6 +1,7 @@
+import { Nullable } from "@xrf/types";
+
 import { bumpLocalStorageRevision } from "@/lib/local-storage/revision";
 import { Logger } from "@/lib/logging";
-import { Nullable } from "@/lib/types/general";
 
 /**
  * Reads a raw local storage value.

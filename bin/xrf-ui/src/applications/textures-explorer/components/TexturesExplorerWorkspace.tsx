@@ -1,5 +1,6 @@
 import { Alert } from "@mui/material";
 import { useInjection } from "@wirestate/react";
+import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useMemo, useState } from "react";
 
 import { describeRoots } from "@/core/assets/lib";
@@ -11,7 +12,6 @@ import { selectUnreadTexturesLtx } from "@/core/textures/lib/texture-catalog";
 import { TextureCatalogService } from "@/core/textures/services/catalog";
 import { TextureSelectionService } from "@/core/textures/services/selection";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { Nullable } from "@/lib/types/general";
 
 import { createTexturesExplorerPanels } from "./panels/textures-explorer-panels";
 import { describeTexturesStatus } from "./TexturesExplorerWorkspace.utils";

@@ -1,8 +1,8 @@
 import { useInjection } from "@wirestate/react";
+import { Nullable } from "@xrf/types";
 import { useEffect, useMemo, useState } from "react";
 
 import { AssetService } from "@/core/assets/services";
-import { Nullable } from "@/lib/types/general";
 
 /**
  * The url a preview shows, kept under one key so the last picture is released when the next one arrives.

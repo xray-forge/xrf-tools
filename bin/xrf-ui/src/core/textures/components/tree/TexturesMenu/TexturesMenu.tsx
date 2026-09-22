@@ -2,6 +2,7 @@ import { default as FolderIcon } from "@mui/icons-material/Folder";
 import { default as FolderOpenIcon } from "@mui/icons-material/FolderOpen";
 import { default as ImageIcon } from "@mui/icons-material/Image";
 import { useInjection } from "@wirestate/react";
+import { Nullable, Optional } from "@xrf/types";
 import { ReactElement, ReactNode, useCallback, useMemo, useState } from "react";
 
 import { TextureSource } from "@/core/ipc/types/xrf-app";
@@ -25,7 +26,6 @@ import { IUseTreeState, useTreeState } from "@/core/ui/tree/use-tree-state";
 import { IVirtualizedTreeIcons, VirtualizedTree } from "@/core/ui/tree/VirtualizedTree";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { LOGICAL_PATH_SEPARATOR } from "@/lib/path/separator";
-import { Nullable, Optional } from "@/lib/types/general";
 
 import { describeEmptyTextureTree } from "./TexturesMenu.utils";
 import { TextureTreeLabel } from "./TextureTreeLabel";

@@ -1,6 +1,7 @@
+import { Nullable } from "@xrf/types";
+
 import { TextureCatalogService } from "@/core/textures/services/catalog";
 import { TextureSelectionService } from "@/core/textures/services/selection";
-import { Nullable } from "@/lib/types/general";
 
 /** Which of the four things the picker is opening. */
 export enum ETextureOpenMode {

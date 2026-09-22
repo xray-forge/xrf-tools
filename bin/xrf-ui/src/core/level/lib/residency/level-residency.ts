@@ -1,6 +1,7 @@
+import { Nullable } from "@xrf/types";
+
 import { SectorOutline } from "@/core/ipc/types/xrf-visual";
 import { DEFAULT_LEVEL_STREAM_CONCURRENCY } from "@/core/level/lib/stream/level-stream-scheduler";
-import { Nullable } from "@/lib/types/general";
 
 /** A point in renderer space, which is where the camera is asked from. */
 export interface ILevelPoint {

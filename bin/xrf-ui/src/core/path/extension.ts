@@ -1,6 +1,7 @@
+import { Nullable } from "@xrf/types";
+
 import { EXrayExtension } from "@/core/ipc/types/xrf-extension";
 import { getFoldedFileExtension } from "@/lib/path/extension";
-import { Nullable } from "@/lib/types/general";
 
 /** Every declared spelling, keyed by itself, which is what a folded token is looked up in. */
 const XRAY_EXTENSION_BY_SPELLING: ReadonlyMap<string, EXrayExtension> = new Map(

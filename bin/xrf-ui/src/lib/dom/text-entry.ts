@@ -1,4 +1,4 @@
-import { Maybe } from "@/lib/types/general";
+import { Maybe } from "@xrf/types";
 
 /**
  * Input types that carry no text, so a bare character reaching one of them is a shortcut rather than typing.

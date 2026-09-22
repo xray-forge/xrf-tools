@@ -1,5 +1,6 @@
 import { Alert, Button, List, Stack, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
+import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback } from "react";
 
 import { TextureEncodingService } from "@/applications/textures-editor/services/encoding";
@@ -13,7 +14,6 @@ import {
 import { TextureSelectionService } from "@/core/textures/services/selection";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatBytes } from "@/lib/memory/format";
-import { Nullable } from "@/lib/types/general";
 
 import { TextureFormatRow } from "./TextureFormatRow";
 

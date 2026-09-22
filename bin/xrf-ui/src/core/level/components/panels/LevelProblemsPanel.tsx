@@ -1,4 +1,5 @@
 import { useInjection } from "@wirestate/react";
+import { Maybe } from "@xrf/types";
 import { ReactElement, useMemo } from "react";
 
 import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
@@ -9,7 +10,6 @@ import { LevelLoadService, LevelViewportService } from "@/core/level/services";
 import { EditorPanel, EditorPanelEmpty } from "@/core/shell/editor/EditorPanel";
 import { EditorProblemsPanel, IEditorProblem } from "@/core/shell/editor/EditorProblemsPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { Maybe } from "@/lib/types/general";
 
 /**
  * Everything the viewer could not draw the way the level asked for it.

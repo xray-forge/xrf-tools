@@ -1,8 +1,8 @@
 import { isTauri } from "@tauri-apps/api/core";
+import { Maybe } from "@xrf/types";
 
 import { SessionId } from "@/core/ipc/types/xrf-app";
 import { Logger } from "@/lib/logging";
-import { Maybe } from "@/lib/types/general";
 
 import { ISessionIdentity } from "./session.types";
 

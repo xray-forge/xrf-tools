@@ -1,8 +1,9 @@
+import { Maybe } from "@xrf/types";
+
 import { LtxFileStructure, LtxStructureInclude, LtxStructureSection } from "@/core/ipc/types/xrf-ltx-inspect";
 import { toLexicalLine } from "@/core/ltx/lib/lexical";
 import { ESyntaxToken, ISyntaxSpan } from "@/core/syntax/lib";
 import { ECodeLineMark, ICodeLine, ICodeLineSource } from "@/core/ui/code/code-line";
-import { Maybe } from "@/lib/types/general";
 
 /** Shared, because a config is mostly blank lines and each of them would otherwise allocate. */
 const NO_SPANS: ReadonlyArray<ISyntaxSpan> = Object.freeze([]);

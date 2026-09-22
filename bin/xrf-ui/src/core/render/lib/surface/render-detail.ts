@@ -1,7 +1,7 @@
+import { Nullable } from "@xrf/types";
 import { IUniform, MeshStandardMaterial, Texture, WebGLProgramParametersWithUniforms } from "three";
 
 import { applyRenderPatch } from "@/core/render/lib/surface/render-patch";
-import { Nullable } from "@/lib/types/general";
 
 /**
  * The detail texture a surface modulates its diffuse with, uploaded, and how densely it lies over it.

@@ -1,11 +1,11 @@
 import { describe, expect, it } from "@jest/globals";
 import { act, RenderResult } from "@testing-library/react";
+import { AnyObject } from "@xrf/types";
 
 import { SpawnFileService } from "@/core/spawn/services";
 import { mockAlifeObject } from "@/fixtures/mocks/spawn.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
-import { AnyObject } from "@/lib/types/general";
 
 import { SpawnRowDetailsPanel } from "./SpawnRowDetailsPanel";
 

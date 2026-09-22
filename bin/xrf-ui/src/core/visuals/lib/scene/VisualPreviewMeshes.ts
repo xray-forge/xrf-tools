@@ -1,3 +1,4 @@
+import { Nullable, Optional } from "@xrf/types";
 import {
   BufferAttribute,
   BufferGeometry,
@@ -25,7 +26,6 @@ import {
   IVisualSubmeshLevel,
   IVisualSubmeshViews,
 } from "@/core/visuals/lib/visual-views";
-import { Nullable, Optional } from "@/lib/types/general";
 
 import { createSubmeshGeometry } from "./VisualPreviewScene.utils";
 

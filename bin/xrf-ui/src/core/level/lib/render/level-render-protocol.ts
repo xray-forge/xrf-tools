@@ -1,5 +1,6 @@
+import { Nullable } from "@xrf/types";
+
 import { SectorDescription } from "@/core/ipc/types/xrf-visual";
-import { Nullable } from "@/lib/types/general";
 
 /** One sector handed to whatever draws it: what the pack says, and the bytes it was packed into. */
 export interface ILevelSectorDelivery {

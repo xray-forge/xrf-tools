@@ -1,3 +1,4 @@
+import { Nullable } from "@xrf/types";
 import {
   ClampToEdgeWrapping,
   CompressedTexture,
@@ -16,7 +17,6 @@ import {
 } from "three";
 
 import { EDdsLayout, IDdsFile, IDdsRead, IDdsRefusal, readDdsFile } from "@/core/render/lib/dds";
-import { Nullable } from "@/lib/types/general";
 
 /**
  * How many samples the engine takes across a texture seen at an angle, `ps_r__tf_Anisotropic`

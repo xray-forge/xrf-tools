@@ -1,6 +1,7 @@
 import { default as ClearAllIcon } from "@mui/icons-material/ClearAll";
 import { IconButton, Tooltip, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
+import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useEffect, useState } from "react";
 
 import { INotification } from "@/core/notifications/lib";
@@ -9,7 +10,6 @@ import { SettingsService } from "@/core/settings/services/settings";
 import { EditorPanel } from "@/core/shell/editor/EditorPanel";
 import { INotificationEntry, toNotificationEntries } from "@/core/shell/panel/notifications/notification-list";
 import { NotificationRow } from "@/core/shell/panel/notifications/NotificationRow";
-import { Nullable } from "@/lib/types/general";
 
 /**
  * The notification centre panel.

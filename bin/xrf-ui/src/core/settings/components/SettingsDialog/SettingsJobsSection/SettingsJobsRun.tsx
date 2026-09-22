@@ -1,4 +1,5 @@
 import { Collapse, Divider, Typography } from "@mui/material";
+import { Nullable } from "@xrf/types";
 import { format } from "date-fns";
 import { ReactElement, useState } from "react";
 
@@ -8,7 +9,6 @@ import { IJobPhase, IJobProfile } from "@/core/jobs/metrics";
 import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatDuration } from "@/lib/format/duration";
-import { Nullable } from "@/lib/types/general";
 
 import { describeJobOutcome, toPhaseShare } from "./SettingsJobsSection.utils";
 

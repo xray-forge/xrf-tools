@@ -1,8 +1,8 @@
+import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
 import { ArchiveStatistics } from "@/core/ipc/types/xrf-archive-stats";
 import { EStatMeasure } from "@/core/ui/stats/stat-measure";
-import { Nullable } from "@/lib/types/general";
 
 /** Stable identity of a section, so a rail selection survives a re-render and a test can name one. */
 export enum EArchiveStatisticsSection {

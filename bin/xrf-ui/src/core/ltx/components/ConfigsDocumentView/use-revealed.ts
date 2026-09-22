@@ -1,9 +1,9 @@
 import { useInjection } from "@wirestate/react";
+import { Nullable } from "@xrf/types";
 import { useEffect } from "react";
 
 import { TConfigsReveal } from "@/core/ltx/lib/reveal";
 import { ConfigsDocumentService } from "@/core/ltx/services/document";
-import { Nullable } from "@/lib/types/general";
 
 /**
  * What a panel asked to be brought into view, consumed by reading it.

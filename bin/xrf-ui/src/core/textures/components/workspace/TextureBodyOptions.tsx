@@ -1,5 +1,6 @@
 import { default as ViewQuiltIcon } from "@mui/icons-material/ViewQuilt";
 import { ToggleButton, ToggleButtonGroup, Typography } from "@mui/material";
+import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
 import { EditorPopoverAction } from "@/core/shell/editor/EditorPopoverAction";
@@ -11,7 +12,6 @@ import {
   ETextureSurfaceShape,
 } from "@/core/textures/lib/texture-surface";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { Nullable } from "@/lib/types/general";
 
 import { SURFACE_ONLY } from "./TextureWorkspaceToolbar.utils";
 

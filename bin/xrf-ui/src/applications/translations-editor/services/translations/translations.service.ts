@@ -1,5 +1,6 @@
 import { EventBus, inject, Injectable, OnDeactivation, OnProvision } from "@wirestate/core";
 import { BoundAction, Computed, flowResult, Observable } from "@wirestate/mobx";
+import { Nullable } from "@xrf/types";
 
 import { TranslationDraft, TTranslationFileEdits } from "@/applications/translations-editor/lib/translation-draft";
 import { describeRoots } from "@/core/assets/lib/roots";
@@ -15,7 +16,6 @@ import { AsyncState } from "@/lib/async-state";
 import { formatDuration } from "@/lib/format/duration";
 import { Logger, Timer } from "@/lib/logging";
 import { call, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
-import { Nullable } from "@/lib/types/general";
 
 @Injectable()
 export class TranslationsService {

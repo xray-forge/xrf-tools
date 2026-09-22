@@ -1,7 +1,8 @@
+import { Optional } from "@xrf/types";
+
 import { ISessionIdentity, Session } from "@/core/ipc/session";
 import { SessionSnapshot } from "@/core/ipc/types/xrf-app";
 import { InvokeHandler } from "@/fixtures/mocks/tauri.mocks";
-import { Optional } from "@/lib/types/general";
 
 /** A native snapshot with an explicit identity for restoration and state fixtures. */
 export function mockSessionSnapshot<T>(value: T, sessionId: string = "fixture-session"): SessionSnapshot<T> {

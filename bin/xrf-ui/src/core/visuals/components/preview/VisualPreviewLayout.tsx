@@ -1,5 +1,6 @@
 import { default as AccountTreeIcon } from "@mui/icons-material/AccountTree";
 import { useInjection } from "@wirestate/react";
+import { Nullable } from "@xrf/types";
 import { ReactElement, ReactNode, useMemo } from "react";
 
 import { isAlphaRenderSurface } from "@/core/render/lib/surface/render-surface";
@@ -14,7 +15,6 @@ import { countVisualTriangles, IVisualModelViews } from "@/core/visuals/lib/visu
 import { VisualViewService } from "@/core/visuals/services/visual-view.service";
 import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { Nullable } from "@/lib/types/general";
 
 interface IVisualPreviewLayoutProps extends BaseComponentProps {
   /** Shown in the toolbar beside the view toggles, usually where the model came from. */

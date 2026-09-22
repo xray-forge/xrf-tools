@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { act, waitFor } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
+import { Nullable } from "@xrf/types";
 
 import { ExportsService } from "@/applications/exports-explorer/services/exports";
 import { ExportSourceContent } from "@/core/ipc/types/xrf-export";
@@ -9,7 +10,6 @@ import { mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
-import { Nullable } from "@/lib/types/general";
 
 import { ExportSourceView } from "./ExportSourceView";
 

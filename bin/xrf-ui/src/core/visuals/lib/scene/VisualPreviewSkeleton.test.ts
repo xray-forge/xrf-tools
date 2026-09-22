@@ -1,9 +1,9 @@
 import { describe, expect, it } from "@jest/globals";
+import { Nullable } from "@xrf/types";
 import { Bone, LineSegments, Matrix4, Object3D } from "three";
 
 import { FLOATS_PER_BONE, IVisualModelViews } from "@/core/visuals/lib/visual-views";
 import { mockVisualBoneFloats, mockVisualModelViews } from "@/fixtures/mocks/visual.mocks";
-import { Nullable } from "@/lib/types/general";
 
 import { VisualPreviewSkeleton } from "./VisualPreviewSkeleton";
 

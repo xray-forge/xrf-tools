@@ -1,5 +1,6 @@
 import { Injectable, OnDeactivation, OnProvision } from "@wirestate/core";
 import { Computed, flowResult, Observable, runInAction } from "@wirestate/mobx";
+import { Nullable } from "@xrf/types";
 
 import { createRoots } from "@/core/assets/lib";
 import { transformError } from "@/core/error/lib";
@@ -11,7 +12,6 @@ import { AsyncState } from "@/lib/async-state";
 import { formatDuration } from "@/lib/format/duration";
 import { Logger, Timer } from "@/lib/logging";
 import { call, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
-import { Nullable } from "@/lib/types/general";
 
 /**
  * Owns the configs project and addresses reads by its committed session identity.

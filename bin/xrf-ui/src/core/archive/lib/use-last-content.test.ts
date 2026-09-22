@@ -1,7 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 import { renderHook } from "@testing-library/react";
-
-import { Nullable } from "@/lib/types/general";
+import { Nullable } from "@xrf/types";
 
 import { useLastContent } from "./use-last-content";
 

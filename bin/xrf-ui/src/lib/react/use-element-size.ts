@@ -1,6 +1,5 @@
+import { Nullable } from "@xrf/types";
 import { RefCallback, useLayoutEffect, useState } from "react";
-
-import { Nullable } from "@/lib/types/general";
 
 /** The measured content box of an element, in css pixels. */
 export interface IElementSize {

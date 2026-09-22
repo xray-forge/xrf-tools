@@ -1,5 +1,6 @@
 import { EventBus, inject, Injectable, OnDeactivation, OnDeprovision, OnProvision, ProvisionId } from "@wirestate/core";
 import { BoundAction, Computed, flowResult, Observable } from "@wirestate/mobx";
+import { AnyObject, Nullable } from "@xrf/types";
 
 import { transformError } from "@/core/error/lib";
 import { spawnCommands } from "@/core/ipc/commands/spawn";
@@ -12,7 +13,6 @@ import { AsyncState } from "@/lib/async-state";
 import { formatDuration } from "@/lib/format/duration";
 import { Logger, Timer } from "@/lib/logging";
 import { call, cancelFlow, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
-import { AnyObject, Nullable } from "@/lib/types/general";
 
 export interface ISpawnRowSelection {
   /** What kind of row this is, for the panel heading. */

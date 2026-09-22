@@ -1,5 +1,6 @@
 import { Button, Divider, Stack, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
+import { Nullable } from "@xrf/types";
 import { ReactElement, useState } from "react";
 
 import { IIpcCommandMetrics, IIpcMetricsSnapshot } from "@/core/ipc/metrics";
@@ -11,7 +12,6 @@ import { StatFigure } from "@/core/ui/stats/StatFigure";
 import { formatDuration } from "@/lib/format/duration";
 import { formatBytes } from "@/lib/memory/format";
 import { usePolledValue } from "@/lib/react";
-import { Nullable } from "@/lib/types/general";
 
 import {
   describeWeighedCalls,

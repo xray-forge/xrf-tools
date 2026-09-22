@@ -1,6 +1,7 @@
+import { Nullable } from "@xrf/types";
+
 import { EPathEntryKind } from "@/core/path/entry-kind";
 import { IPathTreeItem, parsePathTree, toDirectoryItemId, toFileItemId } from "@/core/ui/tree/path-tree";
-import { Nullable } from "@/lib/types/general";
 
 import { IArchiveEntry } from "./entry";
 import { TArchiveSelection } from "./selection";

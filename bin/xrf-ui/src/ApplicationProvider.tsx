@@ -4,6 +4,7 @@ import { default as CssBaseline } from "@mui/material/CssBaseline";
 import { Theme, ThemeProvider } from "@mui/material/styles";
 import { ContainerConfig } from "@wirestate/core";
 import { ContainerProvider } from "@wirestate/react";
+import { Nullable } from "@xrf/types";
 import { ComponentType, PropsWithChildren, ReactElement, ReactNode, useMemo } from "react";
 import { BrowserRouter } from "react-router-dom";
 
@@ -11,7 +12,6 @@ import { createContainerPlugins, ROOT_BINDINGS } from "@/core/container";
 import { THEME_STORAGE_KEY } from "@/core/storage";
 import { createApplicationStyleCache, createApplicationTheme } from "@/core/theme";
 import { isDevelopmentBuild } from "@/lib/env";
-import { Nullable } from "@/lib/types/general";
 
 interface IApplicationProviderProps {
   router?: ComponentType<PropsWithChildren>;

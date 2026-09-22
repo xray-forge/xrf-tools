@@ -1,3 +1,5 @@
+import { IRenderFrameCost, IRenderTarget, TFrameRateLimit } from "@xrf/renderer";
+import { Nullable } from "@xrf/types";
 import { Group, PerspectiveCamera, Vector3 } from "three";
 
 import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
@@ -24,11 +26,7 @@ import { ILevelSurfaceGeometry } from "@/core/level/lib/surface/level-surface-ge
 import { ILevelTextureReport } from "@/core/level/lib/texture/level-texture-report";
 import { LevelTextureSet } from "@/core/level/lib/texture/level-texture-set";
 import { DEFAULT_LEVEL_VIEW_OPTIONS, ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
-import { IRenderFrameCost } from "@/core/render/lib/frame/render-frame-cost";
-import { TFrameRateLimit } from "@/core/render/lib/frame/render-frame-limit";
-import { IRenderTarget } from "@/core/render/lib/frame/render-target";
 import { RenderViewport } from "@/core/render/lib/frame/render-viewport";
-import { Nullable } from "@/lib/types/general";
 
 import { DEFAULT_LEVEL_PREVIEW_SCENE_CONFIG, ILevelPreviewSceneConfig } from "./level-scene-config";
 import { LevelPreviewFrame } from "./LevelPreviewFrame";

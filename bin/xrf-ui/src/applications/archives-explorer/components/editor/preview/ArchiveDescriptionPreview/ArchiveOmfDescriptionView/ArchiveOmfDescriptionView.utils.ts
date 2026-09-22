@@ -1,3 +1,5 @@
+import { assertExhaustive, Nullable } from "@xrf/types";
+
 import {
   ArchiveOmfMark,
   ArchiveOmfMarkInterval,
@@ -9,8 +11,6 @@ import {
 import { MOTION_DEFAULT_SPEED } from "@/core/visuals/lib/visual-motion";
 import { formatSeconds } from "@/lib/format/duration";
 import { formatNumber } from "@/lib/format/number";
-import { assertExhaustive } from "@/lib/types/exhaustive";
-import { Nullable } from "@/lib/types/general";
 
 /** Decimals a mark's own interval keeps, matching what `formatSeconds` gives the durations beside it. */
 const SECOND_DIGITS: number = 2;

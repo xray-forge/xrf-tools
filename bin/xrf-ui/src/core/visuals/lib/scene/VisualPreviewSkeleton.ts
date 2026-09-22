@@ -1,3 +1,4 @@
+import { Nullable, Optional } from "@xrf/types";
 import {
   Bone,
   BufferAttribute,
@@ -10,7 +11,6 @@ import {
 } from "three";
 
 import { FLOATS_PER_BONE, IVisualModelViews, TRANSLATION_OFFSET } from "@/core/visuals/lib/visual-views";
-import { Nullable, Optional } from "@/lib/types/general";
 
 /**
  * Where one frame's bone transforms are read from.

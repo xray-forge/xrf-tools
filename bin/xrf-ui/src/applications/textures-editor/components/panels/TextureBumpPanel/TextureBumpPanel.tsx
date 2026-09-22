@@ -1,5 +1,6 @@
 import { Alert, Button, Stack, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
+import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useState } from "react";
 
 import { DEFAULT_GLOSS_POWER } from "@/applications/textures-editor/lib/texture-bump-gloss";
@@ -19,7 +20,6 @@ import {
 import { TextureSelectionService } from "@/core/textures/services/selection";
 import { IPathField, PathFormRow, usePathField } from "@/core/ui/form";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { Nullable } from "@/lib/types/general";
 
 import { TextureGlossField } from "./TextureGlossField";
 

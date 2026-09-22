@@ -1,9 +1,10 @@
+import { Nullable } from "@xrf/types";
+
 import { getLocatedAsset } from "@/core/assets/lib/resolution";
 import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
 import { XrayAsset } from "@/core/ipc/types/xrf-vfs";
 import { VisualSubmesh, VisualTextureDependency } from "@/core/ipc/types/xrf-visual";
 import { getRenderSurface, IRenderSurface, isAlphaRenderSurface } from "@/core/render/lib/surface/render-surface";
-import { Nullable } from "@/lib/types/general";
 
 /**
  * The material state of every submesh, by the index the submesh reports.

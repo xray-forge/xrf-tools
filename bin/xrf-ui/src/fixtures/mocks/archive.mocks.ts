@@ -1,3 +1,5 @@
+import { Nullable } from "@xrf/types";
+
 import {
   ArchiveAnimationChannel,
   ArchiveAnmDescription,
@@ -67,7 +69,6 @@ import { ArchiveStatistics } from "@/core/ipc/types/xrf-archive-stats";
 import { EXrayExtension } from "@/core/ipc/types/xrf-extension";
 import { ArchivePackResult } from "@/core/ipc/types/xrf-pack";
 import { EXrayAssetContainer, EXraySourceKind, XrayAssetContainer, XrayPathCollision } from "@/core/ipc/types/xrf-vfs";
-import { Nullable } from "@/lib/types/general";
 
 /**
  * Creates the complete result of a packing run.

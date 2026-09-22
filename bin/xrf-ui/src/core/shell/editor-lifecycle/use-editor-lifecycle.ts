@@ -1,8 +1,8 @@
 import { useInjection } from "@wirestate/react";
+import { Nullable } from "@xrf/types";
 import { useEffect, useId } from "react";
 
 import { EditorLifecycleService, EditorSaver } from "@/core/shell/services/editor-lifecycle";
-import { Nullable } from "@/lib/types/general";
 
 export interface IEditorLifecycle {
   isBusy: boolean;

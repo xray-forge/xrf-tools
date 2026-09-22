@@ -1,4 +1,4 @@
-import { Nullable } from "@/lib/types/general";
+import { Nullable } from "@xrf/types";
 
 /** Header key the engine reads to decide where an archive mounts. */
 export const HEADER_ENTRY_POINT: string = "entry_point";

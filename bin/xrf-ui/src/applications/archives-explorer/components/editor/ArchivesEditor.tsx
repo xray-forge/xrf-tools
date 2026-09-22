@@ -4,6 +4,7 @@ import { default as LayersIcon } from "@mui/icons-material/Layers";
 import { Alert } from "@mui/material";
 import { CommandBus } from "@wirestate/core";
 import { useInjection } from "@wirestate/react";
+import { Nullable, Optional } from "@xrf/types";
 import { ReactElement, useCallback, useState } from "react";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
@@ -25,7 +26,6 @@ import { useEditorBusy } from "@/core/shell/editor-lifecycle";
 import { useEditorPanels, useEditorStatus } from "@/core/shell/editor-shell";
 import { IPanelSetActiveCommand, PANEL_SET_ACTIVE_COMMAND } from "@/core/shell/panel/panel-messages";
 import { formatBytes } from "@/lib/memory/format";
-import { Nullable, Optional } from "@/lib/types/general";
 
 import { ARCHIVE_EXPLORER_PANELS, EArchivePanelId } from "./archive-panels";
 import { ArchiveOverridesDialog } from "./overrides";

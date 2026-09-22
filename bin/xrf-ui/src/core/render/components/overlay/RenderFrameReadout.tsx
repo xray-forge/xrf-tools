@@ -1,7 +1,7 @@
+import { IRenderFrameCost } from "@xrf/renderer";
 import { ReactElement, ReactNode } from "react";
 
 import { RenderViewportOverlay, TRenderOverlayCorner } from "@/core/render/components/overlay/RenderViewportOverlay";
-import { IRenderFrameCost } from "@/core/render/lib/frame/render-frame-cost";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 export interface IRenderFrameReadoutProps extends BaseComponentProps {

@@ -1,4 +1,5 @@
 import { useInjection } from "@wirestate/react";
+import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useMemo, useState } from "react";
 
 import { LtxFileStructure } from "@/core/ipc/types/xrf-ltx-inspect";
@@ -10,7 +11,6 @@ import { ITreeNode } from "@/core/ui/tree/tree-node";
 import { VirtualizedTree } from "@/core/ui/tree/VirtualizedTree";
 import { noop } from "@/lib/callbacks/noop";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { Nullable } from "@/lib/types/general";
 
 import {
   filterConfigsIndex,

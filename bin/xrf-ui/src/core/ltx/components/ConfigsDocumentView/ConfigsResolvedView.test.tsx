@@ -2,6 +2,7 @@ import { describe, expect, it } from "@jest/globals";
 import { RenderResult } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { Container } from "@wirestate/core";
+import { Nullable } from "@xrf/types";
 
 import { LtxResolvedIndex } from "@/core/ipc/types/xrf-ltx-inspect";
 import { ConfigsResolvedView } from "@/core/ltx/components/ConfigsDocumentView/ConfigsResolvedView";
@@ -12,7 +13,6 @@ import { ConfigsResolvedService } from "@/core/ltx/services/resolved";
 import { ConfigsSchemeService } from "@/core/ltx/services/scheme";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
-import { Nullable } from "@/lib/types/general";
 
 const ENTRY: string = "configs\\system.ltx";
 const INCLUDER: string = "configs\\includes_only.ltx";

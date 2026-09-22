@@ -1,5 +1,6 @@
 import { Injectable, OnDeactivation } from "@wirestate/core";
 import { Observable, RefObservable, runInAction } from "@wirestate/mobx";
+import { Nullable } from "@xrf/types";
 
 import { transformError } from "@/core/error/lib";
 import { assetsRawCommands } from "@/core/ipc/commands/assets-raw";
@@ -21,7 +22,6 @@ import { AsyncState } from "@/lib/async-state";
 import { formatDuration } from "@/lib/format/duration";
 import { Logger, Timer } from "@/lib/logging";
 import { call, cancelFlow, LatestFlow, TFlow } from "@/lib/mobx";
-import { Nullable } from "@/lib/types/general";
 
 /** One half of the pair as it was read: the file always, and its texels when the layout stores them plainly. */
 interface ITextureBumpHalf {

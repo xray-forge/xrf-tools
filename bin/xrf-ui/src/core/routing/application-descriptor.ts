@@ -1,7 +1,7 @@
+import { Optional } from "@xrf/types";
 import { lazy } from "react";
 
 import { IApplicationDescriptor, IApplicationMetadata, IApplicationRuntime } from "@/core/routing/application";
-import { Optional } from "@/lib/types/general";
 
 /** Supply a ready runtime or a deferred loader; the factory owns preloading and lazy wrapping. */
 export type TApplicationDescriptorOptions =

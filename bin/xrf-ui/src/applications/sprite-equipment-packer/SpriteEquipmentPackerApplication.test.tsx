@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from "@jest/globals";
 import { act, fireEvent } from "@testing-library/react";
 import { EventBus } from "@wirestate/core";
 import { runInAction } from "@wirestate/mobx";
+import { Nullable } from "@xrf/types";
 
 import { EJobKind } from "@/core/ipc/types/xrf-app";
 import { PackEquipmentResult } from "@/core/ipc/types/xrf-texture";
@@ -11,7 +12,6 @@ import { SpriteEquipmentPackerService } from "@/core/sprite-equipment/services/p
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockContainer, mockInjectedService } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
-import { Nullable } from "@/lib/types/general";
 
 import { SPRITE_EQUIPMENT_PACKER_APPLICATION } from "./application";
 import { SpriteEquipmentPackerApplication } from "./SpriteEquipmentPackerApplication";

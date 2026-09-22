@@ -1,3 +1,5 @@
+import { Nullable } from "@xrf/types";
+
 import { EquipmentSlotOccupant } from "@/core/ipc/types/xrf-texture";
 import {
   IEquipmentGrid,
@@ -8,7 +10,6 @@ import {
   toOutsideSheetRects,
 } from "@/core/sprite-equipment/lib";
 import { IPanZoomRect, IPanZoomSize, IPanZoomTransform, toViewportRect } from "@/lib/media/pan-zoom";
-import { Nullable } from "@/lib/types/general";
 
 import { IEquipmentGridPalette, toClaimFill } from "./equipment-grid-palette";
 import { fillRect, strokeRect, toHairline } from "./EquipmentGridPainter.utils";

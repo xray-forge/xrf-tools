@@ -2,6 +2,7 @@ import { describe, expect, it } from "@jest/globals";
 import { act } from "@testing-library/react";
 import { Injectable } from "@wirestate/core";
 import { useInjection } from "@wirestate/react";
+import { Nullable } from "@xrf/types";
 import { Fragment, ReactElement, Suspense } from "react";
 
 import {
@@ -14,7 +15,6 @@ import { createApplicationDescriptor } from "@/core/routing/application-descript
 import { ApplicationScope } from "@/core/shell/ApplicationScope";
 import { IEditorPanel, selectPanelsOnSide, useEditorPanels, useEditorPanelsRegistry } from "@/core/shell/editor-shell";
 import { renderWithProviders } from "@/fixtures/utils/render";
-import { Nullable } from "@/lib/types/general";
 
 @Injectable()
 class ScopedService {

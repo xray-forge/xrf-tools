@@ -1,4 +1,4 @@
-import { Nullable } from "@/lib/types/general";
+import { Nullable } from "@xrf/types";
 
 /** Frames a second an X-Ray motion samples at, which is what playback has to run at to look right. */
 export const MOTION_SAMPLE_FPS: number = 30;

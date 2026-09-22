@@ -1,5 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 import { CommandBus, CommandType, Container, QueryBus } from "@wirestate/core";
+import { Nullable } from "@xrf/types";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { ArchivesExplorerKeybindsService } from "@/applications/archives-explorer/services/keybinds";
@@ -15,7 +16,6 @@ import { mockArchivesVolumes } from "@/fixtures/mocks/archive.mocks";
 import { mockRestoredSession, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { mockContainer, mockInjectedService } from "@/fixtures/utils/container";
 import { AsyncState } from "@/lib/async-state";
-import { Nullable } from "@/lib/types/general";
 
 interface IKeybindsHarness {
   container: Container;

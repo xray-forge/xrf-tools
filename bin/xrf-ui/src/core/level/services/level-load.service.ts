@@ -1,5 +1,6 @@
 import { Injectable, OnDeactivation, OnProvision } from "@wirestate/core";
 import { BoundAction, Computed, flowResult, Observable, runInAction } from "@wirestate/mobx";
+import { Maybe, Nullable } from "@xrf/types";
 
 import { transformError } from "@/core/error/lib";
 import { levelsCommands } from "@/core/ipc/commands/levels";
@@ -46,7 +47,6 @@ import { AsyncState } from "@/lib/async-state";
 import { formatDuration } from "@/lib/format/duration";
 import { Logger, Timer } from "@/lib/logging";
 import { call, cancelFlow, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
-import { Maybe, Nullable } from "@/lib/types/general";
 
 /** Nothing in flight, which is also what a viewer sees before it has asked for anything. */
 export const IDLE_LEVEL_STREAM: ILevelStreamProgress = { loaded: 0, total: 0 };

@@ -1,3 +1,5 @@
+import { assertExhaustive, Nullable } from "@xrf/types";
+
 import {
   ArchiveBounds,
   ArchiveDescribeScope,
@@ -6,8 +8,6 @@ import {
   EArchiveReferenceStatus,
 } from "@/core/ipc/types/xrf-app";
 import { formatNumber } from "@/lib/format/number";
-import { assertExhaustive } from "@/lib/types/exhaustive";
-import { Nullable } from "@/lib/types/general";
 
 /** Shown where a file declares no value at all, which is not the same as declaring a default one. */
 export const NOT_DECLARED: string = "Not declared";

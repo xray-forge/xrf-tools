@@ -1,10 +1,10 @@
+import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
 import { VisualBounds } from "@/core/ipc/types/xrf-visual";
 import { EditorPanelProperty, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { formatCoordinate, formatVector } from "@/core/visuals/lib/visual-format";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { Nullable } from "@/lib/types/general";
 
 interface IVisualBoundsSectionProps extends BaseComponentProps {
   title: string;

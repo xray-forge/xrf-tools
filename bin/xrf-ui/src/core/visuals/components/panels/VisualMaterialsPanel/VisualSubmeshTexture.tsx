@@ -1,4 +1,5 @@
 import { Chip } from "@mui/material";
+import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
 import { AssetTextureDetails } from "@/core/assets/components/AssetTextureDetails";
@@ -9,7 +10,6 @@ import { VisualTextureDependency } from "@/core/ipc/types/xrf-visual";
 import { EditorPanelProperty } from "@/core/shell/editor/EditorPanel";
 import { EVisualTextureState, IVisualTextureStatus } from "@/core/visuals/lib/visual-texture";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { Nullable } from "@/lib/types/general";
 
 import { describeTextureState, IVisualTextureStateDescriptor } from "./VisualSubmeshTexture.utils";
 

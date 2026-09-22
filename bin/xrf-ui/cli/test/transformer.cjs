@@ -2,6 +2,7 @@ const crypto = require("node:crypto");
 const fs = require("node:fs");
 
 const swcJest = require("@swc/jest");
+const { LOCKFILE } = require("@xrf/toolchain/workspace");
 
 const { replaceModuleName } = require("../build/module-name.ts");
 const { applyObserver } = require("../build/observer.ts");
@@ -12,7 +13,7 @@ const SELF_HASH = crypto
   .update(fs.readFileSync(__filename))
   .update(fs.readFileSync(require.resolve("../build/module-name.ts")))
   .update(fs.readFileSync(require.resolve("../build/observer.ts")))
-  .update(fs.readFileSync(require.resolve("../../pnpm-lock.yaml")))
+  .update(fs.readFileSync(LOCKFILE))
   .digest("hex")
   .slice(0, 12);
 

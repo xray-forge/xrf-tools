@@ -1,10 +1,10 @@
+import { Nullable } from "@xrf/types";
 import { Mesh, OrthographicCamera, PlaneGeometry, Scene, Texture, WebGLRenderer } from "three";
 
 import { createDdsTexture } from "@/core/render/lib/texture/render-texture";
 import { ITextureSurfaceBump } from "@/core/textures/lib/texture-surface";
 import { IVisualBumpTextures } from "@/core/visuals/lib/visual-bump";
 import { createXrayBumpChannels, EVisualBumpView, IVisualBumpChannels } from "@/core/visuals/lib/visual-bump-channels";
-import { Nullable } from "@/lib/types/general";
 
 /** The quad fills a camera of exactly its own size, so every tile is the plane and nothing else. */
 const QUAD_EXTENT: number = 1;

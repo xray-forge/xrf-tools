@@ -1,6 +1,7 @@
 import { describe, expect, it, jest } from "@jest/globals";
 import { popoverClasses } from "@mui/material";
 import { fireEvent, RenderResult, waitFor } from "@testing-library/react";
+import { Nullable } from "@xrf/types";
 
 import { VisualPreviewToolbar } from "@/core/visuals/components/preview/VisualPreviewToolbar";
 import {
@@ -9,7 +10,6 @@ import {
   IVisualPreviewViewOptions,
 } from "@/core/visuals/lib/scene";
 import { renderWithProviders } from "@/fixtures/utils/render";
-import { Nullable } from "@/lib/types/general";
 
 function renderToolbar(
   detail: number,

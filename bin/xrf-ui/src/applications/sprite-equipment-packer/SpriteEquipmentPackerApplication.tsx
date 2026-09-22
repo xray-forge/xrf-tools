@@ -1,5 +1,6 @@
 import { flowResult } from "@wirestate/mobx";
 import { useInjection } from "@wirestate/react";
+import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useEffect, useState } from "react";
 
 import { EXrayExtension } from "@/core/ipc/types/xrf-extension";
@@ -11,7 +12,6 @@ import { PickerForm } from "@/core/shell/editor/PickerForm";
 import { SpriteEquipmentPackerService } from "@/core/sprite-equipment/services/packer";
 import { IPathField, PathFormRow, usePathField } from "@/core/ui/form";
 import { Logger, useLogger } from "@/lib/logging";
-import { Nullable } from "@/lib/types/general";
 
 import { EquipmentPackResult } from "./components/EquipmentPackResult";
 

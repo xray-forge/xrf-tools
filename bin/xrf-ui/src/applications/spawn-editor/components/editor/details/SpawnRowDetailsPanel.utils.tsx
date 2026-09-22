@@ -1,4 +1,4 @@
-import { AnyObject } from "@/lib/types/general";
+import { AnyObject } from "@xrf/types";
 
 /**
  * Formats a spawn-row value for single-line display.

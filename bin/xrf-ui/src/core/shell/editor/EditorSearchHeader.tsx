@@ -1,4 +1,5 @@
 import { useInjection } from "@wirestate/react";
+import { Nullable, Optional } from "@xrf/types";
 import { KeyboardEvent, ReactElement, useRef } from "react";
 
 import { formatChord, parseChord } from "@/core/keybinds";
@@ -6,7 +7,6 @@ import { KeymapService } from "@/core/keybinds/services/keymap";
 import { FOCUS_SEARCH_KEYBIND_COMMAND } from "@/core/search/commands";
 import { useSearchFocusTarget } from "@/core/search/lib";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { Nullable, Optional } from "@/lib/types/general";
 
 import { EditorFilterInput } from "./EditorFilterInput";
 import { EditorPanelHeader } from "./EditorPanelHeader";

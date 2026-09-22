@@ -1,11 +1,11 @@
 import { Typography } from "@mui/material";
 import { DataGrid, GridColDef, GridRowId, GridRowParams, GridValidRowModel } from "@mui/x-data-grid";
+import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useMemo, useState } from "react";
 
 import { EditorFilterInput } from "@/core/shell/editor/EditorFilterInput";
 import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { Nullable } from "@/lib/types/general";
 
 interface IDataTableProps<T extends GridValidRowModel> extends BaseComponentProps {
   rows: Array<T>;

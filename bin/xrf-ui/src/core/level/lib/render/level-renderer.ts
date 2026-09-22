@@ -1,3 +1,6 @@
+import { TFrameRateLimit } from "@xrf/renderer";
+import { Nullable } from "@xrf/types";
+
 import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
 import { VisualBounds } from "@/core/ipc/types/xrf-visual";
 import { ILevelCamera } from "@/core/level/lib/camera/level-camera";
@@ -9,8 +12,6 @@ import { ILevelStats } from "@/core/level/lib/stats/level-stats";
 import { ILevelSurfaceGeometry } from "@/core/level/lib/surface/level-surface-geometry";
 import { ILevelTextureReport } from "@/core/level/lib/texture/level-texture-report";
 import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
-import { TFrameRateLimit } from "@/core/render/lib/frame/render-frame-limit";
-import { Nullable } from "@/lib/types/general";
 
 /** The level a renderer is drawing: what it is, rather than how it is drawn. */
 export interface ILevelRenderLevel {

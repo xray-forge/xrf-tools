@@ -15,6 +15,7 @@ import { default as TextureIcon } from "@mui/icons-material/Texture";
 import { default as TranslateIcon } from "@mui/icons-material/Translate";
 import { default as ViewInArIcon } from "@mui/icons-material/ViewInAr";
 import { default as WbSunnyIcon } from "@mui/icons-material/WbSunny";
+import { Nullable } from "@xrf/types";
 
 import { ARCHIVES_EXPLORER_APPLICATION } from "@/applications/archives-explorer";
 import { ARCHIVES_PACKER_APPLICATION } from "@/applications/archives-packer";
@@ -75,7 +76,6 @@ import { VISUALS_SEQUENCER_APPLICATION } from "@/applications/visuals-sequencer"
 import { WEATHER_EDITOR_APPLICATION } from "@/applications/weather-editor";
 import { EApplicationGroupId, IApplicationDescriptor, IApplicationGroup } from "@/core/routing/application";
 import { CATALOG_ACCENT } from "@/core/theme/tokens";
-import { Nullable } from "@/lib/types/general";
 
 export interface IApplicationCatalog {
   readonly applications: ReadonlyArray<IApplicationDescriptor>;

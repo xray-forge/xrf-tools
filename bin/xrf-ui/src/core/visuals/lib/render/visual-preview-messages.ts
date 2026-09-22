@@ -1,12 +1,12 @@
-import { IRenderFrameCost } from "@/core/render/lib/frame/render-frame-cost";
-import { TFrameRateLimit } from "@/core/render/lib/frame/render-frame-limit";
+import { IRenderFrameCost, TFrameRateLimit } from "@xrf/renderer";
+import { Nullable } from "@xrf/types";
+
 import { IRenderLighting } from "@/core/render/lib/lighting/render-lighting";
 import { IVisualPose } from "@/core/visuals/lib/render/visual-render-source";
 import { IVisualPreviewViewOptions } from "@/core/visuals/lib/scene";
 import { IVisualBumpFiles } from "@/core/visuals/lib/visual-bump";
 import { IVisualTextureFile } from "@/core/visuals/lib/visual-texture";
 import { IVisualModelViews } from "@/core/visuals/lib/visual-views";
-import { Nullable } from "@/lib/types/general";
 
 /**
  * What a model preview on another thread can be told about what it draws.

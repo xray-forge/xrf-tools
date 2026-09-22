@@ -1,4 +1,5 @@
 import { GridColDef } from "@mui/x-data-grid";
+import { Nullable } from "@xrf/types";
 import { ReactElement, useMemo } from "react";
 
 import { TranslationBuildSummary } from "@/core/ipc/types/xrf-app";
@@ -8,7 +9,6 @@ import { CommandResult, ICommandResultStat } from "@/core/ui/command-result/Comm
 import { CommandResultFindings } from "@/core/ui/command-result/CommandResultFindings";
 import { RevealPathButton } from "@/core/ui/reveal/RevealPathButton";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { Nullable } from "@/lib/types/general";
 
 type TLanguageRow = TranslationBuildLanguageSummary & { id: string };
 

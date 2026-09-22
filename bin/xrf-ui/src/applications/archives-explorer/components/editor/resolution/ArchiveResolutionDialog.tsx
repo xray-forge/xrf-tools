@@ -1,6 +1,7 @@
 import { default as LayersIcon } from "@mui/icons-material/Layers";
 import { Alert, CircularProgress, Dialog, DialogContent } from "@mui/material";
 import { useInjection } from "@wirestate/react";
+import { Nullable } from "@xrf/types";
 import { ReactElement, useEffect, useId } from "react";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
@@ -8,7 +9,6 @@ import { ArchiveResolution, ArchiveResolutionSource, ArchiveUnreadSource } from 
 import { DialogHeader } from "@/core/ui/dialog/DialogHeader";
 import { DetailSection } from "@/core/ui/layout/DetailSection";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { Nullable } from "@/lib/types/general";
 
 import { ArchiveResolutionSourceRow } from "./ArchiveResolutionSourceRow";
 import { ArchiveResolutionUnreadRow } from "./ArchiveResolutionUnreadRow";

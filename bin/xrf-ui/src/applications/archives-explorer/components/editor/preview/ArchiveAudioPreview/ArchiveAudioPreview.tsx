@@ -1,5 +1,6 @@
 import { Divider, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
+import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
 import { ArchivePreviewError } from "@/applications/archives-explorer/components/editor/preview/ArchivePreviewError/ArchivePreviewError";
@@ -15,7 +16,6 @@ import { AudioPlayer } from "@/core/ui/media/AudioPlayer";
 import { AsyncState } from "@/lib/async-state";
 import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { Nullable } from "@/lib/types/general";
 
 import { formatAudioChannels } from "./ArchiveAudioPreview.utils";
 

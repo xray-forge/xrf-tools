@@ -1,6 +1,5 @@
+import { Nullable, Optional } from "@xrf/types";
 import { useEffect, useState } from "react";
-
-import { Nullable, Optional } from "@/lib/types/general";
 
 interface IAudioSamples {
   src: string;

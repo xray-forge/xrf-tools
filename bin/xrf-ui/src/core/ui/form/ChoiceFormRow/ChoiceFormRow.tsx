@@ -1,9 +1,9 @@
 import { ToggleButton, ToggleButtonGroup } from "@mui/material";
+import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
 import { FormRow } from "@/core/ui/form/FormRow";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { Nullable } from "@/lib/types/general";
 
 /** One value offered by a choice row, in display order. */
 export interface IChoiceFormRowOption<T extends string> {

@@ -1,6 +1,6 @@
+import { assertExhaustive, Nullable } from "@xrf/types";
+
 import { EXrayResolution, XrayAsset, XrayResolution } from "@/core/ipc/types/xrf-vfs";
-import { assertExhaustive } from "@/lib/types/exhaustive";
-import { Nullable } from "@/lib/types/general";
 
 /**
  * The asset a resolution located, or null when it located none.

@@ -1,4 +1,4 @@
-import { Nullable } from "@/lib/types/general";
+import { Nullable } from "@xrf/types";
 
 /** Shown in place of a value that is absent or not a number, rather than a misleading `0`. */
 export const ABSENT_VALUE: string = "—";

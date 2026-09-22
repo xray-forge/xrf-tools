@@ -1,6 +1,5 @@
+import { Nullable } from "@xrf/types";
 import { BufferAttribute, BufferGeometry, Object3D, Points, PointsMaterial } from "three";
-
-import { Nullable } from "@/lib/types/general";
 
 import { IVisualPreviewSceneConfig } from "./scene-config";
 

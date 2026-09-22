@@ -1,8 +1,9 @@
+import { Nullable } from "@xrf/types";
+
 import { getLocatedAsset } from "@/core/assets/lib";
 import { TextureDescription } from "@/core/ipc/types/xrf-app";
 import { ITextureSurfaceFiles } from "@/core/textures/lib/texture-surface";
 import { EVisualBumpView } from "@/core/visuals/lib/visual-bump-channels";
-import { Nullable } from "@/lib/types/general";
 
 /** One tile of the panel: a plane, what it is called, and what a person is meant to read in it. */
 export interface ITextureChannelTile {

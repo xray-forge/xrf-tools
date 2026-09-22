@@ -1,8 +1,9 @@
+import { Nullable } from "@xrf/types";
+
 import { EquipmentSpriteMetadata } from "@/core/ipc/types/xrf-app";
 import { EquipmentSlotOccupant } from "@/core/ipc/types/xrf-texture";
 import { IEditorProblem } from "@/core/shell/editor/EditorProblemsPanel";
 import { IEquipmentLayout } from "@/core/sprite-equipment/lib";
-import { Nullable } from "@/lib/types/general";
 
 /** What kind of thing is wrong, which is also what can be done about it. */
 export enum EEquipmentProblemRule {

@@ -1,10 +1,10 @@
+import { Nullable } from "@xrf/types";
 import { ReactElement, ReactNode } from "react";
 import { createPortal } from "react-dom";
 
 import { useEditorToolbarHost } from "@/core/shell/header/editor-toolbar-host";
 import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { Nullable } from "@/lib/types/general";
 
 interface IEditorLayoutProps extends BaseComponentProps {
   /** Portaled into the window caption, so it must stay one row of controls. */

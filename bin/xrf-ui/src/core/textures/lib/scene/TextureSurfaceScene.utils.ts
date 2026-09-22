@@ -1,8 +1,8 @@
+import { Nullable } from "@xrf/types";
 import { BoxGeometry, BufferAttribute, BufferGeometry, SphereGeometry, Vector2, Vector3 } from "three";
 
 import { ETextureSurfaceShape } from "@/core/textures/lib/texture-surface";
 import { XRAY_BINORMAL_ATTRIBUTE, XRAY_TANGENT_ATTRIBUTE } from "@/core/visuals/lib/visual-bump";
-import { Nullable } from "@/lib/types/general";
 
 /** How large each body is drawn, chosen so all three frame alike under one camera fit. */
 const SHAPE_EXTENT: number = 2;

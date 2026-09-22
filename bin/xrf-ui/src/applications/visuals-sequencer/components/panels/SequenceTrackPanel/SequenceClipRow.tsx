@@ -3,6 +3,7 @@ import { default as ArrowUpwardIcon } from "@mui/icons-material/ArrowUpward";
 import { default as DeleteOutlinedIcon } from "@mui/icons-material/DeleteOutlined";
 import { Chip, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
+import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
 import { ESequenceMotionState, ISequenceMotion } from "@/applications/visuals-sequencer/lib/sequence-motion-cache";
@@ -11,7 +12,6 @@ import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
 import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatSeconds } from "@/lib/format/duration";
-import { Nullable } from "@/lib/types/general";
 
 interface ISequenceClipRowProps extends BaseComponentProps {
   clip: ISequenceClip;

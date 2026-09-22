@@ -1,3 +1,4 @@
+import { Nullable } from "@xrf/types";
 import { useCallback, useMemo, useState } from "react";
 
 import {
@@ -7,7 +8,6 @@ import {
   IApplicationGroup,
 } from "@/core/routing/application";
 import { IUseRankedSearch, useRankedSearch } from "@/core/search/lib";
-import { Nullable } from "@/lib/types/general";
 
 import {
   getCatalogEntries,

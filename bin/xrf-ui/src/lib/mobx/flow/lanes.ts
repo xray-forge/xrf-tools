@@ -1,7 +1,8 @@
+import { Nullable } from "@xrf/types";
+
 import { Logger } from "@/lib/logging";
 import { swallowCancellation } from "@/lib/mobx/flow/cancellation";
 import { TCancellablePromise } from "@/lib/mobx/flow/types";
-import { Nullable } from "@/lib/types/general";
 
 /**
  * The run each flow decorated method currently has in flight, per instance.

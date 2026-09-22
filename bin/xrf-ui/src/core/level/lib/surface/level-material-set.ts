@@ -1,8 +1,8 @@
+import { Maybe, Nullable } from "@xrf/types";
 import { MeshStandardMaterial } from "three";
 
 import { listSurfaceTextures } from "@/core/level/lib/sector/level-sector-textures";
 import { ILevelTextureSource, TLevelTextureChange } from "@/core/level/lib/texture/level-texture-set";
-import { Maybe, Nullable } from "@/lib/types/general";
 
 import {
   applySurfaceDressing,

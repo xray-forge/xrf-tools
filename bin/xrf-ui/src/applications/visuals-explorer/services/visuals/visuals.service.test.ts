@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { waitFor } from "@testing-library/react";
 import { isComputedProp, isObservableProp } from "@wirestate/mobx";
+import { Nullable } from "@xrf/types";
 
 import { VisualsService } from "@/applications/visuals-explorer/services/visuals/index";
 import { createRoots } from "@/core/assets/lib";
@@ -23,7 +24,6 @@ import {
   mockVisualTransform,
 } from "@/fixtures/mocks/visual.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
-import { Nullable } from "@/lib/types/general";
 
 /** A selected visual whose description matches the buffer returned beside it. */
 function mockOpenableVisual(path: string = "C:\\gamedata\\wpn_ak74.ogf"): {

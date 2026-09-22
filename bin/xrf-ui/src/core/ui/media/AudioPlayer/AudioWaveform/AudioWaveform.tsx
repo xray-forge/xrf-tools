@@ -1,12 +1,12 @@
 import { useTheme } from "@mui/material";
 import { useColorScheme } from "@mui/material/styles";
 import { useForkRef } from "@mui/material/utils";
+import { Nullable } from "@xrf/types";
 import { KeyboardEvent, MouseEvent, ReactElement, useLayoutEffect, useMemo, useRef } from "react";
 
 import { cn } from "@/lib/dom/dom-name";
 import { extractPeaks, formatPlaybackTime } from "@/lib/media/waveform";
 import { useElementSize } from "@/lib/react/use-element-size";
-import { Nullable } from "@/lib/types/general";
 
 import { useAudioSamples } from "./use-audio-samples";
 

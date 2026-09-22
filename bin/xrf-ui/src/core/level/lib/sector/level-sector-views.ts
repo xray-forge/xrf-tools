@@ -1,3 +1,5 @@
+import { Nullable } from "@xrf/types";
+
 import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
 import {
   SectorDescription,
@@ -8,7 +10,6 @@ import {
   VisualSection,
 } from "@/core/ipc/types/xrf-visual";
 import { getRenderSurface, IRenderSurface } from "@/core/render/lib/surface/render-surface";
-import { Nullable } from "@/lib/types/general";
 
 /**
  * One packed mesh as views over the buffer it arrived in.

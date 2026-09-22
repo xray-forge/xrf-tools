@@ -1,5 +1,6 @@
+import { Optional } from "@xrf/types";
+
 import { XrfApplicationError } from "@/core/error/lib";
-import { Optional } from "@/lib/types/general";
 
 /**
  * The member of `enumeration` that `value` spells.

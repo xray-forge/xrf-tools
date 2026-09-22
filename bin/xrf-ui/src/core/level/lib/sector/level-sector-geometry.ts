@@ -1,8 +1,8 @@
+import { Nullable } from "@xrf/types";
 import { BufferAttribute, BufferGeometry, Sphere, Vector3 } from "three";
 
 import { VisualBounds } from "@/core/ipc/types/xrf-visual";
 import { ISectorGeometryViews, ISectorSectionViews, ISectorViews } from "@/core/level/lib/sector/level-sector-views";
-import { Nullable } from "@/lib/types/general";
 
 /** The second uv set a lightmapped surface samples, which three.js names `uv1`. */
 export const LIGHTMAP_ATTRIBUTE: string = "uv1";

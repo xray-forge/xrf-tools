@@ -1,5 +1,6 @@
+import { Nullable } from "@xrf/types";
+
 import { EApplicationGroupId, IApplicationDescriptor, IApplicationGroup } from "@/core/routing/application";
-import { Nullable } from "@/lib/types/general";
 
 /** One application together with the group it was found under, which a ranked result no longer implies. */
 export interface ICatalogEntry {

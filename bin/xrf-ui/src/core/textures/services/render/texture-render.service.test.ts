@@ -1,8 +1,8 @@
 import { beforeAll, describe, expect, it, jest } from "@jest/globals";
 import { Container } from "@wirestate/core";
 import { runInAction } from "@wirestate/mobx";
+import { EMPTY_RENDER_FRAME_COST, IRenderFrameCost } from "@xrf/renderer";
 
-import { EMPTY_RENDER_FRAME_COST, IRenderFrameCost } from "@/core/render/lib/frame/render-frame-cost";
 import { IRenderLighting } from "@/core/render/lib/lighting/render-lighting";
 import { SettingsService } from "@/core/settings/services/settings";
 import { DEFAULT_TEXTURE_LIGHTING } from "@/core/textures/lib/scene/texture-lighting";

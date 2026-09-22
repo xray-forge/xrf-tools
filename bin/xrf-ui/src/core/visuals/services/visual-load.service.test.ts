@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { flowResult, isComputedProp, isObservableProp } from "@wirestate/mobx";
+import { Nullable } from "@xrf/types";
 
 import { createRoots } from "@/core/assets/lib";
 import { SelectedVisualDescription } from "@/core/ipc/types/xrf-app";
@@ -19,7 +20,6 @@ import {
 import { muteConsole } from "@/fixtures/utils/console";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { noop } from "@/lib/callbacks/noop";
-import { Nullable } from "@/lib/types/general";
 
 const ROOTS: XrayRoots = createRoots(["C:\\game\\db"]);
 const ENTRY: string = "meshes\\actors\\stalker.ogf";

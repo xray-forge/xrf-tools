@@ -1,5 +1,6 @@
 import { Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
+import { Nullable } from "@xrf/types";
 import { ReactElement, useMemo } from "react";
 
 import { AssetTextureDescriptor } from "@/core/ipc/types/xrf-app";
@@ -12,7 +13,6 @@ import {
   summarizeVisualTextures,
 } from "@/core/visuals/lib/visual-texture-summary";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { Nullable } from "@/lib/types/general";
 
 import { VisualSubmeshSection } from "./VisualSubmeshSection";
 

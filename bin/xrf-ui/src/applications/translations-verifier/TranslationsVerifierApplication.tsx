@@ -1,4 +1,5 @@
 import { useInjection } from "@wirestate/react";
+import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useEffect } from "react";
 
 import { TranslationsVerifierService } from "@/applications/translations-verifier/services/verifier";
@@ -9,7 +10,6 @@ import { PickerForm } from "@/core/shell/editor/PickerForm";
 import { TranslationLanguageField } from "@/core/translations/components/TranslationLanguageField";
 import { ALL_TRANSLATION_LANGUAGES, TRANSLATION_LANGUAGES_WITH_ALL } from "@/core/translations/translations.config";
 import { IPathField, PathFormRow, usePathField, useRememberedValue } from "@/core/ui/form";
-import { Nullable } from "@/lib/types/general";
 
 import { TranslationsVerifyResult } from "./components/TranslationsVerifyResult";
 

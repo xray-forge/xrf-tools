@@ -1,9 +1,9 @@
 import { Typography } from "@mui/material";
+import { Nullable, Optional } from "@xrf/types";
 import { ReactElement, ReactNode, useId } from "react";
 
 import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { Nullable, Optional } from "@/lib/types/general";
 
 /** Attributes that associate a control or group with its row's label and visible messages. */
 export interface IFormRowControlProps {

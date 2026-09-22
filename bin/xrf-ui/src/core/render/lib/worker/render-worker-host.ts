@@ -1,4 +1,6 @@
-import { OffscreenRenderTarget } from "@/core/render/lib/frame/offscreen-render-target";
+import { OffscreenRenderTarget } from "@xrf/renderer";
+import { Nullable } from "@xrf/types";
+
 import {
   ERenderFrame,
   ERenderFrameResponse,
@@ -8,7 +10,6 @@ import {
 } from "@/core/render/lib/worker/render-frame-messages";
 import { RenderProxyElement } from "@/core/render/lib/worker/render-proxy-element";
 import { Logger } from "@/lib/logging";
-import { Nullable } from "@/lib/types/general";
 
 /**
  * A viewport as the far side of a worker sees it: a vocabulary of its own, and a way to be let go.

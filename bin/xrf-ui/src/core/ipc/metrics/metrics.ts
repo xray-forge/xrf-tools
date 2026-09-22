@@ -1,4 +1,4 @@
-import { Nullable, Optional } from "@/lib/types/general";
+import { Nullable, Optional } from "@xrf/types";
 
 import { IpcCallMeasurement } from "./metrics.measurement";
 import { isIpcProfilingEnabled } from "./metrics.profiling";

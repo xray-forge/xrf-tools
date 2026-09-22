@@ -1,4 +1,5 @@
 import { useInjection } from "@wirestate/react";
+import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
 import { VisualDescription } from "@/core/ipc/types/xrf-visual";
@@ -12,7 +13,6 @@ import { VISUAL_INSPECTION } from "@/core/visuals/components/panels/visual-inspe
 import { VisualBoundsSection } from "@/core/visuals/components/panels/VisualHeaderPanel/VisualBoundsSection";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { ABSENT_VALUE } from "@/lib/format/number";
-import { Nullable } from "@/lib/types/general";
 
 export function VisualHeaderPanel({
   "data-testid": dataTestId = "visual-header-panel",

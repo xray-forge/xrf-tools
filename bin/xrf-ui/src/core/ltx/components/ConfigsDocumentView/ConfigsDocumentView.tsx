@@ -1,4 +1,5 @@
 import { useInjection } from "@wirestate/react";
+import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
 import { ConfigsDocument } from "@/core/ipc/types/xrf-app";
@@ -12,7 +13,6 @@ import { ErrorState } from "@/core/ui/layout/ErrorState";
 import { inline } from "@/lib/callbacks/inline";
 import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { Nullable } from "@/lib/types/general";
 
 interface IConfigsDocumentViewProps extends BaseComponentProps {
   /** Ends the selection without closing the project, which the header offers. */

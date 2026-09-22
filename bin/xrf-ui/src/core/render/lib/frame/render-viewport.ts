@@ -1,11 +1,13 @@
+import {
+  DEFAULT_FRAME_RATE_LIMIT,
+  IRenderFrameCost,
+  IRenderTarget,
+  RenderFrameTimer,
+  shouldDrawFrame,
+  TFrameRateLimit,
+} from "@xrf/renderer";
+import { Nullable } from "@xrf/types";
 import { Color, PerspectiveCamera, Scene, Vector2, WebGLRenderer } from "three";
-
-import { Nullable } from "@/lib/types/general";
-
-import { IRenderFrameCost } from "./render-frame-cost";
-import { DEFAULT_FRAME_RATE_LIMIT, shouldDrawFrame, TFrameRateLimit } from "./render-frame-limit";
-import { RenderFrameTimer } from "./render-frame-timer";
-import { IRenderTarget } from "./render-target";
 
 /** Seconds a frame may be worth, so a tab returning from the background does not teleport whatever moves by time. */
 const MAX_FRAME_DELTA: number = 0.1;

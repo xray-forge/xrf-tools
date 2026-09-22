@@ -1,4 +1,5 @@
 import { Button, Divider, Stack, Typography } from "@mui/material";
+import { Callable } from "@xrf/types";
 import { ReactElement, useCallback } from "react";
 
 import { JobDescription } from "@/core/ipc/types/xrf-app";
@@ -11,7 +12,6 @@ import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatDuration } from "@/lib/format/duration";
 import { useForceUpdate } from "@/lib/react";
-import { Callable } from "@/lib/types/general";
 
 import { SettingsJobsRun } from "./SettingsJobsRun";
 

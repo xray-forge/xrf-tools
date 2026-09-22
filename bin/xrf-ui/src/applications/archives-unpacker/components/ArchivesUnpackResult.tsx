@@ -1,4 +1,5 @@
 import { GridColDef } from "@mui/x-data-grid";
+import { Nullable } from "@xrf/types";
 import { ReactElement, useMemo } from "react";
 
 import { ArchiveUnpackResult } from "@/core/ipc/types/xrf-pack";
@@ -9,7 +10,6 @@ import { RevealPathButton } from "@/core/ui/reveal/RevealPathButton";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatDuration } from "@/lib/format/duration";
 import { formatBytes } from "@/lib/memory/format";
-import { Nullable } from "@/lib/types/general";
 
 interface IArchivesUnpackResultProps extends BaseComponentProps {
   result: ArchiveUnpackResult;

@@ -1,9 +1,9 @@
 import { describe, expect, it } from "@jest/globals";
+import { Nullable } from "@xrf/types";
 
 import { LtxAnchoredFinding, LtxFindingKind } from "@/core/ipc/types/xrf-ltx-inspect";
 import { toFindingMark, toFindingMarks, toOrderedFindings } from "@/core/ltx/lib/findings";
 import { ECodeLineMark } from "@/core/ui/code/code-line";
-import { Nullable } from "@/lib/types/general";
 
 const ENTRY: string = "configs\\system.ltx";
 const FILE: string = "configs\\items\\w_base.ltx";

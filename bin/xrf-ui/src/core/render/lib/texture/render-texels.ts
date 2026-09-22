@@ -1,5 +1,6 @@
+import { Nullable, Optional } from "@xrf/types";
+
 import { EDdsLayout, IDdsMipmap, IDdsRead, readDdsFile } from "@/core/render/lib/dds";
-import { Nullable, Optional } from "@/lib/types/general";
 
 /**
  * A texture's top mip on the cpu, for a layout that stores its texels plainly.

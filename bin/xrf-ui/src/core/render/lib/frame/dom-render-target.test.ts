@@ -1,7 +1,7 @@
 import { describe, expect, it, jest } from "@jest/globals";
+import { ERenderResolution } from "@xrf/renderer";
 
 import { DomRenderTarget } from "@/core/render/lib/frame/dom-render-target";
-import { ERenderResolution } from "@/core/render/lib/frame/render-resolution";
 
 function mockContainer(height: number = 540): HTMLElement {
   const container: HTMLElement = document.createElement("div");

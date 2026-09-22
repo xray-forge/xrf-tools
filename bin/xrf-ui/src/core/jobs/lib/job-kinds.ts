@@ -1,6 +1,7 @@
+import { Nullable } from "@xrf/types";
+
 import { EJobKind } from "@/core/ipc/types/xrf-app";
 import { EApplicationId } from "@/core/routing/application";
-import { Nullable } from "@/lib/types/general";
 
 /**
  * Display metadata for a backend job kind.

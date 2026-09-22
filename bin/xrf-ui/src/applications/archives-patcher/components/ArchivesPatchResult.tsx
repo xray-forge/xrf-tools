@@ -1,4 +1,5 @@
 import { GridColDef, GridRenderCellParams } from "@mui/x-data-grid";
+import { Nullable } from "@xrf/types";
 import { ReactElement, useMemo } from "react";
 
 import { describePatchHeadline } from "@/applications/archives-patcher/lib/describe-patch-headline";
@@ -12,7 +13,6 @@ import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatDuration } from "@/lib/format/duration";
 import { formatBytes } from "@/lib/memory/format";
-import { Nullable } from "@/lib/types/general";
 
 const CHANGE_LABELS: Record<ArchivePatchClass, string> = {
   added: "Added",

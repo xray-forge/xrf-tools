@@ -1,7 +1,7 @@
 import { readFileSync } from "fs";
 import { dirname, resolve } from "path";
 
-import { Nullable } from "@/lib/types/general";
+import { Nullable } from "@xrf/types";
 
 /** Where `@/` points, read from this file rather than configured twice. */
 export const SOURCE_ROOT: string = resolve(__dirname, "../..");

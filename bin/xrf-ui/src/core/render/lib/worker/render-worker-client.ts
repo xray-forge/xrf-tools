@@ -1,5 +1,7 @@
+import { IOffscreenRenderSize } from "@xrf/renderer";
+import { Nullable } from "@xrf/types";
+
 import { DomRenderTarget } from "@/core/render/lib/frame/dom-render-target";
-import { IOffscreenRenderSize } from "@/core/render/lib/frame/offscreen-render-target";
 import {
   ERenderFrame,
   ERenderFrameResponse,
@@ -9,7 +11,6 @@ import {
 import { IRenderInputEvent } from "@/core/render/lib/worker/render-input";
 import { RenderInputForwarder } from "@/core/render/lib/worker/render-input-forwarder";
 import { Logger } from "@/lib/logging";
-import { Nullable } from "@/lib/types/general";
 
 /** What a viewport's near half needs to hand its canvas over and keep talking to it. */
 export interface IRenderWorkerClientOptions<TRequest extends { kind: string }, TResponse extends { kind: string }> {

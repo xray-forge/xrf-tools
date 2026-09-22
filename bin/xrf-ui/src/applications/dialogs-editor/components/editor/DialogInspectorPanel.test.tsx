@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { RenderResult } from "@testing-library/react";
+import { Nullable } from "@xrf/types";
 
 import { DIALOG_NODE_ID } from "@/applications/dialogs-editor/lib";
 import { DialogsService } from "@/applications/dialogs-editor/services/dialogs";
@@ -9,7 +10,6 @@ import { setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 import { AsyncState } from "@/lib/async-state";
-import { Nullable } from "@/lib/types/general";
 
 import { DialogInspectorPanel } from "./DialogInspectorPanel";
 

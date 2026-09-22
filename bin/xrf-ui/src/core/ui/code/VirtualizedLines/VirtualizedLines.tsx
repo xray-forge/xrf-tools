@@ -1,5 +1,6 @@
 import { useForkRef } from "@mui/material/utils";
 import { LayoutList, RenderContext, useVirtualizer, Virtualization } from "@mui/x-virtualizer";
+import { Nullable } from "@xrf/types";
 import { KeyboardEvent, ReactElement, useCallback, useEffect, useId, useMemo, useRef } from "react";
 
 import { CODE, MONOSPACE_CHARACTER_WIDTH } from "@/core/theme/tokens";
@@ -7,7 +8,6 @@ import { ICodeLine, ICodeLineRange, ICodeLineSource } from "@/core/ui/code/code-
 import { VirtualizedLinesRow } from "@/core/ui/code/VirtualizedLines/VirtualizedLinesRow";
 import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { Nullable } from "@/lib/types/general";
 
 /**
  * Where a reveal leaves the line it was handed.

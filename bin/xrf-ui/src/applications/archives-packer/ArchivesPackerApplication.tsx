@@ -2,6 +2,7 @@ import { default as TuneIcon } from "@mui/icons-material/Tune";
 import { Alert, Divider, Stack, Typography } from "@mui/material";
 import { DialogFilter, open, save } from "@tauri-apps/plugin-dialog";
 import { useInjection } from "@wirestate/react";
+import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useEffect, useMemo, useState } from "react";
 
 import { EPackerSection, PackerService } from "@/applications/archives-packer/services/packer";
@@ -19,7 +20,6 @@ import { useEditorPanels, useEditorStatus } from "@/core/shell/editor-shell";
 import { ApplicationLoader } from "@/core/shell/loading/ApplicationLoader";
 import { ConfirmDialog } from "@/core/ui/dialog/ConfirmDialog";
 import { IPathField, usePathField } from "@/core/ui/form";
-import { Nullable } from "@/lib/types/general";
 
 import { PackerSectionsMenu } from "./components/PackerSectionsMenu";
 import { PackerToolbarActions } from "./components/PackerToolbarActions";

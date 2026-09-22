@@ -1,6 +1,5 @@
+import { Nullable } from "@xrf/types";
 import { useRef } from "react";
-
-import { Nullable } from "@/lib/types/general";
 
 /**
  * Holds the last content of one kind so a panel can keep showing it while the next one loads.

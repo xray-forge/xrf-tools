@@ -1,7 +1,6 @@
+import { Maybe, Optional } from "@xrf/types";
 import { ClassValue, default as clsx } from "clsx";
 import { extendTailwindMerge } from "tailwind-merge";
-
-import { Maybe, Optional } from "@/lib/types/general";
 
 /**
  * @param values - Id fragments; `false`, `null`, `undefined`, and `"` are skipped.

@@ -1,3 +1,4 @@
+import { Maybe, Nullable } from "@xrf/types";
 import { Texture } from "three";
 
 import { transformError } from "@/core/error/lib";
@@ -13,7 +14,6 @@ import {
   IRenderTextureUpload,
 } from "@/core/render/lib/texture/render-texture";
 import { Logger } from "@/lib/logging";
-import { Maybe, Nullable } from "@/lib/types/general";
 
 import { ILevelTextureProblem, ILevelTextureReport } from "./level-texture-report";
 

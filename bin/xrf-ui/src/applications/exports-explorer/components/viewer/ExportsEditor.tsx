@@ -2,6 +2,7 @@ import { default as ListAltIcon } from "@mui/icons-material/ListAlt";
 import { default as RefreshIcon } from "@mui/icons-material/Refresh";
 import { Alert } from "@mui/material";
 import { useInjection } from "@wirestate/react";
+import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useEffect, useMemo, useState } from "react";
 
 import { ExportsService } from "@/applications/exports-explorer/services/exports";
@@ -12,7 +13,6 @@ import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
 import { EditorToolbarLocation } from "@/core/shell/editor/EditorToolbarLocation";
 import { useEditorBusy } from "@/core/shell/editor-lifecycle";
 import { useEditorPanels, useEditorStatus } from "@/core/shell/editor-shell";
-import { Nullable } from "@/lib/types/general";
 
 import { groupExports, IExportGroup } from "./exports/exports-groups";
 import { ExportsMenu } from "./exports/ExportsMenu";

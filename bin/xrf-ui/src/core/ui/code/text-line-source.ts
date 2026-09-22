@@ -1,7 +1,8 @@
+import { Nullable } from "@xrf/types";
+
 import { ESyntaxLanguage, ESyntaxToken, highlightSyntax, isLineLocalSyntax, ISyntaxSpan } from "@/core/syntax/lib";
 import { ICodeLine, ICodeLineSource } from "@/core/ui/code/code-line";
 import { EMPTY_ARRAY } from "@/lib/types/array";
-import { Nullable } from "@/lib/types/general";
 
 /** Most text a grammar that is not line-local is coloured over. */
 export const MAXIMUM_SCANNED_LENGTH: number = 4 * 1024 * 1024;

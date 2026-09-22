@@ -1,9 +1,9 @@
 import { LayoutList, useVirtualizer } from "@mui/x-virtualizer";
+import { Nullable } from "@xrf/types";
 import { ReactElement, useId, useMemo, useRef } from "react";
 
 import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { Nullable } from "@/lib/types/general";
 
 import { ARCHIVE_OVERRIDE_ROW_HEIGHT, EArchiveOverrideRow, TArchiveOverrideRow } from "./archive-override-rows";
 import { ArchiveOverrideCopyRow } from "./ArchiveOverrideCopyRow";

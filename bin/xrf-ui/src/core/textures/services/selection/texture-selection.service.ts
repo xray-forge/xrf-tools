@@ -1,5 +1,6 @@
 import { Injectable, OnDeactivation } from "@wirestate/core";
 import { BoundAction, Computed, Observable, runInAction } from "@wirestate/mobx";
+import { Nullable } from "@xrf/types";
 
 import { createRoots } from "@/core/assets/lib";
 import { transformError } from "@/core/error/lib";
@@ -11,7 +12,6 @@ import { AsyncState } from "@/lib/async-state";
 import { formatDuration } from "@/lib/format/duration";
 import { Logger, Timer } from "@/lib/logging";
 import { call, cancelFlow, LatestFlow, TFlow } from "@/lib/mobx";
-import { Nullable } from "@/lib/types/general";
 
 /** A texture inspection and the search roots needed to repeat it. */
 interface ITextureSelectionRequest {

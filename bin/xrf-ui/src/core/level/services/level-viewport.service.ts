@@ -1,10 +1,10 @@
 import { Injectable, OnDeactivation } from "@wirestate/core";
 import { BoundAction, Observable, RefObservable } from "@wirestate/mobx";
+import { Nullable } from "@xrf/types";
 
 import { ILevelCamera } from "@/core/level/lib/camera/level-camera";
 import { EMPTY_LEVEL_STATS, ILevelStats } from "@/core/level/lib/stats/level-stats";
 import { EMPTY_LEVEL_TEXTURE_REPORT, ILevelTextureReport } from "@/core/level/lib/texture/level-texture-report";
-import { Nullable } from "@/lib/types/general";
 
 /**
  * What the viewport reports about itself while it draws.

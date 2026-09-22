@@ -1,8 +1,8 @@
 import { Tooltip, Typography } from "@mui/material";
+import { Nullable } from "@xrf/types";
 import { ReactElement, ReactNode } from "react";
 
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { Nullable } from "@/lib/types/general";
 
 /** The one word a tree says after a name when the engine reads that file out of a volume. */
 export const ARCHIVED_CAPTION: string = "db";

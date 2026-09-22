@@ -1,5 +1,6 @@
 import { EventBus, inject, Injectable, OnDeactivation, OnProvision } from "@wirestate/core";
 import { BoundAction, Computed, flowResult, Observable, runInAction } from "@wirestate/mobx";
+import { Nullable, Optional } from "@xrf/types";
 
 import { createRoots } from "@/core/assets/lib";
 import { transformError } from "@/core/error/lib";
@@ -21,7 +22,6 @@ import { VisualMotionService } from "@/core/visuals/services/visual-motion.servi
 import { AsyncState } from "@/lib/async-state";
 import { Logger } from "@/lib/logging";
 import { findLastSeparator } from "@/lib/path/separator";
-import { Nullable, Optional } from "@/lib/types/general";
 
 /**
  * What one open asked for, kept so the same request can be made again.

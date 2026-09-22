@@ -1,6 +1,6 @@
 import { describe, expect, it, jest } from "@jest/globals";
+import { OffscreenRenderTarget } from "@xrf/renderer";
 
-import { OffscreenRenderTarget } from "@/core/render/lib/frame/offscreen-render-target";
 import { ERenderFrame, ERenderFrameResponse } from "@/core/render/lib/worker/render-frame-messages";
 import { ERenderInput, IRenderInputEvent } from "@/core/render/lib/worker/render-input";
 import { RenderProxyElement } from "@/core/render/lib/worker/render-proxy-element";

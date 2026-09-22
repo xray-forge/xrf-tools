@@ -1,11 +1,11 @@
 import { describe, expect, it } from "@jest/globals";
+import { Nullable } from "@xrf/types";
 
 import { TextureDescription } from "@/core/ipc/types/xrf-app";
 import { XrayMaterialDescriptor } from "@/core/ipc/types/xrf-material";
 import { ITextureBumpAssets, selectTextureBumpAssets, toTextureAspect } from "@/core/textures/lib/texture-surface";
 import { mockTextureDescription } from "@/fixtures/mocks/texture.mocks";
 import { mockMaterialDescriptor } from "@/fixtures/mocks/visual.mocks";
-import { Nullable } from "@/lib/types/general";
 
 describe("toTextureAspect", () => {
   it("should report the proportions the file was authored in", () => {

@@ -1,0 +1,28 @@
+{
+  "name": "@xrf/types",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "Type helpers every xrf-tools TypeScript member shares.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "imports": {
+    "#/*": "./src/*.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "jest",
+    "lint": "eslint . --max-warnings 0 --cache --cache-location target/eslint/cache.json --cache-strategy content",
+    "format": "prettier --write --ignore-path ../../.prettierignore \"**/*.(js|cjs|mjs|ts|md)\" && pnpm run lint --fix"
+  },
+  "devDependencies": {
+    "@jest/globals": "catalog:",
+    "@typescript/native": "catalog:",
+    "eslint": "catalog:",
+    "jest": "catalog:",
+    "prettier": "catalog:",
+    "typescript": "catalog:",
+    "@xrf/toolchain": "workspace:*"
+  }
+}

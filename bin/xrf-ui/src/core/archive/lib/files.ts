@@ -1,10 +1,11 @@
+import { Nullable } from "@xrf/types";
+
 import {
   ArchiveDescriptor,
   ArchiveFileDescriptor,
   ArchiveProject,
   ArchiveSharedPayload,
 } from "@/core/ipc/types/xrf-archive";
-import { Nullable } from "@/lib/types/general";
 
 /**
  * The files an archive project holds, without the directories its volumes record.

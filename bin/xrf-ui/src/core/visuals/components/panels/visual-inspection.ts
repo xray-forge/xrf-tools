@@ -1,10 +1,10 @@
 import { InjectionToken } from "@wirestate/core";
+import { Nullable } from "@xrf/types";
 
 import { SelectedVisualDescription } from "@/core/ipc/types/xrf-app";
 import { VisualBone } from "@/core/ipc/types/xrf-visual";
 import { IVisualBumpStatus } from "@/core/visuals/lib/visual-bump";
 import { IVisualTextureStatus } from "@/core/visuals/lib/visual-texture";
-import { Nullable } from "@/lib/types/general";
 
 /**
  * Marking and hiding bones, for a surface that lets a user do either.

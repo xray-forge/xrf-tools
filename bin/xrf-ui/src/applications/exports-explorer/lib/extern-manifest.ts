@@ -1,6 +1,7 @@
+import { Nullable } from "@xrf/types";
+
 import { EXrayExtension } from "@/core/ipc/types/xrf-extension";
 import { getXrayExtension } from "@/core/path/extension";
-import { Nullable } from "@/lib/types/general";
 
 /** Formats the extern manifest can be written as, in the order the save dialog offers them. */
 export const EXTERN_MANIFEST_FORMATS: ReadonlyArray<EXrayExtension> = [

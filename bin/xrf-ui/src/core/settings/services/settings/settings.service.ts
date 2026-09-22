@@ -1,8 +1,8 @@
 import { Injectable, OnDeprovision, OnProvision, ProvisionId } from "@wirestate/core";
 import { BoundAction, Observable } from "@wirestate/mobx";
+import { ERenderResolution, TFrameRateLimit, toFrameRateLimit, toRenderResolution } from "@xrf/renderer";
+import { Nullable } from "@xrf/types";
 
-import { TFrameRateLimit, toFrameRateLimit } from "@/core/render/lib/frame/render-frame-limit";
-import { ERenderResolution, toRenderResolution } from "@/core/render/lib/frame/render-resolution";
 import { TCatalogView, toCatalogView } from "@/core/settings/lib/catalog-view";
 import {
   CATALOG_VIEW_STORAGE_KEY,
@@ -14,7 +14,6 @@ import {
 import { isDevelopmentBuild } from "@/lib/env";
 import { getLocalStorageValue, setLocalStorageValue } from "@/lib/local-storage";
 import { Logger } from "@/lib/logging";
-import { Nullable } from "@/lib/types/general";
 
 /**
  * Application wide switches that are not tied to any one editor.

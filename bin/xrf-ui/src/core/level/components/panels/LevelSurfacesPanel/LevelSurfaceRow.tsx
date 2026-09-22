@@ -1,4 +1,5 @@
 import { Chip } from "@mui/material";
+import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
 import { describeLevelSurfaceDressing, ILevelSurfaceDressing } from "@/core/level/lib/surface/level-surface-dressing";
@@ -16,7 +17,6 @@ import {
 } from "@/core/materials/lib";
 import { EditorPanelProperty, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { Nullable } from "@/lib/types/general";
 
 interface ILevelSurfaceRowProps extends BaseComponentProps {
   summary: ILevelSurfaceSummary;

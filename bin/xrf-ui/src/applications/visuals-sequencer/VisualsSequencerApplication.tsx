@@ -1,4 +1,5 @@
 import { useInjection } from "@wirestate/react";
+import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useState } from "react";
 
 import { SequencerService } from "@/applications/visuals-sequencer/services/sequencer";
@@ -6,7 +7,6 @@ import { ApplicationLoader } from "@/core/shell/loading/ApplicationLoader";
 import { VisualPreviewLayout } from "@/core/visuals/components/preview/VisualPreviewLayout";
 import { IOpenVisual } from "@/core/visuals/services";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { Nullable } from "@/lib/types/general";
 
 import { SEQUENCER_PANELS } from "./components/panels";
 import { SequencerTransport } from "./components/SequencerTransport";

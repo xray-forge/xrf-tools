@@ -1,4 +1,5 @@
 import { beforeAll, beforeEach, describe, expect, it, jest } from "@jest/globals";
+import { OffscreenRenderTarget } from "@xrf/renderer";
 
 import { EMPTY_LEVEL_FLY_INPUT } from "@/core/level/lib/camera/level-fly-input";
 import { ILevelFlyMotion } from "@/core/level/lib/camera/level-fly-motion";
@@ -7,7 +8,6 @@ import {
   ELevelRenderResponse,
   TLevelRenderResponse,
 } from "@/core/level/lib/render/level-render-messages";
-import { OffscreenRenderTarget } from "@/core/render/lib/frame/offscreen-render-target";
 
 const scene = {
   deliver: jest.fn(),

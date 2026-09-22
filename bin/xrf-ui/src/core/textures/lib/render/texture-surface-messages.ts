@@ -1,5 +1,5 @@
-import { IRenderFrameCost } from "@/core/render/lib/frame/render-frame-cost";
-import { TFrameRateLimit } from "@/core/render/lib/frame/render-frame-limit";
+import { IRenderFrameCost, TFrameRateLimit } from "@xrf/renderer";
+
 import { IRenderLighting } from "@/core/render/lib/lighting/render-lighting";
 import { ITextureSurfaceFiles, ITextureSurfaceOptions } from "@/core/textures/lib/texture-surface";
 
