@@ -9,7 +9,7 @@ import {
   EditorPanelSection,
 } from "@/core/shell/editor/EditorPanel";
 import { TextureChannelRenderer } from "@/core/textures/lib/scene/TextureChannelRenderer";
-import { ITextureBumpTexels, ITextureSurfaceTextures } from "@/core/textures/lib/texture-surface";
+import { ITextureBumpTexels, ITextureSurfaceFiles } from "@/core/textures/lib/texture-surface";
 import { TextureSelectionService } from "@/core/textures/services/selection";
 import { TextureSurfaceService } from "@/core/textures/services/surface";
 import { EVisualBumpView } from "@/core/visuals/lib/visual-bump-channels";
@@ -47,13 +47,13 @@ export function TextureChannelsPanel({
   const [position, setPosition] = useState<Nullable<ITextureTexelPosition>>(null);
 
   const description: Nullable<TextureDescription> = selectionService.selected.value;
-  const textures: Nullable<ITextureSurfaceTextures> = surfaceService.textures.value;
+  const files: Nullable<ITextureSurfaceFiles> = surfaceService.files.value;
   const texels: Nullable<ITextureBumpTexels> = surfaceService.bumpTexels;
-  const isUploading: boolean = surfaceService.textures.isLoading;
-  const gap: Nullable<string> = describeTextureChannelsGap(description, textures, isUploading);
+  const isReading: boolean = surfaceService.files.isLoading;
+  const gap: Nullable<string> = describeTextureChannelsGap(description, files, isReading);
   const readout: Nullable<ITextureTexelReadout> = texels && position ? describeTextureTexel(texels, position) : null;
   // Laid out from the pair's own proportions, so a plane is never shown stretched into a square.
-  const aspect: string = toTextureChannelAspect(textures);
+  const aspect: string = toTextureChannelAspect(files);
 
   const draw = useCallback(() => {
     const renderer: Nullable<TextureChannelRenderer> = rendererRef.current;
@@ -79,9 +79,9 @@ export function TextureChannelsPanel({
   }, []);
 
   useEffect(() => {
-    rendererRef.current?.setTextures(textures?.bump ?? null);
+    rendererRef.current?.setTextures(files?.bump ?? null);
     draw();
-  }, [draw, textures]);
+  }, [draw, files]);
 
   // A panel is resized by hand and by the window, and a tile that is not redrawn afterwards keeps the last size it was
   // copied at, stretched.

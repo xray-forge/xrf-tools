@@ -11,8 +11,8 @@ import { SettingsService } from "@/core/settings/services/settings";
 import { TextureSurfaceScene } from "@/core/textures/lib/scene/TextureSurfaceScene";
 import {
   EMPTY_TEXTURE_SURFACE,
+  ITextureSurfaceFiles,
   ITextureSurfaceOptions,
-  ITextureSurfaceTextures,
 } from "@/core/textures/lib/texture-surface";
 import { TextureSurfaceService } from "@/core/textures/services/surface";
 import { TextureViewService } from "@/core/textures/services/view";
@@ -68,7 +68,7 @@ export class TextureRenderService extends RenderSurfaceService {
     // Told what is open as it is now, then again whenever any of it changes. A scene attached after a texture was
     // uploaded would otherwise show an empty body until something happened to change.
     this.reactions.push(
-      reaction(() => this.surfaceService.textures.value, this.applyTextures, { fireImmediately: true }),
+      reaction(() => this.surfaceService.files.value, this.applyTextures, { fireImmediately: true }),
       reaction(() => this.viewService.options, this.applyOptions, { fireImmediately: true }),
       reaction(() => this.viewService.lighting, this.applyLighting, { fireImmediately: true }),
       reaction(() => this.settingsService.frameRateLimit, this.applyFrameRateLimit, { fireImmediately: true }),
@@ -141,8 +141,8 @@ export class TextureRenderService extends RenderSurfaceService {
   }
 
   @BoundAction()
-  private applyTextures(textures: Nullable<ITextureSurfaceTextures>): void {
-    this.scene?.setTextures(textures ?? EMPTY_TEXTURE_SURFACE);
+  private applyTextures(files: Nullable<ITextureSurfaceFiles>): void {
+    this.scene?.setTextures(files ?? EMPTY_TEXTURE_SURFACE);
   }
 
   @BoundAction()

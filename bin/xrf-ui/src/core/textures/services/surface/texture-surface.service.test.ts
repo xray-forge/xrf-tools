@@ -1,6 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { isObservableProp } from "@wirestate/mobx";
-import { Texture } from "three";
 
 import { TextureDescription } from "@/core/ipc/types/xrf-app";
 import { EMPTY_TEXTURE_SURFACE } from "@/core/textures/lib/texture-surface";
@@ -39,28 +38,32 @@ describe("TextureSurfaceService", () => {
     // reacts to its state - and then does nothing at all in the running app.
     const { service } = mockInjectedService(TextureSurfaceService);
 
-    expect(isObservableProp(service, "textures")).toBe(true);
-    expect(isObservableProp(service, "uploaded")).toBe(true);
+    expect(isObservableProp(service, "files")).toBe(true);
+    expect(isObservableProp(service, "reference")).toBe(true);
   });
 
-  it("uploads the base and the pair the descriptor declares", async () => {
+  it("reads the base and the pair the descriptor declares", async () => {
     const { service } = mockInjectedService(TextureSurfaceService);
 
     await service.load(mockBumpedDescription());
 
-    expect((service.textures.value ?? EMPTY_TEXTURE_SURFACE).base).toBeInstanceOf(Texture);
-    expect((service.textures.value ?? EMPTY_TEXTURE_SURFACE).bump?.bump).toBeInstanceOf(Texture);
-    expect((service.textures.value ?? EMPTY_TEXTURE_SURFACE).bump?.companion).toBeInstanceOf(Texture);
-    expect(service.uploaded).toBe(MOCK_TEXTURE);
+    const files = service.files.value ?? EMPTY_TEXTURE_SURFACE;
+
+    // Bytes and what the read learned about them; uploading is the drawing side's business.
+    expect(files.base?.bytes.byteLength).toBeGreaterThan(0);
+    expect(files.base).toMatchObject({ height: 4, isDecoded: false, width: 4 });
+    expect(files.bump?.bump.bytes.byteLength).toBeGreaterThan(0);
+    expect(files.bump?.companion.bytes.byteLength).toBeGreaterThan(0);
+    expect(service.reference).toBe(MOCK_TEXTURE);
   });
 
-  it("uploads no pair for a texture declaring none", async () => {
+  it("reads no pair for a texture declaring none", async () => {
     const { service } = mockInjectedService(TextureSurfaceService);
 
     await service.load(mockTextureDescription());
 
-    expect((service.textures.value ?? EMPTY_TEXTURE_SURFACE).base).toBeInstanceOf(Texture);
-    expect((service.textures.value ?? EMPTY_TEXTURE_SURFACE).bump).toBeNull();
+    expect((service.files.value ?? EMPTY_TEXTURE_SURFACE).base?.bytes.byteLength).toBeGreaterThan(0);
+    expect((service.files.value ?? EMPTY_TEXTURE_SURFACE).bump).toBeNull();
   });
 
   it("keeps the base and skips the companion when the bump read fails", async () => {
@@ -83,18 +86,17 @@ describe("TextureSurfaceService", () => {
 
     await service.load(mockBumpedDescription());
 
-    expect(service.textures.value?.base).toBeInstanceOf(Texture);
-    expect(service.textures.value?.bump).toBeNull();
+    expect(service.files.value?.base?.bytes.byteLength).toBeGreaterThan(0);
+    expect(service.files.value?.bump).toBeNull();
     expect(service.bumpTexels).toBeNull();
-    expect(service.uploaded).toBe(MOCK_TEXTURE);
+    expect(service.reference).toBe(MOCK_TEXTURE);
     expect(reads).toEqual([`textures\\${MOCK_TEXTURE}.dds`, "textures\\wpn\\wpn_ak74_bump.dds"]);
 
     service.clear();
   });
 
-  it("releases the unused bump when its companion fails and retains the base until cleared", async () => {
+  it("keeps the base and publishes no pair when the companion cannot be read", async () => {
     const { service } = mockInjectedService(TextureSurfaceService);
-    const dispose = jest.spyOn(Texture.prototype, "dispose");
 
     setMockInvokeResponses({
       ["plugin:assets|read_asset"]: (args?: Record<string, unknown>) => {
@@ -108,47 +110,30 @@ describe("TextureSurfaceService", () => {
 
     await service.load(mockBumpedDescription());
 
-    const base = service.textures.value?.base;
-
-    expect(base).toBeInstanceOf(Texture);
-    expect(service.textures.value?.bump).toBeNull();
+    // Both halves or neither: the decode samples the pair every texel, and half of it shades nothing.
+    expect(service.files.value?.base?.bytes.byteLength).toBeGreaterThan(0);
+    expect(service.files.value?.bump).toBeNull();
     expect(service.bumpTexels).toBeNull();
-    expect(service.uploaded).toBe(MOCK_TEXTURE);
-    expect(dispose).toHaveBeenCalledTimes(1);
-    expect(dispose.mock.contexts).not.toContain(base);
-
-    service.clear();
-
-    expect(dispose).toHaveBeenCalledTimes(2);
-    expect(dispose.mock.contexts[1]).toBe(base);
+    expect(service.reference).toBe(MOCK_TEXTURE);
   });
 
-  it("releases what it uploaded when cleared", async () => {
+  it("forgets what it read when cleared", async () => {
     const { service } = mockInjectedService(TextureSurfaceService);
 
     await service.load(mockBumpedDescription());
 
-    const released: Array<Texture> = [];
-
-    for (const texture of [
-      (service.textures.value ?? EMPTY_TEXTURE_SURFACE).base,
-      (service.textures.value ?? EMPTY_TEXTURE_SURFACE).bump?.bump,
-      (service.textures.value ?? EMPTY_TEXTURE_SURFACE).bump?.companion,
-    ]) {
-      texture?.addEventListener("dispose", () => released.push(texture));
-    }
+    expect(service.files.value?.base?.bytes.byteLength).toBeGreaterThan(0);
 
     service.clear();
 
-    expect(released).toHaveLength(3);
-    expect(service.textures.value ?? EMPTY_TEXTURE_SURFACE).toEqual({ aspect: 1, base: null, bump: null });
-    expect(service.uploaded).toBeNull();
+    expect(service.files.value ?? EMPTY_TEXTURE_SURFACE).toEqual({ aspect: 1, base: null, bump: null });
+    expect(service.reference).toBeNull();
+    expect(service.bumpTexels).toBeNull();
   });
 
-  it("releases the reads of a run the next selection abandoned", async () => {
-    // The read is still in flight when the run is cancelled, so its texture is uploaded after the run has left. Left
-    // alone it is gpu memory nothing holds a reference to and no surface will ever draw.
-    const dispose = jest.spyOn(Texture.prototype, "dispose");
+  // Nothing here reaches the gpu, so a read the next selection abandoned costs a buffer that is collected and
+  // nothing that has to be released. The whole disposal path this service used to carry went with the uploads.
+  it("publishes nothing from a run the next selection abandoned", async () => {
     const { service } = mockInjectedService(TextureSurfaceService);
 
     // The read is held open, so the run can be cancelled while its file is still being fetched.
@@ -167,12 +152,8 @@ describe("TextureSurfaceService", () => {
     release(mockUploadableTexture());
 
     await abandoned;
-    // The read resolves, decodes and is released over several turns, none of which the cancelled run is waiting on.
-    await new Promise((resolve) => setTimeout(resolve, 0));
 
-    expect(dispose).toHaveBeenCalled();
-    expect((service.textures.value ?? EMPTY_TEXTURE_SURFACE).base).toBeNull();
-
-    dispose.mockRestore();
+    expect((service.files.value ?? EMPTY_TEXTURE_SURFACE).base).toBeNull();
+    expect(service.reference).toBeNull();
   });
 });

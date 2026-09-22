@@ -1,4 +1,4 @@
-import { BufferGeometry, Mesh, MeshStandardMaterial, PerspectiveCamera, Scene } from "three";
+import { BufferGeometry, Matrix3, Mesh, MeshStandardMaterial, PerspectiveCamera, Scene, Texture } from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
 import { DomRenderTarget } from "@/core/render/lib/frame/dom-render-target";
@@ -10,16 +10,25 @@ import { IRenderLighting } from "@/core/render/lib/lighting/render-lighting";
 import { RenderPreviewLighting } from "@/core/render/lib/lighting/RenderPreviewLighting";
 import { applyXrayGlossShading } from "@/core/render/lib/surface/render-gloss";
 import { XRAY_DEFAULT_AREF } from "@/core/render/lib/surface/render-surface";
-import { hasRenderTextureAlpha } from "@/core/render/lib/texture/render-texture";
+import {
+  createDdsTexture,
+  createDecodedTexture,
+  hasRenderTextureAlpha,
+} from "@/core/render/lib/texture/render-texture";
 import {
   EMPTY_TEXTURE_SURFACE,
   ETextureSurfaceAlpha,
   ETextureSurfaceShape,
+  ITextureSurfaceFile,
+  ITextureSurfaceFiles,
   ITextureSurfaceOptions,
-  ITextureSurfaceTextures,
-  listTextureSurfaceTextures,
 } from "@/core/textures/lib/texture-surface";
-import { applyXrayBumpShading, IVisualBumpShading, removeXrayBumpShading } from "@/core/visuals/lib/visual-bump";
+import {
+  applyXrayBumpShading,
+  IVisualBumpShading,
+  IVisualBumpTextures,
+  removeXrayBumpShading,
+} from "@/core/visuals/lib/visual-bump";
 import { bindDragCursor } from "@/lib/media/drag-cursor";
 import { toDolliedPosition } from "@/lib/media/orbit-dolly";
 import { Nullable } from "@/lib/types/general";
@@ -54,7 +63,12 @@ export class TextureSurfaceScene {
 
   private mesh: Nullable<Mesh<BufferGeometry, MeshStandardMaterial | Array<MeshStandardMaterial>>> = null;
   private shading: Nullable<IVisualBumpShading> = null;
-  private textures: ITextureSurfaceTextures = EMPTY_TEXTURE_SURFACE;
+  private files: ITextureSurfaceFiles = EMPTY_TEXTURE_SURFACE;
+  /** What this scene uploaded and is therefore the one to release. */
+  private uploaded: Array<Texture> = [];
+  /** Which set the uploads belong to, so a decode that lands after the next texture is chosen is dropped. */
+  private uploading: number = 0;
+
   private options: ITextureSurfaceOptions = {
     alpha: ETextureSurfaceAlpha.CUT_OUT,
     isBumped: true,
@@ -127,6 +141,7 @@ export class TextureSurfaceScene {
    * Takes the canvas off screen and releases everything it holds.
    */
   public dispose(): void {
+    this.releaseUploads();
     this.unbindDragCursor();
     this.controls.dispose();
     this.mesh?.geometry.dispose();
@@ -158,15 +173,40 @@ export class TextureSurfaceScene {
   /**
    * Draws a different texture, with the pair its descriptor binds.
    *
-   * @param textures - The uploaded base and pair.
+   * @param files - The base file and the pair, as they were read.
    */
-  public setTextures(textures: ITextureSurfaceTextures): void {
-    this.textures = textures;
-    this.material.map = textures.base;
+  public setTextures(files: ITextureSurfaceFiles): void {
+    const generation: number = (this.uploading += 1);
 
-    if (textures.bump) {
+    this.files = files;
+
+    this.releaseUploads();
+
+    const base: Nullable<Texture> = files.base && !files.base.isDecoded ? this.upload(files.base, true) : null;
+    const bump: Nullable<IVisualBumpTextures> = files.bump
+      ? { bump: this.upload(files.bump.bump), companion: this.upload(files.bump.companion) }
+      : null;
+
+    this.dress(base, bump);
+
+    // A layout three.js refuses arrives as the backend's picture instead, and decoding one is asynchronous.
+    if (files.base?.isDecoded) {
+      void this.uploadDecoded(files.base, generation, bump);
+    }
+  }
+
+  /**
+   * Puts what was uploaded onto the material.
+   *
+   * @param base - The base texture, or null while there is none to draw.
+   * @param bump - The pair, or null for a material that binds none.
+   */
+  private dress(base: Nullable<Texture>, bump: Nullable<IVisualBumpTextures>): void {
+    this.material.map = base;
+
+    if (bump) {
       // Re-patched per pair rather than kept, because the patch closes over the two samplers it was given.
-      this.shading = applyXrayBumpShading(this.material, textures.bump);
+      this.shading = applyXrayBumpShading(this.material, bump);
     } else {
       // Taken off rather than switched off: a texture declaring no pair must compile the stock program, or it keeps
       // sampling the last texture's bump through a patch nothing is left to disable.
@@ -177,6 +217,59 @@ export class TextureSurfaceScene {
     this.applyOptions();
 
     this.material.needsUpdate = true;
+  }
+
+  /**
+   * Uploads one file, keeping it to release later.
+   *
+   * @param file - The file as it was read.
+   * @param isColor - Whether it holds srgb values rather than packed ones.
+   * @returns The texture, or null for a layout this side will not upload.
+   */
+  private upload(file: ITextureSurfaceFile, isColor: boolean = false): Texture {
+    // Colour, not data, for a base texture: saying so is what makes the unlit body match the flat picture of the
+    // same file. A pair is packed values and must not be told otherwise.
+    const texture: Nullable<Texture> = createDdsTexture(file.bytes, { isAlphaRead: isColor, isColor }).texture;
+
+    if (texture) {
+      this.uploaded.push(texture);
+    }
+
+    return texture as Texture;
+  }
+
+  /**
+   * Uploads the backend's picture of a layout three.js refused, and draws it if it is still the one wanted.
+   *
+   * @param file - The decoded file.
+   * @param generation - Which set it belongs to.
+   * @param bump - The pair uploaded beside it.
+   */
+  private async uploadDecoded(
+    file: ITextureSurfaceFile,
+    generation: number,
+    bump: Nullable<IVisualBumpTextures>
+  ): Promise<void> {
+    const texture: Texture = await createDecodedTexture(file.bytes, { isColor: true });
+
+    // Another texture was chosen while this decoded, and its uploads are already on the material.
+    if (generation !== this.uploading) {
+      texture.dispose();
+
+      return;
+    }
+
+    this.uploaded.push(texture);
+    this.dress(texture, bump);
+  }
+
+  /** Releases what this scene uploaded, which nothing else holds. */
+  private releaseUploads(): void {
+    for (const texture of this.uploaded) {
+      texture.dispose();
+    }
+
+    this.uploaded = [];
   }
 
   /**
@@ -288,7 +381,7 @@ export class TextureSurfaceScene {
    * Reads the alpha channel the way the chosen shader would, or leaves it unread the way the plain one does.
    */
   private applyAlpha(): void {
-    const isRead: boolean = hasRenderTextureAlpha(this.textures.base);
+    const isRead: boolean = hasRenderTextureAlpha(this.material.map);
     const alpha: ETextureSurfaceAlpha = isRead ? this.options.alpha : ETextureSurfaceAlpha.IGNORED;
     const alphaTest: number = alpha === ETextureSurfaceAlpha.CUT_OUT ? XRAY_DEFAULT_AREF : 0;
     // Still in the opaque pass when it is cut out, which is where the engine's `clip` happens: only the forward
@@ -322,7 +415,7 @@ export class TextureSurfaceScene {
       return;
     }
 
-    const aspect: number = this.options.shape === ETextureSurfaceShape.PLANE ? this.textures.aspect : 1;
+    const aspect: number = this.options.shape === ETextureSurfaceShape.PLANE ? this.files.aspect : 1;
 
     // Depth is left alone, so a slab keeps one thickness whatever proportions the texture on it has.
     this.mesh.scale.set(aspect >= 1 ? 1 : aspect, aspect >= 1 ? 1 / aspect : 1, 1);
@@ -330,15 +423,22 @@ export class TextureSurfaceScene {
 
   /** Repeats every texture the surface samples, the base through three.js and the pair through the patch. */
   private applyTiling(): void {
-    for (const texture of listTextureSurfaceTextures(this.textures)) {
+    for (const texture of this.uploaded) {
       texture.repeat.set(this.options.tiling, this.options.tiling);
       texture.updateMatrix();
     }
 
     // The patch samples the pair itself, so nothing else would carry the repeat to it: without this the base tiles
     // and the bump does not, and one tile of detail is shaded across every tile of colour.
-    if (this.textures.bump) {
-      this.shading?.setUvTransform(this.textures.bump.bump.matrix);
+    if (this.shading) {
+      this.shading.setUvTransform(this.bumpMatrix());
     }
+  }
+
+  /**
+   * @returns The uv transform the pair is sampled through, which is the first half's.
+   */
+  private bumpMatrix(): Matrix3 {
+    return (this.uploaded.at(-2) ?? this.uploaded[0]).matrix;
   }
 }

@@ -1,6 +1,6 @@
 import { getLocatedAsset } from "@/core/assets/lib";
 import { TextureDescription } from "@/core/ipc/types/xrf-app";
-import { ITextureSurfaceTextures } from "@/core/textures/lib/texture-surface";
+import { ITextureSurfaceFiles } from "@/core/textures/lib/texture-surface";
 import { EVisualBumpView } from "@/core/visuals/lib/visual-bump-channels";
 import { Nullable } from "@/lib/types/general";
 
@@ -45,41 +45,32 @@ export const TEXTURE_CHANNEL_TILES: ReadonlyArray<ITextureChannelTile> = [
   },
 ];
 
-/** What three.js records on an uploaded texture about the file it came from, which is only ever its size. */
-interface ITextureChannelImage {
-  width?: number;
-  height?: number;
-}
-
 /** What a tile falls back to before a pair is bound, where there are no proportions to take. */
 const SQUARE: string = "1 / 1";
 
 /**
  * The proportions of the pair being drawn, as a css aspect ratio.
  *
- * Taken from the bump rather than from the base, because these tiles are the pair: a plane forced square would show
- * every measurement of its detail stretched, which is the one thing a person is here to judge.
- *
- * @param textures - What the surface uploaded, or nothing yet.
+ * @param files - What the surface read, or nothing yet.
  * @returns The ratio to lay a tile out at.
  */
-export function toTextureChannelAspect(textures: Nullable<ITextureSurfaceTextures>): string {
-  const image: ITextureChannelImage = (textures?.bump?.bump.image ?? {}) as ITextureChannelImage;
+export function toTextureChannelAspect(files: Nullable<ITextureSurfaceFiles>): string {
+  const { width = 0, height = 0 } = files?.bump?.bump ?? {};
 
-  return image.width && image.height ? `${image.width} / ${image.height}` : SQUARE;
+  return width && height ? `${width} / ${height}` : SQUARE;
 }
 
 /**
  * Why there is nothing to draw, when there is nothing to draw.
  *
  * @param description - The texture as the backend resolved it, or none open.
- * @param textures - What the surface uploaded for it.
+ * @param files - What the surface read for it.
  * @param isUploading - Whether that upload is still in progress.
  * @returns What to say instead of the tiles, or null when the tiles can be drawn.
  */
 export function describeTextureChannelsGap(
   description: Nullable<TextureDescription>,
-  textures: Nullable<ITextureSurfaceTextures>,
+  files: Nullable<ITextureSurfaceFiles>,
   isUploading: boolean
 ): Nullable<string> {
   if (!description) {
@@ -98,7 +89,7 @@ export function describeTextureChannelsGap(
     return "Reading the pair…";
   }
 
-  if (textures?.bump) {
+  if (files?.bump) {
     return null;
   }
 

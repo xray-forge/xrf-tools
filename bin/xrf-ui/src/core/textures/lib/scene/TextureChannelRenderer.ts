@@ -1,5 +1,7 @@
-import { Mesh, OrthographicCamera, PlaneGeometry, Scene, WebGLRenderer } from "three";
+import { Mesh, OrthographicCamera, PlaneGeometry, Scene, Texture, WebGLRenderer } from "three";
 
+import { createDdsTexture } from "@/core/render/lib/texture/render-texture";
+import { ITextureSurfaceBump } from "@/core/textures/lib/texture-surface";
 import { IVisualBumpTextures } from "@/core/visuals/lib/visual-bump";
 import { createXrayBumpChannels, EVisualBumpView, IVisualBumpChannels } from "@/core/visuals/lib/visual-bump-channels";
 import { Nullable } from "@/lib/types/general";
@@ -24,6 +26,8 @@ export class TextureChannelRenderer {
 
   private channels: Nullable<IVisualBumpChannels> = null;
   private mesh: Nullable<Mesh> = null;
+  /** What this renderer uploaded, which nothing else holds and nothing else releases. */
+  private uploaded: Array<Texture> = [];
 
   public constructor() {
     this.renderer = new WebGLRenderer({ antialias: false });
@@ -39,10 +43,16 @@ export class TextureChannelRenderer {
   /**
    * Points every tile at a different pair, or at none.
    *
-   * @param textures - The uploaded pair, owned by whoever loaded it.
+   * @param bump - The pair as it was read, or null for a texture that binds none.
    */
-  public setTextures(textures: Nullable<IVisualBumpTextures>): void {
+  public setTextures(bump: Nullable<ITextureSurfaceBump>): void {
     this.releaseChannels();
+
+    if (!bump) {
+      return;
+    }
+
+    const textures: Nullable<IVisualBumpTextures> = this.upload(bump);
 
     if (!textures) {
       return;
@@ -94,6 +104,25 @@ export class TextureChannelRenderer {
     this.renderer.dispose();
   }
 
+  /**
+   * Uploads a pair for this renderer's own context.
+   *
+   * @param bump - The pair as it was read.
+   * @returns Both halves, or null when either is a layout three.js will not take.
+   */
+  private upload(bump: ITextureSurfaceBump): Nullable<IVisualBumpTextures> {
+    const uploaded: Nullable<Texture> = createDdsTexture(bump.bump.bytes).texture;
+    const companion: Nullable<Texture> = createDdsTexture(bump.companion.bytes).texture;
+
+    for (const texture of [uploaded, companion]) {
+      if (texture) {
+        this.uploaded.push(texture);
+      }
+    }
+
+    return uploaded && companion ? { bump: uploaded, companion } : null;
+  }
+
   private releaseChannels(): void {
     if (this.mesh) {
       this.scene.remove(this.mesh);
@@ -102,5 +131,11 @@ export class TextureChannelRenderer {
 
     this.channels?.dispose();
     this.channels = null;
+
+    for (const texture of this.uploaded) {
+      texture.dispose();
+    }
+
+    this.uploaded = [];
   }
 }

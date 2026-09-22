@@ -1,9 +1,8 @@
 import { describe, expect, it } from "@jest/globals";
-import { Texture } from "three";
 
 import { TextureDescription } from "@/core/ipc/types/xrf-app";
 import { XrayMaterialDescriptor } from "@/core/ipc/types/xrf-material";
-import { EMPTY_TEXTURE_SURFACE, ITextureSurfaceTextures } from "@/core/textures/lib/texture-surface";
+import { EMPTY_TEXTURE_SURFACE, ITextureSurfaceFiles } from "@/core/textures/lib/texture-surface";
 import { EVisualBumpView } from "@/core/visuals/lib/visual-bump-channels";
 import { mockTextureDescription } from "@/fixtures/mocks/texture.mocks";
 import { mockMaterialDescriptor } from "@/fixtures/mocks/visual.mocks";
@@ -37,9 +36,11 @@ function mockHalfLocated(): TextureDescription {
   });
 }
 
-/** An upload that produced both halves. */
-function mockUploaded(): ITextureSurfaceTextures {
-  return { aspect: 1, base: null, bump: { bump: new Texture(), companion: new Texture() } };
+/** A read that produced both halves. */
+function mockUploaded(): ITextureSurfaceFiles {
+  const half = { bytes: new ArrayBuffer(0), height: 64, isDecoded: false, width: 128 };
+
+  return { aspect: 1, base: null, bump: { bump: half, companion: half } };
 }
 
 describe("TEXTURE_CHANNEL_TILES", () => {
@@ -58,11 +59,11 @@ describe("TEXTURE_CHANNEL_TILES", () => {
 describe("toTextureChannelAspect", () => {
   it("takes the proportions of the pair, not of the panel", () => {
     // A 1:2 plane forced square shows every measurement of its detail stretched, which is what a person is judging.
-    const textures: ITextureSurfaceTextures = mockUploaded();
+    const files: ITextureSurfaceFiles = mockUploaded();
 
-    (textures.bump!.bump as unknown as { image: unknown }).image = { height: 2048, width: 1024 };
+    files.bump = { ...files.bump!, bump: { ...files.bump!.bump, height: 2048, width: 1024 } };
 
-    expect(toTextureChannelAspect(textures)).toBe("1024 / 2048");
+    expect(toTextureChannelAspect(files)).toBe("1024 / 2048");
   });
 
   it("falls back to a square before a pair is bound", () => {

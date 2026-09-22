@@ -1,24 +1,40 @@
-import { Texture } from "three";
-
 import { getLocatedAsset } from "@/core/assets/lib";
 import { AssetTextureShape, TextureDescription } from "@/core/ipc/types/xrf-app";
 import { XrayAsset } from "@/core/ipc/types/xrf-vfs";
 import { IRenderTextureTexels } from "@/core/render/lib/texture/render-texels";
-import { IVisualBumpTextures } from "@/core/visuals/lib/visual-bump";
-import { Maybe, Nullable } from "@/lib/types/general";
+import { Nullable } from "@/lib/types/general";
 
 /**
- * What one texture is drawn from once its files are on the gpu.
+ * One file the surface is drawn from, as it was read.
  */
-export interface ITextureSurfaceTextures {
-  /** The base texture, or null for a descriptor with no texture beside it. */
-  base: Nullable<Texture>;
+export interface ITextureSurfaceFile {
+  /** The file itself: a dds as it sits on disk, or the png the backend decoded a refused layout into. */
+  bytes: ArrayBuffer;
+  /** Whether those bytes are that decode rather than the file. */
+  isDecoded: boolean;
+  /** What the file measures, which only the side that read it can say for a layout nothing uploaded. */
+  width: number;
+  height: number;
+}
+
+/**
+ * What one texture is drawn from, as data.
+ */
+export interface ITextureSurfaceFiles {
+  /** The base file, or null for a descriptor with no texture beside it. */
+  base: Nullable<ITextureSurfaceFile>;
   /** The pair the engine binds, or null for a material that binds none. */
-  bump: Nullable<IVisualBumpTextures>;
+  bump: Nullable<ITextureSurfaceBump>;
   /**
    * Width over height of the base file, so a flat body is drawn in the proportions the texture was authored in.
    */
   aspect: number;
+}
+
+/** The two files of a bump pair, which are only ever read and drawn together. */
+export interface ITextureSurfaceBump {
+  bump: ITextureSurfaceFile;
+  companion: ITextureSurfaceFile;
 }
 
 /** The bodies a texture can be laid on, each answering a different question about it. */
@@ -96,18 +112,6 @@ export interface ITextureSurfaceOptions {
 }
 
 /**
- * Every texture one surface holds, in one list.
- *
- * @param textures - The uploaded set, or nothing uploaded at all.
- * @returns Every texture it actually holds.
- */
-export function listTextureSurfaceTextures(textures: Nullable<ITextureSurfaceTextures>): ReadonlyArray<Texture> {
-  return [textures?.base, textures?.bump?.bump, textures?.bump?.companion].filter((it: Maybe<Texture>): it is Texture =>
-    Boolean(it)
-  );
-}
-
-/**
  * The pair's texels on the cpu, for a pair whose layout stores them plainly.
  */
 export interface ITextureBumpTexels {
@@ -123,8 +127,8 @@ export interface ITextureBumpAssets {
   companion: XrayAsset;
 }
 
-/** Nothing uploaded, which is what a surface draws before a texture is chosen and after one is dropped. */
-export const EMPTY_TEXTURE_SURFACE: ITextureSurfaceTextures = { aspect: 1, base: null, bump: null };
+/** Nothing read, which is what a surface draws before a texture is chosen and after one is dropped. */
+export const EMPTY_TEXTURE_SURFACE: ITextureSurfaceFiles = { aspect: 1, base: null, bump: null };
 
 /**
  * The proportions of the base file, or a square when nothing measured it.

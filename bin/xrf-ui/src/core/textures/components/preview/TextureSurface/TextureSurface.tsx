@@ -4,7 +4,7 @@ import { PointerEvent, ReactElement, useCallback, useRef } from "react";
 import { TextureDescription } from "@/core/ipc/types/xrf-app";
 import { RenderFrameReadout } from "@/core/render/components/overlay";
 import { RenderSurface } from "@/core/render/components/RenderSurface";
-import { EMPTY_TEXTURE_SURFACE, ITextureSurfaceTextures } from "@/core/textures/lib/texture-surface";
+import { EMPTY_TEXTURE_SURFACE, ITextureSurfaceFiles } from "@/core/textures/lib/texture-surface";
 import { TextureRenderService } from "@/core/textures/services/render";
 import { TextureSelectionService } from "@/core/textures/services/selection";
 import { TextureSurfaceService } from "@/core/textures/services/surface";
@@ -37,12 +37,12 @@ export function TextureSurface({
   const dragRef = useRef<Nullable<IDragOrigin>>(null);
 
   const description: Nullable<TextureDescription> = selectionService.selected.value;
-  const textures: ITextureSurfaceTextures = surfaceService.textures.value ?? EMPTY_TEXTURE_SURFACE;
-  const isUploading: boolean = surfaceService.textures.isLoading;
+  const files: ITextureSurfaceFiles = surfaceService.files.value ?? EMPTY_TEXTURE_SURFACE;
+  const isUploading: boolean = surfaceService.files.isLoading;
   // Keyed on which texture was uploaded, so this says "nothing to draw" only once an upload has answered for the one
   // on screen, rather than during the frame between choosing a texture and asking for its files.
   const isUntextured: boolean =
-    !isUploading && textures.base === null && surfaceService.uploaded === description?.reference;
+    !isUploading && files.base === null && surfaceService.reference === description?.reference;
 
   const onPointerDown = useCallback((event: PointerEvent<HTMLDivElement>): void => {
     // Shift is what separates moving the light from orbiting the camera, since both are a drag over the same body.

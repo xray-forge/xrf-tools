@@ -11,7 +11,13 @@ import {
 } from "three";
 
 import { DomRenderTarget } from "@/core/render/lib/frame/dom-render-target";
-import { ETextureSurfaceAlpha, ETextureSurfaceShape } from "@/core/textures/lib/texture-surface";
+import {
+  ETextureSurfaceAlpha,
+  ETextureSurfaceShape,
+  ITextureSurfaceFile,
+  ITextureSurfaceFiles,
+} from "@/core/textures/lib/texture-surface";
+import { mockDdsFile } from "@/fixtures/mocks/dds.mocks";
 
 let TextureSurfaceScene: typeof import("./TextureSurfaceScene").TextureSurfaceScene;
 
@@ -36,6 +42,26 @@ afterEach(() => {
   jest.restoreAllMocks();
 });
 
+/** One file as the surface service would have read it. */
+function file(fourCC: string = "DXT5"): ITextureSurfaceFile {
+  return { bytes: mockDdsFile({ fourCC }), height: 8, isDecoded: false, width: 8 };
+}
+
+/** A base and its pair, which the scene uploads for itself. */
+function files(overrides: Partial<ITextureSurfaceFiles> = {}): ITextureSurfaceFiles {
+  return { aspect: 1, base: file(), bump: { bump: file(), companion: file() }, ...overrides };
+}
+
+/**
+ * What the scene uploaded, in the order it uploaded it: the base, then the pair.
+ *
+ * @param scene - A scene that has been given files.
+ * @returns Its textures.
+ */
+function uploadsOf(scene: InstanceType<typeof TextureSurfaceScene>): Array<Texture> {
+  return (scene as unknown as { uploaded: Array<Texture> }).uploaded;
+}
+
 /**
  * The material the textured face of the body is drawn with, which is the one every alpha answer lands on.
  *
@@ -52,13 +78,11 @@ function materialOf(scene: InstanceType<typeof TextureSurfaceScene>): Material {
 describe("TextureSurfaceScene", () => {
   it("changes lighting without invalidating texture data or materials", () => {
     const scene = new TextureSurfaceScene(new DomRenderTarget(document.createElement("div")));
-    const base = new Texture();
-    const bump = new Texture();
-    const companion = new Texture();
 
     try {
-      scene.setTextures({ aspect: 1, base, bump: { bump, companion } });
+      scene.setTextures(files());
 
+      const [base, bump, companion] = uploadsOf(scene);
       const versions = [base.version, bump.version, companion.version];
       const invalidateMaterial = jest.spyOn(Material.prototype, "needsUpdate", "set");
 
@@ -79,13 +103,11 @@ describe("TextureSurfaceScene", () => {
 
   it("updates texture UV matrices when tiling changes without invalidating texture data or materials", () => {
     const scene = new TextureSurfaceScene(new DomRenderTarget(document.createElement("div")));
-    const base = new Texture();
-    const bump = new Texture();
-    const companion = new Texture();
 
     try {
-      scene.setTextures({ aspect: 1, base, bump: { bump, companion } });
+      scene.setTextures(files());
 
+      const [base, bump, companion] = uploadsOf(scene);
       const versions = [base.version, bump.version, companion.version];
       const invalidateMaterial = jest.spyOn(Material.prototype, "needsUpdate", "set");
 
@@ -109,6 +131,36 @@ describe("TextureSurfaceScene", () => {
     }
   });
 
+  // A texture belongs to the context that made it, so this scene is the only thing that can release what it
+  // uploaded - and the service that read the files no longer has any gpu memory to answer for.
+  it("releases what it uploaded, for the next texture and for itself", () => {
+    const scene = new TextureSurfaceScene(new DomRenderTarget(document.createElement("div")));
+
+    scene.setTextures(files());
+
+    const released: Array<Texture> = [];
+
+    for (const texture of [...uploadsOf(scene)]) {
+      texture.addEventListener("dispose", () => released.push(texture));
+    }
+
+    expect(released).toHaveLength(0);
+
+    scene.setTextures(files());
+
+    expect(released).toHaveLength(3);
+
+    const second: Array<Texture> = [...uploadsOf(scene)];
+
+    for (const texture of second) {
+      texture.addEventListener("dispose", () => released.push(texture));
+    }
+
+    scene.dispose();
+
+    expect(released).toHaveLength(6);
+  });
+
   describe("alpha", () => {
     /**
      * @param alpha - The reading to draw the body with.
@@ -117,13 +169,12 @@ describe("TextureSurfaceScene", () => {
      */
     function shade(alpha: ETextureSurfaceAlpha, format: PixelFormat | CompressedPixelFormat = RGBAFormat): Material {
       const scene = new TextureSurfaceScene(new DomRenderTarget(document.createElement("div")));
-      const base = new Texture();
-
-      // The typings admit only an uncompressed format, though three's own loader assigns a compressed one here.
-      base.format = format as PixelFormat;
 
       try {
-        scene.setTextures({ aspect: 1, base, bump: null });
+        scene.setTextures(files({ bump: null }));
+
+        // The typings admit only an uncompressed format, though three's own loader assigns a compressed one here.
+        (uploadsOf(scene)[0] as Texture).format = format as PixelFormat;
         scene.setOptions({ alpha, isBumped: true, isLit: true, shape: ETextureSurfaceShape.PLANE, tiling: 1 });
 
         return materialOf(scene);

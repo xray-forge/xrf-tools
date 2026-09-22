@@ -7,7 +7,7 @@ import { IRenderLighting } from "@/core/render/lib/lighting/render-lighting";
 import { SettingsService } from "@/core/settings/services/settings";
 import { DEFAULT_TEXTURE_LIGHTING } from "@/core/textures/lib/scene/texture-lighting";
 import { DEFAULT_TEXTURE_PREVIEW_OPTIONS, ETexturePreviewMode } from "@/core/textures/lib/texture-preview";
-import { EMPTY_TEXTURE_SURFACE, ITextureSurfaceTextures } from "@/core/textures/lib/texture-surface";
+import { EMPTY_TEXTURE_SURFACE, ITextureSurfaceFiles } from "@/core/textures/lib/texture-surface";
 import { TextureSurfaceService } from "@/core/textures/services/surface";
 import { TextureViewService } from "@/core/textures/services/view";
 import { mockContainer } from "@/fixtures/utils/container";
@@ -69,13 +69,13 @@ describe("TextureRenderService", () => {
 
   it("carries a change to the open texture into the scene", () => {
     const { service, container } = mockAttached();
-    const uploaded: ITextureSurfaceTextures = { ...EMPTY_TEXTURE_SURFACE, aspect: 2 };
+    const uploaded: ITextureSurfaceFiles = { ...EMPTY_TEXTURE_SURFACE, aspect: 2 };
 
     service.attach(document.createElement("div"));
     scene.setTextures.mockClear();
 
     runInAction(() => {
-      container.get(TextureSurfaceService).textures = AsyncState.ready(uploaded);
+      container.get(TextureSurfaceService).files = AsyncState.ready(uploaded);
     });
 
     expect(scene.setTextures).toHaveBeenCalledWith(uploaded);
