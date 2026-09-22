@@ -11,10 +11,12 @@ import { VisualBone } from "@/core/ipc/types/xrf-visual";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
 import { EApplicationId } from "@/core/routing/application";
 import { IVisualBoneControls, IVisualInspection } from "@/core/visuals/components/panels/visual-inspection";
+import { IVisualPose } from "@/core/visuals/lib/render";
 import { selectAddonBones, selectHiddenBoneIndices } from "@/core/visuals/lib/visual-bones";
 import { IVisualBumpStatus, IVisualBumpTextures } from "@/core/visuals/lib/visual-bump";
 import { describeVisualSource } from "@/core/visuals/lib/visual-source";
 import { IVisualTextureStatus } from "@/core/visuals/lib/visual-texture";
+import { IVisualModelViews } from "@/core/visuals/lib/visual-views";
 import { IOpenVisual, VisualLoadService } from "@/core/visuals/services/visual-load.service";
 import { VisualMotionService } from "@/core/visuals/services/visual-motion.service";
 import { AsyncState } from "@/lib/async-state";
@@ -68,6 +70,23 @@ export class VisualsService implements IVisualInspection {
   @Computed()
   public get visual(): AsyncState<IOpenVisual> {
     return this.loadService.visual;
+  }
+
+  @Computed()
+  public get model(): Nullable<IVisualModelViews> {
+    return this.loadService.model;
+  }
+
+  /**
+   * @returns How the model stands, which here is whichever motion the motions panel is playing.
+   */
+  @Computed()
+  public get pose(): IVisualPose {
+    return {
+      floatsPerBone: this.motionService.floatsPerBone,
+      frame: this.motionService.frame,
+      transforms: this.motionService.posed.value?.transforms ?? null,
+    };
   }
 
   @Computed()

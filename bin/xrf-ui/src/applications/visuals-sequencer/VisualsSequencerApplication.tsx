@@ -1,9 +1,8 @@
 import { useInjection } from "@wirestate/react";
-import { ReactElement, ReactNode, useCallback, useState } from "react";
+import { ReactElement, useCallback, useState } from "react";
 
 import { SequencerService } from "@/applications/visuals-sequencer/services/sequencer";
 import { ApplicationLoader } from "@/core/shell/loading/ApplicationLoader";
-import { IVisualPreviewViewportProps } from "@/core/visuals/components/preview";
 import { VisualPreviewLayout } from "@/core/visuals/components/preview/VisualPreviewLayout";
 import { IOpenVisual } from "@/core/visuals/services";
 import { BaseComponentProps } from "@/lib/dom/element-types";
@@ -11,7 +10,6 @@ import { Nullable } from "@/lib/types/general";
 
 import { SEQUENCER_PANELS } from "./components/panels";
 import { SequencerTransport } from "./components/SequencerTransport";
-import { SequencerViewport } from "./components/SequencerViewport";
 import { VisualsSequencerOpenForm } from "./components/VisualsSequencerOpenForm";
 
 /**
@@ -32,11 +30,6 @@ export function VisualsSequencerApplication({
 
   const onFinished = useCallback(() => setPickerOpen(false), []);
 
-  const renderViewport = useCallback(
-    (props: IVisualPreviewViewportProps): ReactNode => <SequencerViewport {...props} />,
-    []
-  );
-
   if (!service.isReady) {
     return <ApplicationLoader />;
   }
@@ -50,12 +43,8 @@ export function VisualsSequencerApplication({
       data-testid={dataTestId}
       id={id}
       className={className}
-      model={visual.views}
       name={service.sourceLabel}
       panels={SEQUENCER_PANELS}
-      textures={service.textures}
-      bumps={service.bumps}
-      renderViewport={renderViewport}
       footer={<SequencerTransport />}
       isLoading={service.visual.isLoading}
       error={service.visual.error?.message}

@@ -46,6 +46,15 @@ export class VisualLoadService {
   public visual: AsyncState<IOpenVisual> = AsyncState.idle();
 
   /**
+   * @returns The model on screen, or null while nothing is open. What a viewport draws, as opposed to what the
+   *   open itself is doing.
+   */
+  @Computed()
+  public get model(): Nullable<IVisualModelViews> {
+    return this.visual.value?.views ?? null;
+  }
+
+  /**
    * Uploaded textures by submesh index, for a viewport to apply.
    */
   @Observable()

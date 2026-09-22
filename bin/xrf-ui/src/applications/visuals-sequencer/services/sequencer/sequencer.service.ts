@@ -12,9 +12,11 @@ import { VisualBone } from "@/core/ipc/types/xrf-visual";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
 import { EApplicationId } from "@/core/routing/application";
 import { IVisualInspection } from "@/core/visuals/components/panels/visual-inspection";
+import { IVisualPose } from "@/core/visuals/lib/render";
 import { IVisualBumpStatus, IVisualBumpTextures } from "@/core/visuals/lib/visual-bump";
 import { describeVisualSource } from "@/core/visuals/lib/visual-source";
 import { IVisualTextureStatus } from "@/core/visuals/lib/visual-texture";
+import { IVisualModelViews } from "@/core/visuals/lib/visual-views";
 import { IOpenVisual, VisualLoadService } from "@/core/visuals/services/visual-load.service";
 import { AsyncState } from "@/lib/async-state";
 import { formatDuration } from "@/lib/format/duration";
@@ -41,6 +43,23 @@ export class SequencerService implements IVisualInspection {
   @Computed()
   public get visual(): AsyncState<IOpenVisual> {
     return this.loadService.visual;
+  }
+
+  @Computed()
+  public get model(): Nullable<IVisualModelViews> {
+    return this.loadService.model;
+  }
+
+  /**
+   * @returns How the model stands, which here is the track rather than any one picked motion.
+   */
+  @Computed()
+  public get pose(): IVisualPose {
+    return {
+      floatsPerBone: this.sequenceService.floatsPerBone,
+      frame: this.sequenceService.frame,
+      transforms: this.sequenceService.transforms,
+    };
   }
 
   @Computed()

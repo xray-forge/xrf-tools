@@ -7,7 +7,6 @@ import { ArchiveSubject } from "@/core/ipc/types/xrf-app";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
 import { VisualPreviewViewport } from "@/core/visuals/components/preview";
-import { DEFAULT_VISUAL_PREVIEW_VIEW_OPTIONS } from "@/core/visuals/lib/scene";
 import { IOpenVisual, VisualLoadService } from "@/core/visuals/services";
 import { AsyncState } from "@/lib/async-state";
 import { cn } from "@/lib/dom/dom-name";
@@ -47,13 +46,7 @@ export function ArchiveModelPreview({
       id={id}
       className={cn("relative flex min-h-0 min-w-0 grow overflow-hidden", className)}
     >
-      <VisualPreviewViewport
-        detail={0}
-        model={visual.value?.views ?? null}
-        options={DEFAULT_VISUAL_PREVIEW_VIEW_OPTIONS}
-        textures={loadService.textures}
-        bumps={loadService.bumps}
-      />
+      <VisualPreviewViewport />
 
       {visual.isLoading ? (
         <div className={"absolute inset-0 flex items-center justify-center"}>

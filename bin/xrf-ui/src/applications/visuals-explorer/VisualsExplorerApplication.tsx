@@ -69,14 +69,9 @@ export function VisualsExplorerApplication({
       data-testid={dataTestId}
       id={id}
       className={className}
-      model={visual?.views ?? null}
       subtitle={location ? <EditorToolbarLocation location={location} /> : undefined}
       name={visualsService.sourceLabel}
       panels={VISUALS_EXPLORER_PANELS}
-      textures={visualsService.textures}
-      bumps={visualsService.bumps}
-      highlightedJoint={visualsService.highlightedJoint}
-      hiddenBones={visualsService.hiddenBoneIndices}
       tree={isBrowsing ? <VisualsMenu /> : undefined}
       isLoading={visualsService.visual.isLoading}
       error={visualsService.visual.error?.message}
