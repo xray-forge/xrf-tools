@@ -2,20 +2,13 @@ import { ReactElement, ReactNode } from "react";
 
 import { RenderViewportOverlay, TRenderOverlayCorner } from "@/core/render/components/overlay/RenderViewportOverlay";
 import { IRenderFrameCost } from "@/core/render/lib/frame/render-frame-cost";
-import { ERenderThread } from "@/core/render/lib/frame/render-thread";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-
-/** What each thread is called where it is read rather than where it is chosen. */
-const THREAD_LABELS: Record<ERenderThread, string> = {
-  [ERenderThread.MAIN]: "main thread",
-  [ERenderThread.WORKER]: "worker",
-};
 
 export interface IRenderFrameReadoutProps extends BaseComponentProps {
   /** What the last reported frame cost. */
   cost: IRenderFrameCost;
-  /** Which thread drew it, which the picture itself never shows. */
-  thread: ERenderThread;
+  /** Whether a thread of its own drew it, which the picture itself never shows. */
+  isOffscreen: boolean;
   corner?: TRenderOverlayCorner;
   /** Anything the scene can say that a viewport cannot, drawn under the rest. */
   children?: ReactNode;
@@ -29,7 +22,7 @@ export function RenderFrameReadout({
   id,
   className,
   cost,
-  thread,
+  isOffscreen,
   corner = "top-left",
   children,
 }: IRenderFrameReadoutProps): ReactElement {
@@ -37,7 +30,7 @@ export function RenderFrameReadout({
     <RenderViewportOverlay data-testid={dataTestId} id={id} className={className} corner={corner}>
       <div>{`${cost.framesPerSecond.toFixed(0)} fps · ${cost.frameTime.toFixed(1)} ms`}</div>
       <div>{`${cost.draws} draws · ${cost.triangles.toLocaleString()} tris`}</div>
-      <div>{`${cost.drawnWidth} × ${cost.drawnHeight} · ${THREAD_LABELS[thread]}`}</div>
+      <div>{`${cost.drawnWidth} × ${cost.drawnHeight} · ${isOffscreen ? "worker" : "main thread"}`}</div>
 
       {children}
     </RenderViewportOverlay>

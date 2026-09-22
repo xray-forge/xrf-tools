@@ -3,7 +3,6 @@ import { Container } from "@wirestate/core";
 import { runInAction } from "@wirestate/mobx";
 
 import { EMPTY_RENDER_FRAME_COST, IRenderFrameCost } from "@/core/render/lib/frame/render-frame-cost";
-import { ERenderThread } from "@/core/render/lib/frame/render-thread";
 import { IRenderLighting } from "@/core/render/lib/lighting/render-lighting";
 import { SettingsService } from "@/core/settings/services/settings";
 import { DEFAULT_TEXTURE_LIGHTING } from "@/core/textures/lib/scene/texture-lighting";
@@ -116,13 +115,13 @@ describe("TextureRenderService", () => {
   });
 
   // The readout over the viewport is the only place the answer to "which thread drew this" can be seen.
-  it("says what its frames cost and which thread drew them", () => {
+  it("says what its frames cost and where they were drawn", () => {
     const { service } = mockAttached();
 
     scene.setReporter.mockClear();
     service.attach(document.createElement("div"));
 
-    expect(service.thread).toBe(ERenderThread.MAIN);
+    expect(service.isOffscreen).toBe(false);
     expect(service.frameCost).toBe(EMPTY_RENDER_FRAME_COST);
 
     const report = scene.setReporter.mock.calls[0][0] as (cost: IRenderFrameCost) => void;

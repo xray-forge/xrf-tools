@@ -4,7 +4,6 @@ import { BoundAction, Observable, reaction, RefObservable } from "@wirestate/mob
 import { DomRenderTarget } from "@/core/render/lib/frame/dom-render-target";
 import { EMPTY_RENDER_FRAME_COST, IRenderFrameCost } from "@/core/render/lib/frame/render-frame-cost";
 import { TFrameRateLimit } from "@/core/render/lib/frame/render-frame-limit";
-import { ERenderThread } from "@/core/render/lib/frame/render-thread";
 import { IRenderLighting } from "@/core/render/lib/lighting/render-lighting";
 import { RenderSurfaceService } from "@/core/render/lib/surface/render-surface-service";
 import { ESetting, ISettingsChangedPayload, SETTINGS_CHANGED_EVENT } from "@/core/settings/lib/settings-changed";
@@ -33,9 +32,9 @@ export class VisualRenderService extends RenderSurfaceService {
   @RefObservable()
   public frameCost: IRenderFrameCost = EMPTY_RENDER_FRAME_COST;
 
-  /** Which thread is drawing them, which nothing else can tell by looking. */
+  /** Whether a thread of its own is drawing them, which nothing else can tell by looking. */
   @Observable()
-  public thread: ERenderThread = ERenderThread.MAIN;
+  public isOffscreen: boolean = false;
 
   private scene: Nullable<VisualPreviewScene> = null;
   private readonly reactions: Array<() => void> = [];
@@ -73,7 +72,7 @@ export class VisualRenderService extends RenderSurfaceService {
     this.scene.setReporter(this.takeCost);
 
     // Nothing else can be said yet: a scene that only draws on this thread is the only one there is.
-    this.takeThread(ERenderThread.MAIN);
+    this.takeOffscreen(false);
 
     // Told what is open as it is now, then again whenever any of it changes. A scene attached after a model was
     // read would otherwise stay empty until something happened to change.
@@ -112,8 +111,8 @@ export class VisualRenderService extends RenderSurfaceService {
   }
 
   @BoundAction()
-  private takeThread(thread: ERenderThread): void {
-    this.thread = thread;
+  private takeOffscreen(isOffscreen: boolean): void {
+    this.isOffscreen = isOffscreen;
   }
 
   /**

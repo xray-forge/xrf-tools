@@ -19,7 +19,13 @@ export function LevelPreviewMetrics({
   const stats: ILevelStats = viewport.stats;
 
   return (
-    <RenderFrameReadout data-testid={dataTestId} id={id} className={className} cost={stats} thread={viewport.thread}>
+    <RenderFrameReadout
+      data-testid={dataTestId}
+      id={id}
+      className={className}
+      cost={stats}
+      isOffscreen={viewport.isOffscreen}
+    >
       <div>{`${stats.sectors} sectors · ${formatBytes(stats.bytes)}`}</div>
     </RenderFrameReadout>
   );

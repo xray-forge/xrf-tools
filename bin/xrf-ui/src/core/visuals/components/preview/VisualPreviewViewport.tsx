@@ -29,7 +29,7 @@ export function VisualPreviewViewport(): ReactElement {
 
       {source.model ? (
         <>
-          <RenderFrameReadout cost={renderService.frameCost} thread={renderService.thread} />
+          <RenderFrameReadout cost={renderService.frameCost} isOffscreen={renderService.isOffscreen} />
 
           <ViewportControls onZoomIn={onZoomIn} onZoomOut={onZoomOut} onReset={onReset} />
         </>

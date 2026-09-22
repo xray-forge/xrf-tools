@@ -4,7 +4,6 @@ import { BoundAction, Observable, RefObservable } from "@wirestate/mobx";
 import { ILevelCamera } from "@/core/level/lib/camera/level-camera";
 import { EMPTY_LEVEL_STATS, ILevelStats } from "@/core/level/lib/stats/level-stats";
 import { EMPTY_LEVEL_TEXTURE_REPORT, ILevelTextureReport } from "@/core/level/lib/texture/level-texture-report";
-import { ERenderThread } from "@/core/render/lib/frame/render-thread";
 import { Nullable } from "@/lib/types/general";
 
 /**
@@ -19,22 +18,22 @@ export class LevelViewportService {
   @RefObservable()
   public camera: Nullable<ILevelCamera> = null;
 
-  /** Which thread the frames are drawn on, which nothing in the picture says. */
+  /** Whether the frames are drawn on a thread of their own, which nothing in the picture says. */
   @Observable()
-  public thread: ERenderThread = ERenderThread.MAIN;
+  public isOffscreen: boolean = false;
 
   /** What the level's textures came to, which is the answer of whichever side uploaded them. */
   @RefObservable()
   public textureReport: ILevelTextureReport = EMPTY_LEVEL_TEXTURE_REPORT;
 
   /**
-   * Takes which thread is drawing, from whoever built the renderer.
+   * Takes where the frames are coming from, from whoever built the renderer.
    *
-   * @param thread - Where the frames are coming from now.
+   * @param isOffscreen - Whether they are drawn on a thread of their own.
    */
   @BoundAction()
-  public noteThread(thread: ERenderThread): void {
-    this.thread = thread;
+  public noteOffscreen(isOffscreen: boolean): void {
+    this.isOffscreen = isOffscreen;
   }
 
   /**

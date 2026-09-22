@@ -3,7 +3,6 @@ import { render } from "@testing-library/react";
 
 import { RenderFrameReadout } from "@/core/render/components/overlay/RenderFrameReadout";
 import { EMPTY_RENDER_FRAME_COST, IRenderFrameCost } from "@/core/render/lib/frame/render-frame-cost";
-import { ERenderThread } from "@/core/render/lib/frame/render-thread";
 
 const COST: IRenderFrameCost = {
   ...EMPTY_RENDER_FRAME_COST,
@@ -17,7 +16,7 @@ const COST: IRenderFrameCost = {
 
 describe("RenderFrameReadout", () => {
   it("reads out what the frame cost and the size it was paid over", () => {
-    const { getByText } = render(<RenderFrameReadout cost={COST} thread={ERenderThread.MAIN} />);
+    const { getByText } = render(<RenderFrameReadout cost={COST} isOffscreen={false} />);
 
     expect(getByText("160 fps · 6.3 ms")).toBeInTheDocument();
     expect(getByText("886 draws · 6,445,460 tris")).toBeInTheDocument();
@@ -25,17 +24,17 @@ describe("RenderFrameReadout", () => {
 
   // The picture is identical either way, so the readout is the only place the answer can be seen.
   it.each([
-    [ERenderThread.MAIN, "3217 × 1930 · main thread"],
-    [ERenderThread.WORKER, "3217 × 1930 · worker"],
-  ])("names the thread that drew it: %s", (thread: ERenderThread, expected: string) => {
-    const { getByText } = render(<RenderFrameReadout cost={COST} thread={thread} />);
+    [false, "3217 × 1930 · main thread"],
+    [true, "3217 × 1930 · worker"],
+  ])("names where it was drawn, offscreen: %s", (isOffscreen: boolean, expected: string) => {
+    const { getByText } = render(<RenderFrameReadout cost={COST} isOffscreen={isOffscreen} />);
 
     expect(getByText(expected)).toBeInTheDocument();
   });
 
   it("carries what only the scene can say, under the rest", () => {
     const { getByText } = render(
-      <RenderFrameReadout cost={COST} thread={ERenderThread.WORKER}>
+      <RenderFrameReadout cost={COST} isOffscreen={true}>
         <div>118 sectors · 138 MB</div>
       </RenderFrameReadout>
     );
@@ -44,7 +43,7 @@ describe("RenderFrameReadout", () => {
   });
 
   it("reads out nothing drawn rather than nothing at all", () => {
-    const { getByText } = render(<RenderFrameReadout cost={EMPTY_RENDER_FRAME_COST} thread={ERenderThread.MAIN} />);
+    const { getByText } = render(<RenderFrameReadout cost={EMPTY_RENDER_FRAME_COST} isOffscreen={false} />);
 
     expect(getByText("0 fps · 0.0 ms")).toBeInTheDocument();
   });
