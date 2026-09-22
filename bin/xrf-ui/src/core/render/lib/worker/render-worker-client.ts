@@ -1,4 +1,4 @@
-import { IOffscreenRenderSize } from "@xrf/renderer";
+import { IOffscreenRenderSize, IRenderInputEvent, RenderInputForwarder } from "@xrf/renderer";
 import { Nullable } from "@xrf/types";
 
 import { DomRenderTarget } from "@/core/render/lib/frame/dom-render-target";
@@ -8,8 +8,6 @@ import {
   listRenderFrameTransfers,
   TRenderFrameRequest,
 } from "@/core/render/lib/worker/render-frame-messages";
-import { IRenderInputEvent } from "@/core/render/lib/worker/render-input";
-import { RenderInputForwarder } from "@/core/render/lib/worker/render-input-forwarder";
 import { Logger } from "@/lib/logging";
 
 /** What a viewport's near half needs to hand its canvas over and keep talking to it. */

@@ -1,9 +1,7 @@
 import { describe, expect, it, jest } from "@jest/globals";
-import { OffscreenRenderTarget } from "@xrf/renderer";
+import { ERenderInput, IRenderInputEvent, OffscreenRenderTarget, RenderProxyElement } from "@xrf/renderer";
 
 import { ERenderFrame, ERenderFrameResponse } from "@/core/render/lib/worker/render-frame-messages";
-import { ERenderInput, IRenderInputEvent } from "@/core/render/lib/worker/render-input";
-import { RenderProxyElement } from "@/core/render/lib/worker/render-proxy-element";
 import { IRenderWorkerScene, RenderWorkerHost } from "@/core/render/lib/worker/render-worker-host";
 
 interface IMockRequest {

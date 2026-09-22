@@ -1,11 +1,11 @@
 import { describe, expect, it } from "@jest/globals";
+import { ERenderInput } from "@xrf/renderer";
 
 import {
   ERenderFrame,
   isRenderFrameRequest,
   listRenderFrameTransfers,
 } from "@/core/render/lib/worker/render-frame-messages";
-import { ERenderInput } from "@/core/render/lib/worker/render-input";
 
 describe("listRenderFrameTransfers", () => {
   // An OffscreenCanvas cannot be cloned at all: posting one without transferring it throws, and the whole

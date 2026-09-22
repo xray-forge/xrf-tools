@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { toDegrees, toRadians } from "@/lib/math/angle";
+import { toDegrees, toRadians } from "#/angle";
 
 describe("toDegrees", () => {
   it("turns the unit the maths uses into the one a person reads", () => {

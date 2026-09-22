@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { toMean, toWorst } from "@/lib/math/series";
+import { toMean, toWorst } from "#/series";
 
 describe("toMean", () => {
   it("means a series", () => {

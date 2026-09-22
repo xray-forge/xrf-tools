@@ -1,6 +1,4 @@
-import { IOffscreenRenderSize } from "@xrf/renderer";
-
-import { IRenderInputEvent } from "@/core/render/lib/worker/render-input";
+import { IOffscreenRenderSize, IRenderInputEvent } from "@xrf/renderer";
 
 /**
  * What every viewport drawn on another thread is told, whatever it draws.

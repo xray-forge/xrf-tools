@@ -1,6 +1,5 @@
+import { toMean } from "@xrf/math";
 import { Nullable } from "@xrf/types";
-
-import { toMean } from "@/lib/math/series";
 
 /**
  * What one stage of reading a sector cost, in milliseconds.

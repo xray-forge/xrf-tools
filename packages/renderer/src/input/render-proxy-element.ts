@@ -1,7 +1,5 @@
-import { IOffscreenRenderSize } from "@xrf/renderer";
-
-import { IRenderInputEvent } from "@/core/render/lib/worker/render-input";
-import { noop } from "@/lib/callbacks/noop";
+import { IOffscreenRenderSize } from "#/frame/offscreen-render-target";
+import { IRenderInputEvent } from "#/input/render-input";
 
 /** What a scene binds its controls to: the canvas on a page, or something answering for it on a worker. */
 export type TRenderInputElement = HTMLElement | RenderProxyElement;
@@ -108,7 +106,11 @@ export class RenderProxyElement {
   public dispatch(event: IRenderInputEvent): void {
     const listeners: Set<TProxyListener> = this.listeners.get(event.type) ?? new Set();
 
-    const dispatched: IRenderProxyEvent = { ...event, preventDefault: noop, stopPropagation: noop };
+    const dispatched: IRenderProxyEvent = {
+      ...event,
+      preventDefault: RenderProxyElement.ignore,
+      stopPropagation: RenderProxyElement.ignore,
+    };
 
     // Copied, because a control that lets go of a pointer stops listening from inside the call that tells it.
     for (const listener of [...listeners]) {
@@ -128,4 +130,7 @@ export class RenderProxyElement {
   public hasPointerCapture(): boolean {
     return false;
   }
+
+  /** What a dispatched event's `preventDefault` and `stopPropagation` do: there is no page to stop anything on. */
+  private static ignore(): void {}
 }

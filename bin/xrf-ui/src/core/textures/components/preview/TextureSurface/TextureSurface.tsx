@@ -1,4 +1,5 @@
 import { useInjection } from "@wirestate/react";
+import { DOLLY_STEP } from "@xrf/renderer";
 import { Nullable } from "@xrf/types";
 import { PointerEvent, ReactElement, useCallback, useRef } from "react";
 
@@ -14,7 +15,6 @@ import { EmptyState } from "@/core/ui/layout/EmptyState";
 import { ViewportControls } from "@/core/ui/media/ViewportControls";
 import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { DOLLY_STEP } from "@/lib/media/orbit-dolly";
 
 /** Where a light drag started, so each move swings by its own delta rather than the whole gesture. */
 interface IDragOrigin {

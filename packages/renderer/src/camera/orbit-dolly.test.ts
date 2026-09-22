@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { DOLLY_STEP, TDollyPoint, toDolliedPosition } from "@/lib/media/orbit-dolly";
+import { DOLLY_STEP, TDollyPoint, toDolliedPosition } from "#/camera/orbit-dolly";
 
 describe("toDolliedPosition", () => {
   it("moves along the line to what the camera orbits, without turning it", () => {

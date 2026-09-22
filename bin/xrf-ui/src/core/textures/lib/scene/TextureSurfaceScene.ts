@@ -1,4 +1,11 @@
-import { IRenderFrameCost, IRenderTarget, TFrameRateLimit } from "@xrf/renderer";
+import {
+  bindDragCursor,
+  IRenderFrameCost,
+  IRenderTarget,
+  TFrameRateLimit,
+  toDolliedPosition,
+  TRenderInputElement,
+} from "@xrf/renderer";
 import { Nullable } from "@xrf/types";
 import { BufferGeometry, Matrix3, Mesh, MeshStandardMaterial, PerspectiveCamera, Scene, Texture } from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
@@ -14,7 +21,6 @@ import {
   createDecodedTexture,
   hasRenderTextureAlpha,
 } from "@/core/render/lib/texture/render-texture";
-import { TRenderInputElement } from "@/core/render/lib/worker/render-proxy-element";
 import {
   EMPTY_TEXTURE_SURFACE,
   ETextureSurfaceAlpha,
@@ -29,8 +35,6 @@ import {
   IVisualBumpTextures,
   removeXrayBumpShading,
 } from "@/core/visuals/lib/visual-bump";
-import { bindDragCursor } from "@/lib/media/drag-cursor";
-import { toDolliedPosition } from "@/lib/media/orbit-dolly";
 
 import {
   DEFAULT_TEXTURE_LIGHTING,

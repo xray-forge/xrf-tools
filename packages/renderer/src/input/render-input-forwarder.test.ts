@@ -1,7 +1,11 @@
+/**
+ * @jest-environment jsdom
+ */
+
 import { describe, expect, it } from "@jest/globals";
 
-import { ERenderInput, IRenderInputEvent } from "@/core/render/lib/worker/render-input";
-import { RenderInputForwarder } from "@/core/render/lib/worker/render-input-forwarder";
+import { ERenderInput, IRenderInputEvent } from "#/input/render-input";
+import { RenderInputForwarder } from "#/input/render-input-forwarder";
 
 function sendTo(target: EventTarget, type: ERenderInput, fields: Record<string, unknown> = {}): Event {
   const event: Event = Object.assign(new Event(type, { bubbles: true, cancelable: true }), fields);

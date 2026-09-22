@@ -1,4 +1,4 @@
-import { toRadians } from "@/lib/math/angle";
+import { toRadians } from "@xrf/math";
 
 /**
  * How a preview is lit, which is the viewer's own answer rather than anything an X-Ray file carries.

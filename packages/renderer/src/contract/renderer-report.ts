@@ -1,3 +1,4 @@
+import { IRendererCameraPose } from "#/contract/renderer-camera";
 import { IRenderFrameCost } from "#/frame/render-frame-cost";
 
 /**
@@ -20,4 +21,6 @@ export interface IRendererReport {
   passes: ReadonlyArray<IRendererPassCost>;
   /** Whether the device grants timestamp queries, without which `passes` stays at zero. */
   isGpuTimed: boolean;
+  /** Where the camera was when the report was taken. */
+  camera: IRendererCameraPose;
 }

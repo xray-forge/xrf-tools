@@ -1,4 +1,5 @@
 import { useInjection } from "@wirestate/react";
+import { DOLLY_STEP } from "@xrf/renderer";
 import { ReactElement, useCallback } from "react";
 
 import { RenderFrameReadout } from "@/core/render/components/overlay";
@@ -6,7 +7,6 @@ import { RenderSurface } from "@/core/render/components/RenderSurface";
 import { ViewportControls } from "@/core/ui/media/ViewportControls";
 import { IVisualRenderSource, VISUAL_RENDER_SOURCE } from "@/core/visuals/lib/render";
 import { VisualRenderService } from "@/core/visuals/services/visual-render.service";
-import { DOLLY_STEP } from "@/lib/media/orbit-dolly";
 
 /**
  * Where the open visual is drawn.

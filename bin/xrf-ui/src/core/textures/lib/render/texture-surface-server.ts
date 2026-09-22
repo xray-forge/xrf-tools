@@ -1,6 +1,5 @@
-import { OffscreenRenderTarget } from "@xrf/renderer";
+import { OffscreenRenderTarget, RenderProxyElement } from "@xrf/renderer";
 
-import { RenderProxyElement } from "@/core/render/lib/worker/render-proxy-element";
 import { IRenderWorkerScene, TRenderWorkerReply } from "@/core/render/lib/worker/render-worker-host";
 import {
   ETextureSurfaceRequest,

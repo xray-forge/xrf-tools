@@ -134,6 +134,9 @@ catalogs:
     jest:
       specifier: ^30.5.1
       version: 30.5.1
+    jest-environment-jsdom:
+      specifier: ^30.5.1
+      version: 30.5.1
     prettier:
       specifier: ^3.9.6
       version: 3.9.6
@@ -217,6 +220,9 @@ importers:
       '@wirestate/react-mobx':
         specifier: 1.0.0
         version: 1.0.0(mobx-react-lite@4.1.1(mobx@6.16.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(mobx@6.16.0)(react@19.3.0)
+      '@xrf/math':
+        specifier: workspace:*
+        version: link:../../packages/math
       '@xrf/renderer':
         specifier: workspace:*
         version: link:../../packages/renderer
@@ -321,7 +327,7 @@ importers:
         specifier: 'catalog:'
         version: 30.5.1(@types/node@24.13.4)(babel-plugin-macros@3.1.0)(supports-color@8.1.1)
       jest-environment-jsdom:
-        specifier: ^30.5.1
+        specifier: 'catalog:'
         version: 30.5.1(supports-color@8.1.1)
       mobx-react-observer:
         specifier: ^2.0.0
@@ -400,8 +406,35 @@ importers:
         specifier: 'catalog:'
         version: 3.9.6
 
+  packages/math:
+    devDependencies:
+      '@jest/globals':
+        specifier: 'catalog:'
+        version: 30.5.1(supports-color@8.1.1)
+      '@typescript/native':
+        specifier: 'catalog:'
+        version: typescript@7.0.2
+      '@xrf/toolchain':
+        specifier: workspace:*
+        version: link:../../cli
+      eslint:
+        specifier: 'catalog:'
+        version: 10.10.0(jiti@2.7.0)(supports-color@8.1.1)
+      jest:
+        specifier: 'catalog:'
+        version: 30.5.1(@types/node@25.9.2)(babel-plugin-macros@3.1.0)(supports-color@8.1.1)
+      prettier:
+        specifier: 'catalog:'
+        version: 3.9.6
+      typescript:
+        specifier: 'catalog:'
+        version: '@typescript/typescript6@6.0.2'
+
   packages/renderer:
     dependencies:
+      '@xrf/math':
+        specifier: workspace:*
+        version: link:../math
       '@xrf/types':
         specifier: workspace:*
         version: link:../types
@@ -412,6 +445,9 @@ importers:
       '@jest/globals':
         specifier: 'catalog:'
         version: 30.5.1(supports-color@8.1.1)
+      '@types/node':
+        specifier: 'catalog:'
+        version: 24.13.4
       '@types/three':
         specifier: 'catalog:'
         version: 0.185.4
@@ -426,7 +462,10 @@ importers:
         version: 10.10.0(jiti@2.7.0)(supports-color@8.1.1)
       jest:
         specifier: 'catalog:'
-        version: 30.5.1(@types/node@25.9.2)(babel-plugin-macros@3.1.0)(supports-color@8.1.1)
+        version: 30.5.1(@types/node@24.13.4)(babel-plugin-macros@3.1.0)(supports-color@8.1.1)
+      jest-environment-jsdom:
+        specifier: 'catalog:'
+        version: 30.5.1(supports-color@8.1.1)
       prettier:
         specifier: 'catalog:'
         version: 3.9.6

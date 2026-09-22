@@ -1,7 +1,8 @@
+import { toDegrees } from "@xrf/math";
+
 import { ILevelPoint } from "@/core/level/lib/residency/level-residency";
 import { IXrayHeading } from "@/core/render/lib/scene/render-space";
 import { formatDegrees } from "@/lib/format/angle";
-import { toDegrees } from "@/lib/math/angle";
 
 /**
  * Where the camera is and which way it faces, in the coordinates the level's own data is written in.

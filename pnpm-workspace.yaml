@@ -15,6 +15,7 @@ catalog:
   "@typescript/native": npm:typescript@^7.0.2
   eslint: ^10.10.0
   jest: ^30.5.1
+  jest-environment-jsdom: ^30.5.1
   prettier: ^3.9.6
   three: ^0.186.0
   typescript: npm:@typescript/typescript6@^6.0.2

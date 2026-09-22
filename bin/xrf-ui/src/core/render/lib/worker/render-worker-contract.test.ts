@@ -22,7 +22,6 @@ const PAGE_ONLY: ReadonlyArray<string> = [
   "core/ipc/raw.ts",
   "core/ipc/metrics",
   "core/render/lib/frame/dom-render-target.ts",
-  "core/render/lib/worker/render-input-forwarder.ts",
 ];
 
 /**

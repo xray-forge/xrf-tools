@@ -1,8 +1,12 @@
+/**
+ * @jest-environment jsdom
+ */
+
 import { describe, expect, it } from "@jest/globals";
 import { PerspectiveCamera } from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
-import { bindDragCursor } from "./drag-cursor";
+import { bindDragCursor } from "#/camera/drag-cursor";
 
 function bind(): { controls: OrbitControls; element: HTMLElement; unbind: () => void } {
   const element: HTMLElement = document.createElement("div");

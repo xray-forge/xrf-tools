@@ -1,6 +1,7 @@
+import { DRAG_CURSOR } from "@xrf/renderer";
+
 import { EMPTY_LEVEL_FLY_INPUT, getFlyBinding, ILevelFlyInput } from "@/core/level/lib/camera";
 import { ILevelFlyMotion, ILevelMotionSource } from "@/core/level/lib/camera/level-fly-motion";
-import { DRAG_CURSOR } from "@/lib/media/drag-cursor";
 
 /**
  * Binds a viewport's pointer and keyboard to whatever reads them.

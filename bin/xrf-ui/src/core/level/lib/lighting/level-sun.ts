@@ -1,8 +1,8 @@
+import { toDegrees } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 
 import { Vector3d } from "@/core/ipc/types/xrf-math";
 import { toRendererSpace } from "@/core/render/lib/scene/render-space";
-import { toDegrees } from "@/lib/math/angle";
 
 /**
  * The elevation and azimuth a level's own sun comes to, for a viewer offering to light it the way xrLC did.

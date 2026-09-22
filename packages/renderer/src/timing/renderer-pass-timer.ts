@@ -1,3 +1,5 @@
+import { toMean } from "@xrf/math";
+
 import { IRendererPassCost } from "#/contract/renderer-report";
 
 /** Frames averaged over, the window the frame timer uses. */
@@ -37,7 +39,7 @@ export class RendererPassTimer {
       const samples: ReadonlyArray<number> = this.samples.get(name) ?? [];
 
       return {
-        gpuTime: samples.length ? samples.reduce((total, sample) => total + sample, 0) / samples.length : 0,
+        gpuTime: toMean(samples),
         name,
       };
     });

@@ -1,3 +1,4 @@
+import { toMean, toWorst } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 
 /** Frames averaged over. Short enough to react to a camera entering dense geometry, long enough not to flicker. */
@@ -91,14 +92,4 @@ export class RenderFrameTimer {
     this.draws.length = 0;
     this.last = null;
   }
-}
-
-/** The mean of a window, or zero for an empty one. */
-function toMean(samples: ReadonlyArray<number>): number {
-  return samples.length ? samples.reduce((total: number, sample: number) => total + sample, 0) / samples.length : 0;
-}
-
-/** The largest sample of a window, or zero for an empty one. */
-function toWorst(samples: ReadonlyArray<number>): number {
-  return samples.reduce((worst: number, sample: number) => Math.max(worst, sample), 0);
 }

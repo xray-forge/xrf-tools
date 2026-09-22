@@ -20,16 +20,19 @@
   },
   "dependencies": {
     "three": "catalog:",
+    "@xrf/math": "workspace:*",
     "@xrf/types": "workspace:*"
   },
   "devDependencies": {
     "@jest/globals": "catalog:",
+    "@types/node": "catalog:",
     "@types/three": "catalog:",
     "@typescript/native": "catalog:",
+    "@xrf/toolchain": "workspace:*",
     "eslint": "catalog:",
     "jest": "catalog:",
+    "jest-environment-jsdom": "catalog:",
     "prettier": "catalog:",
-    "typescript": "catalog:",
-    "@xrf/toolchain": "workspace:*"
+    "typescript": "catalog:"
   }
 }

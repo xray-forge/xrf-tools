@@ -50,6 +50,7 @@
     "react-router-dom": "^7.18.3",
     "tailwind-merge": "3.7.0",
     "three": "catalog:",
+    "@xrf/math": "workspace:*",
     "@xrf/renderer": "workspace:*",
     "@xrf/types": "workspace:*"
   },
@@ -74,20 +75,20 @@
     "@typescript/native": "catalog:",
     "@vitejs/plugin-react": "^6.1.1",
     "@wirestate/dev": "1.0.0",
+    "@xrf/toolchain": "workspace:*",
     "babel-plugin-observing-components": "^0.2.0",
     "eslint": "catalog:",
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-tailwindcss": "4.4.0",
     "jest": "catalog:",
-    "jest-environment-jsdom": "^30.5.1",
+    "jest-environment-jsdom": "catalog:",
     "mobx-react-observer": "^2.0.0",
     "prettier": "catalog:",
     "prettier-plugin-tailwindcss": "0.8.1",
     "tailwindcss": "4.3.3",
     "typescript": "catalog:",
     "vite": "^8.3.0",
-    "vite-plugin-inline-source": "^5.0.0",
-    "@xrf/toolchain": "workspace:*"
+    "vite-plugin-inline-source": "^5.0.0"
   }
 }

@@ -144,7 +144,7 @@ export function createEslintConfig(rootDir, ...layers) {
         ],
         semi: "error",
         "space-in-parens": ["error", "never"],
-        "spaced-comment": ["error", "always"],
+        "spaced-comment": ["error", "always", { markers: ["/"] }],
         "template-tag-spacing": ["error", "never"],
         yoda: "error",
       },

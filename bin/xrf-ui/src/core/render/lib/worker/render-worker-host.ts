@@ -1,4 +1,4 @@
-import { OffscreenRenderTarget } from "@xrf/renderer";
+import { OffscreenRenderTarget, RenderProxyElement } from "@xrf/renderer";
 import { Nullable } from "@xrf/types";
 
 import {
@@ -8,7 +8,6 @@ import {
   TRenderFrameRequest,
   TRenderFrameResponse,
 } from "@/core/render/lib/worker/render-frame-messages";
-import { RenderProxyElement } from "@/core/render/lib/worker/render-proxy-element";
 import { Logger } from "@/lib/logging";
 
 /**
