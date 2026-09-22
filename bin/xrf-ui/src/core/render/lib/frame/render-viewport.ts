@@ -9,6 +9,8 @@ import { IRenderTarget } from "./render-target";
 
 /** Seconds a frame may be worth, so a tab returning from the background does not teleport whatever moves by time. */
 const MAX_FRAME_DELTA: number = 0.1;
+/** Milliseconds between cost reports. Reporting every frame would re-render whatever reads them sixty times a second. */
+const REPORT_INTERVAL: number = 250;
 
 /**
  * Everything about the surface a scene is drawn on, as one value.
@@ -40,6 +42,12 @@ export interface IRenderViewportHandlers {
    * @param height - Canvas height in css pixels.
    */
   onResized?: (width: number, height: number) => void;
+  /**
+   * What frames are costing, a few times a second rather than every frame.
+   *
+   * @param cost - What the frame just drawn cost, and the size it was drawn at.
+   */
+  onReport?: (cost: IRenderFrameCost) => void;
 }
 
 /**
@@ -62,6 +70,7 @@ export class RenderViewport {
   private drawnAt: Nullable<number> = null;
   private frameHandle: number = 0;
   private lastFrame: Nullable<number> = null;
+  private reportedAt: number = 0;
   private isResizePending: boolean = false;
   /** Where the drawing buffer's size is read into, kept rather than allocated for every report. */
   private readonly drawnSize: Vector2 = new Vector2();
@@ -224,7 +233,22 @@ export class RenderViewport {
       // Inside the call rather than around the frame: what a first draw uploads and what a new material compiles
       // both happen here, and nothing outside `render` can be blamed for them.
       this.timer.sampleDraw(performance.now() - drawnFrom);
+
+      this.report(now);
     });
+  }
+
+  /**
+   * Says what frames are costing, on the interval rather than on the frame.
+   *
+   * @param now - This frame's timestamp.
+   */
+  private report(now: number): void {
+    if (this.handlers.onReport && now - this.reportedAt >= REPORT_INTERVAL) {
+      this.reportedAt = now;
+
+      this.handlers.onReport(this.frameCost);
+    }
   }
 
   private advance(now: number): void {

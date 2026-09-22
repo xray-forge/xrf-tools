@@ -1,6 +1,7 @@
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback } from "react";
 
+import { RenderFrameReadout } from "@/core/render/components/overlay";
 import { RenderSurface } from "@/core/render/components/RenderSurface";
 import { ViewportControls } from "@/core/ui/media/ViewportControls";
 import { IVisualRenderSource, VISUAL_RENDER_SOURCE } from "@/core/visuals/lib/render";
@@ -26,7 +27,13 @@ export function VisualPreviewViewport(): ReactElement {
         <RenderSurface host={renderService} />
       </div>
 
-      {source.model ? <ViewportControls onZoomIn={onZoomIn} onZoomOut={onZoomOut} onReset={onReset} /> : null}
+      {source.model ? (
+        <>
+          <RenderFrameReadout cost={renderService.frameCost} thread={renderService.thread} />
+
+          <ViewportControls onZoomIn={onZoomIn} onZoomOut={onZoomOut} onReset={onReset} />
+        </>
+      ) : null}
     </div>
   );
 }

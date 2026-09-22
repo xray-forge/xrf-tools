@@ -2,7 +2,10 @@ import { beforeAll, describe, expect, it, jest } from "@jest/globals";
 import { Container } from "@wirestate/core";
 import { runInAction } from "@wirestate/mobx";
 
+import { EMPTY_RENDER_FRAME_COST, IRenderFrameCost } from "@/core/render/lib/frame/render-frame-cost";
+import { ERenderThread } from "@/core/render/lib/frame/render-thread";
 import { IRenderLighting } from "@/core/render/lib/lighting/render-lighting";
+import { SettingsService } from "@/core/settings/services/settings";
 import { DEFAULT_TEXTURE_LIGHTING } from "@/core/textures/lib/scene/texture-lighting";
 import { DEFAULT_TEXTURE_PREVIEW_OPTIONS, ETexturePreviewMode } from "@/core/textures/lib/texture-preview";
 import { EMPTY_TEXTURE_SURFACE, ITextureSurfaceTextures } from "@/core/textures/lib/texture-surface";
@@ -13,6 +16,7 @@ import { AsyncState } from "@/lib/async-state";
 
 const scene = {
   dispose: jest.fn(),
+  setReporter: jest.fn(),
   dolly: jest.fn(),
   dragLight: jest.fn<(deltaX: number, deltaY: number) => IRenderLighting>(),
   reset: jest.fn(),
@@ -40,11 +44,12 @@ function mockAttached(): {
 } {
   const container: Container = mockContainer([TextureViewService, TextureSurfaceService, TextureRenderService]);
 
-  return {
-    container,
-    service: container.get(TextureRenderService),
-    viewService: container.get(TextureViewService),
-  };
+  const service = container.get(TextureRenderService);
+
+  // Event handlers are wired when a container is provisioned, which is what an application does to it.
+  container.provision();
+
+  return { container, service, viewService: container.get(TextureViewService) };
 }
 
 describe("TextureRenderService", () => {
@@ -106,6 +111,43 @@ describe("TextureRenderService", () => {
 
     expect(scene.dragLight).toHaveBeenCalledWith(10, 4);
     expect(viewService.lighting).toBe(swung);
+
+    service.detach();
+  });
+
+  // The readout over the viewport is the only place the answer to "which thread drew this" can be seen.
+  it("says what its frames cost and which thread drew them", () => {
+    const { service } = mockAttached();
+
+    scene.setReporter.mockClear();
+    service.attach(document.createElement("div"));
+
+    expect(service.thread).toBe(ERenderThread.MAIN);
+    expect(service.frameCost).toBe(EMPTY_RENDER_FRAME_COST);
+
+    const report = scene.setReporter.mock.calls[0][0] as (cost: IRenderFrameCost) => void;
+
+    report({ ...EMPTY_RENDER_FRAME_COST, framesPerSecond: 144 });
+
+    expect(service.frameCost.framesPerSecond).toBe(144);
+
+    service.detach();
+
+    // Nothing is drawing, so the readout says nothing rather than the last thing it saw.
+    expect(service.frameCost).toBe(EMPTY_RENDER_FRAME_COST);
+  });
+
+  // Which thread a viewport draws on is decided when it is built, so the setting is answered by building again.
+  it("builds again when the thread setting changes", () => {
+    const { service, container } = mockAttached();
+
+    service.attach(document.createElement("div"));
+
+    const built: number = scene.dispose.mock.calls.length;
+
+    container.get(SettingsService).setOffscreenRenderEnabled(false);
+
+    expect(scene.dispose.mock.calls).toHaveLength(built + 1);
 
     service.detach();
   });

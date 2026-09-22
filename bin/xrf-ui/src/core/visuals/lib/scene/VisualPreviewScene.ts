@@ -2,7 +2,9 @@ import { DataTexture, PerspectiveCamera, Scene, Texture } from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
 import { DomRenderTarget } from "@/core/render/lib/frame/dom-render-target";
+import { IRenderFrameCost } from "@/core/render/lib/frame/render-frame-cost";
 import { TFrameRateLimit } from "@/core/render/lib/frame/render-frame-limit";
+import { TRenderCostReporter } from "@/core/render/lib/frame/render-reporter";
 import { RenderViewport } from "@/core/render/lib/frame/render-viewport";
 import { IRenderLighting } from "@/core/render/lib/lighting/render-lighting";
 import { RenderPreviewLighting } from "@/core/render/lib/lighting/RenderPreviewLighting";
@@ -34,6 +36,9 @@ export class VisualPreviewScene {
 
   /** Stops the canvas answering drags with the drag cursor, called when the scene goes. */
   private readonly unbindDragCursor: () => void;
+
+  /** Told what frames are costing, or nothing while nobody is reading them. */
+  private reporter: Nullable<TRenderCostReporter> = null;
 
   /** The model on screen, or null when nothing is open. */
   private model: Nullable<VisualPreviewModel> = null;
@@ -74,6 +79,7 @@ export class VisualPreviewScene {
 
     this.viewport = new RenderViewport(target, config, {
       onFrame: () => this.controls.update(),
+      onReport: (cost: IRenderFrameCost) => this.reporter?.(cost),
       // A fit measured against a viewport with no size yet is wrong, and this is the first chance to repeat it.
       onResized: () => this.applyUnmeasuredFit(),
     });
@@ -255,6 +261,15 @@ export class VisualPreviewScene {
 
     this.controls.target.set(x, y, z);
     this.controls.update();
+  }
+
+  /**
+   * Takes what to tell about frame cost, or nothing to stop telling.
+   *
+   * @param reporter - Told what frames are costing, a few times a second.
+   */
+  public setReporter(reporter: Nullable<TRenderCostReporter>): void {
+    this.reporter = reporter;
   }
 
   /**

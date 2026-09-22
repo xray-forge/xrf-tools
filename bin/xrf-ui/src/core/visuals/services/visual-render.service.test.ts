@@ -13,6 +13,7 @@ const scene = {
   applyTexture: jest.fn(),
   applyViewOptions: jest.fn(),
   dispose: jest.fn(),
+  setReporter: jest.fn(),
   dolly: jest.fn(),
   resetCamera: jest.fn(),
   setDetailLevel: jest.fn(),

@@ -2,7 +2,9 @@ import { BufferGeometry, Mesh, MeshStandardMaterial, PerspectiveCamera, Scene } 
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
 import { DomRenderTarget } from "@/core/render/lib/frame/dom-render-target";
+import { IRenderFrameCost } from "@/core/render/lib/frame/render-frame-cost";
 import { TFrameRateLimit } from "@/core/render/lib/frame/render-frame-limit";
+import { TRenderCostReporter } from "@/core/render/lib/frame/render-reporter";
 import { RenderViewport } from "@/core/render/lib/frame/render-viewport";
 import { IRenderLighting } from "@/core/render/lib/lighting/render-lighting";
 import { RenderPreviewLighting } from "@/core/render/lib/lighting/RenderPreviewLighting";
@@ -47,6 +49,9 @@ export class TextureSurfaceScene {
   /** Stops the canvas answering drags with the drag cursor, called when the scene goes. */
   private readonly unbindDragCursor: () => void;
 
+  /** Told what frames are costing, or nothing while nobody is reading them. */
+  private reporter: Nullable<TRenderCostReporter> = null;
+
   private mesh: Nullable<Mesh<BufferGeometry, MeshStandardMaterial | Array<MeshStandardMaterial>>> = null;
   private shading: Nullable<IVisualBumpShading> = null;
   private textures: ITextureSurfaceTextures = EMPTY_TEXTURE_SURFACE;
@@ -67,7 +72,10 @@ export class TextureSurfaceScene {
     this.viewport = new RenderViewport(
       target,
       { backgroundColor: null, cameraFar: 100, cameraFieldOfView: 45, cameraNear: 0.01 },
-      { onFrame: () => this.controls.update() }
+      {
+        onFrame: () => this.controls.update(),
+        onReport: (cost: IRenderFrameCost) => this.reporter?.(cost),
+      }
     );
     this.camera.position.set(0, 0, CAMERA_DISTANCE);
 
@@ -95,6 +103,15 @@ export class TextureSurfaceScene {
   /** The camera the orbit controls drive. */
   private get camera(): PerspectiveCamera {
     return this.viewport.camera;
+  }
+
+  /**
+   * Takes what to tell about frame cost, or nothing to stop telling.
+   *
+   * @param reporter - Told what frames are costing, a few times a second.
+   */
+  public setReporter(reporter: Nullable<TRenderCostReporter>): void {
+    this.reporter = reporter;
   }
 
   /**

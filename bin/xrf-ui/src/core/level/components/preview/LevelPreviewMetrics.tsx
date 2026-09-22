@@ -3,7 +3,7 @@ import { ReactElement } from "react";
 
 import { ILevelStats } from "@/core/level/lib/stats/level-stats";
 import { LevelViewportService } from "@/core/level/services";
-import { RenderViewportOverlay } from "@/core/render/components/overlay";
+import { RenderFrameReadout } from "@/core/render/components/overlay";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatBytes } from "@/lib/memory/format";
 
@@ -19,11 +19,8 @@ export function LevelPreviewMetrics({
   const stats: ILevelStats = viewport.stats;
 
   return (
-    <RenderViewportOverlay data-testid={dataTestId} id={id} className={className} corner={"top-left"}>
-      <div>{`${stats.framesPerSecond.toFixed(0)} fps · ${stats.frameTime.toFixed(1)} ms`}</div>
-      <div>{`${stats.draws} draws · ${stats.triangles.toLocaleString()} tris`}</div>
+    <RenderFrameReadout data-testid={dataTestId} id={id} className={className} cost={stats} thread={viewport.thread}>
       <div>{`${stats.sectors} sectors · ${formatBytes(stats.bytes)}`}</div>
-      <div>{`${stats.drawnWidth} × ${stats.drawnHeight}`}</div>
-    </RenderViewportOverlay>
+    </RenderFrameReadout>
   );
 }

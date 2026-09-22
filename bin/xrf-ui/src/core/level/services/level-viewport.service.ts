@@ -1,9 +1,10 @@
 import { Injectable, OnDeactivation } from "@wirestate/core";
-import { BoundAction, Observable } from "@wirestate/mobx";
+import { BoundAction, Observable, RefObservable } from "@wirestate/mobx";
 
 import { ILevelCamera } from "@/core/level/lib/camera/level-camera";
 import { EMPTY_LEVEL_STATS, ILevelStats } from "@/core/level/lib/stats/level-stats";
 import { EMPTY_LEVEL_TEXTURE_REPORT, ILevelTextureReport } from "@/core/level/lib/texture/level-texture-report";
+import { ERenderThread } from "@/core/render/lib/frame/render-thread";
 import { Nullable } from "@/lib/types/general";
 
 /**
@@ -11,16 +12,30 @@ import { Nullable } from "@/lib/types/general";
  */
 @Injectable()
 export class LevelViewportService {
-  @Observable()
+  @RefObservable()
   public stats: ILevelStats = EMPTY_LEVEL_STATS;
 
   /** Where the camera is and where it faces, or null until the viewport has drawn a frame. */
-  @Observable()
+  @RefObservable()
   public camera: Nullable<ILevelCamera> = null;
 
-  /** What the level's textures came to, which is the answer of whichever side uploaded them. */
+  /** Which thread the frames are drawn on, which nothing in the picture says. */
   @Observable()
+  public thread: ERenderThread = ERenderThread.MAIN;
+
+  /** What the level's textures came to, which is the answer of whichever side uploaded them. */
+  @RefObservable()
   public textureReport: ILevelTextureReport = EMPTY_LEVEL_TEXTURE_REPORT;
+
+  /**
+   * Takes which thread is drawing, from whoever built the renderer.
+   *
+   * @param thread - Where the frames are coming from now.
+   */
+  @BoundAction()
+  public noteThread(thread: ERenderThread): void {
+    this.thread = thread;
+  }
 
   /**
    * Takes what the textures came to.

@@ -18,6 +18,7 @@ beforeAll(async () => {
   jest.doMock("@/core/textures/lib/scene/TextureSurfaceScene", () => ({
     TextureSurfaceScene: jest.fn(() => ({
       dispose: jest.fn(),
+      setReporter: jest.fn(),
       setTextures: jest.fn(),
       setOptions: jest.fn(),
       setFrameRateLimit: jest.fn(),

@@ -11,6 +11,7 @@ import { ILevelSurfaceGeometry } from "@/core/level/lib/surface/level-surface-ge
 import { LevelLoadService } from "@/core/level/services/level-load.service";
 import { LevelViewService } from "@/core/level/services/level-view.service";
 import { LevelViewportService } from "@/core/level/services/level-viewport.service";
+import { ERenderThread } from "@/core/render/lib/frame/render-thread";
 import { RenderSurfaceService } from "@/core/render/lib/surface/render-surface-service";
 import { ESetting, ISettingsChangedPayload, SETTINGS_CHANGED_EVENT } from "@/core/settings/lib/settings-changed";
 import { SettingsService } from "@/core/settings/services/settings";
@@ -72,6 +73,8 @@ export class LevelRenderService extends RenderSurfaceService {
       : new LevelLocalRenderer({ container, events });
 
     this.log.info("Drawing the level", isOffscreen ? "on a thread of its own" : "on this thread");
+
+    this.viewportService.noteThread(isOffscreen ? ERenderThread.WORKER : ERenderThread.MAIN);
 
     this.renderer = renderer;
     this.bridge = new LevelRenderBridge(renderer, {

@@ -24,6 +24,7 @@ import { ILevelSurfaceGeometry } from "@/core/level/lib/surface/level-surface-ge
 import { ILevelTextureReport } from "@/core/level/lib/texture/level-texture-report";
 import { LevelTextureSet } from "@/core/level/lib/texture/level-texture-set";
 import { DEFAULT_LEVEL_VIEW_OPTIONS, ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
+import { IRenderFrameCost } from "@/core/render/lib/frame/render-frame-cost";
 import { TFrameRateLimit } from "@/core/render/lib/frame/render-frame-limit";
 import { IRenderTarget } from "@/core/render/lib/frame/render-target";
 import { RenderViewport } from "@/core/render/lib/frame/render-viewport";
@@ -51,8 +52,6 @@ export interface ILevelPreviewSceneHandlers {
 
 /** Metres the camera has to move before the loader is asked again, which keeps streaming off every frame. */
 const STREAM_THRESHOLD: number = 8;
-/** Milliseconds between stat reports. Reporting every frame would re-render the panel reading them sixty times a second. */
-const STATS_INTERVAL: number = 250;
 
 /**
  * Draws a compiled level and flies a camera through it.
@@ -80,8 +79,6 @@ export class LevelPreviewScene {
   private view: Nullable<ILevelRenderView> = null;
   /** Stops this scene hearing about the sectors it last took, for when it takes another level's. */
   private streamedFrom: Nullable<Vector3> = null;
-  private statsReportedAt: number = 0;
-
   /** Read into rather than allocated, because the camera is measured on every report. */
   private readonly facing: Vector3 = new Vector3();
 
@@ -93,7 +90,8 @@ export class LevelPreviewScene {
     this.handlers = handlers;
 
     this.viewport = new RenderViewport(target, config, {
-      onFrame: (delta: number, now: number) => this.advance(delta, now),
+      onFrame: (delta: number) => this.advance(delta),
+      onReport: (cost: IRenderFrameCost) => this.report(cost),
     });
 
     this.lighting = new LevelPreviewLighting(this.viewport.scene);
@@ -293,7 +291,7 @@ export class LevelPreviewScene {
     this.handlers.onCameraMoved({ x: position.x, y: position.y, z: position.z });
   }
 
-  private advance(delta: number, now: number): void {
+  private advance(delta: number): void {
     const motion: ILevelFlyMotion = this.motion?.drain() ?? EMPTY_LEVEL_FLY_MOTION;
 
     // Looking before moving, because where the camera walks is where it is facing.
@@ -306,15 +304,19 @@ export class LevelPreviewScene {
     // Every frame rather than only on the frames the camera moved, because the marker is placed from the camera and
     // the lighting can change without it.
     this.lighting.follow(this.viewport.camera.position);
+  }
 
-    if (now - this.statsReportedAt >= STATS_INTERVAL) {
-      this.statsReportedAt = now;
-      // Converted here rather than where it is drawn, so a reader of the handler cannot take it for a renderer
-      // placement and a second consumer cannot forget the sign.
-      this.handlers.onReport(
-        measureLevelStats(this.held.measure(), this.viewport.frameCost, this.sectors.meanAddTime),
-        toLevelCamera(this.viewport.camera, this.facing)
-      );
-    }
+  /**
+   * Adds what only this scene can say to what the viewport costs.
+   *
+   * @param cost - What the frame just drawn cost, on the viewport's own interval.
+   */
+  private report(cost: IRenderFrameCost): void {
+    // Converted here rather than where it is drawn, so a reader of the handler cannot take it for a renderer
+    // placement and a second consumer cannot forget the sign.
+    this.handlers.onReport(
+      measureLevelStats(this.held.measure(), cost, this.sectors.meanAddTime),
+      toLevelCamera(this.viewport.camera, this.facing)
+    );
   }
 }

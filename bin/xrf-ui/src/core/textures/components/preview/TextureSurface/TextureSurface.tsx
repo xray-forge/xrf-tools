@@ -2,6 +2,7 @@ import { useInjection } from "@wirestate/react";
 import { PointerEvent, ReactElement, useCallback, useRef } from "react";
 
 import { TextureDescription } from "@/core/ipc/types/xrf-app";
+import { RenderFrameReadout } from "@/core/render/components/overlay";
 import { RenderSurface } from "@/core/render/components/RenderSurface";
 import { EMPTY_TEXTURE_SURFACE, ITextureSurfaceTextures } from "@/core/textures/lib/texture-surface";
 import { TextureRenderService } from "@/core/textures/services/render";
@@ -120,7 +121,11 @@ export function TextureSurface({
       ) : null}
 
       {isUploading || isUntextured ? null : (
-        <ViewportControls onZoomIn={onZoomIn} onZoomOut={onZoomOut} onReset={onReset} />
+        <>
+          <RenderFrameReadout cost={renderService.frameCost} thread={renderService.thread} />
+
+          <ViewportControls onZoomIn={onZoomIn} onZoomOut={onZoomOut} onReset={onReset} />
+        </>
       )}
     </div>
   );
