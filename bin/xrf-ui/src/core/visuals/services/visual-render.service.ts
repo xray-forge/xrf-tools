@@ -15,9 +15,13 @@ import {
   NO_HIDDEN_BONES,
   VISUAL_RENDER_SOURCE,
 } from "@/core/visuals/lib/render";
-import { IVisualPreviewViewOptions, VisualPreviewScene } from "@/core/visuals/lib/scene";
+import { VisualLocalRenderer } from "@/core/visuals/lib/render/visual-local-renderer";
+import { IVisualRenderer, IVisualRendererEvents } from "@/core/visuals/lib/render/visual-renderer";
+import { VisualWorkerRenderer } from "@/core/visuals/lib/render/visual-worker-renderer";
+import { IVisualPreviewViewOptions } from "@/core/visuals/lib/scene";
 import { IVisualModelViews } from "@/core/visuals/lib/visual-views";
 import { VisualViewService } from "@/core/visuals/services/visual-view.service";
+import { canRenderOffscreen } from "@/lib/dom/canvas";
 import { Logger } from "@/lib/logging";
 import { Nullable } from "@/lib/types/general";
 
@@ -36,7 +40,7 @@ export class VisualRenderService extends RenderSurfaceService {
   @Observable()
   public isOffscreen: boolean = false;
 
-  private scene: Nullable<VisualPreviewScene> = null;
+  private renderer: Nullable<IVisualRenderer> = null;
   private target: Nullable<DomRenderTarget> = null;
 
   private readonly reactions: Array<() => void> = [];
@@ -59,14 +63,18 @@ export class VisualRenderService extends RenderSurfaceService {
 
   protected mount(container: HTMLElement): void {
     const target: DomRenderTarget = new DomRenderTarget(container, this.settingsService.renderResolution);
+    const events: IVisualRendererEvents = { onReport: (cost: IRenderFrameCost): void => this.takeCost(cost) };
 
-    this.scene = new VisualPreviewScene(target, null);
+    const isOffscreen: boolean = this.settingsService.isOffscreenRenderEnabled && canRenderOffscreen();
 
+    this.log.info("Drawing the model", isOffscreen ? "on a thread of its own" : "on this thread");
+
+    this.renderer = isOffscreen
+      ? new VisualWorkerRenderer({ events, target })
+      : new VisualLocalRenderer({ events, target });
     this.target = target;
-    this.scene.setReporter(this.takeCost);
 
-    // Nothing else can be said yet: a scene that only draws on this thread is the only one there is.
-    this.takeOffscreen(false);
+    this.takeOffscreen(isOffscreen);
 
     // Told what is open as it is now, then again whenever any of it changes. A scene attached after a model was
     // read would otherwise stay empty until something happened to change.
@@ -94,9 +102,8 @@ export class VisualRenderService extends RenderSurfaceService {
     }
 
     this.reactions.length = 0;
-    this.scene?.setReporter(null);
-    this.scene?.dispose();
-    this.scene = null;
+    this.renderer?.dispose();
+    this.renderer = null;
     this.target?.dispose();
     this.target = null;
 
@@ -130,17 +137,17 @@ export class VisualRenderService extends RenderSurfaceService {
    * @param step - What to multiply the distance by.
    */
   public dolly(step: number): void {
-    this.scene?.dolly(step);
+    this.renderer?.dolly(step);
   }
 
   /** Back to the distance and the angle the model is first framed from. */
   public resetCamera(): void {
-    this.scene?.resetCamera();
+    this.renderer?.resetCamera();
   }
 
   @BoundAction()
   private applyModel(model: Nullable<IVisualModelViews>): void {
-    this.scene?.setModel(model);
+    this.renderer?.setModel(model);
 
     // A new model is new meshes, and everything hung on the old ones went with them.
     this.dress();
@@ -148,37 +155,37 @@ export class VisualRenderService extends RenderSurfaceService {
 
   @BoundAction()
   private applyViewOptions(options: IVisualPreviewViewOptions): void {
-    this.scene?.applyViewOptions(options);
+    this.renderer?.applyViewOptions(options);
   }
 
   @BoundAction()
   private applyLighting(lighting: IRenderLighting): void {
-    this.scene?.setLighting(lighting);
+    this.renderer?.setLighting(lighting);
   }
 
   @BoundAction()
   private applyDetail(detail: number): void {
-    this.scene?.setDetailLevel(detail);
+    this.renderer?.setDetailLevel(detail);
   }
 
   @BoundAction()
   private applyPose(pose: IVisualPose): void {
-    this.scene?.setPose(pose.transforms, pose.frame, pose.floatsPerBone);
+    this.renderer?.setPose(pose);
   }
 
   @BoundAction()
   private applyHiddenBones(bones: ReadonlySet<number>): void {
-    this.scene?.setHiddenBones(bones);
+    this.renderer?.setHiddenBones(bones);
   }
 
   @BoundAction()
   private applyFrameRateLimit(limit: TFrameRateLimit): void {
-    this.scene?.setFrameRateLimit(limit);
+    this.renderer?.setFrameRateLimit(limit);
   }
 
   @BoundAction()
   private applyHighlightedJoint(joint: Nullable<[number, number, number]>): void {
-    this.scene?.setHighlightedJoint(joint);
+    this.renderer?.setHighlightedJoint(joint);
   }
 
   /**
@@ -187,11 +194,11 @@ export class VisualRenderService extends RenderSurfaceService {
   @BoundAction()
   private dress(): void {
     for (const [submeshIndex, texture] of this.source.textures) {
-      this.scene?.applyTexture(submeshIndex, texture);
+      this.renderer?.applyTexture(submeshIndex, texture);
     }
 
     for (const [submeshIndex, pair] of this.source.bumps) {
-      this.scene?.applyBump(submeshIndex, pair);
+      this.renderer?.applyBump(submeshIndex, pair);
     }
 
     this.applyHighlightedJoint(this.source.highlightedJoint ?? null);

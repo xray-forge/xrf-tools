@@ -8,6 +8,7 @@ import { formatImportChain, listImportChains, SOURCE_ROOT } from "@/fixtures/uti
 const WORKERS: ReadonlyArray<string> = [
   "core/level/lib/render/level-render.worker.ts",
   "core/textures/lib/render/texture-surface.worker.ts",
+  "core/visuals/lib/render/visual-preview.worker.ts",
 ];
 
 /**

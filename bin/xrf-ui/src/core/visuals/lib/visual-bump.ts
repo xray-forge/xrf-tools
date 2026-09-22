@@ -6,7 +6,7 @@ import { XrayAsset } from "@/core/ipc/types/xrf-vfs";
 import { VisualTextureDependency } from "@/core/ipc/types/xrf-visual";
 import { toXrayGlossDeclaration, XRAY_GLOSS_VARIABLE } from "@/core/render/lib/surface/render-gloss";
 import { applyRenderPatch, removeRenderPatch } from "@/core/render/lib/surface/render-patch";
-import { EVisualTextureState } from "@/core/visuals/lib/visual-texture";
+import { EVisualTextureState, IVisualTextureFile } from "@/core/visuals/lib/visual-texture";
 import { Nullable } from "@/lib/types/general";
 
 /**
@@ -20,6 +20,12 @@ export interface IVisualBumpTextures {
   bump: Texture;
   /** `normal_error.height`, the `#` companion. */
   companion: Texture;
+}
+
+/** The two files of a bump pair, which are only ever read, uploaded and drawn together. */
+export interface IVisualBumpFiles {
+  bump: IVisualTextureFile;
+  companion: IVisualTextureFile;
 }
 
 /** A submesh whose material binds a bump pair, and the two located files to fetch for it. */

@@ -198,7 +198,7 @@ describe("VisualLoadService bump pairs", () => {
     });
   });
 
-  it("frees the pair with the base textures when the visual is cleared", async () => {
+  it("drops the pair with the base files when the visual is cleared", async () => {
     const { selected, buffer } = mockBumpedVisual(mockMaterialDescriptor());
 
     setMockInvokeResponses({
@@ -211,15 +211,10 @@ describe("VisualLoadService bump pairs", () => {
 
     await service.load({ kind: "asset", logicalPath: ENTRY }, ROOTS);
 
-    const pair = service.bumps.get(0);
-    let disposed: number = 0;
-
-    pair?.bump.addEventListener("dispose", () => (disposed += 1));
-    pair?.companion.addEventListener("dispose", () => (disposed += 1));
+    expect(service.bumps.get(0)?.bump.bytes.byteLength).toBeGreaterThan(0);
 
     service.clear();
 
-    expect(disposed).toBe(2);
     expect(service.bumps.size).toBe(0);
     expect(service.bumpStatuses.size).toBe(0);
   });

@@ -1,6 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { flowResult, isComputedProp, isObservableProp } from "@wirestate/mobx";
-import { Texture } from "three";
 
 import { createRoots } from "@/core/assets/lib";
 import { SelectedVisualDescription } from "@/core/ipc/types/xrf-app";
@@ -402,15 +401,11 @@ describe("VisualLoadService shared textures", () => {
 
     await service.load({ kind: "asset", logicalPath: ENTRY }, ROOTS);
 
-    let disposals: number = 0;
-
-    (service.textures.get(0) as Texture).addEventListener("dispose", () => {
-      disposals += 1;
-    });
+    expect(service.textures.get(0)?.bytes.byteLength).toBeGreaterThan(0);
 
     service.clear();
 
-    expect(disposals).toBe(1);
+    expect(service.textures.size).toBe(0);
   });
 });
 
@@ -432,7 +427,7 @@ describe("VisualLoadService texture decoding", () => {
     jest.restoreAllMocks();
   });
 
-  it("decodes a shared file once and publishes the same texture for both submeshes", async () => {
+  it("asks for a shared file once and publishes the same picture for both submeshes", async () => {
     const { selected, buffer } = mockSharedVisual();
     const { service } = mockInjectedService(VisualLoadService);
     const readTexture = jest.fn(() => new ArrayBuffer(8));
@@ -447,9 +442,10 @@ describe("VisualLoadService texture decoding", () => {
     await service.load({ kind: "asset", logicalPath: ENTRY }, ROOTS);
 
     expect(readTexture).toHaveBeenCalledTimes(1);
-    expect(decoder).toHaveBeenCalledTimes(1);
     expect(service.textures.size).toBe(2);
+    // One file, shared: whoever draws it uploads it once for however many submeshes name it.
     expect(service.textures.get(0)).toBe(service.textures.get(1));
+    expect(service.textures.get(0)?.isDecoded).toBe(true);
     expect([...service.textureStatuses.values()]).toEqual([
       { reason: null, state: EVisualTextureState.DECODED, submeshIndex: 0 },
       { reason: null, state: EVisualTextureState.DECODED, submeshIndex: 1 },
@@ -485,33 +481,29 @@ describe("VisualLoadService texture decoding", () => {
     service.clear();
   });
 
-  it("releases a late shared decoded texture once after clearing without restoring the model", async () => {
+  it("publishes nothing from a run that was cancelled while the backend was decoding", async () => {
     const { selected, buffer } = mockSharedVisual();
     const { service } = mockInjectedService(VisualLoadService);
-    const dispose = jest.spyOn(Texture.prototype, "dispose");
-    const close = jest.fn();
 
-    let finishDecode: (bitmap: ImageBitmap) => void = noop;
-    let onDecoding: () => void = noop;
+    let finishRead: (bytes: ArrayBuffer) => void = noop;
+    let onReading: () => void = noop;
 
-    const decoding = new Promise<ImageBitmap>((resolve) => {
-      finishDecode = resolve;
+    const reading = new Promise<ArrayBuffer>((resolve) => {
+      finishRead = resolve;
     });
     const started = new Promise<void>((resolve) => {
-      onDecoding = resolve;
-    });
-
-    decoder.mockImplementationOnce(() => {
-      onDecoding();
-
-      return decoding;
+      onReading = resolve;
     });
 
     setMockInvokeResponses({
       ["plugin:visuals|open_model"]: mockSessionResponse(selected),
       ["plugin:visuals|read_geometry"]: buffer,
       ["plugin:assets|read_asset"]: mockUndecodableDdsFile(),
-      ["plugin:visuals|read_texture"]: new ArrayBuffer(8),
+      ["plugin:visuals|read_texture"]: () => {
+        onReading();
+
+        return reading;
+      },
     });
 
     const loading = flowResult(service.load({ kind: "asset", logicalPath: ENTRY }, ROOTS));
@@ -519,96 +511,14 @@ describe("VisualLoadService texture decoding", () => {
     await started;
 
     service.clear();
+    finishRead(new ArrayBuffer(8));
 
     await loading;
 
-    expect(dispose).not.toHaveBeenCalled();
-
-    finishDecode({ close, height: 4, width: 4 } as ImageBitmap);
-    // The cancelled flow has settled already; let the late decode reach its own cleanup.
-    await new Promise((resolve) => setTimeout(resolve, 0));
-
-    expect(dispose).toHaveBeenCalledTimes(1);
-    expect(close).toHaveBeenCalledTimes(1);
-    expect(decoder).toHaveBeenCalledTimes(1);
     expect(service.visual.value).toBeNull();
     expect(service.visual.isLoading).toBe(false);
     expect(service.textures.size).toBe(0);
     expect(service.textureStatuses.size).toBe(0);
-
-    service.clear();
-
-    expect(dispose).toHaveBeenCalledTimes(1);
-  });
-
-  it("releases a late decoded texture without disposing the replacement model's texture", async () => {
-    const { selected, buffer } = mockLoadable();
-    const { service } = mockInjectedService(VisualLoadService);
-    const dispose = jest.spyOn(Texture.prototype, "dispose");
-
-    let finishDecode: (bitmap: ImageBitmap) => void = noop;
-    let onDecoding: () => void = noop;
-
-    const decoding = new Promise<ImageBitmap>((resolve) => {
-      finishDecode = resolve;
-    });
-    const started = new Promise<void>((resolve) => {
-      onDecoding = resolve;
-    });
-
-    decoder.mockImplementationOnce(() => {
-      onDecoding();
-
-      return decoding;
-    });
-
-    setMockInvokeResponses({
-      ["plugin:visuals|open_model"]: mockSessionResponse({
-        ...selected,
-        dependencies: { motions: [], textures: [mockTextureDependency({ submeshIndex: 0 })] },
-      }),
-      ["plugin:visuals|read_geometry"]: buffer,
-      ["plugin:assets|read_asset"]: mockUndecodableDdsFile(),
-      ["plugin:visuals|read_texture"]: new ArrayBuffer(8),
-    });
-
-    const loading = flowResult(service.load({ kind: "asset", logicalPath: ENTRY }, ROOTS));
-
-    await started;
-
-    setMockInvokeResponses({
-      ["plugin:visuals|open_model"]: mockSessionResponse({
-        ...selected,
-        dependencies: { motions: [], textures: [mockTextureDependency({ submeshIndex: 0 })] },
-      }),
-      ["plugin:visuals|read_geometry"]: buffer,
-      ["plugin:assets|read_asset"]: mockDdsFile(),
-    });
-
-    await service.load({ kind: "asset", logicalPath: ENTRY }, ROOTS);
-
-    await loading;
-
-    const current = service.visual.value;
-    const currentTexture = service.textures.get(0);
-
-    expect(dispose).not.toHaveBeenCalled();
-
-    finishDecode({ close: noop, height: 4, width: 4 } as ImageBitmap);
-    // The cancelled flow has settled already; let the late decode reach its own cleanup.
-    await new Promise((resolve) => setTimeout(resolve, 0));
-
-    expect(dispose).toHaveBeenCalledTimes(1);
-    expect(service.visual.value).toBe(current);
-    expect(service.visual.isLoading).toBe(false);
-    expect(service.textures.get(0)).toBe(currentTexture);
-    expect(service.textures.size).toBe(1);
-    expect(service.textureStatuses.size).toBe(1);
-    expect(dispose.mock.contexts).not.toContain(currentTexture);
-
-    service.clear();
-
-    expect(dispose).toHaveBeenCalledTimes(2);
   });
 
   it("asks the backend to decode a texture the reader declines", async () => {

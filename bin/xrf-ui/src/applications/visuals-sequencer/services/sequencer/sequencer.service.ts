@@ -1,6 +1,5 @@
 import { EventBus, inject, Injectable, OnDeactivation, OnProvision } from "@wirestate/core";
 import { BoundAction, Computed, flowResult, Observable, runInAction } from "@wirestate/mobx";
-import { Texture } from "three";
 
 import { VisualSequenceService } from "@/applications/visuals-sequencer/services/sequence";
 import { createRoots } from "@/core/assets/lib";
@@ -13,9 +12,9 @@ import { emitNotification, ENotificationSeverity } from "@/core/notifications/li
 import { EApplicationId } from "@/core/routing/application";
 import { IVisualInspection } from "@/core/visuals/components/panels/visual-inspection";
 import { IVisualPose } from "@/core/visuals/lib/render";
-import { IVisualBumpStatus, IVisualBumpTextures } from "@/core/visuals/lib/visual-bump";
+import { IVisualBumpFiles, IVisualBumpStatus } from "@/core/visuals/lib/visual-bump";
 import { describeVisualSource } from "@/core/visuals/lib/visual-source";
-import { IVisualTextureStatus } from "@/core/visuals/lib/visual-texture";
+import { IVisualTextureFile, IVisualTextureStatus } from "@/core/visuals/lib/visual-texture";
 import { IVisualModelViews } from "@/core/visuals/lib/visual-views";
 import { IOpenVisual, VisualLoadService } from "@/core/visuals/services/visual-load.service";
 import { AsyncState } from "@/lib/async-state";
@@ -63,7 +62,7 @@ export class SequencerService implements IVisualInspection {
   }
 
   @Computed()
-  public get textures(): ReadonlyMap<number, Texture> {
+  public get textures(): ReadonlyMap<number, IVisualTextureFile> {
     return this.loadService.textures;
   }
 
@@ -89,7 +88,7 @@ export class SequencerService implements IVisualInspection {
   }
 
   @Computed()
-  public get bumps(): ReadonlyMap<number, IVisualBumpTextures> {
+  public get bumps(): ReadonlyMap<number, IVisualBumpFiles> {
     return this.loadService.bumps;
   }
 

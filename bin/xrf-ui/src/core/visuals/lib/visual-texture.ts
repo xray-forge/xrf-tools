@@ -38,6 +38,19 @@ export interface IVisualTextureStatus {
   reason: Nullable<string>;
 }
 
+/**
+ * One texture file a model is drawn with, as it was read.
+ */
+export interface IVisualTextureFile {
+  /** Engine path, so a file read once is uploaded once however many submeshes name it. */
+  logicalPath: string;
+  bytes: ArrayBuffer;
+  /** Whether those bytes are the backend's picture of a layout three.js refused, rather than the file. */
+  isDecoded: boolean;
+  /** Whether the alpha has to survive the upload, which the surfaces drawn with it decide. */
+  isAlphaRead: boolean;
+}
+
 /** A submesh texture whose bytes can be fetched, and the located file to fetch them from. */
 export interface ILoadableTexture {
   submeshIndex: number;

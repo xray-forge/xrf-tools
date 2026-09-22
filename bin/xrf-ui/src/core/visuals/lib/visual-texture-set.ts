@@ -1,17 +1,16 @@
-import { Texture } from "three";
-
 import { transformError } from "@/core/error/lib";
 import { assetsRawCommands } from "@/core/ipc/commands/assets-raw";
 import { visualsRawCommands } from "@/core/ipc/commands/visuals-raw";
 import { SelectedVisualDescription } from "@/core/ipc/types/xrf-app";
+import { readDdsFile } from "@/core/render/lib/dds";
 import { IRenderSurface } from "@/core/render/lib/surface/render-surface";
-import { createDdsTexture, createDecodedTexture } from "@/core/render/lib/texture/render-texture";
-import { ILoadableBump, IVisualBumpStatus, IVisualBumpTextures, toLoadableBumps } from "@/core/visuals/lib/visual-bump";
+import { ILoadableBump, IVisualBumpFiles, IVisualBumpStatus, toLoadableBumps } from "@/core/visuals/lib/visual-bump";
 import { describeVisualSource } from "@/core/visuals/lib/visual-source";
 import { toAlphaTexturePaths } from "@/core/visuals/lib/visual-surface";
 import {
   EVisualTextureState,
   ILoadableTexture,
+  IVisualTextureFile,
   IVisualTextureStatus,
   toInitialTextureState,
   toLoadableTextures,
@@ -27,9 +26,9 @@ interface IVisualTextureRead {
   reason: Nullable<string>;
 }
 
-/** One half of a bump pair after upload: the texture when it made it, and what to report either way. */
+/** One half of a bump pair once read: the file when three.js will take it, and what to report either way. */
 interface IVisualBumpHalf {
-  texture: Nullable<Texture>;
+  file: Nullable<IVisualTextureFile>;
   state: EVisualTextureState;
   reason: Nullable<string>;
 }
@@ -41,12 +40,9 @@ export class VisualTextureSet {
   /**
    * Prepares textures inside the caller's cancellable flow.
    *
-   * Delegate with `yield*`: cancellation during reads skips texture creation, while cancellation during fallback
-   * decoding releases its late results. A successful return transfers disposal to the caller without another yield.
-   *
    * @param selected - Description whose resolved roots and logical paths address the reads.
    * @param surfaces - Material state per submesh, deciding which base textures must retain alpha.
-   * @returns The prepared set, to publish with geometry and dispose when replaced.
+   * @returns What was read, to publish with the geometry it belongs to.
    */
   public static *load(
     selected: SelectedVisualDescription,
@@ -56,7 +52,7 @@ export class VisualTextureSet {
     const loaded: VisualTextureSet = new VisualTextureSet();
     const reads: Map<string, IVisualTextureRead> = yield* call(loaded.readTextureFiles(selected));
 
-    loaded.uploadTextures(selected, surfaces, reads);
+    loaded.resolveTextures(selected, surfaces, reads);
 
     loaded.log.info(`Loaded ${reads.size} texture files in:`, formatDuration(timer.lap()));
 
@@ -65,46 +61,26 @@ export class VisualTextureSet {
       .filter((status) => status.state === EVisualTextureState.UNSUPPORTED_FORMAT)
       .map((status) => status.submeshIndex);
 
-    let transferred: boolean = false;
-    let decoding: Promise<void> = Promise.resolve();
+    if (declined.length) {
+      yield* call(loaded.decodeTextures(selected, declined));
 
-    try {
-      if (declined.length) {
-        decoding = loaded.decodeTextures(selected, declined);
-
-        yield* call(decoding);
-
-        loaded.log.info(
-          `Processed texture fallbacks for ${declined.length} submeshes in:`,
-          formatDuration(timer.lap())
-        );
-      }
-
-      transferred = true;
-
-      return loaded;
-    } finally {
-      if (!transferred) {
-        // Decoding can still create textures after cancellation. Release only after every fallback has settled.
-        void decoding.then(
-          () => loaded.dispose(),
-          () => loaded.dispose()
-        );
-      }
+      loaded.log.info(`Processed texture fallbacks for ${declined.length} submeshes in:`, formatDuration(timer.lap()));
     }
+
+    return loaded;
   }
 
   private readonly log: Logger = new Logger(__MODULE_NAME__);
 
-  private readonly textureMap: Map<number, Texture> = new Map();
+  private readonly textureMap: Map<number, IVisualTextureFile> = new Map();
   private readonly textureStatusMap: Map<number, IVisualTextureStatus> = new Map();
-  private readonly bumpMap: Map<number, IVisualBumpTextures> = new Map();
+  private readonly bumpMap: Map<number, IVisualBumpFiles> = new Map();
   private readonly bumpStatusMap: Map<number, IVisualBumpStatus> = new Map();
 
   /**
-   * @returns Prepared base textures by submesh index; submeshes can share one texture.
+   * @returns Base files by submesh index; submeshes can share one file.
    */
-  public get textures(): ReadonlyMap<number, Texture> {
+  public get textures(): ReadonlyMap<number, IVisualTextureFile> {
     return this.textureMap;
   }
 
@@ -118,7 +94,7 @@ export class VisualTextureSet {
   /**
    * @returns Complete bump pairs by submesh index, including resolved dummy pairs.
    */
-  public get bumps(): ReadonlyMap<number, IVisualBumpTextures> {
+  public get bumps(): ReadonlyMap<number, IVisualBumpFiles> {
     return this.bumpMap;
   }
 
@@ -132,29 +108,7 @@ export class VisualTextureSet {
   private constructor() {}
 
   /**
-   * Releases each distinct texture once after the owner stops presenting this set.
-   */
-  public dispose(): void {
-    const uploaded: Set<Texture> = new Set(this.textureMap.values());
-
-    for (const pair of this.bumpMap.values()) {
-      uploaded.add(pair.bump);
-      uploaded.add(pair.companion);
-    }
-
-    for (const texture of uploaded) {
-      texture.dispose();
-    }
-  }
-
-  /**
    * Read every located texture file of a visual, in parallel, without decoding any of them.
-   *
-   * Once per **file** rather than once per submesh that names it: a model whose submeshes share a texture used to read
-   * and upload it once each, which costs an archive read and a gpu upload for a file already in hand.
-   *
-   * A failure is a returned reason rather than a throw: one texture that cannot be read is a submesh drawn plain, not
-   * a model that fails to open.
    *
    * @param selected - Visual whose textures should be read.
    * @returns Each distinct file's bytes, or the reason there are none, by logical path.
@@ -199,13 +153,13 @@ export class VisualTextureSet {
   }
 
   /**
-   * Decode and upload what was read, and say what became of every submesh's reference.
+   * Decide what each submesh is drawn from, and say what became of its reference.
    *
    * @param selected - Visual the textures belong to.
    * @param surfaces - Material state per submesh index, which decides whether a file's alpha has to survive upload.
    * @param reads - What each texture read produced.
    */
-  private uploadTextures(
+  private resolveTextures(
     selected: SelectedVisualDescription,
     surfaces: ReadonlyMap<number, IRenderSurface>,
     reads: Map<string, IVisualTextureRead>
@@ -218,8 +172,9 @@ export class VisualTextureSet {
       });
     }
 
-    // One upload per file, shared by every submesh naming it.
-    const uploads: Map<string, Nullable<Texture>> = new Map();
+    // One answer per file, shared by every submesh naming it: whether three.js takes a layout is a property
+    // of the file, and asking twice would say the same thing twice.
+    const taken: Map<string, Nullable<IVisualTextureFile>> = new Map();
     // Per file rather than per submesh, because the upload is: a DXT1 file drawn by a cut-out surface has to keep the
     // alpha bit its blocks carry, and one upload serves every submesh naming it.
     const alpha: ReadonlySet<string> = toAlphaTexturePaths(surfaces, selected.dependencies.textures);
@@ -237,53 +192,53 @@ export class VisualTextureSet {
         continue;
       }
 
-      if (!uploads.has(logicalPath)) {
-        // A base texture is a picture, so it is decoded from sRGB; whether its alpha survives is the surface's answer.
-        uploads.set(
+      if (!taken.has(logicalPath)) {
+        const isAlphaRead: boolean = alpha.has(logicalPath);
+
+        // A base texture is a picture, so it is read as sRGB where it is uploaded; whether its alpha survives
+        // is the surface's answer, and it travels with the file because only this side knows the surfaces.
+        taken.set(
           logicalPath,
-          createDdsTexture(read.bytes, { isAlphaRead: alpha.has(logicalPath), isColor: true }).texture
+          readDdsFile(read.bytes, isAlphaRead).file
+            ? { bytes: read.bytes, isAlphaRead, isDecoded: false, logicalPath }
+            : null
         );
       }
 
-      const uploaded: Nullable<Texture> = uploads.get(logicalPath) ?? null;
+      const file: Nullable<IVisualTextureFile> = taken.get(logicalPath) ?? null;
 
-      if (uploaded) {
-        this.textureMap.set(submeshIndex, uploaded);
+      if (file) {
+        this.textureMap.set(submeshIndex, file);
       }
 
       this.textureStatusMap.set(submeshIndex, {
         reason: null,
-        state: uploaded ? EVisualTextureState.APPLIED : EVisualTextureState.UNSUPPORTED_FORMAT,
+        state: file ? EVisualTextureState.APPLIED : EVisualTextureState.UNSUPPORTED_FORMAT,
         submeshIndex,
       });
     }
 
-    this.uploadBumps(selected, reads, uploads);
+    this.resolveBumps(selected, reads, taken);
   }
 
   /**
-   * Upload every complete bump pair, sharing uploads with the base textures and between submeshes.
-   *
-   * A pair lands only when both halves uploaded: the engine samples both every texel, so half a pair shades nothing,
-   * while each half still reports its own outcome so the panel can say which one failed. The renderer's own loader is
-   * the only decoder here; a bump in a layout it refuses stays unshaded rather than going through the png fallback,
-   * whose single image would lose the mip chain a bump relies on at distance.
+   * Resolve every complete bump pair, sharing answers with the base textures and between submeshes.
    *
    * @param selected - Visual the materials belong to.
    * @param reads - What each texture read produced.
-   * @param uploads - Uploads so far by logical path, shared so a file read once is uploaded once.
+   * @param taken - What was decided per file so far, shared so a file read once is decided once.
    */
-  private uploadBumps(
+  private resolveBumps(
     selected: SelectedVisualDescription,
     reads: Map<string, IVisualTextureRead>,
-    uploads: Map<string, Nullable<Texture>>
+    taken: Map<string, Nullable<IVisualTextureFile>>
   ): void {
     for (const loadable of toLoadableBumps(selected.dependencies.textures, selected.materials)) {
-      const bump: IVisualBumpHalf = this.uploadBumpHalf(loadable.bump, reads, uploads);
-      const companion: IVisualBumpHalf = this.uploadBumpHalf(loadable.companion, reads, uploads);
+      const bump: IVisualBumpHalf = this.resolveBumpHalf(loadable.bump, reads, taken);
+      const companion: IVisualBumpHalf = this.resolveBumpHalf(loadable.companion, reads, taken);
 
-      if (bump.texture && companion.texture) {
-        this.bumpMap.set(loadable.submeshIndex, { bump: bump.texture, companion: companion.texture });
+      if (bump.file && companion.file) {
+        this.bumpMap.set(loadable.submeshIndex, { bump: bump.file, companion: companion.file });
       }
 
       this.bumpStatusMap.set(loadable.submeshIndex, {
@@ -296,43 +251,44 @@ export class VisualTextureSet {
   }
 
   /**
-   * Upload one half of a pair, or say why it is not on the gpu.
+   * Resolve one half of a pair, or say why nothing will draw it.
    *
    * @param logicalPath - The located file.
    * @param reads - What each texture read produced.
-   * @param uploads - Uploads so far by logical path, shared so a file read once is uploaded once.
-   * @returns The texture when it uploaded, and the state and reason either way.
+   * @param taken - What was decided per file so far, shared so a file read once is decided once.
+   * @returns The file when three.js will take it, and the state and reason either way.
    */
-  private uploadBumpHalf(
+  private resolveBumpHalf(
     logicalPath: string,
     reads: Map<string, IVisualTextureRead>,
-    uploads: Map<string, Nullable<Texture>>
+    taken: Map<string, Nullable<IVisualTextureFile>>
   ): IVisualBumpHalf {
     const read: Optional<IVisualTextureRead> = reads.get(logicalPath);
 
     if (!read || read.bytes === null) {
-      return { texture: null, state: EVisualTextureState.FAILED, reason: read?.reason ?? null };
+      return { file: null, reason: read?.reason ?? null, state: EVisualTextureState.FAILED };
     }
 
-    if (!uploads.has(logicalPath)) {
-      // No colour decode: a bump pair's channels are a packed normal, and decoding one would bend every vector in it.
-      uploads.set(logicalPath, createDdsTexture(read.bytes).texture);
+    if (!taken.has(logicalPath)) {
+      // No colour decode: a bump pair's channels are a packed normal, and decoding one would bend every vector
+      // in it. The file says which answer it wants, because the side that uploads cannot know.
+      taken.set(
+        logicalPath,
+        readDdsFile(read.bytes).file ? { bytes: read.bytes, isAlphaRead: false, isDecoded: false, logicalPath } : null
+      );
     }
 
-    const texture: Nullable<Texture> = uploads.get(logicalPath) ?? null;
+    const file: Nullable<IVisualTextureFile> = taken.get(logicalPath) ?? null;
 
     return {
-      texture,
-      state: texture ? EVisualTextureState.APPLIED : EVisualTextureState.UNSUPPORTED_FORMAT,
+      file,
       reason: null,
+      state: file ? EVisualTextureState.APPLIED : EVisualTextureState.UNSUPPORTED_FORMAT,
     };
   }
 
   /**
-   * Decode each file three.js declined once, sharing the fallback texture between submeshes naming it.
-   *
-   * A successful fallback is reported as decoded because it has no mip chain. A refused fallback leaves the original
-   * unsupported status for the materials panel to report.
+   * Ask the backend for a picture of each file three.js declined, shared between the submeshes naming it.
    *
    * @param selected - Visual the textures belong to, whose roots address the read.
    * @param declined - Submesh indices whose texture the renderer's own loader refused.
@@ -356,10 +312,10 @@ export class VisualTextureSet {
       Array.from(submeshesByPath, async ([logicalPath, submeshes]) => {
         try {
           const png: ArrayBuffer = await visualsRawCommands.readTexture(selected.roots, logicalPath);
-          const texture: Texture = await createDecodedTexture(png, { isColor: true });
+          const file: IVisualTextureFile = { bytes: png, isAlphaRead: false, isDecoded: true, logicalPath };
 
           for (const submeshIndex of submeshes) {
-            this.textureMap.set(submeshIndex, texture);
+            this.textureMap.set(submeshIndex, file);
             this.textureStatusMap.set(submeshIndex, {
               reason: null,
               state: EVisualTextureState.DECODED,

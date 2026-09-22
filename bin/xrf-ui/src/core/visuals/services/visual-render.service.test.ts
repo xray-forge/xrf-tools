@@ -1,9 +1,9 @@
 import { beforeAll, describe, expect, it, jest } from "@jest/globals";
 import { Container } from "@wirestate/core";
 import { makeAutoObservable, runInAction } from "@wirestate/mobx";
-import { Texture } from "three";
 
 import { BIND_POSE, IVisualRenderSource, VISUAL_RENDER_SOURCE } from "@/core/visuals/lib/render";
+import { IVisualTextureFile } from "@/core/visuals/lib/visual-texture";
 import { VisualViewService } from "@/core/visuals/services/visual-view.service";
 import { mockVisualModelViews } from "@/fixtures/mocks/visual.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
@@ -33,6 +33,10 @@ beforeAll(async () => {
 
   ({ VisualRenderService } = await import("./visual-render.service"));
 });
+
+function mockTextureFile(): IVisualTextureFile {
+  return { bytes: new ArrayBuffer(8), isAlphaRead: false, isDecoded: false, logicalPath: "textures\\wall" };
+}
 
 function mockSource(overrides: Partial<IVisualRenderSource> = {}): IVisualRenderSource {
   return makeAutoObservable<IVisualRenderSource>(
@@ -86,7 +90,7 @@ describe("VisualRenderService", () => {
 
   // A new model rebuilds the meshes, so everything hung on the old ones has to be hung on these.
   it("puts the textures back after the model is replaced", () => {
-    const texture: Texture = new Texture();
+    const texture: IVisualTextureFile = mockTextureFile();
     const source: IVisualRenderSource = mockSource({ textures: new Map([[0, texture]]) });
     const { service } = mockAttached(source);
 
@@ -103,7 +107,7 @@ describe("VisualRenderService", () => {
   // The loader publishes geometry and textures in one commit, so the two land in the same mobx batch: the meshes
   // have to be built before anything is hung on them.
   it("dresses a model published together with its textures", () => {
-    const texture: Texture = new Texture();
+    const texture: IVisualTextureFile = mockTextureFile();
     const model = mockVisualModelViews();
     const source: IVisualRenderSource = mockSource();
     const { service } = mockAttached(source);
@@ -139,6 +143,23 @@ describe("VisualRenderService", () => {
 
     expect(scene.setModel).not.toHaveBeenCalled();
     expect(scene.setLighting).not.toHaveBeenCalled();
+  });
+
+  it("leaves no canvas behind when it is detached", () => {
+    const container: HTMLElement = document.createElement("div");
+    const { service } = mockAttached(mockSource());
+
+    service.attach(container);
+
+    expect(container.querySelectorAll("canvas")).toHaveLength(1);
+
+    service.attach(container);
+
+    expect(container.querySelectorAll("canvas")).toHaveLength(1);
+
+    service.detach();
+
+    expect(container.querySelectorAll("canvas")).toHaveLength(0);
   });
 
   it("answers the viewport controls before anything is attached", () => {

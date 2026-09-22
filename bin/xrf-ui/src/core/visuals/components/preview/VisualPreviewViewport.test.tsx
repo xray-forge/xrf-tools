@@ -8,7 +8,7 @@ import { IVisualRenderSource, VISUAL_RENDER_SOURCE } from "@/core/visuals/lib/re
 import { mockVisualModelViews } from "@/fixtures/mocks/visual.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
-const createScene = jest.fn((_target: unknown, _model: unknown) => ({
+const createScene = jest.fn((_target: unknown, _element: unknown, _model: unknown) => ({
   applyBump: jest.fn(),
   applyTexture: jest.fn(),
   applyViewOptions: jest.fn(),
@@ -68,7 +68,8 @@ describe("VisualPreviewViewport", () => {
     const scene = getScene(0);
 
     expect(createScene).toHaveBeenCalledTimes(1);
-    expect(createScene).toHaveBeenCalledWith(expect.any(DomRenderTarget), null);
+    // Where to draw, what to listen to, and nothing open yet: on a page the first two are one element.
+    expect(createScene).toHaveBeenCalledWith(expect.any(DomRenderTarget), expect.any(HTMLCanvasElement), null);
     expect(scene.setModel.mock.calls).toEqual([[model]]);
     expect(scene.applyViewOptions).toHaveBeenCalledTimes(1);
     expect(scene.setDetailLevel.mock.calls).toEqual([[0]]);

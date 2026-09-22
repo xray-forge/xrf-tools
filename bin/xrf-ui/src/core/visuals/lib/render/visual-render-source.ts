@@ -1,7 +1,7 @@
 import { InjectionToken } from "@wirestate/core";
-import { Texture } from "three";
 
-import { IVisualBumpTextures } from "@/core/visuals/lib/visual-bump";
+import { IVisualBumpFiles } from "@/core/visuals/lib/visual-bump";
+import { IVisualTextureFile } from "@/core/visuals/lib/visual-texture";
 import { IVisualModelViews } from "@/core/visuals/lib/visual-views";
 import { Nullable } from "@/lib/types/general";
 
@@ -27,10 +27,10 @@ export const NO_HIDDEN_BONES: ReadonlySet<number> = new Set();
 export interface IVisualRenderSource {
   /** What is open, or null when nothing is. */
   model: Nullable<IVisualModelViews>;
-  /** Loaded textures by submesh index, applied as they arrive. */
-  textures: ReadonlyMap<number, Texture>;
-  /** Loaded bump pairs by submesh index, shaded as they arrive. */
-  bumps: ReadonlyMap<number, IVisualBumpTextures>;
+  /** Texture files by submesh index, uploaded and applied by whichever side draws. */
+  textures: ReadonlyMap<number, IVisualTextureFile>;
+  /** Bump pair files by submesh index, shaded as they arrive. */
+  bumps: ReadonlyMap<number, IVisualBumpFiles>;
   /** How the model stands, absent on a surface that plays nothing. */
   pose?: IVisualPose;
   /** Joint to mark, already resolved to a position, absent on a surface that marks none. */

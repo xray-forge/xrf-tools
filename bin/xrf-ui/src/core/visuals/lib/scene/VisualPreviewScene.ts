@@ -1,18 +1,21 @@
 import { DataTexture, PerspectiveCamera, Scene, Texture } from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
-import { DomRenderTarget } from "@/core/render/lib/frame/dom-render-target";
 import { IRenderFrameCost } from "@/core/render/lib/frame/render-frame-cost";
 import { TFrameRateLimit } from "@/core/render/lib/frame/render-frame-limit";
 import { TRenderCostReporter } from "@/core/render/lib/frame/render-reporter";
+import { IRenderTarget } from "@/core/render/lib/frame/render-target";
 import { RenderViewport } from "@/core/render/lib/frame/render-viewport";
 import { IRenderLighting } from "@/core/render/lib/lighting/render-lighting";
 import { RenderPreviewLighting } from "@/core/render/lib/lighting/RenderPreviewLighting";
-import { IVisualBumpTextures } from "@/core/visuals/lib/visual-bump";
+import { createDdsTexture, createDecodedTexture } from "@/core/render/lib/texture/render-texture";
+import { TRenderInputElement } from "@/core/render/lib/worker/render-proxy-element";
+import { IVisualBumpFiles } from "@/core/visuals/lib/visual-bump";
+import { IVisualTextureFile } from "@/core/visuals/lib/visual-texture";
 import { IVisualModelViews } from "@/core/visuals/lib/visual-views";
 import { bindDragCursor } from "@/lib/media/drag-cursor";
 import { toDolliedPosition } from "@/lib/media/orbit-dolly";
-import { Nullable } from "@/lib/types/general";
+import { Nullable, Optional } from "@/lib/types/general";
 
 import { DEFAULT_VISUAL_PREVIEW_SCENE_CONFIG, IVisualPreviewSceneConfig } from "./scene-config";
 import { DEFAULT_VISUAL_LIGHTING } from "./visual-lighting";
@@ -48,6 +51,10 @@ export class VisualPreviewScene {
   private views: Nullable<IVisualModelViews> = null;
   /** How far down its collapse chain every mesh is currently drawing, 0 being full detail. */
   private detail: number = 0;
+  /** What this scene uploaded, by the file it came from, so a file named twice is uploaded once. */
+  private readonly uploaded: Map<string, Texture> = new Map();
+  /** Which model the uploads belong to, so a decode landing after the next model is dropped. */
+  private generation: number = 0;
   /** Whether the camera has ever been fitted to anything in this scene. */
   private hasFramed: boolean = false;
   /** Whether the last fit was measured against a viewport that had no size yet. */
@@ -71,7 +78,8 @@ export class VisualPreviewScene {
   }
 
   public constructor(
-    target: DomRenderTarget,
+    target: IRenderTarget,
+    element: TRenderInputElement,
     model: Nullable<IVisualModelViews>,
     config: IVisualPreviewSceneConfig = DEFAULT_VISUAL_PREVIEW_SCENE_CONFIG
   ) {
@@ -84,7 +92,7 @@ export class VisualPreviewScene {
       onResized: () => this.applyUnmeasuredFit(),
     });
 
-    this.controls = new OrbitControls(this.camera, target.canvas);
+    this.controls = new OrbitControls(this.camera, element as HTMLElement);
     this.controls.enableDamping = true;
 
     this.checker = createCheckerTexture(config);
@@ -93,7 +101,7 @@ export class VisualPreviewScene {
     this.highlight = new VisualPreviewHighlight(this.scene, config);
 
     this.setModel(model);
-    this.unbindDragCursor = bindDragCursor(this.controls, target.canvas);
+    this.unbindDragCursor = bindDragCursor(this.controls, element);
   }
 
   /**
@@ -172,23 +180,99 @@ export class VisualPreviewScene {
   }
 
   /**
-   * Draws one of the model's submeshes with a texture, borrowing it from whoever loaded it.
+   * Draws one of the model's submeshes with a texture, uploaded from the file that was read for it.
    *
    * @param submeshIndex - Index the submesh reports, which is what the backend resolved against.
-   * @param texture - Uploaded texture to draw with.
+   * @param file - The texture file, which this scene uploads for its own context.
    */
-  public applyTexture(submeshIndex: number, texture: Texture): void {
-    this.model?.applyTexture(submeshIndex, texture);
+  public applyTexture(submeshIndex: number, file: IVisualTextureFile): void {
+    const generation: number = this.generation;
+
+    // A layout three.js refuses arrives as the backend's picture instead, and decoding one is asynchronous.
+    if (file.isDecoded) {
+      void this.uploadDecoded(file).then((texture: Nullable<Texture>) => {
+        if (texture && generation === this.generation) {
+          this.model?.applyTexture(submeshIndex, texture);
+        }
+      });
+
+      return;
+    }
+
+    const texture: Nullable<Texture> = this.upload(file, true);
+
+    if (texture) {
+      this.model?.applyTexture(submeshIndex, texture);
+    }
   }
 
   /**
-   * Shades one of the model's submeshes with its bump pair, borrowing both from whoever loaded them.
+   * Shades one of the model's submeshes with its bump pair, uploaded from the files read for it.
    *
    * @param submeshIndex - Index the submesh reports, which is what the backend resolved against.
-   * @param textures - The uploaded pair.
+   * @param files - The pair as it was read.
    */
-  public applyBump(submeshIndex: number, textures: IVisualBumpTextures): void {
-    this.model?.applyBump(submeshIndex, textures);
+  public applyBump(submeshIndex: number, files: IVisualBumpFiles): void {
+    const bump: Nullable<Texture> = this.upload(files.bump, false);
+    const companion: Nullable<Texture> = this.upload(files.companion, false);
+
+    // Both halves or neither: the engine samples the pair every texel, and half of it shades nothing.
+    if (bump && companion) {
+      this.model?.applyBump(submeshIndex, { bump, companion });
+    }
+  }
+
+  /**
+   * Uploads one file for this scene's own context, or hands back what it uploaded for it before.
+   *
+   * @param file - The file as it was read.
+   * @param isColor - Whether it holds srgb values rather than packed ones.
+   * @returns The texture, or null for a layout this context will not take.
+   */
+  private upload(file: IVisualTextureFile, isColor: boolean): Nullable<Texture> {
+    const held: Optional<Texture> = this.uploaded.get(file.logicalPath);
+
+    if (held) {
+      return held;
+    }
+
+    // Two different questions: whether the alpha has to survive is the surfaces' answer and travels with the
+    // file, while whether the values are colour is what is being drawn - a base is a picture, a bump pair is a
+    // packed normal that decoding would bend every vector of.
+    const texture: Nullable<Texture> = createDdsTexture(file.bytes, { isAlphaRead: file.isAlphaRead, isColor }).texture;
+
+    if (texture) {
+      this.uploaded.set(file.logicalPath, texture);
+    }
+
+    return texture;
+  }
+
+  /**
+   * Uploads the backend's picture of a layout three.js refused.
+   *
+   * @param file - The decoded file.
+   * @returns The texture, or null when even the picture would not upload.
+   */
+  private async uploadDecoded(file: IVisualTextureFile): Promise<Nullable<Texture>> {
+    const held: Optional<Texture> = this.uploaded.get(file.logicalPath);
+
+    if (held) {
+      return held;
+    }
+
+    const texture: Texture = await createDecodedTexture(file.bytes, { isColor: true });
+
+    // Another model arrived while this decoded, and its uploads were released without this one in them.
+    if (this.uploaded.has(file.logicalPath)) {
+      texture.dispose();
+
+      return this.uploaded.get(file.logicalPath) as Texture;
+    }
+
+    this.uploaded.set(file.logicalPath, texture);
+
+    return texture;
   }
 
   /**
@@ -298,6 +382,15 @@ export class VisualPreviewScene {
    * Take the current model off the scene and free everything it owns.
    */
   private clearModel(): void {
+    this.generation += 1;
+
+    // Released here because they were made here: a texture belongs to the context that uploaded it, and the
+    // side that read the files has no gpu memory to answer for.
+    for (const texture of this.uploaded.values()) {
+      texture.dispose();
+    }
+
+    this.uploaded.clear();
     this.model?.dispose();
     this.model = null;
     this.views = null;

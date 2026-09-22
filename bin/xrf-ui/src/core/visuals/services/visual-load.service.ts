@@ -1,6 +1,5 @@
 import { Injectable, OnDeactivation } from "@wirestate/core";
-import { BoundAction, Computed, Observable, runInAction } from "@wirestate/mobx";
-import { Texture } from "three";
+import { BoundAction, Computed, Observable, RefObservable, runInAction } from "@wirestate/mobx";
 
 import { transformError } from "@/core/error/lib";
 import { visualsCommands } from "@/core/ipc/commands/visuals";
@@ -9,10 +8,10 @@ import { Session } from "@/core/ipc/session";
 import { SelectedVisualDescription, SessionSnapshot, VisualSource } from "@/core/ipc/types/xrf-app";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { IRenderSurface } from "@/core/render/lib/surface/render-surface";
-import { IVisualBumpStatus, IVisualBumpTextures } from "@/core/visuals/lib/visual-bump";
+import { IVisualBumpFiles, IVisualBumpStatus } from "@/core/visuals/lib/visual-bump";
 import { describeVisualSource } from "@/core/visuals/lib/visual-source";
 import { createVisualSurfaces } from "@/core/visuals/lib/visual-surface";
-import { IVisualTextureStatus } from "@/core/visuals/lib/visual-texture";
+import { IVisualTextureFile, IVisualTextureStatus } from "@/core/visuals/lib/visual-texture";
 import { VisualTextureSet } from "@/core/visuals/lib/visual-texture-set";
 import { createVisualViews, IVisualModelViews } from "@/core/visuals/lib/visual-views";
 import { AsyncState } from "@/lib/async-state";
@@ -39,9 +38,6 @@ export class VisualLoadService {
 
   private readonly session: Session = new Session(visualsCommands.closeModel);
 
-  /** Prepared textures whose ownership transferred to the current view. */
-  private textureSet: Nullable<VisualTextureSet> = null;
-
   @Observable()
   public visual: AsyncState<IOpenVisual> = AsyncState.idle();
 
@@ -55,23 +51,20 @@ export class VisualLoadService {
   }
 
   /**
-   * Uploaded textures by submesh index, for a viewport to apply.
+   * Texture files by submesh index, for whichever side draws to upload.
    */
-  @Observable()
-  public textures: ReadonlyMap<number, Texture> = new Map();
+  @RefObservable()
+  public textures: ReadonlyMap<number, IVisualTextureFile> = new Map();
 
   /** What became of each submesh's texture, so a panel can report it rather than leaving a submesh unexplained. */
   @Observable()
   public textureStatuses: ReadonlyMap<number, IVisualTextureStatus> = new Map();
 
   /**
-   * Uploaded bump pairs by submesh index, for a viewport to shade with.
-   *
-   * Only complete pairs: the engine's sampler reads both every texel, so one half is nothing to shade with. A `dummy`
-   * outcome is a complete pair too, of the real dummy files, so the preview shows the flat surface the game shows.
+   * Bump pairs by submesh index, for whichever side draws to shade with.
    */
-  @Observable()
-  public bumps: ReadonlyMap<number, IVisualBumpTextures> = new Map();
+  @RefObservable()
+  public bumps: ReadonlyMap<number, IVisualBumpFiles> = new Map();
 
   /** What became of each submesh's bump inputs, each half on its own. */
   @Observable()
@@ -104,9 +97,6 @@ export class VisualLoadService {
 
   /**
    * Load a visual and put it on screen.
-   *
-   * Records a failure as state rather than throwing: a caller that wants to report it reads the error, and a caller
-   * that does not is not obliged to catch.
    *
    * @param source - Visual source to open.
    * @param roots - Roots the source and its references are searched in.
@@ -228,35 +218,22 @@ export class VisualLoadService {
 
     const loaded: VisualTextureSet = yield* VisualTextureSet.load(selected, surfaces);
 
-    let published: boolean = false;
+    // Geometry, textures and their statuses land together, so the scene builds a mesh and dresses it in the same
+    // commit. Published separately, a model showed untextured for as long as its textures took to arrive - brief,
+    // and exactly long enough to read as grey plastic.
+    this.releaseTextures();
 
-    try {
-      // Geometry, textures and their statuses land together, so the scene builds a mesh and dresses it in the same
-      // commit. Published separately, a model showed untextured for as long as its textures took to arrive - brief, and
-      // exactly long enough to read as grey plastic.
-      this.releaseTextures();
-
-      this.visual = this.visual.asReady({ selected: snapshot, views });
-      this.textures = loaded.textures;
-      this.textureStatuses = loaded.statuses;
-      this.bumps = loaded.bumps;
-      this.bumpStatuses = loaded.bumpStatuses;
-
-      this.textureSet = loaded;
-      published = true;
-    } finally {
-      if (!published) {
-        loaded.dispose();
-      }
-    }
+    this.visual = this.visual.asReady({ selected: snapshot, views });
+    this.textures = loaded.textures;
+    this.textureStatuses = loaded.statuses;
+    this.bumps = loaded.bumps;
+    this.bumpStatuses = loaded.bumpStatuses;
   }
 
   /**
-   * Releases the texture set owned by the current view.
+   * Drops what the current view was drawn from.
    */
   private releaseTextures(): void {
-    this.textureSet?.dispose();
-    this.textureSet = null;
     this.textures = new Map();
     this.bumps = new Map();
   }
