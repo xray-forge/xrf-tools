@@ -1,4 +1,4 @@
-import { Color, PerspectiveCamera, Scene, WebGLRenderer } from "three";
+import { Color, PerspectiveCamera, Scene, Vector2, WebGLRenderer } from "three";
 
 import { Nullable } from "@/lib/types/general";
 
@@ -63,6 +63,8 @@ export class RenderViewport {
   private frameHandle: number = 0;
   private lastFrame: Nullable<number> = null;
   private isResizePending: boolean = false;
+  /** Where the drawing buffer's size is read into, kept rather than allocated for every report. */
+  private readonly drawnSize: Vector2 = new Vector2();
   private renderedWidth: number = 0;
   private renderedHeight: number = 0;
 
@@ -109,7 +111,11 @@ export class RenderViewport {
   public get frameCost(): IRenderFrameCost {
     const { calls, triangles } = this.renderer.info.render;
 
+    this.renderer.getDrawingBufferSize(this.drawnSize);
+
     return {
+      drawnHeight: this.drawnSize.y,
+      drawnWidth: this.drawnSize.x,
       draws: calls,
       drawTime: this.timer.drawTime,
       frameTime: this.timer.frameTime,

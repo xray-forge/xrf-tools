@@ -24,10 +24,16 @@ export interface ILevelStats {
   bytes: number;
   /** Mean milliseconds one arriving sector costs to put into the scene. */
   sceneTime: number;
+  /** Width of the buffer the frame was drawn into, in device pixels. */
+  drawnWidth: number;
+  /** Height of the same buffer. Everything above is paid for over these two numbers. */
+  drawnHeight: number;
 }
 
 export const EMPTY_LEVEL_STATS: ILevelStats = {
   bytes: 0,
+  drawnHeight: 0,
+  drawnWidth: 0,
   drawTime: 0,
   draws: 0,
   frameTime: 0,
@@ -58,6 +64,8 @@ export interface ILevelHeld {
 export function measureLevelStats(held: ILevelHeld, frame: IRenderFrameCost, sceneTime: number = 0): ILevelStats {
   return {
     bytes: held.bytes,
+    drawnHeight: frame.drawnHeight,
+    drawnWidth: frame.drawnWidth,
     drawTime: frame.drawTime,
     draws: frame.draws,
     frameTime: frame.frameTime,

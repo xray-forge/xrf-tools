@@ -15,4 +15,8 @@ export interface IRenderFrameCost {
   draws: number;
   /** Triangles the last frame drew, instanced geometry counted once for every place it stood. */
   triangles: number;
+  /** Width of the buffer drawn into, in device pixels rather than the css pixels the canvas occupies. */
+  drawnWidth: number;
+  /** Height of the same buffer, which with the width is what every per-pixel cost is paid over. */
+  drawnHeight: number;
 }

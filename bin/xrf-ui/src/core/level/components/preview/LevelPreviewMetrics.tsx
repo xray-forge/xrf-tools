@@ -23,6 +23,7 @@ export function LevelPreviewMetrics({
       <div>{`${stats.framesPerSecond.toFixed(0)} fps · ${stats.frameTime.toFixed(1)} ms`}</div>
       <div>{`${stats.draws} draws · ${stats.triangles.toLocaleString()} tris`}</div>
       <div>{`${stats.sectors} sectors · ${formatBytes(stats.bytes)}`}</div>
+      <div>{`${stats.drawnWidth} × ${stats.drawnHeight}`}</div>
     </RenderViewportOverlay>
   );
 }

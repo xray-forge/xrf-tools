@@ -8,6 +8,8 @@ import { EMPTY_LEVEL_STATS, ILevelStats, measureLevelStats } from "./level-stats
 function frameCost(overrides: Partial<IRenderFrameCost> = {}): IRenderFrameCost {
   return {
     drawTime: 0,
+    drawnHeight: 0,
+    drawnWidth: 0,
     draws: 0,
     frameTime: 0,
     framesPerSecond: 0,
@@ -39,6 +41,18 @@ describe("level stats", () => {
 
     expect(stats.draws).toBe(7);
     expect(stats.triangles).toBe(120);
+  });
+
+  // The size a frame was drawn at is what every per-pixel cost above it was paid over, so it travels with them
+  // rather than being asked of the canvas by whoever draws the readout - which on a worker is a different thread.
+  it("reports the resolution the frame was drawn at", () => {
+    const stats: ILevelStats = measureLevelStats(
+      { bytes: 0, sectors: 0 },
+      frameCost({ drawnHeight: 1440, drawnWidth: 2560 })
+    );
+
+    expect(stats.drawnWidth).toBe(2560);
+    expect(stats.drawnHeight).toBe(1440);
   });
 
   it("reports the frame timing the viewport measured", () => {
