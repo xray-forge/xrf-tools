@@ -108,6 +108,18 @@ impl SectorVertexArrays {
     }))
   }
 
+  /// The extent the positions a run of indices reaches, or `None` when it reaches none.
+  pub fn get_indexed_bounds(&self, indices: &[u32]) -> Option<VisualBounds> {
+    let positions: &[[f32; 3]] = self.positions.as_chunks::<3>().0;
+
+    VisualBounds::from_positions(
+      indices
+        .iter()
+        .filter_map(move |index| positions.get(*index as usize))
+        .map(|[x, y, z]| Vector3d { x: *x, y: *y, z: *z }),
+    )
+  }
+
   /// Writes every declared array and the indices into the buffer, and says where each landed.
   pub fn write_into(&self, indices: &[u32], builder: &mut VisualBufferBuilder) -> SectorGeometry {
     SectorGeometry {

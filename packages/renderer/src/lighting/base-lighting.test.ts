@@ -44,5 +44,6 @@ describe("toBaseLightingConstants", () => {
 
     expect(constants.sunDirection).toEqual([0, -1, 0]);
     expect([constants.fogOffset, constants.fogScale]).toEqual([0, 0]);
+    expect(constants.isFogged).toBe(false);
   });
 });

@@ -27,6 +27,8 @@ export class RendererCameraRig {
   private readonly element: RenderProxyElement;
   private controller: IRendererCameraController;
   private kind: ERendererCameraController = ERendererCameraController.ORBIT;
+  /** The far plane the consumer asked for, which a shorter view distance brings in. */
+  private far: number;
   /** The view's size, for a controller made after the view was measured. */
   private width: number = 1;
   private height: number = 1;
@@ -37,6 +39,7 @@ export class RendererCameraRig {
   public constructor(element: RenderProxyElement) {
     this.element = element;
     this.controller = CAMERA_CONTROLLERS[this.kind](element);
+    this.far = this.controller.camera.far;
   }
 
   public get camera(): PerspectiveCamera {
@@ -61,6 +64,7 @@ export class RendererCameraRig {
     }
 
     this.controller.describe(camera);
+    this.far = camera.far;
   }
 
   /**
@@ -84,10 +88,20 @@ export class RendererCameraRig {
    * Advances the camera and brings its matrices up to date for the frame about to be drawn.
    *
    * @param delta - Seconds since the last frame.
+   * @param viewDistance - How far anything can be seen, which the far plane never reaches past.
    */
-  public update(delta: number): void {
+  public update(delta: number, viewDistance: number): void {
+    const { camera } = this.controller;
+    const far: number = Math.min(this.far, viewDistance);
+
     this.controller.update(delta);
-    this.controller.camera.updateMatrixWorld();
+
+    if (camera.far !== far) {
+      camera.far = far;
+      camera.updateProjectionMatrix();
+    }
+
+    camera.updateMatrixWorld();
   }
 
   public dispose(): void {

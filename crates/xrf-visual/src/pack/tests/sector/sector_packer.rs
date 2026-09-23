@@ -192,6 +192,44 @@ fn test_groups_drawables_by_the_shader_entry_that_dresses_them() {
 }
 
 #[test]
+fn test_bounds_each_section_by_the_vertices_it_draws() {
+  let run: LevelVisualsChunk = new_visuals(&[
+    new_hierarchy(&[1, 2]),
+    new_drawable(1, 0, 2, 0, 3),
+    new_drawable(2, 2, 2, 3, 3),
+  ]);
+  let table: LevelShadersChunk = new_shaders(&["", "def_shaders\\def_vertex/wall", "def_shaders\\def_vertex/floor"]);
+  let source = new_open_geometry(new_geometry());
+
+  let package: SectorPackage = SectorPacker::new(&run, Some(&table), &source).pack::<XRayByteOrder>(
+    0,
+    &new_composition(&run),
+    SectorAttributes::all(),
+  );
+  let centers: Vec<(f32, f32, f32)> = package
+    .description
+    .sections
+    .iter()
+    .map(|section| {
+      let center = &section
+        .bounds
+        .as_ref()
+        .expect("a section drawing vertices is bounded")
+        .bounding_sphere
+        .center;
+
+      (center.x, center.y, center.z)
+    })
+    .collect();
+
+  assert_eq!(
+    centers,
+    vec![(0.5, 0.0, -1.5), (0.5, 1.0, -3.5)],
+    "each around its own two vertices, not the sector's four"
+  );
+}
+
+#[test]
 fn test_leaves_out_a_drawable_whose_range_it_cannot_read() {
   let run: LevelVisualsChunk = new_visuals(&[
     new_hierarchy(&[1, 2]),

@@ -4,6 +4,7 @@ import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useMemo } from "react";
 
 import { LevelSunDescription } from "@/core/ipc/types/xrf-app";
+import { LEVEL_FOG_LIMITS } from "@/core/level/lib/lighting/level-fog";
 import { DEFAULT_LEVEL_LIGHTING, ILevelLighting } from "@/core/level/lib/lighting/level-lighting";
 import { toSunAngles } from "@/core/level/lib/lighting/level-sun";
 import { LevelLoadService } from "@/core/level/services";
@@ -12,7 +13,7 @@ import { RenderLightingControls } from "@/core/render/components/lighting";
 import { IRenderLighting } from "@/core/render/lib/lighting/render-lighting";
 import { EditorPanel, EditorPanelEmpty, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { formatPercent } from "@/lib/format/number";
+import { formatNumber, formatPercent } from "@/lib/format/number";
 
 interface ILevelLightingPanelProps extends BaseComponentProps {
   lighting: ILevelLighting;
@@ -60,6 +61,32 @@ export function LevelLightingPanel({
         <Button size={"small"} disabled={!angles} onClick={onUseLevelSun}>
           {angles ? "Use the level's own sun" : "This level names no sun"}
         </Button>
+      </EditorPanelSection>
+
+      <EditorPanelSection title={"Fog"}>
+        <RenderValueSlider
+          label={"Distance"}
+          value={lighting.fogDistance}
+          {...LEVEL_FOG_LIMITS.fogDistance}
+          format={(value: number) => `${value} m`}
+          onChange={(fogDistance: number) => set({ fogDistance })}
+        />
+
+        <RenderValueSlider
+          label={"Density"}
+          value={lighting.fogDensity}
+          {...LEVEL_FOG_LIMITS.fogDensity}
+          format={formatPercent}
+          onChange={(fogDensity: number) => set({ fogDensity })}
+        />
+
+        <RenderValueSlider
+          label={"Brightness"}
+          value={lighting.fogIntensity}
+          {...LEVEL_FOG_LIMITS.fogIntensity}
+          format={(value: number) => formatNumber(value, 2)}
+          onChange={(fogIntensity: number) => set({ fogIntensity })}
+        />
       </EditorPanelSection>
 
       <EditorPanelSection title={"Baked"}>

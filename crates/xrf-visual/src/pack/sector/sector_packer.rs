@@ -207,6 +207,7 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
 
     for (shader_id, gathering) in gathered_sections {
       sections.push(SectorSection {
+        bounds: arrays.get_indexed_bounds(&gathering.indices),
         draw: VisualDrawRange {
           count: gathering.indices.len() as u32,
           start: indices.len() as u32,

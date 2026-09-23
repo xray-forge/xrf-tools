@@ -13,7 +13,13 @@ export function toLevelSectorGeometry(views: ISectorViews): IRendererGeometry {
   return {
     ...toLevelGeometry(views.geometry),
     bounds: toLevelBounds(views.bounds),
-    groups: views.sections.map((section, slot: number) => ({ count: section.count, slot, start: section.start })),
+    // Each bounded on its own, which is what it is culled by.
+    groups: views.sections.map((section, slot: number) => ({
+      bounds: toLevelBounds(section.bounds),
+      count: section.count,
+      slot,
+      start: section.start,
+    })),
   };
 }
 

@@ -10,6 +10,8 @@ export interface IRendererGeometryGroup {
   count: number;
   /** Which of the object's surfaces draws it, by position in its list. */
   slot: number;
+  /** What the range's own vertices span, which it is culled by; measured by the renderer where left out. */
+  bounds?: IRendererBounds;
 }
 
 /**

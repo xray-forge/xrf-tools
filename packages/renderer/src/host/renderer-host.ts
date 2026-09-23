@@ -20,6 +20,7 @@ import { IRendererFrame } from "#/pass/renderer-frame";
 import { RendererOverlays } from "#/scene/overlay/renderer-overlays";
 import { RendererScene } from "#/scene/renderer-scene";
 import { RendererUniforms } from "#/uniforms/renderer-uniforms";
+import { CullView } from "#/visibility/cull-view";
 
 /**
  * Milliseconds a frame may spend uploading textures, which three would otherwise upload all at once in whichever frame
@@ -47,6 +48,8 @@ export class RendererHost {
   private readonly compiler: RendererSceneCompiler = new RendererSceneCompiler();
   private readonly stats: RendererFrameStats = new RendererFrameStats();
   private readonly drawingSize: Vector2 = new Vector2();
+  /** What the camera sees, which the scene is culled against before every frame. */
+  private readonly cullView: CullView = new CullView();
 
   /** Bumped by every start and stop, so a device coming up late can tell it was superseded. */
   private generation: number = 0;
@@ -286,7 +289,7 @@ export class RendererHost {
       this.rig.resize(width, height);
     }
 
-    this.rig.update(this.drawnAt === null ? 0 : (now - this.drawnAt) / 1000);
+    this.rig.update(this.drawnAt === null ? 0 : (now - this.drawnAt) / 1000, this.uniforms.viewDistance);
     this.drawnAt = now;
     this.uniforms.follow(this.rig.camera);
 
@@ -303,6 +306,8 @@ export class RendererHost {
 
     const startedAt: number = performance.now();
 
+    this.cullView.take(this.rig.camera);
+    this.scene.cull(this.cullView);
     this.graph.render(frame, device.inspector);
     this.stats.endFrame(performance.now() - startedAt, device);
 

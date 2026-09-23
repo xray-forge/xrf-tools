@@ -6,7 +6,7 @@ import { IRendererObject } from "#/contract/scene/renderer-object";
 import { IRendererSurface } from "#/contract/scene/renderer-surface";
 import { TRendererTextureSource } from "#/contract/scene/renderer-texture-source";
 import { SceneChangeQueue } from "#/scene/change/scene-change-queue";
-import { createRendererBufferGeometry } from "#/scene/geometry/renderer-buffer-geometry";
+import { SceneGeometry } from "#/scene/geometry/scene-geometry";
 import { KeyedUsers } from "#/scene/keyed-users";
 import { SceneObject } from "#/scene/object/scene-object";
 import { SceneObjectResolver } from "#/scene/object/scene-object-resolver";
@@ -19,6 +19,7 @@ import { SurfaceLibrary } from "#/scene/surface/surface-library";
 import { IDdsRefusal } from "#/texture/dds/dds-refusal";
 import { RendererTextures } from "#/texture/renderer-textures";
 import { RendererUniforms } from "#/uniforms/renderer-uniforms";
+import { CullView } from "#/visibility/cull-view";
 
 /**
  * Everything a consumer put, as the scenes the frame draws.
@@ -26,12 +27,18 @@ import { RendererUniforms } from "#/uniforms/renderer-uniforms";
  * drawing.
  */
 export class RendererScene {
-  /** What each pass draws. */
-  public readonly scenes: TPassRecord<Scene> = toPassRecord(() => new Scene());
+  /** What each pass draws. Its meshes keep their own matrices current, so three never walks them to. */
+  public readonly scenes: TPassRecord<Scene> = toPassRecord(() => {
+    const scene: Scene = new Scene();
+
+    scene.matrixWorldAutoUpdate = false;
+
+    return scene;
+  });
   public readonly textures: RendererTextures;
   public readonly skeletons: RendererSkeletons;
 
-  private readonly geometries: Map<string, BufferGeometry> = new Map();
+  private readonly geometries: Map<string, SceneGeometry> = new Map();
   private readonly surfaces: SurfaceLibrary;
   private readonly objects: Map<string, SceneObject> = new Map();
   private readonly geometryUsers: KeyedUsers<SceneObject> = new KeyedUsers();
@@ -72,6 +79,15 @@ export class RendererScene {
   /** Applies what became ready since the last frame, a budget of it at a time. */
   public advance(): void {
     this.changes.advance();
+  }
+
+  /**
+   * Shows what a view sees of every object and hides the rest, doing nothing for a view that has not moved.
+   *
+   * @param view - The view about to be drawn.
+   */
+  public cull(view: CullView): void {
+    this.objects.forEach((entry: SceneObject) => entry.cull(view));
   }
 
   /**
@@ -126,7 +142,7 @@ export class RendererScene {
   public putGeometry(key: string, geometry: IRendererGeometry): void {
     this.transact(() => {
       this.retireGeometry(key);
-      this.geometries.set(key, createRendererBufferGeometry(geometry));
+      this.geometries.set(key, new SceneGeometry(geometry));
       this.buildUsers(this.geometryUsers.get(key));
     });
   }
@@ -177,14 +193,17 @@ export class RendererScene {
   }
 
   public dispose(): void {
-    this.objects.forEach((entry: SceneObject) => entry.detach());
+    this.objects.forEach((entry: SceneObject) => {
+      entry.detach();
+      entry.owned.forEach((geometry: BufferGeometry) => geometry.dispose());
+    });
     this.objects.clear();
     this.changes.dispose();
     this.surfaces.dispose();
     this.geometryUsers.clear();
     this.surfaceUsers.clear();
     this.skeletonUsers.clear();
-    this.geometries.forEach((geometry: BufferGeometry) => geometry.dispose());
+    this.geometries.forEach((geometry: SceneGeometry) => geometry.dispose());
     this.geometries.clear();
     this.skeletons.dispose();
     this.textures.dispose();
@@ -226,10 +245,10 @@ export class RendererScene {
 
   /** A geometry no longer put under its key, disposed once the change replacing it applies. */
   private retireGeometry(key: string): void {
-    const geometry: Maybe<BufferGeometry> = this.geometries.get(key);
+    const geometry: Maybe<SceneGeometry> = this.geometries.get(key);
 
     if (geometry) {
-      this.changes.retireGeometry(geometry);
+      this.changes.retireGeometry(geometry.buffer);
     }
   }
 

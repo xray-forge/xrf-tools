@@ -50,6 +50,14 @@ export function toBaseLitColor(
   return select(settings.lit.greaterThan(0.5), toFinishedColor(color, point.position, uniforms), albedo);
 }
 
+/**
+ * @param uniforms - What the frame's shaders read.
+ * @returns Total fog as the frame shows it: what everything past the far plane would have come to.
+ */
+export function toFogColor(uniforms: RendererUniforms): Node<"vec3"> {
+  return toToneMapped(uniforms.lighting.fogColor, uniforms.settings.tonemapScale);
+}
+
 /** `hmodel` and `combine_1`: the hemisphere and ambient added to what the lights accumulated. */
 function toBaseColor(
   albedo: Node<"vec3">,

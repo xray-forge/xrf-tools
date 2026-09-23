@@ -63,6 +63,7 @@ export function mockSectorSurface(overrides: Partial<SectorSurface> = {}): Secto
  */
 export function mockSectorSection(overrides: Partial<SectorSection> = {}): SectorSection {
   return {
+    bounds: null,
     draw: { start: 0, count: 3 },
     drawables: [1],
     surface: mockSectorSurface(),

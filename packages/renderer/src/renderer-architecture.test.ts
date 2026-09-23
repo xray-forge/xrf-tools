@@ -10,11 +10,24 @@ const SOURCE: string = __dirname;
 
 /**
  * What each worker-side area may not import: every area sits on the ones below it, and none reaches up.
- * From the bottom: `uniforms`, `shader`, `material`, `scene`, `pass`, then `graph` and `capture`, and `host` over all.
+ * From the bottom: `visibility` and `uniforms`, `shader`, `material`, `scene`, `pass`, then `graph` and `capture`, and
+ * `host` over all.
  */
 const FORBIDDEN: Record<string, ReadonlyArray<string>> = {
   capture: ["client", "graph", "host"],
-  contract: ["capture", "device", "graph", "host", "material", "pass", "scene", "shader", "timing", "uniforms"],
+  contract: [
+    "capture",
+    "device",
+    "graph",
+    "host",
+    "material",
+    "pass",
+    "scene",
+    "shader",
+    "timing",
+    "uniforms",
+    "visibility",
+  ],
   device: ["client", "host"],
   graph: ["capture", "client", "host"],
   material: ["capture", "client", "device", "graph", "host", "pass", "scene"],
@@ -23,6 +36,7 @@ const FORBIDDEN: Record<string, ReadonlyArray<string>> = {
   shader: ["capture", "client", "device", "graph", "host", "material", "pass", "scene"],
   timing: ["capture", "client", "device", "graph", "host"],
   uniforms: ["capture", "client", "device", "graph", "host", "material", "pass", "scene", "shader"],
+  visibility: ["capture", "client", "device", "graph", "host", "material", "pass", "scene", "shader", "uniforms"],
 };
 
 /** Modules that build nodes without being shaders: uniforms, and the binding of textures to samplers. */

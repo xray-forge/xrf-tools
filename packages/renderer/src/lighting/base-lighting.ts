@@ -29,6 +29,8 @@ export interface IBaseLightingConstants {
   fogOffset: number;
   fogScale: number;
   fogColor: TRendererColor;
+  /** Whether there is fog, and so a distance past which it hides everything. */
+  isFogged: boolean;
 }
 
 /**
@@ -47,6 +49,7 @@ export function toBaseLightingConstants(lighting: IRendererLighting): IBaseLight
     fogColor: lighting.fog?.color ?? [0, 0, 0],
     fogOffset,
     fogScale,
+    isFogged: lighting.fog !== null,
     skyIrradiance: lighting.skyIrradiance,
     sunColor: lighting.sunColor,
     sunDirection: normalise(lighting.sunDirection),

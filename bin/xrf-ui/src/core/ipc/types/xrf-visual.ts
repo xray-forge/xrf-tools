@@ -72,6 +72,8 @@ export type SectorSection = {
   /** Drawables packed into this section, by their index in the visuals run. */
   drawables: Array<number>;
   draw: VisualDrawRange;
+  /** Extent its own vertices span, which it is culled by; absent when it reaches none. */
+  bounds: VisualBounds | null;
 };
 
 /** A drawable of a sector that produced no geometry, and why. */

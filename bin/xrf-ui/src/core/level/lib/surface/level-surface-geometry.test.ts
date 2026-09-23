@@ -18,6 +18,7 @@ import {
 
 function section(shaderId: number, drawables: number, triangleCount: number): ISectorSectionViews {
   return {
+    bounds: null,
     count: triangleCount * 3,
     drawables: Array.from({ length: drawables }, (_, index: number) => index),
     render: toLevelSurfaceRender(null),

@@ -9,7 +9,7 @@ import {
 } from "@xrf/renderer";
 import { createRendererWorkerStub, IRendererWorkerStub } from "@xrf/renderer/fixtures";
 
-import { LEVEL_NOON_FOG } from "@/core/level/lib/render/level-render-view";
+import { DEFAULT_LEVEL_FOG, toLevelRendererFog } from "@/core/level/lib/lighting/level-fog";
 import { ILevelPoint } from "@/core/level/lib/residency/level-residency";
 import { LevelLoadService } from "@/core/level/services/level-load.service";
 import { LevelViewService } from "@/core/level/services/level-view.service";
@@ -96,10 +96,15 @@ describe("LevelRenderService", () => {
   });
 
   // The game's noon closes the level in at 350 metres; off, a whole level is inspectable from anywhere in it.
-  it("draws the noon fog while the toolbar asks, and the sky as total fog", async () => {
+  it("draws the fog while the toolbar asks, as its controls set it", async () => {
     const { service, viewService } = await mockAttached();
 
-    expect(stub.take(ERendererRequest.LIGHTING).at(-1)?.lighting.fog).toEqual(LEVEL_NOON_FOG);
+    expect(stub.take(ERendererRequest.LIGHTING).at(-1)?.lighting.fog).toEqual(toLevelRendererFog(DEFAULT_LEVEL_FOG));
+
+    viewService.setLighting({ ...viewService.lighting, fogDistance: 800 });
+    await stub.flush();
+
+    expect(stub.take(ERendererRequest.LIGHTING).at(-1)?.lighting.fog?.distance).toBe(800);
 
     viewService.setOptions({ ...viewService.options, isFogged: false });
     await stub.flush();

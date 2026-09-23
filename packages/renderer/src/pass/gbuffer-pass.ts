@@ -21,7 +21,11 @@ export class GBufferPass implements IRendererScenePass {
     renderer.setClearColor(0x000000, 0);
     renderer.setRenderTarget(this.target);
     renderer.clear(true, true, false);
+    // In scene order, where an object's parts stand together and share their buffers from one draw to the next:
+    // sorted by depth, every draw rebinds them, and the CPU is what a frame waits on.
+    renderer.sortObjects = false;
     renderer.render(scenes[this.scene], camera);
+    renderer.sortObjects = true;
   }
 
   public dispose(): void {}

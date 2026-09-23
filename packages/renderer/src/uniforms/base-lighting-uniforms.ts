@@ -18,6 +18,8 @@ export class BaseLightingUniforms {
   public readonly fogOffset = uniform(0);
   public readonly fogScale = uniform(0);
   public readonly fogColor = uniform(new Vector3());
+  /** One while there is fog, zero without. */
+  public readonly fogged = uniform(0);
 
   private readonly sunDirectionWorld: Vector3 = new Vector3(0, -1, 0);
 
@@ -39,6 +41,7 @@ export class BaseLightingUniforms {
     this.sunSpecular.value = constants.sunSpecular;
     this.fogOffset.value = constants.fogOffset;
     this.fogScale.value = constants.fogScale;
+    this.fogged.value = constants.isFogged ? 1 : 0;
     this.sunDirectionWorld.set(...constants.sunDirection);
   }
 

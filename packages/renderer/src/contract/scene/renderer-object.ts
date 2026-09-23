@@ -1,3 +1,9 @@
+/** Floats one instance's transform takes. */
+export const RENDERER_FLOATS_PER_INSTANCE: number = 16;
+
+/** Floats one instance's hemisphere terms take. */
+export const RENDERER_HEMI_FLOATS_PER_INSTANCE: number = 2;
+
 /**
  * The places one geometry stands, drawn together.
  */
@@ -23,10 +29,7 @@ export interface IRendererObject {
   matrix?: ReadonlyArray<number>;
   /** The key of the skeleton it is skinned to, for a geometry carrying skin indices and weights. */
   skeleton?: string;
-  /**
-   * The index range drawn, narrowing its geometry's groups: a model's detail level. Applies to the geometry itself, so
-   * a geometry is narrowed for every object drawing it.
-   */
+  /** The index range drawn, narrowing its geometry's groups: a model's detail level. */
   drawRange?: { start: number; count: number };
   /** Where it stands, for a geometry drawn in many places at once; its matrix places every one of them. */
   instances?: IRendererInstances;

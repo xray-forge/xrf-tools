@@ -3,32 +3,20 @@ import {
   ERendererCameraController,
   ERendererDebugView,
   IRendererFlyCamera,
-  IRendererFog,
   IRendererLighting,
   IRendererSettings,
   TFrameRateLimit,
-  toneMapReinhard,
-  TRendererColor,
 } from "@xrf/renderer";
 import { Nullable } from "@xrf/types";
 
 import { VisualBounds } from "@/core/ipc/types/xrf-visual";
 import { ILevelCameraOptions } from "@/core/level/lib/camera/level-camera-options";
 import { ILevelViewpoint, toLevelStartViewpoint } from "@/core/level/lib/camera/level-viewpoint";
+import { toLevelRendererFog } from "@/core/level/lib/lighting/level-fog";
 import { ILevelLighting } from "@/core/level/lib/lighting/level-lighting";
 import { ILevelRenderConfig } from "@/core/level/lib/render/level-render-config";
 import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
 import { toRendererLighting } from "@/core/render/lib/lighting/render-lighting";
-
-/**
- * `default_clear`'s noon fog (`configs/environment/weathers/default_clear.ltx`, `[12:00:00]`): starts at a tenth of
- * 85% of its distance and is total at the far plane, 350 metres.
- */
-export const LEVEL_NOON_FOG: IRendererFog = {
-  color: [0.304609, 0.328138, 0.367354],
-  density: 0.9,
-  distance: 350,
-};
 
 /**
  * Where a level opens, flown by the toolbar's speeds.
@@ -59,12 +47,15 @@ export function toLevelCamera(
 }
 
 /**
- * @param lighting - The level's light, as its controls set it.
- * @param isFogged - Whether the noon fog is drawn.
+ * @param lighting - The level's light and fog, as its controls set them.
+ * @param isFogged - Whether the fog is drawn.
  * @returns The engine's noon, pointed and scaled by those controls.
  */
 export function toLevelRendererLighting(lighting: ILevelLighting, isFogged: boolean): IRendererLighting {
-  return { ...toRendererLighting(lighting, DEFAULT_RENDERER_LIGHTING), fog: isFogged ? LEVEL_NOON_FOG : null };
+  return {
+    ...toRendererLighting(lighting, DEFAULT_RENDERER_LIGHTING),
+    fog: isFogged ? toLevelRendererFog(lighting) : null,
+  };
 }
 
 /**
@@ -81,8 +72,8 @@ export function toLevelRendererSettings(
   config: ILevelRenderConfig
 ): IRendererSettings {
   return {
-    // Fogged, the sky is what total fog comes to, so the horizon does not end in a line.
-    backdrop: options.isFogged ? toToneMappedHex(LEVEL_NOON_FOG.color, 1) : config.backgroundColor,
+    // Fogged, the renderer draws the sky as total fog itself; this shows only where there is none.
+    backdrop: config.backgroundColor,
     debugView: ERendererDebugView.FINAL,
     frameRateLimit,
     hemiStrength: options.isLit ? lighting.hemiStrength : 0,
@@ -91,13 +82,4 @@ export function toLevelRendererSettings(
     isWireframe: options.isWireframe,
     tonemapScale: 1,
   };
-}
-
-/** A raw colour through the engine's tonemap, as the hex a page writes. */
-function toToneMappedHex(color: TRendererColor, scale: number): number {
-  const [red, green, blue] = color.map((channel: number) =>
-    Math.round(Math.min(1, toneMapReinhard(channel, scale)) * 255)
-  );
-
-  return (red << 16) | (green << 8) | blue;
 }

@@ -1,3 +1,4 @@
+import { Nullable } from "@xrf/types";
 import { Data3DTexture, PerspectiveCamera } from "three/webgpu";
 
 import { IRendererLighting } from "#/contract/renderer-lighting";
@@ -18,11 +19,23 @@ export class RendererUniforms {
   public readonly settings: SettingsUniforms = new SettingsUniforms();
   public readonly lut: Data3DTexture = createMaterialLutTexture();
 
+  private fogDistance: Nullable<number> = null;
+  private isLit: boolean = true;
+
+  /**
+   * How far anything can be seen: to where the fog is total while the frame is lit and fogged, which is where the
+   * engine puts its far plane, and without end otherwise.
+   */
+  public get viewDistance(): number {
+    return this.isLit && this.fogDistance !== null ? this.fogDistance : Infinity;
+  }
+
   /**
    * @param settings - The consumer's settings.
    */
   public configure(settings: IRendererSettings): void {
     this.settings.apply(settings);
+    this.isLit = settings.isLit;
   }
 
   /**
@@ -30,6 +43,7 @@ export class RendererUniforms {
    */
   public light(lighting: IRendererLighting): void {
     this.lighting.apply(toBaseLightingConstants(lighting));
+    this.fogDistance = lighting.fog?.distance ?? null;
   }
 
   /**

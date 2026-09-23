@@ -1,9 +1,8 @@
 import { Maybe } from "@xrf/types";
 import { Material } from "three/webgpu";
 
+import { ISurfaceMaterial } from "#/material/surface-material";
 import { ISceneObjectState } from "#/scene/object/scene-object-state";
-import { RENDERER_PASSES } from "#/scene/pass-record";
-import { HIDDEN_MATERIAL } from "#/scene/surface/hidden-material";
 
 /**
  * The vertex layouts each material's pipelines exist for, so drawing it in one stalls nothing.
@@ -32,7 +31,7 @@ export class MaterialReadiness {
    * @returns Whether drawing it with that layout needs no compile.
    */
   public isReady(material: Material, layout: string): boolean {
-    return material === HIDDEN_MATERIAL || Boolean(this.layouts.get(material)?.has(layout));
+    return Boolean(this.layouts.get(material)?.has(layout));
   }
 
   /**
@@ -48,8 +47,8 @@ export class MaterialReadiness {
    * @returns Whether every material it draws is compiled for its layout.
    */
   public isStateReady(state: ISceneObjectState): boolean {
-    return RENDERER_PASSES.every((pass) =>
-      state.slots[pass].every((material: Material) => this.isReady(material, state.layout))
+    return state.surfaces.every(
+      (surface: Maybe<ISurfaceMaterial>) => !surface || this.isReady(surface.material, state.layout)
     );
   }
 }

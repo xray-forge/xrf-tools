@@ -39,6 +39,8 @@ export interface ISectorSectionViews {
   render: ILevelSurfaceRender;
   /** Drawables this section draws, by their index in the visuals run, for inspection rather than for drawing. */
   drawables: Array<number>;
+  /** What its own vertices span, measured by the packer, or null where it reaches none. */
+  bounds: Nullable<VisualBounds>;
   start: number;
   count: number;
   triangleCount: number;
@@ -146,6 +148,7 @@ export function createSectorViews(
       transforms: toFloatView(buffer, group.transforms),
     })),
     sections: description.sections.map((section) => ({
+      bounds: section.bounds,
       count: section.draw.count,
       drawables: section.drawables,
       render: getLevelSurfaceRender(surfaces, section.surface.shaderId),
