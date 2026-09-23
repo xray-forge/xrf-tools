@@ -6,9 +6,10 @@ import { toDeferredSurfaceShader } from "#/material/deferred-surface.tsl";
 import { toForwardSurfaceShader } from "#/material/forward-surface.tsl";
 import { MaterialSamplers } from "#/material/material-samplers";
 import { applySurfaceCompositing, ISurfaceCompositing, toSurfaceCompositing } from "#/material/surface-compositing";
+import { SurfaceNodeMaterial } from "#/material/surface-node-material";
 import { ISurfaceShader } from "#/material/surface-shader";
 import { toWallmarkSurfaceShader } from "#/material/wallmark-surface.tsl";
-import { instancedPosition } from "#/shader/instancing.tsl";
+import { instancedPosition } from "#/shader/placement.tsl";
 import { RendererTextures } from "#/texture/renderer-textures";
 import { RendererUniforms } from "#/uniforms/renderer-uniforms";
 
@@ -49,7 +50,7 @@ export function createSurfaceMaterial(
   const samplers: MaterialSamplers = new MaterialSamplers(textures);
   const shader: ISurfaceShader = SURFACE_SHADERS[pass](surface, samplers, uniforms);
   const compositing: Nullable<ISurfaceCompositing> = toSurfaceCompositing(surface);
-  const material: MeshBasicNodeMaterial = new MeshBasicNodeMaterial();
+  const material: MeshBasicNodeMaterial = new SurfaceNodeMaterial(uniforms.staticDraws);
 
   // Every surface stands its geometry in each place instanced attributes name, and in its own place where none do.
   material.positionNode = instancedPosition();

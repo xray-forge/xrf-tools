@@ -164,7 +164,7 @@ describe("SceneChangeQueue", () => {
     scene.add(mesh);
     queue.transact(() => queue.enlist("a"));
     queue.transact(() => {
-      queue.withdraw("a", [mesh], [geometry]);
+      queue.withdraw("a", [mesh], () => geometry.dispose());
       queue.enlist("b");
     });
 

@@ -2,7 +2,7 @@ import { Maybe } from "@xrf/types";
 import { Material } from "three/webgpu";
 
 import { ISurfaceMaterial } from "#/material/surface-material";
-import { ISceneObjectState } from "#/scene/object/scene-object-state";
+import { ISceneObjectState, toSurfaceDraw } from "#/scene/object/scene-object-state";
 
 /**
  * The vertex layouts each material's pipelines exist for, so drawing it in one stalls nothing.
@@ -48,7 +48,8 @@ export class MaterialReadiness {
    */
   public isStateReady(state: ISceneObjectState): boolean {
     return state.surfaces.every(
-      (surface: Maybe<ISurfaceMaterial>) => !surface || this.isReady(surface.material, state.layout)
+      (surface: Maybe<ISurfaceMaterial>) =>
+        !surface || this.isReady(surface.material, toSurfaceDraw(state, surface).layout)
     );
   }
 }

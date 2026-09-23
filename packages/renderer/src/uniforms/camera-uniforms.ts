@@ -1,4 +1,4 @@
-import { uniform } from "three/tsl";
+import { renderGroup, uniform } from "three/tsl";
 import { Matrix4, PerspectiveCamera } from "three/webgpu";
 
 /**
@@ -6,11 +6,11 @@ import { Matrix4, PerspectiveCamera } from "three/webgpu";
  */
 export class CameraUniforms {
   /** Clip to view, for positions rebuilt from depth. */
-  public readonly projectionInverse = uniform(new Matrix4());
+  public readonly projectionInverse = uniform(new Matrix4()).setGroup(renderGroup);
   /** View to world, the engine's `m_v2w`. */
-  public readonly viewToWorld = uniform(new Matrix4());
+  public readonly viewToWorld = uniform(new Matrix4()).setGroup(renderGroup);
   /** The far plane, for depth shown as a picture. */
-  public readonly far = uniform(1);
+  public readonly far = uniform(1).setGroup(renderGroup);
 
   /**
    * @param camera - The camera about to draw, with its matrices current.

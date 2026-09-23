@@ -25,6 +25,10 @@ export class RendererPassInspector extends InspectorBase {
     this.current = null;
   }
 
+  public override beginCompute(uid: string): void {
+    this.beginRender(uid);
+  }
+
   public override beginRender(uid: string): void {
     if (this.current === null) {
       return;

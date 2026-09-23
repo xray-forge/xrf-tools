@@ -1,5 +1,5 @@
 import { Maybe, Nullable } from "@xrf/types";
-import { BufferGeometry, Mesh } from "three/webgpu";
+import { BufferGeometry, Object3D } from "three/webgpu";
 
 import { ISceneChange } from "#/scene/change/scene-change";
 import { ISceneChangeHandler } from "#/scene/change/scene-change-handler";
@@ -46,8 +46,8 @@ export class SceneChangeQueue<T> {
     return this.changes.flatMap((change: ISceneChange<T>) => [...change.objects]);
   }
 
-  /** Meshes still drawn for objects already released. */
-  public get leaving(): Iterable<Mesh> {
+  /** What is still drawn for objects already released. */
+  public get leaving(): Iterable<Object3D> {
     return this.changes.flatMap((change: ISceneChange<T>) => change.leaving);
   }
 
@@ -90,21 +90,18 @@ export class SceneChangeQueue<T> {
 
   /**
    * @param object - An object released, which never draws again.
-   * @param meshes - What drew it, drawn until the running change applies.
-   * @param geometries - What only it drew, disposed then.
+   * @param leaving - What stands in the scenes for it, drawn until the running change applies.
+   * @param dispose - What lets its resources go, then.
    */
-  public withdraw(object: T, meshes: Iterable<Mesh>, geometries: Iterable<BufferGeometry>): void {
+  public withdraw(object: T, leaving: Iterable<Object3D>, dispose: () => void): void {
     // Whatever it waited in goes with its release, or a geometry that change let go of would be disposed while the
     // meshes leaving here still draw it.
     const into: ISceneChange<T> = this.join(object);
 
     into.objects.delete(object);
     this.waiting.delete(object);
-    into.leaving.push(...meshes);
-
-    for (const geometry of geometries) {
-      into.geometries.add(geometry);
-    }
+    into.leaving.push(...leaving);
+    into.disposals.push(dispose);
   }
 
   /**
@@ -132,8 +129,9 @@ export class SceneChangeQueue<T> {
   /** Lets go of everything waiting, applying none of it. */
   public dispose(): void {
     for (const change of this.changes) {
-      change.leaving.forEach((mesh: Mesh) => mesh.removeFromParent());
+      change.leaving.forEach((it: Object3D) => it.removeFromParent());
       change.geometries.forEach((geometry: BufferGeometry) => geometry.dispose());
+      change.disposals.forEach((dispose: () => void) => dispose());
     }
 
     this.changes.length = 0;
@@ -144,7 +142,7 @@ export class SceneChangeQueue<T> {
   /** The change the running transaction adds to. */
   private get current(): ISceneChange<T> {
     if (!this.open) {
-      this.open = { geometries: new Set(), leaving: [], objects: new Set(), textures: new Set() };
+      this.open = { disposals: [], geometries: new Set(), leaving: [], objects: new Set(), textures: new Set() };
       this.changes.push(this.open);
     }
 
@@ -171,6 +169,7 @@ export class SceneChangeQueue<T> {
     }
 
     into.leaving.push(...from.leaving);
+    into.disposals.push(...from.disposals);
     from.geometries.forEach((geometry: BufferGeometry) => into.geometries.add(geometry));
     from.textures.forEach((key: string) => into.textures.add(key));
     this.changes.splice(this.changes.indexOf(from), 1);
@@ -203,8 +202,9 @@ export class SceneChangeQueue<T> {
         this.waiting.delete(object);
         this.handler.apply(object);
       });
-      change.leaving.forEach((mesh: Mesh) => mesh.removeFromParent());
+      change.leaving.forEach((it: Object3D) => it.removeFromParent());
       change.geometries.forEach((geometry: BufferGeometry) => geometry.dispose());
+      change.disposals.forEach((dispose: () => void) => dispose());
       change.textures.forEach((key: string) => this.handler.releaseTexture(key));
     }
 

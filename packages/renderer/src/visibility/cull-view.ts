@@ -12,6 +12,11 @@ export class CullView {
   private readonly next: Matrix4 = new Matrix4();
   private currentVersion: number = 0;
 
+  /** The frustum's six planes, normals pointing in. */
+  public get planes(): ReadonlyArray<Plane> {
+    return this.frustum.planes;
+  }
+
   /** Bumped whenever the view sees something else. */
   public get version(): number {
     return this.currentVersion;

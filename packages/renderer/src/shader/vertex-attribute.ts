@@ -8,6 +8,8 @@ export enum EVertexAttribute {
   HEMI = "hemi",
   /** Its scale and offset, per place a geometry stands. */
   INSTANCE_HEMI = "instanceHemi",
+  /** A static draw's slot in the buffers every static draw shares, read per instance by its first instance. */
+  STATIC_SLOT = "staticSlot",
 }
 
 /** The instanced columns a place's transform rides in, in order. */

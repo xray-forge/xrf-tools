@@ -34,9 +34,16 @@ export class RendererTextures {
   /** Keys whose texture is not on the GPU yet, in the order they were put. */
   private readonly queued: Set<string> = new Set();
   private readonly onRefused: (key: string, refusal: IDdsRefusal) => void;
+  private readonly onRebound: (key: string) => void;
 
-  public constructor(onRefused: (key: string, refusal: IDdsRefusal) => void) {
+  /**
+   * @param onRefused - Told a file could not be uploaded as stored.
+   * @param onRebound - Told a key's samplers were pointed at another texture, which a recorded bundle drawing them
+   *   does not see until it is recorded again.
+   */
+  public constructor(onRefused: (key: string, refusal: IDdsRefusal) => void, onRebound: (key: string) => void) {
     this.onRefused = onRefused;
+    this.onRebound = onRebound;
   }
 
   /**
@@ -169,7 +176,7 @@ export class RendererTextures {
       }
 
       renderer.initTexture(entry.texture);
-      this.draw(entry, entry.texture);
+      this.draw(key, entry, entry.texture);
 
       if (performance.now() - started >= budget) {
         return;
@@ -216,16 +223,20 @@ export class RendererTextures {
     if (texture) {
       this.queued.add(key);
     } else {
-      this.draw(entry, null);
+      this.draw(key, entry, null);
     }
   }
 
   /** Points every sampler of an entry at what it draws now, letting go of what it drew before. */
-  private draw(entry: ITextureEntry, texture: Nullable<Texture>): void {
+  private draw(key: string, entry: ITextureEntry, texture: Nullable<Texture>): void {
     const previous: Nullable<Texture> = entry.drawn;
 
     entry.drawn = texture;
     entry.samplers.forEach((placeholder: Texture, sampler: TextureNode) => (sampler.value = texture ?? placeholder));
+
+    if (entry.samplers.size && previous !== texture) {
+      this.onRebound(key);
+    }
 
     if (previous && previous !== texture) {
       previous.dispose();

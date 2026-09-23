@@ -7,6 +7,7 @@ import { IRendererPass } from "#/pass/renderer-pass";
 import { IRendererScenePass, isRendererScenePass } from "#/pass/renderer-scene-pass";
 import { RendererTargets } from "#/pass/renderer-targets";
 import { RendererOverlays } from "#/scene/overlay/renderer-overlays";
+import { StaticCull } from "#/scene/static/static-cull";
 import { RendererPassInspector } from "#/timing/renderer-pass-inspector";
 import { RendererUniforms } from "#/uniforms/renderer-uniforms";
 
@@ -24,9 +25,9 @@ export class RendererFrameGraph {
 
   private readonly passes: ReadonlyArray<IRendererPass>;
 
-  public constructor(uniforms: RendererUniforms, overlays: RendererOverlays) {
+  public constructor(uniforms: RendererUniforms, overlays: RendererOverlays, cull: StaticCull) {
     this.present = new PresentPass(this.targets, uniforms.camera);
-    this.passes = [...createBaseFramePasses(this.targets, uniforms, overlays), this.present];
+    this.passes = [...createBaseFramePasses(this.targets, uniforms, overlays, cull), this.present];
     this.scenePasses = this.passes.filter(isRendererScenePass);
     this.passNames = this.passes.map((pass: IRendererPass) => pass.name);
   }

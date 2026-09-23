@@ -2,27 +2,33 @@ import { Maybe, Nullable } from "@xrf/types";
 import { BufferGeometry, Matrix4, Mesh, Scene, Skeleton, Sphere } from "three/webgpu";
 
 import { IRendererInstances, IRendererObject } from "#/contract/scene/renderer-object";
+import { ISurfaceMaterial } from "#/material/surface-material";
 import { createPartGeometry } from "#/scene/geometry/part-geometry";
 import { SceneGeometry } from "#/scene/geometry/scene-geometry";
 import { ISceneSection } from "#/scene/geometry/scene-section";
 import { SceneInstances } from "#/scene/object/scene-instances";
-import { ISceneObjectState } from "#/scene/object/scene-object-state";
+import { ISceneObjectState, isStaticDraw } from "#/scene/object/scene-object-state";
 import { ScenePart } from "#/scene/object/scene-part";
 import { TPassRecord } from "#/scene/pass-record";
+import { StaticDraws } from "#/scene/static/static-draws";
+import { IStaticRange } from "#/scene/static/static-range";
 import { CullView } from "#/visibility/cull-view";
 import { EVisibility } from "#/visibility/visibility";
 
 /**
- * One object a consumer put: a part per section of its geometry, each drawn in the pass its surface names and culled
- * on its own.
+ * One object a consumer put: a part per section of its geometry, each drawn in the pass its surface names.
+ * The parts filling the G-buffer of an object neither instanced nor skinned are static draws: its geometry copied into
+ * the arena of its layout, each part issued by its material's batch and culled on the GPU. The rest are drawn plainly
+ * and culled here.
  */
 export class SceneObject {
   /** The key it was put under, which a released object no longer answers to. */
   public readonly key: string;
   public object: IRendererObject;
 
+  private readonly draws: StaticDraws;
   private parts: Array<ScenePart> = [];
-  /** What the parts draw over, the geometry put or the places it stands. */
+  /** What the parts draw over plainly, the geometry put or the places it stands. */
   private drawn: Nullable<BufferGeometry> = null;
   /** The skeleton the parts' meshes are bound to, or null for rigid meshes. */
   private skeleton: Nullable<Skeleton> = null;
@@ -30,28 +36,34 @@ export class SceneObject {
   private instances: Nullable<SceneInstances> = null;
   /** The places it is about to stand in, built for the change it waits in. */
   private staged: Nullable<SceneInstances> = null;
+  /** The geometry it holds a place in an arena for while any part is drawn statically, and that place. */
+  private placedGeometry: Nullable<SceneGeometry> = null;
+  private range: Nullable<IStaticRange> = null;
   private readonly matrix: Matrix4 = new Matrix4();
   /** What all of it spans, in renderer space. */
   private readonly sphere: Sphere = new Sphere();
   /** The version of the view it was last culled against. */
   private culledAt: number = -1;
 
-  public constructor(key: string, object: IRendererObject) {
+  /**
+   * @param key - What it was put under.
+   * @param object - What it is.
+   * @param draws - The static draws its static parts are.
+   */
+  public constructor(key: string, object: IRendererObject, draws: StaticDraws) {
     this.key = key;
     this.object = object;
+    this.draws = draws;
   }
 
-  /** Every mesh drawing it, whether or not a scene holds it. */
+  /** Every mesh of its parts, whether or not a scene holds it. */
   public get drawing(): ReadonlyArray<Mesh> {
     return this.parts.map((part: ScenePart) => part.mesh);
   }
 
-  /** The geometries only it draws with: its parts, and the places it stands and is about to stand. */
-  public get owned(): ReadonlyArray<BufferGeometry> {
-    return [
-      ...this.parts.map((part: ScenePart) => part.geometry),
-      ...[this.instances, this.staged].flatMap((it: Nullable<SceneInstances>) => (it ? [it.geometry] : [])),
-    ];
+  /** What stands in a scene for it: the meshes of the parts drawn plainly. */
+  public get placed(): ReadonlyArray<Mesh> {
+    return this.parts.map((part: ScenePart) => part.mesh).filter((mesh: Mesh) => mesh.parent);
   }
 
   /**
@@ -82,19 +94,19 @@ export class SceneObject {
   }
 
   /**
-   * Draws the object as it is put now: each part in the scene of the pass its surface names, where it stands.
+   * Draws the object as it is put now: each part in the pass its surface names, where it stands.
    *
    * @param state - What it draws, or null for an object whose geometry is missing.
    * @param scenes - Each pass's scene.
    */
   public apply(state: Nullable<ISceneObjectState>, scenes: TPassRecord<Scene>): void {
     if (!state) {
-      this.parts.forEach((part: ScenePart) => part.detach());
+      this.detach();
 
       return;
     }
 
-    if (state.drawn !== this.drawn) {
+    if (state.plain.drawn !== this.drawn) {
       this.rebuild(state);
     } else if (state.skeleton !== this.skeleton) {
       this.parts.forEach((part: ScenePart) => part.remesh(state.skeleton));
@@ -111,21 +123,14 @@ export class SceneObject {
 
     this.instances?.place(this.matrix);
     this.sphere.copy(state.geometry.sphere).applyMatrix4(this.matrix);
-
-    for (const part of this.parts) {
-      const surface = state.surfaces[part.section];
-
-      part.narrow(this.object.drawRange);
-      part.place(this.matrix);
-      part.show(surface?.material ?? null, surface ? scenes[surface.pass] : null);
-    }
+    this.show(state, scenes);
 
     // Culled afresh on the next frame, whatever the view.
     this.culledAt = -1;
   }
 
   /**
-   * Shows the parts the view sees and hides the rest.
+   * Shows what the view sees of the parts drawn plainly; the GPU culls the static ones.
    *
    * @param view - The view drawn for.
    */
@@ -154,35 +159,105 @@ export class SceneObject {
     const whole: EVisibility = view.classifySphere(this.sphere);
 
     for (const part of this.parts) {
-      part.cull(
-        whole === EVisibility.INSIDE ||
-          (whole === EVisibility.INTERSECTS && view.classifySphere(part.sphere) !== EVisibility.OUTSIDE)
-      );
+      if (!part.isStatic) {
+        part.cull(
+          whole === EVisibility.INSIDE ||
+            (whole === EVisibility.INTERSECTS && view.classifySphere(part.sphere) !== EVisibility.OUTSIDE)
+        );
+      }
     }
   }
 
-  /** Takes every part out of its scene. */
+  /** Takes every part out of what draws it, letting its static slots and its place in an arena go. */
   public detach(): void {
     this.parts.forEach((part: ScenePart) => part.detach());
+    this.unplace();
   }
 
-  /** A part per section over what it draws now, letting the parts that drew before go. */
-  private rebuild(state: ISceneObjectState): void {
+  /** Lets everything it drew with go, for an object released. */
+  public dispose(): void {
+    this.release();
+    this.unplace();
+    this.instances?.dispose();
+    this.staged?.dispose();
+    this.instances = null;
+    this.staged = null;
+  }
+
+  /** Lets its parts go, and with them the buffers they drew with. */
+  private release(): void {
     this.parts.forEach((part: ScenePart) => {
       part.detach();
       part.geometry.dispose();
     });
+    this.parts = [];
+  }
+
+  /** A part per section over what it draws now, letting the parts that drew before go. */
+  private rebuild(state: ISceneObjectState): void {
+    this.release();
 
     // The places it stood before are nothing's once its parts draw the new ones.
     if (this.instances && this.instances !== state.instances) {
       this.instances.dispose();
     }
 
-    this.drawn = state.drawn;
+    this.drawn = state.plain.drawn;
     this.instances = state.instances;
     this.parts = state.geometry.sections.map(
       (section: ISceneSection, index: number) =>
-        new ScenePart(createPartGeometry(state.drawn, section), index, section, state.skeleton)
+        new ScenePart(createPartGeometry(state.plain.drawn, section), index, section, state.skeleton, this.draws)
     );
+  }
+
+  /** Puts each part where its surface draws it: its material's batch for a static draw, its pass's scene otherwise. */
+  private show(state: ISceneObjectState, scenes: TPassRecord<Scene>): void {
+    const range: Nullable<IStaticRange> = state.surfaces.some((surface) => isStaticDraw(state, surface))
+      ? this.place(state.geometry)
+      : null;
+    let staticParts: number = 0;
+
+    for (const part of this.parts) {
+      const surface: Maybe<ISurfaceMaterial> = state.surfaces[part.section];
+
+      part.narrow(this.object.drawRange);
+      part.place(this.matrix);
+
+      if (range && isStaticDraw(state, surface) && part.showStatic(surface, range)) {
+        staticParts += 1;
+      } else {
+        part.showPlain(surface?.material ?? null, surface ? scenes[surface.pass] : null);
+      }
+    }
+
+    if (!staticParts) {
+      this.unplace();
+    }
+  }
+
+  /**
+   * @param geometry - The geometry its static parts draw.
+   * @returns Where it sits in its arena, placed there first where this object held no place for it yet; null where
+   *   the arena cannot hold it.
+   */
+  private place(geometry: SceneGeometry): Nullable<IStaticRange> {
+    if (this.placedGeometry !== geometry) {
+      // Taken before the old one goes, so an arena holding only the old one is not let go and made again at once.
+      const range: Nullable<IStaticRange> = this.draws.acquire(geometry);
+
+      this.unplace();
+      this.placedGeometry = geometry;
+      this.range = range;
+    }
+
+    return this.range;
+  }
+
+  private unplace(): void {
+    if (this.placedGeometry) {
+      this.draws.release(this.placedGeometry);
+      this.placedGeometry = null;
+      this.range = null;
+    }
   }
 }

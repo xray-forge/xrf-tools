@@ -1,4 +1,4 @@
-import { uniform } from "three/tsl";
+import { renderGroup, uniform } from "three/tsl";
 import { Camera, Vector3 } from "three/webgpu";
 
 import { TRendererColor } from "#/contract/renderer-lighting";
@@ -8,18 +8,18 @@ import { IBaseLightingConstants } from "#/lighting/base-lighting";
  * The constants the base lighting passes read, as shader uniforms updated in place.
  */
 export class BaseLightingUniforms {
-  public readonly sunColor = uniform(new Vector3());
-  public readonly sunSpecular = uniform(0);
+  public readonly sunColor = uniform(new Vector3()).setGroup(renderGroup);
+  public readonly sunSpecular = uniform(0).setGroup(renderGroup);
   /** The direction sunlight travels, in view space: set per frame from the world direction. */
-  public readonly sunDirectionView = uniform(new Vector3(0, -1, 0));
-  public readonly ambient = uniform(new Vector3());
-  public readonly environment = uniform(new Vector3());
-  public readonly skyIrradiance = uniform(new Vector3());
-  public readonly fogOffset = uniform(0);
-  public readonly fogScale = uniform(0);
-  public readonly fogColor = uniform(new Vector3());
+  public readonly sunDirectionView = uniform(new Vector3(0, -1, 0)).setGroup(renderGroup);
+  public readonly ambient = uniform(new Vector3()).setGroup(renderGroup);
+  public readonly environment = uniform(new Vector3()).setGroup(renderGroup);
+  public readonly skyIrradiance = uniform(new Vector3()).setGroup(renderGroup);
+  public readonly fogOffset = uniform(0).setGroup(renderGroup);
+  public readonly fogScale = uniform(0).setGroup(renderGroup);
+  public readonly fogColor = uniform(new Vector3()).setGroup(renderGroup);
   /** One while there is fog, zero without. */
-  public readonly fogged = uniform(0);
+  public readonly fogged = uniform(0).setGroup(renderGroup);
 
   private readonly sunDirectionWorld: Vector3 = new Vector3(0, -1, 0);
 

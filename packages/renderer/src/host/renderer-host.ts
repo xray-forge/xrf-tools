@@ -75,7 +75,7 @@ export class RendererHost {
       this.reply({ key, kind: ERendererResponse.TEXTURE_REFUSED, refusal })
     );
     this.overlays = new RendererOverlays(this.scene.skeletons, this.uniforms.lighting.sunDirection);
-    this.graph = new RendererFrameGraph(this.uniforms, this.overlays);
+    this.graph = new RendererFrameGraph(this.uniforms, this.overlays, this.scene.staticCull);
     this.captures = new RendererCaptures(this.graph.present, this.scene.textures, (id, image) =>
       this.reply({ id, image, kind: ERendererResponse.CAPTURED }, image ? [image] : [])
     );
@@ -194,6 +194,8 @@ export class RendererHost {
         }
 
         this.device = device;
+        // A static draw finds its slot by its first instance, which only a device with the feature draws indirectly.
+        this.scene.setStaticDraws(device.renderer.hasFeature("indirect-first-instance"));
         this.reply({ device: device.describe(), kind: ERendererResponse.READY });
         this.view?.show(device.renderer);
         this.ensureScheduled();
@@ -312,9 +314,16 @@ export class RendererHost {
     this.stats.endFrame(performance.now() - startedAt, device);
 
     if (this.stats.takeReport(now)) {
+      this.scene.staticCull.sample(renderer);
       this.reply({
         kind: ERendererResponse.REPORT,
-        report: this.stats.toReport(device, view.canvas, this.rig.pose, this.graph.passNames),
+        report: this.stats.toReport(
+          device,
+          view.canvas,
+          this.rig.pose,
+          this.graph.passNames,
+          this.scene.staticCull.kept
+        ),
       });
     }
 

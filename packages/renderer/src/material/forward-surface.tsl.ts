@@ -24,7 +24,7 @@ export function toForwardSurfaceShader(
   samplers: MaterialSamplers,
   uniforms: RendererUniforms
 ): ISurfaceShader {
-  const texel: ISurfaceTexel = toSurfaceTexel(surface, samplers, uniforms.settings);
+  const texel: ISurfaceTexel = toSurfaceTexel(surface, samplers, uniforms);
   let color: Node<"vec3"> = texel.albedo;
 
   if (surface.draw === ERendererDraw.BLENDED && surface.isLit !== false) {

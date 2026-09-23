@@ -3,6 +3,7 @@ import { IRendererReport } from "#/contract/renderer-report";
 import { RendererDevice } from "#/device/renderer-device";
 import { RenderFrameTimer } from "#/frame/render-frame-timer";
 import { RendererGpuTimings } from "#/host/renderer-gpu-timings";
+import { IStaticCullCounts } from "#/scene/static/static-cull-counts";
 
 /** How often the frame report is sent, in milliseconds. */
 const REPORT_INTERVAL: number = 250;
@@ -50,13 +51,15 @@ export class RendererFrameStats {
    * @param canvas - The canvas drawn on.
    * @param camera - Where the camera stands.
    * @param passes - The frame's passes, in frame order.
+   * @param kept - What the static cull kept, which three's own counts leave out.
    * @returns What the frames have been costing.
    */
   public toReport(
     device: RendererDevice,
     canvas: OffscreenCanvas,
     camera: IRendererCameraPose,
-    passes: ReadonlyArray<string>
+    passes: ReadonlyArray<string>,
+    kept: IStaticCullCounts
   ): IRendererReport {
     const { render } = device.renderer.info;
 
@@ -66,10 +69,10 @@ export class RendererFrameStats {
         drawnHeight: canvas.height,
         drawnWidth: canvas.width,
         drawTime: this.frameTimer.drawTime,
-        draws: render.drawCalls,
+        draws: render.drawCalls + kept.draws,
         frameTime: this.frameTimer.frameTime,
         framesPerSecond: this.frameTimer.framesPerSecond,
-        triangles: render.triangles,
+        triangles: render.triangles + kept.triangles,
         worstDrawTime: this.frameTimer.worstDrawTime,
         worstFrameTime: this.frameTimer.worstFrameTime,
       },

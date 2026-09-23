@@ -29,8 +29,10 @@ export class RendererGpuTimings {
 
     this.isResolving = true;
 
-    device.renderer
-      .resolveTimestampsAsync(TimestampQuery.RENDER)
+    Promise.all([
+      device.renderer.resolveTimestampsAsync(TimestampQuery.RENDER),
+      device.renderer.resolveTimestampsAsync(TimestampQuery.COMPUTE),
+    ])
       .then(() => {
         if (generation !== this.generation) {
           return;

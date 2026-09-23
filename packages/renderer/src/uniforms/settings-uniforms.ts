@@ -1,4 +1,4 @@
-import { uniform } from "three/tsl";
+import { renderGroup, uniform } from "three/tsl";
 
 import { IRendererSettings } from "#/contract/renderer-settings";
 
@@ -7,13 +7,13 @@ import { IRendererSettings } from "#/contract/renderer-settings";
  */
 export class SettingsUniforms {
   /** One while light shades the frame, zero for raw albedo. */
-  public readonly lit = uniform(1);
+  public readonly lit = uniform(1).setGroup(renderGroup);
   /** One while bump pairs shade the surfaces that bind them. */
-  public readonly bumped = uniform(1);
+  public readonly bumped = uniform(1).setGroup(renderGroup);
   /** How much of the baked hemisphere occlusion applies. */
-  public readonly hemiStrength = uniform(1);
+  public readonly hemiStrength = uniform(1).setGroup(renderGroup);
   /** What the tonemap multiplies by first. */
-  public readonly tonemapScale = uniform(1);
+  public readonly tonemapScale = uniform(1).setGroup(renderGroup);
 
   /**
    * @param settings - The consumer's settings.

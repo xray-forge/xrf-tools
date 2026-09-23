@@ -1,9 +1,9 @@
 import { Maybe, Nullable } from "@xrf/types";
-import { BufferGeometry, Material, Mesh, Scene } from "three/webgpu";
+import { Material, Mesh, Object3D, Scene } from "three/webgpu";
 
 import { IRendererGeometry } from "#/contract/scene/renderer-geometry";
 import { IRendererObject } from "#/contract/scene/renderer-object";
-import { IRendererSurface } from "#/contract/scene/renderer-surface";
+import { ERendererPass, IRendererSurface } from "#/contract/scene/renderer-surface";
 import { TRendererTextureSource } from "#/contract/scene/renderer-texture-source";
 import { SceneChangeQueue } from "#/scene/change/scene-change-queue";
 import { SceneGeometry } from "#/scene/geometry/scene-geometry";
@@ -14,6 +14,8 @@ import { ISceneObjectState } from "#/scene/object/scene-object-state";
 import { toPassRecord, TPassRecord } from "#/scene/pass-record";
 import { RendererSkeletons } from "#/scene/skeleton/renderer-skeletons";
 import { createSceneStaging, ISceneStaging } from "#/scene/staging/scene-staging";
+import { StaticCull } from "#/scene/static/static-cull";
+import { StaticDraws } from "#/scene/static/static-draws";
 import { MaterialReadiness } from "#/scene/surface/material-readiness";
 import { SurfaceLibrary } from "#/scene/surface/surface-library";
 import { IDdsRefusal } from "#/texture/dds/dds-refusal";
@@ -37,6 +39,8 @@ export class RendererScene {
   });
   public readonly textures: RendererTextures;
   public readonly skeletons: RendererSkeletons;
+  /** What culls the static draws on the GPU, which the frame dispatches before drawing them. */
+  public readonly staticCull: StaticCull;
 
   private readonly geometries: Map<string, SceneGeometry> = new Map();
   private readonly surfaces: SurfaceLibrary;
@@ -44,22 +48,35 @@ export class RendererScene {
   private readonly geometryUsers: KeyedUsers<SceneObject> = new KeyedUsers();
   private readonly surfaceUsers: KeyedUsers<SceneObject> = new KeyedUsers();
   private readonly skeletonUsers: KeyedUsers<SceneObject> = new KeyedUsers();
+  private readonly staticDraws: StaticDraws;
   private readonly readiness: MaterialReadiness = new MaterialReadiness();
   private readonly resolver: SceneObjectResolver;
   private readonly changes: SceneChangeQueue<SceneObject> = new SceneChangeQueue({
-    apply: (entry: SceneObject) => entry.apply(this.resolver.resolve(entry), this.scenes),
+    apply: (entry: SceneObject) => this.apply(entry),
     canApply: (entry: SceneObject) => this.canApply(entry),
     releaseTexture: (key: string) => this.textures.release(key),
     settled: () => this.retire(),
   });
 
   public constructor(uniforms: RendererUniforms, onTextureRefused: (key: string, refusal: IDdsRefusal) => void) {
-    this.textures = new RendererTextures(onTextureRefused);
+    this.staticDraws = new StaticDraws(uniforms.staticDraws, this.scenes[ERendererPass.DEFERRED]);
+    this.staticCull = this.staticDraws.cull;
+    this.textures = new RendererTextures(onTextureRefused, (key: string) => this.staticDraws.invalidate(key));
     this.skeletons = new RendererSkeletons((key: string) => this.buildUsers(this.skeletonUsers.get(key)));
     this.surfaces = new SurfaceLibrary(this.textures, uniforms, (key: string) =>
       this.buildUsers(this.surfaceUsers.get(key))
     );
-    this.resolver = new SceneObjectResolver(this.geometries, this.skeletons, this.surfaces);
+    this.resolver = new SceneObjectResolver(this.geometries, this.skeletons, this.surfaces, this.staticDraws);
+  }
+
+  /**
+   * @param isEnabled - Whether the device draws static draws: only one drawing an indirect draw's first instance.
+   */
+  public setStaticDraws(isEnabled: boolean): void {
+    if (isEnabled !== this.staticDraws.isEnabled) {
+      this.staticDraws.isEnabled = isEnabled;
+      this.transact(() => this.objects.forEach((entry: SceneObject) => this.build(entry)));
+    }
   }
 
   /** Whether any object waits: for a material to compile, a texture to upload, or its turn to be applied. */
@@ -88,6 +105,7 @@ export class RendererScene {
    */
   public cull(view: CullView): void {
     this.objects.forEach((entry: SceneObject) => entry.cull(view));
+    this.staticCull.take(view);
   }
 
   /**
@@ -171,7 +189,7 @@ export class RendererScene {
         this.unindex(entry);
         entry.object = object;
       } else {
-        entry = new SceneObject(key, object);
+        entry = new SceneObject(key, object, this.staticDraws);
         this.objects.set(key, entry);
       }
 
@@ -187,16 +205,13 @@ export class RendererScene {
       this.transact(() => {
         this.unindex(entry);
         this.objects.delete(key);
-        this.changes.withdraw(entry, entry.drawing, entry.owned);
+        this.changes.withdraw(entry, entry.placed, () => entry.dispose());
       });
     }
   }
 
   public dispose(): void {
-    this.objects.forEach((entry: SceneObject) => {
-      entry.detach();
-      entry.owned.forEach((geometry: BufferGeometry) => geometry.dispose());
-    });
+    this.objects.forEach((entry: SceneObject) => entry.dispose());
     this.objects.clear();
     this.changes.dispose();
     this.surfaces.dispose();
@@ -207,6 +222,7 @@ export class RendererScene {
     this.geometries.clear();
     this.skeletons.dispose();
     this.textures.dispose();
+    this.staticDraws.dispose();
   }
 
   private index(entry: SceneObject): void {
@@ -252,6 +268,11 @@ export class RendererScene {
     }
   }
 
+  /** Draws an object as it is put now. */
+  private apply(entry: SceneObject): void {
+    entry.apply(this.resolver.resolve(entry), this.scenes);
+  }
+
   /** Whether an object draws without a stall: its materials compiled, its textures uploaded. */
   private canApply(entry: SceneObject): boolean {
     const state: Nullable<ISceneObjectState> = this.resolver.resolve(entry);
@@ -271,12 +292,20 @@ export class RendererScene {
     }
 
     const drawn: Set<Material> = new Set();
-    const meshes: Array<Mesh> = [...this.changes.leaving];
+    const meshes: Array<Mesh> = [];
+
+    for (const leaving of this.changes.leaving) {
+      leaving.traverse((it: Object3D) => it instanceof Mesh && meshes.push(it));
+    }
 
     this.objects.forEach((entry: SceneObject) => meshes.push(...entry.drawing));
 
     for (const mesh of meshes) {
       (Array.isArray(mesh.material) ? mesh.material : [mesh.material]).forEach((it: Material) => drawn.add(it));
+    }
+
+    for (const material of this.staticDraws.materials) {
+      drawn.add(material);
     }
 
     this.surfaces.retire(drawn, (material: Material) => this.readiness.isCompiled(material));

@@ -26,7 +26,7 @@ export function toDeferredSurfaceShader(
   samplers: MaterialSamplers,
   uniforms: RendererUniforms
 ): ISurfaceShader {
-  const texel: ISurfaceTexel = toSurfaceTexel(surface, samplers, uniforms.settings);
+  const texel: ISurfaceTexel = toSurfaceTexel(surface, samplers, uniforms);
   const albedo: Node<"vec4"> = vec4(texel.albedo, texel.gloss);
 
   return {

@@ -1,8 +1,9 @@
 import { Nullable } from "@xrf/types";
-import { Material, Mesh, Scene } from "three/webgpu";
+import { Material, Scene } from "three/webgpu";
 
 import { createSceneMesh } from "#/scene/object/scene-mesh";
-import { ISceneObjectState } from "#/scene/object/scene-object-state";
+import { ISceneObjectDraw } from "#/scene/object/scene-object-draw";
+import { ISceneObjectState, toSurfaceDraw } from "#/scene/object/scene-object-state";
 import { toPassRecord, TPassRecord } from "#/scene/pass-record";
 import { MaterialReadiness } from "#/scene/surface/material-readiness";
 
@@ -32,19 +33,19 @@ export function createSceneStaging(
 
   for (const state of states) {
     for (const surface of state.surfaces) {
-      if (
-        !surface ||
-        readiness.isReady(surface.material, state.layout) ||
-        staged.get(surface.material)?.has(state.layout)
-      ) {
+      if (!surface) {
+        continue;
+      }
+
+      const { drawn, layout }: ISceneObjectDraw = toSurfaceDraw(state, surface);
+
+      if (readiness.isReady(surface.material, layout) || staged.get(surface.material)?.has(layout)) {
         continue;
       }
 
       // A pipeline is a material over a layout: one mesh compiles it for every object sharing both.
-      const mesh: Mesh = createSceneMesh(state.drawn, state.skeleton, surface.material);
-
-      scenes[surface.pass].add(mesh);
-      staged.set(surface.material, (staged.get(surface.material) ?? new Set()).add(state.layout));
+      scenes[surface.pass].add(createSceneMesh(drawn, state.skeleton, surface.material));
+      staged.set(surface.material, (staged.get(surface.material) ?? new Set()).add(layout));
     }
   }
 
