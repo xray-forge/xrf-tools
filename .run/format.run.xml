@@ -1,12 +1,12 @@
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="format" type="js.build_tools.npm" nameIsGenerated="true">
-    <package-json value="$PROJECT_DIR$/bin/xrf-ui/package.json"/>
-    <command value="run"/>
+    <package-json value="$PROJECT_DIR$/../xrf-tools/package.json" />
+    <command value="run" />
     <scripts>
-      <script value="format"/>
+      <script value="format" />
     </scripts>
-    <node-interpreter value="project"/>
-    <envs/>
-    <method v="2"/>
+    <node-interpreter value="project" />
+    <envs />
+    <method v="2" />
   </configuration>
 </component>
