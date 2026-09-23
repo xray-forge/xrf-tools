@@ -16,25 +16,21 @@ const COST: IRenderFrameCost = {
 
 describe("RenderFrameReadout", () => {
   it("reads out what the frame cost and the size it was paid over", () => {
-    const { getByText } = render(<RenderFrameReadout cost={COST} isOffscreen={false} />);
+    const { getByText } = render(<RenderFrameReadout cost={COST} />);
 
     expect(getByText("160 fps · 6.3 ms")).toBeInTheDocument();
     expect(getByText("886 draws · 6,445,460 tris")).toBeInTheDocument();
   });
 
-  // The picture is identical either way, so the readout is the only place the answer can be seen.
-  it.each([
-    [false, "3217 × 1930 · main thread"],
-    [true, "3217 × 1930 · worker"],
-  ])("names where it was drawn, offscreen: %s", (isOffscreen: boolean, expected: string) => {
-    const { getByText } = render(<RenderFrameReadout cost={COST} isOffscreen={isOffscreen} />);
+  it("says the size the frame was drawn at", () => {
+    const { getByText } = render(<RenderFrameReadout cost={COST} />);
 
-    expect(getByText(expected)).toBeInTheDocument();
+    expect(getByText("3217 × 1930")).toBeInTheDocument();
   });
 
   it("carries what only the scene can say, under the rest", () => {
     const { getByText } = render(
-      <RenderFrameReadout cost={COST} isOffscreen={true}>
+      <RenderFrameReadout cost={COST}>
         <div>118 sectors · 138 MB</div>
       </RenderFrameReadout>
     );
@@ -43,7 +39,7 @@ describe("RenderFrameReadout", () => {
   });
 
   it("reads out nothing drawn rather than nothing at all", () => {
-    const { getByText } = render(<RenderFrameReadout cost={EMPTY_RENDER_FRAME_COST} isOffscreen={false} />);
+    const { getByText } = render(<RenderFrameReadout cost={EMPTY_RENDER_FRAME_COST} />);
 
     expect(getByText("0 fps · 0.0 ms")).toBeInTheDocument();
   });

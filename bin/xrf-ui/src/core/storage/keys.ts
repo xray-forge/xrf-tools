@@ -22,8 +22,6 @@ export const IPC_PROFILING_STORAGE_KEY: string = buildStorageKey(EStorageNamespa
 export const MEDIA_VOLUME_STORAGE_KEY: string = buildStorageKey(EStorageNamespace.PREFERENCE, "media-volume");
 /** Frames a second a viewport is allowed to draw. */
 export const FRAME_RATE_LIMIT_STORAGE_KEY: string = buildStorageKey(EStorageNamespace.PREFERENCE, "frame-rate-limit");
-/** Whether a level draws on a thread of its own, which the platform may not allow and a person may not want. */
-export const OFFSCREEN_RENDER_STORAGE_KEY: string = buildStorageKey(EStorageNamespace.PREFERENCE, "offscreen-render");
 
 /** How many pixels every viewport draws, whatever size it is shown at. */
 export const RENDER_RESOLUTION_STORAGE_KEY: string = buildStorageKey(EStorageNamespace.PREFERENCE, "render-resolution");

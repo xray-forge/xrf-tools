@@ -1,5 +1,5 @@
 import { inject, Injectable, OnDeactivation } from "@wirestate/core";
-import { BoundAction, Observable, reaction, RefObservable } from "@wirestate/mobx";
+import { BoundAction, reaction, RefObservable } from "@wirestate/mobx";
 import {
   EMPTY_RENDER_FRAME_COST,
   ERendererCameraCommand,
@@ -60,10 +60,6 @@ export class VisualRenderService extends RenderSurfaceService {
   /** What frames are costing, for whatever draws the readout over them. */
   @RefObservable()
   public frameCost: IRenderFrameCost = EMPTY_RENDER_FRAME_COST;
-
-  /** The renderer always draws on a thread of its own. */
-  @Observable()
-  public isOffscreen: boolean = true;
 
   private readonly config: IVisualPreviewSceneConfig = DEFAULT_VISUAL_PREVIEW_SCENE_CONFIG;
   private readonly reactions: Array<() => void> = [];

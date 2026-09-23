@@ -13,6 +13,8 @@ export interface ILevelRenderConfig {
   gridOriginColor: number;
   /** Roughly how many cells the grid is drawn with across the level; the step itself is rounded to a readable one. */
   gridCells: number;
+  /** Times each of those cells is split again, for a finer measure that still reaches the level. */
+  gridSubdivision: number;
   /** Colour of the grid and box outlining the extent the level claims. */
   boundsColor: number;
   /** Colour of the disc drawn where the light comes from. */
@@ -27,6 +29,7 @@ export const DEFAULT_LEVEL_RENDER_CONFIG: ILevelRenderConfig = {
   cameraFar: 5000,
   cameraNear: 0.2,
   gridCells: 40,
+  gridSubdivision: 2,
   gridColor: 0x3a4148,
   gridOriginColor: 0x7a8894,
   sunColor: 0xfff2c8,

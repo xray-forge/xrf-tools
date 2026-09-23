@@ -92,7 +92,6 @@ export class LevelRenderService extends RenderSurfaceService {
 
   protected mount(container: HTMLElement): void {
     this.target = new DomRenderTarget(container, this.settingsService.renderResolution);
-    this.viewportService.noteOffscreen(true);
     this.ensureClient().attach(this.target);
   }
 

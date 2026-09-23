@@ -123,7 +123,7 @@ export function TextureSurface({
 
       {isUploading || isUntextured ? null : (
         <>
-          <RenderFrameReadout cost={renderService.frameCost} isOffscreen={renderService.isOffscreen} />
+          <RenderFrameReadout cost={renderService.frameCost} />
 
           <ViewportControls onZoomIn={onZoomIn} onZoomOut={onZoomOut} onReset={onReset} />
         </>

@@ -19,6 +19,8 @@ export interface IRenderGridLinesOptions {
   originColor: number;
   /** Where its middle stands, the origin when left out. */
   center?: IRenderGridCenter;
+  /** Times each round cell is split, reaching as far with that many more lines; one when left out. */
+  subdivision?: number;
 }
 
 /** A point a grid is laid around. */
@@ -53,9 +55,11 @@ const AXES_COLORS: ReadonlyArray<[TRendererColor, TRendererColor]> = [
  * @returns The grid's lines.
  */
 export function toRenderGridLines(extent: number, options: IRenderGridLinesOptions): IRenderLines {
-  const { cells, color, originColor } = options;
+  const { color, originColor } = options;
   const { x, y, z }: IRenderGridCenter = options.center ?? { x: 0, y: 0, z: 0 };
-  const step: number = toRenderGridStep(extent * 2, cells);
+  const subdivision: number = Math.max(1, Math.round(options.subdivision ?? 1));
+  const cells: number = options.cells * subdivision;
+  const step: number = toRenderGridStep(extent * 2, options.cells) / subdivision;
   const half: number = (step * cells) / 2;
   const positions: Array<number> = [];
   const colors: Array<number> = [];

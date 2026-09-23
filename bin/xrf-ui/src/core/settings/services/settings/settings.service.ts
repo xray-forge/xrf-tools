@@ -8,7 +8,6 @@ import {
   CATALOG_VIEW_STORAGE_KEY,
   DEV_MODE_STORAGE_KEY,
   FRAME_RATE_LIMIT_STORAGE_KEY,
-  OFFSCREEN_RENDER_STORAGE_KEY,
   RENDER_RESOLUTION_STORAGE_KEY,
 } from "@/core/storage";
 import { isDevelopmentBuild } from "@/lib/env";
@@ -31,8 +30,6 @@ export class SettingsService {
   public catalogView: TCatalogView = toCatalogView(getLocalStorageValue(CATALOG_VIEW_STORAGE_KEY));
 
   /** Whether a level draws on a thread of its own, which it does unless somebody has said not to. */
-  @Observable()
-  public isOffscreenRenderEnabled: boolean = getLocalStorageValue(OFFSCREEN_RENDER_STORAGE_KEY) !== String(false);
 
   /**
    * Frames a second every viewport is allowed to draw.
@@ -68,14 +65,6 @@ export class SettingsService {
 
     this.isDevModeEnabled = isEnabled;
     setLocalStorageValue(DEV_MODE_STORAGE_KEY, String(isEnabled));
-  }
-
-  @BoundAction()
-  public setOffscreenRenderEnabled(isEnabled: boolean): void {
-    this.log.info("Set offscreen render:", isEnabled);
-
-    this.isOffscreenRenderEnabled = isEnabled;
-    setLocalStorageValue(OFFSCREEN_RENDER_STORAGE_KEY, String(isEnabled));
   }
 
   @BoundAction()

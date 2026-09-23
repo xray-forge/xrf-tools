@@ -1,10 +1,10 @@
+import { readDdsFile } from "@xrf/renderer";
 import { Nullable, Optional } from "@xrf/types";
 
 import { transformError } from "@/core/error/lib";
 import { assetsRawCommands } from "@/core/ipc/commands/assets-raw";
 import { visualsRawCommands } from "@/core/ipc/commands/visuals-raw";
 import { SelectedVisualDescription } from "@/core/ipc/types/xrf-app";
-import { readWebGlDdsFile } from "@/core/render/lib/dds";
 import { IRendererSurfaceDraw } from "@/core/render/lib/surface/renderer-surface-draw";
 import { ILoadableBump, IVisualBumpFiles, IVisualBumpStatus, toLoadableBumps } from "@/core/visuals/lib/visual-bump";
 import { describeVisualSource } from "@/core/visuals/lib/visual-source";
@@ -200,9 +200,7 @@ export class VisualTextureSet {
         // is the surface's answer, and it travels with the file because only this side knows the surfaces.
         taken.set(
           logicalPath,
-          readWebGlDdsFile(read.bytes, isAlphaRead).file
-            ? { bytes: read.bytes, isAlphaRead, isDecoded: false, logicalPath }
-            : null
+          readDdsFile(read.bytes).file ? { bytes: read.bytes, isAlphaRead, isDecoded: false, logicalPath } : null
         );
       }
 
@@ -275,9 +273,7 @@ export class VisualTextureSet {
       // in it. The file says which answer it wants, because the side that uploads cannot know.
       taken.set(
         logicalPath,
-        readWebGlDdsFile(read.bytes).file
-          ? { bytes: read.bytes, isAlphaRead: false, isDecoded: false, logicalPath }
-          : null
+        readDdsFile(read.bytes).file ? { bytes: read.bytes, isAlphaRead: false, isDecoded: false, logicalPath } : null
       );
     }
 

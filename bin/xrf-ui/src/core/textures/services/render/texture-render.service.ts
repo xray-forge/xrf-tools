@@ -1,5 +1,5 @@
 import { inject, Injectable, OnDeactivation } from "@wirestate/core";
-import { BoundAction, Observable, reaction, RefObservable } from "@wirestate/mobx";
+import { BoundAction, reaction, RefObservable } from "@wirestate/mobx";
 import {
   EMPTY_RENDER_FRAME_COST,
   ERendererBumpPlane,
@@ -50,10 +50,6 @@ export class TextureRenderService extends RenderSurfaceService {
   /** What frames are costing, for whatever draws the readout over them. */
   @RefObservable()
   public frameCost: IRenderFrameCost = EMPTY_RENDER_FRAME_COST;
-
-  /** The renderer always draws on a thread of its own. */
-  @Observable()
-  public isOffscreen: boolean = true;
 
   private client: Nullable<RendererClient> = null;
   private target: Nullable<DomRenderTarget> = null;

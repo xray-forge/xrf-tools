@@ -28,6 +28,7 @@ export function toLevelGridOverlay(box: ILevelBox, config: ILevelRenderConfig): 
       cells: config.gridCells,
       color: config.gridColor,
       originColor: config.gridOriginColor,
+      subdivision: config.gridSubdivision,
     }),
     true
   );
@@ -47,6 +48,7 @@ export function toLevelExtentGridOverlay(box: ILevelBox, config: ILevelRenderCon
       center: toBoxFloor(box),
       color: config.boundsColor,
       originColor: config.boundsColor,
+      subdivision: config.gridSubdivision,
     }),
     true
   );

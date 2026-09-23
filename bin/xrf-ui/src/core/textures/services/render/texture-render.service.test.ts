@@ -163,7 +163,6 @@ describe("TextureRenderService", () => {
     });
 
     expect(service.frameCost.framesPerSecond).toBe(144);
-    expect(service.isOffscreen).toBe(true);
 
     service.detach();
 

@@ -3,9 +3,7 @@ import { ERenderResolution, FRAME_RATE_LIMITS, RENDER_RESOLUTIONS, TFrameRateLim
 import { ReactElement } from "react";
 
 import { SettingsService } from "@/core/settings/services/settings";
-import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 import { ChoiceFormRow, IChoiceFormRowOption } from "@/core/ui/form/ChoiceFormRow";
-import { canRenderOffscreen } from "@/lib/dom/canvas";
 
 const FRAME_RATE_OPTIONS: ReadonlyArray<IChoiceFormRowOption<TFrameRateLimit>> = FRAME_RATE_LIMITS.map((value) => ({
   value,
@@ -28,8 +26,6 @@ const RESOLUTION_OPTIONS: ReadonlyArray<IChoiceFormRowOption<ERenderResolution>>
 export function SettingsRenderSection(): ReactElement {
   const settingsService: SettingsService = useInjection(SettingsService);
 
-  const isOffscreenAvailable: boolean = canRenderOffscreen();
-
   return (
     <div className={"flex flex-col gap-6"}>
       <ChoiceFormRow
@@ -49,17 +45,6 @@ export function SettingsRenderSection(): ReactElement {
         options={RESOLUTION_OPTIONS}
         value={settingsService.renderResolution}
         onChange={settingsService.setRenderResolution}
-      />
-
-      <CheckboxFormRow
-        label={"Draw levels on their own thread"}
-        description={
-          "Keeps the interface responsive while a level streams, for the same picture either way. Turn it off to " +
-          "draw on the thread the interface runs on."
-        }
-        isChecked={settingsService.isOffscreenRenderEnabled && isOffscreenAvailable}
-        isDisabled={!isOffscreenAvailable}
-        onChange={settingsService.setOffscreenRenderEnabled}
       />
     </div>
   );

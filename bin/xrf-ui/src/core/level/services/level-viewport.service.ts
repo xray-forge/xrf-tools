@@ -1,5 +1,5 @@
 import { Injectable, OnDeactivation } from "@wirestate/core";
-import { BoundAction, Observable, RefObservable } from "@wirestate/mobx";
+import { BoundAction, RefObservable } from "@wirestate/mobx";
 import { Nullable } from "@xrf/types";
 
 import { ILevelCamera } from "@/core/level/lib/camera/level-camera";
@@ -18,23 +18,9 @@ export class LevelViewportService {
   @RefObservable()
   public camera: Nullable<ILevelCamera> = null;
 
-  /** Whether the frames are drawn on a thread of their own, which nothing in the picture says. */
-  @Observable()
-  public isOffscreen: boolean = false;
-
   /** What the level's textures came to, which is the answer of whichever side uploaded them. */
   @RefObservable()
   public textureReport: ILevelTextureReport = EMPTY_LEVEL_TEXTURE_REPORT;
-
-  /**
-   * Takes where the frames are coming from, from whoever built the renderer.
-   *
-   * @param isOffscreen - Whether they are drawn on a thread of their own.
-   */
-  @BoundAction()
-  public noteOffscreen(isOffscreen: boolean): void {
-    this.isOffscreen = isOffscreen;
-  }
 
   /**
    * Takes what the textures came to.
