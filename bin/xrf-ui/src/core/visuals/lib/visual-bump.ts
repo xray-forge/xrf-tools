@@ -1,26 +1,10 @@
 import { Nullable } from "@xrf/types";
-import { IUniform, Matrix3, MeshStandardMaterial, Texture, WebGLProgramParametersWithUniforms } from "three";
 
 import { getLocatedAsset } from "@/core/assets/lib/resolution";
 import { XrayMaterialDescriptor } from "@/core/ipc/types/xrf-material";
 import { XrayAsset } from "@/core/ipc/types/xrf-vfs";
 import { VisualTextureDependency } from "@/core/ipc/types/xrf-visual";
-import { toXrayGlossDeclaration, XRAY_GLOSS_VARIABLE } from "@/core/render/lib/surface/render-gloss";
-import { applyRenderPatch, removeRenderPatch } from "@/core/render/lib/surface/render-patch";
 import { EVisualTextureState, IVisualTextureFile } from "@/core/visuals/lib/visual-texture";
-
-/**
- * The two textures a bump declaration binds, uploaded.
- *
- * Always the pair: the engine's `sload_i` samples both every texel, and a `dummy` outcome has the real dummy files
- * uploaded here so the surface shows what the game shows.
- */
-export interface IVisualBumpTextures {
-  /** `normal.gloss`, the file the declaration names. */
-  bump: Texture;
-  /** `normal_error.height`, the `#` companion. */
-  companion: Texture;
-}
 
 /** The two files of a bump pair, which are only ever read, uploaded and drawn together. */
 export interface IVisualBumpFiles {
@@ -60,44 +44,14 @@ export interface IVisualBumpTexel {
 export type TVisualTexel = readonly [number, number, number, number];
 
 /**
- * The geometry attributes the patch reads the authored tangent basis from.
- */
-export const XRAY_TANGENT_ATTRIBUTE: string = "xrayTangent";
-export const XRAY_BINORMAL_ATTRIBUTE: string = "xrayBinormal";
-
-/** What the bump patch is called on a material, so a surface that stops binding a pair can take it off. */
-const XRAY_BUMP_PATCH: string = "xray-bump";
-
-/**
- * The bump decode of `gl/sload.h`, in the shader's own spelling.
- *
- * Held as one string so the GLSL patch and the TypeScript mirror below cannot drift: the test decodes a texel through
- * {@link decodeXrayBumpTexel} and pins that the compiled shader carries this exact expression.
- */
-export const XRAY_BUMP_NORMAL_GLSL: string = "xrayNu.wzy + (xrayNuE.xyz - 1.0)";
-
-/** Gloss is the bump's red channel squared, `S.gloss = Nu.x * Nu.x`. */
-export const XRAY_BUMP_GLOSS_GLSL: string = "xrayNu.x * xrayNu.x";
-
-/**
- * Height is the companion's alpha channel, where `it_height_rev` puts it (`xrDXT/NormalMapGen.cpp`).
- *
- * The engine reads it from two different channels. `UpdateTC` and the steep parallax loop take `.a`, which is this
- * one; `surface_bumped` assigns `S.height = NuE.z`, which is the normal's z error rather than any height.
- * This follows the generator and the parallax path, because they agree with each other and with what
- * the file actually stores.
- */
-export const XRAY_BUMP_HEIGHT_GLSL: string = "xrayNuE.w";
-
-/**
  * Reconstructs what the engine reads from one texel of a bump pair.
  *
  * `Nu.wzy` is (alpha, blue, green) of the bump, and the companion's rgb is the quantisation error the packer left, so
  * the normal is `Nu.wzy + (NuE.xyz - 1.0)` component by component. Not normalised, as the engine does not normalise
  * here either; the shader normalises after rotating through the tangent basis.
  *
- * Height comes from the companion's alpha, which is what the generator writes and what parallax samples; see
- * {@link XRAY_BUMP_HEIGHT_GLSL} for why that is not the channel `surface_bumped` reads.
+ * Height comes from the companion's alpha, which is what the generator writes and what parallax samples, rather than
+ * `NuE.z`, which `surface_bumped` assigns and which is the normal's z error.
  *
  * @param nu - Texel of the bump, `normal.gloss`.
  * @param nuE - Texel of the companion, `normal_error.height`.
@@ -140,138 +94,4 @@ export function toLoadableBumps(
       ? [{ submeshIndex: texture.submeshIndex, bump: located.logicalPath, companion: companion.logicalPath }]
       : [];
   });
-}
-
-/** Switches a patched material between the flat and the bumped surface without recompiling it. */
-export interface IVisualBumpShading {
-  setEnabled(isEnabled: boolean): void;
-  /**
-   * Applies the same uv transform the base texture is sampled through.
-   *
-   * @param matrix - The base texture's `matrix`, kept up to date by `Texture.updateMatrix`.
-   */
-  setUvTransform(matrix: Matrix3): void;
-}
-
-/**
- * The vertex side of the patch: carries the authored tangent basis and the uv to the fragment stage.
- *
- * The basis is skinned with the normal when the mesh is, through the `skinMatrix` three.js has just built, and rotated
- * into view space by the same `normalMatrix`, so it stays the basis of the surface being drawn.
- */
-const VERTEX_PARS: string = `
-attribute vec3 ${XRAY_TANGENT_ATTRIBUTE};
-attribute vec3 ${XRAY_BINORMAL_ATTRIBUTE};
-uniform mat3 xrayBumpUvTransform;
-varying vec3 vXrayTangent;
-varying vec3 vXrayBinormal;
-varying vec2 vXrayUv;
-`;
-
-const VERTEX_BEGIN: string = `
-vec3 xrayObjectTangent = ${XRAY_TANGENT_ATTRIBUTE};
-vec3 xrayObjectBinormal = ${XRAY_BINORMAL_ATTRIBUTE};
-`;
-
-const VERTEX_SKIN: string = `
-#ifdef USE_SKINNING
-xrayObjectTangent = vec4( skinMatrix * vec4( xrayObjectTangent, 0.0 ) ).xyz;
-xrayObjectBinormal = vec4( skinMatrix * vec4( xrayObjectBinormal, 0.0 ) ).xyz;
-#endif
-`;
-
-const VERTEX_TRANSFORM: string = `
-vXrayTangent = normalMatrix * xrayObjectTangent;
-vXrayBinormal = normalMatrix * xrayObjectBinormal;
-vXrayUv = ( xrayBumpUvTransform * vec3( uv, 1.0 ) ).xy;
-`;
-
-const FRAGMENT_PARS: string = `
-varying vec3 vXrayTangent;
-varying vec3 vXrayBinormal;
-varying vec2 vXrayUv;
-uniform sampler2D xrayBump;
-uniform sampler2D xrayBumpX;
-uniform float xrayBumpEnabled;
-`;
-
-/**
- * Samples the pair once, before three.js reads roughness, so both the roughness and the normal below see one texel.
- */
-const FRAGMENT_ROUGHNESS: string = `
-${toXrayGlossDeclaration()}
-vec4 xrayNu = texture2D( xrayBump, vXrayUv );
-vec4 xrayNuE = texture2D( xrayBumpX, vXrayUv );
-#include <roughnessmap_fragment>
-if ( xrayBumpEnabled > 0.5 ) {
-  ${XRAY_GLOSS_VARIABLE} = ${XRAY_BUMP_GLOSS_GLSL};
-  roughnessFactor = 1.0 - ${XRAY_GLOSS_VARIABLE};
-}
-`;
-
-/**
- * The decoded normal rotated through the authored basis, the way `deffer_model_bump.vs` feeds `M1..M3` to the pixel
- * shader and `deffer_base_bump.ps` multiplies: tangent by x, binormal by y, normal by z.
- */
-const FRAGMENT_NORMAL: string = `
-#include <normal_fragment_maps>
-if ( xrayBumpEnabled > 0.5 ) {
-  vec3 xrayNormalTangentSpace = ${XRAY_BUMP_NORMAL_GLSL};
-  normal = normalize(
-    normalize( vXrayTangent ) * xrayNormalTangentSpace.x
-    + normalize( vXrayBinormal ) * xrayNormalTangentSpace.y
-    + normal * xrayNormalTangentSpace.z
-  );
-}
-`;
-
-/**
- * Shades a standard material the way the engine shades a bumped X-Ray surface.
- *
- * @param material - Material of a mesh whose geometry carries `xrayTangent` and `xrayBinormal` attributes.
- * @param textures - The uploaded pair to sample.
- * @returns The switch between the flat and the bumped surface.
- */
-export function applyXrayBumpShading(
-  material: MeshStandardMaterial,
-  textures: IVisualBumpTextures
-): IVisualBumpShading {
-  const enabled: IUniform<number> = { value: 1 };
-  const uvTransform: IUniform<Matrix3> = { value: new Matrix3() };
-
-  applyRenderPatch(material, { name: XRAY_BUMP_PATCH }, (shader: WebGLProgramParametersWithUniforms): void => {
-    shader.uniforms.xrayBump = { value: textures.bump };
-    shader.uniforms.xrayBumpX = { value: textures.companion };
-    shader.uniforms.xrayBumpEnabled = enabled;
-    shader.uniforms.xrayBumpUvTransform = uvTransform;
-
-    shader.vertexShader = shader.vertexShader
-      .replace("#include <common>", `#include <common>\n${VERTEX_PARS}`)
-      .replace("#include <beginnormal_vertex>", `#include <beginnormal_vertex>\n${VERTEX_BEGIN}`)
-      .replace("#include <skinnormal_vertex>", `#include <skinnormal_vertex>\n${VERTEX_SKIN}`)
-      .replace("#include <defaultnormal_vertex>", `#include <defaultnormal_vertex>\n${VERTEX_TRANSFORM}`);
-
-    shader.fragmentShader = shader.fragmentShader
-      .replace("#include <common>", `#include <common>\n${FRAGMENT_PARS}`)
-      .replace("#include <roughnessmap_fragment>", FRAGMENT_ROUGHNESS)
-      .replace("#include <normal_fragment_maps>", FRAGMENT_NORMAL);
-  });
-
-  return {
-    setEnabled(isEnabled: boolean): void {
-      enabled.value = isEnabled ? 1 : 0;
-    },
-    setUvTransform(matrix: Matrix3): void {
-      uvTransform.value.copy(matrix);
-    },
-  };
-}
-
-/**
- * Takes the bump patch off a material, for a surface that no longer binds a pair.
- *
- * @param material - Material that was shaded with a pair.
- */
-export function removeXrayBumpShading(material: MeshStandardMaterial): void {
-  removeRenderPatch(material, XRAY_BUMP_PATCH);
 }

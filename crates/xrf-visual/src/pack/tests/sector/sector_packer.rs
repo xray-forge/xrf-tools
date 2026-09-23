@@ -12,8 +12,8 @@ use crate::pack::sector::sector_package::SectorPackage;
 use crate::pack::sector::sector_packer::SectorPacker;
 use crate::pack::tests::sector::level_fixtures::{
   GeomBuffer, new_drawable, new_drawable_of_buffer, new_geometry_fixture, new_hierarchy, new_lightmapped_declaration,
-  new_lightmapped_vertex, new_lit_tree, new_open_geometry, new_position_vertex, new_positions_declaration, new_shaders, new_tree,
-  new_vertex_lit_declaration, new_vertex_lit_vertex, new_visuals,
+  new_lightmapped_vertex, new_lit_tree, new_open_geometry, new_position_vertex, new_positions_declaration, new_shaders,
+  new_tree, new_vertex_lit_declaration, new_vertex_lit_vertex, new_visuals,
 };
 
 /// Four lightmapped vertices in one buffer, and six indices that draw two triangles out of them.
@@ -368,7 +368,10 @@ fn test_packs_each_places_hemisphere_terms_beside_its_transform() {
   let correction: f32 = 0.5 * 1.5 * 1.3333;
 
   assert_eq!(hemi.len(), 2 * SectorInstanceGroup::HEMI_FLOATS_PER_INSTANCE);
-  assert_eq!(hemi, vec![0.8 * correction, 0.2 * correction, 0.4 * correction, 0.6 * correction]);
+  assert_eq!(
+    hemi,
+    vec![0.8 * correction, 0.2 * correction, 0.4 * correction, 0.6 * correction]
+  );
 }
 
 // Two meshes dressed by different surfaces cannot share one instanced draw, whatever else they have in common.
