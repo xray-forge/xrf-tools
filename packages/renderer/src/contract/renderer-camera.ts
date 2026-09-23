@@ -6,6 +6,8 @@ import { TRendererVector } from "#/contract/renderer-lighting";
 export enum ERendererCameraController {
   /** Orbits a target under the pointer, as a model or texture preview does. */
   ORBIT = "orbit",
+  /** Flies free, turned by a drag and moved by the keys, as a level is walked. */
+  FLY = "fly",
 }
 
 /**
@@ -23,8 +25,30 @@ export interface IRendererOrbitCamera {
   far: number;
 }
 
+/**
+ * A camera flown through a scene.
+ * Described again from the same start, it keeps where it has flown and takes only the rest.
+ */
+export interface IRendererFlyCamera {
+  kind: ERendererCameraController.FLY;
+  /** Where the camera starts, and returns to on reset. */
+  position: TRendererVector;
+  /** What it looks at from there. */
+  target: TRendererVector;
+  /** Vertical field of view, in degrees. */
+  fieldOfView: number;
+  near: number;
+  far: number;
+  /** Metres a second at a walk. */
+  speed: number;
+  /** Times the speed while the boost key is held. */
+  boost: number;
+  /** Radians of turn per pixel dragged. */
+  sensitivity: number;
+}
+
 /** Every camera a consumer can ask for. */
-export type TRendererCamera = IRendererOrbitCamera;
+export type TRendererCamera = IRendererOrbitCamera | IRendererFlyCamera;
 
 /**
  * What a consumer can ask of the camera it chose.

@@ -1,3 +1,5 @@
+import { TRendererVector } from "#/contract/renderer-lighting";
+
 /**
  * A range of a geometry's indices drawn with one surface.
  */
@@ -8,6 +10,14 @@ export interface IRendererGeometryGroup {
   count: number;
   /** Which of the object's surfaces draws it, by position in its list. */
   slot: number;
+}
+
+/**
+ * A sphere enclosing a geometry's positions, as whoever made them measured it.
+ */
+export interface IRendererBounds {
+  center: TRendererVector;
+  radius: number;
 }
 
 /**
@@ -31,8 +41,12 @@ export interface IRendererGeometry {
   skinIndices?: Uint16Array;
   /** Four weights a vertex, beside the indices. */
   skinWeights?: Float32Array;
+  /** One float a vertex: the hemisphere occlusion a vertex-lit surface carries in its normal's fourth byte. */
+  hemi?: Float32Array;
   index?: Uint16Array | Uint32Array;
   groups: ReadonlyArray<IRendererGeometryGroup>;
+  /** What the positions span, where it was measured already; measured by the renderer otherwise. */
+  bounds?: IRendererBounds;
 }
 
 /**
@@ -51,6 +65,7 @@ export function listRendererGeometryTransfers(geometry: IRendererGeometry): Arra
     geometry.binormal,
     geometry.skinIndices,
     geometry.skinWeights,
+    geometry.hemi,
     geometry.index,
   ]
     .filter((array): array is NonNullable<typeof array> => array !== undefined)

@@ -1,5 +1,7 @@
 import { Maybe } from "@xrf/types";
 import {
+  attribute,
+  clamp,
   Discard,
   float,
   Fn,
@@ -22,6 +24,7 @@ import {
   DstColorFactor,
   MeshBasicNodeMaterial,
   Node,
+  NodeBuilder,
   OneFactor,
   OneMinusSrcAlphaFactor,
   SrcAlphaFactor,
@@ -59,6 +62,27 @@ const DEFAULT_MATERIAL: number = 1;
 /** Lighting model slices the material lookup holds. */
 const MATERIAL_SLICES: number = 4;
 
+/** Units a composited surface is pulled towards the eye by, scaled by its slope, so a decal never loses to its wall. */
+const COMPOSITED_POLYGON_OFFSET: number = -1;
+
+/** The geometry attribute a vertex's hemisphere term rides in. */
+export const HEMI_ATTRIBUTE: string = "hemi";
+
+/** The instanced attribute scaling and offsetting it, per place a geometry stands. */
+export const INSTANCE_HEMI_ATTRIBUTE: string = "instanceHemi";
+
+/**
+ * Which pass of the frame draws a surface.
+ */
+export enum ESurfacePass {
+  /** Into the G-buffer, lit by the deferred passes. */
+  DEFERRED = "deferred",
+  /** Into the G-buffer's albedo, before any light: the engine's wall mark phase. */
+  WALLMARK = "wallmark",
+  /** Composited over the tonemapped frame. */
+  FORWARD = "forward",
+}
+
 /** Binds one texture slot and remembers it, so the material's disposal can let it go. */
 type TBind = (key: Maybe<string>, placeholder?: Texture, coordinates?: Node<"vec2">) => TextureNode;
 
@@ -77,8 +101,10 @@ export interface ISurfaceShadingContext {
  */
 export interface ISurfaceMaterial {
   material: MeshBasicNodeMaterial;
-  /** Whether it fills the G-buffer, rather than being composited after it. */
-  isDeferred: boolean;
+
+  /** Which pass draws it. */
+  pass: ESurfacePass;
+
   dispose(): void;
 }
 
@@ -119,20 +145,47 @@ export function createSurfaceMaterial(
     return sampler;
   }
 
-  const texel: ISurfaceTexel = toSurfaceTexel(surface, bind, baseCoordinates, context.settings);
-  const isDeferred: boolean = surface.draw === ERendererDraw.OPAQUE || surface.draw === ERendererDraw.CUT_OUT;
-  const material: MeshBasicNodeMaterial = isDeferred
-    ? createDeferredMaterial(surface, texel)
-    : createForwardMaterial(surface, texel, context);
+  const pass: ESurfacePass = toSurfacePass(surface);
+  let material: MeshBasicNodeMaterial;
+
+  switch (pass) {
+    case ESurfacePass.DEFERRED:
+      material = createDeferredMaterial(surface, toSurfaceTexel(surface, bind, baseCoordinates, context.settings));
+      break;
+
+    case ESurfacePass.WALLMARK:
+      material = createWallmarkMaterial(surface, bind);
+      break;
+
+    case ESurfacePass.FORWARD:
+      material = createForwardMaterial(
+        surface,
+        toSurfaceTexel(surface, bind, baseCoordinates, context.settings),
+        context
+      );
+      break;
+  }
 
   return {
     dispose: () => {
       bound.forEach(([key, sampler]) => textures.unbind(key, sampler));
       material.dispose();
     },
-    isDeferred,
     material,
+    pass,
   };
+}
+
+/**
+ * @param surface - What the consumer put.
+ * @returns The pass its draw puts it in.
+ */
+export function toSurfacePass(surface: IRendererSurface): ESurfacePass {
+  if (surface.draw === ERendererDraw.OPAQUE || surface.draw === ERendererDraw.CUT_OUT) {
+    return ESurfacePass.DEFERRED;
+  }
+
+  return surface.isWallmark ? ESurfacePass.WALLMARK : ESurfacePass.FORWARD;
 }
 
 /** `sload`: the surface at a texel, with the bump pair's normal and gloss where it binds one. */
@@ -181,12 +234,35 @@ function toSurfaceTexel(
     albedo,
     base,
     gloss,
-    // `get_hemi` and `get_sun`: the lightmap's alpha and green; a surface without one is lit in full.
-    hemi: surface.textures.hemi ? bind(surface.textures.hemi, getWhiteTexture(), uv(1)) : vec4(1),
+    // `get_hemi` and `get_sun`: the lightmap's alpha and green, or the vertex's own hemisphere term where there is
+    // no lightmap, sun unoccluded.
+    hemi: surface.textures.hemi
+      ? bind(surface.textures.hemi, getWhiteTexture(), uv(1))
+      : vec4(1, 1, 1, varying(vertexHemi())),
     normal,
     slice: float(((surface.material ?? DEFAULT_MATERIAL) + 0.5) / MATERIAL_SLICES),
   };
 }
+
+/**
+ * `position.w` of the deferred vertex shaders: the hemisphere term the normal's fourth byte carries, scaled and offset
+ * per instance for a tree (`I.Nh.w * c_scale.w + c_bias.w`), and one for a geometry that carries none.
+ */
+const vertexHemi = Fn((_: [], builder: NodeBuilder): Node<"float"> => {
+  if (!builder.geometry?.hasAttribute(HEMI_ATTRIBUTE)) {
+    return float(1);
+  }
+
+  const hemi: Node<"float"> = attribute<"float">(HEMI_ATTRIBUTE, "float");
+
+  if (!builder.geometry.hasAttribute(INSTANCE_HEMI_ATTRIBUTE)) {
+    return hemi;
+  }
+
+  const terms: Node<"vec2"> = attribute<"vec2">(INSTANCE_HEMI_ATTRIBUTE, "vec2");
+
+  return hemi.mul(terms.x).add(terms.y);
+});
 
 /** `deffer_base` and `deffer_base_bump`: raw albedo and gloss, the view normal, and the baked occlusions. */
 function createDeferredMaterial(surface: IRendererSurface, texel: ISurfaceTexel): MeshBasicNodeMaterial {
@@ -234,8 +310,9 @@ function createForwardMaterial(
   if (surface.draw === ERendererDraw.BLENDED && surface.isLit !== false) {
     const point: IBaseShadingPoint = { normal: texel.normal, position: positionView, slice: texel.slice };
     const light: Node<"vec4"> = toSunLight(point, lighting, lut);
+    const hemi: Node<"float"> = mix(float(1), texel.hemi.w, settings.hemiStrength);
     const lit: Node<"vec3"> = toFinishedColor(
-      toBaseColor(texel.albedo, texel.gloss, light, texel.hemi.w, point, lighting, camera, lut),
+      toBaseColor(texel.albedo, texel.gloss, light, hemi, point, lighting, camera, lut),
       positionView,
       lighting
     );
@@ -244,16 +321,44 @@ function createForwardMaterial(
   }
 
   material.colorNode = vec4(color, texel.base.w);
-  material.depthWrite = false;
-  material.transparent = true;
-  material.blending = CustomBlending;
-  // Alpha keeps what is under it, except where a blended surface covers it, so the canvas composites correctly.
-  material.blendSrcAlpha = ZeroFactor;
-  material.blendDstAlpha = OneFactor;
 
   if (surface.alphaReference !== undefined) {
     material.alphaTestNode = float(surface.alphaReference);
   }
+
+  describeComposite(material, surface);
+
+  return material;
+}
+
+/**
+ * `wmark` and `simple`: the base alone, sampled through `smp_rtlinear` - its top level, clamped - and composited into
+ * the albedo by its draw, the gloss under it kept. Nothing clips it: DX10 routes `aref` to a shader constant, and
+ * `simple.ps` reads none.
+ */
+function createWallmarkMaterial(surface: IRendererSurface, bind: TBind): MeshBasicNodeMaterial {
+  const material: MeshBasicNodeMaterial = new MeshBasicNodeMaterial();
+  const base: TextureNode = bind(surface.textures.base, getWhiteTexture(), clamp(uv().mul(surface.tiling ?? 1), 0, 1));
+  const top: TextureNode = base.level(float(0));
+
+  material.colorNode = vec4(toTinted(top.xyz, surface), top.w);
+  describeComposite(material, surface);
+
+  return material;
+}
+
+/** What every composited surface shares: no depth written, pulled towards the eye, and blended by its draw. */
+function describeComposite(material: MeshBasicNodeMaterial, surface: IRendererSurface): void {
+  material.depthWrite = false;
+  material.transparent = true;
+  material.polygonOffset = true;
+  material.polygonOffsetFactor = COMPOSITED_POLYGON_OFFSET;
+  material.polygonOffsetUnits = COMPOSITED_POLYGON_OFFSET;
+  material.blending = CustomBlending;
+  // Alpha keeps what is under it, except where a blended surface covers it: the canvas composites by it, and the
+  // albedo keeps its gloss there.
+  material.blendSrcAlpha = ZeroFactor;
+  material.blendDstAlpha = OneFactor;
 
   switch (surface.draw) {
     case ERendererDraw.BLENDED:
@@ -283,7 +388,11 @@ function createForwardMaterial(
       break;
   }
 
-  return material;
+  // `dx10color_write_enable(true, true, true, false)`: a wall mark leaves the gloss in the albedo's alpha alone.
+  if (surface.isWallmark) {
+    material.blendSrcAlpha = ZeroFactor;
+    material.blendDstAlpha = OneFactor;
+  }
 }
 
 /** The base times the surface's colour, where it gives one. */

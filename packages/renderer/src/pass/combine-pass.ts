@@ -1,4 +1,4 @@
-import { Discard, Fn, getViewPosition, If, screenUV, select, texture, vec4 } from "three/tsl";
+import { Discard, float, Fn, getViewPosition, If, mix, screenUV, select, texture, vec4 } from "three/tsl";
 import { Color, Data3DTexture, LinearSRGBColorSpace, NodeMaterial, QuadMesh } from "three/webgpu";
 
 import { BaseLightingUniforms } from "#/graph/base-lighting-uniforms";
@@ -46,7 +46,8 @@ export class CombinePass implements IRendererPass {
       };
 
       const light = texture(targets.light.texture, screenUV);
-      const color = toBaseColor(albedo.xyz, albedo.w, light, surface.x, point, lighting, camera, lut);
+      const hemi = mix(float(1), surface.x, settings.hemiStrength);
+      const color = toBaseColor(albedo.xyz, albedo.w, light, hemi, point, lighting, camera, lut);
       const lit = toFinishedColor(color, point.position, lighting);
 
       // Unlit, the frame is the raw albedo: the file as it reads, with nothing the lighting model adds.

@@ -52,4 +52,9 @@ export interface IRendererSurface {
   color?: TRendererColor;
   /** Whether a composited surface is lit, as a scripted pass may say it is not; lit when left out. */
   isLit?: boolean;
+  /**
+   * Whether it is a wall mark: composited into the albedo before any light, as the engine's wall mark phase does,
+   * its texture sampled at the top level only. Its draw says how it composites there.
+   */
+  isWallmark?: boolean;
 }

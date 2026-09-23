@@ -1,6 +1,7 @@
-import { BufferAttribute, BufferGeometry } from "three/webgpu";
+import { BufferAttribute, BufferGeometry, Sphere, Vector3 } from "three/webgpu";
 
 import { IRendererGeometry, IRendererGeometryGroup } from "#/contract/scene/renderer-geometry";
+import { HEMI_ATTRIBUTE } from "#/scene/surface-material";
 
 /**
  * A geometry as three draws it, over the very arrays that crossed.
@@ -34,6 +35,10 @@ export function createRendererBufferGeometry(geometry: IRendererGeometry): Buffe
     buffer.setAttribute("skinWeight", new BufferAttribute(geometry.skinWeights, 4));
   }
 
+  if (geometry.hemi) {
+    buffer.setAttribute(HEMI_ATTRIBUTE, new BufferAttribute(geometry.hemi, 1));
+  }
+
   if (geometry.index) {
     buffer.setIndex(new BufferAttribute(geometry.index, 1));
   }
@@ -51,7 +56,11 @@ export function createRendererBufferGeometry(geometry: IRendererGeometry): Buffe
     buffer.addGroup(0, geometry.index ? geometry.index.length : geometry.position.length / 3, 0);
   }
 
-  buffer.computeBoundingSphere();
+  if (geometry.bounds) {
+    buffer.boundingSphere = new Sphere(new Vector3(...geometry.bounds.center), geometry.bounds.radius);
+  } else {
+    buffer.computeBoundingSphere();
+  }
 
   return buffer;
 }

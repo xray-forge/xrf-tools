@@ -25,6 +25,11 @@ export enum EGBufferTarget {
 export class RendererTargets {
   /** `rgba8unorm`, `rg16float`, `rgba8unorm`, and `depth32float`: sixteen bytes a pixel. */
   public readonly gbuffer: RenderTarget;
+  /**
+   * The albedo alone with the G-buffer's depth, which wall marks composite into before any light: `phase_wallmarks`
+   * binds `rt_Color` and nothing else.
+   */
+  public readonly wallmarks: RenderTarget;
   /** What the lights accumulate: diffuse in colour, specular in alpha. */
   public readonly light: RenderTarget;
   /** The tonemapped frame, as combine writes it: no depth, since combine samples the G-buffer's. */
@@ -49,6 +54,11 @@ export class RendererTargets {
       texture.magFilter = NearestFilter;
       texture.generateMipmaps = false;
     }
+
+    this.wallmarks = new RenderTarget(1, 1, { depthBuffer: true });
+    this.wallmarks.texture.dispose();
+    this.wallmarks.texture = this.gbuffer.textures[0];
+    this.wallmarks.depthTexture = this.gbuffer.depthTexture;
 
     this.light = new RenderTarget(1, 1, { depthBuffer: false, type: HalfFloatType });
     this.scene = new RenderTarget(1, 1, { depthBuffer: false });
@@ -81,6 +91,7 @@ export class RendererTargets {
    */
   public resize(width: number, height: number): void {
     this.gbuffer.setSize(width, height);
+    this.wallmarks.setSize(width, height);
     this.light.setSize(width, height);
     this.scene.setSize(width, height);
     this.composite.setSize(width, height);
@@ -89,13 +100,14 @@ export class RendererTargets {
   /**
    * Allocates every target at its size before a pass draws into one.
    *
-   * Three allocates a target on first use, and allocating `composite` reallocates the frame texture it shares: left to
-   * the forward pass, that would erase what combine drew into it on every frame after a resize.
+   * Three allocates a target on first use, and allocating one that shares a texture reallocates it: left to the pass
+   * drawing into `composite` or `wallmarks`, that would erase what the pass before drew on every frame after a resize.
    *
    * @param renderer - The renderer the targets are drawn by.
    */
   public prepare(renderer: WebGPURenderer): void {
     renderer.initRenderTarget(this.gbuffer);
+    renderer.initRenderTarget(this.wallmarks);
     renderer.initRenderTarget(this.light);
     renderer.initRenderTarget(this.scene);
     renderer.initRenderTarget(this.composite);
@@ -103,6 +115,7 @@ export class RendererTargets {
 
   public dispose(): void {
     this.gbuffer.dispose();
+    this.wallmarks.dispose();
     this.light.dispose();
     this.scene.dispose();
     this.composite.dispose();

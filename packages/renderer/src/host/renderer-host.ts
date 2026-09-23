@@ -10,7 +10,10 @@ import {
   WebGPURenderer,
 } from "three/webgpu";
 
+import { IRendererCameraController } from "#/camera/camera-controller";
+import { FlyCameraController } from "#/camera/fly-camera-controller";
 import { OrbitCameraController } from "#/camera/orbit-camera-controller";
+import { ERendererCameraController, TRendererCamera } from "#/contract/renderer-camera";
 import { ERendererCaptureSource, TRendererCaptureSource } from "#/contract/renderer-capture";
 import { IRendererDevice } from "#/contract/renderer-device";
 import { IRendererLighting } from "#/contract/renderer-lighting";
@@ -37,8 +40,10 @@ import { OverlayPass } from "#/pass/overlay-pass";
 import { PresentPass } from "#/pass/present-pass";
 import { IRendererPass } from "#/pass/renderer-pass";
 import { SunPass } from "#/pass/sun-pass";
+import { WallmarkPass } from "#/pass/wallmark-pass";
 import { RendererOverlays } from "#/scene/renderer-overlays";
 import { IRendererSceneStaging, RendererScene } from "#/scene/renderer-scene";
+import { ESurfacePass } from "#/scene/surface-material";
 import { RendererPassInspector } from "#/timing/renderer-pass-inspector";
 import { RendererPassTimer } from "#/timing/renderer-pass-timer";
 import { toFramePassTimes } from "#/timing/renderer-pass-times";
@@ -84,7 +89,11 @@ export class RendererHost {
   private readonly frameTimer: RenderFrameTimer = new RenderFrameTimer();
   private readonly passTimer: RendererPassTimer = new RendererPassTimer();
   private readonly element: RenderProxyElement;
-  private readonly controller: OrbitCameraController;
+  /** Whichever controller the consumer's camera asks for; an orbit until it asks. */
+  private controller: IRendererCameraController;
+  private controllerKind: ERendererCameraController = ERendererCameraController.ORBIT;
+  /** The view's size, for a controller made after the view was measured. */
+  private viewSize: { width: number; height: number } = { height: 1, width: 1 };
   private readonly settingsUniforms: SettingsUniforms = new SettingsUniforms();
   private readonly scene: RendererScene;
   private readonly overlays: RendererOverlays;
@@ -140,6 +149,7 @@ export class RendererHost {
     this.bumpPlanes = new BumpPlaneCapture(this.scene.textures);
     this.passes = [
       new GBufferPass(),
+      new WallmarkPass(),
       new SunPass(this.targets, this.cameraUniforms, this.lightingUniforms, this.lut),
       new CombinePass(this.targets, this.cameraUniforms, this.lightingUniforms, this.settingsUniforms, this.lut),
       new ForwardPass(),
@@ -233,7 +243,7 @@ export class RendererHost {
         return this.light(request.lighting);
 
       case ERendererRequest.CAMERA:
-        return this.controller.describe(request.camera);
+        return this.setCamera(request.camera);
 
       case ERendererRequest.CAMERA_COMMAND:
         return this.controller.command(request.command);
@@ -312,9 +322,8 @@ export class RendererHost {
     this.isGpuTimed = renderer.hasFeature("timestamp-query");
     this.frameState = {
       camera: this.controller.camera,
-      deferred: this.scene.deferred,
-      forward: this.scene.forward,
       renderer,
+      scenes: this.scene.scenes,
       settings,
       targets: this.targets,
     };
@@ -333,6 +342,29 @@ export class RendererHost {
     if (this.frameState) {
       this.frameState.settings = settings;
     }
+  }
+
+  /**
+   * Describes the camera to the controller its kind asks for, replacing the one driving it for another kind.
+   *
+   * @param camera - The camera the consumer wants.
+   */
+  private setCamera(camera: TRendererCamera): void {
+    if (camera.kind !== this.controllerKind) {
+      this.controller.dispose();
+      this.controller =
+        camera.kind === ERendererCameraController.FLY
+          ? new FlyCameraController(this.element)
+          : new OrbitCameraController(this.element);
+      this.controllerKind = camera.kind;
+      this.controller.resize(this.viewSize.width, this.viewSize.height);
+
+      if (this.frameState) {
+        this.frameState.camera = this.controller.camera;
+      }
+    }
+
+    this.controller.describe(camera);
   }
 
   private light(lighting: IRendererLighting): void {
@@ -411,8 +443,11 @@ export class RendererHost {
       if (this.captures.length || shouldDrawFrame(now, this.drawnAt, this.settings.frameRateLimit)) {
         // Nor is one still waiting for a material to compile: a capture shows the scene as it settles.
         isFrameCapturable = !this.isResizePending && !this.scene.hasPending && !this.isCompiling;
+
+        const delta: number = this.drawnAt === null ? 0 : (now - this.drawnAt) / 1000;
+
         this.drawnAt = now;
-        this.draw(now, renderer, inspector, frame, view.target);
+        this.draw(now, delta, renderer, inspector, frame, view.target);
         this.compile(renderer, frame);
       }
     }
@@ -422,6 +457,7 @@ export class RendererHost {
 
   private draw(
     now: number,
+    delta: number,
     renderer: WebGPURenderer,
     inspector: RendererPassInspector,
     frame: IRendererFrame,
@@ -434,10 +470,11 @@ export class RendererHost {
       renderer.getDrawingBufferSize(this.drawingSize);
       this.targets.resize(this.drawingSize.x, this.drawingSize.y);
       this.targets.prepare(renderer);
+      this.viewSize = { height: target.height, width: target.width };
       this.controller.resize(target.width, target.height);
     }
 
-    this.controller.update();
+    this.controller.update(delta);
     frame.camera.updateMatrixWorld();
     this.cameraUniforms.follow(frame.camera);
     this.lightingUniforms.follow(frame.camera);
@@ -485,15 +522,17 @@ export class RendererHost {
     this.isCompiling = true;
 
     // Each for the target it is drawn into, whose attachments the pipeline is built against.
-    renderer.setRenderTarget(this.targets.gbuffer);
+    const compiles: Array<Promise<unknown>> = [
+      [ESurfacePass.DEFERRED, this.targets.gbuffer],
+      [ESurfacePass.WALLMARK, this.targets.wallmarks],
+      [ESurfacePass.FORWARD, this.targets.composite],
+    ].map(([pass, target]) => {
+      renderer.setRenderTarget(target as RenderTarget);
 
-    const deferred: Promise<unknown> = renderer.compileAsync(staging.deferred, frame.camera);
+      return renderer.compileAsync(staging.scenes[pass as ESurfacePass], frame.camera);
+    });
 
-    renderer.setRenderTarget(this.targets.composite);
-
-    const forward: Promise<unknown> = renderer.compileAsync(staging.forward, frame.camera);
-
-    Promise.all([deferred, forward])
+    Promise.all(compiles)
       .then(() => {
         if (generation === this.generation) {
           this.scene.commit(staging);

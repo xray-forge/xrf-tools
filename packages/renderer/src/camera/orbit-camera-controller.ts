@@ -2,6 +2,7 @@ import { Nullable } from "@xrf/types";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { PerspectiveCamera } from "three/webgpu";
 
+import { IRendererCameraController } from "#/camera/camera-controller";
 import { bindDragCursor } from "#/camera/drag-cursor";
 import { toDolliedPosition } from "#/camera/orbit-dolly";
 import {
@@ -9,6 +10,7 @@ import {
   ERendererCameraController,
   IRendererCameraPose,
   IRendererOrbitCamera,
+  TRendererCamera,
   TRendererCameraCommand,
 } from "#/contract/renderer-camera";
 import { RenderProxyElement } from "#/input/render-proxy-element";
@@ -26,7 +28,7 @@ const DEFAULT_ORBIT_CAMERA: IRendererOrbitCamera = {
 /**
  * A camera orbiting a target, turned by the gestures forwarded to the canvas's stand-in.
  */
-export class OrbitCameraController {
+export class OrbitCameraController implements IRendererCameraController {
   public readonly camera: PerspectiveCamera = new PerspectiveCamera();
 
   private readonly controls: OrbitControls;
@@ -46,7 +48,11 @@ export class OrbitCameraController {
   /**
    * @param description - The camera the consumer wants, from where it starts.
    */
-  public describe(description: IRendererOrbitCamera): void {
+  public describe(description: TRendererCamera): void {
+    if (description.kind !== ERendererCameraController.ORBIT) {
+      return;
+    }
+
     this.description = description;
     this.camera.fov = description.fieldOfView;
     this.camera.near = description.near;

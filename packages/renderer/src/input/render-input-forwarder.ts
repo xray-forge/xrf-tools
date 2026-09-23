@@ -16,6 +16,20 @@ const ELEMENT_INPUT: ReadonlyArray<ERenderInput> = [
  */
 const WINDOW_INPUT: ReadonlyArray<ERenderInput> = [ERenderInput.POINTER_MOVE, ERenderInput.POINTER_UP];
 
+/** Keys and focus, heard by the canvas once a press has focused it. */
+const FOCUS_INPUT: ReadonlyArray<ERenderInput> = [ERenderInput.KEY_DOWN, ERenderInput.KEY_UP, ERenderInput.BLUR];
+
+/** Keys whose own action scrolls the page, which a focused canvas refuses; every other key keeps its own. */
+const SCROLLING_KEYS: ReadonlySet<string> = new Set([
+  "ArrowDown",
+  "ArrowLeft",
+  "ArrowRight",
+  "ArrowUp",
+  "PageDown",
+  "PageUp",
+  "Space",
+]);
+
 /**
  * Sends what is done to a canvas to whatever is drawing on it.
  */
@@ -23,18 +37,27 @@ export class RenderInputForwarder {
   private readonly canvas: HTMLCanvasElement;
   private readonly sink: TRenderInputSink;
   private readonly cursor: string;
+  private readonly tabIndex: number;
 
   public constructor(canvas: HTMLCanvasElement, sink: TRenderInputSink) {
     this.canvas = canvas;
     this.cursor = canvas.style.cursor;
+    this.tabIndex = canvas.tabIndex;
     this.sink = sink;
 
     // Scrolling and the browser's own menu belong to the gesture, and only this side can refuse them: a frame
     // spent asking the other thread whether to is a frame the page has already scrolled.
     canvas.style.touchAction = "none";
+    // Focusable, so the keys a camera flies by reach it; a press focuses it, and the ring would frame the scene.
+    canvas.tabIndex = 0;
+    canvas.style.outline = "none";
 
     for (const type of ELEMENT_INPUT) {
       canvas.addEventListener(type, this.onElementInput, { passive: false });
+    }
+
+    for (const type of FOCUS_INPUT) {
+      canvas.addEventListener(type, this.onFocusInput);
     }
 
     for (const type of WINDOW_INPUT) {
@@ -61,17 +84,36 @@ export class RenderInputForwarder {
       window.removeEventListener(type, this.onWindowInput);
     }
 
+    for (const type of FOCUS_INPUT) {
+      this.canvas.removeEventListener(type, this.onFocusInput);
+    }
+
     this.canvas.style.cursor = this.cursor;
     this.canvas.style.touchAction = "";
+    this.canvas.style.outline = "";
+    this.canvas.tabIndex = this.tabIndex;
   }
 
   private readonly onElementInput = (event: Event): void => {
     event.preventDefault();
 
-    this.sink(toRenderInputEvent(event.type as ERenderInput, event as PointerEvent));
+    // Prevented, a press no longer focuses on its own.
+    if (event.type === ERenderInput.POINTER_DOWN) {
+      this.canvas.focus({ preventScroll: true });
+    }
+
+    this.sink(toRenderInputEvent(event.type as ERenderInput, event));
+  };
+
+  private readonly onFocusInput = (event: Event): void => {
+    if (event.type === ERenderInput.KEY_DOWN && SCROLLING_KEYS.has((event as KeyboardEvent).code)) {
+      event.preventDefault();
+    }
+
+    this.sink(toRenderInputEvent(event.type as ERenderInput, event));
   };
 
   private readonly onWindowInput = (event: Event): void => {
-    this.sink(toRenderInputEvent(event.type as ERenderInput, event as PointerEvent));
+    this.sink(toRenderInputEvent(event.type as ERenderInput, event));
   };
 }

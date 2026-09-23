@@ -7,7 +7,7 @@ import { IRendererLighting } from "#/contract/renderer-lighting";
 import { IRendererReport } from "#/contract/renderer-report";
 import { IRendererSettings } from "#/contract/renderer-settings";
 import { IRendererGeometry, listRendererGeometryTransfers } from "#/contract/scene/renderer-geometry";
-import { IRendererObject } from "#/contract/scene/renderer-object";
+import { IRendererObject, listRendererObjectTransfers } from "#/contract/scene/renderer-object";
 import { listRendererOverlayTransfers, TRendererOverlay } from "#/contract/scene/renderer-overlay";
 import { IRendererMotion, IRendererPose, IRendererSkeleton } from "#/contract/scene/renderer-skeleton";
 import { IRendererSurface } from "#/contract/scene/renderer-surface";
@@ -133,6 +133,11 @@ export type TRendererResponse =
  * @returns What to move with it.
  */
 export function listRendererTransfers(request: TRendererRequest): Array<Transferable> {
+  // Once each: several arrays can be views over one buffer, and a buffer listed twice fails the post.
+  return [...new Set(listRequestTransfers(request))];
+}
+
+function listRequestTransfers(request: TRendererRequest): Array<Transferable> {
   switch (request.kind) {
     case ERendererRequest.ATTACH_VIEW:
       return [request.canvas];
@@ -142,6 +147,9 @@ export function listRendererTransfers(request: TRendererRequest): Array<Transfer
 
     case ERendererRequest.PUT_GEOMETRY:
       return listRendererGeometryTransfers(request.geometry);
+
+    case ERendererRequest.PUT_OBJECT:
+      return listRendererObjectTransfers(request.object);
 
     case ERendererRequest.PUT_SKELETON:
       return [request.skeleton.binds.buffer, ...(request.skeleton.pairs ? [request.skeleton.pairs.buffer] : [])];
@@ -153,7 +161,7 @@ export function listRendererTransfers(request: TRendererRequest): Array<Transfer
       return listRendererOverlayTransfers(request.overlay);
 
     case ERendererRequest.BATCH:
-      return request.requests.flatMap(listRendererTransfers);
+      return request.requests.flatMap(listRequestTransfers);
 
     default:
       return [];

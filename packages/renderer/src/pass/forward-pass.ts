@@ -1,5 +1,6 @@
 import { IRendererFrame } from "#/graph/renderer-frame";
 import { IRendererPass } from "#/pass/renderer-pass";
+import { ESurfacePass } from "#/scene/surface-material";
 
 /**
  * Composites blended surfaces over the tonemapped frame, tested against the G-buffer's depth, as Base orders it.
@@ -7,9 +8,9 @@ import { IRendererPass } from "#/pass/renderer-pass";
 export class ForwardPass implements IRendererPass {
   public readonly name: string = "forward";
 
-  public render({ renderer, camera, targets, forward }: IRendererFrame): void {
+  public render({ renderer, camera, targets, scenes }: IRendererFrame): void {
     renderer.setRenderTarget(targets.composite);
-    renderer.render(forward, camera);
+    renderer.render(scenes[ESurfacePass.FORWARD], camera);
   }
 
   public dispose(): void {}

@@ -44,4 +44,6 @@ export interface IRendererSettings {
   isBumped: boolean;
   /** Whether surfaces draw as their triangles' edges. */
   isWireframe: boolean;
+  /** How much of the baked hemisphere occlusion applies: one as the engine applies it, zero ignoring it. */
+  hemiStrength: number;
 }
