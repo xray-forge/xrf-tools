@@ -15,7 +15,7 @@ use crate::plugins::levels::state::{LevelState, PackedSector, SelectedLevel};
 const DRAWN_ATTRIBUTES: SectorAttributes = SectorAttributes {
   binormals: false,
   colors: false,
-  hemi: false,
+  hemi: true,
   lightmap_uvs: true,
   normals: true,
   tangents: false,

@@ -82,9 +82,14 @@ impl XraySurfaceScript {
       (Some(XRayShaderBlendFactor::Zero), Some(XRayShaderBlendFactor::One)) => XraySurfaceDraw::Invisible,
       // Writes its own colour outright, which is the equation of a pass that is not really blending.
       (Some(XRayShaderBlendFactor::One), Some(XRayShaderBlendFactor::Zero)) => XraySurfaceDraw::Opaque,
-      (Some(XRayShaderBlendFactor::SourceAlpha | XRayShaderBlendFactor::One), Some(XRayShaderBlendFactor::One)) => {
-        XraySurfaceDraw::Added { reference }
-      }
+      (Some(XRayShaderBlendFactor::SourceAlpha), Some(XRayShaderBlendFactor::One)) => XraySurfaceDraw::Added {
+        is_weighted: true,
+        reference,
+      },
+      (Some(XRayShaderBlendFactor::One), Some(XRayShaderBlendFactor::One)) => XraySurfaceDraw::Added {
+        is_weighted: false,
+        reference,
+      },
       (Some(XRayShaderBlendFactor::DestinationColor), Some(XRayShaderBlendFactor::Zero)) => {
         XraySurfaceDraw::Multiplied { is_doubled: false }
       }

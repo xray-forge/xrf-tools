@@ -1,3 +1,4 @@
+import { default as FoggyIcon } from "@mui/icons-material/Foggy";
 import { default as GridOnIcon } from "@mui/icons-material/GridOn";
 import { default as HexagonIcon } from "@mui/icons-material/Hexagon";
 import { default as LightbulbIcon } from "@mui/icons-material/Lightbulb";
@@ -79,6 +80,13 @@ export function LevelPreviewToolbar({
             icon={<WbSunnyIcon />}
             isOn={options.isSunVisible}
             onToggle={() => onToggle("isSunVisible")}
+          />
+
+          <EditorViewToggle
+            label={"Fog"}
+            icon={<FoggyIcon />}
+            isOn={options.isFogged}
+            onToggle={() => onToggle("isFogged")}
           />
 
           <EditorToolbarSeparator />

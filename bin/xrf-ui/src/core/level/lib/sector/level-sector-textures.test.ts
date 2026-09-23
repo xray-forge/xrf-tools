@@ -1,14 +1,14 @@
 import { describe, expect, it } from "@jest/globals";
+import { ERendererDraw } from "@xrf/renderer";
 
 import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
 import { SectorDescription } from "@/core/ipc/types/xrf-visual";
 import {
   hasDetailedSurfaces,
-  ISectorTextureRequest,
+  listDescriptionTextures,
   listSectorTextures,
 } from "@/core/level/lib/sector/level-sector-textures";
 import { createSectorViews, ISectorViews } from "@/core/level/lib/sector/level-sector-views";
-import { OPAQUE_RENDER_SURFACE } from "@/core/render/lib/surface/render-surface";
 import {
   mockSectorDescription,
   mockSectorInstanceGroup,
@@ -58,25 +58,21 @@ describe("level sector surfaces", () => {
   it("joins each surface on the shader id it declares", () => {
     const views: ISectorViews = viewsOf(sectorDrawing([]), table(mockAlphaSurfaceDescriptor()));
 
-    expect(views.sections[0]?.render.alphaTest).toBeCloseTo(200 / 255);
-    expect(views.instances[0]?.render.alphaTest).toBeCloseTo(200 / 255);
+    expect(views.sections[0]?.render.draw).toBe(ERendererDraw.CUT_OUT);
+    expect(views.instances[0]?.render.alphaReference).toBeCloseTo(200 / 255);
   });
 
   it("draws a surface the table has no answer for opaque rather than leaving it without a state", () => {
     const views: ISectorViews = viewsOf(sectorDrawing([]), []);
 
-    expect(views.sections[0]?.render).toEqual(OPAQUE_RENDER_SURFACE);
+    expect(views.sections[0]?.render).toMatchObject({ detail: null, draw: ERendererDraw.OPAQUE, isWallmark: false });
     expect(hasDetailedSurfaces(views)).toBe(false);
   });
 
-  // The upload is per file while alpha is per surface: a DXT1 base drawn by a cut-out surface has to keep the alpha
-  // bit its blocks carry, and its lightmap is sampled for light rather than tested for coverage.
-  it("asks for alpha on a cut-out surface's base texture and never on its occlusion map", () => {
+  it("asks for a surface's base texture and its occlusion map", () => {
     const views: ISectorViews = viewsOf(sectorDrawing(["lmap#1_1", "lmap#1_2"]), table(mockAlphaSurfaceDescriptor()));
-    const requests: Array<ISectorTextureRequest> = listSectorTextures(views);
 
-    expect(requests).toContainEqual({ isAlphaRead: true, isMipped: true, reference: "veg\veg_reed" });
-    expect(requests).toContainEqual({ isAlphaRead: false, isMipped: true, reference: "lmap#1_2" });
+    expect(listSectorTextures(views)).toEqual([{ reference: "veg\veg_reed" }, { reference: "lmap#1_2" }]);
   });
 
   // Only the one the renderer samples. Reading the other half of every pair was a megabyte a lightmap for a texture
@@ -89,21 +85,17 @@ describe("level sector surfaces", () => {
 
   // Nothing in the level names it: a sector fetching only what its shader table spells would draw its ground as the
   // bare whole-level photograph its base texture is.
-  it("asks for the detail texture a surface is modulated with, without its alpha", () => {
+  it("asks for the detail texture a surface is modulated with", () => {
     const detailed: XraySurfaceDescriptor = mockSurfaceDescriptor({
       detail: { reference: "detail\\detail_grnd_earth", scale: 150 },
     });
     const views: ISectorViews = viewsOf(sectorDrawing([]), table(detailed));
 
-    expect(listSectorTextures(views)).toContainEqual({
-      isAlphaRead: false,
-      isMipped: true,
-      reference: "detail\\detail_grnd_earth",
-    });
+    expect(listSectorTextures(views)).toContainEqual({ reference: "detail\\detail_grnd_earth" });
     expect(hasDetailedSurfaces(views)).toBe(true);
   });
 
-  it("names a reference once, keeping the alpha any surface naming it asked for", () => {
+  it("names a reference once, however many surfaces name it", () => {
     const buffer: MockVisualBuffer = new MockVisualBuffer();
     const description: SectorDescription = mockSectorDescription(buffer, {
       sections: [
@@ -118,13 +110,18 @@ describe("level sector surfaces", () => {
       table(mockAlphaSurfaceDescriptor())
     );
 
-    expect(listSectorTextures(views)).toEqual([{ isAlphaRead: true, isMipped: true, reference: "shared" }]);
+    expect(listSectorTextures(views)).toEqual([{ reference: "shared" }]);
   });
 
-  // The engine binds a wall mark's decal through `smp_rtlinear`, which filters nothing between mips
-  // (`Blender_Recorder_R3.cpp`). A decal is dark marks on a neutral field, so mipping one spreads the marks over
-  // the field as soon as it is minified, and the footprint fills with a grey the engine never draws.
-  it("asks for a wall mark's decal without the mip chain", () => {
+  // The loader reads what a sector names before it reads the sector, so the description alone has to answer.
+  it("reads the same references off the description as off the views", () => {
+    const description: SectorDescription = sectorDrawing(["lmap#1_1", "lmap#1_2"]);
+    const surfaces: Array<XraySurfaceDescriptor> = table(mockSurfaceDescriptor());
+
+    expect(listDescriptionTextures(description, surfaces)).toEqual(listSectorTextures(viewsOf(description, surfaces)));
+  });
+
+  it("says which surfaces are wall marks, which the renderer composites into the albedo", () => {
     const wallmark: XraySurfaceDescriptor = mockBlendedSurfaceDescriptor({
       declaration: {
         function: "normal",
@@ -137,15 +134,12 @@ describe("level sector surfaces", () => {
       },
       draw: { isDoubled: true, kind: "multiplied" },
     });
-    const [base] = listSectorTextures(viewsOf(sectorDrawing([]), table(wallmark)));
+    const views: ISectorViews = viewsOf(sectorDrawing([]), table(wallmark));
 
-    expect(base.isMipped).toBe(false);
-    expect(base.isAlphaRead).toBe(true);
-  });
-
-  it("keeps the mip chain for every surface that is not one", () => {
-    const views: ISectorViews = viewsOf(sectorDrawing([]), table(mockSurfaceDescriptor()));
-
-    expect(listSectorTextures(views).every((it: ISectorTextureRequest) => it.isMipped)).toBe(true);
+    expect(views.sections[0]?.render).toMatchObject({
+      draw: ERendererDraw.MULTIPLIED_2X,
+      isLit: false,
+      isWallmark: true,
+    });
   });
 });

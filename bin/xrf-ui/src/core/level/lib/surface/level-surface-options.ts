@@ -8,12 +8,9 @@ export interface ILevelSurfaceOptions {
    * own light alone.
    */
   isLit: boolean;
-  /** How much the baked hemisphere term darkens the ambient, `0` ignoring it and `1` applying it whole. */
-  hemiStrength: number;
 }
 
 export const DEFAULT_LEVEL_SURFACE_OPTIONS: ILevelSurfaceOptions = {
-  hemiStrength: 0.65,
   isLit: true,
   isTextured: true,
   isWireframe: false,

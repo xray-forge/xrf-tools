@@ -19,6 +19,7 @@ import { IRendererDevice } from "#/contract/renderer-device";
 import { IRendererLighting } from "#/contract/renderer-lighting";
 import { ERendererRequest, ERendererResponse, TRendererRequest, TRendererResponse } from "#/contract/renderer-messages";
 import { IRendererSettings } from "#/contract/renderer-settings";
+import { ERendererPass } from "#/contract/scene/renderer-surface";
 import { IOffscreenRenderSize, OffscreenRenderTarget } from "#/frame/offscreen-render-target";
 import { shouldDrawFrame } from "#/frame/render-frame-limit";
 import { RenderFrameTimer } from "#/frame/render-frame-timer";
@@ -43,7 +44,6 @@ import { SunPass } from "#/pass/sun-pass";
 import { WallmarkPass } from "#/pass/wallmark-pass";
 import { RendererOverlays } from "#/scene/renderer-overlays";
 import { IRendererSceneStaging, RendererScene } from "#/scene/renderer-scene";
-import { ESurfacePass } from "#/scene/surface-material";
 import { RendererPassInspector } from "#/timing/renderer-pass-inspector";
 import { RendererPassTimer } from "#/timing/renderer-pass-timer";
 import { toFramePassTimes } from "#/timing/renderer-pass-times";
@@ -523,13 +523,13 @@ export class RendererHost {
 
     // Each for the target it is drawn into, whose attachments the pipeline is built against.
     const compiles: Array<Promise<unknown>> = [
-      [ESurfacePass.DEFERRED, this.targets.gbuffer],
-      [ESurfacePass.WALLMARK, this.targets.wallmarks],
-      [ESurfacePass.FORWARD, this.targets.composite],
+      [ERendererPass.DEFERRED, this.targets.gbuffer],
+      [ERendererPass.WALLMARK, this.targets.wallmarks],
+      [ERendererPass.FORWARD, this.targets.composite],
     ].map(([pass, target]) => {
       renderer.setRenderTarget(target as RenderTarget);
 
-      return renderer.compileAsync(staging.scenes[pass as ESurfacePass], frame.camera);
+      return renderer.compileAsync(staging.scenes[pass as ERendererPass], frame.camera);
     });
 
     Promise.all(compiles)

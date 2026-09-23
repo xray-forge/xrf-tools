@@ -11,8 +11,9 @@ pub enum XraySurfaceDraw {
   AlphaTested { reference: u8 },
   /// Drawn in a forward pass, source alpha over inverse source alpha, testing against the authored reference.
   Blended { reference: u8 },
-  /// Added to what is behind it, which is how a glow lights the air rather than covering it.
-  Added { reference: u8 },
+  /// Added to what is behind it, which is how a glow lights the air rather than covering it. `is_weighted` is a source
+  /// factor of its own alpha (`ALPHA-ADD`, `blend(srcalpha, one)`) rather than one (`ADD`, `blend(one, one)`).
+  Added { reference: u8, is_weighted: bool },
   /// Multiplied into what is behind it, which is how a decal darkens the surface it is laid on rather than replacing
   /// it. `is_doubled` is `MUL_2X`, whose destination factor is the source colour rather than zero.
   Multiplied { is_doubled: bool },

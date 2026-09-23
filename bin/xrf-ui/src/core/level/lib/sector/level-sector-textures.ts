@@ -1,21 +1,20 @@
-import { Maybe } from "@xrf/types";
-
 import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
-import { SectorDescription } from "@/core/ipc/types/xrf-visual";
+import { SectorDescription, SectorSurface } from "@/core/ipc/types/xrf-visual";
 import { ISectorInstanceViews, ISectorSectionViews, ISectorViews } from "@/core/level/lib/sector/level-sector-views";
-import { ILevelSurface } from "@/core/level/lib/surface/level-surface-material";
-import { getRenderSurface, isAlphaRenderSurface } from "@/core/render/lib/surface/render-surface";
+import { getLevelSurfaceRender, ILevelSurfaceRender } from "@/core/level/lib/surface/level-surface-render";
 
 /**
- * One texture a sector needs, and what it has to survive upload with.
+ * One texture a sector needs.
  */
 export interface ISectorTextureRequest {
-  /** The reference as the shader table spells it, which is what the set is keyed by. */
+  /** The reference as the shader table spells it, which is what the renderer holds it under. */
   reference: string;
-  /** Whether any surface drawn with this file samples its alpha channel. */
-  isAlphaRead: boolean;
-  /** Whether the surfaces drawn with it sample its mip chain. */
-  isMipped: boolean;
+}
+
+/** A surface a sector draws, with what its blender compiles to. */
+interface ISectorDrawnSurface {
+  surface: SectorSurface;
+  render: ILevelSurfaceRender;
 }
 
 /**
@@ -25,13 +24,13 @@ export interface ISectorTextureRequest {
  * @returns Its references, without repeats.
  */
 export function listSectorTextures(views: ISectorViews): Array<ISectorTextureRequest> {
-  const requests: Map<string, ISectorTextureRequest> = new Map();
+  const references: Set<string> = new Set();
 
   for (const drawn of [...views.sections, ...views.instances]) {
-    collectSurfaceTextures(requests, drawn);
+    collectSurfaceTextures(references, drawn);
   }
 
-  return Array.from(requests.values());
+  return toRequests(references);
 }
 
 /**
@@ -45,51 +44,34 @@ export function listDescriptionTextures(
   description: SectorDescription,
   surfaces: ReadonlyArray<XraySurfaceDescriptor>
 ): Array<ISectorTextureRequest> {
-  const requests: Map<string, ISectorTextureRequest> = new Map();
+  const references: Set<string> = new Set();
 
   for (const drawn of [...description.sections, ...description.instances]) {
-    collectSurfaceTextures(requests, {
-      render: getRenderSurface(surfaces, drawn.surface.shaderId),
+    collectSurfaceTextures(references, {
+      render: getLevelSurfaceRender(surfaces, drawn.surface.shaderId),
       surface: drawn.surface,
     });
   }
 
-  return Array.from(requests.values());
-}
-
-/**
- * Every texture reference one surface names, which is what decides the materials a texture change re-dresses.
- *
- * @param drawn - The surface and what its blender compiles to.
- * @returns Its references, without repeats.
- */
-export function listSurfaceTextures(drawn: ILevelSurface): Array<ISectorTextureRequest> {
-  const requests: Map<string, ISectorTextureRequest> = new Map();
-
-  collectSurfaceTextures(requests, drawn);
-
-  return Array.from(requests.values());
+  return toRequests(references);
 }
 
 /** What one surface names, folded into whatever the caller is collecting. */
-function collectSurfaceTextures(requests: Map<string, ISectorTextureRequest>, drawn: ILevelSurface): void {
-  const { surface, render } = drawn;
-
+function collectSurfaceTextures(references: Set<string>, { surface, render }: ISectorDrawnSurface): void {
   if (surface.textureName) {
-    request(requests, surface.textureName, isAlphaRenderSurface(render), !render.isWallmark);
+    references.add(surface.textureName);
   }
 
   // Only the one the renderer samples. The other half of the pair is R1's baked colour, and reading it was a
   // megabyte a lightmap for a texture nothing binds.
   if (surface.hemi) {
-    request(requests, surface.hemi, false, true);
+    references.add(surface.hemi);
   }
 
   // Named by the surface's blender or by its base texture's descriptor rather than by the shader table, so a sector
   // that only fetched what its table names would draw its ground as the bare aerial photograph the base texture is.
-  // Its alpha is never read: the modulation is a multiply of three channels.
   if (render.detail) {
-    request(requests, render.detail.reference, false, true);
+    references.add(render.detail.reference);
   }
 }
 
@@ -105,19 +87,6 @@ export function hasDetailedSurfaces(views: ISectorViews): boolean {
   return drawn.some((it) => Boolean(it.render.detail));
 }
 
-/** Records one reference, keeping the answer of whichever surface naming it needs the most of the file. */
-function request(
-  requests: Map<string, ISectorTextureRequest>,
-  reference: string,
-  isAlphaRead: boolean,
-  isMipped: boolean
-): void {
-  const held: Maybe<ISectorTextureRequest> = requests.get(reference);
-
-  if (held) {
-    held.isAlphaRead ||= isAlphaRead;
-    held.isMipped &&= isMipped;
-  } else {
-    requests.set(reference, { isAlphaRead, isMipped, reference });
-  }
+function toRequests(references: ReadonlySet<string>): Array<ISectorTextureRequest> {
+  return Array.from(references, (reference: string) => ({ reference }));
 }

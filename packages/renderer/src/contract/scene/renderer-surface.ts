@@ -10,8 +10,10 @@ export enum ERendererDraw {
   CUT_OUT = "cutOut",
   /** Composited by alpha, after the deferred passes. */
   BLENDED = "blended",
-  /** Added to what is under it. */
+  /** Added to what is under it, whole. */
   ADDED = "added",
+  /** Added to what is under it, weighted by its own alpha. */
+  ALPHA_ADDED = "alphaAdded",
   /** Multiplied into what is under it. */
   MULTIPLIED = "multiplied",
   /** Multiplied at twice the strength, so mid grey leaves what is under it alone. */
@@ -57,4 +59,28 @@ export interface IRendererSurface {
    * its texture sampled at the top level only. Its draw says how it composites there.
    */
   isWallmark?: boolean;
+}
+
+/**
+ * Which pass of the frame draws a surface, as the engine orders them.
+ */
+export enum ERendererPass {
+  /** Into the G-buffer, lit by the deferred passes. */
+  DEFERRED = "deferred",
+  /** Into the G-buffer's albedo, before any light: the engine's wall mark phase. */
+  WALLMARK = "wallmark",
+  /** Composited over the tonemapped frame. */
+  FORWARD = "forward",
+}
+
+/**
+ * @param surface - What a consumer puts, or as much of it as decides this.
+ * @returns The pass its draw puts it in.
+ */
+export function toRendererPass(surface: Pick<IRendererSurface, "draw" | "isWallmark">): ERendererPass {
+  if (surface.draw === ERendererDraw.OPAQUE || surface.draw === ERendererDraw.CUT_OUT) {
+    return ERendererPass.DEFERRED;
+  }
+
+  return surface.isWallmark ? ERendererPass.WALLMARK : ERendererPass.FORWARD;
 }

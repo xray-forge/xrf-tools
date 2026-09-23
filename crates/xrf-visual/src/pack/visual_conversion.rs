@@ -1,5 +1,5 @@
 use xrf_math::{Matrix4x4, Vector3d};
-use xrf_ogf::{OgfBox, OgfSphere};
+use xrf_ogf::{OgfBox, OgfSphere, OgfTreeDefinitionChunk};
 
 use crate::data::visual::bounds::visual_bounds::VisualBounds;
 use crate::data::visual::bounds::visual_box::VisualBox;
@@ -52,6 +52,20 @@ pub(crate) fn reverse_triangle_winding<T>(indices: &mut [T]) {
 }
 
 /// Convert a placement into renderer space, so it places already converted vertices.
+/// `ps_r__Tree_SBC`'s default, the correction a tree's colour terms are bound with (`xrRender_console.cpp`).
+const TREE_SCALE_BIAS_CORRECTION: f32 = 1.5;
+
+/// What `FTreeVisual::Render` multiplies that correction by under every deferred renderer.
+const DEFERRED_TREE_CORRECTION: f32 = 1.3333;
+
+/// A tree's hemisphere terms as `FTreeVisual` binds them, `c_scale.w` then `c_bias.w`: what scales and then offsets
+/// its vertices' hemisphere byte.
+pub fn convert_tree_hemi(tree: &OgfTreeDefinitionChunk) -> [f32; 2] {
+  let correction: f32 = TREE_SCALE_BIAS_CORRECTION * DEFERRED_TREE_CORRECTION * OgfTreeDefinitionChunk::COLOR_SCALE;
+
+  [tree.scale.hemi * correction, tree.bias.hemi * correction]
+}
+
 pub fn convert_placement(placement: &Matrix4x4) -> Matrix4x4 {
   const Z: usize = 2;
 

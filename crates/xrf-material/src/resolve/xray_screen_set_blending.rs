@@ -43,8 +43,14 @@ impl XrayScreenSetBlending {
       // Blending off entirely, and the tested variant tests against zero, which discards nothing.
       Self::Set | Self::SetTested => XraySurfaceDraw::Opaque,
       Self::Blend => XraySurfaceDraw::Blended { reference },
-      Self::Add => XraySurfaceDraw::Added { reference: 0 },
-      Self::AlphaAdd => XraySurfaceDraw::Added { reference },
+      Self::Add => XraySurfaceDraw::Added {
+        is_weighted: false,
+        reference: 0,
+      },
+      Self::AlphaAdd => XraySurfaceDraw::Added {
+        is_weighted: true,
+        reference,
+      },
       Self::Multiply => XraySurfaceDraw::Multiplied { is_doubled: false },
       Self::MultiplyDoubled => XraySurfaceDraw::Multiplied { is_doubled: true },
     }

@@ -258,7 +258,10 @@ export enum EXraySurfaceDraw {
   ALPHA_TESTED = "alphaTested",
   /** Drawn in a forward pass, source alpha over inverse source alpha, testing against the authored reference. */
   BLENDED = "blended",
-  /** Added to what is behind it, which is how a glow lights the air rather than covering it. */
+  /**
+   * Added to what is behind it, which is how a glow lights the air rather than covering it. `is_weighted` is a source
+   * factor of its own alpha (`ALPHA-ADD`, `blend(srcalpha, one)`) rather than one (`ADD`, `blend(one, one)`).
+   */
   ADDED = "added",
   /**
    * Multiplied into what is behind it, which is how a decal darkens the surface it is laid on rather than replacing
@@ -280,8 +283,11 @@ export type XraySurfaceDraw =
   | { kind: "alphaTested"; reference: number }
   /** Drawn in a forward pass, source alpha over inverse source alpha, testing against the authored reference. */
   | { kind: "blended"; reference: number }
-  /** Added to what is behind it, which is how a glow lights the air rather than covering it. */
-  | { kind: "added"; reference: number }
+  /**
+   * Added to what is behind it, which is how a glow lights the air rather than covering it. `is_weighted` is a source
+   * factor of its own alpha (`ALPHA-ADD`, `blend(srcalpha, one)`) rather than one (`ADD`, `blend(one, one)`).
+   */
+  | { kind: "added"; reference: number; isWeighted: boolean }
   /**
    * Multiplied into what is behind it, which is how a decal darkens the surface it is laid on rather than replacing
    * it. `is_doubled` is `MUL_2X`, whose destination factor is the source colour rather than zero.

@@ -17,9 +17,14 @@ pub struct SectorInstanceGroup {
   pub instance_count: u32,
   /// Sixteen floats for each instance, exactly as the engine stores a matrix.
   pub transforms: VisualSection,
+  /// Two floats for each instance: what scales and then offsets its vertices' hemisphere term.
+  pub hemi: VisualSection,
 }
 
 impl SectorInstanceGroup {
   /// Floats one instance's transform occupies.
   pub const FLOATS_PER_INSTANCE: usize = 16;
+
+  /// Floats one instance's hemisphere terms occupy.
+  pub const HEMI_FLOATS_PER_INSTANCE: usize = 2;
 }

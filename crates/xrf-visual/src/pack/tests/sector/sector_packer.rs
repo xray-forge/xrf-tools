@@ -12,7 +12,7 @@ use crate::pack::sector::sector_package::SectorPackage;
 use crate::pack::sector::sector_packer::SectorPacker;
 use crate::pack::tests::sector::level_fixtures::{
   GeomBuffer, new_drawable, new_drawable_of_buffer, new_geometry_fixture, new_hierarchy, new_lightmapped_declaration,
-  new_lightmapped_vertex, new_open_geometry, new_position_vertex, new_positions_declaration, new_shaders, new_tree,
+  new_lightmapped_vertex, new_lit_tree, new_open_geometry, new_position_vertex, new_positions_declaration, new_shaders, new_tree,
   new_vertex_lit_declaration, new_vertex_lit_vertex, new_visuals,
 };
 
@@ -347,6 +347,28 @@ fn test_packs_one_mesh_for_every_place_it_stands() {
   assert_eq!(transforms.len(), 2 * SectorInstanceGroup::FLOATS_PER_INSTANCE);
   assert_eq!(transforms[12], 100.0);
   assert_eq!(transforms[12 + SectorInstanceGroup::FLOATS_PER_INSTANCE], -100.0);
+}
+
+// A tree's vertices carry a hemisphere byte its own terms scale and offset, and those terms are per place it stands:
+// `FTreeVisual` halves both as it reads them and binds them times `ps_r__Tree_SBC` and 1.3333.
+#[test]
+fn test_packs_each_places_hemisphere_terms_beside_its_transform() {
+  let run: LevelVisualsChunk = new_visuals(&[
+    new_hierarchy(&[1, 2]),
+    new_lit_tree(1, 0, 2, 3, 100.0, [0.8, 0.2]),
+    new_lit_tree(1, 0, 2, 3, -100.0, [0.4, 0.6]),
+  ]);
+  let source = new_open_geometry(new_geometry());
+
+  let package: SectorPackage =
+    SectorPacker::new(&run, None, &source).pack::<XRayByteOrder>(0, &new_composition(&run), SectorAttributes::all());
+
+  let group: &SectorInstanceGroup = &package.description.instances[0];
+  let hemi: Vec<f32> = new_read_floats(&package, group.hemi);
+  let correction: f32 = 0.5 * 1.5 * 1.3333;
+
+  assert_eq!(hemi.len(), 2 * SectorInstanceGroup::HEMI_FLOATS_PER_INSTANCE);
+  assert_eq!(hemi, vec![0.8 * correction, 0.2 * correction, 0.4 * correction, 0.6 * correction]);
 }
 
 // Two meshes dressed by different surfaces cannot share one instanced draw, whatever else they have in common.

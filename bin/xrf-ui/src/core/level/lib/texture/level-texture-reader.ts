@@ -1,3 +1,4 @@
+import { IDdsRead, readDdsFile } from "@xrf/renderer";
 import { Maybe, Nullable } from "@xrf/types";
 
 import { transformError } from "@/core/error/lib";
@@ -7,7 +8,6 @@ import { LevelTextureReference } from "@/core/ipc/types/xrf-app";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { ILevelTextureDelivery } from "@/core/level/lib/render/level-render-protocol";
 import { ISectorTextureRequest } from "@/core/level/lib/sector/level-sector-textures";
-import { IWebGlDdsRead, readWebGlDdsFile } from "@/core/render/lib/dds";
 import { Logger } from "@/lib/logging";
 
 /**
@@ -62,17 +62,10 @@ export class LevelTextureReader {
       const bytes: ArrayBuffer = await assetsRawCommands.readAsset(this.roots, logicalPath);
       // Read here rather than where it is uploaded, because whether the reader models the layout is a question
       // about the file and not about the graphics context. Deciding it on the far side would mean asking back.
-      const read: IWebGlDdsRead = readWebGlDdsFile(bytes, request.isAlphaRead);
+      const read: IDdsRead = readDdsFile(bytes);
 
       if (read.file) {
-        return {
-          bytes,
-          isAlphaRead: request.isAlphaRead,
-          isDecoded: false,
-          isMipped: request.isMipped,
-          reason: null,
-          reference,
-        };
+        return { bytes, isDecoded: false, reason: null, reference };
       }
 
       // A layout the reader does not model; the backend expands those to a picture instead.
@@ -80,9 +73,7 @@ export class LevelTextureReader {
 
       return {
         bytes: await texturesRawCommands.readTexture(this.roots, logicalPath),
-        isAlphaRead: request.isAlphaRead,
         isDecoded: true,
-        isMipped: request.isMipped,
         reason: null,
         reference,
       };
@@ -98,9 +89,7 @@ export class LevelTextureReader {
   private toFailure(request: ISectorTextureRequest, reason: string): ILevelTextureDelivery {
     return {
       bytes: new ArrayBuffer(0),
-      isAlphaRead: request.isAlphaRead,
       isDecoded: false,
-      isMipped: request.isMipped,
       reason,
       reference: request.reference,
     };

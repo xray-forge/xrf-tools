@@ -1,10 +1,10 @@
 import { Nullable } from "@xrf/types";
 
-import { ILoadedSector } from "@/core/level/lib/sector/level-sector-set";
 import {
   ISectorGeometryViews,
   ISectorInstanceViews,
   ISectorSectionViews,
+  ISectorViews,
 } from "@/core/level/lib/sector/level-sector-views";
 
 import { ILevelSurfaceGeometry, ILevelSurfaceSpan } from "./level-surface-geometry";
@@ -13,67 +13,91 @@ import { ILevelSurfaceGeometry, ILevelSurfaceSpan } from "./level-surface-geomet
 const SPAN_SAMPLES: number = 2048;
 
 /**
- * Counts what each shader table entry actually draws, over the sectors held.
+ * Counts what each shader table entry draws in one sector, read as it arrives: its bytes go to the renderer after.
  *
- * @param sectors - The sectors currently resident.
- * @returns How much each entry draws, keyed by shader id, with entries nothing resident draws left out.
+ * @param views - The sector.
+ * @returns How much each entry draws in it, keyed by shader id.
  */
-export function countLevelSurfaceGeometry(
-  sectors: ReadonlyMap<number, ILoadedSector>
+export function countSectorSurfaceGeometry(views: ISectorViews): Map<number, ILevelSurfaceGeometry> {
+  const counted: Map<number, ILevelSurfaceGeometry> = new Map();
+
+  for (const section of views.sections as Array<ISectorSectionViews>) {
+    add(
+      counted,
+      section.surface.shaderId,
+      section.drawables.length,
+      section.triangleCount,
+      widen(null, views.geometry, section.start, section.count)
+    );
+  }
+
+  // A mesh stood in many places draws its triangles once per place, which is what the frame really costs. Its
+  // coordinates are the one mesh's, so they are measured once however many places it stands in.
+  for (const instance of views.instances as Array<ISectorInstanceViews>) {
+    add(
+      counted,
+      instance.surface.shaderId,
+      instance.drawables.length,
+      (instance.geometry.indexCount / 3) * instance.instanceCount,
+      widen(null, instance.geometry, 0, instance.geometry.indexCount)
+    );
+  }
+
+  return counted;
+}
+
+/**
+ * Totals what each entry draws across sectors.
+ *
+ * @param sectors - Each resident sector's own count.
+ * @returns How much each entry draws across them, keyed by shader id, with entries nothing draws left out.
+ */
+export function mergeLevelSurfaceGeometry(
+  sectors: Iterable<ReadonlyMap<number, ILevelSurfaceGeometry>>
 ): ReadonlyMap<number, ILevelSurfaceGeometry> {
   const counted: Map<number, ILevelSurfaceGeometry> = new Map();
 
-  function add(
-    shaderId: number,
-    drawables: number,
-    triangles: number,
-    geometry: ISectorGeometryViews,
-    start: number,
-    count: number
-  ): void {
-    const held: ILevelSurfaceGeometry = counted.get(shaderId) ?? {
-      drawables: 0,
-      narrowest: null,
-      span: null,
-      triangles: 0,
-    };
-    const drawn: Nullable<ILevelSurfaceSpan> = widen(null, geometry, start, count);
+  for (const sector of sectors) {
+    for (const [shaderId, geometry] of sector) {
+      const held: Nullable<ILevelSurfaceGeometry> = counted.get(shaderId) ?? null;
 
-    held.drawables += drawables;
-    held.triangles += triangles;
-    held.span = merge(held.span, drawn);
-    held.narrowest = narrower(held.narrowest, drawn);
-
-    counted.set(shaderId, held);
-  }
-
-  for (const { views } of sectors.values()) {
-    for (const section of views.sections as Array<ISectorSectionViews>) {
-      add(
-        section.surface.shaderId,
-        section.drawables.length,
-        section.triangleCount,
-        views.geometry,
-        section.start,
-        section.count
-      );
-    }
-
-    // A mesh stood in many places draws its triangles once per place, which is what the frame really costs. Its
-    // coordinates are the one mesh's, so they are measured once however many places it stands in.
-    for (const instance of views.instances as Array<ISectorInstanceViews>) {
-      add(
-        instance.surface.shaderId,
-        instance.drawables.length,
-        (instance.geometry.indexCount / 3) * instance.instanceCount,
-        instance.geometry,
-        0,
-        instance.geometry.indexCount
+      counted.set(
+        shaderId,
+        held
+          ? {
+              drawables: held.drawables + geometry.drawables,
+              narrowest: narrower(held.narrowest, geometry.narrowest),
+              span: merge(held.span, geometry.span),
+              triangles: held.triangles + geometry.triangles,
+            }
+          : geometry
       );
     }
   }
 
   return counted;
+}
+
+function add(
+  counted: Map<number, ILevelSurfaceGeometry>,
+  shaderId: number,
+  drawables: number,
+  triangles: number,
+  drawn: Nullable<ILevelSurfaceSpan>
+): void {
+  const held: ILevelSurfaceGeometry = counted.get(shaderId) ?? {
+    drawables: 0,
+    narrowest: null,
+    span: null,
+    triangles: 0,
+  };
+
+  held.drawables += drawables;
+  held.triangles += triangles;
+  held.span = merge(held.span, drawn);
+  held.narrowest = narrower(held.narrowest, drawn);
+
+  counted.set(shaderId, held);
 }
 
 /** The range covering both, for the union over an entry's draws. */

@@ -9,7 +9,7 @@ import {
   VisualBounds,
   VisualSection,
 } from "@/core/ipc/types/xrf-visual";
-import { getRenderSurface, IRenderSurface } from "@/core/render/lib/surface/render-surface";
+import { getLevelSurfaceRender, ILevelSurfaceRender } from "@/core/level/lib/surface/level-surface-render";
 
 /**
  * One packed mesh as views over the buffer it arrived in.
@@ -36,7 +36,7 @@ export interface ISectorGeometryViews {
 export interface ISectorSectionViews {
   surface: SectorSurface;
   /** What that surface's blender compiles to, joined from the level's shader table as the sector arrives. */
-  render: IRenderSurface;
+  render: ILevelSurfaceRender;
   /** Drawables this section draws, by their index in the visuals run, for inspection rather than for drawing. */
   drawables: Array<number>;
   start: number;
@@ -48,12 +48,14 @@ export interface ISectorSectionViews {
 export interface ISectorInstanceViews {
   surface: SectorSurface;
   /** What that surface's blender compiles to, joined the same way a section's is. */
-  render: IRenderSurface;
+  render: ILevelSurfaceRender;
   drawables: Array<number>;
   geometry: ISectorGeometryViews;
   instanceCount: number;
   /** Sixteen floats for each place the mesh stands, in the order a renderer uploads a matrix in. */
   transforms: Float32Array;
+  /** Two floats for each place: what scales and then offsets its vertices' hemisphere term. */
+  hemi: Float32Array;
 }
 
 /**
@@ -137,15 +139,16 @@ export function createSectorViews(
     instances: description.instances.map((group) => ({
       drawables: group.drawables,
       geometry: toGeometryViews(buffer, group.geometry),
+      hemi: toFloatView(buffer, group.hemi),
       instanceCount: group.instanceCount,
-      render: getRenderSurface(surfaces, group.surface.shaderId),
+      render: getLevelSurfaceRender(surfaces, group.surface.shaderId),
       surface: group.surface,
       transforms: toFloatView(buffer, group.transforms),
     })),
     sections: description.sections.map((section) => ({
       count: section.draw.count,
       drawables: section.drawables,
-      render: getRenderSurface(surfaces, section.surface.shaderId),
+      render: getLevelSurfaceRender(surfaces, section.surface.shaderId),
       start: section.draw.start,
       surface: section.surface,
       triangleCount: section.draw.count / 3,

@@ -15,8 +15,8 @@ function countCalls(command: string): number {
   return mockInvoke.mock.calls.filter(([name]) => name === command).length;
 }
 
-function request(reference: string, overrides: Partial<ISectorTextureRequest> = {}): ISectorTextureRequest {
-  return { isAlphaRead: false, isMipped: true, reference, ...overrides };
+function request(reference: string): ISectorTextureRequest {
+  return { reference };
 }
 
 describe("LevelTextureReader", () => {
@@ -35,18 +35,6 @@ describe("LevelTextureReader", () => {
     expect(delivery.reason).toBeNull();
     expect(delivery.bytes.byteLength).toBeGreaterThan(0);
     expect(delivery.isDecoded).toBe(false);
-  });
-
-  // A surface that reads alpha needs the file uploaded differently, and only the reader knows which file it is.
-  it("carries what the surfaces drawn with it need of it", async () => {
-    const reader: LevelTextureReader = new LevelTextureReader();
-
-    reader.open(ROOTS, [mockLevelTextureReference("stone")]);
-
-    const delivery: ILevelTextureDelivery = await reader.read(request("stone", { isAlphaRead: true, isMipped: false }));
-
-    expect(delivery.isAlphaRead).toBe(true);
-    expect(delivery.isMipped).toBe(false);
   });
 
   it("says why there is no file where the roots answer to nothing", async () => {

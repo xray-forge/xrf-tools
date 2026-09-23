@@ -17,6 +17,15 @@ export interface IRenderGridLinesOptions {
   color: number;
   /** Hex colour of the two lines through the origin. */
   originColor: number;
+  /** Where its middle stands, the origin when left out. */
+  center?: IRenderGridCenter;
+}
+
+/** A point a grid is laid around. */
+export interface IRenderGridCenter {
+  x: number;
+  y: number;
+  z: number;
 }
 
 /** Three's `AxesHelper` colours at each end, as the canvas shows them: x red, y green, z blue, fading as they go. */
@@ -45,6 +54,7 @@ const AXES_COLORS: ReadonlyArray<[TRendererColor, TRendererColor]> = [
  */
 export function toRenderGridLines(extent: number, options: IRenderGridLinesOptions): IRenderLines {
   const { cells, color, originColor } = options;
+  const { x, y, z }: IRenderGridCenter = options.center ?? { x: 0, y: 0, z: 0 };
   const step: number = toRenderGridStep(extent * 2, cells);
   const half: number = (step * cells) / 2;
   const positions: Array<number> = [];
@@ -54,11 +64,44 @@ export function toRenderGridLines(extent: number, options: IRenderGridLinesOptio
     const at: number = -half + line * step;
     const shade: TRendererColor = toRawColor(line * 2 === cells ? originColor : color);
 
-    positions.push(-half, 0, at, half, 0, at, at, 0, -half, at, 0, half);
+    positions.push(x - half, y, z + at, x + half, y, z + at, x + at, y, z - half, x + at, y, z + half);
     colors.push(...shade, ...shade, ...shade, ...shade);
   }
 
   return { colors: new Float32Array(colors), positions: new Float32Array(positions) };
+}
+
+/**
+ * The twelve edges of a box.
+ *
+ * @param min - Its lowest corner.
+ * @param max - Its highest.
+ * @param color - Hex colour of the edges.
+ * @returns The box's lines.
+ */
+export function toRenderBoxLines(min: IRenderGridCenter, max: IRenderGridCenter, color: number): IRenderLines {
+  const corners: Array<[number, number, number]> = [0, 1, 2, 3, 4, 5, 6, 7].map((bits: number) => [
+    bits & 1 ? max.x : min.x,
+    bits & 2 ? max.y : min.y,
+    bits & 4 ? max.z : min.z,
+  ]);
+  // Each pair of corners differing in exactly one bit is an edge.
+  const edges: Array<[number, number]> = [];
+
+  for (let from = 0; from < 8; from += 1) {
+    for (const bit of [1, 2, 4]) {
+      if (!(from & bit)) {
+        edges.push([from, from | bit]);
+      }
+    }
+  }
+
+  const shade: TRendererColor = toRawColor(color);
+
+  return {
+    colors: new Float32Array(edges.flatMap(() => [...shade, ...shade])),
+    positions: new Float32Array(edges.flatMap(([from, to]) => [...corners[from], ...corners[to]])),
+  };
 }
 
 /**

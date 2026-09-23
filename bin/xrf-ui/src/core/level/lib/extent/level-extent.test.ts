@@ -1,10 +1,9 @@
 import { describe, expect, it } from "@jest/globals";
-import { Box3, Vector3 } from "three";
 
-import { toBoxFloor, toBoxReach, toLevelBox, toOriginReach } from "@/core/level/lib/extent";
+import { ILevelBox, toBoxFloor, toBoxReach, toLevelBox, toOriginReach } from "@/core/level/lib/extent";
 import { mockVisualBounds } from "@/fixtures/mocks/visual.mocks";
 
-function boxOf(min: [number, number, number], max: [number, number, number]): Box3 {
+function boxOf(min: [number, number, number], max: [number, number, number]): ILevelBox {
   return toLevelBox(
     mockVisualBounds({
       boundingBox: {
@@ -17,15 +16,16 @@ function boxOf(min: [number, number, number], max: [number, number, number]): Bo
 
 describe("toLevelBox", () => {
   it("takes the corners the backend measured", () => {
-    const box: Box3 = boxOf([-2, 0, -3], [4, 6, 9]);
+    const box: ILevelBox = boxOf([-2, 0, -3], [4, 6, 9]);
 
-    expect(box.min.toArray()).toEqual([-2, 0, -3]);
-    expect(box.max.toArray()).toEqual([4, 6, 9]);
+    expect(box.min).toEqual({ x: -2, y: 0, z: -3 });
+    expect(box.max).toEqual({ x: 4, y: 6, z: 9 });
+    expect(box.isEmpty).toBe(false);
   });
 
   // A level that reports no bounds is ordinary, and everything here answers for one.
   it("is empty for a level that measured nothing", () => {
-    expect(toLevelBox(null).isEmpty()).toBe(true);
+    expect(toLevelBox(null).isEmpty).toBe(true);
   });
 });
 
@@ -35,7 +35,7 @@ describe("toBoxReach", () => {
   });
 
   it("still reaches for an empty box, so what is built from one is not a point", () => {
-    expect(toBoxReach(new Box3())).toBeGreaterThan(0);
+    expect(toBoxReach(toLevelBox(null))).toBeGreaterThan(0);
   });
 });
 
@@ -50,10 +50,10 @@ describe("toOriginReach", () => {
 
 describe("toBoxFloor", () => {
   it("is the middle of the box at its lowest point", () => {
-    expect(toBoxFloor(boxOf([-4, 5, -8], [6, 9, 12]))).toEqual(new Vector3(1, 5, 2));
+    expect(toBoxFloor(boxOf([-4, 5, -8], [6, 9, 12]))).toEqual({ x: 1, y: 5, z: 2 });
   });
 
   it("is the origin for an empty box", () => {
-    expect(toBoxFloor(new Box3())).toEqual(new Vector3());
+    expect(toBoxFloor(toLevelBox(null))).toEqual({ x: 0, y: 0, z: 0 });
   });
 });

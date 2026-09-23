@@ -51,7 +51,7 @@ export function toRendererSurfaceDraw(descriptor: Nullable<XraySurfaceDescriptor
       return { alphaReference, draw: ERendererDraw.BLENDED, isLit };
 
     case EXraySurfaceDraw.ADDED:
-      return { alphaReference, draw: ERendererDraw.ADDED, isLit };
+      return { alphaReference, draw: draw.isWeighted ? ERendererDraw.ALPHA_ADDED : ERendererDraw.ADDED, isLit };
 
     case EXraySurfaceDraw.MULTIPLIED:
       return { draw: draw.isDoubled ? ERendererDraw.MULTIPLIED_2X : ERendererDraw.MULTIPLIED, isLit };

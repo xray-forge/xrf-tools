@@ -4,9 +4,9 @@ import { Container } from "@wirestate/core";
 
 import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
 import { LevelSurfacesPanel } from "@/core/level/components/panels/LevelSurfacesPanel";
-import { ILevelTextureSource } from "@/core/level/lib/texture/level-texture-set";
+import { ILevelTextureReport } from "@/core/level/lib/texture/level-texture-report";
 import { LevelLoadService, LevelRenderService, LevelViewportService, LevelViewService } from "@/core/level/services";
-import { mockLevelTextureSource, mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
+import { mockLevelTextureReport, mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockSurfaceDescriptor } from "@/fixtures/mocks/visual.mocks";
@@ -49,7 +49,7 @@ const TABLE: Array<XraySurfaceDescriptor> = [
 ];
 
 async function renderPanel(
-  textures?: ILevelTextureSource,
+  textures?: ILevelTextureReport,
   arrange?: (render: LevelRenderService) => void
 ): Promise<RenderResult> {
   setMockInvokeResponses({
@@ -68,7 +68,7 @@ async function renderPanel(
 
   // What a level's textures came to, which no test here streams for itself: given one, the panel reads it.
   if (textures) {
-    container.get(LevelViewportService).noteTextures(textures.describe());
+    container.get(LevelViewportService).noteTextures(textures);
   }
 
   arrange?.(container.get(LevelRenderService));
@@ -122,20 +122,23 @@ describe("LevelSurfacesPanel", () => {
   // asked for; without this the panel never says what the renderer actually got.
   it("says when a checker stands in for what a row dresses with", async () => {
     const { getByText } = await renderPanel(
-      mockLevelTextureSource({
-        ["decal\\decal_poteki"]: {
-          isAlphaRead: true,
-          isMipped: true,
-          reason: "Nothing in the mounted roots answers to it",
-          texture: null,
-          upload: null,
-        },
+      mockLevelTextureReport({
+        ["decal\\decal_poteki"]: { reason: "Nothing in the mounted roots answers to it", upload: null },
       })
     );
 
     expect(
       getByText("decal\\decal_poteki · a checker stands in: Nothing in the mounted roots answers to it")
     ).toBeInTheDocument();
+  });
+
+  // Where an entry lands in the frame decides what light it sees, which the draw alone does not say: a wall mark
+  // multiplies the albedo before the light arrives, and that is what made its marks read right.
+  it("says which pass of the frame draws each entry", async () => {
+    const { getAllByText } = await renderPanel();
+
+    expect(getAllByText("the albedo, before any light reaches it")).toHaveLength(2);
+    expect(getAllByText("the G-buffer, lit by the sun and the hemisphere").length).toBeGreaterThan(0);
   });
 
   it("says a texture no resident sector has asked for has not been read", async () => {

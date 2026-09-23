@@ -5,4 +5,6 @@ use xrf_math::Matrix4x4;
 pub(crate) struct SectorInstanceGathering {
   pub(crate) drawables: Vec<u32>,
   pub(crate) placements: Vec<Matrix4x4>,
+  /// Each place's hemisphere scale and bias, beside its transform.
+  pub(crate) hemi: Vec<[f32; 2]>,
 }

@@ -1,15 +1,15 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { ILoadedSector } from "@/core/level/lib/sector/level-sector-set";
 import {
   ISectorGeometryViews,
   ISectorInstanceViews,
   ISectorSectionViews,
+  ISectorViews,
 } from "@/core/level/lib/sector/level-sector-views";
-import { OPAQUE_RENDER_SURFACE } from "@/core/render/lib/surface/render-surface";
+import { toLevelSurfaceRender } from "@/core/level/lib/surface/level-surface-render";
 import { mockSectorSurface } from "@/fixtures/mocks/level.mocks";
 
-import { countLevelSurfaceGeometry } from "./level-surface-count";
+import { countSectorSurfaceGeometry, mergeLevelSurfaceGeometry } from "./level-surface-count";
 import {
   describeLevelSurfaceGeometry,
   describeLevelSurfaceSpan,
@@ -20,7 +20,7 @@ function section(shaderId: number, drawables: number, triangleCount: number): IS
   return {
     count: triangleCount * 3,
     drawables: Array.from({ length: drawables }, (_, index: number) => index),
-    render: OPAQUE_RENDER_SURFACE,
+    render: toLevelSurfaceRender(null),
     start: 0,
     surface: mockSectorSurface({ shaderId }),
     triangleCount,
@@ -39,24 +39,35 @@ function instance(shaderId: number, places: number, indexCount: number): ISector
     drawables: Array.from({ length: places }, (_, index: number) => index),
     // Only the index count is read here, so the rest of the views are left off rather than invented.
     geometry: { indexCount } as ISectorGeometryViews,
+    hemi: new Float32Array(),
     instanceCount: places,
-    render: OPAQUE_RENDER_SURFACE,
+    render: toLevelSurfaceRender(null),
     surface: mockSectorSurface({ shaderId }),
     transforms: new Float32Array(),
   };
+}
+
+function sector(
+  sections: Array<ISectorSectionViews>,
+  instances: Array<ISectorInstanceViews> = [],
+  geometry: ISectorGeometryViews = withCoordinates([])
+): ISectorViews {
+  return { geometry, instances, sections } as unknown as ISectorViews;
+}
+
+function countLevelSurfaceGeometry(...sectors: Array<ISectorViews>) {
+  return mergeLevelSurfaceGeometry(sectors.map(countSectorSurfaceGeometry));
 }
 
 function resident(
   sections: Array<ISectorSectionViews>,
   instances: Array<ISectorInstanceViews> = [],
   geometry: ISectorGeometryViews = withCoordinates([])
-): ReadonlyMap<number, ILoadedSector> {
-  return new Map([
-    [0, { geometry: null, sector: 0, views: { geometry, instances, sections } } as unknown as ILoadedSector],
-  ]);
+): ISectorViews {
+  return sector(sections, instances, geometry);
 }
 
-describe("countLevelSurfaceGeometry", () => {
+describe("countSectorSurfaceGeometry", () => {
   it("counts the drawables and triangles of one entry", () => {
     const counted = countLevelSurfaceGeometry(resident([section(99, 70, 4807)]));
 
@@ -70,10 +81,22 @@ describe("countLevelSurfaceGeometry", () => {
     expect(counted.get(3)).toMatchObject({ drawables: 2, triangles: 40 });
   });
 
-  it("adds up the sections of one entry across sectors", () => {
+  it("adds up the sections of one entry", () => {
     const counted = countLevelSurfaceGeometry(resident([section(99, 3, 30), section(99, 4, 40)]));
 
     expect(counted.get(99)).toMatchObject({ drawables: 7, triangles: 70 });
+  });
+
+  // Each sector is counted as it arrives, since its bytes move to the renderer after; the panel totals them.
+  it("adds up one entry across sectors, widening its range and keeping its narrowest draw", () => {
+    const counted = countLevelSurfaceGeometry(
+      sector([section(99, 1, 1)], [], withCoordinates([0, 0, 1, 1, 0.5, 0.5])),
+      sector([section(99, 2, 1)], [], withCoordinates([2, 2, 2.5, 2.5, 2, 2]))
+    );
+
+    expect(counted.get(99)).toMatchObject({ drawables: 3, triangles: 2 });
+    expect(counted.get(99)?.span).toEqual({ uMax: 2.5, uMin: 0, vMax: 2.5, vMin: 0 });
+    expect(counted.get(99)?.narrowest?.uMin).toBeCloseTo(2);
   });
 
   // A mesh stood in many places draws its triangles once per place, which is what the frame really costs.
@@ -103,7 +126,7 @@ describe("countLevelSurfaceGeometry", () => {
   });
 
   it("counts nothing when nothing is resident", () => {
-    expect(countLevelSurfaceGeometry(new Map()).size).toBe(0);
+    expect(countLevelSurfaceGeometry().size).toBe(0);
   });
 });
 

@@ -1,10 +1,9 @@
 /**
- * Everything about how a level preview is framed, as one value.
+ * Everything about how a level is framed, as one value.
  */
-export interface ILevelPreviewSceneConfig {
+export interface ILevelRenderConfig {
+  /** What the canvas shows where nothing is drawn and no fog is. */
   backgroundColor: number;
-  /** Vertical field of view in degrees. */
-  cameraFieldOfView: number;
   /** Where the camera starts seeing, `VIEWPORT_NEAR` (`xrEngine/device.h`). */
   cameraNear: number;
   cameraFar: number;
@@ -14,17 +13,22 @@ export interface ILevelPreviewSceneConfig {
   gridOriginColor: number;
   /** Roughly how many cells the grid is drawn with across the level; the step itself is rounded to a readable one. */
   gridCells: number;
-  /** Colour of the box outlining the extent the level claims. */
+  /** Colour of the grid and box outlining the extent the level claims. */
   boundsColor: number;
+  /** Colour of the disc drawn where the light comes from. */
+  sunColor: number;
+  /** Its width in device pixels. */
+  sunSize: number;
 }
 
-export const DEFAULT_LEVEL_PREVIEW_SCENE_CONFIG: ILevelPreviewSceneConfig = {
+export const DEFAULT_LEVEL_RENDER_CONFIG: ILevelRenderConfig = {
   backgroundColor: 0x202428,
+  boundsColor: 0xffb300,
   cameraFar: 5000,
-  cameraFieldOfView: 65,
+  cameraNear: 0.2,
   gridCells: 40,
   gridColor: 0x3a4148,
   gridOriginColor: 0x7a8894,
-  boundsColor: 0xffb300,
-  cameraNear: 0.2,
+  sunColor: 0xfff2c8,
+  sunSize: 24,
 };

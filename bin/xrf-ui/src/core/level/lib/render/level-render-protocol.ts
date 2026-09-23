@@ -37,10 +37,6 @@ export interface ILevelTextureDelivery {
   reference: string;
   /** The file itself, which is the only thing here worth transferring rather than copying. */
   bytes: ArrayBuffer;
-  /** Whether the surfaces drawn with it sample its alpha channel. */
-  isAlphaRead: boolean;
-  /** Whether they sample its mip chain. */
-  isMipped: boolean;
   /**
    * Whether the bytes are a picture rather than the file the level names.
    *

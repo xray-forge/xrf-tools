@@ -1,6 +1,6 @@
+import { ERendererPass } from "#/contract/scene/renderer-surface";
 import { IRendererFrame } from "#/graph/renderer-frame";
 import { IRendererPass } from "#/pass/renderer-pass";
-import { ESurfacePass } from "#/scene/surface-material";
 
 /**
  * Fills the G-buffer with everything the deferred passes light.
@@ -12,7 +12,7 @@ export class GBufferPass implements IRendererPass {
     renderer.setClearColor(0x000000, 0);
     renderer.setRenderTarget(targets.gbuffer);
     renderer.clear(true, true, false);
-    renderer.render(scenes[ESurfacePass.DEFERRED], camera);
+    renderer.render(scenes[ERendererPass.DEFERRED], camera);
   }
 
   public dispose(): void {}

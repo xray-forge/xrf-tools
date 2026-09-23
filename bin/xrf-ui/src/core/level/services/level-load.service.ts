@@ -1,6 +1,6 @@
 import { Injectable, OnDeactivation, OnProvision } from "@wirestate/core";
 import { BoundAction, Computed, flowResult, Observable, runInAction } from "@wirestate/mobx";
-import { Maybe, Nullable } from "@xrf/types";
+import { Nullable } from "@xrf/types";
 
 import { transformError } from "@/core/error/lib";
 import { levelsCommands } from "@/core/ipc/commands/levels";
@@ -96,7 +96,7 @@ export class LevelLoadService {
   private readonly textureWatchers: Set<TLevelTextureSupplyListener> = new Set();
 
   /** References already supplied, so a second sector naming one does not read the file again. */
-  private readonly supplied: Map<string, ISectorTextureRequest> = new Map();
+  private readonly supplied: Set<string> = new Set();
 
   /** What the reads have cost, kept here because the loader is what owns a read from end to end. */
   private readonly profile: LevelStreamProfile = new LevelStreamProfile();
@@ -204,21 +204,16 @@ export class LevelLoadService {
    * @param requests - What the sector names, base textures and lightmaps alike.
    */
   private async supply(requests: ReadonlyArray<ISectorTextureRequest>): Promise<number> {
-    const wanted: Array<ISectorTextureRequest> = requests.filter((request: ISectorTextureRequest) => {
-      const supplied: Maybe<ISectorTextureRequest> = this.supplied.get(request.reference);
-
-      return (
-        Boolean(request.reference) &&
-        (!supplied || (request.isAlphaRead && !supplied.isAlphaRead) || (!request.isMipped && supplied.isMipped))
-      );
-    });
+    const wanted: Array<ISectorTextureRequest> = requests.filter(
+      (request: ISectorTextureRequest) => Boolean(request.reference) && !this.supplied.has(request.reference)
+    );
 
     if (!wanted.length) {
       return 0;
     }
 
     for (const request of wanted) {
-      this.supplied.set(request.reference, request);
+      this.supplied.add(request.reference);
     }
 
     const delivered: Array<ILevelTextureDelivery> = await Promise.all(
@@ -443,7 +438,7 @@ export class LevelLoadService {
   private onSettled(): void {
     const retained: Set<string> = this.listResidentTextures();
 
-    for (const reference of Array.from(this.supplied.keys())) {
+    for (const reference of Array.from(this.supplied)) {
       if (!retained.has(reference)) {
         this.supplied.delete(reference);
       }

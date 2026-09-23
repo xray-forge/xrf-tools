@@ -333,7 +333,14 @@ fn a_shader_with_a_script_is_drawn_by_the_script_rather_than_by_its_class() {
 
   let descriptor: XraySurfaceDescriptor = describe(&tree, "effects\\lightplanes");
 
-  assert_eq!(descriptor.draw, XraySurfaceDraw::Added { reference: 0 });
+  // `blend(true, blend.srcalpha, blend.one)`: the planes are added by their own alpha, not whole.
+  assert_eq!(
+    descriptor.draw,
+    XraySurfaceDraw::Added {
+      is_weighted: true,
+      reference: 0
+    }
+  );
   assert!(matches!(
     descriptor.declaration,
     XraySurfaceDeclaration::Scripted { is_blended: true, .. }

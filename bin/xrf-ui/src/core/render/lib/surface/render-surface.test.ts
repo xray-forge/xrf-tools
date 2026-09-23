@@ -53,7 +53,7 @@ describe("toRenderSurface", () => {
   // behind it. Drawn opaque it was a black rectangle standing in the air.
   it("adds a glow to what is behind it", () => {
     const surface: IRenderSurface = toRenderSurface(
-      mockAlphaSurfaceDescriptor({ draw: { kind: "added", reference: 255 } })
+      mockAlphaSurfaceDescriptor({ draw: { isWeighted: true, kind: "added", reference: 255 } })
     );
 
     expect(surface.blend.blending).toBe(AdditiveBlending);
@@ -179,7 +179,7 @@ describe("toRenderSurface lighting", () => {
         kind: "scripted",
         script: "shaders\\r2\\effects_lightplanes.s",
       },
-      draw: { kind: "added", reference: 0 },
+      draw: { isWeighted: true, kind: "added", reference: 0 },
     });
 
     expect(toRenderSurface(untested).alphaTest).toBe(0);

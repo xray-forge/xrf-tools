@@ -26,7 +26,7 @@ use crate::pack::sector::sector_surface_table::SectorSurfaceTable;
 use crate::pack::sector::sector_vertex_arrays::SectorVertexArrays;
 use crate::pack::sector::sector_vertex_range::SectorVertexRange;
 use crate::pack::visual_buffer_builder::VisualBufferBuilder;
-use crate::pack::visual_conversion::{convert_placement, reverse_triangle_winding};
+use crate::pack::visual_conversion::{convert_placement, convert_tree_hemi, reverse_triangle_winding};
 
 /// Packs one sector's drawables into the single buffer a renderer draws it from.
 pub struct SectorPacker<'a, D: ChunkDataSource> {
@@ -68,13 +68,14 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
 
       // A visual the level places is an instance of a mesh rather than geometry of its own: the mesh is packed once
       // below and stood in every place that names it.
-      if let Some(placement) = visual.get_placement() {
+      if let Some(tree) = &visual.tree {
         let gathering: &mut SectorInstanceGathering = gathered
           .entry(SectorInstanceKey::of(container, visual.header.shader_id))
           .or_default();
 
         gathering.drawables.push(*drawable);
-        gathering.placements.push(convert_placement(placement));
+        gathering.placements.push(convert_placement(&tree.transform));
+        gathering.hemi.push(convert_tree_hemi(tree));
 
         continue;
       }
@@ -293,9 +294,12 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
       .flat_map(|placement| placement.values)
       .collect();
 
+    let hemi: Vec<f32> = gathering.hemi.iter().flatten().copied().collect();
+
     Ok(SectorInstanceGroup {
       drawables: gathering.drawables.clone(),
       geometry: arrays.write_into(&indices, builder),
+      hemi: builder.push_f32_section(&hemi),
       instance_count: gathering.placements.len() as u32,
       surface: self.surfaces.get(key.shader_id),
       transforms: builder.push_f32_section(&transforms),

@@ -14,14 +14,13 @@ import {
 
 import { IRendererGeometry } from "#/contract/scene/renderer-geometry";
 import { IRendererInstances, IRendererObject } from "#/contract/scene/renderer-object";
-import { IRendererSurface } from "#/contract/scene/renderer-surface";
+import { ERendererPass, IRendererSurface } from "#/contract/scene/renderer-surface";
 import { TRendererTextureSource } from "#/contract/scene/renderer-texture-source";
 import { createRendererBufferGeometry } from "#/scene/renderer-buffer-geometry";
 import { RendererSkeletonEntry, RendererSkeletons } from "#/scene/renderer-skeletons";
 import { RendererTextures } from "#/scene/renderer-textures";
 import {
   createSurfaceMaterial,
-  ESurfacePass,
   INSTANCE_HEMI_ATTRIBUTE,
   ISurfaceMaterial,
   ISurfaceShadingContext,
@@ -38,13 +37,13 @@ const MATERIAL_CACHE_LIMIT: number = 64;
 const FLOATS_PER_INSTANCE: number = 16;
 
 /** Every pass an object draws in, in frame order. */
-const PASSES: ReadonlyArray<ESurfacePass> = [ESurfacePass.DEFERRED, ESurfacePass.WALLMARK, ESurfacePass.FORWARD];
+const PASSES: ReadonlyArray<ERendererPass> = [ERendererPass.DEFERRED, ERendererPass.WALLMARK, ERendererPass.FORWARD];
 
 /** One mesh per pass, each drawing only its own slots. */
-type TPassMeshes = Record<ESurfacePass, Mesh>;
+type TPassMeshes = Record<ERendererPass, Mesh>;
 
 /** One scene per pass. */
-export type TPassScenes = Record<ESurfacePass, Scene>;
+export type TPassScenes = Record<ERendererPass, Scene>;
 
 /** What an object stands in many places with: its transforms, uploaded once for every pass drawing it. */
 interface IObjectInstances {
@@ -71,7 +70,7 @@ interface IObjectState {
   geometry: BufferGeometry;
   skeleton: Nullable<Skeleton>;
   instances: Nullable<IObjectInstances>;
-  slots: Record<ESurfacePass, Array<Material>>;
+  slots: Record<ERendererPass, Array<Material>>;
   /** The vertex layout the materials compile against. */
   layout: string;
 }
@@ -137,17 +136,17 @@ export class RendererScene {
 
   private static createMeshes(skeleton: Nullable<Skeleton>, instances: Nullable<IObjectInstances>): TPassMeshes {
     return {
-      [ESurfacePass.DEFERRED]: RendererScene.createMesh(skeleton, instances),
-      [ESurfacePass.FORWARD]: RendererScene.createMesh(skeleton, instances),
-      [ESurfacePass.WALLMARK]: RendererScene.createMesh(skeleton, instances),
+      [ERendererPass.DEFERRED]: RendererScene.createMesh(skeleton, instances),
+      [ERendererPass.FORWARD]: RendererScene.createMesh(skeleton, instances),
+      [ERendererPass.WALLMARK]: RendererScene.createMesh(skeleton, instances),
     };
   }
 
   private static createScenes(): TPassScenes {
     return {
-      [ESurfacePass.DEFERRED]: new Scene(),
-      [ESurfacePass.FORWARD]: new Scene(),
-      [ESurfacePass.WALLMARK]: new Scene(),
+      [ERendererPass.DEFERRED]: new Scene(),
+      [ERendererPass.FORWARD]: new Scene(),
+      [ERendererPass.WALLMARK]: new Scene(),
     };
   }
 
@@ -406,7 +405,7 @@ export class RendererScene {
       entry.change = null;
       this.unindex(entry);
       this.objects.delete(key);
-      into.leaving.push(...PASSES.map((pass: ESurfacePass) => entry.meshes[pass]));
+      into.leaving.push(...PASSES.map((pass: ERendererPass) => entry.meshes[pass]));
     });
   }
 
@@ -577,7 +576,7 @@ export class RendererScene {
       this.surfaces.get(object.surfaces[slot])
     );
 
-    function toSlots(pass: ESurfacePass): Array<Material> {
+    function toSlots(pass: ERendererPass): Array<Material> {
       return surfaces.map((surface: Maybe<ISurfaceMaterial>) =>
         surface && surface.pass === pass ? surface.material : HIDDEN
       );
@@ -589,9 +588,9 @@ export class RendererScene {
       layout: RendererScene.toLayout(geometry, skeleton, instances !== null),
       skeleton,
       slots: {
-        [ESurfacePass.DEFERRED]: toSlots(ESurfacePass.DEFERRED),
-        [ESurfacePass.FORWARD]: toSlots(ESurfacePass.FORWARD),
-        [ESurfacePass.WALLMARK]: toSlots(ESurfacePass.WALLMARK),
+        [ERendererPass.DEFERRED]: toSlots(ERendererPass.DEFERRED),
+        [ERendererPass.FORWARD]: toSlots(ERendererPass.FORWARD),
+        [ERendererPass.WALLMARK]: toSlots(ERendererPass.WALLMARK),
       },
     };
   }

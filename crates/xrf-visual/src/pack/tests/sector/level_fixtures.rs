@@ -232,6 +232,18 @@ pub(crate) fn new_shaders(entries: &[&str]) -> LevelShadersChunk {
 
 /// A tree: the same range of the shared buffers, stood where its own transform puts it.
 pub(crate) fn new_tree(shader_id: u16, vertex_base: u32, vertex_count: u32, index_count: u32, at: f32) -> Vec<u8> {
+  new_lit_tree(shader_id, vertex_base, vertex_count, index_count, at, [0.0, 0.0])
+}
+
+/// A tree whose colour terms carry a hemisphere scale and bias, as the file stores them before the engine halves both.
+pub(crate) fn new_lit_tree(
+  shader_id: u16,
+  vertex_base: u32,
+  vertex_count: u32,
+  index_count: u32,
+  at: f32,
+  hemi: [f32; 2],
+) -> Vec<u8> {
   let mut bytes: Vec<u8> = new_drawable_of_buffer(shader_id, 0, vertex_base, vertex_count, 0, index_count);
   let mut definition: Vec<u8> = Vec::new();
 
@@ -245,8 +257,8 @@ pub(crate) fn new_tree(shader_id: u16, vertex_base: u32, vertex_count: u32, inde
     definition.extend_from_slice(&value.to_le_bytes());
   }
 
-  // Scale and bias, five floats each, which packing does not read but the chunk carries.
-  for value in [0.0f32; 10] {
+  // Scale and bias, five floats each: colour, then hemisphere, then sun.
+  for value in [0.0f32, 0.0, 0.0, hemi[0], 0.0, 0.0, 0.0, 0.0, hemi[1], 0.0] {
     definition.extend_from_slice(&value.to_le_bytes());
   }
 

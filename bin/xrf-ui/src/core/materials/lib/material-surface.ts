@@ -75,8 +75,8 @@ export function describeSurfaceDraw(draw: XraySurfaceDraw): Nullable<string> {
 
     case EXraySurfaceDraw.ADDED:
       return (
-        `added to the background, killed below ${draw.reference}/${ALPHA_REFERENCE_SCALE} · ` +
-        "depth tested and not written"
+        `${draw.isWeighted ? "added to the background by its alpha" : "added whole to the background"}, ` +
+        `killed below ${draw.reference}/${ALPHA_REFERENCE_SCALE} · depth tested and not written`
       );
 
     case EXraySurfaceDraw.MULTIPLIED:

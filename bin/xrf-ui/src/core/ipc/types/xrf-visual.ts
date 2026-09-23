@@ -50,6 +50,8 @@ export type SectorInstanceGroup = {
   instanceCount: number;
   /** Sixteen floats for each instance, exactly as the engine stores a matrix. */
   transforms: VisualSection;
+  /** Two floats for each instance: what scales and then offsets its vertices' hemisphere term. */
+  hemi: VisualSection;
 };
 
 /** What one sector is and where it sits, before any of its geometry is read. */

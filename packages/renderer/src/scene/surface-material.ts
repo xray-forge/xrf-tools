@@ -34,7 +34,7 @@ import {
   ZeroFactor,
 } from "three/webgpu";
 
-import { ERendererDraw, IRendererSurface } from "#/contract/scene/renderer-surface";
+import { ERendererDraw, ERendererPass, IRendererSurface, toRendererPass } from "#/contract/scene/renderer-surface";
 import { BaseLightingUniforms } from "#/graph/base-lighting-uniforms";
 import { IBaseShadingPoint, toBaseColor, toFinishedColor, toSunLight } from "#/graph/base-lighting.tsl";
 import { decodeBumpGloss, decodeBumpNormal } from "#/graph/bump.tsl";
@@ -71,18 +71,6 @@ export const HEMI_ATTRIBUTE: string = "hemi";
 /** The instanced attribute scaling and offsetting it, per place a geometry stands. */
 export const INSTANCE_HEMI_ATTRIBUTE: string = "instanceHemi";
 
-/**
- * Which pass of the frame draws a surface.
- */
-export enum ESurfacePass {
-  /** Into the G-buffer, lit by the deferred passes. */
-  DEFERRED = "deferred",
-  /** Into the G-buffer's albedo, before any light: the engine's wall mark phase. */
-  WALLMARK = "wallmark",
-  /** Composited over the tonemapped frame. */
-  FORWARD = "forward",
-}
-
 /** Binds one texture slot and remembers it, so the material's disposal can let it go. */
 type TBind = (key: Maybe<string>, placeholder?: Texture, coordinates?: Node<"vec2">) => TextureNode;
 
@@ -103,7 +91,7 @@ export interface ISurfaceMaterial {
   material: MeshBasicNodeMaterial;
 
   /** Which pass draws it. */
-  pass: ESurfacePass;
+  pass: ERendererPass;
 
   dispose(): void;
 }
@@ -145,19 +133,19 @@ export function createSurfaceMaterial(
     return sampler;
   }
 
-  const pass: ESurfacePass = toSurfacePass(surface);
+  const pass: ERendererPass = toRendererPass(surface);
   let material: MeshBasicNodeMaterial;
 
   switch (pass) {
-    case ESurfacePass.DEFERRED:
+    case ERendererPass.DEFERRED:
       material = createDeferredMaterial(surface, toSurfaceTexel(surface, bind, baseCoordinates, context.settings));
       break;
 
-    case ESurfacePass.WALLMARK:
+    case ERendererPass.WALLMARK:
       material = createWallmarkMaterial(surface, bind);
       break;
 
-    case ESurfacePass.FORWARD:
+    case ERendererPass.FORWARD:
       material = createForwardMaterial(
         surface,
         toSurfaceTexel(surface, bind, baseCoordinates, context.settings),
@@ -174,18 +162,6 @@ export function createSurfaceMaterial(
     material,
     pass,
   };
-}
-
-/**
- * @param surface - What the consumer put.
- * @returns The pass its draw puts it in.
- */
-export function toSurfacePass(surface: IRendererSurface): ESurfacePass {
-  if (surface.draw === ERendererDraw.OPAQUE || surface.draw === ERendererDraw.CUT_OUT) {
-    return ESurfacePass.DEFERRED;
-  }
-
-  return surface.isWallmark ? ESurfacePass.WALLMARK : ESurfacePass.FORWARD;
 }
 
 /** `sload`: the surface at a texel, with the bump pair's normal and gloss where it binds one. */
@@ -370,6 +346,11 @@ function describeComposite(material: MeshBasicNodeMaterial, surface: IRendererSu
 
     case ERendererDraw.ADDED:
       material.blendSrc = OneFactor;
+      material.blendDst = OneFactor;
+      break;
+
+    case ERendererDraw.ALPHA_ADDED:
+      material.blendSrc = SrcAlphaFactor;
       material.blendDst = OneFactor;
       break;
 

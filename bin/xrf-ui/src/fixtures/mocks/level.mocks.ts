@@ -12,12 +12,6 @@ import {
 } from "@/core/ipc/types/xrf-visual";
 import { ELevelSurfaceDressing } from "@/core/level/lib/surface/level-surface-dressing";
 import { ILevelTextureReport } from "@/core/level/lib/texture/level-texture-report";
-import {
-  ILevelTexture,
-  ILevelTextureSource,
-  TLevelTextureChange,
-  TLevelTextureListener,
-} from "@/core/level/lib/texture/level-texture-set";
 import { mockVisualBounds, MockVisualBuffer } from "@/fixtures/mocks/visual.mocks";
 
 /**
@@ -119,10 +113,12 @@ export function mockSectorInstanceGroup(
   const transforms = buffer.pushFloats(
     places.flatMap((at: number) => [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, at, 0, 0, 1])
   );
+  const hemi = buffer.pushFloats(places.flatMap(() => [1, 0]));
 
   return {
     drawables: places.map((_, index: number) => index + 1),
     geometry,
+    hemi,
     instanceCount: places.length,
     surface: mockSectorSurface(),
     transforms,
@@ -199,52 +195,34 @@ export function mockSelectedLevelDescription(
   };
 }
 
-/** A texture set standing in for a level's, which reports what a caller hands it rather than uploading anything. */
-export interface IMockLevelTextureSource extends ILevelTextureSource {
-  /** Says a change happened, as an upload or a release would. */
-  change(changed: TLevelTextureChange): void;
+/** What one reference came to, for a report fixture. */
+export interface IMockLevelTexture {
+  reason: Nullable<string>;
+  upload: Nullable<string>;
 }
 
 /**
- * A texture source holding exactly what it is given.
+ * What a level's textures came to, as the renderer service would publish it.
  *
  * @param entries - What each reference came to.
- * @returns The source, and the handle that tells its listeners something moved.
+ * @returns The report.
  */
-export function mockLevelTextureSource(entries: Record<string, ILevelTexture> = {}): IMockLevelTextureSource {
-  const listeners: Set<TLevelTextureListener> = new Set();
-
+export function mockLevelTextureReport(entries: Record<string, IMockLevelTexture> = {}): ILevelTextureReport {
   return {
-    change: (changed: TLevelTextureChange): void => {
-      for (const listener of Array.from(listeners)) {
-        listener(changed);
-      }
-    },
-    describe: (): ILevelTextureReport => ({
-      dressing: new Map(
-        Object.entries(entries).map(([reference, loaded]) => [
+    dressing: new Map(
+      Object.entries(entries).map(([reference, loaded]) => [
+        reference,
+        {
+          reason: loaded.reason,
           reference,
-          {
-            reason: loaded.reason,
-            reference,
-            state: loaded.reason ? ELevelSurfaceDressing.STOOD_IN : ELevelSurfaceDressing.UPLOADED,
-            upload: loaded.upload,
-          },
-        ])
-      ),
-      problems: Object.entries(entries)
-        .filter(([, loaded]) => loaded.reason)
-        .map(([reference, loaded]) => ({ reason: loaded.reason as string, reference })),
-      uploaded: Object.keys(entries).length,
-    }),
-    get: (reference: string): Nullable<ILevelTexture> => entries[reference] ?? null,
-    size: Object.keys(entries).length,
-    subscribe: (listener: TLevelTextureListener): (() => void) => {
-      listeners.add(listener);
-
-      return (): void => {
-        listeners.delete(listener);
-      };
-    },
+          state: loaded.reason ? ELevelSurfaceDressing.STOOD_IN : ELevelSurfaceDressing.UPLOADED,
+          upload: loaded.upload,
+        },
+      ])
+    ),
+    problems: Object.entries(entries)
+      .filter(([, loaded]) => loaded.reason)
+      .map(([reference, loaded]) => ({ reason: loaded.reason as string, reference })),
+    uploaded: Object.keys(entries).length,
   };
 }
