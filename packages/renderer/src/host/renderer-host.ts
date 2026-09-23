@@ -48,6 +48,12 @@ import { RendererPassInspector } from "#/timing/renderer-pass-inspector";
 import { RendererPassTimer } from "#/timing/renderer-pass-timer";
 import { toFramePassTimes } from "#/timing/renderer-pass-times";
 
+/**
+ * Milliseconds a frame may spend uploading textures, which three would otherwise upload all at once in whichever frame
+ * first draws them.
+ */
+const TEXTURE_UPLOAD_BUDGET: number = 4;
+
 /** How often the frame report is sent, in milliseconds. */
 const REPORT_INTERVAL: number = 250;
 
@@ -437,12 +443,17 @@ export class RendererHost {
     // one of its views waits for the next frame.
     let isFrameCapturable: boolean = false;
 
+    // Before the frame, and whether or not one is drawn: a capture without a view waits on the same uploads.
+    this.scene.textures.upload(renderer, TEXTURE_UPLOAD_BUDGET);
+    this.scene.advance();
+
     if (view) {
       this.frameHandle = this.schedule(this.frame);
 
       if (this.captures.length || shouldDrawFrame(now, this.drawnAt, this.settings.frameRateLimit)) {
         // Nor is one still waiting for a material to compile: a capture shows the scene as it settles.
-        isFrameCapturable = !this.isResizePending && !this.scene.hasPending && !this.isCompiling;
+        isFrameCapturable =
+          !this.isResizePending && !this.scene.hasPending && !this.isCompiling && !this.scene.textures.hasQueued;
 
         const delta: number = this.drawnAt === null ? 0 : (now - this.drawnAt) / 1000;
 
@@ -453,6 +464,8 @@ export class RendererHost {
     }
 
     this.capture(renderer, view !== null, isFrameCapturable);
+    // A capture still waiting on its textures, with no view keeping the loop going, is answered by a later frame.
+    this.ensureScheduled();
   };
 
   private draw(
@@ -560,7 +573,12 @@ export class RendererHost {
     this.captures = [];
 
     for (const { id, source } of captures) {
-      if (source.kind === ERendererCaptureSource.FRAME && hasView && !isFrameCapturable) {
+      const isWaiting: boolean =
+        source.kind === ERendererCaptureSource.FRAME
+          ? hasView && !isFrameCapturable
+          : !this.scene.textures.isUploaded(source.bump) || !this.scene.textures.isUploaded(source.companion);
+
+      if (isWaiting) {
         this.captures.push({ id, source });
         continue;
       }

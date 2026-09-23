@@ -1,5 +1,13 @@
 import { Nullable } from "@xrf/types";
-import { DataTexture, NoColorSpace, RGBAFormat, Texture, UnsignedByteType } from "three/webgpu";
+import {
+  DataTexture,
+  LinearFilter,
+  NoColorSpace,
+  RepeatWrapping,
+  RGBAFormat,
+  Texture,
+  UnsignedByteType,
+} from "three/webgpu";
 
 let white: Nullable<Texture> = null;
 let grey: Nullable<Texture> = null;
@@ -45,6 +53,10 @@ function createSolidTexture(red: number, green: number = red, blue: number = red
   );
 
   texture.colorSpace = NoColorSpace;
+  texture.magFilter = LinearFilter;
+  texture.minFilter = LinearFilter;
+  texture.wrapS = RepeatWrapping;
+  texture.wrapT = RepeatWrapping;
   texture.needsUpdate = true;
 
   return texture;

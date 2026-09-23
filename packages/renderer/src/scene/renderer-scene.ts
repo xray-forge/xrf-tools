@@ -2,7 +2,9 @@ import { Maybe, Nullable } from "@xrf/types";
 import {
   BufferGeometry,
   InstancedBufferAttribute,
-  InstancedMesh,
+  InstancedBufferGeometry,
+  InstancedInterleavedBuffer,
+  InterleavedBufferAttribute,
   Material,
   Matrix4,
   Mesh,
@@ -10,6 +12,7 @@ import {
   Scene,
   Skeleton,
   SkinnedMesh,
+  Sphere,
 } from "three/webgpu";
 
 import { IRendererGeometry } from "#/contract/scene/renderer-geometry";
@@ -22,6 +25,7 @@ import { RendererTextures } from "#/scene/renderer-textures";
 import {
   createSurfaceMaterial,
   INSTANCE_HEMI_ATTRIBUTE,
+  INSTANCE_MATRIX_ATTRIBUTE,
   ISurfaceMaterial,
   ISurfaceShadingContext,
 } from "#/scene/surface-material";
@@ -32,6 +36,12 @@ const HIDDEN: Material = new MeshBasicNodeMaterial({ visible: false });
 
 /** Superseded materials kept compiled, so a toggle back to one draws it at once. */
 const MATERIAL_CACHE_LIMIT: number = 64;
+
+/**
+ * Objects one settle applies before leaving the rest to the next frame: each draws for the first time in the frame
+ * after, where three builds its render state, and a whole level's worth of those was one long frame.
+ */
+const APPLIED_PER_SETTLE: number = 32;
 
 /** Floats one instance's transform takes. */
 const FLOATS_PER_INSTANCE: number = 16;
@@ -45,10 +55,15 @@ type TPassMeshes = Record<ERendererPass, Mesh>;
 /** One scene per pass. */
 export type TPassScenes = Record<ERendererPass, Scene>;
 
-/** What an object stands in many places with: its transforms, uploaded once for every pass drawing it. */
+/**
+ * What an object stands in many places with: its own geometry over the one put, adding the places as instanced
+ * attributes, drawn by every pass.
+ */
 interface IObjectInstances {
   source: IRendererInstances;
-  matrices: InstancedBufferAttribute;
+  /** The geometry put under the object's key, whose attributes the instanced one shares. */
+  base: BufferGeometry;
+  geometry: InstancedBufferGeometry;
 }
 
 /** One object: a mesh per pass over one geometry. */
@@ -61,6 +76,8 @@ interface ISceneObject {
   skeleton: Nullable<Skeleton>;
   /** The places its meshes stand, or null for a mesh its matrix places once. */
   instances: Nullable<IObjectInstances>;
+  /** The places it is about to stand in, built for a change it waits in. */
+  staged: Nullable<IObjectInstances>;
   /** The change it waits in, or null while it draws as it was last put. */
   change: Nullable<ISceneChange>;
 }
@@ -73,6 +90,8 @@ interface IObjectState {
   slots: Record<ERendererPass, Array<Material>>;
   /** The vertex layout the materials compile against. */
   layout: string;
+  /** Every texture key its surfaces sample. */
+  keys: ReadonlyArray<string>;
 }
 
 /**
@@ -107,20 +126,10 @@ export class RendererScene {
    * A mesh the object's matrix places directly, never recomposed from a position and rotation.
    *
    * @param skeleton - What it is skinned to, or null for a rigid mesh.
-   * @param instances - Where it stands, or null for a mesh standing once.
    * @returns The mesh.
    */
-  private static createMesh(skeleton: Nullable<Skeleton>, instances: Nullable<IObjectInstances>): Mesh {
-    let mesh: Mesh;
-
-    if (instances) {
-      const instanced: InstancedMesh = new InstancedMesh(undefined, undefined, instances.matrices.count);
-
-      instanced.instanceMatrix = instances.matrices;
-      mesh = instanced;
-    } else {
-      mesh = skeleton ? new SkinnedMesh() : new Mesh();
-    }
+  private static createMesh(skeleton: Nullable<Skeleton>): Mesh {
+    const mesh: Mesh = skeleton ? new SkinnedMesh() : new Mesh();
 
     mesh.matrixAutoUpdate = false;
 
@@ -134,12 +143,66 @@ export class RendererScene {
     return mesh;
   }
 
-  private static createMeshes(skeleton: Nullable<Skeleton>, instances: Nullable<IObjectInstances>): TPassMeshes {
+  private static createMeshes(skeleton: Nullable<Skeleton>): TPassMeshes {
     return {
-      [ERendererPass.DEFERRED]: RendererScene.createMesh(skeleton, instances),
-      [ERendererPass.FORWARD]: RendererScene.createMesh(skeleton, instances),
-      [ERendererPass.WALLMARK]: RendererScene.createMesh(skeleton, instances),
+      [ERendererPass.DEFERRED]: RendererScene.createMesh(skeleton),
+      [ERendererPass.FORWARD]: RendererScene.createMesh(skeleton),
+      [ERendererPass.WALLMARK]: RendererScene.createMesh(skeleton),
     };
+  }
+
+  /**
+   * A geometry standing in every place the instances name: the put geometry's own attributes, the places as instanced
+   * columns, and a sphere around all of them for culling.
+   */
+  private static createInstancedGeometry(base: BufferGeometry, source: IRendererInstances): InstancedBufferGeometry {
+    const geometry: InstancedBufferGeometry = new InstancedBufferGeometry();
+    const columns: InstancedInterleavedBuffer = new InstancedInterleavedBuffer(source.transforms, FLOATS_PER_INSTANCE);
+    const count: number = source.transforms.length / FLOATS_PER_INSTANCE;
+
+    geometry.index = base.index;
+    Object.entries(base.attributes).forEach(([name, attribute]) => geometry.setAttribute(name, attribute));
+    base.groups.forEach((group) => geometry.addGroup(group.start, group.count, group.materialIndex));
+
+    for (let column = 0; column < 4; column += 1) {
+      geometry.setAttribute(
+        `${INSTANCE_MATRIX_ATTRIBUTE}${column}`,
+        new InterleavedBufferAttribute(columns, 4, column * 4)
+      );
+    }
+
+    if (source.hemi) {
+      geometry.setAttribute(INSTANCE_HEMI_ATTRIBUTE, new InstancedBufferAttribute(source.hemi, 2));
+    }
+
+    geometry.instanceCount = count;
+    geometry.boundingSphere = RendererScene.toInstancesSphere(base, source.transforms, count);
+
+    return geometry;
+  }
+
+  /** A sphere around the base's own, stood in every place. */
+  private static toInstancesSphere(base: BufferGeometry, transforms: Float32Array, count: number): Sphere {
+    if (!base.boundingSphere) {
+      base.computeBoundingSphere();
+    }
+
+    const own: Sphere = base.boundingSphere as Sphere;
+    const matrix: Matrix4 = new Matrix4();
+    const placed: Sphere = new Sphere();
+    const all: Sphere = new Sphere();
+
+    for (let index = 0; index < count; index += 1) {
+      placed.copy(own).applyMatrix4(matrix.fromArray(transforms, index * FLOATS_PER_INSTANCE));
+
+      if (index === 0) {
+        all.copy(placed);
+      } else {
+        all.union(placed);
+      }
+    }
+
+    return all;
   }
 
   private static createScenes(): TPassScenes {
@@ -238,9 +301,16 @@ export class RendererScene {
     }
   }
 
-  /** Whether any object waits for a material to compile. */
+  /** Whether any object waits: for a material to compile, a texture to upload, or its turn to be applied. */
   public get hasPending(): boolean {
     return this.changes.some((change: ISceneChange) => change.objects.size > 0);
+  }
+
+  /** Applies what became ready since the last frame, a budget of it at a time. */
+  public advance(): void {
+    if (this.changes.length && !this.depth) {
+      this.settle();
+    }
   }
 
   /**
@@ -260,7 +330,9 @@ export class RendererScene {
       for (const entry of change.objects) {
         const state: Nullable<IObjectState> = this.toState(entry);
 
-        if (!state) {
+        // Only what has something left to compile, and only once its textures are up: a pipeline built while its
+        // samplers held placeholders would not be the one its first frame draws with.
+        if (!state || !this.hasUncompiled(state) || !this.isUploaded(state)) {
           continue;
         }
 
@@ -271,7 +343,7 @@ export class RendererScene {
             continue;
           }
 
-          const mesh: Mesh = RendererScene.createMesh(state.skeleton, state.instances);
+          const mesh: Mesh = RendererScene.createMesh(state.skeleton);
 
           mesh.geometry = state.geometry;
           mesh.material = slots;
@@ -286,6 +358,10 @@ export class RendererScene {
           }
         }
       }
+    }
+
+    if (!materials.size) {
+      return null;
     }
 
     return {
@@ -372,9 +448,10 @@ export class RendererScene {
           change: null,
           instances: null,
           key,
-          meshes: RendererScene.createMeshes(null, null),
+          meshes: RendererScene.createMeshes(null),
           object,
           skeleton: null,
+          staged: null,
         };
         this.objects.set(key, entry);
       }
@@ -406,6 +483,13 @@ export class RendererScene {
       this.unindex(entry);
       this.objects.delete(key);
       into.leaving.push(...PASSES.map((pass: ERendererPass) => entry.meshes[pass]));
+
+      // The places it stood are its own geometry, let go of with the meshes drawing them.
+      for (const instances of [entry.instances, entry.staged]) {
+        if (instances) {
+          into.geometries.add(instances.geometry);
+        }
+      }
     });
   }
 
@@ -568,6 +652,7 @@ export class RendererScene {
     const skeleton: Nullable<Skeleton> =
       skeletonEntry && geometry.hasAttribute("skinIndex") ? skeletonEntry.skeleton : null;
     const instances: Nullable<IObjectInstances> = this.toInstances(entry, geometry);
+    const drawn: BufferGeometry = instances?.geometry ?? geometry;
     const count: number = Math.max(
       object.surfaces.length,
       ...geometry.groups.map((group) => (group.materialIndex ?? 0) + 1)
@@ -583,9 +668,10 @@ export class RendererScene {
     }
 
     return {
-      geometry,
+      geometry: drawn,
       instances,
-      layout: RendererScene.toLayout(geometry, skeleton, instances !== null),
+      keys: surfaces.flatMap((surface: Maybe<ISurfaceMaterial>) => surface?.keys ?? []),
+      layout: RendererScene.toLayout(drawn, skeleton, instances !== null),
       skeleton,
       slots: {
         [ERendererPass.DEFERRED]: toSlots(ERendererPass.DEFERRED),
@@ -595,10 +681,7 @@ export class RendererScene {
     };
   }
 
-  /**
-   * The places an object stands, kept while it is put with the same transforms, with its instances' hemisphere terms
-   * set on its geometry: a geometry stood in many places is its one object's.
-   */
+  /** The places an object stands, kept while it is put with the same transforms over the same geometry. */
   private toInstances(entry: ISceneObject, geometry: BufferGeometry): Nullable<IObjectInstances> {
     const source: Maybe<IRendererInstances> = entry.object.instances;
 
@@ -606,16 +689,18 @@ export class RendererScene {
       return null;
     }
 
-    const instances: IObjectInstances =
-      entry.instances?.source === source
-        ? entry.instances
-        : { matrices: new InstancedBufferAttribute(source.transforms, FLOATS_PER_INSTANCE), source };
-
-    if (source.hemi && geometry.getAttribute(INSTANCE_HEMI_ATTRIBUTE)?.array !== source.hemi) {
-      geometry.setAttribute(INSTANCE_HEMI_ATTRIBUTE, new InstancedBufferAttribute(source.hemi, 2));
+    if (entry.instances?.source === source && entry.instances.base === geometry) {
+      return entry.instances;
     }
 
-    return instances;
+    // Built once for the change that brings it, and kept on the entry until the change applies.
+    entry.staged ??= { base: geometry, geometry: RendererScene.createInstancedGeometry(geometry, source), source };
+
+    if (entry.staged.source !== source || entry.staged.base !== geometry) {
+      entry.staged = { base: geometry, geometry: RendererScene.createInstancedGeometry(geometry, source), source };
+    }
+
+    return entry.staged;
   }
 
   /** Queues an object's change in the running transaction's, bringing along whatever it already waited in. */
@@ -649,12 +734,27 @@ export class RendererScene {
   }
 
   /**
-   * Applies every change that can draw now, oldest first, stopping at the first that cannot: what a consumer changed
-   * together appears together, and what it released goes in the same frame.
+   * Applies every change that can draw now, each whole: what a consumer changed together appears together, and what
+   * it released goes in the same frame. Changes wait only for themselves - a sector whose materials are compiled does
+   * not wait behind one whose are not - except one letting textures go, which waits for every change before it, since
+   * any of those may be about to sample them. Past the frame's budget the rest wait for the next.
    */
   private settle(): void {
-    while (this.changes.length && this.canApply(this.changes[0])) {
-      const change: ISceneChange = this.changes.shift() as ISceneChange;
+    let applied: number = 0;
+    let isBlocked: boolean = false;
+
+    for (const change of [...this.changes]) {
+      if (applied && applied + change.objects.size > APPLIED_PER_SETTLE) {
+        break;
+      }
+
+      if (!this.canApply(change) || (isBlocked && change.textures.size)) {
+        isBlocked = true;
+        continue;
+      }
+
+      this.changes.splice(this.changes.indexOf(change), 1);
+      applied += change.objects.size;
 
       change.objects.forEach((entry: ISceneObject) => {
         entry.change = null;
@@ -668,16 +768,25 @@ export class RendererScene {
     this.retire();
   }
 
+  /** Whether every object of a change draws without a stall: its materials compiled, its textures uploaded. */
   private canApply(change: ISceneChange): boolean {
     for (const entry of change.objects) {
       const state: Nullable<IObjectState> = this.toState(entry);
 
-      if (state && PASSES.some((pass) => state.slots[pass].some((it) => !this.isReady(it, state.layout)))) {
+      if (state && (this.hasUncompiled(state) || !this.isUploaded(state))) {
         return false;
       }
     }
 
     return true;
+  }
+
+  private isUploaded(state: IObjectState): boolean {
+    return state.keys.every((key: string) => this.textures.isUploaded(key));
+  }
+
+  private hasUncompiled(state: IObjectState): boolean {
+    return PASSES.some((pass) => state.slots[pass].some((it) => !this.isReady(it, state.layout)));
   }
 
   /** A geometry no longer put under its key, disposed once the change replacing it applies. */
@@ -701,12 +810,19 @@ export class RendererScene {
 
     const { object } = entry;
 
-    if (state.skeleton !== entry.skeleton || state.instances !== entry.instances) {
+    if (state.skeleton !== entry.skeleton) {
       PASSES.forEach((pass) => entry.meshes[pass].removeFromParent());
-      entry.meshes = RendererScene.createMeshes(state.skeleton, state.instances);
+      entry.meshes = RendererScene.createMeshes(state.skeleton);
       entry.skeleton = state.skeleton;
-      entry.instances = state.instances;
     }
+
+    // The places it stood before are nothing's once its meshes draw the new ones.
+    if (entry.instances && entry.instances !== state.instances) {
+      entry.instances.geometry.dispose();
+    }
+
+    entry.instances = state.instances;
+    entry.staged = null;
 
     state.geometry.setDrawRange(object.drawRange?.start ?? 0, object.drawRange?.count ?? Infinity);
 
@@ -724,11 +840,6 @@ export class RendererScene {
       }
 
       mesh.matrixWorldNeedsUpdate = true;
-
-      if (mesh instanceof InstancedMesh) {
-        // Measured again over where it stands, lazily, by the first frame that culls it.
-        mesh.boundingSphere = null;
-      }
 
       if (materials.some((material: Material) => material !== HIDDEN)) {
         this.scenes[pass].add(mesh);
