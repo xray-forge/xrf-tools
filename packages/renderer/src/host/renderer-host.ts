@@ -309,7 +309,7 @@ export class RendererHost {
     const startedAt: number = performance.now();
 
     this.cullView.take(this.rig.camera, this.uniforms.viewDistance);
-    this.scene.cull(this.cullView);
+    this.scene.cull(this.cullView, this.rig.camera);
     this.graph.render(frame, device.inspector);
     this.stats.endFrame(performance.now() - startedAt, device);
 

@@ -1,5 +1,5 @@
 import { Maybe, Nullable } from "@xrf/types";
-import { Material, Mesh, Object3D, Scene } from "three/webgpu";
+import { Material, Mesh, Object3D, PerspectiveCamera, Scene } from "three/webgpu";
 
 import { IRendererGeometry } from "#/contract/scene/renderer-geometry";
 import { IRendererObject } from "#/contract/scene/renderer-object";
@@ -104,10 +104,11 @@ export class RendererScene {
    * Shows what a view sees of every object and hides the rest, doing nothing for a view that has not moved.
    *
    * @param view - The view about to be drawn.
+   * @param camera - Its camera.
    */
-  public cull(view: CullView): void {
+  public cull(view: CullView, camera: PerspectiveCamera): void {
     this.objects.forEach((entry: SceneObject) => entry.cull(view));
-    this.staticCull.take(view);
+    this.staticCull.take(view, camera);
   }
 
   /**

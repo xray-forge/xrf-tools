@@ -39,6 +39,9 @@ export class SceneObject {
   /** The geometry it holds a place in an arena for while any part is drawn statically, and that place. */
   private placedGeometry: Nullable<SceneGeometry> = null;
   private range: Nullable<IStaticRange> = null;
+  /** Where its places start in the static draw buffers while its parts are instanced static draws, and how many. */
+  private placeStart: Nullable<number> = null;
+  private placeCount: number = 0;
   private readonly matrix: Matrix4 = new Matrix4();
   /** What all of it spans, in renderer space. */
   private readonly sphere: Sphere = new Sphere();
@@ -149,9 +152,14 @@ export class SceneObject {
     }
 
     if (this.instances) {
-      const count: number = this.instances.cull(view);
+      // Parts drawn as instanced static draws are culled place by place on the GPU.
+      const plain: Array<ScenePart> = this.parts.filter((part: ScenePart) => !part.isStatic);
 
-      this.parts.forEach((part: ScenePart) => part.cullInstances(count));
+      if (plain.length) {
+        const count: number = this.instances.cull(view);
+
+        plain.forEach((part: ScenePart) => part.cullInstances(count));
+      }
 
       return;
     }
@@ -172,12 +180,14 @@ export class SceneObject {
   public detach(): void {
     this.parts.forEach((part: ScenePart) => part.detach());
     this.unplace();
+    this.freePlaces();
   }
 
   /** Lets everything it drew with go, for an object released. */
   public dispose(): void {
     this.release();
     this.unplace();
+    this.freePlaces();
     this.instances?.dispose();
     this.staged?.dispose();
     this.instances = null;
@@ -215,6 +225,7 @@ export class SceneObject {
     const range: Nullable<IStaticRange> = state.surfaces.some((surface) => isStaticDraw(state, surface))
       ? this.place(state.geometry)
       : null;
+    const placeStart: Nullable<number> = range && state.instances ? this.placeInstances(state.instances) : null;
     let staticParts: number = 0;
 
     for (const part of this.parts) {
@@ -223,7 +234,7 @@ export class SceneObject {
       part.narrow(this.object.drawRange);
       part.place(this.matrix);
 
-      if (range && isStaticDraw(state, surface) && part.showStatic(surface, range)) {
+      if (range && isStaticDraw(state, surface) && this.showStatic(part, surface, range, state.instances, placeStart)) {
         staticParts += 1;
       } else {
         part.showPlain(surface?.material ?? null, surface ? scenes[surface.pass] : null);
@@ -232,6 +243,51 @@ export class SceneObject {
 
     if (!staticParts) {
       this.unplace();
+      this.freePlaces();
+    }
+  }
+
+  /** Draws a part as a static draw of its kind: single by its slot, or instanced over its object's places. */
+  private showStatic(
+    part: ScenePart,
+    surface: ISurfaceMaterial,
+    range: IStaticRange,
+    instances: Nullable<SceneInstances>,
+    placeStart: Nullable<number>
+  ): boolean {
+    if (!instances) {
+      return part.showStatic(surface, range);
+    }
+
+    return placeStart !== null && part.showListed(surface, range, placeStart, instances.placeSpheres);
+  }
+
+  /**
+   * @param instances - The places it stands in now, as its matrix places them.
+   * @returns Where they start in the static draw buffers, written there first; null where there is no room.
+   */
+  private placeInstances(instances: SceneInstances): Nullable<number> {
+    if (this.placeStart !== null && this.placeCount !== instances.places) {
+      this.freePlaces();
+    }
+
+    if (this.placeStart === null) {
+      this.placeStart = this.draws.allocatePlaces(instances.places);
+      this.placeCount = instances.places;
+    }
+
+    if (this.placeStart !== null) {
+      this.draws.writePlaces(this.placeStart, instances.source, this.matrix);
+    }
+
+    return this.placeStart;
+  }
+
+  private freePlaces(): void {
+    if (this.placeStart !== null) {
+      this.draws.freePlaces(this.placeStart, this.placeCount);
+      this.placeStart = null;
+      this.placeCount = 0;
     }
   }
 

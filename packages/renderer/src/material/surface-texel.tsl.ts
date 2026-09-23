@@ -8,7 +8,7 @@ import { ISurfaceTexel } from "#/material/surface-texel";
 import { decodeBumpGloss, decodeBumpNormal } from "#/shader/bump.tsl";
 import { toPlacedNormalView, toPlacedViewDirection } from "#/shader/placement.tsl";
 import { skinnedBinormal, skinnedTangent } from "#/shader/skinned-basis.tsl";
-import { vertexHemi } from "#/shader/vertex-hemi.tsl";
+import { toVertexHemi } from "#/shader/vertex-hemi.tsl";
 import {
   getFlatBumpCompanionTexture,
   getFlatBumpTexture,
@@ -111,7 +111,7 @@ export function toSurfaceTexel(
     albedo,
     alpha: base.w,
     gloss,
-    hemi: lightmap ? lightmap.w : varying(vertexHemi()),
+    hemi: lightmap ? lightmap.w : varying(toVertexHemi(staticDraws)),
     normal,
     slice: uniform(((surface.material ?? DEFAULT_MATERIAL) + 0.5) / MATERIAL_SLICES),
     sun: lightmap ? lightmap.y : float(1),

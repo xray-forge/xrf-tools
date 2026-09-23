@@ -1,7 +1,7 @@
 import { MeshBasicNodeMaterial, Node, NodeBuilder, NodeMaterialObserver } from "three/webgpu";
 
 import { StaticDrawObserver } from "#/material/static-draw-observer";
-import { isStaticBuild, toStaticPositionView } from "#/shader/placement.tsl";
+import { isBufferPlacedBuild, toBufferPlacedPositionView } from "#/shader/placement.tsl";
 import { StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
 
 /**
@@ -20,10 +20,12 @@ export class SurfaceNodeMaterial extends MeshBasicNodeMaterial {
   }
 
   public override setupPositionView(builder: NodeBuilder): Node {
-    return isStaticBuild(builder) ? toStaticPositionView(this.staticDraws) : super.setupPositionView(builder);
+    return isBufferPlacedBuild(builder)
+      ? toBufferPlacedPositionView(builder, this.staticDraws)
+      : super.setupPositionView(builder);
   }
 
   public override setupObserver(builder: NodeBuilder): NodeMaterialObserver {
-    return isStaticBuild(builder) ? new StaticDrawObserver(builder) : super.setupObserver(builder);
+    return isBufferPlacedBuild(builder) ? new StaticDrawObserver(builder) : super.setupObserver(builder);
   }
 }

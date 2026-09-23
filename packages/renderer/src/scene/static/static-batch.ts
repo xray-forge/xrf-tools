@@ -1,9 +1,10 @@
 import { Maybe, Nullable } from "@xrf/types";
-import { BufferGeometry, BundleGroup, Material, Mesh } from "three/webgpu";
+import { BufferGeometry, BundleGroup, IndirectStorageBufferAttribute, Material, Mesh, Object3D } from "three/webgpu";
 
 import { ISurfaceMaterial } from "#/material/surface-material";
 import { createSceneMesh } from "#/scene/object/scene-mesh";
 import { StaticArena } from "#/scene/static/static-arena";
+import { EStaticDrawKind } from "#/scene/static/static-draw-kind";
 import { StaticDrawPool } from "#/scene/static/static-draw-pool";
 import { STATIC_DRAW_ARGUMENTS } from "#/uniforms/static-draw-buffers";
 
@@ -13,37 +14,54 @@ const ARGUMENT_BYTES: number = STATIC_DRAW_ARGUMENTS * Uint32Array.BYTES_PER_ELE
 /** What an idle batch's mesh holds instead of the material it last drew, so that one can go. */
 const IDLE_MATERIAL: Material = new Material();
 
+/** One phase's draw of a batch: its mesh over the arena, drawn by that phase's arguments. */
+interface IBatchPhase {
+  args: IndirectStorageBufferAttribute;
+  geometry: BufferGeometry;
+  mesh: Mesh;
+}
+
 /**
- * Every static draw of one material over one arena, as one object issuing an indirect draw a slot: recorded once in a
- * bundle of its own and recorded again only when its draws change. An idle batch keeps its geometry for the next
- * material to draw over the arena, since disposing it would free the arena's buffers every other batch draws.
+ * Every static draw of one material and kind over one arena, as one object issuing an indirect draw a slot, twice a
+ * frame: once by the first cull's arguments, and once by the second's, after the first phase's depth is drawn. Its
+ * meshes are recorded in the bundles of a chunk of batches, which record again only when a batch in them changes. An
+ * idle batch keeps its geometries for the next material to draw over the arena, since disposing them would free the
+ * arena's buffers every other batch draws.
  */
 export class StaticBatch {
-  /** What stands for it in the scene of the pass drawing it. */
-  public readonly bundle: BundleGroup = new BundleGroup();
   /** The arena it draws. */
   public readonly arena: StaticArena;
+  /** The kind of static draw it issues, which its geometry is marked for. */
+  public readonly kind: EStaticDrawKind;
 
+  private readonly phases: ReadonlyArray<IBatchPhase>;
   private currentSurface: Nullable<ISurfaceMaterial> = null;
-  private geometry: BufferGeometry;
-  private mesh: Mesh;
   /** The slots it draws, and each one's position among its draws. */
   private readonly slots: Array<number> = [];
   private readonly positions: Map<number, number> = new Map();
-  /** Each draw's offset into the arguments, in the order of its slots. */
+  /** Each draw's offset into the arguments of either phase, in the order of its slots. */
   private readonly offsets: Array<number> = [];
   private generation: number;
 
   /**
    * @param arena - The arena it draws.
+   * @param kind - The kind of static draw it issues.
    * @param pool - The slots it draws, whose arguments its draws read.
    */
-  public constructor(arena: StaticArena, pool: StaticDrawPool) {
+  public constructor(arena: StaticArena, kind: EStaticDrawKind, pool: StaticDrawPool) {
     this.arena = arena;
+    this.kind = kind;
     this.generation = arena.generation;
-    this.geometry = this.createGeometry(pool);
-    this.mesh = createSceneMesh(this.geometry, null, IDLE_MATERIAL);
-    this.bundle.add(this.mesh);
+    this.phases = [pool.args, pool.lateArgs].map((args: IndirectStorageBufferAttribute) => {
+      const geometry: BufferGeometry = this.createGeometry(args);
+
+      return { args, geometry, mesh: createSceneMesh(geometry, null, IDLE_MATERIAL) };
+    });
+  }
+
+  /** Its meshes: the one the first cull's arguments draw, then the one the second's do. */
+  public get meshes(): readonly [Mesh, Mesh] {
+    return [this.phases[0].mesh, this.phases[1].mesh];
   }
 
   /** The surface it draws, or null while idle. */
@@ -60,8 +78,8 @@ export class StaticBatch {
    */
   public setSurface(surface: Nullable<ISurfaceMaterial>): void {
     this.currentSurface = surface;
-    this.mesh.material = surface?.material ?? IDLE_MATERIAL;
-    this.bundle.needsUpdate = true;
+    this.phases.forEach((phase: IBatchPhase) => (phase.mesh.material = surface?.material ?? IDLE_MATERIAL));
+    this.invalidate();
   }
 
   /**
@@ -71,7 +89,7 @@ export class StaticBatch {
     this.positions.set(slot, this.slots.length);
     this.slots.push(slot);
     this.offsets.push(slot * ARGUMENT_BYTES);
-    this.bundle.needsUpdate = true;
+    this.invalidate();
   }
 
   /**
@@ -95,47 +113,55 @@ export class StaticBatch {
       this.positions.set(last, position);
     }
 
-    this.bundle.needsUpdate = true;
+    this.invalidate();
   }
 
-  /** Has its bundle recorded again, for a binding in it that changed: a texture swapped in, or a matrix rewritten. */
+  /** Has its bundles recorded again, for a binding in them that changed: a texture swapped in, or a matrix rewritten. */
   public invalidate(): void {
-    this.bundle.needsUpdate = true;
+    for (const { mesh } of this.phases) {
+      if (mesh.parent instanceof BundleGroup) {
+        mesh.parent.needsUpdate = true;
+      }
+    }
   }
 
   /**
-   * Draws the arena's buffers as they are now, where it grew since: a new mesh over a new geometry, since three keeps
+   * Draws the arena's buffers as they are now, where it grew since: new meshes over new geometries, since three keeps
    * what it built for a mesh's first geometry.
-   *
-   * @param pool - The slots it draws.
    */
-  public refresh(pool: StaticDrawPool): void {
+  public refresh(): void {
     if (this.generation === this.arena.generation) {
       return;
     }
 
-    const material: Material = this.mesh.material as Material;
-
     this.generation = this.arena.generation;
-    this.mesh.removeFromParent();
-    this.geometry.dispose();
-    this.geometry = this.createGeometry(pool);
-    this.mesh = createSceneMesh(this.geometry, null, material);
-    this.bundle.add(this.mesh);
-    this.bundle.needsUpdate = true;
+
+    for (const phase of this.phases) {
+      const material: Material = phase.mesh.material as Material;
+      const parent: Nullable<Object3D> = phase.mesh.parent;
+
+      phase.mesh.removeFromParent();
+      phase.geometry.dispose();
+      phase.geometry = this.createGeometry(phase.args);
+      phase.mesh = createSceneMesh(phase.geometry, null, material);
+      parent?.add(phase.mesh);
+    }
+
+    this.invalidate();
   }
 
-  /** Frees its geometry, and with it the arena's buffers: only for an arena going, with every batch over it. */
+  /** Frees its geometries, and with them the arena's buffers: only for an arena going, with every batch over it. */
   public dispose(): void {
-    this.bundle.removeFromParent();
-    this.mesh.removeFromParent();
-    this.geometry.dispose();
+    for (const phase of this.phases) {
+      phase.mesh.removeFromParent();
+      phase.geometry.dispose();
+    }
   }
 
-  private createGeometry(pool: StaticDrawPool): BufferGeometry {
-    const geometry: BufferGeometry = this.arena.createGeometry();
+  private createGeometry(args: IndirectStorageBufferAttribute): BufferGeometry {
+    const geometry: BufferGeometry = this.arena.createGeometry(this.kind);
 
-    geometry.setIndirect(pool.args, this.offsets);
+    geometry.setIndirect(args, this.offsets);
     // Drawn by its indirect arguments alone; the range only keeps three's count of what a recording drew honest.
     geometry.setDrawRange(0, 0);
 

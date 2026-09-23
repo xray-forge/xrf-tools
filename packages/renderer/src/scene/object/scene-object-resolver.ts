@@ -9,6 +9,7 @@ import { SceneObject } from "#/scene/object/scene-object";
 import { ISceneObjectState } from "#/scene/object/scene-object-state";
 import { RendererSkeletonEntry } from "#/scene/skeleton/renderer-skeleton-entry";
 import { RendererSkeletons } from "#/scene/skeleton/renderer-skeletons";
+import { EStaticDrawKind } from "#/scene/static/static-draw-kind";
 import { StaticDraws } from "#/scene/static/static-draws";
 import { SurfaceLibrary } from "#/scene/surface/surface-library";
 
@@ -59,10 +60,12 @@ export class SceneObjectResolver {
       this.surfaces.get(object.surfaces[section.slot])
     );
 
-    // Neither instanced nor skinned, it stands where its matrix puts it, which a static draw can say by its slot; its
-    // static draws' materials compile against its arena's prototype.
+    // Unskinned, it stands where its matrix puts it, which a static draw can say by its slot, or in places the instance
+    // cull lists for an instanced one; its static draws' materials compile against its arena's prototype of that kind.
     const staticDrawn: Nullable<BufferGeometry> =
-      this.draws.isEnabled && !instances && !skeleton ? this.draws.toArena(geometry).prototype : null;
+      this.draws.isEnabled && !skeleton
+        ? this.draws.toArena(geometry).prototypes[instances ? EStaticDrawKind.LISTED : EStaticDrawKind.SINGLE]
+        : null;
 
     return {
       geometry,

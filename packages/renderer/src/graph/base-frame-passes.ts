@@ -29,7 +29,7 @@ export function createBaseFramePasses(
 ): Array<IRendererPass> {
   return [
     new StaticCullPass(cull),
-    new GBufferPass(targets),
+    new GBufferPass(targets, cull),
     new WallmarkPass(targets),
     new SunPass(targets, uniforms),
     new CombinePass(targets, uniforms),

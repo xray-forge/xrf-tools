@@ -2,6 +2,7 @@ import { Maybe, Nullable } from "@xrf/types";
 import { BufferAttribute, BufferGeometry, InstancedBufferAttribute, TypedArray } from "three/webgpu";
 
 import { RangeAllocator } from "#/scene/static/range-allocator";
+import { EStaticDrawKind } from "#/scene/static/static-draw-kind";
 import { IStaticRange } from "#/scene/static/static-range";
 import { IStaticRoom } from "#/scene/static/static-room";
 import { EVertexAttribute } from "#/shader/vertex-attribute";
@@ -60,6 +61,18 @@ export class StaticArena {
       .sort((left: IArenaAttribute, right: IArenaAttribute) => left.name.localeCompare(right.name));
   }
 
+  /**
+   * Gives a geometry the attribute its kind of static draw is built for: the slot attribute a single draw reads, or
+   * the mark an instanced one is known by, which its shader never reads and so never binds.
+   */
+  private static mark(geometry: BufferGeometry, kind: EStaticDrawKind, slots: InstancedBufferAttribute): void {
+    if (kind === EStaticDrawKind.SINGLE) {
+      geometry.setAttribute(EVertexAttribute.STATIC_SLOT, slots);
+    } else {
+      geometry.setAttribute(EVertexAttribute.INSTANCE_LIST, new InstancedBufferAttribute(new Uint32Array(1), 1));
+    }
+  }
+
   private static createSlots(count: number): InstancedBufferAttribute {
     return new InstancedBufferAttribute(StaticArena.createSequence(count), 1);
   }
@@ -76,10 +89,10 @@ export class StaticArena {
 
   public readonly signature: string;
   /**
-   * A geometry of three vertices in its layout, with the slot attribute a static draw reads: what a material compiles
-   * against for its static draws, never drawn, and never replaced as the arena grows.
+   * A geometry of three vertices in its layout for each kind of static draw, with the attribute that kind is built
+   * for: what a material compiles against for its static draws, never drawn, and never replaced as the arena grows.
    */
-  public readonly prototype: BufferGeometry;
+  public readonly prototypes: Record<EStaticDrawKind, BufferGeometry>;
 
   private readonly layout: ReadonlyArray<IArenaAttribute>;
   private readonly vertices: RangeAllocator = new RangeAllocator();
@@ -97,7 +110,10 @@ export class StaticArena {
   public constructor(buffer: BufferGeometry) {
     this.signature = StaticArena.toSignature(buffer);
     this.layout = StaticArena.toAttributes(buffer);
-    this.prototype = this.createPrototype();
+    this.prototypes = {
+      [EStaticDrawKind.SINGLE]: this.createPrototype(EStaticDrawKind.SINGLE),
+      [EStaticDrawKind.LISTED]: this.createPrototype(EStaticDrawKind.LISTED),
+    };
   }
 
   /** Bumped whenever the arena's buffers are replaced. */
@@ -170,21 +186,22 @@ export class StaticArena {
   }
 
   /**
+   * @param kind - The kind of static draw it draws.
    * @returns A geometry over the arena's buffers as they are now, for one object to draw many static draws of.
    *   Disposing it frees those buffers, which is only for when the arena grows or goes.
    */
-  public createGeometry(): BufferGeometry {
+  public createGeometry(kind: EStaticDrawKind): BufferGeometry {
     const geometry: BufferGeometry = new BufferGeometry();
 
     this.attributes.forEach((attribute: BufferAttribute, name: string) => geometry.setAttribute(name, attribute));
-    geometry.setAttribute(EVertexAttribute.STATIC_SLOT, this.slots);
+    StaticArena.mark(geometry, kind, this.slots);
     geometry.setIndex(this.index);
 
     return geometry;
   }
 
   public dispose(): void {
-    this.prototype.dispose();
+    Object.values(this.prototypes).forEach((prototype: BufferGeometry) => prototype.dispose());
   }
 
   /** Whether both runs fit as the arena stands, without growing it. */
@@ -265,14 +282,14 @@ export class StaticArena {
     this.currentGeneration += 1;
   }
 
-  private createPrototype(): BufferGeometry {
+  private createPrototype(kind: EStaticDrawKind): BufferGeometry {
     const geometry: BufferGeometry = new BufferGeometry();
 
     for (const { name, type, itemSize, isNormalized } of this.layout) {
       geometry.setAttribute(name, new BufferAttribute(new type(3 * itemSize), itemSize, isNormalized));
     }
 
-    geometry.setAttribute(EVertexAttribute.STATIC_SLOT, StaticArena.createSlots(1));
+    StaticArena.mark(geometry, kind, StaticArena.createSlots(1));
     geometry.setIndex(new BufferAttribute(new Uint32Array([0, 1, 2]), 1));
 
     return geometry;

@@ -10,6 +10,11 @@ export enum EVertexAttribute {
   INSTANCE_HEMI = "instanceHemi",
   /** A static draw's slot in the buffers every static draw shares, read per instance by its first instance. */
   STATIC_SLOT = "staticSlot",
+  /**
+   * Marks an instanced static draw, whose instances are the places the cull kept: never read, only named, so the
+   * shader built for it is its own.
+   */
+  INSTANCE_LIST = "instanceList",
 }
 
 /** The instanced columns a place's transform rides in, in order. */

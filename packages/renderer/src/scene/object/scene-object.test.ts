@@ -1,6 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
 import {
   BundleGroup,
+  Matrix4,
   Mesh,
   MeshBasicNodeMaterial,
   PerspectiveCamera,
@@ -11,10 +12,13 @@ import {
 import { ERendererPass } from "#/contract/scene/renderer-surface";
 import { ISurfaceMaterial } from "#/material/surface-material";
 import { SceneGeometry } from "#/scene/geometry/scene-geometry";
+import { SceneInstances } from "#/scene/object/scene-instances";
 import { SceneObject } from "#/scene/object/scene-object";
 import { ISceneObjectState } from "#/scene/object/scene-object-state";
 import { toPassRecord, TPassRecord } from "#/scene/pass-record";
+import { EStaticDrawKind } from "#/scene/static/static-draw-kind";
 import { StaticDraws } from "#/scene/static/static-draws";
+import { EVertexAttribute } from "#/shader/vertex-attribute";
 import { StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
 import { CullView } from "#/visibility/cull-view";
 
@@ -59,7 +63,9 @@ function toState(
     keys: [],
     plain: { drawn: geometry.buffer, layout: "" },
     skeleton: null,
-    static: draws?.isEnabled ? { drawn: draws.toArena(geometry).prototype, layout: "static" } : null,
+    static: draws?.isEnabled
+      ? { drawn: draws.toArena(geometry).prototypes[EStaticDrawKind.SINGLE], layout: "static" }
+      : null,
     surfaces,
   };
 }
@@ -201,5 +207,42 @@ describe("SceneObject", () => {
 
     expect(scenes[ERendererPass.DEFERRED].children).toEqual([]);
     expect((buffers.args.array as Uint32Array)[1]).toBe(0);
+  });
+
+  it("draws an instanced object's G-buffer sections as instanced static draws, a row a place, culled on the GPU", () => {
+    const scenes: TPassRecord<Scene> = toPassRecord(() => new Scene());
+    const { buffers, draws } = createDraws(scenes);
+    const geometry: SceneGeometry = createGeometry();
+    const source = {
+      transforms: new Float32Array([...new Matrix4().elements, ...new Matrix4().makeTranslation(0, 0, 50).elements]),
+    };
+    const entry: SceneObject = new SceneObject(
+      "stand",
+      { geometry: "stand", instances: source, surfaces: ["a", "a"] },
+      draws
+    );
+    const instances: SceneInstances = entry.toInstances(geometry) as SceneInstances;
+    const surface: ISurfaceMaterial = createSurface(ERendererPass.DEFERRED);
+
+    entry.apply(
+      {
+        ...toState(geometry, [surface, surface]),
+        instances,
+        plain: { drawn: instances.geometry, layout: "" },
+        static: { drawn: draws.toArena(geometry).prototypes[EStaticDrawKind.LISTED], layout: "listed" },
+      },
+      scenes
+    );
+    entry.cull(createView());
+
+    const [batch] = toBatchMeshes(scenes[ERendererPass.DEFERRED]);
+
+    expect(batch.geometry.hasAttribute(EVertexAttribute.INSTANCE_LIST)).toBe(true);
+    expect(batch.geometry.indirectOffset).toEqual([0, 20]);
+    // Two rows a section, each testing one place for its section's slot.
+    expect(Array.from((buffers.rowTargets.array as Uint32Array).subarray(0, 8))).toEqual([0, 0, 0, 3, 1, 0, 0, 3]);
+    // Never culled on the CPU: the places drawn plainly are left as they were.
+    expect(instances.geometry.instanceCount).toBe(2);
+    expect(entry.placed).toEqual([]);
   });
 });

@@ -2,6 +2,7 @@ import {
   attribute,
   cameraViewMatrix,
   Fn,
+  instanceIndex,
   mat3,
   mat4,
   modelViewMatrix,
@@ -16,12 +17,12 @@ import {
 import { Node, NodeBuilder } from "three/webgpu";
 
 import { EVertexAttribute, INSTANCE_MATRIX_COLUMNS } from "#/shader/vertex-attribute";
-import { StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
+import { STATIC_PLACE_COLUMNS, StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
 
-// Where a vertex stands: in each place its instanced attributes name, where the static draw buffers put it, or where
-// its object's matrix puts it. The first two read no uniform of the object's own, so three refreshes nothing per
-// object for them; which one a shader is built for follows from its geometry's attributes, as three's shader cache
-// does.
+// Where a vertex stands: in each place its instanced attributes name, where the static draw buffers put it - by its
+// slot's matrix, or by the place the cull listed for its instance - or where its object's matrix puts it. The buffer
+// placed ones read no uniform of the object's own, so three refreshes nothing per object for them; which one a shader
+// is built for follows from its geometry's attributes, as three's shader cache does.
 
 /** Whether the geometry being built for stands in many places through instanced attributes. */
 function isInstancedBuild(builder: NodeBuilder): boolean {
@@ -34,6 +35,22 @@ function isInstancedBuild(builder: NodeBuilder): boolean {
  */
 export function isStaticBuild(builder: NodeBuilder): boolean {
   return Boolean(builder.geometry?.hasAttribute(EVertexAttribute.STATIC_SLOT));
+}
+
+/**
+ * @param builder - The builder of the shader in question.
+ * @returns Whether the geometry it builds for is an instanced static draw, each instance a place the cull listed.
+ */
+export function isListedBuild(builder: NodeBuilder): boolean {
+  return Boolean(builder.geometry?.hasAttribute(EVertexAttribute.INSTANCE_LIST));
+}
+
+/**
+ * @param builder - The builder of the shader in question.
+ * @returns Whether the buffers every static draw shares place what it builds for, so a replay refreshes nothing.
+ */
+export function isBufferPlacedBuild(builder: NodeBuilder): boolean {
+  return isStaticBuild(builder) || isListedBuild(builder);
 }
 
 /** A place's transform, from the four columns its instanced attributes carry. */
@@ -49,6 +66,32 @@ function toStaticMatrix(buffers: StaticDrawBuffers): Node<"mat4"> {
   const [x, y, z, w] = [0, 1, 2, 3].map((column: number) => buffers.modelColumns.element(first.add(column)));
 
   return mat4(x, y, z, w) as unknown as Node<"mat4">;
+}
+
+/** The place the cull listed for the instance being drawn. */
+function toListedPlace(buffers: StaticDrawBuffers): Node<"uint"> {
+  return buffers.visiblePlaces.element(instanceIndex) as unknown as Node<"uint">;
+}
+
+/** An instanced static draw's matrix, from the place listed for its instance. */
+function toListedMatrix(buffers: StaticDrawBuffers): Node<"mat4"> {
+  const first: Node<"uint"> = toListedPlace(buffers).mul(STATIC_PLACE_COLUMNS);
+  const [x, y, z, w] = [0, 1, 2, 3].map((column: number) => buffers.placeColumns.element(first.add(column)));
+
+  return mat4(x, y, z, w) as unknown as Node<"mat4">;
+}
+
+/**
+ * @param buffers - What static draws are placed by.
+ * @returns The hemisphere scale and offset of the place listed for the instance being drawn.
+ */
+export function toListedHemiTerms(buffers: StaticDrawBuffers): Node<"vec2"> {
+  return buffers.placeColumns.element(toListedPlace(buffers).mul(STATIC_PLACE_COLUMNS).add(4)).xy as Node<"vec2">;
+}
+
+/** What places a buffer placed build: its slot's matrix, or the listed place's. */
+function toBufferMatrix(builder: NodeBuilder, buffers: StaticDrawBuffers): Node<"mat4"> {
+  return isListedBuild(builder) ? toListedMatrix(buffers) : toStaticMatrix(buffers);
 }
 
 /** A transform's normals, divided by the squared scale of each axis first, so a stretched place does not bend them. */
@@ -71,11 +114,12 @@ export const instancedPosition = Fn((_: [], builder: NodeBuilder): Node<"vec3"> 
 });
 
 /**
+ * @param builder - The builder of a buffer placed shader.
  * @param buffers - What static draws are placed by.
  * @returns A static draw's position in view space: its matrix, then the camera's, and nothing of its object's.
  */
-export function toStaticPositionView(buffers: StaticDrawBuffers): Node<"vec3"> {
-  return cameraViewMatrix.mul(toStaticMatrix(buffers).mul(vec4(positionLocal, 1))).xyz;
+export function toBufferPlacedPositionView(builder: NodeBuilder, buffers: StaticDrawBuffers): Node<"vec3"> {
+  return cameraViewMatrix.mul(toBufferMatrix(builder, buffers).mul(vec4(positionLocal, 1))).xyz;
 }
 
 /**
@@ -84,8 +128,10 @@ export function toStaticPositionView(buffers: StaticDrawBuffers): Node<"vec3"> {
  */
 export function toPlacedNormalView(buffers: StaticDrawBuffers): Node<"vec3"> {
   return Fn((_: [], builder: NodeBuilder): Node<"vec3"> => {
-    if (isStaticBuild(builder)) {
-      return normalize(varying(cameraViewMatrix.mul(vec4(toTransformedNormal(toStaticMatrix(buffers)), 0)).xyz));
+    if (isBufferPlacedBuild(builder)) {
+      const matrix: Node<"mat4"> = toBufferMatrix(builder, buffers);
+
+      return normalize(varying(cameraViewMatrix.mul(vec4(toTransformedNormal(matrix), 0)).xyz));
     }
 
     if (isInstancedBuild(builder)) {
@@ -103,8 +149,13 @@ export function toPlacedNormalView(buffers: StaticDrawBuffers): Node<"vec3"> {
  */
 export function toPlacedViewDirection(direction: Node<"vec3">, buffers: StaticDrawBuffers): Node<"vec3"> {
   return Fn((_: [], builder: NodeBuilder): Node<"vec3"> => {
-    if (isStaticBuild(builder)) {
-      return cameraViewMatrix.mul(toStaticMatrix(buffers).mul(vec4(direction, 0))).xyz;
+    if (isBufferPlacedBuild(builder)) {
+      return cameraViewMatrix.mul(toBufferMatrix(builder, buffers).mul(vec4(direction, 0))).xyz;
+    }
+
+    // Each place turns its instance's authored directions too, as it turns its normals.
+    if (isInstancedBuild(builder)) {
+      return modelViewMatrix.mul(toInstanceMatrix().mul(vec4(direction, 0))).xyz;
     }
 
     return modelViewMatrix.mul(vec4(direction, 0)).xyz;

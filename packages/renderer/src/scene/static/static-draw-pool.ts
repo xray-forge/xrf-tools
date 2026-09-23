@@ -1,7 +1,12 @@
 import { Nullable } from "@xrf/types";
 import { BufferAttribute, IndirectStorageBufferAttribute, Matrix4, Sphere } from "three/webgpu";
 
-import { STATIC_DRAW_ARGUMENTS, STATIC_DRAW_CAPACITY, StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
+import {
+  STATIC_DRAW_ARGUMENTS,
+  STATIC_DRAW_CAPACITY,
+  STATIC_ROW_CAPACITY,
+  StaticDrawBuffers,
+} from "#/uniforms/static-draw-buffers";
 
 /** The slots written since the buffers last went up, as one span. */
 interface IDirtySpan {
@@ -31,9 +36,14 @@ export class StaticDrawPool {
     this.buffers = buffers;
   }
 
-  /** The indirect arguments every static draw is drawn by. */
+  /** The indirect arguments every static draw is drawn by, as the first cull leaves them. */
   public get args(): IndirectStorageBufferAttribute {
     return this.buffers.args;
+  }
+
+  /** The indirect arguments every static draw is drawn by again, as the second cull leaves them. */
+  public get lateArgs(): IndirectStorageBufferAttribute {
+    return this.buffers.lateArgs;
   }
 
   /** Bumped whenever a slot changes what it draws or where, so a cull knows to run again. */
@@ -86,6 +96,7 @@ export class StaticDrawPool {
     args[at + 2] = start;
     args[at + 3] = baseVertex;
     args[at + 4] = slot;
+    this.copyLate(at, 0);
     (this.buffers.spheres.array as Float32Array).set(
       [sphere.center.x, sphere.center.y, sphere.center.z, count ? sphere.radius : -1],
       slot * 4
@@ -95,10 +106,34 @@ export class StaticDrawPool {
   }
 
   /**
+   * @param slot - The slot drawing an instanced draw, whose instance count the instance cull writes.
+   * @param start - Its first index, in its arena.
+   * @param count - Indices it draws.
+   * @param baseVertex - Where its geometry's vertices start in its arena.
+   * @param firstInstance - Where its list of kept places starts.
+   */
+  public writeListed(slot: number, start: number, count: number, baseVertex: number, firstInstance: number): void {
+    const args = this.buffers.args.array as Uint32Array;
+    const at: number = slot * STATIC_DRAW_ARGUMENTS;
+
+    args[at] = count;
+    args[at + 1] = 0;
+    args[at + 2] = start;
+    args[at + 3] = baseVertex;
+    args[at + 4] = firstInstance;
+    // The second cull lists its places in the second half of the list.
+    this.copyLate(at, STATIC_ROW_CAPACITY);
+    // Culled by its rows, never as a slot: the slot cull leaves its instance count at none for the rows to count up.
+    (this.buffers.spheres.array as Float32Array)[slot * 4 + 3] = -1;
+    this.touch(slot);
+  }
+
+  /**
    * @param slot - A slot drawing nothing from now on, free for another draw.
    */
   public release(slot: number): void {
     (this.buffers.args.array as Uint32Array)[slot * STATIC_DRAW_ARGUMENTS + 1] = 0;
+    (this.buffers.lateArgs.array as Uint32Array)[slot * STATIC_DRAW_ARGUMENTS + 1] = 0;
     (this.buffers.spheres.array as Float32Array)[slot * 4 + 3] = -1;
     this.free.push(slot);
     this.touch(slot);
@@ -113,6 +148,7 @@ export class StaticDrawPool {
     const { first, last } = this.dirty;
 
     StaticDrawPool.upload(this.buffers.args, first, last, STATIC_DRAW_ARGUMENTS);
+    StaticDrawPool.upload(this.buffers.lateArgs, first, last, STATIC_DRAW_ARGUMENTS);
     StaticDrawPool.upload(this.buffers.spheres, first, last, 4);
     StaticDrawPool.upload(this.buffers.models, first, last, 16);
     this.dirty.first = Infinity;
@@ -122,6 +158,18 @@ export class StaticDrawPool {
   /** Slots the cull has to look at: every slot ever handed out. */
   public get extent(): number {
     return this.used;
+  }
+
+  /** A slot's arguments for the second draw: the first's, with no instances and the list moved on by `offset`. */
+  private copyLate(at: number, offset: number): void {
+    const args = this.buffers.args.array as Uint32Array;
+    const late = this.buffers.lateArgs.array as Uint32Array;
+
+    late[at] = args[at];
+    late[at + 1] = 0;
+    late[at + 2] = args[at + 2];
+    late[at + 3] = args[at + 3];
+    late[at + 4] = args[at + 4] + offset;
   }
 
   private touch(slot: number): void {

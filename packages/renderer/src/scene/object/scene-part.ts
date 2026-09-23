@@ -141,6 +141,38 @@ export class ScenePart {
   }
 
   /**
+   * Draws it as an instanced static draw of its material's batch: once for every place the instance cull keeps.
+   *
+   * @param surface - What draws it.
+   * @param range - Where its object's geometry sits in its arena.
+   * @param placeStart - Where its object's places start.
+   * @param spheres - Each place's sphere in renderer space.
+   * @returns Whether it is drawn so; not where there is no room for it, and it has to be drawn plainly.
+   */
+  public showListed(
+    surface: ISurfaceMaterial,
+    range: IStaticRange,
+    placeStart: number,
+    spheres: Float32Array
+  ): boolean {
+    this.slot ??= this.draws.allocate();
+
+    if (this.slot === null) {
+      return false;
+    }
+
+    if (!this.draws.drawListed(this.slot, surface, range, this.start, this.count, placeStart, spheres)) {
+      this.free();
+
+      return false;
+    }
+
+    this.currentMesh.removeFromParent();
+
+    return true;
+  }
+
+  /**
    * @param isSeen - Whether the view drawn for sees it, for a part drawn plainly.
    */
   public cull(isSeen: boolean): void {

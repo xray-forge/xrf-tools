@@ -64,6 +64,16 @@ export class SceneInstances {
     this.place(this.placement);
   }
 
+  /** How many places it stands in. */
+  public get places(): number {
+    return this.count;
+  }
+
+  /** Every place's sphere in renderer space, four floats each, as its object's matrix last placed it. */
+  public get placeSpheres(): Float32Array {
+    return this.spheres;
+  }
+
   /** How many places the view last culled against sees. */
   public get visible(): number {
     return this.visibleCount;
