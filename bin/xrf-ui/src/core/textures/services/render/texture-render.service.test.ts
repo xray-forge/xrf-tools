@@ -75,10 +75,11 @@ describe("TextureRenderService", () => {
   });
 
   // A renderer started after a texture was chosen would otherwise show an empty body until something changed.
-  it("tells a new renderer what is already open, then shows it on the attached canvas", () => {
+  it("tells a new renderer what is already open, then shows it on the attached canvas", async () => {
     const { service } = mockService();
 
     service.attach(document.createElement("div"));
+    await stub.flush();
 
     expect(stub.requests[0].kind).toBe(ERendererRequest.START);
     expect(stub.take(ERendererRequest.PUT_GEOMETRY)).toHaveLength(1);
@@ -90,12 +91,13 @@ describe("TextureRenderService", () => {
     service.dispose();
   });
 
-  it("hands the renderer a copy of each file, so the surface keeps its own bytes", () => {
+  it("hands the renderer a copy of each file, so the surface keeps its own bytes", async () => {
     const { service, container } = mockService();
     const base: ITextureSurfaceFile = mockFile();
 
     service.attach(document.createElement("div"));
     setFiles(container, { ...EMPTY_TEXTURE_SURFACE, base });
+    await stub.flush();
 
     const [put] = stub.take(ERendererRequest.PUT_TEXTURE);
 
@@ -108,23 +110,25 @@ describe("TextureRenderService", () => {
     service.dispose();
   });
 
-  it("draws the alpha reading as the engine's draw", () => {
+  it("draws the alpha reading as the engine's draw", async () => {
     const { service, container, viewService } = mockService();
 
     service.attach(document.createElement("div"));
     setFiles(container, { ...EMPTY_TEXTURE_SURFACE, base: mockFile() });
     viewService.setOptions({ ...viewService.options, alpha: ETextureSurfaceAlpha.BLENDED });
+    await stub.flush();
 
     expect(stub.take(ERendererRequest.PUT_SURFACE).at(-1)?.surface.draw).toBe(ERendererDraw.BLENDED);
 
     service.dispose();
   });
 
-  it("keeps the renderer and its uploads when the view goes, and lets it go on deactivation", () => {
+  it("keeps the renderer and its uploads when the view goes, and lets it go on deactivation", async () => {
     const { service } = mockService();
 
     service.attach(document.createElement("div"));
     service.detach();
+    await stub.flush();
 
     expect(stub.requests.at(-1)?.kind).toBe(ERendererRequest.DETACH_VIEW);
     expect(stub.isTerminated()).toBe(false);
@@ -136,11 +140,12 @@ describe("TextureRenderService", () => {
   });
 
   // What the drag swung to is the view's to keep: the toolbar shows the number the body is lit by.
-  it("keeps what a drag over the body swung the light to", () => {
+  it("keeps what a drag over the body swung the light to", async () => {
     const { service, viewService } = mockService();
 
     service.attach(document.createElement("div"));
     service.dragLight(10, 0);
+    await stub.flush();
 
     expect(viewService.lighting.sunAzimuth).not.toBe(DEFAULT_TEXTURE_LIGHTING.sunAzimuth);
     expect(stub.take(ERendererRequest.LIGHTING)).toHaveLength(2);
@@ -176,6 +181,9 @@ describe("TextureRenderService", () => {
     setFiles(container, { ...EMPTY_TEXTURE_SURFACE, bump: { bump: mockFile(), companion: mockFile() } });
 
     const captured: Promise<unknown> = service.captureBumpPlane(ERendererBumpPlane.NORMAL, 8, 4);
+
+    await stub.flush();
+
     const [request] = stub.take(ERendererRequest.CAPTURE);
 
     expect(stub.take(ERendererRequest.ATTACH_VIEW)).toHaveLength(0);

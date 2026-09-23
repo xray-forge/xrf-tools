@@ -65,6 +65,8 @@ export enum ERendererRequest {
   INPUT = "@renderer/input",
   /** Draw a picture of the frame or of a texture, and hand it back. */
   CAPTURE = "@renderer/capture",
+  /** These requests, made in one page task, applied in one worker task so no frame shows half of them. */
+  BATCH = "@renderer/batch",
 }
 
 /**
@@ -112,7 +114,8 @@ export type TRendererRequest =
   | { kind: ERendererRequest.CAMERA; camera: TRendererCamera }
   | { kind: ERendererRequest.CAMERA_COMMAND; command: TRendererCameraCommand }
   | { kind: ERendererRequest.INPUT; event: IRenderInputEvent }
-  | { kind: ERendererRequest.CAPTURE; id: number; source: TRendererCaptureSource };
+  | { kind: ERendererRequest.CAPTURE; id: number; source: TRendererCaptureSource }
+  | { kind: ERendererRequest.BATCH; requests: ReadonlyArray<TRendererRequest> };
 
 /** Every message the renderer sends. */
 export type TRendererResponse =
@@ -148,6 +151,9 @@ export function listRendererTransfers(request: TRendererRequest): Array<Transfer
 
     case ERendererRequest.PUT_OVERLAY:
       return listRendererOverlayTransfers(request.overlay);
+
+    case ERendererRequest.BATCH:
+      return request.requests.flatMap(listRendererTransfers);
 
     default:
       return [];

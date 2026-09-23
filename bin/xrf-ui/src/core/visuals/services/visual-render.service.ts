@@ -154,8 +154,11 @@ export class VisualRenderService extends RenderSurfaceService {
     client.putTexture(VISUAL_RENDER_KEYS.checker, createVisualCheckerSource(this.config));
 
     this.reactions.push(
-      reaction(() => this.source.model, this.applyModel, { fireImmediately: true }),
-      reaction(() => [this.source.textures, this.source.bumps] as const, this.applyTextures, { fireImmediately: true }),
+      // One reaction for a model and its textures, in that order: two would leave their order to chance, and textures
+      // applied first release the drawn model's own before the new one replaces it.
+      reaction(() => [this.source.model, this.source.textures, this.source.bumps] as const, this.applyContent, {
+        fireImmediately: true,
+      }),
       reaction(() => this.viewService.options, this.applyOptions, { fireImmediately: true }),
       reaction(() => this.viewService.lighting, this.applyLighting, { fireImmediately: true }),
       reaction(() => this.viewService.detail, this.applyObjects),
@@ -178,6 +181,18 @@ export class VisualRenderService extends RenderSurfaceService {
   }
 
   @BoundAction()
+  private applyContent([model, textures, bumps]: readonly [
+    Nullable<IVisualModelViews>,
+    ReadonlyMap<number, IVisualTextureFile>,
+    ReadonlyMap<number, IVisualBumpFiles>,
+  ]): void {
+    if (model !== this.model) {
+      this.applyModel(model);
+    }
+
+    this.applyTextures([textures, bumps]);
+  }
+
   private applyModel(model: Nullable<IVisualModelViews>): void {
     const client: Nullable<RendererClient> = this.client;
 
@@ -231,7 +246,6 @@ export class VisualRenderService extends RenderSurfaceService {
     this.client.setCamera(toVisualCamera(this.model.fit, this.config));
   }
 
-  @BoundAction()
   private applyTextures([textures, bumps]: readonly [
     ReadonlyMap<number, IVisualTextureFile>,
     ReadonlyMap<number, IVisualBumpFiles>,

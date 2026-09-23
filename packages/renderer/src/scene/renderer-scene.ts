@@ -97,8 +97,14 @@ export class RendererScene {
   private readonly surfaceSources: Map<string, IRendererSurface> = new Map();
   /** Materials whose pipelines exist, so drawing them stalls nothing. */
   private readonly ready: WeakSet<Material> = new WeakSet([HIDDEN]);
-  /** Objects waiting for a material to compile, drawing what they drew before. */
+  /** Objects changed since the scene last settled, drawing what they drew before until every one of them can draw. */
   private readonly pending: Set<ISceneObject> = new Set();
+  /** Released objects' meshes, still drawn until the scene settles, so a replacement never leaves a gap. */
+  private readonly leaving: Array<Mesh> = [];
+  /** Replaced or released geometries, disposed once nothing draws them. */
+  private readonly leavingGeometries: Set<BufferGeometry> = new Set();
+  /** Textures released while the scene had changes waiting, let go when it settles. */
+  private readonly leavingTextures: Set<string> = new Set();
   /** Materials no surface names any more, disposed or cached once nothing draws them. */
   private readonly retired: Set<ISurfaceMaterial> = new Set();
   /** Compiled materials no surface names, by description, for a surface put again as one of them. */
@@ -109,6 +115,8 @@ export class RendererScene {
   private readonly shading: ISurfaceShadingContext;
 
   private isWireframe: boolean = false;
+  /** How deep in `transact` the scene is: nothing settles until the outermost one ends. */
+  private depth: number = 0;
 
   public constructor(shading: ISurfaceShadingContext, onTextureRefused: (key: string, refusal: IDdsRefusal) => void) {
     this.shading = shading;
@@ -128,6 +136,23 @@ export class RendererScene {
 
     this.isWireframe = isWireframe;
     this.surfaceSources.forEach((surface: IRendererSurface, key: string) => this.replaceSurface(key, surface));
+  }
+
+  /**
+   * Makes a run of changes one change: the scene settles only once they are all made.
+   *
+   * @param change - What to change.
+   */
+  public transact(change: () => void): void {
+    this.depth += 1;
+
+    try {
+      change();
+    } finally {
+      this.depth -= 1;
+    }
+
+    this.settle();
   }
 
   /** Whether any object waits for a material to compile. */
@@ -174,36 +199,37 @@ export class RendererScene {
   }
 
   /**
-   * Marks what a staging compiled as ready, and lets every object waiting on it draw.
+   * Marks what a staging compiled as ready, and settles the scene if nothing else is left to compile.
    *
    * @param staging - What was compiled.
    */
   public commit(staging: IRendererSceneStaging): void {
     staging.materials.forEach((material: Material) => this.ready.add(material));
-
-    const waiting: Array<ISceneObject> = [...this.pending];
-
-    this.pending.clear();
-    waiting.forEach((entry: ISceneObject) => this.build(entry));
-    this.retire();
+    this.settle();
   }
 
   public putTexture(key: string, source: TRendererTextureSource): void {
+    this.leavingTextures.delete(key);
     this.textures.put(key, source);
   }
 
   public releaseTexture(key: string): void {
-    this.textures.release(key);
+    // Still sampled by whatever keeps drawing until the scene settles, so let go of only then.
+    if (this.pending.size || this.depth) {
+      this.leavingTextures.add(key);
+    } else {
+      this.textures.release(key);
+    }
   }
 
   public putGeometry(key: string, geometry: IRendererGeometry): void {
-    this.geometries.get(key)?.dispose();
+    this.leaveGeometry(key);
     this.geometries.set(key, createRendererBufferGeometry(geometry));
     this.rebuild((object: IRendererObject) => object.geometry === key);
   }
 
   public releaseGeometry(key: string): void {
-    this.geometries.get(key)?.dispose();
+    this.leaveGeometry(key);
     this.geometries.delete(key);
     this.rebuild((object: IRendererObject) => object.geometry === key);
   }
@@ -254,12 +280,12 @@ export class RendererScene {
     const entry: Maybe<ISceneObject> = this.objects.get(key);
 
     if (entry) {
-      // Out of the waiting set too, or the commit of a compile begun before the release draws it again.
+      // Out of the waiting set, or the next settle would draw it again, and drawn on until then, so what replaces
+      // it appears in the same frame it goes.
       this.pending.delete(entry);
-      entry.deferred.removeFromParent();
-      entry.forward.removeFromParent();
       this.objects.delete(key);
-      this.retire();
+      this.leaving.push(entry.deferred, entry.forward);
+      this.settle();
     }
   }
 
@@ -269,6 +295,11 @@ export class RendererScene {
       entry.forward.removeFromParent();
     });
     this.objects.clear();
+    this.leaving.forEach((mesh: Mesh) => mesh.removeFromParent());
+    this.leaving.length = 0;
+    this.leavingGeometries.forEach((geometry: BufferGeometry) => geometry.dispose());
+    this.leavingGeometries.clear();
+    this.leavingTextures.clear();
     this.surfaces.forEach((surface: ISurfaceMaterial) => surface.dispose());
     this.surfaces.clear();
     this.retired.forEach((surface: ISurfaceMaterial) => surface.dispose());
@@ -324,12 +355,13 @@ export class RendererScene {
   /** Caches, or disposes past the cache's limit, every retired material nothing draws any more. */
   private retire(): void {
     const drawn: Set<Material> = new Set();
+    const meshes: Array<Mesh> = [...this.leaving];
 
-    this.objects.forEach((entry: ISceneObject) => {
-      for (const mesh of [entry.deferred, entry.forward]) {
-        (Array.isArray(mesh.material) ? mesh.material : [mesh.material]).forEach((it: Material) => drawn.add(it));
-      }
-    });
+    this.objects.forEach((entry: ISceneObject) => meshes.push(entry.deferred, entry.forward));
+
+    for (const mesh of meshes) {
+      (Array.isArray(mesh.material) ? mesh.material : [mesh.material]).forEach((it: Material) => drawn.add(it));
+    }
 
     for (const surface of this.retired) {
       if (drawn.has(surface.material)) {
@@ -387,33 +419,64 @@ export class RendererScene {
     return { deferred: toSlots(true), forward: toSlots(false), geometry, skeleton };
   }
 
-  /**
-   * Points both meshes at what the object names now, and shows each only where it has a slot to draw; or, while a
-   * material it names is still compiling, leaves it drawing what it drew and waits.
-   */
+  /** Queues an object's change, and settles the scene if everything changed can draw now. */
   private build(entry: ISceneObject): void {
     // Only an object still held draws: one released while it waited is gone for good.
-    if (this.objects.get(entry.key) !== entry) {
+    if (this.objects.get(entry.key) === entry) {
+      this.pending.add(entry);
+      this.settle();
+    }
+  }
+
+  /**
+   * Applies every change since the last settle in one go, once every material they name is compiled: what a consumer
+   * changed together appears together, and what it released goes in the same frame.
+   */
+  private settle(): void {
+    if (this.depth) {
       return;
     }
 
+    for (const entry of this.pending) {
+      const state: Nullable<IObjectState> = this.toState(entry);
+
+      if (state && [...state.deferred, ...state.forward].some((material: Material) => !this.ready.has(material))) {
+        return;
+      }
+    }
+
+    const entries: Array<ISceneObject> = [...this.pending];
+
+    this.pending.clear();
+    entries.forEach((entry: ISceneObject) => this.apply(entry));
+    this.leaving.forEach((mesh: Mesh) => mesh.removeFromParent());
+    this.leaving.length = 0;
+    this.leavingGeometries.forEach((geometry: BufferGeometry) => geometry.dispose());
+    this.leavingGeometries.clear();
+    this.leavingTextures.forEach((key: string) => this.textures.release(key));
+    this.leavingTextures.clear();
+    this.retire();
+  }
+
+  /** A geometry no longer put under its key, disposed once the scene settles and nothing draws it. */
+  private leaveGeometry(key: string): void {
+    const geometry: Maybe<BufferGeometry> = this.geometries.get(key);
+
+    if (geometry) {
+      this.leavingGeometries.add(geometry);
+    }
+  }
+
+  /** Points both meshes at what the object names now, and shows each only where it has a slot to draw. */
+  private apply(entry: ISceneObject): void {
     const state: Nullable<IObjectState> = this.toState(entry);
 
     if (!state) {
-      this.pending.delete(entry);
       entry.deferred.removeFromParent();
       entry.forward.removeFromParent();
 
       return;
     }
-
-    if ([...state.deferred, ...state.forward].some((material: Material) => !this.ready.has(material))) {
-      this.pending.add(entry);
-
-      return;
-    }
-
-    this.pending.delete(entry);
 
     const { object } = entry;
 

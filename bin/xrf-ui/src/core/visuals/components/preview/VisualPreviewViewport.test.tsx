@@ -48,37 +48,43 @@ beforeEach(() => {
 });
 
 describe("VisualPreviewViewport", () => {
-  it("starts one renderer, tells it what is already open, and shows it on its canvas", () => {
+  it("starts one renderer, tells it what is already open, and shows it on its canvas", async () => {
     runInAction(() => (source.model = mockVisualModelViews({ submeshes: [mockVisualSubmeshViews()] })));
 
     const { unmount } = renderWithProviders(<VisualPreviewViewport />, { bindings });
+
+    await stubs[0].flush();
 
     expect(stubs).toHaveLength(1);
     expect(stubs[0].take(ERendererRequest.PUT_GEOMETRY)).toHaveLength(1);
     expect(stubs[0].take(ERendererRequest.ATTACH_VIEW)).toHaveLength(1);
 
     unmount();
+    await stubs[0].flush();
 
     expect(stubs[0].take(ERendererRequest.DETACH_VIEW)).toHaveLength(1);
   });
 
   // Clicking through a tree keeps the renderer and its camera controller: only the model is replaced.
-  it("replaces the model in the renderer it already has", () => {
+  it("replaces the model in the renderer it already has", async () => {
     runInAction(() => (source.model = mockVisualModelViews({ submeshes: [mockVisualSubmeshViews()] })));
 
     renderWithProviders(<VisualPreviewViewport />, { bindings });
 
     act(() => runInAction(() => (source.model = mockVisualModelViews({ submeshes: [mockVisualSubmeshViews()] }))));
+    await stubs[0].flush();
 
     expect(stubs).toHaveLength(1);
     expect(stubs[0].take(ERendererRequest.RELEASE_GEOMETRY)).toHaveLength(1);
     expect(stubs[0].take(ERendererRequest.PUT_GEOMETRY)).toHaveLength(2);
   });
 
-  it("attaches a fresh canvas after a strict mode remount rather than leaking the first", () => {
+  it("attaches a fresh canvas after a strict mode remount rather than leaking the first", async () => {
     runInAction(() => (source.model = mockVisualModelViews()));
 
     const { container, unmount } = renderWithProviders(<VisualPreviewViewport />, { bindings, isStrict: true });
+
+    await stubs[0].flush();
 
     expect(stubs).toHaveLength(1);
     expect(stubs[0].take(ERendererRequest.ATTACH_VIEW)).toHaveLength(2);

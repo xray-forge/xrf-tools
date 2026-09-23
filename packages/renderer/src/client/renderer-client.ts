@@ -56,6 +56,8 @@ export class RendererClient {
   private readonly worker: Worker;
   private readonly captures: Map<number, (image: Nullable<ImageBitmap>) => void> = new Map();
   private view: Nullable<IRendererClientView> = null;
+  /** Requests made in this page task, posted together once it ends. */
+  private queue: Array<TRendererRequest> = [];
   private captureId: number = 0;
 
   public constructor({ worker, settings, onReady, onFailed, onReport, onTextureRefused }: IRendererClientOptions) {
@@ -267,12 +269,35 @@ export class RendererClient {
   public dispose(): void {
     this.detach();
     this.post({ kind: ERendererRequest.DISPOSE });
+    this.flush();
     this.worker.terminate();
     this.captures.forEach((resolve) => resolve(null));
     this.captures.clear();
   }
 
+  /**
+   * Queues a request, posting the task's queue as one batch once the task ends: whatever the page changes in one go,
+   * the renderer applies in one go.
+   */
   private post(request: TRendererRequest): void {
-    this.worker.postMessage(request, listRendererTransfers(request));
+    if (!this.queue.length) {
+      queueMicrotask(() => this.flush());
+    }
+
+    this.queue.push(request);
+  }
+
+  private flush(): void {
+    const requests: Array<TRendererRequest> = this.queue;
+
+    this.queue = [];
+
+    if (requests.length === 1) {
+      this.worker.postMessage(requests[0], listRendererTransfers(requests[0]));
+    } else if (requests.length > 1) {
+      const batch: TRendererRequest = { kind: ERendererRequest.BATCH, requests };
+
+      this.worker.postMessage(batch, listRendererTransfers(batch));
+    }
   }
 }

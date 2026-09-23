@@ -246,6 +246,9 @@ export class RendererHost {
         this.ensureScheduled();
 
         return;
+
+      case ERendererRequest.BATCH:
+        return this.scene.transact(() => request.requests.forEach((it: TRendererRequest) => this.take(it)));
     }
   }
 

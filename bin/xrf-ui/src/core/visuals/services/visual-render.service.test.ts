@@ -64,7 +64,7 @@ function mockAttached(source: IVisualRenderSource): {
 }
 
 describe("VisualRenderService", () => {
-  it("dresses a model published together with its textures, uploading each file once", () => {
+  it("dresses a model published together with its textures, uploading each file once", async () => {
     const file: IVisualTextureFile = mockTextureFile();
     const model = mockVisualModelViews({
       submeshes: [mockVisualSubmeshViews({ index: 0 }), mockVisualSubmeshViews({ index: 1 })],
@@ -79,6 +79,8 @@ describe("VisualRenderService", () => {
       })
     );
 
+    await stub.flush();
+
     expect(stub.take(ERendererRequest.PUT_GEOMETRY).map((it) => it.key)).toEqual(["submesh:0", "submesh:1"]);
     expect(stub.take(ERendererRequest.PUT_TEXTURE).filter((it) => it.key === file.logicalPath)).toHaveLength(1);
     expect(stub.take(ERendererRequest.PUT_SURFACE).at(-1)?.surface.textures.base).toBe(file.logicalPath);
@@ -88,15 +90,18 @@ describe("VisualRenderService", () => {
     service.dispose();
   });
 
-  it("sends a baked motion once, and only the frame after that", () => {
+  it("sends a baked motion once, and only the frame after that", async () => {
     const transforms: Float32Array = new Float32Array(48);
     const source: IVisualRenderSource = mockSource({ model: mockSkinnedModel(), pose: BIND_POSE });
     const { service } = mockAttached(source);
+
+    await stub.flush();
 
     expect(stub.take(ERendererRequest.POSE).at(-1)?.pose).toEqual({ frame: 0, hiddenBones: [], motion: null });
 
     runInAction(() => (source.pose = { floatsPerBone: 12, frame: 0, transforms }));
     runInAction(() => (source.pose = { floatsPerBone: 12, frame: 1, transforms }));
+    await stub.flush();
 
     expect(stub.take(ERendererRequest.PUT_MOTION)).toHaveLength(1);
     expect(stub.take(ERendererRequest.POSE).at(-1)?.pose).toEqual({ frame: 1, hiddenBones: [], motion: "motion" });
@@ -104,9 +109,11 @@ describe("VisualRenderService", () => {
     service.dispose();
   });
 
-  it("collapses the bones the source hides", () => {
+  it("collapses the bones the source hides", async () => {
     const source: IVisualRenderSource = mockSource({ hiddenBoneIndices: new Set([1]), model: mockSkinnedModel() });
     const { service } = mockAttached(source);
+
+    await stub.flush();
 
     expect(stub.take(ERendererRequest.POSE).at(-1)?.pose.hiddenBones).toEqual([1]);
     expect(stub.take(ERendererRequest.PUT_OBJECT)[0].object.skeleton).toBe("skeleton");
@@ -114,13 +121,14 @@ describe("VisualRenderService", () => {
     service.dispose();
   });
 
-  it("lets the last model's submeshes go when another replaces it", () => {
+  it("lets the last model's submeshes go when another replaces it", async () => {
     const source: IVisualRenderSource = mockSource({
       model: mockVisualModelViews({ submeshes: [mockVisualSubmeshViews()] }),
     });
     const { service } = mockAttached(source);
 
     runInAction(() => (source.model = mockVisualModelViews()));
+    await stub.flush();
 
     const released: Array<TRendererRequest> = stub.requests.filter(
       (request) =>
@@ -132,7 +140,7 @@ describe("VisualRenderService", () => {
     service.dispose();
   });
 
-  it("draws the skeleton overlay and the joint marker only while the skeleton is shown", () => {
+  it("draws the skeleton overlay and the joint marker only while the skeleton is shown", async () => {
     const source: IVisualRenderSource = mockSource({ highlightedJoint: [0, 1, 0], model: mockSkinnedModel() });
     const { service, viewService } = mockAttached(source);
 
@@ -140,9 +148,12 @@ describe("VisualRenderService", () => {
       return stub.take(ERendererRequest.PUT_OVERLAY).map((it) => it.overlay.kind);
     }
 
+    await stub.flush();
+
     expect(overlays()).toEqual([ERendererOverlay.LINES]);
 
     viewService.setOptions({ ...viewService.options, isSkeletonVisible: true });
+    await stub.flush();
 
     expect(overlays()).toContain(ERendererOverlay.SKELETON);
     expect(overlays()).toContain(ERendererOverlay.POINTS);
@@ -151,21 +162,24 @@ describe("VisualRenderService", () => {
   });
 
   // Clicking through a tree keeps the view the person turned to: only the first model a view shows is framed.
-  it("frames the first model a view shows, and keeps the camera for the ones after", () => {
+  it("frames the first model a view shows, and keeps the camera for the ones after", async () => {
     const source: IVisualRenderSource = mockSource({ model: mockVisualModelViews() });
     const { service } = mockAttached(source);
 
     runInAction(() => (source.model = mockVisualModelViews({ fit: { center: [0, 1, 0], radius: 4 } })));
+    await stub.flush();
 
     expect(stub.take(ERendererRequest.CAMERA)).toHaveLength(1);
 
     // A view mounted again frames what it opens with.
     service.detach();
     service.attach(document.createElement("div"));
+    await stub.flush();
 
     expect(stub.take(ERendererRequest.CAMERA)).toHaveLength(2);
 
     service.resetCamera();
+    await stub.flush();
 
     expect(stub.take(ERendererRequest.CAMERA)).toHaveLength(3);
 

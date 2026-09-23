@@ -12,6 +12,8 @@ export interface IRendererWorkerStub {
   requests: Array<TRendererRequest>;
   /** Whether the client let the thread go. */
   isTerminated(): boolean;
+  /** Waits out the page task, so what the client queued in it is posted. */
+  flush(): Promise<void>;
   /**
    * @param kind - Which requests to keep.
    * @returns Those requests, in order.
@@ -33,8 +35,9 @@ export function createRendererWorkerStub(): IRendererWorkerStub {
   const worker = {
     onerror: null,
     onmessage: null as Nullable<(event: MessageEvent<TRendererResponse>) => void>,
+    // Batches are opened, so a test reads the requests the client made rather than how it grouped them.
     postMessage: (request: TRendererRequest): void => {
-      requests.push(request);
+      requests.push(...(request.kind === ERendererRequest.BATCH ? request.requests : [request]));
     },
     terminate: (): void => {
       isTerminated = true;
@@ -42,6 +45,7 @@ export function createRendererWorkerStub(): IRendererWorkerStub {
   };
 
   return {
+    flush: () => new Promise((resolve) => setTimeout(resolve, 0)),
     isTerminated: () => isTerminated,
     requests,
     respond: (response: TRendererResponse): void => worker.onmessage?.({ data: response } as MessageEvent),
