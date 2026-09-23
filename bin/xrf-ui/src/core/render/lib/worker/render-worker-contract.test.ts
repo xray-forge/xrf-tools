@@ -5,10 +5,7 @@ import { describe, expect, it } from "@jest/globals";
 import { formatImportChain, listImportChains, SOURCE_ROOT } from "@/fixtures/utils/imports";
 
 /** Every module that is the first line of a thread of its own. */
-const WORKERS: ReadonlyArray<string> = [
-  "core/level/lib/render/level-render.worker.ts",
-  "core/visuals/lib/render/visual-preview.worker.ts",
-];
+const WORKERS: ReadonlyArray<string> = ["core/level/lib/render/level-render.worker.ts"];
 
 /**
  * What a worker has none of.

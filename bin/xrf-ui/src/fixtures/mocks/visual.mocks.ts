@@ -13,8 +13,9 @@ import {
   VisualTextureDependency,
   VisualTransform,
 } from "@/core/ipc/types/xrf-visual";
+import { OPAQUE_RENDERER_SURFACE_DRAW } from "@/core/render/lib/surface/renderer-surface-draw";
 import { MOTION_DEFAULT_SPEED, MOTION_SAMPLE_FPS } from "@/core/visuals/lib/visual-motion";
-import { FLOATS_PER_BONE, IVisualModelViews } from "@/core/visuals/lib/visual-views";
+import { FLOATS_PER_BONE, IVisualModelViews, IVisualSubmeshViews } from "@/core/visuals/lib/visual-views";
 
 const ALIGNMENT: number = 4;
 
@@ -482,6 +483,24 @@ export function mockVisualModelViews(overrides: Partial<IVisualModelViews> = {})
     skeletonBinds: null,
     vertexCount: 0,
     levelCount: 1,
+    ...overrides,
+  };
+}
+
+export function mockVisualSubmeshViews(overrides: Partial<IVisualSubmeshViews> = {}): IVisualSubmeshViews {
+  return {
+    binormals: new Float32Array(9),
+    index: 0,
+    indices: new Uint16Array([0, 1, 2]),
+    label: "submesh 0",
+    levels: [{ count: 3, start: 0, triangleCount: 1 }],
+    normals: new Float32Array(9),
+    positions: new Float32Array(9),
+    skinIndices: null,
+    skinWeights: null,
+    surface: OPAQUE_RENDERER_SURFACE_DRAW,
+    tangents: new Float32Array(9),
+    uvs: new Float32Array(6),
     ...overrides,
   };
 }

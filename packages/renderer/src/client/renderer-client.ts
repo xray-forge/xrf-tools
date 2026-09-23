@@ -15,6 +15,8 @@ import { IRendererReport } from "#/contract/renderer-report";
 import { IRendererSettings } from "#/contract/renderer-settings";
 import { IRendererGeometry } from "#/contract/scene/renderer-geometry";
 import { IRendererObject } from "#/contract/scene/renderer-object";
+import { TRendererOverlay } from "#/contract/scene/renderer-overlay";
+import { IRendererMotion, IRendererPose, IRendererSkeleton } from "#/contract/scene/renderer-skeleton";
 import { IRendererSurface } from "#/contract/scene/renderer-surface";
 import { TRendererTextureSource } from "#/contract/scene/renderer-texture-source";
 import { IOffscreenRenderSize } from "#/frame/offscreen-render-target";
@@ -179,6 +181,50 @@ export class RendererClient {
 
   public releaseObject(key: string): void {
     this.post({ key, kind: ERendererRequest.RELEASE_OBJECT });
+  }
+
+  /**
+   * @param key - What the skeleton is held under; an object skins to it by this.
+   * @param skeleton - Its bind pose, moved to the renderer.
+   */
+  public putSkeleton(key: string, skeleton: IRendererSkeleton): void {
+    this.post({ key, kind: ERendererRequest.PUT_SKELETON, skeleton });
+  }
+
+  public releaseSkeleton(key: string): void {
+    this.post({ key, kind: ERendererRequest.RELEASE_SKELETON });
+  }
+
+  /**
+   * @param key - What the motion is held under; a pose names it by this.
+   * @param motion - Its baked transforms, moved to the renderer.
+   */
+  public putMotion(key: string, motion: IRendererMotion): void {
+    this.post({ key, kind: ERendererRequest.PUT_MOTION, motion });
+  }
+
+  public releaseMotion(key: string): void {
+    this.post({ key, kind: ERendererRequest.RELEASE_MOTION });
+  }
+
+  /**
+   * @param skeleton - The skeleton's key.
+   * @param pose - The motion and frame it stands in, and the bones it hides.
+   */
+  public pose(skeleton: string, pose: IRendererPose): void {
+    this.post({ kind: ERendererRequest.POSE, pose, skeleton });
+  }
+
+  /**
+   * @param key - What the helper is held under.
+   * @param overlay - What it draws, moved to the renderer.
+   */
+  public putOverlay(key: string, overlay: TRendererOverlay): void {
+    this.post({ key, kind: ERendererRequest.PUT_OVERLAY, overlay });
+  }
+
+  public releaseOverlay(key: string): void {
+    this.post({ key, kind: ERendererRequest.RELEASE_OVERLAY });
   }
 
   /**

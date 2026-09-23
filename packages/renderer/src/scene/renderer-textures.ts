@@ -4,7 +4,12 @@ import { Node, Texture, TextureNode } from "three/webgpu";
 
 import { ERendererTextureEncoding, TRendererTextureSource } from "#/contract/scene/renderer-texture-source";
 import { IDdsRefusal } from "#/texture/dds/dds-refusal";
-import { createRendererImageTexture, createRendererTexture, IRendererTextureUpload } from "#/texture/renderer-texture";
+import {
+  createRendererImageTexture,
+  createRendererRawTexture,
+  createRendererTexture,
+  IRendererTextureUpload,
+} from "#/texture/renderer-texture";
 
 /** One key's texture and every sampler drawing it, each with what it samples while the key holds nothing. */
 interface ITextureEntry {
@@ -41,6 +46,12 @@ export class RendererTextures {
       if (upload.refusal) {
         this.onRefused(key, upload.refusal);
       }
+
+      return;
+    }
+
+    if (source.encoding === ERendererTextureEncoding.RGBA) {
+      this.assign(entry, createRendererRawTexture(source.bytes, source.width, source.height, source.isNearest));
 
       return;
     }

@@ -27,6 +27,10 @@ export interface IRendererGeometry {
   tangent?: Float32Array;
   /** Three floats a vertex: the authored binormal, kept rather than rebuilt so a skewed basis stays as authored. */
   binormal?: Float32Array;
+  /** Four bone indices a vertex, for an object skinned to a skeleton. */
+  skinIndices?: Uint16Array;
+  /** Four weights a vertex, beside the indices. */
+  skinWeights?: Float32Array;
   index?: Uint16Array | Uint32Array;
   groups: ReadonlyArray<IRendererGeometryGroup>;
 }
@@ -45,6 +49,8 @@ export function listRendererGeometryTransfers(geometry: IRendererGeometry): Arra
     geometry.uv1,
     geometry.tangent,
     geometry.binormal,
+    geometry.skinIndices,
+    geometry.skinWeights,
     geometry.index,
   ]
     .filter((array): array is NonNullable<typeof array> => array !== undefined)

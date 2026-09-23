@@ -3,7 +3,7 @@ import { useInjection } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
 import { ReactElement, ReactNode, useMemo } from "react";
 
-import { isAlphaRenderSurface } from "@/core/render/lib/surface/render-surface";
+import { isAlphaRendererSurfaceDraw } from "@/core/render/lib/surface/renderer-surface-draw";
 import { EditorFileHeader } from "@/core/shell/editor/EditorFileHeader";
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { IEditorPanel, useEditorPanels, useEditorStatus } from "@/core/shell/editor-shell";
@@ -69,7 +69,7 @@ export function VisualPreviewLayout({
   const hasSkeleton: boolean = Boolean(model?.skeleton);
   // A dummy pair counts: it is uploaded and shaded, and comparing it flat is how a modder sees that it adds nothing.
   const hasBump: boolean = Boolean(model && source.bumps.size > 0);
-  const hasAlpha: boolean = Boolean(model?.submeshes.some((submesh) => isAlphaRenderSurface(submesh.surface)));
+  const hasAlpha: boolean = Boolean(model?.submeshes.some((submesh) => isAlphaRendererSurfaceDraw(submesh.surface)));
 
   useEditorPanels(() => {
     const stripe: Array<IEditorPanel> = panels ? [...panels] : [];

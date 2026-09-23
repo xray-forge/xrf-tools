@@ -10,7 +10,7 @@ import {
   VisualSubmesh,
   VisualTransform,
 } from "@/core/ipc/types/xrf-visual";
-import { IRenderSurface, OPAQUE_RENDER_SURFACE } from "@/core/render/lib/surface/render-surface";
+import { IRendererSurfaceDraw, OPAQUE_RENDERER_SURFACE_DRAW } from "@/core/render/lib/surface/renderer-surface-draw";
 
 /** Floats one bone transform occupies: three basis vectors and a translation. */
 export const FLOATS_PER_BONE: number = 12;
@@ -48,7 +48,7 @@ export interface IVisualSubmeshViews {
   /** Finest first, never empty. A submesh with one entry has no choice to offer. */
   levels: Array<IVisualSubmeshLevel>;
   /** The material state its shader compiles to: whether alpha is read, and how. */
-  surface: IRenderSurface;
+  surface: IRendererSurfaceDraw;
 }
 
 /** Segment endpoints of a skeleton, which bones each segment joins, and every bone's bind transform. */
@@ -138,7 +138,7 @@ export function createVisualCameraFit(description: VisualDescription): IVisualCa
 export function createVisualViews(
   description: VisualDescription,
   buffer: ArrayBuffer,
-  surfaces: ReadonlyMap<number, IRenderSurface> = new Map()
+  surfaces: ReadonlyMap<number, IRendererSurfaceDraw> = new Map()
 ): IVisualModelViews {
   if (buffer.byteLength !== description.bufferLength) {
     throw new Error(
@@ -180,7 +180,7 @@ export function createVisualViews(
       skinIndices: geometry.skin ? toIndexView(buffer, geometry.skin.indices) : null,
       skinWeights: geometry.skin ? toFloatView(buffer, geometry.skin.weights) : null,
       levels,
-      surface: surfaces.get(submesh.index) ?? OPAQUE_RENDER_SURFACE,
+      surface: surfaces.get(submesh.index) ?? OPAQUE_RENDERER_SURFACE_DRAW,
     });
   }
 

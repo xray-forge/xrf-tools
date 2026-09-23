@@ -33,9 +33,11 @@ import { BumpPlaneCapture } from "#/pass/bump-plane-capture";
 import { CombinePass } from "#/pass/combine-pass";
 import { ForwardPass } from "#/pass/forward-pass";
 import { GBufferPass } from "#/pass/gbuffer-pass";
+import { OverlayPass } from "#/pass/overlay-pass";
 import { PresentPass } from "#/pass/present-pass";
 import { IRendererPass } from "#/pass/renderer-pass";
 import { SunPass } from "#/pass/sun-pass";
+import { RendererOverlays } from "#/scene/renderer-overlays";
 import { RendererScene } from "#/scene/renderer-scene";
 import { RendererPassInspector } from "#/timing/renderer-pass-inspector";
 import { RendererPassTimer } from "#/timing/renderer-pass-timer";
@@ -85,6 +87,7 @@ export class RendererHost {
   private readonly controller: OrbitCameraController;
   private readonly settingsUniforms: SettingsUniforms = new SettingsUniforms();
   private readonly scene: RendererScene;
+  private readonly overlays: RendererOverlays;
   private readonly targets: RendererTargets = new RendererTargets();
   private readonly cameraUniforms: CameraUniforms = new CameraUniforms();
   private readonly lightingUniforms: BaseLightingUniforms = new BaseLightingUniforms();
@@ -130,6 +133,7 @@ export class RendererHost {
       { camera: this.cameraUniforms, lighting: this.lightingUniforms, lut: this.lut, settings: this.settingsUniforms },
       (key, refusal) => this.reply({ key, kind: ERendererResponse.TEXTURE_REFUSED, refusal })
     );
+    this.overlays = new RendererOverlays(this.scene.skeletons);
     this.present = new PresentPass(this.targets, this.cameraUniforms);
     this.bumpPlanes = new BumpPlaneCapture(this.scene.textures);
     this.passes = [
@@ -137,6 +141,7 @@ export class RendererHost {
       new SunPass(this.targets, this.cameraUniforms, this.lightingUniforms, this.lut),
       new CombinePass(this.targets, this.cameraUniforms, this.lightingUniforms, this.settingsUniforms, this.lut),
       new ForwardPass(),
+      new OverlayPass(this.overlays),
       this.present,
     ];
     this.light(DEFAULT_RENDERER_LIGHTING);
@@ -200,6 +205,27 @@ export class RendererHost {
 
       case ERendererRequest.RELEASE_OBJECT:
         return this.scene.releaseObject(request.key);
+
+      case ERendererRequest.PUT_SKELETON:
+        return this.scene.skeletons.putSkeleton(request.key, request.skeleton);
+
+      case ERendererRequest.RELEASE_SKELETON:
+        return this.scene.skeletons.releaseSkeleton(request.key);
+
+      case ERendererRequest.PUT_MOTION:
+        return this.scene.skeletons.putMotion(request.key, request.motion);
+
+      case ERendererRequest.RELEASE_MOTION:
+        return this.scene.skeletons.releaseMotion(request.key);
+
+      case ERendererRequest.POSE:
+        return this.scene.skeletons.pose(request.skeleton, request.pose);
+
+      case ERendererRequest.PUT_OVERLAY:
+        return this.overlays.put(request.key, request.overlay);
+
+      case ERendererRequest.RELEASE_OVERLAY:
+        return this.overlays.release(request.key);
 
       case ERendererRequest.LIGHTING:
         return this.light(request.lighting);
@@ -296,6 +322,7 @@ export class RendererHost {
   private configure(settings: IRendererSettings): void {
     this.settings = settings;
     this.settingsUniforms.apply(settings);
+    this.scene.setWireframe(settings.isWireframe);
     this.lightingUniforms.tonemapScale.value = settings.tonemapScale;
 
     if (this.frameState) {

@@ -162,6 +162,7 @@ export function toTextureRendererSettings(
     frameRateLimit,
     isBumped: options.isBumped,
     isLit: options.isLit,
+    isWireframe: false,
     tonemapScale: 1,
   };
 }

@@ -42,4 +42,6 @@ export interface IRendererSettings {
   isLit: boolean;
   /** Whether bump pairs perturb the normal and supply gloss; off, every surface is shaded flat with `def_gloss`. */
   isBumped: boolean;
+  /** Whether surfaces draw as their triangles' edges. */
+  isWireframe: boolean;
 }

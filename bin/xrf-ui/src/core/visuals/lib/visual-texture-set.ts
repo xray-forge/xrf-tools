@@ -5,7 +5,7 @@ import { assetsRawCommands } from "@/core/ipc/commands/assets-raw";
 import { visualsRawCommands } from "@/core/ipc/commands/visuals-raw";
 import { SelectedVisualDescription } from "@/core/ipc/types/xrf-app";
 import { readWebGlDdsFile } from "@/core/render/lib/dds";
-import { IRenderSurface } from "@/core/render/lib/surface/render-surface";
+import { IRendererSurfaceDraw } from "@/core/render/lib/surface/renderer-surface-draw";
 import { ILoadableBump, IVisualBumpFiles, IVisualBumpStatus, toLoadableBumps } from "@/core/visuals/lib/visual-bump";
 import { describeVisualSource } from "@/core/visuals/lib/visual-source";
 import { toAlphaTexturePaths } from "@/core/visuals/lib/visual-surface";
@@ -47,7 +47,7 @@ export class VisualTextureSet {
    */
   public static *load(
     selected: SelectedVisualDescription,
-    surfaces: ReadonlyMap<number, IRenderSurface>
+    surfaces: ReadonlyMap<number, IRendererSurfaceDraw>
   ): TFlow<VisualTextureSet> {
     const timer: Timer = new Timer();
     const loaded: VisualTextureSet = new VisualTextureSet();
@@ -162,7 +162,7 @@ export class VisualTextureSet {
    */
   private resolveTextures(
     selected: SelectedVisualDescription,
-    surfaces: ReadonlyMap<number, IRenderSurface>,
+    surfaces: ReadonlyMap<number, IRendererSurfaceDraw>,
     reads: Map<string, IVisualTextureRead>
   ): void {
     for (const texture of selected.dependencies.textures) {

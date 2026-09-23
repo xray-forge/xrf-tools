@@ -2,7 +2,7 @@ import { describe, expect, it } from "@jest/globals";
 
 import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
 import { VisualSubmesh, VisualTextureDependency } from "@/core/ipc/types/xrf-visual";
-import { IRenderSurface, OPAQUE_RENDER_SURFACE } from "@/core/render/lib/surface/render-surface";
+import { IRendererSurfaceDraw, OPAQUE_RENDERER_SURFACE_DRAW } from "@/core/render/lib/surface/renderer-surface-draw";
 import { createVisualSurfaces, toAlphaTexturePaths } from "@/core/visuals/lib/visual-surface";
 import {
   mockAlphaSurfaceDescriptor,
@@ -23,21 +23,21 @@ describe("createVisualSurfaces", () => {
     ];
     const surfaces: Array<XraySurfaceDescriptor> = [mockSurfaceDescriptor(), mockAlphaSurfaceDescriptor()];
 
-    const states: Map<number, IRenderSurface> = createVisualSurfaces(submeshes, surfaces);
+    const states: Map<number, IRendererSurfaceDraw> = createVisualSurfaces(submeshes, surfaces);
 
-    expect(states.get(0)).toEqual(OPAQUE_RENDER_SURFACE);
-    expect(states.get(1)!.alphaTest).toBeCloseTo(200 / 255);
+    expect(states.get(0)).toEqual(OPAQUE_RENDERER_SURFACE_DRAW);
+    expect(states.get(1)!.alphaReference).toBeCloseTo(200 / 255);
     // A submesh naming no shader, and one whose name the map has no answer for, are both drawn opaque rather than
     // left without a state.
-    expect(states.get(2)).toEqual(OPAQUE_RENDER_SURFACE);
-    expect(states.get(3)).toEqual(OPAQUE_RENDER_SURFACE);
+    expect(states.get(2)).toEqual(OPAQUE_RENDERER_SURFACE_DRAW);
+    expect(states.get(3)).toEqual(OPAQUE_RENDERER_SURFACE_DRAW);
   });
 
   it("answers for every submesh of a model opened before surfaces existed", () => {
     const buffer: MockVisualBuffer = new MockVisualBuffer();
-    const states: Map<number, IRenderSurface> = createVisualSurfaces([mockPackedSubmesh(buffer, { index: 7 })]);
+    const states: Map<number, IRendererSurfaceDraw> = createVisualSurfaces([mockPackedSubmesh(buffer, { index: 7 })]);
 
-    expect(states.get(7)).toEqual(OPAQUE_RENDER_SURFACE);
+    expect(states.get(7)).toEqual(OPAQUE_RENDERER_SURFACE_DRAW);
   });
 });
 
@@ -68,7 +68,7 @@ describe("toAlphaTexturePaths", () => {
       }),
     ];
 
-    const surfaces: Map<number, IRenderSurface> = createVisualSurfaces(submeshes, [
+    const surfaces: Map<number, IRendererSurfaceDraw> = createVisualSurfaces(submeshes, [
       mockSurfaceDescriptor(),
       mockAlphaSurfaceDescriptor(),
     ]);
@@ -78,7 +78,7 @@ describe("toAlphaTexturePaths", () => {
 
   it("names nothing for a reference that located no file", () => {
     const buffer: MockVisualBuffer = new MockVisualBuffer();
-    const surfaces: Map<number, IRenderSurface> = createVisualSurfaces(
+    const surfaces: Map<number, IRendererSurfaceDraw> = createVisualSurfaces(
       [mockPackedSubmesh(buffer, { index: 0, shaderName: "models\\model_aref" })],
       [mockAlphaSurfaceDescriptor()]
     );
@@ -90,7 +90,7 @@ describe("toAlphaTexturePaths", () => {
 
   it("names nothing when no surface reads alpha", () => {
     const buffer: MockVisualBuffer = new MockVisualBuffer();
-    const surfaces: Map<number, IRenderSurface> = createVisualSurfaces([mockPackedSubmesh(buffer, { index: 0 })]);
+    const surfaces: Map<number, IRendererSurfaceDraw> = createVisualSurfaces([mockPackedSubmesh(buffer, { index: 0 })]);
 
     expect(toAlphaTexturePaths(surfaces, [mockTextureDependency({ submeshIndex: 0 })])).toEqual(new Set());
   });

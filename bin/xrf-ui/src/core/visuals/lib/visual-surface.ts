@@ -4,7 +4,11 @@ import { getLocatedAsset } from "@/core/assets/lib/resolution";
 import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
 import { XrayAsset } from "@/core/ipc/types/xrf-vfs";
 import { VisualSubmesh, VisualTextureDependency } from "@/core/ipc/types/xrf-visual";
-import { getRenderSurface, IRenderSurface, isAlphaRenderSurface } from "@/core/render/lib/surface/render-surface";
+import {
+  getRendererSurfaceDraw,
+  IRendererSurfaceDraw,
+  isAlphaRendererSurfaceDraw,
+} from "@/core/render/lib/surface/renderer-surface-draw";
 
 /**
  * The material state of every submesh, by the index the submesh reports.
@@ -16,9 +20,12 @@ import { getRenderSurface, IRenderSurface, isAlphaRenderSurface } from "@/core/r
 export function createVisualSurfaces(
   submeshes: Array<VisualSubmesh>,
   surfaces: ReadonlyArray<XraySurfaceDescriptor> = []
-): Map<number, IRenderSurface> {
+): Map<number, IRendererSurfaceDraw> {
   return new Map(
-    submeshes.map((submesh: VisualSubmesh, position: number) => [submesh.index, getRenderSurface(surfaces, position)])
+    submeshes.map((submesh: VisualSubmesh, position: number) => [
+      submesh.index,
+      getRendererSurfaceDraw(surfaces, position),
+    ])
   );
 }
 
@@ -30,16 +37,16 @@ export function createVisualSurfaces(
  * @returns The located logical paths whose alpha is read by at least one surface.
  */
 export function toAlphaTexturePaths(
-  surfaces: ReadonlyMap<number, IRenderSurface>,
+  surfaces: ReadonlyMap<number, IRendererSurfaceDraw>,
   textures: Array<VisualTextureDependency>
 ): ReadonlySet<string> {
   const paths: Set<string> = new Set();
 
   for (const texture of textures) {
-    const surface: Nullable<IRenderSurface> = surfaces.get(texture.submeshIndex) ?? null;
+    const surface: Nullable<IRendererSurfaceDraw> = surfaces.get(texture.submeshIndex) ?? null;
     const asset: Nullable<XrayAsset> = getLocatedAsset(texture.resolution);
 
-    if (asset && surface && isAlphaRenderSurface(surface)) {
+    if (asset && surface && isAlphaRendererSurfaceDraw(surface)) {
       paths.add(asset.logicalPath);
     }
   }

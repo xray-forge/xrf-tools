@@ -5,6 +5,7 @@ import {
   DataTexture,
   LinearFilter,
   LinearMipmapLinearFilter,
+  NearestFilter,
   NoColorSpace,
   RED_GREEN_RGTC2_Format,
   RED_RGTC1_Format,
@@ -79,6 +80,33 @@ export async function createRendererImageTexture(bytes: ArrayBuffer, type: strin
 
   texture.flipY = false;
   describeSampling(texture, 1);
+
+  return texture;
+}
+
+/**
+ * Uploads raw rgba bytes a consumer made, such as a uv checker.
+ *
+ * @param bytes - Four bytes a texel, top row first.
+ * @param width - Texels across.
+ * @param height - Rows.
+ * @param isNearest - Whether it is sampled nearest, keeping each texel crisp.
+ * @returns The texture.
+ */
+export function createRendererRawTexture(
+  bytes: ArrayBuffer,
+  width: number,
+  height: number,
+  isNearest: boolean = false
+): Texture {
+  const texture: DataTexture = new DataTexture(new Uint8Array(bytes), width, height, RGBAFormat, UnsignedByteType);
+
+  describeSampling(texture, 1);
+
+  if (isNearest) {
+    texture.magFilter = NearestFilter;
+    texture.minFilter = NearestFilter;
+  }
 
   return texture;
 }

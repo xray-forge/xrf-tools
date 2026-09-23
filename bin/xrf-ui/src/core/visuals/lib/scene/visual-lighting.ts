@@ -9,9 +9,9 @@ import { IRenderLighting } from "@/core/render/lib/lighting/render-lighting";
  */
 export const DEFAULT_VISUAL_LIGHTING: IRenderLighting = {
   ambientColor: 0xffffff,
-  ambientIntensity: 2.2,
+  ambientIntensity: 1,
   sunAzimuth: 37,
   sunColor: 0xffffff,
   sunElevation: 45,
-  sunIntensity: 3,
+  sunIntensity: 1,
 };

@@ -1,6 +1,5 @@
 import { Maybe } from "@xrf/types";
 import {
-  attribute,
   float,
   mix,
   modelViewMatrix,
@@ -18,7 +17,6 @@ import {
   CustomBlending,
   Data3DTexture,
   DstColorFactor,
-  Material,
   MeshBasicNodeMaterial,
   Node,
   OneFactor,
@@ -38,6 +36,7 @@ import { CameraUniforms } from "#/graph/camera-uniforms";
 import { encodeOctahedral } from "#/graph/octahedral-normal.tsl";
 import { EGBufferTarget } from "#/graph/renderer-targets";
 import { SettingsUniforms } from "#/graph/settings-uniforms";
+import { skinnedBinormal, skinnedTangent } from "#/graph/skinned-basis.tsl";
 import {
   getFlatBumpCompanionTexture,
   getFlatBumpTexture,
@@ -75,7 +74,7 @@ export interface ISurfaceShadingContext {
  * A surface as the frame draws it.
  */
 export interface ISurfaceMaterial {
-  material: Material;
+  material: MeshBasicNodeMaterial;
   /** Whether it fills the G-buffer, rather than being composited after it. */
   isDeferred: boolean;
   dispose(): void;
@@ -162,8 +161,8 @@ function toSurfaceTexel(
     const companion: TextureNode = bind(surface.textures.bumpCompanion, getFlatBumpCompanionTexture());
     const tangentSpace: Node<"vec3"> = decodeBumpNormal(bump, companion);
     // `deffer_model_bump`: the authored basis through the model view, the decoded normal rotated along it.
-    const tangent: Node<"vec3"> = varying(modelViewMatrix.mul(vec4(attribute<"vec3">("tangent", "vec3"), 0)).xyz);
-    const binormal: Node<"vec3"> = varying(modelViewMatrix.mul(vec4(attribute<"vec3">("binormal", "vec3"), 0)).xyz);
+    const tangent: Node<"vec3"> = varying(modelViewMatrix.mul(vec4(skinnedTangent, 0)).xyz);
+    const binormal: Node<"vec3"> = varying(modelViewMatrix.mul(vec4(skinnedBinormal(), 0)).xyz);
     const bumped: Node<"vec3"> = normalize(
       normalize(tangent)
         .mul(tangentSpace.x)
@@ -218,7 +217,7 @@ function createForwardMaterial(
   const material: MeshBasicNodeMaterial = new MeshBasicNodeMaterial();
   let color: Node<"vec3"> = texel.albedo;
 
-  if (surface.draw === ERendererDraw.BLENDED) {
+  if (surface.draw === ERendererDraw.BLENDED && surface.isLit !== false) {
     const point: IBaseShadingPoint = { normal: texel.normal, position: positionView, slice: texel.slice };
     const light: Node<"vec4"> = toSunLight(point, lighting, lut);
     const lit: Node<"vec3"> = toFinishedColor(

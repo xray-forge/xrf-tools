@@ -50,6 +50,7 @@ describe("listRendererTransfers", () => {
           frameRateLimit: "60",
           isBumped: true,
           isLit: true,
+          isWireframe: false,
           tonemapScale: 1,
         },
       })

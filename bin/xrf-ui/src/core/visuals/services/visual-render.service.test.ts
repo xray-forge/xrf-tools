@@ -1,37 +1,30 @@
-import { beforeAll, describe, expect, it, jest } from "@jest/globals";
+import { beforeAll, beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { Container } from "@wirestate/core";
 import { makeAutoObservable, runInAction } from "@wirestate/mobx";
+import { ERendererOverlay, ERendererRequest, TRendererRequest } from "@xrf/renderer";
+import { createRendererWorkerStub, IRendererWorkerStub } from "@xrf/renderer/fixtures";
 
 import { BIND_POSE, IVisualRenderSource, VISUAL_RENDER_SOURCE } from "@/core/visuals/lib/render";
 import { IVisualTextureFile } from "@/core/visuals/lib/visual-texture";
 import { VisualViewService } from "@/core/visuals/services/visual-view.service";
-import { mockVisualModelViews } from "@/fixtures/mocks/visual.mocks";
+import { mockVisualModelViews, mockVisualSubmeshViews } from "@/fixtures/mocks/visual.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 
-const scene = {
-  applyBump: jest.fn(),
-  applyTexture: jest.fn(),
-  applyViewOptions: jest.fn(),
-  dispose: jest.fn(),
-  setReporter: jest.fn(),
-  dolly: jest.fn(),
-  resetCamera: jest.fn(),
-  setDetailLevel: jest.fn(),
-  setFrameRateLimit: jest.fn(),
-  setHiddenBones: jest.fn(),
-  setHighlightedJoint: jest.fn(),
-  setLighting: jest.fn(),
-  setModel: jest.fn(),
-  setPose: jest.fn(),
-};
-
+let stub: IRendererWorkerStub;
 let VisualRenderService: typeof import("./visual-render.service").VisualRenderService;
 
 beforeAll(async () => {
-  // Stubbed at the GPU boundary; jsdom cannot construct a WebGL renderer, and nothing below it is under test.
-  jest.doMock("@/core/visuals/lib/scene", () => ({ VisualPreviewScene: jest.fn(() => scene) }));
+  // The worker entry reads `import.meta.url`, which the test transform cannot, and the thread is what is stubbed.
+  jest.doMock("@xrf/renderer/worker", () => ({ createRendererWorker: () => stub.worker }));
+  HTMLCanvasElement.prototype.transferControlToOffscreen = function () {
+    return {} as OffscreenCanvas;
+  };
 
   ({ VisualRenderService } = await import("./visual-render.service"));
+});
+
+beforeEach(() => {
+  stub = createRendererWorkerStub();
 });
 
 function mockTextureFile(): IVisualTextureFile {
@@ -44,6 +37,14 @@ function mockSource(overrides: Partial<IVisualRenderSource> = {}): IVisualRender
     {},
     { deep: false }
   );
+}
+
+function mockSkinnedModel() {
+  return mockVisualModelViews({
+    skeletonBinds: new Float32Array(24),
+    skeletonPairs: new Uint16Array([1, 0]),
+    submeshes: [mockVisualSubmeshViews({ skinIndices: new Uint16Array(12), skinWeights: new Float32Array(12) })],
+  });
 }
 
 function mockAttached(source: IVisualRenderSource): {
@@ -63,116 +64,107 @@ function mockAttached(source: IVisualRenderSource): {
 }
 
 describe("VisualRenderService", () => {
-  it("poses the model the way the source says it stands", () => {
-    const transforms: Float32Array = new Float32Array(16);
-    const source: IVisualRenderSource = mockSource({ pose: BIND_POSE });
-    const { service } = mockAttached(source);
+  it("dresses a model published together with its textures, uploading each file once", () => {
+    const file: IVisualTextureFile = mockTextureFile();
+    const model = mockVisualModelViews({
+      submeshes: [mockVisualSubmeshViews({ index: 0 }), mockVisualSubmeshViews({ index: 1 })],
+    });
+    const { service } = mockAttached(
+      mockSource({
+        model,
+        textures: new Map([
+          [0, file],
+          [1, file],
+        ]),
+      })
+    );
 
-    expect(scene.setPose).toHaveBeenCalledWith(null, 0, 0);
+    expect(stub.take(ERendererRequest.PUT_GEOMETRY).map((it) => it.key)).toEqual(["submesh:0", "submesh:1"]);
+    expect(stub.take(ERendererRequest.PUT_TEXTURE).filter((it) => it.key === file.logicalPath)).toHaveLength(1);
+    expect(stub.take(ERendererRequest.PUT_SURFACE).at(-1)?.surface.textures.base).toBe(file.logicalPath);
+    expect(stub.take(ERendererRequest.CAMERA)).toHaveLength(1);
+    expect(stub.requests.at(-1)?.kind).toBe(ERendererRequest.ATTACH_VIEW);
 
-    runInAction(() => (source.pose = { floatsPerBone: 16, frame: 4, transforms }));
-
-    expect(scene.setPose).toHaveBeenCalledWith(transforms, 4, 16);
-
-    service.detach();
+    service.dispose();
   });
 
-  // A source that plays nothing leaves the pose out, and a model that is never posed is the bind pose.
-  it("stands a model that nothing poses in its bind pose", () => {
-    const { service } = mockAttached(mockSource());
-
-    expect(scene.setPose).toHaveBeenCalledWith(null, 0, 0);
-    expect(scene.setHiddenBones).toHaveBeenCalledWith(new Set());
-    expect(scene.setHighlightedJoint).toHaveBeenCalledWith(null);
-
-    service.detach();
-  });
-
-  // A new model rebuilds the meshes, so everything hung on the old ones has to be hung on these.
-  it("puts the textures back after the model is replaced", () => {
-    const texture: IVisualTextureFile = mockTextureFile();
-    const source: IVisualRenderSource = mockSource({ textures: new Map([[0, texture]]) });
+  it("sends a baked motion once, and only the frame after that", () => {
+    const transforms: Float32Array = new Float32Array(48);
+    const source: IVisualRenderSource = mockSource({ model: mockSkinnedModel(), pose: BIND_POSE });
     const { service } = mockAttached(source);
 
-    expect(scene.applyTexture).toHaveBeenCalledWith(0, texture);
+    expect(stub.take(ERendererRequest.POSE).at(-1)?.pose).toEqual({ frame: 0, hiddenBones: [], motion: null });
 
-    scene.applyTexture.mockClear();
+    runInAction(() => (source.pose = { floatsPerBone: 12, frame: 0, transforms }));
+    runInAction(() => (source.pose = { floatsPerBone: 12, frame: 1, transforms }));
+
+    expect(stub.take(ERendererRequest.PUT_MOTION)).toHaveLength(1);
+    expect(stub.take(ERendererRequest.POSE).at(-1)?.pose).toEqual({ frame: 1, hiddenBones: [], motion: "motion" });
+
+    service.dispose();
+  });
+
+  it("collapses the bones the source hides", () => {
+    const source: IVisualRenderSource = mockSource({ hiddenBoneIndices: new Set([1]), model: mockSkinnedModel() });
+    const { service } = mockAttached(source);
+
+    expect(stub.take(ERendererRequest.POSE).at(-1)?.pose.hiddenBones).toEqual([1]);
+    expect(stub.take(ERendererRequest.PUT_OBJECT)[0].object.skeleton).toBe("skeleton");
+
+    service.dispose();
+  });
+
+  it("lets the last model's submeshes go when another replaces it", () => {
+    const source: IVisualRenderSource = mockSource({
+      model: mockVisualModelViews({ submeshes: [mockVisualSubmeshViews()] }),
+    });
+    const { service } = mockAttached(source);
+
     runInAction(() => (source.model = mockVisualModelViews()));
 
-    expect(scene.applyTexture).toHaveBeenCalledWith(0, texture);
+    const released: Array<TRendererRequest> = stub.requests.filter(
+      (request) =>
+        request.kind === ERendererRequest.RELEASE_GEOMETRY || request.kind === ERendererRequest.RELEASE_OBJECT
+    );
 
-    service.detach();
+    expect(released).toHaveLength(2);
+
+    service.dispose();
   });
 
-  // The loader publishes geometry and textures in one commit, so the two land in the same mobx batch: the meshes
-  // have to be built before anything is hung on them.
-  it("dresses a model published together with its textures", () => {
-    const texture: IVisualTextureFile = mockTextureFile();
-    const model = mockVisualModelViews();
-    const source: IVisualRenderSource = mockSource();
-    const { service } = mockAttached(source);
-
-    scene.applyTexture.mockClear();
-    scene.setModel.mockClear();
-
-    runInAction(() => {
-      source.model = model;
-      source.textures = new Map([[3, texture]]);
-    });
-
-    expect(scene.setModel).toHaveBeenCalledWith(model);
-    expect(scene.applyTexture).toHaveBeenCalledWith(3, texture);
-    expect(scene.setModel.mock.invocationCallOrder[0]).toBeLessThan(scene.applyTexture.mock.invocationCallOrder[0]);
-
-    service.detach();
-  });
-
-  it("releases the scene and stops carrying anything to it", () => {
-    const source: IVisualRenderSource = mockSource();
+  it("draws the skeleton overlay and the joint marker only while the skeleton is shown", () => {
+    const source: IVisualRenderSource = mockSource({ highlightedJoint: [0, 1, 0], model: mockSkinnedModel() });
     const { service, viewService } = mockAttached(source);
 
-    service.detach();
+    function overlays(): Array<string> {
+      return stub.take(ERendererRequest.PUT_OVERLAY).map((it) => it.overlay.kind);
+    }
 
-    expect(scene.dispose).toHaveBeenCalled();
+    expect(overlays()).toEqual([ERendererOverlay.LINES]);
 
-    scene.setModel.mockClear();
-    scene.setLighting.mockClear();
+    viewService.setOptions({ ...viewService.options, isSkeletonVisible: true });
 
-    runInAction(() => (source.model = mockVisualModelViews()));
-    viewService.setDetail(0.5);
+    expect(overlays()).toContain(ERendererOverlay.SKELETON);
+    expect(overlays()).toContain(ERendererOverlay.POINTS);
 
-    expect(scene.setModel).not.toHaveBeenCalled();
-    expect(scene.setLighting).not.toHaveBeenCalled();
+    service.dispose();
   });
 
-  it("leaves no canvas behind when it is detached", () => {
-    const container: HTMLElement = document.createElement("div");
+  it("keeps the renderer when the view goes, and leaves no canvas behind", () => {
     const { service } = mockAttached(mockSource());
+    const element: HTMLElement = document.createElement("div");
 
-    service.attach(container);
+    service.attach(element);
 
-    expect(container.querySelectorAll("canvas")).toHaveLength(1);
-
-    service.attach(container);
-
-    expect(container.querySelectorAll("canvas")).toHaveLength(1);
+    expect(element.querySelectorAll("canvas")).toHaveLength(1);
 
     service.detach();
 
-    expect(container.querySelectorAll("canvas")).toHaveLength(0);
-  });
+    expect(element.querySelectorAll("canvas")).toHaveLength(0);
+    expect(stub.isTerminated()).toBe(false);
 
-  it("answers the viewport controls before anything is attached", () => {
-    const container: Container = mockContainer([
-      VisualViewService,
-      VisualRenderService,
-      { factory: () => mockSource(), token: VISUAL_RENDER_SOURCE },
-    ]);
+    service.dispose();
 
-    expect(() => {
-      container.get(VisualRenderService).dolly(2);
-      container.get(VisualRenderService).resetCamera();
-      container.get(VisualRenderService).detach();
-    }).not.toThrow();
+    expect(stub.isTerminated()).toBe(true);
   });
 });

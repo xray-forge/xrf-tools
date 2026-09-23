@@ -1,3 +1,5 @@
+import { Nullable } from "@xrf/types";
+
 import { ERendererRequest, TRendererRequest, TRendererResponse } from "#/contract/renderer-messages";
 
 /**
@@ -30,7 +32,7 @@ export function createRendererWorkerStub(): IRendererWorkerStub {
 
   const worker = {
     onerror: null,
-    onmessage: null as ((event: MessageEvent<TRendererResponse>) => void) | null,
+    onmessage: null as Nullable<(event: MessageEvent<TRendererResponse>) => void>,
     postMessage: (request: TRendererRequest): void => {
       requests.push(request);
     },

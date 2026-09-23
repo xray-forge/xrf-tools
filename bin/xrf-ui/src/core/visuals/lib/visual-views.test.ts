@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
 
 import { VisualDescription, VisualSubmesh } from "@/core/ipc/types/xrf-visual";
-import { OPAQUE_RENDER_SURFACE } from "@/core/render/lib/surface/render-surface";
+import { OPAQUE_RENDERER_SURFACE_DRAW } from "@/core/render/lib/surface/renderer-surface-draw";
 import { createVisualSurfaces } from "@/core/visuals/lib/visual-surface";
 import {
   countVisualTriangles,
@@ -56,9 +56,9 @@ describe("visual views", () => {
       createVisualSurfaces(description.submeshes, [mockAlphaSurfaceDescriptor()])
     );
 
-    expect(views.submeshes[0].surface.alphaTest).toBeCloseTo(200 / 255);
+    expect(views.submeshes[0].surface.alphaReference).toBeCloseTo(200 / 255);
     // A submesh the table has no answer for is opaque, which is what a model opened without a library gets.
-    expect(views.submeshes[1].surface).toEqual(OPAQUE_RENDER_SURFACE);
+    expect(views.submeshes[1].surface).toEqual(OPAQUE_RENDERER_SURFACE_DRAW);
   });
 
   it("rejects a buffer whose length disagrees with its description", () => {

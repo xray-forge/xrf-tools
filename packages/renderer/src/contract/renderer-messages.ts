@@ -8,6 +8,8 @@ import { IRendererReport } from "#/contract/renderer-report";
 import { IRendererSettings } from "#/contract/renderer-settings";
 import { IRendererGeometry, listRendererGeometryTransfers } from "#/contract/scene/renderer-geometry";
 import { IRendererObject } from "#/contract/scene/renderer-object";
+import { listRendererOverlayTransfers, TRendererOverlay } from "#/contract/scene/renderer-overlay";
+import { IRendererMotion, IRendererPose, IRendererSkeleton } from "#/contract/scene/renderer-skeleton";
 import { IRendererSurface } from "#/contract/scene/renderer-surface";
 import { TRendererTextureSource } from "#/contract/scene/renderer-texture-source";
 import { IOffscreenRenderSize } from "#/frame/offscreen-render-target";
@@ -42,6 +44,17 @@ export enum ERendererRequest {
   /** Draw this object under this key. */
   PUT_OBJECT = "@renderer/putObject",
   RELEASE_OBJECT = "@renderer/releaseObject",
+  /** Hold this skeleton under this key, for objects to skin to. */
+  PUT_SKELETON = "@renderer/putSkeleton",
+  RELEASE_SKELETON = "@renderer/releaseSkeleton",
+  /** Hold this baked motion under this key, for poses to name. */
+  PUT_MOTION = "@renderer/putMotion",
+  RELEASE_MOTION = "@renderer/releaseMotion",
+  /** Stand this skeleton like this. */
+  POSE = "@renderer/pose",
+  /** Draw this helper under this key. */
+  PUT_OVERLAY = "@renderer/putOverlay",
+  RELEASE_OVERLAY = "@renderer/releaseOverlay",
   /** Light the scene like this. */
   LIGHTING = "@renderer/lighting",
   /** Drive the camera like this. */
@@ -88,6 +101,13 @@ export type TRendererRequest =
   | { kind: ERendererRequest.RELEASE_SURFACE; key: string }
   | { kind: ERendererRequest.PUT_OBJECT; key: string; object: IRendererObject }
   | { kind: ERendererRequest.RELEASE_OBJECT; key: string }
+  | { kind: ERendererRequest.PUT_SKELETON; key: string; skeleton: IRendererSkeleton }
+  | { kind: ERendererRequest.RELEASE_SKELETON; key: string }
+  | { kind: ERendererRequest.PUT_MOTION; key: string; motion: IRendererMotion }
+  | { kind: ERendererRequest.RELEASE_MOTION; key: string }
+  | { kind: ERendererRequest.POSE; skeleton: string; pose: IRendererPose }
+  | { kind: ERendererRequest.PUT_OVERLAY; key: string; overlay: TRendererOverlay }
+  | { kind: ERendererRequest.RELEASE_OVERLAY; key: string }
   | { kind: ERendererRequest.LIGHTING; lighting: IRendererLighting }
   | { kind: ERendererRequest.CAMERA; camera: TRendererCamera }
   | { kind: ERendererRequest.CAMERA_COMMAND; command: TRendererCameraCommand }
@@ -119,6 +139,15 @@ export function listRendererTransfers(request: TRendererRequest): Array<Transfer
 
     case ERendererRequest.PUT_GEOMETRY:
       return listRendererGeometryTransfers(request.geometry);
+
+    case ERendererRequest.PUT_SKELETON:
+      return [request.skeleton.binds.buffer, ...(request.skeleton.pairs ? [request.skeleton.pairs.buffer] : [])];
+
+    case ERendererRequest.PUT_MOTION:
+      return [request.motion.transforms.buffer];
+
+    case ERendererRequest.PUT_OVERLAY:
+      return listRendererOverlayTransfers(request.overlay);
 
     default:
       return [];

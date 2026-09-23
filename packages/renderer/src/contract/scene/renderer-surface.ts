@@ -50,4 +50,6 @@ export interface IRendererSurface {
   tiling?: number;
   /** What the base is multiplied by, raw; white when left out. A viewer's affordance, not an engine term. */
   color?: TRendererColor;
+  /** Whether a composited surface is lit, as a scripted pass may say it is not; lit when left out. */
+  isLit?: boolean;
 }

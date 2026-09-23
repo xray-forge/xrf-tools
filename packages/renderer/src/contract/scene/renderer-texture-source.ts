@@ -6,6 +6,8 @@ export enum ERendererTextureEncoding {
   DDS = "dds",
   /** A picture a browser decodes, such as the backend's png of a dds file the reader refuses. */
   IMAGE = "image",
+  /** Raw rgba bytes, four a texel, top row first, for a picture a consumer made itself. */
+  RGBA = "rgba",
 }
 
 /**
@@ -13,4 +15,12 @@ export enum ERendererTextureEncoding {
  */
 export type TRendererTextureSource =
   | { encoding: ERendererTextureEncoding.DDS; bytes: ArrayBuffer }
-  | { encoding: ERendererTextureEncoding.IMAGE; bytes: ArrayBuffer; type: string };
+  | { encoding: ERendererTextureEncoding.IMAGE; bytes: ArrayBuffer; type: string }
+  | {
+      encoding: ERendererTextureEncoding.RGBA;
+      bytes: ArrayBuffer;
+      width: number;
+      height: number;
+      /** Sampled nearest rather than linear, so a pattern of texels stays crisp. */
+      isNearest?: boolean;
+    };

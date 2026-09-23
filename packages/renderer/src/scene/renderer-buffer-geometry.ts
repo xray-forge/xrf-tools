@@ -29,6 +29,11 @@ export function createRendererBufferGeometry(geometry: IRendererGeometry): Buffe
     buffer.setAttribute("binormal", new BufferAttribute(geometry.binormal, 3));
   }
 
+  if (geometry.skinIndices && geometry.skinWeights) {
+    buffer.setAttribute("skinIndex", new BufferAttribute(geometry.skinIndices, 4));
+    buffer.setAttribute("skinWeight", new BufferAttribute(geometry.skinWeights, 4));
+  }
+
   if (geometry.index) {
     buffer.setIndex(new BufferAttribute(geometry.index, 1));
   }

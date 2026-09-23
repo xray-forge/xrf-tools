@@ -12,13 +12,8 @@ import {
   ZeroFactor,
 } from "three";
 
-import {
-  EXraySurfaceDeclaration,
-  EXraySurfaceDraw,
-  XraySurfaceDeclaration,
-  XraySurfaceDescriptor,
-  XraySurfaceDraw,
-} from "@/core/ipc/types/xrf-material";
+import { EXraySurfaceDraw, XraySurfaceDescriptor, XraySurfaceDraw } from "@/core/ipc/types/xrf-material";
+import { isLitSurface, isWallmarkSurface } from "@/core/render/lib/surface/renderer-surface-draw";
 
 /**
  * The detail texture a surface modulates its diffuse with, as the shader table's answer named it.
@@ -100,8 +95,8 @@ export const XRAY_DEFAULT_AREF: number = 200 / ALPHA_REFERENCE_SCALE;
 export function toRenderSurface(descriptor: Nullable<XraySurfaceDescriptor>): IRenderSurface {
   const draw: Nullable<XraySurfaceDraw> = descriptor?.draw ?? null;
   const detail: Nullable<IRenderDetail> = toRenderDetail(descriptor);
-  const isLit: boolean = isLitRenderSurface(descriptor);
-  const isWallmark: boolean = isWallmarkRenderSurface(descriptor);
+  const isLit: boolean = isLitSurface(descriptor);
+  const isWallmark: boolean = isWallmarkSurface(descriptor);
 
   if (!draw || draw.kind === EXraySurfaceDraw.OPAQUE) {
     return detail || !isLit || isWallmark
@@ -163,30 +158,6 @@ export function isAlphaRenderSurface(surface: IRenderSurface): boolean {
  */
 export function getRenderSurface(surfaces: ReadonlyArray<XraySurfaceDescriptor>, index: number): IRenderSurface {
   return toRenderSurface(surfaces[index] ?? null);
-}
-
-/**
- * Whether the surface is a wall mark, which its script says and which decides how its texture is sampled.
- *
- * @param descriptor - What the backend resolved for the surface.
- * @returns Whether the engine would bind it through the wall mark sampler.
- */
-function isWallmarkRenderSurface(descriptor: Nullable<XraySurfaceDescriptor>): boolean {
-  const declaration: Maybe<XraySurfaceDeclaration> = descriptor?.declaration;
-
-  return declaration?.kind === EXraySurfaceDeclaration.SCRIPTED && declaration.isWallmark;
-}
-
-/**
- * Whether the scene's light reaches a surface, which only a scripted pass answers no to.
- *
- * @param descriptor - What the backend resolved for the surface.
- * @returns Whether to shade it with the scene's lights.
- */
-function isLitRenderSurface(descriptor: Nullable<XraySurfaceDescriptor>): boolean {
-  const declaration: Maybe<XraySurfaceDeclaration> = descriptor?.declaration;
-
-  return !(declaration?.kind === EXraySurfaceDeclaration.SCRIPTED && declaration.isBlended);
 }
 
 /**
