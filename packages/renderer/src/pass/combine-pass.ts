@@ -1,31 +1,13 @@
-import {
-  Discard,
-  dot,
-  float,
-  Fn,
-  getViewPosition,
-  If,
-  length,
-  mix,
-  normalize,
-  reflect,
-  saturate,
-  screenUV,
-  select,
-  texture,
-  texture3D,
-  vec3,
-  vec4,
-} from "three/tsl";
+import { Discard, Fn, getViewPosition, If, screenUV, select, texture, vec4 } from "three/tsl";
 import { Color, Data3DTexture, LinearSRGBColorSpace, NodeMaterial, QuadMesh } from "three/webgpu";
 
 import { BaseLightingUniforms } from "#/graph/base-lighting-uniforms";
+import { toBaseColor, toFinishedColor } from "#/graph/base-lighting.tsl";
 import { CameraUniforms } from "#/graph/camera-uniforms";
 import { decodeOctahedral } from "#/graph/octahedral-normal.tsl";
 import { IRendererFrame } from "#/graph/renderer-frame";
 import { RendererTargets } from "#/graph/renderer-targets";
 import { SettingsUniforms } from "#/graph/settings-uniforms";
-import { toneMapReinhardNode } from "#/graph/tonemap.tsl";
 import { createQuadMaterial } from "#/pass/quad-material";
 import { IRendererPass } from "#/pass/renderer-pass";
 
@@ -54,27 +36,18 @@ export class CombinePass implements IRendererPass {
         Discard();
       });
 
-      const position = getViewPosition(screenUV, depth, camera.projectionInverse);
-      const normal = decodeOctahedral(texture(targets.normal, screenUV).xy);
       const albedo = texture(targets.albedo, screenUV);
       const surface = texture(targets.surface, screenUV);
+
+      const point = {
+        normal: decodeOctahedral(texture(targets.normal, screenUV).xy),
+        position: getViewPosition(screenUV, depth, camera.projectionInverse),
+        slice: surface.z,
+      };
+
       const light = texture(targets.light.texture, screenUV);
-
-      // `hmodel`: the hemisphere looked up by occlusion and by how far the reflection turns from the view.
-      const normalWorld = normalize(camera.viewToWorld.mul(vec4(normal, 0)).xyz);
-      const toPointWorld = normalize(camera.viewToWorld.mul(vec4(position, 0)).xyz);
-      const hemisphereSpecular = float(0.5).add(dot(reflect(toPointWorld, normalWorld), toPointWorld).mul(0.5));
-      const hemisphere = texture3D(lut, vec3(surface.x, hemisphereSpecular, surface.z));
-      // The irradiance cube stands in as one colour until weather supplies the cube itself.
-      const environment = lighting.environment.mul(lighting.skyIrradiance);
-      const environmentSquared = environment.mul(environment);
-      const hemisphereDiffuse = environmentSquared.mul(hemisphere.x).add(lighting.ambient);
-      const hemisphereGloss = environmentSquared.mul(hemisphere.y).mul(albedo.w);
-
-      const color = albedo.xyz.mul(light.xyz.add(hemisphereDiffuse)).add(albedo.w.mul(light.w)).add(hemisphereGloss);
-      const fog = saturate(length(position).mul(lighting.fogScale).add(lighting.fogOffset));
-
-      const lit = toneMapReinhardNode(mix(color, lighting.fogColor, fog), lighting.tonemapScale);
+      const color = toBaseColor(albedo.xyz, albedo.w, light, surface.x, point, lighting, camera, lut);
+      const lit = toFinishedColor(color, point.position, lighting);
 
       // Unlit, the frame is the raw albedo: the file as it reads, with nothing the lighting model adds.
       return vec4(select(settings.lit.greaterThan(0.5), lit, albedo.xyz), 1);

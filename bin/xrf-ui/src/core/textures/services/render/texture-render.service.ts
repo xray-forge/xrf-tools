@@ -9,6 +9,7 @@ import {
   IDdsRefusal,
   IRendererReport,
   IRenderFrameCost,
+  NEUTRAL_RENDERER_LIGHTING,
   RendererClient,
 } from "@xrf/renderer";
 import { createRendererWorker } from "@xrf/renderer/worker";
@@ -250,7 +251,8 @@ export class TextureRenderService extends RenderSurfaceService {
 
   @BoundAction()
   private applyLighting(lighting: IRenderLighting): void {
-    this.client?.setLighting(toRendererLighting(lighting));
+    // Neutral rather than the game's warm noon, so the texture shows its own colours.
+    this.client?.setLighting(toRendererLighting(lighting, NEUTRAL_RENDERER_LIGHTING));
   }
 
   @BoundAction()

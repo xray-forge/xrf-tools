@@ -5,10 +5,9 @@ import { IRendererGeometry } from "#/contract/scene/renderer-geometry";
 import { IRendererObject } from "#/contract/scene/renderer-object";
 import { IRendererSurface } from "#/contract/scene/renderer-surface";
 import { TRendererTextureSource } from "#/contract/scene/renderer-texture-source";
-import { SettingsUniforms } from "#/graph/settings-uniforms";
 import { createRendererBufferGeometry } from "#/scene/renderer-buffer-geometry";
 import { RendererTextures } from "#/scene/renderer-textures";
-import { createSurfaceMaterial, ISurfaceMaterial } from "#/scene/surface-material";
+import { createSurfaceMaterial, ISurfaceMaterial, ISurfaceShadingContext } from "#/scene/surface-material";
 import { IDdsRefusal } from "#/texture/dds/dds-refusal";
 
 /** What a slot draws with in the half of an object that does not draw it, or whose surface is missing. */
@@ -44,10 +43,10 @@ export class RendererScene {
   private readonly surfaces: Map<string, ISurfaceMaterial> = new Map();
   private readonly objects: Map<string, ISceneObject> = new Map();
 
-  private readonly settings: SettingsUniforms;
+  private readonly shading: ISurfaceShadingContext;
 
-  public constructor(settings: SettingsUniforms, onTextureRefused: (key: string, refusal: IDdsRefusal) => void) {
-    this.settings = settings;
+  public constructor(shading: ISurfaceShadingContext, onTextureRefused: (key: string, refusal: IDdsRefusal) => void) {
+    this.shading = shading;
     this.textures = new RendererTextures(onTextureRefused);
   }
 
@@ -74,7 +73,7 @@ export class RendererScene {
   public putSurface(key: string, surface: IRendererSurface): void {
     const previous: Maybe<ISurfaceMaterial> = this.surfaces.get(key);
 
-    this.surfaces.set(key, createSurfaceMaterial(surface, this.textures, this.settings));
+    this.surfaces.set(key, createSurfaceMaterial(surface, this.textures, this.shading));
     this.rebuild((object: IRendererObject) => object.surfaces.includes(key));
     previous?.dispose();
   }

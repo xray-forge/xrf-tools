@@ -126,8 +126,9 @@ export class RendererHost {
       this.reply({ cursor, kind: ERendererResponse.CURSOR })
     );
     this.controller = new OrbitCameraController(this.element);
-    this.scene = new RendererScene(this.settingsUniforms, (key, refusal) =>
-      this.reply({ key, kind: ERendererResponse.TEXTURE_REFUSED, refusal })
+    this.scene = new RendererScene(
+      { camera: this.cameraUniforms, lighting: this.lightingUniforms, lut: this.lut, settings: this.settingsUniforms },
+      (key, refusal) => this.reply({ key, kind: ERendererResponse.TEXTURE_REFUSED, refusal })
     );
     this.present = new PresentPass(this.targets, this.cameraUniforms);
     this.bumpPlanes = new BumpPlaneCapture(this.scene.textures);

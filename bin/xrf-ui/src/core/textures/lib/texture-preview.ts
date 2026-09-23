@@ -27,7 +27,7 @@ export const TEXTURE_TILING_STEPS: ReadonlyArray<number> = [1, 2, 4];
  * What the preview shows before anyone touches it.
  */
 export const DEFAULT_TEXTURE_PREVIEW_OPTIONS: ITexturePreviewOptions = {
-  alpha: ETextureSurfaceAlpha.BLENDED,
+  alpha: ETextureSurfaceAlpha.IGNORED,
   isBumped: true,
   isLit: true,
   mode: ETexturePreviewMode.IMAGE,

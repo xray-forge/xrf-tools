@@ -2,10 +2,12 @@ import { Maybe } from "@xrf/types";
 import {
   attribute,
   float,
+  mix,
   modelViewMatrix,
   mrt,
   normalize,
   normalView,
+  positionView,
   select,
   uv,
   varying,
@@ -14,6 +16,7 @@ import {
 } from "three/tsl";
 import {
   CustomBlending,
+  Data3DTexture,
   DstColorFactor,
   Material,
   MeshBasicNodeMaterial,
@@ -28,7 +31,10 @@ import {
 } from "three/webgpu";
 
 import { ERendererDraw, IRendererSurface } from "#/contract/scene/renderer-surface";
+import { BaseLightingUniforms } from "#/graph/base-lighting-uniforms";
+import { IBaseShadingPoint, toBaseColor, toFinishedColor, toSunLight } from "#/graph/base-lighting.tsl";
 import { decodeBumpGloss, decodeBumpNormal } from "#/graph/bump.tsl";
+import { CameraUniforms } from "#/graph/camera-uniforms";
 import { encodeOctahedral } from "#/graph/octahedral-normal.tsl";
 import { EGBufferTarget } from "#/graph/renderer-targets";
 import { SettingsUniforms } from "#/graph/settings-uniforms";
@@ -56,6 +62,16 @@ const MATERIAL_SLICES: number = 4;
 type TBind = (key: Maybe<string>, placeholder?: Texture, coordinates?: Node<"vec2">) => TextureNode;
 
 /**
+ * What a surface's shading reads besides its own textures: the settings, and the lighting a forward surface applies.
+ */
+export interface ISurfaceShadingContext {
+  settings: SettingsUniforms;
+  lighting: BaseLightingUniforms;
+  camera: CameraUniforms;
+  lut: Data3DTexture;
+}
+
+/**
  * A surface as the frame draws it.
  */
 export interface ISurfaceMaterial {
@@ -65,16 +81,27 @@ export interface ISurfaceMaterial {
   dispose(): void;
 }
 
+/** A surface at one texel before any light: what the G-buffer stores, and what the forward path lights. */
+interface ISurfaceTexel {
+  base: TextureNode;
+  albedo: Node<"vec3">;
+  normal: Node<"vec3">;
+  gloss: Node<"float">;
+  /** The lightmap: hemisphere occlusion in alpha, sun occlusion in green. */
+  hemi: Node<"vec4">;
+  slice: Node<"float">;
+}
+
 /**
  * @param surface - What the consumer put.
  * @param textures - Where its textures are bound from.
- * @param settings - The settings its shading switches on.
+ * @param context - The settings and lighting its shading reads.
  * @returns The material, deferred or forward as its draw decides.
  */
 export function createSurfaceMaterial(
   surface: IRendererSurface,
   textures: RendererTextures,
-  settings: SettingsUniforms
+  context: ISurfaceShadingContext
 ): ISurfaceMaterial {
   const bound: Array<[Maybe<string>, TextureNode]> = [];
   const baseCoordinates: Node<"vec2"> = uv().mul(surface.tiling ?? 1);
@@ -91,10 +118,11 @@ export function createSurfaceMaterial(
     return sampler;
   }
 
+  const texel: ISurfaceTexel = toSurfaceTexel(surface, bind, baseCoordinates, context.settings);
   const isDeferred: boolean = surface.draw === ERendererDraw.OPAQUE || surface.draw === ERendererDraw.CUT_OUT;
   const material: MeshBasicNodeMaterial = isDeferred
-    ? createDeferredMaterial(surface, bind, baseCoordinates, settings)
-    : createForwardMaterial(surface, bind);
+    ? createDeferredMaterial(surface, texel)
+    : createForwardMaterial(surface, texel, context);
 
   return {
     dispose: () => {
@@ -106,14 +134,13 @@ export function createSurfaceMaterial(
   };
 }
 
-/** `deffer_base` and `deffer_base_bump`: raw albedo and gloss, the view normal, and the baked occlusions. */
-function createDeferredMaterial(
+/** `sload`: the surface at a texel, with the bump pair's normal and gloss where it binds one. */
+function toSurfaceTexel(
   surface: IRendererSurface,
   bind: TBind,
   baseCoordinates: Node<"vec2">,
   settings: SettingsUniforms
-): MeshBasicNodeMaterial {
-  const material: MeshBasicNodeMaterial = new MeshBasicNodeMaterial();
+): ISurfaceTexel {
   const base: TextureNode = bind(surface.textures.base);
   let albedo: Node<"vec3"> = toTinted(base.xyz, surface);
   let normal: Node<"vec3"> = normalView;
@@ -130,15 +157,10 @@ function createDeferredMaterial(
     albedo = albedo.mul(detail.xyz).mul(2);
   }
 
-  // `get_hemi` and `get_sun`: the lightmap's alpha and green; a surface without one is lit in full.
-  const hemi: Node<"vec4"> = surface.textures.hemi ? bind(surface.textures.hemi, getWhiteTexture(), uv(1)) : vec4(1);
-  const slice: number = ((surface.material ?? DEFAULT_MATERIAL) + 0.5) / MATERIAL_SLICES;
-
   if (surface.textures.bump && surface.textures.bumpCompanion) {
     const bump: TextureNode = bind(surface.textures.bump, getFlatBumpTexture());
     const companion: TextureNode = bind(surface.textures.bumpCompanion, getFlatBumpCompanionTexture());
     const tangentSpace: Node<"vec3"> = decodeBumpNormal(bump, companion);
-    const isBumped: Node<"bool"> = settings.bumped.greaterThan(0.5);
     // `deffer_model_bump`: the authored basis through the model view, the decoded normal rotated along it.
     const tangent: Node<"vec3"> = varying(modelViewMatrix.mul(vec4(attribute<"vec3">("tangent", "vec3"), 0)).xyz);
     const binormal: Node<"vec3"> = varying(modelViewMatrix.mul(vec4(attribute<"vec3">("binormal", "vec3"), 0)).xyz);
@@ -149,33 +171,66 @@ function createDeferredMaterial(
         .add(normalView.mul(tangentSpace.z))
     );
 
-    normal = select(isBumped, bumped, normalView);
-    gloss = select(isBumped, decodeBumpGloss(bump), float(DEFAULT_GLOSS));
+    // Mixed by the switch rather than selected: a `select` between these two came out zero in a forward material.
+    normal = mix(normalView, bumped, settings.bumped);
+    gloss = mix(float(DEFAULT_GLOSS), decodeBumpGloss(bump), settings.bumped);
   }
 
+  return {
+    albedo,
+    base,
+    gloss,
+    // `get_hemi` and `get_sun`: the lightmap's alpha and green; a surface without one is lit in full.
+    hemi: surface.textures.hemi ? bind(surface.textures.hemi, getWhiteTexture(), uv(1)) : vec4(1),
+    normal,
+    slice: float(((surface.material ?? DEFAULT_MATERIAL) + 0.5) / MATERIAL_SLICES),
+  };
+}
+
+/** `deffer_base` and `deffer_base_bump`: raw albedo and gloss, the view normal, and the baked occlusions. */
+function createDeferredMaterial(surface: IRendererSurface, texel: ISurfaceTexel): MeshBasicNodeMaterial {
+  const material: MeshBasicNodeMaterial = new MeshBasicNodeMaterial();
+
   material.mrtNode = mrt({
-    [EGBufferTarget.ALBEDO]: vec4(albedo, gloss),
-    [EGBufferTarget.NORMAL]: vec4(encodeOctahedral(normal), 0, 1),
-    [EGBufferTarget.SURFACE]: vec4(hemi.w, hemi.y, slice, 0),
+    [EGBufferTarget.ALBEDO]: vec4(texel.albedo, texel.gloss),
+    [EGBufferTarget.NORMAL]: vec4(encodeOctahedral(texel.normal), 0, 1),
+    [EGBufferTarget.SURFACE]: vec4(texel.hemi.w, texel.hemi.y, texel.slice, 0),
   });
 
   if (surface.draw === ERendererDraw.CUT_OUT) {
     // Only a cut-out surface reads the base's alpha, so a DXT1 file's punch-through never holes an opaque one.
-    material.colorNode = base;
+    material.colorNode = texel.base;
     material.alphaTestNode = float(surface.alphaReference ?? DEFAULT_ALPHA_REFERENCE);
   }
 
   return material;
 }
 
-/** A surface composited over the tonemapped frame, blended the way its draw says. */
-function createForwardMaterial(surface: IRendererSurface, bind: TBind): MeshBasicNodeMaterial {
+/**
+ * A surface composited over the tonemapped frame, blended the way its draw says.
+ * Blended surfaces are lit per pixel by the deferred passes' model, bump included; added and multiplied stay unlit.
+ */
+function createForwardMaterial(
+  surface: IRendererSurface,
+  texel: ISurfaceTexel,
+  { settings, lighting, camera, lut }: ISurfaceShadingContext
+): MeshBasicNodeMaterial {
   const material: MeshBasicNodeMaterial = new MeshBasicNodeMaterial();
+  let color: Node<"vec3"> = texel.albedo;
 
-  const base: TextureNode = bind(surface.textures.base);
+  if (surface.draw === ERendererDraw.BLENDED) {
+    const point: IBaseShadingPoint = { normal: texel.normal, position: positionView, slice: texel.slice };
+    const light: Node<"vec4"> = toSunLight(point, lighting, lut);
+    const lit: Node<"vec3"> = toFinishedColor(
+      toBaseColor(texel.albedo, texel.gloss, light, texel.hemi.w, point, lighting, camera, lut),
+      positionView,
+      lighting
+    );
 
-  // todo: lit forward surfaces; Base draws them unlit, as their texture.
-  material.colorNode = vec4(toTinted(base.xyz, surface), base.w);
+    color = select(settings.lit.greaterThan(0.5), lit, texel.albedo);
+  }
+
+  material.colorNode = vec4(color, texel.base.w);
   material.depthWrite = false;
   material.transparent = true;
   material.blending = CustomBlending;

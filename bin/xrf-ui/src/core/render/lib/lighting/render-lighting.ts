@@ -1,5 +1,5 @@
 import { toRadians } from "@xrf/math";
-import { DEFAULT_RENDERER_LIGHTING, IRendererLighting, TRendererColor } from "@xrf/renderer";
+import { IRendererLighting, TRendererColor } from "@xrf/renderer";
 
 /**
  * How a preview is lit, which is the viewer's own answer rather than anything an X-Ray file carries.
@@ -41,14 +41,14 @@ export const RENDER_LIGHTING_LIMITS = {
 } as const;
 
 /**
- * The renderer's lighting value for a preview's light: the engine's noon, pointed and scaled by the preview's controls.
+ * The renderer's lighting value for a preview's light: a base lighting, pointed and scaled by the preview's controls.
  *
  * @param lighting - The preview's light, as its controls set it.
+ * @param noon - What it points and scales: the engine's noon for a level, its neutral twin for an asset viewer.
  * @returns What the renderer lights with.
  */
-export function toRendererLighting(lighting: IRenderLighting): IRendererLighting {
+export function toRendererLighting(lighting: IRenderLighting, noon: IRendererLighting): IRendererLighting {
   const [x, y, z] = toRenderSunPosition(lighting, 1);
-  const noon: IRendererLighting = DEFAULT_RENDERER_LIGHTING;
 
   return {
     ...noon,
