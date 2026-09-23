@@ -1,8 +1,8 @@
 import { TimestampQuery } from "three/webgpu";
 
 import { IRendererPassCost } from "#/contract/renderer-report";
-import { getRendererBackend, IRendererBackend } from "#/device/renderer-backend";
 import { RendererDevice } from "#/device/renderer-device";
+import { getRendererBackend, IRendererBackend } from "#/internals/renderer-backend";
 import { RendererPassTimer } from "#/timing/renderer-pass-timer";
 import { toFramePassTimes } from "#/timing/renderer-pass-times";
 

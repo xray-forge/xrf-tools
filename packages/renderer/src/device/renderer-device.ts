@@ -1,8 +1,8 @@
 import { CanvasTarget, LinearSRGBColorSpace, NoToneMapping, WebGPURenderer } from "three/webgpu";
 
 import { IRendererDevice } from "#/contract/renderer-device";
-import { getRendererBackend, IRendererBackend } from "#/device/renderer-backend";
 import { RendererDeviceFailure } from "#/device/renderer-device-failure";
+import { getRendererBackend, IRendererBackend } from "#/internals/renderer-backend";
 import { RendererPassInspector } from "#/timing/renderer-pass-inspector";
 
 /**

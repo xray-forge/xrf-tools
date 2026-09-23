@@ -10,8 +10,8 @@ const SOURCE: string = __dirname;
 
 /**
  * What each worker-side area may not import: every area sits on the ones below it, and none reaches up.
- * From the bottom: `visibility` and `uniforms`, `shader`, `material`, `scene`, `pass`, then `graph` and `capture`, and
- * `host` over all.
+ * From the bottom: `internals`, which alone reads three past its types, then `visibility` and `uniforms`, `shader`,
+ * `material`, `scene`, `pass`, then `graph` and `capture`, and `host` over all.
  */
 const FORBIDDEN: Record<string, ReadonlyArray<string>> = {
   capture: ["client", "graph", "host"],
@@ -20,6 +20,7 @@ const FORBIDDEN: Record<string, ReadonlyArray<string>> = {
     "device",
     "graph",
     "host",
+    "internals",
     "material",
     "pass",
     "scene",
@@ -30,6 +31,10 @@ const FORBIDDEN: Record<string, ReadonlyArray<string>> = {
   ],
   device: ["client", "host"],
   graph: ["capture", "client", "host"],
+  // Beneath every area but the contract, so any may read three through it and it reads nothing of theirs.
+  internals: readdirSync(SOURCE, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory() && entry.name !== "contract" && entry.name !== "internals")
+    .map((entry) => entry.name),
   material: ["capture", "client", "device", "graph", "host", "pass", "scene"],
   pass: ["capture", "client", "device", "graph", "host"],
   scene: ["capture", "client", "device", "graph", "host", "pass"],

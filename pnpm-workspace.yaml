@@ -11,13 +11,15 @@ catalog:
   "@swc/core": ^1.16.2
   "@swc/jest": ^0.2.39
   "@types/node": ^24.13.4
-  "@types/three": ^0.185.4
+  # Exact, as three is: `@xrf/renderer` reads three past its types (packages/renderer/src/internals).
+  "@types/three": 0.185.4
   "@typescript/native": npm:typescript@^7.0.2
   eslint: ^10.10.0
   jest: ^30.5.1
   jest-environment-jsdom: ^30.5.1
   prettier: ^3.9.6
-  three: ^0.186.0
+  # Exact until a feature needs an upgrade, which starts from packages/renderer/src/internals/three-internals.test.ts.
+  three: 0.186.0
   typescript: npm:@typescript/typescript6@^6.0.2
 
 allowBuilds:

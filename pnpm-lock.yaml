@@ -123,7 +123,7 @@ catalogs:
       specifier: ^24.13.4
       version: 24.13.4
     '@types/three':
-      specifier: ^0.185.4
+      specifier: 0.185.4
       version: 0.185.4
     '@typescript/native':
       specifier: npm:typescript@^7.0.2
@@ -141,7 +141,7 @@ catalogs:
       specifier: ^3.9.6
       version: 3.9.6
     three:
-      specifier: ^0.186.0
+      specifier: 0.186.0
       version: 0.186.0
     typescript:
       specifier: npm:@typescript/typescript6@^6.0.2
