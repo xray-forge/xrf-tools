@@ -150,6 +150,28 @@ describe("VisualRenderService", () => {
     service.dispose();
   });
 
+  // Clicking through a tree keeps the view the person turned to: only the first model a view shows is framed.
+  it("frames the first model a view shows, and keeps the camera for the ones after", () => {
+    const source: IVisualRenderSource = mockSource({ model: mockVisualModelViews() });
+    const { service } = mockAttached(source);
+
+    runInAction(() => (source.model = mockVisualModelViews({ fit: { center: [0, 1, 0], radius: 4 } })));
+
+    expect(stub.take(ERendererRequest.CAMERA)).toHaveLength(1);
+
+    // A view mounted again frames what it opens with.
+    service.detach();
+    service.attach(document.createElement("div"));
+
+    expect(stub.take(ERendererRequest.CAMERA)).toHaveLength(2);
+
+    service.resetCamera();
+
+    expect(stub.take(ERendererRequest.CAMERA)).toHaveLength(3);
+
+    service.dispose();
+  });
+
   it("keeps the renderer when the view goes, and leaves no canvas behind", () => {
     const { service } = mockAttached(mockSource());
     const element: HTMLElement = document.createElement("div");

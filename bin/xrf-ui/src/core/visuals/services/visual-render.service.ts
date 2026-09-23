@@ -76,6 +76,8 @@ export class VisualRenderService extends RenderSurfaceService {
   private readonly textures: Set<string> = new Set();
   /** The baked motion put, by the buffer it came from, so only a different motion is sent again. */
   private motion: Nullable<Float32Array> = null;
+  /** Whether the mounted view has fitted its camera to a model yet. */
+  private hasFramed: boolean = false;
   /** What each frame helper was last put as, so a toggle that leaves one alone does not send it again. */
   private readonly framed: Map<string, Nullable<string>> = new Map();
 
@@ -121,7 +123,10 @@ export class VisualRenderService extends RenderSurfaceService {
     const target: DomRenderTarget = new DomRenderTarget(container, this.settingsService.renderResolution);
 
     this.target = target;
+    // A view mounted again frames what it opens with, as a view first shown does.
+    this.hasFramed = false;
     this.ensureClient().attach(target);
+    this.frameOnce();
   }
 
   protected unmount(): void {
@@ -210,8 +215,20 @@ export class VisualRenderService extends RenderSurfaceService {
     this.applyPose([this.source.pose ?? BIND_POSE, this.source.hiddenBoneIndices ?? NO_HIDDEN_BONES]);
     this.applyFrame();
 
-    // Every model is framed on arrival: one model's distance is no measure of the next.
-    client.setCamera(toVisualCamera(model.fit, this.config));
+    this.frameOnce();
+  }
+
+  /**
+   * Fits the camera to the first model a view shows, and only that one: clicking through a tree keeps the view the
+   * person has, rather than jumping with every model. The camera control's reset fits the open model again.
+   */
+  private frameOnce(): void {
+    if (this.hasFramed || !this.model || !this.client) {
+      return;
+    }
+
+    this.hasFramed = true;
+    this.client.setCamera(toVisualCamera(this.model.fit, this.config));
   }
 
   @BoundAction()
