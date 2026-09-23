@@ -23,8 +23,10 @@ export interface IRendererGeometry {
   uv?: Float32Array;
   /** Two floats a vertex: the coordinates a baked lightmap is sampled at. */
   uv1?: Float32Array;
-  /** Four floats a vertex: the authored tangent, handedness in `w`. */
+  /** Three floats a vertex: the authored tangent, which a bump pair's x rotates along. */
   tangent?: Float32Array;
+  /** Three floats a vertex: the authored binormal, kept rather than rebuilt so a skewed basis stays as authored. */
+  binormal?: Float32Array;
   index?: Uint16Array | Uint32Array;
   groups: ReadonlyArray<IRendererGeometryGroup>;
 }
@@ -36,7 +38,15 @@ export interface IRendererGeometry {
  * @returns Its buffers.
  */
 export function listRendererGeometryTransfers(geometry: IRendererGeometry): Array<Transferable> {
-  return [geometry.position, geometry.normal, geometry.uv, geometry.uv1, geometry.tangent, geometry.index]
+  return [
+    geometry.position,
+    geometry.normal,
+    geometry.uv,
+    geometry.uv1,
+    geometry.tangent,
+    geometry.binormal,
+    geometry.index,
+  ]
     .filter((array): array is NonNullable<typeof array> => array !== undefined)
     .map((array) => array.buffer);
 }

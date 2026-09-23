@@ -2,7 +2,7 @@ import { describe, expect, it, jest } from "@jest/globals";
 import { fireEvent, RenderResult } from "@testing-library/react";
 
 import { TextureWorkspaceToolbar } from "@/core/textures/components/workspace/TextureWorkspaceToolbar";
-import { DEFAULT_TEXTURE_LIGHTING } from "@/core/textures/lib/scene/texture-lighting";
+import { DEFAULT_TEXTURE_LIGHTING } from "@/core/textures/lib/texture-lighting";
 import {
   DEFAULT_TEXTURE_PREVIEW_OPTIONS,
   ETexturePreviewMode,

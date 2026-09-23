@@ -5,6 +5,7 @@ import { IRendererGeometry } from "#/contract/scene/renderer-geometry";
 import { IRendererObject } from "#/contract/scene/renderer-object";
 import { IRendererSurface } from "#/contract/scene/renderer-surface";
 import { TRendererTextureSource } from "#/contract/scene/renderer-texture-source";
+import { SettingsUniforms } from "#/graph/settings-uniforms";
 import { createRendererBufferGeometry } from "#/scene/renderer-buffer-geometry";
 import { RendererTextures } from "#/scene/renderer-textures";
 import { createSurfaceMaterial, ISurfaceMaterial } from "#/scene/surface-material";
@@ -43,7 +44,10 @@ export class RendererScene {
   private readonly surfaces: Map<string, ISurfaceMaterial> = new Map();
   private readonly objects: Map<string, ISceneObject> = new Map();
 
-  public constructor(onTextureRefused: (key: string, refusal: IDdsRefusal) => void) {
+  private readonly settings: SettingsUniforms;
+
+  public constructor(settings: SettingsUniforms, onTextureRefused: (key: string, refusal: IDdsRefusal) => void) {
+    this.settings = settings;
     this.textures = new RendererTextures(onTextureRefused);
   }
 
@@ -70,7 +74,7 @@ export class RendererScene {
   public putSurface(key: string, surface: IRendererSurface): void {
     const previous: Maybe<ISurfaceMaterial> = this.surfaces.get(key);
 
-    this.surfaces.set(key, createSurfaceMaterial(surface, this.textures));
+    this.surfaces.set(key, createSurfaceMaterial(surface, this.textures, this.settings));
     this.rebuild((object: IRendererObject) => object.surfaces.includes(key));
     previous?.dispose();
   }

@@ -11,6 +11,7 @@ import {
   reflect,
   saturate,
   screenUV,
+  select,
   texture,
   texture3D,
   vec3,
@@ -23,6 +24,7 @@ import { CameraUniforms } from "#/graph/camera-uniforms";
 import { decodeOctahedral } from "#/graph/octahedral-normal.tsl";
 import { IRendererFrame } from "#/graph/renderer-frame";
 import { RendererTargets } from "#/graph/renderer-targets";
+import { SettingsUniforms } from "#/graph/settings-uniforms";
 import { toneMapReinhardNode } from "#/graph/tonemap.tsl";
 import { createQuadMaterial } from "#/pass/quad-material";
 import { IRendererPass } from "#/pass/renderer-pass";
@@ -41,6 +43,7 @@ export class CombinePass implements IRendererPass {
     targets: RendererTargets,
     camera: CameraUniforms,
     lighting: BaseLightingUniforms,
+    settings: SettingsUniforms,
     lut: Data3DTexture
   ) {
     const fragment = Fn(() => {
@@ -71,7 +74,10 @@ export class CombinePass implements IRendererPass {
       const color = albedo.xyz.mul(light.xyz.add(hemisphereDiffuse)).add(albedo.w.mul(light.w)).add(hemisphereGloss);
       const fog = saturate(length(position).mul(lighting.fogScale).add(lighting.fogOffset));
 
-      return vec4(toneMapReinhardNode(mix(color, lighting.fogColor, fog), lighting.tonemapScale), 1);
+      const lit = toneMapReinhardNode(mix(color, lighting.fogColor, fog), lighting.tonemapScale);
+
+      // Unlit, the frame is the raw albedo: the file as it reads, with nothing the lighting model adds.
+      return vec4(select(settings.lit.greaterThan(0.5), lit, albedo.xyz), 1);
     })();
 
     this.material = createQuadMaterial(fragment);

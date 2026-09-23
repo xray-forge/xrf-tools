@@ -1,4 +1,5 @@
 import { useInjection } from "@wirestate/react";
+import { ERendererBumpPlane } from "@xrf/renderer";
 import { Nullable } from "@xrf/types";
 import { PointerEvent, ReactElement, useCallback, useEffect, useRef, useState } from "react";
 
@@ -9,11 +10,10 @@ import {
   EditorPanelProperty,
   EditorPanelSection,
 } from "@/core/shell/editor/EditorPanel";
-import { TextureChannelRenderer } from "@/core/textures/lib/scene/TextureChannelRenderer";
 import { ITextureBumpTexels, ITextureSurfaceFiles } from "@/core/textures/lib/texture-surface";
+import { TextureRenderService } from "@/core/textures/services/render";
 import { TextureSelectionService } from "@/core/textures/services/selection";
 import { TextureSurfaceService } from "@/core/textures/services/surface";
-import { EVisualBumpView } from "@/core/visuals/lib/visual-bump-channels";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { ABSENT_VALUE } from "@/lib/format/number";
 
@@ -40,9 +40,10 @@ export function TextureChannelsPanel({
 }: BaseComponentProps): ReactElement {
   const selectionService: TextureSelectionService = useInjection(TextureSelectionService);
   const surfaceService: TextureSurfaceService = useInjection(TextureSurfaceService);
+  const renderService: TextureRenderService = useInjection(TextureRenderService);
 
-  const rendererRef = useRef<Nullable<TextureChannelRenderer>>(null);
-  const tilesRef = useRef<Map<EVisualBumpView, HTMLCanvasElement>>(new Map());
+  const tilesRef = useRef<Map<ERendererBumpPlane, HTMLCanvasElement>>(new Map());
+  const requestsRef = useRef<Map<HTMLCanvasElement, number>>(new Map());
 
   const [position, setPosition] = useState<Nullable<ITextureTexelPosition>>(null);
 
@@ -55,31 +56,38 @@ export function TextureChannelsPanel({
   // Laid out from the pair's own proportions, so a plane is never shown stretched into a square.
   const aspect: string = toTextureChannelAspect(files);
 
+  // Drawn by the texture's renderer at each tile's own size, on its thread, and copied in when it answers. Nothing
+  // animates: a tile is drawn when the pair changes and when the tile resizes.
   const draw = useCallback(() => {
-    const renderer: Nullable<TextureChannelRenderer> = rendererRef.current;
+    const ratio: number = window.devicePixelRatio;
 
-    if (!renderer) {
-      return;
-    }
+    for (const [plane, tile] of tilesRef.current) {
+      const width: number = Math.round(tile.clientWidth * ratio);
+      const height: number = Math.round(tile.clientHeight * ratio);
+      const request: number = (requestsRef.current.get(tile) ?? 0) + 1;
 
-    for (const [view, tile] of tilesRef.current) {
-      renderer.draw(view, tile);
+      if (!width || !height) {
+        continue;
+      }
+
+      requestsRef.current.set(tile, request);
+
+      void renderService.captureBumpPlane(plane, width, height).then((image: Nullable<ImageBitmap>) => {
+        if (requestsRef.current.get(tile) !== request || !image) {
+          image?.close();
+
+          return;
+        }
+
+        tile.width = image.width;
+        tile.height = image.height;
+        tile.getContext("2d")?.drawImage(image, 0, 0);
+        image.close();
+      });
     }
-  }, []);
+  }, [renderService]);
 
   useEffect(() => {
-    const renderer: TextureChannelRenderer = new TextureChannelRenderer();
-
-    rendererRef.current = renderer;
-
-    return () => {
-      renderer.dispose();
-      rendererRef.current = null;
-    };
-  }, []);
-
-  useEffect(() => {
-    rendererRef.current?.setTextures(files?.bump ?? null);
     draw();
   }, [draw, files]);
 
@@ -96,11 +104,17 @@ export function TextureChannelsPanel({
   }, [draw, gap]);
 
   const registerTile = useCallback(
-    (view: EVisualBumpView) => (tile: Nullable<HTMLCanvasElement>) => {
+    (plane: ERendererBumpPlane) => (tile: Nullable<HTMLCanvasElement>) => {
       if (tile) {
-        tilesRef.current.set(view, tile);
+        tilesRef.current.set(plane, tile);
       } else {
-        tilesRef.current.delete(view);
+        const previous: Nullable<HTMLCanvasElement> = tilesRef.current.get(plane) ?? null;
+
+        tilesRef.current.delete(plane);
+
+        if (previous) {
+          requestsRef.current.delete(previous);
+        }
       }
     },
     []
@@ -155,7 +169,7 @@ export function TextureChannelsPanel({
           </EditorPanelSection>
 
           {TEXTURE_CHANNEL_TILES.map((tile: ITextureChannelTile) => (
-            <EditorPanelSection key={tile.view} title={tile.label} caption={tile.caption}>
+            <EditorPanelSection key={tile.plane} title={tile.label} caption={tile.caption}>
               <div
                 className={"w-full checkerboard"}
                 style={{ aspectRatio: aspect }}
@@ -163,8 +177,8 @@ export function TextureChannelsPanel({
                 onPointerLeave={() => setPosition(null)}
               >
                 <canvas
-                  ref={registerTile(tile.view)}
-                  data-testid={`texture-channel-${tile.view}`}
+                  ref={registerTile(tile.plane)}
+                  data-testid={`texture-channel-${tile.plane}`}
                   className={"block size-full"}
                 />
               </div>

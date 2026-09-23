@@ -1,9 +1,9 @@
 import { describe, expect, it } from "@jest/globals";
+import { ERendererBumpPlane } from "@xrf/renderer";
 
 import { TextureDescription } from "@/core/ipc/types/xrf-app";
 import { XrayMaterialDescriptor } from "@/core/ipc/types/xrf-material";
 import { EMPTY_TEXTURE_SURFACE, ITextureSurfaceFiles } from "@/core/textures/lib/texture-surface";
-import { EVisualBumpView } from "@/core/visuals/lib/visual-bump-channels";
 import { mockTextureDescription } from "@/fixtures/mocks/texture.mocks";
 import { mockMaterialDescriptor } from "@/fixtures/mocks/visual.mocks";
 
@@ -46,12 +46,12 @@ function mockUploaded(): ITextureSurfaceFiles {
 describe("TEXTURE_CHANNEL_TILES", () => {
   it("shows the two files before the three values read out of them", () => {
     // Reading a reconstruction before its inputs invites believing a decode that was fed the wrong plane.
-    expect(TEXTURE_CHANNEL_TILES.map((it) => it.view)).toEqual([
-      EVisualBumpView.BUMP,
-      EVisualBumpView.COMPANION,
-      EVisualBumpView.NORMAL,
-      EVisualBumpView.GLOSS,
-      EVisualBumpView.HEIGHT,
+    expect(TEXTURE_CHANNEL_TILES.map((it) => it.plane)).toEqual([
+      ERendererBumpPlane.BUMP,
+      ERendererBumpPlane.COMPANION,
+      ERendererBumpPlane.NORMAL,
+      ERendererBumpPlane.GLOSS,
+      ERendererBumpPlane.HEIGHT,
     ]);
   });
 });

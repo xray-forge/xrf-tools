@@ -1,42 +1,49 @@
-import { beforeAll, describe, expect, it, jest } from "@jest/globals";
+import { beforeAll, beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { Container } from "@wirestate/core";
 import { runInAction } from "@wirestate/mobx";
-import { EMPTY_RENDER_FRAME_COST, IRenderFrameCost } from "@xrf/renderer";
+import {
+  EMPTY_RENDER_FRAME_COST,
+  ERendererBumpPlane,
+  ERendererCaptureSource,
+  ERendererDraw,
+  ERendererRequest,
+  ERendererResponse,
+  ERendererTextureEncoding,
+  IRendererReport,
+} from "@xrf/renderer";
+import { createRendererWorkerStub, IRendererWorkerStub } from "@xrf/renderer/fixtures";
 
-import { IRenderLighting } from "@/core/render/lib/lighting/render-lighting";
-import { SettingsService } from "@/core/settings/services/settings";
-import { DEFAULT_TEXTURE_LIGHTING } from "@/core/textures/lib/scene/texture-lighting";
-import { DEFAULT_TEXTURE_PREVIEW_OPTIONS, ETexturePreviewMode } from "@/core/textures/lib/texture-preview";
-import { EMPTY_TEXTURE_SURFACE, ITextureSurfaceFiles } from "@/core/textures/lib/texture-surface";
+import { DEFAULT_TEXTURE_LIGHTING } from "@/core/textures/lib/texture-lighting";
+import {
+  EMPTY_TEXTURE_SURFACE,
+  ETextureSurfaceAlpha,
+  ITextureSurfaceFile,
+  ITextureSurfaceFiles,
+} from "@/core/textures/lib/texture-surface";
 import { TextureSurfaceService } from "@/core/textures/services/surface";
 import { TextureViewService } from "@/core/textures/services/view";
 import { mockContainer } from "@/fixtures/utils/container";
 import { AsyncState } from "@/lib/async-state";
 
-const scene = {
-  dispose: jest.fn(),
-  setReporter: jest.fn(),
-  dolly: jest.fn(),
-  dragLight: jest.fn<(deltaX: number, deltaY: number) => IRenderLighting>(),
-  reset: jest.fn(),
-  setFrameRateLimit: jest.fn(),
-  setLighting: jest.fn(),
-  setOptions: jest.fn(),
-  setTextures: jest.fn(),
-};
-
+let stub: IRendererWorkerStub;
 let TextureRenderService: typeof import("./texture-render.service").TextureRenderService;
 
 beforeAll(async () => {
-  // Stubbed at the GPU boundary; jsdom cannot construct a WebGL renderer, and nothing below it is under test.
-  jest.doMock("@/core/textures/lib/scene/TextureSurfaceScene", () => ({
-    TextureSurfaceScene: jest.fn(() => scene),
-  }));
+  // The worker entry reads `import.meta.url`, which the test transform cannot, and the thread is what is stubbed.
+  jest.doMock("@xrf/renderer/worker", () => ({ createRendererWorker: () => stub.worker }));
+  // jsdom has no offscreen canvas; the client only hands the result to the worker.
+  HTMLCanvasElement.prototype.transferControlToOffscreen = function () {
+    return {} as OffscreenCanvas;
+  };
 
   ({ TextureRenderService } = await import("./texture-render.service"));
 });
 
-function mockAttached(): {
+beforeEach(() => {
+  stub = createRendererWorkerStub();
+});
+
+function mockService(): {
   container: Container;
   service: InstanceType<typeof TextureRenderService>;
   viewService: TextureViewService;
@@ -50,127 +57,162 @@ function mockAttached(): {
   };
 }
 
+function mockFile(): ITextureSurfaceFile {
+  return { bytes: new ArrayBuffer(16), height: 4, isDecoded: false, width: 4 };
+}
+
+function setFiles(container: Container, files: ITextureSurfaceFiles): void {
+  runInAction(() => {
+    container.get(TextureSurfaceService).files = AsyncState.ready(files);
+  });
+}
+
 describe("TextureRenderService", () => {
-  // A scene attached after a texture was chosen would otherwise show an empty body until something happened to
-  // change, which for a texture nobody is touching is never.
-  it("tells a new scene what is already open", () => {
-    const { service, viewService } = mockAttached();
+  it("starts nothing until a view attaches or a panel asks", () => {
+    mockService();
 
-    viewService.setOptions({ ...DEFAULT_TEXTURE_PREVIEW_OPTIONS, mode: ETexturePreviewMode.SURFACE });
-    service.attach(document.createElement("div"));
-
-    expect(scene.setOptions).toHaveBeenCalledWith(viewService.options);
-    expect(scene.setLighting).toHaveBeenCalledWith(DEFAULT_TEXTURE_LIGHTING);
-    expect(scene.setTextures).toHaveBeenCalledTimes(1);
-    expect(scene.setFrameRateLimit).toHaveBeenCalledTimes(1);
-
-    service.detach();
+    expect(stub.requests).toHaveLength(0);
   });
 
-  it("carries a change to the open texture into the scene", () => {
-    const { service, container } = mockAttached();
-    const uploaded: ITextureSurfaceFiles = { ...EMPTY_TEXTURE_SURFACE, aspect: 2 };
+  // A renderer started after a texture was chosen would otherwise show an empty body until something changed.
+  it("tells a new renderer what is already open, then shows it on the attached canvas", () => {
+    const { service } = mockService();
 
     service.attach(document.createElement("div"));
-    scene.setTextures.mockClear();
 
-    runInAction(() => {
-      container.get(TextureSurfaceService).files = AsyncState.ready(uploaded);
+    expect(stub.requests[0].kind).toBe(ERendererRequest.START);
+    expect(stub.take(ERendererRequest.PUT_GEOMETRY)).toHaveLength(1);
+    expect(stub.take(ERendererRequest.PUT_SURFACE).map((it) => it.key)).toEqual(["edge", "face"]);
+    expect(stub.take(ERendererRequest.PUT_OBJECT)).toHaveLength(1);
+    expect(stub.take(ERendererRequest.LIGHTING)).toHaveLength(1);
+    expect(stub.requests.at(-1)?.kind).toBe(ERendererRequest.ATTACH_VIEW);
+
+    service.dispose();
+  });
+
+  it("hands the renderer a copy of each file, so the surface keeps its own bytes", () => {
+    const { service, container } = mockService();
+    const base: ITextureSurfaceFile = mockFile();
+
+    service.attach(document.createElement("div"));
+    setFiles(container, { ...EMPTY_TEXTURE_SURFACE, base });
+
+    const [put] = stub.take(ERendererRequest.PUT_TEXTURE);
+
+    expect(put.key).toBe("base");
+    expect(put.source.encoding).toBe(ERendererTextureEncoding.DDS);
+    expect(put.source.bytes).not.toBe(base.bytes);
+    expect(put.source.bytes.byteLength).toBe(16);
+    expect(stub.take(ERendererRequest.PUT_SURFACE).at(-1)?.surface.textures.base).toBe("base");
+
+    service.dispose();
+  });
+
+  it("draws the alpha reading as the engine's draw", () => {
+    const { service, container, viewService } = mockService();
+
+    service.attach(document.createElement("div"));
+    setFiles(container, { ...EMPTY_TEXTURE_SURFACE, base: mockFile() });
+    viewService.setOptions({ ...viewService.options, alpha: ETextureSurfaceAlpha.BLENDED });
+
+    expect(stub.take(ERendererRequest.PUT_SURFACE).at(-1)?.surface.draw).toBe(ERendererDraw.BLENDED);
+
+    service.dispose();
+  });
+
+  it("keeps the renderer and its uploads when the view goes, and lets it go on deactivation", () => {
+    const { service } = mockService();
+
+    service.attach(document.createElement("div"));
+    service.detach();
+
+    expect(stub.requests.at(-1)?.kind).toBe(ERendererRequest.DETACH_VIEW);
+    expect(stub.isTerminated()).toBe(false);
+
+    service.dispose();
+
+    expect(stub.take(ERendererRequest.DISPOSE)).toHaveLength(1);
+    expect(stub.isTerminated()).toBe(true);
+  });
+
+  // What the drag swung to is the view's to keep: the toolbar shows the number the body is lit by.
+  it("keeps what a drag over the body swung the light to", () => {
+    const { service, viewService } = mockService();
+
+    service.attach(document.createElement("div"));
+    service.dragLight(10, 0);
+
+    expect(viewService.lighting.sunAzimuth).not.toBe(DEFAULT_TEXTURE_LIGHTING.sunAzimuth);
+    expect(stub.take(ERendererRequest.LIGHTING)).toHaveLength(2);
+
+    service.dispose();
+  });
+
+  it("says what its frames cost, and nothing once no view is drawing", () => {
+    const { service } = mockService();
+
+    service.attach(document.createElement("div"));
+    stub.respond({
+      kind: ERendererResponse.REPORT,
+      report: { frame: { ...EMPTY_RENDER_FRAME_COST, framesPerSecond: 144 } } as IRendererReport,
     });
 
-    expect(scene.setTextures).toHaveBeenCalledWith(uploaded);
-
-    service.detach();
-  });
-
-  it("releases the scene and stops carrying anything to it", () => {
-    const { service, viewService } = mockAttached();
-
-    service.attach(document.createElement("div"));
-    service.detach();
-
-    expect(scene.dispose).toHaveBeenCalled();
-
-    scene.setLighting.mockClear();
-    viewService.setLighting({ ...DEFAULT_TEXTURE_LIGHTING, sunIntensity: 9 });
-
-    expect(scene.setLighting).not.toHaveBeenCalled();
-  });
-
-  // The drag is gathered over the element and applied by the scene, but what it swung to is the view's to keep:
-  // the toolbar shows the same number the body is lit by.
-  it("keeps what a drag over the body swung the light to", () => {
-    const { service, viewService } = mockAttached();
-    const swung: IRenderLighting = { ...DEFAULT_TEXTURE_LIGHTING, sunAzimuth: 123 };
-
-    service.attach(document.createElement("div"));
-    scene.dragLight.mockReturnValueOnce(swung);
-    service.dragLight(10, 4);
-
-    expect(scene.dragLight).toHaveBeenCalledWith(10, 4);
-    expect(viewService.lighting).toBe(swung);
-
-    service.detach();
-  });
-
-  // The readout over the viewport is the only place the answer to "which thread drew this" can be seen.
-  it("says what its frames cost and where they were drawn", () => {
-    const { service } = mockAttached();
-
-    scene.setReporter.mockClear();
-    service.attach(document.createElement("div"));
-
-    expect(service.isOffscreen).toBe(false);
-    expect(service.frameCost).toBe(EMPTY_RENDER_FRAME_COST);
-
-    const report = scene.setReporter.mock.calls[0][0] as (cost: IRenderFrameCost) => void;
-
-    report({ ...EMPTY_RENDER_FRAME_COST, framesPerSecond: 144 });
-
     expect(service.frameCost.framesPerSecond).toBe(144);
+    expect(service.isOffscreen).toBe(true);
 
     service.detach();
 
-    // Nothing is drawing, so the readout says nothing rather than the last thing it saw.
     expect(service.frameCost).toBe(EMPTY_RENDER_FRAME_COST);
+
+    service.dispose();
   });
 
-  // Which thread a viewport draws on is decided when it is built, so the setting is answered by building again.
-  it("builds again when the thread setting changes", () => {
-    const { service, container } = mockAttached();
+  it("draws a bump plane without a view, and nothing without a pair", async () => {
+    const { service, container } = mockService();
 
-    service.attach(document.createElement("div"));
+    await expect(service.captureBumpPlane(ERendererBumpPlane.NORMAL, 8, 8)).resolves.toBeNull();
+    expect(stub.requests).toHaveLength(0);
 
-    const built: number = scene.dispose.mock.calls.length;
+    setFiles(container, { ...EMPTY_TEXTURE_SURFACE, bump: { bump: mockFile(), companion: mockFile() } });
 
-    container.get(SettingsService).setOffscreenRenderEnabled(false);
+    const captured: Promise<unknown> = service.captureBumpPlane(ERendererBumpPlane.NORMAL, 8, 4);
+    const [request] = stub.take(ERendererRequest.CAPTURE);
 
-    expect(scene.dispose.mock.calls).toHaveLength(built + 1);
+    expect(stub.take(ERendererRequest.ATTACH_VIEW)).toHaveLength(0);
+    expect(request.source).toEqual({
+      bump: "bump",
+      companion: "bump#",
+      height: 4,
+      kind: ERendererCaptureSource.BUMP_PLANE,
+      plane: ERendererBumpPlane.NORMAL,
+      width: 8,
+    });
 
-    service.detach();
+    stub.respond({ id: request.id, image: null, kind: ERendererResponse.CAPTURED });
+
+    await expect(captured).resolves.toBeNull();
+
+    service.dispose();
   });
 
-  // Whoever put the canvas on the page is the one that can take it off: the viewport draws on a target it was
-  // handed, and one path used to leave the element behind, so a remount stacked a second canvas on the first.
   it("leaves no canvas behind when it is detached", () => {
-    const { service } = mockAttached();
-    const container: HTMLElement = document.createElement("div");
+    const { service } = mockService();
+    const element: HTMLElement = document.createElement("div");
 
-    service.attach(container);
+    service.attach(element);
+    service.attach(element);
 
-    expect(container.querySelectorAll("canvas")).toHaveLength(1);
-
-    service.attach(container);
-
-    expect(container.querySelectorAll("canvas")).toHaveLength(1);
+    expect(element.querySelectorAll("canvas")).toHaveLength(1);
 
     service.detach();
 
-    expect(container.querySelectorAll("canvas")).toHaveLength(0);
+    expect(element.querySelectorAll("canvas")).toHaveLength(0);
+
+    service.dispose();
   });
 
   it("answers the viewport controls before anything is attached", () => {
-    const { service } = mockAttached();
+    const { service } = mockService();
 
     expect(() => {
       service.dolly(2);

@@ -1,8 +1,11 @@
+import { Nullable } from "@xrf/types";
+
 import { TRendererCamera, TRendererCameraCommand } from "#/contract/renderer-camera";
+import { TRendererCaptureSource } from "#/contract/renderer-capture";
 import { IRendererDevice } from "#/contract/renderer-device";
 import { IRendererLighting } from "#/contract/renderer-lighting";
 import { IRendererReport } from "#/contract/renderer-report";
-import { ERendererDebugView, IRendererSettings } from "#/contract/renderer-settings";
+import { IRendererSettings } from "#/contract/renderer-settings";
 import { IRendererGeometry, listRendererGeometryTransfers } from "#/contract/scene/renderer-geometry";
 import { IRendererObject } from "#/contract/scene/renderer-object";
 import { IRendererSurface } from "#/contract/scene/renderer-surface";
@@ -15,8 +18,12 @@ import { IDdsRefusal } from "#/texture/dds/dds-refusal";
  * What a consumer tells the renderer.
  */
 export enum ERendererRequest {
-  /** Here is the canvas, how big it is and how to draw on it: nothing is drawn before this. */
+  /** Bring the device up, with no canvas yet: textures, geometry and captures need none. */
   START = "@renderer/start",
+  /** Here is a canvas to show frames on, and how big it is: frames are drawn only while one is attached. */
+  ATTACH_VIEW = "@renderer/attachView",
+  /** The canvas is going; stop drawing frames. */
+  DETACH_VIEW = "@renderer/detachView",
   /** The element the canvas fills is a different size, or draws a different number of pixels. */
   RESIZE = "@renderer/resize",
   /** The consumer's settings for drawing changed. */
@@ -43,7 +50,7 @@ export enum ERendererRequest {
   CAMERA_COMMAND = "@renderer/cameraCommand",
   /** Somebody did this to the canvas, which only the thread holding it can see. */
   INPUT = "@renderer/input",
-  /** Draw a frame and hand back a picture of it. */
+  /** Draw a picture of the frame or of a texture, and hand it back. */
   CAPTURE = "@renderer/capture",
 }
 
@@ -51,7 +58,7 @@ export enum ERendererRequest {
  * What the renderer tells its consumer.
  */
 export enum ERendererResponse {
-  /** The device is up and the first frame is scheduled. */
+  /** The device is up. */
   READY = "@renderer/ready",
   /** The renderer cannot draw here, and why; there is no fallback. */
   FAILED = "@renderer/failed",
@@ -61,13 +68,15 @@ export enum ERendererResponse {
   TEXTURE_REFUSED = "@renderer/textureRefused",
   /** What the camera controls want the cursor to be, which only the side with a canvas can show. */
   CURSOR = "@renderer/cursor",
-  /** The picture a capture asked for. */
+  /** The picture a capture asked for, or nothing where there was none to draw. */
   CAPTURED = "@renderer/captured",
 }
 
 /** Every message a consumer sends. */
 export type TRendererRequest =
-  | ({ kind: ERendererRequest.START; canvas: OffscreenCanvas; settings: IRendererSettings } & IOffscreenRenderSize)
+  | { kind: ERendererRequest.START; settings: IRendererSettings }
+  | ({ kind: ERendererRequest.ATTACH_VIEW; canvas: OffscreenCanvas } & IOffscreenRenderSize)
+  | { kind: ERendererRequest.DETACH_VIEW }
   | ({ kind: ERendererRequest.RESIZE } & IOffscreenRenderSize)
   | { kind: ERendererRequest.CONFIGURE; settings: IRendererSettings }
   | { kind: ERendererRequest.DISPOSE }
@@ -83,7 +92,7 @@ export type TRendererRequest =
   | { kind: ERendererRequest.CAMERA; camera: TRendererCamera }
   | { kind: ERendererRequest.CAMERA_COMMAND; command: TRendererCameraCommand }
   | { kind: ERendererRequest.INPUT; event: IRenderInputEvent }
-  | { kind: ERendererRequest.CAPTURE; id: number; view: ERendererDebugView };
+  | { kind: ERendererRequest.CAPTURE; id: number; source: TRendererCaptureSource };
 
 /** Every message the renderer sends. */
 export type TRendererResponse =
@@ -92,7 +101,7 @@ export type TRendererResponse =
   | { kind: ERendererResponse.REPORT; report: IRendererReport }
   | { kind: ERendererResponse.TEXTURE_REFUSED; key: string; refusal: IDdsRefusal }
   | { kind: ERendererResponse.CURSOR; cursor: string }
-  | { kind: ERendererResponse.CAPTURED; id: number; image: ImageBitmap };
+  | { kind: ERendererResponse.CAPTURED; id: number; image: Nullable<ImageBitmap> };
 
 /**
  * What a request carries that has to be moved rather than copied.
@@ -102,7 +111,7 @@ export type TRendererResponse =
  */
 export function listRendererTransfers(request: TRendererRequest): Array<Transferable> {
   switch (request.kind) {
-    case ERendererRequest.START:
+    case ERendererRequest.ATTACH_VIEW:
       return [request.canvas];
 
     case ERendererRequest.PUT_TEXTURE:

@@ -1,5 +1,6 @@
 import { Nullable } from "@xrf/types";
 import {
+  CanvasTarget,
   Data3DTexture,
   LinearSRGBColorSpace,
   NoToneMapping,
@@ -10,11 +11,12 @@ import {
 } from "three/webgpu";
 
 import { OrbitCameraController } from "#/camera/orbit-camera-controller";
+import { ERendererCaptureSource, TRendererCaptureSource } from "#/contract/renderer-capture";
 import { IRendererDevice } from "#/contract/renderer-device";
 import { IRendererLighting } from "#/contract/renderer-lighting";
 import { ERendererRequest, ERendererResponse, TRendererRequest, TRendererResponse } from "#/contract/renderer-messages";
-import { ERendererDebugView, IRendererSettings } from "#/contract/renderer-settings";
-import { OffscreenRenderTarget } from "#/frame/offscreen-render-target";
+import { IRendererSettings } from "#/contract/renderer-settings";
+import { IOffscreenRenderSize, OffscreenRenderTarget } from "#/frame/offscreen-render-target";
 import { shouldDrawFrame } from "#/frame/render-frame-limit";
 import { RenderFrameTimer } from "#/frame/render-frame-timer";
 import { BaseLightingUniforms } from "#/graph/base-lighting-uniforms";
@@ -22,10 +24,12 @@ import { CameraUniforms } from "#/graph/camera-uniforms";
 import { createMaterialLutTexture } from "#/graph/material-lut-texture";
 import { IRendererFrame } from "#/graph/renderer-frame";
 import { RendererTargets } from "#/graph/renderer-targets";
+import { SettingsUniforms } from "#/graph/settings-uniforms";
 import { unpadReadbackRows } from "#/host/renderer-host.utils";
 import { RenderProxyElement } from "#/input/render-proxy-element";
 import { toBaseLightingConstants } from "#/lighting/base-lighting";
 import { DEFAULT_RENDERER_LIGHTING } from "#/lighting/default-lighting";
+import { BumpPlaneCapture } from "#/pass/bump-plane-capture";
 import { CombinePass } from "#/pass/combine-pass";
 import { ForwardPass } from "#/pass/forward-pass";
 import { GBufferPass } from "#/pass/gbuffer-pass";
@@ -57,11 +61,18 @@ interface IRendererBackend {
 /** A capture waiting for the next frame. */
 interface IPendingCapture {
   id: number;
-  view: ERendererDebugView;
+  source: TRendererCaptureSource;
+}
+
+/** The canvas frames are shown on, while one is attached. */
+interface IRendererView {
+  target: OffscreenRenderTarget;
+  /** Made once the device is up; three draws on whichever canvas target is current. */
+  canvasTarget: Nullable<CanvasTarget>;
 }
 
 /**
- * The renderer, on the thread holding its canvas.
+ * The renderer, on its own thread: one device, one scene, and at most one canvas showing it.
  */
 export class RendererHost {
   private readonly reply: TRendererReply;
@@ -72,12 +83,14 @@ export class RendererHost {
   private readonly passTimer: RendererPassTimer = new RendererPassTimer();
   private readonly element: RenderProxyElement;
   private readonly controller: OrbitCameraController;
+  private readonly settingsUniforms: SettingsUniforms = new SettingsUniforms();
   private readonly scene: RendererScene;
   private readonly targets: RendererTargets = new RendererTargets();
   private readonly cameraUniforms: CameraUniforms = new CameraUniforms();
   private readonly lightingUniforms: BaseLightingUniforms = new BaseLightingUniforms();
   private readonly lut: Data3DTexture = createMaterialLutTexture();
   private readonly present: PresentPass;
+  private readonly bumpPlanes: BumpPlaneCapture;
   /** In frame order; present last, so a capture can draw every pass before it and present elsewhere. */
   private readonly passes: ReadonlyArray<IRendererPass>;
   private readonly drawingSize: Vector2 = new Vector2();
@@ -85,7 +98,9 @@ export class RendererHost {
   /** Bumped by every start and dispose, so work finishing late can tell it was superseded. */
   private generation: number = 0;
   private renderer: Nullable<WebGPURenderer> = null;
-  private target: Nullable<OffscreenRenderTarget> = null;
+  /** The canvas three was made with, drawn on by nothing, so a detached view leaves the device a target. */
+  private headless: Nullable<CanvasTarget> = null;
+  private view: Nullable<IRendererView> = null;
   private inspector: Nullable<RendererPassInspector> = null;
   private frameState: Nullable<IRendererFrame> = null;
   private settings: Nullable<IRendererSettings> = null;
@@ -111,14 +126,15 @@ export class RendererHost {
       this.reply({ cursor, kind: ERendererResponse.CURSOR })
     );
     this.controller = new OrbitCameraController(this.element);
-    this.scene = new RendererScene((key, refusal) =>
+    this.scene = new RendererScene(this.settingsUniforms, (key, refusal) =>
       this.reply({ key, kind: ERendererResponse.TEXTURE_REFUSED, refusal })
     );
     this.present = new PresentPass(this.targets, this.cameraUniforms);
+    this.bumpPlanes = new BumpPlaneCapture(this.scene.textures);
     this.passes = [
       new GBufferPass(),
       new SunPass(this.targets, this.cameraUniforms, this.lightingUniforms, this.lut),
-      new CombinePass(this.targets, this.cameraUniforms, this.lightingUniforms, this.lut),
+      new CombinePass(this.targets, this.cameraUniforms, this.lightingUniforms, this.settingsUniforms, this.lut),
       new ForwardPass(),
       this.present,
     ];
@@ -135,16 +151,22 @@ export class RendererHost {
 
     switch (request.kind) {
       case ERendererRequest.START:
-        this.start(request).catch((error: unknown) => {
+        this.start(request.settings).catch((error: unknown) => {
           this.stop();
           this.reply({ kind: ERendererResponse.FAILED, reason: `The renderer could not start: ${error}` });
         });
 
         return;
 
+      case ERendererRequest.ATTACH_VIEW:
+        return this.attachView(request.canvas, request);
+
+      case ERendererRequest.DETACH_VIEW:
+        return this.detachView();
+
       case ERendererRequest.RESIZE:
         this.element.resize(request);
-        this.target?.resize(request);
+        this.view?.target.resize(request);
 
         return;
 
@@ -191,20 +213,23 @@ export class RendererHost {
         return this.element.dispatch(request.event);
 
       case ERendererRequest.CAPTURE:
-        this.captures.push({ id: request.id, view: request.view });
+        this.captures.push({ id: request.id, source: request.source });
+        this.ensureScheduled();
 
         return;
     }
   }
 
-  private async start(request: Extract<TRendererRequest, { kind: ERendererRequest.START }>): Promise<void> {
+  private async start(settings: IRendererSettings): Promise<void> {
     this.stop();
+    this.configure(settings);
 
     const generation: number = this.generation;
     const renderer: WebGPURenderer = new WebGPURenderer({
       alpha: true,
       antialias: false,
-      canvas: request.canvas,
+      // Drawn on by nothing: a view brings its own canvas, and textures and captures need none.
+      canvas: new OffscreenCanvas(1, 1),
       trackTimestamp: true,
     });
 
@@ -250,28 +275,26 @@ export class RendererHost {
     renderer.toneMapping = NoToneMapping;
 
     this.renderer = renderer;
+    this.headless = renderer.getCanvasTarget();
     this.inspector = inspector;
     this.isGpuTimed = renderer.hasFeature("timestamp-query");
-    this.element.resize(request);
-    this.target = new OffscreenRenderTarget(request.canvas, request);
-    this.target.observe(() => (this.isResizePending = true));
-    this.isResizePending = true;
-    this.configure(request.settings);
     this.frameState = {
       camera: this.controller.camera,
       deferred: this.scene.deferred,
       forward: this.scene.forward,
       renderer,
-      settings: request.settings,
+      settings,
       targets: this.targets,
     };
 
     this.reply({ device: this.describeDevice(backend), kind: ERendererResponse.READY });
-    this.frameHandle = this.schedule(this.frame);
+    this.showView();
+    this.ensureScheduled();
   }
 
   private configure(settings: IRendererSettings): void {
     this.settings = settings;
+    this.settingsUniforms.apply(settings);
     this.lightingUniforms.tonemapScale.value = settings.tonemapScale;
 
     if (this.frameState) {
@@ -283,24 +306,92 @@ export class RendererHost {
     this.lightingUniforms.apply(toBaseLightingConstants(lighting));
   }
 
+  private attachView(canvas: OffscreenCanvas, size: IOffscreenRenderSize): void {
+    this.detachView();
+
+    const target: OffscreenRenderTarget = new OffscreenRenderTarget(canvas, size);
+
+    target.observe(() => (this.isResizePending = true));
+
+    this.view = { canvasTarget: null, target };
+    this.element.resize(size);
+    this.showView();
+    this.ensureScheduled();
+  }
+
+  /** Points three at the view's canvas, once both the device and a view exist. */
+  private showView(): void {
+    if (!this.renderer || !this.view || this.view.canvasTarget) {
+      return;
+    }
+
+    this.view.canvasTarget = new CanvasTarget(this.view.target.canvas);
+    this.renderer.setCanvasTarget(this.view.canvasTarget);
+    this.isResizePending = true;
+    this.drawnAt = null;
+  }
+
+  private detachView(): void {
+    const view: Nullable<IRendererView> = this.view;
+
+    if (!view) {
+      return;
+    }
+
+    this.view = null;
+
+    if (this.renderer && this.headless) {
+      this.renderer.setCanvasTarget(this.headless);
+    }
+
+    view.canvasTarget?.dispose();
+    view.target.dispose();
+    this.frameTimer.reset();
+  }
+
+  /** Keeps the loop running while there is a view to draw or a capture to answer. */
+  private ensureScheduled(): void {
+    if (this.renderer && this.frameHandle === null && (this.view || this.captures.length)) {
+      this.frameHandle = this.schedule(this.frame);
+    }
+  }
+
   private readonly frame = (now: number): void => {
     const renderer: Nullable<WebGPURenderer> = this.renderer;
-    const target: Nullable<OffscreenRenderTarget> = this.target;
     const inspector: Nullable<RendererPassInspector> = this.inspector;
     const frame: Nullable<IRendererFrame> = this.frameState;
+    const view: Nullable<IRendererView> = this.view;
 
-    if (!renderer || !target || !inspector || !frame || !this.settings) {
+    this.frameHandle = null;
+
+    if (!renderer || !inspector || !frame || !this.settings) {
       return;
     }
 
-    this.frameHandle = this.schedule(this.frame);
+    // A frame that allocated the targets is drawn but not captured: its G-buffer reads back cleared, so a capture of
+    // one of its views waits for the next frame.
+    let isFrameCapturable: boolean = false;
 
-    if (!this.captures.length && !shouldDrawFrame(now, this.drawnAt, this.settings.frameRateLimit)) {
-      return;
+    if (view) {
+      this.frameHandle = this.schedule(this.frame);
+
+      if (this.captures.length || shouldDrawFrame(now, this.drawnAt, this.settings.frameRateLimit)) {
+        isFrameCapturable = !this.isResizePending;
+        this.drawnAt = now;
+        this.draw(now, renderer, inspector, frame, view.target);
+      }
     }
 
-    this.drawnAt = now;
+    this.capture(renderer, view !== null, isFrameCapturable);
+  };
 
+  private draw(
+    now: number,
+    renderer: WebGPURenderer,
+    inspector: RendererPassInspector,
+    frame: IRendererFrame,
+    target: OffscreenRenderTarget
+  ): void {
     if (this.isResizePending) {
       this.isResizePending = false;
       renderer.setPixelRatio(target.pixelRatio);
@@ -328,31 +419,48 @@ export class RendererHost {
     }
 
     this.frameTimer.sampleDraw(performance.now() - startedAt);
-    this.capture(renderer);
     this.resolveTimings(renderer, inspector);
 
     if (now - this.reportedAt >= REPORT_INTERVAL) {
       this.reportedAt = now;
       this.report(renderer, target);
     }
-  };
+  }
 
-  /** Presents every waiting capture's view into a target of its own, from the frame just drawn, and reads it back. */
-  private capture(renderer: WebGPURenderer): void {
-    if (!this.captures.length) {
-      return;
-    }
-
+  /**
+   * Draws every waiting capture into a target of its own and reads it back.
+   *
+   * @param renderer - The renderer drawing.
+   * @param hasView - Whether a view is attached, without which there is no frame to capture.
+   * @param isFrameCapturable - Whether the frame just drawn can be read, or frame captures wait for the next.
+   */
+  private capture(renderer: WebGPURenderer, hasView: boolean, isFrameCapturable: boolean): void {
     const captures: ReadonlyArray<IPendingCapture> = this.captures;
     const generation: number = this.generation;
-    const { x: width, y: height } = this.drawingSize;
 
     this.captures = [];
 
-    for (const { id, view } of captures) {
+    for (const { id, source } of captures) {
+      if (source.kind === ERendererCaptureSource.FRAME && hasView && !isFrameCapturable) {
+        this.captures.push({ id, source });
+        continue;
+      }
+
+      const width: number = source.kind === ERendererCaptureSource.FRAME ? this.drawingSize.x : source.width;
+      const height: number = source.kind === ERendererCaptureSource.FRAME ? this.drawingSize.y : source.height;
+
+      if ((source.kind === ERendererCaptureSource.FRAME && !hasView) || width < 1 || height < 1) {
+        this.reply({ id, image: null, kind: ERendererResponse.CAPTURED });
+        continue;
+      }
+
       const target: RenderTarget = new RenderTarget(width, height, { depthBuffer: false });
 
-      this.present.draw(renderer, view, target);
+      if (source.kind === ERendererCaptureSource.FRAME) {
+        this.present.draw(renderer, source.view, target);
+      } else {
+        this.bumpPlanes.draw(renderer, source.plane, source.bump, source.companion, target);
+      }
 
       renderer
         .readRenderTargetPixelsAsync(target, 0, 0, width, height)
@@ -366,7 +474,7 @@ export class RendererHost {
             image.close();
           }
         })
-        .catch(() => {})
+        .catch(() => this.reply({ id, image: null, kind: ERendererResponse.CAPTURED }))
         .finally(() => target.dispose());
     }
   }
@@ -434,7 +542,7 @@ export class RendererHost {
     };
   }
 
-  /** Lets the device go, keeping what the consumer put, so a later start draws the same scene. */
+  /** Lets the device go, keeping what the consumer put and the view it attached, so a later start draws the same. */
   private stop(): void {
     this.generation += 1;
 
@@ -442,29 +550,36 @@ export class RendererHost {
       this.cancel(this.frameHandle);
     }
 
+    if (this.view) {
+      this.view.canvasTarget?.dispose();
+      this.view.canvasTarget = null;
+    }
+
     this.renderer?.dispose();
-    this.target?.dispose();
     this.frameTimer.reset();
     this.passTimer.reset();
 
     this.frameHandle = null;
     this.renderer = null;
-    this.target = null;
+    this.headless = null;
     this.inspector = null;
     this.frameState = null;
-    this.captures = [];
     this.drawnAt = null;
     this.reportedAt = 0;
     this.isResizePending = false;
     this.isResolving = false;
     this.isGpuTimed = false;
+    this.captures.forEach(({ id }) => this.reply({ id, image: null, kind: ERendererResponse.CAPTURED }));
+    this.captures = [];
   }
 
   /** Lets everything go, for good. */
   private dispose(): void {
+    this.detachView();
     this.stop();
     this.isDisposed = true;
     this.passes.forEach((pass: IRendererPass) => pass.dispose());
+    this.bumpPlanes.dispose();
     this.scene.dispose();
     this.controller.dispose();
     this.targets.dispose();

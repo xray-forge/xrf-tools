@@ -2,7 +2,7 @@ import { Injectable, OnDeactivation } from "@wirestate/core";
 import { BoundAction, RefObservable } from "@wirestate/mobx";
 
 import { IRenderLighting } from "@/core/render/lib/lighting/render-lighting";
-import { DEFAULT_TEXTURE_LIGHTING } from "@/core/textures/lib/scene/texture-lighting";
+import { DEFAULT_TEXTURE_LIGHTING } from "@/core/textures/lib/texture-lighting";
 import { DEFAULT_TEXTURE_PREVIEW_OPTIONS, ITexturePreviewOptions } from "@/core/textures/lib/texture-preview";
 
 /**

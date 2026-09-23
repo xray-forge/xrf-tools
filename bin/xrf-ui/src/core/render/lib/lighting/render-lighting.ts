@@ -1,4 +1,5 @@
 import { toRadians } from "@xrf/math";
+import { DEFAULT_RENDERER_LIGHTING, IRendererLighting, TRendererColor } from "@xrf/renderer";
 
 /**
  * How a preview is lit, which is the viewer's own answer rather than anything an X-Ray file carries.
@@ -38,3 +39,32 @@ export const RENDER_LIGHTING_LIMITS = {
   sunElevation: { max: 90, min: -15, step: 1 },
   sunIntensity: { max: 6, min: 0, step: 0.05 },
 } as const;
+
+/**
+ * The renderer's lighting value for a preview's light: the engine's noon, pointed and scaled by the preview's controls.
+ *
+ * @param lighting - The preview's light, as its controls set it.
+ * @returns What the renderer lights with.
+ */
+export function toRendererLighting(lighting: IRenderLighting): IRendererLighting {
+  const [x, y, z] = toRenderSunPosition(lighting, 1);
+  const noon: IRendererLighting = DEFAULT_RENDERER_LIGHTING;
+
+  return {
+    ...noon,
+    ambientColor: toScaled(noon.ambientColor, lighting.ambientColor, lighting.ambientIntensity),
+    hemisphereColor: toScaled(noon.hemisphereColor, lighting.ambientColor, lighting.ambientIntensity),
+    // Where the sun is, turned into the way its light travels.
+    sunColor: toScaled(noon.sunColor, lighting.sunColor, lighting.sunIntensity),
+    sunDirection: [-x, -y, -z],
+  };
+}
+
+/** A noon colour, tinted by a control's hex colour and scaled by its intensity. */
+function toScaled(color: TRendererColor, tint: number, intensity: number): TRendererColor {
+  return [
+    color[0] * (((tint >> 16) & 0xff) / 255) * intensity,
+    color[1] * (((tint >> 8) & 0xff) / 255) * intensity,
+    color[2] * ((tint & 0xff) / 255) * intensity,
+  ];
+}

@@ -10,7 +10,7 @@ import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
 import { EditorToolbarLocation, IEditorLocation } from "@/core/shell/editor/EditorToolbarLocation";
 import { EditorToolbarSeparator } from "@/core/shell/editor/EditorToolbarSeparator";
 import { EditorViewToggle } from "@/core/shell/editor/EditorViewToggle";
-import { DEFAULT_TEXTURE_LIGHTING } from "@/core/textures/lib/scene/texture-lighting";
+import { DEFAULT_TEXTURE_LIGHTING } from "@/core/textures/lib/texture-lighting";
 import { ETexturePreviewMode, ITexturePreviewOptions } from "@/core/textures/lib/texture-preview";
 
 import { TextureBodyOptions } from "./TextureBodyOptions";

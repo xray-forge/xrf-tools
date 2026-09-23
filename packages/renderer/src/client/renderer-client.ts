@@ -1,4 +1,7 @@
+import { Nullable } from "@xrf/types";
+
 import { TRendererCamera, TRendererCameraCommand } from "#/contract/renderer-camera";
+import { TRendererCaptureSource } from "#/contract/renderer-capture";
 import { IRendererDevice } from "#/contract/renderer-device";
 import { IRendererLighting } from "#/contract/renderer-lighting";
 import {
@@ -9,7 +12,7 @@ import {
   TRendererResponse,
 } from "#/contract/renderer-messages";
 import { IRendererReport } from "#/contract/renderer-report";
-import { ERendererDebugView, IRendererSettings } from "#/contract/renderer-settings";
+import { IRendererSettings } from "#/contract/renderer-settings";
 import { IRendererGeometry } from "#/contract/scene/renderer-geometry";
 import { IRendererObject } from "#/contract/scene/renderer-object";
 import { IRendererSurface } from "#/contract/scene/renderer-surface";
@@ -25,8 +28,6 @@ import { IDdsRefusal } from "#/texture/dds/dds-refusal";
 export interface IRendererClientOptions {
   /** The renderer's worker, from `createRendererWorker`. */
   worker: Worker;
-  /** The page canvas whose drawing is handed over. */
-  target: IRenderTarget;
   settings: IRendererSettings;
   onReady?: (device: IRendererDevice) => void;
   onFailed?: (reason: string) => void;
@@ -35,33 +36,28 @@ export interface IRendererClientOptions {
   onTextureRefused?: (key: string, refusal: IDdsRefusal) => void;
 }
 
+/** A canvas showing the renderer's frames, and what watches it on the page. */
+interface IRendererClientView {
+  target: IRenderTarget;
+  input: RenderInputForwarder;
+  unobserve: () => void;
+}
+
 /**
- * The renderer, from the page that owns its canvas.
+ * The renderer, from the page: one device for as long as the client lives, and a canvas while one is attached.
  */
 export class RendererClient {
+  private static getSize(target: IRenderTarget): IOffscreenRenderSize {
+    return { height: target.height, pixelRatio: target.pixelRatio, width: target.width };
+  }
+
   private readonly worker: Worker;
-  private readonly target: IRenderTarget;
-  private readonly unobserve: () => void;
-  private readonly input: RenderInputForwarder;
-  private readonly captures: Map<number, (image: ImageBitmap) => void> = new Map();
+  private readonly captures: Map<number, (image: Nullable<ImageBitmap>) => void> = new Map();
+  private view: Nullable<IRendererClientView> = null;
   private captureId: number = 0;
 
-  public constructor({
-    worker,
-    target,
-    settings,
-    onReady,
-    onFailed,
-    onReport,
-    onTextureRefused,
-  }: IRendererClientOptions) {
-    if (!(target.canvas instanceof HTMLCanvasElement)) {
-      throw new Error("The renderer draws on a page canvas, and this target holds none.");
-    }
-
+  public constructor({ worker, settings, onReady, onFailed, onReport, onTextureRefused }: IRendererClientOptions) {
     this.worker = worker;
-    this.target = target;
-    this.input = new RenderInputForwarder(target.canvas, (event) => this.post({ event, kind: ERendererRequest.INPUT }));
 
     this.worker.onmessage = (event: MessageEvent<TRendererResponse>): void => {
       const response: TRendererResponse = event.data;
@@ -80,28 +76,62 @@ export class RendererClient {
           return onTextureRefused?.(response.key, response.refusal);
 
         case ERendererResponse.CURSOR:
-          return this.input.setCursor(response.cursor);
+          return this.view?.input.setCursor(response.cursor);
 
         case ERendererResponse.CAPTURED: {
           const resolve = this.captures.get(response.id);
 
           this.captures.delete(response.id);
 
-          return resolve ? resolve(response.image) : response.image.close();
+          return resolve ? resolve(response.image) : response.image?.close();
         }
       }
     };
 
     this.worker.onerror = (event: ErrorEvent): void => onFailed?.(`The renderer worker failed: ${event.message}`);
 
-    this.post({
-      canvas: target.canvas.transferControlToOffscreen(),
-      kind: ERendererRequest.START,
-      settings,
-      ...this.getSize(),
-    });
+    this.post({ kind: ERendererRequest.START, settings });
+  }
 
-    this.unobserve = target.observe(() => this.post({ kind: ERendererRequest.RESIZE, ...this.getSize() }));
+  /**
+   * Shows frames on a page canvas, handing its drawing over for good: a canvas is transferred once.
+   *
+   * @param target - The canvas and its size.
+   */
+  public attach(target: IRenderTarget): void {
+    if (!(target.canvas instanceof HTMLCanvasElement)) {
+      throw new Error("The renderer draws on a page canvas, and this target holds none.");
+    }
+
+    this.detach();
+
+    const canvas: HTMLCanvasElement = target.canvas;
+
+    this.view = {
+      input: new RenderInputForwarder(canvas, (event) => this.post({ event, kind: ERendererRequest.INPUT })),
+      target,
+      unobserve: target.observe(() => this.post({ kind: ERendererRequest.RESIZE, ...RendererClient.getSize(target) })),
+    };
+
+    this.post({
+      canvas: canvas.transferControlToOffscreen(),
+      kind: ERendererRequest.ATTACH_VIEW,
+      ...RendererClient.getSize(target),
+    });
+  }
+
+  /** Stops showing frames; textures, geometry and captures carry on. */
+  public detach(): void {
+    const view: Nullable<IRendererClientView> = this.view;
+
+    if (!view) {
+      return;
+    }
+
+    this.view = null;
+    view.unobserve();
+    view.input.dispose();
+    this.post({ kind: ERendererRequest.DETACH_VIEW });
   }
 
   /**
@@ -173,34 +203,30 @@ export class RendererClient {
   }
 
   /**
-   * Draws the next frame, and a picture of it.
+   * Draws a picture of the frame or of a texture.
    *
-   * @param view - The picture wanted: the frame, or one target raw.
-   * @returns The picture, at the canvas's drawing size.
+   * @param source - What to draw: a frame view, at the canvas's drawing size, or a bump plane at its own.
+   * @returns The picture, or null where there was nothing to draw, such as a frame with no view attached.
    */
-  public capture(view: ERendererDebugView = ERendererDebugView.FINAL): Promise<ImageBitmap> {
+  public capture(source: TRendererCaptureSource): Promise<Nullable<ImageBitmap>> {
     const id: number = ++this.captureId;
 
     return new Promise((resolve) => {
       this.captures.set(id, resolve);
-      this.post({ id, kind: ERendererRequest.CAPTURE, view });
+      this.post({ id, kind: ERendererRequest.CAPTURE, source });
     });
   }
 
   /** Stops the renderer and its thread. */
   public dispose(): void {
-    this.unobserve();
-    this.input.dispose();
+    this.detach();
     this.post({ kind: ERendererRequest.DISPOSE });
     this.worker.terminate();
+    this.captures.forEach((resolve) => resolve(null));
     this.captures.clear();
   }
 
   private post(request: TRendererRequest): void {
     this.worker.postMessage(request, listRendererTransfers(request));
-  }
-
-  private getSize(): IOffscreenRenderSize {
-    return { height: this.target.height, pixelRatio: this.target.pixelRatio, width: this.target.width };
   }
 }

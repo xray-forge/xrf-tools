@@ -70,7 +70,6 @@ export function TextureSurface({
   );
 
   const onPointerEnd = useCallback((event: PointerEvent<HTMLDivElement>): void => {
-    // The child canvas also captures pointers through OrbitControls; its capture loss is not ours.
     if (event.type === "lostpointercapture" && event.target !== event.currentTarget) {
       return;
     }
@@ -115,7 +114,9 @@ export function TextureSurface({
         <div className={"absolute inset-0 flex items-center justify-center"}>
           <EmptyState
             title={"Nothing to lay on a surface"}
-            description={"This file is a layout three.js cannot upload, so there is nothing here to light."}
+            description={
+              "This file is a layout neither the renderer nor the backend can read, so there is nothing to light."
+            }
           />
         </div>
       ) : null}

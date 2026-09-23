@@ -1,5 +1,17 @@
 import { Maybe } from "@xrf/types";
-import { float, mrt, normalView, uv, vec4 } from "three/tsl";
+import {
+  attribute,
+  float,
+  modelViewMatrix,
+  mrt,
+  normalize,
+  normalView,
+  select,
+  uv,
+  varying,
+  vec3,
+  vec4,
+} from "three/tsl";
 import {
   CustomBlending,
   DstColorFactor,
@@ -16,9 +28,16 @@ import {
 } from "three/webgpu";
 
 import { ERendererDraw, IRendererSurface } from "#/contract/scene/renderer-surface";
+import { decodeBumpGloss, decodeBumpNormal } from "#/graph/bump.tsl";
 import { encodeOctahedral } from "#/graph/octahedral-normal.tsl";
 import { EGBufferTarget } from "#/graph/renderer-targets";
-import { getNeutralDetailTexture, getWhiteTexture } from "#/scene/placeholder-textures";
+import { SettingsUniforms } from "#/graph/settings-uniforms";
+import {
+  getFlatBumpCompanionTexture,
+  getFlatBumpTexture,
+  getNeutralDetailTexture,
+  getWhiteTexture,
+} from "#/scene/placeholder-textures";
 import { RendererTextures } from "#/scene/renderer-textures";
 
 /** `def_gloss`: what a surface without a bump reflects (`shaders/r3/common_defines.h`). */
@@ -49,9 +68,14 @@ export interface ISurfaceMaterial {
 /**
  * @param surface - What the consumer put.
  * @param textures - Where its textures are bound from.
+ * @param settings - The settings its shading switches on.
  * @returns The material, deferred or forward as its draw decides.
  */
-export function createSurfaceMaterial(surface: IRendererSurface, textures: RendererTextures): ISurfaceMaterial {
+export function createSurfaceMaterial(
+  surface: IRendererSurface,
+  textures: RendererTextures,
+  settings: SettingsUniforms
+): ISurfaceMaterial {
   const bound: Array<[Maybe<string>, TextureNode]> = [];
   const baseCoordinates: Node<"vec2"> = uv().mul(surface.tiling ?? 1);
 
@@ -69,7 +93,7 @@ export function createSurfaceMaterial(surface: IRendererSurface, textures: Rende
 
   const isDeferred: boolean = surface.draw === ERendererDraw.OPAQUE || surface.draw === ERendererDraw.CUT_OUT;
   const material: MeshBasicNodeMaterial = isDeferred
-    ? createDeferredMaterial(surface, bind, baseCoordinates)
+    ? createDeferredMaterial(surface, bind, baseCoordinates, settings)
     : createForwardMaterial(surface, bind);
 
   return {
@@ -82,15 +106,18 @@ export function createSurfaceMaterial(surface: IRendererSurface, textures: Rende
   };
 }
 
-/** `deffer_base`: raw albedo and gloss, the view normal, and the baked occlusions. */
+/** `deffer_base` and `deffer_base_bump`: raw albedo and gloss, the view normal, and the baked occlusions. */
 function createDeferredMaterial(
   surface: IRendererSurface,
   bind: TBind,
-  baseCoordinates: Node<"vec2">
+  baseCoordinates: Node<"vec2">,
+  settings: SettingsUniforms
 ): MeshBasicNodeMaterial {
   const material: MeshBasicNodeMaterial = new MeshBasicNodeMaterial();
   const base: TextureNode = bind(surface.textures.base);
-  let albedo: Node<"vec3"> = base.xyz;
+  let albedo: Node<"vec3"> = toTinted(base.xyz, surface);
+  let normal: Node<"vec3"> = normalView;
+  let gloss: Node<"float"> = float(DEFAULT_GLOSS);
 
   if (surface.textures.detail) {
     // `D.rgb = 2 * D.rgb * detail.rgb`, sampled at the base coordinates times the detail scale.
@@ -107,10 +134,28 @@ function createDeferredMaterial(
   const hemi: Node<"vec4"> = surface.textures.hemi ? bind(surface.textures.hemi, getWhiteTexture(), uv(1)) : vec4(1);
   const slice: number = ((surface.material ?? DEFAULT_MATERIAL) + 0.5) / MATERIAL_SLICES;
 
-  // todo: gloss and the perturbed normal from the bump pair, with its decoding in iteration 2c.
+  if (surface.textures.bump && surface.textures.bumpCompanion) {
+    const bump: TextureNode = bind(surface.textures.bump, getFlatBumpTexture());
+    const companion: TextureNode = bind(surface.textures.bumpCompanion, getFlatBumpCompanionTexture());
+    const tangentSpace: Node<"vec3"> = decodeBumpNormal(bump, companion);
+    const isBumped: Node<"bool"> = settings.bumped.greaterThan(0.5);
+    // `deffer_model_bump`: the authored basis through the model view, the decoded normal rotated along it.
+    const tangent: Node<"vec3"> = varying(modelViewMatrix.mul(vec4(attribute<"vec3">("tangent", "vec3"), 0)).xyz);
+    const binormal: Node<"vec3"> = varying(modelViewMatrix.mul(vec4(attribute<"vec3">("binormal", "vec3"), 0)).xyz);
+    const bumped: Node<"vec3"> = normalize(
+      normalize(tangent)
+        .mul(tangentSpace.x)
+        .add(normalize(binormal).mul(tangentSpace.y))
+        .add(normalView.mul(tangentSpace.z))
+    );
+
+    normal = select(isBumped, bumped, normalView);
+    gloss = select(isBumped, decodeBumpGloss(bump), float(DEFAULT_GLOSS));
+  }
+
   material.mrtNode = mrt({
-    [EGBufferTarget.ALBEDO]: vec4(albedo, DEFAULT_GLOSS),
-    [EGBufferTarget.NORMAL]: vec4(encodeOctahedral(normalView), 0, 1),
+    [EGBufferTarget.ALBEDO]: vec4(albedo, gloss),
+    [EGBufferTarget.NORMAL]: vec4(encodeOctahedral(normal), 0, 1),
     [EGBufferTarget.SURFACE]: vec4(hemi.w, hemi.y, slice, 0),
   });
 
@@ -127,8 +172,10 @@ function createDeferredMaterial(
 function createForwardMaterial(surface: IRendererSurface, bind: TBind): MeshBasicNodeMaterial {
   const material: MeshBasicNodeMaterial = new MeshBasicNodeMaterial();
 
+  const base: TextureNode = bind(surface.textures.base);
+
   // todo: lit forward surfaces; Base draws them unlit, as their texture.
-  material.colorNode = bind(surface.textures.base);
+  material.colorNode = vec4(toTinted(base.xyz, surface), base.w);
   material.depthWrite = false;
   material.transparent = true;
   material.blending = CustomBlending;
@@ -169,4 +216,9 @@ function createForwardMaterial(surface: IRendererSurface, bind: TBind): MeshBasi
   }
 
   return material;
+}
+
+/** The base times the surface's colour, where it gives one. */
+function toTinted(color: Node<"vec3">, surface: IRendererSurface): Node<"vec3"> {
+  return surface.color ? color.mul(vec3(...surface.color)) : color;
 }

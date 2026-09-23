@@ -38,4 +38,8 @@ export interface IRendererSettings {
   debugView: ERendererDebugView;
   /** What the tonemap multiplies by first. The engine adapts it to the scene; one is its noon answer. */
   tonemapScale: number;
+  /** Whether light shades the frame; unlit, every surface shows its raw albedo, as the file itself reads. */
+  isLit: boolean;
+  /** Whether bump pairs perturb the normal and supply gloss; off, every surface is shaded flat with `def_gloss`. */
+  isBumped: boolean;
 }

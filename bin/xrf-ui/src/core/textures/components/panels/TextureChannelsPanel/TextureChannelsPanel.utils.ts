@@ -1,13 +1,13 @@
+import { ERendererBumpPlane } from "@xrf/renderer";
 import { Nullable } from "@xrf/types";
 
 import { getLocatedAsset } from "@/core/assets/lib";
 import { TextureDescription } from "@/core/ipc/types/xrf-app";
 import { ITextureSurfaceFiles } from "@/core/textures/lib/texture-surface";
-import { EVisualBumpView } from "@/core/visuals/lib/visual-bump-channels";
 
 /** One tile of the panel: a plane, what it is called, and what a person is meant to read in it. */
 export interface ITextureChannelTile {
-  view: EVisualBumpView;
+  plane: ERendererBumpPlane;
   label: string;
   caption: string;
 }
@@ -20,27 +20,27 @@ export interface ITextureChannelTile {
  */
 export const TEXTURE_CHANNEL_TILES: ReadonlyArray<ITextureChannelTile> = [
   {
-    view: EVisualBumpView.BUMP,
+    plane: ERendererBumpPlane.BUMP,
     label: "Bump",
     caption: "normal.gloss as stored",
   },
   {
-    view: EVisualBumpView.COMPANION,
+    plane: ERendererBumpPlane.COMPANION,
     label: "Bump#",
     caption: "error.height as stored",
   },
   {
-    view: EVisualBumpView.NORMAL,
+    plane: ERendererBumpPlane.NORMAL,
     label: "Normal",
     caption: "reconstructed, in the unit range",
   },
   {
-    view: EVisualBumpView.GLOSS,
+    plane: ERendererBumpPlane.GLOSS,
     label: "Gloss",
     caption: "reconstructed from the bump's red",
   },
   {
-    view: EVisualBumpView.HEIGHT,
+    plane: ERendererBumpPlane.HEIGHT,
     label: "Height",
     caption: "stored in alpha; the deferred loader reads the z error instead",
   },

@@ -1,34 +1,26 @@
 import { beforeAll, describe, expect, it, jest } from "@jest/globals";
 import { fireEvent } from "@testing-library/react";
+import { createRendererWorkerStub } from "@xrf/renderer/fixtures";
 
 import { TextureSelectionService } from "@/core/textures/services/selection";
 import { TextureSurfaceService } from "@/core/textures/services/surface";
 import { TextureViewService } from "@/core/textures/services/view";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
-const dragLight = jest.fn<(deltaX: number, deltaY: number) => void>();
-
 let TextureSurface: typeof import("./TextureSurface").TextureSurface;
-// Imported with the component rather than above it: the service is what builds the scene, so it has to be the
-// stubbed one too.
 let TextureRenderService: typeof import("@/core/textures/services/render").TextureRenderService;
+let dragLight: ReturnType<typeof jest.spyOn>;
 
 beforeAll(async () => {
-  // Load the component after stubbing its GPU boundary; jsdom cannot construct a WebGL renderer.
-  jest.doMock("@/core/textures/lib/scene/TextureSurfaceScene", () => ({
-    TextureSurfaceScene: jest.fn(() => ({
-      dispose: jest.fn(),
-      setReporter: jest.fn(),
-      setTextures: jest.fn(),
-      setOptions: jest.fn(),
-      setFrameRateLimit: jest.fn(),
-      setLighting: jest.fn(),
-      dragLight,
-    })),
-  }));
+  // Stubbed at the thread boundary: jsdom has neither a GPU nor an offscreen canvas.
+  jest.doMock("@xrf/renderer/worker", () => ({ createRendererWorker: () => createRendererWorkerStub().worker }));
+  HTMLCanvasElement.prototype.transferControlToOffscreen = function () {
+    return {} as OffscreenCanvas;
+  };
 
   ({ TextureSurface } = await import("./TextureSurface"));
   ({ TextureRenderService } = await import("@/core/textures/services/render"));
+  dragLight = jest.spyOn(TextureRenderService.prototype, "dragLight");
 });
 
 function sendPointer(target: HTMLElement, type: string, options: MouseEventInit = {}): void {

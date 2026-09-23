@@ -22,7 +22,11 @@ export function createRendererBufferGeometry(geometry: IRendererGeometry): Buffe
   }
 
   if (geometry.tangent) {
-    buffer.setAttribute("tangent", new BufferAttribute(geometry.tangent, 4));
+    buffer.setAttribute("tangent", new BufferAttribute(geometry.tangent, 3));
+  }
+
+  if (geometry.binormal) {
+    buffer.setAttribute("binormal", new BufferAttribute(geometry.binormal, 3));
   }
 
   if (geometry.index) {

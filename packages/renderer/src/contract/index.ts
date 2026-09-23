@@ -1,4 +1,5 @@
 export * from "#/contract/renderer-camera";
+export * from "#/contract/renderer-capture";
 export * from "#/contract/renderer-device";
 export * from "#/contract/renderer-lighting";
 export * from "#/contract/renderer-messages";

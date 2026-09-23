@@ -1,3 +1,5 @@
+import { TRendererColor } from "#/contract/renderer-lighting";
+
 /**
  * How a surface reaches the frame, as the engine's blender for it decides.
  */
@@ -46,4 +48,6 @@ export interface IRendererSurface {
   material?: number;
   /** How many times the base and every other texture repeat across the surface. */
   tiling?: number;
+  /** What the base is multiplied by, raw; white when left out. A viewer's affordance, not an engine term. */
+  color?: TRendererColor;
 }

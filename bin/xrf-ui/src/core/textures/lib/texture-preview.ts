@@ -27,7 +27,7 @@ export const TEXTURE_TILING_STEPS: ReadonlyArray<number> = [1, 2, 4];
  * What the preview shows before anyone touches it.
  */
 export const DEFAULT_TEXTURE_PREVIEW_OPTIONS: ITexturePreviewOptions = {
-  alpha: ETextureSurfaceAlpha.CUT_OUT,
+  alpha: ETextureSurfaceAlpha.BLENDED,
   isBumped: true,
   isLit: true,
   mode: ETexturePreviewMode.IMAGE,
@@ -63,7 +63,7 @@ const DESCRIPTOR_ONLY: ITexturePreviewGap = {
  * Why a texture cannot be drawn in the chosen mode, when it cannot.
  *
  * Split by mode because the two fail for different reasons: the flat picture needs the backend's decode, while the
- * lit body needs only a file three.js can upload, and a layout that defeats one may well not defeat the other.
+ * lit body needs only a file the renderer can upload, and a layout that defeats one may well not defeat the other.
  *
  * @param mode - How the texture is being looked at.
  * @param hasTexture - Whether a file sits beside the descriptor at all.

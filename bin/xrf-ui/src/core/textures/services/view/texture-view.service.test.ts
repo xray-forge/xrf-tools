@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
 
 import { IRenderLighting } from "@/core/render/lib/lighting/render-lighting";
-import { DEFAULT_TEXTURE_LIGHTING } from "@/core/textures/lib/scene/texture-lighting";
+import { DEFAULT_TEXTURE_LIGHTING } from "@/core/textures/lib/texture-lighting";
 import {
   DEFAULT_TEXTURE_PREVIEW_OPTIONS,
   ETexturePreviewMode,

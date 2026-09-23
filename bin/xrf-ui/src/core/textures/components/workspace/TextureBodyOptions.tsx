@@ -48,7 +48,7 @@ export function TextureBodyOptions({
       icon={<ViewQuiltIcon />}
       isDisabled={!isSurface}
     >
-      <div className={"flex flex-col gap-2 px-4 py-2"}>
+      <div className={"flex flex-col gap-2 px-4 pt-2 pb-4"}>
         <Typography className={"text-text-secondary"} variant={"overline"}>
           Body
         </Typography>
@@ -90,10 +90,10 @@ export function TextureBodyOptions({
         </Typography>
 
         <ToggleButtonGroup
-          exclusive
+          aria-label={"Alpha"}
+          exclusive={true}
           size={"small"}
           value={options.alpha}
-          aria-label={"Alpha"}
           onChange={(_, next: Nullable<ETextureSurfaceAlpha>) => next && onChangeOptions({ ...options, alpha: next })}
         >
           {Object.values(ETextureSurfaceAlpha).map((value: ETextureSurfaceAlpha) => (

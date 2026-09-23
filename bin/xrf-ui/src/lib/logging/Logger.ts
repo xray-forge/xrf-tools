@@ -1,8 +1,9 @@
 import { AnyCallable } from "@xrf/types";
 
 import { noop } from "@/lib/callbacks/noop";
-import { ILogger } from "@/lib/logging/ILogger";
-import { PREFIX_TIMESTAMP_TAG } from "@/lib/logging/prefix";
+
+import { ILogger } from "./ILogger";
+import { PREFIX_TIMESTAMP_TAG } from "./prefix";
 
 /**
  * A lightweight wrapper around `console` methods that adds a styled prefix.
