@@ -9,7 +9,6 @@ import {
   normalLocal,
   normalView,
   positionLocal,
-  storage,
   varying,
   vec3,
   vec4,
@@ -17,7 +16,7 @@ import {
 import { Node, NodeBuilder } from "three/webgpu";
 
 import { EVertexAttribute, INSTANCE_MATRIX_COLUMNS } from "#/shader/vertex-attribute";
-import { STATIC_DRAW_CAPACITY, StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
+import { StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
 
 // Where a vertex stands: in each place its instanced attributes name, where the static draw buffers put it, or where
 // its object's matrix puts it. The first two read no uniform of the object's own, so three refreshes nothing per
@@ -44,11 +43,10 @@ function toInstanceMatrix(): Node<"mat4"> {
   return mat4(x, y, z, w) as unknown as Node<"mat4">;
 }
 
-/** A static draw's matrix, from its slot in the shared buffers. */
+/** A static draw's matrix, from its slot in the shared buffers, read once into a variable. */
 function toStaticMatrix(buffers: StaticDrawBuffers): Node<"mat4"> {
-  const columns = storage(buffers.models, "vec4", STATIC_DRAW_CAPACITY * 4);
   const first: Node<"uint"> = attribute<"uint">(EVertexAttribute.STATIC_SLOT, "uint").mul(4);
-  const [x, y, z, w] = [0, 1, 2, 3].map((column: number) => columns.element(first.add(column)));
+  const [x, y, z, w] = [0, 1, 2, 3].map((column: number) => buffers.modelColumns.element(first.add(column)));
 
   return mat4(x, y, z, w) as unknown as Node<"mat4">;
 }

@@ -81,13 +81,20 @@ function toBaseColor(
   return albedo.mul(light.xyz.add(hemisphereDiffuse)).add(gloss.mul(light.w)).add(hemisphereGloss);
 }
 
-/** Fog by distance, then the engine's tonemap: what `combine_2` does to a lit colour. */
-function toFinishedColor(
-  color: Node<"vec3">,
-  position: Node<"vec3">,
-  { lighting, settings }: RendererUniforms
-): Node<"vec3"> {
-  const fog = saturate(length(position).mul(lighting.fogScale).add(lighting.fogOffset));
+/**
+ * @param position - A point in view space.
+ * @param uniforms - What the frame's shaders read.
+ * @returns How much fog lies between the camera and the point: none without fog, one where it is total.
+ */
+export function toFogAmount(position: Node<"vec3">, uniforms: RendererUniforms): Node<"float"> {
+  const { lighting } = uniforms;
 
-  return toToneMapped(mix(color, lighting.fogColor, fog), settings.tonemapScale);
+  return saturate(length(position).mul(lighting.fogScale).add(lighting.fogOffset));
+}
+
+/** Fog by distance, then the engine's tonemap: what `combine_2` does to a lit colour. */
+function toFinishedColor(color: Node<"vec3">, position: Node<"vec3">, uniforms: RendererUniforms): Node<"vec3"> {
+  const { lighting, settings } = uniforms;
+
+  return toToneMapped(mix(color, lighting.fogColor, toFogAmount(position, uniforms)), settings.tonemapScale);
 }

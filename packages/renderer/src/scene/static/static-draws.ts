@@ -26,14 +26,16 @@ export class StaticDraws {
   /**
    * @param buffers - What every static draw reads.
    * @param scene - The scene of the pass drawing static draws, where the batches stand.
+   * @param toUpcoming - The geometries objects still waiting to draw will draw statically.
    */
-  public constructor(buffers: StaticDrawBuffers, scene: Object3D) {
+  public constructor(buffers: StaticDrawBuffers, scene: Object3D, toUpcoming: () => Iterable<SceneGeometry>) {
     this.pool = new StaticDrawPool(buffers);
     this.cull = new StaticCull(buffers, this.pool);
     this.batches = new StaticBatches(this.pool, scene);
     this.arenas = new StaticArenas(
       (arena: StaticArena) => this.batches.refresh(arena),
-      (arena: StaticArena) => this.batches.release(arena)
+      (arena: StaticArena) => this.batches.release(arena),
+      toUpcoming
     );
   }
 

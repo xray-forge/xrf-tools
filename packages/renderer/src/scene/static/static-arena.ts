@@ -3,6 +3,7 @@ import { BufferAttribute, BufferGeometry, InstancedBufferAttribute, TypedArray }
 
 import { RangeAllocator } from "#/scene/static/range-allocator";
 import { IStaticRange } from "#/scene/static/static-range";
+import { IStaticRoom } from "#/scene/static/static-room";
 import { EVertexAttribute } from "#/shader/vertex-attribute";
 import { STATIC_DRAW_CAPACITY } from "#/uniforms/static-draw-buffers";
 
@@ -11,10 +12,10 @@ const INITIAL_VERTICES: number = 1 << 16;
 /** Indices an arena starts with. */
 const INITIAL_INDICES: number = 1 << 18;
 /**
- * What a full arena's buffers grow by: every growth copies and uploads all of it again, a hitch. Half again saved a
- * tenth of Pripyat's arena for three times the growths.
+ * The room a growing arena leaves beyond what it holds and what is known to be coming, for what streams in later:
+ * every growth copies and uploads all of it again, a hitch.
  */
-const GROWTH: number = 2;
+const HEADROOM: number = 1.25;
 /** Vertices an arena grows to at most: its widest attribute, four floats, then fills half a WebGPU buffer's default limit. */
 const VERTEX_LIMIT: number = 1 << 23;
 /** Indices an arena grows to at most, half a WebGPU buffer's default limit. */
@@ -110,19 +111,27 @@ export class StaticArena {
   }
 
   /**
-   * Copies a geometry in, growing the arena where it does not fit.
+   * Copies a geometry in, growing the arena where it does not fit: once for everything still to come where that is
+   * known, since every growth copies and uploads the whole arena again.
    *
    * @param buffer - A geometry in the arena's layout.
+   * @param toComing - The room the geometries still to be placed after it will take, asked only when the arena grows.
    * @returns Where it sits, or null where the arena cannot grow to hold it.
    */
-  public place(buffer: BufferGeometry): Nullable<IStaticRange> {
-    // Its buffers are made with the first geometry placed: a material compiles against its prototype alone.
-    if (!this.vertices.capacity) {
-      this.grow(INITIAL_VERTICES, INITIAL_INDICES);
-    }
-
+  public place(buffer: BufferGeometry, toComing: () => IStaticRoom): Nullable<IStaticRange> {
     const vertexCount: number = buffer.getAttribute("position").count;
     const index: ArrayLike<number> = buffer.index?.array ?? StaticArena.createSequence(vertexCount);
+
+    if (!this.vertices.capacity || !this.fits(vertexCount, index.length)) {
+      const coming: IStaticRoom = toComing();
+
+      // Its buffers are made with the first geometry placed: a material compiles against its prototype alone.
+      this.grow(
+        StaticArena.toCapacity(this.vertices, vertexCount + coming.vertices, INITIAL_VERTICES, VERTEX_LIMIT),
+        StaticArena.toCapacity(this.indices, index.length + coming.indices, INITIAL_INDICES, INDEX_LIMIT)
+      );
+    }
+
     const vertexStart: Nullable<number> = this.allocate(this.vertices, vertexCount, VERTEX_LIMIT);
     const indexStart: Nullable<number> =
       vertexStart === null ? null : this.allocate(this.indices, index.length, INDEX_LIMIT);
@@ -178,15 +187,49 @@ export class StaticArena {
     this.prototype.dispose();
   }
 
+  /** Whether both runs fit as the arena stands, without growing it. */
+  private fits(vertexCount: number, indexCount: number): boolean {
+    const vertexStart: Nullable<number> = this.vertices.allocate(vertexCount);
+
+    if (vertexStart === null) {
+      return false;
+    }
+
+    this.vertices.release(vertexStart, vertexCount);
+
+    const indexStart: Nullable<number> = this.indices.allocate(indexCount);
+
+    if (indexStart === null) {
+      return false;
+    }
+
+    this.indices.release(indexStart, indexCount);
+
+    return true;
+  }
+
+  /**
+   * @returns What a buffer grows to so that `wanted` more elements fit beside what it holds, with headroom: at least
+   *   its initial size, more than it was, and never past its limit.
+   */
+  private static toCapacity(allocator: RangeAllocator, wanted: number, initial: number, limit: number): number {
+    const capacity: number = Math.ceil((allocator.used + wanted) * HEADROOM);
+
+    return Math.min(limit, Math.max(initial, allocator.capacity + 1, capacity));
+  }
+
   /** A run of a buffer's elements, the buffers grown until it fits or the limit says it never will. */
   private allocate(allocator: RangeAllocator, count: number, limit: number): Nullable<number> {
     let start: Nullable<number> = allocator.allocate(count);
 
     while (start === null && allocator.capacity < limit) {
+      // Room freed in runs too short for it: grown past the whole run it needs.
+      const capacity: number = Math.min(limit, Math.ceil((allocator.capacity + count) * HEADROOM));
+
       if (allocator === this.vertices) {
-        this.grow(Math.min(limit, Math.ceil(allocator.capacity * GROWTH)), this.indices.capacity);
+        this.grow(capacity, this.indices.capacity);
       } else {
-        this.grow(this.vertices.capacity, Math.min(limit, Math.ceil(allocator.capacity * GROWTH)));
+        this.grow(this.vertices.capacity, capacity);
       }
 
       start = allocator.allocate(count);

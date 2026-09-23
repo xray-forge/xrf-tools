@@ -18,6 +18,11 @@ export class RangeAllocator {
     return this.currentCapacity;
   }
 
+  /** Elements handed out and not released. */
+  public get used(): number {
+    return this.free.reduce((total: number, range: IFreeRange) => total - range.count, this.currentCapacity);
+  }
+
   /**
    * @param count - Elements wanted.
    * @returns Where the run starts, or null where no free run is that long.

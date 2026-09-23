@@ -67,7 +67,7 @@ function toState(
 /** Static draws on, standing their batches in the G-buffer pass's scene. */
 function createDraws(scenes: TPassRecord<Scene>): { buffers: StaticDrawBuffers; draws: StaticDraws } {
   const buffers: StaticDrawBuffers = new StaticDrawBuffers();
-  const draws: StaticDraws = new StaticDraws(buffers, scenes[ERendererPass.DEFERRED]);
+  const draws: StaticDraws = new StaticDraws(buffers, scenes[ERendererPass.DEFERRED], () => []);
 
   draws.isEnabled = true;
 
@@ -80,7 +80,7 @@ function toBatchMeshes(scene: Scene): Array<Mesh> {
 }
 
 describe("SceneObject", () => {
-  const plain: StaticDraws = new StaticDraws(new StaticDrawBuffers(), new Scene());
+  const plain: StaticDraws = new StaticDraws(new StaticDrawBuffers(), new Scene(), () => []);
 
   it("draws each section in the scene of the pass its surface names", () => {
     const scenes: TPassRecord<Scene> = toPassRecord(() => new Scene());

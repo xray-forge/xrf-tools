@@ -17,7 +17,7 @@ function createBuffer(vertices: number): BufferGeometry {
 function createArena(): StaticArena {
   const arena: StaticArena = new StaticArena(createBuffer(3));
 
-  arena.place(createBuffer(3));
+  arena.place(createBuffer(3), () => ({ indices: 0, vertices: 0 }));
 
   return arena;
 }
@@ -49,7 +49,7 @@ describe("StaticBatch", () => {
     const version: number = batch.bundle.version;
 
     batch.add(1);
-    arena.place(createBuffer(1 << 17));
+    arena.place(createBuffer(1 << 17), () => ({ indices: 0, vertices: 0 }));
     batch.refresh(pool);
 
     expect(toMesh(batch)).not.toBe(before);

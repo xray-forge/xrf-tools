@@ -16,15 +16,12 @@ import { SurfaceLibrary } from "#/scene/surface/surface-library";
  * Works out what an object draws from what it names: its geometry, its skeleton, its places and its surfaces.
  */
 export class SceneObjectResolver {
-  /** The vertex layout a mesh compiles against, which three builds a shader per. */
-  private static toLayout(geometry: BufferGeometry, skeleton: Nullable<Skeleton>, isInstanced: boolean): string {
-    return `${isInstanced ? "instanced" : ""}${skeleton ? "skinned" : ""}:${Object.keys(geometry.attributes).sort()}`;
-  }
-
   private readonly geometries: ReadonlyMap<string, SceneGeometry>;
   private readonly skeletons: RendererSkeletons;
   private readonly surfaces: SurfaceLibrary;
   private readonly draws: StaticDraws;
+  /** Each geometry's attribute names, sorted: resolved for every waiting object on every frame. */
+  private readonly attributeNames: WeakMap<BufferGeometry, string> = new WeakMap();
 
   public constructor(
     geometries: ReadonlyMap<string, SceneGeometry>,
@@ -71,12 +68,22 @@ export class SceneObjectResolver {
       geometry,
       instances,
       keys: surfaces.flatMap((surface: Maybe<ISurfaceMaterial>) => surface?.keys ?? []),
-      plain: { drawn, layout: SceneObjectResolver.toLayout(drawn, skeleton, instances !== null) },
+      plain: { drawn, layout: this.toLayout(drawn, skeleton, instances !== null) },
       skeleton,
-      static: staticDrawn
-        ? { drawn: staticDrawn, layout: SceneObjectResolver.toLayout(staticDrawn, null, false) }
-        : null,
+      static: staticDrawn ? { drawn: staticDrawn, layout: this.toLayout(staticDrawn, null, false) } : null,
       surfaces,
     };
+  }
+
+  /** The vertex layout a mesh compiles against, which three builds a shader per. */
+  private toLayout(geometry: BufferGeometry, skeleton: Nullable<Skeleton>, isInstanced: boolean): string {
+    let names: Maybe<string> = this.attributeNames.get(geometry);
+
+    if (names === undefined) {
+      names = Object.keys(geometry.attributes).sort().join(",");
+      this.attributeNames.set(geometry, names);
+    }
+
+    return `${isInstanced ? "instanced" : ""}${skeleton ? "skinned" : ""}:${names}`;
   }
 }

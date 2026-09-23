@@ -34,6 +34,17 @@ describe("CullView", () => {
     expect(view.classify(0, 0, -150, 10)).toBe(EVisibility.OUTSIDE);
   });
 
+  it("brings its far plane in to how far the view sees, leaving the camera's own", () => {
+    const camera: PerspectiveCamera = createCamera();
+    const view: CullView = new CullView();
+
+    view.take(camera, 40);
+
+    expect(view.classify(0, 0, -30, 1)).toBe(EVisibility.INSIDE);
+    expect(view.classify(0, 0, -50, 5)).toBe(EVisibility.OUTSIDE);
+    expect(camera.far).toBe(100);
+  });
+
   it("keeps its version while the camera stays put, and moves it when the camera moves", () => {
     const camera: PerspectiveCamera = createCamera();
     const view: CullView = new CullView();

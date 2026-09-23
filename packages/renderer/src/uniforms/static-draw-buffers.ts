@@ -1,3 +1,4 @@
+import { storage } from "three/tsl";
 import { IndirectStorageBufferAttribute, StorageBufferAttribute } from "three/webgpu";
 
 /** Static draws the buffers hold, which is more sections than any level measured puts in its resident sectors. */
@@ -28,6 +29,11 @@ export class StaticDrawBuffers {
     new Float32Array(STATIC_DRAW_CAPACITY * 16),
     4
   );
+  /**
+   * The matrices as one node every static shader reads. Three names a buffer in a shader by its node, so a node per
+   * material made every static shader's source unique: a pipeline per material, 974 of them on Pripyat.
+   */
+  public readonly modelColumns = storage(this.models, "vec4", STATIC_DRAW_CAPACITY * 4).toReadOnly();
   /** What the last cull kept: draws, then indices, for the frame report. */
   public readonly counts: StorageBufferAttribute = new StorageBufferAttribute(new Uint32Array(2), 1);
 }

@@ -10,7 +10,7 @@ import { SceneGeometry } from "#/scene/geometry/scene-geometry";
 import { KeyedUsers } from "#/scene/keyed-users";
 import { SceneObject } from "#/scene/object/scene-object";
 import { SceneObjectResolver } from "#/scene/object/scene-object-resolver";
-import { ISceneObjectState } from "#/scene/object/scene-object-state";
+import { ISceneObjectState, isStaticDraw } from "#/scene/object/scene-object-state";
 import { toPassRecord, TPassRecord } from "#/scene/pass-record";
 import { RendererSkeletons } from "#/scene/skeleton/renderer-skeletons";
 import { createSceneStaging, ISceneStaging } from "#/scene/staging/scene-staging";
@@ -59,7 +59,9 @@ export class RendererScene {
   });
 
   public constructor(uniforms: RendererUniforms, onTextureRefused: (key: string, refusal: IDdsRefusal) => void) {
-    this.staticDraws = new StaticDraws(uniforms.staticDraws, this.scenes[ERendererPass.DEFERRED]);
+    this.staticDraws = new StaticDraws(uniforms.staticDraws, this.scenes[ERendererPass.DEFERRED], () =>
+      this.toUpcomingStatic()
+    );
     this.staticCull = this.staticDraws.cull;
     this.textures = new RendererTextures(onTextureRefused, (key: string) => this.staticDraws.invalidate(key));
     this.skeletons = new RendererSkeletons((key: string) => this.buildUsers(this.skeletonUsers.get(key)));
@@ -271,6 +273,17 @@ export class RendererScene {
   /** Draws an object as it is put now. */
   private apply(entry: SceneObject): void {
     entry.apply(this.resolver.resolve(entry), this.scenes);
+  }
+
+  /** The geometries the waiting objects will draw statically. */
+  private *toUpcomingStatic(): Iterable<SceneGeometry> {
+    for (const entry of this.changes.pending) {
+      const state: Nullable<ISceneObjectState> = this.resolver.resolve(entry);
+
+      if (state && state.surfaces.some((surface) => isStaticDraw(state, surface))) {
+        yield state.geometry;
+      }
+    }
   }
 
   /** Whether an object draws without a stall: its materials compiled, its textures uploaded. */

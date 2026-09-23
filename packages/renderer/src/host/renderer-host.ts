@@ -291,7 +291,7 @@ export class RendererHost {
       this.rig.resize(width, height);
     }
 
-    this.rig.update(this.drawnAt === null ? 0 : (now - this.drawnAt) / 1000, this.uniforms.viewDistance);
+    this.rig.update(this.drawnAt === null ? 0 : (now - this.drawnAt) / 1000);
     this.drawnAt = now;
     this.uniforms.follow(this.rig.camera);
 
@@ -308,7 +308,7 @@ export class RendererHost {
 
     const startedAt: number = performance.now();
 
-    this.cullView.take(this.rig.camera);
+    this.cullView.take(this.rig.camera, this.uniforms.viewDistance);
     this.scene.cull(this.cullView);
     this.graph.render(frame, device.inspector);
     this.stats.endFrame(performance.now() - startedAt, device);

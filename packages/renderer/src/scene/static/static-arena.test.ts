@@ -3,6 +3,7 @@ import { BufferAttribute, BufferGeometry } from "three/webgpu";
 
 import { StaticArena } from "#/scene/static/static-arena";
 import { IStaticRange } from "#/scene/static/static-range";
+import { IStaticRoom } from "#/scene/static/static-room";
 import { EVertexAttribute } from "#/shader/vertex-attribute";
 
 function createBuffer(count: number, isIndexed: boolean = true): BufferGeometry {
@@ -28,6 +29,11 @@ function createBuffer(count: number, isIndexed: boolean = true): BufferGeometry 
   return buffer;
 }
 
+/** Nothing placed after the geometry in question. */
+function toNothingComing(): IStaticRoom {
+  return { indices: 0, vertices: 0 };
+}
+
 describe("StaticArena", () => {
   it("holds geometries of one layout, telling each apart from one with another", () => {
     const withUv: BufferGeometry = createBuffer(3);
@@ -40,8 +46,8 @@ describe("StaticArena", () => {
 
   it("copies each geometry in after the last, its indices as stored, and a sequence for one without", () => {
     const arena: StaticArena = new StaticArena(createBuffer(3));
-    const first: IStaticRange = arena.place(createBuffer(3)) as IStaticRange;
-    const second: IStaticRange = arena.place(createBuffer(2, false)) as IStaticRange;
+    const first: IStaticRange = arena.place(createBuffer(3), toNothingComing) as IStaticRange;
+    const second: IStaticRange = arena.place(createBuffer(2, false), toNothingComing) as IStaticRange;
     const geometry: BufferGeometry = arena.createGeometry();
 
     expect([first.vertexStart, first.indexStart, second.vertexStart, second.indexStart]).toEqual([0, 0, 3, 3]);
@@ -52,26 +58,38 @@ describe("StaticArena", () => {
 
   it("gives a freed geometry's room to the next, and says when it goes empty", () => {
     const arena: StaticArena = new StaticArena(createBuffer(3));
-    const first: IStaticRange = arena.place(createBuffer(3)) as IStaticRange;
+    const first: IStaticRange = arena.place(createBuffer(3), toNothingComing) as IStaticRange;
 
     arena.free(first);
 
     expect(arena.isEmpty).toBe(true);
-    expect((arena.place(createBuffer(3)) as IStaticRange).vertexStart).toBe(0);
+    expect((arena.place(createBuffer(3), toNothingComing) as IStaticRange).vertexStart).toBe(0);
   });
 
   it("grows by replacing its buffers, keeping what they held, and counts each time", () => {
     const arena: StaticArena = new StaticArena(createBuffer(3));
 
-    arena.place(createBuffer(3));
+    arena.place(createBuffer(3), toNothingComing);
 
     const generation: number = arena.generation;
-    const range: IStaticRange = arena.place(createBuffer(1 << 17)) as IStaticRange;
+    const range: IStaticRange = arena.place(createBuffer(1 << 17), toNothingComing) as IStaticRange;
     const geometry: BufferGeometry = arena.createGeometry();
 
     expect(arena.generation).toBeGreaterThan(generation);
     expect(range.vertexStart).toBe(3);
     expect(geometry.getAttribute("position").count).toBeGreaterThanOrEqual(3 + (1 << 17));
     expect(Array.from((geometry.index as BufferAttribute).array.subarray(0, 3))).toEqual([2, 1, 0]);
+  });
+
+  it("grows once for everything still to come, so what comes next fits without growing again", () => {
+    const arena: StaticArena = new StaticArena(createBuffer(3));
+
+    arena.place(createBuffer(3), () => ({ indices: 1 << 20, vertices: 1 << 20 }));
+
+    const generation: number = arena.generation;
+
+    arena.place(createBuffer(1 << 20), toNothingComing);
+
+    expect(arena.generation).toBe(generation);
   });
 });
