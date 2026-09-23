@@ -1,284 +1,63 @@
 import { Maybe, Nullable } from "@xrf/types";
-import {
-  BufferGeometry,
-  InstancedBufferAttribute,
-  InstancedBufferGeometry,
-  InstancedInterleavedBuffer,
-  InterleavedBufferAttribute,
-  Material,
-  Matrix4,
-  Mesh,
-  MeshBasicNodeMaterial,
-  Scene,
-  Skeleton,
-  SkinnedMesh,
-  Sphere,
-} from "three/webgpu";
+import { BufferGeometry, Material, Mesh, Scene } from "three/webgpu";
 
 import { IRendererGeometry } from "#/contract/scene/renderer-geometry";
-import { IRendererInstances, IRendererObject } from "#/contract/scene/renderer-object";
-import { ERendererPass, IRendererSurface } from "#/contract/scene/renderer-surface";
+import { IRendererObject } from "#/contract/scene/renderer-object";
+import { IRendererSurface } from "#/contract/scene/renderer-surface";
 import { TRendererTextureSource } from "#/contract/scene/renderer-texture-source";
-import { createRendererBufferGeometry } from "#/scene/renderer-buffer-geometry";
-import { RendererSkeletonEntry, RendererSkeletons } from "#/scene/renderer-skeletons";
-import { RendererTextures } from "#/scene/renderer-textures";
-import {
-  createSurfaceMaterial,
-  INSTANCE_HEMI_ATTRIBUTE,
-  INSTANCE_MATRIX_ATTRIBUTE,
-  ISurfaceMaterial,
-  ISurfaceShadingContext,
-} from "#/scene/surface-material";
+import { SceneChangeQueue } from "#/scene/change/scene-change-queue";
+import { createRendererBufferGeometry } from "#/scene/geometry/renderer-buffer-geometry";
+import { KeyedUsers } from "#/scene/keyed-users";
+import { SceneObject } from "#/scene/object/scene-object";
+import { SceneObjectResolver } from "#/scene/object/scene-object-resolver";
+import { ISceneObjectState } from "#/scene/object/scene-object-state";
+import { toPassRecord, TPassRecord } from "#/scene/pass-record";
+import { RendererSkeletons } from "#/scene/skeleton/renderer-skeletons";
+import { createSceneStaging, ISceneStaging } from "#/scene/staging/scene-staging";
+import { MaterialReadiness } from "#/scene/surface/material-readiness";
+import { SurfaceLibrary } from "#/scene/surface/surface-library";
 import { IDdsRefusal } from "#/texture/dds/dds-refusal";
-
-/** What a slot draws with in a pass that does not draw it, or whose surface is missing. */
-const HIDDEN: Material = new MeshBasicNodeMaterial({ visible: false });
-
-/** Superseded materials kept compiled, so a toggle back to one draws it at once. */
-const MATERIAL_CACHE_LIMIT: number = 64;
-
-/**
- * Objects one settle applies before leaving the rest to the next frame: each draws for the first time in the frame
- * after, where three builds its render state, and a whole level's worth of those was one long frame.
- */
-const APPLIED_PER_SETTLE: number = 32;
-
-/** Floats one instance's transform takes. */
-const FLOATS_PER_INSTANCE: number = 16;
-
-/** Every pass an object draws in, in frame order. */
-const PASSES: ReadonlyArray<ERendererPass> = [ERendererPass.DEFERRED, ERendererPass.WALLMARK, ERendererPass.FORWARD];
-
-/** One mesh per pass, each drawing only its own slots. */
-type TPassMeshes = Record<ERendererPass, Mesh>;
-
-/** One scene per pass. */
-export type TPassScenes = Record<ERendererPass, Scene>;
-
-/**
- * What an object stands in many places with: its own geometry over the one put, adding the places as instanced
- * attributes, drawn by every pass.
- */
-interface IObjectInstances {
-  source: IRendererInstances;
-  /** The geometry put under the object's key, whose attributes the instanced one shares. */
-  base: BufferGeometry;
-  geometry: InstancedBufferGeometry;
-}
-
-/** One object: a mesh per pass over one geometry. */
-interface ISceneObject {
-  /** The key it was put under, which a released object no longer answers to. */
-  key: string;
-  object: IRendererObject;
-  meshes: TPassMeshes;
-  /** The skeleton its meshes are bound to, or null for rigid meshes. */
-  skeleton: Nullable<Skeleton>;
-  /** The places its meshes stand, or null for a mesh its matrix places once. */
-  instances: Nullable<IObjectInstances>;
-  /** The places it is about to stand in, built for a change it waits in. */
-  staged: Nullable<IObjectInstances>;
-  /** The change it waits in, or null while it draws as it was last put. */
-  change: Nullable<ISceneChange>;
-}
-
-/** What an object is about to draw, once every material in it is compiled for its layout. */
-interface IObjectState {
-  geometry: BufferGeometry;
-  skeleton: Nullable<Skeleton>;
-  instances: Nullable<IObjectInstances>;
-  slots: Record<ERendererPass, Array<Material>>;
-  /** The vertex layout the materials compile against. */
-  layout: string;
-  /** Every texture key its surfaces sample. */
-  keys: ReadonlyArray<string>;
-}
-
-/**
- * What a consumer changed together: applied together, once every material it names is compiled, after every change
- * made before it.
- */
-interface ISceneChange {
-  objects: Set<ISceneObject>;
-  /** Released objects' meshes, drawn until the change applies, so a replacement never leaves a gap. */
-  leaving: Array<Mesh>;
-  /** Replaced or released geometries, disposed once nothing draws them. */
-  geometries: Set<BufferGeometry>;
-  /** Textures released, let go of once whatever sampled them stops drawing. */
-  textures: Set<string>;
-}
-
-/**
- * Meshes standing in for objects whose materials are not compiled yet, for the renderer to compile off the frame.
- */
-export interface IRendererSceneStaging {
-  scenes: TPassScenes;
-  /** The materials the staging compiles, each against the layout it compiles for. */
-  materials: ReadonlyArray<readonly [Material, string]>;
-}
+import { RendererTextures } from "#/texture/renderer-textures";
+import { RendererUniforms } from "#/uniforms/renderer-uniforms";
 
 /**
  * Everything a consumer put, as the scenes the frame draws.
- * A change compiles off the frame: until its materials are ready, whatever drew before keeps drawing.
+ * A change compiles off the frame: until its materials are ready and its textures are up, whatever drew before keeps
+ * drawing.
  */
 export class RendererScene {
-  /**
-   * A mesh the object's matrix places directly, never recomposed from a position and rotation.
-   *
-   * @param skeleton - What it is skinned to, or null for a rigid mesh.
-   * @returns The mesh.
-   */
-  private static createMesh(skeleton: Nullable<Skeleton>): Mesh {
-    const mesh: Mesh = skeleton ? new SkinnedMesh() : new Mesh();
-
-    mesh.matrixAutoUpdate = false;
-
-    if (mesh instanceof SkinnedMesh && skeleton) {
-      // Measured against its bind pose, a skinned mesh would be culled by a motion reaching outside it.
-      mesh.frustumCulled = false;
-      // Identity: the vertices and the bone transforms are both in model space already.
-      mesh.bind(skeleton, new Matrix4());
-    }
-
-    return mesh;
-  }
-
-  private static createMeshes(skeleton: Nullable<Skeleton>): TPassMeshes {
-    return {
-      [ERendererPass.DEFERRED]: RendererScene.createMesh(skeleton),
-      [ERendererPass.FORWARD]: RendererScene.createMesh(skeleton),
-      [ERendererPass.WALLMARK]: RendererScene.createMesh(skeleton),
-    };
-  }
-
-  /**
-   * A geometry standing in every place the instances name: the put geometry's own attributes, the places as instanced
-   * columns, and a sphere around all of them for culling.
-   */
-  private static createInstancedGeometry(base: BufferGeometry, source: IRendererInstances): InstancedBufferGeometry {
-    const geometry: InstancedBufferGeometry = new InstancedBufferGeometry();
-    const columns: InstancedInterleavedBuffer = new InstancedInterleavedBuffer(source.transforms, FLOATS_PER_INSTANCE);
-    const count: number = source.transforms.length / FLOATS_PER_INSTANCE;
-
-    geometry.index = base.index;
-    Object.entries(base.attributes).forEach(([name, attribute]) => geometry.setAttribute(name, attribute));
-    base.groups.forEach((group) => geometry.addGroup(group.start, group.count, group.materialIndex));
-
-    for (let column = 0; column < 4; column += 1) {
-      geometry.setAttribute(
-        `${INSTANCE_MATRIX_ATTRIBUTE}${column}`,
-        new InterleavedBufferAttribute(columns, 4, column * 4)
-      );
-    }
-
-    if (source.hemi) {
-      geometry.setAttribute(INSTANCE_HEMI_ATTRIBUTE, new InstancedBufferAttribute(source.hemi, 2));
-    }
-
-    geometry.instanceCount = count;
-    geometry.boundingSphere = RendererScene.toInstancesSphere(base, source.transforms, count);
-
-    return geometry;
-  }
-
-  /** A sphere around the base's own, stood in every place. */
-  private static toInstancesSphere(base: BufferGeometry, transforms: Float32Array, count: number): Sphere {
-    if (!base.boundingSphere) {
-      base.computeBoundingSphere();
-    }
-
-    const own: Sphere = base.boundingSphere as Sphere;
-    const matrix: Matrix4 = new Matrix4();
-    const placed: Sphere = new Sphere();
-    const all: Sphere = new Sphere();
-
-    for (let index = 0; index < count; index += 1) {
-      placed.copy(own).applyMatrix4(matrix.fromArray(transforms, index * FLOATS_PER_INSTANCE));
-
-      if (index === 0) {
-        all.copy(placed);
-      } else {
-        all.union(placed);
-      }
-    }
-
-    return all;
-  }
-
-  private static createScenes(): TPassScenes {
-    return {
-      [ERendererPass.DEFERRED]: new Scene(),
-      [ERendererPass.FORWARD]: new Scene(),
-      [ERendererPass.WALLMARK]: new Scene(),
-    };
-  }
-
-  /** The vertex layout a mesh compiles against, which three builds a shader per. */
-  private static toLayout(geometry: BufferGeometry, skeleton: Nullable<Skeleton>, isInstanced: boolean): string {
-    return `${isInstanced ? "instanced" : ""}${skeleton ? "skinned" : ""}:${Object.keys(geometry.attributes).sort()}`;
-  }
-
   /** What each pass draws. */
-  public readonly scenes: TPassScenes = RendererScene.createScenes();
+  public readonly scenes: TPassRecord<Scene> = toPassRecord(() => new Scene());
   public readonly textures: RendererTextures;
   public readonly skeletons: RendererSkeletons;
 
   private readonly geometries: Map<string, BufferGeometry> = new Map();
-  private readonly surfaces: Map<string, ISurfaceMaterial> = new Map();
-  /** What each surface was put as, so putting it again unchanged builds nothing. */
-  private readonly surfaceDescriptions: Map<string, string> = new Map();
-  /** What each surface was put as, to build it again when the wireframe setting changes. */
-  private readonly surfaceSources: Map<string, IRendererSurface> = new Map();
-  private readonly objects: Map<string, ISceneObject> = new Map();
-  /** The objects each surface key is drawn by, so a put touches them and nothing else. */
-  private readonly surfaceUsers: Map<string, Set<ISceneObject>> = new Map();
-  /** The objects each geometry key is drawn by. */
-  private readonly geometryUsers: Map<string, Set<ISceneObject>> = new Map();
-  /** The layouts each material's pipelines exist for, so drawing it in one stalls nothing. */
-  private readonly ready: WeakMap<Material, Set<string>> = new WeakMap();
-  /** Changes not applied yet, oldest first. */
-  private readonly changes: Array<ISceneChange> = [];
-  /** Materials no surface names any more, disposed or cached once nothing draws them. */
-  private readonly retired: Set<ISurfaceMaterial> = new Set();
-  /** Compiled materials no surface names, by description, for a surface put again as one of them. */
-  private readonly cache: Map<string, ISurfaceMaterial> = new Map();
-  /** The description each material was built from, which is the cache's key for it. */
-  private readonly descriptions: WeakMap<ISurfaceMaterial, string> = new WeakMap();
+  private readonly surfaces: SurfaceLibrary;
+  private readonly objects: Map<string, SceneObject> = new Map();
+  private readonly geometryUsers: KeyedUsers<SceneObject> = new KeyedUsers();
+  private readonly surfaceUsers: KeyedUsers<SceneObject> = new KeyedUsers();
+  private readonly skeletonUsers: KeyedUsers<SceneObject> = new KeyedUsers();
+  private readonly readiness: MaterialReadiness = new MaterialReadiness();
+  private readonly resolver: SceneObjectResolver;
+  private readonly changes: SceneChangeQueue<SceneObject> = new SceneChangeQueue({
+    apply: (entry: SceneObject) => entry.apply(this.resolver.resolve(entry), this.scenes),
+    canApply: (entry: SceneObject) => this.canApply(entry),
+    releaseTexture: (key: string) => this.textures.release(key),
+    settled: () => this.retire(),
+  });
 
-  private readonly shading: ISurfaceShadingContext;
-
-  private isWireframe: boolean = false;
-  /** How deep in `transact` the scene is: nothing settles until the outermost one ends. */
-  private depth: number = 0;
-  /** The change the running transaction adds to, made on its first use. */
-  private open: Nullable<ISceneChange> = null;
-
-  public constructor(shading: ISurfaceShadingContext, onTextureRefused: (key: string, refusal: IDdsRefusal) => void) {
-    this.shading = shading;
+  public constructor(uniforms: RendererUniforms, onTextureRefused: (key: string, refusal: IDdsRefusal) => void) {
     this.textures = new RendererTextures(onTextureRefused);
-    this.skeletons = new RendererSkeletons((key: string) =>
-      this.transact(() =>
-        this.objects.forEach((entry: ISceneObject) => {
-          if (entry.object.skeleton === key) {
-            this.build(entry);
-          }
-        })
-      )
+    this.skeletons = new RendererSkeletons((key: string) => this.buildUsers(this.skeletonUsers.get(key)));
+    this.surfaces = new SurfaceLibrary(this.textures, uniforms, (key: string) =>
+      this.buildUsers(this.surfaceUsers.get(key))
     );
+    this.resolver = new SceneObjectResolver(this.geometries, this.skeletons, this.surfaces);
   }
 
-  /**
-   * @param isWireframe - Whether every surface draws as its triangles' edges.
-   */
-  public setWireframe(isWireframe: boolean): void {
-    if (isWireframe === this.isWireframe) {
-      return;
-    }
-
-    this.isWireframe = isWireframe;
-    this.transact(() =>
-      this.surfaceSources.forEach((surface: IRendererSurface, key: string) => this.replaceSurface(key, surface))
-    );
+  /** Whether any object waits: for a material to compile, a texture to upload, or its turn to be applied. */
+  public get hasPending(): boolean {
+    return this.changes.hasPending;
   }
 
   /**
@@ -287,87 +66,40 @@ export class RendererScene {
    * @param change - What to change.
    */
   public transact(change: () => void): void {
-    this.depth += 1;
-
-    try {
-      change();
-    } finally {
-      this.depth -= 1;
-    }
-
-    if (!this.depth) {
-      this.open = null;
-      this.settle();
-    }
-  }
-
-  /** Whether any object waits: for a material to compile, a texture to upload, or its turn to be applied. */
-  public get hasPending(): boolean {
-    return this.changes.some((change: ISceneChange) => change.objects.size > 0);
+    this.changes.transact(change);
   }
 
   /** Applies what became ready since the last frame, a budget of it at a time. */
   public advance(): void {
-    if (this.changes.length && !this.depth) {
-      this.settle();
-    }
+    this.changes.advance();
   }
 
   /**
-   * Stands the waiting objects in scenes of their own, as they will draw, for the renderer to compile.
-   *
-   * @returns The staging, or null when nothing waits.
+   * @param isWireframe - Whether every surface draws as its triangles' edges.
    */
-  public stage(): Nullable<IRendererSceneStaging> {
-    if (!this.hasPending) {
-      return null;
-    }
+  public setWireframe(isWireframe: boolean): void {
+    this.transact(() => this.surfaces.setWireframe(isWireframe));
+  }
 
-    const scenes: TPassScenes = RendererScene.createScenes();
-    const materials: Map<Material, Set<string>> = new Map();
+  /**
+   * Stands the waiting objects with something to compile in scenes of their own, for the renderer to compile. Only
+   * once their textures are up: a pipeline built while its samplers held placeholders would not be the one its first
+   * frame draws with.
+   *
+   * @returns The staging, or null when nothing waits to compile.
+   */
+  public stage(): Nullable<ISceneStaging> {
+    const states: Array<ISceneObjectState> = [];
 
-    for (const change of this.changes) {
-      for (const entry of change.objects) {
-        const state: Nullable<IObjectState> = this.toState(entry);
+    for (const entry of this.changes.pending) {
+      const state: Nullable<ISceneObjectState> = this.resolver.resolve(entry);
 
-        // Only what has something left to compile, and only once its textures are up: a pipeline built while its
-        // samplers held placeholders would not be the one its first frame draws with.
-        if (!state || !this.hasUncompiled(state) || !this.isUploaded(state)) {
-          continue;
-        }
-
-        for (const pass of PASSES) {
-          const slots: Array<Material> = state.slots[pass];
-
-          if (slots.every((material: Material) => material === HIDDEN)) {
-            continue;
-          }
-
-          const mesh: Mesh = RendererScene.createMesh(state.skeleton);
-
-          mesh.geometry = state.geometry;
-          mesh.material = slots;
-          // Compiled whatever the camera sees: culling would skip what is about to come into view.
-          mesh.frustumCulled = false;
-          scenes[pass].add(mesh);
-
-          for (const material of slots) {
-            if (!this.isReady(material, state.layout)) {
-              materials.set(material, (materials.get(material) ?? new Set()).add(state.layout));
-            }
-          }
-        }
+      if (state && !this.readiness.isStateReady(state) && this.isUploaded(state)) {
+        states.push(state);
       }
     }
 
-    if (!materials.size) {
-      return null;
-    }
-
-    return {
-      materials: [...materials].flatMap(([material, layouts]) => [...layouts].map((it) => [material, it] as const)),
-      scenes,
-    };
+    return states.length ? createSceneStaging(states, this.readiness) : null;
   }
 
   /**
@@ -375,30 +107,25 @@ export class RendererScene {
    *
    * @param staging - What was compiled.
    */
-  public commit(staging: IRendererSceneStaging): void {
-    for (const [material, layout] of staging.materials) {
-      this.ready.set(material, (this.ready.get(material) ?? new Set()).add(layout));
-    }
-
+  public commit(staging: ISceneStaging): void {
+    staging.materials.forEach(([material, layout]) => this.readiness.mark(material, layout));
     this.transact(() => {});
   }
 
   public putTexture(key: string, source: TRendererTextureSource): void {
     this.transact(() => {
-      // Put again before an earlier release let go of it: the release is superseded.
-      this.changes.forEach((change: ISceneChange) => change.textures.delete(key));
+      this.changes.keepTexture(key);
       this.textures.put(key, source);
     });
   }
 
   public releaseTexture(key: string): void {
-    // Still sampled by whatever draws until the changes before this one apply, so let go of only then.
-    this.transact(() => this.current.textures.add(key));
+    this.transact(() => this.changes.releaseTexture(key));
   }
 
   public putGeometry(key: string, geometry: IRendererGeometry): void {
     this.transact(() => {
-      this.leaveGeometry(key);
+      this.retireGeometry(key);
       this.geometries.set(key, createRendererBufferGeometry(geometry));
       this.buildUsers(this.geometryUsers.get(key));
     });
@@ -406,446 +133,133 @@ export class RendererScene {
 
   public releaseGeometry(key: string): void {
     this.transact(() => {
-      this.leaveGeometry(key);
+      this.retireGeometry(key);
       this.geometries.delete(key);
       this.buildUsers(this.geometryUsers.get(key));
     });
   }
 
   public putSurface(key: string, surface: IRendererSurface): void {
-    // The same surface again keeps its material: building one compiles its shader.
-    if (this.surfaceDescriptions.get(key) === this.toDescription(surface)) {
-      return;
-    }
-
-    this.surfaceSources.set(key, surface);
-    this.transact(() => this.replaceSurface(key, surface));
+    this.transact(() => this.surfaces.put(key, surface));
   }
 
   public releaseSurface(key: string): void {
-    this.transact(() => {
-      const previous: Maybe<ISurfaceMaterial> = this.surfaces.get(key);
-
-      this.surfaceDescriptions.delete(key);
-      this.surfaceSources.delete(key);
-      this.surfaces.delete(key);
-      this.buildUsers(this.surfaceUsers.get(key));
-
-      if (previous) {
-        this.retired.add(previous);
-      }
-    });
+    this.transact(() => this.surfaces.release(key));
   }
 
   public putObject(key: string, object: IRendererObject): void {
     this.transact(() => {
-      let entry: Maybe<ISceneObject> = this.objects.get(key);
+      let entry: Maybe<SceneObject> = this.objects.get(key);
 
       if (entry) {
         this.unindex(entry);
+        entry.object = object;
       } else {
-        entry = {
-          change: null,
-          instances: null,
-          key,
-          meshes: RendererScene.createMeshes(null),
-          object,
-          skeleton: null,
-          staged: null,
-        };
+        entry = new SceneObject(key, object);
         this.objects.set(key, entry);
       }
 
-      entry.object = object;
       this.index(entry);
       this.build(entry);
     });
   }
 
   public releaseObject(key: string): void {
-    const entry: Maybe<ISceneObject> = this.objects.get(key);
+    const entry: Maybe<SceneObject> = this.objects.get(key);
 
-    if (!entry) {
-      return;
+    if (entry) {
+      this.transact(() => {
+        this.unindex(entry);
+        this.objects.delete(key);
+        this.changes.withdraw(entry, entry.drawing, entry.owned);
+      });
     }
-
-    this.transact(() => {
-      const into: ISceneChange = this.current;
-
-      // Whatever it waited in goes with its release, or a geometry that change let go of would be disposed while the
-      // meshes leaving here still draw it.
-      if (entry.change && entry.change !== into) {
-        this.merge(entry.change, into);
-      }
-
-      into.objects.delete(entry);
-      entry.change = null;
-      this.unindex(entry);
-      this.objects.delete(key);
-      into.leaving.push(...PASSES.map((pass: ERendererPass) => entry.meshes[pass]));
-
-      // The places it stood are its own geometry, let go of with the meshes drawing them.
-      for (const instances of [entry.instances, entry.staged]) {
-        if (instances) {
-          into.geometries.add(instances.geometry);
-        }
-      }
-    });
   }
 
   public dispose(): void {
-    this.objects.forEach((entry: ISceneObject) => PASSES.forEach((pass) => entry.meshes[pass].removeFromParent()));
+    this.objects.forEach((entry: SceneObject) => entry.detach());
     this.objects.clear();
-
-    for (const change of this.changes) {
-      change.leaving.forEach((mesh: Mesh) => mesh.removeFromParent());
-      change.geometries.forEach((geometry: BufferGeometry) => geometry.dispose());
-    }
-
-    this.changes.length = 0;
-    this.open = null;
-    this.surfaces.forEach((surface: ISurfaceMaterial) => surface.dispose());
-    this.surfaces.clear();
-    this.retired.forEach((surface: ISurfaceMaterial) => surface.dispose());
-    this.retired.clear();
-    this.cache.forEach((surface: ISurfaceMaterial) => surface.dispose());
-    this.cache.clear();
-    this.surfaceDescriptions.clear();
-    this.surfaceSources.clear();
-    this.surfaceUsers.clear();
+    this.changes.dispose();
+    this.surfaces.dispose();
     this.geometryUsers.clear();
+    this.surfaceUsers.clear();
+    this.skeletonUsers.clear();
     this.geometries.forEach((geometry: BufferGeometry) => geometry.dispose());
     this.geometries.clear();
     this.skeletons.dispose();
     this.textures.dispose();
   }
 
-  /** The change the running transaction adds to. */
-  private get current(): ISceneChange {
-    if (!this.open) {
-      this.open = { geometries: new Set(), leaving: [], objects: new Set(), textures: new Set() };
-      this.changes.push(this.open);
-    }
+  private index(entry: SceneObject): void {
+    const { geometry, surfaces, skeleton } = entry.object;
 
-    return this.open;
-  }
+    this.geometryUsers.add(geometry, entry);
+    surfaces.forEach((surface: string) => this.surfaceUsers.add(surface, entry));
 
-  private index(entry: ISceneObject): void {
-    RendererScene.addUser(this.geometryUsers, entry.object.geometry, entry);
-    entry.object.surfaces.forEach((surface: string) => RendererScene.addUser(this.surfaceUsers, surface, entry));
-  }
-
-  private unindex(entry: ISceneObject): void {
-    RendererScene.removeUser(this.geometryUsers, entry.object.geometry, entry);
-    entry.object.surfaces.forEach((surface: string) => RendererScene.removeUser(this.surfaceUsers, surface, entry));
-  }
-
-  private static addUser(users: Map<string, Set<ISceneObject>>, key: string, entry: ISceneObject): void {
-    let set: Maybe<Set<ISceneObject>> = users.get(key);
-
-    if (!set) {
-      set = new Set();
-      users.set(key, set);
-    }
-
-    set.add(entry);
-  }
-
-  private static removeUser(users: Map<string, Set<ISceneObject>>, key: string, entry: ISceneObject): void {
-    const set: Maybe<Set<ISceneObject>> = users.get(key);
-
-    set?.delete(entry);
-
-    if (set && !set.size) {
-      users.delete(key);
+    if (skeleton) {
+      this.skeletonUsers.add(skeleton, entry);
     }
   }
 
-  private buildUsers(users: Maybe<ReadonlySet<ISceneObject>>): void {
-    users?.forEach((entry: ISceneObject) => this.build(entry));
-  }
+  private unindex(entry: SceneObject): void {
+    const { geometry, surfaces, skeleton } = entry.object;
 
-  /** A surface's material for its description now, from the cache when one was compiled for it before. */
-  private replaceSurface(key: string, surface: IRendererSurface): void {
-    const description: string = this.toDescription(surface);
-    const previous: Maybe<ISurfaceMaterial> = this.surfaces.get(key);
-    let material: Maybe<ISurfaceMaterial> = this.cache.get(description);
+    this.geometryUsers.delete(geometry, entry);
+    surfaces.forEach((surface: string) => this.surfaceUsers.delete(surface, entry));
 
-    if (material) {
-      this.cache.delete(description);
-    } else {
-      material = createSurfaceMaterial(surface, this.textures, this.shading);
-      material.material.wireframe = this.isWireframe;
-      this.descriptions.set(material, description);
-    }
-
-    this.surfaceDescriptions.set(key, description);
-    this.surfaces.set(key, material);
-    this.buildUsers(this.surfaceUsers.get(key));
-
-    if (previous) {
-      this.retired.add(previous);
+    if (skeleton) {
+      this.skeletonUsers.delete(skeleton, entry);
     }
   }
 
-  /** What a surface is built from: the surface itself and the wireframe setting, as one comparable string. */
-  private toDescription(surface: IRendererSurface): string {
-    return `${this.isWireframe ? "wireframe" : "solid"}:${JSON.stringify(surface)}`;
+  private buildUsers(users: ReadonlySet<SceneObject>): void {
+    this.transact(() => users.forEach((entry: SceneObject) => this.build(entry)));
   }
 
-  /** Caches, or disposes past the cache's limit, every retired material nothing draws any more. */
+  /** Queues an object in the running change, to draw as it is put now. */
+  private build(entry: SceneObject): void {
+    // Only an object still held draws: one released while it waited is gone for good.
+    if (this.objects.get(entry.key) === entry) {
+      this.changes.enlist(entry);
+    }
+  }
+
+  /** A geometry no longer put under its key, disposed once the change replacing it applies. */
+  private retireGeometry(key: string): void {
+    const geometry: Maybe<BufferGeometry> = this.geometries.get(key);
+
+    if (geometry) {
+      this.changes.retireGeometry(geometry);
+    }
+  }
+
+  /** Whether an object draws without a stall: its materials compiled, its textures uploaded. */
+  private canApply(entry: SceneObject): boolean {
+    const state: Nullable<ISceneObjectState> = this.resolver.resolve(entry);
+
+    // One whose geometry is missing applies at once, as nothing drawn.
+    return !state || (this.readiness.isStateReady(state) && this.isUploaded(state));
+  }
+
+  private isUploaded(state: ISceneObjectState): boolean {
+    return state.keys.every((key: string) => this.textures.isUploaded(key));
+  }
+
+  /** Lets the surface library cache or dispose whatever it retired that nothing draws any more. */
   private retire(): void {
-    if (!this.retired.size) {
+    if (!this.surfaces.hasRetired) {
       return;
     }
 
     const drawn: Set<Material> = new Set();
-    const meshes: Array<Mesh> = this.changes.flatMap((change: ISceneChange) => change.leaving);
+    const meshes: Array<Mesh> = [...this.changes.leaving];
 
-    this.objects.forEach((entry: ISceneObject) => PASSES.forEach((pass) => meshes.push(entry.meshes[pass])));
+    this.objects.forEach((entry: SceneObject) => meshes.push(...entry.drawing));
 
     for (const mesh of meshes) {
       (Array.isArray(mesh.material) ? mesh.material : [mesh.material]).forEach((it: Material) => drawn.add(it));
     }
 
-    for (const surface of this.retired) {
-      if (drawn.has(surface.material)) {
-        continue;
-      }
-
-      this.retired.delete(surface);
-
-      const description: Maybe<string> = this.descriptions.get(surface);
-
-      if (description && this.ready.has(surface.material) && !this.cache.has(description)) {
-        this.cache.set(description, surface);
-      } else {
-        surface.dispose();
-      }
-    }
-
-    while (this.cache.size > MATERIAL_CACHE_LIMIT) {
-      const [description, surface] = this.cache.entries().next().value as [string, ISurfaceMaterial];
-
-      this.cache.delete(description);
-      surface.dispose();
-    }
-  }
-
-  private isReady(material: Material, layout: string): boolean {
-    return material === HIDDEN || Boolean(this.ready.get(material)?.has(layout));
-  }
-
-  /** What an object would draw now, or null for one whose geometry is missing. */
-  private toState(entry: ISceneObject): Nullable<IObjectState> {
-    const { object } = entry;
-    const geometry: Maybe<BufferGeometry> = this.geometries.get(object.geometry);
-
-    if (!geometry) {
-      return null;
-    }
-
-    // Skinned only when the object names a skeleton that exists and its geometry carries the links to bind with.
-    const skeletonEntry: Maybe<RendererSkeletonEntry> = object.skeleton
-      ? this.skeletons.get(object.skeleton)
-      : undefined;
-    const skeleton: Nullable<Skeleton> =
-      skeletonEntry && geometry.hasAttribute("skinIndex") ? skeletonEntry.skeleton : null;
-    const instances: Nullable<IObjectInstances> = this.toInstances(entry, geometry);
-    const drawn: BufferGeometry = instances?.geometry ?? geometry;
-    const count: number = Math.max(
-      object.surfaces.length,
-      ...geometry.groups.map((group) => (group.materialIndex ?? 0) + 1)
-    );
-    const surfaces: Array<Maybe<ISurfaceMaterial>> = Array.from({ length: count }, (_, slot: number) =>
-      this.surfaces.get(object.surfaces[slot])
-    );
-
-    function toSlots(pass: ERendererPass): Array<Material> {
-      return surfaces.map((surface: Maybe<ISurfaceMaterial>) =>
-        surface && surface.pass === pass ? surface.material : HIDDEN
-      );
-    }
-
-    return {
-      geometry: drawn,
-      instances,
-      keys: surfaces.flatMap((surface: Maybe<ISurfaceMaterial>) => surface?.keys ?? []),
-      layout: RendererScene.toLayout(drawn, skeleton, instances !== null),
-      skeleton,
-      slots: {
-        [ERendererPass.DEFERRED]: toSlots(ERendererPass.DEFERRED),
-        [ERendererPass.FORWARD]: toSlots(ERendererPass.FORWARD),
-        [ERendererPass.WALLMARK]: toSlots(ERendererPass.WALLMARK),
-      },
-    };
-  }
-
-  /** The places an object stands, kept while it is put with the same transforms over the same geometry. */
-  private toInstances(entry: ISceneObject, geometry: BufferGeometry): Nullable<IObjectInstances> {
-    const source: Maybe<IRendererInstances> = entry.object.instances;
-
-    if (!source) {
-      return null;
-    }
-
-    if (entry.instances?.source === source && entry.instances.base === geometry) {
-      return entry.instances;
-    }
-
-    // Built once for the change that brings it, and kept on the entry until the change applies.
-    entry.staged ??= { base: geometry, geometry: RendererScene.createInstancedGeometry(geometry, source), source };
-
-    if (entry.staged.source !== source || entry.staged.base !== geometry) {
-      entry.staged = { base: geometry, geometry: RendererScene.createInstancedGeometry(geometry, source), source };
-    }
-
-    return entry.staged;
-  }
-
-  /** Queues an object's change in the running transaction's, bringing along whatever it already waited in. */
-  private build(entry: ISceneObject): void {
-    // Only an object still held draws: one released while it waited is gone for good.
-    if (this.objects.get(entry.key) !== entry) {
-      return;
-    }
-
-    const into: ISceneChange = this.current;
-
-    if (entry.change && entry.change !== into) {
-      this.merge(entry.change, into);
-    }
-
-    entry.change = into;
-    into.objects.add(entry);
-  }
-
-  /** Makes an earlier change part of a later one, so neither applies without the other. */
-  private merge(from: ISceneChange, into: ISceneChange): void {
-    for (const entry of from.objects) {
-      entry.change = into;
-      into.objects.add(entry);
-    }
-
-    into.leaving.push(...from.leaving);
-    from.geometries.forEach((geometry: BufferGeometry) => into.geometries.add(geometry));
-    from.textures.forEach((key: string) => into.textures.add(key));
-    this.changes.splice(this.changes.indexOf(from), 1);
-  }
-
-  /**
-   * Applies every change that can draw now, each whole: what a consumer changed together appears together, and what
-   * it released goes in the same frame. Changes wait only for themselves - a sector whose materials are compiled does
-   * not wait behind one whose are not - except one letting textures go, which waits for every change before it, since
-   * any of those may be about to sample them. Past the frame's budget the rest wait for the next.
-   */
-  private settle(): void {
-    let applied: number = 0;
-    let isBlocked: boolean = false;
-
-    for (const change of [...this.changes]) {
-      if (applied && applied + change.objects.size > APPLIED_PER_SETTLE) {
-        break;
-      }
-
-      if (!this.canApply(change) || (isBlocked && change.textures.size)) {
-        isBlocked = true;
-        continue;
-      }
-
-      this.changes.splice(this.changes.indexOf(change), 1);
-      applied += change.objects.size;
-
-      change.objects.forEach((entry: ISceneObject) => {
-        entry.change = null;
-        this.apply(entry);
-      });
-      change.leaving.forEach((mesh: Mesh) => mesh.removeFromParent());
-      change.geometries.forEach((geometry: BufferGeometry) => geometry.dispose());
-      change.textures.forEach((key: string) => this.textures.release(key));
-    }
-
-    this.retire();
-  }
-
-  /** Whether every object of a change draws without a stall: its materials compiled, its textures uploaded. */
-  private canApply(change: ISceneChange): boolean {
-    for (const entry of change.objects) {
-      const state: Nullable<IObjectState> = this.toState(entry);
-
-      if (state && (this.hasUncompiled(state) || !this.isUploaded(state))) {
-        return false;
-      }
-    }
-
-    return true;
-  }
-
-  private isUploaded(state: IObjectState): boolean {
-    return state.keys.every((key: string) => this.textures.isUploaded(key));
-  }
-
-  private hasUncompiled(state: IObjectState): boolean {
-    return PASSES.some((pass) => state.slots[pass].some((it) => !this.isReady(it, state.layout)));
-  }
-
-  /** A geometry no longer put under its key, disposed once the change replacing it applies. */
-  private leaveGeometry(key: string): void {
-    const geometry: Maybe<BufferGeometry> = this.geometries.get(key);
-
-    if (geometry) {
-      this.current.geometries.add(geometry);
-    }
-  }
-
-  /** Points every mesh at what the object names now, and shows each only where it has a slot to draw. */
-  private apply(entry: ISceneObject): void {
-    const state: Nullable<IObjectState> = this.toState(entry);
-
-    if (!state) {
-      PASSES.forEach((pass) => entry.meshes[pass].removeFromParent());
-
-      return;
-    }
-
-    const { object } = entry;
-
-    if (state.skeleton !== entry.skeleton) {
-      PASSES.forEach((pass) => entry.meshes[pass].removeFromParent());
-      entry.meshes = RendererScene.createMeshes(state.skeleton);
-      entry.skeleton = state.skeleton;
-    }
-
-    // The places it stood before are nothing's once its meshes draw the new ones.
-    if (entry.instances && entry.instances !== state.instances) {
-      entry.instances.geometry.dispose();
-    }
-
-    entry.instances = state.instances;
-    entry.staged = null;
-
-    state.geometry.setDrawRange(object.drawRange?.start ?? 0, object.drawRange?.count ?? Infinity);
-
-    for (const pass of PASSES) {
-      const mesh: Mesh = entry.meshes[pass];
-      const materials: Array<Material> = state.slots[pass];
-
-      mesh.geometry = state.geometry;
-      mesh.material = materials;
-
-      if (object.matrix) {
-        mesh.matrix.fromArray(object.matrix);
-      } else {
-        mesh.matrix.identity();
-      }
-
-      mesh.matrixWorldNeedsUpdate = true;
-
-      if (materials.some((material: Material) => material !== HIDDEN)) {
-        this.scenes[pass].add(mesh);
-      } else {
-        mesh.removeFromParent();
-      }
-    }
+    this.surfaces.retire(drawn, (material: Material) => this.readiness.isCompiled(material));
   }
 }

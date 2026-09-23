@@ -13,13 +13,13 @@ import {
 } from "#/contract/renderer-messages";
 import { IRendererReport } from "#/contract/renderer-report";
 import { IRendererSettings } from "#/contract/renderer-settings";
+import { IRendererViewSize } from "#/contract/renderer-view-size";
 import { IRendererGeometry } from "#/contract/scene/renderer-geometry";
 import { IRendererObject } from "#/contract/scene/renderer-object";
 import { TRendererOverlay } from "#/contract/scene/renderer-overlay";
 import { IRendererMotion, IRendererPose, IRendererSkeleton } from "#/contract/scene/renderer-skeleton";
 import { IRendererSurface } from "#/contract/scene/renderer-surface";
 import { TRendererTextureSource } from "#/contract/scene/renderer-texture-source";
-import { IOffscreenRenderSize } from "#/frame/offscreen-render-target";
 import { IRenderTarget } from "#/frame/render-target";
 import { RenderInputForwarder } from "#/input/render-input-forwarder";
 import { IDdsRefusal } from "#/texture/dds/dds-refusal";
@@ -49,7 +49,7 @@ interface IRendererClientView {
  * The renderer, from the page: one device for as long as the client lives, and a canvas while one is attached.
  */
 export class RendererClient {
-  private static getSize(target: IRenderTarget): IOffscreenRenderSize {
+  private static getSize(target: IRenderTarget): IRendererViewSize {
     return { height: target.height, pixelRatio: target.pixelRatio, width: target.width };
   }
 
@@ -103,10 +103,6 @@ export class RendererClient {
    * @param target - The canvas and its size.
    */
   public attach(target: IRenderTarget): void {
-    if (!(target.canvas instanceof HTMLCanvasElement)) {
-      throw new Error("The renderer draws on a page canvas, and this target holds none.");
-    }
-
     this.detach();
 
     const canvas: HTMLCanvasElement = target.canvas;

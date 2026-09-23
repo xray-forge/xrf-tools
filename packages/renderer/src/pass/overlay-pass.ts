@@ -1,8 +1,8 @@
 import { Vector2 } from "three/webgpu";
 
-import { IRendererFrame } from "#/graph/renderer-frame";
+import { IRendererFrame } from "#/pass/renderer-frame";
 import { IRendererPass } from "#/pass/renderer-pass";
-import { RendererOverlays } from "#/scene/renderer-overlays";
+import { RendererOverlays } from "#/scene/overlay/renderer-overlays";
 
 /**
  * Draws the helpers over the composited frame: unlit, as the colours they name, tested against the G-buffer's depth
@@ -25,7 +25,6 @@ export class OverlayPass implements IRendererPass {
     renderer.render(this.overlays.scene, camera);
   }
 
-  public dispose(): void {
-    this.overlays.dispose();
-  }
+  /** The overlays are the host's, which lets them go with the rest of what the consumer put. */
+  public dispose(): void {}
 }

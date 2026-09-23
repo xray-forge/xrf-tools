@@ -4,22 +4,21 @@ import { Maybe } from "@xrf/types";
 
 import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
 import { SectorSurface } from "@/core/ipc/types/xrf-visual";
-import {
-  createLevelCheckerSource,
-  LEVEL_RENDER_KEYS,
-  toLevelInstanceGeometry,
-  toLevelInstanceObject,
-  toLevelSectorGeometry,
-  toLevelSectorObject,
-  toLevelSurface,
-  toLevelTextureSource,
-} from "@/core/level/lib/render/level-render";
+import { LEVEL_RENDER_KEYS } from "@/core/level/lib/render/level-render-keys";
 import {
   ILevelSectorChange,
   ILevelSectorDelivery,
   ILevelTextureDelivery,
   ILevelTextureSupplyChange,
 } from "@/core/level/lib/render/level-render-protocol";
+import {
+  toLevelInstanceGeometry,
+  toLevelInstanceObject,
+  toLevelSectorGeometry,
+  toLevelSectorObject,
+} from "@/core/level/lib/render/level-render-sector";
+import { toLevelSurface } from "@/core/level/lib/render/level-render-surface";
+import { createLevelCheckerSource, toLevelTextureSource } from "@/core/level/lib/render/level-render-texture";
 import { createSectorViews, ISectorInstanceViews, ISectorViews } from "@/core/level/lib/sector/level-sector-views";
 import { ILevelHeld } from "@/core/level/lib/stats/level-stats";
 import { countSectorSurfaceGeometry, mergeLevelSurfaceGeometry } from "@/core/level/lib/surface/level-surface-count";

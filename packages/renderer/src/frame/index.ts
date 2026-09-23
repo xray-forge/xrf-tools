@@ -1,4 +1,3 @@
-export * from "#/frame/offscreen-render-target";
 export * from "#/frame/render-frame-cost";
 export * from "#/frame/render-frame-limit";
 export * from "#/frame/render-frame-timer";

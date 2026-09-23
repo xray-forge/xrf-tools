@@ -3,8 +3,8 @@ import { ERendererDraw, ERendererTextureEncoding, IRendererGeometry, IRendererOb
 import { mockDdsFile } from "@xrf/renderer/fixtures";
 
 import { SectorDescription } from "@/core/ipc/types/xrf-visual";
-import { LEVEL_RENDER_KEYS } from "@/core/level/lib/render/level-render";
 import { LevelRenderContent, TLevelRenderSink } from "@/core/level/lib/render/level-render-content";
+import { LEVEL_RENDER_KEYS } from "@/core/level/lib/render/level-render-keys";
 import { ILevelSectorDelivery, ILevelTextureDelivery } from "@/core/level/lib/render/level-render-protocol";
 import { ELevelSurfaceDressing } from "@/core/level/lib/surface/level-surface-dressing";
 import { DEFAULT_LEVEL_SURFACE_OPTIONS } from "@/core/level/lib/surface/level-surface-options";

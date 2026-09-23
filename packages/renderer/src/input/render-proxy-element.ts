@@ -1,8 +1,5 @@
-import { IOffscreenRenderSize } from "#/frame/offscreen-render-target";
+import { IRendererViewSize } from "#/contract/renderer-view-size";
 import { IRenderInputEvent } from "#/input/render-input";
-
-/** What a scene binds its controls to: the canvas on a page, or something answering for it on a worker. */
-export type TRenderInputElement = HTMLElement | RenderProxyElement;
 
 /** Told whatever the controls wrote on the element's cursor, for the side that has a cursor. */
 export type TRenderCursorSink = (cursor: string) => void;
@@ -24,10 +21,10 @@ export class RenderProxyElement {
   public readonly style: { cursor: string; touchAction: string };
 
   private readonly listeners: Map<string, Set<TProxyListener>> = new Map();
-  private size: IOffscreenRenderSize;
+  private size: IRendererViewSize;
   private cursor: string = "";
 
-  public constructor(size: IOffscreenRenderSize, onCursor: TRenderCursorSink) {
+  public constructor(size: IRendererViewSize, onCursor: TRenderCursorSink) {
     this.size = size;
     this.style = {
       cursor: "",
@@ -75,7 +72,7 @@ export class RenderProxyElement {
    *
    * @param size - What the element the canvas came from now is.
    */
-  public resize(size: IOffscreenRenderSize): void {
+  public resize(size: IRendererViewSize): void {
     this.size = size;
   }
 

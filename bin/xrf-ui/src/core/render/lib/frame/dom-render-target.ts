@@ -8,7 +8,6 @@ import { bindSelectionReset } from "@/lib/dom/selection";
  */
 export class DomRenderTarget implements IRenderTarget {
   public readonly canvas: HTMLCanvasElement = document.createElement("canvas");
-  public readonly isStyled: boolean = true;
 
   private readonly container: HTMLElement;
   private readonly resizeObserver: ResizeObserver;

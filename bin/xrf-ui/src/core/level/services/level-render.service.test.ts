@@ -9,7 +9,7 @@ import {
 } from "@xrf/renderer";
 import { createRendererWorkerStub, IRendererWorkerStub } from "@xrf/renderer/fixtures";
 
-import { LEVEL_NOON_FOG } from "@/core/level/lib/render/level-render";
+import { LEVEL_NOON_FOG } from "@/core/level/lib/render/level-render-view";
 import { ILevelPoint } from "@/core/level/lib/residency/level-residency";
 import { LevelLoadService } from "@/core/level/services/level-load.service";
 import { LevelViewService } from "@/core/level/services/level-view.service";

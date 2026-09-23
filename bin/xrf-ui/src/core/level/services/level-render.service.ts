@@ -10,12 +10,6 @@ import { toLevelCamera as toLevelCameraReading } from "@/core/level/lib/camera/l
 import { toLevelStartViewpoint } from "@/core/level/lib/camera/level-viewpoint";
 import { ILevelBox, toLevelBox } from "@/core/level/lib/extent/level-extent";
 import { ILevelLighting } from "@/core/level/lib/lighting/level-lighting";
-import {
-  LEVEL_RENDER_KEYS,
-  toLevelCamera,
-  toLevelRendererLighting,
-  toLevelRendererSettings,
-} from "@/core/level/lib/render/level-render";
 import { DEFAULT_LEVEL_RENDER_CONFIG, ILevelRenderConfig } from "@/core/level/lib/render/level-render-config";
 import { LevelRenderContent } from "@/core/level/lib/render/level-render-content";
 import {
@@ -25,6 +19,12 @@ import {
   toLevelGridOverlay,
   toLevelSunOverlay,
 } from "@/core/level/lib/render/level-render-frame";
+import { LEVEL_RENDER_KEYS } from "@/core/level/lib/render/level-render-keys";
+import {
+  toLevelCamera,
+  toLevelRendererLighting,
+  toLevelRendererSettings,
+} from "@/core/level/lib/render/level-render-view";
 import { ILevelPoint } from "@/core/level/lib/residency/level-residency";
 import { measureLevelStats } from "@/core/level/lib/stats/level-stats";
 import { ILevelSurfaceGeometry } from "@/core/level/lib/surface/level-surface-geometry";

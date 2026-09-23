@@ -6,13 +6,13 @@ import { IRendererDevice } from "#/contract/renderer-device";
 import { IRendererLighting } from "#/contract/renderer-lighting";
 import { IRendererReport } from "#/contract/renderer-report";
 import { IRendererSettings } from "#/contract/renderer-settings";
+import { IRendererViewSize } from "#/contract/renderer-view-size";
 import { IRendererGeometry, listRendererGeometryTransfers } from "#/contract/scene/renderer-geometry";
 import { IRendererObject, listRendererObjectTransfers } from "#/contract/scene/renderer-object";
 import { listRendererOverlayTransfers, TRendererOverlay } from "#/contract/scene/renderer-overlay";
 import { IRendererMotion, IRendererPose, IRendererSkeleton } from "#/contract/scene/renderer-skeleton";
 import { IRendererSurface } from "#/contract/scene/renderer-surface";
 import { TRendererTextureSource } from "#/contract/scene/renderer-texture-source";
-import { IOffscreenRenderSize } from "#/frame/offscreen-render-target";
 import { IRenderInputEvent } from "#/input/render-input";
 import { IDdsRefusal } from "#/texture/dds/dds-refusal";
 
@@ -90,9 +90,9 @@ export enum ERendererResponse {
 /** Every message a consumer sends. */
 export type TRendererRequest =
   | { kind: ERendererRequest.START; settings: IRendererSettings }
-  | ({ kind: ERendererRequest.ATTACH_VIEW; canvas: OffscreenCanvas } & IOffscreenRenderSize)
+  | ({ kind: ERendererRequest.ATTACH_VIEW; canvas: OffscreenCanvas } & IRendererViewSize)
   | { kind: ERendererRequest.DETACH_VIEW }
-  | ({ kind: ERendererRequest.RESIZE } & IOffscreenRenderSize)
+  | ({ kind: ERendererRequest.RESIZE } & IRendererViewSize)
   | { kind: ERendererRequest.CONFIGURE; settings: IRendererSettings }
   | { kind: ERendererRequest.DISPOSE }
   | { kind: ERendererRequest.PUT_TEXTURE; key: string; source: TRendererTextureSource }

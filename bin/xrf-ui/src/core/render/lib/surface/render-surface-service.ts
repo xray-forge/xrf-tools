@@ -28,23 +28,6 @@ export abstract class RenderSurfaceService implements IRenderSurfaceHost {
     }
   }
 
-  /** Whether there is currently somewhere to draw. */
-  protected get isAttached(): boolean {
-    return this.container !== null;
-  }
-
-  /**
-   * Builds it again against the element it already has.
-   */
-  protected remount(): void {
-    const container: Nullable<HTMLElement> = this.container;
-
-    if (container) {
-      this.unmount();
-      this.mount(container);
-    }
-  }
-
   /**
    * Builds whatever draws, and starts telling it things.
    *

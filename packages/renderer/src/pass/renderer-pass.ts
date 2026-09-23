@@ -1,4 +1,4 @@
-import { IRendererFrame } from "#/graph/renderer-frame";
+import { IRendererFrame } from "#/pass/renderer-frame";
 
 /**
  * One stage of the frame, timed on the GPU under its name.
