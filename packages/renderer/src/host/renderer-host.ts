@@ -38,7 +38,7 @@ import { PresentPass } from "#/pass/present-pass";
 import { IRendererPass } from "#/pass/renderer-pass";
 import { SunPass } from "#/pass/sun-pass";
 import { RendererOverlays } from "#/scene/renderer-overlays";
-import { RendererScene } from "#/scene/renderer-scene";
+import { IRendererSceneStaging, RendererScene } from "#/scene/renderer-scene";
 import { RendererPassInspector } from "#/timing/renderer-pass-inspector";
 import { RendererPassTimer } from "#/timing/renderer-pass-timer";
 import { toFramePassTimes } from "#/timing/renderer-pass-times";
@@ -114,6 +114,8 @@ export class RendererHost {
   private isResizePending: boolean = false;
   private isResolving: boolean = false;
   private isGpuTimed: boolean = false;
+  /** Whether materials are compiling off the frame, so only one batch is in flight. */
+  private isCompiling: boolean = false;
   private isDisposed: boolean = false;
 
   public constructor(
@@ -404,9 +406,11 @@ export class RendererHost {
       this.frameHandle = this.schedule(this.frame);
 
       if (this.captures.length || shouldDrawFrame(now, this.drawnAt, this.settings.frameRateLimit)) {
-        isFrameCapturable = !this.isResizePending;
+        // Nor is one still waiting for a material to compile: a capture shows the scene as it settles.
+        isFrameCapturable = !this.isResizePending && !this.scene.hasPending && !this.isCompiling;
         this.drawnAt = now;
         this.draw(now, renderer, inspector, frame, view.target);
+        this.compile(renderer, frame);
       }
     }
 
@@ -453,6 +457,51 @@ export class RendererHost {
       this.reportedAt = now;
       this.report(renderer, target);
     }
+  }
+
+  /**
+   * Compiles the materials waiting objects need, off the frame: three builds their pipelines asynchronously, and
+   * until they are ready every waiting object keeps drawing what it drew before.
+   *
+   * @param renderer - The renderer drawing.
+   * @param frame - The frame just drawn, whose camera and targets the pipelines are built for.
+   */
+  private compile(renderer: WebGPURenderer, frame: IRendererFrame): void {
+    if (this.isCompiling || !this.scene.hasPending) {
+      return;
+    }
+
+    const staging: Nullable<IRendererSceneStaging> = this.scene.stage();
+
+    if (!staging) {
+      return;
+    }
+
+    const generation: number = this.generation;
+
+    this.isCompiling = true;
+
+    // Each for the target it is drawn into, whose attachments the pipeline is built against.
+    renderer.setRenderTarget(this.targets.gbuffer);
+
+    const deferred: Promise<unknown> = renderer.compileAsync(staging.deferred, frame.camera);
+
+    renderer.setRenderTarget(this.targets.composite);
+
+    const forward: Promise<unknown> = renderer.compileAsync(staging.forward, frame.camera);
+
+    Promise.all([deferred, forward])
+      .then(() => {
+        if (generation === this.generation) {
+          this.scene.commit(staging);
+        }
+      })
+      .catch((error: unknown) => console.error("Materials failed to compile:", error))
+      .finally(() => {
+        if (generation === this.generation) {
+          this.isCompiling = false;
+        }
+      });
   }
 
   /**
@@ -597,6 +646,7 @@ export class RendererHost {
     this.isResizePending = false;
     this.isResolving = false;
     this.isGpuTimed = false;
+    this.isCompiling = false;
     this.captures.forEach(({ id }) => this.reply({ id, image: null, kind: ERendererResponse.CAPTURED }));
     this.captures = [];
   }

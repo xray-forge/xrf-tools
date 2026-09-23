@@ -1,11 +1,14 @@
 import { Maybe } from "@xrf/types";
 import {
+  Discard,
   float,
+  Fn,
+  If,
   mix,
   modelViewMatrix,
-  mrt,
   normalize,
   normalView,
+  outputStruct,
   positionView,
   select,
   uv,
@@ -34,7 +37,6 @@ import { IBaseShadingPoint, toBaseColor, toFinishedColor, toSunLight } from "#/g
 import { decodeBumpGloss, decodeBumpNormal } from "#/graph/bump.tsl";
 import { CameraUniforms } from "#/graph/camera-uniforms";
 import { encodeOctahedral } from "#/graph/octahedral-normal.tsl";
-import { EGBufferTarget } from "#/graph/renderer-targets";
 import { SettingsUniforms } from "#/graph/settings-uniforms";
 import { skinnedBinormal, skinnedTangent } from "#/graph/skinned-basis.tsl";
 import {
@@ -189,20 +191,32 @@ function toSurfaceTexel(
 /** `deffer_base` and `deffer_base_bump`: raw albedo and gloss, the view normal, and the baked occlusions. */
 function createDeferredMaterial(surface: IRendererSurface, texel: ISurfaceTexel): MeshBasicNodeMaterial {
   const material: MeshBasicNodeMaterial = new MeshBasicNodeMaterial();
+  const albedo: Node<"vec4"> = vec4(texel.albedo, texel.gloss);
 
-  material.mrtNode = mrt({
-    [EGBufferTarget.ALBEDO]: vec4(texel.albedo, texel.gloss),
-    [EGBufferTarget.NORMAL]: vec4(encodeOctahedral(texel.normal), 0, 1),
-    [EGBufferTarget.SURFACE]: vec4(texel.hemi.w, texel.hemi.y, texel.slice, 0),
-  });
-
-  if (surface.draw === ERendererDraw.CUT_OUT) {
-    // Only a cut-out surface reads the base's alpha, so a DXT1 file's punch-through never holes an opaque one.
-    material.colorNode = texel.base;
-    material.alphaTestNode = float(surface.alphaReference ?? DEFAULT_ALPHA_REFERENCE);
-  }
+  // The G-buffer outputs by location, in the order `RendererTargets` attaches them. Never three's `mrt`: it finds its
+  // locations on whichever render target is current, and a pipeline compiled off the frame is built after the frame
+  // moved on from the G-buffer.
+  material.fragmentNode = outputStruct(
+    surface.draw === ERendererDraw.CUT_OUT ? toCutOut(texel.base, albedo, surface.alphaReference) : albedo,
+    vec4(encodeOctahedral(texel.normal), 0, 1),
+    vec4(texel.hemi.w, texel.hemi.y, texel.slice, 0)
+  );
 
   return material;
+}
+
+/**
+ * `clip(D.w - def_aref)`: an output that discards the texel first where the base's alpha is at or below the
+ * reference. Only a cut-out surface reads that alpha, so a DXT1 file's punch-through never holes an opaque one.
+ */
+function toCutOut(base: TextureNode, output: Node<"vec4">, reference: Maybe<number>): Node<"vec4"> {
+  return Fn(() => {
+    If(base.w.lessThanEqual(reference ?? DEFAULT_ALPHA_REFERENCE), () => {
+      Discard();
+    });
+
+    return output;
+  })();
 }
 
 /**
