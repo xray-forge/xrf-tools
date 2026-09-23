@@ -10,6 +10,8 @@ export enum ERendererOverlay {
   POINTS = "points",
   /** A skeleton's bones as segments, following its pose. */
   SKELETON = "skeleton",
+  /** A disc in the sky where the light comes from, following the camera and the lighting. */
+  SUN = "sun",
 }
 
 /**
@@ -39,6 +41,12 @@ export type TRendererOverlay =
       skeleton: string;
       color: TRendererColor;
       isDepthTested: boolean;
+    }
+  | {
+      kind: ERendererOverlay.SUN;
+      color: TRendererColor;
+      /** Width in device pixels. */
+      size: number;
     };
 
 /**
@@ -56,6 +64,7 @@ export function listRendererOverlayTransfers(overlay: TRendererOverlay): Array<T
       return [overlay.positions.buffer];
 
     case ERendererOverlay.SKELETON:
+    case ERendererOverlay.SUN:
       return [];
   }
 }

@@ -75,6 +75,50 @@ describe("RenderInputForwarder", () => {
     expect(canvas.style.cursor).toBe("");
   });
 
+  // A camera flown by the keys hears them only once a press has focused the canvas.
+  it("focuses the canvas on a press and sends its keys by where they sit", () => {
+    const { canvas, sent, forwarder } = mockForwarder();
+
+    document.body.appendChild(canvas);
+    sendTo(canvas, ERenderInput.POINTER_DOWN);
+
+    expect(document.activeElement).toBe(canvas);
+
+    sendTo(canvas, ERenderInput.KEY_DOWN, { code: "KeyW" });
+    sendTo(canvas, ERenderInput.KEY_UP, { code: "KeyW" });
+    sendTo(canvas, ERenderInput.BLUR);
+
+    expect(sent.slice(1).map((it) => [it.type, it.code])).toEqual([
+      [ERenderInput.KEY_DOWN, "KeyW"],
+      [ERenderInput.KEY_UP, "KeyW"],
+      [ERenderInput.BLUR, ""],
+    ]);
+
+    forwarder.dispose();
+    canvas.remove();
+  });
+
+  // Tab and every shortcut keep working; only the keys that would scroll the page under the canvas are refused.
+  it("refuses only the keys that scroll", () => {
+    const { canvas, forwarder } = mockForwarder();
+
+    expect(sendTo(canvas, ERenderInput.KEY_DOWN, { code: "ArrowUp" }).defaultPrevented).toBe(true);
+    expect(sendTo(canvas, ERenderInput.KEY_DOWN, { code: "KeyW" }).defaultPrevented).toBe(false);
+    expect(sendTo(canvas, ERenderInput.KEY_DOWN, { code: "Tab" }).defaultPrevented).toBe(false);
+
+    forwarder.dispose();
+  });
+
+  it("gives the canvas its focus order back", () => {
+    const { canvas, forwarder } = mockForwarder();
+
+    expect(canvas.tabIndex).toBe(0);
+
+    forwarder.dispose();
+
+    expect(canvas.tabIndex).toBe(-1);
+  });
+
   it("stops sending once it is disposed", () => {
     const { canvas, sent, forwarder } = mockForwarder();
 

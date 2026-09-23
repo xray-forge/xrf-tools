@@ -205,6 +205,7 @@ export function toVisualRendererSettings(
     backdrop: config.backgroundColor,
     debugView: ERendererDebugView.FINAL,
     frameRateLimit,
+    hemiStrength: 1,
     isBumped: options.isBumpVisible,
     isLit: true,
     isWireframe: options.isWireframe,

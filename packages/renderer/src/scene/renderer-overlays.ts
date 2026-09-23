@@ -1,4 +1,5 @@
 import { Maybe } from "@xrf/types";
+import { float, uv } from "three/tsl";
 import {
   BufferAttribute,
   BufferGeometry,
@@ -9,6 +10,7 @@ import {
   Scene,
   Sprite,
   SpriteNodeMaterial,
+  Vector3,
 } from "three/webgpu";
 
 import { ERendererOverlay, TRendererOverlay } from "#/contract/scene/renderer-overlay";
@@ -16,6 +18,9 @@ import { RendererSkeletonEntry, RendererSkeletons } from "#/scene/renderer-skele
 
 /** Drawn after every surface, so a helper that ignores depth is never covered by one drawn later. */
 const OVERLAY_RENDER_ORDER: number = 1;
+
+/** How far out the sun marker stands, as a share of the far plane: well inside it, and past whatever is near. */
+const SUN_REACH: number = 0.5;
 
 /** One overlay as three draws it, and what refreshes it each frame. */
 interface IOverlayEntry {
@@ -33,9 +38,12 @@ export class RendererOverlays {
 
   private readonly entries: Map<string, IOverlayEntry> = new Map();
   private readonly skeletons: RendererSkeletons;
+  /** The direction sunlight travels, in world space, read each frame. */
+  private readonly sunDirection: Vector3;
 
-  public constructor(skeletons: RendererSkeletons) {
+  public constructor(skeletons: RendererSkeletons, sunDirection: Vector3) {
     this.skeletons = skeletons;
+    this.sunDirection = sunDirection;
   }
 
   public put(key: string, overlay: TRendererOverlay): void {
@@ -71,6 +79,12 @@ export class RendererOverlays {
 
       if (overlay.kind === ERendererOverlay.POINTS) {
         entry.objects.forEach((sprite: Object3D) => sprite.scale.setScalar(overlay.size * pixel));
+      } else if (overlay.kind === ERendererOverlay.SUN) {
+        // Against the light's travel from wherever the camera stands, as a sun far enough away does.
+        const [sun] = entry.objects;
+
+        sun.position.copy(camera.position).addScaledVector(this.sunDirection, -camera.far * SUN_REACH);
+        sun.scale.setScalar(overlay.size * pixel);
       } else if (overlay.kind === ERendererOverlay.SKELETON) {
         this.follow(entry, overlay.skeleton);
       }
@@ -124,6 +138,23 @@ export class RendererOverlays {
         lines.frustumCulled = false;
 
         return [lines];
+      }
+
+      case ERendererOverlay.SUN: {
+        const material: SpriteNodeMaterial = new SpriteNodeMaterial({ sizeAttenuation: false });
+        const sun: Sprite = new Sprite(material);
+
+        material.color.setRGB(...overlay.color);
+        // A disc rather than the sprite's square.
+        material.opacityNode = uv().sub(0.5).length().lessThan(0.5).select(float(1), float(0));
+        material.alphaTest = 0.5;
+        material.depthTest = false;
+        material.depthWrite = false;
+        sun.renderOrder = OVERLAY_RENDER_ORDER;
+        // Placed every frame, so never measured against where it last stood.
+        sun.frustumCulled = false;
+
+        return [sun];
       }
 
       case ERendererOverlay.POINTS:

@@ -25,6 +25,29 @@ describe("listRendererTransfers", () => {
     ).toEqual([bytes]);
   });
 
+  // A level's sector is one buffer every attribute is a view over; listed twice, the post throws.
+  it("moves a buffer several arrays view once, across a batch", () => {
+    const buffer: ArrayBuffer = new ArrayBuffer(64);
+    const position: Float32Array = new Float32Array(buffer, 0, 9);
+    const hemi: Float32Array = new Float32Array(buffer, 36, 3);
+    const transforms: Float32Array = new Float32Array(16);
+
+    expect(
+      listRendererTransfers({
+        kind: ERendererRequest.BATCH,
+        requests: [
+          { geometry: { groups: [], hemi, position }, key: "a", kind: ERendererRequest.PUT_GEOMETRY },
+          { geometry: { groups: [], position }, key: "b", kind: ERendererRequest.PUT_GEOMETRY },
+          {
+            key: "c",
+            kind: ERendererRequest.PUT_OBJECT,
+            object: { geometry: "b", instances: { transforms }, surfaces: [] },
+          },
+        ],
+      })
+    ).toEqual([buffer, transforms.buffer]);
+  });
+
   it("moves every array a geometry has, and only those", () => {
     const position: Float32Array = new Float32Array(9);
     const index: Uint16Array = new Uint16Array(3);
@@ -48,6 +71,7 @@ describe("listRendererTransfers", () => {
           backdrop: 0,
           debugView: ERendererDebugView.FINAL,
           frameRateLimit: "60",
+          hemiStrength: 1,
           isBumped: true,
           isLit: true,
           isWireframe: false,

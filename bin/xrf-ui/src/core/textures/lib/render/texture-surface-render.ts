@@ -160,6 +160,7 @@ export function toTextureRendererSettings(
     backdrop: null,
     debugView: ERendererDebugView.FINAL,
     frameRateLimit,
+    hemiStrength: 1,
     isBumped: options.isBumped,
     isLit: options.isLit,
     isWireframe: false,

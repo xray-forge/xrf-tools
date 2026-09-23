@@ -144,7 +144,7 @@ export class RendererHost {
       { camera: this.cameraUniforms, lighting: this.lightingUniforms, lut: this.lut, settings: this.settingsUniforms },
       (key, refusal) => this.reply({ key, kind: ERendererResponse.TEXTURE_REFUSED, refusal })
     );
-    this.overlays = new RendererOverlays(this.scene.skeletons);
+    this.overlays = new RendererOverlays(this.scene.skeletons, this.lightingUniforms.sunDirection);
     this.present = new PresentPass(this.targets, this.cameraUniforms);
     this.bumpPlanes = new BumpPlaneCapture(this.scene.textures);
     this.passes = [

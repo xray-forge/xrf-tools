@@ -55,6 +55,7 @@ function mockInput(): IRenderInputEvent {
     buttons: 1,
     clientX: 0,
     clientY: 0,
+    code: "",
     ctrlKey: false,
     deltaMode: 0,
     deltaX: 0,

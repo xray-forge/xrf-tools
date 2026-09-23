@@ -22,6 +22,11 @@ export class BaseLightingUniforms {
 
   private readonly sunDirectionWorld: Vector3 = new Vector3(0, -1, 0);
 
+  /** The direction sunlight travels, normalised, in world space. */
+  public get sunDirection(): Vector3 {
+    return this.sunDirectionWorld;
+  }
+
   /**
    * @param constants - What the lighting value comes to.
    */
