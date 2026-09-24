@@ -25,7 +25,7 @@ export function toPresentPassFragment(
   return Fn(() => {
     const sample: IGBufferSample = readGBuffer(targets, camera);
     // A target shown raw is transparent where nothing was drawn, so it is never mistaken for a cleared value.
-    const coverage: Node<"float"> = select(sample.depth.lessThan(1), float(1), float(0));
+    const coverage: Node<"float"> = select(sample.depth.greaterThan(0), float(1), float(0));
 
     return vec4(toShownTarget(view, sample, targets, camera), coverage);
   })();

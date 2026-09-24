@@ -10,6 +10,7 @@ import {
   TRendererCameraCommand,
 } from "#/contract/renderer-camera";
 import { RenderProxyElement } from "#/input/render-proxy-element";
+import { adoptRendererConventions } from "#/internals/camera-conventions";
 
 /** How each kind of camera a consumer can ask for is driven. */
 const CAMERA_CONTROLLERS: Record<
@@ -36,7 +37,7 @@ export class RendererCameraRig {
    */
   public constructor(element: RenderProxyElement) {
     this.element = element;
-    this.controller = CAMERA_CONTROLLERS[this.kind](element);
+    this.controller = this.createController(this.kind);
   }
 
   public get camera(): PerspectiveCamera {
@@ -55,7 +56,7 @@ export class RendererCameraRig {
   public describe(camera: TRendererCamera): void {
     if (camera.kind !== this.kind) {
       this.controller.dispose();
-      this.controller = CAMERA_CONTROLLERS[camera.kind](this.element);
+      this.controller = this.createController(camera.kind);
       this.controller.resize(this.width, this.height);
       this.kind = camera.kind;
     }
@@ -92,5 +93,17 @@ export class RendererCameraRig {
 
   public dispose(): void {
     this.controller.dispose();
+  }
+
+  /**
+   * @param kind - The kind of camera wanted.
+   * @returns Its controller, its camera in the renderer's conventions before anything reads it.
+   */
+  private createController(kind: ERendererCameraController): IRendererCameraController {
+    const controller: IRendererCameraController = CAMERA_CONTROLLERS[kind](this.element);
+
+    adoptRendererConventions(controller.camera);
+
+    return controller;
   }
 }

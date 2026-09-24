@@ -19,6 +19,9 @@ export class RendererDevice {
       antialias: false,
       // Drawn on by nothing: a view brings its own canvas, and textures and captures need none.
       canvas: new OffscreenCanvas(1, 1),
+      // Near is 1 and far 0, so float depth keeps its precision where the projection spends least: in the distance.
+      // Every camera is brought to it before it is first read (`adoptRendererConventions`).
+      reversedDepthBuffer: true,
       trackTimestamp: true,
     });
 

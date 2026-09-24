@@ -1,15 +1,15 @@
 import { describe, expect, it } from "@jest/globals";
-import { PerspectiveCamera, WebGPUCoordinateSystem } from "three/webgpu";
+import { PerspectiveCamera, Plane } from "three/webgpu";
 
+import { adoptRendererConventions } from "#/internals/camera-conventions";
 import { CullView } from "#/visibility/cull-view";
 import { EVisibility } from "#/visibility/visibility";
 
-/** A camera at the origin looking down -z, seeing from one metre to a hundred. */
+/** A camera at the origin looking down -z, seeing from one metre to a hundred, in the renderer's reversed depth. */
 function createCamera(): PerspectiveCamera {
   const camera: PerspectiveCamera = new PerspectiveCamera(90, 1, 1, 100);
 
-  camera.coordinateSystem = WebGPUCoordinateSystem;
-  camera.updateProjectionMatrix();
+  adoptRendererConventions(camera);
   camera.updateMatrixWorld();
 
   return camera;
@@ -26,12 +26,26 @@ describe("CullView", () => {
     expect(view.classify(0, 0, 10, 1)).toBe(EVisibility.OUTSIDE);
   });
 
-  it("culls what lies past the far plane", () => {
+  it("culls what lies past the far plane and short of the near one, under reversed depth", () => {
     const view: CullView = new CullView();
 
     view.take(createCamera());
 
     expect(view.classify(0, 0, -150, 10)).toBe(EVisibility.OUTSIDE);
+    expect(view.classify(0, 0, -0.5, 0.1)).toBe(EVisibility.OUTSIDE);
+  });
+
+  it("finds the far plane where it replaces it, facing back along the view, under reversed depth", () => {
+    const camera: PerspectiveCamera = createCamera();
+    const view: CullView = new CullView();
+
+    view.take(camera);
+
+    const far: Plane = view.planes[4];
+
+    expect(camera.reversedDepth).toBe(true);
+    expect(far.normal.z).toBeCloseTo(1);
+    expect(far.constant).toBeCloseTo(100);
   });
 
   it("brings its far plane in to how far the view sees, leaving the camera's own", () => {

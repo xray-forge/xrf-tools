@@ -115,12 +115,13 @@ export function toOccluded(
         const y1: Node<"uint"> = min(floor(last.y.div(span)), height.sub(1)).toUint();
         const start: Node<"uint"> = offset.toUint();
         const stride: Node<"uint"> = width.toUint();
-        const farthest = max(
-          max(toPyramidDepth(pyramid, start, stride, x0, y0), toPyramidDepth(pyramid, start, stride, x1, y0)),
-          max(toPyramidDepth(pyramid, start, stride, x0, y1), toPyramidDepth(pyramid, start, stride, x1, y1))
+        const farthest = min(
+          min(toPyramidDepth(pyramid, start, stride, x0, y0), toPyramidDepth(pyramid, start, stride, x1, y0)),
+          min(toPyramidDepth(pyramid, start, stride, x0, y1), toPyramidDepth(pyramid, start, stride, x1, y1))
         );
 
-        If(depth.greaterThan(farthest), () => {
+        // Nearer is greater: the sphere's nearest point is behind everything there where it is the lesser.
+        If(depth.lessThan(farthest), () => {
           isOccluded.assign(1);
         });
       });
@@ -134,7 +135,8 @@ export function toOccluded(
  * @param buffers - The static draw buffers, whose pyramid the levels write.
  * @param depth - The depth texture the first level reduces.
  * @returns A shader a level, the first reducing the depth texture and every other the level before it, each the
- *   farthest depth of a four by four block. Their counts are set per build, to the size of their level.
+ *   farthest depth of a four by four block: the least, since depth is reversed and an empty pixel is zero. Their
+ *   counts are set per build, to the size of their level.
  */
 export function createPyramidShaders(buffers: StaticDrawBuffers, depth: Texture): Array<IPyramidLevelShader> {
   const pyramid = storage(buffers.pyramid, "float", STATIC_PYRAMID_CAPACITY);
@@ -146,7 +148,7 @@ export function createPyramidShaders(buffers: StaticDrawBuffers, depth: Texture)
     const compute = Fn(() => {
       const x = instanceIndex.mod(target.width);
       const y = instanceIndex.div(target.width);
-      const farthest = float(0).toVar();
+      const farthest = float(1).toVar();
 
       for (let dy = 0; dy < PYRAMID_REDUCTION; dy += 1) {
         for (let dx = 0; dx < PYRAMID_REDUCTION; dx += 1) {
@@ -156,7 +158,7 @@ export function createPyramidShaders(buffers: StaticDrawBuffers, depth: Texture)
             ? toPyramidDepth(pyramid, source.offset, source.width, sx, sy)
             : (textureLoad(depth, ivec2(sx.toInt(), sy.toInt())) as unknown as Node<"float">);
 
-          farthest.assign(max(farthest, value));
+          farthest.assign(min(farthest, value));
         }
       }
 

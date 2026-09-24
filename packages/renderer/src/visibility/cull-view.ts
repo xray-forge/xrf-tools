@@ -42,7 +42,7 @@ export class CullView {
 
     this.projection.copy(this.next);
     this.distance = distance;
-    this.frustum.setFromProjectionMatrix(this.projection, camera.coordinateSystem);
+    this.frustum.setFromProjectionMatrix(this.projection, camera.coordinateSystem, camera.reversedDepth);
 
     if (distance < camera.far) {
       // Facing the camera, through the point the distance ahead of it.

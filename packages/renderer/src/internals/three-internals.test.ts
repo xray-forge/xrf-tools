@@ -1,6 +1,15 @@
 import { describe, expect, it } from "@jest/globals";
-import { BundleGroup, NodeFrame, NodeMaterialObserver, StorageBufferNode, WebGPURenderer } from "three/webgpu";
+import {
+  BundleGroup,
+  Camera,
+  NodeFrame,
+  NodeMaterialObserver,
+  PerspectiveCamera,
+  StorageBufferNode,
+  WebGPURenderer,
+} from "three/webgpu";
 
+import { adoptRendererConventions } from "#/internals/camera-conventions";
 import { RenderObjectRefreshType } from "#/internals/render-object-refresh";
 import { getRendererBackend, IRendererBackend } from "#/internals/renderer-backend";
 
@@ -42,8 +51,23 @@ describe("three's internals, as the renderer reads them", () => {
     expect(backend.getTimestamp).toBeInstanceOf(Function);
   });
 
+  it("keeps a camera's reversed depth in a private field its getter reads, which its projection follows", () => {
+    const camera: PerspectiveCamera = new PerspectiveCamera(90, 1, 1, 100);
+
+    // `adoptRendererConventions` writes the field, since `reversedDepth` has no setter.
+    expect(Object.getOwnPropertyDescriptor(camera, "_reversedDepth")?.value).toBe(false);
+    expect(Object.getOwnPropertyDescriptor(Camera.prototype, "reversedDepth")?.get).toBeInstanceOf(Function);
+
+    adoptRendererConventions(camera);
+
+    // Reversed: the near plane maps to one and the far plane to zero.
+    expect(camera.reversedDepth).toBe(true);
+    expect(camera.projectionMatrix.elements[10]).toBeCloseTo(1 / 99);
+    expect(camera.projectionMatrix.elements[14]).toBeCloseTo(100 / 99);
+  });
+
   it("builds a reversed depth renderer and a storage buffer node", () => {
-    // Reversed depth rests on the option; `StaticDrawBuffers` shares one storage node per buffer.
+    // `RendererDevice.open` asks for reversed depth; `StaticDrawBuffers` shares one storage node per buffer.
     expect(new WebGPURenderer({ canvas: {} as HTMLCanvasElement, reversedDepthBuffer: true }).reversedDepthBuffer).toBe(
       true
     );

@@ -14,8 +14,11 @@ import {
 
 import { ERendererDraw, IRendererSurface } from "#/contract/scene/renderer-surface";
 
-/** Units a composited surface is pulled towards the eye by, scaled by its slope, so a decal never loses to its wall. */
-const COMPOSITED_POLYGON_OFFSET: number = -1;
+/** Reversed float depth steps a composited surface is pulled towards the eye by, so a decal never loses to its wall. */
+const COMPOSITED_DEPTH_BIAS: number = 256;
+
+/** The same pull, scaled by the surface's depth slope, for surfaces seen at a grazing angle. */
+const COMPOSITED_SLOPE_BIAS: number = 1;
 
 /**
  * How a composited surface blends into what is under it.
@@ -61,8 +64,8 @@ export function applySurfaceCompositing(material: Material, compositing: ISurfac
   material.depthWrite = false;
   material.transparent = true;
   material.polygonOffset = true;
-  material.polygonOffsetFactor = COMPOSITED_POLYGON_OFFSET;
-  material.polygonOffsetUnits = COMPOSITED_POLYGON_OFFSET;
+  material.polygonOffsetFactor = COMPOSITED_SLOPE_BIAS;
+  material.polygonOffsetUnits = COMPOSITED_DEPTH_BIAS;
   material.blending = CustomBlending;
   material.blendSrc = compositing.source;
   material.blendDst = compositing.destination;

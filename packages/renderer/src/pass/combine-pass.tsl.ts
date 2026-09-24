@@ -20,7 +20,7 @@ export function toCombinePassFragment(
 ): Node<"vec4"> {
   return Fn(() => {
     const sample: IGBufferSample = readGBuffer(gbuffer, uniforms.camera);
-    const isEmpty: Node<"bool"> = sample.depth.greaterThanEqual(1);
+    const isEmpty: Node<"bool"> = sample.depth.lessThanEqual(0);
     // The far plane ends where fog is total, so in a lit and fogged frame an empty pixel is what anything past it
     // would have come to. Otherwise the backdrop the target was cleared to shows.
     const isFogged: Node<"bool"> = uniforms.lighting.fogged.mul(uniforms.settings.lit).greaterThan(0.5);
