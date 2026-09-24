@@ -66,6 +66,10 @@ export interface IRendererLodSettings {
   ssaDiscard: number;
   /** `r__geometry_lod`: what the drawing's area is scaled by before the thresholds are taken from it. */
   geometryLod: number;
+  /** `r__ssa_glod_start`: above it a progressive mesh draws its whole detail. */
+  ssaGlodStart: number;
+  /** `r__ssa_glod_end`: below it a progressive mesh draws its coarsest window. */
+  ssaGlodEnd: number;
 }
 
 /** The engine's own values (`xrRender_console.cpp`). */
@@ -75,4 +79,6 @@ export const DEFAULT_RENDERER_LOD_SETTINGS: IRendererLodSettings = {
   ssaA: 64,
   ssaB: 48,
   ssaDiscard: 3.5,
+  ssaGlodEnd: 64,
+  ssaGlodStart: 256,
 };

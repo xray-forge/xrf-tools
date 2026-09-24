@@ -9,6 +9,7 @@ pub use crate::data::sector::sector_impostor_group::SectorImpostorGroup;
 pub use crate::data::sector::sector_impostors::SectorImpostors;
 pub use crate::data::sector::sector_instance_group::SectorInstanceGroup;
 pub use crate::data::sector::sector_outline::SectorOutline;
+pub use crate::data::sector::sector_progressive::SectorProgressive;
 pub use crate::data::sector::sector_section::SectorSection;
 pub use crate::data::sector::sector_skip::SectorSkip;
 pub use crate::data::sector::sector_surface::SectorSurface;

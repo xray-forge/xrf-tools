@@ -19,7 +19,13 @@ import { toPassRecord, TPassRecord } from "#/scene/pass-record";
 import { EStaticDrawKind } from "#/scene/static/static-draw-kind";
 import { StaticDraws } from "#/scene/static/static-draws";
 import { EVertexAttribute } from "#/shader/vertex-attribute";
-import { STATIC_LOD_IMPOSTOR_ROW, STATIC_NO_LOD, StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
+import {
+  STATIC_DRAW_ARGUMENTS,
+  STATIC_LOD_IMPOSTOR_ROW,
+  STATIC_NO_LOD,
+  StaticDrawBuffers,
+  toStaticBandWord,
+} from "#/uniforms/static-draw-buffers";
 import { CullView } from "#/visibility/cull-view";
 
 /** A surface drawn by a pass, with nothing behind it. */
@@ -283,7 +289,8 @@ describe("SceneObject", () => {
     place(createSurface(ERendererPass.DEFERRED));
     place(createSurface(ERendererPass.DEFERRED, true));
 
-    const rows = Array.from((buffers.rowLods.array as Uint32Array).subarray(0, 8));
+    // Each row's words are its impostor, then its band.
+    const rows = Array.from((buffers.rowLods.array as Uint32Array).subarray(0, 16)).filter((_, index) => !(index % 2));
 
     expect(rows).toEqual([
       13,
@@ -295,5 +302,57 @@ describe("SceneObject", () => {
       (13 | STATIC_LOD_IMPOSTOR_ROW) >>> 0,
       STATIC_NO_LOD,
     ]);
+  });
+
+  // A progressive tree draws in a few bands of its windows: a draw a band, each over every place, each keeping the
+  // places whose detail falls in it, so the first draws the whole detail and the last the coarsest.
+  it("draws a progressive mesh a band at a time, every band's rows naming the band they keep", () => {
+    const scenes: TPassRecord<Scene> = toPassRecord(() => new Scene());
+    const { buffers, draws } = createDraws(scenes);
+    const geometry: SceneGeometry = new SceneGeometry({
+      groups: [
+        {
+          count: 6,
+          progressive: {
+            bands: [
+              { count: 6, start: 3 },
+              { count: 3, start: 0 },
+            ],
+            windows: 5,
+          },
+          slot: 0,
+          start: 3,
+        },
+      ],
+      index: new Uint16Array([0, 1, 2, 0, 1, 2, 1, 3, 2]),
+      position: new Float32Array([0, 0, -10, 1, 0, -10, 0, 1, -10, 1, 1, -10]),
+    });
+    const entry: SceneObject = new SceneObject(
+      "tree",
+      { geometry: "tree", instances: { transforms: new Float32Array(new Matrix4().elements) }, surfaces: ["a"] },
+      draws
+    );
+    const instances: SceneInstances = entry.toInstances(geometry) as SceneInstances;
+    const surface: ISurfaceMaterial = createSurface(ERendererPass.DEFERRED);
+
+    entry.apply(
+      {
+        ...toState(geometry, [surface]),
+        instances,
+        plain: { drawn: instances.geometry, layout: "" },
+        static: { drawn: draws.toArena(geometry).prototypes[EStaticDrawKind.LISTED], layout: "listed" },
+      },
+      scenes
+    );
+    entry.cull(createView());
+
+    const args = buffers.args.array as Uint32Array;
+    const words = buffers.rowLods.array as Uint32Array;
+
+    // Two slots, the whole detail's six indices and the coarse band's three, each from its own first index.
+    expect([args[0], args[2]]).toEqual([6, 3]);
+    expect([args[STATIC_DRAW_ARGUMENTS], args[STATIC_DRAW_ARGUMENTS + 2]]).toEqual([3, 0]);
+    // A row each, the second word of each naming its band of two, over five windows.
+    expect([words[1], words[3]]).toEqual([toStaticBandWord(0, 2, 5), toStaticBandWord(1, 2, 5)]);
   });
 });

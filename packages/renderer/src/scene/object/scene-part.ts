@@ -16,6 +16,7 @@ import { ISceneSection } from "#/scene/geometry/scene-section";
 import { createSceneMesh } from "#/scene/object/scene-mesh";
 import { StaticDraws } from "#/scene/static/static-draws";
 import { IStaticRange } from "#/scene/static/static-range";
+import { STATIC_NO_BAND, toStaticBandWord } from "#/uniforms/static-draw-buffers";
 
 /**
  * One section of an object as the frame draws it: a mesh over the section's range, bounded where it stands.
@@ -37,8 +38,8 @@ export class ScenePart {
   /** The range the object's narrowing leaves it. */
   private start: number;
   private count: number;
-  /** Its slot while drawn statically. */
-  private slot: Nullable<number> = null;
+  /** Its slots while drawn statically: one, or one a band for a progressive mesh drawn instanced. */
+  private slots: Array<number> = [];
 
   /**
    * @param geometry - Its part geometry.
@@ -70,7 +71,7 @@ export class ScenePart {
 
   /** Whether it is drawn statically. */
   public get isStatic(): boolean {
-    return this.slot !== null;
+    return this.slots.length > 0;
   }
 
   /**
@@ -128,20 +129,19 @@ export class ScenePart {
    * @returns Whether it is drawn so; not where every slot is taken, and it has to be drawn plainly.
    */
   public showStatic(surface: ISurfaceMaterial, range: IStaticRange): boolean {
-    this.slot ??= this.draws.allocate();
-
-    if (this.slot === null) {
+    if (!this.takeSlots(1)) {
       return false;
     }
 
-    this.draws.draw(this.slot, surface, range, this.start, this.count, this.sphere, this.matrix);
+    this.draws.draw(this.slots[0], surface, range, this.start, this.count, this.sphere, this.matrix);
     this.currentMesh.removeFromParent();
 
     return true;
   }
 
   /**
-   * Draws it as an instanced static draw of its material's batch: once for every place the instance cull keeps.
+   * Draws it as an instanced static draw of its material's batch: once for every place the instance cull keeps. A
+   * progressive mesh is a draw a band, the first its own range, each keeping the places whose detail falls in it.
    *
    * @param surface - What draws it.
    * @param range - Where its object's geometry sits in its arena.
@@ -157,16 +157,23 @@ export class ScenePart {
     spheres: Float32Array,
     lods: Nullable<Uint32Array> = null
   ): boolean {
-    this.slot ??= this.draws.allocate();
+    const progressive = this.source.progressive;
+    const bands: number = progressive?.bands.length ?? 1;
 
-    if (this.slot === null) {
+    if (!this.takeSlots(bands)) {
       return false;
     }
 
-    if (!this.draws.drawListed(this.slot, surface, range, this.start, this.count, placeStart, spheres, lods)) {
-      this.free();
+    for (let band = 0; band < bands; band += 1) {
+      const [start, count] =
+        band && progressive ? [progressive.bands[band].start, progressive.bands[band].count] : [this.start, this.count];
+      const word: number = progressive ? toStaticBandWord(band, bands, progressive.windows) : STATIC_NO_BAND;
 
-      return false;
+      if (!this.draws.drawListed(this.slots[band], surface, range, start, count, placeStart, spheres, lods, word)) {
+        this.free();
+
+        return false;
+      }
     }
 
     this.currentMesh.removeFromParent();
@@ -195,10 +202,32 @@ export class ScenePart {
     this.currentMesh.removeFromParent();
   }
 
-  private free(): void {
-    if (this.slot !== null) {
-      this.draws.free(this.slot);
-      this.slot = null;
+  /**
+   * @param count - Slots it draws with from now on.
+   * @returns Whether it holds that many; not where the pool ran out, having let every one go.
+   */
+  private takeSlots(count: number): boolean {
+    while (this.slots.length > count) {
+      this.draws.free(this.slots.pop() as number);
     }
+
+    while (this.slots.length < count) {
+      const slot: Nullable<number> = this.draws.allocate();
+
+      if (slot === null) {
+        this.free();
+
+        return false;
+      }
+
+      this.slots.push(slot);
+    }
+
+    return true;
+  }
+
+  private free(): void {
+    this.slots.forEach((slot: number) => this.draws.free(slot));
+    this.slots = [];
   }
 }

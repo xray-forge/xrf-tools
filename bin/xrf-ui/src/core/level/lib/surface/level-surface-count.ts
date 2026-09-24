@@ -33,14 +33,17 @@ export function countSectorSurfaceGeometry(views: ISectorViews): Map<number, ILe
   }
 
   // A mesh stood in many places draws its triangles once per place, which is what the frame really costs. Its
-  // coordinates are the one mesh's, so they are measured once however many places it stands in.
+  // coordinates are the one mesh's, so they are measured once however many places it stands in. A progressive mesh
+  // packs every window's indices; at its whole detail it draws its first band.
   for (const instance of views.instances as Array<ISectorInstanceViews>) {
+    const { start, count } = instance.progressive?.bands[0] ?? { count: instance.geometry.indexCount, start: 0 };
+
     add(
       counted,
       instance.surface.shaderId,
       instance.drawables.length,
-      (instance.geometry.indexCount / 3) * instance.instanceCount,
-      widen(null, instance.geometry, 0, instance.geometry.indexCount)
+      (count / 3) * instance.instanceCount,
+      widen(null, instance.geometry, start, count)
     );
   }
 

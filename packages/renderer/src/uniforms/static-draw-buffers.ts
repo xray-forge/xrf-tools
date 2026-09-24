@@ -29,6 +29,22 @@ export const STATIC_NO_LOD: number = 0xffffffff;
 /** The bit of a row's impostor saying the row is the impostor's own draw rather than a tree of its clump. */
 export const STATIC_LOD_IMPOSTOR_ROW: number = 0x80000000;
 
+/** What a row names for its band where its draw is of one detail, drawing whatever detail its place is at. */
+export const STATIC_NO_BAND: number = 0xffffffff;
+
+/**
+ * A row's band word: which band of how many its draw is, of a mesh of how many windows. A row keeps a place only where
+ * the window the place's detail picks falls in that band.
+ *
+ * @param band - The draw's band.
+ * @param bands - Bands the mesh is drawn in.
+ * @param windows - Windows the engine's table has.
+ * @returns The word.
+ */
+export function toStaticBandWord(band: number, bands: number, windows: number): number {
+  return (band | (bands << 8) | (windows << 16)) >>> 0;
+}
+
 /**
  * The pools of the static draw buffers, each grown on its own: slots a draw each, places an instance each, rows a
  * place of one instanced draw each, impostors of clumps of trees, and the depth pyramid's texels.
@@ -133,7 +149,10 @@ export class StaticDrawBuffers {
   public visible: StorageBufferAttribute;
   /** What the first cull decided for each row. */
   public rowStates: StorageBufferAttribute;
-  /** Each row's impostor, `STATIC_NO_LOD` for none, `STATIC_LOD_IMPOSTOR_ROW` set on the impostor's own draw. */
+  /**
+   * Each row's detail words: its impostor, `STATIC_NO_LOD` for none and `STATIC_LOD_IMPOSTOR_ROW` set on the
+   * impostor's own draw, then its band (`toStaticBandWord`), `STATIC_NO_BAND` for none.
+   */
   public rowLods: StorageBufferAttribute;
   /** Each impostor's sphere in renderer space, a negative radius for a slot holding none. */
   public lodSpheres: StorageBufferAttribute;
@@ -210,7 +229,7 @@ export class StaticDrawBuffers {
     this.rowTargets = new StorageBufferAttribute(new Uint32Array(rows * 4), 4);
     this.visible = new StorageBufferAttribute(new Uint32Array(rows * 2), 1);
     this.rowStates = new StorageBufferAttribute(new Uint32Array(rows), 1);
-    this.rowLods = new StorageBufferAttribute(new Uint32Array(rows).fill(STATIC_NO_LOD), 1);
+    this.rowLods = new StorageBufferAttribute(new Uint32Array(rows * 2).fill(STATIC_NO_LOD), 2);
     this.lodSpheres = new StorageBufferAttribute(new Float32Array(lods * 4).fill(-1), 4);
     this.lodFactors = new StorageBufferAttribute(new Float32Array(lods), 1);
     this.lodNormals = new StorageBufferAttribute(new Float32Array(lods * 8 * 4), 4);

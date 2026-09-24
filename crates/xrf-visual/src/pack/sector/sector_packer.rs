@@ -13,6 +13,7 @@ use crate::data::sector::sector_attributes::SectorAttributes;
 use crate::data::sector::sector_description::SectorDescription;
 use crate::data::sector::sector_geometry::SectorGeometry;
 use crate::data::sector::sector_instance_group::SectorInstanceGroup;
+use crate::data::sector::sector_progressive::SectorProgressive;
 use crate::data::sector::sector_section::SectorSection;
 use crate::data::sector::sector_skip::SectorSkip;
 use crate::data::visual::bounds::visual_bounds::VisualBounds;
@@ -28,6 +29,7 @@ use crate::pack::sector::sector_section_gathering::SectorSectionGathering;
 use crate::pack::sector::sector_surface_table::SectorSurfaceTable;
 use crate::pack::sector::sector_vertex_arrays::SectorVertexArrays;
 use crate::pack::sector::sector_vertex_range::SectorVertexRange;
+use crate::pack::sector::sector_window::SectorWindow;
 use crate::pack::visual_buffer_builder::VisualBufferBuilder;
 use crate::pack::visual_conversion::{convert_placement, convert_tree_hemi, reverse_triangle_winding};
 
@@ -84,6 +86,10 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
           .entry(SectorInstanceKey::of(container, visual.header.shader_id))
           .or_default();
 
+        if gathering.drawables.is_empty() {
+          gathering.windows = self.get_windows(visual);
+        }
+
         gathering.drawables.push(*drawable);
         gathering.placements.push(convert_placement(&tree.transform));
         gathering.hemi.push(convert_tree_hemi(tree));
@@ -103,7 +109,17 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
         }
       };
 
-      match self.read_indices::<T>(container, base) {
+      // A progressive mesh's indices are every window laid end to end; baked into a section it draws the whole detail,
+      // its first window, since a section of many visuals has one range.
+      let window: SectorWindow = self
+        .get_windows(visual)
+        .and_then(|windows| windows.first().copied())
+        .unwrap_or(SectorWindow {
+          offset: 0,
+          triangles: container.index_count / 3,
+        });
+
+      match self.read_indices::<T>(container, base, window) {
         Ok(indices) => {
           let gathering: &mut SectorSectionGathering = sections.entry(visual.header.shader_id).or_default();
 
@@ -221,12 +237,20 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
     Ok(base)
   }
 
-  /// Reads a drawable's indices and moves them onto the vertices it was packed at.
-  fn read_indices<T: ByteOrder>(&self, container: &OgfGeometryContainerChunk, base: u32) -> XrfResult<Vec<u32>> {
-    let indices: Vec<u16> =
-      self
-        .source
-        .read_indices::<T>(container.index_buffer_id, container.index_base, container.index_count)?;
+  /// Reads the window of a drawable's indices it draws and moves them onto the vertices it was packed at.
+  fn read_indices<T: ByteOrder>(
+    &self,
+    container: &OgfGeometryContainerChunk,
+    base: u32,
+    window: SectorWindow,
+  ) -> XrfResult<Vec<u32>> {
+    Self::check_windows(container.index_count, &[window])?;
+
+    let indices: Vec<u16> = self.source.read_indices::<T>(
+      container.index_buffer_id,
+      container.index_base + window.offset,
+      window.get_index_count(),
+    )?;
 
     if let Some(stray) = indices
       .iter()
@@ -336,9 +360,15 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
     // Packed unplaced: the mesh is in its own space, and each instance's transform stands a copy of it.
     arrays.push::<T>(&payload)?;
 
+    let (window, progressive): (SectorWindow, Option<SectorProgressive>) =
+      Self::get_instance_detail(key.index_count, gathering.windows.as_deref())?;
     let mut indices: Vec<u32> = self
       .source
-      .read_indices::<T>(key.index_buffer, key.index_base, key.index_count)?
+      .read_indices::<T>(
+        key.index_buffer,
+        key.index_base + window.offset,
+        window.get_index_count(),
+      )?
       .iter()
       .map(|index| u32::from(*index))
       .collect();
@@ -364,9 +394,103 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
       hemi: builder.push_f32_section(&hemi),
       impostors,
       instance_count: gathering.placements.len() as u32,
+      progressive,
       surface: self.surfaces.get(key.shader_id),
       transforms: builder.push_f32_section(&transforms),
     })
+  }
+
+  /// A progressive visual's slide windows, the whole detail first: its own, or the level's table it names.
+  fn get_windows(&self, visual: &LevelVisual) -> Option<Vec<SectorWindow>> {
+    let windows: Vec<SectorWindow> = if let Some(swi) = &visual.swi {
+      swi
+        .windows
+        .iter()
+        .map(|window| SectorWindow {
+          offset: window.offset,
+          triangles: u32::from(window.num_tris),
+        })
+        .collect()
+    } else {
+      self
+        .source
+        .get_file()
+        .slide_windows
+        .get(visual.swi_container.as_ref()?.ext_swib_index as usize)?
+        .windows
+        .iter()
+        .map(|window| SectorWindow {
+          offset: window.offset,
+          triangles: u32::from(window.triangles),
+        })
+        .collect()
+    };
+
+    (!windows.is_empty()).then_some(windows)
+  }
+
+  /// What of a tree mesh's indices is packed, and the bands its places pick among: the whole run of its windows with
+  /// bands where it has more than one, its one window where it has one, and all of its indices where it has none.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when a window reaches past the mesh's indices or does not start on a triangle.
+  fn get_instance_detail(
+    index_count: u32,
+    windows: Option<&[SectorWindow]>,
+  ) -> XrfResult<(SectorWindow, Option<SectorProgressive>)> {
+    let whole: SectorWindow = SectorWindow {
+      offset: 0,
+      triangles: index_count / 3,
+    };
+
+    let Some(windows) = windows else {
+      return Ok((whole, None));
+    };
+
+    Self::check_windows(index_count, windows)?;
+
+    if windows.len() == 1 {
+      return Ok((windows[0], None));
+    }
+
+    let count: u32 = windows.len() as u32;
+    let bands: u32 = count.min(SectorProgressive::MAX_BANDS);
+
+    Ok((
+      whole,
+      Some(SectorProgressive {
+        bands: (0..bands)
+          .map(|band| {
+            let window: SectorWindow = windows[SectorProgressive::get_band_window(band, bands, count) as usize];
+
+            VisualDrawRange {
+              count: window.get_index_count(),
+              start: window.offset,
+            }
+          })
+          .collect(),
+        windows: count,
+      }),
+    ))
+  }
+
+  /// Checks that every window lies within the indices it slides over, on whole triangles.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error naming the first window that does not.
+  fn check_windows(index_count: u32, windows: &[SectorWindow]) -> XrfResult {
+    match windows
+      .iter()
+      .find(|window| window.offset % 3 != 0 || window.offset + window.get_index_count() > index_count)
+    {
+      Some(window) => Err(XrfError::new_invalid_error(format!(
+        "draws a window of {} triangles from index {}, outside the {index_count} indices it declares",
+        window.triangles, window.offset
+      ))),
+      None => Ok(()),
+    }
   }
 
   /// Records every instance of a mesh that could not be read, since none of them can be drawn without it.

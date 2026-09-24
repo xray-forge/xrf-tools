@@ -1,7 +1,7 @@
 import { IRendererBounds, IRendererGeometry, IRendererImpostors, IRendererObject } from "@xrf/renderer";
 import { Nullable } from "@xrf/types";
 
-import { VisualBounds } from "@/core/ipc/types/xrf-visual";
+import { SectorProgressive, VisualBounds } from "@/core/ipc/types/xrf-visual";
 import { LEVEL_RENDER_KEYS } from "@/core/level/lib/render/level-render-keys";
 import {
   ISectorGeometryViews,
@@ -33,7 +33,15 @@ export function toLevelSectorGeometry(views: ISectorViews): IRendererGeometry {
  * @returns The mesh, in its own space.
  */
 export function toLevelInstanceGeometry(instance: ISectorInstanceViews): IRendererGeometry {
-  return { ...toLevelGeometry(instance.geometry), groups: [] };
+  const progressive: Nullable<SectorProgressive> = instance.progressive;
+
+  // A progressive mesh packs every window's indices, so its one group is its whole detail, with the bands beside it.
+  return {
+    ...toLevelGeometry(instance.geometry),
+    groups: progressive
+      ? [{ count: progressive.bands[0].count, progressive, slot: 0, start: progressive.bands[0].start }]
+      : [],
+  };
 }
 
 /**

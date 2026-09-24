@@ -16,7 +16,7 @@ import { StaticLods } from "#/scene/static/static-lods";
 import { StaticPlaces } from "#/scene/static/static-places";
 import { IStaticRange } from "#/scene/static/static-range";
 import { IStaticUpcoming } from "#/scene/static/static-upcoming";
-import { EStaticPool, StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
+import { EStaticPool, STATIC_NO_BAND, StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
 
 /** A run of rows: where it starts, and how many places it tests. */
 interface IRowRun {
@@ -219,6 +219,7 @@ export class StaticDraws {
    * @param placeStart - Where its object's places start.
    * @param spheres - Each place's sphere in renderer space, four floats each, which its rows test.
    * @param lods - Each place's impostor as its row names it, or null where none stands in for any.
+   * @param band - Which band of a progressive mesh it is (`toStaticBandWord`), `STATIC_NO_BAND` for one detail.
    * @returns Whether it is drawn so; not where there is no room for its rows.
    */
   public drawListed(
@@ -229,7 +230,8 @@ export class StaticDraws {
     count: number,
     placeStart: number,
     spheres: Float32Array,
-    lods: Nullable<Uint32Array> = null
+    lods: Nullable<Uint32Array> = null,
+    band: number = STATIC_NO_BAND
   ): boolean {
     const places: number = spheres.length / 4;
     let run: Maybe<IRowRun> = this.rows.get(slot);
@@ -256,7 +258,8 @@ export class StaticDraws {
       placeStart,
       slot,
       count,
-      lods
+      lods,
+      band
     );
     this.pool.writeListed(slot, range.indexStart + start, count, range.vertexStart, run.start);
     this.batches.put(slot, range.arena, EStaticDrawKind.LISTED, surface);

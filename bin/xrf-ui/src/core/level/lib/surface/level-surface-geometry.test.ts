@@ -47,6 +47,7 @@ function instance(shaderId: number, places: number, indexCount: number): ISector
     hemi: new Float32Array(),
     impostors: null,
     instanceCount: places,
+    progressive: null,
     render: toLevelSurfaceRender(null),
     surface: mockSectorSurface({ shaderId }),
     transforms: new Float32Array(),

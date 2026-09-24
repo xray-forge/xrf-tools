@@ -3,8 +3,8 @@ use xrf_chunk::{ChunkDataSource, ChunkReader, find_optional_chunk_by_id, find_re
 use xrf_error::XrfResult;
 use xrf_math::Matrix4x4;
 use xrf_ogf::{
-  OgfChildrenLinkChunk, OgfGeometryContainerChunk, OgfHeaderChunk, OgfLodDefinitionChunk, OgfTextureChunk,
-  OgfTreeDefinitionChunk,
+  OgfChildrenLinkChunk, OgfGeometryContainerChunk, OgfHeaderChunk, OgfLodDefinitionChunk, OgfSwiContainerChunk,
+  OgfSwiDataChunk, OgfTextureChunk, OgfTreeDefinitionChunk,
 };
 
 /// One visual of a compiled level, as `fsL_VISUALS` stores it.
@@ -24,6 +24,10 @@ pub struct LevelVisual {
   pub tree: Option<OgfTreeDefinitionChunk>,
   /// The impostor a `MT_LOD` visual draws in place of the trees it composes, seen from far enough away.
   pub lod: Option<OgfLodDefinitionChunk>,
+  /// The windows of a progressive static mesh, stored with the visual.
+  pub swi: Option<OgfSwiDataChunk>,
+  /// Which of `level.geom`'s window tables a progressive tree draws from.
+  pub swi_container: Option<OgfSwiContainerChunk>,
 }
 
 impl LevelVisual {
@@ -56,6 +60,14 @@ impl LevelVisual {
         None => None,
       },
       lod: match find_optional_chunk_by_id(&chunks, OgfLodDefinitionChunk::CHUNK_ID) {
+        Some(mut chunk) => Some(chunk.read_xr::<T, _>()?),
+        None => None,
+      },
+      swi: match find_optional_chunk_by_id(&chunks, OgfSwiDataChunk::CHUNK_ID) {
+        Some(mut chunk) => Some(chunk.read_xr::<T, _>()?),
+        None => None,
+      },
+      swi_container: match find_optional_chunk_by_id(&chunks, OgfSwiContainerChunk::CHUNK_ID) {
         Some(mut chunk) => Some(chunk.read_xr::<T, _>()?),
         None => None,
       },

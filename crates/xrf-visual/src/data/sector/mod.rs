@@ -5,6 +5,7 @@ pub(crate) mod sector_impostor_group;
 pub(crate) mod sector_impostors;
 pub(crate) mod sector_instance_group;
 pub(crate) mod sector_outline;
+pub(crate) mod sector_progressive;
 pub(crate) mod sector_section;
 pub(crate) mod sector_skip;
 pub(crate) mod sector_surface;

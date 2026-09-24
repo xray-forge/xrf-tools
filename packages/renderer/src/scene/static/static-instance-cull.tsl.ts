@@ -1,8 +1,9 @@
-import { atomicAdd, Fn, If, instanceIndex, select, storage, uint } from "three/tsl";
+import { atomicAdd, clamp, float, floor, Fn, If, instanceIndex, select, sqrt, storage, uint } from "three/tsl";
 import { ComputeNode, Node, StorageBufferNode, UniformArrayNode } from "three/webgpu";
 
 import { toInFrustum } from "#/scene/static/static-frustum.tsl";
 import { toOccluded } from "#/scene/static/static-occlusion.tsl";
+import { LodUniforms } from "#/uniforms/lod-uniforms";
 import {
   EStaticCullState,
   EStaticLodState,
@@ -10,9 +11,13 @@ import {
   STATIC_CULL_COUNTS,
   STATIC_DRAW_ARGUMENTS,
   STATIC_LOD_IMPOSTOR_ROW,
+  STATIC_NO_BAND,
   STATIC_NO_LOD,
   StaticDrawBuffers,
 } from "#/uniforms/static-draw-buffers";
+
+/** `EPS`, what `CalcSSA` adds to a squared distance so a camera standing at a centre divides by something. */
+const DISTANCE_EPSILON: number = 0.00001;
 
 /**
  * Whether a row's clump draws what the row is: a tree while its trees are near enough, the impostor's own draw while it
@@ -33,6 +38,33 @@ function toLodDrawn(row: Node<"uint">, terms: StorageBufferNode<"uvec4">): Node<
 }
 
 /**
+ * Whether a row's band is the one its place draws at (`calcLOD`, `FTreeVisual_PM::Render`): the place's screen area
+ * against the progressive thresholds gives its detail, the detail a window of the engine's table, and the window the
+ * band it falls in. A row of a draw of one detail always does.
+ *
+ * @param word - The row's band word, `STATIC_NO_BAND` for none.
+ * @param sphere - The place's sphere.
+ * @param lod - The thresholds and the camera they are measured from.
+ */
+function toBandDrawn(word: Node<"uint">, sphere: Node<"vec4">, lod: LodUniforms): Node<"bool"> {
+  const band: Node<"uint"> = word.bitAnd(255);
+  const bands: Node<"uint"> = word.shiftRight(8).bitAnd(255);
+  const windows: Node<"uint"> = word.shiftRight(16);
+  const offset: Node<"vec3"> = sphere.xyz.sub(lod.camera);
+  const ssa: Node<"float"> = sphere.w.div(offset.dot(offset).add(DISTANCE_EPSILON));
+  const detail: Node<"float"> = sqrt(clamp(ssa.sub(lod.glodEnd).div(lod.glodStart.sub(lod.glodEnd)), 0, 1));
+  const window: Node<"uint"> = floor(
+    float(1)
+      .sub(detail)
+      .mul(float(windows.sub(1)))
+      .add(0.5)
+  ).toUint();
+
+  // The window is at most `windows - 1`, so the band it falls in is always one of the draw's.
+  return word.equal(STATIC_NO_BAND).or(window.mul(bands).div(windows).equal(band));
+}
+
+/**
  * The first cull of the instanced draws, one invocation a row: a row whose sphere reaches into the view and which the
  * last frame's depth does not hide counts its draw's instance count up by one and writes its place into the draw's
  * list at the index that took; one the depth hides is left for the second cull. Runs after the first slot cull, which
@@ -48,7 +80,7 @@ export function createEarlyInstanceCullShader(
 ): ComputeNode {
   const rows: number = buffers.capacity(EStaticPool.ROWS);
   const args = storage(buffers.args, "uint", buffers.capacity(EStaticPool.SLOTS) * STATIC_DRAW_ARGUMENTS).toAtomic();
-  const rowLods = storage(buffers.rowLods, "uint", rows).toReadOnly();
+  const rowLods = storage(buffers.rowLods, "uvec2", rows).toReadOnly();
   const lodTerms = storage(buffers.lodTerms, "uvec4", buffers.capacity(EStaticPool.LODS)).toReadOnly();
   const spheres = storage(buffers.rowSpheres, "vec4", rows).toReadOnly();
   const targets = storage(buffers.rowTargets, "uvec4", rows).toReadOnly();
@@ -59,12 +91,13 @@ export function createEarlyInstanceCullShader(
 
   return Fn(() => {
     const sphere = spheres.element(instanceIndex);
+    const words = rowLods.element(instanceIndex) as unknown as Node<"uvec2">;
     const state = uint(EStaticCullState.OUTSIDE).toVar();
 
     If(
-      toLodDrawn(rowLods.element(instanceIndex) as unknown as Node<"uint">, lodTerms).and(
-        toInFrustum(sphere, planes).equal(1)
-      ),
+      toLodDrawn(words.x, lodTerms)
+        .and(toBandDrawn(words.y, sphere as unknown as Node<"vec4">, buffers.lod))
+        .and(toInFrustum(sphere, planes).equal(1)),
       () => {
         state.assign(EStaticCullState.DRAWN);
 

@@ -1,6 +1,7 @@
 use serde::Serialize;
 
 use crate::data::sector::sector_geometry::SectorGeometry;
+use crate::data::sector::sector_progressive::SectorProgressive;
 use crate::data::sector::sector_surface::SectorSurface;
 use crate::data::visual::geometry::visual_section::VisualSection;
 
@@ -22,6 +23,9 @@ pub struct SectorInstanceGroup {
   /// One signed integer for each instance: the sector's impostor standing in for the clump it belongs to, or -1.
   /// Absent where no place of the group belongs to one.
   pub impostors: Option<VisualSection>,
+  /// The bands a progressive tree's places pick among, over the whole of its windows' indices; absent for a mesh of
+  /// one detail, whose indices are its one window.
+  pub progressive: Option<SectorProgressive>,
 }
 
 impl SectorInstanceGroup {

@@ -8,3 +8,4 @@ pub(crate) mod sector_section_gathering;
 pub(crate) mod sector_surface_table;
 pub(crate) mod sector_vertex_arrays;
 pub(crate) mod sector_vertex_range;
+pub(crate) mod sector_window;

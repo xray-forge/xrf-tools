@@ -4,7 +4,13 @@ use xrf_chunk::XRayByteOrder;
 use xrf_level::{
   LevelFile, LevelGeomFile, LevelGeomSource, LevelGeomVertexElement, LevelShadersChunk, LevelVisualsChunk,
 };
-use xrf_ogf::{OgfChildrenLinkChunk, OgfGeometryContainerChunk, OgfHeaderChunk, OgfTreeDefinitionChunk};
+use xrf_ogf::{
+  OgfChildrenLinkChunk, OgfGeometryContainerChunk, OgfHeaderChunk, OgfSwiContainerChunk, OgfSwiDataChunk,
+  OgfTreeDefinitionChunk,
+};
+
+/// One slide window as the engine stores it: where in its visual's indices it starts, its triangles, its vertices.
+pub(crate) type Window = (u32, u16, u16);
 
 /// One chunk as a file stores it: its identifier, its length, and its payload.
 pub(crate) fn new_chunk(id: u32, payload: &[u8]) -> Vec<u8> {
@@ -118,6 +124,58 @@ pub(crate) fn new_geometry_fixture(buffers: &[GeomBuffer], indices: &[u16]) -> V
   let mut bytes: Vec<u8> = new_chunk(LevelGeomFile::VERTEX_BUFFERS_CHUNK_ID, &vertex_chunk);
 
   bytes.extend(new_chunk(LevelGeomFile::INDEX_BUFFERS_CHUNK_ID, &index_chunk));
+
+  bytes
+}
+
+/// `fsL_SWIS`, to append to a `level.geom`: one window table per entry, the whole detail first in each.
+pub(crate) fn new_slide_windows(tables: &[&[Window]]) -> Vec<u8> {
+  let mut body: Vec<u8> = (tables.len() as u32).to_le_bytes().to_vec();
+
+  for table in tables {
+    body.extend_from_slice(&[0u8; 16]);
+    body.extend_from_slice(&(table.len() as u32).to_le_bytes());
+    body.extend(new_windows(table));
+  }
+
+  new_chunk(LevelGeomFile::SLIDE_WINDOWS_CHUNK_ID, &body)
+}
+
+/// Windows as a table lays them out, eight bytes each.
+fn new_windows(windows: &[Window]) -> Vec<u8> {
+  let mut bytes: Vec<u8> = Vec::new();
+
+  for (offset, triangles, vertices) in windows {
+    bytes.extend_from_slice(&offset.to_le_bytes());
+    bytes.extend_from_slice(&triangles.to_le_bytes());
+    bytes.extend_from_slice(&vertices.to_le_bytes());
+  }
+
+  bytes
+}
+
+/// A progressive tree, `MT_TREE_PM`: a tree drawing its windows from the level's table `table`.
+pub(crate) fn new_progressive_tree(shader_id: u16, vertex_count: u32, index_count: u32, table: u32) -> Vec<u8> {
+  let mut bytes: Vec<u8> = new_tree(shader_id, 0, vertex_count, index_count, 0.0);
+
+  bytes.extend(new_chunk(OgfSwiContainerChunk::CHUNK_ID, &table.to_le_bytes()));
+
+  bytes
+}
+
+/// A progressive static, `MT_PROGRESSIVE`: a baked visual carrying its own windows.
+pub(crate) fn new_progressive_drawable(
+  shader_id: u16,
+  vertex_count: u32,
+  index_count: u32,
+  windows: &[Window],
+) -> Vec<u8> {
+  let mut bytes: Vec<u8> = new_drawable(shader_id, 0, vertex_count, 0, index_count);
+  let mut data: Vec<u8> = vec![0u8; 16];
+
+  data.extend_from_slice(&(windows.len() as u32).to_le_bytes());
+  data.extend(new_windows(windows));
+  bytes.extend(new_chunk(OgfSwiDataChunk::CHUNK_ID, &data));
 
   bytes
 }

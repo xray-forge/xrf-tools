@@ -6,6 +6,7 @@ import {
   SectorGeometry,
   SectorImpostorGroup,
   SectorImpostors,
+  SectorProgressive,
   SectorSkip,
   SectorSurface,
   VisualBounds,
@@ -64,6 +65,8 @@ export interface ISectorInstanceViews {
   hemi: Float32Array;
   /** The sector's impostor each place belongs to, -1 for none; null where no place belongs to one. */
   impostors: Nullable<Int32Array>;
+  /** The bands a progressive tree's places pick among, the whole detail first; null for a mesh of one detail. */
+  progressive: Nullable<SectorProgressive>;
 }
 
 /** A run of a sector's impostors dressed by one surface. */
@@ -193,6 +196,7 @@ export function createSectorViews(
       geometry: toGeometryViews(buffer, group.geometry),
       hemi: toFloatView(buffer, group.hemi),
       impostors: group.impostors ? toIntegerView(buffer, group.impostors) : null,
+      progressive: group.progressive,
       instanceCount: group.instanceCount,
       render: getLevelSurfaceRender(surfaces, group.surface.shaderId),
       surface: group.surface,

@@ -8,7 +8,13 @@ import {
   RENDERER_HEMI_FLOATS_PER_INSTANCE,
 } from "#/contract/scene/renderer-object";
 import { RangeAllocator } from "#/scene/static/range-allocator";
-import { EStaticPool, STATIC_NO_LOD, STATIC_PLACE_COLUMNS, StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
+import {
+  EStaticPool,
+  STATIC_NO_BAND,
+  STATIC_NO_LOD,
+  STATIC_PLACE_COLUMNS,
+  StaticDrawBuffers,
+} from "#/uniforms/static-draw-buffers";
 
 /** Floats one place takes in the places buffer. */
 const FLOATS_PER_PLACE: number = STATIC_PLACE_COLUMNS * 4;
@@ -137,6 +143,8 @@ export class StaticPlaces {
    * @param slot - The draw's slot, whose instance count the rows count up.
    * @param indexCount - Indices the draw takes, for the report.
    * @param lods - Each row's impostor as the LOD cull reads it, or null where none stands in for any place.
+   * @param band - The draw's band of a progressive mesh (`toStaticBandWord`), `STATIC_NO_BAND` for a draw of one
+   * detail.
    */
   public writeRows(
     start: number,
@@ -144,7 +152,8 @@ export class StaticPlaces {
     placeStart: number,
     slot: number,
     indexCount: number,
-    lods: Nullable<Uint32Array> = null
+    lods: Nullable<Uint32Array> = null,
+    band: number = STATIC_NO_BAND
   ): void {
     const count: number = spheres.length / 4;
     const targets = this.buffers.rowTargets.array as Uint32Array;
@@ -152,14 +161,11 @@ export class StaticPlaces {
 
     (this.buffers.rowSpheres.array as Float32Array).set(spheres, start * 4);
 
-    if (lods) {
-      rowLods.set(lods, start);
-    } else {
-      rowLods.fill(STATIC_NO_LOD, start, start + count);
-    }
-
     for (let index = 0; index < count; index += 1) {
       const at: number = (start + index) * 4;
+
+      rowLods[(start + index) * 2] = lods ? lods[index] : STATIC_NO_LOD;
+      rowLods[(start + index) * 2 + 1] = band;
 
       targets[at] = placeStart + index;
       targets[at + 1] = slot;
@@ -192,7 +198,7 @@ export class StaticPlaces {
     StaticPlaces.upload(this.buffers.places, this.placeSpan, FLOATS_PER_PLACE);
     StaticPlaces.upload(this.buffers.rowSpheres, this.rowSpan, 4);
     StaticPlaces.upload(this.buffers.rowTargets, this.rowSpan, 4);
-    StaticPlaces.upload(this.buffers.rowLods, this.rowSpan, 1);
+    StaticPlaces.upload(this.buffers.rowLods, this.rowSpan, 2);
     this.rowSpan.first = Infinity;
     this.rowSpan.last = -1;
     this.placeSpan.first = Infinity;

@@ -7,14 +7,16 @@ use xrf_level::{LevelSectorComposition, LevelShadersChunk, LevelVisualsChunk};
 use crate::data::sector::sector_attributes::SectorAttributes;
 use crate::data::sector::sector_description::SectorDescription;
 use crate::data::sector::sector_instance_group::SectorInstanceGroup;
+use crate::data::sector::sector_progressive::SectorProgressive;
+use crate::data::visual::geometry::visual_draw_range::VisualDrawRange;
 use crate::data::visual::geometry::visual_skip_cause::VisualSkipCause;
 use crate::pack::sector::sector_package::SectorPackage;
 use crate::pack::sector::sector_packer::SectorPacker;
 use crate::pack::tests::sector::level_fixtures::{
-  GeomBuffer, new_drawable, new_drawable_of_buffer, new_geometry_fixture, new_hierarchy, new_lightmapped_declaration,
-  new_lightmapped_vertex, new_lit_tree, new_lod, new_open_geometry, new_position_vertex, new_positions_declaration,
-  new_shaders, new_tree, new_tree_declaration, new_tree_vertex, new_vertex_lit_declaration, new_vertex_lit_vertex,
-  new_visuals,
+  GeomBuffer, Window, new_drawable, new_drawable_of_buffer, new_geometry_fixture, new_hierarchy,
+  new_lightmapped_declaration, new_lightmapped_vertex, new_lit_tree, new_lod, new_open_geometry, new_position_vertex,
+  new_positions_declaration, new_progressive_drawable, new_progressive_tree, new_shaders, new_slide_windows, new_tree,
+  new_tree_declaration, new_tree_vertex, new_vertex_lit_declaration, new_vertex_lit_vertex, new_visuals,
 };
 
 /// Four lightmapped vertices in one buffer, and six indices that draw two triangles out of them.
@@ -690,4 +692,130 @@ fn test_packs_an_impostor_and_names_it_from_every_tree_of_its_clump() {
 
   assert_eq!(group.drawables, vec![2, 3, 4]);
   assert_eq!(names, vec![0, 0, -1]);
+}
+
+/// Nine indices over four vertices, as a two window mesh lays them out: the one-triangle window first in the buffer,
+/// then the two-triangle whole detail.
+const PROGRESSIVE_INDICES: [u16; 9] = [0, 1, 2, 0, 1, 2, 1, 3, 2];
+
+/// The two windows over those indices, the whole detail first as the engine's tables are.
+const PROGRESSIVE_WINDOWS: [Window; 2] = [(3, 2, 4), (0, 1, 3)];
+
+// A progressive mesh's indices are every window laid end to end; drawing all of them draws every triangle as often as
+// the windows repeat it, which is what put five and a half times Pripyat's progressive triangles on screen.
+#[test]
+fn test_bakes_a_progressive_static_at_its_whole_detail_alone() {
+  let windowed: LevelVisualsChunk = new_visuals(&[
+    new_hierarchy(&[1]),
+    new_progressive_drawable(1, 4, 9, &PROGRESSIVE_WINDOWS),
+  ]);
+  let plain: LevelVisualsChunk = new_visuals(&[new_hierarchy(&[1]), new_drawable(1, 0, 4, 3, 6)]);
+  let source = new_open_geometry(new_progressive_geometry(false, &[]));
+
+  let package: SectorPackage = SectorPacker::new(&windowed, None, &source).pack::<XRayByteOrder>(
+    0,
+    &new_composition(&windowed),
+    SectorAttributes::all(),
+  );
+  let expected: SectorPackage = SectorPacker::new(&plain, None, &source).pack::<XRayByteOrder>(
+    0,
+    &new_composition(&plain),
+    SectorAttributes::all(),
+  );
+
+  assert_eq!(new_read_indices(&package).len(), 6, "the whole detail's two triangles");
+  assert_eq!(new_read_indices(&package), new_read_indices(&expected));
+}
+
+// A progressive tree names a table of the level's rather than carrying one: its mesh packs whole, and its places pick
+// among the bands of it, the whole detail first.
+#[test]
+fn test_packs_a_progressive_tree_whole_with_a_band_for_each_window() {
+  let run: LevelVisualsChunk = new_visuals(&[new_hierarchy(&[1]), new_progressive_tree(1, 4, 9, 0)]);
+  let source = new_open_geometry(new_progressive_geometry(true, &[&PROGRESSIVE_WINDOWS]));
+
+  let package: SectorPackage =
+    SectorPacker::new(&run, None, &source).pack::<XRayByteOrder>(0, &new_composition(&run), SectorAttributes::all());
+  let group: &SectorInstanceGroup = &package.description.instances[0];
+
+  assert_eq!(
+    group.geometry.indices.byte_length,
+    9 * 4,
+    "every window's indices, once"
+  );
+  assert_eq!(
+    group.progressive,
+    Some(SectorProgressive {
+      bands: vec![
+        VisualDrawRange { count: 6, start: 3 },
+        VisualDrawRange { count: 3, start: 0 },
+      ],
+      windows: 2,
+    })
+  );
+}
+
+// Every band is a draw of its own, so a table of many windows is cut into a few: band `b` is window
+// `floor(b * windows / bands)`, never coarser than the window any place in it would draw.
+#[test]
+fn test_cuts_a_table_of_many_windows_into_a_few_bands() {
+  let windows: Vec<Window> = (0..10u32).map(|window| ((9 - window) * 3, 1, 3)).collect();
+  let run: LevelVisualsChunk = new_visuals(&[new_hierarchy(&[1]), new_progressive_tree(1, 4, 30, 0)]);
+  let source = new_open_geometry(new_progressive_geometry(true, &[&windows]));
+
+  let package: SectorPackage =
+    SectorPacker::new(&run, None, &source).pack::<XRayByteOrder>(0, &new_composition(&run), SectorAttributes::all());
+  let progressive: &SectorProgressive = package.description.instances[0].progressive.as_ref().expect("bands");
+
+  assert_eq!(progressive.windows, 10);
+  // Windows 0, 2, 5 and 7, at offsets 27, 21, 12 and 6.
+  assert_eq!(
+    progressive.bands.iter().map(|band| band.start).collect::<Vec<u32>>(),
+    vec![27, 21, 12, 6]
+  );
+}
+
+#[test]
+fn test_leaves_out_a_tree_whose_window_reaches_past_its_indices() {
+  let run: LevelVisualsChunk = new_visuals(&[new_hierarchy(&[1]), new_progressive_tree(1, 4, 9, 0)]);
+  let source = new_open_geometry(new_progressive_geometry(true, &[&[(6, 2, 4), (0, 1, 3)]]));
+
+  let package: SectorPackage =
+    SectorPacker::new(&run, None, &source).pack::<XRayByteOrder>(0, &new_composition(&run), SectorAttributes::all());
+
+  assert!(package.description.instances.is_empty());
+  assert_eq!(package.description.skipped[0].cause, VisualSkipCause::Malformed);
+}
+
+/// Four vertices of a tree or a baked surface over the progressive indices, thirty of them for a table that wants
+/// them, and the level's window tables after.
+fn new_progressive_geometry(is_tree: bool, tables: &[&[Window]]) -> Vec<u8> {
+  let vertices: Vec<Vec<u8>> = (0..4)
+    .map(|index| {
+      let at: f32 = index as f32;
+
+      if is_tree {
+        new_tree_vertex(at, 0.0, 0.0)
+      } else {
+        new_lightmapped_vertex(at, 0.0, 0.0)
+      }
+    })
+    .collect();
+  let declaration: Vec<u8> = if is_tree {
+    new_tree_declaration()
+  } else {
+    new_lightmapped_declaration()
+  };
+  let indices: Vec<u16> = if tables.iter().any(|table| table.len() > 2) {
+    [0u16, 1, 2].repeat(10)
+  } else {
+    PROGRESSIVE_INDICES.to_vec()
+  };
+  let mut bytes: Vec<u8> = new_geometry_fixture(&[GeomBuffer { declaration, vertices }], &indices);
+
+  if !tables.is_empty() {
+    bytes.extend(new_slide_windows(tables));
+  }
+
+  bytes
 }

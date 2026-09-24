@@ -134,8 +134,9 @@ export class SceneGeometry {
       ? geometry.groups
       : [{ count: geometry.index ? geometry.index.length : geometry.position.length / 3, slot: 0, start: 0 }];
 
-    return groups.map(({ start, count, slot, bounds }: IRendererGeometryGroup) => ({
+    return groups.map(({ start, count, slot, bounds, progressive }: IRendererGeometryGroup) => ({
       count,
+      progressive,
       slot,
       sphere: bounds
         ? SceneGeometry.toSphere(bounds)

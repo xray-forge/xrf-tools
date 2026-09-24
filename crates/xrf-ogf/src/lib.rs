@@ -22,6 +22,7 @@ pub use crate::chunks::ogf_header_chunk::OgfHeaderChunk;
 pub use crate::chunks::ogf_ik_data_chunk::OgfIkDataChunk;
 pub use crate::chunks::ogf_kinematics_chunk::OgfKinematicsChunk;
 pub use crate::chunks::ogf_lod_definition_chunk::OgfLodDefinitionChunk;
+pub use crate::chunks::ogf_swi_container_chunk::OgfSwiContainerChunk;
 pub use crate::chunks::ogf_swi_data_chunk::OgfSwiDataChunk;
 pub use crate::chunks::ogf_texture_chunk::OgfTextureChunk;
 pub use crate::chunks::ogf_tree_definition_chunk::{OgfTreeColor, OgfTreeDefinitionChunk};

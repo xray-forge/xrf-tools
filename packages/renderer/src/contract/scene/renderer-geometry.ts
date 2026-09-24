@@ -1,4 +1,5 @@
 import { TRendererVector } from "#/contract/renderer-lighting";
+import { IRendererProgressive } from "#/contract/scene/renderer-progressive";
 
 /**
  * A range of a geometry's indices drawn with one surface.
@@ -12,6 +13,8 @@ export interface IRendererGeometryGroup {
   slot: number;
   /** What the range's own vertices span, which it is culled by; measured by the renderer where left out. */
   bounds?: IRendererBounds;
+  /** The coarser bands of a progressive mesh, which each place of an instanced draw picks among by its detail. */
+  progressive?: IRendererProgressive;
 }
 
 /**

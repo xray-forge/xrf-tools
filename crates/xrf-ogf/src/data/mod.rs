@@ -19,7 +19,6 @@ pub(crate) mod ogf_progressive;
 pub(crate) mod ogf_render_visual;
 pub(crate) mod ogf_slide_window;
 pub(crate) mod ogf_sphere;
-pub(crate) mod ogf_swi_container;
 pub(crate) mod ogf_tree_definition;
 pub(crate) mod ogf_vertex;
 pub(crate) mod ogf_vertices;

@@ -98,6 +98,11 @@ export type SectorInstanceGroup = {
    * Absent where no place of the group belongs to one.
    */
   impostors: VisualSection | null;
+  /**
+   * The bands a progressive tree's places pick among, over the whole of its windows' indices; absent for a mesh of
+   * one detail, whose indices are its one window.
+   */
+  progressive: SectorProgressive | null;
 };
 
 /** What one sector is and where it sits, before any of its geometry is read. */
@@ -110,6 +115,17 @@ export type SectorOutline = {
   drawables: number;
   /** Extent the sector declares, absent when it reaches no drawable. */
   bounds: VisualBounds | null;
+};
+
+/** The bands a progressive mesh is drawn in: a few of the engine's slide windows, one of which each place draws. */
+export type SectorProgressive = {
+  /** Windows the engine's table has, which a place's detail picks among (`FTreeVisual_PM::Render`). */
+  windows: number;
+  /**
+   * A range of the mesh's indices per band, the whole detail first. Band `b` is window `floor(b * windows / bands)`,
+   * so a place drawing the band its window falls in is never coarser than the engine would draw it.
+   */
+  bands: Array<VisualDrawRange>;
 };
 
 /** One draw of a sector's own geometry: the indices to draw, and the surface they are drawn with. */

@@ -23,6 +23,10 @@ export class LodUniforms {
   public readonly discard = uniform(0);
   /** One where impostors draw at all, zero where every clump draws its trees. */
   public readonly isEnabled = uniform(1);
+  /** `r_ssaGLOD_start`: above it a progressive mesh draws its whole detail. */
+  public readonly glodStart = uniform(0);
+  /** `r_ssaGLOD_end`: below it a progressive mesh draws its coarsest window. */
+  public readonly glodEnd = uniform(0);
 
   /**
    * @param settings - The consumer's LOD settings.
@@ -39,14 +43,27 @@ export class LodUniforms {
       (settings.ssaB / 3) ** 2 / screen,
       settings.ssaDiscard ** 2 / screen,
       settings.isImpostors ? 1 : 0,
+      (settings.ssaGlodStart / 3) ** 2 / screen,
+      (settings.ssaGlodEnd / 3) ** 2 / screen,
     ];
-    const isChanged: boolean =
-      values[0] !== this.lodA.value ||
-      values[1] !== this.lodB.value ||
-      values[2] !== this.discard.value ||
-      values[3] !== this.isEnabled.value;
+    const current: ReadonlyArray<number> = [
+      this.lodA.value,
+      this.lodB.value,
+      this.discard.value,
+      this.isEnabled.value,
+      this.glodStart.value,
+      this.glodEnd.value,
+    ];
+    const isChanged: boolean = values.some((value: number, index: number) => value !== current[index]);
 
-    [this.lodA.value, this.lodB.value, this.discard.value, this.isEnabled.value] = values;
+    [
+      this.lodA.value,
+      this.lodB.value,
+      this.discard.value,
+      this.isEnabled.value,
+      this.glodStart.value,
+      this.glodEnd.value,
+    ] = values;
     camera.getWorldPosition(this.camera.value);
 
     return isChanged;

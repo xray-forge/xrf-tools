@@ -122,6 +122,7 @@ export function mockSectorInstanceGroup(
     hemi,
     impostors: null,
     instanceCount: places.length,
+    progressive: null,
     surface: mockSectorSurface(),
     transforms,
     ...overrides,

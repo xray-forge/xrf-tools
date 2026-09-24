@@ -2,8 +2,8 @@ import { describe, expect, it } from "@jest/globals";
 import { IRendererObject } from "@xrf/renderer";
 
 import { LEVEL_RENDER_KEYS } from "@/core/level/lib/render/level-render-keys";
-import { toLevelImpostorObject } from "@/core/level/lib/render/level-render-sector";
-import { ISectorImpostorViews } from "@/core/level/lib/sector/level-sector-views";
+import { toLevelImpostorObject, toLevelInstanceGeometry } from "@/core/level/lib/render/level-render-sector";
+import { ISectorImpostorViews, ISectorInstanceViews } from "@/core/level/lib/sector/level-sector-views";
 import { getLevelSurfaceRender } from "@/core/level/lib/surface/level-surface-render";
 import { mockSectorSurface } from "@/fixtures/mocks/level.mocks";
 
@@ -36,5 +36,31 @@ describe("level render impostors", () => {
     expect([transforms[0], transforms[5], transforms[10]]).toEqual([5, 5, 5]);
     expect(Array.from(transforms.subarray(12, 16))).toEqual([10, 20, 30, 1]);
     expect(Array.from(transforms.subarray(16 + 12, 16 + 16))).toEqual([-10, 0, 4, 1]);
+  });
+
+  // A progressive mesh packs every window's indices; drawn as they are, it draws each triangle as often as the windows
+  // repeat it. Its one group is its whole detail, which is what a plain draw and the first band both draw.
+  it("draws a progressive mesh's whole detail as its group, its bands beside it", () => {
+    const progressive = {
+      bands: [
+        { count: 6, start: 3 },
+        { count: 3, start: 0 },
+      ],
+      windows: 5,
+    };
+    const instance = {
+      geometry: {
+        indexCount: 9,
+        indices: new Uint32Array(9),
+        lightmapUvs: null,
+        normals: null,
+        positions: new Float32Array(12),
+        vertexCount: 4,
+      },
+      progressive,
+    } as unknown as ISectorInstanceViews;
+
+    expect(toLevelInstanceGeometry(instance).groups).toEqual([{ count: 6, progressive, slot: 0, start: 3 }]);
+    expect(toLevelInstanceGeometry({ ...instance, progressive: null }).groups).toEqual([]);
   });
 });

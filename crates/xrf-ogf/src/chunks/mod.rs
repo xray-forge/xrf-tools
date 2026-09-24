@@ -8,6 +8,7 @@ pub(crate) mod ogf_ik_data_chunk;
 pub(crate) mod ogf_kinematics_chunk;
 pub(crate) mod ogf_lod_definition_chunk;
 pub(crate) mod ogf_lods_chunk;
+pub(crate) mod ogf_swi_container_chunk;
 pub(crate) mod ogf_swi_data_chunk;
 pub(crate) mod ogf_texture_chunk;
 pub(crate) mod ogf_tree_definition_chunk;
