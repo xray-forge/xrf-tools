@@ -1,12 +1,19 @@
-import { IRenderFrameCost } from "@xrf/renderer";
-import { ReactElement, ReactNode } from "react";
+import { IRendererPassCost, IRendererPassTimings, IRenderFrameCost } from "@xrf/renderer";
+import { Fragment, ReactElement, ReactNode } from "react";
 
 import { RenderViewportOverlay, TRenderOverlayCorner } from "@/core/render/components/overlay/RenderViewportOverlay";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
+/** What every pass cost together. */
+function toGpuTotal(passes: ReadonlyArray<IRendererPassCost>): number {
+  return passes.reduce((total: number, pass: IRendererPassCost) => total + pass.gpuTime, 0);
+}
+
 export interface IRenderFrameReadoutProps extends BaseComponentProps {
   /** What the last reported frame cost. */
   cost: IRenderFrameCost;
+  /** What each pass of it cost on the GPU, listed while passes are timed. */
+  timings?: IRendererPassTimings;
   corner?: TRenderOverlayCorner;
   /** Anything the scene can say that a viewport cannot, drawn under the rest. */
   children?: ReactNode;
@@ -20,6 +27,7 @@ export function RenderFrameReadout({
   id,
   className,
   cost,
+  timings,
   corner = "top-left",
   children,
 }: IRenderFrameReadoutProps): ReactElement {
@@ -30,6 +38,20 @@ export function RenderFrameReadout({
       <div>{`${cost.drawnWidth} × ${cost.drawnHeight}`}</div>
 
       {children}
+
+      {timings?.isGpuTimed && timings.passes.length ? (
+        <div data-testid={"render-frame-passes"} className={"mt-1 grid grid-cols-[auto_auto] gap-x-3"}>
+          <div>GPU</div>
+          <div className={"text-right tabular-nums"}>{`${toGpuTotal(timings.passes).toFixed(2)} ms`}</div>
+
+          {timings.passes.map((pass: IRendererPassCost) => (
+            <Fragment key={pass.name}>
+              <div className={"opacity-70"}>{pass.name}</div>
+              <div className={"text-right tabular-nums opacity-70"}>{pass.gpuTime.toFixed(2)}</div>
+            </Fragment>
+          ))}
+        </div>
+      ) : null}
     </RenderViewportOverlay>
   );
 }

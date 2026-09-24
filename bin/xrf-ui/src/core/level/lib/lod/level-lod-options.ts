@@ -1,4 +1,4 @@
-import { DEFAULT_RENDERER_LOD_SETTINGS, IRendererLodSettings } from "@xrf/renderer";
+import { IRendererLodSettings } from "@xrf/renderer";
 
 /**
  * How far the viewer draws a clump of trees in full before its impostor takes over.
@@ -19,15 +19,20 @@ export const LEVEL_LOD_LIMITS = {
 } as const;
 
 /**
- * @param lod - The distance the toolbar asks for.
- * @param isImpostors - Whether the toolbar draws impostors at all.
- * @returns The renderer's LOD settings: the engine's thresholds, with the detail scale the distance comes to.
+ * @param features - The LOD the renderer's settings set, for every viewport.
+ * @param lod - The distance the toolbar asks for, against that.
+ * @param isImpostors - Whether the toolbar draws impostors, which it can turn off but not on.
+ * @returns The renderer's LOD settings: the features', with the detail scale the distance comes to.
  */
-export function toLevelRendererLod(lod: ILevelLodOptions, isImpostors: boolean): IRendererLodSettings {
+export function toLevelRendererLod(
+  features: IRendererLodSettings,
+  lod: ILevelLodOptions,
+  isImpostors: boolean
+): IRendererLodSettings {
   return {
-    ...DEFAULT_RENDERER_LOD_SETTINGS,
+    ...features,
     // A clump's screen area falls with the square of its distance, and every threshold with the detail scale.
-    geometryLod: DEFAULT_RENDERER_LOD_SETTINGS.geometryLod * lod.distance ** 2,
-    isImpostors,
+    geometryLod: features.geometryLod * lod.distance ** 2,
+    isImpostors: features.isImpostors && isImpostors,
   };
 }

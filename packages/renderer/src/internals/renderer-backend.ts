@@ -10,10 +10,23 @@ export interface IRendererBackend {
     adapterInfo?: { vendor?: string; architecture?: string };
     limits?: { maxStorageBufferBindingSize?: number; maxBufferSize?: number };
   };
+  /** Whether each pass begins and ends with a timestamp; three reads it as every pass begins. */
+  trackTimestamp?: boolean;
   hasTimestampQuery?(uid: string): boolean;
   getTimestamp?(uid: string): number;
   has?(object: object): boolean;
   destroyAttribute?(attribute: BufferAttribute): void;
+}
+
+/**
+ * Turns the GPU timing of every pass on or off from the next pass. Three decides it once, as the device opens, from the
+ * renderer's `trackTimestamp` and the device's `timestamp-query`; turning it back on needs both.
+ *
+ * @param renderer - A renderer opened with `trackTimestamp`, on a device that times.
+ * @param isTimed - Whether passes are timed from now on.
+ */
+export function setRendererTimestamps(renderer: WebGPURenderer, isTimed: boolean): void {
+  getRendererBackend(renderer).trackTimestamp = isTimed;
 }
 
 /** WebGPU's default `maxStorageBufferBindingSize`, which a device three opens without asking for more has. */

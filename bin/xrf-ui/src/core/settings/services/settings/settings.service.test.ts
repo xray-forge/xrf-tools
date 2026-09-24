@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
+import { ERendererAntialiasing, ERendererPreset, RENDERER_PRESETS } from "@xrf/renderer";
 
 import { SettingsService } from "@/core/settings/services/settings/settings.service";
 import { mockInjectedService } from "@/fixtures/utils/container";
@@ -74,5 +75,32 @@ describe("SettingsService", () => {
     expect(service.frameRateLimit).toBe("30");
     expect(window.localStorage.getItem("xrf.preference.frame-rate-limit")).toBe("30");
     expect(mockInjectedService(SettingsService).service.frameRateLimit).toBe("30");
+  });
+
+  it("draws with Base until another preset is chosen, and keeps what was changed on top of it", () => {
+    const { service } = mockInjectedService(SettingsService);
+
+    expect(service.rendererFeatures).toEqual(RENDERER_PRESETS[ERendererPreset.BASE]);
+
+    service.setRendererOverrides({ antialiasing: ERendererAntialiasing.FXAA });
+    service.setRendererOverrides({ lod: { ssaA: 80 } });
+    service.setRendererOverrides({ lod: { ssaB: 40 } });
+
+    const reloaded = mockInjectedService(SettingsService).service;
+
+    expect(reloaded.rendererFeatures.antialiasing).toBe(ERendererAntialiasing.FXAA);
+    expect([reloaded.rendererFeatures.lod.ssaA, reloaded.rendererFeatures.lod.ssaB]).toEqual([80, 40]);
+
+    // A preset chosen again is the preset whole: whatever was changed on the last one goes.
+    reloaded.setRendererPreset(ERendererPreset.EDITING);
+
+    expect(reloaded.rendererFeatures).toEqual(RENDERER_PRESETS[ERendererPreset.EDITING]);
+    expect(mockInjectedService(SettingsService).service.rendererChoice.preset).toBe(ERendererPreset.EDITING);
+  });
+
+  it("falls back to Base for a stored choice that does not parse", () => {
+    window.localStorage.setItem("xrf.preference.renderer-features", "{not json");
+
+    expect(mockInjectedService(SettingsService).service.rendererChoice.preset).toBe(ERendererPreset.BASE);
   });
 });

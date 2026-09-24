@@ -1,6 +1,9 @@
+import { Nullable } from "@xrf/types";
 import { WebGPURenderer } from "three/webgpu";
 
+import { ERendererAntialiasing, IRendererFeatureSettings } from "#/contract/renderer-features";
 import { createBaseFramePasses } from "#/graph/base-frame-passes";
+import { AntialiasPass, toPresentedFrame } from "#/pass/antialias/antialias-pass";
 import { PresentPass } from "#/pass/present-pass";
 import { IRendererFrame } from "#/pass/renderer-frame";
 import { IRendererPass } from "#/pass/renderer-pass";
@@ -21,15 +24,39 @@ export class RendererFrameGraph {
   /** The passes drawing the consumer's scenes, whose materials compile against their targets. */
   public readonly scenePasses: ReadonlyArray<IRendererScenePass>;
   /** Every pass's name, in frame order, as the frame report states them. */
-  public readonly passNames: ReadonlyArray<string>;
+  public passNames: ReadonlyArray<string> = [];
 
-  private readonly passes: ReadonlyArray<IRendererPass>;
+  private readonly base: ReadonlyArray<IRendererPass>;
+  private passes: ReadonlyArray<IRendererPass> = [];
+  /** The pass smoothing the frame's edges, while a mode is chosen. */
+  private antialias: Nullable<AntialiasPass> = null;
+  private antialiasing: ERendererAntialiasing = ERendererAntialiasing.NONE;
 
   public constructor(uniforms: RendererUniforms, overlays: RendererOverlays, cull: StaticCull) {
     this.present = new PresentPass(this.targets, uniforms.camera);
-    this.passes = [...createBaseFramePasses(this.targets, uniforms, overlays, cull), this.present];
-    this.scenePasses = this.passes.filter(isRendererScenePass);
-    this.passNames = this.passes.map((pass: IRendererPass) => pass.name);
+    this.base = createBaseFramePasses(this.targets, uniforms, overlays, cull);
+    this.scenePasses = this.base.filter(isRendererScenePass);
+    this.link();
+  }
+
+  /**
+   * Puts into the frame the passes the features want and takes out the ones they do not, whose targets go with them.
+   *
+   * @param features - What the features are set to.
+   */
+  public configure(features: IRendererFeatureSettings): void {
+    if (features.antialiasing === this.antialiasing) {
+      return;
+    }
+
+    this.antialias?.dispose();
+    this.antialiasing = features.antialiasing;
+    this.antialias =
+      features.antialiasing === ERendererAntialiasing.NONE
+        ? null
+        : new AntialiasPass(features.antialiasing, this.targets);
+    this.present.setFrame(toPresentedFrame(this.antialias, this.targets));
+    this.link();
   }
 
   /**
@@ -57,5 +84,11 @@ export class RendererFrameGraph {
   public dispose(): void {
     this.passes.forEach((pass: IRendererPass) => pass.dispose());
     this.targets.dispose();
+  }
+
+  /** The frame's passes in order: the base's, whatever the features add, then the picture presented. */
+  private link(): void {
+    this.passes = [...this.base, ...(this.antialias ? [this.antialias] : []), this.present];
+    this.passNames = this.passes.map((pass: IRendererPass) => pass.name);
   }
 }

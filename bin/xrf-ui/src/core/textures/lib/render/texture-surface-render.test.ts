@@ -1,5 +1,12 @@
 import { describe, expect, it } from "@jest/globals";
-import { ERendererDraw, ERendererTextureEncoding, IRendererGeometry, IRendererObject } from "@xrf/renderer";
+import {
+  DEFAULT_RENDERER_FEATURE_CHOICE,
+  ERendererDraw,
+  ERendererTextureEncoding,
+  IRendererGeometry,
+  IRendererObject,
+  resolveRendererFeatures,
+} from "@xrf/renderer";
 
 import {
   createTextureSurfaceGeometry,
@@ -84,7 +91,8 @@ describe("toTextureRendererSettings", () => {
   it("carries the lit and bump switches, over a transparent backdrop", () => {
     const settings = toTextureRendererSettings(
       { ...DEFAULT_TEXTURE_PREVIEW_OPTIONS, isBumped: false, isLit: false },
-      "60"
+      "60",
+      resolveRendererFeatures(DEFAULT_RENDERER_FEATURE_CHOICE)
     );
 
     expect(settings.backdrop).toBeNull();

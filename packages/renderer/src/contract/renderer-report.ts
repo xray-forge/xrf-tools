@@ -48,15 +48,24 @@ export const EMPTY_RENDERER_STATIC_DRAW_REPORT: IRendererStaticDrawReport = {
 };
 
 /**
- * What the renderer says about its frames, a few times a second.
+ * What each pass of the frame cost on the GPU.
  */
-export interface IRendererReport {
-  /** Frame pacing and submission cost, measured on the thread that draws. */
-  frame: IRenderFrameCost;
+export interface IRendererPassTimings {
   /** GPU cost per pass, in frame order. */
   passes: ReadonlyArray<IRendererPassCost>;
-  /** Whether the device grants timestamp queries, without which `passes` stays at zero. */
+  /** Whether passes are being timed: the device grants timestamp queries and the features ask for them. */
   isGpuTimed: boolean;
+}
+
+/** No pass timed, for a viewport that has not reported. */
+export const EMPTY_RENDERER_PASS_TIMINGS: IRendererPassTimings = { isGpuTimed: false, passes: [] };
+
+/**
+ * What the renderer says about its frames, a few times a second.
+ */
+export interface IRendererReport extends IRendererPassTimings {
+  /** Frame pacing and submission cost, measured on the thread that draws. */
+  frame: IRenderFrameCost;
   /** Where the camera was when the report was taken. */
   camera: IRendererCameraPose;
   /** How full the static draws' pools are and what occlusion removed. */

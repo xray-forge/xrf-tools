@@ -2,6 +2,7 @@ import {
   DEFAULT_RENDERER_LIGHTING,
   ERendererCameraController,
   ERendererDebugView,
+  IRendererFeatureSettings,
   IRendererFlyCamera,
   IRendererLighting,
   IRendererSettings,
@@ -64,6 +65,7 @@ export function toLevelRendererLighting(lighting: ILevelLighting, isFogged: bool
  * @param lighting - The level's light, whose hemisphere strength the baked light toggle gates.
  * @param lod - How far trees are drawn in full, which the impostors toggle gates.
  * @param frameRateLimit - How often the application lets a view redraw.
+ * @param features - What the renderer's features are set to, which the level's LOD narrows.
  * @param config - The backdrop.
  * @returns The renderer's settings.
  */
@@ -72,18 +74,19 @@ export function toLevelRendererSettings(
   lighting: ILevelLighting,
   lod: ILevelLodOptions,
   frameRateLimit: TFrameRateLimit,
+  features: IRendererFeatureSettings,
   config: ILevelRenderConfig
 ): IRendererSettings {
   return {
     // Fogged, the renderer draws the sky as total fog itself; this shows only where there is none.
     backdrop: config.backgroundColor,
     debugView: ERendererDebugView.FINAL,
+    features: { ...features, lod: toLevelRendererLod(features.lod, lod, options.isImpostors) },
     frameRateLimit,
     hemiStrength: options.isLit ? lighting.hemiStrength : 0,
     isBumped: true,
     isLit: true,
     isWireframe: options.isWireframe,
-    lod: toLevelRendererLod(lod, options.isImpostors),
     tonemapScale: 1,
   };
 }

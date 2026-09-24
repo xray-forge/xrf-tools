@@ -1,6 +1,17 @@
 import { Injectable, OnDeprovision, OnProvision, ProvisionId } from "@wirestate/core";
-import { BoundAction, Observable } from "@wirestate/mobx";
-import { ERenderResolution, TFrameRateLimit, toFrameRateLimit, toRenderResolution } from "@xrf/renderer";
+import { BoundAction, Observable, RefObservable } from "@wirestate/mobx";
+import {
+  ERendererPreset,
+  ERenderResolution,
+  IRendererFeatureChoice,
+  IRendererFeatureOverrides,
+  IRendererFeatureSettings,
+  resolveRendererFeatures,
+  TFrameRateLimit,
+  toFrameRateLimit,
+  toRendererFeatureChoice,
+  toRenderResolution,
+} from "@xrf/renderer";
 import { Nullable } from "@xrf/types";
 
 import { TCatalogView, toCatalogView } from "@/core/settings/lib/catalog-view";
@@ -9,6 +20,7 @@ import {
   DEV_MODE_STORAGE_KEY,
   FRAME_RATE_LIMIT_STORAGE_KEY,
   RENDER_RESOLUTION_STORAGE_KEY,
+  RENDERER_FEATURES_STORAGE_KEY,
 } from "@/core/storage";
 import { isDevelopmentBuild } from "@/lib/env";
 import { getLocalStorageValue, setLocalStorageValue } from "@/lib/local-storage";
@@ -39,6 +51,29 @@ export class SettingsService {
 
   @Observable()
   public renderResolution: ERenderResolution = toRenderResolution(getLocalStorageValue(RENDER_RESOLUTION_STORAGE_KEY));
+
+  /**
+   * The renderer's preset and what was changed on top of it, the same for every viewport. Held by reference, so what
+   * it resolves to crosses to the renderer's thread as plain data.
+   */
+  @RefObservable()
+  public rendererChoice: IRendererFeatureChoice = SettingsService.readRendererChoice();
+
+  /** Every renderer feature as the choice sets it. */
+  public get rendererFeatures(): IRendererFeatureSettings {
+    return resolveRendererFeatures(this.rendererChoice);
+  }
+
+  /**
+   * @returns The stored choice, or the default where none was stored or it does not parse.
+   */
+  private static readRendererChoice(): IRendererFeatureChoice {
+    try {
+      return toRendererFeatureChoice(JSON.parse(getLocalStorageValue(RENDERER_FEATURES_STORAGE_KEY) ?? "null"));
+    } catch {
+      return toRendererFeatureChoice(null);
+    }
+  }
 
   /**
    * @returns The stored choice, or whether this is a development build when there is none.
@@ -83,11 +118,43 @@ export class SettingsService {
     setLocalStorageValue(RENDER_RESOLUTION_STORAGE_KEY, resolution);
   }
 
+  /**
+   * @param preset - The preset every feature follows from now on, whatever was changed on top of the last one.
+   */
+  @BoundAction()
+  public setRendererPreset(preset: ERendererPreset): void {
+    this.log.info("Set renderer preset:", preset);
+
+    this.storeRendererChoice({ overrides: {}, preset });
+  }
+
+  /**
+   * @param overrides - What changes on top of the preset, merged over what already did.
+   */
+  @BoundAction()
+  public setRendererOverrides(overrides: IRendererFeatureOverrides): void {
+    const current: IRendererFeatureOverrides = this.rendererChoice.overrides;
+
+    this.storeRendererChoice({
+      overrides: {
+        ...current,
+        ...overrides,
+        lod: overrides.lod || current.lod ? { ...current.lod, ...overrides.lod } : undefined,
+      },
+      preset: this.rendererChoice.preset,
+    });
+  }
+
   @BoundAction()
   public setCatalogView(view: TCatalogView): void {
     this.log.info("Set catalog view:", view);
 
     this.catalogView = view;
     setLocalStorageValue(CATALOG_VIEW_STORAGE_KEY, view);
+  }
+
+  private storeRendererChoice(choice: IRendererFeatureChoice): void {
+    this.rendererChoice = toRendererFeatureChoice(choice);
+    setLocalStorageValue(RENDERER_FEATURES_STORAGE_KEY, JSON.stringify(this.rendererChoice));
   }
 }

@@ -312,6 +312,13 @@ export class RendererHost {
       targets: this.graph.targets,
     };
 
+    // The features' passes join or leave the frame, and its timing starts or stops, before anything is drawn.
+    this.graph.configure(settings.features);
+
+    if (device.setTiming(settings.features.isGpuTimed)) {
+      this.stats.resetTimings();
+    }
+
     this.stats.beginFrame(now);
     renderer.info.reset();
 
@@ -319,7 +326,7 @@ export class RendererHost {
 
     this.cullView.take(this.rig.camera, this.uniforms.viewDistance);
     // Thresholds on a clump's screen area, which scale with how many pixels the drawing has.
-    this.scene.staticCull.takeLod(settings.lod, this.drawingSize.x, this.drawingSize.y, this.rig.camera);
+    this.scene.staticCull.takeLod(settings.features.lod, this.drawingSize.x, this.drawingSize.y, this.rig.camera);
     this.scene.cull(this.cullView, this.rig.camera);
     this.graph.render(frame, device.inspector);
     this.stats.endFrame(performance.now() - startedAt, device);

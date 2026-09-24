@@ -1,9 +1,9 @@
 import {
-  DEFAULT_RENDERER_LOD_SETTINGS,
   ERendererCameraController,
   ERendererDebugView,
   ERendererDraw,
   ERendererTextureEncoding,
+  IRendererFeatureSettings,
   IRendererGeometry,
   IRendererObject,
   IRendererOrbitCamera,
@@ -195,19 +195,21 @@ export function createVisualCheckerSource(config: IVisualPreviewSceneConfig): TR
  * @param options - The toolbar's toggles.
  * @param config - The viewer's backdrop.
  * @param frameRateLimit - How often the application lets a view redraw.
+ * @param features - What the renderer's features are set to.
  * @returns The renderer's settings.
  */
 export function toVisualRendererSettings(
   options: IVisualPreviewViewOptions,
   config: IVisualPreviewSceneConfig,
-  frameRateLimit: TFrameRateLimit
+  frameRateLimit: TFrameRateLimit,
+  features: IRendererFeatureSettings
 ): IRendererSettings {
   return {
     backdrop: config.backgroundColor,
     debugView: ERendererDebugView.FINAL,
+    features,
     frameRateLimit,
     hemiStrength: 1,
-    lod: DEFAULT_RENDERER_LOD_SETTINGS,
     isBumped: options.isBumpVisible,
     isLit: true,
     isWireframe: options.isWireframe,

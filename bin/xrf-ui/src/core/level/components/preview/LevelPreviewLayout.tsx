@@ -18,6 +18,7 @@ import { LevelPreviewStatus } from "@/core/level/components/preview/LevelPreview
 import { LevelPreviewToolbar } from "@/core/level/components/preview/LevelPreviewToolbar";
 import { ILevelPreviewViewportProps, LevelPreviewViewport } from "@/core/level/components/preview/LevelPreviewViewport";
 import { ILevelStreamProgress, LevelViewService } from "@/core/level/services";
+import { SettingsService } from "@/core/settings/services/settings";
 import { EditorFileHeader } from "@/core/shell/editor/EditorFileHeader";
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { IEditorPanel, useEditorPanels } from "@/core/shell/editor-shell";
@@ -59,6 +60,7 @@ export function LevelPreviewLayout({
   onDeselect = null,
 }: ILevelPreviewLayoutProps): ReactElement {
   const viewService: LevelViewService = useInjection(LevelViewService);
+  const settingsService: SettingsService = useInjection(SettingsService);
 
   const isOpen: boolean = Boolean(name);
   const isStreaming: boolean = streaming.total > 0;
@@ -114,6 +116,7 @@ export function LevelPreviewLayout({
           options={viewService.options}
           lighting={viewService.lighting}
           lod={viewService.lod}
+          isImpostorsAvailable={settingsService.rendererFeatures.lod.isImpostors}
           actions={<LevelCameraAction camera={viewService.camera} onChange={viewService.setCamera} />}
           onChangeOptions={viewService.setOptions}
           onChangeLighting={viewService.setLighting}

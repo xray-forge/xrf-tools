@@ -19,10 +19,26 @@ export class PresentPass implements IRendererPass {
   private readonly materials: Map<ERendererDebugView, NodeMaterial> = new Map();
   private readonly targets: RendererTargets;
   private readonly camera: CameraUniforms;
+  /** What the finished frame is read from: the tonemapped frame, or what smoothed it. */
+  private frame: RenderTarget;
 
   public constructor(targets: RendererTargets, camera: CameraUniforms) {
     this.targets = targets;
     this.camera = camera;
+    this.frame = targets.scene;
+  }
+
+  /**
+   * @param frame - What the finished frame is read from from now on.
+   */
+  public setFrame(frame: RenderTarget): void {
+    if (frame === this.frame) {
+      return;
+    }
+
+    this.frame = frame;
+    this.materials.get(ERendererDebugView.FINAL)?.dispose();
+    this.materials.delete(ERendererDebugView.FINAL);
   }
 
   public render({ renderer, settings }: IRendererFrame): void {
@@ -38,7 +54,7 @@ export class PresentPass implements IRendererPass {
     let material: Nullable<NodeMaterial> = this.materials.get(view) ?? null;
 
     if (!material) {
-      material = createQuadMaterial(toPresentPassFragment(view, this.targets, this.camera));
+      material = createQuadMaterial(toPresentPassFragment(view, this.targets, this.camera, this.frame));
       this.materials.set(view, material);
     }
 

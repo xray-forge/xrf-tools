@@ -3,7 +3,7 @@ import { CanvasTarget, LinearSRGBColorSpace, NoToneMapping, WebGPURenderer } fro
 import { IRendererDevice } from "#/contract/renderer-device";
 import { RendererDeviceFailure } from "#/device/renderer-device-failure";
 import { getRendererDeviceLimits } from "#/device/renderer-device-limits";
-import { getRendererBackend, IRendererBackend } from "#/internals/renderer-backend";
+import { getRendererBackend, IRendererBackend, setRendererTimestamps } from "#/internals/renderer-backend";
 import { RendererPassInspector } from "#/timing/renderer-pass-inspector";
 
 /**
@@ -51,11 +51,14 @@ export class RendererDevice {
   public readonly headless: CanvasTarget;
   /** Whether the device can time passes. */
   public readonly isGpuTimed: boolean;
+  /** Whether it is timing them, which the features turn on and off. */
+  public isTiming: boolean;
 
   private constructor(renderer: WebGPURenderer) {
     this.renderer = renderer;
     this.headless = renderer.getCanvasTarget();
     this.isGpuTimed = renderer.hasFeature("timestamp-query");
+    this.isTiming = this.isGpuTimed;
 
     // A frame is several renders, so its counters reset once per frame rather than once per render.
     renderer.info.autoReset = false;
@@ -65,6 +68,23 @@ export class RendererDevice {
     // The frame is already the bytes the canvas shows: raw values, tonemapped by the combine pass.
     renderer.outputColorSpace = LinearSRGBColorSpace;
     renderer.toneMapping = NoToneMapping;
+  }
+
+  /**
+   * @param isTimed - Whether passes are timed from the next one on, where the device can time them at all.
+   * @returns Whether that changed anything.
+   */
+  public setTiming(isTimed: boolean): boolean {
+    const isTiming: boolean = this.isGpuTimed && isTimed;
+
+    if (isTiming === this.isTiming) {
+      return false;
+    }
+
+    this.isTiming = isTiming;
+    setRendererTimestamps(this.renderer, isTiming);
+
+    return true;
   }
 
   /** The GPU, as far as the browser tells. */

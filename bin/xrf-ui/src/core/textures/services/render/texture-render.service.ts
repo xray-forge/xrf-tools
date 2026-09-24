@@ -2,11 +2,13 @@ import { inject, Injectable, OnDeactivation } from "@wirestate/core";
 import { BoundAction, reaction, RefObservable } from "@wirestate/mobx";
 import {
   EMPTY_RENDER_FRAME_COST,
+  EMPTY_RENDERER_PASS_TIMINGS,
   ERendererBumpPlane,
   ERendererCameraCommand,
   ERendererCaptureSource,
   ERenderResolution,
   IDdsRefusal,
+  IRendererPassTimings,
   IRendererReport,
   IRenderFrameCost,
   NEUTRAL_RENDERER_LIGHTING,
@@ -50,6 +52,10 @@ export class TextureRenderService extends RenderSurfaceService {
   /** What frames are costing, for whatever draws the readout over them. */
   @RefObservable()
   public frameCost: IRenderFrameCost = EMPTY_RENDER_FRAME_COST;
+
+  /** What each pass of them cost on the GPU, for the same readout. */
+  @RefObservable()
+  public timings: IRendererPassTimings = EMPTY_RENDERER_PASS_TIMINGS;
 
   private client: Nullable<RendererClient> = null;
   private target: Nullable<DomRenderTarget> = null;
@@ -156,10 +162,14 @@ export class TextureRenderService extends RenderSurfaceService {
 
     const client: RendererClient = new RendererClient({
       onFailed: (reason: string): void => this.log.error("The texture renderer failed:", reason),
-      onReport: (report: IRendererReport): void => this.takeCost(report.frame),
+      onReport: (report: IRendererReport): void => this.takeCost(report.frame, report),
       onTextureRefused: (key: string, refusal: IDdsRefusal): void =>
         this.log.warn(`Texture '${key}' was refused by the renderer:`, refusal),
-      settings: toTextureRendererSettings(this.viewService.options, this.settingsService.frameRateLimit),
+      settings: toTextureRendererSettings(
+        this.viewService.options,
+        this.settingsService.frameRateLimit,
+        this.settingsService.rendererFeatures
+      ),
       worker: createRendererWorker(),
     });
 
@@ -174,6 +184,10 @@ export class TextureRenderService extends RenderSurfaceService {
       reaction(() => this.viewService.lighting, this.applyLighting, { fireImmediately: true }),
       reaction(
         () => this.settingsService.frameRateLimit,
+        () => this.applySettings()
+      ),
+      reaction(
+        () => this.settingsService.rendererChoice,
         () => this.applySettings()
       ),
       reaction(() => this.settingsService.renderResolution, this.applyResolution)
@@ -242,7 +256,13 @@ export class TextureRenderService extends RenderSurfaceService {
   }
 
   private applySettings(): void {
-    this.client?.configure(toTextureRendererSettings(this.viewService.options, this.settingsService.frameRateLimit));
+    this.client?.configure(
+      toTextureRendererSettings(
+        this.viewService.options,
+        this.settingsService.frameRateLimit,
+        this.settingsService.rendererFeatures
+      )
+    );
   }
 
   @BoundAction()
@@ -257,7 +277,8 @@ export class TextureRenderService extends RenderSurfaceService {
   }
 
   @BoundAction()
-  private takeCost(cost: IRenderFrameCost): void {
+  private takeCost(cost: IRenderFrameCost, timings: IRendererPassTimings = EMPTY_RENDERER_PASS_TIMINGS): void {
     this.frameCost = cost;
+    this.timings = { isGpuTimed: timings.isGpuTimed, passes: timings.passes };
   }
 }

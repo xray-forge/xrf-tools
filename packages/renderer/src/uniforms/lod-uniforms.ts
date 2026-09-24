@@ -1,7 +1,7 @@
 import { uniform } from "three/tsl";
 import { PerspectiveCamera, Vector3 } from "three/webgpu";
 
-import { IRendererLodSettings } from "#/contract/renderer-settings";
+import { IRendererLodSettings } from "#/contract/renderer-features";
 
 /** `EPS_S`, what `g_fSCREEN`'s LOD scale is offset by so it is never zero (`xrCore/math_constants.h`). */
 const SCREEN_EPSILON: number = 0.0000001;

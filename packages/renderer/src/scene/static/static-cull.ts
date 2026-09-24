@@ -1,6 +1,6 @@
 import { BufferAttribute, PerspectiveCamera, Scene, Texture, WebGPURenderer } from "three/webgpu";
 
-import { IRendererLodSettings } from "#/contract/renderer-settings";
+import { IRendererLodSettings } from "#/contract/renderer-features";
 import { destroyStorageAttribute } from "#/internals/renderer-backend";
 import { IStaticCullCounts } from "#/scene/static/static-cull-counts";
 import { createStaticCullShader, IStaticCullShader } from "#/scene/static/static-cull.tsl";
@@ -143,29 +143,30 @@ export class StaticCull {
   }
 
   /**
-   * The second phase, once the first has drawn into the G-buffer: its depth reduced, what it hid culled again against
-   * it, and what that keeps drawn.
+   * The second phase's cull, once the first has drawn into the G-buffer: its depth reduced, and what it hid culled
+   * again against it.
    *
-   * @param renderer - The renderer drawing, with the G-buffer as its target.
-   * @param camera - The camera drawing.
+   * @param renderer - The renderer drawing.
    * @param depth - The G-buffer's depth.
    * @param width - Its width.
    * @param height - Its height.
    */
-  public drawLate(
-    renderer: WebGPURenderer,
-    camera: PerspectiveCamera,
-    depth: Texture,
-    width: number,
-    height: number
-  ): void {
+  public cullLate(renderer: WebGPURenderer, depth: Texture, width: number, height: number): void {
     if (this.isCulled) {
       this.pyramid.build(renderer, depth, width, height);
       // A pyramid grown for a larger drawing is a buffer the culls built before it do not read.
       this.build();
       renderer.compute(this.shader.late);
     }
+  }
 
+  /**
+   * Draws what the second cull kept.
+   *
+   * @param renderer - The renderer drawing, with the G-buffer as its target.
+   * @param camera - The camera drawing.
+   */
+  public drawLate(renderer: WebGPURenderer, camera: PerspectiveCamera): void {
     if (this.late.children.length) {
       renderer.render(this.late, camera);
     }

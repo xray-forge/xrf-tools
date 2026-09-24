@@ -2,9 +2,11 @@ import { inject, Injectable, OnDeactivation } from "@wirestate/core";
 import { BoundAction, reaction, RefObservable } from "@wirestate/mobx";
 import {
   EMPTY_RENDER_FRAME_COST,
+  EMPTY_RENDERER_PASS_TIMINGS,
   ERendererCameraCommand,
   ERendererOverlay,
   ERenderResolution,
+  IRendererPassTimings,
   IRendererReport,
   IRendererSkeleton,
   IRenderFrameCost,
@@ -60,6 +62,10 @@ export class VisualRenderService extends RenderSurfaceService {
   /** What frames are costing, for whatever draws the readout over them. */
   @RefObservable()
   public frameCost: IRenderFrameCost = EMPTY_RENDER_FRAME_COST;
+
+  /** What each pass of them cost on the GPU, for the same readout. */
+  @RefObservable()
+  public timings: IRendererPassTimings = EMPTY_RENDERER_PASS_TIMINGS;
 
   private readonly config: IVisualPreviewSceneConfig = DEFAULT_VISUAL_PREVIEW_SCENE_CONFIG;
   private readonly reactions: Array<() => void> = [];
@@ -141,8 +147,13 @@ export class VisualRenderService extends RenderSurfaceService {
 
     const client: RendererClient = new RendererClient({
       onFailed: (reason: string): void => this.log.error("The model renderer failed:", reason),
-      onReport: (report: IRendererReport): void => this.takeCost(report.frame),
-      settings: toVisualRendererSettings(this.viewService.options, this.config, this.settingsService.frameRateLimit),
+      onReport: (report: IRendererReport): void => this.takeCost(report.frame, report),
+      settings: toVisualRendererSettings(
+        this.viewService.options,
+        this.config,
+        this.settingsService.frameRateLimit,
+        this.settingsService.rendererFeatures
+      ),
       worker: createRendererWorker(),
     });
 
@@ -168,6 +179,10 @@ export class VisualRenderService extends RenderSurfaceService {
       reaction(() => this.source.highlightedJoint ?? null, this.applyHighlight, { fireImmediately: true }),
       reaction(
         () => this.settingsService.frameRateLimit,
+        () => this.applySettings()
+      ),
+      reaction(
+        () => this.settingsService.rendererChoice,
         () => this.applySettings()
       ),
       reaction(() => this.settingsService.renderResolution, this.applyResolution)
@@ -415,7 +430,12 @@ export class VisualRenderService extends RenderSurfaceService {
 
   private applySettings(): void {
     this.client?.configure(
-      toVisualRendererSettings(this.viewService.options, this.config, this.settingsService.frameRateLimit)
+      toVisualRendererSettings(
+        this.viewService.options,
+        this.config,
+        this.settingsService.frameRateLimit,
+        this.settingsService.rendererFeatures
+      )
     );
   }
 
@@ -431,7 +451,8 @@ export class VisualRenderService extends RenderSurfaceService {
   }
 
   @BoundAction()
-  private takeCost(cost: IRenderFrameCost): void {
+  private takeCost(cost: IRenderFrameCost, timings: IRendererPassTimings = EMPTY_RENDERER_PASS_TIMINGS): void {
     this.frameCost = cost;
+    this.timings = { isGpuTimed: timings.isGpuTimed, passes: timings.passes };
   }
 }

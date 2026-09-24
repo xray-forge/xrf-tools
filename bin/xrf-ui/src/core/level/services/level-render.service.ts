@@ -142,6 +142,10 @@ export class LevelRenderService extends RenderSurfaceService {
         () => this.applySettings()
       ),
       reaction(
+        () => this.settingsService.rendererChoice,
+        () => this.applySettings()
+      ),
+      reaction(
         () => this.settingsService.frameRateLimit,
         () => this.applySettings()
       ),
@@ -197,6 +201,7 @@ export class LevelRenderService extends RenderSurfaceService {
       this.viewService.lighting,
       this.viewService.lod,
       this.settingsService.frameRateLimit,
+      this.settingsService.rendererFeatures,
       this.config
     );
   }
@@ -251,7 +256,8 @@ export class LevelRenderService extends RenderSurfaceService {
 
     this.viewportService.report(
       measureLevelStats(content.held(), report.frame, content.meanAddTime, report.staticDraws),
-      toLevelCameraReading(report.camera)
+      toLevelCameraReading(report.camera),
+      { isGpuTimed: report.isGpuTimed, passes: report.passes }
     );
 
     if (this.level) {

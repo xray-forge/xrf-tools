@@ -5,6 +5,9 @@ import { ReactElement } from "react";
 import { SettingsService } from "@/core/settings/services/settings";
 import { ChoiceFormRow, IChoiceFormRowOption } from "@/core/ui/form/ChoiceFormRow";
 
+import { SettingsRendererFeatures } from "./SettingsRendererFeatures";
+import { SettingsRendererLod } from "./SettingsRendererLod";
+
 const FRAME_RATE_OPTIONS: ReadonlyArray<IChoiceFormRowOption<TFrameRateLimit>> = FRAME_RATE_LIMITS.map((value) => ({
   value,
   label: value === "unlimited" ? "Unlimited" : `${value} fps`,
@@ -46,6 +49,10 @@ export function SettingsRenderSection(): ReactElement {
         value={settingsService.renderResolution}
         onChange={settingsService.setRenderResolution}
       />
+
+      <SettingsRendererFeatures />
+
+      <SettingsRendererLod />
     </div>
   );
 }

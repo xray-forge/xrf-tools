@@ -48,6 +48,11 @@ describe("three's internals, as the renderer reads them", () => {
     const backend: IRendererBackend = getRendererBackend(new WebGPURenderer({ canvas: {} as HTMLCanvasElement }));
 
     expect(backend.isWebGPUBackend).toBe(true);
+    // `setRendererTimestamps` turns timing over by the flag three reads as every pass begins.
+    expect(new WebGPURenderer({ canvas: {} as HTMLCanvasElement, trackTimestamp: true }).backend).toHaveProperty(
+      "trackTimestamp",
+      true
+    );
     expect(backend.hasTimestampQuery).toBeInstanceOf(Function);
     expect(backend.getTimestamp).toBeInstanceOf(Function);
   });

@@ -43,4 +43,21 @@ describe("RenderFrameReadout", () => {
 
     expect(getByText("0 fps · 0.0 ms")).toBeInTheDocument();
   });
+
+  it("lists every pass's GPU cost under the frame while passes are timed, and nothing while they are not", () => {
+    const passes = [
+      { gpuTime: 0.5, name: "gbuffer" },
+      { gpuTime: 0.25, name: "antialias" },
+    ];
+    const timed = render(<RenderFrameReadout cost={EMPTY_RENDER_FRAME_COST} timings={{ isGpuTimed: true, passes }} />);
+
+    expect(timed.getByTestId("render-frame-passes")).toHaveTextContent("GPU0.75 msgbuffer0.50antialias0.25");
+    timed.unmount();
+
+    const untimed = render(
+      <RenderFrameReadout cost={EMPTY_RENDER_FRAME_COST} timings={{ isGpuTimed: false, passes }} />
+    );
+
+    expect(untimed.queryByTestId("render-frame-passes")).not.toBeInTheDocument();
+  });
 });

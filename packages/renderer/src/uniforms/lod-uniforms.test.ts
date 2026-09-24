@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
 import { PerspectiveCamera } from "three/webgpu";
 
-import { DEFAULT_RENDERER_LOD_SETTINGS } from "#/contract/renderer-settings";
+import { DEFAULT_RENDERER_LOD_SETTINGS } from "#/contract/renderer-features";
 import { LodUniforms } from "#/uniforms/lod-uniforms";
 
 describe("LodUniforms", () => {

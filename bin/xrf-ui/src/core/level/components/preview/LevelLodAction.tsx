@@ -10,6 +10,8 @@ import { formatNumber } from "@/lib/format/number";
 
 interface ILevelLodActionProps extends BaseComponentProps {
   isOn: boolean;
+  /** Whether the renderer's settings draw impostors at all, which this view can only narrow. */
+  isAvailable?: boolean;
   lod: ILevelLodOptions;
   onToggle: () => void;
   onChange: (lod: ILevelLodOptions) => void;
@@ -23,6 +25,7 @@ export function LevelLodAction({
   id,
   className,
   isOn,
+  isAvailable = true,
   lod,
   onToggle,
   onChange,
@@ -35,9 +38,16 @@ export function LevelLodAction({
       id={id}
       className={className}
       label={"Impostors"}
-      description={isOn ? `Impostors past ${distance} the game's distance` : "Impostors off, every tree drawn"}
+      description={
+        !isAvailable
+          ? "Impostors are off in Settings, under Rendering"
+          : isOn
+            ? `Impostors past ${distance} the game's distance`
+            : "Impostors off, every tree drawn"
+      }
       icon={<ForestIcon />}
-      isOn={isOn}
+      isOn={isOn && isAvailable}
+      isDisabled={!isAvailable}
       toggleLabel={"Draw distant trees as impostors"}
       onToggle={onToggle}
     >

@@ -23,6 +23,9 @@ export const MEDIA_VOLUME_STORAGE_KEY: string = buildStorageKey(EStorageNamespac
 /** Frames a second a viewport is allowed to draw. */
 export const FRAME_RATE_LIMIT_STORAGE_KEY: string = buildStorageKey(EStorageNamespace.PREFERENCE, "frame-rate-limit");
 
+/** The renderer's preset and what was changed on top of it, as JSON. */
+export const RENDERER_FEATURES_STORAGE_KEY: string = buildStorageKey(EStorageNamespace.PREFERENCE, "renderer-features");
+
 /** How many pixels every viewport draws, whatever size it is shown at. */
 export const RENDER_RESOLUTION_STORAGE_KEY: string = buildStorageKey(EStorageNamespace.PREFERENCE, "render-resolution");
 /** Chords a person bound themselves, as one command id to chords map. */

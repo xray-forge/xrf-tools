@@ -24,6 +24,8 @@ interface ILevelPreviewToolbarProps extends BaseComponentProps {
   lighting: ILevelLighting;
   /** How far trees are drawn in full, which the impostors toggle carries. */
   lod: ILevelLodOptions;
+  /** Whether the renderer's settings draw impostors at all, without which the toggle has nothing to narrow. */
+  isImpostorsAvailable?: boolean;
   /** Value pickers the surface contributes, drawn last, as every toolbar in this application orders them. */
   actions?: ReactNode;
   onChangeOptions: (options: ILevelViewOptions) => void;
@@ -44,6 +46,7 @@ export function LevelPreviewToolbar({
   options,
   lighting,
   lod,
+  isImpostorsAvailable = true,
   actions,
   onChangeOptions,
   onChangeLighting,
@@ -82,6 +85,7 @@ export function LevelPreviewToolbar({
 
           <LevelLodAction
             isOn={options.isImpostors}
+            isAvailable={isImpostorsAvailable}
             lod={lod}
             onToggle={() => onToggle("isImpostors")}
             onChange={onChangeLod}

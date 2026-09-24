@@ -19,7 +19,7 @@ export class RendererGpuTimings {
    * @param device - The device whose renders are timed.
    */
   public resolve(device: RendererDevice): void {
-    if (!device.isGpuTimed || this.isResolving) {
+    if (!device.isTiming || this.isResolving) {
       return;
     }
 

@@ -78,7 +78,7 @@ export class RendererFrameStats {
         worstDrawTime: this.frameTimer.worstDrawTime,
         worstFrameTime: this.frameTimer.worstFrameTime,
       },
-      isGpuTimed: device.isGpuTimed,
+      isGpuTimed: device.isTiming,
       passes: this.gpuTimings.describe(passes),
       staticDraws,
     };
@@ -87,6 +87,11 @@ export class RendererFrameStats {
   /** Forgets the frames timed, for a view shown again after a gap nothing drew in. */
   public restart(): void {
     this.frameTimer.reset();
+  }
+
+  /** Forgets every pass's timing, for timing that stopped or started again: a mean over the gap would lie. */
+  public resetTimings(): void {
+    this.gpuTimings.reset();
   }
 
   /** Forgets everything, for a device that went away. */

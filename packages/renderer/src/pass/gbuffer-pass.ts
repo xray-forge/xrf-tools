@@ -4,28 +4,21 @@ import { ERendererPass } from "#/contract/scene/renderer-surface";
 import { IRendererFrame } from "#/pass/renderer-frame";
 import { IRendererScenePass } from "#/pass/renderer-scene-pass";
 import { RendererTargets } from "#/pass/renderer-targets";
-import { StaticCull } from "#/scene/static/static-cull";
 
 /**
- * Fills the G-buffer with everything the deferred passes light: the static draws the first cull kept and every plain
- * draw, then the static draws the second cull finds seen past what those drew.
+ * Fills the G-buffer with everything the deferred passes light that the first cull kept: its static draws and every
+ * plain draw. The second phase draws on into it after.
  */
 export class GBufferPass implements IRendererScenePass {
   public readonly name: string = "gbuffer";
   public readonly scene: ERendererPass = ERendererPass.DEFERRED;
   public readonly target: RenderTarget;
 
-  private readonly targets: RendererTargets;
-  private readonly cull: StaticCull;
-
   /**
    * @param targets - What the frame draws into.
-   * @param cull - What culls the static draws, whose second phase draws between.
    */
-  public constructor(targets: RendererTargets, cull: StaticCull) {
+  public constructor(targets: RendererTargets) {
     this.target = targets.gbuffer;
-    this.targets = targets;
-    this.cull = cull;
   }
 
   public render({ renderer, camera, scenes }: IRendererFrame): void {
@@ -36,8 +29,6 @@ export class GBufferPass implements IRendererScenePass {
     // sorted by depth, every draw rebinds them, and the CPU is what a frame waits on.
     renderer.sortObjects = false;
     renderer.render(scenes[this.scene], camera);
-    this.cull.drawLate(renderer, camera, this.targets.depth, this.target.width, this.target.height);
-    this.cull.finish(renderer, this.targets.depth, this.target.width, this.target.height);
     renderer.sortObjects = true;
   }
 

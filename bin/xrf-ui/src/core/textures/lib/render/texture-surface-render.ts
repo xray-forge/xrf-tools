@@ -1,11 +1,11 @@
 import {
   createRendererBox,
   createRendererSphere,
-  DEFAULT_RENDERER_LOD_SETTINGS,
   ERendererCameraController,
   ERendererDebugView,
   ERendererDraw,
   ERendererTextureEncoding,
+  IRendererFeatureSettings,
   IRendererGeometry,
   IRendererObject,
   IRendererOrbitCamera,
@@ -150,19 +150,21 @@ export function toTextureSurfaceSource(file: ITextureSurfaceFile): TRendererText
 /**
  * @param options - How the texture is being looked at.
  * @param frameRateLimit - How often the application lets a view redraw.
+ * @param features - What the renderer's features are set to.
  * @returns The renderer's settings for it.
  */
 export function toTextureRendererSettings(
   options: ITextureSurfaceOptions,
-  frameRateLimit: TFrameRateLimit
+  frameRateLimit: TFrameRateLimit,
+  features: IRendererFeatureSettings
 ): IRendererSettings {
   return {
     // Transparent, so the checkerboard the frame already draws shows wherever the texture's alpha does.
     backdrop: null,
     debugView: ERendererDebugView.FINAL,
+    features,
     frameRateLimit,
     hemiStrength: 1,
-    lod: DEFAULT_RENDERER_LOD_SETTINGS,
     isBumped: options.isBumped,
     isLit: options.isLit,
     isWireframe: false,

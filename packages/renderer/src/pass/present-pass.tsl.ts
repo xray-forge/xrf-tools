@@ -1,5 +1,5 @@
 import { float, Fn, log, screenUV, select, texture, vec3, vec4 } from "three/tsl";
-import { Node } from "three/webgpu";
+import { Node, RenderTarget } from "three/webgpu";
 
 import { ERendererDebugView } from "#/contract/renderer-settings";
 import { RendererTargets } from "#/pass/renderer-targets";
@@ -11,15 +11,17 @@ import { CameraUniforms } from "#/uniforms/camera-uniforms";
  * @param view - The picture wanted.
  * @param targets - The frame's targets.
  * @param camera - The drawing camera's uniforms.
+ * @param frame - What the finished frame is read from.
  * @returns The picture at every pixel: the finished frame, or one target shown raw.
  */
 export function toPresentPassFragment(
   view: ERendererDebugView,
   targets: RendererTargets,
-  camera: CameraUniforms
+  camera: CameraUniforms,
+  frame: RenderTarget
 ): Node<"vec4"> {
   if (view === ERendererDebugView.FINAL) {
-    return texture(targets.scene.texture, screenUV);
+    return texture(frame.texture, screenUV);
   }
 
   return Fn(() => {

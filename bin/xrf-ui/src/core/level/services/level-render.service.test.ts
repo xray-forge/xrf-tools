@@ -120,17 +120,17 @@ describe("LevelRenderService", () => {
   it("draws impostors while the toolbar asks, at the distance it sets", async () => {
     const { service, viewService } = await mockAttached();
 
-    expect(stub.take(ERendererRequest.CONFIGURE).at(-1)?.settings.lod.isImpostors).toBe(true);
+    expect(stub.take(ERendererRequest.CONFIGURE).at(-1)?.settings.features.lod.isImpostors).toBe(true);
 
     viewService.setLod({ distance: 2 });
     await stub.flush();
 
-    expect(stub.take(ERendererRequest.CONFIGURE).at(-1)?.settings.lod.geometryLod).toBeCloseTo(3);
+    expect(stub.take(ERendererRequest.CONFIGURE).at(-1)?.settings.features.lod.geometryLod).toBeCloseTo(3);
 
     viewService.setOptions({ ...viewService.options, isImpostors: false });
     await stub.flush();
 
-    expect(stub.take(ERendererRequest.CONFIGURE).at(-1)?.settings.lod.isImpostors).toBe(false);
+    expect(stub.take(ERendererRequest.CONFIGURE).at(-1)?.settings.features.lod.isImpostors).toBe(false);
 
     service.dispose();
   });
