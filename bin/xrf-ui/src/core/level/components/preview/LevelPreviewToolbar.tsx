@@ -3,12 +3,16 @@ import { default as HexagonIcon } from "@mui/icons-material/Hexagon";
 import { default as QueryStatsIcon } from "@mui/icons-material/QueryStats";
 import { default as TextureIcon } from "@mui/icons-material/Texture";
 import { default as ThreeDRotationIcon } from "@mui/icons-material/ThreeDRotation";
+import { IRendererFeatureSettings } from "@xrf/renderer";
 import { ReactElement, ReactNode, useCallback } from "react";
 
+import { LevelAntialiasingAction } from "@/core/level/components/preview/LevelAntialiasingAction";
 import { LevelBakedAction } from "@/core/level/components/preview/LevelBakedAction";
 import { LevelFogAction } from "@/core/level/components/preview/LevelFogAction";
 import { LevelLodAction } from "@/core/level/components/preview/LevelLodAction";
+import { LevelShadowAction } from "@/core/level/components/preview/LevelShadowAction";
 import { LevelSunAction } from "@/core/level/components/preview/LevelSunAction";
+import { ILevelFeatureOptions, toLevelRendererShadows } from "@/core/level/lib/features/level-feature-options";
 import { ILevelLighting } from "@/core/level/lib/lighting/level-lighting";
 import { ILevelLodOptions } from "@/core/level/lib/lod/level-lod-options";
 import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
@@ -24,13 +28,16 @@ interface ILevelPreviewToolbarProps extends BaseComponentProps {
   lighting: ILevelLighting;
   /** How far trees are drawn in full, which the impostors toggle carries. */
   lod: ILevelLodOptions;
-  /** Whether the renderer's settings draw impostors at all, without which the toggle has nothing to narrow. */
-  isImpostorsAvailable?: boolean;
+  /** What the view draws its shadows and antialiasing with, over the settings. */
+  features: ILevelFeatureOptions;
+  /** What the renderer's settings draw every viewport with, which the toggles can only narrow. */
+  settings: IRendererFeatureSettings;
   /** Value pickers the surface contributes, drawn last, as every toolbar in this application orders them. */
   actions?: ReactNode;
   onChangeOptions: (options: ILevelViewOptions) => void;
   onChangeLighting: (lighting: ILevelLighting) => void;
   onChangeLod: (lod: ILevelLodOptions) => void;
+  onChangeFeatures: (features: ILevelFeatureOptions) => void;
   onBack?: () => void;
 }
 
@@ -46,11 +53,13 @@ export function LevelPreviewToolbar({
   options,
   lighting,
   lod,
-  isImpostorsAvailable = true,
+  features,
+  settings,
   actions,
   onChangeOptions,
   onChangeLighting,
   onChangeLod,
+  onChangeFeatures,
   onBack,
 }: ILevelPreviewToolbarProps): ReactElement {
   const onToggle = useCallback(
@@ -85,10 +94,18 @@ export function LevelPreviewToolbar({
 
           <LevelLodAction
             isOn={options.isImpostors}
-            isAvailable={isImpostorsAvailable}
+            isAvailable={settings.lod.isImpostors}
             lod={lod}
             onToggle={() => onToggle("isImpostors")}
             onChange={onChangeLod}
+          />
+
+          <LevelAntialiasingAction
+            isOn={options.isAntialiased}
+            settingsMode={settings.antialiasing}
+            features={features}
+            onToggle={() => onToggle("isAntialiased")}
+            onChange={onChangeFeatures}
           />
 
           <EditorToolbarSeparator />
@@ -105,6 +122,15 @@ export function LevelPreviewToolbar({
             lighting={lighting}
             onToggle={() => onToggle("isSunVisible")}
             onChange={onChangeLighting}
+          />
+
+          <LevelShadowAction
+            isOn={options.isShadowed}
+            isAvailable={settings.shadows.isEnabled}
+            shadows={toLevelRendererShadows(settings.shadows, features, true)}
+            features={features}
+            onToggle={() => onToggle("isShadowed")}
+            onChange={onChangeFeatures}
           />
 
           <LevelFogAction

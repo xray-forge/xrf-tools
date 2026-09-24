@@ -142,6 +142,10 @@ export class LevelRenderService extends RenderSurfaceService {
         () => this.applySettings()
       ),
       reaction(
+        () => this.viewService.features,
+        () => this.applySettings()
+      ),
+      reaction(
         () => this.settingsService.rendererChoice,
         () => this.applySettings()
       ),
@@ -200,6 +204,7 @@ export class LevelRenderService extends RenderSurfaceService {
       this.viewService.options,
       this.viewService.lighting,
       this.viewService.lod,
+      this.viewService.features,
       this.settingsService.frameRateLimit,
       this.settingsService.rendererFeatures,
       this.config

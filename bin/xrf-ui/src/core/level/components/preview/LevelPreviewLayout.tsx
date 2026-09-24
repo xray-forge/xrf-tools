@@ -116,11 +116,13 @@ export function LevelPreviewLayout({
           options={viewService.options}
           lighting={viewService.lighting}
           lod={viewService.lod}
-          isImpostorsAvailable={settingsService.rendererFeatures.lod.isImpostors}
+          features={viewService.features}
+          settings={settingsService.rendererFeatures}
           actions={<LevelCameraAction camera={viewService.camera} onChange={viewService.setCamera} />}
           onChangeOptions={viewService.setOptions}
           onChangeLighting={viewService.setLighting}
           onChangeLod={viewService.setLod}
+          onChangeFeatures={viewService.setFeatures}
           onBack={onBack}
         />
       }

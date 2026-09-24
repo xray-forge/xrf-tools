@@ -13,6 +13,11 @@ import { Nullable } from "@xrf/types";
 import { VisualBounds } from "@/core/ipc/types/xrf-visual";
 import { ILevelCameraOptions } from "@/core/level/lib/camera/level-camera-options";
 import { ILevelViewpoint, toLevelStartViewpoint } from "@/core/level/lib/camera/level-viewpoint";
+import {
+  ILevelFeatureOptions,
+  toLevelRendererAntialiasing,
+  toLevelRendererShadows,
+} from "@/core/level/lib/features/level-feature-options";
 import { toLevelRendererFog } from "@/core/level/lib/lighting/level-fog";
 import { ILevelLighting } from "@/core/level/lib/lighting/level-lighting";
 import { ILevelLodOptions, toLevelRendererLod } from "@/core/level/lib/lod/level-lod-options";
@@ -64,8 +69,9 @@ export function toLevelRendererLighting(lighting: ILevelLighting, isFogged: bool
  * @param options - The toolbar's toggles.
  * @param lighting - The level's light, whose hemisphere strength the baked light toggle gates.
  * @param lod - How far trees are drawn in full, which the impostors toggle gates.
+ * @param view - What the view draws its shadows and antialiasing with, which their toggles gate.
  * @param frameRateLimit - How often the application lets a view redraw.
- * @param features - What the renderer's features are set to, which the level's LOD narrows.
+ * @param features - What the renderer's features are set to, which the level's toolbar narrows.
  * @param config - The backdrop.
  * @returns The renderer's settings.
  */
@@ -73,6 +79,7 @@ export function toLevelRendererSettings(
   options: ILevelViewOptions,
   lighting: ILevelLighting,
   lod: ILevelLodOptions,
+  view: ILevelFeatureOptions,
   frameRateLimit: TFrameRateLimit,
   features: IRendererFeatureSettings,
   config: ILevelRenderConfig
@@ -81,7 +88,12 @@ export function toLevelRendererSettings(
     // Fogged, the renderer draws the sky as total fog itself; this shows only where there is none.
     backdrop: config.backgroundColor,
     debugView: ERendererDebugView.FINAL,
-    features: { ...features, lod: toLevelRendererLod(features.lod, lod, options.isImpostors) },
+    features: {
+      ...features,
+      antialiasing: toLevelRendererAntialiasing(features.antialiasing, view, options.isAntialiased),
+      lod: toLevelRendererLod(features.lod, lod, options.isImpostors),
+      shadows: toLevelRendererShadows(features.shadows, view, options.isShadowed),
+    },
     frameRateLimit,
     hemiStrength: options.isLit ? lighting.hemiStrength : 0,
     isBumped: true,

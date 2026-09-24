@@ -8,6 +8,7 @@ import {
 } from "@xrf/renderer";
 import { ReactElement } from "react";
 
+import { describeRenderAntialiasing } from "@/core/render/lib/features";
 import { SettingsService } from "@/core/settings/services/settings";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 import { ChoiceFormRow, IChoiceFormRowOption } from "@/core/ui/form/ChoiceFormRow";
@@ -22,11 +23,9 @@ const PRESET_OPTIONS: ReadonlyArray<IChoiceFormRowOption<ERendererPreset>> = Obj
   (value: ERendererPreset) => ({ label: PRESET_LABELS[value], value })
 );
 
-const ANTIALIASING_OPTIONS: ReadonlyArray<IChoiceFormRowOption<ERendererAntialiasing>> = [
-  { label: "None", value: ERendererAntialiasing.NONE },
-  { label: "FXAA", value: ERendererAntialiasing.FXAA },
-  { label: "SMAA", value: ERendererAntialiasing.SMAA },
-];
+const ANTIALIASING_OPTIONS: ReadonlyArray<IChoiceFormRowOption<ERendererAntialiasing>> = Object.values(
+  ERendererAntialiasing
+).map((value: ERendererAntialiasing) => ({ label: describeRenderAntialiasing(value), value }));
 
 /** Which preset the renderer's features follow, and the features that are not a level's alone. */
 export function SettingsRendererFeatures(): ReactElement {

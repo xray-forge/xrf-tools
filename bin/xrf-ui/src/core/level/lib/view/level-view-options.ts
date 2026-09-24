@@ -14,14 +14,20 @@ export interface ILevelViewOptions extends ILevelSurfaceOptions {
   isFogged: boolean;
   /** Draws a distant clump of trees as its impostor, as the game does, rather than every tree at every distance. */
   isImpostors: boolean;
+  /** Casts the sun's shadows, while the settings draw them. */
+  isShadowed: boolean;
+  /** Smooths the frame's edges, while the settings smooth them. */
+  isAntialiased: boolean;
 }
 
 export const DEFAULT_LEVEL_VIEW_OPTIONS: ILevelViewOptions = {
   ...DEFAULT_LEVEL_SURFACE_OPTIONS,
+  isAntialiased: true,
   isAxesVisible: false,
   isFogged: true,
   isGridVisible: true,
   isImpostors: true,
+  isShadowed: true,
   isStatsVisible: true,
   isSunVisible: true,
 };

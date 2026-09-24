@@ -1,7 +1,9 @@
 import { beforeAll, beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { Container } from "@wirestate/core";
 import {
+  DEFAULT_RENDERER_SHADOW_SETTINGS,
   EMPTY_RENDERER_STATIC_DRAW_REPORT,
+  ERendererAntialiasing,
   ERendererCameraController,
   ERendererOverlay,
   ERendererRequest,
@@ -131,6 +133,37 @@ describe("LevelRenderService", () => {
     await stub.flush();
 
     expect(stub.take(ERendererRequest.CONFIGURE).at(-1)?.settings.features.lod.isImpostors).toBe(false);
+
+    service.dispose();
+  });
+
+  it("draws shadows and smooths edges as the toolbar sets them over the settings", async () => {
+    const { service, viewService } = await mockAttached();
+
+    function features() {
+      return stub.take(ERendererRequest.CONFIGURE).at(-1)?.settings.features;
+    }
+
+    expect(features()?.shadows.isEnabled).toBe(true);
+    expect(features()?.antialiasing).toBe(ERendererAntialiasing.SMAA);
+
+    viewService.setFeatures({ antialiasing: ERendererAntialiasing.FXAA, shadows: { cascades: [20], filter: 0 } });
+    await stub.flush();
+
+    const set = features();
+
+    expect(set?.antialiasing).toBe(ERendererAntialiasing.FXAA);
+    expect(set?.shadows.cascades).toEqual([20]);
+    expect(set?.shadows.filter).toBe(0);
+    expect(set?.shadows.resolution).toBe(DEFAULT_RENDERER_SHADOW_SETTINGS.resolution);
+
+    viewService.setOptions({ ...viewService.options, isAntialiased: false, isShadowed: false });
+    await stub.flush();
+
+    const off = features();
+
+    expect(off?.antialiasing).toBe(ERendererAntialiasing.NONE);
+    expect(off?.shadows.isEnabled).toBe(false);
 
     service.dispose();
   });
