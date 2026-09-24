@@ -3,6 +3,7 @@ import { BoundAction, RefObservable } from "@wirestate/mobx";
 
 import { DEFAULT_LEVEL_CAMERA_OPTIONS, ILevelCameraOptions } from "@/core/level/lib/camera/level-camera-options";
 import { DEFAULT_LEVEL_LIGHTING, ILevelLighting } from "@/core/level/lib/lighting/level-lighting";
+import { DEFAULT_LEVEL_LOD_OPTIONS, ILevelLodOptions } from "@/core/level/lib/lod/level-lod-options";
 import { DEFAULT_LEVEL_VIEW_OPTIONS, ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
 
 /**
@@ -22,6 +23,10 @@ export class LevelViewService {
   @RefObservable()
   public camera: ILevelCameraOptions = DEFAULT_LEVEL_CAMERA_OPTIONS;
 
+  /** How far trees are drawn in full before their impostors take over. */
+  @RefObservable()
+  public lod: ILevelLodOptions = DEFAULT_LEVEL_LOD_OPTIONS;
+
   @BoundAction()
   public setOptions(options: ILevelViewOptions): void {
     this.options = options;
@@ -37,6 +42,11 @@ export class LevelViewService {
     this.camera = camera;
   }
 
+  @BoundAction()
+  public setLod(lod: ILevelLodOptions): void {
+    this.lod = lod;
+  }
+
   /** Back to the defaults, so a viewer opened again does not inherit the last level's toggles. */
   @OnDeactivation()
   @BoundAction()
@@ -44,5 +54,6 @@ export class LevelViewService {
     this.options = DEFAULT_LEVEL_VIEW_OPTIONS;
     this.lighting = DEFAULT_LEVEL_LIGHTING;
     this.camera = DEFAULT_LEVEL_CAMERA_OPTIONS;
+    this.lod = DEFAULT_LEVEL_LOD_OPTIONS;
   }
 }

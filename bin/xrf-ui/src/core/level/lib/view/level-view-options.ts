@@ -12,6 +12,8 @@ export interface ILevelViewOptions extends ILevelSurfaceOptions {
   isStatsVisible: boolean;
   /** Draws the noon fog, which closes the level in at 350 metres as the game does. */
   isFogged: boolean;
+  /** Draws a distant clump of trees as its impostor, as the game does, rather than every tree at every distance. */
+  isImpostors: boolean;
 }
 
 export const DEFAULT_LEVEL_VIEW_OPTIONS: ILevelViewOptions = {
@@ -19,6 +21,7 @@ export const DEFAULT_LEVEL_VIEW_OPTIONS: ILevelViewOptions = {
   isAxesVisible: false,
   isFogged: true,
   isGridVisible: true,
+  isImpostors: true,
   isStatsVisible: true,
   isSunVisible: true,
 };

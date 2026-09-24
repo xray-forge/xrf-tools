@@ -117,6 +117,24 @@ describe("LevelRenderService", () => {
     service.dispose();
   });
 
+  it("draws impostors while the toolbar asks, at the distance it sets", async () => {
+    const { service, viewService } = await mockAttached();
+
+    expect(stub.take(ERendererRequest.CONFIGURE).at(-1)?.settings.lod.isImpostors).toBe(true);
+
+    viewService.setLod({ distance: 2 });
+    await stub.flush();
+
+    expect(stub.take(ERendererRequest.CONFIGURE).at(-1)?.settings.lod.geometryLod).toBeCloseTo(3);
+
+    viewService.setOptions({ ...viewService.options, isImpostors: false });
+    await stub.flush();
+
+    expect(stub.take(ERendererRequest.CONFIGURE).at(-1)?.settings.lod.isImpostors).toBe(false);
+
+    service.dispose();
+  });
+
   it("gates the baked hemisphere by the baked light toggle", async () => {
     const { service, viewService } = await mockAttached();
 

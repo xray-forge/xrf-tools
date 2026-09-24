@@ -1,6 +1,5 @@
 import { default as InfoOutlinedIcon } from "@mui/icons-material/InfoOutlined";
 import { default as LayersIcon } from "@mui/icons-material/Layers";
-import { default as LightModeIcon } from "@mui/icons-material/LightModeOutlined";
 import { default as SpeedIcon } from "@mui/icons-material/Speed";
 import { default as WarningIcon } from "@mui/icons-material/WarningAmber";
 import { useInjection } from "@wirestate/react";
@@ -8,7 +7,6 @@ import { Nullable } from "@xrf/types";
 import { ReactElement, ReactNode, useMemo } from "react";
 
 import { LevelHeaderPanel } from "@/core/level/components/panels/LevelHeaderPanel";
-import { LevelLightingPanel } from "@/core/level/components/panels/LevelLightingPanel";
 import { LevelProblemsPanel } from "@/core/level/components/panels/LevelProblemsPanel";
 import { LevelStreamPanel } from "@/core/level/components/panels/LevelStreamPanel";
 import { LevelSurfacesPanel } from "@/core/level/components/panels/LevelSurfacesPanel";
@@ -93,12 +91,6 @@ export function LevelPreviewLayout({
         render: () => <LevelStreamPanel />,
       },
       {
-        icon: <LightModeIcon />,
-        id: "lighting",
-        label: "Lighting",
-        render: () => <LevelLightingPanel lighting={viewService.lighting} onChange={viewService.setLighting} />,
-      },
-      {
         icon: <LayersIcon />,
         id: "surfaces",
         label: "Surfaces",
@@ -111,7 +103,7 @@ export function LevelPreviewLayout({
         render: () => <LevelProblemsPanel />,
       },
     ],
-    [viewService.lighting, viewService.setLighting]
+    []
   );
 
   return (
@@ -120,8 +112,12 @@ export function LevelPreviewLayout({
         <LevelPreviewToolbar
           subtitle={subtitle}
           options={viewService.options}
+          lighting={viewService.lighting}
+          lod={viewService.lod}
           actions={<LevelCameraAction camera={viewService.camera} onChange={viewService.setCamera} />}
           onChangeOptions={viewService.setOptions}
+          onChangeLighting={viewService.setLighting}
+          onChangeLod={viewService.setLod}
           onBack={onBack}
         />
       }

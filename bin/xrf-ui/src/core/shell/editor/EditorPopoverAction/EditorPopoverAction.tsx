@@ -1,6 +1,6 @@
 import { Popover } from "@mui/material";
 import { Nullable } from "@xrf/types";
-import { MouseEvent, ReactElement, ReactNode, useCallback, useEffect, useId, useState } from "react";
+import { MouseEvent, MouseEventHandler, ReactElement, ReactNode, useCallback, useEffect, useId, useState } from "react";
 
 import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
 import { BaseComponentProps } from "@/lib/dom/element-types";
@@ -14,6 +14,8 @@ interface IEditorPopoverActionProps extends BaseComponentProps {
   isActive?: boolean;
   /** Side of the trigger on which the content opens. */
   placement?: "top" | "bottom";
+  /** What a right click on the trigger does instead of opening it. */
+  onContextMenu?: MouseEventHandler<HTMLButtonElement>;
   children: ReactNode;
 }
 
@@ -30,6 +32,7 @@ export function EditorPopoverAction({
   isDisabled = false,
   isActive = false,
   placement = "bottom",
+  onContextMenu,
   children,
 }: IEditorPopoverActionProps): ReactElement {
   const [anchor, setAnchor] = useState<Nullable<HTMLButtonElement>>(null);
@@ -76,6 +79,7 @@ export function EditorPopoverAction({
           },
         }}
         onClick={onOpen}
+        onContextMenu={onContextMenu}
       />
 
       <Popover

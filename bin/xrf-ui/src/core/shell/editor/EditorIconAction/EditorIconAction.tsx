@@ -18,6 +18,8 @@ interface IEditorIconActionProps
   /** The control is doing something: a toggle that is on, or a value that differs from its default. */
   isActive?: boolean;
   onClick: MouseEventHandler<HTMLButtonElement>;
+  /** The secondary action, from a right click or the context menu key; the browser's own menu is the caller's. */
+  onContextMenu?: MouseEventHandler<HTMLButtonElement>;
 }
 
 /**
@@ -33,6 +35,7 @@ export function EditorIconAction({
   isDisabled = false,
   isActive = false,
   onClick,
+  onContextMenu,
   sx,
   ...rest
 }: IEditorIconActionProps): ReactElement {
@@ -54,6 +57,7 @@ export function EditorIconAction({
             sx
           )}
           onClick={onClick}
+          onContextMenu={onContextMenu}
         >
           {icon}
         </IconButton>

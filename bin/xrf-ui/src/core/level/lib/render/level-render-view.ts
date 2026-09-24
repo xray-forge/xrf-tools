@@ -1,6 +1,5 @@
 import {
   DEFAULT_RENDERER_LIGHTING,
-  DEFAULT_RENDERER_LOD_SETTINGS,
   ERendererCameraController,
   ERendererDebugView,
   IRendererFlyCamera,
@@ -15,6 +14,7 @@ import { ILevelCameraOptions } from "@/core/level/lib/camera/level-camera-option
 import { ILevelViewpoint, toLevelStartViewpoint } from "@/core/level/lib/camera/level-viewpoint";
 import { toLevelRendererFog } from "@/core/level/lib/lighting/level-fog";
 import { ILevelLighting } from "@/core/level/lib/lighting/level-lighting";
+import { ILevelLodOptions, toLevelRendererLod } from "@/core/level/lib/lod/level-lod-options";
 import { ILevelRenderConfig } from "@/core/level/lib/render/level-render-config";
 import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
 import { toRendererLighting } from "@/core/render/lib/lighting/render-lighting";
@@ -62,6 +62,7 @@ export function toLevelRendererLighting(lighting: ILevelLighting, isFogged: bool
 /**
  * @param options - The toolbar's toggles.
  * @param lighting - The level's light, whose hemisphere strength the baked light toggle gates.
+ * @param lod - How far trees are drawn in full, which the impostors toggle gates.
  * @param frameRateLimit - How often the application lets a view redraw.
  * @param config - The backdrop.
  * @returns The renderer's settings.
@@ -69,6 +70,7 @@ export function toLevelRendererLighting(lighting: ILevelLighting, isFogged: bool
 export function toLevelRendererSettings(
   options: ILevelViewOptions,
   lighting: ILevelLighting,
+  lod: ILevelLodOptions,
   frameRateLimit: TFrameRateLimit,
   config: ILevelRenderConfig
 ): IRendererSettings {
@@ -78,10 +80,10 @@ export function toLevelRendererSettings(
     debugView: ERendererDebugView.FINAL,
     frameRateLimit,
     hemiStrength: options.isLit ? lighting.hemiStrength : 0,
-    lod: DEFAULT_RENDERER_LOD_SETTINGS,
     isBumped: true,
     isLit: true,
     isWireframe: options.isWireframe,
+    lod: toLevelRendererLod(lod, options.isImpostors),
     tonemapScale: 1,
   };
 }

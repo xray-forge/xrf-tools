@@ -1,13 +1,16 @@
-import { default as FoggyIcon } from "@mui/icons-material/Foggy";
 import { default as GridOnIcon } from "@mui/icons-material/GridOn";
 import { default as HexagonIcon } from "@mui/icons-material/Hexagon";
-import { default as LightbulbIcon } from "@mui/icons-material/Lightbulb";
 import { default as QueryStatsIcon } from "@mui/icons-material/QueryStats";
 import { default as TextureIcon } from "@mui/icons-material/Texture";
 import { default as ThreeDRotationIcon } from "@mui/icons-material/ThreeDRotation";
-import { default as WbSunnyIcon } from "@mui/icons-material/WbSunny";
 import { ReactElement, ReactNode, useCallback } from "react";
 
+import { LevelBakedAction } from "@/core/level/components/preview/LevelBakedAction";
+import { LevelFogAction } from "@/core/level/components/preview/LevelFogAction";
+import { LevelLodAction } from "@/core/level/components/preview/LevelLodAction";
+import { LevelSunAction } from "@/core/level/components/preview/LevelSunAction";
+import { ILevelLighting } from "@/core/level/lib/lighting/level-lighting";
+import { ILevelLodOptions } from "@/core/level/lib/lod/level-lod-options";
 import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
 import { EditorToolbarSeparator } from "@/core/shell/editor/EditorToolbarSeparator";
@@ -17,14 +20,21 @@ import { BaseComponentProps } from "@/lib/dom/element-types";
 interface ILevelPreviewToolbarProps extends BaseComponentProps {
   subtitle?: ReactNode;
   options: ILevelViewOptions;
+  /** What the level is lit and fogged with, which the light and fog toggles carry the settings of. */
+  lighting: ILevelLighting;
+  /** How far trees are drawn in full, which the impostors toggle carries. */
+  lod: ILevelLodOptions;
   /** Value pickers the surface contributes, drawn last, as every toolbar in this application orders them. */
   actions?: ReactNode;
   onChangeOptions: (options: ILevelViewOptions) => void;
+  onChangeLighting: (lighting: ILevelLighting) => void;
+  onChangeLod: (lod: ILevelLodOptions) => void;
   onBack?: () => void;
 }
 
 /**
- * Composes the level view toggles in the editor toolbar.
+ * Composes the level view toggles in the editor toolbar. A toggle with settings behind it opens them on a click and
+ * turns over on a right click.
  */
 export function LevelPreviewToolbar({
   "data-testid": dataTestId,
@@ -32,8 +42,12 @@ export function LevelPreviewToolbar({
   className,
   subtitle,
   options,
+  lighting,
+  lod,
   actions,
   onChangeOptions,
+  onChangeLighting,
+  onChangeLod,
   onBack,
 }: ILevelPreviewToolbarProps): ReactElement {
   const onToggle = useCallback(
@@ -66,27 +80,34 @@ export function LevelPreviewToolbar({
             onToggle={() => onToggle("isTextured")}
           />
 
+          <LevelLodAction
+            isOn={options.isImpostors}
+            lod={lod}
+            onToggle={() => onToggle("isImpostors")}
+            onChange={onChangeLod}
+          />
+
           <EditorToolbarSeparator />
 
-          <EditorViewToggle
-            label={"Baked light"}
-            icon={<LightbulbIcon />}
+          <LevelBakedAction
             isOn={options.isLit}
+            lighting={lighting}
             onToggle={() => onToggle("isLit")}
+            onChange={onChangeLighting}
           />
 
-          <EditorViewToggle
-            label={"Sun"}
-            icon={<WbSunnyIcon />}
+          <LevelSunAction
             isOn={options.isSunVisible}
+            lighting={lighting}
             onToggle={() => onToggle("isSunVisible")}
+            onChange={onChangeLighting}
           />
 
-          <EditorViewToggle
-            label={"Fog"}
-            icon={<FoggyIcon />}
+          <LevelFogAction
             isOn={options.isFogged}
+            lighting={lighting}
             onToggle={() => onToggle("isFogged")}
+            onChange={onChangeLighting}
           />
 
           <EditorToolbarSeparator />

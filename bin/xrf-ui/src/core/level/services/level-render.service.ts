@@ -138,6 +138,10 @@ export class LevelRenderService extends RenderSurfaceService {
       reaction(() => this.viewService.lighting, this.applyLighting, { fireImmediately: true }),
       reaction(() => this.viewService.camera, this.applyCamera),
       reaction(
+        () => this.viewService.lod,
+        () => this.applySettings()
+      ),
+      reaction(
         () => this.settingsService.frameRateLimit,
         () => this.applySettings()
       ),
@@ -191,6 +195,7 @@ export class LevelRenderService extends RenderSurfaceService {
     return toLevelRendererSettings(
       this.viewService.options,
       this.viewService.lighting,
+      this.viewService.lod,
       this.settingsService.frameRateLimit,
       this.config
     );
