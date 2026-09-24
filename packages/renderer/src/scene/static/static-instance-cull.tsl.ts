@@ -13,6 +13,7 @@ import {
   STATIC_LOD_IMPOSTOR_ROW,
   STATIC_NO_BAND,
   STATIC_NO_LOD,
+  STATIC_VIEW_REGIONS,
   StaticDrawBuffers,
 } from "#/uniforms/static-draw-buffers";
 
@@ -84,7 +85,7 @@ export function createEarlyInstanceCullShader(
   const lodTerms = storage(buffers.lodTerms, "uvec4", buffers.capacity(EStaticPool.LODS)).toReadOnly();
   const spheres = storage(buffers.rowSpheres, "vec4", rows).toReadOnly();
   const targets = storage(buffers.rowTargets, "uvec4", rows).toReadOnly();
-  const visible = storage(buffers.visible, "uint", rows * 2);
+  const visible = storage(buffers.visible, "uint", rows * STATIC_VIEW_REGIONS);
   const states = storage(buffers.rowStates, "uint", rows);
   const pyramid = storage(buffers.pyramid, "float", buffers.capacity(EStaticPool.PYRAMID)).toReadOnly();
   const counts = storage(buffers.counts, "uint", STATIC_CULL_COUNTS).toAtomic();
@@ -141,7 +142,7 @@ export function createLateInstanceCullShader(buffers: StaticDrawBuffers): Comput
   ).toAtomic();
   const spheres = storage(buffers.rowSpheres, "vec4", rows).toReadOnly();
   const targets = storage(buffers.rowTargets, "uvec4", rows).toReadOnly();
-  const visible = storage(buffers.visible, "uint", rows * 2);
+  const visible = storage(buffers.visible, "uint", rows * STATIC_VIEW_REGIONS);
   const states = storage(buffers.rowStates, "uint", rows).toReadOnly();
   const pyramid = storage(buffers.pyramid, "float", buffers.capacity(EStaticPool.PYRAMID)).toReadOnly();
   const counts = storage(buffers.counts, "uint", STATIC_CULL_COUNTS).toAtomic();
@@ -165,5 +166,56 @@ export function createLateInstanceCullShader(buffers: StaticDrawBuffers): Comput
         atomicAdd(counts.element(4), targets.element(instanceIndex).w);
       });
     });
+  })().compute(rows);
+}
+
+/**
+ * A shadow cascade's cull of the instanced draws, one invocation a row: a row whose sphere reaches into the cascade's
+ * box counts its draw's instance count up in the cascade's arguments and lists its place in the cascade's region. The
+ * shadow phase casts every clump as its trees and never as its impostor (`add_leafs_static`), so an impostor's own row
+ * is left out and a tree's LOD state is not asked; a progressive tree casts the band its detail picks, as it draws.
+ * Runs after the cascade's slot cull, which leaves its instanced draws at no instances.
+ *
+ * @param buffers - The static draw buffers.
+ * @param view - The cascade, from zero.
+ * @param planes - The cascade's six planes.
+ * @returns The compute pass.
+ */
+export function createViewInstanceCullShader(
+  buffers: StaticDrawBuffers,
+  view: number,
+  planes: UniformArrayNode<string>
+): ComputeNode {
+  const rows: number = buffers.capacity(EStaticPool.ROWS);
+  const args = storage(
+    buffers.viewArgs[view],
+    "uint",
+    buffers.capacity(EStaticPool.SLOTS) * STATIC_DRAW_ARGUMENTS
+  ).toAtomic();
+  const rowLods = storage(buffers.rowLods, "uvec2", rows).toReadOnly();
+  const spheres = storage(buffers.rowSpheres, "vec4", rows).toReadOnly();
+  const targets = storage(buffers.rowTargets, "uvec4", rows).toReadOnly();
+  const visible = storage(buffers.visible, "uint", rows * STATIC_VIEW_REGIONS);
+  const region: number = rows * (2 + view);
+
+  return Fn(() => {
+    const sphere = spheres.element(instanceIndex);
+    const words = rowLods.element(instanceIndex) as unknown as Node<"uvec2">;
+    const isImpostor: Node<"bool"> = words.x
+      .notEqual(STATIC_NO_LOD)
+      .and(words.x.bitAnd(STATIC_LOD_IMPOSTOR_ROW).notEqual(0));
+
+    If(
+      isImpostor
+        .not()
+        .and(toBandDrawn(words.y, sphere as unknown as Node<"vec4">, buffers.lod))
+        .and(toInFrustum(sphere, planes).equal(1)),
+      () => {
+        const target = targets.element(instanceIndex);
+        const kept = atomicAdd(args.element(target.y.mul(STATIC_DRAW_ARGUMENTS).add(1)), uint(1));
+
+        visible.element(target.z.add(region).add(kept)).assign(target.x);
+      }
+    );
   })().compute(rows);
 }

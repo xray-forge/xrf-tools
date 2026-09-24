@@ -76,7 +76,7 @@ export class RendererHost {
       this.reply({ key, kind: ERendererResponse.TEXTURE_REFUSED, refusal })
     );
     this.overlays = new RendererOverlays(this.scene.skeletons, this.uniforms.lighting.sunDirection);
-    this.graph = new RendererFrameGraph(this.uniforms, this.overlays, this.scene.staticCull);
+    this.graph = new RendererFrameGraph(this.uniforms, this.overlays, this.scene.staticCull, this.scene.shadowCasters);
     this.captures = new RendererCaptures(this.graph.present, this.scene.textures, (id, image) =>
       this.reply({ id, image, kind: ERendererResponse.CAPTURED }, image ? [image] : [])
     );
@@ -314,6 +314,7 @@ export class RendererHost {
 
     // The features' passes join or leave the frame, and its timing starts or stops, before anything is drawn.
     this.graph.configure(settings.features);
+    this.uniforms.shadows.fit(this.rig.camera, this.uniforms.lighting.sunDirection, settings.features.shadows);
 
     if (device.setTiming(settings.features.isGpuTimed)) {
       this.stats.resetTimings();

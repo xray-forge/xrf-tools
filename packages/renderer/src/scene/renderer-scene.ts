@@ -19,6 +19,7 @@ import { RendererSkeletons } from "#/scene/skeleton/renderer-skeletons";
 import { createSceneStaging, ISceneStaging } from "#/scene/staging/scene-staging";
 import { StaticCull } from "#/scene/static/static-cull";
 import { StaticDraws } from "#/scene/static/static-draws";
+import { IStaticShadowCasters } from "#/scene/static/static-shadow-casters";
 import { IStaticUpcoming } from "#/scene/static/static-upcoming";
 import { MaterialReadiness } from "#/scene/surface/material-readiness";
 import { SurfaceLibrary } from "#/scene/surface/surface-library";
@@ -45,6 +46,11 @@ export class RendererScene {
   public readonly skeletons: RendererSkeletons;
   /** What culls the static draws on the GPU, which the frame dispatches before drawing them. */
   public readonly staticCull: StaticCull;
+
+  /** What each shadow cascade draws: every casting static batch, a cell at a time. */
+  public get shadowCasters(): IStaticShadowCasters {
+    return this.staticDraws;
+  }
 
   private readonly geometries: Map<string, SceneGeometry> = new Map();
   private readonly surfaces: SurfaceLibrary;

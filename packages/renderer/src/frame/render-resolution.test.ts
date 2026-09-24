@@ -10,6 +10,7 @@ import {
 describe("toRenderResolution", () => {
   it("takes one of the offered choices", () => {
     expect(toRenderResolution("1080")).toBe(ERenderResolution.HEIGHT_1080);
+    expect(toRenderResolution("1440")).toBe(ERenderResolution.HEIGHT_1440);
     expect(toRenderResolution("window")).toBe(ERenderResolution.WINDOW);
   });
 

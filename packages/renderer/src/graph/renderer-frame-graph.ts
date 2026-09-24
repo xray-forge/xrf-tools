@@ -1,7 +1,11 @@
 import { Nullable } from "@xrf/types";
 import { WebGPURenderer } from "three/webgpu";
 
-import { ERendererAntialiasing, IRendererFeatureSettings } from "#/contract/renderer-features";
+import {
+  ERendererAntialiasing,
+  IRendererFeatureSettings,
+  RENDERER_MAX_SHADOW_CASCADES,
+} from "#/contract/renderer-features";
 import { createBaseFramePasses } from "#/graph/base-frame-passes";
 import { AntialiasPass, toPresentedFrame } from "#/pass/antialias/antialias-pass";
 import { PresentPass } from "#/pass/present-pass";
@@ -9,8 +13,10 @@ import { IRendererFrame } from "#/pass/renderer-frame";
 import { IRendererPass } from "#/pass/renderer-pass";
 import { IRendererScenePass, isRendererScenePass } from "#/pass/renderer-scene-pass";
 import { RendererTargets } from "#/pass/renderer-targets";
+import { ShadowPass } from "#/pass/shadow-pass";
 import { RendererOverlays } from "#/scene/overlay/renderer-overlays";
 import { StaticCull } from "#/scene/static/static-cull";
+import { IStaticShadowCasters } from "#/scene/static/static-shadow-casters";
 import { RendererPassInspector } from "#/timing/renderer-pass-inspector";
 import { RendererUniforms } from "#/uniforms/renderer-uniforms";
 
@@ -31,8 +37,28 @@ export class RendererFrameGraph {
   /** The pass smoothing the frame's edges, while a mode is chosen. */
   private antialias: Nullable<AntialiasPass> = null;
   private antialiasing: ERendererAntialiasing = ERendererAntialiasing.NONE;
+  /** A pass a shadow cascade drawn, and the cascades and resolution they were made for. */
+  private shadows: Array<ShadowPass> = [];
+  private shadowKey: string = "";
+  private readonly uniforms: RendererUniforms;
+  private readonly cull: StaticCull;
+  private readonly casters: IStaticShadowCasters;
 
-  public constructor(uniforms: RendererUniforms, overlays: RendererOverlays, cull: StaticCull) {
+  /**
+   * @param uniforms - What the frame's shaders read.
+   * @param overlays - The helpers drawn last.
+   * @param cull - What culls the static draws.
+   * @param casters - What each shadow cascade draws.
+   */
+  public constructor(
+    uniforms: RendererUniforms,
+    overlays: RendererOverlays,
+    cull: StaticCull,
+    casters: IStaticShadowCasters
+  ) {
+    this.uniforms = uniforms;
+    this.cull = cull;
+    this.casters = casters;
     this.present = new PresentPass(this.targets, uniforms.camera);
     this.base = createBaseFramePasses(this.targets, uniforms, overlays, cull);
     this.scenePasses = this.base.filter(isRendererScenePass);
@@ -45,17 +71,34 @@ export class RendererFrameGraph {
    * @param features - What the features are set to.
    */
   public configure(features: IRendererFeatureSettings): void {
-    if (features.antialiasing === this.antialiasing) {
+    const { shadows } = features;
+    const count: number = shadows.isEnabled ? Math.min(shadows.cascades.length, RENDERER_MAX_SHADOW_CASCADES) : 0;
+    const shadowKey: string = `${count}:${shadows.resolution}`;
+
+    if (features.antialiasing === this.antialiasing && shadowKey === this.shadowKey) {
       return;
     }
 
-    this.antialias?.dispose();
-    this.antialiasing = features.antialiasing;
-    this.antialias =
-      features.antialiasing === ERendererAntialiasing.NONE
-        ? null
-        : new AntialiasPass(features.antialiasing, this.targets);
-    this.present.setFrame(toPresentedFrame(this.antialias, this.targets));
+    if (features.antialiasing !== this.antialiasing) {
+      this.antialias?.dispose();
+      this.antialiasing = features.antialiasing;
+      this.antialias =
+        features.antialiasing === ERendererAntialiasing.NONE
+          ? null
+          : new AntialiasPass(features.antialiasing, this.targets);
+      this.present.setFrame(toPresentedFrame(this.antialias, this.targets));
+    }
+
+    if (shadowKey !== this.shadowKey) {
+      this.shadows.forEach((pass: ShadowPass) => pass.dispose());
+      this.shadowKey = shadowKey;
+      this.shadows = Array.from(
+        { length: count },
+        (_, view: number) =>
+          new ShadowPass(view, this.targets, this.casters, this.cull, this.uniforms.shadows, shadows.resolution)
+      );
+    }
+
     this.link();
   }
 
@@ -86,9 +129,20 @@ export class RendererFrameGraph {
     this.targets.dispose();
   }
 
-  /** The frame's passes in order: the base's, whatever the features add, then the picture presented. */
+  /**
+   * The frame's passes in order: the base's with the shadow cascades before the sun reads them, whatever else the
+   * features add, then the picture presented.
+   */
   private link(): void {
-    this.passes = [...this.base, ...(this.antialias ? [this.antialias] : []), this.present];
+    const sun: number = this.base.findIndex((pass: IRendererPass) => pass.name === "sun");
+
+    this.passes = [
+      ...this.base.slice(0, sun),
+      ...this.shadows,
+      ...this.base.slice(sun),
+      ...(this.antialias ? [this.antialias] : []),
+      this.present,
+    ];
     this.passNames = this.passes.map((pass: IRendererPass) => pass.name);
   }
 }

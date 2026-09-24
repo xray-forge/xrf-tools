@@ -3,12 +3,14 @@ import {
   FloatType,
   HalfFloatType,
   NearestFilter,
+  RedFormat,
   RenderTarget,
   RGFormat,
   Texture,
   WebGPURenderer,
 } from "three/webgpu";
 
+import { RENDERER_MAX_SHADOW_CASCADES } from "#/contract/renderer-features";
 import { IGBufferTextures } from "#/shader/gbuffer-textures";
 
 /**
@@ -31,6 +33,23 @@ export class RendererTargets implements IGBufferTextures {
    * A second target over one texture, because WebGPU refuses a depth both sampled and attached in one pass.
    */
   public readonly composite: RenderTarget;
+  /**
+   * Each shadow cascade's map, its depth alone, reversed like every other: a texel across while its cascade does not
+   * draw, so the sun always binds the same textures and a cascade that is off costs nothing.
+   */
+  public readonly shadows: ReadonlyArray<RenderTarget> = Array.from(
+    { length: RENDERER_MAX_SHADOW_CASCADES },
+    (_, view: number) => {
+      // The colour a render target cannot go without, as small as a texel can be; nothing writes it.
+      const target: RenderTarget = new RenderTarget(1, 1, { depthBuffer: true, format: RedFormat });
+
+      target.texture.name = `shadow-${view}`;
+      target.depthTexture = new DepthTexture(1, 1, FloatType);
+      target.depthTexture.name = `shadow-depth-${view}`;
+
+      return target;
+    }
+  );
 
   public constructor() {
     this.gbuffer = new RenderTarget(1, 1, { count: 3, depthBuffer: true });

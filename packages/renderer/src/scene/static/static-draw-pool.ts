@@ -43,6 +43,11 @@ export class StaticDrawPool {
     return this.buffers.lateArgs;
   }
 
+  /** Each shadow cascade's arguments, which its batch meshes draw by. */
+  public get viewArgs(): ReadonlyArray<IndirectStorageBufferAttribute> {
+    return this.buffers.viewArgs;
+  }
+
   /** Bumped whenever a slot changes what it draws or where, so a cull knows to run again. */
   public get version(): number {
     return this.currentVersion;
@@ -124,7 +129,7 @@ export class StaticDrawPool {
     args[at + 2] = start;
     args[at + 3] = baseVertex;
     args[at + 4] = firstInstance;
-    // The second cull lists its places in the second half of the list.
+    // Every view after the first lists its places in its own region of the list, a row capacity each.
     this.copyLate(at, this.buffers.capacity(EStaticPool.ROWS));
     this.listed.add(slot);
     // Culled by its rows, never as a slot: the slot cull leaves its instance count at none for the rows to count up.
@@ -136,8 +141,10 @@ export class StaticDrawPool {
    * @param slot - A slot drawing nothing from now on, free for another draw.
    */
   public release(slot: number): void {
-    (this.buffers.args.array as Uint32Array)[slot * STATIC_DRAW_ARGUMENTS + 1] = 0;
-    (this.buffers.lateArgs.array as Uint32Array)[slot * STATIC_DRAW_ARGUMENTS + 1] = 0;
+    for (const args of [this.buffers.args, this.buffers.lateArgs, ...this.buffers.viewArgs]) {
+      (args.array as Uint32Array)[slot * STATIC_DRAW_ARGUMENTS + 1] = 0;
+    }
+
     (this.buffers.spheres.array as Float32Array)[slot * 4 + 3] = -1;
     this.listed.delete(slot);
     this.free.push(slot);
@@ -164,6 +171,7 @@ export class StaticDrawPool {
 
     StaticDrawPool.upload(this.buffers.args, first, last, STATIC_DRAW_ARGUMENTS);
     StaticDrawPool.upload(this.buffers.lateArgs, first, last, STATIC_DRAW_ARGUMENTS);
+    this.buffers.viewArgs.forEach((args) => StaticDrawPool.upload(args, first, last, STATIC_DRAW_ARGUMENTS));
     StaticDrawPool.upload(this.buffers.spheres, first, last, 4);
     StaticDrawPool.upload(this.buffers.models, first, last, 16);
     this.dirty.first = Infinity;
@@ -175,16 +183,22 @@ export class StaticDrawPool {
     return this.used;
   }
 
-  /** A slot's arguments for the second draw: the first's, with no instances and the list moved on by `offset`. */
+  /**
+   * A slot's arguments for every view after the first: the first's, with no instances, and an instanced draw's list
+   * moved on by `offset` a view: into the second cull's region, then each cascade's.
+   */
   private copyLate(at: number, offset: number): void {
     const args = this.buffers.args.array as Uint32Array;
-    const late = this.buffers.lateArgs.array as Uint32Array;
 
-    late[at] = args[at];
-    late[at + 1] = 0;
-    late[at + 2] = args[at + 2];
-    late[at + 3] = args[at + 3];
-    late[at + 4] = args[at + 4] + offset;
+    [this.buffers.lateArgs, ...this.buffers.viewArgs].forEach((view, index: number) => {
+      const copy = view.array as Uint32Array;
+
+      copy[at] = args[at];
+      copy[at + 1] = 0;
+      copy[at + 2] = args[at + 2];
+      copy[at + 3] = args[at + 3];
+      copy[at + 4] = args[at + 4] + offset * (index + 1);
+    });
   }
 
   private touch(slot: number): void {

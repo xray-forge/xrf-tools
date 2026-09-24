@@ -8,7 +8,7 @@ import { toSunPassFragment } from "#/pass/sun-pass.tsl";
 import { RendererUniforms } from "#/uniforms/renderer-uniforms";
 
 /**
- * The sun, accumulated as `accum_sun` does: `Ldynamic_color * plight_infinity(m, P, N, L)`, unshadowed for now.
+ * The sun, accumulated as `accum_sun` does: `Ldynamic_color * plight_infinity(m, P, N, L)`, times its shadow.
  */
 export class SunPass implements IRendererPass {
   public readonly name: string = "sun";
@@ -17,7 +17,13 @@ export class SunPass implements IRendererPass {
   private readonly quad: QuadMesh;
 
   public constructor(targets: RendererTargets, uniforms: RendererUniforms) {
-    this.material = createQuadMaterial(toSunPassFragment(targets, uniforms));
+    this.material = createQuadMaterial(
+      toSunPassFragment(
+        targets,
+        uniforms,
+        targets.shadows.map((target) => target.depthTexture as NonNullable<typeof target.depthTexture>)
+      )
+    );
     this.quad = new QuadMesh(this.material);
   }
 

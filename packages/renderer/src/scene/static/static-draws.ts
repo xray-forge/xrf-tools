@@ -1,6 +1,7 @@
 import { Maybe, Nullable } from "@xrf/types";
-import { Material, Matrix4, Object3D, Scene, Sphere } from "three/webgpu";
+import { Box3, Material, Matrix4, Object3D, Scene, Sphere, Vector3, Vector4 } from "three/webgpu";
 
+import { RENDERER_MAX_SHADOW_CASCADES } from "#/contract/renderer-features";
 import { IRendererPoolUse, IRendererStaticDrawReport } from "#/contract/renderer-report";
 import { IRendererInstances } from "#/contract/scene/renderer-object";
 import { ISurfaceMaterial } from "#/material/surface-material";
@@ -15,6 +16,7 @@ import { toGrownCapacity } from "#/scene/static/static-growth";
 import { StaticLods } from "#/scene/static/static-lods";
 import { StaticPlaces } from "#/scene/static/static-places";
 import { IStaticRange } from "#/scene/static/static-range";
+import { IStaticShadowCasters } from "#/scene/static/static-shadow-casters";
 import { IStaticUpcoming } from "#/scene/static/static-upcoming";
 import { EStaticPool, STATIC_NO_BAND, StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
 
@@ -33,11 +35,19 @@ type TStaticDemand = Record<EStaticPool.SLOTS | EStaticPool.PLACES | EStaticPool
  * and kind, and the cull on the GPU. A pool that runs out grows, once for everything the queue is known to bring; a
  * draw is drawn plainly only where the device's limit stops it.
  */
-export class StaticDraws {
+/** A corner of a place's sphere, reused. */
+const PLACE_CORNER: Vector3 = new Vector3();
+
+export class StaticDraws implements IStaticShadowCasters {
   /** What culls the static draws on the GPU, which the frame dispatches before drawing them and again between. */
   public readonly cull: StaticCull;
   /** Where the batches' second draws stand, drawn into the G-buffer after the second cull. */
   public readonly late: Scene = new Scene();
+  /** What each shadow cascade draws: every casting batch, by the cascade's arguments. */
+  public readonly cascadeScenes: ReadonlyArray<Scene> = Array.from(
+    { length: RENDERER_MAX_SHADOW_CASCADES },
+    () => new Scene()
+  );
 
   private readonly buffers: StaticDrawBuffers;
   private readonly pool: StaticDrawPool;
@@ -65,7 +75,7 @@ export class StaticDraws {
     this.lods = new StaticLods(buffers);
     this.late.matrixWorldAutoUpdate = false;
     this.cull = new StaticCull(buffers, this.pool, this.places, this.lods, this.late);
-    this.batches = new StaticBatches(this.pool, scene, this.late);
+    this.batches = new StaticBatches(this.pool, scene, this.late, this.cascadeScenes);
     this.arenas = new StaticArenas(
       (arena: StaticArena) => this.batches.refresh(arena),
       (arena: StaticArena) => this.batches.release(arena),
@@ -87,6 +97,19 @@ export class StaticDraws {
   }
 
   /** Every material a batch draws. */
+  /** Bumped whenever what any batch draws changed, so a shadow map drawn before is drawn again. */
+  public get shadowVersion(): number {
+    return this.batches.version;
+  }
+
+  /**
+   * @param view - A cascade.
+   * @param planes - Its box's planes.
+   */
+  public showShadowCells(view: number, planes: ReadonlyArray<Vector4>): void {
+    this.batches.showShadowCells(view, planes);
+  }
+
   public get materials(): Iterable<Material> {
     return this.batches.materials;
   }
@@ -167,7 +190,7 @@ export class StaticDraws {
   ): void {
     this.freeRows(slot);
     this.pool.write(slot, range.indexStart + start, count, range.vertexStart, sphere, matrix);
-    this.batches.put(slot, range.arena, EStaticDrawKind.SINGLE, surface);
+    this.batches.put(slot, range.arena, EStaticDrawKind.SINGLE, surface, sphere.getBoundingBox(new Box3()));
   }
 
   /**
@@ -262,9 +285,28 @@ export class StaticDraws {
       band
     );
     this.pool.writeListed(slot, range.indexStart + start, count, range.vertexStart, run.start);
-    this.batches.put(slot, range.arena, EStaticDrawKind.LISTED, surface);
+    this.batches.put(slot, range.arena, EStaticDrawKind.LISTED, surface, StaticDraws.toPlacesBox(spheres));
 
     return true;
+  }
+
+  /**
+   * @param spheres - Each place's sphere, four floats each, a negative radius for none.
+   * @returns The box every place spans, which the draw's cell is taken from.
+   */
+  private static toPlacesBox(spheres: Float32Array): Box3 {
+    const box: Box3 = new Box3();
+
+    for (let at = 0; at < spheres.length; at += 4) {
+      const radius: number = spheres[at + 3];
+
+      if (radius >= 0) {
+        box.expandByPoint(PLACE_CORNER.set(spheres[at] - radius, spheres[at + 1] - radius, spheres[at + 2] - radius));
+        box.expandByPoint(PLACE_CORNER.set(spheres[at] + radius, spheres[at + 1] + radius, spheres[at + 2] + radius));
+      }
+    }
+
+    return box;
   }
 
   /**

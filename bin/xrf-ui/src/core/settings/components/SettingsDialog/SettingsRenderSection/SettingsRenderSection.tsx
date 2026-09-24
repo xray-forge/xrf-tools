@@ -7,6 +7,7 @@ import { ChoiceFormRow, IChoiceFormRowOption } from "@/core/ui/form/ChoiceFormRo
 
 import { SettingsRendererFeatures } from "./SettingsRendererFeatures";
 import { SettingsRendererLod } from "./SettingsRendererLod";
+import { SettingsRendererShadows } from "./SettingsRendererShadows";
 
 const FRAME_RATE_OPTIONS: ReadonlyArray<IChoiceFormRowOption<TFrameRateLimit>> = FRAME_RATE_LIMITS.map((value) => ({
   value,
@@ -15,6 +16,7 @@ const FRAME_RATE_OPTIONS: ReadonlyArray<IChoiceFormRowOption<TFrameRateLimit>> =
 
 const RESOLUTION_LABELS: Record<ERenderResolution, string> = {
   [ERenderResolution.HEIGHT_1080]: "1080p",
+  [ERenderResolution.HEIGHT_1440]: "1440p",
   [ERenderResolution.HEIGHT_2160]: "4K",
   [ERenderResolution.HEIGHT_720]: "720p",
   [ERenderResolution.WINDOW]: "Window",
@@ -51,6 +53,8 @@ export function SettingsRenderSection(): ReactElement {
       />
 
       <SettingsRendererFeatures />
+
+      <SettingsRendererShadows />
 
       <SettingsRendererLod />
     </div>

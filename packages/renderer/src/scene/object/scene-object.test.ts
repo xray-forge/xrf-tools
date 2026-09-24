@@ -30,7 +30,15 @@ import { CullView } from "#/visibility/cull-view";
 
 /** A surface drawn by a pass, with nothing behind it. */
 function createSurface(pass: ERendererPass, isImpostor: boolean = false): ISurfaceMaterial {
-  return { dispose: () => {}, isImpostor, keys: [], material: new MeshBasicNodeMaterial(), pass };
+  return {
+    dispose: () => {},
+    isImpostor,
+    keys: [],
+    material: new MeshBasicNodeMaterial(),
+    pass,
+    shadow: null,
+    shadowKeys: [],
+  };
 }
 
 /** Two triangles far apart, one section each: one ten metres in front of the camera, one ten behind. */

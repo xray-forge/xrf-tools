@@ -43,6 +43,48 @@ export const DEFAULT_RENDERER_LOD_SETTINGS: IRendererLodSettings = {
   ssaGlodStart: 256,
 };
 
+/** Cascades the sun's shadow can be cut into at most. */
+export const RENDERER_MAX_SHADOW_CASCADES: number = 4;
+
+/**
+ * The sun's shadow: cascades of maps, each a square of the level seen from the sun, drawn every frame through the
+ * static draws and sampled by the sun's light. The engine's are three, 20, 40 and 160 metres across, at 2048 texels
+ * (`render_phase_sun.cpp`, `r2_smap_size`).
+ */
+export interface IRendererShadowSettings {
+  isEnabled: boolean;
+  /** Each cascade's width in metres, nearest first; as many cascades as widths, at most `RENDERER_MAX_SHADOW_CASCADES`. */
+  cascades: ReadonlyArray<number>;
+  /** Texels each cascade's map is across. */
+  resolution: number;
+  /** Texels the filter reaches from the one sampled, each way: zero for one comparison, one for a three by three. */
+  filter: number;
+  /**
+   * How far a point is moved along its normal before it is compared, in texels of its cascade: keeps a lit surface
+   *  from shadowing itself.
+   */
+  bias: number;
+  /** Metres towards the sun past a cascade that its casters may stand: a tower outside the map still shades into it. */
+  reach: number;
+  /**
+   * Whether cascade `n` is drawn at most every `2^n` frames, the far ones sharing frames the near one does not. A map
+   * holds depth in the world and is sampled with the matrix it was drawn with, so a map a frame or three old is exact
+   * for everything that stands still; only something moving would cast late.
+   */
+  isStaggered: boolean;
+}
+
+/** The engine's own cascades, and a filter a texel wide. */
+export const DEFAULT_RENDERER_SHADOW_SETTINGS: IRendererShadowSettings = {
+  bias: 1.5,
+  cascades: [20, 40, 160],
+  filter: 1,
+  isEnabled: true,
+  isStaggered: true,
+  reach: 400,
+  resolution: 2048,
+};
+
 /**
  * What the renderer's features are set to: the same for every consumer, chosen as a preset and whatever was changed
  * on top of it. A feature that is off costs nothing: its passes leave the frame and its targets are freed.
@@ -52,6 +94,7 @@ export interface IRendererFeatureSettings {
   /** Whether every pass is timed on the GPU for the report. */
   isGpuTimed: boolean;
   lod: IRendererLodSettings;
+  shadows: IRendererShadowSettings;
 }
 
 /**
@@ -68,11 +111,13 @@ export const RENDERER_PRESETS: Readonly<Record<ERendererPreset, IRendererFeature
     antialiasing: ERendererAntialiasing.SMAA,
     isGpuTimed: true,
     lod: DEFAULT_RENDERER_LOD_SETTINGS,
+    shadows: DEFAULT_RENDERER_SHADOW_SETTINGS,
   },
   [ERendererPreset.EDITING]: {
     antialiasing: ERendererAntialiasing.NONE,
     isGpuTimed: true,
     lod: DEFAULT_RENDERER_LOD_SETTINGS,
+    shadows: { ...DEFAULT_RENDERER_SHADOW_SETTINGS, isEnabled: false },
   },
 };
 
@@ -81,6 +126,7 @@ export interface IRendererFeatureOverrides {
   antialiasing?: ERendererAntialiasing;
   isGpuTimed?: boolean;
   lod?: Partial<IRendererLodSettings>;
+  shadows?: Partial<IRendererShadowSettings>;
 }
 
 /** A preset and what was changed on top of it, which is what a consumer stores. */
@@ -138,6 +184,12 @@ export function toRendererFeatureChoice(stored: unknown): IRendererFeatureChoice
     choice.overrides.lod = lodOverrides;
   }
 
+  const shadows: Partial<IRendererShadowSettings> = toShadowOverrides(source.shadows);
+
+  if (Object.keys(shadows).length) {
+    choice.overrides.shadows = shadows;
+  }
+
   return choice;
 }
 
@@ -147,12 +199,13 @@ export function toRendererFeatureChoice(stored: unknown): IRendererFeatureChoice
  */
 export function resolveRendererFeatures(choice: IRendererFeatureChoice): IRendererFeatureSettings {
   const preset: IRendererFeatureSettings = RENDERER_PRESETS[choice.preset];
-  const { antialiasing, isGpuTimed, lod } = choice.overrides;
+  const { antialiasing, isGpuTimed, lod, shadows } = choice.overrides;
 
   return {
     antialiasing: antialiasing ?? preset.antialiasing,
     isGpuTimed: isGpuTimed ?? preset.isGpuTimed,
     lod: { ...preset.lod, ...lod },
+    shadows: { ...preset.shadows, ...shadows },
   };
 }
 
@@ -167,6 +220,49 @@ export function isRendererFeatureChoiceCustom(choice: IRendererFeatureChoice): b
   return (
     resolved.antialiasing !== preset.antialiasing ||
     resolved.isGpuTimed !== preset.isGpuTimed ||
-    (Object.keys(preset.lod) as Array<keyof IRendererLodSettings>).some((key) => resolved.lod[key] !== preset.lod[key])
+    (Object.keys(preset.lod) as Array<keyof IRendererLodSettings>).some(
+      (key) => resolved.lod[key] !== preset.lod[key]
+    ) ||
+    (Object.keys(preset.shadows) as Array<keyof IRendererShadowSettings>).some((key) =>
+      key === "cascades"
+        ? resolved.shadows.cascades.join() !== preset.shadows.cascades.join()
+        : resolved.shadows[key] !== preset.shadows[key]
+    )
   );
+}
+
+/**
+ * @param stored - What was stored for the shadow overrides.
+ * @returns The ones the shadows take: finite numbers, a flag, and a run of positive widths within the cascade limit.
+ */
+function toShadowOverrides(stored: unknown): Partial<IRendererShadowSettings> {
+  const source: Record<string, unknown> = stored && typeof stored === "object" ? (stored as never) : {};
+  const overrides: Partial<IRendererShadowSettings> = {};
+
+  for (const key of ["isEnabled", "isStaggered"] as const) {
+    if (typeof source[key] === "boolean") {
+      overrides[key] = source[key];
+    }
+  }
+
+  for (const key of ["bias", "filter", "reach", "resolution"] as const) {
+    const value: unknown = source[key];
+
+    if (typeof value === "number" && Number.isFinite(value) && value >= 0) {
+      overrides[key] = value;
+    }
+  }
+
+  const cascades: unknown = source.cascades;
+
+  if (
+    Array.isArray(cascades) &&
+    cascades.length > 0 &&
+    cascades.length <= RENDERER_MAX_SHADOW_CASCADES &&
+    cascades.every((width: unknown) => typeof width === "number" && Number.isFinite(width) && width > 0)
+  ) {
+    overrides.cascades = cascades as Array<number>;
+  }
+
+  return overrides;
 }

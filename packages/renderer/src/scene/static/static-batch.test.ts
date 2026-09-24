@@ -29,11 +29,11 @@ function toMesh(batch: StaticBatch): Mesh {
 
 describe("StaticBatch", () => {
   it("issues a draw a slot from each phase's arguments, the last taking the place of one removed", () => {
-    const batch: StaticBatch = new StaticBatch(
-      createArena(),
-      EStaticDrawKind.SINGLE,
-      new StaticDrawPool(new StaticDrawBuffers())
-    );
+    const pool: StaticDrawPool = new StaticDrawPool(new StaticDrawBuffers());
+    const batch: StaticBatch = new StaticBatch(createArena(), EStaticDrawKind.SINGLE, [
+      () => pool.args,
+      () => pool.lateArgs,
+    ]);
 
     [4, 7, 9].forEach((slot: number) => batch.add(slot));
     batch.remove(4);
@@ -51,7 +51,7 @@ describe("StaticBatch", () => {
   it("draws the arena's new buffers once it grew, over a new mesh, recorded again", () => {
     const arena: StaticArena = createArena();
     const pool: StaticDrawPool = new StaticDrawPool(new StaticDrawBuffers());
-    const batch: StaticBatch = new StaticBatch(arena, EStaticDrawKind.SINGLE, pool);
+    const batch: StaticBatch = new StaticBatch(arena, EStaticDrawKind.SINGLE, [() => pool.args, () => pool.lateArgs]);
     const bundle: BundleGroup = new BundleGroup();
 
     bundle.add(toMesh(batch));

@@ -6,14 +6,16 @@ export enum ERenderResolution {
   WINDOW = "window",
   HEIGHT_720 = "720",
   HEIGHT_1080 = "1080",
+  HEIGHT_1440 = "1440",
   HEIGHT_2160 = "2160",
 }
 
-/** The choices offered: the window itself, and the three heights worth naming. */
+/** The choices offered: the window itself, and the four heights worth naming. */
 export const RENDER_RESOLUTIONS: ReadonlyArray<ERenderResolution> = [
   ERenderResolution.WINDOW,
   ERenderResolution.HEIGHT_720,
   ERenderResolution.HEIGHT_1080,
+  ERenderResolution.HEIGHT_1440,
   ERenderResolution.HEIGHT_2160,
 ];
 

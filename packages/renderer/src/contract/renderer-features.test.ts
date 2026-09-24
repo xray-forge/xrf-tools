@@ -51,4 +51,28 @@ describe("renderer features", () => {
     expect(toRendererFeatureChoice("nonsense")).toBe(DEFAULT_RENDERER_FEATURE_CHOICE);
     expect(toRendererFeatureChoice({ preset: "ultra" }).preset).toBe(ERendererPreset.BASE);
   });
+
+  it("reads back stored shadow overrides, dropping a run of cascades past the limit and anything not a width", () => {
+    expect(
+      toRendererFeatureChoice({
+        overrides: { shadows: { bias: 2, cascades: [20, 40], isStaggered: false, resolution: "big" } },
+        preset: "base",
+      }).overrides.shadows
+    ).toEqual({ bias: 2, cascades: [20, 40], isStaggered: false });
+    expect(
+      toRendererFeatureChoice({ overrides: { shadows: { cascades: [1, 2, 3, 4, 5] } }, preset: "base" }).overrides
+    ).toEqual({});
+  });
+
+  it("calls a changed cascade run custom, and a preset's own run not", () => {
+    expect(
+      isRendererFeatureChoiceCustom({ overrides: { shadows: { cascades: [20, 40] } }, preset: ERendererPreset.BASE })
+    ).toBe(true);
+    expect(
+      isRendererFeatureChoiceCustom({
+        overrides: { shadows: { cascades: [20, 40, 160] } },
+        preset: ERendererPreset.BASE,
+      })
+    ).toBe(false);
+  });
 });

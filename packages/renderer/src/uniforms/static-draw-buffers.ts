@@ -7,6 +7,7 @@ import {
   TypedArray,
 } from "three/webgpu";
 
+import { RENDERER_MAX_SHADOW_CASCADES } from "#/contract/renderer-features";
 import { DEFAULT_STORAGE_LIMIT } from "#/internals/renderer-backend";
 import { LodUniforms } from "#/uniforms/lod-uniforms";
 import { OcclusionUniforms } from "#/uniforms/occlusion-uniforms";
@@ -16,6 +17,12 @@ export const STATIC_DRAW_ARGUMENTS: number = 5;
 
 /** Columns one place takes: its matrix's four, then its hemisphere scale and offset. */
 export const STATIC_PLACE_COLUMNS: number = 5;
+
+/**
+ * Regions of the list of kept places, a view each: the first cull's, the second's, then each shadow cascade's. A
+ * region is a row capacity long, and an instanced draw lists its places at its rows' own start within it.
+ */
+export const STATIC_VIEW_REGIONS: number = 2 + RENDERER_MAX_SHADOW_CASCADES;
 
 /** Unsigned integers the cull counts into: kept draws and indices, then occluded draws, instances and indices. */
 export const STATIC_CULL_COUNTS: number = 5;
@@ -79,7 +86,8 @@ export const INITIAL_STATIC_CAPACITY: Readonly<Record<EStaticPool, number>> = {
 const ELEMENT_BYTES: Readonly<Record<EStaticPool, number>> = {
   [EStaticPool.SLOTS]: 64,
   [EStaticPool.PLACES]: STATIC_PLACE_COLUMNS * 16,
-  [EStaticPool.ROWS]: 16,
+  // The list of kept places, a region a view: wider than any other buffer of a row.
+  [EStaticPool.ROWS]: STATIC_VIEW_REGIONS * 4,
   [EStaticPool.LODS]: STATIC_LOD_CORNER_COLUMNS * 16,
   [EStaticPool.PYRAMID]: 4,
 };
@@ -149,6 +157,11 @@ export class StaticDrawBuffers {
   public visible: StorageBufferAttribute;
   /** What the first cull decided for each row. */
   public rowStates: StorageBufferAttribute;
+  /**
+   * Each shadow cascade's arguments, the cascade's cull's to write: the first cull's, with the cascade's own instance
+   * counts, and an instanced draw's list in the cascade's region.
+   */
+  public viewArgs: Array<IndirectStorageBufferAttribute>;
   /**
    * Each row's detail words: its impostor, `STATIC_NO_LOD` for none and `STATIC_LOD_IMPOSTOR_ROW` set on the
    * impostor's own draw, then its band (`toStaticBandWord`), `STATIC_NO_BAND` for none.
@@ -227,7 +240,11 @@ export class StaticDrawBuffers {
     );
     this.rowSpheres = new StorageBufferAttribute(new Float32Array(rows * 4).fill(-1), 4);
     this.rowTargets = new StorageBufferAttribute(new Uint32Array(rows * 4), 4);
-    this.visible = new StorageBufferAttribute(new Uint32Array(rows * 2), 1);
+    this.visible = new StorageBufferAttribute(new Uint32Array(rows * STATIC_VIEW_REGIONS), 1);
+    this.viewArgs = Array.from(
+      { length: RENDERER_MAX_SHADOW_CASCADES },
+      () => new IndirectStorageBufferAttribute(new Uint32Array(slots * STATIC_DRAW_ARGUMENTS), STATIC_DRAW_ARGUMENTS)
+    );
     this.rowStates = new StorageBufferAttribute(new Uint32Array(rows), 1);
     this.rowLods = new StorageBufferAttribute(new Uint32Array(rows * 2).fill(STATIC_NO_LOD), 2);
     this.lodSpheres = new StorageBufferAttribute(new Float32Array(lods * 4).fill(-1), 4);
@@ -242,7 +259,7 @@ export class StaticDrawBuffers {
       "vec4",
       capacities[EStaticPool.PLACES] * STATIC_PLACE_COLUMNS
     ).toReadOnly();
-    this.visiblePlaces = storage(this.visible, "uint", rows * 2).toReadOnly();
+    this.visiblePlaces = storage(this.visible, "uint", rows * STATIC_VIEW_REGIONS).toReadOnly();
     this.lodSphereColumns = storage(this.lodSpheres, "vec4", lods).toReadOnly();
     this.lodCornerColumns = storage(this.lodCorners, "vec4", lods * STATIC_LOD_CORNER_COLUMNS).toReadOnly();
     this.lodTermColumns = storage(this.lodTerms, "uvec4", lods).toReadOnly();
@@ -289,6 +306,7 @@ export class StaticDrawBuffers {
       case EStaticPool.SLOTS:
         this.args = this.replace(this.args, capacity);
         this.lateArgs = this.replace(this.lateArgs, capacity);
+        this.viewArgs = this.viewArgs.map((args) => this.replace(args, capacity));
         this.spheres = this.replace(this.spheres, capacity, -1);
         this.models = this.replace(this.models, capacity * 4);
         this.slotStates = this.replace(this.slotStates, capacity);
@@ -303,8 +321,9 @@ export class StaticDrawBuffers {
       case EStaticPool.ROWS:
         this.rowSpheres = this.replace(this.rowSpheres, capacity, -1);
         this.rowTargets = this.replace(this.rowTargets, capacity);
-        // Twice over, the halves apart: the second cull lists its places a row capacity on, which moves with it.
-        this.visible = this.replace(this.visible, capacity * 2);
+        // A region a view: every view but the first lists its places a whole number of row capacities on, which moves
+        // with it.
+        this.visible = this.replace(this.visible, capacity * STATIC_VIEW_REGIONS);
         this.rowStates = this.replace(this.rowStates, capacity);
         this.rowLods = this.replace(this.rowLods, capacity, STATIC_NO_LOD);
         this.visiblePlaces.value = this.visible;

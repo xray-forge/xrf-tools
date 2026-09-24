@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { EStaticPool, StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
+import { EStaticPool, STATIC_VIEW_REGIONS, StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
 
 describe("StaticDrawBuffers", () => {
   it("grows the slots with everything written kept, new spheres drawing nothing, and the matrices' node repointed", () => {
@@ -21,12 +21,12 @@ describe("StaticDrawBuffers", () => {
     expect(buffers.takeRetired()).toEqual([]);
   });
 
-  it("grows the rows with both halves of the list, and repoints the list's node", () => {
+  it("grows the rows with every view's region of the list, and repoints the list's node", () => {
     const buffers: StaticDrawBuffers = new StaticDrawBuffers({ [EStaticPool.ROWS]: 4 });
 
     buffers.grow(EStaticPool.ROWS, 16);
 
-    expect(buffers.visible.array).toHaveLength(32);
+    expect(buffers.visible.array).toHaveLength(16 * STATIC_VIEW_REGIONS);
     expect(buffers.rowSpheres.array).toHaveLength(64);
     expect(buffers.visiblePlaces.value).toBe(buffers.visible);
   });

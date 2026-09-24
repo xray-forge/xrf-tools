@@ -1,8 +1,13 @@
 import { atomicAdd, Fn, If, instanceIndex, storage, uint, uniformArray } from "three/tsl";
 import { ComputeNode, UniformArrayNode, Vector4 } from "three/webgpu";
 
+import { RENDERER_MAX_SHADOW_CASCADES } from "#/contract/renderer-features";
 import { toInFrustum } from "#/scene/static/static-frustum.tsl";
-import { createEarlyInstanceCullShader, createLateInstanceCullShader } from "#/scene/static/static-instance-cull.tsl";
+import {
+  createEarlyInstanceCullShader,
+  createLateInstanceCullShader,
+  createViewInstanceCullShader,
+} from "#/scene/static/static-instance-cull.tsl";
 import { createLodCullShader } from "#/scene/static/static-lod-cull.tsl";
 import { toOccluded } from "#/scene/static/static-occlusion.tsl";
 import {
@@ -25,6 +30,14 @@ export interface IStaticCullShader {
   late: [ComputeNode, ComputeNode];
   /** Six planes, normals pointing in, `w` the constant. */
   planes: ReadonlyArray<Vector4>;
+  /** Each shadow cascade's cull: the slot cull, then the instance cull, and the six planes both read. */
+  views: ReadonlyArray<IStaticViewCullShader>;
+}
+
+/** One shadow cascade's cull: no occlusion and no second phase, only its box. */
+export interface IStaticViewCullShader {
+  cull: [ComputeNode, ComputeNode];
+  planes: ReadonlyArray<Vector4>;
 }
 
 /**
@@ -43,7 +56,39 @@ export function createStaticCullShader(buffers: StaticDrawBuffers): IStaticCullS
     ],
     late: [createLateSlotCullShader(buffers), createLateInstanceCullShader(buffers)],
     planes,
+    views: Array.from({ length: RENDERER_MAX_SHADOW_CASCADES }, (_, view: number) => {
+      const viewPlanes: Array<Vector4> = Array.from({ length: 6 }, () => new Vector4());
+      const viewPlaneNodes = uniformArray(viewPlanes, "vec4");
+
+      return {
+        cull: [
+          createViewSlotCullShader(buffers, view, viewPlaneNodes),
+          createViewInstanceCullShader(buffers, view, viewPlaneNodes),
+        ],
+        planes: viewPlanes,
+      };
+    }),
   };
+}
+
+/**
+ * A shadow cascade's cull of the single draws: a slot casts where its sphere reaches into the cascade's box. An
+ * instanced draw's slot, which stands for nothing, is left at no instances for its rows to count up.
+ */
+function createViewSlotCullShader(
+  buffers: StaticDrawBuffers,
+  view: number,
+  planes: UniformArrayNode<string>
+): ComputeNode {
+  const slots: number = buffers.capacity(EStaticPool.SLOTS);
+  const args = storage(buffers.viewArgs[view], "uint", slots * STATIC_DRAW_ARGUMENTS);
+  const spheres = storage(buffers.spheres, "vec4", slots).toReadOnly();
+
+  return Fn(() => {
+    args
+      .element(instanceIndex.mul(STATIC_DRAW_ARGUMENTS).add(1))
+      .assign(toInFrustum(spheres.element(instanceIndex), planes));
+  })().compute(slots);
 }
 
 /**

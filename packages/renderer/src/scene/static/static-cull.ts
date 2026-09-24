@@ -1,15 +1,16 @@
-import { BufferAttribute, PerspectiveCamera, Scene, Texture, WebGPURenderer } from "three/webgpu";
+import { BufferAttribute, PerspectiveCamera, Scene, Texture, Vector4, WebGPURenderer } from "three/webgpu";
 
-import { IRendererLodSettings } from "#/contract/renderer-features";
+import { IRendererLodSettings, RENDERER_MAX_SHADOW_CASCADES } from "#/contract/renderer-features";
 import { destroyStorageAttribute } from "#/internals/renderer-backend";
 import { IStaticCullCounts } from "#/scene/static/static-cull-counts";
-import { createStaticCullShader, IStaticCullShader } from "#/scene/static/static-cull.tsl";
+import { createStaticCullShader, IStaticCullShader, IStaticViewCullShader } from "#/scene/static/static-cull.tsl";
 import { StaticDepthPyramid } from "#/scene/static/static-depth-pyramid";
 import { StaticDrawPool } from "#/scene/static/static-draw-pool";
 import { StaticLods } from "#/scene/static/static-lods";
 import { StaticPlaces } from "#/scene/static/static-places";
 import { StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
 import { CullView } from "#/visibility/cull-view";
+import { SunCascade } from "#/visibility/sun-cascade";
 
 /**
  * Culls every static draw on the GPU against the view drawn for, single draws by slot and instanced ones by row, in
@@ -45,6 +46,8 @@ export class StaticCull {
   private poolVersion: number = -1;
   private placesVersion: number = -1;
   private lodsVersion: number = -1;
+  /** Each cascade's box, pool, places and LOD versions its last cull ran against, joined. */
+  private readonly viewVersions: Array<string | number> = new Array(RENDERER_MAX_SHADOW_CASCADES).fill(-1);
   /** Whether the LOD thresholds or switch changed since the last dispatch. */
   private isLodChanged: boolean = true;
   private isPending: boolean = false;
@@ -173,6 +176,41 @@ export class StaticCull {
   }
 
   /**
+   * A shadow cascade's cull, its casters from every static draw its box reaches: run again only when the box moved or
+   * a slot, row, place or impostor changed.
+   *
+   * @param renderer - The renderer drawing.
+   * @param view - The cascade, from zero.
+   * @param cascade - Its box, fitted for this frame.
+   * @returns Whether it culled, and what the cascade draws may have changed.
+   */
+  public cullView(renderer: WebGPURenderer, view: number, cascade: SunCascade): boolean {
+    this.build();
+
+    const version: string = [
+      cascade.version,
+      this.pool.version,
+      this.places.version,
+      this.lods.version,
+      this.layout,
+      this.buffers.lod.glodStart.value,
+      this.buffers.lod.glodEnd.value,
+    ].join();
+
+    if (this.viewVersions[view] === version) {
+      return false;
+    }
+
+    const shader: IStaticViewCullShader = this.shader.views[view];
+
+    this.viewVersions[view] = version;
+    shader.planes.forEach((plane: Vector4, index: number) => plane.copy(cascade.planes[index]));
+    renderer.compute(shader.cull);
+
+    return true;
+  }
+
+  /**
    * Reduces the depth the frame finished with, for the next frame's first cull to read.
    *
    * @param renderer - The renderer drawing.
@@ -235,7 +273,11 @@ export class StaticCull {
     if (this.layout !== this.buffers.layout) {
       const planes = this.shader.planes;
 
-      [...this.shader.early, ...this.shader.late].forEach((compute) => compute.dispose());
+      [...this.shader.early, ...this.shader.late, ...this.shader.views.flatMap((view) => view.cull)].forEach(
+        (compute) => compute.dispose()
+      );
+      // Every cascade culls again against the buffers as they are laid out now.
+      this.viewVersions.fill(-1);
       this.shader = createStaticCullShader(this.buffers);
       this.shader.planes.forEach((plane, index: number) => plane.copy(planes[index]));
       this.layout = this.buffers.layout;
@@ -252,6 +294,11 @@ export class StaticCull {
     lods.count = Math.max(this.lods.extent, 1);
     earlyRows.count = rows;
     lateRows.count = rows;
+
+    for (const { cull } of this.shader.views) {
+      cull[0].count = slots;
+      cull[1].count = rows;
+    }
   }
 
   /** Frees the GPU buffers a growth replaced a frame ago, and holds the ones replaced since for the next frame. */

@@ -18,14 +18,17 @@ function createBatches(count: number): Array<StaticBatch> {
 
   arena.place(buffer, () => ({ indices: 0, vertices: 0 }));
 
-  return Array.from({ length: count }, () => new StaticBatch(arena, EStaticDrawKind.SINGLE, pool));
+  return Array.from(
+    { length: count },
+    () => new StaticBatch(arena, EStaticDrawKind.SINGLE, [() => pool.args, () => pool.lateArgs])
+  );
 }
 
 describe("StaticBundleChunks", () => {
   it("records batches a chunk of them to a pair of bundles, one in each phase's scene", () => {
     const scene: Scene = new Scene();
     const late: Scene = new Scene();
-    const chunks: StaticBundleChunks = new StaticBundleChunks(scene, late);
+    const chunks: StaticBundleChunks = new StaticBundleChunks([scene, late]);
 
     createBatches(40).forEach((batch: StaticBatch) => chunks.attach(batch));
 
@@ -38,7 +41,7 @@ describe("StaticBundleChunks", () => {
   it("records a chunk again when a batch leaves it, and takes an emptied chunk out of the scenes", () => {
     const scene: Scene = new Scene();
     const late: Scene = new Scene();
-    const chunks: StaticBundleChunks = new StaticBundleChunks(scene, late);
+    const chunks: StaticBundleChunks = new StaticBundleChunks([scene, late]);
     const [batch] = createBatches(1);
 
     chunks.attach(batch);

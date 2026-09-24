@@ -8,6 +8,7 @@ import { BaseLightingUniforms } from "#/uniforms/base-lighting-uniforms";
 import { CameraUniforms } from "#/uniforms/camera-uniforms";
 import { createMaterialLutTexture } from "#/uniforms/material-lut-texture";
 import { SettingsUniforms } from "#/uniforms/settings-uniforms";
+import { ShadowUniforms } from "#/uniforms/shadow-uniforms";
 import { StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
 
 /**
@@ -22,6 +23,8 @@ export class RendererUniforms {
   public readonly lut: Data3DTexture = createMaterialLutTexture();
   /** What every static draw is culled and placed by. */
   public readonly staticDraws: StaticDrawBuffers = new StaticDrawBuffers();
+  /** The sun's shadow cascades, fitted every frame. */
+  public readonly shadows: ShadowUniforms = new ShadowUniforms();
 
   private fogDistance: Nullable<number> = null;
   private isLit: boolean = true;

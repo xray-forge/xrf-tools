@@ -1,4 +1,4 @@
-import { PerspectiveCamera, WebGPUCoordinateSystem } from "three/webgpu";
+import { OrthographicCamera, PerspectiveCamera, WebGPUCoordinateSystem } from "three/webgpu";
 
 /**
  * Brings a camera to the renderer's conventions, WebGPU clip space and reversed depth, and rebuilds its projection.
@@ -7,7 +7,7 @@ import { PerspectiveCamera, WebGPUCoordinateSystem } from "three/webgpu";
  *
  * @param camera - A camera the renderer draws with, before anything reads it.
  */
-export function adoptRendererConventions(camera: PerspectiveCamera): void {
+export function adoptRendererConventions(camera: PerspectiveCamera | OrthographicCamera): void {
   camera.coordinateSystem = WebGPUCoordinateSystem;
   // Private in three, behind a getter: `reversedDepth` has no setter.
   (camera as unknown as { _reversedDepth: boolean })._reversedDepth = true;
