@@ -38,4 +38,24 @@ describe("RangeAllocator", () => {
     expect(allocator.capacity).toBe(8);
     expect(allocator.allocate(6)).toBe(2);
   });
+
+  it("reaches as far as the end of its last run handed out", () => {
+    const allocator: RangeAllocator = new RangeAllocator();
+
+    allocator.grow(10);
+
+    expect(allocator.extent).toBe(0);
+
+    allocator.allocate(4);
+    allocator.allocate(4);
+    allocator.release(0, 4);
+
+    expect(allocator.extent).toBe(8);
+
+    // First fit: the freed run first, then the end.
+    allocator.allocate(4);
+    allocator.allocate(2);
+
+    expect(allocator.extent).toBe(10);
+  });
 });

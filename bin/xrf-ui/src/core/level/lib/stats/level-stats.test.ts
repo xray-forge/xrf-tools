@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
-import { IRenderFrameCost } from "@xrf/renderer";
+import { EMPTY_RENDERER_STATIC_DRAW_REPORT, IRendererStaticDrawReport, IRenderFrameCost } from "@xrf/renderer";
 
 import { EMPTY_LEVEL_STATS, ILevelStats, measureLevelStats } from "./level-stats";
 
@@ -62,5 +62,18 @@ describe("level stats", () => {
 
     expect(stats.frameTime).toBe(20);
     expect(stats.framesPerSecond).toBe(50);
+  });
+
+  it("carries what the renderer said of its static draws, nothing where it said none", () => {
+    const staticDraws: IRendererStaticDrawReport = {
+      ...EMPTY_RENDERER_STATIC_DRAW_REPORT,
+      fallbacks: 1,
+      slots: { capacity: 65536, used: 4096 },
+    };
+
+    expect(measureLevelStats({ bytes: 0, sectors: 0 }, frameCost(), 0, staticDraws).staticDraws).toBe(staticDraws);
+    expect(measureLevelStats({ bytes: 0, sectors: 0 }, frameCost()).staticDraws).toBe(
+      EMPTY_RENDERER_STATIC_DRAW_REPORT
+    );
   });
 });

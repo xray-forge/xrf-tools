@@ -15,6 +15,7 @@ import { RendererFrameStats } from "#/host/renderer-frame-stats";
 import { RendererSceneCompiler } from "#/host/renderer-scene-compiler";
 import { RendererView } from "#/host/renderer-view";
 import { RenderProxyElement } from "#/input/render-proxy-element";
+import { toStorageLimit } from "#/internals/renderer-backend";
 import { DEFAULT_RENDERER_LIGHTING } from "#/lighting/default-lighting";
 import { IRendererFrame } from "#/pass/renderer-frame";
 import { RendererOverlays } from "#/scene/overlay/renderer-overlays";
@@ -194,6 +195,8 @@ export class RendererHost {
         }
 
         this.device = device;
+        // The static draws' pools grow to what one storage buffer may hold on this device.
+        this.uniforms.staticDraws.storageLimit = toStorageLimit(device.renderer);
         // A static draw finds its slot by its first instance, which only a device with the feature draws indirectly.
         this.scene.setStaticDraws(device.renderer.hasFeature("indirect-first-instance"));
         this.reply({ device: device.describe(), kind: ERendererResponse.READY });
@@ -322,7 +325,8 @@ export class RendererHost {
           view.canvas,
           this.rig.pose,
           this.graph.passNames,
-          this.scene.staticCull.kept
+          this.scene.staticCull.kept,
+          this.scene.staticDrawReport
         ),
       });
     }

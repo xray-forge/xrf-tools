@@ -1,18 +1,14 @@
 import { Nullable } from "@xrf/types";
 import { BufferAttribute, Matrix4 } from "three/webgpu";
 
+import { IRendererPoolUse } from "#/contract/renderer-report";
 import {
   IRendererInstances,
   RENDERER_FLOATS_PER_INSTANCE,
   RENDERER_HEMI_FLOATS_PER_INSTANCE,
 } from "#/contract/scene/renderer-object";
 import { RangeAllocator } from "#/scene/static/range-allocator";
-import {
-  STATIC_PLACE_CAPACITY,
-  STATIC_PLACE_COLUMNS,
-  STATIC_ROW_CAPACITY,
-  StaticDrawBuffers,
-} from "#/uniforms/static-draw-buffers";
+import { EStaticPool, STATIC_PLACE_COLUMNS, StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
 
 /** Floats one place takes in the places buffer. */
 const FLOATS_PER_PLACE: number = STATIC_PLACE_COLUMNS * 4;
@@ -39,8 +35,35 @@ export class StaticPlaces {
 
   public constructor(buffers: StaticDrawBuffers) {
     this.buffers = buffers;
-    this.places.grow(STATIC_PLACE_CAPACITY);
-    this.rows.grow(STATIC_ROW_CAPACITY);
+    this.places.grow(buffers.capacity(EStaticPool.PLACES));
+    this.rows.grow(buffers.capacity(EStaticPool.ROWS));
+  }
+
+  /** Places handed out, against what the buffers hold. */
+  public get placeUse(): IRendererPoolUse {
+    return { capacity: this.places.capacity, used: this.places.used };
+  }
+
+  /** Rows handed out, against what the buffers hold. */
+  public get rowUse(): IRendererPoolUse {
+    return { capacity: this.rows.capacity, used: this.rows.used };
+  }
+
+  /** Rows the instance culls have to look at: up to the end of the last run handed out. */
+  public get rowExtent(): number {
+    return this.rows.extent;
+  }
+
+  /**
+   * Grows the places or the rows, their buffers and the runs handed out of them.
+   *
+   * @param pool - The places or the rows.
+   * @param capacity - What it holds from now on, more than it did.
+   */
+  public grow(pool: EStaticPool.PLACES | EStaticPool.ROWS, capacity: number): void {
+    this.buffers.grow(pool, capacity);
+    (pool === EStaticPool.PLACES ? this.places : this.rows).grow(capacity);
+    this.currentVersion += 1;
   }
 
   /** Bumped whenever a row or place changes, so a cull knows to run again. */

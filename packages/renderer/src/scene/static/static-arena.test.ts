@@ -46,7 +46,7 @@ describe("StaticArena", () => {
   });
 
   it("copies each geometry in after the last, its indices as stored, and a sequence for one without", () => {
-    const arena: StaticArena = new StaticArena(createBuffer(3));
+    const arena: StaticArena = new StaticArena(createBuffer(3), 64);
     const first: IStaticRange = arena.place(createBuffer(3), toNothingComing) as IStaticRange;
     const second: IStaticRange = arena.place(createBuffer(2, false), toNothingComing) as IStaticRange;
     const geometry: BufferGeometry = arena.createGeometry(EStaticDrawKind.SINGLE);
@@ -58,7 +58,7 @@ describe("StaticArena", () => {
   });
 
   it("gives a freed geometry's room to the next, and says when it goes empty", () => {
-    const arena: StaticArena = new StaticArena(createBuffer(3));
+    const arena: StaticArena = new StaticArena(createBuffer(3), 64);
     const first: IStaticRange = arena.place(createBuffer(3), toNothingComing) as IStaticRange;
 
     arena.free(first);
@@ -68,7 +68,7 @@ describe("StaticArena", () => {
   });
 
   it("grows by replacing its buffers, keeping what they held, and counts each time", () => {
-    const arena: StaticArena = new StaticArena(createBuffer(3));
+    const arena: StaticArena = new StaticArena(createBuffer(3), 64);
 
     arena.place(createBuffer(3), toNothingComing);
 
@@ -83,7 +83,7 @@ describe("StaticArena", () => {
   });
 
   it("grows once for everything still to come, so what comes next fits without growing again", () => {
-    const arena: StaticArena = new StaticArena(createBuffer(3));
+    const arena: StaticArena = new StaticArena(createBuffer(3), 64);
 
     arena.place(createBuffer(3), () => ({ indices: 1 << 20, vertices: 1 << 20 }));
 

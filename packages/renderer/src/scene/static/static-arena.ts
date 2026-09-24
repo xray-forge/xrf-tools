@@ -3,20 +3,15 @@ import { BufferAttribute, BufferGeometry, InstancedBufferAttribute, TypedArray }
 
 import { RangeAllocator } from "#/scene/static/range-allocator";
 import { EStaticDrawKind } from "#/scene/static/static-draw-kind";
+import { STATIC_HEADROOM, toGrownCapacity } from "#/scene/static/static-growth";
 import { IStaticRange } from "#/scene/static/static-range";
 import { IStaticRoom } from "#/scene/static/static-room";
 import { EVertexAttribute } from "#/shader/vertex-attribute";
-import { STATIC_DRAW_CAPACITY } from "#/uniforms/static-draw-buffers";
 
 /** Vertices an arena starts with. */
 const INITIAL_VERTICES: number = 1 << 16;
 /** Indices an arena starts with. */
 const INITIAL_INDICES: number = 1 << 18;
-/**
- * The room a growing arena leaves beyond what it holds and what is known to be coming, for what streams in later:
- * every growth copies and uploads all of it again, a hitch.
- */
-const HEADROOM: number = 1.25;
 /** Vertices an arena grows to at most: its widest attribute, four floats, then fills half a WebGPU buffer's default limit. */
 const VERTEX_LIMIT: number = 1 << 23;
 /** Indices an arena grows to at most, half a WebGPU buffer's default limit. */
@@ -99,15 +94,20 @@ export class StaticArena {
   private readonly indices: RangeAllocator = new RangeAllocator();
   private attributes: Map<string, BufferAttribute> = new Map();
   private index: BufferAttribute = new BufferAttribute(new Uint32Array(0), 1);
+  /** Slots the static draw buffers hold, which its slot attribute numbers. */
+  private slotCount: number;
   /** Every slot's own number, read by a static draw's first instance: which slot it draws. */
-  private slots: InstancedBufferAttribute = StaticArena.createSlots(STATIC_DRAW_CAPACITY);
+  private slots: InstancedBufferAttribute;
   private currentGeneration: number = 0;
   private placed: number = 0;
 
   /**
    * @param buffer - A geometry whose layout the arena holds.
+   * @param slots - Slots the static draw buffers hold.
    */
-  public constructor(buffer: BufferGeometry) {
+  public constructor(buffer: BufferGeometry, slots: number) {
+    this.slotCount = slots;
+    this.slots = StaticArena.createSlots(slots);
     this.signature = StaticArena.toSignature(buffer);
     this.layout = StaticArena.toAttributes(buffer);
     this.prototypes = {
@@ -177,6 +177,19 @@ export class StaticArena {
   }
 
   /**
+   * Numbers every slot of static draw buffers that grew: a slot attribute of the new count, which every geometry
+   * drawing the arena is made again for.
+   *
+   * @param slots - Slots the buffers hold from now on.
+   */
+  public growSlots(slots: number): void {
+    this.slotCount = slots;
+    // The old one is freed with the geometries drawing it, which its generation has made again.
+    this.slots = StaticArena.createSlots(slots);
+    this.currentGeneration += 1;
+  }
+
+  /**
    * @param range - A geometry placed, whose room another can take from now on.
    */
   public free(range: IStaticRange): void {
@@ -230,9 +243,7 @@ export class StaticArena {
    *   its initial size, more than it was, and never past its limit.
    */
   private static toCapacity(allocator: RangeAllocator, wanted: number, initial: number, limit: number): number {
-    const capacity: number = Math.ceil((allocator.used + wanted) * HEADROOM);
-
-    return Math.min(limit, Math.max(initial, allocator.capacity + 1, capacity));
+    return toGrownCapacity(allocator.used, wanted, allocator.capacity, initial, limit);
   }
 
   /** A run of a buffer's elements, the buffers grown until it fits or the limit says it never will. */
@@ -241,7 +252,7 @@ export class StaticArena {
 
     while (start === null && allocator.capacity < limit) {
       // Room freed in runs too short for it: grown past the whole run it needs.
-      const capacity: number = Math.min(limit, Math.ceil((allocator.capacity + count) * HEADROOM));
+      const capacity: number = Math.min(limit, Math.ceil((allocator.capacity + count) * STATIC_HEADROOM));
 
       if (allocator === this.vertices) {
         this.grow(capacity, this.indices.capacity);
@@ -276,7 +287,7 @@ export class StaticArena {
     this.attributes = attributes;
     this.index = new BufferAttribute(index, 1);
     // Freed with the geometries drawing it; a new one is uploaded with the ones that replace them.
-    this.slots = StaticArena.createSlots(STATIC_DRAW_CAPACITY);
+    this.slots = StaticArena.createSlots(this.slotCount);
     this.vertices.grow(vertices);
     this.indices.grow(indices);
     this.currentGeneration += 1;

@@ -23,21 +23,37 @@ export class StaticArenas {
   private readonly onGrown: (arena: StaticArena) => void;
   private readonly onEmptied: (arena: StaticArena) => void;
   private readonly toUpcoming: () => Iterable<SceneGeometry>;
+  private readonly toSlots: () => number;
 
   /**
    * @param onGrown - Told an arena replaced its buffers, which whatever draws them has to draw instead.
    * @param onEmptied - Told an arena holds nothing and goes, with whatever draws it.
    * @param toUpcoming - The geometries objects still waiting to draw will draw statically, which a growing arena
    *   makes room for at once.
+   * @param toSlots - Slots the static draw buffers hold, which each arena's slot attribute numbers.
    */
   public constructor(
     onGrown: (arena: StaticArena) => void,
     onEmptied: (arena: StaticArena) => void,
-    toUpcoming: () => Iterable<SceneGeometry>
+    toUpcoming: () => Iterable<SceneGeometry>,
+    toSlots: () => number
   ) {
     this.onGrown = onGrown;
     this.onEmptied = onEmptied;
     this.toUpcoming = toUpcoming;
+    this.toSlots = toSlots;
+  }
+
+  /**
+   * Numbers every slot of static draw buffers that grew, in every arena, and has what draws them made again.
+   *
+   * @param slots - Slots the buffers hold from now on.
+   */
+  public growSlots(slots: number): void {
+    this.arenas.forEach((arena: StaticArena) => {
+      arena.growSlots(slots);
+      this.onGrown(arena);
+    });
   }
 
   /**
@@ -49,7 +65,7 @@ export class StaticArenas {
     let arena: Maybe<StaticArena> = this.arenas.get(signature);
 
     if (!arena) {
-      arena = new StaticArena(geometry.buffer);
+      arena = new StaticArena(geometry.buffer, this.toSlots());
       this.arenas.set(signature, arena);
     }
 

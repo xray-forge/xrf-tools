@@ -1,4 +1,5 @@
 import { useInjection } from "@wirestate/react";
+import { IRendererPoolUse, IRendererStaticDrawReport } from "@xrf/renderer";
 import { ReactElement } from "react";
 
 import { ILevelStats } from "@/core/level/lib/stats/level-stats";
@@ -19,6 +20,11 @@ import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatDuration } from "@/lib/format/duration";
 import { formatBytes } from "@/lib/memory/format";
 
+/** How full one static draw pool is: what it holds against what it has room for. */
+function formatPoolUse({ used, capacity }: IRendererPoolUse): string {
+  return `${used} of ${capacity}`;
+}
+
 /**
  * What the viewport is holding and what it costs, measured rather than estimated.
  */
@@ -34,6 +40,7 @@ export function LevelStreamPanel({
   const textures: ILevelTextureReport = viewportService.textureReport;
   const problems: ReadonlyArray<ILevelTextureProblem> = textures.problems;
   const stream: ILevelStreamSummary = loadService.streamProfile;
+  const occluded: IRendererStaticDrawReport["occluded"] = stats.staticDraws.occluded;
 
   if (!loadService.level.value) {
     return (
@@ -94,6 +101,17 @@ export function LevelStreamPanel({
         <EditorPanelProperty label={"Taking a sector in"} value={formatDuration(stats.sceneTime)} />
         <EditorPanelProperty label={"Draw calls"} value={stats.draws} />
         <EditorPanelProperty label={"Triangles"} value={stats.triangles} />
+      </EditorPanelSection>
+
+      <EditorPanelSection title={"Static draws"}>
+        <EditorPanelProperty label={"Slots"} value={formatPoolUse(stats.staticDraws.slots)} />
+        <EditorPanelProperty label={"Instanced places"} value={formatPoolUse(stats.staticDraws.places)} />
+        <EditorPanelProperty label={"Instance rows"} value={formatPoolUse(stats.staticDraws.rows)} />
+        <EditorPanelProperty
+          label={"Occluded"}
+          value={`${occluded.draws} draws · ${occluded.instances} instances · ${occluded.triangles} triangles`}
+        />
+        <EditorPanelProperty label={"Drawn plainly at the limit"} value={stats.staticDraws.fallbacks} />
       </EditorPanelSection>
 
       <EditorPanelSection title={"Textures"}>

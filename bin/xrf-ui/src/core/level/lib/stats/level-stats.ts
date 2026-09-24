@@ -1,4 +1,4 @@
-import { IRenderFrameCost } from "@xrf/renderer";
+import { EMPTY_RENDERER_STATIC_DRAW_REPORT, IRendererStaticDrawReport, IRenderFrameCost } from "@xrf/renderer";
 
 /**
  * What a viewport is holding, against what a frame of it costs.
@@ -28,6 +28,8 @@ export interface ILevelStats {
   drawnWidth: number;
   /** Height of the same buffer. Everything above is paid for over these two numbers. */
   drawnHeight: number;
+  /** How full the static draws' pools are, how often one fell back to drawing plainly, and what occlusion removed. */
+  staticDraws: IRendererStaticDrawReport;
 }
 
 export const EMPTY_LEVEL_STATS: ILevelStats = {
@@ -40,6 +42,7 @@ export const EMPTY_LEVEL_STATS: ILevelStats = {
   framesPerSecond: 0,
   sceneTime: 0,
   sectors: 0,
+  staticDraws: EMPTY_RENDERER_STATIC_DRAW_REPORT,
   triangles: 0,
   worstDrawTime: 0,
   worstFrameTime: 0,
@@ -59,9 +62,15 @@ export interface ILevelHeld {
  * @param held - How many sectors are resident and what they came to.
  * @param frame - What the viewport's renderer counted for the frame just drawn.
  * @param sceneTime - What the scene has been paying to take one arriving sector.
+ * @param staticDraws - What the renderer said of its static draws.
  * @returns What the viewport is spending.
  */
-export function measureLevelStats(held: ILevelHeld, frame: IRenderFrameCost, sceneTime: number = 0): ILevelStats {
+export function measureLevelStats(
+  held: ILevelHeld,
+  frame: IRenderFrameCost,
+  sceneTime: number = 0,
+  staticDraws: IRendererStaticDrawReport = EMPTY_RENDERER_STATIC_DRAW_REPORT
+): ILevelStats {
   return {
     bytes: held.bytes,
     drawnHeight: frame.drawnHeight,
@@ -72,6 +81,7 @@ export function measureLevelStats(held: ILevelHeld, frame: IRenderFrameCost, sce
     framesPerSecond: frame.framesPerSecond,
     sceneTime,
     sectors: held.sectors,
+    staticDraws,
     triangles: frame.triangles,
     worstDrawTime: frame.worstDrawTime,
     worstFrameTime: frame.worstFrameTime,

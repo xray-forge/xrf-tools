@@ -23,7 +23,7 @@ import { ComputeNode, Node, StorageBufferNode, Texture, UniformNode } from "thre
 
 import { OcclusionUniforms } from "#/uniforms/occlusion-uniforms";
 import { OcclusionView } from "#/uniforms/occlusion-view";
-import { STATIC_PYRAMID_CAPACITY, StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
+import { EStaticPool, StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
 
 /** Texels of the level below, or pixels of the depth, a pyramid texel takes the farthest of, per axis. */
 export const PYRAMID_REDUCTION: number = 4;
@@ -139,7 +139,7 @@ export function toOccluded(
  *   counts are set per build, to the size of their level.
  */
 export function createPyramidShaders(buffers: StaticDrawBuffers, depth: Texture): Array<IPyramidLevelShader> {
-  const pyramid = storage(buffers.pyramid, "float", STATIC_PYRAMID_CAPACITY);
+  const pyramid = storage(buffers.pyramid, "float", buffers.capacity(EStaticPool.PYRAMID));
 
   return Array.from({ length: buffers.occlusion.levels.length }, (_, index: number) => {
     const source = { height: uniform(1, "uint"), offset: uniform(0, "uint"), width: uniform(1, "uint") };

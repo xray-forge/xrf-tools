@@ -1,12 +1,7 @@
 import { Nullable } from "@xrf/types";
 import { BufferAttribute, IndirectStorageBufferAttribute, Matrix4, Sphere } from "three/webgpu";
 
-import {
-  STATIC_DRAW_ARGUMENTS,
-  STATIC_DRAW_CAPACITY,
-  STATIC_ROW_CAPACITY,
-  StaticDrawBuffers,
-} from "#/uniforms/static-draw-buffers";
+import { EStaticPool, STATIC_DRAW_ARGUMENTS, StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
 
 /** The slots written since the buffers last went up, as one span. */
 interface IDirtySpan {
@@ -27,6 +22,8 @@ export class StaticDrawPool {
 
   private readonly buffers: StaticDrawBuffers;
   private readonly free: Array<number> = [];
+  /** The slots drawing an instanced draw, whose second list moves with the rows' capacity. */
+  private readonly listed: Set<number> = new Set();
   /** Slots handed out at least once; the cull only reads below it. */
   private used: number = 0;
   private readonly dirty: IDirtySpan = { first: Infinity, last: -1 };
@@ -56,8 +53,13 @@ export class StaticDrawPool {
     return this.used - this.free.length;
   }
 
+  /** Slots the buffers hold. */
+  public get capacity(): number {
+    return this.buffers.capacity(EStaticPool.SLOTS);
+  }
+
   /**
-   * @returns A slot, or null where every slot is taken and the draw has to be drawn otherwise.
+   * @returns A slot, or null where static draws are off or every slot is taken, until the buffers grow.
    */
   public allocate(): Nullable<number> {
     if (!this.isEnabled) {
@@ -68,7 +70,7 @@ export class StaticDrawPool {
       return this.free.pop() as number;
     }
 
-    if (this.used === STATIC_DRAW_CAPACITY) {
+    if (this.used === this.capacity) {
       return null;
     }
 
@@ -97,6 +99,7 @@ export class StaticDrawPool {
     args[at + 3] = baseVertex;
     args[at + 4] = slot;
     this.copyLate(at, 0);
+    this.listed.delete(slot);
     (this.buffers.spheres.array as Float32Array).set(
       [sphere.center.x, sphere.center.y, sphere.center.z, count ? sphere.radius : -1],
       slot * 4
@@ -122,7 +125,8 @@ export class StaticDrawPool {
     args[at + 3] = baseVertex;
     args[at + 4] = firstInstance;
     // The second cull lists its places in the second half of the list.
-    this.copyLate(at, STATIC_ROW_CAPACITY);
+    this.copyLate(at, this.buffers.capacity(EStaticPool.ROWS));
+    this.listed.add(slot);
     // Culled by its rows, never as a slot: the slot cull leaves its instance count at none for the rows to count up.
     (this.buffers.spheres.array as Float32Array)[slot * 4 + 3] = -1;
     this.touch(slot);
@@ -135,8 +139,19 @@ export class StaticDrawPool {
     (this.buffers.args.array as Uint32Array)[slot * STATIC_DRAW_ARGUMENTS + 1] = 0;
     (this.buffers.lateArgs.array as Uint32Array)[slot * STATIC_DRAW_ARGUMENTS + 1] = 0;
     (this.buffers.spheres.array as Float32Array)[slot * 4 + 3] = -1;
+    this.listed.delete(slot);
     this.free.push(slot);
     this.touch(slot);
+  }
+
+  /** Moves every instanced draw's second list to where it starts now, a row capacity on, after the rows grew. */
+  public relist(): void {
+    const rows: number = this.buffers.capacity(EStaticPool.ROWS);
+
+    for (const slot of this.listed) {
+      this.copyLate(slot * STATIC_DRAW_ARGUMENTS, rows);
+      this.touch(slot);
+    }
   }
 
   /** Marks what changed since the last upload to go up with the next use of the buffers. */

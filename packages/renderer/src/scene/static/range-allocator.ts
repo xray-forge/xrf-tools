@@ -1,4 +1,4 @@
-import { Nullable } from "@xrf/types";
+import { Maybe, Nullable } from "@xrf/types";
 
 /** A run of free elements. */
 interface IFreeRange {
@@ -16,6 +16,13 @@ export class RangeAllocator {
   /** Elements the buffer holds. */
   public get capacity(): number {
     return this.currentCapacity;
+  }
+
+  /** Where the last run handed out ends: nothing at or past it is in use. */
+  public get extent(): number {
+    const last: Maybe<IFreeRange> = this.free[this.free.length - 1];
+
+    return last && last.start + last.count === this.currentCapacity ? last.start : this.currentCapacity;
   }
 
   /** Elements handed out and not released. */

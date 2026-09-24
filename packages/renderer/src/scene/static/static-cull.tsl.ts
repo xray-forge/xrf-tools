@@ -6,15 +6,16 @@ import { createEarlyInstanceCullShader, createLateInstanceCullShader } from "#/s
 import { toOccluded } from "#/scene/static/static-occlusion.tsl";
 import {
   EStaticCullState,
+  EStaticPool,
+  STATIC_CULL_COUNTS,
   STATIC_DRAW_ARGUMENTS,
-  STATIC_DRAW_CAPACITY,
-  STATIC_PYRAMID_CAPACITY,
   StaticDrawBuffers,
 } from "#/uniforms/static-draw-buffers";
 
 /**
  * The culls of the static draws, a frame's worth: the first before anything draws, the second once the first's draws
- * have drawn their depth. Each culls the single draws by slot, then the instanced ones by row.
+ * have drawn their depth. Each culls the single draws by slot, then the instanced ones by row. Built over the buffers
+ * as they are laid out, and dispatched only as far as their slots and rows are used.
  */
 export interface IStaticCullShader {
   early: Array<ComputeNode>;
@@ -24,7 +25,7 @@ export interface IStaticCullShader {
 }
 
 /**
- * @param buffers - The static draw buffers.
+ * @param buffers - The static draw buffers, as they are laid out now.
  * @returns Both culls, one invocation a slot or a row, and the planes they read.
  */
 export function createStaticCullShader(buffers: StaticDrawBuffers): IStaticCullShader {
@@ -43,12 +44,13 @@ export function createStaticCullShader(buffers: StaticDrawBuffers): IStaticCullS
  * does not hide it; one it hides is left for the second cull. Every slot's second instance count starts at none.
  */
 function createEarlySlotCullShader(buffers: StaticDrawBuffers, planes: UniformArrayNode<string>): ComputeNode {
-  const args = storage(buffers.args, "uint", STATIC_DRAW_CAPACITY * STATIC_DRAW_ARGUMENTS);
-  const lateArgs = storage(buffers.lateArgs, "uint", STATIC_DRAW_CAPACITY * STATIC_DRAW_ARGUMENTS);
-  const spheres = storage(buffers.spheres, "vec4", STATIC_DRAW_CAPACITY).toReadOnly();
-  const states = storage(buffers.slotStates, "uint", STATIC_DRAW_CAPACITY);
-  const pyramid = storage(buffers.pyramid, "float", STATIC_PYRAMID_CAPACITY).toReadOnly();
-  const counts = storage(buffers.counts, "uint", 2).toAtomic();
+  const slots: number = buffers.capacity(EStaticPool.SLOTS);
+  const args = storage(buffers.args, "uint", slots * STATIC_DRAW_ARGUMENTS);
+  const lateArgs = storage(buffers.lateArgs, "uint", slots * STATIC_DRAW_ARGUMENTS);
+  const spheres = storage(buffers.spheres, "vec4", slots).toReadOnly();
+  const states = storage(buffers.slotStates, "uint", slots);
+  const pyramid = storage(buffers.pyramid, "float", buffers.capacity(EStaticPool.PYRAMID)).toReadOnly();
+  const counts = storage(buffers.counts, "uint", STATIC_CULL_COUNTS).toAtomic();
 
   return Fn(() => {
     const sphere = spheres.element(instanceIndex);
@@ -71,16 +73,20 @@ function createEarlySlotCullShader(buffers: StaticDrawBuffers, planes: UniformAr
       atomicAdd(counts.element(0), uint(1));
       atomicAdd(counts.element(1), args.element(at));
     });
-  })().compute(STATIC_DRAW_CAPACITY);
+  })().compute(slots);
 }
 
-/** The second cull of the single draws: a slot the first left draws where this frame's depth so far does not hide it. */
+/**
+ * The second cull of the single draws: a slot the first left draws where this frame's depth so far does not hide it,
+ * and is counted as occluded where it still does.
+ */
 function createLateSlotCullShader(buffers: StaticDrawBuffers): ComputeNode {
-  const lateArgs = storage(buffers.lateArgs, "uint", STATIC_DRAW_CAPACITY * STATIC_DRAW_ARGUMENTS);
-  const spheres = storage(buffers.spheres, "vec4", STATIC_DRAW_CAPACITY).toReadOnly();
-  const states = storage(buffers.slotStates, "uint", STATIC_DRAW_CAPACITY).toReadOnly();
-  const pyramid = storage(buffers.pyramid, "float", STATIC_PYRAMID_CAPACITY).toReadOnly();
-  const counts = storage(buffers.counts, "uint", 2).toAtomic();
+  const slots: number = buffers.capacity(EStaticPool.SLOTS);
+  const lateArgs = storage(buffers.lateArgs, "uint", slots * STATIC_DRAW_ARGUMENTS);
+  const spheres = storage(buffers.spheres, "vec4", slots).toReadOnly();
+  const states = storage(buffers.slotStates, "uint", slots).toReadOnly();
+  const pyramid = storage(buffers.pyramid, "float", buffers.capacity(EStaticPool.PYRAMID)).toReadOnly();
+  const counts = storage(buffers.counts, "uint", STATIC_CULL_COUNTS).toAtomic();
 
   return Fn(() => {
     If(states.element(instanceIndex).equal(EStaticCullState.OCCLUDED), () => {
@@ -91,7 +97,10 @@ function createLateSlotCullShader(buffers: StaticDrawBuffers): ComputeNode {
         lateArgs.element(at.add(1)).assign(1);
         atomicAdd(counts.element(0), uint(1));
         atomicAdd(counts.element(1), lateArgs.element(at));
+      }).Else(() => {
+        atomicAdd(counts.element(2), uint(1));
+        atomicAdd(counts.element(4), lateArgs.element(at));
       });
     });
-  })().compute(STATIC_DRAW_CAPACITY);
+  })().compute(slots);
 }

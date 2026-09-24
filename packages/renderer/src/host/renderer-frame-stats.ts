@@ -1,5 +1,5 @@
 import { IRendererCameraPose } from "#/contract/renderer-camera";
-import { IRendererReport } from "#/contract/renderer-report";
+import { IRendererReport, IRendererStaticDrawReport } from "#/contract/renderer-report";
 import { RendererDevice } from "#/device/renderer-device";
 import { RenderFrameTimer } from "#/frame/render-frame-timer";
 import { RendererGpuTimings } from "#/host/renderer-gpu-timings";
@@ -52,6 +52,7 @@ export class RendererFrameStats {
    * @param camera - Where the camera stands.
    * @param passes - The frame's passes, in frame order.
    * @param kept - What the static cull kept, which three's own counts leave out.
+   * @param staticDraws - How full the static draws' pools are and what occlusion removed.
    * @returns What the frames have been costing.
    */
   public toReport(
@@ -59,7 +60,8 @@ export class RendererFrameStats {
     canvas: OffscreenCanvas,
     camera: IRendererCameraPose,
     passes: ReadonlyArray<string>,
-    kept: IStaticCullCounts
+    kept: IStaticCullCounts,
+    staticDraws: IRendererStaticDrawReport
   ): IRendererReport {
     const { render } = device.renderer.info;
 
@@ -78,6 +80,7 @@ export class RendererFrameStats {
       },
       isGpuTimed: device.isGpuTimed,
       passes: this.gpuTimings.describe(passes),
+      staticDraws,
     };
   }
 

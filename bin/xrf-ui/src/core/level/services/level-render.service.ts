@@ -245,7 +245,7 @@ export class LevelRenderService extends RenderSurfaceService {
     const [x, y, z] = report.camera.position;
 
     this.viewportService.report(
-      measureLevelStats(content.held(), report.frame, content.meanAddTime),
+      measureLevelStats(content.held(), report.frame, content.meanAddTime, report.staticDraws),
       toLevelCameraReading(report.camera)
     );
 

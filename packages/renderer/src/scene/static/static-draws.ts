@@ -1,6 +1,7 @@
 import { Maybe, Nullable } from "@xrf/types";
 import { Material, Matrix4, Object3D, Scene, Sphere } from "three/webgpu";
 
+import { IRendererPoolUse, IRendererStaticDrawReport } from "#/contract/renderer-report";
 import { IRendererInstances } from "#/contract/scene/renderer-object";
 import { ISurfaceMaterial } from "#/material/surface-material";
 import { SceneGeometry } from "#/scene/geometry/scene-geometry";
@@ -10,9 +11,11 @@ import { StaticBatches } from "#/scene/static/static-batches";
 import { StaticCull } from "#/scene/static/static-cull";
 import { EStaticDrawKind } from "#/scene/static/static-draw-kind";
 import { StaticDrawPool } from "#/scene/static/static-draw-pool";
+import { toGrownCapacity } from "#/scene/static/static-growth";
 import { StaticPlaces } from "#/scene/static/static-places";
 import { IStaticRange } from "#/scene/static/static-range";
-import { StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
+import { IStaticUpcoming } from "#/scene/static/static-upcoming";
+import { EStaticPool, StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
 
 /** A run of rows: where it starts, and how many places it tests. */
 interface IRowRun {
@@ -20,10 +23,14 @@ interface IRowRun {
   count: number;
 }
 
+/** What the objects still waiting to draw will take of each pool. */
+type TStaticDemand = Record<EStaticPool.SLOTS | EStaticPool.PLACES | EStaticPool.ROWS, number>;
+
 /**
  * Everything drawing static draws: the slots each draw's arguments, sphere and matrix sit in, the places and rows of
  * the instanced ones, the arenas their geometry is copied into, the batches issuing them, one object a material, arena
- * and kind, and the cull on the GPU.
+ * and kind, and the cull on the GPU. A pool that runs out grows, once for everything the queue is known to bring; a
+ * draw is drawn plainly only where the device's limit stops it.
  */
 export class StaticDraws {
   /** What culls the static draws on the GPU, which the frame dispatches before drawing them and again between. */
@@ -31,19 +38,25 @@ export class StaticDraws {
   /** Where the batches' second draws stand, drawn into the G-buffer after the second cull. */
   public readonly late: Scene = new Scene();
 
+  private readonly buffers: StaticDrawBuffers;
   private readonly pool: StaticDrawPool;
   private readonly places: StaticPlaces;
   private readonly arenas: StaticArenas;
   /** The rows each instanced draw's slot tests its places by. */
   private readonly rows: Map<number, IRowRun> = new Map();
   private readonly batches: StaticBatches;
+  private readonly toUpcoming: () => Iterable<IStaticUpcoming>;
+  /** Times a static draw was refused room by the device's limit and drawn plainly instead. */
+  private fallbacks: number = 0;
 
   /**
    * @param buffers - What every static draw reads.
    * @param scene - The scene of the pass drawing static draws, where the batches stand.
-   * @param toUpcoming - The geometries objects still waiting to draw will draw statically.
+   * @param toUpcoming - What the objects still waiting to draw will take of the static draws.
    */
-  public constructor(buffers: StaticDrawBuffers, scene: Object3D, toUpcoming: () => Iterable<SceneGeometry>) {
+  public constructor(buffers: StaticDrawBuffers, scene: Object3D, toUpcoming: () => Iterable<IStaticUpcoming>) {
+    this.buffers = buffers;
+    this.toUpcoming = toUpcoming;
     this.pool = new StaticDrawPool(buffers);
     this.places = new StaticPlaces(buffers);
     this.late.matrixWorldAutoUpdate = false;
@@ -52,7 +65,8 @@ export class StaticDraws {
     this.arenas = new StaticArenas(
       (arena: StaticArena) => this.batches.refresh(arena),
       (arena: StaticArena) => this.batches.release(arena),
-      toUpcoming
+      () => [...toUpcoming()].map((upcoming: IStaticUpcoming) => upcoming.geometry),
+      () => buffers.capacity(EStaticPool.SLOTS)
     );
   }
 
@@ -71,6 +85,20 @@ export class StaticDraws {
   /** Every material a batch draws. */
   public get materials(): Iterable<Material> {
     return this.batches.materials;
+  }
+
+  /** How full each pool is, how many draws fell back to the plain path, and what the last cull found occluded. */
+  public get report(): IRendererStaticDrawReport {
+    const slots: IRendererPoolUse = { capacity: this.pool.capacity, used: this.pool.count };
+    const { occludedDraws, occludedInstances, occludedTriangles } = this.cull.kept;
+
+    return {
+      fallbacks: this.fallbacks,
+      occluded: { draws: occludedDraws, instances: occludedInstances, triangles: occludedTriangles },
+      places: this.places.placeUse,
+      rows: this.places.rowUse,
+      slots,
+    };
   }
 
   /**
@@ -97,10 +125,21 @@ export class StaticDraws {
   }
 
   /**
-   * @returns A slot for one static draw, or null where static draws are off or every slot is taken.
+   * @returns A slot for one static draw, the slots grown where every one is taken; null where static draws are off or
+   *   the slots cannot grow past the device's limit.
    */
   public allocate(): Nullable<number> {
-    return this.pool.allocate();
+    if (!this.pool.isEnabled) {
+      return null;
+    }
+
+    const slot: Nullable<number> = this.pool.allocate() ?? (this.growSlots() ? this.pool.allocate() : null);
+
+    if (slot === null) {
+      this.fallbacks += 1;
+    }
+
+    return slot;
   }
 
   /**
@@ -131,7 +170,7 @@ export class StaticDraws {
    * @returns Where its places start, or null where there is no room and it has to be drawn plainly.
    */
   public allocatePlaces(count: number): Nullable<number> {
-    return this.pool.isEnabled ? this.places.allocatePlaces(count) : null;
+    return this.pool.isEnabled ? this.allocateRun(EStaticPool.PLACES, count) : null;
   }
 
   /**
@@ -181,7 +220,7 @@ export class StaticDraws {
     }
 
     if (!run) {
-      const rowStart: Nullable<number> = this.places.allocateRows(places);
+      const rowStart: Nullable<number> = this.allocateRun(EStaticPool.ROWS, places);
 
       if (rowStart === null) {
         return false;
@@ -218,6 +257,83 @@ export class StaticDraws {
    */
   public invalidate(key: string): void {
     this.batches.invalidate(key);
+  }
+
+  /** Grows the slots once for what the queue brings, and every arena's slot attribute with them. */
+  private growSlots(): boolean {
+    const capacity: number = toGrownCapacity(
+      this.pool.count,
+      1 + this.toDemand()[EStaticPool.SLOTS],
+      this.pool.capacity,
+      this.buffers.initial(EStaticPool.SLOTS),
+      this.buffers.limit(EStaticPool.SLOTS)
+    );
+
+    if (capacity <= this.pool.capacity) {
+      return false;
+    }
+
+    this.buffers.grow(EStaticPool.SLOTS, capacity);
+    // A new slot attribute in every arena, so every batch is made again over it and the new arguments.
+    this.arenas.growSlots(capacity);
+
+    return true;
+  }
+
+  /**
+   * @returns A run of places or rows, grown until it fits: first for what the queue brings, then past the whole run,
+   *   where freed room lies in runs too short for it. Null where the device's limit stops it.
+   */
+  private allocateRun(pool: EStaticPool.PLACES | EStaticPool.ROWS, count: number): Nullable<number> {
+    const allocate = (): Nullable<number> =>
+      pool === EStaticPool.PLACES ? this.places.allocatePlaces(count) : this.places.allocateRows(count);
+    const limit: number = this.buffers.limit(pool);
+    let start: Nullable<number> = allocate();
+    let isFirst: boolean = true;
+
+    while (start === null) {
+      const use: IRendererPoolUse = pool === EStaticPool.PLACES ? this.places.placeUse : this.places.rowUse;
+      const capacity: number = toGrownCapacity(
+        isFirst ? use.used : use.capacity,
+        count + (isFirst ? this.toDemand()[pool] : 0),
+        use.capacity,
+        this.buffers.initial(pool),
+        limit
+      );
+
+      if (capacity <= use.capacity) {
+        this.fallbacks += 1;
+
+        return null;
+      }
+
+      this.places.grow(pool, capacity);
+
+      if (pool === EStaticPool.ROWS) {
+        // The second cull lists its places a row capacity on, which moved.
+        this.pool.relist();
+      }
+
+      // Every material reading the places or the list binds the new buffer once its batch records.
+      this.batches.invalidateAll();
+      isFirst = false;
+      start = allocate();
+    }
+
+    return start;
+  }
+
+  /** What the objects still waiting to draw will take of each pool, besides what they hold already. */
+  private toDemand(): TStaticDemand {
+    const demand: TStaticDemand = { [EStaticPool.PLACES]: 0, [EStaticPool.ROWS]: 0, [EStaticPool.SLOTS]: 0 };
+
+    for (const { sections, places } of this.toUpcoming()) {
+      demand[EStaticPool.SLOTS] += sections;
+      demand[EStaticPool.PLACES] += places;
+      demand[EStaticPool.ROWS] += places * sections;
+    }
+
+    return demand;
   }
 
   private freeRows(slot: number): void {

@@ -1,5 +1,6 @@
-import { PerspectiveCamera, Scene, Texture, WebGPURenderer } from "three/webgpu";
+import { BufferAttribute, PerspectiveCamera, Scene, Texture, WebGPURenderer } from "three/webgpu";
 
+import { destroyStorageAttribute } from "#/internals/renderer-backend";
 import { IStaticCullCounts } from "#/scene/static/static-cull-counts";
 import { createStaticCullShader, IStaticCullShader } from "#/scene/static/static-cull.tsl";
 import { StaticDepthPyramid } from "#/scene/static/static-depth-pyramid";
@@ -13,17 +14,28 @@ import { CullView } from "#/visibility/cull-view";
  * two phases. The first draws what the frustum keeps and the last frame's depth does not hide; the second tests what
  * that depth hid against this frame's depth so far and draws what it no longer hides, so nothing appears a frame
  * late. Culled again only when the view moved or a slot, row or place changed; what it kept stays drawn meanwhile.
+ * Its shaders are built again whenever the buffers grow, and dispatched only as far as slots and rows are used.
  */
 export class StaticCull {
   private readonly buffers: StaticDrawBuffers;
   private readonly pool: StaticDrawPool;
   private readonly places: StaticPlaces;
-  private readonly shader: IStaticCullShader;
+  private shader: IStaticCullShader;
+  /** The buffers' layout the shaders were built over. */
+  private layout: number;
+  /** Buffers the last growth replaced, freed a frame later, once no recording binds them. */
+  private retiring: Array<BufferAttribute> = [];
   private readonly pyramid: StaticDepthPyramid;
   /** What the second phase draws, which the G-buffer draws after the second cull. */
   private readonly late: Scene;
   /** What the last cull read back kept, and whether a read is in flight. */
-  private counts: IStaticCullCounts = { draws: 0, triangles: 0 };
+  private counts: IStaticCullCounts = {
+    draws: 0,
+    occludedDraws: 0,
+    occludedInstances: 0,
+    occludedTriangles: 0,
+    triangles: 0,
+  };
   private isReading: boolean = false;
   /** The view and pool versions the last dispatch culled against. */
   private viewVersion: number = -1;
@@ -45,6 +57,7 @@ export class StaticCull {
     this.places = places;
     this.late = late;
     this.shader = createStaticCullShader(buffers);
+    this.layout = buffers.layout;
     this.pyramid = new StaticDepthPyramid(buffers);
   }
 
@@ -82,10 +95,13 @@ export class StaticCull {
    * @param renderer - The renderer drawing.
    */
   public dispatch(renderer: WebGPURenderer): void {
+    this.retire(renderer);
+
     if (!this.isPending) {
       return;
     }
 
+    this.build();
     // The upload comes first: the arguments it writes carry an instance count the cull then writes over.
     this.pool.flush();
     this.places.flush();
@@ -116,6 +132,8 @@ export class StaticCull {
   ): void {
     if (this.isCulled) {
       this.pyramid.build(renderer, depth, width, height);
+      // A pyramid grown for a larger drawing is a buffer the culls built before it do not read.
+      this.build();
       renderer.compute(this.shader.late);
     }
 
@@ -163,9 +181,15 @@ export class StaticCull {
     renderer
       .getArrayBufferAsync(this.buffers.counts)
       .then((buffer: ArrayBuffer) => {
-        const [draws, indices] = new Uint32Array(buffer);
+        const [draws, indices, occludedDraws, occludedInstances, occludedIndices] = new Uint32Array(buffer);
 
-        this.counts = { draws, triangles: indices / 3 };
+        this.counts = {
+          draws,
+          occludedDraws,
+          occludedInstances,
+          occludedTriangles: occludedIndices / 3,
+          triangles: indices / 3,
+        };
       })
       .catch(() => {})
       .finally(() => (this.isReading = false));
@@ -174,5 +198,32 @@ export class StaticCull {
   public dispose(): void {
     [...this.shader.early, ...this.shader.late].forEach((compute) => compute.dispose());
     this.pyramid.dispose();
+  }
+
+  /** Builds the shaders again over buffers that grew, and sizes their dispatches to what is in use. */
+  private build(): void {
+    if (this.layout !== this.buffers.layout) {
+      const planes = this.shader.planes;
+
+      [...this.shader.early, ...this.shader.late].forEach((compute) => compute.dispose());
+      this.shader = createStaticCullShader(this.buffers);
+      this.shader.planes.forEach((plane, index: number) => plane.copy(planes[index]));
+      this.layout = this.buffers.layout;
+    }
+
+    // An invocation a slot handed out and a row up to the last run: nothing past them is in use.
+    const slots: number = Math.max(this.pool.extent, 1);
+    const rows: number = Math.max(this.places.rowExtent, 1);
+
+    this.shader.early[0].count = slots;
+    this.shader.late[0].count = slots;
+    this.shader.early[1].count = rows;
+    this.shader.late[1].count = rows;
+  }
+
+  /** Frees the GPU buffers a growth replaced a frame ago, and holds the ones replaced since for the next frame. */
+  private retire(renderer: WebGPURenderer): void {
+    this.retiring.forEach((attribute: BufferAttribute) => destroyStorageAttribute(renderer, attribute));
+    this.retiring = this.buffers.takeRetired();
   }
 }

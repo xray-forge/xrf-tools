@@ -2,7 +2,7 @@ import { describe, expect, it } from "@jest/globals";
 import { Matrix4, Sphere, Vector3 } from "three/webgpu";
 
 import { StaticDrawPool } from "#/scene/static/static-draw-pool";
-import { STATIC_ROW_CAPACITY, StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
+import { EStaticPool, StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
 
 function createPool(): { pool: StaticDrawPool; buffers: StaticDrawBuffers } {
   const buffers: StaticDrawBuffers = new StaticDrawBuffers();
@@ -79,8 +79,59 @@ describe("StaticDrawPool", () => {
     pool.writeListed(slot, 30, 12, 7, 100);
 
     expect(Array.from((buffers.args.array as Uint32Array).subarray(0, 5))).toEqual([12, 0, 30, 7, 100]);
-    expect((buffers.lateArgs.array as Uint32Array)[4]).toBe(100 + STATIC_ROW_CAPACITY);
+    expect((buffers.lateArgs.array as Uint32Array)[4]).toBe(100 + buffers.capacity(EStaticPool.ROWS));
     // Culled by its rows, never as a slot.
     expect((buffers.spheres.array as Float32Array)[3]).toBe(-1);
+  });
+
+  it("hands out no slot past the buffers' capacity, and the ones they grow by once they have", () => {
+    const buffers: StaticDrawBuffers = new StaticDrawBuffers({ [EStaticPool.SLOTS]: 2 });
+    const pool: StaticDrawPool = new StaticDrawPool(buffers);
+
+    pool.isEnabled = true;
+    pool.allocate();
+    pool.allocate();
+
+    expect(pool.allocate()).toBeNull();
+
+    buffers.grow(EStaticPool.SLOTS, 4);
+
+    expect(pool.allocate()).toBe(2);
+    expect(pool.capacity).toBe(4);
+  });
+
+  it("keeps a slot's arguments through a growth, and uploads them whole with the new buffers", () => {
+    const buffers: StaticDrawBuffers = new StaticDrawBuffers({ [EStaticPool.SLOTS]: 2 });
+    const pool: StaticDrawPool = new StaticDrawPool(buffers);
+
+    pool.isEnabled = true;
+
+    const slot = pool.allocate() as number;
+
+    pool.write(slot, 30, 12, 7, new Sphere(new Vector3(1, 2, 3), 4), new Matrix4());
+    buffers.grow(EStaticPool.SLOTS, 8);
+
+    expect(Array.from((buffers.args.array as Uint32Array).subarray(0, 5))).toEqual([12, 1, 30, 7, slot]);
+    expect(Array.from((buffers.spheres.array as Float32Array).subarray(0, 4))).toEqual([1, 2, 3, 4]);
+  });
+
+  it("moves every instanced draw's second list a row capacity on after the rows grow, and only theirs", () => {
+    const buffers: StaticDrawBuffers = new StaticDrawBuffers({ [EStaticPool.ROWS]: 16 });
+    const pool: StaticDrawPool = new StaticDrawPool(buffers);
+
+    pool.isEnabled = true;
+
+    const listed = pool.allocate() as number;
+    const single = pool.allocate() as number;
+    const late = buffers.lateArgs.array as Uint32Array;
+
+    pool.writeListed(listed, 0, 3, 0, 5);
+    pool.write(single, 0, 3, 0, new Sphere(new Vector3(), 1), new Matrix4());
+    buffers.grow(EStaticPool.ROWS, 64);
+    pool.relist();
+
+    expect((buffers.lateArgs.array as Uint32Array)[listed * 5 + 4]).toBe(5 + 64);
+    expect((buffers.lateArgs.array as Uint32Array)[single * 5 + 4]).toBe(single);
+    expect(buffers.lateArgs.array).toBe(late);
   });
 });

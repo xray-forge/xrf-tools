@@ -16,7 +16,8 @@ const IDLE_MATERIAL: Material = new Material();
 
 /** One phase's draw of a batch: its mesh over the arena, drawn by that phase's arguments. */
 interface IBatchPhase {
-  args: IndirectStorageBufferAttribute;
+  /** The arguments it draws by, which the slots' growth replaces. */
+  toArgs: () => IndirectStorageBufferAttribute;
   geometry: BufferGeometry;
   mesh: Mesh;
 }
@@ -52,10 +53,10 @@ export class StaticBatch {
     this.arena = arena;
     this.kind = kind;
     this.generation = arena.generation;
-    this.phases = [pool.args, pool.lateArgs].map((args: IndirectStorageBufferAttribute) => {
-      const geometry: BufferGeometry = this.createGeometry(args);
+    this.phases = [() => pool.args, () => pool.lateArgs].map((toArgs: () => IndirectStorageBufferAttribute) => {
+      const geometry: BufferGeometry = this.createGeometry(toArgs());
 
-      return { args, geometry, mesh: createSceneMesh(geometry, null, IDLE_MATERIAL) };
+      return { geometry, mesh: createSceneMesh(geometry, null, IDLE_MATERIAL), toArgs };
     });
   }
 
@@ -126,8 +127,8 @@ export class StaticBatch {
   }
 
   /**
-   * Draws the arena's buffers as they are now, where it grew since: new meshes over new geometries, since three keeps
-   * what it built for a mesh's first geometry.
+   * Draws the arena's buffers and the slots' arguments as they are now, where either grew since: new meshes over new
+   * geometries, since three keeps what it built for a mesh's first geometry.
    */
   public refresh(): void {
     if (this.generation === this.arena.generation) {
@@ -142,7 +143,7 @@ export class StaticBatch {
 
       phase.mesh.removeFromParent();
       phase.geometry.dispose();
-      phase.geometry = this.createGeometry(phase.args);
+      phase.geometry = this.createGeometry(phase.toArgs());
       phase.mesh = createSceneMesh(phase.geometry, null, material);
       parent?.add(phase.mesh);
     }

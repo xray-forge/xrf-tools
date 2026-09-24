@@ -1,6 +1,7 @@
 import { Maybe, Nullable } from "@xrf/types";
 import { Material, Mesh, Object3D, PerspectiveCamera, Scene } from "three/webgpu";
 
+import { IRendererStaticDrawReport } from "#/contract/renderer-report";
 import { IRendererGeometry } from "#/contract/scene/renderer-geometry";
 import { IRendererObject } from "#/contract/scene/renderer-object";
 import { ERendererPass, IRendererSurface } from "#/contract/scene/renderer-surface";
@@ -16,6 +17,7 @@ import { RendererSkeletons } from "#/scene/skeleton/renderer-skeletons";
 import { createSceneStaging, ISceneStaging } from "#/scene/staging/scene-staging";
 import { StaticCull } from "#/scene/static/static-cull";
 import { StaticDraws } from "#/scene/static/static-draws";
+import { IStaticUpcoming } from "#/scene/static/static-upcoming";
 import { MaterialReadiness } from "#/scene/surface/material-readiness";
 import { SurfaceLibrary } from "#/scene/surface/surface-library";
 import { IDdsRefusal } from "#/texture/dds/dds-refusal";
@@ -79,6 +81,11 @@ export class RendererScene {
       this.staticDraws.isEnabled = isEnabled;
       this.transact(() => this.objects.forEach((entry: SceneObject) => this.build(entry)));
     }
+  }
+
+  /** How full the static draws' pools are and what the last cull found occluded. */
+  public get staticDrawReport(): IRendererStaticDrawReport {
+    return this.staticDraws.report;
   }
 
   /** Whether any object waits: for a material to compile, a texture to upload, or its turn to be applied. */
@@ -276,13 +283,21 @@ export class RendererScene {
     entry.apply(this.resolver.resolve(entry), this.scenes);
   }
 
-  /** The geometries the waiting objects will draw statically. */
-  private *toUpcomingStatic(): Iterable<SceneGeometry> {
+  /** What the waiting objects will take of the static draws. */
+  private *toUpcomingStatic(): Iterable<IStaticUpcoming> {
     for (const entry of this.changes.pending) {
       const state: Nullable<ISceneObjectState> = this.resolver.resolve(entry);
 
-      if (state && state.surfaces.some((surface) => isStaticDraw(state, surface))) {
-        yield state.geometry;
+      if (!state) {
+        continue;
+      }
+
+      const sections: number = state.geometry.sections.filter((_, index: number) =>
+        isStaticDraw(state, state.surfaces[index])
+      ).length;
+
+      if (sections) {
+        yield { geometry: state.geometry, places: state.instances?.places ?? 0, sections };
       }
     }
   }

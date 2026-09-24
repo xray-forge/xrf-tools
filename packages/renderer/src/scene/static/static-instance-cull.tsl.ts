@@ -5,10 +5,9 @@ import { toInFrustum } from "#/scene/static/static-frustum.tsl";
 import { toOccluded } from "#/scene/static/static-occlusion.tsl";
 import {
   EStaticCullState,
+  EStaticPool,
+  STATIC_CULL_COUNTS,
   STATIC_DRAW_ARGUMENTS,
-  STATIC_DRAW_CAPACITY,
-  STATIC_PYRAMID_CAPACITY,
-  STATIC_ROW_CAPACITY,
   StaticDrawBuffers,
 } from "#/uniforms/static-draw-buffers";
 
@@ -26,13 +25,14 @@ export function createEarlyInstanceCullShader(
   buffers: StaticDrawBuffers,
   planes: UniformArrayNode<string>
 ): ComputeNode {
-  const args = storage(buffers.args, "uint", STATIC_DRAW_CAPACITY * STATIC_DRAW_ARGUMENTS).toAtomic();
-  const spheres = storage(buffers.rowSpheres, "vec4", STATIC_ROW_CAPACITY).toReadOnly();
-  const targets = storage(buffers.rowTargets, "uvec4", STATIC_ROW_CAPACITY).toReadOnly();
-  const visible = storage(buffers.visible, "uint", STATIC_ROW_CAPACITY * 2);
-  const states = storage(buffers.rowStates, "uint", STATIC_ROW_CAPACITY);
-  const pyramid = storage(buffers.pyramid, "float", STATIC_PYRAMID_CAPACITY).toReadOnly();
-  const counts = storage(buffers.counts, "uint", 2).toAtomic();
+  const rows: number = buffers.capacity(EStaticPool.ROWS);
+  const args = storage(buffers.args, "uint", buffers.capacity(EStaticPool.SLOTS) * STATIC_DRAW_ARGUMENTS).toAtomic();
+  const spheres = storage(buffers.rowSpheres, "vec4", rows).toReadOnly();
+  const targets = storage(buffers.rowTargets, "uvec4", rows).toReadOnly();
+  const visible = storage(buffers.visible, "uint", rows * 2);
+  const states = storage(buffers.rowStates, "uint", rows);
+  const pyramid = storage(buffers.pyramid, "float", buffers.capacity(EStaticPool.PYRAMID)).toReadOnly();
+  const counts = storage(buffers.counts, "uint", STATIC_CULL_COUNTS).toAtomic();
 
   return Fn(() => {
     const sphere = spheres.element(instanceIndex);
@@ -60,24 +60,30 @@ export function createEarlyInstanceCullShader(
       });
       atomicAdd(counts.element(1), target.w);
     });
-  })().compute(STATIC_ROW_CAPACITY);
+  })().compute(rows);
 }
 
 /**
  * The second cull of the instanced draws: a row the first left counts its draw's second instance count up where this
- * frame's depth so far does not hide it, listing its place in the second half of the list.
+ * frame's depth so far does not hide it, listing its place in the second half of the list, a row capacity on; one it
+ * still hides is counted as occluded.
  *
  * @param buffers - The static draw buffers.
  * @returns The compute pass.
  */
 export function createLateInstanceCullShader(buffers: StaticDrawBuffers): ComputeNode {
-  const lateArgs = storage(buffers.lateArgs, "uint", STATIC_DRAW_CAPACITY * STATIC_DRAW_ARGUMENTS).toAtomic();
-  const spheres = storage(buffers.rowSpheres, "vec4", STATIC_ROW_CAPACITY).toReadOnly();
-  const targets = storage(buffers.rowTargets, "uvec4", STATIC_ROW_CAPACITY).toReadOnly();
-  const visible = storage(buffers.visible, "uint", STATIC_ROW_CAPACITY * 2);
-  const states = storage(buffers.rowStates, "uint", STATIC_ROW_CAPACITY).toReadOnly();
-  const pyramid = storage(buffers.pyramid, "float", STATIC_PYRAMID_CAPACITY).toReadOnly();
-  const counts = storage(buffers.counts, "uint", 2).toAtomic();
+  const rows: number = buffers.capacity(EStaticPool.ROWS);
+  const lateArgs = storage(
+    buffers.lateArgs,
+    "uint",
+    buffers.capacity(EStaticPool.SLOTS) * STATIC_DRAW_ARGUMENTS
+  ).toAtomic();
+  const spheres = storage(buffers.rowSpheres, "vec4", rows).toReadOnly();
+  const targets = storage(buffers.rowTargets, "uvec4", rows).toReadOnly();
+  const visible = storage(buffers.visible, "uint", rows * 2);
+  const states = storage(buffers.rowStates, "uint", rows).toReadOnly();
+  const pyramid = storage(buffers.pyramid, "float", buffers.capacity(EStaticPool.PYRAMID)).toReadOnly();
+  const counts = storage(buffers.counts, "uint", STATIC_CULL_COUNTS).toAtomic();
 
   return Fn(() => {
     If(states.element(instanceIndex).equal(EStaticCullState.OCCLUDED), () => {
@@ -87,13 +93,16 @@ export function createLateInstanceCullShader(buffers: StaticDrawBuffers): Comput
         const target = targets.element(instanceIndex);
         const kept = atomicAdd(lateArgs.element(target.y.mul(STATIC_DRAW_ARGUMENTS).add(1)), uint(1));
 
-        visible.element(target.z.add(STATIC_ROW_CAPACITY).add(kept)).assign(target.x);
+        visible.element(target.z.add(rows).add(kept)).assign(target.x);
 
         If(kept.equal(0), () => {
           atomicAdd(counts.element(0), uint(1));
         });
         atomicAdd(counts.element(1), target.w);
+      }).Else(() => {
+        atomicAdd(counts.element(3), uint(1));
+        atomicAdd(counts.element(4), targets.element(instanceIndex).w);
       });
     });
-  })().compute(STATIC_ROW_CAPACITY);
+  })().compute(rows);
 }

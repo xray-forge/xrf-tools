@@ -16,7 +16,7 @@ function createBuffer(vertices: number): BufferGeometry {
 }
 
 function createArena(): StaticArena {
-  const arena: StaticArena = new StaticArena(createBuffer(3));
+  const arena: StaticArena = new StaticArena(createBuffer(3), 64);
 
   arena.place(createBuffer(3), () => ({ indices: 0, vertices: 0 }));
 

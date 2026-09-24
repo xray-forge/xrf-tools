@@ -103,6 +103,11 @@ export class StaticBatches {
     }
   }
 
+  /** Has every batch record again, for storage buffers its shaders read that were replaced by ones that grew. */
+  public invalidateAll(): void {
+    this.all().forEach(({ drawing }) => drawing.forEach((batch: StaticBatch) => batch.invalidate()));
+  }
+
   /**
    * @param arena - An arena whose buffers may have been replaced, which every batch over it then draws.
    */

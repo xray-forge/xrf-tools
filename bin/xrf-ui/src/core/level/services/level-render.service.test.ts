@@ -1,6 +1,7 @@
 import { beforeAll, beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { Container } from "@wirestate/core";
 import {
+  EMPTY_RENDERER_STATIC_DRAW_REPORT,
   ERendererCameraController,
   ERendererOverlay,
   ERendererRequest,
@@ -68,6 +69,7 @@ function mockReport(position: [number, number, number]): IRendererReport {
     frame: { draws: 12, triangles: 400 } as IRendererReport["frame"],
     isGpuTimed: false,
     passes: [],
+    staticDraws: EMPTY_RENDERER_STATIC_DRAW_REPORT,
   };
 }
 

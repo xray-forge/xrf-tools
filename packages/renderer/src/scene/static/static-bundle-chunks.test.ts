@@ -13,7 +13,7 @@ function createBatches(count: number): Array<StaticBatch> {
 
   buffer.setAttribute("position", new BufferAttribute(new Float32Array(9), 3));
 
-  const arena: StaticArena = new StaticArena(buffer);
+  const arena: StaticArena = new StaticArena(buffer, 64);
   const pool: StaticDrawPool = new StaticDrawPool(new StaticDrawBuffers());
 
   arena.place(buffer, () => ({ indices: 0, vertices: 0 }));

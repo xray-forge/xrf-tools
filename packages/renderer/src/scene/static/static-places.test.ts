@@ -2,7 +2,7 @@ import { describe, expect, it } from "@jest/globals";
 import { Matrix4 } from "three/webgpu";
 
 import { StaticPlaces } from "#/scene/static/static-places";
-import { STATIC_PLACE_COLUMNS, StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
+import { EStaticPool, STATIC_PLACE_COLUMNS, StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
 
 /** Two places, one moved one metre along x, the other two, with hemisphere terms or without. */
 function createInstances(hasHemi: boolean) {
@@ -52,6 +52,30 @@ describe("StaticPlaces", () => {
     places.freeRows(start, 2);
 
     expect((buffers.rowSpheres.array as Float32Array)[7]).toBe(-1);
+  });
+
+  it("grows the places and the rows with what is written and handed out kept, and bumps its version", () => {
+    const buffers: StaticDrawBuffers = new StaticDrawBuffers({ [EStaticPool.PLACES]: 2, [EStaticPool.ROWS]: 2 });
+    const places: StaticPlaces = new StaticPlaces(buffers);
+    const start: number = places.allocatePlaces(2) as number;
+
+    places.writePlaces(start, createInstances(true), new Matrix4());
+    places.writeRows(places.allocateRows(2) as number, new Float32Array([0, 0, 0, 1, 5, 0, 0, 1]), start, 3, 36);
+
+    expect(places.allocatePlaces(1)).toBeNull();
+
+    const version: number = places.version;
+
+    places.grow(EStaticPool.PLACES, 8);
+    places.grow(EStaticPool.ROWS, 8);
+
+    expect(places.allocatePlaces(1)).toBe(2);
+    expect(places.allocateRows(6)).toBe(2);
+    expect(places.placeUse).toEqual({ capacity: 8, used: 3 });
+    expect(places.rowUse).toEqual({ capacity: 8, used: 8 });
+    expect(places.version).toBeGreaterThan(version);
+    expect((buffers.places.array as Float32Array)[STATIC_PLACE_COLUMNS * 4 + 12]).toBe(2);
+    expect(Array.from((buffers.rowTargets.array as Uint32Array).subarray(4, 8))).toEqual([1, 3, 0, 36]);
   });
 
   it("uploads what changed as one span a buffer", () => {

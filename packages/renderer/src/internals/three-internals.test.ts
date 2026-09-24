@@ -5,6 +5,7 @@ import {
   NodeFrame,
   NodeMaterialObserver,
   PerspectiveCamera,
+  StorageBufferAttribute,
   StorageBufferNode,
   WebGPURenderer,
 } from "three/webgpu";
@@ -49,6 +50,16 @@ describe("three's internals, as the renderer reads them", () => {
     expect(backend.isWebGPUBackend).toBe(true);
     expect(backend.hasTimestampQuery).toBeInstanceOf(Function);
     expect(backend.getTimestamp).toBeInstanceOf(Function);
+  });
+
+  it("frees an attribute's GPU buffer through its backend, from the attribute alone, and knows one it never had", () => {
+    // `destroyStorageAttribute` frees what a static draw pool's growth replaced.
+    const backend: IRendererBackend = getRendererBackend(new WebGPURenderer({ canvas: {} as HTMLCanvasElement }));
+
+    expect(backend.destroyAttribute).toBeInstanceOf(Function);
+    expect(backend.destroyAttribute).toHaveLength(1);
+    // An attribute never uploaded has no backend data, which `destroyStorageAttribute` checks first.
+    expect(backend.has?.(new StorageBufferAttribute(new Float32Array(4), 4))).toBe(false);
   });
 
   it("keeps a camera's reversed depth in a private field its getter reads, which its projection follows", () => {
