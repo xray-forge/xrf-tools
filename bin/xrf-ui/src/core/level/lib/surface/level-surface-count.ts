@@ -1,3 +1,4 @@
+import { toPackedCoordinate } from "@xrf/renderer";
 import { Nullable } from "@xrf/types";
 
 import {
@@ -148,14 +149,14 @@ function widen(
     return span;
   }
 
+  const packed = { binormal: geometry.binormals ?? undefined, tangent: geometry.tangents ?? undefined, uv: uvs };
+
   const stride: number = Math.max(1, Math.floor(count / SPAN_SAMPLES));
   const end: number = Math.min(start + count, indices.length);
   let widened: Nullable<ILevelSurfaceSpan> = span;
 
   for (let at = start; at < end; at += stride) {
-    const vertex: number = indices[at] * 2;
-    const u: number = uvs[vertex];
-    const v: number = uvs[vertex + 1];
+    const [u, v] = toPackedCoordinate(packed, geometry.uvComponents, indices[at]);
 
     if (!Number.isFinite(u) || !Number.isFinite(v)) {
       continue;

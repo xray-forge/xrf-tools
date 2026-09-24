@@ -43,6 +43,16 @@ impl VisualBufferBuilder {
     self.push_encoded(values, u32::to_le_bytes)
   }
 
+  /// Appends bytes as they are and returns their aligned byte range, for a `Uint8Array` view.
+  pub fn push_u8_section(&mut self, values: &[u8]) -> VisualSection {
+    self.push_section(values.len(), |buffer| buffer.extend_from_slice(values))
+  }
+
+  /// Appends `i16` values as little-endian bytes and returns their aligned byte range, for an `Int16Array` view.
+  pub fn push_i16_section(&mut self, values: &[i16]) -> VisualSection {
+    self.push_encoded(values, i16::to_le_bytes)
+  }
+
   /// Returns the total packed buffer length, including alignment padding.
   pub fn length(&self) -> u32 {
     Self::usize_to_u32(self.buffer.len())

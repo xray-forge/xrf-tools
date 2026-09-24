@@ -12,6 +12,7 @@ use crate::geom::buffers::level_geom_vertex_buffer::LevelGeomVertexBuffer;
 use crate::geom::level_geom_file::LevelGeomFile;
 use crate::geom::vertex::level_vertex::LevelVertex;
 use crate::geom::vertex::level_vertex_layout::LevelVertexLayout;
+use crate::geom::vertex::level_vertex_payload::LevelVertexPayload;
 
 /// A level's render geometry with its payloads still where they were, able to serve any range a visual names.
 pub struct LevelGeomSource<D: ChunkDataSource> {
@@ -84,6 +85,23 @@ impl<D: ChunkDataSource> LevelGeomSource<D> {
   /// Returns an error when the buffer does not exist, the range reaches past its vertices, or its declaration is
   /// one xrLC does not write.
   pub fn read_vertices<T: ByteOrder>(&self, buffer: u32, base: u32, count: u32) -> XrfResult<Vec<LevelVertex>> {
+    let payload: LevelVertexPayload = self.read_vertex_payload(buffer, base, count)?;
+
+    Ok(
+      payload
+        .vertices()
+        .map(|vertex| Self::decode_vertex::<T>(&payload.layout, vertex))
+        .collect(),
+    )
+  }
+
+  /// Reads one visual's vertices as they are stored, with the declaration that says where each attribute sits.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the buffer does not exist, the range reaches past its vertices, or its declaration is
+  /// one xrLC does not write.
+  pub fn read_vertex_payload(&self, buffer: u32, base: u32, count: u32) -> XrfResult<LevelVertexPayload> {
     let declared: &LevelGeomVertexBuffer = self
       .file
       .vertex_buffers
@@ -93,20 +111,16 @@ impl<D: ChunkDataSource> LevelGeomSource<D> {
     Self::require_range("vertex", buffer, base, count, declared.vertex_count)?;
 
     let layout: LevelVertexLayout = LevelVertexLayout::of(declared)?;
-    let stride: usize = layout.stride as usize;
-    let payload: Vec<u8> = Self::read_payload(
-      &self.vertices,
-      declared.payload_offset + u64::from(base) * u64::from(layout.stride),
-      count as usize * stride,
-      "vertices",
-    )?;
 
-    Ok(
-      payload
-        .chunks_exact(stride)
-        .map(|vertex| Self::decode_vertex::<T>(&layout, vertex))
-        .collect(),
-    )
+    Ok(LevelVertexPayload {
+      bytes: Self::read_payload(
+        &self.vertices,
+        declared.payload_offset + u64::from(base) * u64::from(layout.stride),
+        count as usize * layout.stride as usize,
+        "vertices",
+      )?,
+      layout,
+    })
   }
 
   /// Reads one visual's indices.
@@ -148,7 +162,8 @@ impl<D: ChunkDataSource> LevelGeomSource<D> {
     };
 
     // The low byte of each base coordinate rides in a tangent or binormal alpha, so the coordinate is rebuilt from
-    // two elements rather than one. A tree carries neither, and zero is exact there.
+    // two elements rather than one. A tree carries both but adds neither: `deffer_tree_*.vs` scales `I.tc` by
+    // `consts` alone.
     let tangent: Option<(Vector3d, u8)> = layout
       .get_tangent_offset()
       .map(|offset| LevelVertex::decode_direction(Self::take_four(vertex, offset)));
@@ -156,8 +171,16 @@ impl<D: ChunkDataSource> LevelGeomSource<D> {
       .get_binormal_offset()
       .map(|offset| LevelVertex::decode_direction(Self::take_four(vertex, offset)));
 
-    let fraction_u: u8 = tangent.as_ref().map_or(0, |(_, fraction)| *fraction);
-    let fraction_v: u8 = binormal.as_ref().map_or(0, |(_, fraction)| *fraction);
+    let fraction_u: u8 = if layout.is_tree() {
+      0
+    } else {
+      tangent.as_ref().map_or(0, |(_, fraction)| *fraction)
+    };
+    let fraction_v: u8 = if layout.is_tree() {
+      0
+    } else {
+      binormal.as_ref().map_or(0, |(_, fraction)| *fraction)
+    };
 
     LevelVertex {
       binormal: binormal.map(|(direction, _)| direction),

@@ -302,3 +302,62 @@ fn test_tree_coordinates_use_the_tree_quantization() -> XrfResult {
 
   Ok(())
 }
+
+// A tree's tangent and binormal carry bytes in their alphas too, but `deffer_tree_*.vs` takes `I.tc * consts` and
+// adds neither: the coordinate is its shorts alone.
+#[test]
+fn test_tree_coordinates_add_no_low_bytes_from_the_tangent_frame() -> XrfResult {
+  let mut declaration: Vec<u8> = new_element(0, 2, 0, 0);
+
+  declaration.extend(new_element(12, 4, 3, 0)); // NORMAL0:D3DCOLOR
+  declaration.extend(new_element(16, 4, 6, 0)); // TANGENT0:D3DCOLOR
+  declaration.extend(new_element(20, 4, 7, 0)); // BINORMAL0:D3DCOLOR
+  declaration.extend(new_element(24, 7, 5, 0)); // TEXCOORD0:SHORT4
+  declaration.extend(new_terminator());
+
+  let mut vertex: Vec<u8> = vec![0; 12];
+
+  vertex.extend_from_slice(&[0, 128, 255, 77]);
+  vertex.extend_from_slice(&[0, 128, 255, 200]);
+  vertex.extend_from_slice(&[255, 128, 0, 100]);
+  vertex.extend_from_slice(&2048i16.to_le_bytes());
+  vertex.extend_from_slice(&1024i16.to_le_bytes());
+  vertex.extend_from_slice(&7i16.to_le_bytes());
+  vertex.extend_from_slice(&9i16.to_le_bytes());
+
+  let source: LevelGeomSource<_> =
+    LevelGeomSource::open_from_bytes::<XRayByteOrder>(new_geometry(&declaration, &vertex, 1, &[0])?)?;
+  let vertices: Vec<LevelVertex> = source.read_vertices::<XRayByteOrder>(0, 0, 1)?;
+
+  assert_eq!(
+    vertices[0].texture_coordinate,
+    (1.0, 0.5),
+    "2048 / 2048 and 1024 / 2048, nothing added"
+  );
+
+  Ok(())
+}
+
+#[test]
+fn test_reads_a_range_of_vertices_as_stored_beside_its_layout() -> XrfResult {
+  let first: Vec<u8> = new_lightmapped_vertex();
+  let mut second: Vec<u8> = new_lightmapped_vertex();
+
+  // Told apart by the hemisphere byte its normal carries.
+  second[15] = 99;
+
+  let source: LevelGeomSource<_> = LevelGeomSource::open_from_bytes::<XRayByteOrder>(new_geometry(
+    &new_lightmapped_declaration(),
+    &[first.clone(), second.clone()].concat(),
+    2,
+    &[0],
+  )?)?;
+
+  let payload = source.read_vertex_payload(0, 1, 1)?;
+
+  assert_eq!(payload.layout.stride, 32);
+  assert_eq!(payload.len(), 1);
+  assert_eq!(payload.bytes, second, "the second vertex, byte for byte");
+
+  Ok(())
+}

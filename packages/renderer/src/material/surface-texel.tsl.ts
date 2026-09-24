@@ -6,6 +6,7 @@ import { IRendererSurface } from "#/contract/scene/renderer-surface";
 import { MaterialSamplers } from "#/material/material-samplers";
 import { ISurfaceTexel } from "#/material/surface-texel";
 import { decodeBumpGloss, decodeBumpNormal } from "#/shader/bump.tsl";
+import { toBaseCoordinate, toLightmapCoordinate } from "#/shader/packed-vertex.tsl";
 import { toPlacedNormalView, toPlacedViewDirection } from "#/shader/placement.tsl";
 import { skinnedBinormal, skinnedTangent } from "#/shader/skinned-basis.tsl";
 import { toVertexHemi } from "#/shader/vertex-hemi.tsl";
@@ -34,7 +35,7 @@ const MATERIAL_SLICES: number = 4;
  * @returns Where its base and every slot sampled with it read: the first uv set, times the surface's tiling.
  */
 export function toSurfaceCoordinates(surface: IRendererSurface): Node<"vec2"> {
-  return uv().mul(uniform(surface.tiling ?? 1));
+  return toBaseCoordinate(uv()).mul(uniform(surface.tiling ?? 1));
 }
 
 /**
@@ -104,7 +105,7 @@ export function toSurfaceTexel(
   // `get_hemi` and `get_sun`: the lightmap's alpha and green, or the vertex's own hemisphere term where there is no
   // lightmap, sun unoccluded.
   const lightmap: Maybe<TextureNode> = surface.textures.hemi
-    ? samplers.bind(surface.textures.hemi, getWhiteTexture(), uv(1))
+    ? samplers.bind(surface.textures.hemi, getWhiteTexture(), toLightmapCoordinate(uv(1)))
     : undefined;
 
   return {

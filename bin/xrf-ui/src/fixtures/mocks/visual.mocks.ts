@@ -42,6 +42,11 @@ export class MockVisualBuffer {
     return this.push(bytes);
   }
 
+  /** Signed shorts, which is how a packed sector carries its coordinates. */
+  public pushShorts(values: Array<number>): VisualSection {
+    return this.push(new Uint8Array(new Int16Array(values).buffer));
+  }
+
   /** Thirty-two bit indices, which is what a packed sector carries rather than a model's sixteen. */
   public pushIndices32(values: Array<number>): VisualSection {
     return this.push(new Uint8Array(new Uint32Array(values).buffer));

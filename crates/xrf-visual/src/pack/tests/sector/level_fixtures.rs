@@ -293,3 +293,33 @@ pub(crate) fn new_vertex_lit_vertex(x: f32, y: f32, z: f32, color: [u8; 4]) -> V
 
   bytes
 }
+
+/// The declaration xrLC writes for a tree: the tangent frame, and a coordinate of four shorts whose last two are wind.
+pub(crate) fn new_tree_declaration() -> Vec<u8> {
+  let mut bytes: Vec<u8> = new_element(0, 2, 0, 0);
+
+  bytes.extend(new_element(12, 4, 3, 0));
+  bytes.extend(new_element(16, 4, 6, 0));
+  bytes.extend(new_element(20, 4, 7, 0));
+  bytes.extend(new_element(24, 7, 5, 0));
+  bytes.extend(new_terminator());
+
+  bytes
+}
+
+/// One tree vertex: a coordinate of 2048 and 1024 over the tree's 2048, then wind terms 7 and 9.
+pub(crate) fn new_tree_vertex(x: f32, y: f32, z: f32) -> Vec<u8> {
+  let mut bytes: Vec<u8> = x.to_le_bytes().to_vec();
+
+  bytes.extend_from_slice(&y.to_le_bytes());
+  bytes.extend_from_slice(&z.to_le_bytes());
+  bytes.extend_from_slice(&[0, 128, 255, 77]);
+  bytes.extend_from_slice(&[0, 128, 255, 200]);
+  bytes.extend_from_slice(&[255, 128, 0, 100]);
+
+  for value in [2048i16, 1024, 7, 9] {
+    bytes.extend_from_slice(&value.to_le_bytes());
+  }
+
+  bytes
+}

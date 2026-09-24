@@ -58,14 +58,20 @@ export function toLevelInstanceObject(sector: number, index: number, instance: I
   };
 }
 
+/** The engine's own vertex as it arrived, packed, beside float positions; a sector without normals carries none. */
 function toLevelGeometry(geometry: ISectorGeometryViews): Omit<IRendererGeometry, "groups"> {
   return {
-    hemi: geometry.hemi ?? undefined,
     index: geometry.indices,
-    normal: geometry.normals ?? undefined,
+    packed: geometry.normals
+      ? {
+          binormal: geometry.binormals ?? undefined,
+          normal: geometry.normals,
+          tangent: geometry.tangents ?? undefined,
+          uv: geometry.uvs ?? undefined,
+          uv1: geometry.lightmapUvs ?? undefined,
+        }
+      : undefined,
     position: geometry.positions,
-    uv: geometry.uvs ?? undefined,
-    uv1: geometry.lightmapUvs ?? undefined,
   };
 }
 

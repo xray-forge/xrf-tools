@@ -1,6 +1,11 @@
 import { BufferAttribute, BufferGeometry, Sphere, Vector3 } from "three/webgpu";
 
-import { IRendererBounds, IRendererGeometry, IRendererGeometryGroup } from "#/contract/scene/renderer-geometry";
+import {
+  IRendererBounds,
+  IRendererGeometry,
+  IRendererGeometryGroup,
+  IRendererPackedVertices,
+} from "#/contract/scene/renderer-geometry";
 import { ISceneSection } from "#/scene/geometry/scene-section";
 import { toSectionSphere } from "#/scene/geometry/section-sphere";
 import { EVertexAttribute } from "#/shader/vertex-attribute";
@@ -15,10 +20,68 @@ export class SceneGeometry {
     return new Sphere(new Vector3(...bounds.center), bounds.radius);
   }
 
+  /** The attributes a packed geometry carries instead, which it may not carry beside them. */
+  private static readonly PACKED_REPLACES: ReadonlyArray<keyof IRendererGeometry> = [
+    "normal",
+    "tangent",
+    "binormal",
+    "uv",
+    "uv1",
+    "hemi",
+  ];
+
+  /**
+   * The engine's packed vertex under its own names: the directions `unorm8x4`, and a coordinate's shorts as the words
+   * they fill, `uint32` a vertex or a tree's `uint32x2`. Three widens a 16-bit vertex buffer to 32 bits a component
+   * as it uploads it, which would double what the shorts were packed to save; a view over the same bytes as words is
+   * passed as it is, and the shader splits each word back into its two shorts.
+   *
+   * @throws {Error} Where the geometry carries a float attribute beside the packed one it stands for.
+   */
+  private static setPackedAttributes(buffer: BufferGeometry, geometry: IRendererGeometry): void {
+    const packed: IRendererPackedVertices = geometry.packed as IRendererPackedVertices;
+    const vertices: number = geometry.position.length / 3;
+    const both: Array<keyof IRendererGeometry> = SceneGeometry.PACKED_REPLACES.filter((key) => geometry[key]);
+
+    if (both.length) {
+      throw new Error(`A geometry carries its vertices packed and as floats both: ${both.join(", ")}`);
+    }
+
+    buffer.setAttribute(EVertexAttribute.PACKED_NORMAL, new BufferAttribute(packed.normal, 4, true));
+
+    if (packed.tangent) {
+      buffer.setAttribute(EVertexAttribute.PACKED_TANGENT, new BufferAttribute(packed.tangent, 4, true));
+    }
+
+    if (packed.binormal) {
+      buffer.setAttribute(EVertexAttribute.PACKED_BINORMAL, new BufferAttribute(packed.binormal, 4, true));
+    }
+
+    if (packed.uv) {
+      buffer.setAttribute(
+        EVertexAttribute.PACKED_UV,
+        new BufferAttribute(SceneGeometry.toWords(packed.uv), packed.uv.length / vertices / 2)
+      );
+    }
+
+    if (packed.uv1) {
+      buffer.setAttribute(EVertexAttribute.PACKED_UV1, new BufferAttribute(SceneGeometry.toWords(packed.uv1), 1));
+    }
+  }
+
+  /** The words a run of shorts fills, two to a word, over the same bytes. */
+  private static toWords(shorts: Int16Array): Uint32Array {
+    return new Uint32Array(shorts.buffer, shorts.byteOffset, shorts.length / 2);
+  }
+
   private static createBuffer(geometry: IRendererGeometry): BufferGeometry {
     const buffer: BufferGeometry = new BufferGeometry();
 
     buffer.setAttribute("position", new BufferAttribute(geometry.position, 3));
+
+    if (geometry.packed) {
+      SceneGeometry.setPackedAttributes(buffer, geometry);
+    }
 
     if (geometry.uv) {
       buffer.setAttribute("uv", new BufferAttribute(geometry.uv, 2));
@@ -51,7 +114,7 @@ export class SceneGeometry {
 
     if (geometry.normal) {
       buffer.setAttribute("normal", new BufferAttribute(geometry.normal, 3));
-    } else {
+    } else if (!geometry.packed) {
       // The G-buffer stores a normal for every pixel; a geometry without one is given the one its faces imply.
       buffer.computeVertexNormals();
     }

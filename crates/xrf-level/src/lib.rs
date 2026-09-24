@@ -44,6 +44,7 @@ pub use crate::geom::level_geom_source::*;
 pub use crate::geom::vertex::level_vertex::*;
 pub use crate::geom::vertex::level_vertex_coordinate::*;
 pub use crate::geom::vertex::level_vertex_layout::*;
+pub use crate::geom::vertex::level_vertex_payload::*;
 pub use crate::geom::window::level_geom_slide_window::*;
 pub use crate::geom::window::level_geom_slide_window_item::*;
 pub use crate::hom::level_hom_file::*;

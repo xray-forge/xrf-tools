@@ -19,23 +19,33 @@ export type SectorDescription = {
   bufferLength: number;
 };
 
-/** Where one packed mesh's attributes sit inside a sector's buffer, and what to draw from them. */
+/**
+ * Where one packed mesh's attributes sit inside a sector's buffer, and what to draw from them: positions as floats
+ * in renderer space, and the rest in the 32-byte vertex xrLC wrote, byte for byte but for a direction's z.
+ */
 export type SectorGeometry = {
   vertexCount: number;
   indexCount: number;
+  /** Three floats a vertex, in renderer space. */
   positions: VisualSection;
+  /**
+   * Four bytes a vertex: the normal's z, y and x as `D3DCOLOR` stores them, z negated into renderer space, then the
+   * hemisphere term.
+   */
   normals: VisualSection | null;
-  /** The authored tangent of every vertex, mirrored with the normal. */
+  /** Four bytes a vertex the same way: the authored tangent, then the low byte of the base `u`. */
   tangents: VisualSection | null;
-  /** The authored binormal of every vertex, mirrored with the normal. */
+  /** Four bytes a vertex the same way: the authored binormal, then the low byte of the base `v`. */
   binormals: VisualSection | null;
+  /** The base coordinate as xrLC quantised it, `uv_components` shorts a vertex. */
   uvs: VisualSection | null;
-  /** The lightmap coordinate of every vertex, for a surface xrLC lit from lightmaps. */
+  /**
+   * Shorts a base coordinate takes a vertex: two (`SHORT2`, over 1024 with its low bytes), or four for a tree
+   * (`SHORT4`, over 2048, then its wind terms). Zero where there are no base coordinates.
+   */
+  uvComponents: number;
+  /** The lightmap coordinate: two shorts a vertex, over 32768. */
   lightmapUvs: VisualSection | null;
-  /** The baked vertex colour of every vertex, as three floats in zero to one. */
-  colors: VisualSection | null;
-  /** The hemisphere term of every vertex, which rides in the normal and is present with it. */
-  hemi: VisualSection | null;
   /** Every index, as 32-bit elements: a sector reaches past what sixteen bits address. */
   indices: VisualSection;
 };

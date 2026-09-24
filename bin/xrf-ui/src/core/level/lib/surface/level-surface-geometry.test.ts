@@ -28,11 +28,15 @@ function section(shaderId: number, drawables: number, triangleCount: number): IS
   };
 }
 
+/** Baked coordinates as a packed sector carries them: shorts over 1024, no low bytes. */
 function withCoordinates(uvs: Array<number>): ISectorGeometryViews {
   return {
+    binormals: null,
     indices: Uint32Array.from({ length: uvs.length / 2 }, (_, index: number) => index),
-    uvs: Float32Array.from(uvs),
-  } as ISectorGeometryViews;
+    tangents: null,
+    uvComponents: 2,
+    uvs: Int16Array.from(uvs, (value: number) => value * 1024),
+  } as unknown as ISectorGeometryViews;
 }
 
 function instance(shaderId: number, places: number, indexCount: number): ISectorInstanceViews {

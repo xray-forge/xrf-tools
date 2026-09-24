@@ -11,14 +11,13 @@ use crate::core::types::TauriResult;
 use crate::plugins::levels::report::report_packed_sector;
 use crate::plugins::levels::state::{LevelState, PackedSector, SelectedLevel};
 
-/// What the viewer draws a level surface with, which is what a pack is worth carrying.
+/// What the viewer draws a level surface with, which is what a pack is worth carrying: the tangent frame too, whose
+/// fourth bytes are the low bytes of the base coordinate.
 const DRAWN_ATTRIBUTES: SectorAttributes = SectorAttributes {
-  binormals: false,
-  colors: false,
-  hemi: true,
+  binormals: true,
   lightmap_uvs: true,
   normals: true,
-  tangents: false,
+  tangents: true,
   uvs: true,
 };
 

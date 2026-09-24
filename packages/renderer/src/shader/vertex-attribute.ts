@@ -6,6 +6,16 @@ export enum EVertexAttribute {
   BINORMAL = "binormal",
   /** A vertex's baked hemisphere term, the fourth byte of the engine's packed normal. */
   HEMI = "hemi",
+  /** The engine's packed normal, four bytes with the hemisphere term last, in place of three's float `normal`. */
+  PACKED_NORMAL = "packedNormal",
+  /** The engine's packed tangent, the base `u`'s low byte last. */
+  PACKED_TANGENT = "packedTangent",
+  /** The engine's packed binormal, the base `v`'s low byte last. */
+  PACKED_BINORMAL = "packedBinormal",
+  /** The base coordinate as shorts, two a vertex or a tree's four, in place of three's `uv`. */
+  PACKED_UV = "packedUv",
+  /** The lightmap coordinate as shorts, in place of three's `uv1`. */
+  PACKED_UV1 = "packedUv1",
   /** Its scale and offset, per place a geometry stands. */
   INSTANCE_HEMI = "instanceHemi",
   /** A static draw's slot in the buffers every static draw shares, read per instance by its first instance. */

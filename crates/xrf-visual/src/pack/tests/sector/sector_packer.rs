@@ -13,7 +13,7 @@ use crate::pack::sector::sector_packer::SectorPacker;
 use crate::pack::tests::sector::level_fixtures::{
   GeomBuffer, new_drawable, new_drawable_of_buffer, new_geometry_fixture, new_hierarchy, new_lightmapped_declaration,
   new_lightmapped_vertex, new_lit_tree, new_open_geometry, new_position_vertex, new_positions_declaration, new_shaders,
-  new_tree, new_vertex_lit_declaration, new_vertex_lit_vertex, new_visuals,
+  new_tree, new_tree_declaration, new_tree_vertex, new_vertex_lit_declaration, new_vertex_lit_vertex, new_visuals,
 };
 
 /// Four lightmapped vertices in one buffer, and six indices that draw two triangles out of them.
@@ -47,6 +47,29 @@ fn new_read_indices(package: &SectorPackage) -> Vec<u32> {
     .0
     .iter()
     .map(|bytes| u32::from_le_bytes(*bytes))
+    .collect()
+}
+
+/// The bytes a section wrote, read back out of the buffer.
+fn new_read_bytes(
+  package: &SectorPackage,
+  section: crate::data::visual::geometry::visual_section::VisualSection,
+) -> Vec<u8> {
+  let start: usize = section.byte_offset as usize;
+
+  package.buffer[start..start + section.byte_length as usize].to_vec()
+}
+
+/// The shorts a section wrote, read back out of the buffer.
+fn new_read_shorts(
+  package: &SectorPackage,
+  section: crate::data::visual::geometry::visual_section::VisualSection,
+) -> Vec<i16> {
+  new_read_bytes(package, section)
+    .as_chunks::<2>()
+    .0
+    .iter()
+    .map(|bytes| i16::from_le_bytes(*bytes))
     .collect()
 }
 
@@ -95,15 +118,12 @@ fn test_packs_a_sector_into_one_buffer_of_parallel_arrays() {
       .normals
       .expect("a lightmapped sector carries normals")
       .byte_length,
-    4 * 3 * 4
+    4 * 4,
+    "four bytes a vertex, the hemisphere term riding in the fourth"
   );
   assert_eq!(
-    description
-      .geometry
-      .hemi
-      .expect("the hemisphere term rides in the normal")
-      .byte_length,
-    4 * 4
+    description.geometry.uv_components, 2,
+    "a baked coordinate, two shorts a vertex"
   );
   assert!(description.skipped.is_empty());
   assert_eq!(description.buffer_length as usize, package.buffer.len());
@@ -289,15 +309,15 @@ fn test_carries_an_attribute_any_range_of_the_sector_declares() {
   assert_eq!(package.description.geometry.vertex_count, 4);
   assert_eq!(
     lightmap.byte_length,
-    4 * 2 * 4,
+    4 * 2 * 2,
     "every vertex of the sector, not only the lit ones"
   );
 
-  let coordinates: Vec<f32> = new_read_floats(&package, lightmap);
+  let coordinates: Vec<i16> = new_read_shorts(&package, lightmap);
 
   assert_eq!(
     &coordinates[4..],
-    &[0.0, 0.0, 0.0, 0.0],
+    &[0, 0, 0, 0],
     "the range that carries none packs zeroes rather than a gap"
   );
 }
@@ -447,11 +467,41 @@ fn test_still_shares_a_range_no_transform_places() {
   assert!(package.description.instances.is_empty());
 }
 
-// The colour channel multiplies, so the neutral value for a vertex that carries none is white. Filling those with
-// black instead told a renderer every lightmapped and every tree surface of the sector was unlit, and a level
-// drawing its baked colour came out a silhouette.
+// The engine's own 32-byte vertex reaches the renderer: every byte as xrLC wrote it but a direction's z, which is
+// negated into renderer space with `255 - b`, exact where decoding and negating a float is not.
 #[test]
-fn test_widens_a_missing_vertex_colour_to_white_rather_than_black() {
+fn test_packs_the_stored_vertex_byte_for_byte_but_each_direction_z() {
+  let run: LevelVisualsChunk = new_visuals(&[new_hierarchy(&[1]), new_drawable(1, 0, 1, 0, 3)]);
+  let source = new_open_geometry(new_geometry());
+
+  let package: SectorPackage =
+    SectorPacker::new(&run, None, &source).pack::<XRayByteOrder>(0, &new_composition(&run), SectorAttributes::all());
+  let geometry = &package.description.geometry;
+
+  // Stored blue, green, red, alpha: normal [0, 128, 255, 77], tangent [0, 128, 255, 0], binormal [255, 128, 0, 0].
+  assert_eq!(
+    new_read_bytes(&package, geometry.normals.expect("normals")),
+    vec![255, 128, 255, 77]
+  );
+  assert_eq!(
+    new_read_bytes(&package, geometry.tangents.expect("tangents")),
+    vec![255, 128, 255, 0]
+  );
+  assert_eq!(
+    new_read_bytes(&package, geometry.binormals.expect("binormals")),
+    vec![0, 128, 0, 0]
+  );
+  assert_eq!(new_read_shorts(&package, geometry.uvs.expect("uvs")), vec![1024, 512]);
+  assert_eq!(
+    new_read_shorts(&package, geometry.lightmap_uvs.expect("lightmap uvs")),
+    vec![16384, -16384]
+  );
+}
+
+// A vertex lit surface's declaration carries a colour and no lightmap coordinate: the colour is not light to the
+// deferred renderer and is left behind, and the coordinate packs as zeroes beside a lightmapped range.
+#[test]
+fn test_leaves_a_baked_colour_behind_and_widens_a_missing_lightmap_coordinate_to_zero() {
   let bytes: Vec<u8> = new_geometry_fixture(
     &[
       GeomBuffer {
@@ -474,22 +524,26 @@ fn test_widens_a_missing_vertex_colour_to_white_rather_than_black() {
 
   let package: SectorPackage =
     SectorPacker::new(&run, None, &source).pack::<XRayByteOrder>(0, &new_composition(&run), SectorAttributes::all());
-  let colors = package
-    .description
-    .geometry
-    .colors
-    .expect("a sector one of whose ranges is vertex lit");
-  let values: Vec<f32> = new_read_floats(&package, colors);
+  let geometry = &package.description.geometry;
 
   assert_eq!(
-    values.len(),
-    6,
-    "three components for each of the sector's two vertices"
+    new_read_shorts(&package, geometry.uvs.expect("uvs")),
+    vec![1024, 512, 1024, 512]
   );
-  // Written blue, green, red: the vertex lit one keeps what the compiler baked.
-  assert_eq!(&values[0..3], &[64.0 / 255.0, 32.0 / 255.0, 16.0 / 255.0]);
-  // The lightmapped one carries no colour and must contribute nothing to the multiply.
-  assert_eq!(&values[3..6], &[1.0, 1.0, 1.0]);
+  assert_eq!(
+    new_read_shorts(
+      &package,
+      geometry
+        .lightmap_uvs
+        .expect("a sector one of whose ranges is lightmapped")
+    ),
+    vec![0, 0, 16384, -16384]
+  );
+  // The vertex lit range carries no tangent frame: its directions pack neutral, no low byte riding in them.
+  assert_eq!(
+    &new_read_bytes(&package, geometry.tangents.expect("tangents"))[..4],
+    &[128, 128, 128, 0]
+  );
 }
 
 // A sector carries whatever its declarations together carry; a caller that samples none of it should not be sent it.
@@ -518,10 +572,6 @@ fn test_packs_only_the_attributes_the_caller_draws_with() {
     "a tangent basis the caller never samples is not written"
   );
   assert!(
-    geometry.hemi.is_none(),
-    "nor a hemisphere term, which rides in the normal"
-  );
-  assert!(
     geometry.lightmap_uvs.is_none(),
     "the declaration carries a lightmap coordinate and the caller did not ask for it"
   );
@@ -540,5 +590,49 @@ fn test_packs_everything_a_sector_declares_for_a_caller_that_wants_it_all() {
   let geometry = &package.description.geometry;
 
   assert!(geometry.normals.is_some() && geometry.tangents.is_some() && geometry.binormals.is_some());
-  assert!(geometry.uvs.is_some() && geometry.lightmap_uvs.is_some() && geometry.hemi.is_some());
+  assert!(geometry.uvs.is_some() && geometry.lightmap_uvs.is_some());
+}
+
+/// Two tree vertices in one buffer, and three indices drawing a triangle of them.
+fn new_tree_geometry() -> Vec<u8> {
+  new_geometry_fixture(
+    &[GeomBuffer {
+      declaration: new_tree_declaration(),
+      vertices: vec![new_tree_vertex(0.0, 0.0, 0.0), new_tree_vertex(1.0, 0.0, 0.0)],
+    }],
+    &[0, 1, 0],
+  )
+}
+
+// A tree's mesh packs in its own declaration: its coordinate is four shorts, the wind terms kept for the day wind is
+// drawn, and it carries no lightmap coordinate whatever the rest of the sector does.
+#[test]
+fn test_packs_a_trees_mesh_in_its_own_declaration() {
+  let run: LevelVisualsChunk = new_visuals(&[new_hierarchy(&[1]), new_tree(1, 0, 2, 3, 100.0)]);
+  let source = new_open_geometry(new_tree_geometry());
+
+  let package: SectorPackage =
+    SectorPacker::new(&run, None, &source).pack::<XRayByteOrder>(0, &new_composition(&run), SectorAttributes::all());
+  let geometry = &package.description.instances[0].geometry;
+
+  assert_eq!(geometry.uv_components, 4);
+  assert_eq!(
+    new_read_shorts(&package, geometry.uvs.expect("uvs")),
+    vec![2048, 1024, 7, 9, 2048, 1024, 7, 9]
+  );
+  assert!(geometry.lightmap_uvs.is_none(), "a tree's declaration carries none");
+}
+
+// A tree's four shorts cannot share an array with a baked surface's two: baked into a sector, it is left out and named.
+#[test]
+fn test_leaves_out_a_tree_declaration_baked_into_a_sector() {
+  let run: LevelVisualsChunk = new_visuals(&[new_hierarchy(&[1]), new_drawable(1, 0, 2, 0, 3)]);
+  let source = new_open_geometry(new_tree_geometry());
+
+  let package: SectorPackage =
+    SectorPacker::new(&run, None, &source).pack::<XRayByteOrder>(0, &new_composition(&run), SectorAttributes::all());
+
+  assert_eq!(package.description.skipped.len(), 1);
+  assert_eq!(package.description.skipped[0].cause, VisualSkipCause::Unsupported);
+  assert_eq!(package.description.geometry.vertex_count, 0);
 }

@@ -50,7 +50,7 @@ describe("level sector views", () => {
   it("carries an attribute the sector did declare", () => {
     const buffer: MockVisualBuffer = new MockVisualBuffer();
     const description: SectorDescription = mockSectorDescription(buffer);
-    const lightmapUvs = buffer.pushFloats([0, 0, 1, 0, 0, 1]);
+    const lightmapUvs = buffer.pushShorts([0, 0, 32767, 0, 0, 32767]);
 
     const views: ISectorViews = createSectorViews(
       {
@@ -61,7 +61,7 @@ describe("level sector views", () => {
       buffer.toArrayBuffer()
     );
 
-    expect(Array.from(views.geometry.lightmapUvs as Float32Array)).toEqual([0, 0, 1, 0, 0, 1]);
+    expect(Array.from(views.geometry.lightmapUvs as Int16Array)).toEqual([0, 0, 32767, 0, 0, 32767]);
   });
 
   it("keeps each section's range and the surface that draws it", () => {

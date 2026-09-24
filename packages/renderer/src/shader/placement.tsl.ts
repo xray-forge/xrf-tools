@@ -10,12 +10,14 @@ import {
   normalLocal,
   normalView,
   positionLocal,
+  transformNormalToView,
   varying,
   vec3,
   vec4,
 } from "three/tsl";
 import { Node, NodeBuilder } from "three/webgpu";
 
+import { isPackedBuild, toPackedNormal } from "#/shader/packed-vertex.tsl";
 import { EVertexAttribute, INSTANCE_MATRIX_COLUMNS } from "#/shader/vertex-attribute";
 import { STATIC_PLACE_COLUMNS, StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
 
@@ -94,11 +96,16 @@ function toBufferMatrix(builder: NodeBuilder, buffers: StaticDrawBuffers): Node<
   return isListedBuild(builder) ? toListedMatrix(buffers) : toStaticMatrix(buffers);
 }
 
+/** The vertex's normal in its geometry's own space: the engine's packed one, or three's float one. */
+function toLocalNormal(builder: NodeBuilder): Node<"vec3"> {
+  return isPackedBuild(builder) ? toPackedNormal() : normalLocal;
+}
+
 /** A transform's normals, divided by the squared scale of each axis first, so a stretched place does not bend them. */
-function toTransformedNormal(matrix: Node<"mat4">): Node<"vec3"> {
+function toTransformedNormal(matrix: Node<"mat4">, normal: Node<"vec3">): Node<"vec3"> {
   const m = mat3(matrix as unknown as Node<"mat3">) as unknown as Node<"mat3"> & ReadonlyArray<Node<"vec3">>;
 
-  return m.mul(normalLocal.div(vec3(m[0].dot(m[0]), m[1].dot(m[1]), m[2].dot(m[2]))));
+  return m.mul(normal.div(vec3(m[0].dot(m[0]), m[1].dot(m[1]), m[2].dot(m[2]))));
 }
 
 /**
@@ -131,14 +138,17 @@ export function toPlacedNormalView(buffers: StaticDrawBuffers): Node<"vec3"> {
     if (isBufferPlacedBuild(builder)) {
       const matrix: Node<"mat4"> = toBufferMatrix(builder, buffers);
 
-      return normalize(varying(cameraViewMatrix.mul(vec4(toTransformedNormal(matrix), 0)).xyz));
+      return normalize(varying(cameraViewMatrix.mul(vec4(toTransformedNormal(matrix, toLocalNormal(builder)), 0)).xyz));
     }
 
     if (isInstancedBuild(builder)) {
-      return normalize(varying(modelViewMatrix.mul(vec4(toTransformedNormal(toInstanceMatrix()), 0)).xyz));
+      return normalize(
+        varying(modelViewMatrix.mul(vec4(toTransformedNormal(toInstanceMatrix(), toLocalNormal(builder)), 0)).xyz)
+      );
     }
 
-    return normalView;
+    // Three's own view normal reads its float attribute, which a packed geometry does not carry.
+    return isPackedBuild(builder) ? normalize(varying(transformNormalToView(toPackedNormal()))) : normalView;
   })();
 }
 

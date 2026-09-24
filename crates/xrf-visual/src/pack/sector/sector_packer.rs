@@ -4,7 +4,7 @@ use byteorder::ByteOrder;
 use xrf_chunk::ChunkDataSource;
 use xrf_error::{XrfError, XrfResult};
 use xrf_level::{
-  LevelGeomSource, LevelSectorComposition, LevelShadersChunk, LevelVertex, LevelVertexLayout, LevelVisual,
+  LevelGeomSource, LevelSectorComposition, LevelShadersChunk, LevelVertexLayout, LevelVertexPayload, LevelVisual,
   LevelVisualsChunk,
 };
 use xrf_ogf::OgfGeometryContainerChunk;
@@ -55,7 +55,11 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
     composition: &LevelSectorComposition,
     wanted: SectorAttributes,
   ) -> SectorPackage {
-    let mut arrays: SectorVertexArrays = SectorVertexArrays::new(self.widen_attributes(composition).intersect(wanted));
+    // Baked geometry stores its base coordinate as two shorts; a tree, which stores four, is packed as an instance.
+    let mut arrays: SectorVertexArrays = SectorVertexArrays::new(
+      self.widen_attributes(composition).intersect(wanted),
+      SectorVertexArrays::BAKED_UV_COMPONENTS,
+    );
     let mut packed: BTreeMap<SectorVertexRange, u32> = BTreeMap::new();
     let mut sections: BTreeMap<u16, SectorSectionGathering> = BTreeMap::new();
     let mut gathered: BTreeMap<SectorInstanceKey, SectorInstanceGathering> = BTreeMap::new();
@@ -100,7 +104,7 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
       }
     }
 
-    self.build::<T>(sector, arrays, sections, gathered, &mut skipped)
+    self.build::<T>(sector, arrays, sections, gathered, wanted, &mut skipped)
   }
 
   /// What every declaration in the sector together carries, which decides the arrays it packs.
@@ -152,17 +156,14 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
       return Ok(*base);
     }
 
-    let vertices: Vec<LevelVertex> = self.source.read_vertices::<T>(
+    let payload: LevelVertexPayload = self.source.read_vertex_payload(
       container.vertex_buffer_id,
       container.vertex_base,
       container.vertex_count,
     )?;
     let base: u32 = arrays.get_vertex_count();
 
-    for vertex in &vertices {
-      arrays.push(vertex);
-    }
-
+    arrays.push::<T>(&payload)?;
     packed.insert(range, base);
 
     Ok(base)
@@ -199,6 +200,7 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
     arrays: SectorVertexArrays,
     gathered_sections: BTreeMap<u16, SectorSectionGathering>,
     gathered: BTreeMap<SectorInstanceKey, SectorInstanceGathering>,
+    wanted: SectorAttributes,
     skipped: &mut Vec<SectorSkip>,
   ) -> SectorPackage {
     let mut builder: VisualBufferBuilder = VisualBufferBuilder::new();
@@ -220,9 +222,8 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
     }
 
     let bounds: Option<VisualBounds> = arrays.get_bounds();
-    let attributes: SectorAttributes = arrays.get_attributes();
     let geometry: SectorGeometry = arrays.write_into(&indices, &mut builder);
-    let instances: Vec<SectorInstanceGroup> = self.pack_instances::<T>(gathered, attributes, &mut builder, skipped);
+    let instances: Vec<SectorInstanceGroup> = self.pack_instances::<T>(gathered, wanted, &mut builder, skipped);
 
     SectorPackage {
       description: SectorDescription {
@@ -242,14 +243,14 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
   fn pack_instances<T: ByteOrder>(
     &self,
     gathered: BTreeMap<SectorInstanceKey, SectorInstanceGathering>,
-    attributes: SectorAttributes,
+    wanted: SectorAttributes,
     builder: &mut VisualBufferBuilder,
     skipped: &mut Vec<SectorSkip>,
   ) -> Vec<SectorInstanceGroup> {
     let mut instances: Vec<SectorInstanceGroup> = Vec::new();
 
     for (key, gathering) in gathered {
-      match self.pack_instance::<T>(key, &gathering, attributes, builder) {
+      match self.pack_instance::<T>(key, &gathering, wanted, builder) {
         Ok(group) => instances.push(group),
         Err(error) => Self::skip_all(&gathering, &error, skipped),
       }
@@ -258,7 +259,7 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
     instances
   }
 
-  /// Packs one mesh, in its own space, beside the transforms that stand it.
+  /// Packs one mesh, in its own space and its own declaration, beside the transforms that stand it.
   ///
   /// # Errors
   ///
@@ -267,18 +268,20 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
     &self,
     key: SectorInstanceKey,
     gathering: &SectorInstanceGathering,
-    attributes: SectorAttributes,
+    wanted: SectorAttributes,
     builder: &mut VisualBufferBuilder,
   ) -> XrfResult<SectorInstanceGroup> {
-    let mut arrays: SectorVertexArrays = SectorVertexArrays::new(attributes);
+    let payload: LevelVertexPayload =
+      self
+        .source
+        .read_vertex_payload(key.vertices.buffer, key.vertices.base, key.vertices.count)?;
+    let mut arrays: SectorVertexArrays = SectorVertexArrays::new(
+      SectorAttributes::of(&payload.layout).intersect(wanted),
+      SectorVertexArrays::uv_components_of(&payload.layout),
+    );
 
     // Packed unplaced: the mesh is in its own space, and each instance's transform stands a copy of it.
-    for vertex in &self
-      .source
-      .read_vertices::<T>(key.vertices.buffer, key.vertices.base, key.vertices.count)?
-    {
-      arrays.push(vertex);
-    }
+    arrays.push::<T>(&payload)?;
 
     let mut indices: Vec<u32> = self
       .source

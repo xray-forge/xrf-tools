@@ -12,22 +12,24 @@ import {
 import { getLevelSurfaceRender, ILevelSurfaceRender } from "@/core/level/lib/surface/level-surface-render";
 
 /**
- * One packed mesh as views over the buffer it arrived in.
+ * One packed mesh as views over the buffer it arrived in: positions as floats, the rest the vertex xrLC wrote.
  */
 export interface ISectorGeometryViews {
   vertexCount: number;
   indexCount: number;
   positions: Float32Array;
-  normals: Nullable<Float32Array>;
-  tangents: Nullable<Float32Array>;
-  binormals: Nullable<Float32Array>;
-  uvs: Nullable<Float32Array>;
-  /** The second uv set a lightmapped surface samples its baked lighting with. */
-  lightmapUvs: Nullable<Float32Array>;
-  /** Baked vertex colour, for the surfaces xrLC lit that way instead of with a lightmap. */
-  colors: Nullable<Float32Array>;
-  /** Hemisphere occlusion, one float per vertex, which rides in the normal and is present with it. */
-  hemi: Nullable<Float32Array>;
+  /** Four bytes a vertex: the packed normal, the hemisphere term fourth. */
+  normals: Nullable<Uint8Array>;
+  /** Four bytes a vertex: the packed tangent, the low byte of the base `u` fourth. */
+  tangents: Nullable<Uint8Array>;
+  /** Four bytes a vertex: the packed binormal, the low byte of the base `v` fourth. */
+  binormals: Nullable<Uint8Array>;
+  /** The base coordinate as shorts, `uvComponents` a vertex. */
+  uvs: Nullable<Int16Array>;
+  /** Shorts the base coordinate takes a vertex: two, or a tree's four. */
+  uvComponents: number;
+  /** The second uv set a lightmapped surface samples its baked lighting with, as shorts. */
+  lightmapUvs: Nullable<Int16Array>;
   /** Thirty-two bit, unlike a model's. */
   indices: Uint32Array;
 }
@@ -83,8 +85,12 @@ function toFloatView(buffer: ArrayBuffer, section: VisualSection): Float32Array 
   return new Float32Array(buffer, section.byteOffset, section.byteLength / Float32Array.BYTES_PER_ELEMENT);
 }
 
-function toOptionalFloatView(buffer: ArrayBuffer, section: Nullable<VisualSection>): Nullable<Float32Array> {
-  return section ? toFloatView(buffer, section) : null;
+function toOptionalByteView(buffer: ArrayBuffer, section: Nullable<VisualSection>): Nullable<Uint8Array> {
+  return section ? new Uint8Array(buffer, section.byteOffset, section.byteLength) : null;
+}
+
+function toOptionalShortView(buffer: ArrayBuffer, section: Nullable<VisualSection>): Nullable<Int16Array> {
+  return section ? new Int16Array(buffer, section.byteOffset, section.byteLength / Int16Array.BYTES_PER_ELEMENT) : null;
 }
 
 function toIndexView(buffer: ArrayBuffer, section: VisualSection): Uint32Array {
@@ -100,16 +106,15 @@ function toIndexView(buffer: ArrayBuffer, section: VisualSection): Uint32Array {
  */
 function toGeometryViews(buffer: ArrayBuffer, geometry: SectorGeometry): ISectorGeometryViews {
   return {
-    binormals: toOptionalFloatView(buffer, geometry.binormals),
-    colors: toOptionalFloatView(buffer, geometry.colors),
-    hemi: toOptionalFloatView(buffer, geometry.hemi),
+    binormals: toOptionalByteView(buffer, geometry.binormals),
     indexCount: geometry.indexCount,
     indices: toIndexView(buffer, geometry.indices),
-    lightmapUvs: toOptionalFloatView(buffer, geometry.lightmapUvs),
-    normals: toOptionalFloatView(buffer, geometry.normals),
+    lightmapUvs: toOptionalShortView(buffer, geometry.lightmapUvs),
+    normals: toOptionalByteView(buffer, geometry.normals),
     positions: toFloatView(buffer, geometry.positions),
-    tangents: toOptionalFloatView(buffer, geometry.tangents),
-    uvs: toOptionalFloatView(buffer, geometry.uvs),
+    tangents: toOptionalByteView(buffer, geometry.tangents),
+    uvComponents: geometry.uvComponents,
+    uvs: toOptionalShortView(buffer, geometry.uvs),
     vertexCount: geometry.vertexCount,
   };
 }

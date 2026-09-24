@@ -1,6 +1,7 @@
 use xrf_level::LevelVertexLayout;
 
-/// Which attributes a sector's vertices carry.
+/// Which attributes a sector's vertices carry. The hemisphere term rides in the normal's fourth byte and the base
+/// coordinate's low bytes in the tangent's and binormal's, so each comes with the direction carrying it.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct SectorAttributes {
   pub normals: bool,
@@ -8,9 +9,6 @@ pub struct SectorAttributes {
   pub binormals: bool,
   pub uvs: bool,
   pub lightmap_uvs: bool,
-  pub colors: bool,
-  /// Hemisphere occlusion, which rides in the normal's fourth byte and is therefore available exactly with it.
-  pub hemi: bool,
 }
 
 impl SectorAttributes {
@@ -18,8 +16,6 @@ impl SectorAttributes {
   pub const fn all() -> Self {
     Self {
       binormals: true,
-      colors: true,
-      hemi: true,
       lightmap_uvs: true,
       normals: true,
       tangents: true,
@@ -27,15 +23,26 @@ impl SectorAttributes {
     }
   }
 
+  /// What one declaration carries.
+  pub const fn of(layout: &LevelVertexLayout) -> Self {
+    Self {
+      binormals: layout.get_binormal_offset().is_some(),
+      lightmap_uvs: layout.get_lightmap_coordinate_offset().is_some(),
+      normals: layout.get_normal_offset().is_some(),
+      tangents: layout.get_tangent_offset().is_some(),
+      uvs: layout.get_texture_coordinate_offset().is_some(),
+    }
+  }
+
   /// Widens what the sector carries by what one more declaration does.
   pub fn widen(&mut self, layout: &LevelVertexLayout) {
-    self.binormals |= layout.get_binormal_offset().is_some();
-    self.colors |= layout.get_color_offset().is_some();
-    self.lightmap_uvs |= layout.get_lightmap_coordinate_offset().is_some();
-    self.normals |= layout.get_normal_offset().is_some();
-    self.tangents |= layout.get_tangent_offset().is_some();
-    self.uvs |= layout.get_texture_coordinate_offset().is_some();
-    self.hemi |= layout.get_normal_offset().is_some();
+    let carried: Self = Self::of(layout);
+
+    self.binormals |= carried.binormals;
+    self.lightmap_uvs |= carried.lightmap_uvs;
+    self.normals |= carried.normals;
+    self.tangents |= carried.tangents;
+    self.uvs |= carried.uvs;
   }
 
   /// What both this and `other` carry, which is what a pack is worth writing.
@@ -43,8 +50,6 @@ impl SectorAttributes {
   pub const fn intersect(self, other: Self) -> Self {
     Self {
       binormals: self.binormals && other.binormals,
-      colors: self.colors && other.colors,
-      hemi: self.hemi && other.hemi,
       lightmap_uvs: self.lightmap_uvs && other.lightmap_uvs,
       normals: self.normals && other.normals,
       tangents: self.tangents && other.tangents,
@@ -60,7 +65,7 @@ mod tests {
   #[test]
   fn keeps_only_what_both_the_sector_and_the_caller_carry() {
     let carried: SectorAttributes = SectorAttributes {
-      colors: true,
+      lightmap_uvs: true,
       normals: true,
       tangents: true,
       ..SectorAttributes::default()

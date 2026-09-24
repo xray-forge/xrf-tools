@@ -74,3 +74,27 @@ fn produces_an_empty_buffer_for_an_empty_section() {
   assert_eq!(section.byte_length, 0);
   assert!(builder.into_buffer().is_empty());
 }
+
+#[test]
+fn writes_bytes_as_they_are_and_shorts_little_endian_each_on_a_boundary() {
+  let mut builder: VisualBufferBuilder = VisualBufferBuilder::new();
+
+  let bytes: VisualSection = builder.push_u8_section(&[1, 2, 3]);
+  let shorts: VisualSection = builder.push_i16_section(&[-2, 513]);
+
+  assert_eq!(
+    bytes,
+    VisualSection {
+      byte_offset: 0,
+      byte_length: 3
+    }
+  );
+  assert_eq!(
+    shorts,
+    VisualSection {
+      byte_offset: 4,
+      byte_length: 4
+    }
+  );
+  assert_eq!(builder.into_buffer(), vec![1, 2, 3, 0, 0xfe, 0xff, 1, 2]);
+}

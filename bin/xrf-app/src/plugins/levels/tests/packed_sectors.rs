@@ -20,8 +20,6 @@ fn new_pack(sector: u32, bytes: &[u8]) -> PackedSector {
       buffer_length: bytes.len() as u32,
       geometry: SectorGeometry {
         binormals: None,
-        colors: None,
-        hemi: None,
         index_count: 0,
         indices: VisualSection {
           byte_length: 0,
@@ -34,6 +32,7 @@ fn new_pack(sector: u32, bytes: &[u8]) -> PackedSector {
           byte_offset: 0,
         },
         tangents: None,
+        uv_components: 0,
         uvs: None,
         vertex_count: 0,
       },
