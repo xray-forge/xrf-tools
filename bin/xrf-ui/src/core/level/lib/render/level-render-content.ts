@@ -12,6 +12,9 @@ import {
   ILevelTextureSupplyChange,
 } from "@/core/level/lib/render/level-render-protocol";
 import {
+  createLevelImpostorQuad,
+  toLevelImpostorObject,
+  toLevelImpostors,
   toLevelInstanceGeometry,
   toLevelInstanceObject,
   toLevelSectorGeometry,
@@ -36,6 +39,8 @@ export type TLevelRenderSink = Pick<
   | "releaseGeometry"
   | "putObject"
   | "releaseObject"
+  | "putImpostors"
+  | "releaseImpostors"
   | "putSurface"
   | "releaseSurface"
   | "putTexture"
@@ -49,6 +54,8 @@ const ADD_WINDOW: number = 32;
 interface IHeldSector {
   geometries: Array<string>;
   objects: Array<string>;
+  /** The impostor set it put, or null for a sector with no clump of trees. */
+  impostors: string | null;
   bytes: number;
   /** What each entry draws in it, counted as it arrived: its bytes went to the renderer. */
   geometry: ReadonlyMap<number, ILevelSurfaceGeometry>;
@@ -72,6 +79,8 @@ export class LevelRenderContent {
   /** What became of each reference supplied, in the order they were. */
   private readonly textures: Map<string, ILevelSurfaceDressing> = new Map();
   private options: ILevelSurfaceOptions = DEFAULT_LEVEL_SURFACE_OPTIONS;
+  /** Whether the quad every impostor draws over is put. */
+  private isImpostorQuadPut: boolean = false;
   /** What the recent arrivals cost to put, which is the half of a sector's arrival no read stage covers. */
   private readonly added: Array<number> = [];
 
@@ -200,6 +209,12 @@ export class LevelRenderContent {
     Array.from(this.sectors.keys()).forEach((sector: number) => this.drop(sector));
     this.surfaces.forEach((_, shaderId: number) => this.sink.releaseSurface(LEVEL_RENDER_KEYS.surface(shaderId)));
     this.surfaces.clear();
+
+    if (this.isImpostorQuadPut) {
+      this.sink.releaseGeometry(LEVEL_RENDER_KEYS.impostorQuad);
+      this.isImpostorQuadPut = false;
+    }
+
     Array.from(this.textures.keys()).forEach((reference: string) => this.releaseTexture(reference));
     this.table = [];
     this.added.length = 0;
@@ -216,6 +231,7 @@ export class LevelRenderContent {
       geometries: [],
       // Counted now: the views are over bytes that move to the renderer once this task ends.
       geometry: countSectorSurfaceGeometry(views),
+      impostors: null,
       objects: [],
     };
 
@@ -241,6 +257,10 @@ export class LevelRenderContent {
       held.objects.push(key);
     });
 
+    if (views.impostors) {
+      this.takeImpostors(views, held);
+    }
+
     this.sectors.set(views.sector, held);
     this.note(timer.elapsed());
   }
@@ -251,11 +271,38 @@ export class LevelRenderContent {
     if (held) {
       held.objects.forEach((key: string) => this.sink.releaseObject(key));
       held.geometries.forEach((key: string) => this.sink.releaseGeometry(key));
+
+      if (held.impostors) {
+        this.sink.releaseImpostors(held.impostors);
+      }
+
       this.sectors.delete(sector);
     }
   }
 
   /** Puts a shader table entry the first time a sector draws it: every sector drawing it shares it after. */
+  /** Puts a sector's impostor set, before the objects naming it, and a draw for each run of it by surface. */
+  private takeImpostors(views: ISectorViews, held: IHeldSector): void {
+    const impostors = views.impostors as NonNullable<ISectorViews["impostors"]>;
+    const key: string = LEVEL_RENDER_KEYS.impostors(views.sector);
+
+    if (!this.isImpostorQuadPut) {
+      this.sink.putGeometry(LEVEL_RENDER_KEYS.impostorQuad, createLevelImpostorQuad());
+      this.isImpostorQuadPut = true;
+    }
+
+    this.sink.putImpostors(key, toLevelImpostors(impostors));
+    held.impostors = key;
+
+    impostors.groups.forEach(({ surface, render }, group: number) => {
+      const object: string = LEVEL_RENDER_KEYS.impostorGroup(views.sector, group);
+
+      this.ensureSurface(surface, render);
+      this.sink.putObject(object, toLevelImpostorObject(views.sector, impostors, group));
+      held.objects.push(object);
+    });
+  }
+
   private ensureSurface(surface: SectorSurface, render: ILevelSurfaceRender): void {
     if (!this.surfaces.has(surface.shaderId)) {
       this.surfaces.set(surface.shaderId, { render, surface });

@@ -1,6 +1,7 @@
 import {
   createRendererBox,
   createRendererSphere,
+  DEFAULT_RENDERER_LOD_SETTINGS,
   ERendererCameraController,
   ERendererDebugView,
   ERendererDraw,
@@ -161,6 +162,7 @@ export function toTextureRendererSettings(
     debugView: ERendererDebugView.FINAL,
     frameRateLimit,
     hemiStrength: 1,
+    lod: DEFAULT_RENDERER_LOD_SETTINGS,
     isBumped: options.isBumped,
     isLit: options.isLit,
     isWireframe: false,

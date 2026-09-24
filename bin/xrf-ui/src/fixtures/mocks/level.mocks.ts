@@ -86,6 +86,7 @@ export function mockSectorDescription(
   return {
     bounds: mockVisualBounds(),
     geometry,
+    impostors: null,
     instances: [],
     sections: [mockSectorSection()],
     sector: 0,
@@ -119,6 +120,7 @@ export function mockSectorInstanceGroup(
     drawables: places.map((_, index: number) => index + 1),
     geometry,
     hemi,
+    impostors: null,
     instanceCount: places.length,
     surface: mockSectorSurface(),
     transforms,

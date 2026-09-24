@@ -5,6 +5,8 @@ pub(crate) mod resolve;
 pub use crate::data::sector::sector_attributes::SectorAttributes;
 pub use crate::data::sector::sector_description::SectorDescription;
 pub use crate::data::sector::sector_geometry::SectorGeometry;
+pub use crate::data::sector::sector_impostor_group::SectorImpostorGroup;
+pub use crate::data::sector::sector_impostors::SectorImpostors;
 pub use crate::data::sector::sector_instance_group::SectorInstanceGroup;
 pub use crate::data::sector::sector_outline::SectorOutline;
 pub use crate::data::sector::sector_section::SectorSection;

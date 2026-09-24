@@ -3,11 +3,13 @@ import { Material, Mesh, Object3D, PerspectiveCamera, Scene } from "three/webgpu
 
 import { IRendererStaticDrawReport } from "#/contract/renderer-report";
 import { IRendererGeometry } from "#/contract/scene/renderer-geometry";
+import { IRendererImpostors } from "#/contract/scene/renderer-impostors";
 import { IRendererObject } from "#/contract/scene/renderer-object";
 import { ERendererPass, IRendererSurface } from "#/contract/scene/renderer-surface";
 import { TRendererTextureSource } from "#/contract/scene/renderer-texture-source";
 import { SceneChangeQueue } from "#/scene/change/scene-change-queue";
 import { SceneGeometry } from "#/scene/geometry/scene-geometry";
+import { RendererImpostorSets } from "#/scene/impostor/renderer-impostor-sets";
 import { KeyedUsers } from "#/scene/keyed-users";
 import { SceneObject } from "#/scene/object/scene-object";
 import { SceneObjectResolver } from "#/scene/object/scene-object-resolver";
@@ -50,6 +52,8 @@ export class RendererScene {
   private readonly geometryUsers: KeyedUsers<SceneObject> = new KeyedUsers();
   private readonly surfaceUsers: KeyedUsers<SceneObject> = new KeyedUsers();
   private readonly skeletonUsers: KeyedUsers<SceneObject> = new KeyedUsers();
+  private readonly impostorUsers: KeyedUsers<SceneObject> = new KeyedUsers();
+  private readonly impostors: RendererImpostorSets;
   private readonly staticDraws: StaticDraws;
   private readonly readiness: MaterialReadiness = new MaterialReadiness();
   private readonly resolver: SceneObjectResolver;
@@ -70,7 +74,16 @@ export class RendererScene {
     this.surfaces = new SurfaceLibrary(this.textures, uniforms, (key: string) =>
       this.buildUsers(this.surfaceUsers.get(key))
     );
-    this.resolver = new SceneObjectResolver(this.geometries, this.skeletons, this.surfaces, this.staticDraws);
+    this.impostors = new RendererImpostorSets(this.staticDraws, (key: string) =>
+      this.buildUsers(this.impostorUsers.get(key))
+    );
+    this.resolver = new SceneObjectResolver(
+      this.geometries,
+      this.skeletons,
+      this.surfaces,
+      this.impostors,
+      this.staticDraws
+    );
   }
 
   /**
@@ -114,6 +127,7 @@ export class RendererScene {
    * @param camera - Its camera.
    */
   public cull(view: CullView, camera: PerspectiveCamera): void {
+    // The trees and impostors of every clump are chosen on the GPU, in the static cull.
     this.objects.forEach((entry: SceneObject) => entry.cull(view));
     this.staticCull.take(view, camera);
   }
@@ -183,6 +197,14 @@ export class RendererScene {
     });
   }
 
+  public putImpostors(key: string, impostors: IRendererImpostors): void {
+    this.transact(() => this.impostors.put(key, impostors));
+  }
+
+  public releaseImpostors(key: string): void {
+    this.transact(() => this.impostors.release(key));
+  }
+
   public putSurface(key: string, surface: IRendererSurface): void {
     this.transact(() => this.surfaces.put(key, surface));
   }
@@ -228,6 +250,8 @@ export class RendererScene {
     this.geometryUsers.clear();
     this.surfaceUsers.clear();
     this.skeletonUsers.clear();
+    this.impostorUsers.clear();
+    this.impostors.dispose();
     this.geometries.forEach((geometry: SceneGeometry) => geometry.dispose());
     this.geometries.clear();
     this.skeletons.dispose();
@@ -236,7 +260,7 @@ export class RendererScene {
   }
 
   private index(entry: SceneObject): void {
-    const { geometry, surfaces, skeleton } = entry.object;
+    const { geometry, surfaces, skeleton, instances } = entry.object;
 
     this.geometryUsers.add(geometry, entry);
     surfaces.forEach((surface: string) => this.surfaceUsers.add(surface, entry));
@@ -244,16 +268,24 @@ export class RendererScene {
     if (skeleton) {
       this.skeletonUsers.add(skeleton, entry);
     }
+
+    if (instances?.impostors) {
+      this.impostorUsers.add(instances.impostors.key, entry);
+    }
   }
 
   private unindex(entry: SceneObject): void {
-    const { geometry, surfaces, skeleton } = entry.object;
+    const { geometry, surfaces, skeleton, instances } = entry.object;
 
     this.geometryUsers.delete(geometry, entry);
     surfaces.forEach((surface: string) => this.surfaceUsers.delete(surface, entry));
 
     if (skeleton) {
       this.skeletonUsers.delete(skeleton, entry);
+    }
+
+    if (instances?.impostors) {
+      this.impostorUsers.delete(instances.impostors.key, entry);
     }
   }
 

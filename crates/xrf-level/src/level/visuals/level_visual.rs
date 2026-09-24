@@ -3,7 +3,8 @@ use xrf_chunk::{ChunkDataSource, ChunkReader, find_optional_chunk_by_id, find_re
 use xrf_error::XrfResult;
 use xrf_math::Matrix4x4;
 use xrf_ogf::{
-  OgfChildrenLinkChunk, OgfGeometryContainerChunk, OgfHeaderChunk, OgfTextureChunk, OgfTreeDefinitionChunk,
+  OgfChildrenLinkChunk, OgfGeometryContainerChunk, OgfHeaderChunk, OgfLodDefinitionChunk, OgfTextureChunk,
+  OgfTreeDefinitionChunk,
 };
 
 /// One visual of a compiled level, as `fsL_VISUALS` stores it.
@@ -21,6 +22,8 @@ pub struct LevelVisual {
   pub children: Vec<u32>,
   /// Where a tree stands and how it is lit, absent for every visual that is not one.
   pub tree: Option<OgfTreeDefinitionChunk>,
+  /// The impostor a `MT_LOD` visual draws in place of the trees it composes, seen from far enough away.
+  pub lod: Option<OgfLodDefinitionChunk>,
 }
 
 impl LevelVisual {
@@ -49,6 +52,10 @@ impl LevelVisual {
       },
       fastpath: Self::read_fastpath::<T, D>(&chunks)?,
       tree: match find_optional_chunk_by_id(&chunks, OgfTreeDefinitionChunk::CHUNK_ID) {
+        Some(mut chunk) => Some(chunk.read_xr::<T, _>()?),
+        None => None,
+      },
+      lod: match find_optional_chunk_by_id(&chunks, OgfLodDefinitionChunk::CHUNK_ID) {
         Some(mut chunk) => Some(chunk.read_xr::<T, _>()?),
         None => None,
       },

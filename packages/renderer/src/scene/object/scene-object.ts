@@ -12,6 +12,7 @@ import { ScenePart } from "#/scene/object/scene-part";
 import { TPassRecord } from "#/scene/pass-record";
 import { StaticDraws } from "#/scene/static/static-draws";
 import { IStaticRange } from "#/scene/static/static-range";
+import { STATIC_LOD_IMPOSTOR_ROW, STATIC_NO_LOD } from "#/uniforms/static-draw-buffers";
 import { CullView } from "#/visibility/cull-view";
 import { EVisibility } from "#/visibility/visibility";
 
@@ -225,7 +226,8 @@ export class SceneObject {
     const range: Nullable<IStaticRange> = state.surfaces.some((surface) => isStaticDraw(state, surface))
       ? this.place(state.geometry)
       : null;
-    const placeStart: Nullable<number> = range && state.instances ? this.placeInstances(state.instances) : null;
+    const placeStart: Nullable<number> =
+      range && state.instances ? this.placeInstances(state.instances, state.lodStart) : null;
     let staticParts: number = 0;
 
     for (const part of this.parts) {
@@ -234,8 +236,15 @@ export class SceneObject {
       part.narrow(this.object.drawRange);
       part.place(this.matrix);
 
-      if (range && isStaticDraw(state, surface) && this.showStatic(part, surface, range, state.instances, placeStart)) {
+      if (
+        range &&
+        isStaticDraw(state, surface) &&
+        this.showStatic(part, surface, range, state.instances, placeStart, state.lodStart)
+      ) {
         staticParts += 1;
+      } else if (surface?.isImpostor) {
+        // An impostor draws only where the LOD cull decides it does, which only a static draw is culled by.
+        part.showPlain(null, null);
       } else {
         part.showPlain(surface?.material ?? null, surface ? scenes[surface.pass] : null);
       }
@@ -253,20 +262,57 @@ export class SceneObject {
     surface: ISurfaceMaterial,
     range: IStaticRange,
     instances: Nullable<SceneInstances>,
-    placeStart: Nullable<number>
+    placeStart: Nullable<number>,
+    lodStart: Nullable<number>
   ): boolean {
     if (!instances) {
-      return part.showStatic(surface, range);
+      return !surface.isImpostor && part.showStatic(surface, range);
     }
 
-    return placeStart !== null && part.showListed(surface, range, placeStart, instances.placeSpheres);
+    if (surface.isImpostor && lodStart === null) {
+      return false;
+    }
+
+    return (
+      placeStart !== null &&
+      part.showListed(
+        surface,
+        range,
+        placeStart,
+        instances.placeSpheres,
+        SceneObject.toRowLods(instances, lodStart, Boolean(surface.isImpostor))
+      )
+    );
+  }
+
+  /**
+   * @param instances - An object's places.
+   * @param lodStart - Where its set's impostors start, or null for none.
+   * @param isImpostor - Whether the rows are the impostors' own draw rather than the trees of their clumps.
+   * @returns Each place's row word for the LOD cull, or null where no place belongs to an impostor.
+   */
+  private static toRowLods(
+    instances: SceneInstances,
+    lodStart: Nullable<number>,
+    isImpostor: boolean
+  ): Nullable<Uint32Array> {
+    const indices: Maybe<Int32Array> = instances.source.impostors?.indices;
+
+    if (lodStart === null || !indices) {
+      return null;
+    }
+
+    return Uint32Array.from(indices, (index: number) =>
+      index < 0 ? STATIC_NO_LOD : (lodStart + index) | (isImpostor ? STATIC_LOD_IMPOSTOR_ROW : 0)
+    );
   }
 
   /**
    * @param instances - The places it stands in now, as its matrix places them.
+   * @param lodStart - Where its set's impostors start, or null for none.
    * @returns Where they start in the static draw buffers, written there first; null where there is no room.
    */
-  private placeInstances(instances: SceneInstances): Nullable<number> {
+  private placeInstances(instances: SceneInstances, lodStart: Nullable<number>): Nullable<number> {
     if (this.placeStart !== null && this.placeCount !== instances.places) {
       this.freePlaces();
     }
@@ -277,7 +323,7 @@ export class SceneObject {
     }
 
     if (this.placeStart !== null) {
-      this.draws.writePlaces(this.placeStart, instances.source, this.matrix);
+      this.draws.writePlaces(this.placeStart, instances.source, this.matrix, lodStart);
     }
 
     return this.placeStart;

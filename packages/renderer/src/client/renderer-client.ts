@@ -15,6 +15,7 @@ import { IRendererReport } from "#/contract/renderer-report";
 import { IRendererSettings } from "#/contract/renderer-settings";
 import { IRendererViewSize } from "#/contract/renderer-view-size";
 import { IRendererGeometry } from "#/contract/scene/renderer-geometry";
+import { IRendererImpostors } from "#/contract/scene/renderer-impostors";
 import { IRendererObject } from "#/contract/scene/renderer-object";
 import { TRendererOverlay } from "#/contract/scene/renderer-overlay";
 import { IRendererMotion, IRendererPose, IRendererSkeleton } from "#/contract/scene/renderer-skeleton";
@@ -179,6 +180,18 @@ export class RendererClient {
 
   public releaseObject(key: string): void {
     this.post({ key, kind: ERendererRequest.RELEASE_OBJECT });
+  }
+
+  /**
+   * @param key - What the set is held under; an instanced object's places name it by this.
+   * @param impostors - The impostors of clumps of trees, moved to the renderer.
+   */
+  public putImpostors(key: string, impostors: IRendererImpostors): void {
+    this.post({ impostors, key, kind: ERendererRequest.PUT_IMPOSTORS });
+  }
+
+  public releaseImpostors(key: string): void {
+    this.post({ key, kind: ERendererRequest.RELEASE_IMPOSTORS });
   }
 
   /**

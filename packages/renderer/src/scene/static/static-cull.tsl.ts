@@ -3,6 +3,7 @@ import { ComputeNode, UniformArrayNode, Vector4 } from "three/webgpu";
 
 import { toInFrustum } from "#/scene/static/static-frustum.tsl";
 import { createEarlyInstanceCullShader, createLateInstanceCullShader } from "#/scene/static/static-instance-cull.tsl";
+import { createLodCullShader } from "#/scene/static/static-lod-cull.tsl";
 import { toOccluded } from "#/scene/static/static-occlusion.tsl";
 import {
   EStaticCullState,
@@ -18,8 +19,10 @@ import {
  * as they are laid out, and dispatched only as far as their slots and rows are used.
  */
 export interface IStaticCullShader {
-  early: Array<ComputeNode>;
-  late: Array<ComputeNode>;
+  /** The slot cull, the LOD cull, then the instance cull, in dispatch order: the instances read what the LODs decide. */
+  early: [ComputeNode, ComputeNode, ComputeNode];
+  /** The slot cull, then the instance cull. */
+  late: [ComputeNode, ComputeNode];
   /** Six planes, normals pointing in, `w` the constant. */
   planes: ReadonlyArray<Vector4>;
 }
@@ -33,7 +36,11 @@ export function createStaticCullShader(buffers: StaticDrawBuffers): IStaticCullS
   const planeNodes = uniformArray(planes, "vec4");
 
   return {
-    early: [createEarlySlotCullShader(buffers, planeNodes), createEarlyInstanceCullShader(buffers, planeNodes)],
+    early: [
+      createEarlySlotCullShader(buffers, planeNodes),
+      createLodCullShader(buffers),
+      createEarlyInstanceCullShader(buffers, planeNodes),
+    ],
     late: [createLateSlotCullShader(buffers), createLateInstanceCullShader(buffers)],
     planes,
   };

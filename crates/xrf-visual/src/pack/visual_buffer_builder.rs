@@ -48,6 +48,11 @@ impl VisualBufferBuilder {
     self.push_section(values.len(), |buffer| buffer.extend_from_slice(values))
   }
 
+  /// Appends `i32` values as little-endian bytes and returns their aligned byte range, for an `Int32Array` view.
+  pub fn push_i32_section(&mut self, values: &[i32]) -> VisualSection {
+    self.push_encoded(values, i32::to_le_bytes)
+  }
+
   /// Appends `i16` values as little-endian bytes and returns their aligned byte range, for an `Int16Array` view.
   pub fn push_i16_section(&mut self, values: &[i16]) -> VisualSection {
     self.push_encoded(values, i16::to_le_bytes)

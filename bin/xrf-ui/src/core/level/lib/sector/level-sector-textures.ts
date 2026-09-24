@@ -1,5 +1,6 @@
 import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
 import { SectorDescription, SectorSurface } from "@/core/ipc/types/xrf-visual";
+import { isLevelImpostorSurface, LEVEL_IMPOSTOR_COMPANION_SUFFIX } from "@/core/level/lib/render/level-render-surface";
 import { ISectorInstanceViews, ISectorSectionViews, ISectorViews } from "@/core/level/lib/sector/level-sector-views";
 import { getLevelSurfaceRender, ILevelSurfaceRender } from "@/core/level/lib/surface/level-surface-render";
 
@@ -26,7 +27,7 @@ interface ISectorDrawnSurface {
 export function listSectorTextures(views: ISectorViews): Array<ISectorTextureRequest> {
   const references: Set<string> = new Set();
 
-  for (const drawn of [...views.sections, ...views.instances]) {
+  for (const drawn of [...views.sections, ...views.instances, ...(views.impostors?.groups ?? [])]) {
     collectSurfaceTextures(references, drawn);
   }
 
@@ -46,7 +47,7 @@ export function listDescriptionTextures(
 ): Array<ISectorTextureRequest> {
   const references: Set<string> = new Set();
 
-  for (const drawn of [...description.sections, ...description.instances]) {
+  for (const drawn of [...description.sections, ...description.instances, ...(description.impostors?.groups ?? [])]) {
     collectSurfaceTextures(references, {
       render: getLevelSurfaceRender(surfaces, drawn.surface.shaderId),
       surface: drawn.surface,
@@ -72,6 +73,11 @@ function collectSurfaceTextures(references: Set<string>, { surface, render }: IS
   // that only fetched what its table names would draw its ground as the bare aerial photograph the base texture is.
   if (render.detail) {
     references.add(render.detail.reference);
+  }
+
+  // An impostor's atlas is bound beside its companion, which the shader table does not name.
+  if (isLevelImpostorSurface(surface) && surface.textureName) {
+    references.add(`${surface.textureName}${LEVEL_IMPOSTOR_COMPANION_SUFFIX}`);
   }
 }
 

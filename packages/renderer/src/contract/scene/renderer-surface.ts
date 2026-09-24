@@ -59,6 +59,12 @@ export interface IRendererSurface {
    * its texture sampled at the top level only. Its draw says how it composites there.
    */
   isWallmark?: boolean;
+  /**
+   * Whether it draws impostors, `details\lod`: the places of the object it dresses are impostors of a set, each a quad
+   * blended from two facets and alpha tested as `lod.ps` does. Its `base` is the atlas, and its `hemi` the atlas's
+   * `_nm` companion, a normal in colour and the hemisphere term in alpha.
+   */
+  isImpostor?: boolean;
 }
 
 /**

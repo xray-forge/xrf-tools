@@ -12,6 +12,7 @@ import { StaticCull } from "#/scene/static/static-cull";
 import { EStaticDrawKind } from "#/scene/static/static-draw-kind";
 import { StaticDrawPool } from "#/scene/static/static-draw-pool";
 import { toGrownCapacity } from "#/scene/static/static-growth";
+import { StaticLods } from "#/scene/static/static-lods";
 import { StaticPlaces } from "#/scene/static/static-places";
 import { IStaticRange } from "#/scene/static/static-range";
 import { IStaticUpcoming } from "#/scene/static/static-upcoming";
@@ -41,6 +42,8 @@ export class StaticDraws {
   private readonly buffers: StaticDrawBuffers;
   private readonly pool: StaticDrawPool;
   private readonly places: StaticPlaces;
+  /** The impostors of clumps of trees, which the LOD cull decides between a clump and its impostor by. */
+  public readonly lods: StaticLods;
   private readonly arenas: StaticArenas;
   /** The rows each instanced draw's slot tests its places by. */
   private readonly rows: Map<number, IRowRun> = new Map();
@@ -59,8 +62,9 @@ export class StaticDraws {
     this.toUpcoming = toUpcoming;
     this.pool = new StaticDrawPool(buffers);
     this.places = new StaticPlaces(buffers);
+    this.lods = new StaticLods(buffers);
     this.late.matrixWorldAutoUpdate = false;
-    this.cull = new StaticCull(buffers, this.pool, this.places, this.late);
+    this.cull = new StaticCull(buffers, this.pool, this.places, this.lods, this.late);
     this.batches = new StaticBatches(this.pool, scene, this.late);
     this.arenas = new StaticArenas(
       (arena: StaticArena) => this.batches.refresh(arena),
@@ -95,6 +99,7 @@ export class StaticDraws {
     return {
       fallbacks: this.fallbacks,
       occluded: { draws: occludedDraws, instances: occludedInstances, triangles: occludedTriangles },
+      lods: this.lods.use,
       places: this.places.placeUse,
       rows: this.places.rowUse,
       slots,
@@ -178,8 +183,21 @@ export class StaticDraws {
    * @param instances - Its places, as the consumer put them.
    * @param placement - Its own matrix, which places every instance.
    */
-  public writePlaces(start: number, instances: IRendererInstances, placement: Matrix4): void {
-    this.places.writePlaces(start, instances, placement);
+  public writePlaces(
+    start: number,
+    instances: IRendererInstances,
+    placement: Matrix4,
+    lodStart: Nullable<number> = null
+  ): void {
+    this.places.writePlaces(start, instances, placement, lodStart);
+  }
+
+  /**
+   * @param count - Impostors a set holds.
+   * @returns Where they start, the pool grown where it has no room; null where the device's limit stops it.
+   */
+  public allocateLods(count: number): Nullable<number> {
+    return this.allocateRun(EStaticPool.LODS, count);
   }
 
   /**
@@ -200,6 +218,7 @@ export class StaticDraws {
    * @param count - Indices it draws; none draws nothing.
    * @param placeStart - Where its object's places start.
    * @param spheres - Each place's sphere in renderer space, four floats each, which its rows test.
+   * @param lods - Each place's impostor as its row names it, or null where none stands in for any.
    * @returns Whether it is drawn so; not where there is no room for its rows.
    */
   public drawListed(
@@ -209,7 +228,8 @@ export class StaticDraws {
     start: number,
     count: number,
     placeStart: number,
-    spheres: Float32Array
+    spheres: Float32Array,
+    lods: Nullable<Uint32Array> = null
   ): boolean {
     const places: number = spheres.length / 4;
     let run: Maybe<IRowRun> = this.rows.get(slot);
@@ -235,7 +255,8 @@ export class StaticDraws {
       count ? spheres : new Float32Array(spheres.length).fill(-1),
       placeStart,
       slot,
-      count
+      count,
+      lods
     );
     this.pool.writeListed(slot, range.indexStart + start, count, range.vertexStart, run.start);
     this.batches.put(slot, range.arena, EStaticDrawKind.LISTED, surface);
@@ -284,18 +305,26 @@ export class StaticDraws {
    * @returns A run of places or rows, grown until it fits: first for what the queue brings, then past the whole run,
    *   where freed room lies in runs too short for it. Null where the device's limit stops it.
    */
-  private allocateRun(pool: EStaticPool.PLACES | EStaticPool.ROWS, count: number): Nullable<number> {
-    const allocate = (): Nullable<number> =>
-      pool === EStaticPool.PLACES ? this.places.allocatePlaces(count) : this.places.allocateRows(count);
+  private allocateRun(pool: EStaticPool.PLACES | EStaticPool.ROWS | EStaticPool.LODS, count: number): Nullable<number> {
+    const allocate = (): Nullable<number> => {
+      switch (pool) {
+        case EStaticPool.PLACES:
+          return this.places.allocatePlaces(count);
+        case EStaticPool.ROWS:
+          return this.places.allocateRows(count);
+        case EStaticPool.LODS:
+          return this.lods.allocate(count);
+      }
+    };
     const limit: number = this.buffers.limit(pool);
     let start: Nullable<number> = allocate();
     let isFirst: boolean = true;
 
     while (start === null) {
-      const use: IRendererPoolUse = pool === EStaticPool.PLACES ? this.places.placeUse : this.places.rowUse;
+      const use: IRendererPoolUse = this.toUse(pool);
       const capacity: number = toGrownCapacity(
         isFirst ? use.used : use.capacity,
-        count + (isFirst ? this.toDemand()[pool] : 0),
+        count + (isFirst && pool !== EStaticPool.LODS ? this.toDemand()[pool] : 0),
         use.capacity,
         this.buffers.initial(pool),
         limit
@@ -307,7 +336,11 @@ export class StaticDraws {
         return null;
       }
 
-      this.places.grow(pool, capacity);
+      if (pool === EStaticPool.LODS) {
+        this.lods.grow(capacity);
+      } else {
+        this.places.grow(pool, capacity);
+      }
 
       if (pool === EStaticPool.ROWS) {
         // The second cull lists its places a row capacity on, which moved.
@@ -321,6 +354,17 @@ export class StaticDraws {
     }
 
     return start;
+  }
+
+  private toUse(pool: EStaticPool.PLACES | EStaticPool.ROWS | EStaticPool.LODS): IRendererPoolUse {
+    switch (pool) {
+      case EStaticPool.PLACES:
+        return this.places.placeUse;
+      case EStaticPool.ROWS:
+        return this.places.rowUse;
+      case EStaticPool.LODS:
+        return this.lods.use;
+    }
   }
 
   /** What the objects still waiting to draw will take of each pool, besides what they hold already. */

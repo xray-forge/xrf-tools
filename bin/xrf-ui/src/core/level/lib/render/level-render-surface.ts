@@ -1,4 +1,4 @@
-import { IRendererSurface, TRendererColor } from "@xrf/renderer";
+import { ERendererDraw, IRendererSurface, TRendererColor } from "@xrf/renderer";
 import { Nullable } from "@xrf/types";
 
 import { SectorSurface } from "@/core/ipc/types/xrf-visual";
@@ -7,6 +7,20 @@ import { ILevelSurfaceRender } from "@/core/level/lib/surface/level-surface-rend
 
 /** Turns of the golden angle, which spreads consecutive shader ids rather than grouping them into near hues. */
 const HUE_STEP: number = 137.508;
+
+/** The shader an impostor is drawn with (`details_lod.s`). */
+export const LEVEL_IMPOSTOR_SHADER: string = "details\\lod";
+
+/** What `details_lod.s` appends to the atlas for its `s_hemi`. */
+export const LEVEL_IMPOSTOR_COMPANION_SUFFIX: string = "_nm";
+
+/**
+ * @param surface - A shader table entry.
+ * @returns Whether it draws impostors.
+ */
+export function isLevelImpostorSurface(surface: SectorSurface): boolean {
+  return surface.shaderName?.toLowerCase() === LEVEL_IMPOSTOR_SHADER;
+}
 
 /**
  * One shader table entry, as the renderer draws it.
@@ -23,6 +37,18 @@ export function toLevelSurface(
 ): IRendererSurface {
   const base: Nullable<string> = options.isTextured ? surface.textureName : null;
   const detail = options.isTextured ? render.detail : null;
+
+  if (isLevelImpostorSurface(surface)) {
+    return {
+      color: base ? undefined : toLevelSurfaceColor(surface.shaderId),
+      draw: ERendererDraw.OPAQUE,
+      isImpostor: true,
+      textures: {
+        base: base ?? undefined,
+        hemi: surface.textureName ? `${surface.textureName}${LEVEL_IMPOSTOR_COMPANION_SUFFIX}` : undefined,
+      },
+    };
+  }
 
   return {
     alphaReference: render.alphaReference,

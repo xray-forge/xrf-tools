@@ -2,6 +2,7 @@ import { CanvasTarget, LinearSRGBColorSpace, NoToneMapping, WebGPURenderer } fro
 
 import { IRendererDevice } from "#/contract/renderer-device";
 import { RendererDeviceFailure } from "#/device/renderer-device-failure";
+import { getRendererDeviceLimits } from "#/device/renderer-device-limits";
 import { getRendererBackend, IRendererBackend } from "#/internals/renderer-backend";
 import { RendererPassInspector } from "#/timing/renderer-pass-inspector";
 
@@ -21,6 +22,7 @@ export class RendererDevice {
       canvas: new OffscreenCanvas(1, 1),
       // Near is 1 and far 0, so float depth keeps its precision where the projection spends least: in the distance.
       // Every camera is brought to it before it is first read (`adoptRendererConventions`).
+      requiredLimits: (await getRendererDeviceLimits()) ?? undefined,
       reversedDepthBuffer: true,
       trackTimestamp: true,
     });

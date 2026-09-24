@@ -4,6 +4,7 @@ import { BufferGeometry, Skeleton } from "three/webgpu";
 import { ISurfaceMaterial } from "#/material/surface-material";
 import { SceneGeometry } from "#/scene/geometry/scene-geometry";
 import { ISceneSection } from "#/scene/geometry/scene-section";
+import { RendererImpostorSets } from "#/scene/impostor/renderer-impostor-sets";
 import { SceneInstances } from "#/scene/object/scene-instances";
 import { SceneObject } from "#/scene/object/scene-object";
 import { ISceneObjectState } from "#/scene/object/scene-object-state";
@@ -20,6 +21,7 @@ export class SceneObjectResolver {
   private readonly geometries: ReadonlyMap<string, SceneGeometry>;
   private readonly skeletons: RendererSkeletons;
   private readonly surfaces: SurfaceLibrary;
+  private readonly impostors: RendererImpostorSets;
   private readonly draws: StaticDraws;
   /** Each geometry's attribute names, sorted: resolved for every waiting object on every frame. */
   private readonly attributeNames: WeakMap<BufferGeometry, string> = new WeakMap();
@@ -28,11 +30,13 @@ export class SceneObjectResolver {
     geometries: ReadonlyMap<string, SceneGeometry>,
     skeletons: RendererSkeletons,
     surfaces: SurfaceLibrary,
+    impostors: RendererImpostorSets,
     draws: StaticDraws
   ) {
     this.geometries = geometries;
     this.skeletons = skeletons;
     this.surfaces = surfaces;
+    this.impostors = impostors;
     this.draws = draws;
   }
 
@@ -71,6 +75,7 @@ export class SceneObjectResolver {
       geometry,
       instances,
       keys: surfaces.flatMap((surface: Maybe<ISurfaceMaterial>) => surface?.keys ?? []),
+      lodStart: instances ? this.impostors.getStart(object.instances?.impostors?.key) : null,
       plain: { drawn, layout: this.toLayout(drawn, skeleton, instances !== null) },
       skeleton,
       static: staticDrawn ? { drawn: staticDrawn, layout: this.toLayout(staticDrawn, null, false) } : null,

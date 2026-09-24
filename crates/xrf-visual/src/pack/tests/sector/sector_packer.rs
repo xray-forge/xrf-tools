@@ -12,8 +12,9 @@ use crate::pack::sector::sector_package::SectorPackage;
 use crate::pack::sector::sector_packer::SectorPacker;
 use crate::pack::tests::sector::level_fixtures::{
   GeomBuffer, new_drawable, new_drawable_of_buffer, new_geometry_fixture, new_hierarchy, new_lightmapped_declaration,
-  new_lightmapped_vertex, new_lit_tree, new_open_geometry, new_position_vertex, new_positions_declaration, new_shaders,
-  new_tree, new_tree_declaration, new_tree_vertex, new_vertex_lit_declaration, new_vertex_lit_vertex, new_visuals,
+  new_lightmapped_vertex, new_lit_tree, new_lod, new_open_geometry, new_position_vertex, new_positions_declaration,
+  new_shaders, new_tree, new_tree_declaration, new_tree_vertex, new_vertex_lit_declaration, new_vertex_lit_vertex,
+  new_visuals,
 };
 
 /// Four lightmapped vertices in one buffer, and six indices that draw two triangles out of them.
@@ -635,4 +636,58 @@ fn test_leaves_out_a_tree_declaration_baked_into_a_sector() {
   assert_eq!(package.description.skipped.len(), 1);
   assert_eq!(package.description.skipped[0].cause, VisualSkipCause::Unsupported);
   assert_eq!(package.description.geometry.vertex_count, 0);
+}
+
+// A clump of trees the level composes under a `MT_LOD` visual draws as that visual's impostor from far enough away:
+// the impostor packs with the sector, and every tree of the clump names it.
+#[test]
+fn test_packs_an_impostor_and_names_it_from_every_tree_of_its_clump() {
+  let run: LevelVisualsChunk = new_visuals(&[
+    new_hierarchy(&[1, 4]),
+    new_lod(3, &[2, 3]),
+    new_tree(1, 0, 2, 3, 100.0),
+    new_tree(1, 0, 2, 3, -100.0),
+    new_tree(1, 0, 2, 3, 50.0),
+  ]);
+  let table: LevelShadersChunk = new_shaders(&["", "trees\\trees/pine", "", "details\\lod/level_lods"]);
+  let source = new_open_geometry(new_tree_geometry());
+
+  let package: SectorPackage = SectorPacker::new(&run, Some(&table), &source).pack::<XRayByteOrder>(
+    0,
+    &new_composition(&run),
+    SectorAttributes::all(),
+  );
+  let impostors = package
+    .description
+    .impostors
+    .as_ref()
+    .expect("a sector composing an impostor");
+
+  assert_eq!(impostors.count, 1);
+  assert_eq!(impostors.groups.len(), 1);
+  assert_eq!(impostors.groups[0].surface.texture_name.as_deref(), Some("level_lods"));
+  // Mirrored into renderer space.
+  assert_eq!(new_read_floats(&package, impostors.spheres), vec![1.0, 2.0, -3.0, 2.0]);
+
+  let corners: Vec<f32> = new_read_floats(&package, impostors.corners);
+
+  assert_eq!(corners.len(), 32 * 8);
+  // The second facet's third corner: (1, 1) in the plane z = 1, mirrored, then its atlas coordinate and terms.
+  assert_eq!(
+    &corners[(4 + 2) * 8..(4 + 3) * 8],
+    &[1.0, 1.0, -1.0, 1.0, 1.0, 77.0 / 255.0, 16.0 / 255.0, 0.0]
+  );
+  assert_eq!(new_read_floats(&package, impostors.normals).len(), 8 * 4);
+
+  // Trees 2 and 3 are the clump's; tree 4 is the sector's own.
+  let group = &package.description.instances[0];
+  let names: Vec<i32> = new_read_bytes(&package, group.impostors.expect("places naming an impostor"))
+    .as_chunks::<4>()
+    .0
+    .iter()
+    .map(|bytes| i32::from_le_bytes(*bytes))
+    .collect();
+
+  assert_eq!(group.drawables, vec![2, 3, 4]);
+  assert_eq!(names, vec![0, 0, -1]);
 }

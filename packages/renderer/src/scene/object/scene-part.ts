@@ -147,13 +147,15 @@ export class ScenePart {
    * @param range - Where its object's geometry sits in its arena.
    * @param placeStart - Where its object's places start.
    * @param spheres - Each place's sphere in renderer space.
+   * @param lods - Each place's impostor as its row names it, or null where none stands in for any.
    * @returns Whether it is drawn so; not where there is no room for it, and it has to be drawn plainly.
    */
   public showListed(
     surface: ISurfaceMaterial,
     range: IStaticRange,
     placeStart: number,
-    spheres: Float32Array
+    spheres: Float32Array,
+    lods: Nullable<Uint32Array> = null
   ): boolean {
     this.slot ??= this.draws.allocate();
 
@@ -161,7 +163,7 @@ export class ScenePart {
       return false;
     }
 
-    if (!this.draws.drawListed(this.slot, surface, range, this.start, this.count, placeStart, spheres)) {
+    if (!this.draws.drawListed(this.slot, surface, range, this.start, this.count, placeStart, spheres, lods)) {
       this.free();
 
       return false;

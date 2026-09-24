@@ -29,6 +29,8 @@ export interface IRendererStaticDrawReport {
   places: IRendererPoolUse;
   /** Rows the instance cull tests, a place of one instanced draw each. */
   rows: IRendererPoolUse;
+  /** Impostors of clumps of trees, which the LOD cull decides between a clump and its impostor by. */
+  lods: IRendererPoolUse;
   /** Times a static draw was refused a slot, place or row by the device's limit and drawn plainly instead. */
   fallbacks: number;
   /** What the frustum kept and the depth pyramid hid in both phases: single draws, instances and triangles. */
@@ -40,6 +42,7 @@ export const EMPTY_RENDERER_STATIC_DRAW_REPORT: IRendererStaticDrawReport = {
   fallbacks: 0,
   occluded: { draws: 0, instances: 0, triangles: 0 },
   places: { capacity: 0, used: 0 },
+  lods: { capacity: 0, used: 0 },
   rows: { capacity: 0, used: 0 },
   slots: { capacity: 0, used: 0 },
 };

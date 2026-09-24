@@ -1,4 +1,5 @@
 import {
+  DEFAULT_RENDERER_LOD_SETTINGS,
   ERendererCameraController,
   ERendererDebugView,
   ERendererDraw,
@@ -206,6 +207,7 @@ export function toVisualRendererSettings(
     debugView: ERendererDebugView.FINAL,
     frameRateLimit,
     hemiStrength: 1,
+    lod: DEFAULT_RENDERER_LOD_SETTINGS,
     isBumped: options.isBumpVisible,
     isLit: true,
     isWireframe: options.isWireframe,

@@ -1,3 +1,4 @@
+import { Nullable } from "@xrf/types";
 import { MeshBasicNodeMaterial, Node, NodeBuilder, NodeMaterialObserver } from "three/webgpu";
 
 import { StaticDrawObserver } from "#/material/static-draw-observer";
@@ -19,7 +20,14 @@ export class SurfaceNodeMaterial extends MeshBasicNodeMaterial {
     this.staticDraws = staticDraws;
   }
 
+  /** Where a vertex stands in view space, for a surface placing its own vertices; null for every other. */
+  public positionViewNode: Nullable<Node> = null;
+
   public override setupPositionView(builder: NodeBuilder): Node {
+    if (this.positionViewNode) {
+      return this.positionViewNode;
+    }
+
     return isBufferPlacedBuild(builder)
       ? toBufferPlacedPositionView(builder, this.staticDraws)
       : super.setupPositionView(builder);

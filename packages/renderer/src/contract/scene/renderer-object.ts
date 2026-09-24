@@ -1,3 +1,5 @@
+import { IRendererInstanceImpostors } from "#/contract/scene/renderer-impostors";
+
 /** Floats one instance's transform takes. */
 export const RENDERER_FLOATS_PER_INSTANCE: number = 16;
 
@@ -15,6 +17,11 @@ export interface IRendererInstances {
    * `c_bias.w`, as the engine binds them.
    */
   hemi?: Float32Array;
+  /**
+   * The impostor each place belongs to. A tree's place is drawn only while its impostor is near enough; the places of an
+   * impostor surface are the impostors themselves, drawn only while theirs is far enough.
+   */
+  impostors?: IRendererInstanceImpostors;
 }
 
 /**
@@ -42,7 +49,7 @@ export interface IRendererObject {
  * @returns Its buffers.
  */
 export function listRendererObjectTransfers(object: IRendererObject): Array<Transferable> {
-  return [object.instances?.transforms, object.instances?.hemi]
-    .filter((array): array is Float32Array => array !== undefined)
+  return [object.instances?.transforms, object.instances?.hemi, object.instances?.impostors?.indices]
+    .filter((array): array is Float32Array | Int32Array => array !== undefined)
     .map((array) => array.buffer);
 }

@@ -1,15 +1,36 @@
-import { atomicAdd, Fn, If, instanceIndex, storage, uint } from "three/tsl";
-import { ComputeNode, UniformArrayNode } from "three/webgpu";
+import { atomicAdd, Fn, If, instanceIndex, select, storage, uint } from "three/tsl";
+import { ComputeNode, Node, StorageBufferNode, UniformArrayNode } from "three/webgpu";
 
 import { toInFrustum } from "#/scene/static/static-frustum.tsl";
 import { toOccluded } from "#/scene/static/static-occlusion.tsl";
 import {
   EStaticCullState,
+  EStaticLodState,
   EStaticPool,
   STATIC_CULL_COUNTS,
   STATIC_DRAW_ARGUMENTS,
+  STATIC_LOD_IMPOSTOR_ROW,
+  STATIC_NO_LOD,
   StaticDrawBuffers,
 } from "#/uniforms/static-draw-buffers";
+
+/**
+ * Whether a row's clump draws what the row is: a tree while its trees are near enough, the impostor's own draw while it
+ * is far enough; a row no impostor stands in for always.
+ *
+ * @param row - The row's impostor word, `STATIC_NO_LOD` for none.
+ * @param terms - What the LOD cull decided, an impostor each.
+ */
+function toLodDrawn(row: Node<"uint">, terms: StorageBufferNode<"uvec4">): Node<"bool"> {
+  const lod: Node<"uint"> = row.bitAnd(STATIC_LOD_IMPOSTOR_ROW - 1);
+  const wanted: Node<"uint"> = select(
+    row.bitAnd(STATIC_LOD_IMPOSTOR_ROW).notEqual(0),
+    uint(EStaticLodState.IMPOSTOR),
+    uint(EStaticLodState.TREES)
+  );
+
+  return row.equal(STATIC_NO_LOD).or((terms.element(lod) as unknown as Node<"uvec4">).w.bitAnd(wanted).notEqual(0));
+}
 
 /**
  * The first cull of the instanced draws, one invocation a row: a row whose sphere reaches into the view and which the
@@ -27,6 +48,8 @@ export function createEarlyInstanceCullShader(
 ): ComputeNode {
   const rows: number = buffers.capacity(EStaticPool.ROWS);
   const args = storage(buffers.args, "uint", buffers.capacity(EStaticPool.SLOTS) * STATIC_DRAW_ARGUMENTS).toAtomic();
+  const rowLods = storage(buffers.rowLods, "uint", rows).toReadOnly();
+  const lodTerms = storage(buffers.lodTerms, "uvec4", buffers.capacity(EStaticPool.LODS)).toReadOnly();
   const spheres = storage(buffers.rowSpheres, "vec4", rows).toReadOnly();
   const targets = storage(buffers.rowTargets, "uvec4", rows).toReadOnly();
   const visible = storage(buffers.visible, "uint", rows * 2);
@@ -38,13 +61,18 @@ export function createEarlyInstanceCullShader(
     const sphere = spheres.element(instanceIndex);
     const state = uint(EStaticCullState.OUTSIDE).toVar();
 
-    If(toInFrustum(sphere, planes).equal(1), () => {
-      state.assign(EStaticCullState.DRAWN);
+    If(
+      toLodDrawn(rowLods.element(instanceIndex) as unknown as Node<"uint">, lodTerms).and(
+        toInFrustum(sphere, planes).equal(1)
+      ),
+      () => {
+        state.assign(EStaticCullState.DRAWN);
 
-      If(toOccluded(sphere, buffers.occlusion.previous, pyramid, buffers.occlusion).equal(1), () => {
-        state.assign(EStaticCullState.OCCLUDED);
-      });
-    });
+        If(toOccluded(sphere, buffers.occlusion.previous, pyramid, buffers.occlusion).equal(1), () => {
+          state.assign(EStaticCullState.OCCLUDED);
+        });
+      }
+    );
 
     states.element(instanceIndex).assign(state);
 

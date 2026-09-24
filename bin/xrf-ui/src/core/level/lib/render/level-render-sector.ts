@@ -1,9 +1,14 @@
-import { IRendererBounds, IRendererGeometry, IRendererObject } from "@xrf/renderer";
+import { IRendererBounds, IRendererGeometry, IRendererImpostors, IRendererObject } from "@xrf/renderer";
 import { Nullable } from "@xrf/types";
 
 import { VisualBounds } from "@/core/ipc/types/xrf-visual";
 import { LEVEL_RENDER_KEYS } from "@/core/level/lib/render/level-render-keys";
-import { ISectorGeometryViews, ISectorInstanceViews, ISectorViews } from "@/core/level/lib/sector/level-sector-views";
+import {
+  ISectorGeometryViews,
+  ISectorImpostorViews,
+  ISectorInstanceViews,
+  ISectorViews,
+} from "@/core/level/lib/sector/level-sector-views";
 
 /**
  * @param views - A sector as it arrived.
@@ -53,8 +58,70 @@ export function toLevelInstanceObject(sector: number, index: number, instance: I
     geometry: LEVEL_RENDER_KEYS.instance(sector, index),
     // The engine stores a row-vector matrix row major and the renderer takes a column-vector one column major: the
     // same sixteen floats, so nothing is rearranged.
-    instances: { hemi: instance.hemi, transforms: instance.transforms },
+    instances: {
+      hemi: instance.hemi,
+      // A tree a clump's impostor stands in for is drawn only while the clump is near enough.
+      impostors: instance.impostors
+        ? { indices: instance.impostors, key: LEVEL_RENDER_KEYS.impostors(sector) }
+        : undefined,
+      transforms: instance.transforms,
+    },
     surfaces: [LEVEL_RENDER_KEYS.surface(instance.surface.shaderId)],
+  };
+}
+
+/**
+ * @param impostors - A sector's impostors as they arrived.
+ * @returns The set its trees and its impostor draws name.
+ */
+export function toLevelImpostors(impostors: ISectorImpostorViews): IRendererImpostors {
+  return {
+    corners: impostors.corners,
+    factors: impostors.factors,
+    normals: impostors.normals,
+    spheres: impostors.spheres,
+  };
+}
+
+/**
+ * The quad an impostor draws over: its corners numbered in the first coordinate, which the impostor shader places by
+ * the facets it chooses; a unit sphere its bounds, which each place scales to its impostor's.
+ */
+export function createLevelImpostorQuad(): IRendererGeometry {
+  return {
+    bounds: { center: [0, 0, 0], radius: 1 },
+    groups: [],
+    index: new Uint16Array([0, 1, 2, 3, 2, 1]),
+    position: new Float32Array([-1, 0, 0, 0, 1, 0, 1, 0, 0, 0, -1, 0]),
+    uv: new Float32Array([0, 0, 1, 0, 2, 0, 3, 0]),
+  };
+}
+
+/**
+ * @param sector - The sector the impostors belong to.
+ * @param impostors - Its impostors.
+ * @param group - Which of their runs, by surface.
+ * @returns What draws that run: the quad in a place per impostor, each standing where its sphere does.
+ */
+export function toLevelImpostorObject(sector: number, impostors: ISectorImpostorViews, group: number): IRendererObject {
+  const { start, count, surface } = impostors.groups[group];
+  const transforms: Float32Array = new Float32Array(count * 16);
+  const indices: Int32Array = new Int32Array(count);
+
+  for (let index = 0; index < count; index += 1) {
+    const at: number = (start + index) * 4;
+    const radius: number = impostors.spheres[at + 3];
+
+    // Scaled by the radius and moved to the centre, so the cull tests each place by its impostor's sphere.
+    transforms.set([radius, 0, 0, 0, 0, radius, 0, 0, 0, 0, radius, 0], index * 16);
+    transforms.set([impostors.spheres[at], impostors.spheres[at + 1], impostors.spheres[at + 2], 1], index * 16 + 12);
+    indices[index] = start + index;
+  }
+
+  return {
+    geometry: LEVEL_RENDER_KEYS.impostorQuad,
+    instances: { impostors: { indices, key: LEVEL_RENDER_KEYS.impostors(sector) }, transforms },
+    surfaces: [LEVEL_RENDER_KEYS.surface(surface.shaderId)],
   };
 }
 

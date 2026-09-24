@@ -75,6 +75,16 @@ function toListedPlace(buffers: StaticDrawBuffers): Node<"uint"> {
   return buffers.visiblePlaces.element(instanceIndex) as unknown as Node<"uint">;
 }
 
+/**
+ * @param buffers - What static draws are placed by.
+ * @returns The impostor the place listed for the instance being drawn is, which an impostor surface draws.
+ */
+export function toListedImpostor(buffers: StaticDrawBuffers): Node<"uint"> {
+  return (
+    buffers.placeColumns.element(toListedPlace(buffers).mul(STATIC_PLACE_COLUMNS).add(4)) as unknown as Node<"vec4">
+  ).z.toUint();
+}
+
 /** An instanced static draw's matrix, from the place listed for its instance. */
 function toListedMatrix(buffers: StaticDrawBuffers): Node<"mat4"> {
   const first: Node<"uint"> = toListedPlace(buffers).mul(STATIC_PLACE_COLUMNS);

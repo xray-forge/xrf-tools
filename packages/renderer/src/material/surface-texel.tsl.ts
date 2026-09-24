@@ -19,13 +19,13 @@ import {
 import { RendererUniforms } from "#/uniforms/renderer-uniforms";
 
 /** `def_gloss`: what a surface without a bump reflects (`shaders/r3/common_defines.h`). */
-const DEFAULT_GLOSS: number = 2 / 255;
+export const DEFAULT_GLOSS: number = 2 / 255;
 
 /** The texture descriptor's default lighting model: Blinn, at full weight. */
 const DEFAULT_MATERIAL: number = 1;
 
 /** Lighting model slices the material lookup holds. */
-const MATERIAL_SLICES: number = 4;
+export const MATERIAL_SLICES: number = 4;
 
 // Every number a surface states is a uniform rather than a constant in its shader, so surfaces differing only in
 // their numbers share one program and one pipeline: a level's shader table is hundreds of entries of a few kinds.

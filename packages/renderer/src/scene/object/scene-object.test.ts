@@ -19,12 +19,12 @@ import { toPassRecord, TPassRecord } from "#/scene/pass-record";
 import { EStaticDrawKind } from "#/scene/static/static-draw-kind";
 import { StaticDraws } from "#/scene/static/static-draws";
 import { EVertexAttribute } from "#/shader/vertex-attribute";
-import { StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
+import { STATIC_LOD_IMPOSTOR_ROW, STATIC_NO_LOD, StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
 import { CullView } from "#/visibility/cull-view";
 
 /** A surface drawn by a pass, with nothing behind it. */
-function createSurface(pass: ERendererPass): ISurfaceMaterial {
-  return { dispose: () => {}, keys: [], material: new MeshBasicNodeMaterial(), pass };
+function createSurface(pass: ERendererPass, isImpostor: boolean = false): ISurfaceMaterial {
+  return { dispose: () => {}, isImpostor, keys: [], material: new MeshBasicNodeMaterial(), pass };
 }
 
 /** Two triangles far apart, one section each: one ten metres in front of the camera, one ten behind. */
@@ -61,6 +61,7 @@ function toState(
     geometry,
     instances: null,
     keys: [],
+    lodStart: null,
     plain: { drawn: geometry.buffer, layout: "" },
     skeleton: null,
     static: draws?.isEnabled
@@ -244,5 +245,55 @@ describe("SceneObject", () => {
     // Never culled on the CPU: the places drawn plainly are left as they were.
     expect(instances.geometry.instanceCount).toBe(2);
     expect(entry.placed).toEqual([]);
+  });
+
+  it("names each row's impostor for the LOD cull: a tree's by index, an impostor's own marked, no impostor as none", () => {
+    const scenes: TPassRecord<Scene> = toPassRecord(() => new Scene());
+    const { buffers, draws } = createDraws(scenes);
+    const geometry: SceneGeometry = createGeometry();
+
+    function place(surface: ISurfaceMaterial): void {
+      const entry: SceneObject = new SceneObject(
+        "clump",
+        {
+          geometry: "clump",
+          instances: {
+            impostors: { indices: new Int32Array([3, -1]), key: "impostors" },
+            transforms: new Float32Array([...new Matrix4().elements, ...new Matrix4().elements]),
+          },
+          surfaces: ["a", "a"],
+        },
+        draws
+      );
+      const instances: SceneInstances = entry.toInstances(geometry) as SceneInstances;
+
+      entry.apply(
+        {
+          ...toState(geometry, [surface, surface]),
+          instances,
+          lodStart: 10,
+          plain: { drawn: instances.geometry, layout: "" },
+          static: { drawn: draws.toArena(geometry).prototypes[EStaticDrawKind.LISTED], layout: "listed" },
+        },
+        scenes
+      );
+      entry.cull(createView());
+    }
+
+    place(createSurface(ERendererPass.DEFERRED));
+    place(createSurface(ERendererPass.DEFERRED, true));
+
+    const rows = Array.from((buffers.rowLods.array as Uint32Array).subarray(0, 8));
+
+    expect(rows).toEqual([
+      13,
+      STATIC_NO_LOD,
+      13,
+      STATIC_NO_LOD,
+      (13 | STATIC_LOD_IMPOSTOR_ROW) >>> 0,
+      STATIC_NO_LOD,
+      (13 | STATIC_LOD_IMPOSTOR_ROW) >>> 0,
+      STATIC_NO_LOD,
+    ]);
   });
 });

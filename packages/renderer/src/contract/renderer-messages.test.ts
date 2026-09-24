@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
 
 import { ERendererRequest, listRendererTransfers } from "#/contract/renderer-messages";
-import { ERendererDebugView } from "#/contract/renderer-settings";
+import { DEFAULT_RENDERER_LOD_SETTINGS, ERendererDebugView } from "#/contract/renderer-settings";
 import { ERendererTextureEncoding } from "#/contract/scene/renderer-texture-source";
 
 describe("listRendererTransfers", () => {
@@ -73,6 +73,7 @@ describe("listRendererTransfers", () => {
           frameRateLimit: "60",
           hemiStrength: 1,
           isBumped: true,
+          lod: DEFAULT_RENDERER_LOD_SETTINGS,
           isLit: true,
           isWireframe: false,
           tonemapScale: 1,

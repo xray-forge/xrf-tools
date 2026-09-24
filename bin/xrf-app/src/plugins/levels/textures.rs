@@ -9,34 +9,45 @@ use xrf_vfs::{XrayAssetRules, XrayAssetType, XrayProbe, XrayResolution};
 
 use crate::plugins::levels::state::LevelTextureReference;
 
-/// Resolves every texture a level's surfaces bind: base textures, lightmaps and detail textures alike.
+/// The shader an impostor is drawn with, whose atlas is bound beside a companion of its own.
+const IMPOSTOR_SHADER: &str = "details\\lod";
+
+/// What `details_lod.s` appends to the atlas for its `s_hemi`: a normal in colour, the hemisphere term in alpha.
+const IMPOSTOR_COMPANION_SUFFIX: &str = "_nm";
+
+/// Resolves every texture a level's surfaces bind: base textures, lightmaps, detail textures, and the companion an
+/// impostor's atlas is bound with.
 pub fn resolve_textures(
   level: &LevelFile,
   surfaces: &[XraySurfaceDescriptor],
   probe: &XrayProbe,
   directory: Option<&str>,
 ) -> Vec<LevelTextureReference> {
-  let mut references: BTreeSet<&str> = BTreeSet::new();
+  let mut references: BTreeSet<String> = BTreeSet::new();
 
   if let Some(shaders) = level.shaders.as_ref() {
     for entry in shaders.references() {
-      for texture in &entry.textures {
-        if !texture.is_empty() {
-          references.insert(texture.as_str());
-        }
+      for texture in entry.textures.iter().filter(|texture| !texture.is_empty()) {
+        references.insert(texture.clone());
+      }
+
+      if entry.shader.eq_ignore_ascii_case(IMPOSTOR_SHADER)
+        && let Some(atlas) = entry.textures.first().filter(|texture| !texture.is_empty())
+      {
+        references.insert(format!("{atlas}{IMPOSTOR_COMPANION_SUFFIX}"));
       }
     }
   }
 
   for detail in surfaces.iter().filter_map(|surface| surface.detail.as_ref()) {
-    references.insert(detail.reference.as_str());
+    references.insert(detail.reference.clone());
   }
 
   references
     .into_iter()
     .map(|reference| LevelTextureReference {
-      logical_path: resolve_reference(probe, directory, reference),
-      reference: reference.to_owned(),
+      logical_path: resolve_reference(probe, directory, &reference),
+      reference,
     })
     .collect()
 }

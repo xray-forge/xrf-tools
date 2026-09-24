@@ -1,3 +1,5 @@
+pub(crate) mod sector_gathering;
+pub(crate) mod sector_impostor_arrays;
 pub(crate) mod sector_instance_gathering;
 pub(crate) mod sector_instance_key;
 pub(crate) mod sector_package;

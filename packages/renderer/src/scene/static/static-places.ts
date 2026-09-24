@@ -8,7 +8,7 @@ import {
   RENDERER_HEMI_FLOATS_PER_INSTANCE,
 } from "#/contract/scene/renderer-object";
 import { RangeAllocator } from "#/scene/static/range-allocator";
-import { EStaticPool, STATIC_PLACE_COLUMNS, StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
+import { EStaticPool, STATIC_NO_LOD, STATIC_PLACE_COLUMNS, StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
 
 /** Floats one place takes in the places buffer. */
 const FLOATS_PER_PLACE: number = STATIC_PLACE_COLUMNS * 4;
@@ -83,8 +83,16 @@ export class StaticPlaces {
    * @param start - Where an object's places start.
    * @param instances - Its places, as the consumer put them.
    * @param placement - What places every instance: the object's own matrix.
+   * @param lodStart - Where the impostors its places belong to start, or null where they belong to none.
    */
-  public writePlaces(start: number, instances: IRendererInstances, placement: Matrix4): void {
+  public writePlaces(
+    start: number,
+    instances: IRendererInstances,
+    placement: Matrix4,
+    lodStart: Nullable<number> = null
+  ): void {
+    const impostors: Nullable<Int32Array> = lodStart === null ? null : (instances.impostors?.indices ?? null);
+
     const count: number = instances.transforms.length / RENDERER_FLOATS_PER_INSTANCE;
     const places = this.buffers.places.array as Float32Array;
 
@@ -96,6 +104,8 @@ export class StaticPlaces {
       // Instances without terms of their own leave the vertex hemi as it is.
       places[at + 16] = instances.hemi ? instances.hemi[index * RENDERER_HEMI_FLOATS_PER_INSTANCE] : 1;
       places[at + 17] = instances.hemi ? instances.hemi[index * RENDERER_HEMI_FLOATS_PER_INSTANCE + 1] : 0;
+      // The impostor a place's draw is, which an impostor shader reads its facets by; -1 for none.
+      places[at + 18] = impostors && impostors[index] >= 0 ? (lodStart as number) + impostors[index] : -1;
     }
 
     StaticPlaces.touch(this.placeSpan, start, start + count - 1);
@@ -126,12 +136,27 @@ export class StaticPlaces {
    * @param placeStart - Where the places start.
    * @param slot - The draw's slot, whose instance count the rows count up.
    * @param indexCount - Indices the draw takes, for the report.
+   * @param lods - Each row's impostor as the LOD cull reads it, or null where none stands in for any place.
    */
-  public writeRows(start: number, spheres: Float32Array, placeStart: number, slot: number, indexCount: number): void {
+  public writeRows(
+    start: number,
+    spheres: Float32Array,
+    placeStart: number,
+    slot: number,
+    indexCount: number,
+    lods: Nullable<Uint32Array> = null
+  ): void {
     const count: number = spheres.length / 4;
     const targets = this.buffers.rowTargets.array as Uint32Array;
+    const rowLods = this.buffers.rowLods.array as Uint32Array;
 
     (this.buffers.rowSpheres.array as Float32Array).set(spheres, start * 4);
+
+    if (lods) {
+      rowLods.set(lods, start);
+    } else {
+      rowLods.fill(STATIC_NO_LOD, start, start + count);
+    }
 
     for (let index = 0; index < count; index += 1) {
       const at: number = (start + index) * 4;
@@ -167,6 +192,7 @@ export class StaticPlaces {
     StaticPlaces.upload(this.buffers.places, this.placeSpan, FLOATS_PER_PLACE);
     StaticPlaces.upload(this.buffers.rowSpheres, this.rowSpan, 4);
     StaticPlaces.upload(this.buffers.rowTargets, this.rowSpan, 4);
+    StaticPlaces.upload(this.buffers.rowLods, this.rowSpan, 1);
     this.rowSpan.first = Infinity;
     this.rowSpan.last = -1;
     this.placeSpan.first = Infinity;

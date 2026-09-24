@@ -36,6 +36,7 @@ fn new_pack(sector: u32, bytes: &[u8]) -> PackedSector {
         uvs: None,
         vertex_count: 0,
       },
+      impostors: None,
       instances: Vec::new(),
       sections: Vec::new(),
       sector,

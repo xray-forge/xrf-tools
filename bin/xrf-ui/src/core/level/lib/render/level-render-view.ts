@@ -1,5 +1,6 @@
 import {
   DEFAULT_RENDERER_LIGHTING,
+  DEFAULT_RENDERER_LOD_SETTINGS,
   ERendererCameraController,
   ERendererDebugView,
   IRendererFlyCamera,
@@ -77,6 +78,7 @@ export function toLevelRendererSettings(
     debugView: ERendererDebugView.FINAL,
     frameRateLimit,
     hemiStrength: options.isLit ? lighting.hemiStrength : 0,
+    lod: DEFAULT_RENDERER_LOD_SETTINGS,
     isBumped: true,
     isLit: true,
     isWireframe: options.isWireframe,

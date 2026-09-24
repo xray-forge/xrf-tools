@@ -4,6 +4,12 @@ export const LEVEL_RENDER_KEYS = {
   extent: "extent",
   extentBox: "extent-box",
   grid: "grid",
+  /** One run of a sector's impostors drawn with one surface. */
+  impostorGroup: (sector: number, group: number): string => `sector:${sector}:impostors:${group}`,
+  /** The quad every impostor draws over, its corners numbered in its coordinate. */
+  impostorQuad: "impostor-quad",
+  /** A sector's impostor set, which its trees and its impostor draws both name. */
+  impostors: (sector: number): string => `sector:${sector}:impostors`,
   /** One mesh a sector stands in many places. */
   instance: (sector: number, index: number): string => `sector:${sector}:instance:${index}`,
   /** Everything a sector bakes in place, one geometry with a group per surface. */

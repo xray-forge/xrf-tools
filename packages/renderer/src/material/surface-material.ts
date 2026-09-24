@@ -1,5 +1,5 @@
 import { Nullable } from "@xrf/types";
-import { MeshBasicNodeMaterial } from "three/webgpu";
+import { DoubleSide, MeshBasicNodeMaterial } from "three/webgpu";
 
 import { ERendererPass, IRendererSurface, toRendererPass } from "#/contract/scene/renderer-surface";
 import { toDeferredSurfaceShader } from "#/material/deferred-surface.tsl";
@@ -32,6 +32,8 @@ export interface ISurfaceMaterial {
   pass: ERendererPass;
   /** The texture keys it samples, which have to be uploaded before it draws without a stall. */
   keys: ReadonlyArray<string>;
+  /** Whether it draws impostors, which only the LOD cull decides are drawn. */
+  isImpostor: boolean;
   dispose(): void;
 }
 
@@ -50,13 +52,19 @@ export function createSurfaceMaterial(
   const samplers: MaterialSamplers = new MaterialSamplers(textures);
   const shader: ISurfaceShader = SURFACE_SHADERS[pass](surface, samplers, uniforms);
   const compositing: Nullable<ISurfaceCompositing> = toSurfaceCompositing(surface);
-  const material: MeshBasicNodeMaterial = new SurfaceNodeMaterial(uniforms.staticDraws);
+  const material: SurfaceNodeMaterial = new SurfaceNodeMaterial(uniforms.staticDraws);
 
   // Every surface stands its geometry in each place instanced attributes name, and in its own place where none do.
   material.positionNode = instancedPosition();
   material.fragmentNode = shader.fragmentNode ?? null;
   material.colorNode = shader.colorNode ?? null;
   material.alphaTestNode = shader.alphaTestNode ?? null;
+  material.positionViewNode = shader.positionViewNode ?? null;
+
+  if (surface.isImpostor) {
+    // Its quad turns to face the camera, from whichever side it is seen.
+    material.side = DoubleSide;
+  }
 
   if (compositing) {
     applySurfaceCompositing(material, compositing);
@@ -67,6 +75,7 @@ export function createSurfaceMaterial(
       samplers.release();
       material.dispose();
     },
+    isImpostor: Boolean(surface.isImpostor),
     keys: samplers.keys,
     material,
     pass,

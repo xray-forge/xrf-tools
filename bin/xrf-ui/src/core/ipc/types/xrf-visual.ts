@@ -12,6 +12,8 @@ export type SectorDescription = {
   sections: Array<SectorSection>;
   /** Meshes the sector draws many times over, each packed once with the places it stands. */
   instances: Array<SectorInstanceGroup>;
+  /** What its clumps of trees draw as from far enough away, absent for a sector with no `MT_LOD` visual. */
+  impostors: SectorImpostors | null;
   /** Drawables that produced no geometry, which is none for every level measured. */
   skipped: Array<SectorSkip>;
   /** Extent the packed vertices span, absent when the sector packed none. */
@@ -37,7 +39,7 @@ export type SectorGeometry = {
   tangents: VisualSection | null;
   /** Four bytes a vertex the same way: the authored binormal, then the low byte of the base `v`. */
   binormals: VisualSection | null;
-  /** The base coordinate as xrLC quantised it, `uv_components` shorts a vertex. */
+  /** The base coordinate as xrLC quantised it, as many shorts a vertex as its components say. */
   uvs: VisualSection | null;
   /**
    * Shorts a base coordinate takes a vertex: two (`SHORT2`, over 1024 with its low bytes), or four for a tree
@@ -48,6 +50,35 @@ export type SectorGeometry = {
   lightmapUvs: VisualSection | null;
   /** Every index, as 32-bit elements: a sector reaches past what sixteen bits address. */
   indices: VisualSection;
+};
+
+/** A run of a sector's impostors dressed by one surface. */
+export type SectorImpostorGroup = {
+  surface: SectorSurface;
+  /** The first impostor of the run. */
+  start: number;
+  count: number;
+};
+
+/**
+ * The impostors of a sector's `MT_LOD` visuals: what the engine draws in place of a clump of trees seen from far
+ * enough away, each eight facets looking at it from eight sides, in renderer space.
+ */
+export type SectorImpostors = {
+  count: number;
+  /** Runs of impostors a surface each, in impostor order. */
+  groups: Array<SectorImpostorGroup>;
+  /** Four floats an impostor: its visual's sphere, centre then radius. */
+  spheres: VisualSection;
+  /** One float an impostor: `FLOD::lod_factor`, what its sphere's screen area is scaled by. */
+  factors: VisualSection;
+  /**
+   * Eight floats for each of an impostor's 32 corners, facet by facet: the position, the atlas `u` and `v`, then the
+   * hemisphere and sun terms as the bytes it stores them over 255, then nothing.
+   */
+  corners: VisualSection;
+  /** Four floats for each of an impostor's eight facets: its normal, then nothing. */
+  normals: VisualSection;
 };
 
 /** One mesh a sector draws many times, packed once with the places it stands. */
@@ -62,6 +93,11 @@ export type SectorInstanceGroup = {
   transforms: VisualSection;
   /** Two floats for each instance: what scales and then offsets its vertices' hemisphere term. */
   hemi: VisualSection;
+  /**
+   * One signed integer for each instance: the sector's impostor standing in for the clump it belongs to, or -1.
+   * Absent where no place of the group belongs to one.
+   */
+  impostors: VisualSection | null;
 };
 
 /** What one sector is and where it sits, before any of its geometry is read. */

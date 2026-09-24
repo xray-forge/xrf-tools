@@ -21,6 +21,8 @@ export interface ISceneObjectState {
   surfaces: ReadonlyArray<Maybe<ISurfaceMaterial>>;
   /** Every texture key its surfaces sample. */
   keys: ReadonlyArray<string>;
+  /** Where the impostors its places belong to start in the LOD pool, or null where they belong to none there is. */
+  lodStart: Nullable<number>;
 }
 
 /**

@@ -4,6 +4,8 @@ import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
 import {
   SectorDescription,
   SectorGeometry,
+  SectorImpostorGroup,
+  SectorImpostors,
   SectorSkip,
   SectorSurface,
   VisualBounds,
@@ -60,6 +62,24 @@ export interface ISectorInstanceViews {
   transforms: Float32Array;
   /** Two floats for each place: what scales and then offsets its vertices' hemisphere term. */
   hemi: Float32Array;
+  /** The sector's impostor each place belongs to, -1 for none; null where no place belongs to one. */
+  impostors: Nullable<Int32Array>;
+}
+
+/** A run of a sector's impostors dressed by one surface. */
+export interface ISectorImpostorGroupViews extends SectorImpostorGroup {
+  /** What that surface's blender compiles to, joined the same way a section's is. */
+  render: ILevelSurfaceRender;
+}
+
+/** The impostors of a sector's clumps of trees, as views over the buffer it arrived in. */
+export interface ISectorImpostorViews {
+  count: number;
+  groups: Array<ISectorImpostorGroupViews>;
+  spheres: Float32Array;
+  factors: Float32Array;
+  corners: Float32Array;
+  normals: Float32Array;
 }
 
 /**
@@ -73,6 +93,8 @@ export interface ISectorViews {
   geometry: ISectorGeometryViews;
   sections: Array<ISectorSectionViews>;
   instances: Array<ISectorInstanceViews>;
+  /** What its clumps of trees draw as from far enough away, or null for a sector with none. */
+  impostors: Nullable<ISectorImpostorViews>;
   /** Drawables the packer could not read, named so a viewer can say what is missing rather than quietly omit it. */
   skipped: Array<SectorSkip>;
 }
@@ -91,6 +113,28 @@ function toOptionalByteView(buffer: ArrayBuffer, section: Nullable<VisualSection
 
 function toOptionalShortView(buffer: ArrayBuffer, section: Nullable<VisualSection>): Nullable<Int16Array> {
   return section ? new Int16Array(buffer, section.byteOffset, section.byteLength / Int16Array.BYTES_PER_ELEMENT) : null;
+}
+
+function toIntegerView(buffer: ArrayBuffer, section: VisualSection): Int32Array {
+  return new Int32Array(buffer, section.byteOffset, section.byteLength / Int32Array.BYTES_PER_ELEMENT);
+}
+
+function toImpostorViews(
+  buffer: ArrayBuffer,
+  impostors: SectorImpostors,
+  surfaces: ReadonlyArray<XraySurfaceDescriptor>
+): ISectorImpostorViews {
+  return {
+    corners: toFloatView(buffer, impostors.corners),
+    count: impostors.count,
+    factors: toFloatView(buffer, impostors.factors),
+    groups: impostors.groups.map((group) => ({
+      ...group,
+      render: getLevelSurfaceRender(surfaces, group.surface.shaderId),
+    })),
+    normals: toFloatView(buffer, impostors.normals),
+    spheres: toFloatView(buffer, impostors.spheres),
+  };
 }
 
 function toIndexView(buffer: ArrayBuffer, section: VisualSection): Uint32Array {
@@ -143,10 +187,12 @@ export function createSectorViews(
     bounds: description.bounds,
     bufferLength: description.bufferLength,
     geometry: toGeometryViews(buffer, description.geometry),
+    impostors: description.impostors ? toImpostorViews(buffer, description.impostors, surfaces) : null,
     instances: description.instances.map((group) => ({
       drawables: group.drawables,
       geometry: toGeometryViews(buffer, group.geometry),
       hemi: toFloatView(buffer, group.hemi),
+      impostors: group.impostors ? toIntegerView(buffer, group.impostors) : null,
       instanceCount: group.instanceCount,
       render: getLevelSurfaceRender(surfaces, group.surface.shaderId),
       surface: group.surface,

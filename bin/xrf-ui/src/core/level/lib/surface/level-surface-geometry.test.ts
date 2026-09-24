@@ -45,6 +45,7 @@ function instance(shaderId: number, places: number, indexCount: number): ISector
     // Only the index count is read here, so the rest of the views are left off rather than invented.
     geometry: { indexCount } as ISectorGeometryViews,
     hemi: new Float32Array(),
+    impostors: null,
     instanceCount: places,
     render: toLevelSurfaceRender(null),
     surface: mockSectorSurface({ shaderId }),

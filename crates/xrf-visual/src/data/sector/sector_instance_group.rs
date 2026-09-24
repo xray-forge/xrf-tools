@@ -19,6 +19,9 @@ pub struct SectorInstanceGroup {
   pub transforms: VisualSection,
   /// Two floats for each instance: what scales and then offsets its vertices' hemisphere term.
   pub hemi: VisualSection,
+  /// One signed integer for each instance: the sector's impostor standing in for the clump it belongs to, or -1.
+  /// Absent where no place of the group belongs to one.
+  pub impostors: Option<VisualSection>,
 }
 
 impl SectorInstanceGroup {

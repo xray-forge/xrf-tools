@@ -1,6 +1,7 @@
 use serde::Serialize;
 
 use crate::data::sector::sector_geometry::SectorGeometry;
+use crate::data::sector::sector_impostors::SectorImpostors;
 use crate::data::sector::sector_instance_group::SectorInstanceGroup;
 use crate::data::sector::sector_section::SectorSection;
 use crate::data::sector::sector_skip::SectorSkip;
@@ -18,6 +19,8 @@ pub struct SectorDescription {
   pub sections: Vec<SectorSection>,
   /// Meshes the sector draws many times over, each packed once with the places it stands.
   pub instances: Vec<SectorInstanceGroup>,
+  /// What its clumps of trees draw as from far enough away, absent for a sector with no `MT_LOD` visual.
+  pub impostors: Option<SectorImpostors>,
   /// Drawables that produced no geometry, which is none for every level measured.
   pub skipped: Vec<SectorSkip>,
   /// Extent the packed vertices span, absent when the sector packed none.

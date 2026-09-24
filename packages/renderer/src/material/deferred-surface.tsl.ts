@@ -3,6 +3,7 @@ import { Discard, Fn, If, uniform, vec4 } from "three/tsl";
 import { Node } from "three/webgpu";
 
 import { ERendererDraw, IRendererSurface } from "#/contract/scene/renderer-surface";
+import { toImpostorSurfaceShader } from "#/material/impostor-surface.tsl";
 import { MaterialSamplers } from "#/material/material-samplers";
 import { ISurfaceShader } from "#/material/surface-shader";
 import { ISurfaceTexel } from "#/material/surface-texel";
@@ -26,6 +27,10 @@ export function toDeferredSurfaceShader(
   samplers: MaterialSamplers,
   uniforms: RendererUniforms
 ): ISurfaceShader {
+  if (surface.isImpostor) {
+    return toImpostorSurfaceShader(surface, samplers, uniforms);
+  }
+
   const texel: ISurfaceTexel = toSurfaceTexel(surface, samplers, uniforms);
   const albedo: Node<"vec4"> = vec4(texel.albedo, texel.gloss);
 

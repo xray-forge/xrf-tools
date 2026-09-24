@@ -46,4 +46,33 @@ export interface IRendererSettings {
   isWireframe: boolean;
   /** How much of the baked hemisphere occlusion applies: one as the engine applies it, zero ignoring it. */
   hemiStrength: number;
+  /** When a clump of trees draws as its impostor instead, as the engine decides it. */
+  lod: IRendererLodSettings;
 }
+
+/**
+ * The engine's switch between a clump of trees and its impostor, on a clump's screen area: its sphere's radius over its
+ * squared distance, scaled by `FLOD::lod_factor`, against thresholds that scale with the drawing's size and field of
+ * view (`r2_R_calculate.cpp`).
+ */
+export interface IRendererLodSettings {
+  /** Whether impostors draw at all; off, every tree draws in full at every distance. */
+  isImpostors: boolean;
+  /** `r2_ssa_lod_a`: below it the impostor draws. */
+  ssaA: number;
+  /** `r2_ssa_lod_b`: above it the trees draw; between the two, both. */
+  ssaB: number;
+  /** `r__ssa_discard`: below it neither draws. */
+  ssaDiscard: number;
+  /** `r__geometry_lod`: what the drawing's area is scaled by before the thresholds are taken from it. */
+  geometryLod: number;
+}
+
+/** The engine's own values (`xrRender_console.cpp`). */
+export const DEFAULT_RENDERER_LOD_SETTINGS: IRendererLodSettings = {
+  geometryLod: 0.75,
+  isImpostors: true,
+  ssaA: 64,
+  ssaB: 48,
+  ssaDiscard: 3.5,
+};

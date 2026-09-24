@@ -122,6 +122,12 @@ export class RendererHost {
       case ERendererRequest.PUT_GEOMETRY:
         return this.scene.putGeometry(request.key, request.geometry);
 
+      case ERendererRequest.PUT_IMPOSTORS:
+        return this.scene.putImpostors(request.key, request.impostors);
+
+      case ERendererRequest.RELEASE_IMPOSTORS:
+        return this.scene.releaseImpostors(request.key);
+
       case ERendererRequest.RELEASE_GEOMETRY:
         return this.scene.releaseGeometry(request.key);
 
@@ -312,6 +318,8 @@ export class RendererHost {
     const startedAt: number = performance.now();
 
     this.cullView.take(this.rig.camera, this.uniforms.viewDistance);
+    // Thresholds on a clump's screen area, which scale with how many pixels the drawing has.
+    this.scene.staticCull.takeLod(settings.lod, this.drawingSize.x, this.drawingSize.y, this.rig.camera);
     this.scene.cull(this.cullView, this.rig.camera);
     this.graph.render(frame, device.inspector);
     this.stats.endFrame(performance.now() - startedAt, device);

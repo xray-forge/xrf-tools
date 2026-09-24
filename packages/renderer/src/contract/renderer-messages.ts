@@ -8,6 +8,7 @@ import { IRendererReport } from "#/contract/renderer-report";
 import { IRendererSettings } from "#/contract/renderer-settings";
 import { IRendererViewSize } from "#/contract/renderer-view-size";
 import { IRendererGeometry, listRendererGeometryTransfers } from "#/contract/scene/renderer-geometry";
+import { IRendererImpostors, listRendererImpostorsTransfers } from "#/contract/scene/renderer-impostors";
 import { IRendererObject, listRendererObjectTransfers } from "#/contract/scene/renderer-object";
 import { listRendererOverlayTransfers, TRendererOverlay } from "#/contract/scene/renderer-overlay";
 import { IRendererMotion, IRendererPose, IRendererSkeleton } from "#/contract/scene/renderer-skeleton";
@@ -44,6 +45,9 @@ export enum ERendererRequest {
   /** Draw this object under this key. */
   PUT_OBJECT = "@renderer/putObject",
   RELEASE_OBJECT = "@renderer/releaseObject",
+  /** Hold these impostors under this key, for objects to stand trees and impostors by. */
+  PUT_IMPOSTORS = "@renderer/putImpostors",
+  RELEASE_IMPOSTORS = "@renderer/releaseImpostors",
   /** Hold this skeleton under this key, for objects to skin to. */
   PUT_SKELETON = "@renderer/putSkeleton",
   RELEASE_SKELETON = "@renderer/releaseSkeleton",
@@ -103,6 +107,8 @@ export type TRendererRequest =
   | { kind: ERendererRequest.RELEASE_SURFACE; key: string }
   | { kind: ERendererRequest.PUT_OBJECT; key: string; object: IRendererObject }
   | { kind: ERendererRequest.RELEASE_OBJECT; key: string }
+  | { kind: ERendererRequest.PUT_IMPOSTORS; key: string; impostors: IRendererImpostors }
+  | { kind: ERendererRequest.RELEASE_IMPOSTORS; key: string }
   | { kind: ERendererRequest.PUT_SKELETON; key: string; skeleton: IRendererSkeleton }
   | { kind: ERendererRequest.RELEASE_SKELETON; key: string }
   | { kind: ERendererRequest.PUT_MOTION; key: string; motion: IRendererMotion }
@@ -150,6 +156,9 @@ function listRequestTransfers(request: TRendererRequest): Array<Transferable> {
 
     case ERendererRequest.PUT_OBJECT:
       return listRendererObjectTransfers(request.object);
+
+    case ERendererRequest.PUT_IMPOSTORS:
+      return listRendererImpostorsTransfers(request.impostors);
 
     case ERendererRequest.PUT_SKELETON:
       return [request.skeleton.binds.buffer, ...(request.skeleton.pairs ? [request.skeleton.pairs.buffer] : [])];

@@ -8,6 +8,7 @@ import {
 } from "three/webgpu";
 
 import { DEFAULT_STORAGE_LIMIT } from "#/internals/renderer-backend";
+import { LodUniforms } from "#/uniforms/lod-uniforms";
 import { OcclusionUniforms } from "#/uniforms/occlusion-uniforms";
 
 /** Unsigned integers one indirect draw takes: index count, instance count, first index, base vertex, first instance. */
@@ -19,15 +20,33 @@ export const STATIC_PLACE_COLUMNS: number = 5;
 /** Unsigned integers the cull counts into: kept draws and indices, then occluded draws, instances and indices. */
 export const STATIC_CULL_COUNTS: number = 5;
 
+/** Vec4 columns one impostor's corners take: two each, the position and hemisphere term, then the atlas and sun. */
+export const STATIC_LOD_CORNER_COLUMNS: number = 64;
+
+/** What a row names for its impostor where none stands in for its place. */
+export const STATIC_NO_LOD: number = 0xffffffff;
+
+/** The bit of a row's impostor saying the row is the impostor's own draw rather than a tree of its clump. */
+export const STATIC_LOD_IMPOSTOR_ROW: number = 0x80000000;
+
 /**
  * The pools of the static draw buffers, each grown on its own: slots a draw each, places an instance each, rows a
- * place of one instanced draw each, and the depth pyramid's texels.
+ * place of one instanced draw each, impostors of clumps of trees, and the depth pyramid's texels.
  */
 export enum EStaticPool {
   SLOTS = "slots",
   PLACES = "places",
   ROWS = "rows",
+  LODS = "lods",
   PYRAMID = "pyramid",
+}
+
+/** What the LOD cull decided a clump draws as, bits of its terms' fourth word. */
+export enum EStaticLodState {
+  /** Its trees, near enough to be drawn in full. */
+  TREES = 1,
+  /** Its impostor, far enough to be drawn in their place. */
+  IMPOSTOR = 2,
 }
 
 /** What each pool holds before it first grows: more than any level measured puts in its resident sectors. */
@@ -35,6 +54,7 @@ export const INITIAL_STATIC_CAPACITY: Readonly<Record<EStaticPool, number>> = {
   [EStaticPool.SLOTS]: 1 << 16,
   [EStaticPool.PLACES]: 1 << 16,
   [EStaticPool.ROWS]: 1 << 17,
+  [EStaticPool.LODS]: 1 << 13,
   // A drawing of 4096 by 4096.
   [EStaticPool.PYRAMID]: 1 << 20,
 };
@@ -44,6 +64,7 @@ const ELEMENT_BYTES: Readonly<Record<EStaticPool, number>> = {
   [EStaticPool.SLOTS]: 64,
   [EStaticPool.PLACES]: STATIC_PLACE_COLUMNS * 16,
   [EStaticPool.ROWS]: 16,
+  [EStaticPool.LODS]: STATIC_LOD_CORNER_COLUMNS * 16,
   [EStaticPool.PYRAMID]: 4,
 };
 
@@ -112,6 +133,21 @@ export class StaticDrawBuffers {
   public visible: StorageBufferAttribute;
   /** What the first cull decided for each row. */
   public rowStates: StorageBufferAttribute;
+  /** Each row's impostor, `STATIC_NO_LOD` for none, `STATIC_LOD_IMPOSTOR_ROW` set on the impostor's own draw. */
+  public rowLods: StorageBufferAttribute;
+  /** Each impostor's sphere in renderer space, a negative radius for a slot holding none. */
+  public lodSpheres: StorageBufferAttribute;
+  /** Each impostor's `FLOD::lod_factor`. */
+  public lodFactors: StorageBufferAttribute;
+  /** Each impostor's eight facet normals. */
+  public lodNormals: StorageBufferAttribute;
+  /** Each impostor's 32 corners, two columns each. */
+  public lodCorners: StorageBufferAttribute;
+  /**
+   * What the LOD cull decided for each impostor: its best facet, the next, the fade and blend bytes, and an
+   * `EStaticLodState`.
+   */
+  public lodTerms: StorageBufferAttribute;
   /** The depth pyramid: each level the farthest depth under a texel of the last, four by four, packed level by level. */
   public pyramid: StorageBufferAttribute;
 
@@ -124,9 +160,17 @@ export class StaticDrawBuffers {
   public readonly placeColumns: StorageBufferNode<"vec4">;
   /** The list as one node every instanced static shader reads. */
   public readonly visiblePlaces: StorageBufferNode<"uint">;
+  /** The impostors' spheres as one node every impostor shader reads. */
+  public readonly lodSphereColumns: StorageBufferNode<"vec4">;
+  /** Their corners as one node every impostor shader reads. */
+  public readonly lodCornerColumns: StorageBufferNode<"vec4">;
+  /** Their terms as one node every impostor shader reads. */
+  public readonly lodTermColumns: StorageBufferNode<"uvec4">;
 
   /** What occlusion tests project by, and where the pyramid's levels are. */
   public readonly occlusion: OcclusionUniforms = new OcclusionUniforms();
+  /** What the LOD cull decides a clump of trees by. */
+  public readonly lod: LodUniforms = new LodUniforms();
   /** What the last cull counted, `STATIC_CULL_COUNTS` of them, for the frame report. */
   public readonly counts: StorageBufferAttribute = new StorageBufferAttribute(new Uint32Array(STATIC_CULL_COUNTS), 1);
 
@@ -143,6 +187,7 @@ export class StaticDrawBuffers {
     const capacities: Record<EStaticPool, number> = { ...INITIAL_STATIC_CAPACITY, ...initial };
     const slots: number = capacities[EStaticPool.SLOTS];
     const rows: number = capacities[EStaticPool.ROWS];
+    const lods: number = capacities[EStaticPool.LODS];
 
     this.initials = { ...capacities };
     this.capacities = capacities;
@@ -165,6 +210,12 @@ export class StaticDrawBuffers {
     this.rowTargets = new StorageBufferAttribute(new Uint32Array(rows * 4), 4);
     this.visible = new StorageBufferAttribute(new Uint32Array(rows * 2), 1);
     this.rowStates = new StorageBufferAttribute(new Uint32Array(rows), 1);
+    this.rowLods = new StorageBufferAttribute(new Uint32Array(rows).fill(STATIC_NO_LOD), 1);
+    this.lodSpheres = new StorageBufferAttribute(new Float32Array(lods * 4).fill(-1), 4);
+    this.lodFactors = new StorageBufferAttribute(new Float32Array(lods), 1);
+    this.lodNormals = new StorageBufferAttribute(new Float32Array(lods * 8 * 4), 4);
+    this.lodCorners = new StorageBufferAttribute(new Float32Array(lods * STATIC_LOD_CORNER_COLUMNS * 4), 4);
+    this.lodTerms = new StorageBufferAttribute(new Uint32Array(lods * 4), 4);
     this.pyramid = new StorageBufferAttribute(new Float32Array(capacities[EStaticPool.PYRAMID]), 1);
     this.modelColumns = storage(this.models, "vec4", slots * 4).toReadOnly();
     this.placeColumns = storage(
@@ -173,6 +224,9 @@ export class StaticDrawBuffers {
       capacities[EStaticPool.PLACES] * STATIC_PLACE_COLUMNS
     ).toReadOnly();
     this.visiblePlaces = storage(this.visible, "uint", rows * 2).toReadOnly();
+    this.lodSphereColumns = storage(this.lodSpheres, "vec4", lods).toReadOnly();
+    this.lodCornerColumns = storage(this.lodCorners, "vec4", lods * STATIC_LOD_CORNER_COLUMNS).toReadOnly();
+    this.lodTermColumns = storage(this.lodTerms, "uvec4", lods).toReadOnly();
   }
 
   /** Bumped by every growth: a shader built over the buffers before it reads the replaced ones. */
@@ -233,7 +287,19 @@ export class StaticDrawBuffers {
         // Twice over, the halves apart: the second cull lists its places a row capacity on, which moves with it.
         this.visible = this.replace(this.visible, capacity * 2);
         this.rowStates = this.replace(this.rowStates, capacity);
+        this.rowLods = this.replace(this.rowLods, capacity, STATIC_NO_LOD);
         this.visiblePlaces.value = this.visible;
+        break;
+
+      case EStaticPool.LODS:
+        this.lodSpheres = this.replace(this.lodSpheres, capacity, -1);
+        this.lodFactors = this.replace(this.lodFactors, capacity);
+        this.lodNormals = this.replace(this.lodNormals, capacity * 8);
+        this.lodCorners = this.replace(this.lodCorners, capacity * STATIC_LOD_CORNER_COLUMNS);
+        this.lodTerms = this.replace(this.lodTerms, capacity);
+        this.lodSphereColumns.value = this.lodSpheres;
+        this.lodCornerColumns.value = this.lodCorners;
+        this.lodTermColumns.value = this.lodTerms;
         break;
 
       case EStaticPool.PYRAMID:

@@ -10,4 +10,6 @@ export interface ISurfaceShader {
   colorNode?: Node<"vec4">;
   /** The alpha a texel must exceed to be drawn at all. */
   alphaTestNode?: Node<"float">;
+  /** Where a vertex stands in view space, for a surface that places its own vertices. */
+  positionViewNode?: Node<"vec3">;
 }

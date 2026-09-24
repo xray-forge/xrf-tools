@@ -17,7 +17,10 @@ use crate::data::sector::sector_section::SectorSection;
 use crate::data::sector::sector_skip::SectorSkip;
 use crate::data::visual::bounds::visual_bounds::VisualBounds;
 use crate::data::visual::geometry::visual_draw_range::VisualDrawRange;
+use crate::data::visual::geometry::visual_section::VisualSection;
 use crate::data::visual::geometry::visual_skip_cause::VisualSkipCause;
+use crate::pack::sector::sector_gathering::SectorGathering;
+use crate::pack::sector::sector_impostor_arrays::SectorImpostorArrays;
 use crate::pack::sector::sector_instance_gathering::SectorInstanceGathering;
 use crate::pack::sector::sector_instance_key::SectorInstanceKey;
 use crate::pack::sector::sector_package::SectorPackage;
@@ -36,6 +39,9 @@ pub struct SectorPacker<'a, D: ChunkDataSource> {
 }
 
 impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
+  /// What a place names for its impostor where no `MT_LOD` visual composes it.
+  const NO_IMPOSTOR: i32 = -1;
+
   pub fn new(
     visuals: &'a LevelVisualsChunk,
     shaders: Option<&'a LevelShadersChunk>,
@@ -64,6 +70,7 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
     let mut sections: BTreeMap<u16, SectorSectionGathering> = BTreeMap::new();
     let mut gathered: BTreeMap<SectorInstanceKey, SectorInstanceGathering> = BTreeMap::new();
     let mut skipped: Vec<SectorSkip> = Vec::new();
+    let (impostors, parents): (SectorImpostorArrays, BTreeMap<u32, u32>) = self.gather_impostors(composition);
 
     for drawable in &composition.drawables {
       let Some((visual, container)) = Self::get_drawable(self.visuals, *drawable) else {
@@ -80,6 +87,9 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
         gathering.drawables.push(*drawable);
         gathering.placements.push(convert_placement(&tree.transform));
         gathering.hemi.push(convert_tree_hemi(tree));
+        gathering
+          .impostors
+          .push(parents.get(drawable).map_or(Self::NO_IMPOSTOR, |index| *index as i32));
 
         continue;
       }
@@ -104,7 +114,49 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
       }
     }
 
-    self.build::<T>(sector, arrays, sections, gathered, wanted, &mut skipped)
+    let gathering: SectorGathering = SectorGathering {
+      arrays,
+      impostors,
+      instances: gathered,
+      sections,
+      skipped,
+    };
+
+    self.build::<T>(sector, gathering, wanted)
+  }
+
+  /// The impostors of the sector's `MT_LOD` visuals, a surface's contiguous, and which impostor each tree they compose
+  /// belongs to, by the tree's index in the visuals run.
+  fn gather_impostors(&self, composition: &LevelSectorComposition) -> (SectorImpostorArrays, BTreeMap<u32, u32>) {
+    let mut lods: Vec<(u16, u32)> = composition
+      .hierarchies
+      .iter()
+      .filter_map(|index| {
+        let visual: &LevelVisual = self.visuals.visuals.get(*index as usize)?;
+
+        visual.lod.as_ref().map(|_| (visual.header.shader_id, *index))
+      })
+      .collect();
+    let mut arrays: SectorImpostorArrays = SectorImpostorArrays::default();
+    let mut parents: BTreeMap<u32, u32> = BTreeMap::new();
+
+    lods.sort_unstable();
+
+    for (_, index) in lods {
+      let visual: &LevelVisual = &self.visuals.visuals[index as usize];
+
+      for child in &visual.children {
+        parents.insert(*child, arrays.len());
+      }
+
+      arrays.push(
+        visual,
+        visual.lod.as_ref().expect("gathered for its impostor"),
+        &self.surfaces,
+      );
+    }
+
+    (arrays, parents)
   }
 
   /// What every declaration in the sector together carries, which decides the arrays it packs.
@@ -194,15 +246,14 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
   }
 
   /// Writes the arrays and the grouped indices into one buffer and describes what landed where.
-  fn build<T: ByteOrder>(
-    &self,
-    sector: u32,
-    arrays: SectorVertexArrays,
-    gathered_sections: BTreeMap<u16, SectorSectionGathering>,
-    gathered: BTreeMap<SectorInstanceKey, SectorInstanceGathering>,
-    wanted: SectorAttributes,
-    skipped: &mut Vec<SectorSkip>,
-  ) -> SectorPackage {
+  fn build<T: ByteOrder>(&self, sector: u32, gathering: SectorGathering, wanted: SectorAttributes) -> SectorPackage {
+    let SectorGathering {
+      arrays,
+      sections: gathered_sections,
+      instances: gathered,
+      impostors,
+      mut skipped,
+    } = gathering;
     let mut builder: VisualBufferBuilder = VisualBufferBuilder::new();
     let mut indices: Vec<u32> = Vec::new();
     let mut sections: Vec<SectorSection> = Vec::new();
@@ -223,17 +274,19 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
 
     let bounds: Option<VisualBounds> = arrays.get_bounds();
     let geometry: SectorGeometry = arrays.write_into(&indices, &mut builder);
-    let instances: Vec<SectorInstanceGroup> = self.pack_instances::<T>(gathered, wanted, &mut builder, skipped);
+    let instances: Vec<SectorInstanceGroup> = self.pack_instances::<T>(gathered, wanted, &mut builder, &mut skipped);
+    let impostors = impostors.write_into(&mut builder);
 
     SectorPackage {
       description: SectorDescription {
         bounds,
         buffer_length: builder.length(),
         geometry,
+        impostors,
         instances,
         sections,
         sector,
-        skipped: std::mem::take(skipped),
+        skipped,
       },
       buffer: builder.into_buffer(),
     }
@@ -299,11 +352,17 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
       .collect();
 
     let hemi: Vec<f32> = gathering.hemi.iter().flatten().copied().collect();
+    let impostors: Option<VisualSection> = gathering
+      .impostors
+      .iter()
+      .any(|impostor| *impostor != Self::NO_IMPOSTOR)
+      .then(|| builder.push_i32_section(&gathering.impostors));
 
     Ok(SectorInstanceGroup {
       drawables: gathering.drawables.clone(),
       geometry: arrays.write_into(&indices, builder),
       hemi: builder.push_f32_section(&hemi),
+      impostors,
       instance_count: gathering.placements.len() as u32,
       surface: self.surfaces.get(key.shader_id),
       transforms: builder.push_f32_section(&transforms),

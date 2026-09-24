@@ -323,3 +323,41 @@ pub(crate) fn new_tree_vertex(x: f32, y: f32, z: f32) -> Vec<u8> {
 
   bytes
 }
+
+/// A `MT_LOD` visual composing the given trees: its sphere at (1, 2, 3) of radius 2, and eight unit facets, facet `f`
+/// in the plane `z = f`, each corner carrying hemisphere byte 77 and sun byte 16.
+pub(crate) fn new_lod(shader_id: u16, children: &[u32]) -> Vec<u8> {
+  let mut header: Vec<u8> = vec![4, 6];
+
+  header.extend_from_slice(&shader_id.to_le_bytes());
+
+  for value in [-1.0f32, -2.0, -1.0, 1.0, 2.0, 1.0, 1.0, 2.0, 3.0, 2.0] {
+    header.extend_from_slice(&value.to_le_bytes());
+  }
+
+  let mut bytes: Vec<u8> = new_chunk(OgfHeaderChunk::CHUNK_ID, &header);
+  let mut links: Vec<u8> = (children.len() as u32).to_le_bytes().to_vec();
+
+  for child in children {
+    links.extend_from_slice(&child.to_le_bytes());
+  }
+
+  bytes.extend(new_chunk(OgfChildrenLinkChunk::CHUNK_ID, &links));
+
+  let mut facets: Vec<u8> = Vec::new();
+
+  for facet in 0..8 {
+    for (x, y) in [(0.0f32, 0.0f32), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)] {
+      for value in [x, y, facet as f32, x, y] {
+        facets.extend_from_slice(&value.to_le_bytes());
+      }
+
+      facets.extend_from_slice(&0x4d00_0000u32.to_le_bytes());
+      facets.extend_from_slice(&[16, 0, 0, 0]);
+    }
+  }
+
+  bytes.extend(new_chunk(xrf_ogf::OgfLodDefinitionChunk::CHUNK_ID, &facets));
+
+  bytes
+}

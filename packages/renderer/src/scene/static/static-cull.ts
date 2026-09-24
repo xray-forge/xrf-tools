@@ -1,10 +1,12 @@
 import { BufferAttribute, PerspectiveCamera, Scene, Texture, WebGPURenderer } from "three/webgpu";
 
+import { IRendererLodSettings } from "#/contract/renderer-settings";
 import { destroyStorageAttribute } from "#/internals/renderer-backend";
 import { IStaticCullCounts } from "#/scene/static/static-cull-counts";
 import { createStaticCullShader, IStaticCullShader } from "#/scene/static/static-cull.tsl";
 import { StaticDepthPyramid } from "#/scene/static/static-depth-pyramid";
 import { StaticDrawPool } from "#/scene/static/static-draw-pool";
+import { StaticLods } from "#/scene/static/static-lods";
 import { StaticPlaces } from "#/scene/static/static-places";
 import { StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
 import { CullView } from "#/visibility/cull-view";
@@ -20,6 +22,7 @@ export class StaticCull {
   private readonly buffers: StaticDrawBuffers;
   private readonly pool: StaticDrawPool;
   private readonly places: StaticPlaces;
+  private readonly lods: StaticLods;
   private shader: IStaticCullShader;
   /** The buffers' layout the shaders were built over. */
   private layout: number;
@@ -41,6 +44,9 @@ export class StaticCull {
   private viewVersion: number = -1;
   private poolVersion: number = -1;
   private placesVersion: number = -1;
+  private lodsVersion: number = -1;
+  /** Whether the LOD thresholds or switch changed since the last dispatch. */
+  private isLodChanged: boolean = true;
   private isPending: boolean = false;
   /** Whether this frame culled, so its depth is to be read. */
   private isCulled: boolean = false;
@@ -49,12 +55,20 @@ export class StaticCull {
    * @param buffers - What every static draw reads.
    * @param pool - The slots.
    * @param places - The instanced draws' places and rows.
+   * @param lods - The impostors of clumps of trees.
    * @param late - The scene the second phase's batches stand in.
    */
-  public constructor(buffers: StaticDrawBuffers, pool: StaticDrawPool, places: StaticPlaces, late: Scene) {
+  public constructor(
+    buffers: StaticDrawBuffers,
+    pool: StaticDrawPool,
+    places: StaticPlaces,
+    lods: StaticLods,
+    late: Scene
+  ) {
     this.buffers = buffers;
     this.pool = pool;
     this.places = places;
+    this.lods = lods;
     this.late = late;
     this.shader = createStaticCullShader(buffers);
     this.layout = buffers.layout;
@@ -67,14 +81,26 @@ export class StaticCull {
   }
 
   /**
+   * @param settings - When a clump of trees draws as its impostor.
+   * @param width - The drawing's width, in pixels, which the thresholds scale with.
+   * @param height - Its height.
+   * @param camera - The camera drawing it, with its matrices current.
+   */
+  public takeLod(settings: IRendererLodSettings, width: number, height: number, camera: PerspectiveCamera): void {
+    this.isLodChanged = this.buffers.lod.take(settings, width, height, camera) || this.isLodChanged;
+  }
+
+  /**
    * @param view - The view about to be drawn.
    * @param camera - Its camera, which the depth it draws is seen from.
    */
   public take(view: CullView, camera: PerspectiveCamera): void {
     if (
+      !this.isLodChanged &&
       view.version === this.viewVersion &&
       this.pool.version === this.poolVersion &&
-      this.places.version === this.placesVersion
+      this.places.version === this.placesVersion &&
+      this.lods.version === this.lodsVersion
     ) {
       return;
     }
@@ -86,6 +112,8 @@ export class StaticCull {
     this.viewVersion = view.version;
     this.poolVersion = this.pool.version;
     this.placesVersion = this.places.version;
+    this.lodsVersion = this.lods.version;
+    this.isLodChanged = false;
     this.isPending = true;
   }
 
@@ -105,6 +133,7 @@ export class StaticCull {
     // The upload comes first: the arguments it writes carry an instance count the cull then writes over.
     this.pool.flush();
     this.places.flush();
+    this.lods.flush();
     (this.buffers.counts.array as Uint32Array).fill(0);
     this.buffers.counts.needsUpdate = true;
     // The slot cull leaves every instanced draw at no instances, for its rows to count up after it.
@@ -211,14 +240,17 @@ export class StaticCull {
       this.layout = this.buffers.layout;
     }
 
-    // An invocation a slot handed out and a row up to the last run: nothing past them is in use.
+    // An invocation a slot handed out, and a row and an impostor up to the last run: nothing past them is in use.
     const slots: number = Math.max(this.pool.extent, 1);
     const rows: number = Math.max(this.places.rowExtent, 1);
+    const [earlySlots, lods, earlyRows] = this.shader.early;
+    const [lateSlots, lateRows] = this.shader.late;
 
-    this.shader.early[0].count = slots;
-    this.shader.late[0].count = slots;
-    this.shader.early[1].count = rows;
-    this.shader.late[1].count = rows;
+    earlySlots.count = slots;
+    lateSlots.count = slots;
+    lods.count = Math.max(this.lods.extent, 1);
+    earlyRows.count = rows;
+    lateRows.count = rows;
   }
 
   /** Frees the GPU buffers a growth replaced a frame ago, and holds the ones replaced since for the next frame. */
