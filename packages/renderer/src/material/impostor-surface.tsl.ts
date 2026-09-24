@@ -12,6 +12,7 @@ import {
   uint,
   uniform,
   varying,
+  vec3,
   vec4,
 } from "three/tsl";
 import { Node, TextureNode } from "three/webgpu";
@@ -35,6 +36,16 @@ const HEMI_SCALE: number = 2 * 1.55;
 /** The lighting model `lod.ps` writes: `pack_gbuffer`'s position `w` of zero. */
 const IMPOSTOR_MATERIAL: number = 0;
 
+/**
+ * The companion's normal, baked in the engine's view space, where `+z` looks away from the eye, turned into this
+ * renderer's, where it looks towards it. `lod.ps` writes it to the G-buffer as the view normal it is.
+ */
+function toViewNormal(companion: Node<"vec3">): Node<"vec3"> {
+  const normal: Node<"vec3"> = normalize(companion.mul(2).sub(1));
+
+  return vec3(normal.x, normal.y, normal.z.negate());
+}
+
 /** The first of the two columns a corner of an impostor's facet takes. */
 function toCornerColumn(lod: Node<"uint">, facet: Node<"uint">, vertex: Node<"uint">): Node<"uint"> {
   return lod.mul(STATIC_LOD_CORNER_COLUMNS).add(facet.mul(4).add(vertex).mul(2));
@@ -44,8 +55,7 @@ function toCornerColumn(lod: Node<"uint">, facet: Node<"uint">, vertex: Node<"ui
  * `details\lod` (`lod.vs`, `lod.ps`, `render_lods`): an impostor as a quad of the two facets facing the camera best,
  * each corner blended between them by the LOD cull's factor and pulled half the sphere's radius towards the camera.
  * The atlas is sampled at both facets' coordinates and blended the same way, its alpha faded by the cull and cut at
- * 96; the `_nm` companion gives the normal, written as it is, and the hemisphere term, times the corners'. The
- * corners' baked sun stands in for the shadow map the engine lights them with.
+ * 96; the `_nm` companion gives the view normal and the hemisphere term, times the corners'.
  *
  * @param surface - The impostor surface.
  * @param samplers - Where its slots are bound.
@@ -82,8 +92,6 @@ export function toImpostorSurfaceShader(
   const blend: Node<"float"> = varying(factor);
   const fade: Node<"float"> = varying(alpha);
   const hemi: Node<"float"> = varying(mix(next.w, best.w, factor).mul(HEMI_SCALE));
-  // Standing in for the sun's shadow map, as a tree's own baked sun does: the corners' sun, blended like the hemi.
-  const sun: Node<"float"> = varying(mix(nextAtlas.z, bestAtlas.z, factor));
   const base0: TextureNode = samplers.bind(surface.textures.base, getWhiteTexture(), varying(nextAtlas.xy));
   const base1: TextureNode = samplers.bind(surface.textures.base, getWhiteTexture(), varying(bestAtlas.xy));
   const normal0: TextureNode = samplers.bind(surface.textures.hemi, getWhiteTexture(), varying(nextAtlas.xy));
@@ -104,9 +112,10 @@ export function toImpostorSurfaceShader(
   return {
     fragmentNode: toGBufferOutput(
       albedo,
-      normalize(companion.xyz.mul(2).sub(1)),
+      toViewNormal(companion.xyz),
       companion.w.mul(hemi),
-      sun,
+      // Unoccluded, as a tree writes it: the engine lights both with the sun's shadow map, which this renderer has not.
+      float(1),
       uniform((IMPOSTOR_MATERIAL + 0.5) / MATERIAL_SLICES)
     ),
     positionViewNode: cameraViewMatrix.mul(vec4(position, 1)).xyz,
