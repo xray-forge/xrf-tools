@@ -1,6 +1,5 @@
 import { default as GridOnIcon } from "@mui/icons-material/GridOn";
 import { default as HexagonIcon } from "@mui/icons-material/Hexagon";
-import { default as QueryStatsIcon } from "@mui/icons-material/QueryStats";
 import { default as TextureIcon } from "@mui/icons-material/Texture";
 import { default as ThreeDRotationIcon } from "@mui/icons-material/ThreeDRotation";
 import { IRendererFeatureSettings } from "@xrf/renderer";
@@ -12,6 +11,7 @@ import { LevelBakedAction } from "@/core/level/components/preview/LevelBakedActi
 import { LevelFogAction } from "@/core/level/components/preview/LevelFogAction";
 import { LevelGrassAction } from "@/core/level/components/preview/LevelGrassAction";
 import { LevelLodAction } from "@/core/level/components/preview/LevelLodAction";
+import { LevelReadoutAction } from "@/core/level/components/preview/LevelReadoutAction";
 import { LevelShadowAction } from "@/core/level/components/preview/LevelShadowAction";
 import { LevelSunAction } from "@/core/level/components/preview/LevelSunAction";
 import { LevelWindAction } from "@/core/level/components/preview/LevelWindAction";
@@ -50,8 +50,8 @@ interface ILevelPreviewToolbarProps extends BaseComponentProps {
 }
 
 /**
- * Composes the level view toggles in the editor toolbar. A toggle with settings behind it opens them on a click and
- * turns over on a right click.
+ * Composes the level view toggles in the editor toolbar. A toggle with settings behind it turns over on a click and
+ * opens them on a right click.
  */
 export function LevelPreviewToolbar({
   "data-testid": dataTestId,
@@ -189,11 +189,11 @@ export function LevelPreviewToolbar({
             onToggle={() => onToggle("isAxesVisible")}
           />
 
-          <EditorViewToggle
-            label={"Readout"}
-            icon={<QueryStatsIcon />}
+          <LevelReadoutAction
             isOn={options.isStatsVisible}
+            isAdvanced={options.isAdvancedStatsVisible}
             onToggle={() => onToggle("isStatsVisible")}
+            onToggleAdvanced={() => onToggle("isAdvancedStatsVisible")}
           />
 
           {actions ? (

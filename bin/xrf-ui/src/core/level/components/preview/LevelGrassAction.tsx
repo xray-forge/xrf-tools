@@ -5,7 +5,11 @@ import { ReactElement, useCallback } from "react";
 
 import { ILevelFeatureOptions, TLevelGrassOptions } from "@/core/level/lib/features/level-feature-options";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
-import { RENDER_GRASS_LIMITS } from "@/core/render/lib/features/render-feature-choices";
+import {
+  fromGrassDensityScale,
+  RENDER_GRASS_LIMITS,
+  toGrassDensityScale,
+} from "@/core/render/lib/features/render-feature-choices";
 import { EditorPopoverToggle } from "@/core/shell/editor/EditorPopoverToggle";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatNumber } from "@/lib/format/number";
@@ -50,7 +54,7 @@ export function LevelGrassAction({
         !isAvailable
           ? "Grass is off in Settings, under Rendering"
           : isOn
-            ? `Grass to ${formatNumber(grass.radius, 0)} m at a density of ${formatNumber(grass.density, 2)}`
+            ? `Grass to ${formatNumber(grass.radius, 0)} m, ${formatNumber(toGrassDensityScale(grass.density), 2)}× the game's density`
             : "Grass off, the ground bare"
       }
       icon={<GrassIcon />}
@@ -61,10 +65,10 @@ export function LevelGrassAction({
     >
       <RenderValueSlider
         label={"Density"}
-        value={grass.density}
+        value={toGrassDensityScale(grass.density)}
         {...RENDER_GRASS_LIMITS.density}
-        format={(value: number) => formatNumber(value, 2)}
-        onChange={(density: number) => set({ density })}
+        format={(value: number) => `${formatNumber(value, 2)}×`}
+        onChange={(scale: number) => set({ density: fromGrassDensityScale(scale) })}
       />
 
       <RenderValueSlider

@@ -10,6 +10,8 @@ export interface ILevelViewOptions extends ILevelSurfaceOptions {
   isSunVisible: boolean;
   /** Draws the two readouts over the viewport: what the frame cost, and where the camera stands. */
   isStatsVisible: boolean;
+  /** Lists what each pass cost on the GPU in the frame readout, under what the frame cost as a whole. */
+  isAdvancedStatsVisible: boolean;
   /** Draws the noon fog, which closes the level in at 350 metres as the game does. */
   isFogged: boolean;
   /** Draws a distant clump of trees as its impostor, as the game does, rather than every tree at every distance. */
@@ -32,7 +34,8 @@ export const DEFAULT_LEVEL_VIEW_OPTIONS: ILevelViewOptions = {
   isAxesVisible: false,
   isFogged: true,
   isGrassy: true,
-  isGridVisible: true,
+  isGridVisible: false,
+  isAdvancedStatsVisible: false,
   isImpostors: true,
   isOccluded: true,
   isShadowed: true,

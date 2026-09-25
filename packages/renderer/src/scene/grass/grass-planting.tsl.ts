@@ -13,7 +13,6 @@ import {
   If,
   instanceIndex,
   int,
-  Loop,
   max,
   Return,
   select,
@@ -27,6 +26,7 @@ import { ComputeNode, Node, StorageBufferNode } from "three/webgpu";
 
 import { RENDERER_GRASS_SLOT_WORDS, RENDERER_GRASS_TRIANGLE_FLOATS } from "#/contract/scene/renderer-grass";
 import { IGrassBuffers } from "#/scene/grass/grass-buffers";
+import { loopNamed } from "#/shader/named-loop.tsl";
 import { GrassUniforms } from "#/uniforms/grass-uniforms";
 import { STATIC_DRAW_ARGUMENTS } from "#/uniforms/static-draw-buffers";
 
@@ -280,8 +280,9 @@ function createPlant(
     const scale = seed.toVar();
     const steps = int(uniforms.steps).toVar();
 
-    Loop({ condition: "<=", end: steps, start: int(0), type: "int" }, ({ i: z }) => {
-      Loop({ condition: "<=", end: steps, start: int(0), type: "int" }, ({ i: x }) => {
+    // Each loop names its own counter: three names every loop's `i`, so a nested one would shadow the one outside it.
+    loopNamed({ condition: "<=", end: steps, name: "row", start: int(0), type: "int" }, (z: Node<"int">) => {
+      loopNamed({ condition: "<=", end: steps, name: "column", start: int(0), type: "int" }, (x: Node<"int">) => {
         const shiftX = toRandom(jitter).mod(16).toVar();
         const shiftZ = toRandom(jitter).mod(16).toVar();
         const mask = uint(0).toVar();
@@ -340,19 +341,22 @@ function createPlant(
         const pz = float(z).div(float(steps)).mul(2).add(minZ).add(jitterZ).toVar();
         const y = minY.sub(5).toVar();
 
-        Loop({ end: binStart.add(binCount), start: binStart, type: "uint" }, ({ i: entry }) => {
-          const first = bins.element(entry).mul(RENDERER_GRASS_TRIANGLE_FLOATS).toVar();
-          const [p0, p1, p2] = [0, 1, 2].map((corner: number) =>
-            vec3(
-              triangles.element(first.add(corner * 3)),
-              triangles.element(first.add(corner * 3 + 1)),
-              triangles.element(first.add(corner * 3 + 2))
-            )
-          );
-          const range = toRayRange(vec3(px, maxY, pz), p0, p1, p2);
+        loopNamed(
+          { end: binStart.add(binCount), name: "entry", start: binStart, type: "uint" },
+          (entry: Node<"uint">) => {
+            const first = bins.element(entry).mul(RENDERER_GRASS_TRIANGLE_FLOATS).toVar();
+            const [p0, p1, p2] = [0, 1, 2].map((corner: number) =>
+              vec3(
+                triangles.element(first.add(corner * 3)),
+                triangles.element(first.add(corner * 3 + 1)),
+                triangles.element(first.add(corner * 3 + 2))
+              )
+            );
+            const range = toRayRange(vec3(px, maxY, pz), p0, p1, p2);
 
-          y.assign(max(y, select(range.greaterThanEqual(0), maxY.sub(range), y)));
-        });
+            y.assign(max(y, select(range.greaterThanEqual(0), maxY.sub(range), y)));
+          }
+        );
 
         If(y.lessThan(minY), () => {
           Continue();

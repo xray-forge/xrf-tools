@@ -86,17 +86,20 @@ describe("LevelRenderService", () => {
     expect(stub.requests).toHaveLength(0);
   });
 
-  it("flies the camera from the level's start and frames it with the grid, the extent and the sun", async () => {
-    const { service } = await mockAttached();
+  // The grid and the extent it frames are off until the toolbar asks for them: a level reads as itself first.
+  it("flies the camera from the level's start with the sun, and frames it with the grid and extent on asking", async () => {
+    const { service, viewService } = await mockAttached();
 
     expect(stub.take(ERendererRequest.CAMERA).at(-1)?.camera.kind).toBe(ERendererCameraController.FLY);
-    expect(stub.take(ERendererRequest.PUT_OVERLAY).map((it) => it.key)).toEqual([
-      "grid",
-      "extent",
-      "extent-box",
-      "sun",
-    ]);
+    expect(stub.take(ERendererRequest.PUT_OVERLAY).map((it) => it.key)).toEqual(["sun"]);
     expect(stub.take(ERendererRequest.PUT_OVERLAY).at(-1)?.overlay.kind).toBe(ERendererOverlay.SUN);
+
+    viewService.setOptions({ ...viewService.options, isGridVisible: true });
+    await stub.flush();
+
+    expect(stub.take(ERendererRequest.PUT_OVERLAY).map((it) => it.key)).toEqual(
+      expect.arrayContaining(["grid", "extent", "extent-box"])
+    );
 
     service.dispose();
   });

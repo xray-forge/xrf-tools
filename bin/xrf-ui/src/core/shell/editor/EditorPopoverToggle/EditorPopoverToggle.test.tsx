@@ -23,15 +23,16 @@ function renderToggle(isOn: boolean, onToggle: () => void = () => {}) {
 }
 
 describe("EditorPopoverToggle", () => {
-  it("opens its settings on a click, led by the toggle as a checkbox", async () => {
+  it("opens its settings on a right click, led by the toggle as a checkbox, and keeps the browser's menu away", async () => {
     const onToggle = jest.fn();
     const { getByRole, findByRole } = renderToggle(true, onToggle);
 
-    await userEvent.click(getByRole("button", { name: "Fog" }));
+    const isDefaultAllowed: boolean = fireEvent.contextMenu(getByRole("button", { name: "Fog" }));
 
     const dialog: HTMLElement = await findByRole("dialog", { name: "Fog" });
     const checkbox: HTMLElement = getByRole("checkbox", { name: "Draw the fog" });
 
+    expect(isDefaultAllowed).toBe(false);
     expect(dialog).toContainElement(getByRole("button", { name: "Distance" }));
     expect(checkbox).toBeChecked();
     expect(onToggle).not.toHaveBeenCalled();
@@ -41,20 +42,19 @@ describe("EditorPopoverToggle", () => {
     expect(onToggle).toHaveBeenCalledTimes(1);
   });
 
-  it("turns over on a right click without opening, and keeps the browser's menu away", () => {
+  it("turns over on a click without opening", async () => {
     const onToggle = jest.fn();
     const { getByRole, queryByRole } = renderToggle(false, onToggle);
 
-    const isDefaultAllowed: boolean = fireEvent.contextMenu(getByRole("button", { name: "Fog" }));
+    await userEvent.click(getByRole("button", { name: "Fog" }));
 
     expect(onToggle).toHaveBeenCalledTimes(1);
-    expect(isDefaultAllowed).toBe(false);
     expect(queryByRole("dialog")).not.toBeInTheDocument();
   });
 
   it("says what its settings are at and what a right click does", () => {
     expect(renderToggle(true).getByRole("button", { name: "Fog" })).toHaveAccessibleDescription(
-      "Fog total at 350 m. Right-click to turn off"
+      "Fog total at 350 m. Right-click for its settings"
     );
   });
 });

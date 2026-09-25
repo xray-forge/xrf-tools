@@ -19,7 +19,7 @@ describe("LevelAntialiasingAction", () => {
       />
     );
 
-    await userEvent.click(getByRole("button", { name: "Antialiasing" }));
+    await userEvent.pointer({ keys: "[MouseRight]", target: getByRole("button", { name: "Antialiasing" }) });
     await findByRole("dialog", { name: "Antialiasing" });
     await userEvent.click(getByRole("button", { name: "FXAA" }));
 

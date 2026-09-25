@@ -15,6 +15,8 @@ export interface IRenderFrameReadoutProps extends BaseComponentProps {
   /** What each pass of it cost on the GPU, listed while passes are timed. */
   timings?: IRendererPassTimings;
   corner?: TRenderOverlayCorner;
+  /** Whether each pass's GPU time is listed, under what the frame cost as a whole. */
+  isAdvanced?: boolean;
   /** Anything the scene can say that a viewport cannot, drawn under the rest. */
   children?: ReactNode;
 }
@@ -29,6 +31,7 @@ export function RenderFrameReadout({
   cost,
   timings,
   corner = "top-left",
+  isAdvanced = true,
   children,
 }: IRenderFrameReadoutProps): ReactElement {
   return (
@@ -39,7 +42,7 @@ export function RenderFrameReadout({
 
       {children}
 
-      {timings?.isGpuTimed && timings.passes.length ? (
+      {isAdvanced && timings?.isGpuTimed && timings.passes.length ? (
         <div data-testid={"render-frame-passes"} className={"mt-1 grid grid-cols-[auto_auto] gap-x-3"}>
           <div>GPU</div>
           <div className={"text-right tabular-nums"}>{`${toGpuTotal(timings.passes).toFixed(2)} ms`}</div>

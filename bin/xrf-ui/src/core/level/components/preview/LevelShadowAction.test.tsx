@@ -20,10 +20,10 @@ describe("LevelShadowAction", () => {
     );
 
     expect(getByRole("button", { name: "Shadows" })).toHaveAccessibleDescription(
-      "Shadows in 3 cascades, the widest 160 m across, at 2048. Right-click to turn off"
+      "Shadows in 3 cascades, the widest 160 m across, at 2048. Right-click for its settings"
     );
 
-    await userEvent.click(getByRole("button", { name: "Shadows" }));
+    await userEvent.pointer({ keys: "[MouseRight]", target: getByRole("button", { name: "Shadows" }) });
     await findByRole("dialog", { name: "Shadows" });
     await userEvent.click(getByRole("button", { name: "1" }));
 

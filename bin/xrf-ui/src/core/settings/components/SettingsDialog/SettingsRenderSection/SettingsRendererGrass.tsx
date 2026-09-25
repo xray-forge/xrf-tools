@@ -2,7 +2,7 @@ import { useInjection } from "@wirestate/react";
 import { IRendererGrassSettings } from "@xrf/renderer";
 import { ReactElement } from "react";
 
-import { RENDER_GRASS_LIMITS } from "@/core/render/lib/features";
+import { fromGrassDensityScale, RENDER_GRASS_LIMITS, toGrassDensityScale } from "@/core/render/lib/features";
 import { SettingsService } from "@/core/settings/services/settings";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 import { SliderFormRow } from "@/core/ui/form/SliderFormRow";
@@ -23,8 +23,8 @@ export function SettingsRendererGrass(): ReactElement {
     <DetailSection
       title={"Grass"}
       description={
-        "The level's detail objects, planted around the camera as the game plants them. The game plants them 49 " +
-        "metres round at a density of 0.6."
+        "The level's detail objects, planted around the camera as the game plants them: 49 metres round, at its " +
+        "own density."
       }
     >
       <div className={"mt-4 flex flex-col gap-6"}>
@@ -37,11 +37,14 @@ export function SettingsRendererGrass(): ReactElement {
 
         <SliderFormRow
           label={"Density"}
-          description={"How close together the tufts of each slot stand. Denser costs more to plant and draw."}
-          value={grass.density}
+          description={
+            "How close together the tufts stand, as a multiple of the game's: at one, as the game plants them. Denser " +
+            "costs more to plant and to draw."
+          }
+          value={toGrassDensityScale(grass.density)}
           {...RENDER_GRASS_LIMITS.density}
-          format={(value: number) => formatNumber(value, 2)}
-          onChange={(density: number) => set({ density })}
+          format={(value: number) => `${formatNumber(value, 2)}×`}
+          onChange={(scale: number) => set({ density: fromGrassDensityScale(scale) })}
         />
 
         <SliderFormRow

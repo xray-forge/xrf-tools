@@ -1,7 +1,8 @@
-import { abs, float, Fn, If, int, Loop, min, mix, saturate, select, sqrt, texture, vec2, vec4 } from "three/tsl";
+import { abs, float, Fn, If, int, min, mix, saturate, select, sqrt, texture, vec2, vec4 } from "three/tsl";
 import { Node, Texture } from "three/webgpu";
 
 import { RENDERER_MAX_SHADOW_CASCADES } from "#/contract/renderer-features";
+import { loopNamed } from "#/shader/named-loop.tsl";
 import { ShadowUniforms } from "#/uniforms/shadow-uniforms";
 
 /** A cascade's component of a per-cascade vector. */
@@ -111,8 +112,12 @@ function toCascadeLit(
   const total = float(0).toVar();
   const taps = float(0).toVar();
 
-  Loop({ condition: "<=", end: int(shadows.filter), start: int(shadows.filter).negate() }, ({ i: x }) => {
-    Loop({ condition: "<=", end: int(shadows.filter), start: int(shadows.filter).negate() }, ({ i: y }) => {
+  // Each loop names its own counter: three names every loop's `i`, so the inner one would shadow the outer and the
+  // filter would sample its diagonal alone.
+  const filter = int(shadows.filter);
+
+  loopNamed({ condition: "<=", end: filter, name: "tapX", start: filter.negate(), type: "int" }, (x: Node<"int">) => {
+    loopNamed({ condition: "<=", end: filter, name: "tapY", start: filter.negate(), type: "int" }, (y: Node<"int">) => {
       // At level zero: a sample inside a branch takes no derivatives.
       const stored = texture(maps[view], uv.add(vec2(float(x), float(y)).mul(step))).level(int(0)).x;
 

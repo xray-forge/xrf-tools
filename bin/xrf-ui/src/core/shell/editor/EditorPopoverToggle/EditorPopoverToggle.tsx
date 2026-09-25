@@ -1,5 +1,5 @@
 import { Typography } from "@mui/material";
-import { MouseEvent, ReactElement, ReactNode, useCallback } from "react";
+import { ReactElement, ReactNode, useCallback } from "react";
 
 import { EditorPopoverAction } from "@/core/shell/editor/EditorPopoverAction";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
@@ -21,7 +21,7 @@ export interface IEditorPopoverToggleProps extends BaseComponentProps {
 }
 
 /**
- * A view toggle with settings behind it: a click opens them, a right click turns the toggle over.
+ * A view toggle with settings behind it: a click turns it over, a right click opens them.
  */
 export function EditorPopoverToggle({
   "data-testid": dataTestId = "editor-popover-toggle",
@@ -36,13 +36,7 @@ export function EditorPopoverToggle({
   onToggle,
   children,
 }: IEditorPopoverToggleProps): ReactElement {
-  const onContextMenu = useCallback(
-    (event: MouseEvent<HTMLButtonElement>) => {
-      event.preventDefault();
-      onToggle();
-    },
-    [onToggle]
-  );
+  const onClick = useCallback(() => onToggle(), [onToggle]);
 
   return (
     <EditorPopoverAction
@@ -50,11 +44,11 @@ export function EditorPopoverToggle({
       id={id}
       className={className}
       label={label}
-      description={`${description}. Right-click to turn ${isOn ? "off" : "on"}`}
+      description={`${description}. Right-click for its settings`}
       icon={icon}
       isActive={isOn}
       isDisabled={isDisabled}
-      onContextMenu={onContextMenu}
+      onClick={onClick}
     >
       <div className={"flex w-60 flex-col gap-2 px-4 py-2"}>
         <Typography className={"text-text-secondary"} variant={"overline"}>

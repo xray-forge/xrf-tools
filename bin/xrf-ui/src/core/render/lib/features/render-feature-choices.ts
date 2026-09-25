@@ -1,4 +1,8 @@
-import { ERendererAmbientOcclusionQuality, ERendererAntialiasing } from "@xrf/renderer";
+import {
+  DEFAULT_RENDERER_GRASS_SETTINGS,
+  ERendererAmbientOcclusionQuality,
+  ERendererAntialiasing,
+} from "@xrf/renderer";
 
 /** The engine's three cascade widths (`render_phase_sun.cpp`), and a fourth reaching three times as far. */
 export const RENDER_SHADOW_CASCADE_WIDTHS: ReadonlyArray<number> = [20, 40, 160, 480];
@@ -14,12 +18,34 @@ export const RENDER_SHADOW_LIMITS = {
   reach: { max: 1000, min: 100, step: 50 },
 } as const;
 
-/** The bounds each grass value is offered between: the engine's own console ranges. */
+/** The engine's grass density, `r__detail_density`, which is a spacing: a smaller one plants more. */
+const GAME_GRASS_DENSITY: number = DEFAULT_RENDERER_GRASS_SETTINGS.density;
+
+/**
+ * The bounds each grass value is offered between: density as how many times the game's the tufts stand, up to the
+ * engine's densest of 0.1, and the engine's own console ranges for the rest.
+ */
 export const RENDER_GRASS_LIMITS = {
-  density: { max: 0.99, min: 0.1, step: 0.01 },
+  density: { max: 6, min: 0.65, step: 0.05 },
   height: { max: 2, min: 0.5, step: 0.1 },
   radius: { max: 150, min: 49, step: 1 },
 } as const;
+
+/**
+ * @param density - The engine's density, a spacing between tufts.
+ * @returns How many times the game's density that is, as the settings offer it: higher is denser.
+ */
+export function toGrassDensityScale(density: number): number {
+  return GAME_GRASS_DENSITY / density;
+}
+
+/**
+ * @param scale - How many times the game's density the settings ask for.
+ * @returns The engine's density that is.
+ */
+export function fromGrassDensityScale(scale: number): number {
+  return GAME_GRASS_DENSITY / scale;
+}
 
 /** The bounds each ambient occlusion value is offered between. */
 export const RENDER_AMBIENT_OCCLUSION_LIMITS = {

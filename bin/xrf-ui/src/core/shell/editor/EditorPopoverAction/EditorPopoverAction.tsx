@@ -14,8 +14,8 @@ interface IEditorPopoverActionProps extends BaseComponentProps {
   isActive?: boolean;
   /** Side of the trigger on which the content opens. */
   placement?: "top" | "bottom";
-  /** What a right click on the trigger does instead of opening it. */
-  onContextMenu?: MouseEventHandler<HTMLButtonElement>;
+  /** What a click on the trigger does instead of opening it: given one, a right click opens it. */
+  onClick?: MouseEventHandler<HTMLButtonElement>;
   children: ReactNode;
 }
 
@@ -32,7 +32,7 @@ export function EditorPopoverAction({
   isDisabled = false,
   isActive = false,
   placement = "bottom",
-  onContextMenu,
+  onClick,
   children,
 }: IEditorPopoverActionProps): ReactElement {
   const [anchor, setAnchor] = useState<Nullable<HTMLButtonElement>>(null);
@@ -40,6 +40,14 @@ export function EditorPopoverAction({
   const isOpen: boolean = anchor !== null && !isDisabled;
 
   const onOpen = useCallback((event: MouseEvent<HTMLButtonElement>) => setAnchor(event.currentTarget), []);
+
+  const onContextMenu = useCallback(
+    (event: MouseEvent<HTMLButtonElement>) => {
+      event.preventDefault();
+      onOpen(event);
+    },
+    [onOpen]
+  );
 
   const onClose = useCallback(() => setAnchor(null), []);
 
@@ -78,8 +86,8 @@ export function EditorPopoverAction({
             opacity: 0.7,
           },
         }}
-        onClick={onOpen}
-        onContextMenu={onContextMenu}
+        onClick={onClick ?? onOpen}
+        onContextMenu={onClick ? onContextMenu : undefined}
       />
 
       <Popover
