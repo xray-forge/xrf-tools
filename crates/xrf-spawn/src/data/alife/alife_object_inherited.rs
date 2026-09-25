@@ -10,6 +10,7 @@ use crate::data::alife::inherited::alife_actor::AlifeActor;
 use crate::data::alife::inherited::alife_anomalous_zone::AlifeAnomalousZone;
 use crate::data::alife::inherited::alife_graph_point::AlifeGraphPoint;
 use crate::data::alife::inherited::alife_level_changer::AlifeLevelChanger;
+use crate::data::alife::inherited::alife_object_abstract::AlifeObjectAbstract;
 use crate::data::alife::inherited::alife_object_breakable::AlifeObjectBreakable;
 use crate::data::alife::inherited::alife_object_car::AlifeObjectCar;
 use crate::data::alife::inherited::alife_object_climable::AlifeObjectClimable;
@@ -124,43 +125,47 @@ impl AlifeObjectInherited {
     })
   }
 
+  /// The abstract object every alife class inherits, which carries its game vertex, flags and custom data; `None`
+  /// for a graph point, which inherits none.
+  pub fn get_abstract(&self) -> Option<&AlifeObjectAbstract> {
+    match self {
+      AlifeObjectInherited::SeActor(object) => Some(&object.base.base.base.base),
+      AlifeObjectInherited::CseAlifeObjectBreakable(object) => Some(&object.base.base),
+      AlifeObjectInherited::CseAlifeObjectClimable(object) => Some(&object.base.base),
+      AlifeObjectInherited::CseAlifeGraphPoint(_) => None,
+      AlifeObjectInherited::CseAlifeSpaceRestrictor(object) => Some(&object.base),
+      AlifeObjectInherited::SeSmartCover(object) => Some(&object.base.base.base),
+      AlifeObjectInherited::CseAlifeAnomalousZone(object) => Some(&object.base.base.base.base),
+      AlifeObjectInherited::CseAlifeTorridZone(object) => Some(&object.base.base.base),
+      AlifeObjectInherited::SeSmartTerrain(object) => Some(&object.base.base.base),
+      AlifeObjectInherited::SeLevelChanger(object) => Some(&object.base.base),
+      AlifeObjectInherited::CseAlifeZoneVisual(object) => Some(&object.base.base.base.base),
+      AlifeObjectInherited::CseAlifeCar(object) => Some(&object.base.base),
+      AlifeObjectInherited::CseAlifeTrader(object) => Some(&object.base.base),
+      AlifeObjectInherited::CseAlifeObjectPhysic(object) => Some(&object.base.base),
+      AlifeObjectInherited::CseAlifeHelicopter(object) => Some(&object.base.base),
+      AlifeObjectInherited::CseAlifeInventoryBox(object) => Some(&object.base.base),
+      AlifeObjectInherited::CseAlifeObjectHangingLamp(object) => Some(&object.base.base),
+      AlifeObjectInherited::CseAlifeItem(object) => Some(&object.base.base),
+      AlifeObjectInherited::CseAlifeItemExplosive(object) => Some(&object.base.base.base),
+      AlifeObjectInherited::CseAlifeItemPda(object) => Some(&object.base.base.base),
+      AlifeObjectInherited::CseAlifeItemAmmo(object) => Some(&object.base.base.base),
+      AlifeObjectInherited::CseAlifeItemGrenade(object) => Some(&object.base.base.base),
+      AlifeObjectInherited::CseAlifeItemArtefact(object) => Some(&object.base.base.base),
+      AlifeObjectInherited::CseAlifeItemWeapon(object) => Some(&object.base.base.base),
+      AlifeObjectInherited::CseAlifeItemDetector(object) => Some(&object.base.base.base),
+      AlifeObjectInherited::CseAlifeItemHelmet(object) => Some(&object.base.base.base),
+      AlifeObjectInherited::CseAlifeItemCustomOutfit(object) => Some(&object.base.base.base),
+      AlifeObjectInherited::CseAlifeItemWeaponShotgun(object) => Some(&object.base.base.base.base),
+      AlifeObjectInherited::CseAlifeItemWeaponMagazined(object) => Some(&object.base.base.base.base),
+      AlifeObjectInherited::CseAlifeItemWeaponMagazinedWGl(object) => Some(&object.base.base.base.base.base),
+    }
+  }
+
   /// Get custom data of the object if it is supported by underlying alife class.
   /// Custom data is stored on the shared abstract object and reached through inheritance chains.
   pub fn get_custom_data(&self) -> Option<&String> {
-    match self {
-      AlifeObjectInherited::SeActor(object) => Some(&object.base.base.base.base.custom_data),
-      AlifeObjectInherited::CseAlifeObjectBreakable(object) => Some(&object.base.base.custom_data),
-      AlifeObjectInherited::CseAlifeObjectClimable(object) => Some(&object.base.base.custom_data),
-      AlifeObjectInherited::CseAlifeGraphPoint(_) => None,
-      AlifeObjectInherited::CseAlifeSpaceRestrictor(object) => Some(&object.base.custom_data),
-      AlifeObjectInherited::SeSmartCover(object) => Some(&object.base.base.base.custom_data),
-      AlifeObjectInherited::CseAlifeAnomalousZone(object) => Some(&object.base.base.base.base.custom_data),
-      AlifeObjectInherited::CseAlifeTorridZone(object) => Some(&object.base.base.base.custom_data),
-      AlifeObjectInherited::SeSmartTerrain(object) => Some(&object.base.base.base.custom_data),
-      AlifeObjectInherited::SeLevelChanger(object) => Some(&object.base.base.custom_data),
-      AlifeObjectInherited::CseAlifeZoneVisual(object) => Some(&object.base.base.base.base.custom_data),
-      AlifeObjectInherited::CseAlifeCar(object) => Some(&object.base.base.custom_data),
-      AlifeObjectInherited::CseAlifeTrader(object) => Some(&object.base.base.custom_data),
-      AlifeObjectInherited::CseAlifeObjectPhysic(object) => Some(&object.base.base.custom_data),
-      AlifeObjectInherited::CseAlifeHelicopter(object) => Some(&object.base.base.custom_data),
-      AlifeObjectInherited::CseAlifeInventoryBox(object) => Some(&object.base.base.custom_data),
-      AlifeObjectInherited::CseAlifeObjectHangingLamp(object) => Some(&object.base.base.custom_data),
-      AlifeObjectInherited::CseAlifeItem(object) => Some(&object.base.base.custom_data),
-      AlifeObjectInherited::CseAlifeItemExplosive(object) => Some(&object.base.base.base.custom_data),
-      AlifeObjectInherited::CseAlifeItemPda(object) => Some(&object.base.base.base.custom_data),
-      AlifeObjectInherited::CseAlifeItemAmmo(object) => Some(&object.base.base.base.custom_data),
-      AlifeObjectInherited::CseAlifeItemGrenade(object) => Some(&object.base.base.base.custom_data),
-      AlifeObjectInherited::CseAlifeItemArtefact(object) => Some(&object.base.base.base.custom_data),
-      AlifeObjectInherited::CseAlifeItemWeapon(object) => Some(&object.base.base.base.custom_data),
-      AlifeObjectInherited::CseAlifeItemDetector(object) => Some(&object.base.base.base.custom_data),
-      AlifeObjectInherited::CseAlifeItemHelmet(object) => Some(&object.base.base.base.custom_data),
-      AlifeObjectInherited::CseAlifeItemCustomOutfit(object) => Some(&object.base.base.base.custom_data),
-      AlifeObjectInherited::CseAlifeItemWeaponShotgun(object) => Some(&object.base.base.base.base.custom_data),
-      AlifeObjectInherited::CseAlifeItemWeaponMagazined(object) => Some(&object.base.base.base.base.custom_data),
-      AlifeObjectInherited::CseAlifeItemWeaponMagazinedWGl(object) => {
-        Some(&object.base.base.base.base.base.custom_data)
-      }
-    }
+    self.get_abstract().map(|it| &it.custom_data)
   }
 
   pub fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {

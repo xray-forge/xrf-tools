@@ -19,6 +19,7 @@ import {
   toLevelRendererAmbientOcclusion,
   toLevelRendererAntialiasing,
   toLevelRendererGrassSettings,
+  toLevelRendererLightsSettings,
   toLevelRendererShadows,
 } from "@/core/level/lib/features/level-feature-options";
 import { toLevelRendererFog } from "@/core/level/lib/lighting/level-fog";
@@ -103,6 +104,7 @@ export function toLevelRendererSettings(
       ...features,
       ambientOcclusion: toLevelRendererAmbientOcclusion(features.ambientOcclusion, view, options.isOccluded),
       grass: toLevelRendererGrassSettings(features.grass, view, options.isGrassy),
+      lights: toLevelRendererLightsSettings(features.lights, view, options.isLightsOn),
       antialiasing: toLevelRendererAntialiasing(features.antialiasing, view, options.isAntialiased),
       lod: toLevelRendererLod(features.lod, lod, options.isImpostors),
       shadows: toLevelRendererShadows(features.shadows, view, options.isShadowed),

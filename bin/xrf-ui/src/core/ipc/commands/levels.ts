@@ -4,6 +4,7 @@ import { invoke as __TAURI_INVOKE } from "@/core/ipc/invoke";
 import {
   LevelDetailsDescription,
   LevelEntry,
+  LevelLightsDescription,
   LevelSource,
   SelectedLevelDescription,
   SessionId,
@@ -30,6 +31,9 @@ export const levelsCommands = {
   /** Select a compiled level and report what it is built out of, without reading any of its geometry. */
   openLevel: (sessionId: SessionId, source: LevelSource, roots: XrayRoots) =>
     __TAURI_INVOKE<SessionSnapshot<SelectedLevelDescription>>("plugin:levels|open_level", { sessionId, source, roots }),
+  /** Collect the open level's lights: the lamps the game spawns on it, and its own. */
+  openLights: (sessionId: SessionId) =>
+    __TAURI_INVOKE<SessionSnapshot<LevelLightsDescription>>("plugin:levels|open_lights", { sessionId }),
   /** Pack one sector of the open level and report what it became. */
   openSector: (sessionId: SessionId, sectorId: SessionId, sector: number) =>
     __TAURI_INVOKE<SessionSnapshot<SectorDescription>>("plugin:levels|open_sector", { sessionId, sectorId, sector }),

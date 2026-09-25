@@ -10,6 +10,7 @@ import { LevelAntialiasingAction } from "@/core/level/components/preview/LevelAn
 import { LevelBakedAction } from "@/core/level/components/preview/LevelBakedAction";
 import { LevelFogAction } from "@/core/level/components/preview/LevelFogAction";
 import { LevelGrassAction } from "@/core/level/components/preview/LevelGrassAction";
+import { LevelLightsAction } from "@/core/level/components/preview/LevelLightsAction";
 import { LevelLodAction } from "@/core/level/components/preview/LevelLodAction";
 import { LevelReadoutAction } from "@/core/level/components/preview/LevelReadoutAction";
 import { LevelShadowAction } from "@/core/level/components/preview/LevelShadowAction";
@@ -19,6 +20,7 @@ import {
   ILevelFeatureOptions,
   toLevelRendererAmbientOcclusion,
   toLevelRendererGrassSettings,
+  toLevelRendererLightsSettings,
   toLevelRendererShadows,
 } from "@/core/level/lib/features/level-feature-options";
 import { ILevelLighting } from "@/core/level/lib/lighting/level-lighting";
@@ -130,6 +132,15 @@ export function LevelPreviewToolbar({
             lighting={lighting}
             onToggle={() => onToggle("isSunVisible")}
             onChange={onChangeLighting}
+          />
+
+          <LevelLightsAction
+            isOn={options.isLightsOn}
+            isAvailable={settings.lights.isEnabled}
+            lights={toLevelRendererLightsSettings(settings.lights, features, true)}
+            features={features}
+            onToggle={() => onToggle("isLightsOn")}
+            onChange={onChangeFeatures}
           />
 
           <LevelShadowAction

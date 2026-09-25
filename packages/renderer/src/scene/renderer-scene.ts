@@ -5,6 +5,7 @@ import { IRendererStaticDrawReport } from "#/contract/renderer-report";
 import { IRendererGeometry } from "#/contract/scene/renderer-geometry";
 import { IRendererGrass } from "#/contract/scene/renderer-grass";
 import { IRendererImpostors } from "#/contract/scene/renderer-impostors";
+import { IRendererLights } from "#/contract/scene/renderer-lights";
 import { IRendererObject } from "#/contract/scene/renderer-object";
 import { ERendererPass, IRendererSurface } from "#/contract/scene/renderer-surface";
 import { TRendererTextureSource } from "#/contract/scene/renderer-texture-source";
@@ -13,6 +14,7 @@ import { SceneGeometry } from "#/scene/geometry/scene-geometry";
 import { SceneGrass } from "#/scene/grass/scene-grass";
 import { RendererImpostorSets } from "#/scene/impostor/renderer-impostor-sets";
 import { KeyedUsers } from "#/scene/keyed-users";
+import { SceneLights } from "#/scene/lights/scene-lights";
 import { SceneObject } from "#/scene/object/scene-object";
 import { SceneObjectResolver } from "#/scene/object/scene-object-resolver";
 import { ISceneObjectState, isStaticDraw } from "#/scene/object/scene-object-state";
@@ -50,6 +52,8 @@ export class RendererScene {
   public readonly staticCull: StaticCull;
   /** The level's grass, planted on the GPU by the grass pass. */
   public readonly grass: SceneGrass;
+  /** The local lights, written out each frame for the lights pass. */
+  public readonly lights: SceneLights;
 
   /** What each shadow cascade draws: every casting static batch, a cell at a time. */
   public get shadowCasters(): IStaticShadowCasters {
@@ -81,6 +85,7 @@ export class RendererScene {
     this.staticCull = this.staticDraws.cull;
     this.textures = new RendererTextures(onTextureRefused, (key: string) => this.staticDraws.invalidate(key));
     this.grass = new SceneGrass(this.textures, uniforms);
+    this.lights = new SceneLights(this.textures);
     this.skeletons = new RendererSkeletons((key: string) => this.buildUsers(this.skeletonUsers.get(key)));
     this.surfaces = new SurfaceLibrary(this.textures, uniforms, (key: string) =>
       this.buildUsers(this.surfaceUsers.get(key))
@@ -220,6 +225,17 @@ export class RendererScene {
     this.grass.release();
   }
 
+  /**
+   * @param lights - The scene's local lights, replacing any put before.
+   */
+  public putLights(lights: IRendererLights): void {
+    this.lights.put(lights);
+  }
+
+  public releaseLights(): void {
+    this.lights.release();
+  }
+
   public putImpostors(key: string, impostors: IRendererImpostors): void {
     this.transact(() => this.impostors.put(key, impostors));
   }
@@ -267,6 +283,7 @@ export class RendererScene {
 
   public dispose(): void {
     this.grass.dispose();
+    this.lights.dispose();
     this.objects.forEach((entry: SceneObject) => entry.dispose());
     this.objects.clear();
     this.changes.dispose();

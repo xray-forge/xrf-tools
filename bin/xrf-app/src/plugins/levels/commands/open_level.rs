@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 use std::time::Instant;
 
 use tauri::State;
@@ -57,6 +57,7 @@ pub async fn levels_open_level(
     session_id,
     SelectedLevel {
       details: PackedDetails::new(),
+      spawn: OnceLock::new(),
       geometry: read.geometry,
       level: read.level,
       outlines,

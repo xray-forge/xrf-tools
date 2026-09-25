@@ -23,11 +23,19 @@ impl BindTransform {
     }
   }
 
-  /// One bone's bind transform, exactly as the engine composes it.
+  /// One bone's bind transform, exactly as the engine composes it: `setXYZi`.
   pub(crate) fn from_bind(rotation: &Vector3d, position: &Vector3d) -> Self {
     // The engine's own argument order, kept verbatim so this reads against `_matrix.h` rather than against intuition.
-    let (h, p, b) = (-rotation.y, -rotation.x, -rotation.z);
+    Self::from_hpb(-rotation.y, -rotation.x, -rotation.z, position)
+  }
 
+  /// An object's placement as `CGameObject::net_Spawn` sets it: `setXYZ(o_Angle)` at `o_Position`.
+  pub(crate) fn from_angle(angle: &Vector3d, position: &Vector3d) -> Self {
+    Self::from_hpb(angle.y, angle.x, angle.z, position)
+  }
+
+  /// `Fmatrix::setHPB`, which every Euler setter of the engine comes to, at a translation.
+  fn from_hpb(h: f32, p: f32, b: f32, position: &Vector3d) -> Self {
     let (sh, ch) = (h.sin(), h.cos());
     let (sp, cp) = (p.sin(), p.cos());
     let (sb, cb) = (b.sin(), b.cos());

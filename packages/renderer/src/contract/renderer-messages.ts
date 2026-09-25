@@ -10,6 +10,7 @@ import { IRendererViewSize } from "#/contract/renderer-view-size";
 import { IRendererGeometry, listRendererGeometryTransfers } from "#/contract/scene/renderer-geometry";
 import { IRendererGrass, listRendererGrassTransfers } from "#/contract/scene/renderer-grass";
 import { IRendererImpostors, listRendererImpostorsTransfers } from "#/contract/scene/renderer-impostors";
+import { IRendererLights } from "#/contract/scene/renderer-lights";
 import { IRendererObject, listRendererObjectTransfers } from "#/contract/scene/renderer-object";
 import { listRendererOverlayTransfers, TRendererOverlay } from "#/contract/scene/renderer-overlay";
 import { IRendererMotion, IRendererPose, IRendererSkeleton } from "#/contract/scene/renderer-skeleton";
@@ -50,6 +51,9 @@ export enum ERendererRequest {
   PUT_IMPOSTORS = "@renderer/putImpostors",
   PUT_GRASS = "@renderer/putGrass",
   RELEASE_GRASS = "@renderer/releaseGrass",
+  /** Light the scene with these local lights, replacing any put before. */
+  PUT_LIGHTS = "@renderer/putLights",
+  RELEASE_LIGHTS = "@renderer/releaseLights",
   RELEASE_IMPOSTORS = "@renderer/releaseImpostors",
   /** Hold this skeleton under this key, for objects to skin to. */
   PUT_SKELETON = "@renderer/putSkeleton",
@@ -114,6 +118,8 @@ export type TRendererRequest =
   | { kind: ERendererRequest.RELEASE_IMPOSTORS; key: string }
   | { kind: ERendererRequest.PUT_GRASS; grass: IRendererGrass }
   | { kind: ERendererRequest.RELEASE_GRASS }
+  | { kind: ERendererRequest.PUT_LIGHTS; lights: IRendererLights }
+  | { kind: ERendererRequest.RELEASE_LIGHTS }
   | { kind: ERendererRequest.PUT_SKELETON; key: string; skeleton: IRendererSkeleton }
   | { kind: ERendererRequest.RELEASE_SKELETON; key: string }
   | { kind: ERendererRequest.PUT_MOTION; key: string; motion: IRendererMotion }

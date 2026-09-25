@@ -17,6 +17,7 @@ import { IRendererViewSize } from "#/contract/renderer-view-size";
 import { IRendererGeometry } from "#/contract/scene/renderer-geometry";
 import { IRendererGrass } from "#/contract/scene/renderer-grass";
 import { IRendererImpostors } from "#/contract/scene/renderer-impostors";
+import { IRendererLights } from "#/contract/scene/renderer-lights";
 import { IRendererObject } from "#/contract/scene/renderer-object";
 import { TRendererOverlay } from "#/contract/scene/renderer-overlay";
 import { IRendererMotion, IRendererPose, IRendererSkeleton } from "#/contract/scene/renderer-skeleton";
@@ -204,6 +205,17 @@ export class RendererClient {
 
   public releaseGrass(): void {
     this.post({ kind: ERendererRequest.RELEASE_GRASS });
+  }
+
+  /**
+   * @param lights - The scene's local lights, replacing any put before.
+   */
+  public putLights(lights: IRendererLights): void {
+    this.post({ kind: ERendererRequest.PUT_LIGHTS, lights });
+  }
+
+  public releaseLights(): void {
+    this.post({ kind: ERendererRequest.RELEASE_LIGHTS });
   }
 
   /**

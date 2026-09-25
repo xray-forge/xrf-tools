@@ -2,6 +2,7 @@ import {
   ERendererAntialiasing,
   IRendererAmbientOcclusionSettings,
   IRendererGrassSettings,
+  IRendererLightsSettings,
   IRendererShadowSettings,
 } from "@xrf/renderer";
 import { Nullable } from "@xrf/types";
@@ -18,12 +19,16 @@ export type TLevelAmbientOcclusionOptions = Pick<IRendererAmbientOcclusionSettin
 /** The grass settings a level view may set for itself. */
 export type TLevelGrassOptions = Pick<IRendererGrassSettings, "density" | "height" | "radius">;
 
+/** The lights settings a level view may set for itself. */
+export type TLevelLightsOptions = Pick<IRendererLightsSettings, "isLevelLights">;
+
 /**
  * What a level view sets over the renderer's settings for itself: whatever it leaves unset follows them.
  */
 export interface ILevelFeatureOptions {
   ambientOcclusion: Partial<TLevelAmbientOcclusionOptions>;
   grass: Partial<TLevelGrassOptions>;
+  lights: Partial<TLevelLightsOptions>;
   /** The mode edges are smoothed with while the settings smooth them at all, or null for the settings' own. */
   antialiasing: Nullable<ERendererAntialiasing>;
   shadows: Partial<TLevelShadowOptions>;
@@ -33,6 +38,7 @@ export const DEFAULT_LEVEL_FEATURE_OPTIONS: ILevelFeatureOptions = {
   ambientOcclusion: {},
   antialiasing: null,
   grass: {},
+  lights: {},
   shadows: {},
 };
 
@@ -87,6 +93,20 @@ export function toLevelRendererGrassSettings(
   isGrassy: boolean
 ): IRendererGrassSettings {
   return { ...features, ...view.grass, isEnabled: features.isEnabled && isGrassy };
+}
+
+/**
+ * @param features - The lights the renderer's settings set, for every viewport.
+ * @param view - What the view sets over them.
+ * @param isLightsOn - Whether the toolbar draws them, which it can turn off but not on.
+ * @returns The lights the view is drawn with.
+ */
+export function toLevelRendererLightsSettings(
+  features: IRendererLightsSettings,
+  view: ILevelFeatureOptions,
+  isLightsOn: boolean
+): IRendererLightsSettings {
+  return { ...features, ...view.lights, isEnabled: features.isEnabled && isLightsOn };
 }
 
 /**

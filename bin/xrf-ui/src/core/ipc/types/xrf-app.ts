@@ -19,6 +19,7 @@ import {
 import { XrayAsset, XrayAssetContainer, XrayPathCollision, XrayRoots, XraySourceKind } from "@/core/ipc/types/xrf-vfs";
 import {
   DetailsDescription,
+  LightsDescription,
   SectorOutline,
   VisualBounds,
   VisualDependencies,
@@ -1665,6 +1666,13 @@ export type LevelEntry = {
   logicalPath: string;
   /** Whether `level.geom` sits beside the bundle; a level without it draws nothing. */
   hasGeometry: boolean;
+};
+
+/** A level's lights, and what each projector its spots name resolved to. */
+export type LevelLightsDescription = {
+  lights: LightsDescription;
+  /** By the lights' projector index. */
+  projectors: Array<LevelTextureReference>;
 };
 
 /** Every `kind` the `LevelSource` union is told apart by, so a switch or a comparison names one. */

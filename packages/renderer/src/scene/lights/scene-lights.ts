@@ -1,0 +1,293 @@
+import { Nullable } from "@xrf/types";
+import {
+  Frustum,
+  Matrix4,
+  PerspectiveCamera,
+  Sphere,
+  StorageBufferAttribute,
+  TextureNode,
+  Vector3,
+} from "three/webgpu";
+
+import { IRendererLightsSettings } from "#/contract/renderer-features";
+import { TRendererVector } from "#/contract/renderer-lighting";
+import { ERendererLightKind, IRendererLight, IRendererLights } from "#/contract/scene/renderer-lights";
+import { toSunSpecular } from "#/lighting/base-lighting";
+import { toAnimatedColor } from "#/lighting/light-animator";
+import { toProjectorAnchor } from "#/scene/lights/light-projectors.tsl";
+import { getWhiteTexture } from "#/texture/placeholder-textures";
+import { RendererTextures } from "#/texture/renderer-textures";
+import { LIGHT_CLUSTER_CAPACITY, LIGHT_CLUSTERS, LightsUniforms } from "#/uniforms/lights-uniforms";
+import { LodUniforms } from "#/uniforms/lod-uniforms";
+
+/**
+ * Vectors of four floats a light takes, in view space: its position and falloff, its colour and specular weight, its
+ * direction and cone, its right and projection scale, its up and projector, and the sphere it is binned by.
+ */
+export const LIGHT_VECTORS: number = 6;
+
+/** Lights standing in view at most in one frame. */
+export const MAX_LIGHTS: number = 1024;
+
+/** Distinct projectors the spots of one scene sample; a spot naming another lights white. */
+export const MAX_PROJECTORS: number = 8;
+
+/** What a light's falloff reaches zero at, a share of its range: `L_R` (`r3_rendertarget_accum_point.cpp`). */
+const FALLOFF_RANGE: number = 0.95;
+
+/** How far a spot's projection is widened past its cone (`Light_Render_Direct_ComputeXFS.cpp`). */
+const PROJECTION_WIDENING: number = (3.5 * Math.PI) / 180;
+
+/** `ps_r2_slight_fade`: what a shadowed light's screen area is scaled by before it fades (`xrRender_console.cpp`). */
+const SHADOWED_FADE: number = 0.5;
+
+/** `EPS_L`: the level of detail a light must pass to be drawn at all. */
+const LIGHT_EPSILON: number = 0.001;
+
+/** A cone the record says is none: every point passes its test. */
+const NO_CONE: number = -2;
+
+/**
+ * A scene's local lights: kept as the consumer put them, and each frame the ones in view written out in view space,
+ * animated and faded as the engine would, for the lights pass to bin and accumulate.
+ */
+export class SceneLights {
+  /** `LIGHT_VECTORS` a light standing in view, this frame's. */
+  public readonly records: StorageBufferAttribute = new StorageBufferAttribute(
+    new Float32Array(MAX_LIGHTS * LIGHT_VECTORS * 4),
+    4
+  );
+  /** Lights reaching each cluster, and which they are. */
+  public readonly counts: StorageBufferAttribute = new StorageBufferAttribute(new Uint32Array(LIGHT_CLUSTERS), 1);
+  public readonly items: StorageBufferAttribute = new StorageBufferAttribute(
+    new Uint32Array(LIGHT_CLUSTERS * LIGHT_CLUSTER_CAPACITY),
+    1
+  );
+  public readonly uniforms: LightsUniforms = new LightsUniforms();
+  /** A sampler a projector slot, white where no spot names one. */
+  public projectors: ReadonlyArray<TextureNode> = [];
+  /** Bumped whenever the projectors are bound again, which the pass sampling them rebuilds on. */
+  public version: number = 0;
+  /** Lights standing in view this frame. */
+  public count: number = 0;
+
+  private readonly textures: RendererTextures;
+  private lights: Nullable<IRendererLights> = null;
+  /** The key each slot is bound to. */
+  private keys: Array<string> = [];
+  private readonly frustum: Frustum = new Frustum();
+  private readonly viewProjection: Matrix4 = new Matrix4();
+  private readonly eye: Vector3 = new Vector3();
+  private readonly bound: Sphere = new Sphere();
+  private readonly vector: Vector3 = new Vector3();
+  private readonly direction: Vector3 = new Vector3();
+  private readonly right: Vector3 = new Vector3();
+  private readonly up: Vector3 = new Vector3();
+  private readonly color: Array<number> = [0, 0, 0];
+
+  public constructor(textures: RendererTextures) {
+    this.textures = textures;
+    this.bind([]);
+  }
+
+  /** Whether there are lights at all, so a pass lighting them has anything to do. */
+  public get isEmpty(): boolean {
+    return !this.lights?.lights.length;
+  }
+
+  /**
+   * @param lights - The scene's lights, replacing any put before.
+   */
+  public put(lights: IRendererLights): void {
+    const keys: Array<string> = [];
+
+    for (const light of lights.lights) {
+      if (light.projector && !keys.includes(light.projector) && keys.length < MAX_PROJECTORS) {
+        keys.push(light.projector);
+      }
+    }
+
+    this.lights = lights;
+    this.bind(keys);
+  }
+
+  public release(): void {
+    this.lights = null;
+    this.count = 0;
+    this.bind([]);
+  }
+
+  /**
+   * Writes out the lights standing in view this frame.
+   *
+   * @param camera - The camera drawing the frame, its matrices current and its projection jittered as it draws.
+   * @param time - Seconds, which the animations run by.
+   * @param settings - What the lights are set to.
+   * @param lod - The level of detail thresholds, which shadowed lights fade by.
+   */
+  public update(camera: PerspectiveCamera, time: number, settings: IRendererLightsSettings, lod: LodUniforms): void {
+    const data: Float32Array = this.records.array as Float32Array;
+    const view: Matrix4 = camera.matrixWorldInverse;
+    let count: number = 0;
+
+    this.viewProjection.multiplyMatrices(camera.projectionMatrix, view);
+    this.frustum.setFromProjectionMatrix(this.viewProjection, camera.coordinateSystem, camera.reversedDepth);
+    camera.getWorldPosition(this.eye);
+
+    for (const light of this.lights?.lights ?? []) {
+      if (count >= MAX_LIGHTS) {
+        break;
+      }
+
+      if (light.isLevel && !settings.isLevelLights) {
+        continue;
+      }
+
+      const fade: number = light.isShadowed ? this.toShadowedFade(light, lod) : 1;
+
+      if (fade <= LIGHT_EPSILON) {
+        continue;
+      }
+
+      this.toBound(light);
+
+      if (!this.frustum.intersectsSphere(this.bound)) {
+        continue;
+      }
+
+      this.toColor(light, time, light.kind === ERendererLightKind.SPOT ? fade : 1);
+      this.writeRecord(data, count * LIGHT_VECTORS * 4, light, view);
+      count += 1;
+    }
+
+    this.count = count;
+    this.uniforms.follow(camera, count);
+
+    if (count > 0) {
+      this.records.clearUpdateRanges();
+      this.records.addUpdateRange(0, count * LIGHT_VECTORS * 4);
+      this.records.needsUpdate = true;
+    }
+  }
+
+  public dispose(): void {
+    this.release();
+  }
+
+  /** Points each projector slot at the key a spot names, and the rest at white. */
+  private bind(keys: Array<string>): void {
+    if (this.projectors.length && keys.join() === this.keys.join()) {
+      return;
+    }
+
+    this.projectors.forEach((sampler: TextureNode, slot: number) => this.textures.unbind(this.keys[slot], sampler));
+    this.keys = keys;
+    this.projectors = Array.from({ length: MAX_PROJECTORS }, (_, slot: number) =>
+      this.textures.bind(keys[slot], getWhiteTexture(), toProjectorAnchor())
+    );
+    this.version += 1;
+  }
+
+  /** `light::get_LOD`: a shadowed light fades by its sphere's share of the screen, as the engine's does. */
+  private toShadowedFade(light: IRendererLight, lod: LodUniforms): number {
+    this.toSpatialSphere(light);
+
+    const distance: number = this.eye.distanceToSquared(this.bound.center) + LIGHT_EPSILON;
+    const area: number = (SHADOWED_FADE * this.bound.radius) / distance;
+    const start: number = lod.glodStart.value;
+    const end: number = lod.glodEnd.value;
+
+    return start > end ? Math.sqrt(Math.min(Math.max((area - end) / (start - end), 0), 1)) : 1;
+  }
+
+  /** `light::spatial_move`'s sphere, which the engine fades a light by. */
+  private toSpatialSphere(light: IRendererLight): void {
+    const [x, y, z] = light.position;
+
+    this.bound.center.set(x, y, z);
+    this.bound.radius = light.range;
+
+    if (light.kind !== ERendererLightKind.SPOT) {
+      return;
+    }
+
+    const half: number = light.cone / 2;
+
+    this.bound.radius =
+      light.cone >= Math.PI / 2 ? light.range * Math.tan(half) : light.range / (2 * Math.cos(half) ** 2);
+    this.bound.center.add(
+      toVector(this.vector, light.direction).multiplyScalar(light.cone >= Math.PI / 2 ? light.range : this.bound.radius)
+    );
+  }
+
+  /** The least sphere around what a light reaches, which it is culled and binned by. */
+  private toBound(light: IRendererLight): void {
+    const [x, y, z] = light.position;
+
+    this.bound.center.set(x, y, z);
+    this.bound.radius = light.range;
+
+    if (light.kind !== ERendererLightKind.SPOT) {
+      return;
+    }
+
+    const half: number = Math.min(light.cone / 2, Math.PI / 2);
+    // A narrow cone's sphere passes through its apex and its rim; a wide one's is its rim's.
+    const offset: number = half > Math.PI / 4 ? light.range * Math.cos(half) : light.range / (2 * Math.cos(half) ** 2);
+
+    this.bound.radius = half > Math.PI / 4 ? light.range * Math.sin(half) : offset;
+    this.bound.center.add(toVector(this.vector, light.direction).multiplyScalar(offset));
+  }
+
+  private toColor(light: IRendererLight, time: number, fade: number): void {
+    const animator = light.animator === undefined ? undefined : this.lights?.animators[light.animator];
+
+    if (animator) {
+      toAnimatedColor(animator, time, this.color);
+
+      for (let channel: number = 0; channel < 3; channel += 1) {
+        this.color[channel] *= light.animatorScale * fade;
+      }
+    } else {
+      for (let channel: number = 0; channel < 3; channel += 1) {
+        this.color[channel] = light.color[channel] * fade;
+      }
+    }
+  }
+
+  private writeRecord(data: Float32Array, offset: number, light: IRendererLight, view: Matrix4): void {
+    const isSpot: boolean = light.kind === ERendererLightKind.SPOT;
+    const range: number = light.range * FALLOFF_RANGE;
+    const slot: number = isSpot && light.projector ? this.keys.indexOf(light.projector) : -1;
+
+    // `compute_xf_spot`: the right the lamp gives, made square to its direction through the up they make. Crossed in
+    // the renderer's mirrored space, the engine's `up = dir x right` turns its sign.
+    toVector(this.direction, light.direction).normalize();
+    toVector(this.right, light.right);
+    this.up.crossVectors(this.direction, this.right).negate().normalize();
+    this.right.crossVectors(this.up, this.direction).negate().normalize();
+    this.direction.transformDirection(view);
+    this.right.transformDirection(view);
+    this.up.transformDirection(view);
+    this.vector.set(light.position[0], light.position[1], light.position[2]).applyMatrix4(view);
+
+    data.set([this.vector.x, this.vector.y, this.vector.z, range > 0 ? 1 / (range * range) : 0], offset);
+    data.set([this.color[0], this.color[1], this.color[2], toSunSpecular(this.color as never)], offset + 4);
+    data.set(
+      [this.direction.x, this.direction.y, this.direction.z, isSpot ? Math.cos(light.cone / 2) : NO_CONE],
+      offset + 8
+    );
+    data.set(
+      [this.right.x, this.right.y, this.right.z, isSpot ? 1 / Math.tan((light.cone + PROJECTION_WIDENING) / 2) : 0],
+      offset + 12
+    );
+    data.set([this.up.x, this.up.y, this.up.z, slot], offset + 16);
+
+    this.bound.center.applyMatrix4(view);
+    data.set([this.bound.center.x, this.bound.center.y, this.bound.center.z, this.bound.radius], offset + 20);
+  }
+}
+
+function toVector(out: Vector3, vector: TRendererVector): Vector3 {
+  return out.set(vector[0], vector[1], vector[2]);
+}

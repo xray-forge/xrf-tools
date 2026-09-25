@@ -70,6 +70,21 @@ export const DEFAULT_RENDERER_GRASS_SETTINGS: IRendererGrassSettings = {
   radius: 49,
 };
 
+/**
+ * The local lights a scene was given: binned into a grid over the view, and accumulated after the sun in one pass.
+ */
+export interface IRendererLightsSettings {
+  isEnabled: boolean;
+  /** Whether the level file's own lights are drawn too, which the engine does only with `r2_allow_r1_lights`. */
+  isLevelLights: boolean;
+}
+
+/** The engine's own: every spawned light, and none of the level file's. */
+export const DEFAULT_RENDERER_LIGHTS_SETTINGS: IRendererLightsSettings = {
+  isEnabled: true,
+  isLevelLights: false,
+};
+
 /** Cascades the sun's shadow can be cut into at most. */
 export const RENDERER_MAX_SHADOW_CASCADES: number = 4;
 
@@ -163,6 +178,7 @@ export interface IRendererFeatureSettings {
   grass: IRendererGrassSettings;
   /** Whether every pass is timed on the GPU for the report. */
   isGpuTimed: boolean;
+  lights: IRendererLightsSettings;
   lod: IRendererLodSettings;
   shadows: IRendererShadowSettings;
 }
@@ -182,6 +198,7 @@ export const RENDERER_PRESETS: Readonly<Record<ERendererPreset, IRendererFeature
     antialiasing: ERendererAntialiasing.SMAA,
     grass: DEFAULT_RENDERER_GRASS_SETTINGS,
     isGpuTimed: true,
+    lights: DEFAULT_RENDERER_LIGHTS_SETTINGS,
     lod: DEFAULT_RENDERER_LOD_SETTINGS,
     shadows: DEFAULT_RENDERER_SHADOW_SETTINGS,
   },
@@ -190,6 +207,8 @@ export const RENDERER_PRESETS: Readonly<Record<ERendererPreset, IRendererFeature
     antialiasing: ERendererAntialiasing.NONE,
     grass: { ...DEFAULT_RENDERER_GRASS_SETTINGS, isEnabled: false },
     isGpuTimed: true,
+    // Unshadowed, the lights cost a pass over the screen: an editor keeps seeing what lights a room.
+    lights: DEFAULT_RENDERER_LIGHTS_SETTINGS,
     lod: DEFAULT_RENDERER_LOD_SETTINGS,
     shadows: { ...DEFAULT_RENDERER_SHADOW_SETTINGS, isEnabled: false },
   },
@@ -201,6 +220,7 @@ export interface IRendererFeatureOverrides {
   antialiasing?: ERendererAntialiasing;
   grass?: Partial<IRendererGrassSettings>;
   isGpuTimed?: boolean;
+  lights?: Partial<IRendererLightsSettings>;
   lod?: Partial<IRendererLodSettings>;
   shadows?: Partial<IRendererShadowSettings>;
 }
@@ -274,6 +294,12 @@ export function toRendererFeatureChoice(stored: unknown): IRendererFeatureChoice
     choice.overrides.grass = grass;
   }
 
+  const lights: Partial<IRendererLightsSettings> = toLightsOverrides(source.lights);
+
+  if (Object.keys(lights).length) {
+    choice.overrides.lights = lights;
+  }
+
   const shadows: Partial<IRendererShadowSettings> = toShadowOverrides(source.shadows);
 
   if (Object.keys(shadows).length) {
@@ -289,13 +315,14 @@ export function toRendererFeatureChoice(stored: unknown): IRendererFeatureChoice
  */
 export function resolveRendererFeatures(choice: IRendererFeatureChoice): IRendererFeatureSettings {
   const preset: IRendererFeatureSettings = RENDERER_PRESETS[choice.preset];
-  const { ambientOcclusion, antialiasing, grass, isGpuTimed, lod, shadows } = choice.overrides;
+  const { ambientOcclusion, antialiasing, grass, isGpuTimed, lights, lod, shadows } = choice.overrides;
 
   return {
     ambientOcclusion: { ...preset.ambientOcclusion, ...ambientOcclusion },
     antialiasing: antialiasing ?? preset.antialiasing,
     grass: { ...preset.grass, ...grass },
     isGpuTimed: isGpuTimed ?? preset.isGpuTimed,
+    lights: { ...preset.lights, ...lights },
     lod: { ...preset.lod, ...lod },
     shadows: { ...preset.shadows, ...shadows },
   };
@@ -317,6 +344,9 @@ export function isRendererFeatureChoiceCustom(choice: IRendererFeatureChoice): b
     ) ||
     (Object.keys(preset.grass) as Array<keyof IRendererGrassSettings>).some(
       (key) => resolved.grass[key] !== preset.grass[key]
+    ) ||
+    (Object.keys(preset.lights) as Array<keyof IRendererLightsSettings>).some(
+      (key) => resolved.lights[key] !== preset.lights[key]
     ) ||
     (Object.keys(preset.ambientOcclusion) as Array<keyof IRendererAmbientOcclusionSettings>).some(
       (key) => resolved.ambientOcclusion[key] !== preset.ambientOcclusion[key]
@@ -346,6 +376,23 @@ function toGrassOverrides(stored: unknown): Partial<IRendererGrassSettings> {
 
     if (typeof value === "number" && Number.isFinite(value) && value > 0) {
       overrides[key] = value;
+    }
+  }
+
+  return overrides;
+}
+
+/**
+ * @param stored - What was stored for the lights overrides.
+ * @returns The ones the lights take: their flags.
+ */
+function toLightsOverrides(stored: unknown): Partial<IRendererLightsSettings> {
+  const source: Record<string, unknown> = stored && typeof stored === "object" ? (stored as never) : {};
+  const overrides: Partial<IRendererLightsSettings> = {};
+
+  for (const key of ["isEnabled", "isLevelLights"] as const) {
+    if (typeof source[key] === "boolean") {
+      overrides[key] = source[key];
     }
   }
 

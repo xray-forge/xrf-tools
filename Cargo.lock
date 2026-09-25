@@ -7570,6 +7570,7 @@ dependencies = [
  "xrf-chunk",
  "xrf-error",
  "xrf-level",
+ "xrf-light-anim",
  "xrf-math",
  "xrf-ogf",
  "xrf-particles",

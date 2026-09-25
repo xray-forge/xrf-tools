@@ -25,6 +25,19 @@ pub fn convert_bones(bones: &[OgfBone], ik_data: Option<&[OgfBoneIkData]>) -> Ve
     .collect()
 }
 
+/// A bone's model-space bind transform in the engine's space, or `None` for a bone the list does not name, or one it
+/// cannot resolve.
+pub(crate) fn resolve_bone_transform(
+  bones: &[OgfBone],
+  ik_data: Option<&[OgfBoneIkData]>,
+  name: &str,
+) -> Option<BindTransform> {
+  let binds: &[OgfBoneIkData] = ik_data.filter(|it| it.len() == bones.len())?;
+  let index: usize = bones.iter().position(|it| it.name.eq_ignore_ascii_case(name))?;
+
+  resolve_model_transforms(bones, binds).swap_remove(index)
+}
+
 /// Every bone's model-space bind transform, or `None` for a bone whose parent chain does not reach a root.
 fn resolve_model_transforms(bones: &[OgfBone], binds: &[OgfBoneIkData]) -> Vec<Option<BindTransform>> {
   let local: Vec<BindTransform> = binds

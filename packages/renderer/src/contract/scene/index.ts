@@ -1,6 +1,7 @@
 export * from "#/contract/scene/renderer-geometry";
 export * from "#/contract/scene/renderer-grass";
 export * from "#/contract/scene/renderer-impostors";
+export * from "#/contract/scene/renderer-lights";
 export * from "#/contract/scene/renderer-object";
 export * from "#/contract/scene/renderer-overlay";
 export * from "#/contract/scene/renderer-progressive";

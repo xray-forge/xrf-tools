@@ -2,6 +2,7 @@
 
 pub(crate) mod level_entry;
 pub(crate) mod level_source;
+pub(crate) mod level_spawn;
 pub(crate) mod level_state;
 pub(crate) mod packed_details;
 pub(crate) mod packed_sector;
@@ -10,11 +11,13 @@ pub(crate) mod selection;
 
 pub(crate) use level_entry::LevelEntry;
 pub(crate) use level_source::LevelSource;
+pub(crate) use level_spawn::LevelSpawn;
 pub(crate) use level_state::LevelState;
 pub(crate) use packed_details::PackedDetails;
 pub(crate) use packed_sector::PackedSector;
 pub(crate) use packed_sectors::PackedSectors;
 pub(crate) use selection::level_details_description::LevelDetailsDescription;
+pub(crate) use selection::level_lights_description::LevelLightsDescription;
 pub(crate) use selection::level_texture_reference::LevelTextureReference;
 pub(crate) use selection::selected_level::SelectedLevel;
 pub(crate) use selection::selected_level_description::SelectedLevelDescription;

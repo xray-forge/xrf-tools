@@ -81,7 +81,8 @@ export class RendererHost {
       this.overlays,
       this.scene.staticCull,
       this.scene.shadowCasters,
-      this.scene.grass
+      this.scene.grass,
+      this.scene.lights
     );
     this.captures = new RendererCaptures(this.graph.present, this.scene.textures, (id, image) =>
       this.reply({ id, image, kind: ERendererResponse.CAPTURED }, image ? [image] : [])
@@ -133,6 +134,12 @@ export class RendererHost {
 
       case ERendererRequest.RELEASE_GRASS:
         return this.scene.releaseGrass();
+
+      case ERendererRequest.PUT_LIGHTS:
+        return this.scene.putLights(request.lights);
+
+      case ERendererRequest.RELEASE_LIGHTS:
+        return this.scene.releaseLights();
 
       case ERendererRequest.PUT_IMPOSTORS:
         return this.scene.putImpostors(request.key, request.impostors);
@@ -349,6 +356,8 @@ export class RendererHost {
     this.cullView.take(this.rig.camera, this.uniforms.viewDistance);
     // Thresholds on a clump's screen area, which scale with how many pixels the drawing has.
     this.scene.staticCull.takeLod(settings.features.lod, this.drawingSize.x, this.drawingSize.y, this.rig.camera);
+    // After the jitter and the thresholds: the clusters cut the view as it draws, and shadowed lights fade by the LOD.
+    this.scene.lights.update(this.rig.camera, now / 1000, settings.features.lights, this.uniforms.staticDraws.lod);
     this.scene.cull(this.cullView, this.rig.camera);
     this.graph.render(frame, device.inspector);
     this.stats.endFrame(performance.now() - startedAt, device);

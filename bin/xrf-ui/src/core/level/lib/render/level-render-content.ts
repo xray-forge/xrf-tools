@@ -2,10 +2,12 @@ import { toMean } from "@xrf/math";
 import { IDdsRead, IDdsRefusal, readDdsFile, RendererClient } from "@xrf/renderer";
 import { Maybe, Nullable } from "@xrf/types";
 
+import { LevelLightsDescription } from "@/core/ipc/types/xrf-app";
 import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
 import { SectorSurface } from "@/core/ipc/types/xrf-visual";
 import { toLevelRendererGrass } from "@/core/level/lib/render/level-render-grass";
 import { LEVEL_RENDER_KEYS } from "@/core/level/lib/render/level-render-keys";
+import { toLevelRendererLights } from "@/core/level/lib/render/level-render-lights";
 import {
   ILevelGrassDelivery,
   ILevelSectorChange,
@@ -45,6 +47,8 @@ export type TLevelRenderSink = Pick<
   | "releaseImpostors"
   | "putGrass"
   | "releaseGrass"
+  | "putLights"
+  | "releaseLights"
   | "putSurface"
   | "releaseSurface"
   | "putTexture"
@@ -121,6 +125,17 @@ export class LevelRenderContent {
       this.sink.putGrass(toLevelRendererGrass(grass));
     } else {
       this.sink.releaseGrass();
+    }
+  }
+
+  /**
+   * @param lights - The level's lights, or null for none.
+   */
+  public light(lights: Nullable<LevelLightsDescription>): void {
+    if (lights) {
+      this.sink.putLights(toLevelRendererLights(lights));
+    } else {
+      this.sink.releaseLights();
     }
   }
 

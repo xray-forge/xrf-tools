@@ -60,6 +60,69 @@ export type DetailsModel = {
   indices: VisualSection;
 };
 
+/** A colour animation of `lanims.xr` (`CLAItem`), which replaces the colour of every light it drives. */
+export type LightAnimatorDescription = {
+  name: string;
+  fps: number | null;
+  frameCount: number;
+  /** By frame, the first at frame zero. */
+  keys: Array<LightAnimatorKey>;
+};
+
+/** One key of a colour animation: the frame it stands at and its colour, each channel in `[0, 255]`. */
+export type LightAnimatorKey = {
+  frame: number;
+  color: [number | null, number | null, number | null];
+};
+
+/** One light of a level, in renderer space, as the engine would light with it. */
+export type LightDescription = {
+  /** The spawned object it belongs to, or the level file's record for one of the level's own. */
+  name: string;
+  kind: LightKind;
+  position: Vector3d;
+  /** Where a spot points: its bone's third axis. */
+  direction: Vector3d;
+  /** Its bone's first axis, which turns a spot's projector about its direction. */
+  right: Vector3d;
+  /** Raw, times the lamp's brightness, as the engine hands it to the shaders. */
+  color: [number | null, number | null, number | null];
+  range: number | null;
+  /** A spot's whole cone, in radians. */
+  cone: number | null;
+  /** Where a spot's projection starts: the lamp's virtual size. */
+  near: number | null;
+  /** A spot's projector, by its index among the description's projectors. */
+  projector: number | null;
+  /** The animation replacing its colour, by its index among the description's animators. */
+  animator: number | null;
+  /** What an animated colour, each channel in `[0, 255]`, is multiplied by. */
+  animatorScale: number | null;
+  /** Whether it casts shadows, which also has it fade and drop out with distance as the engine's shadowed lights do. */
+  isShadowed: boolean;
+  /** Whether it is one of the level file's own lights, which the engine draws only with `r2_allow_r1_lights`. */
+  isLevel: boolean;
+};
+
+/** The shape a light reaches out in. */
+export enum ELightKind {
+  /** Every way around it, to its range. */
+  POINT = "point",
+  /** Along its direction, within its cone, through its projector. */
+  SPOT = "spot",
+}
+
+/** Every `ELightKind` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type LightKind = `${ELightKind}`;
+
+/** A level's lights: its spawned lamps and its own, with the animations and projectors they name. */
+export type LightsDescription = {
+  lights: Array<LightDescription>;
+  animators: Array<LightAnimatorDescription>;
+  /** The projector textures the spots name, as the lamps reference them. */
+  projectors: Array<string>;
+};
+
 /** Everything about a packed sector except the bytes themselves. */
 export type SectorDescription = {
   /** The sector packed, by its index in the sectors chunk. */

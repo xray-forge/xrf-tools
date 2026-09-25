@@ -1,6 +1,6 @@
 import { Nullable } from "@xrf/types";
 
-import { LevelDetailsDescription } from "@/core/ipc/types/xrf-app";
+import { LevelDetailsDescription, LevelLightsDescription } from "@/core/ipc/types/xrf-app";
 import { SectorDescription } from "@/core/ipc/types/xrf-visual";
 
 /** One sector handed to whatever draws it: what the pack says, and the bytes it was packed into. */
@@ -51,6 +51,20 @@ export interface ILevelGrassSource {
    * @returns Stops the telling.
    */
   subscribe(listener: TLevelGrassListener): () => void;
+}
+
+/** Told the level's lights, or null for none. */
+export type TLevelLightsListener = (lights: Nullable<LevelLightsDescription>) => void;
+
+/**
+ * The level's lights as whatever draws them takes them: those its spawned objects carry, and its own.
+ */
+export interface ILevelLightsSource {
+  /**
+   * @param listener - Told the lights held now, then whenever they change.
+   * @returns Stops the telling.
+   */
+  subscribe(listener: TLevelLightsListener): () => void;
 }
 
 /** One texture's file, handed to whatever uploads it. */

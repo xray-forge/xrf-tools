@@ -26,6 +26,8 @@ export interface ILevelViewOptions extends ILevelSurfaceOptions {
   isWindy: boolean;
   /** Draws the grass, while the settings draw it. */
   isGrassy: boolean;
+  /** Lights the level with its lamps, while the settings draw lights. */
+  isLightsOn: boolean;
 }
 
 export const DEFAULT_LEVEL_VIEW_OPTIONS: ILevelViewOptions = {
@@ -37,6 +39,7 @@ export const DEFAULT_LEVEL_VIEW_OPTIONS: ILevelViewOptions = {
   isGridVisible: false,
   isAdvancedStatsVisible: false,
   isImpostors: true,
+  isLightsOn: true,
   isOccluded: true,
   isShadowed: true,
   isWindy: true,

@@ -15,6 +15,7 @@ use crate::chunks::spawn_artefact_spawns_chunk::SpawnArtefactSpawnsChunk;
 use crate::chunks::spawn_graphs_chunk::SpawnGraphsChunk;
 use crate::chunks::spawn_header_chunk::SpawnHeaderChunk;
 use crate::chunks::spawn_patrols_chunk::SpawnPatrolsChunk;
+use crate::data::graph::graph_vertex_levels::GraphVertexLevels;
 
 /// Descriptor of generic spawn file used by xray game engine.
 ///
@@ -116,6 +117,28 @@ impl SpawnFile {
   }
 
   /// Write spawn file data to the file by provided path.
+  /// Reads which level each game vertex stands on out of a spawn file's root chunks, and nothing else of the graph.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the graph chunk is missing or its head cannot be read.
+  pub fn read_vertex_levels_from_chunks<T: ByteOrder, D: ChunkDataSource>(
+    chunks: &[ChunkReader<D>],
+  ) -> XrfResult<GraphVertexLevels> {
+    GraphVertexLevels::read::<T, _>(&mut find_required_chunk_by_id(chunks, SpawnGraphsChunk::CHUNK_ID)?)
+  }
+
+  /// Reads the alife objects out of a spawn file's root chunks, and nothing else of the file.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the objects chunk is missing or cannot be read.
+  pub fn read_alife_spawns_from_chunks<T: ByteOrder, D: ChunkDataSource>(
+    chunks: &[ChunkReader<D>],
+  ) -> XrfResult<SpawnALifeSpawnsChunk> {
+    find_required_chunk_by_id(chunks, SpawnALifeSpawnsChunk::CHUNK_ID)?.read_xr::<T, _>()
+  }
+
   pub fn write_to_path<T: ByteOrder, P: AsRef<Path>>(&self, path: &P) -> XrfResult {
     let path_ref: &Path = path.as_ref();
 

@@ -21,6 +21,7 @@ xrf-error = { workspace = true }
 xrf-level = { workspace = true }
 xrf-vfs = { workspace = true }
 xrf-spawn = { workspace = true }
+xrf-light-anim = { workspace = true }
 xrf-particles = { workspace = true }
 
 [features]

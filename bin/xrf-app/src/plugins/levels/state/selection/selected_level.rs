@@ -1,3 +1,5 @@
+use std::sync::{Arc, OnceLock};
+
 use xrf_chunk::InMemoryChunkDataSource;
 use xrf_level::{LevelFile, LevelGeomSource, LevelSector, LevelVisualsChunk};
 use xrf_material::XraySurfaceDescriptor;
@@ -5,6 +7,7 @@ use xrf_vfs::XrayRoots;
 use xrf_visual::SectorOutline;
 
 use crate::plugins::levels::state::level_source::LevelSource;
+use crate::plugins::levels::state::level_spawn::LevelSpawn;
 use crate::plugins::levels::state::packed_details::PackedDetails;
 use crate::plugins::levels::state::packed_sectors::PackedSectors;
 use crate::plugins::levels::state::selection::level_sun_description::LevelSunDescription;
@@ -33,6 +36,8 @@ pub struct SelectedLevel {
   pub packed: PackedSectors,
   /// The grass packed by an `open_details` and not yet served.
   pub details: PackedDetails,
+  /// What the game spawns on the level, read the first time anything asks and kept, a failure with it.
+  pub spawn: OnceLock<Result<Arc<LevelSpawn>, String>>,
 }
 
 impl SelectedLevel {

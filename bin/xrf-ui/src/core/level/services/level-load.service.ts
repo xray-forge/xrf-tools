@@ -9,6 +9,7 @@ import { Session } from "@/core/ipc/session";
 import { requireSessionId } from "@/core/ipc/session/session.utils";
 import {
   LevelDetailsDescription,
+  LevelLightsDescription,
   LevelSource,
   SelectedLevelDescription,
   SessionSnapshot,
@@ -18,6 +19,7 @@ import { SectorDescription } from "@/core/ipc/types/xrf-visual";
 import {
   ILevelGrassDelivery,
   ILevelGrassSource,
+  ILevelLightsSource,
   ILevelSectorChange,
   ILevelSectorDelivery,
   ILevelSectorSource,
@@ -25,6 +27,7 @@ import {
   ILevelTextureSupply,
   ILevelTextureSupplyChange,
   TLevelGrassListener,
+  TLevelLightsListener,
   TLevelSectorListener,
   TLevelTextureSupplyListener,
 } from "@/core/level/lib/render/level-render-protocol";
@@ -119,6 +122,15 @@ export class LevelLoadService {
   /** The textures the grass is dressed with, kept for as long as it is held. */
   private grassTextures: Set<string> = new Set();
 
+  /** Told the level's lights whenever they change. */
+  private readonly lightsWatchers: Set<TLevelLightsListener> = new Set();
+
+  /** The level's lights once read, which a renderer started later is handed too. */
+  private lightsHeld: Nullable<LevelLightsDescription> = null;
+
+  /** The projectors the spots sample, kept for as long as the lights are held. */
+  private lightsTextures: Set<string> = new Set();
+
   /** Where the camera last reported from, which is what the level is filled in around once it settles. */
   private streamedFrom: Nullable<ILevelPoint> = null;
 
@@ -183,6 +195,22 @@ export class LevelLoadService {
 
         return (): void => {
           this.grassWatchers.delete(listener);
+        };
+      },
+    };
+  }
+
+  /**
+   * @returns The level's lights, told as they are now and whenever they change: read once, after the level opens.
+   */
+  public get lights(): ILevelLightsSource {
+    return {
+      subscribe: (listener: TLevelLightsListener): (() => void) => {
+        this.lightsWatchers.add(listener);
+        listener(this.lightsHeld);
+
+        return (): void => {
+          this.lightsWatchers.delete(listener);
         };
       },
     };
@@ -369,7 +397,58 @@ export class LevelLoadService {
     this.notifyTextures({ delivered: [], retained: null });
     this.level = this.level.asReady({ selected });
     this.holdGrass(null);
+    this.holdLights(null);
     void this.readGrass(selected.sessionId);
+    void this.readLights(selected.sessionId);
+  }
+
+  /**
+   * Collects the level's lights, and the projectors its spots sample, then hands them over, for a level still open.
+   *
+   * @param sessionId - The level opening they belong to.
+   */
+  private async readLights(sessionId: string): Promise<void> {
+    const timer: Timer = new Timer();
+
+    try {
+      const snapshot: SessionSnapshot<LevelLightsDescription> = await levelsCommands.openLights(sessionId);
+
+      if (!this.isOpen(sessionId)) {
+        return;
+      }
+
+      const description: LevelLightsDescription = snapshot.value;
+
+      this.reading.add(description.projectors);
+      this.lightsTextures = new Set(description.projectors.map((it) => it.reference));
+      await this.supply(description.projectors.map((it) => ({ reference: it.reference })));
+
+      if (!this.isOpen(sessionId)) {
+        return;
+      }
+
+      this.log.info(
+        "Lights read in:",
+        formatDuration(timer.elapsed()),
+        `${description.lights.lights.length} lights,`,
+        `${description.lights.animators.length} animators`
+      );
+      this.holdLights(description);
+    } catch (error: unknown) {
+      this.log.error("Failed to read the level's lights:", transformError(error));
+    }
+  }
+
+  private holdLights(lights: Nullable<LevelLightsDescription>): void {
+    this.lightsHeld = lights;
+
+    if (!lights) {
+      this.lightsTextures = new Set();
+    }
+
+    for (const watcher of Array.from(this.lightsWatchers)) {
+      watcher(lights);
+    }
   }
 
   /**
@@ -650,6 +729,10 @@ export class LevelLoadService {
       references.add(reference);
     }
 
+    for (const reference of this.lightsTextures) {
+      references.add(reference);
+    }
+
     return references;
   }
 
@@ -682,6 +765,7 @@ export class LevelLoadService {
       this.reading.close();
       this.notifyTextures({ delivered: [], retained: null });
       this.holdGrass(null);
+      this.holdLights(null);
     });
   }
 

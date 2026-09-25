@@ -11,6 +11,7 @@ import { AmbientOcclusionPass } from "#/pass/ambient-occlusion-pass";
 import { AntialiasPass, toPresentedFrame } from "#/pass/antialias/antialias-pass";
 import { CombinePass } from "#/pass/combine-pass";
 import { GrassPass } from "#/pass/grass-pass";
+import { LightsPass } from "#/pass/lights-pass";
 import { OverlayPass } from "#/pass/overlay-pass";
 import { PresentPass } from "#/pass/present-pass";
 import { IRendererFrame } from "#/pass/renderer-frame";
@@ -20,6 +21,7 @@ import { RendererTargets } from "#/pass/renderer-targets";
 import { ShadowPass } from "#/pass/shadow-pass";
 import { TemporalAntialiasPass } from "#/pass/temporal-antialias-pass";
 import { SceneGrass } from "#/scene/grass/scene-grass";
+import { SceneLights } from "#/scene/lights/scene-lights";
 import { RendererOverlays } from "#/scene/overlay/renderer-overlays";
 import { StaticCull } from "#/scene/static/static-cull";
 import { IStaticShadowCasters } from "#/scene/static/static-shadow-casters";
@@ -47,6 +49,8 @@ export class RendererFrameGraph {
   private antialiasing: ERendererAntialiasing = ERendererAntialiasing.NONE;
   /** The grass, while it is on. */
   private grassPass: Nullable<GrassPass> = null;
+  /** The local lights, while they are on. */
+  private lightsPass: Nullable<LightsPass> = null;
   /** The screen's occlusion while it is on, and the quality it was made for. */
   private ambientOcclusion: Nullable<AmbientOcclusionPass> = null;
   private ambientOcclusionKey: string = "";
@@ -57,6 +61,7 @@ export class RendererFrameGraph {
   private readonly cull: StaticCull;
   private readonly casters: IStaticShadowCasters;
   private readonly grass: SceneGrass;
+  private readonly lights: SceneLights;
   /** The pass the occlusion is combined in. */
   private readonly combine: CombinePass;
   /** The pass the helpers draw in, over the resolved frame while TAA is chosen. */
@@ -72,16 +77,19 @@ export class RendererFrameGraph {
    * @param cull - What culls the static draws.
    * @param casters - What each shadow cascade draws.
    * @param grass - The level's grass, which the grass pass plants and draws.
+   * @param lights - The local lights, which the lights pass bins and accumulates.
    */
   public constructor(
     uniforms: RendererUniforms,
     overlays: RendererOverlays,
     cull: StaticCull,
     casters: IStaticShadowCasters,
-    grass: SceneGrass
+    grass: SceneGrass,
+    lights: SceneLights
   ) {
     this.uniforms = uniforms;
     this.grass = grass;
+    this.lights = lights;
     this.cull = cull;
     this.casters = casters;
     this.present = new PresentPass(this.targets, uniforms.camera);
@@ -107,9 +115,15 @@ export class RendererFrameGraph {
       features.antialiasing === this.antialiasing &&
       shadowKey === this.shadowKey &&
       ambientOcclusionKey === this.ambientOcclusionKey &&
-      features.grass.isEnabled === (this.grassPass !== null)
+      features.grass.isEnabled === (this.grassPass !== null) &&
+      features.lights.isEnabled === (this.lightsPass !== null)
     ) {
       return;
+    }
+
+    if (features.lights.isEnabled !== (this.lightsPass !== null)) {
+      this.lightsPass?.dispose();
+      this.lightsPass = features.lights.isEnabled ? new LightsPass(this.lights, this.targets, this.uniforms) : null;
     }
 
     if (features.grass.isEnabled !== (this.grassPass !== null)) {
@@ -211,9 +225,9 @@ export class RendererFrameGraph {
   }
 
   /**
-   * The frame's passes in order: the base's with the shadow cascades before the sun reads them, the occlusion before
-   * combine does, and the temporal resolve before the helpers, whatever else the features add, then the picture
-   * presented.
+   * The frame's passes in order: the base's with the shadow cascades before the sun reads them, the local lights after
+   * it, the occlusion before combine does, and the temporal resolve before the helpers, whatever else the features add,
+   * then the picture presented.
    */
   private link(): void {
     const sun: number = this.base.findIndex((pass: IRendererPass) => pass.name === "sun");
@@ -227,7 +241,9 @@ export class RendererFrameGraph {
       ...(this.grassPass ? [this.grassPass] : []),
       ...this.base.slice(gbuffer, sun),
       ...this.shadows,
-      ...this.base.slice(sun, combine),
+      ...this.base.slice(sun, sun + 1),
+      ...(this.lightsPass ? [this.lightsPass] : []),
+      ...this.base.slice(sun + 1, combine),
       ...(this.ambientOcclusion ? [this.ambientOcclusion] : []),
       ...this.base.slice(combine, overlay),
       ...(this.temporal ? [this.temporal] : []),
