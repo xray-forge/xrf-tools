@@ -1,4 +1,5 @@
-use std::sync::{Arc, OnceLock};
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex, OnceLock};
 use std::time::Instant;
 
 use tauri::State;
@@ -58,6 +59,8 @@ pub async fn levels_open_level(
     SelectedLevel {
       details: PackedDetails::new(),
       spawn: OnceLock::new(),
+      configs: OnceLock::new(),
+      spawn_visuals: Mutex::new(HashMap::new()),
       geometry: read.geometry,
       level: read.level,
       outlines,

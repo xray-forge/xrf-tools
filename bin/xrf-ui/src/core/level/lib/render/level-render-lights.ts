@@ -34,6 +34,7 @@ export function toLevelRendererLights(lights: LevelLightsDescription): IRenderer
       position: toVector(light.position),
       projector: light.projector === null ? undefined : projectors[light.projector],
       range: light.range ?? 0,
+      rangeJitter: light.rangeJitter ?? undefined,
       right: toVector(light.right),
     })),
   };

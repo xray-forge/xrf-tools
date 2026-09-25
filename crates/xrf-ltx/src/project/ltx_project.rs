@@ -83,6 +83,26 @@ impl LtxProject {
     Self::open_at_scope_opt(roots.describe(), vfs, scope, options)
   }
 
+  /// Opens a project over roots that reads a config only when one is asked for: no listing of the tree, no entry
+  /// points and no schemes. What a caller resolving a known root, such as `system.ltx` for its sections, needs.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the roots cannot be mounted or the prefix is not a logical path.
+  pub fn open_lean_at_roots(roots: &XrayRoots, prefix: Option<&str>, options: LtxProjectOptions) -> XrfResult<Self> {
+    Ok(Self {
+      dialect: options.dialect,
+      is_caching_resolutions: options.is_caching_resolutions,
+      root: PathBuf::from(roots.describe()),
+      scope: match prefix {
+        Some(prefix) => XrayLookupScope::all().with_prefix(prefix)?,
+        None => XrayLookupScope::all(),
+      },
+      vfs: roots.open()?.with_cache_policy(XrayCachePolicy::configs()),
+      ..Self::empty(roots.describe())
+    })
+  }
+
   /// Opens a project from an existing VFS scope.
   ///
   /// `root` is reported in user-facing output; the mounts and scope determine which files the project can read.

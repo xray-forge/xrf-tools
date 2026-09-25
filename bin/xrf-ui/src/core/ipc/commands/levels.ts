@@ -6,6 +6,7 @@ import {
   LevelEntry,
   LevelLightsDescription,
   LevelSource,
+  LevelSpawnModelsDescription,
   SelectedLevelDescription,
   SessionId,
   SessionRestore,
@@ -37,4 +38,7 @@ export const levelsCommands = {
   /** Pack one sector of the open level and report what it became. */
   openSector: (sessionId: SessionId, sectorId: SessionId, sector: number) =>
     __TAURI_INVOKE<SessionSnapshot<SectorDescription>>("plugin:levels|open_sector", { sessionId, sectorId, sector }),
+  /** Describe the models the open level's spawned objects are drawn as, and where each object stands. */
+  openSpawnModels: (sessionId: SessionId) =>
+    __TAURI_INVOKE<SessionSnapshot<LevelSpawnModelsDescription>>("plugin:levels|open_spawn_models", { sessionId }),
 };

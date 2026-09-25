@@ -24,6 +24,8 @@ export interface IRendererLight {
   /** Raw, as the engine sets it: a lamp's colour times its brightness. */
   color: TRendererColor;
   range: number;
+  /** How far the range strays each frame, either way, at random: a zone's flicker. None where left out. */
+  rangeJitter?: number;
   /** A spot's whole cone, in radians. */
   cone: number;
   /** Where a spot's projection starts. */

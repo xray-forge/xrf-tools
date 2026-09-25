@@ -19,6 +19,7 @@ const SPOT: LightDescription = {
   position: { x: 1, y: 2, z: 3 },
   projector: 1,
   range: 8,
+  rangeJitter: 0,
   right: { x: 1, y: 0, z: 0 },
 };
 
@@ -68,6 +69,7 @@ describe("toLevelRendererLights", () => {
       position: [1, 2, 3],
       projector: "lights\\lights_spot_wire_02",
       range: 8,
+      rangeJitter: 0,
       right: [1, 0, 0],
     });
     expect(lights.lights[1].kind).toBe(ERendererLightKind.POINT);

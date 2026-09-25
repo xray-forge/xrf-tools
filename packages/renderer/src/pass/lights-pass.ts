@@ -1,6 +1,7 @@
 import { Nullable } from "@xrf/types";
 import { ComputeNode, CustomBlending, NodeMaterial, OneFactor, QuadMesh, Texture } from "three/webgpu";
 
+import { ERendererLightShadowFilter } from "#/contract/renderer-features";
 import { toLightsPassFragment } from "#/pass/lights-pass.tsl";
 import { createQuadMaterial } from "#/pass/quad-material";
 import { IRendererFrame } from "#/pass/renderer-frame";
@@ -24,8 +25,10 @@ export class LightsPass implements IRendererPass {
   private readonly binning: ComputeNode;
   private readonly quad: QuadMesh = new QuadMesh();
   private material: Nullable<NodeMaterial> = null;
-  /** The projectors' version its material samples. */
+  /** The projectors' version its material samples, and the filter its shadows are compared through. */
   private version: number = -1;
+  private filter: ERendererLightShadowFilter = ERendererLightShadowFilter.ENGINE;
+  private builtFilter: ERendererLightShadowFilter = ERendererLightShadowFilter.ENGINE;
 
   /**
    * @param lights - The scene's lights, written out for the frame before this draws.
@@ -37,6 +40,13 @@ export class LightsPass implements IRendererPass {
     this.targets = targets;
     this.uniforms = uniforms;
     this.binning = createLightBinning(lights, lights.uniforms, LIGHT_VECTORS, MAX_LIGHTS);
+  }
+
+  /**
+   * @param filter - How the shadows are filtered from the next frame, which builds the accumulation again.
+   */
+  public setFilter(filter: ERendererLightShadowFilter): void {
+    this.filter = filter;
   }
 
   public render({ renderer, targets }: IRendererFrame): void {
@@ -57,12 +67,13 @@ export class LightsPass implements IRendererPass {
 
   /** The accumulation, built again once the projectors it samples are bound again. */
   private getMaterial(): NodeMaterial {
-    if (this.material && this.version === this.lights.version) {
+    if (this.material && this.version === this.lights.version && this.builtFilter === this.filter) {
       return this.material;
     }
 
     this.material?.dispose();
     this.version = this.lights.version;
+    this.builtFilter = this.filter;
     this.material = createQuadMaterial(
       toLightsPassFragment(
         {
@@ -77,7 +88,8 @@ export class LightsPass implements IRendererPass {
         this.uniforms.camera,
         this.lights.uniforms,
         LIGHT_VECTORS,
-        MAX_LIGHTS
+        MAX_LIGHTS,
+        this.filter
       )
     );
     // Added to the sun, colour and specular alike: `blend(true, D3DBLEND_ONE, D3DBLEND_ONE)`.

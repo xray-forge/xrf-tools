@@ -1,5 +1,5 @@
 import { IRendererCameraPose } from "#/contract/renderer-camera";
-import { IRendererReport, IRendererStaticDrawReport } from "#/contract/renderer-report";
+import { IRendererLightsReport, IRendererReport, IRendererStaticDrawReport } from "#/contract/renderer-report";
 import { RendererDevice } from "#/device/renderer-device";
 import { RenderFrameTimer } from "#/frame/render-frame-timer";
 import { RendererGpuTimings } from "#/host/renderer-gpu-timings";
@@ -61,7 +61,8 @@ export class RendererFrameStats {
     camera: IRendererCameraPose,
     passes: ReadonlyArray<string>,
     kept: IStaticCullCounts,
-    staticDraws: IRendererStaticDrawReport
+    staticDraws: IRendererStaticDrawReport,
+    lights: IRendererLightsReport
   ): IRendererReport {
     const { render } = device.renderer.info;
 
@@ -79,6 +80,7 @@ export class RendererFrameStats {
         worstFrameTime: this.frameTimer.worstFrameTime,
       },
       isGpuTimed: device.isTiming,
+      lights,
       passes: this.gpuTimings.describe(passes),
       staticDraws,
     };

@@ -115,6 +115,9 @@ export class RendererFrameGraph {
     const ambientOcclusionKey: string = features.ambientOcclusion.isEnabled ? features.ambientOcclusion.quality : "";
     const isLightShadowed: boolean = features.lights.isEnabled && features.lights.isShadowed;
 
+    // Its material is built again for another filter; the pass itself stays.
+    this.lightsPass?.setFilter(features.lights.shadowFilter);
+
     if (
       features.antialiasing === this.antialiasing &&
       shadowKey === this.shadowKey &&
@@ -137,6 +140,8 @@ export class RendererFrameGraph {
       this.lightsPass?.dispose();
       this.lightsPass = features.lights.isEnabled ? new LightsPass(this.lights, this.targets, this.uniforms) : null;
     }
+
+    this.lightsPass?.setFilter(features.lights.shadowFilter);
 
     if (features.grass.isEnabled !== (this.grassPass !== null)) {
       this.grassPass?.dispose();

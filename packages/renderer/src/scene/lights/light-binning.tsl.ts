@@ -17,6 +17,8 @@ export interface ILightBinningBuffers {
   records: StorageBufferAttribute;
   counts: StorageBufferAttribute;
   items: StorageBufferAttribute;
+  /** Lights each cluster was reached by and could not hold. */
+  drops: StorageBufferAttribute;
 }
 
 /**
@@ -57,6 +59,7 @@ export function createLightBinning(
   const records = storage(buffers.records, "vec4", capacity * vectors).toReadOnly();
   const counts = storage(buffers.counts, "uint", LIGHT_CLUSTERS);
   const items = storage(buffers.items, "uint", LIGHT_CLUSTERS * LIGHT_CLUSTER_CAPACITY);
+  const drops = storage(buffers.drops, "uint", LIGHT_CLUSTERS);
 
   return Fn(() => {
     const cluster = instanceIndex;
@@ -94,18 +97,24 @@ export function createLightBinning(
       near.negate()
     ).toVar();
     const kept = uint(0).toVar();
+    const dropped = uint(0).toVar();
 
     loopNamed({ end: uniforms.count, name: "light", start: uint(0), type: "uint" }, (light) => {
       const sphere = records.element(light.mul(vectors).add(LIGHT_RECORD.sphere));
       const nearest = sphere.xyz.clamp(least, most);
       const offset = sphere.xyz.sub(nearest);
 
-      If(dot(offset, offset).lessThanEqual(sphere.w.mul(sphere.w)).and(kept.lessThan(LIGHT_CLUSTER_CAPACITY)), () => {
-        items.element(cluster.mul(LIGHT_CLUSTER_CAPACITY).add(kept)).assign(light);
-        kept.addAssign(1);
+      If(dot(offset, offset).lessThanEqual(sphere.w.mul(sphere.w)), () => {
+        If(kept.lessThan(LIGHT_CLUSTER_CAPACITY), () => {
+          items.element(cluster.mul(LIGHT_CLUSTER_CAPACITY).add(kept)).assign(light);
+          kept.addAssign(1);
+        }).Else(() => {
+          dropped.addAssign(1);
+        });
       });
     });
 
     counts.element(cluster).assign(kept);
+    drops.element(cluster).assign(dropped);
   })().compute(LIGHT_CLUSTERS);
 }

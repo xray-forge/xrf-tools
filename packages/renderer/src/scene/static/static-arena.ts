@@ -1,6 +1,7 @@
 import { Maybe, Nullable } from "@xrf/types";
 import { BufferAttribute, BufferGeometry, InstancedBufferAttribute, TypedArray } from "three/webgpu";
 
+import { PACKED_TREE_COMPONENTS } from "#/geometry/renderer-packed-coordinate";
 import { RangeAllocator } from "#/scene/static/range-allocator";
 import { EStaticDrawKind } from "#/scene/static/static-draw-kind";
 import { STATIC_HEADROOM, toGrownCapacity } from "#/scene/static/static-growth";
@@ -88,6 +89,8 @@ export class StaticArena {
    * for: what a material compiles against for its static draws, never drawn, and never replaced as the arena grows.
    */
   public readonly prototypes: Record<EStaticDrawKind, BufferGeometry>;
+  /** Whether its geometry is a tree's, packed with the rigidity the wind sways it by. */
+  public readonly isSwaying: boolean;
 
   private readonly layout: ReadonlyArray<IArenaAttribute>;
   private readonly vertices: RangeAllocator = new RangeAllocator();
@@ -116,6 +119,7 @@ export class StaticArena {
     this.slots = StaticArena.createSlots(slots);
     this.signature = StaticArena.toSignature(buffer);
     this.layout = StaticArena.toAttributes(buffer);
+    this.isSwaying = buffer.getAttribute(EVertexAttribute.PACKED_UV)?.itemSize === PACKED_TREE_COMPONENTS / 2;
     this.prototypes = {
       [EStaticDrawKind.SINGLE]: this.createPrototype(EStaticDrawKind.SINGLE),
       [EStaticDrawKind.LISTED]: this.createPrototype(EStaticDrawKind.LISTED),

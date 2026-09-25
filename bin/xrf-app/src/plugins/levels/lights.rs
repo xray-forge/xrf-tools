@@ -1,15 +1,18 @@
 //! A level's lights: those its spawned objects carry, and its own.
 
+use std::sync::Arc;
 use std::time::Instant;
 
 use xrf_light_anim::LightAnimFile;
-use xrf_ogf::OgfFile;
+use xrf_ltx::LtxResolution;
 use xrf_spawn::XRayByteOrder;
 use xrf_vfs::XrayProbe;
 use xrf_visual::{LightsDescription, LightsPacker};
 
+use crate::plugins::levels::configs::get_level_configs;
 use crate::plugins::levels::read::read_asset;
 use crate::plugins::levels::spawn::get_level_spawn;
+use crate::plugins::levels::spawn_visuals::get_spawn_visual;
 use crate::plugins::levels::state::{LevelTextureReference, SelectedLevel};
 use crate::plugins::levels::textures::resolve_reference;
 
@@ -33,10 +36,19 @@ pub fn pack_lights(current: &SelectedLevel, probe: &XrayProbe, directory: Option
     log::warn!("No readable '{ANIMATIONS_FILE}', so no light is animated");
   }
 
+  let configs: Option<Arc<LtxResolution>> = get_level_configs(current)
+    .inspect_err(|error| log::warn!("No zone lights and no lamp sections: {error}"))
+    .ok();
   let mut packer: LightsPacker = LightsPacker::new(animations.as_ref());
 
+  if let Some(configs) = configs.as_ref() {
+    packer = packer.with_sections(&configs.ltx);
+  }
+
   match get_level_spawn(current, probe) {
-    Ok(spawn) => packer.add_objects(&spawn.objects, &mut |visual| read_visual(probe, visual)),
+    Ok(spawn) => packer.add_objects(&spawn.objects, &mut |visual| {
+      get_spawn_visual(current, probe, visual).and_then(|it| it.rest.clone())
+    }),
     Err(error) => log::warn!("No spawned lights for {}: {error}", current.source.get_label()),
   }
 
@@ -65,22 +77,5 @@ pub fn pack_lights(current: &SelectedLevel, probe: &XrayProbe, directory: Option
       })
       .collect(),
     lights,
-  }
-}
-
-/// A visual by the name an object gives it, or `None` where it cannot be read: a light then stands at the object's
-/// own place, as the engine stands one without a bone.
-fn read_visual(probe: &XrayProbe, visual: &str) -> Option<OgfFile> {
-  let path: String = format!("meshes\\{visual}.ogf");
-
-  match read_asset(probe, &path)
-    .and_then(|bytes| OgfFile::read_from_bytes::<XRayByteOrder>(bytes).map_err(|error| error.to_string()))
-  {
-    Ok(file) => Some(file),
-    Err(error) => {
-      log::warn!("Visual '{path}' placed nothing: {error}");
-
-      None
-    }
   }
 }

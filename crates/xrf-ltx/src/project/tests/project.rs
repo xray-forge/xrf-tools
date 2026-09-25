@@ -8,7 +8,7 @@ use std::path::PathBuf;
 
 use xrf_error::XrfResult;
 use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
-use xrf_vfs::{XrayLogicalPath, XrayLookupScope, XrayVfs};
+use xrf_vfs::{XrayLogicalPath, XrayLookupScope, XrayMountMode, XrayRoots, XrayVfs};
 
 use crate::project::LtxProject;
 
@@ -200,6 +200,33 @@ value = 1
   );
 
   fs::remove_dir_all(root)?;
+
+  Ok(())
+}
+
+#[test]
+fn a_lean_project_lists_nothing_and_still_resolves_system_ltx_with_its_includes_and_inheritance() -> XrfResult {
+  let root: PathBuf = create_root("lean")?;
+  let configs: PathBuf = root.join("configs");
+
+  fs::create_dir_all(configs.join("zones"))?;
+  fs::write(
+    configs.join("system.ltx"),
+    "#include \"zones\\zones.ltx\"\n[campfire]:zone_base\nidle_light = on\n",
+  )?;
+  fs::write(
+    configs.join("zones").join("zones.ltx"),
+    "[zone_base]\nidle_light_range = 8\nidle_light = off\n",
+  )?;
+
+  let roots: XrayRoots = XrayRoots::one(root.clone(), XrayMountMode::Directory);
+  let project: LtxProject = LtxProject::open_lean_at_roots(&roots, Some("configs"), Default::default())?;
+  let system = project.system_ltx()?;
+  let campfire = system.ltx.section("campfire").expect("the campfire section to resolve");
+
+  assert!(project.ltx_files.is_empty(), "nothing is listed up front");
+  assert_eq!(campfire.get("idle_light"), Some("on"));
+  assert_eq!(campfire.get("idle_light_range"), Some("8"));
 
   Ok(())
 }

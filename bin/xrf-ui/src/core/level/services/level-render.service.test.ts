@@ -4,6 +4,7 @@ import {
   DEFAULT_RENDERER_AMBIENT_OCCLUSION_SETTINGS,
   DEFAULT_RENDERER_SHADOW_SETTINGS,
   DEFAULT_RENDERER_TREE_WIND,
+  EMPTY_RENDERER_LIGHTS_REPORT,
   EMPTY_RENDERER_STATIC_DRAW_REPORT,
   ERendererAntialiasing,
   ERendererCameraController,
@@ -72,6 +73,7 @@ function mockReport(position: [number, number, number]): IRendererReport {
     camera: { position, target: [position[0], position[1], position[2] - 1] },
     frame: { draws: 12, triangles: 400 } as IRendererReport["frame"],
     isGpuTimed: false,
+    lights: EMPTY_RENDERER_LIGHTS_REPORT,
     passes: [],
     staticDraws: EMPTY_RENDERER_STATIC_DRAW_REPORT,
   };

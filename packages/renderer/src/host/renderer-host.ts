@@ -362,7 +362,8 @@ export class RendererHost {
       now / 1000,
       settings.features.lights,
       this.uniforms.staticDraws.lod,
-      this.scene.shadowCasters.shadowVersion
+      this.scene.shadowCasters.shadowChanges,
+      this.uniforms.wind.isSwaying
     );
     this.scene.cull(this.cullView, this.rig.camera);
     this.graph.render(frame, device.inspector);
@@ -370,6 +371,7 @@ export class RendererHost {
 
     if (this.stats.takeReport(now)) {
       this.scene.staticCull.sample(renderer);
+      this.scene.lights.sample(renderer);
       this.reply({
         kind: ERendererResponse.REPORT,
         report: this.stats.toReport(
@@ -378,7 +380,8 @@ export class RendererHost {
           this.rig.pose,
           this.graph.passNames,
           this.scene.staticCull.kept,
-          this.scene.staticDrawReport
+          this.scene.staticDrawReport,
+          this.scene.lights.report
         ),
       });
     }

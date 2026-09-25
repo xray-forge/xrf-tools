@@ -88,6 +88,8 @@ export type LightDescription = {
   /** Raw, times the lamp's brightness, as the engine hands it to the shaders. */
   color: [number | null, number | null, number | null];
   range: number | null;
+  /** How far the range strays each frame, either way, at random: a zone's `idle_light_range_delta`. */
+  rangeJitter: number | null;
   /** A spot's whole cone, in radians. */
   cone: number | null;
   /** Where a spot's projection starts: the lamp's virtual size. */

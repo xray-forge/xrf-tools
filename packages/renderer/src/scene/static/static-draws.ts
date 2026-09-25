@@ -16,6 +16,7 @@ import { StaticLods } from "#/scene/static/static-lods";
 import { StaticPlaces } from "#/scene/static/static-places";
 import { IStaticRange } from "#/scene/static/static-range";
 import { IStaticShadowCasters } from "#/scene/static/static-shadow-casters";
+import { StaticShadowChanges } from "#/scene/static/static-shadow-changes";
 import { IStaticUpcoming } from "#/scene/static/static-upcoming";
 import { EStaticPool, STATIC_NO_BAND, STATIC_SHADOW_VIEWS, StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
 
@@ -106,6 +107,11 @@ export class StaticDraws implements IStaticShadowCasters {
   /** Bumped whenever what any batch draws changed, so a shadow map drawn before is drawn again. */
   public get shadowVersion(): number {
     return this.batches.version;
+  }
+
+  /** Where what the shadow views draw changed, and what of it sways. */
+  public get shadowChanges(): StaticShadowChanges {
+    return this.batches.shadowChanges;
   }
 
   /**

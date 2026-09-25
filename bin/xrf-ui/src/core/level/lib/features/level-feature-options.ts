@@ -20,7 +20,7 @@ export type TLevelAmbientOcclusionOptions = Pick<IRendererAmbientOcclusionSettin
 export type TLevelGrassOptions = Pick<IRendererGrassSettings, "density" | "height" | "radius">;
 
 /** The lights settings a level view may set for itself. */
-export type TLevelLightsOptions = Pick<IRendererLightsSettings, "isLevelLights" | "isShadowed">;
+export type TLevelLightsOptions = Pick<IRendererLightsSettings, "isLevelLights" | "isShadowed" | "shadowFilter">;
 
 /**
  * What a level view sets over the renderer's settings for itself: whatever it leaves unset follows them.

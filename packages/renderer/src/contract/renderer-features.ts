@@ -71,6 +71,16 @@ export const DEFAULT_RENDERER_GRASS_SETTINGS: IRendererGrassSettings = {
 };
 
 /**
+ * How a light's shadow is filtered.
+ */
+export enum ERendererLightShadowFilter {
+  /** `shadow_hw`: four comparisons a texel apart, at `r2_ls_depth_bias` -0.0003, as vanilla draws them. */
+  ENGINE = "engine",
+  /** Anomaly's `shadow_pcss`: a blocker search, then a penumbra of twelve comparisons, at its -0.001 bias. */
+  ANOMALY = "anomaly",
+}
+
+/**
  * The local lights a scene was given: binned into a grid over the view, and accumulated after the sun in one pass.
  */
 export interface IRendererLightsSettings {
@@ -79,6 +89,7 @@ export interface IRendererLightsSettings {
   isLevelLights: boolean;
   /** Whether a light the engine shadows casts its shadows, through faces drawn once into an atlas and kept. */
   isShadowed: boolean;
+  shadowFilter: ERendererLightShadowFilter;
 }
 
 /** The engine's own: every spawned light, and none of the level file's. */
@@ -86,6 +97,7 @@ export const DEFAULT_RENDERER_LIGHTS_SETTINGS: IRendererLightsSettings = {
   isEnabled: true,
   isLevelLights: false,
   isShadowed: true,
+  shadowFilter: ERendererLightShadowFilter.ENGINE,
 };
 
 /** Cascades the sun's shadow can be cut into at most. */
@@ -397,6 +409,14 @@ function toLightsOverrides(stored: unknown): Partial<IRendererLightsSettings> {
     if (typeof source[key] === "boolean") {
       overrides[key] = source[key];
     }
+  }
+
+  const shadowFilter: ERendererLightShadowFilter | undefined = Object.values(ERendererLightShadowFilter).find(
+    (it) => it === source.shadowFilter
+  );
+
+  if (shadowFilter) {
+    overrides.shadowFilter = shadowFilter;
   }
 
   return overrides;

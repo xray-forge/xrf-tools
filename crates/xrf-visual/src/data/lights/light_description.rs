@@ -19,6 +19,8 @@ pub struct LightDescription {
   /// Raw, times the lamp's brightness, as the engine hands it to the shaders.
   pub color: [f32; 3],
   pub range: f32,
+  /// How far the range strays each frame, either way, at random: a zone's `idle_light_range_delta`.
+  pub range_jitter: f32,
   /// A spot's whole cone, in radians.
   pub cone: f32,
   /// Where a spot's projection starts: the lamp's virtual size.

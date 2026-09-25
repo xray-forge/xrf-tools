@@ -12,6 +12,11 @@ pub(crate) struct BindTransform {
   pub(crate) c: Vector3d,
 }
 
+/// `CGameObject::net_Spawn`'s `XFORM`, in the renderer's space: `setXYZ(o_Angle)` at `o_Position`.
+pub fn to_spawn_transform(position: &Vector3d, angle: &Vector3d) -> VisualTransform {
+  BindTransform::from_angle(angle, position).to_renderer_space()
+}
+
 impl BindTransform {
   /// The transform a root bone composes against, which is what the engine walks down from.
   pub(crate) fn identity() -> Self {
@@ -123,6 +128,27 @@ impl BindTransform {
         y: self.c.y,
         z: -self.c.z,
       },
+    }
+  }
+
+  /// A transform as the wire carries it, in the renderer's space, taken back unchanged: composing in either space
+  /// gives the same, the mirror commuting with composition.
+  pub(crate) fn from_renderer_space(transform: &VisualTransform) -> Self {
+    Self {
+      i: transform.i.clone(),
+      j: transform.j.clone(),
+      k: transform.k.clone(),
+      c: transform.c.clone(),
+    }
+  }
+
+  /// The transform as it stands, taken to the wire unchanged, for one already in the renderer's space.
+  pub(crate) fn to_visual(&self) -> VisualTransform {
+    VisualTransform {
+      i: self.i.clone(),
+      j: self.j.clone(),
+      k: self.k.clone(),
+      c: self.c.clone(),
     }
   }
 

@@ -11,11 +11,14 @@ import {
   LevelDetailsDescription,
   LevelLightsDescription,
   LevelSource,
+  LevelSpawnModelsDescription,
+  LevelTextureReference,
   SelectedLevelDescription,
   SessionSnapshot,
 } from "@/core/ipc/types/xrf-app";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { SectorDescription } from "@/core/ipc/types/xrf-visual";
+import { LevelHeld } from "@/core/level/lib/render/level-held";
 import {
   ILevelGrassDelivery,
   ILevelGrassSource,
@@ -23,14 +26,17 @@ import {
   ILevelSectorChange,
   ILevelSectorDelivery,
   ILevelSectorSource,
+  ILevelSpawnModelsSource,
   ILevelTextureDelivery,
   ILevelTextureSupply,
   ILevelTextureSupplyChange,
   TLevelGrassListener,
   TLevelLightsListener,
   TLevelSectorListener,
+  TLevelSpawnModelsListener,
   TLevelTextureSupplyListener,
 } from "@/core/level/lib/render/level-render-protocol";
+import { ILevelSpawnModelsDelivery } from "@/core/level/lib/render/level-render-spawn";
 import {
   createLevelResidency,
   DEFAULT_LEVEL_RESIDENCY,
@@ -122,14 +128,11 @@ export class LevelLoadService {
   /** The textures the grass is dressed with, kept for as long as it is held. */
   private grassTextures: Set<string> = new Set();
 
-  /** Told the level's lights whenever they change. */
-  private readonly lightsWatchers: Set<TLevelLightsListener> = new Set();
+  /** The level's lights once read, which a renderer started later is handed too, and the projectors they sample. */
+  private readonly heldLights: LevelHeld<LevelLightsDescription> = new LevelHeld();
 
-  /** The level's lights once read, which a renderer started later is handed too. */
-  private lightsHeld: Nullable<LevelLightsDescription> = null;
-
-  /** The projectors the spots sample, kept for as long as the lights are held. */
-  private lightsTextures: Set<string> = new Set();
+  /** The models the level's spawned objects stand as once read, and the textures they are dressed with. */
+  private readonly heldSpawnModels: LevelHeld<ILevelSpawnModelsDelivery> = new LevelHeld();
 
   /** Where the camera last reported from, which is what the level is filled in around once it settles. */
   private streamedFrom: Nullable<ILevelPoint> = null;
@@ -204,16 +207,22 @@ export class LevelLoadService {
    * @returns The level's lights, told as they are now and whenever they change: read once, after the level opens.
    */
   public get lights(): ILevelLightsSource {
-    return {
-      subscribe: (listener: TLevelLightsListener): (() => void) => {
-        this.lightsWatchers.add(listener);
-        listener(this.lightsHeld);
+    return { subscribe: (listener: TLevelLightsListener): (() => void) => this.heldLights.subscribe(listener) };
+  }
 
-        return (): void => {
-          this.lightsWatchers.delete(listener);
-        };
-      },
+  /**
+   * @returns The models the level's spawned objects stand as, told as they are now and whenever they change: read
+   *   once, after the level opens.
+   */
+  public get spawnModels(): ILevelSpawnModelsSource {
+    return {
+      subscribe: (listener: TLevelSpawnModelsListener): (() => void) => this.heldSpawnModels.subscribe(listener),
     };
+  }
+
+  /** The lights held now, for a caller reading rather than listening. */
+  public get lightsHeld(): Nullable<LevelLightsDescription> {
+    return this.heldLights.held;
   }
 
   /**
@@ -397,9 +406,11 @@ export class LevelLoadService {
     this.notifyTextures({ delivered: [], retained: null });
     this.level = this.level.asReady({ selected });
     this.holdGrass(null);
-    this.holdLights(null);
+    this.heldLights.hold(null);
+    this.heldSpawnModels.hold(null);
     void this.readGrass(selected.sessionId);
     void this.readLights(selected.sessionId);
+    void this.readSpawnModels(selected.sessionId);
   }
 
   /**
@@ -419,8 +430,11 @@ export class LevelLoadService {
 
       const description: LevelLightsDescription = snapshot.value;
 
+      const textures: Set<string> = new Set(description.projectors.map((it) => it.reference));
+
       this.reading.add(description.projectors);
-      this.lightsTextures = new Set(description.projectors.map((it) => it.reference));
+      // Held first with nothing to show, so the textures stay uploaded while they are supplied.
+      this.heldLights.hold(null, textures);
       await this.supply(description.projectors.map((it) => ({ reference: it.reference })));
 
       if (!this.isOpen(sessionId)) {
@@ -433,21 +447,55 @@ export class LevelLoadService {
         `${description.lights.lights.length} lights,`,
         `${description.lights.animators.length} animators`
       );
-      this.holdLights(description);
+      this.heldLights.hold(description, textures);
     } catch (error: unknown) {
       this.log.error("Failed to read the level's lights:", transformError(error));
     }
   }
 
-  private holdLights(lights: Nullable<LevelLightsDescription>): void {
-    this.lightsHeld = lights;
+  /**
+   * Reads the models the level's spawned objects stand as, each model's pack and textures, then hands them over, for
+   * a level still open.
+   *
+   * @param sessionId - The level opening they belong to.
+   */
+  private async readSpawnModels(sessionId: string): Promise<void> {
+    const timer: Timer = new Timer();
 
-    if (!lights) {
-      this.lightsTextures = new Set();
-    }
+    try {
+      const snapshot: SessionSnapshot<LevelSpawnModelsDescription> = await levelsCommands.openSpawnModels(sessionId);
+      const description: LevelSpawnModelsDescription = snapshot.value;
 
-    for (const watcher of Array.from(this.lightsWatchers)) {
-      watcher(lights);
+      if (!this.isOpen(sessionId) || !description.models.length) {
+        return;
+      }
+
+      const buffers: Map<string, ArrayBuffer> = new Map();
+
+      for (const model of description.models) {
+        buffers.set(model.name, await levelsRawCommands.readSpawnModel(sessionId, model.name));
+      }
+
+      const references: Array<LevelTextureReference> = description.models.flatMap((model) => model.textures);
+      const textures: Set<string> = new Set(references.map((it) => it.reference));
+
+      this.reading.add(references);
+      this.heldSpawnModels.hold(null, textures);
+      await this.supply(references.map((it) => ({ reference: it.reference })));
+
+      if (!this.isOpen(sessionId)) {
+        return;
+      }
+
+      this.log.info(
+        "Spawned models read in:",
+        formatDuration(timer.elapsed()),
+        `${description.models.length} models,`,
+        `${description.placements.length} placed`
+      );
+      this.heldSpawnModels.hold({ buffers, description }, textures);
+    } catch (error: unknown) {
+      this.log.error("Failed to read the level's spawned models:", transformError(error));
     }
   }
 
@@ -729,7 +777,7 @@ export class LevelLoadService {
       references.add(reference);
     }
 
-    for (const reference of this.lightsTextures) {
+    for (const reference of [...this.heldLights.textures, ...this.heldSpawnModels.textures]) {
       references.add(reference);
     }
 
@@ -765,7 +813,8 @@ export class LevelLoadService {
       this.reading.close();
       this.notifyTextures({ delivered: [], retained: null });
       this.holdGrass(null);
-      this.holdLights(null);
+      this.heldLights.hold(null);
+      this.heldSpawnModels.hold(null);
     });
   }
 

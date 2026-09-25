@@ -1,4 +1,10 @@
-import { EMPTY_RENDERER_STATIC_DRAW_REPORT, IRendererStaticDrawReport, IRenderFrameCost } from "@xrf/renderer";
+import {
+  EMPTY_RENDERER_LIGHTS_REPORT,
+  EMPTY_RENDERER_STATIC_DRAW_REPORT,
+  IRendererLightsReport,
+  IRendererStaticDrawReport,
+  IRenderFrameCost,
+} from "@xrf/renderer";
 
 /**
  * What a viewport is holding, against what a frame of it costs.
@@ -30,6 +36,8 @@ export interface ILevelStats {
   drawnHeight: number;
   /** How full the static draws' pools are, how often one fell back to drawing plainly, and what occlusion removed. */
   staticDraws: IRendererStaticDrawReport;
+  /** What the local lights came to: how many stood in view and were shadowed, the atlas, and full clusters. */
+  lights: IRendererLightsReport;
 }
 
 export const EMPTY_LEVEL_STATS: ILevelStats = {
@@ -40,6 +48,7 @@ export const EMPTY_LEVEL_STATS: ILevelStats = {
   draws: 0,
   frameTime: 0,
   framesPerSecond: 0,
+  lights: EMPTY_RENDERER_LIGHTS_REPORT,
   sceneTime: 0,
   sectors: 0,
   staticDraws: EMPTY_RENDERER_STATIC_DRAW_REPORT,
@@ -63,13 +72,15 @@ export interface ILevelHeld {
  * @param frame - What the viewport's renderer counted for the frame just drawn.
  * @param sceneTime - What the scene has been paying to take one arriving sector.
  * @param staticDraws - What the renderer said of its static draws.
+ * @param lights - What it said of its local lights.
  * @returns What the viewport is spending.
  */
 export function measureLevelStats(
   held: ILevelHeld,
   frame: IRenderFrameCost,
   sceneTime: number = 0,
-  staticDraws: IRendererStaticDrawReport = EMPTY_RENDERER_STATIC_DRAW_REPORT
+  staticDraws: IRendererStaticDrawReport = EMPTY_RENDERER_STATIC_DRAW_REPORT,
+  lights: IRendererLightsReport = EMPTY_RENDERER_LIGHTS_REPORT
 ): ILevelStats {
   return {
     bytes: held.bytes,
@@ -79,6 +90,7 @@ export function measureLevelStats(
     draws: frame.draws,
     frameTime: frame.frameTime,
     framesPerSecond: frame.framesPerSecond,
+    lights,
     sceneTime,
     sectors: held.sectors,
     staticDraws,

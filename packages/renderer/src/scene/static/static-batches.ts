@@ -8,6 +8,7 @@ import { StaticBundleChunks } from "#/scene/static/static-bundle-chunks";
 import { isBoxInPlanes, STATIC_EVERYWHERE, toStaticCell } from "#/scene/static/static-cell";
 import { EStaticDrawKind } from "#/scene/static/static-draw-kind";
 import { StaticDrawPool } from "#/scene/static/static-draw-pool";
+import { StaticShadowChanges } from "#/scene/static/static-shadow-changes";
 
 /** An arena's batches of one kind for one grouping: the ones drawing, by material and cell, and the idle ones kept. */
 interface IArenaBatches {
@@ -52,6 +53,8 @@ export class StaticBatches {
   /** What a wireframe draws every surface with but an impostor, or null while none draws. */
   private wireMaterial: Nullable<Material> = null;
   private currentVersion: number = 0;
+  /** Where what the shadow views draw changed, and what of it sways. */
+  public readonly shadowChanges: StaticShadowChanges = new StaticShadowChanges();
 
   /**
    * @param pool - The slots the batches draw.
@@ -130,6 +133,7 @@ export class StaticBatches {
       StaticBatches.withdraw(this.shadows, slot);
     }
 
+    this.shadowChanges.put(slot, bounds, Boolean(surface.shadow), arena.isSwaying);
     this.currentVersion += 1;
   }
 
@@ -141,6 +145,7 @@ export class StaticBatches {
     StaticBatches.withdraw(this.shadows, slot);
     StaticBatches.withdraw(this.wires, slot);
     this.slotSurfaces.delete(slot);
+    this.shadowChanges.withdraw(slot);
     this.currentVersion += 1;
   }
 
@@ -181,6 +186,12 @@ export class StaticBatches {
       }
     }
 
+    // A shadow changes where a caster cuts out by the texture, not where only its colour does.
+    this.shadows.drawing.forEach((batch: StaticBatch, slot: number) => {
+      if (batch.keys.includes(key)) {
+        this.shadowChanges.touch(slot);
+      }
+    });
     this.currentVersion += 1;
   }
 

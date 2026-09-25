@@ -24,6 +24,7 @@ import {
   VisualBounds,
   VisualDependencies,
   VisualDescription,
+  VisualTransform,
 } from "@/core/ipc/types/xrf-visual";
 
 /** Every `kind` the `ArchiveAnimationBehavior` union is told apart by, so a switch or a comparison names one. */
@@ -1689,6 +1690,38 @@ export type LevelSource =
   | { kind: "directory"; path: string }
   /** A level of the mounted roots, named by its engine identity. */
   | { kind: "asset"; logicalPath: string };
+
+/** One visual spawned objects are drawn as: what its pack says, the pose it stands in, and what dresses it. */
+export type LevelSpawnModelDescription = {
+  /** The visual as the objects name it, which its bytes are read by. */
+  name: string;
+  description: VisualDescription;
+  /**
+   * Twelve floats a bone, basis then translation, in model and renderer space: the pose it stands in, the `idle`
+   * cycle's first frame or the bind pose. `None` for a visual without bones.
+   */
+  rest: Array<number | null> | null;
+  /** How the renderer draws each submesh, in their order. */
+  surfaces: Array<XraySurfaceDescriptor>;
+  /** What each texture a submesh binds resolved to. */
+  textures: Array<LevelTextureReference>;
+};
+
+/** The models a level's spawned objects are drawn as, and where each object stands. */
+export type LevelSpawnModelsDescription = {
+  models: Array<LevelSpawnModelDescription>;
+  placements: Array<LevelSpawnPlacement>;
+};
+
+/** Where one spawned object stands, and which model it is drawn as. */
+export type LevelSpawnPlacement = {
+  name: string;
+  section: string;
+  /** The model, by its index among the description's models. */
+  model: number;
+  /** The object's `XFORM`, in renderer space. */
+  transform: VisualTransform;
+};
 
 /** The sun xrLC compiled the level against, as the light chunk records it. */
 export type LevelSunDescription = {

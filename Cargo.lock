@@ -7571,6 +7571,7 @@ dependencies = [
  "xrf-error",
  "xrf-level",
  "xrf-light-anim",
+ "xrf-ltx",
  "xrf-math",
  "xrf-ogf",
  "xrf-particles",

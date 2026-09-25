@@ -22,6 +22,7 @@ xrf-level = { workspace = true }
 xrf-vfs = { workspace = true }
 xrf-spawn = { workspace = true }
 xrf-light-anim = { workspace = true }
+xrf-ltx = { workspace = true }
 xrf-particles = { workspace = true }
 
 [features]

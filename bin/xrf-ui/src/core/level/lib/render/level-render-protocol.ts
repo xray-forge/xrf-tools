@@ -2,6 +2,7 @@ import { Nullable } from "@xrf/types";
 
 import { LevelDetailsDescription, LevelLightsDescription } from "@/core/ipc/types/xrf-app";
 import { SectorDescription } from "@/core/ipc/types/xrf-visual";
+import { ILevelSpawnModelsDelivery } from "@/core/level/lib/render/level-render-spawn";
 
 /** One sector handed to whatever draws it: what the pack says, and the bytes it was packed into. */
 export interface ILevelSectorDelivery {
@@ -65,6 +66,20 @@ export interface ILevelLightsSource {
    * @returns Stops the telling.
    */
   subscribe(listener: TLevelLightsListener): () => void;
+}
+
+/** Told the level's spawned models, or null for none. */
+export type TLevelSpawnModelsListener = (models: Nullable<ILevelSpawnModelsDelivery>) => void;
+
+/**
+ * The models the level's spawned objects stand as, as whatever draws them takes them.
+ */
+export interface ILevelSpawnModelsSource {
+  /**
+   * @param listener - Told the models held now, then whenever they change.
+   * @returns Stops the telling.
+   */
+  subscribe(listener: TLevelSpawnModelsListener): () => void;
 }
 
 /** One texture's file, handed to whatever uploads it. */

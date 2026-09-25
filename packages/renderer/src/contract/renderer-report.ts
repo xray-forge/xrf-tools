@@ -48,6 +48,33 @@ export const EMPTY_RENDERER_STATIC_DRAW_REPORT: IRendererStaticDrawReport = {
 };
 
 /**
+ * What the local lights came to in the last frame.
+ */
+export interface IRendererLightsReport {
+  /** Lights standing in view, binned and lit. */
+  inView: number;
+  /** Of them, the ones drawn with their shadows. */
+  shadowed: number;
+  /** Texels of the shadow atlas the faces hold. */
+  atlas: IRendererPoolUse;
+  /** What every wanted shadow size is scaled by, below one while the atlas is short of room. */
+  shadowScale: number;
+  /** Clusters more lights reached than they hold, as the last binning read back found them, and the lights left out. */
+  fullClusters: number;
+  droppedLights: number;
+}
+
+/** No lights, which is what a renderer reports before it has any. */
+export const EMPTY_RENDERER_LIGHTS_REPORT: IRendererLightsReport = {
+  atlas: { capacity: 0, used: 0 },
+  droppedLights: 0,
+  fullClusters: 0,
+  inView: 0,
+  shadowScale: 1,
+  shadowed: 0,
+};
+
+/**
  * What each pass of the frame cost on the GPU.
  */
 export interface IRendererPassTimings {
@@ -70,4 +97,5 @@ export interface IRendererReport extends IRendererPassTimings {
   camera: IRendererCameraPose;
   /** How full the static draws' pools are and what occlusion removed. */
   staticDraws: IRendererStaticDrawReport;
+  lights: IRendererLightsReport;
 }

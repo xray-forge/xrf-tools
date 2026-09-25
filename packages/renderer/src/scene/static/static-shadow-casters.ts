@@ -1,5 +1,7 @@
 import { Scene, Vector4 } from "three/webgpu";
 
+import { StaticShadowChanges } from "#/scene/static/static-shadow-changes";
+
 /**
  * What the shadow views draw, the sun's cascades and the lights' faces: a scene a view of every casting batch, the
  * cells shown to each by its frustum, a version saying whether anything any of them draws changed, and the parts drawn
@@ -15,6 +17,8 @@ export interface IStaticShadowCasters {
   readonly plainCasters: Scene;
   /** Bumped whenever what any batch draws changed. */
   readonly shadowVersion: number;
+  /** Where what the shadow views draw changed, and what of it sways: what a kept shadow is drawn again by. */
+  readonly shadowChanges: StaticShadowChanges;
   /**
    * @param view - A shadow view.
    * @param planes - Its frustum's planes, which the cells it shows are taken by.

@@ -114,6 +114,23 @@ export function LevelStreamPanel({
         <EditorPanelProperty label={"Drawn plainly at the limit"} value={stats.staticDraws.fallbacks} />
       </EditorPanelSection>
 
+      <EditorPanelSection title={"Lights"}>
+        <EditorPanelProperty label={"In view"} value={stats.lights.inView} />
+        <EditorPanelProperty label={"Shadowed"} value={stats.lights.shadowed} />
+        <EditorPanelProperty
+          label={"Shadow atlas"}
+          value={`${Math.round((100 * stats.lights.atlas.used) / Math.max(stats.lights.atlas.capacity, 1))}% held · sizes at ${stats.lights.shadowScale.toFixed(2)}×`}
+        />
+        <EditorPanelProperty
+          label={"Full clusters"}
+          value={
+            stats.lights.fullClusters
+              ? `${stats.lights.fullClusters} · ${stats.lights.droppedLights} lights left out`
+              : "none"
+          }
+        />
+      </EditorPanelSection>
+
       <EditorPanelSection title={"Textures"}>
         <EditorPanelProperty label={"Uploaded"} value={textures.uploaded} />
         <EditorPanelProperty label={"Unusable"} value={problems.length} />

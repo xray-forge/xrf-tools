@@ -8,7 +8,7 @@ export const LIGHT_CLUSTERS_Z: number = 24;
 export const LIGHT_CLUSTERS: number = LIGHT_CLUSTERS_X * LIGHT_CLUSTERS_Y * LIGHT_CLUSTERS_Z;
 
 /** Lights one cluster holds at most; any more reaching it go unlit there. */
-export const LIGHT_CLUSTER_CAPACITY: number = 32;
+export const LIGHT_CLUSTER_CAPACITY: number = 64;
 
 /**
  * What the lights are binned and lit by: how many stand in view this frame, and the view the clusters cut, its depth

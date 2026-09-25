@@ -24,6 +24,7 @@ import {
   toLevelSectorGeometry,
   toLevelSectorObject,
 } from "@/core/level/lib/render/level-render-sector";
+import { ILevelSpawnModelsDelivery, toLevelSpawnParts } from "@/core/level/lib/render/level-render-spawn";
 import { toLevelSurface } from "@/core/level/lib/render/level-render-surface";
 import { createLevelCheckerSource, toLevelTextureSource } from "@/core/level/lib/render/level-render-texture";
 import { createSectorViews, ISectorInstanceViews, ISectorViews } from "@/core/level/lib/sector/level-sector-views";
@@ -87,6 +88,9 @@ export class LevelRenderContent {
   /** What became of each reference supplied, in the order they were. */
   private readonly textures: Map<string, ILevelSurfaceDressing> = new Map();
   private options: ILevelSurfaceOptions = DEFAULT_LEVEL_SURFACE_OPTIONS;
+  /** The spawned models held, and the keys their parts were put under. */
+  private spawnModels: Nullable<ILevelSpawnModelsDelivery> = null;
+  private spawnKeys: Array<string> = [];
   /** Whether the quad every impostor draws over is put. */
   private isImpostorQuadPut: boolean = false;
   /** What the recent arrivals cost to put, which is the half of a sector's arrival no read stage covers. */
@@ -136,6 +140,21 @@ export class LevelRenderContent {
       this.sink.putLights(toLevelRendererLights(lights));
     } else {
       this.sink.releaseLights();
+    }
+  }
+
+  /**
+   * @param models - The models the level's spawned objects stand as, or null for none; every part put before goes.
+   */
+  public stand(models: Nullable<ILevelSpawnModelsDelivery>): void {
+    this.releaseSpawnParts();
+    this.spawnModels = models;
+
+    for (const part of models ? toLevelSpawnParts(models, this.options.isTextured) : []) {
+      this.sink.putGeometry(part.key, part.geometry);
+      this.sink.putSurface(part.key, part.surface);
+      this.sink.putObject(part.key, part.object);
+      this.spawnKeys.push(part.key);
     }
   }
 
@@ -191,6 +210,7 @@ export class LevelRenderContent {
       this.surfaces.forEach(({ surface, render }, shaderId: number) =>
         this.sink.putSurface(LEVEL_RENDER_KEYS.surface(shaderId), toLevelSurface(surface, render, options))
       );
+      this.stand(this.spawnModels);
     }
   }
 
@@ -236,6 +256,8 @@ export class LevelRenderContent {
 
   /** Lets everything the level put go. */
   public clear(): void {
+    this.releaseSpawnParts();
+    this.spawnModels = null;
     Array.from(this.sectors.keys()).forEach((sector: number) => this.drop(sector));
     this.surfaces.forEach((_, shaderId: number) => this.sink.releaseSurface(LEVEL_RENDER_KEYS.surface(shaderId)));
     this.surfaces.clear();
@@ -248,6 +270,16 @@ export class LevelRenderContent {
     Array.from(this.textures.keys()).forEach((reference: string) => this.releaseTexture(reference));
     this.table = [];
     this.added.length = 0;
+  }
+
+  private releaseSpawnParts(): void {
+    for (const key of this.spawnKeys) {
+      this.sink.releaseObject(key);
+      this.sink.releaseSurface(key);
+      this.sink.releaseGeometry(key);
+    }
+
+    this.spawnKeys = [];
   }
 
   private take(delivery: ILevelSectorDelivery): void {

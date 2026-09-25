@@ -2,6 +2,7 @@ import {
   DEFAULT_RENDERER_GRASS_SETTINGS,
   ERendererAmbientOcclusionQuality,
   ERendererAntialiasing,
+  ERendererLightShadowFilter,
 } from "@xrf/renderer";
 
 /** The engine's three cascade widths (`render_phase_sun.cpp`), and a fourth reaching three times as far. */
@@ -86,6 +87,26 @@ export function describeRenderAntialiasing(mode: ERendererAntialiasing): string 
       return "TAA";
   }
 }
+
+/**
+ * @param filter - How a light's shadow is filtered.
+ * @returns Its name as the settings say it.
+ */
+export function describeRenderLightShadowFilter(filter: ERendererLightShadowFilter): string {
+  switch (filter) {
+    case ERendererLightShadowFilter.ENGINE:
+      return "Engine";
+    case ERendererLightShadowFilter.ANOMALY:
+      return "Anomaly soft";
+  }
+}
+
+/** The filters a light's shadow is offered in, in the order they are offered. */
+export const RENDER_LIGHT_SHADOW_FILTER_OPTIONS: ReadonlyArray<{ label: string; value: ERendererLightShadowFilter }> =
+  Object.values(ERendererLightShadowFilter).map((value: ERendererLightShadowFilter) => ({
+    label: describeRenderLightShadowFilter(value),
+    value,
+  }));
 
 /**
  * @param blend - How far in from a cascade's edge the next is mixed in, as a share of its width.

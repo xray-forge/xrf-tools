@@ -1,9 +1,11 @@
 import { default as LightIcon } from "@mui/icons-material/Light";
 import { Button } from "@mui/material";
-import { IRendererLightsSettings } from "@xrf/renderer";
+import { ERendererLightShadowFilter, IRendererLightsSettings } from "@xrf/renderer";
 import { ReactElement } from "react";
 
 import { ILevelFeatureOptions } from "@/core/level/lib/features/level-feature-options";
+import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
+import { RENDER_LIGHT_SHADOW_FILTER_OPTIONS } from "@/core/render/lib/features/render-feature-choices";
 import { EditorPopoverToggle } from "@/core/shell/editor/EditorPopoverToggle";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 import { BaseComponentProps } from "@/lib/dom/element-types";
@@ -56,6 +58,15 @@ export function LevelLightsAction({
         label={"Shadows"}
         isChecked={lights.isShadowed}
         onChange={(isShadowed: boolean) => onChange({ ...features, lights: { ...features.lights, isShadowed } })}
+      />
+
+      <RenderValueChoice
+        label={"Shadow filter"}
+        options={RENDER_LIGHT_SHADOW_FILTER_OPTIONS}
+        value={lights.shadowFilter}
+        onChange={(shadowFilter: ERendererLightShadowFilter) =>
+          onChange({ ...features, lights: { ...features.lights, shadowFilter } })
+        }
       />
 
       <CheckboxFormRow

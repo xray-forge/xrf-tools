@@ -123,6 +123,7 @@ export class LevelRenderService extends RenderSurfaceService {
       this.loadService.sectors.subscribe((change) => content.deliver(change)),
       this.loadService.grass.subscribe((grass) => content.plant(grass)),
       this.loadService.lights.subscribe((lights) => content.light(lights)),
+      this.loadService.spawnModels.subscribe((models) => content.stand(models)),
       this.loadService.textures.subscribe((change) => {
         content.supply(change);
         this.publishTextures();
@@ -264,7 +265,7 @@ export class LevelRenderService extends RenderSurfaceService {
     const [x, y, z] = report.camera.position;
 
     this.viewportService.report(
-      measureLevelStats(content.held(), report.frame, content.meanAddTime, report.staticDraws),
+      measureLevelStats(content.held(), report.frame, content.meanAddTime, report.staticDraws, report.lights),
       toLevelCameraReading(report.camera),
       { isGpuTimed: report.isGpuTimed, passes: report.passes }
     );

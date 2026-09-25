@@ -9,4 +9,6 @@ export const levelsRawCommands = {
     invokeRaw("plugin:levels|read_details", { sessionId, detailsId }),
   readSector: (sessionId: SessionId, sectorId: SessionId): Promise<ArrayBuffer> =>
     invokeRaw("plugin:levels|read_sector", { sessionId, sectorId }),
+  readSpawnModel: (sessionId: SessionId, name: string): Promise<ArrayBuffer> =>
+    invokeRaw("plugin:levels|read_spawn_model", { sessionId, name }),
 };

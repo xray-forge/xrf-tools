@@ -1,7 +1,9 @@
 use std::f32::consts::FRAC_PI_2;
+use std::sync::Arc;
 
 use xrf_level::{LevelDynamicLight, LevelLightColor};
 use xrf_light_anim::{LightAnimFile, LightAnimItem, LightAnimKey};
+use xrf_ltx::Ltx;
 use xrf_math::Vector3d;
 use xrf_ogf::OgfFile;
 use xrf_spawn::{
@@ -12,6 +14,7 @@ use xrf_spawn::{
 use crate::data::lights::light_description::LightDescription;
 use crate::data::lights::light_kind::LightKind;
 use crate::data::lights::lights_description::LightsDescription;
+use crate::data::visual::skeleton::visual_rest_pose::VisualRestPose;
 use crate::pack::lights::lights_packer::LightsPacker;
 use crate::pack::tests::visual::fixtures::{MODEL_TYPE_SKELETON_ANIM, bind, bones, vector, visual};
 
@@ -119,13 +122,17 @@ fn lamp_visual() -> OgfFile {
   }
 }
 
+fn lamp_pose() -> Arc<VisualRestPose> {
+  Arc::new(VisualRestPose::of_bind(&lamp_visual()).expect("the lamp's bind pose to resolve"))
+}
+
 fn pack_one(object: &AlifeObject, animations: Option<&LightAnimFile>) -> LightsDescription {
   let AlifeObjectInherited::CseAlifeObjectHangingLamp(lamp) = &object.inherited else {
     unreachable!()
   };
   let mut packer: LightsPacker = LightsPacker::new(animations);
 
-  packer.add_lamp(object, lamp, &mut |_| Some(lamp_visual()));
+  packer.add_lamp(object, lamp, &mut |_| Some(lamp_pose()));
   packer.pack()
 }
 
@@ -211,7 +218,7 @@ fn lights_each_lamp_of_the_objects_reading_each_visual_once() {
   packer.add_objects(&objects, &mut |name| {
     reads.push(name.to_owned());
 
-    Some(lamp_visual())
+    Some(lamp_pose())
   });
 
   let description: LightsDescription = packer.pack();
@@ -261,7 +268,7 @@ fn resolves_animators_once_and_takes_a_version_0_library_as_bgr() {
         unreachable!()
       };
 
-      packer.add_lamp(&object, lamp, &mut |_| Some(lamp_visual()));
+      packer.add_lamp(&object, lamp, &mut |_| Some(lamp_pose()));
     }
 
     let description: LightsDescription = packer.pack();
@@ -336,4 +343,89 @@ fn keeps_the_level_files_point_lights_and_leaves_its_sun() {
   assert_eq!(only.range, 12.0);
   assert!(only.is_shadowed);
   assert!(only.is_level);
+}
+
+fn sections() -> Ltx {
+  Ltx::read_from_str(
+    r"
+[campfire]
+idle_light = on
+idle_light_range = 8
+idle_light_anim = koster_00
+idle_light_height = 0.7
+
+[zone_quiet]
+idle_light = off
+idle_light_range = 8
+idle_light_anim = koster_00
+
+[zone_unanimated]
+idle_light = on
+idle_light_range = 3
+idle_light_anim = light\missing
+
+[lights_hanging_lamp]
+shadow = off
+",
+  )
+  .expect("the sections to parse")
+}
+
+fn animations() -> LightAnimFile {
+  LightAnimFile {
+    version: 1,
+    items: vec![LightAnimItem {
+      name: String::from("koster_00"),
+      fps: 15.0,
+      frame_count: 30,
+      keys: vec![LightAnimKey {
+        frame: 0,
+        color: 0x00FF_8000,
+      }],
+    }],
+  }
+}
+
+#[test]
+fn lights_a_zone_its_section_lights_over_it_by_its_animation_alone() {
+  let ltx: Ltx = sections();
+  let animations: LightAnimFile = animations();
+  let mut packer: LightsPacker = LightsPacker::new(Some(&animations)).with_sections(&ltx);
+
+  for section in ["campfire", "zone_quiet", "zone_unanimated"] {
+    let mut zone: AlifeObject = object(section, lamp(FLAG_R2, 0));
+
+    zone.section = String::from(section);
+    packer.add_zone(&zone);
+  }
+
+  let description: LightsDescription = packer.pack();
+  let [fire] = description.lights.as_slice() else {
+    panic!("expected the campfire alone, got {:?}", description.lights)
+  };
+
+  assert_eq!(fire.name, "campfire");
+  assert_eq!(fire.kind, LightKind::Point);
+  // Its height over the zone, in renderer space.
+  assert_close(&fire.position, vector(10.0, 2.7, -5.0));
+  assert_eq!(fire.range, 8.0);
+  assert_eq!(fire.range_jitter, 0.25);
+  assert_eq!(fire.animator, Some(0));
+  assert_eq!(fire.animator_scale, 1.0 / 255.0);
+  // `idle_light_shadow` is on unless the section says otherwise.
+  assert!(fire.is_shadowed);
+}
+
+#[test]
+fn takes_a_lamps_own_section_shadow_over_its_flag() {
+  let ltx: Ltx = sections();
+  let object: AlifeObject = object("lamp", lamp(FLAG_R2 | FLAG_CAST_SHADOW, 0));
+  let AlifeObjectInherited::CseAlifeObjectHangingLamp(lamp) = &object.inherited else {
+    unreachable!()
+  };
+  let mut packer: LightsPacker = LightsPacker::new(None).with_sections(&ltx);
+
+  packer.add_lamp(&object, lamp, &mut |_| Some(lamp_pose()));
+
+  assert!(!packer.pack().lights[0].is_shadowed);
 }

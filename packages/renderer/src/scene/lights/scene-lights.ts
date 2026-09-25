@@ -7,10 +7,12 @@ import {
   StorageBufferAttribute,
   TextureNode,
   Vector3,
+  WebGPURenderer,
 } from "three/webgpu";
 
 import { IRendererLightsSettings } from "#/contract/renderer-features";
 import { TRendererVector } from "#/contract/renderer-lighting";
+import { IRendererLightsReport } from "#/contract/renderer-report";
 import { ERendererLightKind, IRendererLight, IRendererLights } from "#/contract/scene/renderer-lights";
 import { toSunSpecular } from "#/lighting/base-lighting";
 import { toAnimatedColor } from "#/lighting/light-animator";
@@ -23,6 +25,7 @@ import {
   LIGHT_SHADOW_ATLAS_SIZE,
   LightShadows,
 } from "#/scene/lights/light-shadows";
+import { StaticShadowChanges } from "#/scene/static/static-shadow-changes";
 import { getWhiteTexture } from "#/texture/placeholder-textures";
 import { RendererTextures } from "#/texture/renderer-textures";
 import { LIGHT_CLUSTER_CAPACITY, LIGHT_CLUSTERS, LightsUniforms } from "#/uniforms/lights-uniforms";
@@ -52,7 +55,7 @@ const NO_CONE: number = -2;
 /** A shadowed light's record waiting for the planner to say whether its faces are drawn. */
 interface IPendingShadow {
   offset: number;
-  entry: ILightShadowEntry;
+  index: number;
 }
 
 /**
@@ -72,6 +75,8 @@ export class SceneLights {
     new Uint32Array(LIGHT_CLUSTERS * LIGHT_CLUSTER_CAPACITY),
     1
   );
+  /** Lights each cluster was reached by and could not hold, as the binning left them. */
+  public readonly drops: StorageBufferAttribute = new StorageBufferAttribute(new Uint32Array(LIGHT_CLUSTERS), 1);
   public readonly uniforms: LightsUniforms = new LightsUniforms();
   /** What plans the shadowed lights' faces. */
   public readonly shadows: LightShadows = new LightShadows();
@@ -99,10 +104,51 @@ export class SceneLights {
   private readonly up: Vector3 = new Vector3();
   private readonly color: Array<number> = [0, 0, 0];
   private pending: Array<IPendingShadow> = [];
+  /** Lights drawn with their shadows this frame. */
+  private shadowed: number = 0;
+  /** What the last read of the clusters found full, and whether a read is in flight. */
+  private fullClusters: number = 0;
+  private droppedLights: number = 0;
+  private isReading: boolean = false;
 
   public constructor(textures: RendererTextures) {
     this.textures = textures;
     this.bind([]);
+  }
+
+  /** What the lights came to in the last frame, the clusters' fill as last read back. */
+  public get report(): IRendererLightsReport {
+    return {
+      atlas: { capacity: LIGHT_SHADOW_ATLAS_SIZE * LIGHT_SHADOW_ATLAS_SIZE, used: this.shadows.atlas.used },
+      droppedLights: this.droppedLights,
+      fullClusters: this.fullClusters,
+      inView: this.count,
+      shadowScale: this.shadows.sizeScale,
+      shadowed: this.shadowed,
+    };
+  }
+
+  /**
+   * Reads back how many lights each cluster could not hold, for a later report; one read at a time.
+   *
+   * @param renderer - The renderer the clusters were binned by.
+   */
+  public sample(renderer: WebGPURenderer): void {
+    if (this.isReading || this.count === 0) {
+      return;
+    }
+
+    this.isReading = true;
+    renderer
+      .getArrayBufferAsync(this.drops)
+      .then((buffer: ArrayBuffer) => {
+        const drops: Uint32Array = new Uint32Array(buffer);
+
+        this.fullClusters = drops.reduce((total: number, it: number) => total + (it > 0 ? 1 : 0), 0);
+        this.droppedLights = drops.reduce((total: number, it: number) => total + it, 0);
+      })
+      .catch(() => {})
+      .finally(() => (this.isReading = false));
   }
 
   /** Whether there are lights at all, so a pass lighting them has anything to do. */
@@ -130,6 +176,8 @@ export class SceneLights {
   public release(): void {
     this.lights = null;
     this.count = 0;
+    this.fullClusters = 0;
+    this.droppedLights = 0;
     this.shadows.reset();
     this.bind([]);
   }
@@ -141,14 +189,16 @@ export class SceneLights {
    * @param time - Seconds, which the animations run by.
    * @param settings - What the lights are set to.
    * @param lod - The level of detail thresholds, which shadowed lights fade by.
-   * @param casterVersion - What the shadow casters are at: a face drawn at another is drawn again.
+   * @param changes - Where what the shadow views draw changed, and what sways: what a kept face is drawn again by.
+   * @param isWindy - Whether the wind sways the trees this frame.
    */
   public update(
     camera: PerspectiveCamera,
     time: number,
     settings: IRendererLightsSettings,
     lod: LodUniforms,
-    casterVersion: number
+    changes: StaticShadowChanges,
+    isWindy: boolean
   ): void {
     const data: Float32Array = this.records.array as Float32Array;
     const view: Matrix4 = camera.matrixWorldInverse;
@@ -158,8 +208,9 @@ export class SceneLights {
     this.frustum.setFromProjectionMatrix(this.viewProjection, camera.coordinateSystem, camera.reversedDepth);
     camera.getWorldPosition(this.eye);
     camera.getWorldDirection(this.forward);
-    this.shadows.begin(casterVersion);
+    this.shadows.begin(changes, isWindy);
     this.pending = [];
+    this.shadowed = 0;
 
     (this.lights?.lights ?? []).forEach((light: IRendererLight, index: number) => {
       if (count >= MAX_LIGHTS || (light.isLevel && !settings.isLevelLights)) {
@@ -192,7 +243,13 @@ export class SceneLights {
     });
 
     this.shadows.finish(LIGHT_SHADOW_FACE_BUDGET);
-    this.pending.forEach(({ offset, entry }) => this.writeShadow(data, offset, entry));
+    this.pending.forEach(({ offset, index }) => {
+      const entry: Nullable<ILightShadowEntry> = this.shadows.getEntry(index);
+
+      if (entry) {
+        this.writeShadow(data, offset, entry);
+      }
+    });
     this.count = count;
     this.uniforms.follow(camera, count);
 
@@ -258,7 +315,8 @@ export class SceneLights {
     const [x, y, z] = light.position;
 
     this.bound.center.set(x, y, z);
-    this.bound.radius = light.range;
+    // Reaching as far as its range strays.
+    this.bound.radius = light.range + (light.rangeJitter ?? 0);
 
     if (light.kind !== ERendererLightKind.SPOT) {
       return;
@@ -307,7 +365,7 @@ export class SceneLights {
 
     this.toSpatialSphere(light);
 
-    const entry: Nullable<ILightShadowEntry> = this.shadows.request(index, {
+    this.shadows.request(index, {
       cone: light.cone,
       direction: this.direction,
       distance: Math.max(this.eye.distanceTo(this.spatial.center) - this.spatial.radius, 0),
@@ -319,15 +377,12 @@ export class SceneLights {
       range: light.range,
       up: this.up,
     });
-
-    if (entry) {
-      this.pending.push({ entry, offset });
-    }
+    this.pending.push({ index, offset });
   }
 
   private writeRecord(data: Float32Array, offset: number, light: IRendererLight, view: Matrix4): void {
     const isSpot: boolean = light.kind === ERendererLightKind.SPOT;
-    const range: number = light.range * FALLOFF_RANGE;
+    const range: number = toFrameRange(light) * FALLOFF_RANGE;
     const slot: number = isSpot && light.projector ? this.keys.indexOf(light.projector) : -1;
 
     function at(vector: number): number {
@@ -367,6 +422,8 @@ export class SceneLights {
       return;
     }
 
+    this.shadowed += 1;
+
     data.set(
       [entry.near, entry.far, entry.faces.length, 1 / LIGHT_SHADOW_ATLAS_SIZE],
       offset + LIGHT_RECORD.shadow * 4
@@ -378,6 +435,11 @@ export class SceneLights {
       );
     });
   }
+}
+
+/** `UpdateIdleLight`: a light's range this frame, strayed at random by its jitter. */
+function toFrameRange(light: IRendererLight): number {
+  return light.rangeJitter ? light.range + light.rangeJitter * (Math.random() * 2 - 1) : light.range;
 }
 
 function toVector(out: Vector3, vector: TRendererVector): Vector3 {

@@ -1,9 +1,11 @@
 import { useInjection } from "@wirestate/react";
-import { IRendererLightsSettings } from "@xrf/renderer";
+import { ERendererLightShadowFilter, IRendererLightsSettings } from "@xrf/renderer";
 import { ReactElement } from "react";
 
+import { RENDER_LIGHT_SHADOW_FILTER_OPTIONS } from "@/core/render/lib/features";
 import { SettingsService } from "@/core/settings/services/settings";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
+import { ChoiceFormRow } from "@/core/ui/form/ChoiceFormRow";
 import { DetailSection } from "@/core/ui/layout/DetailSection";
 
 /** The local lights: whether they light the level, and whether the level file's own join the spawned ones. */
@@ -40,6 +42,17 @@ export function SettingsRendererLights(): ReactElement {
           }
           isChecked={lights.isShadowed}
           onChange={(isShadowed: boolean) => set({ isShadowed })}
+        />
+
+        <ChoiceFormRow
+          label={"Shadow filter"}
+          description={
+            "How a shadow's edge is softened: the engine's four comparisons a texel apart, or Anomaly's penumbra, " +
+            "wider the further the caster stands from what it shades, at a larger bias."
+          }
+          options={RENDER_LIGHT_SHADOW_FILTER_OPTIONS}
+          value={lights.shadowFilter}
+          onChange={(shadowFilter: ERendererLightShadowFilter) => set({ shadowFilter })}
         />
 
         <CheckboxFormRow
