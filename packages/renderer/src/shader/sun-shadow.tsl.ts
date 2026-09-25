@@ -1,4 +1,4 @@
-import { abs, float, Fn, If, int, Loop, saturate, select, texture, vec2, vec4 } from "three/tsl";
+import { abs, float, Fn, If, int, Loop, saturate, select, sqrt, texture, vec2, vec4 } from "three/tsl";
 import { Node, Texture } from "three/webgpu";
 
 import { RENDERER_MAX_SHADOW_CASCADES } from "#/contract/renderer-features";
@@ -22,6 +22,8 @@ const BORDER: number = 0.4;
  *
  * @param position - The point, in world space.
  * @param normal - Its normal, in world space, which it is moved along first so a lit surface never shadows itself.
+ * @param facing - How squarely it faces the sun, the cosine of the angle between its normal and the sun: a surface
+ *   the light grazes is moved up to twice as far, since one texel of the map spans more of its depth there.
  * @param shadows - The cascades and what sampling takes.
  * @param maps - Each cascade's depth, one a cascade there can be.
  * @returns The sun's share, from nothing to one.
@@ -29,17 +31,21 @@ const BORDER: number = 0.4;
 export function toSunShadow(
   position: Node<"vec3">,
   normal: Node<"vec3">,
+  facing: Node<"float">,
   shadows: ShadowUniforms,
   maps: ReadonlyArray<Texture>
 ): Node<"float"> {
   return Fn(() => {
     const lit = float(1).toVar();
     const isFound = int(0).toVar();
+    const lean = float(1)
+      .add(sqrt(float(1).sub(saturate(facing).mul(saturate(facing)))))
+      .toVar();
 
     for (let view = 0; view < RENDERER_MAX_SHADOW_CASCADES; view += 1) {
       If(isFound.equal(0).and(shadows.count.greaterThan(view)), () => {
         const texel: Node<"float"> = shadows.texels[COMPONENTS[view]];
-        const moved: Node<"vec3"> = position.add(normal.mul(shadows.bias.mul(texel)));
+        const moved: Node<"vec3"> = position.add(normal.mul(shadows.bias.mul(texel).mul(lean)));
         const clip = shadows.matrices[view].mul(vec4(moved, 1)).toVar();
         const uv = vec2(clip.x.mul(0.5).add(0.5), clip.y.mul(-0.5).add(0.5)).toVar();
         const isInside: Node<"bool"> = uv.x

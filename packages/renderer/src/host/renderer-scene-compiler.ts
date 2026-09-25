@@ -1,9 +1,15 @@
 import { Nullable } from "@xrf/types";
-import { PerspectiveCamera, WebGPURenderer } from "three/webgpu";
+import { Camera, PerspectiveCamera, RenderTarget, WebGPURenderer } from "three/webgpu";
 
 import { IRendererScenePass } from "#/pass/renderer-scene-pass";
 import { RendererScene } from "#/scene/renderer-scene";
 import { ISceneStaging } from "#/scene/staging/scene-staging";
+
+/** Where the shadow materials compile: a cascade's target, and a cascade's camera, as the shadow passes draw them. */
+export interface IRendererShadowCompile {
+  target: RenderTarget;
+  camera: Camera;
+}
 
 /**
  * Compiles the materials waiting objects need, off the frame: three builds their pipelines asynchronously, and until
@@ -24,12 +30,14 @@ export class RendererSceneCompiler {
    * @param scene - The scene whose waiting objects compile.
    * @param passes - The passes drawing its scenes, each compiled against the target it draws into.
    * @param camera - The drawing camera.
+   * @param shadow - Where the shadow materials compile.
    */
   public compile(
     renderer: WebGPURenderer,
     scene: RendererScene,
     passes: ReadonlyArray<IRendererScenePass>,
-    camera: PerspectiveCamera
+    camera: PerspectiveCamera,
+    shadow: IRendererShadowCompile
   ): void {
     if (this.isCompilingBatch || !scene.hasPending) {
       return;
@@ -50,6 +58,11 @@ export class RendererSceneCompiler {
 
       return renderer.compileAsync(staging.scenes[pass.scene], camera);
     });
+
+    if (staging.shadows.children.length) {
+      renderer.setRenderTarget(shadow.target);
+      compiles.push(renderer.compileAsync(staging.shadows, shadow.camera));
+    }
 
     Promise.all(compiles)
       .then(() => {

@@ -13,6 +13,8 @@ import { MaterialReadiness } from "#/scene/surface/material-readiness";
 export interface ISceneStaging {
   /** Each pass's stand-ins, to compile against the target the pass draws into. */
   scenes: TPassRecord<Scene>;
+  /** The stand-ins of the shadow materials, to compile against a cascade's target and camera. */
+  shadows: Scene;
   /** The materials the staging compiles, each against the layout it compiles for. */
   materials: ReadonlyArray<readonly [Material, string]>;
 }
@@ -29,7 +31,18 @@ export function createSceneStaging(
   readiness: MaterialReadiness
 ): Nullable<ISceneStaging> {
   const scenes: TPassRecord<Scene> = toPassRecord(() => new Scene());
+  const shadows: Scene = new Scene();
   const staged: Map<Material, Set<string>> = new Map();
+
+  // A pipeline is a material over a layout: one mesh compiles it for every object sharing both.
+  function stage(scene: Scene, material: Material, state: ISceneObjectState, draw: ISceneObjectDraw): void {
+    if (readiness.isReady(material, draw.layout) || staged.get(material)?.has(draw.layout)) {
+      return;
+    }
+
+    scene.add(createSceneMesh(draw.drawn, state.skeleton, material));
+    staged.set(material, (staged.get(material) ?? new Set()).add(draw.layout));
+  }
 
   for (const state of states) {
     for (const surface of state.surfaces) {
@@ -37,15 +50,14 @@ export function createSceneStaging(
         continue;
       }
 
-      const { drawn, layout }: ISceneObjectDraw = toSurfaceDraw(state, surface);
+      const draw: ISceneObjectDraw = toSurfaceDraw(state, surface);
 
-      if (readiness.isReady(surface.material, layout) || staged.get(surface.material)?.has(layout)) {
-        continue;
+      stage(scenes[surface.pass], surface.material, state, draw);
+
+      // What draws it into the cascades, over the same layout: compiled with it, so its first cascade stalls nothing.
+      if (surface.shadow) {
+        stage(shadows, surface.shadow, state, draw);
       }
-
-      // A pipeline is a material over a layout: one mesh compiles it for every object sharing both.
-      scenes[surface.pass].add(createSceneMesh(drawn, state.skeleton, surface.material));
-      staged.set(surface.material, (staged.get(surface.material) ?? new Set()).add(layout));
     }
   }
 
@@ -56,5 +68,6 @@ export function createSceneStaging(
   return {
     materials: [...staged].flatMap(([material, layouts]) => [...layouts].map((it) => [material, it] as const)),
     scenes,
+    shadows,
   };
 }

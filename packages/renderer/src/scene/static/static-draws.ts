@@ -48,6 +48,8 @@ export class StaticDraws implements IStaticShadowCasters {
     { length: RENDERER_MAX_SHADOW_CASCADES },
     () => new Scene()
   );
+  /** What every cascade draws besides the batches: a twin of each part drawn plainly that casts. */
+  public readonly plainCasters: Scene = new Scene();
 
   private readonly buffers: StaticDrawBuffers;
   private readonly pool: StaticDrawPool;

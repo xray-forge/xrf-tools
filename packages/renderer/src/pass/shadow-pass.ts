@@ -62,8 +62,10 @@ export class ShadowPass implements IRendererPass {
     }
 
     const isCulled: boolean = this.cull.cullView(renderer, this.view, cascade);
+    // A part drawn plainly may be skinned, and moves with no version saying so.
+    const hasPlain: boolean = this.casters.plainCasters.children.length > 0;
 
-    if (!isCulled && this.drawnVersion === this.casters.shadowVersion) {
+    if (!isCulled && !hasPlain && this.drawnVersion === this.casters.shadowVersion) {
       return;
     }
 
@@ -74,6 +76,11 @@ export class ShadowPass implements IRendererPass {
     renderer.clear(false, true, false);
     renderer.sortObjects = false;
     renderer.render(this.casters.cascadeScenes[this.view], cascade.camera);
+
+    if (hasPlain) {
+      renderer.render(this.casters.plainCasters, cascade.camera);
+    }
+
     renderer.sortObjects = true;
   }
 

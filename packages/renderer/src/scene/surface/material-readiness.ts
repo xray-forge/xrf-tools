@@ -44,12 +44,17 @@ export class MaterialReadiness {
 
   /**
    * @param state - What an object is about to draw.
-   * @returns Whether every material it draws is compiled for its layout.
+   * @returns Whether every material it draws is compiled for its layout, the shadow materials among them.
    */
   public isStateReady(state: ISceneObjectState): boolean {
-    return state.surfaces.every(
-      (surface: Maybe<ISurfaceMaterial>) =>
-        !surface || this.isReady(surface.material, toSurfaceDraw(state, surface).layout)
-    );
+    return state.surfaces.every((surface: Maybe<ISurfaceMaterial>) => {
+      if (!surface) {
+        return true;
+      }
+
+      const { layout } = toSurfaceDraw(state, surface);
+
+      return this.isReady(surface.material, layout) && (!surface.shadow || this.isReady(surface.shadow, layout));
+    });
   }
 }

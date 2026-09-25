@@ -278,7 +278,10 @@ export class RendererHost {
       const isResized: boolean = this.draw(now, device, view, settings);
 
       drawn = isSettled && !isResized ? this.drawingSize : null;
-      this.compiler.compile(device.renderer, this.scene, this.graph.scenePasses, this.rig.camera);
+      this.compiler.compile(device.renderer, this.scene, this.graph.scenePasses, this.rig.camera, {
+        camera: this.uniforms.shadows.cascades[0].camera,
+        target: this.graph.targets.shadows[0],
+      });
     }
 
     this.captures.answer(device.renderer, view !== null, drawn);

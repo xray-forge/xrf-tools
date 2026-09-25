@@ -35,6 +35,9 @@ export class ScenePart {
   private readonly draws: StaticDraws;
   private readonly matrix: Matrix4 = new Matrix4();
   private currentMesh: Mesh;
+  private skeleton: Nullable<Skeleton>;
+  /** Its twin in the cascades' plain casters while it is drawn plainly by a surface that casts, made the first time. */
+  private shadowMesh: Nullable<Mesh> = null;
   /** The range the object's narrowing leaves it. */
   private start: number;
   private count: number;
@@ -61,6 +64,7 @@ export class ScenePart {
     this.draws = draws;
     this.start = source.start;
     this.count = source.count;
+    this.skeleton = skeleton;
     this.currentMesh = createSceneMesh(geometry, skeleton);
   }
 
@@ -79,7 +83,9 @@ export class ScenePart {
    */
   public remesh(skeleton: Nullable<Skeleton>): void {
     this.detach();
+    this.skeleton = skeleton;
     this.currentMesh = createSceneMesh(this.geometry, skeleton);
+    this.shadowMesh = null;
   }
 
   /**
@@ -102,6 +108,11 @@ export class ScenePart {
     this.sphere.copy(this.source.sphere).applyMatrix4(matrix);
     this.currentMesh.matrix.copy(matrix);
     this.currentMesh.updateMatrixWorld(true);
+
+    if (this.shadowMesh) {
+      this.shadowMesh.matrix.copy(matrix);
+      this.shadowMesh.updateMatrixWorld(true);
+    }
   }
 
   /**
@@ -109,8 +120,9 @@ export class ScenePart {
    *
    * @param material - What draws it, or null for a section whose surface is missing.
    * @param scene - The scene of the pass drawing that material.
+   * @param shadow - What draws it into the sun's cascades, or null for a surface that casts none.
    */
-  public showPlain(material: Nullable<Material>, scene: Nullable<Scene>): void {
+  public showPlain(material: Nullable<Material>, scene: Nullable<Scene>, shadow: Nullable<Material> = null): void {
     this.free();
 
     if (material && scene) {
@@ -119,6 +131,8 @@ export class ScenePart {
     } else {
       this.currentMesh.removeFromParent();
     }
+
+    this.showShadow(material && scene ? shadow : null);
   }
 
   /**
@@ -135,6 +149,7 @@ export class ScenePart {
 
     this.draws.draw(this.slots[0], surface, range, this.start, this.count, this.sphere, this.matrix);
     this.currentMesh.removeFromParent();
+    this.showShadow(null);
 
     return true;
   }
@@ -177,15 +192,21 @@ export class ScenePart {
     }
 
     this.currentMesh.removeFromParent();
+    this.showShadow(null);
 
     return true;
   }
 
   /**
-   * @param isSeen - Whether the view drawn for sees it, for a part drawn plainly.
+   * @param isSeen - Whether the view drawn for sees it, for a part drawn plainly. Its twin casts whether or not the
+   *   view sees it: what stands out of view still shades what is in it.
    */
   public cull(isSeen: boolean): void {
     this.currentMesh.visible = this.count > 0 && isSeen;
+
+    if (this.shadowMesh) {
+      this.shadowMesh.visible = this.count > 0;
+    }
   }
 
   /**
@@ -200,6 +221,26 @@ export class ScenePart {
   public detach(): void {
     this.free();
     this.currentMesh.removeFromParent();
+    this.showShadow(null);
+  }
+
+  /** Stands its twin in the cascades' plain casters, drawn by the shadow material given, or takes it out for none. */
+  private showShadow(material: Nullable<Material>): void {
+    if (!material) {
+      this.shadowMesh?.removeFromParent();
+
+      return;
+    }
+
+    if (!this.shadowMesh) {
+      this.shadowMesh = createSceneMesh(this.geometry, this.skeleton, material);
+      this.shadowMesh.matrix.copy(this.matrix);
+      this.shadowMesh.updateMatrixWorld(true);
+    }
+
+    this.shadowMesh.material = material;
+    this.shadowMesh.visible = this.count > 0;
+    this.draws.plainCasters.add(this.shadowMesh);
   }
 
   /**

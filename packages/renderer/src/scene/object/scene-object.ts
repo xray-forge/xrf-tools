@@ -246,7 +246,7 @@ export class SceneObject {
         // An impostor draws only where the LOD cull decides it does, which only a static draw is culled by.
         part.showPlain(null, null);
       } else {
-        part.showPlain(surface?.material ?? null, surface ? scenes[surface.pass] : null);
+        part.showPlain(surface?.material ?? null, surface ? scenes[surface.pass] : null, surface?.shadow ?? null);
       }
     }
 
