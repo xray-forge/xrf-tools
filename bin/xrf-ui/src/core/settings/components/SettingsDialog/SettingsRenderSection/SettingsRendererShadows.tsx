@@ -3,6 +3,7 @@ import { IRendererShadowSettings } from "@xrf/renderer";
 import { ReactElement } from "react";
 
 import {
+  formatCascadeBlend,
   RENDER_SHADOW_CASCADE_WIDTHS,
   RENDER_SHADOW_LIMITS,
   RENDER_SHADOW_RESOLUTIONS,
@@ -87,6 +88,18 @@ export function SettingsRendererShadows(): ReactElement {
           {...RENDER_SHADOW_LIMITS.bias}
           format={(value: number) => formatNumber(value, 2)}
           onChange={(bias: number) => set({ bias })}
+        />
+
+        <SliderFormRow
+          label={"Cascade blend"}
+          description={
+            "How far in from a cascade's edge the next one is mixed in, as a share of its width, so the switch to a " +
+            "coarser map is never a line. None switches at a line, as the game does."
+          }
+          value={shadows.blend}
+          {...RENDER_SHADOW_LIMITS.blend}
+          format={formatCascadeBlend}
+          onChange={(blend: number) => set({ blend })}
         />
 
         <SliderFormRow

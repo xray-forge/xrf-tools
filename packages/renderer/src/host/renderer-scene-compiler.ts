@@ -53,6 +53,9 @@ export class RendererSceneCompiler {
 
     this.isCompilingBatch = true;
 
+    // Three builds a staged pipeline's shader after the compile returns, for whatever target is current then: left on
+    // the one-channel shadow map, it gave every later shader one output, which a four-channel target refuses.
+    const previous = renderer.getRenderTarget();
     const compiles: Array<Promise<unknown>> = passes.map((pass: IRendererScenePass) => {
       renderer.setRenderTarget(pass.target);
 
@@ -63,6 +66,8 @@ export class RendererSceneCompiler {
       renderer.setRenderTarget(shadow.target);
       compiles.push(renderer.compileAsync(staging.shadows, shadow.camera));
     }
+
+    renderer.setRenderTarget(previous);
 
     Promise.all(compiles)
       .then(() => {

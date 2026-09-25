@@ -7,6 +7,7 @@ import { ILevelFeatureOptions, TLevelShadowOptions } from "@/core/level/lib/feat
 import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
 import {
+  formatCascadeBlend,
   RENDER_SHADOW_CASCADE_WIDTHS,
   RENDER_SHADOW_LIMITS,
   RENDER_SHADOW_RESOLUTIONS,
@@ -104,6 +105,14 @@ export function LevelShadowAction({
         {...RENDER_SHADOW_LIMITS.bias}
         format={(value: number) => formatNumber(value, 2)}
         onChange={(bias: number) => set({ bias })}
+      />
+
+      <RenderValueSlider
+        label={"Cascade blend"}
+        value={shadows.blend}
+        {...RENDER_SHADOW_LIMITS.blend}
+        format={formatCascadeBlend}
+        onChange={(blend: number) => set({ blend })}
       />
 
       <Button size={"small"} onClick={() => onChange({ ...features, shadows: {} })}>

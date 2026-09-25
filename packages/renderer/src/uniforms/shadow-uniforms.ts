@@ -27,6 +27,8 @@ export class ShadowUniforms {
   public readonly filter = uniform(1).setGroup(renderGroup);
   /** Texels a point moves along its normal before it is compared. */
   public readonly bias = uniform(1).setGroup(renderGroup);
+  /** How far in from a cascade's edge the next is mixed in, as a share of its width. */
+  public readonly blend = uniform(0).setGroup(renderGroup);
   /** Texels each map is across. */
   public readonly resolution = uniform(1).setGroup(renderGroup);
   /** Where the camera looks, which the last cascade fades out towards. */
@@ -57,6 +59,8 @@ export class ShadowUniforms {
     this.count.value = count;
     this.filter.value = settings.filter;
     this.bias.value = settings.bias;
+    // Kept short of the map's middle, where every point would blend.
+    this.blend.value = Math.min(Math.max(settings.blend, 0), 0.4);
     this.resolution.value = settings.resolution;
     this.isStaggered = settings.isStaggered;
 

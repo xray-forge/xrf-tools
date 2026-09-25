@@ -2,7 +2,10 @@ import { ERendererAntialiasing, IRendererShadowSettings } from "@xrf/renderer";
 import { Nullable } from "@xrf/types";
 
 /** The shadow settings a level view may set for itself. */
-export type TLevelShadowOptions = Pick<IRendererShadowSettings, "bias" | "cascades" | "filter" | "resolution">;
+export type TLevelShadowOptions = Pick<
+  IRendererShadowSettings,
+  "bias" | "blend" | "cascades" | "filter" | "resolution"
+>;
 
 /**
  * What a level view sets over the renderer's settings for itself: whatever it leaves unset follows them.

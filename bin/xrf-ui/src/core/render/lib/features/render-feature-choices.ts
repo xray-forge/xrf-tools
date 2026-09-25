@@ -9,6 +9,7 @@ export const RENDER_SHADOW_RESOLUTIONS: ReadonlyArray<number> = [1024, 2048, 409
 /** The bounds each shadow value is offered between. */
 export const RENDER_SHADOW_LIMITS = {
   bias: { max: 5, min: 0, step: 0.25 },
+  blend: { max: 0.2, min: 0, step: 0.01 },
   filter: { max: 3, min: 0, step: 1 },
   reach: { max: 1000, min: 100, step: 50 },
 } as const;
@@ -26,4 +27,12 @@ export function describeRenderAntialiasing(mode: ERendererAntialiasing): string 
     case ERendererAntialiasing.SMAA:
       return "SMAA";
   }
+}
+
+/**
+ * @param blend - How far in from a cascade's edge the next is mixed in, as a share of its width.
+ * @returns It as the settings read it: a percentage, or the engine's hard switch for none.
+ */
+export function formatCascadeBlend(blend: number): string {
+  return blend > 0 ? `${Math.round(blend * 100)}%` : "Hard";
 }

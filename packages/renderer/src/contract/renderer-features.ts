@@ -67,6 +67,11 @@ export interface IRendererShadowSettings {
   /** Metres towards the sun past a cascade that its casters may stand: a tower outside the map still shades into it. */
   reach: number;
   /**
+   * How far in from a cascade's edge, as a share of its width, the next cascade is mixed in: none switches maps at a
+   * line, as the engine does.
+   */
+  blend: number;
+  /**
    * Whether cascade `n` is drawn at most every `2^n` frames, the far ones sharing frames the near one does not. A map
    * holds depth in the world and is sampled with the matrix it was drawn with, so a map a frame or three old is exact
    * for everything that stands still; only something moving would cast late.
@@ -77,6 +82,7 @@ export interface IRendererShadowSettings {
 /** The engine's own cascades, and a filter a texel wide. */
 export const DEFAULT_RENDERER_SHADOW_SETTINGS: IRendererShadowSettings = {
   bias: 1.5,
+  blend: 0.1,
   cascades: [20, 40, 160],
   filter: 1,
   isEnabled: true,
@@ -245,7 +251,7 @@ function toShadowOverrides(stored: unknown): Partial<IRendererShadowSettings> {
     }
   }
 
-  for (const key of ["bias", "filter", "reach", "resolution"] as const) {
+  for (const key of ["bias", "blend", "filter", "reach", "resolution"] as const) {
     const value: unknown = source[key];
 
     if (typeof value === "number" && Number.isFinite(value) && value >= 0) {

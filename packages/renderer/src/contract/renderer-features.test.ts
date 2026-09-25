@@ -55,10 +55,10 @@ describe("renderer features", () => {
   it("reads back stored shadow overrides, dropping a run of cascades past the limit and anything not a width", () => {
     expect(
       toRendererFeatureChoice({
-        overrides: { shadows: { bias: 2, cascades: [20, 40], isStaggered: false, resolution: "big" } },
+        overrides: { shadows: { bias: 2, blend: 0.05, cascades: [20, 40], isStaggered: false, resolution: "big" } },
         preset: "base",
       }).overrides.shadows
-    ).toEqual({ bias: 2, cascades: [20, 40], isStaggered: false });
+    ).toEqual({ bias: 2, blend: 0.05, cascades: [20, 40], isStaggered: false });
     expect(
       toRendererFeatureChoice({ overrides: { shadows: { cascades: [1, 2, 3, 4, 5] } }, preset: "base" }).overrides
     ).toEqual({});
