@@ -11,6 +11,7 @@ import {
   WebGPURenderer,
 } from "three/webgpu";
 
+import { initBorrowedDepthTarget } from "#/internals/borrowed-depth-target";
 import { createQuadMaterial } from "#/pass/quad-material";
 import { IRendererFrame } from "#/pass/renderer-frame";
 import { IRendererPass } from "#/pass/renderer-pass";
@@ -156,7 +157,7 @@ export class TemporalAntialiasPass implements IRendererPass {
     this.height = height;
     this.output.setSize(width, height);
     this.resolves.forEach((target: RenderTarget) => target.setSize(width, height));
-    renderer.initRenderTarget(this.output);
+    initBorrowedDepthTarget(renderer, this.output);
     this.resolves.forEach((target: RenderTarget) => renderer.initRenderTarget(target));
     this.temporal.isHistoryValid.value = 0;
   }

@@ -11,6 +11,7 @@ import {
 } from "three/webgpu";
 
 import { RENDERER_MAX_SHADOW_CASCADES } from "#/contract/renderer-features";
+import { initBorrowedDepthTarget } from "#/internals/borrowed-depth-target";
 import { IGBufferTextures } from "#/shader/gbuffer-textures";
 
 /**
@@ -125,15 +126,16 @@ export class RendererTargets implements IGBufferTextures {
    *
    * Three allocates a target on first use, and allocating one that shares a texture reallocates it: left to the pass
    * drawing into `composite` or `wallmarks`, that would erase what the pass before drew on every frame after a resize.
+   * The two borrow the G-buffer's depth, which three would clear on the first draw into each.
    *
    * @param renderer - The renderer the targets are drawn by.
    */
   public prepare(renderer: WebGPURenderer): void {
     renderer.initRenderTarget(this.gbuffer);
-    renderer.initRenderTarget(this.wallmarks);
+    initBorrowedDepthTarget(renderer, this.wallmarks);
     renderer.initRenderTarget(this.light);
     renderer.initRenderTarget(this.scene);
-    renderer.initRenderTarget(this.composite);
+    initBorrowedDepthTarget(renderer, this.composite);
   }
 
   public dispose(): void {

@@ -82,6 +82,14 @@ describe("three's internals, as the renderer reads them", () => {
     expect(camera.projectionMatrix.elements[14]).toBeCloseTo(100 / 99);
   });
 
+  it("clears a target's depth on its first draw unless its data says it was cleared", () => {
+    // `initBorrowedDepthTarget` writes the flag this reads, for the targets that borrow the G-buffer's depth.
+    const render = (WebGPURenderer.prototype as unknown as { _renderScene: () => void })._renderScene;
+
+    expect(render.toString()).toContain("renderTargetData.depthInitialized !== true");
+    expect(new WebGPURenderer({ canvas: {} as HTMLCanvasElement })).toHaveProperty("_textures");
+  });
+
   it("builds a reversed depth renderer and a storage buffer node", () => {
     // `RendererDevice.open` asks for reversed depth; `StaticDrawBuffers` shares one storage node per buffer.
     expect(new WebGPURenderer({ canvas: {} as HTMLCanvasElement, reversedDepthBuffer: true }).reversedDepthBuffer).toBe(
