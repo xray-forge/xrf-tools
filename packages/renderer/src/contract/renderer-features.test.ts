@@ -2,6 +2,7 @@ import { describe, expect, it } from "@jest/globals";
 
 import {
   DEFAULT_RENDERER_FEATURE_CHOICE,
+  ERendererAmbientOcclusionQuality,
   ERendererAntialiasing,
   ERendererPreset,
   isRendererFeatureChoiceCustom,
@@ -50,6 +51,22 @@ describe("renderer features", () => {
     ).toEqual({ overrides: { isGpuTimed: false, lod: { ssaB: 40 } }, preset: ERendererPreset.EDITING });
     expect(toRendererFeatureChoice("nonsense")).toBe(DEFAULT_RENDERER_FEATURE_CHOICE);
     expect(toRendererFeatureChoice({ preset: "ultra" }).preset).toBe(ERendererPreset.BASE);
+  });
+
+  it("reads back stored ambient occlusion overrides, dropping a quality it has not and a radius below zero", () => {
+    expect(
+      toRendererFeatureChoice({
+        overrides: { ambientOcclusion: { isEnabled: false, quality: "ultra", radius: -1, strength: 1.5 } },
+        preset: "base",
+      }).overrides.ambientOcclusion
+    ).toEqual({ isEnabled: false, quality: ERendererAmbientOcclusionQuality.ULTRA, strength: 1.5 });
+    expect(
+      toRendererFeatureChoice({ overrides: { ambientOcclusion: { quality: "extreme" } }, preset: "base" }).overrides
+        .ambientOcclusion
+    ).toBeUndefined();
+    expect(
+      isRendererFeatureChoiceCustom({ overrides: { ambientOcclusion: { radius: 2 } }, preset: ERendererPreset.BASE })
+    ).toBe(true);
   });
 
   it("reads back stored shadow overrides, dropping a run of cascades past the limit and anything not a width", () => {

@@ -5,6 +5,7 @@ import { ReactElement } from "react";
 import { SettingsService } from "@/core/settings/services/settings";
 import { ChoiceFormRow, IChoiceFormRowOption } from "@/core/ui/form/ChoiceFormRow";
 
+import { SettingsRendererAmbientOcclusion } from "./SettingsRendererAmbientOcclusion";
 import { SettingsRendererFeatures } from "./SettingsRendererFeatures";
 import { SettingsRendererLod } from "./SettingsRendererLod";
 import { SettingsRendererShadows } from "./SettingsRendererShadows";
@@ -55,6 +56,8 @@ export function SettingsRenderSection(): ReactElement {
       <SettingsRendererFeatures />
 
       <SettingsRendererShadows />
+
+      <SettingsRendererAmbientOcclusion />
 
       <SettingsRendererLod />
     </div>

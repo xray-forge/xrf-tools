@@ -6,6 +6,7 @@ import { default as ThreeDRotationIcon } from "@mui/icons-material/ThreeDRotatio
 import { IRendererFeatureSettings } from "@xrf/renderer";
 import { ReactElement, ReactNode, useCallback } from "react";
 
+import { LevelAmbientOcclusionAction } from "@/core/level/components/preview/LevelAmbientOcclusionAction";
 import { LevelAntialiasingAction } from "@/core/level/components/preview/LevelAntialiasingAction";
 import { LevelBakedAction } from "@/core/level/components/preview/LevelBakedAction";
 import { LevelFogAction } from "@/core/level/components/preview/LevelFogAction";
@@ -13,7 +14,11 @@ import { LevelLodAction } from "@/core/level/components/preview/LevelLodAction";
 import { LevelShadowAction } from "@/core/level/components/preview/LevelShadowAction";
 import { LevelSunAction } from "@/core/level/components/preview/LevelSunAction";
 import { LevelWindAction } from "@/core/level/components/preview/LevelWindAction";
-import { ILevelFeatureOptions, toLevelRendererShadows } from "@/core/level/lib/features/level-feature-options";
+import {
+  ILevelFeatureOptions,
+  toLevelRendererAmbientOcclusion,
+  toLevelRendererShadows,
+} from "@/core/level/lib/features/level-feature-options";
 import { ILevelLighting } from "@/core/level/lib/lighting/level-lighting";
 import { ILevelLodOptions } from "@/core/level/lib/lod/level-lod-options";
 import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
@@ -131,6 +136,15 @@ export function LevelPreviewToolbar({
             shadows={toLevelRendererShadows(settings.shadows, features, true)}
             features={features}
             onToggle={() => onToggle("isShadowed")}
+            onChange={onChangeFeatures}
+          />
+
+          <LevelAmbientOcclusionAction
+            isOn={options.isOccluded}
+            isAvailable={settings.ambientOcclusion.isEnabled}
+            occlusion={toLevelRendererAmbientOcclusion(settings.ambientOcclusion, features, true)}
+            features={features}
+            onToggle={() => onToggle("isOccluded")}
             onChange={onChangeFeatures}
           />
 

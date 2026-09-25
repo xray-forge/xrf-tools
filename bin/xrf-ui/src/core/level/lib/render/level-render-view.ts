@@ -15,6 +15,7 @@ import { ILevelCameraOptions } from "@/core/level/lib/camera/level-camera-option
 import { ILevelViewpoint, toLevelStartViewpoint } from "@/core/level/lib/camera/level-viewpoint";
 import {
   ILevelFeatureOptions,
+  toLevelRendererAmbientOcclusion,
   toLevelRendererAntialiasing,
   toLevelRendererShadows,
 } from "@/core/level/lib/features/level-feature-options";
@@ -97,6 +98,7 @@ export function toLevelRendererSettings(
     debugView: ERendererDebugView.FINAL,
     features: {
       ...features,
+      ambientOcclusion: toLevelRendererAmbientOcclusion(features.ambientOcclusion, view, options.isOccluded),
       antialiasing: toLevelRendererAntialiasing(features.antialiasing, view, options.isAntialiased),
       lod: toLevelRendererLod(features.lod, lod, options.isImpostors),
       shadows: toLevelRendererShadows(features.shadows, view, options.isShadowed),

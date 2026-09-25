@@ -25,6 +25,8 @@ export enum ERendererDebugView {
   DEPTH = "depth",
   /** What the lights accumulated: diffuse in colour. */
   LIGHT = "light",
+  /** The screen's occlusion, white where it is off. */
+  AMBIENT_OCCLUSION = "ambient-occlusion",
 }
 
 /**

@@ -1,8 +1,14 @@
 import { describe, expect, it } from "@jest/globals";
-import { DEFAULT_RENDERER_SHADOW_SETTINGS, ERendererAntialiasing } from "@xrf/renderer";
+import {
+  DEFAULT_RENDERER_AMBIENT_OCCLUSION_SETTINGS,
+  DEFAULT_RENDERER_SHADOW_SETTINGS,
+  ERendererAmbientOcclusionQuality,
+  ERendererAntialiasing,
+} from "@xrf/renderer";
 
 import {
   DEFAULT_LEVEL_FEATURE_OPTIONS,
+  toLevelRendererAmbientOcclusion,
   toLevelRendererAntialiasing,
   toLevelRendererShadows,
 } from "@/core/level/lib/features/level-feature-options";
@@ -38,6 +44,23 @@ describe("level feature options", () => {
       cascades: [20],
       filter: 0,
     });
+  });
+
+  it("draws ambient occlusion with the view's own values over the settings', and can turn it off but not on", () => {
+    const view = {
+      ...DEFAULT_LEVEL_FEATURE_OPTIONS,
+      ambientOcclusion: { quality: ERendererAmbientOcclusionQuality.LOW },
+    };
+    const off = { ...DEFAULT_RENDERER_AMBIENT_OCCLUSION_SETTINGS, isEnabled: false };
+
+    expect(toLevelRendererAmbientOcclusion(DEFAULT_RENDERER_AMBIENT_OCCLUSION_SETTINGS, view, true)).toEqual({
+      ...DEFAULT_RENDERER_AMBIENT_OCCLUSION_SETTINGS,
+      quality: ERendererAmbientOcclusionQuality.LOW,
+    });
+    expect(toLevelRendererAmbientOcclusion(DEFAULT_RENDERER_AMBIENT_OCCLUSION_SETTINGS, view, false).isEnabled).toBe(
+      false
+    );
+    expect(toLevelRendererAmbientOcclusion(off, view, true).isEnabled).toBe(false);
   });
 
   it("can turn shadows off but not on", () => {

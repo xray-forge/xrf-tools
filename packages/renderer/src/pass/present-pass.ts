@@ -1,5 +1,5 @@
 import { Nullable } from "@xrf/types";
-import { NodeMaterial, QuadMesh, RenderTarget, WebGPURenderer } from "three/webgpu";
+import { NodeMaterial, QuadMesh, RenderTarget, Texture, WebGPURenderer } from "three/webgpu";
 
 import { ERendererDebugView } from "#/contract/renderer-settings";
 import { toPresentPassFragment } from "#/pass/present-pass.tsl";
@@ -21,6 +21,8 @@ export class PresentPass implements IRendererPass {
   private readonly camera: CameraUniforms;
   /** What the finished frame is read from: the tonemapped frame, or what smoothed it. */
   private frame: RenderTarget;
+  /** The screen's occlusion, while it is on. */
+  private ambientOcclusion: Nullable<Texture> = null;
 
   public constructor(targets: RendererTargets, camera: CameraUniforms) {
     this.targets = targets;
@@ -41,6 +43,19 @@ export class PresentPass implements IRendererPass {
     this.materials.delete(ERendererDebugView.FINAL);
   }
 
+  /**
+   * @param ambientOcclusion - The screen's occlusion its view shows from now on, or none.
+   */
+  public setAmbientOcclusion(ambientOcclusion: Nullable<Texture>): void {
+    if (ambientOcclusion === this.ambientOcclusion) {
+      return;
+    }
+
+    this.ambientOcclusion = ambientOcclusion;
+    this.materials.get(ERendererDebugView.AMBIENT_OCCLUSION)?.dispose();
+    this.materials.delete(ERendererDebugView.AMBIENT_OCCLUSION);
+  }
+
   public render({ renderer, settings }: IRendererFrame): void {
     this.draw(renderer, settings.debugView, null);
   }
@@ -54,7 +69,9 @@ export class PresentPass implements IRendererPass {
     let material: Nullable<NodeMaterial> = this.materials.get(view) ?? null;
 
     if (!material) {
-      material = createQuadMaterial(toPresentPassFragment(view, this.targets, this.camera, this.frame));
+      material = createQuadMaterial(
+        toPresentPassFragment(view, this.targets, this.camera, this.frame, this.ambientOcclusion)
+      );
       this.materials.set(view, material);
     }
 

@@ -1,4 +1,5 @@
-import { Color, LinearSRGBColorSpace, NodeMaterial, QuadMesh } from "three/webgpu";
+import { Nullable } from "@xrf/types";
+import { Color, LinearSRGBColorSpace, NodeMaterial, QuadMesh, Texture } from "three/webgpu";
 
 import { toCombinePassFragment } from "#/pass/combine-pass.tsl";
 import { createQuadMaterial } from "#/pass/quad-material";
@@ -13,13 +14,30 @@ import { RendererUniforms } from "#/uniforms/renderer-uniforms";
 export class CombinePass implements IRendererPass {
   public readonly name: string = "combine";
 
-  private readonly material: NodeMaterial;
-  private readonly quad: QuadMesh;
+  private readonly quad: QuadMesh = new QuadMesh();
   private readonly backdrop: Color = new Color();
+  private readonly targets: RendererTargets;
+  private readonly uniforms: RendererUniforms;
+  private material: NodeMaterial;
+  private ambientOcclusion: Nullable<Texture> = null;
 
   public constructor(targets: RendererTargets, uniforms: RendererUniforms) {
-    this.material = createQuadMaterial(toCombinePassFragment(targets, targets.light.texture, uniforms));
-    this.quad = new QuadMesh(this.material);
+    this.targets = targets;
+    this.uniforms = uniforms;
+    this.material = this.createMaterial();
+  }
+
+  /**
+   * @param ambientOcclusion - The screen's occlusion combine multiplies the hemisphere and ambient by from now on, or none.
+   */
+  public setAmbientOcclusion(ambientOcclusion: Nullable<Texture>): void {
+    if (ambientOcclusion === this.ambientOcclusion) {
+      return;
+    }
+
+    this.ambientOcclusion = ambientOcclusion;
+    this.material.dispose();
+    this.material = this.createMaterial();
   }
 
   public render({ renderer, targets, settings }: IRendererFrame): void {
@@ -28,10 +46,17 @@ export class CombinePass implements IRendererPass {
     renderer.setClearColor(this.backdrop, settings.backdrop === null ? 0 : 1);
     renderer.setRenderTarget(targets.scene);
     renderer.clear(true, false, false);
+    this.quad.material = this.material;
     this.quad.render(renderer);
   }
 
   public dispose(): void {
     this.material.dispose();
+  }
+
+  private createMaterial(): NodeMaterial {
+    return createQuadMaterial(
+      toCombinePassFragment(this.targets, this.targets.light.texture, this.uniforms, this.ambientOcclusion)
+    );
   }
 }

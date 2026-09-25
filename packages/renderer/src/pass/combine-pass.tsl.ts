@@ -1,6 +1,8 @@
-import { Discard, Fn, If, screenUV, select, texture, vec4 } from "three/tsl";
+import { Nullable } from "@xrf/types";
+import { Discard, float, Fn, If, screenUV, select, texture, vec4 } from "three/tsl";
 import { Node, Texture } from "three/webgpu";
 
+import { toUpsampledAmbientOcclusion } from "#/shader/ambient-occlusion.tsl";
 import { toBaseLitColor, toFogColor } from "#/shader/base-lighting.tsl";
 import { IGBufferSample } from "#/shader/gbuffer-sample";
 import { IGBufferTextures } from "#/shader/gbuffer-textures";
@@ -11,12 +13,14 @@ import { RendererUniforms } from "#/uniforms/renderer-uniforms";
  * @param gbuffer - The G-buffer combined.
  * @param light - What the lights accumulated.
  * @param uniforms - What the frame's shaders read.
+ * @param ambientOcclusion - The screen's occlusion at half resolution, or none.
  * @returns Every drawn pixel lit, fogged and tonemapped; where nothing was drawn, total fog or nothing.
  */
 export function toCombinePassFragment(
   gbuffer: IGBufferTextures,
   light: Texture,
-  uniforms: RendererUniforms
+  uniforms: RendererUniforms,
+  ambientOcclusion: Nullable<Texture>
 ): Node<"vec4"> {
   return Fn(() => {
     const sample: IGBufferSample = readGBuffer(gbuffer, uniforms.camera);
@@ -35,7 +39,10 @@ export function toCombinePassFragment(
       sample.hemi,
       texture(light, screenUV),
       sample.point,
-      uniforms
+      uniforms,
+      ambientOcclusion
+        ? toUpsampledAmbientOcclusion(ambientOcclusion, sample.point.position.z.negate(), isEmpty.not())
+        : float(1)
     );
 
     return vec4(select(isEmpty, toFogColor(uniforms), lit), 1);

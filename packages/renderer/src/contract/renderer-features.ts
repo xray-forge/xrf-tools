@@ -92,10 +92,46 @@ export const DEFAULT_RENDERER_SHADOW_SETTINGS: IRendererShadowSettings = {
 };
 
 /**
+ * How many directions and steps a pixel's horizons are searched in: XeGTAO's own quality presets.
+ */
+export enum ERendererAmbientOcclusionQuality {
+  /** One direction, two steps each way. */
+  LOW = "low",
+  /** Two directions, two steps. */
+  MEDIUM = "medium",
+  /** Three directions, three steps, `Base`'s choice. */
+  HIGH = "high",
+  /** Six directions, three steps. */
+  ULTRA = "ultra",
+}
+
+/**
+ * Ambient occlusion from the depth of the frame, GTAO as XeGTAO computes it at half resolution: it darkens the
+ * hemisphere and ambient light over the baked hemisphere occlusion, as the engine's SSAO does.
+ */
+export interface IRendererAmbientOcclusionSettings {
+  isEnabled: boolean;
+  /** Metres around a point that what stands there occludes it from. */
+  radius: number;
+  /** How dark the occlusion goes: one XeGTAO's own curve, zero none, two its square. */
+  strength: number;
+  quality: ERendererAmbientOcclusionQuality;
+}
+
+/** XeGTAO's defaults, at a metre. */
+export const DEFAULT_RENDERER_AMBIENT_OCCLUSION_SETTINGS: IRendererAmbientOcclusionSettings = {
+  isEnabled: true,
+  quality: ERendererAmbientOcclusionQuality.HIGH,
+  radius: 1,
+  strength: 1,
+};
+
+/**
  * What the renderer's features are set to: the same for every consumer, chosen as a preset and whatever was changed
  * on top of it. A feature that is off costs nothing: its passes leave the frame and its targets are freed.
  */
 export interface IRendererFeatureSettings {
+  ambientOcclusion: IRendererAmbientOcclusionSettings;
   antialiasing: ERendererAntialiasing;
   /** Whether every pass is timed on the GPU for the report. */
   isGpuTimed: boolean;
@@ -114,12 +150,14 @@ export enum ERendererPreset {
 /** What each preset sets every feature to. */
 export const RENDERER_PRESETS: Readonly<Record<ERendererPreset, IRendererFeatureSettings>> = {
   [ERendererPreset.BASE]: {
+    ambientOcclusion: DEFAULT_RENDERER_AMBIENT_OCCLUSION_SETTINGS,
     antialiasing: ERendererAntialiasing.SMAA,
     isGpuTimed: true,
     lod: DEFAULT_RENDERER_LOD_SETTINGS,
     shadows: DEFAULT_RENDERER_SHADOW_SETTINGS,
   },
   [ERendererPreset.EDITING]: {
+    ambientOcclusion: { ...DEFAULT_RENDERER_AMBIENT_OCCLUSION_SETTINGS, isEnabled: false },
     antialiasing: ERendererAntialiasing.NONE,
     isGpuTimed: true,
     lod: DEFAULT_RENDERER_LOD_SETTINGS,
@@ -129,6 +167,7 @@ export const RENDERER_PRESETS: Readonly<Record<ERendererPreset, IRendererFeature
 
 /** What was changed on top of a preset, feature by feature. */
 export interface IRendererFeatureOverrides {
+  ambientOcclusion?: Partial<IRendererAmbientOcclusionSettings>;
   antialiasing?: ERendererAntialiasing;
   isGpuTimed?: boolean;
   lod?: Partial<IRendererLodSettings>;
@@ -190,6 +229,14 @@ export function toRendererFeatureChoice(stored: unknown): IRendererFeatureChoice
     choice.overrides.lod = lodOverrides;
   }
 
+  const ambientOcclusion: Partial<IRendererAmbientOcclusionSettings> = toAmbientOcclusionOverrides(
+    source.ambientOcclusion
+  );
+
+  if (Object.keys(ambientOcclusion).length) {
+    choice.overrides.ambientOcclusion = ambientOcclusion;
+  }
+
   const shadows: Partial<IRendererShadowSettings> = toShadowOverrides(source.shadows);
 
   if (Object.keys(shadows).length) {
@@ -205,9 +252,10 @@ export function toRendererFeatureChoice(stored: unknown): IRendererFeatureChoice
  */
 export function resolveRendererFeatures(choice: IRendererFeatureChoice): IRendererFeatureSettings {
   const preset: IRendererFeatureSettings = RENDERER_PRESETS[choice.preset];
-  const { antialiasing, isGpuTimed, lod, shadows } = choice.overrides;
+  const { ambientOcclusion, antialiasing, isGpuTimed, lod, shadows } = choice.overrides;
 
   return {
+    ambientOcclusion: { ...preset.ambientOcclusion, ...ambientOcclusion },
     antialiasing: antialiasing ?? preset.antialiasing,
     isGpuTimed: isGpuTimed ?? preset.isGpuTimed,
     lod: { ...preset.lod, ...lod },
@@ -229,12 +277,45 @@ export function isRendererFeatureChoiceCustom(choice: IRendererFeatureChoice): b
     (Object.keys(preset.lod) as Array<keyof IRendererLodSettings>).some(
       (key) => resolved.lod[key] !== preset.lod[key]
     ) ||
+    (Object.keys(preset.ambientOcclusion) as Array<keyof IRendererAmbientOcclusionSettings>).some(
+      (key) => resolved.ambientOcclusion[key] !== preset.ambientOcclusion[key]
+    ) ||
     (Object.keys(preset.shadows) as Array<keyof IRendererShadowSettings>).some((key) =>
       key === "cascades"
         ? resolved.shadows.cascades.join() !== preset.shadows.cascades.join()
         : resolved.shadows[key] !== preset.shadows[key]
     )
   );
+}
+
+/**
+ * @param stored - What was stored for the ambient occlusion overrides.
+ * @returns The ones the ambient occlusion takes: a flag, finite numbers not below zero, and a quality it has.
+ */
+function toAmbientOcclusionOverrides(stored: unknown): Partial<IRendererAmbientOcclusionSettings> {
+  const source: Record<string, unknown> = stored && typeof stored === "object" ? (stored as never) : {};
+  const overrides: Partial<IRendererAmbientOcclusionSettings> = {};
+  const quality: ERendererAmbientOcclusionQuality | undefined = Object.values(ERendererAmbientOcclusionQuality).find(
+    (it) => it === source.quality
+  );
+
+  if (typeof source.isEnabled === "boolean") {
+    overrides.isEnabled = source.isEnabled;
+  }
+
+  for (const key of ["radius", "strength"] as const) {
+    const value: unknown = source[key];
+
+    if (typeof value === "number" && Number.isFinite(value) && value >= 0) {
+      overrides[key] = value;
+    }
+  }
+
+  if (quality) {
+    overrides.quality = quality;
+  }
+
+  return overrides;
 }
 
 /**

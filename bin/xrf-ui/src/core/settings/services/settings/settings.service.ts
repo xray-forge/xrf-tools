@@ -139,6 +139,10 @@ export class SettingsService {
       overrides: {
         ...current,
         ...overrides,
+        ambientOcclusion:
+          overrides.ambientOcclusion || current.ambientOcclusion
+            ? { ...current.ambientOcclusion, ...overrides.ambientOcclusion }
+            : undefined,
         lod: overrides.lod || current.lod ? { ...current.lod, ...overrides.lod } : undefined,
         shadows: overrides.shadows || current.shadows ? { ...current.shadows, ...overrides.shadows } : undefined,
       },

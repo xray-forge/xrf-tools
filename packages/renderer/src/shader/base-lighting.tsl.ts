@@ -33,6 +33,8 @@ export function toSunLight(point: IBaseShadingPoint, uniforms: RendererUniforms)
  * @param light - What the lights accumulated there.
  * @param point - The point shaded.
  * @param uniforms - What the frame's shaders read.
+ * @param ambientOcclusion - How much of the hemisphere and ambient light reaches the point, as the engine's SSAO
+ *   leaves it: all without one.
  * @returns The colour as the frame shows it.
  */
 export function toBaseLitColor(
@@ -41,11 +43,12 @@ export function toBaseLitColor(
   hemi: Node<"float">,
   light: Node<"vec4">,
   point: IBaseShadingPoint,
-  uniforms: RendererUniforms
+  uniforms: RendererUniforms,
+  ambientOcclusion: Node<"float"> = float(1)
 ): Node<"vec3"> {
   const { settings } = uniforms;
   const occlusion: Node<"float"> = mix(float(1), hemi, settings.hemiStrength);
-  const color: Node<"vec3"> = toBaseColor(albedo, gloss, light, occlusion, point, uniforms);
+  const color: Node<"vec3"> = toBaseColor(albedo, gloss, light, occlusion, ambientOcclusion, point, uniforms);
 
   return select(settings.lit.greaterThan(0.5), toFinishedColor(color, point.position, uniforms), albedo);
 }
@@ -58,12 +61,16 @@ export function toFogColor(uniforms: RendererUniforms): Node<"vec3"> {
   return toToneMapped(uniforms.lighting.fogColor, uniforms.settings.tonemapScale);
 }
 
-/** `hmodel` and `combine_1`: the hemisphere and ambient added to what the lights accumulated. */
+/**
+ * `hmodel` and `combine_1`: the hemisphere and ambient, times the screen's occlusion as `combine_1` multiplies
+ * `hdiffuse` and `hspecular` by `occ`, added to what the lights accumulated.
+ */
 function toBaseColor(
   albedo: Node<"vec3">,
   gloss: Node<"float">,
   light: Node<"vec4">,
   hemi: Node<"float">,
+  ambientOcclusion: Node<"float">,
   point: IBaseShadingPoint,
   { camera, lighting, lut }: RendererUniforms
 ): Node<"vec3"> {
@@ -75,8 +82,8 @@ function toBaseColor(
   // The irradiance cube stands in as one colour until weather supplies the cube itself.
   const environment = lighting.environment.mul(lighting.skyIrradiance);
   const environmentSquared = environment.mul(environment);
-  const hemisphereDiffuse = environmentSquared.mul(hemisphere.x).add(lighting.ambient);
-  const hemisphereGloss = environmentSquared.mul(hemisphere.y).mul(gloss);
+  const hemisphereDiffuse = environmentSquared.mul(hemisphere.x).add(lighting.ambient).mul(ambientOcclusion);
+  const hemisphereGloss = environmentSquared.mul(hemisphere.y).mul(gloss).mul(ambientOcclusion);
 
   return albedo.mul(light.xyz.add(hemisphereDiffuse)).add(gloss.mul(light.w)).add(hemisphereGloss);
 }

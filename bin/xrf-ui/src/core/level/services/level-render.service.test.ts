@@ -1,6 +1,7 @@
 import { beforeAll, beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { Container } from "@wirestate/core";
 import {
+  DEFAULT_RENDERER_AMBIENT_OCCLUSION_SETTINGS,
   DEFAULT_RENDERER_SHADOW_SETTINGS,
   DEFAULT_RENDERER_TREE_WIND,
   EMPTY_RENDERER_STATIC_DRAW_REPORT,
@@ -148,7 +149,11 @@ describe("LevelRenderService", () => {
     expect(features()?.shadows.isEnabled).toBe(true);
     expect(features()?.antialiasing).toBe(ERendererAntialiasing.SMAA);
 
-    viewService.setFeatures({ antialiasing: ERendererAntialiasing.FXAA, shadows: { cascades: [20], filter: 0 } });
+    viewService.setFeatures({
+      ambientOcclusion: { radius: 2 },
+      antialiasing: ERendererAntialiasing.FXAA,
+      shadows: { cascades: [20], filter: 0 },
+    });
     await stub.flush();
 
     const set = features();
@@ -157,14 +162,16 @@ describe("LevelRenderService", () => {
     expect(set?.shadows.cascades).toEqual([20]);
     expect(set?.shadows.filter).toBe(0);
     expect(set?.shadows.resolution).toBe(DEFAULT_RENDERER_SHADOW_SETTINGS.resolution);
+    expect(set?.ambientOcclusion).toEqual({ ...DEFAULT_RENDERER_AMBIENT_OCCLUSION_SETTINGS, radius: 2 });
 
-    viewService.setOptions({ ...viewService.options, isAntialiased: false, isShadowed: false });
+    viewService.setOptions({ ...viewService.options, isAntialiased: false, isOccluded: false, isShadowed: false });
     await stub.flush();
 
     const off = features();
 
     expect(off?.antialiasing).toBe(ERendererAntialiasing.NONE);
     expect(off?.shadows.isEnabled).toBe(false);
+    expect(off?.ambientOcclusion.isEnabled).toBe(false);
 
     service.dispose();
   });

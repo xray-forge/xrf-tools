@@ -7,7 +7,9 @@ import {
   RENDERER_MAX_SHADOW_CASCADES,
 } from "#/contract/renderer-features";
 import { createBaseFramePasses } from "#/graph/base-frame-passes";
+import { AmbientOcclusionPass } from "#/pass/ambient-occlusion-pass";
 import { AntialiasPass, toPresentedFrame } from "#/pass/antialias/antialias-pass";
+import { CombinePass } from "#/pass/combine-pass";
 import { PresentPass } from "#/pass/present-pass";
 import { IRendererFrame } from "#/pass/renderer-frame";
 import { IRendererPass } from "#/pass/renderer-pass";
@@ -37,12 +39,17 @@ export class RendererFrameGraph {
   /** The pass smoothing the frame's edges, while a mode is chosen. */
   private antialias: Nullable<AntialiasPass> = null;
   private antialiasing: ERendererAntialiasing = ERendererAntialiasing.NONE;
+  /** The screen's occlusion while it is on, and the quality it was made for. */
+  private ambientOcclusion: Nullable<AmbientOcclusionPass> = null;
+  private ambientOcclusionKey: string = "";
   /** A pass a shadow cascade drawn, and the cascades and resolution they were made for. */
   private shadows: Array<ShadowPass> = [];
   private shadowKey: string = "";
   private readonly uniforms: RendererUniforms;
   private readonly cull: StaticCull;
   private readonly casters: IStaticShadowCasters;
+  /** The pass the occlusion is combined in. */
+  private readonly combine: CombinePass;
 
   /**
    * @param uniforms - What the frame's shaders read.
@@ -62,6 +69,7 @@ export class RendererFrameGraph {
     this.present = new PresentPass(this.targets, uniforms.camera);
     this.base = createBaseFramePasses(this.targets, uniforms, overlays, cull);
     this.scenePasses = this.base.filter(isRendererScenePass);
+    this.combine = this.base.find((pass: IRendererPass) => pass instanceof CombinePass) as CombinePass;
     this.link();
   }
 
@@ -74,9 +82,24 @@ export class RendererFrameGraph {
     const { shadows } = features;
     const count: number = shadows.isEnabled ? Math.min(shadows.cascades.length, RENDERER_MAX_SHADOW_CASCADES) : 0;
     const shadowKey: string = `${count}:${shadows.resolution}`;
+    const ambientOcclusionKey: string = features.ambientOcclusion.isEnabled ? features.ambientOcclusion.quality : "";
 
-    if (features.antialiasing === this.antialiasing && shadowKey === this.shadowKey) {
+    if (
+      features.antialiasing === this.antialiasing &&
+      shadowKey === this.shadowKey &&
+      ambientOcclusionKey === this.ambientOcclusionKey
+    ) {
       return;
+    }
+
+    if (ambientOcclusionKey !== this.ambientOcclusionKey) {
+      this.ambientOcclusion?.dispose();
+      this.ambientOcclusionKey = ambientOcclusionKey;
+      this.ambientOcclusion = features.ambientOcclusion.isEnabled
+        ? new AmbientOcclusionPass(features.ambientOcclusion.quality, this.targets, this.uniforms.camera)
+        : null;
+      this.combine.setAmbientOcclusion(this.ambientOcclusion?.output ?? null);
+      this.present.setAmbientOcclusion(this.ambientOcclusion?.output ?? null);
     }
 
     if (features.antialiasing !== this.antialiasing) {
@@ -138,16 +161,19 @@ export class RendererFrameGraph {
   }
 
   /**
-   * The frame's passes in order: the base's with the shadow cascades before the sun reads them, whatever else the
-   * features add, then the picture presented.
+   * The frame's passes in order: the base's with the shadow cascades before the sun reads them and the occlusion
+   * before combine does, whatever else the features add, then the picture presented.
    */
   private link(): void {
     const sun: number = this.base.findIndex((pass: IRendererPass) => pass.name === "sun");
+    const combine: number = this.base.indexOf(this.combine);
 
     this.passes = [
       ...this.base.slice(0, sun),
       ...this.shadows,
-      ...this.base.slice(sun),
+      ...this.base.slice(sun, combine),
+      ...(this.ambientOcclusion ? [this.ambientOcclusion] : []),
+      ...this.base.slice(combine),
       ...(this.antialias ? [this.antialias] : []),
       this.present,
     ];

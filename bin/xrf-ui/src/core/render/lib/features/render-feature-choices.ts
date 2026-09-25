@@ -1,4 +1,4 @@
-import { ERendererAntialiasing } from "@xrf/renderer";
+import { ERendererAmbientOcclusionQuality, ERendererAntialiasing } from "@xrf/renderer";
 
 /** The engine's three cascade widths (`render_phase_sun.cpp`), and a fourth reaching three times as far. */
 export const RENDER_SHADOW_CASCADE_WIDTHS: ReadonlyArray<number> = [20, 40, 160, 480];
@@ -13,6 +13,29 @@ export const RENDER_SHADOW_LIMITS = {
   filter: { max: 3, min: 0, step: 1 },
   reach: { max: 1000, min: 100, step: 50 },
 } as const;
+
+/** The bounds each ambient occlusion value is offered between. */
+export const RENDER_AMBIENT_OCCLUSION_LIMITS = {
+  radius: { max: 4, min: 0.25, step: 0.25 },
+  strength: { max: 2, min: 0, step: 0.1 },
+} as const;
+
+/**
+ * @param quality - An ambient occlusion quality.
+ * @returns Its name as the settings say it.
+ */
+export function describeRenderAmbientOcclusionQuality(quality: ERendererAmbientOcclusionQuality): string {
+  switch (quality) {
+    case ERendererAmbientOcclusionQuality.LOW:
+      return "Low";
+    case ERendererAmbientOcclusionQuality.MEDIUM:
+      return "Medium";
+    case ERendererAmbientOcclusionQuality.HIGH:
+      return "High";
+    case ERendererAmbientOcclusionQuality.ULTRA:
+      return "Ultra";
+  }
+}
 
 /**
  * @param mode - An antialiasing mode.
