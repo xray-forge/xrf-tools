@@ -20,6 +20,25 @@ describe("RendererPassTimer", () => {
     ]);
   });
 
+  it("counts a frame a pass issued nothing in as costing it nothing", () => {
+    const timer: RendererPassTimer = new RendererPassTimer();
+
+    timer.record(
+      new Map([
+        ["gbuffer", 1],
+        ["light-shadows", 4],
+      ])
+    );
+    timer.record(new Map([["gbuffer", 1]]));
+    timer.record(new Map([["gbuffer", 1]]));
+    timer.record(new Map([["gbuffer", 1]]));
+
+    expect(timer.describe(["gbuffer", "light-shadows"])).toEqual([
+      { gpuTime: 1, name: "gbuffer" },
+      { gpuTime: 1, name: "light-shadows" },
+    ]);
+  });
+
   it("reports zero for a pass never timed", () => {
     expect(new RendererPassTimer().describe(["clear"])).toEqual([{ gpuTime: 0, name: "clear" }]);
   });

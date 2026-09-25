@@ -21,7 +21,7 @@ export function SettingsRendererLights(): ReactElement {
       title={"Lights"}
       description={
         "The lamps the game spawns on a level, point lights and spots through their projectors, animated as the game " +
-        "animates them. Drawn unshadowed for now."
+        "animates them."
       }
     >
       <div className={"mt-4 flex flex-col gap-6"}>
@@ -30,6 +30,16 @@ export function SettingsRendererLights(): ReactElement {
           description={"Off, only the sun and the baked light reach the level."}
           isChecked={lights.isEnabled}
           onChange={(isEnabled: boolean) => set({ isEnabled })}
+        />
+
+        <CheckboxFormRow
+          label={"Shadows"}
+          description={
+            "The lamps the game shadows cast their shadows, each drawn once into an atlas and kept while nothing it " +
+            "casts from changes. A level fills it over its first frames."
+          }
+          isChecked={lights.isShadowed}
+          onChange={(isShadowed: boolean) => set({ isShadowed })}
         />
 
         <CheckboxFormRow

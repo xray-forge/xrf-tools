@@ -6,7 +6,9 @@ import { IRendererPassCost } from "#/contract/renderer-report";
 const WINDOW: number = 30;
 
 /**
- * A rolling mean of what each pass cost on the GPU.
+ * A rolling mean of what each pass cost on the GPU a frame. A frame a pass issued nothing in costs it nothing, so a pass
+ * drawing only now and then, a staggered cascade or a shadow face drawn once and kept, shows what it costs a frame
+ * rather than what it cost the last time it drew.
  */
 export class RendererPassTimer {
   private readonly samples: Map<string, Array<number>> = new Map();
@@ -17,16 +19,18 @@ export class RendererPassTimer {
    * @param frame - GPU milliseconds by pass name.
    */
   public record(frame: ReadonlyMap<string, number>): void {
-    for (const [pass, duration] of frame) {
-      const samples: Array<number> = this.samples.get(pass) ?? [];
+    for (const pass of frame.keys()) {
+      if (!this.samples.has(pass)) {
+        this.samples.set(pass, []);
+      }
+    }
 
-      samples.push(duration);
+    for (const [pass, samples] of this.samples) {
+      samples.push(frame.get(pass) ?? 0);
 
       if (samples.length > WINDOW) {
         samples.shift();
       }
-
-      this.samples.set(pass, samples);
     }
   }
 

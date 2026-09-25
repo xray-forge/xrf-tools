@@ -19,10 +19,19 @@ export const STATIC_DRAW_ARGUMENTS: number = 5;
 export const STATIC_PLACE_COLUMNS: number = 5;
 
 /**
- * Regions of the list of kept places, a view each: the first cull's, the second's, then each shadow cascade's. A
- * region is a row capacity long, and an instanced draw lists its places at its rows' own start within it.
+ * Shadow views a static draw is culled for besides the camera's: each sun cascade, then the one every light's shadow
+ * face culls into in turn.
  */
-export const STATIC_VIEW_REGIONS: number = 2 + RENDERER_MAX_SHADOW_CASCADES;
+export const STATIC_SHADOW_VIEWS: number = RENDERER_MAX_SHADOW_CASCADES + 1;
+
+/** The shadow view a light's faces are culled into, one face after another. */
+export const STATIC_LIGHT_VIEW: number = RENDERER_MAX_SHADOW_CASCADES;
+
+/**
+ * Regions of the list of kept places, a view each: the first cull's, the second's, then each shadow view's. A region
+ * is a row capacity long, and an instanced draw lists its places at its rows' own start within it.
+ */
+export const STATIC_VIEW_REGIONS: number = 2 + STATIC_SHADOW_VIEWS;
 
 /** Unsigned integers the cull counts into: kept draws and indices, then occluded draws, instances and indices. */
 export const STATIC_CULL_COUNTS: number = 5;
@@ -256,7 +265,7 @@ export class StaticDrawBuffers {
     this.rowTargets = new StorageBufferAttribute(new Uint32Array(rows * 4), 4);
     this.visible = new StorageBufferAttribute(new Uint32Array(rows * STATIC_VIEW_REGIONS), 1);
     this.viewArgs = Array.from(
-      { length: RENDERER_MAX_SHADOW_CASCADES },
+      { length: STATIC_SHADOW_VIEWS },
       () => new IndirectStorageBufferAttribute(new Uint32Array(slots * STATIC_DRAW_ARGUMENTS), STATIC_DRAW_ARGUMENTS)
     );
     this.rowStates = new StorageBufferAttribute(new Uint32Array(rows), 1);

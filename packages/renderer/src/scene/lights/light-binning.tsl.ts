@@ -1,6 +1,7 @@
 import { dot, float, Fn, If, instanceIndex, max, min, pow, storage, uint, vec3 } from "three/tsl";
 import { ComputeNode, Node, StorageBufferAttribute } from "three/webgpu";
 
+import { LIGHT_RECORD } from "#/scene/lights/light-record";
 import { loopNamed } from "#/shader/named-loop.tsl";
 import {
   LIGHT_CLUSTER_CAPACITY,
@@ -95,7 +96,7 @@ export function createLightBinning(
     const kept = uint(0).toVar();
 
     loopNamed({ end: uniforms.count, name: "light", start: uint(0), type: "uint" }, (light) => {
-      const sphere = records.element(light.mul(vectors).add(vectors - 1));
+      const sphere = records.element(light.mul(vectors).add(LIGHT_RECORD.sphere));
       const nearest = sphere.xyz.clamp(least, most);
       const offset = sphere.xyz.sub(nearest);
 

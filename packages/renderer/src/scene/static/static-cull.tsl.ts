@@ -1,7 +1,6 @@
 import { atomicAdd, Fn, If, instanceIndex, storage, uint, uniformArray } from "three/tsl";
 import { ComputeNode, UniformArrayNode, Vector4 } from "three/webgpu";
 
-import { RENDERER_MAX_SHADOW_CASCADES } from "#/contract/renderer-features";
 import { toInFrustum } from "#/scene/static/static-frustum.tsl";
 import {
   createEarlyInstanceCullShader,
@@ -16,6 +15,7 @@ import {
   EStaticPool,
   STATIC_CULL_COUNTS,
   STATIC_DRAW_ARGUMENTS,
+  STATIC_SHADOW_VIEWS,
   StaticDrawBuffers,
 } from "#/uniforms/static-draw-buffers";
 
@@ -33,11 +33,11 @@ export interface IStaticCullShader {
   wire: [ComputeNode, ComputeNode];
   /** Six planes, normals pointing in, `w` the constant. */
   planes: ReadonlyArray<Vector4>;
-  /** Each shadow cascade's cull: the slot cull, then the instance cull, and the six planes both read. */
+  /** Each shadow view's cull: the slot cull, then the instance cull, and the six planes both read. */
   views: ReadonlyArray<IStaticViewCullShader>;
 }
 
-/** One shadow cascade's cull: no occlusion and no second phase, only its box. */
+/** One shadow view's cull: no occlusion and no second phase, only its frustum. */
 export interface IStaticViewCullShader {
   cull: [ComputeNode, ComputeNode];
   planes: ReadonlyArray<Vector4>;
@@ -63,7 +63,7 @@ export function createStaticCullShader(buffers: StaticDrawBuffers): IStaticCullS
       createWireArgumentsShader(buffers.args, buffers.wireArgs, buffers.capacity(EStaticPool.SLOTS)),
       createWireArgumentsShader(buffers.lateArgs, buffers.wireLateArgs, buffers.capacity(EStaticPool.SLOTS)),
     ],
-    views: Array.from({ length: RENDERER_MAX_SHADOW_CASCADES }, (_, view: number) => {
+    views: Array.from({ length: STATIC_SHADOW_VIEWS }, (_, view: number) => {
       const viewPlanes: Array<Vector4> = Array.from({ length: 6 }, () => new Vector4());
       const viewPlaneNodes = uniformArray(viewPlanes, "vec4");
 

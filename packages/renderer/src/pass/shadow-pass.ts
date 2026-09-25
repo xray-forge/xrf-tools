@@ -81,7 +81,7 @@ export class ShadowPass implements IRendererPass {
     renderer.setRenderTarget(this.target);
     renderer.clear(false, true, false);
     renderer.sortObjects = false;
-    renderer.render(this.casters.cascadeScenes[this.view], cascade.camera);
+    renderer.render(this.casters.shadowScenes[this.view], cascade.camera);
 
     if (hasPlain) {
       renderer.render(this.casters.plainCasters, cascade.camera);

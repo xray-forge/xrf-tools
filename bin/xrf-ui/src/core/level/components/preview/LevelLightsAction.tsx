@@ -43,9 +43,7 @@ export function LevelLightsAction({
         !isAvailable
           ? "Lights are off in Settings, under Rendering"
           : isOn
-            ? lights.isLevelLights
-              ? "The level's lamps, and the level file's own lights"
-              : "The level's lamps, as the game lights them"
+            ? `The level's lamps${lights.isLevelLights ? " and the level file's own lights" : ""}, ${lights.isShadowed ? "shadowed" : "unshadowed"}`
             : "Lights off, only the sun and the baked light"
       }
       icon={<LightIcon />}
@@ -54,6 +52,12 @@ export function LevelLightsAction({
       toggleLabel={"Light the lamps"}
       onToggle={onToggle}
     >
+      <CheckboxFormRow
+        label={"Shadows"}
+        isChecked={lights.isShadowed}
+        onChange={(isShadowed: boolean) => onChange({ ...features, lights: { ...features.lights, isShadowed } })}
+      />
+
       <CheckboxFormRow
         label={"Level lights: r2_allow_r1_lights"}
         isChecked={lights.isLevelLights}

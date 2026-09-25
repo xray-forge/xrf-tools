@@ -11,6 +11,7 @@ import { AmbientOcclusionPass } from "#/pass/ambient-occlusion-pass";
 import { AntialiasPass, toPresentedFrame } from "#/pass/antialias/antialias-pass";
 import { CombinePass } from "#/pass/combine-pass";
 import { GrassPass } from "#/pass/grass-pass";
+import { LightShadowPass } from "#/pass/light-shadow-pass";
 import { LightsPass } from "#/pass/lights-pass";
 import { OverlayPass } from "#/pass/overlay-pass";
 import { PresentPass } from "#/pass/present-pass";
@@ -51,6 +52,8 @@ export class RendererFrameGraph {
   private grassPass: Nullable<GrassPass> = null;
   /** The local lights, while they are on. */
   private lightsPass: Nullable<LightsPass> = null;
+  /** The lights' shadow faces, while the lights draw shadows. */
+  private lightShadowPass: Nullable<LightShadowPass> = null;
   /** The screen's occlusion while it is on, and the quality it was made for. */
   private ambientOcclusion: Nullable<AmbientOcclusionPass> = null;
   private ambientOcclusionKey: string = "";
@@ -110,15 +113,24 @@ export class RendererFrameGraph {
     const count: number = shadows.isEnabled ? Math.min(shadows.cascades.length, RENDERER_MAX_SHADOW_CASCADES) : 0;
     const shadowKey: string = `${count}:${shadows.resolution}`;
     const ambientOcclusionKey: string = features.ambientOcclusion.isEnabled ? features.ambientOcclusion.quality : "";
+    const isLightShadowed: boolean = features.lights.isEnabled && features.lights.isShadowed;
 
     if (
       features.antialiasing === this.antialiasing &&
       shadowKey === this.shadowKey &&
       ambientOcclusionKey === this.ambientOcclusionKey &&
       features.grass.isEnabled === (this.grassPass !== null) &&
-      features.lights.isEnabled === (this.lightsPass !== null)
+      features.lights.isEnabled === (this.lightsPass !== null) &&
+      isLightShadowed === (this.lightShadowPass !== null)
     ) {
       return;
+    }
+
+    if (isLightShadowed !== (this.lightShadowPass !== null)) {
+      this.lightShadowPass?.dispose();
+      this.lightShadowPass = isLightShadowed
+        ? new LightShadowPass(this.lights.shadows, this.targets, this.casters, this.cull)
+        : null;
     }
 
     if (features.lights.isEnabled !== (this.lightsPass !== null)) {
@@ -241,6 +253,7 @@ export class RendererFrameGraph {
       ...(this.grassPass ? [this.grassPass] : []),
       ...this.base.slice(gbuffer, sun),
       ...this.shadows,
+      ...(this.lightShadowPass ? [this.lightShadowPass] : []),
       ...this.base.slice(sun, sun + 1),
       ...(this.lightsPass ? [this.lightsPass] : []),
       ...this.base.slice(sun + 1, combine),

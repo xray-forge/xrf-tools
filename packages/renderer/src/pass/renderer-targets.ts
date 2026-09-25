@@ -55,7 +55,16 @@ export class RendererTargets implements IGBufferTextures {
     }
   );
 
+  /**
+   * The lights' shadow atlas, every shadowed light's faces in squares of it, its depth alone like a cascade's: a texel
+   * across while the lights draw no shadows, so the lights always bind the same texture.
+   */
+  public readonly lightShadows: RenderTarget = new RenderTarget(1, 1, { depthBuffer: true, format: RedFormat });
+
   public constructor() {
+    this.lightShadows.texture.name = "light-shadows";
+    this.lightShadows.depthTexture = new DepthTexture(1, 1, FloatType);
+    this.lightShadows.depthTexture.name = "light-shadows-depth";
     this.gbuffer = new RenderTarget(1, 1, { count: 4, depthBuffer: true });
     // Named for the device's labels alone: the surfaces write the attachments by location, in this order.
     this.gbuffer.textures[0].name = "albedo";
@@ -144,5 +153,6 @@ export class RendererTargets implements IGBufferTextures {
     this.light.dispose();
     this.scene.dispose();
     this.composite.dispose();
+    this.lightShadows.dispose();
   }
 }

@@ -77,12 +77,15 @@ export interface IRendererLightsSettings {
   isEnabled: boolean;
   /** Whether the level file's own lights are drawn too, which the engine does only with `r2_allow_r1_lights`. */
   isLevelLights: boolean;
+  /** Whether a light the engine shadows casts its shadows, through faces drawn once into an atlas and kept. */
+  isShadowed: boolean;
 }
 
 /** The engine's own: every spawned light, and none of the level file's. */
 export const DEFAULT_RENDERER_LIGHTS_SETTINGS: IRendererLightsSettings = {
   isEnabled: true,
   isLevelLights: false,
+  isShadowed: true,
 };
 
 /** Cascades the sun's shadow can be cut into at most. */
@@ -208,7 +211,7 @@ export const RENDERER_PRESETS: Readonly<Record<ERendererPreset, IRendererFeature
     grass: { ...DEFAULT_RENDERER_GRASS_SETTINGS, isEnabled: false },
     isGpuTimed: true,
     // Unshadowed, the lights cost a pass over the screen: an editor keeps seeing what lights a room.
-    lights: DEFAULT_RENDERER_LIGHTS_SETTINGS,
+    lights: { ...DEFAULT_RENDERER_LIGHTS_SETTINGS, isShadowed: false },
     lod: DEFAULT_RENDERER_LOD_SETTINGS,
     shadows: { ...DEFAULT_RENDERER_SHADOW_SETTINGS, isEnabled: false },
   },
@@ -390,7 +393,7 @@ function toLightsOverrides(stored: unknown): Partial<IRendererLightsSettings> {
   const source: Record<string, unknown> = stored && typeof stored === "object" ? (stored as never) : {};
   const overrides: Partial<IRendererLightsSettings> = {};
 
-  for (const key of ["isEnabled", "isLevelLights"] as const) {
+  for (const key of ["isEnabled", "isLevelLights", "isShadowed"] as const) {
     if (typeof source[key] === "boolean") {
       overrides[key] = source[key];
     }

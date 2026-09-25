@@ -1,5 +1,5 @@
 import { Nullable } from "@xrf/types";
-import { ComputeNode, CustomBlending, NodeMaterial, OneFactor, QuadMesh } from "three/webgpu";
+import { ComputeNode, CustomBlending, NodeMaterial, OneFactor, QuadMesh, Texture } from "three/webgpu";
 
 import { toLightsPassFragment } from "#/pass/lights-pass.tsl";
 import { createQuadMaterial } from "#/pass/quad-material";
@@ -7,7 +7,8 @@ import { IRendererFrame } from "#/pass/renderer-frame";
 import { IRendererPass } from "#/pass/renderer-pass";
 import { RendererTargets } from "#/pass/renderer-targets";
 import { createLightBinning } from "#/scene/lights/light-binning.tsl";
-import { LIGHT_VECTORS, MAX_LIGHTS, SceneLights } from "#/scene/lights/scene-lights";
+import { LIGHT_VECTORS } from "#/scene/lights/light-record";
+import { MAX_LIGHTS, SceneLights } from "#/scene/lights/scene-lights";
 import { RendererUniforms } from "#/uniforms/renderer-uniforms";
 
 /**
@@ -66,6 +67,7 @@ export class LightsPass implements IRendererPass {
       toLightsPassFragment(
         {
           counts: this.lights.counts,
+          atlas: this.targets.lightShadows.depthTexture as Texture,
           gbuffer: this.targets,
           items: this.lights.items,
           lut: this.uniforms.lut,

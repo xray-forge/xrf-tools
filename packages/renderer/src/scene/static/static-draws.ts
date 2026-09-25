@@ -1,7 +1,6 @@
 import { Maybe, Nullable } from "@xrf/types";
 import { Box3, Material, Matrix4, Object3D, Scene, Sphere, Vector3, Vector4 } from "three/webgpu";
 
-import { RENDERER_MAX_SHADOW_CASCADES } from "#/contract/renderer-features";
 import { IRendererPoolUse, IRendererStaticDrawReport } from "#/contract/renderer-report";
 import { IRendererInstances } from "#/contract/scene/renderer-object";
 import { ISurfaceMaterial } from "#/material/surface-material";
@@ -18,7 +17,7 @@ import { StaticPlaces } from "#/scene/static/static-places";
 import { IStaticRange } from "#/scene/static/static-range";
 import { IStaticShadowCasters } from "#/scene/static/static-shadow-casters";
 import { IStaticUpcoming } from "#/scene/static/static-upcoming";
-import { EStaticPool, STATIC_NO_BAND, StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
+import { EStaticPool, STATIC_NO_BAND, STATIC_SHADOW_VIEWS, StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
 
 /** A run of rows: where it starts, and how many places it tests. */
 interface IRowRun {
@@ -43,11 +42,8 @@ export class StaticDraws implements IStaticShadowCasters {
   public readonly cull: StaticCull;
   /** Where the batches' second draws stand, drawn into the G-buffer after the second cull. */
   public readonly late: Scene = new Scene();
-  /** What each shadow cascade draws: every casting batch, by the cascade's arguments. */
-  public readonly cascadeScenes: ReadonlyArray<Scene> = Array.from(
-    { length: RENDERER_MAX_SHADOW_CASCADES },
-    () => new Scene()
-  );
+  /** What each shadow view draws: every casting batch, by the view's arguments. */
+  public readonly shadowScenes: ReadonlyArray<Scene> = Array.from({ length: STATIC_SHADOW_VIEWS }, () => new Scene());
   /** What every cascade draws besides the batches: a twin of each part drawn plainly that casts. */
   public readonly plainCasters: Scene = new Scene();
 
@@ -77,7 +73,7 @@ export class StaticDraws implements IStaticShadowCasters {
     this.lods = new StaticLods(buffers);
     this.late.matrixWorldAutoUpdate = false;
     this.cull = new StaticCull(buffers, this.pool, this.places, this.lods, this.late);
-    this.batches = new StaticBatches(this.pool, scene, this.late, this.cascadeScenes);
+    this.batches = new StaticBatches(this.pool, scene, this.late, this.shadowScenes);
     this.arenas = new StaticArenas(
       (arena: StaticArena) => this.batches.refresh(arena),
       (arena: StaticArena) => this.batches.release(arena),

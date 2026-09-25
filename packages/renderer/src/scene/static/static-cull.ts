@@ -1,6 +1,6 @@
 import { BufferAttribute, PerspectiveCamera, Scene, Texture, Vector4, WebGPURenderer } from "three/webgpu";
 
-import { IRendererLodSettings, RENDERER_MAX_SHADOW_CASCADES } from "#/contract/renderer-features";
+import { IRendererLodSettings } from "#/contract/renderer-features";
 import { destroyStorageAttribute } from "#/internals/renderer-backend";
 import { IStaticCullCounts } from "#/scene/static/static-cull-counts";
 import { createStaticCullShader, IStaticCullShader, IStaticViewCullShader } from "#/scene/static/static-cull.tsl";
@@ -8,9 +8,9 @@ import { StaticDepthPyramid } from "#/scene/static/static-depth-pyramid";
 import { StaticDrawPool } from "#/scene/static/static-draw-pool";
 import { StaticLods } from "#/scene/static/static-lods";
 import { StaticPlaces } from "#/scene/static/static-places";
-import { StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
+import { STATIC_SHADOW_VIEWS, StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
 import { CullView } from "#/visibility/cull-view";
-import { SunCascade } from "#/visibility/sun-cascade";
+import { IShadowFrustum } from "#/visibility/shadow-frustum";
 
 /**
  * Culls every static draw on the GPU against the view drawn for, single draws by slot and instanced ones by row, in
@@ -46,8 +46,8 @@ export class StaticCull {
   private poolVersion: number = -1;
   private placesVersion: number = -1;
   private lodsVersion: number = -1;
-  /** Each cascade's box, pool, places and LOD versions its last cull ran against, joined. */
-  private readonly viewVersions: Array<string | number> = new Array(RENDERER_MAX_SHADOW_CASCADES).fill(-1);
+  /** Each shadow view's frustum, pool, places and LOD versions its last cull ran against, joined. */
+  private readonly viewVersions: Array<string | number> = new Array(STATIC_SHADOW_VIEWS).fill(-1);
   /** Whether the LOD thresholds or switch changed since the last dispatch. */
   private isLodChanged: boolean = true;
   private isPending: boolean = false;
@@ -198,15 +198,15 @@ export class StaticCull {
   }
 
   /**
-   * A shadow cascade's cull, its casters from every static draw its box reaches: run again only when the box moved or
-   * a slot, row, place or impostor changed.
+   * A shadow view's cull, its casters from every static draw its frustum reaches: run again only when the frustum
+   * moved or a slot, row, place or impostor changed.
    *
    * @param renderer - The renderer drawing.
-   * @param view - The cascade, from zero.
-   * @param cascade - Its box, fitted for this frame.
+   * @param view - The shadow view, from zero: a sun cascade's, or the one light faces take in turn.
+   * @param cascade - Its frustum, fitted for this frame.
    * @returns Whether it culled, and what the cascade draws may have changed.
    */
-  public cullView(renderer: WebGPURenderer, view: number, cascade: SunCascade): boolean {
+  public cullView(renderer: WebGPURenderer, view: number, cascade: IShadowFrustum): boolean {
     this.build();
 
     const version: string = [

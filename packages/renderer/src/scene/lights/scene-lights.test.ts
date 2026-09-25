@@ -5,7 +5,8 @@ import { DEFAULT_RENDERER_LIGHTS_SETTINGS } from "#/contract/renderer-features";
 import { ERendererLightKind, IRendererLight } from "#/contract/scene/renderer-lights";
 import { adoptRendererConventions } from "#/internals/camera-conventions";
 import { toSunSpecular } from "#/lighting/base-lighting";
-import { LIGHT_VECTORS, SceneLights } from "#/scene/lights/scene-lights";
+import { LIGHT_VECTORS } from "#/scene/lights/light-record";
+import { SceneLights } from "#/scene/lights/scene-lights";
 import { RendererTextures } from "#/texture/renderer-textures";
 import { LodUniforms } from "#/uniforms/lod-uniforms";
 
@@ -53,7 +54,7 @@ describe("SceneLights", () => {
     const lights: SceneLights = createLights();
 
     lights.put({ animators: [], lights: [POINT] });
-    lights.update(createCamera(), 0, DEFAULT_RENDERER_LIGHTS_SETTINGS, new LodUniforms());
+    lights.update(createCamera(), 0, DEFAULT_RENDERER_LIGHTS_SETTINGS, new LodUniforms(), 0);
 
     const record: Array<number> = readRecord(lights, 0);
 
@@ -77,10 +78,16 @@ describe("SceneLights", () => {
     const level: IRendererLight = { ...POINT, isLevel: true };
 
     lights.put({ animators: [], lights: [behind, level] });
-    lights.update(createCamera(), 0, DEFAULT_RENDERER_LIGHTS_SETTINGS, new LodUniforms());
+    lights.update(createCamera(), 0, DEFAULT_RENDERER_LIGHTS_SETTINGS, new LodUniforms(), 0);
     expect(lights.count).toBe(0);
 
-    lights.update(createCamera(), 0, { ...DEFAULT_RENDERER_LIGHTS_SETTINGS, isLevelLights: true }, new LodUniforms());
+    lights.update(
+      createCamera(),
+      0,
+      { ...DEFAULT_RENDERER_LIGHTS_SETTINGS, isLevelLights: true },
+      new LodUniforms(),
+      0
+    );
     expect(lights.count).toBe(1);
   });
 
@@ -91,7 +98,7 @@ describe("SceneLights", () => {
       animators: [{ colors: [[255, 0, 51]], fps: 10, frameCount: 10, frames: [0] }],
       lights: [{ ...POINT, animator: 0, animatorScale: 2 / 255 }],
     });
-    lights.update(createCamera(), 3, DEFAULT_RENDERER_LIGHTS_SETTINGS, new LodUniforms());
+    lights.update(createCamera(), 3, DEFAULT_RENDERER_LIGHTS_SETTINGS, new LodUniforms(), 0);
 
     const [red, green, blue] = readRecord(lights, 0).slice(4, 7);
 
@@ -113,7 +120,7 @@ describe("SceneLights", () => {
     };
 
     lights.put({ animators: [], lights: [{ ...spot, projector: "other" }, spot] });
-    lights.update(createCamera(), 0, DEFAULT_RENDERER_LIGHTS_SETTINGS, new LodUniforms());
+    lights.update(createCamera(), 0, DEFAULT_RENDERER_LIGHTS_SETTINGS, new LodUniforms(), 0);
 
     const record: Array<number> = readRecord(lights, 1);
     const [direction, right, up] = [record.slice(8, 11), record.slice(12, 15), record.slice(16, 19)];
@@ -147,7 +154,7 @@ describe("SceneLights", () => {
     lod.glodStart.value = 0.001;
     lod.glodEnd.value = 0.0001;
     lights.put({ animators: [], lights: [spot, { ...spot, position: [0, 0, -400] }] });
-    lights.update(createCamera(), 0, DEFAULT_RENDERER_LIGHTS_SETTINGS, lod);
+    lights.update(createCamera(), 0, DEFAULT_RENDERER_LIGHTS_SETTINGS, lod, 0);
 
     // The acute cone's sphere: `R / (2 cos²(c / 2))` ahead of it, at `-44.44`.
     const radius: number = 4 / (2 * Math.cos(Math.PI / 6) ** 2);

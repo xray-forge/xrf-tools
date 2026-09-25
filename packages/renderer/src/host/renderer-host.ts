@@ -357,7 +357,13 @@ export class RendererHost {
     // Thresholds on a clump's screen area, which scale with how many pixels the drawing has.
     this.scene.staticCull.takeLod(settings.features.lod, this.drawingSize.x, this.drawingSize.y, this.rig.camera);
     // After the jitter and the thresholds: the clusters cut the view as it draws, and shadowed lights fade by the LOD.
-    this.scene.lights.update(this.rig.camera, now / 1000, settings.features.lights, this.uniforms.staticDraws.lod);
+    this.scene.lights.update(
+      this.rig.camera,
+      now / 1000,
+      settings.features.lights,
+      this.uniforms.staticDraws.lod,
+      this.scene.shadowCasters.shadowVersion
+    );
     this.scene.cull(this.cullView, this.rig.camera);
     this.graph.render(frame, device.inspector);
     this.stats.endFrame(performance.now() - startedAt, device);
