@@ -22,6 +22,7 @@ import { MaterialSamplers } from "#/material/material-samplers";
 import { ISurfaceShader } from "#/material/surface-shader";
 import { DEFAULT_GLOSS, MATERIAL_SLICES } from "#/material/surface-texel.tsl";
 import { toGBufferOutput } from "#/shader/gbuffer.tsl";
+import { toWorldMotion } from "#/shader/motion.tsl";
 import { toListedImpostor } from "#/shader/placement.tsl";
 import { getWhiteTexture } from "#/texture/placeholder-textures";
 import { RendererUniforms } from "#/uniforms/renderer-uniforms";
@@ -116,7 +117,8 @@ export function toImpostorSurfaceShader(
       companion.w.mul(hemi),
       // Unoccluded, as a tree writes it: the engine lights both with the sun's shadow map, which this renderer has not.
       float(1),
-      uniform((IMPOSTOR_MATERIAL + 0.5) / MATERIAL_SLICES)
+      uniform((IMPOSTOR_MATERIAL + 0.5) / MATERIAL_SLICES),
+      toWorldMotion(uniforms.motion, position)
     ),
     positionViewNode: cameraViewMatrix.mul(vec4(position, 1)).xyz,
   };

@@ -55,6 +55,11 @@ export class RendererSkeletons {
     this.apply(key);
   }
 
+  /** Keeps every skeleton's bone matrices of the frame before, once each drawn frame, before it draws. */
+  public advance(): void {
+    this.skeletons.forEach((entry: RendererSkeletonEntry) => entry.advance());
+  }
+
   public dispose(): void {
     this.skeletons.forEach((entry: RendererSkeletonEntry) => entry.dispose());
     this.skeletons.clear();

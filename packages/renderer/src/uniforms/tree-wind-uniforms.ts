@@ -14,6 +14,10 @@ export class TreeWindUniforms {
   public readonly wind = uniform(new Vector3()).setGroup(renderGroup);
   /** The engine's `wave`: its direction through the level, and its phase in `w`, both over a turn. */
   public readonly wave = uniform(new Vector4()).setGroup(renderGroup);
+  /** The wind the frame before, where a tree's vertex stood then for the motion it wrote. */
+  public readonly previousWind = uniform(new Vector3()).setGroup(renderGroup);
+  /** The wave the frame before. */
+  public readonly previousWave = uniform(new Vector4()).setGroup(renderGroup);
 
   private trees: Nullable<IRendererTreeWind> = null;
 
@@ -34,6 +38,9 @@ export class TreeWindUniforms {
    */
   public update(time: number): void {
     const trees: Nullable<IRendererTreeWind> = this.trees;
+
+    this.previousWind.value.copy(this.wind.value);
+    this.previousWave.value.copy(this.wave.value);
 
     if (!trees || trees.amplitude <= 0) {
       this.wind.value.set(0, 0, 0);

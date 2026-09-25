@@ -59,7 +59,11 @@ export function SettingsRendererFeatures(): ReactElement {
 
         <ChoiceFormRow
           label={"Anti-aliasing"}
-          description={"How the frame's edges are smoothed. SMAA is crisp and stable; FXAA is cheaper and softer."}
+          description={
+            "How the frame's edges are smoothed. SMAA is crisp and stable; FXAA is cheaper and softer. TAA blends " +
+            "each frame with the ones before, which also smooths foliage and thin wires, and settles when the view " +
+            "stops moving."
+          }
           options={ANTIALIASING_OPTIONS}
           value={features.antialiasing}
           onChange={(antialiasing: ERendererAntialiasing) => settingsService.setRendererOverrides({ antialiasing })}

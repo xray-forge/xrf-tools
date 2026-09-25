@@ -1,5 +1,5 @@
 import { Nullable } from "@xrf/types";
-import { WebGPURenderer } from "three/webgpu";
+import { PerspectiveCamera, WebGPURenderer } from "three/webgpu";
 
 import {
   ERendererAntialiasing,
@@ -10,12 +10,14 @@ import { createBaseFramePasses } from "#/graph/base-frame-passes";
 import { AmbientOcclusionPass } from "#/pass/ambient-occlusion-pass";
 import { AntialiasPass, toPresentedFrame } from "#/pass/antialias/antialias-pass";
 import { CombinePass } from "#/pass/combine-pass";
+import { OverlayPass } from "#/pass/overlay-pass";
 import { PresentPass } from "#/pass/present-pass";
 import { IRendererFrame } from "#/pass/renderer-frame";
 import { IRendererPass } from "#/pass/renderer-pass";
 import { IRendererScenePass, isRendererScenePass } from "#/pass/renderer-scene-pass";
 import { RendererTargets } from "#/pass/renderer-targets";
 import { ShadowPass } from "#/pass/shadow-pass";
+import { TemporalAntialiasPass } from "#/pass/temporal-antialias-pass";
 import { RendererOverlays } from "#/scene/overlay/renderer-overlays";
 import { StaticCull } from "#/scene/static/static-cull";
 import { IStaticShadowCasters } from "#/scene/static/static-shadow-casters";
@@ -36,8 +38,10 @@ export class RendererFrameGraph {
 
   private readonly base: ReadonlyArray<IRendererPass>;
   private passes: ReadonlyArray<IRendererPass> = [];
-  /** The pass smoothing the frame's edges, while a mode is chosen. */
+  /** The pass smoothing the frame's edges, while a mode over the finished frame is chosen. */
   private antialias: Nullable<AntialiasPass> = null;
+  /** The pass resolving jittered frames with their history, while TAA is chosen. */
+  private temporal: Nullable<TemporalAntialiasPass> = null;
   private antialiasing: ERendererAntialiasing = ERendererAntialiasing.NONE;
   /** The screen's occlusion while it is on, and the quality it was made for. */
   private ambientOcclusion: Nullable<AmbientOcclusionPass> = null;
@@ -50,6 +54,12 @@ export class RendererFrameGraph {
   private readonly casters: IStaticShadowCasters;
   /** The pass the occlusion is combined in. */
   private readonly combine: CombinePass;
+  /** The pass the helpers draw in, over the resolved frame while TAA is chosen. */
+  private readonly overlay: OverlayPass;
+  /** What the targets were last sized by, for a pass that joins the frame after. */
+  private renderer: Nullable<WebGPURenderer> = null;
+  private width: number = 0;
+  private height: number = 0;
 
   /**
    * @param uniforms - What the frame's shaders read.
@@ -70,6 +80,7 @@ export class RendererFrameGraph {
     this.base = createBaseFramePasses(this.targets, uniforms, overlays, cull);
     this.scenePasses = this.base.filter(isRendererScenePass);
     this.combine = this.base.find((pass: IRendererPass) => pass instanceof CombinePass) as CombinePass;
+    this.overlay = this.base.find((pass: IRendererPass) => pass instanceof OverlayPass) as OverlayPass;
     this.link();
   }
 
@@ -104,12 +115,23 @@ export class RendererFrameGraph {
 
     if (features.antialiasing !== this.antialiasing) {
       this.antialias?.dispose();
+      this.temporal?.dispose();
       this.antialiasing = features.antialiasing;
-      this.antialias =
-        features.antialiasing === ERendererAntialiasing.NONE
-          ? null
-          : new AntialiasPass(features.antialiasing, this.targets);
-      this.present.setFrame(toPresentedFrame(this.antialias, this.targets));
+      this.antialias = null;
+      this.temporal = null;
+
+      if (features.antialiasing === ERendererAntialiasing.TAA) {
+        this.temporal = new TemporalAntialiasPass(this.targets, this.uniforms);
+
+        if (this.renderer) {
+          this.temporal.resize(this.renderer, this.width, this.height);
+        }
+      } else if (features.antialiasing !== ERendererAntialiasing.NONE) {
+        this.antialias = new AntialiasPass(features.antialiasing, this.targets);
+      }
+
+      this.overlay.setTarget(this.temporal?.output ?? null);
+      this.present.setFrame(this.temporal?.output ?? toPresentedFrame(this.antialias, this.targets));
     }
 
     if (shadowKey !== this.shadowKey) {
@@ -139,8 +161,22 @@ export class RendererFrameGraph {
    * @param height - Drawing buffer height, in device pixels.
    */
   public resize(renderer: WebGPURenderer, width: number, height: number): void {
+    this.renderer = renderer;
+    this.width = width;
+    this.height = height;
     this.targets.resize(width, height);
     this.targets.prepare(renderer);
+    this.temporal?.resize(renderer, width, height);
+  }
+
+  /**
+   * Offsets the camera's samples within the pixel for this frame while TAA resolves it, before anything reads the
+   * camera; the resolve gives it back its projection before the helpers draw.
+   *
+   * @param camera - The drawing camera, its projection as its controller left it.
+   */
+  public jitter(camera: PerspectiveCamera): void {
+    this.temporal?.jitter(camera);
   }
 
   /**
@@ -161,19 +197,23 @@ export class RendererFrameGraph {
   }
 
   /**
-   * The frame's passes in order: the base's with the shadow cascades before the sun reads them and the occlusion
-   * before combine does, whatever else the features add, then the picture presented.
+   * The frame's passes in order: the base's with the shadow cascades before the sun reads them, the occlusion before
+   * combine does, and the temporal resolve before the helpers, whatever else the features add, then the picture
+   * presented.
    */
   private link(): void {
     const sun: number = this.base.findIndex((pass: IRendererPass) => pass.name === "sun");
     const combine: number = this.base.indexOf(this.combine);
+    const overlay: number = this.base.indexOf(this.overlay);
 
     this.passes = [
       ...this.base.slice(0, sun),
       ...this.shadows,
       ...this.base.slice(sun, combine),
       ...(this.ambientOcclusion ? [this.ambientOcclusion] : []),
-      ...this.base.slice(combine),
+      ...this.base.slice(combine, overlay),
+      ...(this.temporal ? [this.temporal] : []),
+      ...this.base.slice(overlay),
       ...(this.antialias ? [this.antialias] : []),
       this.present,
     ];

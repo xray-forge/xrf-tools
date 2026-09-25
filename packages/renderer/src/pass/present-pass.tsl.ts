@@ -1,5 +1,5 @@
 import { Nullable } from "@xrf/types";
-import { float, Fn, log, screenUV, select, texture, vec3, vec4 } from "three/tsl";
+import { float, Fn, int, log, screenUV, select, texture, vec2, vec3, vec4 } from "three/tsl";
 import { Node, RenderTarget, Texture } from "three/webgpu";
 
 import { ERendererDebugView } from "#/contract/renderer-settings";
@@ -70,6 +70,14 @@ function toShownTarget(
 
     case ERendererDebugView.LIGHT:
       return texture(targets.light.texture, screenUV).xyz;
+
+    case ERendererDebugView.MOTION: {
+      const pixels: Node<"vec2"> = texture(targets.motion, screenUV).xy.mul(
+        vec2(texture(targets.motion).size(int(0)) as Node<"uvec2">)
+      );
+
+      return vec3(pixels.div(16).add(0.5), 0.5);
+    }
 
     case ERendererDebugView.AMBIENT_OCCLUSION:
       return vec3(

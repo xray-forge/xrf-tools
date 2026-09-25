@@ -305,6 +305,12 @@ export class RendererHost {
 
     this.rig.update(this.drawnAt === null ? 0 : (now - this.drawnAt) / 1000);
     this.drawnAt = now;
+    // The features' passes join or leave the frame, and its timing starts or stops, before anything is drawn.
+    this.graph.configure(settings.features);
+    // Motion is measured unjittered; everything after draws, and rebuilds positions, with this frame's jitter.
+    this.uniforms.motion.follow(this.rig.camera);
+    this.scene.skeletons.advance();
+    this.graph.jitter(this.rig.camera);
     this.uniforms.follow(this.rig.camera);
 
     const frame: IRendererFrame = {
@@ -315,8 +321,6 @@ export class RendererHost {
       targets: this.graph.targets,
     };
 
-    // The features' passes join or leave the frame, and its timing starts or stops, before anything is drawn.
-    this.graph.configure(settings.features);
     this.uniforms.shadows.fit(this.rig.camera, this.uniforms.lighting.sunDirection, settings.features.shadows);
     this.uniforms.wind.update(now / 1000);
 

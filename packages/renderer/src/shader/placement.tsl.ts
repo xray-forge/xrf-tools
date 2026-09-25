@@ -144,10 +144,33 @@ export function toBufferPlacedPositionView(
   buffers: StaticDrawBuffers,
   wind: TreeWindUniforms
 ): Node<"vec3"> {
+  return cameraViewMatrix.mul(vec4(toBufferPlacedWorld(builder, buffers, wind), 1)).xyz;
+}
+
+/**
+ * @param builder - The builder of a buffer placed shader.
+ * @param buffers - What static draws are placed by.
+ * @param wind - How the trees sway.
+ * @param isPrevious - Whether it is where the vertex stood the frame before: a static draw stands still, and only a
+ *   tree's sway moves it.
+ * @returns A static draw's vertex in the world.
+ */
+export function toBufferPlacedWorld(
+  builder: NodeBuilder,
+  buffers: StaticDrawBuffers,
+  wind: TreeWindUniforms,
+  isPrevious: boolean = false
+): Node<"vec3"> {
   const matrix: Node<"mat4"> = toBufferMatrix(builder, buffers);
   const world: Node<"vec3"> = matrix.mul(vec4(positionLocal, 1)).xyz;
 
-  return cameraViewMatrix.mul(vec4(isPackedTreeBuild(builder) ? toSwayed(world, matrix, wind) : world, 1)).xyz;
+  if (!isPackedTreeBuild(builder)) {
+    return world;
+  }
+
+  return isPrevious
+    ? toSwayed(world, matrix, wind.previousWind, wind.previousWave)
+    : toSwayed(world, matrix, wind.wind, wind.wave);
 }
 
 /**
@@ -156,15 +179,14 @@ export function toBufferPlacedPositionView(
  *
  * @param world - The vertex in the world.
  * @param matrix - What placed the tree, whose translation is its foot (`m_xform._24`).
- * @param wind - How the trees sway.
- * @returns The vertex where the wind has it now.
+ * @param wind - The engine's `wind`: which way the trees lean, and how far.
+ * @param wave - The engine's `wave`: its direction through the level, and its phase.
+ * @returns The vertex where the wind has it.
  */
-function toSwayed(world: Node<"vec3">, matrix: Node<"mat4">, wind: TreeWindUniforms): Node<"vec3"> {
+function toSwayed(world: Node<"vec3">, matrix: Node<"mat4">, wind: Node<"vec3">, wave: Node<"vec4">): Node<"vec3"> {
   const foot: Node<"float"> = (matrix as unknown as ReadonlyArray<Node<"vec4">>)[3].y;
-  const wave: Node<"float"> = toCyclic(wind.wave.w.add(world.dot(wind.wave.xyz)));
-  const lean: Node<"vec2"> = vec2(wind.wind.x, wind.wind.z)
-    .mul(world.y.sub(foot).mul(wave))
-    .mul(toPackedTreeRigidity());
+  const phase: Node<"float"> = toCyclic(wave.w.add(world.dot(wave.xyz)));
+  const lean: Node<"vec2"> = vec2(wind.x, wind.z).mul(world.y.sub(foot).mul(phase)).mul(toPackedTreeRigidity());
 
   return world.add(vec3(lean.x, 0, lean.y));
 }

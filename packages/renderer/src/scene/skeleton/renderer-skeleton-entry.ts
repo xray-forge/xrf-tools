@@ -17,6 +17,11 @@ export const BIND_POSE: IRendererPose = { frame: 0, hiddenBones: [], motion: nul
 /**
  * One skeleton: three's, posed from model space transforms, and its segments for the overlay.
  */
+/** A skeleton that keeps the bone matrices of the frame before, as the skinned motion reads them. */
+interface IPreviousSkeleton extends Skeleton {
+  previousBoneMatrices: Float32Array;
+}
+
 export class RendererSkeletonEntry {
   public readonly skeleton: Skeleton;
   /** Six floats a segment, child then parent, where the pose puts them; null without pairs. */
@@ -50,6 +55,20 @@ export class RendererSkeletonEntry {
 
     this.skeleton = new Skeleton(this.bones, inverses);
     this.pose(null, BIND_POSE);
+    this.skeleton.update();
+    (this.skeleton as IPreviousSkeleton).previousBoneMatrices = this.skeleton.boneMatrices!.slice();
+  }
+
+  /**
+   * Keeps the bone matrices the frame before drew with, for the motion a skinned surface writes, and computes this
+   * frame's from the pose. Once each drawn frame, before it draws: three computes the matrices again as it draws, from
+   * the same pose.
+   */
+  public advance(): void {
+    const { boneMatrices } = this.skeleton;
+
+    (this.skeleton as IPreviousSkeleton).previousBoneMatrices.set(boneMatrices!);
+    this.skeleton.update();
   }
 
   /**

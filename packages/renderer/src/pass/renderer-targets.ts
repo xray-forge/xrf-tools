@@ -17,7 +17,10 @@ import { IGBufferTextures } from "#/shader/gbuffer-textures";
  * Every target a frame draws into, sized together.
  */
 export class RendererTargets implements IGBufferTextures {
-  /** `rgba8unorm`, `rg16float`, `rgba8unorm`, and `depth32float`: sixteen bytes a pixel. */
+  /**
+   * `rgba8unorm`, `rg16float`, `rgba8unorm`, `rg16float` and `depth32float`: twenty bytes a pixel. The fourth is the
+   * motion every surface writes, which the temporal resolve reprojects its history by.
+   */
   public readonly gbuffer: RenderTarget;
   /**
    * The albedo alone with the G-buffer's depth, which wall marks composite into before any light: `phase_wallmarks`
@@ -52,13 +55,16 @@ export class RendererTargets implements IGBufferTextures {
   );
 
   public constructor() {
-    this.gbuffer = new RenderTarget(1, 1, { count: 3, depthBuffer: true });
+    this.gbuffer = new RenderTarget(1, 1, { count: 4, depthBuffer: true });
     // Named for the device's labels alone: the surfaces write the attachments by location, in this order.
     this.gbuffer.textures[0].name = "albedo";
     this.gbuffer.textures[1].name = "normal";
     this.gbuffer.textures[1].format = RGFormat;
     this.gbuffer.textures[1].type = HalfFloatType;
     this.gbuffer.textures[2].name = "surface";
+    this.gbuffer.textures[3].name = "motion";
+    this.gbuffer.textures[3].format = RGFormat;
+    this.gbuffer.textures[3].type = HalfFloatType;
     this.gbuffer.depthTexture = new DepthTexture(1, 1, FloatType);
 
     for (const texture of this.gbuffer.textures) {
@@ -91,6 +97,11 @@ export class RendererTargets implements IGBufferTextures {
 
   public get surface(): Texture {
     return this.gbuffer.textures[2];
+  }
+
+  /** How far each pixel's surface moved on the screen since the frame before, in texture coordinates. */
+  public get motion(): Texture {
+    return this.gbuffer.textures[3];
   }
 
   public get depth(): DepthTexture {

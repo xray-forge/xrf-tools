@@ -9,6 +9,7 @@ import { ISurfaceShader } from "#/material/surface-shader";
 import { ISurfaceTexel } from "#/material/surface-texel";
 import { toSurfaceTexel } from "#/material/surface-texel.tsl";
 import { toGBufferOutput } from "#/shader/gbuffer.tsl";
+import { toSurfaceMotion } from "#/shader/motion.tsl";
 import { RendererUniforms } from "#/uniforms/renderer-uniforms";
 
 /** `def_aref`: where a cut-out surface without its own reference is cut. */
@@ -40,7 +41,8 @@ export function toDeferredSurfaceShader(
       texel.normal,
       texel.hemi,
       texel.sun,
-      texel.slice
+      texel.slice,
+      toSurfaceMotion(uniforms)
     ),
   };
 }

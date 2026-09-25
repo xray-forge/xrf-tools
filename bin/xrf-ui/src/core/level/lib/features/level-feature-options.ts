@@ -30,6 +30,7 @@ export const DEFAULT_LEVEL_FEATURE_OPTIONS: ILevelFeatureOptions = {
 export const LEVEL_ANTIALIASING_MODES: ReadonlyArray<ERendererAntialiasing> = [
   ERendererAntialiasing.FXAA,
   ERendererAntialiasing.SMAA,
+  ERendererAntialiasing.TAA,
 ];
 
 /**

@@ -23,6 +23,22 @@ describe("TreeWindUniforms", () => {
     expect(uniforms.isSwaying).toBe(true);
   });
 
+  it("keeps the frame before's wind and wave, where a tree's motion is measured from", () => {
+    const uniforms: TreeWindUniforms = new TreeWindUniforms();
+
+    uniforms.take(DEFAULT_RENDERER_TREE_WIND);
+    uniforms.update(1);
+
+    const wind = uniforms.wind.value.clone();
+    const wave = uniforms.wave.value.clone();
+
+    uniforms.update(1.5);
+
+    expect(uniforms.previousWind.value.equals(wind)).toBe(true);
+    expect(uniforms.previousWave.value.equals(wave)).toBe(true);
+    expect(uniforms.wind.value.equals(wind)).toBe(false);
+  });
+
   it("stands the trees still without a wind", () => {
     const uniforms: TreeWindUniforms = new TreeWindUniforms();
 

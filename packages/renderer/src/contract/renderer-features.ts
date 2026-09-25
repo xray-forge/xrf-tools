@@ -1,6 +1,6 @@
 /**
  * How the finished frame's edges are smoothed. Deferred shading rules hardware multisampling out, so every mode is a
- * pass over the frame; temporal AA comes with `Enhanced`.
+ * pass over the frame.
  */
 export enum ERendererAntialiasing {
   NONE = "none",
@@ -8,6 +8,11 @@ export enum ERendererAntialiasing {
   FXAA = "fxaa",
   /** Three passes over the frame's edges, crisp and stable, `Base`'s choice. */
   SMAA = "smaa",
+  /**
+   * Temporal: every frame's samples jittered within the pixel and resolved with the frames before, found by the motion
+   * every surface writes. Smooths inside a surface too, cut-out foliage and thin wires, where SMAA finds no edge.
+   */
+  TAA = "taa",
 }
 
 /**

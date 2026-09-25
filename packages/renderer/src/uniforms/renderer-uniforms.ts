@@ -7,6 +7,7 @@ import { toBaseLightingConstants } from "#/lighting/base-lighting";
 import { BaseLightingUniforms } from "#/uniforms/base-lighting-uniforms";
 import { CameraUniforms } from "#/uniforms/camera-uniforms";
 import { createMaterialLutTexture } from "#/uniforms/material-lut-texture";
+import { MotionUniforms } from "#/uniforms/motion-uniforms";
 import { SettingsUniforms } from "#/uniforms/settings-uniforms";
 import { ShadowUniforms } from "#/uniforms/shadow-uniforms";
 import { StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
@@ -27,6 +28,8 @@ export class RendererUniforms {
   /** The sun's shadow cascades, fitted every frame. */
   public readonly shadows: ShadowUniforms = new ShadowUniforms();
   public readonly wind: TreeWindUniforms = new TreeWindUniforms();
+  /** What the motion every G-buffer surface writes is measured with. */
+  public readonly motion: MotionUniforms = new MotionUniforms();
 
   private fogDistance: Nullable<number> = null;
   private isLit: boolean = true;

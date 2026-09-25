@@ -16,6 +16,7 @@ import { CameraUniforms } from "#/uniforms/camera-uniforms";
  * @param hemi - The baked hemisphere occlusion.
  * @param sun - The baked sun occlusion.
  * @param slice - The lighting model slice.
+ * @param motion - How far the point moved on the screen since the frame before, in texture coordinates.
  * @returns The fragment's outputs.
  */
 export function toGBufferOutput(
@@ -23,9 +24,10 @@ export function toGBufferOutput(
   normal: Node<"vec3">,
   hemi: Node<"float">,
   sun: Node<"float">,
-  slice: Node<"float">
+  slice: Node<"float">,
+  motion: Node<"vec2">
 ): Node {
-  return outputStruct(albedo, vec4(encodeOctahedral(normal), 0, 1), vec4(hemi, sun, slice, 0));
+  return outputStruct(albedo, vec4(encodeOctahedral(normal), 0, 1), vec4(hemi, sun, slice, 0), vec4(motion, 0, 1));
 }
 
 /**

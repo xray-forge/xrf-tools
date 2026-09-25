@@ -49,6 +49,8 @@ export function describeRenderAntialiasing(mode: ERendererAntialiasing): string 
       return "FXAA";
     case ERendererAntialiasing.SMAA:
       return "SMAA";
+    case ERendererAntialiasing.TAA:
+      return "TAA";
   }
 }
 

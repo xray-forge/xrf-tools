@@ -27,6 +27,8 @@ export enum ERendererDebugView {
   LIGHT = "light",
   /** The screen's occlusion, white where it is off. */
   AMBIENT_OCCLUSION = "ambient-occlusion",
+  /** How far each surface moved on the screen since the frame before: grey for none, eight pixels to a full shift. */
+  MOTION = "motion",
 }
 
 /**
