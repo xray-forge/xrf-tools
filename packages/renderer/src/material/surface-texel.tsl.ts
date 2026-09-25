@@ -22,7 +22,7 @@ import { RendererUniforms } from "#/uniforms/renderer-uniforms";
 export const DEFAULT_GLOSS: number = 2 / 255;
 
 /** The texture descriptor's default lighting model: Blinn, at full weight. */
-const DEFAULT_MATERIAL: number = 1;
+export const DEFAULT_MATERIAL: number = 1;
 
 /** Lighting model slices the material lookup holds. */
 export const MATERIAL_SLICES: number = 4;

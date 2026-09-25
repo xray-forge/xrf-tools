@@ -3,12 +3,14 @@ import { Material, Mesh, Object3D, PerspectiveCamera, Scene } from "three/webgpu
 
 import { IRendererStaticDrawReport } from "#/contract/renderer-report";
 import { IRendererGeometry } from "#/contract/scene/renderer-geometry";
+import { IRendererGrass } from "#/contract/scene/renderer-grass";
 import { IRendererImpostors } from "#/contract/scene/renderer-impostors";
 import { IRendererObject } from "#/contract/scene/renderer-object";
 import { ERendererPass, IRendererSurface } from "#/contract/scene/renderer-surface";
 import { TRendererTextureSource } from "#/contract/scene/renderer-texture-source";
 import { SceneChangeQueue } from "#/scene/change/scene-change-queue";
 import { SceneGeometry } from "#/scene/geometry/scene-geometry";
+import { SceneGrass } from "#/scene/grass/scene-grass";
 import { RendererImpostorSets } from "#/scene/impostor/renderer-impostor-sets";
 import { KeyedUsers } from "#/scene/keyed-users";
 import { SceneObject } from "#/scene/object/scene-object";
@@ -46,6 +48,8 @@ export class RendererScene {
   public readonly skeletons: RendererSkeletons;
   /** What culls the static draws on the GPU, which the frame dispatches before drawing them. */
   public readonly staticCull: StaticCull;
+  /** The level's grass, planted on the GPU by the grass pass. */
+  public readonly grass: SceneGrass;
 
   /** What each shadow cascade draws: every casting static batch, a cell at a time. */
   public get shadowCasters(): IStaticShadowCasters {
@@ -76,6 +80,7 @@ export class RendererScene {
     );
     this.staticCull = this.staticDraws.cull;
     this.textures = new RendererTextures(onTextureRefused, (key: string) => this.staticDraws.invalidate(key));
+    this.grass = new SceneGrass(this.textures, uniforms);
     this.skeletons = new RendererSkeletons((key: string) => this.buildUsers(this.skeletonUsers.get(key)));
     this.surfaces = new SurfaceLibrary(this.textures, uniforms, (key: string) =>
       this.buildUsers(this.surfaceUsers.get(key))
@@ -204,6 +209,17 @@ export class RendererScene {
     });
   }
 
+  /**
+   * @param grass - A level's grass, replacing any put before.
+   */
+  public putGrass(grass: IRendererGrass): void {
+    this.grass.put(grass);
+  }
+
+  public releaseGrass(): void {
+    this.grass.release();
+  }
+
   public putImpostors(key: string, impostors: IRendererImpostors): void {
     this.transact(() => this.impostors.put(key, impostors));
   }
@@ -250,6 +266,7 @@ export class RendererScene {
   }
 
   public dispose(): void {
+    this.grass.dispose();
     this.objects.forEach((entry: SceneObject) => entry.dispose());
     this.objects.clear();
     this.changes.dispose();

@@ -23,6 +23,15 @@ pub struct LevelDetailsSlot {
   pub base_height: f32,
   /// Packed height the planting occupies above the base, in metres.
   pub height: f32,
+  /// How densely each object is planted at each corner of the slot, 0 to 15, by object then corner:
+  /// `DetailPalette::a0..a3`, the corners at `(0, 0)`, `(1, 0)`, `(0, 1)` and `(1, 1)` of the slot.
+  pub palettes: [[u8; 4]; 4],
+  /// How much sun reaches the planting, 0 to 15: `c_dir`.
+  pub sun: u8,
+  /// How much of the sky reaches it, 0 to 15: `c_hemi`.
+  pub hemi: u8,
+  /// The planting's colour, 0 to 15 a channel, which only the fixed function renderer reads: `c_r`, `c_g`, `c_b`.
+  pub color: [u8; 3],
 }
 
 impl LevelDetailsSlot {
@@ -38,6 +47,8 @@ impl LevelDetailsSlot {
     let base: u32 = (word & 0xFFF) as u32;
     let height: u32 = ((word >> 12) & 0xFF) as u32;
 
+    let nibble = |shift: u32| ((word >> shift) & 0xF) as u8;
+
     Self {
       objects: [20, 26, 32, 38].map(|shift| {
         let id: u8 = ((word >> shift) & 0x3F) as u8;
@@ -46,6 +57,14 @@ impl LevelDetailsSlot {
       }),
       base_height: BASE_ORIGIN + base as f32 * BASE_STEP,
       height: height as f32 * HEIGHT_STEP,
+      palettes: [0, 1, 2, 3].map(|object| {
+        let palette: u16 = u16::from_le_bytes([bytes[8 + object * 2], bytes[9 + object * 2]]);
+
+        [0, 4, 8, 12].map(|shift| ((palette >> shift) & 0xF) as u8)
+      }),
+      sun: nibble(44),
+      hemi: nibble(48),
+      color: [nibble(52), nibble(56), nibble(60)],
     }
   }
 
@@ -85,6 +104,24 @@ mod tests {
 
     assert_eq!(described.objects, [Some(0), None, Some(7), None]);
     assert!(described.is_planted());
+  }
+
+  #[test]
+  fn a_slot_reads_its_light_and_each_object_density_at_each_corner() {
+    let mut bytes: [u8; LevelDetailsSlot::SERIALIZED_SIZE] = slot(0, 0, [0; 4]);
+    let word: u64 = u64::from_le_bytes(bytes[..8].try_into().unwrap()) | (9 << 44) | (13 << 48) | (1 << 52) | (2 << 56);
+
+    bytes[..8].copy_from_slice(&(word | (3 << 60)).to_le_bytes());
+    // Object 1's corners 0 to 3 as 1, 2, 3 and 15, low nibble first.
+    bytes[10..12].copy_from_slice(&0xF321_u16.to_le_bytes());
+
+    let described: LevelDetailsSlot = LevelDetailsSlot::of(&bytes);
+
+    assert_eq!(described.sun, 9);
+    assert_eq!(described.hemi, 13);
+    assert_eq!(described.color, [1, 2, 3]);
+    assert_eq!(described.palettes[0], [0; 4]);
+    assert_eq!(described.palettes[1], [1, 2, 3, 15]);
   }
 
   #[test]

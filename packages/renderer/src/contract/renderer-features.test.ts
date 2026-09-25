@@ -69,6 +69,19 @@ describe("renderer features", () => {
     ).toBe(true);
   });
 
+  it("reads back stored grass overrides, dropping a density of zero", () => {
+    expect(
+      toRendererFeatureChoice({
+        overrides: { grass: { density: 0, isEnabled: false, radius: 60 } },
+        preset: "base",
+      }).overrides.grass
+    ).toEqual({ isEnabled: false, radius: 60 });
+    expect(isRendererFeatureChoiceCustom({ overrides: { grass: { radius: 49 } }, preset: ERendererPreset.BASE })).toBe(
+      false
+    );
+    expect(RENDERER_PRESETS[ERendererPreset.EDITING].grass.isEnabled).toBe(false);
+  });
+
   it("reads back stored shadow overrides, dropping a run of cascades past the limit and anything not a width", () => {
     expect(
       toRendererFeatureChoice({

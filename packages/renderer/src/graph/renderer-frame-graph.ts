@@ -10,6 +10,7 @@ import { createBaseFramePasses } from "#/graph/base-frame-passes";
 import { AmbientOcclusionPass } from "#/pass/ambient-occlusion-pass";
 import { AntialiasPass, toPresentedFrame } from "#/pass/antialias/antialias-pass";
 import { CombinePass } from "#/pass/combine-pass";
+import { GrassPass } from "#/pass/grass-pass";
 import { OverlayPass } from "#/pass/overlay-pass";
 import { PresentPass } from "#/pass/present-pass";
 import { IRendererFrame } from "#/pass/renderer-frame";
@@ -18,6 +19,7 @@ import { IRendererScenePass, isRendererScenePass } from "#/pass/renderer-scene-p
 import { RendererTargets } from "#/pass/renderer-targets";
 import { ShadowPass } from "#/pass/shadow-pass";
 import { TemporalAntialiasPass } from "#/pass/temporal-antialias-pass";
+import { SceneGrass } from "#/scene/grass/scene-grass";
 import { RendererOverlays } from "#/scene/overlay/renderer-overlays";
 import { StaticCull } from "#/scene/static/static-cull";
 import { IStaticShadowCasters } from "#/scene/static/static-shadow-casters";
@@ -43,6 +45,8 @@ export class RendererFrameGraph {
   /** The pass resolving jittered frames with their history, while TAA is chosen. */
   private temporal: Nullable<TemporalAntialiasPass> = null;
   private antialiasing: ERendererAntialiasing = ERendererAntialiasing.NONE;
+  /** The grass, while it is on. */
+  private grassPass: Nullable<GrassPass> = null;
   /** The screen's occlusion while it is on, and the quality it was made for. */
   private ambientOcclusion: Nullable<AmbientOcclusionPass> = null;
   private ambientOcclusionKey: string = "";
@@ -52,6 +56,7 @@ export class RendererFrameGraph {
   private readonly uniforms: RendererUniforms;
   private readonly cull: StaticCull;
   private readonly casters: IStaticShadowCasters;
+  private readonly grass: SceneGrass;
   /** The pass the occlusion is combined in. */
   private readonly combine: CombinePass;
   /** The pass the helpers draw in, over the resolved frame while TAA is chosen. */
@@ -66,14 +71,17 @@ export class RendererFrameGraph {
    * @param overlays - The helpers drawn last.
    * @param cull - What culls the static draws.
    * @param casters - What each shadow cascade draws.
+   * @param grass - The level's grass, which the grass pass plants and draws.
    */
   public constructor(
     uniforms: RendererUniforms,
     overlays: RendererOverlays,
     cull: StaticCull,
-    casters: IStaticShadowCasters
+    casters: IStaticShadowCasters,
+    grass: SceneGrass
   ) {
     this.uniforms = uniforms;
+    this.grass = grass;
     this.cull = cull;
     this.casters = casters;
     this.present = new PresentPass(this.targets, uniforms.camera);
@@ -98,9 +106,15 @@ export class RendererFrameGraph {
     if (
       features.antialiasing === this.antialiasing &&
       shadowKey === this.shadowKey &&
-      ambientOcclusionKey === this.ambientOcclusionKey
+      ambientOcclusionKey === this.ambientOcclusionKey &&
+      features.grass.isEnabled === (this.grassPass !== null)
     ) {
       return;
+    }
+
+    if (features.grass.isEnabled !== (this.grassPass !== null)) {
+      this.grassPass?.dispose();
+      this.grassPass = features.grass.isEnabled ? new GrassPass(this.grass, this.targets) : null;
     }
 
     if (ambientOcclusionKey !== this.ambientOcclusionKey) {
@@ -206,8 +220,12 @@ export class RendererFrameGraph {
     const combine: number = this.base.indexOf(this.combine);
     const overlay: number = this.base.indexOf(this.overlay);
 
+    const gbuffer: number = this.base.findIndex((pass: IRendererPass) => pass.name === "gbuffer") + 1;
+
     this.passes = [
-      ...this.base.slice(0, sun),
+      ...this.base.slice(0, gbuffer),
+      ...(this.grassPass ? [this.grassPass] : []),
+      ...this.base.slice(gbuffer, sun),
       ...this.shadows,
       ...this.base.slice(sun, combine),
       ...(this.ambientOcclusion ? [this.ambientOcclusion] : []),

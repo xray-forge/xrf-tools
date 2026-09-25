@@ -1,3 +1,4 @@
+pub(crate) mod details;
 pub(crate) mod sector;
 pub(crate) mod visual;
 pub(crate) mod visual_buffer_builder;

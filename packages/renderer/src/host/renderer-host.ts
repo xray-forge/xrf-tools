@@ -76,7 +76,13 @@ export class RendererHost {
       this.reply({ key, kind: ERendererResponse.TEXTURE_REFUSED, refusal })
     );
     this.overlays = new RendererOverlays(this.scene.skeletons, this.uniforms.lighting.sunDirection);
-    this.graph = new RendererFrameGraph(this.uniforms, this.overlays, this.scene.staticCull, this.scene.shadowCasters);
+    this.graph = new RendererFrameGraph(
+      this.uniforms,
+      this.overlays,
+      this.scene.staticCull,
+      this.scene.shadowCasters,
+      this.scene.grass
+    );
     this.captures = new RendererCaptures(this.graph.present, this.scene.textures, (id, image) =>
       this.reply({ id, image, kind: ERendererResponse.CAPTURED }, image ? [image] : [])
     );
@@ -121,6 +127,12 @@ export class RendererHost {
 
       case ERendererRequest.PUT_GEOMETRY:
         return this.scene.putGeometry(request.key, request.geometry);
+
+      case ERendererRequest.PUT_GRASS:
+        return this.scene.putGrass(request.grass);
+
+      case ERendererRequest.RELEASE_GRASS:
+        return this.scene.releaseGrass();
 
       case ERendererRequest.PUT_IMPOSTORS:
         return this.scene.putImpostors(request.key, request.impostors);
@@ -323,6 +335,7 @@ export class RendererHost {
 
     this.uniforms.shadows.fit(this.rig.camera, this.uniforms.lighting.sunDirection, settings.features.shadows);
     this.uniforms.wind.update(now / 1000);
+    this.uniforms.grassWind.update(now / 1000);
 
     if (device.setTiming(settings.features.isGpuTimed)) {
       this.stats.resetTimings();

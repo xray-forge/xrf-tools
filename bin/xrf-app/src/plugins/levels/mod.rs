@@ -1,4 +1,5 @@
 pub mod commands;
+pub mod details;
 pub mod plugin;
 pub mod read;
 pub mod report;

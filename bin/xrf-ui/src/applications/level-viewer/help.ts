@@ -17,7 +17,7 @@ export const LEVEL_VIEWER_HELP: IApplicationHelp = {
   limitations: [
     "The sun term the engine reads out of a lightmap and out of the vertex colour is not applied, so a surface facing away from the viewer's sun is lit only by the ambient standing in for the sky.",
     "Lighting is not read from the weather configs, so a level is never shown at a particular hour of a particular weather the way the game shows it.",
-    "Detail objects - the grass and litter a level plants through `level.details` - are not drawn at all, so a level reads as its geometry alone where the game shows a field.",
+    "Grass casts no shadow, as the game draws it by default (`r2_sun_details` off), and a waving tuft picks its wave by its place where the game picks it at random.",
     "Only levels shipping `level.geom` are offered, since a level without it has no geometry to draw.",
   ],
 };

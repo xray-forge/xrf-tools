@@ -1,4 +1,9 @@
-import { ERendererAntialiasing, IRendererAmbientOcclusionSettings, IRendererShadowSettings } from "@xrf/renderer";
+import {
+  ERendererAntialiasing,
+  IRendererAmbientOcclusionSettings,
+  IRendererGrassSettings,
+  IRendererShadowSettings,
+} from "@xrf/renderer";
 import { Nullable } from "@xrf/types";
 
 /** The shadow settings a level view may set for itself. */
@@ -10,11 +15,15 @@ export type TLevelShadowOptions = Pick<
 /** The ambient occlusion settings a level view may set for itself. */
 export type TLevelAmbientOcclusionOptions = Pick<IRendererAmbientOcclusionSettings, "quality" | "radius" | "strength">;
 
+/** The grass settings a level view may set for itself. */
+export type TLevelGrassOptions = Pick<IRendererGrassSettings, "density" | "height" | "radius">;
+
 /**
  * What a level view sets over the renderer's settings for itself: whatever it leaves unset follows them.
  */
 export interface ILevelFeatureOptions {
   ambientOcclusion: Partial<TLevelAmbientOcclusionOptions>;
+  grass: Partial<TLevelGrassOptions>;
   /** The mode edges are smoothed with while the settings smooth them at all, or null for the settings' own. */
   antialiasing: Nullable<ERendererAntialiasing>;
   shadows: Partial<TLevelShadowOptions>;
@@ -23,6 +32,7 @@ export interface ILevelFeatureOptions {
 export const DEFAULT_LEVEL_FEATURE_OPTIONS: ILevelFeatureOptions = {
   ambientOcclusion: {},
   antialiasing: null,
+  grass: {},
   shadows: {},
 };
 
@@ -63,6 +73,20 @@ export function toLevelRendererAmbientOcclusion(
   isOccluded: boolean
 ): IRendererAmbientOcclusionSettings {
   return { ...features, ...view.ambientOcclusion, isEnabled: features.isEnabled && isOccluded };
+}
+
+/**
+ * @param features - The grass the renderer's settings set, for every viewport.
+ * @param view - What the view sets over them.
+ * @param isGrassy - Whether the toolbar draws it, which it can turn off but not on.
+ * @returns The grass the view is drawn with.
+ */
+export function toLevelRendererGrassSettings(
+  features: IRendererGrassSettings,
+  view: ILevelFeatureOptions,
+  isGrassy: boolean
+): IRendererGrassSettings {
+  return { ...features, ...view.grass, isEnabled: features.isEnabled && isGrassy };
 }
 
 /**

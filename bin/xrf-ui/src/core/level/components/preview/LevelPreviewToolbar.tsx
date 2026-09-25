@@ -10,6 +10,7 @@ import { LevelAmbientOcclusionAction } from "@/core/level/components/preview/Lev
 import { LevelAntialiasingAction } from "@/core/level/components/preview/LevelAntialiasingAction";
 import { LevelBakedAction } from "@/core/level/components/preview/LevelBakedAction";
 import { LevelFogAction } from "@/core/level/components/preview/LevelFogAction";
+import { LevelGrassAction } from "@/core/level/components/preview/LevelGrassAction";
 import { LevelLodAction } from "@/core/level/components/preview/LevelLodAction";
 import { LevelShadowAction } from "@/core/level/components/preview/LevelShadowAction";
 import { LevelSunAction } from "@/core/level/components/preview/LevelSunAction";
@@ -17,6 +18,7 @@ import { LevelWindAction } from "@/core/level/components/preview/LevelWindAction
 import {
   ILevelFeatureOptions,
   toLevelRendererAmbientOcclusion,
+  toLevelRendererGrassSettings,
   toLevelRendererShadows,
 } from "@/core/level/lib/features/level-feature-options";
 import { ILevelLighting } from "@/core/level/lib/lighting/level-lighting";
@@ -153,6 +155,15 @@ export function LevelPreviewToolbar({
             lighting={lighting}
             onToggle={() => onToggle("isFogged")}
             onChange={onChangeLighting}
+          />
+
+          <LevelGrassAction
+            isOn={options.isGrassy}
+            isAvailable={settings.grass.isEnabled}
+            grass={toLevelRendererGrassSettings(settings.grass, features, true)}
+            features={features}
+            onToggle={() => onToggle("isGrassy")}
+            onChange={onChangeFeatures}
           />
 
           <LevelWindAction

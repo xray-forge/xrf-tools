@@ -5,6 +5,8 @@ import { SessionId } from "@/core/ipc/types/xrf-app";
 
 /** Commands answering with raw bytes, which Specta cannot type. */
 export const levelsRawCommands = {
+  readDetails: (sessionId: SessionId, detailsId: SessionId): Promise<ArrayBuffer> =>
+    invokeRaw("plugin:levels|read_details", { sessionId, detailsId }),
   readSector: (sessionId: SessionId, sectorId: SessionId): Promise<ArrayBuffer> =>
     invokeRaw("plugin:levels|read_sector", { sessionId, sectorId }),
 };

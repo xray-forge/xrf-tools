@@ -53,7 +53,7 @@ pub fn resolve_textures(
 }
 
 /// Locates one texture reference the way the engine's own loader does.
-fn resolve_reference(probe: &XrayProbe, directory: Option<&str>, reference: &str) -> Option<String> {
+pub fn resolve_reference(probe: &XrayProbe, directory: Option<&str>, reference: &str) -> Option<String> {
   if let Some(beside) = directory
     .zip(XrayAssetType::Dds.get_rules())
     .and_then(|(directory, rules)| get_resolution_logical_path(probe.find(&beside_level(directory, &rules, reference))))

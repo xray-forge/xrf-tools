@@ -33,6 +33,32 @@ export interface IRendererTreeWind {
 }
 
 /**
+ * One way the grass swings, as `[details]` in `system.ltx` states it: two winds turning at their own rates, and a wave
+ * running through the level.
+ */
+export interface IRendererGrassSwing {
+  /** How far the first and second wind lean the grass. */
+  amp1: number;
+  amp2: number;
+  /** Seconds each wind takes to turn once around. */
+  rot1: number;
+  rot2: number;
+  /** How fast the wave runs. */
+  speed: number;
+}
+
+/**
+ * How the grass sways (`CDetailManager::swing_desc`): between its normal and its fast swing, by the weather's wind
+ * strength.
+ */
+export interface IRendererGrassWind {
+  /** `wind_strength_factor`, from the normal swing at zero to the fast one at one. */
+  strength: number;
+  normal: IRendererGrassSwing;
+  fast: IRendererGrassSwing;
+}
+
+/**
  * What a scene is lit by, in the terms a weather keyframe uses.
  */
 export interface IRendererLighting {
@@ -50,4 +76,6 @@ export interface IRendererLighting {
   fog: Nullable<IRendererFog>;
   /** How the trees sway, or null for trees standing still. */
   trees: Nullable<IRendererTreeWind>;
+  /** How the grass sways, or null for grass standing still. */
+  grass: Nullable<IRendererGrassWind>;
 }

@@ -38,6 +38,23 @@ export class LevelTextureReader {
     );
   }
 
+  /**
+   * Adds what more references came to, read beside the open: the grass's, which a later call packs.
+   *
+   * @param references - What each texture reference came to.
+   */
+  public add(references: ReadonlyArray<LevelTextureReference>): void {
+    const paths: Map<string, string> = new Map(this.paths);
+
+    for (const it of references) {
+      if (it.logicalPath) {
+        paths.set(it.reference, it.logicalPath);
+      }
+    }
+
+    this.paths = paths;
+  }
+
   /** Forgets the level, so a read after it closes finds nothing rather than the last one's files. */
   public close(): void {
     this.paths = new Map();

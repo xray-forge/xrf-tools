@@ -17,7 +17,13 @@ import {
   TranslationVerifyLanguageSummary,
 } from "@/core/ipc/types/xrf-translation";
 import { XrayAsset, XrayAssetContainer, XrayPathCollision, XrayRoots, XraySourceKind } from "@/core/ipc/types/xrf-vfs";
-import { SectorOutline, VisualBounds, VisualDependencies, VisualDescription } from "@/core/ipc/types/xrf-visual";
+import {
+  DetailsDescription,
+  SectorOutline,
+  VisualBounds,
+  VisualDependencies,
+  VisualDescription,
+} from "@/core/ipc/types/xrf-visual";
 
 /** Every `kind` the `ArchiveAnimationBehavior` union is told apart by, so a switch or a comparison names one. */
 export enum EArchiveAnimationBehavior {
@@ -1641,6 +1647,15 @@ export enum EJobKind {
 
 /** Every `EJobKind` as the spelling it crosses IPC as, for a value no member has narrowed. */
 export type JobKind = `${EJobKind}`;
+
+/** A level's grass as packed, and what dresses each of its models. */
+export type LevelDetailsDescription = {
+  details: DetailsDescription;
+  /** How the renderer draws each model, in the library's order. */
+  surfaces: Array<XraySurfaceDescriptor>;
+  /** What each texture a model binds resolved to. */
+  textures: Array<LevelTextureReference>;
+};
 
 /** One compiled level the roots hold, as a picker lists it. */
 export type LevelEntry = {

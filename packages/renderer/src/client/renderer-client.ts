@@ -15,6 +15,7 @@ import { IRendererReport } from "#/contract/renderer-report";
 import { IRendererSettings } from "#/contract/renderer-settings";
 import { IRendererViewSize } from "#/contract/renderer-view-size";
 import { IRendererGeometry } from "#/contract/scene/renderer-geometry";
+import { IRendererGrass } from "#/contract/scene/renderer-grass";
 import { IRendererImpostors } from "#/contract/scene/renderer-impostors";
 import { IRendererObject } from "#/contract/scene/renderer-object";
 import { TRendererOverlay } from "#/contract/scene/renderer-overlay";
@@ -192,6 +193,17 @@ export class RendererClient {
 
   public releaseImpostors(key: string): void {
     this.post({ key, kind: ERendererRequest.RELEASE_IMPOSTORS });
+  }
+
+  /**
+   * @param grass - A level's grass, replacing any put before, moved to the renderer.
+   */
+  public putGrass(grass: IRendererGrass): void {
+    this.post({ grass, kind: ERendererRequest.PUT_GRASS });
+  }
+
+  public releaseGrass(): void {
+    this.post({ kind: ERendererRequest.RELEASE_GRASS });
   }
 
   /**

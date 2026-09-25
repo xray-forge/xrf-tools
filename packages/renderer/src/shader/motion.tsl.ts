@@ -46,6 +46,16 @@ export function toWorldMotion(motion: MotionUniforms, world: Node<"vec3">): Node
   return toClipMotion(motion, world, world);
 }
 
+/**
+ * @param motion - What motion is measured with.
+ * @param current - Where a vertex stands in the world this frame.
+ * @param previous - Where it stood the frame before.
+ * @returns How far it moved on the screen, the camera's move included.
+ */
+export function toPointMotion(motion: MotionUniforms, current: Node<"vec3">, previous: Node<"vec3">): Node<"vec2"> {
+  return toClipMotion(motion, current, previous);
+}
+
 /** Both frames' clip positions, interpolated as the vertex's own, and divided per pixel. */
 function toClipMotion(motion: MotionUniforms, current: Node<"vec3">, previous: Node<"vec3">): Node<"vec2"> {
   const clip: Node<"vec4"> = varying(motion.viewProjection.mul(vec4(current, 1)));

@@ -12,7 +12,7 @@ use crate::core::types::TauriResult;
 use crate::plugins::levels::read::{ReadLevel, read_source};
 use crate::plugins::levels::report::report_open;
 use crate::plugins::levels::state::{
-  LevelSource, LevelState, LevelTextureReference, PackedSectors, SelectedLevel, SelectedLevelDescription,
+  LevelSource, LevelState, LevelTextureReference, PackedDetails, PackedSectors, SelectedLevel, SelectedLevelDescription,
 };
 use crate::plugins::levels::surfaces::resolve_surfaces;
 use crate::plugins::levels::textures::resolve_textures;
@@ -56,6 +56,7 @@ pub async fn levels_open_level(
   let selected: Arc<SessionSnapshot<SelectedLevel>> = state.selected.commit_open(
     session_id,
     SelectedLevel {
+      details: PackedDetails::new(),
       geometry: read.geometry,
       level: read.level,
       outlines,

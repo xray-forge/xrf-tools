@@ -121,6 +121,7 @@ export class LevelRenderService extends RenderSurfaceService {
 
     this.reactions.push(
       this.loadService.sectors.subscribe((change) => content.deliver(change)),
+      this.loadService.grass.subscribe((grass) => content.plant(grass)),
       this.loadService.textures.subscribe((change) => {
         content.supply(change);
         this.publishTextures();

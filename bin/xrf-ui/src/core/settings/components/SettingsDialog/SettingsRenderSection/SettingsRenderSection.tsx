@@ -7,6 +7,7 @@ import { ChoiceFormRow, IChoiceFormRowOption } from "@/core/ui/form/ChoiceFormRo
 
 import { SettingsRendererAmbientOcclusion } from "./SettingsRendererAmbientOcclusion";
 import { SettingsRendererFeatures } from "./SettingsRendererFeatures";
+import { SettingsRendererGrass } from "./SettingsRendererGrass";
 import { SettingsRendererLod } from "./SettingsRendererLod";
 import { SettingsRendererShadows } from "./SettingsRendererShadows";
 
@@ -58,6 +59,8 @@ export function SettingsRenderSection(): ReactElement {
       <SettingsRendererShadows />
 
       <SettingsRendererAmbientOcclusion />
+
+      <SettingsRendererGrass />
 
       <SettingsRendererLod />
     </div>

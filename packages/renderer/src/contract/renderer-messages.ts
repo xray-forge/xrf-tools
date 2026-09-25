@@ -8,6 +8,7 @@ import { IRendererReport } from "#/contract/renderer-report";
 import { IRendererSettings } from "#/contract/renderer-settings";
 import { IRendererViewSize } from "#/contract/renderer-view-size";
 import { IRendererGeometry, listRendererGeometryTransfers } from "#/contract/scene/renderer-geometry";
+import { IRendererGrass, listRendererGrassTransfers } from "#/contract/scene/renderer-grass";
 import { IRendererImpostors, listRendererImpostorsTransfers } from "#/contract/scene/renderer-impostors";
 import { IRendererObject, listRendererObjectTransfers } from "#/contract/scene/renderer-object";
 import { listRendererOverlayTransfers, TRendererOverlay } from "#/contract/scene/renderer-overlay";
@@ -47,6 +48,8 @@ export enum ERendererRequest {
   RELEASE_OBJECT = "@renderer/releaseObject",
   /** Hold these impostors under this key, for objects to stand trees and impostors by. */
   PUT_IMPOSTORS = "@renderer/putImpostors",
+  PUT_GRASS = "@renderer/putGrass",
+  RELEASE_GRASS = "@renderer/releaseGrass",
   RELEASE_IMPOSTORS = "@renderer/releaseImpostors",
   /** Hold this skeleton under this key, for objects to skin to. */
   PUT_SKELETON = "@renderer/putSkeleton",
@@ -109,6 +112,8 @@ export type TRendererRequest =
   | { kind: ERendererRequest.RELEASE_OBJECT; key: string }
   | { kind: ERendererRequest.PUT_IMPOSTORS; key: string; impostors: IRendererImpostors }
   | { kind: ERendererRequest.RELEASE_IMPOSTORS; key: string }
+  | { kind: ERendererRequest.PUT_GRASS; grass: IRendererGrass }
+  | { kind: ERendererRequest.RELEASE_GRASS }
   | { kind: ERendererRequest.PUT_SKELETON; key: string; skeleton: IRendererSkeleton }
   | { kind: ERendererRequest.RELEASE_SKELETON; key: string }
   | { kind: ERendererRequest.PUT_MOTION; key: string; motion: IRendererMotion }
@@ -159,6 +164,9 @@ function listRequestTransfers(request: TRendererRequest): Array<Transferable> {
 
     case ERendererRequest.PUT_IMPOSTORS:
       return listRendererImpostorsTransfers(request.impostors);
+
+    case ERendererRequest.PUT_GRASS:
+      return listRendererGrassTransfers(request.grass);
 
     case ERendererRequest.PUT_SKELETON:
       return [request.skeleton.binds.buffer, ...(request.skeleton.pairs ? [request.skeleton.pairs.buffer] : [])];

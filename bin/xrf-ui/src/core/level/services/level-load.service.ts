@@ -4,18 +4,27 @@ import { Nullable } from "@xrf/types";
 
 import { transformError } from "@/core/error/lib";
 import { levelsCommands } from "@/core/ipc/commands/levels";
+import { levelsRawCommands } from "@/core/ipc/commands/levels-raw";
 import { Session } from "@/core/ipc/session";
 import { requireSessionId } from "@/core/ipc/session/session.utils";
-import { LevelSource, SelectedLevelDescription, SessionSnapshot } from "@/core/ipc/types/xrf-app";
+import {
+  LevelDetailsDescription,
+  LevelSource,
+  SelectedLevelDescription,
+  SessionSnapshot,
+} from "@/core/ipc/types/xrf-app";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { SectorDescription } from "@/core/ipc/types/xrf-visual";
 import {
+  ILevelGrassDelivery,
+  ILevelGrassSource,
   ILevelSectorChange,
   ILevelSectorDelivery,
   ILevelSectorSource,
   ILevelTextureDelivery,
   ILevelTextureSupply,
   ILevelTextureSupplyChange,
+  TLevelGrassListener,
   TLevelSectorListener,
   TLevelTextureSupplyListener,
 } from "@/core/level/lib/render/level-render-protocol";
@@ -101,6 +110,15 @@ export class LevelLoadService {
   /** What the reads have cost, kept here because the loader is what owns a read from end to end. */
   private readonly profile: LevelStreamProfile = new LevelStreamProfile();
 
+  /** Told the level's grass whenever it changes. */
+  private readonly grassWatchers: Set<TLevelGrassListener> = new Set();
+
+  /** The level's grass once read, which a renderer started later is handed too. */
+  private grassHeld: Nullable<ILevelGrassDelivery> = null;
+
+  /** The textures the grass is dressed with, kept for as long as it is held. */
+  private grassTextures: Set<string> = new Set();
+
   /** Where the camera last reported from, which is what the level is filled in around once it settles. */
   private streamedFrom: Nullable<ILevelPoint> = null;
 
@@ -153,6 +171,22 @@ export class LevelLoadService {
    */
   @Observable()
   public isReady: boolean = false;
+
+  /**
+   * @returns The level's grass, told as it is now and whenever it changes: read once, after the level opens.
+   */
+  public get grass(): ILevelGrassSource {
+    return {
+      subscribe: (listener: TLevelGrassListener): (() => void) => {
+        this.grassWatchers.add(listener);
+        listener(this.grassHeld);
+
+        return (): void => {
+          this.grassWatchers.delete(listener);
+        };
+      },
+    };
+  }
 
   /**
    * @returns The level's textures, to read and to hear about rather than to manage: their lifetime is this
@@ -334,6 +368,61 @@ export class LevelLoadService {
     this.reading.open(selected.value.roots, selected.value.textures);
     this.notifyTextures({ delivered: [], retained: null });
     this.level = this.level.asReady({ selected });
+    this.holdGrass(null);
+    void this.readGrass(selected.sessionId);
+  }
+
+  /**
+   * Packs and reads the level's grass, and its textures, then hands it over, for a level still open.
+   *
+   * @param sessionId - The level opening it belongs to.
+   */
+  private async readGrass(sessionId: string): Promise<void> {
+    const timer: Timer = new Timer();
+
+    try {
+      const snapshot: SessionSnapshot<Nullable<LevelDetailsDescription>> = await levelsCommands.openDetails(
+        sessionId,
+        crypto.randomUUID()
+      );
+
+      if (!snapshot.value || !this.isOpen(sessionId)) {
+        return;
+      }
+
+      const buffer: ArrayBuffer = await levelsRawCommands.readDetails(sessionId, snapshot.sessionId);
+      const description: LevelDetailsDescription = snapshot.value;
+
+      this.reading.add(description.textures);
+      this.grassTextures = new Set(description.textures.map((it) => it.reference));
+      await this.supply(description.textures.map((it) => ({ reference: it.reference })));
+
+      if (!this.isOpen(sessionId)) {
+        return;
+      }
+
+      this.log.info(
+        "Grass read in:",
+        formatDuration(timer.elapsed()),
+        `${description.details.slotCount} planted slots,`,
+        `${description.details.models.length} models`
+      );
+      this.holdGrass({ buffer, description });
+    } catch (error: unknown) {
+      this.log.error("Failed to read the level's grass:", transformError(error));
+    }
+  }
+
+  private holdGrass(grass: Nullable<ILevelGrassDelivery>): void {
+    this.grassHeld = grass;
+
+    if (!grass) {
+      this.grassTextures = new Set();
+    }
+
+    for (const watcher of Array.from(this.grassWatchers)) {
+      watcher(grass);
+    }
   }
 
   /**
@@ -557,6 +646,10 @@ export class LevelLoadService {
       references.add(reference);
     }
 
+    for (const reference of this.grassTextures) {
+      references.add(reference);
+    }
+
     return references;
   }
 
@@ -588,6 +681,7 @@ export class LevelLoadService {
       this.supplied.clear();
       this.reading.close();
       this.notifyTextures({ delivered: [], retained: null });
+      this.holdGrass(null);
     });
   }
 

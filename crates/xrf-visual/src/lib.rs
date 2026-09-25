@@ -2,6 +2,8 @@ pub(crate) mod data;
 pub(crate) mod pack;
 pub(crate) mod resolve;
 
+pub use crate::data::details::details_description::DetailsDescription;
+pub use crate::data::details::details_model::DetailsModel;
 pub use crate::data::sector::sector_attributes::SectorAttributes;
 pub use crate::data::sector::sector_description::SectorDescription;
 pub use crate::data::sector::sector_geometry::SectorGeometry;
@@ -26,6 +28,9 @@ pub use crate::data::visual::geometry::visual_submesh_content::VisualSubmeshCont
 pub use crate::data::visual::skeleton::visual_bone::VisualBone;
 pub use crate::data::visual::skeleton::visual_transform::VisualTransform;
 pub use crate::data::visual::visual_description::VisualDescription;
+pub use crate::pack::details::details_package::DetailsPackage;
+pub use crate::pack::details::details_packer::DetailsPacker;
+pub use crate::pack::details::details_slot_box::DetailsSlotBox;
 pub use crate::pack::sector::sector_package::SectorPackage;
 pub use crate::pack::sector::sector_packer::SectorPacker;
 pub use crate::pack::visual::motion::visual_motion::{FLOATS_PER_BONE, bake_motion, total_part_bones};

@@ -152,6 +152,7 @@ describe("LevelRenderService", () => {
     viewService.setFeatures({
       ambientOcclusion: { radius: 2 },
       antialiasing: ERendererAntialiasing.FXAA,
+      grass: {},
       shadows: { cascades: [20], filter: 0 },
     });
     await stub.flush();

@@ -42,7 +42,7 @@ pub fn read_source(source: &LevelSource, probe: &XrayProbe) -> TauriResult<ReadL
 }
 
 /// Reads one of the level's files, from disk or out of the mounted roots.
-fn read_file(source: &LevelSource, probe: &XrayProbe, file: &str) -> TauriResult<Vec<u8>> {
+pub fn read_file(source: &LevelSource, probe: &XrayProbe, file: &str) -> TauriResult<Vec<u8>> {
   match source {
     LevelSource::Directory { path } => {
       let path: std::path::PathBuf = Path::new(path).join(file);
@@ -54,7 +54,7 @@ fn read_file(source: &LevelSource, probe: &XrayProbe, file: &str) -> TauriResult
 }
 
 /// Reads one of the level's files out of the mounted roots, loose or archived alike.
-fn read_asset(probe: &XrayProbe, logical_path: &str) -> TauriResult<Vec<u8>> {
+pub fn read_asset(probe: &XrayProbe, logical_path: &str) -> TauriResult<Vec<u8>> {
   let resolution: XrayResolution = probe
     .find(logical_path)
     .map_err(|error| format!("Rejected level file '{logical_path}': {error}"))?;

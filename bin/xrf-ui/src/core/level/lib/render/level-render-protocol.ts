@@ -1,5 +1,6 @@
 import { Nullable } from "@xrf/types";
 
+import { LevelDetailsDescription } from "@/core/ipc/types/xrf-app";
 import { SectorDescription } from "@/core/ipc/types/xrf-visual";
 
 /** One sector handed to whatever draws it: what the pack says, and the bytes it was packed into. */
@@ -29,6 +30,27 @@ export interface ILevelSectorSource {
    * @returns Stops the telling.
    */
   subscribe(listener: TLevelSectorListener): () => void;
+}
+
+/** A level's grass handed to whatever draws it: what the pack says, and the bytes it was packed into. */
+export interface ILevelGrassDelivery {
+  description: LevelDetailsDescription;
+  /** The pack, kept by the loader: whoever draws it takes a copy, so a renderer started later gets it too. */
+  buffer: ArrayBuffer;
+}
+
+/** Told the level's grass, or null for none. */
+export type TLevelGrassListener = (grass: Nullable<ILevelGrassDelivery>) => void;
+
+/**
+ * The level's grass as whatever draws it takes it.
+ */
+export interface ILevelGrassSource {
+  /**
+   * @param listener - Told the grass held now, then whenever it changes.
+   * @returns Stops the telling.
+   */
+  subscribe(listener: TLevelGrassListener): () => void;
 }
 
 /** One texture's file, handed to whatever uploads it. */

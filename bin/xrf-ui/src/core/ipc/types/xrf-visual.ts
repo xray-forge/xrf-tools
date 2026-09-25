@@ -3,6 +3,63 @@
 import { Vector3d } from "@/core/ipc/types/xrf-math";
 import { XrayResolution } from "@/core/ipc/types/xrf-vfs";
 
+/**
+ * Everything about a level's packed grass except the bytes themselves.
+ *
+ * The slots and the collision triangles stay in the engine's own space, because the renderer plants them with the
+ * engine's own arithmetic and only converts what it planted.
+ */
+export type DetailsDescription = {
+  /**
+   * The grid's size in slots, and the world slot its first cell stands for, negated: cell `(x, z)` is world slot
+   * `(x - offset_x, z - offset_z)`.
+   */
+  sizeX: number;
+  sizeZ: number;
+  offsetX: number;
+  offsetZ: number;
+  models: Array<DetailsModel>;
+  /** One `u32` a cell, `z * size_x + x`: the planted slot's record plus one, zero for a cell with nothing to plant. */
+  grid: VisualSection;
+  /**
+   * Eight `u32` a planted slot: its stored sixteen bytes as four words, the first entry of its triangle bin, the
+   * bin's length, and its world slot's `x` and `z`.
+   */
+  slots: VisualSection;
+  slotCount: number;
+  /** One `u32` an entry: the triangle, by index into the triangles. */
+  bins: VisualSection;
+  binLength: number;
+  /** Nine floats a triangle: its corners in the engine's space and winding, passable ones left out. */
+  triangles: VisualSection;
+  triangleCount: number;
+  bufferLength: number;
+};
+
+/** One detail model of a level's library, packed for the renderer to plant. */
+export type DetailsModel = {
+  /** The shader and texture it is dressed with, as the library names them. */
+  shader: string;
+  texture: string;
+  /** Whether the wind moves it: no `DO_NO_WAVING` flag. */
+  isWaving: boolean;
+  /** The scale range it is planted at, before the engine narrows it to half the least and nine tenths the most. */
+  minScale: number | null;
+  maxScale: number | null;
+  /** Its bounding box's height, which a waving vertex's share of the sway is measured against. */
+  height: number | null;
+  /** The radius of the sphere around its bounding box, which its distance cull is measured by. */
+  radius: number | null;
+  vertexCount: number;
+  indexCount: number;
+  /** Three floats a vertex, in renderer space. */
+  positions: VisualSection;
+  /** Two floats a vertex. */
+  uvs: VisualSection;
+  /** Sixteen-bit indices, wound for renderer space. */
+  indices: VisualSection;
+};
+
 /** Everything about a packed sector except the bytes themselves. */
 export type SectorDescription = {
   /** The sector packed, by its index in the sectors chunk. */

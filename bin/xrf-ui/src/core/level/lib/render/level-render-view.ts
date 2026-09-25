@@ -1,4 +1,5 @@
 import {
+  DEFAULT_RENDERER_GRASS_WIND,
   DEFAULT_RENDERER_LIGHTING,
   ERendererCameraController,
   ERendererDebugView,
@@ -17,6 +18,7 @@ import {
   ILevelFeatureOptions,
   toLevelRendererAmbientOcclusion,
   toLevelRendererAntialiasing,
+  toLevelRendererGrassSettings,
   toLevelRendererShadows,
 } from "@/core/level/lib/features/level-feature-options";
 import { toLevelRendererFog } from "@/core/level/lib/lighting/level-fog";
@@ -69,6 +71,7 @@ export function toLevelRendererLighting(
   return {
     ...toRendererLighting(lighting, DEFAULT_RENDERER_LIGHTING),
     fog: isFogged ? toLevelRendererFog(lighting) : null,
+    grass: isWindy ? DEFAULT_RENDERER_GRASS_WIND : null,
     trees: isWindy ? toLevelRendererTreeWind(lighting) : null,
   };
 }
@@ -99,6 +102,7 @@ export function toLevelRendererSettings(
     features: {
       ...features,
       ambientOcclusion: toLevelRendererAmbientOcclusion(features.ambientOcclusion, view, options.isOccluded),
+      grass: toLevelRendererGrassSettings(features.grass, view, options.isGrassy),
       antialiasing: toLevelRendererAntialiasing(features.antialiasing, view, options.isAntialiased),
       lod: toLevelRendererLod(features.lod, lod, options.isImpostors),
       shadows: toLevelRendererShadows(features.shadows, view, options.isShadowed),

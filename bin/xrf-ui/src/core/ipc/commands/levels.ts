@@ -2,6 +2,7 @@
 
 import { invoke as __TAURI_INVOKE } from "@/core/ipc/invoke";
 import {
+  LevelDetailsDescription,
   LevelEntry,
   LevelSource,
   SelectedLevelDescription,
@@ -20,6 +21,12 @@ export const levelsCommands = {
   getLevel: () => __TAURI_INVOKE<SessionRestore<SelectedLevelDescription>>("plugin:levels|get_level"),
   /** Every compiled level the mounted roots hold, loose or archived alike. */
   listLevels: (roots: XrayRoots) => __TAURI_INVOKE<Array<LevelEntry>>("plugin:levels|list_levels", { roots }),
+  /** Pack the open level's grass and describe it, or answer nothing for a level with no detail library. */
+  openDetails: (sessionId: SessionId, detailsId: SessionId) =>
+    __TAURI_INVOKE<SessionSnapshot<LevelDetailsDescription | null>>("plugin:levels|open_details", {
+      sessionId,
+      detailsId,
+    }),
   /** Select a compiled level and report what it is built out of, without reading any of its geometry. */
   openLevel: (sessionId: SessionId, source: LevelSource, roots: XrayRoots) =>
     __TAURI_INVOKE<SessionSnapshot<SelectedLevelDescription>>("plugin:levels|open_level", { sessionId, source, roots }),

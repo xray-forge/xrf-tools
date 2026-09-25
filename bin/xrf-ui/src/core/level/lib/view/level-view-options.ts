@@ -20,8 +20,10 @@ export interface ILevelViewOptions extends ILevelSurfaceOptions {
   isOccluded: boolean;
   /** Smooths the frame's edges, while the settings smooth them. */
   isAntialiased: boolean;
-  /** Sways the trees in the wind, as the game does. */
+  /** Sways the trees and the grass in the wind, as the game does. */
   isWindy: boolean;
+  /** Draws the grass, while the settings draw it. */
+  isGrassy: boolean;
 }
 
 export const DEFAULT_LEVEL_VIEW_OPTIONS: ILevelViewOptions = {
@@ -29,6 +31,7 @@ export const DEFAULT_LEVEL_VIEW_OPTIONS: ILevelViewOptions = {
   isAntialiased: true,
   isAxesVisible: false,
   isFogged: true,
+  isGrassy: true,
   isGridVisible: true,
   isImpostors: true,
   isOccluded: true,

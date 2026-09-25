@@ -21,11 +21,13 @@ type TMockSink = { [K in keyof TLevelRenderSink]: jest.Mock<TLevelRenderSink[K]>
 function mockSink(): TMockSink {
   return {
     putGeometry: jest.fn(),
+    putGrass: jest.fn(),
     putImpostors: jest.fn(),
     putObject: jest.fn(),
     putSurface: jest.fn(),
     putTexture: jest.fn(),
     releaseGeometry: jest.fn(),
+    releaseGrass: jest.fn(),
     releaseImpostors: jest.fn(),
     releaseObject: jest.fn(),
     releaseSurface: jest.fn(),

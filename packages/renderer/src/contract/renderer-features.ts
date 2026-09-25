@@ -48,6 +48,28 @@ export const DEFAULT_RENDERER_LOD_SETTINGS: IRendererLodSettings = {
   ssaGlodStart: 256,
 };
 
+/**
+ * The grass (`CDetailManager`): planted on the GPU around the camera as the engine plants it, and drawn into the
+ * G-buffer. The engine's are 49 metres round at a density of 0.6 (`r__detail_radius`, `r__detail_density`).
+ */
+export interface IRendererGrassSettings {
+  isEnabled: boolean;
+  /** How close together a slot's candidates stand, from 0.1 (sparse) to 0.99 (dense): `r__detail_density`. */
+  density: number;
+  /** Metres around the camera grass is planted to, from 49: `r__detail_radius`. */
+  radius: number;
+  /** What every planted tuft is scaled by, from 1: `r__detail_height`. */
+  height: number;
+}
+
+/** The engine's own grass. */
+export const DEFAULT_RENDERER_GRASS_SETTINGS: IRendererGrassSettings = {
+  density: 0.6,
+  height: 1,
+  isEnabled: true,
+  radius: 49,
+};
+
 /** Cascades the sun's shadow can be cut into at most. */
 export const RENDERER_MAX_SHADOW_CASCADES: number = 4;
 
@@ -138,6 +160,7 @@ export const DEFAULT_RENDERER_AMBIENT_OCCLUSION_SETTINGS: IRendererAmbientOcclus
 export interface IRendererFeatureSettings {
   ambientOcclusion: IRendererAmbientOcclusionSettings;
   antialiasing: ERendererAntialiasing;
+  grass: IRendererGrassSettings;
   /** Whether every pass is timed on the GPU for the report. */
   isGpuTimed: boolean;
   lod: IRendererLodSettings;
@@ -157,6 +180,7 @@ export const RENDERER_PRESETS: Readonly<Record<ERendererPreset, IRendererFeature
   [ERendererPreset.BASE]: {
     ambientOcclusion: DEFAULT_RENDERER_AMBIENT_OCCLUSION_SETTINGS,
     antialiasing: ERendererAntialiasing.SMAA,
+    grass: DEFAULT_RENDERER_GRASS_SETTINGS,
     isGpuTimed: true,
     lod: DEFAULT_RENDERER_LOD_SETTINGS,
     shadows: DEFAULT_RENDERER_SHADOW_SETTINGS,
@@ -164,6 +188,7 @@ export const RENDERER_PRESETS: Readonly<Record<ERendererPreset, IRendererFeature
   [ERendererPreset.EDITING]: {
     ambientOcclusion: { ...DEFAULT_RENDERER_AMBIENT_OCCLUSION_SETTINGS, isEnabled: false },
     antialiasing: ERendererAntialiasing.NONE,
+    grass: { ...DEFAULT_RENDERER_GRASS_SETTINGS, isEnabled: false },
     isGpuTimed: true,
     lod: DEFAULT_RENDERER_LOD_SETTINGS,
     shadows: { ...DEFAULT_RENDERER_SHADOW_SETTINGS, isEnabled: false },
@@ -174,6 +199,7 @@ export const RENDERER_PRESETS: Readonly<Record<ERendererPreset, IRendererFeature
 export interface IRendererFeatureOverrides {
   ambientOcclusion?: Partial<IRendererAmbientOcclusionSettings>;
   antialiasing?: ERendererAntialiasing;
+  grass?: Partial<IRendererGrassSettings>;
   isGpuTimed?: boolean;
   lod?: Partial<IRendererLodSettings>;
   shadows?: Partial<IRendererShadowSettings>;
@@ -242,6 +268,12 @@ export function toRendererFeatureChoice(stored: unknown): IRendererFeatureChoice
     choice.overrides.ambientOcclusion = ambientOcclusion;
   }
 
+  const grass: Partial<IRendererGrassSettings> = toGrassOverrides(source.grass);
+
+  if (Object.keys(grass).length) {
+    choice.overrides.grass = grass;
+  }
+
   const shadows: Partial<IRendererShadowSettings> = toShadowOverrides(source.shadows);
 
   if (Object.keys(shadows).length) {
@@ -257,11 +289,12 @@ export function toRendererFeatureChoice(stored: unknown): IRendererFeatureChoice
  */
 export function resolveRendererFeatures(choice: IRendererFeatureChoice): IRendererFeatureSettings {
   const preset: IRendererFeatureSettings = RENDERER_PRESETS[choice.preset];
-  const { ambientOcclusion, antialiasing, isGpuTimed, lod, shadows } = choice.overrides;
+  const { ambientOcclusion, antialiasing, grass, isGpuTimed, lod, shadows } = choice.overrides;
 
   return {
     ambientOcclusion: { ...preset.ambientOcclusion, ...ambientOcclusion },
     antialiasing: antialiasing ?? preset.antialiasing,
+    grass: { ...preset.grass, ...grass },
     isGpuTimed: isGpuTimed ?? preset.isGpuTimed,
     lod: { ...preset.lod, ...lod },
     shadows: { ...preset.shadows, ...shadows },
@@ -282,6 +315,9 @@ export function isRendererFeatureChoiceCustom(choice: IRendererFeatureChoice): b
     (Object.keys(preset.lod) as Array<keyof IRendererLodSettings>).some(
       (key) => resolved.lod[key] !== preset.lod[key]
     ) ||
+    (Object.keys(preset.grass) as Array<keyof IRendererGrassSettings>).some(
+      (key) => resolved.grass[key] !== preset.grass[key]
+    ) ||
     (Object.keys(preset.ambientOcclusion) as Array<keyof IRendererAmbientOcclusionSettings>).some(
       (key) => resolved.ambientOcclusion[key] !== preset.ambientOcclusion[key]
     ) ||
@@ -291,6 +327,29 @@ export function isRendererFeatureChoiceCustom(choice: IRendererFeatureChoice): b
         : resolved.shadows[key] !== preset.shadows[key]
     )
   );
+}
+
+/**
+ * @param stored - What was stored for the grass overrides.
+ * @returns The ones the grass takes: a flag, and finite numbers not below zero.
+ */
+function toGrassOverrides(stored: unknown): Partial<IRendererGrassSettings> {
+  const source: Record<string, unknown> = stored && typeof stored === "object" ? (stored as never) : {};
+  const overrides: Partial<IRendererGrassSettings> = {};
+
+  if (typeof source.isEnabled === "boolean") {
+    overrides.isEnabled = source.isEnabled;
+  }
+
+  for (const key of ["density", "height", "radius"] as const) {
+    const value: unknown = source[key];
+
+    if (typeof value === "number" && Number.isFinite(value) && value > 0) {
+      overrides[key] = value;
+    }
+  }
+
+  return overrides;
 }
 
 /**

@@ -14,6 +14,13 @@ export const RENDER_SHADOW_LIMITS = {
   reach: { max: 1000, min: 100, step: 50 },
 } as const;
 
+/** The bounds each grass value is offered between: the engine's own console ranges. */
+export const RENDER_GRASS_LIMITS = {
+  density: { max: 0.99, min: 0.1, step: 0.01 },
+  height: { max: 2, min: 0.5, step: 0.1 },
+  radius: { max: 150, min: 49, step: 1 },
+} as const;
+
 /** The bounds each ambient occlusion value is offered between. */
 export const RENDER_AMBIENT_OCCLUSION_LIMITS = {
   radius: { max: 4, min: 0.25, step: 0.25 },

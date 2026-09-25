@@ -87,10 +87,12 @@ macro_rules! for_each_tauri_command_domain {
         close_level => crate::plugins::levels::commands::close_level::levels_close_level,
         get_level => crate::plugins::levels::commands::get_level::levels_get_level,
         list_levels => crate::plugins::levels::commands::list_levels::levels_list_levels,
+        open_details => crate::plugins::levels::commands::open_details::levels_open_details,
         open_level => crate::plugins::levels::commands::open_level::levels_open_level,
         open_sector => crate::plugins::levels::commands::open_sector::levels_open_sector,
       }
       @raw {
+        read_details(sessionId: "SessionId", detailsId: "SessionId") => crate::plugins::levels::commands::read_details::levels_read_details,
         read_sector(sessionId: "SessionId", sectorId: "SessionId") => crate::plugins::levels::commands::read_sector::levels_read_sector,
       }
       spawn => "spawn" {

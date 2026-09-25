@@ -1,11 +1,13 @@
 import { toMean } from "@xrf/math";
 import { IDdsRead, IDdsRefusal, readDdsFile, RendererClient } from "@xrf/renderer";
-import { Maybe } from "@xrf/types";
+import { Maybe, Nullable } from "@xrf/types";
 
 import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
 import { SectorSurface } from "@/core/ipc/types/xrf-visual";
+import { toLevelRendererGrass } from "@/core/level/lib/render/level-render-grass";
 import { LEVEL_RENDER_KEYS } from "@/core/level/lib/render/level-render-keys";
 import {
+  ILevelGrassDelivery,
   ILevelSectorChange,
   ILevelSectorDelivery,
   ILevelTextureDelivery,
@@ -41,6 +43,8 @@ export type TLevelRenderSink = Pick<
   | "releaseObject"
   | "putImpostors"
   | "releaseImpostors"
+  | "putGrass"
+  | "releaseGrass"
   | "putSurface"
   | "releaseSurface"
   | "putTexture"
@@ -107,6 +111,17 @@ export class LevelRenderContent {
     }
 
     change.delivered.forEach((delivery: ILevelSectorDelivery) => this.take(delivery));
+  }
+
+  /**
+   * @param grass - The level's grass, or null for none.
+   */
+  public plant(grass: Nullable<ILevelGrassDelivery>): void {
+    if (grass) {
+      this.sink.putGrass(toLevelRendererGrass(grass));
+    } else {
+      this.sink.releaseGrass();
+    }
   }
 
   /**
