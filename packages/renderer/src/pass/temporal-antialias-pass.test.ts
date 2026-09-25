@@ -1,24 +1,39 @@
 import { describe, expect, it } from "@jest/globals";
 import { Matrix4, PerspectiveCamera, Vector3 } from "three/webgpu";
 
-import { jitterProjection, TEMPORAL_JITTER, toHalton } from "#/pass/temporal-antialias-pass";
+import {
+  jitterProjection,
+  toHalton,
+  toRenderSize,
+  toTemporalJitter,
+  toTemporalJitterPhases,
+} from "#/pass/temporal-antialias-pass";
 
 describe("temporal antialiasing", () => {
   it("jitters by Halton (2, 3), every offset within half a pixel and their mean near the pixel's centre", () => {
     expect([1, 2, 3, 4].map((index: number) => toHalton(index, 2))).toEqual([0.5, 0.25, 0.75, 0.125]);
     expect(toHalton(1, 3)).toBeCloseTo(1 / 3, 10);
 
-    for (const [x, y] of TEMPORAL_JITTER) {
+    const offsets = Array.from({ length: toTemporalJitterPhases(1) }, (_, phase: number) => toTemporalJitter(phase));
+
+    for (const [x, y] of offsets) {
       expect(Math.abs(x)).toBeLessThan(0.5);
       expect(Math.abs(y)).toBeLessThan(0.5);
     }
 
     const mean: Array<number> = [0, 1].map(
-      (axis: number) => TEMPORAL_JITTER.reduce((sum, offset) => sum + offset[axis], 0) / TEMPORAL_JITTER.length
+      (axis: number) => offsets.reduce((sum, offset) => sum + offset[axis], 0) / offsets.length
     );
 
     expect(Math.abs(mean[0])).toBeLessThan(0.1);
     expect(Math.abs(mean[1])).toBeLessThan(0.1);
+  });
+
+  it("cycles through more positions the more it upscales, and draws a side as the ratio takes it", () => {
+    expect([1, 1.5, 1.7, 2].map(toTemporalJitterPhases)).toEqual([8, 18, 24, 32]);
+    expect(toRenderSize(3220, 1.5)).toBe(2147);
+    expect(toRenderSize(1930, 2)).toBe(965);
+    expect(toRenderSize(1, 2)).toBe(1);
   });
 
   // The texel at `m` shows the scene at `m + 0.5 + jitter`: a point moves the other way on the screen, `y` down.

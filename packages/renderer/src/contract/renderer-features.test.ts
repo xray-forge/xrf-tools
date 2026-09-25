@@ -5,10 +5,12 @@ import {
   ERendererAmbientOcclusionQuality,
   ERendererAntialiasing,
   ERendererPreset,
+  ERendererRenderScale,
   isRendererFeatureChoiceCustom,
   RENDERER_PRESETS,
   resolveRendererFeatures,
   toRendererFeatureChoice,
+  toRendererUpscale,
 } from "#/contract/renderer-features";
 
 describe("renderer features", () => {
@@ -104,5 +106,25 @@ describe("renderer features", () => {
         preset: ERendererPreset.BASE,
       })
     ).toBe(false);
+  });
+
+  it("reads back stored temporal overrides, dropping a scale it has not and a sharpening past one", () => {
+    expect(
+      toRendererFeatureChoice({ overrides: { temporal: { scale: "quality", sharpening: 0.25 } }, preset: "base" })
+        .overrides.temporal
+    ).toEqual({ scale: ERendererRenderScale.QUALITY, sharpening: 0.25 });
+    expect(
+      toRendererFeatureChoice({ overrides: { temporal: { scale: "ultra", sharpening: 2 } }, preset: "base" }).overrides
+        .temporal
+    ).toBeUndefined();
+  });
+
+  it("upscales by the render scale only while TAA resolves", () => {
+    const base = RENDERER_PRESETS[ERendererPreset.BASE];
+    const temporal = { scale: ERendererRenderScale.PERFORMANCE, sharpening: 0.5 };
+
+    expect(toRendererUpscale({ ...base, antialiasing: ERendererAntialiasing.TAA, temporal })).toBe(2);
+    expect(toRendererUpscale({ ...base, antialiasing: ERendererAntialiasing.SMAA, temporal })).toBe(1);
+    expect(toRendererUpscale(base)).toBe(1);
   });
 });

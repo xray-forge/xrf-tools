@@ -113,6 +113,7 @@ export function LevelPreviewToolbar({
           <LevelAntialiasingAction
             isOn={options.isAntialiased}
             settingsMode={settings.antialiasing}
+            settingsScale={settings.temporal.scale}
             features={features}
             onToggle={() => onToggle("isAntialiased")}
             onChange={onChangeFeatures}

@@ -132,7 +132,7 @@ export class SceneGrass {
     this.capacity = capacity;
     this.planting = createGrassPlanting(buffers, uniforms, this.uniforms.staticDraws.lod.discard, capacity);
     this.draws = grass.models.map((model: IRendererGrassModel, index: number) => {
-      const samplers: MaterialSamplers = new MaterialSamplers(this.textures);
+      const samplers: MaterialSamplers = new MaterialSamplers(this.textures, this.uniforms.settings.textureBias);
       const shader: ISurfaceShader = toGrassSurfaceShader(
         { height: model.height, items, surface: model.surface },
         samplers,

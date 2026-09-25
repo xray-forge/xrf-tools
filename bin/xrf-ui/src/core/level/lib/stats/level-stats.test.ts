@@ -12,6 +12,8 @@ function frameCost(overrides: Partial<IRenderFrameCost> = {}): IRenderFrameCost 
     draws: 0,
     frameTime: 0,
     framesPerSecond: 0,
+    renderedHeight: 0,
+    renderedWidth: 0,
     triangles: 0,
     worstDrawTime: 0,
     worstFrameTime: 0,

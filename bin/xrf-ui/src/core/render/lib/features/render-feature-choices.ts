@@ -3,6 +3,8 @@ import {
   ERendererAmbientOcclusionQuality,
   ERendererAntialiasing,
   ERendererLightShadowFilter,
+  ERendererRenderScale,
+  RENDERER_RENDER_SCALE_RATIOS,
 } from "@xrf/renderer";
 
 /** The engine's three cascade widths (`render_phase_sun.cpp`), and a fourth reaching three times as far. */
@@ -49,6 +51,28 @@ export function fromGrassDensityScale(scale: number): number {
 }
 
 /** The bounds each ambient occlusion value is offered between. */
+/** How far the upscaled frame's sharpening goes. */
+export const RENDER_SHARPENING_LIMITS = { max: 1, min: 0, step: 0.05 } as const;
+
+/**
+ * @param scale - A render scale.
+ * @returns Its name as the settings say it, with the share of each side it draws.
+ */
+export function describeRenderScale(scale: ERendererRenderScale): string {
+  const share: string = `${Math.round(100 / RENDERER_RENDER_SCALE_RATIOS[scale])}%`;
+
+  switch (scale) {
+    case ERendererRenderScale.NATIVE:
+      return "Native";
+    case ERendererRenderScale.QUALITY:
+      return `Quality, ${share}`;
+    case ERendererRenderScale.BALANCED:
+      return `Balanced, ${share}`;
+    case ERendererRenderScale.PERFORMANCE:
+      return `Performance, ${share}`;
+  }
+}
+
 export const RENDER_AMBIENT_OCCLUSION_LIMITS = {
   radius: { max: 4, min: 0.25, step: 0.25 },
   strength: { max: 2, min: 0, step: 0.1 },

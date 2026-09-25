@@ -3,16 +3,19 @@ import { useInjection } from "@wirestate/react";
 import {
   ERendererAntialiasing,
   ERendererPreset,
+  ERendererRenderScale,
   IRendererFeatureSettings,
   isRendererFeatureChoiceCustom,
 } from "@xrf/renderer";
 import { ReactElement } from "react";
 
-import { describeRenderAntialiasing } from "@/core/render/lib/features";
+import { describeRenderAntialiasing, describeRenderScale, RENDER_SHARPENING_LIMITS } from "@/core/render/lib/features";
 import { SettingsService } from "@/core/settings/services/settings";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 import { ChoiceFormRow, IChoiceFormRowOption } from "@/core/ui/form/ChoiceFormRow";
+import { SliderFormRow } from "@/core/ui/form/SliderFormRow";
 import { DetailSection } from "@/core/ui/layout/DetailSection";
+import { formatNumber } from "@/lib/format/number";
 
 const PRESET_LABELS: Record<ERendererPreset, string> = {
   [ERendererPreset.BASE]: "Base",
@@ -26,6 +29,10 @@ const PRESET_OPTIONS: ReadonlyArray<IChoiceFormRowOption<ERendererPreset>> = Obj
 const ANTIALIASING_OPTIONS: ReadonlyArray<IChoiceFormRowOption<ERendererAntialiasing>> = Object.values(
   ERendererAntialiasing
 ).map((value: ERendererAntialiasing) => ({ label: describeRenderAntialiasing(value), value }));
+
+const SCALE_OPTIONS: ReadonlyArray<IChoiceFormRowOption<ERendererRenderScale>> = Object.values(
+  ERendererRenderScale
+).map((value: ERendererRenderScale) => ({ label: describeRenderScale(value), value }));
 
 /** Which preset the renderer's features follow, and the features that are not a level's alone. */
 export function SettingsRendererFeatures(): ReactElement {
@@ -68,6 +75,31 @@ export function SettingsRendererFeatures(): ReactElement {
           value={features.antialiasing}
           onChange={(antialiasing: ERendererAntialiasing) => settingsService.setRendererOverrides({ antialiasing })}
         />
+
+        {features.antialiasing === ERendererAntialiasing.TAA ? (
+          <>
+            <ChoiceFormRow
+              label={"Render scale"}
+              description={
+                "How much of each side the scene is drawn at before TAA upscales it to the view, from the frames " +
+                "before as much as this one. Less costs less for every pass that is paid per pixel."
+              }
+              options={SCALE_OPTIONS}
+              value={features.temporal.scale}
+              onChange={(scale: ERendererRenderScale) => settingsService.setRendererOverrides({ temporal: { scale } })}
+            />
+
+            <SliderFormRow
+              label={"Sharpening"}
+              description={"How much the upscaled frame is sharpened after, as FSR's RCAS does. None at native."}
+              value={features.temporal.sharpening}
+              {...RENDER_SHARPENING_LIMITS}
+              isDisabled={features.temporal.scale === ERendererRenderScale.NATIVE}
+              format={(value: number) => formatNumber(value, 2)}
+              onChange={(sharpening: number) => settingsService.setRendererOverrides({ temporal: { sharpening } })}
+            />
+          </>
+        ) : null}
 
         <CheckboxFormRow
           label={"GPU timings"}

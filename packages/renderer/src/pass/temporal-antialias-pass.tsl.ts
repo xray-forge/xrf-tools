@@ -52,6 +52,8 @@ export interface ITemporalUniforms {
 const DISTANCE_TOLERANCE: number = 0.1;
 /** Output pixels of motion at which the history counts for nothing more than the neighbourhood lets it. */
 const MAX_MOTION: number = 128;
+/** `exp(-2.29 x²)`'s factor: Karis's fit of a Blackman-Harris window a pixel wide. */
+const WINDOW: number = -2.29;
 /** The 3x3 neighbourhood around a sample. */
 const NEIGHBOURS: ReadonlyArray<readonly [number, number]> = [-1, 0, 1].flatMap((y: number) =>
   [-1, 0, 1].map((x: number) => [x, y] as const)
@@ -62,7 +64,9 @@ const NEIGHBOURS: ReadonlyArray<readonly [number, number]> = [-1, 0, 1].flatMap(
  * pixel reconstructs this frame's colour from the jittered samples around it with a Blackman-Harris window, finds its
  * surface in the history by the motion of the nearest surface around it, rejects the history where that surface stood
  * elsewhere, clips it to the neighbourhood's colours, and blends. The frame and the output are sized apart, so the same
- * resolve upscales as TAAU with the frame drawn smaller.
+ * resolve upscales as TAAU with the frame drawn smaller: there an output pixel takes this frame by how near the nearest
+ * sample landed to its centre, scaled by the area a drawn pixel covers, so the history keeps what earlier samples
+ * nearer the centre saw and holds as many frames' worth as it does unscaled.
  *
  * @param inputs - What the resolve reads.
  * @param uniforms - The uniforms it reads.
@@ -73,6 +77,8 @@ export function toTemporalResolve(inputs: ITemporalInputs, uniforms: ITemporalUn
   const inputSize: Node<"vec2"> = vec2(texture(inputs.frame).size(int(0)) as Node<"uvec2">);
   const outputSize: Node<"vec2"> = vec2(texture(inputs.history).size(int(0)) as Node<"uvec2">);
   const lastTexel: Node<"vec2"> = inputSize.sub(1);
+  // Output pixels a drawn one spans across; one unscaled.
+  const upscale: Node<"float"> = outputSize.x.div(inputSize.x);
 
   function toTexel(at: Node<"vec2">): Node<"ivec2"> {
     return ivec2(clamp(at, vec2(0), lastTexel));
@@ -146,7 +152,7 @@ export function toTemporalResolve(inputs: ITemporalInputs, uniforms: ITemporalUn
       const at: Node<"vec2"> = nearest.add(vec2(x, y));
       const color: Node<"vec3"> = max(textureLoad(inputs.frame, toTexel(at)).xyz, vec3(0));
       const offset: Node<"vec2"> = position.sub(at.add(0.5).add(motion.jitter));
-      const weight: Node<"float"> = exp(offset.dot(offset).mul(-2.29));
+      const weight: Node<"float"> = exp(offset.dot(offset).mul(WINDOW));
 
       sum = sum.add(color.mul(weight));
       weights = weights.add(weight);
@@ -167,7 +173,18 @@ export function toTemporalResolve(inputs: ITemporalInputs, uniforms: ITemporalUn
       mean.sub(spread),
       mean.add(spread)
     );
-    const weight: Node<"float"> = select(isValid, saturate(temporal.currentWeight.add(motionShare)), float(1));
+    // The nearest sample's distance from this pixel's centre, in output pixels, weighs this frame; unscaled, as is.
+    const landed: Node<"vec2"> = position.sub(nearest.add(0.5).add(motion.jitter)).mul(upscale);
+    const confidence: Node<"float"> = select(
+      upscale.greaterThan(1.001),
+      exp(landed.dot(landed).mul(WINDOW)).mul(upscale.mul(upscale)),
+      float(1)
+    );
+    const weight: Node<"float"> = select(
+      isValid,
+      saturate(temporal.currentWeight.mul(confidence).add(motionShare)),
+      float(1)
+    );
 
     return vec4(toBlended(current, history, weight), select(isDrawn, distance, float(0)));
   })();
@@ -178,6 +195,20 @@ export function toTemporalResolve(inputs: ITemporalInputs, uniforms: ITemporalUn
   ).w;
 
   return outputStruct(resolved, vec4(resolved.xyz, coverage));
+}
+
+/**
+ * The depth the output carries for the helpers drawn over it: the drawn sample's nearest this pixel's centre.
+ *
+ * @param inputs - What the resolve reads.
+ * @param motion - The motion uniforms, which hold this frame's jitter.
+ * @returns The depth, reversed like the drawn one.
+ */
+export function toResolvedDepth(inputs: ITemporalInputs, motion: MotionUniforms): Node<"float"> {
+  const inputSize: Node<"vec2"> = vec2(texture(inputs.frame).size(int(0)) as Node<"uvec2">);
+  const nearest: Node<"vec2"> = round(screenUV.mul(inputSize).sub(0.5).sub(motion.jitter));
+
+  return textureLoad(inputs.depth, ivec2(clamp(nearest, vec2(0), inputSize.sub(1)))) as unknown as Node<"float">;
 }
 
 /**

@@ -14,6 +14,11 @@ export class SettingsUniforms {
   public readonly hemiStrength = uniform(1).setGroup(renderGroup);
   /** What the tonemap multiplies by first. */
   public readonly tonemapScale = uniform(1).setGroup(renderGroup);
+  /**
+   * Mip levels every surface texture is sampled finer by: `log2` of the drawing's side over the output's, set by the
+   * frame while TAA upscales, so a scene drawn smaller keeps the texture detail of the size it is shown at.
+   */
+  public readonly textureBias = uniform(0).setGroup(renderGroup);
 
   /**
    * @param settings - The consumer's settings.

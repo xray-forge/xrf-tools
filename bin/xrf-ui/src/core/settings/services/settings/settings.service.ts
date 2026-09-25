@@ -144,8 +144,10 @@ export class SettingsService {
             ? { ...current.ambientOcclusion, ...overrides.ambientOcclusion }
             : undefined,
         grass: overrides.grass || current.grass ? { ...current.grass, ...overrides.grass } : undefined,
+        lights: overrides.lights || current.lights ? { ...current.lights, ...overrides.lights } : undefined,
         lod: overrides.lod || current.lod ? { ...current.lod, ...overrides.lod } : undefined,
         shadows: overrides.shadows || current.shadows ? { ...current.shadows, ...overrides.shadows } : undefined,
+        temporal: overrides.temporal || current.temporal ? { ...current.temporal, ...overrides.temporal } : undefined,
       },
       preset: this.rendererChoice.preset,
     });

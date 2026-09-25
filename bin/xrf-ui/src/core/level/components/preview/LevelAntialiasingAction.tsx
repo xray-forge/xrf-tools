@@ -1,11 +1,11 @@
 import { default as DeblurIcon } from "@mui/icons-material/Deblur";
 import { Button } from "@mui/material";
-import { ERendererAntialiasing } from "@xrf/renderer";
+import { ERendererAntialiasing, ERendererRenderScale } from "@xrf/renderer";
 import { ReactElement } from "react";
 
 import { ILevelFeatureOptions, LEVEL_ANTIALIASING_MODES } from "@/core/level/lib/features/level-feature-options";
 import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
-import { describeRenderAntialiasing } from "@/core/render/lib/features/render-feature-choices";
+import { describeRenderAntialiasing, describeRenderScale } from "@/core/render/lib/features/render-feature-choices";
 import { EditorPopoverToggle } from "@/core/shell/editor/EditorPopoverToggle";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
@@ -18,6 +18,8 @@ interface ILevelAntialiasingActionProps extends BaseComponentProps {
   isOn: boolean;
   /** The mode the settings smooth with, which this view can only narrow to none. */
   settingsMode: ERendererAntialiasing;
+  /** The scale the settings draw at while TAA upscales, which this view follows. */
+  settingsScale: ERendererRenderScale;
   features: ILevelFeatureOptions;
   onToggle: () => void;
   onChange: (features: ILevelFeatureOptions) => void;
@@ -32,12 +34,14 @@ export function LevelAntialiasingAction({
   className,
   isOn,
   settingsMode,
+  settingsScale,
   features,
   onToggle,
   onChange,
 }: ILevelAntialiasingActionProps): ReactElement {
   const isAvailable: boolean = settingsMode !== ERendererAntialiasing.NONE;
   const mode: ERendererAntialiasing = features.antialiasing ?? settingsMode;
+  const isUpscaled: boolean = mode === ERendererAntialiasing.TAA && settingsScale !== ERendererRenderScale.NATIVE;
 
   return (
     <EditorPopoverToggle
@@ -49,7 +53,7 @@ export function LevelAntialiasingAction({
         !isAvailable
           ? "Antialiasing is off in Settings, under Rendering"
           : isOn
-            ? `Edges smoothed by ${describeRenderAntialiasing(mode)}`
+            ? `Edges smoothed by ${describeRenderAntialiasing(mode)}${isUpscaled ? `, upscaled from ${describeRenderScale(settingsScale)}` : ""}`
             : "Antialiasing off, every edge as drawn"
       }
       icon={<DeblurIcon />}

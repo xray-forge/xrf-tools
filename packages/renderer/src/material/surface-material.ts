@@ -57,7 +57,7 @@ export function createSurfaceMaterial(
   uniforms: RendererUniforms
 ): ISurfaceMaterial {
   const pass: ERendererPass = toRendererPass(surface);
-  const samplers: MaterialSamplers = new MaterialSamplers(textures);
+  const samplers: MaterialSamplers = new MaterialSamplers(textures, uniforms.settings.textureBias);
   const shader: ISurfaceShader = SURFACE_SHADERS[pass](surface, samplers, uniforms);
   const compositing: Nullable<ISurfaceCompositing> = toSurfaceCompositing(surface);
   const material: SurfaceNodeMaterial = new SurfaceNodeMaterial(uniforms.staticDraws, uniforms.wind);
@@ -83,7 +83,7 @@ export function createSurfaceMaterial(
   const shadow: Nullable<MeshBasicNodeMaterial> = !isCasting
     ? null
     : isCutOut
-      ? createShadowMaterial(surface, samplers, uniforms)
+      ? createShadowMaterial(surface, samplers.unbiased(), uniforms)
       : getOpaqueShadowMaterial(uniforms);
 
   return {

@@ -4,6 +4,15 @@ import { Fragment, ReactElement, ReactNode } from "react";
 import { RenderViewportOverlay, TRenderOverlayCorner } from "@/core/render/components/overlay/RenderViewportOverlay";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
+/** The buffer's size, and the scene's as drawn where TAA upscales it from less. */
+function toSizeLine(cost: IRenderFrameCost): string {
+  const drawn: string = `${cost.drawnWidth} × ${cost.drawnHeight}`;
+  const isUpscaled: boolean =
+    cost.renderedWidth > 0 && (cost.renderedWidth !== cost.drawnWidth || cost.renderedHeight !== cost.drawnHeight);
+
+  return isUpscaled ? `${drawn} from ${cost.renderedWidth} × ${cost.renderedHeight}` : drawn;
+}
+
 /** What every pass cost together. */
 function toGpuTotal(passes: ReadonlyArray<IRendererPassCost>): number {
   return passes.reduce((total: number, pass: IRendererPassCost) => total + pass.gpuTime, 0);
@@ -38,7 +47,7 @@ export function RenderFrameReadout({
     <RenderViewportOverlay data-testid={dataTestId} id={id} className={className} corner={corner}>
       <div>{`${cost.framesPerSecond.toFixed(0)} fps · ${cost.frameTime.toFixed(1)} ms`}</div>
       <div>{`${cost.draws} draws · ${cost.triangles.toLocaleString()} tris`}</div>
-      <div>{`${cost.drawnWidth} × ${cost.drawnHeight}`}</div>
+      <div>{toSizeLine(cost)}</div>
 
       {children}
 

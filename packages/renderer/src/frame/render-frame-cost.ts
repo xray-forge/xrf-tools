@@ -19,6 +19,10 @@ export interface IRenderFrameCost {
   drawnWidth: number;
   /** Height of the same buffer, which with the width is what every per-pixel cost is paid over. */
   drawnHeight: number;
+  /** Width the scene was drawn at: the buffer's, or less while TAA upscales it. */
+  renderedWidth: number;
+  /** And its height: what the scene's per-pixel passes are paid over. */
+  renderedHeight: number;
 }
 
 /** Nothing drawn yet, which is what a viewport costs before its first frame. */
@@ -29,6 +33,8 @@ export const EMPTY_RENDER_FRAME_COST: IRenderFrameCost = {
   draws: 0,
   frameTime: 0,
   framesPerSecond: 0,
+  renderedHeight: 0,
+  renderedWidth: 0,
   triangles: 0,
   worstDrawTime: 0,
   worstFrameTime: 0,

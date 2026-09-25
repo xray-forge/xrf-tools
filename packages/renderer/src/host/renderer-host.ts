@@ -377,6 +377,7 @@ export class RendererHost {
         report: this.stats.toReport(
           device,
           view.canvas,
+          this.graph.renderSize,
           this.rig.pose,
           this.graph.passNames,
           this.scene.staticCull.kept,

@@ -1,10 +1,11 @@
 import { Nullable } from "@xrf/types";
-import { PerspectiveCamera, WebGPURenderer } from "three/webgpu";
+import { PerspectiveCamera, RenderTarget, Vector2, WebGPURenderer } from "three/webgpu";
 
 import {
   ERendererAntialiasing,
   IRendererFeatureSettings,
   RENDERER_MAX_SHADOW_CASCADES,
+  toRendererUpscale,
 } from "#/contract/renderer-features";
 import { createBaseFramePasses } from "#/graph/base-frame-passes";
 import { AmbientOcclusionPass } from "#/pass/ambient-occlusion-pass";
@@ -20,7 +21,8 @@ import { IRendererPass } from "#/pass/renderer-pass";
 import { IRendererScenePass, isRendererScenePass } from "#/pass/renderer-scene-pass";
 import { RendererTargets } from "#/pass/renderer-targets";
 import { ShadowPass } from "#/pass/shadow-pass";
-import { TemporalAntialiasPass } from "#/pass/temporal-antialias-pass";
+import { SharpenPass } from "#/pass/sharpen-pass";
+import { TemporalAntialiasPass, toRenderSize } from "#/pass/temporal-antialias-pass";
 import { SceneGrass } from "#/scene/grass/scene-grass";
 import { SceneLights } from "#/scene/lights/scene-lights";
 import { RendererOverlays } from "#/scene/overlay/renderer-overlays";
@@ -40,6 +42,8 @@ export class RendererFrameGraph {
   public readonly scenePasses: ReadonlyArray<IRendererScenePass>;
   /** Every pass's name, in frame order, as the frame report states them. */
   public passNames: ReadonlyArray<string> = [];
+  /** The scene's size as drawn: the output's, or smaller while TAA upscales. */
+  public readonly renderSize: Vector2 = new Vector2();
 
   private readonly base: ReadonlyArray<IRendererPass>;
   private passes: ReadonlyArray<IRendererPass> = [];
@@ -47,7 +51,11 @@ export class RendererFrameGraph {
   private antialias: Nullable<AntialiasPass> = null;
   /** The pass resolving jittered frames with their history, while TAA is chosen. */
   private temporal: Nullable<TemporalAntialiasPass> = null;
+  /** The pass sharpening what TAA upscaled, while it upscales and sharpens. */
+  private sharpen: Nullable<SharpenPass> = null;
   private antialiasing: ERendererAntialiasing = ERendererAntialiasing.NONE;
+  /** The ratio of the output's side to the scene's as drawn. */
+  private upscale: number = 1;
   /** The grass, while it is on. */
   private grassPass: Nullable<GrassPass> = null;
   /** The local lights, while they are on. */
@@ -69,7 +77,7 @@ export class RendererFrameGraph {
   private readonly combine: CombinePass;
   /** The pass the helpers draw in, over the resolved frame while TAA is chosen. */
   private readonly overlay: OverlayPass;
-  /** What the targets were last sized by, for a pass that joins the frame after. */
+  /** What the targets were last sized by, for a pass that joins the frame after: the renderer and the output's size. */
   private renderer: Nullable<WebGPURenderer> = null;
   private width: number = 0;
   private height: number = 0;
@@ -114,12 +122,17 @@ export class RendererFrameGraph {
     const shadowKey: string = `${count}:${shadows.resolution}`;
     const ambientOcclusionKey: string = features.ambientOcclusion.isEnabled ? features.ambientOcclusion.quality : "";
     const isLightShadowed: boolean = features.lights.isEnabled && features.lights.isShadowed;
+    const upscale: number = toRendererUpscale(features);
+    const isSharpened: boolean = upscale > 1 && features.temporal.sharpening > 0;
 
     // Its material is built again for another filter; the pass itself stays.
     this.lightsPass?.setFilter(features.lights.shadowFilter);
+    this.sharpen?.setSharpening(features.temporal.sharpening);
 
     if (
       features.antialiasing === this.antialiasing &&
+      upscale === this.upscale &&
+      isSharpened === (this.sharpen !== null) &&
       shadowKey === this.shadowKey &&
       ambientOcclusionKey === this.ambientOcclusionKey &&
       features.grass.isEnabled === (this.grassPass !== null) &&
@@ -158,7 +171,9 @@ export class RendererFrameGraph {
       this.present.setAmbientOcclusion(this.ambientOcclusion?.output ?? null);
     }
 
-    if (features.antialiasing !== this.antialiasing) {
+    const isResolved: boolean = features.antialiasing !== this.antialiasing;
+
+    if (isResolved) {
       this.antialias?.dispose();
       this.temporal?.dispose();
       this.antialiasing = features.antialiasing;
@@ -167,17 +182,31 @@ export class RendererFrameGraph {
 
       if (features.antialiasing === ERendererAntialiasing.TAA) {
         this.temporal = new TemporalAntialiasPass(this.targets, this.uniforms);
-
-        if (this.renderer) {
-          this.temporal.resize(this.renderer, this.width, this.height);
-        }
       } else if (features.antialiasing !== ERendererAntialiasing.NONE) {
         this.antialias = new AntialiasPass(features.antialiasing, this.targets);
       }
-
-      this.overlay.setTarget(this.temporal?.output ?? null);
-      this.present.setFrame(this.temporal?.output ?? toPresentedFrame(this.antialias, this.targets));
     }
+
+    // It reads the resolve's output, so it goes and comes back with a new resolve.
+    const isResharpened: boolean = isResolved || isSharpened !== (this.sharpen !== null);
+
+    if (isResharpened) {
+      this.sharpen?.dispose();
+      this.sharpen = isSharpened && this.temporal ? new SharpenPass(this.temporal.output) : null;
+      this.sharpen?.setSharpening(features.temporal.sharpening);
+    }
+
+    if (isResharpened || upscale !== this.upscale) {
+      this.upscale = upscale;
+      // Textures sampled as finely as the output shows them, whatever size the scene is drawn at.
+      this.uniforms.settings.textureBias.value = -Math.log2(upscale);
+      this.applySize();
+    }
+
+    const shown: Nullable<RenderTarget> = this.sharpen?.output ?? this.temporal?.output ?? null;
+
+    this.overlay.setTarget(shown);
+    this.present.setFrame(shown ?? toPresentedFrame(this.antialias, this.targets));
 
     if (shadowKey !== this.shadowKey) {
       this.shadows.forEach((pass: ShadowPass) => pass.dispose());
@@ -202,16 +231,14 @@ export class RendererFrameGraph {
 
   /**
    * @param renderer - The renderer the targets are drawn by.
-   * @param width - Drawing buffer width, in device pixels.
+   * @param width - Drawing buffer width, in device pixels: the output's.
    * @param height - Drawing buffer height, in device pixels.
    */
   public resize(renderer: WebGPURenderer, width: number, height: number): void {
     this.renderer = renderer;
     this.width = width;
     this.height = height;
-    this.targets.resize(width, height);
-    this.targets.prepare(renderer);
-    this.temporal?.resize(renderer, width, height);
+    this.applySize();
   }
 
   /**
@@ -241,10 +268,25 @@ export class RendererFrameGraph {
     this.targets.dispose();
   }
 
+  /** Sizes the scene's targets to the drawing and the resolve's to the output, once there is a renderer to size by. */
+  private applySize(): void {
+    const { renderer, width, height } = this;
+
+    if (!renderer) {
+      return;
+    }
+
+    this.renderSize.set(toRenderSize(width, this.upscale), toRenderSize(height, this.upscale));
+    this.targets.resize(this.renderSize.x, this.renderSize.y);
+    this.targets.prepare(renderer);
+    this.temporal?.resize(renderer, width, height, this.renderSize.x, this.renderSize.y);
+    this.sharpen?.resize(renderer, width, height);
+  }
+
   /**
    * The frame's passes in order: the base's with the shadow cascades before the sun reads them, the local lights after
-   * it, the occlusion before combine does, and the temporal resolve before the helpers, whatever else the features add,
-   * then the picture presented.
+   * it, the occlusion before combine does, and the temporal resolve and its sharpening before the helpers, whatever else
+   * the features add, then the picture presented.
    */
   private link(): void {
     const sun: number = this.base.findIndex((pass: IRendererPass) => pass.name === "sun");
@@ -265,6 +307,7 @@ export class RendererFrameGraph {
       ...(this.ambientOcclusion ? [this.ambientOcclusion] : []),
       ...this.base.slice(combine, overlay),
       ...(this.temporal ? [this.temporal] : []),
+      ...(this.sharpen ? [this.sharpen] : []),
       ...this.base.slice(overlay),
       ...(this.antialias ? [this.antialias] : []),
       this.present,

@@ -19,7 +19,8 @@ export function toWallmarkSurfaceShader(surface: IRendererSurface, samplers: Mat
   const base: TextureNode = samplers.bind(
     surface.textures.base,
     getWhiteTexture(),
-    clamp(toSurfaceCoordinates(surface), 0, 1)
+    clamp(toSurfaceCoordinates(surface), 0, 1),
+    false
   );
   const top: TextureNode = base.level(float(0));
 
