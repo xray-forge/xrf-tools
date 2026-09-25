@@ -7,9 +7,9 @@ import {
   toRenderSize,
   toTemporalJitter,
   toTemporalJitterPhases,
-} from "#/pass/temporal-antialias-pass";
+} from "#/pass/temporal-jitter";
 
-describe("temporal antialiasing", () => {
+describe("temporal jitter", () => {
   it("jitters by Halton (2, 3), every offset within half a pixel and their mean near the pixel's centre", () => {
     expect([1, 2, 3, 4].map((index: number) => toHalton(index, 2))).toEqual([0.5, 0.25, 0.75, 0.125]);
     expect(toHalton(1, 3)).toBeCloseTo(1 / 3, 10);

@@ -109,6 +109,8 @@ export function describeRenderAntialiasing(mode: ERendererAntialiasing): string 
       return "SMAA";
     case ERendererAntialiasing.TAA:
       return "TAA";
+    case ERendererAntialiasing.FSR:
+      return "FSR 2";
   }
 }
 

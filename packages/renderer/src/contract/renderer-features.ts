@@ -13,11 +13,24 @@ export enum ERendererAntialiasing {
    * every surface writes. Smooths inside a surface too, cut-out foliage and thin wires, where SMAA finds no edge.
    */
   TAA = "taa",
+  /**
+   * FSR 2: AMD's temporal upscaler, from the same jittered frames, motion and depth as TAA, with locks that keep thin
+   * features and a reactive mask from what the blended surfaces changed.
+   */
+  FSR = "fsr",
 }
 
 /**
- * How much smaller than the output TAA draws the scene, upscaling it in its resolve: FSR's quality modes, by the
- * ratio of the output's side to the drawing's.
+ * @param mode - An antialiasing mode.
+ * @returns Whether it resolves jittered frames with their history, which jitters every scene pass.
+ */
+export function isRendererTemporal(mode: ERendererAntialiasing): boolean {
+  return mode === ERendererAntialiasing.TAA || mode === ERendererAntialiasing.FSR;
+}
+
+/**
+ * How much smaller than the output the scene is drawn and then upscaled: FSR's quality modes, by the ratio of the
+ * output's side to the drawing's. TAA upscales in its resolve, FSR in its own, and the other modes with FSR 1.
  */
 export enum ERendererRenderScale {
   NATIVE = "native",
@@ -38,17 +51,16 @@ export const RENDERER_RENDER_SCALE_RATIOS: Readonly<Record<ERendererRenderScale,
 };
 
 /**
- * What TAA resolves at: the scene drawn at a share of the output and upscaled, and the output sharpened after while
- * it is upscaled.
+ * What the scene is drawn at: a share of the output, upscaled, and the output sharpened after while it is upscaled.
  */
-export interface IRendererTemporalSettings {
+export interface IRendererUpscalingSettings {
   scale: ERendererRenderScale;
   /** RCAS's sharpness, from none to its most: zero leaves the upscaled frame as resolved. */
   sharpening: number;
 }
 
 /** Drawn at the output's size; sharpened halfway once upscaled. */
-export const DEFAULT_RENDERER_TEMPORAL_SETTINGS: IRendererTemporalSettings = {
+export const DEFAULT_RENDERER_UPSCALING_SETTINGS: IRendererUpscalingSettings = {
   scale: ERendererRenderScale.NATIVE,
   sharpening: 0.5,
 };
@@ -234,7 +246,7 @@ export interface IRendererFeatureSettings {
   lights: IRendererLightsSettings;
   lod: IRendererLodSettings;
   shadows: IRendererShadowSettings;
-  temporal: IRendererTemporalSettings;
+  upscaling: IRendererUpscalingSettings;
 }
 
 /**
@@ -255,7 +267,7 @@ export const RENDERER_PRESETS: Readonly<Record<ERendererPreset, IRendererFeature
     lights: DEFAULT_RENDERER_LIGHTS_SETTINGS,
     lod: DEFAULT_RENDERER_LOD_SETTINGS,
     shadows: DEFAULT_RENDERER_SHADOW_SETTINGS,
-    temporal: DEFAULT_RENDERER_TEMPORAL_SETTINGS,
+    upscaling: DEFAULT_RENDERER_UPSCALING_SETTINGS,
   },
   [ERendererPreset.EDITING]: {
     ambientOcclusion: { ...DEFAULT_RENDERER_AMBIENT_OCCLUSION_SETTINGS, isEnabled: false },
@@ -266,7 +278,7 @@ export const RENDERER_PRESETS: Readonly<Record<ERendererPreset, IRendererFeature
     lights: { ...DEFAULT_RENDERER_LIGHTS_SETTINGS, isShadowed: false },
     lod: DEFAULT_RENDERER_LOD_SETTINGS,
     shadows: { ...DEFAULT_RENDERER_SHADOW_SETTINGS, isEnabled: false },
-    temporal: DEFAULT_RENDERER_TEMPORAL_SETTINGS,
+    upscaling: DEFAULT_RENDERER_UPSCALING_SETTINGS,
   },
 };
 
@@ -279,7 +291,7 @@ export interface IRendererFeatureOverrides {
   lights?: Partial<IRendererLightsSettings>;
   lod?: Partial<IRendererLodSettings>;
   shadows?: Partial<IRendererShadowSettings>;
-  temporal?: Partial<IRendererTemporalSettings>;
+  upscaling?: Partial<IRendererUpscalingSettings>;
 }
 
 /** A preset and what was changed on top of it, which is what a consumer stores. */
@@ -363,10 +375,10 @@ export function toRendererFeatureChoice(stored: unknown): IRendererFeatureChoice
     choice.overrides.shadows = shadows;
   }
 
-  const temporal: Partial<IRendererTemporalSettings> = toTemporalOverrides(source.temporal);
+  const upscaling: Partial<IRendererUpscalingSettings> = toUpscalingOverrides(source.upscaling);
 
-  if (Object.keys(temporal).length) {
-    choice.overrides.temporal = temporal;
+  if (Object.keys(upscaling).length) {
+    choice.overrides.upscaling = upscaling;
   }
 
   return choice;
@@ -378,7 +390,7 @@ export function toRendererFeatureChoice(stored: unknown): IRendererFeatureChoice
  */
 export function resolveRendererFeatures(choice: IRendererFeatureChoice): IRendererFeatureSettings {
   const preset: IRendererFeatureSettings = RENDERER_PRESETS[choice.preset];
-  const { ambientOcclusion, antialiasing, grass, isGpuTimed, lights, lod, shadows, temporal } = choice.overrides;
+  const { ambientOcclusion, antialiasing, grass, isGpuTimed, lights, lod, shadows, upscaling } = choice.overrides;
 
   return {
     ambientOcclusion: { ...preset.ambientOcclusion, ...ambientOcclusion },
@@ -388,7 +400,7 @@ export function resolveRendererFeatures(choice: IRendererFeatureChoice): IRender
     lights: { ...preset.lights, ...lights },
     lod: { ...preset.lod, ...lod },
     shadows: { ...preset.shadows, ...shadows },
-    temporal: { ...preset.temporal, ...temporal },
+    upscaling: { ...preset.upscaling, ...upscaling },
   };
 }
 
@@ -412,8 +424,8 @@ export function isRendererFeatureChoiceCustom(choice: IRendererFeatureChoice): b
     (Object.keys(preset.lights) as Array<keyof IRendererLightsSettings>).some(
       (key) => resolved.lights[key] !== preset.lights[key]
     ) ||
-    (Object.keys(preset.temporal) as Array<keyof IRendererTemporalSettings>).some(
-      (key) => resolved.temporal[key] !== preset.temporal[key]
+    (Object.keys(preset.upscaling) as Array<keyof IRendererUpscalingSettings>).some(
+      (key) => resolved.upscaling[key] !== preset.upscaling[key]
     ) ||
     (Object.keys(preset.ambientOcclusion) as Array<keyof IRendererAmbientOcclusionSettings>).some(
       (key) => resolved.ambientOcclusion[key] !== preset.ambientOcclusion[key]
@@ -541,12 +553,12 @@ function toShadowOverrides(stored: unknown): Partial<IRendererShadowSettings> {
 }
 
 /**
- * @param stored - What was stored for the temporal overrides.
- * @returns The ones the resolve takes: a render scale it has, and a sharpening from zero to one.
+ * @param stored - What was stored for the upscaling overrides.
+ * @returns The ones the upscaling takes: a render scale it has, and a sharpening from zero to one.
  */
-function toTemporalOverrides(stored: unknown): Partial<IRendererTemporalSettings> {
+function toUpscalingOverrides(stored: unknown): Partial<IRendererUpscalingSettings> {
   const source: Record<string, unknown> = stored && typeof stored === "object" ? (stored as never) : {};
-  const overrides: Partial<IRendererTemporalSettings> = {};
+  const overrides: Partial<IRendererUpscalingSettings> = {};
   const scale: ERendererRenderScale | undefined = Object.values(ERendererRenderScale).find((it) => it === source.scale);
 
   if (scale) {
@@ -562,10 +574,8 @@ function toTemporalOverrides(stored: unknown): Partial<IRendererTemporalSettings
 
 /**
  * @param features - What the features are set to.
- * @returns The ratio of the output's side to the scene's as drawn: the render scale's while TAA resolves, else one.
+ * @returns The ratio of the output's side to the scene's as drawn.
  */
 export function toRendererUpscale(features: IRendererFeatureSettings): number {
-  return features.antialiasing === ERendererAntialiasing.TAA
-    ? RENDERER_RENDER_SCALE_RATIOS[features.temporal.scale]
-    : 1;
+  return RENDERER_RENDER_SCALE_RATIOS[features.upscaling.scale];
 }

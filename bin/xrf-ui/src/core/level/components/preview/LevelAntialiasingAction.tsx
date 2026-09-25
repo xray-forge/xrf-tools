@@ -14,15 +14,22 @@ const MODE_OPTIONS = LEVEL_ANTIALIASING_MODES.map((value: ERendererAntialiasing)
   value,
 }));
 
+const SCALE_OPTIONS = Object.values(ERendererRenderScale).map((value: ERendererRenderScale) => ({
+  label: describeRenderScale(value),
+  value,
+}));
+
 interface ILevelAntialiasingActionProps extends BaseComponentProps {
   isOn: boolean;
   /** The mode the settings smooth with, which this view can only narrow to none. */
   settingsMode: ERendererAntialiasing;
-  /** The scale the settings draw at while TAA upscales, which this view follows. */
-  settingsScale: ERendererRenderScale;
+  /** The render scale in the settings, which every viewport draws at. */
+  scale: ERendererRenderScale;
   features: ILevelFeatureOptions;
   onToggle: () => void;
   onChange: (features: ILevelFeatureOptions) => void;
+  /** Sets the render scale in the settings. */
+  onChangeScale: (scale: ERendererRenderScale) => void;
 }
 
 /**
@@ -34,14 +41,15 @@ export function LevelAntialiasingAction({
   className,
   isOn,
   settingsMode,
-  settingsScale,
+  scale,
   features,
   onToggle,
   onChange,
+  onChangeScale,
 }: ILevelAntialiasingActionProps): ReactElement {
   const isAvailable: boolean = settingsMode !== ERendererAntialiasing.NONE;
   const mode: ERendererAntialiasing = features.antialiasing ?? settingsMode;
-  const isUpscaled: boolean = mode === ERendererAntialiasing.TAA && settingsScale !== ERendererRenderScale.NATIVE;
+  const isUpscaled: boolean = scale !== ERendererRenderScale.NATIVE;
 
   return (
     <EditorPopoverToggle
@@ -53,7 +61,7 @@ export function LevelAntialiasingAction({
         !isAvailable
           ? "Antialiasing is off in Settings, under Rendering"
           : isOn
-            ? `Edges smoothed by ${describeRenderAntialiasing(mode)}${isUpscaled ? `, upscaled from ${describeRenderScale(settingsScale)}` : ""}`
+            ? `Edges smoothed by ${describeRenderAntialiasing(mode)}${isUpscaled ? `, upscaled from ${describeRenderScale(scale)}` : ""}`
             : "Antialiasing off, every edge as drawn"
       }
       icon={<DeblurIcon />}
@@ -68,6 +76,8 @@ export function LevelAntialiasingAction({
         value={mode}
         onChange={(antialiasing: ERendererAntialiasing) => onChange({ ...features, antialiasing })}
       />
+
+      <RenderValueChoice label={"Render scale"} options={SCALE_OPTIONS} value={scale} onChange={onChangeScale} />
 
       <Button size={"small"} onClick={() => onChange({ ...features, antialiasing: null })}>
         Back to the settings

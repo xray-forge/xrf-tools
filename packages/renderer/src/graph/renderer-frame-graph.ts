@@ -4,6 +4,7 @@ import { PerspectiveCamera, RenderTarget, Vector2, WebGPURenderer } from "three/
 import {
   ERendererAntialiasing,
   IRendererFeatureSettings,
+  isRendererTemporal,
   RENDERER_MAX_SHADOW_CASCADES,
   toRendererUpscale,
 } from "#/contract/renderer-features";
@@ -11,6 +12,7 @@ import { createBaseFramePasses } from "#/graph/base-frame-passes";
 import { AmbientOcclusionPass } from "#/pass/ambient-occlusion-pass";
 import { AntialiasPass, toPresentedFrame } from "#/pass/antialias/antialias-pass";
 import { CombinePass } from "#/pass/combine-pass";
+import { FsrPass } from "#/pass/fsr/fsr-pass";
 import { GrassPass } from "#/pass/grass-pass";
 import { LightShadowPass } from "#/pass/light-shadow-pass";
 import { LightsPass } from "#/pass/lights-pass";
@@ -22,7 +24,10 @@ import { IRendererScenePass, isRendererScenePass } from "#/pass/renderer-scene-p
 import { RendererTargets } from "#/pass/renderer-targets";
 import { ShadowPass } from "#/pass/shadow-pass";
 import { SharpenPass } from "#/pass/sharpen-pass";
-import { TemporalAntialiasPass, toRenderSize } from "#/pass/temporal-antialias-pass";
+import { SpatialUpscalePass } from "#/pass/spatial-upscale-pass";
+import { TemporalAntialiasPass } from "#/pass/temporal-antialias-pass";
+import { toRenderSize } from "#/pass/temporal-jitter";
+import { ITemporalUpscaler } from "#/pass/temporal-upscaler";
 import { SceneGrass } from "#/scene/grass/scene-grass";
 import { SceneLights } from "#/scene/lights/scene-lights";
 import { RendererOverlays } from "#/scene/overlay/renderer-overlays";
@@ -42,16 +47,18 @@ export class RendererFrameGraph {
   public readonly scenePasses: ReadonlyArray<IRendererScenePass>;
   /** Every pass's name, in frame order, as the frame report states them. */
   public passNames: ReadonlyArray<string> = [];
-  /** The scene's size as drawn: the output's, or smaller while TAA upscales. */
+  /** The scene's size as drawn: the output's, or smaller while it is upscaled. */
   public readonly renderSize: Vector2 = new Vector2();
 
   private readonly base: ReadonlyArray<IRendererPass>;
   private passes: ReadonlyArray<IRendererPass> = [];
   /** The pass smoothing the frame's edges, while a mode over the finished frame is chosen. */
   private antialias: Nullable<AntialiasPass> = null;
-  /** The pass resolving jittered frames with their history, while TAA is chosen. */
-  private temporal: Nullable<TemporalAntialiasPass> = null;
-  /** The pass sharpening what TAA upscaled, while it upscales and sharpens. */
+  /** The pass resolving jittered frames with their history, while TAA or FSR is chosen. */
+  private temporal: Nullable<ITemporalUpscaler> = null;
+  /** FSR 1, upscaling what the other modes finish, while they draw the scene smaller. */
+  private spatial: Nullable<SpatialUpscalePass> = null;
+  /** The pass sharpening what was upscaled, while the scene is upscaled and sharpened. */
   private sharpen: Nullable<SharpenPass> = null;
   private antialiasing: ERendererAntialiasing = ERendererAntialiasing.NONE;
   /** The ratio of the output's side to the scene's as drawn. */
@@ -75,7 +82,7 @@ export class RendererFrameGraph {
   private readonly lights: SceneLights;
   /** The pass the occlusion is combined in. */
   private readonly combine: CombinePass;
-  /** The pass the helpers draw in, over the resolved frame while TAA is chosen. */
+  /** The pass the helpers draw in, over the upscaled or resolved frame where there is one. */
   private readonly overlay: OverlayPass;
   /** What the targets were last sized by, for a pass that joins the frame after: the renderer and the output's size. */
   private renderer: Nullable<WebGPURenderer> = null;
@@ -123,15 +130,17 @@ export class RendererFrameGraph {
     const ambientOcclusionKey: string = features.ambientOcclusion.isEnabled ? features.ambientOcclusion.quality : "";
     const isLightShadowed: boolean = features.lights.isEnabled && features.lights.isShadowed;
     const upscale: number = toRendererUpscale(features);
-    const isSharpened: boolean = upscale > 1 && features.temporal.sharpening > 0;
+    const isSpatial: boolean = !isRendererTemporal(features.antialiasing) && upscale > 1;
+    const isSharpened: boolean = upscale > 1 && features.upscaling.sharpening > 0;
 
     // Its material is built again for another filter; the pass itself stays.
     this.lightsPass?.setFilter(features.lights.shadowFilter);
-    this.sharpen?.setSharpening(features.temporal.sharpening);
+    this.sharpen?.setSharpening(features.upscaling.sharpening);
 
     if (
       features.antialiasing === this.antialiasing &&
       upscale === this.upscale &&
+      isSpatial === (this.spatial !== null) &&
       isSharpened === (this.sharpen !== null) &&
       shadowKey === this.shadowKey &&
       ambientOcclusionKey === this.ambientOcclusionKey &&
@@ -182,18 +191,32 @@ export class RendererFrameGraph {
 
       if (features.antialiasing === ERendererAntialiasing.TAA) {
         this.temporal = new TemporalAntialiasPass(this.targets, this.uniforms);
+      } else if (features.antialiasing === ERendererAntialiasing.FSR) {
+        this.temporal = new FsrPass(this.targets, this.uniforms);
       } else if (features.antialiasing !== ERendererAntialiasing.NONE) {
         this.antialias = new AntialiasPass(features.antialiasing, this.targets);
       }
     }
 
-    // It reads the resolve's output, so it goes and comes back with a new resolve.
-    const isResharpened: boolean = isResolved || isSharpened !== (this.sharpen !== null);
+    // It reads what the smoothing finished, so it goes and comes back with a new mode.
+    const isRespatial: boolean = isResolved || isSpatial !== (this.spatial !== null);
+
+    if (isRespatial) {
+      this.spatial?.dispose();
+      this.spatial = isSpatial
+        ? new SpatialUpscalePass(toPresentedFrame(this.antialias, this.targets), this.targets, this.uniforms)
+        : null;
+    }
+
+    const upscaled: Nullable<RenderTarget> = this.temporal?.output ?? this.spatial?.output ?? null;
+    // It reads the upscaled output, so it goes and comes back with a new upscaler.
+    const isResharpened: boolean = isRespatial || isSharpened !== (this.sharpen !== null);
 
     if (isResharpened) {
       this.sharpen?.dispose();
-      this.sharpen = isSharpened && this.temporal ? new SharpenPass(this.temporal.output) : null;
-      this.sharpen?.setSharpening(features.temporal.sharpening);
+      this.sharpen =
+        isSharpened && upscaled ? new SharpenPass(upscaled, features.antialiasing === ERendererAntialiasing.FSR) : null;
+      this.sharpen?.setSharpening(features.upscaling.sharpening);
     }
 
     if (isResharpened || upscale !== this.upscale) {
@@ -203,7 +226,7 @@ export class RendererFrameGraph {
       this.applySize();
     }
 
-    const shown: Nullable<RenderTarget> = this.sharpen?.output ?? this.temporal?.output ?? null;
+    const shown: Nullable<RenderTarget> = this.sharpen?.output ?? upscaled;
 
     this.overlay.setTarget(shown);
     this.present.setFrame(shown ?? toPresentedFrame(this.antialias, this.targets));
@@ -242,8 +265,8 @@ export class RendererFrameGraph {
   }
 
   /**
-   * Offsets the camera's samples within the pixel for this frame while TAA resolves it, before anything reads the
-   * camera; the resolve gives it back its projection before the helpers draw.
+   * Offsets the camera's samples within the pixel for this frame while TAA or FSR resolves it, before anything reads
+   * the camera; the resolve gives it back its projection before the helpers draw.
    *
    * @param camera - The drawing camera, its projection as its controller left it.
    */
@@ -280,18 +303,22 @@ export class RendererFrameGraph {
     this.targets.resize(this.renderSize.x, this.renderSize.y);
     this.targets.prepare(renderer);
     this.temporal?.resize(renderer, width, height, this.renderSize.x, this.renderSize.y);
+    this.spatial?.resize(renderer, width, height);
     this.sharpen?.resize(renderer, width, height);
   }
 
   /**
    * The frame's passes in order: the base's with the shadow cascades before the sun reads them, the local lights after
-   * it, the occlusion before combine does, and the temporal resolve and its sharpening before the helpers, whatever else
-   * the features add, then the picture presented.
+   * it, the occlusion before combine does, FSR's copy of the opaque frame before the blended surfaces draw, and the
+   * upscaling and its sharpening before the helpers, whatever else the features add, then the picture presented. The
+   * smoothing of the other modes comes after the helpers, which it smooths too, unless FSR 1 upscales what it smoothed.
    */
   private link(): void {
     const sun: number = this.base.findIndex((pass: IRendererPass) => pass.name === "sun");
     const combine: number = this.base.indexOf(this.combine);
+    const forward: number = this.base.findIndex((pass: IRendererPass) => pass.name === "forward");
     const overlay: number = this.base.indexOf(this.overlay);
+    const smoothing: ReadonlyArray<IRendererPass> = this.antialias ? [this.antialias] : [];
 
     const gbuffer: number = this.base.findIndex((pass: IRendererPass) => pass.name === "gbuffer") + 1;
 
@@ -305,11 +332,14 @@ export class RendererFrameGraph {
       ...(this.lightsPass ? [this.lightsPass] : []),
       ...this.base.slice(sun + 1, combine),
       ...(this.ambientOcclusion ? [this.ambientOcclusion] : []),
-      ...this.base.slice(combine, overlay),
+      ...this.base.slice(combine, forward),
+      ...(this.temporal instanceof FsrPass ? [this.temporal.opaque] : []),
+      ...this.base.slice(forward, overlay),
       ...(this.temporal ? [this.temporal] : []),
+      ...(this.spatial ? [...smoothing, this.spatial] : []),
       ...(this.sharpen ? [this.sharpen] : []),
       ...this.base.slice(overlay),
-      ...(this.antialias ? [this.antialias] : []),
+      ...(this.spatial ? [] : smoothing),
       this.present,
     ];
     this.passNames = this.passes.map((pass: IRendererPass) => pass.name);

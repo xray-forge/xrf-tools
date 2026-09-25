@@ -13,8 +13,9 @@ describe("LevelAntialiasingAction", () => {
       <LevelAntialiasingAction
         isOn
         settingsMode={ERendererAntialiasing.SMAA}
-        settingsScale={ERendererRenderScale.NATIVE}
         features={DEFAULT_LEVEL_FEATURE_OPTIONS}
+        scale={ERendererRenderScale.NATIVE}
+        onChangeScale={() => {}}
         onToggle={() => {}}
         onChange={onChange}
       />
@@ -39,8 +40,9 @@ describe("LevelAntialiasingAction", () => {
       <LevelAntialiasingAction
         isOn
         settingsMode={ERendererAntialiasing.NONE}
-        settingsScale={ERendererRenderScale.NATIVE}
         features={DEFAULT_LEVEL_FEATURE_OPTIONS}
+        scale={ERendererRenderScale.NATIVE}
+        onChangeScale={() => {}}
         onToggle={() => {}}
         onChange={() => {}}
       />

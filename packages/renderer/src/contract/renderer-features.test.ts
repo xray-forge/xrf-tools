@@ -7,6 +7,7 @@ import {
   ERendererPreset,
   ERendererRenderScale,
   isRendererFeatureChoiceCustom,
+  isRendererTemporal,
   RENDERER_PRESETS,
   resolveRendererFeatures,
   toRendererFeatureChoice,
@@ -108,23 +109,26 @@ describe("renderer features", () => {
     ).toBe(false);
   });
 
-  it("reads back stored temporal overrides, dropping a scale it has not and a sharpening past one", () => {
+  it("reads back stored upscaling overrides, dropping a scale it has not and a sharpening past one", () => {
     expect(
-      toRendererFeatureChoice({ overrides: { temporal: { scale: "quality", sharpening: 0.25 } }, preset: "base" })
-        .overrides.temporal
+      toRendererFeatureChoice({ overrides: { upscaling: { scale: "quality", sharpening: 0.25 } }, preset: "base" })
+        .overrides.upscaling
     ).toEqual({ scale: ERendererRenderScale.QUALITY, sharpening: 0.25 });
     expect(
-      toRendererFeatureChoice({ overrides: { temporal: { scale: "ultra", sharpening: 2 } }, preset: "base" }).overrides
-        .temporal
+      toRendererFeatureChoice({ overrides: { upscaling: { scale: "ultra", sharpening: 2 } }, preset: "base" }).overrides
+        .upscaling
     ).toBeUndefined();
   });
 
-  it("upscales by the render scale only while TAA resolves", () => {
+  it("upscales by the render scale whatever the mode, and jitters for the temporal modes alone", () => {
     const base = RENDERER_PRESETS[ERendererPreset.BASE];
-    const temporal = { scale: ERendererRenderScale.PERFORMANCE, sharpening: 0.5 };
+    const upscaling = { scale: ERendererRenderScale.PERFORMANCE, sharpening: 0.5 };
 
-    expect(toRendererUpscale({ ...base, antialiasing: ERendererAntialiasing.TAA, temporal })).toBe(2);
-    expect(toRendererUpscale({ ...base, antialiasing: ERendererAntialiasing.SMAA, temporal })).toBe(1);
+    expect(toRendererUpscale({ ...base, antialiasing: ERendererAntialiasing.SMAA, upscaling })).toBe(2);
     expect(toRendererUpscale(base)).toBe(1);
+    expect(Object.values(ERendererAntialiasing).filter(isRendererTemporal)).toEqual([
+      ERendererAntialiasing.TAA,
+      ERendererAntialiasing.FSR,
+    ]);
   });
 });

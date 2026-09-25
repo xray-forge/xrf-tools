@@ -3,6 +3,7 @@ import { default as LayersIcon } from "@mui/icons-material/Layers";
 import { default as SpeedIcon } from "@mui/icons-material/Speed";
 import { default as WarningIcon } from "@mui/icons-material/WarningAmber";
 import { useInjection } from "@wirestate/react";
+import { ERendererRenderScale } from "@xrf/renderer";
 import { Nullable } from "@xrf/types";
 import { ReactElement, ReactNode, useMemo } from "react";
 
@@ -123,6 +124,9 @@ export function LevelPreviewLayout({
           onChangeLighting={viewService.setLighting}
           onChangeLod={viewService.setLod}
           onChangeFeatures={viewService.setFeatures}
+          onChangeScale={(scale: ERendererRenderScale) =>
+            settingsService.setRendererOverrides({ upscaling: { scale } })
+          }
           onBack={onBack}
         />
       }

@@ -198,20 +198,6 @@ export function toTemporalResolve(inputs: ITemporalInputs, uniforms: ITemporalUn
 }
 
 /**
- * The depth the output carries for the helpers drawn over it: the drawn sample's nearest this pixel's centre.
- *
- * @param inputs - What the resolve reads.
- * @param motion - The motion uniforms, which hold this frame's jitter.
- * @returns The depth, reversed like the drawn one.
- */
-export function toResolvedDepth(inputs: ITemporalInputs, motion: MotionUniforms): Node<"float"> {
-  const inputSize: Node<"vec2"> = vec2(texture(inputs.frame).size(int(0)) as Node<"uvec2">);
-  const nearest: Node<"vec2"> = round(screenUV.mul(inputSize).sub(0.5).sub(motion.jitter));
-
-  return textureLoad(inputs.depth, ivec2(clamp(nearest, vec2(0), inputSize.sub(1)))) as unknown as Node<"float">;
-}
-
-/**
  * The history clipped towards the neighbourhood's mean onto the box of its colours (Playdead's `clip_aabb`), so a
  * colour the neighbourhood no longer has fades out rather than trails.
  */

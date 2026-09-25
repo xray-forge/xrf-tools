@@ -69,37 +69,35 @@ export function SettingsRendererFeatures(): ReactElement {
           description={
             "How the frame's edges are smoothed. SMAA is crisp and stable; FXAA is cheaper and softer. TAA blends " +
             "each frame with the ones before, which also smooths foliage and thin wires, and settles when the view " +
-            "stops moving."
+            "stops moving. FSR 2 does the same as AMD's upscaler, holding thin features and the blended surfaces " +
+            "steadier."
           }
           options={ANTIALIASING_OPTIONS}
           value={features.antialiasing}
           onChange={(antialiasing: ERendererAntialiasing) => settingsService.setRendererOverrides({ antialiasing })}
         />
 
-        {features.antialiasing === ERendererAntialiasing.TAA ? (
-          <>
-            <ChoiceFormRow
-              label={"Render scale"}
-              description={
-                "How much of each side the scene is drawn at before TAA upscales it to the view, from the frames " +
-                "before as much as this one. Less costs less for every pass that is paid per pixel."
-              }
-              options={SCALE_OPTIONS}
-              value={features.temporal.scale}
-              onChange={(scale: ERendererRenderScale) => settingsService.setRendererOverrides({ temporal: { scale } })}
-            />
+        <ChoiceFormRow
+          label={"Render scale"}
+          description={
+            "How much of each side the scene is drawn at before it is upscaled to the view: by TAA or FSR 2 from the " +
+            "frames before as much as this one, and by FSR 1 from this frame alone for the other modes. Less costs " +
+            "less for every pass that is paid per pixel."
+          }
+          options={SCALE_OPTIONS}
+          value={features.upscaling.scale}
+          onChange={(scale: ERendererRenderScale) => settingsService.setRendererOverrides({ upscaling: { scale } })}
+        />
 
-            <SliderFormRow
-              label={"Sharpening"}
-              description={"How much the upscaled frame is sharpened after, as FSR's RCAS does. None at native."}
-              value={features.temporal.sharpening}
-              {...RENDER_SHARPENING_LIMITS}
-              isDisabled={features.temporal.scale === ERendererRenderScale.NATIVE}
-              format={(value: number) => formatNumber(value, 2)}
-              onChange={(sharpening: number) => settingsService.setRendererOverrides({ temporal: { sharpening } })}
-            />
-          </>
-        ) : null}
+        <SliderFormRow
+          label={"Sharpening"}
+          description={"How much the upscaled frame is sharpened after, as FSR's RCAS does. None at native."}
+          value={features.upscaling.sharpening}
+          {...RENDER_SHARPENING_LIMITS}
+          isDisabled={features.upscaling.scale === ERendererRenderScale.NATIVE}
+          format={(value: number) => formatNumber(value, 2)}
+          onChange={(sharpening: number) => settingsService.setRendererOverrides({ upscaling: { sharpening } })}
+        />
 
         <CheckboxFormRow
           label={"GPU timings"}

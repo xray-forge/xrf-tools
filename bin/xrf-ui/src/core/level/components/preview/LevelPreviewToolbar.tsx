@@ -2,7 +2,7 @@ import { default as GridOnIcon } from "@mui/icons-material/GridOn";
 import { default as HexagonIcon } from "@mui/icons-material/Hexagon";
 import { default as TextureIcon } from "@mui/icons-material/Texture";
 import { default as ThreeDRotationIcon } from "@mui/icons-material/ThreeDRotation";
-import { IRendererFeatureSettings } from "@xrf/renderer";
+import { ERendererRenderScale, IRendererFeatureSettings } from "@xrf/renderer";
 import { ReactElement, ReactNode, useCallback } from "react";
 
 import { LevelAmbientOcclusionAction } from "@/core/level/components/preview/LevelAmbientOcclusionAction";
@@ -48,6 +48,8 @@ interface ILevelPreviewToolbarProps extends BaseComponentProps {
   onChangeLighting: (lighting: ILevelLighting) => void;
   onChangeLod: (lod: ILevelLodOptions) => void;
   onChangeFeatures: (features: ILevelFeatureOptions) => void;
+  /** Sets the render scale in the settings, every viewport's. */
+  onChangeScale: (scale: ERendererRenderScale) => void;
   onBack?: () => void;
 }
 
@@ -70,6 +72,7 @@ export function LevelPreviewToolbar({
   onChangeLighting,
   onChangeLod,
   onChangeFeatures,
+  onChangeScale,
   onBack,
 }: ILevelPreviewToolbarProps): ReactElement {
   const onToggle = useCallback(
@@ -113,8 +116,9 @@ export function LevelPreviewToolbar({
           <LevelAntialiasingAction
             isOn={options.isAntialiased}
             settingsMode={settings.antialiasing}
-            settingsScale={settings.temporal.scale}
             features={features}
+            scale={settings.upscaling.scale}
+            onChangeScale={onChangeScale}
             onToggle={() => onToggle("isAntialiased")}
             onChange={onChangeFeatures}
           />

@@ -8,8 +8,8 @@ import { toSharpened } from "#/pass/sharpen-pass.tsl";
 import { SharpenUniforms } from "#/uniforms/sharpen-uniforms";
 
 /**
- * Sharpens the upscaled frame before the helpers draw over it: TAAU softens what it reconstructs from fewer samples.
- * In the frame only while TAA upscales and the sharpening is above none.
+ * Sharpens the upscaled frame with RCAS before the helpers draw over it: an upscaler softens what it reconstructs from
+ * fewer samples. In the frame only while the scene is upscaled and the sharpening is above none.
  */
 export class SharpenPass implements IRendererPass {
   public readonly name: string = "sharpen";
@@ -21,12 +21,13 @@ export class SharpenPass implements IRendererPass {
   private readonly quad: QuadMesh;
 
   /**
-   * @param frame - The resolved frame and its depth, at the output's size.
+   * @param frame - The upscaled frame and its depth, at the output's size.
+   * @param isDenoised - Whether RCAS spares what it finds noisy, as FSR 2's does.
    */
-  public constructor(frame: RenderTarget) {
+  public constructor(frame: RenderTarget, isDenoised: boolean) {
     this.output.texture.name = "sharpened";
     this.output.depthTexture = frame.depthTexture;
-    this.material = createQuadMaterial(toSharpened(frame.texture, this.uniforms.strength));
+    this.material = createQuadMaterial(toSharpened(frame.texture, this.uniforms.strength, isDenoised));
     this.quad = new QuadMesh(this.material);
   }
 
