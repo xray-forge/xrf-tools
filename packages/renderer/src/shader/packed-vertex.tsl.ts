@@ -92,6 +92,27 @@ export function toPackedUv(builder: NodeBuilder): Node<"vec2"> {
   return toShorts(attribute<"uint">(EVertexAttribute.PACKED_UV, "uint")).add(fraction).div(PACKED_BASE_QUANT);
 }
 
+/**
+ * @param builder - A builder.
+ * @returns Whether it builds for a tree's packed vertex, whose coordinate is four shorts (`v_tree`).
+ */
+export function isPackedTreeBuild(builder: NodeBuilder): boolean {
+  return (
+    hasAttribute(builder, EVertexAttribute.PACKED_UV) &&
+    builder.geometry.getAttribute(EVertexAttribute.PACKED_UV).itemSize === PACKED_TREE_COMPONENTS / 2
+  );
+}
+
+/**
+ * A tree vertex's rigidity, the coordinate's third short scaled as `deffer_tree_*.vs` scales it by `consts.x`: how much
+ * of the sway it takes, none at the trunk's foot.
+ *
+ * @returns The rigidity.
+ */
+export function toPackedTreeRigidity(): Node<"float"> {
+  return toShorts(attribute<"uvec2">(EVertexAttribute.PACKED_UV, "uvec2").y).x.div(PACKED_TREE_QUANT);
+}
+
 /** The lightmap coordinate from its shorts. */
 export function toPackedUv1(): Node<"vec2"> {
   return toShorts(attribute<"uint">(EVertexAttribute.PACKED_UV1, "uint")).div(PACKED_LIGHTMAP_QUANT);

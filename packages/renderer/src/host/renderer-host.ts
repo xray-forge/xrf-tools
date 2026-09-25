@@ -318,6 +318,7 @@ export class RendererHost {
     // The features' passes join or leave the frame, and its timing starts or stops, before anything is drawn.
     this.graph.configure(settings.features);
     this.uniforms.shadows.fit(this.rig.camera, this.uniforms.lighting.sunDirection, settings.features.shadows);
+    this.uniforms.wind.update(now / 1000);
 
     if (device.setTiming(settings.features.isGpuTimed)) {
       this.stats.resetTimings();

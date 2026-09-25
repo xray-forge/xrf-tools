@@ -2,6 +2,7 @@ import { beforeAll, beforeEach, describe, expect, it, jest } from "@jest/globals
 import { Container } from "@wirestate/core";
 import {
   DEFAULT_RENDERER_SHADOW_SETTINGS,
+  DEFAULT_RENDERER_TREE_WIND,
   EMPTY_RENDERER_STATIC_DRAW_REPORT,
   ERendererAntialiasing,
   ERendererCameraController,
@@ -164,6 +165,25 @@ describe("LevelRenderService", () => {
 
     expect(off?.antialiasing).toBe(ERendererAntialiasing.NONE);
     expect(off?.shadows.isEnabled).toBe(false);
+
+    service.dispose();
+  });
+
+  // The game sways its trees by the weather's wind; off, they stand still for an inspection.
+  it("sways the trees while the toolbar asks, as its controls set the wind", async () => {
+    const { service, viewService } = await mockAttached();
+
+    expect(stub.take(ERendererRequest.LIGHTING).at(-1)?.lighting.trees).toEqual(DEFAULT_RENDERER_TREE_WIND);
+
+    viewService.setLighting({ ...viewService.lighting, windAmplitude: 0.02 });
+    await stub.flush();
+
+    expect(stub.take(ERendererRequest.LIGHTING).at(-1)?.lighting.trees?.amplitude).toBe(0.02);
+
+    viewService.setOptions({ ...viewService.options, isWindy: false });
+    await stub.flush();
+
+    expect(stub.take(ERendererRequest.LIGHTING).at(-1)?.lighting.trees).toBeNull();
 
     service.dispose();
   });

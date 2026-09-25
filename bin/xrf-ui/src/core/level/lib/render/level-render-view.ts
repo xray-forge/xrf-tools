@@ -20,6 +20,7 @@ import {
 } from "@/core/level/lib/features/level-feature-options";
 import { toLevelRendererFog } from "@/core/level/lib/lighting/level-fog";
 import { ILevelLighting } from "@/core/level/lib/lighting/level-lighting";
+import { toLevelRendererTreeWind } from "@/core/level/lib/lighting/level-wind";
 import { ILevelLodOptions, toLevelRendererLod } from "@/core/level/lib/lod/level-lod-options";
 import { ILevelRenderConfig } from "@/core/level/lib/render/level-render-config";
 import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
@@ -54,14 +55,20 @@ export function toLevelCamera(
 }
 
 /**
- * @param lighting - The level's light and fog, as its controls set them.
+ * @param lighting - The level's light, fog and wind, as its controls set them.
  * @param isFogged - Whether the fog is drawn.
+ * @param isWindy - Whether the trees sway.
  * @returns The engine's noon, pointed and scaled by those controls.
  */
-export function toLevelRendererLighting(lighting: ILevelLighting, isFogged: boolean): IRendererLighting {
+export function toLevelRendererLighting(
+  lighting: ILevelLighting,
+  isFogged: boolean,
+  isWindy: boolean = true
+): IRendererLighting {
   return {
     ...toRendererLighting(lighting, DEFAULT_RENDERER_LIGHTING),
     fog: isFogged ? toLevelRendererFog(lighting) : null,
+    trees: isWindy ? toLevelRendererTreeWind(lighting) : null,
   };
 }
 

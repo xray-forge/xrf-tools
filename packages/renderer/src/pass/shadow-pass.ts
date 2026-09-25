@@ -7,6 +7,7 @@ import { RendererTargets } from "#/pass/renderer-targets";
 import { StaticCull } from "#/scene/static/static-cull";
 import { IStaticShadowCasters } from "#/scene/static/static-shadow-casters";
 import { ShadowUniforms } from "#/uniforms/shadow-uniforms";
+import { TreeWindUniforms } from "#/uniforms/tree-wind-uniforms";
 import { SunCascade } from "#/visibility/sun-cascade";
 
 /**
@@ -22,6 +23,7 @@ export class ShadowPass implements IRendererPass {
   private readonly casters: IStaticShadowCasters;
   private readonly cull: StaticCull;
   private readonly shadows: ShadowUniforms;
+  private readonly wind: TreeWindUniforms;
   /** The casters' version its map was drawn at, or null before it was drawn at all. */
   private drawnVersion: Nullable<number> = null;
   /** Frames it has been in, which its staggered rate is counted by. */
@@ -33,6 +35,7 @@ export class ShadowPass implements IRendererPass {
    * @param casters - What the cascades draw.
    * @param cull - What culls the static draws, per cascade too.
    * @param shadows - The cascades, fitted for the frame.
+   * @param wind - How the trees sway, which has the map drawn again every frame it is due while they do.
    * @param resolution - Texels its map is across.
    */
   public constructor(
@@ -41,6 +44,7 @@ export class ShadowPass implements IRendererPass {
     casters: IStaticShadowCasters,
     cull: StaticCull,
     shadows: ShadowUniforms,
+    wind: TreeWindUniforms,
     resolution: number
   ) {
     this.name = `shadow:${view}`;
@@ -49,6 +53,7 @@ export class ShadowPass implements IRendererPass {
     this.casters = casters;
     this.cull = cull;
     this.shadows = shadows;
+    this.wind = wind;
     this.target.setSize(resolution, resolution);
   }
 
@@ -62,10 +67,11 @@ export class ShadowPass implements IRendererPass {
     }
 
     const isCulled: boolean = this.cull.cullView(renderer, this.view, cascade);
-    // A part drawn plainly may be skinned, and moves with no version saying so.
+    // A part drawn plainly may be skinned, and a tree sways: both move with no version saying so.
     const hasPlain: boolean = this.casters.plainCasters.children.length > 0;
+    const isMoving: boolean = hasPlain || this.wind.isSwaying;
 
-    if (!isCulled && !hasPlain && this.drawnVersion === this.casters.shadowVersion) {
+    if (!isCulled && !isMoving && this.drawnVersion === this.casters.shadowVersion) {
       return;
     }
 

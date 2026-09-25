@@ -185,7 +185,9 @@ export class LevelRenderService extends RenderSurfaceService {
 
   @BoundAction()
   private applyLighting(lighting: ILevelLighting): void {
-    this.client?.setLighting(toLevelRendererLighting(lighting, this.viewService.options.isFogged));
+    const { isFogged, isWindy } = this.viewService.options;
+
+    this.client?.setLighting(toLevelRendererLighting(lighting, isFogged, isWindy));
     this.applySettings();
   }
 

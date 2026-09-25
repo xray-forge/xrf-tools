@@ -2,6 +2,7 @@ import {
   attribute,
   cameraViewMatrix,
   Fn,
+  fract,
   instanceIndex,
   mat3,
   mat4,
@@ -12,14 +13,16 @@ import {
   positionLocal,
   transformNormalToView,
   varying,
+  vec2,
   vec3,
   vec4,
 } from "three/tsl";
 import { Node, NodeBuilder } from "three/webgpu";
 
-import { isPackedBuild, toPackedNormal } from "#/shader/packed-vertex.tsl";
+import { isPackedBuild, isPackedTreeBuild, toPackedNormal, toPackedTreeRigidity } from "#/shader/packed-vertex.tsl";
 import { EVertexAttribute, INSTANCE_MATRIX_COLUMNS } from "#/shader/vertex-attribute";
 import { STATIC_PLACE_COLUMNS, StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
+import { TreeWindUniforms } from "#/uniforms/tree-wind-uniforms";
 
 // Where a vertex stands: in each place its instanced attributes name, where the static draw buffers put it - by its
 // slot's matrix, or by the place the cull listed for its instance - or where its object's matrix puts it. The buffer
@@ -133,10 +136,44 @@ export const instancedPosition = Fn((_: [], builder: NodeBuilder): Node<"vec3"> 
 /**
  * @param builder - The builder of a buffer placed shader.
  * @param buffers - What static draws are placed by.
+ * @param wind - How the trees sway, which a tree's vertices take in the world, as `deffer_tree_*.vs` moves them.
  * @returns A static draw's position in view space: its matrix, then the camera's, and nothing of its object's.
  */
-export function toBufferPlacedPositionView(builder: NodeBuilder, buffers: StaticDrawBuffers): Node<"vec3"> {
-  return cameraViewMatrix.mul(toBufferMatrix(builder, buffers).mul(vec4(positionLocal, 1))).xyz;
+export function toBufferPlacedPositionView(
+  builder: NodeBuilder,
+  buffers: StaticDrawBuffers,
+  wind: TreeWindUniforms
+): Node<"vec3"> {
+  const matrix: Node<"mat4"> = toBufferMatrix(builder, buffers);
+  const world: Node<"vec3"> = matrix.mul(vec4(positionLocal, 1)).xyz;
+
+  return cameraViewMatrix.mul(vec4(isPackedTreeBuild(builder) ? toSwayed(world, matrix, wind) : world, 1)).xyz;
+}
+
+/**
+ * `deffer_tree_*.vs`: a tree's vertex moved across the ground by the wind, as far as its height over the tree's foot
+ * times the wave at its place, and as much of that as its rigidity lets it.
+ *
+ * @param world - The vertex in the world.
+ * @param matrix - What placed the tree, whose translation is its foot (`m_xform._24`).
+ * @param wind - How the trees sway.
+ * @returns The vertex where the wind has it now.
+ */
+function toSwayed(world: Node<"vec3">, matrix: Node<"mat4">, wind: TreeWindUniforms): Node<"vec3"> {
+  const foot: Node<"float"> = (matrix as unknown as ReadonlyArray<Node<"vec4">>)[3].y;
+  const wave: Node<"float"> = toCyclic(wind.wave.w.add(world.dot(wind.wave.xyz)));
+  const lean: Node<"vec2"> = vec2(wind.wind.x, wind.wind.z)
+    .mul(world.y.sub(foot).mul(wave))
+    .mul(toPackedTreeRigidity());
+
+  return world.add(vec3(lean.x, 0, lean.y));
+}
+
+/** `calc_cyclic`: a wave from minus one to one over each whole turn, a parabola rather than a sine. */
+function toCyclic(phase: Node<"float">): Node<"float"> {
+  const f: Node<"float"> = fract(phase).mul(2.8284271).sub(1.4142136);
+
+  return f.mul(f).sub(1);
 }
 
 /**

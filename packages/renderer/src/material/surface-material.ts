@@ -60,7 +60,7 @@ export function createSurfaceMaterial(
   const samplers: MaterialSamplers = new MaterialSamplers(textures);
   const shader: ISurfaceShader = SURFACE_SHADERS[pass](surface, samplers, uniforms);
   const compositing: Nullable<ISurfaceCompositing> = toSurfaceCompositing(surface);
-  const material: SurfaceNodeMaterial = new SurfaceNodeMaterial(uniforms.staticDraws);
+  const material: SurfaceNodeMaterial = new SurfaceNodeMaterial(uniforms.staticDraws, uniforms.wind);
 
   // Every surface stands its geometry in each place instanced attributes name, and in its own place where none do.
   material.positionNode = instancedPosition();
@@ -135,7 +135,7 @@ function createShadowMaterial(
   samplers: Nullable<MaterialSamplers>,
   uniforms: RendererUniforms
 ): MeshBasicNodeMaterial {
-  const material: SurfaceNodeMaterial = new SurfaceNodeMaterial(uniforms.staticDraws);
+  const material: SurfaceNodeMaterial = new SurfaceNodeMaterial(uniforms.staticDraws, uniforms.wind);
 
   material.positionNode = instancedPosition();
   material.fragmentNode = toShadowSurfaceShader(surface, samplers).fragmentNode ?? null;

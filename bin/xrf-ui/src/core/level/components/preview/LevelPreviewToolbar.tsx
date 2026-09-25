@@ -12,6 +12,7 @@ import { LevelFogAction } from "@/core/level/components/preview/LevelFogAction";
 import { LevelLodAction } from "@/core/level/components/preview/LevelLodAction";
 import { LevelShadowAction } from "@/core/level/components/preview/LevelShadowAction";
 import { LevelSunAction } from "@/core/level/components/preview/LevelSunAction";
+import { LevelWindAction } from "@/core/level/components/preview/LevelWindAction";
 import { ILevelFeatureOptions, toLevelRendererShadows } from "@/core/level/lib/features/level-feature-options";
 import { ILevelLighting } from "@/core/level/lib/lighting/level-lighting";
 import { ILevelLodOptions } from "@/core/level/lib/lod/level-lod-options";
@@ -137,6 +138,13 @@ export function LevelPreviewToolbar({
             isOn={options.isFogged}
             lighting={lighting}
             onToggle={() => onToggle("isFogged")}
+            onChange={onChangeLighting}
+          />
+
+          <LevelWindAction
+            isOn={options.isWindy}
+            lighting={lighting}
+            onToggle={() => onToggle("isWindy")}
             onChange={onChangeLighting}
           />
 

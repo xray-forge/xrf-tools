@@ -1,10 +1,11 @@
 import { DEFAULT_LEVEL_FOG, ILevelFog } from "@/core/level/lib/lighting/level-fog";
+import { DEFAULT_LEVEL_WIND, ILevelWind } from "@/core/level/lib/lighting/level-wind";
 import { IRenderLighting } from "@/core/render/lib/lighting/render-lighting";
 
 /**
- * How a level preview is lit and fogged.
+ * How a level preview is lit and fogged, and how its trees sway.
  */
-export interface ILevelLighting extends IRenderLighting, ILevelFog {
+export interface ILevelLighting extends IRenderLighting, ILevelFog, ILevelWind {
   /** How much the baked hemisphere term darkens the ambient, `0` ignoring it and `1` applying it whole. */
   hemiStrength: number;
 }
@@ -16,6 +17,7 @@ export interface ILevelLighting extends IRenderLighting, ILevelFog {
  */
 export const DEFAULT_LEVEL_LIGHTING: ILevelLighting = {
   ...DEFAULT_LEVEL_FOG,
+  ...DEFAULT_LEVEL_WIND,
   ambientColor: 0xffffff,
   ambientIntensity: 1,
   hemiStrength: 1,

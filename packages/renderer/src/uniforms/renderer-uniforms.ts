@@ -10,6 +10,7 @@ import { createMaterialLutTexture } from "#/uniforms/material-lut-texture";
 import { SettingsUniforms } from "#/uniforms/settings-uniforms";
 import { ShadowUniforms } from "#/uniforms/shadow-uniforms";
 import { StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
+import { TreeWindUniforms } from "#/uniforms/tree-wind-uniforms";
 
 /**
  * Everything the frame's shaders read besides the scene: uniforms updated in place, so no change recompiles a
@@ -25,6 +26,7 @@ export class RendererUniforms {
   public readonly staticDraws: StaticDrawBuffers = new StaticDrawBuffers();
   /** The sun's shadow cascades, fitted every frame. */
   public readonly shadows: ShadowUniforms = new ShadowUniforms();
+  public readonly wind: TreeWindUniforms = new TreeWindUniforms();
 
   private fogDistance: Nullable<number> = null;
   private isLit: boolean = true;
@@ -50,6 +52,7 @@ export class RendererUniforms {
    */
   public light(lighting: IRendererLighting): void {
     this.lighting.apply(toBaseLightingConstants(lighting));
+    this.wind.take(lighting.trees);
     this.fogDistance = lighting.fog?.distance ?? null;
   }
 

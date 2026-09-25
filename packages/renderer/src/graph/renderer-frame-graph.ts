@@ -95,7 +95,15 @@ export class RendererFrameGraph {
       this.shadows = Array.from(
         { length: count },
         (_, view: number) =>
-          new ShadowPass(view, this.targets, this.casters, this.cull, this.uniforms.shadows, shadows.resolution)
+          new ShadowPass(
+            view,
+            this.targets,
+            this.casters,
+            this.cull,
+            this.uniforms.shadows,
+            this.uniforms.wind,
+            shadows.resolution
+          )
       );
     }
 

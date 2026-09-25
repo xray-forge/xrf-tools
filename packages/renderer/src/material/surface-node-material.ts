@@ -4,6 +4,7 @@ import { MeshBasicNodeMaterial, Node, NodeBuilder, NodeMaterialObserver } from "
 import { StaticDrawObserver } from "#/material/static-draw-observer";
 import { isBufferPlacedBuild, toBufferPlacedPositionView } from "#/shader/placement.tsl";
 import { StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
+import { TreeWindUniforms } from "#/uniforms/tree-wind-uniforms";
 
 /**
  * The material every surface draws with: three's basic node material, placing a static draw by the buffers every
@@ -11,13 +12,16 @@ import { StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
  */
 export class SurfaceNodeMaterial extends MeshBasicNodeMaterial {
   private readonly staticDraws: StaticDrawBuffers;
+  private readonly wind: TreeWindUniforms;
 
   /**
    * @param staticDraws - What static draws are placed by.
+   * @param wind - How the trees sway, which a tree drawn statically takes.
    */
-  public constructor(staticDraws: StaticDrawBuffers) {
+  public constructor(staticDraws: StaticDrawBuffers, wind: TreeWindUniforms) {
     super();
     this.staticDraws = staticDraws;
+    this.wind = wind;
   }
 
   /** Where a vertex stands in view space, for a surface placing its own vertices; null for every other. */
@@ -29,7 +33,7 @@ export class SurfaceNodeMaterial extends MeshBasicNodeMaterial {
     }
 
     return isBufferPlacedBuild(builder)
-      ? toBufferPlacedPositionView(builder, this.staticDraws)
+      ? toBufferPlacedPositionView(builder, this.staticDraws, this.wind)
       : super.setupPositionView(builder);
   }
 
