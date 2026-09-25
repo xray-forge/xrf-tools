@@ -1,6 +1,7 @@
 import { Nullable } from "@xrf/types";
 import { BufferAttribute, IndirectStorageBufferAttribute, Matrix4, Sphere } from "three/webgpu";
 
+import { queueBufferUpload } from "#/scene/buffer-upload";
 import { EStaticPool, STATIC_DRAW_ARGUMENTS, StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
 
 /** The slots written since the buffers last went up, as one span. */
@@ -41,6 +42,16 @@ export class StaticDrawPool {
   /** The indirect arguments every static draw is drawn by again, as the second cull leaves them. */
   public get lateArgs(): IndirectStorageBufferAttribute {
     return this.buffers.lateArgs;
+  }
+
+  /** The first draw's arguments over the arenas' line indices, which the cull rewrites while a wireframe draws. */
+  public get wireArgs(): IndirectStorageBufferAttribute {
+    return this.buffers.wireArgs;
+  }
+
+  /** The second draw's, likewise. */
+  public get wireLateArgs(): IndirectStorageBufferAttribute {
+    return this.buffers.wireLateArgs;
   }
 
   /** Each shadow cascade's arguments, which its batch meshes draw by. */
@@ -208,8 +219,6 @@ export class StaticDrawPool {
   }
 
   private static upload(attribute: BufferAttribute, first: number, last: number, stride: number): void {
-    attribute.clearUpdateRanges();
-    attribute.addUpdateRange(first * stride, (last - first + 1) * stride);
-    attribute.needsUpdate = true;
+    queueBufferUpload(attribute, first * stride, (last - first + 1) * stride);
   }
 }

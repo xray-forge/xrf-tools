@@ -1,4 +1,4 @@
-import { float, Fn, If, int, Loop, select, texture, vec2, vec4 } from "three/tsl";
+import { abs, float, Fn, If, int, Loop, saturate, select, texture, vec2, vec4 } from "three/tsl";
 import { Node, Texture } from "three/webgpu";
 
 import { RENDERER_MAX_SHADOW_CASCADES } from "#/contract/renderer-features";
@@ -10,10 +10,15 @@ const COMPONENTS = ["x", "y", "z", "w"] as const;
 /** The share of a map's edge a point is kept off, so the filter never reads past it into the next cascade's edge. */
 const EDGE: number = 0.02;
 
+/** How far from its centre, in shares of the map, the last cascade starts to fade out: the engine's `border`. */
+const BORDER: number = 0.4;
+
 /**
  * How much of the sun reaches a point: the first cascade whose map holds it, compared over a square of texels the
- * filter reaches, one where it is lit and nothing where every texel stands nearer the sun. Past every cascade the sun
- * reaches it whole. Depth is reversed, so a texel nearer the sun holds the larger value.
+ * filter reaches, one where it is lit and nothing where every texel stands nearer the sun. The last cascade fades out
+ * over its outer fifth on the side the camera looks towards, as the engine's far pass does (`accum_sun_far.ps`), so
+ * its square never shows; past every cascade the sun reaches it whole. Depth is reversed, so a texel nearer the sun
+ * holds the larger value.
  *
  * @param position - The point, in world space.
  * @param normal - Its normal, in world space, which it is moved along first so a lit surface never shadows itself.
@@ -63,6 +68,19 @@ export function toSunShadow(
           });
 
           lit.assign(total.div(taps));
+
+          If(shadows.count.equal(view + 1), () => {
+            // The view's direction in the map, and how far out the point stands from its centre, on that side only.
+            const ahead = shadows.matrices[view].mul(vec4(shadows.forward, 0));
+            const offset = uv.sub(0.5).toVar();
+            const isAhead = offset.dot(vec2(ahead.x, ahead.y.negate())).greaterThanEqual(0);
+            const out = select(isAhead, abs(offset), vec2(0));
+            const kept = float(1)
+              .sub(saturate(out.x.sub(BORDER).div(0.5 - BORDER)))
+              .mul(float(1).sub(saturate(out.y.sub(BORDER).div(0.5 - BORDER))));
+
+            lit.assign(lit.add(float(1).sub(lit).mul(float(1).sub(kept))));
+          });
         });
       });
     }

@@ -94,6 +94,12 @@ export class StaticArena {
   private readonly indices: RangeAllocator = new RangeAllocator();
   private attributes: Map<string, BufferAttribute> = new Map();
   private index: BufferAttribute = new BufferAttribute(new Uint32Array(0), 1);
+  /**
+   * The line index a wireframe draws, held only while one does: every triangle's three edges, two indices each, at
+   * twice the triangle's own offset, so a draw's arguments become a wireframe draw's by doubling its count and first
+   * index.
+   */
+  private lines: Nullable<BufferAttribute> = null;
   /** Slots the static draw buffers hold, which its slot attribute numbers. */
   private slotCount: number;
   /** Every slot's own number, read by a static draw's first instance: which slot it draws. */
@@ -173,6 +179,17 @@ export class StaticArena {
     this.index.needsUpdate = true;
     this.placed += 1;
 
+    if (this.lines) {
+      StaticArena.writeLines(
+        this.index.array as Uint32Array,
+        this.lines.array as Uint32Array,
+        indexStart,
+        index.length
+      );
+      this.lines.addUpdateRange(indexStart * 2, index.length * 2);
+      this.lines.needsUpdate = true;
+    }
+
     return { arena: this, indexCount: index.length, indexStart, vertexCount, vertexStart };
   }
 
@@ -213,8 +230,63 @@ export class StaticArena {
     return geometry;
   }
 
+  /** Whether it holds the line index a wireframe draws. */
+  public get isWired(): boolean {
+    return this.lines !== null;
+  }
+
+  /** Builds the line index a wireframe draws, from every triangle it holds, and keeps it up to date from now on. */
+  public wire(): void {
+    if (!this.lines) {
+      this.lines = StaticArena.createLines(this.index.array as Uint32Array);
+    }
+  }
+
+  /** Lets go of the line index; its buffer goes with the wireframe geometries that drew it. */
+  public unwire(): void {
+    this.lines = null;
+  }
+
+  /**
+   * @param kind - The kind of static draw it draws.
+   * @returns A geometry over the arena's vertices and its line index, as `createGeometry` is over its triangles.
+   */
+  public createWireGeometry(kind: EStaticDrawKind): BufferGeometry {
+    this.wire();
+
+    const geometry: BufferGeometry = this.createGeometry(kind);
+
+    geometry.setIndex(this.lines);
+
+    return geometry;
+  }
+
   public dispose(): void {
     Object.values(this.prototypes).forEach((prototype: BufferGeometry) => prototype.dispose());
+  }
+
+  /** A line index over every triangle of a triangle index, two indices an edge at twice each triangle's offset. */
+  private static createLines(index: Uint32Array): BufferAttribute {
+    const lines: Uint32Array = new Uint32Array(index.length * 2);
+
+    StaticArena.writeLines(index, lines, 0, index.length - (index.length % 3));
+
+    return new BufferAttribute(lines, 1);
+  }
+
+  /** Writes the edges of the triangles in a run of a triangle index into a line index. */
+  private static writeLines(index: Uint32Array, lines: Uint32Array, start: number, count: number): void {
+    for (let at = start; at < start + count; at += 3) {
+      const [a, b, c] = [index[at], index[at + 1], index[at + 2]];
+      const line: number = at * 2;
+
+      lines[line] = a;
+      lines[line + 1] = b;
+      lines[line + 2] = b;
+      lines[line + 3] = c;
+      lines[line + 4] = c;
+      lines[line + 5] = a;
+    }
   }
 
   /** Whether both runs fit as the arena stands, without growing it. */
@@ -286,6 +358,8 @@ export class StaticArena {
     index.set(this.index.array);
     this.attributes = attributes;
     this.index = new BufferAttribute(index, 1);
+    // Drawn again from the grown index by the geometries its generation makes again.
+    this.lines = this.lines ? StaticArena.createLines(index) : null;
     // Freed with the geometries drawing it; a new one is uploaded with the ones that replace them.
     this.slots = StaticArena.createSlots(this.slotCount);
     this.vertices.grow(vertices);

@@ -21,14 +21,18 @@ export interface IOverlayDrawing {
 }
 
 /**
- * @param objects - An overlay's objects, taken out of their scene and let go of on the device.
+ * @param objects - An overlay's objects, taken out of their scene and let go of on the device. A sprite's geometry is
+ *   the one quad three shares between every sprite, so only its material goes: disposing the quad destroys its buffers
+ *   under every sprite put after, and the overlay pass that draws one is dropped whole, grid and all.
  */
 export function disposeOverlayObjects(objects: ReadonlyArray<Object3D>): void {
   for (const object of objects) {
     object.removeFromParent();
 
-    if (object instanceof LineSegments || object instanceof Sprite) {
+    if (object instanceof LineSegments) {
       object.geometry.dispose();
+      (object.material as { dispose(): void }).dispose();
+    } else if (object instanceof Sprite) {
       (object.material as { dispose(): void }).dispose();
     }
   }

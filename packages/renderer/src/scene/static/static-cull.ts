@@ -53,6 +53,8 @@ export class StaticCull {
   private isPending: boolean = false;
   /** Whether this frame culled, so its depth is to be read. */
   private isCulled: boolean = false;
+  /** Whether a wireframe draws, whose arguments each cull rewrites from its own. */
+  private isWireframe: boolean = false;
 
   /**
    * @param buffers - What every static draw reads.
@@ -121,6 +123,17 @@ export class StaticCull {
   }
 
   /**
+   * @param isWireframe - Whether the arenas' line indices draw, by arguments each cull rewrites from its own.
+   */
+  public setWireframe(isWireframe: boolean): void {
+    if (isWireframe !== this.isWireframe) {
+      this.isWireframe = isWireframe;
+      // The wireframe's arguments are only as current as the last cull that wrote them.
+      this.isPending = true;
+    }
+  }
+
+  /**
    * The first cull, before anything draws: uploads what changed and culls, where anything did.
    *
    * @param renderer - The renderer drawing.
@@ -141,6 +154,11 @@ export class StaticCull {
     this.buffers.counts.needsUpdate = true;
     // The slot cull leaves every instanced draw at no instances, for its rows to count up after it.
     renderer.compute(this.shader.early);
+
+    if (this.isWireframe) {
+      renderer.compute(this.shader.wire[0]);
+    }
+
     this.isPending = false;
     this.isCulled = true;
   }
@@ -160,6 +178,10 @@ export class StaticCull {
       // A pyramid grown for a larger drawing is a buffer the culls built before it do not read.
       this.build();
       renderer.compute(this.shader.late);
+
+      if (this.isWireframe) {
+        renderer.compute(this.shader.wire[1]);
+      }
     }
   }
 
@@ -264,7 +286,7 @@ export class StaticCull {
   }
 
   public dispose(): void {
-    [...this.shader.early, ...this.shader.late].forEach((compute) => compute.dispose());
+    [...this.shader.early, ...this.shader.late, ...this.shader.wire].forEach((compute) => compute.dispose());
     this.pyramid.dispose();
   }
 
@@ -273,9 +295,12 @@ export class StaticCull {
     if (this.layout !== this.buffers.layout) {
       const planes = this.shader.planes;
 
-      [...this.shader.early, ...this.shader.late, ...this.shader.views.flatMap((view) => view.cull)].forEach(
-        (compute) => compute.dispose()
-      );
+      [
+        ...this.shader.early,
+        ...this.shader.late,
+        ...this.shader.wire,
+        ...this.shader.views.flatMap((view) => view.cull),
+      ].forEach((compute) => compute.dispose());
       // Every cascade culls again against the buffers as they are laid out now.
       this.viewVersions.fill(-1);
       this.shader = createStaticCullShader(this.buffers);
@@ -291,6 +316,7 @@ export class StaticCull {
 
     earlySlots.count = slots;
     lateSlots.count = slots;
+    this.shader.wire.forEach((compute) => (compute.count = slots));
     lods.count = Math.max(this.lods.extent, 1);
     earlyRows.count = rows;
     lateRows.count = rows;

@@ -13,9 +13,9 @@ export interface ISceneObjectDraw {
 
 /**
  * @param surface - A surface an object draws.
- * @returns Whether its parts can be static draws: filling the G-buffer, and as triangles rather than their edges,
- *   which an indirect draw of triangle ranges cannot draw.
+ * @returns Whether its parts can be static draws: filling the G-buffer. A wireframe draws them too, over the arenas'
+ *   line indices.
  */
 export function isStaticSurface(surface: ISurfaceMaterial): boolean {
-  return surface.pass === ERendererPass.DEFERRED && !surface.material.wireframe;
+  return surface.pass === ERendererPass.DEFERRED;
 }

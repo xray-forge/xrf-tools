@@ -1,7 +1,7 @@
 import { Maybe } from "@xrf/types";
-import { BundleGroup, Mesh, Object3D } from "three/webgpu";
+import { BundleGroup, Object3D } from "three/webgpu";
 
-import { StaticBatch } from "#/scene/static/static-batch";
+import { StaticBatch, TStaticBatchMesh } from "#/scene/static/static-batch";
 
 /**
  * Batches one set of bundles holds: every bundle costs the frame on its own to replay, and a change records its
@@ -27,6 +27,8 @@ export class StaticBundleChunks {
   /** Each cell's chunks, so a chunk holds batches of one cell alone and a cell's bundles show or hide together. */
   private readonly cells: Map<string, Array<IBundleChunk>> = new Map();
   private readonly owners: Map<StaticBatch, IBundleChunk> = new Map();
+  /** Whether its bundles draw at all, which a chunk made later takes too. */
+  private isShown: boolean = true;
 
   /**
    * @param scenes - Where each phase's bundles stand, in the order a batch's meshes are.
@@ -55,7 +57,7 @@ export class StaticBundleChunks {
     let chunk: Maybe<IBundleChunk> = chunks.find((it: IBundleChunk) => it.count < BATCHES_PER_CHUNK);
 
     if (!chunk) {
-      chunk = { bundles: this.scenes.map(() => StaticBundleChunks.createBundle()), cell, count: 0 };
+      chunk = { bundles: this.scenes.map(() => StaticBundleChunks.createBundle(this.isShown)), cell, count: 0 };
       chunks.push(chunk);
       this.chunks.push(chunk);
     }
@@ -82,7 +84,7 @@ export class StaticBundleChunks {
       return;
     }
 
-    batch.meshes.forEach((mesh: Mesh) => mesh.removeFromParent());
+    batch.meshes.forEach((mesh: TStaticBatchMesh) => mesh.removeFromParent());
     this.owners.delete(batch);
     chunk.count -= 1;
     chunk.bundles.forEach((bundle: BundleGroup) => {
@@ -107,6 +109,16 @@ export class StaticBundleChunks {
     }
   }
 
+  /**
+   * @param isShown - Whether any of its bundles draws, every phase and cell of them, now and once made.
+   */
+  public setShown(isShown: boolean): void {
+    this.isShown = isShown;
+    this.chunks.forEach((chunk: IBundleChunk) =>
+      chunk.bundles.forEach((bundle: BundleGroup) => (bundle.visible = isShown))
+    );
+  }
+
   public clear(): void {
     this.chunks.forEach((chunk: IBundleChunk) =>
       chunk.bundles.forEach((bundle: BundleGroup) => bundle.removeFromParent())
@@ -120,9 +132,10 @@ export class StaticBundleChunks {
    * A bundle standing where the scene stands: its batches' meshes are placed by the buffers, never by their matrices,
    * so neither it nor anything in it takes part in three's walk of the scene's matrices.
    */
-  private static createBundle(): BundleGroup {
+  private static createBundle(isShown: boolean): BundleGroup {
     const bundle: BundleGroup = new BundleGroup();
 
+    bundle.visible = isShown;
     bundle.matrixAutoUpdate = false;
     bundle.matrixWorldAutoUpdate = false;
 

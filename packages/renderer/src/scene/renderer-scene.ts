@@ -142,7 +142,8 @@ export class RendererScene {
    * @param isWireframe - Whether every surface draws as its triangles' edges.
    */
   public setWireframe(isWireframe: boolean): void {
-    this.transact(() => this.surfaces.setWireframe(isWireframe));
+    this.surfaces.setWireframe(isWireframe);
+    this.staticDraws.setWireframe(isWireframe ? this.surfaces.wireframeMaterial.material : null);
   }
 
   /**

@@ -3,6 +3,7 @@ import { Matrix4, PerspectiveCamera, UniformNode, Vector3, Vector4 } from "three
 
 import { IRendererShadowSettings, RENDERER_MAX_SHADOW_CASCADES } from "#/contract/renderer-features";
 import { SunCascade } from "#/visibility/sun-cascade";
+import { SunViewRays } from "#/visibility/sun-view-rays";
 
 /**
  * The sun's shadow as the frame reads it: each cascade fitted to the camera, and what sampling one takes, in three's
@@ -28,6 +29,11 @@ export class ShadowUniforms {
   public readonly bias = uniform(1).setGroup(renderGroup);
   /** Texels each map is across. */
   public readonly resolution = uniform(1).setGroup(renderGroup);
+  /** Where the camera looks, which the last cascade fades out towards. */
+  public readonly forward = uniform(new Vector3(0, 0, -1)).setGroup(renderGroup);
+
+  /** The view's edges, which the cascades are placed along one after another. */
+  private readonly rays: SunViewRays = new SunViewRays();
 
   /** Cascades drawn, as the last fit took them. */
   public get drawn(): number {
@@ -54,8 +60,19 @@ export class ShadowUniforms {
     this.resolution.value = settings.resolution;
     this.isStaggered = settings.isStaggered;
 
+    camera.getWorldDirection(this.forward.value);
+    // Each cascade starts where the view's edges leave the one before it, the first at the near plane.
+    this.rays.reset(camera);
+
     for (let view = 0; view < count; view += 1) {
-      this.cascades[view].fit(camera, direction, settings.cascades[view], settings.resolution, settings.reach);
+      this.cascades[view].fit(
+        camera,
+        this.rays,
+        direction,
+        settings.cascades[view],
+        settings.resolution,
+        settings.reach
+      );
     }
   }
 

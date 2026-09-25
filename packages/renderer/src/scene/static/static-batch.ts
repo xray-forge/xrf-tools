@@ -1,7 +1,15 @@
 import { Maybe, Nullable } from "@xrf/types";
-import { BufferGeometry, BundleGroup, IndirectStorageBufferAttribute, Material, Mesh, Object3D } from "three/webgpu";
+import {
+  BufferGeometry,
+  BundleGroup,
+  IndirectStorageBufferAttribute,
+  LineSegments,
+  Material,
+  Mesh,
+  Object3D,
+} from "three/webgpu";
 
-import { createSceneMesh } from "#/scene/object/scene-mesh";
+import { createSceneLines, createSceneMesh } from "#/scene/object/scene-mesh";
 import { StaticArena } from "#/scene/static/static-arena";
 import { EStaticDrawKind } from "#/scene/static/static-draw-kind";
 import { STATIC_DRAW_ARGUMENTS } from "#/uniforms/static-draw-buffers";
@@ -15,11 +23,14 @@ const IDLE_MATERIAL: Material = new Material();
 /** The arguments one phase of a batch draws by, read again whenever the slots' growth replaced them. */
 export type TStaticBatchArguments = () => IndirectStorageBufferAttribute;
 
+/** What a batch draws a phase with: a mesh over the arena's triangles, or line segments over its line index. */
+export type TStaticBatchMesh = Mesh | LineSegments;
+
 /** One phase's draw of a batch: its mesh over the arena, drawn by that phase's arguments. */
 interface IBatchPhase {
   toArgs: TStaticBatchArguments;
   geometry: BufferGeometry;
-  mesh: Mesh;
+  mesh: TStaticBatchMesh;
 }
 
 /**
@@ -34,6 +45,8 @@ export class StaticBatch {
   public readonly arena: StaticArena;
   /** The kind of static draw it issues, which its geometry is marked for. */
   public readonly kind: EStaticDrawKind;
+  /** Whether it draws the arena's line index, as a wireframe, rather than its triangles. */
+  public readonly isWire: boolean;
 
   private readonly phases: ReadonlyArray<IBatchPhase>;
   private currentMaterial: Nullable<Material> = null;
@@ -49,20 +62,27 @@ export class StaticBatch {
    * @param arena - The arena it draws.
    * @param kind - The kind of static draw it issues.
    * @param phases - The arguments each of its phases draws by.
+   * @param isWire - Whether it draws the arena's line index, by arguments doubled for it.
    */
-  public constructor(arena: StaticArena, kind: EStaticDrawKind, phases: ReadonlyArray<TStaticBatchArguments>) {
+  public constructor(
+    arena: StaticArena,
+    kind: EStaticDrawKind,
+    phases: ReadonlyArray<TStaticBatchArguments>,
+    isWire: boolean = false
+  ) {
     this.arena = arena;
     this.kind = kind;
+    this.isWire = isWire;
     this.generation = arena.generation;
     this.phases = phases.map((toArgs: TStaticBatchArguments) => {
       const geometry: BufferGeometry = this.createGeometry(toArgs());
 
-      return { geometry, mesh: createSceneMesh(geometry, null, IDLE_MATERIAL), toArgs };
+      return { geometry, mesh: this.createMesh(geometry, IDLE_MATERIAL), toArgs };
     });
   }
 
   /** Its meshes, a phase each, in the order its phases were given. */
-  public get meshes(): ReadonlyArray<Mesh> {
+  public get meshes(): ReadonlyArray<TStaticBatchMesh> {
     return this.phases.map((phase: IBatchPhase) => phase.mesh);
   }
 
@@ -152,7 +172,7 @@ export class StaticBatch {
       phase.mesh.removeFromParent();
       phase.geometry.dispose();
       phase.geometry = this.createGeometry(phase.toArgs());
-      phase.mesh = createSceneMesh(phase.geometry, null, material);
+      phase.mesh = this.createMesh(phase.geometry, material);
       parent?.add(phase.mesh);
     }
 
@@ -167,8 +187,14 @@ export class StaticBatch {
     }
   }
 
+  private createMesh(geometry: BufferGeometry, material: Material): TStaticBatchMesh {
+    return this.isWire ? createSceneLines(geometry, material) : createSceneMesh(geometry, null, material);
+  }
+
   private createGeometry(args: IndirectStorageBufferAttribute): BufferGeometry {
-    const geometry: BufferGeometry = this.arena.createGeometry(this.kind);
+    const geometry: BufferGeometry = this.isWire
+      ? this.arena.createWireGeometry(this.kind)
+      : this.arena.createGeometry(this.kind);
 
     geometry.setIndirect(args, this.offsets);
     // Drawn by its indirect arguments alone; the range only keeps three's count of what a recording drew honest.

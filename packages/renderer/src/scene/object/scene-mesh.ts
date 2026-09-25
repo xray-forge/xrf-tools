@@ -1,5 +1,5 @@
 import { Nullable } from "@xrf/types";
-import { BufferGeometry, Material, Matrix4, Mesh, Skeleton, SkinnedMesh } from "three/webgpu";
+import { BufferGeometry, LineSegments, Material, Matrix4, Mesh, Skeleton, SkinnedMesh } from "three/webgpu";
 
 /**
  * A mesh the scene places itself: its matrix set directly, never recomposed, and never culled by three, since the
@@ -22,4 +22,20 @@ export function createSceneMesh(geometry: BufferGeometry, skeleton: Nullable<Ske
   }
 
   return mesh;
+}
+
+/**
+ * Line segments the scene places itself, as `createSceneMesh` places a mesh: a wireframe's edges, two indices each.
+ *
+ * @param geometry - What it draws, indexed by line.
+ * @param material - What draws it.
+ * @returns The line segments.
+ */
+export function createSceneLines(geometry: BufferGeometry, material: Material): LineSegments {
+  const lines: LineSegments = new LineSegments(geometry, material);
+
+  lines.matrixAutoUpdate = false;
+  lines.frustumCulled = false;
+
+  return lines;
 }

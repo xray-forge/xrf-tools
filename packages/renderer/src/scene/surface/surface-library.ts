@@ -1,13 +1,16 @@
 import { Maybe } from "@xrf/types";
 import { Material } from "three/webgpu";
 
-import { IRendererSurface } from "#/contract/scene/renderer-surface";
+import { ERendererDraw, IRendererSurface } from "#/contract/scene/renderer-surface";
 import { createSurfaceMaterial, ISurfaceMaterial } from "#/material/surface-material";
 import { RendererTextures } from "#/texture/renderer-textures";
 import { RendererUniforms } from "#/uniforms/renderer-uniforms";
 
 /** Superseded materials kept compiled, so a toggle back to one draws it at once. */
 const MATERIAL_CACHE_LIMIT: number = 64;
+
+/** What a wireframe draws every static surface's edges with: one untextured grey, lit as a surface is. */
+const WIREFRAME_SURFACE: IRendererSurface = { color: [0.75, 0.75, 0.75], draw: ERendererDraw.OPAQUE, textures: {} };
 
 /**
  * The surfaces a consumer put, by key, each as the material the frame draws it with.
@@ -19,8 +22,6 @@ export class SurfaceLibrary {
   private readonly onReplaced: (key: string) => void;
 
   private readonly materials: Map<string, ISurfaceMaterial> = new Map();
-  /** What each surface was put as, to build it again when the wireframe setting changes. */
-  private readonly sources: Map<string, IRendererSurface> = new Map();
   /** The description each key's material was built from. */
   private readonly descriptions: Map<string, string> = new Map();
   /** The description each material was built from, which is the cache's key for it. */
@@ -30,6 +31,8 @@ export class SurfaceLibrary {
   /** Compiled materials no surface names, by description, oldest first. */
   private readonly cache: Map<string, ISurfaceMaterial> = new Map();
   private isWireframe: boolean = false;
+  /** What a wireframe draws the static surfaces' edges with, made the first time one draws. */
+  private wireframe: Maybe<ISurfaceMaterial>;
 
   /**
    * @param textures - Where the materials bind their textures.
@@ -57,7 +60,6 @@ export class SurfaceLibrary {
    */
   public put(key: string, surface: IRendererSurface): void {
     if (this.descriptions.get(key) !== this.toDescription(surface)) {
-      this.sources.set(key, surface);
       this.build(key, surface);
     }
   }
@@ -66,7 +68,6 @@ export class SurfaceLibrary {
     const previous: Maybe<ISurfaceMaterial> = this.materials.get(key);
 
     this.materials.delete(key);
-    this.sources.delete(key);
     this.descriptions.delete(key);
 
     if (previous) {
@@ -76,13 +77,41 @@ export class SurfaceLibrary {
     this.onReplaced(key);
   }
 
+  /** What a wireframe draws every static surface's edges with, over the arenas' line indices. */
+  public get wireframeMaterial(): ISurfaceMaterial {
+    this.wireframe ??= createSurfaceMaterial(WIREFRAME_SURFACE, this.textures, this.uniforms);
+
+    return this.wireframe;
+  }
+
   /**
+   * Has every material draw its triangles' edges, or its triangles: what a part drawn plainly draws. Nothing is built
+   * again, so nothing compiles but what draws plainly; the static draws take their own wireframe.
+   *
    * @param isWireframe - Whether every surface draws as its triangles' edges.
    */
   public setWireframe(isWireframe: boolean): void {
-    if (isWireframe !== this.isWireframe) {
-      this.isWireframe = isWireframe;
-      this.sources.forEach((surface: IRendererSurface, key: string) => this.build(key, surface));
+    if (isWireframe === this.isWireframe) {
+      return;
+    }
+
+    this.isWireframe = isWireframe;
+
+    for (const surfaces of [this.materials.values(), this.retired, this.cache.values()]) {
+      for (const surface of surfaces) {
+        SurfaceLibrary.applyWireframe(surface, isWireframe);
+      }
+    }
+  }
+
+  /**
+   * An impostor is never drawn plainly, and its wireframe batch draws the line index with its own material: three
+   * would build a line index of its own over that one, as big as the arena, for a material marked wireframe.
+   */
+  private static applyWireframe(surface: ISurfaceMaterial, isWireframe: boolean): void {
+    if (!surface.isImpostor && surface.material.wireframe !== isWireframe) {
+      surface.material.wireframe = isWireframe;
+      surface.material.needsUpdate = true;
     }
   }
 
@@ -124,10 +153,12 @@ export class SurfaceLibrary {
       }
     }
 
+    this.wireframe?.dispose();
+    this.wireframe = undefined;
+
     this.materials.clear();
     this.retired.clear();
     this.cache.clear();
-    this.sources.clear();
     this.descriptions.clear();
   }
 
@@ -141,9 +172,10 @@ export class SurfaceLibrary {
       this.cache.delete(description);
     } else {
       material = createSurfaceMaterial(surface, this.textures, this.uniforms);
-      material.material.wireframe = this.isWireframe;
       this.built.set(material, description);
     }
+
+    SurfaceLibrary.applyWireframe(material, this.isWireframe);
 
     this.descriptions.set(key, description);
     this.materials.set(key, material);
@@ -155,8 +187,8 @@ export class SurfaceLibrary {
     this.onReplaced(key);
   }
 
-  /** What a surface is built from: the surface itself and the wireframe setting, as one comparable string. */
+  /** What a surface is built from, as one comparable string. */
   private toDescription(surface: IRendererSurface): string {
-    return `${this.isWireframe ? "wireframe" : "solid"}:${JSON.stringify(surface)}`;
+    return JSON.stringify(surface);
   }
 }

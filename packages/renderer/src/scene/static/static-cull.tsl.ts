@@ -10,6 +10,7 @@ import {
 } from "#/scene/static/static-instance-cull.tsl";
 import { createLodCullShader } from "#/scene/static/static-lod-cull.tsl";
 import { toOccluded } from "#/scene/static/static-occlusion.tsl";
+import { createWireArgumentsShader } from "#/scene/static/static-wire.tsl";
 import {
   EStaticCullState,
   EStaticPool,
@@ -28,6 +29,8 @@ export interface IStaticCullShader {
   early: [ComputeNode, ComputeNode, ComputeNode];
   /** The slot cull, then the instance cull. */
   late: [ComputeNode, ComputeNode];
+  /** Each phase's arguments rewritten for its wireframe draw, the first then the second. */
+  wire: [ComputeNode, ComputeNode];
   /** Six planes, normals pointing in, `w` the constant. */
   planes: ReadonlyArray<Vector4>;
   /** Each shadow cascade's cull: the slot cull, then the instance cull, and the six planes both read. */
@@ -56,6 +59,10 @@ export function createStaticCullShader(buffers: StaticDrawBuffers): IStaticCullS
     ],
     late: [createLateSlotCullShader(buffers), createLateInstanceCullShader(buffers)],
     planes,
+    wire: [
+      createWireArgumentsShader(buffers.args, buffers.wireArgs, buffers.capacity(EStaticPool.SLOTS)),
+      createWireArgumentsShader(buffers.lateArgs, buffers.wireLateArgs, buffers.capacity(EStaticPool.SLOTS)),
+    ],
     views: Array.from({ length: RENDERER_MAX_SHADOW_CASCADES }, (_, view: number) => {
       const viewPlanes: Array<Vector4> = Array.from({ length: 6 }, () => new Vector4());
       const viewPlaneNodes = uniformArray(viewPlanes, "vec4");

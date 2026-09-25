@@ -93,4 +93,23 @@ describe("StaticArena", () => {
 
     expect(arena.generation).toBe(generation);
   });
+
+  // A draw's arguments become its wireframe's by doubling its count and first index: every triangle's three edges sit
+  // at twice the triangle's own offset.
+  it("holds a line index of every triangle's edges at twice its offset, kept up to date once built", () => {
+    const arena: StaticArena = new StaticArena(createBuffer(3), 1);
+    const first: IStaticRange = arena.place(createBuffer(3), toNothingComing) as IStaticRange;
+
+    expect(arena.isWired).toBe(false);
+
+    const lines = arena.createWireGeometry(EStaticDrawKind.SINGLE).index?.array as Uint32Array;
+
+    expect(arena.isWired).toBe(true);
+    expect([...lines.subarray(first.indexStart * 2, first.indexStart * 2 + 6)]).toEqual([2, 1, 1, 0, 0, 2]);
+
+    const second: IStaticRange = arena.place(createBuffer(3), toNothingComing) as IStaticRange;
+    const grown = arena.createWireGeometry(EStaticDrawKind.SINGLE).index?.array as Uint32Array;
+
+    expect([...grown.subarray(second.indexStart * 2, second.indexStart * 2 + 6)]).toEqual([2, 1, 1, 0, 0, 2]);
+  });
 });

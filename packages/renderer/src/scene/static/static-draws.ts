@@ -96,6 +96,14 @@ export class StaticDraws implements IStaticShadowCasters {
     this.pool.isEnabled = isEnabled;
   }
 
+  /**
+   * @param material - What every static draw's edges draw with, over its arena's line index; null to draw triangles.
+   */
+  public setWireframe(material: Nullable<Material>): void {
+    this.batches.setWireframe(material);
+    this.cull.setWireframe(material !== null);
+  }
+
   /** Every material a batch draws. */
   /** Bumped whenever what any batch draws changed, so a shadow map drawn before is drawn again. */
   public get shadowVersion(): number {

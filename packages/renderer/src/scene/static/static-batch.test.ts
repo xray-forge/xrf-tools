@@ -24,7 +24,7 @@ function createArena(): StaticArena {
 }
 
 function toMesh(batch: StaticBatch): Mesh {
-  return batch.meshes[0];
+  return batch.meshes[0] as Mesh;
 }
 
 describe("StaticBatch", () => {

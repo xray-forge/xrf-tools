@@ -7,6 +7,7 @@ import {
   RENDERER_FLOATS_PER_INSTANCE,
   RENDERER_HEMI_FLOATS_PER_INSTANCE,
 } from "#/contract/scene/renderer-object";
+import { queueBufferUpload } from "#/scene/buffer-upload";
 import { RangeAllocator } from "#/scene/static/range-allocator";
 import {
   EStaticPool,
@@ -215,8 +216,6 @@ export class StaticPlaces {
       return;
     }
 
-    attribute.clearUpdateRanges();
-    attribute.addUpdateRange(span.first * stride, (span.last - span.first + 1) * stride);
-    attribute.needsUpdate = true;
+    queueBufferUpload(attribute, span.first * stride, (span.last - span.first + 1) * stride);
   }
 }

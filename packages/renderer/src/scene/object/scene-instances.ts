@@ -13,6 +13,7 @@ import {
   RENDERER_FLOATS_PER_INSTANCE,
   RENDERER_HEMI_FLOATS_PER_INSTANCE,
 } from "#/contract/scene/renderer-object";
+import { queueBufferUpload } from "#/scene/buffer-upload";
 import { SceneGeometry } from "#/scene/geometry/scene-geometry";
 import { EVertexAttribute, INSTANCE_MATRIX_COLUMNS } from "#/shader/vertex-attribute";
 import { CullView } from "#/visibility/cull-view";
@@ -213,14 +214,10 @@ export class SceneInstances {
     }
 
     this.drawnCount = count;
-    this.columns.clearUpdateRanges();
-    this.columns.addUpdateRange(0, count * RENDERER_FLOATS_PER_INSTANCE);
-    this.columns.needsUpdate = true;
+    queueBufferUpload(this.columns, 0, count * RENDERER_FLOATS_PER_INSTANCE);
 
     if (this.hemi) {
-      this.hemi.clearUpdateRanges();
-      this.hemi.addUpdateRange(0, count * RENDERER_HEMI_FLOATS_PER_INSTANCE);
-      this.hemi.needsUpdate = true;
+      queueBufferUpload(this.hemi, 0, count * RENDERER_HEMI_FLOATS_PER_INSTANCE);
     }
   }
 }

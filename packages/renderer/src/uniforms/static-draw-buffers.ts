@@ -138,6 +138,12 @@ export class StaticDrawBuffers {
    * in the second half of the list.
    */
   public lateArgs: IndirectStorageBufferAttribute;
+  /**
+   * The first and second draws' arguments over the arenas' line indices, while a wireframe draws: each draw's own
+   * with its count and first index doubled, rewritten after each cull.
+   */
+  public wireArgs: IndirectStorageBufferAttribute;
+  public wireLateArgs: IndirectStorageBufferAttribute;
   /** Each draw's sphere in renderer space, a negative radius for a slot drawing nothing. */
   public spheres: StorageBufferAttribute;
   /** Each draw's matrix, four columns. */
@@ -231,6 +237,14 @@ export class StaticDrawBuffers {
       new Uint32Array(slots * STATIC_DRAW_ARGUMENTS),
       STATIC_DRAW_ARGUMENTS
     );
+    this.wireArgs = new IndirectStorageBufferAttribute(
+      new Uint32Array(slots * STATIC_DRAW_ARGUMENTS),
+      STATIC_DRAW_ARGUMENTS
+    );
+    this.wireLateArgs = new IndirectStorageBufferAttribute(
+      new Uint32Array(slots * STATIC_DRAW_ARGUMENTS),
+      STATIC_DRAW_ARGUMENTS
+    );
     this.spheres = new StorageBufferAttribute(new Float32Array(slots * 4).fill(-1), 4);
     this.models = new StorageBufferAttribute(new Float32Array(slots * 16), 4);
     this.slotStates = new StorageBufferAttribute(new Uint32Array(slots), 1);
@@ -306,6 +320,8 @@ export class StaticDrawBuffers {
       case EStaticPool.SLOTS:
         this.args = this.replace(this.args, capacity);
         this.lateArgs = this.replace(this.lateArgs, capacity);
+        this.wireArgs = this.replace(this.wireArgs, capacity);
+        this.wireLateArgs = this.replace(this.wireLateArgs, capacity);
         this.viewArgs = this.viewArgs.map((args) => this.replace(args, capacity));
         this.spheres = this.replace(this.spheres, capacity, -1);
         this.models = this.replace(this.models, capacity * 4);

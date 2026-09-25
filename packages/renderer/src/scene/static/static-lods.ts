@@ -8,6 +8,7 @@ import {
   RENDERER_IMPOSTOR_CORNERS,
   RENDERER_IMPOSTOR_FACETS,
 } from "#/contract/scene/renderer-impostors";
+import { queueBufferUpload } from "#/scene/buffer-upload";
 import { RangeAllocator } from "#/scene/static/range-allocator";
 import { EStaticPool, STATIC_LOD_CORNER_COLUMNS, StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
 
@@ -129,8 +130,6 @@ export class StaticLods {
   }
 
   private static upload(attribute: BufferAttribute, span: IDirtySpan, stride: number): void {
-    attribute.clearUpdateRanges();
-    attribute.addUpdateRange(span.first * stride, (span.last - span.first + 1) * stride);
-    attribute.needsUpdate = true;
+    queueBufferUpload(attribute, span.first * stride, (span.last - span.first + 1) * stride);
   }
 }

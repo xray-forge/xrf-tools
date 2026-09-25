@@ -30,6 +30,8 @@ interface IBatchGrouping {
   /** Whether it batches by cell too, and the box of everything standing in each cell. */
   isCelled: boolean;
   cells: Map<string, Box3>;
+  /** Whether its batches draw the arenas' line indices, as a wireframe. */
+  isWire: boolean;
 }
 
 /**
@@ -37,11 +39,18 @@ interface IBatchGrouping {
  * draws any. Every slot is batched twice over: by its surface's own material, drawn in the G-buffer, and, for a
  * surface that casts, by its shadow material and the cell it stands in, drawn into each cascade. Every opaque surface
  * shares one shadow material, so its casters are a batch an arena, kind and cell, however many surfaces they are; a
- * cascade shows only the cells its box reaches, so it issues the draws of what it can cast from alone.
+ * cascade shows only the cells its box reaches, so it issues the draws of what it can cast from alone. While a wireframe
+ * draws, every slot is batched a third time, by one wireframe material over its arena's line index, in place of its
+ * surface's batch.
  */
 export class StaticBatches {
   private readonly surfaces: IBatchGrouping;
   private readonly shadows: IBatchGrouping;
+  private readonly wires: IBatchGrouping;
+  /** Each slot's surface, which its wireframe batch is chosen by. */
+  private readonly slotSurfaces: Map<number, ISurfaceMaterial> = new Map();
+  /** What a wireframe draws every surface with but an impostor, or null while none draws. */
+  private wireMaterial: Nullable<Material> = null;
   private currentVersion: number = 0;
 
   /**
@@ -52,6 +61,12 @@ export class StaticBatches {
    */
   public constructor(pool: StaticDrawPool, scene: Object3D, late: Object3D, cascadeScenes: ReadonlyArray<Object3D>) {
     this.surfaces = StaticBatches.createGrouping([() => pool.args, () => pool.lateArgs], [scene, late], false);
+    this.wires = StaticBatches.createGrouping(
+      [() => pool.wireArgs, () => pool.wireLateArgs],
+      [scene, late],
+      false,
+      true
+    );
     this.shadows = StaticBatches.createGrouping(
       cascadeScenes.map((_, view: number) => () => pool.viewArgs[view]),
       cascadeScenes,
@@ -103,6 +118,11 @@ export class StaticBatches {
     bounds: Nullable<Box3> = null
   ): void {
     StaticBatches.put(this.surfaces, slot, arena, kind, surface.material, surface.keys, bounds);
+    this.slotSurfaces.set(slot, surface);
+
+    if (this.wireMaterial) {
+      this.putWire(slot, arena, kind, surface, this.wireMaterial);
+    }
 
     if (surface.shadow) {
       StaticBatches.put(this.shadows, slot, arena, kind, surface.shadow, surface.shadowKeys, bounds);
@@ -119,6 +139,35 @@ export class StaticBatches {
   public withdraw(slot: number): void {
     StaticBatches.withdraw(this.surfaces, slot);
     StaticBatches.withdraw(this.shadows, slot);
+    StaticBatches.withdraw(this.wires, slot);
+    this.slotSurfaces.delete(slot);
+    this.currentVersion += 1;
+  }
+
+  /**
+   * Draws every slot as its triangles' edges, or as its triangles again: by one material over the arenas' line
+   * indices, or by its surface's own. An impostor's slot keeps its own material, which turns its quad to the camera.
+   *
+   * @param material - What a wireframe draws with, or null to draw the triangles.
+   */
+  public setWireframe(material: Nullable<Material>): void {
+    if (material === this.wireMaterial) {
+      return;
+    }
+
+    this.wireMaterial = material;
+
+    // Its batches go idle rather than away: their geometries share the arenas' buffers, which disposing would free.
+    [...this.wires.drawing.keys()].forEach((slot: number) => StaticBatches.withdraw(this.wires, slot));
+
+    if (material) {
+      this.surfaces.drawing.forEach((batch: StaticBatch, slot: number) =>
+        this.putWire(slot, batch.arena, batch.kind, this.slotSurfaces.get(slot) as ISurfaceMaterial, material)
+      );
+    }
+
+    this.surfaces.chunks.setShown(!material);
+    this.wires.chunks.setShown(Boolean(material));
     this.currentVersion += 1;
   }
 
@@ -126,7 +175,7 @@ export class StaticBatches {
    * @param key - A texture key whose samplers now sample another texture: every batch sampling it records again.
    */
   public invalidate(key: string): void {
-    for (const grouping of [this.surfaces, this.shadows]) {
+    for (const grouping of [this.surfaces, this.shadows, this.wires]) {
       for (const { drawing } of StaticBatches.all(grouping)) {
         drawing.forEach((batch: StaticBatch) => batch.keys.includes(key) && batch.invalidate());
       }
@@ -137,7 +186,7 @@ export class StaticBatches {
 
   /** Has every batch record again, for storage buffers its shaders read that were replaced by ones that grew. */
   public invalidateAll(): void {
-    for (const grouping of [this.surfaces, this.shadows]) {
+    for (const grouping of [this.surfaces, this.shadows, this.wires]) {
       StaticBatches.all(grouping).forEach(({ drawing }) => drawing.forEach((batch: StaticBatch) => batch.invalidate()));
     }
 
@@ -148,7 +197,7 @@ export class StaticBatches {
    * @param arena - An arena whose buffers may have been replaced, which every batch over it then draws.
    */
   public refresh(arena: StaticArena): void {
-    for (const grouping of [this.surfaces, this.shadows]) {
+    for (const grouping of [this.surfaces, this.shadows, this.wires]) {
       for (const batches of Object.values(grouping.arenas.get(arena) ?? {})) {
         batches.drawing.forEach((batch: StaticBatch) => batch.refresh());
         batches.idle.forEach((batch: StaticBatch) => batch.refresh());
@@ -162,7 +211,7 @@ export class StaticBatches {
    * @param arena - An arena going, which no batch draws any more.
    */
   public release(arena: StaticArena): void {
-    for (const grouping of [this.surfaces, this.shadows]) {
+    for (const grouping of [this.surfaces, this.shadows, this.wires]) {
       for (const batches of Object.values(grouping.arenas.get(arena) ?? {})) {
         batches.drawing.forEach((batch: StaticBatch) => {
           grouping.chunks.detach(batch);
@@ -176,20 +225,36 @@ export class StaticBatches {
   }
 
   public dispose(): void {
-    new Set([...this.surfaces.arenas.keys(), ...this.shadows.arenas.keys()]).forEach((arena: StaticArena) =>
-      this.release(arena)
+    new Set([...this.surfaces.arenas.keys(), ...this.shadows.arenas.keys(), ...this.wires.arenas.keys()]).forEach(
+      (arena: StaticArena) => this.release(arena)
     );
 
-    for (const grouping of [this.surfaces, this.shadows]) {
+    for (const grouping of [this.surfaces, this.shadows, this.wires]) {
       grouping.chunks.clear();
       grouping.drawing.clear();
+    }
+  }
+
+  /** Batches a slot's wireframe: an impostor's by its own material, every other by the one wireframe material. */
+  private putWire(
+    slot: number,
+    arena: StaticArena,
+    kind: EStaticDrawKind,
+    surface: ISurfaceMaterial,
+    material: Material
+  ): void {
+    if (surface.isImpostor) {
+      StaticBatches.put(this.wires, slot, arena, kind, surface.material, surface.keys, null);
+    } else {
+      StaticBatches.put(this.wires, slot, arena, kind, material, [], null);
     }
   }
 
   private static createGrouping(
     phases: ReadonlyArray<TStaticBatchArguments>,
     scenes: ReadonlyArray<Object3D>,
-    isCelled: boolean
+    isCelled: boolean,
+    isWire: boolean = false
   ): IBatchGrouping {
     return {
       arenas: new Map(),
@@ -197,6 +262,7 @@ export class StaticBatches {
       chunks: new StaticBundleChunks(scenes),
       drawing: new Map(),
       isCelled,
+      isWire,
       keys: new Map(),
       phases,
     };
@@ -236,7 +302,7 @@ export class StaticBatches {
     StaticBatches.withdraw(grouping, slot);
 
     if (!batch) {
-      batch = batches.idle.pop() ?? new StaticBatch(arena, kind, grouping.phases);
+      batch = batches.idle.pop() ?? new StaticBatch(arena, kind, grouping.phases, grouping.isWire);
       batch.setMaterial(material, keys);
       batches.drawing.set(key, batch);
       grouping.keys.set(batch, key);

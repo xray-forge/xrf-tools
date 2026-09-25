@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
-import { BufferAttribute, BufferGeometry, MeshBasicNodeMaterial, Scene } from "three/webgpu";
+import { BufferAttribute, BufferGeometry, LineSegments, MeshBasicNodeMaterial, Scene } from "three/webgpu";
 
 import { ERendererPass } from "#/contract/scene/renderer-surface";
 import { ISurfaceMaterial } from "#/material/surface-material";
@@ -60,5 +60,34 @@ describe("StaticBatches", () => {
 
     expect(cascade.children).toHaveLength(0);
     expect(scene.children[0].children).toHaveLength(1);
+  });
+
+  // Drawn over the arenas' line indices by one material, a wireframe compiles nothing a surface and builds no line
+  // index on the CPU a mesh; an impostor keeps its own material, which turns its quad to the camera.
+  it("draws every slot's edges by one material while a wireframe draws, and its surface again after", () => {
+    const scene: Scene = new Scene();
+    const batches: StaticBatches = new StaticBatches(new StaticDrawPool(new StaticDrawBuffers()), scene, new Scene(), [
+      new Scene(),
+    ]);
+    const arena: StaticArena = createArena();
+    const wire: MeshBasicNodeMaterial = new MeshBasicNodeMaterial();
+    const impostor: ISurfaceMaterial = { ...createSurface(null), isImpostor: true };
+
+    batches.put(1, arena, EStaticDrawKind.SINGLE, createSurface(null));
+    batches.put(2, arena, EStaticDrawKind.SINGLE, impostor);
+    batches.setWireframe(wire);
+    batches.put(3, arena, EStaticDrawKind.SINGLE, createSurface(null));
+
+    const [surfaces, wires] = scene.children;
+
+    expect(surfaces.visible).toBe(false);
+    expect(wires.visible).toBe(true);
+    expect(wires.children.map((mesh) => (mesh as LineSegments).isLineSegments)).toEqual([true, true]);
+    expect(wires.children.map((mesh) => (mesh as LineSegments).material)).toEqual([wire, impostor.material]);
+
+    batches.setWireframe(null);
+
+    expect(surfaces.visible).toBe(true);
+    expect(wires.children).toHaveLength(0);
   });
 });
