@@ -374,7 +374,8 @@ export class SceneLights {
       isSpot,
       near: light.near,
       position: this.position,
-      range: light.range,
+      // As far as its range strays: past a face's far plane every point reads as shadowed.
+      range: light.range + (light.rangeJitter ?? 0),
       up: this.up,
     });
     this.pending.push({ index, offset });

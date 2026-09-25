@@ -27,6 +27,21 @@ describe("StaticDrawObserver", () => {
     expect(observer.needsRefresh(renderObject, { renderId: 2 })).toBe(FULL);
   });
 
+  it("draws a replay with its render call's camera, not the one it recorded with", () => {
+    const observer: StaticDrawObserver = createObserver();
+    const [recording, replaying] = [{ name: "recording" }, { name: "replaying" }];
+    const renderObject = { bundle: { version: 1 }, camera: recording as unknown, context: { camera: recording } };
+
+    observer.needsRefresh(renderObject, { renderId: 1 });
+    renderObject.context.camera = replaying;
+
+    const frame = { camera: recording as unknown, renderId: 2 };
+
+    expect(observer.needsRefresh(renderObject, frame)).toBe(SHARED);
+    expect(renderObject.camera).toBe(replaying);
+    expect(frame.camera).toBe(replaying);
+  });
+
   it("leaves a render object outside any bundle to three", () => {
     expect(createObserver().needsRefresh({ bundle: null }, { renderId: 1 })).toBe(FULL);
   });

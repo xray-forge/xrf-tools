@@ -1,6 +1,7 @@
 import { NodeMaterialObserver } from "three/webgpu";
 
 import {
+  adoptRenderCamera,
   callBaseNeedsRefresh,
   IObservedFrame,
   IObservedObject,
@@ -13,7 +14,8 @@ import {
  * only the uniform groups every material shares. Three refreshes every node material fully on every replay, since a
  * node could read anything; a static draw's shader reads nothing of its own object that changes without its bundle
  * recording again - its textures, arena and slot changes all record it - so that refresh bought nothing and cost
- * every batch several microseconds a frame.
+ * every batch several microseconds a frame. A replay takes its render call's camera, which three leaves at the one it
+ * recorded with.
  */
 export class StaticDrawObserver extends NodeMaterialObserver {
   /** The bundle version each render object was last fully refreshed at. */
@@ -21,6 +23,8 @@ export class StaticDrawObserver extends NodeMaterialObserver {
 
   public needsRefresh(renderObject: IObservedObject, nodeFrame: IObservedFrame): TRenderObjectRefreshType {
     const { bundle } = renderObject;
+
+    adoptRenderCamera(renderObject, nodeFrame);
 
     if (!bundle || this.recorded.get(renderObject) !== bundle.version) {
       if (bundle) {

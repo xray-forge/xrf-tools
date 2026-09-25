@@ -43,6 +43,13 @@ describe("three's internals, as the renderer reads them", () => {
     expect(new NodeFrame().renderId).toBe(0);
   });
 
+  it("gives the render context each render call's camera, and a kept render object its camera only as it records", () => {
+    // `adoptRenderCamera` reads the first, and makes up for the second on a bundle's replay.
+    const source: string = String((WebGPURenderer.prototype as unknown as { _renderScene: unknown })._renderScene);
+
+    expect(source).toContain("renderContext.camera = camera");
+  });
+
   it("has a backend that says it is WebGPU and times queries by their uid", () => {
     // `getRendererBackend` and `RendererGpuTimings` read these.
     const backend: IRendererBackend = getRendererBackend(new WebGPURenderer({ canvas: {} as HTMLCanvasElement }));
