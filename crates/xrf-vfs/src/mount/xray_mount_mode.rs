@@ -9,12 +9,8 @@ use crate::mount::xray_root::implied_install_root;
 use crate::{FsgameFile, XrayMountPlan, XrayRootKind};
 
 /// How a caller's path is turned into mounts.
-///
-/// One vocabulary for every tool, so `--source` means the same thing everywhere. Each variant maps onto an
-/// [`XrayMountPlan`] constructor; this exists so a command surface, an app setting, and an editor can all name
-/// the choice rather than each re-deriving it.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum XrayMountMode {
   /// Treat the path as an installation when it declares one, as one volume when it is one, as a volume set when it
@@ -24,14 +20,6 @@ pub enum XrayMountMode {
   /// Treat the path as a complete X-Ray root, ignoring any `fsgame.ltx` beside it.
   Directory,
   /// Treat the path as one archive volume, or as every volume beneath a directory, and mount each on its own.
-  ///
-  /// What the engine does for a path declared with `recurs = true`: `CLocatorAPI::ProcessOne` hands any `.db*` or
-  /// `.xdb*` file it meets to `ProcessArchive`, including one `Recurse` found in a subdirectory
-  /// (`xray-16/src/xrCore/LocatorAPI.cpp`). `Auto` is the `recurs = false` half of the same rule, which is how Anomaly
-  /// declares `$arch_dir$` and each of its subdirectories.
-  ///
-  /// Name it for a path a person picked rather than one `fsgame.ltx` declared, where a listing already read that path
-  /// recursively and every entry it lists must be readable back.
   Volumes,
   /// Require the path to declare an installation, and mount everything it declares.
   Installation,

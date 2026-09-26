@@ -1,4 +1,7 @@
+use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_error::XrfResult;
 
 /// One triangle of the collision form, `CDB::TRI` (`xrCDB/xrCDB.h`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -19,18 +22,40 @@ pub struct LevelCformFace {
 impl LevelCformFace {
   /// Bytes one face occupies: three vertex indices and a packed word.
   pub const SERIALIZED_SIZE: usize = 16;
+}
 
-  /// Reads one face out of its stored bytes.
-  pub fn of(bytes: &[u8; Self::SERIALIZED_SIZE]) -> Self {
-    let word = |at: usize| u32::from_le_bytes([bytes[at], bytes[at + 1], bytes[at + 2], bytes[at + 3]]);
-    let packed: u32 = word(12);
+impl ChunkReadWrite for LevelCformFace {
+  /// Reads one face: its three corners, then the word packing its material, flags and sector.
+  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+    let vertices: [u32; 3] = [
+      reader.read_u32::<T>()?,
+      reader.read_u32::<T>()?,
+      reader.read_u32::<T>()?,
+    ];
+    let packed: u32 = reader.read_u32::<T>()?;
 
-    Self {
-      vertices: [word(0), word(4), word(8)],
+    Ok(Self {
+      vertices,
       material: (packed & 0x3FFF) as u16,
       is_shadow_suppressed: packed & (1 << 14) != 0,
       is_wallmark_suppressed: packed & (1 << 15) != 0,
       sector: (packed >> 16) as u16,
+    })
+  }
+
+  /// Writes one face in the layout [`Self::read`] reads.
+  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+    for vertex in self.vertices {
+      writer.write_u32::<T>(vertex)?;
     }
+
+    writer.write_u32::<T>(
+      u32::from(self.material & 0x3FFF)
+        | (u32::from(self.is_shadow_suppressed) << 14)
+        | (u32::from(self.is_wallmark_suppressed) << 15)
+        | (u32::from(self.sector) << 16),
+    )?;
+
+    Ok(())
   }
 }

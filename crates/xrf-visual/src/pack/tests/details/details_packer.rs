@@ -1,3 +1,4 @@
+use xrf_chunk::XRayByteOrder;
 use xrf_level::{DetailModel, DetailVertex, LevelCformFace, LevelCformGeometry, LevelDetailsFile, LevelDetailsHeader};
 use xrf_math::Vector3d;
 
@@ -95,7 +96,7 @@ fn pack() -> (DetailsDescription, Vec<u32>) {
   let details: LevelDetailsFile = details();
   let collision: LevelCformGeometry = collision();
   let is_passable = |material: u16| material == PASSABLE;
-  let package: DetailsPackage = DetailsPacker::new(&details, &collision, &is_passable).pack();
+  let package: DetailsPackage = DetailsPacker::new(&details, &collision, &is_passable).pack::<XRayByteOrder>();
   let words: Vec<u32> = package
     .buffer
     .as_chunks::<4>()
@@ -200,7 +201,7 @@ fn bins_a_triangle_reaching_far_past_the_grid_over_the_part_inside_it_and_skips_
   ];
 
   let is_passable = |_: u16| false;
-  let package: DetailsPackage = DetailsPacker::new(&details, &collision, &is_passable).pack();
+  let package: DetailsPackage = DetailsPacker::new(&details, &collision, &is_passable).pack::<XRayByteOrder>();
 
   // The wide ground reaches the first cell, the only one planted over it; the unplaced one is binned nowhere.
   assert_eq!(package.description.slot_count, 1);

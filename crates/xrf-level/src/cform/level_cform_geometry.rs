@@ -3,7 +3,6 @@ use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReader};
 use xrf_error::{XrfError, XrfResult};
 use xrf_math::Vector3d;
-use xrf_utils::assert_count_fits;
 
 use crate::cform::level_cform_face::LevelCformFace;
 use crate::cform::level_cform_file::LevelCformHeader;
@@ -26,45 +25,25 @@ impl LevelCformGeometry {
     reader: &mut ChunkReader<D>,
     header: &LevelCformHeader,
   ) -> XrfResult<Self> {
-    let remaining: u64 = reader.read_bytes_remain();
-
-    assert_count_fits(
+    let mut vertices: Vec<Vector3d<f32>> = reader.new_bounded_vec(
       u64::from(header.vertex_count),
-      remaining,
       Self::VERTEX_SIZE as u64,
       "collision form vertices",
     )?;
 
-    let vertex_bytes: Vec<u8> = reader.read_bytes(header.vertex_count as usize * Self::VERTEX_SIZE)?;
+    for _ in 0..header.vertex_count {
+      vertices.push(reader.read_xr::<T, _>()?);
+    }
 
-    assert_count_fits(
+    let mut faces: Vec<LevelCformFace> = reader.new_bounded_vec(
       u64::from(header.face_count),
-      reader.read_bytes_remain(),
       LevelCformFace::SERIALIZED_SIZE as u64,
       "collision form faces",
     )?;
 
-    let face_bytes: Vec<u8> = reader.read_bytes(header.face_count as usize * LevelCformFace::SERIALIZED_SIZE)?;
-
-    let vertices: Vec<Vector3d<f32>> = vertex_bytes
-      .as_chunks::<{ Self::VERTEX_SIZE }>()
-      .0
-      .iter()
-      .map(|vertex| {
-        Vector3d::new(
-          T::read_f32(&vertex[0..4]),
-          T::read_f32(&vertex[4..8]),
-          T::read_f32(&vertex[8..12]),
-        )
-      })
-      .collect();
-
-    let faces: Vec<LevelCformFace> = face_bytes
-      .as_chunks::<{ LevelCformFace::SERIALIZED_SIZE }>()
-      .0
-      .iter()
-      .map(LevelCformFace::of)
-      .collect();
+    for _ in 0..header.face_count {
+      faces.push(reader.read_xr::<T, _>()?);
+    }
 
     let vertex_count: u32 = header.vertex_count;
 

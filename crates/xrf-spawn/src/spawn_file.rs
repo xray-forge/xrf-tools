@@ -124,7 +124,7 @@ impl SpawnFile {
   /// # Errors
   ///
   /// Returns an error when the graph chunk is missing or its head cannot be read.
-  pub fn read_vertex_levels_from_chunks<T: ByteOrder, D: ChunkDataSource>(
+  pub(crate) fn read_vertex_levels_from_chunks<T: ByteOrder, D: ChunkDataSource>(
     chunks: &[ChunkReader<D>],
   ) -> XrfResult<GraphVertexLevels> {
     GraphVertexLevels::read::<T, _>(&mut find_required_chunk_by_id(chunks, SpawnGraphsChunk::CHUNK_ID)?)

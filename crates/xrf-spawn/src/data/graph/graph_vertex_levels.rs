@@ -9,7 +9,7 @@ use crate::data::graph::graph_vertex::GraphVertex;
 
 /// Which level each game vertex stands on: the head of a graph chunk, read without its edges, points and cross tables.
 #[derive(Clone, Debug, PartialEq)]
-pub struct GraphVertexLevels {
+pub(crate) struct GraphVertexLevels {
   pub levels: Vec<GraphLevel>,
   /// Each game vertex's level id, by vertex.
   pub vertex_levels: Vec<u8>,

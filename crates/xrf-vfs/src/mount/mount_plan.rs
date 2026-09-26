@@ -6,17 +6,16 @@ use crate::{XrayMountId, XrayMountPlan, XrayPlannedMount, XraySkippedMount, Xray
 
 impl XrayVfs {
   /// Mounts each planned source that can be opened, in plan order, behind the mounts already present.
-  ///
-  /// Planning is a decision about the filesystem; this is the construction of the sources it named.
-  ///
-  /// A source that fails to open is omitted rather than fatal, so one corrupt volume does not stop a tool from reading the
-  /// rest of an installation. Each omission is recorded on the VFS through [`XrayVfs::get_skipped_mounts`] — reporting it is
-  /// the caller's job, because a check enumerating a mount that never opened would otherwise present a read failure as
-  /// missing content. The returned mount IDs preserve plan order.
   pub fn mount_plan(&mut self, plan: &XrayMountPlan) -> XrfResult<Vec<XrayMountId>> {
     let mut mounted: Vec<XrayMountId> = Vec::with_capacity(plan.len());
 
     for planned in plan.get_mounts() {
+      if self.planned_mount(&planned.path, planned.kind).is_none()
+        && self.skipped_mount(&planned.path, planned.kind).is_some()
+      {
+        continue;
+      }
+
       match mount_one(self, planned) {
         Ok(id) => {
           self.record_origin(id, &planned.origin);
@@ -29,11 +28,14 @@ impl XrayVfs {
             format_path(&planned.path)
           );
 
-          self.record_skipped(XraySkippedMount {
-            origin: planned.origin.clone(),
-            path: planned.path.clone(),
-            reason: error.to_string(),
-          });
+          self.record_skipped(
+            planned.kind,
+            XraySkippedMount {
+              origin: planned.origin.clone(),
+              path: planned.path.clone(),
+              reason: error.to_string(),
+            },
+          );
         }
       }
     }
@@ -41,16 +43,31 @@ impl XrayVfs {
     Ok(mounted)
   }
 
-  /// The mounts a plan produced, in plan order, where every source it names is mounted already; `None` where one is
+  /// The mounts a plan produced, in plan order, where every source it names is settled already; `None` where one is
   /// not, which only [`Self::mount_plan`] can settle.
-  ///
-  /// Reads the VFS without changing it, so a caller sharing one VFS between threads learns what it already holds
-  /// without shutting every other reader out. Each mount keeps the origin the plan that opened it gave.
   pub fn find_mounted_plan(&self, plan: &XrayMountPlan) -> Option<Vec<XrayMountId>> {
+    let mut mounted: Vec<XrayMountId> = Vec::with_capacity(plan.len());
+
+    for planned in plan.get_mounts() {
+      match self.planned_mount(&planned.path, planned.kind) {
+        Some(id) => mounted.push(id),
+        None => {
+          self.skipped_mount(&planned.path, planned.kind)?;
+        }
+      }
+    }
+
+    Some(mounted)
+  }
+
+  /// The recorded failures among the sources a plan names, in plan order.
+  pub fn list_skipped_mounts_of(&self, plan: &XrayMountPlan) -> Vec<XraySkippedMount> {
     plan
       .get_mounts()
       .iter()
-      .map(|planned| self.planned_mount(&planned.path, planned.kind))
+      .filter(|planned| self.planned_mount(&planned.path, planned.kind).is_none())
+      .filter_map(|planned| self.skipped_mount(&planned.path, planned.kind))
+      .cloned()
       .collect()
   }
 }

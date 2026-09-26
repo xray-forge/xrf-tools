@@ -1,3 +1,4 @@
+use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 
 /// The id a slot uses to say a corner plants nothing, `DetailSlot::ID_Empty`.
@@ -38,11 +39,9 @@ impl LevelDetailsSlot {
   /// Bytes one slot occupies: a packed word and a palette per corner.
   pub const SERIALIZED_SIZE: usize = 16;
 
-  /// Reads one slot out of the grid's stored bytes.
-  pub fn of(bytes: &[u8; Self::SERIALIZED_SIZE]) -> Self {
-    let word: u64 = u64::from_le_bytes([
-      bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7],
-    ]);
+  /// Reads one slot out of the grid's stored bytes, its bitfield stored as two `u32` words.
+  pub fn of<T: ByteOrder>(bytes: &[u8; Self::SERIALIZED_SIZE]) -> Self {
+    let word: u64 = u64::from(T::read_u32(&bytes[0..4])) | (u64::from(T::read_u32(&bytes[4..8])) << 32);
 
     let base: u32 = (word & 0xFFF) as u32;
     let height: u32 = ((word >> 12) & 0xFF) as u32;
@@ -58,7 +57,7 @@ impl LevelDetailsSlot {
       base_height: BASE_ORIGIN + base as f32 * BASE_STEP,
       height: height as f32 * HEIGHT_STEP,
       palettes: [0, 1, 2, 3].map(|object| {
-        let palette: u16 = u16::from_le_bytes([bytes[8 + object * 2], bytes[9 + object * 2]]);
+        let palette: u16 = T::read_u16(&bytes[8 + object * 2..10 + object * 2]);
 
         [0, 4, 8, 12].map(|shift| ((palette >> shift) & 0xF) as u8)
       }),
@@ -76,6 +75,8 @@ impl LevelDetailsSlot {
 
 #[cfg(test)]
 mod tests {
+  use xrf_chunk::XRayByteOrder;
+
   use super::LevelDetailsSlot;
 
   /// A slot's stored word, in the order the bitfield packs it.
@@ -92,7 +93,7 @@ mod tests {
 
   #[test]
   fn an_empty_slot_plants_nothing_rather_than_object_sixty_three() {
-    let described: LevelDetailsSlot = LevelDetailsSlot::of(&slot(0, 0, [0x3F; 4]));
+    let described: LevelDetailsSlot = LevelDetailsSlot::of::<XRayByteOrder>(&slot(0, 0, [0x3F; 4]));
 
     assert_eq!(described.objects, [None; 4]);
     assert!(!described.is_planted());
@@ -100,7 +101,7 @@ mod tests {
 
   #[test]
   fn a_slot_names_the_object_in_each_corner_it_plants() {
-    let described: LevelDetailsSlot = LevelDetailsSlot::of(&slot(0, 0, [0, 0x3F, 7, 0x3F]));
+    let described: LevelDetailsSlot = LevelDetailsSlot::of::<XRayByteOrder>(&slot(0, 0, [0, 0x3F, 7, 0x3F]));
 
     assert_eq!(described.objects, [Some(0), None, Some(7), None]);
     assert!(described.is_planted());
@@ -115,7 +116,7 @@ mod tests {
     // Object 1's corners 0 to 3 as 1, 2, 3 and 15, low nibble first.
     bytes[10..12].copy_from_slice(&0xF321_u16.to_le_bytes());
 
-    let described: LevelDetailsSlot = LevelDetailsSlot::of(&bytes);
+    let described: LevelDetailsSlot = LevelDetailsSlot::of::<XRayByteOrder>(&bytes);
 
     assert_eq!(described.sun, 9);
     assert_eq!(described.hemi, 13);
@@ -127,7 +128,7 @@ mod tests {
   #[test]
   fn a_height_reads_as_the_metres_the_engine_packs_it_from() {
     // 1000 base units from -200 m, and 25 height units, which is what the packer's own steps are worth.
-    let described: LevelDetailsSlot = LevelDetailsSlot::of(&slot(1000, 25, [0x3F; 4]));
+    let described: LevelDetailsSlot = LevelDetailsSlot::of::<XRayByteOrder>(&slot(1000, 25, [0x3F; 4]));
 
     assert_eq!(described.base_height, 0.0);
     assert_eq!(described.height, 2.5);

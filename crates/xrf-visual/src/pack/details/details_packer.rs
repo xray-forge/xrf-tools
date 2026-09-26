@@ -1,9 +1,8 @@
 use std::collections::HashMap;
 use std::ops::RangeInclusive;
 
-use xrf_level::{
-  DETAIL_SLOT_METERS, DetailModel, LevelCformFace, LevelCformGeometry, LevelDetailsFile, LevelDetailsSlot,
-};
+use byteorder::ByteOrder;
+use xrf_level::{DETAIL_SLOT_METERS, DetailModel, LevelCformFace, LevelCformGeometry, LevelDetailsFile};
 use xrf_math::Vector3d;
 
 use crate::data::details::details_description::DetailsDescription;
@@ -45,18 +44,16 @@ impl<'a> DetailsPacker<'a> {
   }
 
   /// The grass as the renderer plants it: every model, and each planted slot with the ground its planting falls on.
-  pub fn pack(&self) -> DetailsPackage {
+  pub fn pack<T: ByteOrder>(&self) -> DetailsPackage {
     let header = &self.details.header;
     let (size_x, size_z) = (header.size_x as i64, header.size_z as i64);
-    let stored: Vec<&[u8; LevelDetailsSlot::SERIALIZED_SIZE]> = self.details.iter_stored_slots().collect();
-    let slots: Vec<LevelDetailsSlot> = stored.iter().copied().map(LevelDetailsSlot::of).collect();
-    let bins: Vec<Vec<u32>> = self.bin(&slots);
+    let bins: Vec<Vec<u32>> = self.bin::<T>();
 
     let mut triangles: Vec<f32> = Vec::new();
     let mut compacted: HashMap<u32, u32> = HashMap::new();
     let mut entries: Vec<u32> = Vec::new();
     let mut records: Vec<u32> = Vec::new();
-    let mut grid: Vec<u32> = vec![0; slots.len()];
+    let mut grid: Vec<u32> = vec![0; bins.len()];
 
     for (cell, bin) in bins.iter().enumerate().filter(|(_, bin)| !bin.is_empty()) {
       let start: u32 = entries.len() as u32;
@@ -73,13 +70,11 @@ impl<'a> DetailsPacker<'a> {
         entries.push(index);
       }
 
-      records.extend(
-        stored[cell]
-          .as_chunks::<4>()
-          .0
-          .iter()
-          .map(|word| u32::from_le_bytes(*word)),
-      );
+      // A cell holding a bin is a cell `bin` found a stored slot for.
+      if let Some(stored) = self.details.get_stored_slot(cell) {
+        records.extend(stored.as_chunks::<4>().0.iter().map(|word| T::read_u32(word)));
+      }
+
       records.extend([start, bin.len() as u32]);
       grid[cell] = (records.len() / SLOT_WORDS) as u32;
     }
@@ -120,13 +115,10 @@ impl<'a> DetailsPacker<'a> {
 
   /// Each cell's triangles, found by walking every solid triangle over the cells its footprint covers rather than
   /// every cell over every triangle.
-  ///
-  /// A triangle with a corner that is not a finite number stands nowhere, so it is binned nowhere; one reaching past
-  /// the grid is walked over the part inside it, however far it reaches.
-  fn bin(&self, slots: &[LevelDetailsSlot]) -> Vec<Vec<u32>> {
+  fn bin<T: ByteOrder>(&self) -> Vec<Vec<u32>> {
     let header = &self.details.header;
     let size_x: i64 = i64::from(header.size_x);
-    let mut bins: Vec<Vec<u32>> = vec![Vec::new(); slots.len()];
+    let mut bins: Vec<Vec<u32>> = vec![Vec::new(); self.details.get_slots_count() as usize];
 
     for (index, face) in self.collision.faces.iter().enumerate() {
       if (self.is_passable)(face.material) {
@@ -147,7 +139,9 @@ impl<'a> DetailsPacker<'a> {
       for z in rows {
         for x in columns.clone() {
           let cell: usize = (z * size_x + x) as usize;
-          let slot: &LevelDetailsSlot = &slots[cell];
+          let Some(slot) = self.details.get_slot::<T>(cell) else {
+            continue;
+          };
           let (world_x, world_z) = self.to_world_slot(x, z);
 
           if slot.is_planted()

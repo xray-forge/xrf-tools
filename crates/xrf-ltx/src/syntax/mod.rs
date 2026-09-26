@@ -1,6 +1,7 @@
 //! What the characters and reserved names in an LTX file mean, shared by everything that reads or writes one.
 
 pub(crate) mod ltx_syntax;
+pub(crate) mod ltx_value;
 
 pub use crate::syntax::ltx_syntax::{
   DEFAULT_KV_SEPARATOR, LTX_LINE_SEPARATOR, LTX_SCHEME_EXTENSION, LTX_SCHEME_FIELD, LTX_SCHEME_LTX_FILENAME,

@@ -5,9 +5,9 @@ use std::path::Path;
 use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkIterator, ChunkReadWrite, ChunkReader, ChunkWriter};
-use xrf_error::XrfResult;
+use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{FileImportExport, Ltx, LtxImportExport};
-use xrf_utils::{assert_equal, assert_length, open_export_file, to_format_size};
+use xrf_utils::{assert_count_fits, assert_equal, assert_length, open_export_file, to_format_size};
 
 use crate::data::alife::alife_object::AlifeObject;
 
@@ -40,13 +40,29 @@ impl SpawnALifeSpawnsChunk {
   /// Returns an error when the chunk's own layout cannot be read: its count, its objects, or one object's chunk.
   pub fn read_each<T: ByteOrder, D: ChunkDataSource>(
     reader: &mut ChunkReader<D>,
-    mut visit: impl FnMut(u32, XrfResult<AlifeObject>),
+    visit: impl FnMut(u32, XrfResult<AlifeObject>),
   ) -> XrfResult<u32> {
+    Self::walk::<T, _>(reader, visit).map(|(count, _)| count)
+  }
+
+  /// The walk behind both readers, answering the declared count and the objects chunk it walked to the end of.
+  fn walk<T: ByteOrder, D: ChunkDataSource>(
+    reader: &mut ChunkReader<D>,
+    mut visit: impl FnMut(u32, XrfResult<AlifeObject>),
+  ) -> XrfResult<(u32, ChunkReader<D>)> {
     let mut count_reader: ChunkReader<D> = reader.read_child_by_index(Self::COUNT_CHUNK_ID)?;
     let mut objects_reader: ChunkReader<D> = reader.read_child_by_index(Self::OBJECTS_CHUNK_ID)?;
     let count: u32 = count_reader.read_u32::<T>()?;
 
     count_reader.assert_read("Expect count chunk to be ended")?;
+
+    // The count is declared in its own chunk, so the objects chunk is what has to hold that many records.
+    assert_count_fits(
+      count.into(),
+      objects_reader.read_bytes_remain(),
+      AlifeObject::MIN_SERIALIZED_SIZE,
+      "alife objects",
+    )?;
 
     for object_reader in ChunkIterator::from_start(&mut objects_reader)? {
       let mut object_reader: ChunkReader<D> = object_reader?;
@@ -54,7 +70,7 @@ impl SpawnALifeSpawnsChunk {
       visit(object_reader.id, Self::read_object::<T, _>(&mut object_reader));
     }
 
-    Ok(count)
+    Ok((count, objects_reader))
   }
 
   /// One object's chunk: its index, which is the chunk's id, then its data.
@@ -83,23 +99,23 @@ impl ChunkReadWrite for SpawnALifeSpawnsChunk {
   fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     log::info!("Reading ALife spawns chunk, {} bytes", reader.read_bytes_remain());
 
-    let mut count_reader: ChunkReader<D> = reader.read_child_by_index(Self::COUNT_CHUNK_ID)?;
-    let mut objects_reader: ChunkReader<D> = reader.read_child_by_index(Self::OBJECTS_CHUNK_ID)?;
-    let vertex_reader: ChunkReader<D> = reader.read_child_by_index(Self::VERTEX_CHUNK_ID)?;
+    let mut objects: Vec<AlifeObject> = Vec::new();
+    let mut failure: Option<XrfError> = None;
+    let (count, objects_reader): (u32, ChunkReader<D>) = Self::walk::<T, _>(reader, |_, object| match object {
+      Ok(object) => objects.push(object),
+      Err(error) => {
+        failure.get_or_insert(error);
+      }
+    })?;
 
-    let count: u32 = count_reader.read_u32::<T>()?;
-
-    // The count is declared in its own chunk, so the objects chunk is what has to hold that many records.
-    let mut objects: Vec<AlifeObject> =
-      objects_reader.new_bounded_vec(count.into(), AlifeObject::MIN_SERIALIZED_SIZE, "alife objects")?;
-
-    for object_reader in ChunkIterator::from_start(&mut objects_reader)? {
-      objects.push(Self::read_object::<T, _>(&mut object_reader?)?);
+    if let Some(error) = failure {
+      return Err(error);
     }
+
+    let vertex_reader: ChunkReader<D> = reader.read_child_by_index(Self::VERTEX_CHUNK_ID)?;
 
     assert_length(&objects, count as usize, "Expect all object read")?;
 
-    count_reader.assert_read("Expect count chunk to be ended")?;
     objects_reader.assert_read("Expect objects chunk to be ended")?;
     vertex_reader.assert_read("Parsing of edges in spawn chunk is not implemented")?;
     reader.assert_read("Expect ALife spawns chunk to be ended")?;

@@ -3,7 +3,9 @@ use std::path::{Path, PathBuf};
 
 use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 
-use crate::{FsgameFile, XrayMountMode, XrayMountPlan, XrayProbe, XrayProbeStep, XrayRoots, XraySourceKind, XrayVfs};
+use crate::{
+  FsgameFile, XrayMountMode, XrayMountPlan, XrayProbe, XrayProbePlan, XrayProbeStep, XrayRoots, XraySourceKind, XrayVfs,
+};
 
 /// The alias order a real `fsgame.ltx` uses: archives declared before gamedata, which is what makes loose files win.
 const FSGAME: &str = "\
@@ -296,6 +298,69 @@ fn a_mounted_plan_names_each_source_by_the_alias_that_declared_it() {
       .collect::<Vec<&str>>(),
     ["$arch_dir_textures$"],
     "a source the plan named but could not open is reported rather than silently absent"
+  );
+}
+
+#[test]
+fn a_source_that_failed_to_open_is_settled_rather_than_retried() {
+  let root: PathBuf = install(
+    "settled_failure",
+    &["db\\textures\\textures.db0", "gamedata\\configs\\system.ltx"],
+  );
+  let plan: XrayProbePlan = XrayRoots::one(root, XrayMountMode::Installation)
+    .to_probe_plan()
+    .expect("roots plan");
+
+  let mut vfs: XrayVfs = XrayVfs::new();
+
+  assert_eq!(
+    plan.find_mounted(&vfs),
+    None,
+    "nothing is settled before the first mount"
+  );
+
+  let steps: Vec<XrayProbeStep> = plan.mount_into(&mut vfs).expect("roots mount");
+
+  assert_eq!(
+    plan.find_mounted(&vfs),
+    Some(steps.clone()),
+    "a recorded failure settles the plan, so a later probe is found under a read"
+  );
+
+  // A second mount of the same plan must neither try the broken volume again nor record it twice.
+  assert_eq!(plan.mount_into(&mut vfs).expect("roots mount again"), steps);
+  assert_eq!(vfs.get_skipped_mounts().len(), 1);
+  assert_eq!(
+    vfs.probe().with_steps(steps).list_skipped_sources().len(),
+    1,
+    "the step still reports what it could not open"
+  );
+}
+
+#[test]
+fn a_forgotten_failure_is_tried_again() {
+  let root: PathBuf = install(
+    "forgotten_failure",
+    &["db\\textures\\textures.db0", "gamedata\\configs\\system.ltx"],
+  );
+  let plan: XrayProbePlan = XrayRoots::one(root, XrayMountMode::Installation)
+    .to_probe_plan()
+    .expect("roots plan");
+
+  let mut vfs: XrayVfs = XrayVfs::new();
+
+  plan.mount_into(&mut vfs).expect("roots mount");
+  vfs.forget_skipped_mounts();
+
+  assert!(vfs.get_skipped_mounts().is_empty());
+  assert_eq!(plan.find_mounted(&vfs), None, "a forgotten failure is unsettled again");
+
+  plan.mount_into(&mut vfs).expect("roots mount again");
+
+  assert_eq!(
+    vfs.get_skipped_mounts().len(),
+    1,
+    "the retry fails and is recorded once more"
   );
 }
 

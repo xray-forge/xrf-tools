@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 
 use xrf_error::XrfResult;
 
-use crate::{XrayLookupScope, XrayMountId, XrayMountMode, XrayMountPlan, XrayProbeStep, XraySkippedMount, XrayVfs};
+use crate::{XrayLookupScope, XrayMountId, XrayMountMode, XrayMountPlan, XrayProbeStep, XrayVfs};
 
 /// One declared place to search, before it has been mounted.
 #[derive(Clone, Debug)]
@@ -12,14 +12,6 @@ struct PlannedProbeStep {
 }
 
 /// An ordered search declared before anything is mounted, so the order survives the mounting.
-///
-/// A probe's value is its order, and the order is decided by the caller's intent rather than by which source happens to
-/// open first: a viewer searches an asset's own tree before the project it belongs to, precisely so a loose file beside a
-/// model wins over the same name in gamedata. Declaring the steps and mounting them in one pass is what keeps that
-/// intact — mounting as each root is discovered produces whatever order discovery happened in.
-///
-/// Mounting is idempotent, because [`XrayVfs`] reuses a mount for a planned path it already holds. A viewer that opens
-/// fifty models under one root therefore pays for one index, not fifty, which is why a probe may be planned per asset.
 #[derive(Clone, Debug, Default)]
 pub struct XrayProbePlan {
   steps: Vec<PlannedProbeStep>,
@@ -36,10 +28,6 @@ impl XrayProbePlan {
   }
 
   /// Searches an asset's own X-Ray root, then the installation containing it.
-  ///
-  /// Two steps rather than one, because they answer differently: the first is the loose tree the asset sits in, the
-  /// second is that tree's game install including its volumes. Either may derive nothing, which leaves a step that
-  /// selects no mount and is skipped at lookup time.
   ///
   /// # Errors
   ///
@@ -61,13 +49,6 @@ impl XrayProbePlan {
 
   /// Searches one root, named by the caller because only the caller knows what it means to a reader.
   ///
-  /// Planned through [`XrayMountMode::Auto`], so a root the user picked is treated as whatever it is: an installation
-  /// with its volumes, a bare volume set, or a loose tree. A viewer pointed at `<install>\db` otherwise mounts the
-  /// volumes as files and finds no assets at all.
-  ///
-  /// A path that is neither a directory nor an archive volume plans nothing rather than failing: an unconfigured
-  /// project root is an ordinary state of a viewer, not an error to report.
-  ///
   /// # Errors
   ///
   /// Returns an error when the root exists but cannot be planned.
@@ -76,13 +57,6 @@ impl XrayProbePlan {
   }
 
   /// Searches one root, read the way the caller says rather than through the default.
-  ///
-  /// The same step as [`Self::with_root`], for a caller carrying a mode per root — an `XrayRoots` names
-  /// one each, so a loose gamedata tree and the installation behind it can be read differently within
-  /// one search.
-  ///
-  /// A path that is neither a directory nor an archive volume plans nothing rather than failing, for the
-  /// reason above: an unconfigured project root is an ordinary state of a viewer, not an error to report.
   ///
   /// # Errors
   ///
@@ -116,12 +90,6 @@ impl XrayProbePlan {
 
   /// Mounts every declared step into a VFS and returns the steps in search order.
   ///
-  /// Returns the steps rather than a probe so that mounting, which needs the VFS mutably, finishes before the probe
-  /// borrows it. Hand them to [`crate::XrayProbe::with_steps`].
-  ///
-  /// A step whose plan is empty, or whose sources all fail to open, still becomes a step: it selects no mount, so it is
-  /// skipped rather than answering, and it stays visible to a caller reporting on what was searched.
-  ///
   /// # Errors
   ///
   /// Returns an error when a mount plan cannot be applied to the VFS.
@@ -129,35 +97,34 @@ impl XrayProbePlan {
     let mut steps: Vec<XrayProbeStep> = Vec::with_capacity(self.steps.len());
 
     for step in &self.steps {
-      // The VFS records every failure of every plan it has ever mounted, so this step's own are the ones it appended:
-      // a caller reporting on this search must name the sources it is missing rather than an unrelated root's.
-      let already_skipped: usize = vfs.get_skipped_mounts().len();
       let mounts: Vec<XrayMountId> = vfs.mount_plan(&step.plan)?;
-      let skipped: Vec<XraySkippedMount> = vfs.get_skipped_mounts()[already_skipped..].to_vec();
 
       steps.push(XrayProbeStep::planned(
         &step.label,
         XrayLookupScope::only(mounts),
-        skipped,
+        vfs.list_skipped_mounts_of(&step.plan),
       ));
     }
 
     Ok(steps)
   }
 
-  /// The steps [`Self::mount_into`] would return, where every source the plan names is mounted already; `None` where
+  /// The steps [`Self::mount_into`] would return, where every source the plan names is settled already; `None` where
   /// one is not.
   ///
-  /// A step found here skipped nothing, as nothing was tried. A plan naming a source that never opens is never found,
-  /// and goes through [`Self::mount_into`], which tries the source again.
+  /// A source that failed to open is settled by its recorded failure, which the step reports as skipped.
   pub fn find_mounted(&self, vfs: &XrayVfs) -> Option<Vec<XrayProbeStep>> {
     self
       .steps
       .iter()
       .map(|step| {
-        vfs
-          .find_mounted_plan(&step.plan)
-          .map(|mounts| XrayProbeStep::planned(&step.label, XrayLookupScope::only(mounts), Vec::new()))
+        vfs.find_mounted_plan(&step.plan).map(|mounts| {
+          XrayProbeStep::planned(
+            &step.label,
+            XrayLookupScope::only(mounts),
+            vfs.list_skipped_mounts_of(&step.plan),
+          )
+        })
       })
       .collect()
   }

@@ -16,15 +16,6 @@ use crate::{
 };
 
 /// The engine's view of assets: several mounted sources, searched in order, first hit wins.
-///
-/// Open one with [`XrayVfs::open`], then read and resolve directly — every lookup spans all mounts. Narrow a lookup by
-/// applying an [`XrayLookupScope`] once through [`XrayVfs::scoped`] rather than threading it into each call.
-///
-/// Mount higher-priority sources first. This produces the same winner as `CLocatorAPI` when callers reverse the engine's
-/// last-registration-wins order, while retaining shadowed entries for inspection.
-///
-/// Mounting indexes sources eagerly. Duplicate logical paths remain errors within one source and become ordinary
-/// shadowing across mounts.
 #[derive(Debug, Default)]
 pub struct XrayVfs {
   mounts: Vec<XrayMount>,
@@ -33,10 +24,9 @@ pub struct XrayVfs {
   /// Per-path account of what was physically read, absent unless a caller asked to be told.
   trace: Option<XrayReadTrace>,
   skipped: Vec<XraySkippedMount>,
+  /// Where in `skipped` each planned source that failed to open sits, so a failure is settled rather than retried.
+  failed: HashMap<(PathBuf, XraySourceKind), usize>,
   /// Paths already mounted from a plan, so a later plan naming the same source reuses it.
-  ///
-  /// Keyed by the planned path rather than the source's root, because a volume set's root is the common parent of its
-  /// volumes: two single-volume plans in one directory share a root while naming different sources.
   planned: HashMap<PathBuf, XrayMountId>,
 }
 
@@ -47,9 +37,6 @@ impl XrayVfs {
   }
 
   /// Sets what this world may retain after parsing an asset.
-  ///
-  /// Named at construction because retention is a property of the session, not of a call site: a verification sweep and
-  /// an editing session want opposite answers, and neither should be inferred from whichever consumer reads first.
   pub fn with_cache_policy(mut self, policy: XrayCachePolicy) -> Self {
     self.cache = XrayAssetCache::new(policy);
 
@@ -62,9 +49,6 @@ impl XrayVfs {
   }
 
   /// Accounts for every physical read this world performs from here on.
-  ///
-  /// Off by default and intentionally opt-in: the account is a lock taken on the read path, which is where a sweep
-  /// spends its time. A run that wants the numbers pays for them; every other run pays a null check.
   pub fn with_read_trace(mut self) -> Self {
     self.trace = Some(XrayReadTrace::default());
 
@@ -77,9 +61,6 @@ impl XrayVfs {
   }
 
   /// Reads through a mount, accounting for the read when this world is tracing.
-  ///
-  /// The single place bytes leave a source, so both the path-keyed read and the asset-keyed one are counted without
-  /// either having to remember to.
   fn read_from_mount(&self, mount: &XrayMount, source_path: &str, logical_path: &str) -> XrfResult<Vec<u8>> {
     let bytes: Vec<u8> = mount.get_source().read(source_path)?;
 
@@ -91,23 +72,37 @@ impl XrayVfs {
   }
 
   /// Sources a plan named that could not be opened.
-  ///
-  /// Empty for a VFS assembled by hand. Populated by [`Self::mount_plan`], which is tolerant of a source that fails to
-  /// open — so a caller that reports on what this VFS holds must report these too, or a mount that silently vanished
-  /// looks like content that is silently missing.
   pub fn get_skipped_mounts(&self) -> &[XraySkippedMount] {
     &self.skipped
   }
 
-  /// Records a source that a plan named but could not open.
-  pub(crate) fn record_skipped(&mut self, skipped: XraySkippedMount) {
+  /// Records a source that a plan named but could not open, once however many plans name it.
+  pub(crate) fn record_skipped(&mut self, kind: XraySourceKind, skipped: XraySkippedMount) {
+    let key: (PathBuf, XraySourceKind) = (skipped.path.clone(), kind);
+
+    if self.failed.contains_key(&key) {
+      return;
+    }
+
+    self.failed.insert(key, self.skipped.len());
     self.skipped.push(skipped);
   }
 
+  /// The recorded failure of a planned source, which settles it until [`Self::forget_skipped_mounts`].
+  pub(crate) fn skipped_mount(&self, path: &Path, kind: XraySourceKind) -> Option<&XraySkippedMount> {
+    self
+      .failed
+      .get(&(path.to_path_buf(), kind))
+      .and_then(|index| self.skipped.get(*index))
+  }
+
+  /// Forgets every source that failed to open, so the next plan naming one tries it again.
+  pub fn forget_skipped_mounts(&mut self) {
+    self.failed.clear();
+    self.skipped.clear();
+  }
+
   /// The mount already opened from a planned path, when its kind still matches.
-  ///
-  /// Opening a source indexes it, so a caller that keeps one VFS across requests — a viewer resolving one model after
-  /// another — would otherwise re-walk the same tree and append a duplicate mount every time.
   pub(crate) fn planned_mount(&self, path: &Path, kind: XraySourceKind) -> Option<XrayMountId> {
     self
       .planned
@@ -149,8 +144,6 @@ impl XrayVfs {
   }
 
   /// Mounts a directory once, reusing the existing mount for the same root.
-  ///
-  /// The first mount's base and priority are retained when a root is reused.
   ///
   /// # Errors
   ///
@@ -262,11 +255,6 @@ impl XrayVfs {
 
   /// Reads the bytes of an asset this VFS already resolved.
   ///
-  /// Prefer this over [`Self::read`] whenever a lookup or an enumeration already produced the asset. It reads from the
-  /// source that *answered* rather than searching the mounts again, which is both cheaper and more truthful: between a
-  /// resolve and a path-keyed read, a remount or a new override can change which mount wins, so the bytes need not be
-  /// the ones described by the asset in hand.
-  ///
   /// # Errors
   ///
   /// Returns a not-found error when no mount in this VFS holds the asset's container — most often because the asset came
@@ -305,9 +293,6 @@ impl XrayVfs {
 
   /// Size in bytes of the winning entry, without reading it.
   ///
-  /// For a size gate that exists to avoid parsing a truncated asset: reading the bytes to measure them would defeat it, and
-  /// for an archived entry would decompress the whole thing.
-  ///
   /// Answers `None` both for an absent asset and for a path that is not a valid logical path — a size gate has nothing
   /// useful to do with the difference, and every caller would discard it.
   pub fn read_size(&self, logical_path: &str) -> Option<u64> {
@@ -323,11 +308,6 @@ impl XrayVfs {
 
   /// CRC32 of the winning entry's payload, when its source already knows it without reading anything.
   ///
-  /// The cheap half of comparing two mounted worlds: an archive answers from its name table, a directory answers
-  /// `None` because producing one means reading the file. A caller that needs a checksum either way reads the bytes
-  /// and hashes them itself, and does so only where this could not answer — which is what keeps an archive-to-archive
-  /// comparison free of any payload read at all.
-  ///
   /// `None` covers an absent asset, an unreadable logical path, and a source that simply does not record one; a
   /// caller that must tell those apart has [`Self::find`] for the first two.
   pub fn read_recorded_crc(&self, logical_path: &str) -> Option<u32> {
@@ -342,11 +322,6 @@ impl XrayVfs {
   }
 
   /// Returns winning entries, one per logical path, ordered by that path.
-  ///
-  /// Sorted here rather than left to callers: an archive source keys its name table by hash, so enumeration order is
-  /// otherwise arbitrary and unstable between runs. Every consumer that shows or diffs a listing needs a deterministic
-  /// order, and two shipped defects came from a caller forgetting to impose one. Sorting ~47,000 entries costs
-  /// milliseconds against the enumeration itself.
   pub fn list_entries(&self) -> Vec<XrayAsset> {
     self.list_entries_in(&XrayLookupScope::default())
   }
@@ -363,12 +338,6 @@ impl XrayVfs {
   }
 
   /// Returns winning entries whose extension identifies one kind.
-  ///
-  /// Not narrowed to the kind's own directory. That directory is where a *reference* resolves, not where
-  /// every instance lives: a level ships its own `.dds` files under `levels\<name>\`, and narrowing would drop them from any
-  /// enumeration that means "every texture in this project".
-  ///
-  /// Narrow with a scope prefix when a caller wants one subtree.
   pub fn list_entries_of_type(&self, asset_type: XrayAssetType) -> Vec<XrayAsset> {
     self.list_entries_of_type_in(&XrayLookupScope::default(), asset_type)
   }
@@ -382,10 +351,6 @@ impl XrayVfs {
   }
 
   /// Returns winning entries whose logical path ends with `suffix` on a component boundary.
-  ///
-  /// For assets named by convention rather than by extension alone — `particles.xr` libraries, a level's `level.spawn` — where
-  /// the tail of the path is the identity and no kind describes it. The boundary matters: a suffix of `particles.xr`
-  /// names that file anywhere in the tree, and must not also match a neighbour named `old_particles.xr`.
   ///
   /// # Errors
   ///
@@ -413,9 +378,6 @@ impl XrayVfs {
   }
 
   /// Files any mount holds but cannot reach, because another file in the same mount claims their identity.
-  ///
-  /// An authoring problem to report rather than a reason to refuse the VFS: nothing here affects what resolves, only what a
-  /// person should be told is unreachable.
   pub fn list_collisions(&self) -> Vec<XrayPathCollision> {
     self.list_collisions_in(&XrayLookupScope::default())
   }
@@ -428,14 +390,6 @@ impl XrayVfs {
   }
 
   /// Returns what sits directly inside one logical directory, as a browser or a tree view needs it.
-  ///
-  /// Separate from [`Self::list_entries`], which answers everything *below* a prefix: listing `textures` with a prefix scope
-  /// yields every texture in the tree, while this yields its handful of folders and files. That is the difference between
-  /// expanding one node and loading the whole tree.
-  ///
-  /// Directories are not entries — a volume records them, and treating them as assets inflates every count — so folder
-  /// names are derived from the path segments of entries. Cost is therefore proportional to the entries under `directory`,
-  /// not to the number of children returned.
   ///
   /// # Errors
   ///
@@ -482,10 +436,6 @@ impl XrayVfs {
   }
 
   /// The scope a listing runs under: the narrower of the view's subtree and the directory asked for.
-  ///
-  /// `None` means the directory falls outside the view's subtree, which lists nothing. Replacing the scope's prefix
-  /// instead of intersecting it would let a view narrowed to `configs` list the children of `textures`, which is the
-  /// reach past its own subtree that every other read-path operation refuses.
   ///
   /// `directory` must already be normalized, and is empty for the logical root.
   fn get_listing_scope(scope: &XrayLookupScope, directory: &str) -> XrfResult<Option<XrayLookupScope>> {
@@ -589,9 +539,6 @@ impl XrayVfs {
   }
 
   /// Returns the winning entry for every reachable path with its size, ordered by logical path.
-  ///
-  /// Sizes come from the mount that answered, as the walk meets it. Asking the VFS for each afterwards would repeat
-  /// the lookup this already performed, once per entry.
   pub fn list_mounted_entries(&self) -> Vec<XrayMountedEntry> {
     self.list_mounted_entries_in(&XrayLookupScope::default())
   }
@@ -648,11 +595,6 @@ impl XrayVfs {
   }
 
   /// Writes bytes to the winning entry within a scope.
-  ///
-  /// A write names its scope explicitly where lookups default to everything: changing bytes deserves the ceremony, and the
-  /// scope is how a caller states which mounts may take the write. Pass [`XrayLookupScope::all()`] to mean the whole VFS.
-  ///
-  /// The operation refuses read-only winners and absent paths instead of creating a loose override.
   pub fn write(&self, scope: &XrayLookupScope, logical_path: &str, bytes: &[u8]) -> XrfResult<()> {
     let logical_path: Cow<str> = normalize(logical_path)?;
 
@@ -684,24 +626,6 @@ impl XrayVfs {
   }
 
   /// Creates a loose override in the highest-priority writable mount in scope.
-  ///
-  /// Unlike [`Self::write`], this creates a new entry instead of modifying the current winner. The mount is rebuilt so the
-  /// override resolves immediately. This is how an archived asset is changed: a volume never takes a write, so the
-  /// override shadows it from a loose mount in front.
-  ///
-  /// ```rust,no_run
-  /// use xrf_vfs::{XrayLookupScope, XrayMountMode, XrayVfs};
-  ///
-  /// # fn main() -> xrf_error::XrfResult {
-  /// let mut vfs: XrayVfs = XrayVfs::open(XrayMountMode::Installation, "C:\\Games\\Anomaly")?;
-  ///
-  /// // write() refuses an archive winner; the override lands in gamedata and shadows it.
-  /// let overridden = vfs.write_override(&XrayLookupScope::all(), "configs\\my_tweak.ltx", b"[tweak]")?;
-  ///
-  /// assert!(overridden.to_physical_path().is_some(), "an override is always a loose file");
-  /// # Ok(())
-  /// # }
-  /// ```
   ///
   /// # Errors
   ///
@@ -742,8 +666,6 @@ impl XrayVfs {
 
   /// Reindexes a directory mount so newly created files resolve.
   ///
-  /// Non-directory mounts are left unchanged.
-  ///
   /// # Errors
   ///
   /// Returns an error when the mount does not exist or its root can no longer be indexed.
@@ -776,10 +698,6 @@ impl XrayVfs {
 
   /// Resolves a raw engine reference of one kind, under that kind's directory and extension.
   ///
-  /// This is how an editor resolves any kind the table knows without the VFS growing a method per kind. `reference` is
-  /// untrusted engine text — from a config field or a mesh header — so normalizing it is this call's job, which is why it
-  /// takes `&str` rather than an [`crate::XrayLogicalPath`].
-  ///
   /// # Errors
   ///
   /// Returns an error when `asset_type` has no canonical home, or when the reference cannot be normalized as an X-Ray path.
@@ -799,10 +717,6 @@ impl XrayVfs {
   }
 
   /// Resolves every asset of one kind a reference names, which may be a `*` mask.
-  ///
-  /// A motion reference is allowed to name a set — `wpn\wpn_ak74_*.omf` means every matching animation file — so this
-  /// answers a list where [`Self::resolve`] answers at most one. A reference without `*` resolves to a single asset or none,
-  /// which is why this is not two separate calls at the consumer.
   ///
   /// # Errors
   ///
@@ -916,12 +830,6 @@ impl XrayVfs {
   }
 
   /// The highest-priority mount in scope holding a logical path, with that path in the mount's own namespace.
-  ///
-  /// The one place a path-keyed operation picks a winner. [`Self::find`], [`Self::read`], [`Self::read_size`] and
-  /// [`Self::write`] each used to walk the mounts themselves and apply the scope's subtree guard inline — four copies of
-  /// one decision, two of which asked `locate` where the others asked `contains`. A source answering those two
-  /// differently would have sent a read to a mount the preceding lookup did not choose;
-  /// [`XrayAssetSource::contains`] now derives from `locate` by default so it cannot.
   ///
   /// `logical_path` must already be normalized.
   fn get_winner_in_scope<'a>(&self, scope: &XrayLookupScope, logical_path: &'a str) -> Option<(&XrayMount, &'a str)> {

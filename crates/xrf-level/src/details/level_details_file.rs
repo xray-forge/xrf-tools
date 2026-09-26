@@ -229,8 +229,8 @@ impl LevelDetailsFile {
   }
 
   /// Every slot of the grid, decoded in the order the file stores them.
-  pub fn iter_slots(&self) -> impl Iterator<Item = LevelDetailsSlot> + '_ {
-    self.iter_stored_slots().map(LevelDetailsSlot::of)
+  pub fn iter_slots<T: ByteOrder>(&self) -> impl Iterator<Item = LevelDetailsSlot> {
+    self.iter_stored_slots().map(LevelDetailsSlot::of::<T>)
   }
 
   /// Every slot of the grid as the file stores it, for a reader passing the packed bytes on rather than decoding them.
@@ -238,16 +238,30 @@ impl LevelDetailsFile {
     self.slots.as_chunks::<{ LevelDetailsSlot::SERIALIZED_SIZE }>().0.iter()
   }
 
+  /// One cell's slot as the file stores it, by its index in the grid.
+  pub fn get_stored_slot(&self, cell: usize) -> Option<&[u8; LevelDetailsSlot::SERIALIZED_SIZE]> {
+    self
+      .slots
+      .as_chunks::<{ LevelDetailsSlot::SERIALIZED_SIZE }>()
+      .0
+      .get(cell)
+  }
+
+  /// One cell's slot, decoded, by its index in the grid.
+  pub fn get_slot<T: ByteOrder>(&self, cell: usize) -> Option<LevelDetailsSlot> {
+    self.get_stored_slot(cell).map(LevelDetailsSlot::of::<T>)
+  }
+
   /// Slots planting at least one object, which is what decides how much of a level is actually dressed.
-  pub fn get_planted_slots_count(&self) -> u64 {
-    self.iter_slots().filter(LevelDetailsSlot::is_planted).count() as u64
+  pub fn get_planted_slots_count<T: ByteOrder>(&self) -> u64 {
+    self.iter_slots::<T>().filter(LevelDetailsSlot::is_planted).count() as u64
   }
 
   /// How many corners across the whole grid each library object is planted in, by library index.
-  pub fn get_object_usage(&self) -> Vec<u64> {
+  pub fn get_object_usage<T: ByteOrder>(&self) -> Vec<u64> {
     let mut usage: Vec<u64> = vec![0; self.objects.len()];
 
-    for slot in self.iter_slots() {
+    for slot in self.iter_slots::<T>() {
       for object in slot.objects.into_iter().flatten() {
         if let Some(count) = usage.get_mut(usize::from(object)) {
           *count += 1;

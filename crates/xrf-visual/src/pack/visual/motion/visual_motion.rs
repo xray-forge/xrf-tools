@@ -6,6 +6,7 @@ use xrf_spawn::XRayByteOrder;
 use crate::data::visual::skeleton::visual_transform::VisualTransform;
 use crate::pack::visual::motion::visual_motion_bake::VisualMotionBake;
 use crate::pack::visual::motion::visual_motion_pose::VisualMotionPose;
+use crate::pack::visual::visual_skeleton::resolve_parents;
 use crate::pack::visual::visual_transform::BindTransform;
 
 /// Floats one baked bone transform occupies: three basis vectors and a translation.
@@ -41,7 +42,7 @@ pub fn bake_motion(
   // through `find_bone_id` (`SkeletonMotions.cpp:106`). Positional pairing would animate the wrong bones whenever a
   // partition orders them differently from the bone chunk, which is the normal case.
   let animated: Vec<Option<usize>> = resolve_animated_bones(bones, parts, runs.len());
-  let parents: Vec<Option<usize>> = bones.iter().map(|bone| find_bone(bones, &bone.parent)).collect();
+  let parents: Vec<Option<usize>> = resolve_parents(bones);
   let bind_locals: Vec<BindTransform> = binds
     .iter()
     .map(|it| BindTransform::from_bind(&it.bind_rotation, &it.bind_position))
@@ -58,7 +59,7 @@ pub fn bake_motion(
       })
       .collect();
 
-    for transform in compose_chain(&locals, &parents) {
+    for transform in BindTransform::compose_chain(&locals, &parents) {
       // A bone whose chain never reaches a root has no place to be posed; the identity is the only honest answer, and
       // it leaves whatever is skinned to that bone sitting in model space rather than collapsed to a point.
       let posed: VisualTransform = transform
@@ -120,41 +121,4 @@ fn resolve_animated_bones(bones: &[OgfBone], parts: &[SkeletonPart], run_count: 
   }
 
   animated
-}
-
-/// Composes local transforms into model space, root downwards.
-fn compose_chain(locals: &[BindTransform], parents: &[Option<usize>]) -> Vec<Option<BindTransform>> {
-  let mut model: Vec<Option<BindTransform>> = vec![None; locals.len()];
-
-  loop {
-    let mut placed: usize = 0;
-
-    for index in 0..locals.len() {
-      if model[index].is_some() {
-        continue;
-      }
-
-      let resolved: Option<BindTransform> = match parents[index] {
-        None => Some(locals[index].then(&BindTransform::identity())),
-        Some(parent) => model[parent].as_ref().map(|it| locals[index].then(it)),
-      };
-
-      if let Some(resolved) = resolved {
-        model[index] = Some(resolved);
-        placed += 1;
-      }
-    }
-
-    if placed == 0 {
-      return model;
-    }
-  }
-}
-
-fn find_bone(bones: &[OgfBone], name: &str) -> Option<usize> {
-  if name.is_empty() {
-    return None;
-  }
-
-  bones.iter().position(|it| it.name == name)
 }

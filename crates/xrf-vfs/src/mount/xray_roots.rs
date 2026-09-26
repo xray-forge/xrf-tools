@@ -11,7 +11,7 @@ use crate::vfs::XrayVfs;
 
 /// One place to read from, and how that place becomes mounts.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, Default, Eq, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, Debug, Default, Eq, Hash, PartialEq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct XrayRoot {
   /// Native host address, retained without rendering it as text.
@@ -28,22 +28,8 @@ impl XrayRoot {
 }
 
 /// Everywhere a caller wants read: an optional subject asset, then ordered roots.
-///
-/// The one way every surface says where to read from, so `--source` on a command, a setting in the
-/// app, and an editor session all name the same thing. What sits *inside* those roots is a separate
-/// question that stays with each domain — a dialog layout and a translations layout disagree about it,
-/// and a spawn file has no answer at all.
-///
-/// Several roots means layering, which is how modding actually works: a loose gamedata tree in front
-/// of an installation. Search order is declaration order, and the first mount holding a path wins.
-///
-/// Callers do not assemble mounts from this themselves. They hand it to whatever owns mounting and
-/// receive a VFS or a probe back, so one place decides what a declaration means.
-///
-/// Serde keeps the existing string wire shape for Unicode paths and refuses a non-Unicode address
-/// instead of substituting characters into it.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, Default, Eq, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, Debug, Default, Eq, Hash, PartialEq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct XrayRoots {
   /// Native asset address whose own X-Ray root and installation are searched first, when the read is centred on one.
@@ -72,10 +58,6 @@ impl XrayRoots {
   }
 
   /// The same roots, centred on an asset when it does not already name one.
-  ///
-  /// Lets a command fill in the subject it knows about while leaving a caller free to name a different
-  /// one, and the result is what travels back to the frontend — so a later read searches what the open
-  /// searched.
   pub fn centred_on(&self, asset: Option<&Path>) -> Self {
     Self {
       asset: self.asset.clone().or_else(|| asset.map(Path::to_path_buf)),
@@ -110,9 +92,6 @@ impl XrayRoots {
 
   /// The mounts these roots mean, in search order.
   ///
-  /// For a tool that lists and reads a whole tree. `XrayMountPlan::behind` dedupes by path, so a
-  /// fallback root that happens to be the tree the asset already implied is not mounted twice.
-  ///
   /// # Errors
   ///
   /// Returns an error when a root cannot be planned — `Installation` on a path declaring none, or an
@@ -131,9 +110,6 @@ impl XrayRoots {
   }
 
   /// The ordered probe steps these roots mean.
-  ///
-  /// For a per-asset lookup that has to report which step answered. Each root is labelled with its own
-  /// path, because that is the string a failed lookup lists as searched.
   ///
   /// # Errors
   ///

@@ -54,14 +54,10 @@ impl ChunkReadWrite for LevelCformHeader {
 }
 
 /// Descriptor of the `level.cform` file used by xray game engine.
-///
-/// Only the header is read. Vertex and triangle payload is not parsed - it is validated by the
-/// engine's collision database loader and cannot be checked cheaply.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LevelCformFile {
   pub header: LevelCformHeader,
-  // todo: Content.
 }
 
 impl LevelCformFile {

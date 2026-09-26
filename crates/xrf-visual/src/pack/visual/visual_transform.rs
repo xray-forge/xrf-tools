@@ -105,6 +105,36 @@ impl BindTransform {
     }
   }
 
+  /// Composes local transforms into model space, root downwards; `None` for a bone whose chain reaches no root.
+  pub(crate) fn compose_chain(locals: &[Self], parents: &[Option<usize>]) -> Vec<Option<Self>> {
+    let mut model: Vec<Option<Self>> = vec![None; locals.len()];
+
+    loop {
+      let mut placed: usize = 0;
+
+      for index in 0..locals.len() {
+        if model[index].is_some() {
+          continue;
+        }
+
+        let resolved: Option<Self> = match parents[index] {
+          // A root bone's parent is the identity, which is what the engine walks down from.
+          None => Some(locals[index].then(&Self::identity())),
+          Some(parent) => model[parent].as_ref().map(|it| locals[index].then(it)),
+        };
+
+        if let Some(resolved) = resolved {
+          model[index] = Some(resolved);
+          placed += 1;
+        }
+      }
+
+      if placed == 0 {
+        return model;
+      }
+    }
+  }
+
   /// The same transform expressed in the renderer's mirrored space.
   pub(crate) fn mirrored(&self) -> Self {
     Self {

@@ -127,10 +127,6 @@ impl<'a> LightsPacker<'a> {
   /// `CHangingLamp::net_Spawn`: the main light on its bone, and the ambient one on its own where the lamp asks for
   /// it. A lamp the engine would not spawn on R2, one already broken, or a signal rocket waiting for launch lights
   /// nothing.
-  ///
-  /// The section's `shadow` and `ambient_shadow` are xray-monolith's; xray-16 takes the flag and leaves the ambient
-  /// light unshadowed, which is what a section naming neither reads as. The spawned `virtual_size` is xray-16's, where
-  /// xray-monolith keeps the renderer's 0.1.
   pub(crate) fn add_lamp(
     &mut self,
     object: &AlifeObject,
@@ -146,13 +142,13 @@ impl<'a> LightsPacker<'a> {
     let visual: Option<Arc<VisualRestPose>> = object.inherited.get_visual().and_then(pose_visual);
     let pose: Option<&VisualRestPose> = visual.as_deref();
     let object_transform: VisualTransform = to_spawn_transform(&object.position, &object.direction);
-    let main: VisualTransform = place_on_bone(&object_transform, pose, &lamp.light_bone);
+    let main: VisualTransform = Self::place_on_bone(&object_transform, pose, &lamp.light_bone);
     let ambient: VisualTransform = if lamp.light_ambient_bone.eq_ignore_ascii_case(&lamp.light_bone) {
       main.clone()
     } else {
-      place_on_bone(&object_transform, pose, &lamp.light_ambient_bone)
+      Self::place_on_bone(&object_transform, pose, &lamp.light_ambient_bone)
     };
-    let color: [f32; 3] = unpack_color(lamp.main_color, lamp.main_brightness);
+    let color: [f32; 3] = Self::unpack_color(lamp.main_color, lamp.main_brightness);
     let animator: Option<u32> = self.find_animator(&lamp.color_animator);
     let is_spot: bool = lamp.is_spot();
     let projector: Option<u32> = is_spot.then(|| {
@@ -167,7 +163,7 @@ impl<'a> LightsPacker<'a> {
       name: object.name.clone(),
       kind: if is_spot { LightKind::Spot } else { LightKind::Point },
       position: main.c.clone(),
-      direction: to_direction(&main),
+      direction: Self::to_direction(&main),
       right: main.i.clone(),
       color,
       range: lamp.main_range,
@@ -188,7 +184,7 @@ impl<'a> LightsPacker<'a> {
         name: format!("{} ambient", object.name),
         kind: LightKind::Point,
         position: ambient.c.clone(),
-        direction: to_direction(&ambient),
+        direction: Self::to_direction(&ambient),
         right: ambient.i.clone(),
         color: color.map(|channel| channel * lamp.ambient_power),
         range: lamp.ambient_radius,
@@ -286,7 +282,7 @@ impl<'a> LightsPacker<'a> {
           .map(|item| (file, item))
       })
       .map(|(file, item)| {
-        self.animators.push(describe_animator(item, file.is_bgr()));
+        self.animators.push(Self::describe_animator(item, file.is_bgr()));
 
         (self.animators.len() - 1) as u32
       });
@@ -308,56 +304,56 @@ impl<'a> LightsPacker<'a> {
 
     index
   }
-}
 
-/// `XFORM() * LL_GetTransform(bone)` in the renderer's space: the bone's rest transform placed with the object, or the
-/// object's own where the visual has no such bone.
-fn place_on_bone(object: &VisualTransform, pose: Option<&VisualRestPose>, bone: &str) -> VisualTransform {
-  pose
-    .filter(|_| !bone.is_empty())
-    .and_then(|pose| pose.find(bone))
-    .map_or_else(
-      || object.clone(),
-      |it| {
-        BindTransform::from_renderer_space(it)
-          .then(&BindTransform::from_renderer_space(object))
-          .to_visual()
-      },
-    )
-}
+  /// `XFORM() * LL_GetTransform(bone)` in the renderer's space: the bone's rest transform placed with the object, or the
+  /// object's own where the visual has no such bone.
+  fn place_on_bone(object: &VisualTransform, pose: Option<&VisualRestPose>, bone: &str) -> VisualTransform {
+    pose
+      .filter(|_| !bone.is_empty())
+      .and_then(|pose| pose.find(bone))
+      .map_or_else(
+        || object.clone(),
+        |it| {
+          BindTransform::from_renderer_space(it)
+            .then(&BindTransform::from_renderer_space(object))
+            .to_visual()
+        },
+      )
+  }
 
-/// The engine's `xf.k`, where a light points, in the renderer's space: mirroring a transform negates the `x` and `y` of
-/// its third axis, so negating that axis gives the converted `k` back.
-fn to_direction(transform: &VisualTransform) -> Vector3d {
-  Vector3d::new(-transform.k.x, -transform.k.y, -transform.k.z)
-}
+  /// The engine's `xf.k`, where a light points, in the renderer's space: mirroring a transform negates the `x` and `y` of
+  /// its third axis, so negating that axis gives the converted `k` back.
+  fn to_direction(transform: &VisualTransform) -> Vector3d {
+    Vector3d::new(-transform.k.x, -transform.k.y, -transform.k.z)
+  }
 
-/// `Fcolor(color)` times the lamp's brightness: an `ARGB` colour, each channel over 255, its alpha dropped.
-fn unpack_color(color: u32, brightness: f32) -> [f32; 3] {
-  [16, 8, 0].map(|shift| ((color >> shift) & 0xFF) as f32 / 255.0 * brightness)
-}
+  /// `Fcolor(color)` times the lamp's brightness: an `ARGB` colour, each channel over 255, its alpha dropped.
+  fn unpack_color(color: u32, brightness: f32) -> [f32; 3] {
+    [16, 8, 0].map(|shift| ((color >> shift) & 0xFF) as f32 / 255.0 * brightness)
+  }
 
-/// The keys as the engine holds them once loaded, each as the `RGB` a lamp takes: a version 0 library stores `BGR`,
-/// which the load swaps, and `CHangingLamp` swaps `CalculateBGR`'s result back.
-fn describe_animator(item: &LightAnimItem, is_bgr: bool) -> LightAnimatorDescription {
-  let mut keys: Vec<&LightAnimKey> = item.keys.iter().collect();
+  /// The keys as the engine holds them once loaded, each as the `RGB` a lamp takes: a version 0 library stores `BGR`,
+  /// which the load swaps, and `CHangingLamp` swaps `CalculateBGR`'s result back.
+  fn describe_animator(item: &LightAnimItem, is_bgr: bool) -> LightAnimatorDescription {
+    let mut keys: Vec<&LightAnimKey> = item.keys.iter().collect();
 
-  keys.sort_by_key(|key| key.frame);
+    keys.sort_by_key(|key| key.frame);
 
-  LightAnimatorDescription {
-    name: item.name.clone(),
-    fps: item.fps,
-    frame_count: item.frame_count,
-    keys: keys
-      .into_iter()
-      .map(|key| {
-        let shifts: [u32; 3] = if is_bgr { [0, 8, 16] } else { [16, 8, 0] };
+    LightAnimatorDescription {
+      name: item.name.clone(),
+      fps: item.fps,
+      frame_count: item.frame_count,
+      keys: keys
+        .into_iter()
+        .map(|key| {
+          let shifts: [u32; 3] = if is_bgr { [0, 8, 16] } else { [16, 8, 0] };
 
-        LightAnimatorKey {
-          frame: key.frame,
-          color: shifts.map(|shift| ((key.color >> shift) & 0xFF) as f32),
-        }
-      })
-      .collect(),
+          LightAnimatorKey {
+            frame: key.frame,
+            color: shifts.map(|shift| ((key.color >> shift) & 0xFF) as f32),
+          }
+        })
+        .collect(),
+    }
   }
 }
