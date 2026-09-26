@@ -47,7 +47,7 @@ export const LEVEL_ANTIALIASING_MODES: ReadonlyArray<ERendererAntialiasing> = [
   ERendererAntialiasing.FXAA,
   ERendererAntialiasing.SMAA,
   ERendererAntialiasing.TAA,
-  ERendererAntialiasing.FSR,
+  ERendererAntialiasing.FSR2,
 ];
 
 /**

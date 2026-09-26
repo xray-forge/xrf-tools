@@ -128,7 +128,7 @@ describe("renderer features", () => {
     expect(toRendererUpscale(base)).toBe(1);
     expect(Object.values(ERendererAntialiasing).filter(isRendererTemporal)).toEqual([
       ERendererAntialiasing.TAA,
-      ERendererAntialiasing.FSR,
+      ERendererAntialiasing.FSR2,
     ]);
   });
 });

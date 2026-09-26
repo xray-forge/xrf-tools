@@ -17,7 +17,7 @@ export enum ERendererAntialiasing {
    * FSR 2: AMD's temporal upscaler, from the same jittered frames, motion and depth as TAA, with locks that keep thin
    * features and a reactive mask from what the blended surfaces changed.
    */
-  FSR = "fsr",
+  FSR2 = "fsr2",
 }
 
 /**
@@ -25,7 +25,7 @@ export enum ERendererAntialiasing {
  * @returns Whether it resolves jittered frames with their history, which jitters every scene pass.
  */
 export function isRendererTemporal(mode: ERendererAntialiasing): boolean {
-  return mode === ERendererAntialiasing.TAA || mode === ERendererAntialiasing.FSR;
+  return mode === ERendererAntialiasing.TAA || mode === ERendererAntialiasing.FSR2;
 }
 
 /**
