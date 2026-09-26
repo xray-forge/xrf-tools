@@ -5,11 +5,11 @@ use std::time::Instant;
 use xrf_chunk::XRayByteOrder;
 use xrf_light_anim::LightAnimFile;
 use xrf_ltx::Ltx;
-use xrf_vfs::XrayProbe;
+use xrf_vfs::{XrayLogicalPath, XrayProbe};
 use xrf_visual::{LightsDescription, LightsPacker};
 
 use crate::core::assets::read_located_asset;
-use crate::plugins::levels::report::report_lights;
+use crate::plugins::levels::report::{report_lights, report_missing_spawned_lights, report_unreadable_animations};
 use crate::plugins::levels::spawn::get_level_spawn;
 use crate::plugins::levels::spawn_visuals::SpawnVisualReader;
 use crate::plugins::levels::state::{LevelTextureReference, SelectedLevel};
@@ -30,7 +30,7 @@ pub fn pack_lights(current: &SelectedLevel, probe: &XrayProbe, sections: Option<
   let started: Instant = Instant::now();
   let animations: Option<LightAnimFile> = read_located_asset(probe, ANIMATIONS_FILE)
     .and_then(LightAnimFile::read_from_bytes::<XRayByteOrder>)
-    .inspect_err(|error| log::warn!("No light is animated, as '{ANIMATIONS_FILE}' is unreadable: {error}"))
+    .inspect_err(|error| report_unreadable_animations(ANIMATIONS_FILE, error))
     .ok();
   let mut packer: LightsPacker = LightsPacker::new(animations.as_ref());
 
@@ -46,7 +46,7 @@ pub fn pack_lights(current: &SelectedLevel, probe: &XrayProbe, sections: Option<
         visuals.get(name).and_then(|it| it.rest.clone())
       });
     }
-    Err(error) => log::warn!("No spawned lights for {}: {error}", current.source.get_label()),
+    Err(error) => report_missing_spawned_lights(&current.source, &error),
   }
 
   if let Some(lights) = current.level.lights.as_ref() {
@@ -54,7 +54,7 @@ pub fn pack_lights(current: &SelectedLevel, probe: &XrayProbe, sections: Option<
   }
 
   let lights: LightsDescription = packer.pack();
-  let directory: Option<String> = current.source.get_logical_directory();
+  let directory: Option<XrayLogicalPath> = current.source.get_logical_directory();
 
   report_lights(&current.source, &lights, started);
 
@@ -63,7 +63,7 @@ pub fn pack_lights(current: &SelectedLevel, probe: &XrayProbe, sections: Option<
       .projectors
       .iter()
       .map(|reference| LevelTextureReference {
-        logical_path: resolve_reference(probe, directory.as_deref(), reference),
+        logical_path: resolve_reference(probe, directory.as_ref(), reference),
         reference: reference.clone(),
       })
       .collect(),

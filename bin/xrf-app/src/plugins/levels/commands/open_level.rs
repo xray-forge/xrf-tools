@@ -3,7 +3,7 @@ use std::time::Instant;
 
 use tauri::State;
 use xrf_material::XraySurfaceDescriptor;
-use xrf_vfs::XrayRoots;
+use xrf_vfs::{XrayLogicalPath, XrayRoots};
 use xrf_visual::SectorOutline;
 
 use crate::core::assets::AssetMountState;
@@ -11,7 +11,7 @@ use crate::core::execution::ExecutionState;
 use crate::core::session::{SessionId, SessionSnapshot};
 use crate::core::types::TauriResult;
 use crate::plugins::levels::read::{ReadLevel, read_source};
-use crate::plugins::levels::report::report_open;
+use crate::plugins::levels::report::{report_open, report_opening};
 use crate::plugins::levels::state::{
   LevelSource, LevelSpawnVisuals, LevelState, LevelTextureReference, PackedDetails, PackedSectors, SelectedLevel,
   SelectedLevelDescription,
@@ -34,18 +34,17 @@ pub async fn levels_open_level(
 
   let started: Instant = Instant::now();
 
-  log::info!("Opening level: {}", source.get_label());
+  report_opening(&source);
 
   let roots: XrayRoots = roots.centred_on(source.get_physical_path());
   let assets: AssetMountState = AssetMountState::clone(&assets);
   let (read, textures, surfaces, source, roots) = execution
     .run_blocking("Opening the level", move || {
-      let directory: Option<String> = source.get_logical_directory();
+      let directory: Option<XrayLogicalPath> = source.get_logical_directory();
       let (read, textures, surfaces) = assets.with_probe(&roots, |probe| {
         let read: ReadLevel = read_source(&source, probe)?;
         let surfaces: Vec<XraySurfaceDescriptor> = resolve_surfaces(&read.level, probe);
-        let textures: Vec<LevelTextureReference> =
-          resolve_textures(&read.level, &surfaces, probe, directory.as_deref());
+        let textures: Vec<LevelTextureReference> = resolve_textures(&read.level, &surfaces, probe, directory.as_ref());
 
         TauriResult::Ok((read, textures, surfaces))
       })??;

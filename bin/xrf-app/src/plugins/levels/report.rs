@@ -1,21 +1,39 @@
 //! What the level plugin says to the log, in one place rather than beside each command that says it.
 
+use std::fmt::Display;
 use std::time::Instant;
 
-use xrf_level::LevelShaderEntry;
+use xrf_level::{LevelSectorComposition, LevelShaderEntry};
 use xrf_material::{XraySurfaceDeclaration, XraySurfaceDescriptor, XraySurfaceDraw};
 use xrf_spawn::SpawnLevelObjects;
 use xrf_visual::{
   DetailsDescription, LightsDescription, SectorDescription, SectorInstanceGroup, SectorOutline, SectorPackage,
 };
 
-use crate::plugins::levels::state::{LevelSource, LevelSpawnModelsDescription, LevelTextureReference, SelectedLevel};
+use crate::plugins::levels::state::{
+  LevelEntry, LevelSource, LevelSpawnModelsDescription, LevelTextureReference, SelectedLevel,
+};
 
 /// How many names a log line about a set of them carries before it stops listing and starts counting.
 const LISTED_NAMES: usize = 6;
 
 /// Bytes past which a packed sector is worth saying something about.
 const LARGE_SECTOR_BYTES: usize = 256 * 1024 * 1024;
+
+/// How many levels the roots hold, and how many of them draw.
+pub fn report_listed_levels(entries: &[LevelEntry], started: Instant) {
+  log::info!(
+    "Listed {} levels in {}, {} of them with render geometry",
+    entries.len(),
+    xrf_utils::format_duration(started.elapsed()),
+    entries.iter().filter(|entry| entry.has_geometry).count()
+  );
+}
+
+/// That an open has begun, before anything is read.
+pub fn report_opening(source: &LevelSource) {
+  log::info!("Opening level: {}", source.get_label());
+}
 
 /// What one open came to, and what about it is worth a warning.
 pub fn report_open(selected: &SelectedLevel, started: Instant) {
@@ -123,6 +141,23 @@ fn report_surfaces(source: &LevelSource, surfaces: &[(&str, &XraySurfaceDescript
   }
 }
 
+/// What one sector is about to be packed out of.
+pub fn report_packing_sector(sector: u32, root: u32, composition: &LevelSectorComposition) {
+  log::info!(
+    "Packing sector {sector} of root {root}: {} drawables, {} hierarchies",
+    composition.drawables.len(),
+    composition.hierarchies.len()
+  );
+}
+
+/// That one packed sector's bytes went to the read that asked for them.
+pub fn report_served_sector(sector: u32, bytes: &[u8]) {
+  log::debug!(
+    "Serving {} bytes of sector {sector}",
+    xrf_utils::format_bytes(bytes.len() as u64)
+  );
+}
+
 /// Says what one sector came to, and says it louder when it came to too much.
 pub fn report_packed_sector(package: &SectorPackage, started: Instant) {
   let description: &SectorDescription = &package.description;
@@ -191,6 +226,21 @@ pub fn report_sections(source: &LevelSource, kept: usize, resolved: usize, start
   );
 }
 
+/// That the configs could not be read, so zones light nothing and lamps keep their spawned flags.
+pub fn report_missing_sections(error: &impl Display) {
+  log::warn!("No zone lights and no lamp sections: {error}");
+}
+
+/// That the light animation library could not be read, so no light is animated.
+pub fn report_unreadable_animations(file: &str, error: &impl Display) {
+  log::warn!("No light is animated, as '{file}' is unreadable: {error}");
+}
+
+/// That the spawn could not be read, so the level keeps its own lights alone.
+pub fn report_missing_spawned_lights(source: &LevelSource, error: &impl Display) {
+  log::warn!("No spawned lights for {}: {error}", source.get_label());
+}
+
 /// What a level's lights came to.
 pub fn report_lights(source: &LevelSource, lights: &LightsDescription, started: Instant) {
   log::info!(
@@ -203,6 +253,26 @@ pub fn report_lights(source: &LevelSource, lights: &LightsDescription, started: 
   );
 }
 
+/// That the spawn could not be read, so the level stands no spawned model.
+pub fn report_missing_spawn_models(source: &LevelSource, error: &impl Display) {
+  log::warn!("No spawned models for {}: {error}", source.get_label());
+}
+
+/// That a spawned visual could not be read, so it is not drawn.
+pub fn report_undrawn_visual(name: &str, error: &impl Display) {
+  log::warn!("Spawned visual '{name}' is not drawn: {error}");
+}
+
+/// That a spawned visual's rest cycle holds no frame, so it stands in its bind pose.
+pub fn report_empty_rest_motion(name: &str, motion: &str) {
+  log::debug!("Spawned visual '{name}' has an empty '{motion}' cycle, so it stands in its bind pose");
+}
+
+/// That a spawned visual's rest cycle could not be baked, so it stands in its bind pose.
+pub fn report_bind_rest_pose(name: &str, error: &impl Display) {
+  log::debug!("Spawned visual '{name}' stands in its bind pose: {error}");
+}
+
 /// What a level's spawned models came to.
 pub fn report_spawn_models(source: &LevelSource, models: &LevelSpawnModelsDescription, started: Instant) {
   log::info!(
@@ -212,6 +282,11 @@ pub fn report_spawn_models(source: &LevelSource, models: &LevelSpawnModelsDescri
     models.models.len(),
     models.placements.len()
   );
+}
+
+/// That the game material library could not be read, so every collision triangle is solid ground.
+pub fn report_unreadable_materials(file: &str, error: &impl Display) {
+  log::warn!("Every collision triangle is taken as solid ground, as '{file}' is unreadable: {error}");
 }
 
 /// What a level's grass came to, or that it has none.

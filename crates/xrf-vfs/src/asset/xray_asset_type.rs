@@ -4,9 +4,6 @@ use xrf_extension::{XrayExtension, XrayExtensionOf};
 use crate::path::XrayLogicalPath;
 
 /// Asset category inferred from an X-Ray logical path's extension or recognized suffix.
-///
-/// Serialized so a consumer can name the kind it wants without the crate growing a command per kind, which is the same
-/// reason [`XrayAssetType::get_rules`] is a table rather than a method each.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -47,9 +44,6 @@ pub enum XrayAssetType {
 }
 
 /// Where a kind of asset lives and what extension the engine loads it as.
-///
-/// A table rather than a method per kind, so resolving a new kind is a row here instead of a new accessor on every
-/// resolver — which is how the same extension rule came to be written twice and drift.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct XrayAssetRules {
   /// Logical directory the engine resolves this kind under.
@@ -62,26 +56,14 @@ pub struct XrayAssetRules {
 
 impl XrayAssetType {
   /// The X-Ray shader library's fixed gamedata-relative logical path.
-  ///
-  /// A constant rather than a [`XrayAssetRules`] row, because [`Self::Shader`] has no directory-plus-extension home —
-  /// the library is one fixed file beside the trees the rules describe.
   pub const SHADER_LIBRARY_PATH: &'static str = super::shader::SHADER_LIBRARY_LOGICAL_PATH;
 
   /// Converts a sound reference into the name the engine registers it under.
-  ///
-  /// Both the `sounds` root and the `.ogg` extension are implied, and a config may spell either out. Case and separators
-  /// are normalized too, so a reference matches a registered name whichever way it was written. Sounds get a dedicated
-  /// conversion where other kinds go through [`Self::get_rules`], because the registered name strips the extension
-  /// instead of gaining one.
   pub fn sound_reference_name(reference: &str) -> String {
     super::sound::sound_reference_name(reference)
   }
 
   /// Where this kind lives, for the kinds with one canonical home.
-  ///
-  /// `None` covers two different cases, and both are intentional rather than gaps to fill in speculatively: a kind whose
-  /// home is not one directory — `Level` names a directory per level, `Shader` loads a dozen extensions — and a kind no
-  /// caller resolves by reference yet. Add a row when a consumer needs one, with evidence from a real tree.
   pub fn get_rules(self) -> Option<XrayAssetRules> {
     let (directory, extension, authoring_extensions): (&str, XrayExtension, &[XrayExtension]) = match self {
       Self::Ogf => ("meshes", XrayExtension::Ogf, &[]),
@@ -108,10 +90,6 @@ impl XrayAssetType {
   }
 
   /// The kind an extension names, or `None` for one that names no asset this models.
-  ///
-  /// Where an extension stops being a spelling and becomes engine-tree knowledge. The vocabulary knows that `anm` and
-  /// `anm1` are two different files; only here is it known that the engine loads both as animations, that eleven
-  /// spellings are all shader sources, and that `log` and `bat` are not assets so much as things found beside them.
   pub fn of(extension: XrayExtension) -> Option<Self> {
     Some(match extension {
       XrayExtension::Ai => Self::Ai,
@@ -187,9 +165,6 @@ impl XrayAssetType {
 
 impl XrayAssetRules {
   /// Converts a raw engine reference into the logical path below the kind's directory.
-  ///
-  /// An authoring extension is replaced rather than appended, and a reference already carrying the loaded extension is
-  /// left alone. Both comparisons ignore case, because a reference authored as `wpn\wpn_ak74.OGF` names the same asset.
   pub fn to_logical_path(&self, reference: &str) -> String {
     if let Some((stem, extension)) = reference.rsplit_once('.') {
       if XrayExtension::parse(extension).is_some_and(|authored| self.authoring_extensions.contains(&authored)) {

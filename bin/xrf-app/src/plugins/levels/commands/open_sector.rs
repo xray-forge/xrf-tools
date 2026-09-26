@@ -6,9 +6,10 @@ use xrf_level::{LevelSector, LevelSectorComposition};
 use xrf_spawn::XRayByteOrder;
 use xrf_visual::{SectorAttributes, SectorDescription, SectorPackage, SectorPacker};
 
+use crate::core::execution::ExecutionState;
 use crate::core::session::{SessionId, SessionSnapshot};
 use crate::core::types::TauriResult;
-use crate::plugins::levels::report::report_packed_sector;
+use crate::plugins::levels::report::{report_packed_sector, report_packing_sector};
 use crate::plugins::levels::state::{LevelState, PackedSector, SelectedLevel};
 
 /// What the viewer draws a level surface with, which is what a pack is worth carrying: the tangent frame too, whose
@@ -29,42 +30,49 @@ pub async fn levels_open_sector(
   sector_id: SessionId,
   sector: u32,
   state: State<'_, LevelState>,
+  execution: State<'_, ExecutionState>,
 ) -> TauriResult<SessionSnapshot<SectorDescription>> {
   let current: Arc<SessionSnapshot<SelectedLevel>> = state.selected.require(session_id)?;
   let sectors: &[LevelSector] = current.get_sectors();
 
-  let Some(named) = sectors.get(sector as usize) else {
+  let Some(root) = sectors.get(sector as usize).map(|named| named.root) else {
     return Err(format!(
       "The open level names {} sectors, so sector {sector} is not one of them",
       sectors.len()
     ));
   };
 
-  let started: Instant = Instant::now();
-  let composition: LevelSectorComposition = LevelSectorComposition::of(&current.visuals, named.root);
+  let packing: Arc<SessionSnapshot<SelectedLevel>> = Arc::clone(&current);
+  let package: SectorPackage = execution
+    .run_blocking("Packing the level sector", move || {
+      let started: Instant = Instant::now();
+      let composition: LevelSectorComposition = LevelSectorComposition::of(&packing.visuals, root);
 
-  log::info!(
-    "Packing sector {sector} of root {}: {} drawables, {} hierarchies",
-    named.root,
-    composition.drawables.len(),
-    composition.hierarchies.len()
-  );
+      report_packing_sector(sector, root, &composition);
 
-  let package: SectorPackage = SectorPacker::new(&current.visuals, current.level.shaders.as_ref(), &current.geometry)
-    .pack::<XRayByteOrder>(sector, &composition, DRAWN_ATTRIBUTES);
+      let package: SectorPackage = SectorPacker::new(
+        &packing.visuals,
+        packing.level.shaders.as_ref(),
+        &packing.geometry,
+      )
+      .pack::<XRayByteOrder>(sector, &composition, DRAWN_ATTRIBUTES);
 
-  report_packed_sector(&package, started);
+      report_packed_sector(&package, started);
 
-  let parked: Arc<PackedSector> = current.packed.park(
+      package
+    })
+    .await?;
+
+  current.packed.park(
     sector_id,
     PackedSector {
       buffer: Mutex::new(Some(package.buffer)),
-      description: package.description.clone(),
+      sector,
     },
   )?;
 
   Ok(SessionSnapshot {
     session_id: sector_id,
-    value: parked.description.clone(),
+    value: package.description,
   })
 }

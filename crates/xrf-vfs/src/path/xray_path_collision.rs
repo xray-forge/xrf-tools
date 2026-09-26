@@ -7,16 +7,9 @@ use xrf_utils::{format_path, to_portable_path_string};
 use crate::path::XrayLogicalPath;
 
 /// Separator between a volume and the entry inside it.
-///
-/// Not a path separator: an archived entry has no host path, and joining the two the usual way would produce something a
-/// reader could mistake for one and try to open.
 const ENTRY_SEPARATOR: &str = "::";
 
 /// Where one side of a collision physically sits.
-///
-/// A loose file is addressed by its host path. An archived entry is addressed by its volume plus the name that volume's
-/// header authored, and the authored name is kept because it is exactly what case folding destroys — a person cannot fix
-/// the archive without knowing which of the two spellings to remove.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum XrayCollisionSite {
   /// A file on the host filesystem.
@@ -47,10 +40,6 @@ impl XrayCollisionSite {
 }
 
 /// Serializes as the portable string, so one rendering reaches every consumer.
-///
-/// A site is a place rather than an address a reader opens, and its two halves are not the same kind of thing — a host
-/// path and an entry name inside a volume. Emitting the structure would make every consumer join them itself, and a
-/// `PathBuf` field fails to serialize outright on a host name that is not valid Unicode.
 impl Serialize for XrayCollisionSite {
   fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
     serializer.serialize_str(&self.to_portable_string())
@@ -70,19 +59,6 @@ impl Display for XrayCollisionSite {
 }
 
 /// Two files in one source claiming the same engine identity.
-///
-/// An authoring error rather than shadowing: shadowing is what happens *between* mounts, where a loose file legitimately
-/// overrides an archived one. Inside one source there is no priority to appeal to, so one file simply cannot be reached.
-///
-/// Reported rather than fatal, because a tool must be able to open a project and say what is wrong with it — an editor
-/// cannot refuse to load a mod because one texture is authored twice. A consumer that treats a project as invalid
-/// decides that for itself. The engine is not stricter: `CLocatorAPI::Register` folds a name to lower case before its
-/// lookup and overwrites on a hit, so it resolves a collision silently rather than refusing the archive
-/// (`xray-16/src/xrCore/LocatorAPI.cpp`).
-///
-/// This record is also the reported shape, deposited as it stands by every surface that answers for a mounted world —
-/// `gamedata list`, `archive verify`, and the application's `archives|list_overrides`. Restating it per surface is
-/// what left the condition recorded in one place and told to nobody anywhere else.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]

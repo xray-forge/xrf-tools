@@ -2,10 +2,10 @@ use std::fs;
 use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 
-use xrf_chunk::InMemoryChunkDataSource;
+use xrf_chunk::{ChunkReader, InMemoryChunkDataSource};
 use xrf_level::{LevelFile, LevelGeomSource, LevelVisualsChunk};
 use xrf_spawn::XRayByteOrder;
-use xrf_vfs::{XrayProbe, XrayResolution};
+use xrf_vfs::{XrayLogicalPath, XrayProbe, XrayResolution};
 
 use crate::core::types::TauriResult;
 use crate::plugins::levels::state::{GEOMETRY_FILE, LEVEL_FILE, LevelSource};
@@ -22,10 +22,13 @@ pub fn read_source(source: &LevelSource, probe: &XrayProbe) -> TauriResult<ReadL
   let bundle: Vec<u8> = read_file(source, probe, LEVEL_FILE)?;
   let geometry: Vec<u8> = read_file(source, probe, GEOMETRY_FILE)?;
 
+  let chunks: Vec<ChunkReader<InMemoryChunkDataSource>> = ChunkReader::from_vec(bundle)
+    .and_then(|mut it| it.read_children())
+    .map_err(|error| failure(source, LEVEL_FILE, &error))?;
   let level: LevelFile =
-    LevelFile::read_from_bytes::<XRayByteOrder>(bundle.clone()).map_err(|error| failure(source, LEVEL_FILE, &error))?;
+    LevelFile::read_from_chunks::<XRayByteOrder, _>(&chunks).map_err(|error| failure(source, LEVEL_FILE, &error))?;
 
-  let visuals: LevelVisualsChunk = LevelFile::read_visuals_from_bytes::<XRayByteOrder>(bundle)
+  let visuals: LevelVisualsChunk = LevelFile::read_visuals_from_chunks::<XRayByteOrder, _>(&chunks)
     .map_err(|error| failure(source, LEVEL_FILE, &error))?
     .ok_or_else(|| {
       format!(
@@ -61,9 +64,11 @@ pub fn read_optional_file(source: &LevelSource, probe: &XrayProbe, file: &str) -
       }
     }
     LevelSource::Asset { logical_path } => {
-      let logical_path: String = format!("{logical_path}\\{file}");
+      let logical_path: XrayLogicalPath = XrayLogicalPath::new(logical_path)
+        .and_then(|directory| directory.join(file))
+        .map_err(|error| format!("Rejected level file '{file}' of '{logical_path}': {error}"))?;
       let resolution: XrayResolution = probe
-        .find(&logical_path)
+        .find(logical_path.as_str())
         .map_err(|error| format!("Rejected level file '{logical_path}': {error}"))?;
 
       resolution

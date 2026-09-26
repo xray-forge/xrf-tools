@@ -5,7 +5,7 @@ use std::collections::BTreeSet;
 use xrf_error::XrfResult;
 use xrf_level::LevelFile;
 use xrf_material::XraySurfaceDescriptor;
-use xrf_vfs::{XrayAssetRules, XrayAssetType, XrayProbe, XrayResolution};
+use xrf_vfs::{XrayAssetRules, XrayAssetType, XrayLogicalPath, XrayProbe, XrayResolution};
 
 use crate::plugins::levels::state::LevelTextureReference;
 
@@ -21,7 +21,7 @@ pub fn resolve_textures(
   level: &LevelFile,
   surfaces: &[XraySurfaceDescriptor],
   probe: &XrayProbe,
-  directory: Option<&str>,
+  directory: Option<&XrayLogicalPath>,
 ) -> Vec<LevelTextureReference> {
   let mut references: BTreeSet<String> = BTreeSet::new();
 
@@ -53,10 +53,11 @@ pub fn resolve_textures(
 }
 
 /// Locates one texture reference the way the engine's own loader does.
-pub fn resolve_reference(probe: &XrayProbe, directory: Option<&str>, reference: &str) -> Option<String> {
+pub fn resolve_reference(probe: &XrayProbe, directory: Option<&XrayLogicalPath>, reference: &str) -> Option<String> {
   if let Some(beside) = directory
     .zip(XrayAssetType::Dds.get_rules())
-    .and_then(|(directory, rules)| get_resolution_logical_path(probe.find(&beside_level(directory, &rules, reference))))
+    .and_then(|(directory, rules)| beside_level(directory, &rules, reference))
+    .and_then(|beside| get_resolution_logical_path(probe.find(beside.as_str())))
   {
     return Some(beside);
   }
@@ -64,9 +65,10 @@ pub fn resolve_reference(probe: &XrayProbe, directory: Option<&str>, reference: 
   get_resolution_logical_path(probe.resolve(XrayAssetType::Dds, reference))
 }
 
-/// The path a reference names beside the level rather than below the shared texture tree.
-fn beside_level(directory: &str, rules: &XrayAssetRules, reference: &str) -> String {
-  format!("{directory}\\{}", rules.to_logical_path(reference))
+/// The path a reference names beside the level rather than below the shared texture tree, `None` for one no path
+/// can name.
+fn beside_level(directory: &XrayLogicalPath, rules: &XrayAssetRules, reference: &str) -> Option<XrayLogicalPath> {
+  directory.join(&rules.to_logical_path(reference)).ok()
 }
 
 /// The logical path a lookup landed on, treating a rejected reference as absent rather than failing the open.

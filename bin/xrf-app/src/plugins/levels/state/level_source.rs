@@ -33,26 +33,30 @@ impl LevelSource {
   }
 
   /// The level's engine identity: the directory its own files are addressed under.
-  pub fn get_logical_directory(&self) -> Option<String> {
+  pub fn get_logical_directory(&self) -> Option<XrayLogicalPath> {
     match self {
-      Self::Asset { logical_path } => Some(logical_path.clone()),
+      Self::Asset { logical_path } => XrayLogicalPath::new(logical_path).ok(),
       Self::Directory { path } => Path::new(path)
         .file_name()
         .and_then(|name| name.to_str())
-        .map(|name| format!("{LEVELS_DIRECTORY}\\{name}")),
+        .and_then(|name| {
+          XrayLogicalPath::new(LEVELS_DIRECTORY)
+            .and_then(|levels| levels.join(name))
+            .ok()
+        }),
     }
   }
 
   /// The level's name, the last component of its engine identity, which the game graph knows it by.
   pub fn get_name(&self) -> Option<String> {
-    XrayLogicalPath::new(&self.get_logical_directory()?)
-      .ok()
-      .map(|path| path.file_name().to_owned())
+    self.get_logical_directory().map(|path| path.file_name().to_owned())
   }
 }
 
 #[cfg(test)]
 mod tests {
+  use xrf_vfs::XrayLogicalPath;
+
   use crate::plugins::levels::state::LevelSource;
 
   #[test]
@@ -62,7 +66,8 @@ mod tests {
         logical_path: String::from("levels\\k00_marsh"),
       }
       .get_logical_directory()
-      .as_deref(),
+      .as_ref()
+      .map(XrayLogicalPath::as_str),
       Some("levels\\k00_marsh")
     );
   }
@@ -75,7 +80,8 @@ mod tests {
         path: String::from("C:\\game\\gamedata\\levels\\l01_escape"),
       }
       .get_logical_directory()
-      .as_deref(),
+      .as_ref()
+      .map(XrayLogicalPath::as_str),
       Some("levels\\l01_escape")
     );
   }

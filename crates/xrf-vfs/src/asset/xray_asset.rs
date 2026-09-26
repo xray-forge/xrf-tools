@@ -8,8 +8,6 @@ use crate::XrayAssetType;
 use crate::path::XrayLogicalPath;
 
 /// The physical container of a located asset.
-///
-/// Separate variants prevent callers from treating an archived entry as a loose file with a usable filesystem path.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, Eq, Hash, PartialEq, Serialize)]
 // `rename_all_fields` keeps struct-variant fields camel-cased alongside the variants.
@@ -22,9 +20,6 @@ pub enum XrayAssetContainer {
 }
 
 /// One asset a mount resolved: its engine identity plus the container it came out of.
-///
-/// Owned rather than borrowed, so it can be stored, sorted or sent over IPC — which is what an editor that mounts and
-/// writes needs, and why nothing borrowed reaches past this crate.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -37,10 +32,6 @@ pub struct XrayAsset {
 
 impl XrayAsset {
   /// Creates a location from an engine path and a source-reported container.
-  ///
-  /// The caller is responsible for passing the normalized logical path returned by the VFS. A loose container's
-  /// `relative_path` is joined to its `root` only when [`Self::to_physical_path`] is asked for; the logical path stays the
-  /// engine identity used for lookups and IPC.
   pub fn new(logical_path: XrayLogicalPath, container: XrayAssetContainer) -> Self {
     Self {
       container,
@@ -64,9 +55,6 @@ impl XrayAsset {
   }
 
   /// Returns the kind this asset's extension identifies, when it is one the tools recognize.
-  ///
-  /// Derived from the logical path rather than stored, because the path is the only evidence: a container says where the
-  /// bytes are, not what they mean.
   pub fn get_asset_type(&self) -> Option<XrayAssetType> {
     XrayAssetType::from_logical_path(self.logical_path.as_str())
   }
@@ -90,8 +78,6 @@ impl XrayAsset {
   }
 
   /// Returns a readable filesystem path for a loose asset.
-  ///
-  /// Archived assets return `None`; callers that support both containers should read through [`crate::XrayVfs`].
   pub fn to_physical_path(&self) -> Option<PathBuf> {
     match &self.container {
       XrayAssetContainer::Directory { relative_path, root } => Some(root.join(relative_path)),
@@ -125,14 +111,6 @@ impl XrayAssetContainer {
 }
 
 /// The host path an in-place edit would write to, or one refusal for the case there is none.
-///
-/// Every editing domain reaches this same wall — an asset whose winner is packed has no file to
-/// replace — and each was inventing its own wording and its own error kind for it. A surface deciding
-/// whether a save failed *because the source is archived* would otherwise have to match three strings
-/// that nothing keeps in step.
-///
-/// Takes the two parts rather than an [`XrayAsset`] because the refusal usually happens later than the
-/// listing: a project holds the logical path and what it resolved to, and the asset itself is gone.
 ///
 /// # Errors
 ///

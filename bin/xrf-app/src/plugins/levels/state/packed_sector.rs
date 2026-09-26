@@ -1,10 +1,9 @@
 use std::sync::Mutex;
 
-use xrf_visual::SectorDescription;
-
 /// One packed sector parked between the call that described it and the call that serves its bytes.
 pub struct PackedSector {
-  pub description: SectorDescription,
+  /// Which sector of the level the bytes are.
+  pub sector: u32,
   /// Taken by the read that serves it rather than copied.
   pub buffer: Mutex<Option<Vec<u8>>>,
 }

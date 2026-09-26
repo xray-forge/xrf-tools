@@ -49,10 +49,7 @@ fn read_system_ltx(current: &SelectedLevel) -> Result<Arc<LtxResolution>, String
   let project: LtxProject = LtxProject::open_lean_at_roots_opt(
     &current.roots,
     Some(CONFIGS_DIRECTORY),
-    LtxProjectOptions {
-      dialect: select_ltx_dialect(true),
-      ..Default::default()
-    },
+    LtxProjectOptions::default().with_dialect(select_ltx_dialect(true)),
   )
   .map_err(|error| format!("Failed to mount the configs of {}: {error}", current.source.get_label()))?;
 

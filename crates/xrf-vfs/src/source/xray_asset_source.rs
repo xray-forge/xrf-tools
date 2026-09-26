@@ -9,8 +9,6 @@ use crate::source::XrayDeclaredRoot;
 use crate::{XrayAssetContainer, XrayPathCollision, XrayShadowedCopy};
 
 /// The storage kind backing a mount.
-///
-/// It distinguishes loose filesystem entries from entries inside archive volumes.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -22,9 +20,6 @@ pub enum XraySourceKind {
 }
 
 /// Names a source after the directory or volume set it was opened from, for [`XrayAssetSource::get_label`].
-///
-/// The crate's answer for both of its own sources, so a diagnostic reads `textures` rather than a whole install path.
-/// Falls back to the path itself for a root with no final component, the one case `file_name` declines.
 pub fn label_from_path(path: &Path) -> String {
   path
     .file_name()
@@ -32,14 +27,6 @@ pub fn label_from_path(path: &Path) -> String {
 }
 
 /// An asset source addressed by normalized paths relative to itself.
-///
-/// [`crate::XrayMount`] strips its logical base before calling the source, allowing the same source type to back a root or
-/// a subtree. Sources are `Send + Sync` because the mounted VFS is shared across application commands.
-///
-/// This is the extension seam: a source for a format this crate does not own belongs beside that format and implements
-/// this trait, then mounts with [`crate::XrayVfs::mount`]. Key entries with [`crate::XrayLogicalPath::normalize`] and
-/// scope enumeration with [`crate::XrayLogicalPath::is_component_prefix`], so lookups behave the same whichever kind of
-/// source answers; [`XrayArchiveSource`](crate::XrayArchiveSource) is the in-crate exemplar.
 pub trait XrayAssetSource: Debug + Send + Sync {
   /// Short name for reporting, such as a directory or volume-set name.
   fn get_label(&self) -> &str;
@@ -54,18 +41,11 @@ pub trait XrayAssetSource: Debug + Send + Sync {
   fn get_root_path(&self) -> &Path;
 
   /// Checks whether the source contains a source-relative logical path.
-  ///
-  /// Must answer exactly when [`Self::locate`] does. [`crate::XrayVfs`] picks a winning mount with this and then reads,
-  /// sizes or locates through that same mount, so a source answering the two differently would send a read to a mount
-  /// the preceding lookup did not choose. The default derives it from `locate` so they cannot drift; override it when
-  /// membership can be answered without building a container, as both of this crate's sources do.
   fn contains(&self, path: &str) -> bool {
     self.locate(path).is_some()
   }
 
   /// Locates an entry in its physical container.
-  ///
-  /// Returns `None` when the source does not contain `path`.
   fn locate(&self, path: &str) -> Option<XrayAssetContainer>;
 
   /// Reads an existing entry.
@@ -75,8 +55,6 @@ pub trait XrayAssetSource: Debug + Send + Sync {
   fn write(&self, path: &str, bytes: &[u8]) -> XrfResult<()>;
 
   /// Creates an entry the source does not currently expose, when writable.
-  ///
-  /// Implementations may leave mount-time indexes stale. [`crate::XrayVfs::write_override`] remounts after creation.
   fn create(&self, path: &str, bytes: &[u8]) -> XrfResult<()>;
 
   /// Enumerates source-relative logical paths, optionally restricted to a component prefix.
@@ -93,18 +71,9 @@ pub trait XrayAssetSource: Debug + Send + Sync {
   }
 
   /// Size in bytes of an entry this source holds, without reading it.
-  ///
-  /// Answered from metadata rather than from a read, because the callers are size gates: a level's cform is checked against
-  /// its header size precisely to avoid parsing a truncated file. An archive knows this from its name table, so neither
-  /// container has to decompress anything.
   fn get_size(&self, path: &str) -> Option<u64>;
 
   /// CRC32 of an entry's unpacked payload, when the source already knows it without reading anything.
-  ///
-  /// A comparison between two mounted worlds asks this before it hashes: an archive records the checksum the engine
-  /// itself verifies on every decompression, so the answer is a name-table lookup, while a directory would have to
-  /// read the file to produce one. Defaulting to `None` is what keeps that honest — a source says only what it
-  /// already holds, and the caller decides whether the payload is worth reading to learn the rest.
   fn get_recorded_crc(&self, path: &str) -> Option<u32> {
     let _ = path;
 
@@ -112,19 +81,11 @@ pub trait XrayAssetSource: Debug + Send + Sync {
   }
 
   /// Where this source's own metadata says its entries mount, for each container that declares it.
-  ///
-  /// Empty by default, and empty for a directory: a loose tree mounts where it was mounted and claims nothing. An
-  /// archive volume claims `[header] entry_point`, one per volume of a set. See [`XrayDeclaredRoot`] for why this is
-  /// published rather than applied.
   fn list_declared_roots(&self) -> Vec<XrayDeclaredRoot> {
     Vec::new()
   }
 
   /// Files this source holds but cannot reach, because another file already claims their engine identity.
-  ///
-  /// Defaults to none, which is correct only for a source whose names are unique *after* normalization. Uniqueness as
-  /// authored is not enough: an archive volume keys entries by their authored name, yet `Textures\A.DDS` and
-  /// `textures\a.dds` are one identity to the engine, so [`XrayArchiveSource`](crate::XrayArchiveSource) overrides this.
   fn get_collisions(&self) -> &[XrayPathCollision] {
     &[]
   }

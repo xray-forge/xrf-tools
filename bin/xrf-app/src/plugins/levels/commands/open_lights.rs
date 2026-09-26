@@ -9,6 +9,7 @@ use crate::core::session::{SessionId, SessionSnapshot};
 use crate::core::types::TauriResult;
 use crate::plugins::levels::configs::get_level_sections;
 use crate::plugins::levels::lights::{PackedLevelLights, pack_lights};
+use crate::plugins::levels::report::report_missing_sections;
 use crate::plugins::levels::spawn::get_level_spawn;
 use crate::plugins::levels::state::{LevelLightsDescription, LevelState, SelectedLevel};
 
@@ -29,7 +30,7 @@ pub async fn levels_open_lights(
       let sections: Option<Arc<Ltx>> = assets
         .with_probe(&current.roots, |probe| get_level_spawn(&current, probe))?
         .and_then(|spawn| get_level_sections(&current, &spawn))
-        .inspect_err(|error| log::warn!("No zone lights and no lamp sections: {error}"))
+        .inspect_err(report_missing_sections)
         .ok();
 
       assets.with_probe(&current.roots, |probe| {

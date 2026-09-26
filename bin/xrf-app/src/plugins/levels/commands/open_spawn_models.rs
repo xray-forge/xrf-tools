@@ -10,7 +10,7 @@ use crate::core::assets::AssetMountState;
 use crate::core::execution::ExecutionState;
 use crate::core::session::{SessionId, SessionSnapshot};
 use crate::core::types::TauriResult;
-use crate::plugins::levels::report::report_spawn_models;
+use crate::plugins::levels::report::{report_missing_spawn_models, report_spawn_models};
 use crate::plugins::levels::spawn::get_level_spawn;
 use crate::plugins::levels::spawn_visuals::{SpawnVisualReader, get_drawn_visual};
 use crate::plugins::levels::state::{
@@ -46,7 +46,7 @@ fn describe_models(current: &SelectedLevel, probe: &XrayProbe) -> LevelSpawnMode
   let spawn = match get_level_spawn(current, probe) {
     Ok(spawn) => spawn,
     Err(error) => {
-      log::warn!("No spawned models for {}: {error}", current.source.get_label());
+      report_missing_spawn_models(&current.source, &error);
 
       return LevelSpawnModelsDescription { models, placements };
     }

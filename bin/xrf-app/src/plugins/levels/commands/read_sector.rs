@@ -5,6 +5,7 @@ use tauri::ipc::Response;
 
 use crate::core::session::{SessionId, SessionSnapshot};
 use crate::core::types::TauriResult;
+use crate::plugins::levels::report::report_served_sector;
 use crate::plugins::levels::state::{LevelState, PackedSector, SelectedLevel};
 
 /// Read the exact pack described by open_sector, rather than whichever sector happens to be packed now.
@@ -18,11 +19,7 @@ pub async fn levels_read_sector(
   let packed: Arc<PackedSector> = selected.packed.take(sector_id)?;
   let bytes: Vec<u8> = packed.take_buffer()?;
 
-  log::debug!(
-    "Serving {} bytes of sector {}",
-    xrf_utils::format_bytes(bytes.len() as u64),
-    packed.description.sector
-  );
+  report_served_sector(packed.sector, &bytes);
 
   Ok(Response::new(bytes))
 }

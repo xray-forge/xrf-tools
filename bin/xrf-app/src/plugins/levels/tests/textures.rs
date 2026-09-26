@@ -5,7 +5,7 @@ use xrf_material::fixtures::{FixtureTree, ThmFixture};
 use xrf_shaders::ShaderBlenderClass;
 use xrf_shaders::fixtures::ShaderBlenderFixture;
 use xrf_thm::ThmTextureFlag;
-use xrf_vfs::{XrayLookupScope, XrayMountId, XrayProbe, XrayVfs};
+use xrf_vfs::{XrayLogicalPath, XrayLookupScope, XrayMountId, XrayProbe, XrayVfs};
 
 use crate::plugins::levels::state::LevelTextureReference;
 use crate::plugins::levels::surfaces::resolve_surfaces;
@@ -34,8 +34,10 @@ fn new_resolved(tree: &FixtureTree, level: &LevelFile, directory: Option<&str>) 
   let mut vfs: XrayVfs = XrayVfs::new();
   let id: XrayMountId = vfs.mount_directory("", tree.root()).expect("tree mounts");
   let probe: XrayProbe = vfs.probe().with_step("tree", XrayLookupScope::only([id]));
+  let directory: Option<XrayLogicalPath> =
+    directory.map(|directory| XrayLogicalPath::new(directory).expect("a level directory"));
 
-  resolve_textures(level, &resolve_surfaces(level, &probe), &probe, directory)
+  resolve_textures(level, &resolve_surfaces(level, &probe), &probe, directory.as_ref())
 }
 
 fn get_path_of<'a>(references: &'a [LevelTextureReference], reference: &str) -> Option<&'a str> {

@@ -33,8 +33,6 @@ impl XrayRoot {
 #[serde(rename_all = "camelCase")]
 pub struct XrayRoots {
   /// Native asset address whose own X-Ray root and installation are searched first, when the read is centred on one.
-  ///
-  /// This is what finds a texture shipped beside a model rather than in the shared tree.
   pub asset: Option<PathBuf>,
   /// Roots searched after the asset's own, in the order given.
   pub roots: Vec<XrayRoot>,
@@ -71,9 +69,6 @@ impl XrayRoots {
   }
 
   /// Name these roots for a log line or an error message.
-  ///
-  /// On the type because roots have no single path to print and every surface reporting on one had
-  /// started writing its own join.
   pub fn describe(&self) -> String {
     if self.roots.is_empty() {
       return match &self.asset {

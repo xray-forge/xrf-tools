@@ -6,12 +6,13 @@ use xrf_chunk::XRayByteOrder;
 use xrf_gamemtl::GameMtlFile;
 use xrf_level::{LevelCformFile, LevelCformGeometry, LevelDetailsFile};
 use xrf_material::{XraySurfaceDescriptor, XraySurfaceResolver};
-use xrf_vfs::XrayProbe;
+use xrf_vfs::{XrayLogicalPath, XrayProbe};
 use xrf_visual::{DetailsPackage, DetailsPacker};
 
 use crate::core::assets::read_located_asset;
 use crate::core::types::TauriResult;
 use crate::plugins::levels::read::{read_file, read_optional_file};
+use crate::plugins::levels::report::report_unreadable_materials;
 use crate::plugins::levels::state::{COLLISION_FILE, DETAILS_FILE, LevelSource, LevelTextureReference};
 use crate::plugins::levels::textures::resolve_reference;
 
@@ -29,7 +30,7 @@ pub struct PackedLevelDetails {
 pub fn pack_details(
   source: &LevelSource,
   probe: &XrayProbe,
-  directory: Option<&str>,
+  directory: Option<&XrayLogicalPath>,
 ) -> TauriResult<Option<PackedLevelDetails>> {
   let Some(details) = read_optional_file(source, probe, DETAILS_FILE)? else {
     return Ok(None);
@@ -52,7 +53,7 @@ pub fn pack_details(
     )?;
   let passable: HashSet<u16> = read_passable_materials(probe);
   let is_passable = |material: u16| passable.contains(&material);
-  let package: DetailsPackage = DetailsPacker::new(&details, &collision, &is_passable).pack();
+  let package: DetailsPackage = DetailsPacker::new(&details, &collision, &is_passable).pack::<XRayByteOrder>();
 
   let resolver: XraySurfaceResolver = XraySurfaceResolver::open(probe);
   let surfaces: Vec<XraySurfaceDescriptor> = details
@@ -87,9 +88,7 @@ fn read_passable_materials(probe: &XrayProbe) -> HashSet<u16> {
     match read_located_asset(probe, GAME_MATERIALS_FILE).and_then(GameMtlFile::read_from_bytes::<XRayByteOrder>) {
       Ok(materials) => materials,
       Err(error) => {
-        log::warn!(
-          "Every collision triangle is taken as solid ground, as '{GAME_MATERIALS_FILE}' is unreadable: {error}"
-        );
+        report_unreadable_materials(GAME_MATERIALS_FILE, &error);
 
         return HashSet::new();
       }

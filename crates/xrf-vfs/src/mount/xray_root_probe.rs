@@ -9,9 +9,6 @@ use crate::mount::xray_root::{
 use crate::{FsgameFile, XrayMountPlan};
 
 /// Well-known entries a probe reports finding, in the order it reports them.
-///
-/// Evidence rather than a definition: holding `configs` does not make a directory a root, but saying which of these are
-/// there is what lets a surface distinguish game data from a directory that merely mounts without error.
 const PROBED_ENTRIES: [&str; 5] = [
   CONFIGS_DIRECTORY,
   MESHES_DIRECTORY,
@@ -21,9 +18,6 @@ const PROBED_ENTRIES: [&str; 5] = [
 ];
 
 /// What a path turns out to be when planned, and why.
-///
-/// Exists because planning alone cannot answer the question a surface asks. [`XrayMountMode::Auto`] plans any readable
-/// directory as a root, so a source repository and a game data tree plan identically; only the evidence separates them.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -31,9 +25,6 @@ pub struct XrayRootProbe {
   /// What the path is, as planning sees it.
   pub kind: XrayRootKind,
   /// Which of the well-known entries sit directly beneath the path.
-  ///
-  /// Empty for an installation, whose content is behind its declaration rather than beside it, and empty for a
-  /// directory holding nothing an engine would load.
   pub evidence: Vec<String>,
   /// How many sources the path plans into, or zero when it plans into none.
   pub mounts: usize,
@@ -58,10 +49,6 @@ pub enum XrayRootKind {
 
 impl XrayRootKind {
   /// What a path is, before anything is opened or judged by its contents.
-  ///
-  /// The single classifier behind both describing a path and planning one, so a description cannot promise a kind
-  /// that mounting would then disagree with. Answers only [`Self::Installation`], [`Self::Volumes`] or
-  /// [`Self::Root`]; the other two are refinements a probe adds from what it finds.
   pub(crate) fn of(path: &Path) -> Self {
     if path.join(FsgameFile::FILE_NAME).is_file() {
       Self::Installation
@@ -90,9 +77,6 @@ impl XrayRootKind {
 
 impl XrayRootProbe {
   /// Describes what `path` is without opening anything.
-  ///
-  /// Planning is attempted rather than assumed, so an `fsgame.ltx` that is present but unreadable is reported as
-  /// unrecognized instead of as an installation the caller cannot mount.
   pub fn describe(path: impl AsRef<Path>) -> Self {
     let path: &Path = path.as_ref();
 

@@ -3,8 +3,6 @@
 use std::str::FromStr;
 use std::sync::{Arc, Mutex};
 
-use xrf_visual::{SectorDescription, SectorGeometry, VisualSection};
-
 use crate::core::session::SessionId;
 use crate::plugins::levels::state::{PackedSector, PackedSectors};
 
@@ -15,33 +13,7 @@ fn new_session(at: u8) -> SessionId {
 fn new_pack(sector: u32, bytes: &[u8]) -> PackedSector {
   PackedSector {
     buffer: Mutex::new(Some(bytes.to_vec())),
-    description: SectorDescription {
-      bounds: None,
-      buffer_length: bytes.len() as u32,
-      geometry: SectorGeometry {
-        binormals: None,
-        index_count: 0,
-        indices: VisualSection {
-          byte_length: 0,
-          byte_offset: 0,
-        },
-        lightmap_uvs: None,
-        normals: None,
-        positions: VisualSection {
-          byte_length: 0,
-          byte_offset: 0,
-        },
-        tangents: None,
-        uv_components: 0,
-        uvs: None,
-        vertex_count: 0,
-      },
-      impostors: None,
-      instances: Vec::new(),
-      sections: Vec::new(),
-      sector,
-      skipped: Vec::new(),
-    },
+    sector,
   }
 }
 
@@ -62,9 +34,9 @@ fn serves_each_read_the_pack_it_was_described() {
   let first: Arc<PackedSector> = parked.take(new_session(1)).expect("the first pack");
   let third: Arc<PackedSector> = parked.take(new_session(3)).expect("the third pack");
 
-  assert_eq!(first.description.sector, 10);
-  assert_eq!(second.description.sector, 20);
-  assert_eq!(third.description.sector, 30);
+  assert_eq!(first.sector, 10);
+  assert_eq!(second.sector, 20);
+  assert_eq!(third.sector, 30);
   assert_eq!(first.take_buffer().expect("the first bytes"), vec![1, 2, 3]);
 }
 

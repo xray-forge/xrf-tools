@@ -8,12 +8,6 @@ use xrf_extension::XrayExtension;
 use xrf_utils::format_path;
 
 /// An X-Ray logical path: lower case, backslash separated, with no empty, `.` or `..` component.
-///
-/// Being separator-explicit is what makes it portable: it splits on `\` itself rather than deferring to
-/// `std::path`, so `parent` and `file_name` answer the same on Linux as on Windows, where a `std::path::Path`
-/// would treat the whole thing as one component.
-///
-/// Serialized and typed transparently as its string form, so an engine path crosses IPC as the text the engine uses.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 #[serde(transparent)]
@@ -31,9 +25,6 @@ impl XrayLogicalPath {
   }
 
   /// Wraps a string [`normalize`] already produced.
-  ///
-  /// Crate-internal, because only the mount layer knows a path came out of normalization. It exists so enumerating tens of
-  /// thousands of entries does not re-validate each one to say what the source already guaranteed.
   pub(crate) fn from_normalized(path: String) -> Self {
     debug_assert_eq!(
       normalize(&path).ok().as_deref(),
@@ -50,9 +41,6 @@ impl XrayLogicalPath {
   }
 
   /// Converts this engine identity to a host path relative to a trusted root.
-  ///
-  /// The returned path is built from logical components, so host I/O uses the platform separator
-  /// instead of creating a filename containing X-Ray's `\\` separator on Unix-like hosts.
   pub fn to_host_relative_path(&self) -> PathBuf {
     to_host_relative(&self.0)
   }
@@ -92,13 +80,6 @@ impl XrayLogicalPath {
 
   /// This path relative to `prefix`, or `None` when it does not sit under it.
   ///
-  /// The counterpart to [`Self::is_under`] and matched the same way, on component boundaries. A plain
-  /// `str::strip_prefix` is the trap this exists to close: `translations` strips off
-  /// `translations_old\st.json` and leaves `_old\st.json`, a key that names a file nobody has.
-  ///
-  /// Answers `None` rather than the whole path for a non-match, so a caller cannot silently key an
-  /// unrelated file by its full path.
-  ///
   /// # Errors
   ///
   /// Returns an error when `prefix` is not a valid X-Ray logical path.
@@ -116,10 +97,6 @@ impl XrayLogicalPath {
   /// Normalizes a path into the canonical X-Ray logical form: lower case, backslash separated, no leading or trailing
   /// separator.
   ///
-  /// Exposed because an out-of-crate [`crate::XrayAssetSource`] cannot key its entries correctly without the same rule.
-  /// Paths handed to a source are already normalized; a source normalizes only its own keys. A source keys a map of many
-  /// thousands of names, which is why this answers a `String` rather than an [`XrayLogicalPath`].
-  ///
   /// # Errors
   ///
   /// Returns an error when the path contains an empty, `.` or `..` component.
@@ -129,10 +106,6 @@ impl XrayLogicalPath {
 
   /// Whether a logical path sits under a prefix, matching on component boundaries so `configs_backup` does not match
   /// `configs`.
-  ///
-  /// Exposed for the same reason as [`Self::normalize`]: an out-of-crate source must scope its enumeration by the same
-  /// rule, and two copies that drift would make scoping depend on which kind of source answered. Both arguments are
-  /// expected to be normalized already.
   pub fn is_component_prefix(path: &str, prefix: &str) -> bool {
     is_component_prefix(path, prefix)
   }
@@ -160,10 +133,6 @@ pub(crate) fn is_component_prefix(path: &str, prefix: &str) -> bool {
 }
 
 /// Normalizes a path, borrowing it when it is already canonical.
-///
-/// Rewriting cost three allocations and two full passes to produce an identical string, and enumeration calls this once
-/// per entry — tens of thousands of times per run, on paths a source already keyed canonically. Checking first is a
-/// single pass with no allocation, so the common case now copies nothing.
 pub(crate) fn normalize(path: &str) -> XrfResult<Cow<'_, str>> {
   if is_canonical(path) {
     validate_components(path, path)?;
@@ -190,8 +159,6 @@ fn is_canonical(path: &str) -> bool {
 }
 
 /// Rejects a path whose components the engine cannot address.
-///
-/// `original` is reported rather than the rewritten form, so the error names what the caller passed.
 fn validate_components(normalized: &str, original: &str) -> XrfResult<()> {
   if normalized.is_empty()
     || normalized
@@ -208,9 +175,6 @@ fn validate_components(normalized: &str, original: &str) -> XrfResult<()> {
 
 /// Normalizes a mount's logical base, where empty means the whole root rather than an invalid path.
 ///
-/// The one place that exception lives. A mount and the plan that describes it both have to agree on it, and
-/// [`normalize`] cannot answer it: an empty path is exactly what it rejects.
-///
 /// # Errors
 ///
 /// Returns an error when a non-empty base is not a valid logical path.
@@ -223,8 +187,6 @@ pub(crate) fn normalize_base(base: &str) -> XrfResult<String> {
 }
 
 /// Converts a root-relative host path into the canonical X-Ray logical path used for indexing.
-///
-/// Named for the domain it crosses: the input is a host path fragment, the output an engine identity.
 pub(crate) fn normalize_host_relative(path: &Path) -> XrfResult<String> {
   let path: &str = path.to_str().ok_or_else(|| {
     XrfError::new_asset_error(format!(
@@ -237,10 +199,6 @@ pub(crate) fn normalize_host_relative(path: &Path) -> XrfResult<String> {
 }
 
 /// Converts an engine identity into a host path relative to a source root.
-///
-/// The intentional crossing out of the engine domain, and the inverse of [`normalize_host_relative`]. Built from
-/// components so the platform inserts its own separator: a `\`-joined literal is one component on Linux, which is how a
-/// created file lands with a backslash in its name instead of in a subdirectory.
 pub(crate) fn to_host_relative(logical_path: &str) -> PathBuf {
   logical_path.split('\\').collect()
 }

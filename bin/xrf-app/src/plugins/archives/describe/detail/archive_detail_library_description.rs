@@ -47,14 +47,14 @@ impl ArchiveDetailLibraryDescription {
   pub fn read(source: &ArchiveDescribeSource, name: &str) -> XrfResult<Self> {
     let file: LevelDetailsFile = LevelDetailsFile::read_from_bytes::<XRayByteOrder>(source.read_bytes(name)?)?;
     let (covers_x, covers_z): (f32, f32) = file.get_covered_meters();
-    let usage: Vec<u64> = file.get_object_usage();
+    let usage: Vec<u64> = file.get_object_usage::<XRayByteOrder>();
 
     Ok(Self {
       version: file.header.version,
       size_x: file.header.size_x,
       size_z: file.header.size_z,
       slots: file.get_slots_count(),
-      planted_slots: file.get_planted_slots_count(),
+      planted_slots: file.get_planted_slots_count::<XRayByteOrder>(),
       covers_x,
       covers_z,
       entries: file
