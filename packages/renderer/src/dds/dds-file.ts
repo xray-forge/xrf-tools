@@ -1,13 +1,13 @@
 import { Nullable } from "@xrf/types";
 
-import { DDS_BLOCK_SIZE } from "#/texture/dds/dds-block-format";
-import { getDdsDxgiLayout } from "#/texture/dds/dds-dxgi";
-import { getDdsFourCcLayout } from "#/texture/dds/dds-fourcc";
-import { DDS_DIMENSION_TEXTURE_3D, IDdsHeader, IDdsHeaderRead, readDdsHeader } from "#/texture/dds/dds-header";
-import { EDdsLayout, TDdsLayout } from "#/texture/dds/dds-layout";
-import { describeDdsMasks, getDdsMaskLayout } from "#/texture/dds/dds-masks";
-import { IDdsMipmap, readDdsMipmaps } from "#/texture/dds/dds-mipmaps";
-import { EDdsRefusal, IDdsRefusal } from "#/texture/dds/dds-refusal";
+import { DDS_BLOCK_SIZE } from "#/dds/dds-block-format";
+import { getDdsDxgiLayout } from "#/dds/dds-dxgi";
+import { getDdsFourCcLayout } from "#/dds/dds-fourcc";
+import { DDS_DIMENSION_TEXTURE_3D, IDdsHeader, IDdsHeaderRead, readDdsHeader } from "#/dds/dds-header";
+import { EDdsLayout, TDdsLayout } from "#/dds/dds-layout";
+import { describeDdsMasks, getDdsMaskLayout } from "#/dds/dds-masks";
+import { IDdsMipmap, readDdsMipmaps } from "#/dds/dds-mipmaps";
+import { EDdsRefusal, IDdsRefusal } from "#/dds/dds-refusal";
 
 /** A dds file, read. */
 export interface IDdsFile {

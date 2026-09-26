@@ -14,11 +14,11 @@ import {
 
 /** What the lights are binned from and into. */
 export interface ILightBinningBuffers {
-  records: StorageBufferAttribute;
-  counts: StorageBufferAttribute;
-  items: StorageBufferAttribute;
+  readonly records: StorageBufferAttribute;
+  readonly counts: StorageBufferAttribute;
+  readonly items: StorageBufferAttribute;
   /** Lights each cluster was reached by and could not hold. */
-  drops: StorageBufferAttribute;
+  readonly drops: StorageBufferAttribute;
 }
 
 /**

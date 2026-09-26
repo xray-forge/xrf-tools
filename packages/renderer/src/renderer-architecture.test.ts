@@ -9,40 +9,26 @@ import { describe, expect, it } from "@jest/globals";
 const SOURCE: string = __dirname;
 
 /**
- * What each worker-side area may not import: every area sits on the ones below it, and none reaches up.
- * From the bottom: `internals`, which alone reads three past its types, then `visibility` and `uniforms`, `shader`,
- * `material`, `scene`, `pass`, then `graph` and `capture`, and `host` over all.
+ * Every area, in layers from the bottom: an area reads the layers below its own and nothing beside or above it.
+ * The leaves read nothing of the package; the contract is what crosses the thread; `internals` alone reads three past
+ * its types; the page's client and the worker's host sit on top, apart.
  */
-const FORBIDDEN: Record<string, ReadonlyArray<string>> = {
-  capture: ["client", "graph", "host"],
-  contract: [
-    "capture",
-    "device",
-    "graph",
-    "host",
-    "internals",
-    "material",
-    "pass",
-    "scene",
-    "shader",
-    "timing",
-    "uniforms",
-    "visibility",
-  ],
-  device: ["client", "host"],
-  graph: ["capture", "client", "host"],
-  // Beneath every area but the contract, so any may read three through it and it reads nothing of theirs.
-  internals: readdirSync(SOURCE, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory() && entry.name !== "contract" && entry.name !== "internals")
-    .map((entry) => entry.name),
-  material: ["capture", "client", "device", "graph", "host", "pass", "scene"],
-  pass: ["capture", "client", "device", "graph", "host"],
-  scene: ["capture", "client", "device", "graph", "host", "pass"],
-  shader: ["capture", "client", "device", "graph", "host", "material", "pass", "scene"],
-  timing: ["capture", "client", "device", "graph", "host"],
-  uniforms: ["capture", "client", "device", "graph", "host", "material", "pass", "scene", "shader"],
-  visibility: ["capture", "client", "device", "graph", "host", "material", "pass", "scene", "shader", "uniforms"],
-};
+const LAYERS: ReadonlyArray<ReadonlyArray<string>> = [
+  ["dds", "frame", "sampling"],
+  ["contract"],
+  ["geometry", "input", "internals", "lighting", "texture", "timing"],
+  ["camera", "device", "visibility"],
+  ["uniforms"],
+  ["shader"],
+  ["material"],
+  ["scene"],
+  ["pass"],
+  ["capture", "graph"],
+  ["client", "host"],
+];
+
+/** Three's own shader code, ported word for word, which keeps three's idiom so it reads against the original. */
+const PORTED: ReadonlyArray<string> = ["pass/antialias/smaa-stages.tsl.ts"];
 
 /** Modules that build nodes without being shaders: uniforms, and the binding of textures to samplers. */
 const NODE_BUILDERS: ReadonlyArray<string> = ["uniforms/", "texture/renderer-textures.ts"];
@@ -69,16 +55,37 @@ function listImports(module: string): Array<string> {
   );
 }
 
+/** @returns The layer an area stands in, or -1 for one no layer names. */
+function toLayer(area: string): number {
+  return LAYERS.findIndex((layer: ReadonlyArray<string>) => layer.includes(area));
+}
+
 describe("the renderer's architecture", () => {
   const modules: Array<string> = listModules();
+  const shaders: Array<string> = modules.filter((module: string) => module.endsWith(".tsl.ts"));
 
-  it("keeps every area on the ones below it", () => {
+  it("places every area in a layer", () => {
+    const areas: Array<string> = readdirSync(SOURCE, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => entry.name);
+
+    expect(areas.filter((area: string) => toLayer(area) < 0)).toEqual([]);
+  });
+
+  it("keeps every area on the layers below it", () => {
     const violations: Array<string> = modules.flatMap((module: string) => {
-      const forbidden: ReadonlyArray<string> = FORBIDDEN[module.split("/")[0]] ?? [];
+      const area: string = module.split("/")[0];
+
+      // The package's entry points, beside every area.
+      if (!module.includes("/")) {
+        return [];
+      }
 
       return listImports(module)
-        .filter((specifier: string) => forbidden.some((area: string) => specifier.startsWith(`#/${area}/`)))
-        .map((specifier: string) => `${module} -> ${specifier}`);
+        .map((specifier: string) => /^#\/([^/]+)\//.exec(specifier)?.[1] ?? null)
+        .filter((imported: string | null): imported is string => imported !== null && imported !== area)
+        .filter((imported: string) => toLayer(imported) >= toLayer(area))
+        .map((imported: string) => `${module} -> ${imported}`);
     });
 
     expect(violations).toEqual([]);
@@ -96,9 +103,21 @@ describe("the renderer's architecture", () => {
   });
 
   it("keeps `.tsl.ts` modules free of state: they build nodes and hold nothing", () => {
-    const violations: Array<string> = modules.filter(
+    const violations: Array<string> = shaders.filter((module: string) =>
+      /^(export )?(class|let|var)\b|^(export )?const \w+(: [^=]+)? = new\b/m.test(
+        readFileSync(join(SOURCE, module), "utf8")
+      )
+    );
+
+    expect(violations).toEqual([]);
+  });
+
+  it("names every loop's counter, which three names `i` in every loop that nests", () => {
+    const violations: Array<string> = shaders.filter(
       (module: string) =>
-        module.endsWith(".tsl.ts") && /^export (class|let)\b/m.test(readFileSync(join(SOURCE, module), "utf8"))
+        module !== "shader/named-loop.tsl.ts" &&
+        !PORTED.includes(module) &&
+        /\bLoop\(/.test(readFileSync(join(SOURCE, module), "utf8"))
     );
 
     expect(violations).toEqual([]);

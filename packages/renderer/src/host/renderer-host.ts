@@ -1,5 +1,5 @@
 import { Nullable } from "@xrf/types";
-import { Vector2 } from "three/webgpu";
+import { PerspectiveCamera, Vector2 } from "three/webgpu";
 
 import { RendererCaptures } from "#/capture/renderer-captures";
 import { ERendererRequest, ERendererResponse, TRendererRequest, TRendererResponse } from "#/contract/renderer-messages";
@@ -17,7 +17,6 @@ import { RendererView } from "#/host/renderer-view";
 import { RenderProxyElement } from "#/input/render-proxy-element";
 import { toStorageLimit } from "#/internals/renderer-backend";
 import { DEFAULT_RENDERER_LIGHTING } from "#/lighting/default-lighting";
-import { IRendererFrame } from "#/pass/renderer-frame";
 import { RendererOverlays } from "#/scene/overlay/renderer-overlays";
 import { RendererScene } from "#/scene/renderer-scene";
 import { RendererUniforms } from "#/uniforms/renderer-uniforms";
@@ -242,6 +241,8 @@ export class RendererHost {
   private configure(settings: IRendererSettings): void {
     this.settings = settings;
     this.uniforms.configure(settings);
+    // The features' passes join or leave the frame here, never while one is drawn.
+    this.graph.configure(settings.features);
     this.scene.setWireframe(settings.isWireframe);
   }
 
@@ -307,44 +308,18 @@ export class RendererHost {
     this.ensureScheduled();
   }
 
-  /** @returns Whether the frame resized the targets. */
+  /**
+   * The frame, in its phases: the view moved and measured, what changes over time advanced, what the view sees chosen
+   * from the view unjittered, then the scene drawn with this frame's camera.
+   *
+   * @returns Whether the frame resized the targets.
+   */
   private draw(now: number, device: RendererDevice, view: RendererView, settings: IRendererSettings): boolean {
     const { renderer } = device;
-    const isResized: boolean = view.takeResize();
+    const { features } = settings;
+    const time: number = now / 1000;
 
-    if (isResized) {
-      const { width, height, pixelRatio } = view.size;
-
-      renderer.setPixelRatio(pixelRatio);
-      renderer.setSize(width, height, false);
-      renderer.getDrawingBufferSize(this.drawingSize);
-      this.graph.resize(renderer, this.drawingSize.x, this.drawingSize.y);
-      this.rig.resize(width, height);
-    }
-
-    this.rig.update(this.drawnAt === null ? 0 : (now - this.drawnAt) / 1000);
-    this.drawnAt = now;
-    // The features' passes join or leave the frame, and its timing starts or stops, before anything is drawn.
-    this.graph.configure(settings.features);
-    // Motion is measured unjittered; everything after draws, and rebuilds positions, with this frame's jitter.
-    this.uniforms.motion.follow(this.rig.camera);
-    this.scene.skeletons.advance();
-    this.graph.jitter(this.rig.camera);
-    this.uniforms.follow(this.rig.camera);
-
-    const frame: IRendererFrame = {
-      camera: this.rig.camera,
-      renderer,
-      scenes: this.scene.scenes,
-      settings,
-      targets: this.graph.targets,
-    };
-
-    this.uniforms.shadows.fit(this.rig.camera, this.uniforms.lighting.sunDirection, settings.features.shadows);
-    this.uniforms.wind.update(now / 1000);
-    this.uniforms.grassWind.update(now / 1000);
-
-    if (device.setTiming(settings.features.isGpuTimed)) {
+    if (device.setTiming(features.isGpuTimed)) {
       this.stats.resetTimings();
     }
 
@@ -353,31 +328,78 @@ export class RendererHost {
 
     const startedAt: number = performance.now();
 
-    this.cullView.take(this.rig.camera, this.uniforms.viewDistance);
+    if (view.takeResize()) {
+      const { width, height, pixelRatio } = view.size;
+
+      renderer.setPixelRatio(pixelRatio);
+      renderer.setSize(width, height, false);
+      renderer.getDrawingBufferSize(this.drawingSize);
+      this.rig.resize(width, height);
+    }
+
+    // Every frame: a device started again sizes the frame again at the same size.
+    const isResized: boolean = this.graph.resize(renderer, this.drawingSize.x, this.drawingSize.y);
+    // The first frame of a view, or of a camera that jumped, has no frame before it to follow.
+    const isCut: boolean = this.drawnAt === null || this.rig.takeCut();
+
+    this.rig.update(this.drawnAt === null ? 0 : (now - this.drawnAt) / 1000);
+    this.drawnAt = now;
+
+    const viewCamera: PerspectiveCamera = this.rig.camera;
+
+    this.uniforms.motion.follow(viewCamera);
+
+    if (isCut) {
+      this.uniforms.motion.forget();
+      this.graph.resetHistory();
+    }
+
+    this.scene.skeletons.advance();
+    this.uniforms.treeWind.update(time);
+    this.uniforms.grassWind.update(time);
+
+    // What the view sees, from the view unjittered, so the jitter never flickers a choice.
+    this.cullView.take(viewCamera, this.uniforms.viewDistance);
     // Thresholds on a clump's screen area, which scale with how many pixels the drawing has.
-    this.scene.staticCull.takeLod(settings.features.lod, this.drawingSize.x, this.drawingSize.y, this.rig.camera);
-    // After the jitter and the thresholds: the clusters cut the view as it draws, and shadowed lights fade by the LOD.
-    this.scene.lights.update(
-      this.rig.camera,
-      now / 1000,
-      settings.features.lights,
-      this.uniforms.staticDraws.lod,
-      this.scene.shadowCasters.shadowChanges,
-      this.uniforms.wind.isSwaying
+    this.scene.staticCull.takeLod(features.lod, this.drawingSize.x, this.drawingSize.y, viewCamera);
+    this.uniforms.shadows.fit(viewCamera, this.uniforms.lighting.sunDirection, features.shadows);
+
+    const camera: PerspectiveCamera = this.graph.takeCamera(viewCamera);
+
+    this.uniforms.follow(camera);
+    // After the thresholds, which shadowed lights fade by; the clusters cut the view as it draws.
+    this.scene.lights.update({
+      camera,
+      isWindy: this.uniforms.treeWind.isSwaying,
+      lod: this.uniforms.staticDraws.lod,
+      settings: features.lights,
+      time,
+      view: viewCamera,
+    });
+    this.scene.cull(this.cullView, viewCamera);
+    this.graph.render(
+      {
+        camera,
+        jitter: this.graph.jitter,
+        renderer,
+        scenes: this.scene.scenes,
+        settings,
+        targets: this.graph.targets,
+        viewCamera,
+      },
+      device.inspector
     );
-    this.scene.cull(this.cullView, this.rig.camera);
-    this.graph.render(frame, device.inspector);
     this.stats.endFrame(performance.now() - startedAt, device);
 
     if (this.stats.takeReport(now)) {
       this.scene.staticCull.sample(renderer);
-      this.scene.lights.sample(renderer);
+      this.scene.lights.readClusterDrops(renderer);
       this.reply({
         kind: ERendererResponse.REPORT,
         report: this.stats.toReport(
           device,
           view.canvas,
-          this.graph.renderSize,
+          this.graph.size,
           this.rig.pose,
           this.graph.passNames,
           this.scene.staticCull.kept,

@@ -1,8 +1,8 @@
 import { uniform } from "three/tsl";
 import { PerspectiveCamera, Vector2, Vector4 } from "three/webgpu";
 
-import { IRendererFrameJitter } from "#/pass/renderer-frame-jitter";
-import { IRendererFrameSize } from "#/pass/renderer-frame-size";
+import { IRendererFrameJitter } from "#/sampling/renderer-frame-jitter";
+import { IRendererFrameSize } from "#/sampling/renderer-frame-size";
 
 /** `FFX_FSR2_SHADING_CHANGE_MIP_LEVEL`: the luminance mip the locks watch for a change of shading. */
 export const SHADING_CHANGE_MIP_LEVEL: number = 4;

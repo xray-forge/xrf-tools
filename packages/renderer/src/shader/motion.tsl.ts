@@ -1,7 +1,7 @@
 import { Fn, modelWorldMatrix, positionLocal, varying, vec2, vec4 } from "three/tsl";
 import { Node, NodeBuilder, SkinnedMesh } from "three/webgpu";
 
-import { isBufferPlacedBuild, toBufferPlacedWorld } from "#/shader/placement.tsl";
+import { IBufferPlacedWorlds, isBufferPlacedBuild, toBufferPlacedWorlds } from "#/shader/placement.tsl";
 import { previousSkinnedPosition } from "#/shader/skinned-basis.tsl";
 import { MotionUniforms } from "#/uniforms/motion-uniforms";
 import { RendererUniforms } from "#/uniforms/renderer-uniforms";
@@ -16,15 +16,13 @@ import { RendererUniforms } from "#/uniforms/renderer-uniforms";
  * @returns The motion in texture coordinates, now less then, `y` down.
  */
 export function toSurfaceMotion(uniforms: RendererUniforms): Node<"vec2"> {
-  const { motion, staticDraws, wind } = uniforms;
+  const { motion, staticDraws, treeWind } = uniforms;
 
   return Fn((_: [], builder: NodeBuilder): Node<"vec2"> => {
     if (isBufferPlacedBuild(builder)) {
-      return toClipMotion(
-        motion,
-        toBufferPlacedWorld(builder, staticDraws, wind),
-        toBufferPlacedWorld(builder, staticDraws, wind, true)
-      );
+      const { current, previous }: IBufferPlacedWorlds = toBufferPlacedWorlds(builder, staticDraws, treeWind);
+
+      return toClipMotion(motion, current, previous);
     }
 
     const isSkinned: boolean = Boolean((builder.object as Partial<SkinnedMesh>).isSkinnedMesh);

@@ -10,10 +10,14 @@ const FIRST_WAVE: readonly [number, number, number] = [1 / 5, 1 / 7, 1 / 3];
 /** The second wave's, the same components in another order. */
 const SECOND_WAVE: readonly [number, number, number] = [1 / 3, 1 / 7, 1 / 5];
 
+/** What a frame's step is taken as where the time ran back or leapt past a second, as `hw_Render` takes it. */
+const STEP_FALLBACK: number = 0.03;
+
 /**
  * The sway of the grass as its shaders read it, built each frame as `CDetailManager::hw_Render` builds it: two winds
  * turning at their own rates and a wave running through the level, the normal and fast swings mixed by the wind's
- * strength. Held in the engine's own space, where the grass is swayed.
+ * strength, each advanced by the frame's step so a change of strength turns them no faster at once. Held in the
+ * engine's own space, where the grass is swayed.
  */
 export class GrassWindUniforms {
   /** `dir1`: the first wave's lean across the ground. */
@@ -30,6 +34,14 @@ export class GrassWindUniforms {
   public readonly previousWave2 = uniform(new Vector4()).setGroup(renderGroup);
 
   private grass: Nullable<IRendererGrassWind> = null;
+  /** `m_time_rot_1`, `m_time_rot_2` and `m_time_pos`: how far each wind has turned and the waves have run. */
+  private firstTurn: number = 0;
+  private secondTurn: number = 0;
+  private phase: number = 0;
+  /** `m_global_time_old`: the time the last frame was at. */
+  private time: Nullable<number> = null;
+  /** `swing_current`, mixed each frame. */
+  private readonly swing: IRendererGrassSwing = { amp1: 0, amp2: 0, rot1: 0, rot2: 0, speed: 0 };
 
   /**
    * @param grass - How the grass sways, or null for grass standing still.
@@ -42,6 +54,10 @@ export class GrassWindUniforms {
    * @param time - Seconds the renderer has been running, the engine's `fTimeGlobal`.
    */
   public update(time: number): void {
+    const elapsed: number = time - (this.time ?? time);
+    const step: number = elapsed < 0 || elapsed > 1 ? STEP_FALLBACK : elapsed;
+
+    this.time = time;
     this.previousWind1.value.copy(this.wind1.value);
     this.previousWind2.value.copy(this.wind2.value);
     this.previousWave1.value.copy(this.wave1.value);
@@ -54,31 +70,37 @@ export class GrassWindUniforms {
       return;
     }
 
-    const swing: IRendererGrassSwing = mixSwing(this.grass);
+    const swing: IRendererGrassSwing = mixSwing(this.grass, this.swing);
     const turn: number = Math.PI * 2;
-    const first: number = swing.rot1 > 0 ? (turn * time) / swing.rot1 : 0;
-    const second: number = swing.rot2 > 0 ? (turn * time) / swing.rot2 : 0;
-    const phase: number = time * swing.speed;
 
+    this.firstTurn += swing.rot1 > 0 ? (turn * step) / swing.rot1 : 0;
+    this.secondTurn += swing.rot2 > 0 ? (turn * step) / swing.rot2 : 0;
+    this.phase += step * swing.speed;
     // `(sin, 0, cos)` normalised, then scaled: already unit, so the amplitude alone.
-    this.wind1.value.set(Math.sin(first), 0, Math.cos(first)).multiplyScalar(swing.amp1);
-    this.wind2.value.set(Math.sin(second), 0, Math.cos(second)).multiplyScalar(swing.amp2);
-    this.wave1.value.set(...FIRST_WAVE, phase).divideScalar(turn);
-    this.wave2.value.set(...SECOND_WAVE, phase).divideScalar(turn);
+    this.wind1.value.set(Math.sin(this.firstTurn), 0, Math.cos(this.firstTurn)).multiplyScalar(swing.amp1);
+    this.wind2.value.set(Math.sin(this.secondTurn), 0, Math.cos(this.secondTurn)).multiplyScalar(swing.amp2);
+    this.wave1.value.set(...FIRST_WAVE, this.phase).divideScalar(turn);
+    this.wave2.value.set(...SECOND_WAVE, this.phase).divideScalar(turn);
   }
 }
 
-/** The swing between the normal and the fast one, `swing_current.lerp`. */
-function mixSwing({ strength, normal, fast }: IRendererGrassWind): IRendererGrassSwing {
+/**
+ * @param wind - How the grass sways.
+ * @param out - Where the swing is written.
+ * @returns The swing between the normal and the fast one, `swing_current.lerp`.
+ */
+function mixSwing(wind: IRendererGrassWind, out: IRendererGrassSwing): IRendererGrassSwing {
+  const { strength, normal, fast } = wind;
+
   function mix(from: number, to: number): number {
     return from + (to - from) * strength;
   }
 
-  return {
-    amp1: mix(normal.amp1, fast.amp1),
-    amp2: mix(normal.amp2, fast.amp2),
-    rot1: mix(normal.rot1, fast.rot1),
-    rot2: mix(normal.rot2, fast.rot2),
-    speed: mix(normal.speed, fast.speed),
-  };
+  out.amp1 = mix(normal.amp1, fast.amp1);
+  out.amp2 = mix(normal.amp2, fast.amp2);
+  out.rot1 = mix(normal.rot1, fast.rot1);
+  out.rot2 = mix(normal.rot2, fast.rot2);
+  out.speed = mix(normal.speed, fast.speed);
+
+  return out;
 }

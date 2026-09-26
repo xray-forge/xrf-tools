@@ -12,7 +12,7 @@ import {
 
 import { RENDERER_MAX_SHADOW_CASCADES } from "#/contract/renderer-features";
 import { initPreservedDepthTarget } from "#/internals/preserved-depth-target";
-import { IRendererFrameSize } from "#/pass/renderer-frame-size";
+import { IRendererFrameSize } from "#/sampling/renderer-frame-size";
 import { IGBufferTextures } from "#/shader/gbuffer-textures";
 
 /**
@@ -57,8 +57,9 @@ export class RendererTargets implements IGBufferTextures {
   );
 
   /**
-   * The lights' shadow atlas, every shadowed light's faces in squares of it, its depth alone like a cascade's: a texel
-   * across while the lights draw no shadows, so the lights always bind the same texture.
+   * The lights' shadow atlas, every shadowed light's faces in squares of it, its depth alone read: a texel across while
+   * the lights draw no shadows, so the lights always bind the same texture. Three draws into no target without a colour
+   * attachment, so it keeps one of a byte a texel, never written.
    */
   public readonly lightShadows: RenderTarget = new RenderTarget(1, 1, { depthBuffer: true, format: RedFormat });
 

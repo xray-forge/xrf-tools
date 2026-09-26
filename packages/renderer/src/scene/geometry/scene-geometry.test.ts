@@ -2,8 +2,8 @@ import { describe, expect, it } from "@jest/globals";
 import { BufferAttribute } from "three/webgpu";
 
 import { IRendererGeometry } from "#/contract/scene/renderer-geometry";
+import { EVertexAttribute } from "#/geometry/vertex-attribute";
 import { SceneGeometry } from "#/scene/geometry/scene-geometry";
-import { EVertexAttribute } from "#/shader/vertex-attribute";
 
 /** A triangle whose vertices come packed, its coordinate two shorts a vertex or a tree's four. */
 function createPacked(uvComponents: number = 2): IRendererGeometry {

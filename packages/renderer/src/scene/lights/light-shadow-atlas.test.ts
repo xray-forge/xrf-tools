@@ -5,7 +5,7 @@ import { ILightShadowTile, LightShadowAtlas } from "#/scene/lights/light-shadow-
 
 describe("LightShadowAtlas", () => {
   it("cuts a square into quarters for a smaller face, taking the least free square that holds it", () => {
-    const atlas: LightShadowAtlas = new LightShadowAtlas(1024, 32);
+    const atlas: LightShadowAtlas = new LightShadowAtlas(1024);
     const large = atlas.allocate(512) as ILightShadowTile;
     const small = atlas.allocate(128) as ILightShadowTile;
     const next = atlas.allocate(128) as ILightShadowTile;
@@ -21,7 +21,7 @@ describe("LightShadowAtlas", () => {
   });
 
   it("refuses a face once no free square is as large", () => {
-    const atlas: LightShadowAtlas = new LightShadowAtlas(256, 32);
+    const atlas: LightShadowAtlas = new LightShadowAtlas(256);
     const tiles: Array<Nullable<ILightShadowTile>> = [128, 128, 128, 128].map((size) => atlas.allocate(size));
 
     expect(tiles.every(Boolean)).toBe(true);
@@ -29,12 +29,24 @@ describe("LightShadowAtlas", () => {
   });
 
   it("joins four free quarters back into their square", () => {
-    const atlas: LightShadowAtlas = new LightShadowAtlas(256, 32);
+    const atlas: LightShadowAtlas = new LightShadowAtlas(256);
     const tiles: Array<ILightShadowTile> = [32, 32, 64, 128].map((size) => atlas.allocate(size) as ILightShadowTile);
 
     tiles.forEach((tile: ILightShadowTile) => atlas.release(tile));
 
     expect(atlas.used).toBe(0);
     expect(atlas.allocate(256)).toEqual({ size: 256, x: 0, y: 0 });
+  });
+
+  it("refuses a square the free area would hold once what is free is scattered", () => {
+    const atlas: LightShadowAtlas = new LightShadowAtlas(256);
+    const tiles: Array<ILightShadowTile> = Array.from({ length: 16 }, () => atlas.allocate(64) as ILightShadowTile);
+
+    // One from each quarter: a 128's worth free, in four pieces.
+    [0, 5, 10, 15].forEach((index: number) => atlas.release(tiles[index]));
+
+    expect(atlas.used).toBe(256 * 256 - 128 * 128);
+    expect(atlas.allocate(128)).toBeNull();
+    expect(atlas.allocate(64)).not.toBeNull();
   });
 });

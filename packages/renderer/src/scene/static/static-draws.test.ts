@@ -4,7 +4,7 @@ import { MeshBasicNodeMaterial, Scene, Vector3 } from "three/webgpu";
 import { ERendererPass } from "#/contract/scene/renderer-surface";
 import { ISurfaceMaterial } from "#/material/surface-material";
 import { SceneGeometry } from "#/scene/geometry/scene-geometry";
-import { ILightShadowRequest, LightShadows } from "#/scene/lights/light-shadows";
+import { ILightShadowRequest, LightShadowPlanner } from "#/scene/lights/light-shadow-planner";
 import { StaticDraws } from "#/scene/static/static-draws";
 import { IStaticRange } from "#/scene/static/static-range";
 import { IStaticUpcoming } from "#/scene/static/static-upcoming";
@@ -97,7 +97,7 @@ describe("listed tree shadow invalidation", () => {
       shadow: new MeshBasicNodeMaterial(),
       shadowKeys: [],
     };
-    const shadows: LightShadows = new LightShadows();
+    const shadows: LightShadowPlanner = new LightShadowPlanner(draws.shadowChanges);
     const light: ILightShadowRequest = {
       cone: Math.PI / 2,
       direction: new Vector3(0, -1, 0),
@@ -117,7 +117,7 @@ describe("listed tree shadow invalidation", () => {
     }
 
     function frame(isWindy: boolean = true): number {
-      shadows.begin(draws.shadowChanges, isWindy);
+      shadows.begin(isWindy);
       shadows.request(0, light);
       shadows.finish(8);
 

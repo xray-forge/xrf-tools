@@ -1,27 +1,38 @@
 import { describe, expect, it } from "@jest/globals";
 import { PerspectiveCamera } from "three/webgpu";
 
-import { DEFAULT_RENDERER_LIGHTS_SETTINGS } from "#/contract/renderer-features";
-import { ERendererLightKind, IRendererLight } from "#/contract/scene/renderer-lights";
+import { DEFAULT_RENDERER_LIGHTS_SETTINGS, IRendererLightsSettings } from "#/contract/renderer-features";
+import { EMPTY_RENDERER_LIGHTS_REPORT } from "#/contract/renderer-report";
+import {
+  ERendererLightKind,
+  IRendererPointLight,
+  IRendererSpotLight,
+  TRendererLight,
+} from "#/contract/scene/renderer-lights";
 import { adoptRendererConventions } from "#/internals/camera-conventions";
 import { toSunSpecular } from "#/lighting/base-lighting";
-import { LIGHT_VECTORS } from "#/scene/lights/light-record";
-import { SceneLights } from "#/scene/lights/scene-lights";
+import { LIGHT_NO_CONE, LIGHT_RECORD, MAX_LIGHTS } from "#/scene/lights/light-record";
+import { ISceneLightsFrame, SceneLights } from "#/scene/lights/scene-lights";
 import { StaticShadowChanges } from "#/scene/static/static-shadow-changes";
 import { RendererTextures } from "#/texture/renderer-textures";
 import { LodUniforms } from "#/uniforms/lod-uniforms";
 
-const POINT: IRendererLight = {
+const POINT: IRendererPointLight = {
   animatorScale: 0,
   color: [0.5, 0.25, 1],
-  cone: 0,
-  direction: [0, 0, 1],
   isLevel: false,
   isShadowed: false,
   kind: ERendererLightKind.POINT,
   near: 0,
   position: [1, 2, -10],
   range: 4,
+};
+
+const SPOT: IRendererSpotLight = {
+  ...POINT,
+  cone: Math.PI / 2,
+  direction: [0, -1, 0],
+  kind: ERendererLightKind.SPOT,
   right: [1, 0, 0],
 };
 
@@ -35,19 +46,35 @@ function createCamera(): PerspectiveCamera {
   return camera;
 }
 
-function createLights(): SceneLights {
+function createLights(random?: () => number): SceneLights {
   return new SceneLights(
     new RendererTextures(
       () => {},
       () => {}
-    )
+    ),
+    new StaticShadowChanges(),
+    random
   );
 }
 
-function readRecord(lights: SceneLights, index: number): Array<number> {
-  return Array.from(
-    (lights.records.array as Float32Array).subarray(index * LIGHT_VECTORS * 4, (index + 1) * LIGHT_VECTORS * 4)
-  );
+/** A frame seen from the origin, the view and the drawing one camera. */
+function createFrame(part: Partial<ISceneLightsFrame> = {}): ISceneLightsFrame {
+  const camera: PerspectiveCamera = createCamera();
+
+  return {
+    camera,
+    isWindy: false,
+    lod: new LodUniforms(),
+    settings: DEFAULT_RENDERER_LIGHTS_SETTINGS,
+    time: 0,
+    view: camera,
+    ...part,
+  };
+}
+
+/** One vector of a light's record. */
+function readVector(lights: SceneLights, light: number, vector: number): Array<number> {
+  return Array.from(lights.records.read(light).subarray(vector * 4, vector * 4 + 4));
 }
 
 describe("SceneLights", () => {
@@ -55,56 +82,44 @@ describe("SceneLights", () => {
     const lights: SceneLights = createLights();
 
     lights.put({ animators: [], lights: [POINT] });
-    lights.update(
-      createCamera(),
-      0,
-      DEFAULT_RENDERER_LIGHTS_SETTINGS,
-      new LodUniforms(),
-      new StaticShadowChanges(),
-      false
-    );
+    lights.update(createFrame());
 
-    const record: Array<number> = readRecord(lights, 0);
+    const [x, y, z, falloff] = readVector(lights, 0, LIGHT_RECORD.position);
 
     expect(lights.count).toBe(1);
-    expect(lights.uniforms.count.value).toBe(1);
-    expect(record.slice(0, 3)).toEqual([1, 2, -10]);
+    expect(lights.clusters.uniforms.count.value).toBe(1);
+    expect([x, y, z]).toEqual([1, 2, -10]);
     // `1 / L_R²`, `L_R` 95% of the range.
-    expect(record[3]).toBeCloseTo(1 / (4 * 0.95) ** 2, 6);
-    expect(record.slice(4, 7)).toEqual([0.5, 0.25, 1]);
-    expect(record[7]).toBeCloseTo(toSunSpecular([0.5, 0.25, 1]), 6);
-    // No cone, no projector.
-    expect(record[11]).toBe(-2);
-    expect(record[19]).toBe(-1);
-    // Bound by its range.
-    expect(record.slice(20, 24)).toEqual([1, 2, -10, 4]);
+    expect(falloff).toBeCloseTo(1 / (4 * 0.95) ** 2, 6);
+    expect(readVector(lights, 0, LIGHT_RECORD.color).slice(0, 3)).toEqual([0.5, 0.25, 1]);
+    expect(readVector(lights, 0, LIGHT_RECORD.color)[3]).toBeCloseTo(toSunSpecular([0.5, 0.25, 1]), 6);
+    // No cone, no projector, no shadow.
+    expect(readVector(lights, 0, LIGHT_RECORD.axis)[3]).toBe(LIGHT_NO_CONE);
+    expect(readVector(lights, 0, LIGHT_RECORD.up)[3]).toBe(-1);
+    expect(readVector(lights, 0, LIGHT_RECORD.shadow)).toEqual([0, 0, 0, 0]);
+    expect(readVector(lights, 0, LIGHT_RECORD.sphere)).toEqual([1, 2, -10, 4]);
   });
 
-  it("leaves the level file's lights out unless asked, and whatever stands out of view", () => {
+  it("leaves the level file's lights out unless asked, whatever stands out of view, and all while the lights are off", () => {
     const lights: SceneLights = createLights();
-    const behind: IRendererLight = { ...POINT, position: [0, 0, 20] };
-    const level: IRendererLight = { ...POINT, isLevel: true };
+    const settings: IRendererLightsSettings = { ...DEFAULT_RENDERER_LIGHTS_SETTINGS, isLevelLights: true };
 
-    lights.put({ animators: [], lights: [behind, level] });
-    lights.update(
-      createCamera(),
-      0,
-      DEFAULT_RENDERER_LIGHTS_SETTINGS,
-      new LodUniforms(),
-      new StaticShadowChanges(),
-      false
-    );
+    lights.put({
+      animators: [],
+      lights: [
+        { ...POINT, position: [0, 0, 20] },
+        { ...POINT, isLevel: true },
+      ],
+    });
+    lights.update(createFrame());
     expect(lights.count).toBe(0);
 
-    lights.update(
-      createCamera(),
-      0,
-      { ...DEFAULT_RENDERER_LIGHTS_SETTINGS, isLevelLights: true },
-      new LodUniforms(),
-      new StaticShadowChanges(),
-      false
-    );
+    lights.update(createFrame({ settings }));
     expect(lights.count).toBe(1);
+
+    lights.update(createFrame({ settings: { ...settings, isEnabled: false } }));
+    expect(lights.count).toBe(0);
+    expect(lights.clusters.uniforms.count.value).toBe(0);
   });
 
   it("animates a colour by its key times the scale, replacing its own", () => {
@@ -114,84 +129,132 @@ describe("SceneLights", () => {
       animators: [{ colors: [[255, 0, 51]], fps: 10, frameCount: 10, frames: [0] }],
       lights: [{ ...POINT, animator: 0, animatorScale: 2 / 255 }],
     });
-    lights.update(
-      createCamera(),
-      3,
-      DEFAULT_RENDERER_LIGHTS_SETTINGS,
-      new LodUniforms(),
-      new StaticShadowChanges(),
-      false
-    );
+    lights.update(createFrame({ time: 3 }));
 
-    const [red, green, blue] = readRecord(lights, 0).slice(4, 7);
+    const [red, green, blue] = readVector(lights, 0, LIGHT_RECORD.color);
 
     expect(red).toBeCloseTo(2, 6);
     expect(green).toBe(0);
     expect(blue).toBeCloseTo(0.4, 6);
   });
 
+  it("strays a zone's range by its jitter, as the random source says", () => {
+    const lights: SceneLights = createLights(() => 1);
+
+    lights.put({ animators: [], lights: [{ ...POINT, rangeJitter: 1 }] });
+    lights.update(createFrame());
+
+    expect(readVector(lights, 0, LIGHT_RECORD.position)[3]).toBeCloseTo(1 / (5 * 0.95) ** 2, 6);
+    // Bound as far as the range strays either way.
+    expect(readVector(lights, 0, LIGHT_RECORD.sphere)[3]).toBe(5);
+  });
+
   it("frames a spot's projection square to its direction, through the slot its projector took", () => {
     const lights: SceneLights = createLights();
-    const spot: IRendererLight = {
-      ...POINT,
-      cone: Math.PI / 2,
-      // Down, turned with a right that is not square to it.
-      direction: [0, -1, 0],
-      kind: ERendererLightKind.SPOT,
-      projector: "lights\\lights_spot01",
-      right: [1, 0.5, 0],
-    };
+    // Down, turned with a right that is not square to it.
+    const spot: IRendererSpotLight = { ...SPOT, projector: "lights\\lights_spot01", right: [1, 0.5, 0] };
 
     lights.put({ animators: [], lights: [{ ...spot, projector: "other" }, spot] });
-    lights.update(
-      createCamera(),
-      0,
-      DEFAULT_RENDERER_LIGHTS_SETTINGS,
-      new LodUniforms(),
-      new StaticShadowChanges(),
-      false
-    );
+    lights.update(createFrame());
 
-    const record: Array<number> = readRecord(lights, 1);
-    const [direction, right, up] = [record.slice(8, 11), record.slice(12, 15), record.slice(16, 19)];
+    const [direction, right, up] = [LIGHT_RECORD.axis, LIGHT_RECORD.right, LIGHT_RECORD.up].map((vector: number) =>
+      readVector(lights, 1, vector)
+    );
 
     expect(lights.count).toBe(2);
     expect(direction[0]).toBeCloseTo(0, 6);
     expect(direction[1]).toBeCloseTo(-1, 6);
     expect(direction[2]).toBeCloseTo(0, 6);
-    expect(record[11]).toBeCloseTo(Math.cos(Math.PI / 4), 6);
+    expect(direction[3]).toBeCloseTo(Math.cos(Math.PI / 4), 6);
     expect(right[0]).toBeCloseTo(1, 6);
     expect(right[1]).toBeCloseTo(0, 6);
     expect(right[2]).toBeCloseTo(0, 6);
     // The engine's `up = dir x right` is `+z` in its own space, so `-z` mirrored.
-    expect(up.map((it) => (Math.abs(it) < 1e-6 ? 0 : it))).toEqual([0, 0, -1]);
-    expect(record[15]).toBeCloseTo(1 / Math.tan((Math.PI / 2 + (3.5 * Math.PI) / 180) / 2), 6);
-    expect(record[19]).toBe(1);
+    expect(up.slice(0, 3).map((it: number) => (Math.abs(it) < 1e-6 ? 0 : it))).toEqual([0, 0, -1]);
+    expect(right[3]).toBeCloseTo(1 / Math.tan((Math.PI / 2 + (3.5 * Math.PI) / 180) / 2), 6);
+    expect(up[3]).toBe(1);
   });
 
-  it("fades a shadowed spot with its share of the screen and drops it past the far threshold", () => {
+  it("fades a shadowed light of either kind with its share of the screen, and drops it past the far threshold", () => {
     const lights: SceneLights = createLights();
     const lod: LodUniforms = new LodUniforms();
-    const spot: IRendererLight = {
-      ...POINT,
+    const spot: IRendererSpotLight = {
+      ...SPOT,
       cone: Math.PI / 3,
       direction: [0, 0, -1],
       isShadowed: true,
-      kind: ERendererLightKind.SPOT,
       position: [0, 0, -40],
     };
+    const point: IRendererPointLight = { ...POINT, isShadowed: true, position: [0, 0, -60] };
 
     lod.glodStart.value = 0.001;
     lod.glodEnd.value = 0.0001;
     lights.put({ animators: [], lights: [spot, { ...spot, position: [0, 0, -400] }] });
-    lights.update(createCamera(), 0, DEFAULT_RENDERER_LIGHTS_SETTINGS, lod, new StaticShadowChanges(), false);
+    lights.update(createFrame({ lod }));
 
     // The acute cone's sphere: `R / (2 cos²(c / 2))` ahead of it, at `-44.44`.
     const radius: number = 4 / (2 * Math.cos(Math.PI / 6) ** 2);
-    const area: number = (0.5 * radius) / ((40 + radius) ** 2 + 0.001);
-    const fade: number = Math.sqrt((area - 0.0001) / (0.001 - 0.0001));
+    const area: number = (0.5 * radius) / ((40 + radius) ** 2 + 0.00001);
 
     expect(lights.count).toBe(1);
-    expect(readRecord(lights, 0)[4]).toBeCloseTo(0.5 * fade, 6);
+    expect(readVector(lights, 0, LIGHT_RECORD.color)[0]).toBeCloseTo(0.5 * Math.sqrt((area - 0.0001) / 0.0009), 6);
+
+    lights.put({ animators: [], lights: [point] });
+    lights.update(createFrame({ lod }));
+    lights.shadows.markDrawn();
+    lights.update(createFrame({ lod }));
+
+    const pointArea: number = (0.5 * 4) / (60 ** 2 + 0.00001);
+
+    expect(readVector(lights, 0, LIGHT_RECORD.color)[0]).toBeCloseTo(0.5 * Math.sqrt((pointArea - 0.0001) / 0.0009), 6);
+  });
+
+  it("lights a shadowed light only once its faces are drawn, with its faces' squares", () => {
+    const lights: SceneLights = createLights();
+    const shadowed: Array<TRendererLight> = [
+      { ...POINT, isShadowed: true },
+      { ...POINT, isShadowed: true, position: [-1, 2, -12] },
+    ];
+
+    lights.put({ animators: [], lights: shadowed });
+    // Twelve faces, eight drawn a frame: the second light waits.
+    lights.update(createFrame());
+
+    expect(lights.count).toBe(1);
+    expect(lights.shadowed).toBe(1);
+    expect(readVector(lights, 0, LIGHT_RECORD.shadow)[2]).toBe(6);
+
+    lights.shadows.markDrawn();
+    lights.update(createFrame());
+
+    expect(lights.count).toBe(2);
+    expect(lights.report.shadowed).toBe(2);
+  });
+
+  it("keeps the nearest lights the records hold, and counts the rest", () => {
+    const lights: SceneLights = createLights();
+    const crowd: Array<TRendererLight> = Array.from({ length: MAX_LIGHTS + 6 }, (_, index: number) => ({
+      ...POINT,
+      position: [0, 0, -10 - (MAX_LIGHTS + 6 - index) * 0.1],
+      range: 1,
+    }));
+
+    lights.put({ animators: [], lights: crowd });
+    lights.update(createFrame());
+
+    expect(lights.count).toBe(MAX_LIGHTS);
+    expect(lights.report.excessLights).toBe(6);
+    // The nearest first: the last put, standing nearest.
+    expect(readVector(lights, 0, LIGHT_RECORD.position)[2]).toBeCloseTo(-10.1, 4);
+  });
+
+  it("reports nothing once the lights are let go", () => {
+    const lights: SceneLights = createLights();
+
+    lights.put({ animators: [], lights: [POINT] });
+    lights.update(createFrame());
+    lights.release();
+
+    expect({ ...lights.report, atlas: EMPTY_RENDERER_LIGHTS_REPORT.atlas }).toEqual(EMPTY_RENDERER_LIGHTS_REPORT);
   });
 });

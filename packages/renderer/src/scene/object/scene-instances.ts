@@ -13,9 +13,9 @@ import {
   RENDERER_FLOATS_PER_INSTANCE,
   RENDERER_HEMI_FLOATS_PER_INSTANCE,
 } from "#/contract/scene/renderer-object";
+import { EVertexAttribute, INSTANCE_MATRIX_COLUMNS } from "#/geometry/vertex-attribute";
 import { queueBufferUpload } from "#/scene/buffer-upload";
 import { SceneGeometry } from "#/scene/geometry/scene-geometry";
-import { EVertexAttribute, INSTANCE_MATRIX_COLUMNS } from "#/shader/vertex-attribute";
 import { CullView } from "#/visibility/cull-view";
 import { collectVisibleInstances, FLOATS_PER_SPHERE, toInstanceSpheres } from "#/visibility/instance-spheres";
 import { EVisibility } from "#/visibility/visibility";

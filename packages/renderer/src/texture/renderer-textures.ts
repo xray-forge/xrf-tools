@@ -3,7 +3,7 @@ import { texture as sample } from "three/tsl";
 import { Node, Texture, TextureNode, WebGPURenderer } from "three/webgpu";
 
 import { ERendererTextureEncoding, TRendererTextureSource } from "#/contract/scene/renderer-texture-source";
-import { IDdsRefusal } from "#/texture/dds/dds-refusal";
+import { IDdsRefusal } from "#/dds/dds-refusal";
 import {
   createRendererImageTexture,
   createRendererRawTexture,

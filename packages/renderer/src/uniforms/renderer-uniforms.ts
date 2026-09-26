@@ -28,7 +28,8 @@ export class RendererUniforms {
   public readonly staticDraws: StaticDrawBuffers = new StaticDrawBuffers();
   /** The sun's shadow cascades, fitted every frame. */
   public readonly shadows: ShadowUniforms = new ShadowUniforms();
-  public readonly wind: TreeWindUniforms = new TreeWindUniforms();
+  /** How the trees sway, built each frame. */
+  public readonly treeWind: TreeWindUniforms = new TreeWindUniforms();
   /** How the grass sways, built each frame beside the trees' wind. */
   public readonly grassWind: GrassWindUniforms = new GrassWindUniforms();
   /** What the motion every G-buffer surface writes is measured with. */
@@ -58,7 +59,7 @@ export class RendererUniforms {
    */
   public light(lighting: IRendererLighting): void {
     this.lighting.apply(toBaseLightingConstants(lighting));
-    this.wind.take(lighting.trees);
+    this.treeWind.take(lighting.trees);
     this.grassWind.take(lighting.grass);
     this.fogDistance = lighting.fog?.distance ?? null;
   }

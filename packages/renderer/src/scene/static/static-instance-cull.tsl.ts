@@ -10,6 +10,7 @@ import {
   EStaticPool,
   STATIC_CULL_COUNTS,
   STATIC_DRAW_ARGUMENTS,
+  STATIC_LIGHT_VIEW_START,
   STATIC_LOD_IMPOSTOR_ROW,
   STATIC_NO_BAND,
   STATIC_NO_LOD,
@@ -63,6 +64,16 @@ function toBandDrawn(word: Node<"uint">, sphere: Node<"vec4">, lod: LodUniforms)
 
   // The window is at most `windows - 1`, so the band it falls in is always one of the draw's.
   return word.equal(STATIC_NO_BAND).or(window.mul(bands).div(windows).equal(band));
+}
+
+/**
+ * Whether a row's band is the finest, which a light's face casts whatever the camera: the face is kept while nothing it
+ * casts from changes, so a band picked from where the camera stood would stay as the camera comes near.
+ *
+ * @param word - The row's band word, `STATIC_NO_BAND` for none.
+ */
+function toFinestBand(word: Node<"uint">): Node<"bool"> {
+  return word.equal(STATIC_NO_BAND).or(word.bitAnd(255).equal(0));
 }
 
 /**
@@ -170,15 +181,15 @@ export function createLateInstanceCullShader(buffers: StaticDrawBuffers): Comput
 }
 
 /**
- * A shadow cascade's cull of the instanced draws, one invocation a row: a row whose sphere reaches into the cascade's
- * box counts its draw's instance count up in the cascade's arguments and lists its place in the cascade's region. The
- * shadow phase casts every clump as its trees and never as its impostor (`add_leafs_static`), so an impostor's own row
- * is left out and a tree's LOD state is not asked; a progressive tree casts the band its detail picks, as it draws.
- * Runs after the cascade's slot cull, which leaves its instanced draws at no instances.
+ * A shadow view's cull of the instanced draws, one invocation a row: a row whose sphere reaches into the view counts
+ * its draw's instance count up in the view's arguments and lists its place in the view's region. The shadow phase
+ * casts every clump as its trees and never as its impostor (`add_leafs_static`), so an impostor's own row is left out
+ * and a tree's LOD state is not asked. A progressive tree casts into a cascade the band its detail picks, as it draws,
+ * and into a light's face its finest. Runs after the view's slot cull, which leaves its instanced draws at none.
  *
  * @param buffers - The static draw buffers.
- * @param view - The cascade, from zero.
- * @param planes - The cascade's six planes.
+ * @param view - The shadow view, from zero: the cascades, then the lights' faces.
+ * @param planes - The view's six planes.
  * @returns The compute pass.
  */
 export function createViewInstanceCullShader(
@@ -205,17 +216,16 @@ export function createViewInstanceCullShader(
       .notEqual(STATIC_NO_LOD)
       .and(words.x.bitAnd(STATIC_LOD_IMPOSTOR_ROW).notEqual(0));
 
-    If(
-      isImpostor
-        .not()
-        .and(toBandDrawn(words.y, sphere as unknown as Node<"vec4">, buffers.lod))
-        .and(toInFrustum(sphere, planes).equal(1)),
-      () => {
-        const target = targets.element(instanceIndex);
-        const kept = atomicAdd(args.element(target.y.mul(STATIC_DRAW_ARGUMENTS).add(1)), uint(1));
+    const isBanded: Node<"bool"> =
+      view >= STATIC_LIGHT_VIEW_START
+        ? toFinestBand(words.y)
+        : toBandDrawn(words.y, sphere as unknown as Node<"vec4">, buffers.lod);
 
-        visible.element(target.z.add(region).add(kept)).assign(target.x);
-      }
-    );
+    If(isImpostor.not().and(isBanded).and(toInFrustum(sphere, planes).equal(1)), () => {
+      const target = targets.element(instanceIndex);
+      const kept = atomicAdd(args.element(target.y.mul(STATIC_DRAW_ARGUMENTS).add(1)), uint(1));
+
+      visible.element(target.z.add(region).add(kept)).assign(target.x);
+    });
   })().compute(rows);
 }

@@ -25,7 +25,7 @@ import {
 import { ComputeNode, Node, StorageBufferNode } from "three/webgpu";
 
 import { RENDERER_GRASS_SLOT_WORDS, RENDERER_GRASS_TRIANGLE_FLOATS } from "#/contract/scene/renderer-grass";
-import { IGrassBuffers } from "#/scene/grass/grass-buffers";
+import { IGrassItemBuffers, TGrassBuffers } from "#/scene/grass/grass-buffers";
 import { loopNamed } from "#/shader/named-loop.tsl";
 import { GrassUniforms } from "#/uniforms/grass-uniforms";
 import { STATIC_DRAW_ARGUMENTS } from "#/uniforms/static-draw-buffers";
@@ -89,11 +89,10 @@ export function createGrassDither(): Uint32Array {
 
 /**
  * @param buffers - What the grass is planted into.
- * @param capacity - Items the lists hold.
  * @returns The sorted items as a draw reads them.
  */
-export function toGrassItems(buffers: IGrassBuffers, capacity: number): StorageBufferNode<"vec4"> {
-  return storage(buffers.sorted, "vec4", capacity * GRASS_ITEM_VECTORS).toReadOnly() as never;
+export function toGrassItems(buffers: IGrassItemBuffers): StorageBufferNode<"vec4"> {
+  return storage(buffers.sorted, "vec4", buffers.capacity * GRASS_ITEM_VECTORS).toReadOnly() as never;
 }
 
 /**
@@ -106,15 +105,14 @@ export function toGrassItems(buffers: IGrassBuffers, capacity: number): StorageB
  * @param buffers - What the grass is planted from and into.
  * @param uniforms - Where the camera stands and what the planting is set to.
  * @param discard - `r_ssaDISCARD`, the screen area below which the engine drops what it would draw.
- * @param capacity - Items the lists hold.
- * @returns The passes.
+ * @returns The passes; the planting's dispatch is as many slots as the settings cover, set before each frame's.
  */
 export function createGrassPlanting(
-  buffers: IGrassBuffers,
+  buffers: TGrassBuffers,
   uniforms: GrassUniforms,
-  discard: Node<"float">,
-  capacity: number
+  discard: Node<"float">
 ): IGrassPlanting {
+  const { capacity } = buffers;
   const models: number = buffers.modelCount;
   const counts = storage(buffers.counts, "uint", models + 1).toAtomic();
   const cursors = storage(buffers.cursors, "uint", Math.max(models, 1)).toAtomic();
@@ -173,7 +171,7 @@ export function createGrassPlanting(
 
 /** The planting of every slot around the camera, a thread a slot. */
 function createPlant(
-  buffers: IGrassBuffers,
+  buffers: TGrassBuffers,
   uniforms: GrassUniforms,
   discard: Node<"float">,
   capacity: number,

@@ -4,6 +4,7 @@ import { ERendererPass } from "#/contract/scene/renderer-surface";
 import { IRendererFrame } from "#/pass/renderer-frame";
 import { IRendererScenePass } from "#/pass/renderer-scene-pass";
 import { RendererTargets } from "#/pass/renderer-targets";
+import { drawUnsorted } from "#/pass/unsorted-draw";
 
 /**
  * Fills the G-buffer with everything the deferred passes light that the first cull kept: its static draws and every
@@ -27,9 +28,7 @@ export class GBufferPass implements IRendererScenePass {
     renderer.clear(true, true, false);
     // In scene order, where an object's parts stand together and share their buffers from one draw to the next:
     // sorted by depth, every draw rebinds them, and the CPU is what a frame waits on.
-    renderer.sortObjects = false;
-    renderer.render(scenes[this.scene], camera);
-    renderer.sortObjects = true;
+    drawUnsorted(renderer, () => renderer.render(scenes[this.scene], camera));
   }
 
   public dispose(): void {}

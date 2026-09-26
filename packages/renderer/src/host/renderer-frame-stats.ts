@@ -3,7 +3,7 @@ import { IRendererLightsReport, IRendererReport, IRendererStaticDrawReport } fro
 import { RendererDevice } from "#/device/renderer-device";
 import { RenderFrameTimer } from "#/frame/render-frame-timer";
 import { RendererGpuTimings } from "#/host/renderer-gpu-timings";
-import { IRendererFrameSize } from "#/pass/renderer-frame-size";
+import { IRendererFrameSize } from "#/sampling/renderer-frame-size";
 import { IStaticCullCounts } from "#/scene/static/static-cull-counts";
 
 /** How often the frame report is sent, in milliseconds. */

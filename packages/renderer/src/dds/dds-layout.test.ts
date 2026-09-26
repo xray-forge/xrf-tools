@@ -1,8 +1,8 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { EDdsBlockFormat } from "#/texture/dds/dds-block-format";
-import { EDdsChannels } from "#/texture/dds/dds-channels";
-import { getDdsStoredLength, toDdsBlockLayout, toDdsTexelLayout } from "#/texture/dds/dds-layout";
+import { EDdsBlockFormat } from "#/dds/dds-block-format";
+import { EDdsChannels } from "#/dds/dds-channels";
+import { getDdsStoredLength, toDdsBlockLayout, toDdsTexelLayout } from "#/dds/dds-layout";
 
 describe("getDdsStoredLength", () => {
   it("costs a block layout whole blocks, and never less than one", () => {

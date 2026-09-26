@@ -1,6 +1,7 @@
 import { IRendererFrame } from "#/pass/renderer-frame";
 import { IRendererPass } from "#/pass/renderer-pass";
 import { RendererTargets } from "#/pass/renderer-targets";
+import { drawUnsorted } from "#/pass/unsorted-draw";
 import { StaticCull } from "#/scene/static/static-cull";
 
 /**
@@ -23,9 +24,7 @@ export class GBufferLatePass implements IRendererPass {
 
   public render({ renderer, camera }: IRendererFrame): void {
     renderer.setRenderTarget(this.targets.gbuffer);
-    renderer.sortObjects = false;
-    this.cull.drawLate(renderer, camera);
-    renderer.sortObjects = true;
+    drawUnsorted(renderer, () => this.cull.drawLate(renderer, camera));
   }
 
   public dispose(): void {}

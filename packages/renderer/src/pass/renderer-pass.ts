@@ -1,7 +1,7 @@
 import { WebGPURenderer } from "three/webgpu";
 
 import { IRendererFrame } from "#/pass/renderer-frame";
-import { IRendererFrameSize } from "#/pass/renderer-frame-size";
+import { IRendererFrameSize } from "#/sampling/renderer-frame-size";
 
 /**
  * One stage of the frame, timed on the GPU under its name.

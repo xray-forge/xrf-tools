@@ -2,12 +2,12 @@ import { attribute, bitcast, float, Fn, varying, vec2 } from "three/tsl";
 import { Node, NodeBuilder } from "three/webgpu";
 
 import {
+  isPackedTreeGeometry,
   PACKED_BASE_QUANT,
   PACKED_LIGHTMAP_QUANT,
-  PACKED_TREE_COMPONENTS,
   PACKED_TREE_QUANT,
 } from "#/geometry/renderer-packed-coordinate";
-import { EVertexAttribute } from "#/shader/vertex-attribute";
+import { EVertexAttribute } from "#/geometry/vertex-attribute";
 
 /**
  * @param builder - A builder.
@@ -77,7 +77,7 @@ function toSigned(bits: Node<"uint">): Node<"int"> {
  * @returns The coordinate.
  */
 export function toPackedUv(builder: NodeBuilder): Node<"vec2"> {
-  if (builder.geometry.getAttribute(EVertexAttribute.PACKED_UV).itemSize === PACKED_TREE_COMPONENTS / 2) {
+  if (isPackedTreeGeometry(builder.geometry)) {
     return toShorts(attribute<"uvec2">(EVertexAttribute.PACKED_UV, "uvec2").x).div(PACKED_TREE_QUANT);
   }
 
@@ -97,10 +97,7 @@ export function toPackedUv(builder: NodeBuilder): Node<"vec2"> {
  * @returns Whether it builds for a tree's packed vertex, whose coordinate is four shorts (`v_tree`).
  */
 export function isPackedTreeBuild(builder: NodeBuilder): boolean {
-  return (
-    hasAttribute(builder, EVertexAttribute.PACKED_UV) &&
-    builder.geometry.getAttribute(EVertexAttribute.PACKED_UV).itemSize === PACKED_TREE_COMPONENTS / 2
-  );
+  return isPackedTreeGeometry(builder.geometry);
 }
 
 /**

@@ -1,4 +1,10 @@
-import { ERendererLightKind, IRendererLight, IRendererLightAnimator, IRendererLights } from "@xrf/renderer";
+import {
+  ERendererLightKind,
+  IRendererLightAnimator,
+  IRendererLightBase,
+  IRendererLights,
+  TRendererLight,
+} from "@xrf/renderer";
 
 import { LevelLightsDescription } from "@/core/ipc/types/xrf-app";
 import { Vector3d } from "@/core/ipc/types/xrf-math";
@@ -21,22 +27,39 @@ export function toLevelRendererLights(lights: LevelLightsDescription): IRenderer
       frameCount: animator.frameCount,
       frames: animator.keys.map((key: LightAnimatorKey) => key.frame),
     })),
-    lights: lights.lights.lights.map((light: LightDescription): IRendererLight => ({
-      animator: light.animator ?? undefined,
-      animatorScale: light.animatorScale ?? 0,
-      color: [light.color[0] ?? 0, light.color[1] ?? 0, light.color[2] ?? 0],
-      cone: light.cone ?? 0,
-      direction: toVector(light.direction),
-      isLevel: light.isLevel,
-      isShadowed: light.isShadowed,
-      kind: light.kind === ELightKind.SPOT ? ERendererLightKind.SPOT : ERendererLightKind.POINT,
-      near: light.near ?? 0,
-      position: toVector(light.position),
-      projector: light.projector === null ? undefined : projectors[light.projector],
-      range: light.range ?? 0,
-      rangeJitter: light.rangeJitter ?? undefined,
-      right: toVector(light.right),
-    })),
+    lights: lights.lights.lights.map((light: LightDescription) => toLevelRendererLight(light, projectors)),
+  };
+}
+
+/**
+ * @param light - One light the loader holds.
+ * @param projectors - The references the lights' projectors are put under.
+ * @returns It as the renderer lights with it: a spot with its direction, cone and projector, a point without.
+ */
+function toLevelRendererLight(light: LightDescription, projectors: ReadonlyArray<string>): TRendererLight {
+  const base: IRendererLightBase = {
+    animator: light.animator ?? undefined,
+    animatorScale: light.animatorScale ?? 0,
+    color: [light.color[0] ?? 0, light.color[1] ?? 0, light.color[2] ?? 0],
+    isLevel: light.isLevel,
+    isShadowed: light.isShadowed,
+    near: light.near ?? 0,
+    position: toVector(light.position),
+    range: light.range ?? 0,
+    rangeJitter: light.rangeJitter ?? undefined,
+  };
+
+  if (light.kind !== ELightKind.SPOT) {
+    return { ...base, kind: ERendererLightKind.POINT };
+  }
+
+  return {
+    ...base,
+    cone: light.cone ?? 0,
+    direction: toVector(light.direction),
+    kind: ERendererLightKind.SPOT,
+    projector: light.projector === null ? undefined : projectors[light.projector],
+    right: toVector(light.right),
   };
 }
 

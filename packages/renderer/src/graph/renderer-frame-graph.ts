@@ -21,8 +21,6 @@ import { LightsPass } from "#/pass/lights-pass";
 import { MotionBackgroundPass } from "#/pass/motion-background-pass";
 import { PresentPass } from "#/pass/present-pass";
 import { IRendererFrame } from "#/pass/renderer-frame";
-import { IRendererFrameJitter } from "#/pass/renderer-frame-jitter";
-import { IRendererFrameSize, isSameRendererFrameSize, toRendererFrameSize } from "#/pass/renderer-frame-size";
 import { IRendererPass } from "#/pass/renderer-pass";
 import { IRendererScenePass, isRendererScenePass } from "#/pass/renderer-scene-pass";
 import { RendererTargets } from "#/pass/renderer-targets";
@@ -32,6 +30,8 @@ import { SpatialUpscalePass } from "#/pass/spatial-upscale-pass";
 import { TemporalAntialiasPass } from "#/pass/temporal-antialias-pass";
 import { TemporalJitter } from "#/pass/temporal-jitter";
 import { ITemporalUpscaler } from "#/pass/temporal-upscaler";
+import { IRendererFrameJitter } from "#/sampling/renderer-frame-jitter";
+import { IRendererFrameSize, isSameRendererFrameSize, toRendererFrameSize } from "#/sampling/renderer-frame-size";
 import { SceneGrass } from "#/scene/grass/scene-grass";
 import { SceneLights } from "#/scene/lights/scene-lights";
 import { RendererOverlays } from "#/scene/overlay/renderer-overlays";
@@ -161,7 +161,8 @@ export class RendererFrameGraph {
       ({ count, resolution }: IFramePlanShadows) =>
         Array.from(
           { length: count },
-          (_, view: number) => new ShadowPass(view, targets, casters, cull, uniforms.shadows, uniforms.wind, resolution)
+          (_, view: number) =>
+            new ShadowPass(view, targets, casters, cull, uniforms.shadows, uniforms.treeWind, resolution)
         ),
       ({ count, resolution }: IFramePlanShadows) => `${count}:${resolution}`
     );

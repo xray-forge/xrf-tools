@@ -49,18 +49,20 @@ export interface ISurfaceMaterial {
  * @param surface - What the consumer put.
  * @param textures - Where its textures are bound from.
  * @param uniforms - What the frame's shaders read.
+ * @param opaqueShadow - The shadow material every opaque surface shares, its maker's.
  * @returns The material, shaded by the pass its draw puts it in.
  */
 export function createSurfaceMaterial(
   surface: IRendererSurface,
   textures: RendererTextures,
-  uniforms: RendererUniforms
+  uniforms: RendererUniforms,
+  opaqueShadow: MeshBasicNodeMaterial
 ): ISurfaceMaterial {
   const pass: ERendererPass = toRendererPass(surface);
   const samplers: MaterialSamplers = new MaterialSamplers(textures, uniforms.settings.textureBias);
   const shader: ISurfaceShader = SURFACE_SHADERS[pass](surface, samplers, uniforms);
   const compositing: Nullable<ISurfaceCompositing> = toSurfaceCompositing(surface);
-  const material: SurfaceNodeMaterial = new SurfaceNodeMaterial(uniforms.staticDraws, uniforms.wind);
+  const material: SurfaceNodeMaterial = new SurfaceNodeMaterial(uniforms.staticDraws, uniforms.treeWind);
 
   // Every surface stands its geometry in each place instanced attributes name, and in its own place where none do.
   material.positionNode = instancedPosition();
@@ -84,14 +86,14 @@ export function createSurfaceMaterial(
     ? null
     : isCutOut
       ? createShadowMaterial(surface, samplers.unbiased(), uniforms)
-      : getOpaqueShadowMaterial(uniforms);
+      : opaqueShadow;
 
   return {
     dispose: () => {
       samplers.release();
       material.dispose();
 
-      // The opaque one is every opaque surface's, and goes with the renderer.
+      // The opaque one is every opaque surface's, and goes with whatever made it.
       if (isCutOut) {
         shadow?.dispose();
       }
@@ -105,23 +107,13 @@ export function createSurfaceMaterial(
   };
 }
 
-/** The shadow material every opaque surface of a renderer shares, by the uniforms it was made over. */
-const OPAQUE_SHADOW_MATERIALS: WeakMap<RendererUniforms, MeshBasicNodeMaterial> = new WeakMap();
-
 /**
  * @param uniforms - What the frame's shaders read.
  * @returns The shadow material every opaque surface shares: its depth alone, whatever it is dressed with, so every
  *   opaque caster of an arena is one batch.
  */
-function getOpaqueShadowMaterial(uniforms: RendererUniforms): MeshBasicNodeMaterial {
-  let material: MeshBasicNodeMaterial | undefined = OPAQUE_SHADOW_MATERIALS.get(uniforms);
-
-  if (!material) {
-    material = createShadowMaterial(null, null, uniforms);
-    OPAQUE_SHADOW_MATERIALS.set(uniforms, material);
-  }
-
-  return material;
+export function createOpaqueShadowMaterial(uniforms: RendererUniforms): MeshBasicNodeMaterial {
+  return createShadowMaterial(null, null, uniforms);
 }
 
 /**
@@ -135,7 +127,7 @@ function createShadowMaterial(
   samplers: Nullable<MaterialSamplers>,
   uniforms: RendererUniforms
 ): MeshBasicNodeMaterial {
-  const material: SurfaceNodeMaterial = new SurfaceNodeMaterial(uniforms.staticDraws, uniforms.wind);
+  const material: SurfaceNodeMaterial = new SurfaceNodeMaterial(uniforms.staticDraws, uniforms.treeWind);
 
   material.positionNode = instancedPosition();
   material.fragmentNode = toShadowSurfaceShader(surface, samplers).fragmentNode ?? null;

@@ -1,11 +1,11 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { EDdsBlockFormat } from "#/texture/dds/dds-block-format";
-import { EDdsChannels } from "#/texture/dds/dds-channels";
-import { IDdsFile, IDdsRead, readDdsFile } from "#/texture/dds/dds-file";
-import { mockDdsFile, mockDx10DdsFile, mockUncompressedDdsFile } from "#/texture/dds/dds-fixtures";
-import { EDdsLayout } from "#/texture/dds/dds-layout";
-import { EDdsRefusal, IDdsRefusal } from "#/texture/dds/dds-refusal";
+import { EDdsBlockFormat } from "#/dds/dds-block-format";
+import { EDdsChannels } from "#/dds/dds-channels";
+import { IDdsFile, IDdsRead, readDdsFile } from "#/dds/dds-file";
+import { mockDdsFile, mockDx10DdsFile, mockUncompressedDdsFile } from "#/dds/dds-fixtures";
+import { EDdsLayout } from "#/dds/dds-layout";
+import { EDdsRefusal, IDdsRefusal } from "#/dds/dds-refusal";
 
 /** The file a read produced, failing the case rather than the assertion when it was refused. */
 function readFile(bytes: ArrayBuffer): IDdsFile {

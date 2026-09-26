@@ -26,12 +26,14 @@ import {
 import { Data3DTexture, Node, StorageBufferAttribute, StorageBufferNode, Texture, TextureNode } from "three/webgpu";
 
 import { ERendererLightShadowFilter } from "#/contract/renderer-features";
-import { LIGHT_RECORD } from "#/scene/lights/light-record";
+import { TRendererVector } from "#/contract/renderer-lighting";
+import { LIGHT_RECORD, LIGHT_VECTORS, MAX_LIGHTS } from "#/scene/lights/light-record";
 import {
   LIGHT_SHADOW_POINT_CONE,
   LIGHT_SHADOW_POINT_FACES,
   toLightShadowScale,
 } from "#/scene/lights/light-shadow-faces";
+import { LIGHT_SHADOW_ATLAS_SIZE } from "#/scene/lights/light-shadow-planner";
 import { IGBufferSample } from "#/shader/gbuffer-sample";
 import { IGBufferTextures } from "#/shader/gbuffer-textures";
 import { readGBuffer } from "#/shader/gbuffer.tsl";
@@ -62,27 +64,27 @@ export interface ILightsPassInputs {
 /** `gbd.P += gbd.N * 0.015`: the virtual offset `accum_base` moves a point by with the optimised G-buffer. */
 const VIRTUAL_OFFSET: number = 0.015;
 
+/** A texel of the atlas, in texture coordinates. */
+const ATLAS_TEXEL: number = 1 / LIGHT_SHADOW_ATLAS_SIZE;
+
 /**
- * Every local light reaching a pixel, as `accum_omni_unshadowed` and `accum_spot_unshadowed` accumulate each:
- * `Ldynamic_color * plight_local(m, P, N) * lightmap`, a spot's `lightmap` its projector where the pixel stands in its
- * cone.
+ * Every local light reaching a pixel, as the engine's `accum_omni` and `accum_spot` accumulate each:
+ * `Ldynamic_color * plight_local(m, P, N) * lightmap * shadow`, a spot's `lightmap` its projector where the pixel stands
+ * in its cone, and the shadow of a light that casts one.
  *
  * @param inputs - The G-buffer, the binned lights and what they are shaded with.
  * @param camera - The drawing camera's uniforms.
  * @param uniforms - What the lights were binned by.
- * @param vectors - Vectors of four floats a light record takes.
- * @param capacity - Lights the records hold.
+ * @param filter - How the shadows are filtered.
  * @returns Diffuse in colour, specular in alpha, to add to what the sun accumulated.
  */
 export function toLightsPassFragment(
   inputs: ILightsPassInputs,
   camera: CameraUniforms,
   uniforms: LightsUniforms,
-  vectors: number,
-  capacity: number,
   filter: ERendererLightShadowFilter
 ): Node<"vec4"> {
-  const records = storage(inputs.records, "vec4", capacity * vectors).toReadOnly();
+  const records = storage(inputs.records, "vec4", MAX_LIGHTS * LIGHT_VECTORS).toReadOnly();
   const counts = storage(inputs.counts, "uint", LIGHT_CLUSTERS).toReadOnly();
   const items = storage(inputs.items, "uint", LIGHT_CLUSTERS * LIGHT_CLUSTER_CAPACITY).toReadOnly();
 
@@ -116,12 +118,12 @@ export function toLightsPassFragment(
     const reaching = sample.depth.greaterThan(0).select(counts.element(cluster), uint(0));
 
     loopNamed({ end: reaching, name: "reaching", start: uint(0), type: "uint" }, (index) => {
-      const base = items.element(cluster.mul(LIGHT_CLUSTER_CAPACITY).add(index)).mul(vectors);
-      const place = records.element(base);
-      const color = records.element(base.add(1));
-      const axis = records.element(base.add(2));
-      const right = records.element(base.add(3));
-      const up = records.element(base.add(4));
+      const base = items.element(cluster.mul(LIGHT_CLUSTER_CAPACITY).add(index)).mul(LIGHT_VECTORS);
+      const place = records.element(base.add(LIGHT_RECORD.position));
+      const color = records.element(base.add(LIGHT_RECORD.color));
+      const axis = records.element(base.add(LIGHT_RECORD.axis));
+      const right = records.element(base.add(LIGHT_RECORD.right));
+      const up = records.element(base.add(LIGHT_RECORD.up));
       const shadow = records.element(base.add(LIGHT_RECORD.shadow));
       const isSpot = axis.w.greaterThan(-1);
       const isShadowed = shadow.z.greaterThan(0);
@@ -130,33 +132,47 @@ export function toLightsPassFragment(
       const toPoint = point.sub(place.xyz);
       // `plight_local`: falloff by the squared distance, to zero at 95% of the range.
       const falloff = saturate(float(1).sub(dot(toPoint, toPoint).mul(place.w)));
-      const toLight = normalize(toPoint.negate());
-      const half = normalize(toLight.add(toEye));
-      const material = texture3D(inputs.lut, vec3(dot(toLight, normal), dot(half, normal), slice)).level(float(0));
-      const light = vec4(material.x, material.x, material.x, material.y).mul(falloff).toVar();
+      const lookup: ILightShadowLookup = {
+        atlas: inputs.atlas,
+        axis,
+        base,
+        isSpot,
+        records,
+        right,
+        shadow,
+        toPoint,
+        up,
+      };
 
-      If(isSpot, () => {
-        // The point in the light's own view: `x` right, `y` up, `z` along its direction.
-        const along = dot(toPoint, axis.xyz);
-        const across = vec2(dot(toPoint, right.xyz), dot(toPoint, up.xyz));
-        const isInCone = along.greaterThan(0).and(along.greaterThanEqual(axis.w.mul(toPoint.length())));
-        // `m_Lmap`: the widened projection, `v` down, over the texture's square.
-        const uv = vec2(0.5).add(across.mul(right.w).div(along).mul(vec2(0.5, -0.5)));
+      // Past the light's reach nothing below adds anything: no material, projector or shadow is read there.
+      If(falloff.greaterThan(0), () => {
+        const toLight = normalize(toPoint.negate());
+        const half = normalize(toLight.add(toEye));
+        const material = texture3D(inputs.lut, vec3(dot(toLight, normal), dot(half, normal), slice)).level(float(0));
+        const light = vec4(material.x, material.x, material.x, material.y).mul(falloff).toVar();
 
-        light.mulAssign(isInCone.select(toProjected(inputs.projectors, int(up.w), uv), vec4(0)));
+        If(isSpot, () => {
+          const along = dot(toPoint, axis.xyz);
+          // In front of the apex and within the cone: the rest of a spot's clusters stays dark, its apex undivided.
+          const isInCone = along.greaterThan(0).and(along.greaterThanEqual(axis.w.mul(toPoint.length())));
+
+          If(isInCone, () => {
+            const across = vec2(dot(toPoint, right.xyz), dot(toPoint, up.xyz));
+
+            light.mulAssign(toProjected(inputs.projectors, int(up.w), toFaceUv(across, along, right.w)));
+
+            If(isShadowed, () => {
+              light.mulAssign(toLightShadow(lookup, camera, filter));
+            });
+          }).Else(() => {
+            light.assign(vec4(0));
+          });
+        }).ElseIf(isShadowed, () => {
+          light.mulAssign(toLightShadow(lookup, camera, filter));
+        });
+
+        total.addAssign(color.mul(light));
       });
-
-      If(isShadowed, () => {
-        light.mulAssign(
-          toLightShadow(
-            { atlas: inputs.atlas, axis, base, isSpot, records, right, shadow, toPoint, up },
-            camera,
-            filter
-          )
-        );
-      });
-
-      total.addAssign(color.mul(light));
     });
 
     return total;
@@ -178,12 +194,19 @@ interface ILightShadowLookup {
   isSpot: Node<"bool">;
 }
 
-/** A point light's faces, with the right each camera takes: `direction x up`. */
-const POINT_FACES = LIGHT_SHADOW_POINT_FACES.map(({ direction, up }) => {
+/** A point light's face, with the right its camera takes. */
+interface IPointFace {
+  readonly direction: TRendererVector;
+  readonly right: TRendererVector;
+  readonly up: TRendererVector;
+}
+
+/** A point light's faces, each camera's right `direction x up`. */
+const POINT_FACES: ReadonlyArray<IPointFace> = LIGHT_SHADOW_POINT_FACES.map(({ direction, up }): IPointFace => {
   const [dx, dy, dz] = direction;
   const [ux, uy, uz] = up;
 
-  return { direction, right: [dy * uz - dz * uy, dz * ux - dx * uz, dx * uy - dy * ux] as const, up };
+  return { direction, right: [dy * uz - dz * uy, dz * ux - dx * uz, dx * uy - dy * ux], up };
 });
 
 /** `KERNEL`: how far `shadow_hw`'s four taps stand from the point, in texels of the atlas. */
@@ -219,8 +242,8 @@ const PCSS_WIDTH: number = 150;
 
 /**
  * How much of a shadowed light reaches a point, as `shadow_hw` finds it: the face the point stands in, its depth there
- * in the engine's own depth moved by its scale and bias, and four taps of a bilinear comparison around it, kept a texel
- * and a half inside the face's square. A point's face is its direction's longest axis; a spot has one.
+ * in the engine's own depth moved by its scale and bias, and four taps of a bilinear comparison around it. A point's
+ * face is its direction's longest axis; a spot has one.
  *
  * @param lookup - The light's record, and the point.
  * @param camera - The drawing camera's uniforms, which turn the point into the world a point light's faces stand in.
@@ -261,7 +284,7 @@ function toLightShadow(
   });
 
   const rect = records.element(base.add(LIGHT_RECORD.faces).add(face));
-  const texel = shadow.w;
+  const texel = float(ATLAS_TEXEL);
   const [near, far] = [shadow.x, shadow.y];
   const depth = max(along, near);
   // The face's own depth as the engine stores it, `0` near and `1` far, moved as `m_TexelAdjust` moves it; the atlas
@@ -269,11 +292,14 @@ function toLightShadow(
   const engineDepth = far.mul(depth.sub(near)).div(depth.mul(far.sub(near)));
   const moved = engineDepth.mul(DEPTH_SCALE).add(DEPTH_BIAS[filter]);
   const reference = float(1).sub(moved);
-  const uv = vec2(0.5).add(across.mul(scale).div(along).mul(vec2(0.5, -0.5)));
-  // In texels of the atlas, the square's own edge a texel and a half in, as the engine insets its sub-rect.
-  const least = rect.xy.div(texel).add(1.5);
-  const most = rect.xy.add(rect.zz).div(texel).sub(1.5);
-  const centre = clamp(rect.xy.add(uv.mul(rect.z)).div(texel), least, most);
+  const uv = toFaceUv(across, along, scale);
+  // In texels of the atlas: the face maps into its square a texel in, as the engine maps a face into its sub-rect;
+  // each tap is kept inside the square, where the engine's kernel may read a neighbour's texel.
+  const corner = rect.xy.div(texel);
+  const side = rect.z.div(texel);
+  const least = corner.add(0.5);
+  const most = corner.add(side).sub(0.5);
+  const centre = corner.add(1).add(uv.mul(side.sub(2)));
 
   if (filter === ERendererLightShadowFilter.ANOMALY) {
     return toPenumbraLit(atlas, centre, least, most, texel, moved);
@@ -287,7 +313,9 @@ function toLightShadow(
     [-1, 1],
     [1, 1],
   ]) {
-    lit = lit.add(toComparedTexels(atlas, centre.add(vec2(x * SHADOW_KERNEL, y * SHADOW_KERNEL)), texel, reference));
+    const tap = clamp(centre.add(vec2(x * SHADOW_KERNEL, y * SHADOW_KERNEL)), least, most);
+
+    lit = lit.add(toComparedTexels(atlas, tap, texel, reference));
   }
 
   return lit.div(4);
@@ -375,6 +403,19 @@ function toComparedTexels(
   }
 
   return mix(mix(lit(0, 0), lit(1, 0), blend.x), mix(lit(0, 1), lit(1, 1), blend.x), blend.y);
+}
+
+/**
+ * `m_Lmap` and a face's projection alike: a point in a light's view, `x` right, `y` up, `along` its direction, over the
+ * square the widened cone covers, `v` down.
+ *
+ * @param across - The point across the light's view.
+ * @param along - How far along it.
+ * @param scale - `cot` of half the widened cone.
+ * @returns Where it stands on the square, from zero to one.
+ */
+function toFaceUv(across: Node<"vec2">, along: Node<"float">, scale: Node<"float">): Node<"vec2"> {
+  return vec2(0.5).add(across.mul(scale).div(along).mul(vec2(0.5, -0.5)));
 }
 
 /**

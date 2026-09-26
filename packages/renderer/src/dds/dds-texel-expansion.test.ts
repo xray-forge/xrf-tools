@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { EDdsChannels } from "#/texture/dds/dds-channels";
-import { expandDdsTexels } from "#/texture/dds/dds-texel-expansion";
+import { EDdsChannels } from "#/dds/dds-channels";
+import { expandDdsTexels } from "#/dds/dds-texel-expansion";
 
 /** Bytes laid out as a file stores them, starting at a nonzero offset so the offset is exercised too. */
 function stored(bytes: ReadonlyArray<number>): ArrayBuffer {

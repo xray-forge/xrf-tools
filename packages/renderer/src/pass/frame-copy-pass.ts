@@ -3,8 +3,8 @@ import { NodeMaterial, QuadMesh, RenderTarget, Texture, WebGPURenderer } from "t
 import { toFrameCopy } from "#/pass/frame-copy-pass.tsl";
 import { createQuadMaterial } from "#/pass/quad-material";
 import { IRendererFrame } from "#/pass/renderer-frame";
-import { IRendererFrameSize } from "#/pass/renderer-frame-size";
 import { IRendererPass } from "#/pass/renderer-pass";
+import { IRendererFrameSize } from "#/sampling/renderer-frame-size";
 
 /**
  * Copies a frame as it stands at one point of the frame into a target of its own, for a later pass to compare with.

@@ -38,34 +38,31 @@ export class LodUniforms {
   public take(settings: IRendererLodSettings, width: number, height: number, camera: PerspectiveCamera): boolean {
     const fieldOfView: number = REFERENCE_FIELD_OF_VIEW / camera.fov;
     const screen: number = width * height * fieldOfView * fieldOfView * (SCREEN_EPSILON + settings.geometryLod);
-    const values: ReadonlyArray<number> = [
-      (settings.ssaA / 3) ** 2 / screen,
-      (settings.ssaB / 3) ** 2 / screen,
-      settings.ssaDiscard ** 2 / screen,
-      settings.isImpostors ? 1 : 0,
-      (settings.ssaGlodStart / 3) ** 2 / screen,
-      (settings.ssaGlodEnd / 3) ** 2 / screen,
-    ];
-    const current: ReadonlyArray<number> = [
-      this.lodA.value,
-      this.lodB.value,
-      this.discard.value,
-      this.isEnabled.value,
-      this.glodStart.value,
-      this.glodEnd.value,
-    ];
-    const isChanged: boolean = values.some((value: number, index: number) => value !== current[index]);
+    // Every threshold set, whichever changed: none may be skipped once one has.
+    let isChanged: boolean = setChanged(this.lodA, (settings.ssaA / 3) ** 2 / screen);
 
-    [
-      this.lodA.value,
-      this.lodB.value,
-      this.discard.value,
-      this.isEnabled.value,
-      this.glodStart.value,
-      this.glodEnd.value,
-    ] = values;
+    isChanged = setChanged(this.lodB, (settings.ssaB / 3) ** 2 / screen) || isChanged;
+    isChanged = setChanged(this.discard, settings.ssaDiscard ** 2 / screen) || isChanged;
+    isChanged = setChanged(this.isEnabled, settings.isImpostors ? 1 : 0) || isChanged;
+    isChanged = setChanged(this.glodStart, (settings.ssaGlodStart / 3) ** 2 / screen) || isChanged;
+    isChanged = setChanged(this.glodEnd, (settings.ssaGlodEnd / 3) ** 2 / screen) || isChanged;
+
     camera.getWorldPosition(this.camera.value);
 
     return isChanged;
   }
+}
+
+/**
+ * @param uniform - A uniform.
+ * @param uniform.value - What it holds.
+ * @param value - What it holds from now on.
+ * @returns Whether that is not what it held.
+ */
+function setChanged(uniform: { value: number }, value: number): boolean {
+  const isChanged: boolean = uniform.value !== value;
+
+  uniform.value = value;
+
+  return isChanged;
 }

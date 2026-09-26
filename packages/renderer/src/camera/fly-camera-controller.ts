@@ -12,8 +12,8 @@ import {
   TRendererCamera,
   TRendererCameraCommand,
 } from "#/contract/renderer-camera";
+import { ERenderInput } from "#/contract/renderer-input";
 import { TRendererVector } from "#/contract/renderer-lighting";
-import { ERenderInput } from "#/input/render-input";
 import { IRenderProxyEvent, RenderProxyElement } from "#/input/render-proxy-element";
 
 /** Just short of straight up, so looking at the sky never flips the horizon over. */

@@ -2,7 +2,6 @@ import {
   attribute,
   cameraViewMatrix,
   Fn,
-  fract,
   instanceIndex,
   mat3,
   mat4,
@@ -19,8 +18,9 @@ import {
 } from "three/tsl";
 import { Node, NodeBuilder } from "three/webgpu";
 
+import { EVertexAttribute, INSTANCE_MATRIX_COLUMNS } from "#/geometry/vertex-attribute";
+import { toCyclic } from "#/shader/cyclic-wave.tsl";
 import { isPackedBuild, isPackedTreeBuild, toPackedNormal, toPackedTreeRigidity } from "#/shader/packed-vertex.tsl";
-import { EVertexAttribute, INSTANCE_MATRIX_COLUMNS } from "#/shader/vertex-attribute";
 import { STATIC_PLACE_COLUMNS, StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
 import { TreeWindUniforms } from "#/uniforms/tree-wind-uniforms";
 
@@ -144,33 +144,38 @@ export function toBufferPlacedPositionView(
   buffers: StaticDrawBuffers,
   wind: TreeWindUniforms
 ): Node<"vec3"> {
-  return cameraViewMatrix.mul(vec4(toBufferPlacedWorld(builder, buffers, wind), 1)).xyz;
+  return cameraViewMatrix.mul(vec4(toBufferPlacedWorlds(builder, buffers, wind).current, 1)).xyz;
+}
+
+/** Where a static draw's vertex stands in the world this frame, and where it stood the frame before. */
+export interface IBufferPlacedWorlds {
+  readonly current: Node<"vec3">;
+  readonly previous: Node<"vec3">;
 }
 
 /**
  * @param builder - The builder of a buffer placed shader.
  * @param buffers - What static draws are placed by.
  * @param wind - How the trees sway.
- * @param isPrevious - Whether it is where the vertex stood the frame before: a static draw stands still, and only a
- *   tree's sway moves it.
- * @returns A static draw's vertex in the world.
+ * @returns A static draw's vertex in the world, both frames from one read of its matrix: it stands still but for a
+ *   tree's sway, at each frame's wind.
  */
-export function toBufferPlacedWorld(
+export function toBufferPlacedWorlds(
   builder: NodeBuilder,
   buffers: StaticDrawBuffers,
-  wind: TreeWindUniforms,
-  isPrevious: boolean = false
-): Node<"vec3"> {
-  const matrix: Node<"mat4"> = toBufferMatrix(builder, buffers);
+  wind: TreeWindUniforms
+): IBufferPlacedWorlds {
+  const matrix: Node<"mat4"> = toBufferMatrix(builder, buffers).toVar();
   const world: Node<"vec3"> = matrix.mul(vec4(positionLocal, 1)).xyz;
 
   if (!isPackedTreeBuild(builder)) {
-    return world;
+    return { current: world, previous: world };
   }
 
-  return isPrevious
-    ? toSwayed(world, matrix, wind.previousWind, wind.previousWave)
-    : toSwayed(world, matrix, wind.wind, wind.wave);
+  return {
+    current: toSwayed(world, matrix, wind.wind, wind.wave),
+    previous: toSwayed(world, matrix, wind.previousWind, wind.previousWave),
+  };
 }
 
 /**
@@ -189,13 +194,6 @@ function toSwayed(world: Node<"vec3">, matrix: Node<"mat4">, wind: Node<"vec3">,
   const lean: Node<"vec2"> = vec2(wind.x, wind.z).mul(world.y.sub(foot).mul(phase)).mul(toPackedTreeRigidity());
 
   return world.add(vec3(lean.x, 0, lean.y));
-}
-
-/** `calc_cyclic`: a wave from minus one to one over each whole turn, a parabola rather than a sine. */
-function toCyclic(phase: Node<"float">): Node<"float"> {
-  const f: Node<"float"> = fract(phase).mul(2.8284271).sub(1.4142136);
-
-  return f.mul(f).sub(1);
 }
 
 /**

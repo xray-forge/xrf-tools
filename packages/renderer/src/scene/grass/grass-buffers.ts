@@ -4,8 +4,8 @@ import { IRendererGrass, IRendererGrassModel } from "#/contract/scene/renderer-g
 import { createGrassDither, GRASS_ITEM_VECTORS } from "#/scene/grass/grass-planting.tsl";
 import { STATIC_DRAW_ARGUMENTS } from "#/uniforms/static-draw-buffers";
 
-/** What the grass is planted from and into, on the GPU. */
-export interface IGrassBuffers {
+/** What the grass is planted from, and what each model's count and draw are kept in: the level's, made once. */
+export interface IGrassLevelBuffers {
   modelCount: number;
   /** Each model's index count, which its draw is written with. */
   indexCounts: ReadonlyArray<number>;
@@ -24,21 +24,29 @@ export interface IGrassBuffers {
   counts: StorageBufferAttribute;
   /** Where each model's range goes on filling, as the items are sorted into it. */
   cursors: StorageBufferAttribute;
+  /** One draw a model. */
+  args: IndirectStorageBufferAttribute;
+}
+
+/** The frame's planted items, as many as the planting's settings ask room for. */
+export interface IGrassItemBuffers {
+  /** Items the lists hold. */
+  capacity: number;
   /** The frame's items as they were planted, and which model each is. */
   items: StorageBufferAttribute;
   itemModels: StorageBufferAttribute;
   /** The same items sorted by model, which the draws read. */
   sorted: StorageBufferAttribute;
-  /** One draw a model. */
-  args: IndirectStorageBufferAttribute;
 }
+
+/** Everything the planting reads and writes. */
+export type TGrassBuffers = IGrassLevelBuffers & IGrassItemBuffers;
 
 /**
  * @param grass - The level's grass.
- * @param capacity - Items the lists hold.
- * @returns Its buffers.
+ * @returns What it is planted from.
  */
-export function createGrassBuffers(grass: IRendererGrass, capacity: number): IGrassBuffers {
+export function createGrassLevelBuffers(grass: IRendererGrass): IGrassLevelBuffers {
   const modelCount: number = grass.models.length;
   const models: Float32Array = new Float32Array(Math.max(modelCount, 1) * 8);
 
@@ -59,16 +67,44 @@ export function createGrassBuffers(grass: IRendererGrass, capacity: number): IGr
     grid: toStorage(grass.grid, 1),
     gridLength: Math.max(grass.grid.length, 1),
     indexCounts: grass.models.map((model: IRendererGrassModel) => model.indices.length),
-    itemModels: new StorageBufferAttribute(new Uint32Array(capacity), 1),
-    items: new StorageBufferAttribute(new Float32Array(capacity * GRASS_ITEM_VECTORS * 4), 4),
     modelCount,
     models: new StorageBufferAttribute(models, 4),
     slotWords: Math.max(grass.slots.length, 1),
     slots: toStorage(grass.slots, 1),
-    sorted: new StorageBufferAttribute(new Float32Array(capacity * GRASS_ITEM_VECTORS * 4), 4),
     triangleFloats: Math.max(grass.triangles.length, 1),
     triangles: toStorage(grass.triangles, 1),
   };
+}
+
+/**
+ * @param capacity - Items the lists hold.
+ * @returns The lists.
+ */
+export function createGrassItemBuffers(capacity: number): IGrassItemBuffers {
+  return {
+    capacity,
+    itemModels: new StorageBufferAttribute(new Uint32Array(capacity), 1),
+    items: new StorageBufferAttribute(new Float32Array(capacity * GRASS_ITEM_VECTORS * 4), 4),
+    sorted: new StorageBufferAttribute(new Float32Array(capacity * GRASS_ITEM_VECTORS * 4), 4),
+  };
+}
+
+/**
+ * @param buffers - The level's buffers.
+ * @returns Every storage buffer among them, for letting them go.
+ */
+export function listGrassLevelStorage(buffers: IGrassLevelBuffers): Array<StorageBufferAttribute> {
+  const { counts, cursors, grid, slots, bins, triangles, dither, models, args } = buffers;
+
+  return [counts, cursors, grid, slots, bins, triangles, dither, models, args];
+}
+
+/**
+ * @param buffers - The item lists.
+ * @returns Every storage buffer among them, for letting them go.
+ */
+export function listGrassItemStorage(buffers: IGrassItemBuffers): Array<StorageBufferAttribute> {
+  return [buffers.items, buffers.itemModels, buffers.sorted];
 }
 
 /** A storage attribute over an array, one element long where the array is empty: a binding cannot be. */

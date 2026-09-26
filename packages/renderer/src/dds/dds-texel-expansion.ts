@@ -1,4 +1,4 @@
-import { EDdsChannels, getDdsSourceStride } from "#/texture/dds/dds-channels";
+import { EDdsChannels, getDdsSourceStride } from "#/dds/dds-channels";
 
 /** Texels expand to four bytes however few the file stored. */
 const EXPANDED_STRIDE: number = 4;

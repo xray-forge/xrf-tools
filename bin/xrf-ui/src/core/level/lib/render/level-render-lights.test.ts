@@ -72,8 +72,18 @@ describe("toLevelRendererLights", () => {
       rangeJitter: 0,
       right: [1, 0, 0],
     });
-    expect(lights.lights[1].kind).toBe(ERendererLightKind.POINT);
-    expect(lights.lights[1].projector).toBeUndefined();
-    expect(lights.lights[1].animator).toBeUndefined();
+    // A point takes none of a spot's own fields.
+    expect(lights.lights[1]).toEqual({
+      animator: undefined,
+      animatorScale: 2 / 255,
+      color: [0.5, 0.25, 1],
+      isLevel: false,
+      isShadowed: true,
+      kind: ERendererLightKind.POINT,
+      near: 0.1,
+      position: [1, 2, 3],
+      range: 8,
+      rangeJitter: 0,
+    });
   });
 });

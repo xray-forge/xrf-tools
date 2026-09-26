@@ -1,9 +1,9 @@
 import { attribute, float, Fn } from "three/tsl";
 import { Node, NodeBuilder } from "three/webgpu";
 
+import { EVertexAttribute } from "#/geometry/vertex-attribute";
 import { isPackedBuild, toPackedHemi } from "#/shader/packed-vertex.tsl";
 import { isListedBuild, toListedHemiTerms } from "#/shader/placement.tsl";
-import { EVertexAttribute } from "#/shader/vertex-attribute";
 import { StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
 
 /**

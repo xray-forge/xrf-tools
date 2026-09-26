@@ -3,9 +3,9 @@ import { NodeMaterial, QuadMesh, RenderTarget, WebGPURenderer } from "three/webg
 import { initPreservedDepthTarget } from "#/internals/preserved-depth-target";
 import { createQuadMaterial } from "#/pass/quad-material";
 import { IRendererFrame } from "#/pass/renderer-frame";
-import { IRendererFrameSize } from "#/pass/renderer-frame-size";
 import { IRendererPass } from "#/pass/renderer-pass";
 import { toSharpened } from "#/pass/sharpen-pass.tsl";
+import { IRendererFrameSize } from "#/sampling/renderer-frame-size";
 import { SharpenUniforms } from "#/uniforms/sharpen-uniforms";
 
 /**

@@ -1,8 +1,8 @@
 import { Nullable } from "@xrf/types";
 
-import { toDdsFourCc } from "#/texture/dds/dds-fourcc";
-import { IDdsChannelMasks } from "#/texture/dds/dds-masks";
-import { EDdsRefusal, IDdsRefusal } from "#/texture/dds/dds-refusal";
+import { toDdsFourCc } from "#/dds/dds-fourcc";
+import { IDdsChannelMasks } from "#/dds/dds-masks";
+import { EDdsRefusal, IDdsRefusal } from "#/dds/dds-refusal";
 
 /** `DDS `, little endian. */
 const DDS_MAGIC: number = 0x20534444;

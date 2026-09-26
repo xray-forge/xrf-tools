@@ -10,6 +10,7 @@ import {
 } from "three/webgpu";
 
 import { ERendererPass } from "#/contract/scene/renderer-surface";
+import { EVertexAttribute } from "#/geometry/vertex-attribute";
 import { ISurfaceMaterial } from "#/material/surface-material";
 import { SceneGeometry } from "#/scene/geometry/scene-geometry";
 import { SceneInstances } from "#/scene/object/scene-instances";
@@ -18,7 +19,6 @@ import { ISceneObjectState } from "#/scene/object/scene-object-state";
 import { toPassRecord, TPassRecord } from "#/scene/pass-record";
 import { EStaticDrawKind } from "#/scene/static/static-draw-kind";
 import { StaticDraws } from "#/scene/static/static-draws";
-import { EVertexAttribute } from "#/shader/vertex-attribute";
 import {
   STATIC_DRAW_ARGUMENTS,
   STATIC_LOD_IMPOSTOR_ROW,

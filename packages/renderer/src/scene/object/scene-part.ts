@@ -1,5 +1,6 @@
 import { Maybe, Nullable } from "@xrf/types";
 import {
+  Box3,
   BufferGeometry,
   InstancedBufferGeometry,
   Material,
@@ -16,7 +17,11 @@ import { ISceneSection } from "#/scene/geometry/scene-section";
 import { createSceneMesh } from "#/scene/object/scene-mesh";
 import { StaticDraws } from "#/scene/static/static-draws";
 import { IStaticRange } from "#/scene/static/static-range";
+import { EShadowCasterMotion } from "#/scene/static/static-shadow-changes";
 import { STATIC_NO_BAND, toStaticBandWord } from "#/uniforms/static-draw-buffers";
+
+/** How much wider than its rest sphere a skinned part's cast is taken to reach, for what its motions move out to. */
+const SKINNED_REACH: number = 1.5;
 
 /**
  * One section of an object as the frame draws it: a mesh over the section's range, bounded where it stands.
@@ -30,13 +35,15 @@ export class ScenePart {
   public readonly section: number;
   /** What it spans in renderer space. */
   public readonly sphere: Sphere = new Sphere();
+  /** What its twin casts from: its sphere, wider for a skinned part by what its motions reach. */
+  private readonly castSphere: Sphere = new Sphere();
 
   private readonly source: ISceneSection;
   private readonly draws: StaticDraws;
   private readonly matrix: Matrix4 = new Matrix4();
   private currentMesh: Mesh;
   private skeleton: Nullable<Skeleton>;
-  /** Its twin in the cascades' plain casters while it is drawn plainly by a surface that casts, made the first time. */
+  /** Its twin in the shadow views' plain casters while it is drawn plainly by a surface that casts, made the first time. */
   private shadowMesh: Nullable<Mesh> = null;
   /** The range the object's narrowing leaves it. */
   private start: number;
@@ -98,6 +105,10 @@ export class ScenePart {
     this.start = start;
     this.count = Math.max(0, end - start);
     this.geometry.setDrawRange(this.start, this.count);
+
+    if (this.shadowMesh?.parent) {
+      this.draws.shadowChanges.touch(this);
+    }
   }
 
   /**
@@ -112,6 +123,11 @@ export class ScenePart {
     if (this.shadowMesh) {
       this.shadowMesh.matrix.copy(matrix);
       this.shadowMesh.updateMatrixWorld(true);
+    }
+
+    // Cast from where it stands now: from the old box to the new one.
+    if (this.shadowMesh?.parent) {
+      this.noteCasting();
     }
   }
 
@@ -205,7 +221,7 @@ export class ScenePart {
     this.currentMesh.visible = this.count > 0 && isSeen;
 
     if (this.shadowMesh) {
-      this.shadowMesh.visible = this.count > 0;
+      this.draws.plainCasters.setDrawing(this.shadowMesh, this.count > 0);
     }
   }
 
@@ -224,10 +240,13 @@ export class ScenePart {
     this.showShadow(null);
   }
 
-  /** Stands its twin in the cascades' plain casters, drawn by the shadow material given, or takes it out for none. */
+  /** Stands its twin in the shadow views' plain casters, drawn by the shadow material given, or takes it out for none. */
   private showShadow(material: Nullable<Material>): void {
     if (!material) {
-      this.shadowMesh?.removeFromParent();
+      if (this.shadowMesh?.parent) {
+        this.draws.plainCasters.release(this.shadowMesh);
+        this.draws.shadowChanges.withdraw(this);
+      }
 
       return;
     }
@@ -239,8 +258,23 @@ export class ScenePart {
     }
 
     this.shadowMesh.material = material;
-    this.shadowMesh.visible = this.count > 0;
-    this.draws.plainCasters.add(this.shadowMesh);
+    this.draws.plainCasters.put(this.shadowMesh, this.castSphere);
+    this.draws.plainCasters.setDrawing(this.shadowMesh, this.count > 0);
+    this.noteCasting();
+  }
+
+  /** Tells the shadow views where its twin casts from, and whether it moves there: a skinned one plays. */
+  private noteCasting(): void {
+    this.castSphere.set(this.sphere.center, this.sphere.radius * (this.skeleton ? SKINNED_REACH : 1));
+
+    const box: Box3 = this.castSphere.getBoundingBox(new Box3());
+
+    this.draws.shadowChanges.put(
+      this,
+      box,
+      true,
+      this.skeleton ? EShadowCasterMotion.MOVING : EShadowCasterMotion.STILL
+    );
   }
 
   /**

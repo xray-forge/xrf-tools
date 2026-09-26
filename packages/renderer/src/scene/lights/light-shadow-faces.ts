@@ -2,8 +2,8 @@ import { TRendererVector } from "#/contract/renderer-lighting";
 
 /** One face of a point light's shadow: where it looks, and which way is up in it. */
 export interface ILightShadowFaceBasis {
-  direction: TRendererVector;
-  up: TRendererVector;
+  readonly direction: TRendererVector;
+  readonly up: TRendererVector;
 }
 
 /**
@@ -24,6 +24,14 @@ export const LIGHT_SHADOW_WIDENING: number = (3.5 * Math.PI) / 180;
 
 /** An omni part's cone: a quarter turn. */
 export const LIGHT_SHADOW_POINT_CONE: number = Math.PI / 2;
+
+/**
+ * @param isSpot - Whether the light is a spot.
+ * @returns Faces its shadow takes: a spot's one, a point's six.
+ */
+export function toLightShadowFaceCount(isSpot: boolean): number {
+  return isSpot ? 1 : LIGHT_SHADOW_POINT_FACES.length;
+}
 
 /**
  * @param cone - A face's cone, in radians.

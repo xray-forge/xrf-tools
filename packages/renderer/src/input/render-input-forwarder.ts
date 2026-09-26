@@ -1,4 +1,4 @@
-import { ERenderInput, IRenderInputEvent, toRenderInputEvent } from "#/input/render-input";
+import { ERenderInput, IRenderInputEvent, toRenderInputEvent } from "#/contract/renderer-input";
 
 /** What the forwarder does with a gesture it has taken. */
 export type TRenderInputSink = (event: IRenderInputEvent) => void;

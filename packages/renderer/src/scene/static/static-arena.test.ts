@@ -1,11 +1,11 @@
 import { describe, expect, it } from "@jest/globals";
 import { BufferAttribute, BufferGeometry } from "three/webgpu";
 
+import { EVertexAttribute } from "#/geometry/vertex-attribute";
 import { StaticArena } from "#/scene/static/static-arena";
 import { EStaticDrawKind } from "#/scene/static/static-draw-kind";
 import { IStaticRange } from "#/scene/static/static-range";
 import { IStaticRoom } from "#/scene/static/static-room";
-import { EVertexAttribute } from "#/shader/vertex-attribute";
 
 function createBuffer(count: number, isIndexed: boolean = true): BufferGeometry {
   const buffer: BufferGeometry = new BufferGeometry();

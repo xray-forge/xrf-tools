@@ -9,6 +9,7 @@ import { IRendererLights } from "#/contract/scene/renderer-lights";
 import { IRendererObject } from "#/contract/scene/renderer-object";
 import { ERendererPass, IRendererSurface } from "#/contract/scene/renderer-surface";
 import { TRendererTextureSource } from "#/contract/scene/renderer-texture-source";
+import { IDdsRefusal } from "#/dds/dds-refusal";
 import { SceneChangeQueue } from "#/scene/change/scene-change-queue";
 import { SceneGeometry } from "#/scene/geometry/scene-geometry";
 import { SceneGrass } from "#/scene/grass/scene-grass";
@@ -27,7 +28,6 @@ import { IStaticShadowCasters } from "#/scene/static/static-shadow-casters";
 import { IStaticUpcoming } from "#/scene/static/static-upcoming";
 import { MaterialReadiness } from "#/scene/surface/material-readiness";
 import { SurfaceLibrary } from "#/scene/surface/surface-library";
-import { IDdsRefusal } from "#/texture/dds/dds-refusal";
 import { RendererTextures } from "#/texture/renderer-textures";
 import { RendererUniforms } from "#/uniforms/renderer-uniforms";
 import { CullView } from "#/visibility/cull-view";
@@ -85,7 +85,7 @@ export class RendererScene {
     this.staticCull = this.staticDraws.cull;
     this.textures = new RendererTextures(onTextureRefused, (key: string) => this.staticDraws.invalidate(key));
     this.grass = new SceneGrass(this.textures, uniforms);
-    this.lights = new SceneLights(this.textures);
+    this.lights = new SceneLights(this.textures, this.staticDraws.shadowChanges);
     this.skeletons = new RendererSkeletons((key: string) => this.buildUsers(this.skeletonUsers.get(key)));
     this.surfaces = new SurfaceLibrary(this.textures, uniforms, (key: string) =>
       this.buildUsers(this.surfaceUsers.get(key))

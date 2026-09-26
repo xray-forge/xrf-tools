@@ -7,6 +7,7 @@ import {
   IRendererSkeleton,
   RENDERER_FLOATS_PER_BONE,
 } from "#/contract/scene/renderer-skeleton";
+import { PREVIOUS_BONE_MATRICES, TPreviousSkeleton } from "#/shader/previous-bones";
 
 /** Where a bone's translation starts within its twelve floats. */
 const TRANSLATION_OFFSET: number = 9;
@@ -15,15 +16,11 @@ const TRANSLATION_OFFSET: number = 9;
 export const BIND_POSE: IRendererPose = { frame: 0, hiddenBones: [], motion: null };
 
 /**
- * One skeleton: three's, posed from model space transforms, and its segments for the overlay.
+ * One skeleton: three's, posed from model space transforms, keeping the bone matrices of the frame before for the
+ * motion a skinned surface writes, and its segments for the overlay.
  */
-/** A skeleton that keeps the bone matrices of the frame before, as the skinned motion reads them. */
-interface IPreviousSkeleton extends Skeleton {
-  previousBoneMatrices: Float32Array;
-}
-
 export class RendererSkeletonEntry {
-  public readonly skeleton: Skeleton;
+  public readonly skeleton: TPreviousSkeleton;
   /** Six floats a segment, child then parent, where the pose puts them; null without pairs. */
   public readonly segments: Nullable<Float32Array>;
   /** Bumped by every pose, so an overlay can tell its segments moved. */
@@ -50,13 +47,14 @@ export class RendererSkeletonEntry {
     // The inverses are of the bind pose itself, never a motion or the hidden set: the inverse of a collapsed bone
     // would be the inverse of a zero matrix.
     const inverses: Array<Matrix4> = this.bones.map((_, bone: number) =>
-      RendererSkeletonEntry.toMatrix(binds, bone * RENDERER_FLOATS_PER_BONE).invert()
+      toBoneMatrix(binds, bone * RENDERER_FLOATS_PER_BONE, new Matrix4()).invert()
     );
+    const skeleton: Skeleton = new Skeleton(this.bones, inverses);
 
-    this.skeleton = new Skeleton(this.bones, inverses);
+    this.skeleton = Object.assign(skeleton, { [PREVIOUS_BONE_MATRICES]: skeleton.boneMatrices!.slice() });
     this.pose(null, BIND_POSE);
     this.skeleton.update();
-    (this.skeleton as IPreviousSkeleton).previousBoneMatrices = this.skeleton.boneMatrices!.slice();
+    this.skeleton[PREVIOUS_BONE_MATRICES].set(this.skeleton.boneMatrices!);
   }
 
   /**
@@ -65,9 +63,7 @@ export class RendererSkeletonEntry {
    * the same pose.
    */
   public advance(): void {
-    const { boneMatrices } = this.skeleton;
-
-    (this.skeleton as IPreviousSkeleton).previousBoneMatrices.set(boneMatrices!);
+    this.skeleton[PREVIOUS_BONE_MATRICES].set(this.skeleton.boneMatrices!);
     this.skeleton.update();
   }
 
@@ -87,7 +83,7 @@ export class RendererSkeletonEntry {
     const boneStride: number = isInMotion ? stride : RENDERER_FLOATS_PER_BONE;
 
     this.bones.forEach((bone: Bone, index: number) => {
-      bone.matrix.copy(RendererSkeletonEntry.toMatrix(source, offset + index * boneStride));
+      toBoneMatrix(source, offset + index * boneStride, bone.matrix);
       bone.matrixWorld.copy(bone.matrix);
     });
 
@@ -122,25 +118,29 @@ export class RendererSkeletonEntry {
       this.segments.set(source.subarray(parent, parent + 3), segment * 6 + 3);
     }
   }
+}
 
-  /** A bone's 3x4 as a matrix: three rotation columns, then the translation. */
-  private static toMatrix(source: Float32Array, at: number): Matrix4 {
-    const matrix: Matrix4 = new Matrix4();
-    const elements: Array<number> = matrix.elements;
+/**
+ * @param source - Bones' transforms, twelve floats each.
+ * @param at - Where one starts.
+ * @param out - Where it is written.
+ * @returns Its 3x4 as a matrix: three rotation columns, then the translation.
+ */
+function toBoneMatrix(source: Float32Array, at: number, out: Matrix4): Matrix4 {
+  const elements: Array<number> = out.identity().elements;
 
-    elements[0] = source[at];
-    elements[1] = source[at + 1];
-    elements[2] = source[at + 2];
-    elements[4] = source[at + 3];
-    elements[5] = source[at + 4];
-    elements[6] = source[at + 5];
-    elements[8] = source[at + 6];
-    elements[9] = source[at + 7];
-    elements[10] = source[at + 8];
-    elements[12] = source[at + 9];
-    elements[13] = source[at + 10];
-    elements[14] = source[at + 11];
+  elements[0] = source[at];
+  elements[1] = source[at + 1];
+  elements[2] = source[at + 2];
+  elements[4] = source[at + 3];
+  elements[5] = source[at + 4];
+  elements[6] = source[at + 5];
+  elements[8] = source[at + 6];
+  elements[9] = source[at + 7];
+  elements[10] = source[at + 8];
+  elements[12] = source[at + 9];
+  elements[13] = source[at + 10];
+  elements[14] = source[at + 11];
 
-    return matrix;
-  }
+  return out;
 }

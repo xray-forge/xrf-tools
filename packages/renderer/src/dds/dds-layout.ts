@@ -1,5 +1,5 @@
-import { DDS_BLOCK_SIZE, EDdsBlockFormat } from "#/texture/dds/dds-block-format";
-import { EDdsChannels, getDdsSourceStride } from "#/texture/dds/dds-channels";
+import { DDS_BLOCK_SIZE, EDdsBlockFormat } from "#/dds/dds-block-format";
+import { EDdsChannels, getDdsSourceStride } from "#/dds/dds-channels";
 
 /**
  * How the texels of one dds layout are stored.

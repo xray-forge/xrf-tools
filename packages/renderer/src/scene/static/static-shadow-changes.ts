@@ -1,4 +1,4 @@
-import { Maybe, Nullable } from "@xrf/types";
+import { Nullable } from "@xrf/types";
 import { Box3, Sphere, Vector4 } from "three/webgpu";
 
 import { isBoxInPlanes } from "#/scene/static/static-cell";
@@ -6,157 +6,184 @@ import { isBoxInPlanes } from "#/scene/static/static-cell";
 /** Changes the log keeps; one older than the oldest kept stands for a change anywhere. */
 const LOG_LIMIT: number = 4096;
 
-/** One change to what the shadow views draw: where it was, or null for anywhere. */
-interface IShadowChange {
-  serial: number;
-  box: Nullable<Box3>;
+/** What casts into the shadow views: a static slot by its number, or a part drawn plainly by itself. */
+export type TShadowCasterKey = number | object;
+
+/** How a caster moves while it casts, which has a kept shadow over it drawn again. */
+export enum EShadowCasterMotion {
+  /** Not at all: a shadow over it is drawn again only once something there changes. */
+  STILL = 0,
+  /** With the wind: while it blows. */
+  SWAYING = 1,
+  /** On its own, as a skinned part plays: always. */
+  MOVING = 2,
 }
 
-/** An animated draw's broad bound and, for a listed draw, its individual instance spheres. */
-interface ISwayingCaster {
+/** One change to what the shadow views draw. */
+export interface IShadowChange {
+  /** Where it was, or null for anywhere. */
+  readonly box: Nullable<Box3>;
+  /** Whether what came or went there sways or moves, so a kept shadow there looks again for what does. */
+  readonly isAnimated: boolean;
+}
+
+/** What changed since a version: every change kept, or anywhere, the log no longer reaching back. */
+export interface IShadowChanges {
+  readonly isEverywhere: boolean;
+  readonly changes: ReadonlyArray<IShadowChange>;
+}
+
+/** A caster that sways or moves: its broad bound and, for a listed draw, each of its places' spheres. */
+interface IAnimatedCaster {
+  motion: EShadowCasterMotion;
   bounds: Nullable<Box3>;
   spheres: Nullable<Float32Array>;
 }
 
 /**
- * Where what the shadow views draw changed: every casting slot's box, which a slot going or coming, or a texture it
- * cuts out by being replaced, logs as changed; and the casting slots that sway in the wind. A shadow kept over a
- * region that changed is drawn again, and one kept over a swaying caster while the wind blows.
+ * Where what the shadow views draw changed: every caster's box, which a caster coming, going or moving, or a texture it
+ * cuts out by being replaced, logs as changed; and the casters that sway or move. A shadow kept over a region that
+ * changed is drawn again, and one kept over a caster that sways or moves while it does.
  */
 export class StaticShadowChanges {
   private serial: number = 0;
-  private log: Array<IShadowChange> = [];
-  /** The serial before the oldest change kept: anything asked from earlier is taken as changed everywhere. */
-  private dropped: number = 0;
-  /** Every casting slot's box, null where it is not known. */
-  private readonly casting: Map<number, Nullable<Box3>> = new Map();
-  private readonly swaying: Map<number, ISwayingCaster> = new Map();
+  /** The last changes, a ring `LOG_LIMIT` long, the change of serial `s` at `s % LOG_LIMIT`. */
+  private readonly log: Array<IShadowChange> = new Array(LOG_LIMIT);
+  /** Every caster's box, null where it is not known. */
+  private readonly casting: Map<TShadowCasterKey, Nullable<Box3>> = new Map();
+  private readonly animated: Map<TShadowCasterKey, IAnimatedCaster> = new Map();
   private readonly instanceBox: Box3 = new Box3();
-  private currentSwayingVersion: number = 0;
 
   /** Bumped by every change logged. */
   public get version(): number {
     return this.serial;
   }
 
-  /** Bumped whenever a swaying caster came or went. */
-  public get swayingVersion(): number {
-    return this.currentSwayingVersion;
+  /**
+   * @param caster - What casts from now on.
+   * @param bounds - What it spans, null where it is not known.
+   * @param isCasting - Whether its surface casts.
+   * @param motion - How it moves while it casts.
+   * @param spheres - A listed draw's places' spheres in renderer space, four floats each, a negative radius for none;
+   *   copied for a caster that sways or moves. Null for a single draw or unknown places.
+   */
+  public put(
+    caster: TShadowCasterKey,
+    bounds: Nullable<Box3>,
+    isCasting: boolean,
+    motion: EShadowCasterMotion = EShadowCasterMotion.STILL,
+    spheres: Nullable<Float32Array> = null
+  ): void {
+    this.withdraw(caster);
+
+    if (!isCasting) {
+      return;
+    }
+
+    const isAnimated: boolean = motion !== EShadowCasterMotion.STILL;
+
+    this.casting.set(caster, bounds);
+
+    if (isAnimated) {
+      this.animated.set(caster, { bounds, motion, spheres: spheres?.slice() ?? null });
+    }
+
+    this.note(bounds, isAnimated);
   }
 
   /**
-   * Tests animated casters against a light face. A listed draw's aggregate bound only rejects whole draws; an
-   * individual instance must intersect too, so empty space between distant trees does not force shadow redraws.
-   *
-   * @param sphere - Everything the light reaches.
-   * @param planes - The face's frustum planes, in renderer space.
-   * @returns Whether wind can change a caster in the face; unknown bounds conservatively intersect.
+   * @param caster - What casts no more.
    */
-  public hasSwaying(sphere: Sphere, planes: ReadonlyArray<Vector4>): boolean {
-    for (const { bounds, spheres } of this.swaying.values()) {
-      if (bounds && (!sphere.intersectsBox(bounds) || !isBoxInPlanes(bounds, planes))) {
+  public withdraw(caster: TShadowCasterKey): void {
+    if (!this.casting.has(caster)) {
+      return;
+    }
+
+    const bounds: Nullable<Box3> = this.casting.get(caster) ?? null;
+
+    this.casting.delete(caster);
+    this.note(bounds, this.animated.delete(caster));
+  }
+
+  /**
+   * @param caster - A caster drawn differently from now on where it stands, as by a texture it cuts out replaced.
+   */
+  public touch(caster: TShadowCasterKey): void {
+    if (this.casting.has(caster)) {
+      this.note(this.casting.get(caster) ?? null, false);
+    }
+  }
+
+  /**
+   * @param since - The version a shadow was drawn at.
+   * @returns What changed since.
+   */
+  public since(since: number): IShadowChanges {
+    const oldest: number = this.serial - Math.min(this.serial, LOG_LIMIT);
+    const changes: Array<IShadowChange> = [];
+
+    if (since < oldest) {
+      return { changes, isEverywhere: true };
+    }
+
+    for (let serial: number = since + 1; serial <= this.serial; serial += 1) {
+      changes.push(this.log[serial % LOG_LIMIT]);
+    }
+
+    return { changes, isEverywhere: changes.some((change: IShadowChange) => change.box === null) };
+  }
+
+  /**
+   * Finds the fastest a caster in a shadow view moves: a listed draw's own places tested, so the room between two trees
+   * far apart has nothing drawn again.
+   *
+   * @param planes - The view's frustum planes, in renderer space.
+   * @param sphere - What the view's light reaches, for a light's face; none for a cascade.
+   * @returns How the fastest caster there moves; a caster of unknown bounds stands everywhere.
+   */
+  public getMotion(planes: ReadonlyArray<Vector4>, sphere: Nullable<Sphere> = null): EShadowCasterMotion {
+    let motion: EShadowCasterMotion = EShadowCasterMotion.STILL;
+
+    for (const caster of this.animated.values()) {
+      if (caster.motion > motion && this.isInView(caster, planes, sphere)) {
+        motion = caster.motion;
+      }
+    }
+
+    return motion;
+  }
+
+  private isInView(caster: IAnimatedCaster, planes: ReadonlyArray<Vector4>, sphere: Nullable<Sphere>): boolean {
+    const { bounds, spheres } = caster;
+
+    if (bounds && ((sphere && !sphere.intersectsBox(bounds)) || !isBoxInPlanes(bounds, planes))) {
+      return false;
+    }
+
+    if (spheres === null) {
+      return true;
+    }
+
+    for (let at: number = 0; at < spheres.length; at += 4) {
+      const radius: number = spheres[at + 3];
+
+      if (radius < 0) {
         continue;
       }
 
-      if (spheres === null) {
+      this.instanceBox.min.set(spheres[at] - radius, spheres[at + 1] - radius, spheres[at + 2] - radius);
+      this.instanceBox.max.set(spheres[at] + radius, spheres[at + 1] + radius, spheres[at + 2] + radius);
+
+      if ((!sphere || sphere.intersectsBox(this.instanceBox)) && isBoxInPlanes(this.instanceBox, planes)) {
         return true;
-      }
-
-      for (let at: number = 0; at < spheres.length; at += 4) {
-        const radius: number = spheres[at + 3];
-
-        if (radius < 0) {
-          continue;
-        }
-
-        this.instanceBox.min.set(spheres[at] - radius, spheres[at + 1] - radius, spheres[at + 2] - radius);
-        this.instanceBox.max.set(spheres[at] + radius, spheres[at + 1] + radius, spheres[at + 2] + radius);
-
-        if (sphere.intersectsBox(this.instanceBox) && isBoxInPlanes(this.instanceBox, planes)) {
-          return true;
-        }
       }
     }
 
     return false;
   }
 
-  /**
-   * @param slot - A slot drawing from now on.
-   * @param bounds - What it spans, null where it is not known.
-   * @param isCasting - Whether its surface casts.
-   * @param isSwaying - Whether the wind sways it.
-   * @param spheres - Listed instance spheres in renderer space, four floats each, negative radius for inactive; copied
-   *   for animated casters. Null for a single draw or unknown instance bounds.
-   */
-  public put(
-    slot: number,
-    bounds: Nullable<Box3>,
-    isCasting: boolean,
-    isSwaying: boolean,
-    spheres: Nullable<Float32Array> = null
-  ): void {
-    this.withdraw(slot);
-
-    if (!isCasting) {
-      return;
-    }
-
-    this.casting.set(slot, bounds);
-    this.note(bounds);
-
-    if (isSwaying) {
-      this.swaying.set(slot, { bounds, spheres: spheres?.slice() ?? null });
-      this.currentSwayingVersion += 1;
-    }
-  }
-
-  /**
-   * @param slot - A slot no longer drawing.
-   */
-  public withdraw(slot: number): void {
-    if (!this.casting.has(slot)) {
-      return;
-    }
-
-    this.note(this.casting.get(slot) ?? null);
-    this.casting.delete(slot);
-
-    if (this.swaying.delete(slot)) {
-      this.currentSwayingVersion += 1;
-    }
-  }
-
-  /**
-   * @param slot - A casting slot drawn differently from now on where it stands, as a texture it cuts out by replaced.
-   */
-  public touch(slot: number): void {
-    if (this.casting.has(slot)) {
-      this.note(this.casting.get(slot) ?? null);
-    }
-  }
-
-  /**
-   * @param since - The version a shadow was drawn at.
-   * @returns Where anything changed since, a null box for anywhere, or null where the log no longer reaches back.
-   */
-  public since(since: number): Nullable<ReadonlyArray<Nullable<Box3>>> {
-    if (since < this.dropped) {
-      return null;
-    }
-
-    const first: Maybe<IShadowChange> = this.log[0];
-    const start: number = first ? Math.max(0, since - first.serial + 1) : 0;
-
-    return this.log.slice(start).map((change: IShadowChange) => change.box);
-  }
-
-  private note(box: Nullable<Box3>): void {
+  private note(box: Nullable<Box3>, isAnimated: boolean): void {
     this.serial += 1;
-    this.log.push({ box, serial: this.serial });
-
-    if (this.log.length > LOG_LIMIT) {
-      this.dropped = (this.log.shift() as IShadowChange).serial;
-    }
+    this.log[this.serial % LOG_LIMIT] = { box, isAnimated };
   }
 }

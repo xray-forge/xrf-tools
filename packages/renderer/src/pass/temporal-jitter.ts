@@ -1,8 +1,8 @@
 import { Matrix4, PerspectiveCamera } from "three/webgpu";
 
 import { adoptRendererConventions } from "#/internals/camera-conventions";
-import { IRendererFrameJitter } from "#/pass/renderer-frame-jitter";
-import { IRendererFrameSize } from "#/pass/renderer-frame-size";
+import { IRendererFrameJitter } from "#/sampling/renderer-frame-jitter";
+import { IRendererFrameSize } from "#/sampling/renderer-frame-size";
 import { MotionUniforms } from "#/uniforms/motion-uniforms";
 
 /** Jitter places a drawn pixel cycles through at the output's size: `ffxFsr2GetJitterPhaseCount`'s base. */

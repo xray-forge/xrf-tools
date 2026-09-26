@@ -3,6 +3,7 @@ import { Nullable } from "@xrf/types";
 import { TRendererCamera, TRendererCameraCommand } from "#/contract/renderer-camera";
 import { TRendererCaptureSource } from "#/contract/renderer-capture";
 import { IRendererDevice } from "#/contract/renderer-device";
+import { IRenderInputEvent } from "#/contract/renderer-input";
 import { IRendererLighting } from "#/contract/renderer-lighting";
 import { IRendererReport } from "#/contract/renderer-report";
 import { IRendererSettings } from "#/contract/renderer-settings";
@@ -16,8 +17,7 @@ import { listRendererOverlayTransfers, TRendererOverlay } from "#/contract/scene
 import { IRendererMotion, IRendererPose, IRendererSkeleton } from "#/contract/scene/renderer-skeleton";
 import { IRendererSurface } from "#/contract/scene/renderer-surface";
 import { TRendererTextureSource } from "#/contract/scene/renderer-texture-source";
-import { IRenderInputEvent } from "#/input/render-input";
-import { IDdsRefusal } from "#/texture/dds/dds-refusal";
+import { IDdsRefusal } from "#/dds/dds-refusal";
 
 /**
  * What a consumer tells the renderer.

@@ -2,11 +2,11 @@ import { NodeMaterial, QuadMesh, RenderTarget, Texture, WebGPURenderer } from "t
 
 import { createDepthWritingQuadMaterial } from "#/pass/quad-material";
 import { IRendererFrame } from "#/pass/renderer-frame";
-import { IRendererFrameSize } from "#/pass/renderer-frame-size";
 import { IRendererPass } from "#/pass/renderer-pass";
 import { RendererTargets } from "#/pass/renderer-targets";
 import { ResolvedTarget } from "#/pass/resolved-target";
 import { toSpatialUpscale, toSpatialUpscaleDepth } from "#/pass/spatial-upscale-pass.tsl";
+import { IRendererFrameSize } from "#/sampling/renderer-frame-size";
 
 /**
  * FSR 1: the frame as a mode that does not jitter finishes it, upscaled to the output by EASU, with the drawn depth

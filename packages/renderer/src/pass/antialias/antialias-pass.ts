@@ -16,9 +16,9 @@ import { ISmaaStages } from "#/pass/antialias/smaa-stages.tsl";
 import { toFrameCopy } from "#/pass/frame-copy-pass.tsl";
 import { createQuadMaterial } from "#/pass/quad-material";
 import { IRendererFrame } from "#/pass/renderer-frame";
-import { IRendererFrameSize } from "#/pass/renderer-frame-size";
 import { IRendererPass } from "#/pass/renderer-pass";
 import { RendererTargets } from "#/pass/renderer-targets";
+import { IRendererFrameSize } from "#/sampling/renderer-frame-size";
 
 /** One stage of a mode: what it draws, and where. */
 interface IAntialiasStage {

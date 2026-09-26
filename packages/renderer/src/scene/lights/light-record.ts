@@ -19,3 +19,9 @@ export const LIGHT_RECORD_FACES: number = 6;
 
 /** Vectors of four floats a light's record takes. */
 export const LIGHT_VECTORS: number = LIGHT_RECORD.faces + LIGHT_RECORD_FACES;
+
+/** Lights standing in view at most in one frame: the nearest are kept. */
+export const MAX_LIGHTS: number = 1024;
+
+/** What a record's cone says for a light without one: every point passes its test. */
+export const LIGHT_NO_CONE: number = -2;

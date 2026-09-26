@@ -23,10 +23,10 @@ import {
   UnsignedByteType,
 } from "three/webgpu";
 
-import { EDdsBlockFormat } from "#/texture/dds/dds-block-format";
-import { IDdsFile, IDdsRead, readDdsFile } from "#/texture/dds/dds-file";
-import { EDdsLayout } from "#/texture/dds/dds-layout";
-import { IDdsRefusal } from "#/texture/dds/dds-refusal";
+import { EDdsBlockFormat } from "#/dds/dds-block-format";
+import { IDdsFile, IDdsRead, readDdsFile } from "#/dds/dds-file";
+import { EDdsLayout } from "#/dds/dds-layout";
+import { IDdsRefusal } from "#/dds/dds-refusal";
 
 /** The engine's `ps_r__tf_Anisotropic` default (`Layers/xrRender/xrRender_console.cpp`). */
 export const XRAY_TEXTURE_ANISOTROPY: number = 8;

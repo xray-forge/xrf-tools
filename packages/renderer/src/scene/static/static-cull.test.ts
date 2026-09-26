@@ -77,7 +77,7 @@ describe("StaticCull shadow batches", () => {
     cull.dispose();
   });
 
-  it("reculls retained faces when camera-dependent detail or resident draws change", () => {
+  it("reculls kept faces when the draws change, not when the camera moves: a face casts every tree at its finest", () => {
     const { buffers, cull, pool, renderer, submissions } = createCull();
     const faces: Array<IShadowFrustum> = [createFrustum(), createFrustum()];
 
@@ -91,7 +91,24 @@ describe("StaticCull shadow batches", () => {
     pool.release(0);
     cull.cullViews(renderer, STATIC_LIGHT_VIEW_START, faces);
 
-    expect(submissions.map((nodes) => nodes.length)).toEqual([4, 4, 4, 4]);
+    expect(submissions.map((nodes) => nodes.length)).toEqual([4, 4]);
+    cull.dispose();
+  });
+
+  it("reculls a kept cascade when the camera moves, which picks its trees' bands", () => {
+    const { buffers, cull, pool, renderer, submissions } = createCull();
+    const cascade: Array<IShadowFrustum> = [createFrustum()];
+
+    pool.isEnabled = true;
+    pool.allocate();
+    cull.cullViews(renderer, 0, cascade);
+    cull.cullViews(renderer, 0, cascade);
+    buffers.lod.camera.value.x += 10;
+    cull.cullViews(renderer, 0, cascade);
+    buffers.lod.glodStart.value += 1;
+    cull.cullViews(renderer, 0, cascade);
+
+    expect(submissions.map((nodes) => nodes.length)).toEqual([2, 2, 2]);
     cull.dispose();
   });
 

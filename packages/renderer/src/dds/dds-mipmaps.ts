@@ -1,7 +1,7 @@
 import { Nullable } from "@xrf/types";
 
-import { EDdsLayout, getDdsStoredLength, TDdsLayout } from "#/texture/dds/dds-layout";
-import { expandDdsTexels } from "#/texture/dds/dds-texel-expansion";
+import { EDdsLayout, getDdsStoredLength, TDdsLayout } from "#/dds/dds-layout";
+import { expandDdsTexels } from "#/dds/dds-texel-expansion";
 
 /** One mip: block bytes untouched, or texels already expanded to rgba. */
 export interface IDdsMipmap {

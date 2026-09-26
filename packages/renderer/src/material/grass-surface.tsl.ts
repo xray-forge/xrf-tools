@@ -1,10 +1,6 @@
 import {
   cameraViewMatrix,
   cos,
-  Discard,
-  Fn,
-  fract,
-  If,
   instanceIndex,
   normalize,
   positionLocal,
@@ -22,14 +18,13 @@ import { IRendererSurface } from "#/contract/scene/renderer-surface";
 import { MaterialSamplers } from "#/material/material-samplers";
 import { ISurfaceShader } from "#/material/surface-shader";
 import { DEFAULT_GLOSS, DEFAULT_MATERIAL, MATERIAL_SLICES } from "#/material/surface-texel.tsl";
+import { toAlphaCut } from "#/shader/alpha-cut.tsl";
+import { toCyclic } from "#/shader/cyclic-wave.tsl";
 import { toGBufferOutput } from "#/shader/gbuffer.tsl";
 import { toPointMotion } from "#/shader/motion.tsl";
 import { getWhiteTexture } from "#/texture/placeholder-textures";
 import { GrassWindUniforms } from "#/uniforms/grass-wind-uniforms";
 import { RendererUniforms } from "#/uniforms/renderer-uniforms";
-
-/** `def_aref`: where a tuft's base texture is cut out (`deffer_base_aref_flat.ps`). */
-const DEFAULT_ALPHA_REFERENCE: number = 200 / 255;
 
 /** How far below its foot a tuft's normals point from, `deffer_detail_*_flat.vs`: up, and never zero. */
 const NORMAL_DROP: number = 0.75;
@@ -88,13 +83,8 @@ export function toGrassSurfaceShader(
     varying(cameraViewMatrix.mul(vec4(normalize(current.sub(place.xyz.sub(vec3(0, NORMAL_DROP, 0)))), 0)).xyz)
   );
   const base: Node<"vec4"> = samplers.bind(surface.textures.base, getWhiteTexture(), uv());
-  const albedo: Node<"vec4"> = Fn(() => {
-    If(base.w.lessThanEqual(uniform(surface.alphaReference ?? DEFAULT_ALPHA_REFERENCE)), () => {
-      Discard();
-    });
-
-    return vec4(base.xyz, DEFAULT_GLOSS);
-  })();
+  // `deffer_base_aref_flat.ps`: cut out at `def_aref`.
+  const albedo: Node<"vec4"> = toAlphaCut(base.w, vec4(base.xyz, DEFAULT_GLOSS), surface.alphaReference);
 
   return {
     fragmentNode: toGBufferOutput(
@@ -142,11 +132,4 @@ function toSwayed(
   const swayed: Node<"vec3"> = standing.add(vec3(wind.x.mul(lean), 0, wind.z.mul(lean).negate()));
 
   return select(wave.greaterThan(0.5), swayed, standing);
-}
-
-/** `calc_cyclic`: a wave from minus one to one over each whole turn, a parabola rather than a sine. */
-function toCyclic(phase: Node<"float">): Node<"float"> {
-  const f: Node<"float"> = fract(phase).mul(2.8284271).sub(1.4142136);
-
-  return f.mul(f).sub(1);
 }

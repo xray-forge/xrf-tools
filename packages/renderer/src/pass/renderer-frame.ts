@@ -2,8 +2,8 @@ import { Nullable } from "@xrf/types";
 import { PerspectiveCamera, Scene, WebGPURenderer } from "three/webgpu";
 
 import { IRendererSettings } from "#/contract/renderer-settings";
-import { IRendererFrameJitter } from "#/pass/renderer-frame-jitter";
 import { RendererTargets } from "#/pass/renderer-targets";
+import { IRendererFrameJitter } from "#/sampling/renderer-frame-jitter";
 import { TPassRecord } from "#/scene/pass-record";
 
 /**

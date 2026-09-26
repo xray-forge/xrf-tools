@@ -1,13 +1,13 @@
+import { Maybe } from "@xrf/types";
 import { uniform, uniformArray } from "three/tsl";
-import { Frustum, Matrix4, PerspectiveCamera, Plane, Vector3, Vector4 } from "three/webgpu";
+import { Frustum, PerspectiveCamera, Vector3, Vector4 } from "three/webgpu";
 
+import { RENDERER_FEATURE_SCHEMA, toRendererSettingValue } from "#/contract/renderer-feature-schema";
 import { IRendererGrassSettings } from "#/contract/renderer-features";
+import { toCameraFrustum, toPlaneVectors } from "#/visibility/camera-frustum";
 
 /** Metres a detail slot spans, `dm_slot_size`. */
 export const GRASS_SLOT_METERS: number = 2;
-
-/** The least radius the engine plants to, `r__detail_radius`'s own floor. */
-const LEAST_RADIUS: number = 49;
 
 /**
  * What planting the grass around the camera reads: where the camera stands in the engine's space and on the slot grid,
@@ -35,7 +35,6 @@ export class GrassUniforms {
   public readonly planeNodes = uniformArray(this.planes, "vec4");
 
   private readonly frustum: Frustum = new Frustum();
-  private readonly viewProjection: Matrix4 = new Matrix4();
 
   /** Slots the planting covers, a square around the camera's: `dm_cache_line` squared. */
   public get slotCount(): number {
@@ -53,8 +52,11 @@ export class GrassUniforms {
    * @param settings - What the grass is set to.
    */
   public configure(settings: IRendererGrassSettings): void {
-    const radius: number = Math.max(settings.radius, LEAST_RADIUS);
-    const density: number = Math.min(Math.max(settings.density, 0.1), 0.99);
+    // Held to the engine's bounds whoever set them: a density or radius past them plants past the lists' room.
+    const { grass } = RENDERER_FEATURE_SCHEMA;
+    const radius: number = (toRendererSettingValue(grass.radius, settings.radius) as Maybe<number>) ?? grass.radius.min;
+    const density: number =
+      (toRendererSettingValue(grass.density, settings.density) as Maybe<number>) ?? grass.density.max;
 
     // `dm_current_size` and `dm_current_fade`, from `r__detail_radius`.
     this.reach.value = Math.floor(radius / 4) * 2;
@@ -82,10 +84,6 @@ export class GrassUniforms {
       0
     );
     this.grid.value.set(sizeX, sizeZ, offsetX, offsetZ);
-    this.viewProjection.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
-    this.frustum.setFromProjectionMatrix(this.viewProjection, camera.coordinateSystem, camera.reversedDepth);
-    this.frustum.planes.forEach((plane: Plane, index: number) =>
-      this.planes[index].set(plane.normal.x, plane.normal.y, plane.normal.z, plane.constant)
-    );
+    toPlaneVectors(toCameraFrustum(camera, this.frustum).planes, this.planes);
   }
 }

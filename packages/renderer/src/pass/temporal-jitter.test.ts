@@ -2,7 +2,6 @@ import { describe, expect, it } from "@jest/globals";
 import { Matrix4, PerspectiveCamera, Vector3 } from "three/webgpu";
 
 import { adoptRendererConventions } from "#/internals/camera-conventions";
-import { toRendererFrameSize } from "#/pass/renderer-frame-size";
 import {
   jitterProjection,
   TemporalJitter,
@@ -10,6 +9,7 @@ import {
   toTemporalJitter,
   toTemporalJitterPhases,
 } from "#/pass/temporal-jitter";
+import { toRendererFrameSize } from "#/sampling/renderer-frame-size";
 import { MotionUniforms } from "#/uniforms/motion-uniforms";
 
 describe("temporal jitter", () => {

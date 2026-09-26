@@ -1,129 +1,134 @@
-import { Nullable } from "@xrf/types";
-import {
-  Frustum,
-  Matrix4,
-  PerspectiveCamera,
-  Sphere,
-  StorageBufferAttribute,
-  TextureNode,
-  Vector3,
-  WebGPURenderer,
-} from "three/webgpu";
+import { Maybe, Nullable } from "@xrf/types";
+import { Frustum, Matrix4, PerspectiveCamera, Sphere, Vector3, WebGPURenderer } from "three/webgpu";
 
 import { IRendererLightsSettings } from "#/contract/renderer-features";
-import { TRendererVector } from "#/contract/renderer-lighting";
 import { IRendererLightsReport } from "#/contract/renderer-report";
-import { ERendererLightKind, IRendererLight, IRendererLights } from "#/contract/scene/renderer-lights";
+import {
+  ERendererLightKind,
+  IRendererLightAnimator,
+  IRendererLights,
+  IRendererSpotLight,
+  TRendererLight,
+} from "#/contract/scene/renderer-lights";
 import { toSunSpecular } from "#/lighting/base-lighting";
 import { toAnimatedColor } from "#/lighting/light-animator";
-import { toProjectorAnchor } from "#/scene/lights/light-projectors.tsl";
-import { LIGHT_RECORD, LIGHT_VECTORS } from "#/scene/lights/light-record";
+import { LightClusters } from "#/scene/lights/light-clusters";
+import {
+  createLightBasis,
+  ILightBasis,
+  toLightBasis,
+  toLightBound,
+  toLightIntensity,
+  toLightLod,
+  toLightSpatialSphere,
+} from "#/scene/lights/light-geometry";
+import { LightProjectors } from "#/scene/lights/light-projectors";
+import { LIGHT_NO_CONE, LIGHT_RECORD, MAX_LIGHTS } from "#/scene/lights/light-record";
+import { LightRecords } from "#/scene/lights/light-records";
 import { toLightShadowScale } from "#/scene/lights/light-shadow-faces";
 import {
   ILightShadowEntry,
   ILightShadowFace,
+  ILightShadowRequest,
   LIGHT_SHADOW_ATLAS_SIZE,
-  LightShadows,
-} from "#/scene/lights/light-shadows";
+  LightShadowPlanner,
+} from "#/scene/lights/light-shadow-planner";
 import { StaticShadowChanges } from "#/scene/static/static-shadow-changes";
-import { getWhiteTexture } from "#/texture/placeholder-textures";
 import { RendererTextures } from "#/texture/renderer-textures";
-import {
-  LIGHT_CLUSTER_CAPACITY,
-  LIGHT_CLUSTERS,
-  LIGHT_SHADOW_FACE_BUDGET,
-  LightsUniforms,
-} from "#/uniforms/lights-uniforms";
+import { LIGHT_SHADOW_FACE_BUDGET } from "#/uniforms/lights-uniforms";
 import { LodUniforms } from "#/uniforms/lod-uniforms";
-
-/** Lights standing in view at most in one frame. */
-export const MAX_LIGHTS: number = 1024;
-
-/** Distinct projectors the spots of one scene sample; a spot naming another lights white. */
-export const MAX_PROJECTORS: number = 8;
+import { toCameraFrustum } from "#/visibility/camera-frustum";
 
 /** What a light's falloff reaches zero at, a share of its range: `L_R` (`r3_rendertarget_accum_point.cpp`). */
 const FALLOFF_RANGE: number = 0.95;
 
-/** `ps_r2_slight_fade`: what a shadowed light's screen area is scaled by before it fades (`xrRender_console.cpp`). */
-const SHADOWED_FADE: number = 0.5;
+/** `EPS_L`: the level of detail a shadowed light must pass to be drawn at all. */
+const EPS_L: number = 0.001;
 
-/** `EPS_L`: the level of detail a light must pass to be drawn at all. */
-const LIGHT_EPSILON: number = 0.001;
+/** What a frame's lights are written for. */
+export interface ISceneLightsFrame {
+  /** The view's camera, unjittered: what the lights are culled, ordered, faded and sized by. */
+  readonly view: PerspectiveCamera;
+  /** The camera the scene draws with, whose projection the clusters cut. */
+  readonly camera: PerspectiveCamera;
+  /** Seconds, which the animations run by. */
+  readonly time: number;
+  readonly settings: IRendererLightsSettings;
+  /** The level of detail thresholds, which shadowed lights fade by. */
+  readonly lod: LodUniforms;
+  /** Whether the wind sways the trees this frame, which has the faces over them drawn again. */
+  readonly isWindy: boolean;
+}
 
-/** A cone the record says is none: every point passes its test. */
-const NO_CONE: number = -2;
-
-/** A shadowed light's record waiting for the planner to say whether its faces are drawn. */
-interface IPendingShadow {
-  offset: number;
+/** A light standing in view this frame. */
+interface IInViewLight {
+  light: TRendererLight;
+  /** Its place among the scene's lights, which its shadow is planned under. */
   index: number;
+  /** Metres from the eye to its bound's edge, which the nearest are kept by. */
+  distance: number;
+  /** How far it has faded, one for none. */
+  fade: number;
 }
 
 /**
- * A scene's local lights: kept as the consumer put them, and each frame the ones in view written out in view space,
- * animated and faded as the engine would, for the lights pass to bin and accumulate, a shadowed one with the squares
- * of the atlas its faces are drawn in.
+ * A scene's local lights: kept as the consumer put them, and each frame the nearest in view written out in view space,
+ * animated and faded as the engine would, for the lights pass to bin and accumulate; a shadowed one only once its
+ * faces are drawn, with the squares of the atlas they are drawn in.
  */
 export class SceneLights {
-  /** `LIGHT_VECTORS` a light standing in view, this frame's. */
-  public readonly records: StorageBufferAttribute = new StorageBufferAttribute(
-    new Float32Array(MAX_LIGHTS * LIGHT_VECTORS * 4),
-    4
-  );
-  /** Lights reaching each cluster, and which they are. */
-  public readonly counts: StorageBufferAttribute = new StorageBufferAttribute(new Uint32Array(LIGHT_CLUSTERS), 1);
-  public readonly items: StorageBufferAttribute = new StorageBufferAttribute(
-    new Uint32Array(LIGHT_CLUSTERS * LIGHT_CLUSTER_CAPACITY),
-    1
-  );
-  /** Lights each cluster was reached by and could not hold, as the binning left them. */
-  public readonly drops: StorageBufferAttribute = new StorageBufferAttribute(new Uint32Array(LIGHT_CLUSTERS), 1);
-  public readonly uniforms: LightsUniforms = new LightsUniforms();
-  /** What plans the shadowed lights' faces. */
-  public readonly shadows: LightShadows = new LightShadows();
-  /** A sampler a projector slot, white where no spot names one. */
-  public projectors: ReadonlyArray<TextureNode> = [];
-  /** Bumped whenever the projectors are bound again, which the pass sampling them rebuilds on. */
-  public version: number = 0;
-  /** Lights standing in view this frame. */
+  public readonly records: LightRecords = new LightRecords();
+  public readonly clusters: LightClusters = new LightClusters(this.records.buffer);
+  public readonly projectors: LightProjectors;
+  public readonly shadows: LightShadowPlanner;
+  /** Lights standing in view this frame, and of them the ones drawn with their shadows. */
   public count: number = 0;
+  public shadowed: number = 0;
+  /** Lights in view past the ones the records hold, the farthest. */
+  public excess: number = 0;
 
-  private readonly textures: RendererTextures;
+  private readonly random: () => number;
   private lights: Nullable<IRendererLights> = null;
-  /** The key each slot is bound to. */
-  private keys: Array<string> = [];
+  private readonly inView: Array<IInViewLight> = [];
   private readonly frustum: Frustum = new Frustum();
-  private readonly viewProjection: Matrix4 = new Matrix4();
   private readonly eye: Vector3 = new Vector3();
   private readonly forward: Vector3 = new Vector3();
   private readonly bound: Sphere = new Sphere();
   private readonly spatial: Sphere = new Sphere();
-  private readonly position: Vector3 = new Vector3();
+  private readonly basis: ILightBasis = createLightBasis();
   private readonly vector: Vector3 = new Vector3();
-  private readonly direction: Vector3 = new Vector3();
-  private readonly right: Vector3 = new Vector3();
-  private readonly up: Vector3 = new Vector3();
-  private readonly color: Array<number> = [0, 0, 0];
-  private pending: Array<IPendingShadow> = [];
-  /** Lights drawn with their shadows this frame. */
-  private shadowed: number = 0;
-  /** What the last read of the clusters found full, and whether a read is in flight. */
-  private fullClusters: number = 0;
-  private droppedLights: number = 0;
-  private isReading: boolean = false;
+  private readonly color: [number, number, number] = [0, 0, 0];
+  private readonly request: ILightShadowRequest = {
+    cone: 0,
+    direction: this.basis.direction,
+    distance: 0,
+    duel: 1,
+    intensity: 0,
+    isSpot: false,
+    near: 0,
+    position: this.basis.position,
+    range: 0,
+    up: this.basis.up,
+  };
 
-  public constructor(textures: RendererTextures) {
-    this.textures = textures;
-    this.bind([]);
+  /**
+   * @param textures - What the spots' projectors are bound through.
+   * @param changes - Where what the shadow views draw changed, which the shadow faces kept are drawn again by.
+   * @param random - What a zone's range strays by each frame, from zero to one.
+   */
+  public constructor(textures: RendererTextures, changes: StaticShadowChanges, random: () => number = Math.random) {
+    this.projectors = new LightProjectors(textures);
+    this.shadows = new LightShadowPlanner(changes);
+    this.random = random;
   }
 
   /** What the lights came to in the last frame, the clusters' fill as last read back. */
   public get report(): IRendererLightsReport {
     return {
       atlas: { capacity: LIGHT_SHADOW_ATLAS_SIZE * LIGHT_SHADOW_ATLAS_SIZE, used: this.shadows.atlas.used },
-      droppedLights: this.droppedLights,
-      fullClusters: this.fullClusters,
+      droppedLights: this.clusters.droppedLights,
+      excessLights: this.excess,
+      fullClusters: this.clusters.fullClusters,
       inView: this.count,
       shadowScale: this.shadows.sizeScale,
       shadowed: this.shadowed,
@@ -131,320 +136,215 @@ export class SceneLights {
   }
 
   /**
-   * Reads back how many lights each cluster could not hold, for a later report; one read at a time.
-   *
-   * @param renderer - The renderer the clusters were binned by.
-   */
-  public sample(renderer: WebGPURenderer): void {
-    if (this.isReading || this.count === 0) {
-      return;
-    }
-
-    this.isReading = true;
-    renderer
-      .getArrayBufferAsync(this.drops)
-      .then((buffer: ArrayBuffer) => {
-        const drops: Uint32Array = new Uint32Array(buffer);
-
-        this.fullClusters = drops.reduce((total: number, it: number) => total + (it > 0 ? 1 : 0), 0);
-        this.droppedLights = drops.reduce((total: number, it: number) => total + it, 0);
-      })
-      .catch(() => {})
-      .finally(() => (this.isReading = false));
-  }
-
-  /** Whether there are lights at all, so a pass lighting them has anything to do. */
-  public get isEmpty(): boolean {
-    return !this.lights?.lights.length;
-  }
-
-  /**
    * @param lights - The scene's lights, replacing any put before.
    */
   public put(lights: IRendererLights): void {
-    const keys: Array<string> = [];
-
-    for (const light of lights.lights) {
-      if (light.projector && !keys.includes(light.projector) && keys.length < MAX_PROJECTORS) {
-        keys.push(light.projector);
-      }
-    }
-
     this.lights = lights;
     this.shadows.reset();
-    this.bind(keys);
+    this.projectors.put(lights.lights);
   }
 
   public release(): void {
     this.lights = null;
     this.count = 0;
-    this.fullClusters = 0;
-    this.droppedLights = 0;
+    this.shadowed = 0;
+    this.excess = 0;
     this.shadows.reset();
-    this.bind([]);
+    this.projectors.release();
+    this.clusters.forget();
   }
 
   /**
-   * Writes out the lights standing in view this frame, and plans the shadow faces drawn in it.
+   * Writes out the lights standing in view this frame, nearest first, and plans the shadow faces drawn in it.
    *
-   * @param camera - The camera drawing the frame, its matrices current and its projection jittered as it draws.
-   * @param time - Seconds, which the animations run by.
-   * @param settings - What the lights are set to.
-   * @param lod - The level of detail thresholds, which shadowed lights fade by.
-   * @param changes - Where what the shadow views draw changed, and what sways: what a kept face is drawn again by.
-   * @param isWindy - Whether the wind sways the trees this frame.
+   * @param frame - What the frame's lights are written for.
    */
-  public update(
-    camera: PerspectiveCamera,
-    time: number,
-    settings: IRendererLightsSettings,
-    lod: LodUniforms,
-    changes: StaticShadowChanges,
-    isWindy: boolean
-  ): void {
-    const data: Float32Array = this.records.array as Float32Array;
-    const view: Matrix4 = camera.matrixWorldInverse;
-    let count: number = 0;
+  public update(frame: ISceneLightsFrame): void {
+    const { view, camera, settings } = frame;
 
-    this.viewProjection.multiplyMatrices(camera.projectionMatrix, view);
-    this.frustum.setFromProjectionMatrix(this.viewProjection, camera.coordinateSystem, camera.reversedDepth);
-    camera.getWorldPosition(this.eye);
-    camera.getWorldDirection(this.forward);
-    this.shadows.begin(changes, isWindy);
-    this.pending = [];
+    this.count = 0;
     this.shadowed = 0;
+    this.excess = 0;
 
-    (this.lights?.lights ?? []).forEach((light: IRendererLight, index: number) => {
-      if (count >= MAX_LIGHTS || (light.isLevel && !settings.isLevelLights)) {
-        return;
+    if (settings.isEnabled && this.lights) {
+      const isShadowing: boolean = settings.isShadowed;
+
+      view.getWorldPosition(this.eye);
+      view.getWorldDirection(this.forward);
+      toCameraFrustum(view, this.frustum);
+
+      const inView: Array<IInViewLight> = this.findInView(this.lights.lights, frame);
+
+      this.excess = Math.max(0, inView.length - MAX_LIGHTS);
+      inView.length = Math.min(inView.length, MAX_LIGHTS);
+
+      if (isShadowing) {
+        this.shadows.begin(frame.isWindy);
+        inView.forEach(({ light, index }: IInViewLight) => light.isShadowed && this.requestShadow(index, light));
+        this.shadows.finish(LIGHT_SHADOW_FACE_BUDGET);
       }
 
-      const fade: number = light.isShadowed ? this.toShadowedFade(light, lod) : 1;
+      for (const { light, index, fade } of inView) {
+        const entry: Nullable<ILightShadowEntry> =
+          isShadowing && light.isShadowed ? this.shadows.getEntry(index) : null;
 
-      if (fade <= LIGHT_EPSILON) {
-        return;
+        // The engine never lights a shadowed light without its map: it waits for its faces.
+        if (isShadowing && light.isShadowed && !entry) {
+          continue;
+        }
+
+        this.writeLight(this.count, light, fade, frame.time, camera.matrixWorldInverse);
+        this.writeShadow(this.count, entry);
+        this.count += 1;
       }
-
-      this.toBound(light);
-
-      if (!this.frustum.intersectsSphere(this.bound)) {
-        return;
-      }
-
-      const offset: number = count * LIGHT_VECTORS * 4;
-
-      this.toColor(light, time, light.kind === ERendererLightKind.SPOT ? fade : 1);
-      this.toBasis(light);
-
-      if (light.isShadowed && settings.isShadowed) {
-        this.requestShadow(index, light, offset);
-      }
-
-      this.writeRecord(data, offset, light, view);
-      count += 1;
-    });
-
-    this.shadows.finish(LIGHT_SHADOW_FACE_BUDGET);
-    this.pending.forEach(({ offset, index }) => {
-      const entry: Nullable<ILightShadowEntry> = this.shadows.getEntry(index);
-
-      if (entry) {
-        this.writeShadow(data, offset, entry);
-      }
-    });
-    this.count = count;
-    this.uniforms.follow(camera, count);
-
-    if (count > 0) {
-      this.records.clearUpdateRanges();
-      this.records.addUpdateRange(0, count * LIGHT_VECTORS * 4);
-      this.records.needsUpdate = true;
     }
+
+    this.clusters.follow(camera, this.count);
+    this.records.upload(this.count);
+  }
+
+  /**
+   * @param renderer - The renderer the clusters were binned by.
+   */
+  public readClusterDrops(renderer: WebGPURenderer): void {
+    this.clusters.readDrops(renderer);
   }
 
   public dispose(): void {
     this.release();
+    this.projectors.dispose();
+    this.clusters.dispose();
   }
 
-  /** Points each projector slot at the key a spot names, and the rest at white. */
-  private bind(keys: Array<string>): void {
-    if (this.projectors.length && keys.join() === this.keys.join()) {
-      return;
-    }
+  /** The lights the view sees, not faded out, nearest first, in objects kept for the next frame. */
+  private findInView(lights: ReadonlyArray<TRendererLight>, frame: ISceneLightsFrame): Array<IInViewLight> {
+    const { lod, settings } = frame;
+    let count: number = 0;
 
-    this.projectors.forEach((sampler: TextureNode, slot: number) => this.textures.unbind(this.keys[slot], sampler));
-    this.keys = keys;
-    this.projectors = Array.from({ length: MAX_PROJECTORS }, (_, slot: number) =>
-      this.textures.bind(keys[slot], getWhiteTexture(), toProjectorAnchor())
-    );
-    this.version += 1;
-  }
-
-  /** `light::get_LOD`: a shadowed light fades by its sphere's share of the screen, as the engine's does. */
-  private toShadowedFade(light: IRendererLight, lod: LodUniforms): number {
-    this.toSpatialSphere(light);
-
-    const distance: number = this.eye.distanceToSquared(this.spatial.center) + LIGHT_EPSILON;
-    const area: number = (SHADOWED_FADE * this.spatial.radius) / distance;
-    const start: number = lod.glodStart.value;
-    const end: number = lod.glodEnd.value;
-
-    return start > end ? Math.sqrt(Math.min(Math.max((area - end) / (start - end), 0), 1)) : 1;
-  }
-
-  /** `light::spatial_move`'s sphere, which the engine fades a light and sizes its shadow by. */
-  private toSpatialSphere(light: IRendererLight): void {
-    const [x, y, z] = light.position;
-
-    this.spatial.center.set(x, y, z);
-    this.spatial.radius = light.range;
-
-    if (light.kind !== ERendererLightKind.SPOT) {
-      return;
-    }
-
-    const half: number = light.cone / 2;
-    const isWide: boolean = light.cone >= Math.PI / 2;
-
-    this.spatial.radius = isWide ? light.range * Math.tan(half) : light.range / (2 * Math.cos(half) ** 2);
-    this.spatial.center.add(
-      toVector(this.vector, light.direction).multiplyScalar(isWide ? light.range : this.spatial.radius)
-    );
-  }
-
-  /** The least sphere around what a light reaches, which it is culled and binned by. */
-  private toBound(light: IRendererLight): void {
-    const [x, y, z] = light.position;
-
-    this.bound.center.set(x, y, z);
-    // Reaching as far as its range strays.
-    this.bound.radius = light.range + (light.rangeJitter ?? 0);
-
-    if (light.kind !== ERendererLightKind.SPOT) {
-      return;
-    }
-
-    const half: number = Math.min(light.cone / 2, Math.PI / 2);
-    // A narrow cone's sphere passes through its apex and its rim; a wide one's is its rim's.
-    const offset: number = half > Math.PI / 4 ? light.range * Math.cos(half) : light.range / (2 * Math.cos(half) ** 2);
-
-    this.bound.radius = half > Math.PI / 4 ? light.range * Math.sin(half) : offset;
-    this.bound.center.add(toVector(this.vector, light.direction).multiplyScalar(offset));
-  }
-
-  private toColor(light: IRendererLight, time: number, fade: number): void {
-    const animator = light.animator === undefined ? undefined : this.lights?.animators[light.animator];
-
-    if (animator) {
-      toAnimatedColor(animator, time, this.color);
-
-      for (let channel: number = 0; channel < 3; channel += 1) {
-        this.color[channel] *= light.animatorScale * fade;
+    lights.forEach((light: TRendererLight, index: number) => {
+      if (light.isLevel && !settings.isLevelLights) {
+        return;
       }
-    } else {
-      for (let channel: number = 0; channel < 3; channel += 1) {
-        this.color[channel] = light.color[channel] * fade;
+
+      // `light::get_LOD`, a shadowed light's alone: faded by its sphere's share of the screen.
+      const fade: number = light.isShadowed
+        ? toLightLod(toLightSpatialSphere(light, this.spatial), this.eye, lod.glodStart.value, lod.glodEnd.value)
+        : 1;
+
+      if (fade <= EPS_L || !this.frustum.intersectsSphere(toLightBound(light, this.bound))) {
+        return;
       }
-    }
-  }
 
-  /**
-   * `compute_xf_spot`: the direction, and the right the lamp gives made square to it through the up they make, in
-   * world space. Crossed in the renderer's mirrored space, the engine's `up = dir x right` turns its sign.
-   */
-  private toBasis(light: IRendererLight): void {
-    this.position.set(light.position[0], light.position[1], light.position[2]);
-    toVector(this.direction, light.direction).normalize();
-    toVector(this.right, light.right);
-    this.up.crossVectors(this.direction, this.right).negate().normalize();
-    this.right.crossVectors(this.up, this.direction).negate().normalize();
-  }
+      const entry: IInViewLight = (this.inView[count] ??= { distance: 0, fade: 1, index: 0, light });
 
-  /** Asks the planner for a shadowed light's faces, sized as the engine sizes its maps, in world space. */
-  private requestShadow(index: number, light: IRendererLight, offset: number): void {
-    const [red, green, blue] = this.color;
-    const isSpot: boolean = light.kind === ERendererLightKind.SPOT;
-
-    this.toSpatialSphere(light);
-
-    this.shadows.request(index, {
-      cone: light.cone,
-      direction: this.direction,
-      distance: Math.max(this.eye.distanceTo(this.spatial.center) - this.spatial.radius, 0),
-      duel: isSpot ? 1 - 0.5 * this.forward.dot(this.direction) : 1,
-      intensity: ((red + green + blue) / 3 + (red * 0.2125 + green * 0.7154 + blue * 0.0721)) / 2,
-      isSpot,
-      near: light.near,
-      position: this.position,
-      // As far as its range strays: past a face's far plane every point reads as shadowed.
-      range: light.range + (light.rangeJitter ?? 0),
-      up: this.up,
+      entry.light = light;
+      entry.index = index;
+      entry.fade = fade;
+      entry.distance = Math.max(this.eye.distanceTo(this.bound.center) - this.bound.radius, 0);
+      count += 1;
     });
-    this.pending.push({ index, offset });
+
+    return this.inView.slice(0, count).sort((a: IInViewLight, b: IInViewLight) => a.distance - b.distance);
   }
 
-  private writeRecord(data: Float32Array, offset: number, light: IRendererLight, view: Matrix4): void {
-    const isSpot: boolean = light.kind === ERendererLightKind.SPOT;
-    const range: number = toFrameRange(light) * FALLOFF_RANGE;
-    const slot: number = isSpot && light.projector ? this.keys.indexOf(light.projector) : -1;
+  /** Asks the planner for a shadowed light's faces, sized as the engine sizes its maps, by its colour unfaded. */
+  private requestShadow(index: number, light: TRendererLight): void {
+    const { request } = this;
+    const spot: Nullable<IRendererSpotLight> = light.kind === ERendererLightKind.SPOT ? light : null;
 
-    function at(vector: number): number {
-      return offset + vector * 4;
-    }
-
-    this.vector.copy(this.position).applyMatrix4(view);
-    data.set(
-      [this.vector.x, this.vector.y, this.vector.z, range > 0 ? 1 / (range * range) : 0],
-      at(LIGHT_RECORD.position)
-    );
-    data.set([this.color[0], this.color[1], this.color[2], toSunSpecular(this.color as never)], at(LIGHT_RECORD.color));
-    this.vector.copy(this.direction).transformDirection(view);
-    data.set(
-      [this.vector.x, this.vector.y, this.vector.z, isSpot ? Math.cos(light.cone / 2) : NO_CONE],
-      at(LIGHT_RECORD.axis)
-    );
-    this.vector.copy(this.right).transformDirection(view);
-    data.set(
-      [this.vector.x, this.vector.y, this.vector.z, isSpot ? toLightShadowScale(light.cone) : 0],
-      at(LIGHT_RECORD.right)
-    );
-    this.vector.copy(this.up).transformDirection(view);
-    data.set([this.vector.x, this.vector.y, this.vector.z, slot], at(LIGHT_RECORD.up));
-    this.bound.center.applyMatrix4(view);
-    data.set(
-      [this.bound.center.x, this.bound.center.y, this.bound.center.z, this.bound.radius],
-      at(LIGHT_RECORD.sphere)
-    );
-    // Unshadowed until the planner says its faces are drawn.
-    data.set([0, 0, 0, 0], at(LIGHT_RECORD.shadow));
+    toLightBasis(light, this.basis);
+    toLightSpatialSphere(light, this.spatial);
+    request.isSpot = spot !== null;
+    request.cone = spot?.cone ?? 0;
+    request.near = light.near;
+    // As far as its range strays: past a face's far plane every point reads as shadowed.
+    request.range = light.range + (light.rangeJitter ?? 0);
+    request.intensity = toLightIntensity(light.color);
+    request.distance = Math.max(this.eye.distanceTo(this.spatial.center) - this.spatial.radius, 0);
+    request.duel = spot ? 1 - 0.5 * this.forward.dot(this.basis.direction) : 1;
+    this.shadows.request(index, request);
   }
 
-  /** A shadowed light's near and far planes, and each face's square of the atlas in texture coordinates. */
-  private writeShadow(data: Float32Array, offset: number, entry: ILightShadowEntry): void {
-    if (!this.shadows.isReady(entry)) {
+  /** A light's record, in view space, its colour animated and faded. */
+  private writeLight(slot: number, light: TRendererLight, fade: number, time: number, view: Matrix4): void {
+    const { records, basis, vector, color } = this;
+    const spot: Nullable<IRendererSpotLight> = light.kind === ERendererLightKind.SPOT ? light : null;
+    const range: number = this.toFrameRange(light) * FALLOFF_RANGE;
+
+    toLightBasis(light, basis);
+    this.toColor(light, time, fade);
+    records.setVector(
+      slot,
+      LIGHT_RECORD.position,
+      vector.copy(basis.position).applyMatrix4(view),
+      range > 0 ? 1 / (range * range) : 0
+    );
+    records.set(slot, LIGHT_RECORD.color, color[0], color[1], color[2], toSunSpecular(color));
+    records.setVector(
+      slot,
+      LIGHT_RECORD.axis,
+      vector.copy(basis.direction).transformDirection(view),
+      spot ? Math.cos(spot.cone / 2) : LIGHT_NO_CONE
+    );
+    records.setVector(
+      slot,
+      LIGHT_RECORD.right,
+      vector.copy(basis.right).transformDirection(view),
+      spot ? toLightShadowScale(spot.cone) : 0
+    );
+    records.setVector(
+      slot,
+      LIGHT_RECORD.up,
+      vector.copy(basis.up).transformDirection(view),
+      this.projectors.getSlot(light)
+    );
+    toLightBound(light, this.bound).center.applyMatrix4(view);
+    records.setVector(slot, LIGHT_RECORD.sphere, this.bound.center, this.bound.radius);
+  }
+
+  /** A shadowed light's near and far planes and face count, and each face's square of the atlas in texture coordinates. */
+  private writeShadow(slot: number, entry: Nullable<ILightShadowEntry>): void {
+    if (!entry) {
+      this.records.set(slot, LIGHT_RECORD.shadow, 0, 0, 0, 0);
+
       return;
     }
 
     this.shadowed += 1;
-
-    data.set(
-      [entry.near, entry.far, entry.faces.length, 1 / LIGHT_SHADOW_ATLAS_SIZE],
-      offset + LIGHT_RECORD.shadow * 4
+    this.records.set(slot, LIGHT_RECORD.shadow, entry.near, entry.far, entry.faces.length, 0);
+    entry.faces.forEach(({ tile }: ILightShadowFace, face: number) =>
+      this.records.set(
+        slot,
+        LIGHT_RECORD.faces + face,
+        tile.x / LIGHT_SHADOW_ATLAS_SIZE,
+        tile.y / LIGHT_SHADOW_ATLAS_SIZE,
+        tile.size / LIGHT_SHADOW_ATLAS_SIZE,
+        0
+      )
     );
-    entry.faces.forEach(({ tile }: ILightShadowFace, face: number) => {
-      data.set(
-        [tile.x / LIGHT_SHADOW_ATLAS_SIZE, tile.y / LIGHT_SHADOW_ATLAS_SIZE, tile.size / LIGHT_SHADOW_ATLAS_SIZE, 0],
-        offset + (LIGHT_RECORD.faces + face) * 4
-      );
-    });
   }
-}
 
-/** `UpdateIdleLight`: a light's range this frame, strayed at random by its jitter. */
-function toFrameRange(light: IRendererLight): number {
-  return light.rangeJitter ? light.range + light.rangeJitter * (Math.random() * 2 - 1) : light.range;
-}
+  /** Its colour this frame: animated where it names an animation, then faded. */
+  private toColor(light: TRendererLight, time: number, fade: number): void {
+    const animator: Maybe<IRendererLightAnimator> =
+      light.animator === undefined ? undefined : this.lights?.animators[light.animator];
+    const { color } = this;
 
-function toVector(out: Vector3, vector: TRendererVector): Vector3 {
-  return out.set(vector[0], vector[1], vector[2]);
+    if (animator) {
+      toAnimatedColor(animator, time, color);
+
+      for (let channel: number = 0; channel < 3; channel += 1) {
+        color[channel] *= light.animatorScale * fade;
+      }
+    } else {
+      for (let channel: number = 0; channel < 3; channel += 1) {
+        color[channel] = light.color[channel] * fade;
+      }
+    }
+  }
+
+  /** `UpdateIdleLight`: a light's range this frame, strayed at random by its jitter. */
+  private toFrameRange(light: TRendererLight): number {
+    return light.rangeJitter ? light.range + light.rangeJitter * (this.random() * 2 - 1) : light.range;
+  }
 }

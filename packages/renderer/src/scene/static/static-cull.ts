@@ -9,9 +9,13 @@ import { StaticDepthPyramid } from "#/scene/static/static-depth-pyramid";
 import { StaticDrawPool } from "#/scene/static/static-draw-pool";
 import { StaticLods } from "#/scene/static/static-lods";
 import { StaticPlaces } from "#/scene/static/static-places";
-import { STATIC_SHADOW_VIEWS, StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
+import { STATIC_LIGHT_VIEW_START, STATIC_SHADOW_VIEWS, StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
+import { toPlaneVectors } from "#/visibility/camera-frustum";
 import { CullView } from "#/visibility/cull-view";
 import { IShadowFrustum } from "#/visibility/shadow-frustum";
+
+/** Numbers a shadow view's cull is keyed by: its frustum's, the pools' and the layout's versions, then its bands'. */
+const VIEW_KEY_LENGTH: number = 10;
 
 /**
  * Culls every static draw on the GPU against the view drawn for, single draws by slot and instanced ones by row, in
@@ -47,8 +51,11 @@ export class StaticCull {
   private poolVersion: number = -1;
   private placesVersion: number = -1;
   private lodsVersion: number = -1;
-  /** Each shadow view's frustum, pool, places and LOD versions its last cull ran against, joined. */
-  private readonly viewVersions: Array<string> = new Array(STATIC_SHADOW_VIEWS).fill("");
+  /** What each shadow view's last cull ran against, and what this one runs against. */
+  private readonly viewKeys: Array<Float64Array> = Array.from({ length: STATIC_SHADOW_VIEWS }, () =>
+    new Float64Array(VIEW_KEY_LENGTH).fill(NaN)
+  );
+  private readonly nextKey: Float64Array = new Float64Array(VIEW_KEY_LENGTH);
   /** Which frustum owns each retained result; versions of different frustums need not be distinct. */
   private readonly viewFrustums: Array<Nullable<IShadowFrustum>> = new Array(STATIC_SHADOW_VIEWS).fill(null);
   /** Dirty views' slot and row culls, retained as one compute batch between frames. */
@@ -115,9 +122,7 @@ export class StaticCull {
       return;
     }
 
-    view.planes.forEach(({ normal, constant }, index: number) =>
-      this.shader.planes[index].set(normal.x, normal.y, normal.z, constant)
-    );
+    toPlaneVectors(view.planes, this.shader.planes);
     this.buffers.occlusion.current.take(camera);
     this.viewVersion = view.version;
     this.poolVersion = this.pool.version;
@@ -321,28 +326,32 @@ export class StaticCull {
   /** Takes a slot for this frustum, copying its planes only where its retained result is no longer current. */
   private prepareView(view: number, frustum: IShadowFrustum): Nullable<IStaticViewCullShader> {
     const { lod } = this.buffers;
-    const version: string = [
-      frustum.version,
-      this.pool.version,
-      this.places.version,
-      this.lods.version,
-      this.layout,
-      lod.glodStart.value,
-      lod.glodEnd.value,
-      // Shadow instance culling chooses progressive-mesh bands from the main camera's position too.
-      lod.camera.value.x,
-      lod.camera.value.y,
-      lod.camera.value.z,
-    ].join();
+    const key: Float64Array = this.nextKey;
+    // A cascade casts a progressive tree at the band the camera picks for it; a light's face casts the finest.
+    const isBanded: boolean = view < STATIC_LIGHT_VIEW_START;
 
-    if (this.viewFrustums[view] === frustum && this.viewVersions[view] === version) {
+    key[0] = frustum.version;
+    key[1] = this.pool.version;
+    key[2] = this.places.version;
+    key[3] = this.lods.version;
+    key[4] = this.layout;
+    key[5] = isBanded ? lod.glodStart.value : 0;
+    key[6] = isBanded ? lod.glodEnd.value : 0;
+    key[7] = isBanded ? lod.camera.value.x : 0;
+    key[8] = isBanded ? lod.camera.value.y : 0;
+    key[9] = isBanded ? lod.camera.value.z : 0;
+
+    if (
+      this.viewFrustums[view] === frustum &&
+      key.every((value: number, at: number) => value === this.viewKeys[view][at])
+    ) {
       return null;
     }
 
     const shader: IStaticViewCullShader = this.shader.views[view];
 
     this.viewFrustums[view] = frustum;
-    this.viewVersions[view] = version;
+    this.viewKeys[view].set(key);
     shader.planes.forEach((plane: Vector4, index: number) => plane.copy(frustum.planes[index]));
 
     return shader;
@@ -364,7 +373,7 @@ export class StaticCull {
 
       this.disposeShader();
       // Every cascade culls again against the buffers as they are laid out now.
-      this.viewVersions.fill("");
+      this.viewKeys.forEach((it: Float64Array) => it.fill(NaN));
       this.shader = createStaticCullShader(this.buffers);
       this.shader.planes.forEach((plane, index: number) => plane.copy(planes[index]));
       this.layout = this.buffers.layout;

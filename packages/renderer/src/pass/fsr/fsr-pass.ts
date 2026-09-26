@@ -29,11 +29,11 @@ import {
 import { PingPong } from "#/pass/ping-pong";
 import { createDepthWritingQuadMaterial, createQuadMaterial } from "#/pass/quad-material";
 import { IRendererFrame } from "#/pass/renderer-frame";
-import { IRendererFrameSize } from "#/pass/renderer-frame-size";
 import { IRendererPass } from "#/pass/renderer-pass";
 import { RendererTargets } from "#/pass/renderer-targets";
 import { ResolvedTarget } from "#/pass/resolved-target";
 import { ITemporalUpscaler } from "#/pass/temporal-upscaler";
+import { IRendererFrameSize } from "#/sampling/renderer-frame-size";
 import { toUpscaledDepth } from "#/shader/drawn-sample.tsl";
 import { FsrUniforms, toShadingChangeMipSide } from "#/uniforms/fsr-uniforms";
 import { RendererUniforms } from "#/uniforms/renderer-uniforms";

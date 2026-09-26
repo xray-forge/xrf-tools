@@ -1,7 +1,7 @@
 import { RenderTarget, WebGPURenderer } from "three/webgpu";
 
-import { IRendererFrameSize } from "#/pass/renderer-frame-size";
 import { IRendererPass } from "#/pass/renderer-pass";
+import { IRendererFrameSize } from "#/sampling/renderer-frame-size";
 
 /**
  * A pass resolving the jittered frames with their history at the output's size: TAA's, or FSR 2's. The frame's jitter

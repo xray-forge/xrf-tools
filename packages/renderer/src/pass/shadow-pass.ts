@@ -4,8 +4,10 @@ import { RenderTarget } from "three/webgpu";
 import { IRendererFrame } from "#/pass/renderer-frame";
 import { IRendererPass } from "#/pass/renderer-pass";
 import { RendererTargets } from "#/pass/renderer-targets";
+import { drawUnsorted } from "#/pass/unsorted-draw";
 import { StaticCull } from "#/scene/static/static-cull";
 import { IStaticShadowCasters } from "#/scene/static/static-shadow-casters";
+import { EShadowCasterMotion } from "#/scene/static/static-shadow-changes";
 import { ShadowUniforms } from "#/uniforms/shadow-uniforms";
 import { TreeWindUniforms } from "#/uniforms/tree-wind-uniforms";
 import { SunCascade } from "#/visibility/sun-cascade";
@@ -24,10 +26,13 @@ export class ShadowPass implements IRendererPass {
   private readonly cull: StaticCull;
   private readonly shadows: ShadowUniforms;
   private readonly wind: TreeWindUniforms;
-  /** The casters' version its map was drawn at, or null before it was drawn at all. */
+  /** The shadow changes' version its map was drawn at, or null before it was drawn at all. */
   private drawnVersion: Nullable<number> = null;
   /** Frames it has been in, which its staggered rate is counted by. */
   private frames: number = 0;
+  /** How the fastest caster in its box moves, and the box's and the changes' versions that was found at. */
+  private motion: EShadowCasterMotion = EShadowCasterMotion.STILL;
+  private motionKey: string = "";
 
   /**
    * @param view - The cascade, from zero.
@@ -35,7 +40,7 @@ export class ShadowPass implements IRendererPass {
    * @param casters - What the cascades draw.
    * @param cull - What culls the static draws, per cascade too.
    * @param shadows - The cascades, fitted for the frame.
-   * @param wind - How the trees sway, which has the map drawn again every frame it is due while they do.
+   * @param wind - How the trees sway, which has the map over a swaying caster drawn again every frame it is due.
    * @param resolution - Texels its map is across.
    */
   public constructor(
@@ -67,27 +72,39 @@ export class ShadowPass implements IRendererPass {
     }
 
     const isCulled: boolean = this.cull.cullView(renderer, this.view, cascade);
-    // A part drawn plainly may be skinned, and a tree sways: both move with no version saying so.
-    const hasPlain: boolean = this.casters.plainCasters.children.length > 0;
-    const isMoving: boolean = hasPlain || this.wind.isSwaying;
+    const motion: EShadowCasterMotion = this.findMotion(cascade);
+    // A skinned part moves, and a tree sways while the wind blows: both with no version saying so.
+    const isMoving: boolean =
+      motion === EShadowCasterMotion.MOVING || (motion === EShadowCasterMotion.SWAYING && this.wind.isSwaying);
 
-    if (!isCulled && !isMoving && this.drawnVersion === this.casters.shadowVersion) {
+    if (!isCulled && !isMoving && this.drawnVersion === this.casters.shadowChanges.version) {
       return;
     }
 
-    this.drawnVersion = this.casters.shadowVersion;
+    this.drawnVersion = this.casters.shadowChanges.version;
     this.shadows.commit(this.view);
     this.casters.showShadowCells(this.view, cascade.planes);
     renderer.setRenderTarget(this.target);
     renderer.clear(false, true, false);
-    renderer.sortObjects = false;
-    renderer.render(this.casters.shadowScenes[this.view], cascade.camera);
+    drawUnsorted(renderer, () => {
+      renderer.render(this.casters.shadowScenes[this.view], cascade.camera);
 
-    if (hasPlain) {
-      renderer.render(this.casters.plainCasters, cascade.camera);
+      if (this.casters.plainCasters.show(cascade.planes)) {
+        renderer.render(this.casters.plainCasters.scene, cascade.camera);
+      }
+    });
+  }
+
+  /** The fastest a caster in the cascade's box moves, found again once the box or what casts changed. */
+  private findMotion(cascade: SunCascade): EShadowCasterMotion {
+    const key: string = `${cascade.version}:${this.casters.shadowChanges.version}`;
+
+    if (key !== this.motionKey) {
+      this.motion = this.casters.shadowChanges.getMotion(cascade.planes);
+      this.motionKey = key;
     }
 
-    renderer.sortObjects = true;
+    return this.motion;
   }
 
   /** Gives its map back to nothing: the target stays, at a texel, so the sun's bindings never change. */

@@ -4,18 +4,27 @@ import {
   BufferGeometry,
   DoubleSide,
   Mesh,
+  PerspectiveCamera,
   Scene,
   StorageBufferAttribute,
   WebGPURenderer,
 } from "three/webgpu";
 
+import { IRendererGrassSettings } from "#/contract/renderer-features";
 import { IRendererGrass, IRendererGrassModel } from "#/contract/scene/renderer-grass";
 import { destroyStorageAttribute } from "#/internals/renderer-backend";
 import { toGrassSurfaceShader } from "#/material/grass-surface.tsl";
 import { MaterialSamplers } from "#/material/material-samplers";
 import { SurfaceNodeMaterial } from "#/material/surface-node-material";
 import { ISurfaceShader } from "#/material/surface-shader";
-import { createGrassBuffers, IGrassBuffers } from "#/scene/grass/grass-buffers";
+import {
+  createGrassItemBuffers,
+  createGrassLevelBuffers,
+  IGrassItemBuffers,
+  IGrassLevelBuffers,
+  listGrassItemStorage,
+  listGrassLevelStorage,
+} from "#/scene/grass/grass-buffers";
 import { createGrassPlanting, IGrassPlanting, toGrassItems } from "#/scene/grass/grass-planting.tsl";
 import { createSceneMesh } from "#/scene/object/scene-mesh";
 import { RendererTextures } from "#/texture/renderer-textures";
@@ -35,34 +44,29 @@ interface IGrassDraw {
 
 /**
  * A level's grass on the GPU: what it is planted from, the passes planting it around the camera every frame, and a
- * draw a model, each drawing the tufts the planting sorted into its range. Built at the size the planting needs and
- * built again when a setting needs more.
+ * draw a model, each drawing the tufts the planting sorted into its range. The item lists grow when a setting needs
+ * more room than they hold; any other change of the settings is only what the passes are dispatched over.
  */
 export class SceneGrass {
   /** What the grass pass draws, a mesh a model. */
   public readonly scene: Scene = new Scene();
+  /** Where the camera stands and what the planting is set to, as the planting reads them. */
+  public readonly uniforms: GrassUniforms = new GrassUniforms();
 
   private readonly textures: RendererTextures;
-  private readonly uniforms: RendererUniforms;
+  private readonly rendererUniforms: RendererUniforms;
   private grass: Nullable<IRendererGrass> = null;
-  private buffers: Nullable<IGrassBuffers> = null;
-  private planting: Nullable<IGrassPlanting> = null;
+  private level: Nullable<IGrassLevelBuffers> = null;
+  private items: Nullable<IGrassItemBuffers> = null;
+  private passes: Nullable<IGrassPlanting> = null;
   private draws: Array<IGrassDraw> = [];
-  /** What the planting was built for: the slots it plants and the items its lists hold. */
-  private slotCount: number = 0;
-  private capacity: number = 0;
-  /** Buffers a rebuild replaced, freed once a renderer is at hand. */
+  /** Buffers let go of, freed once a renderer is at hand. */
   private retired: Array<StorageBufferAttribute> = [];
 
   public constructor(textures: RendererTextures, uniforms: RendererUniforms) {
     this.textures = textures;
-    this.uniforms = uniforms;
+    this.rendererUniforms = uniforms;
     this.scene.matrixWorldAutoUpdate = false;
-  }
-
-  /** The grid the grass is planted over, or null for none. */
-  public get grid(): Nullable<Pick<IRendererGrass, "offsetX" | "offsetZ" | "sizeX" | "sizeZ">> {
-    return this.grass;
   }
 
   /** Whether there is grass to plant, and every texture it is dressed with is up. */
@@ -83,62 +87,83 @@ export class SceneGrass {
   public put(grass: IRendererGrass): void {
     this.release();
     this.grass = grass;
+    this.level = createGrassLevelBuffers(grass);
   }
 
   /** Lets the grass go. */
   public release(): void {
-    this.clear();
+    this.clearItems();
+
+    if (this.level) {
+      this.retired.push(...listGrassLevelStorage(this.level));
+    }
+
+    this.level = null;
     this.grass = null;
   }
 
   /**
-   * Plants the frame's grass for where the camera stands: the four passes, after building what they need at the size
-   * the settings ask for.
+   * Plants the frame's grass around where the view stands: the four passes, over as many slots as the settings cover.
    *
    * @param renderer - The renderer drawing.
-   * @param uniforms - Where the camera stands and what the planting is set to, current.
+   * @param view - The view's camera, unjittered, which the planting centres on and culls by.
+   * @param settings - What the grass is set to.
    */
-  public plant(renderer: WebGPURenderer, uniforms: GrassUniforms): void {
+  public plant(renderer: WebGPURenderer, view: PerspectiveCamera, settings: IRendererGrassSettings): void {
     this.retired.forEach((attribute: StorageBufferAttribute) => destroyStorageAttribute(renderer, attribute));
     this.retired = [];
 
-    if (!this.grass) {
+    const { grass, level, uniforms } = this;
+
+    if (!grass || !level) {
       return;
     }
 
-    const capacity: number = uniforms.slotCount * uniforms.candidateCount;
+    uniforms.configure(settings);
+    uniforms.follow(view, grass.sizeX, grass.sizeZ, grass.offsetX, grass.offsetZ);
 
-    if (!this.planting || uniforms.slotCount !== this.slotCount || capacity > this.capacity) {
-      this.build(this.grass, uniforms, capacity);
-    }
+    const needed: number = uniforms.slotCount * uniforms.candidateCount;
+    const passes: IGrassPlanting =
+      this.passes && this.items && needed <= this.items.capacity ? this.passes : this.build(grass, level, needed);
 
-    const planting: IGrassPlanting = this.planting!;
-
-    renderer.compute([planting.clear, planting.plant, planting.arrange, planting.scatter]);
+    passes.plant.count = Math.max(uniforms.slotCount, 1);
+    passes.scatter.count = Math.max(needed, 1);
+    renderer.compute([passes.clear, passes.plant, passes.arrange, passes.scatter]);
   }
 
   public dispose(): void {
     this.release();
   }
 
-  private build(grass: IRendererGrass, uniforms: GrassUniforms, capacity: number): void {
-    this.clear();
+  /** The item lists as large as asked, and the passes and draws reading them. */
+  private build(grass: IRendererGrass, level: IGrassLevelBuffers, capacity: number): IGrassPlanting {
+    this.clearItems();
 
-    const buffers: IGrassBuffers = createGrassBuffers(grass, capacity);
-    const items = toGrassItems(buffers, capacity);
+    const items: IGrassItemBuffers = createGrassItemBuffers(capacity);
+    const buffers = { ...level, ...items };
+    const passes: IGrassPlanting = createGrassPlanting(
+      buffers,
+      this.uniforms,
+      this.rendererUniforms.staticDraws.lod.discard
+    );
+    const sorted = toGrassItems(items);
 
-    this.buffers = buffers;
-    this.slotCount = uniforms.slotCount;
-    this.capacity = capacity;
-    this.planting = createGrassPlanting(buffers, uniforms, this.uniforms.staticDraws.lod.discard, capacity);
+    this.items = items;
+    this.passes = passes;
     this.draws = grass.models.map((model: IRendererGrassModel, index: number) => {
-      const samplers: MaterialSamplers = new MaterialSamplers(this.textures, this.uniforms.settings.textureBias);
-      const shader: ISurfaceShader = toGrassSurfaceShader(
-        { height: model.height, items, surface: model.surface },
-        samplers,
-        this.uniforms
+      const samplers: MaterialSamplers = new MaterialSamplers(
+        this.textures,
+        this.rendererUniforms.settings.textureBias
       );
-      const material: SurfaceNodeMaterial = new SurfaceNodeMaterial(this.uniforms.staticDraws, this.uniforms.wind);
+      const shader: ISurfaceShader = toGrassSurfaceShader(
+        { height: model.height, items: sorted, surface: model.surface },
+        samplers,
+        this.rendererUniforms
+      );
+      const material: SurfaceNodeMaterial = new SurfaceNodeMaterial(
+        this.rendererUniforms.staticDraws,
+        this.rendererUniforms.treeWind
+      );
       const geometry: BufferGeometry = new BufferGeometry();
 
       material.fragmentNode = shader.fragmentNode ?? null;
@@ -148,7 +173,7 @@ export class SceneGrass {
       geometry.setAttribute("position", new BufferAttribute(model.positions, 3));
       geometry.setAttribute("uv", new BufferAttribute(model.uvs, 2));
       geometry.setIndex(new BufferAttribute(model.indices, 1));
-      geometry.setIndirect(buffers.args, index * ARGUMENT_BYTES);
+      geometry.setIndirect(level.args, index * ARGUMENT_BYTES);
 
       const mesh: Mesh = createSceneMesh(geometry, null, material);
 
@@ -156,10 +181,12 @@ export class SceneGrass {
 
       return { material, mesh, samplers };
     });
+
+    return passes;
   }
 
-  /** Takes down what was built, keeping the grass it was built from. */
-  private clear(): void {
+  /** Takes down the item lists and what reads them, keeping what the grass is planted from. */
+  private clearItems(): void {
     this.draws.forEach(({ mesh, material, samplers }: IGrassDraw) => {
       this.scene.remove(mesh);
       mesh.geometry.dispose();
@@ -168,15 +195,11 @@ export class SceneGrass {
     });
     this.draws = [];
 
-    if (this.buffers) {
-      const { counts, cursors, items, itemModels, sorted, grid, slots, bins, triangles, dither, models } = this.buffers;
-
-      this.retired.push(counts, cursors, items, itemModels, sorted, grid, slots, bins, triangles, dither, models);
+    if (this.items) {
+      this.retired.push(...listGrassItemStorage(this.items));
     }
 
-    this.buffers = null;
-    this.planting = null;
-    this.slotCount = 0;
-    this.capacity = 0;
+    this.items = null;
+    this.passes = null;
   }
 }

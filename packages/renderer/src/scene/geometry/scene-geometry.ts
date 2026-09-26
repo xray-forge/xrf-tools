@@ -6,9 +6,9 @@ import {
   IRendererGeometryGroup,
   IRendererPackedVertices,
 } from "#/contract/scene/renderer-geometry";
+import { EVertexAttribute } from "#/geometry/vertex-attribute";
 import { ISceneSection } from "#/scene/geometry/scene-section";
 import { toSectionSphere } from "#/scene/geometry/section-sphere";
-import { EVertexAttribute } from "#/shader/vertex-attribute";
 
 /**
  * A geometry a consumer put: the buffers every object drawing it shares, over the very arrays that crossed, and the

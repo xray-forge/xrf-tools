@@ -2,7 +2,7 @@ import { describe, expect, it } from "@jest/globals";
 import { PerspectiveCamera, Vector3 } from "three/webgpu";
 
 import { adoptRendererConventions } from "#/internals/camera-conventions";
-import { toRendererFrameSize } from "#/pass/renderer-frame-size";
+import { toRendererFrameSize } from "#/sampling/renderer-frame-size";
 import { FsrUniforms, toShadingChangeMipSide } from "#/uniforms/fsr-uniforms";
 
 describe("FsrUniforms", () => {

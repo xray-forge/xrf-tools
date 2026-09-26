@@ -13,17 +13,14 @@ export interface ILightShadowTile {
  */
 export class LightShadowAtlas {
   public readonly size: number;
-  public readonly minimum: number;
   /** Every free square, by its key. */
   private readonly free: Map<string, ILightShadowTile> = new Map();
 
   /**
    * @param size - Texels the atlas is across, a power of two.
-   * @param minimum - Texels the least square is across, a power of two no larger.
    */
-  public constructor(size: number, minimum: number) {
+  public constructor(size: number) {
     this.size = size;
-    this.minimum = minimum;
     this.clear();
   }
 

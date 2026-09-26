@@ -1,5 +1,5 @@
 import { Nullable } from "@xrf/types";
-import { ComputeNode, CustomBlending, NodeMaterial, OneFactor, QuadMesh, Texture } from "three/webgpu";
+import { CustomBlending, NodeMaterial, OneFactor, QuadMesh, Texture } from "three/webgpu";
 
 import { ERendererLightShadowFilter } from "#/contract/renderer-features";
 import { toLightsPassFragment } from "#/pass/lights-pass.tsl";
@@ -7,9 +7,7 @@ import { createQuadMaterial } from "#/pass/quad-material";
 import { IRendererFrame } from "#/pass/renderer-frame";
 import { IRendererPass } from "#/pass/renderer-pass";
 import { RendererTargets } from "#/pass/renderer-targets";
-import { createLightBinning } from "#/scene/lights/light-binning.tsl";
-import { LIGHT_VECTORS } from "#/scene/lights/light-record";
-import { MAX_LIGHTS, SceneLights } from "#/scene/lights/scene-lights";
+import { SceneLights } from "#/scene/lights/scene-lights";
 import { RendererUniforms } from "#/uniforms/renderer-uniforms";
 
 /**
@@ -22,11 +20,10 @@ export class LightsPass implements IRendererPass {
   private readonly lights: SceneLights;
   private readonly targets: RendererTargets;
   private readonly uniforms: RendererUniforms;
-  private readonly binning: ComputeNode;
   private readonly quad: QuadMesh = new QuadMesh();
   private material: Nullable<NodeMaterial> = null;
   /** The projectors' version its material samples, and the filter its shadows are compared through. */
-  private version: number = -1;
+  private projectorVersion: number = -1;
   private filter: ERendererLightShadowFilter = ERendererLightShadowFilter.ENGINE;
   private builtFilter: ERendererLightShadowFilter = ERendererLightShadowFilter.ENGINE;
 
@@ -39,7 +36,6 @@ export class LightsPass implements IRendererPass {
     this.lights = lights;
     this.targets = targets;
     this.uniforms = uniforms;
-    this.binning = createLightBinning(lights, lights.uniforms, LIGHT_VECTORS, MAX_LIGHTS);
   }
 
   /**
@@ -54,41 +50,40 @@ export class LightsPass implements IRendererPass {
       return;
     }
 
-    renderer.compute(this.binning);
+    this.lights.clusters.bin(renderer);
     this.quad.material = this.getMaterial();
     renderer.setRenderTarget(targets.light);
     this.quad.render(renderer);
   }
 
   public dispose(): void {
-    this.binning.dispose();
     this.material?.dispose();
   }
 
-  /** The accumulation, built again once the projectors it samples are bound again. */
+  /** The accumulation, built again once the projectors it samples are bound again, or its filter changes. */
   private getMaterial(): NodeMaterial {
-    if (this.material && this.version === this.lights.version && this.builtFilter === this.filter) {
+    const { clusters, projectors, records } = this.lights;
+
+    if (this.material && this.projectorVersion === projectors.version && this.builtFilter === this.filter) {
       return this.material;
     }
 
     this.material?.dispose();
-    this.version = this.lights.version;
+    this.projectorVersion = projectors.version;
     this.builtFilter = this.filter;
     this.material = createQuadMaterial(
       toLightsPassFragment(
         {
-          counts: this.lights.counts,
           atlas: this.targets.lightShadows.depthTexture as Texture,
+          counts: clusters.counts,
           gbuffer: this.targets,
-          items: this.lights.items,
+          items: clusters.items,
           lut: this.uniforms.lut,
-          projectors: this.lights.projectors,
-          records: this.lights.records,
+          projectors: projectors.samplers,
+          records: records.buffer,
         },
         this.uniforms.camera,
-        this.lights.uniforms,
-        LIGHT_VECTORS,
-        MAX_LIGHTS,
+        clusters.uniforms,
         this.filter
       )
     );

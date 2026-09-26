@@ -1,11 +1,33 @@
 import { attribute, Fn, positionGeometry, reference, referenceBuffer, tangentLocal, vec4 } from "three/tsl";
 import { Node, NodeBuilder, SkinnedMesh } from "three/webgpu";
 
-import { EVertexAttribute } from "#/shader/vertex-attribute";
+import { EVertexAttribute } from "#/geometry/vertex-attribute";
+import { PREVIOUS_BONE_MATRICES } from "#/shader/previous-bones";
 
 /** A buffer of matrices a node indexes, which the typings leave off `referenceBuffer`. */
 interface IMatrixBuffer {
   element(index: Node<"uint">): Node<"mat4">;
+}
+
+/**
+ * A vertex's skin, as three's `SkinningNode` blends it: its four bones' matrices weighted, between the bind matrices.
+ *
+ * @param bones - The bone matrices, current or the frame before's.
+ * @returns What turns a model space vector of the vertex's.
+ */
+function toSkinMatrix(bones: IMatrixBuffer): Node<"mat4"> {
+  const index = attribute<"uvec4">("skinIndex", "uvec4");
+  const weight = attribute<"vec4">("skinWeight", "vec4");
+  const skin: Node<"mat4"> = bones
+    .element(index.x)
+    .mul(weight.x)
+    .add(bones.element(index.y).mul(weight.y))
+    .add(bones.element(index.z).mul(weight.z))
+    .add(bones.element(index.w).mul(weight.w));
+  const bind = reference("bindMatrix", "mat4", null) as unknown as Node<"mat4">;
+  const bindInverse = reference("bindMatrixInverse", "mat4", null) as unknown as Node<"mat4">;
+
+  return bindInverse.mul(skin).mul(bind);
 }
 
 /**
@@ -32,18 +54,8 @@ export const skinnedBinormal = Fn((_: [], builder: NodeBuilder): Node<"vec3"> =>
     object.skeleton.bones.length,
     null
   ) as unknown as IMatrixBuffer;
-  const index = attribute<"uvec4">("skinIndex", "uvec4");
-  const weight = attribute<"vec4">("skinWeight", "vec4");
-  const skin: Node<"mat4"> = bones
-    .element(index.x)
-    .mul(weight.x)
-    .add(bones.element(index.y).mul(weight.y))
-    .add(bones.element(index.z).mul(weight.z))
-    .add(bones.element(index.w).mul(weight.w));
-  const bind = reference("bindMatrix", "mat4", null) as unknown as Node<"mat4">;
-  const bindInverse = reference("bindMatrixInverse", "mat4", null) as unknown as Node<"mat4">;
 
-  return bindInverse.mul(skin).mul(bind).mul(vec4(binormal, 0)).xyz;
+  return toSkinMatrix(bones).mul(vec4(binormal, 0)).xyz;
 });
 
 /**
@@ -58,21 +70,11 @@ export const previousSkinnedPosition = Fn((_: [], builder: NodeBuilder): Node<"v
   }
 
   const bones = referenceBuffer(
-    "skeleton.previousBoneMatrices",
+    `skeleton.${PREVIOUS_BONE_MATRICES}`,
     "mat4",
     object.skeleton.bones.length,
     null
   ) as unknown as IMatrixBuffer;
-  const index = attribute<"uvec4">("skinIndex", "uvec4");
-  const weight = attribute<"vec4">("skinWeight", "vec4");
-  const skin: Node<"mat4"> = bones
-    .element(index.x)
-    .mul(weight.x)
-    .add(bones.element(index.y).mul(weight.y))
-    .add(bones.element(index.z).mul(weight.z))
-    .add(bones.element(index.w).mul(weight.w));
-  const bind = reference("bindMatrix", "mat4", null) as unknown as Node<"mat4">;
-  const bindInverse = reference("bindMatrixInverse", "mat4", null) as unknown as Node<"mat4">;
 
-  return bindInverse.mul(skin).mul(bind).mul(vec4(positionGeometry, 1)).xyz;
+  return toSkinMatrix(bones).mul(vec4(positionGeometry, 1)).xyz;
 });

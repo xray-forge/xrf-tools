@@ -4,7 +4,7 @@
 
 import { describe, expect, it } from "@jest/globals";
 
-import { ERenderInput, IRenderInputEvent } from "#/input/render-input";
+import { ERenderInput, IRenderInputEvent } from "#/contract/renderer-input";
 import { RenderInputForwarder } from "#/input/render-input-forwarder";
 
 function sendTo(target: EventTarget, type: ERenderInput, fields: Record<string, unknown> = {}): Event {

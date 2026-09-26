@@ -8,7 +8,7 @@ import { StaticBundleChunks } from "#/scene/static/static-bundle-chunks";
 import { isBoxInPlanes, STATIC_EVERYWHERE, toStaticCell } from "#/scene/static/static-cell";
 import { EStaticDrawKind } from "#/scene/static/static-draw-kind";
 import { StaticDrawPool } from "#/scene/static/static-draw-pool";
-import { StaticShadowChanges } from "#/scene/static/static-shadow-changes";
+import { EShadowCasterMotion, StaticShadowChanges } from "#/scene/static/static-shadow-changes";
 
 /** An arena's batches of one kind for one grouping: the ones drawing, by material and cell, and the idle ones kept. */
 interface IArenaBatches {
@@ -45,6 +45,9 @@ interface IBatchGrouping {
  * surface's batch.
  */
 export class StaticBatches {
+  /** Where what the shadow views draw changed, and what of it sways or moves. */
+  public readonly shadowChanges: StaticShadowChanges = new StaticShadowChanges();
+
   private readonly surfaces: IBatchGrouping;
   private readonly shadows: IBatchGrouping;
   private readonly wires: IBatchGrouping;
@@ -52,9 +55,6 @@ export class StaticBatches {
   private readonly slotSurfaces: Map<number, ISurfaceMaterial> = new Map();
   /** What a wireframe draws every surface with but an impostor, or null while none draws. */
   private wireMaterial: Nullable<Material> = null;
-  private currentVersion: number = 0;
-  /** Where what the shadow views draw changed, and what of it sways. */
-  public readonly shadowChanges: StaticShadowChanges = new StaticShadowChanges();
 
   /**
    * @param pool - The slots the batches draw.
@@ -75,11 +75,6 @@ export class StaticBatches {
       cascadeScenes,
       true
     );
-  }
-
-  /** Bumped whenever what any batch draws changed, so a shadow map drawn before is drawn again. */
-  public get version(): number {
-    return this.currentVersion;
   }
 
   /**
@@ -135,8 +130,13 @@ export class StaticBatches {
       StaticBatches.withdraw(this.shadows, slot);
     }
 
-    this.shadowChanges.put(slot, bounds, Boolean(surface.shadow), arena.isSwaying, spheres);
-    this.currentVersion += 1;
+    this.shadowChanges.put(
+      slot,
+      bounds,
+      Boolean(surface.shadow),
+      arena.isSwaying ? EShadowCasterMotion.SWAYING : EShadowCasterMotion.STILL,
+      spheres
+    );
   }
 
   /**
@@ -148,7 +148,6 @@ export class StaticBatches {
     StaticBatches.withdraw(this.wires, slot);
     this.slotSurfaces.delete(slot);
     this.shadowChanges.withdraw(slot);
-    this.currentVersion += 1;
   }
 
   /**
@@ -175,7 +174,6 @@ export class StaticBatches {
 
     this.surfaces.chunks.setShown(!material);
     this.wires.chunks.setShown(Boolean(material));
-    this.currentVersion += 1;
   }
 
   /**
@@ -194,7 +192,6 @@ export class StaticBatches {
         this.shadowChanges.touch(slot);
       }
     });
-    this.currentVersion += 1;
   }
 
   /** Has every batch record again, for storage buffers its shaders read that were replaced by ones that grew. */
@@ -202,8 +199,6 @@ export class StaticBatches {
     for (const grouping of [this.surfaces, this.shadows, this.wires]) {
       StaticBatches.all(grouping).forEach(({ drawing }) => drawing.forEach((batch: StaticBatch) => batch.invalidate()));
     }
-
-    this.currentVersion += 1;
   }
 
   /**
@@ -216,8 +211,6 @@ export class StaticBatches {
         batches.idle.forEach((batch: StaticBatch) => batch.refresh());
       }
     }
-
-    this.currentVersion += 1;
   }
 
   /**

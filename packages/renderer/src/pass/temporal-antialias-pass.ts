@@ -3,12 +3,12 @@ import { NodeMaterial, QuadMesh, RenderTarget, Texture, WebGPURenderer } from "t
 import { PingPong } from "#/pass/ping-pong";
 import { createDepthWritingQuadMaterial } from "#/pass/quad-material";
 import { IRendererFrame } from "#/pass/renderer-frame";
-import { IRendererFrameSize } from "#/pass/renderer-frame-size";
 import { IRendererPass } from "#/pass/renderer-pass";
 import { RendererTargets } from "#/pass/renderer-targets";
 import { ResolvedTarget } from "#/pass/resolved-target";
 import { toTemporalResolve } from "#/pass/temporal-antialias-pass.tsl";
 import { ITemporalUpscaler } from "#/pass/temporal-upscaler";
+import { IRendererFrameSize } from "#/sampling/renderer-frame-size";
 import { toUpscaledDepth } from "#/shader/drawn-sample.tsl";
 import { RendererUniforms } from "#/uniforms/renderer-uniforms";
 import { TemporalUniforms } from "#/uniforms/temporal-uniforms";

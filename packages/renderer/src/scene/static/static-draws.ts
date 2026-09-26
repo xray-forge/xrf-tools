@@ -5,6 +5,7 @@ import { IRendererPoolUse, IRendererStaticDrawReport } from "#/contract/renderer
 import { IRendererInstances } from "#/contract/scene/renderer-object";
 import { ISurfaceMaterial } from "#/material/surface-material";
 import { SceneGeometry } from "#/scene/geometry/scene-geometry";
+import { PlainShadowCasters } from "#/scene/static/plain-shadow-casters";
 import { StaticArena } from "#/scene/static/static-arena";
 import { StaticArenas } from "#/scene/static/static-arenas";
 import { StaticBatches } from "#/scene/static/static-batches";
@@ -46,7 +47,7 @@ export class StaticDraws implements IStaticShadowCasters {
   /** What each shadow view draws: every casting batch, by the view's arguments. */
   public readonly shadowScenes: ReadonlyArray<Scene> = Array.from({ length: STATIC_SHADOW_VIEWS }, () => new Scene());
   /** What every cascade draws besides the batches: a twin of each part drawn plainly that casts. */
-  public readonly plainCasters: Scene = new Scene();
+  public readonly plainCasters: PlainShadowCasters = new PlainShadowCasters();
 
   private readonly buffers: StaticDrawBuffers;
   private readonly pool: StaticDrawPool;
@@ -103,25 +104,20 @@ export class StaticDraws implements IStaticShadowCasters {
     this.cull.setWireframe(material !== null);
   }
 
-  /** Every material a batch draws. */
-  /** Bumped whenever what any batch draws changed, so a shadow map drawn before is drawn again. */
-  public get shadowVersion(): number {
-    return this.batches.version;
-  }
-
-  /** Where what the shadow views draw changed, and what of it sways. */
+  /** Where what the shadow views draw changed, and what of it sways or moves. */
   public get shadowChanges(): StaticShadowChanges {
     return this.batches.shadowChanges;
   }
 
   /**
-   * @param view - A cascade.
-   * @param planes - Its box's planes.
+   * @param view - A shadow view: a cascade, or a light's face.
+   * @param planes - Its frustum's planes.
    */
   public showShadowCells(view: number, planes: ReadonlyArray<Vector4>): void {
     this.batches.showShadowCells(view, planes);
   }
 
+  /** Every material a batch draws. */
   public get materials(): Iterable<Material> {
     return this.batches.materials;
   }

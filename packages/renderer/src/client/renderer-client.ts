@@ -23,9 +23,9 @@ import { TRendererOverlay } from "#/contract/scene/renderer-overlay";
 import { IRendererMotion, IRendererPose, IRendererSkeleton } from "#/contract/scene/renderer-skeleton";
 import { IRendererSurface } from "#/contract/scene/renderer-surface";
 import { TRendererTextureSource } from "#/contract/scene/renderer-texture-source";
+import { IDdsRefusal } from "#/dds/dds-refusal";
 import { IRenderTarget } from "#/frame/render-target";
 import { RenderInputForwarder } from "#/input/render-input-forwarder";
-import { IDdsRefusal } from "#/texture/dds/dds-refusal";
 
 /**
  * What a consumer hands the renderer, and what it is told back.
