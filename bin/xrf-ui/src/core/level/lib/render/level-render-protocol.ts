@@ -1,8 +1,7 @@
 import { Nullable } from "@xrf/types";
 
-import { LevelDetailsDescription, LevelLightsDescription } from "@/core/ipc/types/xrf-app";
+import { LevelDetailsDescription } from "@/core/ipc/types/xrf-app";
 import { SectorDescription } from "@/core/ipc/types/xrf-visual";
-import { ILevelSpawnModelsDelivery } from "@/core/level/lib/render/level-render-spawn";
 
 /** One sector handed to whatever draws it: what the pack says, and the bytes it was packed into. */
 export interface ILevelSectorDelivery {
@@ -40,46 +39,27 @@ export interface ILevelGrassDelivery {
   buffer: ArrayBuffer;
 }
 
-/** Told the level's grass, or null for none. */
-export type TLevelGrassListener = (grass: Nullable<ILevelGrassDelivery>) => void;
+/** Told a held value, or null for none. */
+export type TLevelHeldListener<T> = (value: Nullable<T>) => void;
 
 /**
- * The level's grass as whatever draws it takes it.
+ * Something a level reads once, after it opens, as whatever draws it takes it: its grass, its lights, the models its
+ * spawned objects stand as.
  */
-export interface ILevelGrassSource {
+export interface ILevelHeldSource<T> {
   /**
-   * @param listener - Told the grass held now, then whenever it changes.
+   * @param listener - Told what is held now, then whenever it changes.
    * @returns Stops the telling.
    */
-  subscribe(listener: TLevelGrassListener): () => void;
+  subscribe(listener: TLevelHeldListener<T>): () => void;
 }
 
-/** Told the level's lights, or null for none. */
-export type TLevelLightsListener = (lights: Nullable<LevelLightsDescription>) => void;
-
-/**
- * The level's lights as whatever draws them takes them: those its spawned objects carry, and its own.
- */
-export interface ILevelLightsSource {
-  /**
-   * @param listener - Told the lights held now, then whenever they change.
-   * @returns Stops the telling.
-   */
-  subscribe(listener: TLevelLightsListener): () => void;
-}
-
-/** Told the level's spawned models, or null for none. */
-export type TLevelSpawnModelsListener = (models: Nullable<ILevelSpawnModelsDelivery>) => void;
-
-/**
- * The models the level's spawned objects stand as, as whatever draws them takes them.
- */
-export interface ILevelSpawnModelsSource {
-  /**
-   * @param listener - Told the models held now, then whenever they change.
-   * @returns Stops the telling.
-   */
-  subscribe(listener: TLevelSpawnModelsListener): () => void;
+/** How large a texture file is, as its reader found it. */
+export interface ILevelTextureSize {
+  width: number;
+  height: number;
+  /** Mip levels it carries. */
+  levels: number;
 }
 
 /** One texture's file, handed to whatever uploads it. */
@@ -97,6 +77,8 @@ export interface ILevelTextureDelivery {
   isDecoded: boolean;
   /** Why there is no file, for a reference that could not be read at all. */
   reason: Nullable<string>;
+  /** Its size as read, for a file the dds reader models; null for a decoded picture or none. */
+  size: Nullable<ILevelTextureSize>;
 }
 
 /** What changed about the textures a level holds. */

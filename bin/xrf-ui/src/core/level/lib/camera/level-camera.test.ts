@@ -2,10 +2,10 @@ import { describe, expect, it } from "@jest/globals";
 import { TRendererVector } from "@xrf/renderer";
 
 import { ILevelCamera } from "./level-camera";
-import { toLevelCamera } from "./level-camera-reading";
+import { toLevelCameraReading } from "./level-camera-reading";
 
 function placed(position: TRendererVector, target: TRendererVector): ILevelCamera {
-  return toLevelCamera({ position, target });
+  return toLevelCameraReading({ position, target });
 }
 
 describe("toLevelCamera", () => {

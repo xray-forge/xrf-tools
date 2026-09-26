@@ -1,6 +1,7 @@
 use std::path::Path;
 
 use serde::{Deserialize, Serialize};
+use xrf_vfs::XrayLogicalPath;
 
 use crate::plugins::levels::state::LEVELS_DIRECTORY;
 
@@ -41,6 +42,13 @@ impl LevelSource {
         .map(|name| format!("{LEVELS_DIRECTORY}\\{name}")),
     }
   }
+
+  /// The level's name, the last component of its engine identity, which the game graph knows it by.
+  pub fn get_name(&self) -> Option<String> {
+    XrayLogicalPath::new(&self.get_logical_directory()?)
+      .ok()
+      .map(|path| path.file_name().to_owned())
+  }
 }
 
 #[cfg(test)]
@@ -69,6 +77,18 @@ mod tests {
       .get_logical_directory()
       .as_deref(),
       Some("levels\\l01_escape")
+    );
+  }
+
+  #[test]
+  fn names_a_level_by_the_last_component_of_its_identity_in_lower_case() {
+    assert_eq!(
+      LevelSource::Asset {
+        logical_path: String::from("levels\\K00_Marsh"),
+      }
+      .get_name()
+      .as_deref(),
+      Some("k00_marsh")
     );
   }
 

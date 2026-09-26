@@ -2,12 +2,18 @@ import { useInjection } from "@wirestate/react";
 import { IRendererGrassSettings } from "@xrf/renderer";
 import { ReactElement } from "react";
 
-import { fromGrassDensityScale, RENDER_GRASS_LIMITS, toGrassDensityScale } from "@/core/render/lib/features";
+import {
+  formatGrassDensity,
+  formatGrassHeight,
+  formatGrassRadius,
+  fromGrassDensityScale,
+  RENDER_GRASS_LIMITS,
+  toGrassDensityScale,
+} from "@/core/render/lib/features";
 import { SettingsService } from "@/core/settings/services/settings";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 import { SliderFormRow } from "@/core/ui/form/SliderFormRow";
 import { DetailSection } from "@/core/ui/layout/DetailSection";
-import { formatNumber } from "@/lib/format/number";
 
 /** The level's grass: whether it is planted, how densely, how far round the camera, and how tall. */
 export function SettingsRendererGrass(): ReactElement {
@@ -43,7 +49,7 @@ export function SettingsRendererGrass(): ReactElement {
           }
           value={toGrassDensityScale(grass.density)}
           {...RENDER_GRASS_LIMITS.density}
-          format={(value: number) => `${formatNumber(value, 2)}×`}
+          format={(scale: number) => formatGrassDensity(fromGrassDensityScale(scale))}
           onChange={(scale: number) => set({ density: fromGrassDensityScale(scale) })}
         />
 
@@ -52,7 +58,7 @@ export function SettingsRendererGrass(): ReactElement {
           description={"Metres around the camera the grass reaches, fading out towards the edge."}
           value={grass.radius}
           {...RENDER_GRASS_LIMITS.radius}
-          format={(value: number) => `${formatNumber(value, 0)} m`}
+          format={formatGrassRadius}
           onChange={(radius: number) => set({ radius })}
         />
 
@@ -61,7 +67,7 @@ export function SettingsRendererGrass(): ReactElement {
           description={"What every tuft is scaled by."}
           value={grass.height}
           {...RENDER_GRASS_LIMITS.height}
-          format={(value: number) => `${formatNumber(value, 1)}×`}
+          format={formatGrassHeight}
           onChange={(height: number) => set({ height })}
         />
       </div>

@@ -1,35 +1,37 @@
 import { describe, expect, it } from "@jest/globals";
-import { EMPTY_RENDERER_STATIC_DRAW_REPORT, IRendererStaticDrawReport, IRenderFrameCost } from "@xrf/renderer";
+import {
+  EMPTY_RENDER_FRAME_COST,
+  EMPTY_RENDERER_LIGHTS_REPORT,
+  EMPTY_RENDERER_STATIC_DRAW_REPORT,
+  IRendererStaticDrawReport,
+  IRenderFrameCost,
+} from "@xrf/renderer";
 
-import { EMPTY_LEVEL_STATS, ILevelStats, measureLevelStats } from "./level-stats";
+import { EMPTY_LEVEL_STATS, ILevelHeld, ILevelStats, measureLevelStats } from "./level-stats";
 
 /** What a renderer counted for the frame just drawn. */
 function frameCost(overrides: Partial<IRenderFrameCost> = {}): IRenderFrameCost {
-  return {
-    drawTime: 0,
-    drawnHeight: 0,
-    drawnWidth: 0,
-    draws: 0,
-    frameTime: 0,
-    framesPerSecond: 0,
-    renderedHeight: 0,
-    renderedWidth: 0,
-    triangles: 0,
-    worstDrawTime: 0,
-    worstFrameTime: 0,
-    ...overrides,
-  };
+  return { ...EMPTY_RENDER_FRAME_COST, ...overrides };
+}
+
+/** The stats of what is held against a frame, with the renderer's reports at none unless given. */
+function measure(
+  held: ILevelHeld,
+  frame: IRenderFrameCost,
+  staticDraws: IRendererStaticDrawReport = EMPTY_RENDERER_STATIC_DRAW_REPORT
+): ILevelStats {
+  return measureLevelStats(held, frame, 0, staticDraws, EMPTY_RENDERER_LIGHTS_REPORT);
 }
 
 describe("level stats", () => {
   it("measures nothing when nothing is resident and nothing has been drawn", () => {
-    expect(measureLevelStats({ bytes: 0, sectors: 0 }, frameCost())).toEqual(EMPTY_LEVEL_STATS);
+    expect(measure({ bytes: 0, sectors: 0 }, frameCost())).toEqual(EMPTY_LEVEL_STATS);
   });
 
   // What is held is the sector set's question - it is the only thing that can see a sector - and this only
   // carries the answer into the report.
   it("carries what is held into the report", () => {
-    const stats: ILevelStats = measureLevelStats({ bytes: 4096, sectors: 2 }, frameCost());
+    const stats: ILevelStats = measure({ bytes: 4096, sectors: 2 }, frameCost());
 
     expect(stats.sectors).toBe(2);
     expect(stats.bytes).toBe(4096);
@@ -38,7 +40,7 @@ describe("level stats", () => {
   // What a frame cost is the renderer's question, and the two stopped agreeing the moment anything was culled:
   // counting the held draws and calling that the frame's cost reports the number culling exists to reduce.
   it("takes the draws and triangles from what the renderer counted, not from what is held", () => {
-    const stats: ILevelStats = measureLevelStats({ bytes: 4096, sectors: 1 }, frameCost({ draws: 7, triangles: 120 }));
+    const stats: ILevelStats = measure({ bytes: 4096, sectors: 1 }, frameCost({ draws: 7, triangles: 120 }));
 
     expect(stats.draws).toBe(7);
     expect(stats.triangles).toBe(120);
@@ -47,35 +49,26 @@ describe("level stats", () => {
   // The size a frame was drawn at is what every per-pixel cost above it was paid over, so it travels with them
   // rather than being asked of the canvas by whoever draws the readout - which on a worker is a different thread.
   it("reports the resolution the frame was drawn at", () => {
-    const stats: ILevelStats = measureLevelStats(
-      { bytes: 0, sectors: 0 },
-      frameCost({ drawnHeight: 1440, drawnWidth: 2560 })
-    );
+    const stats: ILevelStats = measure({ bytes: 0, sectors: 0 }, frameCost({ drawnHeight: 1440, drawnWidth: 2560 }));
 
     expect(stats.drawnWidth).toBe(2560);
     expect(stats.drawnHeight).toBe(1440);
   });
 
   it("reports the frame timing the viewport measured", () => {
-    const stats: ILevelStats = measureLevelStats(
-      { bytes: 0, sectors: 0 },
-      frameCost({ frameTime: 20, framesPerSecond: 50 })
-    );
+    const stats: ILevelStats = measure({ bytes: 0, sectors: 0 }, frameCost({ frameTime: 20, framesPerSecond: 50 }));
 
     expect(stats.frameTime).toBe(20);
     expect(stats.framesPerSecond).toBe(50);
   });
 
-  it("carries what the renderer said of its static draws, nothing where it said none", () => {
+  it("carries what the renderer said of its static draws", () => {
     const staticDraws: IRendererStaticDrawReport = {
       ...EMPTY_RENDERER_STATIC_DRAW_REPORT,
       fallbacks: 1,
       slots: { capacity: 65536, used: 4096 },
     };
 
-    expect(measureLevelStats({ bytes: 0, sectors: 0 }, frameCost(), 0, staticDraws).staticDraws).toBe(staticDraws);
-    expect(measureLevelStats({ bytes: 0, sectors: 0 }, frameCost()).staticDraws).toBe(
-      EMPTY_RENDERER_STATIC_DRAW_REPORT
-    );
+    expect(measure({ bytes: 0, sectors: 0 }, frameCost(), staticDraws).staticDraws).toBe(staticDraws);
   });
 });

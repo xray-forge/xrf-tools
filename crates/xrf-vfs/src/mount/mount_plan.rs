@@ -40,6 +40,19 @@ impl XrayVfs {
 
     Ok(mounted)
   }
+
+  /// The mounts a plan produced, in plan order, where every source it names is mounted already; `None` where one is
+  /// not, which only [`Self::mount_plan`] can settle.
+  ///
+  /// Reads the VFS without changing it, so a caller sharing one VFS between threads learns what it already holds
+  /// without shutting every other reader out. Each mount keeps the origin the plan that opened it gave.
+  pub fn find_mounted_plan(&self, plan: &XrayMountPlan) -> Option<Vec<XrayMountId>> {
+    plan
+      .get_mounts()
+      .iter()
+      .map(|planned| self.planned_mount(&planned.path, planned.kind))
+      .collect()
+  }
 }
 
 fn mount_one(vfs: &mut XrayVfs, planned: &XrayPlannedMount) -> XrfResult<XrayMountId> {

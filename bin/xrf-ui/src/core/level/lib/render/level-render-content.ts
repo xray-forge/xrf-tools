@@ -1,5 +1,5 @@
 import { toMean } from "@xrf/math";
-import { IDdsRead, IDdsRefusal, readDdsFile, RendererClient } from "@xrf/renderer";
+import { IDdsRefusal, RendererClient } from "@xrf/renderer";
 import { Maybe, Nullable } from "@xrf/types";
 
 import { LevelLightsDescription } from "@/core/ipc/types/xrf-app";
@@ -24,7 +24,12 @@ import {
   toLevelSectorGeometry,
   toLevelSectorObject,
 } from "@/core/level/lib/render/level-render-sector";
-import { ILevelSpawnModelsDelivery, toLevelSpawnParts } from "@/core/level/lib/render/level-render-spawn";
+import {
+  ILevelSpawnModelsDelivery,
+  ILevelSpawnPart,
+  toLevelSpawnParts,
+  toLevelSpawnSurface,
+} from "@/core/level/lib/render/level-render-spawn";
 import { toLevelSurface } from "@/core/level/lib/render/level-render-surface";
 import { createLevelCheckerSource, toLevelTextureSource } from "@/core/level/lib/render/level-render-texture";
 import { createSectorViews, ISectorInstanceViews, ISectorViews } from "@/core/level/lib/sector/level-sector-views";
@@ -64,7 +69,7 @@ interface IHeldSector {
   geometries: Array<string>;
   objects: Array<string>;
   /** The impostor set it put, or null for a sector with no clump of trees. */
-  impostors: string | null;
+  impostors: Nullable<string>;
   bytes: number;
   /** What each entry draws in it, counted as it arrived: its bytes went to the renderer. */
   geometry: ReadonlyMap<number, ILevelSurfaceGeometry>;
@@ -88,9 +93,8 @@ export class LevelRenderContent {
   /** What became of each reference supplied, in the order they were. */
   private readonly textures: Map<string, ILevelSurfaceDressing> = new Map();
   private options: ILevelSurfaceOptions = DEFAULT_LEVEL_SURFACE_OPTIONS;
-  /** The spawned models held, and the keys their parts were put under. */
-  private spawnModels: Nullable<ILevelSpawnModelsDelivery> = null;
-  private spawnKeys: Array<string> = [];
+  /** The spawned models' parts put, which a texture toggle dresses again. */
+  private spawnParts: ReadonlyArray<ILevelSpawnPart> = [];
   /** Whether the quad every impostor draws over is put. */
   private isImpostorQuadPut: boolean = false;
   /** What the recent arrivals cost to put, which is the half of a sector's arrival no read stage covers. */
@@ -101,7 +105,8 @@ export class LevelRenderContent {
   }
 
   /**
-   * Takes the level whose shader table every arriving sector joins against, letting the last one go.
+   * Takes the level whose shader table every arriving sector joins against, letting the last one's sectors, surfaces
+   * and textures go. Its grass, lights and spawned models are the loader's to let go, which it does as it opens.
    *
    * @param table - The level's resolved shader table, empty for no level.
    */
@@ -148,13 +153,12 @@ export class LevelRenderContent {
    */
   public stand(models: Nullable<ILevelSpawnModelsDelivery>): void {
     this.releaseSpawnParts();
-    this.spawnModels = models;
+    this.spawnParts = models ? toLevelSpawnParts(models) : [];
 
-    for (const part of models ? toLevelSpawnParts(models, this.options.isTextured) : []) {
+    for (const part of this.spawnParts) {
       this.sink.putGeometry(part.key, part.geometry);
-      this.sink.putSurface(part.key, part.surface);
+      this.sink.putSurface(part.key, toLevelSpawnSurface(part.dressing, this.options.isTextured));
       this.sink.putObject(part.key, part.object);
-      this.spawnKeys.push(part.key);
     }
   }
 
@@ -199,7 +203,8 @@ export class LevelRenderContent {
   }
 
   /**
-   * @param options - How the toolbar has the surfaces drawn; every entry is put again when that changes them.
+   * @param options - How the toolbar has the surfaces drawn; every surface is put again when that changes them, and
+   *   nothing else: a geometry does not change with its dressing.
    */
   public setOptions(options: ILevelSurfaceOptions): void {
     const isChanged: boolean = options.isTextured !== this.options.isTextured;
@@ -208,9 +213,11 @@ export class LevelRenderContent {
 
     if (isChanged) {
       this.surfaces.forEach(({ surface, render }, shaderId: number) =>
-        this.sink.putSurface(LEVEL_RENDER_KEYS.surface(shaderId), toLevelSurface(surface, render, options))
+        this.sink.putSurface(LEVEL_RENDER_KEYS.surface(shaderId), toLevelSurface(surface, render, options.isTextured))
       );
-      this.stand(this.spawnModels);
+      this.spawnParts.forEach((part: ILevelSpawnPart) =>
+        this.sink.putSurface(part.key, toLevelSpawnSurface(part.dressing, options.isTextured))
+      );
     }
   }
 
@@ -254,10 +261,8 @@ export class LevelRenderContent {
     return { dressing: new Map(this.textures), problems, uploaded: this.textures.size };
   }
 
-  /** Lets everything the level put go. */
-  public clear(): void {
-    this.releaseSpawnParts();
-    this.spawnModels = null;
+  /** Lets the level's sectors, surfaces and textures go. */
+  private clear(): void {
     Array.from(this.sectors.keys()).forEach((sector: number) => this.drop(sector));
     this.surfaces.forEach((_, shaderId: number) => this.sink.releaseSurface(LEVEL_RENDER_KEYS.surface(shaderId)));
     this.surfaces.clear();
@@ -273,13 +278,13 @@ export class LevelRenderContent {
   }
 
   private releaseSpawnParts(): void {
-    for (const key of this.spawnKeys) {
+    for (const { key } of this.spawnParts) {
       this.sink.releaseObject(key);
       this.sink.releaseSurface(key);
       this.sink.releaseGeometry(key);
     }
 
-    this.spawnKeys = [];
+    this.spawnParts = [];
   }
 
   private take(delivery: ILevelSectorDelivery): void {
@@ -320,7 +325,7 @@ export class LevelRenderContent {
     });
 
     if (views.impostors) {
-      this.takeImpostors(views, held);
+      this.takeImpostors(views.sector, views.impostors, held);
     }
 
     this.sectors.set(views.sector, held);
@@ -342,11 +347,9 @@ export class LevelRenderContent {
     }
   }
 
-  /** Puts a shader table entry the first time a sector draws it: every sector drawing it shares it after. */
   /** Puts a sector's impostor set, before the objects naming it, and a draw for each run of it by surface. */
-  private takeImpostors(views: ISectorViews, held: IHeldSector): void {
-    const impostors = views.impostors as NonNullable<ISectorViews["impostors"]>;
-    const key: string = LEVEL_RENDER_KEYS.impostors(views.sector);
+  private takeImpostors(sector: number, impostors: NonNullable<ISectorViews["impostors"]>, held: IHeldSector): void {
+    const key: string = LEVEL_RENDER_KEYS.impostors(sector);
 
     if (!this.isImpostorQuadPut) {
       this.sink.putGeometry(LEVEL_RENDER_KEYS.impostorQuad, createLevelImpostorQuad());
@@ -357,18 +360,22 @@ export class LevelRenderContent {
     held.impostors = key;
 
     impostors.groups.forEach(({ surface, render }, group: number) => {
-      const object: string = LEVEL_RENDER_KEYS.impostorGroup(views.sector, group);
+      const object: string = LEVEL_RENDER_KEYS.impostorGroup(sector, group);
 
       this.ensureSurface(surface, render);
-      this.sink.putObject(object, toLevelImpostorObject(views.sector, impostors, group));
+      this.sink.putObject(object, toLevelImpostorObject(sector, impostors, group));
       held.objects.push(object);
     });
   }
 
+  /** Puts a shader table entry the first time a sector draws it: every sector drawing it shares it after. */
   private ensureSurface(surface: SectorSurface, render: ILevelSurfaceRender): void {
     if (!this.surfaces.has(surface.shaderId)) {
       this.surfaces.set(surface.shaderId, { render, surface });
-      this.sink.putSurface(LEVEL_RENDER_KEYS.surface(surface.shaderId), toLevelSurface(surface, render, this.options));
+      this.sink.putSurface(
+        LEVEL_RENDER_KEYS.surface(surface.shaderId),
+        toLevelSurface(surface, render, this.options.isTextured)
+      );
     }
   }
 
@@ -398,16 +405,13 @@ export class LevelRenderContent {
       return { reason: null, reference, state: ELevelSurfaceDressing.UPLOADED, upload: "decoded by the backend" };
     }
 
-    const read: IDdsRead = readDdsFile(delivery.bytes);
-    const levels: number = read.file?.mipmaps.length ?? 0;
+    const { size } = delivery;
 
     return {
       reason: null,
       reference,
       state: ELevelSurfaceDressing.UPLOADED,
-      upload: read.file
-        ? `${read.file.width}×${read.file.height} · ${levels} ${levels === 1 ? "level" : "levels"}`
-        : null,
+      upload: size ? `${size.width}×${size.height} · ${size.levels} ${size.levels === 1 ? "level" : "levels"}` : null,
     };
   }
 }

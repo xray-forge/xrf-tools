@@ -6,7 +6,8 @@ use xrf_vfs::{XrayAsset, XrayAssetType, XrayProbe, XrayRoots};
 use crate::core::assets::AssetMountState;
 use crate::core::types::TauriResult;
 
-/// Descriptors read per critical section, so interactive reads interleave with the sweep instead of queueing behind it.
+/// Descriptors read per hold of the mounts, so a request mounting a new root interleaves with the sweep instead of
+/// queueing behind it.
 const SWEEP_SLICE: usize = 512;
 
 /// What a tree shows on a texture before anyone opens it, read from its descriptor alone.

@@ -19,7 +19,7 @@ export interface IRenderFrameCost {
   drawnWidth: number;
   /** Height of the same buffer, which with the width is what every per-pixel cost is paid over. */
   drawnHeight: number;
-  /** Width the scene was drawn at: the buffer's, or less while TAA upscales it. */
+  /** Width the scene was drawn at: the buffer's, or less while it is upscaled. */
   renderedWidth: number;
   /** And its height: what the scene's per-pixel passes are paid over. */
   renderedHeight: number;

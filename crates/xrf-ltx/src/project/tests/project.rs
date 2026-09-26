@@ -220,7 +220,7 @@ fn a_lean_project_lists_nothing_and_still_resolves_system_ltx_with_its_includes_
   )?;
 
   let roots: XrayRoots = XrayRoots::one(root.clone(), XrayMountMode::Directory);
-  let project: LtxProject = LtxProject::open_lean_at_roots(&roots, Some("configs"), Default::default())?;
+  let project: LtxProject = LtxProject::open_lean_at_roots_opt(&roots, Some("configs"), Default::default())?;
   let system = project.system_ltx()?;
   let campfire = system.ltx.section("campfire").expect("the campfire section to resolve");
 

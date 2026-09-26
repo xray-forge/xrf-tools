@@ -1,32 +1,31 @@
+use xrf_level::DETAIL_SLOT_METERS;
+
 /// An edge of a triangle, and the pairs of its corners its three axis tests project.
 type EdgeAxes = ([f32; 3], [[f32; 3]; 2], [[f32; 3]; 2], [[f32; 3]; 2]);
 
 /// A detail slot's box as `CDetailManager::cache_Task` makes it, grown by `EPS_L`, and the test the engine's box
 /// query keeps a collision triangle by (`xrCDB/xrCDB_box.cpp`, `box_collider::_tri` with class III tests).
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct DetailsSlotBox {
+pub(crate) struct DetailsSlotBox {
   center: [f32; 3],
   extents: [f32; 3],
 }
 
 impl DetailsSlotBox {
-  /// Metres a slot spans across, `dm_slot_size`.
-  pub const SLOT_METERS: f32 = 2.0;
-
   /// `EPS_L`, which the box grows by on every side.
   const GROWTH: f32 = 0.001;
 
   /// The box of world slot `(x, z)`, from its base height to its top.
-  pub fn of(x: i32, z: i32, base: f32, height: f32) -> Self {
+  pub(crate) fn of(x: i32, z: i32, base: f32, height: f32) -> Self {
     let minimum: [f32; 3] = [
-      x as f32 * Self::SLOT_METERS - Self::GROWTH,
+      x as f32 * DETAIL_SLOT_METERS - Self::GROWTH,
       base - Self::GROWTH,
-      z as f32 * Self::SLOT_METERS - Self::GROWTH,
+      z as f32 * DETAIL_SLOT_METERS - Self::GROWTH,
     ];
     let maximum: [f32; 3] = [
-      x as f32 * Self::SLOT_METERS + Self::SLOT_METERS + Self::GROWTH,
+      x as f32 * DETAIL_SLOT_METERS + DETAIL_SLOT_METERS + Self::GROWTH,
       base + height + Self::GROWTH,
-      z as f32 * Self::SLOT_METERS + Self::SLOT_METERS + Self::GROWTH,
+      z as f32 * DETAIL_SLOT_METERS + DETAIL_SLOT_METERS + Self::GROWTH,
     ];
 
     Self {
@@ -36,7 +35,7 @@ impl DetailsSlotBox {
   }
 
   /// Whether a triangle overlaps the box, by the separating axis tests the engine's full box query runs.
-  pub fn overlaps(&self, triangle: &[[f32; 3]; 3]) -> bool {
+  pub(crate) fn overlaps(&self, triangle: &[[f32; 3]; 3]) -> bool {
     let [e_x, e_y, e_z] = self.extents;
     let [v0, v1, v2] = triangle.map(|corner| [0, 1, 2].map(|axis| corner[axis] - self.center[axis]));
 

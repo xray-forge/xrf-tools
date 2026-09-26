@@ -836,3 +836,93 @@ describe("LevelLoadService texture supply", () => {
     expect(supply.retained).toEqual([]);
   });
 });
+
+describe("LevelLoadService held reads", () => {
+  beforeEach(() => {
+    resetMockInvoke();
+  });
+
+  const LIGHTS = { lights: { animators: [], lights: [] }, projectors: [mockLevelTextureReference("lamp")] };
+
+  /** Lets every read started so far run to its end. */
+  async function settle(): Promise<void> {
+    for (let turn: number = 0; turn < 5; turn += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
+  }
+
+  function armLights(level: SelectedLevelDescription, lights: unknown): void {
+    setMockInvokeResponses({
+      ["plugin:assets|read_asset"]: mockDdsFile(),
+      ["plugin:levels|open_level"]: mockSessionResponse(level),
+      ["plugin:levels|open_lights"]: mockSessionResponse(lights),
+    });
+  }
+
+  // The projectors are read before the lights are handed over, and a settle meanwhile keeps them: they are claimed.
+  it("hands the lights over once their projectors are read, and keeps the projectors through a settle", async () => {
+    const { level } = mockStreamable([outlineAt(0, 5)]);
+    const { service } = mockInjectedService(LevelLoadService);
+    const supply = recordSupply(service);
+    const told: Array<unknown> = [];
+
+    armLights(level, LIGHTS);
+    service.lights.subscribe((lights) => told.push(lights));
+
+    await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS);
+    await settle();
+
+    expect(told.at(-1)).toEqual(LIGHTS);
+    expect(supply.delivered.map((it) => it.reference)).toContain("lamp");
+
+    await service.stream(ORIGIN);
+
+    expect(Array.from(supply.retained.at(-1) ?? [])).toContain("lamp");
+  });
+
+  // Closing while the read is out: the old level's projectors are never delivered, and its lights never held.
+  it("drops what a level closed mid-read held, delivering none of it", async () => {
+    const { level } = mockStreamable([outlineAt(0, 5)]);
+    const { service } = mockInjectedService(LevelLoadService);
+    const { held, release } = createHeldCall();
+    const supply = recordSupply(service);
+    const told: Array<unknown> = [];
+
+    setMockInvokeResponses({
+      ["plugin:assets|read_asset"]: mockDdsFile(),
+      ["plugin:levels|open_level"]: mockSessionResponse(level),
+      ["plugin:levels|open_lights"]: async (args?: Record<string, unknown>) => {
+        await held;
+
+        return mockSessionResponse(LIGHTS)(args);
+      },
+    });
+    service.lights.subscribe((lights) => told.push(lights));
+
+    await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS);
+    service.clear();
+    release();
+    await settle();
+
+    expect(told.every((it) => it === null)).toBe(true);
+    expect(supply.delivered.map((it) => it.reference)).not.toContain("lamp");
+  });
+
+  // A renderer started later is handed the lights again by their subscription; their projectors come with a restream.
+  it("supplies what the level holds again when it is read for a second renderer", async () => {
+    const { level } = mockStreamable([outlineAt(0, 5)]);
+    const { service } = mockInjectedService(LevelLoadService);
+
+    armLights(level, LIGHTS);
+
+    await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS);
+    await settle();
+
+    const supply = recordSupply(service);
+
+    await service.restream();
+    await settle();
+
+    expect(supply.delivered.map((it) => it.reference)).toEqual(["lamp"]);
+  });
+});

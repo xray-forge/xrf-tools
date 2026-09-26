@@ -42,3 +42,13 @@ export function formatDuration(durationMs: number): string {
 
   return `${hours} h ${minutes - hours * 60} m`;
 }
+
+/**
+ * Formats a short span, a frame's or a stage's, to a tenth of a millisecond: what `formatDuration` rounds away.
+ *
+ * @param durationMs - Duration in milliseconds.
+ * @returns The duration in milliseconds.
+ */
+export function formatMilliseconds(durationMs: number): string {
+  return `${durationMs.toFixed(1)} ms`;
+}

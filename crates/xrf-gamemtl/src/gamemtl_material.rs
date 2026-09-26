@@ -68,6 +68,9 @@ impl GameMtlMaterial {
   pub const FACTORS_MP_CHUNK_ID: u32 = 0x1008;
   pub const ACOUSTICS_CHUNK_ID: u32 = 0x1009;
 
+  /// `SGameMtl::flPassable`: what walks and falls through the material.
+  pub const FLAG_PASSABLE: u32 = 1 << 7;
+
   /// Reads one material from the chunk holding it.
   ///
   /// # Errors
@@ -186,6 +189,11 @@ impl GameMtlMaterial {
     }
 
     Ok(())
+  }
+
+  /// Whether what walks and falls through it, as grass planted over it does.
+  pub fn is_passable(&self) -> bool {
+    self.flags & Self::FLAG_PASSABLE != 0
   }
 
   /// The flags the material sets, named.

@@ -36,7 +36,6 @@ pub use crate::data::visual::skeleton::visual_transform::VisualTransform;
 pub use crate::data::visual::visual_description::VisualDescription;
 pub use crate::pack::details::details_package::DetailsPackage;
 pub use crate::pack::details::details_packer::DetailsPacker;
-pub use crate::pack::details::details_slot_box::DetailsSlotBox;
 pub use crate::pack::lights::lights_packer::LightsPacker;
 pub use crate::pack::sector::sector_package::SectorPackage;
 pub use crate::pack::sector::sector_packer::SectorPacker;

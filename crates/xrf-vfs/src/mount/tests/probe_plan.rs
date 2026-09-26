@@ -123,3 +123,22 @@ fn planning_the_same_root_twice_mounts_it_once() {
 
   assert_eq!(vfs.get_mounts().len(), 1, "mounting is idempotent per planned path");
 }
+
+#[test]
+fn finds_the_steps_of_a_plan_only_once_it_is_mounted() {
+  let beside: PathBuf = root("found_beside", &["meshes/wpn/wpn_ak74.ogf"]);
+  let project: PathBuf = root("found_project", &["textures/wpn/wpn_ak74.dds"]);
+  let plan: XrayProbePlan = XrayProbePlan::new()
+    .with_asset(beside.join("meshes").join("wpn").join("wpn_ak74.ogf"))
+    .expect("asset plans")
+    .with_root("project gamedata", &project)
+    .expect("root plans");
+
+  let mut vfs: XrayVfs = XrayVfs::new();
+
+  assert_eq!(plan.find_mounted(&vfs), None);
+
+  let steps: Vec<XrayProbeStep> = plan.mount_into(&mut vfs).expect("plan mounts");
+
+  assert_eq!(plan.find_mounted(&vfs), Some(steps));
+}

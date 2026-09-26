@@ -74,11 +74,7 @@ impl LtxProject {
   /// Returns an error when the roots cannot be mounted, the prefix is not a logical path, or the project cannot be
   /// assembled.
   pub fn open_at_roots_opt(roots: &XrayRoots, prefix: Option<&str>, options: LtxProjectOptions) -> XrfResult<Self> {
-    let vfs: XrayVfs = roots.open()?.with_cache_policy(XrayCachePolicy::configs());
-    let scope: XrayLookupScope = match prefix {
-      Some(prefix) => XrayLookupScope::all().with_prefix(prefix)?,
-      None => XrayLookupScope::all(),
-    };
+    let (vfs, scope) = Self::open_roots(roots, prefix)?;
 
     Self::open_at_scope_opt(roots.describe(), vfs, scope, options)
   }
@@ -89,18 +85,32 @@ impl LtxProject {
   /// # Errors
   ///
   /// Returns an error when the roots cannot be mounted or the prefix is not a logical path.
-  pub fn open_lean_at_roots(roots: &XrayRoots, prefix: Option<&str>, options: LtxProjectOptions) -> XrfResult<Self> {
+  pub fn open_lean_at_roots_opt(
+    roots: &XrayRoots,
+    prefix: Option<&str>,
+    options: LtxProjectOptions,
+  ) -> XrfResult<Self> {
+    let (vfs, scope) = Self::open_roots(roots, prefix)?;
+
     Ok(Self {
       dialect: options.dialect,
       is_caching_resolutions: options.is_caching_resolutions,
       root: PathBuf::from(roots.describe()),
-      scope: match prefix {
-        Some(prefix) => XrayLookupScope::all().with_prefix(prefix)?,
-        None => XrayLookupScope::all(),
-      },
-      vfs: roots.open()?.with_cache_policy(XrayCachePolicy::configs()),
+      scope,
+      vfs,
       ..Self::empty(roots.describe())
     })
+  }
+
+  /// The roots mounted as a project reads configs, and the scope a prefix narrows them to.
+  fn open_roots(roots: &XrayRoots, prefix: Option<&str>) -> XrfResult<(XrayVfs, XrayLookupScope)> {
+    let vfs: XrayVfs = roots.open()?.with_cache_policy(XrayCachePolicy::configs());
+    let scope: XrayLookupScope = match prefix {
+      Some(prefix) => XrayLookupScope::all().with_prefix(prefix)?,
+      None => XrayLookupScope::all(),
+    };
+
+    Ok((vfs, scope))
   }
 
   /// Opens a project from an existing VFS scope.

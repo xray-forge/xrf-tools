@@ -51,7 +51,7 @@ function mockGrass(): ILevelGrassDelivery {
     vertexCount: 3,
   };
   const grid: VisualSection = buffer.push(new Uint32Array([1, 0]));
-  const slots: VisualSection = buffer.push(new Uint32Array([1, 2, 3, 4, 0, 1, 7, 8]));
+  const slots: VisualSection = buffer.push(new Uint32Array([1, 2, 3, 4, 0, 1]));
   const bins: VisualSection = buffer.push(new Uint32Array([0]));
   const triangles: VisualSection = buffer.push(new Float32Array([0, 1, 0, 2, 1, 0, 0, 1, 2]));
 
@@ -84,7 +84,7 @@ describe("toLevelRendererGrass", () => {
     const grass: IRendererGrass = toLevelRendererGrass(mockGrass());
 
     expect(Array.from(grass.grid)).toEqual([1, 0]);
-    expect(Array.from(grass.slots)).toEqual([1, 2, 3, 4, 0, 1, 7, 8]);
+    expect(Array.from(grass.slots)).toEqual([1, 2, 3, 4, 0, 1]);
     expect(Array.from(grass.bins)).toEqual([0]);
     expect(Array.from(grass.triangles)).toEqual([0, 1, 0, 2, 1, 0, 0, 1, 2]);
     expect([grass.sizeX, grass.sizeZ, grass.offsetX, grass.offsetZ]).toEqual([2, 1, 3, -2]);

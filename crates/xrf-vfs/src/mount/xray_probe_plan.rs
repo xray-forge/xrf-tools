@@ -144,4 +144,21 @@ impl XrayProbePlan {
 
     Ok(steps)
   }
+
+  /// The steps [`Self::mount_into`] would return, where every source the plan names is mounted already; `None` where
+  /// one is not.
+  ///
+  /// A step found here skipped nothing, as nothing was tried. A plan naming a source that never opens is never found,
+  /// and goes through [`Self::mount_into`], which tries the source again.
+  pub fn find_mounted(&self, vfs: &XrayVfs) -> Option<Vec<XrayProbeStep>> {
+    self
+      .steps
+      .iter()
+      .map(|step| {
+        vfs
+          .find_mounted_plan(&step.plan)
+          .map(|mounts| XrayProbeStep::planned(&step.label, XrayLookupScope::only(mounts), Vec::new()))
+      })
+      .collect()
+  }
 }

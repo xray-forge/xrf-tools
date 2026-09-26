@@ -12,7 +12,7 @@ describe("LevelShadowAction", () => {
     const { getByRole, findByRole } = renderWithProviders(
       <LevelShadowAction
         isOn
-        shadows={DEFAULT_RENDERER_SHADOW_SETTINGS}
+        state={{ isAvailable: true, value: DEFAULT_RENDERER_SHADOW_SETTINGS }}
         features={DEFAULT_LEVEL_FEATURE_OPTIONS}
         onToggle={() => {}}
         onChange={onChange}
@@ -34,8 +34,7 @@ describe("LevelShadowAction", () => {
     const { getByRole } = renderWithProviders(
       <LevelShadowAction
         isOn
-        isAvailable={false}
-        shadows={DEFAULT_RENDERER_SHADOW_SETTINGS}
+        state={{ isAvailable: false, value: DEFAULT_RENDERER_SHADOW_SETTINGS }}
         features={DEFAULT_LEVEL_FEATURE_OPTIONS}
         onToggle={() => {}}
         onChange={() => {}}
@@ -43,5 +42,8 @@ describe("LevelShadowAction", () => {
     );
 
     expect(getByRole("button", { name: "Shadows" })).toBeDisabled();
+    expect(getByRole("button", { name: "Shadows" })).toHaveAccessibleDescription(
+      "Shadows are off in Settings, under Rendering. Right-click for its settings"
+    );
   });
 });

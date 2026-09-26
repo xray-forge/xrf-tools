@@ -205,7 +205,7 @@ describe("LevelRenderService", () => {
   it("gates the baked hemisphere by the baked light toggle", async () => {
     const { service, viewService } = await mockAttached();
 
-    viewService.setOptions({ ...viewService.options, isLit: false });
+    viewService.setOptions({ ...viewService.options, isBaked: false });
     await stub.flush();
 
     expect(stub.take(ERendererRequest.CONFIGURE).at(-1)?.settings.hemiStrength).toBe(0);

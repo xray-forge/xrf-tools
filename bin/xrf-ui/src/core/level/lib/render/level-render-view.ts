@@ -16,11 +16,8 @@ import { ILevelCameraOptions } from "@/core/level/lib/camera/level-camera-option
 import { ILevelViewpoint, toLevelStartViewpoint } from "@/core/level/lib/camera/level-viewpoint";
 import {
   ILevelFeatureOptions,
-  toLevelRendererAmbientOcclusion,
   toLevelRendererAntialiasing,
-  toLevelRendererGrassSettings,
-  toLevelRendererLightsSettings,
-  toLevelRendererShadows,
+  toLevelRendererFeature,
 } from "@/core/level/lib/features/level-feature-options";
 import { toLevelRendererFog } from "@/core/level/lib/lighting/level-fog";
 import { ILevelLighting } from "@/core/level/lib/lighting/level-lighting";
@@ -61,13 +58,13 @@ export function toLevelCamera(
 /**
  * @param lighting - The level's light, fog and wind, as its controls set them.
  * @param isFogged - Whether the fog is drawn.
- * @param isWindy - Whether the trees sway.
+ * @param isWindy - Whether the trees and the grass sway: the trees by the wind's controls, the grass as the game's calm.
  * @returns The engine's noon, pointed and scaled by those controls.
  */
 export function toLevelRendererLighting(
   lighting: ILevelLighting,
   isFogged: boolean,
-  isWindy: boolean = true
+  isWindy: boolean
 ): IRendererLighting {
   return {
     ...toRendererLighting(lighting, DEFAULT_RENDERER_LIGHTING),
@@ -77,40 +74,46 @@ export function toLevelRendererLighting(
   };
 }
 
+/** What a level view's renderer settings are made of. */
+export interface ILevelRendererSettingsInputs {
+  /** The toolbar's toggles. */
+  options: ILevelViewOptions;
+  /** The level's light, whose hemisphere strength the baked light toggle gates. */
+  lighting: ILevelLighting;
+  /** How far trees are drawn in full, which the impostors toggle gates. */
+  lod: ILevelLodOptions;
+  /** What the view sets over the settings' features for itself, which their toggles gate. */
+  view: ILevelFeatureOptions;
+  /** How often the application lets a view redraw. */
+  frameRateLimit: TFrameRateLimit;
+  /** What the renderer's features are set to, which the level's toolbar narrows. */
+  features: IRendererFeatureSettings;
+  /** The backdrop. */
+  config: ILevelRenderConfig;
+}
+
 /**
- * @param options - The toolbar's toggles.
- * @param lighting - The level's light, whose hemisphere strength the baked light toggle gates.
- * @param lod - How far trees are drawn in full, which the impostors toggle gates.
- * @param view - What the view draws its shadows and antialiasing with, which their toggles gate.
- * @param frameRateLimit - How often the application lets a view redraw.
- * @param features - What the renderer's features are set to, which the level's toolbar narrows.
- * @param config - The backdrop.
+ * @param inputs - What the settings are made of.
  * @returns The renderer's settings.
  */
-export function toLevelRendererSettings(
-  options: ILevelViewOptions,
-  lighting: ILevelLighting,
-  lod: ILevelLodOptions,
-  view: ILevelFeatureOptions,
-  frameRateLimit: TFrameRateLimit,
-  features: IRendererFeatureSettings,
-  config: ILevelRenderConfig
-): IRendererSettings {
+export function toLevelRendererSettings(inputs: ILevelRendererSettingsInputs): IRendererSettings {
+  const { options, lighting, lod, view, frameRateLimit, features, config } = inputs;
+
   return {
     // Fogged, the renderer draws the sky as total fog itself; this shows only where there is none.
     backdrop: config.backgroundColor,
     debugView: ERendererDebugView.FINAL,
     features: {
       ...features,
-      ambientOcclusion: toLevelRendererAmbientOcclusion(features.ambientOcclusion, view, options.isOccluded),
-      grass: toLevelRendererGrassSettings(features.grass, view, options.isGrassy),
-      lights: toLevelRendererLightsSettings(features.lights, view, options.isLightsOn),
+      ambientOcclusion: toLevelRendererFeature("ambientOcclusion", features, view, options.isOccluded),
       antialiasing: toLevelRendererAntialiasing(features.antialiasing, view, options.isAntialiased),
+      grass: toLevelRendererFeature("grass", features, view, options.isGrassy),
+      lights: toLevelRendererFeature("lights", features, view, options.isLamplit),
       lod: toLevelRendererLod(features.lod, lod, options.isImpostors),
-      shadows: toLevelRendererShadows(features.shadows, view, options.isShadowed),
+      shadows: toLevelRendererFeature("shadows", features, view, options.isShadowed),
     },
     frameRateLimit,
-    hemiStrength: options.isLit ? lighting.hemiStrength : 0,
+    hemiStrength: options.isBaked ? lighting.hemiStrength : 0,
     isBumped: true,
     isLit: true,
     isWireframe: options.isWireframe,

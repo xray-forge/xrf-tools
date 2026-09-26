@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
-import { ERendererAntialiasing, ERendererPreset, RENDERER_PRESETS } from "@xrf/renderer";
+import { ERendererAntialiasing, ERendererPreset, ERendererRenderScale, RENDERER_PRESETS } from "@xrf/renderer";
 
 import { SettingsService } from "@/core/settings/services/settings/settings.service";
 import { mockInjectedService } from "@/fixtures/utils/container";
@@ -96,6 +96,24 @@ describe("SettingsService", () => {
 
     expect(reloaded.rendererFeatures).toEqual(RENDERER_PRESETS[ERendererPreset.EDITING]);
     expect(mockInjectedService(SettingsService).service.rendererChoice.preset).toBe(ERendererPreset.EDITING);
+  });
+
+  // Two writes to one group keep both, whichever group: a group forgotten used to be replaced whole.
+  it("keeps every group's earlier changes when another of its settings changes", () => {
+    const { service } = mockInjectedService(SettingsService);
+
+    service.setRendererOverrides({ grass: { radius: 80 }, shadows: { bias: 2 }, upscaling: { sharpening: 0.2 } });
+    service.setRendererOverrides({
+      grass: { height: 1.5 },
+      shadows: { filter: 2 },
+      upscaling: { scale: ERendererRenderScale.QUALITY },
+    });
+
+    expect(service.rendererChoice.overrides).toEqual({
+      grass: { height: 1.5, radius: 80 },
+      shadows: { bias: 2, filter: 2 },
+      upscaling: { scale: ERendererRenderScale.QUALITY, sharpening: 0.2 },
+    });
   });
 
   it("falls back to Base for a stored choice that does not parse", () => {

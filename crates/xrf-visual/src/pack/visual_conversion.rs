@@ -51,7 +51,6 @@ pub(crate) fn reverse_triangle_winding<T>(indices: &mut [T]) {
   }
 }
 
-/// Convert a placement into renderer space, so it places already converted vertices.
 /// `ps_r__Tree_SBC`'s default, the correction a tree's colour terms are bound with (`xrRender_console.cpp`).
 const TREE_SCALE_BIAS_CORRECTION: f32 = 1.5;
 
@@ -66,6 +65,7 @@ pub fn convert_tree_hemi(tree: &OgfTreeDefinitionChunk) -> [f32; 2] {
   [tree.scale.hemi * correction, tree.bias.hemi * correction]
 }
 
+/// Convert a placement into renderer space, so it places already converted vertices.
 pub fn convert_placement(placement: &Matrix4x4) -> Matrix4x4 {
   const Z: usize = 2;
 

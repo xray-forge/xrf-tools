@@ -4,30 +4,18 @@ import { ReactElement } from "react";
 
 import {
   formatCascadeBlend,
+  formatShadowFilter,
+  RENDER_SHADOW_CASCADE_OPTIONS,
   RENDER_SHADOW_CASCADE_WIDTHS,
   RENDER_SHADOW_LIMITS,
-  RENDER_SHADOW_RESOLUTIONS,
+  RENDER_SHADOW_RESOLUTION_OPTIONS,
 } from "@/core/render/lib/features";
 import { SettingsService } from "@/core/settings/services/settings";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
-import { ChoiceFormRow, IChoiceFormRowOption } from "@/core/ui/form/ChoiceFormRow";
+import { ChoiceFormRow } from "@/core/ui/form/ChoiceFormRow";
 import { SliderFormRow } from "@/core/ui/form/SliderFormRow";
 import { DetailSection } from "@/core/ui/layout/DetailSection";
 import { formatNumber } from "@/lib/format/number";
-
-const CASCADE_OPTIONS: ReadonlyArray<IChoiceFormRowOption<string>> = RENDER_SHADOW_CASCADE_WIDTHS.map(
-  (_, index: number) => ({
-    label: String(index + 1),
-    value: String(index + 1),
-  })
-);
-
-const RESOLUTION_OPTIONS: ReadonlyArray<IChoiceFormRowOption<string>> = RENDER_SHADOW_RESOLUTIONS.map(
-  (value: number) => ({
-    label: String(value),
-    value: String(value),
-  })
-);
 
 /** The sun's shadow: how many cascades, how fine, and how they are filtered and drawn. */
 export function SettingsRendererShadows(): ReactElement {
@@ -58,7 +46,7 @@ export function SettingsRendererShadows(): ReactElement {
         <ChoiceFormRow
           label={"Cascades"}
           description={"How far the shadow reaches: 20, 40, 160, then 480 metres across."}
-          options={CASCADE_OPTIONS}
+          options={RENDER_SHADOW_CASCADE_OPTIONS}
           value={String(shadows.cascades.length)}
           onChange={(count: string) => set({ cascades: RENDER_SHADOW_CASCADE_WIDTHS.slice(0, Number(count)) })}
         />
@@ -66,7 +54,7 @@ export function SettingsRendererShadows(): ReactElement {
         <ChoiceFormRow
           label={"Map resolution"}
           description={"Texels each cascade's map is across. Finer edges cost more to draw and to hold."}
-          options={RESOLUTION_OPTIONS}
+          options={RENDER_SHADOW_RESOLUTION_OPTIONS}
           value={String(shadows.resolution)}
           onChange={(resolution: string) => set({ resolution: Number(resolution) })}
         />
@@ -76,6 +64,7 @@ export function SettingsRendererShadows(): ReactElement {
           description={"Texels each way a shadow's edge is averaged over: none for the hardest edge."}
           value={shadows.filter}
           {...RENDER_SHADOW_LIMITS.filter}
+          format={formatShadowFilter}
           onChange={(filter: number) => set({ filter })}
         />
 

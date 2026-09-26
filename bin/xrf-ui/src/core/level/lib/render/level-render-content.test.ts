@@ -6,6 +6,7 @@ import { SectorDescription } from "@/core/ipc/types/xrf-visual";
 import { LevelRenderContent, TLevelRenderSink } from "@/core/level/lib/render/level-render-content";
 import { LEVEL_RENDER_KEYS } from "@/core/level/lib/render/level-render-keys";
 import { ILevelSectorDelivery, ILevelTextureDelivery } from "@/core/level/lib/render/level-render-protocol";
+import { ILevelSpawnModelsDelivery } from "@/core/level/lib/render/level-render-spawn";
 import { ELevelSurfaceDressing } from "@/core/level/lib/surface/level-surface-dressing";
 import { DEFAULT_LEVEL_SURFACE_OPTIONS } from "@/core/level/lib/surface/level-surface-options";
 import {
@@ -14,7 +15,13 @@ import {
   mockSectorSection,
   mockSectorSurface,
 } from "@/fixtures/mocks/level.mocks";
-import { mockSurfaceDescriptor, MockVisualBuffer } from "@/fixtures/mocks/visual.mocks";
+import {
+  mockPackedSubmesh,
+  mockSurfaceDescriptor,
+  MockVisualBuffer,
+  mockVisualDescription,
+  mockVisualTransform,
+} from "@/fixtures/mocks/visual.mocks";
 
 type TMockSink = { [K in keyof TLevelRenderSink]: jest.Mock<TLevelRenderSink[K]> };
 
@@ -57,7 +64,35 @@ function mockTexture(reference: string, overrides: Partial<ILevelTextureDelivery
     isDecoded: false,
     reason: null,
     reference,
+    size: { height: 8, levels: 4, width: 8 },
     ...overrides,
+  };
+}
+
+/** One lamp model of one submesh, standing in one place. */
+function mockSpawnModels(): ILevelSpawnModelsDelivery {
+  const buffer: MockVisualBuffer = new MockVisualBuffer();
+  const description = mockVisualDescription({
+    bufferLength: 0,
+    submeshes: [mockPackedSubmesh(buffer, { index: 0, textureName: "lamp" })],
+  });
+
+  return {
+    buffers: new Map([["lamp", buffer.toArrayBuffer()]]),
+    description: {
+      models: [
+        {
+          description: { ...description, bufferLength: buffer.byteLength },
+          name: "lamp",
+          rest: null,
+          surfaces: [mockSurfaceDescriptor()],
+          textures: [],
+        },
+      ],
+      placements: [
+        { model: 0, name: "lamp_0", section: "physic_object", transform: mockVisualTransform({ x: 1, y: 2, z: 3 }) },
+      ],
+    },
   };
 }
 
@@ -203,5 +238,38 @@ describe("LevelRenderContent", () => {
     ]);
     expect(sink.releaseTexture).toHaveBeenCalledWith("stone");
     expect(content.held()).toEqual({ bytes: 0, sectors: 0 });
+  });
+
+  it("dresses spawned models again on a texture toggle without putting their geometry again", () => {
+    const { content, sink } = mockContent();
+    const key: string = LEVEL_RENDER_KEYS.spawn(0, 0);
+
+    content.stand(mockSpawnModels());
+
+    expect(sink.putGeometry.mock.calls.map(([it]) => it)).toEqual([key]);
+    expect(sink.putSurface.mock.calls.at(-1)?.[1].textures?.base).toBe("lamp");
+
+    sink.putGeometry.mockClear();
+    content.setOptions({ ...DEFAULT_LEVEL_SURFACE_OPTIONS, isTextured: false });
+
+    expect(sink.putGeometry).not.toHaveBeenCalled();
+    expect(sink.putSurface.mock.calls.at(-1)).toEqual([
+      key,
+      expect.objectContaining({ textures: { base: undefined } }),
+    ]);
+  });
+
+  // A renderer started after the models were read is handed them before the level's own reaction opens it.
+  it("keeps spawned models held when a level opens, which the loader alone lets go", () => {
+    const { content, sink } = mockContent();
+
+    content.stand(mockSpawnModels());
+    content.open([]);
+
+    expect(sink.releaseObject).not.toHaveBeenCalledWith(LEVEL_RENDER_KEYS.spawn(0, 0));
+
+    content.stand(null);
+
+    expect(sink.releaseObject).toHaveBeenCalledWith(LEVEL_RENDER_KEYS.spawn(0, 0));
   });
 });

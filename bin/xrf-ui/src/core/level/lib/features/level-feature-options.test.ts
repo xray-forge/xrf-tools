@@ -1,74 +1,105 @@
 import { describe, expect, it } from "@jest/globals";
 import {
-  DEFAULT_RENDERER_AMBIENT_OCCLUSION_SETTINGS,
-  DEFAULT_RENDERER_SHADOW_SETTINGS,
   ERendererAmbientOcclusionQuality,
   ERendererAntialiasing,
+  ERendererLightShadowFilter,
+  ERendererPreset,
+  IRendererFeatureSettings,
+  RENDERER_PRESETS,
 } from "@xrf/renderer";
 
 import {
   DEFAULT_LEVEL_FEATURE_OPTIONS,
-  toLevelRendererAmbientOcclusion,
+  describeLevelFeatureToggle,
+  ILevelFeatureOptions,
+  LEVEL_ANTIALIASING_MODES,
+  TLevelFeatureKey,
+  toLevelFeatureView,
   toLevelRendererAntialiasing,
-  toLevelRendererShadows,
+  toLevelRendererFeature,
 } from "@/core/level/lib/features/level-feature-options";
+
+const SETTINGS: IRendererFeatureSettings = RENDERER_PRESETS[ERendererPreset.BASE];
+
+/** A view setting one value of every group over the settings. */
+const VIEW: ILevelFeatureOptions = {
+  ...DEFAULT_LEVEL_FEATURE_OPTIONS,
+  ambientOcclusion: { quality: ERendererAmbientOcclusionQuality.LOW },
+  grass: { radius: 80 },
+  lights: { shadowFilter: ERendererLightShadowFilter.ANOMALY },
+  shadows: { cascades: [20], filter: 0 },
+};
+
+const KEYS: ReadonlyArray<TLevelFeatureKey> = ["ambientOcclusion", "grass", "lights", "shadows"];
 
 describe("level feature options", () => {
   it("follows the settings by default", () => {
     expect(toLevelRendererAntialiasing(ERendererAntialiasing.SMAA, DEFAULT_LEVEL_FEATURE_OPTIONS, true)).toBe(
       ERendererAntialiasing.SMAA
     );
-    expect(toLevelRendererShadows(DEFAULT_RENDERER_SHADOW_SETTINGS, DEFAULT_LEVEL_FEATURE_OPTIONS, true)).toEqual(
-      DEFAULT_RENDERER_SHADOW_SETTINGS
-    );
+
+    for (const key of KEYS) {
+      expect(toLevelRendererFeature(key, SETTINGS, DEFAULT_LEVEL_FEATURE_OPTIONS, true)).toEqual(SETTINGS[key]);
+    }
   });
 
-  it("smooths with the view's own mode", () => {
-    const view = { ...DEFAULT_LEVEL_FEATURE_OPTIONS, antialiasing: ERendererAntialiasing.FXAA };
+  it("smooths with the view's own mode, which can be any but none", () => {
+    const view: ILevelFeatureOptions = { ...DEFAULT_LEVEL_FEATURE_OPTIONS, antialiasing: ERendererAntialiasing.FXAA };
 
     expect(toLevelRendererAntialiasing(ERendererAntialiasing.SMAA, view, true)).toBe(ERendererAntialiasing.FXAA);
     expect(toLevelRendererAntialiasing(ERendererAntialiasing.SMAA, view, false)).toBe(ERendererAntialiasing.NONE);
+    expect(LEVEL_ANTIALIASING_MODES).not.toContain(ERendererAntialiasing.NONE);
+    expect(LEVEL_ANTIALIASING_MODES).toHaveLength(Object.values(ERendererAntialiasing).length - 1);
   });
 
   it("cannot smooth what the settings leave unsmoothed", () => {
-    const view = { ...DEFAULT_LEVEL_FEATURE_OPTIONS, antialiasing: ERendererAntialiasing.SMAA };
+    const view: ILevelFeatureOptions = { ...DEFAULT_LEVEL_FEATURE_OPTIONS, antialiasing: ERendererAntialiasing.SMAA };
 
     expect(toLevelRendererAntialiasing(ERendererAntialiasing.NONE, view, true)).toBe(ERendererAntialiasing.NONE);
   });
 
-  it("draws shadows with the view's own values over the settings'", () => {
-    const view = { ...DEFAULT_LEVEL_FEATURE_OPTIONS, shadows: { cascades: [20], filter: 0 } };
-
-    expect(toLevelRendererShadows(DEFAULT_RENDERER_SHADOW_SETTINGS, view, true)).toEqual({
-      ...DEFAULT_RENDERER_SHADOW_SETTINGS,
+  it("draws every group with the view's own values over the settings'", () => {
+    expect(toLevelRendererFeature("ambientOcclusion", SETTINGS, VIEW, true).quality).toBe(
+      ERendererAmbientOcclusionQuality.LOW
+    );
+    expect(toLevelRendererFeature("grass", SETTINGS, VIEW, true)).toEqual({ ...SETTINGS.grass, radius: 80 });
+    expect(toLevelRendererFeature("lights", SETTINGS, VIEW, true).shadowFilter).toBe(
+      ERendererLightShadowFilter.ANOMALY
+    );
+    expect(toLevelRendererFeature("shadows", SETTINGS, VIEW, true)).toEqual({
+      ...SETTINGS.shadows,
       cascades: [20],
       filter: 0,
     });
   });
 
-  it("draws ambient occlusion with the view's own values over the settings', and can turn it off but not on", () => {
-    const view = {
-      ...DEFAULT_LEVEL_FEATURE_OPTIONS,
-      ambientOcclusion: { quality: ERendererAmbientOcclusionQuality.LOW },
-    };
-    const off = { ...DEFAULT_RENDERER_AMBIENT_OCCLUSION_SETTINGS, isEnabled: false };
+  it("can turn every group off but not on", () => {
+    for (const key of KEYS) {
+      const off: IRendererFeatureSettings = { ...SETTINGS, [key]: { ...SETTINGS[key], isEnabled: false } };
 
-    expect(toLevelRendererAmbientOcclusion(DEFAULT_RENDERER_AMBIENT_OCCLUSION_SETTINGS, view, true)).toEqual({
-      ...DEFAULT_RENDERER_AMBIENT_OCCLUSION_SETTINGS,
-      quality: ERendererAmbientOcclusionQuality.LOW,
-    });
-    expect(toLevelRendererAmbientOcclusion(DEFAULT_RENDERER_AMBIENT_OCCLUSION_SETTINGS, view, false).isEnabled).toBe(
-      false
-    );
-    expect(toLevelRendererAmbientOcclusion(off, view, true).isEnabled).toBe(false);
+      expect(toLevelRendererFeature(key, SETTINGS, VIEW, false).isEnabled).toBe(false);
+      expect(toLevelRendererFeature(key, off, VIEW, true).isEnabled).toBe(false);
+    }
   });
 
-  it("can turn shadows off but not on", () => {
-    const off = { ...DEFAULT_RENDERER_SHADOW_SETTINGS, isEnabled: false };
+  it("resolves each group as the toolbar shows it: drawn as on, available as the settings allow", () => {
+    const view = toLevelFeatureView({ ...SETTINGS, grass: { ...SETTINGS.grass, isEnabled: false } }, VIEW);
 
-    expect(
-      toLevelRendererShadows(DEFAULT_RENDERER_SHADOW_SETTINGS, DEFAULT_LEVEL_FEATURE_OPTIONS, false).isEnabled
-    ).toBe(false);
-    expect(toLevelRendererShadows(off, DEFAULT_LEVEL_FEATURE_OPTIONS, true).isEnabled).toBe(false);
+    expect(view.grass).toEqual({ isAvailable: false, value: { ...SETTINGS.grass, isEnabled: false, radius: 80 } });
+    expect(view.shadows.isAvailable).toBe(true);
+    expect(view.shadows.value.cascades).toEqual([20]);
+  });
+
+  it("says a toggle's state, and the settings' own where they keep it off", () => {
+    const description = { isAvailable: true, isOn: true, isPlural: true, label: "Shadows", off: "Off", on: "On" };
+
+    expect(describeLevelFeatureToggle(description)).toBe("On");
+    expect(describeLevelFeatureToggle({ ...description, isOn: false })).toBe("Off");
+    expect(describeLevelFeatureToggle({ ...description, isAvailable: false })).toBe(
+      "Shadows are off in Settings, under Rendering"
+    );
+    expect(describeLevelFeatureToggle({ ...description, isAvailable: false, isPlural: false, label: "Grass" })).toBe(
+      "Grass is off in Settings, under Rendering"
+    );
   });
 });

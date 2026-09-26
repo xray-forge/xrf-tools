@@ -6,7 +6,7 @@ import { assetsRawCommands } from "@/core/ipc/commands/assets-raw";
 import { texturesRawCommands } from "@/core/ipc/commands/textures-raw";
 import { LevelTextureReference } from "@/core/ipc/types/xrf-app";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
-import { ILevelTextureDelivery } from "@/core/level/lib/render/level-render-protocol";
+import { ILevelTextureDelivery, ILevelTextureSize } from "@/core/level/lib/render/level-render-protocol";
 import { ISectorTextureRequest } from "@/core/level/lib/sector/level-sector-textures";
 import { Logger } from "@/lib/logging";
 
@@ -39,7 +39,7 @@ export class LevelTextureReader {
   }
 
   /**
-   * Adds what more references came to, read beside the open: the grass's, which a later call packs.
+   * Adds what more references came to, read beside the open: what the level's grass, lights and spawned models bind.
    *
    * @param references - What each texture reference came to.
    */
@@ -82,7 +82,13 @@ export class LevelTextureReader {
       const read: IDdsRead = readDdsFile(bytes);
 
       if (read.file) {
-        return { bytes, isDecoded: false, reason: null, reference };
+        const size: ILevelTextureSize = {
+          height: read.file.height,
+          levels: read.file.mipmaps.length,
+          width: read.file.width,
+        };
+
+        return { bytes, isDecoded: false, reason: null, reference, size };
       }
 
       // A layout the reader does not model; the backend expands those to a picture instead.
@@ -93,6 +99,7 @@ export class LevelTextureReader {
         isDecoded: true,
         reason: null,
         reference,
+        size: null,
       };
     } catch (error: unknown) {
       const transformed: Error = transformError(error);
@@ -109,6 +116,7 @@ export class LevelTextureReader {
       isDecoded: false,
       reason,
       reference: request.reference,
+      size: null,
     };
   }
 }

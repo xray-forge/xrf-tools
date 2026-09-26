@@ -98,6 +98,11 @@ impl LevelCformFile {
 
     Ok((file, geometry))
   }
+
+  /// Reads the vertices and faces alone, the header read only for the counts it holds.
+  pub fn read_geometry_from_bytes<T: ByteOrder>(bytes: Vec<u8>) -> XrfResult<LevelCformGeometry> {
+    Self::read_with_geometry_from_bytes::<T>(bytes).map(|(_, geometry)| geometry)
+  }
 }
 
 #[cfg(test)]

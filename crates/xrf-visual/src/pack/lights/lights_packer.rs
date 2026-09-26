@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use xrf_level::LevelDynamicLight;
 use xrf_light_anim::{LightAnimFile, LightAnimItem, LightAnimKey};
-use xrf_ltx::Ltx;
+use xrf_ltx::{Ltx, Section};
 use xrf_math::Vector3d;
 
 use xrf_spawn::{AlifeObject, AlifeObjectHangingLamp, AlifeObjectInherited};
@@ -17,29 +17,20 @@ use crate::data::visual::skeleton::visual_transform::VisualTransform;
 use crate::pack::visual::visual_transform::{BindTransform, to_spawn_transform};
 use crate::pack::visual_conversion::convert_vector;
 
-/// `CSE_ALifeObjectHangingLamp::flCastShadow`.
-const FLAG_CAST_SHADOW: u16 = 1 << 1;
+/// The binder of a signal rocket (`bind_signal_light.script`), which turns its lamp off on its first update: lit only
+/// while a scripted launch flies it.
+const SIGNAL_LIGHT_BINDING: &str = "bind_signal_light.init";
 
-/// `CSE_ALifeObjectHangingLamp::flR2`: a lamp the engine spawns on R2 and later.
-const FLAG_R2: u16 = 1 << 3;
-
-/// `CSE_ALifeObjectHangingLamp::flTypeSpot`.
-const FLAG_SPOT: u16 = 1 << 4;
-
-/// `CSE_ALifeObjectHangingLamp::flPointAmbient`: a second, unshadowed point light at the ambient bone.
-const FLAG_POINT_AMBIENT: u16 = 1 << 5;
-
-/// A signal rocket: a hanging lamp its script (`bind_signal_light`) turns off on its first update, lit only while a
-/// scripted launch flies it.
+/// The section vanilla binds it to, which is what a lamp is known by without configs to read its binding from.
 const SIGNAL_LIGHT_SECTION: &str = "lights_signal_light";
 
 /// What a spot with no projector of its own projects (`r2_rendertarget.cpp`).
 const DEFAULT_PROJECTOR: &str = "lights\\lights_spot01";
 
-/// `idle_light_range_delta`'s default (`CCustomZone::Load`).
+/// `idle_light_range_delta`'s default (xray-16's `CCustomZone::Load`), and the only value xray-monolith knows.
 const ZONE_RANGE_JITTER: f32 = 0.25;
 
-/// The widest cone `light::spatial_move` accepts.
+/// The widest cone a spot takes here, so its projection stays finite; the engines pass any cone through.
 const MAX_CONE: f32 = 120.0 * std::f32::consts::PI / 180.0;
 
 /// Collects a level's lights as the engine would light with them: its hanging lamps, placed on their bones, and the
@@ -54,8 +45,6 @@ pub struct LightsPacker<'a> {
   animator_indices: HashMap<String, Option<u32>>,
   projectors: Vec<String>,
   projector_indices: HashMap<String, u32>,
-  /// Each visual read, `None` for one that could not be.
-  visuals: HashMap<String, Option<Arc<VisualRestPose>>>,
 }
 
 impl<'a> LightsPacker<'a> {
@@ -69,11 +58,11 @@ impl<'a> LightsPacker<'a> {
       animator_indices: HashMap::new(),
       projectors: Vec::new(),
       projector_indices: HashMap::new(),
-      visuals: HashMap::new(),
     }
   }
 
-  /// Reads each spawned object's section from the game's configs: a zone's idle light, and a lamp's own `shadow`.
+  /// Reads each spawned object's section from the game's configs: a zone's idle light, and a lamp's own `shadow` and
+  /// `ambient_shadow`.
   pub fn with_sections(mut self, sections: &'a Ltx) -> Self {
     self.sections = Some(sections);
     self
@@ -84,7 +73,8 @@ impl<'a> LightsPacker<'a> {
   /// # Arguments
   ///
   /// * `objects` - The objects spawned on the level.
-  /// * `pose_visual` - The rest pose of a visual by the name an object gives it, `None` for one that cannot be read.
+  /// * `pose_visual` - The rest pose of a visual by the name an object gives it, `None` for one that cannot be read;
+  ///   asked once per lamp, so a caller reading from disk keeps what it read.
   pub fn add_objects(
     &mut self,
     objects: &[AlifeObject],
@@ -125,6 +115,7 @@ impl<'a> LightsPacker<'a> {
     }
   }
 
+  /// The lights added, with the animators and projectors they name.
   pub fn pack(self) -> LightsDescription {
     LightsDescription {
       lights: self.lights,
@@ -136,29 +127,24 @@ impl<'a> LightsPacker<'a> {
   /// `CHangingLamp::net_Spawn`: the main light on its bone, and the ambient one on its own where the lamp asks for
   /// it. A lamp the engine would not spawn on R2, one already broken, or a signal rocket waiting for launch lights
   /// nothing.
+  ///
+  /// The section's `shadow` and `ambient_shadow` are xray-monolith's; xray-16 takes the flag and leaves the ambient
+  /// light unshadowed, which is what a section naming neither reads as. The spawned `virtual_size` is xray-16's, where
+  /// xray-monolith keeps the renderer's 0.1.
   pub(crate) fn add_lamp(
     &mut self,
     object: &AlifeObject,
     lamp: &AlifeObjectHangingLamp,
     pose_visual: &mut dyn FnMut(&str) -> Option<Arc<VisualRestPose>>,
   ) {
-    if lamp.light_flags & FLAG_R2 == 0 || lamp.health <= 0.0 || object.section == SIGNAL_LIGHT_SECTION {
+    let section: Option<&Section> = self.find_section(&object.section);
+
+    if !lamp.is_spawned_on_r2() || lamp.health <= 0.0 || self.is_signal_rocket(object, section) {
       return;
     }
 
-    let visual_name: &str = &lamp.base.visual_name;
-
-    if !self.visuals.contains_key(visual_name) {
-      let visual: Option<Arc<VisualRestPose>> = if visual_name.is_empty() {
-        None
-      } else {
-        pose_visual(visual_name)
-      };
-
-      self.visuals.insert(visual_name.to_owned(), visual);
-    }
-
-    let pose: Option<&VisualRestPose> = self.visuals.get(visual_name).and_then(Option::as_deref);
+    let visual: Option<Arc<VisualRestPose>> = object.inherited.get_visual().and_then(pose_visual);
+    let pose: Option<&VisualRestPose> = visual.as_deref();
     let object_transform: VisualTransform = to_spawn_transform(&object.position, &object.direction);
     let main: VisualTransform = place_on_bone(&object_transform, pose, &lamp.light_bone);
     let ambient: VisualTransform = if lamp.light_ambient_bone.eq_ignore_ascii_case(&lamp.light_bone) {
@@ -168,7 +154,7 @@ impl<'a> LightsPacker<'a> {
     };
     let color: [f32; 3] = unpack_color(lamp.main_color, lamp.main_brightness);
     let animator: Option<u32> = self.find_animator(&lamp.color_animator);
-    let is_spot: bool = lamp.light_flags & FLAG_SPOT != 0;
+    let is_spot: bool = lamp.is_spot();
     let projector: Option<u32> = is_spot.then(|| {
       self.find_projector(if lamp.light_texture.is_empty() {
         DEFAULT_PROJECTOR
@@ -191,14 +177,13 @@ impl<'a> LightsPacker<'a> {
       projector,
       animator,
       animator_scale: lamp.main_brightness / 255.0,
-      // Anomaly's engine takes the section's own `shadow` over the flag where it names one.
-      is_shadowed: self
-        .read_bool(&object.section, "shadow")
-        .unwrap_or(lamp.light_flags & FLAG_CAST_SHADOW != 0),
+      is_shadowed: section
+        .and_then(|it| it.get_bool("shadow"))
+        .unwrap_or_else(|| lamp.casts_shadow()),
       is_level: false,
     });
 
-    if lamp.light_flags & FLAG_POINT_AMBIENT != 0 {
+    if lamp.has_point_ambient() {
       self.lights.push(LightDescription {
         name: format!("{} ambient", object.name),
         kind: LightKind::Point,
@@ -213,7 +198,7 @@ impl<'a> LightsPacker<'a> {
         projector: None,
         animator,
         animator_scale: lamp.main_brightness / 255.0 * lamp.ambient_power,
-        is_shadowed: false,
+        is_shadowed: section.and_then(|it| it.get_bool("ambient_shadow")).unwrap_or(false),
         is_level: false,
       });
     }
@@ -223,18 +208,27 @@ impl<'a> LightsPacker<'a> {
   /// it, its colour its animation's alone, its range straying each frame. One whose animation the library lacks, which
   /// the engine would refuse, lights nothing.
   pub(crate) fn add_zone(&mut self, object: &AlifeObject) {
-    if self.read_bool(&object.section, "idle_light") != Some(true) {
+    let Some(section) = self.find_section(&object.section) else {
+      return;
+    };
+
+    if section.get_bool("idle_light") != Some(true) {
       return;
     }
 
-    let Some(range) = self.read_f32(&object.section, "idle_light_range") else {
+    let Some(range) = section.get_f32("idle_light_range") else {
       return;
     };
-    let name: Option<String> = self.read_string(&object.section, "idle_light_anim");
-    let Some(animator) = name.as_deref().and_then(|name| self.find_animator(name)) else {
+    let range_jitter: f32 = section.get_f32("idle_light_range_delta").unwrap_or(ZONE_RANGE_JITTER);
+    let height: f32 = section.get_f32("idle_light_height").unwrap_or(0.0);
+    let is_shadowed: bool = section.get_bool("idle_light_shadow").unwrap_or(true);
+    let Some(animator) = section
+      .get("idle_light_anim")
+      .map(str::trim)
+      .and_then(|name| self.find_animator(name))
+    else {
       return;
     };
-    let height: f32 = self.read_f32(&object.section, "idle_light_height").unwrap_or(0.0);
     let position: Vector3d = Vector3d::new(object.position.x, object.position.y + height, object.position.z);
 
     self.lights.push(LightDescription {
@@ -245,34 +239,31 @@ impl<'a> LightsPacker<'a> {
       right: Vector3d::new(1.0, 0.0, 0.0),
       color: [0.0, 0.0, 0.0],
       range,
-      range_jitter: self
-        .read_f32(&object.section, "idle_light_range_delta")
-        .unwrap_or(ZONE_RANGE_JITTER),
+      range_jitter,
       cone: 0.0,
       near: 0.0,
       projector: None,
       animator: Some(animator),
       animator_scale: 1.0 / 255.0,
-      is_shadowed: self.read_bool(&object.section, "idle_light_shadow").unwrap_or(true),
+      is_shadowed,
       is_level: false,
     });
   }
 
-  fn read_string(&self, section: &str, key: &str) -> Option<String> {
-    Some(self.sections?.section(section)?.get(key)?.trim().to_owned())
+  /// Whether a lamp is a signal rocket, by the binder its section names, or by vanilla's section without configs.
+  fn is_signal_rocket(&self, object: &AlifeObject, section: Option<&Section>) -> bool {
+    match self.sections {
+      Some(_) => section
+        .and_then(|it| it.get("script_binding"))
+        .is_some_and(|binding| binding.trim().eq_ignore_ascii_case(SIGNAL_LIGHT_BINDING)),
+      None => object.section == SIGNAL_LIGHT_SECTION,
+    }
   }
 
-  fn read_f32(&self, section: &str, key: &str) -> Option<f32> {
-    self.read_string(section, key)?.parse().ok()
-  }
-
-  /// `CInifile::r_bool`: `on`, `yes`, `true` and `1` are true, anything else false.
-  fn read_bool(&self, section: &str, key: &str) -> Option<bool> {
-    self.read_string(section, key).map(|value| {
-      ["on", "yes", "true", "1"]
-        .iter()
-        .any(|it| value.eq_ignore_ascii_case(it))
-    })
+  /// A spawned object's section, from configs outliving the packer rather than borrowed through it, so a caller can
+  /// hold it while the packer adds animators.
+  fn find_section(&self, name: &str) -> Option<&'a Section> {
+    self.sections?.section(name)
   }
 
   /// `LALib.FindItem`: the animation by its exact name, added the first time a lamp names it.
@@ -335,8 +326,8 @@ fn place_on_bone(object: &VisualTransform, pose: Option<&VisualRestPose>, bone: 
     )
 }
 
-/// The engine's `xf.k`, where a light points, in the renderer's space: a mirrored transform's third axis is the
-/// mirrored axis turned about, since the mirror flips the third axis on both sides of it.
+/// The engine's `xf.k`, where a light points, in the renderer's space: mirroring a transform negates the `x` and `y` of
+/// its third axis, so negating that axis gives the converted `k` back.
 fn to_direction(transform: &VisualTransform) -> Vector3d {
   Vector3d::new(-transform.k.x, -transform.k.y, -transform.k.z)
 }

@@ -21,19 +21,14 @@ import { SectorDescription } from "@/core/ipc/types/xrf-visual";
 import { LevelHeld } from "@/core/level/lib/render/level-held";
 import {
   ILevelGrassDelivery,
-  ILevelGrassSource,
-  ILevelLightsSource,
+  ILevelHeldSource,
   ILevelSectorChange,
   ILevelSectorDelivery,
   ILevelSectorSource,
-  ILevelSpawnModelsSource,
   ILevelTextureDelivery,
   ILevelTextureSupply,
   ILevelTextureSupplyChange,
-  TLevelGrassListener,
-  TLevelLightsListener,
   TLevelSectorListener,
-  TLevelSpawnModelsListener,
   TLevelTextureSupplyListener,
 } from "@/core/level/lib/render/level-render-protocol";
 import { ILevelSpawnModelsDelivery } from "@/core/level/lib/render/level-render-spawn";
@@ -84,6 +79,13 @@ interface ILevelSectorEntry {
   skipped: ReadonlyArray<ILevelSectorSkip>;
 }
 
+/** What one read of something a level holds came to: the value, what it binds, and a line saying how much it was. */
+interface ILevelHeldRead<T> {
+  value: T;
+  textures: ReadonlyArray<LevelTextureReference>;
+  summary: ReadonlyArray<string>;
+}
+
 /** How far through the sectors a camera asked for the loader has got. */
 export interface ILevelStreamProgress {
   /** Sectors the current plan asked for, or zero when nothing is streaming. */
@@ -119,19 +121,12 @@ export class LevelLoadService {
   /** What the reads have cost, kept here because the loader is what owns a read from end to end. */
   private readonly profile: LevelStreamProfile = new LevelStreamProfile();
 
-  /** Told the level's grass whenever it changes. */
-  private readonly grassWatchers: Set<TLevelGrassListener> = new Set();
-
-  /** The level's grass once read, which a renderer started later is handed too. */
-  private grassHeld: Nullable<ILevelGrassDelivery> = null;
-
-  /** The textures the grass is dressed with, kept for as long as it is held. */
-  private grassTextures: Set<string> = new Set();
-
-  /** The level's lights once read, which a renderer started later is handed too, and the projectors they sample. */
+  /**
+   * What the level holds besides its sectors, each read once after it opens and handed to a renderer started later
+   * too: its grass, its lights and the projectors they sample, and the models its spawned objects stand as.
+   */
+  private readonly heldGrass: LevelHeld<ILevelGrassDelivery> = new LevelHeld();
   private readonly heldLights: LevelHeld<LevelLightsDescription> = new LevelHeld();
-
-  /** The models the level's spawned objects stand as once read, and the textures they are dressed with. */
   private readonly heldSpawnModels: LevelHeld<ILevelSpawnModelsDelivery> = new LevelHeld();
 
   /** Where the camera last reported from, which is what the level is filled in around once it settles. */
@@ -146,7 +141,8 @@ export class LevelLoadService {
     isOpen: (sessionId: string): boolean => this.isOpen(sessionId),
     listTextures: (description: SectorDescription): ReadonlyArray<ISectorTextureRequest> =>
       this.listTextures(description),
-    load: (requests: ReadonlyArray<ISectorTextureRequest>): Promise<number> => this.supply(requests),
+    load: (sessionId: string, requests: ReadonlyArray<ISectorTextureRequest>): Promise<number> =>
+      this.supply(sessionId, requests),
     record: (reading: ILevelStreamReading): void => this.noteReading(reading),
   });
 
@@ -187,37 +183,19 @@ export class LevelLoadService {
   @Observable()
   public isReady: boolean = false;
 
-  /**
-   * @returns The level's grass, told as it is now and whenever it changes: read once, after the level opens.
-   */
-  public get grass(): ILevelGrassSource {
-    return {
-      subscribe: (listener: TLevelGrassListener): (() => void) => {
-        this.grassWatchers.add(listener);
-        listener(this.grassHeld);
-
-        return (): void => {
-          this.grassWatchers.delete(listener);
-        };
-      },
-    };
+  /** The level's grass, told as it is now and whenever it changes. */
+  public get grass(): ILevelHeldSource<ILevelGrassDelivery> {
+    return this.heldGrass;
   }
 
-  /**
-   * @returns The level's lights, told as they are now and whenever they change: read once, after the level opens.
-   */
-  public get lights(): ILevelLightsSource {
-    return { subscribe: (listener: TLevelLightsListener): (() => void) => this.heldLights.subscribe(listener) };
+  /** The level's lights, told as they are now and whenever they change. */
+  public get lights(): ILevelHeldSource<LevelLightsDescription> {
+    return this.heldLights;
   }
 
-  /**
-   * @returns The models the level's spawned objects stand as, told as they are now and whenever they change: read
-   *   once, after the level opens.
-   */
-  public get spawnModels(): ILevelSpawnModelsSource {
-    return {
-      subscribe: (listener: TLevelSpawnModelsListener): (() => void) => this.heldSpawnModels.subscribe(listener),
-    };
+  /** The models the level's spawned objects stand as, told as they are now and whenever they change. */
+  public get spawnModels(): ILevelHeldSource<ILevelSpawnModelsDelivery> {
+    return this.heldSpawnModels;
   }
 
   /** The lights held now, for a caller reading rather than listening. */
@@ -270,16 +248,19 @@ export class LevelLoadService {
   }
 
   /**
-   * Reads the files a sector's surfaces name, and supplies them to whatever uploads them.
+   * Reads the files a level's surfaces name, and supplies them to whatever uploads them, for a level still open: a
+   * read that outlives its level delivers nothing into the next.
    *
-   * @param requests - What the sector names, base textures and lightmaps alike.
+   * @param sessionId - The level opening that named them.
+   * @param requests - What its sectors, grass, lights or spawned models name, base textures and lightmaps alike.
+   * @returns How many files it read.
    */
-  private async supply(requests: ReadonlyArray<ISectorTextureRequest>): Promise<number> {
+  private async supply(sessionId: string, requests: ReadonlyArray<ISectorTextureRequest>): Promise<number> {
     const wanted: Array<ISectorTextureRequest> = requests.filter(
       (request: ISectorTextureRequest) => Boolean(request.reference) && !this.supplied.has(request.reference)
     );
 
-    if (!wanted.length) {
+    if (!wanted.length || !this.isOpen(sessionId)) {
       return 0;
     }
 
@@ -290,6 +271,10 @@ export class LevelLoadService {
     const delivered: Array<ILevelTextureDelivery> = await Promise.all(
       wanted.map((request: ISectorTextureRequest) => this.reading.read(request))
     );
+
+    if (!this.isOpen(sessionId)) {
+      return 0;
+    }
 
     this.notifyTextures({ delivered, retained: null });
 
@@ -405,151 +390,114 @@ export class LevelLoadService {
     this.reading.open(selected.value.roots, selected.value.textures);
     this.notifyTextures({ delivered: [], retained: null });
     this.level = this.level.asReady({ selected });
-    this.holdGrass(null);
-    this.heldLights.hold(null);
-    this.heldSpawnModels.hold(null);
-    void this.readGrass(selected.sessionId);
-    void this.readLights(selected.sessionId);
-    void this.readSpawnModels(selected.sessionId);
+    this.releaseHeld();
+    void this.readHeld(selected.sessionId, "grass", this.heldGrass, () => this.readGrass(selected.sessionId));
+    void this.readHeld(selected.sessionId, "lights", this.heldLights, () => this.readLights(selected.sessionId));
+    void this.readHeld(selected.sessionId, "spawned models", this.heldSpawnModels, () =>
+      this.readSpawnModels(selected.sessionId)
+    );
   }
 
   /**
-   * Collects the level's lights, and the projectors its spots sample, then hands them over, for a level still open.
-   *
-   * @param sessionId - The level opening they belong to.
-   */
-  private async readLights(sessionId: string): Promise<void> {
-    const timer: Timer = new Timer();
-
-    try {
-      const snapshot: SessionSnapshot<LevelLightsDescription> = await levelsCommands.openLights(sessionId);
-
-      if (!this.isOpen(sessionId)) {
-        return;
-      }
-
-      const description: LevelLightsDescription = snapshot.value;
-
-      const textures: Set<string> = new Set(description.projectors.map((it) => it.reference));
-
-      this.reading.add(description.projectors);
-      // Held first with nothing to show, so the textures stay uploaded while they are supplied.
-      this.heldLights.hold(null, textures);
-      await this.supply(description.projectors.map((it) => ({ reference: it.reference })));
-
-      if (!this.isOpen(sessionId)) {
-        return;
-      }
-
-      this.log.info(
-        "Lights read in:",
-        formatDuration(timer.elapsed()),
-        `${description.lights.lights.length} lights,`,
-        `${description.lights.animators.length} animators`
-      );
-      this.heldLights.hold(description, textures);
-    } catch (error: unknown) {
-      this.log.error("Failed to read the level's lights:", transformError(error));
-    }
-  }
-
-  /**
-   * Reads the models the level's spawned objects stand as, each model's pack and textures, then hands them over, for
-   * a level still open.
-   *
-   * @param sessionId - The level opening they belong to.
-   */
-  private async readSpawnModels(sessionId: string): Promise<void> {
-    const timer: Timer = new Timer();
-
-    try {
-      const snapshot: SessionSnapshot<LevelSpawnModelsDescription> = await levelsCommands.openSpawnModels(sessionId);
-      const description: LevelSpawnModelsDescription = snapshot.value;
-
-      if (!this.isOpen(sessionId) || !description.models.length) {
-        return;
-      }
-
-      const buffers: Map<string, ArrayBuffer> = new Map();
-
-      for (const model of description.models) {
-        buffers.set(model.name, await levelsRawCommands.readSpawnModel(sessionId, model.name));
-      }
-
-      const references: Array<LevelTextureReference> = description.models.flatMap((model) => model.textures);
-      const textures: Set<string> = new Set(references.map((it) => it.reference));
-
-      this.reading.add(references);
-      this.heldSpawnModels.hold(null, textures);
-      await this.supply(references.map((it) => ({ reference: it.reference })));
-
-      if (!this.isOpen(sessionId)) {
-        return;
-      }
-
-      this.log.info(
-        "Spawned models read in:",
-        formatDuration(timer.elapsed()),
-        `${description.models.length} models,`,
-        `${description.placements.length} placed`
-      );
-      this.heldSpawnModels.hold({ buffers, description }, textures);
-    } catch (error: unknown) {
-      this.log.error("Failed to read the level's spawned models:", transformError(error));
-    }
-  }
-
-  /**
-   * Packs and reads the level's grass, and its textures, then hands it over, for a level still open.
+   * Reads one thing the level holds, supplies the textures it binds, then holds it, for a level still open after each
+   * step: its textures claimed before they are read, so a settle meanwhile keeps them.
    *
    * @param sessionId - The level opening it belongs to.
+   * @param what - What it is, as the log names it.
+   * @param held - Where it is held.
+   * @param read - Reads it, or answers null for a level holding none.
    */
-  private async readGrass(sessionId: string): Promise<void> {
+  private async readHeld<T>(
+    sessionId: string,
+    what: string,
+    held: LevelHeld<T>,
+    read: () => Promise<Nullable<ILevelHeldRead<T>>>
+  ): Promise<void> {
     const timer: Timer = new Timer();
 
     try {
-      const snapshot: SessionSnapshot<Nullable<LevelDetailsDescription>> = await levelsCommands.openDetails(
-        sessionId,
-        crypto.randomUUID()
-      );
+      const result: Nullable<ILevelHeldRead<T>> = await read();
 
-      if (!snapshot.value || !this.isOpen(sessionId)) {
+      if (!result || !this.isOpen(sessionId)) {
         return;
       }
 
-      const buffer: ArrayBuffer = await levelsRawCommands.readDetails(sessionId, snapshot.sessionId);
-      const description: LevelDetailsDescription = snapshot.value;
-
-      this.reading.add(description.textures);
-      this.grassTextures = new Set(description.textures.map((it) => it.reference));
-      await this.supply(description.textures.map((it) => ({ reference: it.reference })));
+      this.reading.add(result.textures);
+      held.claim(new Set(result.textures.map((it: LevelTextureReference) => it.reference)));
+      await this.supply(
+        sessionId,
+        result.textures.map((it: LevelTextureReference) => ({ reference: it.reference }))
+      );
 
       if (!this.isOpen(sessionId)) {
         return;
       }
 
-      this.log.info(
-        "Grass read in:",
-        formatDuration(timer.elapsed()),
-        `${description.details.slotCount} planted slots,`,
-        `${description.details.models.length} models`
-      );
-      this.holdGrass({ buffer, description });
+      this.log.info(`Level ${what} read in:`, formatDuration(timer.elapsed()), ...result.summary);
+      held.hold(result.value);
     } catch (error: unknown) {
-      this.log.error("Failed to read the level's grass:", transformError(error));
+      this.log.error(`Failed to read the level's ${what}:`, transformError(error));
     }
   }
 
-  private holdGrass(grass: Nullable<ILevelGrassDelivery>): void {
-    this.grassHeld = grass;
+  /** The level's lights, and the projectors its spots sample. */
+  private async readLights(sessionId: string): Promise<ILevelHeldRead<LevelLightsDescription>> {
+    const { value }: SessionSnapshot<LevelLightsDescription> = await levelsCommands.openLights(sessionId);
 
-    if (!grass) {
-      this.grassTextures = new Set();
+    return {
+      summary: [`${value.lights.lights.length} lights,`, `${value.lights.animators.length} animators`],
+      textures: value.projectors,
+      value,
+    };
+  }
+
+  /** The models the level's spawned objects stand as, each one's pack read at once, and their textures. */
+  private async readSpawnModels(sessionId: string): Promise<Nullable<ILevelHeldRead<ILevelSpawnModelsDelivery>>> {
+    const { value: description }: SessionSnapshot<LevelSpawnModelsDescription> =
+      await levelsCommands.openSpawnModels(sessionId);
+
+    if (!description.models.length || !this.isOpen(sessionId)) {
+      return null;
     }
 
-    for (const watcher of Array.from(this.grassWatchers)) {
-      watcher(grass);
+    const packs: Array<ArrayBuffer> = await Promise.all(
+      description.models.map((model) => levelsRawCommands.readSpawnModel(sessionId, model.name))
+    );
+
+    return {
+      summary: [`${description.models.length} models,`, `${description.placements.length} placed`],
+      textures: description.models.flatMap((model) => model.textures),
+      value: {
+        buffers: new Map(description.models.map((model, index: number) => [model.name, packs[index]])),
+        description,
+      },
+    };
+  }
+
+  /** The level's grass, packed for it, and its textures; null for a level with none. */
+  private async readGrass(sessionId: string): Promise<Nullable<ILevelHeldRead<ILevelGrassDelivery>>> {
+    const snapshot: SessionSnapshot<Nullable<LevelDetailsDescription>> = await levelsCommands.openDetails(
+      sessionId,
+      crypto.randomUUID()
+    );
+    const description: Nullable<LevelDetailsDescription> = snapshot.value;
+
+    if (!description || !this.isOpen(sessionId)) {
+      return null;
     }
+
+    return {
+      summary: [`${description.details.slotCount} planted slots,`, `${description.details.models.length} models`],
+      textures: description.textures,
+      value: { buffer: await levelsRawCommands.readDetails(sessionId, snapshot.sessionId), description },
+    };
+  }
+
+  /** Lets go of everything the level holds besides its sectors. */
+  private releaseHeld(): void {
+    this.heldGrass.release();
+    this.heldLights.release();
+    this.heldSpawnModels.release();
   }
 
   /**
@@ -719,17 +667,28 @@ export class LevelLoadService {
   }
 
   /**
-   * Forgets what is resident and reads it again, for a level that has to be handed to a different renderer.
+   * Forgets what is resident and reads it again, for a level that has to be handed to a different renderer: the
+   * sectors from where the camera was, and the textures of what the level holds, which the renderer is handed again.
    */
   @BoundAction()
   public restream(): Promise<void> {
     const from: Nullable<ILevelPoint> = this.streamedFrom;
+    const open: Nullable<IOpenLevel> = this.level.value;
 
     this.scheduler.clear();
     this.supplied.clear();
     this.releaseSectors();
 
     this.streamedFrom = null;
+
+    if (open) {
+      const held: Set<string> = this.listHeldTextures();
+
+      void this.supply(
+        open.selected.sessionId,
+        Array.from(held, (reference: string) => ({ reference }))
+      );
+    }
 
     return from ? this.stream(from) : Promise.resolve();
   }
@@ -769,19 +728,16 @@ export class LevelLoadService {
       }
     }
 
-    for (const reference of this.reader.listClaimedTextures()) {
-      references.add(reference);
-    }
-
-    for (const reference of this.grassTextures) {
-      references.add(reference);
-    }
-
-    for (const reference of [...this.heldLights.textures, ...this.heldSpawnModels.textures]) {
+    for (const reference of [...this.reader.listClaimedTextures(), ...this.listHeldTextures()]) {
       references.add(reference);
     }
 
     return references;
+  }
+
+  /** @returns What the level's grass, lights and spawned models bind, held or claimed. */
+  private listHeldTextures(): Set<string> {
+    return new Set([...this.heldGrass.textures, ...this.heldLights.textures, ...this.heldSpawnModels.textures]);
   }
 
   private publishSectorReport(): void {
@@ -812,9 +768,7 @@ export class LevelLoadService {
       this.supplied.clear();
       this.reading.close();
       this.notifyTextures({ delivered: [], retained: null });
-      this.holdGrass(null);
-      this.heldLights.hold(null);
-      this.heldSpawnModels.hold(null);
+      this.releaseHeld();
     });
   }
 

@@ -9,7 +9,11 @@ import {
 } from "@xrf/renderer";
 import { ReactElement } from "react";
 
-import { describeRenderAntialiasing, describeRenderScale, RENDER_SHARPENING_LIMITS } from "@/core/render/lib/features";
+import {
+  RENDER_ANTIALIASING_OPTIONS,
+  RENDER_SCALE_OPTIONS,
+  RENDER_SHARPENING_LIMITS,
+} from "@/core/render/lib/features";
 import { SettingsService } from "@/core/settings/services/settings";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 import { ChoiceFormRow, IChoiceFormRowOption } from "@/core/ui/form/ChoiceFormRow";
@@ -25,14 +29,6 @@ const PRESET_LABELS: Record<ERendererPreset, string> = {
 const PRESET_OPTIONS: ReadonlyArray<IChoiceFormRowOption<ERendererPreset>> = Object.values(ERendererPreset).map(
   (value: ERendererPreset) => ({ label: PRESET_LABELS[value], value })
 );
-
-const ANTIALIASING_OPTIONS: ReadonlyArray<IChoiceFormRowOption<ERendererAntialiasing>> = Object.values(
-  ERendererAntialiasing
-).map((value: ERendererAntialiasing) => ({ label: describeRenderAntialiasing(value), value }));
-
-const SCALE_OPTIONS: ReadonlyArray<IChoiceFormRowOption<ERendererRenderScale>> = Object.values(
-  ERendererRenderScale
-).map((value: ERendererRenderScale) => ({ label: describeRenderScale(value), value }));
 
 /** Which preset the renderer's features follow, and the features that are not a level's alone. */
 export function SettingsRendererFeatures(): ReactElement {
@@ -65,14 +61,14 @@ export function SettingsRendererFeatures(): ReactElement {
         />
 
         <ChoiceFormRow
-          label={"Anti-aliasing"}
+          label={"Antialiasing"}
           description={
             "How the frame's edges are smoothed. SMAA is crisp and stable; FXAA is cheaper and softer. TAA blends " +
             "each frame with the ones before, which also smooths foliage and thin wires, and settles when the view " +
             "stops moving. FSR 2 does the same as AMD's upscaler, holding thin features and the blended surfaces " +
             "steadier."
           }
-          options={ANTIALIASING_OPTIONS}
+          options={RENDER_ANTIALIASING_OPTIONS}
           value={features.antialiasing}
           onChange={(antialiasing: ERendererAntialiasing) => settingsService.setRendererOverrides({ antialiasing })}
         />
@@ -84,7 +80,7 @@ export function SettingsRendererFeatures(): ReactElement {
             "frames before as much as this one, and by FSR 1 from this frame alone for the other modes. Less costs " +
             "less for every pass that is paid per pixel."
           }
-          options={SCALE_OPTIONS}
+          options={RENDER_SCALE_OPTIONS}
           value={features.upscaling.scale}
           onChange={(scale: ERendererRenderScale) => settingsService.setRendererOverrides({ upscaling: { scale } })}
         />

@@ -1,5 +1,6 @@
 use std::fs;
-use std::path::Path;
+use std::io::ErrorKind;
+use std::path::{Path, PathBuf};
 
 use xrf_chunk::InMemoryChunkDataSource;
 use xrf_level::{LevelFile, LevelGeomSource, LevelVisualsChunk};
@@ -43,31 +44,35 @@ pub fn read_source(source: &LevelSource, probe: &XrayProbe) -> TauriResult<ReadL
 
 /// Reads one of the level's files, from disk or out of the mounted roots.
 pub fn read_file(source: &LevelSource, probe: &XrayProbe, file: &str) -> TauriResult<Vec<u8>> {
-  match source {
-    LevelSource::Directory { path } => {
-      let path: std::path::PathBuf = Path::new(path).join(file);
-
-      fs::read(&path).map_err(|error| format!("Failed to read level file '{}': {error}", path.display()))
-    }
-    LevelSource::Asset { logical_path } => read_asset(probe, &format!("{logical_path}\\{file}")),
-  }
+  read_optional_file(source, probe, file)?.ok_or_else(|| format!("Level '{}' has no '{file}'", source.get_label()))
 }
 
-/// Reads one of the level's files out of the mounted roots, loose or archived alike.
-pub fn read_asset(probe: &XrayProbe, logical_path: &str) -> TauriResult<Vec<u8>> {
-  let resolution: XrayResolution = probe
-    .find(logical_path)
-    .map_err(|error| format!("Rejected level file '{logical_path}': {error}"))?;
+/// Reads one of the level's files, or `None` where the level has none: only a file that is not there, not one that
+/// cannot be read.
+pub fn read_optional_file(source: &LevelSource, probe: &XrayProbe, file: &str) -> TauriResult<Option<Vec<u8>>> {
+  match source {
+    LevelSource::Directory { path } => {
+      let path: PathBuf = Path::new(path).join(file);
 
-  let Some(asset) = resolution.get_asset() else {
-    return Err(format!(
-      "Failed to read level file '{logical_path}': it resolves to nothing"
-    ));
-  };
+      match fs::read(&path) {
+        Ok(bytes) => Ok(Some(bytes)),
+        Err(error) if error.kind() == ErrorKind::NotFound => Ok(None),
+        Err(error) => Err(format!("Failed to read level file '{}': {error}", path.display())),
+      }
+    }
+    LevelSource::Asset { logical_path } => {
+      let logical_path: String = format!("{logical_path}\\{file}");
+      let resolution: XrayResolution = probe
+        .find(&logical_path)
+        .map_err(|error| format!("Rejected level file '{logical_path}': {error}"))?;
 
-  probe
-    .read_asset_bytes(asset)
-    .map_err(|error| format!("Failed to read level file '{logical_path}': {error}"))
+      resolution
+        .get_asset()
+        .map(|asset| probe.read_asset_bytes(asset))
+        .transpose()
+        .map_err(|error| format!("Failed to read level file '{logical_path}': {error}"))
+    }
+  }
 }
 
 fn failure(source: &LevelSource, file: &str, error: &impl std::fmt::Display) -> String {

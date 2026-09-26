@@ -9,7 +9,7 @@ import { toXrayHeading, toXraySpace } from "@/core/render/lib/scene/render-space
  * @param pose - Where the camera is and the point it looks at, in renderer space.
  * @returns Where it is and where it faces, in the level's own coordinates.
  */
-export function toLevelCamera(pose: IRendererCameraPose): ILevelCamera {
+export function toLevelCameraReading(pose: IRendererCameraPose): ILevelCamera {
   const [x, y, z] = pose.position;
   const [tx, ty, tz] = pose.target;
 

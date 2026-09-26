@@ -230,12 +230,12 @@ impl LevelDetailsFile {
 
   /// Every slot of the grid, decoded in the order the file stores them.
   pub fn iter_slots(&self) -> impl Iterator<Item = LevelDetailsSlot> + '_ {
-    self
-      .slots
-      .as_chunks::<{ LevelDetailsSlot::SERIALIZED_SIZE }>()
-      .0
-      .iter()
-      .map(LevelDetailsSlot::of)
+    self.iter_stored_slots().map(LevelDetailsSlot::of)
+  }
+
+  /// Every slot of the grid as the file stores it, for a reader passing the packed bytes on rather than decoding them.
+  pub fn iter_stored_slots(&self) -> impl Iterator<Item = &[u8; LevelDetailsSlot::SERIALIZED_SIZE]> + '_ {
+    self.slots.as_chunks::<{ LevelDetailsSlot::SERIALIZED_SIZE }>().0.iter()
   }
 
   /// Slots planting at least one object, which is what decides how much of a level is actually dressed.

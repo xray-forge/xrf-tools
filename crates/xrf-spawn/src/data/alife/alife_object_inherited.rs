@@ -162,6 +162,45 @@ impl AlifeObjectInherited {
     }
   }
 
+  /// The visual the object is drawn as, by the name its class keeps it under (`cse_visual::visual_name`); `None` for a
+  /// class drawn as nothing, and for an object naming no visual.
+  pub fn get_visual(&self) -> Option<&str> {
+    let name: &str = match self {
+      AlifeObjectInherited::SeActor(object) => object.base.base.base.visual_name.as_str(),
+      AlifeObjectInherited::CseAlifeObjectBreakable(object) => object.base.visual_name.as_str(),
+      AlifeObjectInherited::CseAlifeCar(object) => object.base.visual_name.as_str(),
+      AlifeObjectInherited::CseAlifeTrader(object) => object.base.visual_name.as_str(),
+      AlifeObjectInherited::CseAlifeObjectPhysic(object) => object.base.visual_name.as_str(),
+      AlifeObjectInherited::CseAlifeHelicopter(object) => object.base.visual_name.as_str(),
+      AlifeObjectInherited::CseAlifeInventoryBox(object) => object.base.visual_name.as_str(),
+      AlifeObjectInherited::CseAlifeObjectHangingLamp(object) => object.base.visual_name.as_str(),
+      AlifeObjectInherited::CseAlifeItem(object) => object.base.visual_name.as_str(),
+      AlifeObjectInherited::CseAlifeItemExplosive(object) => object.base.base.visual_name.as_str(),
+      AlifeObjectInherited::CseAlifeItemPda(object) => object.base.base.visual_name.as_str(),
+      AlifeObjectInherited::CseAlifeItemAmmo(object) => object.base.base.visual_name.as_str(),
+      AlifeObjectInherited::CseAlifeItemGrenade(object) => object.base.base.visual_name.as_str(),
+      AlifeObjectInherited::CseAlifeItemArtefact(object) => object.base.base.visual_name.as_str(),
+      AlifeObjectInherited::CseAlifeItemWeapon(object) => object.base.base.visual_name.as_str(),
+      AlifeObjectInherited::CseAlifeItemDetector(object) => object.base.base.visual_name.as_str(),
+      AlifeObjectInherited::CseAlifeItemHelmet(object) => object.base.base.visual_name.as_str(),
+      AlifeObjectInherited::CseAlifeItemCustomOutfit(object) => object.base.base.visual_name.as_str(),
+      AlifeObjectInherited::CseAlifeItemWeaponShotgun(object) => object.base.base.base.visual_name.as_str(),
+      AlifeObjectInherited::CseAlifeItemWeaponMagazined(object) => object.base.base.base.visual_name.as_str(),
+      AlifeObjectInherited::CseAlifeItemWeaponMagazinedWGl(object) => object.base.base.base.base.visual_name.as_str(),
+      AlifeObjectInherited::CseAlifeZoneVisual(object) => object.visual.visual_name.as_str(),
+      AlifeObjectInherited::CseAlifeObjectClimable(_)
+      | AlifeObjectInherited::CseAlifeGraphPoint(_)
+      | AlifeObjectInherited::CseAlifeSpaceRestrictor(_)
+      | AlifeObjectInherited::SeSmartCover(_)
+      | AlifeObjectInherited::CseAlifeAnomalousZone(_)
+      | AlifeObjectInherited::CseAlifeTorridZone(_)
+      | AlifeObjectInherited::SeSmartTerrain(_)
+      | AlifeObjectInherited::SeLevelChanger(_) => return None,
+    };
+
+    (!name.is_empty()).then_some(name)
+  }
+
   /// Get custom data of the object if it is supported by underlying alife class.
   /// Custom data is stored on the shared abstract object and reached through inheritance chains.
   pub fn get_custom_data(&self) -> Option<&String> {

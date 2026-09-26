@@ -4,7 +4,7 @@ use xrf_error::XrfResult;
 use xrf_ogf::{OgfBone, OgfBoneIkData};
 use xrf_skeleton::{SAMPLE_FPS, SkeletonMotion, SkeletonMotionDefinition, SkeletonPart};
 
-use crate::pack::tests::visual::fixtures::{bind, bones, vector};
+use crate::pack::tests::fixtures::{bind, bones, vector};
 use crate::pack::visual::motion::visual_motion::{FLOATS_PER_BONE, bake_motion};
 use crate::pack::visual::motion::visual_motion_pose::VisualMotionPose;
 

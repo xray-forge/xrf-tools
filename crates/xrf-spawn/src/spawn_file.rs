@@ -15,6 +15,9 @@ use crate::chunks::spawn_artefact_spawns_chunk::SpawnArtefactSpawnsChunk;
 use crate::chunks::spawn_graphs_chunk::SpawnGraphsChunk;
 use crate::chunks::spawn_header_chunk::SpawnHeaderChunk;
 use crate::chunks::spawn_patrols_chunk::SpawnPatrolsChunk;
+use crate::data::alife::alife_object::AlifeObject;
+use crate::data::alife::spawn_level_objects::SpawnLevelObjects;
+use crate::data::alife::spawn_skipped_object::SpawnSkippedObject;
 use crate::data::graph::graph_vertex_levels::GraphVertexLevels;
 
 /// Descriptor of generic spawn file used by xray game engine.
@@ -116,7 +119,6 @@ impl SpawnFile {
     find_required_chunk_by_id(chunks, SpawnGraphsChunk::CHUNK_ID)?.read_xr::<T, _>()
   }
 
-  /// Write spawn file data to the file by provided path.
   /// Reads which level each game vertex stands on out of a spawn file's root chunks, and nothing else of the graph.
   ///
   /// # Errors
@@ -128,17 +130,48 @@ impl SpawnFile {
     GraphVertexLevels::read::<T, _>(&mut find_required_chunk_by_id(chunks, SpawnGraphsChunk::CHUNK_ID)?)
   }
 
-  /// Reads the alife objects out of a spawn file's root chunks, and nothing else of the file.
+  /// The alife objects a spawn file places on one level, by the level each one's game vertex stands on, reading nothing
+  /// of the file but its objects and the head of its graph.
+  ///
+  /// Keeps what it can: an object it cannot read is skipped rather than failing the level, as a mod's spawn can hold a
+  /// class this has no reader for. Levels are matched by name without case.
   ///
   /// # Errors
   ///
-  /// Returns an error when the objects chunk is missing or cannot be read.
-  pub fn read_alife_spawns_from_chunks<T: ByteOrder, D: ChunkDataSource>(
+  /// Returns an error when the objects chunk or the head of the graph is missing or cannot be read.
+  pub fn read_level_objects_from_chunks<T: ByteOrder, D: ChunkDataSource>(
     chunks: &[ChunkReader<D>],
-  ) -> XrfResult<SpawnALifeSpawnsChunk> {
-    find_required_chunk_by_id(chunks, SpawnALifeSpawnsChunk::CHUNK_ID)?.read_xr::<T, _>()
+    level: &str,
+  ) -> XrfResult<SpawnLevelObjects> {
+    let levels: GraphVertexLevels = Self::read_vertex_levels_from_chunks::<T, _>(chunks)?;
+    let mut objects: Vec<AlifeObject> = Vec::new();
+    let mut skipped: Vec<SpawnSkippedObject> = Vec::new();
+    let total: u32 = SpawnALifeSpawnsChunk::read_each::<T, _>(
+      &mut find_required_chunk_by_id(chunks, SpawnALifeSpawnsChunk::CHUNK_ID)?,
+      |index, object| match object {
+        Ok(object) => {
+          if levels
+            .get_object_level(&object)
+            .is_some_and(|it| it.name.eq_ignore_ascii_case(level))
+          {
+            objects.push(object);
+          }
+        }
+        Err(error) => skipped.push(SpawnSkippedObject {
+          index,
+          reason: error.to_string(),
+        }),
+      },
+    )?;
+
+    Ok(SpawnLevelObjects {
+      objects,
+      total,
+      skipped,
+    })
   }
 
+  /// Write spawn file data to the file by provided path.
   pub fn write_to_path<T: ByteOrder, P: AsRef<Path>>(&self, path: &P) -> XrfResult {
     let path_ref: &Path = path.as_ref();
 

@@ -3,8 +3,9 @@ import { Fragment, ReactElement, ReactNode } from "react";
 
 import { RenderViewportOverlay, TRenderOverlayCorner } from "@/core/render/components/overlay/RenderViewportOverlay";
 import { BaseComponentProps } from "@/lib/dom/element-types";
+import { formatCount } from "@/lib/format/number";
 
-/** The buffer's size, and the scene's as drawn where TAA upscales it from less. */
+/** The buffer's size, and the scene's as drawn where it is upscaled from less. */
 function toSizeLine(cost: IRenderFrameCost): string {
   const drawn: string = `${cost.drawnWidth} × ${cost.drawnHeight}`;
   const isUpscaled: boolean =
@@ -46,7 +47,7 @@ export function RenderFrameReadout({
   return (
     <RenderViewportOverlay data-testid={dataTestId} id={id} className={className} corner={corner}>
       <div>{`${cost.framesPerSecond.toFixed(0)} fps · ${cost.frameTime.toFixed(1)} ms`}</div>
-      <div>{`${cost.draws} draws · ${cost.triangles.toLocaleString()} tris`}</div>
+      <div>{`${cost.draws} draws · ${formatCount(cost.triangles)} tris`}</div>
       <div>{toSizeLine(cost)}</div>
 
       {children}

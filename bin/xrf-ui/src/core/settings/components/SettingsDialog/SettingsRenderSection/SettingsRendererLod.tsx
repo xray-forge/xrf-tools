@@ -1,5 +1,5 @@
 import { useInjection } from "@wirestate/react";
-import { IRendererLodSettings } from "@xrf/renderer";
+import { IRendererLodSettings, RENDERER_FEATURE_SCHEMA } from "@xrf/renderer";
 import { ReactElement } from "react";
 
 import { SettingsService } from "@/core/settings/services/settings";
@@ -8,26 +8,22 @@ import { SliderFormRow } from "@/core/ui/form/SliderFormRow";
 import { DetailSection } from "@/core/ui/layout/DetailSection";
 import { formatNumber } from "@/lib/format/number";
 
-/** One threshold, the console variable it is and the range the engine's console takes it in. */
+/** One threshold, and the console variable it is. */
 interface ILodThreshold {
   key: Exclude<keyof IRendererLodSettings, "isImpostors">;
   label: string;
   description: string;
-  min: number;
-  max: number;
   step: number;
   digits: number;
 }
 
-/** In the order the engine's console lists them (`xrRender_console.cpp`), with its own ranges. */
+/** In the order the engine's console lists them (`xrRender_console.cpp`); its ranges are the renderer's schema's. */
 const LOD_THRESHOLDS: ReadonlyArray<ILodThreshold> = [
   {
     description: "r__geometry_lod: every threshold below is taken against the drawing's area times this.",
     digits: 2,
     key: "geometryLod",
     label: "Detail scale",
-    max: 2,
-    min: 0.1,
     step: 0.05,
   },
   {
@@ -35,8 +31,6 @@ const LOD_THRESHOLDS: ReadonlyArray<ILodThreshold> = [
     digits: 0,
     key: "ssaA",
     label: "Impostor below",
-    max: 96,
-    min: 16,
     step: 1,
   },
   {
@@ -44,8 +38,6 @@ const LOD_THRESHOLDS: ReadonlyArray<ILodThreshold> = [
     digits: 0,
     key: "ssaB",
     label: "Trees above",
-    max: 64,
-    min: 32,
     step: 1,
   },
   {
@@ -53,8 +45,6 @@ const LOD_THRESHOLDS: ReadonlyArray<ILodThreshold> = [
     digits: 1,
     key: "ssaDiscard",
     label: "Nothing below",
-    max: 10,
-    min: 1,
     step: 0.5,
   },
   {
@@ -62,8 +52,6 @@ const LOD_THRESHOLDS: ReadonlyArray<ILodThreshold> = [
     digits: 0,
     key: "ssaGlodStart",
     label: "Whole detail above",
-    max: 512,
-    min: 128,
     step: 8,
   },
   {
@@ -71,8 +59,6 @@ const LOD_THRESHOLDS: ReadonlyArray<ILodThreshold> = [
     digits: 0,
     key: "ssaGlodEnd",
     label: "Coarsest below",
-    max: 96,
-    min: 16,
     step: 1,
   },
 ];
@@ -105,8 +91,8 @@ export function SettingsRendererLod(): ReactElement {
             label={threshold.label}
             description={threshold.description}
             value={lod[threshold.key]}
-            min={threshold.min}
-            max={threshold.max}
+            min={RENDERER_FEATURE_SCHEMA.lod[threshold.key].min}
+            max={RENDERER_FEATURE_SCHEMA.lod[threshold.key].max}
             step={threshold.step}
             format={(value: number) => formatNumber(value, threshold.digits)}
             onChange={(value: number) => settingsService.setRendererOverrides({ lod: { [threshold.key]: value } })}

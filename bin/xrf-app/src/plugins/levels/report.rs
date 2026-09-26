@@ -4,9 +4,12 @@ use std::time::Instant;
 
 use xrf_level::LevelShaderEntry;
 use xrf_material::{XraySurfaceDeclaration, XraySurfaceDescriptor, XraySurfaceDraw};
-use xrf_visual::{SectorDescription, SectorInstanceGroup, SectorOutline, SectorPackage};
+use xrf_spawn::SpawnLevelObjects;
+use xrf_visual::{
+  DetailsDescription, LightsDescription, SectorDescription, SectorInstanceGroup, SectorOutline, SectorPackage,
+};
 
-use crate::plugins::levels::state::{LevelSource, LevelTextureReference, SelectedLevel};
+use crate::plugins::levels::state::{LevelSource, LevelSpawnModelsDescription, LevelTextureReference, SelectedLevel};
 
 /// How many names a log line about a set of them carries before it stops listing and starts counting.
 const LISTED_NAMES: usize = 6;
@@ -157,6 +160,78 @@ pub fn report_packed_sector(package: &SectorPackage, started: Instant) {
       xrf_utils::format_bytes(package.buffer.len() as u64)
     );
   }
+}
+
+/// What a level's share of the spawn came to, and how much of the spawn could not be read at all.
+pub fn report_spawn(level: &str, file: &str, read: &SpawnLevelObjects, started: Instant) {
+  log::info!(
+    "Read the spawn of {level} in {}: {} of {} objects",
+    xrf_utils::format_duration(started.elapsed()),
+    read.objects.len(),
+    read.total
+  );
+
+  if let Some(first) = read.skipped.first() {
+    log::warn!(
+      "Skipped {} of the {} objects of '{file}', as they could not be read; the first, object {}: {}",
+      read.skipped.len(),
+      read.total,
+      first.index,
+      first.reason
+    );
+  }
+}
+
+/// How many of the resolved configs' sections a level keeps, which is the ones its spawned objects name.
+pub fn report_sections(source: &LevelSource, kept: usize, resolved: usize, started: Instant) {
+  log::info!(
+    "Read the configs of {} in {}: kept {kept} of {resolved} sections",
+    source.get_label(),
+    xrf_utils::format_duration(started.elapsed())
+  );
+}
+
+/// What a level's lights came to.
+pub fn report_lights(source: &LevelSource, lights: &LightsDescription, started: Instant) {
+  log::info!(
+    "Collected lights of {} in {}: {} lights, {} animators, {} projectors",
+    source.get_label(),
+    xrf_utils::format_duration(started.elapsed()),
+    lights.lights.len(),
+    lights.animators.len(),
+    lights.projectors.len()
+  );
+}
+
+/// What a level's spawned models came to.
+pub fn report_spawn_models(source: &LevelSource, models: &LevelSpawnModelsDescription, started: Instant) {
+  log::info!(
+    "Described the spawned models of {} in {}: {} models, {} placed",
+    source.get_label(),
+    xrf_utils::format_duration(started.elapsed()),
+    models.models.len(),
+    models.placements.len()
+  );
+}
+
+/// What a level's grass came to, or that it has none.
+pub fn report_details(source: &LevelSource, details: Option<&DetailsDescription>, started: Instant) {
+  let Some(details) = details else {
+    log::info!("Level {} has no detail library", source.get_label());
+
+    return;
+  };
+
+  log::info!(
+    "Packed grass of {} in {}: {} planted slots, {} triangles, {} bin entries, {} models, {}",
+    source.get_label(),
+    xrf_utils::format_duration(started.elapsed()),
+    details.slot_count,
+    details.triangle_count,
+    details.bin_length,
+    details.models.len(),
+    xrf_utils::format_bytes(u64::from(details.buffer_length))
+  );
 }
 
 /// Names the first few of a set and says how many more there are, for a log line that has to stay one line.

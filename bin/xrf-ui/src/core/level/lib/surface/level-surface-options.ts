@@ -7,11 +7,11 @@ export interface ILevelSurfaceOptions {
    * Whether the hemisphere occlusion xrLC baked into the level is applied, or the level is drawn under the viewer's
    * own light alone.
    */
-  isLit: boolean;
+  isBaked: boolean;
 }
 
 export const DEFAULT_LEVEL_SURFACE_OPTIONS: ILevelSurfaceOptions = {
-  isLit: true,
+  isBaked: true,
   isTextured: true,
   isWireframe: false,
 };

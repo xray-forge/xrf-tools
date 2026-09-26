@@ -30,6 +30,52 @@ impl SpawnALifeSpawnsChunk {
 
   pub const OBJECT_INDEX_CHUNK_ID: u32 = 0;
   pub const OBJECT_DATA_CHUNK_ID: u32 = 1;
+
+  /// Reads the chunk's objects one at a time, handing `visit` each one's index with the object or the reason it could
+  /// not be read, so a reader keeps what it can of a spawn holding a class it has no reader for. Answers the count the
+  /// chunk declares.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the chunk's own layout cannot be read: its count, its objects, or one object's chunk.
+  pub fn read_each<T: ByteOrder, D: ChunkDataSource>(
+    reader: &mut ChunkReader<D>,
+    mut visit: impl FnMut(u32, XrfResult<AlifeObject>),
+  ) -> XrfResult<u32> {
+    let mut count_reader: ChunkReader<D> = reader.read_child_by_index(Self::COUNT_CHUNK_ID)?;
+    let mut objects_reader: ChunkReader<D> = reader.read_child_by_index(Self::OBJECTS_CHUNK_ID)?;
+    let count: u32 = count_reader.read_u32::<T>()?;
+
+    count_reader.assert_read("Expect count chunk to be ended")?;
+
+    for object_reader in ChunkIterator::from_start(&mut objects_reader)? {
+      let mut object_reader: ChunkReader<D> = object_reader?;
+
+      visit(object_reader.id, Self::read_object::<T, _>(&mut object_reader));
+    }
+
+    Ok(count)
+  }
+
+  /// One object's chunk: its index, which is the chunk's id, then its data.
+  fn read_object<T: ByteOrder, D: ChunkDataSource>(object_reader: &mut ChunkReader<D>) -> XrfResult<AlifeObject> {
+    let mut index_reader: ChunkReader<D> = object_reader.read_child_by_index(Self::OBJECT_INDEX_CHUNK_ID)?;
+    let index: u16 = index_reader.read_u16::<T>()?;
+
+    assert_equal(
+      index as u32,
+      object_reader.id,
+      "Expected index and chunk ID to be equal",
+    )?;
+    index_reader.assert_read("Expect ALife object index to be read")?;
+
+    let mut data_reader: ChunkReader<D> = object_reader.read_child_by_index(Self::OBJECT_DATA_CHUNK_ID)?;
+    let data: AlifeObject = data_reader.read_xr::<T, _>()?;
+
+    data_reader.assert_read("Expect ALife object data to be read")?;
+
+    Ok(data)
+  }
 }
 
 impl ChunkReadWrite for SpawnALifeSpawnsChunk {
@@ -48,24 +94,7 @@ impl ChunkReadWrite for SpawnALifeSpawnsChunk {
       objects_reader.new_bounded_vec(count.into(), AlifeObject::MIN_SERIALIZED_SIZE, "alife objects")?;
 
     for object_reader in ChunkIterator::from_start(&mut objects_reader)? {
-      let mut object_reader: ChunkReader<D> = object_reader?;
-
-      let mut index_reader: ChunkReader<D> = object_reader.read_child_by_index(Self::OBJECT_INDEX_CHUNK_ID)?;
-      let index: u16 = index_reader.read_u16::<T>()?;
-
-      assert_equal(
-        index as u32,
-        object_reader.id,
-        "Expected index and chunk ID to be equal",
-      )?;
-      index_reader.assert_read("Expect ALife object index to be read")?;
-
-      let mut data_reader: ChunkReader<D> = object_reader.read_child_by_index(Self::OBJECT_DATA_CHUNK_ID)?;
-      let data: AlifeObject = data_reader.read_xr::<T, _>()?;
-
-      objects.push(data);
-
-      data_reader.assert_read("Expect ALife object data to be read")?;
+      objects.push(Self::read_object::<T, _>(&mut object_reader?)?);
     }
 
     assert_length(&objects, count as usize, "Expect all object read")?;
@@ -177,6 +206,8 @@ impl fmt::Debug for SpawnALifeSpawnsChunk {
 
 #[cfg(test)]
 mod tests {
+  use std::io::Write;
+
   use byteorder::WriteBytesExt;
   use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
   use xrf_error::XrfResult;
@@ -196,6 +227,85 @@ mod tests {
   use crate::data::alife::inherited::alife_object_item_custom_outfit::AlifeObjectItemCustomOutfit;
   use crate::data::alife::inherited::alife_object_space_restrictor::AlifeObjectSpaceRestrictor;
   use crate::data::meta::cls_id::ClsId;
+
+  fn restrictor() -> AlifeObject {
+    AlifeObject {
+      id: 7,
+      net_action: 1,
+      section: String::from("space_restrictor"),
+      clsid: ClsId::SpcRsS,
+      name: String::from("readable-restrictor"),
+      script_game_id: 5,
+      script_rp: 52,
+      position: Vector3d::new(1.0, 2.0, 4.0),
+      direction: Vector3d::new(5.0, 2.0, 1.0),
+      respawn_time: 50000,
+      parent_id: 2463,
+      phantom_id: 0,
+      script_flags: 33,
+      version: 128,
+      game_type: 1,
+      script_version: 10,
+      client_data_size: 0,
+      spawn_id: 2354,
+      inherited: AlifeObjectInherited::CseAlifeSpaceRestrictor(Box::new(AlifeObjectSpaceRestrictor {
+        base: AlifeObjectAbstract {
+          game_vertex_id: 5473,
+          distance: 45.5,
+          direct_control: 373574,
+          level_vertex_id: 253,
+          flags: 0,
+          custom_data: String::new(),
+          story_id: 3564,
+          spawn_story_id: 38754,
+        },
+        shape: vec![],
+        restrictor_type: 0,
+      })),
+      update_data: vec![0, 1, 2, 3, 4, 5, 6, 7, 8],
+    }
+  }
+
+  /// One object's chunk, its index then the data written into it.
+  fn object_chunk(index: u16, data: &mut ChunkWriter) -> XrfResult<Vec<u8>> {
+    let mut index_writer: ChunkWriter = ChunkWriter::new();
+    let mut object_writer: ChunkWriter = ChunkWriter::new();
+
+    index_writer.write_u16::<XRayByteOrder>(index)?;
+    object_writer.write_all(&index_writer.flush_chunk_into_buffer::<XRayByteOrder>(0)?)?;
+    object_writer.write_all(&data.flush_chunk_into_buffer::<XRayByteOrder>(1)?)?;
+    object_writer.flush_chunk_into_buffer::<XRayByteOrder>(u32::from(index))
+  }
+
+  #[test]
+  fn reads_each_object_it_can_and_names_the_one_it_cannot() -> XrfResult {
+    let mut readable: ChunkWriter = ChunkWriter::new();
+    let mut unreadable: ChunkWriter = ChunkWriter::new();
+    let mut count_writer: ChunkWriter = ChunkWriter::new();
+    let mut objects_writer: ChunkWriter = ChunkWriter::new();
+    let mut spawns_writer: ChunkWriter = ChunkWriter::new();
+
+    restrictor().write::<XRayByteOrder>(&mut readable)?;
+    unreadable.write_all(&[0xFF; 4])?;
+    count_writer.write_u32::<XRayByteOrder>(2)?;
+    objects_writer.write_all(&object_chunk(0, &mut readable)?)?;
+    objects_writer.write_all(&object_chunk(1, &mut unreadable)?)?;
+    spawns_writer.write_all(&count_writer.flush_chunk_into_buffer::<XRayByteOrder>(0)?)?;
+    spawns_writer.write_all(&objects_writer.flush_chunk_into_buffer::<XRayByteOrder>(1)?)?;
+    spawns_writer.write_all(&ChunkWriter::new().flush_chunk_into_buffer::<XRayByteOrder>(2)?)?;
+
+    let mut reader: ChunkReader<InMemoryChunkDataSource> =
+      ChunkReader::from_vec(spawns_writer.flush_chunk_into_buffer::<XRayByteOrder>(0)?)?.read_child_by_index(0)?;
+    let mut read: Vec<(u32, Option<AlifeObject>)> = Vec::new();
+    let count: u32 = SpawnALifeSpawnsChunk::read_each::<XRayByteOrder, _>(&mut reader, |index, object| {
+      read.push((index, object.ok()));
+    })?;
+
+    assert_eq!(count, 2);
+    assert_eq!(read, vec![(0, Some(restrictor())), (1, None)]);
+
+    Ok(())
+  }
 
   #[test]
   fn test_read_write_empty() -> XrfResult {

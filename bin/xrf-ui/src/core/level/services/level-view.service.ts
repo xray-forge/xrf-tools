@@ -28,7 +28,7 @@ export class LevelViewService {
   @RefObservable()
   public lod: ILevelLodOptions = DEFAULT_LEVEL_LOD_OPTIONS;
 
-  /** What the view draws its shadows and antialiasing with, over the renderer's settings. */
+  /** What the view sets over the renderer's features for itself: antialiasing, shadows, occlusion, grass and lights. */
   @RefObservable()
   public features: ILevelFeatureOptions = DEFAULT_LEVEL_FEATURE_OPTIONS;
 

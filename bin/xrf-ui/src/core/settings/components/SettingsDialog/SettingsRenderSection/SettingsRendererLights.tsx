@@ -47,7 +47,8 @@ export function SettingsRendererLights(): ReactElement {
         <ChoiceFormRow
           label={"Shadow filter"}
           description={
-            "How a shadow's edge is softened: the engine's four comparisons a texel apart, or Anomaly's penumbra, " +
+            "How a shadow's edge is softened: the engine's four comparisons 0.6 of a texel off the point, or " +
+            "Anomaly's penumbra, " +
             "wider the further the caster stands from what it shades, at a larger bias."
           }
           options={RENDER_LIGHT_SHADOW_FILTER_OPTIONS}

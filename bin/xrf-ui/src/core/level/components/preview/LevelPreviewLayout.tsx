@@ -18,6 +18,7 @@ import { LevelPreviewMetrics } from "@/core/level/components/preview/LevelPrevie
 import { LevelPreviewStatus } from "@/core/level/components/preview/LevelPreviewStatus";
 import { LevelPreviewToolbar } from "@/core/level/components/preview/LevelPreviewToolbar";
 import { ILevelPreviewViewportProps, LevelPreviewViewport } from "@/core/level/components/preview/LevelPreviewViewport";
+import { toLevelFeatureView } from "@/core/level/lib/features";
 import { ILevelStreamProgress, LevelViewService } from "@/core/level/services";
 import { SettingsService } from "@/core/settings/services/settings";
 import { EditorFileHeader } from "@/core/shell/editor/EditorFileHeader";
@@ -118,6 +119,7 @@ export function LevelPreviewLayout({
           lighting={viewService.lighting}
           lod={viewService.lod}
           features={viewService.features}
+          featureView={toLevelFeatureView(settingsService.rendererFeatures, viewService.features)}
           settings={settingsService.rendererFeatures}
           actions={<LevelCameraAction camera={viewService.camera} onChange={viewService.setCamera} />}
           onChangeOptions={viewService.setOptions}

@@ -1,7 +1,7 @@
 import { IRendererSurface } from "#/contract/scene/renderer-surface";
 
-/** `u32` words a planted slot takes: its stored sixteen bytes, its triangle bin's start and length, its world slot. */
-export const RENDERER_GRASS_SLOT_WORDS: number = 8;
+/** `u32` words a planted slot takes: its stored sixteen bytes, then its triangle bin's start and length. */
+export const RENDERER_GRASS_SLOT_WORDS: number = 6;
 
 /** Floats a collision triangle takes: its three corners. */
 export const RENDERER_GRASS_TRIANGLE_FLOATS: number = 9;

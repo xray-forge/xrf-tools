@@ -1,18 +1,17 @@
 //! A level's lights: those its spawned objects carry, and its own.
 
-use std::sync::Arc;
 use std::time::Instant;
 
+use xrf_chunk::XRayByteOrder;
 use xrf_light_anim::LightAnimFile;
-use xrf_ltx::LtxResolution;
-use xrf_spawn::XRayByteOrder;
+use xrf_ltx::Ltx;
 use xrf_vfs::XrayProbe;
 use xrf_visual::{LightsDescription, LightsPacker};
 
-use crate::plugins::levels::configs::get_level_configs;
-use crate::plugins::levels::read::read_asset;
+use crate::core::assets::read_located_asset;
+use crate::plugins::levels::report::report_lights;
 use crate::plugins::levels::spawn::get_level_spawn;
-use crate::plugins::levels::spawn_visuals::get_spawn_visual;
+use crate::plugins::levels::spawn_visuals::SpawnVisualReader;
 use crate::plugins::levels::state::{LevelTextureReference, SelectedLevel};
 use crate::plugins::levels::textures::resolve_reference;
 
@@ -25,30 +24,28 @@ pub struct PackedLevelLights {
   pub projectors: Vec<LevelTextureReference>,
 }
 
-/// Collects the open level's lights. Where its spawn cannot be read the level keeps its own lights alone.
-pub fn pack_lights(current: &SelectedLevel, probe: &XrayProbe, directory: Option<&str>) -> PackedLevelLights {
+/// Collects the open level's lights. Where its spawn cannot be read the level keeps its own lights alone, and without
+/// configs its zones light nothing and its lamps keep their spawned flags.
+pub fn pack_lights(current: &SelectedLevel, probe: &XrayProbe, sections: Option<&Ltx>) -> PackedLevelLights {
   let started: Instant = Instant::now();
-  let animations: Option<LightAnimFile> = read_asset(probe, ANIMATIONS_FILE)
-    .ok()
-    .and_then(|bytes| LightAnimFile::read_from_bytes::<XRayByteOrder>(bytes).ok());
-
-  if animations.is_none() {
-    log::warn!("No readable '{ANIMATIONS_FILE}', so no light is animated");
-  }
-
-  let configs: Option<Arc<LtxResolution>> = get_level_configs(current)
-    .inspect_err(|error| log::warn!("No zone lights and no lamp sections: {error}"))
+  let animations: Option<LightAnimFile> = read_located_asset(probe, ANIMATIONS_FILE)
+    .and_then(LightAnimFile::read_from_bytes::<XRayByteOrder>)
+    .inspect_err(|error| log::warn!("No light is animated, as '{ANIMATIONS_FILE}' is unreadable: {error}"))
     .ok();
   let mut packer: LightsPacker = LightsPacker::new(animations.as_ref());
 
-  if let Some(configs) = configs.as_ref() {
-    packer = packer.with_sections(&configs.ltx);
+  if let Some(sections) = sections {
+    packer = packer.with_sections(sections);
   }
 
   match get_level_spawn(current, probe) {
-    Ok(spawn) => packer.add_objects(&spawn.objects, &mut |visual| {
-      get_spawn_visual(current, probe, visual).and_then(|it| it.rest.clone())
-    }),
+    Ok(spawn) => {
+      let visuals: SpawnVisualReader = SpawnVisualReader::new(current, probe);
+
+      packer.add_objects(&spawn.objects, &mut |name| {
+        visuals.get(name).and_then(|it| it.rest.clone())
+      });
+    }
     Err(error) => log::warn!("No spawned lights for {}: {error}", current.source.get_label()),
   }
 
@@ -57,22 +54,16 @@ pub fn pack_lights(current: &SelectedLevel, probe: &XrayProbe, directory: Option
   }
 
   let lights: LightsDescription = packer.pack();
+  let directory: Option<String> = current.source.get_logical_directory();
 
-  log::info!(
-    "Collected lights of {}: {} lights, {} animators, {} projectors in {:?}",
-    current.source.get_label(),
-    lights.lights.len(),
-    lights.animators.len(),
-    lights.projectors.len(),
-    started.elapsed()
-  );
+  report_lights(&current.source, &lights, started);
 
   PackedLevelLights {
     projectors: lights
       .projectors
       .iter()
       .map(|reference| LevelTextureReference {
-        logical_path: resolve_reference(probe, directory, reference),
+        logical_path: resolve_reference(probe, directory.as_deref(), reference),
         reference: reference.clone(),
       })
       .collect(),

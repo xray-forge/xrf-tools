@@ -16,12 +16,12 @@ use crate::data::lights::light_kind::LightKind;
 use crate::data::lights::lights_description::LightsDescription;
 use crate::data::visual::skeleton::visual_rest_pose::VisualRestPose;
 use crate::pack::lights::lights_packer::LightsPacker;
-use crate::pack::tests::visual::fixtures::{MODEL_TYPE_SKELETON_ANIM, bind, bones, vector, visual};
+use crate::pack::tests::fixtures::{MODEL_TYPE_SKELETON_ANIM, bind, bones, vector, visual};
 
-const FLAG_CAST_SHADOW: u16 = 1 << 1;
-const FLAG_R2: u16 = 1 << 3;
-const FLAG_SPOT: u16 = 1 << 4;
-const FLAG_POINT_AMBIENT: u16 = 1 << 5;
+const FLAG_CAST_SHADOW: u16 = AlifeObjectHangingLamp::FLAG_CAST_SHADOW;
+const FLAG_R2: u16 = AlifeObjectHangingLamp::FLAG_R2;
+const FLAG_SPOT: u16 = AlifeObjectHangingLamp::FLAG_SPOT;
+const FLAG_POINT_AMBIENT: u16 = AlifeObjectHangingLamp::FLAG_POINT_AMBIENT;
 
 fn assert_close(actual: &Vector3d, expected: Vector3d) {
   assert!(
@@ -210,7 +210,7 @@ fn stands_a_lamp_whose_visual_lacks_the_bone_at_the_object_itself() {
 }
 
 #[test]
-fn lights_each_lamp_of_the_objects_reading_each_visual_once() {
+fn lights_each_lamp_of_the_objects_by_the_visual_it_names() {
   let objects: Vec<AlifeObject> = vec![object("first", lamp(FLAG_R2, 0)), object("second", lamp(FLAG_R2, 1))];
   let mut packer: LightsPacker = LightsPacker::new(None);
   let mut reads: Vec<String> = Vec::new();
@@ -227,7 +227,27 @@ fn lights_each_lamp_of_the_objects_reading_each_visual_once() {
     description.lights.iter().map(|it| it.name.as_str()).collect::<Vec<_>>(),
     vec!["first", "second"]
   );
-  assert_eq!(reads, vec![String::from("dynamics\\light\\light_lamp")]);
+  assert_eq!(reads, vec![String::from("dynamics\\light\\light_lamp"); 2]);
+}
+
+#[test]
+fn asks_for_no_visual_where_a_lamp_names_none() {
+  let mut unnamed: AlifeObjectHangingLamp = lamp(FLAG_R2, 0);
+
+  unnamed.base.visual_name = String::new();
+
+  let mut packer: LightsPacker = LightsPacker::new(None);
+  let mut reads: usize = 0;
+
+  packer.add_objects(&[object("lamp", unnamed)], &mut |_| {
+    reads += 1;
+
+    Some(lamp_pose())
+  });
+
+  assert_eq!(reads, 0);
+  // Stood at the object itself.
+  assert_close(&packer.pack().lights[0].position, vector(10.0, 2.0, -5.0));
 }
 
 #[test]
@@ -366,6 +386,15 @@ idle_light_anim = light\missing
 
 [lights_hanging_lamp]
 shadow = off
+
+[lights_shadowed_ambient]
+ambient_shadow = on
+
+[flare_rocket]
+script_binding = bind_signal_light.init
+
+[lights_signal_light]
+script_binding = bind_dynamic_light.init
 ",
   )
   .expect("the sections to parse")
@@ -428,4 +457,57 @@ fn takes_a_lamps_own_section_shadow_over_its_flag() {
   packer.add_lamp(&object, lamp, &mut |_| Some(lamp_pose()));
 
   assert!(!packer.pack().lights[0].is_shadowed);
+}
+
+#[test]
+fn shadows_the_ambient_point_where_its_section_asks() {
+  let ltx: Ltx = sections();
+  let mut object: AlifeObject = object("lamp", lamp(FLAG_R2 | FLAG_POINT_AMBIENT, 0));
+
+  object.section = String::from("lights_shadowed_ambient");
+
+  let AlifeObjectInherited::CseAlifeObjectHangingLamp(lamp) = &object.inherited else {
+    unreachable!()
+  };
+  let mut packer: LightsPacker = LightsPacker::new(None).with_sections(&ltx);
+
+  packer.add_lamp(&object, lamp, &mut |_| Some(lamp_pose()));
+
+  let description: LightsDescription = packer.pack();
+  let [main, ambient] = description.lights.as_slice() else {
+    panic!("expected two lights, got {:?}", description.lights)
+  };
+
+  // The main light keeps the flag, which this lamp leaves unset.
+  assert!(!main.is_shadowed);
+  assert!(ambient.is_shadowed);
+}
+
+#[test]
+fn knows_a_signal_rocket_by_its_binder_where_the_configs_are_read() {
+  let ltx: Ltx = sections();
+  let mut packer: LightsPacker = LightsPacker::new(None).with_sections(&ltx);
+
+  // A mod's rocket under a section of its own, and vanilla's section rebound to a lamp that stays lit.
+  for section in ["flare_rocket", "lights_signal_light"] {
+    let mut object: AlifeObject = object(section, lamp(FLAG_R2, 0));
+
+    object.section = String::from(section);
+
+    let AlifeObjectInherited::CseAlifeObjectHangingLamp(lamp) = &object.inherited else {
+      unreachable!()
+    };
+
+    packer.add_lamp(&object, lamp, &mut |_| Some(lamp_pose()));
+  }
+
+  assert_eq!(
+    packer
+      .pack()
+      .lights
+      .iter()
+      .map(|it| it.name.as_str())
+      .collect::<Vec<_>>(),
+    vec!["lights_signal_light"]
+  );
 }

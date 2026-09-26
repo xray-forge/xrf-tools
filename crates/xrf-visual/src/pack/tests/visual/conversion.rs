@@ -4,7 +4,7 @@ use xrf_math::{Matrix4x4, Vector3d};
 use xrf_ogf::{OgfBox, OgfSphere};
 
 use crate::data::visual::bounds::visual_bounds::VisualBounds;
-use crate::pack::tests::visual::fixtures::vector;
+use crate::pack::tests::fixtures::vector;
 use crate::pack::visual_conversion::{
   convert_declared_bounds, convert_placement, convert_uvs, convert_vector, reverse_triangle_winding,
 };

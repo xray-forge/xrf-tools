@@ -36,6 +36,41 @@ pub struct AlifeObjectHangingLamp {
   pub volumetric_distance: f32,
 }
 
+impl AlifeObjectHangingLamp {
+  /// `CSE_ALifeObjectHangingLamp::flCastShadow`.
+  pub const FLAG_CAST_SHADOW: u16 = 1 << 1;
+  /// `flR1`: a lamp the engine spawns on R1.
+  pub const FLAG_R1: u16 = 1 << 2;
+  /// `flR2`: a lamp the engine spawns on R2 and later.
+  pub const FLAG_R2: u16 = 1 << 3;
+  /// `flTypeSpot`: a spot rather than a point.
+  pub const FLAG_SPOT: u16 = 1 << 4;
+  /// `flPointAmbient`: a second point light at the ambient bone.
+  pub const FLAG_POINT_AMBIENT: u16 = 1 << 5;
+  /// `flVolumetric`.
+  pub const FLAG_VOLUMETRIC: u16 = 1 << 6;
+
+  /// Whether the engine spawns it on R2 and later, the renderers a viewer follows.
+  pub fn is_spawned_on_r2(&self) -> bool {
+    self.light_flags & Self::FLAG_R2 != 0
+  }
+
+  /// Whether its main light is a spot rather than a point.
+  pub fn is_spot(&self) -> bool {
+    self.light_flags & Self::FLAG_SPOT != 0
+  }
+
+  /// Whether its main light casts shadows, where its section does not say otherwise.
+  pub fn casts_shadow(&self) -> bool {
+    self.light_flags & Self::FLAG_CAST_SHADOW != 0
+  }
+
+  /// Whether it carries a second point light at its ambient bone.
+  pub fn has_point_ambient(&self) -> bool {
+    self.light_flags & Self::FLAG_POINT_AMBIENT != 0
+  }
+}
+
 impl ChunkReadWrite for AlifeObjectHangingLamp {
   /// Read hanging lamp data from the chunk.
   fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {

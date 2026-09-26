@@ -33,19 +33,19 @@ impl VisualRestPose {
   /// A pose from transforms twelve floats a bone, basis then translation, as a baked motion's frame holds them.
   pub fn of_floats(names: Vec<String>, floats: &[f32]) -> Option<Self> {
     let transforms: Vec<VisualTransform> = floats
-      .as_chunks::<12>()
+      .as_chunks::<{ VisualTransform::FLOATS }>()
       .0
       .iter()
       .take(names.len())
-      .map(|it| VisualTransform {
-        i: xrf_math::Vector3d::new(it[0], it[1], it[2]),
-        j: xrf_math::Vector3d::new(it[3], it[4], it[5]),
-        k: xrf_math::Vector3d::new(it[6], it[7], it[8]),
-        c: xrf_math::Vector3d::new(it[9], it[10], it[11]),
-      })
+      .map(VisualTransform::from_floats)
       .collect();
 
     Self::of(names, transforms)
+  }
+
+  /// Its transforms as twelve floats a bone, basis then translation, the layout [`Self::of_floats`] reads.
+  pub fn to_floats(&self) -> Vec<f32> {
+    self.transforms.iter().flat_map(VisualTransform::to_floats).collect()
   }
 
   /// The transform of a bone by name, as the engine finds one: `LL_BoneID`, without regard to case.

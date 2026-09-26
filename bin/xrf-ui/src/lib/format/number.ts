@@ -31,3 +31,13 @@ export function formatNumber(value: Nullable<number>, digits: number, fallback: 
 export function formatPercent(value: number, digits: number = 0): string {
   return `${(value * 100).toFixed(digits)}%`;
 }
+
+/**
+ * Formats a count with its thousands grouped, the same whatever the machine's locale.
+ *
+ * @param value - The count.
+ * @returns The count, grouped by thousands.
+ */
+export function formatCount(value: number): string {
+  return value.toLocaleString("en-US");
+}

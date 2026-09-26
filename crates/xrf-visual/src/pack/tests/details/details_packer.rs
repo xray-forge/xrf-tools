@@ -136,8 +136,8 @@ fn bins_each_planted_slot_with_the_solid_ground_under_it() {
       .map(|word| u32::from_le_bytes(*word))
       .collect::<Vec<u32>>()
   );
-  // Its bin starts at the first entry and holds one, and it is world slot (-1, 0).
-  assert_eq!(record[4..], [0, 1, (-1_i32) as u32, 0]);
+  // Its bin starts at the first entry and holds one.
+  assert_eq!(record[4..], [0, 1]);
 }
 
 #[test]
@@ -173,4 +173,36 @@ fn packs_a_model_in_renderer_space_with_the_measures_its_planting_reads() {
 
   assert_eq!(positions[..3], [-1.0, 0.0, -1.0]);
   assert_eq!(model.index_count, 3);
+}
+
+#[test]
+fn bins_a_triangle_reaching_far_past_the_grid_over_the_part_inside_it_and_skips_one_standing_nowhere() {
+  let details: LevelDetailsFile = details();
+  let mut collision: LevelCformGeometry = collision();
+  let first: u32 = collision.vertices.len() as u32;
+
+  // Ground from the first cell to the edge of what an `f32` holds, and a corner that is no number.
+  collision.vertices.extend([
+    Vector3d::new(-2.0, 1.0, -1.0),
+    Vector3d::new(f32::MAX, 1.0, 1.0),
+    Vector3d::new(-2.0, 1.0, 1.0),
+    Vector3d::new(f32::NAN, 1.0, 1.0),
+  ]);
+  collision.faces = vec![
+    LevelCformFace {
+      vertices: [first, first + 1, first + 2],
+      ..collision.faces[0]
+    },
+    LevelCformFace {
+      vertices: [first, first + 3, first + 2],
+      ..collision.faces[0]
+    },
+  ];
+
+  let is_passable = |_: u16| false;
+  let package: DetailsPackage = DetailsPacker::new(&details, &collision, &is_passable).pack();
+
+  // The wide ground reaches the first cell, the only one planted over it; the unplaced one is binned nowhere.
+  assert_eq!(package.description.slot_count, 1);
+  assert_eq!(package.description.bin_length, 1);
 }

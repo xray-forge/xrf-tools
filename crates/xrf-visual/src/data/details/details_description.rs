@@ -20,8 +20,8 @@ pub struct DetailsDescription {
   pub models: Vec<DetailsModel>,
   /// One `u32` a cell, `z * size_x + x`: the planted slot's record plus one, zero for a cell with nothing to plant.
   pub grid: VisualSection,
-  /// Eight `u32` a planted slot: its stored sixteen bytes as four words, the first entry of its triangle bin, the
-  /// bin's length, and its world slot's `x` and `z`.
+  /// Six `u32` a planted slot: its stored sixteen bytes as four words, the first entry of its triangle bin, and the
+  /// bin's length. Its world slot is its cell's, which the grid says.
   pub slots: VisualSection,
   pub slot_count: u32,
   /// One `u32` an entry: the triangle, by index into the triangles.

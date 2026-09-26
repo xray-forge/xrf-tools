@@ -13,16 +13,11 @@ import { LevelGrassAction } from "@/core/level/components/preview/LevelGrassActi
 import { LevelLightsAction } from "@/core/level/components/preview/LevelLightsAction";
 import { LevelLodAction } from "@/core/level/components/preview/LevelLodAction";
 import { LevelReadoutAction } from "@/core/level/components/preview/LevelReadoutAction";
+import { LevelRenderScaleAction } from "@/core/level/components/preview/LevelRenderScaleAction";
 import { LevelShadowAction } from "@/core/level/components/preview/LevelShadowAction";
 import { LevelSunAction } from "@/core/level/components/preview/LevelSunAction";
 import { LevelWindAction } from "@/core/level/components/preview/LevelWindAction";
-import {
-  ILevelFeatureOptions,
-  toLevelRendererAmbientOcclusion,
-  toLevelRendererGrassSettings,
-  toLevelRendererLightsSettings,
-  toLevelRendererShadows,
-} from "@/core/level/lib/features/level-feature-options";
+import { ILevelFeatureOptions, TLevelFeatureView } from "@/core/level/lib/features";
 import { ILevelLighting } from "@/core/level/lib/lighting/level-lighting";
 import { ILevelLodOptions } from "@/core/level/lib/lod/level-lod-options";
 import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
@@ -38,8 +33,10 @@ interface ILevelPreviewToolbarProps extends BaseComponentProps {
   lighting: ILevelLighting;
   /** How far trees are drawn in full, which the impostors toggle carries. */
   lod: ILevelLodOptions;
-  /** What the view draws its shadows and antialiasing with, over the settings. */
+  /** What the view sets over the settings' features for itself. */
   features: ILevelFeatureOptions;
+  /** Each feature group as the view draws it while on, and whether the settings let it be on. */
+  featureView: TLevelFeatureView;
   /** What the renderer's settings draw every viewport with, which the toggles can only narrow. */
   settings: IRendererFeatureSettings;
   /** Value pickers the surface contributes, drawn last, as every toolbar in this application orders them. */
@@ -66,6 +63,7 @@ export function LevelPreviewToolbar({
   lighting,
   lod,
   features,
+  featureView,
   settings,
   actions,
   onChangeOptions,
@@ -117,18 +115,18 @@ export function LevelPreviewToolbar({
             isOn={options.isAntialiased}
             settingsMode={settings.antialiasing}
             features={features}
-            scale={settings.upscaling.scale}
-            onChangeScale={onChangeScale}
             onToggle={() => onToggle("isAntialiased")}
             onChange={onChangeFeatures}
           />
 
+          <LevelRenderScaleAction scale={settings.upscaling.scale} onChange={onChangeScale} />
+
           <EditorToolbarSeparator />
 
           <LevelBakedAction
-            isOn={options.isLit}
+            isOn={options.isBaked}
             lighting={lighting}
-            onToggle={() => onToggle("isLit")}
+            onToggle={() => onToggle("isBaked")}
             onChange={onChangeLighting}
           />
 
@@ -140,18 +138,16 @@ export function LevelPreviewToolbar({
           />
 
           <LevelLightsAction
-            isOn={options.isLightsOn}
-            isAvailable={settings.lights.isEnabled}
-            lights={toLevelRendererLightsSettings(settings.lights, features, true)}
+            isOn={options.isLamplit}
+            state={featureView.lights}
             features={features}
-            onToggle={() => onToggle("isLightsOn")}
+            onToggle={() => onToggle("isLamplit")}
             onChange={onChangeFeatures}
           />
 
           <LevelShadowAction
             isOn={options.isShadowed}
-            isAvailable={settings.shadows.isEnabled}
-            shadows={toLevelRendererShadows(settings.shadows, features, true)}
+            state={featureView.shadows}
             features={features}
             onToggle={() => onToggle("isShadowed")}
             onChange={onChangeFeatures}
@@ -159,8 +155,7 @@ export function LevelPreviewToolbar({
 
           <LevelAmbientOcclusionAction
             isOn={options.isOccluded}
-            isAvailable={settings.ambientOcclusion.isEnabled}
-            occlusion={toLevelRendererAmbientOcclusion(settings.ambientOcclusion, features, true)}
+            state={featureView.ambientOcclusion}
             features={features}
             onToggle={() => onToggle("isOccluded")}
             onChange={onChangeFeatures}
@@ -175,8 +170,7 @@ export function LevelPreviewToolbar({
 
           <LevelGrassAction
             isOn={options.isGrassy}
-            isAvailable={settings.grass.isEnabled}
-            grass={toLevelRendererGrassSettings(settings.grass, features, true)}
+            state={featureView.grass}
             features={features}
             onToggle={() => onToggle("isGrassy")}
             onChange={onChangeFeatures}

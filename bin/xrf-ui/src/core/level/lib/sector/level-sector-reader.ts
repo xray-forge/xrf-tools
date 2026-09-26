@@ -15,10 +15,11 @@ export interface ILevelSectorReaderHost {
   /**
    * Reads the files a sector's surfaces name, for whoever draws them to upload.
    *
+   * @param sessionId - The level opening the sector belongs to, whose textures alone are supplied.
    * @param requests - What its surfaces name, base textures and lightmaps alike.
    * @returns How many files it actually fetched, which is what the round trips were spent on.
    */
-  load(requests: ReadonlyArray<ISectorTextureRequest>): Promise<number>;
+  load(sessionId: string, requests: ReadonlyArray<ISectorTextureRequest>): Promise<number>;
   /** What one sector's surfaces name, joined against the level's shader table. */
   listTextures(description: SectorDescription): ReadonlyArray<ISectorTextureRequest>;
   /** Whether that level opening is still the one held, checked once the read has everything in hand. */
@@ -106,7 +107,7 @@ export class LevelSectorReader {
     this.claimed.set(key, requested);
 
     // Before the sector is published, so a surface is never drawn untextured for a frame and then corrected.
-    const files: number = await this.host.load(requested);
+    const files: number = await this.host.load(sessionId, requested);
 
     const textures: number = stage.lap();
 

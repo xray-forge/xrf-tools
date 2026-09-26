@@ -1,16 +1,15 @@
-use std::collections::HashMap;
-use std::sync::{Arc, Mutex, OnceLock};
+use std::sync::{Arc, OnceLock};
 
 use xrf_chunk::InMemoryChunkDataSource;
 use xrf_level::{LevelFile, LevelGeomSource, LevelSector, LevelVisualsChunk};
-use xrf_ltx::LtxResolution;
+use xrf_ltx::Ltx;
 use xrf_material::XraySurfaceDescriptor;
 use xrf_vfs::XrayRoots;
 use xrf_visual::SectorOutline;
 
 use crate::plugins::levels::state::level_source::LevelSource;
 use crate::plugins::levels::state::level_spawn::LevelSpawn;
-use crate::plugins::levels::state::level_spawn_visual::LevelSpawnVisual;
+use crate::plugins::levels::state::level_spawn_visuals::LevelSpawnVisuals;
 use crate::plugins::levels::state::packed_details::PackedDetails;
 use crate::plugins::levels::state::packed_sectors::PackedSectors;
 use crate::plugins::levels::state::selection::level_sun_description::LevelSunDescription;
@@ -42,9 +41,10 @@ pub struct SelectedLevel {
   /// What the game spawns on the level, read the first time anything asks and kept, a failure with it.
   pub spawn: OnceLock<Result<Arc<LevelSpawn>, String>>,
   /// Each visual a spawned object stands as, read the first time anything asks and kept, `None` for one unreadable.
-  pub spawn_visuals: Mutex<HashMap<String, Option<Arc<LevelSpawnVisual>>>>,
-  /// The game's `system.ltx`, resolved, which the sections its spawned objects name are read from; kept likewise.
-  pub configs: OnceLock<Result<Arc<LtxResolution>, String>>,
+  pub spawn_visuals: LevelSpawnVisuals,
+  /// The sections of the game's resolved `system.ltx` its spawned objects name, which their lights are read from;
+  /// kept likewise.
+  pub sections: OnceLock<Result<Arc<Ltx>, String>>,
 }
 
 impl SelectedLevel {

@@ -1,6 +1,6 @@
-use std::sync::{Arc, Mutex, MutexGuard};
+use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};
 
-use xrf_vfs::{XrayProbe, XrayProbeStep, XrayRoots, XrayVfs};
+use xrf_vfs::{XrayProbe, XrayProbePlan, XrayProbeStep, XrayRoots, XrayVfs};
 
 use crate::core::types::TauriResult;
 
@@ -12,29 +12,48 @@ use crate::core::types::TauriResult;
 /// two unrelated roots.
 #[derive(Clone)]
 pub struct AssetMountState {
-  vfs: Arc<Mutex<XrayVfs>>,
+  vfs: Arc<RwLock<XrayVfs>>,
 }
 
 impl AssetMountState {
   pub fn new() -> Self {
     Self {
-      vfs: Arc::new(Mutex::new(XrayVfs::new())),
+      vfs: Arc::new(RwLock::new(XrayVfs::new())),
     }
   }
 
   /// Mounts what a spec names and hands a probe over it to `consumer`.
   pub fn with_probe<T>(&self, spec: &XrayRoots, consumer: impl FnOnce(&XrayProbe) -> T) -> TauriResult<T> {
-    let mut vfs: MutexGuard<XrayVfs> = self
-      .vfs
-      .lock()
-      .map_err(|error| format!("Failed to search assets - the mounted roots is unavailable: {error}"))?;
-
-    let steps: Vec<XrayProbeStep> = spec
+    let plan: XrayProbePlan = spec
       .to_probe_plan()
-      .map_err(|error| format!("Failed to plan the asset roots: {error}"))?
-      .mount_into(&mut vfs)
-      .map_err(|error| format!("Failed to mount the asset roots: {error}"))?;
+      .map_err(|error| format!("Failed to plan the asset roots: {error}"))?;
+    let steps: Vec<XrayProbeStep> = self.mount(&plan)?;
 
-    Ok(consumer(&vfs.probe().with_steps(steps)))
+    Ok(consumer(&self.read()?.probe().with_steps(steps)))
+  }
+
+  /// The steps of a plan, found among the mounts already held where it can be, and mounted where it cannot.
+  fn mount(&self, plan: &XrayProbePlan) -> TauriResult<Vec<XrayProbeStep>> {
+    let found: Option<Vec<XrayProbeStep>> = plan.find_mounted(&*self.read()?);
+
+    if let Some(steps) = found {
+      return Ok(steps);
+    }
+
+    let mut vfs: RwLockWriteGuard<XrayVfs> = self
+      .vfs
+      .write()
+      .map_err(|error| format!("Failed to mount assets - the mounted roots are unavailable: {error}"))?;
+
+    plan
+      .mount_into(&mut vfs)
+      .map_err(|error| format!("Failed to mount the asset roots: {error}"))
+  }
+
+  fn read(&self) -> TauriResult<RwLockReadGuard<'_, XrayVfs>> {
+    self
+      .vfs
+      .read()
+      .map_err(|error| format!("Failed to search assets - the mounted roots are unavailable: {error}"))
   }
 }

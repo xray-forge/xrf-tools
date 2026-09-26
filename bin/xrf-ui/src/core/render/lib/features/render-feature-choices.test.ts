@@ -13,7 +13,7 @@ describe("grass density scale", () => {
     expect(toGrassDensityScale(DEFAULT_RENDERER_GRASS_SETTINGS.density)).toBe(1);
     expect(toGrassDensityScale(0.3)).toBeCloseTo(2, 10);
     expect(fromGrassDensityScale(RENDER_GRASS_LIMITS.density.max)).toBeCloseTo(0.1, 10);
-    expect(fromGrassDensityScale(RENDER_GRASS_LIMITS.density.min)).toBeLessThan(0.99);
+    expect(fromGrassDensityScale(RENDER_GRASS_LIMITS.density.min)).toBeCloseTo(0.99, 10);
     expect(fromGrassDensityScale(toGrassDensityScale(0.45))).toBeCloseTo(0.45, 10);
   });
 });

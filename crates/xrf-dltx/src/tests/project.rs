@@ -7,7 +7,7 @@ use std::sync::Arc;
 use xrf_error::XrfResult;
 use xrf_ltx::{LtxDialect, LtxProject, LtxProjectOptions, LtxResolution, LtxStandardDialect};
 use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
-use xrf_vfs::XrayLogicalPath;
+use xrf_vfs::{XrayLogicalPath, XrayMountMode, XrayRoots};
 
 use crate::dltx_dialect::DltxDialect;
 
@@ -125,4 +125,24 @@ fn the_same_tree_resolves_differently_under_each_dialect() -> XrfResult {
 fn dltx_mode_reports_a_dialect_name_a_caller_can_show() {
   assert_eq!(DltxDialect.get_name(), "dltx");
   assert_eq!(LtxStandardDialect.get_name(), "ltx");
+}
+
+#[test]
+fn a_lean_project_resolves_the_patched_values_it_never_listed() -> XrfResult {
+  let root: PathBuf = patched_tree("lean")?;
+  let project: LtxProject = LtxProject::open_lean_at_roots_opt(
+    &XrayRoots::one(root.clone(), XrayMountMode::Directory),
+    None,
+    LtxProjectOptions::default().with_dialect(Arc::new(DltxDialect)),
+  )?;
+  let system: Arc<LtxResolution> = project.system_ltx()?;
+  let weapon = system.ltx.section("wpn_ak74").expect("the weapon to resolve");
+
+  assert!(project.ltx_files.is_empty(), "nothing is listed up front");
+  // The patch beside `system.ltx` is found when it resolves, not from a listing.
+  assert_eq!(weapon.get("cost"), Some("9999"));
+
+  fs::remove_dir_all(root)?;
+
+  Ok(())
 }

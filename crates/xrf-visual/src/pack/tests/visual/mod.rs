@@ -1,6 +1,6 @@
 mod buffer_builder;
 mod conversion;
-pub(crate) mod fixtures;
 mod motion;
 mod packer;
 pub(crate) mod reader;
+mod rest_pose;

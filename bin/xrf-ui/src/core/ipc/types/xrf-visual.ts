@@ -22,8 +22,8 @@ export type DetailsDescription = {
   /** One `u32` a cell, `z * size_x + x`: the planted slot's record plus one, zero for a cell with nothing to plant. */
   grid: VisualSection;
   /**
-   * Eight `u32` a planted slot: its stored sixteen bytes as four words, the first entry of its triangle bin, the
-   * bin's length, and its world slot's `x` and `z`.
+   * Six `u32` a planted slot: its stored sixteen bytes as four words, the first entry of its triangle bin, and the
+   * bin's length. Its world slot is its cell's, which the grid says.
    */
   slots: VisualSection;
   slotCount: number;

@@ -1,6 +1,6 @@
 import { describe, expect, it, jest } from "@jest/globals";
 import { userEvent } from "@testing-library/user-event";
-import { ERendererAntialiasing, ERendererRenderScale } from "@xrf/renderer";
+import { ERendererAntialiasing } from "@xrf/renderer";
 
 import { LevelAntialiasingAction } from "@/core/level/components/preview/LevelAntialiasingAction";
 import { DEFAULT_LEVEL_FEATURE_OPTIONS, ILevelFeatureOptions } from "@/core/level/lib/features/level-feature-options";
@@ -14,8 +14,6 @@ describe("LevelAntialiasingAction", () => {
         isOn
         settingsMode={ERendererAntialiasing.SMAA}
         features={DEFAULT_LEVEL_FEATURE_OPTIONS}
-        scale={ERendererRenderScale.NATIVE}
-        onChangeScale={() => {}}
         onToggle={() => {}}
         onChange={onChange}
       />
@@ -41,8 +39,6 @@ describe("LevelAntialiasingAction", () => {
         isOn
         settingsMode={ERendererAntialiasing.NONE}
         features={DEFAULT_LEVEL_FEATURE_OPTIONS}
-        scale={ERendererRenderScale.NATIVE}
-        onChangeScale={() => {}}
         onToggle={() => {}}
         onChange={() => {}}
       />

@@ -9,7 +9,7 @@ use crate::pack::visual::motion::visual_motion_pose::VisualMotionPose;
 use crate::pack::visual::visual_transform::BindTransform;
 
 /// Floats one baked bone transform occupies: three basis vectors and a translation.
-pub const FLOATS_PER_BONE: usize = 12;
+pub const FLOATS_PER_BONE: usize = VisualTransform::FLOATS;
 
 /// Bakes every frame of one motion into model-space bone transforms.
 ///

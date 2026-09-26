@@ -1,4 +1,5 @@
 import {
+  EMPTY_RENDER_FRAME_COST,
   EMPTY_RENDERER_LIGHTS_REPORT,
   EMPTY_RENDERER_STATIC_DRAW_REPORT,
   IRendererLightsReport,
@@ -9,35 +10,13 @@ import {
 /**
  * What a viewport is holding, against what a frame of it costs.
  */
-export interface ILevelStats {
-  /** Mean frame time over the window, in milliseconds. */
-  frameTime: number;
-  /** The longest frame of the window, which is the stutter rather than the average of it. */
-  worstFrameTime: number;
-  /** Mean of what drawing cost, which is where uploads and shader compiles land. */
-  drawTime: number;
-  /** The longest draw of the window, which says whether a spike was inside `render` or outside it. */
-  worstDrawTime: number;
-  /** Frames a second, derived from the mean rather than counted, so a short window still reports. */
-  framesPerSecond: number;
+export interface ILevelStats extends IRenderFrameCost {
   /** Sectors resident. */
   sectors: number;
-  /** Draw calls the last frame issued, which is what survived culling rather than what is held. */
-  draws: number;
-  /** Triangles the last frame drew, instanced geometry counted once for every place it stood. */
-  triangles: number;
   /** Bytes of geometry held, which is what a residency budget is really spending. */
   bytes: number;
   /** Mean milliseconds one arriving sector costs to put into the scene. */
   sceneTime: number;
-  /** Width of the buffer the frame was drawn into, in device pixels. */
-  drawnWidth: number;
-  /** Height of the same buffer. Everything above is paid for over these two numbers. */
-  drawnHeight: number;
-  /** Width the scene was drawn at, less than the buffer's while TAA upscales. */
-  renderedWidth: number;
-  /** And its height. */
-  renderedHeight: number;
   /** How full the static draws' pools are, how often one fell back to drawing plainly, and what occlusion removed. */
   staticDraws: IRendererStaticDrawReport;
   /** What the local lights came to: how many stood in view and were shadowed, the atlas, and full clusters. */
@@ -45,22 +24,12 @@ export interface ILevelStats {
 }
 
 export const EMPTY_LEVEL_STATS: ILevelStats = {
+  ...EMPTY_RENDER_FRAME_COST,
   bytes: 0,
-  drawnHeight: 0,
-  drawnWidth: 0,
-  drawTime: 0,
-  draws: 0,
-  frameTime: 0,
-  framesPerSecond: 0,
   lights: EMPTY_RENDERER_LIGHTS_REPORT,
-  renderedHeight: 0,
-  renderedWidth: 0,
   sceneTime: 0,
   sectors: 0,
   staticDraws: EMPTY_RENDERER_STATIC_DRAW_REPORT,
-  triangles: 0,
-  worstDrawTime: 0,
-  worstFrameTime: 0,
 };
 
 /** What is held, which only whoever holds it can say. */
@@ -84,26 +53,9 @@ export interface ILevelHeld {
 export function measureLevelStats(
   held: ILevelHeld,
   frame: IRenderFrameCost,
-  sceneTime: number = 0,
-  staticDraws: IRendererStaticDrawReport = EMPTY_RENDERER_STATIC_DRAW_REPORT,
-  lights: IRendererLightsReport = EMPTY_RENDERER_LIGHTS_REPORT
+  sceneTime: number,
+  staticDraws: IRendererStaticDrawReport,
+  lights: IRendererLightsReport
 ): ILevelStats {
-  return {
-    bytes: held.bytes,
-    drawnHeight: frame.drawnHeight,
-    drawnWidth: frame.drawnWidth,
-    drawTime: frame.drawTime,
-    draws: frame.draws,
-    frameTime: frame.frameTime,
-    framesPerSecond: frame.framesPerSecond,
-    lights,
-    renderedHeight: frame.renderedHeight,
-    renderedWidth: frame.renderedWidth,
-    sceneTime,
-    sectors: held.sectors,
-    staticDraws,
-    triangles: frame.triangles,
-    worstDrawTime: frame.worstDrawTime,
-    worstFrameTime: frame.worstFrameTime,
-  };
+  return { ...frame, bytes: held.bytes, lights, sceneTime, sectors: held.sectors, staticDraws };
 }

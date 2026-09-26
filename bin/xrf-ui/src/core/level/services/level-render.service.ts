@@ -1,12 +1,19 @@
 import { inject, Injectable, OnDeactivation } from "@wirestate/core";
 import { BoundAction, reaction } from "@wirestate/mobx";
-import { ERenderResolution, IDdsRefusal, IRendererReport, RendererClient, TRendererOverlay } from "@xrf/renderer";
+import {
+  ERenderResolution,
+  IDdsRefusal,
+  IRendererReport,
+  IRendererSettings,
+  RendererClient,
+  TRendererOverlay,
+} from "@xrf/renderer";
 import { createRendererWorker } from "@xrf/renderer/worker";
 import { Maybe, Nullable } from "@xrf/types";
 
 import { SelectedLevelDescription } from "@/core/ipc/types/xrf-app";
 import { ILevelCameraOptions } from "@/core/level/lib/camera/level-camera-options";
-import { toLevelCamera as toLevelCameraReading } from "@/core/level/lib/camera/level-camera-reading";
+import { toLevelCameraReading } from "@/core/level/lib/camera/level-camera-reading";
 import { toLevelStartViewpoint } from "@/core/level/lib/camera/level-viewpoint";
 import { ILevelBox, toLevelBox } from "@/core/level/lib/extent/level-extent";
 import { ILevelLighting } from "@/core/level/lib/lighting/level-lighting";
@@ -130,8 +137,8 @@ export class LevelRenderService extends RenderSurfaceService {
       })
     );
 
-    // A renderer started after sectors were read has none of them: they are read again for it, from where the level
-    // opens below.
+    // A renderer started after the level was read has none of it: its sectors and the textures of what it holds are
+    // read again for it, from where the level opens below.
     void this.loadService.restream();
 
     this.reactions.push(
@@ -140,20 +147,14 @@ export class LevelRenderService extends RenderSurfaceService {
       reaction(() => this.viewService.options, this.applyOptions, { fireImmediately: true }),
       reaction(() => this.viewService.lighting, this.applyLighting, { fireImmediately: true }),
       reaction(() => this.viewService.camera, this.applyCamera),
+      // Whatever else the settings are made of; the options and the lighting configure as they apply.
       reaction(
-        () => this.viewService.lod,
-        () => this.applySettings()
-      ),
-      reaction(
-        () => this.viewService.features,
-        () => this.applySettings()
-      ),
-      reaction(
-        () => this.settingsService.rendererChoice,
-        () => this.applySettings()
-      ),
-      reaction(
-        () => this.settingsService.frameRateLimit,
+        () => [
+          this.viewService.lod,
+          this.viewService.features,
+          this.settingsService.rendererChoice,
+          this.settingsService.frameRateLimit,
+        ],
         () => this.applySettings()
       ),
       reaction(() => this.settingsService.renderResolution, this.applyResolution)
@@ -181,7 +182,7 @@ export class LevelRenderService extends RenderSurfaceService {
   @BoundAction()
   private applyOptions(options: ILevelViewOptions): void {
     this.content?.setOptions(options);
-    this.applySettings();
+    // The fog and the wind are the lighting's, which configures too.
     this.applyLighting(this.viewService.lighting);
     this.applyFrame();
   }
@@ -204,16 +205,16 @@ export class LevelRenderService extends RenderSurfaceService {
     this.client?.configure(this.toSettings());
   }
 
-  private toSettings() {
-    return toLevelRendererSettings(
-      this.viewService.options,
-      this.viewService.lighting,
-      this.viewService.lod,
-      this.viewService.features,
-      this.settingsService.frameRateLimit,
-      this.settingsService.rendererFeatures,
-      this.config
-    );
+  private toSettings(): IRendererSettings {
+    return toLevelRendererSettings({
+      config: this.config,
+      features: this.settingsService.rendererFeatures,
+      frameRateLimit: this.settingsService.frameRateLimit,
+      lighting: this.viewService.lighting,
+      lod: this.viewService.lod,
+      options: this.viewService.options,
+      view: this.viewService.features,
+    });
   }
 
   /** The grid, the extent, the axes and the sun, sized to the level and shown as the toolbar asks. */

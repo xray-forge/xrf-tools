@@ -26,7 +26,7 @@ pub fn read_referenced_asset(probe: &XrayProbe, asset_type: XrayAssetType, refer
   match probe.resolve(asset_type, reference)?.get_asset() {
     Some(asset) => probe.read_asset_bytes(asset),
     None => Err(XrfError::new_asset_error(format!(
-      "'{reference}' resolves to no texture in the mounted roots"
+      "'{reference}' resolves to no {asset_type:?} asset in the mounted roots"
     ))),
   }
 }

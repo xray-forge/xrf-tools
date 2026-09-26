@@ -1,6 +1,9 @@
 use std::collections::HashMap;
+use std::ops::RangeInclusive;
 
-use xrf_level::{DetailModel, LevelCformFace, LevelCformGeometry, LevelDetailsFile, LevelDetailsSlot};
+use xrf_level::{
+  DETAIL_SLOT_METERS, DetailModel, LevelCformFace, LevelCformGeometry, LevelDetailsFile, LevelDetailsSlot,
+};
 use xrf_math::Vector3d;
 
 use crate::data::details::details_description::DetailsDescription;
@@ -11,7 +14,11 @@ use crate::pack::visual_buffer_builder::VisualBufferBuilder;
 use crate::pack::visual_conversion::{convert_vector, reverse_triangle_winding};
 
 /// `u32` words a packed slot record takes.
-const SLOT_WORDS: usize = 8;
+const SLOT_WORDS: usize = 6;
+
+/// Metres a triangle's footprint is widened by on each side before it is walked over the grid, covering the room the
+/// slot boxes grow by.
+const FOOTPRINT_MARGIN: f32 = 0.01;
 
 /// Packs a level's grass: its detail models, and each planted slot with the collision triangles its planting is cast
 /// down onto, binned once by the box query `CDetailManager::cache_Decompress` makes for it.
@@ -37,10 +44,12 @@ impl<'a> DetailsPacker<'a> {
     }
   }
 
+  /// The grass as the renderer plants it: every model, and each planted slot with the ground its planting falls on.
   pub fn pack(&self) -> DetailsPackage {
     let header = &self.details.header;
     let (size_x, size_z) = (header.size_x as i64, header.size_z as i64);
-    let slots: Vec<LevelDetailsSlot> = self.details.iter_slots().collect();
+    let stored: Vec<&[u8; LevelDetailsSlot::SERIALIZED_SIZE]> = self.details.iter_stored_slots().collect();
+    let slots: Vec<LevelDetailsSlot> = stored.iter().copied().map(LevelDetailsSlot::of).collect();
     let bins: Vec<Vec<u32>> = self.bin(&slots);
 
     let mut triangles: Vec<f32> = Vec::new();
@@ -64,12 +73,14 @@ impl<'a> DetailsPacker<'a> {
         entries.push(index);
       }
 
-      let stored: &[u8] =
-        &self.details.slots[cell * LevelDetailsSlot::SERIALIZED_SIZE..][..LevelDetailsSlot::SERIALIZED_SIZE];
-      let (world_x, world_z) = self.to_world_slot(cell as i64 % size_x, cell as i64 / size_x);
-
-      records.extend(stored.as_chunks::<4>().0.iter().map(|word| u32::from_le_bytes(*word)));
-      records.extend([start, bin.len() as u32, world_x as u32, world_z as u32]);
+      records.extend(
+        stored[cell]
+          .as_chunks::<4>()
+          .0
+          .iter()
+          .map(|word| u32::from_le_bytes(*word)),
+      );
+      records.extend([start, bin.len() as u32]);
       grid[cell] = (records.len() / SLOT_WORDS) as u32;
     }
 
@@ -109,9 +120,12 @@ impl<'a> DetailsPacker<'a> {
 
   /// Each cell's triangles, found by walking every solid triangle over the cells its footprint covers rather than
   /// every cell over every triangle.
+  ///
+  /// A triangle with a corner that is not a finite number stands nowhere, so it is binned nowhere; one reaching past
+  /// the grid is walked over the part inside it, however far it reaches.
   fn bin(&self, slots: &[LevelDetailsSlot]) -> Vec<Vec<u32>> {
     let header = &self.details.header;
-    let (size_x, size_z) = (header.size_x as i64, header.size_z as i64);
+    let size_x: i64 = i64::from(header.size_x);
     let mut bins: Vec<Vec<u32>> = vec![Vec::new(); slots.len()];
 
     for (index, face) in self.collision.faces.iter().enumerate() {
@@ -120,22 +134,24 @@ impl<'a> DetailsPacker<'a> {
       }
 
       let triangle: [[f32; 3]; 3] = self.triangle(index as u32);
-      let [low_x, high_x] = Self::to_slot_span(triangle.map(|corner| corner[0]));
-      let [low_z, high_z] = Self::to_slot_span(triangle.map(|corner| corner[2]));
 
-      for world_z in low_z..=high_z {
-        for world_x in low_x..=high_x {
-          let (x, z) = (world_x + header.offset_x as i64, world_z + header.offset_z as i64);
+      if !triangle.as_flattened().iter().all(|value| value.is_finite()) {
+        continue;
+      }
 
-          if x < 0 || z < 0 || x >= size_x || z >= size_z {
-            continue;
-          }
+      let columns: RangeInclusive<i64> =
+        Self::to_cell_span(triangle.map(|corner| corner[0]), header.offset_x, header.size_x);
+      let rows: RangeInclusive<i64> =
+        Self::to_cell_span(triangle.map(|corner| corner[2]), header.offset_z, header.size_z);
 
+      for z in rows {
+        for x in columns.clone() {
           let cell: usize = (z * size_x + x) as usize;
           let slot: &LevelDetailsSlot = &slots[cell];
+          let (world_x, world_z) = self.to_world_slot(x, z);
 
           if slot.is_planted()
-            && DetailsSlotBox::of(world_x as i32, world_z as i32, slot.base_height, slot.height).overlaps(&triangle)
+            && DetailsSlotBox::of(world_x, world_z, slot.base_height, slot.height).overlaps(&triangle)
           {
             bins[cell].push(index as u32);
           }
@@ -153,15 +169,15 @@ impl<'a> DetailsPacker<'a> {
     ((x - header.offset_x as i64) as i32, (z - header.offset_z as i64) as i32)
   }
 
-  /// The world slots a span of one axis touches, with the room the slot boxes grow by.
-  fn to_slot_span(values: [f32; 3]) -> [i64; 2] {
+  /// The grid cells along one axis a span of finite values touches, with the room the slot boxes grow by, cut to the
+  /// grid: empty for a span wholly outside it.
+  fn to_cell_span(values: [f32; 3], offset: i32, size: u32) -> RangeInclusive<i64> {
     let minimum: f32 = values[0].min(values[1]).min(values[2]);
     let maximum: f32 = values[0].max(values[1]).max(values[2]);
+    // Saturating casts, so a span reaching past `i64` still cuts to the grid.
+    let to_cell = |value: f32| ((value / DETAIL_SLOT_METERS).floor() as i64).saturating_add(i64::from(offset));
 
-    [
-      ((minimum - 0.01) / DetailsSlotBox::SLOT_METERS).floor() as i64,
-      ((maximum + 0.01) / DetailsSlotBox::SLOT_METERS).floor() as i64,
-    ]
+    to_cell(minimum - FOOTPRINT_MARGIN).max(0)..=to_cell(maximum + FOOTPRINT_MARGIN).min(i64::from(size) - 1)
   }
 
   fn triangle(&self, face: u32) -> [[f32; 3]; 3] {

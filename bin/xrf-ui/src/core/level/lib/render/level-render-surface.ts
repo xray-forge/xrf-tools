@@ -2,7 +2,6 @@ import { ERendererDraw, IRendererSurface, TRendererColor } from "@xrf/renderer";
 import { Nullable } from "@xrf/types";
 
 import { SectorSurface } from "@/core/ipc/types/xrf-visual";
-import { ILevelSurfaceOptions } from "@/core/level/lib/surface/level-surface-options";
 import { ILevelSurfaceRender } from "@/core/level/lib/surface/level-surface-render";
 
 /** Turns of the golden angle, which spreads consecutive shader ids rather than grouping them into near hues. */
@@ -27,16 +26,16 @@ export function isLevelImpostorSurface(surface: SectorSurface): boolean {
  *
  * @param surface - What the level's table names for it.
  * @param render - What its blender compiles to.
- * @param options - What the toolbar has switched on.
+ * @param isTextured - Whether surfaces draw their textures.
  * @returns The surface.
  */
 export function toLevelSurface(
   surface: SectorSurface,
   render: ILevelSurfaceRender,
-  options: ILevelSurfaceOptions
+  isTextured: boolean
 ): IRendererSurface {
-  const base: Nullable<string> = options.isTextured ? surface.textureName : null;
-  const detail = options.isTextured ? render.detail : null;
+  const base: Nullable<string> = isTextured ? surface.textureName : null;
+  const detail = isTextured ? render.detail : null;
 
   if (isLevelImpostorSurface(surface)) {
     return {

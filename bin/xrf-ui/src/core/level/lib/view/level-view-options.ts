@@ -2,7 +2,7 @@ import { DEFAULT_LEVEL_SURFACE_OPTIONS, ILevelSurfaceOptions } from "@/core/leve
 
 /** Everything the level viewer's toolbar switches, which is more than what a surface is drawn with. */
 export interface ILevelViewOptions extends ILevelSurfaceOptions {
-  /**  Draws the ground plane the level sits on, in cells of a round number of metres, and the extent it claims over it. */
+  /** Draws the ground plane the level sits on, in cells of a round number of metres, and the extent it claims over it. */
   isGridVisible: boolean;
   /** Draws the axis marker at the level's own origin, which is the only thing that says which way `+x` and `+z` go. */
   isAxesVisible: boolean;
@@ -27,7 +27,7 @@ export interface ILevelViewOptions extends ILevelSurfaceOptions {
   /** Draws the grass, while the settings draw it. */
   isGrassy: boolean;
   /** Lights the level with its lamps, while the settings draw lights. */
-  isLightsOn: boolean;
+  isLamplit: boolean;
 }
 
 export const DEFAULT_LEVEL_VIEW_OPTIONS: ILevelViewOptions = {
@@ -39,7 +39,7 @@ export const DEFAULT_LEVEL_VIEW_OPTIONS: ILevelViewOptions = {
   isGridVisible: false,
   isAdvancedStatsVisible: false,
   isImpostors: true,
-  isLightsOn: true,
+  isLamplit: true,
   isOccluded: true,
   isShadowed: true,
   isWindy: true,

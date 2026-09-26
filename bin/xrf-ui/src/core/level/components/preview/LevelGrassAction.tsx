@@ -1,29 +1,23 @@
 import { default as GrassIcon } from "@mui/icons-material/Grass";
 import { Button } from "@mui/material";
 import { IRendererGrassSettings } from "@xrf/renderer";
-import { ReactElement, useCallback } from "react";
+import { ReactElement } from "react";
 
-import { ILevelFeatureOptions, TLevelGrassOptions } from "@/core/level/lib/features/level-feature-options";
+import {
+  describeLevelFeatureToggle,
+  ILevelFeatureActionProps,
+  useLevelFeatureOverride,
+} from "@/core/level/lib/features";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
 import {
+  formatGrassDensity,
+  formatGrassHeight,
+  formatGrassRadius,
   fromGrassDensityScale,
   RENDER_GRASS_LIMITS,
   toGrassDensityScale,
-} from "@/core/render/lib/features/render-feature-choices";
+} from "@/core/render/lib/features";
 import { EditorPopoverToggle } from "@/core/shell/editor/EditorPopoverToggle";
-import { BaseComponentProps } from "@/lib/dom/element-types";
-import { formatNumber } from "@/lib/format/number";
-
-interface ILevelGrassActionProps extends BaseComponentProps {
-  isOn: boolean;
-  /** The grass the view is drawn with: the settings', with the view's own values over them. */
-  grass: IRendererGrassSettings;
-  /** Whether the renderer's settings draw grass at all, which this view can only narrow. */
-  isAvailable?: boolean;
-  features: ILevelFeatureOptions;
-  onToggle: () => void;
-  onChange: (features: ILevelFeatureOptions) => void;
-}
 
 /**
  * Whether this view plants the level's grass, and how dense, how far and how tall.
@@ -33,16 +27,13 @@ export function LevelGrassAction({
   id,
   className,
   isOn,
-  grass,
-  isAvailable = true,
+  state,
   features,
   onToggle,
   onChange,
-}: ILevelGrassActionProps): ReactElement {
-  const set = useCallback(
-    (part: Partial<TLevelGrassOptions>) => onChange({ ...features, grass: { ...features.grass, ...part } }),
-    [features, onChange]
-  );
+}: ILevelFeatureActionProps<"grass">): ReactElement {
+  const { set, reset } = useLevelFeatureOverride("grass", features, onChange);
+  const grass: IRendererGrassSettings = state.value;
 
   return (
     <EditorPopoverToggle
@@ -50,16 +41,16 @@ export function LevelGrassAction({
       id={id}
       className={className}
       label={"Grass"}
-      description={
-        !isAvailable
-          ? "Grass is off in Settings, under Rendering"
-          : isOn
-            ? `Grass to ${formatNumber(grass.radius, 0)} m, ${formatNumber(toGrassDensityScale(grass.density), 2)}× the game's density`
-            : "Grass off, the ground bare"
-      }
+      description={describeLevelFeatureToggle({
+        isAvailable: state.isAvailable,
+        isOn,
+        label: "Grass",
+        off: "Grass off, the ground bare",
+        on: `Grass to ${formatGrassRadius(grass.radius)}, ${formatGrassDensity(grass.density)} the game's density`,
+      })}
       icon={<GrassIcon />}
-      isOn={isOn && isAvailable}
-      isDisabled={!isAvailable}
+      isOn={isOn && state.isAvailable}
+      isDisabled={!state.isAvailable}
       toggleLabel={"Plant the grass"}
       onToggle={onToggle}
     >
@@ -67,7 +58,7 @@ export function LevelGrassAction({
         label={"Density"}
         value={toGrassDensityScale(grass.density)}
         {...RENDER_GRASS_LIMITS.density}
-        format={(value: number) => `${formatNumber(value, 2)}×`}
+        format={(scale: number) => formatGrassDensity(fromGrassDensityScale(scale))}
         onChange={(scale: number) => set({ density: fromGrassDensityScale(scale) })}
       />
 
@@ -75,7 +66,7 @@ export function LevelGrassAction({
         label={"Radius"}
         value={grass.radius}
         {...RENDER_GRASS_LIMITS.radius}
-        format={(value: number) => `${formatNumber(value, 0)} m`}
+        format={formatGrassRadius}
         onChange={(radius: number) => set({ radius })}
       />
 
@@ -83,11 +74,11 @@ export function LevelGrassAction({
         label={"Height"}
         value={grass.height}
         {...RENDER_GRASS_LIMITS.height}
-        format={(value: number) => `${formatNumber(value, 1)}×`}
+        format={formatGrassHeight}
         onChange={(height: number) => set({ height })}
       />
 
-      <Button size={"small"} onClick={() => onChange({ ...features, grass: {} })}>
+      <Button size={"small"} onClick={reset}>
         Back to the settings
       </Button>
     </EditorPopoverToggle>

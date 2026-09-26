@@ -4,7 +4,8 @@ import { Nullable } from "@xrf/types";
 import { LevelSpawnModelDescription, LevelSpawnModelsDescription, LevelSpawnPlacement } from "@/core/ipc/types/xrf-app";
 import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
 import { VisualTransform } from "@/core/ipc/types/xrf-visual";
-import { toLevelSurfaceRender } from "@/core/level/lib/surface/level-surface-render";
+import { LEVEL_RENDER_KEYS } from "@/core/level/lib/render/level-render-keys";
+import { ILevelSurfaceRender, toLevelSurfaceRender } from "@/core/level/lib/surface/level-surface-render";
 import { createVisualViews, IVisualModelViews, IVisualSubmeshViews } from "@/core/visuals/lib/visual-views";
 
 /** Floats one bone's transform takes: its basis, then its translation. */
@@ -16,11 +17,17 @@ export interface ILevelSpawnModelsDelivery {
   buffers: ReadonlyMap<string, ArrayBuffer>;
 }
 
+/** What a submesh is dressed as: its shader as it resolved, and its base texture. */
+export interface ILevelSpawnDressing {
+  descriptor: Nullable<XraySurfaceDescriptor>;
+  texture: Nullable<string>;
+}
+
 /** What one submesh of one model puts into the renderer, under one key. */
 export interface ILevelSpawnPart {
   key: string;
   geometry: IRendererGeometry;
-  surface: IRendererSurface;
+  dressing: ILevelSpawnDressing;
   object: IRendererObject;
 }
 
@@ -29,10 +36,9 @@ export interface ILevelSpawnPart {
  * drawn in every place an object of it stands.
  *
  * @param delivery - The models and where they stand.
- * @param isTextured - Whether surfaces draw their textures.
  * @returns Every part, by its key.
  */
-export function toLevelSpawnParts(delivery: ILevelSpawnModelsDelivery, isTextured: boolean): Array<ILevelSpawnPart> {
+export function toLevelSpawnParts(delivery: ILevelSpawnModelsDelivery): Array<ILevelSpawnPart> {
   const { models, placements } = delivery.description;
 
   return models.flatMap((model: LevelSpawnModelDescription, index: number): Array<ILevelSpawnPart> => {
@@ -47,26 +53,19 @@ export function toLevelSpawnParts(delivery: ILevelSpawnModelsDelivery, isTexture
     const transforms: Float32Array = toInstanceTransforms(standing);
 
     return views.submeshes.map((submesh: IVisualSubmeshViews) => {
-      const key: string = toLevelSpawnKey(index, submesh.index);
-      const texture: Nullable<string> = model.description.submeshes[submesh.index]?.textureName ?? null;
+      const key: string = LEVEL_RENDER_KEYS.spawn(index, submesh.index);
 
       return {
+        dressing: {
+          descriptor: model.surfaces[submesh.index] ?? null,
+          texture: model.description.submeshes[submesh.index]?.textureName ?? null,
+        },
         geometry: toPosedGeometry(submesh, views.skeletonBinds, model.rest?.map((it) => it ?? 0) ?? null),
         key,
         object: { geometry: key, instances: { transforms: transforms.slice() }, surfaces: [key] },
-        surface: toSpawnSurface(model.surfaces[submesh.index] ?? null, isTextured ? texture : null),
       };
     });
   });
-}
-
-/**
- * @param model - A model, by its index among the description's.
- * @param submesh - One of its submeshes.
- * @returns The key its geometry, surface and object share.
- */
-export function toLevelSpawnKey(model: number, submesh: number): string {
-  return `spawn:${model}:${submesh}`;
 }
 
 /**
@@ -239,14 +238,20 @@ function skinVertex(
   });
 }
 
-/** A submesh dressed as its shader resolved: its base texture, cut out or blended as the blender says. */
-function toSpawnSurface(descriptor: Nullable<XraySurfaceDescriptor>, texture: Nullable<string>): IRendererSurface {
-  const render = toLevelSurfaceRender(descriptor);
+/**
+ * A submesh dressed as its shader resolved: its base texture, cut out or blended as the blender says.
+ *
+ * @param dressing - Its shader and base texture.
+ * @param isTextured - Whether surfaces draw their textures.
+ * @returns Its surface.
+ */
+export function toLevelSpawnSurface(dressing: ILevelSpawnDressing, isTextured: boolean): IRendererSurface {
+  const render: ILevelSurfaceRender = toLevelSurfaceRender(dressing.descriptor);
 
   return {
     alphaReference: render.alphaReference,
     draw: render.draw,
     isLit: render.isLit,
-    textures: { base: texture || undefined },
+    textures: { base: (isTextured && dressing.texture) || undefined },
   };
 }

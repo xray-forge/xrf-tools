@@ -129,6 +129,24 @@ impl Section {
     self.data.get(key).map(|value| &**value)
   }
 
+  /// Reads a value as `CInifile::r_bool` does: `on`, `yes`, `true` and `1`, in any case, are true, anything else false;
+  /// `None` for a key the section lacks.
+  pub fn get_bool(&self, key: &str) -> Option<bool> {
+    self.get(key).map(|value| {
+      let value: &str = value.trim();
+
+      ["on", "yes", "true", "1"]
+        .iter()
+        .any(|it| value.eq_ignore_ascii_case(it))
+    })
+  }
+
+  /// Reads a value as `CInifile::r_float` does, through `atof`: the number its text starts with, zero for text that
+  /// starts with none; `None` for a key the section lacks.
+  pub fn get_f32(&self, key: &str) -> Option<f32> {
+    self.get(key).map(|value| parse_leading_float(value.trim_start()))
+  }
+
   /// Remove the property with the first value of the key.
   pub fn remove(&mut self, key: &str) -> Option<Arc<str>> {
     self.data.shift_remove(key)
@@ -146,6 +164,43 @@ impl<S: AsRef<str>> Index<S> for Section {
       None => panic!("Key `{}` does not exist", section),
     }
   }
+}
+
+/// `atof`: the longest prefix of the text that reads as a decimal number, sign and exponent included, and zero where
+/// none does.
+fn parse_leading_float(text: &str) -> f32 {
+  let bytes: &[u8] = text.as_bytes();
+  let digits = |from: usize| -> usize { bytes[from..].iter().take_while(|it| it.is_ascii_digit()).count() };
+  let mut end: usize = usize::from(matches!(bytes.first(), Some(b'+' | b'-')));
+  let whole: usize = digits(end);
+
+  end += whole;
+
+  let fraction: usize = if bytes.get(end) == Some(&b'.') {
+    digits(end + 1)
+  } else {
+    0
+  };
+
+  if bytes.get(end) == Some(&b'.') && whole + fraction > 0 {
+    end += 1 + fraction;
+  }
+
+  if whole + fraction == 0 {
+    return 0.0;
+  }
+
+  // An exponent counts only with a digit after it, as `strtod` takes it.
+  if matches!(bytes.get(end), Some(b'e' | b'E')) {
+    let sign: usize = usize::from(matches!(bytes.get(end + 1), Some(b'+' | b'-')));
+    let exponent: usize = digits(end + 1 + sign);
+
+    if exponent > 0 {
+      end += 1 + sign + exponent;
+    }
+  }
+
+  text[..end].parse().unwrap_or(0.0)
 }
 
 #[cfg(test)]
@@ -167,6 +222,42 @@ mod test {
 
     assert_eq!(props.len(), 1);
     assert_eq!(props.get("k1"), Some("v2"));
+  }
+
+  #[test]
+  fn reads_a_flag_as_r_bool_does() {
+    let mut section: Section = Section::new();
+
+    section.insert("on", "On");
+    section.insert("one", " 1 ");
+    section.insert("no", "no");
+    section.insert("longer", "truer");
+
+    assert_eq!(section.get_bool("on"), Some(true));
+    assert_eq!(section.get_bool("one"), Some(true));
+    assert_eq!(section.get_bool("no"), Some(false));
+    assert_eq!(section.get_bool("longer"), Some(false));
+    assert_eq!(section.get_bool("missing"), None);
+  }
+
+  #[test]
+  fn reads_a_number_as_atof_does() {
+    let mut section: Section = Section::new();
+
+    section.insert("plain", "2.5");
+    section.insert("prefixed", " -0.25 ; a comment the reader kept");
+    section.insert("exponent", "1e2x");
+    section.insert("dangling", "3e");
+    section.insert("dot", ".5");
+    section.insert("none", "abc");
+
+    assert_eq!(section.get_f32("plain"), Some(2.5));
+    assert_eq!(section.get_f32("prefixed"), Some(-0.25));
+    assert_eq!(section.get_f32("exponent"), Some(100.0));
+    assert_eq!(section.get_f32("dangling"), Some(3.0));
+    assert_eq!(section.get_f32("dot"), Some(0.5));
+    assert_eq!(section.get_f32("none"), Some(0.0));
+    assert_eq!(section.get_f32("missing"), None);
   }
 
   #[test]

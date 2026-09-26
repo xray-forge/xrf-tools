@@ -4,9 +4,11 @@ use std::time::Instant;
 use tauri::State;
 
 use crate::core::assets::AssetMountState;
+use crate::core::execution::ExecutionState;
 use crate::core::session::{SessionId, SessionSnapshot};
 use crate::core::types::TauriResult;
 use crate::plugins::levels::details::{PackedLevelDetails, pack_details};
+use crate::plugins::levels::report::report_details;
 use crate::plugins::levels::state::{LevelDetailsDescription, LevelState, SelectedLevel};
 
 /// Pack the open level's grass and describe it, or answer nothing for a level with no detail library.
@@ -17,35 +19,34 @@ pub async fn levels_open_details(
   details_id: SessionId,
   state: State<'_, LevelState>,
   assets: State<'_, AssetMountState>,
+  execution: State<'_, ExecutionState>,
 ) -> TauriResult<SessionSnapshot<Option<LevelDetailsDescription>>> {
   let current: Arc<SessionSnapshot<SelectedLevel>> = state.selected.require(session_id)?;
   let started: Instant = Instant::now();
-  let directory: Option<String> = current.source.get_logical_directory();
-  let packed: Option<PackedLevelDetails> = assets.with_probe(&current.roots, |probe| {
-    pack_details(&current.source, probe, directory.as_deref())
-  })??;
+  let assets: AssetMountState = AssetMountState::clone(&assets);
+  let read: Arc<SessionSnapshot<SelectedLevel>> = Arc::clone(&current);
+  let packed: Option<PackedLevelDetails> = execution
+    .run_blocking("Packing the level grass", move || {
+      let directory: Option<String> = read.source.get_logical_directory();
+
+      assets.with_probe(&read.roots, |probe| {
+        pack_details(&read.source, probe, directory.as_deref())
+      })
+    })
+    .await???;
+
+  report_details(
+    &current.source,
+    packed.as_ref().map(|it| &it.package.description),
+    started,
+  );
 
   let Some(packed) = packed else {
-    log::info!("Level {} has no detail library", current.source.get_label());
-
     return Ok(SessionSnapshot {
       session_id: details_id,
       value: None,
     });
   };
-
-  let description = &packed.package.description;
-
-  log::info!(
-    "Packed grass of {}: {} planted slots, {} triangles, {} bin entries, {} models, {} in {:?}",
-    current.source.get_label(),
-    description.slot_count,
-    description.triangle_count,
-    description.bin_length,
-    description.models.len(),
-    xrf_utils::format_bytes(u64::from(description.buffer_length)),
-    started.elapsed()
-  );
 
   let value: LevelDetailsDescription = LevelDetailsDescription {
     details: packed.package.description,

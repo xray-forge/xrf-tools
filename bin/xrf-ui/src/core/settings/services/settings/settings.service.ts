@@ -6,6 +6,7 @@ import {
   IRendererFeatureChoice,
   IRendererFeatureOverrides,
   IRendererFeatureSettings,
+  mergeRendererFeatureOverrides,
   resolveRendererFeatures,
   TFrameRateLimit,
   toFrameRateLimit,
@@ -40,8 +41,6 @@ export class SettingsService {
   /** How the root catalog draws its tools. */
   @Observable()
   public catalogView: TCatalogView = toCatalogView(getLocalStorageValue(CATALOG_VIEW_STORAGE_KEY));
-
-  /** Whether a level draws on a thread of its own, which it does unless somebody has said not to. */
 
   /**
    * Frames a second every viewport is allowed to draw.
@@ -133,23 +132,8 @@ export class SettingsService {
    */
   @BoundAction()
   public setRendererOverrides(overrides: IRendererFeatureOverrides): void {
-    const current: IRendererFeatureOverrides = this.rendererChoice.overrides;
-
     this.storeRendererChoice({
-      overrides: {
-        ...current,
-        ...overrides,
-        ambientOcclusion:
-          overrides.ambientOcclusion || current.ambientOcclusion
-            ? { ...current.ambientOcclusion, ...overrides.ambientOcclusion }
-            : undefined,
-        grass: overrides.grass || current.grass ? { ...current.grass, ...overrides.grass } : undefined,
-        lights: overrides.lights || current.lights ? { ...current.lights, ...overrides.lights } : undefined,
-        lod: overrides.lod || current.lod ? { ...current.lod, ...overrides.lod } : undefined,
-        shadows: overrides.shadows || current.shadows ? { ...current.shadows, ...overrides.shadows } : undefined,
-        upscaling:
-          overrides.upscaling || current.upscaling ? { ...current.upscaling, ...overrides.upscaling } : undefined,
-      },
+      overrides: mergeRendererFeatureOverrides(this.rendererChoice.overrides, overrides),
       preset: this.rendererChoice.preset,
     });
   }

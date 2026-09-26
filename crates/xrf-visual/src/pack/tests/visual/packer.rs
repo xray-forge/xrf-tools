@@ -8,7 +8,7 @@ use crate::data::visual::geometry::visual_geometry::VisualGeometry;
 use crate::data::visual::geometry::visual_skin::VisualSkin;
 use crate::data::visual::geometry::visual_skip_cause::VisualSkipCause;
 use crate::data::visual::geometry::visual_submesh::VisualSubmesh;
-use crate::pack::tests::visual::fixtures::{
+use crate::pack::tests::fixtures::{
   MODEL_TYPE_GEOMDEF_PM, MODEL_TYPE_GEOMDEF_ST, PROGRESSIVE_FINE_OFFSET, PROGRESSIVE_FINE_TRIANGLES,
   PROGRESSIVE_INDICES, bones, description, embedded_motions, geometry, geometry_of_unknown_format, kinematics,
   progressive_child, progressive_child_with_windows, skeleton, static_triangle_child, swi, textured, vector, vertex,
