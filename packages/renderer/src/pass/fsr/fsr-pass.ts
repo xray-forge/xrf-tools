@@ -1,134 +1,104 @@
 import { Nullable } from "@xrf/types";
-import type { AnyPixelFormat, TextureDataType } from "three";
 import {
   ComputeNode,
-  DepthTexture,
   FloatType,
-  HalfFloatType,
-  LinearFilter,
-  NearestFilter,
   NodeMaterial,
-  PerspectiveCamera,
   QuadMesh,
   RedFormat,
   RenderTarget,
-  RGBAFormat,
   RGFormat,
   StorageBufferAttribute,
-  Texture,
   UnsignedByteType,
-  Vector2,
   WebGPURenderer,
 } from "three/webgpu";
 
-import { initBorrowedDepthTarget } from "#/internals/borrowed-depth-target";
 import { destroyStorageAttribute } from "#/internals/renderer-backend";
-import { toFrameCopy } from "#/pass/antialias/antialias-stages.tsl";
+import { createColourTarget, IColourAttachment } from "#/pass/colour-target";
+import { FrameCopyPass } from "#/pass/frame-copy-pass";
 import { toFsrAccumulate } from "#/pass/fsr/fsr-accumulate.tsl";
+import { IFsrInputs } from "#/pass/fsr/fsr-common.tsl";
+import { toFsrDepthClip } from "#/pass/fsr/fsr-depth-clip.tsl";
+import { toFsrLock } from "#/pass/fsr/fsr-lock.tsl";
+import { LUMA_FIRST_STEP, toLumaFirstStep, toLumaShadingChange } from "#/pass/fsr/fsr-luminance-pyramid.tsl";
+import { toFsrReactive } from "#/pass/fsr/fsr-reactive.tsl";
 import {
   createFsrDepthClear,
   createFsrDepthReconstruction,
-  IFsrInputs,
-  toFsrDepthClip,
   toFsrDilate,
-  toFsrLock,
-  toFsrReactive,
-  toLumaEighth,
-  toLumaShadingChange,
-} from "#/pass/fsr/fsr-prepare.tsl";
-import { createQuadMaterial } from "#/pass/quad-material";
+} from "#/pass/fsr/fsr-reconstruct-and-dilate.tsl";
+import { PingPong } from "#/pass/ping-pong";
+import { createDepthWritingQuadMaterial, createQuadMaterial } from "#/pass/quad-material";
 import { IRendererFrame } from "#/pass/renderer-frame";
+import { IRendererFrameSize } from "#/pass/renderer-frame-size";
 import { IRendererPass } from "#/pass/renderer-pass";
 import { RendererTargets } from "#/pass/renderer-targets";
-import { TemporalJitter } from "#/pass/temporal-jitter";
+import { ResolvedTarget } from "#/pass/resolved-target";
 import { ITemporalUpscaler } from "#/pass/temporal-upscaler";
-import { toUpscaledDepth } from "#/pass/upscale-depth.tsl";
-import { FsrUniforms } from "#/uniforms/fsr-uniforms";
+import { toUpscaledDepth } from "#/shader/drawn-sample.tsl";
+import { FsrUniforms, toShadingChangeMipSide } from "#/uniforms/fsr-uniforms";
 import { RendererUniforms } from "#/uniforms/renderer-uniforms";
 
-/** One attachment of an FSR target: its format, type and whether it is sampled between texels. */
-type TAttachment = readonly [AnyPixelFormat, TextureDataType, boolean];
+/** One channel of half floats. */
+const RED_HALF: Omit<IColourAttachment, "name"> = { format: RedFormat };
+/** Two channels of half floats. */
+const RG_HALF: Omit<IColourAttachment, "name"> = { format: RGFormat };
+/** One channel of bytes, read texel by texel. */
+const RED_BYTE: Omit<IColourAttachment, "name"> = { format: RedFormat, isFiltered: false, type: UnsignedByteType };
 
-const RED_HALF: TAttachment = [RedFormat, HalfFloatType, true];
-const RG_HALF: TAttachment = [RGFormat, HalfFloatType, true];
-const RGBA_HALF: TAttachment = [RGBAFormat, HalfFloatType, true];
-const RED_BYTE: TAttachment = [RedFormat, UnsignedByteType, false];
-const RGBA_BYTE: TAttachment = [RGBAFormat, UnsignedByteType, true];
-const RED_FLOAT: TAttachment = [RedFormat, FloatType, false];
-
-/** A target of one or more attachments, named for the device's labels. */
-function createTarget(name: string, attachments: ReadonlyArray<TAttachment>): RenderTarget {
-  const target: RenderTarget = new RenderTarget(1, 1, { count: attachments.length, depthBuffer: false });
-
-  attachments.forEach(([format, type, isFiltered], index: number) => {
-    const texture: Texture = target.textures[index];
-
-    texture.name = attachments.length > 1 ? `${name}-${index}` : name;
-    texture.format = format;
-    texture.type = type;
-    texture.minFilter = isFiltered ? LinearFilter : NearestFilter;
-    texture.magFilter = isFiltered ? LinearFilter : NearestFilter;
-    texture.generateMipmaps = false;
-  });
-
-  return target;
+/** What one frame of the two writes, reading the other's. */
+interface IFsrFrame {
+  /** The dilated depth, the dilated motion, and the lock luma. */
+  dilate: RenderTarget;
+  /** The history, the lock status and the luma history it writes, and the output. */
+  accumulation: RenderTarget;
+  accumulate: NodeMaterial;
+  lock: NodeMaterial;
+  /** Built with the reconstructed depth, which grows with the drawing. */
+  clip: Nullable<NodeMaterial>;
 }
 
-/** A quad drawing one material into one target. */
-interface IFsrStage {
-  material: NodeMaterial;
-  target: RenderTarget;
+/** The depth of the frame before as each texel's nearest depth reprojected puts it, and what writes it. */
+interface IFsrReconstruction {
+  depths: StorageBufferAttribute;
+  capacity: number;
+  clear: ComputeNode;
+  reconstruct: ComputeNode;
 }
 
 /**
- * FSR 2.2's upscaler (FidelityFX, AMD, MIT), ported to the renderer's passes: the luminance the locks watch, the depth
- * of the frame before reconstructed by reprojection, the dilated depth and motion, a reactive mask from what the
- * blended surfaces changed, the depth clip and the reactive masks, the thin features to lock, and the accumulation at
- * the display's size. Its RCAS is the renderer's sharpening, with FSR 2's denoise. The frame's colour is the display's
- * already, so it runs with an exposure of one and no tonemap of its own; the motion is drawn at the render size.
+ * FSR 2.2's upscaler (FidelityFX, AMD, MIT) over the renderer's frame, which is in the display's range: an exposure of
+ * one and no tonemap of its own, motion drawn at the render size.
  */
 export class FsrPass implements ITemporalUpscaler {
-  public readonly name: string = "fsr";
-  public readonly output: RenderTarget = new RenderTarget(1, 1, { depthBuffer: true });
-  /** A copy of the frame before the blended surfaces draw, which the reactive mask compares with. */
-  public readonly opaque: IRendererPass;
+  public readonly name: string = "fsr2";
+  public readonly beforeBlended: ReadonlyArray<IRendererPass>;
 
   private readonly constants: FsrUniforms = new FsrUniforms();
-  private readonly jitters: TemporalJitter;
   private readonly inputs: IFsrInputs;
   private readonly quad: QuadMesh = new QuadMesh();
-  private readonly opaqueTarget: RenderTarget = createTarget("fsr-opaque", [RGBA_BYTE]);
-  private readonly lumaEighth: RenderTarget = createTarget("fsr-luma-8", [RED_HALF]);
-  private readonly lumaShading: RenderTarget = createTarget("fsr-luma-32", [RED_HALF]);
-  /** Two, so the depth clip reads the dilated motion of the frame before. */
-  private readonly dilates: ReadonlyArray<RenderTarget> = [0, 1].map((index: number) =>
-    createTarget(`fsr-dilate-${index}`, [RED_FLOAT, RG_HALF, RED_HALF])
-  );
-  private readonly reactive: RenderTarget = createTarget("fsr-reactive", [RED_BYTE]);
-  private readonly clip: RenderTarget = createTarget("fsr-clip", [RGBA_HALF, RG_HALF]);
-  private readonly locks: RenderTarget = createTarget("fsr-locks", [RED_BYTE]);
-  /** Two, each frame's accumulation reading the other's: history, lock status, luma history, and the output. */
-  private readonly accumulations: ReadonlyArray<RenderTarget>;
-  private readonly stages: {
-    lumaEighth: IFsrStage;
-    lumaShading: IFsrStage;
-    reactive: IFsrStage;
-    lock: ReadonlyArray<IFsrStage>;
-    accumulate: ReadonlyArray<IFsrStage>;
+  /** The frame before the blended surfaces drew, which the reactive mask compares with. */
+  private readonly opaque: FrameCopyPass;
+  private readonly lumaFirst: RenderTarget = createColourTarget([{ name: "fsr2-luma-8", ...RED_HALF }]);
+  private readonly lumaShading: RenderTarget = createColourTarget([{ name: "fsr2-luma-32", ...RED_HALF }]);
+  private readonly reactive: RenderTarget = createColourTarget([{ name: "fsr2-reactive", ...RED_BYTE }]);
+  private readonly clip: RenderTarget = createColourTarget([
+    { name: "fsr2-prepared" },
+    { name: "fsr2-masks", ...RG_HALF },
+  ]);
+  private readonly locks: RenderTarget = createColourTarget([{ name: "fsr2-locks", ...RED_BYTE }]);
+  private readonly resolved: ResolvedTarget = new ResolvedTarget("fsr2");
+  private readonly frames: PingPong<IFsrFrame>;
+  private readonly materials: {
+    lumaFirst: NodeMaterial;
+    lumaShading: NodeMaterial;
+    dilate: NodeMaterial;
+    reactive: NodeMaterial;
   };
-  private readonly dilate: NodeMaterial;
-  private readonly accumulates: ReadonlyArray<NodeMaterial>;
-  /** The reconstructed depth of the frame before, a `u32` a drawn texel, and what reads and writes it. */
-  private depths: Nullable<StorageBufferAttribute> = null;
-  private capacity: number = 0;
-  private clear: Nullable<ComputeNode> = null;
-  private reconstruct: Nullable<ComputeNode> = null;
-  private clips: ReadonlyArray<NodeMaterial> = [];
+
+  private reconstruction: Nullable<IFsrReconstruction> = null;
   private renderer: Nullable<WebGPURenderer> = null;
-  private readonly renderSize: Vector2 = new Vector2();
-  private readonly displaySize: Vector2 = new Vector2();
-  /** Which of each pair this frame writes. */
-  private written: number = 0;
+  private size: Nullable<IRendererFrameSize> = null;
+  /** Frames resolved since the history was reset: FSR's `FrameIndex`. */
   private frameIndex: number = 0;
 
   /**
@@ -136,229 +106,202 @@ export class FsrPass implements ITemporalUpscaler {
    * @param uniforms - What the frame's shaders read.
    */
   public constructor(targets: RendererTargets, uniforms: RendererUniforms) {
-    const outputTexture: Texture = createTarget("fsr-output", [RGBA_BYTE]).texture;
-    const outputDepth: DepthTexture = new DepthTexture(1, 1, FloatType);
-
-    outputDepth.name = "fsr-depth";
-    this.output.texture.dispose();
-    this.output.texture = outputTexture;
-    this.output.depthTexture = outputDepth;
-    this.jitters = new TemporalJitter(uniforms.motion);
     this.inputs = { color: targets.scene.texture, depth: targets.depth, motion: targets.motion };
-    this.accumulations = [0, 1].map((index: number) => {
-      const target: RenderTarget = createTarget(`fsr-accumulate-${index}`, [RGBA_HALF, RG_HALF, RGBA_BYTE, RGBA_BYTE]);
-
-      target.textures[3].dispose();
-      target.textures[3] = outputTexture;
-      target.depthBuffer = true;
-      target.depthTexture = outputDepth;
-
-      return target;
-    });
-    this.dilate = createQuadMaterial(toFsrDilate(this.inputs, this.constants));
-    this.accumulates = [0, 1].map((index: number) => {
-      const previous: RenderTarget = this.accumulations[1 - index];
-      const material: NodeMaterial = createQuadMaterial(
-        toFsrAccumulate(
-          {
-            dilatedMotion: this.dilates[index].textures[1],
-            frame: this.inputs.color,
-            history: previous.textures[0],
-            lockStatus: previous.textures[1],
-            locks: this.locks.texture,
-            lumaHistory: previous.textures[2],
-            prepared: this.clip.textures[0],
-            reactiveMasks: this.clip.textures[1],
-            shadingLuma: this.lumaShading.texture,
-          },
-          this.constants,
-          uniforms.motion.jitter
-        )
-      );
-
-      // Written wherever it stands, the test left off: three turns `AlwaysDepth` into `NeverDepth` for reversed depth.
-      material.depthNode = toUpscaledDepth(this.inputs.color, this.inputs.depth, uniforms.motion.jitter);
-      material.depthWrite = true;
-
-      return material;
-    });
-    this.stages = {
-      accumulate: this.accumulates.map((material: NodeMaterial, index: number) => ({
-        material,
-        target: this.accumulations[index],
-      })),
-      lock: [
-        { material: createQuadMaterial(toFsrLock(this.dilates[0].textures[2], this.constants)), target: this.locks },
-        {
-          material: createQuadMaterial(toFsrLock(this.dilates[1].textures[2], this.constants)),
-          target: this.locks,
-        },
-      ],
-      lumaEighth: { material: createQuadMaterial(toLumaEighth(this.inputs, this.constants)), target: this.lumaEighth },
-      lumaShading: {
-        material: createQuadMaterial(toLumaShadingChange(this.lumaEighth.texture)),
-        target: this.lumaShading,
-      },
-      reactive: {
-        material: createQuadMaterial(toFsrReactive(this.opaqueTarget.texture, this.inputs, this.constants)),
-        target: this.reactive,
-      },
+    this.opaque = new FrameCopyPass("fsr2-opaque", targets.scene.texture);
+    this.beforeBlended = [this.opaque];
+    this.materials = {
+      dilate: createQuadMaterial(toFsrDilate(this.inputs, this.constants)),
+      lumaFirst: createQuadMaterial(toLumaFirstStep(this.inputs, this.constants)),
+      lumaShading: createQuadMaterial(toLumaShadingChange(this.lumaFirst.texture)),
+      reactive: createQuadMaterial(toFsrReactive(this.opaque.output.texture, this.inputs, this.constants)),
     };
 
-    const copy: NodeMaterial = createQuadMaterial(toFrameCopy(this.inputs.color));
+    // Each frame's targets first, since each frame's materials read the other's.
+    const dilates: ReadonlyArray<RenderTarget> = [0, 1].map((index: number) =>
+      createColourTarget([
+        { format: RedFormat, isFiltered: false, name: `fsr2-dilated-depth-${index}`, type: FloatType },
+        { name: `fsr2-dilated-motion-${index}`, ...RG_HALF },
+        { name: `fsr2-lock-luma-${index}`, ...RED_HALF },
+      ])
+    );
+    const accumulations: ReadonlyArray<RenderTarget> = [0, 1].map((index: number) =>
+      this.resolved.createWriter([
+        { name: `fsr2-history-${index}` },
+        { name: `fsr2-lock-status-${index}`, ...RG_HALF },
+        { name: `fsr2-luma-history-${index}`, type: UnsignedByteType },
+      ])
+    );
 
-    this.opaque = {
-      dispose: (): void => copy.dispose(),
-      name: "fsr-opaque",
-      render: ({ renderer }: IRendererFrame): void =>
-        this.draw(renderer, { material: copy, target: this.opaqueTarget }),
-    };
+    this.frames = new PingPong((index: 0 | 1) => {
+      const previous: RenderTarget = accumulations[index === 0 ? 1 : 0];
+
+      return {
+        accumulate: createDepthWritingQuadMaterial(
+          toFsrAccumulate(
+            {
+              dilatedMotion: dilates[index].textures[1],
+              frame: this.inputs.color,
+              history: previous.textures[0],
+              lockStatus: previous.textures[1],
+              locks: this.locks.texture,
+              lumaHistory: previous.textures[2],
+              prepared: this.clip.textures[0],
+              reactiveMasks: this.clip.textures[1],
+              shadingLuma: this.lumaShading.texture,
+            },
+            this.constants,
+            uniforms.motion.jitter
+          ),
+          toUpscaledDepth(this.inputs.color, this.inputs.depth, uniforms.motion.jitter)
+        ),
+        accumulation: accumulations[index],
+        clip: null,
+        dilate: dilates[index],
+        lock: createQuadMaterial(toFsrLock(dilates[index].textures[2], this.constants)),
+      };
+    });
   }
 
-  public resize(
-    renderer: WebGPURenderer,
-    width: number,
-    height: number,
-    renderWidth: number,
-    renderHeight: number
-  ): void {
-    if (
-      width === this.displaySize.x &&
-      height === this.displaySize.y &&
-      renderWidth === this.renderSize.x &&
-      renderHeight === this.renderSize.y
-    ) {
-      return;
-    }
+  public get output(): RenderTarget {
+    return this.resolved.output;
+  }
+
+  public resize(renderer: WebGPURenderer, size: IRendererFrameSize): void {
+    const { renderWidth, renderHeight } = size;
 
     this.renderer = renderer;
-    this.displaySize.set(width, height);
-    this.renderSize.set(renderWidth, renderHeight);
-    this.jitters.resize(width / Math.max(renderWidth, 1), renderWidth, renderHeight);
+    this.size = size;
+    this.opaque.resize(renderer, size);
 
-    const mip: Vector2 = new Vector2(
-      Math.max(1, Math.floor(renderWidth / 32)),
-      Math.max(1, Math.floor(renderHeight / 32))
-    );
-
-    [this.opaqueTarget, ...this.dilates, this.reactive, this.clip, this.locks].forEach((target: RenderTarget) =>
-      target.setSize(renderWidth, renderHeight)
-    );
-    this.lumaEighth.setSize(Math.ceil(renderWidth / 8), Math.ceil(renderHeight / 8));
-    this.lumaShading.setSize(mip.x, mip.y);
-    this.accumulations.forEach((target: RenderTarget) => target.setSize(width, height));
-    this.output.setSize(width, height);
-    // The accumulation writes the depth the helpers then draw over: none of the three may clear it on its first draw.
-    this.accumulations.forEach((target: RenderTarget) => initBorrowedDepthTarget(renderer, target));
-    initBorrowedDepthTarget(renderer, this.output);
-    this.ensureCapacity(renderer, renderWidth * renderHeight);
-    this.frameIndex = 0;
-  }
-
-  public jitter(camera: PerspectiveCamera): void {
-    this.jitters.apply(camera);
-  }
-
-  public render({ renderer, camera }: IRendererFrame): void {
-    if (!this.clear || !this.reconstruct) {
-      return;
-    }
-
-    const current: number = this.written;
-    const count: number = this.renderSize.x * this.renderSize.y;
-
-    this.constants.follow(camera, this.renderSize, this.displaySize, this.jitters.offset, this.jitters.phaseCount);
-    this.constants.frameIndex.value = this.frameIndex;
-    this.clear.count = count;
-    this.reconstruct.count = count;
-
-    renderer.compute(this.clear);
-    this.draw(renderer, this.stages.lumaEighth);
-    this.draw(renderer, this.stages.lumaShading);
-    renderer.compute(this.reconstruct);
-    this.draw(renderer, { material: this.dilate, target: this.dilates[current] });
-    this.draw(renderer, this.stages.reactive);
-    this.draw(renderer, { material: this.clips[current], target: this.clip });
-    this.draw(renderer, this.stages.lock[current]);
-    this.draw(renderer, this.stages.accumulate[current]);
-
-    this.written = 1 - current;
-    this.frameIndex += 1;
-    this.jitters.advance();
-    this.jitters.restore();
-  }
-
-  public dispose(): void {
-    this.jitters.dispose();
-    this.opaque.dispose();
-    [
-      this.dilate,
-      ...this.accumulates,
-      ...this.clips,
-      this.stages.lumaEighth.material,
-      this.stages.lumaShading.material,
-      this.stages.reactive.material,
-      ...this.stages.lock.map((stage: IFsrStage) => stage.material),
-    ].forEach((material: NodeMaterial) => material.dispose());
-    [
-      this.opaqueTarget,
-      this.lumaEighth,
-      this.lumaShading,
-      ...this.dilates,
+    for (const target of [
       this.reactive,
       this.clip,
       this.locks,
-      ...this.accumulations,
-      this.output,
-    ].forEach((target: RenderTarget) => target.dispose());
-    this.output.texture.dispose();
-    this.output.depthTexture?.dispose();
-    this.clear?.dispose();
-    this.reconstruct?.dispose();
-
-    if (this.renderer && this.depths) {
-      destroyStorageAttribute(this.renderer, this.depths);
+      ...this.frames.both.map((it: IFsrFrame) => it.dilate),
+    ]) {
+      target.setSize(renderWidth, renderHeight);
+      renderer.initRenderTarget(target);
     }
+
+    this.lumaFirst.setSize(Math.ceil(renderWidth / LUMA_FIRST_STEP), Math.ceil(renderHeight / LUMA_FIRST_STEP));
+    this.lumaShading.setSize(toShadingChangeMipSide(renderWidth), toShadingChangeMipSide(renderHeight));
+    [this.lumaFirst, this.lumaShading].forEach((target: RenderTarget) => renderer.initRenderTarget(target));
+    this.resolved.resize(renderer, size.width, size.height);
+    this.reserve(renderWidth * renderHeight);
+    this.resetHistory();
   }
 
-  /** Grows the reconstructed depth to a drawing's texels, and what reads and writes it with it. */
-  private ensureCapacity(renderer: WebGPURenderer, count: number): void {
-    if (count <= this.capacity) {
+  public resetHistory(): void {
+    this.frameIndex = 0;
+  }
+
+  public render({ renderer, camera, jitter }: IRendererFrame): void {
+    const { reconstruction, size } = this;
+    const frame: IFsrFrame = this.frames.current;
+
+    if (!reconstruction || !size || !jitter || !frame.clip) {
       return;
     }
 
-    if (this.depths) {
-      destroyStorageAttribute(renderer, this.depths);
+    this.constants.take(camera, size, jitter, this.frameIndex);
+    reconstruction.clear.count = size.renderWidth * size.renderHeight;
+    reconstruction.reconstruct.count = reconstruction.clear.count;
+
+    renderer.compute(reconstruction.clear);
+    this.draw(renderer, this.materials.lumaFirst, this.lumaFirst);
+    this.draw(renderer, this.materials.lumaShading, this.lumaShading);
+    renderer.compute(reconstruction.reconstruct);
+    this.draw(renderer, this.materials.dilate, frame.dilate);
+    this.draw(renderer, this.materials.reactive, this.reactive);
+    this.draw(renderer, frame.clip, this.clip);
+    this.draw(renderer, frame.lock, this.locks);
+    this.draw(renderer, frame.accumulate, frame.accumulation);
+
+    this.frames.swap();
+    this.frameIndex += 1;
+  }
+
+  public dispose(): void {
+    this.opaque.dispose();
+    [
+      ...Object.values(this.materials),
+      ...this.frames.both.flatMap(({ accumulate, lock, clip }: IFsrFrame) =>
+        clip ? [accumulate, lock, clip] : [accumulate, lock]
+      ),
+    ].forEach((material: NodeMaterial) => material.dispose());
+    [
+      this.lumaFirst,
+      this.lumaShading,
+      this.reactive,
+      this.clip,
+      this.locks,
+      ...this.frames.both.map((it) => it.dilate),
+    ].forEach((target: RenderTarget) => target.dispose());
+    this.resolved.dispose();
+    this.release();
+  }
+
+  /** Grows the reconstructed depth to hold a drawing's texels, and what reads and writes it with it. */
+  private reserve(count: number): void {
+    if (this.reconstruction && count <= this.reconstruction.capacity) {
+      return;
     }
 
-    this.clear?.dispose();
-    this.reconstruct?.dispose();
-    this.clips.forEach((material: NodeMaterial) => material.dispose());
-    this.capacity = count;
-    this.depths = new StorageBufferAttribute(new Uint32Array(count), 1);
-    this.clear = createFsrDepthClear(this.depths, count);
-    this.reconstruct = createFsrDepthReconstruction(this.inputs, this.depths, count, this.constants);
-    this.clips = [0, 1].map((index: number) =>
-      createQuadMaterial(
+    this.release();
+
+    const depths: StorageBufferAttribute = new StorageBufferAttribute(new Uint32Array(count), 1);
+
+    this.reconstruction = {
+      capacity: count,
+      clear: createFsrDepthClear(depths, count),
+      depths,
+      reconstruct: createFsrDepthReconstruction(this.inputs, depths, count, this.constants),
+    };
+    this.frames.both.forEach((frame: IFsrFrame, index: number) => {
+      const other: IFsrFrame = this.frames.both[index === 0 ? 1 : 0];
+
+      frame.clip = createQuadMaterial(
         toFsrDepthClip(
           this.inputs,
           {
             capacity: count,
-            dilatedDepth: this.dilates[index].textures[0],
-            dilatedMotion: this.dilates[index].textures[1],
-            previousDilatedMotion: this.dilates[1 - index].textures[1],
+            dilatedDepth: frame.dilate.textures[0],
+            dilatedMotion: frame.dilate.textures[1],
+            previousDilatedMotion: other.dilate.textures[1],
             reactive: this.reactive.texture,
-            reconstructed: this.depths as StorageBufferAttribute,
+            reconstructed: depths,
           },
           this.constants
         )
-      )
-    );
+      );
+    });
   }
 
-  private draw(renderer: WebGPURenderer, stage: IFsrStage): void {
-    this.quad.material = stage.material;
-    renderer.setRenderTarget(stage.target);
+  /** Lets the reconstructed depth go, and the materials and computes built with it. */
+  private release(): void {
+    const { reconstruction, renderer } = this;
+
+    if (!reconstruction) {
+      return;
+    }
+
+    reconstruction.clear.dispose();
+    reconstruction.reconstruct.dispose();
+    this.frames.both.forEach((frame: IFsrFrame) => {
+      frame.clip?.dispose();
+      frame.clip = null;
+    });
+
+    if (renderer) {
+      destroyStorageAttribute(renderer, reconstruction.depths);
+    }
+
+    this.reconstruction = null;
+  }
+
+  private draw(renderer: WebGPURenderer, material: NodeMaterial, target: RenderTarget): void {
+    this.quad.material = material;
+    renderer.setRenderTarget(target);
     this.quad.render(renderer);
   }
 }

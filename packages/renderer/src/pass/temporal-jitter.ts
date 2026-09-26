@@ -1,10 +1,12 @@
-import { Nullable } from "@xrf/types";
 import { Matrix4, PerspectiveCamera } from "three/webgpu";
 
+import { adoptRendererConventions } from "#/internals/camera-conventions";
+import { IRendererFrameJitter } from "#/pass/renderer-frame-jitter";
+import { IRendererFrameSize } from "#/pass/renderer-frame-size";
 import { MotionUniforms } from "#/uniforms/motion-uniforms";
 
-/** Jitter positions a drawn pixel cycles through at the output's size: eight of Halton (2, 3). */
-const JITTER_SAMPLES: number = 8;
+/** Jitter places a drawn pixel cycles through at the output's size: `ffxFsr2GetJitterPhaseCount`'s base. */
+const JITTER_BASE_PHASES: number = 8;
 
 /** The Halton sequence's value at an index in a base, in `[0, 1)`. */
 export function toHalton(index: number, base: number): number {
@@ -20,35 +22,26 @@ export function toHalton(index: number, base: number): number {
 }
 
 /**
- * @param upscale - The ratio of the output's side to the drawing's.
- * @returns How many jitter positions the frames cycle through: `ffxFsr2GetJitterPhaseCount`, eight times the ratio
- *   squared, so every output pixel a drawn pixel covers is sampled near its centre as often as at the output's size.
+ * @param width - The output's width.
+ * @param renderWidth - The drawing's width.
+ * @returns How many places the jitter cycles through: `ffxFsr2GetJitterPhaseCount`, eight times the squared ratio,
+ *   truncated.
  */
-export function toTemporalJitterPhases(upscale: number): number {
-  return Math.ceil(JITTER_SAMPLES * upscale * upscale - 1e-6);
+export function toTemporalJitterPhases(width: number, renderWidth: number): number {
+  return Math.max(1, Math.trunc(JITTER_BASE_PHASES * (width / Math.max(renderWidth, 1)) ** 2));
 }
 
 /**
- * @param phase - The frame's place in the cycle.
- * @returns The offset its samples are jittered by, in drawn pixels about the pixel's centre, `y` down.
+ * @param phase - A frame's place in the cycle.
+ * @returns Its offset, in drawn pixels about each pixel's centre, `y` down: `ffxFsr2GetJitterOffset`'s Halton (2, 3).
  */
 export function toTemporalJitter(phase: number): readonly [number, number] {
   return [toHalton(phase + 1, 2) - 0.5, toHalton(phase + 1, 3) - 0.5];
 }
 
 /**
- * @param output - A side of the output, in pixels.
- * @param upscale - The ratio of the output's side to the drawing's.
- * @returns That side of the scene as drawn.
- */
-export function toRenderSize(output: number, upscale: number): number {
-  return Math.max(1, Math.round(output / upscale));
-}
-
-/**
- * Offsets a perspective projection so the texel at `m` shows the scene at `m + 0.5 + jitter`: the image moves the other
- * way, by as many clip units. A perspective projection carries a clip offset times `w`, which is `-z`, in its third
- * column.
+ * Offsets a perspective projection so the texel at `m` shows the scene at `m + 0.5 + jitter`, through the clip offset a
+ * projection carries times `w` in its third column.
  *
  * @param projection - The projection, changed in place.
  * @param x - The jitter across, in pixels.
@@ -62,62 +55,59 @@ export function jitterProjection(projection: Matrix4, x: number, y: number, widt
 }
 
 /**
- * The camera's jitter for a temporal resolve: a position of the cycle each frame, the projection offset by it before
- * anything draws and given back before the helpers do, and the motion uniforms told where the samples stand.
+ * The frame's jitter while a temporal mode resolves: a camera of its own the scene draws with, the view's copied and
+ * offset each frame, so the view's camera itself is never jittered.
  */
 export class TemporalJitter {
-  private readonly motion: MotionUniforms;
-  /** The camera's projection as its controller left it, which the helpers draw with. */
-  private readonly projection: Matrix4 = new Matrix4();
-  private readonly projectionInverse: Matrix4 = new Matrix4();
-  private jittered: Nullable<PerspectiveCamera> = null;
-  private phase: number = 0;
-  private phases: number = JITTER_SAMPLES;
-  private width: number = 1;
-  private height: number = 1;
+  /** What the scene draws with, one object every frame so three's recordings of it stay put. */
+  public readonly camera: PerspectiveCamera = new PerspectiveCamera();
 
+  private readonly motion: MotionUniforms;
+  private phase: number = 0;
+  private phases: number = JITTER_BASE_PHASES;
+  private renderWidth: number = 1;
+  private renderHeight: number = 1;
+
+  /**
+   * @param motion - The motion uniforms, which the resolves read the jitter from.
+   */
   public constructor(motion: MotionUniforms) {
     this.motion = motion;
+    adoptRendererConventions(this.camera);
+    // Its matrices are copied whole each frame; three must not rebuild them from its position.
+    this.camera.matrixWorldAutoUpdate = false;
   }
 
-  /** How many positions the cycle holds. */
-  public get phaseCount(): number {
-    return this.phases;
-  }
-
-  /** This frame's offset, in drawn pixels, `y` down. */
-  public get offset(): readonly [number, number] {
-    return toTemporalJitter(this.phase);
+  /** This frame's place and its cycle. */
+  public get state(): IRendererFrameJitter {
+    return { offset: toTemporalJitter(this.phase), phases: this.phases };
   }
 
   /**
-   * Starts the cycle again for a drawing's size.
+   * Starts the cycle again for the frame's size.
    *
-   * @param upscale - The ratio of the output's side to the drawing's.
-   * @param width - The drawing's width.
-   * @param height - And its height.
+   * @param size - The frame's size.
    */
-  public resize(upscale: number, width: number, height: number): void {
-    this.phases = toTemporalJitterPhases(upscale);
+  public resize(size: IRendererFrameSize): void {
+    this.phases = toTemporalJitterPhases(size.width, size.renderWidth);
     this.phase = 0;
-    this.width = width;
-    this.height = height;
+    this.renderWidth = size.renderWidth;
+    this.renderHeight = size.renderHeight;
   }
 
   /**
-   * Offsets the camera's projection by this frame's jitter, before anything reads it.
-   *
-   * @param camera - The drawing camera, its projection as its controller left it.
+   * @param view - The view's camera, its matrices current.
+   * @returns The camera the scene draws with this frame: the view's, offset by this frame's place.
    */
-  public apply(camera: PerspectiveCamera): void {
-    const [x, y] = this.offset;
+  public take(view: PerspectiveCamera): PerspectiveCamera {
+    const [x, y] = toTemporalJitter(this.phase);
 
-    this.projection.copy(camera.projectionMatrix);
-    this.projectionInverse.copy(camera.projectionMatrixInverse);
-    this.jittered = camera;
+    this.camera.copy(view, false);
+    jitterProjection(this.camera.projectionMatrix, x, y, this.renderWidth, this.renderHeight);
+    this.camera.projectionMatrixInverse.copy(this.camera.projectionMatrix).invert();
     this.motion.jitter.value.set(x, y);
-    jitterProjection(camera.projectionMatrix, x, y, this.width, this.height);
-    camera.projectionMatrixInverse.copy(camera.projectionMatrix).invert();
+
+    return this.camera;
   }
 
   /** Moves the cycle on, once the frame is resolved. */
@@ -125,18 +115,8 @@ export class TemporalJitter {
     this.phase = (this.phase + 1) % this.phases;
   }
 
-  /** Gives the camera back the projection its controller left it, for the helpers and the next frame. */
-  public restore(): void {
-    if (this.jittered) {
-      this.jittered.projectionMatrix.copy(this.projection);
-      this.jittered.projectionMatrixInverse.copy(this.projectionInverse);
-      this.jittered = null;
-    }
-  }
-
-  /** Restores the camera and leaves the samples at the pixels' centres, for a frame no longer jittered. */
+  /** Leaves the samples at the pixels' centres, for frames no longer jittered. */
   public dispose(): void {
-    this.restore();
     this.motion.jitter.value.set(0, 0);
   }
 }

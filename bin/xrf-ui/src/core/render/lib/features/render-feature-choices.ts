@@ -4,7 +4,6 @@ import {
   ERendererAntialiasing,
   ERendererLightShadowFilter,
   ERendererRenderScale,
-  RENDERER_RENDER_SCALE_RATIOS,
 } from "@xrf/renderer";
 
 /** The engine's three cascade widths (`render_phase_sun.cpp`), and a fourth reaching three times as far. */
@@ -59,17 +58,15 @@ export const RENDER_SHARPENING_LIMITS = { max: 1, min: 0, step: 0.05 } as const;
  * @returns Its name as the settings say it, with the share of each side it draws.
  */
 export function describeRenderScale(scale: ERendererRenderScale): string {
-  const share: string = `${Math.round(100 / RENDERER_RENDER_SCALE_RATIOS[scale])}%`;
-
   switch (scale) {
     case ERendererRenderScale.NATIVE:
       return "Native";
     case ERendererRenderScale.QUALITY:
-      return `Quality, ${share}`;
+      return "Quality";
     case ERendererRenderScale.BALANCED:
-      return `Balanced, ${share}`;
+      return "Balanced";
     case ERendererRenderScale.PERFORMANCE:
-      return `Performance, ${share}`;
+      return "Performance";
   }
 }
 

@@ -54,4 +54,43 @@ describe("MotionUniforms", () => {
 
     expect(uniforms.previousModelWorld.value.elements[13]).toBe(3);
   });
+
+  it("gives an object back in view after a while its own matrix, where it stood when last drawn being stale", () => {
+    const uniforms: MotionUniforms = new MotionUniforms();
+    const camera: PerspectiveCamera = new PerspectiveCamera();
+    const object: Object3D = new Object3D();
+    const node = uniforms.previousModelWorld as unknown as IObjectUpdate;
+
+    uniforms.follow(camera);
+    object.updateMatrixWorld();
+    node.update({ object });
+
+    // Two frames culled, moved meanwhile.
+    uniforms.follow(camera);
+    uniforms.follow(camera);
+    object.position.set(0, 5, 0);
+    object.updateMatrixWorld();
+    uniforms.follow(camera);
+    node.update({ object });
+
+    expect(uniforms.previousModelWorld.value.elements[13]).toBe(5);
+  });
+
+  it("forgets the frame before for a view that jumped, and reads the sky's direction from this frame's inverse", () => {
+    const uniforms: MotionUniforms = new MotionUniforms();
+    const camera: PerspectiveCamera = new PerspectiveCamera(60, 1, 0.2, 100);
+
+    camera.updateMatrixWorld();
+    uniforms.follow(camera);
+    camera.position.set(50, 0, 0);
+    camera.updateMatrixWorld();
+    uniforms.follow(camera);
+    uniforms.forget();
+
+    expect(uniforms.previousViewProjection.value.equals(uniforms.viewProjection.value)).toBe(true);
+
+    const identity: Matrix4 = uniforms.inverseViewProjection.value.clone().multiply(uniforms.viewProjection.value);
+
+    identity.elements.forEach((value: number, index: number) => expect(value).toBeCloseTo(index % 5 === 0 ? 1 : 0, 6));
+  });
 });

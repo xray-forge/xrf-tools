@@ -90,7 +90,7 @@ describe("three's internals, as the renderer reads them", () => {
   });
 
   it("clears a target's depth on its first draw unless its data says it was cleared", () => {
-    // `initBorrowedDepthTarget` writes the flag this reads, for the targets that borrow the G-buffer's depth.
+    // `initPreservedDepthTarget` writes the flag this reads, for the targets whose depth another draw fills.
     const render = (WebGPURenderer.prototype as unknown as { _renderScene: () => void })._renderScene;
 
     expect(render.toString()).toContain("renderTargetData.depthInitialized !== true");

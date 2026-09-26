@@ -1,10 +1,9 @@
-import { Vector2 } from "three/webgpu";
-
 import { IRendererCameraPose } from "#/contract/renderer-camera";
 import { IRendererLightsReport, IRendererReport, IRendererStaticDrawReport } from "#/contract/renderer-report";
 import { RendererDevice } from "#/device/renderer-device";
 import { RenderFrameTimer } from "#/frame/render-frame-timer";
 import { RendererGpuTimings } from "#/host/renderer-gpu-timings";
+import { IRendererFrameSize } from "#/pass/renderer-frame-size";
 import { IStaticCullCounts } from "#/scene/static/static-cull-counts";
 
 /** How often the frame report is sent, in milliseconds. */
@@ -51,7 +50,7 @@ export class RendererFrameStats {
   /**
    * @param device - The device drawing.
    * @param canvas - The canvas drawn on.
-   * @param rendered - The scene's size as drawn.
+   * @param size - The frame's size, the scene's as drawn among it.
    * @param camera - Where the camera stands.
    * @param passes - The frame's passes, in frame order.
    * @param kept - What the static cull kept, which three's own counts leave out.
@@ -61,7 +60,7 @@ export class RendererFrameStats {
   public toReport(
     device: RendererDevice,
     canvas: OffscreenCanvas,
-    rendered: Vector2,
+    size: IRendererFrameSize,
     camera: IRendererCameraPose,
     passes: ReadonlyArray<string>,
     kept: IStaticCullCounts,
@@ -79,8 +78,8 @@ export class RendererFrameStats {
         draws: render.drawCalls + kept.draws,
         frameTime: this.frameTimer.frameTime,
         framesPerSecond: this.frameTimer.framesPerSecond,
-        renderedHeight: rendered.y,
-        renderedWidth: rendered.x,
+        renderedHeight: size.renderHeight,
+        renderedWidth: size.renderWidth,
         triangles: render.triangles + kept.triangles,
         worstDrawTime: this.frameTimer.worstDrawTime,
         worstFrameTime: this.frameTimer.worstFrameTime,

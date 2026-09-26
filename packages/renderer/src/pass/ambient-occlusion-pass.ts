@@ -1,4 +1,13 @@
-import { HalfFloatType, NearestFilter, NodeMaterial, QuadMesh, RenderTarget, RGFormat, Texture } from "three/webgpu";
+import {
+  HalfFloatType,
+  NearestFilter,
+  NodeMaterial,
+  QuadMesh,
+  RenderTarget,
+  RGFormat,
+  Texture,
+  WebGPURenderer,
+} from "three/webgpu";
 
 import { ERendererAmbientOcclusionQuality } from "#/contract/renderer-features";
 import {
@@ -8,6 +17,7 @@ import {
 } from "#/pass/ambient-occlusion-pass.tsl";
 import { createQuadMaterial } from "#/pass/quad-material";
 import { IRendererFrame } from "#/pass/renderer-frame";
+import { IRendererFrameSize } from "#/pass/renderer-frame-size";
 import { IRendererPass } from "#/pass/renderer-pass";
 import { RendererTargets } from "#/pass/renderer-targets";
 import { AmbientOcclusionUniforms } from "#/uniforms/ambient-occlusion-uniforms";
@@ -69,13 +79,15 @@ export class AmbientOcclusionPass implements IRendererPass {
     return this.searched.texture;
   }
 
-  public render({ renderer, camera, targets, settings }: IRendererFrame): void {
-    const width: number = Math.ceil(targets.gbuffer.width / 2);
-    const height: number = Math.ceil(targets.gbuffer.height / 2);
+  public resize(renderer: WebGPURenderer, { renderWidth, renderHeight }: IRendererFrameSize): void {
+    for (const target of [this.searched, this.denoised]) {
+      target.setSize(Math.ceil(renderWidth / 2), Math.ceil(renderHeight / 2));
+      renderer.initRenderTarget(target);
+    }
+  }
 
-    this.searched.setSize(width, height);
-    this.denoised.setSize(width, height);
-    this.uniforms.take(settings.features.ambientOcclusion, camera, width, height);
+  public render({ renderer, camera, settings }: IRendererFrame): void {
+    this.uniforms.take(settings.features.ambientOcclusion, camera, this.searched.width, this.searched.height);
 
     for (const [material, target] of [
       [this.search, this.searched],

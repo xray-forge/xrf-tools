@@ -1,24 +1,28 @@
 import { Nullable } from "@xrf/types";
-import { PerspectiveCamera, RenderTarget, Vector2, WebGPURenderer } from "three/webgpu";
+import { PerspectiveCamera, RenderTarget, Texture, WebGPURenderer } from "three/webgpu";
 
 import {
+  ERendererAmbientOcclusionQuality,
   ERendererAntialiasing,
   IRendererFeatureSettings,
-  isRendererTemporal,
-  RENDERER_MAX_SHADOW_CASCADES,
-  toRendererUpscale,
+  TRendererSmoothingAntialiasing,
+  TRendererTemporalAntialiasing,
 } from "#/contract/renderer-features";
-import { createBaseFramePasses } from "#/graph/base-frame-passes";
+import { createBaseFramePasses, IBaseFramePasses } from "#/graph/base-frame-passes";
+import { toFramePassOrder } from "#/graph/frame-pass-order";
+import { IFramePlanShadows, IRendererFramePlan, toFramePlan } from "#/graph/frame-plan";
+import { FrameStage } from "#/graph/frame-stage";
 import { AmbientOcclusionPass } from "#/pass/ambient-occlusion-pass";
-import { AntialiasPass, toPresentedFrame } from "#/pass/antialias/antialias-pass";
-import { CombinePass } from "#/pass/combine-pass";
+import { AntialiasPass } from "#/pass/antialias/antialias-pass";
 import { FsrPass } from "#/pass/fsr/fsr-pass";
 import { GrassPass } from "#/pass/grass-pass";
 import { LightShadowPass } from "#/pass/light-shadow-pass";
 import { LightsPass } from "#/pass/lights-pass";
-import { OverlayPass } from "#/pass/overlay-pass";
+import { MotionBackgroundPass } from "#/pass/motion-background-pass";
 import { PresentPass } from "#/pass/present-pass";
 import { IRendererFrame } from "#/pass/renderer-frame";
+import { IRendererFrameJitter } from "#/pass/renderer-frame-jitter";
+import { IRendererFrameSize, isSameRendererFrameSize, toRendererFrameSize } from "#/pass/renderer-frame-size";
 import { IRendererPass } from "#/pass/renderer-pass";
 import { IRendererScenePass, isRendererScenePass } from "#/pass/renderer-scene-pass";
 import { RendererTargets } from "#/pass/renderer-targets";
@@ -26,7 +30,7 @@ import { ShadowPass } from "#/pass/shadow-pass";
 import { SharpenPass } from "#/pass/sharpen-pass";
 import { SpatialUpscalePass } from "#/pass/spatial-upscale-pass";
 import { TemporalAntialiasPass } from "#/pass/temporal-antialias-pass";
-import { toRenderSize } from "#/pass/temporal-jitter";
+import { TemporalJitter } from "#/pass/temporal-jitter";
 import { ITemporalUpscaler } from "#/pass/temporal-upscaler";
 import { SceneGrass } from "#/scene/grass/scene-grass";
 import { SceneLights } from "#/scene/lights/scene-lights";
@@ -36,8 +40,22 @@ import { IStaticShadowCasters } from "#/scene/static/static-shadow-casters";
 import { RendererPassInspector } from "#/timing/renderer-pass-inspector";
 import { RendererUniforms } from "#/uniforms/renderer-uniforms";
 
+/** What the frame is drawn by and at: sized once each, a pass joining later sized as it joins. */
+interface IFrameSizing {
+  readonly renderer: WebGPURenderer;
+  readonly size: IRendererFrameSize;
+}
+
+/** What RCAS is made for: the upscaled frame it sharpens, and whether it denoises too. */
+interface IFrameSharpening {
+  readonly isDenoised: boolean;
+  readonly upscaled: RenderTarget;
+}
+
 /**
- * The frame: every target it draws into, and its passes in order, the picture presented last.
+ * The frame: every target it draws into, and its passes in order, the picture presented last. The features make a
+ * plan; each optional stage is made for its part of it and kept while that stands, a stage reading another's output
+ * made again with it.
  */
 export class RendererFrameGraph {
   public readonly targets: RendererTargets = new RendererTargets();
@@ -47,47 +65,36 @@ export class RendererFrameGraph {
   public readonly scenePasses: ReadonlyArray<IRendererScenePass>;
   /** Every pass's name, in frame order, as the frame report states them. */
   public passNames: ReadonlyArray<string> = [];
-  /** The scene's size as drawn: the output's, or smaller while it is upscaled. */
-  public readonly renderSize: Vector2 = new Vector2();
 
-  private readonly base: ReadonlyArray<IRendererPass>;
-  private passes: ReadonlyArray<IRendererPass> = [];
-  /** The pass smoothing the frame's edges, while a mode over the finished frame is chosen. */
-  private antialias: Nullable<AntialiasPass> = null;
-  /** The pass resolving jittered frames with their history, while TAA or FSR is chosen. */
-  private temporal: Nullable<ITemporalUpscaler> = null;
-  /** FSR 1, upscaling what the other modes finish, while they draw the scene smaller. */
-  private spatial: Nullable<SpatialUpscalePass> = null;
-  /** The pass sharpening what was upscaled, while the scene is upscaled and sharpened. */
-  private sharpen: Nullable<SharpenPass> = null;
-  private antialiasing: ERendererAntialiasing = ERendererAntialiasing.NONE;
-  /** The ratio of the output's side to the scene's as drawn. */
-  private upscale: number = 1;
-  /** The grass, while it is on. */
-  private grassPass: Nullable<GrassPass> = null;
-  /** The local lights, while they are on. */
-  private lightsPass: Nullable<LightsPass> = null;
-  /** The lights' shadow faces, while the lights draw shadows. */
-  private lightShadowPass: Nullable<LightShadowPass> = null;
-  /** The screen's occlusion while it is on, and the quality it was made for. */
-  private ambientOcclusion: Nullable<AmbientOcclusionPass> = null;
-  private ambientOcclusionKey: string = "";
-  /** A pass a shadow cascade drawn, and the cascades and resolution they were made for. */
-  private shadows: Array<ShadowPass> = [];
-  private shadowKey: string = "";
   private readonly uniforms: RendererUniforms;
   private readonly cull: StaticCull;
   private readonly casters: IStaticShadowCasters;
   private readonly grass: SceneGrass;
   private readonly lights: SceneLights;
-  /** The pass the occlusion is combined in. */
-  private readonly combine: CombinePass;
-  /** The pass the helpers draw in, over the upscaled or resolved frame where there is one. */
-  private readonly overlay: OverlayPass;
-  /** What the targets were last sized by, for a pass that joins the frame after: the renderer and the output's size. */
+  private readonly base: IBaseFramePasses;
+  private readonly stages = {
+    ambientOcclusion: new FrameStage<AmbientOcclusionPass>(release),
+    grass: new FrameStage<GrassPass>(release),
+    jitter: new FrameStage<TemporalJitter>((jitter: TemporalJitter) => jitter.dispose()),
+    lightShadows: new FrameStage<LightShadowPass>(release),
+    lights: new FrameStage<LightsPass>(release),
+    motionBackground: new FrameStage<MotionBackgroundPass>(release),
+    resolve: new FrameStage<ITemporalUpscaler>(release),
+    shadows: new FrameStage<ReadonlyArray<ShadowPass>>((passes: ReadonlyArray<ShadowPass>) => passes.forEach(release)),
+    sharpen: new FrameStage<SharpenPass>(release),
+    smoothing: new FrameStage<AntialiasPass>(release),
+    spatial: new FrameStage<SpatialUpscalePass>(release),
+  };
+
+  private passes: ReadonlyArray<IRendererPass> = [];
+  private plan: Nullable<IRendererFramePlan> = null;
   private renderer: Nullable<WebGPURenderer> = null;
-  private width: number = 0;
-  private height: number = 0;
+  /** The output's size, in device pixels, which the plan's upscale divides. */
+  private width: number = 1;
+  private height: number = 1;
+  private sizing: Nullable<IFrameSizing> = null;
+  /** What each pass and the targets were last sized by, so each is sized once for it. */
+  private readonly sized: WeakMap<object, IFrameSizing> = new WeakMap();
 
   /**
    * @param uniforms - What the frame's shaders read.
@@ -106,174 +113,120 @@ export class RendererFrameGraph {
     lights: SceneLights
   ) {
     this.uniforms = uniforms;
-    this.grass = grass;
-    this.lights = lights;
     this.cull = cull;
     this.casters = casters;
+    this.grass = grass;
+    this.lights = lights;
     this.present = new PresentPass(this.targets, uniforms.camera);
     this.base = createBaseFramePasses(this.targets, uniforms, overlays, cull);
-    this.scenePasses = this.base.filter(isRendererScenePass);
-    this.combine = this.base.find((pass: IRendererPass) => pass instanceof CombinePass) as CombinePass;
-    this.overlay = this.base.find((pass: IRendererPass) => pass instanceof OverlayPass) as OverlayPass;
+    this.scenePasses = Object.values(this.base).filter(isRendererScenePass);
     this.link();
   }
 
+  /** The frame's size as last sized, the scene's as drawn among it. */
+  public get size(): IRendererFrameSize {
+    return this.sizing?.size ?? toRendererFrameSize(this.width, this.height, 1);
+  }
+
+  /** Where this frame's samples stand within the pixel, while a resolve jitters them. */
+  public get jitter(): Nullable<IRendererFrameJitter> {
+    return this.stages.jitter.value?.state ?? null;
+  }
+
   /**
-   * Puts into the frame the passes the features want and takes out the ones they do not, whose targets go with them.
+   * Puts into the frame the stages the features want and takes out the ones they do not, whose targets go with them.
    *
    * @param features - What the features are set to.
    */
   public configure(features: IRendererFeatureSettings): void {
-    const { shadows } = features;
-    const count: number = shadows.isEnabled ? Math.min(shadows.cascades.length, RENDERER_MAX_SHADOW_CASCADES) : 0;
-    const shadowKey: string = `${count}:${shadows.resolution}`;
-    const ambientOcclusionKey: string = features.ambientOcclusion.isEnabled ? features.ambientOcclusion.quality : "";
-    const isLightShadowed: boolean = features.lights.isEnabled && features.lights.isShadowed;
-    const upscale: number = toRendererUpscale(features);
-    const isSpatial: boolean = !isRendererTemporal(features.antialiasing) && upscale > 1;
-    const isSharpened: boolean = upscale > 1 && features.upscaling.sharpening > 0;
+    const plan: IRendererFramePlan = toFramePlan(features);
+    const { stages, targets, uniforms, casters, cull } = this;
+    const isResolved: Nullable<true> = toWanted(plan.resolve !== null);
 
-    // Its material is built again for another filter; the pass itself stays.
-    this.lightsPass?.setFilter(features.lights.shadowFilter);
-    this.sharpen?.setSharpening(features.upscaling.sharpening);
+    this.plan = plan;
+    stages.jitter.reconcile(isResolved, () => new TemporalJitter(uniforms.motion));
+    stages.motionBackground.reconcile(isResolved, () => new MotionBackgroundPass(targets, uniforms.motion));
+    stages.grass.reconcile(toWanted(plan.isGrassy), () => new GrassPass(this.grass, targets));
+    stages.lights.reconcile(toWanted(plan.isLit), () => new LightsPass(this.lights, targets, uniforms));
+    stages.lightShadows.reconcile(
+      toWanted(plan.isLightShadowed),
+      () => new LightShadowPass(this.lights.shadows, targets, casters, cull)
+    );
+    stages.ambientOcclusion.reconcile(
+      plan.ambientOcclusion,
+      (quality: ERendererAmbientOcclusionQuality) => new AmbientOcclusionPass(quality, targets, uniforms.camera)
+    );
+    stages.shadows.reconcile(
+      plan.shadows,
+      ({ count, resolution }: IFramePlanShadows) =>
+        Array.from(
+          { length: count },
+          (_, view: number) => new ShadowPass(view, targets, casters, cull, uniforms.shadows, uniforms.wind, resolution)
+        ),
+      ({ count, resolution }: IFramePlanShadows) => `${count}:${resolution}`
+    );
+    stages.resolve.reconcile(plan.resolve, (mode: TRendererTemporalAntialiasing) =>
+      mode === ERendererAntialiasing.FSR2
+        ? new FsrPass(targets, uniforms)
+        : new TemporalAntialiasPass(targets, uniforms)
+    );
+    stages.smoothing.reconcile(
+      plan.smoothing,
+      (mode: TRendererSmoothingAntialiasing) => new AntialiasPass(mode, targets)
+    );
+    // FSR 1 reads what the smoothing finished, so it is made again with it.
+    stages.spatial.reconcile(
+      plan.isSpatial ? stages.smoothing.generation : null,
+      () => new SpatialUpscalePass(stages.smoothing.value?.output.texture ?? targets.scene.texture, targets)
+    );
 
-    if (
-      features.antialiasing === this.antialiasing &&
-      upscale === this.upscale &&
-      isSpatial === (this.spatial !== null) &&
-      isSharpened === (this.sharpen !== null) &&
-      shadowKey === this.shadowKey &&
-      ambientOcclusionKey === this.ambientOcclusionKey &&
-      features.grass.isEnabled === (this.grassPass !== null) &&
-      features.lights.isEnabled === (this.lightsPass !== null) &&
-      isLightShadowed === (this.lightShadowPass !== null)
-    ) {
-      return;
-    }
+    const upscaled: Nullable<RenderTarget> = stages.resolve.value?.output ?? stages.spatial.value?.output ?? null;
 
-    if (isLightShadowed !== (this.lightShadowPass !== null)) {
-      this.lightShadowPass?.dispose();
-      this.lightShadowPass = isLightShadowed
-        ? new LightShadowPass(this.lights.shadows, this.targets, this.casters, this.cull)
-        : null;
-    }
+    // RCAS reads what was upscaled, so it is made again with the upscaler.
+    stages.sharpen.reconcile(
+      plan.sharpen && upscaled ? { ...plan.sharpen, upscaled } : null,
+      ({ isDenoised, upscaled }: IFrameSharpening) => new SharpenPass(upscaled, isDenoised),
+      ({ isDenoised }: IFrameSharpening) => `${isDenoised}:${stages.resolve.generation}:${stages.spatial.generation}`
+    );
 
-    if (features.lights.isEnabled !== (this.lightsPass !== null)) {
-      this.lightsPass?.dispose();
-      this.lightsPass = features.lights.isEnabled ? new LightsPass(this.lights, this.targets, this.uniforms) : null;
-    }
+    const occlusion: Nullable<Texture> = stages.ambientOcclusion.value?.output ?? null;
+    const shown: Nullable<RenderTarget> = stages.sharpen.value?.output ?? upscaled;
 
-    this.lightsPass?.setFilter(features.lights.shadowFilter);
-
-    if (features.grass.isEnabled !== (this.grassPass !== null)) {
-      this.grassPass?.dispose();
-      this.grassPass = features.grass.isEnabled ? new GrassPass(this.grass, this.targets) : null;
-    }
-
-    if (ambientOcclusionKey !== this.ambientOcclusionKey) {
-      this.ambientOcclusion?.dispose();
-      this.ambientOcclusionKey = ambientOcclusionKey;
-      this.ambientOcclusion = features.ambientOcclusion.isEnabled
-        ? new AmbientOcclusionPass(features.ambientOcclusion.quality, this.targets, this.uniforms.camera)
-        : null;
-      this.combine.setAmbientOcclusion(this.ambientOcclusion?.output ?? null);
-      this.present.setAmbientOcclusion(this.ambientOcclusion?.output ?? null);
-    }
-
-    const isResolved: boolean = features.antialiasing !== this.antialiasing;
-
-    if (isResolved) {
-      this.antialias?.dispose();
-      this.temporal?.dispose();
-      this.antialiasing = features.antialiasing;
-      this.antialias = null;
-      this.temporal = null;
-
-      if (features.antialiasing === ERendererAntialiasing.TAA) {
-        this.temporal = new TemporalAntialiasPass(this.targets, this.uniforms);
-      } else if (features.antialiasing === ERendererAntialiasing.FSR2) {
-        this.temporal = new FsrPass(this.targets, this.uniforms);
-      } else if (features.antialiasing !== ERendererAntialiasing.NONE) {
-        this.antialias = new AntialiasPass(features.antialiasing, this.targets);
-      }
-    }
-
-    // It reads what the smoothing finished, so it goes and comes back with a new mode.
-    const isRespatial: boolean = isResolved || isSpatial !== (this.spatial !== null);
-
-    if (isRespatial) {
-      this.spatial?.dispose();
-      this.spatial = isSpatial
-        ? new SpatialUpscalePass(toPresentedFrame(this.antialias, this.targets), this.targets, this.uniforms)
-        : null;
-    }
-
-    const upscaled: Nullable<RenderTarget> = this.temporal?.output ?? this.spatial?.output ?? null;
-    // It reads the upscaled output, so it goes and comes back with a new upscaler.
-    const isResharpened: boolean = isRespatial || isSharpened !== (this.sharpen !== null);
-
-    if (isResharpened) {
-      this.sharpen?.dispose();
-      this.sharpen =
-        isSharpened && upscaled
-          ? new SharpenPass(upscaled, features.antialiasing === ERendererAntialiasing.FSR2)
-          : null;
-      this.sharpen?.setSharpening(features.upscaling.sharpening);
-    }
-
-    if (isResharpened || upscale !== this.upscale) {
-      this.upscale = upscale;
-      // Textures sampled as finely as the output shows them, whatever size the scene is drawn at.
-      this.uniforms.settings.textureBias.value = -Math.log2(upscale);
-      this.applySize();
-    }
-
-    const shown: Nullable<RenderTarget> = this.sharpen?.output ?? upscaled;
-
-    this.overlay.setTarget(shown);
-    this.present.setFrame(shown ?? toPresentedFrame(this.antialias, this.targets));
-
-    if (shadowKey !== this.shadowKey) {
-      this.shadows.forEach((pass: ShadowPass) => pass.dispose());
-      this.shadowKey = shadowKey;
-      this.shadows = Array.from(
-        { length: count },
-        (_, view: number) =>
-          new ShadowPass(
-            view,
-            this.targets,
-            this.casters,
-            this.cull,
-            this.uniforms.shadows,
-            this.uniforms.wind,
-            shadows.resolution
-          )
-      );
-    }
-
+    stages.lights.value?.setFilter(features.lights.shadowFilter);
+    stages.sharpen.value?.setSharpening(features.upscaling.sharpening);
+    this.base.combine.setAmbientOcclusion(occlusion);
+    this.present.setAmbientOcclusion(occlusion);
+    this.base.overlay.setTarget(shown);
+    this.present.setFrame(shown ?? stages.smoothing.value?.output ?? targets.scene);
     this.link();
+    this.applySizing();
   }
 
   /**
    * @param renderer - The renderer the targets are drawn by.
    * @param width - Drawing buffer width, in device pixels: the output's.
    * @param height - Drawing buffer height, in device pixels.
+   * @returns Whether the frame was sized again, which reallocated its targets.
    */
-  public resize(renderer: WebGPURenderer, width: number, height: number): void {
+  public resize(renderer: WebGPURenderer, width: number, height: number): boolean {
     this.renderer = renderer;
     this.width = width;
     this.height = height;
-    this.applySize();
+
+    return this.applySizing();
   }
 
   /**
-   * Offsets the camera's samples within the pixel for this frame while TAA or FSR resolves it, before anything reads
-   * the camera; the resolve gives it back its projection before the helpers draw.
-   *
-   * @param camera - The drawing camera, its projection as its controller left it.
+   * @param view - The view's camera, its matrices current.
+   * @returns The camera the scene draws with this frame: the view's, offset within the pixel while a resolve jitters it.
    */
-  public jitter(camera: PerspectiveCamera): void {
-    this.temporal?.jitter(camera);
+  public takeCamera(view: PerspectiveCamera): PerspectiveCamera {
+    return this.stages.jitter.value?.take(view) ?? view;
+  }
+
+  /** Forgets what the resolve kept of the frames before, for a view that jumped. */
+  public resetHistory(): void {
+    this.stages.resolve.value?.resetHistory();
   }
 
   /**
@@ -286,64 +239,94 @@ export class RendererFrameGraph {
       pass.render(frame);
       inspector.leave();
     }
+
+    this.stages.jitter.value?.advance();
   }
 
   public dispose(): void {
-    this.passes.forEach((pass: IRendererPass) => pass.dispose());
+    Object.values(this.stages).forEach((stage: { dispose(): void }) => stage.dispose());
+    Object.values(this.base).forEach(release);
+    this.present.dispose();
     this.targets.dispose();
   }
 
-  /** Sizes the scene's targets to the drawing and the resolve's to the output, once there is a renderer to size by. */
-  private applySize(): void {
-    const { renderer, width, height } = this;
+  /**
+   * Sizes the targets and every pass not yet sized for the frame as it is now, once there is a renderer to size by: a
+   * new renderer, output size or upscale sizes all of them again, a pass joining the frame just itself.
+   *
+   * @returns Whether the frame's sizing changed.
+   */
+  private applySizing(): boolean {
+    const { renderer, sizing: current, sized } = this;
 
     if (!renderer) {
-      return;
+      return false;
     }
 
-    this.renderSize.set(toRenderSize(width, this.upscale), toRenderSize(height, this.upscale));
-    this.targets.resize(this.renderSize.x, this.renderSize.y);
-    this.targets.prepare(renderer);
-    this.temporal?.resize(renderer, width, height, this.renderSize.x, this.renderSize.y);
-    this.spatial?.resize(renderer, width, height);
-    this.sharpen?.resize(renderer, width, height);
+    const size: IRendererFrameSize = toRendererFrameSize(this.width, this.height, this.plan?.upscale ?? 1);
+    const sizing: IFrameSizing =
+      current && current.renderer === renderer && isSameRendererFrameSize(current.size, size)
+        ? current
+        : { renderer, size };
+    const jitter: Nullable<TemporalJitter> = this.stages.jitter.value;
+
+    this.sizing = sizing;
+
+    if (sized.get(this.targets) !== sizing) {
+      this.targets.resize(renderer, sizing.size);
+      sized.set(this.targets, sizing);
+    }
+
+    if (jitter && sized.get(jitter) !== sizing) {
+      jitter.resize(sizing.size);
+      sized.set(jitter, sizing);
+    }
+
+    for (const pass of this.passes) {
+      if (pass.resize && sized.get(pass) !== sizing) {
+        pass.resize(renderer, sizing.size);
+        sized.set(pass, sizing);
+      }
+    }
+
+    return sizing !== current;
   }
 
-  /**
-   * The frame's passes in order: the base's with the shadow cascades before the sun reads them, the local lights after
-   * it, the occlusion before combine does, FSR's copy of the opaque frame before the blended surfaces draw, and the
-   * upscaling and its sharpening before the helpers, whatever else the features add, then the picture presented. The
-   * smoothing of the other modes comes after the helpers, which it smooths too, unless FSR 1 upscales what it smoothed.
-   */
+  /** Orders the passes the stages hold now. */
   private link(): void {
-    const sun: number = this.base.findIndex((pass: IRendererPass) => pass.name === "sun");
-    const combine: number = this.base.indexOf(this.combine);
-    const forward: number = this.base.findIndex((pass: IRendererPass) => pass.name === "forward");
-    const overlay: number = this.base.indexOf(this.overlay);
-    const smoothing: ReadonlyArray<IRendererPass> = this.antialias ? [this.antialias] : [];
+    const { stages } = this;
 
-    const gbuffer: number = this.base.findIndex((pass: IRendererPass) => pass.name === "gbuffer") + 1;
-
-    this.passes = [
-      ...this.base.slice(0, gbuffer),
-      ...(this.grassPass ? [this.grassPass] : []),
-      ...this.base.slice(gbuffer, sun),
-      ...this.shadows,
-      ...(this.lightShadowPass ? [this.lightShadowPass] : []),
-      ...this.base.slice(sun, sun + 1),
-      ...(this.lightsPass ? [this.lightsPass] : []),
-      ...this.base.slice(sun + 1, combine),
-      ...(this.ambientOcclusion ? [this.ambientOcclusion] : []),
-      ...this.base.slice(combine, forward),
-      ...(this.temporal instanceof FsrPass ? [this.temporal.opaque] : []),
-      ...this.base.slice(forward, overlay),
-      ...(this.temporal ? [this.temporal] : []),
-      ...(this.spatial ? [...smoothing, this.spatial] : []),
-      ...(this.sharpen ? [this.sharpen] : []),
-      ...this.base.slice(overlay),
-      ...(this.spatial ? [] : smoothing),
-      this.present,
-    ];
+    this.passes = toFramePassOrder(
+      this.base,
+      {
+        ambientOcclusion: stages.ambientOcclusion.value,
+        grass: stages.grass.value,
+        lightShadows: stages.lightShadows.value,
+        lights: stages.lights.value,
+        motionBackground: stages.motionBackground.value,
+        resolve: stages.resolve.value,
+        sharpen: stages.sharpen.value,
+        shadows: stages.shadows.value ?? [],
+        smoothing: stages.smoothing.value,
+        spatial: stages.spatial.value,
+      },
+      this.present
+    );
     this.passNames = this.passes.map((pass: IRendererPass) => pass.name);
   }
+}
+
+/**
+ * @param isWanted - Whether a stage with no variants is wanted.
+ * @returns What it is wanted for: nothing but that it is.
+ */
+function toWanted(isWanted: boolean): Nullable<true> {
+  return isWanted ? true : null;
+}
+
+/**
+ * @param pass - A pass leaving the frame.
+ */
+function release(pass: IRendererPass): void {
+  pass.dispose();
 }

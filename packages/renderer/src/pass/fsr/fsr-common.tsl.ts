@@ -1,28 +1,10 @@
-import {
-  abs,
-  clamp,
-  dot,
-  float,
-  floor,
-  int,
-  ivec2,
-  log,
-  mat4,
-  max,
-  min,
-  outputStruct,
-  pow,
-  select,
-  sin,
-  textureLoad,
-  vec2,
-  vec3,
-  vec4,
-} from "three/tsl";
-import { Node, Texture } from "three/webgpu";
+import { abs, clamp, dot, float, floor, log, max, min, pow, select, sin, vec2, vec3, vec4 } from "three/tsl";
+import { DepthTexture, Node, Texture } from "three/webgpu";
 
-// FidelityFX FSR 2.2 (`ffx_fsr2_common.h`, `ffx_fsr2_sample.h`, AMD, MIT): the helpers its passes share, for inverted
-// depth, colour in the display's range with an exposure of one, and motion drawn at the render size.
+import { loadClamped, loadDepth } from "#/shader/texel.tsl";
+
+// FidelityFX FSR 2.2 (`ffx_fsr2_common.h`, `ffx_fsr2_sample.h`, AMD, MIT): what its passes share, for inverted depth,
+// colour in the display's range with an exposure of one, and motion drawn at the render size.
 
 export const FSR2_EPSILON: number = 1e-3;
 export const FSR2_FP16_MAX: number = 65504;
@@ -35,12 +17,16 @@ export const MAX_ACCUMULATION_LANCZOS_WEIGHT: number = 1;
 /** `fAverageLanczosWeightPerFrame`. */
 export const AVERAGE_LANCZOS_WEIGHT_PER_FRAME: number = 0.74 * UPSAMPLE_LANCZOS_WEIGHT_SCALE;
 
-/** The 3x3 neighbourhood, row by row. */
-export const NEIGHBOURHOOD: ReadonlyArray<readonly [number, number]> = [-1, 0, 1].flatMap((y: number) =>
-  [-1, 0, 1].map((x: number) => [x, y] as const)
-);
+/** What FSR 2 reads of the frame as drawn. */
+export interface IFsrInputs {
+  /** The tonemapped frame, jittered, with the blended surfaces. */
+  color: Texture;
+  depth: DepthTexture;
+  /** The renderer's motion: how far a pixel's surface moved since the frame before, in texture coordinates. */
+  motion: Texture;
+}
 
-/** What every FSR pass reads of the frame: `cbFSR2`'s fields the passes use, as uniforms. */
+/** `cbFSR2`'s fields the passes read, as uniforms. */
 export interface IFsrConstants {
   renderSize: Node<"vec2">;
   displaySize: Node<"vec2">;
@@ -55,6 +41,19 @@ export interface IFsrConstants {
   /** Zero on the first frame after a reset. */
   frameIndex: Node<"float">;
 }
+
+/** The nine texels around the centre, the centre first: `FindNearestDepth`'s order. */
+const NEAREST_ORDER: ReadonlyArray<readonly [number, number]> = [
+  [0, 0],
+  [1, 0],
+  [0, 1],
+  [0, -1],
+  [-1, 0],
+  [-1, 1],
+  [1, 1],
+  [-1, -1],
+  [1, -1],
+];
 
 export function toYCoCg(rgb: Node<"vec3">): Node<"vec3"> {
   return vec3(
@@ -85,6 +84,11 @@ export function toPerceivedLuma(rgb: Node<"vec3">): Node<"float"> {
   ).mul(0.01);
 }
 
+/** The natural log of a luma kept off zero, as the luminance pyramid takes it. */
+export function toLogLuma(rgb: Node<"vec3">): Node<"float"> {
+  return log(max(toLuma(rgb), float(FSR2_EPSILON)));
+}
+
 /** `GetViewSpaceDepth`: a device depth as a distance along the view. */
 export function toViewDepth(depth: Node<"float">, constants: IFsrConstants): Node<"float"> {
   return constants.deviceToView.y.div(depth.sub(constants.deviceToView.x));
@@ -95,19 +99,9 @@ export function toMaxDistance(constants: IFsrConstants): Node<"float"> {
   return toViewDepth(float(0), constants);
 }
 
-/** `IsOnScreen`, for a texel position held as floats. */
+/** `IsOnScreen`, for a texel held as floats. */
 export function isOnScreen(position: Node<"vec2">, size: Node<"vec2">): Node<"bool"> {
   return position.greaterThanEqual(vec2(0)).all().and(position.lessThan(size).all());
-}
-
-/** `ClampLoad`: a texel, kept on the texture. */
-export function toClampedTexel(position: Node<"vec2">, size: Node<"vec2">): Node<"ivec2"> {
-  return ivec2(clamp(position, vec2(0), size.sub(1)));
-}
-
-/** A texture's texel at a float position, kept on it. */
-export function loadClamped(source: Texture, position: Node<"vec2">, size: Node<"vec2">): Node<"vec4"> {
-  return textureLoad(source, toClampedTexel(position, size));
 }
 
 /** `ClampUv`: a coordinate kept half a texel inside a texture of a size. */
@@ -118,6 +112,34 @@ export function toClampedUv(uv: Node<"vec2">, size: Node<"vec2">): Node<"vec2"> 
 /** `ComputeHrPosFromLrPos`: the display pixel a drawn texel's sample falls in. */
 export function toDisplayPosition(renderPosition: Node<"vec2">, constants: IFsrConstants): Node<"vec2"> {
   return floor(renderPosition.add(0.5).sub(constants.jitter).div(constants.renderSize).mul(constants.displaySize));
+}
+
+/** `LoadInputMotionVector`: FSR's motion is the renderer's turned, from now to the frame before. */
+export function loadFsrMotion(inputs: IFsrInputs, position: Node<"vec2">, constants: IFsrConstants): Node<"vec2"> {
+  return loadClamped(inputs.motion, position, constants.renderSize).xy.negate();
+}
+
+/** The nearest depth about a texel, and the texel it stands at. */
+export interface INearestDepth {
+  depth: Node<"float">;
+  at: Node<"vec2">;
+}
+
+/** `FindNearestDepth`, inverted: the nearest of the nine on the screen is the greatest. */
+export function toNearestDepth(inputs: IFsrInputs, position: Node<"vec2">, constants: IFsrConstants): INearestDepth {
+  let depth: Node<"float"> = loadDepth(inputs.depth, position, constants.renderSize).toVar();
+  let at: Node<"vec2"> = position;
+
+  for (const [x, y] of NEAREST_ORDER.slice(1)) {
+    const sample: Node<"vec2"> = position.add(vec2(x, y));
+    const sampled: Node<"float"> = loadDepth(inputs.depth, sample, constants.renderSize);
+    const isNearer: Node<"bool"> = isOnScreen(sample, constants.renderSize).and(sampled.greaterThan(depth));
+
+    depth = select(isNearer, sampled, depth).toVar();
+    at = select(isNearer, sample, at).toVar();
+  }
+
+  return { at, depth };
 }
 
 /** `Lanczos2`: the reference two-lobe window. */
@@ -156,6 +178,7 @@ export function toLanczos2Sample(source: Texture, uv: Node<"vec2">, size: Node<"
   const base: Node<"vec2"> = floor(position).toVar();
   const fraction: Node<"vec2"> = position.sub(base).toVar();
   const rows: Array<Node<"vec4">> = [];
+  const nearest: Array<Node<"vec4">> = [];
 
   function texel(x: number, y: number): Node<"vec4"> {
     return loadClamped(source, base.add(vec2(x, y)), size).toVar();
@@ -169,7 +192,6 @@ export function toLanczos2Sample(source: Texture, uv: Node<"vec2">, size: Node<"
   const down: Array<Node<"float">> = weights(fraction.y);
   const acrossTotal: Node<"float"> = across[0].add(across[1]).add(across[2]).add(across[3]);
   const downTotal: Node<"float"> = down[0].add(down[1]).add(down[2]).add(down[3]);
-  const nearest: Array<Node<"vec4">> = [];
 
   for (let y: number = -1; y <= 2; y += 1) {
     const samples: Array<Node<"vec4">> = [-1, 0, 1, 2].map((x: number) => texel(x, y));
@@ -200,38 +222,7 @@ export function toLanczos2Sample(source: Texture, uv: Node<"vec2">, size: Node<"
   return clamp(filtered, least, most);
 }
 
-/** The natural log of a luma kept off zero, as the luminance pyramid takes it. */
-export function toLogLuma(rgb: Node<"vec3">): Node<"float"> {
-  return log(max(toLuma(rgb), float(FSR2_EPSILON)));
-}
-
-/**
- * Several targets' outputs from one `Fn`: three takes an `outputStruct` only built outside a `Fn`, so the `Fn` packs
- * them as a matrix's columns, which this unpacks.
- *
- * @param outputs - Up to four outputs.
- * @returns The packed matrix, for the `Fn` to return.
- */
-export function packOutputs(...outputs: Array<Node<"vec4">>): Node<"mat4"> {
-  const columns: Array<Node<"vec4">> = [...outputs, vec4(0), vec4(0), vec4(0)].slice(0, 4);
-
-  return mat4(columns[0], columns[1], columns[2], columns[3]);
-}
-
-/**
- * @param packed - What `packOutputs` packed, as the `Fn` returned it.
- * @param count - How many outputs it packed.
- * @returns The outputs, one a target.
- */
-export function unpackOutputs(packed: Node<"mat4">, count: number): Node {
-  return outputStruct(
-    ...Array.from({ length: count }, (_, index: number) =>
-      (packed as unknown as { element(index: Node<"int">): Node<"vec4"> }).element(int(index))
-    )
-  );
-}
-
-/** A vec4 of one value, for a single-channel target. */
+/** A texel of one value, for a single-channel target. */
 export function toScalarTexel(value: Node<"float">): Node<"vec4"> {
   return vec4(value, 0, 0, 1);
 }

@@ -15,3 +15,20 @@ export function createQuadMaterial(fragment: Node): NodeMaterial {
 
   return material;
 }
+
+/**
+ * A full screen material that writes a depth of its own at every pixel, whatever stood there: the test is left off,
+ * since three turns `AlwaysDepth` into `NeverDepth` for a reversed depth buffer.
+ *
+ * @param fragment - What each pixel comes to.
+ * @param depth - The depth each pixel writes.
+ * @returns The material.
+ */
+export function createDepthWritingQuadMaterial(fragment: Node, depth: Node<"float">): NodeMaterial {
+  const material: NodeMaterial = createQuadMaterial(fragment);
+
+  material.depthNode = depth;
+  material.depthWrite = true;
+
+  return material;
+}

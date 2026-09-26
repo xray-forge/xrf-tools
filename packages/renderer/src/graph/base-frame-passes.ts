@@ -14,6 +14,20 @@ import { RendererOverlays } from "#/scene/overlay/renderer-overlays";
 import { StaticCull } from "#/scene/static/static-cull";
 import { RendererUniforms } from "#/uniforms/renderer-uniforms";
 
+/** `Base`'s passes every frame draws, by their place in it. */
+export interface IBaseFramePasses {
+  readonly cull: IRendererPass;
+  readonly gbuffer: IRendererPass;
+  readonly lateCull: IRendererPass;
+  readonly gbufferLate: IRendererPass;
+  readonly pyramid: IRendererPass;
+  readonly wallmarks: IRendererPass;
+  readonly sun: IRendererPass;
+  readonly combine: CombinePass;
+  readonly forward: IRendererPass;
+  readonly overlay: OverlayPass;
+}
+
 /**
  * `Base`'s frame, in R4's order: the static draws culled, the G-buffer, the static draws its depth hid culled again
  * and drawn into it, its depth reduced for the next frame, wall marks into its albedo, the sun, combine with its fog and
@@ -23,24 +37,24 @@ import { RendererUniforms } from "#/uniforms/renderer-uniforms";
  * @param uniforms - What their shaders read.
  * @param overlays - The helpers drawn last.
  * @param cull - What culls the static draws.
- * @returns The passes, in frame order, before the frame is presented.
+ * @returns The passes, by their place in the frame.
  */
 export function createBaseFramePasses(
   targets: RendererTargets,
   uniforms: RendererUniforms,
   overlays: RendererOverlays,
   cull: StaticCull
-): Array<IRendererPass> {
-  return [
-    new StaticCullPass(cull),
-    new GBufferPass(targets),
-    new StaticLateCullPass(targets, cull),
-    new GBufferLatePass(targets, cull),
-    new DepthPyramidPass(targets, cull),
-    new WallmarkPass(targets),
-    new SunPass(targets, uniforms),
-    new CombinePass(targets, uniforms),
-    new ForwardPass(targets),
-    new OverlayPass(overlays),
-  ];
+): IBaseFramePasses {
+  return {
+    combine: new CombinePass(targets, uniforms),
+    cull: new StaticCullPass(cull),
+    forward: new ForwardPass(targets),
+    gbuffer: new GBufferPass(targets),
+    gbufferLate: new GBufferLatePass(targets, cull),
+    lateCull: new StaticLateCullPass(targets, cull),
+    overlay: new OverlayPass(overlays),
+    pyramid: new DepthPyramidPass(targets, cull),
+    sun: new SunPass(targets, uniforms),
+    wallmarks: new WallmarkPass(targets),
+  };
 }

@@ -16,6 +16,8 @@ interface IObjectPlacement {
 export class MotionUniforms {
   /** World to clip, this frame, unjittered. */
   public readonly viewProjection = uniform(new Matrix4()).setGroup(renderGroup);
+  /** Clip to world, this frame, unjittered: where a pixel of the sky looks. */
+  public readonly inverseViewProjection = uniform(new Matrix4()).setGroup(renderGroup);
   /** World to clip, the frame before, unjittered. */
   public readonly previousViewProjection = uniform(new Matrix4()).setGroup(renderGroup);
   /** World to view, the frame before: how far a point stood from the camera then. */
@@ -44,14 +46,23 @@ export class MotionUniforms {
     this.previousView.value.copy(this.view);
     this.view.copy(camera.matrixWorld).invert();
     this.viewProjection.value.multiplyMatrices(camera.projectionMatrix, this.view);
+    this.inverseViewProjection.value.copy(this.viewProjection.value).invert();
 
     if (isFirst) {
-      this.previousViewProjection.value.copy(this.viewProjection.value);
-      this.previousView.value.copy(this.view);
+      this.forget();
     }
   }
 
-  /** The object's matrix in the frame before the one drawing, its own the first time it draws. */
+  /** Takes this frame's view for the frame before too, for a view that jumped: nothing moved across the jump. */
+  public forget(): void {
+    this.previousViewProjection.value.copy(this.viewProjection.value);
+    this.previousView.value.copy(this.view);
+  }
+
+  /**
+   * The object's matrix in the frame before the one drawing: its own where it was not drawn then, the first time it
+   * draws or back in view after a while, since where it stood when last drawn is not where it stood a frame ago.
+   */
   private toPreviousMatrix(object: Object3D): Matrix4 {
     let placement: IObjectPlacement | undefined = this.placements.get(object);
 
@@ -59,7 +70,7 @@ export class MotionUniforms {
       placement = { current: object.matrixWorld.clone(), frame: this.frame, previous: object.matrixWorld.clone() };
       this.placements.set(object, placement);
     } else if (placement.frame !== this.frame) {
-      placement.previous.copy(placement.current);
+      placement.previous.copy(placement.frame === this.frame - 1 ? placement.current : object.matrixWorld);
       placement.current.copy(object.matrixWorld);
       placement.frame = this.frame;
     }

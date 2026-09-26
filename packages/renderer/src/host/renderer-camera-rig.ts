@@ -4,6 +4,7 @@ import { IRendererCameraController } from "#/camera/camera-controller";
 import { FlyCameraController } from "#/camera/fly-camera-controller";
 import { OrbitCameraController } from "#/camera/orbit-camera-controller";
 import {
+  ERendererCameraCommand,
   ERendererCameraController,
   IRendererCameraPose,
   TRendererCamera,
@@ -31,6 +32,8 @@ export class RendererCameraRig {
   /** The view's size, for a controller made after the view was measured. */
   private width: number = 1;
   private height: number = 1;
+  /** Whether the camera jumped since last asked, which no frame before it saw coming. */
+  private isCut: boolean = true;
 
   /**
    * @param element - What stands in for the canvas the controllers listen to.
@@ -62,6 +65,7 @@ export class RendererCameraRig {
     }
 
     this.controller.describe(camera);
+    this.isCut = true;
   }
 
   /**
@@ -69,6 +73,18 @@ export class RendererCameraRig {
    */
   public command(command: TRendererCameraCommand): void {
     this.controller.command(command);
+    this.isCut ||= command.kind === ERendererCameraCommand.RESET;
+  }
+
+  /**
+   * @returns Whether the camera jumped since last asked: described anew or reset, what a frame's history cannot follow.
+   */
+  public takeCut(): boolean {
+    const isCut: boolean = this.isCut;
+
+    this.isCut = false;
+
+    return isCut;
   }
 
   /**

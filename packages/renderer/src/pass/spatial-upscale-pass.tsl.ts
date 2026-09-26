@@ -1,30 +1,29 @@
 import {
   abs,
-  clamp,
   float,
   floor,
   Fn,
-  int,
   inverseSqrt,
-  ivec2,
   max,
   min,
   saturate,
   screenCoordinate,
   screenSize,
   select,
-  texture,
-  textureLoad,
   vec2,
   vec3,
   vec4,
 } from "three/tsl";
-import { Node, Texture } from "three/webgpu";
+import { DepthTexture, Node, Texture } from "three/webgpu";
 
-import { toUpscaledCoverage } from "#/pass/upscale-depth.tsl";
+import { toUpscaledCoverage, toUpscaledDepth } from "#/shader/drawn-sample.tsl";
+import { loadClamped, toTextureSize } from "#/shader/texel.tsl";
 
-/** The twelve taps around `f`, by name: `b c` above, `e f g h` and `i j k l` across, `n o` below. */
-const TAPS = {
+/** A tap of EASU's twelve, by `ffx_fsr1.h`'s name: `b c` above, `e f g h` and `i j k l` across, `n o` below. */
+type TTap = "b" | "c" | "e" | "f" | "g" | "h" | "i" | "j" | "k" | "l" | "n" | "o";
+
+/** Each tap's texel about `f`. */
+const TAPS: Readonly<Record<TTap, readonly [number, number]>> = {
   b: [0, -1],
   c: [1, -1],
   e: [-1, 0],
@@ -37,9 +36,17 @@ const TAPS = {
   l: [2, 1],
   n: [0, 2],
   o: [1, 2],
-} as const;
+};
 
-type TTap = keyof typeof TAPS;
+const TAP_NAMES: ReadonlyArray<TTap> = Object.keys(TAPS) as Array<TTap>;
+
+/**
+ * @param make - What a tap comes to, from its name.
+ * @returns Every tap's, by name.
+ */
+function toTapRecord<T>(make: (name: TTap) => T): Record<TTap, T> {
+  return Object.fromEntries(TAP_NAMES.map((name: TTap) => [name, make(name)])) as Record<TTap, T>;
+}
 
 interface IEasuSums {
   direction: Node<"vec2">;
@@ -56,25 +63,21 @@ interface IEasuSums {
  */
 export function toSpatialUpscale(frame: Texture): Node<"vec4"> {
   return Fn(() => {
-    const inputSize: Node<"vec2"> = vec2(texture(frame).size(int(0)) as Node<"uvec2">);
-    const last: Node<"vec2"> = inputSize.sub(1);
+    const inputSize: Node<"vec2"> = toTextureSize(frame);
     // `con0`: the output pixel's centre in the drawn pixels, less half a texel, so `f` is the texel at or left of it.
     const position: Node<"vec2"> = screenCoordinate.xy.floor().add(0.5).mul(inputSize.div(screenSize)).sub(0.5);
     const base: Node<"vec2"> = floor(position);
     const fraction: Node<"vec2"> = position.sub(base).toVar();
-    const colors = {} as Record<TTap, Node<"vec3">>;
-    const lumas = {} as Record<TTap, Node<"float">>;
-
-    for (const [name, [x, y]] of Object.entries(TAPS) as Array<[TTap, readonly [number, number]]>) {
-      const color: Node<"vec3"> = textureLoad(frame, ivec2(clamp(base.add(vec2(x, y)), vec2(0), last))).xyz.toVar();
-
-      colors[name] = color;
-      // Luma times two, in two multiply-adds.
-      lumas[name] = color.z.mul(0.5).add(color.x.mul(0.5).add(color.y));
-    }
-
+    const colors: Record<TTap, Node<"vec3">> = toTapRecord((name: TTap) =>
+      loadClamped(frame, base.add(vec2(...TAPS[name])), inputSize).xyz.toVar()
+    );
+    // Luma times two, in two multiply-adds.
+    const lumas: Record<TTap, Node<"float">> = toTapRecord((name: TTap) =>
+      colors[name].z.mul(0.5).add(colors[name].x.mul(0.5).add(colors[name].y))
+    );
     const sums: IEasuSums = { direction: vec2(0), length: float(0) };
-    const { x: px, y: py } = { x: fraction.x, y: fraction.y };
+    const px: Node<"float"> = fraction.x;
+    const py: Node<"float"> = fraction.y;
 
     toEasuSet(sums, px.oneMinus().mul(py.oneMinus()), lumas.b, lumas.e, lumas.f, lumas.g, lumas.j);
     toEasuSet(sums, px.mul(py.oneMinus()), lumas.c, lumas.f, lumas.g, lumas.h, lumas.k);
@@ -106,8 +109,8 @@ export function toSpatialUpscale(frame: Texture): Node<"vec4"> {
     let color: Node<"vec3"> = vec3(0);
     let weight: Node<"float"> = float(0);
 
-    for (const [name, [x, y]] of Object.entries(TAPS) as Array<[TTap, readonly [number, number]]>) {
-      const tap: Node<"float"> = toEasuTap(vec2(x, y).sub(fraction), direction, anisotropy, lobe, clip);
+    for (const name of TAP_NAMES) {
+      const tap: Node<"float"> = toEasuTap(vec2(...TAPS[name]).sub(fraction), direction, anisotropy, lobe, clip);
 
       color = color.add(colors[name].mul(tap));
       weight = weight.add(tap);
@@ -117,6 +120,15 @@ export function toSpatialUpscale(frame: Texture): Node<"vec4"> {
 
     return vec4(upscaled, toUpscaledCoverage(frame, vec2(0)));
   })();
+}
+
+/**
+ * @param frame - The frame as drawn.
+ * @param depth - The drawn depth.
+ * @returns The depth the upscaled output carries: the drawn texel's nearest each output pixel, which is not jittered.
+ */
+export function toSpatialUpscaleDepth(frame: Texture, depth: DepthTexture): Node<"float"> {
+  return toUpscaledDepth(frame, depth, vec2(0));
 }
 
 /**

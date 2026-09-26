@@ -32,19 +32,18 @@ import {
   FSR2_FP16_MAX,
   IFsrConstants,
   isOnScreen,
-  loadClamped,
   MAX_ACCUMULATION_LANCZOS_WEIGHT,
-  packOutputs,
   toClampedUv,
   toDisplayPosition,
   toLanczos2ApproxSq,
   toLanczos2Sample,
   toRgb,
   toYCoCg,
-  unpackOutputs,
   UPSAMPLE_LANCZOS_WEIGHT_SCALE,
 } from "#/pass/fsr/fsr-common.tsl";
-import { toUpscaledCoverage } from "#/pass/upscale-depth.tsl";
+import { toUpscaledCoverage } from "#/shader/drawn-sample.tsl";
+import { packOutputs, unpackOutputs } from "#/shader/packed-outputs.tsl";
+import { loadClamped } from "#/shader/texel.tsl";
 
 /** What the accumulation reads: this frame's prepared inputs at the render size, and the history at the display's. */
 export interface IFsrAccumulateInputs {
@@ -77,9 +76,7 @@ interface IRectificationBox {
 
 /**
  * `Accumulate` (`ffx_fsr2_accumulate.h`, with `ffx_fsr2_reproject.h`, `ffx_fsr2_upsample.h` and
- * `ffx_fsr2_postprocess_lock_status.h`): each display pixel's history reprojected, this frame's samples around it
- * gathered through a Lanczos kernel sized by how much the history can be trusted, the history rectified to their box
- * unless a lock or the luma's instability holds it, and the two blended by how much this frame adds.
+ * `ffx_fsr2_postprocess_lock_status.h`), at the display's size.
  *
  * @param inputs - What it reads.
  * @param constants - The frame's FSR constants.
@@ -129,8 +126,7 @@ export function toFsrAccumulate(inputs: IFsrAccumulateInputs, constants: IFsrCon
     const reactive: Node<"float"> = max(dilatedReactive, temporalReactive).toVar();
 
     // `UpdateLockStatus`.
-    const mipSize: Node<"vec2"> = floor(renderSize.div(2 << 4));
-    const shadingUv: Node<"vec2"> = toClampedUv(uv, mipSize).mul(mipSize).div(constants.lumaMipSize);
+    const shadingUv: Node<"vec2"> = toClampedUv(uv, constants.lumaMipSize);
     const shading: Node<"float"> = pow(
       exp(texture(inputs.shadingLuma, shadingUv).level(int(0)).x),
       float(1 / 6)
@@ -164,7 +160,7 @@ export function toFsrAccumulate(inputs: IFsrAccumulateInputs, constants: IFsrCon
     ).toVar();
 
     // `ComputeUpsampledColorAndWeight`.
-    const upsampled = toUpsampled(inputs.prepared, position, constants, {
+    const upsampled: IUpsampled = toUpsampled(inputs.prepared, position, constants, {
       depthClip,
       isNew,
       reactive,
@@ -314,6 +310,13 @@ function toNewLock(locks: Texture, position: Node<"vec2">, constants: IFsrConsta
   return lock;
 }
 
+/** This frame's colour gathered about a display pixel, its weight among the frames, and the box around it. */
+interface IUpsampled {
+  color: Node<"vec3">;
+  weight: Node<"float">;
+  box: IRectificationBox;
+}
+
 /** What the upsample's kernel is sized by. */
 interface IUpsampleFactors {
   depthClip: Node<"float">;
@@ -332,7 +335,7 @@ function toUpsampled(
   position: Node<"vec2">,
   constants: IFsrConstants,
   factors: IUpsampleFactors
-): { color: Node<"vec3">; weight: Node<"float">; box: IRectificationBox } {
+): IUpsampled {
   const { renderSize, downscale } = constants;
   const output: Node<"vec2"> = position.add(0.5).mul(downscale).toVar();
   const input: Node<"vec2"> = floor(output).toVar();

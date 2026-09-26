@@ -1,5 +1,6 @@
 import { renderGroup, uniform } from "three/tsl";
 
+import { ERendererAntialiasing, IRendererFeatureSettings, toRendererUpscale } from "#/contract/renderer-features";
 import { IRendererSettings } from "#/contract/renderer-settings";
 
 /**
@@ -14,10 +15,7 @@ export class SettingsUniforms {
   public readonly hemiStrength = uniform(1).setGroup(renderGroup);
   /** What the tonemap multiplies by first. */
   public readonly tonemapScale = uniform(1).setGroup(renderGroup);
-  /**
-   * Mip levels every surface texture is sampled finer by: `log2` of the drawing's side over the output's, set by the
-   * frame while TAA upscales, so a scene drawn smaller keeps the texture detail of the size it is shown at.
-   */
+  /** Mip levels every surface texture is sampled finer by, so a scene drawn smaller keeps its shown detail. */
   public readonly textureBias = uniform(0).setGroup(renderGroup);
 
   /**
@@ -28,5 +26,18 @@ export class SettingsUniforms {
     this.bumped.value = settings.isBumped ? 1 : 0;
     this.hemiStrength.value = settings.hemiStrength;
     this.tonemapScale.value = settings.tonemapScale;
+    this.textureBias.value = toTextureBias(settings.features);
   }
+}
+
+/**
+ * `log2` of the drawn side over the shown one, and one level finer again under FSR 2, as its integration guide asks.
+ *
+ * @param features - What the features are set to.
+ * @returns Mip levels to sample the surfaces' textures finer by.
+ */
+export function toTextureBias(features: IRendererFeatureSettings): number {
+  const bias: number = -Math.log2(toRendererUpscale(features));
+
+  return features.antialiasing === ERendererAntialiasing.FSR2 ? bias - 1 : bias;
 }

@@ -22,14 +22,6 @@ export function createAntialiasSize(): UniformNode<"vec2", Vector2> {
 
 /**
  * @param frame - The tonemapped frame.
- * @returns It, as it is: what a pass draws while its lookups are still on their way.
- */
-export function toFrameCopy(frame: Texture): Node<"vec4"> {
-  return texture(frame);
-}
-
-/**
- * @param frame - The tonemapped frame.
  * @returns It smoothed by three's own `FXAANode`.
  */
 export function toFxaaStage(frame: Texture): Node {

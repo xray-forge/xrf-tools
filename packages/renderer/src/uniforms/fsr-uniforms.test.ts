@@ -1,8 +1,9 @@
 import { describe, expect, it } from "@jest/globals";
-import { PerspectiveCamera, Vector2, Vector3 } from "three/webgpu";
+import { PerspectiveCamera, Vector3 } from "three/webgpu";
 
 import { adoptRendererConventions } from "#/internals/camera-conventions";
-import { FsrUniforms } from "#/uniforms/fsr-uniforms";
+import { toRendererFrameSize } from "#/pass/renderer-frame-size";
+import { FsrUniforms, toShadingChangeMipSide } from "#/uniforms/fsr-uniforms";
 
 describe("FsrUniforms", () => {
   it("turns a reversed device depth back into the distance along the view, as `GetViewSpaceDepth` reads it", () => {
@@ -11,7 +12,7 @@ describe("FsrUniforms", () => {
 
     adoptRendererConventions(camera);
     camera.updateProjectionMatrix();
-    uniforms.follow(camera, new Vector2(1280, 720), new Vector2(1920, 1080), [0.25, -0.125], 18);
+    uniforms.take(camera, toRendererFrameSize(1920, 1080, 1.5), { offset: [0.25, -0.125], phases: 18 }, 3);
 
     const { x, y } = uniforms.deviceToView.value;
 
@@ -28,11 +29,19 @@ describe("FsrUniforms", () => {
   it("turns the renderer's jitter to FSR's sense and scales the drawing to the display", () => {
     const uniforms: FsrUniforms = new FsrUniforms();
 
-    uniforms.follow(new PerspectiveCamera(), new Vector2(1280, 720), new Vector2(1920, 1080), [0.25, -0.125], 18);
+    uniforms.take(
+      new PerspectiveCamera(),
+      toRendererFrameSize(1920, 1080, 1.5),
+      { offset: [0.25, -0.125], phases: 18 },
+      3
+    );
 
     expect(uniforms.jitter.value.toArray()).toEqual([-0.25, 0.125]);
+    expect(uniforms.renderSize.value.toArray()).toEqual([1280, 720]);
     expect(uniforms.downscale.value.x).toBeCloseTo(2 / 3, 10);
     expect(uniforms.lumaMipSize.value.toArray()).toEqual([40, 22]);
     expect(uniforms.jitterPhaseCount.value).toBe(18);
+    expect(uniforms.frameIndex.value).toBe(3);
+    expect(toShadingChangeMipSide(20)).toBe(1);
   });
 });

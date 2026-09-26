@@ -11,7 +11,8 @@ import {
 } from "three/webgpu";
 
 import { RENDERER_MAX_SHADOW_CASCADES } from "#/contract/renderer-features";
-import { initBorrowedDepthTarget } from "#/internals/borrowed-depth-target";
+import { initPreservedDepthTarget } from "#/internals/preserved-depth-target";
+import { IRendererFrameSize } from "#/pass/renderer-frame-size";
 import { IGBufferTextures } from "#/shader/gbuffer-textures";
 
 /**
@@ -119,40 +120,31 @@ export class RendererTargets implements IGBufferTextures {
   }
 
   /**
-   * @param width - Drawing buffer width, in device pixels.
-   * @param height - Drawing buffer height, in device pixels.
-   */
-  public resize(width: number, height: number): void {
-    this.gbuffer.setSize(width, height);
-    this.wallmarks.setSize(width, height);
-    this.light.setSize(width, height);
-    this.scene.setSize(width, height);
-    this.composite.setSize(width, height);
-  }
-
-  /**
-   * Allocates every target at its size before a pass draws into one.
-   *
-   * Three allocates a target on first use, and allocating one that shares a texture reallocates it: left to the pass
-   * drawing into `composite` or `wallmarks`, that would erase what the pass before drew on every frame after a resize.
-   * The two borrow the G-buffer's depth, which three would clear on the first draw into each.
+   * Sizes every target to the scene as drawn and allocates it before a pass draws into one: three allocates a target
+   * on first use, and allocating one that shares a texture reallocates it, which left to a pass would erase what the
+   * pass before drew.
    *
    * @param renderer - The renderer the targets are drawn by.
+   * @param size - The frame's size.
    */
-  public prepare(renderer: WebGPURenderer): void {
+  public resize(renderer: WebGPURenderer, size: IRendererFrameSize): void {
+    const { renderWidth, renderHeight } = size;
+
+    this.gbuffer.setSize(renderWidth, renderHeight);
+    this.wallmarks.setSize(renderWidth, renderHeight);
+    this.light.setSize(renderWidth, renderHeight);
+    this.scene.setSize(renderWidth, renderHeight);
+    this.composite.setSize(renderWidth, renderHeight);
     renderer.initRenderTarget(this.gbuffer);
-    initBorrowedDepthTarget(renderer, this.wallmarks);
+    initPreservedDepthTarget(renderer, this.wallmarks);
     renderer.initRenderTarget(this.light);
     renderer.initRenderTarget(this.scene);
-    initBorrowedDepthTarget(renderer, this.composite);
+    initPreservedDepthTarget(renderer, this.composite);
   }
 
   public dispose(): void {
-    this.gbuffer.dispose();
-    this.wallmarks.dispose();
-    this.light.dispose();
-    this.scene.dispose();
-    this.composite.dispose();
-    this.lightShadows.dispose();
+    [this.gbuffer, this.wallmarks, this.light, this.scene, this.composite, this.lightShadows, ...this.shadows].forEach(
+      (target: RenderTarget) => target.dispose()
+    );
   }
 }

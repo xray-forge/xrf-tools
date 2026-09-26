@@ -1,4 +1,3 @@
-import { Nullable } from "@xrf/types";
 import {
   HalfFloatType,
   LinearFilter,
@@ -10,19 +9,16 @@ import {
   WebGPURenderer,
 } from "three/webgpu";
 
-import { ERendererAntialiasing } from "#/contract/renderer-features";
-import { createAntialiasSize, toFrameCopy, toFxaaStage, toSmaaPipeline } from "#/pass/antialias/antialias-stages.tsl";
+import { ERendererAntialiasing, TRendererSmoothingAntialiasing } from "#/contract/renderer-features";
+import { createAntialiasSize, toFxaaStage, toSmaaPipeline } from "#/pass/antialias/antialias-stages.tsl";
 import { SMAA_AREA_TEXTURE, SMAA_SEARCH_TEXTURE } from "#/pass/antialias/smaa-lookup";
 import { ISmaaStages } from "#/pass/antialias/smaa-stages.tsl";
+import { toFrameCopy } from "#/pass/frame-copy-pass.tsl";
 import { createQuadMaterial } from "#/pass/quad-material";
 import { IRendererFrame } from "#/pass/renderer-frame";
+import { IRendererFrameSize } from "#/pass/renderer-frame-size";
 import { IRendererPass } from "#/pass/renderer-pass";
 import { RendererTargets } from "#/pass/renderer-targets";
-
-/** The target an antialiasing pass writes, or the frame itself where there is none. */
-export function toPresentedFrame(pass: Nullable<AntialiasPass>, targets: RendererTargets): RenderTarget {
-  return pass ? pass.output : targets.scene;
-}
 
 /** One stage of a mode: what it draws, and where. */
 interface IAntialiasStage {
@@ -54,20 +50,22 @@ export class AntialiasPass implements IRendererPass {
    * @param mode - How the edges are smoothed.
    * @param targets - The frame's targets, whose tonemapped frame is smoothed.
    */
-  public constructor(mode: Exclude<ERendererAntialiasing, ERendererAntialiasing.NONE>, targets: RendererTargets) {
+  public constructor(mode: TRendererSmoothingAntialiasing, targets: RendererTargets) {
     this.source = targets.scene;
     this.output.texture.name = "antialiased";
     this.copy = { material: createQuadMaterial(toFrameCopy(this.source.texture)), target: this.output };
     this.stages = mode === ERendererAntialiasing.FXAA ? this.createFxaa() : this.createSmaa();
   }
 
+  public resize(renderer: WebGPURenderer, { renderWidth, renderHeight }: IRendererFrameSize): void {
+    [this.output, ...this.targets].forEach((target: RenderTarget) => {
+      target.setSize(renderWidth, renderHeight);
+      renderer.initRenderTarget(target);
+    });
+    this.invSize.value.set(1 / renderWidth, 1 / renderHeight);
+  }
+
   public render({ renderer }: IRendererFrame): void {
-    const { width, height } = this.source;
-
-    this.output.setSize(width, height);
-    this.targets.forEach((target: RenderTarget) => target.setSize(width, height));
-    this.invSize.value.set(1 / width, 1 / height);
-
     for (const stage of this.pending ? [this.copy] : this.stages) {
       this.draw(renderer, stage);
     }
