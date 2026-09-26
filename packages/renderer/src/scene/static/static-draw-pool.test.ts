@@ -134,4 +134,29 @@ describe("StaticDrawPool", () => {
     expect((buffers.lateArgs.array as Uint32Array)[single * 5 + 4]).toBe(single);
     expect(buffers.lateArgs.array).toBe(late);
   });
+
+  it("keeps shadow instance lists disjoint through growth and clears every view when a slot is released", () => {
+    const buffers: StaticDrawBuffers = new StaticDrawBuffers({ [EStaticPool.ROWS]: 16, [EStaticPool.SLOTS]: 4 });
+    const pool: StaticDrawPool = new StaticDrawPool(buffers);
+
+    pool.isEnabled = true;
+
+    const slot = pool.allocate() as number;
+
+    pool.writeListed(slot, 30, 12, 7, 5);
+    expect(new Set(buffers.viewArgs.map((args) => args.array)).size).toBe(buffers.viewArgs.length);
+    buffers.grow(EStaticPool.ROWS, 64);
+    buffers.grow(EStaticPool.SLOTS, 8);
+    pool.relist();
+
+    buffers.viewArgs.forEach((args, view: number) => {
+      expect(Array.from((args.array as Uint32Array).subarray(0, 5))).toEqual([12, 0, 30, 7, 5 + 64 * (2 + view)]);
+      (args.array as Uint32Array)[1] = view + 1;
+    });
+    pool.release(slot);
+    buffers.viewArgs.forEach((args) => expect((args.array as Uint32Array)[1]).toBe(0));
+    expect(pool.allocate()).toBe(slot);
+    pool.write(slot, 0, 3, 0, new Sphere(new Vector3(), 1), new Matrix4());
+    buffers.viewArgs.forEach((args) => expect((args.array as Uint32Array)[4]).toBe(slot));
+  });
 });

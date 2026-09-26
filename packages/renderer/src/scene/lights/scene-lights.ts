@@ -28,7 +28,12 @@ import {
 import { StaticShadowChanges } from "#/scene/static/static-shadow-changes";
 import { getWhiteTexture } from "#/texture/placeholder-textures";
 import { RendererTextures } from "#/texture/renderer-textures";
-import { LIGHT_CLUSTER_CAPACITY, LIGHT_CLUSTERS, LightsUniforms } from "#/uniforms/lights-uniforms";
+import {
+  LIGHT_CLUSTER_CAPACITY,
+  LIGHT_CLUSTERS,
+  LIGHT_SHADOW_FACE_BUDGET,
+  LightsUniforms,
+} from "#/uniforms/lights-uniforms";
 import { LodUniforms } from "#/uniforms/lod-uniforms";
 
 /** Lights standing in view at most in one frame. */
@@ -36,9 +41,6 @@ export const MAX_LIGHTS: number = 1024;
 
 /** Distinct projectors the spots of one scene sample; a spot naming another lights white. */
 export const MAX_PROJECTORS: number = 8;
-
-/** Shadow faces drawn at most in one frame, so a level opening fills the atlas over a few frames rather than in one. */
-export const LIGHT_SHADOW_FACE_BUDGET: number = 8;
 
 /** What a light's falloff reaches zero at, a share of its range: `L_R` (`r3_rendertarget_accum_point.cpp`). */
 const FALLOFF_RANGE: number = 0.95;

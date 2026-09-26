@@ -191,7 +191,7 @@ export class RendererFrameGraph {
 
       if (features.antialiasing === ERendererAntialiasing.TAA) {
         this.temporal = new TemporalAntialiasPass(this.targets, this.uniforms);
-      } else if (features.antialiasing === ERendererAntialiasing.FSR) {
+      } else if (features.antialiasing === ERendererAntialiasing.FSR2) {
         this.temporal = new FsrPass(this.targets, this.uniforms);
       } else if (features.antialiasing !== ERendererAntialiasing.NONE) {
         this.antialias = new AntialiasPass(features.antialiasing, this.targets);
@@ -215,7 +215,9 @@ export class RendererFrameGraph {
     if (isResharpened) {
       this.sharpen?.dispose();
       this.sharpen =
-        isSharpened && upscaled ? new SharpenPass(upscaled, features.antialiasing === ERendererAntialiasing.FSR) : null;
+        isSharpened && upscaled
+          ? new SharpenPass(upscaled, features.antialiasing === ERendererAntialiasing.FSR2)
+          : null;
       this.sharpen?.setSharpening(features.upscaling.sharpening);
     }
 

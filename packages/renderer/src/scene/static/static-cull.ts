@@ -1,4 +1,5 @@
-import { BufferAttribute, PerspectiveCamera, Scene, Texture, Vector4, WebGPURenderer } from "three/webgpu";
+import { Nullable } from "@xrf/types";
+import { BufferAttribute, ComputeNode, PerspectiveCamera, Scene, Texture, Vector4, WebGPURenderer } from "three/webgpu";
 
 import { IRendererLodSettings } from "#/contract/renderer-features";
 import { destroyStorageAttribute } from "#/internals/renderer-backend";
@@ -47,7 +48,11 @@ export class StaticCull {
   private placesVersion: number = -1;
   private lodsVersion: number = -1;
   /** Each shadow view's frustum, pool, places and LOD versions its last cull ran against, joined. */
-  private readonly viewVersions: Array<string | number> = new Array(STATIC_SHADOW_VIEWS).fill(-1);
+  private readonly viewVersions: Array<string> = new Array(STATIC_SHADOW_VIEWS).fill("");
+  /** Which frustum owns each retained result; versions of different frustums need not be distinct. */
+  private readonly viewFrustums: Array<Nullable<IShadowFrustum>> = new Array(STATIC_SHADOW_VIEWS).fill(null);
+  /** Dirty views' slot and row culls, retained as one compute batch between frames. */
+  private readonly pendingViews: Array<ComputeNode> = [];
   /** Whether the LOD thresholds or switch changed since the last dispatch. */
   private isLodChanged: boolean = true;
   private isPending: boolean = false;
@@ -199,37 +204,58 @@ export class StaticCull {
 
   /**
    * A shadow view's cull, its casters from every static draw its frustum reaches: run again only when the frustum
-   * moved or a slot, row, place or impostor changed.
+   * moved, resident geometry changed or the main camera's detail selection changed.
    *
    * @param renderer - The renderer drawing.
-   * @param view - The shadow view, from zero: a sun cascade's, or the one light faces take in turn.
+   * @param view - The shadow view, from zero: a sun cascade's or a local-light face slot.
    * @param cascade - Its frustum, fitted for this frame.
    * @returns Whether it culled, and what the cascade draws may have changed.
    */
   public cullView(renderer: WebGPURenderer, view: number, cascade: IShadowFrustum): boolean {
     this.build();
 
-    const version: string = [
-      cascade.version,
-      this.pool.version,
-      this.places.version,
-      this.lods.version,
-      this.layout,
-      this.buffers.lod.glodStart.value,
-      this.buffers.lod.glodEnd.value,
-    ].join();
+    const shader: Nullable<IStaticViewCullShader> = this.prepareView(view, cascade);
 
-    if (this.viewVersions[view] === version) {
+    if (!shader) {
       return false;
     }
 
-    const shader: IStaticViewCullShader = this.shader.views[view];
-
-    this.viewVersions[view] = version;
-    shader.planes.forEach((plane: Vector4, index: number) => plane.copy(cascade.planes[index]));
     renderer.compute(shader.cull);
 
     return true;
+  }
+
+  /**
+   * Culls a batch of shadow frustums in one submission. Each owns a separate arguments buffer and visible-instance
+   * region until its slot is assigned another frustum. Unchanged results stay available without another dispatch.
+   *
+   * @param renderer - The renderer drawing.
+   * @param firstView - The first of the consecutive shadow-view slots reserved for this batch.
+   * @param frustums - The frustums in slot order, at most the number of reserved slots.
+   */
+  public cullViews(renderer: WebGPURenderer, firstView: number, frustums: ReadonlyArray<IShadowFrustum>): void {
+    if (firstView < 0 || firstView + frustums.length > this.shader.views.length) {
+      throw new RangeError("Shadow cull batch exceeds its view slots");
+    }
+
+    if (!frustums.length) {
+      return;
+    }
+
+    this.build();
+    this.pendingViews.length = 0;
+
+    frustums.forEach((frustum: IShadowFrustum, index: number) => {
+      const shader: Nullable<IStaticViewCullShader> = this.prepareView(firstView + index, frustum);
+
+      if (shader) {
+        this.pendingViews.push(...shader.cull);
+      }
+    });
+
+    if (this.pendingViews.length) {
+      renderer.compute(this.pendingViews);
+    }
   }
 
   /**
@@ -286,8 +312,49 @@ export class StaticCull {
   }
 
   public dispose(): void {
-    [...this.shader.early, ...this.shader.late, ...this.shader.wire].forEach((compute) => compute.dispose());
+    this.disposeShader();
+    this.pendingViews.length = 0;
+    this.viewFrustums.fill(null);
     this.pyramid.dispose();
+  }
+
+  /** Takes a slot for this frustum, copying its planes only where its retained result is no longer current. */
+  private prepareView(view: number, frustum: IShadowFrustum): Nullable<IStaticViewCullShader> {
+    const { lod } = this.buffers;
+    const version: string = [
+      frustum.version,
+      this.pool.version,
+      this.places.version,
+      this.lods.version,
+      this.layout,
+      lod.glodStart.value,
+      lod.glodEnd.value,
+      // Shadow instance culling chooses progressive-mesh bands from the main camera's position too.
+      lod.camera.value.x,
+      lod.camera.value.y,
+      lod.camera.value.z,
+    ].join();
+
+    if (this.viewFrustums[view] === frustum && this.viewVersions[view] === version) {
+      return null;
+    }
+
+    const shader: IStaticViewCullShader = this.shader.views[view];
+
+    this.viewFrustums[view] = frustum;
+    this.viewVersions[view] = version;
+    shader.planes.forEach((plane: Vector4, index: number) => plane.copy(frustum.planes[index]));
+
+    return shader;
+  }
+
+  private disposeShader(): void {
+    [
+      ...this.shader.early,
+      ...this.shader.late,
+      ...this.shader.wire,
+      ...this.shader.views.flatMap((view) => view.cull),
+    ].forEach((compute: ComputeNode) => compute.dispose());
   }
 
   /** Builds the shaders again over buffers that grew, and sizes their dispatches to what is in use. */
@@ -295,14 +362,9 @@ export class StaticCull {
     if (this.layout !== this.buffers.layout) {
       const planes = this.shader.planes;
 
-      [
-        ...this.shader.early,
-        ...this.shader.late,
-        ...this.shader.wire,
-        ...this.shader.views.flatMap((view) => view.cull),
-      ].forEach((compute) => compute.dispose());
+      this.disposeShader();
       // Every cascade culls again against the buffers as they are laid out now.
-      this.viewVersions.fill(-1);
+      this.viewVersions.fill("");
       this.shader = createStaticCullShader(this.buffers);
       this.shader.planes.forEach((plane, index: number) => plane.copy(planes[index]));
       this.layout = this.buffers.layout;

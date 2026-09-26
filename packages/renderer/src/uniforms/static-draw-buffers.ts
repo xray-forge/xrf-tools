@@ -9,6 +9,7 @@ import {
 
 import { RENDERER_MAX_SHADOW_CASCADES } from "#/contract/renderer-features";
 import { DEFAULT_STORAGE_LIMIT } from "#/internals/renderer-backend";
+import { LIGHT_SHADOW_FACE_BUDGET } from "#/uniforms/lights-uniforms";
 import { LodUniforms } from "#/uniforms/lod-uniforms";
 import { OcclusionUniforms } from "#/uniforms/occlusion-uniforms";
 
@@ -19,13 +20,13 @@ export const STATIC_DRAW_ARGUMENTS: number = 5;
 export const STATIC_PLACE_COLUMNS: number = 5;
 
 /**
- * Shadow views a static draw is culled for besides the camera's: each sun cascade, then the one every light's shadow
- * face culls into in turn.
+ * Shadow views a static draw is culled for besides the camera's: each sun cascade, then a reusable slot for each
+ * local-light face scheduled in one frame. The slots are bounded by the execution budget, not the resident lights.
  */
-export const STATIC_SHADOW_VIEWS: number = RENDERER_MAX_SHADOW_CASCADES + 1;
+export const STATIC_SHADOW_VIEWS: number = RENDERER_MAX_SHADOW_CASCADES + LIGHT_SHADOW_FACE_BUDGET;
 
-/** The shadow view a light's faces are culled into, one face after another. */
-export const STATIC_LIGHT_VIEW: number = RENDERER_MAX_SHADOW_CASCADES;
+/** The first local-light face slot, after the sun cascades. A batch uses consecutive slots from here. */
+export const STATIC_LIGHT_VIEW_START: number = RENDERER_MAX_SHADOW_CASCADES;
 
 /**
  * Regions of the list of kept places, a view each: the first cull's, the second's, then each shadow view's. A region

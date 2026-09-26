@@ -1,6 +1,9 @@
 import { uniform } from "three/tsl";
 import { PerspectiveCamera, Vector4 } from "three/webgpu";
 
+/** Shadow faces drawn at most in one frame, so a level opening fills the atlas over a few frames rather than in one. */
+export const LIGHT_SHADOW_FACE_BUDGET: number = 8;
+
 /** Tiles the view is cut into across and down, and slices into along it, each a cluster the lights are binned into. */
 export const LIGHT_CLUSTERS_X: number = 16;
 export const LIGHT_CLUSTERS_Y: number = 9;

@@ -7,12 +7,12 @@ import { RendererTargets } from "#/pass/renderer-targets";
 import { ILightShadowFace, LIGHT_SHADOW_ATLAS_SIZE, LightShadows } from "#/scene/lights/light-shadows";
 import { StaticCull } from "#/scene/static/static-cull";
 import { IStaticShadowCasters } from "#/scene/static/static-shadow-casters";
-import { STATIC_LIGHT_VIEW } from "#/uniforms/static-draw-buffers";
+import { STATIC_LIGHT_VIEW_START } from "#/uniforms/static-draw-buffers";
 
 /**
- * Draws the light faces the planner queued this frame into their squares of the atlas, each culled into the one
- * shadow view the lights share, its square cleared to the far plane first: clearing the target would clear every other
- * face. In the frame only while the lights draw shadows, the atlas a texel across otherwise.
+ * Culls the light faces queued this frame as one batch, each into its own reusable shadow-view slot, then draws each
+ * into its square of the atlas. Only that square is cleared: clearing the target would erase the cached faces. In the
+ * frame only while the lights draw shadows, the atlas a texel across otherwise.
  */
 export class LightShadowPass implements IRendererPass {
   public readonly name: string = "light-shadows";
@@ -28,7 +28,7 @@ export class LightShadowPass implements IRendererPass {
    * @param shadows - What plans the faces.
    * @param targets - The frame's targets, whose atlas the faces are drawn into.
    * @param casters - What the shadow views draw.
-   * @param cull - What culls the static draws, into the lights' shadow view too.
+   * @param cull - What culls the static draws, including the scheduled light faces.
    */
   public constructor(shadows: LightShadows, targets: RendererTargets, casters: IStaticShadowCasters, cull: StaticCull) {
     this.shadows = shadows;
@@ -53,17 +53,18 @@ export class LightShadowPass implements IRendererPass {
       return;
     }
 
+    this.cull.cullViews(renderer, STATIC_LIGHT_VIEW_START, faces);
     renderer.sortObjects = false;
 
-    for (const face of faces) {
+    for (const [index, face] of faces.entries()) {
       const { x, y, size } = face.tile;
+      const view: number = STATIC_LIGHT_VIEW_START + index;
 
-      this.cull.cullView(renderer, STATIC_LIGHT_VIEW, face);
-      this.casters.showShadowCells(STATIC_LIGHT_VIEW, face.planes);
+      this.casters.showShadowCells(view, face.planes);
       this.target.viewport.set(x, y, size, size);
       renderer.setRenderTarget(this.target);
       this.clear.render(renderer);
-      renderer.render(this.casters.shadowScenes[STATIC_LIGHT_VIEW], face.camera);
+      renderer.render(this.casters.shadowScenes[view], face.camera);
 
       if (this.casters.plainCasters.children.length > 0) {
         renderer.render(this.casters.plainCasters, face.camera);

@@ -48,8 +48,8 @@ export function LevelAntialiasingAction({
   onChangeScale,
 }: ILevelAntialiasingActionProps): ReactElement {
   const isAvailable: boolean = settingsMode !== ERendererAntialiasing.NONE;
-  const mode: ERendererAntialiasing = features.antialiasing ?? settingsMode;
   const isUpscaled: boolean = scale !== ERendererRenderScale.NATIVE;
+  const mode: ERendererAntialiasing = features.antialiasing ?? settingsMode;
 
   return (
     <EditorPopoverToggle
