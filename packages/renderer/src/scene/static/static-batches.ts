@@ -112,13 +112,15 @@ export class StaticBatches {
    * @param surface - What draws it.
    * @param bounds - What it spans in renderer space: a single draw's sphere's box, or the box of every place an
    *   instanced one stands in; null where it is not known.
+   * @param spheres - Individual instance spheres for precise animated-caster queries, copied by the change tracker.
    */
   public put(
     slot: number,
     arena: StaticArena,
     kind: EStaticDrawKind,
     surface: ISurfaceMaterial,
-    bounds: Nullable<Box3> = null
+    bounds: Nullable<Box3> = null,
+    spheres: Nullable<Float32Array> = null
   ): void {
     StaticBatches.put(this.surfaces, slot, arena, kind, surface.material, surface.keys, bounds);
     this.slotSurfaces.set(slot, surface);
@@ -133,7 +135,7 @@ export class StaticBatches {
       StaticBatches.withdraw(this.shadows, slot);
     }
 
-    this.shadowChanges.put(slot, bounds, Boolean(surface.shadow), arena.isSwaying);
+    this.shadowChanges.put(slot, bounds, Boolean(surface.shadow), arena.isSwaying, spheres);
     this.currentVersion += 1;
   }
 

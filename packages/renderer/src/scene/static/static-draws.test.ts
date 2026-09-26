@@ -1,8 +1,12 @@
 import { describe, expect, it } from "@jest/globals";
-import { Scene } from "three/webgpu";
+import { MeshBasicNodeMaterial, Scene, Vector3 } from "three/webgpu";
 
+import { ERendererPass } from "#/contract/scene/renderer-surface";
+import { ISurfaceMaterial } from "#/material/surface-material";
 import { SceneGeometry } from "#/scene/geometry/scene-geometry";
+import { ILightShadowRequest, LightShadows } from "#/scene/lights/light-shadows";
 import { StaticDraws } from "#/scene/static/static-draws";
+import { IStaticRange } from "#/scene/static/static-range";
 import { IStaticUpcoming } from "#/scene/static/static-upcoming";
 import { EStaticPool, StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
 
@@ -69,5 +73,102 @@ describe("StaticDraws", () => {
     expect(draws.allocate()).toBeNull();
     expect(draws.allocatePlaces(1)).toBeNull();
     expect(draws.report.fallbacks).toBe(0);
+  });
+});
+
+// Exercises the real registration path: listed draw -> batches -> caster changes -> shadow planner.
+describe("listed tree shadow invalidation", () => {
+  it("keeps a lamp between distant instances cached, but follows a tree moved into its face", () => {
+    const { draws } = createDraws();
+    const geometry: SceneGeometry = new SceneGeometry({
+      groups: [],
+      packed: { normal: new Uint8Array(12), uv: new Int16Array(12) },
+      position: new Float32Array(9),
+    });
+    const range: IStaticRange = draws.acquire(geometry) as IStaticRange;
+    const slot: number = draws.allocate() as number;
+    const places: number = draws.allocatePlaces(2) as number;
+    const surface: ISurfaceMaterial = {
+      dispose: () => {},
+      isImpostor: false,
+      keys: [],
+      material: new MeshBasicNodeMaterial(),
+      pass: ERendererPass.DEFERRED,
+      shadow: new MeshBasicNodeMaterial(),
+      shadowKeys: [],
+    };
+    const shadows: LightShadows = new LightShadows();
+    const light: ILightShadowRequest = {
+      cone: Math.PI / 2,
+      direction: new Vector3(0, -1, 0),
+      distance: 0,
+      duel: 1,
+      intensity: 1,
+      isSpot: true,
+      near: 0.1,
+      position: new Vector3(0, 3, 0),
+      range: 8,
+      up: new Vector3(0, 0, 1),
+    };
+    const spheres: Float32Array = new Float32Array([-20, 0, 0, 1, 20, 0, 0, 1]);
+
+    function put(count: number = 3): void {
+      expect(draws.drawListed(slot, surface, range, 0, count, places, spheres)).toBe(true);
+    }
+
+    function frame(isWindy: boolean = true): number {
+      shadows.begin(draws.shadowChanges, isWindy);
+      shadows.request(0, light);
+      shadows.finish(8);
+
+      const count: number = shadows.queue.length;
+
+      shadows.markDrawn();
+
+      return count;
+    }
+
+    try {
+      expect(range.arena.isSwaying).toBe(true);
+      put();
+      expect(frame()).toBe(1);
+      expect(frame()).toBe(0);
+
+      // A caller reusing its sphere array must not silently alter registered caster bounds.
+      spheres[0] = 0;
+      expect(frame()).toBe(0);
+      put();
+      expect(frame()).toBe(1);
+      expect(frame()).toBe(1);
+      expect(frame(false)).toBe(0);
+      expect(frame()).toBe(1);
+
+      spheres[0] = -20;
+      put();
+      expect(frame()).toBe(1);
+      expect(frame()).toBe(0);
+
+      // A zero-index draw contributes no animated instances, even while its placement is under the lamp.
+      spheres[0] = 0;
+      put(0);
+      expect(frame()).toBe(1);
+      expect(frame()).toBe(0);
+      put();
+      expect(frame()).toBe(1);
+      expect(frame()).toBe(1);
+
+      draws.free(slot);
+      expect(frame()).toBe(1);
+      expect(frame()).toBe(0);
+      expect(draws.allocate()).toBe(slot);
+      spheres[0] = -20;
+      put();
+      expect(frame()).toBe(1);
+      expect(frame()).toBe(0);
+    } finally {
+      draws.dispose();
+      surface.material.dispose();
+      surface.shadow?.dispose();
+    }
   });
 });

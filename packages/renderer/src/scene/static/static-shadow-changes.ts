@@ -1,5 +1,7 @@
 import { Maybe, Nullable } from "@xrf/types";
-import { Box3 } from "three/webgpu";
+import { Box3, Sphere, Vector4 } from "three/webgpu";
+
+import { isBoxInPlanes } from "#/scene/static/static-cell";
 
 /** Changes the log keeps; one older than the oldest kept stands for a change anywhere. */
 const LOG_LIMIT: number = 4096;
@@ -8,6 +10,12 @@ const LOG_LIMIT: number = 4096;
 interface IShadowChange {
   serial: number;
   box: Nullable<Box3>;
+}
+
+/** An animated draw's broad bound and, for a listed draw, its individual instance spheres. */
+interface ISwayingCaster {
+  bounds: Nullable<Box3>;
+  spheres: Nullable<Float32Array>;
 }
 
 /**
@@ -22,7 +30,8 @@ export class StaticShadowChanges {
   private dropped: number = 0;
   /** Every casting slot's box, null where it is not known. */
   private readonly casting: Map<number, Nullable<Box3>> = new Map();
-  private readonly swaying: Map<number, Box3> = new Map();
+  private readonly swaying: Map<number, ISwayingCaster> = new Map();
+  private readonly instanceBox: Box3 = new Box3();
   private currentSwayingVersion: number = 0;
 
   /** Bumped by every change logged. */
@@ -35,9 +44,41 @@ export class StaticShadowChanges {
     return this.currentSwayingVersion;
   }
 
-  /** The boxes of every casting slot the wind sways. */
-  public get swayingBoxes(): Iterable<Box3> {
-    return this.swaying.values();
+  /**
+   * Tests animated casters against a light face. A listed draw's aggregate bound only rejects whole draws; an
+   * individual instance must intersect too, so empty space between distant trees does not force shadow redraws.
+   *
+   * @param sphere - Everything the light reaches.
+   * @param planes - The face's frustum planes, in renderer space.
+   * @returns Whether wind can change a caster in the face; unknown bounds conservatively intersect.
+   */
+  public hasSwaying(sphere: Sphere, planes: ReadonlyArray<Vector4>): boolean {
+    for (const { bounds, spheres } of this.swaying.values()) {
+      if (bounds && (!sphere.intersectsBox(bounds) || !isBoxInPlanes(bounds, planes))) {
+        continue;
+      }
+
+      if (spheres === null) {
+        return true;
+      }
+
+      for (let at: number = 0; at < spheres.length; at += 4) {
+        const radius: number = spheres[at + 3];
+
+        if (radius < 0) {
+          continue;
+        }
+
+        this.instanceBox.min.set(spheres[at] - radius, spheres[at + 1] - radius, spheres[at + 2] - radius);
+        this.instanceBox.max.set(spheres[at] + radius, spheres[at + 1] + radius, spheres[at + 2] + radius);
+
+        if (sphere.intersectsBox(this.instanceBox) && isBoxInPlanes(this.instanceBox, planes)) {
+          return true;
+        }
+      }
+    }
+
+    return false;
   }
 
   /**
@@ -45,8 +86,16 @@ export class StaticShadowChanges {
    * @param bounds - What it spans, null where it is not known.
    * @param isCasting - Whether its surface casts.
    * @param isSwaying - Whether the wind sways it.
+   * @param spheres - Listed instance spheres in renderer space, four floats each, negative radius for inactive; copied
+   *   for animated casters. Null for a single draw or unknown instance bounds.
    */
-  public put(slot: number, bounds: Nullable<Box3>, isCasting: boolean, isSwaying: boolean): void {
+  public put(
+    slot: number,
+    bounds: Nullable<Box3>,
+    isCasting: boolean,
+    isSwaying: boolean,
+    spheres: Nullable<Float32Array> = null
+  ): void {
     this.withdraw(slot);
 
     if (!isCasting) {
@@ -56,8 +105,8 @@ export class StaticShadowChanges {
     this.casting.set(slot, bounds);
     this.note(bounds);
 
-    if (isSwaying && bounds) {
-      this.swaying.set(slot, bounds);
+    if (isSwaying) {
+      this.swaying.set(slot, { bounds, spheres: spheres?.slice() ?? null });
       this.currentSwayingVersion += 1;
     }
   }

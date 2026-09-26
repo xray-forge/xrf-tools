@@ -287,17 +287,18 @@ export class StaticDraws implements IStaticShadowCasters {
       this.rows.set(slot, run);
     }
 
-    this.places.writeRows(
-      run.start,
-      count ? spheres : new Float32Array(spheres.length).fill(-1),
-      placeStart,
-      slot,
-      count,
-      lods,
-      band
-    );
+    const activeSpheres: Float32Array = count ? spheres : new Float32Array(spheres.length).fill(-1);
+
+    this.places.writeRows(run.start, activeSpheres, placeStart, slot, count, lods, band);
     this.pool.writeListed(slot, range.indexStart + start, count, range.vertexStart, run.start);
-    this.batches.put(slot, range.arena, EStaticDrawKind.LISTED, surface, StaticDraws.toPlacesBox(spheres));
+    this.batches.put(
+      slot,
+      range.arena,
+      EStaticDrawKind.LISTED,
+      surface,
+      StaticDraws.toPlacesBox(spheres),
+      activeSpheres
+    );
 
     return true;
   }

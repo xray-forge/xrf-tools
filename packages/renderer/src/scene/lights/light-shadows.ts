@@ -344,17 +344,9 @@ export class LightShadows {
 
   /** Finds which of a light's faces a swaying caster stands in. */
   private findSwaying(entry: ILightShadowEntry): void {
-    entry.faces.forEach((face: ILightShadowFace) => (face.isSwaying = false));
-
-    if (!this.changes) {
-      return;
-    }
-
-    for (const box of this.changes.swayingBoxes) {
-      if (entry.sphere.intersectsBox(box)) {
-        entry.faces.forEach((face: ILightShadowFace) => (face.isSwaying ||= isBoxInPlanes(box, face.planes)));
-      }
-    }
+    entry.faces.forEach((face: ILightShadowFace) => {
+      face.isSwaying = this.changes?.hasSwaying(entry.sphere, face.planes) ?? false;
+    });
   }
 
   /** A light's faces at a size, room made by the lights out of view longest where the atlas has none. */
