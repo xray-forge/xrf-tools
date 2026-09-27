@@ -1,10 +1,11 @@
 import { Maybe } from "@xrf/types";
-import { float, mix, normalize, uniform, uv, varying } from "three/tsl";
-import { Node, TextureNode, Vector3 } from "three/webgpu";
+import { float, mix, normalize, uv, varying } from "three/tsl";
+import { Node, TextureNode } from "three/webgpu";
 
-import { IRendererSurface } from "#/contract/scene/renderer-surface";
-import { MaterialSamplers } from "#/material/material-samplers";
+import { ISurfaceInputs } from "#/material/surface-inputs";
+import { ESurfaceSlot } from "#/material/surface-slot";
 import { ISurfaceTexel } from "#/material/surface-texel";
+import { ISurfaceVariant } from "#/material/surface-variant";
 import { decodeBumpGloss, decodeBumpNormal } from "#/shader/bump.tsl";
 import {
   toBaseCoordinate,
@@ -15,12 +16,6 @@ import {
 import { toPlacedNormalView, toPlacedViewDirection } from "#/shader/placement.tsl";
 import { skinnedBinormal, skinnedTangent } from "#/shader/skinned-basis.tsl";
 import { toVertexHemi } from "#/shader/vertex-hemi.tsl";
-import {
-  getFlatBumpCompanionTexture,
-  getFlatBumpTexture,
-  getNeutralDetailTexture,
-  getWhiteTexture,
-} from "#/texture/placeholder-textures";
 import { RendererUniforms } from "#/uniforms/renderer-uniforms";
 
 /** `def_gloss`: what a surface without a bump reflects (`shaders/r3/common_defines.h`). */
@@ -32,65 +27,58 @@ export const DEFAULT_MATERIAL: number = 1;
 /** Lighting model slices the material lookup holds. */
 export const MATERIAL_SLICES: number = 4;
 
-// Every number a surface states is a uniform rather than a constant in its shader, so surfaces differing only in
-// their numbers share one program and one pipeline: a level's shader table is hundreds of entries of a few kinds.
+// A surface's shader is its variant's: every texture and number it states is read from its material per object, so a
+// level's shader table, hundreds of entries of a few kinds, builds a few node graphs rather than hundreds.
 
 /**
- * @param surface - The surface sampled.
+ * @param inputs - What the material drawing carries.
  * @returns Where its base and every slot sampled with it read: the first uv set, times the surface's tiling.
  */
-export function toSurfaceCoordinates(surface: IRendererSurface): Node<"vec2"> {
-  return toBaseCoordinate(uv()).mul(uniform(surface.tiling ?? 1));
+export function toSurfaceCoordinates(inputs: ISurfaceInputs): Node<"vec2"> {
+  return toBaseCoordinate(uv()).mul(inputs.tiling);
 }
 
 /**
  * @param color - The base's colour.
- * @param surface - The surface sampled.
+ * @param variant - The surface's variant.
+ * @param inputs - What the material drawing carries.
  * @returns The colour times the surface's tint, where it gives one.
  */
-export function toTintedColor(color: Node<"vec3">, surface: IRendererSurface): Node<"vec3"> {
-  return surface.color ? color.mul(uniform(new Vector3(...surface.color))) : color;
+export function toTintedColor(color: Node<"vec3">, variant: ISurfaceVariant, inputs: ISurfaceInputs): Node<"vec3"> {
+  return variant.isTinted ? color.mul(inputs.color) : color;
 }
 
 /**
  * `sload`: the surface at a texel, with the bump pair's normal and gloss where it binds one.
  *
- * @param surface - The surface sampled.
- * @param samplers - Where its slots are bound.
+ * @param variant - The surface's variant.
+ * @param inputs - What the material drawing carries.
  * @param uniforms - What the frame's shaders read: the settings switch the bump, the static draw buffers place it.
  * @returns The texel.
  */
 export function toSurfaceTexel(
-  surface: IRendererSurface,
-  samplers: MaterialSamplers,
+  variant: ISurfaceVariant,
+  inputs: ISurfaceInputs,
   uniforms: RendererUniforms
 ): ISurfaceTexel {
   const { settings, staticDraws } = uniforms;
-  const coordinates: Node<"vec2"> = toSurfaceCoordinates(surface);
-  const base: TextureNode = samplers.bind(surface.textures.base, getWhiteTexture(), coordinates);
+  const coordinates: Node<"vec2"> = toSurfaceCoordinates(inputs);
+  const base: TextureNode = inputs.sample(ESurfaceSlot.BASE, coordinates);
   const surfaceNormal: Node<"vec3"> = toPlacedNormalView(staticDraws);
-  let albedo: Node<"vec3"> = toTintedColor(base.xyz, surface);
+  let albedo: Node<"vec3"> = toTintedColor(base.xyz, variant, inputs);
   let normal: Node<"vec3"> = surfaceNormal;
   let gloss: Node<"float"> = float(DEFAULT_GLOSS);
 
-  if (surface.textures.detail) {
+  if (variant.hasDetail) {
     // `D.rgb = 2 * D.rgb * detail.rgb`, sampled at the base coordinates times the detail scale.
-    const detail: TextureNode = samplers.bind(
-      surface.textures.detail,
-      getNeutralDetailTexture(),
-      coordinates.mul(uniform(surface.detailScale ?? 1))
-    );
+    const detail: TextureNode = inputs.sample(ESurfaceSlot.DETAIL, coordinates.mul(inputs.detailScale));
 
     albedo = albedo.mul(detail.xyz).mul(2);
   }
 
-  if (surface.textures.bump && surface.textures.bumpCompanion) {
-    const bump: TextureNode = samplers.bind(surface.textures.bump, getFlatBumpTexture(), coordinates);
-    const companion: TextureNode = samplers.bind(
-      surface.textures.bumpCompanion,
-      getFlatBumpCompanionTexture(),
-      coordinates
-    );
+  if (variant.hasBump) {
+    const bump: TextureNode = inputs.sample(ESurfaceSlot.BUMP, coordinates);
+    const companion: TextureNode = inputs.sample(ESurfaceSlot.BUMP_COMPANION, coordinates);
     const tangentSpace: Node<"vec3"> = decodeBumpNormal(bump, companion);
     // `deffer_model_bump`: the authored basis through the model view, the decoded normal rotated along it.
     const tangent: Node<"vec3"> = varying(toPlacedViewDirection(toSurfaceTangent(skinnedTangent), staticDraws));
@@ -109,8 +97,8 @@ export function toSurfaceTexel(
 
   // `get_hemi` and `get_sun`: the lightmap's alpha and green, or the vertex's own hemisphere term where there is no
   // lightmap, sun unoccluded.
-  const lightmap: Maybe<TextureNode> = surface.textures.hemi
-    ? samplers.bind(surface.textures.hemi, getWhiteTexture(), toLightmapCoordinate(uv(1)))
+  const lightmap: Maybe<TextureNode> = variant.hasHemi
+    ? inputs.sample(ESurfaceSlot.HEMI, toLightmapCoordinate(uv(1)))
     : undefined;
 
   return {
@@ -119,7 +107,7 @@ export function toSurfaceTexel(
     gloss,
     hemi: lightmap ? lightmap.w : varying(toVertexHemi(staticDraws)),
     normal,
-    slice: uniform(((surface.material ?? DEFAULT_MATERIAL) + 0.5) / MATERIAL_SLICES),
+    slice: inputs.slice,
     sun: lightmap ? lightmap.y : float(1),
   };
 }

@@ -1,42 +1,41 @@
-import { Nullable, Optional } from "@xrf/types";
+import { Optional } from "@xrf/types";
 
-/** Matches the frame a render context's timestamp uid belongs to: three spells them `<context>:f<frame>`. */
-const FRAME_PATTERN: RegExp = /:f(\d+)$/;
+import { TIssuedRender } from "#/timing/renderer-pass-inspector";
 
 /**
  * Sums resolved GPU durations into per-frame, per-pass totals.
  *
- * A pass may issue several renders, each timed under its own uid; the pass costs their sum, per frame.
+ * A pass may issue several renders, each timed under its own uid; the pass costs their sum, per frame. Three resolves
+ * a frame's renders together, so a frame that resolved at all is read whole and let go of: a render in it without a
+ * duration is one three never timed.
  *
- * @param issued - Every render still waiting for its timing, by uid, with the pass that issued it.
+ * @param issued - Every render still waiting for its timing, by the frame it was issued in, oldest first.
  * @param resolve - The resolved duration of a uid in milliseconds, or undefined while it has none.
- * @returns Per-pass totals of every frame that resolved, oldest frame first, and the uids consumed.
+ * @returns Per-pass totals of every frame that resolved, oldest frame first, and those frames.
  */
 export function toFramePassTimes(
-  issued: ReadonlyMap<string, string>,
+  issued: ReadonlyMap<number, ReadonlyArray<TIssuedRender>>,
   resolve: (uid: string) => Optional<number>
-): { frames: Array<Map<string, number>>; consumed: Array<string> } {
-  const byFrame: Map<number, Map<string, number>> = new Map();
-  const consumed: Array<string> = [];
+): { frames: Array<Map<string, number>>; consumed: Array<number> } {
+  const frames: Array<Map<string, number>> = [];
+  const consumed: Array<number> = [];
 
-  for (const [uid, pass] of issued) {
-    const duration: Optional<number> = resolve(uid);
-    const match: Nullable<RegExpMatchArray> = uid.match(FRAME_PATTERN);
+  for (const [frame, renders] of issued) {
+    const passes: Map<string, number> = new Map();
 
-    if (duration === undefined || !match) {
-      continue;
+    for (const [uid, pass] of renders) {
+      const duration: Optional<number> = resolve(uid);
+
+      if (duration !== undefined) {
+        passes.set(pass, (passes.get(pass) ?? 0) + duration);
+      }
     }
 
-    const frame: number = Number(match[1]);
-    const passes: Map<string, number> = byFrame.get(frame) ?? new Map();
-
-    passes.set(pass, (passes.get(pass) ?? 0) + duration);
-    byFrame.set(frame, passes);
-    consumed.push(uid);
+    if (passes.size) {
+      frames.push(passes);
+      consumed.push(frame);
+    }
   }
 
-  return {
-    consumed,
-    frames: [...byFrame.entries()].sort(([left], [right]) => left - right).map(([, passes]) => passes),
-  };
+  return { consumed, frames };
 }

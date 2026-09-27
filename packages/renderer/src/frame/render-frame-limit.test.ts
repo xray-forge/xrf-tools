@@ -5,6 +5,7 @@ import { DEFAULT_FRAME_RATE_LIMIT, toFrameInterval, toFrameRateLimit } from "#/f
 describe("toFrameRateLimit", () => {
   it("takes a limit this build offers", () => {
     expect(toFrameRateLimit("30")).toBe("30");
+    expect(toFrameRateLimit("160")).toBe("160");
     expect(toFrameRateLimit("unlimited")).toBe("unlimited");
   });
 
@@ -19,10 +20,11 @@ describe("toFrameRateLimit", () => {
 });
 
 describe("toFrameInterval", () => {
-  it("waits a fraction under the interval asked for", () => {
+  it("waits exactly the interval asked for", () => {
     expect(toFrameInterval("60")).toBeCloseTo(1000 / 60);
     expect(toFrameInterval("30")).toBeCloseTo(1000 / 30);
     expect(toFrameInterval("120")).toBeCloseTo(1000 / 120);
+    expect(toFrameInterval("160")).toBeCloseTo(1000 / 160);
   });
 
   it("waits not at all for a viewport allowed every frame", () => {

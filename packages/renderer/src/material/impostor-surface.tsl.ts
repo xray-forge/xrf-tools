@@ -17,14 +17,13 @@ import {
 } from "three/tsl";
 import { Node, TextureNode } from "three/webgpu";
 
-import { IRendererSurface } from "#/contract/scene/renderer-surface";
-import { MaterialSamplers } from "#/material/material-samplers";
+import { ISurfaceInputs } from "#/material/surface-inputs";
 import { ISurfaceShader } from "#/material/surface-shader";
+import { ESurfaceSlot } from "#/material/surface-slot";
 import { DEFAULT_GLOSS, MATERIAL_SLICES } from "#/material/surface-texel.tsl";
 import { toGBufferOutput } from "#/shader/gbuffer.tsl";
 import { toWorldMotion } from "#/shader/motion.tsl";
 import { toListedImpostor } from "#/shader/placement.tsl";
-import { getWhiteTexture } from "#/texture/placeholder-textures";
 import { RendererUniforms } from "#/uniforms/renderer-uniforms";
 import { STATIC_LOD_CORNER_COLUMNS } from "#/uniforms/static-draw-buffers";
 
@@ -58,16 +57,11 @@ function toCornerColumn(lod: Node<"uint">, facet: Node<"uint">, vertex: Node<"ui
  * The atlas is sampled at both facets' coordinates and blended the same way, its alpha faded by the cull and cut at
  * 96; the `_nm` companion gives the view normal and the hemisphere term, times the corners'.
  *
- * @param surface - The impostor surface.
- * @param samplers - Where its slots are bound.
+ * @param inputs - What the material drawing carries: the atlas as its base, the companion as its lightmap.
  * @param uniforms - What the frame's shaders read.
  * @returns Its shader, placing its own vertices.
  */
-export function toImpostorSurfaceShader(
-  surface: IRendererSurface,
-  samplers: MaterialSamplers,
-  uniforms: RendererUniforms
-): ISurfaceShader {
+export function toImpostorSurfaceShader(inputs: ISurfaceInputs, uniforms: RendererUniforms): ISurfaceShader {
   const buffers = uniforms.staticDraws;
   const lod: Node<"uint"> = toListedImpostor(buffers);
   const terms = buffers.lodTermColumns.element(lod) as unknown as Node<"uvec4">;
@@ -93,10 +87,10 @@ export function toImpostorSurfaceShader(
   const blend: Node<"float"> = varying(factor);
   const fade: Node<"float"> = varying(alpha);
   const hemi: Node<"float"> = varying(mix(next.w, best.w, factor).mul(HEMI_SCALE));
-  const base0: TextureNode = samplers.bind(surface.textures.base, getWhiteTexture(), varying(nextAtlas.xy));
-  const base1: TextureNode = samplers.bind(surface.textures.base, getWhiteTexture(), varying(bestAtlas.xy));
-  const normal0: TextureNode = samplers.bind(surface.textures.hemi, getWhiteTexture(), varying(nextAtlas.xy));
-  const normal1: TextureNode = samplers.bind(surface.textures.hemi, getWhiteTexture(), varying(bestAtlas.xy));
+  const base0: TextureNode = inputs.sample(ESurfaceSlot.BASE, varying(nextAtlas.xy));
+  const base1: TextureNode = inputs.sample(ESurfaceSlot.BASE, varying(bestAtlas.xy));
+  const normal0: TextureNode = inputs.sample(ESurfaceSlot.HEMI, varying(nextAtlas.xy));
+  const normal1: TextureNode = inputs.sample(ESurfaceSlot.HEMI, varying(bestAtlas.xy));
 
   const companion: Node<"vec4"> = mix(normal0, normal1, blend);
   // The discard rides on the albedo, as a cut-out's does: the output struct cannot be what a function returns.

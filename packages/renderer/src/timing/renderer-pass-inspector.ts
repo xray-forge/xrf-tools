@@ -1,17 +1,27 @@
-import { Nullable } from "@xrf/types";
+import { Maybe, Nullable } from "@xrf/types";
 import { InspectorBase } from "three/webgpu";
 
-/** Renders kept waiting for a timing before they are given up on, so a device that never resolves holds no memory. */
-const PENDING_LIMIT: number = 4096;
+/** Matches the frame a render context's timestamp uid belongs to: three spells them `<context>:f<frame>`. */
+const FRAME_PATTERN: RegExp = /:f(\d+)$/;
+
+/** Frames kept waiting for their timings, so renders three never timed are let go of rather than walked every read. */
+const FRAME_LIMIT: number = 16;
+
+/** A render three times under its uid, with the pass that issued it. */
+export type TIssuedRender = readonly [uid: string, pass: string];
 
 /**
- * Tags every render three times with the pass that issued it.
+ * Tags every render three times with the pass that issued it, while the device is timing.
  *
  * Three calls `beginRender` with the uid it later resolves a GPU duration under; the frame names the pass around it.
  */
 export class RendererPassInspector extends InspectorBase {
+  /** Whether renders are tagged: nothing reads them while the device is not timing. */
+  public isRecording: boolean = true;
+
   private current: Nullable<string> = null;
-  private readonly pending: Map<string, string> = new Map();
+  /** The renders waiting for their timings, by the frame they were issued in, oldest first. */
+  private readonly pending: Map<number, Array<TIssuedRender>> = new Map();
 
   /**
    * @param pass - The pass whose renders follow.
@@ -25,35 +35,60 @@ export class RendererPassInspector extends InspectorBase {
     this.current = null;
   }
 
+  /**
+   * @param isRecording - Whether renders are tagged from now on; the ones waiting are let go of when they are not.
+   */
+  public setRecording(isRecording: boolean): void {
+    this.isRecording = isRecording;
+
+    if (!isRecording) {
+      this.pending.clear();
+    }
+  }
+
   public override beginCompute(uid: string): void {
     this.beginRender(uid);
   }
 
   public override beginRender(uid: string): void {
-    if (this.current === null) {
+    if (!this.isRecording || this.current === null) {
       return;
     }
 
-    if (this.pending.size >= PENDING_LIMIT) {
-      this.pending.delete(this.pending.keys().next().value as string);
+    const match: Nullable<RegExpMatchArray> = uid.match(FRAME_PATTERN);
+
+    if (!match) {
+      return;
     }
 
-    this.pending.set(uid, this.current);
+    const frame: number = Number(match[1]);
+    let renders: Maybe<Array<TIssuedRender>> = this.pending.get(frame);
+
+    if (!renders) {
+      renders = [];
+      this.pending.set(frame, renders);
+
+      if (this.pending.size > FRAME_LIMIT) {
+        this.pending.delete(this.pending.keys().next().value as number);
+      }
+    }
+
+    renders.push([uid, this.current]);
   }
 
   /**
-   * @returns Every render still waiting for its timing, by uid.
+   * @returns Every render still waiting for its timing, by the frame it was issued in, oldest first.
    */
-  public get issued(): ReadonlyMap<string, string> {
+  public get issued(): ReadonlyMap<number, ReadonlyArray<TIssuedRender>> {
     return this.pending;
   }
 
   /**
-   * @param uids - Renders whose timing has been read.
+   * @param frames - Frames whose timings have been read.
    */
-  public consume(uids: ReadonlyArray<string>): void {
-    for (const uid of uids) {
-      this.pending.delete(uid);
+  public consume(frames: ReadonlyArray<number>): void {
+    for (const frame of frames) {
+      this.pending.delete(frame);
     }
   }
 }

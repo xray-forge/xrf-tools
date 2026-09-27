@@ -1,28 +1,23 @@
 import { clamp, float, vec4 } from "three/tsl";
 import { TextureNode } from "three/webgpu";
 
-import { IRendererSurface } from "#/contract/scene/renderer-surface";
-import { MaterialSamplers } from "#/material/material-samplers";
+import { ISurfaceInputs } from "#/material/surface-inputs";
 import { ISurfaceShader } from "#/material/surface-shader";
+import { ESurfaceSlot } from "#/material/surface-slot";
 import { toSurfaceCoordinates, toTintedColor } from "#/material/surface-texel.tsl";
-import { getWhiteTexture } from "#/texture/placeholder-textures";
+import { ISurfaceVariant } from "#/material/surface-variant";
 
 /**
  * `wmark` and `simple`: the base alone, sampled through `smp_rtlinear` - its top level, clamped - and composited into
  * the albedo by its draw. Nothing clips it: DX10 routes `aref` to a shader constant, and `simple.ps` reads none.
  *
- * @param surface - The surface drawn.
- * @param samplers - Where its slots are bound.
- * @returns Its shader.
+ * @param variant - The surfaces drawn.
+ * @param inputs - What the material drawing carries.
+ * @returns Their shader.
  */
-export function toWallmarkSurfaceShader(surface: IRendererSurface, samplers: MaterialSamplers): ISurfaceShader {
-  const base: TextureNode = samplers.bind(
-    surface.textures.base,
-    getWhiteTexture(),
-    clamp(toSurfaceCoordinates(surface), 0, 1),
-    false
-  );
+export function toWallmarkSurfaceShader(variant: ISurfaceVariant, inputs: ISurfaceInputs): ISurfaceShader {
+  const base: TextureNode = inputs.sample(ESurfaceSlot.BASE, clamp(toSurfaceCoordinates(inputs), 0, 1), false);
   const top: TextureNode = base.level(float(0));
 
-  return { colorNode: vec4(toTintedColor(top.xyz, surface), top.w) };
+  return { colorNode: vec4(toTintedColor(top.xyz, variant, inputs), top.w) };
 }

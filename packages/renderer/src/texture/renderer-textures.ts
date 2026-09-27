@@ -10,14 +10,15 @@ import {
   createRendererTexture,
   IRendererTextureUpload,
 } from "#/texture/renderer-texture";
+import { ITextureTarget } from "#/texture/texture-target";
 
-/** One key's texture and every sampler drawing it, each with what it samples while the key holds nothing. */
+/** One key's texture and everything drawing it, each with what it draws while the key holds nothing. */
 interface ITextureEntry {
   /** The texture last put, which may not be on the GPU yet. */
   texture: Nullable<Texture>;
-  /** What the samplers draw: always a texture already on the GPU, or nothing. */
+  /** What the targets draw: always a texture already on the GPU, or nothing. */
   drawn: Nullable<Texture>;
-  samplers: Map<TextureNode, Texture>;
+  samplers: Map<ITextureTarget, Texture>;
   /** Bumped by every put and release, so a picture decoding late can tell it was superseded. */
   version: number;
   /** Whether a picture is still decoding for it. */
@@ -120,19 +121,32 @@ export class RendererTextures {
       return sample(placeholder, coordinates);
     }
 
-    const entry: ITextureEntry = this.getEntry(key);
-    const sampler: TextureNode = sample(entry.drawn ?? placeholder, coordinates);
+    const sampler: TextureNode = sample(placeholder, coordinates);
 
-    entry.samplers.set(sampler, placeholder);
+    this.target(key, placeholder, sampler);
 
     return sampler;
   }
 
   /**
-   * @param key - The key a sampler was bound to.
-   * @param sampler - The sampler, whose material is going away.
+   * Points a target at whatever the key holds, now and after every later put.
+   *
+   * @param key - The texture's key.
+   * @param placeholder - What it draws while the key holds nothing on the GPU.
+   * @param target - What draws it.
    */
-  public unbind(key: Maybe<string>, sampler: TextureNode): void {
+  public target(key: string, placeholder: Texture, target: ITextureTarget): void {
+    const entry: ITextureEntry = this.getEntry(key);
+
+    target.value = entry.drawn ?? placeholder;
+    entry.samplers.set(target, placeholder);
+  }
+
+  /**
+   * @param key - The key a sampler or target was bound to.
+   * @param sampler - What drew it, whose material is going away.
+   */
+  public unbind(key: Maybe<string>, sampler: ITextureTarget): void {
     const entry: Maybe<ITextureEntry> = key ? this.entries.get(key) : undefined;
 
     if (key && entry) {
@@ -232,7 +246,7 @@ export class RendererTextures {
     const previous: Nullable<Texture> = entry.drawn;
 
     entry.drawn = texture;
-    entry.samplers.forEach((placeholder: Texture, sampler: TextureNode) => (sampler.value = texture ?? placeholder));
+    entry.samplers.forEach((placeholder: Texture, sampler: ITextureTarget) => (sampler.value = texture ?? placeholder));
 
     if (entry.samplers.size && previous !== texture) {
       this.onRebound(key);

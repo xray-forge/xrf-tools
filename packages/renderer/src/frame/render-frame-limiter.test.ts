@@ -29,10 +29,13 @@ describe("RenderFrameLimiter", () => {
     expect(countDrawn(144, "120")).toBeLessThanOrEqual(1201);
     expect(countDrawn(165, "30")).toBeGreaterThanOrEqual(299);
     expect(countDrawn(165, "30")).toBeLessThanOrEqual(301);
+    expect(countDrawn(165, "160")).toBeGreaterThanOrEqual(1599);
+    expect(countDrawn(165, "160")).toBeLessThanOrEqual(1601);
   });
 
   it("draws every wake of a display slower than the limit, and every wake without one", () => {
     expect(countDrawn(60, "120")).toBe(600);
+    expect(countDrawn(160, "160")).toBe(1600);
     expect(countDrawn(160, "unlimited")).toBe(1600);
   });
 

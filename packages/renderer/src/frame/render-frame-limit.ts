@@ -1,10 +1,10 @@
 /**
  * How often a viewport is allowed to redraw.
  */
-export type TFrameRateLimit = "30" | "60" | "120" | "unlimited";
+export type TFrameRateLimit = "30" | "60" | "120" | "160" | "unlimited";
 
 /** The choices offered, coarse on purpose: this is a budget, not a tuning knob. */
-export const FRAME_RATE_LIMITS: ReadonlyArray<TFrameRateLimit> = ["30", "60", "120", "unlimited"];
+export const FRAME_RATE_LIMITS: ReadonlyArray<TFrameRateLimit> = ["30", "60", "120", "160", "unlimited"];
 
 /** Enough for anything a viewer does, and a third of what an unthrottled loop costs on a fast display. */
 export const DEFAULT_FRAME_RATE_LIMIT: TFrameRateLimit = "60";

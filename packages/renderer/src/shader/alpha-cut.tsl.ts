@@ -1,5 +1,4 @@
-import { Maybe } from "@xrf/types";
-import { Discard, Fn, If, uniform } from "three/tsl";
+import { Discard, Fn, If } from "three/tsl";
 import { Node } from "three/webgpu";
 
 /** `def_aref`: where a cut-out surface without its own reference is cut. */
@@ -10,16 +9,16 @@ export const DEFAULT_ALPHA_REFERENCE: number = 200 / 255;
  *
  * @param alpha - The alpha the surface is cut by.
  * @param output - What it writes where it stands.
- * @param reference - Its own reference, or none for `def_aref`.
+ * @param reference - Where it is cut.
  * @returns The output, cut.
  */
 export function toAlphaCut<T extends "vec4" | "float">(
   alpha: Node<"float">,
   output: Node<T>,
-  reference: Maybe<number>
+  reference: Node<"float">
 ): Node<T> {
   return Fn(() => {
-    If(alpha.lessThanEqual(uniform(reference ?? DEFAULT_ALPHA_REFERENCE)), () => {
+    If(alpha.lessThanEqual(reference), () => {
       Discard();
     });
 

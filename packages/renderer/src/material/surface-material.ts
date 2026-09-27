@@ -1,28 +1,17 @@
 import { Nullable } from "@xrf/types";
 import { DoubleSide, MeshBasicNodeMaterial } from "three/webgpu";
 
-import { ERendererDraw, ERendererPass, IRendererSurface, toRendererPass } from "#/contract/scene/renderer-surface";
-import { toDeferredSurfaceShader } from "#/material/deferred-surface.tsl";
-import { toForwardSurfaceShader } from "#/material/forward-surface.tsl";
-import { MaterialSamplers } from "#/material/material-samplers";
-import { toShadowSurfaceShader } from "#/material/shadow-surface.tsl";
+import { ERendererDraw, ERendererPass, IRendererSurface } from "#/contract/scene/renderer-surface";
 import { applySurfaceCompositing, ISurfaceCompositing, toSurfaceCompositing } from "#/material/surface-compositing";
 import { SurfaceNodeMaterial } from "#/material/surface-node-material";
+import { SurfacePrograms } from "#/material/surface-programs";
 import { ISurfaceShader } from "#/material/surface-shader";
-import { toWallmarkSurfaceShader } from "#/material/wallmark-surface.tsl";
-import { instancedPosition } from "#/shader/placement.tsl";
+import { ESurfaceSlot, TSurfaceSlotTargets } from "#/material/surface-slot";
+import { SurfaceSlots } from "#/material/surface-slots";
+import { ISurfaceValues, toSurfaceValues } from "#/material/surface-values";
+import { ISurfaceVariant, toSampledSlots, toSurfaceVariant } from "#/material/surface-variant";
 import { RendererTextures } from "#/texture/renderer-textures";
 import { RendererUniforms } from "#/uniforms/renderer-uniforms";
-
-/** How each pass shades the surfaces it draws. */
-const SURFACE_SHADERS: Record<
-  ERendererPass,
-  (surface: IRendererSurface, samplers: MaterialSamplers, uniforms: RendererUniforms) => ISurfaceShader
-> = {
-  [ERendererPass.DEFERRED]: toDeferredSurfaceShader,
-  [ERendererPass.FORWARD]: toForwardSurfaceShader,
-  [ERendererPass.WALLMARK]: toWallmarkSurfaceShader,
-};
 
 /**
  * A surface as the frame draws it.
@@ -49,6 +38,7 @@ export interface ISurfaceMaterial {
  * @param surface - What the consumer put.
  * @param textures - Where its textures are bound from.
  * @param uniforms - What the frame's shaders read.
+ * @param programs - The shaders its variant shares.
  * @param opaqueShadow - The shadow material every opaque surface shares, its maker's.
  * @returns The material, shaded by the pass its draw puts it in.
  */
@@ -56,22 +46,22 @@ export function createSurfaceMaterial(
   surface: IRendererSurface,
   textures: RendererTextures,
   uniforms: RendererUniforms,
+  programs: SurfacePrograms,
   opaqueShadow: MeshBasicNodeMaterial
 ): ISurfaceMaterial {
-  const pass: ERendererPass = toRendererPass(surface);
-  const samplers: MaterialSamplers = new MaterialSamplers(textures, uniforms.settings.textureBias);
-  const shader: ISurfaceShader = SURFACE_SHADERS[pass](surface, samplers, uniforms);
+  const variant: ISurfaceVariant = toSurfaceVariant(surface);
+  const shader: ISurfaceShader = programs.get(variant);
+  const slots: SurfaceSlots = new SurfaceSlots(textures, surface.textures, toSampledSlots(variant));
+  const values: ISurfaceValues = toSurfaceValues(surface);
   const compositing: Nullable<ISurfaceCompositing> = toSurfaceCompositing(surface);
-  const material: SurfaceNodeMaterial = new SurfaceNodeMaterial(uniforms.staticDraws, uniforms.treeWind);
+  const material: SurfaceNodeMaterial = createSharedMaterial(programs, uniforms, slots.targets, values);
 
-  // Every surface stands its geometry in each place instanced attributes name, and in its own place where none do.
-  material.positionNode = instancedPosition();
   material.fragmentNode = shader.fragmentNode ?? null;
   material.colorNode = shader.colorNode ?? null;
   material.alphaTestNode = shader.alphaTestNode ?? null;
   material.positionViewNode = shader.positionViewNode ?? null;
 
-  if (surface.isImpostor) {
+  if (variant.isImpostor) {
     // Its quad turns to face the camera, from whichever side it is seen.
     material.side = DoubleSide;
   }
@@ -80,17 +70,17 @@ export function createSurfaceMaterial(
     applySurfaceCompositing(material, compositing);
   }
 
-  const isCasting: boolean = pass === ERendererPass.DEFERRED && !surface.isImpostor;
-  const isCutOut: boolean = surface.draw === ERendererDraw.CUT_OUT;
+  const isCasting: boolean = variant.pass === ERendererPass.DEFERRED && !variant.isImpostor;
+  const isCutOut: boolean = variant.draw === ERendererDraw.CUT_OUT;
   const shadow: Nullable<MeshBasicNodeMaterial> = !isCasting
     ? null
     : isCutOut
-      ? createShadowMaterial(surface, samplers.unbiased(), uniforms)
+      ? createShadowMaterial(programs, uniforms, slots.targets, values)
       : opaqueShadow;
 
   return {
     dispose: () => {
-      samplers.release();
+      slots.release();
       material.dispose();
 
       // The opaque one is every opaque surface's, and goes with whatever made it.
@@ -98,42 +88,64 @@ export function createSurfaceMaterial(
         shadow?.dispose();
       }
     },
-    isImpostor: Boolean(surface.isImpostor),
-    keys: samplers.keys,
+    isImpostor: variant.isImpostor,
+    keys: slots.keys,
     material,
-    pass,
+    pass: variant.pass,
     shadow,
-    shadowKeys: isCasting && isCutOut ? samplers.keys : [],
+    shadowKeys: isCasting && isCutOut ? slots.keysOf(ESurfaceSlot.BASE) : [],
   };
 }
 
 /**
+ * @param programs - The shaders the surfaces share.
  * @param uniforms - What the frame's shaders read.
  * @returns The shadow material every opaque surface shares: its depth alone, whatever it is dressed with, so every
  *   opaque caster of an arena is one batch.
  */
-export function createOpaqueShadowMaterial(uniforms: RendererUniforms): MeshBasicNodeMaterial {
-  return createShadowMaterial(null, null, uniforms);
+export function createOpaqueShadowMaterial(
+  programs: SurfacePrograms,
+  uniforms: RendererUniforms
+): MeshBasicNodeMaterial {
+  return createShadowMaterial(programs, uniforms, null, null);
 }
 
 /**
- * @param surface - A cut-out surface the G-buffer draws, or null for the opaque surfaces' shared material.
- * @param samplers - Where its slots are bound, shared with its G-buffer material.
+ * @param programs - The shaders the surfaces share.
  * @param uniforms - What the frame's shaders read.
+ * @param slots - A cut-out surface's slots, shared with its G-buffer material, or null for the opaque surfaces'.
+ * @param values - Its numbers, likewise.
  * @returns Its depth-only material, standing its geometry where the G-buffer's does.
  */
 function createShadowMaterial(
-  surface: Nullable<IRendererSurface>,
-  samplers: Nullable<MaterialSamplers>,
-  uniforms: RendererUniforms
+  programs: SurfacePrograms,
+  uniforms: RendererUniforms,
+  slots: Nullable<TSurfaceSlotTargets>,
+  values: Nullable<ISurfaceValues>
 ): MeshBasicNodeMaterial {
-  const material: SurfaceNodeMaterial = new SurfaceNodeMaterial(uniforms.staticDraws, uniforms.treeWind);
+  const material: SurfaceNodeMaterial = createSharedMaterial(programs, uniforms, slots, values);
 
-  material.positionNode = instancedPosition();
-  material.fragmentNode = toShadowSurfaceShader(surface, samplers).fragmentNode ?? null;
+  material.fragmentNode = programs.getShadow(slots !== null).fragmentNode ?? null;
   material.colorWrite = false;
   // Both faces: a card seen from the sun's side is its back as often as its front, and a wall casts either way.
   material.side = DoubleSide;
+
+  return material;
+}
+
+/** A material drawing with its variant's shared nodes, carrying what they read of it. */
+function createSharedMaterial(
+  programs: SurfacePrograms,
+  uniforms: RendererUniforms,
+  slots: Nullable<TSurfaceSlotTargets>,
+  values: Nullable<ISurfaceValues>
+): SurfaceNodeMaterial {
+  const material: SurfaceNodeMaterial = new SurfaceNodeMaterial(uniforms.staticDraws, uniforms.treeWind);
+
+  // Every surface stands its geometry in each place instanced attributes name, and in its own place where none do.
+  material.positionNode = programs.position;
+  material.surfaceSlots = slots;
+  material.surfaceValues = values;
 
   return material;
 }

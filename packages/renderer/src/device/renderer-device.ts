@@ -63,6 +63,7 @@ export class RendererDevice {
     this.headless = renderer.getCanvasTarget();
     this.isGpuTimed = renderer.hasFeature("timestamp-query");
     this.isTiming = this.isGpuTimed;
+    this.inspector.setRecording(this.isTiming);
 
     // A frame is several renders, so its counters reset once per frame rather than once per render.
     renderer.info.autoReset = false;
@@ -86,6 +87,7 @@ export class RendererDevice {
     }
 
     this.isTiming = isTiming;
+    this.inspector.setRecording(isTiming);
     setRendererTimestamps(this.renderer, isTiming);
 
     return true;

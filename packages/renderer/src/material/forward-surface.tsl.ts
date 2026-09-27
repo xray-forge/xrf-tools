@@ -1,11 +1,12 @@
-import { mix, positionView, uniform, vec3, vec4 } from "three/tsl";
+import { mix, positionView, vec3, vec4 } from "three/tsl";
 import { Node } from "three/webgpu";
 
-import { ERendererDraw, IRendererSurface } from "#/contract/scene/renderer-surface";
-import { MaterialSamplers } from "#/material/material-samplers";
+import { ERendererDraw } from "#/contract/scene/renderer-surface";
+import { ISurfaceInputs } from "#/material/surface-inputs";
 import { ISurfaceShader } from "#/material/surface-shader";
 import { ISurfaceTexel } from "#/material/surface-texel";
 import { toSurfaceTexel } from "#/material/surface-texel.tsl";
+import { ISurfaceVariant } from "#/material/surface-variant";
 import { toBaseLitColor, toFogAmount, toFogColor, toSunLight } from "#/shader/base-lighting.tsl";
 import { IBaseShadingPoint } from "#/shader/base-shading-point";
 import { RendererUniforms } from "#/uniforms/renderer-uniforms";
@@ -15,20 +16,20 @@ import { RendererUniforms } from "#/uniforms/renderer-uniforms";
  * bump included; added and multiplied stay unlit. Every one fades into the fog as the engine's forward shaders do:
  * blended towards the fog's colour, added towards nothing, multiplied towards leaving what is under it alone.
  *
- * @param surface - The surface drawn.
- * @param samplers - Where its slots are bound.
+ * @param variant - The surfaces drawn.
+ * @param inputs - What the material drawing carries.
  * @param uniforms - What the frame's shaders read.
- * @returns Its shader.
+ * @returns Their shader.
  */
 export function toForwardSurfaceShader(
-  surface: IRendererSurface,
-  samplers: MaterialSamplers,
+  variant: ISurfaceVariant,
+  inputs: ISurfaceInputs,
   uniforms: RendererUniforms
 ): ISurfaceShader {
-  const texel: ISurfaceTexel = toSurfaceTexel(surface, samplers, uniforms);
+  const texel: ISurfaceTexel = toSurfaceTexel(variant, inputs, uniforms);
   let color: Node<"vec3"> = texel.albedo;
 
-  if (surface.draw === ERendererDraw.BLENDED && surface.isLit !== false) {
+  if (variant.draw === ERendererDraw.BLENDED && variant.isLit) {
     const point: IBaseShadingPoint = { normal: texel.normal, position: positionView, slice: texel.slice };
 
     color = toBaseLitColor(texel.albedo, texel.gloss, texel.hemi, toSunLight(point, uniforms), point, uniforms);
@@ -36,13 +37,13 @@ export function toForwardSurfaceShader(
     // Raw albedo, as the frame shows it unlit, takes no fog either.
     color = mix(
       color,
-      toFoggedColor(surface.draw, uniforms),
+      toFoggedColor(variant.draw, uniforms),
       toFogAmount(positionView, uniforms).mul(uniforms.settings.lit)
     );
   }
 
   return {
-    alphaTestNode: surface.alphaReference === undefined ? undefined : uniform(surface.alphaReference),
+    alphaTestNode: variant.isAlphaTested ? inputs.alphaReference : undefined,
     colorNode: vec4(color, texel.alpha),
   };
 }

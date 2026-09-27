@@ -3,6 +3,7 @@ import { Material, MeshBasicNodeMaterial } from "three/webgpu";
 
 import { ERendererDraw, IRendererSurface } from "#/contract/scene/renderer-surface";
 import { createOpaqueShadowMaterial, createSurfaceMaterial, ISurfaceMaterial } from "#/material/surface-material";
+import { SurfacePrograms } from "#/material/surface-programs";
 import { RendererTextures } from "#/texture/renderer-textures";
 import { RendererUniforms } from "#/uniforms/renderer-uniforms";
 
@@ -33,6 +34,8 @@ export class SurfaceLibrary {
   private isWireframe: boolean = false;
   /** What a wireframe draws the static surfaces' edges with, made the first time one draws. */
   private wireframe: Maybe<ISurfaceMaterial>;
+  /** The shaders its materials share, one per variant. */
+  private readonly programs: SurfacePrograms;
   /** The shadow material every opaque surface it makes shares. */
   private readonly opaqueShadow: MeshBasicNodeMaterial;
 
@@ -45,7 +48,8 @@ export class SurfaceLibrary {
     this.textures = textures;
     this.uniforms = uniforms;
     this.onReplaced = onReplaced;
-    this.opaqueShadow = createOpaqueShadowMaterial(uniforms);
+    this.programs = new SurfacePrograms(uniforms);
+    this.opaqueShadow = createOpaqueShadowMaterial(this.programs, uniforms);
   }
 
   /** Whether any material waits for nothing to draw it. */
@@ -82,7 +86,13 @@ export class SurfaceLibrary {
 
   /** What a wireframe draws every static surface's edges with, over the arenas' line indices. */
   public get wireframeMaterial(): ISurfaceMaterial {
-    this.wireframe ??= createSurfaceMaterial(WIREFRAME_SURFACE, this.textures, this.uniforms, this.opaqueShadow);
+    this.wireframe ??= createSurfaceMaterial(
+      WIREFRAME_SURFACE,
+      this.textures,
+      this.uniforms,
+      this.programs,
+      this.opaqueShadow
+    );
 
     return this.wireframe;
   }
@@ -175,7 +185,7 @@ export class SurfaceLibrary {
     if (material) {
       this.cache.delete(description);
     } else {
-      material = createSurfaceMaterial(surface, this.textures, this.uniforms, this.opaqueShadow);
+      material = createSurfaceMaterial(surface, this.textures, this.uniforms, this.programs, this.opaqueShadow);
       this.built.set(material, description);
     }
 

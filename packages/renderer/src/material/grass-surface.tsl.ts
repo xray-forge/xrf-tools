@@ -18,7 +18,7 @@ import { IRendererSurface } from "#/contract/scene/renderer-surface";
 import { MaterialSamplers } from "#/material/material-samplers";
 import { ISurfaceShader } from "#/material/surface-shader";
 import { DEFAULT_GLOSS, DEFAULT_MATERIAL, MATERIAL_SLICES } from "#/material/surface-texel.tsl";
-import { toAlphaCut } from "#/shader/alpha-cut.tsl";
+import { DEFAULT_ALPHA_REFERENCE, toAlphaCut } from "#/shader/alpha-cut.tsl";
 import { toCyclic } from "#/shader/cyclic-wave.tsl";
 import { toGBufferOutput } from "#/shader/gbuffer.tsl";
 import { toPointMotion } from "#/shader/motion.tsl";
@@ -87,7 +87,11 @@ export function toGrassSurfaceShader(
   );
   const base: Node<"vec4"> = samplers.bind(surface.textures.base, getWhiteTexture(), uv());
   // `deffer_base_aref_flat.ps`: cut out at `def_aref`.
-  const albedo: Node<"vec4"> = toAlphaCut(base.w, vec4(base.xyz, DEFAULT_GLOSS), surface.alphaReference);
+  const albedo: Node<"vec4"> = toAlphaCut(
+    base.w,
+    vec4(base.xyz, DEFAULT_GLOSS),
+    uniform(surface.alphaReference ?? DEFAULT_ALPHA_REFERENCE)
+  );
 
   return {
     fragmentNode: toGBufferOutput(

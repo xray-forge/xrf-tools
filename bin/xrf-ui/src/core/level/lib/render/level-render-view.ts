@@ -108,6 +108,8 @@ export function toLevelRendererSettings(inputs: ILevelRendererSettingsInputs): I
       ambientOcclusion: toLevelRendererFeature("ambientOcclusion", features, view, options.isOccluded),
       antialiasing: toLevelRendererAntialiasing(features.antialiasing, view, options.isAntialiased),
       grass: toLevelRendererFeature("grass", features, view, options.isGrassy),
+      // Timing every pass costs a level's frame rate a few percent, so only while the readout shows it.
+      isGpuTimed: features.isGpuTimed && options.isAdvancedStatsVisible,
       lights: toLevelRendererFeature("lights", features, view, options.isLamplit),
       lod: toLevelRendererLod(features.lod, lod, options.isImpostors),
       shadows: toLevelRendererFeature("shadows", features, view, options.isShadowed),
