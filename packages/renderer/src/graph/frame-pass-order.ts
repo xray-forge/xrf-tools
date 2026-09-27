@@ -7,6 +7,8 @@ import { IRendererPass } from "#/pass/renderer-pass";
 /** The optional passes a frame holds now, each null or empty while its feature is off. */
 export interface IFrameOptionalPasses {
   readonly grass: Nullable<IRendererPass>;
+  /** The frame combine finished measured, and the exposure adapted towards it. */
+  readonly exposure: Nullable<IRendererPass>;
   /** The static draws the first phase's depth hid culled again and drawn, and the depth reduced after. */
   readonly occlusion: Nullable<IOcclusionFramePasses>;
   readonly motionBackground: Nullable<IRendererPass>;
@@ -58,6 +60,7 @@ export function toFramePassOrder(
     base.sun,
     ...some(optional.lights, optional.ambientOcclusion),
     base.combine,
+    ...some(optional.exposure),
     ...(resolve?.beforeBlended ?? []),
     base.water,
     base.forward,

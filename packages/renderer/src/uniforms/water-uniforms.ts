@@ -1,12 +1,11 @@
-import { cubeTexture, renderGroup, texture, uniform } from "three/tsl";
-import { CubeTexture, CubeTextureNode, DataTexture, FloatType, RedFormat, TextureNode } from "three/webgpu";
+import { renderGroup, texture, uniform } from "three/tsl";
+import { DataTexture, FloatType, RedFormat, TextureNode } from "three/webgpu";
 
 import { DEFAULT_RENDERER_WATER_SETTINGS, IRendererWaterSettings } from "#/contract/renderer-features";
 import { IRendererLighting } from "#/contract/renderer-lighting";
-import { getPlaceholderSkyTexture } from "#/texture/placeholder-textures";
 
 /**
- * What the water's shaders read: the engine's `timers`, `water_intensity` and its two skies, and the settings standing
+ * What the water's shaders read: the engine's `timers` and `water_intensity`, and the settings standing
  * in for the constants of `shared/waterconfig.h`.
  */
 export class WaterUniforms {
@@ -22,19 +21,11 @@ export class WaterUniforms {
   public readonly soft = uniform(1).setGroup(renderGroup);
   /** `water_intensity`. */
   public readonly intensity = uniform(1).setGroup(renderGroup);
-  /** How far from the first sky to the second, `L_ambient.w`. */
-  public readonly skyBlend = uniform(0).setGroup(renderGroup);
   /**
    * The depth behind the water, each pixel's distance along the view in metres, the engine's `s_position.z`: the
    * frame's own once the water pass is made, and nothing near until then.
    */
   public readonly depth: TextureNode = texture(createFarDepthTexture());
-  /** `$user$sky0` and `$user$sky1`, pointed at the lighting's two skies as they upload. */
-  public readonly skies: readonly [CubeTextureNode, CubeTextureNode] = [
-    cubeTexture(getPlaceholderSkyTexture() as CubeTexture),
-    cubeTexture(getPlaceholderSkyTexture() as CubeTexture),
-  ];
-
   /**
    * @param settings - How the water is drawn.
    */
@@ -48,11 +39,10 @@ export class WaterUniforms {
   }
 
   /**
-   * @param lighting - How the scene is lit, which names its skies and the water's intensity.
+   * @param lighting - How the scene is lit, which names the water's intensity.
    */
-  public take(lighting: Pick<IRendererLighting, "sky" | "waterIntensity">): void {
+  public take(lighting: Pick<IRendererLighting, "waterIntensity">): void {
     this.intensity.value = lighting.waterIntensity;
-    this.skyBlend.value = lighting.sky.blend;
   }
 
   /**

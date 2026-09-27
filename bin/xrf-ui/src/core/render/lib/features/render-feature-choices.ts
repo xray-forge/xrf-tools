@@ -132,6 +132,14 @@ export function formatOcclusionRadius(radius: number): string {
   return `${formatNumber(radius, 2)} m`;
 }
 
+/** The bounds each exposure value is offered between: the console's own. */
+export const RENDER_EXPOSURE_LIMITS = {
+  adaptation: toRenderLimits(RENDERER_FEATURE_SCHEMA.exposure.adaptation, 0.01),
+  amount: toRenderLimits(RENDERER_FEATURE_SCHEMA.exposure.amount, 0.05),
+  lowLuminance: toRenderLimits(RENDERER_FEATURE_SCHEMA.exposure.lowLuminance, 0.0001),
+  middleGray: toRenderLimits(RENDERER_FEATURE_SCHEMA.exposure.middleGray, 0.05),
+} as const;
+
 /** The bounds each water value is offered between. */
 export const RENDER_WATER_LIMITS = {
   distortion: toRenderLimits(RENDERER_FEATURE_SCHEMA.water.distortion, 0.005),

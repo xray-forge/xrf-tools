@@ -15,6 +15,7 @@ import { FrameStage } from "#/graph/frame-stage";
 import { createOcclusionFramePasses, IOcclusionFramePasses } from "#/graph/occlusion-frame-passes";
 import { AmbientOcclusionPass } from "#/pass/ambient-occlusion-pass";
 import { AntialiasPass } from "#/pass/antialias/antialias-pass";
+import { ExposurePass } from "#/pass/exposure-pass";
 import { FsrPass } from "#/pass/fsr/fsr-pass";
 import { GrassPass } from "#/pass/grass-pass";
 import { LightShadowPass } from "#/pass/light-shadow-pass";
@@ -75,6 +76,7 @@ export class RendererFrameGraph {
   private readonly base: IBaseFramePasses;
   private readonly stages = {
     ambientOcclusion: new FrameStage<AmbientOcclusionPass>(release),
+    exposure: new FrameStage<ExposurePass>(release),
     grass: new FrameStage<GrassPass>(release),
     jitter: new FrameStage<TemporalJitter>((jitter: TemporalJitter) => jitter.dispose()),
     lightShadows: new FrameStage<LightShadowPass>(release),
@@ -153,6 +155,8 @@ export class RendererFrameGraph {
     stages.jitter.reconcile(isResolved, () => new TemporalJitter(uniforms.motion));
     stages.motionBackground.reconcile(isResolved, () => new MotionBackgroundPass(targets, uniforms.motion));
     stages.grass.reconcile(toWanted(plan.isGrassy), () => new GrassPass(this.grass, targets));
+    stages.exposure.reconcile(toWanted(plan.isExposed), () => new ExposurePass(targets, uniforms.exposure));
+    stages.exposure.value?.setSettings(features.exposure);
     stages.occlusion.reconcile(toWanted(plan.isOccluding), () => createOcclusionFramePasses(targets, cull));
     cull.setOccluding(plan.isOccluding);
     stages.lights.reconcile(toWanted(plan.isLit), () => new LightsPass(this.lights, targets, uniforms));
@@ -315,6 +319,7 @@ export class RendererFrameGraph {
       this.base,
       {
         ambientOcclusion: stages.ambientOcclusion.value,
+        exposure: stages.exposure.value,
         grass: stages.grass.value,
         lightShadows: stages.lightShadows.value,
         lights: stages.lights.value,

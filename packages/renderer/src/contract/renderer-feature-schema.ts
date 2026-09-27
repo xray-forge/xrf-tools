@@ -81,6 +81,14 @@ export const RENDERER_FEATURE_SCHEMA: TRendererSettingSchema<IRendererFeatureSet
     strength: toNumber(0, 2),
   },
   antialiasing: toChoice(ERendererAntialiasing),
+  // The console's own bounds.
+  exposure: {
+    adaptation: toNumber(0.01, 10),
+    amount: toNumber(0, 1),
+    isEnabled: FLAG,
+    lowLuminance: toNumber(0.0001, 1),
+    middleGray: toNumber(0, 2),
+  },
   grass: {
     // `r__detail_density`: a spacing, 0.1 the densest.
     density: toNumber(0.1, 0.99),

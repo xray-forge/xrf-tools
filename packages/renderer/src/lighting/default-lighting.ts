@@ -33,7 +33,12 @@ export const DEFAULT_RENDERER_LIGHTING: IRendererLighting = {
   skyIrradiance: [0.5, 0.511, 0.548],
   sunColor: [0.905882, 0.839216, 0.694118],
   grass: DEFAULT_RENDERER_GRASS_WIND,
-  sky: { blend: 0, textures: [DEFAULT_RENDERER_SKY_TEXTURE, DEFAULT_RENDERER_SKY_TEXTURE] },
+  sky: {
+    blend: 0,
+    color: [0.851001, 0.851001, 0.851001],
+    rotation: 0,
+    textures: [DEFAULT_RENDERER_SKY_TEXTURE, DEFAULT_RENDERER_SKY_TEXTURE],
+  },
   sunDirection: toRendererSunDirection(-68.999985, -30),
   trees: DEFAULT_RENDERER_TREE_WIND,
   waterIntensity: 1,

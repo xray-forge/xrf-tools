@@ -3,7 +3,7 @@ import { Nullable } from "@xrf/types";
 import { IRendererSky } from "#/contract/renderer-lighting";
 import { getPlaceholderSkyTexture } from "#/texture/placeholder-textures";
 import { RendererTextures } from "#/texture/renderer-textures";
-import { WaterUniforms } from "#/uniforms/water-uniforms";
+import { SkyUniforms } from "#/uniforms/sky-uniforms";
 
 /**
  * The two skies the lighting names, bound into what samples them by their texture keys: each draws its placeholder
@@ -11,16 +11,16 @@ import { WaterUniforms } from "#/uniforms/water-uniforms";
  */
 export class SceneSky {
   private readonly textures: RendererTextures;
-  private readonly water: WaterUniforms;
+  private readonly sky: SkyUniforms;
   private readonly keys: [Nullable<string>, Nullable<string>] = [null, null];
 
   /**
    * @param textures - Where the skies' cubes are put.
-   * @param water - What samples them.
+   * @param sky - What samples them.
    */
-  public constructor(textures: RendererTextures, water: WaterUniforms) {
+  public constructor(textures: RendererTextures, sky: SkyUniforms) {
     this.textures = textures;
-    this.water = water;
+    this.sky = sky;
   }
 
   /**
@@ -35,10 +35,10 @@ export class SceneSky {
       }
 
       if (previous) {
-        this.textures.unbind(previous, this.water.skies[index]);
+        this.textures.unbind(previous, this.sky.cubes[index]);
       }
 
-      this.textures.target(key, getPlaceholderSkyTexture(), this.water.skies[index]);
+      this.textures.target(key, getPlaceholderSkyTexture(), this.sky.cubes[index]);
       this.keys[index] = key;
     });
   }
@@ -46,7 +46,7 @@ export class SceneSky {
   public dispose(): void {
     this.keys.forEach((key: Nullable<string>, index: number) => {
       if (key) {
-        this.textures.unbind(key, this.water.skies[index]);
+        this.textures.unbind(key, this.sky.cubes[index]);
       }
     });
     this.keys.fill(null);

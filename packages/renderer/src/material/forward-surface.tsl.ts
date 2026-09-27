@@ -1,4 +1,4 @@
-import { mix, positionView, vec3, vec4 } from "three/tsl";
+import { Fn, mix, positionView, vec3, vec4 } from "three/tsl";
 import { Node } from "three/webgpu";
 
 import { ERendererDraw } from "#/contract/scene/renderer-surface";
@@ -7,7 +7,7 @@ import { ISurfaceShader } from "#/material/surface-shader";
 import { ISurfaceTexel } from "#/material/surface-texel";
 import { toSurfaceTexel } from "#/material/surface-texel.tsl";
 import { ISurfaceVariant } from "#/material/surface-variant";
-import { toBaseLitColor, toFogAmount, toFogColor, toSunLight } from "#/shader/base-lighting.tsl";
+import { discardBeyondFog, toBaseLitColor, toFogAmount, toFogColor, toSunLight } from "#/shader/base-lighting.tsl";
 import { IBaseShadingPoint } from "#/shader/base-shading-point";
 import { RendererUniforms } from "#/uniforms/renderer-uniforms";
 
@@ -44,7 +44,11 @@ export function toForwardSurfaceShader(
 
   return {
     alphaTestNode: variant.isAlphaTested ? inputs.alphaReference : undefined,
-    colorNode: vec4(color, texel.alpha),
+    colorNode: Fn(() => {
+      discardBeyondFog(positionView, uniforms);
+
+      return vec4(color, texel.alpha);
+    })(),
   };
 }
 

@@ -41,12 +41,14 @@ export interface IRendererSettings {
   backdrop: Nullable<number>;
   /** Which picture reaches the canvas. */
   debugView: ERendererDebugView;
-  /** What the tonemap multiplies by first. The engine adapts it to the scene; one is its noon answer. */
+  /** What the tonemap multiplies by first, over whatever the exposure adapts it to. */
   tonemapScale: number;
   /** Whether light shades the frame; unlit, every surface shows its raw albedo, as the file itself reads. */
   isLit: boolean;
   /** Whether bump pairs perturb the normal and supply gloss; off, every surface is shaded flat with `def_gloss`. */
   isBumped: boolean;
+  /** Whether the sky is drawn behind the scene and the fog fades into it, as a level's is; off, the backdrop shows. */
+  isSkyDrawn: boolean;
   /** Whether surfaces draw as their triangles' edges. */
   isWireframe: boolean;
   /** How much of the baked hemisphere occlusion applies: one as the engine applies it, zero ignoring it. */

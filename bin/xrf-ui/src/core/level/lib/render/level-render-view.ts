@@ -75,7 +75,7 @@ export function toLevelRendererLighting(
     ...toRendererLighting(lighting, DEFAULT_RENDERER_LIGHTING),
     fog: isFogged ? toLevelRendererFog(lighting) : null,
     grass: isWindy ? DEFAULT_RENDERER_GRASS_WIND : null,
-    sky: sky ? { blend: 0, textures: [sky, sky] } : DEFAULT_RENDERER_LIGHTING.sky,
+    sky: sky ? { ...DEFAULT_RENDERER_LIGHTING.sky, textures: [sky, sky] } : DEFAULT_RENDERER_LIGHTING.sky,
     trees: isWindy ? toLevelRendererTreeWind(lighting) : null,
   };
 }
@@ -126,6 +126,7 @@ export function toLevelRendererSettings(inputs: ILevelRendererSettingsInputs): I
     hemiStrength: options.isBaked ? lighting.hemiStrength : 0,
     isBumped: true,
     isLit: true,
+    isSkyDrawn: true,
     isWireframe: options.isWireframe,
     tonemapScale: 1,
   };

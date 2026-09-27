@@ -210,11 +210,13 @@ export function toVisualRendererSettings(
   return {
     backdrop: config.backgroundColor,
     debugView: ERendererDebugView.FINAL,
-    features,
+    // At the engine's noon scale: one asset against a backdrop is no scene to adapt the exposure to.
+    features: { ...features, exposure: { ...features.exposure, isEnabled: false } },
     pacing,
     hemiStrength: 1,
     isBumped: options.isBumpVisible,
     isLit: true,
+    isSkyDrawn: false,
     isWireframe: options.isWireframe,
     tonemapScale: 1,
   };

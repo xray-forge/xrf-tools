@@ -140,8 +140,11 @@ export function createCubeTexture(
 
   // Three sizes a texture by its image, and this class's image is the face list, which has no size of its own.
   (texture as unknown as { image: { width: number; height: number } }).image = { height, width };
-  texture.mipmaps = file.mipmaps as unknown as CompressedCubeTexture["mipmaps"];
-  describeSampling(texture, file.mipmaps.length);
+  // The top level alone: three allocates a cube one level more than its list holds (`Textures.updateTexture`,
+  // `levels++`), so the last is never written and samples black, and a whole chain would ask for one level too many.
+  // A sky ships no mips, and is sampled at its top level.
+  texture.mipmaps = file.mipmaps.slice(0, 1) as unknown as CompressedCubeTexture["mipmaps"];
+  describeSampling(texture, 1);
   texture.wrapS = ClampToEdgeWrapping;
   texture.wrapT = ClampToEdgeWrapping;
 

@@ -135,6 +135,34 @@ export const DEFAULT_RENDERER_GRASS_SETTINGS: IRendererGrassSettings = {
 };
 
 /**
+ * The engine's exposure (`r2_tonemap`): the scene's average luminance measured every frame, and the scale the tonemap
+ * multiplies by moved towards `middle_gray / luminance` at the adaptation's rate
+ * (`xrRender_R2/r2_rendertarget_phase_luminance.cpp`, `bloom_luminance_3.ps`). OpenXRay's defaults
+ * (`xrRender_console.cpp`).
+ */
+export interface IRendererExposureSettings {
+  /** `r2_tonemap`: off, the tonemap multiplies by one, the engine's answer at noon. */
+  isEnabled: boolean;
+  /** `r2_tonemap_amount`: how far from no adaptation towards the whole of it. */
+  amount: number;
+  /** `r2_tonemap_middlegray`: the luminance the frame is brought towards. */
+  middleGray: number;
+  /** `r2_tonemap_lowlum`: what the luminance is floored at, so a black frame is not brightened without end. */
+  lowLuminance: number;
+  /** `r2_tonemap_adaptation`: how fast the scale follows the frame. */
+  adaptation: number;
+}
+
+/** OpenXRay's own exposure. */
+export const DEFAULT_RENDERER_EXPOSURE_SETTINGS: IRendererExposureSettings = {
+  adaptation: 1,
+  amount: 0.7,
+  isEnabled: true,
+  lowLuminance: 0.0001,
+  middleGray: 1,
+};
+
+/**
  * The water (`water.vs`, `water.ps`, `waterd.ps`): rippled and reflecting the sky, blended over the depth behind it
  * and distorting it. The engine's own look by default: its constants are `shared/waterconfig.h`'s and `def_distort`.
  */
@@ -300,6 +328,7 @@ export const DEFAULT_RENDERER_AMBIENT_OCCLUSION_SETTINGS: IRendererAmbientOcclus
 export interface IRendererFeatureSettings {
   ambientOcclusion: IRendererAmbientOcclusionSettings;
   antialiasing: ERendererAntialiasing;
+  exposure: IRendererExposureSettings;
   grass: IRendererGrassSettings;
   /** Whether every pass is timed on the GPU for the report. */
   isGpuTimed: boolean;
@@ -329,6 +358,7 @@ export const RENDERER_PRESETS: Readonly<Record<ERendererPreset, IRendererFeature
   [ERendererPreset.BASE]: {
     ambientOcclusion: DEFAULT_RENDERER_AMBIENT_OCCLUSION_SETTINGS,
     antialiasing: ERendererAntialiasing.SMAA,
+    exposure: DEFAULT_RENDERER_EXPOSURE_SETTINGS,
     grass: DEFAULT_RENDERER_GRASS_SETTINGS,
     isGpuTimed: true,
     isOcclusionCulled: true,
@@ -341,6 +371,7 @@ export const RENDERER_PRESETS: Readonly<Record<ERendererPreset, IRendererFeature
   [ERendererPreset.EDITING]: {
     ambientOcclusion: { ...DEFAULT_RENDERER_AMBIENT_OCCLUSION_SETTINGS, isEnabled: false },
     antialiasing: ERendererAntialiasing.NONE,
+    exposure: DEFAULT_RENDERER_EXPOSURE_SETTINGS,
     grass: { ...DEFAULT_RENDERER_GRASS_SETTINGS, isEnabled: false },
     isGpuTimed: true,
     isOcclusionCulled: true,

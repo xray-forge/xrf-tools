@@ -1,10 +1,11 @@
 import { Nullable } from "@xrf/types";
-import { float, Fn, int, log, screenUV, select, texture, vec2, vec3, vec4 } from "three/tsl";
+import { float, Fn, int, log, screenCoordinate, screenUV, select, texture, vec2, vec3, vec4 } from "three/tsl";
 import { Node, RenderTarget, Texture } from "three/webgpu";
 
 import { ERendererDebugView } from "#/contract/renderer-settings";
 import { RendererTargets } from "#/pass/renderer-targets";
 import { toUpsampledAmbientOcclusion } from "#/shader/ambient-occlusion.tsl";
+import { toOutputDither } from "#/shader/dither.tsl";
 import { IGBufferSample } from "#/shader/gbuffer-sample";
 import { readGBuffer } from "#/shader/gbuffer.tsl";
 import { CameraUniforms } from "#/uniforms/camera-uniforms";
@@ -15,7 +16,7 @@ import { CameraUniforms } from "#/uniforms/camera-uniforms";
  * @param camera - The drawing camera's uniforms.
  * @param frame - What the finished frame is read from.
  * @param ambientOcclusion - The screen's occlusion at half resolution, or none.
- * @returns The picture at every pixel: the finished frame, or one target shown raw.
+ * @returns The picture at every pixel: the finished frame dithered to the canvas, or one target shown raw.
  */
 export function toPresentPassFragment(
   view: ERendererDebugView,
@@ -25,7 +26,11 @@ export function toPresentPassFragment(
   ambientOcclusion: Nullable<Texture>
 ): Node<"vec4"> {
   if (view === ERendererDebugView.FINAL) {
-    return texture(frame.texture, screenUV);
+    return Fn(() => {
+      const color: Node<"vec4"> = texture(frame.texture, screenUV);
+
+      return vec4(color.xyz.add(toOutputDither(screenCoordinate.xy)), color.w);
+    })();
   }
 
   return Fn(() => {

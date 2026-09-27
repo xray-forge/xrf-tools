@@ -24,6 +24,7 @@ const OCCLUSION: IOcclusionFramePasses = {
 
 const NONE: IFrameOptionalPasses = {
   ambientOcclusion: null,
+  exposure: null,
   grass: null,
   lightShadows: null,
   lights: null,
@@ -115,5 +116,12 @@ describe("the frame's pass order", () => {
       "pyramid",
       "wallmarks",
     ]);
+  });
+
+  // Measured from what combine wrote, before the water and the blended surfaces add theirs, as `phase_luminance` is.
+  it("measures the exposure right after combine", () => {
+    const order: Array<string> = toOrder({ exposure: toPass("exposure") });
+
+    expect(order.indexOf("exposure")).toBe(order.indexOf("combine") + 1);
   });
 });

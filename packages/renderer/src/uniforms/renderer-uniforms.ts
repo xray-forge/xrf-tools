@@ -6,11 +6,13 @@ import { IRendererSettings } from "#/contract/renderer-settings";
 import { toBaseLightingConstants } from "#/lighting/base-lighting";
 import { BaseLightingUniforms } from "#/uniforms/base-lighting-uniforms";
 import { CameraUniforms } from "#/uniforms/camera-uniforms";
+import { ExposureUniforms } from "#/uniforms/exposure-uniforms";
 import { GrassWindUniforms } from "#/uniforms/grass-wind-uniforms";
 import { createMaterialLutTexture } from "#/uniforms/material-lut-texture";
 import { MotionUniforms } from "#/uniforms/motion-uniforms";
 import { SettingsUniforms } from "#/uniforms/settings-uniforms";
 import { ShadowUniforms } from "#/uniforms/shadow-uniforms";
+import { SkyUniforms } from "#/uniforms/sky-uniforms";
 import { StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
 import { StorageRetirement } from "#/uniforms/storage-retirement";
 import { TreeWindUniforms } from "#/uniforms/tree-wind-uniforms";
@@ -25,6 +27,8 @@ export class RendererUniforms {
   public readonly camera: CameraUniforms = new CameraUniforms();
   public readonly lighting: BaseLightingUniforms = new BaseLightingUniforms();
   public readonly settings: SettingsUniforms = new SettingsUniforms();
+  /** What every tonemap multiplies by, adapted to the frame. */
+  public readonly exposure: ExposureUniforms = new ExposureUniforms(this.settings.tonemapScale);
   public readonly lut: Data3DTexture = createMaterialLutTexture();
   /** What every static draw is culled and placed by. */
   public readonly staticDraws: StaticDrawBuffers = new StaticDrawBuffers();
@@ -34,7 +38,9 @@ export class RendererUniforms {
   public readonly treeWind: TreeWindUniforms = new TreeWindUniforms();
   /** How the grass sways, built each frame beside the trees' wind. */
   public readonly grassWind: GrassWindUniforms = new GrassWindUniforms();
-  /** How the water moves and what it reflects. */
+  /** The sky the frame draws behind the scene and the water reflects. */
+  public readonly sky: SkyUniforms = new SkyUniforms();
+  /** How the water moves. */
   public readonly water: WaterUniforms = new WaterUniforms();
   /** What the motion every G-buffer surface writes is measured with. */
   public readonly motion: MotionUniforms = new MotionUniforms();
@@ -68,6 +74,7 @@ export class RendererUniforms {
   public configure(settings: IRendererSettings): void {
     this.settings.apply(settings);
     this.water.apply(settings.features.water);
+    this.sky.setDrawn(settings.isSkyDrawn);
     this.isLit = settings.isLit;
   }
 
@@ -79,6 +86,7 @@ export class RendererUniforms {
     this.treeWind.take(lighting.trees);
     this.grassWind.take(lighting.grass);
     this.water.take(lighting);
+    this.sky.take(lighting.sky);
     this.fogDistance = lighting.fog?.distance ?? null;
   }
 

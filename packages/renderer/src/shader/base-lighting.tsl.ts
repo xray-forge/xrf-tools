@@ -1,4 +1,18 @@
-import { dot, float, length, mix, normalize, reflect, saturate, select, texture3D, vec3, vec4 } from "three/tsl";
+import {
+  Discard,
+  dot,
+  float,
+  If,
+  length,
+  mix,
+  normalize,
+  reflect,
+  saturate,
+  select,
+  texture3D,
+  vec3,
+  vec4,
+} from "three/tsl";
 import { Node } from "three/webgpu";
 
 import { IBaseShadingPoint } from "#/shader/base-shading-point";
@@ -58,7 +72,7 @@ export function toBaseLitColor(
  * @returns Total fog as the frame shows it: what everything past the far plane would have come to.
  */
 export function toFogColor(uniforms: RendererUniforms): Node<"vec3"> {
-  return toToneMapped(uniforms.lighting.fogColor, uniforms.settings.tonemapScale);
+  return toToneMapped(uniforms.lighting.fogColor, uniforms.exposure.scale);
 }
 
 /**
@@ -99,9 +113,25 @@ export function toFogAmount(position: Node<"vec3">, uniforms: RendererUniforms):
   return saturate(length(position).mul(lighting.fogScale).add(lighting.fogOffset));
 }
 
+/**
+ * The engine's far plane, which a lit and fogged frame ends where the fog is total: past it a surface is not drawn, so
+ * what shows there is the sky or the fog behind it rather than the fog's colour standing in front. Called inside a
+ * fragment's `Fn`.
+ *
+ * @param position - A point in view space.
+ * @param uniforms - What the frame's shaders read.
+ */
+export function discardBeyondFog(position: Node<"vec3">, uniforms: RendererUniforms): void {
+  const isFogged: Node<"bool"> = uniforms.lighting.fogged.mul(uniforms.settings.lit).greaterThan(0.5);
+
+  If(isFogged.and(toFogAmount(position, uniforms).greaterThanEqual(1)), () => {
+    Discard();
+  });
+}
+
 /** Fog by distance, then the engine's tonemap: what `combine_2` does to a lit colour. */
 function toFinishedColor(color: Node<"vec3">, position: Node<"vec3">, uniforms: RendererUniforms): Node<"vec3"> {
-  const { lighting, settings } = uniforms;
+  const { lighting, exposure } = uniforms;
 
-  return toToneMapped(mix(color, lighting.fogColor, toFogAmount(position, uniforms)), settings.tonemapScale);
+  return toToneMapped(mix(color, lighting.fogColor, toFogAmount(position, uniforms)), exposure.scale);
 }

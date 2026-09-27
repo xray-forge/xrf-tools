@@ -1,7 +1,7 @@
 import { Node } from "three/webgpu";
 
 /** `fWhiteIntensity` of `tonemap`, squared. */
-const WHITE_INTENSITY_SQUARED: number = 1.7 * 1.7;
+export const WHITE_INTENSITY_SQUARED: number = 1.7 * 1.7;
 
 /**
  * `tonemap` of `common_functions.h`, the curve `toneMapReinhard` states on the CPU.

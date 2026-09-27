@@ -76,6 +76,7 @@ describe("listRendererTransfers", () => {
           isBumped: true,
           features: RENDERER_PRESETS[ERendererPreset.BASE],
           isLit: true,
+          isSkyDrawn: false,
           isWireframe: false,
           tonemapScale: 1,
         },

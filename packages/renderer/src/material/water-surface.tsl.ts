@@ -35,11 +35,12 @@ import { ISurfaceShader } from "#/material/surface-shader";
 import { ESurfaceSlot } from "#/material/surface-slot";
 import { toSurfaceCoordinates } from "#/material/surface-texel.tsl";
 import { ISurfaceVariant } from "#/material/surface-variant";
-import { toFogAmount } from "#/shader/base-lighting.tsl";
+import { discardBeyondFog, toFogAmount } from "#/shader/base-lighting.tsl";
 import { packOutputs, unpackOutputs } from "#/shader/packed-outputs.tsl";
 import { toSurfaceBinormal, toSurfaceTangent } from "#/shader/packed-vertex.tsl";
 import { instancedPosition, toPlacedNormalView, toPlacedViewDirection } from "#/shader/placement.tsl";
 import { skinnedBinormal, skinnedTangent } from "#/shader/skinned-basis.tsl";
+import { toSkyCubes } from "#/shader/sky.tsl";
 import { toToneMapped } from "#/shader/tonemap.tsl";
 import { toVertexHemi } from "#/shader/vertex-hemi.tsl";
 import { RendererUniforms } from "#/uniforms/renderer-uniforms";
@@ -78,22 +79,10 @@ function toScrolled(base: Node<"vec2">, world: Node<"vec3">, layer: number, wate
   return base.mul(tile).add(vec2(sin(angle), cos(angle)).mul(amplitude).mul(water.ripple));
 }
 
-/** A world direction, as a cube the engine authored is sampled by: its `z` negated back, and three's `x` flip undone. */
-function toCubeDirection(direction: Node<"vec3">): Node<"vec3"> {
-  return vec3(direction.x.negate(), direction.y, direction.z.negate());
-}
-
 /** What a water model shades the surface to, before its depth, foam and fog: its colour, and its alpha. */
 interface IWaterShading {
   color: Node<"vec3">;
   alpha: Node<"float">;
-}
-
-/** The two skies at a direction, blended as `L_ambient.w` blends them. */
-function toSky(direction: Node<"vec3">, water: WaterUniforms): Node<"vec3"> {
-  const cube: Node<"vec3"> = toCubeDirection(direction);
-
-  return mix(water.skies[0].sample(cube).xyz, water.skies[1].sample(cube).xyz, water.skyBlend);
 }
 
 /**
@@ -104,9 +93,9 @@ function toEngineShading(
   remapped: Node<"vec3">,
   power: Node<"float">,
   light: Node<"vec3">,
-  water: WaterUniforms
+  { water, sky: skies }: RendererUniforms
 ): IWaterShading {
-  const sky: Node<"vec3"> = toSky(remapped, water);
+  const sky: Node<"vec3"> = toSkyCubes(remapped, skies);
   const amount: Node<"float"> = float(0.15).add(power.mul(0.25)).mul(water.reflection);
 
   return {
@@ -131,7 +120,7 @@ function toAnomalyShading(
   const { water, lighting, camera } = uniforms;
   const power: Node<"float"> = pow(saturate(dot(reflected, toPoint)), 9);
   // `calc_envmap`: the fast remapping alone.
-  const sky: Node<"vec3"> = toSky(vec3(reflected.x, reflected.y.mul(2).sub(1), reflected.z), water).mul(
+  const sky: Node<"vec3"> = toSkyCubes(vec3(reflected.x, reflected.y.mul(2).sub(1), reflected.z), uniforms.sky).mul(
     water.reflection
   );
   const albedo: Node<"vec3"> = anomaly.isTransparent ? base.xyz.mul(light) : base.xyz;
@@ -177,6 +166,8 @@ export function toWaterSurfaceShader(
   const hemi: Node<"float"> = varying(toVertexHemi(staticDraws));
 
   const packed: Node<"mat4"> = Fn(() => {
+    discardBeyondFog(positionView, uniforms);
+
     const normalView: Node<"vec3"> = toPlacedNormalView(staticDraws);
     const normal: Node<"vec3"> = camera.viewToWorld.mul(vec4(normalView, 0)).xyz.toVar();
     const coordinates: Node<"vec2"> = toSurfaceCoordinates(inputs);
@@ -211,7 +202,7 @@ export function toWaterSurfaceShader(
       .toVar();
     const shaded: IWaterShading = variant.anomalyWater
       ? toAnomalyShading(variant.anomalyWater, base, reflected, toPoint, surfaceNormal, light, uniforms)
-      : toEngineShading(base, remapped, power, light, water);
+      : toEngineShading(base, remapped, power, light, uniforms);
     const lit: Node<"vec3"> = shaded.color.toVar();
 
     // `NEED_SOFT_WATER` and `USE_SOFT_WATER`: the depth behind the surface, which fades, darkens and foams it.
@@ -237,7 +228,7 @@ export function toWaterSurfaceShader(
     const seen: Node<"float"> = float(1).sub(fog);
     // Plain `water` is written whole, `blend(false)`; soft water is faded by the fog twice over, as its alpha is.
     const alpha: Node<"float"> = variant.isSoftWater ? softAlpha.mul(seen).mul(seen) : float(1);
-    const finished: Node<"vec3"> = toToneMapped(mix(color, lighting.fogColor, fog), settings.tonemapScale);
+    const finished: Node<"vec3"> = toToneMapped(mix(color, lighting.fogColor, fog), uniforms.exposure.scale);
     const shown: Node<"vec3"> = select(settings.lit.greaterThan(0.5), finished, base.xyz);
 
     // `waterd.ps`: the distortion map at the normal layers' coordinates, gone where the base is opaque, faded by the

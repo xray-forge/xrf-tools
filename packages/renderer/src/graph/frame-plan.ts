@@ -32,6 +32,8 @@ export interface IRendererFramePlan {
   /** RCAS over the upscaled frame, with FSR 2's denoise under FSR 2. */
   readonly sharpen: Nullable<{ readonly isDenoised: boolean }>;
   readonly isGrassy: boolean;
+  /** Whether the exposure adapts to the frame. */
+  readonly isExposed: boolean;
   readonly isLit: boolean;
   readonly isLightShadowed: boolean;
   /** Whether the static draws the depth hides are culled: the second cull, its draw and the pyramid. */
@@ -53,6 +55,7 @@ export function toFramePlan(features: IRendererFeatureSettings): IRendererFrameP
 
   return {
     ambientOcclusion: features.ambientOcclusion.isEnabled ? features.ambientOcclusion.quality : null,
+    isExposed: features.exposure.isEnabled,
     isGrassy: features.grass.isEnabled,
     isLightShadowed: lights.isEnabled && lights.isShadowed,
     isLit: lights.isEnabled,

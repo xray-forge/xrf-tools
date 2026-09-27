@@ -11,6 +11,7 @@ import { ReactElement } from "react";
 
 import {
   RENDER_ANTIALIASING_OPTIONS,
+  RENDER_EXPOSURE_LIMITS,
   RENDER_SCALE_OPTIONS,
   RENDER_SHARPENING_LIMITS,
 } from "@/core/render/lib/features";
@@ -93,6 +94,56 @@ export function SettingsRendererFeatures(): ReactElement {
           isDisabled={features.upscaling.scale === ERendererRenderScale.NATIVE}
           format={(value: number) => formatNumber(value, 2)}
           onChange={(sharpening: number) => settingsService.setRendererOverrides({ upscaling: { sharpening } })}
+        />
+
+        <CheckboxFormRow
+          label={"Exposure adaptation"}
+          description={
+            "Brightens or darkens the level towards the middle gray by its average luminance, as the engine's " +
+            "r2_tonemap does. Off, the frame is drawn at the engine's noon scale."
+          }
+          isChecked={features.exposure.isEnabled}
+          onChange={(isEnabled: boolean) => settingsService.setRendererOverrides({ exposure: { isEnabled } })}
+        />
+
+        <SliderFormRow
+          label={"Middle gray"}
+          description={"The luminance the frame is brought towards: r2_tonemap_middlegray."}
+          value={features.exposure.middleGray}
+          {...RENDER_EXPOSURE_LIMITS.middleGray}
+          isDisabled={!features.exposure.isEnabled}
+          format={(value: number) => formatNumber(value, 2)}
+          onChange={(middleGray: number) => settingsService.setRendererOverrides({ exposure: { middleGray } })}
+        />
+
+        <SliderFormRow
+          label={"Adaptation amount"}
+          description={"How much of the adaptation applies: r2_tonemap_amount."}
+          value={features.exposure.amount}
+          {...RENDER_EXPOSURE_LIMITS.amount}
+          isDisabled={!features.exposure.isEnabled}
+          format={(value: number) => formatNumber(value, 2)}
+          onChange={(amount: number) => settingsService.setRendererOverrides({ exposure: { amount } })}
+        />
+
+        <SliderFormRow
+          label={"Low luminance"}
+          description={"What the measured luminance is floored at: r2_tonemap_lowlum."}
+          value={features.exposure.lowLuminance}
+          {...RENDER_EXPOSURE_LIMITS.lowLuminance}
+          isDisabled={!features.exposure.isEnabled}
+          format={(value: number) => formatNumber(value, 4)}
+          onChange={(lowLuminance: number) => settingsService.setRendererOverrides({ exposure: { lowLuminance } })}
+        />
+
+        <SliderFormRow
+          label={"Adaptation speed"}
+          description={"How fast the exposure follows the frame: r2_tonemap_adaptation."}
+          value={features.exposure.adaptation}
+          {...RENDER_EXPOSURE_LIMITS.adaptation}
+          isDisabled={!features.exposure.isEnabled}
+          format={(value: number) => formatNumber(value, 2)}
+          onChange={(adaptation: number) => settingsService.setRendererOverrides({ exposure: { adaptation } })}
         />
 
         <CheckboxFormRow

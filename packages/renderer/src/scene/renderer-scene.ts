@@ -86,7 +86,7 @@ export class RendererScene {
     this.textures = new RendererTextures(onTextureRefused, (key: string) => this.staticDraws.invalidate(key));
     this.grass = new SceneGrass(this.textures, uniforms);
     this.lights = new SceneLights(this.textures, this.staticDraws.shadowChanges);
-    this.sky = new SceneSky(this.textures, uniforms.water);
+    this.sky = new SceneSky(this.textures, uniforms.sky);
     this.skeletons = new RendererSkeletons((key: string) => this.buildUsers(this.skeletonUsers.get(key)));
     this.surfaces = new SurfaceLibrary(this.textures, uniforms, (key: string) =>
       this.buildUsers(this.surfaceUsers.get(key))

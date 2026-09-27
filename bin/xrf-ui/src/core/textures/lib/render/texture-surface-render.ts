@@ -162,11 +162,13 @@ export function toTextureRendererSettings(
     // Transparent, so the checkerboard the frame already draws shows wherever the texture's alpha does.
     backdrop: null,
     debugView: ERendererDebugView.FINAL,
-    features,
+    // At the engine's noon scale: one asset against a backdrop is no scene to adapt the exposure to.
+    features: { ...features, exposure: { ...features.exposure, isEnabled: false } },
     pacing,
     hemiStrength: 1,
     isBumped: options.isBumped,
     isLit: options.isLit,
+    isSkyDrawn: false,
     isWireframe: false,
     tonemapScale: 1,
   };

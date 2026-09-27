@@ -66,6 +66,10 @@ export interface IRendererSky {
   textures: readonly [string, string];
   /** How far from the first to the second, `L_ambient.w`. */
   blend: number;
+  /** `sky_color`: what the cubes are multiplied by. */
+  color: TRendererColor;
+  /** `sky_rotation`, in degrees about the vertical. */
+  rotation: number;
 }
 
 /**

@@ -12,6 +12,7 @@ import {
   mix,
   outputStruct,
   saturate,
+  screenCoordinate,
   screenUV,
   select,
   sqrt,
@@ -22,6 +23,7 @@ import {
 } from "three/tsl";
 import { DepthTexture, Node, Texture } from "three/webgpu";
 
+import { toOutputDither } from "#/shader/dither.tsl";
 import { toNearestDrawnTexel, toUpscaledCoverage } from "#/shader/drawn-sample.tsl";
 import { loadClamped, loadDepth, NEIGHBOURHOOD, toTextureSize } from "#/shader/texel.tsl";
 import { CameraUniforms } from "#/uniforms/camera-uniforms";
@@ -159,7 +161,10 @@ export function toTemporalResolve(inputs: ITemporalInputs, uniforms: ITemporalUn
     return vec4(toBlended(current, history, weight), select(isDrawn, distance, float(0)));
   })();
 
-  return outputStruct(resolved, vec4(resolved.xyz, toUpscaledCoverage(inputs.frame, motion.jitter)));
+  // The history keeps its precision; the frame shown is eight bits again, and its average would band as the input did.
+  const shown: Node<"vec3"> = resolved.xyz.add(toOutputDither(screenCoordinate.xy));
+
+  return outputStruct(resolved, vec4(shown, toUpscaledCoverage(inputs.frame, motion.jitter)));
 }
 
 /**
