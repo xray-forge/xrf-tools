@@ -1,6 +1,7 @@
 import { inject, Injectable, OnDeactivation } from "@wirestate/core";
 import { BoundAction, comparer, reaction } from "@wirestate/mobx";
 import {
+  ERendererCameraCommand,
   ERenderResolution,
   IDdsRefusal,
   IRendererLighting,
@@ -13,9 +14,10 @@ import { createRendererWorker } from "@xrf/renderer/worker";
 import { Maybe, Nullable } from "@xrf/types";
 
 import { SelectedLevelDescription } from "@/core/ipc/types/xrf-app";
+import { ILevelGoTo, toLevelGoToViewpoint } from "@/core/level/lib/camera/level-camera-goto";
 import { ILevelCameraOptions } from "@/core/level/lib/camera/level-camera-options";
 import { toLevelCameraReading } from "@/core/level/lib/camera/level-camera-reading";
-import { toLevelStartViewpoint } from "@/core/level/lib/camera/level-viewpoint";
+import { ILevelViewpoint, toLevelStartViewpoint } from "@/core/level/lib/camera/level-viewpoint";
 import { ILevelBox, toLevelBox } from "@/core/level/lib/extent/level-extent";
 import { ILevelLighting } from "@/core/level/lib/lighting/level-lighting";
 import { DEFAULT_LEVEL_RENDER_CONFIG, ILevelRenderConfig } from "@/core/level/lib/render/level-render-config";
@@ -29,7 +31,7 @@ import {
 } from "@/core/level/lib/render/level-render-frame";
 import { LEVEL_RENDER_KEYS } from "@/core/level/lib/render/level-render-keys";
 import {
-  toLevelCamera,
+  toLevelCameraAt,
   toLevelRendererLighting,
   toLevelRendererSettings,
 } from "@/core/level/lib/render/level-render-view";
@@ -65,6 +67,11 @@ export class LevelRenderService extends RenderSurfaceService {
   private level: Nullable<SelectedLevelDescription> = null;
   /** Where the loader was last asked to stream from. */
   private streamedFrom: Nullable<ILevelPoint> = null;
+  /**
+   * Where the camera was last stood: the level's start, or a place gone to. The toolbar's speeds and lens are sent
+   * with it, so changing one leaves the camera where it has flown rather than taking it back.
+   */
+  private viewpoint: Nullable<ILevelViewpoint> = null;
   /** Bumped by every level opened, so a reveal waiting on one that has since been replaced reveals nothing. */
   private opening: number = 0;
   /** What each frame helper was last put as, so a toggle that leaves one alone does not send it again. */
@@ -93,6 +100,7 @@ export class LevelRenderService extends RenderSurfaceService {
     this.content = null;
     this.level = null;
     this.streamedFrom = null;
+    this.viewpoint = null;
     this.framed.clear();
     this.sentSettings = null;
     this.sentLighting = null;
@@ -157,6 +165,10 @@ export class LevelRenderService extends RenderSurfaceService {
       reaction(() => this.viewService.options, this.applyOptions, { fireImmediately: true }),
       reaction(() => this.viewService.lighting, this.applyLighting, { fireImmediately: true }),
       reaction(() => this.viewService.camera, this.applyCamera),
+      reaction(
+        () => this.viewService.goTo,
+        (goTo: Nullable<Readonly<ILevelGoTo>>) => goTo && this.goTo(goTo)
+      ),
       // Whatever else the settings are made of; the options and the lighting configure as they apply.
       reaction(
         () => [
@@ -183,9 +195,8 @@ export class LevelRenderService extends RenderSurfaceService {
     this.applyFrame();
 
     // The start frames the camera, and is where the level is first read around.
-    this.client?.setCamera(
-      toLevelCamera(level?.bounds ?? null, level?.start ?? null, this.viewService.camera, this.config)
-    );
+    this.viewpoint = toLevelStartViewpoint(level?.bounds ?? null, level?.start ?? null);
+    this.client?.setCamera(toLevelCameraAt(this.viewpoint, this.viewService.camera, this.config));
     this.streamedFrom = null;
     this.viewportService.conceal();
 
@@ -221,10 +232,30 @@ export class LevelRenderService extends RenderSurfaceService {
     this.applySettings();
   }
 
-  /** The toolbar's speeds and lens, from the same start: the camera keeps where it has flown. */
+  /**
+   * Stands the camera at a place, facing the way asked, and reads the level around it.
+   *
+   * @param goTo - Where, as the readout states it.
+   */
+  @BoundAction()
+  public goTo(goTo: ILevelGoTo): void {
+    this.viewpoint = toLevelGoToViewpoint(goTo);
+    this.client?.setCamera(toLevelCameraAt(this.viewpoint, this.viewService.camera, this.config));
+    // The same place again moves nothing a description compares, and the camera has flown on since: stood there anew.
+    this.client?.commandCamera({ kind: ERendererCameraCommand.RESET });
+
+    if (this.level) {
+      void this.stream(this.viewpoint.position);
+    }
+  }
+
+  /** The toolbar's speeds and lens, from the same place: the camera keeps where it has flown. */
   @BoundAction()
   private applyCamera(camera: ILevelCameraOptions): void {
-    this.client?.setCamera(toLevelCamera(this.level?.bounds ?? null, this.level?.start ?? null, camera, this.config));
+    const viewpoint: ILevelViewpoint =
+      this.viewpoint ?? toLevelStartViewpoint(this.level?.bounds ?? null, this.level?.start ?? null);
+
+    this.client?.setCamera(toLevelCameraAt(viewpoint, camera, this.config));
   }
 
   private applySettings(): void {

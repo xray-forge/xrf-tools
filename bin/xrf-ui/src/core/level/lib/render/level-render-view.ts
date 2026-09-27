@@ -43,7 +43,21 @@ export function toLevelCamera(
   options: ILevelCameraOptions,
   config: ILevelRenderConfig
 ): IRendererFlyCamera {
-  const { position, target }: ILevelViewpoint = toLevelStartViewpoint(bounds, start);
+  return toLevelCameraAt(toLevelStartViewpoint(bounds, start), options, config);
+}
+
+/**
+ * @param viewpoint - Where the camera stands and what it looks at.
+ * @param options - The camera the toolbar asks for.
+ * @param config - The near and far planes.
+ * @returns The camera there, flown by the toolbar's speeds.
+ */
+export function toLevelCameraAt(
+  viewpoint: ILevelViewpoint,
+  options: ILevelCameraOptions,
+  config: ILevelRenderConfig
+): IRendererFlyCamera {
+  const { position, target }: ILevelViewpoint = viewpoint;
 
   return {
     boost: options.boost,

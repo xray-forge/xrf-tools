@@ -1,6 +1,12 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { IXrayHeading, toRendererSpace, toXrayHeading, toXraySpace } from "@/core/render/lib/scene/render-space";
+import {
+  IXrayHeading,
+  toRendererFacing,
+  toRendererSpace,
+  toXrayHeading,
+  toXraySpace,
+} from "@/core/render/lib/scene/render-space";
 
 describe("render space", () => {
   // The packer negates `z` on the way out, so anything read back for a person has to negate it again or it disagrees
@@ -24,11 +30,7 @@ describe("render space", () => {
 describe("toXrayHeading", () => {
   /** What `Fvector::setHP` builds from a heading and a pitch, in renderer space for the reader to hand back. */
   function facing(heading: number, pitch: number) {
-    return toRendererSpace({
-      x: -Math.cos(pitch) * Math.sin(heading),
-      y: Math.sin(pitch),
-      z: Math.cos(pitch) * Math.cos(heading),
-    });
+    return toRendererFacing({ heading, pitch });
   }
 
   /** The same direction the engine names, counted round one turn. */
@@ -66,5 +68,21 @@ describe("toXrayHeading", () => {
 
   it("does not need a normalized direction", () => {
     expect(toXrayHeading({ x: 0, y: 0, z: -8 }).heading).toBeCloseTo(toXrayHeading({ x: 0, y: 0, z: -1 }).heading);
+  });
+});
+
+describe("toRendererFacing", () => {
+  it("is the heading and pitch the readout states, read back", () => {
+    const stated: IXrayHeading = { heading: 1.78, pitch: -0.38 };
+    const read: IXrayHeading = toXrayHeading(toRendererFacing(stated));
+
+    expect(read.heading).toBeCloseTo(stated.heading);
+    expect(read.pitch).toBeCloseTo(stated.pitch);
+  });
+
+  it("faces the engine's +z at no heading, which is the renderer's -z", () => {
+    const { x, y, z } = toRendererFacing({ heading: 0, pitch: 0 });
+
+    expect([x, y, z].map((it) => Math.round(it) + 0)).toEqual([0, 0, -1]);
   });
 });

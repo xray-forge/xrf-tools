@@ -32,7 +32,6 @@
         "resizable": true,
         "visible": false,
         "backgroundColor": "#171717",
-        "additionalBrowserArgs": "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --enable-webgpu-developer-features",
         "decorations": false,
         "windowEffects": {
           "effects": ["mica"]

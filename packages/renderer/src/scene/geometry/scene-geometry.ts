@@ -69,6 +69,10 @@ export class SceneGeometry {
     if (packed.uv1) {
       buffer.setAttribute(EVertexAttribute.PACKED_UV1, new BufferAttribute(SceneGeometry.toWords(packed.uv1), 1));
     }
+
+    if (packed.color) {
+      buffer.setAttribute(EVertexAttribute.PACKED_COLOR, new BufferAttribute(packed.color, 4, true));
+    }
   }
 
   /** The words a run of shorts fills, two to a word, over the same bytes. */

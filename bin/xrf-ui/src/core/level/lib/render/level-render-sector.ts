@@ -141,6 +141,7 @@ function toLevelGeometry(geometry: ISectorGeometryViews): Omit<IRendererGeometry
     packed: geometry.normals
       ? {
           binormal: geometry.binormals ?? undefined,
+          color: geometry.colors ?? undefined,
           normal: geometry.normals,
           tangent: geometry.tangents ?? undefined,
           uv: geometry.uvs ?? undefined,

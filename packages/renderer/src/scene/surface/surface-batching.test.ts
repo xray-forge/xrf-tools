@@ -5,12 +5,13 @@ import { ERendererDraw, IRendererSurface } from "#/contract/scene/renderer-surfa
 import { ERendererTextureEncoding } from "#/contract/scene/renderer-texture-source";
 import { mockDdsFile, mockUncompressedDdsFile } from "#/dds/dds-fixtures";
 import { createOpaqueShadowMaterial, createSurfaceMaterial, ISurfaceMaterial } from "#/material/surface-material";
+import { SurfaceNodeMaterial } from "#/material/surface-node-material";
 import { SurfacePrograms } from "#/material/surface-programs";
 import { ESurfaceSlot, SURFACE_SLOTS } from "#/material/surface-slot";
 import { SurfaceBatching } from "#/scene/surface/surface-batching";
 import { RendererTextures } from "#/texture/renderer-textures";
 import { RendererUniforms } from "#/uniforms/renderer-uniforms";
-import { SURFACE_NO_ROW, SURFACE_TABLE_LAYER_WORD, SURFACE_TABLE_WORDS } from "#/uniforms/surface-table";
+import { SURFACE_TABLE_LAYER_WORD, SURFACE_TABLE_WORDS } from "#/uniforms/surface-table";
 
 /** A renderer that uploads nothing, which is all the queue asks of it here. */
 const RENDERER: WebGPURenderer = { initTexture: () => {} } as unknown as WebGPURenderer;
@@ -60,11 +61,10 @@ function toHemiLayer(uniforms: RendererUniforms, row: number): number {
 }
 
 describe("SurfaceBatching", () => {
-  it("draws surfaces sharing all but their lightmap by one material, each with its own row and layer", () => {
+  it("draws surfaces sharing their variant by one material, each with its own row and layers", () => {
     const { batching, create, uniforms, upload } = createFixture();
 
-    upload("lmap#1");
-    upload("lmap#2");
+    ["brick", "lmap#1", "lmap#2"].forEach((key: string) => upload(key));
 
     const wall: ISurfaceMaterial = create(WALL);
     const next: ISurfaceMaterial = create(NEXT_WALL);
@@ -84,10 +84,12 @@ describe("SurfaceBatching", () => {
     ).toBe(3);
   });
 
-  it("gives surfaces of other textures a material of their own", () => {
+  it("keeps apart surfaces whose own textures differ, where a texture is of no class an array holds", () => {
     const { batching, create, upload } = createFixture();
 
     upload("lmap#1");
+    upload("brick", mockUncompressedDdsFile());
+    upload("plaster", mockUncompressedDdsFile());
 
     const wall: ISurfaceMaterial = create(WALL);
     const plaster: ISurfaceMaterial = create(PLASTER);
@@ -95,40 +97,56 @@ describe("SurfaceBatching", () => {
     batching.track(wall, WALL);
     batching.track(plaster, PLASTER);
 
-    expect(wall.batched?.material).not.toBe(plaster.batched?.material);
+    const shared: SurfaceNodeMaterial = wall.batched?.material as SurfaceNodeMaterial;
+
+    expect(shared).not.toBe(plaster.batched?.material);
+    expect(shared.surfaceArrays?.base).toBeUndefined();
+    expect(shared.surfaceArrays?.hemi).toBeDefined();
   });
 
-  it("batches a surface once its lightmap is up, and names it for building again", () => {
+  it("batches a surface once every texture it samples is up, and names it for building again", () => {
     const { batching, create, upload } = createFixture();
     const wall: ISurfaceMaterial = create(WALL);
+
+    upload("lmap#1");
 
     expect(batching.track(wall, WALL)).toBe(false);
     expect(wall.batched).toBeNull();
 
-    upload("lmap#1");
+    upload("brick");
 
-    expect(batching.rebind("lmap#1")).toEqual([wall]);
+    expect(batching.rebind("brick")).toEqual([wall]);
     expect(wall.batched).not.toBeNull();
     // Of its class again: the layer is copied, and nothing is built again.
-    upload("lmap#1");
-    expect(batching.rebind("lmap#1")).toEqual([]);
+    upload("brick");
+    expect(batching.rebind("brick")).toEqual([]);
   });
 
-  it("leaves a surface its own material where its lightmap is of no class an array holds", () => {
+  it("casts a cut-out surface by a shadow material its batch shares, cut from the array", () => {
     const { batching, create, upload } = createFixture();
-    const wall: ISurfaceMaterial = create(WALL);
+    const leaves: IRendererSurface = { ...WALL, alphaReference: 0.5, draw: ERendererDraw.CUT_OUT };
+    const more: IRendererSurface = { ...leaves, textures: { base: "plaster", hemi: "lmap#1" } };
 
-    upload("lmap#1", mockUncompressedDdsFile());
+    ["brick", "plaster", "lmap#1"].forEach((key: string) => upload(key));
 
-    expect(batching.track(wall, WALL)).toBe(false);
-    expect(wall.batched).toBeNull();
-    expect(wall.row).toBe(SURFACE_NO_ROW);
+    const [a, b] = [leaves, more].map((surface: IRendererSurface) => {
+      const material: ISurfaceMaterial = create(surface);
+
+      batching.track(material, surface);
+
+      return material.batched as ISurfaceMaterial;
+    });
+    const shadow: SurfaceNodeMaterial = a.shadow as SurfaceNodeMaterial;
+
+    expect(shadow).toBe(b.shadow);
+    expect(shadow.surfaceArrays?.base).toBeDefined();
+    expect(a.shadowKeys).not.toContain("brick");
   });
 
-  it("tracks only surfaces filling the G-buffer with a lightmap", () => {
+  it("tracks only surfaces filling the G-buffer with a texture", () => {
     const { batching, create, upload } = createFixture();
     const glass: IRendererSurface = { ...WALL, draw: ERendererDraw.BLENDED };
-    const bare: IRendererSurface = { ...WALL, textures: { base: "brick" } };
+    const bare: IRendererSurface = { ...WALL, textures: {} };
 
     upload("lmap#1");
 
@@ -140,6 +158,7 @@ describe("SurfaceBatching", () => {
     const { batching, create, uniforms, upload } = createFixture();
     const wall: ISurfaceMaterial = create(WALL);
 
+    upload("brick");
     upload("lmap#1");
     batching.track(wall, WALL);
 

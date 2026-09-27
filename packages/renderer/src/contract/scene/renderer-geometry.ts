@@ -45,6 +45,8 @@ export interface IRendererPackedVertices {
   uv?: Int16Array;
   /** The lightmap coordinate: two shorts a vertex, over 32768 (`unpack_tc_lmap`). */
   uv1?: Int16Array;
+  /** Four bytes a vertex, `D3DCOLOR` as stored: the baked light blue, green, red, then the sun occlusion. */
+  color?: Uint8Array;
   // Each coordinate starts on four bytes, as a sector's buffer lays its sections out: it is read as whole words.
 }
 
@@ -121,6 +123,7 @@ export function listRendererGeometryTransfers(geometry: IRendererGeometry): Arra
     geometry.packed?.binormal,
     geometry.packed?.uv,
     geometry.packed?.uv1,
+    geometry.packed?.color,
     geometry.index,
     geometry.clusters?.ranges,
     geometry.clusters?.spheres,

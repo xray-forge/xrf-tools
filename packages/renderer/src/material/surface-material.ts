@@ -121,6 +121,10 @@ export function toOwnSurfaceDrawing(
 export interface ISurfaceBatchMaterial {
   material: SurfaceNodeMaterial;
   keys: ReadonlyArray<string>;
+  /** What draws its cut-out casters into a shadow map, sharing its arrays; null for a variant casting as opaque. */
+  shadow: Nullable<SurfaceNodeMaterial>;
+  /** The texture keys that shadow binds of its own: the base, where no array holds it. */
+  shadowKeys: ReadonlyArray<string>;
   dispose(): void;
 }
 
@@ -157,13 +161,28 @@ export function createSurfaceBatchMaterial(
   material.alphaTestNode = shader.alphaTestNode ?? null;
   material.positionViewNode = shader.positionViewNode ?? null;
 
+  const isCutOut: boolean = variant.draw === ERendererDraw.CUT_OUT && !variant.isImpostor;
+  let shadow: Nullable<SurfaceNodeMaterial> = null;
+
+  if (isCutOut) {
+    shadow = createSharedMaterial(programs, uniforms, slots.targets, null);
+    shadow.surfaceArrays = arrays;
+    shadow.fragmentNode = programs.getTabledShadow(arrayed).fragmentNode ?? null;
+    shadow.colorWrite = false;
+    // Both faces, as every caster's: a card seen from the sun's side is its back as often as its front.
+    shadow.side = DoubleSide;
+  }
+
   return {
     dispose: () => {
       slots.release();
       material.dispose();
+      shadow?.dispose();
     },
     keys: slots.keys,
     material,
+    shadow,
+    shadowKeys: isCutOut ? slots.keysOf(ESurfaceSlot.BASE) : [],
   };
 }
 

@@ -60,6 +60,20 @@ export function toXrayHeading(direction: IRenderPoint): IXrayHeading {
   };
 }
 
+/**
+ * Builds a direction the way `Fvector::setHP` does, the inverse of {@link toXrayHeading}.
+ *
+ * @param heading - Where something faces, as the engine states it.
+ * @returns Which way it faces, normalized, in renderer space.
+ */
+export function toRendererFacing(heading: IXrayHeading): IRenderPoint {
+  return toRendererSpace({
+    x: -Math.cos(heading.pitch) * Math.sin(heading.heading),
+    y: Math.sin(heading.pitch),
+    z: Math.cos(heading.pitch) * Math.cos(heading.heading),
+  });
+}
+
 /** The same angle counted from zero round one turn, so a bearing never arrives negative. */
 function toTurn(radians: number): number {
   const turn: number = Math.PI * 2;

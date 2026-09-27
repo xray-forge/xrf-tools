@@ -12,6 +12,7 @@ import { LevelProblemsPanel } from "@/core/level/components/panels/LevelProblems
 import { LevelStreamPanel } from "@/core/level/components/panels/LevelStreamPanel";
 import { LevelSurfacesPanel } from "@/core/level/components/panels/LevelSurfacesPanel";
 import { LevelCameraAction } from "@/core/level/components/preview/LevelCameraAction";
+import { LevelGoToAction } from "@/core/level/components/preview/LevelGoToAction";
 import { LevelPreviewActivity } from "@/core/level/components/preview/LevelPreviewActivity";
 import { LevelPreviewCoordinates } from "@/core/level/components/preview/LevelPreviewCoordinates";
 import { LevelPreviewCover } from "@/core/level/components/preview/LevelPreviewCover";
@@ -19,8 +20,10 @@ import { LevelPreviewEmpty } from "@/core/level/components/preview/LevelPreviewE
 import { LevelPreviewMetrics } from "@/core/level/components/preview/LevelPreviewMetrics";
 import { LevelPreviewToolbar } from "@/core/level/components/preview/LevelPreviewToolbar";
 import { ILevelPreviewViewportProps, LevelPreviewViewport } from "@/core/level/components/preview/LevelPreviewViewport";
+import { ILevelCamera } from "@/core/level/lib/camera/level-camera";
+import { ILevelGoTo } from "@/core/level/lib/camera/level-camera-goto";
 import { ILevelFeatureOptions, TLevelFeatureView, toLevelFeatureView } from "@/core/level/lib/features";
-import { LevelLoadService, LevelViewService } from "@/core/level/services";
+import { LevelLoadService, LevelViewportService, LevelViewService } from "@/core/level/services";
 import { SettingsService } from "@/core/settings/services/settings";
 import { EditorFileHeader } from "@/core/shell/editor/EditorFileHeader";
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
@@ -61,6 +64,7 @@ export function LevelPreviewLayout({
   const loadService: LevelLoadService = useInjection(LevelLoadService);
   const viewService: LevelViewService = useInjection(LevelViewService);
   const settingsService: SettingsService = useInjection(SettingsService);
+  const viewportService: LevelViewportService = useInjection(LevelViewportService);
 
   const isOpen: boolean = Boolean(name);
   const settings: IRendererFeatureSettings = settingsService.rendererFeatures;
@@ -69,9 +73,17 @@ export function LevelPreviewLayout({
   // Stable between changes of their own, so the toolbar redraws for a toggle and for nothing else.
   const featureView: TLevelFeatureView = useMemo(() => toLevelFeatureView(settings, features), [settings, features]);
 
+  const readCamera = useCallback((): Nullable<ILevelCamera> => viewportService.camera, [viewportService]);
+  const onGoTo = useCallback((goTo: ILevelGoTo) => viewService.requestGoTo(goTo), [viewService]);
+
   const actions: ReactElement = useMemo(
-    () => <LevelCameraAction camera={viewService.camera} onChange={viewService.setCamera} />,
-    [viewService.camera, viewService.setCamera]
+    () => (
+      <>
+        <LevelCameraAction camera={viewService.camera} onChange={viewService.setCamera} />
+        <LevelGoToAction isDisabled={!isOpen} readCamera={readCamera} onGoTo={onGoTo} />
+      </>
+    ),
+    [viewService.camera, viewService.setCamera, isOpen, readCamera, onGoTo]
   );
 
   const onChangeScale = useCallback(

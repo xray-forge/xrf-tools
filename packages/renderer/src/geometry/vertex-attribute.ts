@@ -16,6 +16,11 @@ export enum EVertexAttribute {
   PACKED_UV = "packedUv",
   /** The lightmap coordinate as shorts, in place of three's `uv1`. */
   PACKED_UV1 = "packedUv1",
+  /**
+   * The engine's vertex colour, its baked light and its sun occlusion, which water is lit by: drawn plainly, so no
+   * arena stores it.
+   */
+  PACKED_COLOR = "packedColor",
   /** Its scale and offset, per place a geometry stands. */
   INSTANCE_HEMI = "instanceHemi",
   /**

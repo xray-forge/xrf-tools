@@ -38,10 +38,8 @@ const DEFAULT_FLY_CAMERA: IRendererFlyCamera = {
   target: [0, 2, -1],
 };
 
-const UP: Vector3 = new Vector3(0, 1, 0);
-
 /**
- * A free camera: a drag turns it, the keys move it along where it faces, and rising is always along world up.
+ * A free camera: a drag turns it, the keys move it along where it faces, rising along its own up as it is pitched.
  * It holds yaw and pitch itself, since a rotation read back off the camera cannot tell `+π` from `-π`.
  */
 export class FlyCameraController implements IRendererCameraController {
@@ -52,6 +50,7 @@ export class FlyCameraController implements IRendererCameraController {
   private readonly euler: Euler = new Euler(0, 0, 0, "YXZ");
   private readonly ahead: Vector3 = new Vector3();
   private readonly across: Vector3 = new Vector3();
+  private readonly above: Vector3 = new Vector3();
 
   private description: IRendererFlyCamera = DEFAULT_FLY_CAMERA;
   private yaw: number = 0;
@@ -136,10 +135,11 @@ export class FlyCameraController implements IRendererCameraController {
 
     this.ahead.set(0, 0, -1).applyQuaternion(this.camera.quaternion);
     this.across.set(1, 0, 0).applyQuaternion(this.camera.quaternion);
+    this.above.set(0, 1, 0).applyQuaternion(this.camera.quaternion);
     this.camera.position
       .addScaledVector(this.ahead, forward * distance)
       .addScaledVector(this.across, strafe * distance)
-      .addScaledVector(UP, rise * distance);
+      .addScaledVector(this.above, rise * distance);
   }
 
   public get pose(): IRendererCameraPose {

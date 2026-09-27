@@ -2,19 +2,28 @@ import { Maybe, Nullable } from "@xrf/types";
 import { Material, Texture, WebGPURenderer } from "three/webgpu";
 
 import { ERendererPass, IRendererSurface } from "#/contract/scene/renderer-surface";
+import { copyTextures } from "#/internals/texture-copies";
 import { toSurfaceCompositing } from "#/material/surface-compositing";
 import { createSurfaceBatchMaterial, ISurfaceBatchMaterial, ISurfaceMaterial } from "#/material/surface-material";
 import { SurfacePrograms } from "#/material/surface-programs";
 import { ESurfaceSlot, SURFACE_SLOTS, TSurfaceArrayTargets } from "#/material/surface-slot";
+import { SurfaceSlotNodes } from "#/material/surface-slot-nodes";
 import { ISurfaceValues, toSurfaceValues } from "#/material/surface-values";
 import { ISurfaceVariant, toSampledSlots, toSurfaceVariant, toSurfaceVariantKey } from "#/material/surface-variant";
 import { RendererTextures } from "#/texture/renderer-textures";
+import { ITextureArrayFlush } from "#/texture/texture-array-flush";
 import { ITextureLayer, TextureArrays } from "#/texture/texture-arrays";
 import { RendererUniforms } from "#/uniforms/renderer-uniforms";
 import { SURFACE_NO_ROW, SurfaceTable } from "#/uniforms/surface-table";
 
-/** The slots a static batch samples from arrays rather than from each surface's own texture: the lightmaps. */
-export const SURFACE_ARRAY_SLOTS: ReadonlyArray<ESurfaceSlot> = [ESurfaceSlot.HEMI];
+/** The slots a static batch samples from arrays, where their textures are of a class one holds: every static one. */
+export const SURFACE_ARRAY_SLOTS: ReadonlyArray<ESurfaceSlot> = [
+  ESurfaceSlot.BASE,
+  ESurfaceSlot.DETAIL,
+  ESurfaceSlot.BUMP,
+  ESurfaceSlot.BUMP_COMPANION,
+  ESurfaceSlot.HEMI,
+];
 
 /** A shared material, and how many surfaces draw by it. */
 interface ISharedMaterial {
@@ -211,7 +220,18 @@ export class SurfaceBatching {
    * @param renderer - The renderer drawing.
    */
   public flush(renderer: WebGPURenderer): void {
-    this.arrays.flush(renderer);
+    // Fitted once a level has stopped streaming layers in, which it does a layer at a time.
+    this.arrays.compact(performance.now());
+
+    const { copies, disposals, evicted }: ITextureArrayFlush = this.arrays.flush();
+
+    copyTextures(renderer, copies);
+    // Sent, so the GPU finishes reading them first; a bundle still sampling one records again, and three uploads it.
+    disposals.forEach((texture: Texture) => {
+      SurfaceSlotNodes.forget(texture);
+      texture.dispose();
+    });
+    evicted.forEach((key: string) => this.onInvalidated(key));
     this.table.flush();
 
     if (this.table.version !== this.tableVersion) {
@@ -228,27 +248,35 @@ export class SurfaceBatching {
     this.arrays.dispose();
   }
 
-  /** Batches a surface where its array slots' textures are up and held, and unbatches it where they are not. */
+  /**
+   * Batches a surface once its array slots' textures are up, each held in an array of its class or sampled as its own
+   * where none holds it; unbatches it while any is not up.
+   */
   private evaluate(material: ISurfaceMaterial): boolean {
     const tracking: ISurfaceTracking = this.tracked.get(material) as ISurfaceTracking;
     const layers: Array<readonly [ESurfaceSlot, string, ITextureLayer]> = [];
+    const claims: Array<string> = [];
 
     for (const [slot, key] of tracking.arrayed) {
       const texture: Nullable<Texture> = this.textures.getUploaded(key);
-      const held: Nullable<ITextureLayer> = texture ? this.arrays.claim(key, texture) : null;
 
-      if (!held) {
-        layers.forEach(([, claimed]) => this.arrays.release(claimed));
+      if (!texture) {
+        claims.forEach((claimed: string) => this.arrays.release(claimed));
 
         return this.unbatch(material, tracking);
       }
 
-      layers.push([slot, key, held]);
+      const held: Nullable<ITextureLayer> = this.arrays.claim(key, texture);
+
+      if (held) {
+        layers.push([slot, key, held]);
+        claims.push(key);
+      }
     }
 
     // Claimed again before the claims before are let go, so a layer both hold stays where it is.
-    tracking.claims.forEach((key: string) => this.arrays.release(key));
-    tracking.claims = layers.map(([, key]) => key);
+    tracking.claims.forEach((claimed: string) => this.arrays.release(claimed));
+    tracking.claims = claims;
 
     const shared: ISharedMaterial = this.getShared(tracking, layers);
 
@@ -275,7 +303,7 @@ export class SurfaceBatching {
   private unbatch(material: ISurfaceMaterial, tracking: ISurfaceTracking): boolean {
     const wasBatched: boolean = tracking.shared !== null;
 
-    tracking.claims.forEach((key: string) => this.arrays.release(key));
+    tracking.claims.forEach((claimed: string) => this.arrays.release(claimed));
     tracking.claims = [];
     this.leave(tracking);
 
@@ -370,6 +398,10 @@ export class SurfaceBatching {
       material: shared.batch.material,
       plainMaterial: material.material,
       row,
+      shadow: shared.batch.shadow ?? material.shadow,
+      shadowKeys: shared.batch.shadow
+        ? [...shared.batch.shadowKeys, ...shared.arrayKeys, this.table.key]
+        : material.shadowKeys,
     };
   }
 }

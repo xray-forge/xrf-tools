@@ -501,10 +501,10 @@ fn test_packs_the_stored_vertex_byte_for_byte_but_each_direction_z() {
   );
 }
 
-// A vertex lit surface's declaration carries a colour and no lightmap coordinate: the colour is not light to the
-// deferred renderer and is left behind, and the coordinate packs as zeroes beside a lightmapped range.
+// A vertex lit surface's declaration carries a colour and no lightmap coordinate: the colour packs as stored, water is
+// lit by it, and a lightmapped range beside it packs none with the sun whole; its coordinate packs as zeroes.
 #[test]
-fn test_leaves_a_baked_colour_behind_and_widens_a_missing_lightmap_coordinate_to_zero() {
+fn test_packs_a_baked_colour_and_widens_a_missing_lightmap_coordinate_to_zero() {
   let bytes: Vec<u8> = new_geometry_fixture(
     &[
       GeomBuffer {
@@ -546,6 +546,10 @@ fn test_leaves_a_baked_colour_behind_and_widens_a_missing_lightmap_coordinate_to
   assert_eq!(
     &new_read_bytes(&package, geometry.tangents.expect("tangents"))[..4],
     &[128, 128, 128, 0]
+  );
+  assert_eq!(
+    new_read_bytes(&package, geometry.colors.expect("colors")),
+    vec![16, 32, 64, 255, 0, 0, 0, 255]
   );
 }
 

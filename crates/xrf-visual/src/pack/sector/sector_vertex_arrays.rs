@@ -24,6 +24,7 @@ pub(crate) struct SectorVertexArrays {
   binormals: Vec<u8>,
   uvs: Vec<i16>,
   lightmap_uvs: Vec<i16>,
+  colors: Vec<u8>,
 }
 
 impl SectorVertexArrays {
@@ -36,6 +37,9 @@ impl SectorVertexArrays {
   /// What a vertex whose declaration carries no such direction packs: as near no direction as a byte comes, and
   /// nothing riding in the fourth byte, which is exact for a coordinate's low byte.
   const NEUTRAL_DIRECTION: [u8; 4] = [128, 128, 128, 0];
+
+  /// What a vertex whose declaration carries no colour packs: no baked light, and the sun unoccluded.
+  const NEUTRAL_COLOR: [u8; 4] = [0, 0, 0, 255];
 
   /// Where a direction's z sits among its bytes, which `D3DCOLOR` stores blue, green, red.
   const DIRECTION_Z: usize = 0;
@@ -50,6 +54,7 @@ impl SectorVertexArrays {
     Self {
       attributes,
       binormals: Vec::new(),
+      colors: Vec::new(),
       lightmap_uvs: Vec::new(),
       normals: Vec::new(),
       positions: Vec::new(),
@@ -129,6 +134,15 @@ impl SectorVertexArrays {
           Self::LIGHTMAP_COMPONENTS,
         );
       }
+
+      if self.attributes.colors {
+        match layout.get_color_offset() {
+          Some(offset) => self
+            .colors
+            .extend_from_slice(&vertex[offset as usize..offset as usize + 4]),
+          None => self.colors.extend_from_slice(&Self::NEUTRAL_COLOR),
+        }
+      }
     }
 
     Ok(())
@@ -180,6 +194,7 @@ impl SectorVertexArrays {
         .attributes
         .lightmap_uvs
         .then(|| builder.push_i16_section(&self.lightmap_uvs)),
+      colors: Self::push_bytes(builder, self.attributes.colors, &self.colors),
       indices: builder.push_u32_section(indices),
       clusters: clusters.write_into(builder),
     }

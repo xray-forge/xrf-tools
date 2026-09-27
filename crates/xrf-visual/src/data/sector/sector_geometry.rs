@@ -27,6 +27,9 @@ pub struct SectorGeometry {
   pub uv_components: u32,
   /// The lightmap coordinate: two shorts a vertex, over 32768.
   pub lightmap_uvs: Option<VisualSection>,
+  /// Four bytes a vertex, the `D3DCOLOR` as stored: its baked light blue, green, red, then its sun occlusion. A vertex
+  /// of a declaration carrying none takes no baked light and the whole sun.
+  pub colors: Option<VisualSection>,
   /// Every index, as 32-bit elements: a sector reaches past what sixteen bits address.
   pub indices: VisualSection,
   /// The clusters of every range it draws, which each range names a run of.

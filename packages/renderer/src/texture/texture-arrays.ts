@@ -1,8 +1,9 @@
 import { Maybe, Nullable } from "@xrf/types";
-import { CompressedTexture, Texture, WebGPURenderer } from "three/webgpu";
+import { CompressedTexture, Texture } from "three/webgpu";
 
 import { TextureArray } from "#/texture/texture-array";
 import { toTextureArrayClass } from "#/texture/texture-array-class";
+import { ITextureArrayFlush } from "#/texture/texture-array-flush";
 
 /** WebGPU's default `maxTextureArrayLayers`, which a device three opens without asking for more has. */
 export const DEFAULT_ARRAY_LAYER_LIMIT: number = 256;
@@ -106,18 +107,36 @@ export class TextureArrays {
   }
 
   /**
-   * Copies what waits into each array, growing any that had to.
+   * Says what every array waits for, telling of each array replaced by a larger one.
    *
-   * @param renderer - The renderer drawing.
+   * @returns The copies, in order, and what to dispose once they are sent.
    */
-  public flush(renderer: WebGPURenderer): void {
+  public flush(): ITextureArrayFlush {
+    const flush: ITextureArrayFlush = { copies: [], disposals: [], evicted: [], replaced: [] };
+
     for (const arrays of this.arrays.values()) {
       for (const array of arrays) {
-        if (array.flush(renderer)) {
-          this.onReplaced(array.key);
-        }
+        const { copies, disposals, evicted, replaced } = array.flush();
+
+        flush.copies.push(...copies);
+        flush.disposals.push(...disposals);
+        flush.evicted.push(...evicted);
+        flush.replaced.push(...replaced);
       }
     }
+
+    flush.replaced.forEach((key: string) => this.onReplaced(key));
+
+    return flush;
+  }
+
+  /**
+   * Fits every array gone unchanged a while to what it holds.
+   *
+   * @param now - Milliseconds, on `performance.now()`'s clock.
+   */
+  public compact(now: number): void {
+    this.arrays.forEach((arrays: Array<TextureArray>) => arrays.forEach((array: TextureArray) => array.compact(now)));
   }
 
   public dispose(): void {

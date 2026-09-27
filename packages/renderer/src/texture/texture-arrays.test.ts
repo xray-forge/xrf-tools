@@ -1,23 +1,15 @@
-import { describe, expect, it, jest } from "@jest/globals";
-import { Box2, Box3, CompressedArrayTexture, Texture, Vector3, WebGPURenderer } from "three/webgpu";
+import { describe, expect, it } from "@jest/globals";
+import { CompressedArrayTexture, Texture } from "three/webgpu";
 
 import { mockDdsFile } from "#/dds/dds-fixtures";
 import { createRendererTexture } from "#/texture/renderer-texture";
 import { toTextureArrayClass } from "#/texture/texture-array-class";
+import { ITextureArrayFlush } from "#/texture/texture-array-flush";
 import { ITextureLayer, TextureArrays } from "#/texture/texture-arrays";
+import { ITextureCopy } from "#/texture/texture-copy";
 
-/** A copy three was asked for: what from, what to, the region, where to, and the levels. */
-type TCopy = [Texture, Texture, Box2 | Box3, Vector3, number, number];
-
-function createRenderer(): { renderer: WebGPURenderer; copies: Array<TCopy> } {
-  const copies: Array<TCopy> = [];
-  const renderer = {
-    copyTextureToTexture: jest.fn((...copy: TCopy) => copies.push(copy)),
-    initTexture: () => {},
-  } as unknown as WebGPURenderer;
-
-  return { copies, renderer };
-}
+/** A clock reading long after every claim a test makes. */
+const IDLE: number = performance.now() + 60_000;
 
 function createTexture(fourCC: string = "DXT5", size: number = 8, mipmapCount: number = 2): Texture {
   return createRendererTexture(mockDdsFile({ fourCC, height: size, mipmapCount, width: size })).texture as Texture;
@@ -77,48 +69,71 @@ describe("TextureArrays", () => {
     expect(arrays.claim("lmap", createTexture("DXT1"))).toBeNull();
   });
 
-  it("copies every level of a claimed texture into its layer, block rows whole", () => {
+  it("copies every level of a claimed texture into its layer, block rows whole, then lets the texture go", () => {
     const arrays: TextureArrays = new TextureArrays(() => {});
-    const { copies, renderer } = createRenderer();
     const texture: Texture = createTexture("DXT5", 8, 3);
     const held: ITextureLayer = arrays.claim("lmap", texture) as ITextureLayer;
-
-    arrays.flush(renderer);
+    const flush: ITextureArrayFlush = arrays.flush();
 
     // Eight, four and two texels a side: the last is a block of four.
-    expect(copies.map(([source, , region, at, level]) => [source, (region as Box2).max.x, at.z, level])).toEqual([
+    expect(
+      flush.copies.map((copy: ITextureCopy) => [copy.source, copy.width, copy.destinationLayer, copy.level])
+    ).toEqual([
       [texture, 8, held.layer, 0],
       [texture, 4, held.layer, 1],
       [texture, 4, held.layer, 2],
     ]);
-
-    arrays.flush(renderer);
-
-    expect(copies).toHaveLength(3);
+    expect(flush.disposals).toEqual([texture]);
+    expect(flush.evicted).toEqual(["lmap"]);
+    expect(arrays.flush().copies).toHaveLength(0);
   });
 
-  it("grows an array by copying every layer it held into a larger one, and says so", () => {
+  it("fits an array to what it holds once it has gone unchanged a while, copying only the layers it used", () => {
+    const arrays: TextureArrays = new TextureArrays(() => {});
+    const [first] = ["a", "b", "c", "d", "e"].map(
+      (key: string) => arrays.claim(key, createTexture("DXT5", 8, 1)) as ITextureLayer
+    );
+
+    arrays.flush();
+
+    const before: CompressedArrayTexture = first.array.target.value as CompressedArrayTexture;
+
+    // Five of six, but only just claimed: a level streaming in is left alone.
+    expect(before.image.depth).toBe(6);
+
+    arrays.compact(performance.now());
+
+    expect(arrays.flush().copies).toHaveLength(0);
+
+    arrays.compact(IDLE);
+
+    const { copies, disposals }: ITextureArrayFlush = arrays.flush();
+    const after: CompressedArrayTexture = first.array.target.value as CompressedArrayTexture;
+
+    expect(after.image.depth).toBe(5);
+    expect(copies).toEqual([expect.objectContaining({ destination: after, layers: 5, source: before })]);
+    expect(disposals).toEqual([before]);
+  });
+
+  it("grows an array by half again, copying every layer it held into the larger one, and says so", () => {
     const replaced: Array<string> = [];
     const arrays: TextureArrays = new TextureArrays((key: string) => replaced.push(key));
-    const { copies, renderer } = createRenderer();
     const held: Array<ITextureLayer> = ["a", "b", "c", "d"].map(
       (key: string) => arrays.claim(key, createTexture("DXT5", 8, 1)) as ITextureLayer
     );
     const before: Texture = held[0].array.target.value;
 
-    arrays.flush(renderer);
-    copies.length = 0;
+    arrays.flush();
     arrays.claim("e", createTexture("DXT5", 8, 1));
 
     const after: CompressedArrayTexture = held[0].array.target.value as CompressedArrayTexture;
-
-    arrays.flush(renderer);
+    const { copies, disposals }: ITextureArrayFlush = arrays.flush();
 
     expect(after).not.toBe(before);
-    expect(after.image.depth).toBe(8);
+    expect(after.image.depth).toBe(6);
     expect(replaced).toEqual([held[0].array.key]);
-    expect(copies[0][0]).toBe(before);
-    expect((copies[0][2] as Box3).max.z).toBe(4);
-    expect(copies[1][3].z).toBe(4);
+    expect(copies[0]).toMatchObject({ destination: after, destinationLayer: 0, layers: 4, source: before });
+    expect(copies[1]).toMatchObject({ destinationLayer: 4, layers: 1 });
+    expect(disposals).toContain(before);
   });
 });

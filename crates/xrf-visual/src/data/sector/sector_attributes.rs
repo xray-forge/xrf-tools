@@ -9,6 +9,8 @@ pub struct SectorAttributes {
   pub binormals: bool,
   pub uvs: bool,
   pub lightmap_uvs: bool,
+  /// The vertex's `D3DCOLOR`: its baked light, and its sun occlusion in the fourth byte.
+  pub colors: bool,
 }
 
 impl SectorAttributes {
@@ -16,6 +18,7 @@ impl SectorAttributes {
   pub const fn all() -> Self {
     Self {
       binormals: true,
+      colors: true,
       lightmap_uvs: true,
       normals: true,
       tangents: true,
@@ -27,6 +30,7 @@ impl SectorAttributes {
   pub const fn of(layout: &LevelVertexLayout) -> Self {
     Self {
       binormals: layout.get_binormal_offset().is_some(),
+      colors: layout.get_color_offset().is_some(),
       lightmap_uvs: layout.get_lightmap_coordinate_offset().is_some(),
       normals: layout.get_normal_offset().is_some(),
       tangents: layout.get_tangent_offset().is_some(),
@@ -39,6 +43,7 @@ impl SectorAttributes {
     let carried: Self = Self::of(layout);
 
     self.binormals |= carried.binormals;
+    self.colors |= carried.colors;
     self.lightmap_uvs |= carried.lightmap_uvs;
     self.normals |= carried.normals;
     self.tangents |= carried.tangents;
@@ -50,6 +55,7 @@ impl SectorAttributes {
   pub const fn intersect(self, other: Self) -> Self {
     Self {
       binormals: self.binormals && other.binormals,
+      colors: self.colors && other.colors,
       lightmap_uvs: self.lightmap_uvs && other.lightmap_uvs,
       normals: self.normals && other.normals,
       tangents: self.tangents && other.tangents,

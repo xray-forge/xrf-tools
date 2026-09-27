@@ -33,6 +33,8 @@ export interface ISectorGeometryViews {
   uvComponents: number;
   /** The second uv set a lightmapped surface samples its baked lighting with, as shorts. */
   lightmapUvs: Nullable<Int16Array>;
+  /** Four bytes a vertex: its baked light as `D3DCOLOR` stores it, blue first, then its sun occlusion. */
+  colors: Nullable<Uint8Array>;
   /** Thirty-two bit, unlike a model's. */
   indices: Uint32Array;
   /** Its clusters: four words a cluster (first index, triangles, drawable, nothing), then four floats (its sphere). */
@@ -159,6 +161,7 @@ function toGeometryViews(buffer: ArrayBuffer, geometry: SectorGeometry): ISector
     binormals: toOptionalByteView(buffer, geometry.binormals),
     clusterRanges: toIndexView(buffer, geometry.clusters.ranges),
     clusterSpheres: toFloatView(buffer, geometry.clusters.spheres),
+    colors: toOptionalByteView(buffer, geometry.colors),
     indexCount: geometry.indexCount,
     indices: toIndexView(buffer, geometry.indices),
     lightmapUvs: toOptionalShortView(buffer, geometry.lightmapUvs),

@@ -41,6 +41,7 @@ export class SurfacePrograms {
   private readonly inputs: ISurfaceInputs;
   private readonly shaders: Map<string, ISurfaceShader> = new Map();
   private readonly tabled: Map<string, ISurfaceShader> = new Map();
+  private readonly tabledShadows: Map<string, ISurfaceShader> = new Map();
   private cutOutShadow: Maybe<ISurfaceShader>;
   private opaqueShadow: Maybe<ISurfaceShader>;
 
@@ -88,6 +89,24 @@ export class SurfacePrograms {
 
       shader = SURFACE_SHADERS[variant.pass](variant, inputs, this.uniforms);
       this.tabled.set(key, shader);
+    }
+
+    return shader;
+  }
+
+  /**
+   * @param arrayed - The slots a static batch's shared material samples from arrays, the base among them or not.
+   * @returns What draws a cut-out caster sharing a static batch into a shadow map, its cut read from the surface table.
+   */
+  public getTabledShadow(arrayed: ReadonlyArray<ESurfaceSlot>): ISurfaceShader {
+    const key: string = arrayed.join(",");
+    let shader: Maybe<ISurfaceShader> = this.tabledShadows.get(key);
+
+    if (!shader) {
+      shader = toShadowSurfaceShader(
+        toTabledSurfaceInputs(null, this.uniforms.surfaceTable, this.uniforms.staticDraws, arrayed)
+      );
+      this.tabledShadows.set(key, shader);
     }
 
     return shader;

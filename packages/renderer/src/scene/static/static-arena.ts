@@ -53,6 +53,11 @@ export class StaticArena implements IClusterSource {
     for (const [name, attribute] of Object.entries(buffer.attributes).sort(([left], [right]) =>
       left.localeCompare(right)
     )) {
+      // Read only by water, which draws plainly: an arena stores it for nothing, and would split its layouts by it.
+      if (name === EVertexAttribute.PACKED_COLOR) {
+        continue;
+      }
+
       const { array, itemSize, normalized } = attribute as BufferAttribute;
       let format: Maybe<EClusterWordFormat>;
       let words: number = itemSize;

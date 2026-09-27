@@ -1,4 +1,4 @@
-import { bitcast, float, Fn, varying, vec2 } from "three/tsl";
+import { bitcast, float, Fn, varying, vec2, vec4 } from "three/tsl";
 import { Node, NodeBuilder } from "three/webgpu";
 
 import {
@@ -141,6 +141,18 @@ export function isPackedTreeBuild(builder: NodeBuilder): boolean {
  */
 export function toPackedTreeRigidity(): Node<"float"> {
   return toShorts(toVertexAttribute<"uvec2">(EVertexAttribute.PACKED_UV, "uvec2").y).x.div(PACKED_TREE_QUANT);
+}
+
+/**
+ * `unpack_D3DCOLOR` of the vertex colour: its baked light, then its sun occlusion; none and the whole sun for a geometry
+ * carrying no colour.
+ */
+export function toPackedColor(): Node<"vec4"> {
+  return Fn((_: [], builder: NodeBuilder): Node<"vec4"> =>
+    hasAttribute(builder, EVertexAttribute.PACKED_COLOR)
+      ? (varying(toVertexAttribute<"vec4">(EVertexAttribute.PACKED_COLOR, "vec4").zyxw) as unknown as Node<"vec4">)
+      : vec4(0, 0, 0, 1)
+  )();
 }
 
 /** The lightmap coordinate from its shorts. */

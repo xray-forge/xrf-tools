@@ -37,11 +37,10 @@ import { toSurfaceCoordinates } from "#/material/surface-texel.tsl";
 import { ISurfaceVariant } from "#/material/surface-variant";
 import { discardBeyondFog, toFogAmount } from "#/shader/base-lighting.tsl";
 import { packOutputs, unpackOutputs } from "#/shader/packed-outputs.tsl";
-import { toSurfaceBinormal, toSurfaceTangent } from "#/shader/packed-vertex.tsl";
+import { toPackedColor, toSurfaceBinormal, toSurfaceTangent } from "#/shader/packed-vertex.tsl";
 import { instancedPosition, toPlacedNormalView, toPlacedViewDirection } from "#/shader/placement.tsl";
 import { skinnedBinormal, skinnedTangent } from "#/shader/skinned-basis.tsl";
 import { toSkyCubes } from "#/shader/sky.tsl";
-import { toToneMapped } from "#/shader/tonemap.tsl";
 import { toVertexHemi } from "#/shader/vertex-hemi.tsl";
 import { RendererUniforms } from "#/uniforms/renderer-uniforms";
 import { WaterUniforms } from "#/uniforms/water-uniforms";
@@ -164,6 +163,7 @@ export function toWaterSurfaceShader(
     camera.viewToWorld.mul(vec4(toPlacedViewDirection(toSurfaceBinormal(skinnedBinormal()), staticDraws), 0)).xyz
   );
   const hemi: Node<"float"> = varying(toVertexHemi(staticDraws));
+  const baked: Node<"vec4"> = toPackedColor();
 
   const packed: Node<"mat4"> = Fn(() => {
     discardBeyondFog(positionView, uniforms);
@@ -191,13 +191,16 @@ export function toWaterSurfaceShader(
       scaled.z
     ).toVar();
     const power: Node<"float"> = pow(saturate(dot(remapped, toPoint)), 9).toVar();
-    // `c0`: the hemisphere by the vertex's occlusion, the sun, and the ambient, as `L_hemi_color`, `L_sun_color` and
-    // `L_ambient` bind them raw. The vertex's baked colour and its sun occlusion are not carried: the sun is taken whole.
-    const light: Node<"vec3"> = lighting.environment
-      .mul(0.25)
-      .mul(float(0.5).add(normalize(normal).y.mul(0.5)))
-      .mul(hemi)
-      .add(lighting.sunColor.mul(dot(normalView, lighting.sunDirectionView.negate())))
+    // `c0`: the vertex's baked light, the hemisphere by its occlusion, the sun by its sun occlusion, and the ambient,
+    // as `L_hemi_color`, `L_sun_color` and `L_ambient` bind them raw.
+    const light: Node<"vec3"> = baked.xyz
+      .add(
+        lighting.environment
+          .mul(0.25)
+          .mul(float(0.5).add(normalize(normal).y.mul(0.5)))
+          .mul(hemi)
+      )
+      .add(lighting.sunColor.mul(dot(normalView, lighting.sunDirectionView.negate())).mul(baked.w))
       .add(lighting.ambient.mul(0.5))
       .toVar();
     const shaded: IWaterShading = variant.anomalyWater
@@ -228,7 +231,8 @@ export function toWaterSurfaceShader(
     const seen: Node<"float"> = float(1).sub(fog);
     // Plain `water` is written whole, `blend(false)`; soft water is faded by the fog twice over, as its alpha is.
     const alpha: Node<"float"> = variant.isSoftWater ? softAlpha.mul(seen).mul(seen) : float(1);
-    const finished: Node<"vec3"> = toToneMapped(mix(color, lighting.fogColor, fog), uniforms.exposure.scale);
+    // Drawn after combine into the frame as it shows, and written as it is: `water.ps` takes no tonemap or exposure.
+    const finished: Node<"vec3"> = mix(color, lighting.fogColor, fog);
     const shown: Node<"vec3"> = select(settings.lit.greaterThan(0.5), finished, base.xyz);
 
     // `waterd.ps`: the distortion map at the normal layers' coordinates, gone where the base is opaque, faded by the

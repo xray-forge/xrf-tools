@@ -165,6 +165,11 @@ export type SectorGeometry = {
   uvComponents: number;
   /** The lightmap coordinate: two shorts a vertex, over 32768. */
   lightmapUvs: VisualSection | null;
+  /**
+   * Four bytes a vertex, the `D3DCOLOR` as stored: its baked light blue, green, red, then its sun occlusion. A vertex
+   * of a declaration carrying none takes no baked light and the whole sun.
+   */
+  colors: VisualSection | null;
   /** Every index, as 32-bit elements: a sector reaches past what sixteen bits address. */
   indices: VisualSection;
   /** The clusters of every range it draws, which each range names a run of. */

@@ -32,6 +32,7 @@ export function mockSectorGeometry(buffer: MockVisualBuffer): SectorGeometry {
     indexCount: 3,
     indices,
     lightmapUvs: null,
+    colors: null,
     normals: null,
     positions,
     tangents: null,

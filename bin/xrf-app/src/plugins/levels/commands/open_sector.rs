@@ -13,9 +13,10 @@ use crate::plugins::levels::report::{report_packed_sector, report_packing_sector
 use crate::plugins::levels::state::{LevelState, PackedSector, SelectedLevel};
 
 /// What the viewer draws a level surface with, which is what a pack is worth carrying: the tangent frame too, whose
-/// fourth bytes are the low bytes of the base coordinate.
+/// fourth bytes are the low bytes of the base coordinate, and the vertex colour water is lit by.
 const DRAWN_ATTRIBUTES: SectorAttributes = SectorAttributes {
   binormals: true,
+  colors: true,
   lightmap_uvs: true,
   normals: true,
   tangents: true,
