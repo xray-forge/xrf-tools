@@ -12,7 +12,7 @@ import {
 
 import { ERendererPass } from "#/contract/scene/renderer-surface";
 import { EVertexAttribute } from "#/geometry/vertex-attribute";
-import { ISurfaceMaterial } from "#/material/surface-material";
+import { ISurfaceMaterial, toOwnSurfaceDrawing } from "#/material/surface-material";
 import { SceneGeometry } from "#/scene/geometry/scene-geometry";
 import { SceneInstances } from "#/scene/object/scene-instances";
 import { SceneObject } from "#/scene/object/scene-object";
@@ -38,7 +38,7 @@ function createSurface(pass: ERendererPass, isImpostor: boolean = false): ISurfa
     dispose: () => {},
     isImpostor,
     keys: [],
-    material: new MeshBasicNodeMaterial(),
+    ...toOwnSurfaceDrawing(new MeshBasicNodeMaterial()),
     pass,
     shadow: null,
     shadowKeys: [],

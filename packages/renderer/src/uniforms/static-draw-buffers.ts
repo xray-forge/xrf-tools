@@ -35,7 +35,7 @@ export const STATIC_CLUSTER_WIRE_VERTICES: number = RENDERER_CLUSTER_TRIANGLES *
 /** Columns one place takes: its matrix's four, then its hemisphere scale and offset, impostor and greatest scale. */
 export const STATIC_PLACE_COLUMNS: number = 5;
 
-/** Unsigned integers one slot's record takes, in two words of four: its clusters and place, then its batches. */
+/** Unsigned integers one slot's record takes, in two words of four: its clusters and place, then its batches and row. */
 export const STATIC_SLOT_WORDS: number = 8;
 
 /**
@@ -194,7 +194,8 @@ export class StaticDrawBuffers {
 
   /**
    * Each slot's record: its first cluster, its clusters, its place, its `EStaticSlotKind`; then its surface batch, its
-   * shadow batch, and nothing.
+   * shadow batch, the row of the surface table its surface reads (`SURFACE_NO_ROW` for one drawing by a material of its
+   * own), and nothing.
    */
   public slots: StorageBufferAttribute;
   /** Each place of a static draw: its matrix, then its hemisphere terms, impostor and greatest scale. */
@@ -246,6 +247,8 @@ export class StaticDrawBuffers {
    * material made every static shader's source unique: a pipeline per material.
    */
   public readonly placeColumns: StorageBufferNode<"vec4">;
+  /** The slots' records as one node every shared surface shader reads its row by, two elements a slot. */
+  public readonly slotWords: StorageBufferNode<"uvec4">;
   /** The clusters' ranges as one node every static shader reads. */
   public readonly clusterRangeWords: StorageBufferNode<"uvec4">;
   /** The lists as one node every static shader reads. */
@@ -309,6 +312,7 @@ export class StaticDrawBuffers {
       "vec4",
       capacities[EStaticPool.PLACES] * STATIC_PLACE_COLUMNS
     ).toReadOnly();
+    this.slotWords = storage(this.slots, "uvec4", capacities[EStaticPool.SLOTS] * (STATIC_SLOT_WORDS / 4)).toReadOnly();
     this.clusterRangeWords = storage(this.clusterRanges, "uvec4", capacities[EStaticPool.CLUSTERS]).toReadOnly();
     this.listEntries = storage(this.lists, "uvec2", this.toListLength()).toReadOnly();
     this.lodSphereColumns = storage(this.lodSpheres, "vec4", lods).toReadOnly();
@@ -368,6 +372,7 @@ export class StaticDrawBuffers {
     switch (pool) {
       case EStaticPool.SLOTS:
         this.slots = this.replace(this.slots, capacity * (STATIC_SLOT_WORDS / 4));
+        this.slotWords.value = this.slots;
         break;
 
       case EStaticPool.PLACES:

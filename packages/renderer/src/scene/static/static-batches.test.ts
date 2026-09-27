@@ -12,7 +12,7 @@ import {
 import { ERendererPass } from "#/contract/scene/renderer-surface";
 import { PACKED_TREE_COMPONENTS } from "#/geometry/renderer-packed-coordinate";
 import { EVertexAttribute } from "#/geometry/vertex-attribute";
-import { ISurfaceMaterial } from "#/material/surface-material";
+import { ISurfaceMaterial, toOwnSurfaceDrawing } from "#/material/surface-material";
 import { StaticArena } from "#/scene/static/static-arena";
 import { StaticBatches } from "#/scene/static/static-batches";
 import { EStaticPool, STATIC_NO_BATCH, StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
@@ -23,7 +23,7 @@ function createSurface(shadow: MeshBasicNodeMaterial | null): ISurfaceMaterial {
     dispose: () => {},
     isImpostor: false,
     keys: [],
-    material: new MeshBasicNodeMaterial(),
+    ...toOwnSurfaceDrawing(new MeshBasicNodeMaterial()),
     pass: ERendererPass.DEFERRED,
     shadow,
     shadowKeys: [],

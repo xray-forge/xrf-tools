@@ -15,6 +15,7 @@ import { ShadowUniforms } from "#/uniforms/shadow-uniforms";
 import { SkyUniforms } from "#/uniforms/sky-uniforms";
 import { StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
 import { StorageRetirement } from "#/uniforms/storage-retirement";
+import { SurfaceTable } from "#/uniforms/surface-table";
 import { TreeWindUniforms } from "#/uniforms/tree-wind-uniforms";
 import { WaterUniforms } from "#/uniforms/water-uniforms";
 
@@ -32,6 +33,8 @@ export class RendererUniforms {
   public readonly lut: Data3DTexture = createMaterialLutTexture();
   /** What every static draw is culled and placed by. */
   public readonly staticDraws: StaticDrawBuffers = new StaticDrawBuffers();
+  /** The numbers and array layers of every surface a static batch's shared material draws. */
+  public readonly surfaceTable: SurfaceTable = new SurfaceTable();
   /** The sun's shadow cascades, fitted every frame. */
   public readonly shadows: ShadowUniforms = new ShadowUniforms();
   /** How the trees sway, built each frame. */
@@ -57,6 +60,7 @@ export class RendererUniforms {
    */
   public freeRetired(renderer: WebGPURenderer): void {
     this.retirement.retire(this.staticDraws.takeRetired());
+    this.retirement.retire(this.surfaceTable.takeRetired());
     this.retirement.free(renderer);
   }
 

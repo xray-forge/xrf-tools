@@ -305,7 +305,8 @@ export class StaticDraws implements IStaticShadowCasters, IStaticPools {
       { count: run.count, start },
       hold.place,
       batches.surface,
-      batches.shadow
+      batches.shadow,
+      surface.row
     );
 
     return true;
@@ -420,7 +421,8 @@ export class StaticDraws implements IStaticShadowCasters, IStaticPools {
       { count: run.count, start },
       0,
       batches.surface,
-      batches.shadow
+      batches.shadow,
+      surface.row
     );
 
     return true;

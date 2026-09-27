@@ -9,7 +9,7 @@ export interface IRendererBackend {
   device?: {
     features?: Iterable<string>;
     adapterInfo?: { vendor?: string; architecture?: string };
-    limits?: { maxStorageBufferBindingSize?: number; maxBufferSize?: number };
+    limits?: { maxStorageBufferBindingSize?: number; maxBufferSize?: number; maxTextureArrayLayers?: number };
     queue?: { onSubmittedWorkDone?(): Promise<void> };
   };
   /** Whether each pass begins and ends with a timestamp; three reads it as every pass begins. */
@@ -62,6 +62,17 @@ export function toStorageLimit(renderer: WebGPURenderer): number {
     limits?.maxStorageBufferBindingSize ?? DEFAULT_STORAGE_LIMIT,
     limits?.maxBufferSize ?? DEFAULT_STORAGE_LIMIT
   );
+}
+
+/** WebGPU's default `maxTextureArrayLayers`, which a device three opens without asking for more has. */
+export const DEFAULT_ARRAY_LAYERS: number = 256;
+
+/**
+ * @param renderer - A renderer, its device open.
+ * @returns Layers one texture array may hold on its device.
+ */
+export function toArrayLayerLimit(renderer: WebGPURenderer): number {
+  return getRendererBackend(renderer).device?.limits?.maxTextureArrayLayers ?? DEFAULT_ARRAY_LAYERS;
 }
 
 /**

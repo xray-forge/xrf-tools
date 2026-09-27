@@ -59,7 +59,12 @@ export function getSurfaceSlotPlaceholder(slot: ESurfaceSlot): Texture {
 /** What a material's slots draw, each pointed at its key's texture as that uploads. */
 export type TSurfaceSlotTargets = Readonly<Record<ESurfaceSlot, ITextureTarget>>;
 
+/** What a shared material's array slots sample: each slot's array as it is now, for the slots it samples so. */
+export type TSurfaceArrayTargets = Readonly<Partial<Record<ESurfaceSlot, ITextureTarget>>>;
+
 /** A material whose slots a shared shader samples. */
 export interface ISurfaceSlotted {
   surfaceSlots: Nullable<TSurfaceSlotTargets>;
+  /** The arrays its array slots sample, or null for a material sampling every slot from a texture of its own. */
+  surfaceArrays: Nullable<TSurfaceArrayTargets>;
 }

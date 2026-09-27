@@ -2,7 +2,7 @@ import { Nullable } from "@xrf/types";
 import { MeshBasicNodeMaterial, Node, NodeBuilder, NodeMaterialObserver } from "three/webgpu";
 
 import { StaticDrawObserver } from "#/material/static-draw-observer";
-import { ISurfaceSlotted, TSurfaceSlotTargets } from "#/material/surface-slot";
+import { ISurfaceSlotted, TSurfaceArrayTargets, TSurfaceSlotTargets } from "#/material/surface-slot";
 import { ISurfaceValues } from "#/material/surface-values";
 import { isBufferPlacedBuild, toBufferPlacedPositionView } from "#/shader/placement.tsl";
 import { StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
@@ -28,6 +28,8 @@ export class SurfaceNodeMaterial extends MeshBasicNodeMaterial implements ISurfa
 
   /** The textures its variant's shared shader samples for it. */
   public surfaceSlots: Nullable<TSurfaceSlotTargets> = null;
+  /** The arrays a static batch's shared shader samples its array slots from, or null for any other material. */
+  public surfaceArrays: Nullable<TSurfaceArrayTargets> = null;
   /** The numbers that shader reads for it. */
   public surfaceValues: Nullable<ISurfaceValues> = null;
 

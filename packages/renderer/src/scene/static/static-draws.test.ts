@@ -2,7 +2,7 @@ import { describe, expect, it } from "@jest/globals";
 import { MeshBasicNodeMaterial, Scene, Vector3 } from "three/webgpu";
 
 import { ERendererPass } from "#/contract/scene/renderer-surface";
-import { ISurfaceMaterial } from "#/material/surface-material";
+import { ISurfaceMaterial, toOwnSurfaceDrawing } from "#/material/surface-material";
 import { SceneGeometry } from "#/scene/geometry/scene-geometry";
 import { ILightShadowRequest, LightShadowPlanner } from "#/scene/lights/light-shadow-planner";
 import { StaticDraws } from "#/scene/static/static-draws";
@@ -92,7 +92,7 @@ describe("listed tree shadow invalidation", () => {
       dispose: () => {},
       isImpostor: false,
       keys: [],
-      material: new MeshBasicNodeMaterial(),
+      ...toOwnSurfaceDrawing(new MeshBasicNodeMaterial()),
       pass: ERendererPass.DEFERRED,
       shadow: new MeshBasicNodeMaterial(),
       shadowKeys: [],

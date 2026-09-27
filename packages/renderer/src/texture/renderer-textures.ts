@@ -166,6 +166,16 @@ export class RendererTextures {
     return !entry || (!entry.isDecoding && entry.drawn === entry.texture);
   }
 
+  /**
+   * @param key - A texture's key.
+   * @returns What it holds on the GPU and draws, or null for one holding nothing there yet.
+   */
+  public getUploaded(key: string): Nullable<Texture> {
+    const entry: Maybe<ITextureEntry> = this.entries.get(key);
+
+    return entry && !entry.isDecoding && entry.drawn === entry.texture ? entry.drawn : null;
+  }
+
   /** Whether any texture waits to go up. */
   public get hasQueued(): boolean {
     return this.queued.size > 0;

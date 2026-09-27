@@ -9,6 +9,7 @@ import {
   STATIC_SLOT_WORDS,
   StaticDrawBuffers,
 } from "#/uniforms/static-draw-buffers";
+import { SURFACE_NO_ROW } from "#/uniforms/surface-table";
 
 /**
  * Hands out the slots of the static draw buffers and writes what each draws: its clusters, its place and its batches,
@@ -78,6 +79,7 @@ export class StaticDrawPool {
    * @param place - Where a single draw stands; nothing for an instanced one, whose rows name their places.
    * @param surfaceBatch - The batch drawing it into the G-buffer.
    * @param shadowBatch - The batch drawing it into the shadow views, `STATIC_NO_BATCH` for one casting nothing.
+   * @param row - The surface table's row its surface reads, `SURFACE_NO_ROW` for one drawing by its own material.
    */
   public write(
     slot: number,
@@ -85,10 +87,11 @@ export class StaticDrawPool {
     clusters: ISceneClusterRun,
     place: number,
     surfaceBatch: number,
-    shadowBatch: number
+    shadowBatch: number,
+    row: number = SURFACE_NO_ROW
   ): void {
     (this.buffers.slots.array as Uint32Array).set(
-      [clusters.start, clusters.count, place, kind, surfaceBatch, shadowBatch, 0, 0],
+      [clusters.start, clusters.count, place, kind, surfaceBatch, shadowBatch, row, 0],
       slot * STATIC_SLOT_WORDS
     );
     this.touch(slot);
@@ -99,7 +102,7 @@ export class StaticDrawPool {
    */
   public release(slot: number): void {
     (this.buffers.slots.array as Uint32Array).set(
-      [0, 0, 0, EStaticSlotKind.NONE, STATIC_NO_BATCH, STATIC_NO_BATCH, 0, 0],
+      [0, 0, 0, EStaticSlotKind.NONE, STATIC_NO_BATCH, STATIC_NO_BATCH, SURFACE_NO_ROW, 0],
       slot * STATIC_SLOT_WORDS
     );
     this.free.push(slot);

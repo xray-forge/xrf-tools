@@ -8,6 +8,8 @@ import { toShadowSurfaceShader } from "#/material/shadow-surface.tsl";
 import { ISurfaceInputs } from "#/material/surface-inputs";
 import { toSurfaceInputs } from "#/material/surface-inputs.tsl";
 import { ISurfaceShader } from "#/material/surface-shader";
+import { ESurfaceSlot } from "#/material/surface-slot";
+import { toTabledSurfaceInputs } from "#/material/surface-table-inputs.tsl";
 import { ISurfaceVariant, toSurfaceVariantKey } from "#/material/surface-variant";
 import { toWallmarkSurfaceShader } from "#/material/wallmark-surface.tsl";
 import { toWaterSurfaceShader } from "#/material/water-surface.tsl";
@@ -38,6 +40,7 @@ export class SurfacePrograms {
   private readonly uniforms: RendererUniforms;
   private readonly inputs: ISurfaceInputs;
   private readonly shaders: Map<string, ISurfaceShader> = new Map();
+  private readonly tabled: Map<string, ISurfaceShader> = new Map();
   private cutOutShadow: Maybe<ISurfaceShader>;
   private opaqueShadow: Maybe<ISurfaceShader>;
 
@@ -60,6 +63,31 @@ export class SurfacePrograms {
     if (!shader) {
       shader = SURFACE_SHADERS[variant.pass](variant, this.inputs, this.uniforms);
       this.shaders.set(key, shader);
+    }
+
+    return shader;
+  }
+
+  /**
+   * @param variant - A surface's variant.
+   * @param arrayed - The slots a static batch's shared material samples from arrays.
+   * @returns The shader every surface of the variant shares in a static batch, reading its numbers and array layers from
+   *   the surface table: built the first time the pair is asked for.
+   */
+  public getTabled(variant: ISurfaceVariant, arrayed: ReadonlyArray<ESurfaceSlot>): ISurfaceShader {
+    const key: string = `${toSurfaceVariantKey(variant)}|${arrayed.join(",")}`;
+    let shader: Maybe<ISurfaceShader> = this.tabled.get(key);
+
+    if (!shader) {
+      const inputs: ISurfaceInputs = toTabledSurfaceInputs(
+        this.uniforms.settings.textureBias,
+        this.uniforms.surfaceTable,
+        this.uniforms.staticDraws,
+        arrayed
+      );
+
+      shader = SURFACE_SHADERS[variant.pass](variant, inputs, this.uniforms);
+      this.tabled.set(key, shader);
     }
 
     return shader;

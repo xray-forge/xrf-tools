@@ -2,6 +2,7 @@ import { describe, expect, it } from "@jest/globals";
 
 import { StaticDrawPool } from "#/scene/static/static-draw-pool";
 import { EStaticSlotKind, STATIC_NO_BATCH, STATIC_SLOT_WORDS, StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
+import { SURFACE_NO_ROW } from "#/uniforms/surface-table";
 
 function createPool(): { pool: StaticDrawPool; buffers: StaticDrawBuffers } {
   const buffers: StaticDrawBuffers = new StaticDrawBuffers();
@@ -23,13 +24,17 @@ describe("StaticDrawPool", () => {
     expect(new StaticDrawPool(new StaticDrawBuffers()).allocate()).toBeNull();
   });
 
-  it("writes a draw's clusters, place, kind and batches into its slot's record", () => {
+  it("writes a draw's clusters, place, kind, batches and row into its slot's record", () => {
     const { buffers, pool } = createPool();
     const slot = pool.allocate() as number;
 
+    pool.write(slot, EStaticSlotKind.SINGLE, { count: 3, start: 40 }, 9, 2, STATIC_NO_BATCH, 7);
+
+    expect(toRecord(buffers, slot)).toEqual([40, 3, 9, EStaticSlotKind.SINGLE, 2, STATIC_NO_BATCH, 7, 0]);
+
     pool.write(slot, EStaticSlotKind.SINGLE, { count: 3, start: 40 }, 9, 2, STATIC_NO_BATCH);
 
-    expect(toRecord(buffers, slot)).toEqual([40, 3, 9, EStaticSlotKind.SINGLE, 2, STATIC_NO_BATCH, 0, 0]);
+    expect(toRecord(buffers, slot)[6]).toBe(SURFACE_NO_ROW);
   });
 
   // The cull reads every slot up to the last handed out; a released one draws nothing and belongs to no batch.
@@ -41,7 +46,16 @@ describe("StaticDrawPool", () => {
     pool.allocate();
     pool.release(first);
 
-    expect(toRecord(buffers, first)).toEqual([0, 0, 0, EStaticSlotKind.NONE, STATIC_NO_BATCH, STATIC_NO_BATCH, 0, 0]);
+    expect(toRecord(buffers, first)).toEqual([
+      0,
+      0,
+      0,
+      EStaticSlotKind.NONE,
+      STATIC_NO_BATCH,
+      STATIC_NO_BATCH,
+      SURFACE_NO_ROW,
+      0,
+    ]);
     expect(pool.allocate()).toBe(first);
     expect(pool.count).toBe(2);
     expect(pool.extent).toBe(2);

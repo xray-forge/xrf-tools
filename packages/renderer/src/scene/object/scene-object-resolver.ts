@@ -59,14 +59,16 @@ export class SceneObjectResolver {
       skeletonEntry && geometry.buffer.hasAttribute("skinIndex") ? skeletonEntry.skeleton : null;
     const instances: Nullable<SceneInstances> = entry.toInstances(geometry);
     const drawn: BufferGeometry = instances?.geometry ?? geometry.buffer;
-    const surfaces: Array<Maybe<ISurfaceMaterial>> = geometry.sections.map((section: ISceneSection) =>
-      this.surfaces.get(object.surfaces[section.slot])
-    );
-
     // Unskinned, in a layout an arena stores, it stands its clusters in a place of its own or in each of its places,
     // which the buffers hold; its static draws' materials compile against its arena's prototype.
     const staticDrawn: Nullable<BufferGeometry> =
       this.draws.isEnabled && !skeleton ? (this.draws.toArena(geometry)?.prototype ?? null) : null;
+    // A static draw draws by the material its surface shares with others where it has one.
+    const surfaces: Array<Maybe<ISurfaceMaterial>> = geometry.sections.map((section: ISceneSection) => {
+      const surface: Maybe<ISurfaceMaterial> = this.surfaces.get(object.surfaces[section.slot]);
+
+      return (staticDrawn && surface?.batched) || surface;
+    });
 
     return {
       geometry,

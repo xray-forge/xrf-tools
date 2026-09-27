@@ -1,5 +1,5 @@
 import { Maybe, Nullable } from "@xrf/types";
-import { Material, Mesh, Object3D, PerspectiveCamera, Scene } from "three/webgpu";
+import { Material, Mesh, Object3D, PerspectiveCamera, Scene, WebGPURenderer } from "three/webgpu";
 
 import { IRendererStaticDrawReport } from "#/contract/renderer-report";
 import { IRendererGeometry } from "#/contract/scene/renderer-geometry";
@@ -83,13 +83,19 @@ export class RendererScene {
       this.toUpcomingStatic()
     );
     this.staticCull = this.staticDraws.cull;
-    this.textures = new RendererTextures(onTextureRefused, (key: string) => this.staticDraws.invalidate(key));
+    this.textures = new RendererTextures(onTextureRefused, (key: string) => {
+      this.surfaces.rebind(key);
+      this.staticDraws.invalidate(key);
+    });
     this.grass = new SceneGrass(this.textures, uniforms);
     this.lights = new SceneLights(this.textures, this.staticDraws.shadowChanges);
     this.sky = new SceneSky(this.textures, uniforms.sky);
     this.skeletons = new RendererSkeletons((key: string) => this.buildUsers(this.skeletonUsers.get(key)));
-    this.surfaces = new SurfaceLibrary(this.textures, uniforms, (key: string) =>
-      this.buildUsers(this.surfaceUsers.get(key))
+    this.surfaces = new SurfaceLibrary(
+      this.textures,
+      uniforms,
+      (key: string) => this.buildUsers(this.surfaceUsers.get(key)),
+      (key: string) => this.staticDraws.invalidate(key)
     );
     this.impostors = new RendererImpostorSets(this.staticDraws, (key: string) =>
       this.buildUsers(this.impostorUsers.get(key))
@@ -116,6 +122,20 @@ export class RendererScene {
   /** How full the static draws' pools are and what the last cull found occluded. */
   public get staticDrawReport(): IRendererStaticDrawReport {
     return this.staticDraws.report;
+  }
+
+  /** Layers the device allows a texture array, which the device says once it is open. */
+  public set arrayLayerLimit(limit: number) {
+    this.surfaces.arrayLayerLimit = limit;
+  }
+
+  /**
+   * Puts what the static batches' shared materials read on the GPU: the layers their arrays wait for, and their rows.
+   *
+   * @param renderer - The renderer about to draw.
+   */
+  public flushSurfaces(renderer: WebGPURenderer): void {
+    this.surfaces.flush(renderer);
   }
 
   /** Whether any object waits: for a material to compile, a texture to upload, or its turn to be applied. */

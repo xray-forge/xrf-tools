@@ -19,7 +19,7 @@ import { RendererFrameStats } from "#/host/renderer-frame-stats";
 import { RendererSceneCompiler } from "#/host/renderer-scene-compiler";
 import { RendererView } from "#/host/renderer-view";
 import { RenderProxyElement } from "#/input/render-proxy-element";
-import { toStorageLimit, whenSubmittedWorkDone } from "#/internals/renderer-backend";
+import { toArrayLayerLimit, toStorageLimit, whenSubmittedWorkDone } from "#/internals/renderer-backend";
 import { DEFAULT_RENDERER_LIGHTING } from "#/lighting/default-lighting";
 import { RendererOverlays } from "#/scene/overlay/renderer-overlays";
 import { RendererScene } from "#/scene/renderer-scene";
@@ -242,6 +242,8 @@ export class RendererHost {
         this.device = device;
         // The static draws' pools grow to what one storage buffer may hold on this device.
         this.uniforms.staticDraws.storageLimit = toStorageLimit(device.renderer);
+        // A static batch's shared material samples arrays as long as this device allows.
+        this.scene.arrayLayerLimit = toArrayLayerLimit(device.renderer);
         // A static draw finds its slot by its first instance, which only a device with the feature draws indirectly.
         this.scene.setStaticDraws(device.renderer.hasFeature("indirect-first-instance"));
         this.reply({ device: device.describe(), kind: ERendererResponse.READY });
@@ -316,6 +318,7 @@ export class RendererHost {
     // Before the frame, and whether or not one is drawn: a capture without a view waits on the same uploads.
     this.scene.textures.upload(device.renderer, TEXTURE_UPLOAD_BUDGET);
     this.scene.advance();
+    this.scene.flushSurfaces(device.renderer);
 
     let drawn: Nullable<Vector2> = null;
 

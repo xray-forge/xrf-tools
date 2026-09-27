@@ -6,18 +6,28 @@ import { applySurfaceCompositing, ISurfaceCompositing, toSurfaceCompositing } fr
 import { SurfaceNodeMaterial } from "#/material/surface-node-material";
 import { SurfacePrograms } from "#/material/surface-programs";
 import { ISurfaceShader } from "#/material/surface-shader";
-import { ESurfaceSlot, TSurfaceSlotTargets } from "#/material/surface-slot";
+import { ESurfaceSlot, TSurfaceArrayTargets, TSurfaceSlotTargets } from "#/material/surface-slot";
 import { SurfaceSlots } from "#/material/surface-slots";
 import { ISurfaceValues, toSurfaceValues } from "#/material/surface-values";
 import { ISurfaceVariant, toSampledSlots, toSurfaceVariant } from "#/material/surface-variant";
 import { RendererTextures } from "#/texture/renderer-textures";
 import { RendererUniforms } from "#/uniforms/renderer-uniforms";
+import { SURFACE_NO_ROW } from "#/uniforms/surface-table";
 
 /**
  * A surface as the frame draws it.
  */
 export interface ISurfaceMaterial {
   material: MeshBasicNodeMaterial;
+  /** What a part of it drawn plainly draws with: the material itself, or for a batched view the surface's own. */
+  plainMaterial: MeshBasicNodeMaterial;
+  /**
+   * Its view in a static batch drawn by a material its surfaces share, or null while it draws static batches by its own
+   * material: its array slots' textures not up yet, or of no class an array holds.
+   */
+  batched: Nullable<ISurfaceMaterial>;
+  /** The surface table's row a shared material reads for it, `SURFACE_NO_ROW` for one drawing by its own. */
+  row: number;
   /** Which pass draws it. */
   pass: ERendererPass;
   /** The texture keys it samples, which have to be uploaded before it draws without a stall. */
@@ -88,12 +98,72 @@ export function createSurfaceMaterial(
         shadow?.dispose();
       }
     },
+    ...toOwnSurfaceDrawing(material),
     isImpostor: variant.isImpostor,
     keys: slots.keys,
-    material,
     pass: variant.pass,
     shadow,
     shadowKeys: isCasting && isCutOut ? slots.keysOf(ESurfaceSlot.BASE) : [],
+  };
+}
+
+/**
+ * @param material - A surface's own material.
+ * @returns What a surface drawing by it says of the static batches: that it draws them by it, reading no row.
+ */
+export function toOwnSurfaceDrawing(
+  material: MeshBasicNodeMaterial
+): Pick<ISurfaceMaterial, "batched" | "material" | "plainMaterial" | "row"> {
+  return { batched: null, material, plainMaterial: material, row: SURFACE_NO_ROW };
+}
+
+/** A static batch's shared material, and the texture keys it binds of its own. */
+export interface ISurfaceBatchMaterial {
+  material: SurfaceNodeMaterial;
+  keys: ReadonlyArray<string>;
+  dispose(): void;
+}
+
+/**
+ * @param variant - The variant of every surface it draws.
+ * @param keys - The texture keys of the slots it samples of its own, which every surface it draws shares.
+ * @param arrays - The arrays its array slots sample.
+ * @param textures - Where its own slots are bound from.
+ * @param uniforms - What the frame's shaders read.
+ * @param programs - The shaders its variant shares.
+ * @returns What draws every surface of the variant sharing its own textures in one static batch, each surface's
+ *   numbers and array layers read from the surface table.
+ */
+export function createSurfaceBatchMaterial(
+  variant: ISurfaceVariant,
+  keys: IRendererSurface["textures"],
+  arrays: TSurfaceArrayTargets,
+  textures: RendererTextures,
+  uniforms: RendererUniforms,
+  programs: SurfacePrograms
+): ISurfaceBatchMaterial {
+  const arrayed: Array<ESurfaceSlot> = Object.keys(arrays) as Array<ESurfaceSlot>;
+  const shader: ISurfaceShader = programs.getTabled(variant, arrayed);
+  const slots: SurfaceSlots = new SurfaceSlots(
+    textures,
+    keys,
+    toSampledSlots(variant).filter((slot: ESurfaceSlot) => !arrayed.includes(slot))
+  );
+  const material: SurfaceNodeMaterial = createSharedMaterial(programs, uniforms, slots.targets, null);
+
+  material.surfaceArrays = arrays;
+  material.fragmentNode = shader.fragmentNode ?? null;
+  material.colorNode = shader.colorNode ?? null;
+  material.alphaTestNode = shader.alphaTestNode ?? null;
+  material.positionViewNode = shader.positionViewNode ?? null;
+
+  return {
+    dispose: () => {
+      slots.release();
+      material.dispose();
+    },
+    keys: slots.keys,
+    material,
   };
 }
 

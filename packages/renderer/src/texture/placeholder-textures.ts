@@ -1,5 +1,6 @@
 import { Nullable } from "@xrf/types";
 import {
+  DataArrayTexture,
   DataTexture,
   LinearFilter,
   NoColorSpace,
@@ -20,6 +21,28 @@ let flatBumpCompanion: Nullable<Texture> = null;
 let sky: Nullable<Texture> = null;
 let flatNormal: Nullable<Texture> = null;
 let clear: Nullable<Texture> = null;
+let array: Nullable<Texture> = null;
+
+/**
+ * @returns What an array slot's sampler is built with, which is what makes its shader declare an array: a layer of
+ *   white. Every material drawing by the shader binds an array of its own.
+ */
+export function getPlaceholderArrayTexture(): Texture {
+  if (!array) {
+    const texture: DataArrayTexture = new DataArrayTexture(new Uint8Array([255, 255, 255, 255]), 1, 1, 1);
+
+    texture.format = RGBAFormat;
+    texture.type = UnsignedByteType;
+    texture.colorSpace = NoColorSpace;
+    // Filtered, as every array it stands in for is: three declares no sampler for a texture sampled nearest.
+    texture.minFilter = LinearFilter;
+    texture.magFilter = LinearFilter;
+    texture.needsUpdate = true;
+    array = texture;
+  }
+
+  return array;
+}
 
 /**
  * @returns What a surface samples before its texture arrives, or without one: every channel one.

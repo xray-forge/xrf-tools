@@ -1,9 +1,10 @@
 import { Maybe } from "@xrf/types";
-import { Material, MeshBasicNodeMaterial } from "three/webgpu";
+import { Material, MeshBasicNodeMaterial, WebGPURenderer } from "three/webgpu";
 
 import { ERendererDraw, IRendererSurface } from "#/contract/scene/renderer-surface";
 import { createOpaqueShadowMaterial, createSurfaceMaterial, ISurfaceMaterial } from "#/material/surface-material";
 import { SurfacePrograms } from "#/material/surface-programs";
+import { SurfaceBatching } from "#/scene/surface/surface-batching";
 import { RendererTextures } from "#/texture/renderer-textures";
 import { RendererUniforms } from "#/uniforms/renderer-uniforms";
 
@@ -38,18 +39,52 @@ export class SurfaceLibrary {
   private readonly programs: SurfacePrograms;
   /** The shadow material every opaque surface it makes shares. */
   private readonly opaqueShadow: MeshBasicNodeMaterial;
+  /** Which of its surfaces a static batch draws by a material they share. */
+  private readonly batching: SurfaceBatching;
+  /** The keys each material is put under, which its users are found by. */
+  private readonly keysOf: Map<ISurfaceMaterial, Set<string>> = new Map();
 
   /**
    * @param textures - Where the materials bind their textures.
    * @param uniforms - What their shaders read.
    * @param onReplaced - Told when a key's material changed, so whatever draws it can draw the new one.
+   * @param onInvalidated - Told a key as a texture's where what the shared materials bind under it was replaced, which
+   *   bundles drawing them record again for.
    */
-  public constructor(textures: RendererTextures, uniforms: RendererUniforms, onReplaced: (key: string) => void) {
+  public constructor(
+    textures: RendererTextures,
+    uniforms: RendererUniforms,
+    onReplaced: (key: string) => void,
+    onInvalidated: (key: string) => void
+  ) {
     this.textures = textures;
     this.uniforms = uniforms;
     this.onReplaced = onReplaced;
     this.programs = new SurfacePrograms(uniforms);
     this.opaqueShadow = createOpaqueShadowMaterial(this.programs, uniforms);
+    this.batching = new SurfaceBatching(textures, uniforms, this.programs, onInvalidated);
+  }
+
+  /** Layers the device allows a texture array, which the device says once it is open. */
+  public set arrayLayerLimit(limit: number) {
+    this.batching.layerLimit = limit;
+  }
+
+  /**
+   * @param key - A texture's key whose samplers were pointed at another texture: every surface whose batched view
+   *   changed with it is drawn again.
+   */
+  public rebind(key: string): void {
+    for (const material of this.batching.rebind(key)) {
+      this.keysOf.get(material)?.forEach((surface: string) => this.onReplaced(surface));
+    }
+  }
+
+  /**
+   * @param renderer - The renderer drawing, the shared materials' arrays and rows put on the GPU before it does.
+   */
+  public flush(renderer: WebGPURenderer): void {
+    this.batching.flush(renderer);
   }
 
   /** Whether any material waits for nothing to draw it. */
@@ -78,6 +113,7 @@ export class SurfaceLibrary {
     this.descriptions.delete(key);
 
     if (previous) {
+      this.forget(previous, key);
       this.retired.add(previous);
     }
 
@@ -142,7 +178,14 @@ export class SurfaceLibrary {
 
       this.retired.delete(surface);
 
+      // A material still named under another key draws on; only its retirement under this one ends here.
+      if (this.keysOf.has(surface)) {
+        continue;
+      }
+
       const description: Maybe<string> = this.built.get(surface);
+
+      this.batching.untrack(surface);
 
       if (description && isCompiled(surface.material) && !this.cache.has(description)) {
         this.cache.set(description, surface);
@@ -150,6 +193,8 @@ export class SurfaceLibrary {
         surface.dispose();
       }
     }
+
+    this.batching.retire(drawn);
 
     while (this.cache.size > MATERIAL_CACHE_LIMIT) {
       const [description, surface] = this.cache.entries().next().value as [string, ISurfaceMaterial];
@@ -168,7 +213,9 @@ export class SurfaceLibrary {
 
     this.wireframe?.dispose();
     this.wireframe = undefined;
+    this.batching.dispose();
     this.opaqueShadow.dispose();
+    this.keysOf.clear();
 
     this.materials.clear();
     this.retired.clear();
@@ -195,10 +242,31 @@ export class SurfaceLibrary {
     this.materials.set(key, material);
 
     if (previous) {
+      this.forget(previous, key);
       this.retired.add(previous);
     }
 
+    let keys: Maybe<Set<string>> = this.keysOf.get(material);
+
+    if (!keys) {
+      keys = new Set();
+      this.keysOf.set(material, keys);
+    }
+
+    keys.add(key);
+    this.batching.track(material, surface);
     this.onReplaced(key);
+  }
+
+  /** Forgets that a material was put under a key. */
+  private forget(material: ISurfaceMaterial, key: string): void {
+    const keys: Maybe<Set<string>> = this.keysOf.get(material);
+
+    keys?.delete(key);
+
+    if (keys && !keys.size) {
+      this.keysOf.delete(material);
+    }
   }
 
   /** What a surface is built from, as one comparable string. */

@@ -2,7 +2,7 @@ import { describe, expect, it } from "@jest/globals";
 import { BufferAttribute, BufferGeometry, Material, Mesh, MeshBasicNodeMaterial } from "three/webgpu";
 
 import { ERendererPass } from "#/contract/scene/renderer-surface";
-import { ISurfaceMaterial } from "#/material/surface-material";
+import { ISurfaceMaterial, toOwnSurfaceDrawing } from "#/material/surface-material";
 import { SceneGeometry } from "#/scene/geometry/scene-geometry";
 import { ISceneObjectState } from "#/scene/object/scene-object-state";
 import { LayoutProxies } from "#/scene/staging/layout-proxies";
@@ -15,7 +15,7 @@ function createState(shadow: MeshBasicNodeMaterial | null): { state: ISceneObjec
     dispose: () => {},
     isImpostor: false,
     keys: [],
-    material: new MeshBasicNodeMaterial(),
+    ...toOwnSurfaceDrawing(new MeshBasicNodeMaterial()),
     pass: ERendererPass.DEFERRED,
     shadow,
     shadowKeys: [],
