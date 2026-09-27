@@ -1,154 +1,185 @@
 import { Maybe, Nullable } from "@xrf/types";
-import { Box3, Material, Object3D, Vector4 } from "three/webgpu";
+import { Box3, Material, Object3D } from "three/webgpu";
 
+import { IRendererPoolUse } from "#/contract/renderer-report";
 import { ISurfaceMaterial } from "#/material/surface-material";
 import { StaticArena } from "#/scene/static/static-arena";
 import { StaticBatch, TStaticBatchArguments } from "#/scene/static/static-batch";
 import { StaticBundleChunks } from "#/scene/static/static-bundle-chunks";
-import { isBoxInPlanes, STATIC_EVERYWHERE, toStaticCell } from "#/scene/static/static-cell";
-import { EStaticDrawKind } from "#/scene/static/static-draw-kind";
-import { StaticDrawPool } from "#/scene/static/static-draw-pool";
+import { toGrownCapacity } from "#/scene/static/static-growth";
+import { StaticListRegions } from "#/scene/static/static-list-regions";
 import { EShadowCasterMotion, StaticShadowChanges } from "#/scene/static/static-shadow-changes";
+import {
+  EStaticListSpace,
+  EStaticPool,
+  EStaticView,
+  STATIC_NO_BATCH,
+  STATIC_SHADOW_VIEWS,
+  StaticDrawBuffers,
+} from "#/uniforms/static-draw-buffers";
 
-/** An arena's batches of one kind for one grouping: the ones drawing, by material and cell, and the idle ones kept. */
-interface IArenaBatches {
-  drawing: Map<string, StaticBatch>;
-  idle: Array<StaticBatch>;
-}
-
-/**
- * One way of batching the slots: the arguments each batch's phases draw by, which material of a surface groups its
- * slots, and the bundles the batches are recorded in.
- */
+/** One way of batching the slots: the list space and arguments its batches draw by, and the bundles they are in. */
 interface IBatchGrouping {
+  space: EStaticListSpace;
   phases: ReadonlyArray<TStaticBatchArguments>;
   chunks: StaticBundleChunks;
-  arenas: Map<StaticArena, Record<EStaticDrawKind, IArenaBatches>>;
+  /** Each arena's batches drawing, by material, and the idle ones kept for another material. */
+  drawing: Map<StaticArena, Map<Material, StaticBatch>>;
+  idle: Map<StaticArena, Array<StaticBatch>>;
   /** The batch drawing each slot. */
-  drawing: Map<number, StaticBatch>;
-  /** Each batch's key among its arena's, its material and cell. */
-  keys: Map<StaticBatch, string>;
-  /** Whether it batches by cell too, and the box of everything standing in each cell. */
-  isCelled: boolean;
-  cells: Map<string, Box3>;
-  /** Whether its batches draw the arenas' line indices, as a wireframe. */
-  isWire: boolean;
+  slots: Map<number, StaticBatch>;
+}
+
+/** Which batches draw a slot: its surface's, and its shadow material's or none. */
+export interface IStaticSlotBatches {
+  surface: number;
+  shadow: number;
 }
 
 /**
- * The batches drawing every static draw, one an arena, kind and material, each recorded in a chunk's bundles while it
- * draws any. Every slot is batched twice over: by its surface's own material, drawn in the G-buffer, and, for a
- * surface that casts, by its shadow material and the cell it stands in, drawn into each shadow view: apart for what
- * sways with the wind, so a light's face can keep what stands still and draw again only what moves. Every opaque surface
- * shares one shadow material, so its casters are a batch an arena, kind and cell, however many surfaces they are; a
- * cascade shows only the cells its box reaches, so it issues the draws of what it can cast from alone. While a wireframe
- * draws, every slot is batched a third time, by one wireframe material over its arena's line index, in place of its
- * surface's batch.
+ * The batches drawing every static draw, one an arena and material, each recorded in a chunk's bundles while it draws
+ * any, and each with its region of its list space. Every slot is batched twice over: by its surface's own material,
+ * drawn in the G-buffer, and, for a surface that casts, by its shadow material, drawn into each shadow view: apart for
+ * what sways with the wind, so a light's face can keep what stands still and draw again only what moves. Every opaque
+ * surface shares one shadow material, so its casters are a batch an arena, however many surfaces they are. While a
+ * wireframe draws, every surface batch draws its own region as its clusters' edges, by one material but an
+ * impostor's own.
  */
 export class StaticBatches {
   /** Where what the shadow views draw changed, and what of it sways or moves. */
   public readonly shadowChanges: StaticShadowChanges = new StaticShadowChanges();
 
+  private readonly buffers: StaticDrawBuffers;
+  private readonly regions: StaticListRegions;
   private readonly surfaces: IBatchGrouping;
   private readonly shadows: IBatchGrouping;
   private readonly swayingShadows: IBatchGrouping;
-  private readonly wires: IBatchGrouping;
+  private readonly wires: StaticBundleChunks;
   /** Every grouping, for what is done to each alike. */
   private readonly groupings: ReadonlyArray<IBatchGrouping>;
-  /** Each slot's surface, which its wireframe batch is chosen by. */
-  private readonly slotSurfaces: Map<number, ISurfaceMaterial> = new Map();
+  /** Batch numbers handed out, and those free again. */
+  private readonly free: Array<number> = [];
+  private used: number = 0;
   /** What a wireframe draws every surface with but an impostor, or null while none draws. */
   private wireMaterial: Nullable<Material> = null;
+  private currentVersion: number = 0;
 
   /**
-   * @param pool - The slots the batches draw.
-   * @param scene - Where a batch drawing anything stands.
-   * @param late - Where its draw by the second cull's arguments stands.
+   * @param buffers - What every static draw reads.
+   * @param scene - Where a batch's first draw stands.
+   * @param late - Where its draw by the second cull's list stands.
    * @param stillScenes - Where a shadow batch of what stands still draws, by each shadow view's arguments.
    * @param swayingScenes - Where one of what sways with the wind draws.
    */
   public constructor(
-    pool: StaticDrawPool,
+    buffers: StaticDrawBuffers,
     scene: Object3D,
     late: Object3D,
     stillScenes: ReadonlyArray<Object3D>,
     swayingScenes: ReadonlyArray<Object3D>
   ) {
-    this.surfaces = StaticBatches.createGrouping([() => pool.args, () => pool.lateArgs], [scene, late], false);
-    this.wires = StaticBatches.createGrouping(
-      [() => pool.wireArgs, () => pool.wireLateArgs],
-      [scene, late],
-      false,
-      true
+    function toShadowArgs(view: number): TStaticBatchArguments {
+      return () => buffers.viewArgs[EStaticView.SHADOW + view];
+    }
+
+    this.buffers = buffers;
+    this.regions = new StaticListRegions(buffers);
+    this.surfaces = StaticBatches.createGrouping(
+      EStaticListSpace.SURFACES,
+      [() => buffers.viewArgs[EStaticView.EARLY], () => buffers.viewArgs[EStaticView.LATE]],
+      [scene, late]
     );
     this.shadows = StaticBatches.createGrouping(
-      stillScenes.map((_, view: number) => () => pool.viewArgs[view]),
-      stillScenes,
-      true
+      EStaticListSpace.SHADOWS,
+      Array.from({ length: STATIC_SHADOW_VIEWS }, (_, view: number) => toShadowArgs(view)),
+      stillScenes
     );
     this.swayingShadows = StaticBatches.createGrouping(
-      swayingScenes.map((_, view: number) => () => pool.viewArgs[view]),
-      swayingScenes,
-      true
+      EStaticListSpace.SHADOWS,
+      Array.from({ length: STATIC_SHADOW_VIEWS }, (_, view: number) => toShadowArgs(view)),
+      swayingScenes
     );
-    this.groupings = [this.surfaces, this.shadows, this.swayingShadows, this.wires];
+    this.wires = new StaticBundleChunks([scene, late]);
+    this.wires.setShown(false);
+    this.groupings = [this.surfaces, this.shadows, this.swayingShadows];
+  }
+
+  /** Bumped whenever a batch or its region changes, so every view culls again. */
+  public get version(): number {
+    return this.currentVersion + this.regions.version;
+  }
+
+  /** Surface batches drawing, each drawn once a view of the camera's two. */
+  public get surfaceCount(): number {
+    let count: number = 0;
+
+    this.surfaces.drawing.forEach((batches) => (count += batches.size));
+
+    return count;
+  }
+
+  /** Batches the cull has to clear the arguments of: every number ever handed out. */
+  public get extent(): number {
+    return this.used;
   }
 
   /**
-   * Shows a cascade the cells its box reaches, and hides the rest.
-   *
-   * @param view - The cascade.
-   * @param planes - Its box's planes.
+   * @param space - A list space.
+   * @returns Entries its batches' regions hold, against what it holds.
    */
-  public showShadowCells(view: number, planes: ReadonlyArray<Vector4>): void {
-    for (const grouping of [this.shadows, this.swayingShadows]) {
-      grouping.chunks.show(view, (cell: string) => {
-        const box: Maybe<Box3> = grouping.cells.get(cell);
-
-        return cell === STATIC_EVERYWHERE || (box !== undefined && isBoxInPlanes(box, planes));
-      });
-    }
+  public listUse(space: EStaticListSpace): IRendererPoolUse {
+    return this.regions.use(space);
   }
 
   /** Every material a batch draws in the G-buffer. */
   public get materials(): Iterable<Material> {
-    return StaticBatches.all(this.surfaces).flatMap((batches: IArenaBatches) =>
-      [...batches.drawing.values()].map((batch: StaticBatch) => batch.material as Material)
-    );
+    return [...this.surfaces.drawing.values()].flatMap((batches) => [...batches.keys()]);
   }
 
   /**
-   * @param slot - A slot drawing from now on in the batch of its arena and material, and in no other. Its batch
-   *   records again even where it drew the slot already: only a recording uploads the matrices its draws read, since
-   *   a replay refreshes nothing of the batch's own.
+   * @param slot - A slot drawing from now on in the batches of its arena and materials, and in no others. Its batches
+   *   record again even where they drew the slot already.
    * @param arena - The arena its geometry sits in.
-   * @param kind - The kind of static draw it is.
    * @param surface - What draws it.
-   * @param bounds - What it spans in renderer space: a single draw's sphere's box, or the box of every place an
-   *   instanced one stands in; null where it is not known.
+   * @param entries - Entries it may list at once: its clusters, times its rows for an instanced one.
+   * @param bounds - What it spans in renderer space, or null where it is not known.
    * @param spheres - Individual instance spheres for precise animated-caster queries, copied by the change tracker.
+   * @returns Its batches, or null where a region could not be made for either and it has to be drawn plainly.
    */
   public put(
     slot: number,
     arena: StaticArena,
-    kind: EStaticDrawKind,
     surface: ISurfaceMaterial,
+    entries: number,
     bounds: Nullable<Box3> = null,
     spheres: Nullable<Float32Array> = null
-  ): void {
-    StaticBatches.put(this.surfaces, slot, arena, kind, surface.material, surface.keys, bounds);
-    this.slotSurfaces.set(slot, surface);
+  ): Nullable<IStaticSlotBatches> {
+    const shadows: IBatchGrouping = arena.isSwaying ? this.swayingShadows : this.shadows;
+    const drawn: Nullable<StaticBatch> = this.putIn(
+      this.surfaces,
+      slot,
+      arena,
+      surface.material,
+      surface.keys,
+      entries,
+      surface.isImpostor
+    );
+    const cast: Nullable<StaticBatch> = surface.shadow
+      ? this.putIn(shadows, slot, arena, surface.shadow, surface.shadowKeys, entries)
+      : null;
 
-    if (this.wireMaterial) {
-      this.putWire(slot, arena, kind, surface, this.wireMaterial);
+    if (!drawn || (surface.shadow && !cast)) {
+      this.withdraw(slot);
+
+      return null;
     }
 
-    const shadows: IBatchGrouping = arena.isSwaying ? this.swayingShadows : this.shadows;
+    if (!surface.shadow) {
+      StaticBatches.take(shadows, slot, this);
+    }
 
-    if (surface.shadow) {
-      StaticBatches.put(shadows, slot, arena, kind, surface.shadow, surface.shadowKeys, bounds);
-    } else {
-      StaticBatches.withdraw(shadows, slot);
+    if (this.wireMaterial) {
+      this.wire(drawn);
     }
 
     this.shadowChanges.put(
@@ -158,20 +189,21 @@ export class StaticBatches {
       arena.isSwaying ? EShadowCasterMotion.SWAYING : EShadowCasterMotion.STILL,
       spheres
     );
+
+    return { shadow: cast?.id ?? STATIC_NO_BATCH, surface: drawn.id };
   }
 
   /**
    * @param slot - A slot no batch draws from now on.
    */
   public withdraw(slot: number): void {
-    this.groupings.forEach((grouping: IBatchGrouping) => StaticBatches.withdraw(grouping, slot));
-    this.slotSurfaces.delete(slot);
+    this.groupings.forEach((grouping: IBatchGrouping) => StaticBatches.take(grouping, slot, this));
     this.shadowChanges.withdraw(slot);
   }
 
   /**
-   * Draws every slot as its triangles' edges, or as its triangles again: by one material over the arenas' line
-   * indices, or by its surface's own. An impostor's slot keeps its own material, which turns its quad to the camera.
+   * Draws every surface batch's clusters as their edges, or as their triangles again: by one material, or by an
+   * impostor's own, which turns its quad to the camera.
    *
    * @param material - What a wireframe draws with, or null to draw the triangles.
    */
@@ -182,17 +214,12 @@ export class StaticBatches {
 
     this.wireMaterial = material;
 
-    // Its batches go idle rather than away: their geometries share the arenas' buffers, which disposing would free.
-    [...this.wires.drawing.keys()].forEach((slot: number) => StaticBatches.withdraw(this.wires, slot));
-
     if (material) {
-      this.surfaces.drawing.forEach((batch: StaticBatch, slot: number) =>
-        this.putWire(slot, batch.arena, batch.kind, this.slotSurfaces.get(slot) as ISurfaceMaterial, material)
-      );
+      this.surfaces.drawing.forEach((batches) => batches.forEach((batch: StaticBatch) => this.wire(batch)));
     }
 
     this.surfaces.chunks.setShown(!material);
-    this.wires.chunks.setShown(Boolean(material));
+    this.wires.setShown(Boolean(material));
   }
 
   /**
@@ -200,14 +227,12 @@ export class StaticBatches {
    */
   public invalidate(key: string): void {
     for (const grouping of this.groupings) {
-      for (const { drawing } of StaticBatches.all(grouping)) {
-        drawing.forEach((batch: StaticBatch) => batch.keys.includes(key) && batch.invalidate());
-      }
+      StaticBatches.all(grouping).forEach((batch: StaticBatch) => batch.keys.includes(key) && batch.invalidate());
     }
 
     // A shadow changes where a caster cuts out by the texture, not where only its colour does.
     for (const grouping of [this.shadows, this.swayingShadows]) {
-      grouping.drawing.forEach((batch: StaticBatch, slot: number) => {
+      grouping.slots.forEach((batch: StaticBatch, slot: number) => {
         if (batch.keys.includes(key)) {
           this.shadowChanges.touch(slot);
         }
@@ -217,21 +242,23 @@ export class StaticBatches {
 
   /** Has every batch record again, for storage buffers its shaders read that were replaced by ones that grew. */
   public invalidateAll(): void {
-    for (const grouping of this.groupings) {
-      StaticBatches.all(grouping).forEach(({ drawing }) => drawing.forEach((batch: StaticBatch) => batch.invalidate()));
-    }
+    this.groupings.forEach((grouping: IBatchGrouping) =>
+      StaticBatches.all(grouping).forEach((batch: StaticBatch) => batch.invalidate())
+    );
   }
 
   /**
-   * @param arena - An arena whose buffers may have been replaced, which every batch over it then draws.
+   * @param arena - An arena whose buffers were replaced, which every batch over it binds once it records again.
    */
-  public refresh(arena: StaticArena): void {
-    for (const grouping of this.groupings) {
-      for (const batches of Object.values(grouping.arenas.get(arena) ?? {})) {
-        // An idle batch is refreshed as it is taken up again, so one nothing draws costs nothing while the arena grows.
-        batches.drawing.forEach((batch: StaticBatch) => batch.refresh());
-      }
-    }
+  public invalidateArena(arena: StaticArena): void {
+    this.groupings.forEach((grouping: IBatchGrouping) =>
+      grouping.drawing.get(arena)?.forEach((batch: StaticBatch) => batch.invalidate())
+    );
+  }
+
+  /** Marks what changed since the last upload to go up with the next use of the buffers. */
+  public flush(): void {
+    this.regions.flush();
   }
 
   /**
@@ -239,145 +266,199 @@ export class StaticBatches {
    */
   public release(arena: StaticArena): void {
     for (const grouping of this.groupings) {
-      for (const batches of Object.values(grouping.arenas.get(arena) ?? {})) {
-        batches.drawing.forEach((batch: StaticBatch) => {
-          grouping.chunks.detach(batch);
-          batch.dispose();
-        });
-        batches.idle.forEach((batch: StaticBatch) => batch.dispose());
-      }
-
-      grouping.arenas.delete(arena);
+      grouping.drawing.get(arena)?.forEach((batch: StaticBatch) => this.drop(grouping, batch));
+      grouping.idle.get(arena)?.forEach((batch: StaticBatch) => this.drop(grouping, batch));
+      grouping.drawing.delete(arena);
+      grouping.idle.delete(arena);
     }
+
+    this.currentVersion += 1;
   }
 
   public dispose(): void {
-    new Set(this.groupings.flatMap((grouping: IBatchGrouping) => [...grouping.arenas.keys()])).forEach(
-      (arena: StaticArena) => this.release(arena)
-    );
+    new Set(
+      this.groupings.flatMap((grouping: IBatchGrouping) => [...grouping.drawing.keys(), ...grouping.idle.keys()])
+    ).forEach((arena: StaticArena) => this.release(arena));
 
     for (const grouping of this.groupings) {
       grouping.chunks.clear();
-      grouping.drawing.clear();
+      grouping.slots.clear();
     }
+
+    this.wires.clear();
   }
 
-  /** Batches a slot's wireframe: an impostor's by its own material, every other by the one wireframe material. */
-  private putWire(
-    slot: number,
-    arena: StaticArena,
-    kind: EStaticDrawKind,
-    surface: ISurfaceMaterial,
-    material: Material
-  ): void {
-    if (surface.isImpostor) {
-      StaticBatches.put(this.wires, slot, arena, kind, surface.material, surface.keys, null);
-    } else {
-      StaticBatches.put(this.wires, slot, arena, kind, material, [], null);
-    }
+  /** Draws a surface batch's wireframe: an impostor's by its own material, every other by the one wireframe material. */
+  private wire(batch: StaticBatch): void {
+    const material: Material = batch.isImpostor ? (batch.material as Material) : (this.wireMaterial as Material);
+
+    batch.setWire([() => this.buffers.wireArgs[0], () => this.buffers.wireArgs[1]], material);
+    this.wires.attach(batch, batch.wireMeshes);
   }
 
-  private static createGrouping(
-    phases: ReadonlyArray<TStaticBatchArguments>,
-    scenes: ReadonlyArray<Object3D>,
-    isCelled: boolean,
-    isWire: boolean = false
-  ): IBatchGrouping {
-    return {
-      arenas: new Map(),
-      cells: new Map(),
-      chunks: new StaticBundleChunks(scenes),
-      drawing: new Map(),
-      isCelled,
-      isWire,
-      keys: new Map(),
-      phases,
-    };
-  }
-
-  private static put(
+  /** Puts a slot in its grouping's batch of its arena and material, and gives the batch room for it. */
+  private putIn(
     grouping: IBatchGrouping,
     slot: number,
     arena: StaticArena,
-    kind: EStaticDrawKind,
     material: Material,
     keys: ReadonlyArray<string>,
-    bounds: Nullable<Box3>
-  ): void {
-    const batches: IArenaBatches = StaticBatches.toArenaBatches(grouping, arena, kind);
-    const cell: string = grouping.isCelled ? toStaticCell(bounds) : "";
-    const key: string = `${material.uuid}|${cell}`;
-    let batch: Maybe<StaticBatch> = batches.drawing.get(key);
+    entries: number,
+    isImpostor: boolean = false
+  ): Nullable<StaticBatch> {
+    let batches: Maybe<Map<Material, StaticBatch>> = grouping.drawing.get(arena);
 
-    if (grouping.isCelled && bounds && cell !== STATIC_EVERYWHERE) {
-      let box: Maybe<Box3> = grouping.cells.get(cell);
-
-      if (!box) {
-        box = new Box3();
-        grouping.cells.set(cell, box);
-      }
-
-      box.union(bounds);
+    if (!batches) {
+      batches = new Map();
+      grouping.drawing.set(arena, batches);
     }
 
-    if (batch && grouping.drawing.get(slot) === batch) {
-      batch.invalidate();
+    let batch: Maybe<StaticBatch> = batches.get(material);
 
-      return;
+    if (grouping.slots.get(slot) !== batch) {
+      StaticBatches.take(grouping, slot, this);
     }
-
-    StaticBatches.withdraw(grouping, slot);
 
     if (!batch) {
-      batch = batches.idle.pop() ?? new StaticBatch(arena, kind, grouping.phases, grouping.isWire);
-      batch.refresh();
-      batch.setMaterial(material, keys);
-      batches.drawing.set(key, batch);
-      grouping.keys.set(batch, key);
-      grouping.chunks.attach(batch, cell);
+      const created: Nullable<StaticBatch> = this.takeBatch(grouping, arena);
+
+      if (!created) {
+        return null;
+      }
+
+      batch = created;
+      batch.setMaterial(material, keys, isImpostor);
+      batches.set(material, batch);
+      grouping.chunks.attach(batch, batch.meshes);
     }
 
-    batch.add(slot);
-    grouping.drawing.set(slot, batch);
+    batch.put(slot, entries);
+    grouping.slots.set(slot, batch);
+    batch.invalidate();
+    this.currentVersion += 1;
+
+    const layout: number = this.buffers.layout;
+    const isFitted: boolean = this.regions.fit(batch);
+
+    // A list space that grew is a buffer every static material reads, bound again as each batch records.
+    if (this.buffers.layout !== layout) {
+      this.invalidateAll();
+    }
+
+    if (!isFitted) {
+      StaticBatches.take(grouping, slot, this);
+
+      return null;
+    }
+
+    return batch;
   }
 
-  private static withdraw(grouping: IBatchGrouping, slot: number): void {
-    const batch: Maybe<StaticBatch> = grouping.drawing.get(slot);
+  /** An idle batch of the arena's, or a new one, numbered; null where the device's limit stops the batches growing. */
+  private takeBatch(grouping: IBatchGrouping, arena: StaticArena): Nullable<StaticBatch> {
+    const idle: Maybe<StaticBatch> = grouping.idle.get(arena)?.pop();
+
+    if (idle) {
+      return idle;
+    }
+
+    const id: Nullable<number> = this.allocateId();
+
+    return id === null ? null : new StaticBatch(arena, id, grouping.space, grouping.phases);
+  }
+
+  private allocateId(): Nullable<number> {
+    if (this.free.length) {
+      return this.free.pop() as number;
+    }
+
+    const capacity: number = this.buffers.capacity(EStaticPool.BATCHES);
+
+    if (this.used === capacity) {
+      const grown: number = toGrownCapacity(
+        this.used,
+        1,
+        capacity,
+        this.buffers.initial(EStaticPool.BATCHES),
+        this.buffers.limit(EStaticPool.BATCHES)
+      );
+
+      if (grown <= capacity) {
+        return null;
+      }
+
+      this.buffers.grow(EStaticPool.BATCHES, grown);
+      // Every batch draws by the new arguments.
+      this.groupings.forEach((grouping: IBatchGrouping) =>
+        StaticBatches.all(grouping).forEach((batch: StaticBatch) => batch.refresh())
+      );
+    }
+
+    this.used += 1;
+
+    return this.used - 1;
+  }
+
+  /** Lets a batch go with its arena: its region and its number free, its meshes out of every bundle. */
+  private drop(grouping: IBatchGrouping, batch: StaticBatch): void {
+    grouping.chunks.detach(batch);
+    this.wires.detach(batch);
+    this.regions.release(batch);
+    batch.dispose();
+    this.free.push(batch.id);
+  }
+
+  /** Takes a slot out of its batch in a grouping, the batch going idle once it draws nothing. */
+  private static take(grouping: IBatchGrouping, slot: number, batches: StaticBatches): void {
+    const batch: Maybe<StaticBatch> = grouping.slots.get(slot);
 
     if (!batch) {
       return;
     }
 
     batch.remove(slot);
-    grouping.drawing.delete(slot);
+    batch.invalidate();
+    grouping.slots.delete(slot);
+    batches.currentVersion += 1;
 
     if (batch.isEmpty) {
-      const batches: IArenaBatches = StaticBatches.toArenaBatches(grouping, batch.arena, batch.kind);
-
-      batches.drawing.delete(grouping.keys.get(batch) as string);
-      grouping.keys.delete(batch);
+      grouping.drawing.get(batch.arena)?.delete(batch.material as Material);
       batch.setMaterial(null);
       grouping.chunks.detach(batch);
-      batches.idle.push(batch);
+      batches.wires.detach(batch);
+      batches.regions.release(batch);
+
+      let idle: Maybe<Array<StaticBatch>> = grouping.idle.get(batch.arena);
+
+      if (!idle) {
+        idle = [];
+        grouping.idle.set(batch.arena, idle);
+      }
+
+      idle.push(batch);
     }
   }
 
-  private static toArenaBatches(grouping: IBatchGrouping, arena: StaticArena, kind: EStaticDrawKind): IArenaBatches {
-    let batches: Maybe<Record<EStaticDrawKind, IArenaBatches>> = grouping.arenas.get(arena);
-
-    if (!batches) {
-      batches = {
-        [EStaticDrawKind.LISTED]: { drawing: new Map(), idle: [] },
-        [EStaticDrawKind.SINGLE]: { drawing: new Map(), idle: [] },
-      };
-      grouping.arenas.set(arena, batches);
-    }
-
-    return batches[kind];
+  private static createGrouping(
+    space: EStaticListSpace,
+    phases: ReadonlyArray<TStaticBatchArguments>,
+    scenes: ReadonlyArray<Object3D>
+  ): IBatchGrouping {
+    return {
+      chunks: new StaticBundleChunks(scenes),
+      drawing: new Map(),
+      idle: new Map(),
+      phases,
+      slots: new Map(),
+      space,
+    };
   }
 
-  /** Every arena's batches of every kind in a grouping. */
-  private static all(grouping: IBatchGrouping): Array<IArenaBatches> {
-    return [...grouping.arenas.values()].flatMap((batches) => Object.values(batches));
+  /** Every batch of a grouping, drawing and idle. */
+  private static all(grouping: IBatchGrouping): Array<StaticBatch> {
+    return [
+      ...[...grouping.drawing.values()].flatMap((batches) => [...batches.values()]),
+      ...[...grouping.idle.values()].flat(),
+    ];
   }
 }

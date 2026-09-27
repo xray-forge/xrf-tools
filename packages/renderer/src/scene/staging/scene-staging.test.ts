@@ -1,10 +1,11 @@
 import { describe, expect, it } from "@jest/globals";
-import { BufferGeometry, Material, MeshBasicNodeMaterial } from "three/webgpu";
+import { BufferAttribute, BufferGeometry, Material, Mesh, MeshBasicNodeMaterial } from "three/webgpu";
 
 import { ERendererPass } from "#/contract/scene/renderer-surface";
 import { ISurfaceMaterial } from "#/material/surface-material";
 import { SceneGeometry } from "#/scene/geometry/scene-geometry";
 import { ISceneObjectState } from "#/scene/object/scene-object-state";
+import { LayoutProxies } from "#/scene/staging/layout-proxies";
 import { createSceneStaging, ISceneStaging } from "#/scene/staging/scene-staging";
 import { MaterialReadiness } from "#/scene/surface/material-readiness";
 
@@ -40,7 +41,7 @@ describe("createSceneStaging", () => {
     const shadow: MeshBasicNodeMaterial = new MeshBasicNodeMaterial();
     const { state, surface } = createState(shadow);
     const readiness: MaterialReadiness = new MaterialReadiness();
-    const staging: ISceneStaging = createSceneStaging([state], readiness) as ISceneStaging;
+    const staging: ISceneStaging = createSceneStaging([state], readiness, new LayoutProxies()) as ISceneStaging;
 
     expect(staging.scenes[ERendererPass.DEFERRED].children).toHaveLength(1);
     expect(staging.shadows.children).toHaveLength(1);
@@ -56,12 +57,32 @@ describe("createSceneStaging", () => {
     readiness.mark(shadow, "plain");
 
     expect(readiness.isStateReady(state)).toBe(true);
-    expect(createSceneStaging([state], readiness)).toBeNull();
+    expect(createSceneStaging([state], readiness, new LayoutProxies())).toBeNull();
+  });
+
+  // A stand-in stays, holding its pipelines for the material's life: over the object's own geometry it held the level.
+  it("stands in over a triangle of the object's layout, never over the object's geometry", () => {
+    const { state } = createState(null);
+
+    state.plain.drawn.setAttribute("position", new BufferAttribute(new Float32Array(3000), 3));
+
+    const staging: ISceneStaging = createSceneStaging(
+      [state],
+      new MaterialReadiness(),
+      new LayoutProxies()
+    ) as ISceneStaging;
+    const drawn: BufferGeometry = (staging.scenes[ERendererPass.DEFERRED].children[0] as Mesh).geometry;
+
+    expect(drawn).not.toBe(state.plain.drawn);
+    expect(Object.keys(drawn.attributes)).toEqual(["position"]);
+    expect(drawn.getAttribute("position").count).toBe(3);
   });
 
   it("stages nothing for the cascades of a surface that casts none", () => {
     const { state } = createState(null);
 
-    expect((createSceneStaging([state], new MaterialReadiness()) as ISceneStaging).shadows.children).toHaveLength(0);
+    expect(
+      (createSceneStaging([state], new MaterialReadiness(), new LayoutProxies()) as ISceneStaging).shadows.children
+    ).toHaveLength(0);
   });
 });

@@ -1,57 +1,79 @@
-import { describe, expect, it } from "@jest/globals";
-import { BufferAttribute, BufferGeometry, BundleGroup, Mesh } from "three/webgpu";
+import { describe, expect, it, jest } from "@jest/globals";
+import { storage } from "three/tsl";
+import {
+  BufferAttribute,
+  BufferGeometry,
+  BundleGroup,
+  LineSegments,
+  Material,
+  Mesh,
+  StorageBufferAttribute,
+} from "three/webgpu";
 
 import { StaticArena } from "#/scene/static/static-arena";
 import { StaticBatch } from "#/scene/static/static-batch";
-import { EStaticDrawKind } from "#/scene/static/static-draw-kind";
-import { StaticDrawPool } from "#/scene/static/static-draw-pool";
-import { StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
-
-function createBuffer(vertices: number): BufferGeometry {
-  const buffer: BufferGeometry = new BufferGeometry();
-
-  buffer.setAttribute("position", new BufferAttribute(new Float32Array(vertices * 3), 3));
-
-  return buffer;
-}
+import {
+  EStaticListSpace,
+  EStaticPool,
+  EStaticView,
+  STATIC_BATCH_ARGUMENT_BYTES,
+  StaticDrawBuffers,
+} from "#/uniforms/static-draw-buffers";
 
 function createArena(): StaticArena {
-  const arena: StaticArena = new StaticArena(createBuffer(3), 64);
+  const buffer: BufferGeometry = new BufferGeometry();
 
-  arena.place(createBuffer(3), () => ({ indices: 0, vertices: 0 }));
+  buffer.setAttribute("position", new BufferAttribute(new Float32Array(9), 3));
 
-  return arena;
+  return new StaticArena(
+    buffer,
+    storage(new StorageBufferAttribute(new Uint32Array(2), 2), "uvec2", 1).toReadOnly(),
+    storage(new StorageBufferAttribute(new Uint32Array(4), 4), "uvec4", 1).toReadOnly()
+  );
 }
 
-function toMesh(batch: StaticBatch): Mesh {
-  return batch.meshes[0] as Mesh;
+function createBatch(buffers: StaticDrawBuffers, id: number = 3): StaticBatch {
+  return new StaticBatch(createArena(), id, EStaticListSpace.SURFACES, [
+    () => buffers.viewArgs[EStaticView.EARLY],
+    () => buffers.viewArgs[EStaticView.LATE],
+  ]);
+}
+
+function toMesh(batch: StaticBatch, phase: number = 0): Mesh {
+  return batch.meshes[phase] as Mesh;
 }
 
 describe("StaticBatch", () => {
-  it("issues a draw a slot from each phase's arguments, the last taking the place of one removed", () => {
-    const pool: StaticDrawPool = new StaticDrawPool(new StaticDrawBuffers());
-    const batch: StaticBatch = new StaticBatch(createArena(), EStaticDrawKind.SINGLE, [
-      () => pool.args,
-      () => pool.lateArgs,
-    ]);
+  // One command a view whatever it draws: its clusters are the instances of one indirect draw.
+  it("issues one draw a phase from that phase's arguments, at its own offset", () => {
+    const buffers: StaticDrawBuffers = new StaticDrawBuffers();
+    const batch: StaticBatch = createBatch(buffers, 3);
 
-    [4, 7, 9].forEach((slot: number) => batch.add(slot));
+    expect(toMesh(batch).geometry.indirect).toBe(buffers.viewArgs[EStaticView.EARLY]);
+    expect(toMesh(batch, 1).geometry.indirect).toBe(buffers.viewArgs[EStaticView.LATE]);
+    expect(toMesh(batch).geometry.indirectOffset).toBe(3 * STATIC_BATCH_ARGUMENT_BYTES);
+    expect(toMesh(batch).geometry.index).toBeNull();
+  });
+
+  it("holds room for every entry its slots may list at once", () => {
+    const batch: StaticBatch = createBatch(new StaticDrawBuffers());
+
+    batch.put(4, 10);
+    batch.put(7, 200);
+    batch.put(4, 12);
+
+    expect(batch.demand).toBe(212);
+
+    batch.remove(7);
     batch.remove(4);
 
-    expect(toMesh(batch).geometry.indirectOffset).toEqual([9 * 20, 7 * 20]);
-    expect(batch.meshes[1].geometry.indirectOffset).toEqual([9 * 20, 7 * 20]);
-    expect(batch.meshes[1].geometry.indirect).not.toBe(toMesh(batch).geometry.indirect);
-
-    batch.remove(9);
-    batch.remove(7);
-
+    expect(batch.demand).toBe(0);
     expect(batch.isEmpty).toBe(true);
   });
 
-  it("draws the arena's new buffers once it grew, over a new mesh, recorded again", () => {
-    const arena: StaticArena = createArena();
-    const pool: StaticDrawPool = new StaticDrawPool(new StaticDrawBuffers());
-    const batch: StaticBatch = new StaticBatch(arena, EStaticDrawKind.SINGLE, [() => pool.args, () => pool.lateArgs]);
+  it("draws the arguments the batches' growth replaced, over a new mesh in the same bundle, recorded again", () => {
+    const buffers: StaticDrawBuffers = new StaticDrawBuffers({ [EStaticPool.BATCHES]: 4 });
+    const batch: StaticBatch = createBatch(buffers, 1);
     const bundle: BundleGroup = new BundleGroup();
 
     bundle.add(toMesh(batch));
@@ -59,14 +81,38 @@ describe("StaticBatch", () => {
     const before: Mesh = toMesh(batch);
     const version: number = bundle.version;
 
-    batch.add(1);
-    arena.place(createBuffer(1 << 17), () => ({ indices: 0, vertices: 0 }));
+    buffers.grow(EStaticPool.BATCHES, 8);
     batch.refresh();
 
     expect(toMesh(batch)).not.toBe(before);
-    expect(toMesh(batch).geometry.getAttribute("position").count).toBeGreaterThan(1 << 16);
-    expect(toMesh(batch).geometry.indirectOffset).toEqual([20]);
+    expect(toMesh(batch).geometry.indirect).toBe(buffers.viewArgs[EStaticView.EARLY]);
     expect(toMesh(batch).parent).toBe(bundle);
     expect(bundle.version).toBeGreaterThan(version);
+  });
+
+  it("draws its region's edges as lines while a wireframe draws, by the wireframe's arguments at its offset", () => {
+    const buffers: StaticDrawBuffers = new StaticDrawBuffers();
+    const batch: StaticBatch = createBatch(buffers, 2);
+    const material: Material = new Material();
+
+    batch.setWire([() => buffers.wireArgs[0], () => buffers.wireArgs[1]], material);
+
+    const [first] = batch.wireMeshes;
+
+    expect(first).toBeInstanceOf(LineSegments);
+    expect(first.material).toBe(material);
+    expect(first.geometry.indirect).toBe(buffers.wireArgs[0]);
+    expect(first.geometry.indirectOffset).toBe(2 * STATIC_BATCH_ARGUMENT_BYTES);
+  });
+
+  // Three keeps an object's render objects, and with them its geometry, until the object itself is disposed.
+  it("lets three forget every mesh it drew with as it goes", () => {
+    const batch: StaticBatch = createBatch(new StaticDrawBuffers());
+    const onDispose = jest.fn();
+
+    batch.meshes.forEach((mesh) => mesh.addEventListener("dispose" as never, onDispose));
+    batch.dispose();
+
+    expect(onDispose).toHaveBeenCalledTimes(2);
   });
 });

@@ -2,6 +2,7 @@ use xrf_math::Vector3d;
 use xrf_ogf::{OgfFile, OgfGeometry, OgfModelType, OgfSlideWindow, OgfVertex};
 
 use crate::data::visual::bounds::visual_bounds::VisualBounds;
+use crate::data::visual::geometry::visual_clusters::VisualClusters;
 use crate::data::visual::geometry::visual_draw_range::VisualDrawRange;
 use crate::data::visual::geometry::visual_geometry::VisualGeometry;
 use crate::data::visual::geometry::visual_skin::VisualSkin;
@@ -13,6 +14,7 @@ use crate::pack::visual::visual_package::VisualPackage;
 use crate::pack::visual::visual_skeleton::convert_bones;
 use crate::pack::visual::visual_skip::VisualSkip;
 use crate::pack::visual_buffer_builder::VisualBufferBuilder;
+use crate::pack::visual_cluster_table::VisualClusterTable;
 use crate::pack::visual_conversion::{convert_declared_bounds, convert_uvs, convert_vector, reverse_triangle_winding};
 
 /// Flattens a parsed OGF visual into renderer ready buffers.
@@ -173,6 +175,21 @@ impl VisualPacker {
 
     reverse_triangle_winding(&mut wound_indices);
 
+    // Skinned geometry moves with its bones, so only geometry drawn as stored is cut into clusters.
+    let (clusters, detail_clusters): (Option<VisualClusters>, Vec<VisualDrawRange>) = if skin.is_none() {
+      let cut: Vec<u32> = wound_indices.iter().map(|index| u32::from(*index)).collect();
+      let points: Vec<[f32; 3]> = positions.iter().map(|it| [it.x, it.y, it.z]).collect();
+      let mut table: VisualClusterTable = VisualClusterTable::default();
+      let runs: Vec<VisualDrawRange> = detail_levels
+        .iter()
+        .map(|level| table.push_run(&cut, &points, level.start, level.count, VisualClusters::NO_DRAWABLE))
+        .collect();
+
+      (Some(table.write_into(builder)), runs)
+    } else {
+      (None, Vec::new())
+    };
+
     Ok(VisualGeometry {
       vertex_count: vertices.len() as u32,
       index_count: wound_indices.len() as u32,
@@ -187,6 +204,8 @@ impl VisualPacker {
         weights: builder.push_f32_section(&it.weights),
       }),
       detail_levels,
+      clusters,
+      detail_clusters,
       bounds,
     })
   }

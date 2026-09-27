@@ -136,6 +136,7 @@ export function toLevelImpostorObject(sector: number, impostors: ISectorImpostor
 /** The engine's own vertex as it arrived, packed, beside float positions; a sector without normals carries none. */
 function toLevelGeometry(geometry: ISectorGeometryViews): Omit<IRendererGeometry, "groups"> {
   return {
+    clusters: { ranges: geometry.clusterRanges, spheres: geometry.clusterSpheres },
     index: geometry.indices,
     packed: geometry.normals
       ? {

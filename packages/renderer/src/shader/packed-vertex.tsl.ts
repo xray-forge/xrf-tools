@@ -1,4 +1,4 @@
-import { attribute, bitcast, float, Fn, varying, vec2 } from "three/tsl";
+import { bitcast, float, Fn, varying, vec2 } from "three/tsl";
 import { Node, NodeBuilder } from "three/webgpu";
 
 import {
@@ -8,6 +8,7 @@ import {
   PACKED_TREE_QUANT,
 } from "#/geometry/renderer-packed-coordinate";
 import { EVertexAttribute } from "#/geometry/vertex-attribute";
+import { isClusteredBuild, toVertexAttribute } from "#/shader/cluster-vertex.tsl";
 
 /**
  * @param builder - A builder.
@@ -31,7 +32,7 @@ export function isPackedBuild(builder: NodeBuilder): boolean {
  * direction. The `unorm8x4` read is already `byte / 255`, and `byte / 127.5 - 1` is that times two less one.
  */
 function toPackedDirection(name: EVertexAttribute): Node<"vec3"> {
-  return attribute<"vec4">(name, "vec4").zyx.mul(2).sub(1) as Node<"vec3">;
+  return toVertexAttribute<"vec4">(name, "vec4").zyx.mul(2).sub(1) as Node<"vec3">;
 }
 
 /** The packed normal in the geometry's own space. */
@@ -56,9 +57,13 @@ export function toPackedBinormal(): Node<"vec3"> {
  * @returns The tangent.
  */
 export function toSurfaceTangent(fallback: Node<"vec3">): Node<"vec3"> {
-  return Fn((_: [], builder: NodeBuilder): Node<"vec3"> =>
-    hasAttribute(builder, EVertexAttribute.PACKED_TANGENT) ? toPackedTangent() : fallback
-  )();
+  return Fn((_: [], builder: NodeBuilder): Node<"vec3"> => {
+    if (hasAttribute(builder, EVertexAttribute.PACKED_TANGENT)) {
+      return toPackedTangent();
+    }
+
+    return isClusteredBuild(builder) ? toVertexAttribute<"vec3">("tangent", "vec3") : fallback;
+  })();
 }
 
 /**
@@ -68,14 +73,18 @@ export function toSurfaceTangent(fallback: Node<"vec3">): Node<"vec3"> {
  * @returns The binormal.
  */
 export function toSurfaceBinormal(fallback: Node<"vec3">): Node<"vec3"> {
-  return Fn((_: [], builder: NodeBuilder): Node<"vec3"> =>
-    hasAttribute(builder, EVertexAttribute.PACKED_BINORMAL) ? toPackedBinormal() : fallback
-  )();
+  return Fn((_: [], builder: NodeBuilder): Node<"vec3"> => {
+    if (hasAttribute(builder, EVertexAttribute.PACKED_BINORMAL)) {
+      return toPackedBinormal();
+    }
+
+    return isClusteredBuild(builder) ? toVertexAttribute<"vec3">(EVertexAttribute.BINORMAL, "vec3") : fallback;
+  })();
 }
 
 /** The hemisphere term the packed normal's fourth byte carries. */
 export function toPackedHemi(): Node<"float"> {
-  return attribute<"vec4">(EVertexAttribute.PACKED_NORMAL, "vec4").w;
+  return toVertexAttribute<"vec4">(EVertexAttribute.PACKED_NORMAL, "vec4").w;
 }
 
 /**
@@ -102,18 +111,18 @@ function toSigned(bits: Node<"uint">): Node<"int"> {
  */
 export function toPackedUv(builder: NodeBuilder): Node<"vec2"> {
   if (isPackedTreeGeometry(builder.geometry)) {
-    return toShorts(attribute<"uvec2">(EVertexAttribute.PACKED_UV, "uvec2").x).div(PACKED_TREE_QUANT);
+    return toShorts(toVertexAttribute<"uvec2">(EVertexAttribute.PACKED_UV, "uvec2").x).div(PACKED_TREE_QUANT);
   }
 
   const fraction: Node<"vec2"> =
     hasAttribute(builder, EVertexAttribute.PACKED_TANGENT) && hasAttribute(builder, EVertexAttribute.PACKED_BINORMAL)
       ? vec2(
-          attribute<"vec4">(EVertexAttribute.PACKED_TANGENT, "vec4").w,
-          attribute<"vec4">(EVertexAttribute.PACKED_BINORMAL, "vec4").w
+          toVertexAttribute<"vec4">(EVertexAttribute.PACKED_TANGENT, "vec4").w,
+          toVertexAttribute<"vec4">(EVertexAttribute.PACKED_BINORMAL, "vec4").w
         )
       : vec2(0);
 
-  return toShorts(attribute<"uint">(EVertexAttribute.PACKED_UV, "uint")).add(fraction).div(PACKED_BASE_QUANT);
+  return toShorts(toVertexAttribute<"uint">(EVertexAttribute.PACKED_UV, "uint")).add(fraction).div(PACKED_BASE_QUANT);
 }
 
 /**
@@ -131,12 +140,12 @@ export function isPackedTreeBuild(builder: NodeBuilder): boolean {
  * @returns The rigidity.
  */
 export function toPackedTreeRigidity(): Node<"float"> {
-  return toShorts(attribute<"uvec2">(EVertexAttribute.PACKED_UV, "uvec2").y).x.div(PACKED_TREE_QUANT);
+  return toShorts(toVertexAttribute<"uvec2">(EVertexAttribute.PACKED_UV, "uvec2").y).x.div(PACKED_TREE_QUANT);
 }
 
 /** The lightmap coordinate from its shorts. */
 export function toPackedUv1(): Node<"vec2"> {
-  return toShorts(attribute<"uint">(EVertexAttribute.PACKED_UV1, "uint")).div(PACKED_LIGHTMAP_QUANT);
+  return toShorts(toVertexAttribute<"uint">(EVertexAttribute.PACKED_UV1, "uint")).div(PACKED_LIGHTMAP_QUANT);
 }
 
 /**

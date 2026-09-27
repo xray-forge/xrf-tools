@@ -8,6 +8,7 @@ use crate::data::sector::sector_geometry::SectorGeometry;
 use crate::data::visual::bounds::visual_bounds::VisualBounds;
 use crate::data::visual::geometry::visual_section::VisualSection;
 use crate::pack::visual_buffer_builder::VisualBufferBuilder;
+use crate::pack::visual_cluster_table::VisualClusterTable;
 use crate::pack::visual_conversion::convert_vector;
 
 /// The attribute arrays of a sector under construction, one entry per packed vertex: positions decoded into renderer
@@ -133,6 +134,11 @@ impl SectorVertexArrays {
     Ok(())
   }
 
+  /// Every packed position, three floats in renderer space.
+  pub fn get_positions(&self) -> &[[f32; 3]] {
+    self.positions.as_chunks::<3>().0
+  }
+
   /// The extent the packed positions span, or `None` when nothing was packed.
   pub fn get_bounds(&self) -> Option<VisualBounds> {
     VisualBounds::from_positions(self.positions.as_chunks::<3>().0.iter().map(|[x, y, z]| Vector3d {
@@ -155,7 +161,12 @@ impl SectorVertexArrays {
   }
 
   /// Writes every declared array and the indices into the buffer, and says where each landed.
-  pub fn write_into(&self, indices: &[u32], builder: &mut VisualBufferBuilder) -> SectorGeometry {
+  pub fn write_into(
+    &self,
+    indices: &[u32],
+    clusters: &VisualClusterTable,
+    builder: &mut VisualBufferBuilder,
+  ) -> SectorGeometry {
     SectorGeometry {
       vertex_count: self.get_vertex_count(),
       index_count: indices.len() as u32,
@@ -170,6 +181,7 @@ impl SectorVertexArrays {
         .lightmap_uvs
         .then(|| builder.push_i16_section(&self.lightmap_uvs)),
       indices: builder.push_u32_section(indices),
+      clusters: clusters.write_into(builder),
     }
   }
 

@@ -1,24 +1,25 @@
 import { Nullable } from "@xrf/types";
-import { IndirectStorageBufferAttribute, Matrix4, Sphere } from "three/webgpu";
 
 import { DirtySpan } from "#/scene/dirty-span";
-import { EStaticPool, STATIC_DRAW_ARGUMENTS, StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
+import { ISceneClusterRun } from "#/scene/geometry/scene-cluster-run";
+import {
+  EStaticPool,
+  EStaticSlotKind,
+  STATIC_NO_BATCH,
+  STATIC_SLOT_WORDS,
+  StaticDrawBuffers,
+} from "#/uniforms/static-draw-buffers";
 
 /**
- * Hands out the slots of the static draw buffers and writes what each draws, uploading the slots changed in a frame
- * as one span a buffer.
+ * Hands out the slots of the static draw buffers and writes what each draws: its clusters, its place and its batches,
+ * uploading the slots changed in a frame as one span.
  */
 export class StaticDrawPool {
-  /**
-   * Whether static draws are drawn at all: only on a device drawing an indirect draw's first instance, which is how a
-   * static draw finds its slot.
-   */
+  /** Whether static draws are drawn at all: only on a device drawing an indirect draw's first instance. */
   public isEnabled: boolean = false;
 
   private readonly buffers: StaticDrawBuffers;
   private readonly free: Array<number> = [];
-  /** The slots drawing an instanced draw, whose second list moves with the rows' capacity. */
-  private readonly listed: Set<number> = new Set();
   /** Slots handed out at least once; the cull only reads below it. */
   private used: number = 0;
   /** The slots written since the buffers last went up. */
@@ -27,31 +28,6 @@ export class StaticDrawPool {
 
   public constructor(buffers: StaticDrawBuffers) {
     this.buffers = buffers;
-  }
-
-  /** The indirect arguments every static draw is drawn by, as the first cull leaves them. */
-  public get args(): IndirectStorageBufferAttribute {
-    return this.buffers.args;
-  }
-
-  /** The indirect arguments every static draw is drawn by again, as the second cull leaves them. */
-  public get lateArgs(): IndirectStorageBufferAttribute {
-    return this.buffers.lateArgs;
-  }
-
-  /** The first draw's arguments over the arenas' line indices, which the cull rewrites while a wireframe draws. */
-  public get wireArgs(): IndirectStorageBufferAttribute {
-    return this.buffers.wireArgs;
-  }
-
-  /** The second draw's, likewise. */
-  public get wireLateArgs(): IndirectStorageBufferAttribute {
-    return this.buffers.wireLateArgs;
-  }
-
-  /** Each shadow cascade's arguments, which its batch meshes draw by. */
-  public get viewArgs(): ReadonlyArray<IndirectStorageBufferAttribute> {
-    return this.buffers.viewArgs;
   }
 
   /** Bumped whenever a slot changes what it draws or where, so a cull knows to run again. */
@@ -67,6 +43,11 @@ export class StaticDrawPool {
   /** Slots the buffers hold. */
   public get capacity(): number {
     return this.buffers.capacity(EStaticPool.SLOTS);
+  }
+
+  /** Slots the cull has to look at: every slot ever handed out. */
+  public get extent(): number {
+    return this.used;
   }
 
   /**
@@ -91,55 +72,25 @@ export class StaticDrawPool {
   }
 
   /**
-   * @param slot - The slot drawing, which is also its first instance: the element of its arena's slot attribute
-   *   holding its own number.
-   * @param start - Its first index, in its arena.
-   * @param count - Indices it draws; none draws nothing.
-   * @param baseVertex - Where its geometry's vertices start in its arena.
-   * @param sphere - What it spans in renderer space.
-   * @param matrix - Where it stands.
+   * @param slot - The slot drawing.
+   * @param kind - What it draws.
+   * @param clusters - Where its clusters sit in the clusters pool.
+   * @param place - Where a single draw stands; nothing for an instanced one, whose rows name their places.
+   * @param surfaceBatch - The batch drawing it into the G-buffer.
+   * @param shadowBatch - The batch drawing it into the shadow views, `STATIC_NO_BATCH` for one casting nothing.
    */
-  public write(slot: number, start: number, count: number, baseVertex: number, sphere: Sphere, matrix: Matrix4): void {
-    const args = this.buffers.args.array as Uint32Array;
-    const at: number = slot * STATIC_DRAW_ARGUMENTS;
-
-    // The instance count is the cull's to write; one until it has.
-    args[at] = count;
-    args[at + 1] = 1;
-    args[at + 2] = start;
-    args[at + 3] = baseVertex;
-    args[at + 4] = slot;
-    this.copyLate(at, 0);
-    this.listed.delete(slot);
-    (this.buffers.spheres.array as Float32Array).set(
-      [sphere.center.x, sphere.center.y, sphere.center.z, count ? sphere.radius : -1],
-      slot * 4
+  public write(
+    slot: number,
+    kind: EStaticSlotKind,
+    clusters: ISceneClusterRun,
+    place: number,
+    surfaceBatch: number,
+    shadowBatch: number
+  ): void {
+    (this.buffers.slots.array as Uint32Array).set(
+      [clusters.start, clusters.count, place, kind, surfaceBatch, shadowBatch, 0, 0],
+      slot * STATIC_SLOT_WORDS
     );
-    (this.buffers.models.array as Float32Array).set(matrix.elements, slot * 16);
-    this.touch(slot);
-  }
-
-  /**
-   * @param slot - The slot drawing an instanced draw, whose instance count the instance cull writes.
-   * @param start - Its first index, in its arena.
-   * @param count - Indices it draws.
-   * @param baseVertex - Where its geometry's vertices start in its arena.
-   * @param firstInstance - Where its list of kept places starts.
-   */
-  public writeListed(slot: number, start: number, count: number, baseVertex: number, firstInstance: number): void {
-    const args = this.buffers.args.array as Uint32Array;
-    const at: number = slot * STATIC_DRAW_ARGUMENTS;
-
-    args[at] = count;
-    args[at + 1] = 0;
-    args[at + 2] = start;
-    args[at + 3] = baseVertex;
-    args[at + 4] = firstInstance;
-    // Every view after the first lists its places in its own region of the list, a row capacity each.
-    this.copyLate(at, this.buffers.capacity(EStaticPool.ROWS));
-    this.listed.add(slot);
-    // Culled by its rows, never as a slot: the slot cull leaves its instance count at none for the rows to count up.
-    (this.buffers.spheres.array as Float32Array)[slot * 4 + 3] = -1;
     this.touch(slot);
   }
 
@@ -147,63 +98,18 @@ export class StaticDrawPool {
    * @param slot - A slot drawing nothing from now on, free for another draw.
    */
   public release(slot: number): void {
-    for (const args of [this.buffers.args, this.buffers.lateArgs, ...this.buffers.viewArgs]) {
-      (args.array as Uint32Array)[slot * STATIC_DRAW_ARGUMENTS + 1] = 0;
-    }
-
-    (this.buffers.spheres.array as Float32Array)[slot * 4 + 3] = -1;
-    this.listed.delete(slot);
+    (this.buffers.slots.array as Uint32Array).set(
+      [0, 0, 0, EStaticSlotKind.NONE, STATIC_NO_BATCH, STATIC_NO_BATCH, 0, 0],
+      slot * STATIC_SLOT_WORDS
+    );
     this.free.push(slot);
     this.touch(slot);
   }
 
-  /** Moves every instanced draw's second list to where it starts now, a row capacity on, after the rows grew. */
-  public relist(): void {
-    const rows: number = this.buffers.capacity(EStaticPool.ROWS);
-
-    for (const slot of this.listed) {
-      this.copyLate(slot * STATIC_DRAW_ARGUMENTS, rows);
-      this.touch(slot);
-    }
-  }
-
   /** Marks what changed since the last upload to go up with the next use of the buffers. */
   public flush(): void {
-    const { dirty } = this;
-
-    dirty.upload(this.buffers.args, STATIC_DRAW_ARGUMENTS);
-    dirty.upload(this.buffers.lateArgs, STATIC_DRAW_ARGUMENTS);
-
-    for (const args of this.buffers.viewArgs) {
-      dirty.upload(args, STATIC_DRAW_ARGUMENTS);
-    }
-
-    dirty.upload(this.buffers.spheres, 4);
-    dirty.upload(this.buffers.models, 16);
-    dirty.clear();
-  }
-
-  /** Slots the cull has to look at: every slot ever handed out. */
-  public get extent(): number {
-    return this.used;
-  }
-
-  /**
-   * A slot's arguments for every view after the first: the first's, with no instances, and an instanced draw's list
-   * moved on by `offset` a view: into the second cull's region, then each cascade's.
-   */
-  private copyLate(at: number, offset: number): void {
-    const args = this.buffers.args.array as Uint32Array;
-
-    [this.buffers.lateArgs, ...this.buffers.viewArgs].forEach((view, index: number) => {
-      const copy = view.array as Uint32Array;
-
-      copy[at] = args[at];
-      copy[at + 1] = 0;
-      copy[at + 2] = args[at + 2];
-      copy[at + 3] = args[at + 3];
-      copy[at + 4] = args[at + 4] + offset * (index + 1);
-    });
+    this.dirty.upload(this.buffers.slots, STATIC_SLOT_WORDS);
+    this.dirty.clear();
   }
 
   private touch(slot: number): void {

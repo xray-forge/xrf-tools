@@ -4,6 +4,7 @@ import { BufferGeometry, Matrix4, Mesh, Scene, Skeleton, Sphere } from "three/we
 import { IRendererInstances, IRendererObject } from "#/contract/scene/renderer-object";
 import { ISurfaceMaterial } from "#/material/surface-material";
 import { createPartGeometry } from "#/scene/geometry/part-geometry";
+import { SceneClusters } from "#/scene/geometry/scene-clusters";
 import { SceneGeometry } from "#/scene/geometry/scene-geometry";
 import { ISceneSection } from "#/scene/geometry/scene-section";
 import { SceneInstances } from "#/scene/object/scene-instances";
@@ -199,7 +200,7 @@ export class SceneObject {
   /** Lets its parts go, and with them the buffers they drew with. */
   private release(): void {
     this.parts.forEach((part: ScenePart) => {
-      part.detach();
+      part.dispose();
       part.geometry.dispose();
     });
     this.parts = [];
@@ -240,7 +241,7 @@ export class SceneObject {
       if (
         range &&
         isStaticDraw(state, surface) &&
-        this.showStatic(part, surface, range, state.instances, placeStart, state.lodStart)
+        this.showStatic(part, surface, range, state.geometry.clusters, state.instances, placeStart, state.lodStart)
       ) {
         staticParts += 1;
       } else if (surface?.isImpostor) {
@@ -262,12 +263,13 @@ export class SceneObject {
     part: ScenePart,
     surface: ISurfaceMaterial,
     range: IStaticRange,
+    clusters: SceneClusters,
     instances: Nullable<SceneInstances>,
     placeStart: Nullable<number>,
     lodStart: Nullable<number>
   ): boolean {
     if (!instances) {
-      return !surface.isImpostor && part.showStatic(surface, range);
+      return !surface.isImpostor && part.showStatic(surface, range, clusters);
     }
 
     if (surface.isImpostor && lodStart === null) {
@@ -279,6 +281,7 @@ export class SceneObject {
       part.showListed(
         surface,
         range,
+        clusters,
         placeStart,
         instances.placeSpheres,
         SceneObject.toRowLods(instances, lodStart, Boolean(surface.isImpostor))

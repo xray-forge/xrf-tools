@@ -97,6 +97,11 @@ export function toPosedGeometry(
 
   return {
     binormal: binormals,
+    // Cut from the vertices as stored, which a pose moves: a posed submesh is left for the renderer to cut.
+    clusters:
+      submesh.clusters && !submesh.skinIndices
+        ? { ranges: submesh.clusters.ranges.slice(), spheres: submesh.clusters.spheres.slice() }
+        : undefined,
     groups: [{ count: submesh.indices.length, slot: 0, start: 0 }],
     index: submesh.indices.slice(),
     normal: normals,

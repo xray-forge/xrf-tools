@@ -50,6 +50,9 @@ export const VISUAL_RENDER_KEYS = {
 export function toVisualGeometry(submesh: IVisualSubmeshViews): IRendererGeometry {
   return {
     binormal: submesh.binormals.slice(),
+    clusters: submesh.clusters
+      ? { ranges: submesh.clusters.ranges.slice(), spheres: submesh.clusters.spheres.slice() }
+      : undefined,
     groups: [{ count: submesh.indices.length, slot: 0, start: 0 }],
     index: submesh.indices.slice(),
     normal: submesh.normals.slice(),

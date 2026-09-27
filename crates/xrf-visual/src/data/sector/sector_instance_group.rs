@@ -3,6 +3,7 @@ use serde::Serialize;
 use crate::data::sector::sector_geometry::SectorGeometry;
 use crate::data::sector::sector_progressive::SectorProgressive;
 use crate::data::sector::sector_surface::SectorSurface;
+use crate::data::visual::geometry::visual_draw_range::VisualDrawRange;
 use crate::data::visual::geometry::visual_section::VisualSection;
 
 /// One mesh a sector draws many times, packed once with the places it stands.
@@ -15,6 +16,8 @@ pub struct SectorInstanceGroup {
   pub drawables: Vec<u32>,
   /// The mesh itself, in its own space, its indices counting from its own first vertex.
   pub geometry: SectorGeometry,
+  /// The clusters of what a place draws of it at its whole detail, in its geometry's table.
+  pub clusters: VisualDrawRange,
   pub instance_count: u32,
   /// Sixteen floats for each instance, exactly as the engine stores a matrix.
   pub transforms: VisualSection,

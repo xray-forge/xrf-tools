@@ -8,6 +8,7 @@ import { IVisualSubmeshViews } from "@/core/visuals/lib/visual-views";
 function createSubmesh(): IVisualSubmeshViews {
   return {
     binormals: new Float32Array([0, 0, 1]),
+    clusters: null,
     index: 0,
     indices: new Uint16Array([0, 0, 0]),
     label: "lamp",

@@ -1,4 +1,5 @@
 mod buffer_builder;
+mod cluster_table;
 mod conversion;
 mod motion;
 mod packer;

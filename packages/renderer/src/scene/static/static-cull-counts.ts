@@ -3,12 +3,11 @@
  * recorded bundles.
  */
 export interface IStaticCullCounts {
-  draws: number;
+  /** Clusters drawn, over both of the camera's views. */
+  clusters: number;
   triangles: number;
-  /** Single draws in view that both phases found hidden. */
-  occludedDraws: number;
-  /** Places of instanced draws in view that both phases found hidden. */
-  occludedInstances: number;
-  /** Triangles of both. */
+  /** Clusters in view that both phases found hidden. */
+  occludedClusters: number;
+  /** Their triangles. */
   occludedTriangles: number;
 }

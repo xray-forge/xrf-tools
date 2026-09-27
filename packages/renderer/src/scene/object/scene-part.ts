@@ -13,13 +13,19 @@ import {
 
 import { IRendererObject } from "#/contract/scene/renderer-object";
 import { IRendererProgressive } from "#/contract/scene/renderer-progressive";
+import { disposeObject } from "#/internals/object-disposal";
 import { ISurfaceMaterial } from "#/material/surface-material";
+import { ISceneClusterRun } from "#/scene/geometry/scene-cluster-run";
+import { SceneClusters } from "#/scene/geometry/scene-clusters";
 import { ISceneSection } from "#/scene/geometry/scene-section";
 import { createSceneMesh } from "#/scene/object/scene-mesh";
 import { StaticDraws } from "#/scene/static/static-draws";
 import { IStaticRange } from "#/scene/static/static-range";
 import { EShadowCasterMotion } from "#/scene/static/static-shadow-changes";
 import { STATIC_NO_BAND, toStaticBandWord } from "#/uniforms/static-draw-buffers";
+
+/** What a part narrowed to nothing draws: no clusters. */
+const NO_CLUSTERS: ISceneClusterRun = { count: 0, start: 0 };
 
 /** How much wider than its rest sphere a skinned part's cast is taken to reach, for what its motions move out to. */
 const SKINNED_REACH: number = 1.5;
@@ -90,7 +96,7 @@ export class ScenePart {
    * @param skeleton - What its mesh is skinned to now; a new mesh over the same geometry, shown nowhere yet.
    */
   public remesh(skeleton: Nullable<Skeleton>): void {
-    this.detach();
+    this.dispose();
     this.skeleton = skeleton;
     this.currentMesh = createSceneMesh(this.geometry, skeleton);
     this.shadowMesh = null;
@@ -153,18 +159,28 @@ export class ScenePart {
   }
 
   /**
-   * Draws it as a static draw of its material's batch, taking its mesh out of any scene.
+   * Draws it as a static draw of its material's batch, its clusters in its object's place, taking its mesh out of any
+   * scene.
    *
    * @param surface - What draws it.
    * @param range - Where its object's geometry sits in its arena.
-   * @returns Whether it is drawn so; not where every slot is taken, and it has to be drawn plainly.
+   * @param clusters - Its geometry's clusters.
+   * @returns Whether it is drawn so; not where its range is not a run of clusters or there is no room for it, and it
+   *   has to be drawn plainly.
    */
-  public showStatic(surface: ISurfaceMaterial, range: IStaticRange): boolean {
-    if (!this.takeSlots(1)) {
+  public showStatic(surface: ISurfaceMaterial, range: IStaticRange, clusters: SceneClusters): boolean {
+    const run: Nullable<ISceneClusterRun> = this.count ? clusters.toRun(this.start, this.count) : NO_CLUSTERS;
+
+    if (!run || !this.takeSlots(1)) {
       return false;
     }
 
-    this.draws.draw(this.slots[0], surface, range, this.start, this.count, this.sphere, this.matrix);
+    if (!this.draws.draw(this.slots[0], surface, range, clusters, run, this.sphere, this.matrix)) {
+      this.free();
+
+      return false;
+    }
+
     this.currentMesh.removeFromParent();
     this.showShadow(null);
 
@@ -177,31 +193,39 @@ export class ScenePart {
    *
    * @param surface - What draws it.
    * @param range - Where its object's geometry sits in its arena.
+   * @param clusters - Its geometry's clusters.
    * @param placeStart - Where its object's places start.
    * @param spheres - Each place's sphere in renderer space.
    * @param lods - Each place's impostor as its row names it, or null where none stands in for any.
-   * @returns Whether it is drawn so; not where there is no room for it, and it has to be drawn plainly.
+   * @returns Whether it is drawn so; not where a band is not a run of clusters or there is no room for it, and it has
+   *   to be drawn plainly.
    */
   public showListed(
     surface: ISurfaceMaterial,
     range: IStaticRange,
+    clusters: SceneClusters,
     placeStart: number,
     spheres: Float32Array,
     lods: Nullable<Uint32Array> = null
   ): boolean {
     const progressive: Maybe<IRendererProgressive> = this.source.progressive;
     const bands: number = progressive?.bands.length ?? 1;
+    const runs: Array<Nullable<ISceneClusterRun>> = Array.from({ length: bands }, (_, band: number) => {
+      const [start, count] =
+        band && progressive ? [progressive.bands[band].start, progressive.bands[band].count] : [this.start, this.count];
 
-    if (!this.takeSlots(bands)) {
+      return count ? clusters.toRun(start, count) : NO_CLUSTERS;
+    });
+
+    if (runs.some((run: Nullable<ISceneClusterRun>) => run === null) || !this.takeSlots(bands)) {
       return false;
     }
 
     for (let band = 0; band < bands; band += 1) {
-      const [start, count] =
-        band && progressive ? [progressive.bands[band].start, progressive.bands[band].count] : [this.start, this.count];
       const word: number = progressive ? toStaticBandWord(band, bands, progressive.windows) : STATIC_NO_BAND;
+      const run: ISceneClusterRun = runs[band] as ISceneClusterRun;
 
-      if (!this.draws.drawListed(this.slots[band], surface, range, start, count, placeStart, spheres, lods, word)) {
+      if (!this.draws.drawListed(this.slots[band], surface, range, clusters, run, placeStart, spheres, lods, word)) {
         this.free();
 
         return false;
@@ -232,6 +256,16 @@ export class ScenePart {
   public cullInstances(count: number): void {
     (this.geometry as InstancedBufferGeometry).instanceCount = count;
     this.cull(count > 0);
+  }
+
+  /** Takes it out of whatever draws it and lets three forget its meshes; its geometry goes with its object's buffers. */
+  public dispose(): void {
+    this.detach();
+    disposeObject(this.currentMesh);
+
+    if (this.shadowMesh) {
+      disposeObject(this.shadowMesh);
+    }
   }
 
   /** Takes it out of whatever draws it, and lets its slot go. */

@@ -23,9 +23,12 @@ import { mockVisualBounds, MockVisualBuffer } from "@/fixtures/mocks/visual.mock
 export function mockSectorGeometry(buffer: MockVisualBuffer): SectorGeometry {
   const positions = buffer.pushFloats([0, 0, 0, 1, 0, 0, 0, 1, 0]);
   const indices = buffer.pushIndices32([0, 1, 2]);
+  const ranges = buffer.pushIndices32([0, 1, 0, 0]);
+  const spheres = buffer.pushFloats([0, 0, 0, 1]);
 
   return {
     binormals: null,
+    clusters: { count: 1, ranges, spheres },
     indexCount: 3,
     indices,
     lightmapUvs: null,
@@ -63,6 +66,7 @@ export function mockSectorSurface(overrides: Partial<SectorSurface> = {}): Secto
 export function mockSectorSection(overrides: Partial<SectorSection> = {}): SectorSection {
   return {
     bounds: null,
+    clusters: { count: 1, start: 0 },
     draw: { start: 0, count: 3 },
     drawables: [1],
     surface: mockSectorSurface(),
@@ -117,6 +121,7 @@ export function mockSectorInstanceGroup(
   const hemi = buffer.pushFloats(places.flatMap(() => [1, 0]));
 
   return {
+    clusters: { count: 1, start: 0 },
     drawables: places.map((_, index: number) => index + 1),
     geometry,
     hemi,

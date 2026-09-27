@@ -1,5 +1,4 @@
 import {
-  attribute,
   cameraPosition,
   cameraViewMatrix,
   Discard,
@@ -21,9 +20,10 @@ import { ISurfaceInputs } from "#/material/surface-inputs";
 import { ISurfaceShader } from "#/material/surface-shader";
 import { ESurfaceSlot } from "#/material/surface-slot";
 import { DEFAULT_GLOSS, MATERIAL_SLICES } from "#/material/surface-texel.tsl";
+import { toVertexAttribute } from "#/shader/cluster-vertex.tsl";
 import { toGBufferOutput } from "#/shader/gbuffer.tsl";
 import { toWorldMotion } from "#/shader/motion.tsl";
-import { toListedImpostor } from "#/shader/placement.tsl";
+import { toPlacedImpostor } from "#/shader/placement.tsl";
 import { RendererUniforms } from "#/uniforms/renderer-uniforms";
 import { STATIC_LOD_CORNER_COLUMNS } from "#/uniforms/static-draw-buffers";
 
@@ -63,12 +63,12 @@ function toCornerColumn(lod: Node<"uint">, facet: Node<"uint">, vertex: Node<"ui
  */
 export function toImpostorSurfaceShader(inputs: ISurfaceInputs, uniforms: RendererUniforms): ISurfaceShader {
   const buffers = uniforms.staticDraws;
-  const lod: Node<"uint"> = toListedImpostor(buffers);
+  const lod: Node<"uint"> = toPlacedImpostor(buffers);
   const terms = buffers.lodTermColumns.element(lod) as unknown as Node<"uvec4">;
   const factor: Node<"float"> = float(terms.z.shiftRight(8).bitAnd(255)).div(255);
   const alpha: Node<"float"> = float(terms.z.bitAnd(255)).div(255);
   // A quad's corners are written in the order `render_lods` takes them from a facet: 3, 0, 2, 1.
-  const corner: Node<"uint"> = attribute<"vec2">("uv", "vec2").x.toUint();
+  const corner: Node<"uint"> = toVertexAttribute<"vec2">("uv", "vec2").x.toUint();
   const vertex: Node<"uint"> = select(
     corner.equal(0),
     uint(3),

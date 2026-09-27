@@ -2,7 +2,6 @@ import {
   attribute,
   cameraViewMatrix,
   Fn,
-  instanceIndex,
   mat3,
   mat4,
   modelViewMatrix,
@@ -18,16 +17,17 @@ import {
 } from "three/tsl";
 import { Node, NodeBuilder } from "three/webgpu";
 
-import { EVertexAttribute, INSTANCE_MATRIX_COLUMNS } from "#/geometry/vertex-attribute";
+import { INSTANCE_MATRIX_COLUMNS } from "#/geometry/vertex-attribute";
+import { isClusteredBuild, toClusterAttribute, toClusterEntry, toVertexAttribute } from "#/shader/cluster-vertex.tsl";
 import { toCyclic } from "#/shader/cyclic-wave.tsl";
 import { isPackedBuild, isPackedTreeBuild, toPackedNormal, toPackedTreeRigidity } from "#/shader/packed-vertex.tsl";
 import { STATIC_PLACE_COLUMNS, StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
 import { TreeWindUniforms } from "#/uniforms/tree-wind-uniforms";
 
-// Where a vertex stands: in each place its instanced attributes name, where the static draw buffers put it - by its
-// slot's matrix, or by the place the cull listed for its instance - or where its object's matrix puts it. The buffer
-// placed ones read no uniform of the object's own, so three refreshes nothing per object for them; which one a shader
-// is built for follows from its geometry's attributes, as three's shader cache does.
+// Where a vertex stands: in each place its instanced attributes name, where the static draw buffers put it - by the
+// place of the entry its instance draws - or where its object's matrix puts it. The buffer placed ones read no uniform
+// of the object's own, so three refreshes nothing per object for them; which one a shader is built for follows from its
+// geometry, as three's shader cache does.
 
 /** Whether the geometry being built for stands in many places through instanced attributes. */
 function isInstancedBuild(builder: NodeBuilder): boolean {
@@ -36,26 +36,11 @@ function isInstancedBuild(builder: NodeBuilder): boolean {
 
 /**
  * @param builder - The builder of the shader in question.
- * @returns Whether the geometry it builds for is a static draw, placed by the buffers every static draw shares.
- */
-export function isStaticBuild(builder: NodeBuilder): boolean {
-  return Boolean(builder.geometry?.hasAttribute(EVertexAttribute.STATIC_SLOT));
-}
-
-/**
- * @param builder - The builder of the shader in question.
- * @returns Whether the geometry it builds for is an instanced static draw, each instance a place the cull listed.
- */
-export function isListedBuild(builder: NodeBuilder): boolean {
-  return Boolean(builder.geometry?.hasAttribute(EVertexAttribute.INSTANCE_LIST));
-}
-
-/**
- * @param builder - The builder of the shader in question.
- * @returns Whether the buffers every static draw shares place what it builds for, so a replay refreshes nothing.
+ * @returns Whether the buffers every static draw shares place what it builds for, so a replay refreshes nothing: a
+ *   clustered static draw's, placed by the entry its instance draws.
  */
 export function isBufferPlacedBuild(builder: NodeBuilder): boolean {
-  return isStaticBuild(builder) || isListedBuild(builder);
+  return isClusteredBuild(builder);
 }
 
 /** A place's transform, from the four columns its instanced attributes carry. */
@@ -65,32 +50,14 @@ function toInstanceMatrix(): Node<"mat4"> {
   return mat4(x, y, z, w) as unknown as Node<"mat4">;
 }
 
-/** A static draw's matrix, from its slot in the shared buffers, read once into a variable. */
-function toStaticMatrix(buffers: StaticDrawBuffers): Node<"mat4"> {
-  const first: Node<"uint"> = attribute<"uint">(EVertexAttribute.STATIC_SLOT, "uint").mul(4);
-  const [x, y, z, w] = [0, 1, 2, 3].map((column: number) => buffers.modelColumns.element(first.add(column)));
-
-  return mat4(x, y, z, w) as unknown as Node<"mat4">;
+/** The first column of the place of the entry a clustered build's instance draws. */
+function toEntryPlace(builder: NodeBuilder): Node<"uint"> {
+  return toClusterEntry(builder).y.mul(STATIC_PLACE_COLUMNS);
 }
 
-/** The place the cull listed for the instance being drawn. */
-function toListedPlace(buffers: StaticDrawBuffers): Node<"uint"> {
-  return buffers.visiblePlaces.element(instanceIndex) as unknown as Node<"uint">;
-}
-
-/**
- * @param buffers - What static draws are placed by.
- * @returns The impostor the place listed for the instance being drawn is, which an impostor surface draws.
- */
-export function toListedImpostor(buffers: StaticDrawBuffers): Node<"uint"> {
-  return (
-    buffers.placeColumns.element(toListedPlace(buffers).mul(STATIC_PLACE_COLUMNS).add(4)) as unknown as Node<"vec4">
-  ).z.toUint();
-}
-
-/** An instanced static draw's matrix, from the place listed for its instance. */
-function toListedMatrix(buffers: StaticDrawBuffers): Node<"mat4"> {
-  const first: Node<"uint"> = toListedPlace(buffers).mul(STATIC_PLACE_COLUMNS);
+/** A clustered build's matrix, from the place of the entry its instance draws. */
+function toBufferMatrix(builder: NodeBuilder, buffers: StaticDrawBuffers): Node<"mat4"> {
+  const first: Node<"uint"> = toEntryPlace(builder);
   const [x, y, z, w] = [0, 1, 2, 3].map((column: number) => buffers.placeColumns.element(first.add(column)));
 
   return mat4(x, y, z, w) as unknown as Node<"mat4">;
@@ -98,20 +65,30 @@ function toListedMatrix(buffers: StaticDrawBuffers): Node<"mat4"> {
 
 /**
  * @param buffers - What static draws are placed by.
- * @returns The hemisphere scale and offset of the place listed for the instance being drawn.
+ * @returns The impostor the place of the entry drawn is, which an impostor surface draws.
  */
-export function toListedHemiTerms(buffers: StaticDrawBuffers): Node<"vec2"> {
-  return buffers.placeColumns.element(toListedPlace(buffers).mul(STATIC_PLACE_COLUMNS).add(4)).xy as Node<"vec2">;
+export function toPlacedImpostor(buffers: StaticDrawBuffers): Node<"uint"> {
+  return Fn((_: [], builder: NodeBuilder): Node<"uint"> =>
+    (buffers.placeColumns.element(toEntryPlace(builder).add(4)) as unknown as Node<"vec4">).z.toUint()
+  )();
 }
 
-/** What places a buffer placed build: its slot's matrix, or the listed place's. */
-function toBufferMatrix(builder: NodeBuilder, buffers: StaticDrawBuffers): Node<"mat4"> {
-  return isListedBuild(builder) ? toListedMatrix(buffers) : toStaticMatrix(buffers);
+/**
+ * @param builder - The builder of a clustered build.
+ * @param buffers - What static draws are placed by.
+ * @returns The hemisphere scale and offset of the place of the entry drawn: a tree's own, one and none for any other.
+ */
+export function toPlacedHemiTerms(builder: NodeBuilder, buffers: StaticDrawBuffers): Node<"vec2"> {
+  return buffers.placeColumns.element(toEntryPlace(builder).add(4)).xy as Node<"vec2">;
 }
 
-/** The vertex's normal in its geometry's own space: the engine's packed one, or three's float one. */
+/** The vertex's normal in its geometry's own space: the engine's packed one, or its float one. */
 function toLocalNormal(builder: NodeBuilder): Node<"vec3"> {
-  return isPackedBuild(builder) ? toPackedNormal() : normalLocal;
+  if (isPackedBuild(builder)) {
+    return toPackedNormal();
+  }
+
+  return isClusteredBuild(builder) ? toVertexAttribute("normal", "vec3") : normalLocal;
 }
 
 /** A transform's normals, divided by the squared scale of each axis first, so a stretched place does not bend them. */
@@ -126,6 +103,11 @@ function toTransformedNormal(matrix: Node<"mat4">, normal: Node<"vec3">): Node<"
  * three's `InstancedMesh`, whose shader carries its instance count, so every stand of trees was a pipeline of its own.
  */
 export const instancedPosition = Fn((_: [], builder: NodeBuilder): Node<"vec3"> => {
+  // A clustered build's vertex is its arena's, which it stands in its place itself (`toBufferPlacedWorlds`).
+  if (isClusteredBuild(builder)) {
+    return toClusterAttribute(builder, "position") as Node<"vec3">;
+  }
+
   if (!isInstancedBuild(builder)) {
     return positionLocal;
   }
@@ -166,7 +148,8 @@ export function toBufferPlacedWorlds(
   wind: TreeWindUniforms
 ): IBufferPlacedWorlds {
   const matrix: Node<"mat4"> = toBufferMatrix(builder, buffers).toVar();
-  const world: Node<"vec3"> = matrix.mul(vec4(positionLocal, 1)).xyz;
+  const local: Node<"vec3"> = toClusterAttribute(builder, "position") as Node<"vec3">;
+  const world: Node<"vec3"> = matrix.mul(vec4(local, 1)).xyz;
 
   if (!isPackedTreeBuild(builder)) {
     return { current: world, previous: world };

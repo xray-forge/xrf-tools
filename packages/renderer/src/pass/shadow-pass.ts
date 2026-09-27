@@ -85,7 +85,6 @@ export class ShadowPass implements IRendererPass {
 
     this.drawnVersion = this.casters.shadowChanges.version;
     this.shadows.commit(this.view);
-    this.casters.showShadowCells(this.view, cascade.planes);
     renderer.setRenderTarget(this.target);
     renderer.clear(false, true, false);
     drawUnsorted(renderer, () => {

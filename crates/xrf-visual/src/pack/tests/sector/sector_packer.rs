@@ -750,9 +750,20 @@ fn test_packs_a_progressive_tree_whole_with_a_band_for_each_window() {
         VisualDrawRange { count: 6, start: 3 },
         VisualDrawRange { count: 3, start: 0 },
       ],
+      // A cluster each: every band is cut from its own window.
+      clusters: vec![
+        VisualDrawRange { count: 1, start: 0 },
+        VisualDrawRange { count: 1, start: 1 },
+      ],
       windows: 2,
     })
   );
+  assert_eq!(
+    group.clusters,
+    VisualDrawRange { count: 1, start: 0 },
+    "the whole detail's"
+  );
+  assert_eq!(group.geometry.clusters.count, 2);
 }
 
 // Every band is a draw of its own, so a table of many windows is cut into a few: band `b` is window
@@ -818,4 +829,34 @@ fn new_progressive_geometry(is_tree: bool, tables: &[&[Window]]) -> Vec<u8> {
   }
 
   bytes
+}
+
+// A section is every drawable of its surface one after another; a cluster is cut from one of them alone, so it culls
+// with what it belongs to.
+#[test]
+fn test_cuts_each_drawable_of_a_section_into_clusters_of_its_own() {
+  let run: LevelVisualsChunk = new_visuals(&[
+    new_hierarchy(&[1, 2]),
+    new_drawable(1, 0, 2, 0, 3),
+    new_drawable(1, 2, 2, 3, 3),
+  ]);
+  let source = new_open_geometry(new_geometry());
+
+  let package: SectorPackage =
+    SectorPacker::new(&run, None, &source).pack::<XRayByteOrder>(0, &new_composition(&run), SectorAttributes::all());
+  let description: &SectorDescription = &package.description;
+  let ranges: Vec<u32> = new_read_bytes(&package, description.geometry.clusters.ranges)
+    .as_chunks::<4>()
+    .0
+    .iter()
+    .map(|bytes| u32::from_le_bytes(*bytes))
+    .collect();
+
+  assert_eq!(description.sections.len(), 1, "one surface");
+  assert_eq!(description.sections[0].clusters, VisualDrawRange { count: 2, start: 0 });
+  assert_eq!(
+    ranges,
+    vec![0, 1, 1, 0, 3, 1, 2, 0],
+    "a triangle each, of drawables 1 and 2"
+  );
 }

@@ -5,50 +5,43 @@ import { IRendererLodSettings } from "#/contract/renderer-features";
 import { IStaticCullCounts } from "#/scene/static/static-cull-counts";
 import { createStaticCullShader, IStaticCullShader, IStaticViewCullShader } from "#/scene/static/static-cull.tsl";
 import { StaticDepthPyramid } from "#/scene/static/static-depth-pyramid";
-import { StaticDrawPool } from "#/scene/static/static-draw-pool";
-import { StaticLods } from "#/scene/static/static-lods";
-import { StaticPlaces } from "#/scene/static/static-places";
-import { STATIC_LIGHT_VIEW_START, STATIC_SHADOW_VIEWS, StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
+import { IStaticPools } from "#/scene/static/static-pools";
+import {
+  EStaticPool,
+  STATIC_LIGHT_VIEW_START,
+  STATIC_SHADOW_VIEWS,
+  StaticDrawBuffers,
+} from "#/uniforms/static-draw-buffers";
 import { toPlaneVectors } from "#/visibility/camera-frustum";
 import { CullView } from "#/visibility/cull-view";
 import { IShadowFrustum } from "#/visibility/shadow-frustum";
 
 /** Numbers a shadow view's cull is keyed by: its frustum's, the pools' and the layout's versions, then its bands'. */
-const VIEW_KEY_LENGTH: number = 10;
+const VIEW_KEY_LENGTH: number = 8;
 
 /**
- * Culls every static draw on the GPU against the view drawn for, single draws by slot and instanced ones by row, in
- * two phases. The first draws what the frustum keeps and the last frame's depth does not hide; the second tests what
- * that depth hid against this frame's depth so far and draws what it no longer hides, so nothing appears a frame
- * late. Culled again only when the view moved or a slot, row or place changed; what it kept stays drawn meanwhile.
- * Its shaders are built again whenever the buffers grow, and dispatched only as far as slots and rows are used.
+ * Culls every static draw's clusters on the GPU against the view drawn for, into every batch's region of the view's
+ * list, in two phases. The first keeps what the frustum keeps and the last frame's depth does not hide; the second
+ * tests what that depth hid against this frame's depth so far and keeps what it no longer hides, so nothing appears a
+ * frame late. Culled again only when the view moved or anything it lists changed; what it kept stays drawn meanwhile.
+ * Its shaders are built again whenever the buffers grow, and dispatched only as far as clusters, rows and batches are
+ * used.
  */
 export class StaticCull {
   private readonly buffers: StaticDrawBuffers;
-  private readonly pool: StaticDrawPool;
-  private readonly places: StaticPlaces;
-  private readonly lods: StaticLods;
+  private readonly pools: IStaticPools;
   private shader: IStaticCullShader;
   /** The buffers' layout the shaders were built over. */
   private layout: number;
-  /** Buffers the last growth replaced, freed a frame later, once no recording binds them. */
   private readonly pyramid: StaticDepthPyramid;
   /** What the second phase draws, which the G-buffer draws after the second cull. */
   private readonly late: Scene;
   /** What the last cull read back kept, and whether a read is in flight. */
-  private counts: IStaticCullCounts = {
-    draws: 0,
-    occludedDraws: 0,
-    occludedInstances: 0,
-    occludedTriangles: 0,
-    triangles: 0,
-  };
+  private counts: IStaticCullCounts = { clusters: 0, occludedClusters: 0, occludedTriangles: 0, triangles: 0 };
   private isReading: boolean = false;
-  /** The view and pool versions the last dispatch culled against. */
+  /** The view and pools' version the last dispatch culled against. */
   private viewVersion: number = -1;
-  private poolVersion: number = -1;
-  private placesVersion: number = -1;
-  private lodsVersion: number = -1;
+  private poolsVersion: number = -1;
   /** What each shadow view's last cull ran against, and what this one runs against. */
   private readonly viewKeys: Array<Float64Array> = Array.from({ length: STATIC_SHADOW_VIEWS }, () =>
     new Float64Array(VIEW_KEY_LENGTH).fill(NaN)
@@ -56,7 +49,7 @@ export class StaticCull {
   private readonly nextKey: Float64Array = new Float64Array(VIEW_KEY_LENGTH);
   /** Which frustum owns each retained result; versions of different frustums need not be distinct. */
   private readonly viewFrustums: Array<Nullable<IShadowFrustum>> = new Array(STATIC_SHADOW_VIEWS).fill(null);
-  /** Dirty views' slot and row culls, retained as one compute batch between frames. */
+  /** Dirty views' culls, retained as one compute batch between frames. */
   private readonly pendingViews: Array<ComputeNode> = [];
   /** Whether the LOD thresholds or switch changed since the last dispatch. */
   private isLodChanged: boolean = true;
@@ -68,22 +61,12 @@ export class StaticCull {
 
   /**
    * @param buffers - What every static draw reads.
-   * @param pool - The slots.
-   * @param places - The instanced draws' places and rows.
-   * @param lods - The impostors of clumps of trees.
+   * @param pools - What the culls read, which says when they must run again and how far.
    * @param late - The scene the second phase's batches stand in.
    */
-  public constructor(
-    buffers: StaticDrawBuffers,
-    pool: StaticDrawPool,
-    places: StaticPlaces,
-    lods: StaticLods,
-    late: Scene
-  ) {
+  public constructor(buffers: StaticDrawBuffers, pools: IStaticPools, late: Scene) {
     this.buffers = buffers;
-    this.pool = pool;
-    this.places = places;
-    this.lods = lods;
+    this.pools = pools;
     this.late = late;
     this.shader = createStaticCullShader(buffers);
     this.layout = buffers.layout;
@@ -110,28 +93,20 @@ export class StaticCull {
    * @param camera - Its camera, which the depth it draws is seen from.
    */
   public take(view: CullView, camera: PerspectiveCamera): void {
-    if (
-      !this.isLodChanged &&
-      view.version === this.viewVersion &&
-      this.pool.version === this.poolVersion &&
-      this.places.version === this.placesVersion &&
-      this.lods.version === this.lodsVersion
-    ) {
+    if (!this.isLodChanged && view.version === this.viewVersion && this.pools.version === this.poolsVersion) {
       return;
     }
 
     toPlaneVectors(view.planes, this.shader.planes);
     this.buffers.occlusion.current.take(camera);
     this.viewVersion = view.version;
-    this.poolVersion = this.pool.version;
-    this.placesVersion = this.places.version;
-    this.lodsVersion = this.lods.version;
+    this.poolsVersion = this.pools.version;
     this.isLodChanged = false;
     this.isPending = true;
   }
 
   /**
-   * @param isWireframe - Whether the arenas' line indices draw, by arguments each cull rewrites from its own.
+   * @param isWireframe - Whether the batches' edges draw, by arguments each cull rewrites from its own.
    */
   public setWireframe(isWireframe: boolean): void {
     if (isWireframe !== this.isWireframe) {
@@ -151,15 +126,11 @@ export class StaticCull {
       return;
     }
 
+    this.pools.flush();
     this.build();
-    // The upload comes first: the arguments it writes carry an instance count the cull then writes over.
-    this.pool.flush();
-    this.places.flush();
-    this.lods.flush();
     (this.buffers.counts.array as Uint32Array).fill(0);
     this.buffers.counts.needsUpdate = true;
-    // The slot cull leaves every instanced draw at no instances, for its rows to count up after it.
-    renderer.compute(this.shader.early);
+    renderer.compute([...this.shader.early]);
 
     if (this.isWireframe) {
       renderer.compute(this.shader.wire[0]);
@@ -205,7 +176,7 @@ export class StaticCull {
 
   /**
    * A shadow view's cull, its casters from every static draw its frustum reaches: run again only when the frustum
-   * moved, resident geometry changed or the main camera's detail selection changed.
+   * moved, anything it lists changed or the main camera's detail selection changed.
    *
    * @param renderer - The renderer drawing.
    * @param view - The shadow view, from zero: a sun cascade's or a local-light face slot.
@@ -213,6 +184,7 @@ export class StaticCull {
    * @returns Whether it culled, and what the cascade draws may have changed.
    */
   public cullView(renderer: WebGPURenderer, view: number, cascade: IShadowFrustum): boolean {
+    this.pools.flush();
     this.build();
 
     const shader: Nullable<IStaticViewCullShader> = this.prepareView(view, cascade);
@@ -221,14 +193,14 @@ export class StaticCull {
       return false;
     }
 
-    renderer.compute(shader.cull);
+    renderer.compute([...shader.cull]);
 
     return true;
   }
 
   /**
-   * Culls a batch of shadow frustums in one submission. Each owns a separate arguments buffer and visible-instance
-   * region until its slot is assigned another frustum. Unchanged results stay available without another dispatch.
+   * Culls a batch of shadow frustums in one submission. Each owns its view's arguments and list until its slot is
+   * assigned another frustum. Unchanged results stay available without another dispatch.
    *
    * @param renderer - The renderer drawing.
    * @param firstView - The first of the consecutive shadow-view slots reserved for this batch.
@@ -243,6 +215,7 @@ export class StaticCull {
       return;
     }
 
+    this.pools.flush();
     this.build();
     this.pendingViews.length = 0;
 
@@ -298,15 +271,9 @@ export class StaticCull {
     renderer
       .getArrayBufferAsync(this.buffers.counts)
       .then((buffer: ArrayBuffer) => {
-        const [draws, indices, occludedDraws, occludedInstances, occludedIndices] = new Uint32Array(buffer);
+        const [clusters, triangles, occludedClusters, occludedTriangles] = new Uint32Array(buffer);
 
-        this.counts = {
-          draws,
-          occludedDraws,
-          occludedInstances,
-          occludedTriangles: occludedIndices / 3,
-          triangles: indices / 3,
-        };
+        this.counts = { clusters, occludedClusters, occludedTriangles, triangles };
       })
       .catch(() => {})
       .finally(() => (this.isReading = false));
@@ -327,15 +294,13 @@ export class StaticCull {
     const isBanded: boolean = view < STATIC_LIGHT_VIEW_START;
 
     key[0] = frustum.version;
-    key[1] = this.pool.version;
-    key[2] = this.places.version;
-    key[3] = this.lods.version;
-    key[4] = this.layout;
-    key[5] = isBanded ? lod.glodStart.value : 0;
-    key[6] = isBanded ? lod.glodEnd.value : 0;
-    key[7] = isBanded ? lod.camera.value.x : 0;
-    key[8] = isBanded ? lod.camera.value.y : 0;
-    key[9] = isBanded ? lod.camera.value.z : 0;
+    key[1] = this.pools.version;
+    key[2] = this.layout;
+    key[3] = isBanded ? lod.glodStart.value : 0;
+    key[4] = isBanded ? lod.glodEnd.value : 0;
+    key[5] = isBanded ? lod.camera.value.x : 0;
+    key[6] = isBanded ? lod.camera.value.y : 0;
+    key[7] = isBanded ? lod.camera.value.z : 0;
 
     if (
       this.viewFrustums[view] === frustum &&
@@ -356,7 +321,7 @@ export class StaticCull {
   private disposeShader(): void {
     [
       ...this.shader.early,
-      ...this.shader.late,
+      this.shader.late,
       ...this.shader.wire,
       ...this.shader.views.flatMap((view) => view.cull),
     ].forEach((compute: ComputeNode) => compute.dispose());
@@ -368,29 +333,33 @@ export class StaticCull {
       const planes: ReadonlyArray<Vector4> = this.shader.planes;
 
       this.disposeShader();
-      // Every cascade culls again against the buffers as they are laid out now.
+      // Every view culls again against the buffers as they are laid out now.
       this.viewKeys.forEach((it: Float64Array) => it.fill(NaN));
       this.shader = createStaticCullShader(this.buffers);
       this.shader.planes.forEach((plane, index: number) => plane.copy(planes[index]));
       this.layout = this.buffers.layout;
     }
 
-    // An invocation a slot handed out, and a row and an impostor up to the last run: nothing past them is in use.
-    const slots: number = Math.max(this.pool.extent, 1);
-    const rows: number = Math.max(this.places.rowExtent, 1);
-    const [earlySlots, lods, earlyRows] = this.shader.early;
-    const [lateSlots, lateRows] = this.shader.late;
+    // An invocation a cluster, a row, a batch and an impostor up to the last run handed out: nothing past them is used.
+    const clusters: number = Math.max(this.pools.clusterExtent, 1);
+    const rows: number = Math.max(this.pools.rowExtent, 1);
+    const batches: number = Math.max(this.pools.batchExtent, 1);
+    const [clearEarly, clearLate, lods, singles, instanced] = this.shader.early;
 
-    earlySlots.count = slots;
-    lateSlots.count = slots;
-    this.shader.wire.forEach((compute) => (compute.count = slots));
-    lods.count = Math.max(this.lods.extent, 1);
-    earlyRows.count = rows;
-    lateRows.count = rows;
+    clearEarly.count = batches;
+    clearLate.count = batches;
+    lods.count = Math.max(this.pools.lodExtent, 1);
+    singles.count = clusters;
+    instanced.count = rows;
+    this.shader.late.count = Math.max(this.buffers.capacity(EStaticPool.SURFACE_LIST), 1);
+    this.shader.wire.forEach((compute: ComputeNode) => (compute.count = batches));
 
     for (const { cull } of this.shader.views) {
-      cull[0].count = slots;
-      cull[1].count = rows;
+      const [clear, viewSingles, viewInstanced] = cull;
+
+      clear.count = batches;
+      viewSingles.count = clusters;
+      viewInstanced.count = rows;
     }
   }
 }

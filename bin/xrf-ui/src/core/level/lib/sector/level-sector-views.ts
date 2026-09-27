@@ -35,6 +35,9 @@ export interface ISectorGeometryViews {
   lightmapUvs: Nullable<Int16Array>;
   /** Thirty-two bit, unlike a model's. */
   indices: Uint32Array;
+  /** Its clusters: four words a cluster (first index, triangles, drawable, nothing), then four floats (its sphere). */
+  clusterRanges: Uint32Array;
+  clusterSpheres: Float32Array;
 }
 
 /** One draw of a sector's own geometry: the range to draw, and the surface it is drawn with. */
@@ -154,6 +157,8 @@ function toIndexView(buffer: ArrayBuffer, section: VisualSection): Uint32Array {
 function toGeometryViews(buffer: ArrayBuffer, geometry: SectorGeometry): ISectorGeometryViews {
   return {
     binormals: toOptionalByteView(buffer, geometry.binormals),
+    clusterRanges: toIndexView(buffer, geometry.clusters.ranges),
+    clusterSpheres: toFloatView(buffer, geometry.clusters.spheres),
     indexCount: geometry.indexCount,
     indices: toIndexView(buffer, geometry.indices),
     lightmapUvs: toOptionalShortView(buffer, geometry.lightmapUvs),

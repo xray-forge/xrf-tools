@@ -133,7 +133,6 @@ export class LightShadowPass implements IRendererPass {
     const isStillKept: boolean = face.isDrawn && !face.isStale;
 
     this.takeFace(face);
-    this.casters.showShadowCells(view, face.planes);
 
     if (!isStillKept) {
       this.still.viewport.set(x, y, size, size);

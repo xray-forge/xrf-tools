@@ -1,7 +1,7 @@
 import { Nullable } from "@xrf/types";
 import { Box3, Sphere, Vector4 } from "three/webgpu";
 
-import { isBoxInPlanes } from "#/scene/static/static-cell";
+import { isBoxInPlanes } from "#/visibility/plane-tests";
 
 /** Changes the log keeps; one older than the oldest kept stands for a change anywhere. */
 const LOG_LIMIT: number = 4096;

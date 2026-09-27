@@ -24,7 +24,7 @@ function createDraws(upcoming: Array<IStaticUpcoming> = []): { buffers: StaticDr
 function toUpcoming(sections: number, places: number): IStaticUpcoming {
   const geometry: SceneGeometry = new SceneGeometry({ groups: [], position: new Float32Array(9) });
 
-  return { geometry, places, sections };
+  return { clusters: 0, geometry, places, sections };
 }
 
 describe("StaticDraws", () => {
@@ -54,8 +54,8 @@ describe("StaticDraws", () => {
   it("draws plainly where the device's limit stops a pool growing, and says how often", () => {
     const { buffers, draws } = createDraws();
 
-    // Two slots of 64 bytes each, which the buffers hold already.
-    buffers.storageLimit = 128;
+    // Two slots of 32 bytes each, which the buffers hold already.
+    buffers.storageLimit = 64;
     draws.allocate();
     draws.allocate();
 
@@ -113,7 +113,11 @@ describe("listed tree shadow invalidation", () => {
     const spheres: Float32Array = new Float32Array([-20, 0, 0, 1, 20, 0, 0, 1]);
 
     function put(count: number = 3): void {
-      expect(draws.drawListed(slot, surface, range, 0, count, places, spheres)).toBe(true);
+      const run = count ? geometry.clusters.toRun(0, count) : { count: 0, start: 0 };
+
+      expect(
+        draws.drawListed(slot, surface, range, geometry.clusters, run ?? { count: 0, start: 0 }, places, spheres)
+      ).toBe(true);
     }
 
     function frame(isWindy: boolean = true): number {

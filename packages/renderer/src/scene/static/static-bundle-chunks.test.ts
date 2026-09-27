@@ -1,26 +1,31 @@
 import { describe, expect, it } from "@jest/globals";
-import { BufferAttribute, BufferGeometry, Scene } from "three/webgpu";
+import { storage } from "three/tsl";
+import { BufferAttribute, BufferGeometry, Scene, StorageBufferAttribute } from "three/webgpu";
 
 import { StaticArena } from "#/scene/static/static-arena";
 import { StaticBatch } from "#/scene/static/static-batch";
 import { StaticBundleChunks } from "#/scene/static/static-bundle-chunks";
-import { EStaticDrawKind } from "#/scene/static/static-draw-kind";
-import { StaticDrawPool } from "#/scene/static/static-draw-pool";
-import { StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
+import { EStaticListSpace, EStaticView, StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
 
 function createBatches(count: number): Array<StaticBatch> {
   const buffer: BufferGeometry = new BufferGeometry();
+  const buffers: StaticDrawBuffers = new StaticDrawBuffers();
 
   buffer.setAttribute("position", new BufferAttribute(new Float32Array(9), 3));
 
-  const arena: StaticArena = new StaticArena(buffer, 64);
-  const pool: StaticDrawPool = new StaticDrawPool(new StaticDrawBuffers());
-
-  arena.place(buffer, () => ({ indices: 0, vertices: 0 }));
+  const arena: StaticArena = new StaticArena(
+    buffer,
+    storage(new StorageBufferAttribute(new Uint32Array(2), 2), "uvec2", 1).toReadOnly(),
+    storage(new StorageBufferAttribute(new Uint32Array(4), 4), "uvec4", 1).toReadOnly()
+  );
 
   return Array.from(
     { length: count },
-    () => new StaticBatch(arena, EStaticDrawKind.SINGLE, [() => pool.args, () => pool.lateArgs])
+    (_, id: number) =>
+      new StaticBatch(arena, id, EStaticListSpace.SURFACES, [
+        () => buffers.viewArgs[EStaticView.EARLY],
+        () => buffers.viewArgs[EStaticView.LATE],
+      ])
   );
 }
 
@@ -30,7 +35,7 @@ describe("StaticBundleChunks", () => {
     const late: Scene = new Scene();
     const chunks: StaticBundleChunks = new StaticBundleChunks([scene, late]);
 
-    createBatches(40).forEach((batch: StaticBatch) => chunks.attach(batch));
+    createBatches(40).forEach((batch: StaticBatch) => chunks.attach(batch, batch.meshes));
 
     expect(scene.children).toHaveLength(2);
     expect(late.children).toHaveLength(2);
@@ -44,7 +49,7 @@ describe("StaticBundleChunks", () => {
     const chunks: StaticBundleChunks = new StaticBundleChunks([scene, late]);
     const [batch] = createBatches(1);
 
-    chunks.attach(batch);
+    chunks.attach(batch, batch.meshes);
 
     const bundle = scene.children[0];
     const version: number = (bundle as unknown as { version: number }).version;

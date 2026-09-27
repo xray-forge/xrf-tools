@@ -2,44 +2,55 @@ import { describe, expect, it, jest } from "@jest/globals";
 import { ComputeNode, Scene, Vector4, WebGPURenderer } from "three/webgpu";
 
 import { StaticCull } from "#/scene/static/static-cull";
-import { StaticDrawPool } from "#/scene/static/static-draw-pool";
-import { StaticLods } from "#/scene/static/static-lods";
-import { StaticPlaces } from "#/scene/static/static-places";
+import { IStaticPools } from "#/scene/static/static-pools";
 import { LIGHT_SHADOW_FACE_BUDGET } from "#/uniforms/lights-uniforms";
 import { EStaticPool, STATIC_LIGHT_VIEW_START, StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
 import { IShadowFrustum } from "#/visibility/shadow-frustum";
 
+/** Passes a shadow view's cull dispatches: its arguments cleared, its single draws' clusters, then its rows'. */
+const VIEW_PASSES: number = 3;
+
+/** Pools of one of everything, whose version a test bumps as the draws would change. */
+interface IPoolsStub extends IStaticPools {
+  version: number;
+}
+
 function createCull(): {
   buffers: StaticDrawBuffers;
   cull: StaticCull;
-  pool: StaticDrawPool;
+  pools: IPoolsStub;
   renderer: WebGPURenderer;
   submissions: Array<Array<ComputeNode>>;
 } {
   const buffers: StaticDrawBuffers = new StaticDrawBuffers({
+    [EStaticPool.BATCHES]: 4,
+    [EStaticPool.CLUSTERS]: 4,
     [EStaticPool.LODS]: 2,
     [EStaticPool.PLACES]: 4,
     [EStaticPool.PYRAMID]: 4,
     [EStaticPool.ROWS]: 4,
+    [EStaticPool.SHADOW_LIST]: 4,
     [EStaticPool.SLOTS]: 4,
+    [EStaticPool.SURFACE_LIST]: 4,
   });
-  const pool: StaticDrawPool = new StaticDrawPool(buffers);
-  const cull: StaticCull = new StaticCull(
-    buffers,
-    pool,
-    new StaticPlaces(buffers),
-    new StaticLods(buffers),
-    new Scene()
-  );
+  const pools: IPoolsStub = {
+    batchExtent: 1,
+    clusterExtent: 1,
+    flush: () => {},
+    lodExtent: 1,
+    rowExtent: 1,
+    version: 0,
+  };
+  const cull: StaticCull = new StaticCull(buffers, pools, new Scene());
   const submissions: Array<Array<ComputeNode>> = [];
-  // The tests record dispatches; WebGPU execution and the resulting instance lists are checked in the app.
+  // The tests record dispatches; WebGPU execution and the resulting lists are checked in the app.
   const renderer = {
-    compute: (nodes: Array<ComputeNode>): void => {
-      submissions.push([...nodes]);
+    compute: (nodes: ComputeNode | Array<ComputeNode>): void => {
+      submissions.push(Array.isArray(nodes) ? [...nodes] : [nodes]);
     },
   } as unknown as WebGPURenderer;
 
-  return { buffers, cull, pool, renderer, submissions };
+  return { buffers, cull, pools, renderer, submissions };
 }
 
 function createFrustum(version: number = 1): IShadowFrustum {
@@ -56,8 +67,8 @@ describe("StaticCull shadow batches", () => {
     cull.cullViews(renderer, STATIC_LIGHT_VIEW_START, faces);
 
     expect(submissions).toHaveLength(1);
-    expect(submissions[0]).toHaveLength(2 * faces.length);
-    expect(new Set(submissions[0]).size).toBe(2 * faces.length);
+    expect(submissions[0]).toHaveLength(VIEW_PASSES * faces.length);
+    expect(new Set(submissions[0]).size).toBe(VIEW_PASSES * faces.length);
     cull.dispose();
   });
 
@@ -73,34 +84,30 @@ describe("StaticCull shadow batches", () => {
     cull.cullViews(renderer, STATIC_LIGHT_VIEW_START, faces);
     cull.cullViews(renderer, STATIC_LIGHT_VIEW_START, [faces[1], moving]);
 
-    expect(submissions.map((nodes) => nodes.length)).toEqual([4, 2, 2, 4]);
+    expect(submissions.map((nodes) => nodes.length / VIEW_PASSES)).toEqual([2, 1, 1, 2]);
     cull.dispose();
   });
 
   it("reculls kept faces when the draws change, not when the camera moves: a face casts every tree at its finest", () => {
-    const { buffers, cull, pool, renderer, submissions } = createCull();
+    const { buffers, cull, pools, renderer, submissions } = createCull();
     const faces: Array<IShadowFrustum> = [createFrustum(), createFrustum()];
 
-    pool.isEnabled = true;
-    pool.allocate();
     cull.cullViews(renderer, STATIC_LIGHT_VIEW_START, faces);
     buffers.lod.camera.value.x += 10;
     cull.cullViews(renderer, STATIC_LIGHT_VIEW_START, faces);
     buffers.lod.glodStart.value += 1;
     cull.cullViews(renderer, STATIC_LIGHT_VIEW_START, faces);
-    pool.release(0);
+    pools.version += 1;
     cull.cullViews(renderer, STATIC_LIGHT_VIEW_START, faces);
 
-    expect(submissions.map((nodes) => nodes.length)).toEqual([4, 4]);
+    expect(submissions.map((nodes) => nodes.length / VIEW_PASSES)).toEqual([2, 2]);
     cull.dispose();
   });
 
   it("reculls a kept cascade when the camera moves, which picks its trees' bands", () => {
-    const { buffers, cull, pool, renderer, submissions } = createCull();
+    const { buffers, cull, renderer, submissions } = createCull();
     const cascade: Array<IShadowFrustum> = [createFrustum()];
 
-    pool.isEnabled = true;
-    pool.allocate();
     cull.cullViews(renderer, 0, cascade);
     cull.cullViews(renderer, 0, cascade);
     buffers.lod.camera.value.x += 10;
@@ -108,7 +115,7 @@ describe("StaticCull shadow batches", () => {
     buffers.lod.glodStart.value += 1;
     cull.cullViews(renderer, 0, cascade);
 
-    expect(submissions.map((nodes) => nodes.length)).toEqual([2, 2, 2]);
+    expect(submissions.map((nodes) => nodes.length / VIEW_PASSES)).toEqual([1, 1, 1]);
     cull.dispose();
   });
 
@@ -121,15 +128,15 @@ describe("StaticCull shadow batches", () => {
     cull.cullViews(renderer, STATIC_LIGHT_VIEW_START, faces);
     submissions[0].forEach((node: ComputeNode) => node.addEventListener("dispose", retired));
     buffers.grow(EStaticPool.SLOTS, 8);
-    buffers.grow(EStaticPool.ROWS, 8);
+    buffers.grow(EStaticPool.CLUSTERS, 8);
     cull.cullViews(renderer, STATIC_LIGHT_VIEW_START, faces);
 
-    expect(retired).toHaveBeenCalledTimes(4);
+    expect(retired).toHaveBeenCalledTimes(2 * VIEW_PASSES);
     expect(submissions).toHaveLength(2);
     expect(submissions[1].every((node) => !submissions[0].includes(node))).toBe(true);
     submissions[1].forEach((node: ComputeNode) => node.addEventListener("dispose", disposed));
     cull.dispose();
-    expect(disposed).toHaveBeenCalledTimes(4);
+    expect(disposed).toHaveBeenCalledTimes(2 * VIEW_PASSES);
   });
 
   it("rejects a batch larger than the reserved slots before submitting any work", () => {

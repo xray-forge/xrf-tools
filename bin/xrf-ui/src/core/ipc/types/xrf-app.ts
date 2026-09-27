@@ -1733,14 +1733,12 @@ export type LevelStart = {
   origin: LevelStartOrigin;
 };
 
-/** What a level's start was taken from, the first of these the level has. */
+/** What a level's start was taken from. */
 export enum ELevelStartOrigin {
   /** Where a changer of another level leading here puts the actor. */
   ARRIVAL = "arrival",
   /** Where the level's own actor is spawned. */
   ACTOR = "actor",
-  /** The AI map's node nearest the level's centre. */
-  GROUND = "ground",
 }
 
 /** Every `ELevelStartOrigin` as the spelling it crosses IPC as, for a value no member has narrowed. */

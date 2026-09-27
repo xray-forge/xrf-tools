@@ -18,13 +18,11 @@ export enum EVertexAttribute {
   PACKED_UV1 = "packedUv1",
   /** Its scale and offset, per place a geometry stands. */
   INSTANCE_HEMI = "instanceHemi",
-  /** A static draw's slot in the buffers every static draw shares, read per instance by its first instance. */
-  STATIC_SLOT = "staticSlot",
   /**
-   * Marks an instanced static draw, whose instances are the places the cull kept: never read, only named, so the
-   * shader built for it is its own.
+   * The mark of a clustered static draw's arena, followed by the arena's number: never read, only named, so the
+   * programs built for one arena's draws, which read its buffers by name, are its own.
    */
-  INSTANCE_LIST = "instanceList",
+  CLUSTER_ARENA = "clusterArena",
 }
 
 /** The instanced columns a place's transform rides in, in order. */

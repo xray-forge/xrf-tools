@@ -17,6 +17,7 @@ use crate::data::sector::sector_progressive::SectorProgressive;
 use crate::data::sector::sector_section::SectorSection;
 use crate::data::sector::sector_skip::SectorSkip;
 use crate::data::visual::bounds::visual_bounds::VisualBounds;
+use crate::data::visual::geometry::visual_clusters::VisualClusters;
 use crate::data::visual::geometry::visual_draw_range::VisualDrawRange;
 use crate::data::visual::geometry::visual_section::VisualSection;
 use crate::data::visual::geometry::visual_skip_cause::VisualSkipCause;
@@ -31,6 +32,7 @@ use crate::pack::sector::sector_vertex_arrays::SectorVertexArrays;
 use crate::pack::sector::sector_vertex_range::SectorVertexRange;
 use crate::pack::sector::sector_window::SectorWindow;
 use crate::pack::visual_buffer_builder::VisualBufferBuilder;
+use crate::pack::visual_cluster_table::VisualClusterTable;
 use crate::pack::visual_conversion::{convert_placement, convert_tree_hemi, reverse_triangle_winding};
 
 /// Packs one sector's drawables into the single buffer a renderer draws it from.
@@ -124,6 +126,7 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
           let gathering: &mut SectorSectionGathering = sections.entry(visual.header.shader_id).or_default();
 
           gathering.drawables.push(*drawable);
+          gathering.runs.push(indices.len() as u32);
           gathering.indices.extend(indices);
         }
         Err(error) => skipped.push(Self::skip(*drawable, &error)),
@@ -280,14 +283,19 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
     } = gathering;
     let mut builder: VisualBufferBuilder = VisualBufferBuilder::new();
     let mut indices: Vec<u32> = Vec::new();
+    let mut runs: Vec<(u32, Vec<(u32, u32)>)> = Vec::new();
     let mut sections: Vec<SectorSection> = Vec::new();
 
     for (shader_id, gathering) in gathered_sections {
+      let start: u32 = indices.len() as u32;
+
+      runs.push((start, gathering.drawables.iter().copied().zip(gathering.runs).collect()));
       sections.push(SectorSection {
         bounds: arrays.get_indexed_bounds(&gathering.indices),
+        clusters: VisualDrawRange::default(),
         draw: VisualDrawRange {
           count: gathering.indices.len() as u32,
-          start: indices.len() as u32,
+          start,
         },
         drawables: gathering.drawables,
         surface: self.surfaces.get(shader_id),
@@ -296,8 +304,26 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
       indices.extend(gathering.indices);
     }
 
+    let mut clusters: VisualClusterTable = VisualClusterTable::default();
+
+    // A section's clusters are its drawables' own, so none spans two of them.
+    for (section, (start, drawables)) in sections.iter_mut().zip(runs) {
+      let first: u32 = clusters.get_count();
+      let mut at: u32 = start;
+
+      for (drawable, count) in drawables {
+        clusters.push_run(&indices, arrays.get_positions(), at, count, drawable);
+        at += count;
+      }
+
+      section.clusters = VisualDrawRange {
+        count: clusters.get_count() - first,
+        start: first,
+      };
+    }
+
     let bounds: Option<VisualBounds> = arrays.get_bounds();
-    let geometry: SectorGeometry = arrays.write_into(&indices, &mut builder);
+    let geometry: SectorGeometry = arrays.write_into(&indices, &clusters, &mut builder);
     let instances: Vec<SectorInstanceGroup> = self.pack_instances::<T>(gathered, wanted, &mut builder, &mut skipped);
     let impostors = impostors.write_into(&mut builder);
 
@@ -360,7 +386,7 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
     // Packed unplaced: the mesh is in its own space, and each instance's transform stands a copy of it.
     arrays.push::<T>(&payload)?;
 
-    let (window, progressive): (SectorWindow, Option<SectorProgressive>) =
+    let (window, mut progressive): (SectorWindow, Option<SectorProgressive>) =
       Self::get_instance_detail(key.index_count, gathering.windows.as_deref())?;
     let mut indices: Vec<u32> = self
       .source
@@ -374,6 +400,35 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
       .collect();
 
     reverse_triangle_winding(&mut indices);
+
+    let mut table: VisualClusterTable = VisualClusterTable::default();
+    // A place draws its band's window, or the whole mesh: the whole detail is band nought.
+    let clusters: VisualDrawRange = match &mut progressive {
+      Some(progressive) => {
+        progressive.clusters = progressive
+          .bands
+          .iter()
+          .map(|band| {
+            table.push_run(
+              &indices,
+              arrays.get_positions(),
+              band.start,
+              band.count,
+              VisualClusters::NO_DRAWABLE,
+            )
+          })
+          .collect();
+
+        progressive.clusters[0]
+      }
+      None => table.push_run(
+        &indices,
+        arrays.get_positions(),
+        0,
+        indices.len() as u32,
+        VisualClusters::NO_DRAWABLE,
+      ),
+    };
 
     let transforms: Vec<f32> = gathering
       .placements
@@ -389,8 +444,9 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
       .then(|| builder.push_i32_section(&gathering.impostors));
 
     Ok(SectorInstanceGroup {
+      clusters,
       drawables: gathering.drawables.clone(),
-      geometry: arrays.write_into(&indices, builder),
+      geometry: arrays.write_into(&indices, &table, builder),
       hemi: builder.push_f32_section(&hemi),
       impostors,
       instance_count: gathering.placements.len() as u32,
@@ -470,6 +526,7 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
             }
           })
           .collect(),
+        clusters: Vec::new(),
         windows: count,
       }),
     ))

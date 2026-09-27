@@ -9,7 +9,6 @@ import {
   LIGHT_SHADOW_WIDENING,
   toLightShadowFaceCount,
 } from "#/scene/lights/light-shadow-faces";
-import { isBoxInPlanes } from "#/scene/static/static-cell";
 import {
   EShadowCasterMotion,
   IShadowChange,
@@ -17,6 +16,7 @@ import {
   StaticShadowChanges,
 } from "#/scene/static/static-shadow-changes";
 import { toCameraFrustum, toPlaneVectors } from "#/visibility/camera-frustum";
+import { isBoxInPlanes } from "#/visibility/plane-tests";
 import { IShadowFrustum } from "#/visibility/shadow-frustum";
 
 /** Texels the atlas is across. */

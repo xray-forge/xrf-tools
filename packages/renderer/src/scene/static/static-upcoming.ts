@@ -10,4 +10,6 @@ export interface IStaticUpcoming {
   sections: number;
   /** Places it stands in, none for an object that is not instanced. */
   places: number;
+  /** Clusters its geometry is cut into, which its static draws take a run of each. */
+  clusters: number;
 }

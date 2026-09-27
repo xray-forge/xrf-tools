@@ -1,7 +1,7 @@
-//! Where a level opens: where the game has a player arrive, the ground nearest its middle where it has none.
+//! Where a level opens: where the game has a player arrive or spawns its actor, under the open sky.
 
 use xrf_math::Vector3d;
-use xrf_spawn::{AlifeObjectInherited, SpawnLevelArrival};
+use xrf_spawn::AlifeObjectInherited;
 use xrf_visual::VisualBounds;
 
 use crate::plugins::levels::state::{LevelSpawn, LevelStart, LevelStartOrigin};
@@ -9,55 +9,55 @@ use crate::plugins::levels::state::{LevelSpawn, LevelStart, LevelStartOrigin};
 /// Metres an actor's eye stands above the ground under it.
 pub const ACTOR_EYE_HEIGHT: f32 = 1.7;
 
-/// The start of a level, the first the level has of: the arrival nearest its centre, its actor's spawn, and the ground
-/// `find_ground` finds nearest the centre, given in the engine's space; none of them leaves it to the viewer.
+/// The eyes a level may open at, in the engine's space: where each of its arrivals and its actor's spawn stand.
+pub fn list_level_start_eyes(spawn: &LevelSpawn) -> Vec<Vector3d> {
+  list_candidates(spawn).map(|(eye, _, _)| eye).collect()
+}
+
+/// The start of a level: of the eyes `list_level_start_eyes` lists, the one nearest its centre that `open` says is
+/// under the open sky; none of them leaves it to the viewer.
 pub fn resolve_level_start(
   spawn: Option<&LevelSpawn>,
   bounds: Option<&VisualBounds>,
-  find_ground: impl FnOnce(f32, f32) -> Option<Vector3d>,
+  open: &[bool],
 ) -> Option<LevelStart> {
-  let bounds: &VisualBounds = bounds?;
-  let (x, z): (f32, f32) = to_engine_centre(bounds);
+  let (x, z): (f32, f32) = to_engine_centre(bounds?);
 
-  if let Some(spawn) = spawn {
-    let nearest: Option<&SpawnLevelArrival> = spawn
-      .arrivals
-      .iter()
-      .min_by(|left, right| to_distance(&left.position, x, z).total_cmp(&to_distance(&right.position, x, z)));
-
-    if let Some(arrival) = nearest {
-      return Some(to_start(&arrival.position, arrival.angles.y, LevelStartOrigin::Arrival));
-    }
-
-    let actor = spawn
-      .objects
-      .iter()
-      .find(|object| matches!(object.inherited, AlifeObjectInherited::SeActor(_)));
-
-    if let Some(actor) = actor {
-      return Some(to_start(&actor.position, actor.direction.y, LevelStartOrigin::Actor));
-    }
-  }
-
-  find_ground(x, z).map(|ground| LevelStart {
-    direction: to_longer_side(bounds),
-    origin: LevelStartOrigin::Ground,
-    position: to_renderer_eye(&ground),
-  })
+  list_candidates(spawn?)
+    .zip(open)
+    .filter_map(|(candidate, is_open)| is_open.then_some(candidate))
+    .min_by(|(left, _, _), (right, _, _)| to_distance(left, x, z).total_cmp(&to_distance(right, x, z)))
+    .map(|(eye, heading, origin)| to_start(&eye, heading, origin))
 }
 
-/// An actor's eye at a place, turned to a heading as `CActor::MoveActor` turns it: `setHP` of the heading.
-fn to_start(position: &Vector3d, heading: f32, origin: LevelStartOrigin) -> LevelStart {
+/// Each arrival, then the actor's spawn, as an eye, a heading and what it is.
+fn list_candidates(spawn: &LevelSpawn) -> impl Iterator<Item = (Vector3d, f32, LevelStartOrigin)> {
+  let arrivals = spawn
+    .arrivals
+    .iter()
+    .map(|arrival| (to_eye(&arrival.position), arrival.angles.y, LevelStartOrigin::Arrival));
+  let actors = spawn
+    .objects
+    .iter()
+    .filter(|object| matches!(object.inherited, AlifeObjectInherited::SeActor(_)))
+    .map(|actor| (to_eye(&actor.position), actor.direction.y, LevelStartOrigin::Actor));
+
+  arrivals.chain(actors)
+}
+
+/// An actor's eye above a place, in the engine's space.
+fn to_eye(position: &Vector3d) -> Vector3d {
+  Vector3d::new(position.x, position.y + ACTOR_EYE_HEIGHT, position.z)
+}
+
+/// An eye in the renderer's space, whose z runs the other way, turned to a heading as `CActor::MoveActor` turns it:
+/// `setHP` of the heading.
+fn to_start(eye: &Vector3d, heading: f32, origin: LevelStartOrigin) -> LevelStart {
   LevelStart {
     direction: Vector3d::new(-heading.sin(), 0.0, -heading.cos()),
     origin,
-    position: to_renderer_eye(position),
+    position: Vector3d::new(eye.x, eye.y, -eye.z),
   }
-}
-
-/// A place in the engine's space, as an eye above it in the renderer's, whose z runs the other way.
-fn to_renderer_eye(position: &Vector3d) -> Vector3d {
-  Vector3d::new(position.x, position.y + ACTOR_EYE_HEIGHT, -position.z)
 }
 
 /// The middle of an extent in the renderer's space, as the engine's x and z.
@@ -72,16 +72,4 @@ fn to_engine_centre(bounds: &VisualBounds) -> (f32, f32) {
 
 fn to_distance(position: &Vector3d, x: f32, z: f32) -> f32 {
   (position.x - x).powi(2) + (position.z - z).powi(2)
-}
-
-/// Down the extent's longer side, so most of the level is in front.
-fn to_longer_side(bounds: &VisualBounds) -> Vector3d {
-  let across: f32 = bounds.bounding_box.max.x - bounds.bounding_box.min.x;
-  let along: f32 = bounds.bounding_box.max.z - bounds.bounding_box.min.z;
-
-  if across >= along {
-    Vector3d::new(1.0, 0.0, 0.0)
-  } else {
-    Vector3d::new(0.0, 0.0, -1.0)
-  }
 }

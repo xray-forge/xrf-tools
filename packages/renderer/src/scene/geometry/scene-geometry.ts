@@ -7,6 +7,8 @@ import {
   IRendererPackedVertices,
 } from "#/contract/scene/renderer-geometry";
 import { EVertexAttribute } from "#/geometry/vertex-attribute";
+import { cutSceneClusters } from "#/scene/geometry/scene-cluster-cut";
+import { SceneClusters } from "#/scene/geometry/scene-clusters";
 import { ISceneSection } from "#/scene/geometry/scene-section";
 import { toSectionSphere } from "#/scene/geometry/section-sphere";
 
@@ -148,9 +150,13 @@ export class SceneGeometry {
   public readonly buffer: BufferGeometry;
   public readonly sections: ReadonlyArray<ISceneSection>;
 
+  /** Its clusters, which a range must be cut into to be drawn statically: the packer's, or cut here for one without. */
+  public readonly clusters: SceneClusters;
+
   public constructor(geometry: IRendererGeometry) {
     this.buffer = SceneGeometry.createBuffer(geometry);
     this.sections = SceneGeometry.toSections(geometry);
+    this.clusters = new SceneClusters(geometry.clusters ?? cutSceneClusters(geometry, this.sections));
   }
 
   /** What all of it spans, in its own space. */

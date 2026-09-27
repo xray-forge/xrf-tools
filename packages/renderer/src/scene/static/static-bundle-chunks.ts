@@ -1,7 +1,7 @@
 import { Maybe } from "@xrf/types";
 import { BundleGroup, Object3D } from "three/webgpu";
 
-import { StaticBatch, TStaticBatchMesh } from "#/scene/static/static-batch";
+import { TStaticBatchMesh } from "#/scene/static/static-batch";
 
 /**
  * Batches one set of bundles holds: every bundle costs the frame on its own to replay, and a change records its
@@ -9,24 +9,27 @@ import { StaticBatch, TStaticBatchMesh } from "#/scene/static/static-batch";
  */
 const BATCHES_PER_CHUNK: number = 32;
 
-/** A bundle a phase, the cell its batches stand in, and how many batches stand in them. */
+/** A bundle a phase, and how many batches stand in them. */
 interface IBundleChunk {
   bundles: ReadonlyArray<BundleGroup>;
-  cell: string;
   count: number;
+}
+
+/** What a chunk holds of one batch: its meshes, a phase each. */
+interface IBundleOwner {
+  chunk: IBundleChunk;
+  meshes: ReadonlyArray<TStaticBatchMesh>;
 }
 
 /**
  * The bundles a set of batches' meshes are recorded in, a chunk of batches to a bundle a phase, each phase's bundle in
- * that phase's scene: a surface's batches in the scene the first draw stands in and the one drawn after the second
- * cull, a shadow material's in each cascade's.
+ * that phase's scene: a surface's batches in the scene the first view draws and the one drawn after the second cull,
+ * a shadow material's in each shadow view's.
  */
 export class StaticBundleChunks {
   private readonly scenes: ReadonlyArray<Object3D>;
   private readonly chunks: Array<IBundleChunk> = [];
-  /** Each cell's chunks, so a chunk holds batches of one cell alone and a cell's bundles show or hide together. */
-  private readonly cells: Map<string, Array<IBundleChunk>> = new Map();
-  private readonly owners: Map<StaticBatch, IBundleChunk> = new Map();
+  private readonly owners: Map<object, IBundleOwner> = new Map();
   /** Whether its bundles draw at all, which a chunk made later takes too. */
   private isShown: boolean = true;
 
@@ -43,22 +46,16 @@ export class StaticBundleChunks {
   }
 
   /**
-   * @param batch - A batch whose meshes are recorded from now on, in the first chunk of its cell with room.
-   * @param cell - The cell it stands in, which its chunk shows and hides with.
+   * @param owner - What the meshes are of, which detaches them.
+   * @param meshes - Its meshes, a phase each, recorded from now on in the first chunk with room.
    */
-  public attach(batch: StaticBatch, cell: string = ""): void {
-    let chunks: Maybe<Array<IBundleChunk>> = this.cells.get(cell);
+  public attach(owner: object, meshes: ReadonlyArray<TStaticBatchMesh>): void {
+    this.detach(owner);
 
-    if (!chunks) {
-      chunks = [];
-      this.cells.set(cell, chunks);
-    }
-
-    let chunk: Maybe<IBundleChunk> = chunks.find((it: IBundleChunk) => it.count < BATCHES_PER_CHUNK);
+    let chunk: Maybe<IBundleChunk> = this.chunks.find((it: IBundleChunk) => it.count < BATCHES_PER_CHUNK);
 
     if (!chunk) {
-      chunk = { bundles: this.scenes.map(() => StaticBundleChunks.createBundle(this.isShown)), cell, count: 0 };
-      chunks.push(chunk);
+      chunk = { bundles: this.scenes.map(() => StaticBundleChunks.createBundle(this.isShown)), count: 0 };
       this.chunks.push(chunk);
     }
 
@@ -67,25 +64,27 @@ export class StaticBundleChunks {
     }
 
     chunk.bundles.forEach((bundle: BundleGroup, phase: number) => {
-      bundle.add(batch.meshes[phase]);
+      bundle.add(meshes[phase]);
       bundle.needsUpdate = true;
     });
     chunk.count += 1;
-    this.owners.set(batch, chunk);
+    this.owners.set(owner, { chunk, meshes });
   }
 
   /**
-   * @param batch - A batch whose meshes are no longer recorded.
+   * @param owner - What meshes attached before are of, no longer recorded.
    */
-  public detach(batch: StaticBatch): void {
-    const chunk: Maybe<IBundleChunk> = this.owners.get(batch);
+  public detach(owner: object): void {
+    const recorded: Maybe<IBundleOwner> = this.owners.get(owner);
 
-    if (!chunk) {
+    if (!recorded) {
       return;
     }
 
-    batch.meshes.forEach((mesh: TStaticBatchMesh) => mesh.removeFromParent());
-    this.owners.delete(batch);
+    const { chunk, meshes } = recorded;
+
+    meshes.forEach((mesh: TStaticBatchMesh) => mesh.removeFromParent());
+    this.owners.delete(owner);
     chunk.count -= 1;
     chunk.bundles.forEach((bundle: BundleGroup) => {
       bundle.needsUpdate = true;
@@ -97,20 +96,7 @@ export class StaticBundleChunks {
   }
 
   /**
-   * Shows the bundles of one phase for the cells a view takes and hides the rest: three skips a hidden bundle whole,
-   * so the draws of a cell the view does not reach are never issued. Nothing records again.
-   *
-   * @param phase - The phase, by its position among the scenes.
-   * @param isShown - Whether the view takes a cell.
-   */
-  public show(phase: number, isShown: (cell: string) => boolean): void {
-    for (const chunk of this.chunks) {
-      chunk.bundles[phase].visible = isShown(chunk.cell);
-    }
-  }
-
-  /**
-   * @param isShown - Whether any of its bundles draws, every phase and cell of them, now and once made.
+   * @param isShown - Whether any of its bundles draws, every phase of them, now and once made.
    */
   public setShown(isShown: boolean): void {
     this.isShown = isShown;
@@ -124,7 +110,6 @@ export class StaticBundleChunks {
       chunk.bundles.forEach((bundle: BundleGroup) => bundle.removeFromParent())
     );
     this.chunks.length = 0;
-    this.cells.clear();
     this.owners.clear();
   }
 

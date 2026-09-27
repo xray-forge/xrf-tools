@@ -1,5 +1,5 @@
 import { Maybe } from "@xrf/types";
-import { float, mix, normalize, uv, varying } from "three/tsl";
+import { float, mix, normalize, varying } from "three/tsl";
 import { Node, TextureNode } from "three/webgpu";
 
 import { ISurfaceInputs } from "#/material/surface-inputs";
@@ -7,6 +7,7 @@ import { ESurfaceSlot } from "#/material/surface-slot";
 import { ISurfaceTexel } from "#/material/surface-texel";
 import { ISurfaceVariant } from "#/material/surface-variant";
 import { decodeBumpGloss, decodeBumpNormal } from "#/shader/bump.tsl";
+import { toVertexAttribute } from "#/shader/cluster-vertex.tsl";
 import {
   toBaseCoordinate,
   toLightmapCoordinate,
@@ -35,7 +36,7 @@ export const MATERIAL_SLICES: number = 4;
  * @returns Where its base and every slot sampled with it read: the first uv set, times the surface's tiling.
  */
 export function toSurfaceCoordinates(inputs: ISurfaceInputs): Node<"vec2"> {
-  return toBaseCoordinate(uv()).mul(inputs.tiling);
+  return toBaseCoordinate(toVertexAttribute<"vec2">("uv", "vec2")).mul(inputs.tiling);
 }
 
 /**
@@ -98,7 +99,7 @@ export function toSurfaceTexel(
   // `get_hemi` and `get_sun`: the lightmap's alpha and green, or the vertex's own hemisphere term where there is no
   // lightmap, sun unoccluded.
   const lightmap: Maybe<TextureNode> = variant.hasHemi
-    ? inputs.sample(ESurfaceSlot.HEMI, toLightmapCoordinate(uv(1)))
+    ? inputs.sample(ESurfaceSlot.HEMI, toLightmapCoordinate(toVertexAttribute<"vec2">("uv1", "vec2")))
     : undefined;
 
   return {

@@ -1,10 +1,12 @@
 import { Maybe, Nullable } from "@xrf/types";
-import { BufferAttribute, BufferGeometry, InstancedBufferAttribute, TypedArray } from "three/webgpu";
+import { BufferAttribute, BufferGeometry, StorageBufferAttribute, StorageBufferNode, TypedArray } from "three/webgpu";
 
+import { EClusterWordFormat, IClusterAttribute, IClusterSource } from "#/geometry/cluster-source";
 import { isPackedTreeGeometry } from "#/geometry/renderer-packed-coordinate";
 import { EVertexAttribute } from "#/geometry/vertex-attribute";
+import { queueBufferUpload } from "#/scene/buffer-upload";
 import { RangeAllocator } from "#/scene/static/range-allocator";
-import { EStaticDrawKind } from "#/scene/static/static-draw-kind";
+import { createArenaNode } from "#/scene/static/static-arena-nodes.tsl";
 import { STATIC_HEADROOM, toGrownCapacity } from "#/scene/static/static-growth";
 import { IStaticRange } from "#/scene/static/static-range";
 import { IStaticRoom } from "#/scene/static/static-room";
@@ -13,117 +15,127 @@ import { IStaticRoom } from "#/scene/static/static-room";
 const INITIAL_VERTICES: number = 1 << 16;
 /** Indices an arena starts with. */
 const INITIAL_INDICES: number = 1 << 18;
-/** Vertices an arena grows to at most: its widest attribute, four floats, then fills half a WebGPU buffer's default limit. */
-const VERTEX_LIMIT: number = 1 << 23;
-/** Indices an arena grows to at most, half a WebGPU buffer's default limit. */
-const INDEX_LIMIT: number = 1 << 25;
 
 type TTypedArrayConstructor = new (length: number) => TypedArray;
 
-/** One vertex attribute as every geometry in an arena stores it. */
-interface IArenaAttribute {
-  name: string;
-  type: TTypedArrayConstructor;
-  itemSize: number;
-  isNormalized: boolean;
-}
+/** Every arena made, numbered: the number marks the programs built for it, which read its buffers by name. */
+let arenaCount: number = 0;
 
 /**
- * One vertex and one index buffer holding every static geometry of a vertex layout, so every static draw of a material
- * over that layout is drawn by one object. It grows by replacing its buffers, which every geometry drawing them
- * has to be made again for: its generation says when.
+ * One buffer of words holding every static geometry of a vertex layout, a vertex its attributes one after another, and
+ * one of indices: every static draw of that layout reads its vertices from them by what its cluster names, so every
+ * static draw of a material over the layout is drawn by one object. It grows by replacing its buffers, the nodes every
+ * shader reads them through pointed at the new ones.
  */
-export class StaticArena {
+export class StaticArena implements IClusterSource {
   /**
    * @param buffer - A geometry's buffers.
-   * @returns The layout they are stored in, which an arena holds geometries of one of.
+   * @returns The layout they are stored in, which an arena holds geometries of one of; null for one holding an
+   *   attribute an arena stores no word format for, which draws plainly.
    */
-  public static toSignature(buffer: BufferGeometry): string {
-    return StaticArena.toAttributes(buffer)
-      .map(({ name, type, itemSize, isNormalized }: IArenaAttribute) =>
-        [name, type.name, itemSize, isNormalized ? "normalized" : ""].join(":")
-      )
-      .join(",");
+  public static toSignature(buffer: BufferGeometry): Nullable<string> {
+    const attributes: Nullable<Array<IClusterAttribute>> = StaticArena.toAttributes(buffer);
+
+    return attributes
+      ? attributes
+          .map(({ name, type, itemSize, isNormalized }: IClusterAttribute) =>
+            [name, type.name, itemSize, isNormalized ? "normalized" : ""].join(":")
+          )
+          .join(",")
+      : null;
   }
 
-  private static toAttributes(buffer: BufferGeometry): Array<IArenaAttribute> {
-    return Object.entries(buffer.attributes)
-      .map(([name, attribute]) => ({
-        isNormalized: attribute.normalized,
-        itemSize: attribute.itemSize,
+  /** Each attribute's place among a vertex's words, sorted by name; null where one has no word format. */
+  private static toAttributes(buffer: BufferGeometry): Nullable<Array<IClusterAttribute>> {
+    const attributes: Array<IClusterAttribute> = [];
+    let offset: number = 0;
+
+    for (const [name, attribute] of Object.entries(buffer.attributes).sort(([left], [right]) =>
+      left.localeCompare(right)
+    )) {
+      const { array, itemSize, normalized } = attribute as BufferAttribute;
+      let format: Maybe<EClusterWordFormat>;
+      let words: number = itemSize;
+
+      if (array instanceof Float32Array) {
+        format = EClusterWordFormat.FLOAT;
+      } else if (array instanceof Uint32Array) {
+        format = EClusterWordFormat.UINT;
+      } else if (array instanceof Uint8Array && normalized && itemSize === 4) {
+        format = EClusterWordFormat.UNORM8X4;
+        words = 1;
+      }
+
+      if (!format) {
+        return null;
+      }
+
+      attributes.push({
+        format,
+        isNormalized: normalized,
+        itemSize,
         name,
-        type: attribute.array.constructor as TTypedArrayConstructor,
-      }))
-      .sort((left: IArenaAttribute, right: IArenaAttribute) => left.name.localeCompare(right.name));
-  }
-
-  /**
-   * Gives a geometry the attribute its kind of static draw is built for: the slot attribute a single draw reads, or
-   * the mark an instanced one is known by, which its shader never reads and so never binds.
-   */
-  private static mark(geometry: BufferGeometry, kind: EStaticDrawKind, slots: InstancedBufferAttribute): void {
-    if (kind === EStaticDrawKind.SINGLE) {
-      geometry.setAttribute(EVertexAttribute.STATIC_SLOT, slots);
-    } else {
-      geometry.setAttribute(EVertexAttribute.INSTANCE_LIST, new InstancedBufferAttribute(new Uint32Array(1), 1));
-    }
-  }
-
-  private static createSlots(count: number): InstancedBufferAttribute {
-    return new InstancedBufferAttribute(StaticArena.createSequence(count), 1);
-  }
-
-  private static createSequence(count: number): Uint32Array {
-    const sequence: Uint32Array = new Uint32Array(count);
-
-    for (let it = 0; it < count; it += 1) {
-      sequence[it] = it;
+        offset,
+        type: array.constructor as TTypedArrayConstructor,
+        words,
+      });
+      offset += words;
     }
 
-    return sequence;
+    return attributes;
   }
 
+  /** Its number, which marks the programs built for it. */
+  public readonly id: number = ++arenaCount;
   public readonly signature: string;
+  /** Each attribute's place among a vertex's words. */
+  public readonly layout: ReadonlyArray<IClusterAttribute>;
+  /** Words a vertex takes. */
+  public readonly stride: number;
   /**
-   * A geometry of three vertices in its layout for each kind of static draw, with the attribute that kind is built
-   * for: what a material compiles against for its static draws, never drawn, and never replaced as the arena grows.
+   * A geometry of three vertices in its layout, marked for its arena: what a material compiles against for its static
+   * draws and what every batch over the arena is made of, never drawn from, and never replaced as the arena grows.
    */
-  public readonly prototypes: Record<EStaticDrawKind, BufferGeometry>;
+  public readonly prototype: BufferGeometry;
   /** Whether its geometry is a tree's, packed with the rigidity the wind sways it by. */
   public readonly isSwaying: boolean;
+  public readonly entryNode: StorageBufferNode<"uvec2">;
+  public readonly rangeNode: StorageBufferNode<"uvec4">;
+  /** The words as the node every shader over the arena reads them through. */
+  public readonly wordNode: StorageBufferNode<"uint">;
+  /** The indices, likewise. */
+  public readonly indexNode: StorageBufferNode<"uint">;
 
-  private readonly layout: ReadonlyArray<IArenaAttribute>;
   private readonly vertices: RangeAllocator = new RangeAllocator();
   private readonly indices: RangeAllocator = new RangeAllocator();
-  private attributes: Map<string, BufferAttribute> = new Map();
-  private index: BufferAttribute = new BufferAttribute(new Uint32Array(0), 1);
-  /**
-   * The line index a wireframe draws, built the first time one does and kept after, since the idle wireframe batches
-   * still draw it: every triangle's three edges, two indices each, at twice the triangle's own offset, so a draw's
-   * arguments become a wireframe draw's by doubling its count and first index.
-   */
-  private lines: Nullable<BufferAttribute> = null;
-  /** Slots the static draw buffers hold, which its slot attribute numbers. */
-  private slotCount: number;
-  /** Every slot's own number, read by a static draw's first instance: which slot it draws. */
-  private slots: InstancedBufferAttribute;
+  private words: StorageBufferAttribute;
+  private index: StorageBufferAttribute;
+  /** Buffers a growth replaced, whose GPU buffers go once nothing binds them. */
+  private retired: Array<BufferAttribute> = [];
   private currentGeneration: number = 0;
   private placed: number = 0;
 
   /**
-   * @param buffer - A geometry whose layout the arena holds.
-   * @param slots - Slots the static draw buffers hold.
+   * @param buffer - A geometry whose layout the arena holds, which has one (`toSignature`).
+   * @param entryNode - Every view's kept clusters, which a clustered draw's instances are.
+   * @param rangeNode - Every cluster's range, which an entry names.
    */
-  public constructor(buffer: BufferGeometry, slots: number) {
-    this.slotCount = slots;
-    this.slots = StaticArena.createSlots(slots);
-    this.signature = StaticArena.toSignature(buffer);
-    this.layout = StaticArena.toAttributes(buffer);
+  public constructor(
+    buffer: BufferGeometry,
+    entryNode: StorageBufferNode<"uvec2">,
+    rangeNode: StorageBufferNode<"uvec4">
+  ) {
+    this.entryNode = entryNode;
+    this.rangeNode = rangeNode;
+    this.layout = StaticArena.toAttributes(buffer) as Array<IClusterAttribute>;
+    this.signature = StaticArena.toSignature(buffer) as string;
+    this.stride = this.layout.reduce((total: number, attribute: IClusterAttribute) => total + attribute.words, 0);
     this.isSwaying = isPackedTreeGeometry(buffer);
-    this.prototypes = {
-      [EStaticDrawKind.SINGLE]: this.createPrototype(EStaticDrawKind.SINGLE),
-      [EStaticDrawKind.LISTED]: this.createPrototype(EStaticDrawKind.LISTED),
-    };
+    this.words = new StorageBufferAttribute(new Uint32Array(this.stride), 1);
+    this.index = new StorageBufferAttribute(new Uint32Array(1), 1);
+    this.wordNode = createArenaNode(this.words);
+    this.indexNode = createArenaNode(this.index);
+    this.prototype = this.createPrototype();
   }
 
   /** Bumped whenever the arena's buffers are replaced. */
@@ -142,25 +154,25 @@ export class StaticArena {
    *
    * @param buffer - A geometry in the arena's layout.
    * @param toComing - The room the geometries still to be placed after it will take, asked only when the arena grows.
+   * @param limits - The most vertices and indices the device lets a buffer of the arena hold.
    * @returns Where it sits, or null where the arena cannot grow to hold it.
    */
-  public place(buffer: BufferGeometry, toComing: () => IStaticRoom): Nullable<IStaticRange> {
+  public place(buffer: BufferGeometry, toComing: () => IStaticRoom, limits: IStaticRoom): Nullable<IStaticRange> {
     const vertexCount: number = buffer.getAttribute("position").count;
     const index: ArrayLike<number> = buffer.index?.array ?? StaticArena.createSequence(vertexCount);
 
     if (!this.vertices.capacity || !this.fits(vertexCount, index.length)) {
       const coming: IStaticRoom = toComing();
 
-      // Its buffers are made with the first geometry placed: a material compiles against its prototype alone.
       this.grow(
-        StaticArena.toCapacity(this.vertices, vertexCount + coming.vertices, INITIAL_VERTICES, VERTEX_LIMIT),
-        StaticArena.toCapacity(this.indices, index.length + coming.indices, INITIAL_INDICES, INDEX_LIMIT)
+        StaticArena.toCapacity(this.vertices, vertexCount + coming.vertices, INITIAL_VERTICES, limits.vertices),
+        StaticArena.toCapacity(this.indices, index.length + coming.indices, INITIAL_INDICES, limits.indices)
       );
     }
 
-    const vertexStart: Nullable<number> = this.allocate(this.vertices, vertexCount, VERTEX_LIMIT);
+    const vertexStart: Nullable<number> = this.allocate(this.vertices, vertexCount, limits.vertices);
     const indexStart: Nullable<number> =
-      vertexStart === null ? null : this.allocate(this.indices, index.length, INDEX_LIMIT);
+      vertexStart === null ? null : this.allocate(this.indices, index.length, limits.indices);
 
     if (vertexStart === null || indexStart === null) {
       if (vertexStart !== null) {
@@ -170,44 +182,12 @@ export class StaticArena {
       return null;
     }
 
-    for (const { name, itemSize } of this.layout) {
-      const attribute: BufferAttribute = this.attributes.get(name) as BufferAttribute;
-
-      attribute.array.set(buffer.getAttribute(name).array as TypedArray, vertexStart * itemSize);
-      attribute.addUpdateRange(vertexStart * itemSize, vertexCount * itemSize);
-      attribute.needsUpdate = true;
-    }
-
-    this.index.array.set(index, indexStart);
-    this.index.addUpdateRange(indexStart, index.length);
-    this.index.needsUpdate = true;
+    this.writeVertices(buffer, vertexStart, vertexCount);
+    (this.index.array as Uint32Array).set(index, indexStart);
+    queueBufferUpload(this.index, indexStart, index.length);
     this.placed += 1;
 
-    if (this.lines) {
-      StaticArena.writeLines(
-        this.index.array as Uint32Array,
-        this.lines.array as Uint32Array,
-        indexStart,
-        index.length
-      );
-      this.lines.addUpdateRange(indexStart * 2, index.length * 2);
-      this.lines.needsUpdate = true;
-    }
-
     return { arena: this, indexCount: index.length, indexStart, vertexCount, vertexStart };
-  }
-
-  /**
-   * Numbers every slot of static draw buffers that grew: a slot attribute of the new count, which every geometry
-   * drawing the arena is made again for.
-   *
-   * @param slots - Slots the buffers hold from now on.
-   */
-  public growSlots(slots: number): void {
-    this.slotCount = slots;
-    // The old one is freed with the geometries drawing it, which its generation has made again.
-    this.slots = StaticArena.createSlots(slots);
-    this.currentGeneration += 1;
   }
 
   /**
@@ -220,72 +200,71 @@ export class StaticArena {
   }
 
   /**
-   * @param kind - The kind of static draw it draws.
-   * @returns A geometry over the arena's buffers as they are now, for one object to draw many static draws of.
-   *   Disposing it frees those buffers, which is only for when the arena grows or goes.
+   * @returns A geometry over no data in the arena's layout, for one object to draw its batch's clusters from: the
+   *   prototype's attributes, which nothing reads, keying the programs it is drawn with as the prototype does.
    */
-  public createGeometry(kind: EStaticDrawKind): BufferGeometry {
+  public createGeometry(): BufferGeometry {
     const geometry: BufferGeometry = new BufferGeometry();
 
-    this.attributes.forEach((attribute: BufferAttribute, name: string) => geometry.setAttribute(name, attribute));
-    StaticArena.mark(geometry, kind, this.slots);
-    geometry.setIndex(this.index);
-
-    return geometry;
-  }
-
-  /** Whether it holds the line index a wireframe draws. */
-  public get isWired(): boolean {
-    return this.lines !== null;
-  }
-
-  /** Builds the line index a wireframe draws, from every triangle it holds, and keeps it up to date from now on. */
-  public wire(): void {
-    if (!this.lines) {
-      this.lines = StaticArena.createLines(this.index.array as Uint32Array);
+    for (const [name, attribute] of Object.entries(this.prototype.attributes)) {
+      geometry.setAttribute(name, attribute);
     }
-  }
 
-  /**
-   * @param kind - The kind of static draw it draws.
-   * @returns A geometry over the arena's vertices and its line index, as `createGeometry` is over its triangles.
-   */
-  public createWireGeometry(kind: EStaticDrawKind): BufferGeometry {
-    this.wire();
-
-    const geometry: BufferGeometry = this.createGeometry(kind);
-
-    geometry.setIndex(this.lines);
+    geometry.userData = this.prototype.userData;
 
     return geometry;
   }
 
+  /** @returns The buffers replaced since the last call, for their GPU buffers to go. */
+  public takeRetired(): Array<BufferAttribute> {
+    const retired: Array<BufferAttribute> = this.retired;
+
+    this.retired = [];
+
+    return retired;
+  }
+
+  /** Gives its buffers up, for them to go once nothing binds them. */
   public dispose(): void {
-    Object.values(this.prototypes).forEach((prototype: BufferGeometry) => prototype.dispose());
+    this.prototype.dispose();
+    this.retired.push(this.words, this.index);
   }
 
-  /** A line index over every triangle of a triangle index, two indices an edge at twice each triangle's offset. */
-  private static createLines(index: Uint32Array): BufferAttribute {
-    const lines: Uint32Array = new Uint32Array(index.length * 2);
+  private static createSequence(count: number): Uint32Array {
+    const sequence: Uint32Array = new Uint32Array(count);
 
-    StaticArena.writeLines(index, lines, 0, index.length - (index.length % 3));
-
-    return new BufferAttribute(lines, 1);
-  }
-
-  /** Writes the edges of the triangles in a run of a triangle index into a line index. */
-  private static writeLines(index: Uint32Array, lines: Uint32Array, start: number, count: number): void {
-    for (let at = start; at < start + count; at += 3) {
-      const [a, b, c] = [index[at], index[at + 1], index[at + 2]];
-      const line: number = at * 2;
-
-      lines[line] = a;
-      lines[line + 1] = b;
-      lines[line + 2] = b;
-      lines[line + 3] = c;
-      lines[line + 4] = c;
-      lines[line + 5] = a;
+    for (let it = 0; it < count; it += 1) {
+      sequence[it] = it;
     }
+
+    return sequence;
+  }
+
+  /** Copies each attribute of a geometry into its words of every vertex. */
+  private writeVertices(buffer: BufferGeometry, vertexStart: number, vertexCount: number): void {
+    const words: Uint32Array = this.words.array as Uint32Array;
+    const floats: Float32Array = new Float32Array(words.buffer, words.byteOffset, words.length);
+
+    for (const { name, format, itemSize, offset } of this.layout) {
+      const source: TypedArray = buffer.getAttribute(name).array as TypedArray;
+      const target: Uint32Array | Float32Array = format === EClusterWordFormat.FLOAT ? floats : words;
+      // Four normalized bytes are one word, read as the word they fill.
+      const values: TypedArray =
+        format === EClusterWordFormat.UNORM8X4
+          ? new Uint32Array(source.buffer, source.byteOffset, vertexCount)
+          : source;
+      const width: number = format === EClusterWordFormat.UNORM8X4 ? 1 : itemSize;
+
+      for (let vertex = 0; vertex < vertexCount; vertex += 1) {
+        const at: number = (vertexStart + vertex) * this.stride + offset;
+
+        for (let component = 0; component < width; component += 1) {
+          target[at + component] = values[vertex * width + component];
+        }
+      }
+    }
+
+    queueBufferUpload(this.words, vertexStart * this.stride, vertexCount * this.stride);
   }
 
   /** Whether both runs fit as the arena stands, without growing it. */
@@ -337,44 +316,35 @@ export class StaticArena {
     return start;
   }
 
-  /** Buffers of the sizes given, holding everything the current ones do. */
+  /** Buffers of the sizes given, holding everything the current ones do, uploaded whole with their next use. */
   private grow(vertices: number, indices: number): void {
-    const attributes: Map<string, BufferAttribute> = new Map();
+    const words: Uint32Array = new Uint32Array(Math.max(vertices, 1) * this.stride);
+    const index: Uint32Array = new Uint32Array(Math.max(indices, 1));
 
-    for (const { name, type, itemSize, isNormalized } of this.layout) {
-      const array: TypedArray = new type(vertices * itemSize);
-      const previous: Maybe<BufferAttribute> = this.attributes.get(name);
-
-      if (previous) {
-        array.set(previous.array);
-      }
-
-      attributes.set(name, new BufferAttribute(array, itemSize, isNormalized));
-    }
-
-    const index: Uint32Array = new Uint32Array(indices);
-
-    index.set(this.index.array);
-    this.attributes = attributes;
-    this.index = new BufferAttribute(index, 1);
-    // Drawn again from the grown index by the geometries its generation makes again.
-    this.lines = this.lines ? StaticArena.createLines(index) : null;
-    // Freed with the geometries drawing it; a new one is uploaded with the ones that replace them.
-    this.slots = StaticArena.createSlots(this.slotCount);
+    words.set((this.words.array as Uint32Array).subarray(0, Math.min(this.words.array.length, words.length)));
+    index.set((this.index.array as Uint32Array).subarray(0, Math.min(this.index.array.length, index.length)));
+    this.retired.push(this.words, this.index);
+    this.words = new StorageBufferAttribute(words, 1);
+    this.index = new StorageBufferAttribute(index, 1);
+    this.wordNode.value = this.words;
+    this.indexNode.value = this.index;
     this.vertices.grow(vertices);
     this.indices.grow(indices);
     this.currentGeneration += 1;
   }
 
-  private createPrototype(kind: EStaticDrawKind): BufferGeometry {
+  /** Three vertices in the arena's layout, and the mark of the arena, which programs built for it are keyed by. */
+  private createPrototype(): BufferGeometry {
     const geometry: BufferGeometry = new BufferGeometry();
 
     for (const { name, type, itemSize, isNormalized } of this.layout) {
       geometry.setAttribute(name, new BufferAttribute(new type(3 * itemSize), itemSize, isNormalized));
     }
 
-    StaticArena.mark(geometry, kind, StaticArena.createSlots(1));
-    geometry.setIndex(new BufferAttribute(new Uint32Array([0, 1, 2]), 1));
+    // Never read, so never bound: the name alone keys the programs, which read this arena's buffers by name.
+    geometry.setAttribute(`${EVertexAttribute.CLUSTER_ARENA}${this.id}`, new BufferAttribute(new Uint32Array(3), 1));
+    geometry.setDrawRange(0, 0);
+    geometry.userData = { clusters: this };
 
     return geometry;
   }

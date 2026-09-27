@@ -1,4 +1,5 @@
 import { Maybe, Nullable } from "@xrf/types";
+import { BufferAttribute, StorageBufferNode } from "three/webgpu";
 
 import { SceneGeometry } from "#/scene/geometry/scene-geometry";
 import { StaticArena } from "#/scene/static/static-arena";
@@ -13,59 +14,64 @@ interface IPlacement {
 
 /**
  * The arenas static geometry is copied into, one a vertex layout. A geometry is placed while any object draws it
- * statically, and its room freed once none does; an arena holding nothing goes.
+ * statically, and its room freed once none does. An arena stays once made, empty or not, until the static draws go:
+ * an object resolved against it may compile over its buffers at any time, and a new arena of the layout would be new
+ * programs for every material drawing it. A geometry whose layout no arena can store is drawn plainly.
  */
 export class StaticArenas {
   private readonly arenas: Map<string, StaticArena> = new Map();
   private readonly placements: Map<SceneGeometry, IPlacement> = new Map();
   /** Each geometry's layout, which takes sorting its attributes to tell. */
-  private readonly signatures: WeakMap<SceneGeometry, string> = new WeakMap();
+  private readonly signatures: WeakMap<SceneGeometry, Nullable<string>> = new WeakMap();
   private readonly onGrown: (arena: StaticArena) => void;
-  private readonly onEmptied: (arena: StaticArena) => void;
+  private readonly onDisposed: (arena: StaticArena) => void;
   private readonly toUpcoming: () => Iterable<SceneGeometry>;
-  private readonly toSlots: () => number;
+  private readonly toLimit: () => number;
+  private readonly entryNode: StorageBufferNode<"uvec2">;
+  private readonly rangeNode: StorageBufferNode<"uvec4">;
+  /** Buffers of arenas gone, whose GPU buffers go once nothing binds them. */
+  private retired: Array<BufferAttribute> = [];
 
   /**
-   * @param onGrown - Told an arena replaced its buffers, which whatever draws them has to draw instead.
-   * @param onEmptied - Told an arena holds nothing and goes, with whatever draws it.
+   * @param onGrown - Told an arena replaced its buffers, which whatever draws them binds once it records again.
+   * @param onDisposed - Told an arena goes, with the static draws, and whatever draws it with it.
    * @param toUpcoming - The geometries objects still waiting to draw will draw statically, which a growing arena
    *   makes room for at once.
-   * @param toSlots - Slots the static draw buffers hold, which each arena's slot attribute numbers.
+   * @param toLimit - Bytes one storage buffer may hold on the device, which caps an arena's buffers.
+   * @param entryNode - Every view's kept clusters, which a clustered draw's instances are.
+   * @param rangeNode - Every cluster's range, which an entry names.
    */
   public constructor(
     onGrown: (arena: StaticArena) => void,
-    onEmptied: (arena: StaticArena) => void,
+    onDisposed: (arena: StaticArena) => void,
     toUpcoming: () => Iterable<SceneGeometry>,
-    toSlots: () => number
+    toLimit: () => number,
+    entryNode: StorageBufferNode<"uvec2">,
+    rangeNode: StorageBufferNode<"uvec4">
   ) {
+    this.entryNode = entryNode;
+    this.rangeNode = rangeNode;
     this.onGrown = onGrown;
-    this.onEmptied = onEmptied;
+    this.onDisposed = onDisposed;
     this.toUpcoming = toUpcoming;
-    this.toSlots = toSlots;
-  }
-
-  /**
-   * Numbers every slot of static draw buffers that grew, in every arena, and has what draws them made again.
-   *
-   * @param slots - Slots the buffers hold from now on.
-   */
-  public growSlots(slots: number): void {
-    this.arenas.forEach((arena: StaticArena) => {
-      arena.growSlots(slots);
-      this.onGrown(arena);
-    });
+    this.toLimit = toLimit;
   }
 
   /**
    * @param geometry - A geometry.
-   * @returns The arena of its layout, made where there is none yet.
+   * @returns The arena of its layout, made where there is none yet; null for a layout no arena stores.
    */
-  public toArena(geometry: SceneGeometry): StaticArena {
-    const signature: string = this.toSignature(geometry);
+  public toArena(geometry: SceneGeometry): Nullable<StaticArena> {
+    const signature: Nullable<string> = this.toSignature(geometry);
+
+    if (signature === null) {
+      return null;
+    }
+
     let arena: Maybe<StaticArena> = this.arenas.get(signature);
 
     if (!arena) {
-      arena = new StaticArena(geometry.buffer, this.toSlots());
+      arena = new StaticArena(geometry.buffer, this.entryNode, this.rangeNode);
       this.arenas.set(signature, arena);
     }
 
@@ -80,13 +86,22 @@ export class StaticArenas {
     let placement: Maybe<IPlacement> = this.placements.get(geometry);
 
     if (!placement) {
-      const arena: StaticArena = this.toArena(geometry);
-      const generation: number = arena.generation;
+      const arena: Nullable<StaticArena> = this.toArena(geometry);
+      const limit: number = this.toLimit();
+      const generation: Nullable<number> = arena?.generation ?? null;
 
-      placement = { range: arena.place(geometry.buffer, () => this.toComing(arena, geometry)), users: 0 };
+      placement = {
+        range: arena
+          ? arena.place(geometry.buffer, () => this.toComing(arena, geometry), {
+              indices: Math.floor(limit / Uint32Array.BYTES_PER_ELEMENT),
+              vertices: Math.floor(limit / (arena.stride * Uint32Array.BYTES_PER_ELEMENT)),
+            })
+          : null,
+        users: 0,
+      };
       this.placements.set(geometry, placement);
 
-      if (arena.generation !== generation) {
+      if (arena && arena.generation !== generation) {
         this.onGrown(arena);
       }
     }
@@ -112,19 +127,21 @@ export class StaticArenas {
       return;
     }
 
-    const { arena } = placement.range;
-
-    arena.free(placement.range);
-
-    if (arena.isEmpty) {
-      this.arenas.delete(arena.signature);
-      this.onEmptied(arena);
-      arena.dispose();
-    }
+    placement.range.arena.free(placement.range);
   }
 
-  private toSignature(geometry: SceneGeometry): string {
-    let signature: Maybe<string> = this.signatures.get(geometry);
+  /** @returns Every arena's buffers replaced or given up since the last call, for their GPU buffers to go. */
+  public takeRetired(): Array<BufferAttribute> {
+    const retired: Array<BufferAttribute> = this.retired;
+
+    this.arenas.forEach((arena: StaticArena) => retired.push(...arena.takeRetired()));
+    this.retired = [];
+
+    return retired;
+  }
+
+  private toSignature(geometry: SceneGeometry): Nullable<string> {
+    let signature: Maybe<Nullable<string>> = this.signatures.get(geometry);
 
     if (signature === undefined) {
       signature = StaticArena.toSignature(geometry.buffer);
@@ -152,8 +169,9 @@ export class StaticArenas {
 
   public dispose(): void {
     this.arenas.forEach((arena: StaticArena) => {
-      this.onEmptied(arena);
+      this.onDisposed(arena);
       arena.dispose();
+      this.retired.push(...arena.takeRetired());
     });
     this.arenas.clear();
     this.placements.clear();

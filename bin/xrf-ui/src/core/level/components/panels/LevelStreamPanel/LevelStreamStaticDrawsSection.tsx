@@ -14,22 +14,28 @@ function formatPoolUse({ used, capacity }: IRendererPoolUse): string {
 }
 
 /**
- * How full the static draws' pools are, what occlusion removed, and how often one fell back to drawing plainly.
+ * How full the static draws' pools are, what the culls kept and occlusion removed, and how often one fell back to
+ * drawing plainly.
  */
 export function LevelStreamStaticDrawsSection({ staticDraws }: ILevelStreamStaticDrawsSectionProps): ReactElement {
-  const { occluded } = staticDraws;
+  const { kept, lists, occluded } = staticDraws;
 
   return (
     <EditorPanelSection title={"Static draws"}>
       <EditorPanelProperty label={"Slots"} value={formatPoolUse(staticDraws.slots)} />
-      <EditorPanelProperty label={"Instanced places"} value={formatPoolUse(staticDraws.places)} />
+      <EditorPanelProperty label={"Clusters"} value={formatPoolUse(staticDraws.clusters)} />
+      <EditorPanelProperty label={"Places"} value={formatPoolUse(staticDraws.places)} />
       <EditorPanelProperty label={"Instance rows"} value={formatPoolUse(staticDraws.rows)} />
+      <EditorPanelProperty label={"Surface lists"} value={formatPoolUse(lists.surfaces)} />
+      <EditorPanelProperty label={"Shadow lists"} value={formatPoolUse(lists.shadows)} />
+      <EditorPanelProperty label={"Batch draws"} value={formatCount(staticDraws.commands)} />
+      <EditorPanelProperty
+        label={"Kept"}
+        value={`${formatCount(kept.clusters)} clusters · ${formatCount(kept.triangles)} triangles`}
+      />
       <EditorPanelProperty
         label={"Occluded"}
-        value={
-          `${formatCount(occluded.draws)} draws · ${formatCount(occluded.instances)} instances · ` +
-          `${formatCount(occluded.triangles)} triangles`
-        }
+        value={`${formatCount(occluded.clusters)} clusters · ${formatCount(occluded.triangles)} triangles`}
       />
       <EditorPanelProperty label={"Drawn plainly at the limit"} value={staticDraws.fallbacks} />
     </EditorPanelSection>

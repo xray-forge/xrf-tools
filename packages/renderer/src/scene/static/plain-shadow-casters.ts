@@ -2,7 +2,7 @@ import { Maybe } from "@xrf/types";
 import { Mesh, Scene, Sphere, Vector4 } from "three/webgpu";
 
 import { createSceneRoot } from "#/scene/object/scene-mesh";
-import { isSphereInPlanes } from "#/scene/static/static-cell";
+import { isSphereInPlanes } from "#/visibility/plane-tests";
 
 /** A twin casting in the shadow views, where it reaches, and whether its part draws anything at all. */
 interface IPlainShadowCaster {

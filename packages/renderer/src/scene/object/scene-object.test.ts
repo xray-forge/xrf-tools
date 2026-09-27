@@ -1,5 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 import {
+  BufferGeometry,
   BundleGroup,
   Matrix4,
   Mesh,
@@ -17,12 +18,15 @@ import { SceneInstances } from "#/scene/object/scene-instances";
 import { SceneObject } from "#/scene/object/scene-object";
 import { ISceneObjectState } from "#/scene/object/scene-object-state";
 import { toPassRecord, TPassRecord } from "#/scene/pass-record";
-import { EStaticDrawKind } from "#/scene/static/static-draw-kind";
+import { StaticArena } from "#/scene/static/static-arena";
 import { StaticDraws } from "#/scene/static/static-draws";
 import {
-  STATIC_DRAW_ARGUMENTS,
+  EStaticSlotKind,
+  EStaticView,
   STATIC_LOD_IMPOSTOR_ROW,
+  STATIC_NO_BATCH,
   STATIC_NO_LOD,
+  STATIC_SLOT_WORDS,
   StaticDrawBuffers,
   toStaticBandWord,
 } from "#/uniforms/static-draw-buffers";
@@ -78,11 +82,26 @@ function toState(
     lodStart: null,
     plain: { drawn: geometry.buffer, layout: "" },
     skeleton: null,
-    static: draws?.isEnabled
-      ? { drawn: draws.toArena(geometry).prototypes[EStaticDrawKind.SINGLE], layout: "static" }
-      : null,
+    static: draws?.isEnabled ? { drawn: toPrototype(draws, geometry), layout: "static" } : null,
     surfaces,
   };
+}
+
+/** What an object's static draws over a geometry compile against: its arena's prototype. */
+function toPrototype(draws: StaticDraws, geometry: SceneGeometry): BufferGeometry {
+  return (draws.toArena(geometry) as StaticArena).prototype;
+}
+
+/** A slot's record: its first cluster, its clusters, its place, its kind, its surface and shadow batches. */
+function toSlot(buffers: StaticDrawBuffers, slot: number): Array<number> {
+  return Array.from(
+    (buffers.slots.array as Uint32Array).subarray(slot * STATIC_SLOT_WORDS, slot * STATIC_SLOT_WORDS + 6)
+  );
+}
+
+/** A cluster's range: its first index and base vertex in its arena, its triangles, its slot. */
+function toCluster(buffers: StaticDrawBuffers, cluster: number): Array<number> {
+  return Array.from((buffers.clusterRanges.array as Uint32Array).subarray(cluster * 4, cluster * 4 + 4));
 }
 
 /** Static draws on, standing their batches in the G-buffer pass's scene. */
@@ -165,11 +184,13 @@ describe("SceneObject", () => {
     const [batch] = toBatchMeshes(scenes[ERendererPass.DEFERRED]);
 
     expect(scenes[ERendererPass.DEFERRED].children).toHaveLength(1);
-    expect(batch.geometry.indirect).toBe(buffers.args);
-    expect(batch.geometry.indirectOffset).toEqual([0]);
+    expect(batch.geometry.indirect).toBe(buffers.viewArgs[EStaticView.EARLY]);
+    expect(batch.geometry.indirectOffset).toBe(0);
     expect(scenes[ERendererPass.FORWARD].children).toEqual([entry.drawing[1]]);
-    // Its first instance is its slot; its vertices start where its geometry sits in the arena.
-    expect(Array.from((buffers.args.array as Uint32Array).subarray(0, 5))).toEqual([3, 1, 0, 0, 0]);
+    // One cluster in a place of its own, drawn by the first batch and cast by none.
+    expect(toSlot(buffers, 0)).toEqual([0, 1, 0, EStaticSlotKind.SINGLE, 0, STATIC_NO_BATCH]);
+    // Its indices and vertices where its geometry sits in the arena.
+    expect(toCluster(buffers, 0)).toEqual([0, 1, 0, 0]);
   });
 
   it("issues every static draw of one material over one layout from one batch, whichever object it is of", () => {
@@ -191,9 +212,10 @@ describe("SceneObject", () => {
     const batches: Array<Mesh> = toBatchMeshes(scenes[ERendererPass.DEFERRED]);
 
     expect(batches).toHaveLength(1);
-    expect(batches[0].geometry.indirectOffset).toEqual([0, 20, 40, 60]);
+    expect(batches[0].geometry.indirectOffset).toBe(0);
     // The second geometry's vertices follow the first's in the arena, and its indices follow the first's.
-    expect(Array.from((buffers.args.array as Uint32Array).subarray(15, 20))).toEqual([3, 1, 9, 6, 3]);
+    expect(toCluster(buffers, 3)).toEqual([9, 1, 6, 3]);
+    expect(toSlot(buffers, 3)[4]).toBe(0);
   });
 
   it("never culls a static draw on the CPU", () => {
@@ -221,7 +243,7 @@ describe("SceneObject", () => {
     entry.dispose();
 
     expect(scenes[ERendererPass.DEFERRED].children).toEqual([]);
-    expect((buffers.args.array as Uint32Array)[1]).toBe(0);
+    expect(toSlot(buffers, 0)).toEqual([0, 0, 0, EStaticSlotKind.NONE, STATIC_NO_BATCH, STATIC_NO_BATCH]);
   });
 
   it("draws an instanced object's G-buffer sections as instanced static draws, a row a place, culled on the GPU", () => {
@@ -244,7 +266,7 @@ describe("SceneObject", () => {
         ...toState(geometry, [surface, surface]),
         instances,
         plain: { drawn: instances.geometry, layout: "" },
-        static: { drawn: draws.toArena(geometry).prototypes[EStaticDrawKind.LISTED], layout: "listed" },
+        static: { drawn: toPrototype(draws, geometry), layout: "static" },
       },
       scenes
     );
@@ -252,10 +274,13 @@ describe("SceneObject", () => {
 
     const [batch] = toBatchMeshes(scenes[ERendererPass.DEFERRED]);
 
-    expect(batch.geometry.hasAttribute(EVertexAttribute.INSTANCE_LIST)).toBe(true);
-    expect(batch.geometry.indirectOffset).toEqual([0, 20]);
-    // Two rows a section, each testing one place for its section's slot.
-    expect(Array.from((buffers.rowTargets.array as Uint32Array).subarray(0, 8))).toEqual([0, 0, 0, 3, 1, 0, 0, 3]);
+    expect(Object.keys(batch.geometry.attributes).some((name) => name.startsWith(EVertexAttribute.CLUSTER_ARENA))).toBe(
+      true
+    );
+    expect(batch.geometry.indirectOffset).toBe(0);
+    // Two rows a section, each standing its section's slot's clusters in one place.
+    expect(Array.from((buffers.rowTargets.array as Uint32Array).subarray(0, 8))).toEqual([0, 0, 0, 0, 1, 0, 0, 0]);
+    expect(toSlot(buffers, 0).slice(0, 4)).toEqual([0, 1, 0, EStaticSlotKind.LISTED]);
     // Never culled on the CPU: the places drawn plainly are left as they were.
     expect(instances.geometry.instanceCount).toBe(2);
     expect(entry.placed).toEqual([]);
@@ -287,7 +312,7 @@ describe("SceneObject", () => {
           instances,
           lodStart: 10,
           plain: { drawn: instances.geometry, layout: "" },
-          static: { drawn: draws.toArena(geometry).prototypes[EStaticDrawKind.LISTED], layout: "listed" },
+          static: { drawn: toPrototype(draws, geometry), layout: "static" },
         },
         scenes
       );
@@ -348,18 +373,17 @@ describe("SceneObject", () => {
         ...toState(geometry, [surface]),
         instances,
         plain: { drawn: instances.geometry, layout: "" },
-        static: { drawn: draws.toArena(geometry).prototypes[EStaticDrawKind.LISTED], layout: "listed" },
+        static: { drawn: toPrototype(draws, geometry), layout: "static" },
       },
       scenes
     );
     entry.cull(createView());
 
-    const args = buffers.args.array as Uint32Array;
     const words = buffers.rowLods.array as Uint32Array;
 
-    // Two slots, the whole detail's six indices and the coarse band's three, each from its own first index.
-    expect([args[0], args[2]]).toEqual([6, 3]);
-    expect([args[STATIC_DRAW_ARGUMENTS], args[STATIC_DRAW_ARGUMENTS + 2]]).toEqual([3, 0]);
+    // Two slots, the whole detail's two triangles and the coarse band's one, each a cluster from its own first index.
+    expect(toCluster(buffers, toSlot(buffers, 0)[0])).toEqual([3, 2, 0, 0]);
+    expect(toCluster(buffers, toSlot(buffers, 1)[0])).toEqual([0, 1, 0, 1]);
     // A row each, the second word of each naming its band of two, over five windows.
     expect([words[1], words[3]]).toEqual([toStaticBandWord(0, 2, 5), toStaticBandWord(1, 2, 5)]);
   });

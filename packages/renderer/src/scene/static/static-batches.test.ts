@@ -1,5 +1,13 @@
 import { describe, expect, it } from "@jest/globals";
-import { BufferAttribute, BufferGeometry, LineSegments, MeshBasicNodeMaterial, Scene } from "three/webgpu";
+import { storage } from "three/tsl";
+import {
+  BufferAttribute,
+  BufferGeometry,
+  LineSegments,
+  MeshBasicNodeMaterial,
+  Scene,
+  StorageBufferAttribute,
+} from "three/webgpu";
 
 import { ERendererPass } from "#/contract/scene/renderer-surface";
 import { PACKED_TREE_COMPONENTS } from "#/geometry/renderer-packed-coordinate";
@@ -7,9 +15,7 @@ import { EVertexAttribute } from "#/geometry/vertex-attribute";
 import { ISurfaceMaterial } from "#/material/surface-material";
 import { StaticArena } from "#/scene/static/static-arena";
 import { StaticBatches } from "#/scene/static/static-batches";
-import { EStaticDrawKind } from "#/scene/static/static-draw-kind";
-import { StaticDrawPool } from "#/scene/static/static-draw-pool";
-import { StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
+import { EStaticPool, STATIC_NO_BATCH, StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
 
 /** A G-buffer surface of its own material, casting through the shadow material given. */
 function createSurface(shadow: MeshBasicNodeMaterial | null): ISurfaceMaterial {
@@ -33,15 +39,15 @@ function createArena(isTree: boolean = false): StaticArena {
   if (isTree) {
     buffer.setAttribute(
       EVertexAttribute.PACKED_UV,
-      new BufferAttribute(new Int16Array(12), PACKED_TREE_COMPONENTS / 2)
+      new BufferAttribute(new Uint32Array(6), PACKED_TREE_COMPONENTS / 2)
     );
   }
 
-  const arena: StaticArena = new StaticArena(buffer, 64);
-
-  arena.place(buffer, () => ({ indices: 0, vertices: 0 }));
-
-  return arena;
+  return new StaticArena(
+    buffer,
+    storage(new StorageBufferAttribute(new Uint32Array(2), 2), "uvec2", 1).toReadOnly(),
+    storage(new StorageBufferAttribute(new Uint32Array(4), 4), "uvec4", 1).toReadOnly()
+  );
 }
 
 describe("StaticBatches", () => {
@@ -51,19 +57,13 @@ describe("StaticBatches", () => {
     const scene: Scene = new Scene();
     const late: Scene = new Scene();
     const cascade: Scene = new Scene();
-    const batches: StaticBatches = new StaticBatches(
-      new StaticDrawPool(new StaticDrawBuffers()),
-      scene,
-      late,
-      [cascade],
-      [new Scene()]
-    );
+    const batches: StaticBatches = new StaticBatches(new StaticDrawBuffers(), scene, late, [cascade], [new Scene()]);
     const arena: StaticArena = createArena();
     const opaque: MeshBasicNodeMaterial = new MeshBasicNodeMaterial();
 
-    batches.put(1, arena, EStaticDrawKind.SINGLE, createSurface(opaque));
-    batches.put(2, arena, EStaticDrawKind.SINGLE, createSurface(opaque));
-    batches.put(3, arena, EStaticDrawKind.SINGLE, createSurface(null));
+    batches.put(1, arena, createSurface(opaque), 1);
+    batches.put(2, arena, createSurface(opaque), 1);
+    batches.put(3, arena, createSurface(null), 1);
 
     expect(scene.children[0].children).toHaveLength(3);
     expect(cascade.children[0].children).toHaveLength(1);
@@ -81,7 +81,7 @@ describe("StaticBatches", () => {
     const still: Scene = new Scene();
     const swaying: Scene = new Scene();
     const batches: StaticBatches = new StaticBatches(
-      new StaticDrawPool(new StaticDrawBuffers()),
+      new StaticDrawBuffers(),
       new Scene(),
       new Scene(),
       [still],
@@ -89,8 +89,8 @@ describe("StaticBatches", () => {
     );
     const opaque: MeshBasicNodeMaterial = new MeshBasicNodeMaterial();
 
-    batches.put(1, createArena(), EStaticDrawKind.SINGLE, createSurface(opaque));
-    batches.put(2, createArena(true), EStaticDrawKind.SINGLE, createSurface(opaque));
+    batches.put(1, createArena(), createSurface(opaque), 1);
+    batches.put(2, createArena(true), createSurface(opaque), 1);
 
     expect(still.children[0].children).toHaveLength(1);
     expect(swaying.children[0].children).toHaveLength(1);
@@ -100,12 +100,12 @@ describe("StaticBatches", () => {
     expect(swaying.children).toHaveLength(0);
   });
 
-  // Drawn over the arenas' line indices by one material, a wireframe compiles nothing a surface and builds no line
-  // index on the CPU a mesh; an impostor keeps its own material, which turns its quad to the camera.
-  it("draws every slot's edges by one material while a wireframe draws, and its surface again after", () => {
+  // Drawn from each surface batch's own region by one material, a wireframe compiles nothing a surface and builds no
+  // line index; an impostor keeps its own material, which turns its quad to the camera.
+  it("draws every batch's edges by one material while a wireframe draws, and its triangles again after", () => {
     const scene: Scene = new Scene();
     const batches: StaticBatches = new StaticBatches(
-      new StaticDrawPool(new StaticDrawBuffers()),
+      new StaticDrawBuffers(),
       scene,
       new Scene(),
       [new Scene()],
@@ -115,21 +115,48 @@ describe("StaticBatches", () => {
     const wire: MeshBasicNodeMaterial = new MeshBasicNodeMaterial();
     const impostor: ISurfaceMaterial = { ...createSurface(null), isImpostor: true };
 
-    batches.put(1, arena, EStaticDrawKind.SINGLE, createSurface(null));
-    batches.put(2, arena, EStaticDrawKind.SINGLE, impostor);
+    batches.put(1, arena, createSurface(null), 1);
+    batches.put(2, arena, impostor, 1);
     batches.setWireframe(wire);
-    batches.put(3, arena, EStaticDrawKind.SINGLE, createSurface(null));
+    batches.put(3, arena, createSurface(null), 1);
 
     const [surfaces, wires] = scene.children;
 
     expect(surfaces.visible).toBe(false);
     expect(wires.visible).toBe(true);
-    expect(wires.children.map((mesh) => (mesh as LineSegments).isLineSegments)).toEqual([true, true]);
-    expect(wires.children.map((mesh) => (mesh as LineSegments).material)).toEqual([wire, impostor.material]);
+    // A surface batch's edges each, from its own region: the one made after the wireframe began among them.
+    expect(wires.children.map((mesh) => (mesh as LineSegments).isLineSegments)).toEqual([true, true, true]);
+    expect(wires.children.map((mesh) => (mesh as LineSegments).material)).toEqual([wire, impostor.material, wire]);
 
     batches.setWireframe(null);
 
     expect(surfaces.visible).toBe(true);
-    expect(wires.children).toHaveLength(0);
+    expect(wires.visible).toBe(false);
+  });
+
+  // A region holds every entry its batch's slots may list at once, so no cull overflows one.
+  it("gives each batch a region of its list space holding what its slots may list, moved as it outgrows it", () => {
+    const buffers: StaticDrawBuffers = new StaticDrawBuffers({ [EStaticPool.SURFACE_LIST]: 64 });
+    const batches: StaticBatches = new StaticBatches(buffers, new Scene(), new Scene(), [new Scene()], [new Scene()]);
+    const arena: StaticArena = createArena();
+    const surface: ISurfaceMaterial = createSurface(null);
+    const first = batches.put(1, arena, surface, 10);
+    const second = batches.put(2, arena, createSurface(null), 20);
+    const regions = buffers.batchRegions.array as Uint32Array;
+    const batch: number = first?.surface as number;
+
+    expect(first?.shadow).toBe(STATIC_NO_BATCH);
+    expect(batch).not.toBe(second?.surface);
+    expect(regions[batch * 4 + 1]).toBeGreaterThanOrEqual(10);
+
+    const version: number = batches.version;
+
+    // Past its region and past the space: the region moves, and the space grows.
+    batches.put(1, arena, surface, 100);
+
+    expect(batches.version).toBeGreaterThan(version);
+    expect(regions === buffers.batchRegions.array).toBe(true);
+    expect(regions[batch * 4 + 1]).toBeGreaterThanOrEqual(100);
+    expect(buffers.capacity(EStaticPool.SURFACE_LIST)).toBeGreaterThan(64);
   });
 });

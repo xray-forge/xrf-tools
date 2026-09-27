@@ -22,6 +22,7 @@ import { SceneObjectResolver } from "#/scene/object/scene-object-resolver";
 import { ISceneObjectState, isStaticDraw } from "#/scene/object/scene-object-state";
 import { toPassRecord, TPassRecord } from "#/scene/pass-record";
 import { RendererSkeletons } from "#/scene/skeleton/renderer-skeletons";
+import { LayoutProxies } from "#/scene/staging/layout-proxies";
 import { createSceneStaging, ISceneStaging } from "#/scene/staging/scene-staging";
 import { StaticCull } from "#/scene/static/static-cull";
 import { StaticDraws } from "#/scene/static/static-draws";
@@ -65,6 +66,7 @@ export class RendererScene {
   private readonly impostors: RendererImpostorSets;
   private readonly staticDraws: StaticDraws;
   private readonly readiness: MaterialReadiness = new MaterialReadiness();
+  private readonly proxies: LayoutProxies = new LayoutProxies();
   private readonly resolver: SceneObjectResolver;
   private readonly changes: SceneChangeQueue<SceneObject> = new SceneChangeQueue({
     apply: (entry: SceneObject) => this.apply(entry),
@@ -169,7 +171,7 @@ export class RendererScene {
       }
     }
 
-    return states.length ? createSceneStaging(states, this.readiness) : null;
+    return states.length ? createSceneStaging(states, this.readiness, this.proxies) : null;
   }
 
   /**
@@ -293,6 +295,7 @@ export class RendererScene {
     this.skeletons.dispose();
     this.textures.dispose();
     this.staticDraws.dispose();
+    this.proxies.dispose();
   }
 
   private index(entry: SceneObject): void {
@@ -365,7 +368,12 @@ export class RendererScene {
       ).length;
 
       if (sections) {
-        yield { geometry: state.geometry, places: state.instances?.places ?? 0, sections };
+        yield {
+          clusters: state.geometry.clusters.count,
+          geometry: state.geometry,
+          places: state.instances?.places ?? 0,
+          sections,
+        };
       }
     }
   }

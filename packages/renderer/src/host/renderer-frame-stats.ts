@@ -75,7 +75,7 @@ export class RendererFrameStats {
         drawnHeight: canvas.height,
         drawnWidth: canvas.width,
         drawTime: this.frameTimer.drawTime,
-        draws: render.drawCalls + kept.draws,
+        draws: render.drawCalls + staticDraws.commands,
         frameTime: this.frameTimer.frameTime,
         framesPerSecond: this.frameTimer.framesPerSecond,
         renderedHeight: size.renderHeight,

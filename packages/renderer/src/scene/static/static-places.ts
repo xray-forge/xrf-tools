@@ -21,9 +21,9 @@ import {
 const FLOATS_PER_PLACE: number = STATIC_PLACE_COLUMNS * 4;
 
 /**
- * Where instanced static draws stand and what the instance cull tests: places, a matrix and hemisphere terms each;
- * rows, a place of one draw each; and the list each draw's kept places are written to. Handed out in runs, uploaded as
- * one span a buffer.
+ * Where static draws stand and what the instance cull tests: places, a matrix, hemisphere terms, an impostor and the
+ * greatest scale each, a single draw's one and an instanced draw's one an instance; and rows, a place of one instanced
+ * draw each. Handed out in runs, uploaded as one span a buffer.
  */
 export class StaticPlaces {
   private readonly buffers: StaticDrawBuffers;
@@ -108,9 +108,25 @@ export class StaticPlaces {
       places[at + 17] = instances.hemi ? instances.hemi[index * RENDERER_HEMI_FLOATS_PER_INSTANCE + 1] : 0;
       // The impostor a place's draw is, which an impostor shader reads its facets by; -1 for none.
       places[at + 18] = impostors && impostors[index] >= 0 ? (lodStart as number) + impostors[index] : -1;
+      // What a cluster's sphere, in its mesh's own space, is scaled by where the place stands it.
+      places[at + 19] = this.matrix.getMaxScaleOnAxis();
     }
 
     this.placeSpan.touch(start, start + count - 1);
+    this.currentVersion += 1;
+  }
+
+  /**
+   * @param at - A single draw's place.
+   * @param matrix - Where it stands.
+   */
+  public writePlace(at: number, matrix: Matrix4): void {
+    const places = this.buffers.places.array as Float32Array;
+    const first: number = at * FLOATS_PER_PLACE;
+
+    places.set(matrix.elements, first);
+    places.set([1, 0, -1, matrix.getMaxScaleOnAxis()], first + 16);
+    this.placeSpan.touch(at);
     this.currentVersion += 1;
   }
 
@@ -123,21 +139,20 @@ export class StaticPlaces {
   }
 
   /**
-   * @param count - Rows wanted, and as many entries in the list of kept places.
-   * @returns Where both start, or null where there is no room.
+   * @param count - Rows wanted.
+   * @returns Where they start, or null where there is no room.
    */
   public allocateRows(count: number): Nullable<number> {
     return this.rows.allocate(count);
   }
 
   /**
-   * Makes a run of rows test every place of one instanced draw, listing the kept ones from the run's own start.
+   * Makes a run of rows test every place of one instanced draw, each kept one standing the draw's clusters there.
    *
    * @param start - Where the rows start.
    * @param spheres - Each place's sphere in renderer space, four floats each.
    * @param placeStart - Where the places start.
-   * @param slot - The draw's slot, whose instance count the rows count up.
-   * @param indexCount - Indices the draw takes, for the report.
+   * @param slot - The draw's slot, whose clusters a kept row stands.
    * @param lods - Each row's impostor as the LOD cull reads it, or null where none stands in for any place.
    * @param band - The draw's band of a progressive mesh (`toStaticBandWord`), `STATIC_NO_BAND` for a draw of one
    * detail.
@@ -147,7 +162,6 @@ export class StaticPlaces {
     spheres: Float32Array,
     placeStart: number,
     slot: number,
-    indexCount: number,
     lods: Nullable<Uint32Array> = null,
     band: number = STATIC_NO_BAND
   ): void {
@@ -165,8 +179,8 @@ export class StaticPlaces {
 
       targets[at] = placeStart + index;
       targets[at + 1] = slot;
-      targets[at + 2] = start;
-      targets[at + 3] = indexCount;
+      targets[at + 2] = 0;
+      targets[at + 3] = 0;
     }
 
     this.rowSpan.touch(start, start + count - 1);

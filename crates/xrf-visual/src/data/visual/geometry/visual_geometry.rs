@@ -1,6 +1,7 @@
 use serde::Serialize;
 
 use crate::data::visual::bounds::visual_bounds::VisualBounds;
+use crate::data::visual::geometry::visual_clusters::VisualClusters;
 use crate::data::visual::geometry::visual_draw_range::VisualDrawRange;
 use crate::data::visual::geometry::visual_section::VisualSection;
 use crate::data::visual::geometry::visual_skin::VisualSkin;
@@ -24,6 +25,11 @@ pub struct VisualGeometry {
   pub skin: Option<VisualSkin>,
   /// Every range a consumer may draw, finest first, and never empty.
   pub detail_levels: Vec<VisualDrawRange>,
+  /// The clusters every detail level is cut into, for geometry drawn as it is stored; `None` for skinned geometry,
+  /// which moves with its bones.
+  pub clusters: Option<VisualClusters>,
+  /// Each detail level's clusters, in the table, beside `detail_levels`; empty with the table.
+  pub detail_clusters: Vec<VisualDrawRange>,
   pub bounds: VisualBounds,
 }
 

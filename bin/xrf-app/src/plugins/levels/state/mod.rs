@@ -40,11 +40,8 @@ pub const GEOMETRY_FILE: &str = "level.geom";
 /// The detail library and planting grid, which the grass is planted from.
 pub const DETAILS_FILE: &str = "level.details";
 
-/// The collision form, which the grass is planted onto.
+/// The collision form, which the grass is planted onto and which says whether a start is under the open sky.
 pub const COLLISION_FILE: &str = "level.cform";
 
 /// The directory every installation keeps its levels under.
 pub const LEVELS_DIRECTORY: &str = "levels";
-
-/// The AI map, whose nodes stand on the ground a level opens on where the spawn puts no one on it.
-pub const AI_FILE: &str = "level.ai";

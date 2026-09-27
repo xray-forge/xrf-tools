@@ -38,15 +38,15 @@ describe("StaticPlaces", () => {
     expect(Array.from((buffers.places.array as Float32Array).subarray(16, 18))).toEqual([1, 0]);
   });
 
-  it("makes a row a place of one draw, listed from the rows' own start, and a freed row tests nothing", () => {
+  it("makes a row a place of one draw, which stands the draw's clusters there, and a freed row tests nothing", () => {
     const buffers: StaticDrawBuffers = new StaticDrawBuffers();
     const places: StaticPlaces = new StaticPlaces(buffers);
     const start: number = places.allocateRows(2) as number;
     const version: number = places.version;
 
-    places.writeRows(start, new Float32Array([0, 0, 0, 1, 5, 0, 0, 1]), 40, 7, 36);
+    places.writeRows(start, new Float32Array([0, 0, 0, 1, 5, 0, 0, 1]), 40, 7);
 
-    expect(Array.from((buffers.rowTargets.array as Uint32Array).subarray(4, 8))).toEqual([41, 7, start, 36]);
+    expect(Array.from((buffers.rowTargets.array as Uint32Array).subarray(4, 8))).toEqual([41, 7, 0, 0]);
     expect(places.version).toBeGreaterThan(version);
 
     places.freeRows(start, 2);
@@ -60,7 +60,7 @@ describe("StaticPlaces", () => {
     const start: number = places.allocatePlaces(2) as number;
 
     places.writePlaces(start, createInstances(true), new Matrix4());
-    places.writeRows(places.allocateRows(2) as number, new Float32Array([0, 0, 0, 1, 5, 0, 0, 1]), start, 3, 36);
+    places.writeRows(places.allocateRows(2) as number, new Float32Array([0, 0, 0, 1, 5, 0, 0, 1]), start, 3);
 
     expect(places.allocatePlaces(1)).toBeNull();
 
@@ -75,14 +75,36 @@ describe("StaticPlaces", () => {
     expect(places.rowUse).toEqual({ capacity: 8, used: 8 });
     expect(places.version).toBeGreaterThan(version);
     expect((buffers.places.array as Float32Array)[STATIC_PLACE_COLUMNS * 4 + 12]).toBe(2);
-    expect(Array.from((buffers.rowTargets.array as Uint32Array).subarray(4, 8))).toEqual([1, 3, 0, 36]);
+    expect(Array.from((buffers.rowTargets.array as Uint32Array).subarray(4, 8))).toEqual([1, 3, 0, 0]);
+  });
+
+  // An instanced cluster's sphere is in its mesh's own space: the cull stands it in the place, scaled by the greatest.
+  it("keeps each place's greatest scale, and gives a single draw a place of its own drawing its vertex hemi", () => {
+    const buffers: StaticDrawBuffers = new StaticDrawBuffers();
+    const places: StaticPlaces = new StaticPlaces(buffers);
+    const start: number = places.allocatePlaces(3) as number;
+
+    places.writePlaces(start, createInstances(true), new Matrix4().makeScale(1, 3, 2));
+    places.writePlace(start + 2, new Matrix4().makeTranslation(7, 0, 0));
+
+    const floats = buffers.places.array as Float32Array;
+
+    expect(floats[STATIC_PLACE_COLUMNS * 4 * start + 19]).toBe(3);
+    expect(
+      Array.from(
+        floats.subarray(STATIC_PLACE_COLUMNS * 4 * (start + 2) + 12, STATIC_PLACE_COLUMNS * 4 * (start + 2) + 13)
+      )
+    ).toEqual([7]);
+    expect(
+      Array.from(floats.subarray(STATIC_PLACE_COLUMNS * 4 * (start + 2) + 16, STATIC_PLACE_COLUMNS * 4 * (start + 3)))
+    ).toEqual([1, 0, -1, 1]);
   });
 
   it("uploads what changed as one span a buffer", () => {
     const buffers: StaticDrawBuffers = new StaticDrawBuffers();
     const places: StaticPlaces = new StaticPlaces(buffers);
 
-    places.writeRows(places.allocateRows(2) as number, new Float32Array(8), 0, 0, 3);
+    places.writeRows(places.allocateRows(2) as number, new Float32Array(8), 0, 0);
     places.flush();
 
     expect(buffers.rowTargets.updateRanges).toEqual([{ count: 8, start: 0 }]);

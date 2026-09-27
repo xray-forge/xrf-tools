@@ -167,6 +167,8 @@ export type SectorGeometry = {
   lightmapUvs: VisualSection | null;
   /** Every index, as 32-bit elements: a sector reaches past what sixteen bits address. */
   indices: VisualSection;
+  /** The clusters of every range it draws, which each range names a run of. */
+  clusters: VisualClusters;
 };
 
 /** A run of a sector's impostors dressed by one surface. */
@@ -205,6 +207,8 @@ export type SectorInstanceGroup = {
   drawables: Array<number>;
   /** The mesh itself, in its own space, its indices counting from its own first vertex. */
   geometry: SectorGeometry;
+  /** The clusters of what a place draws of it at its whole detail, in its geometry's table. */
+  clusters: VisualDrawRange;
   instanceCount: number;
   /** Sixteen floats for each instance, exactly as the engine stores a matrix. */
   transforms: VisualSection;
@@ -243,6 +247,11 @@ export type SectorProgressive = {
    * so a place drawing the band its window falls in is never coarser than the engine would draw it.
    */
   bands: Array<VisualDrawRange>;
+  /**
+   * Each band's clusters, in its mesh's table: cut from the band's own window, so windows sharing triangles each
+   * take entries and no index is rewritten.
+   */
+  clusters: Array<VisualDrawRange>;
 };
 
 /** One draw of a sector's own geometry: the indices to draw, and the surface they are drawn with. */
@@ -251,6 +260,8 @@ export type SectorSection = {
   /** Drawables packed into this section, by their index in the visuals run. */
   drawables: Array<number>;
   draw: VisualDrawRange;
+  /** Its clusters, in its geometry's table. */
+  clusters: VisualDrawRange;
   /** Extent its own vertices span, which it is culled by; absent when it reaches none. */
   bounds: VisualBounds | null;
 };
@@ -295,6 +306,22 @@ export type VisualBounds = {
 export type VisualBox = {
   min: Vector3d;
   max: Vector3d;
+};
+
+/**
+ * Where a geometry's clusters sit in its buffer: runs of up to [`VisualClusters::MAX_TRIANGLES`] consecutive
+ * triangles of its index order, never crossing from one drawable into the next, which a renderer culls and draws each
+ * on its own.
+ */
+export type VisualClusters = {
+  count: number;
+  /**
+   * Four unsigned integers a cluster: its first index, in the geometry's indices; its triangles; the drawable it is
+   * cut from, by its index in the visuals run, or [`VisualClusters::NO_DRAWABLE`]; then nothing.
+   */
+  ranges: VisualSection;
+  /** Four floats a cluster: the centre and radius of a sphere holding its vertices, in the space of the positions. */
+  spheres: VisualSection;
 };
 
 /** Everything a visual needs from outside itself, resolved. */
@@ -346,6 +373,13 @@ export type VisualGeometry = {
   skin: VisualSkin | null;
   /** Every range a consumer may draw, finest first, and never empty. */
   detailLevels: Array<VisualDrawRange>;
+  /**
+   * The clusters every detail level is cut into, for geometry drawn as it is stored; `None` for skinned geometry,
+   * which moves with its bones.
+   */
+  clusters: VisualClusters | null;
+  /** Each detail level's clusters, in the table, beside `detail_levels`; empty with the table. */
+  detailClusters: Array<VisualDrawRange>;
   bounds: VisualBounds;
 };
 

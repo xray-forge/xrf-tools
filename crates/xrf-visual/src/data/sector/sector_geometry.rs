@@ -1,5 +1,6 @@
 use serde::Serialize;
 
+use crate::data::visual::geometry::visual_clusters::VisualClusters;
 use crate::data::visual::geometry::visual_section::VisualSection;
 
 /// Where one packed mesh's attributes sit inside a sector's buffer, and what to draw from them: positions as floats
@@ -28,4 +29,6 @@ pub struct SectorGeometry {
   pub lightmap_uvs: Option<VisualSection>,
   /// Every index, as 32-bit elements: a sector reaches past what sixteen bits address.
   pub indices: VisualSection,
+  /// The clusters of every range it draws, which each range names a run of.
+  pub clusters: VisualClusters,
 }

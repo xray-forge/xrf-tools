@@ -9,21 +9,22 @@ import {
   Object3D,
 } from "three/webgpu";
 
+import { disposeObject } from "#/internals/object-disposal";
 import { createSceneLines, createSceneMesh } from "#/scene/object/scene-mesh";
 import { StaticArena } from "#/scene/static/static-arena";
-import { EStaticDrawKind } from "#/scene/static/static-draw-kind";
-import { STATIC_DRAW_ARGUMENT_BYTES } from "#/uniforms/static-draw-buffers";
+import { IStaticRegion } from "#/scene/static/static-region";
+import { EStaticListSpace, STATIC_BATCH_ARGUMENT_BYTES } from "#/uniforms/static-draw-buffers";
 
 /** What an idle batch's mesh holds instead of the material it last drew, so that one can go. */
 const IDLE_MATERIAL: Material = new Material();
 
-/** The arguments one phase of a batch draws by, read again whenever the slots' growth replaced them. */
+/** The arguments one phase of a batch draws by, read again whenever the batches' growth replaced them. */
 export type TStaticBatchArguments = () => IndirectStorageBufferAttribute;
 
-/** What a batch draws a phase with: a mesh over the arena's triangles, or line segments over its line index. */
+/** What a batch draws a phase with: a mesh of its clusters' triangles, or line segments of their edges. */
 export type TStaticBatchMesh = Mesh | LineSegments;
 
-/** One phase's draw of a batch: its mesh over the arena, drawn by that phase's arguments. */
+/** One phase's draw of a batch: its mesh, drawn by that phase's arguments at the batch's offset. */
 interface IBatchPhase {
   toArgs: TStaticBatchArguments;
   geometry: BufferGeometry;
@@ -31,56 +32,58 @@ interface IBatchPhase {
 }
 
 /**
- * Every static draw of one material and kind over one arena, as one object issuing an indirect draw a slot, once a
- * phase: a surface's batch draws by the first cull's arguments and by the second's, a shadow material's by each
- * cascade's. Its meshes are recorded in the bundles of a chunk of batches, which record again only when a batch in
- * them changes. An idle batch keeps its geometries for the next material to draw over the arena, since disposing them
- * would free the arena's buffers every other batch draws.
+ * Every static draw of one material over one arena, as one object a phase issuing one indirect draw: of every cluster
+ * the phase's view kept of them, a cluster an instance, read from the batch's region of the view's list. A surface's
+ * batch draws by the camera's two views, a shadow material's by each shadow view's. Its meshes are recorded in the
+ * bundles of a chunk of batches, which record again only when a batch in them changes.
  */
 export class StaticBatch {
   /** The arena it draws. */
   public readonly arena: StaticArena;
-  /** The kind of static draw it issues, which its geometry is marked for. */
-  public readonly kind: EStaticDrawKind;
-  /** Whether it draws the arena's line index, as a wireframe, rather than its triangles. */
-  public readonly isWire: boolean;
+  /** Where its draw sits in every view's arguments, and its region's entry in the regions. */
+  public readonly id: number;
+  /** The list space its region is in. */
+  public readonly space: EStaticListSpace;
+  /** Where its region lies in its list space, which it is given as the entries it may list outgrow it. */
+  public region: Nullable<IStaticRegion> = null;
+  /** Whether its material is an impostor's, which draws its own wireframe. */
+  public isImpostor: boolean = false;
 
-  private readonly phases: ReadonlyArray<IBatchPhase>;
+  private readonly phases: Array<IBatchPhase>;
+  /** Its draws of its clusters' edges, while a wireframe draws, by the wireframe's arguments at the same offset. */
+  private wires: Nullable<Array<IBatchPhase>> = null;
   private currentMaterial: Nullable<Material> = null;
   private currentKeys: ReadonlyArray<string> = [];
-  /** The slots it draws, and each one's position among its draws. */
-  private readonly slots: Array<number> = [];
-  private readonly positions: Map<number, number> = new Map();
-  /** Each draw's offset into the arguments of every phase, in the order of its slots. */
-  private readonly offsets: Array<number> = [];
-  private generation: number;
+  /** Entries each slot it draws may list at once: its clusters, times its rows for an instanced one. */
+  private readonly entries: Map<number, number> = new Map();
+  private currentDemand: number = 0;
 
   /**
    * @param arena - The arena it draws.
-   * @param kind - The kind of static draw it issues.
+   * @param id - Where its draw sits in every view's arguments.
+   * @param space - The list space its region is in.
    * @param phases - The arguments each of its phases draws by.
-   * @param isWire - Whether it draws the arena's line index, by arguments doubled for it.
    */
   public constructor(
     arena: StaticArena,
-    kind: EStaticDrawKind,
-    phases: ReadonlyArray<TStaticBatchArguments>,
-    isWire: boolean = false
+    id: number,
+    space: EStaticListSpace,
+    phases: ReadonlyArray<TStaticBatchArguments>
   ) {
     this.arena = arena;
-    this.kind = kind;
-    this.isWire = isWire;
-    this.generation = arena.generation;
-    this.phases = phases.map((toArgs: TStaticBatchArguments) => {
-      const geometry: BufferGeometry = this.createGeometry(toArgs());
-
-      return { geometry, mesh: this.createMesh(geometry, IDLE_MATERIAL), toArgs };
-    });
+    this.id = id;
+    this.space = space;
+    this.phases = phases.map((toArgs: TStaticBatchArguments) => this.createPhase(toArgs, IDLE_MATERIAL, false));
   }
 
   /** Its meshes, a phase each, in the order its phases were given. */
   public get meshes(): ReadonlyArray<TStaticBatchMesh> {
     return this.phases.map((phase: IBatchPhase) => phase.mesh);
+  }
+
+  /** Its wireframe's meshes, a phase each, or none before a wireframe first drew it. */
+  public get wireMeshes(): ReadonlyArray<TStaticBatchMesh> {
+    return this.wires?.map((phase: IBatchPhase) => phase.mesh) ?? [];
   }
 
   /** The material it draws, or null while idle. */
@@ -94,109 +97,122 @@ export class StaticBatch {
   }
 
   public get isEmpty(): boolean {
-    return this.slots.length === 0;
+    return this.entries.size === 0;
+  }
+
+  /** Entries its slots may list at once, which its region has to hold. */
+  public get demand(): number {
+    return this.currentDemand;
   }
 
   /**
    * @param material - What it draws from now on, or null for a batch going idle.
    * @param keys - The texture keys that material samples.
+   * @param isImpostor - Whether it is an impostor's.
    */
-  public setMaterial(material: Nullable<Material>, keys: ReadonlyArray<string> = []): void {
+  public setMaterial(
+    material: Nullable<Material>,
+    keys: ReadonlyArray<string> = [],
+    isImpostor: boolean = false
+  ): void {
     this.currentMaterial = material;
     this.currentKeys = keys;
+    this.isImpostor = isImpostor;
     this.phases.forEach((phase: IBatchPhase) => (phase.mesh.material = material ?? IDLE_MATERIAL));
     this.invalidate();
   }
 
   /**
-   * @param slot - A slot drawn by this batch from now on.
+   * Draws its clusters' edges beside its triangles, each phase by the wireframe's arguments, with the material given.
+   *
+   * @param wires - The arguments of the wireframe's phases.
+   * @param material - What draws the edges.
    */
-  public add(slot: number): void {
-    this.positions.set(slot, this.slots.length);
-    this.slots.push(slot);
-    this.offsets.push(slot * STATIC_DRAW_ARGUMENT_BYTES);
+  public setWire(wires: ReadonlyArray<TStaticBatchArguments>, material: Material): void {
+    if (!this.wires) {
+      this.wires = wires.map((toArgs: TStaticBatchArguments) => this.createPhase(toArgs, material, true));
+    }
+
+    this.wires.forEach((phase: IBatchPhase) => (phase.mesh.material = material));
     this.invalidate();
   }
 
   /**
-   * @param slot - A slot this batch no longer draws; the last draw takes its place.
+   * @param slot - A slot drawn by this batch from now on, or again with what it may list.
+   * @param entries - Entries it may list at once.
    */
-  public remove(slot: number): void {
-    const position: Maybe<number> = this.positions.get(slot);
-
-    if (position === undefined) {
-      return;
-    }
-
-    const last: number = this.slots.pop() as number;
-
-    this.offsets.pop();
-    this.positions.delete(slot);
-
-    if (last !== slot) {
-      this.slots[position] = last;
-      this.offsets[position] = last * STATIC_DRAW_ARGUMENT_BYTES;
-      this.positions.set(last, position);
-    }
-
-    this.invalidate();
+  public put(slot: number, entries: number): void {
+    this.currentDemand += entries - (this.entries.get(slot) ?? 0);
+    this.entries.set(slot, entries);
   }
 
-  /** Has its bundles recorded again, for a binding in them that changed: a texture swapped in, or a matrix rewritten. */
+  /**
+   * @param slot - A slot this batch no longer draws.
+   */
+  public remove(slot: number): void {
+    const entries: Maybe<number> = this.entries.get(slot);
+
+    if (entries !== undefined) {
+      this.currentDemand -= entries;
+      this.entries.delete(slot);
+    }
+  }
+
+  /** Has its bundles recorded again, for a binding in them that changed. */
   public invalidate(): void {
-    for (const { mesh } of this.phases) {
+    for (const { mesh } of [...this.phases, ...(this.wires ?? [])]) {
       if (mesh.parent instanceof BundleGroup) {
         mesh.parent.needsUpdate = true;
       }
     }
   }
 
-  /**
-   * Draws the arena's buffers and the slots' arguments as they are now, where either grew since: new meshes over new
-   * geometries, since three keeps what it built for a mesh's first geometry.
-   */
+  /** Draws by the arguments as they are now, where the batches' growth replaced them. */
   public refresh(): void {
-    if (this.generation === this.arena.generation) {
-      return;
-    }
+    for (const phases of [this.phases, this.wires ?? []]) {
+      phases.forEach((phase: IBatchPhase, index: number) => {
+        if (phase.geometry.indirect === phase.toArgs()) {
+          return;
+        }
 
-    this.generation = this.arena.generation;
+        const parent: Nullable<Object3D> = phase.mesh.parent;
+        const replaced: IBatchPhase = this.createPhase(
+          phase.toArgs,
+          phase.mesh.material as Material,
+          phases === this.wires
+        );
 
-    for (const phase of this.phases) {
-      const material: Material = phase.mesh.material as Material;
-      const parent: Nullable<Object3D> = phase.mesh.parent;
-
-      phase.mesh.removeFromParent();
-      phase.geometry.dispose();
-      phase.geometry = this.createGeometry(phase.toArgs());
-      phase.mesh = this.createMesh(phase.geometry, material);
-      parent?.add(phase.mesh);
+        StaticBatch.disposePhase(phase);
+        parent?.add(replaced.mesh);
+        phases[index] = replaced;
+      });
     }
 
     this.invalidate();
   }
 
-  /** Frees its geometries, and with them the arena's buffers: only for an arena going, with every batch over it. */
+  /** Lets three forget its meshes and geometries: its arena's data is the arena's and stays. */
   public dispose(): void {
-    for (const phase of this.phases) {
-      phase.mesh.removeFromParent();
-      phase.geometry.dispose();
-    }
+    [...this.phases, ...(this.wires ?? [])].forEach(StaticBatch.disposePhase);
   }
 
-  private createMesh(geometry: BufferGeometry, material: Material): TStaticBatchMesh {
-    return this.isWire ? createSceneLines(geometry, material) : createSceneMesh(geometry, null, material);
+  private static disposePhase(phase: IBatchPhase): void {
+    phase.mesh.removeFromParent();
+    disposeObject(phase.mesh);
+    phase.geometry.dispose();
   }
 
-  private createGeometry(args: IndirectStorageBufferAttribute): BufferGeometry {
-    const geometry: BufferGeometry = this.isWire
-      ? this.arena.createWireGeometry(this.kind)
-      : this.arena.createGeometry(this.kind);
+  private createPhase(toArgs: TStaticBatchArguments, material: Material, isWire: boolean): IBatchPhase {
+    const geometry: BufferGeometry = this.arena.createGeometry();
 
-    geometry.setIndirect(args, this.offsets);
+    geometry.setIndirect(toArgs(), this.id * STATIC_BATCH_ARGUMENT_BYTES);
     // Drawn by its indirect arguments alone; the range only keeps three's count of what a recording drew honest.
     geometry.setDrawRange(0, 0);
 
-    return geometry;
+    return {
+      geometry,
+      mesh: isWire ? createSceneLines(geometry, material) : createSceneMesh(geometry, null, material),
+      toArgs,
+    };
   }
 }

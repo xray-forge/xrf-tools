@@ -143,6 +143,8 @@ export function mockPackedSubmesh(
         indices,
         skin: null,
         detailLevels: [{ start: 0, count: 3 }],
+        clusters: null,
+        detailClusters: [],
         bounds: mockVisualBounds(),
         ...geometryOverrides,
       },
@@ -495,6 +497,7 @@ export function mockVisualModelViews(overrides: Partial<IVisualModelViews> = {})
 export function mockVisualSubmeshViews(overrides: Partial<IVisualSubmeshViews> = {}): IVisualSubmeshViews {
   return {
     binormals: new Float32Array(9),
+    clusters: null,
     index: 0,
     indices: new Uint16Array([0, 1, 2]),
     label: "submesh 0",

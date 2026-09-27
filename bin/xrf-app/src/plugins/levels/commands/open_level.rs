@@ -2,8 +2,8 @@ use std::sync::{Arc, OnceLock};
 use std::time::Instant;
 
 use tauri::State;
-use xrf_chunk::{ChunkReader, XRayByteOrder};
-use xrf_level::LevelAiFile;
+use xrf_chunk::XRayByteOrder;
+use xrf_level::LevelCformFile;
 use xrf_material::XraySurfaceDescriptor;
 use xrf_math::Vector3d;
 use xrf_vfs::{XrayLogicalPath, XrayProbe, XrayRoots};
@@ -16,10 +16,10 @@ use crate::core::types::TauriResult;
 use crate::plugins::levels::read::{ReadLevel, read_optional_file, read_source};
 use crate::plugins::levels::report::{report_open, report_opening, report_start};
 use crate::plugins::levels::spawn::read_source_spawn;
-use crate::plugins::levels::start::resolve_level_start;
+use crate::plugins::levels::start::{list_level_start_eyes, resolve_level_start};
 use crate::plugins::levels::state::{
-  AI_FILE, LevelSource, LevelSpawn, LevelSpawnVisuals, LevelStart, LevelState, LevelTextureReference, PackedDetails,
-  PackedSectors, SelectedLevel, SelectedLevelDescription,
+  COLLISION_FILE, LevelSource, LevelSpawn, LevelSpawnVisuals, LevelStart, LevelState, LevelTextureReference,
+  PackedDetails, PackedSectors, SelectedLevel, SelectedLevelDescription,
 };
 use crate::plugins::levels::surfaces::resolve_surfaces;
 use crate::plugins::levels::textures::resolve_textures;
@@ -91,8 +91,19 @@ pub async fn levels_open_level(
 /// Reads the level and its spawn side by side, outlines its sectors and decides where it opens.
 fn open(source: &LevelSource, probe: &XrayProbe) -> TauriResult<OpenedLevel> {
   let directory: Option<XrayLogicalPath> = source.get_logical_directory();
-  // The spawn is read beside the level rather than after it: the start is taken from it.
-  let (read, spawn) = rayon::join(|| read_source(source, probe), || read_source_spawn(source, probe));
+  // The spawn, and what stands over the places it has an actor at, are read beside the level rather than after it.
+  let (read, (spawn, open)) = rayon::join(
+    || read_source(source, probe),
+    || {
+      let spawn: Result<Arc<LevelSpawn>, String> = read_source_spawn(source, probe);
+      let open: Vec<bool> = spawn.as_deref().map_or_else(
+        |_| Vec::new(),
+        |spawn| find_open(source, probe, &list_level_start_eyes(spawn)),
+      );
+
+      (spawn, open)
+    },
+  );
   let read: ReadLevel = read?;
   let surfaces: Vec<XraySurfaceDescriptor> = resolve_surfaces(&read.level, probe);
   let textures: Vec<LevelTextureReference> = resolve_textures(&read.level, &surfaces, probe, directory.as_ref());
@@ -108,7 +119,7 @@ fn open(source: &LevelSource, probe: &XrayProbe) -> TauriResult<OpenedLevel> {
   let start: Option<LevelStart> = resolve_level_start(
     spawn.as_deref().ok(),
     SectorOutline::merge_bounds(&outlines).as_ref(),
-    |x, z| find_ground(source, probe, x, z),
+    &open,
   );
 
   Ok(OpenedLevel {
@@ -121,13 +132,21 @@ fn open(source: &LevelSource, probe: &XrayProbe) -> TauriResult<OpenedLevel> {
   })
 }
 
-/// The AI map's node nearest a place across the ground, in the engine's space; `None` for a level without one.
-fn find_ground(source: &LevelSource, probe: &XrayProbe, x: f32, z: f32) -> Option<Vector3d> {
-  let bytes: Vec<u8> = read_optional_file(source, probe, AI_FILE).ok()??;
-
-  ChunkReader::from_vec(bytes)
-    .and_then(|mut reader| LevelAiFile::find_nearest_node::<XRayByteOrder, _>(&mut reader, x, z))
-    .map_err(|error| log::warn!("Failed to read '{AI_FILE}' of level '{}': {error}", source.get_label()))
+/// Whether nothing of the collision form stands over each eye; every one for a level without a readable form, which
+/// covers nothing.
+fn find_open(source: &LevelSource, probe: &XrayProbe, eyes: &[Vector3d]) -> Vec<bool> {
+  read_optional_file(source, probe, COLLISION_FILE)
     .ok()
     .flatten()
+    .and_then(|bytes| {
+      LevelCformFile::read_open_above_from_bytes::<XRayByteOrder>(bytes, eyes)
+        .map_err(|error| {
+          log::warn!(
+            "Failed to read '{COLLISION_FILE}' of level '{}': {error}",
+            source.get_label()
+          )
+        })
+        .ok()
+    })
+    .unwrap_or_else(|| vec![true; eyes.len()])
 }

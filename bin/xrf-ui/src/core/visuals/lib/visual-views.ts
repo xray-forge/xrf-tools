@@ -1,3 +1,4 @@
+import { IRendererClusters } from "@xrf/renderer";
 import { Nullable, Optional } from "@xrf/types";
 
 import { Vector3d } from "@/core/ipc/types/xrf-math";
@@ -47,6 +48,8 @@ export interface IVisualSubmeshViews {
   skinWeights: Nullable<Float32Array>;
   /** Finest first, never empty. A submesh with one entry has no choice to offer. */
   levels: Array<IVisualSubmeshLevel>;
+  /** The packer's clusters of every level, for geometry drawn as it is stored; null for skinned geometry. */
+  clusters: Nullable<IRendererClusters>;
   /** The material state its shader compiles to: whether alpha is read, and how. */
   surface: IRendererSurfaceDraw;
 }
@@ -103,6 +106,10 @@ function toFiniteTriple(vector: Vector3d): Nullable<[number, number, number]> {
  */
 function toFloatView(buffer: ArrayBuffer, section: VisualSection): Float32Array {
   return new Float32Array(buffer, section.byteOffset, section.byteLength / Float32Array.BYTES_PER_ELEMENT);
+}
+
+function toWordView(buffer: ArrayBuffer, section: VisualSection): Uint32Array {
+  return new Uint32Array(buffer, section.byteOffset, section.byteLength / Uint32Array.BYTES_PER_ELEMENT);
 }
 
 function toIndexView(buffer: ArrayBuffer, section: VisualSection): Uint16Array {
@@ -180,6 +187,12 @@ export function createVisualViews(
       skinIndices: geometry.skin ? toIndexView(buffer, geometry.skin.indices) : null,
       skinWeights: geometry.skin ? toFloatView(buffer, geometry.skin.weights) : null,
       levels,
+      clusters: geometry.clusters
+        ? {
+            ranges: toWordView(buffer, geometry.clusters.ranges),
+            spheres: toFloatView(buffer, geometry.clusters.spheres),
+          }
+        : null,
       surface: surfaces.get(submesh.index) ?? OPAQUE_RENDERER_SURFACE_DRAW,
     });
   }

@@ -12,6 +12,9 @@ pub struct SectorProgressive {
   /// A range of the mesh's indices per band, the whole detail first. Band `b` is window `floor(b * windows / bands)`,
   /// so a place drawing the band its window falls in is never coarser than the engine would draw it.
   pub bands: Vec<VisualDrawRange>,
+  /// Each band's clusters, in its mesh's table: cut from the band's own window, so windows sharing triangles each
+  /// take entries and no index is rewritten.
+  pub clusters: Vec<VisualDrawRange>,
 }
 
 impl SectorProgressive {

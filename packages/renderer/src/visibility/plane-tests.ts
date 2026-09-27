@@ -1,29 +1,4 @@
-import { Nullable } from "@xrf/types";
 import { Box3, Sphere, Vector3, Vector4 } from "three/webgpu";
-
-/** Metres a cell of the level is across, which a shadow cascade takes or leaves its casters by. */
-export const STATIC_CELL_SIZE: number = 64;
-
-/** The cell of what stands nowhere in particular: a draw whose extent is not known. */
-export const STATIC_EVERYWHERE: string = "everywhere";
-
-/** A box's centre, reused. */
-const CENTER: Vector3 = new Vector3();
-
-/**
- * @param bounds - What a static draw spans: a single draw's sphere's box, or the box of every place an instanced one
- *   stands in; null where it is not known.
- * @returns The cell it stands in, by its centre across the ground.
- */
-export function toStaticCell(bounds: Nullable<Box3>): string {
-  if (!bounds || bounds.isEmpty()) {
-    return STATIC_EVERYWHERE;
-  }
-
-  bounds.getCenter(CENTER);
-
-  return `${Math.floor(CENTER.x / STATIC_CELL_SIZE)},${Math.floor(CENTER.z / STATIC_CELL_SIZE)}`;
-}
 
 /** A corner of a box, reused. */
 const CORNER: Vector3 = new Vector3();

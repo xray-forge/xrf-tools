@@ -4,6 +4,7 @@ import {
   Camera,
   NodeFrame,
   NodeMaterialObserver,
+  Object3D,
   PerspectiveCamera,
   StorageBufferAttribute,
   StorageBufferNode,
@@ -81,6 +82,17 @@ describe("three's internals, as the renderer reads them", () => {
     expect(backend.destroyAttribute).toHaveLength(1);
     // An attribute never uploaded has no backend data, which `destroyStorageAttribute` checks first.
     expect(backend.has?.(new StorageBufferAttribute(new Float32Array(4), 4))).toBe(false);
+  });
+
+  it("lets an object go by an event of its own, which is what its render objects are freed on", () => {
+    // `disposeObject`: three's render objects keep an object's geometry until the object or its material is disposed.
+    const object: Object3D = new Object3D();
+    let events: number = 0;
+
+    object.addEventListener("dispose" as never, () => (events += 1));
+    (object as unknown as { dispose(): void }).dispose();
+
+    expect(events).toBe(1);
   });
 
   it("keeps a camera's reversed depth in a private field its getter reads, which its projection follows", () => {

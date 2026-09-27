@@ -8,6 +8,7 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_math::Vector3d;
 use xrf_utils::format_path;
 
+use crate::cform::level_cform_cover::read_open_above;
 use crate::cform::level_cform_geometry::LevelCformGeometry;
 
 /// `hdrCFORM` in c++ codebase, stored raw at the very start of the `level.cform` file.
@@ -93,6 +94,14 @@ impl LevelCformFile {
     let geometry: LevelCformGeometry = LevelCformGeometry::read_from_chunk::<T, _>(&mut reader, &file.header)?;
 
     Ok((file, geometry))
+  }
+
+  /// Whether no face lies straight above each point, the faces tested as they are read rather than kept.
+  pub fn read_open_above_from_bytes<T: ByteOrder>(bytes: Vec<u8>, points: &[Vector3d<f32>]) -> XrfResult<Vec<bool>> {
+    let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_vec(bytes)?;
+    let file: Self = Self::read_from_chunk::<T, _>(&mut reader)?;
+
+    read_open_above::<T, _>(&mut reader, &file.header, points)
   }
 
   /// Reads the vertices and faces alone, the header read only for the counts it holds.
@@ -212,6 +221,78 @@ mod tests {
     }
 
     assert!(LevelCformFile::read_with_geometry_from_bytes::<XRayByteOrder>(bytes).is_err());
+
+    Ok(())
+  }
+
+  /// A collision form of the given corners and faces, each face of material nought.
+  fn new_form(vertices: &[[f32; 3]], faces: &[[u32; 3]]) -> XrfResult<Vec<u8>> {
+    let mut writer: ChunkWriter = ChunkWriter::new();
+
+    LevelCformHeader {
+      version: 4,
+      vertex_count: vertices.len() as u32,
+      face_count: faces.len() as u32,
+      aabb_min: Vector3d::new(0.0, 0.0, 0.0),
+      aabb_max: Vector3d::new(0.0, 0.0, 0.0),
+    }
+    .write::<XRayByteOrder>(&mut writer)?;
+
+    let mut bytes: Vec<u8> = writer.flush_raw_into_buffer()?;
+
+    for value in vertices.iter().flatten() {
+      bytes.extend_from_slice(&value.to_le_bytes());
+    }
+
+    for face in faces {
+      for index in face.iter().copied().chain([0]) {
+        bytes.extend_from_slice(&index.to_le_bytes());
+      }
+    }
+
+    Ok(bytes)
+  }
+
+  // A floor at nought over the corner x + z < 10, a roof at ten over x + z < 5, and a wall along x = 20.
+  #[test]
+  fn tells_which_points_have_nothing_straight_above_them() -> XrfResult {
+    let bytes: Vec<u8> = new_form(
+      &[
+        [0.0, 0.0, 0.0],
+        [10.0, 0.0, 0.0],
+        [0.0, 0.0, 10.0],
+        [0.0, 10.0, 0.0],
+        [5.0, 10.0, 0.0],
+        [0.0, 10.0, 5.0],
+        [20.0, 0.0, 0.0],
+        [20.0, 10.0, 0.0],
+        [20.0, 0.0, 10.0],
+      ],
+      &[[0, 1, 2], [3, 5, 4], [6, 7, 8]],
+    )?;
+    let points: [Vector3d<f32>; 4] = [
+      Vector3d::new(2.0, 1.7, 2.0),
+      Vector3d::new(2.0, 11.0, 2.0),
+      Vector3d::new(4.0, 1.7, 4.0),
+      Vector3d::new(20.0, 1.7, 5.0),
+    ];
+
+    // Under the roof; over it; over the floor alone; beside a wall seen edge-on from above.
+    assert_eq!(
+      LevelCformFile::read_open_above_from_bytes::<XRayByteOrder>(bytes, &points)?,
+      vec![false, true, true, true]
+    );
+
+    Ok(())
+  }
+
+  #[test]
+  fn a_face_naming_a_vertex_past_the_count_is_an_error_when_testing_the_sky() -> XrfResult {
+    let bytes: Vec<u8> = new_form(&[[0.0, 0.0, 0.0]], &[[0, 0, 3]])?;
+
+    assert!(
+      LevelCformFile::read_open_above_from_bytes::<XRayByteOrder>(bytes, &[Vector3d::new(0.0, 0.0, 0.0)]).is_err()
+    );
 
     Ok(())
   }
