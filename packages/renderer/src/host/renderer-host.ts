@@ -8,7 +8,7 @@ import { IRendererSettings } from "#/contract/renderer-settings";
 import { IRendererViewSize } from "#/contract/renderer-view-size";
 import { RendererDevice } from "#/device/renderer-device";
 import { RendererDeviceFailure } from "#/device/renderer-device-failure";
-import { shouldDrawFrame } from "#/frame/render-frame-limit";
+import { RenderFrameLimiter } from "#/frame/render-frame-limiter";
 import { toFramesInFlight } from "#/frame/render-frame-pacing";
 import { RendererFrameGraph } from "#/graph/renderer-frame-graph";
 import { RendererCameraRig } from "#/host/renderer-camera-rig";
@@ -61,6 +61,7 @@ export class RendererHost {
   private view: Nullable<RendererView> = null;
   private settings: Nullable<IRendererSettings> = null;
   private drawnAt: Nullable<number> = null;
+  private readonly limiter: RenderFrameLimiter = new RenderFrameLimiter();
   private isDisposed: boolean = false;
 
   public constructor(
@@ -264,6 +265,7 @@ export class RendererHost {
     }
 
     this.drawnAt = null;
+    this.limiter.reset();
     this.ensureScheduled();
   }
 
@@ -301,7 +303,7 @@ export class RendererHost {
 
     let drawn: Nullable<Vector2> = null;
 
-    if (view && (this.captures.hasPending || shouldDrawFrame(now, this.drawnAt, settings.pacing.rateLimit))) {
+    if (view && (this.captures.hasPending || this.limiter.take(now, settings.pacing.rateLimit))) {
       // A frame still settling shows the scene half changed, and one that allocated the targets reads back cleared: a
       // capture of either waits for a later frame.
       const isSettled: boolean = !this.scene.hasPending && !this.compiler.isCompiling && !this.scene.textures.hasQueued;
@@ -444,6 +446,7 @@ export class RendererHost {
     this.device?.dispose();
     this.device = null;
     this.drawnAt = null;
+    this.limiter.reset();
     this.compiler.reset();
     this.stats.reset();
     this.captures.cancel();

@@ -64,11 +64,20 @@ export class RendererTargets implements IGBufferTextures {
    * attachment, so it keeps one of a byte a texel, never written.
    */
   public readonly lightShadows: RenderTarget = new RenderTarget(1, 1, { depthBuffer: true, format: RedFormat });
+  /**
+   * The atlas of what stands still: each face's square as it was last drawn in full, which a face drawn again for what
+   * sways starts from. It shares the lights' colour, which nothing writes.
+   */
+  public readonly lightShadowsStill: RenderTarget = new RenderTarget(1, 1, { depthBuffer: true, format: RedFormat });
 
   public constructor() {
     this.lightShadows.texture.name = "light-shadows";
     this.lightShadows.depthTexture = new DepthTexture(1, 1, FloatType);
     this.lightShadows.depthTexture.name = "light-shadows-depth";
+    this.lightShadowsStill.texture.dispose();
+    this.lightShadowsStill.texture = this.lightShadows.texture;
+    this.lightShadowsStill.depthTexture = new DepthTexture(1, 1, FloatType);
+    this.lightShadowsStill.depthTexture.name = "light-shadows-still-depth";
     this.gbuffer = new RenderTarget(1, 1, { count: 4, depthBuffer: true });
     // Named for the device's labels alone: the surfaces write the attachments by location, in this order.
     this.gbuffer.textures[0].name = "albedo";
@@ -166,6 +175,7 @@ export class RendererTargets implements IGBufferTextures {
       this.scene,
       this.composite,
       this.lightShadows,
+      this.lightShadowsStill,
       ...this.shadows,
     ].forEach((target: RenderTarget) => target.dispose());
   }

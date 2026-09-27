@@ -15,10 +15,13 @@ export interface ILevelFog {
 /** `fog_color` of `default_clear` at noon (`configs/environment/weathers/default_clear.ltx`, `[12:00:00]`). */
 const LEVEL_NOON_FOG_COLOR: TRendererColor = [0.304609, 0.328138, 0.367354];
 
-/** `default_clear`'s noon fog: total at 350 metres, starting at a tenth of 85% of that. */
+/**
+ * Total at 750 metres, starting at a quarter of 85% of that: farther than `default_clear`'s noon, 350 metres from a
+ * tenth, which closes a viewer in on what it is there to look at.
+ */
 export const DEFAULT_LEVEL_FOG: ILevelFog = {
-  fogDensity: 0.9,
-  fogDistance: 350,
+  fogDensity: 0.75,
+  fogDistance: 750,
   fogIntensity: 1,
 };
 

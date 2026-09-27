@@ -38,7 +38,8 @@ interface IBatchGrouping {
 /**
  * The batches drawing every static draw, one an arena, kind and material, each recorded in a chunk's bundles while it
  * draws any. Every slot is batched twice over: by its surface's own material, drawn in the G-buffer, and, for a
- * surface that casts, by its shadow material and the cell it stands in, drawn into each cascade. Every opaque surface
+ * surface that casts, by its shadow material and the cell it stands in, drawn into each shadow view: apart for what
+ * sways with the wind, so a light's face can keep what stands still and draw again only what moves. Every opaque surface
  * shares one shadow material, so its casters are a batch an arena, kind and cell, however many surfaces they are; a
  * cascade shows only the cells its box reaches, so it issues the draws of what it can cast from alone. While a wireframe
  * draws, every slot is batched a third time, by one wireframe material over its arena's line index, in place of its
@@ -50,7 +51,10 @@ export class StaticBatches {
 
   private readonly surfaces: IBatchGrouping;
   private readonly shadows: IBatchGrouping;
+  private readonly swayingShadows: IBatchGrouping;
   private readonly wires: IBatchGrouping;
+  /** Every grouping, for what is done to each alike. */
+  private readonly groupings: ReadonlyArray<IBatchGrouping>;
   /** Each slot's surface, which its wireframe batch is chosen by. */
   private readonly slotSurfaces: Map<number, ISurfaceMaterial> = new Map();
   /** What a wireframe draws every surface with but an impostor, or null while none draws. */
@@ -60,9 +64,16 @@ export class StaticBatches {
    * @param pool - The slots the batches draw.
    * @param scene - Where a batch drawing anything stands.
    * @param late - Where its draw by the second cull's arguments stands.
-   * @param cascadeScenes - Where a shadow batch's draws by each cascade's arguments stand.
+   * @param stillScenes - Where a shadow batch of what stands still draws, by each shadow view's arguments.
+   * @param swayingScenes - Where one of what sways with the wind draws.
    */
-  public constructor(pool: StaticDrawPool, scene: Object3D, late: Object3D, cascadeScenes: ReadonlyArray<Object3D>) {
+  public constructor(
+    pool: StaticDrawPool,
+    scene: Object3D,
+    late: Object3D,
+    stillScenes: ReadonlyArray<Object3D>,
+    swayingScenes: ReadonlyArray<Object3D>
+  ) {
     this.surfaces = StaticBatches.createGrouping([() => pool.args, () => pool.lateArgs], [scene, late], false);
     this.wires = StaticBatches.createGrouping(
       [() => pool.wireArgs, () => pool.wireLateArgs],
@@ -71,10 +82,16 @@ export class StaticBatches {
       true
     );
     this.shadows = StaticBatches.createGrouping(
-      cascadeScenes.map((_, view: number) => () => pool.viewArgs[view]),
-      cascadeScenes,
+      stillScenes.map((_, view: number) => () => pool.viewArgs[view]),
+      stillScenes,
       true
     );
+    this.swayingShadows = StaticBatches.createGrouping(
+      swayingScenes.map((_, view: number) => () => pool.viewArgs[view]),
+      swayingScenes,
+      true
+    );
+    this.groupings = [this.surfaces, this.shadows, this.swayingShadows, this.wires];
   }
 
   /**
@@ -84,11 +101,13 @@ export class StaticBatches {
    * @param planes - Its box's planes.
    */
   public showShadowCells(view: number, planes: ReadonlyArray<Vector4>): void {
-    this.shadows.chunks.show(view, (cell: string) => {
-      const box: Maybe<Box3> = this.shadows.cells.get(cell);
+    for (const grouping of [this.shadows, this.swayingShadows]) {
+      grouping.chunks.show(view, (cell: string) => {
+        const box: Maybe<Box3> = grouping.cells.get(cell);
 
-      return cell === STATIC_EVERYWHERE || (box !== undefined && isBoxInPlanes(box, planes));
-    });
+        return cell === STATIC_EVERYWHERE || (box !== undefined && isBoxInPlanes(box, planes));
+      });
+    }
   }
 
   /** Every material a batch draws in the G-buffer. */
@@ -124,10 +143,12 @@ export class StaticBatches {
       this.putWire(slot, arena, kind, surface, this.wireMaterial);
     }
 
+    const shadows: IBatchGrouping = arena.isSwaying ? this.swayingShadows : this.shadows;
+
     if (surface.shadow) {
-      StaticBatches.put(this.shadows, slot, arena, kind, surface.shadow, surface.shadowKeys, bounds);
+      StaticBatches.put(shadows, slot, arena, kind, surface.shadow, surface.shadowKeys, bounds);
     } else {
-      StaticBatches.withdraw(this.shadows, slot);
+      StaticBatches.withdraw(shadows, slot);
     }
 
     this.shadowChanges.put(
@@ -143,9 +164,7 @@ export class StaticBatches {
    * @param slot - A slot no batch draws from now on.
    */
   public withdraw(slot: number): void {
-    StaticBatches.withdraw(this.surfaces, slot);
-    StaticBatches.withdraw(this.shadows, slot);
-    StaticBatches.withdraw(this.wires, slot);
+    this.groupings.forEach((grouping: IBatchGrouping) => StaticBatches.withdraw(grouping, slot));
     this.slotSurfaces.delete(slot);
     this.shadowChanges.withdraw(slot);
   }
@@ -180,23 +199,25 @@ export class StaticBatches {
    * @param key - A texture key whose samplers now sample another texture: every batch sampling it records again.
    */
   public invalidate(key: string): void {
-    for (const grouping of [this.surfaces, this.shadows, this.wires]) {
+    for (const grouping of this.groupings) {
       for (const { drawing } of StaticBatches.all(grouping)) {
         drawing.forEach((batch: StaticBatch) => batch.keys.includes(key) && batch.invalidate());
       }
     }
 
     // A shadow changes where a caster cuts out by the texture, not where only its colour does.
-    this.shadows.drawing.forEach((batch: StaticBatch, slot: number) => {
-      if (batch.keys.includes(key)) {
-        this.shadowChanges.touch(slot);
-      }
-    });
+    for (const grouping of [this.shadows, this.swayingShadows]) {
+      grouping.drawing.forEach((batch: StaticBatch, slot: number) => {
+        if (batch.keys.includes(key)) {
+          this.shadowChanges.touch(slot);
+        }
+      });
+    }
   }
 
   /** Has every batch record again, for storage buffers its shaders read that were replaced by ones that grew. */
   public invalidateAll(): void {
-    for (const grouping of [this.surfaces, this.shadows, this.wires]) {
+    for (const grouping of this.groupings) {
       StaticBatches.all(grouping).forEach(({ drawing }) => drawing.forEach((batch: StaticBatch) => batch.invalidate()));
     }
   }
@@ -205,7 +226,7 @@ export class StaticBatches {
    * @param arena - An arena whose buffers may have been replaced, which every batch over it then draws.
    */
   public refresh(arena: StaticArena): void {
-    for (const grouping of [this.surfaces, this.shadows, this.wires]) {
+    for (const grouping of this.groupings) {
       for (const batches of Object.values(grouping.arenas.get(arena) ?? {})) {
         // An idle batch is refreshed as it is taken up again, so one nothing draws costs nothing while the arena grows.
         batches.drawing.forEach((batch: StaticBatch) => batch.refresh());
@@ -217,7 +238,7 @@ export class StaticBatches {
    * @param arena - An arena going, which no batch draws any more.
    */
   public release(arena: StaticArena): void {
-    for (const grouping of [this.surfaces, this.shadows, this.wires]) {
+    for (const grouping of this.groupings) {
       for (const batches of Object.values(grouping.arenas.get(arena) ?? {})) {
         batches.drawing.forEach((batch: StaticBatch) => {
           grouping.chunks.detach(batch);
@@ -231,11 +252,11 @@ export class StaticBatches {
   }
 
   public dispose(): void {
-    new Set([...this.surfaces.arenas.keys(), ...this.shadows.arenas.keys(), ...this.wires.arenas.keys()]).forEach(
+    new Set(this.groupings.flatMap((grouping: IBatchGrouping) => [...grouping.arenas.keys()])).forEach(
       (arena: StaticArena) => this.release(arena)
     );
 
-    for (const grouping of [this.surfaces, this.shadows, this.wires]) {
+    for (const grouping of this.groupings) {
       grouping.chunks.clear();
       grouping.drawing.clear();
     }

@@ -3,11 +3,11 @@ import { describe, expect, it } from "@jest/globals";
 import { DEFAULT_LEVEL_FOG, toLevelRendererFog } from "@/core/level/lib/lighting/level-fog";
 
 describe("toLevelRendererFog", () => {
-  it("is default_clear's noon fog as it stands", () => {
+  it("is default_clear's noon colour, total at 750 metres from a quarter of the way in", () => {
     expect(toLevelRendererFog(DEFAULT_LEVEL_FOG)).toEqual({
       color: [0.304609, 0.328138, 0.367354],
-      density: 0.9,
-      distance: 350,
+      density: 0.75,
+      distance: 750,
     });
   });
 

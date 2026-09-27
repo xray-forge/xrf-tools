@@ -12,7 +12,7 @@ export interface ILevelViewOptions extends ILevelSurfaceOptions {
   isStatsVisible: boolean;
   /** Lists what each pass cost on the GPU in the frame readout, under what the frame cost as a whole. */
   isAdvancedStatsVisible: boolean;
-  /** Draws the noon fog, which closes the level in at 350 metres as the game does. */
+  /** Draws the fog, which closes the level in at its distance. */
   isFogged: boolean;
   /** Draws a distant clump of trees as its impostor, as the game does, rather than every tree at every distance. */
   isImpostors: boolean;

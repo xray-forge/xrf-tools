@@ -45,8 +45,24 @@ export class StaticDraws implements IStaticShadowCasters {
   public readonly cull: StaticCull;
   /** Where the batches' second draws stand, drawn into the G-buffer after the second cull. */
   public readonly late: Scene = createSceneRoot();
-  /** What each shadow view draws: every casting batch, by the view's arguments. */
-  public readonly shadowScenes: ReadonlyArray<Scene> = Array.from({ length: STATIC_SHADOW_VIEWS }, createSceneRoot);
+  /** What each shadow view draws of the casting batches that stand still, by the view's arguments. */
+  public readonly stillShadowScenes: ReadonlyArray<Scene> = Array.from(
+    { length: STATIC_SHADOW_VIEWS },
+    createSceneRoot
+  );
+  /** And of those that sway with the wind. */
+  public readonly swayingShadowScenes: ReadonlyArray<Scene> = Array.from(
+    { length: STATIC_SHADOW_VIEWS },
+    createSceneRoot
+  );
+  /** What each shadow view draws: every casting batch, the still and the swaying scene within it. */
+  public readonly shadowScenes: ReadonlyArray<Scene> = this.stillShadowScenes.map((still: Scene, view: number) => {
+    const scene: Scene = createSceneRoot();
+
+    scene.add(still, this.swayingShadowScenes[view]);
+
+    return scene;
+  });
   /** What every cascade draws besides the batches: a twin of each part drawn plainly that casts. */
   public readonly plainCasters: PlainShadowCasters = new PlainShadowCasters();
 
@@ -75,7 +91,7 @@ export class StaticDraws implements IStaticShadowCasters {
     this.places = new StaticPlaces(buffers);
     this.lods = new StaticLods(buffers);
     this.cull = new StaticCull(buffers, this.pool, this.places, this.lods, this.late);
-    this.batches = new StaticBatches(this.pool, scene, this.late, this.shadowScenes);
+    this.batches = new StaticBatches(this.pool, scene, this.late, this.stillShadowScenes, this.swayingShadowScenes);
     this.arenas = new StaticArenas(
       (arena: StaticArena) => this.batches.refresh(arena),
       (arena: StaticArena) => this.batches.release(arena),

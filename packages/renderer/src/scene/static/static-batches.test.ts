@@ -2,6 +2,8 @@ import { describe, expect, it } from "@jest/globals";
 import { BufferAttribute, BufferGeometry, LineSegments, MeshBasicNodeMaterial, Scene } from "three/webgpu";
 
 import { ERendererPass } from "#/contract/scene/renderer-surface";
+import { PACKED_TREE_COMPONENTS } from "#/geometry/renderer-packed-coordinate";
+import { EVertexAttribute } from "#/geometry/vertex-attribute";
 import { ISurfaceMaterial } from "#/material/surface-material";
 import { StaticArena } from "#/scene/static/static-arena";
 import { StaticBatches } from "#/scene/static/static-batches";
@@ -22,10 +24,18 @@ function createSurface(shadow: MeshBasicNodeMaterial | null): ISurfaceMaterial {
   };
 }
 
-function createArena(): StaticArena {
+function createArena(isTree: boolean = false): StaticArena {
   const buffer: BufferGeometry = new BufferGeometry();
 
   buffer.setAttribute("position", new BufferAttribute(new Float32Array(9), 3));
+
+  // A tree's packed coordinates, which is what a geometry that sways is told by.
+  if (isTree) {
+    buffer.setAttribute(
+      EVertexAttribute.PACKED_UV,
+      new BufferAttribute(new Int16Array(12), PACKED_TREE_COMPONENTS / 2)
+    );
+  }
 
   const arena: StaticArena = new StaticArena(buffer, 64);
 
@@ -41,9 +51,13 @@ describe("StaticBatches", () => {
     const scene: Scene = new Scene();
     const late: Scene = new Scene();
     const cascade: Scene = new Scene();
-    const batches: StaticBatches = new StaticBatches(new StaticDrawPool(new StaticDrawBuffers()), scene, late, [
-      cascade,
-    ]);
+    const batches: StaticBatches = new StaticBatches(
+      new StaticDrawPool(new StaticDrawBuffers()),
+      scene,
+      late,
+      [cascade],
+      [new Scene()]
+    );
     const arena: StaticArena = createArena();
     const opaque: MeshBasicNodeMaterial = new MeshBasicNodeMaterial();
 
@@ -62,13 +76,41 @@ describe("StaticBatches", () => {
     expect(scene.children[0].children).toHaveLength(1);
   });
 
+  // A light's face keeps what stands still and draws again only what sways, so the two cast from scenes of their own.
+  it("casts what sways with the wind from a scene of its own", () => {
+    const still: Scene = new Scene();
+    const swaying: Scene = new Scene();
+    const batches: StaticBatches = new StaticBatches(
+      new StaticDrawPool(new StaticDrawBuffers()),
+      new Scene(),
+      new Scene(),
+      [still],
+      [swaying]
+    );
+    const opaque: MeshBasicNodeMaterial = new MeshBasicNodeMaterial();
+
+    batches.put(1, createArena(), EStaticDrawKind.SINGLE, createSurface(opaque));
+    batches.put(2, createArena(true), EStaticDrawKind.SINGLE, createSurface(opaque));
+
+    expect(still.children[0].children).toHaveLength(1);
+    expect(swaying.children[0].children).toHaveLength(1);
+
+    batches.withdraw(2);
+
+    expect(swaying.children).toHaveLength(0);
+  });
+
   // Drawn over the arenas' line indices by one material, a wireframe compiles nothing a surface and builds no line
   // index on the CPU a mesh; an impostor keeps its own material, which turns its quad to the camera.
   it("draws every slot's edges by one material while a wireframe draws, and its surface again after", () => {
     const scene: Scene = new Scene();
-    const batches: StaticBatches = new StaticBatches(new StaticDrawPool(new StaticDrawBuffers()), scene, new Scene(), [
+    const batches: StaticBatches = new StaticBatches(
+      new StaticDrawPool(new StaticDrawBuffers()),
+      scene,
       new Scene(),
-    ]);
+      [new Scene()],
+      [new Scene()]
+    );
     const arena: StaticArena = createArena();
     const wire: MeshBasicNodeMaterial = new MeshBasicNodeMaterial();
     const impostor: ISurfaceMaterial = { ...createSurface(null), isImpostor: true };

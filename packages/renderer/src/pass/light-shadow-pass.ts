@@ -1,8 +1,17 @@
 import { Nullable } from "@xrf/types";
-import { NodeMaterial, PerspectiveCamera, QuadMesh, RenderTarget, WebGPURenderer } from "three/webgpu";
+import {
+  DepthTexture,
+  NodeMaterial,
+  Object3D,
+  PerspectiveCamera,
+  QuadMesh,
+  RenderTarget,
+  Scene,
+  WebGPURenderer,
+} from "three/webgpu";
 
 import { adoptRendererConventions } from "#/internals/camera-conventions";
-import { toFarDepth, toNoColor } from "#/pass/light-shadow-pass.tsl";
+import { toFarDepth, toKeptDepth, toNoColor } from "#/pass/light-shadow-pass.tsl";
 import { IRendererFrame } from "#/pass/renderer-frame";
 import { IRendererPass } from "#/pass/renderer-pass";
 import { RendererTargets } from "#/pass/renderer-targets";
@@ -15,19 +24,25 @@ import { STATIC_LIGHT_VIEW_START } from "#/uniforms/static-draw-buffers";
 /**
  * Culls the light faces queued this frame as one batch, each into its own shadow-view slot, then draws each into its
  * square of the atlas through one camera that takes each face's matrices, so a slot's recordings replay for every face
- * it draws. Only that square is cleared: clearing the target would erase the faces kept. In the frame only while the
- * lights draw shadows; the atlas is a texel across otherwise.
+ * it draws. Only that square is cleared: clearing the target would erase the faces kept. What stands still is drawn
+ * into an atlas of its own and kept there, so a face drawn again only because what sways moved starts from what it
+ * kept and draws the swaying and the plain casters alone. In the frame only while the lights draw shadows; the atlases
+ * are a texel across otherwise.
  */
 export class LightShadowPass implements IRendererPass {
   public readonly name: string = "light-shadows";
 
   private readonly planner: LightShadowPlanner;
   private readonly target: RenderTarget;
+  private readonly still: RenderTarget;
   private readonly casters: IStaticShadowCasters;
   private readonly cull: StaticCull;
   private readonly camera: PerspectiveCamera = new PerspectiveCamera();
   private readonly clear: QuadMesh;
   private readonly clearMaterial: NodeMaterial = new NodeMaterial();
+  /** Writes what a face kept of what stands still into its square, as its draw over what sways starts. */
+  private readonly keep: QuadMesh;
+  private readonly keepMaterial: NodeMaterial = new NodeMaterial();
   /** The renderer the atlas was allocated by: another starts it out holding nothing. */
   private renderer: Nullable<WebGPURenderer> = null;
 
@@ -45,6 +60,7 @@ export class LightShadowPass implements IRendererPass {
   ) {
     this.planner = planner;
     this.target = targets.lightShadows;
+    this.still = targets.lightShadowsStill;
     this.casters = casters;
     this.cull = cull;
     adoptRendererConventions(this.camera);
@@ -59,6 +75,12 @@ export class LightShadowPass implements IRendererPass {
     this.clearMaterial.depthWrite = true;
     this.clearMaterial.colorWrite = false;
     this.clear = new QuadMesh(this.clearMaterial);
+    this.keepMaterial.fragmentNode = toNoColor();
+    this.keepMaterial.depthNode = toKeptDepth(this.still.depthTexture as DepthTexture);
+    this.keepMaterial.depthTest = false;
+    this.keepMaterial.depthWrite = true;
+    this.keepMaterial.colorWrite = false;
+    this.keep = new QuadMesh(this.keepMaterial);
   }
 
   /** Allocates the atlas for a renderer, whatever the frame's size: a new one holds no face, so each is drawn again. */
@@ -68,8 +90,11 @@ export class LightShadowPass implements IRendererPass {
     }
 
     this.renderer = renderer;
+    // Both sized before either is allocated: they share a colour, which sizing frees.
     this.target.setSize(LIGHT_SHADOW_ATLAS_SIZE, LIGHT_SHADOW_ATLAS_SIZE);
+    this.still.setSize(LIGHT_SHADOW_ATLAS_SIZE, LIGHT_SHADOW_ATLAS_SIZE);
     renderer.initRenderTarget(this.target);
+    renderer.initRenderTarget(this.still);
     this.planner.forgetDrawn();
   }
 
@@ -85,26 +110,42 @@ export class LightShadowPass implements IRendererPass {
       faces.forEach((face: ILightShadowFace, index: number) => this.draw(renderer, face, index))
     );
     this.target.viewport.set(0, 0, LIGHT_SHADOW_ATLAS_SIZE, LIGHT_SHADOW_ATLAS_SIZE);
+    this.still.viewport.set(0, 0, LIGHT_SHADOW_ATLAS_SIZE, LIGHT_SHADOW_ATLAS_SIZE);
     this.planner.markDrawn();
   }
 
   /** Gives the atlas back to a texel; the faces keep their squares, drawn again once the atlas is. */
   public dispose(): void {
     this.target.setSize(1, 1);
+    this.still.setSize(1, 1);
     this.clearMaterial.dispose();
+    this.keepMaterial.dispose();
   }
 
-  /** Draws a face into its square, through the light-view camera taking its matrices, from its view slot. */
+  /**
+   * Draws a face into its square, through the light-view camera taking its matrices, from its view slot: what stands
+   * still into the still atlas where that changed or was never drawn, then that into the atlas and what sways over it.
+   */
   private draw(renderer: WebGPURenderer, face: ILightShadowFace, index: number): void {
     const { x, y, size } = face.tile;
     const view: number = STATIC_LIGHT_VIEW_START + index;
+    // Drawn, and nothing it keeps changed: it is queued for what sways or moves alone.
+    const isStillKept: boolean = face.isDrawn && !face.isStale;
 
     this.takeFace(face);
     this.casters.showShadowCells(view, face.planes);
+
+    if (!isStillKept) {
+      this.still.viewport.set(x, y, size, size);
+      renderer.setRenderTarget(this.still);
+      this.clear.render(renderer);
+      renderIfShown(renderer, this.casters.stillShadowScenes[view], this.camera);
+    }
+
     this.target.viewport.set(x, y, size, size);
     renderer.setRenderTarget(this.target);
-    this.clear.render(renderer);
-    renderer.render(this.casters.shadowScenes[view], this.camera);
+    this.keep.render(renderer);
+    renderIfShown(renderer, this.casters.swayingShadowScenes[view], this.camera);
 
     if (this.casters.plainCasters.show(face.planes)) {
       renderer.render(this.casters.plainCasters.scene, this.camera);
@@ -120,5 +161,15 @@ export class LightShadowPass implements IRendererPass {
     camera.matrixWorldInverse.copy(face.view);
     camera.projectionMatrix.copy(face.projection);
     camera.projectionMatrixInverse.copy(face.projection).invert();
+  }
+}
+
+/**
+ * Renders a shadow scene where any of its bundles is shown to the view: a render call costs its setup whatever it
+ * draws, and a face often reaches nothing that sways.
+ */
+function renderIfShown(renderer: WebGPURenderer, scene: Scene, camera: PerspectiveCamera): void {
+  if (scene.children.some((child: Object3D) => child.visible)) {
+    renderer.render(scene, camera);
   }
 }

@@ -1,5 +1,3 @@
-import { Nullable } from "@xrf/types";
-
 /**
  * How often a viewport is allowed to redraw.
  */
@@ -10,9 +8,6 @@ export const FRAME_RATE_LIMITS: ReadonlyArray<TFrameRateLimit> = ["30", "60", "1
 
 /** Enough for anything a viewer does, and a third of what an unthrottled loop costs on a fast display. */
 export const DEFAULT_FRAME_RATE_LIMIT: TFrameRateLimit = "60";
-
-/** How much of the interval has to have passed, leaving room for a wake that lands just short of it. */
-const FRAME_ALLOWANCE: number = 0.9;
 
 /**
  * Reads a stored choice, falling back to the default rather than trusting what is in storage.
@@ -25,23 +20,11 @@ export function toFrameRateLimit(stored: unknown): TFrameRateLimit {
 }
 
 /**
- * Milliseconds a viewport has to wait before drawing again.
+ * Milliseconds between two frames at a limit.
  *
  * @param limit - The budget chosen.
- * @returns The wait, or zero for a viewport allowed every frame.
+ * @returns The interval, or zero for a viewport allowed every frame.
  */
 export function toFrameInterval(limit: TFrameRateLimit): number {
-  return limit === "unlimited" ? 0 : (1000 / Number(limit)) * FRAME_ALLOWANCE;
-}
-
-/**
- * Whether a frame due now is worth drawing under a limit.
- *
- * @param now - The animation frame's own timestamp, in milliseconds.
- * @param drawnAt - When the last frame was drawn, or null before any has been.
- * @param limit - The budget chosen.
- * @returns Whether to draw this one.
- */
-export function shouldDrawFrame(now: number, drawnAt: Nullable<number>, limit: TFrameRateLimit): boolean {
-  return drawnAt === null || now - drawnAt >= toFrameInterval(limit);
+  return limit === "unlimited" ? 0 : 1000 / Number(limit);
 }
