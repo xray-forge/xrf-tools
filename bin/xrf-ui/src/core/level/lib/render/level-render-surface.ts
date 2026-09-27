@@ -49,6 +49,24 @@ export function toLevelSurface(
     };
   }
 
+  if (render.waterTextures) {
+    const water = render.waterTextures;
+
+    return {
+      color: base ? undefined : toLevelSurfaceColor(surface.shaderId),
+      draw: render.draw,
+      isLit: render.isLit,
+      textures: {
+        // The script's own base, which is the water's colour and the mix of its reflection, over the row's.
+        base: isTextured ? (water.base ?? base ?? undefined) : undefined,
+        distortion: water.distortion ?? undefined,
+        foam: isTextured ? (water.foam ?? undefined) : undefined,
+        normal: water.normal ?? undefined,
+      },
+      water: render.water,
+    };
+  }
+
   return {
     alphaReference: render.alphaReference,
     // An untextured surface takes its entry's colour, so a level with textures off is still read surface by surface.

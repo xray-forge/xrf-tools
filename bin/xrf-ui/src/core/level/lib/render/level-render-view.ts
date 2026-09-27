@@ -62,17 +62,20 @@ export function toLevelCamera(
  * @param lighting - The level's light, fog and wind, as its controls set them.
  * @param isFogged - Whether the fog is drawn.
  * @param isWindy - Whether the trees and the grass sway: the trees by the wind's controls, the grass as the game's calm.
- * @returns The engine's noon, pointed and scaled by those controls.
+ * @param sky - The texture key of the sky cube the level is lit under, or null for the engine's noon sky.
+ * @returns The engine's noon, pointed and scaled by those controls, under the level's sky.
  */
 export function toLevelRendererLighting(
   lighting: ILevelLighting,
   isFogged: boolean,
-  isWindy: boolean
+  isWindy: boolean,
+  sky: Nullable<string> = null
 ): IRendererLighting {
   return {
     ...toRendererLighting(lighting, DEFAULT_RENDERER_LIGHTING),
     fog: isFogged ? toLevelRendererFog(lighting) : null,
     grass: isWindy ? DEFAULT_RENDERER_GRASS_WIND : null,
+    sky: sky ? { blend: 0, textures: [sky, sky] } : DEFAULT_RENDERER_LIGHTING.sky,
     trees: isWindy ? toLevelRendererTreeWind(lighting) : null,
   };
 }
@@ -117,6 +120,7 @@ export function toLevelRendererSettings(inputs: ILevelRendererSettingsInputs): I
       lights: toLevelRendererFeature("lights", features, view, options.isLamplit),
       lod: toLevelRendererLod(features.lod, lod, options.isImpostors),
       shadows: toLevelRendererFeature("shadows", features, view, options.isShadowed),
+      water: toLevelRendererFeature("water", features, view, options.isWaterVisible),
     },
     pacing,
     hemiStrength: options.isBaked ? lighting.hemiStrength : 0,

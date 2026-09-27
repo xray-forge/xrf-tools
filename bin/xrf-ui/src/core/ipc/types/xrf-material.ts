@@ -199,6 +199,8 @@ export type XraySurfaceDeclaration =
       script: string;
       /** The pass the engine compiles as the base element, named by its function. */
       function: string;
+      /** The vertex program that pass begins, `water_soft` and its kin, which says what shades it. */
+      program: string;
       /** Whether the pass is composited rather than written. */
       isBlended: boolean;
       /** Whether the pass asks for an alpha test, which DX10 and DX11 grant only where the pixel shader calls `clip`. */
@@ -240,6 +242,11 @@ export type XraySurfaceDescriptor = {
    * descriptor associates none.
    */
   detail: XraySurfaceDetail | null;
+  /**
+   * The texture files a scripted surface binds by sampler, in every element the renderer compiles for it; none for a
+   * surface the blender library describes, whose class binds by slot.
+   */
+  samplers: Array<XraySurfaceSampler>;
 };
 
 /** The detail texture a surface modulates its diffuse with, and how densely it is laid over it. */
@@ -273,6 +280,11 @@ export enum EXraySurfaceDraw {
    * nothing at all.
    */
   INVISIBLE = "invisible",
+  /**
+   * Water, by a `water` program: reflecting the sky, rippled and distorting what is behind it. `is_soft` is one that
+   * blends, over the depth behind it, as vanilla's `water_soft` and every Anomaly program does; plain `water` is whole.
+   */
+  WATER = "water",
 }
 
 /** How the renderer draws a surface once its blender is compiled. */
@@ -297,4 +309,19 @@ export type XraySurfaceDraw =
    * Composited by an equation that keeps the destination and discards the source, so the surface contributes
    * nothing at all.
    */
-  | { kind: "invisible" };
+  | { kind: "invisible" }
+  /**
+   * Water, by a `water` program: reflecting the sky, rippled and distorting what is behind it. `is_soft` is one that
+   * blends, over the depth behind it, as vanilla's `water_soft` and every Anomaly program does; plain `water` is whole.
+   */
+  | { kind: "water"; isSoft: boolean };
+
+/** A texture file a surface's script binds to one of its samplers. */
+export type XraySurfaceSampler = {
+  /** The script function whose pass binds it: `normal` for the surface itself, `l_special` for its distortion. */
+  element: string;
+  /** The sampler's name in the shader, `s_nmap` and its kin. */
+  name: string;
+  /** Texture reference, engine-style, without extension. */
+  texture: string;
+};

@@ -25,6 +25,8 @@ mod xray_shader_import;
 mod xray_shader_import_reference;
 mod xray_shader_pass;
 mod xray_shader_pass_state;
+mod xray_shader_sampler;
+mod xray_shader_sampler_texture;
 mod xray_shader_script;
 mod xray_shader_source_loader;
 
@@ -36,6 +38,8 @@ pub use xray_shader_compiler::*;
 pub use xray_shader_import::*;
 pub use xray_shader_pass::*;
 pub use xray_shader_pass_state::*;
+pub use xray_shader_sampler::*;
+pub use xray_shader_sampler_texture::*;
 pub use xray_shader_script::*;
 pub use xray_shader_source_loader::*;
 

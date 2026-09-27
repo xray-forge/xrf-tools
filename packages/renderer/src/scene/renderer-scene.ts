@@ -22,6 +22,7 @@ import { SceneObjectResolver } from "#/scene/object/scene-object-resolver";
 import { ISceneObjectState, isStaticDraw } from "#/scene/object/scene-object-state";
 import { toPassRecord, TPassRecord } from "#/scene/pass-record";
 import { RendererSkeletons } from "#/scene/skeleton/renderer-skeletons";
+import { SceneSky } from "#/scene/sky/scene-sky";
 import { LayoutProxies } from "#/scene/staging/layout-proxies";
 import { createSceneStaging, ISceneStaging } from "#/scene/staging/scene-staging";
 import { StaticCull } from "#/scene/static/static-cull";
@@ -50,6 +51,8 @@ export class RendererScene {
   public readonly grass: SceneGrass;
   /** The local lights, written out each frame for the lights pass. */
   public readonly lights: SceneLights;
+  /** The skies the lighting names, which the water reflects. */
+  public readonly sky: SceneSky;
 
   /** What each shadow cascade draws: every casting static batch, a cell at a time. */
   public get shadowCasters(): IStaticShadowCasters {
@@ -83,6 +86,7 @@ export class RendererScene {
     this.textures = new RendererTextures(onTextureRefused, (key: string) => this.staticDraws.invalidate(key));
     this.grass = new SceneGrass(this.textures, uniforms);
     this.lights = new SceneLights(this.textures, this.staticDraws.shadowChanges);
+    this.sky = new SceneSky(this.textures, uniforms.water);
     this.skeletons = new RendererSkeletons((key: string) => this.buildUsers(this.skeletonUsers.get(key)));
     this.surfaces = new SurfaceLibrary(this.textures, uniforms, (key: string) =>
       this.buildUsers(this.surfaceUsers.get(key))
@@ -281,6 +285,7 @@ export class RendererScene {
   public dispose(): void {
     this.grass.dispose();
     this.lights.dispose();
+    this.sky.dispose();
     this.objects.forEach((entry: SceneObject) => entry.dispose());
     this.objects.clear();
     this.changes.dispose();

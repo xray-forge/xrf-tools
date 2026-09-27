@@ -22,6 +22,8 @@ pub struct SelectedLevel {
   pub source: LevelSource,
   /// What each texture reference the level's surfaces bind came to, decided at open.
   pub textures: Vec<LevelTextureReference>,
+  /// The sky cube the level is lit under, resolved at open.
+  pub sky: LevelTextureReference,
   /// How the renderer draws each entry of the shader table, in its order, decided at open.
   pub surfaces: Vec<XraySurfaceDescriptor>,
   /// The roots the level was opened in, kept so a later read searches what the open searched.
@@ -66,6 +68,7 @@ impl SelectedLevel {
       sectors: self.outlines.clone(),
       start: self.start.clone(),
       shader_entries: level.shaders.as_ref().map_or(0, |it| it.entries.len()) as u32,
+      sky: self.sky.clone(),
       source: self.source.clone(),
       surfaces: self.surfaces.clone(),
       textures: self.textures.clone(),

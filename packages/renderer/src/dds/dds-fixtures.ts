@@ -122,6 +122,33 @@ export function mockDdsFile(options: IMockDdsOptions = {}): ArrayBuffer {
   return buffer;
 }
 
+/** `DDSCAPS2_CUBEMAP` and its six face bits, `+x` to `-z`. */
+const CUBEMAP_CAPS: number = 0x200 | 0x400 | 0x800 | 0x1000 | 0x2000 | 0x4000 | 0x8000;
+const OFFSET_CAPS2: number = 28;
+
+/**
+ * A block-compressed cubemap whose every face is filled with its own number, one to six, so an order can be read back.
+ *
+ * @param options - Format, dimensions and mip count to declare.
+ * @returns The file as bytes.
+ */
+export function mockCubeDdsFile(options: IMockDdsOptions = {}): ArrayBuffer {
+  const { fourCC = "DXT1", width = 8, height = 8, mipmapCount = 1 } = options;
+  const face: number = toCompressedDataSize(width, height, mipmapCount, BLOCK_BYTES[fourCC] ?? DEFAULT_BLOCK_BYTES);
+  const single: ArrayBuffer = mockDdsFile(options);
+  const buffer: ArrayBuffer = new ArrayBuffer(DATA_OFFSET + face * 6);
+  const bytes: Uint8Array = new Uint8Array(buffer);
+
+  bytes.set(new Uint8Array(single, 0, DATA_OFFSET));
+  new Int32Array(buffer)[OFFSET_CAPS2] = CUBEMAP_CAPS;
+
+  for (let index = 0; index < 6; index += 1) {
+    bytes.fill(index + 1, DATA_OFFSET + index * face, DATA_OFFSET + (index + 1) * face);
+  }
+
+  return buffer;
+}
+
 /**
  * A DDS file whose format is declared by a `DX10` extended header.
  *

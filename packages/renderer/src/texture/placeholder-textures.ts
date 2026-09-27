@@ -4,15 +4,22 @@ import {
   LinearFilter,
   NoColorSpace,
   RepeatWrapping,
+  RGBA_S3TC_DXT1_Format,
   RGBAFormat,
   Texture,
   UnsignedByteType,
 } from "three/webgpu";
 
+import { DDS_CUBE_FACES } from "#/dds/dds-file";
+import { createCubeTexture } from "#/texture/renderer-texture";
+
 let white: Nullable<Texture> = null;
 let grey: Nullable<Texture> = null;
 let flatBump: Nullable<Texture> = null;
 let flatBumpCompanion: Nullable<Texture> = null;
+let sky: Nullable<Texture> = null;
+let flatNormal: Nullable<Texture> = null;
+let clear: Nullable<Texture> = null;
 
 /**
  * @returns What a surface samples before its texture arrives, or without one: every channel one.
@@ -41,6 +48,36 @@ export function getFlatBumpTexture(): Texture {
  */
 export function getFlatBumpCompanionTexture(): Texture {
   return (flatBumpCompanion ??= createSolidTexture(128, 128, 128, 0));
+}
+
+/**
+ * @returns What a normal map samples before its file arrives: straight up in tangent space, a half, a half and one.
+ */
+export function getFlatNormalTexture(): Texture {
+  return (flatNormal ??= createSolidTexture(128, 128, 255));
+}
+
+/**
+ * @returns What an overlay samples before its file arrives, or without one: nothing, at no coverage.
+ */
+export function getClearTexture(): Texture {
+  return (clear ??= createSolidTexture(0, 0, 0, 0));
+}
+
+/**
+ * @returns What a sky cube samples before its file arrives: the mean of `default_clear`'s noon irradiance on every
+ *   face, one block of each.
+ */
+export function getPlaceholderSkyTexture(): Texture {
+  // One BC1 block of a single 565 colour, both endpoints alike and every index the first.
+  const color: number = (16 << 11) | (32 << 5) | 17;
+  const block: Array<number> = [color & 0xff, color >> 8, color & 0xff, color >> 8, 0, 0, 0, 0];
+  const data: Uint8Array = new Uint8Array(Array.from({ length: DDS_CUBE_FACES }, () => block).flat());
+
+  return (sky ??= createCubeTexture(
+    { height: 4, mipmaps: [{ data, height: 4, width: 4 }], width: 4 },
+    RGBA_S3TC_DXT1_Format
+  ));
 }
 
 function createSolidTexture(red: number, green: number = red, blue: number = red, alpha: number = 255): Texture {

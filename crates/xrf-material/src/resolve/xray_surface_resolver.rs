@@ -110,6 +110,7 @@ impl<'probe, 'vfs> XraySurfaceResolver<'probe, 'vfs> {
       },
       draw: rule.draw(blender, alpha),
       detail: self.describe_detail(blender, textures),
+      samplers: Vec::new(),
     }
   }
 

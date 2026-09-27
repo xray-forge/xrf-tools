@@ -6,6 +6,7 @@ import {
   IRendererGrassSettings,
   IRendererLightsSettings,
   IRendererShadowSettings,
+  IRendererWaterSettings,
   toRendererFeatureChoice,
 } from "@xrf/renderer";
 import { Nullable } from "@xrf/types";
@@ -22,6 +23,9 @@ export type TLevelAmbientOcclusionOptions = Pick<IRendererAmbientOcclusionSettin
 /** The grass settings a level view may set for itself. */
 export type TLevelGrassOptions = Pick<IRendererGrassSettings, "density" | "height" | "radius">;
 
+/** The water settings a level view may set for itself: all but whether it is drawn, which the toolbar toggles. */
+export type TLevelWaterOptions = Omit<IRendererWaterSettings, "isEnabled">;
+
 /** The lights settings a level view may set for itself. */
 export type TLevelLightsOptions = Pick<IRendererLightsSettings, "isLevelLights" | "isShadowed" | "shadowFilter">;
 
@@ -35,6 +39,7 @@ export interface ILevelFeatureOptions {
   /** The mode edges are smoothed with while the settings smooth them at all, or null for the settings' own. */
   antialiasing: Nullable<ERendererAntialiasing>;
   shadows: Partial<TLevelShadowOptions>;
+  water: Partial<TLevelWaterOptions>;
 }
 
 export const DEFAULT_LEVEL_FEATURE_OPTIONS: ILevelFeatureOptions = {
@@ -43,6 +48,7 @@ export const DEFAULT_LEVEL_FEATURE_OPTIONS: ILevelFeatureOptions = {
   grass: {},
   lights: {},
   shadows: {},
+  water: {},
 };
 
 /** The modes a view picks from, which smooth something: turning it off is the toggle's. */
@@ -58,6 +64,7 @@ const LEVEL_FEATURE_KEYS: {
   grass: ["density", "height", "radius"],
   lights: ["isLevelLights", "isShadowed", "shadowFilter"],
   shadows: ["bias", "blend", "cascades", "filter", "resolution"],
+  water: ["distortion", "isDistorted", "isSoft", "reflection", "ripple", "waveHeight", "waveSpeed"],
 };
 
 /**
@@ -83,11 +90,12 @@ export function toLevelFeatureOptions(stored: unknown): ILevelFeatureOptions {
     grass: pick("grass"),
     lights: pick("lights"),
     shadows: pick("shadows"),
+    water: pick("water"),
   };
 }
 
 /** The feature groups a view sets over the settings for itself, each behind a toolbar toggle of its own. */
-export type TLevelFeatureKey = "ambientOcclusion" | "grass" | "lights" | "shadows";
+export type TLevelFeatureKey = "ambientOcclusion" | "grass" | "lights" | "shadows" | "water";
 
 /** A feature group as a view resolves it: what it draws with while on, and whether the settings let it be. */
 export interface ILevelFeatureState<T> {
@@ -129,6 +137,7 @@ export function toLevelFeatureView(settings: IRendererFeatureSettings, view: ILe
     grass: toState("grass"),
     lights: toState("lights"),
     shadows: toState("shadows"),
+    water: toState("water"),
   };
 }
 

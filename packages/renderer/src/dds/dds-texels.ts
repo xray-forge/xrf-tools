@@ -23,7 +23,7 @@ export interface IDdsTexels {
 export function readDdsTexels(bytes: ArrayBuffer): Nullable<IDdsTexels> {
   const read: IDdsRead = readDdsFile(bytes);
 
-  if (!read.file || read.file.layout.kind !== EDdsLayout.TEXELS) {
+  if (!read.file || read.file.isCube || read.file.layout.kind !== EDdsLayout.TEXELS) {
     return null;
   }
 

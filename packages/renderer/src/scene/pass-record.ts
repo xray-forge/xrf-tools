@@ -12,5 +12,6 @@ export function toPassRecord<T>(create: (pass: ERendererPass) => T): TPassRecord
     [ERendererPass.DEFERRED]: create(ERendererPass.DEFERRED),
     [ERendererPass.FORWARD]: create(ERendererPass.FORWARD),
     [ERendererPass.WALLMARK]: create(ERendererPass.WALLMARK),
+    [ERendererPass.WATER]: create(ERendererPass.WATER),
   };
 }

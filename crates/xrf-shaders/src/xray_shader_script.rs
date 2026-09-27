@@ -1,9 +1,9 @@
 use std::path::{Path, PathBuf};
 
 use xrf_error::XrfResult;
-use xrf_lua::XRayLuaScript;
+use xrf_lua::{XRayLuaMethodCall, XRayLuaScript};
 
-use crate::XRayShaderPass;
+use crate::{XRayShaderPass, XRayShaderSampler};
 
 /// An X-Ray renderer shader script and the literal passes it declares.
 #[derive(Clone, Debug, PartialEq)]
@@ -20,20 +20,32 @@ impl XRayShaderScript {
   {
     let path: &Path = path.as_ref();
     let lua_script: XRayLuaScript = XRayLuaScript::parse(path, source)?;
-    let passes: Vec<XRayShaderPass> = lua_script
-      .method_calls("shader", "begin")
-      .into_iter()
+    let begins: Vec<&XRayLuaMethodCall> = lua_script.method_calls("shader", "begin");
+    let samplers: Vec<&XRayLuaMethodCall> = lua_script.method_calls("shader", "sampler");
+    let passes: Vec<XRayShaderPass> = begins
+      .iter()
       .filter_map(|method_call| {
         let arguments: Vec<String> = method_call.literal_string_arguments()?;
         let [vertex_shader, pixel_shader] = arguments.as_slice() else {
           return None;
         };
+        // A pass binds what its function binds after it and before the function begins another.
+        let from: usize = method_call.line_number();
+        let to: usize = begins
+          .iter()
+          .filter(|next| next.function() == method_call.function() && next.line_number() > from)
+          .map(|next| next.line_number())
+          .min()
+          .unwrap_or(usize::MAX);
+        let bound: Vec<XRayShaderSampler> = samplers
+          .iter()
+          .filter(|sampler| {
+            sampler.function() == method_call.function() && sampler.line_number() >= from && sampler.line_number() < to
+          })
+          .filter_map(|sampler| XRayShaderSampler::of(sampler, &lua_script))
+          .collect();
 
-        Some(XRayShaderPass::of(
-          method_call,
-          vertex_shader.clone(),
-          pixel_shader.clone(),
-        ))
+        Some(XRayShaderPass::of(method_call, vertex_shader.clone(), pixel_shader.clone()).with_samplers(bound))
       })
       .collect();
 
@@ -69,6 +81,7 @@ mod tests {
   use crate::xray_shader_blend_factor::XRayShaderBlendFactor;
   use crate::xray_shader_pass::XRayShaderPass;
   use crate::xray_shader_pass_state::XRayShaderPassState;
+  use crate::xray_shader_sampler_texture::XRayShaderSamplerTexture;
 
   #[test]
   fn collects_literal_shader_passes() -> XrfResult {
@@ -164,6 +177,59 @@ end
     assert_eq!(state.blend_source, Some(XRayShaderBlendFactor::SourceAlpha));
     assert_eq!(state.blend_destination, Some(XRayShaderBlendFactor::InverseSourceAlpha));
     assert!(state.is_wallmark);
+
+    Ok(())
+  }
+
+  // `shaders/r2/effects_water.s`: its textures are named once at the top, each pass binds its own.
+  #[test]
+  fn reads_the_samplers_each_pass_binds() -> XrfResult {
+    let script: XRayShaderScript = XRayShaderScript::parse(
+      Path::new("shaders/r2/effects_water.s"),
+      r#"
+local tex_nmap                = "water\\water_normal"
+local tex_dist                = "water\\water_dudv"
+local tex_env0                = "$user$sky0"
+
+function normal                (shader, t_base, t_second, t_detail)
+  shader:begin                ("water_soft","water_soft")
+        : blend                (true,blend.srcalpha,blend.invsrcalpha)
+  shader:sampler        ("s_base")       :texture  (t_base)
+  shader:sampler        ("s_nmap")       :texture  (tex_nmap)
+  shader:sampler        ("s_env0")       :texture  (tex_env0)   : clamp()
+  shader:sampler        ("s_leaves")     :texture  ("water\\water_foam") : wrap()
+end
+
+function l_special        (shader, t_base, t_second, t_detail)
+  shader:begin                ("waterd_soft","waterd_soft")
+  shader:sampler        ("s_distort")    :texture  (tex_dist)
+end
+"#,
+    )?;
+
+    let normal: &XRayShaderPass = script.pass_of(XRayShaderPass::BASE_FUNCTION).expect("a base pass");
+    let special: &XRayShaderPass = script.pass_of("l_special").expect("a distortion pass");
+    let texture = |pass: &XRayShaderPass, name: &str| pass.sampler(name).map(|sampler| sampler.texture().clone());
+
+    assert_eq!(normal.samplers().len(), 4);
+    assert_eq!(
+      texture(normal, "s_base"),
+      Some(XRayShaderSamplerTexture::Parameter("t_base".to_owned()))
+    );
+    assert_eq!(
+      texture(normal, "s_nmap"),
+      Some(XRayShaderSamplerTexture::Named(r"water\water_normal".to_owned()))
+    );
+    assert_eq!(normal.sampler("s_env0").and_then(|it| it.texture().file()), None);
+    assert_eq!(
+      normal.sampler("s_leaves").and_then(|it| it.texture().file()),
+      Some(r"water\water_foam")
+    );
+    assert_eq!(
+      texture(special, "s_distort"),
+      Some(XRayShaderSamplerTexture::Named(r"water\water_dudv".to_owned()))
+    );
+    assert!(special.sampler("s_nmap").is_none());
 
     Ok(())
   }

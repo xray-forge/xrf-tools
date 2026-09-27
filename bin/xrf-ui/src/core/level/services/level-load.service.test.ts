@@ -91,6 +91,9 @@ function createHeldCall(): { held: Promise<void>; release: () => void } {
   return { held, release: () => release[0]() };
 }
 
+/** The sky every level is lit under, held beside whatever its sectors name. */
+const SKY: string = mockSelectedLevelDescription().sky.reference;
+
 describe("LevelLoadService", () => {
   beforeEach(() => {
     resetMockInvoke();
@@ -368,13 +371,13 @@ describe("LevelLoadService", () => {
 
     await service.stream(ORIGIN);
 
-    expect(supply.delivered.map((it) => it.reference)).toEqual(["stone"]);
+    expect(supply.delivered.map((it) => it.reference)).toEqual([SKY, "stone"]);
 
     await service.stream({ x: 20_000, y: 0, z: 0 });
 
     // The second sector names the same fixture surface, so what it says to keep is what that one names rather
     // than what the first one left behind.
-    expect(Array.from(supply.retained.at(-1) ?? [])).toEqual(["stone"]);
+    expect(Array.from(supply.retained.at(-1) ?? [])).toEqual(["stone", SKY]);
   });
 
   it("releases every texture when the level is closed", async () => {
@@ -801,7 +804,7 @@ describe("LevelLoadService texture supply", () => {
 
     await service.stream(ORIGIN);
 
-    expect(supply.delivered.map((it) => it.reference)).toEqual(["stone"]);
+    expect(supply.delivered.map((it) => it.reference)).toEqual([SKY, "stone"]);
   });
 
   // There is no reference to name for a level opening: the answer is the whole set.
@@ -834,7 +837,7 @@ describe("LevelLoadService texture supply", () => {
     await service.stream(ORIGIN);
 
     // One delivery for two sectors that name the same reference, which is the read that did not happen twice.
-    expect(supply.delivered.map((it) => it.reference)).toEqual(["stone"]);
+    expect(supply.delivered.map((it) => it.reference)).toEqual([SKY, "stone"]);
   });
 
   // Nothing arrived and nothing was released, so nothing is re-dressed.
@@ -942,6 +945,6 @@ describe("LevelLoadService held reads", () => {
     await service.restream();
     await settle();
 
-    expect(supply.delivered.map((it) => it.reference)).toEqual(["lamp"]);
+    expect(supply.delivered.map((it) => it.reference)).toEqual(["lamp", SKY]);
   });
 });

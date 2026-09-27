@@ -41,6 +41,16 @@ export class RendererTargets implements IGBufferTextures {
    */
   public readonly composite: RenderTarget;
   /**
+   * What the water is prepared in, in one quad: the depth behind it, each pixel's distance along the view in metres
+   * as the engine's `s_position.z` holds it, and the distortion target cleared to nothing.
+   */
+  public readonly waterPrepare: RenderTarget;
+  /**
+   * The frame and the distortion target, with the G-buffer's depth attached: the water composites over the one and
+   * writes what it distorts into the other in the same draw.
+   */
+  public readonly water: RenderTarget;
+  /**
    * Each shadow cascade's map, its depth alone, reversed like every other: a texel across while its cascade does not
    * draw, so the sun always binds the same textures and a cascade that is off costs nothing.
    */
@@ -112,6 +122,33 @@ export class RendererTargets implements IGBufferTextures {
     this.composite.texture = this.scene.texture;
     // The G-buffer claimed the depth first, so it stays the target three resizes the depth with.
     this.composite.depthTexture = this.gbuffer.depthTexture;
+    this.waterPrepare = new RenderTarget(1, 1, { count: 2, depthBuffer: false });
+    this.waterPrepare.textures[0].name = "water-depth";
+    this.waterPrepare.textures[0].format = RedFormat;
+    this.waterPrepare.textures[0].type = FloatType;
+    this.waterPrepare.textures[1].name = "distortion";
+
+    for (const texture of this.waterPrepare.textures) {
+      texture.minFilter = NearestFilter;
+      texture.magFilter = NearestFilter;
+      texture.generateMipmaps = false;
+    }
+
+    this.water = new RenderTarget(1, 1, { count: 2, depthBuffer: true });
+    this.water.textures.forEach((texture: Texture) => texture.dispose());
+    this.water.textures[0] = this.scene.texture;
+    this.water.textures[1] = this.waterPrepare.textures[1];
+    this.water.depthTexture = this.gbuffer.depthTexture;
+  }
+
+  /** The depth behind the water, in metres along the view. */
+  public get waterDepth(): Texture {
+    return this.waterPrepare.textures[0];
+  }
+
+  /** How far the water moves what is seen through it: `rt_Generic_1`, a half where nothing is moved. */
+  public get distortion(): Texture {
+    return this.waterPrepare.textures[1];
   }
 
   public get albedo(): Texture {
@@ -153,6 +190,8 @@ export class RendererTargets implements IGBufferTextures {
     this.light.setSize(renderWidth, renderHeight);
     this.scene.setSize(renderWidth, renderHeight);
     this.composite.setSize(renderWidth, renderHeight);
+    this.waterPrepare.setSize(renderWidth, renderHeight);
+    this.water.setSize(renderWidth, renderHeight);
 
     renderer.initRenderTarget(this.gbuffer);
 
@@ -164,6 +203,9 @@ export class RendererTargets implements IGBufferTextures {
     renderer.initRenderTarget(this.scene);
 
     initPreservedDepthTarget(renderer, this.composite);
+
+    renderer.initRenderTarget(this.waterPrepare);
+    initPreservedDepthTarget(renderer, this.water);
   }
 
   public dispose(): void {
@@ -174,6 +216,8 @@ export class RendererTargets implements IGBufferTextures {
       this.light,
       this.scene,
       this.composite,
+      this.waterPrepare,
+      this.water,
       this.lightShadows,
       this.lightShadowsStill,
       ...this.shadows,

@@ -96,6 +96,29 @@ export function SettingsRendererFeatures(): ReactElement {
         />
 
         <CheckboxFormRow
+          label={"Water"}
+          description={"Draws the water as the engine does: rippled and reflecting the sky."}
+          isChecked={features.water.isEnabled}
+          onChange={(isEnabled: boolean) => settingsService.setRendererOverrides({ water: { isEnabled } })}
+        />
+
+        <CheckboxFormRow
+          label={"Soft water"}
+          description={"Fades the water by how deep it is, and lays foam in the shallows: r2_soft_water."}
+          isChecked={features.water.isSoft}
+          isDisabled={!features.water.isEnabled}
+          onChange={(isSoft: boolean) => settingsService.setRendererOverrides({ water: { isSoft } })}
+        />
+
+        <CheckboxFormRow
+          label={"Water distortion"}
+          description={"Moves what is seen through the water, as the engine's distortion does."}
+          isChecked={features.water.isDistorted}
+          isDisabled={!features.water.isEnabled}
+          onChange={(isDistorted: boolean) => settingsService.setRendererOverrides({ water: { isDistorted } })}
+        />
+
+        <CheckboxFormRow
           label={"Occlusion culling"}
           description={"Culls the level's static draws that nearer ones hide, twice a frame against its depth."}
           isChecked={features.isOcclusionCulled}

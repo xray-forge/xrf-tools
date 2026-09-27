@@ -19,6 +19,9 @@ export const DEFAULT_RENDERER_GRASS_WIND: IRendererGrassWind = {
   strength: 0.5,
 };
 
+/** The sky `default_clear` names at noon, both keyframes' at exactly twelve: the next one is weighed at nothing. */
+export const DEFAULT_RENDERER_SKY_TEXTURE: string = "sky\\sky_7_cube";
+
 /**
  * Noon of `default_clear` (`configs/environment/weathers/default_clear.ltx`, `[12:00:00]`), without its fog.
  * The sky irradiance is the mean of that keyframe's `sky_7_cube#small`, measured at 0.50, 0.51 and 0.55.
@@ -30,6 +33,8 @@ export const DEFAULT_RENDERER_LIGHTING: IRendererLighting = {
   skyIrradiance: [0.5, 0.511, 0.548],
   sunColor: [0.905882, 0.839216, 0.694118],
   grass: DEFAULT_RENDERER_GRASS_WIND,
+  sky: { blend: 0, textures: [DEFAULT_RENDERER_SKY_TEXTURE, DEFAULT_RENDERER_SKY_TEXTURE] },
   sunDirection: toRendererSunDirection(-68.999985, -30),
   trees: DEFAULT_RENDERER_TREE_WIND,
+  waterIntensity: 1,
 };

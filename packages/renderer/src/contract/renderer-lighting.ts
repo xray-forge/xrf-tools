@@ -59,6 +59,16 @@ export interface IRendererGrassWind {
 }
 
 /**
+ * The sky, as the two weather keyframes either side of the time name it (`$user$sky0`, `$user$sky1`).
+ */
+export interface IRendererSky {
+  /** The texture keys of the two keyframes' `sky_texture` cubes. */
+  textures: readonly [string, string];
+  /** How far from the first to the second, `L_ambient.w`. */
+  blend: number;
+}
+
+/**
  * What a scene is lit by, in the terms a weather keyframe uses.
  */
 export interface IRendererLighting {
@@ -78,4 +88,8 @@ export interface IRendererLighting {
   trees: Nullable<IRendererTreeWind>;
   /** How the grass sways, or null for grass standing still. */
   grass: Nullable<IRendererGrassWind>;
+  /** The sky the water reflects. */
+  sky: IRendererSky;
+  /** `water_intensity`: how bright the depth of soft water and its foam are, one by a clear day. */
+  waterIntensity: number;
 }

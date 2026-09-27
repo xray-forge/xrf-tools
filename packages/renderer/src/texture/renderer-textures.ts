@@ -1,6 +1,6 @@
 import { Maybe, Nullable } from "@xrf/types";
 import { texture as sample } from "three/tsl";
-import { Node, Texture, TextureNode, WebGPURenderer } from "three/webgpu";
+import { CubeTexture, Node, Texture, TextureNode, WebGPURenderer } from "three/webgpu";
 
 import { ERendererTextureEncoding, TRendererTextureSource } from "#/contract/scene/renderer-texture-source";
 import { IDdsRefusal } from "#/dds/dds-refusal";
@@ -138,7 +138,7 @@ export class RendererTextures {
   public target(key: string, placeholder: Texture, target: ITextureTarget): void {
     const entry: ITextureEntry = this.getEntry(key);
 
-    target.value = entry.drawn ?? placeholder;
+    target.value = toDrawn(entry.drawn, placeholder);
     entry.samplers.set(target, placeholder);
   }
 
@@ -246,7 +246,9 @@ export class RendererTextures {
     const previous: Nullable<Texture> = entry.drawn;
 
     entry.drawn = texture;
-    entry.samplers.forEach((placeholder: Texture, sampler: ITextureTarget) => (sampler.value = texture ?? placeholder));
+    entry.samplers.forEach(
+      (placeholder: Texture, sampler: ITextureTarget) => (sampler.value = toDrawn(texture, placeholder))
+    );
 
     if (entry.samplers.size && previous !== texture) {
       this.onRebound(key);
@@ -264,4 +266,19 @@ export class RendererTextures {
       this.queued.delete(key);
     }
   }
+}
+
+/**
+ * @param texture - What a key holds on the GPU, or nothing.
+ * @param placeholder - What its target draws without it, which says the kind of texture the target samples.
+ * @returns The texture, where it is of that kind: a flat sampler bound to a sky's cube, or the reverse, would not
+ *   compile, so it keeps drawing its placeholder.
+ */
+function toDrawn(texture: Nullable<Texture>, placeholder: Texture): Texture {
+  return texture && isCube(texture) === isCube(placeholder) ? texture : placeholder;
+}
+
+/** Whether a texture is a cube, which three says by a flag its types leave to the cube classes. */
+function isCube(texture: Texture): boolean {
+  return (texture as Partial<CubeTexture>).isCubeTexture === true;
 }

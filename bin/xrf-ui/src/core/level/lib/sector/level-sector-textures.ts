@@ -75,6 +75,13 @@ function collectSurfaceTextures(references: Set<string>, { surface, render }: IS
     references.add(render.detail.reference);
   }
 
+  // Water binds its own base, normal map, foam and distortion by sampler, which its row never names.
+  for (const reference of Object.values(render.waterTextures ?? {})) {
+    if (reference) {
+      references.add(reference);
+    }
+  }
+
   // An impostor's atlas is bound beside its companion, which the shader table does not name.
   if (isLevelImpostorSurface(surface) && surface.textureName) {
     references.add(`${surface.textureName}${LEVEL_IMPOSTOR_COMPANION_SUFFIX}`);

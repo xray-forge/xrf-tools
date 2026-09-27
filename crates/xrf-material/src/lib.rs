@@ -28,5 +28,6 @@ pub use crate::data::xray_surface_declaration::XraySurfaceDeclaration;
 pub use crate::data::xray_surface_descriptor::XraySurfaceDescriptor;
 pub use crate::data::xray_surface_detail::XraySurfaceDetail;
 pub use crate::data::xray_surface_draw::XraySurfaceDraw;
+pub use crate::data::xray_surface_sampler::XraySurfaceSampler;
 pub use crate::resolve::xray_material_resolver::XrayMaterialResolver;
 pub use crate::resolve::xray_surface_resolver::XraySurfaceResolver;

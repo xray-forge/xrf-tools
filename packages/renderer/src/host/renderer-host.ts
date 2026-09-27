@@ -3,6 +3,7 @@ import { PerspectiveCamera, Vector2 } from "three/webgpu";
 
 import { RendererCaptures } from "#/capture/renderer-captures";
 import { ERenderInput, toRenderInputEvent } from "#/contract/renderer-input";
+import { IRendererLighting } from "#/contract/renderer-lighting";
 import { ERendererRequest, ERendererResponse, TRendererRequest, TRendererResponse } from "#/contract/renderer-messages";
 import { IRendererSettings } from "#/contract/renderer-settings";
 import { IRendererViewSize } from "#/contract/renderer-view-size";
@@ -93,7 +94,15 @@ export class RendererHost {
     this.captures = new RendererCaptures(this.graph.present, this.scene.textures, (id, image) =>
       this.reply({ id, image, kind: ERendererResponse.CAPTURED }, image ? [image] : [])
     );
-    this.uniforms.light(DEFAULT_RENDERER_LIGHTING);
+    this.light(DEFAULT_RENDERER_LIGHTING);
+  }
+
+  /**
+   * @param lighting - How the scene is lit, and the skies it is lit under.
+   */
+  private light(lighting: IRendererLighting): void {
+    this.uniforms.light(lighting);
+    this.scene.sky.take(lighting.sky);
   }
 
   /**
@@ -190,7 +199,7 @@ export class RendererHost {
         return this.overlays.release(request.key);
 
       case ERendererRequest.LIGHTING:
-        return this.uniforms.light(request.lighting);
+        return this.light(request.lighting);
 
       case ERendererRequest.CAMERA:
         return this.rig.describe(request.camera);
@@ -382,6 +391,7 @@ export class RendererHost {
     this.scene.skeletons.advance();
     this.uniforms.treeWind.update(time);
     this.uniforms.grassWind.update(time);
+    this.uniforms.water.update(time);
 
     // What the view sees, from the view unjittered, so the jitter never flickers a choice.
     this.cullView.take(viewCamera, this.uniforms.viewDistance);

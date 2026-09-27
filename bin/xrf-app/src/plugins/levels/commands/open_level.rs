@@ -22,12 +22,13 @@ use crate::plugins::levels::state::{
   PackedDetails, PackedSectors, SelectedLevel, SelectedLevelDescription,
 };
 use crate::plugins::levels::surfaces::resolve_surfaces;
-use crate::plugins::levels::textures::resolve_textures;
+use crate::plugins::levels::textures::{resolve_sky, resolve_textures};
 
 /// What the open reads and decides off the command's thread, kept together until the level is committed.
 struct OpenedLevel {
   read: ReadLevel,
   textures: Vec<LevelTextureReference>,
+  sky: LevelTextureReference,
   surfaces: Vec<XraySurfaceDescriptor>,
   spawn: Result<Arc<LevelSpawn>, String>,
   outlines: Vec<SectorOutline>,
@@ -75,6 +76,7 @@ pub async fn levels_open_level(
       outlines: opened.outlines,
       packed: PackedSectors::new(),
       roots,
+      sky: opened.sky,
       source,
       start: opened.start,
       surfaces: opened.surfaces,
@@ -125,6 +127,7 @@ fn open(source: &LevelSource, probe: &XrayProbe) -> TauriResult<OpenedLevel> {
   Ok(OpenedLevel {
     outlines,
     read,
+    sky: resolve_sky(probe),
     spawn,
     start,
     surfaces,

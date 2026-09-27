@@ -30,6 +30,8 @@ export interface ISurfaceCompositing {
   alphaDestination: BlendingDstFactor;
   /** Whether it writes colour at all: an invisible surface is submitted and drawn, writing nothing. */
   isColorWritten: boolean;
+  /** Whether it is pulled towards the eye, as a decal is so it never loses to its wall. Water lies where it lies. */
+  isPulled: boolean;
 }
 
 /**
@@ -63,7 +65,7 @@ export function toSurfaceCompositing(
 export function applySurfaceCompositing(material: Material, compositing: ISurfaceCompositing): void {
   material.depthWrite = false;
   material.transparent = true;
-  material.polygonOffset = true;
+  material.polygonOffset = compositing.isPulled;
   material.polygonOffsetFactor = COMPOSITED_SLOPE_BIAS;
   material.polygonOffsetUnits = COMPOSITED_DEPTH_BIAS;
   material.blending = CustomBlending;
@@ -86,22 +88,40 @@ function toDrawCompositing(draw: ERendererDraw): Nullable<ISurfaceCompositing> {
         alphaSource: OneFactor,
         destination: OneMinusSrcAlphaFactor,
         isColorWritten: true,
+        isPulled: true,
+        source: SrcAlphaFactor,
+      };
+
+    // `blend(true, srcalpha, invsrcalpha)` for the water and its distortion alike; plain `water` writes an alpha of one.
+    case ERendererDraw.WATER:
+      return {
+        alphaDestination: OneMinusSrcAlphaFactor,
+        alphaSource: OneFactor,
+        destination: OneMinusSrcAlphaFactor,
+        isColorWritten: true,
+        isPulled: false,
         source: SrcAlphaFactor,
       };
 
     case ERendererDraw.ADDED:
-      return { ...KEPT_ALPHA, destination: OneFactor, isColorWritten: true, source: OneFactor };
+      return { ...KEPT_ALPHA, destination: OneFactor, isColorWritten: true, isPulled: true, source: OneFactor };
 
     case ERendererDraw.ALPHA_ADDED:
-      return { ...KEPT_ALPHA, destination: OneFactor, isColorWritten: true, source: SrcAlphaFactor };
+      return { ...KEPT_ALPHA, destination: OneFactor, isColorWritten: true, isPulled: true, source: SrcAlphaFactor };
 
     case ERendererDraw.MULTIPLIED:
-      return { ...KEPT_ALPHA, destination: ZeroFactor, isColorWritten: true, source: DstColorFactor };
+      return { ...KEPT_ALPHA, destination: ZeroFactor, isColorWritten: true, isPulled: true, source: DstColorFactor };
 
     case ERendererDraw.MULTIPLIED_2X:
-      return { ...KEPT_ALPHA, destination: SrcColorFactor, isColorWritten: true, source: DstColorFactor };
+      return {
+        ...KEPT_ALPHA,
+        destination: SrcColorFactor,
+        isColorWritten: true,
+        isPulled: true,
+        source: DstColorFactor,
+      };
 
     case ERendererDraw.INVISIBLE:
-      return { ...KEPT_ALPHA, destination: ZeroFactor, isColorWritten: false, source: OneFactor };
+      return { ...KEPT_ALPHA, destination: ZeroFactor, isColorWritten: false, isPulled: true, source: OneFactor };
   }
 }

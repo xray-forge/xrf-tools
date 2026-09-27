@@ -56,6 +56,16 @@ describe("toSurfaceCompositing", () => {
       alphaSource: ZeroFactor,
       destination: OneMinusSrcAlphaFactor,
       isColorWritten: true,
+      isPulled: true,
+      source: SrcAlphaFactor,
+    });
+  });
+
+  // `zb(true, false)` and nothing more: water lies where it lies, and its blend is the plain composite.
+  it("composites water by its alpha, unpulled", () => {
+    expect(toSurfaceCompositing({ draw: ERendererDraw.WATER })).toMatchObject({
+      destination: OneMinusSrcAlphaFactor,
+      isPulled: false,
       source: SrcAlphaFactor,
     });
   });

@@ -1,6 +1,7 @@
 use xrf_lua::XRayLuaMethodCall;
 
 use crate::xray_shader_pass_state::XRayShaderPassState;
+use crate::xray_shader_sampler::XRayShaderSampler;
 
 /// A literal vertex and pixel shader pair selected by `shader:begin`, and the state chained onto it.
 #[derive(Clone, Debug, PartialEq)]
@@ -9,6 +10,8 @@ pub struct XRayShaderPass {
   function: Option<String>,
   line_number: usize,
   pixel_shader: String,
+  /// The samplers the function binds after this `begin` and before its next one, in source order.
+  samplers: Vec<XRayShaderSampler>,
   state: XRayShaderPassState,
   vertex_shader: String,
 }
@@ -23,9 +26,17 @@ impl XRayShaderPass {
       function: call.function().map(str::to_owned),
       line_number: call.line_number(),
       pixel_shader,
+      samplers: Vec::new(),
       state: XRayShaderPassState::of(call),
       vertex_shader,
     }
+  }
+
+  /// The same pass, binding these samplers.
+  pub(crate) fn with_samplers(mut self, samplers: Vec<XRayShaderSampler>) -> Self {
+    self.samplers = samplers;
+
+    self
   }
 
   pub fn function(&self) -> Option<&str> {
@@ -38,6 +49,15 @@ impl XRayShaderPass {
 
   pub fn pixel_shader(&self) -> &str {
     &self.pixel_shader
+  }
+
+  pub fn samplers(&self) -> &[XRayShaderSampler] {
+    &self.samplers
+  }
+
+  /// The sampler of a name the pass binds, `s_nmap` and its kin.
+  pub fn sampler(&self, name: &str) -> Option<&XRayShaderSampler> {
+    self.samplers.iter().find(|sampler| sampler.name() == name)
   }
 
   pub fn state(&self) -> &XRayShaderPassState {

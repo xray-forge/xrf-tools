@@ -119,6 +119,16 @@ export const RENDERER_FEATURE_SCHEMA: TRendererSettingSchema<IRendererFeatureSet
     scale: toChoice(ERendererRenderScale),
     sharpening: toNumber(0, 1),
   },
+  water: {
+    distortion: toNumber(0, 0.2),
+    isDistorted: FLAG,
+    isEnabled: FLAG,
+    isSoft: FLAG,
+    reflection: toNumber(0, 4),
+    ripple: toNumber(0, 4),
+    waveHeight: toNumber(0, 0.2),
+    waveSpeed: toNumber(0, 100),
+  },
 };
 
 /**

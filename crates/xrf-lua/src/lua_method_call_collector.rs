@@ -1,4 +1,8 @@
-use full_moon::ast::{Ast, Call, Expression, FunctionArgs, FunctionCall, FunctionDeclaration, Prefix, Suffix};
+use std::collections::HashMap;
+
+use full_moon::ast::{
+  Ast, Call, Expression, FunctionArgs, FunctionCall, FunctionDeclaration, LocalAssignment, Prefix, Suffix,
+};
 use full_moon::node::Node;
 use full_moon::visitors::Visitor;
 
@@ -13,15 +17,31 @@ struct LuaFunctionRange {
   to: usize,
 }
 
+/// A `local name = value` binding, and the line it was written on.
+struct LuaLocalBinding {
+  line: usize,
+  name: String,
+  value: XRayLuaValue,
+}
+
+/// What a script declares, as far as a reader that never runs it can collect it.
+pub(crate) struct LuaCollected {
+  pub(crate) method_calls: Vec<XRayLuaMethodCall>,
+  /// Top-level locals bound to a literal string, by name, the last binding of a name winning as it would at run time.
+  pub(crate) constants: HashMap<String, String>,
+}
+
 pub(crate) struct LuaMethodCallCollector {
   functions: Vec<LuaFunctionRange>,
   method_calls: Vec<XRayLuaMethodCall>,
+  locals: Vec<LuaLocalBinding>,
 }
 
 impl LuaMethodCallCollector {
-  pub(crate) fn collect(ast: &Ast) -> Vec<XRayLuaMethodCall> {
+  pub(crate) fn collect(ast: &Ast) -> LuaCollected {
     let mut collector: Self = Self {
       functions: Vec::new(),
+      locals: Vec::new(),
       method_calls: Vec::new(),
     };
 
@@ -40,7 +60,23 @@ impl LuaMethodCallCollector {
       call.set_function(function);
     }
 
-    collector.method_calls
+    let mut constants: HashMap<String, String> = HashMap::new();
+
+    for local in &collector.locals {
+      let is_top_level: bool = !collector
+        .functions
+        .iter()
+        .any(|range| local.line >= range.from && local.line <= range.to);
+
+      if let (true, Some(value)) = (is_top_level, local.value.as_string()) {
+        constants.insert(local.name.clone(), value.to_owned());
+      }
+    }
+
+    LuaCollected {
+      constants,
+      method_calls: collector.method_calls,
+    }
   }
 
   /// The arguments of one call, each read as far as a reader that never runs the script can read it.
@@ -55,6 +91,20 @@ impl LuaMethodCallCollector {
 }
 
 impl Visitor for LuaMethodCallCollector {
+  fn visit_local_assignment(&mut self, assignment: &LocalAssignment) {
+    let Some(from) = assignment.start_position() else {
+      return;
+    };
+
+    for (name, expression) in assignment.names().iter().zip(assignment.expressions().iter()) {
+      self.locals.push(LuaLocalBinding {
+        line: from.line(),
+        name: name.token().to_string(),
+        value: XRayLuaValue::of(expression),
+      });
+    }
+  }
+
   fn visit_function_declaration(&mut self, declaration: &FunctionDeclaration) {
     let (Some(from), Some(to)) = (declaration.start_position(), declaration.end_position()) else {
       return;

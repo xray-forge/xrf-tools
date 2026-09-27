@@ -1,6 +1,6 @@
 import { Injectable, OnDeactivation } from "@wirestate/core";
 import { Observable, RefObservable, runInAction } from "@wirestate/mobx";
-import { IDdsRead, IDdsTexels, readDdsFile, readDdsTexels } from "@xrf/renderer";
+import { IDdsFile, IDdsRead, IDdsTexels, readDdsFile, readDdsTexels, toDdsPicture } from "@xrf/renderer";
 import { Nullable } from "@xrf/types";
 
 import { transformError } from "@/core/error/lib";
@@ -138,12 +138,14 @@ export class TextureSurfaceService {
     return this.guard(logicalPath, async () => {
       const bytes: ArrayBuffer = await assetsRawCommands.readAsset(roots, logicalPath);
       const read: IDdsRead = readDdsFile(bytes);
+      const picture: Nullable<IDdsFile> = toDdsPicture(read);
 
-      if (read.file) {
-        return { bytes, height: read.file.height, isDecoded: false, width: read.file.width };
+      if (picture) {
+        return { bytes, height: picture.height, isDecoded: false, width: picture.width };
       }
 
-      this.log.info(`Texture '${logicalPath}' is decoded rather than read as it is:`, read.refusal);
+      // A sky's six faces are shown as the backend lays them out, as any file this surface cannot draw flat.
+      this.log.info(`Texture '${logicalPath}' is decoded rather than read as it is:`, read.refusal ?? "a cubemap");
 
       // Measured by whoever decodes the picture: the png says what it is, and nothing here has to parse it.
       return {
@@ -165,12 +167,12 @@ export class TextureSurfaceService {
   private readBumpHalf(roots: XrayRoots, logicalPath: string): Promise<Nullable<ITextureBumpHalf>> {
     return this.guard(logicalPath, async () => {
       const bytes: ArrayBuffer = await assetsRawCommands.readAsset(roots, logicalPath);
-      const read: IDdsRead = readDdsFile(bytes);
+      const picture: Nullable<IDdsFile> = toDdsPicture(readDdsFile(bytes));
 
       // No fallback for a pair: the decode reads its packed values, and a picture of them shades nothing.
-      return read.file
+      return picture
         ? {
-            file: { bytes, height: read.file.height, isDecoded: false, width: read.file.width },
+            file: { bytes, height: picture.height, isDecoded: false, width: picture.width },
             texels: readDdsTexels(bytes),
           }
         : null;

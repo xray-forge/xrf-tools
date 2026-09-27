@@ -20,6 +20,8 @@ export enum ERendererDraw {
   MULTIPLIED_2X = "multiplied2x",
   /** Submitted and drawn, writing nothing. */
   INVISIBLE = "invisible",
+  /** Water, as the engine's `water` programs draw it: rippled, reflecting the sky, distorting what is behind it. */
+  WATER = "water",
 }
 
 /**
@@ -34,6 +36,37 @@ export interface IRendererSurfaceTextures {
   bumpCompanion?: string;
   /** A baked lightmap: hemisphere occlusion in alpha, sun occlusion in green. */
   hemi?: string;
+  /** Water's normal map, `s_nmap`, sampled twice as it scrolls. */
+  normal?: string;
+  /** Water's foam, `s_leaves`, laid where the water is shallow. */
+  foam?: string;
+  /** Water's distortion, `s_distort`: how far what is behind it is moved. */
+  distortion?: string;
+}
+
+/**
+ * Anomaly's own water (`shaders/r2/water.ps` in its gamedata), by the switches each of its programs defines: the whole
+ * sky mixed with the base rather than the engine's share of it, a sun highlight, and foam only where asked.
+ */
+export interface IRendererAnomalyWater {
+  /** `NEED_REFLECTIONS`: the sky mixed with the base by the base's alpha; without it, the base alone. */
+  isReflecting: boolean;
+  /** `NEED_SPECULARS`: the sun's Phong highlight, four times over. */
+  isSpecular: boolean;
+  /** `NEED_TRANSPARENT`: the base lit before it is mixed. */
+  isTransparent: boolean;
+  /** `NEED_FOAM`: foam in the shallows. */
+  isFoamed: boolean;
+}
+
+/**
+ * How a water surface is drawn, as its script's programs say.
+ */
+export interface IRendererSurfaceWater {
+  /** A program that blends over what is behind it by how deep the water there is. Plain `water` is drawn whole. */
+  isSoft: boolean;
+  /** Anomaly's model where the program is one of its own, or null for OpenXRay's. */
+  anomaly: IRendererAnomalyWater | null;
 }
 
 /**
@@ -65,6 +98,8 @@ export interface IRendererSurface {
    * `_nm` companion, a normal in colour and the hemisphere term in alpha.
    */
   isImpostor?: boolean;
+  /** How a water surface is drawn; only a surface drawn as water reads it. */
+  water?: IRendererSurfaceWater;
 }
 
 /**
@@ -77,6 +112,8 @@ export enum ERendererPass {
   WALLMARK = "wallmark",
   /** Composited over the tonemapped frame. */
   FORWARD = "forward",
+  /** Composited over the lit frame before the forward surfaces, the distortion it causes written beside it. */
+  WATER = "water",
 }
 
 /**
@@ -86,6 +123,10 @@ export enum ERendererPass {
 export function toRendererPass(surface: Pick<IRendererSurface, "draw" | "isWallmark">): ERendererPass {
   if (surface.draw === ERendererDraw.OPAQUE || surface.draw === ERendererDraw.CUT_OUT) {
     return ERendererPass.DEFERRED;
+  }
+
+  if (surface.draw === ERendererDraw.WATER) {
+    return ERendererPass.WATER;
   }
 
   return surface.isWallmark ? ERendererPass.WALLMARK : ERendererPass.FORWARD;

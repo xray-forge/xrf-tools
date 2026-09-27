@@ -18,7 +18,7 @@ impl XRayLuaValue {
   pub(crate) fn of(expression: &Expression) -> Self {
     match expression {
       Expression::String(token) => match token.token().token_type() {
-        TokenType::StringLiteral { literal, .. } => Self::String(literal.to_string()),
+        TokenType::StringLiteral { literal, .. } => Self::String(Self::unescape(literal)),
         _ => Self::Other,
       },
       Expression::Number(token) => token
@@ -37,6 +37,29 @@ impl XRayLuaValue {
       Expression::Var(variable) => Self::Name(variable.to_string().trim().to_owned()),
       _ => Self::Other,
     }
+  }
+
+  /// A short string's value from its source text, which the tokenizer keeps escaped: `"water\\water"` is one backslash.
+  fn unescape(literal: &str) -> String {
+    let mut value: String = String::with_capacity(literal.len());
+    let mut characters = literal.chars();
+
+    while let Some(character) = characters.next() {
+      if character != '\\' {
+        value.push(character);
+        continue;
+      }
+
+      match characters.next() {
+        Some('n') => value.push('\n'),
+        Some('t') => value.push('\t'),
+        Some('r') => value.push('\r'),
+        Some(other) => value.push(other),
+        None => value.push('\\'),
+      }
+    }
+
+    value
   }
 
   /// The string this argument is, for one that is a literal string.

@@ -1,4 +1,10 @@
-import { ERendererDraw, ERendererPass, IRendererSurface, toRendererPass } from "#/contract/scene/renderer-surface";
+import {
+  ERendererDraw,
+  ERendererPass,
+  IRendererAnomalyWater,
+  IRendererSurface,
+  toRendererPass,
+} from "#/contract/scene/renderer-surface";
 import { ESurfaceSlot } from "#/material/surface-slot";
 
 /**
@@ -20,6 +26,10 @@ export interface ISurfaceVariant {
   hasBump: boolean;
   /** Whether it binds a lightmap. */
   hasHemi: boolean;
+  /** Whether water is drawn by `water_soft`, blended over the depth behind it. */
+  isSoftWater: boolean;
+  /** Anomaly's water model, or null for OpenXRay's or for a surface that is not water. */
+  anomalyWater: IRendererAnomalyWater | null;
 }
 
 /**
@@ -36,6 +46,8 @@ export function toSurfaceVariant(surface: IRendererSurface): ISurfaceVariant {
     hasHemi: Boolean(textures.hemi),
     isAlphaTested: surface.alphaReference !== undefined,
     isImpostor: Boolean(surface.isImpostor),
+    isSoftWater: surface.draw === ERendererDraw.WATER && Boolean(surface.water?.isSoft),
+    anomalyWater: surface.draw === ERendererDraw.WATER ? (surface.water?.anomaly ?? null) : null,
     isLit: surface.isLit !== false,
     isTinted: Boolean(surface.color),
     pass: toRendererPass(surface),
@@ -57,6 +69,12 @@ export function toSurfaceVariantKey(variant: ISurfaceVariant): string {
     variant.hasDetail,
     variant.hasBump,
     variant.hasHemi,
+    variant.isSoftWater,
+    variant.anomalyWater
+      ? ["isReflecting", "isSpecular", "isTransparent", "isFoamed"]
+          .map((it) => Number(variant.anomalyWater?.[it as keyof IRendererAnomalyWater]))
+          .join("")
+      : "-",
   ].join(":");
 }
 
@@ -67,6 +85,10 @@ export function toSurfaceVariantKey(variant: ISurfaceVariant): string {
 export function toSampledSlots(variant: ISurfaceVariant): Array<ESurfaceSlot> {
   if (variant.pass === ERendererPass.WALLMARK) {
     return [ESurfaceSlot.BASE];
+  }
+
+  if (variant.pass === ERendererPass.WATER) {
+    return [ESurfaceSlot.BASE, ESurfaceSlot.NORMAL, ESurfaceSlot.FOAM, ESurfaceSlot.DISTORTION];
   }
 
   const slots: Array<ESurfaceSlot> = [ESurfaceSlot.BASE];

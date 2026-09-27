@@ -3,7 +3,7 @@ import { describe, expect, it } from "@jest/globals";
 import { EDdsBlockFormat } from "#/dds/dds-block-format";
 import { EDdsChannels } from "#/dds/dds-channels";
 import { IDdsFile, IDdsRead, readDdsFile } from "#/dds/dds-file";
-import { mockDdsFile, mockDx10DdsFile, mockUncompressedDdsFile } from "#/dds/dds-fixtures";
+import { mockCubeDdsFile, mockDdsFile, mockDx10DdsFile, mockUncompressedDdsFile } from "#/dds/dds-fixtures";
 import { EDdsLayout } from "#/dds/dds-layout";
 import { EDdsRefusal, IDdsRefusal } from "#/dds/dds-refusal";
 
@@ -85,17 +85,27 @@ describe("readDdsFile refusals", () => {
     expect(refusalOf(mockDx10DdsFile(77, { resourceDimension: 4 })).reason).toBe(EDdsRefusal.UNSUPPORTED_DIMENSION);
   });
 
-  it("refuses a cubemap where it recognises one, and says whether its faces are all there", () => {
-    // Refused by the reader rather than by the upload above it: six faces are not a surface texture whichever way
-    // they are drawn, so there is no readable outcome to hand on.
-    const whole: ArrayBuffer = mockDdsFile();
+  it("refuses a cubemap missing a face", () => {
     const partial: ArrayBuffer = mockDdsFile();
 
-    new Uint32Array(whole)[28] = 0x200 | 0x400 | 0x800 | 0x1000 | 0x2000 | 0x4000 | 0x8000;
     new Uint32Array(partial)[28] = 0x200 | 0x400;
 
-    expect(refusalOf(whole)).toEqual({ detail: "the file is a cubemap, six faces", reason: EDdsRefusal.CUBEMAP });
-    expect(refusalOf(partial).detail).toContain("missing faces");
+    expect(refusalOf(partial)).toEqual({
+      detail: "the file is a cubemap missing faces",
+      reason: EDdsRefusal.CUBEMAP,
+    });
+  });
+
+  // A file stores each face's whole chain before the next face; a cube uploads each level's faces together.
+  it("reads a cubemap's six faces regrouped by level, each face in its order", () => {
+    const file: IDdsFile = readDdsFile(mockCubeDdsFile({ height: 8, mipmapCount: 2, width: 8 })).file as IDdsFile;
+    const [top, next] = file.mipmaps;
+
+    expect(file.isCube).toBe(true);
+    expect(top.data.byteLength).toBe(4 * 8 * 6);
+    expect(Array.from(top.data.filter((_, at: number) => at % 32 === 0))).toEqual([1, 2, 3, 4, 5, 6]);
+    expect(next.width).toBe(4);
+    expect(Array.from(next.data.filter((_, at: number) => at % 8 === 0))).toEqual([1, 2, 3, 4, 5, 6]);
   });
 
   it("refuses a file that stops before the texels its header declares", () => {

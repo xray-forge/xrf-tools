@@ -125,6 +125,7 @@ describe("level sector surfaces", () => {
     const wallmark: XraySurfaceDescriptor = mockBlendedSurfaceDescriptor({
       declaration: {
         function: "normal",
+        program: "wmark",
         isAlphaTested: true,
         isBlended: true,
         isDepthWritten: false,

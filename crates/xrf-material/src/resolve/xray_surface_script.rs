@@ -1,11 +1,12 @@
 use std::sync::Arc;
 
-use xrf_shaders::{XRayShaderBlendFactor, XRayShaderPass, XRayShaderPassState, XRayShaderScript};
+use xrf_shaders::{XRayShaderBlendFactor, XRayShaderPass, XRayShaderPassState, XRayShaderSampler, XRayShaderScript};
 use xrf_vfs::{XrayAsset, XrayProbe};
 
 use crate::data::xray_surface_declaration::XraySurfaceDeclaration;
 use crate::data::xray_surface_descriptor::XraySurfaceDescriptor;
 use crate::data::xray_surface_draw::XraySurfaceDraw;
+use crate::data::xray_surface_sampler::XraySurfaceSampler;
 
 /// The renderer shader script a surface's name resolves to, which the engine prefers over the blender library.
 pub struct XraySurfaceScript;
@@ -22,6 +23,14 @@ impl XraySurfaceScript {
 
   /// What the undecoration replaces it with, so `effects\lightplanes` is looked up as `effects_lightplanes`.
   const NAMESPACE_DELIMITER: char = '_';
+
+  /// The function whose pass the renderer compiles into its distortion target (`L_special`, `mapDistort`).
+  pub const DISTORTION_FUNCTION: &'static str = "l_special";
+
+  /// The engine's water program (`shaders/r2/water.vs`), and what every variant of it is named behind: vanilla's
+  /// `water_soft`, Anomaly's `water_regular`, `water_studen`, `water_ryaska` and `water_underground`.
+  const WATER_PROGRAM: &'static str = "water";
+  const WATER_VARIANT_PREFIX: &'static str = "water_";
 
   /// The logical path of the script a shader of this name would be read from.
   pub fn to_logical_path(shader_name: &str) -> String {
@@ -43,6 +52,11 @@ impl XraySurfaceScript {
     let script: XRayShaderScript = XRayShaderScript::parse(&logical_path, &source).ok()?;
     let pass: &XRayShaderPass = script.pass_of(XRayShaderPass::BASE_FUNCTION)?;
     let state: &XRayShaderPassState = pass.state();
+    let samplers: Vec<XraySurfaceSampler> = [XRayShaderPass::BASE_FUNCTION, Self::DISTORTION_FUNCTION]
+      .into_iter()
+      .filter_map(|function| script.pass_of(function))
+      .flat_map(Self::to_samplers)
+      .collect();
 
     Some(XraySurfaceDescriptor {
       shader: None,
@@ -50,16 +64,48 @@ impl XraySurfaceScript {
       library: Some(asset),
       declaration: XraySurfaceDeclaration::Scripted {
         function: XRayShaderPass::BASE_FUNCTION.to_owned(),
+        program: pass.vertex_shader().to_owned(),
         is_alpha_tested: state.is_alpha_tested,
         is_blended: state.is_blended,
         is_depth_written: state.is_depth_written,
         is_wallmark: state.is_wallmark,
         script: logical_path,
       },
-      draw: Self::to_draw(state),
+      draw: Self::to_water_draw(pass).unwrap_or_else(|| Self::to_draw(state)),
       // A script binds its own samplers by name, so nothing here is the detail texture the library's classes bind.
       detail: None,
+      samplers,
     })
+  }
+
+  /// The texture files one pass binds, each by its sampler.
+  fn to_samplers(pass: &XRayShaderPass) -> Vec<XraySurfaceSampler> {
+    let element: &str = pass.function().unwrap_or_default();
+
+    pass
+      .samplers()
+      .iter()
+      .filter_map(|sampler: &XRayShaderSampler| {
+        Some(XraySurfaceSampler {
+          element: element.to_owned(),
+          name: sampler.name().to_owned(),
+          texture: sampler.texture().file()?.to_owned(),
+        })
+      })
+      .collect()
+  }
+
+  /// Water, for a pass drawn by a water program, which no blend state tells apart from a plain surface. Soft where
+  /// it blends: `water_soft` is vanilla's one blended program and the only one reading the depth behind it, while
+  /// vanilla's plain `water` draws `blend(false)`.
+  fn to_water_draw(pass: &XRayShaderPass) -> Option<XraySurfaceDraw> {
+    let program: &str = pass.vertex_shader();
+
+    (program == Self::WATER_PROGRAM || program.starts_with(Self::WATER_VARIANT_PREFIX)).then_some(
+      XraySurfaceDraw::Water {
+        is_soft: pass.state().is_blended,
+      },
+    )
   }
 
   /// The pass the script declares, as the draw the renderer compiles from it.

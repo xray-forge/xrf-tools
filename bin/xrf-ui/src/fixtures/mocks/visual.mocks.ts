@@ -268,6 +268,7 @@ export function mockSurfaceDescriptor(overrides: Partial<XraySurfaceDescriptor> 
     },
     draw: { kind: "opaque" },
     detail: null,
+    samplers: [],
     ...overrides,
   };
 }

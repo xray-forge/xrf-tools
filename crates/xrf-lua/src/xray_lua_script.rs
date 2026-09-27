@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 use full_moon::ast::Ast;
@@ -5,13 +6,15 @@ use full_moon::{LuaVersion, parse_fallible};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::format_path;
 
-use crate::lua_method_call_collector::LuaMethodCallCollector;
+use crate::lua_method_call_collector::{LuaCollected, LuaMethodCallCollector};
 use crate::xray_lua_method_call::XRayLuaMethodCall;
 
 /// A parsed LuaJIT script with normalized method calls.
 #[derive(Clone, Debug, PartialEq)]
 pub struct XRayLuaScript {
   method_calls: Vec<XRayLuaMethodCall>,
+  /// Top-level locals bound to a literal string, as `local tex_base = "water\\water_water"` names a texture.
+  constants: HashMap<String, String>,
   path: PathBuf,
 }
 
@@ -23,9 +26,14 @@ impl XRayLuaScript {
   {
     let path: &Path = path.as_ref();
     let ast: Ast = Self::parse_ast(path, source)?;
+    let LuaCollected {
+      method_calls,
+      constants,
+    } = LuaMethodCallCollector::collect(&ast);
 
     Ok(Self {
-      method_calls: LuaMethodCallCollector::collect(&ast),
+      constants,
+      method_calls,
       path: path.to_path_buf(),
     })
   }
@@ -36,6 +44,11 @@ impl XRayLuaScript {
       .iter()
       .filter(|call| call.receiver() == receiver && call.method() == method)
       .collect()
+  }
+
+  /// The literal string a top-level local is bound to, for a name the script binds one to.
+  pub fn constant(&self, name: &str) -> Option<&str> {
+    self.constants.get(name).map(String::as_str)
   }
 
   pub fn path(&self) -> &Path {
@@ -128,6 +141,30 @@ end
         .and_then(XRayLuaValue::as_number),
       Some(32.0)
     );
+
+    Ok(())
+  }
+
+  // `effects_water.s` names its textures once at the top and binds them in two functions.
+  #[test]
+  fn reads_the_literal_strings_top_level_locals_are_bound_to() -> XrfResult {
+    let script: XRayLuaScript = XRayLuaScript::parse(
+      Path::new("effects_water.s"),
+      r#"
+local tex_base = "water\\water_water"
+local tex_env0 = "$user$sky0"
+local count = 3
+
+function normal(shader)
+  local tex_base = "inner"
+  shader:sampler("s_base"):texture(tex_base)
+end
+"#,
+    )?;
+
+    assert_eq!(script.constant("tex_base"), Some(r"water\water_water"));
+    assert_eq!(script.constant("tex_env0"), Some("$user$sky0"));
+    assert_eq!(script.constant("count"), None);
 
     Ok(())
   }

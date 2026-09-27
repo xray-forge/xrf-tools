@@ -1845,6 +1845,8 @@ export type SelectedLevelDescription = {
    * search.
    */
   textures: Array<LevelTextureReference>;
+  /** The sky cube the level is lit under, which its water reflects. */
+  sky: LevelTextureReference;
   /**
    * How the renderer draws each entry of the shader table, in its order, so a surface is cut out, blended and
    * detailed the way its blender says rather than drawn flat. Indexed by the shader id a packed surface carries.

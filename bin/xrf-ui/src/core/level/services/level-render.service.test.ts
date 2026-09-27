@@ -167,6 +167,7 @@ describe("LevelRenderService", () => {
       grass: {},
       lights: {},
       shadows: { cascades: [20], filter: 0 },
+      water: {},
     });
     await stub.flush();
 

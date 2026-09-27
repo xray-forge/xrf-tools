@@ -1,0 +1,115 @@
+import { default as WaterIcon } from "@mui/icons-material/Water";
+import { Button } from "@mui/material";
+import { IRendererWaterSettings } from "@xrf/renderer";
+import { ReactElement } from "react";
+
+import {
+  describeLevelFeatureToggle,
+  ILevelFeatureActionProps,
+  useLevelFeatureOverride,
+} from "@/core/level/lib/features";
+import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
+import {
+  formatWaterDistortion,
+  formatWaterMultiple,
+  formatWaveHeight,
+  RENDER_WATER_LIMITS,
+} from "@/core/render/lib/features";
+import { EditorPopoverToggle } from "@/core/shell/editor/EditorPopoverToggle";
+import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
+
+/**
+ * Whether this view draws the water, and how it moves, reflects and distorts: the engine's own by default.
+ */
+export function LevelWaterAction({
+  "data-testid": dataTestId = "level-water-action",
+  id,
+  className,
+  isOn,
+  state,
+  features,
+  onToggle,
+  onChange,
+}: ILevelFeatureActionProps<"water">): ReactElement {
+  const { set, reset } = useLevelFeatureOverride("water", features, onChange);
+  const water: IRendererWaterSettings = state.value;
+
+  return (
+    <EditorPopoverToggle
+      data-testid={dataTestId}
+      id={id}
+      className={className}
+      label={"Water"}
+      description={describeLevelFeatureToggle({
+        isAvailable: state.isAvailable,
+        isOn,
+        label: "Water",
+        off: "Water off, what lies under it showing",
+        on: `Water reflecting the sky${water.isSoft ? ", soft" : ""}${water.isDistorted ? ", distorting" : ""}`,
+      })}
+      icon={<WaterIcon />}
+      isOn={isOn && state.isAvailable}
+      isDisabled={!state.isAvailable}
+      toggleLabel={"Draw the water"}
+      onToggle={onToggle}
+    >
+      <CheckboxFormRow
+        label={"Soft"}
+        description={"Fades by how deep it is, and lays foam in the shallows: r2_soft_water."}
+        isChecked={water.isSoft}
+        onChange={(isSoft: boolean) => set({ isSoft })}
+      />
+
+      <CheckboxFormRow
+        label={"Distortion"}
+        description={"Moves what is seen through it."}
+        isChecked={water.isDistorted}
+        onChange={(isDistorted: boolean) => set({ isDistorted })}
+      />
+
+      <RenderValueSlider
+        label={"Wave height"}
+        value={water.waveHeight}
+        {...RENDER_WATER_LIMITS.waveHeight}
+        format={formatWaveHeight}
+        onChange={(waveHeight: number) => set({ waveHeight })}
+      />
+
+      <RenderValueSlider
+        label={"Wave speed"}
+        value={water.waveSpeed}
+        {...RENDER_WATER_LIMITS.waveSpeed}
+        format={(speed: number) => `${speed}`}
+        onChange={(waveSpeed: number) => set({ waveSpeed })}
+      />
+
+      <RenderValueSlider
+        label={"Ripple"}
+        value={water.ripple}
+        {...RENDER_WATER_LIMITS.ripple}
+        format={formatWaterMultiple}
+        onChange={(ripple: number) => set({ ripple })}
+      />
+
+      <RenderValueSlider
+        label={"Reflection"}
+        value={water.reflection}
+        {...RENDER_WATER_LIMITS.reflection}
+        format={formatWaterMultiple}
+        onChange={(reflection: number) => set({ reflection })}
+      />
+
+      <RenderValueSlider
+        label={"Distortion strength"}
+        value={water.distortion}
+        {...RENDER_WATER_LIMITS.distortion}
+        format={formatWaterDistortion}
+        onChange={(distortion: number) => set({ distortion })}
+      />
+
+      <Button size={"small"} onClick={reset}>
+        Back to the settings
+      </Button>
+    </EditorPopoverToggle>
+  );
+}

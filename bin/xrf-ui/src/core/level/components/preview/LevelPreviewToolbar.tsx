@@ -19,6 +19,7 @@ import { LevelReadoutAction } from "@/core/level/components/preview/LevelReadout
 import { LevelRenderScaleAction } from "@/core/level/components/preview/LevelRenderScaleAction";
 import { LevelShadowAction } from "@/core/level/components/preview/LevelShadowAction";
 import { LevelSunAction } from "@/core/level/components/preview/LevelSunAction";
+import { LevelWaterAction } from "@/core/level/components/preview/LevelWaterAction";
 import { LevelWindAction } from "@/core/level/components/preview/LevelWindAction";
 import { ILevelFeatureOptions, TLevelFeatureView } from "@/core/level/lib/features";
 import { ILevelLighting } from "@/core/level/lib/lighting/level-lighting";
@@ -194,6 +195,14 @@ export function LevelPreviewToolbar({
             state={featureView.grass}
             features={features}
             onToggle={() => onToggle("isGrassy")}
+            onChange={onChangeFeatures}
+          />
+
+          <LevelWaterAction
+            isOn={options.isWaterVisible}
+            state={featureView.water}
+            features={features}
+            onToggle={() => onToggle("isWaterVisible")}
             onChange={onChangeFeatures}
           />
 

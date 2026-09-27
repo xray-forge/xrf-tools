@@ -202,6 +202,8 @@ export class RendererFrameGraph {
     const shown: Nullable<RenderTarget> = stages.sharpen.value?.output ?? upscaled;
 
     stages.lights.value?.setFilter(features.lights.shadowFilter);
+    this.base.water.setEnabled(features.water.isEnabled);
+    this.base.distortion.setDistorted(features.water.isEnabled && features.water.isDistorted);
     stages.sharpen.value?.setSharpening(features.upscaling.sharpening);
     this.base.combine.setAmbientOcclusion(occlusion);
     this.present.setAmbientOcclusion(occlusion);

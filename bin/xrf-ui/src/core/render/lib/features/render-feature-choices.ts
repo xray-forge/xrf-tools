@@ -132,6 +132,30 @@ export function formatOcclusionRadius(radius: number): string {
   return `${formatNumber(radius, 2)} m`;
 }
 
+/** The bounds each water value is offered between. */
+export const RENDER_WATER_LIMITS = {
+  distortion: toRenderLimits(RENDERER_FEATURE_SCHEMA.water.distortion, 0.005),
+  reflection: toRenderLimits(RENDERER_FEATURE_SCHEMA.water.reflection, 0.05),
+  ripple: toRenderLimits(RENDERER_FEATURE_SCHEMA.water.ripple, 0.05),
+  waveHeight: toRenderLimits(RENDERER_FEATURE_SCHEMA.water.waveHeight, 0.001),
+  waveSpeed: toRenderLimits(RENDERER_FEATURE_SCHEMA.water.waveSpeed, 1),
+} as const;
+
+/** @returns A wave's height, in centimetres, which is the size the engine's are. */
+export function formatWaveHeight(height: number): string {
+  return `${formatNumber(height * 100, 1)} cm`;
+}
+
+/** @returns A multiple of the engine's own value. */
+export function formatWaterMultiple(multiple: number): string {
+  return `${formatNumber(multiple, 2)}×`;
+}
+
+/** @returns How far the distortion moves what is behind the water, a share of the screen. */
+export function formatWaterDistortion(distortion: number): string {
+  return `${formatNumber(distortion * 100, 1)}%`;
+}
+
 /** @returns An occlusion strength. */
 export function formatOcclusionStrength(strength: number): string {
   return formatNumber(strength, 1);

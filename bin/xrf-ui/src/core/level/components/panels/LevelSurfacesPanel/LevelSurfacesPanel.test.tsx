@@ -20,6 +20,7 @@ const TABLE: Array<XraySurfaceDescriptor> = [
   mockSurfaceDescriptor({
     declaration: {
       function: "normal",
+      program: "wmark",
       isAlphaTested: true,
       isBlended: true,
       isDepthWritten: false,
@@ -35,6 +36,7 @@ const TABLE: Array<XraySurfaceDescriptor> = [
   mockSurfaceDescriptor({
     declaration: {
       function: "normal",
+      program: "wmark",
       isAlphaTested: true,
       isBlended: true,
       isDepthWritten: false,

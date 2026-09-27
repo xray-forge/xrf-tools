@@ -1,5 +1,7 @@
 import { Nullable } from "@xrf/types";
 import {
+  ClampToEdgeWrapping,
+  CompressedCubeTexture,
   CompressedPixelFormat,
   CompressedTexture,
   DataTexture,
@@ -24,7 +26,7 @@ import {
 } from "three/webgpu";
 
 import { EDdsBlockFormat } from "#/dds/dds-block-format";
-import { IDdsFile, IDdsRead, readDdsFile } from "#/dds/dds-file";
+import { DDS_CUBE_FACES, IDdsFile, IDdsRead, readDdsFile } from "#/dds/dds-file";
 import { EDdsLayout } from "#/dds/dds-layout";
 import { IDdsMipmap } from "#/dds/dds-mipmaps";
 import { IDdsRefusal } from "#/dds/dds-refusal";
@@ -52,6 +54,11 @@ export function createRendererTexture(bytes: ArrayBuffer): IRendererTextureUploa
   }
 
   const file: IDdsFile = read.file;
+
+  if (file.isCube && file.layout.kind === EDdsLayout.BLOCK) {
+    return { refusal: null, texture: createCubeTexture(file, toCompressedFormat(file.layout.format)) };
+  }
+
   const texture: Texture =
     file.layout.kind === EDdsLayout.BLOCK
       ? new CompressedTexture(file.mipmaps, file.width, file.height, toCompressedFormat(file.layout.format))
@@ -108,6 +115,35 @@ export function createRendererRawTexture(
     texture.magFilter = NearestFilter;
     texture.minFilter = NearestFilter;
   }
+
+  return texture;
+}
+
+/**
+ * A sky's six faces as one cube, each level's faces uploaded as its six layers. Sampled clamped, as the engine's
+ * scripts bind a sky (`clamp()`).
+ *
+ * @param file - The file, its levels holding every face in order.
+ * @param format - The block format it is stored in.
+ * @returns The texture.
+ */
+export function createCubeTexture(
+  file: Pick<IDdsFile, "width" | "height" | "mipmaps">,
+  format: CompressedPixelFormat
+): Texture {
+  const { width, height } = file;
+  const faces: Array<CompressedTexture> = Array.from(
+    { length: DDS_CUBE_FACES },
+    () => ({ height, width }) as unknown as CompressedTexture
+  );
+  const texture: CompressedCubeTexture = new CompressedCubeTexture(faces, format);
+
+  // Three sizes a texture by its image, and this class's image is the face list, which has no size of its own.
+  (texture as unknown as { image: { width: number; height: number } }).image = { height, width };
+  texture.mipmaps = file.mipmaps as unknown as CompressedCubeTexture["mipmaps"];
+  describeSampling(texture, file.mipmaps.length);
+  texture.wrapS = ClampToEdgeWrapping;
+  texture.wrapT = ClampToEdgeWrapping;
 
   return texture;
 }

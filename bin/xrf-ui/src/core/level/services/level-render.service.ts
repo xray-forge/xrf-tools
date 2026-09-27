@@ -177,6 +177,8 @@ export class LevelRenderService extends RenderSurfaceService {
   private openLevel(level: Nullable<SelectedLevelDescription>): void {
     this.level = level;
     this.content?.open(level?.surfaces ?? []);
+    // The level names the sky its water reflects.
+    this.applyLighting(this.viewService.lighting);
     this.publishTextures();
     this.applyFrame();
 
@@ -203,7 +205,12 @@ export class LevelRenderService extends RenderSurfaceService {
   @BoundAction()
   private applyLighting(lighting: ILevelLighting): void {
     const { isFogged, isWindy } = this.viewService.options;
-    const next: IRendererLighting = toLevelRendererLighting(lighting, isFogged, isWindy);
+    const next: IRendererLighting = toLevelRendererLighting(
+      lighting,
+      isFogged,
+      isWindy,
+      this.level?.sky.reference ?? null
+    );
 
     if (this.client && !(this.sentLighting && comparer.structural(next, this.sentLighting))) {
       this.sentLighting = next;

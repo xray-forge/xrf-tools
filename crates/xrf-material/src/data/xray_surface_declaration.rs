@@ -23,6 +23,8 @@ pub enum XraySurfaceDeclaration {
     script: String,
     /// The pass the engine compiles as the base element, named by its function.
     function: String,
+    /// The vertex program that pass begins, `water_soft` and its kin, which says what shades it.
+    program: String,
     /// Whether the pass is composited rather than written.
     is_blended: bool,
     /// Whether the pass asks for an alpha test, which DX10 and DX11 grant only where the pixel shader calls `clip`.

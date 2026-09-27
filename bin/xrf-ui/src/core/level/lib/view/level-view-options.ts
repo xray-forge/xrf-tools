@@ -30,6 +30,8 @@ export interface ILevelViewOptions extends ILevelSurfaceOptions {
   isGrassy: boolean;
   /** Lights the level with its lamps, while the settings draw lights. */
   isLamplit: boolean;
+  /** Draws the water, while the settings draw it. */
+  isWaterVisible: boolean;
 }
 
 export const DEFAULT_LEVEL_VIEW_OPTIONS: ILevelViewOptions = {
@@ -48,4 +50,5 @@ export const DEFAULT_LEVEL_VIEW_OPTIONS: ILevelViewOptions = {
   isWindy: true,
   isStatsVisible: true,
   isSunVisible: true,
+  isWaterVisible: true,
 };

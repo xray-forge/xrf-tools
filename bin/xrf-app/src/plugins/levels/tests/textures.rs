@@ -165,6 +165,44 @@ fn resolves_the_detail_texture_a_surface_binds_though_the_table_never_names_it()
   );
 }
 
+// `effects_water.s` binds its normal map and foam by name, which no shader table entry spells.
+#[test]
+fn resolves_the_textures_a_surface_script_binds_by_sampler() {
+  let tree: FixtureTree = FixtureTree::new("level_textures_script")
+    .with_shader_library(&[])
+    .with_shader_script(
+      "effects\\water",
+      r#"
+local tex_nmap = "water\\water_normal"
+
+function normal (shader, t_base, t_second, t_detail)
+  shader:begin ("water_soft","water_soft") : blend (true,blend.srcalpha,blend.invsrcalpha)
+  shader:sampler ("s_nmap")   :texture (tex_nmap)
+  shader:sampler ("s_leaves") :texture ("water\\water_foam")
+  shader:sampler ("s_env0")   :texture ("$user$sky0")
+end
+"#,
+    )
+    .with_texture("water\\water_normal")
+    .with_texture("water\\water_foam");
+
+  let references: Vec<LevelTextureReference> = new_resolved(
+    &tree,
+    &new_level(&["effects\\water/water\\water_water"]),
+    Some(DIRECTORY),
+  );
+
+  assert_eq!(
+    get_path_of(&references, "water\\water_normal"),
+    Some("textures\\water\\water_normal.dds")
+  );
+  assert_eq!(
+    get_path_of(&references, "water\\water_foam"),
+    Some("textures\\water\\water_foam.dds")
+  );
+  assert!(references.iter().all(|it| !it.reference.starts_with('$')));
+}
+
 #[test]
 fn a_level_carrying_no_shader_table_names_no_textures() {
   let tree: FixtureTree = FixtureTree::new("level_textures_no_table").with_texture("prop\\prop_fence");

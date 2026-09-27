@@ -14,6 +14,7 @@ import { ShadowUniforms } from "#/uniforms/shadow-uniforms";
 import { StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
 import { StorageRetirement } from "#/uniforms/storage-retirement";
 import { TreeWindUniforms } from "#/uniforms/tree-wind-uniforms";
+import { WaterUniforms } from "#/uniforms/water-uniforms";
 
 /**
  * Everything the frame's shaders read besides the scene: uniforms updated in place, so no change recompiles a
@@ -33,6 +34,8 @@ export class RendererUniforms {
   public readonly treeWind: TreeWindUniforms = new TreeWindUniforms();
   /** How the grass sways, built each frame beside the trees' wind. */
   public readonly grassWind: GrassWindUniforms = new GrassWindUniforms();
+  /** How the water moves and what it reflects. */
+  public readonly water: WaterUniforms = new WaterUniforms();
   /** What the motion every G-buffer surface writes is measured with. */
   public readonly motion: MotionUniforms = new MotionUniforms();
   /** Storage let go of by any part, freed a frame later. */
@@ -64,6 +67,7 @@ export class RendererUniforms {
    */
   public configure(settings: IRendererSettings): void {
     this.settings.apply(settings);
+    this.water.apply(settings.features.water);
     this.isLit = settings.isLit;
   }
 
@@ -74,6 +78,7 @@ export class RendererUniforms {
     this.lighting.apply(toBaseLightingConstants(lighting));
     this.treeWind.take(lighting.trees);
     this.grassWind.take(lighting.grass);
+    this.water.take(lighting);
     this.fogDistance = lighting.fog?.distance ?? null;
   }
 

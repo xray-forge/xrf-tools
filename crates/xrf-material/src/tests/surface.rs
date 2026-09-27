@@ -387,6 +387,100 @@ end
   assert_eq!(describe(&tree, "selflight").draw, XraySurfaceDraw::Invisible);
 }
 
+// `effects_water.s` and `effects_waterstuden.s`: the programs say water, and the scripts' own textures come along.
+#[test]
+fn a_water_script_is_water_with_the_textures_each_of_its_passes_binds() {
+  let soft: FixtureTree = library("surface_script_water_soft", &[]).with_shader_script(
+    "effects\\water",
+    r#"
+local tex_base   = "water\\water_water"
+local tex_nmap   = "water\\water_normal"
+local tex_dist   = "water\\water_dudv"
+local tex_env0   = "$user$sky0"
+
+function normal (shader, t_base, t_second, t_detail)
+  shader:begin ("water_soft","water_soft") : sorting (2, false) : blend (true,blend.srcalpha,blend.invsrcalpha)
+        : zb (true,false) : distort (true) : fog (true)
+  shader:sampler ("s_base")     :texture (tex_base)
+  shader:sampler ("s_nmap")     :texture (tex_nmap)
+  shader:sampler ("s_env0")     :texture (tex_env0) : clamp()
+  shader:sampler ("s_position") :texture ("$user$position") : f_none ()
+  shader:sampler ("s_leaves")   :texture ("water\\water_foam") : wrap() : f_anisotropic()
+end
+
+function l_special (shader, t_base, t_second, t_detail)
+  shader:begin ("waterd_soft","waterd_soft") : blend (true,blend.srcalpha,blend.invsrcalpha)
+  shader:sampler ("s_base")    :texture (tex_base)
+  shader:sampler ("s_distort") :texture (tex_dist)
+end
+"#,
+  );
+  let whole: FixtureTree = library("surface_script_water_whole", &[]).with_shader_script(
+    "effects\\waterstuden",
+    r#"
+function normal (shader, t_base, t_second, t_detail)
+  shader:begin ("water","water") : blend (false,blend.srcalpha,blend.invsrcalpha) : zb (true,false)
+end
+"#,
+  );
+  let described: XraySurfaceDescriptor = describe(&soft, "effects\\water");
+  let named: Vec<(&str, &str, &str)> = described
+    .samplers
+    .iter()
+    .map(|it| (it.element.as_str(), it.name.as_str(), it.texture.as_str()))
+    .collect();
+
+  assert_eq!(described.draw, XraySurfaceDraw::Water { is_soft: true });
+  assert_eq!(
+    named,
+    vec![
+      ("normal", "s_base", r"water\water_water"),
+      ("normal", "s_nmap", r"water\water_normal"),
+      ("normal", "s_leaves", r"water\water_foam"),
+      ("l_special", "s_base", r"water\water_water"),
+      ("l_special", "s_distort", r"water\water_dudv"),
+    ]
+  );
+  assert_eq!(
+    describe(&whole, "effects\\waterstuden").draw,
+    XraySurfaceDraw::Water { is_soft: false }
+  );
+}
+
+// Anomaly's `effects_waterstuden.s` draws by a program of its own, blended as vanilla's soft water is.
+#[test]
+fn a_water_program_of_another_name_is_water_too_and_soft_where_it_blends() {
+  let anomaly: FixtureTree = library("surface_script_water_anomaly", &[]).with_shader_script(
+    "effects\\waterstuden",
+    r#"
+function normal (shader, t_base, t_second, t_detail)
+  shader:begin ("water_studen","water_studen") : blend (true,blend.srcalpha,blend.invsrcalpha) : zb (true,false)
+end
+"#,
+  );
+  let distortion: FixtureTree = library("surface_script_water_distortion_only", &[]).with_shader_script(
+    "effects\\waterdistort",
+    r#"
+function normal (shader, t_base, t_second, t_detail)
+  shader:begin ("waterd","waterd") : blend (true,blend.srcalpha,blend.invsrcalpha) : zb (true,false)
+end
+"#,
+  );
+
+  assert_eq!(
+    describe(&anomaly, "effects\\waterstuden").draw,
+    XraySurfaceDraw::Water { is_soft: true }
+  );
+  assert!(matches!(
+    describe(&anomaly, "effects\\waterstuden").declaration,
+    XraySurfaceDeclaration::Scripted { program, .. } if program == "water_studen"
+  ));
+  assert_eq!(
+    describe(&distortion, "effects\\waterdistort").draw,
+    XraySurfaceDraw::Blended { reference: 0 }
+  );
+}
+
 // `effects_wallmarkblend.s` and `effects_wallmarkmult.s`, the two a level lays its marks with.
 #[test]
 fn a_wall_mark_script_composites_the_way_it_says() {

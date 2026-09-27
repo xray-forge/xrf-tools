@@ -20,6 +20,9 @@ pub enum XraySurfaceDraw {
   /// Composited by an equation that keeps the destination and discards the source, so the surface contributes
   /// nothing at all.
   Invisible,
+  /// Water, by a `water` program: reflecting the sky, rippled and distorting what is behind it. `is_soft` is one that
+  /// blends, over the depth behind it, as vanilla's `water_soft` and every Anomaly program does; plain `water` is whole.
+  Water { is_soft: bool },
 }
 
 impl XraySurfaceDraw {

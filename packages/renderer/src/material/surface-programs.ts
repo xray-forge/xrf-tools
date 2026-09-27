@@ -10,6 +10,7 @@ import { toSurfaceInputs } from "#/material/surface-inputs.tsl";
 import { ISurfaceShader } from "#/material/surface-shader";
 import { ISurfaceVariant, toSurfaceVariantKey } from "#/material/surface-variant";
 import { toWallmarkSurfaceShader } from "#/material/wallmark-surface.tsl";
+import { toWaterSurfaceShader } from "#/material/water-surface.tsl";
 import { instancedPosition } from "#/shader/placement.tsl";
 import { RendererUniforms } from "#/uniforms/renderer-uniforms";
 
@@ -22,6 +23,7 @@ const SURFACE_SHADERS: Record<
   [ERendererPass.FORWARD]: toForwardSurfaceShader,
   [ERendererPass.WALLMARK]: (variant: ISurfaceVariant, inputs: ISurfaceInputs) =>
     toWallmarkSurfaceShader(variant, inputs),
+  [ERendererPass.WATER]: toWaterSurfaceShader,
 };
 
 /**

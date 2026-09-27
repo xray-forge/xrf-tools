@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
 import { MeshBasicNodeMaterial } from "three/webgpu";
 
-import { ERendererDraw, IRendererSurface } from "#/contract/scene/renderer-surface";
+import { ERendererDraw, ERendererPass, IRendererSurface } from "#/contract/scene/renderer-surface";
 import { createOpaqueShadowMaterial, createSurfaceMaterial, ISurfaceMaterial } from "#/material/surface-material";
 import { SurfaceNodeMaterial } from "#/material/surface-node-material";
 import { SurfacePrograms } from "#/material/surface-programs";
@@ -114,5 +114,51 @@ describe("SurfacePrograms", () => {
 
     // A key nothing holds and nothing draws is forgotten: it counts as uploaded.
     expect(textures.isUploaded("brick")).toBe(true);
+  });
+});
+
+/** `effects\water` as a level puts it: the script's own textures, soft, by OpenXRay's model. */
+const WATER: IRendererSurface = {
+  draw: ERendererDraw.WATER,
+  textures: {
+    base: "water\\water_water",
+    distortion: "water\\water_dudv",
+    foam: "water\\water_foam",
+    normal: "water\\water_normal",
+  },
+  water: { anomaly: null, isSoft: true },
+};
+
+describe("water surfaces", () => {
+  it("are drawn by the water pass, sampling their four slots and waiting for them", () => {
+    const uniforms: RendererUniforms = new RendererUniforms();
+    const water: ISurfaceMaterial = createMaterial(WATER, new SurfacePrograms(uniforms), uniforms);
+
+    expect(water.pass).toBe(ERendererPass.WATER);
+    expect(water.shadow).toBeNull();
+    expect(toSampledSlots(toSurfaceVariant(WATER))).toEqual([
+      ESurfaceSlot.BASE,
+      ESurfaceSlot.NORMAL,
+      ESurfaceSlot.FOAM,
+      ESurfaceSlot.DISTORTION,
+    ]);
+    expect(water.keys).toEqual(["water\\water_water", "water\\water_normal", "water\\water_foam", "water\\water_dudv"]);
+    // Tested against the depth and never pulled towards the eye: water lies where it lies.
+    expect(water.material.depthWrite).toBe(false);
+    expect(water.material.polygonOffset).toBe(false);
+  });
+
+  it("share a shader but by how soft they are and by which model draws them", () => {
+    const key: string = toSurfaceVariantKey(toSurfaceVariant(WATER));
+    const anomaly = { isFoamed: false, isReflecting: true, isSpecular: true, isTransparent: false };
+
+    expect(toSurfaceVariantKey(toSurfaceVariant({ ...WATER, textures: { base: "water\\water_studen" } }))).toBe(key);
+    expect(toSurfaceVariantKey(toSurfaceVariant({ ...WATER, water: { anomaly: null, isSoft: false } }))).not.toBe(key);
+    expect(toSurfaceVariantKey(toSurfaceVariant({ ...WATER, water: { anomaly, isSoft: true } }))).not.toBe(key);
+    expect(
+      toSurfaceVariantKey(
+        toSurfaceVariant({ ...WATER, water: { anomaly: { ...anomaly, isFoamed: true }, isSoft: true } })
+      )
+    ).not.toBe(toSurfaceVariantKey(toSurfaceVariant({ ...WATER, water: { anomaly, isSoft: true } })));
   });
 });

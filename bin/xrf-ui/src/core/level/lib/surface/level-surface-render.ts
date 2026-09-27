@@ -1,7 +1,7 @@
 import { ERendererPass, toRendererPass } from "@xrf/renderer";
 import { Maybe, Nullable } from "@xrf/types";
 
-import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
+import { EXraySurfaceDraw, XraySurfaceDescriptor, XraySurfaceSampler } from "@/core/ipc/types/xrf-material";
 import {
   IRendererSurfaceDraw,
   isWallmarkSurface,
@@ -19,6 +19,20 @@ export interface ILevelSurfaceDetail {
 }
 
 /**
+ * The textures a water surface's script binds by sampler, each a reference, engine-style, or null where it binds none.
+ */
+export interface ILevelSurfaceWaterTextures {
+  /** `s_base`, the water's own, which the script names in place of the level's row. */
+  base: Nullable<string>;
+  /** `s_nmap`. */
+  normal: Nullable<string>;
+  /** `s_leaves`. */
+  foam: Nullable<string>;
+  /** `s_distort`, which its distortion element binds. */
+  distortion: Nullable<string>;
+}
+
+/**
  * What one shader table entry compiles to, for the renderer: its draw, whether it is a wall mark, and its detail.
  */
 export interface ILevelSurfaceRender extends IRendererSurfaceDraw {
@@ -26,6 +40,26 @@ export interface ILevelSurfaceRender extends IRendererSurfaceDraw {
   isWallmark: boolean;
   /** The detail bound beside the base, or null for a surface the engine details with none. */
   detail: Nullable<ILevelSurfaceDetail>;
+  /** What a water surface's script binds, or null for any other surface. */
+  waterTextures: Nullable<ILevelSurfaceWaterTextures>;
+}
+
+/** The function whose pass is the surface itself, and the one drawing its distortion. */
+const BASE_ELEMENT: string = "normal";
+const DISTORTION_ELEMENT: string = "l_special";
+
+/**
+ * @param samplers - What a surface's script binds.
+ * @param element - The function whose pass binds it.
+ * @param name - The sampler.
+ * @returns The texture it binds there, or null for none.
+ */
+function findSamplerTexture(
+  samplers: ReadonlyArray<XraySurfaceSampler>,
+  element: string,
+  name: string
+): Nullable<string> {
+  return samplers.find((it: XraySurfaceSampler) => it.element === element && it.name === name)?.texture ?? null;
 }
 
 /**
@@ -40,6 +74,17 @@ export function toLevelSurfaceRender(descriptor: Nullable<XraySurfaceDescriptor>
     // Dropped where it carries no tiling: the engine binds no scaler there either, and none can be invented for it.
     detail: detail && detail.scale !== null ? { reference: detail.reference, scale: detail.scale } : null,
     isWallmark: isWallmarkSurface(descriptor),
+    waterTextures: descriptor?.draw.kind === EXraySurfaceDraw.WATER ? toWaterTextures(descriptor.samplers) : null,
+  };
+}
+
+/** A water script's samplers, by the role each plays. */
+function toWaterTextures(samplers: ReadonlyArray<XraySurfaceSampler>): ILevelSurfaceWaterTextures {
+  return {
+    base: findSamplerTexture(samplers, BASE_ELEMENT, "s_base"),
+    distortion: findSamplerTexture(samplers, DISTORTION_ELEMENT, "s_distort"),
+    foam: findSamplerTexture(samplers, BASE_ELEMENT, "s_leaves"),
+    normal: findSamplerTexture(samplers, BASE_ELEMENT, "s_nmap"),
   };
 }
 
@@ -71,5 +116,8 @@ export function describeLevelSurfacePass(render: ILevelSurfaceRender): string {
 
     case ERendererPass.FORWARD:
       return render.isLit ? "over the lit frame, lit itself" : "over the lit frame, unlit";
+
+    case ERendererPass.WATER:
+      return "over the lit frame as water, reflecting the sky and distorting what is behind it";
   }
 }

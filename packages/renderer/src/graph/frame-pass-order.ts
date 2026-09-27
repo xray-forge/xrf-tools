@@ -25,7 +25,8 @@ export interface IFrameOptionalPasses {
  * The frame's passes in order: the grass into the G-buffer, what its depth hid culled again and drawn into it, the
  * sky's motion once the G-buffer is whole, its depth reduced for the next frame, the shadow
  * cascades and light faces before the sun reads them, the local lights after it, the occlusion before combine, what the
- * resolve needs before the blended surfaces, and the upscaling and its sharpening before the helpers. The smoothing of
+ * resolve needs before the water and the blended surfaces, what the water distorts moved once they are down, and the
+ * upscaling and its sharpening before the helpers. The smoothing of
  * a mode that does not jitter comes after the helpers, which it smooths too, unless FSR 1 upscales what it smoothed.
  *
  * @param base - The passes every frame draws.
@@ -58,7 +59,9 @@ export function toFramePassOrder(
     ...some(optional.lights, optional.ambientOcclusion),
     base.combine,
     ...(resolve?.beforeBlended ?? []),
+    base.water,
     base.forward,
+    base.distortion,
     ...some(resolve),
     ...(spatial ? some(smoothing, spatial) : []),
     ...some(optional.sharpen),

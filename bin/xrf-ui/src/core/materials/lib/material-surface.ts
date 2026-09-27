@@ -87,6 +87,11 @@ export function describeSurfaceDraw(draw: XraySurfaceDraw): Nullable<string> {
     case EXraySurfaceDraw.INVISIBLE:
       return "the background times one and the surface times zero · submitted, drawn, and contributing nothing";
 
+    case EXraySurfaceDraw.WATER:
+      return draw.isSoft
+        ? "water, reflecting the sky and blended over the depth behind it · depth tested and not written"
+        : "water, reflecting the sky and drawn whole · depth tested and not written";
+
     default:
       return assertExhaustive(draw);
   }
@@ -180,6 +185,9 @@ function describeDrawState(draw: XraySurfaceDraw): IMaterialStateDescriptor {
 
     case EXraySurfaceDraw.INVISIBLE:
       return { color: "default", label: "Draws nothing" };
+
+    case EXraySurfaceDraw.WATER:
+      return { color: "success", label: draw.isSoft ? "Soft water" : "Water" };
 
     default:
       return assertExhaustive(draw);

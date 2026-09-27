@@ -10,7 +10,7 @@ export enum EDdsRefusal {
   UNSUPPORTED_DXGI = "unsupportedDxgi",
   /** An uncompressed layout whose channels are not whole bytes, which the backend expands instead. */
   UNSUPPORTED_MASKS = "unsupportedMasks",
-  /** Six faces rather than one picture, which no surface of a level or a model draws. */
+  /** A cubemap the reader does not take: missing faces, or faces of uncompressed texels. */
   CUBEMAP = "cubemap",
   /** A texture array or a volume, which a surface has no way to draw either. */
   UNSUPPORTED_DIMENSION = "unsupportedDimension",
