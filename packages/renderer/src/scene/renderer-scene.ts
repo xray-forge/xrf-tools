@@ -16,6 +16,7 @@ import { SceneGrass } from "#/scene/grass/scene-grass";
 import { RendererImpostorSets } from "#/scene/impostor/renderer-impostor-sets";
 import { KeyedUsers } from "#/scene/keyed-users";
 import { SceneLights } from "#/scene/lights/scene-lights";
+import { createSceneRoot } from "#/scene/object/scene-mesh";
 import { SceneObject } from "#/scene/object/scene-object";
 import { SceneObjectResolver } from "#/scene/object/scene-object-resolver";
 import { ISceneObjectState, isStaticDraw } from "#/scene/object/scene-object-state";
@@ -39,13 +40,7 @@ import { CullView } from "#/visibility/cull-view";
  */
 export class RendererScene {
   /** What each pass draws. Its meshes keep their own matrices current, so three never walks them to. */
-  public readonly scenes: TPassRecord<Scene> = toPassRecord(() => {
-    const scene: Scene = new Scene();
-
-    scene.matrixWorldAutoUpdate = false;
-
-    return scene;
-  });
+  public readonly scenes: TPassRecord<Scene> = toPassRecord(createSceneRoot);
   public readonly textures: RendererTextures;
   public readonly skeletons: RendererSkeletons;
   /** What culls the static draws on the GPU, which the frame dispatches before drawing them. */

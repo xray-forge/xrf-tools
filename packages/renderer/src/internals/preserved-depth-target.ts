@@ -16,3 +16,27 @@ export function initPreservedDepthTarget(renderer: WebGPURenderer, target: Rende
   renderer.initRenderTarget(target);
   (renderer as unknown as IRendererTargetData)._textures.get(target).depthInitialized = true;
 }
+
+/**
+ * Sizes and allocates a target whose depth another target lends it, without freeing that depth: sizing a target frees
+ * every texture it holds, and a borrowed one is its lender's, still drawn into.
+ *
+ * @param renderer - The renderer the target is drawn by.
+ * @param target - The target, its depth borrowed and already allocated by its lender.
+ * @param width - Its width.
+ * @param height - Its height.
+ */
+export function resizeBorrowedDepthTarget(
+  renderer: WebGPURenderer,
+  target: RenderTarget,
+  width: number,
+  height: number
+): void {
+  const depth: RenderTarget["depthTexture"] = target.depthTexture;
+
+  target.depthTexture = null;
+  target.setSize(width, height);
+  target.depthTexture = depth;
+
+  initPreservedDepthTarget(renderer, target);
+}

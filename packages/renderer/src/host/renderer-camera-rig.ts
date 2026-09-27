@@ -66,8 +66,11 @@ export class RendererCameraRig {
       this.kind = camera.kind;
     }
 
-    // Described again from where it stands, new speeds or a new lens, the camera keeps its history.
-    this.isCut ||= this.controller.describe(camera) || isReplaced;
+    // Always described first: a cut already pending must not skip it. Described again from where it stands, new speeds
+    // or a new lens, the camera keeps its history.
+    const isMoved: boolean = this.controller.describe(camera);
+
+    this.isCut ||= isMoved || isReplaced;
   }
 
   /**

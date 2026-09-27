@@ -1,5 +1,5 @@
 import { Nullable } from "@xrf/types";
-import { BufferGeometry, LineSegments, Material, Matrix4, Mesh, Skeleton, SkinnedMesh } from "three/webgpu";
+import { BufferGeometry, LineSegments, Material, Matrix4, Mesh, Scene, Skeleton, SkinnedMesh } from "three/webgpu";
 
 /**
  * A mesh the scene places itself: its matrix set directly, never recomposed, and never culled by three, since the
@@ -38,4 +38,18 @@ export function createSceneLines(geometry: BufferGeometry, material: Material): 
   lines.frustumCulled = false;
 
   return lines;
+}
+
+/**
+ * A scene of meshes that keep their own matrices current, which three then never walks to update: it would otherwise
+ * recompose every object's matrices on every render of the scene, and a shadow scene is rendered once a face.
+ *
+ * @returns The scene.
+ */
+export function createSceneRoot(): Scene {
+  const scene: Scene = new Scene();
+
+  scene.matrixWorldAutoUpdate = false;
+
+  return scene;
 }

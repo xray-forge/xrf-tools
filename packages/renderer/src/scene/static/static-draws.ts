@@ -5,6 +5,7 @@ import { IRendererPoolUse, IRendererStaticDrawReport } from "#/contract/renderer
 import { IRendererInstances } from "#/contract/scene/renderer-object";
 import { ISurfaceMaterial } from "#/material/surface-material";
 import { SceneGeometry } from "#/scene/geometry/scene-geometry";
+import { createSceneRoot } from "#/scene/object/scene-mesh";
 import { PlainShadowCasters } from "#/scene/static/plain-shadow-casters";
 import { StaticArena } from "#/scene/static/static-arena";
 import { StaticArenas } from "#/scene/static/static-arenas";
@@ -43,9 +44,9 @@ export class StaticDraws implements IStaticShadowCasters {
   /** What culls the static draws on the GPU, which the frame dispatches before drawing them and again between. */
   public readonly cull: StaticCull;
   /** Where the batches' second draws stand, drawn into the G-buffer after the second cull. */
-  public readonly late: Scene = new Scene();
+  public readonly late: Scene = createSceneRoot();
   /** What each shadow view draws: every casting batch, by the view's arguments. */
-  public readonly shadowScenes: ReadonlyArray<Scene> = Array.from({ length: STATIC_SHADOW_VIEWS }, () => new Scene());
+  public readonly shadowScenes: ReadonlyArray<Scene> = Array.from({ length: STATIC_SHADOW_VIEWS }, createSceneRoot);
   /** What every cascade draws besides the batches: a twin of each part drawn plainly that casts. */
   public readonly plainCasters: PlainShadowCasters = new PlainShadowCasters();
 
@@ -73,7 +74,6 @@ export class StaticDraws implements IStaticShadowCasters {
     this.pool = new StaticDrawPool(buffers);
     this.places = new StaticPlaces(buffers);
     this.lods = new StaticLods(buffers);
-    this.late.matrixWorldAutoUpdate = false;
     this.cull = new StaticCull(buffers, this.pool, this.places, this.lods, this.late);
     this.batches = new StaticBatches(this.pool, scene, this.late, this.shadowScenes);
     this.arenas = new StaticArenas(

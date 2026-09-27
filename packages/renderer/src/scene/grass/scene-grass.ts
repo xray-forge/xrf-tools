@@ -28,7 +28,7 @@ import {
   toGrassItemCapacity,
 } from "#/scene/grass/grass-buffers";
 import { createGrassPlanting, IGrassPlanting, toGrassItems, toGrassStarts } from "#/scene/grass/grass-planting.tsl";
-import { createSceneMesh } from "#/scene/object/scene-mesh";
+import { createSceneMesh, createSceneRoot } from "#/scene/object/scene-mesh";
 import { RendererTextures } from "#/texture/renderer-textures";
 import { GrassUniforms } from "#/uniforms/grass-uniforms";
 import { RendererUniforms } from "#/uniforms/renderer-uniforms";
@@ -48,7 +48,7 @@ interface IGrassDraw {
  */
 export class SceneGrass {
   /** What the grass pass draws, a mesh a model. */
-  public readonly scene: Scene = new Scene();
+  public readonly scene: Scene = createSceneRoot();
   /** Where the camera stands and what the planting is set to, as the planting reads them. */
   public readonly uniforms: GrassUniforms = new GrassUniforms();
 
@@ -65,7 +65,6 @@ export class SceneGrass {
   public constructor(textures: RendererTextures, uniforms: RendererUniforms) {
     this.textures = textures;
     this.rendererUniforms = uniforms;
-    this.scene.matrixWorldAutoUpdate = false;
   }
 
   /** Whether there is grass to plant, and every texture it is dressed with is up. */

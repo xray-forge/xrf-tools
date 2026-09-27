@@ -1,6 +1,6 @@
 import { NodeMaterial, QuadMesh, RenderTarget, WebGPURenderer } from "three/webgpu";
 
-import { initPreservedDepthTarget } from "#/internals/preserved-depth-target";
+import { resizeBorrowedDepthTarget } from "#/internals/preserved-depth-target";
 import { createQuadMaterial } from "#/pass/quad-material";
 import { IRendererFrame } from "#/pass/renderer-frame";
 import { IRendererPass } from "#/pass/renderer-pass";
@@ -39,10 +39,9 @@ export class SharpenPass implements IRendererPass {
     this.uniforms.apply(sharpening);
   }
 
-  /** Sized after the upscaler, whose depth it shares and must not clear. */
+  /** Sized after the upscaler, whose depth it shares and must neither clear nor free. */
   public resize(renderer: WebGPURenderer, { width, height }: IRendererFrameSize): void {
-    this.output.setSize(width, height);
-    initPreservedDepthTarget(renderer, this.output);
+    resizeBorrowedDepthTarget(renderer, this.output, width, height);
   }
 
   public render({ renderer }: IRendererFrame): void {

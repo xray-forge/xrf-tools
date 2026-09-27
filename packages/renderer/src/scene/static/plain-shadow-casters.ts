@@ -1,6 +1,7 @@
 import { Maybe } from "@xrf/types";
 import { Mesh, Scene, Sphere, Vector4 } from "three/webgpu";
 
+import { createSceneRoot } from "#/scene/object/scene-mesh";
 import { isSphereInPlanes } from "#/scene/static/static-cell";
 
 /** A twin casting in the shadow views, where it reaches, and whether its part draws anything at all. */
@@ -15,7 +16,7 @@ interface IPlainShadowCaster {
  */
 export class PlainShadowCasters {
   /** What a shadow view draws of them, once shown the ones it holds. */
-  public readonly scene: Scene = new Scene();
+  public readonly scene: Scene = createSceneRoot();
 
   private readonly casters: Map<Mesh, IPlainShadowCaster> = new Map();
 
