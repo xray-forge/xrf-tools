@@ -8,7 +8,7 @@ import { BaseComponentProps } from "@/lib/dom/element-types";
 export interface IEditorPopoverToggleProps extends BaseComponentProps {
   /** Stable accessible name, independent of whether the toggle is on. */
   label: string;
-  /** What the settings behind it are at now, said in the tooltip ahead of the right click hint. */
+  /** What the settings behind it are at now, said in the tooltip ahead of the right click hint while enabled. */
   description: string;
   icon: ReactNode;
   isOn: boolean;
@@ -44,7 +44,7 @@ export function EditorPopoverToggle({
       id={id}
       className={className}
       label={label}
-      description={`${description}. Right-click for its settings`}
+      description={isDisabled ? description : `${description}. Right-click for its settings`}
       icon={icon}
       isActive={isOn}
       isDisabled={isDisabled}

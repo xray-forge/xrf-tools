@@ -1,23 +1,23 @@
 import { default as WbSunnyIcon } from "@mui/icons-material/WbSunny";
 import { Button } from "@mui/material";
-import { useInjection } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useMemo } from "react";
 
 import { LevelSunDescription } from "@/core/ipc/types/xrf-app";
 import { DEFAULT_LEVEL_LIGHTING, ILevelLighting } from "@/core/level/lib/lighting/level-lighting";
-import { toSunAngles } from "@/core/level/lib/lighting/level-sun";
-import { LevelLoadService } from "@/core/level/services";
+import { ILevelSunAngles, toSunAngles } from "@/core/level/lib/lighting/level-sun";
 import { RenderLightingControls } from "@/core/render/components/lighting/RenderLightingControls";
-import { IRenderLighting } from "@/core/render/lib/lighting/render-lighting";
 import { EditorPopoverToggle } from "@/core/shell/editor/EditorPopoverToggle";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatDegrees } from "@/lib/format/angle";
+import { usePartialChange } from "@/lib/react/use-partial-change";
 
 interface ILevelSunActionProps extends BaseComponentProps {
   /** Whether the sun is drawn in the sky, which is what the toggle turns over; the light it casts stays. */
   isOn: boolean;
   lighting: ILevelLighting;
+  /** The sun the open level was compiled against, or null where it names none. */
+  sun: Nullable<LevelSunDescription>;
   onToggle: () => void;
   onChange: (lighting: ILevelLighting) => void;
 }
@@ -31,27 +31,25 @@ export function LevelSunAction({
   className,
   isOn,
   lighting,
+  sun,
   onToggle,
   onChange,
 }: ILevelSunActionProps): ReactElement {
-  const service: LevelLoadService = useInjection(LevelLoadService);
+  const angles: Nullable<ILevelSunAngles> = useMemo(() => toSunAngles(sun?.direction ?? null), [sun]);
 
-  const sun: Nullable<LevelSunDescription> = service.level.value?.selected.value.sun ?? null;
-  const angles = useMemo(() => toSunAngles(sun?.direction ?? null), [sun]);
-
-  const set = useCallback((part: Partial<IRenderLighting>) => onChange({ ...lighting, ...part }), [lighting, onChange]);
+  const onSet = usePartialChange(lighting, onChange);
 
   // The one thing about its lighting a level can answer for: the occlusion it carries was computed for this
   // direction, so lighting a preview from it is lighting it the way the compiler assumed.
   const onUseLevelSun = useCallback(() => {
     if (angles) {
-      set({ sunAzimuth: Math.round(angles.azimuth), sunElevation: Math.round(angles.elevation) });
+      onSet({ sunAzimuth: Math.round(angles.azimuth), sunElevation: Math.round(angles.elevation) });
     }
-  }, [angles, set]);
+  }, [angles, onSet]);
 
   const onReset = useCallback(
     () =>
-      set({
+      onSet({
         ambientColor: DEFAULT_LEVEL_LIGHTING.ambientColor,
         ambientIntensity: DEFAULT_LEVEL_LIGHTING.ambientIntensity,
         sunAzimuth: DEFAULT_LEVEL_LIGHTING.sunAzimuth,
@@ -59,7 +57,7 @@ export function LevelSunAction({
         sunElevation: DEFAULT_LEVEL_LIGHTING.sunElevation,
         sunIntensity: DEFAULT_LEVEL_LIGHTING.sunIntensity,
       }),
-    [set]
+    [onSet]
   );
 
   return (
@@ -74,7 +72,7 @@ export function LevelSunAction({
       toggleLabel={"Show the sun in the sky"}
       onToggle={onToggle}
     >
-      <RenderLightingControls lighting={lighting} onChange={set} />
+      <RenderLightingControls lighting={lighting} onChange={onSet} />
 
       <Button size={"small"} disabled={!angles} onClick={onUseLevelSun}>
         {angles ? "Use the level's own sun" : "This level names no sun"}

@@ -5,18 +5,14 @@ import { LevelStreamBudgetSection } from "@/core/level/components/panels/LevelSt
 import { LevelStreamFrameSection } from "@/core/level/components/panels/LevelStreamPanel/LevelStreamFrameSection";
 import { LevelStreamLightsSection } from "@/core/level/components/panels/LevelStreamPanel/LevelStreamLightsSection";
 import { LevelStreamReadingSection } from "@/core/level/components/panels/LevelStreamPanel/LevelStreamReadingSection";
+import { LevelStreamResidentSection } from "@/core/level/components/panels/LevelStreamPanel/LevelStreamResidentSection";
 import { LevelStreamStaticDrawsSection } from "@/core/level/components/panels/LevelStreamPanel/LevelStreamStaticDrawsSection";
+import { LevelStreamTexturesSection } from "@/core/level/components/panels/LevelStreamPanel/LevelStreamTexturesSection";
 import { ILevelStats } from "@/core/level/lib/stats/level-stats";
 import { ILevelTextureReport } from "@/core/level/lib/texture/level-texture-report";
 import { LevelLoadService, LevelViewportService } from "@/core/level/services";
-import {
-  EditorPanel,
-  EditorPanelEmpty,
-  EditorPanelProperty,
-  EditorPanelSection,
-} from "@/core/shell/editor/EditorPanel";
+import { EditorPanel, EditorPanelEmpty } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { formatBytes } from "@/lib/memory/format";
 
 /**
  * What the viewport is holding and what it costs, measured rather than estimated.
@@ -42,20 +38,14 @@ export function LevelStreamPanel({
 
   return (
     <EditorPanel data-testid={dataTestId} id={id} className={className} title={"Streaming"}>
-      <EditorPanelSection title={"Resident"} isFirst>
-        <EditorPanelProperty label={"Sectors"} value={stats.sectors} />
-        <EditorPanelProperty label={"Geometry"} value={formatBytes(stats.bytes)} />
-      </EditorPanelSection>
+      <LevelStreamResidentSection stats={stats} />
 
       <LevelStreamReadingSection stream={loadService.streamProfile} />
       <LevelStreamFrameSection stats={stats} />
       <LevelStreamStaticDrawsSection staticDraws={stats.staticDraws} />
       <LevelStreamLightsSection lights={stats.lights} />
 
-      <EditorPanelSection title={"Textures"}>
-        <EditorPanelProperty label={"Uploaded"} value={textures.uploaded} />
-        <EditorPanelProperty label={"Unusable"} value={textures.problems.length} />
-      </EditorPanelSection>
+      <LevelStreamTexturesSection textures={textures} />
 
       <LevelStreamBudgetSection bytes={stats.bytes} residency={loadService.residency} />
     </EditorPanel>

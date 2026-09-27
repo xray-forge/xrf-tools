@@ -11,7 +11,7 @@ import {
   IRendererOrbitCamera,
   IRendererSettings,
   IRendererSurface,
-  TFrameRateLimit,
+  IRenderFramePacing,
   TRendererTextureSource,
   withRendererTangentBasis,
 } from "@xrf/renderer";
@@ -149,13 +149,13 @@ export function toTextureSurfaceSource(file: ITextureSurfaceFile): TRendererText
 
 /**
  * @param options - How the texture is being looked at.
- * @param frameRateLimit - How often the application lets a view redraw.
+ * @param pacing - How the application paces a view's frames.
  * @param features - What the renderer's features are set to.
  * @returns The renderer's settings for it.
  */
 export function toTextureRendererSettings(
   options: ITextureSurfaceOptions,
-  frameRateLimit: TFrameRateLimit,
+  pacing: IRenderFramePacing,
   features: IRendererFeatureSettings
 ): IRendererSettings {
   return {
@@ -163,7 +163,7 @@ export function toTextureRendererSettings(
     backdrop: null,
     debugView: ERendererDebugView.FINAL,
     features,
-    frameRateLimit,
+    pacing,
     hemiStrength: 1,
     isBumped: options.isBumped,
     isLit: options.isLit,

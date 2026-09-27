@@ -87,9 +87,7 @@ describe("level feature actions", () => {
       const { getByRole } = renderWithProviders(render(false, () => {}));
 
       expect(getByRole("button", { name: label })).toBeDisabled();
-      expect(getByRole("button", { name: label })).toHaveAccessibleDescription(
-        `${unavailable}. Right-click for its settings`
-      );
+      expect(getByRole("button", { name: label })).toHaveAccessibleDescription(unavailable);
     }
   );
 });

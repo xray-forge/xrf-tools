@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 import { default as TuneIcon } from "@mui/icons-material/Tune";
-import { waitFor } from "@testing-library/react";
+import { fireEvent, waitFor } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 
 import { renderWithProviders } from "@/fixtures/utils/render";
@@ -47,6 +47,19 @@ describe("EditorPopoverAction", () => {
     expect(button).toHaveFocus();
     expect(button).toHaveAttribute("aria-expanded", "false");
     expect(button).not.toHaveAttribute("aria-controls");
+  });
+
+  it("opens from a right click as from a left one, keeping the browser's menu shut", async () => {
+    const { getByRole, findByRole } = renderWithProviders(
+      <EditorPopoverAction label={"Options"} description={"Adjust the preview"} icon={<TuneIcon />}>
+        <button>Setting</button>
+      </EditorPopoverAction>
+    );
+
+    const isDefaultAllowed: boolean = fireEvent.contextMenu(getByRole("button", { name: "Options" }));
+
+    expect(isDefaultAllowed).toBe(false);
+    expect(await findByRole("dialog", { name: "Options" })).toBeInTheDocument();
   });
 
   it("explains a disabled action without opening its dialog", async () => {

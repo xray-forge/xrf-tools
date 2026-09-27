@@ -10,7 +10,7 @@ import {
   IRendererSettings,
   IRendererSkeleton,
   IRendererSurface,
-  TFrameRateLimit,
+  IRenderFramePacing,
   TRendererTextureSource,
 } from "@xrf/renderer";
 import { Nullable } from "@xrf/types";
@@ -194,21 +194,21 @@ export function createVisualCheckerSource(config: IVisualPreviewSceneConfig): TR
 /**
  * @param options - The toolbar's toggles.
  * @param config - The viewer's backdrop.
- * @param frameRateLimit - How often the application lets a view redraw.
+ * @param pacing - How the application paces a view's frames.
  * @param features - What the renderer's features are set to.
  * @returns The renderer's settings.
  */
 export function toVisualRendererSettings(
   options: IVisualPreviewViewOptions,
   config: IVisualPreviewSceneConfig,
-  frameRateLimit: TFrameRateLimit,
+  pacing: IRenderFramePacing,
   features: IRendererFeatureSettings
 ): IRendererSettings {
   return {
     backdrop: config.backgroundColor,
     debugView: ERendererDebugView.FINAL,
     features,
-    frameRateLimit,
+    pacing,
     hemiStrength: 1,
     isBumped: options.isBumpVisible,
     isLit: true,

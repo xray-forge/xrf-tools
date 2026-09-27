@@ -6,6 +6,8 @@ import { RenderLightingControls } from "@/core/render/components/lighting/Render
 import { IRenderLighting } from "@/core/render/lib/lighting/render-lighting";
 import { EditorPopoverAction } from "@/core/shell/editor/EditorPopoverAction";
 import { BaseComponentProps } from "@/lib/dom/element-types";
+import { formatDegrees } from "@/lib/format/angle";
+import { formatNumber } from "@/lib/format/number";
 
 interface IRenderLightingActionProps extends BaseComponentProps {
   lighting: IRenderLighting;
@@ -39,7 +41,7 @@ export function RenderLightingAction({
       description={
         isDisabled && unavailableDescription
           ? unavailableDescription
-          : `Lighting: ${lighting.sunElevation}° up, ${lighting.sunIntensity.toFixed(2)} light`
+          : `Lighting: ${formatDegrees(lighting.sunElevation)} up, ${formatNumber(lighting.sunIntensity, 2)} light`
       }
       icon={<WbSunnyIcon />}
       isDisabled={isDisabled}

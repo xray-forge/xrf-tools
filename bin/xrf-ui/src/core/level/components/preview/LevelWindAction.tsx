@@ -1,13 +1,14 @@
 import { default as AirIcon } from "@mui/icons-material/Air";
 import { Button } from "@mui/material";
-import { ReactElement, useCallback } from "react";
+import { ReactElement } from "react";
 
 import { ILevelLighting } from "@/core/level/lib/lighting/level-lighting";
-import { DEFAULT_LEVEL_WIND, ILevelWind, LEVEL_WIND_LIMITS } from "@/core/level/lib/lighting/level-wind";
+import { DEFAULT_LEVEL_WIND, LEVEL_WIND_LIMITS } from "@/core/level/lib/lighting/level-wind";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
 import { EditorPopoverToggle } from "@/core/shell/editor/EditorPopoverToggle";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatNumber } from "@/lib/format/number";
+import { usePartialChange } from "@/lib/react/use-partial-change";
 
 interface ILevelWindActionProps extends BaseComponentProps {
   isOn: boolean;
@@ -28,7 +29,7 @@ export function LevelWindAction({
   onToggle,
   onChange,
 }: ILevelWindActionProps): ReactElement {
-  const set = useCallback((part: Partial<ILevelWind>) => onChange({ ...lighting, ...part }), [lighting, onChange]);
+  const onSet = usePartialChange(lighting, onChange);
 
   return (
     <EditorPopoverToggle
@@ -49,7 +50,7 @@ export function LevelWindAction({
         value={lighting.windAmplitude}
         {...LEVEL_WIND_LIMITS.windAmplitude}
         format={(value: number) => formatNumber(value, 3)}
-        onChange={(windAmplitude: number) => set({ windAmplitude })}
+        onChange={(windAmplitude: number) => onSet({ windAmplitude })}
       />
 
       <RenderValueSlider
@@ -57,10 +58,10 @@ export function LevelWindAction({
         value={lighting.windSpeed}
         {...LEVEL_WIND_LIMITS.windSpeed}
         format={(value: number) => `${formatNumber(value, 1)}×`}
-        onChange={(windSpeed: number) => set({ windSpeed })}
+        onChange={(windSpeed: number) => onSet({ windSpeed })}
       />
 
-      <Button size={"small"} onClick={() => set(DEFAULT_LEVEL_WIND)}>
+      <Button size={"small"} onClick={() => onSet(DEFAULT_LEVEL_WIND)}>
         Back to the game&apos;s wind
       </Button>
     </EditorPopoverToggle>

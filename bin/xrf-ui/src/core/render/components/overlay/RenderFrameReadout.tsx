@@ -3,6 +3,7 @@ import { Fragment, ReactElement, ReactNode } from "react";
 
 import { RenderViewportOverlay, TRenderOverlayCorner } from "@/core/render/components/overlay/RenderViewportOverlay";
 import { BaseComponentProps } from "@/lib/dom/element-types";
+import { formatMilliseconds } from "@/lib/format/duration";
 import { formatCount } from "@/lib/format/number";
 
 /** The buffer's size, and the scene's as drawn where it is upscaled from less. */
@@ -46,8 +47,8 @@ export function RenderFrameReadout({
 }: IRenderFrameReadoutProps): ReactElement {
   return (
     <RenderViewportOverlay data-testid={dataTestId} id={id} className={className} corner={corner}>
-      <div>{`${cost.framesPerSecond.toFixed(0)} fps · ${cost.frameTime.toFixed(1)} ms`}</div>
-      <div>{`${cost.draws} draws · ${formatCount(cost.triangles)} tris`}</div>
+      <div>{`${cost.framesPerSecond.toFixed(0)} fps · ${formatMilliseconds(cost.frameTime)}`}</div>
+      <div>{`${formatCount(cost.draws)} draws · ${formatCount(cost.triangles)} tris`}</div>
       <div>{toSizeLine(cost)}</div>
 
       {children}

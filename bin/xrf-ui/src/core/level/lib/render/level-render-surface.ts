@@ -2,7 +2,7 @@ import { ERendererDraw, IRendererSurface, TRendererColor } from "@xrf/renderer";
 import { Nullable } from "@xrf/types";
 
 import { SectorSurface } from "@/core/ipc/types/xrf-visual";
-import { ILevelSurfaceRender } from "@/core/level/lib/surface/level-surface-render";
+import { ILevelSurfaceDetail, ILevelSurfaceRender } from "@/core/level/lib/surface/level-surface-render";
 
 /** Turns of the golden angle, which spreads consecutive shader ids rather than grouping them into near hues. */
 const HUE_STEP: number = 137.508;
@@ -35,7 +35,7 @@ export function toLevelSurface(
   isTextured: boolean
 ): IRendererSurface {
   const base: Nullable<string> = isTextured ? surface.textureName : null;
-  const detail = isTextured ? render.detail : null;
+  const detail: Nullable<ILevelSurfaceDetail> = isTextured ? render.detail : null;
 
   if (isLevelImpostorSurface(surface)) {
     return {

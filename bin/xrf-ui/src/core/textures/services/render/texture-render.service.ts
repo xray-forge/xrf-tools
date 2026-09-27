@@ -167,7 +167,7 @@ export class TextureRenderService extends RenderSurfaceService {
         this.log.warn(`Texture '${key}' was refused by the renderer:`, refusal),
       settings: toTextureRendererSettings(
         this.viewService.options,
-        this.settingsService.frameRateLimit,
+        this.settingsService.framePacing,
         this.settingsService.rendererFeatures
       ),
       worker: createRendererWorker(),
@@ -183,7 +183,7 @@ export class TextureRenderService extends RenderSurfaceService {
       reaction(() => this.viewService.options, this.applyOptions, { fireImmediately: true }),
       reaction(() => this.viewService.lighting, this.applyLighting, { fireImmediately: true }),
       reaction(
-        () => this.settingsService.frameRateLimit,
+        () => this.settingsService.framePacing,
         () => this.applySettings()
       ),
       reaction(
@@ -259,7 +259,7 @@ export class TextureRenderService extends RenderSurfaceService {
     this.client?.configure(
       toTextureRendererSettings(
         this.viewService.options,
-        this.settingsService.frameRateLimit,
+        this.settingsService.framePacing,
         this.settingsService.rendererFeatures
       )
     );

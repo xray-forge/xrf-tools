@@ -1,8 +1,9 @@
 import { inject, Injectable, OnDeactivation } from "@wirestate/core";
-import { BoundAction, reaction } from "@wirestate/mobx";
+import { BoundAction, comparer, reaction } from "@wirestate/mobx";
 import {
   ERenderResolution,
   IDdsRefusal,
+  IRendererLighting,
   IRendererReport,
   IRendererSettings,
   RendererClient,
@@ -66,6 +67,9 @@ export class LevelRenderService extends RenderSurfaceService {
   private streamedFrom: Nullable<ILevelPoint> = null;
   /** What each frame helper was last put as, so a toggle that leaves one alone does not send it again. */
   private readonly framed: Map<string, Nullable<string>> = new Map();
+  /** What the renderer was last told its settings and its lighting are, so a change neither reads sends neither. */
+  private sentSettings: Nullable<IRendererSettings> = null;
+  private sentLighting: Nullable<IRendererLighting> = null;
 
   public constructor(
     private readonly loadService: LevelLoadService = inject(LevelLoadService),
@@ -88,6 +92,8 @@ export class LevelRenderService extends RenderSurfaceService {
     this.level = null;
     this.streamedFrom = null;
     this.framed.clear();
+    this.sentSettings = null;
+    this.sentLighting = null;
   }
 
   /**
@@ -114,17 +120,19 @@ export class LevelRenderService extends RenderSurfaceService {
       return this.client;
     }
 
+    const settings: IRendererSettings = this.toSettings();
     const client: RendererClient = new RendererClient({
       onFailed: (reason: string): void => this.log.error("The level renderer failed:", reason),
       onReport: (report: IRendererReport): void => this.takeReport(report),
       onTextureRefused: (key: string, refusal: IDdsRefusal): void => this.refuseTexture(key, refusal),
-      settings: this.toSettings(),
+      settings,
       worker: createRendererWorker(),
     });
     const content: LevelRenderContent = new LevelRenderContent(client);
 
     this.client = client;
     this.content = content;
+    this.sentSettings = settings;
 
     this.reactions.push(
       this.loadService.sectors.subscribe((change) => content.deliver(change)),
@@ -153,7 +161,7 @@ export class LevelRenderService extends RenderSurfaceService {
           this.viewService.lod,
           this.viewService.features,
           this.settingsService.rendererChoice,
-          this.settingsService.frameRateLimit,
+          this.settingsService.framePacing,
         ],
         () => this.applySettings()
       ),
@@ -182,7 +190,7 @@ export class LevelRenderService extends RenderSurfaceService {
   @BoundAction()
   private applyOptions(options: ILevelViewOptions): void {
     this.content?.setOptions(options);
-    // The fog and the wind are the lighting's, which configures too.
+    // The fog and the wind are the lighting's; the rest of what the settings read, the settings'.
     this.applyLighting(this.viewService.lighting);
     this.applyFrame();
   }
@@ -190,8 +198,14 @@ export class LevelRenderService extends RenderSurfaceService {
   @BoundAction()
   private applyLighting(lighting: ILevelLighting): void {
     const { isFogged, isWindy } = this.viewService.options;
+    const next: IRendererLighting = toLevelRendererLighting(lighting, isFogged, isWindy);
 
-    this.client?.setLighting(toLevelRendererLighting(lighting, isFogged, isWindy));
+    if (this.client && !(this.sentLighting && comparer.structural(next, this.sentLighting))) {
+      this.sentLighting = next;
+      this.client.setLighting(next);
+    }
+
+    // The hemisphere strength is the lighting's, which the settings carry.
     this.applySettings();
   }
 
@@ -202,14 +216,19 @@ export class LevelRenderService extends RenderSurfaceService {
   }
 
   private applySettings(): void {
-    this.client?.configure(this.toSettings());
+    const next: IRendererSettings = this.toSettings();
+
+    if (this.client && !(this.sentSettings && comparer.structural(next, this.sentSettings))) {
+      this.sentSettings = next;
+      this.client.configure(next);
+    }
   }
 
   private toSettings(): IRendererSettings {
     return toLevelRendererSettings({
       config: this.config,
       features: this.settingsService.rendererFeatures,
-      frameRateLimit: this.settingsService.frameRateLimit,
+      pacing: this.settingsService.framePacing,
       lighting: this.viewService.lighting,
       lod: this.viewService.lod,
       options: this.viewService.options,

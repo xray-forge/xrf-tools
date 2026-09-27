@@ -7,7 +7,7 @@ import {
   IRendererFlyCamera,
   IRendererLighting,
   IRendererSettings,
-  TFrameRateLimit,
+  IRenderFramePacing,
 } from "@xrf/renderer";
 import { Nullable } from "@xrf/types";
 
@@ -84,8 +84,8 @@ export interface ILevelRendererSettingsInputs {
   lod: ILevelLodOptions;
   /** What the view sets over the settings' features for itself, which their toggles gate. */
   view: ILevelFeatureOptions;
-  /** How often the application lets a view redraw. */
-  frameRateLimit: TFrameRateLimit;
+  /** How the application paces a view's frames. */
+  pacing: IRenderFramePacing;
   /** What the renderer's features are set to, which the level's toolbar narrows. */
   features: IRendererFeatureSettings;
   /** The backdrop. */
@@ -97,7 +97,7 @@ export interface ILevelRendererSettingsInputs {
  * @returns The renderer's settings.
  */
 export function toLevelRendererSettings(inputs: ILevelRendererSettingsInputs): IRendererSettings {
-  const { options, lighting, lod, view, frameRateLimit, features, config } = inputs;
+  const { options, lighting, lod, view, pacing, features, config } = inputs;
 
   return {
     // Fogged, the renderer draws the sky as total fog itself; this shows only where there is none.
@@ -112,7 +112,7 @@ export function toLevelRendererSettings(inputs: ILevelRendererSettingsInputs): I
       lod: toLevelRendererLod(features.lod, lod, options.isImpostors),
       shadows: toLevelRendererFeature("shadows", features, view, options.isShadowed),
     },
-    frameRateLimit,
+    pacing,
     hemiStrength: options.isBaked ? lighting.hemiStrength : 0,
     isBumped: true,
     isLit: true,

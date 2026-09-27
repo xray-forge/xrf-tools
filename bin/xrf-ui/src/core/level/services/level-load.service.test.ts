@@ -13,6 +13,7 @@ import {
   ILevelTextureSupplyChange,
 } from "@/core/level/lib/render/level-render-protocol";
 import { createLevelResidency } from "@/core/level/lib/residency/level-residency";
+import { EMPTY_LEVEL_STREAM_SUMMARY } from "@/core/level/lib/stream/level-stream-profile";
 import {
   mockLevelTextureReference,
   mockSectorDescription,
@@ -471,6 +472,24 @@ describe("LevelLoadService streaming progress", () => {
 
     expect(service.streaming).toEqual(IDLE_LEVEL_STREAM);
     expect(service.isStreaming).toBe(false);
+  });
+
+  // What streaming cost belongs to the level it streamed: the next one starts with no readings of its own.
+  it("forgets what the last level's streaming cost when another opens", async () => {
+    const { level, description, buffer } = mockStreamable([outlineAt(0, 1)]);
+    const { service } = mockInjectedService(LevelLoadService);
+
+    armLevel(level, description, buffer);
+
+    await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS);
+    await service.stream(ORIGIN);
+
+    expect(service.streamProfile).not.toEqual(EMPTY_LEVEL_STREAM_SUMMARY);
+
+    await service.load({ kind: "asset", logicalPath: "levels\\jupiter" }, ROOTS);
+
+    expect(service.streamProfile).toEqual(EMPTY_LEVEL_STREAM_SUMMARY);
+    expect(service.streaming).toEqual(IDLE_LEVEL_STREAM);
   });
 
   // A failed read would otherwise leave a viewer showing progress towards sectors that will never land.

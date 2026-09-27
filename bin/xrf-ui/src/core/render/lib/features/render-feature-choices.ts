@@ -6,6 +6,7 @@ import {
   ERendererRenderScale,
   IRendererNumberField,
   RENDERER_FEATURE_SCHEMA,
+  RENDERER_SHADOW_CASCADE_WIDTHS,
 } from "@xrf/renderer";
 
 import { formatNumber } from "@/lib/format/number";
@@ -32,15 +33,12 @@ function toRenderLimits(field: IRendererNumberField, step: number): IRenderLimit
   return { max: field.max, min: field.min, step };
 }
 
-/** The engine's three cascade widths (`render_phase_sun.cpp`), and a fourth reaching three times as far. */
-export const RENDER_SHADOW_CASCADE_WIDTHS: ReadonlyArray<number> = [20, 40, 160, 480];
-
 /** How many cascades are offered, as counts. */
 export const RENDER_SHADOW_CASCADE_OPTIONS: ReadonlyArray<IRenderChoiceOption<string>> =
-  RENDER_SHADOW_CASCADE_WIDTHS.map((_, index: number) => ({ label: String(index + 1), value: String(index + 1) }));
+  RENDERER_SHADOW_CASCADE_WIDTHS.map((_, index: number) => ({ label: String(index + 1), value: String(index + 1) }));
 
 /** The map resolutions offered, in texels across. */
-export const RENDER_SHADOW_RESOLUTIONS: ReadonlyArray<number> = [1024, 2048, 4096];
+const RENDER_SHADOW_RESOLUTIONS: ReadonlyArray<number> = [1024, 2048, 4096];
 
 export const RENDER_SHADOW_RESOLUTION_OPTIONS: ReadonlyArray<IRenderChoiceOption<string>> =
   RENDER_SHADOW_RESOLUTIONS.map((value: number) => ({ label: String(value), value: String(value) }));

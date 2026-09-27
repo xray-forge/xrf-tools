@@ -12,8 +12,10 @@ import {
   ERendererRequest,
   ERendererResponse,
   IRendererReport,
+  IRendererSettings,
 } from "@xrf/renderer";
 import { createRendererWorkerStub, IRendererWorkerStub } from "@xrf/renderer/fixtures";
+import { Maybe } from "@xrf/types";
 
 import { DEFAULT_LEVEL_FOG, toLevelRendererFog } from "@/core/level/lib/lighting/level-fog";
 import { ILevelPoint } from "@/core/level/lib/residency/level-residency";
@@ -66,6 +68,11 @@ async function mockAttached(): Promise<{
   await stub.flush();
 
   return { container, service, viewService: container.get(LevelViewService) };
+}
+
+/** The settings the renderer draws with now: the last it was configured with, or those it started with. */
+function drawnSettings(): Maybe<IRendererSettings> {
+  return stub.take(ERendererRequest.CONFIGURE).at(-1)?.settings ?? stub.take(ERendererRequest.START).at(-1)?.settings;
 }
 
 function mockReport(position: [number, number, number]): IRendererReport {
@@ -121,7 +128,7 @@ describe("LevelRenderService", () => {
     await stub.flush();
 
     expect(stub.take(ERendererRequest.LIGHTING).at(-1)?.lighting.fog).toBeNull();
-    expect(stub.take(ERendererRequest.CONFIGURE).at(-1)?.settings.backdrop).toBe(0x202428);
+    expect(drawnSettings()?.backdrop).toBe(0x202428);
 
     service.dispose();
   });
@@ -129,17 +136,17 @@ describe("LevelRenderService", () => {
   it("draws impostors while the toolbar asks, at the distance it sets", async () => {
     const { service, viewService } = await mockAttached();
 
-    expect(stub.take(ERendererRequest.CONFIGURE).at(-1)?.settings.features.lod.isImpostors).toBe(true);
+    expect(drawnSettings()?.features.lod.isImpostors).toBe(true);
 
     viewService.setLod({ distance: 2 });
     await stub.flush();
 
-    expect(stub.take(ERendererRequest.CONFIGURE).at(-1)?.settings.features.lod.geometryLod).toBeCloseTo(3);
+    expect(drawnSettings()?.features.lod.geometryLod).toBeCloseTo(3);
 
     viewService.setOptions({ ...viewService.options, isImpostors: false });
     await stub.flush();
 
-    expect(stub.take(ERendererRequest.CONFIGURE).at(-1)?.settings.features.lod.isImpostors).toBe(false);
+    expect(drawnSettings()?.features.lod.isImpostors).toBe(false);
 
     service.dispose();
   });
@@ -148,7 +155,7 @@ describe("LevelRenderService", () => {
     const { service, viewService } = await mockAttached();
 
     function features() {
-      return stub.take(ERendererRequest.CONFIGURE).at(-1)?.settings.features;
+      return drawnSettings()?.features;
     }
 
     expect(features()?.shadows.isEnabled).toBe(true);
@@ -208,7 +215,38 @@ describe("LevelRenderService", () => {
     viewService.setOptions({ ...viewService.options, isBaked: false });
     await stub.flush();
 
-    expect(stub.take(ERendererRequest.CONFIGURE).at(-1)?.settings.hemiStrength).toBe(0);
+    expect(drawnSettings()?.hemiStrength).toBe(0);
+
+    service.dispose();
+  });
+
+  // A renderer is told its settings and its light as it starts, and then only what changed: a configure rebuilds
+  // passes, and a toggle the settings do not read has nothing to rebuild.
+  it("configures and lights only for what changed", async () => {
+    const { service, viewService } = await mockAttached();
+
+    expect(stub.take(ERendererRequest.START)).toHaveLength(1);
+    expect(stub.take(ERendererRequest.CONFIGURE)).toHaveLength(0);
+    expect(stub.take(ERendererRequest.LIGHTING)).toHaveLength(1);
+
+    viewService.setOptions({ ...viewService.options, isAxesVisible: true, isGridVisible: true, isSunVisible: false });
+    viewService.setOptions({ ...viewService.options, isStatsVisible: false });
+    await stub.flush();
+
+    expect(stub.take(ERendererRequest.CONFIGURE)).toHaveLength(0);
+    expect(stub.take(ERendererRequest.LIGHTING)).toHaveLength(1);
+
+    viewService.setOptions({ ...viewService.options, isFogged: false });
+    await stub.flush();
+
+    expect(stub.take(ERendererRequest.CONFIGURE)).toHaveLength(0);
+    expect(stub.take(ERendererRequest.LIGHTING)).toHaveLength(2);
+
+    viewService.setOptions({ ...viewService.options, isShadowed: false });
+    await stub.flush();
+
+    expect(stub.take(ERendererRequest.CONFIGURE)).toHaveLength(1);
+    expect(stub.take(ERendererRequest.LIGHTING)).toHaveLength(2);
 
     service.dispose();
   });

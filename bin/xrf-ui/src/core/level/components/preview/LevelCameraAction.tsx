@@ -1,6 +1,6 @@
 import { default as VideocamIcon } from "@mui/icons-material/Videocam";
 import { Button, Typography } from "@mui/material";
-import { ReactElement, useCallback } from "react";
+import { ReactElement } from "react";
 
 import {
   DEFAULT_LEVEL_CAMERA_OPTIONS,
@@ -12,6 +12,7 @@ import { EditorPopoverAction } from "@/core/shell/editor/EditorPopoverAction";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatDegrees } from "@/lib/format/angle";
 import { formatNumber } from "@/lib/format/number";
+import { usePartialChange } from "@/lib/react/use-partial-change";
 
 interface ILevelCameraActionProps extends BaseComponentProps {
   camera: ILevelCameraOptions;
@@ -28,7 +29,7 @@ export function LevelCameraAction({
   camera,
   onChange,
 }: ILevelCameraActionProps): ReactElement {
-  const set = useCallback((part: Partial<ILevelCameraOptions>) => onChange({ ...camera, ...part }), [camera, onChange]);
+  const onSet = usePartialChange(camera, onChange);
 
   return (
     <EditorPopoverAction
@@ -49,7 +50,7 @@ export function LevelCameraAction({
           value={camera.fieldOfView}
           {...LEVEL_CAMERA_LIMITS.fieldOfView}
           format={formatDegrees}
-          onChange={(fieldOfView) => set({ fieldOfView })}
+          onChange={(fieldOfView) => onSet({ fieldOfView })}
         />
 
         <RenderValueSlider
@@ -57,7 +58,7 @@ export function LevelCameraAction({
           value={camera.speed}
           {...LEVEL_CAMERA_LIMITS.speed}
           format={(value: number) => `${value} m/s`}
-          onChange={(speed) => set({ speed })}
+          onChange={(speed) => onSet({ speed })}
         />
 
         <RenderValueSlider
@@ -65,7 +66,7 @@ export function LevelCameraAction({
           value={camera.boost}
           {...LEVEL_CAMERA_LIMITS.boost}
           format={(value: number) => `${value}×`}
-          onChange={(boost) => set({ boost })}
+          onChange={(boost) => onSet({ boost })}
         />
 
         <RenderValueSlider
@@ -73,7 +74,7 @@ export function LevelCameraAction({
           value={camera.sensitivity}
           {...LEVEL_CAMERA_LIMITS.sensitivity}
           format={(value: number) => formatNumber(value, 4)}
-          onChange={(sensitivity) => set({ sensitivity })}
+          onChange={(sensitivity) => onSet({ sensitivity })}
         />
 
         <Button size={"small"} onClick={() => onChange(DEFAULT_LEVEL_CAMERA_OPTIONS)}>

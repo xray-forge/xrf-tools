@@ -8,15 +8,15 @@ import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 import { ChoiceFormRow } from "@/core/ui/form/ChoiceFormRow";
 import { DetailSection } from "@/core/ui/layout/DetailSection";
 
+import { useRendererOverride } from "./use-renderer-override";
+
 /** The local lights: whether they light the level, and whether the level file's own join the spawned ones. */
 export function SettingsRendererLights(): ReactElement {
   const settingsService: SettingsService = useInjection(SettingsService);
 
   const lights: IRendererLightsSettings = settingsService.rendererFeatures.lights;
 
-  function set(part: Partial<IRendererLightsSettings>): void {
-    settingsService.setRendererOverrides({ lights: part });
-  }
+  const onSet = useRendererOverride("lights");
 
   return (
     <DetailSection
@@ -31,7 +31,7 @@ export function SettingsRendererLights(): ReactElement {
           label={"Lights"}
           description={"Off, only the sun and the baked light reach the level."}
           isChecked={lights.isEnabled}
-          onChange={(isEnabled: boolean) => set({ isEnabled })}
+          onChange={(isEnabled: boolean) => onSet({ isEnabled })}
         />
 
         <CheckboxFormRow
@@ -41,7 +41,7 @@ export function SettingsRendererLights(): ReactElement {
             "casts from changes. A level fills it over its first frames."
           }
           isChecked={lights.isShadowed}
-          onChange={(isShadowed: boolean) => set({ isShadowed })}
+          onChange={(isShadowed: boolean) => onSet({ isShadowed })}
         />
 
         <ChoiceFormRow
@@ -53,7 +53,7 @@ export function SettingsRendererLights(): ReactElement {
           }
           options={RENDER_LIGHT_SHADOW_FILTER_OPTIONS}
           value={lights.shadowFilter}
-          onChange={(shadowFilter: ERendererLightShadowFilter) => set({ shadowFilter })}
+          onChange={(shadowFilter: ERendererLightShadowFilter) => onSet({ shadowFilter })}
         />
 
         <CheckboxFormRow
@@ -63,7 +63,7 @@ export function SettingsRendererLights(): ReactElement {
             "hold them, so they light twice."
           }
           isChecked={lights.isLevelLights}
-          onChange={(isLevelLights: boolean) => set({ isLevelLights })}
+          onChange={(isLevelLights: boolean) => onSet({ isLevelLights })}
         />
       </div>
     </DetailSection>

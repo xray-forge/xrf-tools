@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { ILevelCamera, UNPLACED_LEVEL_CAMERA } from "@/core/level/lib/camera/level-camera";
+import { ILevelCamera } from "@/core/level/lib/camera/level-camera";
 import { EMPTY_LEVEL_STATS, ILevelStats } from "@/core/level/lib/stats/level-stats";
 import { LevelViewportService } from "@/core/level/services/level-viewport.service";
 import { mockInjectedService } from "@/fixtures/utils/container";
@@ -10,7 +10,7 @@ function stats(overrides: Partial<ILevelStats> = {}): ILevelStats {
 }
 
 function camera(overrides: Partial<ILevelCamera> = {}): ILevelCamera {
-  return { ...UNPLACED_LEVEL_CAMERA, ...overrides };
+  return { heading: 0, pitch: 0, position: { x: 0, y: 0, z: 0 }, ...overrides };
 }
 
 describe("LevelViewportService", () => {

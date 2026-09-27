@@ -3,23 +3,23 @@ import { default as LayersIcon } from "@mui/icons-material/Layers";
 import { default as SpeedIcon } from "@mui/icons-material/Speed";
 import { default as WarningIcon } from "@mui/icons-material/WarningAmber";
 import { useInjection } from "@wirestate/react";
-import { ERendererRenderScale } from "@xrf/renderer";
+import { ERendererRenderScale, IRendererFeatureSettings } from "@xrf/renderer";
 import { Nullable } from "@xrf/types";
-import { ReactElement, ReactNode, useMemo } from "react";
+import { ReactElement, ReactNode, useCallback, useMemo } from "react";
 
 import { LevelHeaderPanel } from "@/core/level/components/panels/LevelHeaderPanel";
 import { LevelProblemsPanel } from "@/core/level/components/panels/LevelProblemsPanel";
 import { LevelStreamPanel } from "@/core/level/components/panels/LevelStreamPanel";
 import { LevelSurfacesPanel } from "@/core/level/components/panels/LevelSurfacesPanel";
 import { LevelCameraAction } from "@/core/level/components/preview/LevelCameraAction";
+import { LevelPreviewActivity } from "@/core/level/components/preview/LevelPreviewActivity";
 import { LevelPreviewCoordinates } from "@/core/level/components/preview/LevelPreviewCoordinates";
 import { LevelPreviewEmpty } from "@/core/level/components/preview/LevelPreviewEmpty";
 import { LevelPreviewMetrics } from "@/core/level/components/preview/LevelPreviewMetrics";
-import { LevelPreviewStatus } from "@/core/level/components/preview/LevelPreviewStatus";
 import { LevelPreviewToolbar } from "@/core/level/components/preview/LevelPreviewToolbar";
 import { ILevelPreviewViewportProps, LevelPreviewViewport } from "@/core/level/components/preview/LevelPreviewViewport";
-import { toLevelFeatureView } from "@/core/level/lib/features";
-import { ILevelStreamProgress, LevelViewService } from "@/core/level/services";
+import { ILevelFeatureOptions, TLevelFeatureView, toLevelFeatureView } from "@/core/level/lib/features";
+import { LevelLoadService, LevelViewService } from "@/core/level/services";
 import { SettingsService } from "@/core/settings/services/settings";
 import { EditorFileHeader } from "@/core/shell/editor/EditorFileHeader";
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
@@ -32,8 +32,6 @@ interface ILevelPreviewLayoutProps extends BaseComponentProps {
   /** What the open level is called. Its presence is what draws the file header over the viewport. */
   name?: Nullable<string>;
   subtitle?: ReactNode;
-  /** How far through the sectors the camera asked for the loader is. */
-  streaming: ILevelStreamProgress;
   /** Whether the level itself is being opened, which is a different wait from streaming its sectors. */
   isLoading?: boolean;
   error?: string;
@@ -53,7 +51,6 @@ export function LevelPreviewLayout({
   className,
   name = null,
   subtitle,
-  streaming,
   isLoading = false,
   error,
   renderViewport,
@@ -61,23 +58,26 @@ export function LevelPreviewLayout({
   onBack,
   onDeselect = null,
 }: ILevelPreviewLayoutProps): ReactElement {
+  const loadService: LevelLoadService = useInjection(LevelLoadService);
   const viewService: LevelViewService = useInjection(LevelViewService);
   const settingsService: SettingsService = useInjection(SettingsService);
 
   const isOpen: boolean = Boolean(name);
-  const isStreaming: boolean = streaming.total > 0;
+  const settings: IRendererFeatureSettings = settingsService.rendererFeatures;
+  const features: ILevelFeatureOptions = viewService.features;
 
-  const activity: Nullable<string> = useMemo(() => {
-    if (isLoading) {
-      return "Opening level";
-    }
+  // Stable between changes of their own, so the toolbar redraws for a toggle and for nothing else.
+  const featureView: TLevelFeatureView = useMemo(() => toLevelFeatureView(settings, features), [settings, features]);
 
-    if (isStreaming) {
-      return `Streaming sector ${Math.min(streaming.loaded + 1, streaming.total)} of ${streaming.total}`;
-    }
+  const actions: ReactElement = useMemo(
+    () => <LevelCameraAction camera={viewService.camera} onChange={viewService.setCamera} />,
+    [viewService.camera, viewService.setCamera]
+  );
 
-    return isOpen ? null : "No level open";
-  }, [isLoading, isOpen, isStreaming, streaming]);
+  const onChangeScale = useCallback(
+    (scale: ERendererRenderScale) => settingsService.setRendererOverrides({ upscaling: { scale } }),
+    [settingsService]
+  );
 
   useEditorPanels(
     (): Array<IEditorPanel> => [
@@ -117,18 +117,17 @@ export function LevelPreviewLayout({
           subtitle={subtitle}
           options={viewService.options}
           lighting={viewService.lighting}
+          sun={loadService.level.value?.selected.value.sun ?? null}
           lod={viewService.lod}
-          features={viewService.features}
-          featureView={toLevelFeatureView(settingsService.rendererFeatures, viewService.features)}
-          settings={settingsService.rendererFeatures}
-          actions={<LevelCameraAction camera={viewService.camera} onChange={viewService.setCamera} />}
+          features={features}
+          featureView={featureView}
+          settings={settings}
+          actions={actions}
           onChangeOptions={viewService.setOptions}
           onChangeLighting={viewService.setLighting}
           onChangeLod={viewService.setLod}
           onChangeFeatures={viewService.setFeatures}
-          onChangeScale={(scale: ERendererRenderScale) =>
-            settingsService.setRendererOverrides({ upscaling: { scale } })
-          }
+          onChangeScale={onChangeScale}
           onBack={onBack}
         />
       }
@@ -166,19 +165,9 @@ export function LevelPreviewLayout({
             </div>
           ) : null}
 
-          {!isLoading && isStreaming ? (
-            <div className={"pointer-events-none absolute inset-x-0 bottom-0 flex justify-center pb-6"}>
-              <DelayedProgress
-                data-testid={"level-stream-progress"}
-                isOnViewport={true}
-                label={`Streaming sectors, ${streaming.loaded} of ${streaming.total}`}
-              />
-            </div>
-          ) : null}
+          <LevelPreviewActivity isOpen={isOpen} isLoading={isLoading} />
         </div>
       </div>
-
-      <LevelPreviewStatus activity={activity} />
     </EditorLayout>
   );
 }

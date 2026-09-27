@@ -2,7 +2,13 @@ import { toDegrees } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 
 import { Vector3d } from "@/core/ipc/types/xrf-math";
-import { toRendererSpace } from "@/core/render/lib/scene/render-space";
+import { IRenderPoint, toRendererSpace } from "@/core/render/lib/scene/render-space";
+
+/** Where a sun stands, in degrees: how far above the horizon, and which way round. */
+export interface ILevelSunAngles {
+  elevation: number;
+  azimuth: number;
+}
 
 /**
  * The elevation and azimuth a level's own sun comes to, for a viewer offering to light it the way xrLC did.
@@ -10,7 +16,7 @@ import { toRendererSpace } from "@/core/render/lib/scene/render-space";
  * @param direction - The direction the level's sun light travels, in the level's own axes.
  * @returns The angles, or null when there is no direction to take them from.
  */
-export function toSunAngles(direction: Nullable<Vector3d>): Nullable<{ elevation: number; azimuth: number }> {
+export function toSunAngles(direction: Nullable<Vector3d>): Nullable<ILevelSunAngles> {
   if (!direction) {
     return null;
   }
@@ -24,7 +30,7 @@ export function toSunAngles(direction: Nullable<Vector3d>): Nullable<{ elevation
   }
 
   // Opposite the travel, because this describes where the sun is rather than where its light goes.
-  const toSun = { x: -x / length, y: -y / length, z: -z / length };
+  const toSun: IRenderPoint = { x: -x / length, y: -y / length, z: -z / length };
 
   return {
     azimuth: toDegrees(Math.atan2(toSun.x, toSun.z)),

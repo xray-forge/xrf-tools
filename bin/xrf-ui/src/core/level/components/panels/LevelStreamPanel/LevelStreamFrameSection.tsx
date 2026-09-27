@@ -2,7 +2,7 @@ import { ReactElement } from "react";
 
 import { ILevelStats } from "@/core/level/lib/stats/level-stats";
 import { EditorPanelProperty, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
-import { formatDuration, formatMilliseconds } from "@/lib/format/duration";
+import { formatMilliseconds } from "@/lib/format/duration";
 import { formatCount } from "@/lib/format/number";
 
 interface ILevelStreamFrameSectionProps {
@@ -22,7 +22,7 @@ export function LevelStreamFrameSection({ stats }: ILevelStreamFrameSectionProps
         value={`${formatMilliseconds(stats.drawTime)} · worst ${formatMilliseconds(stats.worstDrawTime)}`}
       />
       <EditorPanelProperty label={"Frames a second"} value={stats.framesPerSecond.toFixed(0)} />
-      <EditorPanelProperty label={"Taking a sector in"} value={formatDuration(stats.sceneTime)} />
+      <EditorPanelProperty label={"Taking a sector in"} value={formatMilliseconds(stats.sceneTime)} />
       <EditorPanelProperty label={"Draw calls"} value={formatCount(stats.draws)} />
       <EditorPanelProperty label={"Triangles"} value={formatCount(stats.triangles)} />
     </EditorPanelSection>

@@ -7,13 +7,14 @@ import { renderWithProviders } from "@/fixtures/utils/render";
 
 import { EditorPopoverToggle } from "./EditorPopoverToggle";
 
-function renderToggle(isOn: boolean, onToggle: () => void = () => {}) {
+function renderToggle(isOn: boolean, onToggle: () => void = () => {}, isDisabled: boolean = false) {
   return renderWithProviders(
     <EditorPopoverToggle
       label={"Fog"}
       description={"Fog total at 350 m"}
       icon={<FoggyIcon />}
       isOn={isOn}
+      isDisabled={isDisabled}
       toggleLabel={"Draw the fog"}
       onToggle={onToggle}
     >
@@ -55,6 +56,13 @@ describe("EditorPopoverToggle", () => {
   it("says what its settings are at and what a right click does", () => {
     expect(renderToggle(true).getByRole("button", { name: "Fog" })).toHaveAccessibleDescription(
       "Fog total at 350 m. Right-click for its settings"
+    );
+  });
+
+  // A disabled button opens nothing, so the hint would promise a right click that does nothing.
+  it("offers no right click while disabled", () => {
+    expect(renderToggle(true, () => {}, true).getByRole("button", { name: "Fog" })).toHaveAccessibleDescription(
+      "Fog total at 350 m"
     );
   });
 });

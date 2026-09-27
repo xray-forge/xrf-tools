@@ -3,6 +3,7 @@ import { ERenderResolution, FRAME_RATE_LIMITS, RENDER_RESOLUTIONS, TFrameRateLim
 import { ReactElement } from "react";
 
 import { SettingsService } from "@/core/settings/services/settings";
+import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 import { ChoiceFormRow, IChoiceFormRowOption } from "@/core/ui/form/ChoiceFormRow";
 
 import { SettingsRendererAmbientOcclusion } from "./SettingsRendererAmbientOcclusion";
@@ -42,6 +43,16 @@ export function SettingsRenderSection(): ReactElement {
         options={FRAME_RATE_OPTIONS}
         value={settingsService.frameRateLimit}
         onChange={settingsService.setFrameRateLimit}
+      />
+
+      <CheckboxFormRow
+        label={"Low latency"}
+        description={
+          "Waits for the GPU to be at most a frame behind before drawing another, so the camera answers a frame " +
+          "sooner where the GPU is what holds the frame rate back, for about a tenth fewer frames."
+        }
+        isChecked={settingsService.isLowLatency}
+        onChange={settingsService.setLowLatency}
       />
 
       <ChoiceFormRow

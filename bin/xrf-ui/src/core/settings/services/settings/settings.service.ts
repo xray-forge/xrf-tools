@@ -1,11 +1,12 @@
 import { Injectable, OnDeprovision, OnProvision, ProvisionId } from "@wirestate/core";
-import { BoundAction, Observable, RefObservable } from "@wirestate/mobx";
+import { BoundAction, Computed, Observable, RefObservable } from "@wirestate/mobx";
 import {
   ERendererPreset,
   ERenderResolution,
   IRendererFeatureChoice,
   IRendererFeatureOverrides,
   IRendererFeatureSettings,
+  IRenderFramePacing,
   mergeRendererFeatureOverrides,
   resolveRendererFeatures,
   TFrameRateLimit,
@@ -20,6 +21,7 @@ import {
   CATALOG_VIEW_STORAGE_KEY,
   DEV_MODE_STORAGE_KEY,
   FRAME_RATE_LIMIT_STORAGE_KEY,
+  LOW_LATENCY_STORAGE_KEY,
   RENDER_RESOLUTION_STORAGE_KEY,
   RENDERER_FEATURES_STORAGE_KEY,
 } from "@/core/storage";
@@ -48,6 +50,10 @@ export class SettingsService {
   @Observable()
   public frameRateLimit: TFrameRateLimit = toFrameRateLimit(getLocalStorageValue(FRAME_RATE_LIMIT_STORAGE_KEY));
 
+  /** Whether frames wait for the GPU to be at most a frame behind, answering input sooner for fewer frames. */
+  @Observable()
+  public isLowLatency: boolean = getLocalStorageValue(LOW_LATENCY_STORAGE_KEY) !== String(false);
+
   @Observable()
   public renderResolution: ERenderResolution = toRenderResolution(getLocalStorageValue(RENDER_RESOLUTION_STORAGE_KEY));
 
@@ -58,7 +64,14 @@ export class SettingsService {
   @RefObservable()
   public rendererChoice: IRendererFeatureChoice = SettingsService.readRendererChoice();
 
+  /** How every viewport paces its frames. */
+  @Computed()
+  public get framePacing(): IRenderFramePacing {
+    return { isLowLatency: this.isLowLatency, rateLimit: this.frameRateLimit };
+  }
+
   /** Every renderer feature as the choice sets it. */
+  @Computed()
   public get rendererFeatures(): IRendererFeatureSettings {
     return resolveRendererFeatures(this.rendererChoice);
   }
@@ -107,6 +120,14 @@ export class SettingsService {
 
     this.frameRateLimit = limit;
     setLocalStorageValue(FRAME_RATE_LIMIT_STORAGE_KEY, limit);
+  }
+
+  @BoundAction()
+  public setLowLatency(isLowLatency: boolean): void {
+    this.log.info("Set low latency:", isLowLatency);
+
+    this.isLowLatency = isLowLatency;
+    setLocalStorageValue(LOW_LATENCY_STORAGE_KEY, String(isLowLatency));
   }
 
   @BoundAction()

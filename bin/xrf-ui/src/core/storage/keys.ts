@@ -22,6 +22,8 @@ export const IPC_PROFILING_STORAGE_KEY: string = buildStorageKey(EStorageNamespa
 export const MEDIA_VOLUME_STORAGE_KEY: string = buildStorageKey(EStorageNamespace.PREFERENCE, "media-volume");
 /** Frames a second a viewport is allowed to draw. */
 export const FRAME_RATE_LIMIT_STORAGE_KEY: string = buildStorageKey(EStorageNamespace.PREFERENCE, "frame-rate-limit");
+/** Whether frames wait for the GPU to be at most a frame behind. */
+export const LOW_LATENCY_STORAGE_KEY: string = buildStorageKey(EStorageNamespace.PREFERENCE, "low-latency");
 
 /** The renderer's preset and what was changed on top of it, as JSON. */
 export const RENDERER_FEATURES_STORAGE_KEY: string = buildStorageKey(EStorageNamespace.PREFERENCE, "renderer-features");

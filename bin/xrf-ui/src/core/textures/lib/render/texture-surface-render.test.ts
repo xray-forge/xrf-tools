@@ -1,5 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 import {
+  DEFAULT_RENDER_FRAME_PACING,
   DEFAULT_RENDERER_FEATURE_CHOICE,
   ERendererDraw,
   ERendererTextureEncoding,
@@ -91,7 +92,7 @@ describe("toTextureRendererSettings", () => {
   it("carries the lit and bump switches, over a transparent backdrop", () => {
     const settings = toTextureRendererSettings(
       { ...DEFAULT_TEXTURE_PREVIEW_OPTIONS, isBumped: false, isLit: false },
-      "60",
+      DEFAULT_RENDER_FRAME_PACING,
       resolveRendererFeatures(DEFAULT_RENDERER_FEATURE_CHOICE)
     );
 

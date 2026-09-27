@@ -1,17 +1,22 @@
 import { describe, expect, it, jest } from "@jest/globals";
 import { act, fireEvent, RenderResult } from "@testing-library/react";
 import { Container } from "@wirestate/core";
+import { runInAction } from "@wirestate/mobx";
 
 import { LevelPreviewLayout } from "@/core/level/components/preview/LevelPreviewLayout";
 import { ILevelCamera } from "@/core/level/lib/camera/level-camera";
 import { ILevelPoint } from "@/core/level/lib/residency/level-residency";
 import { EMPTY_LEVEL_STATS } from "@/core/level/lib/stats/level-stats";
-import { ILevelStreamProgress, LevelLoadService, LevelViewportService, LevelViewService } from "@/core/level/services";
+import {
+  IDLE_LEVEL_STREAM,
+  ILevelStreamProgress,
+  LevelLoadService,
+  LevelViewportService,
+  LevelViewService,
+} from "@/core/level/services";
 import { ApplicationStatusBar } from "@/core/shell/footer/ApplicationStatusBar";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
-
-const IDLE: ILevelStreamProgress = { loaded: 0, total: 0 };
 
 /** A camera placed where a readout has something to say about every axis. */
 function camera(position: Partial<ILevelPoint> = {}): ILevelCamera {
@@ -30,6 +35,7 @@ function camera(position: Partial<ILevelPoint> = {}): ILevelCamera {
  * @returns The rendered tree, and the service a test reports through.
  */
 function renderReporting(onRender: () => void = () => undefined): {
+  loader: LevelLoadService;
   view: RenderResult;
   viewport: LevelViewportService;
 } {
@@ -39,7 +45,6 @@ function renderReporting(onRender: () => void = () => undefined): {
     <>
       <LevelPreviewLayout
         name={"levels\\zaton"}
-        streaming={IDLE}
         renderViewport={() => {
           onRender();
 
@@ -51,19 +56,31 @@ function renderReporting(onRender: () => void = () => undefined): {
     { container, route: "/level-viewer" }
   );
 
-  return { view, viewport: container.get(LevelViewportService) };
+  return { loader: container.get(LevelLoadService), view, viewport: container.get(LevelViewportService) };
 }
 
-function renderLayout(overrides: Partial<Parameters<typeof LevelPreviewLayout>[0]> = {}): RenderResult {
+function renderLayout(
+  overrides: Partial<Parameters<typeof LevelPreviewLayout>[0]> = {},
+  streaming: ILevelStreamProgress = IDLE_LEVEL_STREAM
+): RenderResult {
+  const container: Container = mockContainer([LevelLoadService, LevelViewService, LevelViewportService]);
+
+  setStreaming(container.get(LevelLoadService), streaming);
+
   return renderWithProviders(
     <LevelPreviewLayout
       name={"levels\\zaton"}
-      streaming={IDLE}
       renderViewport={() => <div data-testid={"stub-viewport"} />}
       {...overrides}
     />,
-    { bindings: [LevelLoadService, LevelViewService, LevelViewportService], route: "/level-viewer" }
+    { container, route: "/level-viewer" }
   );
+}
+
+function setStreaming(loader: LevelLoadService, streaming: ILevelStreamProgress): void {
+  runInAction(() => {
+    loader.streaming = streaming;
+  });
 }
 
 describe("LevelPreviewLayout", () => {
@@ -84,7 +101,7 @@ describe("LevelPreviewLayout", () => {
 
   // Streaming does not: what has arrived is already drawn and already flyable, so the progress sits over it.
   it("reports streaming without taking the viewport away", () => {
-    const view: RenderResult = renderLayout({ streaming: { loaded: 3, total: 24 } });
+    const view: RenderResult = renderLayout({}, { loaded: 3, total: 24 });
 
     expect(view.getByTestId("stub-viewport")).toBeInTheDocument();
     expect(view.getByTestId("level-stream-progress")).toHaveTextContent("Streaming sectors, 3 of 24");
@@ -175,6 +192,25 @@ describe("LevelPreviewLayout", () => {
     }
 
     expect(await view.findByText("x 19.0 y 12.5 z 87.3")).toBeInTheDocument();
+    expect(renders).toBe(before);
+  });
+
+  // A sector lands many times a second while a level streams in, and only the progress and the status bar say so.
+  it("redraws nothing that draws the level as sectors arrive", async () => {
+    let renders: number = 0;
+    const { loader, view } = renderReporting(() => {
+      renders += 1;
+    });
+
+    await view.findByTestId("stub-viewport");
+
+    const before: number = renders;
+
+    for (let loaded = 0; loaded < 20; loaded += 1) {
+      act(() => setStreaming(loader, { loaded, total: 24 }));
+    }
+
+    expect(await view.findByText("Streaming sector 20 of 24")).toBeInTheDocument();
     expect(renders).toBe(before);
   });
 });

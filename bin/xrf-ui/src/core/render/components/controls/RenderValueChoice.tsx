@@ -2,17 +2,12 @@ import { ToggleButton, ToggleButtonGroup } from "@mui/material";
 import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
+import { IRenderChoiceOption } from "@/core/render/lib/features";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-
-/** One value a choice offers, in display order. */
-export interface IRenderValueChoiceOption<T extends string> {
-  value: T;
-  label: string;
-}
 
 export interface IRenderValueChoiceProps<T extends string> extends BaseComponentProps {
   label: string;
-  options: ReadonlyArray<IRenderValueChoiceOption<T>>;
+  options: ReadonlyArray<IRenderChoiceOption<T>>;
   value: T;
   onChange: (value: T) => void;
 }
@@ -47,7 +42,7 @@ export function RenderValueChoice<T extends string>({
           }
         }}
       >
-        {options.map((option: IRenderValueChoiceOption<T>) => (
+        {options.map((option: IRenderChoiceOption<T>) => (
           <ToggleButton key={option.value} value={option.value}>
             {option.label}
           </ToggleButton>

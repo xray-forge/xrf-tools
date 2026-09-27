@@ -15,15 +15,15 @@ import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 import { SliderFormRow } from "@/core/ui/form/SliderFormRow";
 import { DetailSection } from "@/core/ui/layout/DetailSection";
 
+import { useRendererOverride } from "./use-renderer-override";
+
 /** The level's grass: whether it is planted, how densely, how far round the camera, and how tall. */
 export function SettingsRendererGrass(): ReactElement {
   const settingsService: SettingsService = useInjection(SettingsService);
 
   const grass: IRendererGrassSettings = settingsService.rendererFeatures.grass;
 
-  function set(part: Partial<IRendererGrassSettings>): void {
-    settingsService.setRendererOverrides({ grass: part });
-  }
+  const onSet = useRendererOverride("grass");
 
   return (
     <DetailSection
@@ -38,7 +38,7 @@ export function SettingsRendererGrass(): ReactElement {
           label={"Grass"}
           description={"Off, the ground is bare, as the game draws it with detail objects off."}
           isChecked={grass.isEnabled}
-          onChange={(isEnabled: boolean) => set({ isEnabled })}
+          onChange={(isEnabled: boolean) => onSet({ isEnabled })}
         />
 
         <SliderFormRow
@@ -50,7 +50,7 @@ export function SettingsRendererGrass(): ReactElement {
           value={toGrassDensityScale(grass.density)}
           {...RENDER_GRASS_LIMITS.density}
           format={(scale: number) => formatGrassDensity(fromGrassDensityScale(scale))}
-          onChange={(scale: number) => set({ density: fromGrassDensityScale(scale) })}
+          onChange={(scale: number) => onSet({ density: fromGrassDensityScale(scale) })}
         />
 
         <SliderFormRow
@@ -59,7 +59,7 @@ export function SettingsRendererGrass(): ReactElement {
           value={grass.radius}
           {...RENDER_GRASS_LIMITS.radius}
           format={formatGrassRadius}
-          onChange={(radius: number) => set({ radius })}
+          onChange={(radius: number) => onSet({ radius })}
         />
 
         <SliderFormRow
@@ -68,7 +68,7 @@ export function SettingsRendererGrass(): ReactElement {
           value={grass.height}
           {...RENDER_GRASS_LIMITS.height}
           format={formatGrassHeight}
-          onChange={(height: number) => set({ height })}
+          onChange={(height: number) => onSet({ height })}
         />
       </div>
     </DetailSection>

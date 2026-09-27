@@ -3,8 +3,10 @@ import { default as HexagonIcon } from "@mui/icons-material/Hexagon";
 import { default as TextureIcon } from "@mui/icons-material/Texture";
 import { default as ThreeDRotationIcon } from "@mui/icons-material/ThreeDRotation";
 import { ERendererRenderScale, IRendererFeatureSettings } from "@xrf/renderer";
+import { Nullable } from "@xrf/types";
 import { ReactElement, ReactNode, useCallback } from "react";
 
+import { LevelSunDescription } from "@/core/ipc/types/xrf-app";
 import { LevelAmbientOcclusionAction } from "@/core/level/components/preview/LevelAmbientOcclusionAction";
 import { LevelAntialiasingAction } from "@/core/level/components/preview/LevelAntialiasingAction";
 import { LevelBakedAction } from "@/core/level/components/preview/LevelBakedAction";
@@ -31,6 +33,8 @@ interface ILevelPreviewToolbarProps extends BaseComponentProps {
   options: ILevelViewOptions;
   /** What the level is lit and fogged with, which the light and fog toggles carry the settings of. */
   lighting: ILevelLighting;
+  /** The sun the open level was compiled against, which the sun's popover offers to light it from. */
+  sun: Nullable<LevelSunDescription>;
   /** How far trees are drawn in full, which the impostors toggle carries. */
   lod: ILevelLodOptions;
   /** What the view sets over the settings' features for itself. */
@@ -61,6 +65,7 @@ export function LevelPreviewToolbar({
   subtitle,
   options,
   lighting,
+  sun,
   lod,
   features,
   featureView,
@@ -133,6 +138,7 @@ export function LevelPreviewToolbar({
           <LevelSunAction
             isOn={options.isSunVisible}
             lighting={lighting}
+            sun={sun}
             onToggle={() => onToggle("isSunVisible")}
             onChange={onChangeLighting}
           />

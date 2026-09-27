@@ -151,7 +151,7 @@ export class VisualRenderService extends RenderSurfaceService {
       settings: toVisualRendererSettings(
         this.viewService.options,
         this.config,
-        this.settingsService.frameRateLimit,
+        this.settingsService.framePacing,
         this.settingsService.rendererFeatures
       ),
       worker: createRendererWorker(),
@@ -178,7 +178,7 @@ export class VisualRenderService extends RenderSurfaceService {
       ),
       reaction(() => this.source.highlightedJoint ?? null, this.applyHighlight, { fireImmediately: true }),
       reaction(
-        () => this.settingsService.frameRateLimit,
+        () => this.settingsService.framePacing,
         () => this.applySettings()
       ),
       reaction(
@@ -433,7 +433,7 @@ export class VisualRenderService extends RenderSurfaceService {
       toVisualRendererSettings(
         this.viewService.options,
         this.config,
-        this.settingsService.frameRateLimit,
+        this.settingsService.framePacing,
         this.settingsService.rendererFeatures
       )
     );

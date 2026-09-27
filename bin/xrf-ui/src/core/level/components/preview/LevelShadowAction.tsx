@@ -1,6 +1,6 @@
 import { default as TonalityIcon } from "@mui/icons-material/Tonality";
 import { Button } from "@mui/material";
-import { IRendererShadowSettings } from "@xrf/renderer";
+import { IRendererShadowSettings, RENDERER_SHADOW_CASCADE_WIDTHS } from "@xrf/renderer";
 import { ReactElement } from "react";
 
 import {
@@ -14,7 +14,6 @@ import {
   formatCascadeBlend,
   formatShadowFilter,
   RENDER_SHADOW_CASCADE_OPTIONS,
-  RENDER_SHADOW_CASCADE_WIDTHS,
   RENDER_SHADOW_LIMITS,
   RENDER_SHADOW_RESOLUTION_OPTIONS,
 } from "@/core/render/lib/features";
@@ -62,7 +61,7 @@ export function LevelShadowAction({
         label={"Cascades"}
         options={RENDER_SHADOW_CASCADE_OPTIONS}
         value={String(shadows.cascades.length)}
-        onChange={(count: string) => set({ cascades: RENDER_SHADOW_CASCADE_WIDTHS.slice(0, Number(count)) })}
+        onChange={(count: string) => set({ cascades: RENDERER_SHADOW_CASCADE_WIDTHS.slice(0, Number(count)) })}
       />
 
       <RenderValueChoice

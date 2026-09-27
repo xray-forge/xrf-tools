@@ -1,10 +1,11 @@
-import { ReactElement, useCallback } from "react";
+import { ReactElement } from "react";
 
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
 import { IRenderLighting, RENDER_LIGHTING_LIMITS } from "@/core/render/lib/lighting/render-lighting";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatDegrees } from "@/lib/format/angle";
 import { formatNumber } from "@/lib/format/number";
+import { usePartialChange } from "@/lib/react/use-partial-change";
 
 /** Decimals a strength reads with, which is read against the other strength rather than in any unit. */
 const STRENGTH_DIGITS: number = 2;
@@ -24,7 +25,7 @@ export function RenderLightingControls({
   lighting,
   onChange,
 }: IRenderLightingControlsProps): ReactElement {
-  const set = useCallback((part: Partial<IRenderLighting>) => onChange({ ...lighting, ...part }), [lighting, onChange]);
+  const onSet = usePartialChange(lighting, onChange);
 
   return (
     <div data-testid={dataTestId} id={id} className={className}>
@@ -33,7 +34,7 @@ export function RenderLightingControls({
         value={lighting.sunElevation}
         {...RENDER_LIGHTING_LIMITS.sunElevation}
         format={formatDegrees}
-        onChange={(sunElevation) => set({ sunElevation })}
+        onChange={(sunElevation) => onSet({ sunElevation })}
       />
 
       <RenderValueSlider
@@ -41,7 +42,7 @@ export function RenderLightingControls({
         value={lighting.sunAzimuth}
         {...RENDER_LIGHTING_LIMITS.sunAzimuth}
         format={formatDegrees}
-        onChange={(sunAzimuth) => set({ sunAzimuth })}
+        onChange={(sunAzimuth) => onSet({ sunAzimuth })}
       />
 
       <RenderValueSlider
@@ -49,7 +50,7 @@ export function RenderLightingControls({
         value={lighting.sunIntensity}
         {...RENDER_LIGHTING_LIMITS.sunIntensity}
         format={(value: number) => formatNumber(value, STRENGTH_DIGITS)}
-        onChange={(sunIntensity) => set({ sunIntensity })}
+        onChange={(sunIntensity) => onSet({ sunIntensity })}
       />
 
       <RenderValueSlider
@@ -57,7 +58,7 @@ export function RenderLightingControls({
         value={lighting.ambientIntensity}
         {...RENDER_LIGHTING_LIMITS.ambientIntensity}
         format={(value: number) => formatNumber(value, STRENGTH_DIGITS)}
-        onChange={(ambientIntensity) => set({ ambientIntensity })}
+        onChange={(ambientIntensity) => onSet({ ambientIntensity })}
       />
     </div>
   );

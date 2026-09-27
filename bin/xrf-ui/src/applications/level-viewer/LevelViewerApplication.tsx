@@ -4,6 +4,7 @@ import { ReactElement, useCallback, useState } from "react";
 
 import { SelectedLevelDescription } from "@/core/ipc/types/xrf-app";
 import { LevelPreviewLayout } from "@/core/level/components/preview/LevelPreviewLayout";
+import { describeLevelSource } from "@/core/level/lib/source";
 import { LevelLoadService } from "@/core/level/services";
 import { ApplicationLoader } from "@/core/shell/loading/ApplicationLoader";
 import { BaseComponentProps } from "@/lib/dom/element-types";
@@ -24,10 +25,6 @@ export function LevelViewerApplication({
 
   const description: Nullable<SelectedLevelDescription> = loadService.level.value?.selected.value ?? null;
 
-  const onDescribeLevelName = useCallback((description: SelectedLevelDescription) => {
-    return description.source.kind === "directory" ? description.source.path : description.source.logicalPath;
-  }, []);
-
   const onBack = useCallback(() => setPickerOpen(true), []);
 
   const onFinished = useCallback(() => setPickerOpen(false), []);
@@ -47,8 +44,7 @@ export function LevelViewerApplication({
       data-testid={dataTestId}
       id={id}
       className={className}
-      name={description ? onDescribeLevelName(description) : null}
-      streaming={loadService.streaming}
+      name={description ? describeLevelSource(description.source) : null}
       isLoading={loadService.level.isLoading}
       error={loadService.level.error?.message}
       onBack={onBack}

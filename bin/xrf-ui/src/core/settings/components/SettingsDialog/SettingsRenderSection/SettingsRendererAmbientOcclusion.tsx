@@ -14,15 +14,15 @@ import { ChoiceFormRow } from "@/core/ui/form/ChoiceFormRow";
 import { SliderFormRow } from "@/core/ui/form/SliderFormRow";
 import { DetailSection } from "@/core/ui/layout/DetailSection";
 
+import { useRendererOverride } from "./use-renderer-override";
+
 /** The screen's ambient occlusion: whether it is drawn, how far it reaches, how dark and how fine. */
 export function SettingsRendererAmbientOcclusion(): ReactElement {
   const settingsService: SettingsService = useInjection(SettingsService);
 
   const occlusion: IRendererAmbientOcclusionSettings = settingsService.rendererFeatures.ambientOcclusion;
 
-  function set(part: Partial<IRendererAmbientOcclusionSettings>): void {
-    settingsService.setRendererOverrides({ ambientOcclusion: part });
-  }
+  const onSet = useRendererOverride("ambientOcclusion");
 
   return (
     <DetailSection
@@ -37,7 +37,7 @@ export function SettingsRendererAmbientOcclusion(): ReactElement {
           label={"Ambient occlusion"}
           description={"Off, only the level's baked occlusion shades what the sky cannot reach."}
           isChecked={occlusion.isEnabled}
-          onChange={(isEnabled: boolean) => set({ isEnabled })}
+          onChange={(isEnabled: boolean) => onSet({ isEnabled })}
         />
 
         <ChoiceFormRow
@@ -45,7 +45,7 @@ export function SettingsRendererAmbientOcclusion(): ReactElement {
           description={"How many directions and steps each pixel searches. Higher is smoother and costs more."}
           options={RENDER_AMBIENT_OCCLUSION_QUALITY_OPTIONS}
           value={occlusion.quality}
-          onChange={(quality: ERendererAmbientOcclusionQuality) => set({ quality })}
+          onChange={(quality: ERendererAmbientOcclusionQuality) => onSet({ quality })}
         />
 
         <SliderFormRow
@@ -54,7 +54,7 @@ export function SettingsRendererAmbientOcclusion(): ReactElement {
           value={occlusion.radius}
           {...RENDER_AMBIENT_OCCLUSION_LIMITS.radius}
           format={formatOcclusionRadius}
-          onChange={(radius: number) => set({ radius })}
+          onChange={(radius: number) => onSet({ radius })}
         />
 
         <SliderFormRow
@@ -63,7 +63,7 @@ export function SettingsRendererAmbientOcclusion(): ReactElement {
           value={occlusion.strength}
           {...RENDER_AMBIENT_OCCLUSION_LIMITS.strength}
           format={formatOcclusionStrength}
-          onChange={(strength: number) => set({ strength })}
+          onChange={(strength: number) => onSet({ strength })}
         />
       </div>
     </DetailSection>

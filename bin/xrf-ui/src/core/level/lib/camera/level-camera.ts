@@ -11,13 +11,6 @@ export interface ILevelCamera extends IXrayHeading {
   position: ILevelPoint;
 }
 
-/** What a viewer shows before its camera has ever reported, which is nothing rather than a guess at the origin. */
-export const UNPLACED_LEVEL_CAMERA: ILevelCamera = {
-  heading: 0,
-  pitch: 0,
-  position: { x: 0, y: 0, z: 0 },
-};
-
 /**
  * Where the camera is, in the coordinates the level's own data is written in.
  *

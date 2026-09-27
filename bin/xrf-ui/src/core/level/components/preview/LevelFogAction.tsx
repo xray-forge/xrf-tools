@@ -1,13 +1,14 @@
 import { default as FoggyIcon } from "@mui/icons-material/Foggy";
 import { Button } from "@mui/material";
-import { ReactElement, useCallback } from "react";
+import { ReactElement } from "react";
 
-import { DEFAULT_LEVEL_FOG, ILevelFog, LEVEL_FOG_LIMITS } from "@/core/level/lib/lighting/level-fog";
+import { DEFAULT_LEVEL_FOG, LEVEL_FOG_LIMITS } from "@/core/level/lib/lighting/level-fog";
 import { ILevelLighting } from "@/core/level/lib/lighting/level-lighting";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
 import { EditorPopoverToggle } from "@/core/shell/editor/EditorPopoverToggle";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatNumber, formatPercent } from "@/lib/format/number";
+import { usePartialChange } from "@/lib/react/use-partial-change";
 
 interface ILevelFogActionProps extends BaseComponentProps {
   isOn: boolean;
@@ -28,7 +29,7 @@ export function LevelFogAction({
   onToggle,
   onChange,
 }: ILevelFogActionProps): ReactElement {
-  const set = useCallback((part: Partial<ILevelFog>) => onChange({ ...lighting, ...part }), [lighting, onChange]);
+  const onSet = usePartialChange(lighting, onChange);
 
   return (
     <EditorPopoverToggle
@@ -47,7 +48,7 @@ export function LevelFogAction({
         value={lighting.fogDistance}
         {...LEVEL_FOG_LIMITS.fogDistance}
         format={(value: number) => `${value} m`}
-        onChange={(fogDistance: number) => set({ fogDistance })}
+        onChange={(fogDistance: number) => onSet({ fogDistance })}
       />
 
       <RenderValueSlider
@@ -55,7 +56,7 @@ export function LevelFogAction({
         value={lighting.fogDensity}
         {...LEVEL_FOG_LIMITS.fogDensity}
         format={formatPercent}
-        onChange={(fogDensity: number) => set({ fogDensity })}
+        onChange={(fogDensity: number) => onSet({ fogDensity })}
       />
 
       <RenderValueSlider
@@ -63,10 +64,10 @@ export function LevelFogAction({
         value={lighting.fogIntensity}
         {...LEVEL_FOG_LIMITS.fogIntensity}
         format={(value: number) => formatNumber(value, 2)}
-        onChange={(fogIntensity: number) => set({ fogIntensity })}
+        onChange={(fogIntensity: number) => onSet({ fogIntensity })}
       />
 
-      <Button size={"small"} onClick={() => set(DEFAULT_LEVEL_FOG)}>
+      <Button size={"small"} onClick={() => onSet(DEFAULT_LEVEL_FOG)}>
         Back to the noon fog
       </Button>
     </EditorPopoverToggle>

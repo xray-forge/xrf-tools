@@ -1,7 +1,7 @@
 import { IRendererBounds, IRendererGeometry, IRendererImpostors, IRendererObject } from "@xrf/renderer";
-import { Nullable } from "@xrf/types";
+import { Maybe, Nullable } from "@xrf/types";
 
-import { SectorProgressive, VisualBounds } from "@/core/ipc/types/xrf-visual";
+import { SectorProgressive, VisualBounds, VisualSphere } from "@/core/ipc/types/xrf-visual";
 import { LEVEL_RENDER_KEYS } from "@/core/level/lib/render/level-render-keys";
 import {
   ISectorGeometryViews,
@@ -152,7 +152,7 @@ function toLevelGeometry(geometry: ISectorGeometryViews): Omit<IRendererGeometry
 
 /** The packer's sphere, where it measured one: a non-finite radius crosses the wire as null. */
 function toLevelBounds(bounds: Nullable<VisualBounds>): IRendererBounds | undefined {
-  const sphere = bounds?.boundingSphere;
+  const sphere: Maybe<VisualSphere> = bounds?.boundingSphere;
 
   if (!sphere || sphere.radius === null || sphere.radius === undefined) {
     return undefined;

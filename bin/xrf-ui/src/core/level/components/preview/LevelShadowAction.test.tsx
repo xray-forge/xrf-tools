@@ -20,7 +20,7 @@ describe("LevelShadowAction", () => {
     );
 
     expect(getByRole("button", { name: "Shadows" })).toHaveAccessibleDescription(
-      "Shadows in 3 cascades, the widest 160 m across, at 2048. Right-click for its settings"
+      "Shadows in 4 cascades, the widest 480 m across, at 2048. Right-click for its settings"
     );
 
     await userEvent.pointer({ keys: "[MouseRight]", target: getByRole("button", { name: "Shadows" }) });
@@ -43,7 +43,7 @@ describe("LevelShadowAction", () => {
 
     expect(getByRole("button", { name: "Shadows" })).toBeDisabled();
     expect(getByRole("button", { name: "Shadows" })).toHaveAccessibleDescription(
-      "Shadows are off in Settings, under Rendering. Right-click for its settings"
+      "Shadows are off in Settings, under Rendering"
     );
   });
 });

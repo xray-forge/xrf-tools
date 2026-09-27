@@ -3,7 +3,7 @@ import { Button } from "@mui/material";
 import { ERendererAntialiasing } from "@xrf/renderer";
 import { ReactElement } from "react";
 
-import { ILevelFeatureOptions, LEVEL_ANTIALIASING_MODES } from "@/core/level/lib/features";
+import { describeLevelFeatureToggle, ILevelFeatureOptions, LEVEL_ANTIALIASING_MODES } from "@/core/level/lib/features";
 import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
 import { describeRenderAntialiasing, IRenderChoiceOption } from "@/core/render/lib/features";
 import { EditorPopoverToggle } from "@/core/shell/editor/EditorPopoverToggle";
@@ -44,13 +44,13 @@ export function LevelAntialiasingAction({
       id={id}
       className={className}
       label={"Antialiasing"}
-      description={
-        !isAvailable
-          ? "Antialiasing is off in Settings, under Rendering"
-          : isOn
-            ? `Edges smoothed by ${describeRenderAntialiasing(mode)}`
-            : "Antialiasing off, every edge as drawn"
-      }
+      description={describeLevelFeatureToggle({
+        isAvailable,
+        isOn,
+        label: "Antialiasing",
+        off: "Antialiasing off, every edge as drawn",
+        on: `Edges smoothed by ${describeRenderAntialiasing(mode)}`,
+      })}
       icon={<DeblurIcon />}
       isOn={isOn && isAvailable}
       isDisabled={!isAvailable}

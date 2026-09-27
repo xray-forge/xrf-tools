@@ -2,6 +2,7 @@ import { default as ForestIcon } from "@mui/icons-material/Forest";
 import { Button } from "@mui/material";
 import { ReactElement } from "react";
 
+import { describeLevelFeatureToggle } from "@/core/level/lib/features";
 import { DEFAULT_LEVEL_LOD_OPTIONS, ILevelLodOptions, LEVEL_LOD_LIMITS } from "@/core/level/lib/lod/level-lod-options";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
 import { EditorPopoverToggle } from "@/core/shell/editor/EditorPopoverToggle";
@@ -38,13 +39,14 @@ export function LevelLodAction({
       id={id}
       className={className}
       label={"Impostors"}
-      description={
-        !isAvailable
-          ? "Impostors are off in Settings, under Rendering"
-          : isOn
-            ? `Impostors past ${distance} the game's distance`
-            : "Impostors off, every tree drawn"
-      }
+      description={describeLevelFeatureToggle({
+        isAvailable,
+        isOn,
+        isPlural: true,
+        label: "Impostors",
+        off: "Impostors off, every tree drawn",
+        on: `Impostors past ${distance} the game's distance`,
+      })}
       icon={<ForestIcon />}
       isOn={isOn && isAvailable}
       isDisabled={!isAvailable}

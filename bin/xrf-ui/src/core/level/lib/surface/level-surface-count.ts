@@ -1,4 +1,4 @@
-import { toPackedCoordinate } from "@xrf/renderer";
+import { IRendererPackedVertices, toPackedCoordinate } from "@xrf/renderer";
 import { Nullable } from "@xrf/types";
 
 import {
@@ -152,7 +152,11 @@ function widen(
     return span;
   }
 
-  const packed = { binormal: geometry.binormals ?? undefined, tangent: geometry.tangents ?? undefined, uv: uvs };
+  const packed: Pick<IRendererPackedVertices, "binormal" | "tangent" | "uv"> = {
+    binormal: geometry.binormals ?? undefined,
+    tangent: geometry.tangents ?? undefined,
+    uv: uvs,
+  };
 
   const stride: number = Math.max(1, Math.floor(count / SPAN_SAMPLES));
   const end: number = Math.min(start + count, indices.length);

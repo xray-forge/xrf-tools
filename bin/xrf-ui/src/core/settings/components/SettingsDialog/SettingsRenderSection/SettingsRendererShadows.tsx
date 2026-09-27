@@ -1,12 +1,11 @@
 import { useInjection } from "@wirestate/react";
-import { IRendererShadowSettings } from "@xrf/renderer";
+import { IRendererShadowSettings, RENDERER_SHADOW_CASCADE_WIDTHS } from "@xrf/renderer";
 import { ReactElement } from "react";
 
 import {
   formatCascadeBlend,
   formatShadowFilter,
   RENDER_SHADOW_CASCADE_OPTIONS,
-  RENDER_SHADOW_CASCADE_WIDTHS,
   RENDER_SHADOW_LIMITS,
   RENDER_SHADOW_RESOLUTION_OPTIONS,
 } from "@/core/render/lib/features";
@@ -17,22 +16,22 @@ import { SliderFormRow } from "@/core/ui/form/SliderFormRow";
 import { DetailSection } from "@/core/ui/layout/DetailSection";
 import { formatNumber } from "@/lib/format/number";
 
+import { useRendererOverride } from "./use-renderer-override";
+
 /** The sun's shadow: how many cascades, how fine, and how they are filtered and drawn. */
 export function SettingsRendererShadows(): ReactElement {
   const settingsService: SettingsService = useInjection(SettingsService);
 
   const shadows: IRendererShadowSettings = settingsService.rendererFeatures.shadows;
 
-  function set(part: Partial<IRendererShadowSettings>): void {
-    settingsService.setRendererOverrides({ shadows: part });
-  }
+  const onSet = useRendererOverride("shadows");
 
   return (
     <DetailSection
       title={"Shadows"}
       description={
-        "The sun's shadow in cascades of maps, the nearest the finest. The game's are three, 20, 40 and 160 metres " +
-        "across at 2048 texels."
+        "The sun's shadow in cascades of maps, the nearest the finest: four by default, where the game's are three, " +
+        "20, 40 and 160 metres across at 2048 texels."
       }
     >
       <div className={"mt-4 flex flex-col gap-6"}>
@@ -40,7 +39,7 @@ export function SettingsRendererShadows(): ReactElement {
           label={"Sun shadows"}
           description={"Off, the sun lights every surface facing it, as the level's baked light alone shades it."}
           isChecked={shadows.isEnabled}
-          onChange={(isEnabled: boolean) => set({ isEnabled })}
+          onChange={(isEnabled: boolean) => onSet({ isEnabled })}
         />
 
         <ChoiceFormRow
@@ -48,7 +47,7 @@ export function SettingsRendererShadows(): ReactElement {
           description={"How far the shadow reaches: 20, 40, 160, then 480 metres across."}
           options={RENDER_SHADOW_CASCADE_OPTIONS}
           value={String(shadows.cascades.length)}
-          onChange={(count: string) => set({ cascades: RENDER_SHADOW_CASCADE_WIDTHS.slice(0, Number(count)) })}
+          onChange={(count: string) => onSet({ cascades: RENDERER_SHADOW_CASCADE_WIDTHS.slice(0, Number(count)) })}
         />
 
         <ChoiceFormRow
@@ -56,7 +55,7 @@ export function SettingsRendererShadows(): ReactElement {
           description={"Texels each cascade's map is across. Finer edges cost more to draw and to hold."}
           options={RENDER_SHADOW_RESOLUTION_OPTIONS}
           value={String(shadows.resolution)}
-          onChange={(resolution: string) => set({ resolution: Number(resolution) })}
+          onChange={(resolution: string) => onSet({ resolution: Number(resolution) })}
         />
 
         <SliderFormRow
@@ -65,7 +64,7 @@ export function SettingsRendererShadows(): ReactElement {
           value={shadows.filter}
           {...RENDER_SHADOW_LIMITS.filter}
           format={formatShadowFilter}
-          onChange={(filter: number) => set({ filter })}
+          onChange={(filter: number) => onSet({ filter })}
         />
 
         <SliderFormRow
@@ -76,7 +75,7 @@ export function SettingsRendererShadows(): ReactElement {
           value={shadows.bias}
           {...RENDER_SHADOW_LIMITS.bias}
           format={(value: number) => formatNumber(value, 2)}
-          onChange={(bias: number) => set({ bias })}
+          onChange={(bias: number) => onSet({ bias })}
         />
 
         <SliderFormRow
@@ -88,7 +87,7 @@ export function SettingsRendererShadows(): ReactElement {
           value={shadows.blend}
           {...RENDER_SHADOW_LIMITS.blend}
           format={formatCascadeBlend}
-          onChange={(blend: number) => set({ blend })}
+          onChange={(blend: number) => onSet({ blend })}
         />
 
         <SliderFormRow
@@ -97,7 +96,7 @@ export function SettingsRendererShadows(): ReactElement {
           value={shadows.reach}
           {...RENDER_SHADOW_LIMITS.reach}
           format={(value: number) => `${value} m`}
-          onChange={(reach: number) => set({ reach })}
+          onChange={(reach: number) => onSet({ reach })}
         />
 
         <CheckboxFormRow
@@ -107,7 +106,7 @@ export function SettingsRendererShadows(): ReactElement {
             "what keeps a moving camera near the frame rate."
           }
           isChecked={shadows.isStaggered}
-          onChange={(isStaggered: boolean) => set({ isStaggered })}
+          onChange={(isStaggered: boolean) => onSet({ isStaggered })}
         />
       </div>
     </DetailSection>

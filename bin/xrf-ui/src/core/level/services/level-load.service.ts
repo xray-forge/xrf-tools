@@ -1,6 +1,6 @@
 import { Injectable, OnDeactivation, OnProvision } from "@wirestate/core";
 import { BoundAction, Computed, flowResult, Observable, runInAction } from "@wirestate/mobx";
-import { Nullable } from "@xrf/types";
+import { Maybe, Nullable } from "@xrf/types";
 
 import { transformError } from "@/core/error/lib";
 import { levelsCommands } from "@/core/ipc/commands/levels";
@@ -14,6 +14,7 @@ import {
   LevelSpawnModelsDescription,
   LevelTextureReference,
   SelectedLevelDescription,
+  SessionRestore,
   SessionSnapshot,
 } from "@/core/ipc/types/xrf-app";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
@@ -48,6 +49,7 @@ import {
   ILevelSectorSkip,
 } from "@/core/level/lib/sector/level-sector-report";
 import { ISectorTextureRequest, listDescriptionTextures } from "@/core/level/lib/sector/level-sector-textures";
+import { describeLevelSource } from "@/core/level/lib/source";
 import {
   EMPTY_LEVEL_STREAM_SUMMARY,
   ILevelStreamReading,
@@ -198,11 +200,6 @@ export class LevelLoadService {
     return this.heldSpawnModels;
   }
 
-  /** The lights held now, for a caller reading rather than listening. */
-  public get lightsHeld(): Nullable<LevelLightsDescription> {
-    return this.heldLights.held;
-  }
-
   /**
    * @returns The level's textures, to read and to hear about rather than to manage: their lifetime is this
    *   service's, and the set says for itself what changed.
@@ -297,7 +294,7 @@ export class LevelLoadService {
   public *load(source: LevelSource, roots: XrayRoots): TFlow {
     const timer: Timer = new Timer();
 
-    this.log.info("Loading level:", source.kind === "directory" ? source.path : source.logicalPath);
+    this.log.info("Loading level:", describeLevelSource(source));
 
     try {
       this.level = this.level.asLoading();
@@ -311,7 +308,7 @@ export class LevelLoadService {
       this.log.info(
         "Level opened in:",
         formatDuration(timer.elapsed()),
-        source.kind === "directory" ? source.path : source.logicalPath,
+        describeLevelSource(source),
         `${selected.value.sectors.length} sectors,`,
         `${selected.value.visuals} visuals`
       );
@@ -320,7 +317,7 @@ export class LevelLoadService {
 
       this.log.error(
         "Failed to load level:",
-        source.kind === "directory" ? source.path : source.logicalPath,
+        describeLevelSource(source),
         "after",
         formatDuration(timer.elapsed()),
         transformed
@@ -351,20 +348,13 @@ export class LevelLoadService {
    */
   @ExclusiveFlow("level")
   public *restore(): TFlow {
-    const snapshot = yield* call(levelsCommands.getLevel());
+    const snapshot: SessionRestore<SelectedLevelDescription> = yield* call(levelsCommands.getLevel());
 
     this.session.adopt(snapshot);
 
     if (snapshot) {
       this.adopt(snapshot);
-
-      const source: LevelSource = snapshot.value.source;
-
-      this.log.info(
-        "Level restored:",
-        source.kind === "directory" ? source.path : source.logicalPath,
-        snapshot.sessionId
-      );
+      this.log.info("Level restored:", describeLevelSource(snapshot.value.source), snapshot.sessionId);
     }
   }
 
@@ -378,8 +368,8 @@ export class LevelLoadService {
     this.releaseSectors();
 
     // Before anything else: a target belongs to the level it was planned against, and so does every sector number
-    // in it. The level about to open inherits neither.
-    this.scheduler.clear();
+    // in it. The level about to open inherits neither, nor what streaming the last one cost.
+    this.resetStream();
 
     this.residency = createLevelResidency(selected.value.bounds?.boundingSphere.radius ?? 0);
     this.scheduler.setConcurrency(this.residency.concurrency);
@@ -655,14 +645,14 @@ export class LevelLoadService {
    */
   @LatestFlow("level")
   public *close(): TFlow {
-    const source = this.level.value?.selected.value.source;
+    const source: Maybe<LevelSource> = this.level.value?.selected.value.source;
 
     yield* call(this.session.close());
 
     this.clearView();
 
     if (source) {
-      this.log.info("Level closed:", source.kind === "directory" ? source.path : source.logicalPath);
+      this.log.info("Level closed:", describeLevelSource(source));
     }
   }
 
@@ -756,20 +746,24 @@ export class LevelLoadService {
   }
 
   private clearView(): void {
-    this.scheduler.clear();
-    this.profile.clear();
-    this.streamedFrom = null;
-    this.streamProfile = EMPTY_LEVEL_STREAM_SUMMARY;
-
     runInAction(() => {
+      this.resetStream();
       this.level = this.level.asIdle();
-      this.streaming = IDLE_LEVEL_STREAM;
       this.releaseSectors();
       this.supplied.clear();
       this.reading.close();
       this.notifyTextures({ delivered: [], retained: null });
       this.releaseHeld();
     });
+  }
+
+  /** Forgets what streaming the held level asked for, from where, and what it cost. */
+  private resetStream(): void {
+    this.scheduler.clear();
+    this.profile.clear();
+    this.streamedFrom = null;
+    this.streamProfile = EMPTY_LEVEL_STREAM_SUMMARY;
+    this.streaming = IDLE_LEVEL_STREAM;
   }
 
   private releaseSectors(): void {

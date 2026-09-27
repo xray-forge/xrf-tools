@@ -77,6 +77,17 @@ describe("SettingsService", () => {
     expect(mockInjectedService(SettingsService).service.frameRateLimit).toBe("30");
   });
 
+  it("paces frames with low latency until told otherwise, and keeps what it was told", () => {
+    const { service } = mockInjectedService(SettingsService);
+
+    expect(service.framePacing).toEqual({ isLowLatency: true, rateLimit: "60" });
+
+    service.setLowLatency(false);
+
+    expect(window.localStorage.getItem("xrf.preference.low-latency")).toBe("false");
+    expect(mockInjectedService(SettingsService).service.framePacing.isLowLatency).toBe(false);
+  });
+
   it("draws with Base until another preset is chosen, and keeps what was changed on top of it", () => {
     const { service } = mockInjectedService(SettingsService);
 
