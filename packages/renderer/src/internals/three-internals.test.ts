@@ -64,6 +64,15 @@ describe("three's internals, as the renderer reads them", () => {
     expect(backend.getTimestamp).toBeInstanceOf(Function);
   });
 
+  it("keeps the device it opened on its backend, which the limits, the pacing and the device's description read", () => {
+    // `toStorageLimit`, `whenSubmittedWorkDone` and `RendererDevice.describe` read `backend.device`.
+    const backend: object = getRendererBackend(new WebGPURenderer({ canvas: {} as HTMLCanvasElement }));
+    const init: string = String((backend as { init?: unknown }).init);
+
+    expect(backend).toHaveProperty("device", null);
+    expect(init).toContain("this.device = device");
+  });
+
   it("frees an attribute's GPU buffer through its backend, from the attribute alone, and knows one it never had", () => {
     // `destroyStorageAttribute` frees what a static draw pool's growth replaced.
     const backend: IRendererBackend = getRendererBackend(new WebGPURenderer({ canvas: {} as HTMLCanvasElement }));

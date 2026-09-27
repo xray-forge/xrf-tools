@@ -39,13 +39,29 @@ describe("RenderInputForwarder", () => {
   });
 
   // Pointer capture cannot help a thread that does not receive the events, so the window is what is watched.
-  it("keeps sending a drag that has left the canvas", () => {
+  it("keeps sending a drag that has left the canvas, until it is let go", () => {
+    const { canvas, sent, forwarder } = mockForwarder();
+
+    sendTo(canvas, ERenderInput.POINTER_DOWN, { pointerId: 1 });
+    sendTo(window, ERenderInput.POINTER_MOVE, { clientX: 99, pointerId: 1 });
+    sendTo(window, ERenderInput.POINTER_UP, { pointerId: 1 });
+    sendTo(window, ERenderInput.POINTER_MOVE, { clientX: 120, pointerId: 1 });
+
+    expect(sent.map((it) => it.type)).toEqual([
+      ERenderInput.POINTER_DOWN,
+      ERenderInput.POINTER_MOVE,
+      ERenderInput.POINTER_UP,
+    ]);
+
+    forwarder.dispose();
+  });
+
+  it("sends nothing of a pointer only passing over the window", () => {
     const { sent, forwarder } = mockForwarder();
 
     sendTo(window, ERenderInput.POINTER_MOVE, { clientX: 99 });
-    sendTo(window, ERenderInput.POINTER_UP, {});
 
-    expect(sent.map((it) => it.type)).toEqual([ERenderInput.POINTER_MOVE, ERenderInput.POINTER_UP]);
+    expect(sent).toEqual([]);
 
     forwarder.dispose();
   });
@@ -122,6 +138,8 @@ describe("RenderInputForwarder", () => {
   it("stops sending once it is disposed", () => {
     const { canvas, sent, forwarder } = mockForwarder();
 
+    sendTo(canvas, ERenderInput.POINTER_DOWN);
+    sent.length = 0;
     forwarder.dispose();
 
     sendTo(canvas, ERenderInput.POINTER_DOWN);

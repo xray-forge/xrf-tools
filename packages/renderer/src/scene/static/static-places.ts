@@ -1,5 +1,5 @@
 import { Nullable } from "@xrf/types";
-import { BufferAttribute, Matrix4 } from "three/webgpu";
+import { Matrix4 } from "three/webgpu";
 
 import { IRendererPoolUse } from "#/contract/renderer-report";
 import {
@@ -7,7 +7,7 @@ import {
   RENDERER_FLOATS_PER_INSTANCE,
   RENDERER_HEMI_FLOATS_PER_INSTANCE,
 } from "#/contract/scene/renderer-object";
-import { queueBufferUpload } from "#/scene/buffer-upload";
+import { DirtySpan } from "#/scene/dirty-span";
 import { RangeAllocator } from "#/scene/static/range-allocator";
 import {
   EStaticPool,
@@ -20,12 +20,6 @@ import {
 /** Floats one place takes in the places buffer. */
 const FLOATS_PER_PLACE: number = STATIC_PLACE_COLUMNS * 4;
 
-/** The elements written since the buffers last went up, as one span. */
-interface IDirtySpan {
-  first: number;
-  last: number;
-}
-
 /**
  * Where instanced static draws stand and what the instance cull tests: places, a matrix and hemisphere terms each;
  * rows, a place of one draw each; and the list each draw's kept places are written to. Handed out in runs, uploaded as
@@ -35,8 +29,9 @@ export class StaticPlaces {
   private readonly buffers: StaticDrawBuffers;
   private readonly places: RangeAllocator = new RangeAllocator();
   private readonly rows: RangeAllocator = new RangeAllocator();
-  private readonly placeSpan: IDirtySpan = { first: Infinity, last: -1 };
-  private readonly rowSpan: IDirtySpan = { first: Infinity, last: -1 };
+  /** The places and the rows written since the buffers last went up. */
+  private readonly placeSpan: DirtySpan = new DirtySpan();
+  private readonly rowSpan: DirtySpan = new DirtySpan();
   private readonly matrix: Matrix4 = new Matrix4();
   private currentVersion: number = 0;
 
@@ -115,7 +110,7 @@ export class StaticPlaces {
       places[at + 18] = impostors && impostors[index] >= 0 ? (lodStart as number) + impostors[index] : -1;
     }
 
-    StaticPlaces.touch(this.placeSpan, start, start + count - 1);
+    this.placeSpan.touch(start, start + count - 1);
     this.currentVersion += 1;
   }
 
@@ -174,7 +169,7 @@ export class StaticPlaces {
       targets[at + 3] = indexCount;
     }
 
-    StaticPlaces.touch(this.rowSpan, start, start + count - 1);
+    this.rowSpan.touch(start, start + count - 1);
     this.currentVersion += 1;
   }
 
@@ -190,32 +185,17 @@ export class StaticPlaces {
     }
 
     this.rows.release(start, count);
-    StaticPlaces.touch(this.rowSpan, start, start + count - 1);
+    this.rowSpan.touch(start, start + count - 1);
     this.currentVersion += 1;
   }
 
   /** Marks what changed since the last upload to go up with the next use of the buffers. */
   public flush(): void {
-    StaticPlaces.upload(this.buffers.places, this.placeSpan, FLOATS_PER_PLACE);
-    StaticPlaces.upload(this.buffers.rowSpheres, this.rowSpan, 4);
-    StaticPlaces.upload(this.buffers.rowTargets, this.rowSpan, 4);
-    StaticPlaces.upload(this.buffers.rowLods, this.rowSpan, 2);
-    this.rowSpan.first = Infinity;
-    this.rowSpan.last = -1;
-    this.placeSpan.first = Infinity;
-    this.placeSpan.last = -1;
-  }
-
-  private static touch(span: IDirtySpan, first: number, last: number): void {
-    span.first = Math.min(span.first, first);
-    span.last = Math.max(span.last, last);
-  }
-
-  private static upload(attribute: BufferAttribute, span: IDirtySpan, stride: number): void {
-    if (span.last < span.first) {
-      return;
-    }
-
-    queueBufferUpload(attribute, span.first * stride, (span.last - span.first + 1) * stride);
+    this.placeSpan.upload(this.buffers.places, FLOATS_PER_PLACE);
+    this.rowSpan.upload(this.buffers.rowSpheres, 4);
+    this.rowSpan.upload(this.buffers.rowTargets, 4);
+    this.rowSpan.upload(this.buffers.rowLods, 2);
+    this.rowSpan.clear();
+    this.placeSpan.clear();
   }
 }

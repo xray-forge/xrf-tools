@@ -32,7 +32,9 @@ export class ShadowPass implements IRendererPass {
   private frames: number = 0;
   /** How the fastest caster in its box moves, and the box's and the changes' versions that was found at. */
   private motion: EShadowCasterMotion = EShadowCasterMotion.STILL;
-  private motionKey: string = "";
+  /** The cascade's box and the casters' change the motion was last found for. */
+  private motionCascade: number = -1;
+  private motionChanges: number = -1;
 
   /**
    * @param view - The cascade, from zero.
@@ -97,11 +99,12 @@ export class ShadowPass implements IRendererPass {
 
   /** The fastest a caster in the cascade's box moves, found again once the box or what casts changed. */
   private findMotion(cascade: SunCascade): EShadowCasterMotion {
-    const key: string = `${cascade.version}:${this.casters.shadowChanges.version}`;
+    const changes: number = this.casters.shadowChanges.version;
 
-    if (key !== this.motionKey) {
+    if (cascade.version !== this.motionCascade || changes !== this.motionChanges) {
       this.motion = this.casters.shadowChanges.getMotion(cascade.planes);
-      this.motionKey = key;
+      this.motionCascade = cascade.version;
+      this.motionChanges = changes;
     }
 
     return this.motion;

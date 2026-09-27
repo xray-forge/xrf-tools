@@ -1,5 +1,4 @@
 import { Nullable } from "@xrf/types";
-import { BufferAttribute } from "three/webgpu";
 
 import { IRendererPoolUse } from "#/contract/renderer-report";
 import {
@@ -8,15 +7,9 @@ import {
   RENDERER_IMPOSTOR_CORNERS,
   RENDERER_IMPOSTOR_FACETS,
 } from "#/contract/scene/renderer-impostors";
-import { queueBufferUpload } from "#/scene/buffer-upload";
+import { DirtySpan } from "#/scene/dirty-span";
 import { RangeAllocator } from "#/scene/static/range-allocator";
 import { EStaticPool, STATIC_LOD_CORNER_COLUMNS, StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
-
-/** The slots written since the buffers last went up, as one span. */
-interface IDirtySpan {
-  first: number;
-  last: number;
-}
 
 /**
  * The impostors of clumps of trees, one slot each, that the LOD cull decides between a clump and its impostor by:
@@ -25,7 +18,8 @@ interface IDirtySpan {
 export class StaticLods {
   private readonly buffers: StaticDrawBuffers;
   private readonly lods: RangeAllocator = new RangeAllocator();
-  private readonly span: IDirtySpan = { first: Infinity, last: -1 };
+  /** The slots written since the buffers last went up. */
+  private readonly span: DirtySpan = new DirtySpan();
   private currentVersion: number = 0;
 
   public constructor(buffers: StaticDrawBuffers) {
@@ -90,7 +84,7 @@ export class StaticLods {
       corners.set([source[from + 3], source[from + 4], source[from + 6], 0], to + 4);
     }
 
-    StaticLods.touch(this.span, start, start + count - 1);
+    this.span.touch(start, start + count - 1);
     this.currentVersion += 1;
   }
 
@@ -106,30 +100,18 @@ export class StaticLods {
     }
 
     this.lods.release(start, count);
-    StaticLods.touch(this.span, start, start + count - 1);
+    this.span.touch(start, start + count - 1);
     this.currentVersion += 1;
   }
 
   /** Marks what changed since the last upload to go up with the next use of the buffers. */
   public flush(): void {
-    if (this.span.last < this.span.first) {
-      return;
-    }
+    const { span } = this;
 
-    StaticLods.upload(this.buffers.lodSpheres, this.span, 4);
-    StaticLods.upload(this.buffers.lodFactors, this.span, 1);
-    StaticLods.upload(this.buffers.lodNormals, this.span, RENDERER_IMPOSTOR_FACETS * 4);
-    StaticLods.upload(this.buffers.lodCorners, this.span, STATIC_LOD_CORNER_COLUMNS * 4);
-    this.span.first = Infinity;
-    this.span.last = -1;
-  }
-
-  private static touch(span: IDirtySpan, first: number, last: number): void {
-    span.first = Math.min(span.first, first);
-    span.last = Math.max(span.last, last);
-  }
-
-  private static upload(attribute: BufferAttribute, span: IDirtySpan, stride: number): void {
-    queueBufferUpload(attribute, span.first * stride, (span.last - span.first + 1) * stride);
+    span.upload(this.buffers.lodSpheres, 4);
+    span.upload(this.buffers.lodFactors, 1);
+    span.upload(this.buffers.lodNormals, RENDERER_IMPOSTOR_FACETS * 4);
+    span.upload(this.buffers.lodCorners, STATIC_LOD_CORNER_COLUMNS * 4);
+    span.clear();
   }
 }

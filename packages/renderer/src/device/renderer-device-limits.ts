@@ -16,7 +16,7 @@ export async function getRendererDeviceLimits(): Promise<Nullable<Record<string,
   // Three's own options; the DOM library does not know `featureLevel` yet.
   const options: GPURequestAdapterOptions & { featureLevel: string } = { featureLevel: "compatibility" };
   const adapter: Nullable<GPUAdapter> =
-    typeof navigator === "undefined" ? null : await navigator.gpu.requestAdapter(options);
+    typeof navigator === "undefined" || !navigator.gpu ? null : await navigator.gpu.requestAdapter(options);
 
   if (!adapter) {
     return null;

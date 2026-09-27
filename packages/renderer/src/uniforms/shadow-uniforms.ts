@@ -1,7 +1,11 @@
 import { renderGroup, uniform } from "three/tsl";
 import { Matrix4, PerspectiveCamera, UniformNode, Vector3, Vector4 } from "three/webgpu";
 
-import { IRendererShadowSettings, RENDERER_MAX_SHADOW_CASCADES } from "#/contract/renderer-features";
+import {
+  IRendererShadowSettings,
+  RENDERER_MAX_SHADOW_CASCADES,
+  toShadowCascadeCount,
+} from "#/contract/renderer-features";
 import { SunCascade } from "#/visibility/sun-cascade";
 import { SunViewRays } from "#/visibility/sun-view-rays";
 
@@ -54,7 +58,7 @@ export class ShadowUniforms {
    * @param settings - The shadow settings.
    */
   public fit(camera: PerspectiveCamera, direction: Vector3, settings: IRendererShadowSettings): void {
-    const count: number = settings.isEnabled ? Math.min(settings.cascades.length, RENDERER_MAX_SHADOW_CASCADES) : 0;
+    const count: number = toShadowCascadeCount(settings);
 
     this.count.value = count;
     this.filter.value = settings.filter;

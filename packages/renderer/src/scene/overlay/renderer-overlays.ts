@@ -1,4 +1,4 @@
-import { Maybe } from "@xrf/types";
+import { Maybe, Nullable } from "@xrf/types";
 import { Object3D, PerspectiveCamera, Scene, Vector3 } from "three/webgpu";
 
 import { ERendererOverlay, TRendererOverlay } from "#/contract/scene/renderer-overlay";
@@ -17,6 +17,8 @@ export class RendererOverlays {
   public readonly scene: Scene = new Scene();
 
   private readonly drawings: Map<string, IOverlayDrawing> = new Map();
+  /** What every overlay is brought up to date with, written again each frame. */
+  private frame: Nullable<IOverlayFrame> = null;
   private readonly skeletons: RendererSkeletons;
   /** The direction sunlight travels, in world space. */
   private readonly sunDirection: Vector3;
@@ -52,8 +54,10 @@ export class RendererOverlays {
    */
   public update(camera: PerspectiveCamera, height: number): void {
     // A sprite without attenuation is scaled by its depth, so this is pixels over the view's height at depth one.
-    const frame: IOverlayFrame = { camera, pixel: (2 * Math.tan((camera.fov * Math.PI) / 360)) / Math.max(height, 1) };
+    const frame: IOverlayFrame = (this.frame ??= { camera, pixel: 0 });
 
+    frame.camera = camera;
+    frame.pixel = (2 * Math.tan((camera.fov * Math.PI) / 360)) / Math.max(height, 1);
     this.drawings.forEach((drawing: IOverlayDrawing) => drawing.update(frame));
   }
 

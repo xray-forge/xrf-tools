@@ -1,14 +1,8 @@
 import { Nullable } from "@xrf/types";
-import { BufferAttribute, IndirectStorageBufferAttribute, Matrix4, Sphere } from "three/webgpu";
+import { IndirectStorageBufferAttribute, Matrix4, Sphere } from "three/webgpu";
 
-import { queueBufferUpload } from "#/scene/buffer-upload";
+import { DirtySpan } from "#/scene/dirty-span";
 import { EStaticPool, STATIC_DRAW_ARGUMENTS, StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
-
-/** The slots written since the buffers last went up, as one span. */
-interface IDirtySpan {
-  first: number;
-  last: number;
-}
 
 /**
  * Hands out the slots of the static draw buffers and writes what each draws, uploading the slots changed in a frame
@@ -27,7 +21,8 @@ export class StaticDrawPool {
   private readonly listed: Set<number> = new Set();
   /** Slots handed out at least once; the cull only reads below it. */
   private used: number = 0;
-  private readonly dirty: IDirtySpan = { first: Infinity, last: -1 };
+  /** The slots written since the buffers last went up. */
+  private readonly dirty: DirtySpan = new DirtySpan();
   private currentVersion: number = 0;
 
   public constructor(buffers: StaticDrawBuffers) {
@@ -174,19 +169,18 @@ export class StaticDrawPool {
 
   /** Marks what changed since the last upload to go up with the next use of the buffers. */
   public flush(): void {
-    if (this.dirty.last < this.dirty.first) {
-      return;
+    const { dirty } = this;
+
+    dirty.upload(this.buffers.args, STATIC_DRAW_ARGUMENTS);
+    dirty.upload(this.buffers.lateArgs, STATIC_DRAW_ARGUMENTS);
+
+    for (const args of this.buffers.viewArgs) {
+      dirty.upload(args, STATIC_DRAW_ARGUMENTS);
     }
 
-    const { first, last } = this.dirty;
-
-    StaticDrawPool.upload(this.buffers.args, first, last, STATIC_DRAW_ARGUMENTS);
-    StaticDrawPool.upload(this.buffers.lateArgs, first, last, STATIC_DRAW_ARGUMENTS);
-    this.buffers.viewArgs.forEach((args) => StaticDrawPool.upload(args, first, last, STATIC_DRAW_ARGUMENTS));
-    StaticDrawPool.upload(this.buffers.spheres, first, last, 4);
-    StaticDrawPool.upload(this.buffers.models, first, last, 16);
-    this.dirty.first = Infinity;
-    this.dirty.last = -1;
+    dirty.upload(this.buffers.spheres, 4);
+    dirty.upload(this.buffers.models, 16);
+    dirty.clear();
   }
 
   /** Slots the cull has to look at: every slot ever handed out. */
@@ -213,12 +207,7 @@ export class StaticDrawPool {
   }
 
   private touch(slot: number): void {
-    this.dirty.first = Math.min(this.dirty.first, slot);
-    this.dirty.last = Math.max(this.dirty.last, slot);
+    this.dirty.touch(slot);
     this.currentVersion += 1;
-  }
-
-  private static upload(attribute: BufferAttribute, first: number, last: number, stride: number): void {
-    queueBufferUpload(attribute, first * stride, (last - first + 1) * stride);
   }
 }

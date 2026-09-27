@@ -207,8 +207,8 @@ export class StaticBatches {
   public refresh(arena: StaticArena): void {
     for (const grouping of [this.surfaces, this.shadows, this.wires]) {
       for (const batches of Object.values(grouping.arenas.get(arena) ?? {})) {
+        // An idle batch is refreshed as it is taken up again, so one nothing draws costs nothing while the arena grows.
         batches.drawing.forEach((batch: StaticBatch) => batch.refresh());
-        batches.idle.forEach((batch: StaticBatch) => batch.refresh());
       }
     }
   }
@@ -309,6 +309,7 @@ export class StaticBatches {
 
     if (!batch) {
       batch = batches.idle.pop() ?? new StaticBatch(arena, kind, grouping.phases, grouping.isWire);
+      batch.refresh();
       batch.setMaterial(material, keys);
       batches.drawing.set(key, batch);
       grouping.keys.set(batch, key);

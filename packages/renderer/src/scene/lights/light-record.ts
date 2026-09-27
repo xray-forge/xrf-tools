@@ -1,7 +1,8 @@
 /**
  * Where each vector of a light's record stands, four floats each, in view space: its position and `1 / L_R²`, its
  * colour and specular weight, its direction and `cos(cone / 2)`, its right and projection scale, its up and projector
- * slot, the sphere it is binned by, its shadow's near and far planes and face count, then a square of the atlas a face.
+ * slot, the sphere it is binned by, its shadow's near and far planes and face count, then a face's square of the atlas
+ * and how far the face has faded.
  */
 export const LIGHT_RECORD = {
   position: 0,

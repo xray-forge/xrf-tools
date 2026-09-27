@@ -98,9 +98,9 @@ export class StaticArena {
   private attributes: Map<string, BufferAttribute> = new Map();
   private index: BufferAttribute = new BufferAttribute(new Uint32Array(0), 1);
   /**
-   * The line index a wireframe draws, held only while one does: every triangle's three edges, two indices each, at
-   * twice the triangle's own offset, so a draw's arguments become a wireframe draw's by doubling its count and first
-   * index.
+   * The line index a wireframe draws, built the first time one does and kept after, since the idle wireframe batches
+   * still draw it: every triangle's three edges, two indices each, at twice the triangle's own offset, so a draw's
+   * arguments become a wireframe draw's by doubling its count and first index.
    */
   private lines: Nullable<BufferAttribute> = null;
   /** Slots the static draw buffers hold, which its slot attribute numbers. */
@@ -244,11 +244,6 @@ export class StaticArena {
     if (!this.lines) {
       this.lines = StaticArena.createLines(this.index.array as Uint32Array);
     }
-  }
-
-  /** Lets go of the line index; its buffer goes with the wireframe geometries that drew it. */
-  public unwire(): void {
-    this.lines = null;
   }
 
   /**

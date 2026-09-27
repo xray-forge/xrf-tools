@@ -1,6 +1,6 @@
 import { Nullable } from "@xrf/types";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
-import { PerspectiveCamera } from "three/webgpu";
+import { PerspectiveCamera, Vector3 } from "three/webgpu";
 
 import { IRendererCameraController } from "#/camera/camera-controller";
 import { bindDragCursor } from "#/camera/drag-cursor";
@@ -14,6 +14,12 @@ import {
   TRendererCameraCommand,
 } from "#/contract/renderer-camera";
 import { RenderProxyElement } from "#/input/render-proxy-element";
+
+/** The share of a turn three's orbit controls apply each sixtieth of a second, its own `dampingFactor`. */
+const ORBIT_DAMPING: number = 0.05;
+
+/** The longest frame the damping advances by, so one after a stall does not end a turn in a jump. */
+const MAX_DELTA: number = 0.25;
 
 /** Where a camera starts before its consumer describes one: a unit of distance back from the origin. */
 const DEFAULT_ORBIT_CAMERA: IRendererOrbitCamera = {
@@ -48,9 +54,9 @@ export class OrbitCameraController implements IRendererCameraController {
   /**
    * @param description - The camera the consumer wants, from where it starts.
    */
-  public describe(description: TRendererCamera): void {
+  public describe(description: TRendererCamera): boolean {
     if (description.kind !== ERendererCameraController.ORBIT) {
-      return;
+      return false;
     }
 
     this.description = description;
@@ -59,6 +65,8 @@ export class OrbitCameraController implements IRendererCameraController {
     this.camera.far = description.far;
     this.camera.updateProjectionMatrix();
     this.reset();
+
+    return true;
   }
 
   /**
@@ -71,7 +79,7 @@ export class OrbitCameraController implements IRendererCameraController {
 
       case ERendererCameraCommand.DOLLY: {
         const { x, y, z } = this.camera.position;
-        const target = this.controls.target;
+        const target: Vector3 = this.controls.target;
 
         this.camera.position.set(
           ...toDolliedPosition(
@@ -103,8 +111,13 @@ export class OrbitCameraController implements IRendererCameraController {
     }
   }
 
-  /** Advances the damping, once a frame. */
-  public update(): void {
+  /**
+   * Advances the damping, once a frame, by the frame's time: three's factor is a sixtieth of a second's.
+   *
+   * @param delta - Seconds since the last frame.
+   */
+  public update(delta: number): void {
+    this.controls.dampingFactor = 1 - (1 - ORBIT_DAMPING) ** (Math.min(delta, MAX_DELTA) * 60);
     this.controls.update();
   }
 

@@ -171,7 +171,6 @@ export class FsrPass implements ITemporalUpscaler {
 
     this.renderer = renderer;
     this.size = size;
-    this.opaque.resize(renderer, size);
 
     for (const target of [
       this.reactive,
@@ -222,6 +221,8 @@ export class FsrPass implements ITemporalUpscaler {
   }
 
   public dispose(): void {
+    // First, as it frees each frame's clip material and forgets it.
+    this.release();
     this.opaque.dispose();
     [
       ...Object.values(this.materials),
@@ -238,7 +239,6 @@ export class FsrPass implements ITemporalUpscaler {
       ...this.frames.both.map((it) => it.dilate),
     ].forEach((target: RenderTarget) => target.dispose());
     this.resolved.dispose();
-    this.release();
   }
 
   /** Grows the reconstructed depth to hold a drawing's texels, and what reads and writes it with it. */

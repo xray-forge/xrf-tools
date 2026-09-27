@@ -12,7 +12,8 @@ const ELEMENT_INPUT: ReadonlyArray<ERenderInput> = [
 ];
 
 /**
- * Gestures taken from the whole window, so a drag that leaves the canvas is still a drag.
+ * Gestures taken from the whole window while a pointer pressed on the canvas is down, so a drag that leaves the canvas
+ * is still a drag, and a pointer only passing over it sends nothing.
  */
 const WINDOW_INPUT: ReadonlyArray<ERenderInput> = [ERenderInput.POINTER_MOVE, ERenderInput.POINTER_UP];
 
@@ -38,6 +39,8 @@ export class RenderInputForwarder {
   private readonly sink: TRenderInputSink;
   private readonly cursor: string;
   private readonly tabIndex: number;
+  /** The pointers pressed on the canvas and not yet let go, which the window is listened to for. */
+  private readonly pressed: Set<number> = new Set();
 
   public constructor(canvas: HTMLCanvasElement, sink: TRenderInputSink) {
     this.canvas = canvas;
@@ -59,10 +62,6 @@ export class RenderInputForwarder {
     for (const type of FOCUS_INPUT) {
       canvas.addEventListener(type, this.onFocusInput);
     }
-
-    for (const type of WINDOW_INPUT) {
-      window.addEventListener(type, this.onWindowInput);
-    }
   }
 
   /**
@@ -80,9 +79,8 @@ export class RenderInputForwarder {
       this.canvas.removeEventListener(type, this.onElementInput);
     }
 
-    for (const type of WINDOW_INPUT) {
-      window.removeEventListener(type, this.onWindowInput);
-    }
+    this.pressed.clear();
+    this.setWindowListened(false);
 
     for (const type of FOCUS_INPUT) {
       this.canvas.removeEventListener(type, this.onFocusInput);
@@ -100,6 +98,9 @@ export class RenderInputForwarder {
     // Prevented, a press no longer focuses on its own.
     if (event.type === ERenderInput.POINTER_DOWN) {
       this.canvas.focus({ preventScroll: true });
+      this.press((event as PointerEvent).pointerId ?? 0, true);
+    } else if (event.type === ERenderInput.POINTER_CANCEL) {
+      this.press((event as PointerEvent).pointerId ?? 0, false);
     }
 
     this.sink(toRenderInputEvent(event.type as ERenderInput, event));
@@ -115,5 +116,29 @@ export class RenderInputForwarder {
 
   private readonly onWindowInput = (event: Event): void => {
     this.sink(toRenderInputEvent(event.type as ERenderInput, event));
+
+    if (event.type === ERenderInput.POINTER_UP) {
+      this.press((event as PointerEvent).pointerId ?? 0, false);
+    }
   };
+
+  private press(pointerId: number, isPressed: boolean): void {
+    if (isPressed) {
+      this.pressed.add(pointerId);
+    } else {
+      this.pressed.delete(pointerId);
+    }
+
+    this.setWindowListened(this.pressed.size > 0);
+  }
+
+  private setWindowListened(isListened: boolean): void {
+    for (const type of WINDOW_INPUT) {
+      if (isListened) {
+        window.addEventListener(type, this.onWindowInput);
+      } else {
+        window.removeEventListener(type, this.onWindowInput);
+      }
+    }
+  }
 }

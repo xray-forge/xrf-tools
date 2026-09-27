@@ -103,6 +103,8 @@ export class TemporalJitter {
     const [x, y] = toTemporalJitter(this.phase);
 
     this.camera.copy(view, false);
+    // `copy` takes the view's flag too, and the matrices it copied are the ones to draw with.
+    this.camera.matrixWorldAutoUpdate = false;
     jitterProjection(this.camera.projectionMatrix, x, y, this.renderWidth, this.renderHeight);
     this.camera.projectionMatrixInverse.copy(this.camera.projectionMatrix).invert();
     this.motion.jitter.value.set(x, y);

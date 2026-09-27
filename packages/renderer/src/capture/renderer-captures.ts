@@ -118,7 +118,9 @@ export class RendererCaptures {
         if (generation === this.generation) {
           this.reply(id, image);
         } else {
+          // Superseded, yet still answered: whoever asked is waiting on it.
           image.close();
+          this.reply(id, null);
         }
       })
       .catch(() => this.reply(id, null))

@@ -13,8 +13,9 @@ export interface IRendererCameraController {
 
   /**
    * @param description - The camera the consumer wants, of this controller's kind.
+   * @returns Whether the camera jumped to a start of its own, rather than keeping where it stands.
    */
-  describe(description: TRendererCamera): void;
+  describe(description: TRendererCamera): boolean;
 
   /**
    * @param command - What to do with the camera.

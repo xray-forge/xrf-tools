@@ -6,7 +6,7 @@ import { IBaseShadingPoint } from "#/shader/base-shading-point";
  * One pixel of the G-buffer, decoded.
  */
 export interface IGBufferSample {
-  /** Hardware depth: one where nothing was drawn. */
+  /** Hardware depth, reversed: zero where nothing was drawn. */
   depth: Node<"float">;
   /** Raw albedo. */
   albedo: Node<"vec3">;

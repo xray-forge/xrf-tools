@@ -1,4 +1,4 @@
-import { Nullable } from "@xrf/types";
+import { Maybe, Nullable } from "@xrf/types";
 
 import { TRendererCamera, TRendererCameraCommand } from "#/contract/renderer-camera";
 import { TRendererCaptureSource } from "#/contract/renderer-capture";
@@ -86,7 +86,7 @@ export class RendererClient {
           return this.view?.input.setCursor(response.cursor);
 
         case ERendererResponse.CAPTURED: {
-          const resolve = this.captures.get(response.id);
+          const resolve: Maybe<(image: Nullable<ImageBitmap>) => void> = this.captures.get(response.id);
 
           this.captures.delete(response.id);
 

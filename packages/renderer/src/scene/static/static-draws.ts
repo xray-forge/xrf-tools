@@ -30,15 +30,15 @@ interface IRowRun {
 /** What the objects still waiting to draw will take of each pool. */
 type TStaticDemand = Record<EStaticPool.SLOTS | EStaticPool.PLACES | EStaticPool.ROWS, number>;
 
+/** A corner of a place's sphere, reused. */
+const PLACE_CORNER: Vector3 = new Vector3();
+
 /**
  * Everything drawing static draws: the slots each draw's arguments, sphere and matrix sit in, the places and rows of
  * the instanced ones, the arenas their geometry is copied into, the batches issuing them, one object a material, arena
  * and kind, and the cull on the GPU. A pool that runs out grows, once for everything the queue is known to bring; a
  * draw is drawn plainly only where the device's limit stops it.
  */
-/** A corner of a place's sphere, reused. */
-const PLACE_CORNER: Vector3 = new Vector3();
-
 export class StaticDraws implements IStaticShadowCasters {
   /** What culls the static draws on the GPU, which the frame dispatches before drawing them and again between. */
   public readonly cull: StaticCull;
@@ -355,23 +355,25 @@ export class StaticDraws implements IStaticShadowCasters {
     return true;
   }
 
+  /** @returns A run of the pool's, where it holds room for one, or null. */
+  private takeRun(pool: EStaticPool.PLACES | EStaticPool.ROWS | EStaticPool.LODS, count: number): Nullable<number> {
+    switch (pool) {
+      case EStaticPool.PLACES:
+        return this.places.allocatePlaces(count);
+      case EStaticPool.ROWS:
+        return this.places.allocateRows(count);
+      case EStaticPool.LODS:
+        return this.lods.allocate(count);
+    }
+  }
+
   /**
    * @returns A run of places or rows, grown until it fits: first for what the queue brings, then past the whole run,
    *   where freed room lies in runs too short for it. Null where the device's limit stops it.
    */
   private allocateRun(pool: EStaticPool.PLACES | EStaticPool.ROWS | EStaticPool.LODS, count: number): Nullable<number> {
-    const allocate = (): Nullable<number> => {
-      switch (pool) {
-        case EStaticPool.PLACES:
-          return this.places.allocatePlaces(count);
-        case EStaticPool.ROWS:
-          return this.places.allocateRows(count);
-        case EStaticPool.LODS:
-          return this.lods.allocate(count);
-      }
-    };
     const limit: number = this.buffers.limit(pool);
-    let start: Nullable<number> = allocate();
+    let start: Nullable<number> = this.takeRun(pool, count);
     let isFirst: boolean = true;
 
     while (start === null) {
@@ -404,7 +406,7 @@ export class StaticDraws implements IStaticShadowCasters {
       // Every material reading the places or the list binds the new buffer once its batch records.
       this.batches.invalidateAll();
       isFirst = false;
-      start = allocate();
+      start = this.takeRun(pool, count);
     }
 
     return start;

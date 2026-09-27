@@ -1,3 +1,4 @@
+import { TRendererColor } from "#/contract/renderer-lighting";
 import { IRendererLightAnimator } from "#/contract/scene/renderer-lights";
 
 /**
@@ -31,7 +32,13 @@ export function toInterpolatedColor(
   out: Array<number>
 ): Array<number> {
   const { frames, colors } = animator;
-  const next: number = frames.findIndex((keyFrame: number) => keyFrame > frame);
+  let next: number = -1;
+
+  for (let index: number = 0; index < frames.length && next < 0; index += 1) {
+    if (frames[index] > frame) {
+      next = index;
+    }
+  }
 
   if (colors.length === 0) {
     out[0] = out[1] = out[2] = 0;
@@ -41,7 +48,7 @@ export function toInterpolatedColor(
 
   // Past the last key, or on the first one with nothing before it to blend from.
   if (next <= 0) {
-    const color = colors[next === 0 ? 0 : colors.length - 1];
+    const color: TRendererColor = colors[next === 0 ? 0 : colors.length - 1];
 
     out[0] = color[0];
     out[1] = color[1];
@@ -50,7 +57,8 @@ export function toInterpolatedColor(
     return out;
   }
 
-  const [from, to] = [colors[next - 1], colors[next]];
+  const from: TRendererColor = colors[next - 1];
+  const to: TRendererColor = colors[next];
   const blend: number = (frame - frames[next - 1]) / (frames[next] - frames[next - 1]);
 
   for (let channel: number = 0; channel < 3; channel += 1) {

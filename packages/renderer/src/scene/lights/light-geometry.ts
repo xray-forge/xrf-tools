@@ -126,6 +126,25 @@ export function toLightSpatialSphere(light: TRendererLight, out: Sphere): Sphere
 }
 
 /**
+ * `light::spatial_move` for an `OMNIPART`, one face of a shadowed point: its range over root two across, standing that
+ * far along the face, which the engine fades the face and sizes its map by.
+ *
+ * @param light - The point light.
+ * @param direction - Where the face looks, in the world.
+ * @param out - Where the sphere is written.
+ * @returns The sphere written.
+ */
+export function toLightFaceSphere(light: TRendererLight, direction: TRendererVector, out: Sphere): Sphere {
+  const radius: number = light.range * Math.SQRT1_2;
+  const [x, y, z] = light.position;
+
+  out.center.set(x + direction[0] * radius, y + direction[1] * radius, z + direction[2] * radius);
+  out.radius = radius;
+
+  return out;
+}
+
+/**
  * `light::get_LOD`: how far a shadowed light has faded, by its sphere's share of the screen, as the engine's does.
  *
  * @param spatial - Its spatial sphere.

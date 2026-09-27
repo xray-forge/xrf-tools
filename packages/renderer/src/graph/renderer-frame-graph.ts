@@ -93,6 +93,8 @@ export class RendererFrameGraph {
   private width: number = 1;
   private height: number = 1;
   private sizing: Nullable<IFrameSizing> = null;
+  /** Whether a configure sized the frame again since a frame last asked, which that frame reports as its own resize. */
+  private isResizedByConfigure: boolean = false;
   /** What each pass and the targets were last sized by, so each is sized once for it. */
   private readonly sized: WeakMap<object, IFrameSizing> = new WeakMap();
 
@@ -200,7 +202,7 @@ export class RendererFrameGraph {
     this.base.overlay.setTarget(shown);
     this.present.setFrame(shown ?? stages.smoothing.value?.output ?? targets.scene);
     this.link();
-    this.applySizing();
+    this.isResizedByConfigure ||= this.applySizing();
   }
 
   /**
@@ -214,7 +216,11 @@ export class RendererFrameGraph {
     this.width = width;
     this.height = height;
 
-    return this.applySizing();
+    const isResized: boolean = this.applySizing() || this.isResizedByConfigure;
+
+    this.isResizedByConfigure = false;
+
+    return isResized;
   }
 
   /**

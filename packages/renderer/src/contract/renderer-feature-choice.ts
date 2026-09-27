@@ -5,30 +5,18 @@ import {
   toRendererSettingValue,
   TRendererSettingField,
 } from "#/contract/renderer-feature-schema";
-import {
-  ERendererAntialiasing,
-  ERendererPreset,
-  IRendererAmbientOcclusionSettings,
-  IRendererFeatureSettings,
-  IRendererGrassSettings,
-  IRendererLightsSettings,
-  IRendererLodSettings,
-  IRendererShadowSettings,
-  IRendererUpscalingSettings,
-  RENDERER_PRESETS,
-} from "#/contract/renderer-features";
+import { ERendererPreset, IRendererFeatureSettings, RENDERER_PRESETS } from "#/contract/renderer-features";
+
+/** A group's override: part of the group, or the whole of a setting that is one value. */
+type TRendererFeatureOverride<T> = T extends ReadonlyArray<unknown> ? T : T extends object ? Partial<T> : T;
+
+/** Every feature's override, from the settings themselves, so the two cannot drift. */
+type TRendererFeatureOverrideGroups = {
+  [K in keyof IRendererFeatureSettings]?: TRendererFeatureOverride<IRendererFeatureSettings[K]>;
+};
 
 /** What was changed on top of a preset, feature by feature. */
-export interface IRendererFeatureOverrides {
-  ambientOcclusion?: Partial<IRendererAmbientOcclusionSettings>;
-  antialiasing?: ERendererAntialiasing;
-  grass?: Partial<IRendererGrassSettings>;
-  isGpuTimed?: boolean;
-  lights?: Partial<IRendererLightsSettings>;
-  lod?: Partial<IRendererLodSettings>;
-  shadows?: Partial<IRendererShadowSettings>;
-  upscaling?: Partial<IRendererUpscalingSettings>;
-}
+export interface IRendererFeatureOverrides extends TRendererFeatureOverrideGroups {}
 
 /** A preset and what was changed on top of it, which is what a consumer stores. */
 export interface IRendererFeatureChoice {

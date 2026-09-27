@@ -36,6 +36,8 @@ export interface IGrassSurfaceSource {
   height: number;
   /** Every planted tuft, sorted by model: two vectors each, its place and turn, then its scale, light and wave. */
   items: StorageBufferNode<"vec4">;
+  /** Where the model's tufts start among the items. */
+  start: Node<"uint">;
 }
 
 /**
@@ -52,9 +54,10 @@ export function toGrassSurfaceShader(
   samplers: MaterialSamplers,
   uniforms: RendererUniforms
 ): ISurfaceShader {
-  const { items, height, surface } = source;
-  const place: Node<"vec4"> = items.element(instanceIndex.mul(2)) as unknown as Node<"vec4">;
-  const look: Node<"vec4"> = items.element(instanceIndex.mul(2).add(1)) as unknown as Node<"vec4">;
+  const { items, height, surface, start } = source;
+  const item: Node<"uint"> = instanceIndex.add(start);
+  const place: Node<"vec4"> = items.element(item.mul(2)) as unknown as Node<"vec4">;
+  const look: Node<"vec4"> = items.element(item.mul(2).add(1)) as unknown as Node<"vec4">;
   const turned: Node<"vec3"> = toTurned(positionLocal.mul(look.x), place.w);
   const standing: Node<"vec3"> = place.xyz.add(turned);
   const wind: GrassWindUniforms = uniforms.grassWind;

@@ -16,6 +16,9 @@ import { OcclusionUniforms } from "#/uniforms/occlusion-uniforms";
 /** Unsigned integers one indirect draw takes: index count, instance count, first index, base vertex, first instance. */
 export const STATIC_DRAW_ARGUMENTS: number = 5;
 
+/** Bytes one indirect draw's arguments take, which a draw's offset into them counts in. */
+export const STATIC_DRAW_ARGUMENT_BYTES: number = STATIC_DRAW_ARGUMENTS * Uint32Array.BYTES_PER_ELEMENT;
+
 /** Columns one place takes: its matrix's four, then its hemisphere scale and offset. */
 export const STATIC_PLACE_COLUMNS: number = 5;
 

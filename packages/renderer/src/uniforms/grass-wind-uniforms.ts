@@ -92,15 +92,21 @@ export class GrassWindUniforms {
 function mixSwing(wind: IRendererGrassWind, out: IRendererGrassSwing): IRendererGrassSwing {
   const { strength, normal, fast } = wind;
 
-  function mix(from: number, to: number): number {
-    return from + (to - from) * strength;
-  }
-
-  out.amp1 = mix(normal.amp1, fast.amp1);
-  out.amp2 = mix(normal.amp2, fast.amp2);
-  out.rot1 = mix(normal.rot1, fast.rot1);
-  out.rot2 = mix(normal.rot2, fast.rot2);
-  out.speed = mix(normal.speed, fast.speed);
+  out.amp1 = mix(normal.amp1, fast.amp1, strength);
+  out.amp2 = mix(normal.amp2, fast.amp2, strength);
+  out.rot1 = mix(normal.rot1, fast.rot1, strength);
+  out.rot2 = mix(normal.rot2, fast.rot2, strength);
+  out.speed = mix(normal.speed, fast.speed, strength);
 
   return out;
+}
+
+/**
+ * @param from - The value at none.
+ * @param to - The value at one.
+ * @param share - How far between them.
+ * @returns The value that far between.
+ */
+function mix(from: number, to: number, share: number): number {
+  return from + (to - from) * share;
 }

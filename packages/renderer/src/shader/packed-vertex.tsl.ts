@@ -49,6 +49,30 @@ export function toPackedBinormal(): Node<"vec3"> {
   return toPackedDirection(EVertexAttribute.PACKED_BINORMAL);
 }
 
+/**
+ * The tangent a surface bumps along, packed or three's own, in the geometry's own space.
+ *
+ * @param fallback - Three's tangent, skinned where the geometry is.
+ * @returns The tangent.
+ */
+export function toSurfaceTangent(fallback: Node<"vec3">): Node<"vec3"> {
+  return Fn((_: [], builder: NodeBuilder): Node<"vec3"> =>
+    hasAttribute(builder, EVertexAttribute.PACKED_TANGENT) ? toPackedTangent() : fallback
+  )();
+}
+
+/**
+ * The binormal a surface bumps along, packed or three's own, in the geometry's own space.
+ *
+ * @param fallback - Three's binormal, skinned where the geometry is.
+ * @returns The binormal.
+ */
+export function toSurfaceBinormal(fallback: Node<"vec3">): Node<"vec3"> {
+  return Fn((_: [], builder: NodeBuilder): Node<"vec3"> =>
+    hasAttribute(builder, EVertexAttribute.PACKED_BINORMAL) ? toPackedBinormal() : fallback
+  )();
+}
+
 /** The hemisphere term the packed normal's fourth byte carries. */
 export function toPackedHemi(): Node<"float"> {
   return attribute<"vec4">(EVertexAttribute.PACKED_NORMAL, "vec4").w;

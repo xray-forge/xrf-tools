@@ -26,6 +26,7 @@ import {
 import { EDdsBlockFormat } from "#/dds/dds-block-format";
 import { IDdsFile, IDdsRead, readDdsFile } from "#/dds/dds-file";
 import { EDdsLayout } from "#/dds/dds-layout";
+import { IDdsMipmap } from "#/dds/dds-mipmaps";
 import { IDdsRefusal } from "#/dds/dds-refusal";
 
 /** The engine's `ps_r__tf_Anisotropic` default (`Layers/xrRender/xrRender_console.cpp`). */
@@ -113,7 +114,7 @@ export function createRendererRawTexture(
 
 /** A texel layout, already expanded to rgba by the reader, with its chain as three's mipmap list. */
 function createTexelTexture(file: IDdsFile): Texture {
-  const top = file.mipmaps[0];
+  const top: IDdsMipmap = file.mipmaps[0];
   const texture: DataTexture = new DataTexture(top.data, top.width, top.height, RGBAFormat, UnsignedByteType);
 
   texture.mipmaps = file.mipmaps.length > 1 ? (file.mipmaps as unknown as Array<ImageData>) : [];

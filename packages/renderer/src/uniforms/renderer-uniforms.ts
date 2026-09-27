@@ -1,5 +1,5 @@
 import { Nullable } from "@xrf/types";
-import { Data3DTexture, PerspectiveCamera } from "three/webgpu";
+import { Data3DTexture, PerspectiveCamera, WebGPURenderer } from "three/webgpu";
 
 import { IRendererLighting } from "#/contract/renderer-lighting";
 import { IRendererSettings } from "#/contract/renderer-settings";
@@ -12,6 +12,7 @@ import { MotionUniforms } from "#/uniforms/motion-uniforms";
 import { SettingsUniforms } from "#/uniforms/settings-uniforms";
 import { ShadowUniforms } from "#/uniforms/shadow-uniforms";
 import { StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
+import { StorageRetirement } from "#/uniforms/storage-retirement";
 import { TreeWindUniforms } from "#/uniforms/tree-wind-uniforms";
 
 /**
@@ -34,9 +35,21 @@ export class RendererUniforms {
   public readonly grassWind: GrassWindUniforms = new GrassWindUniforms();
   /** What the motion every G-buffer surface writes is measured with. */
   public readonly motion: MotionUniforms = new MotionUniforms();
+  /** Storage let go of by any part, freed a frame later. */
+  public readonly retirement: StorageRetirement = new StorageRetirement();
 
   private fogDistance: Nullable<number> = null;
   private isLit: boolean = true;
+
+  /**
+   * Frees the storage retired a frame ago, the static pools' growths among it. Once a frame, whatever it draws.
+   *
+   * @param renderer - The renderer that uploaded it.
+   */
+  public freeRetired(renderer: WebGPURenderer): void {
+    this.retirement.retire(this.staticDraws.takeRetired());
+    this.retirement.free(renderer);
+  }
 
   /**
    * How far anything can be seen: to where the fog is total while the frame is lit and fogged, which is where the

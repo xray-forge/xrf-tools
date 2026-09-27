@@ -1,4 +1,20 @@
-import { dot, float, Fn, If, instanceIndex, max, min, pow, storage, uint, vec3 } from "three/tsl";
+import {
+  clamp,
+  dot,
+  float,
+  floor,
+  Fn,
+  If,
+  instanceIndex,
+  log,
+  max,
+  min,
+  pow,
+  storage,
+  uint,
+  vec2,
+  vec3,
+} from "three/tsl";
 import { ComputeNode, Node, StorageBufferAttribute } from "three/webgpu";
 
 import { LIGHT_RECORD } from "#/scene/lights/light-record";
@@ -28,6 +44,37 @@ export interface ILightBinningBuffers {
  */
 export function toLightSliceDepth(uniforms: LightsUniforms, slice: Node<"float">): Node<"float"> {
   return uniforms.near.mul(pow(uniforms.far.div(uniforms.near), slice.div(LIGHT_CLUSTERS_Z)));
+}
+
+/**
+ * The cluster a point of the frame falls in, as the binning cut the view: its tile across the screen, the first row the
+ * top one, and its slice of the depth.
+ *
+ * @param uniforms - What the view is cut by.
+ * @param screen - Where the point is on the screen, `(0, 0)` its top left.
+ * @param depth - How far along the view it stands.
+ * @returns The cluster's index.
+ */
+export function toLightCluster(uniforms: LightsUniforms, screen: Node<"vec2">, depth: Node<"float">): Node<"uint"> {
+  const tile = clamp(
+    floor(screen.mul(vec2(LIGHT_CLUSTERS_X, LIGHT_CLUSTERS_Y))),
+    vec2(0),
+    vec2(LIGHT_CLUSTERS_X - 1, LIGHT_CLUSTERS_Y - 1)
+  );
+  // `toLightSliceDepth` read backwards.
+  const slice = clamp(
+    floor(
+      log(depth.div(uniforms.near))
+        .div(log(uniforms.far.div(uniforms.near)))
+        .mul(LIGHT_CLUSTERS_Z)
+    ),
+    0,
+    LIGHT_CLUSTERS_Z - 1
+  );
+
+  return uint(tile.x)
+    .add(uint(tile.y).mul(LIGHT_CLUSTERS_X))
+    .add(uint(slice).mul(LIGHT_CLUSTERS_X * LIGHT_CLUSTERS_Y));
 }
 
 /** A device coordinate across at a depth, in view space: `(ndc + offset) * depth / scale`. */

@@ -1,3 +1,4 @@
+import { Maybe } from "@xrf/types";
 import { BufferAttribute, WebGPURenderer } from "three/webgpu";
 
 /**
@@ -9,6 +10,7 @@ export interface IRendererBackend {
     features?: Iterable<string>;
     adapterInfo?: { vendor?: string; architecture?: string };
     limits?: { maxStorageBufferBindingSize?: number; maxBufferSize?: number };
+    queue?: { onSubmittedWorkDone?(): Promise<void> };
   };
   /** Whether each pass begins and ends with a timestamp; three reads it as every pass begins. */
   trackTimestamp?: boolean;
@@ -29,6 +31,14 @@ export function setRendererTimestamps(renderer: WebGPURenderer, isTimed: boolean
   getRendererBackend(renderer).trackTimestamp = isTimed;
 }
 
+/**
+ * @param renderer - A renderer, its device open.
+ * @returns Settles once the GPU has done everything submitted to it so far; at once for a backend that cannot say.
+ */
+export function whenSubmittedWorkDone(renderer: WebGPURenderer): Promise<void> {
+  return getRendererBackend(renderer).device?.queue?.onSubmittedWorkDone?.() ?? Promise.resolve();
+}
+
 /** WebGPU's default `maxStorageBufferBindingSize`, which a device three opens without asking for more has. */
 export const DEFAULT_STORAGE_LIMIT: number = 1 << 27;
 
@@ -45,7 +55,8 @@ export function getRendererBackend(renderer: WebGPURenderer): IRendererBackend {
  * @returns Bytes one storage buffer may hold and be bound whole: the lesser of the device's two limits on it.
  */
 export function toStorageLimit(renderer: WebGPURenderer): number {
-  const limits = getRendererBackend(renderer).device?.limits;
+  const limits: Maybe<{ maxStorageBufferBindingSize?: number; maxBufferSize?: number }> =
+    getRendererBackend(renderer).device?.limits;
 
   return Math.min(
     limits?.maxStorageBufferBindingSize ?? DEFAULT_STORAGE_LIMIT,

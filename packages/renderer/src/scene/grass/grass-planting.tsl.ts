@@ -25,7 +25,7 @@ import {
 import { ComputeNode, Node, StorageBufferNode } from "three/webgpu";
 
 import { RENDERER_GRASS_SLOT_WORDS, RENDERER_GRASS_TRIANGLE_FLOATS } from "#/contract/scene/renderer-grass";
-import { IGrassItemBuffers, TGrassBuffers } from "#/scene/grass/grass-buffers";
+import { IGrassItemBuffers, IGrassLevelBuffers, TGrassBuffers } from "#/scene/grass/grass-buffers";
 import { loopNamed } from "#/shader/named-loop.tsl";
 import { GrassUniforms } from "#/uniforms/grass-uniforms";
 import { STATIC_DRAW_ARGUMENTS } from "#/uniforms/static-draw-buffers";
@@ -88,8 +88,16 @@ export function createGrassDither(): Uint32Array {
 }
 
 /**
- * @param buffers - What the grass is planted into.
- * @returns The sorted items as a draw reads them.
+ * @param buffers - The level's buffers.
+ * @returns Where each model's tufts start among the sorted items, as its draw reads them.
+ */
+export function toGrassStarts(buffers: IGrassLevelBuffers): StorageBufferNode<"uint"> {
+  return storage(buffers.starts, "uint", Math.max(buffers.modelCount, 1)).toReadOnly() as never;
+}
+
+/**
+ * @param buffers - The item lists.
+ * @returns The sorted items, as the draws read them.
  */
 export function toGrassItems(buffers: IGrassItemBuffers): StorageBufferNode<"vec4"> {
   return storage(buffers.sorted, "vec4", buffers.capacity * GRASS_ITEM_VECTORS).toReadOnly() as never;
@@ -125,6 +133,7 @@ export function createGrassPlanting(
 
   const arrange: ComputeNode = Fn(() => {
     const args = storage(buffers.args, "uint", Math.max(models, 1) * STATIC_DRAW_ARGUMENTS);
+    const starts = storage(buffers.starts, "uint", Math.max(models, 1));
     const first = uint(0).toVar();
 
     for (let model = 0; model < models; model++) {
@@ -135,7 +144,9 @@ export function createGrassPlanting(
       args.element(at + 1).assign(count);
       args.element(at + 2).assign(uint(0));
       args.element(at + 3).assign(uint(0));
-      args.element(at + 4).assign(first);
+      // No first instance, which a device without `indirect-first-instance` would ignore: the draw reads its start.
+      args.element(at + 4).assign(uint(0));
+      starts.element(model).assign(first);
       atomicStore(cursors.element(model), first);
       first.addAssign(count);
     }

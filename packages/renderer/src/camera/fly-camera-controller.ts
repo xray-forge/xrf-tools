@@ -2,7 +2,7 @@ import { Maybe, Nullable } from "@xrf/types";
 import { Euler, PerspectiveCamera, Vector3 } from "three/webgpu";
 
 import { IRendererCameraController } from "#/camera/camera-controller";
-import { DRAG_CURSOR } from "#/camera/drag-cursor";
+import { DragCursor } from "#/camera/drag-cursor";
 import { EFlyKey, getFlyKey } from "#/camera/fly-keys";
 import {
   ERendererCameraCommand,
@@ -19,8 +19,11 @@ import { IRenderProxyEvent, RenderProxyElement } from "#/input/render-proxy-elem
 /** Just short of straight up, so looking at the sky never flips the horizon over. */
 const MAX_PITCH: number = Math.PI / 2 - 0.001;
 
-/** The longest step one frame moves by, so a frame after a stall does not throw the camera across the level. */
-const MAX_DELTA: number = 0.1;
+/**
+ * The longest step one frame moves by, so a frame after a stall, a hidden window's, does not throw the camera across
+ * the level. Any frame faster than four a second moves its whole time's worth.
+ */
+const MAX_DELTA: number = 0.25;
 
 /** Where a camera starts before its consumer describes one. */
 const DEFAULT_FLY_CAMERA: IRendererFlyCamera = {
@@ -58,11 +61,11 @@ export class FlyCameraController implements IRendererCameraController {
   private lookY: number = 0;
   /** Where the dragging pointer last was, or null while nothing drags. */
   private dragged: Nullable<{ x: number; y: number }> = null;
-  /** The cursor the element had before a drag took it. */
-  private restingCursor: string = "";
+  private readonly cursor: DragCursor;
 
   public constructor(element: RenderProxyElement) {
     this.element = element;
+    this.cursor = new DragCursor(element);
 
     for (const [type, listener] of Object.entries(this.listeners)) {
       element.addEventListener(type, listener);
@@ -71,9 +74,9 @@ export class FlyCameraController implements IRendererCameraController {
     this.describe(DEFAULT_FLY_CAMERA);
   }
 
-  public describe(description: TRendererCamera): void {
+  public describe(description: TRendererCamera): boolean {
     if (description.kind !== ERendererCameraController.FLY) {
-      return;
+      return false;
     }
 
     const isMoved: boolean =
@@ -87,9 +90,13 @@ export class FlyCameraController implements IRendererCameraController {
     this.camera.updateProjectionMatrix();
 
     // The same start again is new speeds or a new lens, not a request to go back.
-    if (isMoved || description === DEFAULT_FLY_CAMERA) {
+    const isReset: boolean = isMoved || description === DEFAULT_FLY_CAMERA;
+
+    if (isReset) {
       this.reset();
     }
+
+    return isReset;
   }
 
   public command(command: TRendererCameraCommand): void {
@@ -147,9 +154,7 @@ export class FlyCameraController implements IRendererCameraController {
       this.element.removeEventListener(type, listener);
     }
 
-    if (this.dragged) {
-      this.element.style.cursor = this.restingCursor;
-    }
+    this.cursor.end();
   }
 
   /** Back to the start, looking at its target. */
@@ -176,8 +181,7 @@ export class FlyCameraController implements IRendererCameraController {
   private readonly listeners: Readonly<Record<string, (event: IRenderProxyEvent) => void>> = {
     [ERenderInput.POINTER_DOWN]: (event: IRenderProxyEvent): void => {
       this.dragged = { x: event.clientX, y: event.clientY };
-      this.restingCursor = this.element.style.cursor;
-      this.element.style.cursor = DRAG_CURSOR;
+      this.cursor.start();
     },
     [ERenderInput.POINTER_MOVE]: (event: IRenderProxyEvent): void => {
       if (this.dragged) {
@@ -208,10 +212,8 @@ export class FlyCameraController implements IRendererCameraController {
   }
 
   private release(): void {
-    if (this.dragged) {
-      this.dragged = null;
-      this.element.style.cursor = this.restingCursor;
-    }
+    this.dragged = null;
+    this.cursor.end();
   }
 }
 

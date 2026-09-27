@@ -71,8 +71,8 @@ describe("listRendererTransfers", () => {
         settings: {
           backdrop: 0,
           debugView: ERendererDebugView.FINAL,
-          frameRateLimit: "60",
           hemiStrength: 1,
+          pacing: { isLowLatency: true, rateLimit: "60" },
           isBumped: true,
           features: RENDERER_PRESETS[ERendererPreset.BASE],
           isLit: true,

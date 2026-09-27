@@ -1,7 +1,7 @@
 import { Nullable } from "@xrf/types";
 
 import { IRendererFeatureSettings } from "#/contract/renderer-features";
-import { TFrameRateLimit } from "#/frame/render-frame-limit";
+import { IRenderFramePacing } from "#/frame/render-frame-pacing";
 
 /**
  * Which picture reaches the canvas: the frame, or one of the targets it was built from.
@@ -35,8 +35,8 @@ export enum ERendererDebugView {
  * How the consumer wants frames drawn.
  */
 export interface IRendererSettings {
-  /** How often a frame may be drawn. */
-  frameRateLimit: TFrameRateLimit;
+  /** How often a frame may be drawn, and how far frames run ahead of the GPU. */
+  pacing: IRenderFramePacing;
   /** What the canvas shows where nothing is drawn, as a hex colour, or null to leave it transparent. */
   backdrop: Nullable<number>;
   /** Which picture reaches the canvas. */

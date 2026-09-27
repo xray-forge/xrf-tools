@@ -18,6 +18,7 @@ import {
   ILightBasis,
   toLightBasis,
   toLightBound,
+  toLightFaceSphere,
   toLightIntensity,
   toLightLod,
   toLightSpatialSphere,
@@ -25,7 +26,7 @@ import {
 import { LightProjectors } from "#/scene/lights/light-projectors";
 import { LIGHT_NO_CONE, LIGHT_RECORD, MAX_LIGHTS } from "#/scene/lights/light-record";
 import { LightRecords } from "#/scene/lights/light-records";
-import { toLightShadowScale } from "#/scene/lights/light-shadow-faces";
+import { ILightShadowFaceBasis, LIGHT_SHADOW_POINT_FACES, toLightShadowScale } from "#/scene/lights/light-shadow-faces";
 import {
   ILightShadowEntry,
   ILightShadowFace,
@@ -67,8 +68,10 @@ interface IInViewLight {
   index: number;
   /** Metres from the eye to its bound's edge, which the nearest are kept by. */
   distance: number;
-  /** How far it has faded, one for none. */
+  /** How far its colour has faded, one for none: a shadowed spot's, as the engine fades it whole. */
   fade: number;
+  /** How far each face of a shadowed point has faded, as the engine fades each omni part on its own; ones otherwise. */
+  faceFades: Array<number>;
 }
 
 /**
@@ -90,6 +93,8 @@ export class SceneLights {
   private readonly random: () => number;
   private lights: Nullable<IRendererLights> = null;
   private readonly inView: Array<IInViewLight> = [];
+  /** The first of them this frame, nearest first, sorted in an array kept between frames. */
+  private readonly visible: Array<IInViewLight> = [];
   private readonly frustum: Frustum = new Frustum();
   private readonly eye: Vector3 = new Vector3();
   private readonly forward: Vector3 = new Vector3();
@@ -184,7 +189,7 @@ export class SceneLights {
         this.shadows.finish(LIGHT_SHADOW_FACE_BUDGET);
       }
 
-      for (const { light, index, fade } of inView) {
+      for (const { light, index, fade, faceFades } of inView) {
         const entry: Nullable<ILightShadowEntry> =
           isShadowing && light.isShadowed ? this.shadows.getEntry(index) : null;
 
@@ -194,7 +199,7 @@ export class SceneLights {
         }
 
         this.writeLight(this.count, light, fade, frame.time, camera.matrixWorldInverse);
-        this.writeShadow(this.count, entry);
+        this.writeShadow(this.count, entry, faceFades);
         this.count += 1;
       }
     }
@@ -226,25 +231,73 @@ export class SceneLights {
         return;
       }
 
-      // `light::get_LOD`, a shadowed light's alone: faded by its sphere's share of the screen.
-      const fade: number = light.isShadowed
-        ? toLightLod(toLightSpatialSphere(light, this.spatial), this.eye, lod.glodStart.value, lod.glodEnd.value)
-        : 1;
+      const entry: IInViewLight = (this.inView[count] ??= {
+        distance: 0,
+        faceFades: LIGHT_SHADOW_POINT_FACES.map(() => 1),
+        fade: 1,
+        index: 0,
+        light,
+      });
+      // `light::get_LOD`, a light the engine shadows alone: by its sphere's share of the screen, a point's each face.
+      const shown: number = this.toFade(light, entry, settings.isShadowed, lod);
 
-      if (fade <= EPS_L || !this.frustum.intersectsSphere(toLightBound(light, this.bound))) {
+      if (shown <= EPS_L || !this.frustum.intersectsSphere(toLightBound(light, this.bound))) {
         return;
       }
 
-      const entry: IInViewLight = (this.inView[count] ??= { distance: 0, fade: 1, index: 0, light });
-
       entry.light = light;
       entry.index = index;
-      entry.fade = fade;
       entry.distance = Math.max(this.eye.distanceTo(this.bound.center) - this.bound.radius, 0);
       count += 1;
     });
 
-    return this.inView.slice(0, count).sort((a: IInViewLight, b: IInViewLight) => a.distance - b.distance);
+    const { visible } = this;
+
+    visible.length = count;
+
+    for (let index: number = 0; index < count; index += 1) {
+      visible[index] = this.inView[index];
+    }
+
+    return visible.sort(byDistance);
+  }
+
+  /**
+   * Writes how far a light has faded into its entry, a shadowed point's face by face.
+   *
+   * @returns The most any of it shows, which it is culled by.
+   */
+  private toFade(light: TRendererLight, entry: IInViewLight, isShadowing: boolean, lod: LodUniforms): number {
+    const { glodStart, glodEnd } = lod;
+
+    entry.fade = 1;
+    entry.faceFades.fill(1);
+
+    if (!isShadowing || !light.isShadowed) {
+      return 1;
+    }
+
+    if (light.kind === ERendererLightKind.SPOT) {
+      entry.fade = toLightLod(toLightSpatialSphere(light, this.spatial), this.eye, glodStart.value, glodEnd.value);
+
+      return entry.fade;
+    }
+
+    let shown: number = 0;
+
+    LIGHT_SHADOW_POINT_FACES.forEach(({ direction }: ILightShadowFaceBasis, face: number) => {
+      const fade: number = toLightLod(
+        toLightFaceSphere(light, direction, this.spatial),
+        this.eye,
+        glodStart.value,
+        glodEnd.value
+      );
+
+      entry.faceFades[face] = fade;
+      shown = Math.max(shown, fade);
+    });
+
+    return shown;
   }
 
   /** Asks the planner for a shadowed light's faces, sized as the engine sizes its maps, by its colour unfaded. */
@@ -302,8 +355,11 @@ export class SceneLights {
     records.setVector(slot, LIGHT_RECORD.sphere, this.bound.center, this.bound.radius);
   }
 
-  /** A shadowed light's near and far planes and face count, and each face's square of the atlas in texture coordinates. */
-  private writeShadow(slot: number, entry: Nullable<ILightShadowEntry>): void {
+  /**
+   * A shadowed light's near and far planes and face count, and each face's square of the atlas in texture coordinates
+   * with how far the face has faded.
+   */
+  private writeShadow(slot: number, entry: Nullable<ILightShadowEntry>, faceFades: ReadonlyArray<number>): void {
     if (!entry) {
       this.records.set(slot, LIGHT_RECORD.shadow, 0, 0, 0, 0);
 
@@ -319,7 +375,7 @@ export class SceneLights {
         tile.x / LIGHT_SHADOW_ATLAS_SIZE,
         tile.y / LIGHT_SHADOW_ATLAS_SIZE,
         tile.size / LIGHT_SHADOW_ATLAS_SIZE,
-        0
+        faceFades[face]
       )
     );
   }
@@ -347,4 +403,8 @@ export class SceneLights {
   private toFrameRange(light: TRendererLight): number {
     return light.rangeJitter ? light.range + light.rangeJitter * (this.random() * 2 - 1) : light.range;
   }
+}
+
+function byDistance(a: IInViewLight, b: IInViewLight): number {
+  return a.distance - b.distance;
 }

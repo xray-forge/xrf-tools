@@ -3,6 +3,9 @@ import { OrthographicCamera, PerspectiveCamera, Vector3, Vector4 } from "three/w
 import { adoptRendererConventions } from "#/internals/camera-conventions";
 import { ISunViewRay, SunViewRays } from "#/visibility/sun-view-rays";
 
+/** Numbers a cascade is fitted by: its square's place, width, resolution, reach, and the light's direction. */
+const KEY_LENGTH: number = 9;
+
 /** How far a cascade's map reaches past its reach below its centre, in widths: the engine's `1.41421 * map_size`. */
 const DEPTH: number = 1.41421;
 
@@ -55,7 +58,15 @@ export class SunCascade {
   private readonly translation: Vector3 = new Vector3();
   private readonly push: Vector3 = new Vector3();
   private readonly across: Vector3 = new Vector3();
-  private readonly key: Array<number> = [];
+  /** What the cascade was last fitted by: its square's place, width, resolution, reach and the light. */
+  private readonly key: Float64Array = new Float64Array(KEY_LENGTH).fill(NaN);
+  /** What it is fitted by this frame, compared with the key before the key takes it. */
+  private readonly next: Float64Array = new Float64Array(KEY_LENGTH);
+  /** The sides the view looks away from, at most two. */
+  private readonly behind: Array<number> = [];
+  /** The square's axes across the light, which the view is held within. */
+  private readonly axes: ReadonlyArray<Vector3> = [this.right, this.up];
+  private readonly negated: Vector3 = new Vector3();
 
   public constructor() {
     adoptRendererConventions(this.camera);
@@ -112,10 +123,7 @@ export class SunCascade {
 
     center.set(0, 0, 0).addScaledVector(right, x).addScaledVector(up, y).addScaledVector(light, z);
 
-    const key: Array<number> = [x, y, z, width, resolution, reach, light.x, light.y, light.z];
-
-    if (key.some((value: number, index: number) => value !== this.key[index])) {
-      this.key.splice(0, key.length, ...key);
+    if (this.rekey(x, y, z, width, resolution, reach)) {
       this.version += 1;
     }
 
@@ -135,11 +143,11 @@ export class SunCascade {
 
     // The same box as planes: across the light either way, and from the reach towards the sun to its far side.
     this.setPlane(0, right, -(x - half));
-    this.setPlane(1, right.clone().negate(), x + half);
+    this.setPlane(1, this.negated.copy(right).negate(), x + half);
     this.setPlane(2, up, -(y - half));
-    this.setPlane(3, up.clone().negate(), y + half);
+    this.setPlane(3, this.negated.copy(up).negate(), y + half);
     this.setPlane(4, light, -(z - reach));
-    this.setPlane(5, light.clone().negate(), z - reach + far);
+    this.setPlane(5, this.negated.copy(light).negate(), z - reach + far);
   }
 
   /**
@@ -174,20 +182,27 @@ export class SunCascade {
    * @param width - Metres the square is across.
    */
   private align(center: Vector3, look: Vector3, rays: ReadonlyArray<ISunViewRay>, width: number): void {
-    const { sides, translation, push, across } = this;
+    const { sides, translation, push, across, behind } = this;
     const half: number = width / 2;
 
     // The one or two sides the view looks away from, behind the camera.
-    const behind: Array<number> = [0, 1, 2, 3].filter((side: number) => look.dot(sides[side]) > EPS_L).slice(0, 2);
+    behind.length = 0;
+
+    for (let side: number = 0; side < sides.length && behind.length < 2; side += 1) {
+      if (look.dot(sides[side]) > EPS_L) {
+        behind.push(side);
+      }
+    }
 
     // Each brought up to the nearest point an edge starts from.
     translation.set(0, 0, 0);
 
     for (const side of behind) {
-      const nearest: number = rays.reduce(
-        (least: number, ray: ISunViewRay) => Math.min(least, this.inside(side, ray.origin, center, half)),
-        FAR_BEHIND
-      );
+      let nearest: number = FAR_BEHIND;
+
+      for (const ray of rays) {
+        nearest = Math.min(nearest, this.inside(side, ray.origin, center, half));
+      }
 
       translation.addScaledVector(sides[side], nearest);
     }
@@ -230,7 +245,7 @@ export class SunCascade {
     const reach: number = width * HELD;
     const half: number = width * (0.5 - HELD_MARGIN);
 
-    for (const axis of [this.right, this.up]) {
+    for (const axis of this.axes) {
       let least: number = Infinity;
       let most: number = -Infinity;
 
@@ -295,6 +310,35 @@ export class SunCascade {
     const normal: Vector3 = this.sides[side];
 
     return normal.dot(point) - normal.dot(center) + half;
+  }
+
+  /**
+   * Takes this frame's fit as the key where it differs from the last.
+   *
+   * @returns Whether it differed, which is a new version of the cascade.
+   */
+  private rekey(x: number, y: number, z: number, width: number, resolution: number, reach: number): boolean {
+    const { key, next, light } = this;
+
+    next[0] = x;
+    next[1] = y;
+    next[2] = z;
+    next[3] = width;
+    next[4] = resolution;
+    next[5] = reach;
+    next[6] = light.x;
+    next[7] = light.y;
+    next[8] = light.z;
+
+    for (let index: number = 0; index < KEY_LENGTH; index += 1) {
+      if (next[index] !== key[index]) {
+        key.set(next);
+
+        return true;
+      }
+    }
+
+    return false;
   }
 
   private setPlane(index: number, normal: Vector3, constant: number): void {

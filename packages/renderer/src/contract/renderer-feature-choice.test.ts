@@ -100,11 +100,14 @@ describe("renderer feature choices", () => {
 
   it("calls a changed cascade run custom, and a preset's own run not", () => {
     expect(
-      isRendererFeatureChoiceCustom({ overrides: { shadows: { cascades: [20, 40] } }, preset: ERendererPreset.BASE })
+      isRendererFeatureChoiceCustom({
+        overrides: { shadows: { cascades: [20, 40, 160] } },
+        preset: ERendererPreset.BASE,
+      })
     ).toBe(true);
     expect(
       isRendererFeatureChoiceCustom({
-        overrides: { shadows: { cascades: [20, 40, 160] } },
+        overrides: { shadows: { cascades: [20, 40, 160, 480] } },
         preset: ERendererPreset.BASE,
       })
     ).toBe(false);

@@ -57,15 +57,17 @@ export class RendererCameraRig {
    * @param camera - The camera the consumer wants.
    */
   public describe(camera: TRendererCamera): void {
-    if (camera.kind !== this.kind) {
+    const isReplaced: boolean = camera.kind !== this.kind;
+
+    if (isReplaced) {
       this.controller.dispose();
       this.controller = this.createController(camera.kind);
       this.controller.resize(this.width, this.height);
       this.kind = camera.kind;
     }
 
-    this.controller.describe(camera);
-    this.isCut = true;
+    // Described again from where it stands, new speeds or a new lens, the camera keeps its history.
+    this.isCut ||= this.controller.describe(camera) || isReplaced;
   }
 
   /**

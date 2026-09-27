@@ -7,7 +7,6 @@ import {
   Fn,
   If,
   int,
-  log,
   max,
   mix,
   normalize,
@@ -27,6 +26,7 @@ import { Data3DTexture, Node, StorageBufferAttribute, StorageBufferNode, Texture
 
 import { ERendererLightShadowFilter } from "#/contract/renderer-features";
 import { TRendererVector } from "#/contract/renderer-lighting";
+import { toLightCluster } from "#/scene/lights/light-clusters.tsl";
 import { LIGHT_RECORD, LIGHT_VECTORS, MAX_LIGHTS } from "#/scene/lights/light-record";
 import {
   LIGHT_SHADOW_POINT_CONE,
@@ -39,14 +39,7 @@ import { IGBufferTextures } from "#/shader/gbuffer-textures";
 import { readGBuffer } from "#/shader/gbuffer.tsl";
 import { loopNamed } from "#/shader/named-loop.tsl";
 import { CameraUniforms } from "#/uniforms/camera-uniforms";
-import {
-  LIGHT_CLUSTER_CAPACITY,
-  LIGHT_CLUSTERS,
-  LIGHT_CLUSTERS_X,
-  LIGHT_CLUSTERS_Y,
-  LIGHT_CLUSTERS_Z,
-  LightsUniforms,
-} from "#/uniforms/lights-uniforms";
+import { LIGHT_CLUSTER_CAPACITY, LIGHT_CLUSTERS, LightsUniforms } from "#/uniforms/lights-uniforms";
 
 /** What the lights are accumulated from. */
 export interface ILightsPassInputs {
@@ -93,23 +86,7 @@ export function toLightsPassFragment(
     const { position, normal, slice } = sample.point;
     const depth = position.z.negate();
 
-    const tile = clamp(
-      floor(screenUV.mul(vec2(LIGHT_CLUSTERS_X, LIGHT_CLUSTERS_Y))),
-      vec2(0),
-      vec2(LIGHT_CLUSTERS_X - 1, LIGHT_CLUSTERS_Y - 1)
-    );
-    const depthSlice = clamp(
-      floor(
-        log(depth.div(uniforms.near))
-          .div(log(uniforms.far.div(uniforms.near)))
-          .mul(LIGHT_CLUSTERS_Z)
-      ),
-      0,
-      LIGHT_CLUSTERS_Z - 1
-    );
-    const cluster = uint(tile.x)
-      .add(uint(tile.y).mul(LIGHT_CLUSTERS_X))
-      .add(uint(depthSlice).mul(LIGHT_CLUSTERS_X * LIGHT_CLUSTERS_Y));
+    const cluster = toLightCluster(uniforms, screenUV, depth);
     const toEye = normalize(position.negate());
     const offset = position.add(normal.mul(VIRTUAL_OFFSET));
     const total = vec4(0).toVar();
@@ -301,8 +278,11 @@ function toLightShadow(
   const most = corner.add(side).sub(0.5);
   const centre = corner.add(1).add(uv.mul(side.sub(2)));
 
+  // A point's faces fade each on its own, as the engine's omni parts do.
+  const faded = rect.w;
+
   if (filter === ERendererLightShadowFilter.ANOMALY) {
-    return toPenumbraLit(atlas, centre, least, most, texel, moved);
+    return toPenumbraLit(atlas, centre, least, most, texel, moved).mul(faded);
   }
 
   let lit: Node<"float"> = float(0);
@@ -318,7 +298,7 @@ function toLightShadow(
     lit = lit.add(toComparedTexels(atlas, tap, texel, reference));
   }
 
-  return lit.div(4);
+  return lit.div(4).mul(faded);
 }
 
 /**

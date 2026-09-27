@@ -1,3 +1,5 @@
+import { Nullable } from "@xrf/types";
+
 /** What the pointer shows while it is dragging a scene, matching the picture viewport's own drag cursor. */
 export const DRAG_CURSOR: string = "grabbing";
 
@@ -13,6 +15,34 @@ export interface IDragControls {
 }
 
 /**
+ * A scene's drag shown on the cursor, for as long as the drag lasts, and the cursor given back after.
+ */
+export class DragCursor {
+  private readonly element: ICursorTarget;
+  /** The cursor the element had before a drag took it, or null while nothing drags. */
+  private resting: Nullable<string> = null;
+
+  /**
+   * @param element - Whatever carries the cursor.
+   */
+  public constructor(element: ICursorTarget) {
+    this.element = element;
+  }
+
+  public start(): void {
+    this.resting ??= this.element.style.cursor;
+    this.element.style.cursor = DRAG_CURSOR;
+  }
+
+  public end(): void {
+    if (this.resting !== null) {
+      this.element.style.cursor = this.resting;
+      this.resting = null;
+    }
+  }
+}
+
+/**
  * Shows a scene's drag on the cursor, for as long as the drag lasts.
  *
  * @param controls - Controls whose drag the cursor answers.
@@ -20,14 +50,14 @@ export interface IDragControls {
  * @returns Unbinds the listeners and leaves the cursor as it was found.
  */
 export function bindDragCursor(controls: IDragControls, element: ICursorTarget): () => void {
-  const original: string = element.style.cursor;
+  const cursor: DragCursor = new DragCursor(element);
 
   function onStart(): void {
-    element.style.cursor = DRAG_CURSOR;
+    cursor.start();
   }
 
   function onEnd(): void {
-    element.style.cursor = original;
+    cursor.end();
   }
 
   controls.addEventListener("start", onStart);
@@ -36,6 +66,6 @@ export function bindDragCursor(controls: IDragControls, element: ICursorTarget):
   return () => {
     controls.removeEventListener("start", onStart);
     controls.removeEventListener("end", onEnd);
-    element.style.cursor = original;
+    cursor.end();
   };
 }

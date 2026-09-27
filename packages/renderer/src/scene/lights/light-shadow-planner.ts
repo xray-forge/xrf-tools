@@ -191,6 +191,9 @@ export class LightShadowPlanner {
   private readonly asks: Array<ILightShadowAsk> = [];
   private askCount: number = 0;
   private readonly candidates: Array<IFaceCandidate> = [];
+  /** This frame's asks, nearest first, and its candidates, most urgent first: sorted in arrays kept between frames. */
+  private readonly orderedAsks: Array<ILightShadowAsk> = [];
+  private readonly orderedCandidates: Array<IFaceCandidate> = [];
   private candidateCount: number = 0;
   private frame: number = 0;
   private faceVersion: number = 0;
@@ -295,7 +298,7 @@ export class LightShadowPlanner {
    * @param budget - Faces drawn at most.
    */
   public finish(budget: number): void {
-    const asks: Array<ILightShadowAsk> = this.asks.slice(0, this.askCount).sort((a, b) => a.distance - b.distance);
+    const asks: Array<ILightShadowAsk> = takeSorted(this.asks, this.askCount, this.orderedAsks, byDistance);
     const isTight: boolean = this.sizeScale < 1;
     let refused: number = 0;
 
@@ -305,7 +308,13 @@ export class LightShadowPlanner {
     for (const { index } of asks) {
       const slot: Maybe<ILightShadowSlot> = this.slots.get(index);
 
-      [slot?.shown, slot?.next].forEach((entry: Maybe<ILightShadowEntry>) => entry && (entry.seen = this.frame));
+      if (slot?.shown) {
+        slot.shown.seen = this.frame;
+      }
+
+      if (slot?.next) {
+        slot.next.seen = this.frame;
+      }
     }
 
     for (const ask of asks) {
@@ -432,9 +441,12 @@ export class LightShadowPlanner {
   }
 
   private fillQueue(budget: number): void {
-    const candidates: Array<IFaceCandidate> = this.candidates
-      .slice(0, this.candidateCount)
-      .sort((a, b) => a.urgency - b.urgency || a.order - b.order);
+    const candidates: Array<IFaceCandidate> = takeSorted(
+      this.candidates,
+      this.candidateCount,
+      this.orderedCandidates,
+      byUrgency
+    );
 
     for (let index: number = 0; index < Math.min(budget, candidates.length); index += 1) {
       this.queue.push(candidates[index].face);
@@ -640,4 +652,29 @@ function toSlotArea({ shown, next }: ILightShadowSlot): number {
 
 function toSlotSeen({ shown, next }: ILightShadowSlot): number {
   return Math.max(shown?.seen ?? -1, next?.seen ?? -1);
+}
+
+/**
+ * @param pool - Objects kept between frames, the first `count` of them this frame's.
+ * @param count - How many are this frame's.
+ * @param out - Where they are sorted, kept between frames.
+ * @param order - What they are sorted by.
+ * @returns `out`, holding this frame's in order.
+ */
+function takeSorted<T>(pool: ReadonlyArray<T>, count: number, out: Array<T>, order: (a: T, b: T) => number): Array<T> {
+  out.length = count;
+
+  for (let index: number = 0; index < count; index += 1) {
+    out[index] = pool[index];
+  }
+
+  return out.sort(order);
+}
+
+function byDistance(a: ILightShadowAsk, b: ILightShadowAsk): number {
+  return a.distance - b.distance;
+}
+
+function byUrgency(a: IFaceCandidate, b: IFaceCandidate): number {
+  return a.urgency - b.urgency || a.order - b.order;
 }

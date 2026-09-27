@@ -11,10 +11,11 @@ import { RendererPassInspector } from "#/timing/renderer-pass-inspector";
  */
 export class RendererDevice {
   /**
+   * @param onLost - Told why, where the device is lost once up: a driver reset, the GPU removed, or out of memory.
    * @returns The device, up.
    * @throws {RendererDeviceFailure} Where there is no WebGPU device to draw with.
    */
-  public static async open(): Promise<RendererDevice> {
+  public static async open(onLost: (reason: string) => void): Promise<RendererDevice> {
     const renderer: WebGPURenderer = new WebGPURenderer({
       alpha: true,
       antialias: false,
@@ -40,6 +41,9 @@ export class RendererDevice {
 
       throw new RendererDeviceFailure("WebGPU is unavailable, and this renderer has no fallback.");
     }
+
+    // Three's own answer only logs, which leaves a frozen view drawing nothing and saying nothing.
+    renderer.onDeviceLost = (info: { message: string }): void => onLost(info.message);
 
     return new RendererDevice(renderer);
   }

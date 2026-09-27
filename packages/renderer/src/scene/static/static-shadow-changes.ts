@@ -33,6 +33,12 @@ export interface IShadowChanges {
   readonly changes: ReadonlyArray<IShadowChange>;
 }
 
+/** A change as the log keeps it, its record written over as the ring comes round. */
+interface IShadowChangeRecord {
+  box: Nullable<Box3>;
+  isAnimated: boolean;
+}
+
 /** A caster that sways or moves: its broad bound and, for a listed draw, each of its places' spheres. */
 interface IAnimatedCaster {
   motion: EShadowCasterMotion;
@@ -48,7 +54,15 @@ interface IAnimatedCaster {
 export class StaticShadowChanges {
   private serial: number = 0;
   /** The last changes, a ring `LOG_LIMIT` long, the change of serial `s` at `s % LOG_LIMIT`. */
-  private readonly log: Array<IShadowChange> = new Array(LOG_LIMIT);
+  private readonly log: Array<IShadowChangeRecord> = Array.from({ length: LOG_LIMIT }, () => ({
+    box: null,
+    isAnimated: false,
+  }));
+  /** What `since` answers, written again each call: it is read at once, never kept. */
+  private readonly answer: { isEverywhere: boolean; changes: Array<IShadowChange> } = {
+    changes: [],
+    isEverywhere: false,
+  };
   /** Every caster's box, null where it is not known. */
   private readonly casting: Map<TShadowCasterKey, Nullable<Box3>> = new Map();
   private readonly animated: Map<TShadowCasterKey, IAnimatedCaster> = new Map();
@@ -120,17 +134,23 @@ export class StaticShadowChanges {
    */
   public since(since: number): IShadowChanges {
     const oldest: number = this.serial - Math.min(this.serial, LOG_LIMIT);
-    const changes: Array<IShadowChange> = [];
+    const { answer } = this;
 
-    if (since < oldest) {
-      return { changes, isEverywhere: true };
+    answer.changes.length = 0;
+    answer.isEverywhere = since < oldest;
+
+    if (answer.isEverywhere) {
+      return answer;
     }
 
     for (let serial: number = since + 1; serial <= this.serial; serial += 1) {
-      changes.push(this.log[serial % LOG_LIMIT]);
+      const change: IShadowChangeRecord = this.log[serial % LOG_LIMIT];
+
+      answer.changes.push(change);
+      answer.isEverywhere ||= change.box === null;
     }
 
-    return { changes, isEverywhere: changes.some((change: IShadowChange) => change.box === null) };
+    return answer;
   }
 
   /**
@@ -183,7 +203,10 @@ export class StaticShadowChanges {
   }
 
   private note(box: Nullable<Box3>, isAnimated: boolean): void {
+    const record: IShadowChangeRecord = this.log[(this.serial + 1) % LOG_LIMIT];
+
     this.serial += 1;
-    this.log[this.serial % LOG_LIMIT] = { box, isAnimated };
+    record.box = box;
+    record.isAnimated = isAnimated;
   }
 }

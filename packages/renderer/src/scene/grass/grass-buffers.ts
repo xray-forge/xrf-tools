@@ -24,6 +24,8 @@ export interface IGrassLevelBuffers {
   counts: StorageBufferAttribute;
   /** Where each model's range goes on filling, as the items are sorted into it. */
   cursors: StorageBufferAttribute;
+  /** Where each model's range starts among the sorted items, read by its draw rather than drawn as a first instance. */
+  starts: StorageBufferAttribute;
   /** One draw a model. */
   args: IndirectStorageBufferAttribute;
 }
@@ -63,6 +65,7 @@ export function createGrassLevelBuffers(grass: IRendererGrass): IGrassLevelBuffe
     bins: toStorage(grass.bins, 1),
     counts: new StorageBufferAttribute(new Uint32Array(modelCount + 1), 1),
     cursors: new StorageBufferAttribute(new Uint32Array(Math.max(modelCount, 1)), 1),
+    starts: new StorageBufferAttribute(new Uint32Array(Math.max(modelCount, 1)), 1),
     dither: new StorageBufferAttribute(createGrassDither(), 1),
     grid: toStorage(grass.grid, 1),
     gridLength: Math.max(grass.grid.length, 1),
@@ -90,13 +93,29 @@ export function createGrassItemBuffers(capacity: number): IGrassItemBuffers {
 }
 
 /**
+ * Items the lists are made to hold for a need: the next power of two, so a setting dragged up rebuilds them a handful of
+ * times rather than at every step, and one brought back down rebuilds nothing. Never past what one storage buffer may
+ * hold: a need past it plants what fits, the planting dropping the rest.
+ *
+ * @param needed - Items the settings plant at most.
+ * @param storageLimit - Bytes one storage buffer may hold and be bound whole.
+ * @returns The capacity to make the lists with.
+ */
+export function toGrassItemCapacity(needed: number, storageLimit: number): number {
+  const rounded: number = 2 ** Math.ceil(Math.log2(Math.max(needed, 1)));
+  const most: number = Math.floor(storageLimit / (GRASS_ITEM_VECTORS * 16));
+
+  return Math.max(1, Math.min(rounded, most));
+}
+
+/**
  * @param buffers - The level's buffers.
  * @returns Every storage buffer among them, for letting them go.
  */
 export function listGrassLevelStorage(buffers: IGrassLevelBuffers): Array<StorageBufferAttribute> {
-  const { counts, cursors, grid, slots, bins, triangles, dither, models, args } = buffers;
+  const { counts, cursors, starts, grid, slots, bins, triangles, dither, models, args } = buffers;
 
-  return [counts, cursors, grid, slots, bins, triangles, dither, models, args];
+  return [counts, cursors, starts, grid, slots, bins, triangles, dither, models, args];
 }
 
 /**

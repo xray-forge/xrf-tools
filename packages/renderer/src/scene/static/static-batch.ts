@@ -12,10 +12,7 @@ import {
 import { createSceneLines, createSceneMesh } from "#/scene/object/scene-mesh";
 import { StaticArena } from "#/scene/static/static-arena";
 import { EStaticDrawKind } from "#/scene/static/static-draw-kind";
-import { STATIC_DRAW_ARGUMENTS } from "#/uniforms/static-draw-buffers";
-
-/** Bytes one static draw's indirect arguments take. */
-const ARGUMENT_BYTES: number = STATIC_DRAW_ARGUMENTS * Uint32Array.BYTES_PER_ELEMENT;
+import { STATIC_DRAW_ARGUMENT_BYTES } from "#/uniforms/static-draw-buffers";
 
 /** What an idle batch's mesh holds instead of the material it last drew, so that one can go. */
 const IDLE_MATERIAL: Material = new Material();
@@ -117,7 +114,7 @@ export class StaticBatch {
   public add(slot: number): void {
     this.positions.set(slot, this.slots.length);
     this.slots.push(slot);
-    this.offsets.push(slot * ARGUMENT_BYTES);
+    this.offsets.push(slot * STATIC_DRAW_ARGUMENT_BYTES);
     this.invalidate();
   }
 
@@ -138,7 +135,7 @@ export class StaticBatch {
 
     if (last !== slot) {
       this.slots[position] = last;
-      this.offsets[position] = last * ARGUMENT_BYTES;
+      this.offsets[position] = last * STATIC_DRAW_ARGUMENT_BYTES;
       this.positions.set(last, position);
     }
 

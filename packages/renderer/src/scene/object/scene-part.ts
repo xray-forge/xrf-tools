@@ -12,6 +12,7 @@ import {
 } from "three/webgpu";
 
 import { IRendererObject } from "#/contract/scene/renderer-object";
+import { IRendererProgressive } from "#/contract/scene/renderer-progressive";
 import { ISurfaceMaterial } from "#/material/surface-material";
 import { ISceneSection } from "#/scene/geometry/scene-section";
 import { createSceneMesh } from "#/scene/object/scene-mesh";
@@ -188,7 +189,7 @@ export class ScenePart {
     spheres: Float32Array,
     lods: Nullable<Uint32Array> = null
   ): boolean {
-    const progressive = this.source.progressive;
+    const progressive: Maybe<IRendererProgressive> = this.source.progressive;
     const bands: number = progressive?.bands.length ?? 1;
 
     if (!this.takeSlots(bands)) {

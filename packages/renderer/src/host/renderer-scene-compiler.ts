@@ -55,7 +55,7 @@ export class RendererSceneCompiler {
 
     // Three builds a staged pipeline's shader after the compile returns, for whatever target is current then: left on
     // the one-channel shadow map, it gave every later shader one output, which a four-channel target refuses.
-    const previous = renderer.getRenderTarget();
+    const previous: Nullable<RenderTarget> = renderer.getRenderTarget();
     const compiles: Array<Promise<unknown>> = passes.map((pass: IRendererScenePass) => {
       renderer.setRenderTarget(pass.target);
 
@@ -69,13 +69,15 @@ export class RendererSceneCompiler {
 
     renderer.setRenderTarget(previous);
 
+    // A batch that failed commits too, its objects drawing what three makes of their materials: staged again, it would
+    // fail the same way every frame, and nothing would ever settle.
     Promise.all(compiles)
+      .catch((error: unknown) => console.error("Materials failed to compile:", error))
       .then(() => {
         if (generation === this.generation) {
           scene.commit(staging);
         }
       })
-      .catch((error: unknown) => console.error("Materials failed to compile:", error))
       .finally(() => {
         if (generation === this.generation) {
           this.isCompilingBatch = false;

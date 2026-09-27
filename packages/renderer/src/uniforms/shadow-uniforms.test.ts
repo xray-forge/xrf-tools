@@ -19,7 +19,10 @@ describe("ShadowUniforms", () => {
   it("draws as many cascades as the settings widths, and none while shadows are off", () => {
     const shadows: ShadowUniforms = new ShadowUniforms();
 
-    shadows.fit(createCamera(), new Vector3(0, -1, 0), DEFAULT_RENDERER_SHADOW_SETTINGS);
+    shadows.fit(createCamera(), new Vector3(0, -1, 0), {
+      ...DEFAULT_RENDERER_SHADOW_SETTINGS,
+      cascades: [20, 40, 160],
+    });
 
     expect(shadows.drawn).toBe(3);
 

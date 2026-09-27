@@ -2,17 +2,17 @@ import { Nullable } from "@xrf/types";
 import {
   BufferAttribute,
   BufferGeometry,
+  ComputeNode,
   DoubleSide,
   Mesh,
   PerspectiveCamera,
   Scene,
-  StorageBufferAttribute,
+  StorageBufferNode,
   WebGPURenderer,
 } from "three/webgpu";
 
 import { IRendererGrassSettings } from "#/contract/renderer-features";
 import { IRendererGrass, IRendererGrassModel } from "#/contract/scene/renderer-grass";
-import { destroyStorageAttribute } from "#/internals/renderer-backend";
 import { toGrassSurfaceShader } from "#/material/grass-surface.tsl";
 import { MaterialSamplers } from "#/material/material-samplers";
 import { SurfaceNodeMaterial } from "#/material/surface-node-material";
@@ -24,16 +24,15 @@ import {
   IGrassLevelBuffers,
   listGrassItemStorage,
   listGrassLevelStorage,
+  TGrassBuffers,
+  toGrassItemCapacity,
 } from "#/scene/grass/grass-buffers";
-import { createGrassPlanting, IGrassPlanting, toGrassItems } from "#/scene/grass/grass-planting.tsl";
+import { createGrassPlanting, IGrassPlanting, toGrassItems, toGrassStarts } from "#/scene/grass/grass-planting.tsl";
 import { createSceneMesh } from "#/scene/object/scene-mesh";
 import { RendererTextures } from "#/texture/renderer-textures";
 import { GrassUniforms } from "#/uniforms/grass-uniforms";
 import { RendererUniforms } from "#/uniforms/renderer-uniforms";
-import { STATIC_DRAW_ARGUMENTS } from "#/uniforms/static-draw-buffers";
-
-/** Bytes one draw's indirect arguments take. */
-const ARGUMENT_BYTES: number = STATIC_DRAW_ARGUMENTS * 4;
+import { STATIC_DRAW_ARGUMENT_BYTES } from "#/uniforms/static-draw-buffers";
 
 /** What one model draws with. */
 interface IGrassDraw {
@@ -59,9 +58,9 @@ export class SceneGrass {
   private level: Nullable<IGrassLevelBuffers> = null;
   private items: Nullable<IGrassItemBuffers> = null;
   private passes: Nullable<IGrassPlanting> = null;
+  /** The four passes, in the order a frame runs them. */
+  private dispatches: Array<ComputeNode> = [];
   private draws: Array<IGrassDraw> = [];
-  /** Buffers let go of, freed once a renderer is at hand. */
-  private retired: Array<StorageBufferAttribute> = [];
 
   public constructor(textures: RendererTextures, uniforms: RendererUniforms) {
     this.textures = textures;
@@ -95,7 +94,7 @@ export class SceneGrass {
     this.clearItems();
 
     if (this.level) {
-      this.retired.push(...listGrassLevelStorage(this.level));
+      this.rendererUniforms.retirement.retire(listGrassLevelStorage(this.level));
     }
 
     this.level = null;
@@ -110,9 +109,6 @@ export class SceneGrass {
    * @param settings - What the grass is set to.
    */
   public plant(renderer: WebGPURenderer, view: PerspectiveCamera, settings: IRendererGrassSettings): void {
-    this.retired.forEach((attribute: StorageBufferAttribute) => destroyStorageAttribute(renderer, attribute));
-    this.retired = [];
-
     const { grass, level, uniforms } = this;
 
     if (!grass || !level) {
@@ -123,12 +119,14 @@ export class SceneGrass {
     uniforms.follow(view, grass.sizeX, grass.sizeZ, grass.offsetX, grass.offsetZ);
 
     const needed: number = uniforms.slotCount * uniforms.candidateCount;
+    const capacity: number = toGrassItemCapacity(needed, this.rendererUniforms.staticDraws.storageLimit);
     const passes: IGrassPlanting =
-      this.passes && this.items && needed <= this.items.capacity ? this.passes : this.build(grass, level, needed);
+      this.passes && this.items && capacity <= this.items.capacity ? this.passes : this.build(grass, level, capacity);
 
     passes.plant.count = Math.max(uniforms.slotCount, 1);
-    passes.scatter.count = Math.max(needed, 1);
-    renderer.compute([passes.clear, passes.plant, passes.arrange, passes.scatter]);
+    // Past the lists' room the planting drops what does not fit, so nothing past it is scattered.
+    passes.scatter.count = Math.max(Math.min(needed, this.items?.capacity ?? capacity), 1);
+    renderer.compute(this.dispatches);
   }
 
   public dispose(): void {
@@ -140,23 +138,25 @@ export class SceneGrass {
     this.clearItems();
 
     const items: IGrassItemBuffers = createGrassItemBuffers(capacity);
-    const buffers = { ...level, ...items };
+    const buffers: TGrassBuffers = { ...level, ...items };
     const passes: IGrassPlanting = createGrassPlanting(
       buffers,
       this.uniforms,
       this.rendererUniforms.staticDraws.lod.discard
     );
-    const sorted = toGrassItems(items);
+    const sorted: StorageBufferNode<"vec4"> = toGrassItems(items);
+    const starts: StorageBufferNode<"uint"> = toGrassStarts(level);
 
     this.items = items;
     this.passes = passes;
+    this.dispatches = [passes.clear, passes.plant, passes.arrange, passes.scatter];
     this.draws = grass.models.map((model: IRendererGrassModel, index: number) => {
       const samplers: MaterialSamplers = new MaterialSamplers(
         this.textures,
         this.rendererUniforms.settings.textureBias
       );
       const shader: ISurfaceShader = toGrassSurfaceShader(
-        { height: model.height, items: sorted, surface: model.surface },
+        { height: model.height, items: sorted, start: starts.element(index), surface: model.surface },
         samplers,
         this.rendererUniforms
       );
@@ -173,7 +173,7 @@ export class SceneGrass {
       geometry.setAttribute("position", new BufferAttribute(model.positions, 3));
       geometry.setAttribute("uv", new BufferAttribute(model.uvs, 2));
       geometry.setIndex(new BufferAttribute(model.indices, 1));
-      geometry.setIndirect(level.args, index * ARGUMENT_BYTES);
+      geometry.setIndirect(level.args, index * STATIC_DRAW_ARGUMENT_BYTES);
 
       const mesh: Mesh = createSceneMesh(geometry, null, material);
 
@@ -196,7 +196,14 @@ export class SceneGrass {
     this.draws = [];
 
     if (this.items) {
-      this.retired.push(...listGrassItemStorage(this.items));
+      this.rendererUniforms.retirement.retire(listGrassItemStorage(this.items));
+    }
+
+    // Their capacity and model count are in their shaders, so each rebuild is four pipelines three keeps until told.
+    if (this.passes) {
+      const { clear, plant, arrange, scatter } = this.passes;
+
+      [clear, plant, arrange, scatter].forEach((compute: ComputeNode) => compute.dispose());
     }
 
     this.items = null;

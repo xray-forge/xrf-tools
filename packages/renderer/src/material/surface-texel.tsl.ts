@@ -6,7 +6,12 @@ import { IRendererSurface } from "#/contract/scene/renderer-surface";
 import { MaterialSamplers } from "#/material/material-samplers";
 import { ISurfaceTexel } from "#/material/surface-texel";
 import { decodeBumpGloss, decodeBumpNormal } from "#/shader/bump.tsl";
-import { toBaseCoordinate, toLightmapCoordinate } from "#/shader/packed-vertex.tsl";
+import {
+  toBaseCoordinate,
+  toLightmapCoordinate,
+  toSurfaceBinormal,
+  toSurfaceTangent,
+} from "#/shader/packed-vertex.tsl";
 import { toPlacedNormalView, toPlacedViewDirection } from "#/shader/placement.tsl";
 import { skinnedBinormal, skinnedTangent } from "#/shader/skinned-basis.tsl";
 import { toVertexHemi } from "#/shader/vertex-hemi.tsl";
@@ -88,8 +93,8 @@ export function toSurfaceTexel(
     );
     const tangentSpace: Node<"vec3"> = decodeBumpNormal(bump, companion);
     // `deffer_model_bump`: the authored basis through the model view, the decoded normal rotated along it.
-    const tangent: Node<"vec3"> = varying(toPlacedViewDirection(skinnedTangent, staticDraws));
-    const binormal: Node<"vec3"> = varying(toPlacedViewDirection(skinnedBinormal(), staticDraws));
+    const tangent: Node<"vec3"> = varying(toPlacedViewDirection(toSurfaceTangent(skinnedTangent), staticDraws));
+    const binormal: Node<"vec3"> = varying(toPlacedViewDirection(toSurfaceBinormal(skinnedBinormal()), staticDraws));
     const bumped: Node<"vec3"> = normalize(
       normalize(tangent)
         .mul(tangentSpace.x)

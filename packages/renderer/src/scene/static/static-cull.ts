@@ -1,8 +1,7 @@
 import { Nullable } from "@xrf/types";
-import { BufferAttribute, ComputeNode, PerspectiveCamera, Scene, Texture, Vector4, WebGPURenderer } from "three/webgpu";
+import { ComputeNode, PerspectiveCamera, Scene, Texture, Vector4, WebGPURenderer } from "three/webgpu";
 
 import { IRendererLodSettings } from "#/contract/renderer-features";
-import { destroyStorageAttribute } from "#/internals/renderer-backend";
 import { IStaticCullCounts } from "#/scene/static/static-cull-counts";
 import { createStaticCullShader, IStaticCullShader, IStaticViewCullShader } from "#/scene/static/static-cull.tsl";
 import { StaticDepthPyramid } from "#/scene/static/static-depth-pyramid";
@@ -33,7 +32,6 @@ export class StaticCull {
   /** The buffers' layout the shaders were built over. */
   private layout: number;
   /** Buffers the last growth replaced, freed a frame later, once no recording binds them. */
-  private retiring: Array<BufferAttribute> = [];
   private readonly pyramid: StaticDepthPyramid;
   /** What the second phase draws, which the G-buffer draws after the second cull. */
   private readonly late: Scene;
@@ -149,8 +147,6 @@ export class StaticCull {
    * @param renderer - The renderer drawing.
    */
   public dispatch(renderer: WebGPURenderer): void {
-    this.retire(renderer);
-
     if (!this.isPending) {
       return;
     }
@@ -369,7 +365,7 @@ export class StaticCull {
   /** Builds the shaders again over buffers that grew, and sizes their dispatches to what is in use. */
   private build(): void {
     if (this.layout !== this.buffers.layout) {
-      const planes = this.shader.planes;
+      const planes: ReadonlyArray<Vector4> = this.shader.planes;
 
       this.disposeShader();
       // Every cascade culls again against the buffers as they are laid out now.
@@ -396,11 +392,5 @@ export class StaticCull {
       cull[0].count = slots;
       cull[1].count = rows;
     }
-  }
-
-  /** Frees the GPU buffers a growth replaced a frame ago, and holds the ones replaced since for the next frame. */
-  private retire(renderer: WebGPURenderer): void {
-    this.retiring.forEach((attribute: BufferAttribute) => destroyStorageAttribute(renderer, attribute));
-    this.retiring = this.buffers.takeRetired();
   }
 }

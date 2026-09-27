@@ -164,8 +164,11 @@ export const DEFAULT_RENDERER_LIGHTS_SETTINGS: IRendererLightsSettings = {
   shadowFilter: ERendererLightShadowFilter.ENGINE,
 };
 
+/** The engine's three cascade widths in metres (`render_phase_sun.cpp`), and a fourth reaching three times as far. */
+export const RENDERER_SHADOW_CASCADE_WIDTHS: ReadonlyArray<number> = [20, 40, 160, 480];
+
 /** Cascades the sun's shadow can be cut into at most. */
-export const RENDERER_MAX_SHADOW_CASCADES: number = 4;
+export const RENDERER_MAX_SHADOW_CASCADES: number = RENDERER_SHADOW_CASCADE_WIDTHS.length;
 
 /**
  * The sun's shadow: cascades of maps, each a square of the level seen from the sun, drawn every frame through the
@@ -200,11 +203,19 @@ export interface IRendererShadowSettings {
   isStaggered: boolean;
 }
 
-/** The engine's own cascades, and a filter a texel wide. */
+/**
+ * @param settings - The sun's shadow settings.
+ * @returns Cascades drawn: as many as widths, at most `RENDERER_MAX_SHADOW_CASCADES`, and none while shadows are off.
+ */
+export function toShadowCascadeCount(settings: IRendererShadowSettings): number {
+  return settings.isEnabled ? Math.min(settings.cascades.length, RENDERER_MAX_SHADOW_CASCADES) : 0;
+}
+
+/** Every cascade, the engine's three and the far one, and a filter a texel wide. */
 export const DEFAULT_RENDERER_SHADOW_SETTINGS: IRendererShadowSettings = {
   bias: 1.5,
   blend: 0.1,
-  cascades: [20, 40, 160],
+  cascades: RENDERER_SHADOW_CASCADE_WIDTHS,
   filter: 1,
   isEnabled: true,
   isStaggered: true,

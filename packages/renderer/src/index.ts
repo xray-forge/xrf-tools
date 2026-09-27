@@ -4,5 +4,4 @@ export * from "#/contract/index";
 export * from "#/dds/index";
 export * from "#/frame/index";
 export * from "#/geometry/index";
-export * from "#/input/index";
 export * from "#/lighting/index";

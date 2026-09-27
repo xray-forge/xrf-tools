@@ -2,20 +2,23 @@ import { Nullable } from "@xrf/types";
 import { PerspectiveCamera, Vector2 } from "three/webgpu";
 
 import { RendererCaptures } from "#/capture/renderer-captures";
+import { ERenderInput, toRenderInputEvent } from "#/contract/renderer-input";
 import { ERendererRequest, ERendererResponse, TRendererRequest, TRendererResponse } from "#/contract/renderer-messages";
 import { IRendererSettings } from "#/contract/renderer-settings";
 import { IRendererViewSize } from "#/contract/renderer-view-size";
 import { RendererDevice } from "#/device/renderer-device";
 import { RendererDeviceFailure } from "#/device/renderer-device-failure";
 import { shouldDrawFrame } from "#/frame/render-frame-limit";
+import { toFramesInFlight } from "#/frame/render-frame-pacing";
 import { RendererFrameGraph } from "#/graph/renderer-frame-graph";
 import { RendererCameraRig } from "#/host/renderer-camera-rig";
 import { RendererFrameLoop, TRendererFrameScheduler } from "#/host/renderer-frame-loop";
+import { RendererFramePacing } from "#/host/renderer-frame-pacing";
 import { RendererFrameStats } from "#/host/renderer-frame-stats";
 import { RendererSceneCompiler } from "#/host/renderer-scene-compiler";
 import { RendererView } from "#/host/renderer-view";
 import { RenderProxyElement } from "#/input/render-proxy-element";
-import { toStorageLimit } from "#/internals/renderer-backend";
+import { toStorageLimit, whenSubmittedWorkDone } from "#/internals/renderer-backend";
 import { DEFAULT_RENDERER_LIGHTING } from "#/lighting/default-lighting";
 import { RendererOverlays } from "#/scene/overlay/renderer-overlays";
 import { RendererScene } from "#/scene/renderer-scene";
@@ -38,6 +41,7 @@ export type TRendererReply = (response: TRendererResponse, transfers?: Array<Tra
 export class RendererHost {
   private readonly reply: TRendererReply;
   private readonly loop: RendererFrameLoop;
+  private readonly pacing: RendererFramePacing = new RendererFramePacing(() => this.ensureScheduled());
   private readonly element: RenderProxyElement;
   private readonly rig: RendererCameraRig;
   private readonly uniforms: RendererUniforms = new RendererUniforms();
@@ -210,7 +214,7 @@ export class RendererHost {
 
     const generation: number = this.generation;
 
-    RendererDevice.open()
+    RendererDevice.open((reason: string) => this.lose(generation, reason))
       .then((device: RendererDevice) => {
         if (generation !== this.generation) {
           device.dispose();
@@ -240,10 +244,13 @@ export class RendererHost {
 
   private configure(settings: IRendererSettings): void {
     this.settings = settings;
+    this.pacing.limit = toFramesInFlight(settings.pacing);
     this.uniforms.configure(settings);
     // The features' passes join or leave the frame here, never while one is drawn.
     this.graph.configure(settings.features);
     this.scene.setWireframe(settings.isWireframe);
+    // A limit raised lets a frame start that was waiting on the GPU.
+    this.ensureScheduled();
   }
 
   private attachView(canvas: OffscreenCanvas, size: IRendererViewSize): void {
@@ -266,14 +273,16 @@ export class RendererHost {
     }
 
     this.device?.renderer.setCanvasTarget(this.device.headless);
+    // Its canvas goes before it can blur, so a key held as it went would otherwise fly the next view on its own.
+    this.element.dispatch(toRenderInputEvent(ERenderInput.BLUR, new Event(ERenderInput.BLUR)));
     this.view.hide();
     this.view = null;
     this.stats.restart();
   }
 
-  /** Keeps the loop running while there is a view to draw or a capture to answer. */
+  /** Keeps the loop running while there is a view to draw or a capture to answer, once the GPU is ready for a frame. */
   private ensureScheduled(): void {
-    if (this.device && (this.view || this.captures.hasPending)) {
+    if (this.device && (this.view || this.captures.hasPending) && this.pacing.isReady) {
       this.loop.request();
     }
   }
@@ -281,17 +290,18 @@ export class RendererHost {
   private frame(now: number): void {
     const { device, view, settings } = this;
 
-    if (!device || !settings) {
+    if (!device || !settings || !this.pacing.isReady) {
       return;
     }
 
+    this.uniforms.freeRetired(device.renderer);
     // Before the frame, and whether or not one is drawn: a capture without a view waits on the same uploads.
     this.scene.textures.upload(device.renderer, TEXTURE_UPLOAD_BUDGET);
     this.scene.advance();
 
     let drawn: Nullable<Vector2> = null;
 
-    if (view && (this.captures.hasPending || shouldDrawFrame(now, this.drawnAt, settings.frameRateLimit))) {
+    if (view && (this.captures.hasPending || shouldDrawFrame(now, this.drawnAt, settings.pacing.rateLimit))) {
       // A frame still settling shows the scene half changed, and one that allocated the targets reads back cleared: a
       // capture of either waits for a later frame.
       const isSettled: boolean = !this.scene.hasPending && !this.compiler.isCompiling && !this.scene.textures.hasQueued;
@@ -340,7 +350,8 @@ export class RendererHost {
     // Every frame: a device started again sizes the frame again at the same size.
     const isResized: boolean = this.graph.resize(renderer, this.drawingSize.x, this.drawingSize.y);
     // The first frame of a view, or of a camera that jumped, has no frame before it to follow.
-    const isCut: boolean = this.drawnAt === null || this.rig.takeCut();
+    // The rig's flag taken first, so a view's first frame spends it rather than leaving it to the second.
+    const isCut: boolean = this.rig.takeCut() || this.drawnAt === null;
 
     this.rig.update(this.drawnAt === null ? 0 : (now - this.drawnAt) / 1000);
     this.drawnAt = now;
@@ -389,6 +400,10 @@ export class RendererHost {
       },
       device.inspector
     );
+    if (Number.isFinite(this.pacing.limit)) {
+      this.pacing.submitted(whenSubmittedWorkDone(renderer));
+    }
+
     this.stats.endFrame(performance.now() - startedAt, device);
 
     if (this.stats.takeReport(now)) {
@@ -413,9 +428,18 @@ export class RendererHost {
   }
 
   /** Lets the device go, keeping what the consumer put and the view it attached, so a later start draws the same. */
+  /** A device lost once up: the renderer stops, and says so, as one that could not start does. */
+  private lose(generation: number, reason: string): void {
+    if (generation === this.generation) {
+      this.stop();
+      this.reply({ kind: ERendererResponse.FAILED, reason: `The GPU device was lost: ${reason}` });
+    }
+  }
+
   private stop(): void {
     this.generation += 1;
     this.loop.cancel();
+    this.pacing.reset();
     this.view?.hide();
     this.device?.dispose();
     this.device = null;

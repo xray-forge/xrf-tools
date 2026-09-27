@@ -153,13 +153,14 @@ export class SceneObject {
     }
 
     if (this.instances) {
-      // Parts drawn as instanced static draws are culled place by place on the GPU.
-      const plain: Array<ScenePart> = this.parts.filter((part: ScenePart) => !part.isStatic);
+      // Parts drawn as instanced static draws are culled place by place on the GPU; the rest here, by one count.
+      let count: Nullable<number> = null;
 
-      if (plain.length) {
-        const count: number = this.instances.cull(view);
-
-        plain.forEach((part: ScenePart) => part.cullInstances(count));
+      for (const part of this.parts) {
+        if (!part.isStatic) {
+          count ??= this.instances.cull(view);
+          part.cullInstances(count);
+        }
       }
 
       return;

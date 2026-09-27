@@ -204,9 +204,17 @@ describe("SceneLights", () => {
     lights.shadows.markDrawn();
     lights.update(createFrame({ lod }));
 
-    const pointArea: number = (0.5 * 4) / (60 ** 2 + 0.00001);
+    // A point fades face by face, each omni part's sphere its range over root two across, that far along the face: the
+    // one facing the camera nearer, the one facing away farther; its colour stays whole.
+    const part: number = 4 * Math.SQRT1_2;
 
-    expect(readVector(lights, 0, LIGHT_RECORD.color)[0]).toBeCloseTo(0.5 * Math.sqrt((pointArea - 0.0001) / 0.0009), 6);
+    function toFaceFade(distance: number): number {
+      return Math.sqrt(((0.5 * part) / (distance ** 2 + 0.00001) - 0.0001) / 0.0009);
+    }
+
+    expect(readVector(lights, 0, LIGHT_RECORD.color)[0]).toBeCloseTo(0.5, 6);
+    expect(readVector(lights, 0, LIGHT_RECORD.faces + 4)[3]).toBeCloseTo(toFaceFade(60 - part), 5);
+    expect(readVector(lights, 0, LIGHT_RECORD.faces + 5)[3]).toBeCloseTo(toFaceFade(60 + part), 5);
   });
 
   it("lights a shadowed light only once its faces are drawn, with its faces' squares", () => {

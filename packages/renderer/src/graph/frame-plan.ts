@@ -6,8 +6,8 @@ import {
   IRendererFeatureSettings,
   isRendererSmoothing,
   isRendererTemporal,
-  RENDERER_MAX_SHADOW_CASCADES,
   toRendererUpscale,
+  toShadowCascadeCount,
   TRendererSmoothingAntialiasing,
   TRendererTemporalAntialiasing,
 } from "#/contract/renderer-features";
@@ -47,7 +47,7 @@ export function toFramePlan(features: IRendererFeatureSettings): IRendererFrameP
   const upscale: number = toRendererUpscale(features);
   const resolve: Nullable<TRendererTemporalAntialiasing> = isRendererTemporal(antialiasing) ? antialiasing : null;
   const smoothing: Nullable<TRendererSmoothingAntialiasing> = isRendererSmoothing(antialiasing) ? antialiasing : null;
-  const count: number = shadows.isEnabled ? Math.min(shadows.cascades.length, RENDERER_MAX_SHADOW_CASCADES) : 0;
+  const count: number = toShadowCascadeCount(shadows);
 
   return {
     ambientOcclusion: features.ambientOcclusion.isEnabled ? features.ambientOcclusion.quality : null,
