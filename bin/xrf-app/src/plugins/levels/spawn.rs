@@ -9,7 +9,7 @@ use xrf_vfs::{XrayLogicalPath, XrayProbe};
 
 use crate::core::assets::read_located_asset;
 use crate::plugins::levels::report::report_spawn;
-use crate::plugins::levels::state::{LevelSpawn, SelectedLevel};
+use crate::plugins::levels::state::{LevelSource, LevelSpawn, SelectedLevel};
 
 /// Where the game keeps its spawn (`$game_spawn$`).
 const SPAWNS_DIRECTORY: &str = "spawns";
@@ -26,15 +26,21 @@ const SPAWN_FILE: &str = "all.spawn";
 pub fn get_level_spawn(current: &SelectedLevel, probe: &XrayProbe) -> Result<Arc<LevelSpawn>, String> {
   current
     .spawn
-    .get_or_init(|| {
-      let level: String = current
-        .source
-        .get_name()
-        .ok_or_else(|| format!("Level {} has no name to find its spawn by", current.source.get_label()))?;
-
-      read_level_spawn(probe, &level).map(Arc::new)
-    })
+    .get_or_init(|| read_source_spawn(&current.source, probe))
     .clone()
+}
+
+/// The spawned objects of a level, read by its name.
+///
+/// # Errors
+///
+/// Returns the reason when the spawn cannot be read or the level has no name to find its objects by.
+pub fn read_source_spawn(source: &LevelSource, probe: &XrayProbe) -> Result<Arc<LevelSpawn>, String> {
+  let level: String = source
+    .get_name()
+    .ok_or_else(|| format!("Level {} has no name to find its spawn by", source.get_label()))?;
+
+  read_level_spawn(probe, &level).map(Arc::new)
 }
 
 /// The objects standing on a level, by the level each game vertex belongs to, reading nothing of the spawn but its
@@ -54,5 +60,8 @@ fn read_level_spawn(probe: &XrayProbe, level: &str) -> Result<LevelSpawn, String
 
   report_spawn(level, path.as_str(), &read, started);
 
-  Ok(LevelSpawn { objects: read.objects })
+  Ok(LevelSpawn {
+    arrivals: read.arrivals,
+    objects: read.objects,
+  })
 }

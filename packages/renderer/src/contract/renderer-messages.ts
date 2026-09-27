@@ -76,6 +76,8 @@ export enum ERendererRequest {
   INPUT = "@renderer/input",
   /** Draw a picture of the frame or of a texture, and hand it back. */
   CAPTURE = "@renderer/capture",
+  /** Say when a frame has been drawn with everything asked for so far on the GPU and compiled. */
+  SETTLE = "@renderer/settle",
   /** These requests, made in one page task, applied in one worker task so no frame shows half of them. */
   BATCH = "@renderer/batch",
 }
@@ -96,6 +98,8 @@ export enum ERendererResponse {
   CURSOR = "@renderer/cursor",
   /** The picture a capture asked for, or nothing where there was none to draw. */
   CAPTURED = "@renderer/captured",
+  /** A frame was drawn with everything asked for before a settle on the GPU and compiled. */
+  SETTLED = "@renderer/settled",
 }
 
 /** Every message a consumer sends. */
@@ -132,6 +136,7 @@ export type TRendererRequest =
   | { kind: ERendererRequest.CAMERA_COMMAND; command: TRendererCameraCommand }
   | { kind: ERendererRequest.INPUT; event: IRenderInputEvent }
   | { kind: ERendererRequest.CAPTURE; id: number; source: TRendererCaptureSource }
+  | { kind: ERendererRequest.SETTLE; id: number }
   | { kind: ERendererRequest.BATCH; requests: ReadonlyArray<TRendererRequest> };
 
 /** Every message the renderer sends. */
@@ -141,7 +146,8 @@ export type TRendererResponse =
   | { kind: ERendererResponse.REPORT; report: IRendererReport }
   | { kind: ERendererResponse.TEXTURE_REFUSED; key: string; refusal: IDdsRefusal }
   | { kind: ERendererResponse.CURSOR; cursor: string }
-  | { kind: ERendererResponse.CAPTURED; id: number; image: Nullable<ImageBitmap> };
+  | { kind: ERendererResponse.CAPTURED; id: number; image: Nullable<ImageBitmap> }
+  | { kind: ERendererResponse.SETTLED; id: number };
 
 /**
  * What a request carries that has to be moved rather than copied.

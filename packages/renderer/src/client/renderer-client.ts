@@ -58,10 +58,12 @@ export class RendererClient {
 
   private readonly worker: Worker;
   private readonly captures: Map<number, (image: Nullable<ImageBitmap>) => void> = new Map();
+  private readonly settles: Map<number, () => void> = new Map();
   private view: Nullable<IRendererClientView> = null;
   /** Requests made in this page task, posted together once it ends. */
   private queue: Array<TRendererRequest> = [];
   private captureId: number = 0;
+  private settleId: number = 0;
 
   public constructor({ worker, settings, onReady, onFailed, onReport, onTextureRefused }: IRendererClientOptions) {
     this.worker = worker;
@@ -91,6 +93,14 @@ export class RendererClient {
           this.captures.delete(response.id);
 
           return resolve ? resolve(response.image) : response.image?.close();
+        }
+
+        case ERendererResponse.SETTLED: {
+          const resolve: Maybe<() => void> = this.settles.get(response.id);
+
+          this.settles.delete(response.id);
+
+          return resolve?.();
         }
       }
     };
@@ -298,6 +308,22 @@ export class RendererClient {
     });
   }
 
+  /**
+   * Waits for a frame drawn with everything asked for so far: its textures on the GPU and its materials compiled. The
+   * request follows every one before it, so a frame drawn before the last of them cannot answer it. Only a frame drawn
+   * into a view does.
+   *
+   * @returns Settles once such a frame has been drawn, or once the renderer is disposed.
+   */
+  public settle(): Promise<void> {
+    const id: number = ++this.settleId;
+
+    return new Promise((resolve) => {
+      this.settles.set(id, resolve);
+      this.post({ id, kind: ERendererRequest.SETTLE });
+    });
+  }
+
   /** Stops the renderer and its thread. */
   public dispose(): void {
     this.detach();
@@ -306,6 +332,8 @@ export class RendererClient {
     this.worker.terminate();
     this.captures.forEach((resolve) => resolve(null));
     this.captures.clear();
+    this.settles.forEach((resolve) => resolve());
+    this.settles.clear();
   }
 
   /**

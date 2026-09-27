@@ -1,4 +1,5 @@
 use std::fs::File;
+use std::io::Read;
 use std::path::Path;
 
 use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
@@ -28,6 +29,17 @@ pub struct LevelAiHeader {
 impl LevelAiHeader {
   /// Byte size of the header as laid out by the engine.
   pub const SIZE: u64 = 56;
+
+  /// `XRAI_VERSION_BORSHT_BIG`, the first version whose nodes pack their place into six bytes rather than five.
+  pub const WIDE_POSITION_VERSION: u32 = 12;
+
+  /// `EPS_L`, which the engine pads the grid's row length with (`xrCore/math_constants.h`).
+  const ROW_EPSILON: f32 = 0.001;
+
+  /// Nodes a row of the grid holds, which is how a node's packed place is unpacked (`CLevelGraph::Initialize`).
+  pub fn get_row_length(&self) -> u32 {
+    ((self.aabb_max.z - self.aabb_min.z) / self.size + Self::ROW_EPSILON + 1.5).floor() as u32
+  }
 }
 
 impl ChunkReadWrite for LevelAiHeader {
@@ -86,6 +98,70 @@ impl LevelAiFile {
     Self::read_from_chunk::<T, _>(&mut ChunkReader::from_file(file)?)
   }
 
+  /// Finds the node standing nearest a point across the ground, the lower of two at one place, reading nothing of
+  /// the nodes but their places: every node ends in it, `NodePosition4` or `NodePosition12` by version.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the header cannot be read or the nodes do not divide into the count it declares.
+  pub fn find_nearest_node<T: ByteOrder, D: ChunkDataSource>(
+    reader: &mut ChunkReader<D>,
+    x: f32,
+    z: f32,
+  ) -> XrfResult<Option<Vector3d<f32>>> {
+    let header: LevelAiHeader = reader.read_xr::<T, _>()?;
+    let remaining: u64 = reader.read_bytes_remain();
+
+    if header.count == 0 {
+      return Ok(None);
+    }
+
+    let position_size: u64 = if header.version >= LevelAiHeader::WIDE_POSITION_VERSION {
+      6
+    } else {
+      5
+    };
+    let stride: u64 = remaining / u64::from(header.count);
+
+    if !remaining.is_multiple_of(u64::from(header.count)) || stride < position_size {
+      return Err(XrfError::new_invalid_error(format!(
+        "Level AI-map nodes are {remaining} bytes, which do not divide into {} nodes",
+        header.count
+      )));
+    }
+
+    let mut nodes: Vec<u8> = vec![0; remaining as usize];
+
+    reader.read_exact(&mut nodes)?;
+
+    let row_length: u32 = header.get_row_length().max(1);
+    let mut nearest: Option<(f32, Vector3d<f32>)> = None;
+
+    for node in nodes.chunks_exact(stride as usize) {
+      let place: &[u8] = &node[node.len() - position_size as usize..];
+      let (xz, y): (u32, u16) = if position_size == 6 {
+        (T::read_u32(&place[..4]), T::read_u16(&place[4..]))
+      } else {
+        (T::read_u24(&place[..3]), T::read_u16(&place[3..]))
+      };
+      let position: Vector3d<f32> = Vector3d::new(
+        (xz / row_length) as f32 * header.size + header.aabb_min.x,
+        f32::from(y) / f32::from(u16::MAX) * header.size_y + header.aabb_min.y,
+        (xz % row_length) as f32 * header.size + header.aabb_min.z,
+      );
+      let distance: f32 = (position.x - x).powi(2) + (position.z - z).powi(2);
+
+      if nearest
+        .as_ref()
+        .is_none_or(|(best, at)| distance < *best || (distance == *best && position.y < at.y))
+      {
+        nearest = Some((distance, position));
+      }
+    }
+
+    Ok(nearest.map(|(_, position)| position))
+  }
+
   /// Reads the header from a chunk reader over any data source.
   ///
   /// The route an archived level file takes: a volume holds no file to slice, only bytes.
@@ -101,7 +177,7 @@ mod tests {
   use std::io::Write;
 
   use uuid::uuid;
-  use xrf_chunk::{ChunkReadWrite, ChunkWriter, XRayByteOrder};
+  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
   use xrf_error::XrfResult;
   use xrf_math::Vector3d;
   use xrf_test_utils::utils::{
@@ -142,6 +218,87 @@ mod tests {
     )?)?;
 
     assert_eq!(read.header, original);
+
+    Ok(())
+  }
+
+  /// A map of the given version over a 10 m grid from the origin, three metres tall, one node a place.
+  fn new_map(version: u32, places: &[(u32, u16)]) -> XrfResult<Vec<u8>> {
+    let header: LevelAiHeader = LevelAiHeader {
+      aabb_max: Vector3d::new(90.0, 3.0, 90.0),
+      aabb_min: Vector3d::new(0.0, 0.0, 0.0),
+      count: places.len() as u32,
+      guid: uuid!("78e55023-10b1-426f-9247-bb680e5fe0b7"),
+      size: 10.0,
+      size_y: 3.0,
+      version,
+    };
+    let mut writer: ChunkWriter = ChunkWriter::new();
+
+    header.write::<XRayByteOrder>(&mut writer)?;
+
+    let mut bytes: Vec<u8> = writer.flush_raw_into_buffer()?;
+
+    for (xz, y) in places {
+      // Links, covers and plane, which the search skips.
+      bytes.extend([0u8; 18]);
+
+      if version >= LevelAiHeader::WIDE_POSITION_VERSION {
+        bytes.extend(xz.to_le_bytes());
+      } else {
+        bytes.extend(&xz.to_le_bytes()[..3]);
+      }
+
+      bytes.extend(y.to_le_bytes());
+    }
+
+    Ok(bytes)
+  }
+
+  #[test]
+  fn finds_the_node_nearest_a_point_across_the_ground() -> XrfResult {
+    // A row is ten nodes: 23 is the fourth row's fourth node, at x 20 and z 30.
+    let bytes: Vec<u8> = new_map(10, &[(0, 0), (23, u16::MAX), (99, 0)])?;
+    let nearest: Vector3d<f32> =
+      LevelAiFile::find_nearest_node::<XRayByteOrder, _>(&mut ChunkReader::from_vec(bytes)?, 21.0, 29.0)?
+        .expect("a node");
+
+    assert_eq!(nearest, Vector3d::new(20.0, 3.0, 30.0));
+
+    Ok(())
+  }
+
+  #[test]
+  fn reads_the_wide_places_of_the_big_map_versions() -> XrfResult {
+    let bytes: Vec<u8> = new_map(12, &[(0, 0), (99, 0)])?;
+    let nearest: Vector3d<f32> =
+      LevelAiFile::find_nearest_node::<XRayByteOrder, _>(&mut ChunkReader::from_vec(bytes)?, 88.0, 88.0)?
+        .expect("a node");
+
+    assert_eq!(nearest, Vector3d::new(90.0, 0.0, 90.0));
+
+    Ok(())
+  }
+
+  #[test]
+  fn takes_the_lower_of_two_nodes_at_one_place() -> XrfResult {
+    let bytes: Vec<u8> = new_map(10, &[(0, u16::MAX), (0, 0)])?;
+    let nearest: Vector3d<f32> =
+      LevelAiFile::find_nearest_node::<XRayByteOrder, _>(&mut ChunkReader::from_vec(bytes)?, 0.0, 0.0)?
+        .expect("a node");
+
+    assert_eq!(nearest.y, 0.0);
+
+    Ok(())
+  }
+
+  #[test]
+  fn nodes_that_do_not_divide_into_their_count_are_an_error() -> XrfResult {
+    let mut bytes: Vec<u8> = new_map(10, &[(0, 0), (1, 0)])?;
+
+    bytes.pop();
+
+    assert!(LevelAiFile::find_nearest_node::<XRayByteOrder, _>(&mut ChunkReader::from_vec(bytes)?, 0.0, 0.0).is_err());
 
     Ok(())
   }

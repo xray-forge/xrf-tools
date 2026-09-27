@@ -14,6 +14,7 @@ import { LevelSurfacesPanel } from "@/core/level/components/panels/LevelSurfaces
 import { LevelCameraAction } from "@/core/level/components/preview/LevelCameraAction";
 import { LevelPreviewActivity } from "@/core/level/components/preview/LevelPreviewActivity";
 import { LevelPreviewCoordinates } from "@/core/level/components/preview/LevelPreviewCoordinates";
+import { LevelPreviewCover } from "@/core/level/components/preview/LevelPreviewCover";
 import { LevelPreviewEmpty } from "@/core/level/components/preview/LevelPreviewEmpty";
 import { LevelPreviewMetrics } from "@/core/level/components/preview/LevelPreviewMetrics";
 import { LevelPreviewToolbar } from "@/core/level/components/preview/LevelPreviewToolbar";
@@ -24,7 +25,6 @@ import { SettingsService } from "@/core/settings/services/settings";
 import { EditorFileHeader } from "@/core/shell/editor/EditorFileHeader";
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { IEditorPanel, useEditorPanels } from "@/core/shell/editor-shell";
-import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
@@ -159,11 +159,7 @@ export function LevelPreviewLayout({
 
           {!isOpen && !isLoading ? <LevelPreviewEmpty error={error} onRetry={onRetry} /> : null}
 
-          {isLoading ? (
-            <div className={"pointer-events-none absolute inset-0 flex items-center justify-center"}>
-              <DelayedProgress isOnViewport={true} label={"Opening level…"} />
-            </div>
-          ) : null}
+          {isOpen || isLoading ? <LevelPreviewCover isLoading={isLoading} /> : null}
 
           <LevelPreviewActivity isOpen={isOpen} isLoading={isLoading} />
         </div>

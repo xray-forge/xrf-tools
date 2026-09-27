@@ -28,6 +28,25 @@ export class LevelViewportService {
   public textureReport: ILevelTextureReport = EMPTY_LEVEL_TEXTURE_REPORT;
 
   /**
+   * Whether the viewport shows the level: not until a frame has been drawn with everything the level opens with, so
+   * a level never assembles in front of whoever opened it.
+   */
+  @RefObservable()
+  public isRevealed: boolean = false;
+
+  /** Shows the level, drawn whole. */
+  @BoundAction()
+  public reveal(): void {
+    this.isRevealed = true;
+  }
+
+  /** Hides it again, for a level about to open. */
+  @BoundAction()
+  public conceal(): void {
+    this.isRevealed = false;
+  }
+
+  /**
    * Takes what the textures came to.
    *
    * @param report - What each reference became, once the renderer had uploaded it.
@@ -62,6 +81,7 @@ export class LevelViewportService {
     this.timings = EMPTY_RENDERER_PASS_TIMINGS;
     this.camera = null;
     this.textureReport = EMPTY_LEVEL_TEXTURE_REPORT;
+    this.isRevealed = false;
   }
 
   @OnDeactivation()

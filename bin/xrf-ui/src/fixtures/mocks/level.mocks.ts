@@ -187,6 +187,7 @@ export function mockSelectedLevelDescription(
     portals: 0,
     roots: createRoots([]),
     sectors: [mockSectorOutline()],
+    start: null,
     shaderEntries: 4,
     source: { kind: "directory", path: "C:\\levels\\zaton" },
     surfaces: [],

@@ -4,9 +4,6 @@ use crate::data::details::details_model::DetailsModel;
 use crate::data::visual::geometry::visual_section::VisualSection;
 
 /// Everything about a level's packed grass except the bytes themselves.
-///
-/// The slots and the collision triangles stay in the engine's own space, because the renderer plants them with the
-/// engine's own arithmetic and only converts what it planted.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]

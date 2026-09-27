@@ -7,6 +7,7 @@ pub mod read;
 pub mod report;
 pub mod spawn;
 pub mod spawn_visuals;
+pub mod start;
 pub mod state;
 pub mod surfaces;
 pub mod textures;

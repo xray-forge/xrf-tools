@@ -49,6 +49,8 @@ export class RendererHost {
   private readonly overlays: RendererOverlays;
   private readonly graph: RendererFrameGraph;
   private readonly captures: RendererCaptures;
+  /** Settles asked for since the last frame drawn with everything on the GPU and compiled. */
+  private readonly settles: Array<number> = [];
   private readonly compiler: RendererSceneCompiler = new RendererSceneCompiler();
   private readonly stats: RendererFrameStats = new RendererFrameStats();
   private readonly drawingSize: Vector2 = new Vector2();
@@ -204,6 +206,11 @@ export class RendererHost {
 
         return this.ensureScheduled();
 
+      case ERendererRequest.SETTLE:
+        this.settles.push(request.id);
+
+        return this.ensureScheduled();
+
       case ERendererRequest.BATCH:
         return this.scene.transact(() => request.requests.forEach((it: TRendererRequest) => this.take(it)));
     }
@@ -310,6 +317,11 @@ export class RendererHost {
       const isResized: boolean = this.draw(now, device, view, settings);
 
       drawn = isSettled && !isResized ? this.drawingSize : null;
+
+      if (drawn) {
+        this.answerSettles();
+      }
+
       this.compiler.compile(device.renderer, this.scene, this.graph.scenePasses, this.rig.camera, {
         camera: this.uniforms.shadows.cascades[0].camera,
         target: this.graph.targets.shadows[0],
@@ -427,6 +439,15 @@ export class RendererHost {
     }
 
     return isResized;
+  }
+
+  /** Tells every settle waiting that a frame was drawn with everything it came after. */
+  private answerSettles(): void {
+    for (const id of this.settles) {
+      this.reply({ id, kind: ERendererResponse.SETTLED });
+    }
+
+    this.settles.length = 0;
   }
 
   /** Lets the device go, keeping what the consumer put and the view it attached, so a later start draws the same. */

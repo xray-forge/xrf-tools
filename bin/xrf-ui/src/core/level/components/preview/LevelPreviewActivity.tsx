@@ -3,7 +3,7 @@ import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
 import { LevelPreviewStatus } from "@/core/level/components/preview/LevelPreviewStatus";
-import { ILevelStreamProgress, LevelLoadService } from "@/core/level/services";
+import { ILevelStreamProgress, LevelLoadService, LevelViewportService } from "@/core/level/services";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 
 interface ILevelPreviewActivityProps {
@@ -19,6 +19,7 @@ interface ILevelPreviewActivityProps {
  */
 export function LevelPreviewActivity({ isOpen, isLoading }: ILevelPreviewActivityProps): ReactElement {
   const loadService: LevelLoadService = useInjection(LevelLoadService);
+  const viewportService: LevelViewportService = useInjection(LevelViewportService);
   const streaming: ILevelStreamProgress = loadService.streaming;
   const isStreaming: boolean = streaming.total > 0;
 
@@ -32,7 +33,7 @@ export function LevelPreviewActivity({ isOpen, isLoading }: ILevelPreviewActivit
 
   return (
     <>
-      {!isLoading && isStreaming ? (
+      {!isLoading && isStreaming && viewportService.isRevealed ? (
         <div className={"pointer-events-none absolute inset-x-0 bottom-0 flex justify-center pb-6"}>
           <DelayedProgress
             data-testid={"level-stream-progress"}

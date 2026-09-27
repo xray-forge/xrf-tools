@@ -25,6 +25,8 @@ pub(crate) use selection::level_lights_description::LevelLightsDescription;
 pub(crate) use selection::level_spawn_model_description::LevelSpawnModelDescription;
 pub(crate) use selection::level_spawn_models_description::LevelSpawnModelsDescription;
 pub(crate) use selection::level_spawn_placement::LevelSpawnPlacement;
+pub(crate) use selection::level_start::LevelStart;
+pub(crate) use selection::level_start_origin::LevelStartOrigin;
 pub(crate) use selection::level_texture_reference::LevelTextureReference;
 pub(crate) use selection::selected_level::SelectedLevel;
 pub(crate) use selection::selected_level_description::SelectedLevelDescription;
@@ -43,3 +45,6 @@ pub const COLLISION_FILE: &str = "level.cform";
 
 /// The directory every installation keeps its levels under.
 pub const LEVELS_DIRECTORY: &str = "levels";
+
+/// The AI map, whose nodes stand on the ground a level opens on where the spawn puts no one on it.
+pub const AI_FILE: &str = "level.ai";

@@ -1723,6 +1723,29 @@ export type LevelSpawnPlacement = {
   transform: VisualTransform;
 };
 
+/** Where a level opens, in renderer space: an actor's eye where the game puts one on the level. */
+export type LevelStart = {
+  /** Where the camera stands. */
+  position: Vector3d;
+  /** Which way it looks, level with the horizon. */
+  direction: Vector3d;
+  /** What the place was taken from. */
+  origin: LevelStartOrigin;
+};
+
+/** What a level's start was taken from, the first of these the level has. */
+export enum ELevelStartOrigin {
+  /** Where a changer of another level leading here puts the actor. */
+  ARRIVAL = "arrival",
+  /** Where the level's own actor is spawned. */
+  ACTOR = "actor",
+  /** The AI map's node nearest the level's centre. */
+  GROUND = "ground",
+}
+
+/** Every `ELevelStartOrigin` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type LevelStartOrigin = `${ELevelStartOrigin}`;
+
 /** The sun xrLC compiled the level against, as the light chunk records it. */
 export type LevelSunDescription = {
   /** Where the light travels, in the level's own axes. */
@@ -1817,6 +1840,8 @@ export type SelectedLevelDescription = {
   /** The directional light the level names its sun, which is what its baked occlusion was computed for. */
   sun: LevelSunDescription | null;
   sectors: Array<SectorOutline>;
+  /** Where it opens, or `None` for a viewer to decide. */
+  start: LevelStart | null;
   /**
    * Every texture the level's surfaces bind, resolved once so a sector arriving later is a lookup rather than a
    * search.

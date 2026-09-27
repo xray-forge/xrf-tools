@@ -130,6 +130,8 @@ export class LevelLoadService {
   private readonly heldGrass: LevelHeld<ILevelGrassDelivery> = new LevelHeld();
   private readonly heldLights: LevelHeld<LevelLightsDescription> = new LevelHeld();
   private readonly heldSpawnModels: LevelHeld<ILevelSpawnModelsDelivery> = new LevelHeld();
+  /** The open level's grass, lights and spawned models being read, settling once all three have. */
+  private heldReads: Promise<void> = Promise.resolve();
 
   /** Where the camera last reported from, which is what the level is filled in around once it settles. */
   private streamedFrom: Nullable<ILevelPoint> = null;
@@ -381,11 +383,21 @@ export class LevelLoadService {
     this.notifyTextures({ delivered: [], retained: null });
     this.level = this.level.asReady({ selected });
     this.releaseHeld();
-    void this.readHeld(selected.sessionId, "grass", this.heldGrass, () => this.readGrass(selected.sessionId));
-    void this.readHeld(selected.sessionId, "lights", this.heldLights, () => this.readLights(selected.sessionId));
-    void this.readHeld(selected.sessionId, "spawned models", this.heldSpawnModels, () =>
-      this.readSpawnModels(selected.sessionId)
-    );
+    this.heldReads = Promise.all([
+      this.readHeld(selected.sessionId, "grass", this.heldGrass, () => this.readGrass(selected.sessionId)),
+      this.readHeld(selected.sessionId, "lights", this.heldLights, () => this.readLights(selected.sessionId)),
+      this.readHeld(selected.sessionId, "spawned models", this.heldSpawnModels, () =>
+        this.readSpawnModels(selected.sessionId)
+      ),
+    ]).then(() => undefined);
+  }
+
+  /**
+   * @returns Settles once the open level's grass, lights and spawned models are held, or have failed and said so;
+   *   each is handed on as it is held, so what draws them has them all by then.
+   */
+  public whenHeldRead(): Promise<void> {
+    return this.heldReads;
   }
 
   /**

@@ -12,6 +12,7 @@ use crate::plugins::levels::state::level_spawn::LevelSpawn;
 use crate::plugins::levels::state::level_spawn_visuals::LevelSpawnVisuals;
 use crate::plugins::levels::state::packed_details::PackedDetails;
 use crate::plugins::levels::state::packed_sectors::PackedSectors;
+use crate::plugins::levels::state::selection::level_start::LevelStart;
 use crate::plugins::levels::state::selection::level_sun_description::LevelSunDescription;
 use crate::plugins::levels::state::selection::level_texture_reference::LevelTextureReference;
 use crate::plugins::levels::state::selection::selected_level_description::SelectedLevelDescription;
@@ -30,6 +31,8 @@ pub struct SelectedLevel {
   /// What each sector is and where, taken at open from what the visuals declare, so a viewer can decide what to
   /// stream before reading any geometry.
   pub outlines: Vec<SectorOutline>,
+  /// Where the level opens, resolved at open; `None` leaves it to the viewer.
+  pub start: Option<LevelStart>,
   /// Render geometry with its payloads still on the heap where they were read, serving whichever range a sector
   /// names. Shared rather than locked: a range is read without moving the source, so sectors pack side by side.
   pub geometry: LevelGeomSource<InMemoryChunkDataSource>,
@@ -61,6 +64,7 @@ impl SelectedLevel {
       portals: level.portals.as_ref().map_or(0, |it| it.portals.len()) as u32,
       roots: self.roots.clone(),
       sectors: self.outlines.clone(),
+      start: self.start.clone(),
       shader_entries: level.shaders.as_ref().map_or(0, |it| it.entries.len()) as u32,
       source: self.source.clone(),
       surfaces: self.surfaces.clone(),

@@ -1,5 +1,7 @@
-import { Maybe } from "@xrf/types";
+import { Maybe, Nullable } from "@xrf/types";
 
+import { LevelStart } from "@/core/ipc/types/xrf-app";
+import { Vector3d } from "@/core/ipc/types/xrf-math";
 import { VisualBounds } from "@/core/ipc/types/xrf-visual";
 import { ILevelPoint } from "@/core/level/lib/residency/level-residency";
 
@@ -19,12 +21,27 @@ const LOOK_AHEAD: number = 0.25;
 const MINIMUM_LOOK: number = 1;
 
 /**
- * Where a level opens: standing in the middle of it, looking down its longer side.
+ * Where a level opens: where the backend says the game puts a player on it, or else standing in the middle of it,
+ * looking down its longer side.
  *
  * @param bounds - The level's extent, as the backend measured it, or null for a level that reports none.
+ * @param start - Where the backend opens the level, or null where it names nowhere.
  * @returns Where to stand and what to look at.
  */
-export function toLevelStartViewpoint(bounds: Maybe<VisualBounds>): ILevelViewpoint {
+export function toLevelStartViewpoint(
+  bounds: Maybe<VisualBounds>,
+  start: Nullable<LevelStart> = null
+): ILevelViewpoint {
+  if (start) {
+    const position: ILevelPoint = toPoint(start.position);
+    const direction: ILevelPoint = toPoint(start.direction);
+
+    return {
+      position,
+      target: { x: position.x + direction.x, y: position.y + direction.y, z: position.z + direction.z },
+    };
+  }
+
   const minimum: ILevelPoint = toPoint(bounds?.boundingBox.min);
   const maximum: ILevelPoint = toPoint(bounds?.boundingBox.max);
 
@@ -47,8 +64,8 @@ export function toLevelStartViewpoint(bounds: Maybe<VisualBounds>): ILevelViewpo
   };
 }
 
-/** One corner of a measured extent, where every field is optional on the wire because a float may not be one. */
-function toPoint(corner: Maybe<VisualBounds["boundingBox"]["min"]>): ILevelPoint {
+/** A point from the wire, where every field is optional because a float may not be one. */
+function toPoint(corner: Maybe<Vector3d>): ILevelPoint {
   return {
     x: corner?.x ?? ORIGIN.x,
     y: corner?.y ?? ORIGIN.y,

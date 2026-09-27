@@ -16,6 +16,8 @@ use crate::chunks::spawn_graphs_chunk::SpawnGraphsChunk;
 use crate::chunks::spawn_header_chunk::SpawnHeaderChunk;
 use crate::chunks::spawn_patrols_chunk::SpawnPatrolsChunk;
 use crate::data::alife::alife_object::AlifeObject;
+use crate::data::alife::alife_object_inherited::AlifeObjectInherited;
+use crate::data::alife::spawn_level_arrival::SpawnLevelArrival;
 use crate::data::alife::spawn_level_objects::SpawnLevelObjects;
 use crate::data::alife::spawn_skipped_object::SpawnSkippedObject;
 use crate::data::graph::graph_vertex_levels::GraphVertexLevels;
@@ -133,9 +135,6 @@ impl SpawnFile {
   /// The alife objects a spawn file places on one level, by the level each one's game vertex stands on, reading nothing
   /// of the file but its objects and the head of its graph.
   ///
-  /// Keeps what it can: an object it cannot read is skipped rather than failing the level, as a mod's spawn can hold a
-  /// class this has no reader for. Levels are matched by name without case.
-  ///
   /// # Errors
   ///
   /// Returns an error when the objects chunk or the head of the graph is missing or cannot be read.
@@ -145,11 +144,18 @@ impl SpawnFile {
   ) -> XrfResult<SpawnLevelObjects> {
     let levels: GraphVertexLevels = Self::read_vertex_levels_from_chunks::<T, _>(chunks)?;
     let mut objects: Vec<AlifeObject> = Vec::new();
+    let mut arrivals: Vec<SpawnLevelArrival> = Vec::new();
     let mut skipped: Vec<SpawnSkippedObject> = Vec::new();
     let total: u32 = SpawnALifeSpawnsChunk::read_each::<T, _>(
       &mut find_required_chunk_by_id(chunks, SpawnALifeSpawnsChunk::CHUNK_ID)?,
       |index, object| match object {
         Ok(object) => {
+          if let AlifeObjectInherited::SeLevelChanger(changer) = &object.inherited {
+            let destination: Option<&str> = levels.get_level(changer.dest_game_vertex_id).map(|it| it.name.as_str());
+
+            arrivals.extend(SpawnLevelArrival::of(&object.name, changer, destination, level));
+          }
+
           if levels
             .get_object_level(&object)
             .is_some_and(|it| it.name.eq_ignore_ascii_case(level))
@@ -165,6 +171,7 @@ impl SpawnFile {
     )?;
 
     Ok(SpawnLevelObjects {
+      arrivals,
       objects,
       total,
       skipped,

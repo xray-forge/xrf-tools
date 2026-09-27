@@ -11,7 +11,7 @@ use xrf_visual::{
 };
 
 use crate::plugins::levels::state::{
-  LevelEntry, LevelSource, LevelSpawnModelsDescription, LevelTextureReference, SelectedLevel,
+  LevelEntry, LevelSource, LevelSpawnModelsDescription, LevelStart, LevelTextureReference, SelectedLevel,
 };
 
 /// How many names a log line about a set of them carries before it stops listing and starts counting.
@@ -150,6 +150,22 @@ pub fn report_packing_sector(sector: u32, root: u32, composition: &LevelSectorCo
   );
 }
 
+/// Where a level opens, and what that was taken from.
+pub fn report_start(source: &LevelSource, start: Option<&LevelStart>) {
+  match start {
+    Some(start) => log::info!(
+      "Level {} opens at {:?}, from its {:?}",
+      source.get_label(),
+      start.position,
+      start.origin
+    ),
+    None => log::info!(
+      "Level {} names nowhere to open, so a viewer frames it",
+      source.get_label()
+    ),
+  }
+}
+
 /// That one packed sector's bytes went to the read that asked for them.
 pub fn report_served_sector(sector: u32, bytes: &[u8]) {
   log::debug!(
@@ -200,10 +216,11 @@ pub fn report_packed_sector(package: &SectorPackage, started: Instant) {
 /// What a level's share of the spawn came to, and how much of the spawn could not be read at all.
 pub fn report_spawn(level: &str, file: &str, read: &SpawnLevelObjects, started: Instant) {
   log::info!(
-    "Read the spawn of {level} in {}: {} of {} objects",
+    "Read the spawn of {level} in {}: {} of {} objects, {} arrivals",
     xrf_utils::format_duration(started.elapsed()),
     read.objects.len(),
-    read.total
+    read.total,
+    read.arrivals.len()
   );
 
   if let Some(first) = read.skipped.first() {

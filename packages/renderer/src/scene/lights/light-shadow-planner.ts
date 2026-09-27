@@ -187,6 +187,8 @@ export class LightShadowPlanner {
 
   private readonly changes: StaticShadowChanges;
   private readonly slots: Map<number, ILightShadowSlot> = new Map();
+  /** The entries a change of something that sways or moves reached this frame, whose motion is found once. */
+  private readonly moved: Set<ILightShadowEntry> = new Set();
   /** This frame's requests, the first `askCount` of them, their objects kept for the next frame's. */
   private readonly asks: Array<ILightShadowAsk> = [];
   private askCount: number = 0;
@@ -250,7 +252,11 @@ export class LightShadowPlanner {
         this.findMotion(entry);
       });
     } else {
+      // Found once an entry, whatever reached it: a level arriving logs thousands of trees in one frame, and each
+      // finding tests every caster that sways.
       since.changes.forEach((change: IShadowChange) => this.markChanged(change.box as Box3, change.isAnimated));
+      this.moved.forEach((entry: ILightShadowEntry) => this.findMotion(entry));
+      this.moved.clear();
     }
   }
 
@@ -487,7 +493,7 @@ export class LightShadowPlanner {
       });
 
       if (isAnimated) {
-        this.findMotion(entry);
+        this.moved.add(entry);
       }
     });
   }

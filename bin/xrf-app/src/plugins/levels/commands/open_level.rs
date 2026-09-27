@@ -2,22 +2,37 @@ use std::sync::{Arc, OnceLock};
 use std::time::Instant;
 
 use tauri::State;
+use xrf_chunk::{ChunkReader, XRayByteOrder};
+use xrf_level::LevelAiFile;
 use xrf_material::XraySurfaceDescriptor;
-use xrf_vfs::{XrayLogicalPath, XrayRoots};
+use xrf_math::Vector3d;
+use xrf_vfs::{XrayLogicalPath, XrayProbe, XrayRoots};
 use xrf_visual::SectorOutline;
 
 use crate::core::assets::AssetMountState;
 use crate::core::execution::ExecutionState;
 use crate::core::session::{SessionId, SessionSnapshot};
 use crate::core::types::TauriResult;
-use crate::plugins::levels::read::{ReadLevel, read_source};
-use crate::plugins::levels::report::{report_open, report_opening};
+use crate::plugins::levels::read::{ReadLevel, read_optional_file, read_source};
+use crate::plugins::levels::report::{report_open, report_opening, report_start};
+use crate::plugins::levels::spawn::read_source_spawn;
+use crate::plugins::levels::start::resolve_level_start;
 use crate::plugins::levels::state::{
-  LevelSource, LevelSpawnVisuals, LevelState, LevelTextureReference, PackedDetails, PackedSectors, SelectedLevel,
-  SelectedLevelDescription,
+  AI_FILE, LevelSource, LevelSpawn, LevelSpawnVisuals, LevelStart, LevelState, LevelTextureReference, PackedDetails,
+  PackedSectors, SelectedLevel, SelectedLevelDescription,
 };
 use crate::plugins::levels::surfaces::resolve_surfaces;
 use crate::plugins::levels::textures::resolve_textures;
+
+/// What the open reads and decides off the command's thread, kept together until the level is committed.
+struct OpenedLevel {
+  read: ReadLevel,
+  textures: Vec<LevelTextureReference>,
+  surfaces: Vec<XraySurfaceDescriptor>,
+  spawn: Result<Arc<LevelSpawn>, String>,
+  outlines: Vec<SectorOutline>,
+  start: Option<LevelStart>,
+}
 
 /// Select a compiled level and report what it is built out of, without reading any of its geometry.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "open_level"))]
@@ -38,21 +53,49 @@ pub async fn levels_open_level(
 
   let roots: XrayRoots = roots.centred_on(source.get_physical_path());
   let assets: AssetMountState = AssetMountState::clone(&assets);
-  let (read, textures, surfaces, source, roots) = execution
+  let (opened, source, roots) = execution
     .run_blocking("Opening the level", move || {
-      let directory: Option<XrayLogicalPath> = source.get_logical_directory();
-      let (read, textures, surfaces) = assets.with_probe(&roots, |probe| {
-        let read: ReadLevel = read_source(&source, probe)?;
-        let surfaces: Vec<XraySurfaceDescriptor> = resolve_surfaces(&read.level, probe);
-        let textures: Vec<LevelTextureReference> = resolve_textures(&read.level, &surfaces, probe, directory.as_ref());
+      let opened: OpenedLevel = assets.with_probe(&roots, |probe| open(&source, probe))??;
 
-        TauriResult::Ok((read, textures, surfaces))
-      })??;
-
-      TauriResult::Ok((read, textures, surfaces, source, roots))
+      TauriResult::Ok((opened, source, roots))
     })
     .await??;
 
+  report_start(&source, opened.start.as_ref());
+
+  let selected: Arc<SessionSnapshot<SelectedLevel>> = state.selected.commit_open(
+    session_id,
+    SelectedLevel {
+      details: PackedDetails::new(),
+      spawn: opened.spawn.into(),
+      sections: OnceLock::new(),
+      spawn_visuals: LevelSpawnVisuals::new(),
+      geometry: opened.read.geometry,
+      level: opened.read.level,
+      outlines: opened.outlines,
+      packed: PackedSectors::new(),
+      roots,
+      source,
+      start: opened.start,
+      surfaces: opened.surfaces,
+      textures: opened.textures,
+      visuals: opened.read.visuals,
+    },
+  )?;
+
+  report_open(&selected.value, started);
+
+  Ok(selected.map(SelectedLevel::describe))
+}
+
+/// Reads the level and its spawn side by side, outlines its sectors and decides where it opens.
+fn open(source: &LevelSource, probe: &XrayProbe) -> TauriResult<OpenedLevel> {
+  let directory: Option<XrayLogicalPath> = source.get_logical_directory();
+  // The spawn is read beside the level rather than after it: the start is taken from it.
+  let (read, spawn) = rayon::join(|| read_source(source, probe), || read_source_spawn(source, probe));
+  let read: ReadLevel = read?;
+  let surfaces: Vec<XraySurfaceDescriptor> = resolve_surfaces(&read.level, probe);
+  let textures: Vec<LevelTextureReference> = resolve_textures(&read.level, &surfaces, probe, directory.as_ref());
   let outlines: Vec<SectorOutline> = read
     .level
     .sectors
@@ -62,27 +105,29 @@ pub async fn levels_open_level(
     .enumerate()
     .map(|(index, sector)| SectorOutline::of(&read.visuals, index as u32, sector.root))
     .collect();
+  let start: Option<LevelStart> = resolve_level_start(
+    spawn.as_deref().ok(),
+    SectorOutline::merge_bounds(&outlines).as_ref(),
+    |x, z| find_ground(source, probe, x, z),
+  );
 
-  let selected: Arc<SessionSnapshot<SelectedLevel>> = state.selected.commit_open(
-    session_id,
-    SelectedLevel {
-      details: PackedDetails::new(),
-      spawn: OnceLock::new(),
-      sections: OnceLock::new(),
-      spawn_visuals: LevelSpawnVisuals::new(),
-      geometry: read.geometry,
-      level: read.level,
-      outlines,
-      packed: PackedSectors::new(),
-      roots,
-      source,
-      surfaces,
-      textures,
-      visuals: read.visuals,
-    },
-  )?;
+  Ok(OpenedLevel {
+    outlines,
+    read,
+    spawn,
+    start,
+    surfaces,
+    textures,
+  })
+}
 
-  report_open(&selected.value, started);
+/// The AI map's node nearest a place across the ground, in the engine's space; `None` for a level without one.
+fn find_ground(source: &LevelSource, probe: &XrayProbe, x: f32, z: f32) -> Option<Vector3d> {
+  let bytes: Vec<u8> = read_optional_file(source, probe, AI_FILE).ok()??;
 
-  Ok(selected.map(SelectedLevel::describe))
+  ChunkReader::from_vec(bytes)
+    .and_then(|mut reader| LevelAiFile::find_nearest_node::<XRayByteOrder, _>(&mut reader, x, z))
+    .map_err(|error| log::warn!("Failed to read '{AI_FILE}' of level '{}': {error}", source.get_label()))
+    .ok()
+    .flatten()
 }

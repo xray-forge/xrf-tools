@@ -294,6 +294,29 @@ describe("LevelRenderService", () => {
     service.dispose();
   });
 
+  // A level assembling in view is worse than a wait: shown only once the renderer says a frame was drawn after
+  // everything the level opens with was handed to it.
+  it("keeps the level covered until the renderer has drawn it with everything it opens with", async () => {
+    const { container, service } = await mockAttached();
+    const viewportService: LevelViewportService = container.get(LevelViewportService);
+
+    for (let flush: number = 0; flush < 20 && !stub.take(ERendererRequest.SETTLE).length; flush += 1) {
+      await stub.flush();
+    }
+
+    const [settle] = stub.take(ERendererRequest.SETTLE);
+
+    expect(settle).toBeDefined();
+    expect(viewportService.isRevealed).toBe(false);
+
+    stub.respond({ id: settle.id, kind: ERendererResponse.SETTLED });
+    await stub.flush();
+
+    expect(viewportService.isRevealed).toBe(true);
+
+    service.dispose();
+  });
+
   it("keeps the renderer when the view goes, and lets it go on deactivation", async () => {
     const { service } = await mockAttached();
 

@@ -65,6 +65,8 @@ export class LevelRenderService extends RenderSurfaceService {
   private level: Nullable<SelectedLevelDescription> = null;
   /** Where the loader was last asked to stream from. */
   private streamedFrom: Nullable<ILevelPoint> = null;
+  /** Bumped by every level opened, so a reveal waiting on one that has since been replaced reveals nothing. */
+  private opening: number = 0;
   /** What each frame helper was last put as, so a toggle that leaves one alone does not send it again. */
   private readonly framed: Map<string, Nullable<string>> = new Map();
   /** What the renderer was last told its settings and its lighting are, so a change neither reads sends neither. */
@@ -179,11 +181,14 @@ export class LevelRenderService extends RenderSurfaceService {
     this.applyFrame();
 
     // The start frames the camera, and is where the level is first read around.
-    this.client?.setCamera(toLevelCamera(level?.bounds ?? null, this.viewService.camera, this.config));
+    this.client?.setCamera(
+      toLevelCamera(level?.bounds ?? null, level?.start ?? null, this.viewService.camera, this.config)
+    );
     this.streamedFrom = null;
+    this.viewportService.conceal();
 
     if (level) {
-      this.stream(toLevelStartViewpoint(level.bounds).position);
+      void this.reveal(this.stream(toLevelStartViewpoint(level.bounds, level.start).position));
     }
   }
 
@@ -212,7 +217,7 @@ export class LevelRenderService extends RenderSurfaceService {
   /** The toolbar's speeds and lens, from the same start: the camera keeps where it has flown. */
   @BoundAction()
   private applyCamera(camera: ILevelCameraOptions): void {
-    this.client?.setCamera(toLevelCamera(this.level?.bounds ?? null, camera, this.config));
+    this.client?.setCamera(toLevelCamera(this.level?.bounds ?? null, this.level?.start ?? null, camera, this.config));
   }
 
   private applySettings(): void {
@@ -291,20 +296,46 @@ export class LevelRenderService extends RenderSurfaceService {
     );
 
     if (this.level) {
-      this.stream({ x, y, z });
+      void this.stream({ x, y, z });
     }
   }
 
   /** Asks the loader to stream, but only once the camera has gone far enough to change what is near. */
-  private stream(point: ILevelPoint): void {
+  /**
+   * @param point - Where the camera is, in renderer space.
+   * @returns Settles once what the camera is near is resident, or at once for a camera that has barely moved.
+   */
+  private stream(point: ILevelPoint): Promise<void> {
     const from: Nullable<ILevelPoint> = this.streamedFrom;
 
     if (from && Math.hypot(point.x - from.x, point.y - from.y, point.z - from.z) < STREAM_THRESHOLD) {
-      return;
+      return Promise.resolve();
     }
 
     this.streamedFrom = point;
-    void this.loadService.stream(point);
+
+    return this.loadService.stream(point);
+  }
+
+  /**
+   * Shows the level once everything it opens with has been drawn: the sectors around the start, the grass, the
+   * lights and the spawned models, their textures up and their materials compiled. Until then the viewport draws
+   * under a cover, which is what uploads and compiles it.
+   *
+   * @param streamed - Settles once the sectors around the start are resident.
+   */
+  private async reveal(streamed: Promise<void>): Promise<void> {
+    const opening: number = ++this.opening;
+
+    await Promise.all([streamed, this.loadService.whenHeldRead()]);
+
+    if (opening === this.opening && this.client) {
+      await this.client.settle();
+    }
+
+    if (opening === this.opening) {
+      this.viewportService.reveal();
+    }
   }
 
   private refuseTexture(key: string, refusal: IDdsRefusal): void {

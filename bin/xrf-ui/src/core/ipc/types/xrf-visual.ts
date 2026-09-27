@@ -3,12 +3,7 @@
 import { Vector3d } from "@/core/ipc/types/xrf-math";
 import { XrayResolution } from "@/core/ipc/types/xrf-vfs";
 
-/**
- * Everything about a level's packed grass except the bytes themselves.
- *
- * The slots and the collision triangles stay in the engine's own space, because the renderer plants them with the
- * engine's own arithmetic and only converts what it planted.
- */
+/** Everything about a level's packed grass except the bytes themselves. */
 export type DetailsDescription = {
   /**
    * The grid's size in slots, and the world slot its first cell stands for, negated: cell `(x, z)` is world slot

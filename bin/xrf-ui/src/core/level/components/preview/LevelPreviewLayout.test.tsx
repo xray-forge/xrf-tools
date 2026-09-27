@@ -99,11 +99,30 @@ describe("LevelPreviewLayout", () => {
     expect(view.queryByTestId("level-stream-progress")).not.toBeInTheDocument();
   });
 
-  // Streaming does not: what has arrived is already drawn and already flyable, so the progress sits over it.
-  it("reports streaming without taking the viewport away", () => {
+  // A level assembling in view is worse than a wait: until it has been drawn with everything it opens with, a cover
+  // says what it is waiting for.
+  it("covers a level being read until it has been drawn whole", () => {
     const view: RenderResult = renderLayout({}, { loaded: 3, total: 24 });
 
+    expect(view.getByTestId("level-preview-cover")).toHaveClass("opacity-100");
+    expect(view.getByTestId("level-preview-cover")).toHaveTextContent("Reading sectors, 3 of 24");
+    expect(view.queryByTestId("level-stream-progress")).not.toBeInTheDocument();
+  });
+
+  // Once shown, streaming does not take it away: what has arrived is drawn and flyable, so the progress sits over it.
+  it("reports streaming without taking the viewport away once the level is shown", () => {
+    const container: Container = mockContainer([LevelLoadService, LevelViewService, LevelViewportService]);
+
+    setStreaming(container.get(LevelLoadService), { loaded: 3, total: 24 });
+    container.get(LevelViewportService).reveal();
+
+    const view: RenderResult = renderWithProviders(
+      <LevelPreviewLayout name={"levels\\zaton"} renderViewport={() => <div data-testid={"stub-viewport"} />} />,
+      { container, route: "/level-viewer" }
+    );
+
     expect(view.getByTestId("stub-viewport")).toBeInTheDocument();
+    expect(view.getByTestId("level-preview-cover")).toHaveClass("opacity-0");
     expect(view.getByTestId("level-stream-progress")).toHaveTextContent("Streaming sectors, 3 of 24");
   });
 

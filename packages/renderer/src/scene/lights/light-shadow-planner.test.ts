@@ -1,4 +1,4 @@
-import { describe, expect, it } from "@jest/globals";
+import { describe, expect, it, jest } from "@jest/globals";
 import { Nullable } from "@xrf/types";
 import { Box3, Vector3, Vector4 } from "three/webgpu";
 
@@ -171,6 +171,26 @@ describe("LightShadowPlanner", () => {
     plan(planner, [createRequest()]);
     plan(planner, [createRequest()], { isDrawn: false });
 
+    expect(planner.queue).toHaveLength(1);
+  });
+
+  // A level arriving logs thousands of swaying casters in one frame: each face's motion is found once, not once each.
+  it("finds a face's motion once a frame however many swaying casters came under it", () => {
+    const changes: StaticShadowChanges = new StaticShadowChanges();
+    const planner: LightShadowPlanner = new LightShadowPlanner(changes);
+
+    plan(planner, [createRequest()], { isWindy: true });
+
+    const getMotion = jest.spyOn(changes, "getMotion");
+
+    for (let caster: number = 0; caster < 50; caster += 1) {
+      changes.put(caster, createBox(0, 0, 0), true, EShadowCasterMotion.SWAYING);
+    }
+
+    plan(planner, [createRequest()], { isDrawn: false, isWindy: true });
+
+    // A spot's one face, found once.
+    expect(getMotion).toHaveBeenCalledTimes(1);
     expect(planner.queue).toHaveLength(1);
   });
 

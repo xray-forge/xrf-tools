@@ -63,6 +63,7 @@ pub use crate::data::alife::inherited::alife_smart_cover_loophole::AlifeSmartCov
 pub use crate::data::alife::inherited::alife_smart_terrain::AlifeSmartTerrain;
 pub use crate::data::alife::inherited::alife_smart_zone::AlifeSmartZone;
 pub use crate::data::alife::inherited::alife_zone_visual::AlifeZoneVisual;
+pub use crate::data::alife::spawn_level_arrival::SpawnLevelArrival;
 pub use crate::data::alife::spawn_level_objects::SpawnLevelObjects;
 pub use crate::data::alife::spawn_skipped_object::SpawnSkippedObject;
 pub use crate::data::artefact_spawn::artefact_spawn_point::ArtefactSpawnPoint;

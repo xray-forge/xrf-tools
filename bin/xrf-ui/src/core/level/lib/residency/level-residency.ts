@@ -42,6 +42,8 @@ export interface ILevelResidencyPlan {
 interface IRankedSector {
   sector: number;
   distance: number;
+  /** How far its sphere's centre is, which orders the sectors a camera stands inside several of. */
+  centre: number;
   held: boolean;
 }
 
@@ -100,6 +102,29 @@ export function getSectorDistance(outline: SectorOutline, point: ILevelPoint): N
 }
 
 /**
+ * Distance from a point to the centre of a sector's enclosing sphere: what tells apart the sectors a camera stands
+ * inside, which are all at none from it by their surfaces.
+ *
+ * @param outline - The sector to measure.
+ * @param point - Where the camera is.
+ * @returns Distance to the centre, or infinity for a sector that declares no extent.
+ */
+function getSectorCentreDistance(outline: SectorOutline, point: ILevelPoint): number {
+  if (!outline.bounds) {
+    return Infinity;
+  }
+
+  const { center } = outline.bounds.boundingSphere;
+
+  return Math.hypot((center.x ?? 0) - point.x, (center.y ?? 0) - point.y, (center.z ?? 0) - point.z);
+}
+
+/** Nearest first, the nearer centre first among sectors at the same distance. */
+function compareRanked(left: IRankedSector, right: IRankedSector): number {
+  return left.distance - right.distance || left.centre - right.centre;
+}
+
+/**
  * Decides which sectors a camera should be holding.
  *
  * @param outlines - What the level's sectors are and where, from `open_level`.
@@ -129,7 +154,7 @@ export function planLevelResidency(
     const isHeld: boolean = held.has(outline.sector);
     const limit: number = isHeld ? options.keepDistance : options.loadDistance;
 
-    ranked.push({ distance, held: isHeld, sector: outline.sector });
+    ranked.push({ centre: getSectorCentreDistance(outline, point), distance, held: isHeld, sector: outline.sector });
 
     if (distance <= limit) {
       within += 1;
@@ -138,7 +163,7 @@ export function planLevelResidency(
 
   // Nearest first, and a sector already held wins a tie so the budget does not swap two equals every frame.
   ranked.sort((left: IRankedSector, right: IRankedSector) => {
-    return left.distance - right.distance || Number(right.held) - Number(left.held);
+    return compareRanked(left, right) || Number(right.held) - Number(left.held);
   });
 
   // The distances decide how much is worth holding; the two counts decide how much is held regardless. A camera
@@ -195,11 +220,11 @@ export function listLevelPreload(
     const distance: Nullable<number> = getSectorDistance(outline, point);
 
     if (distance !== null && !held.has(outline.sector)) {
-      ranked.push({ distance, held: false, sector: outline.sector });
+      ranked.push({ centre: getSectorCentreDistance(outline, point), distance, held: false, sector: outline.sector });
     }
   }
 
-  return ranked.sort((left, right) => left.distance - right.distance).map((it) => it.sector);
+  return ranked.sort(compareRanked).map((it) => it.sector);
 }
 
 /** What a sector is worth assuming to cost, from the ones already read. */

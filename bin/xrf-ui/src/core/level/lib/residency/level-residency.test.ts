@@ -42,6 +42,19 @@ function outlineAt(sector: number, x: number): SectorOutline {
   });
 }
 
+/**
+ * A sector 50 metres across standing at one distance along x, which a camera at the origin stands inside.
+ */
+function outlineAround(sector: number, x: number): SectorOutline {
+  return mockSectorOutline({
+    bounds: {
+      boundingBox: { max: { x: x + 50, y: 50, z: 50 }, min: { x: x - 50, y: -50, z: -50 } },
+      boundingSphere: { center: { x, y: 0, z: 0 }, radius: 50 },
+    },
+    sector,
+  });
+}
+
 describe("level residency", () => {
   it("measures to the sector's surface rather than its centre", () => {
     expect(getSectorDistance(outlineAt(0, 10), ORIGIN)).toBe(9);
@@ -69,6 +82,19 @@ describe("level residency", () => {
 
     expect(plan.load).toEqual([1, 2]);
     expect(plan.resident).toEqual([1, 2]);
+  });
+
+  // A camera stands inside several sectors at once, each at no distance by its surface: the one centred nearest is
+  // where it stands, and a room further along the street is not.
+  it("loads the sector centred nearest first among the sectors the camera stands inside", () => {
+    const plan: ILevelResidencyPlan = planLevelResidency(
+      [outlineAround(0, 30), outlineAround(1, 5), outlineAround(2, 20)],
+      ORIGIN,
+      getHolding(),
+      { ...OPTIONS, maxSectors: 3 }
+    );
+
+    expect(plan.load).toEqual([1, 2, 0]);
   });
 
   it("holds no more than the budget allows", () => {
