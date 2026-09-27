@@ -1,10 +1,12 @@
 import {
   ERendererAntialiasing,
   IRendererAmbientOcclusionSettings,
+  IRendererFeatureOverrides,
   IRendererFeatureSettings,
   IRendererGrassSettings,
   IRendererLightsSettings,
   IRendererShadowSettings,
+  toRendererFeatureChoice,
 } from "@xrf/renderer";
 import { Nullable } from "@xrf/types";
 
@@ -47,6 +49,42 @@ export const DEFAULT_LEVEL_FEATURE_OPTIONS: ILevelFeatureOptions = {
 export const LEVEL_ANTIALIASING_MODES: ReadonlyArray<ERendererAntialiasing> = Object.values(
   ERendererAntialiasing
 ).filter((mode: ERendererAntialiasing) => mode !== ERendererAntialiasing.NONE);
+
+/** Each group's settings a view may set, which is all a stored view keeps. */
+const LEVEL_FEATURE_KEYS: {
+  readonly [K in TLevelFeatureKey]: ReadonlyArray<keyof ILevelFeatureOptions[K]>;
+} = {
+  ambientOcclusion: ["quality", "radius", "strength"],
+  grass: ["density", "height", "radius"],
+  lights: ["isLevelLights", "isShadowed", "shadowFilter"],
+  shadows: ["bias", "blend", "cascades", "filter", "resolution"],
+};
+
+/**
+ * @param stored - What was stored for a view's features, parsed from wherever it is kept.
+ * @returns What the view sets, held to the renderer's own bounds, with everything a view does not set dropped.
+ */
+export function toLevelFeatureOptions(stored: unknown): ILevelFeatureOptions {
+  const overrides: IRendererFeatureOverrides = toRendererFeatureChoice({ overrides: stored }).overrides;
+
+  function pick<K extends TLevelFeatureKey>(key: K): ILevelFeatureOptions[K] {
+    const group: Record<string, unknown> = (overrides[key] ?? {}) as Record<string, unknown>;
+
+    return Object.fromEntries(
+      LEVEL_FEATURE_KEYS[key].filter((it) => group[it as string] !== undefined).map((it) => [it, group[it as string]])
+    ) as ILevelFeatureOptions[K];
+  }
+
+  const antialiasing: ERendererAntialiasing | undefined = overrides.antialiasing;
+
+  return {
+    ambientOcclusion: pick("ambientOcclusion"),
+    antialiasing: antialiasing && LEVEL_ANTIALIASING_MODES.includes(antialiasing) ? antialiasing : null,
+    grass: pick("grass"),
+    lights: pick("lights"),
+    shadows: pick("shadows"),
+  };
+}
 
 /** The feature groups a view sets over the settings for itself, each behind a toolbar toggle of its own. */
 export type TLevelFeatureKey = "ambientOcclusion" | "grass" | "lights" | "shadows";

@@ -1,5 +1,6 @@
 import { default as GridOnIcon } from "@mui/icons-material/GridOn";
 import { default as HexagonIcon } from "@mui/icons-material/Hexagon";
+import { default as LayersIcon } from "@mui/icons-material/Layers";
 import { default as TextureIcon } from "@mui/icons-material/Texture";
 import { default as ThreeDRotationIcon } from "@mui/icons-material/ThreeDRotation";
 import { ERendererRenderScale, IRendererFeatureSettings } from "@xrf/renderer";
@@ -106,6 +107,20 @@ export function LevelPreviewToolbar({
             icon={<TextureIcon />}
             isOn={options.isTextured}
             onToggle={() => onToggle("isTextured")}
+          />
+
+          <EditorViewToggle
+            label={"Occlusion culling"}
+            description={
+              options.isOcclusionCulled
+                ? "What the depth hides is culled before it draws"
+                : "Every static draw the frustum keeps is drawn, hidden or not"
+            }
+            unavailableTitle={"Occlusion culling is off in Settings, under Rendering"}
+            icon={<LayersIcon />}
+            isOn={options.isOcclusionCulled && settings.isOcclusionCulled}
+            isDisabled={!settings.isOcclusionCulled}
+            onToggle={() => onToggle("isOcclusionCulled")}
           />
 
           <LevelLodAction

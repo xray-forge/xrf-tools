@@ -1,11 +1,14 @@
 import { Nullable } from "@xrf/types";
 
 import { IBaseFramePasses } from "#/graph/base-frame-passes";
+import { IOcclusionFramePasses } from "#/graph/occlusion-frame-passes";
 import { IRendererPass } from "#/pass/renderer-pass";
 
 /** The optional passes a frame holds now, each null or empty while its feature is off. */
 export interface IFrameOptionalPasses {
   readonly grass: Nullable<IRendererPass>;
+  /** The static draws the first phase's depth hid culled again and drawn, and the depth reduced after. */
+  readonly occlusion: Nullable<IOcclusionFramePasses>;
   readonly motionBackground: Nullable<IRendererPass>;
   readonly shadows: ReadonlyArray<IRendererPass>;
   readonly lightShadows: Nullable<IRendererPass>;
@@ -19,7 +22,8 @@ export interface IFrameOptionalPasses {
 }
 
 /**
- * The frame's passes in order: the grass into the G-buffer, the sky's motion once the G-buffer is whole, the shadow
+ * The frame's passes in order: the grass into the G-buffer, what its depth hid culled again and drawn into it, the
+ * sky's motion once the G-buffer is whole, its depth reduced for the next frame, the shadow
  * cascades and light faces before the sun reads them, the local lights after it, the occlusion before combine, what the
  * resolve needs before the blended surfaces, and the upscaling and its sharpening before the helpers. The smoothing of
  * a mode that does not jitter comes after the helpers, which it smooths too, unless FSR 1 upscales what it smoothed.
@@ -34,7 +38,7 @@ export function toFramePassOrder(
   optional: IFrameOptionalPasses,
   present: IRendererPass
 ): Array<IRendererPass> {
-  const { resolve, smoothing, spatial } = optional;
+  const { occlusion, resolve, smoothing, spatial } = optional;
 
   function some(...passes: ReadonlyArray<Nullable<IRendererPass>>): Array<IRendererPass> {
     return passes.filter((pass: Nullable<IRendererPass>): pass is IRendererPass => pass !== null);
@@ -44,10 +48,9 @@ export function toFramePassOrder(
     base.cull,
     base.gbuffer,
     ...some(optional.grass),
-    base.lateCull,
-    base.gbufferLate,
+    ...(occlusion ? [occlusion.lateCull, occlusion.gbufferLate] : []),
     ...some(optional.motionBackground),
-    base.pyramid,
+    ...some(occlusion?.pyramid ?? null),
     base.wallmarks,
     ...optional.shadows,
     ...some(optional.lightShadows),

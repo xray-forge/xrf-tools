@@ -58,6 +58,8 @@ export class StaticCull {
   private isCulled: boolean = false;
   /** Whether a wireframe draws, whose arguments each cull rewrites from its own. */
   private isWireframe: boolean = false;
+  /** Whether what the depth hides is culled, which the frame's second phase and pyramid are there for. */
+  private isOccluding: boolean = true;
 
   /**
    * @param buffers - What every static draw reads.
@@ -103,6 +105,20 @@ export class StaticCull {
     this.poolsVersion = this.pools.version;
     this.isLodChanged = false;
     this.isPending = true;
+  }
+
+  /**
+   * @param isOccluding - Whether what the depth hides is culled. Off, the first phase keeps all the frustum keeps and
+   *   no second phase or pyramid runs; either way the view is culled again, since what it kept was kept by the other.
+   */
+  public setOccluding(isOccluding: boolean): void {
+    if (isOccluding !== this.isOccluding) {
+      this.isOccluding = isOccluding;
+      // The first phase never occludes against a forgotten view, and only the pyramid's build takes one again.
+      this.buffers.occlusion.previous.forget();
+      this.isCulled = false;
+      this.isPending = true;
+    }
   }
 
   /**
@@ -251,6 +267,8 @@ export class StaticCull {
       // Laid out for another size, a pyramid read by the last view would be read wrong.
       occlusion.previous.forget();
     } else {
+      // The first depth taken since none was is culled against at once, not only once the view next moves.
+      this.isPending ||= !occlusion.previous.isTaken.value;
       occlusion.previous.copy(occlusion.current);
     }
 

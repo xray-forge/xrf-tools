@@ -193,7 +193,7 @@ const SHADOW_KERNEL: number = 0.6;
 const DEPTH_SCALE: number = 1.00001;
 const DEPTH_BIAS: Record<ERendererLightShadowFilter, number> = {
   [ERendererLightShadowFilter.ENGINE]: -0.0003,
-  [ERendererLightShadowFilter.ANOMALY]: -0.001,
+  [ERendererLightShadowFilter.SOFT]: -0.001,
 };
 
 /** Anomaly's `poissonDisk`: the first twelve, which its `shadow_pcss` takes at its default quality. */
@@ -281,7 +281,7 @@ function toLightShadow(
   // A point's faces fade each on its own, as the engine's omni parts do.
   const faded = rect.w;
 
-  if (filter === ERendererLightShadowFilter.ANOMALY) {
+  if (filter === ERendererLightShadowFilter.SOFT) {
     return toPenumbraLit(atlas, centre, least, most, texel, moved).mul(faded);
   }
 

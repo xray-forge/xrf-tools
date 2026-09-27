@@ -216,8 +216,8 @@ export function describeRenderLightShadowFilter(filter: ERendererLightShadowFilt
   switch (filter) {
     case ERendererLightShadowFilter.ENGINE:
       return "Engine";
-    case ERendererLightShadowFilter.ANOMALY:
-      return "Anomaly soft";
+    case ERendererLightShadowFilter.SOFT:
+      return "Soft";
   }
 }
 

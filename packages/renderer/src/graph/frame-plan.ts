@@ -34,6 +34,8 @@ export interface IRendererFramePlan {
   readonly isGrassy: boolean;
   readonly isLit: boolean;
   readonly isLightShadowed: boolean;
+  /** Whether the static draws the depth hides are culled: the second cull, its draw and the pyramid. */
+  readonly isOccluding: boolean;
   readonly ambientOcclusion: Nullable<ERendererAmbientOcclusionQuality>;
   readonly shadows: Nullable<IFramePlanShadows>;
 }
@@ -54,6 +56,7 @@ export function toFramePlan(features: IRendererFeatureSettings): IRendererFrameP
     isGrassy: features.grass.isEnabled,
     isLightShadowed: lights.isEnabled && lights.isShadowed,
     isLit: lights.isEnabled,
+    isOccluding: features.isOcclusionCulled,
     isSpatial: resolve === null && upscale > 1,
     resolve,
     shadows: count > 0 ? { count, resolution: shadows.resolution } : null,

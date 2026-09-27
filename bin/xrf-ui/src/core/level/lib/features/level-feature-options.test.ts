@@ -14,6 +14,7 @@ import {
   ILevelFeatureOptions,
   LEVEL_ANTIALIASING_MODES,
   TLevelFeatureKey,
+  toLevelFeatureOptions,
   toLevelFeatureView,
   toLevelRendererAntialiasing,
   toLevelRendererFeature,
@@ -26,7 +27,7 @@ const VIEW: ILevelFeatureOptions = {
   ...DEFAULT_LEVEL_FEATURE_OPTIONS,
   ambientOcclusion: { quality: ERendererAmbientOcclusionQuality.LOW },
   grass: { radius: 80 },
-  lights: { shadowFilter: ERendererLightShadowFilter.ANOMALY },
+  lights: { shadowFilter: ERendererLightShadowFilter.SOFT },
   shadows: { cascades: [20], filter: 0 },
 };
 
@@ -63,9 +64,7 @@ describe("level feature options", () => {
       ERendererAmbientOcclusionQuality.LOW
     );
     expect(toLevelRendererFeature("grass", SETTINGS, VIEW, true)).toEqual({ ...SETTINGS.grass, radius: 80 });
-    expect(toLevelRendererFeature("lights", SETTINGS, VIEW, true).shadowFilter).toBe(
-      ERendererLightShadowFilter.ANOMALY
-    );
+    expect(toLevelRendererFeature("lights", SETTINGS, VIEW, true).shadowFilter).toBe(ERendererLightShadowFilter.SOFT);
     expect(toLevelRendererFeature("shadows", SETTINGS, VIEW, true)).toEqual({
       ...SETTINGS.shadows,
       cascades: [20],
@@ -101,5 +100,19 @@ describe("level feature options", () => {
     expect(describeLevelFeatureToggle({ ...description, isAvailable: false, isPlural: false, label: "Grass" })).toBe(
       "Grass is off in Settings, under Rendering"
     );
+  });
+
+  // Stored by an earlier run, which may have known other settings or other bounds.
+  it("reads a stored view back as the view set it, held to the renderer's bounds, the rest dropped", () => {
+    expect(toLevelFeatureOptions(JSON.parse(JSON.stringify(VIEW)))).toEqual(VIEW);
+    expect(
+      toLevelFeatureOptions({
+        antialiasing: ERendererAntialiasing.NONE,
+        grass: { isEnabled: false, radius: 5000 },
+        lights: { shadowFilter: "anomaly" },
+        lod: { ssaA: 20 },
+      })
+    ).toEqual({ ...DEFAULT_LEVEL_FEATURE_OPTIONS, grass: { radius: 300 } });
+    expect(toLevelFeatureOptions(null)).toEqual(DEFAULT_LEVEL_FEATURE_OPTIONS);
   });
 });

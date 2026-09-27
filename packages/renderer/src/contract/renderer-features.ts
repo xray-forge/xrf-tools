@@ -141,7 +141,7 @@ export enum ERendererLightShadowFilter {
   /** `shadow_hw`: four bilinear comparisons 0.6 of a texel off the point, at `r2_ls_depth_bias` -0.0003, as vanilla. */
   ENGINE = "engine",
   /** Anomaly's `shadow_pcss`: a blocker search, then a penumbra of twelve comparisons, at its -0.001 bias. */
-  ANOMALY = "anomaly",
+  SOFT = "soft",
 }
 
 /**
@@ -268,6 +268,12 @@ export interface IRendererFeatureSettings {
   grass: IRendererGrassSettings;
   /** Whether every pass is timed on the GPU for the report. */
   isGpuTimed: boolean;
+  /**
+   * Whether the static draws the depth hides are culled, in two phases: against the last frame's depth, then what that
+   * hid against this frame's so far. Off, every static draw the frustum keeps is drawn, at no pyramid and no second
+   * phase.
+   */
+  isOcclusionCulled: boolean;
   lights: IRendererLightsSettings;
   lod: IRendererLodSettings;
   shadows: IRendererShadowSettings;
@@ -289,6 +295,7 @@ export const RENDERER_PRESETS: Readonly<Record<ERendererPreset, IRendererFeature
     antialiasing: ERendererAntialiasing.SMAA,
     grass: DEFAULT_RENDERER_GRASS_SETTINGS,
     isGpuTimed: true,
+    isOcclusionCulled: true,
     lights: DEFAULT_RENDERER_LIGHTS_SETTINGS,
     lod: DEFAULT_RENDERER_LOD_SETTINGS,
     shadows: DEFAULT_RENDERER_SHADOW_SETTINGS,
@@ -299,6 +306,7 @@ export const RENDERER_PRESETS: Readonly<Record<ERendererPreset, IRendererFeature
     antialiasing: ERendererAntialiasing.NONE,
     grass: { ...DEFAULT_RENDERER_GRASS_SETTINGS, isEnabled: false },
     isGpuTimed: true,
+    isOcclusionCulled: true,
     // Unshadowed, the lights cost a pass over the screen: an editor keeps seeing what lights a room.
     lights: { ...DEFAULT_RENDERER_LIGHTS_SETTINGS, isShadowed: false },
     lod: DEFAULT_RENDERER_LOD_SETTINGS,

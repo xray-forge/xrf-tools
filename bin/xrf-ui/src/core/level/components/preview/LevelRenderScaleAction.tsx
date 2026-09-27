@@ -42,7 +42,7 @@ export function LevelRenderScaleAction({
       icon={<AspectRatioIcon />}
       isActive={isUpscaled}
     >
-      <div className={"flex w-60 flex-col gap-2 px-4 py-2"}>
+      <div className={"flex w-max min-w-60 flex-col gap-2 px-4 py-2"}>
         <Typography className={"text-text-secondary"} variant={"overline"}>
           Render scale
         </Typography>

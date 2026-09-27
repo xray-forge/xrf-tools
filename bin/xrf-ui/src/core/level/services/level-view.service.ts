@@ -1,11 +1,13 @@
 import { Injectable, OnDeactivation } from "@wirestate/core";
 import { BoundAction, RefObservable } from "@wirestate/mobx";
 
-import { DEFAULT_LEVEL_CAMERA_OPTIONS, ILevelCameraOptions } from "@/core/level/lib/camera/level-camera-options";
-import { DEFAULT_LEVEL_FEATURE_OPTIONS, ILevelFeatureOptions } from "@/core/level/lib/features/level-feature-options";
+import { ILevelCameraOptions, toLevelCameraOptions } from "@/core/level/lib/camera/level-camera-options";
+import { ILevelFeatureOptions, toLevelFeatureOptions } from "@/core/level/lib/features/level-feature-options";
 import { DEFAULT_LEVEL_LIGHTING, ILevelLighting } from "@/core/level/lib/lighting/level-lighting";
 import { DEFAULT_LEVEL_LOD_OPTIONS, ILevelLodOptions } from "@/core/level/lib/lod/level-lod-options";
 import { DEFAULT_LEVEL_VIEW_OPTIONS, ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
+import { LEVEL_CAMERA_STORAGE_KEY, LEVEL_FEATURES_STORAGE_KEY } from "@/core/storage";
+import { parseLocalStorageValueSafe, setLocalStorageValueSafe } from "@/lib/local-storage";
 
 /**
  * How a level is drawn: what the viewer has switched on, rather than what the level is.
@@ -20,17 +22,20 @@ export class LevelViewService {
   @RefObservable()
   public lighting: ILevelLighting = DEFAULT_LEVEL_LIGHTING;
 
-  /** What the camera sees and how it answers input. */
+  /** What the camera sees and how it answers input: a preference, kept over runs. */
   @RefObservable()
-  public camera: ILevelCameraOptions = DEFAULT_LEVEL_CAMERA_OPTIONS;
+  public camera: ILevelCameraOptions = toLevelCameraOptions(parseLocalStorageValueSafe(LEVEL_CAMERA_STORAGE_KEY));
 
   /** How far trees are drawn in full before their impostors take over. */
   @RefObservable()
   public lod: ILevelLodOptions = DEFAULT_LEVEL_LOD_OPTIONS;
 
-  /** What the view sets over the renderer's features for itself: antialiasing, shadows, occlusion, grass and lights. */
+  /**
+   * What the view sets over the renderer's features for itself: antialiasing, shadows, occlusion, grass and lights. A
+   * preference, kept over runs.
+   */
   @RefObservable()
-  public features: ILevelFeatureOptions = DEFAULT_LEVEL_FEATURE_OPTIONS;
+  public features: ILevelFeatureOptions = toLevelFeatureOptions(parseLocalStorageValueSafe(LEVEL_FEATURES_STORAGE_KEY));
 
   @BoundAction()
   public setOptions(options: ILevelViewOptions): void {
@@ -45,6 +50,7 @@ export class LevelViewService {
   @BoundAction()
   public setCamera(camera: ILevelCameraOptions): void {
     this.camera = camera;
+    setLocalStorageValueSafe(LEVEL_CAMERA_STORAGE_KEY, JSON.stringify(camera));
   }
 
   @BoundAction()
@@ -55,16 +61,18 @@ export class LevelViewService {
   @BoundAction()
   public setFeatures(features: ILevelFeatureOptions): void {
     this.features = features;
+    setLocalStorageValueSafe(LEVEL_FEATURES_STORAGE_KEY, JSON.stringify(features));
   }
 
-  /** Back to the defaults, so a viewer opened again does not inherit the last level's toggles. */
+  /**
+   * Back to the defaults, so a viewer opened again does not inherit the last level's toggles; the camera and the
+   * features are preferences and stay.
+   */
   @OnDeactivation()
   @BoundAction()
   public clear(): void {
     this.options = DEFAULT_LEVEL_VIEW_OPTIONS;
     this.lighting = DEFAULT_LEVEL_LIGHTING;
-    this.camera = DEFAULT_LEVEL_CAMERA_OPTIONS;
     this.lod = DEFAULT_LEVEL_LOD_OPTIONS;
-    this.features = DEFAULT_LEVEL_FEATURE_OPTIONS;
   }
 }

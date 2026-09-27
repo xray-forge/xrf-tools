@@ -89,6 +89,7 @@ export const RENDERER_FEATURE_SCHEMA: TRendererSettingSchema<IRendererFeatureSet
     radius: toNumber(49, 300, true),
   },
   isGpuTimed: FLAG,
+  isOcclusionCulled: FLAG,
   lights: {
     isEnabled: FLAG,
     isLevelLights: FLAG,

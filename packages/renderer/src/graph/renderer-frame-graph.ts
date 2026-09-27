@@ -12,6 +12,7 @@ import { createBaseFramePasses, IBaseFramePasses } from "#/graph/base-frame-pass
 import { toFramePassOrder } from "#/graph/frame-pass-order";
 import { IFramePlanShadows, IRendererFramePlan, toFramePlan } from "#/graph/frame-plan";
 import { FrameStage } from "#/graph/frame-stage";
+import { createOcclusionFramePasses, IOcclusionFramePasses } from "#/graph/occlusion-frame-passes";
 import { AmbientOcclusionPass } from "#/pass/ambient-occlusion-pass";
 import { AntialiasPass } from "#/pass/antialias/antialias-pass";
 import { FsrPass } from "#/pass/fsr/fsr-pass";
@@ -79,6 +80,9 @@ export class RendererFrameGraph {
     lightShadows: new FrameStage<LightShadowPass>(release),
     lights: new FrameStage<LightsPass>(release),
     motionBackground: new FrameStage<MotionBackgroundPass>(release),
+    occlusion: new FrameStage<IOcclusionFramePasses>((passes: IOcclusionFramePasses) =>
+      Object.values(passes).forEach(release)
+    ),
     resolve: new FrameStage<ITemporalUpscaler>(release),
     shadows: new FrameStage<ReadonlyArray<ShadowPass>>((passes: ReadonlyArray<ShadowPass>) => passes.forEach(release)),
     sharpen: new FrameStage<SharpenPass>(release),
@@ -149,6 +153,8 @@ export class RendererFrameGraph {
     stages.jitter.reconcile(isResolved, () => new TemporalJitter(uniforms.motion));
     stages.motionBackground.reconcile(isResolved, () => new MotionBackgroundPass(targets, uniforms.motion));
     stages.grass.reconcile(toWanted(plan.isGrassy), () => new GrassPass(this.grass, targets));
+    stages.occlusion.reconcile(toWanted(plan.isOccluding), () => createOcclusionFramePasses(targets, cull));
+    cull.setOccluding(plan.isOccluding);
     stages.lights.reconcile(toWanted(plan.isLit), () => new LightsPass(this.lights, targets, uniforms));
     stages.lightShadows.reconcile(
       toWanted(plan.isLightShadowed),
@@ -311,6 +317,7 @@ export class RendererFrameGraph {
         lightShadows: stages.lightShadows.value,
         lights: stages.lights.value,
         motionBackground: stages.motionBackground.value,
+        occlusion: stages.occlusion.value,
         resolve: stages.resolve.value,
         sharpen: stages.sharpen.value,
         shadows: stages.shadows.value ?? [],

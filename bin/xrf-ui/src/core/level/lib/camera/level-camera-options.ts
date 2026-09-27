@@ -27,3 +27,28 @@ export const LEVEL_CAMERA_LIMITS = {
   /** Metres a second at a walk. */
   speed: { max: 120, min: 1, step: 1 },
 } as const;
+
+/**
+ * @param stored - What was stored for the camera, parsed from wherever it is kept.
+ * @returns The options, each value held to its bounds and the default for any value that is not a number.
+ */
+export function toLevelCameraOptions(stored: unknown): ILevelCameraOptions {
+  const source: Partial<Record<keyof ILevelCameraOptions, unknown>> =
+    typeof stored === "object" && stored !== null ? stored : {};
+
+  function toValue(key: keyof typeof LEVEL_CAMERA_LIMITS): number {
+    const value: unknown = source[key];
+    const { min, max } = LEVEL_CAMERA_LIMITS[key];
+
+    return typeof value === "number" && Number.isFinite(value)
+      ? Math.min(max, Math.max(min, value))
+      : DEFAULT_LEVEL_CAMERA_OPTIONS[key];
+  }
+
+  return {
+    boost: toValue("boost"),
+    fieldOfView: toValue("fieldOfView"),
+    sensitivity: toValue("sensitivity"),
+    speed: toValue("speed"),
+  };
+}

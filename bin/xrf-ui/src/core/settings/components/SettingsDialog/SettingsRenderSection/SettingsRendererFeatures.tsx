@@ -96,6 +96,13 @@ export function SettingsRendererFeatures(): ReactElement {
         />
 
         <CheckboxFormRow
+          label={"Occlusion culling"}
+          description={"Culls the level's static draws that nearer ones hide, twice a frame against its depth."}
+          isChecked={features.isOcclusionCulled}
+          onChange={(isOcclusionCulled: boolean) => settingsService.setRendererOverrides({ isOcclusionCulled })}
+        />
+
+        <CheckboxFormRow
           label={"GPU timings"}
           description={"Times every pass on the GPU for the readout."}
           isChecked={features.isGpuTimed}

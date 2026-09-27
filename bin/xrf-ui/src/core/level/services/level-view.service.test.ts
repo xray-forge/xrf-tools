@@ -1,4 +1,5 @@
-import { describe, expect, it } from "@jest/globals";
+import { beforeEach, describe, expect, it } from "@jest/globals";
+import { ERendererAntialiasing } from "@xrf/renderer";
 
 import { DEFAULT_LEVEL_CAMERA_OPTIONS, ILevelCameraOptions } from "@/core/level/lib/camera/level-camera-options";
 import { DEFAULT_LEVEL_FEATURE_OPTIONS } from "@/core/level/lib/features/level-feature-options";
@@ -8,6 +9,10 @@ import { LevelViewService } from "@/core/level/services/level-view.service";
 import { mockInjectedService } from "@/fixtures/utils/container";
 
 describe("LevelViewService", () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+  });
+
   it("starts with the defaults", () => {
     const { service } = mockInjectedService(LevelViewService);
 
@@ -50,12 +55,37 @@ describe("LevelViewService", () => {
     ).not.toThrow();
   });
 
-  it("forgets the last level's toggles", () => {
+  it("forgets the last level's toggles and keeps the camera and the features", () => {
     const { service } = mockInjectedService(LevelViewService);
+    const camera: ILevelCameraOptions = { ...DEFAULT_LEVEL_CAMERA_OPTIONS, fieldOfView: 40 };
 
-    service.setCamera({ ...DEFAULT_LEVEL_CAMERA_OPTIONS, fieldOfView: 40 });
+    service.setOptions({ ...DEFAULT_LEVEL_VIEW_OPTIONS, isGridVisible: !DEFAULT_LEVEL_VIEW_OPTIONS.isGridVisible });
+    service.setCamera(camera);
     service.setFeatures({ ...DEFAULT_LEVEL_FEATURE_OPTIONS, shadows: { filter: 0 } });
     service.clear();
+
+    expect(service.options).toEqual(DEFAULT_LEVEL_VIEW_OPTIONS);
+    expect(service.camera).toEqual(camera);
+    expect(service.features.shadows).toEqual({ filter: 0 });
+  });
+
+  it("starts from the camera and the features the last run stored", () => {
+    const first = mockInjectedService(LevelViewService).service;
+
+    first.setCamera({ ...DEFAULT_LEVEL_CAMERA_OPTIONS, speed: 30 });
+    first.setFeatures({ ...DEFAULT_LEVEL_FEATURE_OPTIONS, antialiasing: ERendererAntialiasing.TAA });
+
+    const { service } = mockInjectedService(LevelViewService);
+
+    expect(service.camera.speed).toBe(30);
+    expect(service.features.antialiasing).toBe(ERendererAntialiasing.TAA);
+  });
+
+  it("starts from the defaults where what was stored does not read", () => {
+    window.localStorage.setItem("xrf.preference.level-camera", "{not json");
+    window.localStorage.setItem("xrf.preference.level-features", JSON.stringify({ antialiasing: "none", grass: 4 }));
+
+    const { service } = mockInjectedService(LevelViewService);
 
     expect(service.camera).toEqual(DEFAULT_LEVEL_CAMERA_OPTIONS);
     expect(service.features).toEqual(DEFAULT_LEVEL_FEATURE_OPTIONS);

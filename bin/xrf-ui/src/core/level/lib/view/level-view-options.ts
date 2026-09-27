@@ -20,6 +20,8 @@ export interface ILevelViewOptions extends ILevelSurfaceOptions {
   isShadowed: boolean;
   /** Darkens creases and corners by the screen's ambient occlusion, while the settings draw it. */
   isOccluded: boolean;
+  /** Culls the static draws the depth hides, while the settings cull them. */
+  isOcclusionCulled: boolean;
   /** Smooths the frame's edges, while the settings smooth them. */
   isAntialiased: boolean;
   /** Sways the trees and the grass in the wind, as the game does. */
@@ -41,6 +43,7 @@ export const DEFAULT_LEVEL_VIEW_OPTIONS: ILevelViewOptions = {
   isImpostors: true,
   isLamplit: true,
   isOccluded: true,
+  isOcclusionCulled: true,
   isShadowed: true,
   isWindy: true,
   isStatsVisible: true,

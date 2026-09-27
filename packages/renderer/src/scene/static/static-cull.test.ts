@@ -148,3 +148,20 @@ describe("StaticCull shadow batches", () => {
     cull.dispose();
   });
 });
+
+describe("StaticCull occlusion", () => {
+  // What the first phase kept last was kept against the depth, so a view that stands still is culled again.
+  it("culls the view again, occluding nothing, once what the depth hides is no longer culled", () => {
+    const { buffers, cull, renderer, submissions } = createCull();
+
+    buffers.occlusion.previous.isTaken.value = 1;
+    cull.setOccluding(false);
+    cull.dispatch(renderer);
+    cull.setOccluding(false);
+    cull.dispatch(renderer);
+
+    expect(buffers.occlusion.previous.isTaken.value).toBe(0);
+    expect(submissions).toHaveLength(1);
+    cull.dispose();
+  });
+});

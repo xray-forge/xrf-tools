@@ -30,6 +30,11 @@ export const RENDERER_FEATURES_STORAGE_KEY: string = buildStorageKey(EStorageNam
 
 /** How many pixels every viewport draws, whatever size it is shown at. */
 export const RENDER_RESOLUTION_STORAGE_KEY: string = buildStorageKey(EStorageNamespace.PREFERENCE, "render-resolution");
+/** How the level viewer's camera sees and answers input, as JSON. */
+export const LEVEL_CAMERA_STORAGE_KEY: string = buildStorageKey(EStorageNamespace.PREFERENCE, "level-camera");
+/** What the level viewer sets over the renderer's features for itself, as JSON. */
+export const LEVEL_FEATURES_STORAGE_KEY: string = buildStorageKey(EStorageNamespace.PREFERENCE, "level-features");
+
 /** Chords a person bound themselves, as one command id to chords map. */
 export const KEYBINDS_STORAGE_KEY: string = buildStorageKey(EStorageNamespace.PREFERENCE, "keybinds");
 

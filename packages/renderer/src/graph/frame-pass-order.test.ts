@@ -2,6 +2,7 @@ import { describe, expect, it } from "@jest/globals";
 
 import { IBaseFramePasses } from "#/graph/base-frame-passes";
 import { IFrameOptionalPasses, toFramePassOrder } from "#/graph/frame-pass-order";
+import { IOcclusionFramePasses } from "#/graph/occlusion-frame-passes";
 import { IRendererPass } from "#/pass/renderer-pass";
 
 /** A pass that is nothing but its name. */
@@ -10,10 +11,14 @@ function toPass(name: string): IRendererPass {
 }
 
 const BASE: IBaseFramePasses = Object.fromEntries(
-  ["cull", "gbuffer", "lateCull", "gbufferLate", "pyramid", "wallmarks", "sun", "combine", "forward", "overlay"].map(
-    (name: string) => [name, toPass(name)]
-  )
+  ["cull", "gbuffer", "wallmarks", "sun", "combine", "forward", "overlay"].map((name: string) => [name, toPass(name)])
 ) as unknown as IBaseFramePasses;
+
+const OCCLUSION: IOcclusionFramePasses = {
+  gbufferLate: toPass("gbufferLate"),
+  lateCull: toPass("lateCull"),
+  pyramid: toPass("pyramid"),
+};
 
 const NONE: IFrameOptionalPasses = {
   ambientOcclusion: null,
@@ -21,6 +26,7 @@ const NONE: IFrameOptionalPasses = {
   lightShadows: null,
   lights: null,
   motionBackground: null,
+  occlusion: null,
   resolve: null,
   shadows: [],
   sharpen: null,
@@ -35,19 +41,7 @@ function toOrder(optional: Partial<IFrameOptionalPasses>): Array<string> {
 
 describe("the frame's pass order", () => {
   it("draws the base alone with every feature off", () => {
-    expect(toOrder({})).toEqual([
-      "cull",
-      "gbuffer",
-      "lateCull",
-      "gbufferLate",
-      "pyramid",
-      "wallmarks",
-      "sun",
-      "combine",
-      "forward",
-      "overlay",
-      "present",
-    ]);
+    expect(toOrder({})).toEqual(["cull", "gbuffer", "wallmarks", "sun", "combine", "forward", "overlay", "present"]);
   });
 
   it("puts every stage of a resolved frame where it reads what it needs", () => {
@@ -58,6 +52,7 @@ describe("the frame's pass order", () => {
         lightShadows: toPass("light-shadows"),
         lights: toPass("lights"),
         motionBackground: toPass("motion-background"),
+        occlusion: OCCLUSION,
         resolve: { ...toPass("fsr2"), beforeBlended: [toPass("fsr2-opaque")] },
         shadows: [toPass("shadow-0"), toPass("shadow-1")],
         sharpen: toPass("rcas"),
@@ -92,5 +87,18 @@ describe("the frame's pass order", () => {
     expect(
       toOrder({ sharpen: toPass("rcas"), smoothing: toPass("antialias"), spatial: toPass("fsr1") }).slice(-6)
     ).toEqual(["forward", "antialias", "fsr1", "rcas", "overlay", "present"]);
+  });
+
+  // The second phase reads the first's depth and draws on into the G-buffer; the pyramid reduces the whole of it.
+  it("culls what the depth hides after the G-buffer's first phase, and reduces its depth once it is whole", () => {
+    expect(toOrder({ grass: toPass("grass"), occlusion: OCCLUSION }).slice(0, 7)).toEqual([
+      "cull",
+      "gbuffer",
+      "grass",
+      "lateCull",
+      "gbufferLate",
+      "pyramid",
+      "wallmarks",
+    ]);
   });
 });

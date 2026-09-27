@@ -83,4 +83,9 @@ describe("the frame plan", () => {
       isLit: true,
     });
   });
+
+  it("culls what the depth hides while the features do, and drops its passes while they do not", () => {
+    expect(toFramePlan(BASE).isOccluding).toBe(true);
+    expect(toFramePlan({ ...BASE, isOcclusionCulled: false }).isOccluding).toBe(false);
+  });
 });
