@@ -117,6 +117,7 @@ export function toLightsPassFragment(
         records,
         right,
         shadow,
+        normal,
         toPoint,
         up,
       };
@@ -168,6 +169,8 @@ interface ILightShadowLookup {
   shadow: Node<"vec4">;
   /** The point from the light, in view space. */
   toPoint: Node<"vec3">;
+  /** The point's normal, in view space. */
+  normal: Node<"vec3">;
   isSpot: Node<"bool">;
 }
 
@@ -185,6 +188,12 @@ const POINT_FACES: ReadonlyArray<IPointFace> = LIGHT_SHADOW_POINT_FACES.map(({ d
 
   return { direction, right: [dy * uz - dz * uy, dz * ux - dx * uz, dx * uy - dy * ux], up };
 });
+
+/**
+ * Texels of its face a point is moved along its normal before it is compared: a departure from the engine, whose maps
+ * are as coarse but whose floors around a low light stripe the same way.
+ */
+const NORMAL_OFFSET: number = 1;
 
 /** `KERNEL`: how far `shadow_hw`'s four taps stand from the point, in texels of the atlas. */
 const SHADOW_KERNEL: number = 0.6;
@@ -232,9 +241,13 @@ function toLightShadow(
   camera: CameraUniforms,
   filter: ERendererLightShadowFilter
 ): Node<"float"> {
-  const { atlas, records, base, axis, right, up, shadow, toPoint, isSpot } = lookup;
-  const across = vec2(dot(toPoint, right.xyz), dot(toPoint, up.xyz)).toVar();
-  const along = dot(toPoint, axis.xyz).toVar();
+  const { atlas, records, base, axis, right, up, shadow, toPoint, normal, isSpot } = lookup;
+  // The face's basis and the point, where the face stands: a spot's in view space, a point light's faces in the world.
+  const faceRight = right.xyz.toVar();
+  const faceUp = up.xyz.toVar();
+  const faceAxis = axis.xyz.toVar();
+  const point = toPoint.toVar();
+  const bent = normal.toVar();
   const scale = right.w.toVar();
   const face = uint(0).toVar();
 
@@ -252,16 +265,27 @@ function toLightShadow(
       )
     );
     scale.assign(toLightShadowScale(LIGHT_SHADOW_POINT_CONE));
+    point.assign(world);
+    bent.assign(camera.viewToWorld.mul(vec4(normal, 0)).xyz);
     POINT_FACES.forEach((basis, index: number) => {
       If(face.equal(index), () => {
-        across.assign(vec2(dot(world, vec3(...basis.right)), dot(world, vec3(...basis.up))));
-        along.assign(dot(world, vec3(...basis.direction)));
+        faceRight.assign(vec3(...basis.right));
+        faceUp.assign(vec3(...basis.up));
+        faceAxis.assign(vec3(...basis.direction));
       });
     });
   });
 
   const rect = records.element(base.add(LIGHT_RECORD.faces).add(face));
   const texel = float(ATLAS_TEXEL);
+  const side = rect.z.div(texel);
+  // A texel of the face across, in metres where the point stands: the face's `2 / scale` of its depth over its texels.
+  const reach = dot(point, faceAxis)
+    .mul(2)
+    .div(scale.mul(side.sub(2)));
+  const shifted = point.add(bent.mul(reach.mul(NORMAL_OFFSET))).toVar();
+  const across = vec2(dot(shifted, faceRight), dot(shifted, faceUp));
+  const along = dot(shifted, faceAxis);
   const [near, far] = [shadow.x, shadow.y];
   const depth = max(along, near);
   // The face's own depth as the engine stores it, `0` near and `1` far, moved as `m_TexelAdjust` moves it; the atlas
@@ -273,7 +297,6 @@ function toLightShadow(
   // In texels of the atlas: the face maps into its square a texel in, as the engine maps a face into its sub-rect;
   // each tap is kept inside the square, where the engine's kernel may read a neighbour's texel.
   const corner = rect.xy.div(texel);
-  const side = rect.z.div(texel);
   const least = corner.add(0.5);
   const most = corner.add(side).sub(0.5);
   const centre = corner.add(1).add(uv.mul(side.sub(2)));
