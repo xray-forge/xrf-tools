@@ -19,9 +19,15 @@ pub struct XrayMaterialDescriptor {
   pub outcome: XrayBumpOutcome,
   /// The detail association the descriptor names, when the type gate lets the engine read it and it names one.
   pub detail: Option<XrayMaterialDetail>,
+  /// The lighting model the texture's surfaces shade with, `m_material`: its class plus its weight, or the engine's
+  /// one where no descriptor is read (`TextureDescrManager.cpp`).
+  pub material: f32,
 }
 
 impl XrayMaterialDescriptor {
+  /// What `CTexture` holds as its material until a descriptor sets one (`SH_Texture.cpp`).
+  pub const DEFAULT_MATERIAL: f32 = 1.0;
+
   /// A texture with no descriptor anywhere, which is most of them.
   pub fn undeclared() -> Self {
     Self::flat(None, XrayMaterialDeclaration::NoDescriptor)
@@ -35,6 +41,7 @@ impl XrayMaterialDescriptor {
       bump: None,
       outcome: XrayBumpOutcome::Flat,
       detail: None,
+      material: Self::DEFAULT_MATERIAL,
     }
   }
 

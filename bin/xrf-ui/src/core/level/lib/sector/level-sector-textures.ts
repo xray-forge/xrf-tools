@@ -75,6 +75,12 @@ function collectSurfaceTextures(references: Set<string>, { surface, render }: IS
     references.add(render.detail.reference);
   }
 
+  // Named by the base texture's descriptor, and bound as a pair.
+  if (render.bump) {
+    references.add(render.bump.bump);
+    references.add(render.bump.companion);
+  }
+
   // Water binds its own base, normal map, foam and distortion by sampler, which its row never names.
   for (const reference of Object.values(render.waterTextures ?? {})) {
     if (reference) {

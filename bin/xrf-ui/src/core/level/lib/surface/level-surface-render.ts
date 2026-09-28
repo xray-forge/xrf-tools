@@ -19,6 +19,17 @@ export interface ILevelSurfaceDetail {
 }
 
 /**
+ * The bump pair a surface binds, as its base texture's descriptor declared it: each the reference the engine asks for,
+ * which the level found as the file it names or the engine's dummy in its place.
+ */
+export interface ILevelSurfaceBump {
+  /** `normal.gloss`. */
+  bump: string;
+  /** `normal_error.height`, the bump's name with `#` appended. */
+  companion: string;
+}
+
+/**
  * The textures a water surface's script binds by sampler, each a reference, engine-style, or null where it binds none.
  */
 export interface ILevelSurfaceWaterTextures {
@@ -40,9 +51,16 @@ export interface ILevelSurfaceRender extends IRendererSurfaceDraw {
   isWallmark: boolean;
   /** The detail bound beside the base, or null for a surface the engine details with none. */
   detail: Nullable<ILevelSurfaceDetail>;
+  /** The bump pair bound beside the base, or null for a surface the engine draws flat. */
+  bump: Nullable<ILevelSurfaceBump>;
+  /** The lighting model its base texture's descriptor sets: its class plus its weight. */
+  material: number;
   /** What a water surface's script binds, or null for any other surface. */
   waterTextures: Nullable<ILevelSurfaceWaterTextures>;
 }
+
+/** What a texture shades with until a descriptor sets otherwise (`SH_Texture.cpp`). */
+export const LEVEL_SURFACE_DEFAULT_MATERIAL: number = 1;
 
 /** The function whose pass is the surface itself, and the one drawing its distortion. */
 const BASE_ELEMENT: string = "normal";
@@ -68,12 +86,15 @@ function findSamplerTexture(
  */
 export function toLevelSurfaceRender(descriptor: Nullable<XraySurfaceDescriptor>): ILevelSurfaceRender {
   const detail: Maybe<XraySurfaceDescriptor["detail"]> = descriptor?.detail;
+  const bump: Maybe<XraySurfaceDescriptor["bump"]> = descriptor?.bump;
 
   return {
     ...toRendererSurfaceDraw(descriptor),
+    bump: bump ? { bump: bump.bump.reference, companion: bump.companion.reference } : null,
     // Dropped where it carries no tiling: the engine binds no scaler there either, and none can be invented for it.
     detail: detail && detail.scale !== null ? { reference: detail.reference, scale: detail.scale } : null,
     isWallmark: isWallmarkSurface(descriptor),
+    material: descriptor?.material ?? LEVEL_SURFACE_DEFAULT_MATERIAL,
     waterTextures: descriptor?.draw.kind === EXraySurfaceDraw.WATER ? toWaterTextures(descriptor.samplers) : null,
   };
 }

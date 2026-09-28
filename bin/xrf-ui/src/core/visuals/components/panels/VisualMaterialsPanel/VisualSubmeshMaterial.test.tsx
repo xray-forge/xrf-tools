@@ -30,6 +30,7 @@ describe("VisualSubmeshMaterial", () => {
       declaration: { kind: "noDescriptor" },
       bump: null,
       outcome: "flat",
+      material: 1,
       detail: null,
     });
 
@@ -99,6 +100,7 @@ describe("VisualSubmeshMaterial", () => {
       },
       bump: null,
       outcome: "flat",
+      material: 1,
       detail: null,
     });
 
@@ -127,6 +129,7 @@ describe("VisualSubmeshMaterial", () => {
         declaration,
         bump: null,
         outcome: "flat",
+        material: 1,
         detail: null,
       });
 

@@ -3,6 +3,7 @@ use std::sync::Arc;
 use xrf_shaders::{XRayShaderBlendFactor, XRayShaderPass, XRayShaderPassState, XRayShaderSampler, XRayShaderScript};
 use xrf_vfs::{XrayAsset, XrayProbe};
 
+use crate::data::xray_material_descriptor::XrayMaterialDescriptor;
 use crate::data::xray_surface_declaration::XraySurfaceDeclaration;
 use crate::data::xray_surface_descriptor::XraySurfaceDescriptor;
 use crate::data::xray_surface_draw::XraySurfaceDraw;
@@ -75,6 +76,8 @@ impl XraySurfaceScript {
       // A script binds its own samplers by name, so nothing here is the detail texture the library's classes bind.
       detail: None,
       samplers,
+      bump: None,
+      material: XrayMaterialDescriptor::DEFAULT_MATERIAL,
     })
   }
 

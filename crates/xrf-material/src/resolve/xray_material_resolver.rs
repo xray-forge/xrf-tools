@@ -3,7 +3,7 @@ use std::sync::Arc;
 use xrf_chunk::ChunkReader;
 use xrf_error::XrfResult;
 use xrf_spawn::XRayByteOrder;
-use xrf_thm::{ThmBumpChunk, ThmFile, ThmTextureType};
+use xrf_thm::{ThmBumpChunk, ThmFile, ThmMaterialChunk, ThmTextureType};
 use xrf_vfs::{XrayAsset, XrayAssetType, XrayProbe, XrayResolution};
 
 use crate::data::xray_bump_fallback::XrayBumpFallback;
@@ -81,7 +81,13 @@ impl XrayMaterialResolver {
       bump,
       outcome,
       detail: Self::describe_detail(&file),
+      material: Self::describe_material(file.material.unwrap_or_default()),
     }
+  }
+
+  /// `float(tp.material) + tp.material_weight`, a chunk the descriptor lacks read as its defaults.
+  fn describe_material(chunk: ThmMaterialChunk) -> f32 {
+    u32::from(chunk.material) as f32 + chunk.weight
   }
 
   fn read(probe: &XrayProbe, descriptor: &XrayAsset) -> XrfResult<Arc<ThmFile>> {

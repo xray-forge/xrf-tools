@@ -1,6 +1,7 @@
 use xrf_spawn::XRayByteOrder;
 use xrf_thm::{
-  ThmBumpChunk, ThmBumpMode, ThmDetailChunk, ThmFile, ThmTextureFlag, ThmTextureParamChunk, ThmTextureType,
+  ThmBumpChunk, ThmBumpMode, ThmDetailChunk, ThmFile, ThmMaterial, ThmMaterialChunk, ThmTextureFlag,
+  ThmTextureParamChunk, ThmTextureType,
 };
 
 /// A descriptor file, built by changing one thing at a time about the one the SDK writes for a plain image.
@@ -62,6 +63,12 @@ impl ThmFixture {
 
   pub fn without_bump(mut self) -> Self {
     self.file.bump = None;
+    self
+  }
+
+  /// The lighting model the descriptor asks for, and how far towards the pair's second model it leans.
+  pub fn with_material(mut self, material: ThmMaterial, weight: f32) -> Self {
+    self.file.material = Some(ThmMaterialChunk { material, weight });
     self
   }
 

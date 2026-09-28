@@ -18,6 +18,7 @@ import {
 import {
   mockAlphaSurfaceDescriptor,
   mockBlendedSurfaceDescriptor,
+  mockMaterialDescriptor,
   mockSurfaceDescriptor,
   MockVisualBuffer,
 } from "@/fixtures/mocks/visual.mocks";
@@ -93,6 +94,15 @@ describe("level sector surfaces", () => {
 
     expect(listSectorTextures(views)).toContainEqual({ reference: "detail\\detail_grnd_earth" });
     expect(hasDetailedSurfaces(views)).toBe(true);
+  });
+
+  // Named by the base texture's descriptor too, and read as a pair: a sector holding one half draws flat.
+  it("asks for both halves of the bump pair a surface binds", () => {
+    const bumped: XraySurfaceDescriptor = mockSurfaceDescriptor({ bump: mockMaterialDescriptor().bump });
+    const views: ISectorViews = viewsOf(sectorDrawing([]), table(bumped));
+
+    expect(listSectorTextures(views)).toContainEqual({ reference: "wpn\\wpn_ak74_bump" });
+    expect(listSectorTextures(views)).toContainEqual({ reference: "wpn\\wpn_ak74_bump#" });
   });
 
   it("names a reference once, however many surfaces name it", () => {

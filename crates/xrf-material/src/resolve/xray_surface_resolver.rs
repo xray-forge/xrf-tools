@@ -12,6 +12,7 @@ use crate::data::xray_surface_descriptor::XraySurfaceDescriptor;
 use crate::data::xray_surface_detail::XraySurfaceDetail;
 use crate::resolve::xray_material_resolver::XrayMaterialResolver;
 use crate::resolve::xray_surface_alpha::XraySurfaceAlpha;
+use crate::resolve::xray_surface_bump_rule::XraySurfaceBumpRule;
 use crate::resolve::xray_surface_detail_rule::XraySurfaceDetailRule;
 use crate::resolve::xray_surface_rule::XraySurfaceRule;
 use crate::resolve::xray_surface_script::XraySurfaceScript;
@@ -97,6 +98,10 @@ impl<'probe, 'vfs> XraySurfaceResolver<'probe, 'vfs> {
     };
 
     let alpha: XraySurfaceAlpha = rule.read(blender);
+    // The base texture's descriptor, which says the detail, the bump pair and the lighting model all at once.
+    let base: Option<XrayMaterialDescriptor> = blender
+      .base_texture(textures)
+      .map(|base| XrayMaterialResolver::describe_texture(self.probe, base));
 
     XraySurfaceDescriptor {
       shader: None,
@@ -109,16 +114,23 @@ impl<'probe, 'vfs> XraySurfaceResolver<'probe, 'vfs> {
         is_strict_sorting: alpha.is_strict_sorting,
       },
       draw: rule.draw(blender, alpha),
-      detail: self.describe_detail(blender, textures),
+      detail: base
+        .as_ref()
+        .and_then(|descriptor| Self::describe_detail(blender, descriptor)),
       samplers: Vec::new(),
+      bump: base
+        .as_ref()
+        .filter(|_| XraySurfaceBumpRule::is_bumped(blender.class))
+        .and_then(|descriptor| descriptor.bump.clone()),
+      material: base.map_or(XrayMaterialDescriptor::DEFAULT_MATERIAL, |descriptor| {
+        descriptor.material
+      }),
     }
   }
 
   /// The detail texture the blender's class binds, laid out at the tiling its base texture's descriptor sets.
-  fn describe_detail(&self, blender: &ShaderBlender, textures: &[String]) -> Option<XraySurfaceDetail> {
+  fn describe_detail(blender: &ShaderBlender, descriptor: &XrayMaterialDescriptor) -> Option<XraySurfaceDetail> {
     let rule: XraySurfaceDetailRule = XraySurfaceDetailRule::of(blender.class)?;
-    let base: &str = blender.base_texture(textures)?;
-    let descriptor: XrayMaterialDescriptor = XrayMaterialResolver::describe_texture(self.probe, base);
     let associated: &XrayMaterialDetail = descriptor
       .detail
       .as_ref()

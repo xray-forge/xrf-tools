@@ -2,7 +2,11 @@ import { ERendererDraw, IRendererSurface, TRendererColor } from "@xrf/renderer";
 import { Nullable } from "@xrf/types";
 
 import { SectorSurface } from "@/core/ipc/types/xrf-visual";
-import { ILevelSurfaceDetail, ILevelSurfaceRender } from "@/core/level/lib/surface/level-surface-render";
+import {
+  ILevelSurfaceBump,
+  ILevelSurfaceDetail,
+  ILevelSurfaceRender,
+} from "@/core/level/lib/surface/level-surface-render";
 
 /** Turns of the golden angle, which spreads consecutive shader ids rather than grouping them into near hues. */
 const HUE_STEP: number = 137.508;
@@ -36,6 +40,7 @@ export function toLevelSurface(
 ): IRendererSurface {
   const base: Nullable<string> = isTextured ? surface.textureName : null;
   const detail: Nullable<ILevelSurfaceDetail> = isTextured ? render.detail : null;
+  const bump: Nullable<ILevelSurfaceBump> = isTextured ? render.bump : null;
 
   if (isLevelImpostorSurface(surface)) {
     return {
@@ -75,8 +80,11 @@ export function toLevelSurface(
     draw: render.draw,
     isLit: render.isLit,
     isWallmark: render.isWallmark || undefined,
+    material: render.material,
     textures: {
       base: base ?? undefined,
+      bump: bump?.bump,
+      bumpCompanion: bump?.companion,
       detail: detail?.reference,
       // The row's third texture, which `uber_deffer` binds as `s_hemi`: the second is R1's baked colour.
       hemi: surface.hemi ?? undefined,

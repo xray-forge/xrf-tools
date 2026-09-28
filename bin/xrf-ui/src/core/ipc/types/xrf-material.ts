@@ -136,6 +136,11 @@ export type XrayMaterialDescriptor = {
   outcome: XrayBumpOutcome;
   /** The detail association the descriptor names, when the type gate lets the engine read it and it names one. */
   detail: XrayMaterialDetail | null;
+  /**
+   * The lighting model the texture's surfaces shade with, `m_material`: its class plus its weight, or the engine's
+   * one where no descriptor is read (`TextureDescrManager.cpp`).
+   */
+  material: number | null;
 };
 
 /** The detail texture a descriptor names, and whether the engine applies it. */
@@ -247,6 +252,10 @@ export type XraySurfaceDescriptor = {
    * surface the blender library describes, whose class binds by slot.
    */
   samplers: Array<XraySurfaceSampler>;
+  /** The bump pair its base texture's descriptor declares, for a class that binds one. */
+  bump: XrayMaterialBump | null;
+  /** The lighting model its base texture's descriptor sets, `m_material`. */
+  material: number | null;
 };
 
 /** The detail texture a surface modulates its diffuse with, and how densely it is laid over it. */

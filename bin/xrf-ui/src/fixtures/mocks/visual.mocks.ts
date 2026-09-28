@@ -253,6 +253,8 @@ export function mockSelectedVisual(overrides: Partial<SelectedVisualDescription>
  */
 export function mockSurfaceDescriptor(overrides: Partial<XraySurfaceDescriptor> = {}): XraySurfaceDescriptor {
   return {
+    bump: null,
+    material: 1,
     shader: "models\\model",
     textures: ["models\\model"],
     library: {
@@ -321,6 +323,7 @@ export function mockBlendedSurfaceDescriptor(overrides: Partial<XraySurfaceDescr
  */
 export function mockMaterialDescriptor(overrides: Partial<XrayMaterialDescriptor> = {}): XrayMaterialDescriptor {
   return {
+    material: 1,
     descriptor: {
       container: { kind: "directory", relativePath: "textures\\wpn\\wpn_ak74.thm", root: "C:\\gamedata" },
       logicalPath: "textures\\wpn\\wpn_ak74.thm",

@@ -1,6 +1,8 @@
 use serde::Serialize;
 use xrf_vfs::XrayAsset;
 
+use crate::data::xray_material_bump::XrayMaterialBump;
+use crate::data::xray_material_descriptor::XrayMaterialDescriptor;
 use crate::data::xray_surface_declaration::XraySurfaceDeclaration;
 use crate::data::xray_surface_detail::XraySurfaceDetail;
 use crate::data::xray_surface_draw::XraySurfaceDraw;
@@ -27,6 +29,10 @@ pub struct XraySurfaceDescriptor {
   /// The texture files a scripted surface binds by sampler, in every element the renderer compiles for it; none for a
   /// surface the blender library describes, whose class binds by slot.
   pub samplers: Vec<XraySurfaceSampler>,
+  /// The bump pair its base texture's descriptor declares, for a class that binds one.
+  pub bump: Option<XrayMaterialBump>,
+  /// The lighting model its base texture's descriptor sets, `m_material`.
+  pub material: f32,
 }
 
 impl XraySurfaceDescriptor {
@@ -40,6 +46,8 @@ impl XraySurfaceDescriptor {
       draw: XraySurfaceDraw::Opaque,
       detail: None,
       samplers: Vec::new(),
+      bump: None,
+      material: XrayMaterialDescriptor::DEFAULT_MATERIAL,
     }
   }
 

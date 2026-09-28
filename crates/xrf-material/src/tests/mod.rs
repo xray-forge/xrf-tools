@@ -5,5 +5,7 @@ pub(crate) mod material_probe;
 mod declaration;
 mod descriptor;
 mod detail;
+mod material;
 mod outcome;
 mod surface;
+mod surface_bump;

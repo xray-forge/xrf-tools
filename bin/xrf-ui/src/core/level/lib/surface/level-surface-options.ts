@@ -8,10 +8,13 @@ export interface ILevelSurfaceOptions {
    * own light alone.
    */
   isBaked: boolean;
+  /** Whether surfaces shade with the bump pairs their base textures declare, or flat for comparison. */
+  isBumped: boolean;
 }
 
 export const DEFAULT_LEVEL_SURFACE_OPTIONS: ILevelSurfaceOptions = {
   isBaked: true,
+  isBumped: true,
   isTextured: true,
   isWireframe: false,
 };

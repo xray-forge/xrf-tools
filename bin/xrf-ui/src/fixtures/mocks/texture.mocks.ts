@@ -98,6 +98,7 @@ export function mockFlatMaterial(overrides: Partial<XrayMaterialDescriptor> = {}
     bump: null,
     declaration: { kind: "noDescriptor" },
     descriptor: null,
+    material: 1,
     detail: null,
     outcome: "flat",
     ...overrides,

@@ -1,6 +1,6 @@
 //! What a level's surfaces are dressed with, resolved once for the whole shader table.
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
 use xrf_error::XrfResult;
 use xrf_level::LevelFile;
@@ -20,8 +20,8 @@ const IMPOSTOR_COMPANION_SUFFIX: &str = "_nm";
 // todo: Resolve the sky of the level's own weather cycle at the viewer's time once the weather is read.
 pub const LEVEL_SKY_TEXTURE: &str = "sky\\sky_7_cube";
 
-/// Resolves every texture a level's surfaces bind: base textures, lightmaps, detail textures, and the companion an
-/// impostor's atlas is bound with.
+/// Resolves every texture a level's surfaces bind: base textures, lightmaps, detail textures, bump pairs, and the
+/// companion an impostor's atlas is bound with.
 pub fn resolve_textures(
   level: &LevelFile,
   surfaces: &[XraySurfaceDescriptor],
@@ -53,12 +53,38 @@ pub fn resolve_textures(
     references.insert(sampler.texture.clone());
   }
 
-  references
+  // A bump pair is found as the descriptor that declared it found it, the engine's dummy where its file is absent.
+  let bumps: BTreeMap<String, Option<String>> = surfaces
+    .iter()
+    .filter_map(|surface| surface.bump.as_ref())
+    .flat_map(|bump| [&bump.bump, &bump.companion])
+    .map(|input| {
+      (
+        input.reference.clone(),
+        get_resolution_logical_path(Ok(input.resolution.clone())),
+      )
+    })
+    .collect();
+
+  let located: Vec<LevelTextureReference> = references
     .into_iter()
+    .filter(|reference| !bumps.contains_key(reference))
     .map(|reference| LevelTextureReference {
       logical_path: resolve_reference(probe, directory, &reference),
       reference,
     })
+    .collect();
+
+  located
+    .into_iter()
+    .chain(
+      bumps
+        .into_iter()
+        .map(|(reference, logical_path)| LevelTextureReference {
+          logical_path,
+          reference,
+        }),
+    )
     .collect()
 }
 

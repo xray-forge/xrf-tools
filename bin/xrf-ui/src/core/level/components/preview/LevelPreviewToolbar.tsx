@@ -1,6 +1,7 @@
 import { default as GridOnIcon } from "@mui/icons-material/GridOn";
 import { default as HexagonIcon } from "@mui/icons-material/Hexagon";
 import { default as LayersIcon } from "@mui/icons-material/Layers";
+import { default as TerrainIcon } from "@mui/icons-material/Terrain";
 import { default as TextureIcon } from "@mui/icons-material/Texture";
 import { default as ThreeDRotationIcon } from "@mui/icons-material/ThreeDRotation";
 import { ERendererRenderScale, IRendererFeatureSettings } from "@xrf/renderer";
@@ -108,6 +109,18 @@ export function LevelPreviewToolbar({
             icon={<TextureIcon />}
             isOn={options.isTextured}
             onToggle={() => onToggle("isTextured")}
+          />
+
+          <EditorViewToggle
+            label={"Bumps"}
+            description={
+              options.isBumped
+                ? "Surfaces shade with the bump pairs their textures declare"
+                : "Every surface shades flat, as though no pair were bound"
+            }
+            icon={<TerrainIcon />}
+            isOn={options.isBumped}
+            onToggle={() => onToggle("isBumped")}
           />
 
           <EditorViewToggle

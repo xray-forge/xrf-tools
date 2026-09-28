@@ -138,7 +138,7 @@ export function toLevelRendererSettings(inputs: ILevelRendererSettingsInputs): I
     },
     pacing,
     hemiStrength: options.isBaked ? lighting.hemiStrength : 0,
-    isBumped: true,
+    isBumped: options.isBumped,
     isLit: true,
     isSkyDrawn: true,
     isWireframe: options.isWireframe,

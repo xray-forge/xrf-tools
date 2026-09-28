@@ -5,7 +5,7 @@ import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
 import { toLevelSurface } from "@/core/level/lib/render/level-render-surface";
 import { ILevelSurfaceRender, toLevelSurfaceRender } from "@/core/level/lib/surface/level-surface-render";
 import { mockSectorSurface } from "@/fixtures/mocks/level.mocks";
-import { mockSurfaceDescriptor } from "@/fixtures/mocks/visual.mocks";
+import { mockMaterialDescriptor, mockSurfaceDescriptor } from "@/fixtures/mocks/visual.mocks";
 
 /** `effects\water` as a script declares it: its program, and what each of its passes binds. */
 function mockWaterDescriptor(program: string, isSoft: boolean): XraySurfaceDescriptor {
@@ -78,5 +78,29 @@ describe("toLevelSurface for water", () => {
     expect(surface.color).toBeDefined();
     expect(surface.textures.base).toBeUndefined();
     expect(surface.textures.normal).toBe("water\\water_normal");
+  });
+});
+
+describe("toLevelSurface for a bumped surface", () => {
+  const bumped: XraySurfaceDescriptor = mockSurfaceDescriptor({ bump: mockMaterialDescriptor().bump, material: 2.5 });
+
+  it("binds the pair its base texture declares and shades with the base texture's model", () => {
+    const surface: IRendererSurface = toLevelSurface(mockSectorSurface(), toLevelSurfaceRender(bumped), true);
+
+    expect(surface.textures.bump).toBe("wpn\\wpn_ak74_bump");
+    expect(surface.textures.bumpCompanion).toBe("wpn\\wpn_ak74_bump#");
+    expect(surface.material).toBe(2.5);
+  });
+
+  it("drops the pair with the other textures, keeping the model", () => {
+    const surface: IRendererSurface = toLevelSurface(mockSectorSurface(), toLevelSurfaceRender(bumped), false);
+
+    expect(surface.textures.bump).toBeUndefined();
+    expect(surface.textures.bumpCompanion).toBeUndefined();
+    expect(surface.material).toBe(2.5);
+  });
+
+  it("shades a surface the backend described nothing for with the engine's default model", () => {
+    expect(toLevelSurfaceRender(null)).toMatchObject({ bump: null, material: 1 });
   });
 });
