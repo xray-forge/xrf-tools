@@ -5,3 +5,4 @@ pub(crate) mod condlist_branch;
 pub(crate) mod source_span;
 
 pub use crate::condlist::condlist::Condlist;
+pub use crate::condlist::condlist_branch::{CondlistBranch, CondlistCondition};
