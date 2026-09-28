@@ -17,6 +17,7 @@ import {
   Return,
   select,
   shiftRight,
+  sqrt,
   storage,
   uint,
   vec3,
@@ -273,6 +274,17 @@ function createPlant(
     const fadeLimit = uniforms.fade.mul(uniforms.fade);
 
     If(distance.greaterThan(fadeLimit), () => {
+      Return();
+    });
+
+    // `UpdateVisibleM`'s `testSAABB`: a slot outside the view is passed over before any of its candidates is laid
+    // out. Its sphere is grown by the largest tuft, since a tuft reaches past the ground its slot's box holds.
+    const half = top.sub(base).mul(0.5);
+    const bound = sqrt(float(2).add(half.mul(half)))
+      .add(BOX_GROWTH)
+      .add(uniforms.height.mul(buffers.tuftReach));
+
+    If(toOutside(uniforms, vec3(center.x, center.y, center.z.negate()), bound), () => {
       Return();
     });
 

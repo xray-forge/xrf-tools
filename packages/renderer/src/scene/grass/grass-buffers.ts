@@ -20,6 +20,8 @@ export interface IGrassLevelBuffers {
   dither: StorageBufferAttribute;
   /** Two vectors a model: its least and most scale, radius and height, then whether it waves. */
   models: StorageBufferAttribute;
+  /** Metres the largest tuft reaches past the ground it stands on, at a height of one: what a slot's box grows by. */
+  tuftReach: number;
   /** Items planted a model, then the whole frame's in the last. */
   counts: StorageBufferAttribute;
   /** Where each model's range goes on filling, as the items are sorted into it. */
@@ -76,6 +78,10 @@ export function createGrassLevelBuffers(grass: IRendererGrass): IGrassLevelBuffe
     slots: toStorage(grass.slots, 1),
     triangleFloats: Math.max(grass.triangles.length, 1),
     triangles: toStorage(grass.triangles, 1),
+    tuftReach: grass.models.reduce(
+      (reach: number, model: IRendererGrassModel) => Math.max(reach, model.maxScale * (model.radius + model.height)),
+      0
+    ),
   };
 }
 
