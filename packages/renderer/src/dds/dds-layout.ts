@@ -29,12 +29,8 @@ export function toDdsTexelLayout(channels: EDdsChannels): TDdsLayout {
 /** Bytes one mip occupies **in the file**, which for a texel layout is not what it occupies once expanded. */
 export function getDdsStoredLength(layout: TDdsLayout, width: number, height: number): number {
   if (layout.kind === EDdsLayout.BLOCK) {
-    // A chain runs below one block, and the smallest levels still cost a whole one.
-    return (
-      (Math.max(DDS_BLOCK_SIZE, width) / DDS_BLOCK_SIZE) *
-      (Math.max(DDS_BLOCK_SIZE, height) / DDS_BLOCK_SIZE) *
-      layout.blockBytes
-    );
+    // Every block a level touches is stored whole: one of 6 texels is two, and the smallest levels still cost one.
+    return Math.ceil(width / DDS_BLOCK_SIZE) * Math.ceil(height / DDS_BLOCK_SIZE) * layout.blockBytes;
   }
 
   return width * height * getDdsSourceStride(layout.channels);

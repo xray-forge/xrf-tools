@@ -1,22 +1,13 @@
+import { IRendererFeatureOverrides } from "#/contract/renderer-feature-overrides";
+import { RENDERER_FEATURE_SCHEMA } from "#/contract/renderer-feature-schema";
+import { IRendererFeatureSettings } from "#/contract/renderer-feature-settings";
+import { ERendererPreset, RENDERER_PRESETS } from "#/contract/renderer-preset";
 import {
   isRendererSettingField,
   isSameRendererSetting,
-  RENDERER_FEATURE_SCHEMA,
   toRendererSettingValue,
   TRendererSettingField,
-} from "#/contract/renderer-feature-schema";
-import { ERendererPreset, IRendererFeatureSettings, RENDERER_PRESETS } from "#/contract/renderer-features";
-
-/** A group's override: part of the group, or the whole of a setting that is one value. */
-type TRendererFeatureOverride<T> = T extends ReadonlyArray<unknown> ? T : T extends object ? Partial<T> : T;
-
-/** Every feature's override, from the settings themselves, so the two cannot drift. */
-type TRendererFeatureOverrideGroups = {
-  [K in keyof IRendererFeatureSettings]?: TRendererFeatureOverride<IRendererFeatureSettings[K]>;
-};
-
-/** What was changed on top of a preset, feature by feature. */
-export interface IRendererFeatureOverrides extends TRendererFeatureOverrideGroups {}
+} from "#/contract/renderer-setting-field";
 
 /** A preset and what was changed on top of it, which is what a consumer stores. */
 export interface IRendererFeatureChoice {
@@ -49,7 +40,9 @@ export function toRendererFeatureChoice(stored: unknown): IRendererFeatureChoice
 
   return {
     overrides: (parse(SCHEMA, stored.overrides) ?? {}) as IRendererFeatureOverrides,
-    preset: Object.values(ERendererPreset).find((it) => it === stored.preset) ?? DEFAULT_RENDERER_FEATURE_CHOICE.preset,
+    preset:
+      Object.values(ERendererPreset).find((preset: ERendererPreset) => preset === stored.preset) ??
+      DEFAULT_RENDERER_FEATURE_CHOICE.preset,
   };
 }
 
@@ -59,6 +52,14 @@ export function toRendererFeatureChoice(stored: unknown): IRendererFeatureChoice
  */
 export function resolveRendererFeatures(choice: IRendererFeatureChoice): IRendererFeatureSettings {
   return resolve(SCHEMA, RENDERER_PRESETS[choice.preset], choice.overrides) as IRendererFeatureSettings;
+}
+
+/**
+ * @param stored - Feature settings as they arrived, from whoever sent them.
+ * @returns The features as the renderer takes them: every value held to the schema, `Base`'s for any it lacks.
+ */
+export function toRendererFeatureSettings(stored: unknown): IRendererFeatureSettings {
+  return resolve(SCHEMA, RENDERER_PRESETS[ERendererPreset.BASE], parse(SCHEMA, stored)) as IRendererFeatureSettings;
 }
 
 /**
@@ -107,7 +108,9 @@ function isSame(node: TSchemaNode, a: unknown, b: unknown): boolean {
     return isSameRendererSetting(node, a, b);
   }
 
-  return Object.entries(node).every(([key, child]) => isSame(child, (a as TValues)[key], (b as TValues)[key]));
+  return Object.entries(node).every(([key, child]: [string, TSchemaNode]) =>
+    isSame(child, (a as TValues)[key], (b as TValues)[key])
+  );
 }
 
 function merge(node: TSchemaNode, a: unknown, b: unknown): unknown {

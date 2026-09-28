@@ -1,5 +1,5 @@
 import { uniform, uniformArray } from "three/tsl";
-import { Vector2, Vector4 } from "three/webgpu";
+import { UniformArrayNode, UniformNode, Vector2, Vector4 } from "three/webgpu";
 
 import { OcclusionView } from "#/uniforms/occlusion-view";
 
@@ -16,8 +16,8 @@ export class OcclusionUniforms {
   /** The view being drawn, which the pyramid holds the depth of by the frame's second cull. */
   public readonly current: OcclusionView = new OcclusionView();
   public readonly levels: Array<Vector4> = Array.from({ length: OCCLUSION_PYRAMID_LEVELS }, () => new Vector4());
-  public readonly levelNodes = uniformArray(this.levels, "vec4");
+  public readonly levelNodes: UniformArrayNode<"vec4"> = uniformArray(this.levels, "vec4");
   /** How many levels the pyramid has, and the drawing size its first level reduces. */
-  public readonly levelCount = uniform(0);
-  public readonly size = uniform(new Vector2(1, 1));
+  public readonly levelCount: UniformNode<"float", number> = uniform(0);
+  public readonly size: UniformNode<"vec2", Vector2> = uniform(new Vector2(1, 1));
 }

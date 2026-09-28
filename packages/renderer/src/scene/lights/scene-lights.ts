@@ -1,15 +1,11 @@
 import { Maybe, Nullable } from "@xrf/types";
-import { Frustum, Matrix4, PerspectiveCamera, Sphere, Vector3, WebGPURenderer } from "three/webgpu";
+import { Frustum, Matrix4, Sphere, Vector3, WebGPURenderer } from "three/webgpu";
 
-import { IRendererLightsSettings } from "#/contract/renderer-features";
-import { IRendererLightsReport } from "#/contract/renderer-report";
-import {
-  ERendererLightKind,
-  IRendererLightAnimator,
-  IRendererLights,
-  IRendererSpotLight,
-  TRendererLight,
-} from "#/contract/scene/renderer-lights";
+import { IRendererLightsReport } from "#/contract/renderer-lights-report";
+import { ERendererLightKind, TRendererLight } from "#/contract/scene/renderer-light";
+import { IRendererLightAnimator } from "#/contract/scene/renderer-light-animator";
+import { IRendererLights } from "#/contract/scene/renderer-lights";
+import { IRendererSpotLight } from "#/contract/scene/renderer-spot-light";
 import { toSunSpecular } from "#/lighting/base-lighting";
 import { toAnimatedColor } from "#/lighting/light-animator";
 import { LightClusters } from "#/scene/lights/light-clusters";
@@ -26,14 +22,14 @@ import {
 import { LightProjectors } from "#/scene/lights/light-projectors";
 import { LIGHT_NO_CONE, LIGHT_RECORD, MAX_LIGHTS } from "#/scene/lights/light-record";
 import { LightRecords } from "#/scene/lights/light-records";
+import { LIGHT_SHADOW_ATLAS_SIZE } from "#/scene/lights/light-shadow-atlas";
+import { ILightShadowEntry } from "#/scene/lights/light-shadow-entry";
+import { ILightShadowFace } from "#/scene/lights/light-shadow-face";
 import { ILightShadowFaceBasis, LIGHT_SHADOW_POINT_FACES, toLightShadowScale } from "#/scene/lights/light-shadow-faces";
-import {
-  ILightShadowEntry,
-  ILightShadowFace,
-  ILightShadowRequest,
-  LIGHT_SHADOW_ATLAS_SIZE,
-  LightShadowPlanner,
-} from "#/scene/lights/light-shadow-planner";
+import { LightShadowPlanner } from "#/scene/lights/light-shadow-planner";
+import { ILightShadowRequest } from "#/scene/lights/light-shadow-request";
+import { byDistance, takeSorted } from "#/scene/lights/light-sorting";
+import { ISceneLightsFrame } from "#/scene/lights/scene-lights-frame";
 import { StaticShadowChanges } from "#/scene/static/static-shadow-changes";
 import { RendererTextures } from "#/texture/renderer-textures";
 import { LIGHT_SHADOW_FACE_BUDGET } from "#/uniforms/lights-uniforms";
@@ -45,21 +41,6 @@ const FALLOFF_RANGE: number = 0.95;
 
 /** `EPS_L`: the level of detail a shadowed light must pass to be drawn at all. */
 const EPS_L: number = 0.001;
-
-/** What a frame's lights are written for. */
-export interface ISceneLightsFrame {
-  /** The view's camera, unjittered: what the lights are culled, ordered, faded and sized by. */
-  readonly view: PerspectiveCamera;
-  /** The camera the scene draws with, whose projection the clusters cut. */
-  readonly camera: PerspectiveCamera;
-  /** Seconds, which the animations run by. */
-  readonly time: number;
-  readonly settings: IRendererLightsSettings;
-  /** The level of detail thresholds, which shadowed lights fade by. */
-  readonly lod: LodUniforms;
-  /** Whether the wind sways the trees this frame, which has the faces over them drawn again. */
-  readonly isWindy: boolean;
-}
 
 /** A light standing in view this frame. */
 interface IInViewLight {
@@ -180,20 +161,32 @@ export class SceneLights {
 
       const inView: Array<IInViewLight> = this.findInView(this.lights.lights, frame);
 
-      this.excess = Math.max(0, inView.length - MAX_LIGHTS);
-      inView.length = Math.min(inView.length, MAX_LIGHTS);
-
       if (isShadowing) {
         this.shadows.begin(frame.isWindy);
-        inView.forEach(({ light, index }: IInViewLight) => light.isShadowed && this.requestShadow(index, light));
+
+        // Only the nearest the records could hold ask for faces.
+        for (let at: number = 0; at < Math.min(inView.length, MAX_LIGHTS); at += 1) {
+          const { light, index }: IInViewLight = inView[at];
+
+          if (light.isShadowed) {
+            this.requestShadow(index, light);
+          }
+        }
+
         this.shadows.finish(LIGHT_SHADOW_FACE_BUDGET);
       }
 
       for (const { light, index, fade, faceFades } of inView) {
+        if (this.count === MAX_LIGHTS) {
+          this.excess += 1;
+          continue;
+        }
+
         const entry: Nullable<ILightShadowEntry> =
           isShadowing && light.isShadowed ? this.shadows.getEntry(index) : null;
 
-        // The engine never lights a shadowed light without its map: it waits for its faces.
+        // The engine never lights a shadowed light without its map: it waits for its faces, leaving its record to the
+        // next light in view.
         if (isShadowing && light.isShadowed && !entry) {
           continue;
         }
@@ -238,10 +231,13 @@ export class SceneLights {
         index: 0,
         light,
       });
-      // `light::get_LOD`, a light the engine shadows alone: by its sphere's share of the screen, a point's each face.
-      const shown: number = this.toFade(light, entry, settings.isShadowed, lod);
 
-      if (shown <= EPS_L || !this.frustum.intersectsSphere(toLightBound(light, this.bound))) {
+      if (!this.frustum.intersectsSphere(toLightBound(light, this.bound))) {
+        return;
+      }
+
+      // `light::get_LOD`, a light the engine shadows alone: by its sphere's share of the screen, a point's each face.
+      if (this.toFade(light, entry, settings.isShadowed, lod) <= EPS_L) {
         return;
       }
 
@@ -251,15 +247,7 @@ export class SceneLights {
       count += 1;
     });
 
-    const { visible } = this;
-
-    visible.length = count;
-
-    for (let index: number = 0; index < count; index += 1) {
-      visible[index] = this.inView[index];
-    }
-
-    return visible.sort(byDistance);
+    return takeSorted(this.inView, count, this.visible, byDistance);
   }
 
   /**
@@ -369,9 +357,9 @@ export class SceneLights {
     this.shadowed += 1;
     this.records.set(slot, LIGHT_RECORD.shadow, entry.near, entry.far, entry.faces.length, 0);
     entry.faces.forEach(({ tile }: ILightShadowFace, face: number) =>
-      this.records.set(
+      this.records.setFace(
         slot,
-        LIGHT_RECORD.faces + face,
+        face,
         tile.x / LIGHT_SHADOW_ATLAS_SIZE,
         tile.y / LIGHT_SHADOW_ATLAS_SIZE,
         tile.size / LIGHT_SHADOW_ATLAS_SIZE,
@@ -403,8 +391,4 @@ export class SceneLights {
   private toFrameRange(light: TRendererLight): number {
     return light.rangeJitter ? light.range + light.rangeJitter * (this.random() * 2 - 1) : light.range;
   }
-}
-
-function byDistance(a: IInViewLight, b: IInViewLight): number {
-  return a.distance - b.distance;
 }

@@ -1,4 +1,6 @@
-import { IRendererGrassWind, IRendererLighting, IRendererTreeWind } from "#/contract/renderer-lighting";
+import { IRendererGrassWind } from "#/contract/renderer-grass-wind";
+import { IRendererLighting } from "#/contract/renderer-lighting";
+import { IRendererTreeWind } from "#/contract/renderer-tree-wind";
 import { toRendererSunDirection } from "#/lighting/sun-direction";
 
 /** The engine's own sway, where a weather states none (`CEnvDescriptor::load`). */
@@ -20,7 +22,7 @@ export const DEFAULT_RENDERER_GRASS_WIND: IRendererGrassWind = {
 };
 
 /** The sky `default_clear` names at noon, both keyframes' at exactly twelve: the next one is weighed at nothing. */
-export const DEFAULT_RENDERER_SKY_TEXTURE: string = "sky\\sky_7_cube";
+const DEFAULT_RENDERER_SKY_TEXTURE: string = "sky\\sky_7_cube";
 
 /**
  * Noon of `default_clear` (`configs/environment/weathers/default_clear.ltx`, `[12:00:00]`), without its fog.

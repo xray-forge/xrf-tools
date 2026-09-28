@@ -1,7 +1,9 @@
 import { describe, expect, it } from "@jest/globals";
 import { MeshBasicNodeMaterial } from "three/webgpu";
 
-import { ERendererDraw, ERendererPass, IRendererSurface } from "#/contract/scene/renderer-surface";
+import { ERendererDraw } from "#/contract/scene/renderer-draw";
+import { ERendererPass } from "#/contract/scene/renderer-pass";
+import { IRendererSurface } from "#/contract/scene/renderer-surface";
 import { createOpaqueShadowMaterial, createSurfaceMaterial, ISurfaceMaterial } from "#/material/surface-material";
 import { SurfaceNodeMaterial } from "#/material/surface-node-material";
 import { SurfacePrograms } from "#/material/surface-programs";

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { DEFAULT_RENDERER_GRASS_SETTINGS } from "#/contract/renderer-features";
+import { DEFAULT_RENDERER_GRASS_SETTINGS } from "#/contract/renderer-grass-settings";
 import { IGrassBuildSize, isGrassBuildOutgrown, toGrassBuildSize } from "#/scene/grass/grass-build-size";
 import { GrassUniforms } from "#/uniforms/grass-uniforms";
 

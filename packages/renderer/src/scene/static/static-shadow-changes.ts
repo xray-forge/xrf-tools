@@ -1,37 +1,14 @@
 import { Nullable } from "@xrf/types";
 import { Box3, Sphere, Vector4 } from "three/webgpu";
 
+import { TShadowCasterKey } from "#/scene/static/shadow-caster-key";
+import { EShadowCasterMotion } from "#/scene/static/shadow-caster-motion";
+import { IShadowChange } from "#/scene/static/shadow-change";
+import { IShadowChanges } from "#/scene/static/shadow-changes";
 import { isBoxInPlanes } from "#/visibility/plane-tests";
 
 /** Changes the log keeps; one older than the oldest kept stands for a change anywhere. */
 const LOG_LIMIT: number = 4096;
-
-/** What casts into the shadow views: a static slot by its number, or a part drawn plainly by itself. */
-export type TShadowCasterKey = number | object;
-
-/** How a caster moves while it casts, which has a kept shadow over it drawn again. */
-export enum EShadowCasterMotion {
-  /** Not at all: a shadow over it is drawn again only once something there changes. */
-  STILL = 0,
-  /** With the wind: while it blows. */
-  SWAYING = 1,
-  /** On its own, as a skinned part plays: always. */
-  MOVING = 2,
-}
-
-/** One change to what the shadow views draw. */
-export interface IShadowChange {
-  /** Where it was, or null for anywhere. */
-  readonly box: Nullable<Box3>;
-  /** Whether what came or went there sways or moves, so a kept shadow there looks again for what does. */
-  readonly isAnimated: boolean;
-}
-
-/** What changed since a version: every change kept, or anywhere, the log no longer reaching back. */
-export interface IShadowChanges {
-  readonly isEverywhere: boolean;
-  readonly changes: ReadonlyArray<IShadowChange>;
-}
 
 /** A change as the log keeps it, its record written over as the ring comes round. */
 interface IShadowChangeRecord {

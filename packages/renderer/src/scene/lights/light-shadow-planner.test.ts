@@ -2,22 +2,20 @@ import { describe, expect, it, jest } from "@jest/globals";
 import { Nullable } from "@xrf/types";
 import { Box3, Vector3, Vector4 } from "three/webgpu";
 
-import { ERendererLightKind } from "#/contract/scene/renderer-lights";
+import { ERendererLightKind } from "#/contract/scene/renderer-light";
 import { createLightBasis, ILightBasis, toLightBasis } from "#/scene/lights/light-geometry";
+import { ILightShadowEntry } from "#/scene/lights/light-shadow-entry";
+import { ILightShadowFace } from "#/scene/lights/light-shadow-face";
 import {
   LIGHT_SHADOW_POINT_CONE,
   LIGHT_SHADOW_POINT_FACES,
   toLightShadowScale,
 } from "#/scene/lights/light-shadow-faces";
-import {
-  ILightShadowEntry,
-  ILightShadowFace,
-  ILightShadowRequest,
-  LightShadowPlanner,
-  toLightShadowSize,
-  toLightShadowTileSize,
-} from "#/scene/lights/light-shadow-planner";
-import { EShadowCasterMotion, StaticShadowChanges } from "#/scene/static/static-shadow-changes";
+import { LightShadowPlanner } from "#/scene/lights/light-shadow-planner";
+import { ILightShadowRequest } from "#/scene/lights/light-shadow-request";
+import { toLightShadowSize, toLightShadowTileSize } from "#/scene/lights/light-shadow-sizing";
+import { EShadowCasterMotion } from "#/scene/static/shadow-caster-motion";
+import { StaticShadowChanges } from "#/scene/static/static-shadow-changes";
 
 function createRequest(part: Partial<ILightShadowRequest> = {}): ILightShadowRequest {
   return {

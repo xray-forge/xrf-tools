@@ -1,30 +1,7 @@
 import { Nullable } from "@xrf/types";
-import { BufferGeometry, StorageBufferNode, TypedArray } from "three/webgpu";
+import { BufferGeometry, StorageBufferNode } from "three/webgpu";
 
-/** How an attribute's components sit in the words a clustered draw reads its vertices from. */
-export enum EClusterWordFormat {
-  /** A float a word, its bits. */
-  FLOAT = "float",
-  /** An unsigned integer a word. */
-  UINT = "uint",
-  /** Four normalized bytes, one word. */
-  UNORM8X4 = "unorm8x4",
-}
-
-/**
- * One vertex attribute as a clustered draw's source stores it, and where it sits among a vertex's words.
- */
-export interface IClusterAttribute {
-  name: string;
-  type: new (length: number) => TypedArray;
-  itemSize: number;
-  isNormalized: boolean;
-  format: EClusterWordFormat;
-  /** Its first word, from the vertex's first. */
-  offset: number;
-  /** Words it takes. */
-  words: number;
-}
+import { IClusterAttribute } from "#/geometry/cluster-attribute";
 
 /**
  * Where a clustered draw reads its vertices: the entry its instance is, the cluster it names, words, a vertex its

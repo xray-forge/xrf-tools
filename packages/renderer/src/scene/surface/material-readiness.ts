@@ -2,7 +2,8 @@ import { Maybe } from "@xrf/types";
 import { Material } from "three/webgpu";
 
 import { ISurfaceMaterial } from "#/material/surface-material";
-import { ISceneObjectState, toSurfaceDraw } from "#/scene/object/scene-object-state";
+import { ISceneObjectState } from "#/scene/object/scene-object-state";
+import { ISurfacePipeline, toSurfacePipelines } from "#/scene/surface/surface-pipeline";
 
 /**
  * The vertex layouts each material's pipelines exist for, so drawing it in one stalls nothing.
@@ -44,17 +45,16 @@ export class MaterialReadiness {
 
   /**
    * @param state - What an object is about to draw.
-   * @returns Whether every material it draws is compiled for its layout, the shadow materials among them.
+   * @returns Whether every material it draws is compiled for its layout, the shadow materials and the plain fallbacks
+   *   among them.
    */
   public isStateReady(state: ISceneObjectState): boolean {
-    return state.surfaces.every((surface: Maybe<ISurfaceMaterial>) => {
-      if (!surface) {
-        return true;
-      }
-
-      const { layout } = toSurfaceDraw(state, surface);
-
-      return this.isReady(surface.material, layout) && (!surface.shadow || this.isReady(surface.shadow, layout));
-    });
+    return state.surfaces.every(
+      (surface: Maybe<ISurfaceMaterial>) =>
+        !surface ||
+        toSurfacePipelines(state, surface).every(({ draw, material }: ISurfacePipeline) =>
+          this.isReady(material, draw.layout)
+        )
+    );
   }
 }

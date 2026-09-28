@@ -1,6 +1,6 @@
 import { toRadians } from "@xrf/math";
 
-import { TRendererVector } from "#/contract/renderer-lighting";
+import { TRendererVector } from "#/contract/renderer-vector";
 
 /**
  * The direction sunlight travels, in renderer space, from a weather keyframe's two angles.

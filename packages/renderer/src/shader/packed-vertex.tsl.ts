@@ -1,12 +1,8 @@
 import { bitcast, float, Fn, varying, vec2, vec4 } from "three/tsl";
 import { Node, NodeBuilder } from "three/webgpu";
 
-import {
-  isPackedTreeGeometry,
-  PACKED_BASE_QUANT,
-  PACKED_LIGHTMAP_QUANT,
-  PACKED_TREE_QUANT,
-} from "#/geometry/renderer-packed-coordinate";
+import { isPackedTreeGeometry } from "#/geometry/packed-tree-geometry";
+import { PACKED_BASE_QUANT, PACKED_LIGHTMAP_QUANT, PACKED_TREE_QUANT } from "#/geometry/renderer-packed-coordinate";
 import { EVertexAttribute } from "#/geometry/vertex-attribute";
 import { isClusteredBuild, toVertexAttribute } from "#/shader/cluster-vertex.tsl";
 

@@ -1,6 +1,9 @@
 import { abs, clamp, dot, float, floor, log, max, min, pow, select, sin, vec2, vec3, vec4 } from "three/tsl";
-import { DepthTexture, Node, Texture } from "three/webgpu";
+import { Node, Texture } from "three/webgpu";
 
+import { IFsrConstants } from "#/pass/fsr/fsr-constants";
+import { IFsrInputs } from "#/pass/fsr/fsr-inputs";
+import { INearestDepth } from "#/pass/fsr/nearest-depth";
 import { loadClamped, loadDepth } from "#/shader/texel.tsl";
 
 // FidelityFX FSR 2.2 (`ffx_fsr2_common.h`, `ffx_fsr2_sample.h`, AMD, MIT): what its passes share, for inverted depth,
@@ -16,31 +19,6 @@ export const UPSAMPLE_LANCZOS_WEIGHT_SCALE: number = 1 / 12;
 export const MAX_ACCUMULATION_LANCZOS_WEIGHT: number = 1;
 /** `fAverageLanczosWeightPerFrame`. */
 export const AVERAGE_LANCZOS_WEIGHT_PER_FRAME: number = 0.74 * UPSAMPLE_LANCZOS_WEIGHT_SCALE;
-
-/** What FSR 2 reads of the frame as drawn. */
-export interface IFsrInputs {
-  /** The tonemapped frame, jittered, with the blended surfaces. */
-  color: Texture;
-  depth: DepthTexture;
-  /** The renderer's motion: how far a pixel's surface moved since the frame before, in texture coordinates. */
-  motion: Texture;
-}
-
-/** `cbFSR2`'s fields the passes read, as uniforms. */
-export interface IFsrConstants {
-  renderSize: Node<"vec2">;
-  displaySize: Node<"vec2">;
-  /** In FSR's sense: a drawn texel `m` stands at `m + 0.5 - jitter`. */
-  jitter: Node<"vec2">;
-  /** The drawing's size over the display's. */
-  downscale: Node<"vec2">;
-  /** `fDeviceToViewDepth`: device depth to view depth, `[1] / (d - [0])`, and the projection's inverse scales. */
-  deviceToView: Node<"vec4">;
-  lumaMipSize: Node<"vec2">;
-  jitterPhaseCount: Node<"float">;
-  /** Zero on the first frame after a reset. */
-  frameIndex: Node<"float">;
-}
 
 /** The nine texels around the centre, the centre first: `FindNearestDepth`'s order. */
 const NEAREST_ORDER: ReadonlyArray<readonly [number, number]> = [
@@ -117,12 +95,6 @@ export function toDisplayPosition(renderPosition: Node<"vec2">, constants: IFsrC
 /** `LoadInputMotionVector`: FSR's motion is the renderer's turned, from now to the frame before. */
 export function loadFsrMotion(inputs: IFsrInputs, position: Node<"vec2">, constants: IFsrConstants): Node<"vec2"> {
   return loadClamped(inputs.motion, position, constants.renderSize).xy.negate();
-}
-
-/** The nearest depth about a texel, and the texel it stands at. */
-export interface INearestDepth {
-  depth: Node<"float">;
-  at: Node<"vec2">;
 }
 
 /** `FindNearestDepth`, inverted: the nearest of the nine on the screen is the greatest. */

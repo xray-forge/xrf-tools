@@ -1,6 +1,6 @@
 import { BufferGeometry } from "three/webgpu";
 
-import { ERendererPass } from "#/contract/scene/renderer-surface";
+import { ERendererPass } from "#/contract/scene/renderer-pass";
 import { ISurfaceMaterial } from "#/material/surface-material";
 
 /**

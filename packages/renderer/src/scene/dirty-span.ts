@@ -16,9 +16,13 @@ export class DirtySpan {
 
   /**
    * @param first - The first element written.
-   * @param last - The last element written, the first where only it was.
+   * @param last - The last element written, the first where only it was; before it where none was.
    */
   public touch(first: number, last: number = first): void {
+    if (last < first) {
+      return;
+    }
+
     this.first = Math.min(this.first, first);
     this.last = Math.max(this.last, last);
   }

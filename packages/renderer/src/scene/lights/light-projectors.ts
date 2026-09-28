@@ -1,6 +1,6 @@
 import { TextureNode } from "three/webgpu";
 
-import { ERendererLightKind, TRendererLight } from "#/contract/scene/renderer-lights";
+import { ERendererLightKind, TRendererLight } from "#/contract/scene/renderer-light";
 import { toProjectorAnchor } from "#/scene/lights/light-projectors.tsl";
 import { getWhiteTexture } from "#/texture/placeholder-textures";
 import { RendererTextures } from "#/texture/renderer-textures";
@@ -77,7 +77,7 @@ export class LightProjectors {
 
     this.unbind();
     this.keys = keys;
-    this.samplers = Array.from({ length: MAX_PROJECTORS }, (_, slot: number) =>
+    this.samplers = Array.from({ length: MAX_PROJECTORS }, (_: unknown, slot: number) =>
       this.textures.bind(keys[slot], getWhiteTexture(), toProjectorAnchor())
     );
     this.version += 1;

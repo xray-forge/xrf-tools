@@ -1,6 +1,7 @@
-import { ComputeNode } from "three/webgpu";
+import { Nullable } from "@xrf/types";
+import { ComputeNode, WebGPURenderer } from "three/webgpu";
 
-import { IRendererExposureSettings } from "#/contract/renderer-features";
+import { IRendererExposureSettings } from "#/contract/renderer-exposure-settings";
 import { createExposureAdaptation, createExposureMeasure } from "#/pass/exposure-pass.tsl";
 import { IRendererFrame } from "#/pass/renderer-frame";
 import { IRendererPass } from "#/pass/renderer-pass";
@@ -22,7 +23,8 @@ export class ExposurePass implements IRendererPass {
   private readonly measure: ComputeNode;
   private readonly adapt: ComputeNode;
   private adaptation: number = 1;
-  private last: number = -1;
+  /** The frame's time it last adapted at, in seconds, or null before it adapted at all. */
+  private last: Nullable<number> = null;
 
   /**
    * @param targets - What the frame draws into, the frame combine writes among them.
@@ -42,15 +44,14 @@ export class ExposurePass implements IRendererPass {
     this.adaptation = settings.adaptation;
   }
 
-  public resize(_: unknown, { renderWidth, renderHeight }: IRendererFrameSize): void {
+  public resize(_renderer: WebGPURenderer, { renderWidth, renderHeight }: IRendererFrameSize): void {
     this.exposure.size.value.set(renderWidth, renderHeight);
   }
 
-  public render({ renderer }: IRendererFrame): void {
-    const now: number = performance.now() / 1000;
-    const delta: number = this.last < 0 ? 0 : Math.min(now - this.last, LONGEST_STEP);
+  public render({ renderer, time }: IRendererFrame): void {
+    const delta: number = this.last === null ? 0 : Math.min(time - this.last, LONGEST_STEP);
 
-    this.last = now;
+    this.last = time;
     this.exposure.advance(delta, this.adaptation);
     renderer.compute([this.measure, this.adapt]);
   }

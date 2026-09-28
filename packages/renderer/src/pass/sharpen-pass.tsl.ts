@@ -40,7 +40,7 @@ export function toSharpened(frame: Texture, strength: UniformNode<"float", numbe
     }
 
     const centre: Node<"vec4"> = load(0, 0);
-    const [b, d, f, h] = [load(0, -1), load(-1, 0), load(1, 0), load(0, 1)].map((it) => it.xyz);
+    const [b, d, f, h] = [load(0, -1), load(-1, 0), load(1, 0), load(0, 1)].map((it: Node<"vec4">) => it.xyz);
     const e: Node<"vec3"> = centre.xyz;
     const least: Node<"vec3"> = min(min(b, d), min(f, h));
     const most: Node<"vec3"> = max(max(b, d), max(f, h));

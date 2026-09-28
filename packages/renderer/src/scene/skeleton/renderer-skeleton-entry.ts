@@ -1,12 +1,9 @@
 import { Maybe, Nullable } from "@xrf/types";
 import { Bone, Matrix4, Skeleton } from "three/webgpu";
 
-import {
-  IRendererMotion,
-  IRendererPose,
-  IRendererSkeleton,
-  RENDERER_FLOATS_PER_BONE,
-} from "#/contract/scene/renderer-skeleton";
+import { IRendererMotion } from "#/contract/scene/renderer-motion";
+import { IRendererPose } from "#/contract/scene/renderer-pose";
+import { IRendererSkeleton, RENDERER_FLOATS_PER_BONE } from "#/contract/scene/renderer-skeleton";
 import { PREVIOUS_BONE_MATRICES, TPreviousSkeleton } from "#/shader/previous-bones";
 
 /** Where a bone's translation starts within its twelve floats. */
@@ -46,7 +43,7 @@ export class RendererSkeletonEntry {
 
     // The inverses are of the bind pose itself, never a motion or the hidden set: the inverse of a collapsed bone
     // would be the inverse of a zero matrix.
-    const inverses: Array<Matrix4> = this.bones.map((_, bone: number) =>
+    const inverses: Array<Matrix4> = this.bones.map((_: unknown, bone: number) =>
       toBoneMatrix(binds, bone * RENDERER_FLOATS_PER_BONE, new Matrix4()).invert()
     );
     const skeleton: Skeleton = new Skeleton(this.bones, inverses);

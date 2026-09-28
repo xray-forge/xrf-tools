@@ -29,7 +29,7 @@ import {
 } from "three/tsl";
 import { Node, TextureNode } from "three/webgpu";
 
-import { IRendererAnomalyWater } from "#/contract/scene/renderer-surface";
+import { IRendererAnomalyWater } from "#/contract/scene/renderer-anomaly-water";
 import { ISurfaceInputs } from "#/material/surface-inputs";
 import { ISurfaceShader } from "#/material/surface-shader";
 import { ESurfaceSlot } from "#/material/surface-slot";

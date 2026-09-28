@@ -18,13 +18,13 @@ export function createRendererSphere(radius: number, widthSegments: number, heig
   const index: Array<number> = [];
   const grid: Array<Array<number>> = [];
 
-  for (let row = 0; row <= heightSegments; row += 1) {
+  for (let row: number = 0; row <= heightSegments; row += 1) {
     const v: number = row / heightSegments;
     // The poles' uvs shift half a segment, so each pole triangle samples the middle of its own column.
     const offset: number = row === 0 ? 0.5 / widthSegments : row === heightSegments ? -0.5 / widthSegments : 0;
     const vertices: Array<number> = [];
 
-    for (let column = 0; column <= widthSegments; column += 1) {
+    for (let column: number = 0; column <= widthSegments; column += 1) {
       const u: number = column / widthSegments;
       const x: number = -Math.cos(u * Math.PI * 2) * Math.sin(v * Math.PI);
       const y: number = Math.cos(v * Math.PI);
@@ -39,8 +39,8 @@ export function createRendererSphere(radius: number, widthSegments: number, heig
     grid.push(vertices);
   }
 
-  for (let row = 0; row < heightSegments; row += 1) {
-    for (let column = 0; column < widthSegments; column += 1) {
+  for (let row: number = 0; row < heightSegments; row += 1) {
+    for (let column: number = 0; column < widthSegments; column += 1) {
       const a: number = grid[row][column + 1];
       const b: number = grid[row][column];
       const c: number = grid[row + 1][column];

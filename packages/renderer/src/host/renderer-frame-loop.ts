@@ -1,7 +1,6 @@
 import { Nullable } from "@xrf/types";
 
-/** Schedules a callback for the next frame, as `requestAnimationFrame` does. */
-export type TRendererFrameScheduler = (callback: (now: number) => void) => number;
+import { TRendererFrameScheduler } from "#/host/renderer-frame-scheduler";
 
 /**
  * The frame loop: at most one frame scheduled at a time, each told the time it runs at.

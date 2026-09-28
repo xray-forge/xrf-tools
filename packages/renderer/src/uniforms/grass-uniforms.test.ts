@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
 import { PerspectiveCamera } from "three/webgpu";
 
-import { DEFAULT_RENDERER_GRASS_SETTINGS } from "#/contract/renderer-features";
+import { DEFAULT_RENDERER_GRASS_SETTINGS } from "#/contract/renderer-grass-settings";
 import { GrassUniforms } from "#/uniforms/grass-uniforms";
 
 describe("GrassUniforms", () => {

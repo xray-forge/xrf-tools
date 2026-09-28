@@ -1,6 +1,6 @@
 import { toMean } from "@xrf/math";
 
-import { IRendererPassCost } from "#/contract/renderer-report";
+import { IRendererPassCost } from "#/contract/renderer-pass-cost";
 
 /** Frames averaged over, the window the frame timer uses. */
 const WINDOW: number = 30;

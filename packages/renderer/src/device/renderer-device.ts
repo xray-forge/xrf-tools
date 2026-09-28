@@ -1,3 +1,4 @@
+import { Nullable } from "@xrf/types";
 import { CanvasTarget, LinearSRGBColorSpace, NoToneMapping, WebGPURenderer } from "three/webgpu";
 
 import { IRendererDevice } from "#/contract/renderer-device";
@@ -16,24 +17,22 @@ export class RendererDevice {
    * @throws {RendererDeviceFailure} Where there is no WebGPU device to draw with.
    */
   public static async open(onLost: (reason: string) => void): Promise<RendererDevice> {
-    const renderer: WebGPURenderer = new WebGPURenderer({
-      alpha: true,
-      antialias: false,
-      // Drawn on by nothing: a view brings its own canvas, and textures and captures need none.
-      canvas: new OffscreenCanvas(1, 1),
-      // Near is 1 and far 0, so float depth keeps its precision where the projection spends least: in the distance.
-      // Every camera is brought to it before it is first read (`adoptRendererConventions`).
-      requiredLimits: (await getRendererDeviceLimits()) ?? undefined,
-      reversedDepthBuffer: true,
-      trackTimestamp: true,
-    });
+    const limits: Nullable<Record<string, number>> = await getRendererDeviceLimits();
+    let renderer: WebGPURenderer;
 
     try {
-      await renderer.init();
-    } catch (error) {
-      renderer.dispose();
+      renderer = await RendererDevice.create(limits);
+    } catch (raised: unknown) {
+      if (!limits) {
+        throw new RendererDeviceFailure(`The GPU device could not be created: ${raised}`);
+      }
 
-      throw new RendererDeviceFailure(`The GPU device could not be created: ${error}`);
+      // Three asks for an adapter of its own, which on a machine with two may not offer what the one read offered.
+      try {
+        renderer = await RendererDevice.create(null);
+      } catch (error: unknown) {
+        throw new RendererDeviceFailure(`The GPU device could not be created: ${error}`);
+      }
     }
 
     if (!getRendererBackend(renderer).isWebGPUBackend) {
@@ -46,6 +45,34 @@ export class RendererDevice {
     renderer.onDeviceLost = (info: { message: string }): void => onLost(info.message);
 
     return new RendererDevice(renderer);
+  }
+
+  /**
+   * @param limits - The limits to require of the device, or null for WebGPU's defaults.
+   * @returns A renderer, its device up.
+   */
+  private static async create(limits: Nullable<Record<string, number>>): Promise<WebGPURenderer> {
+    const renderer: WebGPURenderer = new WebGPURenderer({
+      alpha: true,
+      antialias: false,
+      // Drawn on by nothing: a view brings its own canvas, and textures and captures need none.
+      canvas: new OffscreenCanvas(1, 1),
+      requiredLimits: limits ?? undefined,
+      // Near is 1 and far 0, so float depth keeps its precision where the projection spends least: in the distance.
+      // Every camera is brought to it before it is first read (`adoptRendererConventions`).
+      reversedDepthBuffer: true,
+      trackTimestamp: true,
+    });
+
+    try {
+      await renderer.init();
+    } catch (error) {
+      renderer.dispose();
+
+      throw error;
+    }
+
+    return renderer;
   }
 
   public readonly renderer: WebGPURenderer;

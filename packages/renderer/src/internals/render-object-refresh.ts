@@ -1,31 +1,8 @@
-import { Nullable } from "@xrf/types";
-import * as THREE from "three/webgpu";
 import { NodeMaterialObserver } from "three/webgpu";
 
-/** One of three's `RenderObjectRefreshType` values. */
-export type TRenderObjectRefreshType = number;
-
-/** Three's refresh types by name. */
-type TRenderObjectRefreshTypes = Readonly<Record<"NONE" | "SHARED" | "FULL", TRenderObjectRefreshType>>;
-
-/** What three does for a render object before drawing it: its `RenderObjectRefreshType`, which its types leave out. */
-export const RenderObjectRefreshType: TRenderObjectRefreshTypes = (
-  THREE as unknown as { RenderObjectRefreshType: TRenderObjectRefreshTypes }
-).RenderObjectRefreshType;
-
-/** What an observer reads of a render object: the bundle group recording it, if any, and the camera it draws with. */
-export interface IObservedObject {
-  bundle: Nullable<{ version: number }>;
-  camera?: unknown;
-  /** Its render context, which three gives the camera of every render call. */
-  context?: { camera?: unknown };
-}
-
-/** What an observer reads of the frame: which render call it is, and the camera its uniforms are read from. */
-export interface IObservedFrame {
-  renderId: number;
-  camera?: unknown;
-}
+import { IObservedFrame } from "#/internals/observed-frame";
+import { IObservedObject } from "#/internals/observed-object";
+import { TRenderObjectRefreshType } from "#/internals/render-object-refresh-type";
 
 /** Three's own refresh decision, which its types leave out. */
 type TNeedsRefresh = (renderObject: IObservedObject, nodeFrame: IObservedFrame) => TRenderObjectRefreshType;

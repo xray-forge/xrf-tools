@@ -1,6 +1,8 @@
 import { storage } from "three/tsl";
 import { BufferAttribute, StorageBufferAttribute, StorageBufferNode } from "three/webgpu";
 
+import { ISurfaceTableRow } from "#/uniforms/surface-table-row";
+
 /** Words one row takes: the surface's numbers, then a layer for each slot it samples from an array. */
 export const SURFACE_TABLE_WORDS: number = 16;
 
@@ -15,17 +17,6 @@ export const SURFACE_NO_ROW: number = 0xffffffff;
 
 /** Rows the table holds before it first grows. */
 const INITIAL_ROWS: number = 1 << 10;
-
-/** What one row says of a surface. */
-export interface ISurfaceTableRow {
-  tiling: number;
-  detailScale: number;
-  alphaReference: number;
-  slice: number;
-  color: readonly [number, number, number];
-  /** Each slot's layer in the array its material samples it from, by the slot's place; zero for the rest. */
-  layers: ReadonlyArray<number>;
-}
 
 /** The numbers and array layers of every surface a shared material draws, a row a surface, read by its slot's row. */
 export class SurfaceTable {

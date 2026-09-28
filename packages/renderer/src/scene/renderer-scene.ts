@@ -1,16 +1,18 @@
 import { Maybe, Nullable } from "@xrf/types";
 import { Material, Mesh, Object3D, PerspectiveCamera, Scene, WebGPURenderer } from "three/webgpu";
 
-import { IRendererStaticDrawReport } from "#/contract/renderer-report";
+import { IRendererStaticDrawReport } from "#/contract/renderer-static-draw-report";
 import { IRendererGeometry } from "#/contract/scene/renderer-geometry";
 import { IRendererGrass } from "#/contract/scene/renderer-grass";
 import { IRendererImpostors } from "#/contract/scene/renderer-impostors";
 import { IRendererLights } from "#/contract/scene/renderer-lights";
 import { IRendererObject } from "#/contract/scene/renderer-object";
-import { ERendererPass, IRendererSurface } from "#/contract/scene/renderer-surface";
+import { ERendererPass } from "#/contract/scene/renderer-pass";
+import { IRendererSurface } from "#/contract/scene/renderer-surface";
 import { TRendererTextureSource } from "#/contract/scene/renderer-texture-source";
 import { IDdsRefusal } from "#/dds/dds-refusal";
 import { SceneChangeQueue } from "#/scene/change/scene-change-queue";
+import { GeometryReleases } from "#/scene/geometry/geometry-releases";
 import { SceneGeometry } from "#/scene/geometry/scene-geometry";
 import { SceneGrass } from "#/scene/grass/scene-grass";
 import { RendererImpostorSets } from "#/scene/impostor/renderer-impostor-sets";
@@ -54,12 +56,9 @@ export class RendererScene {
   /** The skies the lighting names, which the water reflects. */
   public readonly sky: SceneSky;
 
-  /** What each shadow cascade draws: every casting static batch, a cell at a time. */
-  public get shadowCasters(): IStaticShadowCasters {
-    return this.staticDraws;
-  }
-
   private readonly geometries: Map<string, SceneGeometry> = new Map();
+  /** The buffers of geometries nothing draws any more, freed with the next flush. */
+  private readonly releases: GeometryReleases = new GeometryReleases();
   private readonly surfaces: SurfaceLibrary;
   private readonly objects: Map<string, SceneObject> = new Map();
   private readonly geometryUsers: KeyedUsers<SceneObject> = new KeyedUsers();
@@ -90,15 +89,17 @@ export class RendererScene {
     this.grass = new SceneGrass(this.textures, uniforms);
     this.lights = new SceneLights(this.textures, this.staticDraws.shadowChanges);
     this.sky = new SceneSky(this.textures, uniforms.sky);
-    this.skeletons = new RendererSkeletons((key: string) => this.buildUsers(this.skeletonUsers.get(key)));
+    this.skeletons = new RendererSkeletons((key: string, release: Nullable<() => void>) =>
+      this.replace(this.skeletonUsers.get(key), release)
+    );
     this.surfaces = new SurfaceLibrary(
       this.textures,
       uniforms,
       (key: string) => this.buildUsers(this.surfaceUsers.get(key)),
       (key: string) => this.staticDraws.invalidate(key)
     );
-    this.impostors = new RendererImpostorSets(this.staticDraws, (key: string) =>
-      this.buildUsers(this.impostorUsers.get(key))
+    this.impostors = new RendererImpostorSets(this.staticDraws, (key: string, release: Nullable<() => void>) =>
+      this.replace(this.impostorUsers.get(key), release)
     );
     this.resolver = new SceneObjectResolver(
       this.geometries,
@@ -107,6 +108,11 @@ export class RendererScene {
       this.impostors,
       this.staticDraws
     );
+  }
+
+  /** What each shadow cascade draws: every casting static batch, a cell at a time. */
+  public get shadowCasters(): IStaticShadowCasters {
+    return this.staticDraws;
   }
 
   /**
@@ -130,12 +136,14 @@ export class RendererScene {
   }
 
   /**
-   * Puts what the static batches' shared materials read on the GPU: the layers their arrays wait for, and their rows.
+   * Puts what the static batches' shared materials read on the GPU, the layers their arrays wait for and their rows,
+   * and frees the buffers of the geometries nothing draws any more.
    *
    * @param renderer - The renderer about to draw.
    */
-  public flushSurfaces(renderer: WebGPURenderer): void {
+  public flush(renderer: WebGPURenderer): void {
     this.surfaces.flush(renderer);
+    this.releases.free(renderer);
   }
 
   /** Whether any object waits: for a material to compile, a texture to upload, or its turn to be applied. */
@@ -204,7 +212,9 @@ export class RendererScene {
    * @param staging - What was compiled.
    */
   public commit(staging: ISceneStaging): void {
-    staging.materials.forEach(([material, layout]) => this.readiness.mark(material, layout));
+    staging.materials.forEach(([material, layout]: readonly [Material, string]) =>
+      this.readiness.mark(material, layout)
+    );
     this.transact(() => {});
   }
 
@@ -220,9 +230,12 @@ export class RendererScene {
   }
 
   public putGeometry(key: string, geometry: IRendererGeometry): void {
+    // Made first: one refused leaves the geometry it would have replaced drawn, and nothing queued.
+    const entry: SceneGeometry = new SceneGeometry(geometry);
+
     this.transact(() => {
       this.retireGeometry(key);
-      this.geometries.set(key, new SceneGeometry(geometry));
+      this.geometries.set(key, entry);
       this.buildUsers(this.geometryUsers.get(key));
     });
   }
@@ -281,7 +294,7 @@ export class RendererScene {
         this.unindex(entry);
         entry.object = object;
       } else {
-        entry = new SceneObject(key, object, this.staticDraws);
+        entry = new SceneObject(key, object, this.staticDraws, this.releases);
         this.objects.set(key, entry);
       }
 
@@ -315,7 +328,7 @@ export class RendererScene {
     this.skeletonUsers.clear();
     this.impostorUsers.clear();
     this.impostors.dispose();
-    this.geometries.forEach((geometry: SceneGeometry) => geometry.dispose());
+    this.geometries.forEach((geometry: SceneGeometry) => geometry.dispose(this.releases));
     this.geometries.clear();
     this.skeletons.dispose();
     this.textures.dispose();
@@ -357,6 +370,22 @@ export class RendererScene {
     this.transact(() => users.forEach((entry: SceneObject) => this.build(entry)));
   }
 
+  /**
+   * Rebuilds the users of a keyed resource put again or released, in the change that lets the one it replaced go.
+   *
+   * @param users - The objects naming its key.
+   * @param release - What lets the replaced one go, or null for none.
+   */
+  private replace(users: ReadonlySet<SceneObject>, release: Nullable<() => void>): void {
+    this.transact(() => {
+      if (release) {
+        this.changes.retire(release);
+      }
+
+      this.buildUsers(users);
+    });
+  }
+
   /** Queues an object in the running change, to draw as it is put now. */
   private build(entry: SceneObject): void {
     // Only an object still held draws: one released while it waited is gone for good.
@@ -365,12 +394,12 @@ export class RendererScene {
     }
   }
 
-  /** A geometry no longer put under its key, disposed once the change replacing it applies. */
+  /** A geometry no longer put under its key, its buffers freed once the change replacing it applies. */
   private retireGeometry(key: string): void {
     const geometry: Maybe<SceneGeometry> = this.geometries.get(key);
 
     if (geometry) {
-      this.changes.retireGeometry(geometry.buffer);
+      this.changes.retire(() => geometry.dispose(this.releases));
     }
   }
 
@@ -388,7 +417,7 @@ export class RendererScene {
         continue;
       }
 
-      const sections: number = state.geometry.sections.filter((_, index: number) =>
+      const sections: number = state.geometry.sections.filter((_: unknown, index: number) =>
         isStaticDraw(state, state.surfaces[index])
       ).length;
 

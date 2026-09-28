@@ -14,7 +14,7 @@ export class PointsOverlay implements IOverlayDrawing {
 
   public constructor(overlay: Extract<TRendererOverlay, { kind: ERendererOverlay.POINTS }>) {
     this.size = overlay.size;
-    this.objects = Array.from({ length: overlay.positions.length / 3 }, (_, at: number) => {
+    this.objects = Array.from({ length: overlay.positions.length / 3 }, (_: unknown, at: number) => {
       const material: SpriteNodeMaterial = new SpriteNodeMaterial({ sizeAttenuation: false });
       const sprite: Sprite = new Sprite(material);
 

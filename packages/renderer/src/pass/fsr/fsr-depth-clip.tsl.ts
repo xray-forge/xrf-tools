@@ -21,12 +21,11 @@ import {
   vec3,
   vec4,
 } from "three/tsl";
-import { Node, StorageBufferAttribute, Texture } from "three/webgpu";
+import { Node } from "three/webgpu";
 
+import { IFsrClipInputs } from "#/pass/fsr/fsr-clip-inputs";
 import {
   FSR2_FP16_MAX,
-  IFsrConstants,
-  IFsrInputs,
   isOnScreen,
   loadFsrMotion,
   RECONSTRUCTED_DEPTH_WEIGHT_THRESHOLD,
@@ -35,30 +34,16 @@ import {
   toViewDepth,
   toYCoCg,
 } from "#/pass/fsr/fsr-common.tsl";
+import { IFsrConstants } from "#/pass/fsr/fsr-constants";
+import { IFsrInputs } from "#/pass/fsr/fsr-inputs";
+import { IBilinearFootprint } from "#/shader/bilinear-footprint";
 import { packOutputs, unpackOutputs } from "#/shader/packed-outputs.tsl";
-import {
-  IBilinearFootprint,
-  loadClamped,
-  NEIGHBOURHOOD,
-  toBilinearFootprint,
-  toClampedTexel,
-} from "#/shader/texel.tsl";
+import { loadClamped, NEIGHBOURHOOD, toBilinearFootprint, toClampedTexel } from "#/shader/texel.tsl";
 
 // `ffx_fsr2_depth_clip.h`.
 
 /** `Ksep`: the depth separation a pixel of the view can tell, per unit of distance. */
 const DEPTH_SEPARATION: number = 1.37e-5;
-
-/** What the depth clip reads besides the frame. */
-export interface IFsrClipInputs {
-  /** The reconstructed depth of the frame before, a depth's bits a drawn texel. */
-  reconstructed: StorageBufferAttribute;
-  capacity: number;
-  dilatedDepth: Texture;
-  dilatedMotion: Texture;
-  previousDilatedMotion: Texture;
-  reactive: Texture;
-}
 
 /**
  * `DepthClip`.

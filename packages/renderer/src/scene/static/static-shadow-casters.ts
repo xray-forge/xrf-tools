@@ -16,7 +16,7 @@ export interface IStaticShadowCasters {
   readonly swayingShadowScenes: ReadonlyArray<Scene>;
   /**
    * What every shadow view draws besides: a twin of each part drawn plainly that casts, skinned ones among them, placed
-   * and skinned by three as the part is, each noted in the changes where it stands.
+   * and skinned by three as the part is. Whoever puts a twin notes it in the changes itself.
    */
   readonly plainCasters: PlainShadowCasters;
   /** Where what the shadow views draw changed, and what of it sways or moves: what a kept shadow is drawn again by. */

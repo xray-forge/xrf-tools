@@ -22,5 +22,5 @@ export function packOutputs(...outputs: Array<Node<"vec4">>): Node<"mat4"> {
 export function unpackOutputs(packed: Node<"mat4">, count: number): Node {
   const columns = packed as unknown as { element(index: Node<"int">): Node<"vec4"> };
 
-  return outputStruct(...Array.from({ length: count }, (_, index: number) => columns.element(int(index))));
+  return outputStruct(...Array.from({ length: count }, (_: unknown, index: number) => columns.element(int(index))));
 }

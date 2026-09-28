@@ -4,7 +4,8 @@
 
 import { describe, expect, it } from "@jest/globals";
 
-import { ERenderInput, IRenderInputEvent } from "#/contract/renderer-input";
+import { ERenderInput } from "#/contract/render-input";
+import { IRenderInputEvent } from "#/contract/render-input-event";
 import { RenderInputForwarder } from "#/input/render-input-forwarder";
 
 function sendTo(target: EventTarget, type: ERenderInput, fields: Record<string, unknown> = {}): Event {
@@ -62,6 +63,38 @@ describe("RenderInputForwarder", () => {
     sendTo(window, ERenderInput.POINTER_MOVE, { clientX: 99 });
 
     expect(sent).toEqual([]);
+
+    forwarder.dispose();
+  });
+
+  it("sends nothing of another pointer moving while one pressed on the canvas is down", () => {
+    const { canvas, sent, forwarder } = mockForwarder();
+
+    sendTo(canvas, ERenderInput.POINTER_DOWN, { pointerId: 1 });
+    sendTo(window, ERenderInput.POINTER_MOVE, { pointerId: 2 });
+    sendTo(window, ERenderInput.POINTER_UP, { pointerId: 2 });
+    sendTo(window, ERenderInput.POINTER_MOVE, { pointerId: 1 });
+
+    expect(sent.map((it: IRenderInputEvent) => [it.type, it.pointerId])).toEqual([
+      [ERenderInput.POINTER_DOWN, 1],
+      [ERenderInput.POINTER_MOVE, 1],
+    ]);
+
+    forwarder.dispose();
+  });
+
+  // Alt-tab mid drag: the let go happens in another window, and the drag would otherwise go on once back.
+  it("cancels every drag still down once the window loses focus, and stops listening to it", () => {
+    const { canvas, sent, forwarder } = mockForwarder();
+
+    sendTo(canvas, ERenderInput.POINTER_DOWN, { pointerId: 4 });
+    window.dispatchEvent(new Event("blur"));
+    sendTo(window, ERenderInput.POINTER_MOVE, { pointerId: 4 });
+
+    expect(sent.map((it: IRenderInputEvent) => [it.type, it.pointerId])).toEqual([
+      [ERenderInput.POINTER_DOWN, 4],
+      [ERenderInput.POINTER_CANCEL, 4],
+    ]);
 
     forwarder.dispose();
   });

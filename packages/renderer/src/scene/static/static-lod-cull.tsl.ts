@@ -2,10 +2,10 @@ import { clamp, float, floor, Fn, If, instanceIndex, max, normalize, storage, ui
 import { ComputeNode, Node } from "three/webgpu";
 
 import { RENDERER_IMPOSTOR_FACETS } from "#/contract/scene/renderer-impostors";
-import { EStaticLodState, EStaticPool, StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
-
-/** `EPS`, what `CalcSSA` adds to a squared distance so a camera standing at a centre divides by something. */
-const DISTANCE_EPSILON: number = 0.00001;
+import { toStaticScreenArea } from "#/scene/static/static-screen-area.tsl";
+import { StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
+import { EStaticLodState } from "#/uniforms/static-lod-state";
+import { EStaticPool } from "#/uniforms/static-pool";
 
 /** `EPS_S`, the least the fade's range is taken as. */
 const RANGE_EPSILON: number = 0.0000001;
@@ -37,10 +37,7 @@ export function createLodCullShader(buffers: StaticDrawBuffers): ComputeNode {
 
     If(sphere.w.greaterThan(0), () => {
       const offset: Node<"vec3"> = sphere.xyz.sub(lod.camera);
-      const ssa: Node<"float"> = sphere.w
-        .div(offset.dot(offset).add(DISTANCE_EPSILON))
-        .mul(factors.element(instanceIndex))
-        .toVar();
+      const ssa: Node<"float"> = toStaticScreenArea(sphere.w, offset).mul(factors.element(instanceIndex)).toVar();
 
       If(lod.isEnabled.lessThan(0.5).or(ssa.greaterThan(lod.lodB)), () => {
         state.assign(EStaticLodState.TREES);

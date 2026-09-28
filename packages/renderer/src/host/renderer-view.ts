@@ -7,6 +7,11 @@ import { IRendererViewSize } from "#/contract/renderer-view-size";
  * The page canvas frames are shown on, handed to this thread, and the size the page last measured it at.
  */
 export class RendererView {
+  /** A size a pixel across at least: a hidden element measures nothing, and nothing allocates an empty target. */
+  private static toDrawnSize(size: IRendererViewSize): IRendererViewSize {
+    return { ...size, height: Math.max(1, size.height), width: Math.max(1, size.width) };
+  }
+
   public readonly canvas: OffscreenCanvas;
 
   private currentSize: IRendererViewSize;
@@ -16,7 +21,7 @@ export class RendererView {
 
   public constructor(canvas: OffscreenCanvas, size: IRendererViewSize) {
     this.canvas = canvas;
-    this.currentSize = size;
+    this.currentSize = RendererView.toDrawnSize(size);
   }
 
   public get size(): IRendererViewSize {
@@ -27,7 +32,7 @@ export class RendererView {
    * @param size - What the element the canvas came from now is.
    */
   public resize(size: IRendererViewSize): void {
-    this.currentSize = size;
+    this.currentSize = RendererView.toDrawnSize(size);
     this.isResizePending = true;
   }
 
@@ -55,7 +60,7 @@ export class RendererView {
     }
   }
 
-  /** Lets go of what the device held of the canvas, which a later device can show again. */
+  /** Lets go of what the device held of the canvas. */
   public hide(): void {
     this.target?.dispose();
     this.target = null;

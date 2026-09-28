@@ -31,8 +31,10 @@ export class RendererUniforms {
   /** What every tonemap multiplies by, adapted to the frame. */
   public readonly exposure: ExposureUniforms = new ExposureUniforms(this.settings.tonemapScale);
   public readonly lut: Data3DTexture = createMaterialLutTexture();
+  /** Storage let go of by any part, freed a frame later. */
+  public readonly retirement: StorageRetirement = new StorageRetirement();
   /** What every static draw is culled and placed by. */
-  public readonly staticDraws: StaticDrawBuffers = new StaticDrawBuffers();
+  public readonly staticDraws: StaticDrawBuffers = new StaticDrawBuffers(this.retirement);
   /** The numbers and array layers of every surface a static batch's shared material draws. */
   public readonly surfaceTable: SurfaceTable = new SurfaceTable();
   /** The sun's shadow cascades, fitted every frame. */
@@ -47,8 +49,6 @@ export class RendererUniforms {
   public readonly water: WaterUniforms = new WaterUniforms();
   /** What the motion every G-buffer surface writes is measured with. */
   public readonly motion: MotionUniforms = new MotionUniforms();
-  /** Storage let go of by any part, freed a frame later. */
-  public readonly retirement: StorageRetirement = new StorageRetirement();
 
   private fogDistance: Nullable<number> = null;
   private isLit: boolean = true;
@@ -59,7 +59,6 @@ export class RendererUniforms {
    * @param renderer - The renderer that uploaded it.
    */
   public freeRetired(renderer: WebGPURenderer): void {
-    this.retirement.retire(this.staticDraws.takeRetired());
     this.retirement.retire(this.surfaceTable.takeRetired());
     this.retirement.free(renderer);
   }

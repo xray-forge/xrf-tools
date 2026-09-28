@@ -1,6 +1,6 @@
 import { TimestampQuery } from "three/webgpu";
 
-import { IRendererPassCost } from "#/contract/renderer-report";
+import { IRendererPassCost } from "#/contract/renderer-pass-cost";
 import { RendererDevice } from "#/device/renderer-device";
 import { getRendererBackend, IRendererBackend } from "#/internals/renderer-backend";
 import { RendererPassTimer } from "#/timing/renderer-pass-timer";
@@ -14,6 +14,8 @@ export class RendererGpuTimings {
   /** Bumped by every reset, so a read finishing late can tell it was superseded. */
   private generation: number = 0;
   private isResolving: boolean = false;
+  /** Whether the last read failed, so a failure that repeats every frame is logged once. */
+  private isFailing: boolean = false;
 
   /**
    * @param device - The device whose renders are timed.
@@ -44,8 +46,15 @@ export class RendererGpuTimings {
 
         inspector.consume(consumed);
         frames.forEach((frame: Map<string, number>) => this.timer.record(frame));
+        this.isFailing = false;
       })
-      .catch(() => {})
+      .catch((error: unknown) => {
+        if (!this.isFailing) {
+          console.error("GPU timings failed to resolve:", error);
+        }
+
+        this.isFailing = true;
+      })
       .finally(() => {
         if (generation === this.generation) {
           this.isResolving = false;
@@ -61,7 +70,7 @@ export class RendererGpuTimings {
     return this.timer.describe(passes);
   }
 
-  /** Forgets every timing, for a device that went away. */
+  /** Forgets every timing, for timing that stopped or started again. */
   public reset(): void {
     this.generation += 1;
     this.isResolving = false;

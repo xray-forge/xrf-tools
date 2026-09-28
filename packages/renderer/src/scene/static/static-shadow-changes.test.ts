@@ -1,7 +1,9 @@
 import { describe, expect, it } from "@jest/globals";
 import { Box3, Sphere, Vector3, Vector4 } from "three/webgpu";
 
-import { EShadowCasterMotion, IShadowChange, StaticShadowChanges } from "#/scene/static/static-shadow-changes";
+import { EShadowCasterMotion } from "#/scene/static/shadow-caster-motion";
+import { IShadowChange } from "#/scene/static/shadow-change";
+import { StaticShadowChanges } from "#/scene/static/static-shadow-changes";
 
 const BOX: Box3 = new Box3(new Vector3(0, 0, 0), new Vector3(1, 1, 1));
 const LIGHT: Sphere = new Sphere(new Vector3(), 3);

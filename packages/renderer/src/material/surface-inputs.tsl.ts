@@ -4,6 +4,7 @@ import { Node, TextureNode } from "three/webgpu";
 
 import { ISurfaceInputs } from "#/material/surface-inputs";
 import { ESurfaceSlot, getSurfaceSlotPlaceholder } from "#/material/surface-slot";
+import { SurfaceSlotNodes } from "#/material/surface-slot-nodes";
 import { SurfaceSlotTextureNode } from "#/material/surface-slot-texture-node";
 import { ISurfaceValues } from "#/material/surface-values";
 
@@ -21,9 +22,10 @@ function toValue<T extends "float" | "vec3">(name: keyof ISurfaceValues, type: T
 
 /**
  * @param bias - The mip levels every sample is moved by, or null for a material drawing no screen pixels.
+ * @param nodes - The renderer's shared samplers, which each sampler built joins.
  * @returns What a variant's shader reads per object, every sampler and uniform one node the variant's materials share.
  */
-export function toSurfaceInputs(bias: Nullable<Node<"float">>): ISurfaceInputs {
+export function toSurfaceInputs(bias: Nullable<Node<"float">>, nodes: SurfaceSlotNodes): ISurfaceInputs {
   return {
     alphaReference: toValue("alphaReference", "float"),
     color: toValue("color", "vec3"),
@@ -32,6 +34,7 @@ export function toSurfaceInputs(bias: Nullable<Node<"float">>): ISurfaceInputs {
       const sampler: SurfaceSlotTextureNode = new SurfaceSlotTextureNode(getSurfaceSlotPlaceholder(slot), coordinates);
 
       sampler.slot = slot;
+      nodes.add(sampler);
 
       const node: TextureNode = nodeObject(sampler) as unknown as TextureNode;
 
@@ -39,6 +42,6 @@ export function toSurfaceInputs(bias: Nullable<Node<"float">>): ISurfaceInputs {
     },
     slice: toValue("slice", "float"),
     tiling: toValue("tiling", "float"),
-    unbiased: (): ISurfaceInputs => toSurfaceInputs(null),
+    unbiased: (): ISurfaceInputs => toSurfaceInputs(null, nodes),
   };
 }

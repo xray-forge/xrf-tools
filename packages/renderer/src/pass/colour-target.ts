@@ -32,16 +32,18 @@ export function createColourTarget(
 ): RenderTarget {
   const target: RenderTarget = new RenderTarget(1, 1, { count: colours.length, depthBuffer: isDepthed });
 
-  colours.forEach(({ name, format = RGBAFormat, type = HalfFloatType, isFiltered = true }, index: number) => {
-    const texture: Texture = target.textures[index];
+  colours.forEach(
+    ({ name, format = RGBAFormat, type = HalfFloatType, isFiltered = true }: IColourAttachment, index: number) => {
+      const texture: Texture = target.textures[index];
 
-    texture.name = name;
-    texture.format = format;
-    texture.type = type;
-    texture.minFilter = isFiltered ? LinearFilter : NearestFilter;
-    texture.magFilter = isFiltered ? LinearFilter : NearestFilter;
-    texture.generateMipmaps = false;
-  });
+      texture.name = name;
+      texture.format = format;
+      texture.type = type;
+      texture.minFilter = isFiltered ? LinearFilter : NearestFilter;
+      texture.magFilter = isFiltered ? LinearFilter : NearestFilter;
+      texture.generateMipmaps = false;
+    }
+  );
 
   return target;
 }

@@ -1,18 +1,14 @@
 import { Nullable } from "@xrf/types";
 import { ComputeNode, PerspectiveCamera, Scene, Texture, Vector4, WebGPURenderer } from "three/webgpu";
 
-import { IRendererLodSettings } from "#/contract/renderer-features";
+import { IRendererLodSettings } from "#/contract/renderer-lod-settings";
 import { IStaticCullCounts } from "#/scene/static/static-cull-counts";
-import { createStaticCullShader, IStaticCullShader, IStaticViewCullShader } from "#/scene/static/static-cull.tsl";
+import { IStaticCullShader } from "#/scene/static/static-cull-shader";
+import { createStaticCullShader } from "#/scene/static/static-cull.tsl";
 import { StaticDepthPyramid } from "#/scene/static/static-depth-pyramid";
 import { IStaticPools } from "#/scene/static/static-pools";
-import {
-  EStaticPool,
-  STATIC_LIGHT_VIEW_START,
-  STATIC_SHADOW_VIEWS,
-  StaticDrawBuffers,
-} from "#/uniforms/static-draw-buffers";
-import { toPlaneVectors } from "#/visibility/camera-frustum";
+import { IStaticViewCullShader } from "#/scene/static/static-view-cull-shader";
+import { STATIC_LIGHT_VIEW_START, STATIC_SHADOW_VIEWS, StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
 import { CullView } from "#/visibility/cull-view";
 import { IShadowFrustum } from "#/visibility/shadow-frustum";
 
@@ -24,8 +20,10 @@ const VIEW_KEY_LENGTH: number = 8;
  * list, in two phases. The first keeps what the frustum keeps and the last frame's depth does not hide; the second
  * tests what that depth hid against this frame's depth so far and keeps what it no longer hides, so nothing appears a
  * frame late. Culled again only when the view moved or anything it lists changed; what it kept stays drawn meanwhile.
- * Its shaders are built again whenever the buffers grow, and dispatched only as far as clusters, rows and batches are
- * used.
+ * The depth it tests is the G-buffer's, plain draws' among it, taken on a frame that culls: a view culled against
+ * another view's depth is culled once more against its own, and then not again while nothing changes, however the plain
+ * draws move. Its shaders are built again whenever the buffers grow, and dispatched only as far as clusters, rows,
+ * batches and regions are used.
  */
 export class StaticCull {
   private readonly buffers: StaticDrawBuffers;
@@ -42,6 +40,8 @@ export class StaticCull {
   /** The view and pools' version the last dispatch culled against. */
   private viewVersion: number = -1;
   private poolsVersion: number = -1;
+  /** The view version the depth the first phase tests against was taken at, -1 for none. */
+  private depthVersion: number = -1;
   /** What each shadow view's last cull ran against, and what this one runs against. */
   private readonly viewKeys: Array<Float64Array> = Array.from({ length: STATIC_SHADOW_VIEWS }, () =>
     new Float64Array(VIEW_KEY_LENGTH).fill(NaN)
@@ -99,7 +99,7 @@ export class StaticCull {
       return;
     }
 
-    toPlaneVectors(view.planes, this.shader.planes);
+    this.shader.planes.forEach((plane: Vector4, index: number) => plane.copy(view.planes[index]));
     this.buffers.occlusion.current.take(camera);
     this.viewVersion = view.version;
     this.poolsVersion = this.pools.version;
@@ -116,6 +116,7 @@ export class StaticCull {
       this.isOccluding = isOccluding;
       // The first phase never occludes against a forgotten view, and only the pyramid's build takes one again.
       this.buffers.occlusion.previous.forget();
+      this.depthVersion = -1;
       this.isCulled = false;
       this.isPending = true;
     }
@@ -266,9 +267,11 @@ export class StaticCull {
     if (this.pyramid.build(renderer, depth, width, height)) {
       // Laid out for another size, a pyramid read by the last view would be read wrong.
       occlusion.previous.forget();
+      this.depthVersion = -1;
     } else {
-      // The first depth taken since none was is culled against at once, not only once the view next moves.
-      this.isPending ||= !occlusion.previous.isTaken.value;
+      // A view culled against no depth or another view's is culled against its own at once, not once it next moves.
+      this.isPending ||= this.depthVersion !== this.viewVersion;
+      this.depthVersion = this.viewVersion;
       occlusion.previous.copy(occlusion.current);
     }
 
@@ -341,7 +344,7 @@ export class StaticCull {
       ...this.shader.early,
       this.shader.late,
       ...this.shader.wire,
-      ...this.shader.views.flatMap((view) => view.cull),
+      ...this.shader.views.flatMap((view: IStaticViewCullShader) => view.cull),
     ].forEach((compute: ComputeNode) => compute.dispose());
   }
 
@@ -354,11 +357,11 @@ export class StaticCull {
       // Every view culls again against the buffers as they are laid out now.
       this.viewKeys.forEach((it: Float64Array) => it.fill(NaN));
       this.shader = createStaticCullShader(this.buffers);
-      this.shader.planes.forEach((plane, index: number) => plane.copy(planes[index]));
+      this.shader.planes.forEach((plane: Vector4, index: number) => plane.copy(planes[index]));
       this.layout = this.buffers.layout;
     }
 
-    // An invocation a cluster, a row, a batch and an impostor up to the last run handed out: nothing past them is used.
+    // An invocation a cluster, row, batch, impostor and candidate up to the last run handed out: none past it is used.
     const clusters: number = Math.max(this.pools.clusterExtent, 1);
     const rows: number = Math.max(this.pools.rowExtent, 1);
     const batches: number = Math.max(this.pools.batchExtent, 1);
@@ -369,7 +372,7 @@ export class StaticCull {
     lods.count = Math.max(this.pools.lodExtent, 1);
     singles.count = clusters;
     instanced.count = rows;
-    this.shader.late.count = Math.max(this.buffers.capacity(EStaticPool.SURFACE_LIST), 1);
+    this.shader.late.count = Math.max(this.pools.candidateExtent, 1);
     this.shader.wire.forEach((compute: ComputeNode) => (compute.count = batches));
 
     for (const { cull } of this.shader.views) {

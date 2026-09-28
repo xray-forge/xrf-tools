@@ -1,21 +1,26 @@
-import { Nullable } from "@xrf/types";
+import { Maybe, Nullable } from "@xrf/types";
 import { PerspectiveCamera, Vector2 } from "three/webgpu";
 
 import { RendererCaptures } from "#/capture/renderer-captures";
-import { ERenderInput, toRenderInputEvent } from "#/contract/renderer-input";
+import { ERenderInput } from "#/contract/render-input";
+import { toRenderInputEvent } from "#/contract/render-input-event";
 import { IRendererLighting } from "#/contract/renderer-lighting";
-import { ERendererRequest, ERendererResponse, TRendererRequest, TRendererResponse } from "#/contract/renderer-messages";
-import { IRendererSettings } from "#/contract/renderer-settings";
+import { ERendererRequest, TRendererRequest } from "#/contract/renderer-request";
+import { ERendererResponse } from "#/contract/renderer-response";
+import { IRendererSettings, toRendererSettings } from "#/contract/renderer-settings";
 import { IRendererViewSize } from "#/contract/renderer-view-size";
+import { IDdsRefusal } from "#/dds/dds-refusal";
 import { RendererDevice } from "#/device/renderer-device";
 import { RendererDeviceFailure } from "#/device/renderer-device-failure";
 import { RenderFrameLimiter } from "#/frame/render-frame-limiter";
 import { toFramesInFlight } from "#/frame/render-frame-pacing";
 import { RendererFrameGraph } from "#/graph/renderer-frame-graph";
 import { RendererCameraRig } from "#/host/renderer-camera-rig";
-import { RendererFrameLoop, TRendererFrameScheduler } from "#/host/renderer-frame-loop";
+import { RendererFrameLoop } from "#/host/renderer-frame-loop";
 import { RendererFramePacing } from "#/host/renderer-frame-pacing";
+import { TRendererFrameScheduler } from "#/host/renderer-frame-scheduler";
 import { RendererFrameStats } from "#/host/renderer-frame-stats";
+import { TRendererReply } from "#/host/renderer-reply";
 import { RendererSceneCompiler } from "#/host/renderer-scene-compiler";
 import { RendererView } from "#/host/renderer-view";
 import { RenderProxyElement } from "#/input/render-proxy-element";
@@ -32,12 +37,10 @@ import { CullView } from "#/visibility/cull-view";
  */
 const TEXTURE_UPLOAD_BUDGET: number = 4;
 
-/** Posts a response, moving what it names rather than copying it. */
-export type TRendererReply = (response: TRendererResponse, transfers?: Array<Transferable>) => void;
-
 /**
  * The renderer, on its own thread: one device, one scene, and at most one canvas showing it.
- * It routes what the consumer says to the part it concerns, and runs the frame.
+ * It routes what the consumer says to the part it concerns, and runs the frame. Started once: a device that fails, or
+ * a frame or request that throws, ends it for good, and a consumer that wants to draw again makes another.
  */
 export class RendererHost {
   private readonly reply: TRendererReply;
@@ -58,20 +61,19 @@ export class RendererHost {
   /** What the camera sees, which the scene is culled against before every frame. */
   private readonly cullView: CullView = new CullView();
 
-  /** Bumped by every start and stop, so a device coming up late can tell it was superseded. */
-  private generation: number = 0;
   private device: Nullable<RendererDevice> = null;
   private view: Nullable<RendererView> = null;
   private settings: Nullable<IRendererSettings> = null;
   private drawnAt: Nullable<number> = null;
   private readonly limiter: RenderFrameLimiter = new RenderFrameLimiter();
+  private isStarted: boolean = false;
   private isDisposed: boolean = false;
 
   public constructor(
     reply: TRendererReply,
     // Wrapped, not passed bare: a scheduler called off its global throws "Illegal invocation".
-    schedule: TRendererFrameScheduler = (callback) => requestAnimationFrame(callback),
-    cancel: (handle: number) => void = (handle) => cancelAnimationFrame(handle)
+    schedule: TRendererFrameScheduler = (callback: (now: number) => void) => requestAnimationFrame(callback),
+    cancel: (handle: number) => void = (handle: number) => cancelAnimationFrame(handle)
   ) {
     this.reply = reply;
     this.loop = new RendererFrameLoop(schedule, cancel, (now: number) => this.frame(now));
@@ -79,7 +81,7 @@ export class RendererHost {
       this.reply({ cursor, kind: ERendererResponse.CURSOR })
     );
     this.rig = new RendererCameraRig(this.element);
-    this.scene = new RendererScene(this.uniforms, (key, refusal) =>
+    this.scene = new RendererScene(this.uniforms, (key: string, refusal: IDdsRefusal) =>
       this.reply({ key, kind: ERendererResponse.TEXTURE_REFUSED, refusal })
     );
     this.overlays = new RendererOverlays(this.scene.skeletons, this.uniforms.lighting.sunDirection);
@@ -91,8 +93,11 @@ export class RendererHost {
       this.scene.grass,
       this.scene.lights
     );
-    this.captures = new RendererCaptures(this.graph.present, this.scene.textures, (id, image) =>
-      this.reply({ id, image, kind: ERendererResponse.CAPTURED }, image ? [image] : [])
+    this.captures = new RendererCaptures(
+      this.graph.present,
+      this.scene.textures,
+      (id: number, image: Nullable<ImageBitmap>) =>
+        this.reply({ id, image, kind: ERendererResponse.CAPTURED }, image ? [image] : [])
     );
     this.light(DEFAULT_RENDERER_LIGHTING);
   }
@@ -113,6 +118,14 @@ export class RendererHost {
       return;
     }
 
+    try {
+      this.dispatch(request);
+    } catch (error: unknown) {
+      this.fail("The renderer failed on a request", error);
+    }
+  }
+
+  private dispatch(request: TRendererRequest): void {
     switch (request.kind) {
       case ERendererRequest.START:
         return this.start(request.settings);
@@ -221,19 +234,51 @@ export class RendererHost {
         return this.ensureScheduled();
 
       case ERendererRequest.BATCH:
-        return this.scene.transact(() => request.requests.forEach((it: TRendererRequest) => this.take(it)));
+        return this.takeBatch(request.requests);
+    }
+  }
+
+  /**
+   * Applies a batch as one change, but for the renderer's start and its end: those stand between the requests around
+   * them, never inside a change.
+   *
+   * @param requests - What the consumer said in one go.
+   */
+  private takeBatch(requests: ReadonlyArray<TRendererRequest>): void {
+    let from: number = 0;
+
+    for (let at: number = 0; at <= requests.length && !this.isDisposed; at += 1) {
+      const request: Maybe<TRendererRequest> = requests[at];
+
+      if (request && request.kind !== ERendererRequest.START && request.kind !== ERendererRequest.DISPOSE) {
+        continue;
+      }
+
+      const changes: ReadonlyArray<TRendererRequest> = requests.slice(from, at);
+
+      if (changes.length) {
+        this.scene.transact(() => changes.forEach((it: TRendererRequest) => this.dispatch(it)));
+      }
+
+      if (request) {
+        this.dispatch(request);
+      }
+
+      from = at + 1;
     }
   }
 
   private start(settings: IRendererSettings): void {
-    this.stop();
+    if (this.isStarted) {
+      return;
+    }
+
+    this.isStarted = true;
     this.configure(settings);
 
-    const generation: number = this.generation;
-
-    RendererDevice.open((reason: string) => this.lose(generation, reason))
+    RendererDevice.open((reason: string) => this.fail(`The GPU device was lost: ${reason}`))
       .then((device: RendererDevice) => {
-        if (generation !== this.generation) {
+        if (this.isDisposed) {
           device.dispose();
 
           return;
@@ -250,18 +295,17 @@ export class RendererHost {
         this.view?.show(device.renderer);
         this.ensureScheduled();
       })
-      .catch((error: unknown) => {
-        if (generation === this.generation) {
-          this.stop();
-          this.reply({
-            kind: ERendererResponse.FAILED,
-            reason: error instanceof RendererDeviceFailure ? error.message : `The renderer could not start: ${error}`,
-          });
-        }
-      });
+      .catch((error: unknown) =>
+        error instanceof RendererDeviceFailure
+          ? this.fail(error.message)
+          : this.fail("The renderer could not start", error)
+      );
   }
 
-  private configure(settings: IRendererSettings): void {
+  private configure(sent: IRendererSettings): void {
+    // The one place settings are checked: everything past it takes them as they are.
+    const settings: IRendererSettings = toRendererSettings(sent);
+
     this.settings = settings;
     this.pacing.limit = toFramesInFlight(settings.pacing);
     this.uniforms.configure(settings);
@@ -308,6 +352,14 @@ export class RendererHost {
   }
 
   private frame(now: number): void {
+    try {
+      this.runFrame(now);
+    } catch (error: unknown) {
+      this.fail("The renderer failed drawing a frame", error);
+    }
+  }
+
+  private runFrame(now: number): void {
     const { device, view, settings } = this;
 
     if (!device || !settings || !this.pacing.isReady) {
@@ -318,30 +370,24 @@ export class RendererHost {
     // Before the frame, and whether or not one is drawn: a capture without a view waits on the same uploads.
     this.scene.textures.upload(device.renderer, TEXTURE_UPLOAD_BUDGET);
     this.scene.advance();
-    this.scene.flushSurfaces(device.renderer);
+    this.scene.flush(device.renderer);
 
     let drawn: Nullable<Vector2> = null;
 
     if (view && (this.captures.hasPending || this.limiter.take(now, settings.pacing.rateLimit))) {
-      // A frame still settling shows the scene half changed, and one that allocated the targets reads back cleared: a
-      // capture of either waits for a later frame.
-      const isSettled: boolean = !this.scene.hasPending && !this.compiler.isCompiling && !this.scene.textures.hasQueued;
       const isResized: boolean = this.draw(now, device, view, settings);
+
+      this.compiler.compile(device.renderer, this.scene, this.graph.compileTargets, this.rig.camera);
+
+      // A frame still settling shows the scene half changed, and one that allocated the targets reads back cleared: a
+      // capture of either waits for a later frame. Asked after the compiler took what waits, a grass build among it.
+      const isSettled: boolean = !this.scene.hasPending && !this.compiler.isCompiling && !this.scene.textures.hasQueued;
 
       drawn = isSettled && !isResized ? this.drawingSize : null;
 
       if (drawn) {
         this.answerSettles();
       }
-
-      this.compiler.compile(
-        device.renderer,
-        this.scene,
-        this.graph.scenePasses,
-        this.rig.camera,
-        { camera: this.uniforms.shadows.cascades[0].camera, target: this.graph.targets.shadows[0] },
-        this.graph.targets.gbuffer
-      );
     }
 
     this.captures.answer(device.renderer, view !== null, drawn);
@@ -377,7 +423,7 @@ export class RendererHost {
       this.rig.resize(width, height);
     }
 
-    // Every frame: a device started again sizes the frame again at the same size.
+    // Every frame, which also tells whether a configure sized the frame again since the last.
     const isResized: boolean = this.graph.resize(renderer, this.drawingSize.x, this.drawingSize.y);
     // The first frame of a view, or of a camera that jumped, has no frame before it to follow.
     // The rig's flag taken first, so a view's first frame spends it rather than leaving it to the second.
@@ -426,7 +472,7 @@ export class RendererHost {
         renderer,
         scenes: this.scene.scenes,
         settings,
-        targets: this.graph.targets,
+        time,
         viewCamera,
       },
       device.inspector
@@ -467,34 +513,34 @@ export class RendererHost {
     this.settles.length = 0;
   }
 
-  /** Lets the device go, keeping what the consumer put and the view it attached, so a later start draws the same. */
-  /** A device lost once up: the renderer stops, and says so, as one that could not start does. */
-  private lose(generation: number, reason: string): void {
-    if (generation === this.generation) {
-      this.stop();
-      this.reply({ kind: ERendererResponse.FAILED, reason: `The GPU device was lost: ${reason}` });
+  /**
+   * Says why the renderer cannot draw on, and lets everything go for good.
+   *
+   * @param reason - Why, as the consumer is told.
+   * @param error - What was thrown, logged with its stack.
+   */
+  private fail(reason: string, error?: unknown): void {
+    if (this.isDisposed) {
+      return;
     }
+
+    if (error !== undefined) {
+      console.error(`${reason}:`, error);
+    }
+
+    this.reply({ kind: ERendererResponse.FAILED, reason: error === undefined ? reason : `${reason}: ${error}` });
+    this.dispose();
   }
 
-  private stop(): void {
-    this.generation += 1;
+  /** Lets everything go, for good. Best effort: the consumer lets the thread go right after asking. */
+  private dispose(): void {
+    this.isDisposed = true;
+    this.detachView();
     this.loop.cancel();
-    this.pacing.reset();
-    this.view?.hide();
+    this.compiler.dispose();
     this.device?.dispose();
     this.device = null;
-    this.drawnAt = null;
-    this.limiter.reset();
-    this.compiler.reset();
-    this.stats.reset();
-    this.captures.cancel();
-  }
-
-  /** Lets everything go, for good. */
-  private dispose(): void {
-    this.detachView();
-    this.stop();
-    this.isDisposed = true;
+    this.settles.length = 0;
     this.graph.dispose();
     this.captures.dispose();
     this.overlays.dispose();

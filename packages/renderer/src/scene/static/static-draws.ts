@@ -1,8 +1,10 @@
 import { Maybe, Nullable } from "@xrf/types";
 import { Box3, Material, Matrix4, Object3D, Scene, Sphere, Vector3 } from "three/webgpu";
 
-import { IRendererPoolUse, IRendererStaticDrawReport } from "#/contract/renderer-report";
-import { IRendererInstances } from "#/contract/scene/renderer-object";
+import { IRendererPoolUse } from "#/contract/renderer-pool-use";
+import { IRendererStaticDrawReport } from "#/contract/renderer-static-draw-report";
+import { IRendererImpostors } from "#/contract/scene/renderer-impostors";
+import { IRendererInstances } from "#/contract/scene/renderer-instances";
 import { ISurfaceMaterial } from "#/material/surface-material";
 import { ISceneClusterRun } from "#/scene/geometry/scene-cluster-run";
 import { SceneClusters } from "#/scene/geometry/scene-clusters";
@@ -11,48 +13,40 @@ import { createSceneRoot } from "#/scene/object/scene-mesh";
 import { PlainShadowCasters } from "#/scene/static/plain-shadow-casters";
 import { StaticArena } from "#/scene/static/static-arena";
 import { StaticArenas } from "#/scene/static/static-arenas";
-import { IStaticSlotBatches, StaticBatches } from "#/scene/static/static-batches";
+import { StaticBatches } from "#/scene/static/static-batches";
 import { StaticClusters } from "#/scene/static/static-clusters";
 import { StaticCull } from "#/scene/static/static-cull";
 import { StaticDrawPool } from "#/scene/static/static-draw-pool";
-import { toGrownCapacity } from "#/scene/static/static-growth";
+import { allocateGrowing, toGrownCapacity } from "#/scene/static/static-growth";
 import { StaticLods } from "#/scene/static/static-lods";
 import { StaticPlaces } from "#/scene/static/static-places";
 import { IStaticPools } from "#/scene/static/static-pools";
 import { IStaticRange } from "#/scene/static/static-range";
+import { StaticRows } from "#/scene/static/static-rows";
+import { IStaticRunPool } from "#/scene/static/static-run-pool";
+import { IStaticRuns } from "#/scene/static/static-runs";
 import { IStaticShadowCasters } from "#/scene/static/static-shadow-casters";
 import { StaticShadowChanges } from "#/scene/static/static-shadow-changes";
+import { IStaticSlotBatches } from "#/scene/static/static-slot-batches";
+import { StaticSlotHolds } from "#/scene/static/static-slot-holds";
 import { IStaticUpcoming } from "#/scene/static/static-upcoming";
 import {
-  EStaticListSpace,
-  EStaticPool,
-  EStaticSlotKind,
   STATIC_NO_BAND,
   STATIC_NO_BATCH,
   STATIC_SHADOW_VIEWS,
   StaticDrawBuffers,
 } from "#/uniforms/static-draw-buffers";
+import { EStaticListSpace } from "#/uniforms/static-list-space";
+import { EStaticPool } from "#/uniforms/static-pool";
+import { EStaticSlotKind } from "#/uniforms/static-slot-kind";
 
-/** A run of a pool's elements a slot holds: where it starts, and how many. */
-interface IRun {
-  start: number;
-  count: number;
-}
-
-/** What one slot holds of the pools besides its record. */
-interface ISlotHold {
-  clusters: Nullable<IRun>;
-  /** A single draw's place. */
-  place: Nullable<number>;
-  /** An instanced draw's rows, a place of its object each. */
-  rows: Nullable<IRun>;
-}
-
-/** The pools a run is handed out of, which grow on their own. */
-type TRunPool = EStaticPool.PLACES | EStaticPool.ROWS | EStaticPool.LODS | EStaticPool.CLUSTERS;
-
-/** What the objects still waiting to draw will take of each pool. */
-type TStaticDemand = Record<EStaticPool.SLOTS | EStaticPool.PLACES | EStaticPool.ROWS | EStaticPool.CLUSTERS, number>;
+/** What one object still waiting to draw will take of each pool it is known to take of. */
+const UPCOMING_DEMAND: Readonly<Partial<Record<EStaticPool, (upcoming: IStaticUpcoming) => number>>> = {
+  [EStaticPool.SLOTS]: ({ sections }: IStaticUpcoming) => sections,
+  [EStaticPool.PLACES]: ({ places, sections }: IStaticUpcoming) => places || sections,
+  [EStaticPool.ROWS]: ({ places, sections }: IStaticUpcoming) => places * sections,
+  [EStaticPool.CLUSTERS]: ({ clusters }: IStaticUpcoming) => clusters,
+};
 
 /** A corner of a place's sphere, reused. */
 const PLACE_CORNER: Vector3 = new Vector3();
@@ -88,16 +82,17 @@ export class StaticDraws implements IStaticShadowCasters, IStaticPools {
   });
   /** What every cascade draws besides the batches: a twin of each part drawn plainly that casts. */
   public readonly plainCasters: PlainShadowCasters = new PlainShadowCasters();
-  /** The impostors of clumps of trees, which the LOD cull decides between a clump and its impostor by. */
-  public readonly lods: StaticLods;
 
   private readonly buffers: StaticDrawBuffers;
   private readonly pool: StaticDrawPool;
   private readonly places: StaticPlaces;
+  private readonly rows: StaticRows;
+  /** The impostors of clumps of trees, which the LOD cull decides between a clump and its impostor by. */
+  private readonly lods: StaticLods;
   private readonly clusters: StaticClusters;
+  private readonly holds: StaticSlotHolds;
   private readonly arenas: StaticArenas;
   private readonly batches: StaticBatches;
-  private readonly holds: Map<number, ISlotHold> = new Map();
   private readonly toUpcoming: () => Iterable<IStaticUpcoming>;
   /** Times a static draw was refused room by the device's limit and drawn plainly instead. */
   private fallbacks: number = 0;
@@ -112,16 +107,13 @@ export class StaticDraws implements IStaticShadowCasters, IStaticPools {
     this.toUpcoming = toUpcoming;
     this.pool = new StaticDrawPool(buffers);
     this.places = new StaticPlaces(buffers);
+    this.rows = new StaticRows(buffers);
     this.lods = new StaticLods(buffers);
     this.clusters = new StaticClusters(buffers);
+    this.holds = new StaticSlotHolds((pool: IStaticRunPool, count: number) => this.allocateRun(pool, count));
     this.batches = new StaticBatches(buffers, scene, this.late, this.stillShadowScenes, this.swayingShadowScenes);
-    this.arenas = new StaticArenas(
-      (arena: StaticArena) => this.batches.invalidateArena(arena),
-      (arena: StaticArena) => this.batches.release(arena),
-      () => [...toUpcoming()].map((upcoming: IStaticUpcoming) => upcoming.geometry),
-      () => buffers.storageLimit,
-      buffers.listEntries,
-      buffers.clusterRangeWords
+    this.arenas = new StaticArenas(buffers, () =>
+      [...toUpcoming()].map((upcoming: IStaticUpcoming) => upcoming.geometry)
     );
     this.cull = new StaticCull(buffers, this, this.late);
   }
@@ -135,9 +127,18 @@ export class StaticDraws implements IStaticShadowCasters, IStaticPools {
     this.pool.isEnabled = isEnabled;
   }
 
-  /** Bumped whenever anything a cull lists changes. */
+  /** Bumped whenever anything a cull lists changes, or a buffer anything draws by is replaced. */
   public get version(): number {
-    return this.pool.version + this.places.version + this.lods.version + this.clusters.version + this.batches.version;
+    return (
+      this.pool.version +
+      this.places.version +
+      this.rows.version +
+      this.lods.version +
+      this.clusters.version +
+      this.batches.version +
+      this.buffers.layout +
+      this.arenas.generation
+    );
   }
 
   public get clusterExtent(): number {
@@ -145,7 +146,7 @@ export class StaticDraws implements IStaticShadowCasters, IStaticPools {
   }
 
   public get rowExtent(): number {
-    return this.places.rowExtent;
+    return this.rows.extent;
   }
 
   public get batchExtent(): number {
@@ -156,14 +157,18 @@ export class StaticDraws implements IStaticShadowCasters, IStaticPools {
     return this.lods.extent;
   }
 
-  /** Queues every pool's changes for upload, and hands the arenas' replaced buffers on to be freed. */
+  public get candidateExtent(): number {
+    return this.batches.listExtent(EStaticListSpace.SURFACES);
+  }
+
+  /** Queues every pool's changes for upload, the batches recorded again over whatever grew. */
   public flush(): void {
     this.pool.flush();
     this.places.flush();
+    this.rows.flush();
     this.lods.flush();
     this.clusters.flush();
     this.batches.flush();
-    this.buffers.retire(this.arenas.takeRetired());
   }
 
   /**
@@ -189,7 +194,7 @@ export class StaticDraws implements IStaticShadowCasters, IStaticPools {
     const { clusters, triangles, occludedClusters, occludedTriangles } = this.cull.kept;
 
     return {
-      clusters: this.clusters.use,
+      clusters: StaticDraws.toUse(this.clusters),
       commands: this.batches.surfaceCount * 2,
       fallbacks: this.fallbacks,
       kept: { clusters, triangles },
@@ -197,10 +202,10 @@ export class StaticDraws implements IStaticShadowCasters, IStaticPools {
         shadows: this.batches.listUse(EStaticListSpace.SHADOWS),
         surfaces: this.batches.listUse(EStaticListSpace.SURFACES),
       },
-      lods: this.lods.use,
+      lods: StaticDraws.toUse(this.lods),
       occluded: { clusters: occludedClusters, triangles: occludedTriangles },
-      places: this.places.placeUse,
-      rows: this.places.rowUse,
+      places: StaticDraws.toUse(this.places),
+      rows: StaticDraws.toUse(this.rows),
       slots: { capacity: this.pool.capacity, used: this.pool.count },
     };
   }
@@ -242,8 +247,6 @@ export class StaticDraws implements IStaticShadowCasters, IStaticPools {
 
     if (slot === null) {
       this.fallbacks += 1;
-    } else {
-      this.holds.set(slot, { clusters: null, place: null, rows: null });
     }
 
     return slot;
@@ -270,21 +273,16 @@ export class StaticDraws implements IStaticShadowCasters, IStaticPools {
     bounds: Sphere,
     matrix: Matrix4
   ): boolean {
-    const hold: ISlotHold = this.holds.get(slot) as ISlotHold;
+    this.holds.drop(slot, this.rows);
 
-    this.freeRun(EStaticPool.ROWS, hold, "rows");
+    const place: Nullable<number> = this.holds.hold(slot, this.places, 1);
+    const start: Nullable<number> = this.holds.hold(slot, this.clusters, run.count);
 
-    if (hold.place === null) {
-      hold.place = this.allocateRun(EStaticPool.PLACES, 1);
-    }
-
-    const start: Nullable<number> = this.holdClusters(hold, run.count);
-
-    if (hold.place === null || start === null) {
+    if (place === null || start === null) {
       return this.refuse(slot, false);
     }
 
-    this.places.writePlace(hold.place, matrix);
+    this.places.writePlace(place, matrix);
     this.clusters.write(start, slot, clusters, run, range, matrix);
 
     const batches: Nullable<IStaticSlotBatches> = this.batches.put(
@@ -303,7 +301,7 @@ export class StaticDraws implements IStaticShadowCasters, IStaticPools {
       slot,
       run.count ? EStaticSlotKind.SINGLE : EStaticSlotKind.NONE,
       { count: run.count, start },
-      hold.place,
+      place,
       batches.surface,
       batches.shadow,
       surface.row
@@ -317,7 +315,7 @@ export class StaticDraws implements IStaticShadowCasters, IStaticPools {
    * @returns Where its places start, or null where there is no room and it has to be drawn plainly.
    */
   public allocatePlaces(count: number): Nullable<number> {
-    return this.pool.isEnabled ? this.allocateRun(EStaticPool.PLACES, count) : null;
+    return this.pool.isEnabled ? this.allocateRun(this.places, count) : null;
   }
 
   /**
@@ -336,19 +334,35 @@ export class StaticDraws implements IStaticShadowCasters, IStaticPools {
   }
 
   /**
-   * @param count - Impostors a set holds.
-   * @returns Where they start, the pool grown where it has no room; null where the device's limit stops it.
-   */
-  public allocateLods(count: number): Nullable<number> {
-    return this.allocateRun(EStaticPool.LODS, count);
-  }
-
-  /**
    * @param start - Where a run of places starts, free for another object.
    * @param count - Its length.
    */
   public freePlaces(start: number, count: number): void {
-    this.places.freePlaces(start, count);
+    this.places.free(start, count);
+  }
+
+  /**
+   * @param count - Impostors a set holds.
+   * @returns Where they start, the pool grown where it has no room; null where the device's limit stops it.
+   */
+  public allocateLods(count: number): Nullable<number> {
+    return this.allocateRun(this.lods, count);
+  }
+
+  /**
+   * @param start - Where a set's impostors start.
+   * @param impostors - The set.
+   */
+  public writeLods(start: number, impostors: IRendererImpostors): void {
+    this.lods.write(start, impostors);
+  }
+
+  /**
+   * @param start - Where a set's impostors start, holding none from now on.
+   * @param count - Its length.
+   */
+  public freeLods(start: number, count: number): void {
+    this.lods.free(start, count);
   }
 
   /**
@@ -376,31 +390,21 @@ export class StaticDraws implements IStaticShadowCasters, IStaticPools {
     lods: Nullable<Uint32Array> = null,
     band: number = STATIC_NO_BAND
   ): boolean {
-    const hold: ISlotHold = this.holds.get(slot) as ISlotHold;
     const places: number = spheres.length / 4;
 
-    this.freePlace(hold);
+    this.holds.drop(slot, this.places);
 
-    if (hold.rows && hold.rows.count !== places) {
-      this.freeRun(EStaticPool.ROWS, hold, "rows");
-    }
+    const rowStart: Nullable<number> = this.holds.hold(slot, this.rows, places);
+    const start: Nullable<number> = this.holds.hold(slot, this.clusters, run.count);
 
-    if (!hold.rows) {
-      const rowStart: Nullable<number> = this.allocateRun(EStaticPool.ROWS, places);
-
-      hold.rows = rowStart === null ? null : { count: places, start: rowStart };
-    }
-
-    const start: Nullable<number> = this.holdClusters(hold, run.count);
-
-    if (!hold.rows || start === null) {
+    if (rowStart === null || start === null) {
       return this.refuse(slot, false);
     }
 
     const activeSpheres: Float32Array = run.count ? spheres : new Float32Array(spheres.length).fill(-1);
 
     this.clusters.write(start, slot, clusters, run, range, null);
-    this.places.writeRows(hold.rows.start, activeSpheres, placeStart, slot, lods, band);
+    this.rows.write(rowStart, activeSpheres, placeStart, slot, lods, band);
 
     const batches: Nullable<IStaticSlotBatches> = this.batches.put(
       slot,
@@ -432,17 +436,8 @@ export class StaticDraws implements IStaticShadowCasters, IStaticPools {
    * @param slot - A slot drawing nothing from now on.
    */
   public free(slot: number): void {
-    const hold: Maybe<ISlotHold> = this.holds.get(slot);
-
     this.batches.withdraw(slot);
-
-    if (hold) {
-      this.freeRun(EStaticPool.ROWS, hold, "rows");
-      this.freeRun(EStaticPool.CLUSTERS, hold, "clusters");
-      this.freePlace(hold);
-      this.holds.delete(slot);
-    }
-
+    this.holds.release(slot);
     this.pool.release(slot);
   }
 
@@ -456,8 +451,12 @@ export class StaticDraws implements IStaticShadowCasters, IStaticPools {
   public dispose(): void {
     this.batches.dispose();
     this.arenas.dispose();
-    this.buffers.retire(this.arenas.takeRetired());
     this.cull.dispose();
+  }
+
+  /** @returns What of a pool's elements are handed out, against what it holds. */
+  private static toUse(runs: IStaticRuns): IRendererPoolUse {
+    return { capacity: runs.capacity, used: runs.used };
   }
 
   /**
@@ -487,16 +486,8 @@ export class StaticDraws implements IStaticShadowCasters, IStaticPools {
    * @returns Nothing drawn statically.
    */
   private refuse(slot: number, isCounted: boolean = true): boolean {
-    const hold: Maybe<ISlotHold> = this.holds.get(slot);
-
     this.batches.withdraw(slot);
-
-    if (hold) {
-      this.freeRun(EStaticPool.ROWS, hold, "rows");
-      this.freeRun(EStaticPool.CLUSTERS, hold, "clusters");
-      this.freePlace(hold);
-    }
-
+    this.holds.release(slot);
     this.pool.write(slot, EStaticSlotKind.NONE, { count: 0, start: 0 }, 0, STATIC_NO_BATCH, STATIC_NO_BATCH);
 
     if (isCounted) {
@@ -506,49 +497,11 @@ export class StaticDraws implements IStaticShadowCasters, IStaticPools {
     return false;
   }
 
-  /** A slot's run of clusters of the length wanted: kept where it is that long, taken again otherwise. */
-  private holdClusters(hold: ISlotHold, count: number): Nullable<number> {
-    if (hold.clusters && hold.clusters.count !== count) {
-      this.freeRun(EStaticPool.CLUSTERS, hold, "clusters");
-    }
-
-    if (!hold.clusters) {
-      const start: Nullable<number> = this.allocateRun(EStaticPool.CLUSTERS, count);
-
-      hold.clusters = start === null ? null : { count, start };
-    }
-
-    return hold.clusters?.start ?? null;
-  }
-
-  private freeRun(pool: EStaticPool.ROWS | EStaticPool.CLUSTERS, hold: ISlotHold, key: "rows" | "clusters"): void {
-    const run: Nullable<IRun> = hold[key];
-
-    if (!run) {
-      return;
-    }
-
-    if (pool === EStaticPool.ROWS) {
-      this.places.freeRows(run.start, run.count);
-    } else {
-      this.clusters.free(run.start, run.count);
-    }
-
-    hold[key] = null;
-  }
-
-  private freePlace(hold: ISlotHold): void {
-    if (hold.place !== null) {
-      this.places.freePlaces(hold.place, 1);
-      hold.place = null;
-    }
-  }
-
   /** Grows the slots once for what the queue brings. */
   private growSlots(): boolean {
     const capacity: number = toGrownCapacity(
       this.pool.count,
-      1 + this.toDemand()[EStaticPool.SLOTS],
+      1 + this.toDemand(EStaticPool.SLOTS),
       this.pool.capacity,
       this.buffers.initial(EStaticPool.SLOTS),
       this.buffers.limit(EStaticPool.SLOTS)
@@ -559,97 +512,40 @@ export class StaticDraws implements IStaticShadowCasters, IStaticPools {
     }
 
     this.buffers.grow(EStaticPool.SLOTS, capacity);
-    this.batches.invalidateAll();
 
     return true;
   }
 
-  /** @returns A run of the pool's, where it holds room for one, or null. */
-  private takeRun(pool: TRunPool, count: number): Nullable<number> {
-    switch (pool) {
-      case EStaticPool.PLACES:
-        return this.places.allocatePlaces(count);
-      case EStaticPool.ROWS:
-        return this.places.allocateRows(count);
-      case EStaticPool.LODS:
-        return this.lods.allocate(count);
-      case EStaticPool.CLUSTERS:
-        return this.clusters.allocate(count);
-    }
-  }
-
   /**
-   * @returns A run of a pool, grown until it fits: first for what the queue brings, then past the whole run, where
-   *   freed room lies in runs too short for it. Null where the device's limit stops it.
+   * @returns A run of a pool, grown once where none fits (`allocateGrowing`), for what the queue brings besides; null
+   *   where the device's limit stops it, counted as a fallback.
    */
-  private allocateRun(pool: TRunPool, count: number): Nullable<number> {
-    const limit: number = this.buffers.limit(pool);
-    let start: Nullable<number> = this.takeRun(pool, count);
-    let isFirst: boolean = true;
+  private allocateRun(pool: IStaticRunPool, count: number): Nullable<number> {
+    const start: Nullable<number> = allocateGrowing(
+      pool,
+      count,
+      this.buffers.initial(pool.kind),
+      this.buffers.limit(pool.kind),
+      (capacity: number) => pool.grow(capacity),
+      () => this.toDemand(pool.kind)
+    );
 
-    while (start === null) {
-      const use: IRendererPoolUse = this.toUse(pool);
-      const capacity: number = toGrownCapacity(
-        isFirst ? use.used : use.capacity,
-        count + (isFirst && pool !== EStaticPool.LODS ? this.toDemand()[pool] : 0),
-        use.capacity,
-        this.buffers.initial(pool),
-        limit
-      );
-
-      if (capacity <= use.capacity) {
-        this.fallbacks += 1;
-
-        return null;
-      }
-
-      switch (pool) {
-        case EStaticPool.LODS:
-          this.lods.grow(capacity);
-          break;
-        case EStaticPool.CLUSTERS:
-          this.clusters.grow(capacity);
-          break;
-        default:
-          this.places.grow(pool, capacity);
-      }
-
-      // Every material reading the grown buffer binds the new one once its batch records.
-      this.batches.invalidateAll();
-      isFirst = false;
-      start = this.takeRun(pool, count);
+    if (start === null) {
+      this.fallbacks += 1;
     }
 
     return start;
   }
 
-  private toUse(pool: TRunPool): IRendererPoolUse {
-    switch (pool) {
-      case EStaticPool.PLACES:
-        return this.places.placeUse;
-      case EStaticPool.ROWS:
-        return this.places.rowUse;
-      case EStaticPool.LODS:
-        return this.lods.use;
-      case EStaticPool.CLUSTERS:
-        return this.clusters.use;
-    }
-  }
+  /** What the objects still waiting to draw will take of a pool, besides what they hold already. */
+  private toDemand(pool: EStaticPool): number {
+    const toTaken: Maybe<(upcoming: IStaticUpcoming) => number> = UPCOMING_DEMAND[pool];
+    let demand: number = 0;
 
-  /** What the objects still waiting to draw will take of each pool, besides what they hold already. */
-  private toDemand(): TStaticDemand {
-    const demand: TStaticDemand = {
-      [EStaticPool.CLUSTERS]: 0,
-      [EStaticPool.PLACES]: 0,
-      [EStaticPool.ROWS]: 0,
-      [EStaticPool.SLOTS]: 0,
-    };
-
-    for (const { sections, places, clusters } of this.toUpcoming()) {
-      demand[EStaticPool.SLOTS] += sections;
-      demand[EStaticPool.PLACES] += places || sections;
-      demand[EStaticPool.ROWS] += places * sections;
-      demand[EStaticPool.CLUSTERS] += clusters;
+    if (toTaken) {
+      for (const upcoming of this.toUpcoming()) {
+        demand += toTaken(upcoming);
+      }
     }
 
     return demand;

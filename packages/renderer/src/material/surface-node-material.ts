@@ -2,7 +2,9 @@ import { Nullable } from "@xrf/types";
 import { MeshBasicNodeMaterial, Node, NodeBuilder, NodeMaterialObserver } from "three/webgpu";
 
 import { StaticDrawObserver } from "#/material/static-draw-observer";
-import { ISurfaceSlotted, TSurfaceArrayTargets, TSurfaceSlotTargets } from "#/material/surface-slot";
+import { TSurfaceArrayTargets } from "#/material/surface-array-targets";
+import { TSurfaceSlotTargets } from "#/material/surface-slot-targets";
+import { ISurfaceSlotted } from "#/material/surface-slotted";
 import { ISurfaceValues } from "#/material/surface-values";
 import { isBufferPlacedBuild, toBufferPlacedPositionView } from "#/shader/placement.tsl";
 import { StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
@@ -13,6 +15,16 @@ import { TreeWindUniforms } from "#/uniforms/tree-wind-uniforms";
  * static draw shares rather than by its object's matrices, and refreshing it only when its bundle records.
  */
 export class SurfaceNodeMaterial extends MeshBasicNodeMaterial implements ISurfaceSlotted {
+  /** The textures its variant's shared shader samples for it. */
+  public surfaceSlots: Nullable<TSurfaceSlotTargets> = null;
+  /** The arrays a static batch's shared shader samples its array slots from, or null for any other material. */
+  public surfaceArrays: Nullable<TSurfaceArrayTargets> = null;
+  /** The numbers that shader reads for it. */
+  public surfaceValues: Nullable<ISurfaceValues> = null;
+
+  /** Where a vertex stands in view space, for a surface placing its own vertices; null for every other. */
+  public positionViewNode: Nullable<Node> = null;
+
   private readonly staticDraws: StaticDrawBuffers;
   private readonly wind: TreeWindUniforms;
 
@@ -25,16 +37,6 @@ export class SurfaceNodeMaterial extends MeshBasicNodeMaterial implements ISurfa
     this.staticDraws = staticDraws;
     this.wind = wind;
   }
-
-  /** The textures its variant's shared shader samples for it. */
-  public surfaceSlots: Nullable<TSurfaceSlotTargets> = null;
-  /** The arrays a static batch's shared shader samples its array slots from, or null for any other material. */
-  public surfaceArrays: Nullable<TSurfaceArrayTargets> = null;
-  /** The numbers that shader reads for it. */
-  public surfaceValues: Nullable<ISurfaceValues> = null;
-
-  /** Where a vertex stands in view space, for a surface placing its own vertices; null for every other. */
-  public positionViewNode: Nullable<Node> = null;
 
   public override setupPositionView(builder: NodeBuilder): Node {
     if (this.positionViewNode) {

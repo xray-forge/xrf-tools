@@ -1,4 +1,4 @@
-import { NodeMaterial, QuadMesh } from "three/webgpu";
+import { NodeMaterial, QuadMesh, RenderTarget } from "three/webgpu";
 
 import { createQuadMaterial } from "#/pass/quad-material";
 import { IRendererFrame } from "#/pass/renderer-frame";
@@ -13,23 +13,25 @@ import { RendererUniforms } from "#/uniforms/renderer-uniforms";
 export class SunPass implements IRendererPass {
   public readonly name: string = "sun";
 
+  private readonly targets: RendererTargets;
   private readonly material: NodeMaterial;
   private readonly quad: QuadMesh;
 
   public constructor(targets: RendererTargets, uniforms: RendererUniforms) {
+    this.targets = targets;
     this.material = createQuadMaterial(
       toSunPassFragment(
         targets,
         uniforms,
-        targets.shadows.map((target) => target.depthTexture as NonNullable<typeof target.depthTexture>)
+        targets.shadows.map((target: RenderTarget) => target.depthTexture as NonNullable<typeof target.depthTexture>)
       )
     );
     this.quad = new QuadMesh(this.material);
   }
 
-  public render({ renderer, targets }: IRendererFrame): void {
+  public render({ renderer }: IRendererFrame): void {
     renderer.setClearColor(0x000000, 0);
-    renderer.setRenderTarget(targets.light);
+    renderer.setRenderTarget(this.targets.light);
     renderer.clear(true, false, false);
     this.quad.render(renderer);
   }

@@ -9,12 +9,9 @@ import {
   WebGPURenderer,
 } from "three/webgpu";
 
-import { ERendererAmbientOcclusionQuality } from "#/contract/renderer-features";
-import {
-  IAmbientOcclusionSearch,
-  toAmbientOcclusionDenoise,
-  toAmbientOcclusionSearch,
-} from "#/pass/ambient-occlusion-pass.tsl";
+import { ERendererAmbientOcclusionQuality } from "#/contract/renderer-ambient-occlusion-quality";
+import { toAmbientOcclusionDenoise, toAmbientOcclusionSearch } from "#/pass/ambient-occlusion-pass.tsl";
+import { IAmbientOcclusionSearch } from "#/pass/ambient-occlusion-search";
 import { createQuadMaterial } from "#/pass/quad-material";
 import { IRendererFrame } from "#/pass/renderer-frame";
 import { IRendererPass } from "#/pass/renderer-pass";

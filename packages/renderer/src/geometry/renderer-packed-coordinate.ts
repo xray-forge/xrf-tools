@@ -1,7 +1,4 @@
-import { BufferGeometry } from "three/webgpu";
-
-import { IRendererPackedVertices } from "#/contract/scene/renderer-geometry";
-import { EVertexAttribute } from "#/geometry/vertex-attribute";
+import { IRendererPackedVertices } from "#/contract/scene/renderer-packed-vertices";
 
 /** What a baked coordinate's shorts are divided by: `unpack_tc_base` scales by `32 / 32768` (`common_functions.h`). */
 export const PACKED_BASE_QUANT: number = 1024;
@@ -42,12 +39,4 @@ export function toPackedCoordinate(
   const fractionV: number = packed.binormal ? packed.binormal[vertex * 4 + FRACTION_BYTE] / 255 : 0;
 
   return [(uv[vertex * 2] + fractionU) / PACKED_BASE_QUANT, (uv[vertex * 2 + 1] + fractionV) / PACKED_BASE_QUANT];
-}
-
-/**
- * @param geometry - A geometry.
- * @returns Whether its vertices are a tree's packed ones, whose coordinate is four shorts, two words (`v_tree`).
- */
-export function isPackedTreeGeometry(geometry: BufferGeometry): boolean {
-  return geometry.getAttribute(EVertexAttribute.PACKED_UV)?.itemSize === PACKED_TREE_COMPONENTS / 2;
 }

@@ -1,18 +1,25 @@
 import { describe, expect, it } from "@jest/globals";
-import { MeshBasicNodeMaterial, Scene, Vector3 } from "three/webgpu";
+import { Matrix4, MeshBasicNodeMaterial, Scene, Sphere, Vector3 } from "three/webgpu";
 
-import { ERendererPass } from "#/contract/scene/renderer-surface";
+import { ERendererPass } from "#/contract/scene/renderer-pass";
 import { ISurfaceMaterial, toOwnSurfaceDrawing } from "#/material/surface-material";
+import { ISceneClusterRun } from "#/scene/geometry/scene-cluster-run";
 import { SceneGeometry } from "#/scene/geometry/scene-geometry";
-import { ILightShadowRequest, LightShadowPlanner } from "#/scene/lights/light-shadow-planner";
+import { LightShadowPlanner } from "#/scene/lights/light-shadow-planner";
+import { ILightShadowRequest } from "#/scene/lights/light-shadow-request";
 import { StaticDraws } from "#/scene/static/static-draws";
 import { IStaticRange } from "#/scene/static/static-range";
 import { IStaticUpcoming } from "#/scene/static/static-upcoming";
-import { EStaticPool, StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
+import { StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
+import { EStaticPool } from "#/uniforms/static-pool";
+import { StorageRetirement } from "#/uniforms/storage-retirement";
 
 /** Static draws over buffers of two slots and two places, with what the queue brings. */
 function createDraws(upcoming: Array<IStaticUpcoming> = []): { buffers: StaticDrawBuffers; draws: StaticDraws } {
-  const buffers: StaticDrawBuffers = new StaticDrawBuffers({ [EStaticPool.SLOTS]: 2, [EStaticPool.PLACES]: 2 });
+  const buffers: StaticDrawBuffers = new StaticDrawBuffers(new StorageRetirement(), {
+    [EStaticPool.SLOTS]: 2,
+    [EStaticPool.PLACES]: 2,
+  });
   const draws: StaticDraws = new StaticDraws(buffers, new Scene(), () => upcoming);
 
   draws.isEnabled = true;
@@ -65,6 +72,48 @@ describe("StaticDraws", () => {
     expect(buffers.capacity(EStaticPool.SLOTS)).toBe(2);
   });
 
+  // A draw of no clusters used to find no free run of none in a full pool, and grow it or fall back.
+  it("draws a slot of no clusters over a full cluster pool without growing it", () => {
+    const buffers: StaticDrawBuffers = new StaticDrawBuffers(new StorageRetirement(), { [EStaticPool.CLUSTERS]: 1 });
+    const draws: StaticDraws = new StaticDraws(buffers, new Scene(), () => []);
+    const geometry: SceneGeometry = new SceneGeometry({ groups: [], position: new Float32Array(9) });
+    const surface: ISurfaceMaterial = {
+      dispose: () => {},
+      isImpostor: false,
+      keys: [],
+      ...toOwnSurfaceDrawing(new MeshBasicNodeMaterial(), null),
+      pass: ERendererPass.DEFERRED,
+      shadowKeys: [],
+    };
+    const range: IStaticRange = draws.acquire(geometry) as IStaticRange;
+    const run: ISceneClusterRun = geometry.clusters.toRun(0, 3) as ISceneClusterRun;
+    const bounds: Sphere = new Sphere(new Vector3(), 1);
+
+    draws.isEnabled = true;
+
+    try {
+      expect(
+        draws.draw(draws.allocate() as number, surface, range, geometry.clusters, run, bounds, new Matrix4())
+      ).toBe(true);
+      expect(
+        draws.draw(
+          draws.allocate() as number,
+          surface,
+          range,
+          geometry.clusters,
+          { count: 0, start: 0 },
+          bounds,
+          new Matrix4()
+        )
+      ).toBe(true);
+      expect(draws.report.clusters).toEqual({ capacity: 1, used: 1 });
+      expect(draws.report.fallbacks).toBe(0);
+    } finally {
+      draws.dispose();
+      surface.material.dispose();
+    }
+  });
+
   it("hands out nothing, and counts no fallback, while static draws are off", () => {
     const { draws } = createDraws();
 
@@ -92,9 +141,8 @@ describe("listed tree shadow invalidation", () => {
       dispose: () => {},
       isImpostor: false,
       keys: [],
-      ...toOwnSurfaceDrawing(new MeshBasicNodeMaterial()),
+      ...toOwnSurfaceDrawing(new MeshBasicNodeMaterial(), new MeshBasicNodeMaterial()),
       pass: ERendererPass.DEFERRED,
-      shadow: new MeshBasicNodeMaterial(),
       shadowKeys: [],
     };
     const shadows: LightShadowPlanner = new LightShadowPlanner(draws.shadowChanges);

@@ -84,7 +84,7 @@ export class LightClusters {
         this.fullClusters = drops.reduce((total: number, it: number) => total + (it > 0 ? 1 : 0), 0);
         this.droppedLights = drops.reduce((total: number, it: number) => total + it, 0);
       })
-      .catch(() => {})
+      .catch((error: unknown) => console.error("The lights' clusters could not be read back:", error))
       .finally(() => (this.isReading = false));
   }
 

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "@jest/globals";
+import { describe, expect, it, jest } from "@jest/globals";
 import {
   BufferGeometry,
   BundleGroup,
@@ -7,12 +7,16 @@ import {
   MeshBasicNodeMaterial,
   PerspectiveCamera,
   Scene,
+  Skeleton,
+  SkinnedMesh,
   WebGPUCoordinateSystem,
 } from "three/webgpu";
 
-import { ERendererPass } from "#/contract/scene/renderer-surface";
+import { IRendererInstances } from "#/contract/scene/renderer-instances";
+import { ERendererPass } from "#/contract/scene/renderer-pass";
 import { EVertexAttribute } from "#/geometry/vertex-attribute";
 import { ISurfaceMaterial, toOwnSurfaceDrawing } from "#/material/surface-material";
+import { GeometryReleases } from "#/scene/geometry/geometry-releases";
 import { SceneGeometry } from "#/scene/geometry/scene-geometry";
 import { SceneInstances } from "#/scene/object/scene-instances";
 import { SceneObject } from "#/scene/object/scene-object";
@@ -21,8 +25,6 @@ import { toPassRecord, TPassRecord } from "#/scene/pass-record";
 import { StaticArena } from "#/scene/static/static-arena";
 import { StaticDraws } from "#/scene/static/static-draws";
 import {
-  EStaticSlotKind,
-  EStaticView,
   STATIC_LOD_IMPOSTOR_ROW,
   STATIC_NO_BATCH,
   STATIC_NO_LOD,
@@ -30,6 +32,9 @@ import {
   StaticDrawBuffers,
   toStaticBandWord,
 } from "#/uniforms/static-draw-buffers";
+import { EStaticSlotKind } from "#/uniforms/static-slot-kind";
+import { EStaticView } from "#/uniforms/static-view";
+import { StorageRetirement } from "#/uniforms/storage-retirement";
 import { CullView } from "#/visibility/cull-view";
 
 /** A surface drawn by a pass, with nothing behind it. */
@@ -38,9 +43,8 @@ function createSurface(pass: ERendererPass, isImpostor: boolean = false): ISurfa
     dispose: () => {},
     isImpostor,
     keys: [],
-    ...toOwnSurfaceDrawing(new MeshBasicNodeMaterial()),
+    ...toOwnSurfaceDrawing(new MeshBasicNodeMaterial(), null),
     pass,
-    shadow: null,
     shadowKeys: [],
   };
 }
@@ -106,7 +110,7 @@ function toCluster(buffers: StaticDrawBuffers, cluster: number): Array<number> {
 
 /** Static draws on, standing their batches in the G-buffer pass's scene. */
 function createDraws(scenes: TPassRecord<Scene>): { buffers: StaticDrawBuffers; draws: StaticDraws } {
-  const buffers: StaticDrawBuffers = new StaticDrawBuffers();
+  const buffers: StaticDrawBuffers = new StaticDrawBuffers(new StorageRetirement());
   const draws: StaticDraws = new StaticDraws(buffers, scenes[ERendererPass.DEFERRED], () => []);
 
   draws.isEnabled = true;
@@ -120,12 +124,13 @@ function toBatchMeshes(scene: Scene): Array<Mesh> {
 }
 
 describe("SceneObject", () => {
-  const plain: StaticDraws = new StaticDraws(new StaticDrawBuffers(), new Scene(), () => []);
+  const plain: StaticDraws = new StaticDraws(new StaticDrawBuffers(new StorageRetirement()), new Scene(), () => []);
+  const releases: GeometryReleases = new GeometryReleases();
 
   it("draws each section in the scene of the pass its surface names", () => {
     const scenes: TPassRecord<Scene> = toPassRecord(() => new Scene());
     const geometry: SceneGeometry = createGeometry();
-    const entry: SceneObject = new SceneObject("wall", { geometry: "wall", surfaces: ["a", "b"] }, plain);
+    const entry: SceneObject = new SceneObject("wall", { geometry: "wall", surfaces: ["a", "b"] }, plain, releases);
 
     entry.apply(
       toState(geometry, [createSurface(ERendererPass.DEFERRED), createSurface(ERendererPass.FORWARD)]),
@@ -139,7 +144,7 @@ describe("SceneObject", () => {
   it("culls each section drawn plainly by its own bounds", () => {
     const scenes: TPassRecord<Scene> = toPassRecord(() => new Scene());
     const geometry: SceneGeometry = createGeometry();
-    const entry: SceneObject = new SceneObject("wall", { geometry: "wall", surfaces: ["a", "a"] }, plain);
+    const entry: SceneObject = new SceneObject("wall", { geometry: "wall", surfaces: ["a", "a"] }, plain, releases);
     const surface: ISurfaceMaterial = createSurface(ERendererPass.DEFERRED);
 
     entry.apply(toState(geometry, [surface, surface]), scenes);
@@ -154,7 +159,8 @@ describe("SceneObject", () => {
     const entry: SceneObject = new SceneObject(
       "wall",
       { drawRange: { count: 3, start: 0 }, geometry: "wall", surfaces: ["a", "a"] },
-      plain
+      plain,
+      releases
     );
     const surface: ISurfaceMaterial = createSurface(ERendererPass.DEFERRED);
 
@@ -174,7 +180,7 @@ describe("SceneObject", () => {
     const scenes: TPassRecord<Scene> = toPassRecord(() => new Scene());
     const { buffers, draws } = createDraws(scenes);
     const geometry: SceneGeometry = createGeometry();
-    const entry: SceneObject = new SceneObject("wall", { geometry: "wall", surfaces: ["a", "b"] }, draws);
+    const entry: SceneObject = new SceneObject("wall", { geometry: "wall", surfaces: ["a", "b"] }, draws, releases);
 
     entry.apply(
       toState(geometry, [createSurface(ERendererPass.DEFERRED), createSurface(ERendererPass.FORWARD)], draws),
@@ -200,11 +206,11 @@ describe("SceneObject", () => {
     const first: SceneGeometry = createGeometry();
     const second: SceneGeometry = createGeometry();
 
-    new SceneObject("a", { geometry: "a", surfaces: ["a", "a"] }, draws).apply(
+    new SceneObject("a", { geometry: "a", surfaces: ["a", "a"] }, draws, releases).apply(
       toState(first, [surface, surface], draws),
       scenes
     );
-    new SceneObject("b", { geometry: "b", surfaces: ["a", "a"] }, draws).apply(
+    new SceneObject("b", { geometry: "b", surfaces: ["a", "a"] }, draws, releases).apply(
       toState(second, [surface, surface], draws),
       scenes
     );
@@ -222,7 +228,7 @@ describe("SceneObject", () => {
     const scenes: TPassRecord<Scene> = toPassRecord(() => new Scene());
     const { draws } = createDraws(scenes);
     const geometry: SceneGeometry = createGeometry();
-    const entry: SceneObject = new SceneObject("wall", { geometry: "wall", surfaces: ["a", "a"] }, draws);
+    const entry: SceneObject = new SceneObject("wall", { geometry: "wall", surfaces: ["a", "a"] }, draws, releases);
     const surface: ISurfaceMaterial = createSurface(ERendererPass.DEFERRED);
 
     entry.apply(toState(geometry, [surface, surface], draws), scenes);
@@ -236,7 +242,7 @@ describe("SceneObject", () => {
     const scenes: TPassRecord<Scene> = toPassRecord(() => new Scene());
     const { buffers, draws } = createDraws(scenes);
     const geometry: SceneGeometry = createGeometry();
-    const entry: SceneObject = new SceneObject("wall", { geometry: "wall", surfaces: ["a", "a"] }, draws);
+    const entry: SceneObject = new SceneObject("wall", { geometry: "wall", surfaces: ["a", "a"] }, draws, releases);
     const surface: ISurfaceMaterial = createSurface(ERendererPass.DEFERRED);
 
     entry.apply(toState(geometry, [surface, surface], draws), scenes);
@@ -256,7 +262,8 @@ describe("SceneObject", () => {
     const entry: SceneObject = new SceneObject(
       "stand",
       { geometry: "stand", instances: source, surfaces: ["a", "a"] },
-      draws
+      draws,
+      releases
     );
     const instances: SceneInstances = entry.toInstances(geometry) as SceneInstances;
     const surface: ISurfaceMaterial = createSurface(ERendererPass.DEFERRED);
@@ -302,7 +309,8 @@ describe("SceneObject", () => {
           },
           surfaces: ["a", "a"],
         },
-        draws
+        draws,
+        releases
       );
       const instances: SceneInstances = entry.toInstances(geometry) as SceneInstances;
 
@@ -363,7 +371,8 @@ describe("SceneObject", () => {
     const entry: SceneObject = new SceneObject(
       "tree",
       { geometry: "tree", instances: { transforms: new Float32Array(new Matrix4().elements) }, surfaces: ["a"] },
-      draws
+      draws,
+      releases
     );
     const instances: SceneInstances = entry.toInstances(geometry) as SceneInstances;
     const surface: ISurfaceMaterial = createSurface(ERendererPass.DEFERRED);
@@ -386,5 +395,81 @@ describe("SceneObject", () => {
     expect(toCluster(buffers, toSlot(buffers, 1)[0])).toEqual([0, 1, 0, 1]);
     // A row each, the second word of each naming its band of two, over five windows.
     expect([words[1], words[3]]).toEqual([toStaticBandWord(0, 2, 5), toStaticBandWord(1, 2, 5)]);
+  });
+
+  it("lets its parts go without the buffers they share with every other object drawing the geometry", () => {
+    const scenes: TPassRecord<Scene> = toPassRecord(() => new Scene());
+    const geometry: SceneGeometry = createGeometry();
+    const surface: ISurfaceMaterial = createSurface(ERendererPass.FORWARD);
+    const first: SceneObject = new SceneObject("a", { geometry: "rock", surfaces: ["a", "a"] }, plain, releases);
+    const second: SceneObject = new SceneObject("b", { geometry: "rock", surfaces: ["a", "a"] }, plain, releases);
+    const named: Array<number> = [];
+
+    first.apply(toState(geometry, [surface, surface]), scenes);
+    second.apply(toState(geometry, [surface, surface]), scenes);
+    // What three would free with each part: every buffer it names as it is disposed.
+    first.drawing.forEach(({ geometry: part }: Mesh) =>
+      part.addEventListener("dispose", () => named.push(Object.keys(part.attributes).length + (part.index ? 1 : 0)))
+    );
+    first.dispose();
+
+    expect(named).toEqual([0, 0]);
+    expect(second.drawing.map(({ geometry: part }: Mesh) => part.getAttribute("position"))).toEqual([
+      geometry.buffer.getAttribute("position"),
+      geometry.buffer.getAttribute("position"),
+    ]);
+    expect(second.drawing[0].geometry.index).toBe(geometry.buffer.index);
+  });
+
+  it("draws over new parts once its skeleton changes, letting the old ones go", () => {
+    const scenes: TPassRecord<Scene> = toPassRecord(() => new Scene());
+    const geometry: SceneGeometry = createGeometry();
+    const surface: ISurfaceMaterial = createSurface(ERendererPass.FORWARD);
+    const entry: SceneObject = new SceneObject("npc", { geometry: "npc", surfaces: ["a", "a"] }, plain, releases);
+    const disposed = jest.fn();
+
+    entry.apply(toState(geometry, [surface, surface]), scenes);
+
+    const [before] = entry.drawing;
+
+    before.geometry.addEventListener("dispose", disposed);
+    entry.apply({ ...toState(geometry, [surface, surface]), skeleton: new Skeleton([]) }, scenes);
+
+    expect(entry.drawing[0]).not.toBe(before);
+    expect(entry.drawing[0].geometry).not.toBe(before.geometry);
+    expect(entry.drawing[0]).toBeInstanceOf(SkinnedMesh);
+    expect(disposed).toHaveBeenCalledTimes(1);
+  });
+
+  it("lets places staged for a change go once it is put back to the places it stands in", () => {
+    const scenes: TPassRecord<Scene> = toPassRecord(() => new Scene());
+    const geometry: SceneGeometry = createGeometry();
+    const surface: ISurfaceMaterial = createSurface(ERendererPass.FORWARD);
+    const source: IRendererInstances = { transforms: new Float32Array(new Matrix4().elements) };
+    const entry: SceneObject = new SceneObject(
+      "stand",
+      { geometry: "stand", instances: source, surfaces: ["a", "a"] },
+      plain,
+      releases
+    );
+
+    function toStanding(instances: SceneInstances): ISceneObjectState {
+      return { ...toState(geometry, [surface, surface]), instances, plain: { drawn: instances.geometry, layout: "" } };
+    }
+
+    const standing: SceneInstances = entry.toInstances(geometry) as SceneInstances;
+
+    entry.apply(toStanding(standing), scenes);
+    entry.object = { ...entry.object, instances: { transforms: new Float32Array(new Matrix4().elements) } };
+
+    const staged: SceneInstances = entry.toInstances(geometry) as SceneInstances;
+    const disposed = jest.fn();
+
+    staged.geometry.addEventListener("dispose", disposed);
+    entry.object = { ...entry.object, instances: source };
+    entry.apply(toStanding(entry.toInstances(geometry) as SceneInstances), scenes);
+
+    expect(staged).not.toBe(standing);
+    expect(disposed).toHaveBeenCalledTimes(1);
   });
 });

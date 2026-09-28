@@ -1,4 +1,4 @@
-import { BufferGeometry, Object3D } from "three/webgpu";
+import { Object3D } from "three/webgpu";
 
 /**
  * What a consumer changed together: applied together, once every object in it can draw, after every change made
@@ -11,8 +11,8 @@ export interface ISceneChange<T> {
   leaving: Array<Object3D>;
   /** What lets released objects' resources go, once nothing draws them. */
   disposals: Array<() => void>;
-  /** Replaced or released geometries, disposed once nothing draws them. */
-  geometries: Set<BufferGeometry>;
+  /** What lets go of keyed resources replaced or released, once nothing draws them: after every change before it. */
+  retired: Array<() => void>;
   /** Textures released, let go of once whatever sampled them stops drawing. */
   textures: Set<string>;
 }

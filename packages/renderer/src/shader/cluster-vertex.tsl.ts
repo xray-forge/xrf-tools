@@ -15,7 +15,9 @@ import {
 } from "three/tsl";
 import { Node, NodeBuilder } from "three/webgpu";
 
-import { EClusterWordFormat, IClusterAttribute, IClusterSource, toClusterSource } from "#/geometry/cluster-source";
+import { IClusterAttribute } from "#/geometry/cluster-attribute";
+import { IClusterSource, toClusterSource } from "#/geometry/cluster-source";
+import { EClusterWordFormat } from "#/geometry/cluster-word-format";
 
 // A clustered draw reads nothing through vertex buffers. Its instance is an entry of its batch's region of the view's
 // list, a cluster and a place; its vertex index a corner of one of the cluster's triangles, or an end of one of their
@@ -44,10 +46,9 @@ export function toClusterEntry(builder: NodeBuilder): Node<"uvec2"> {
 /**
  * The vertex a clustered build draws, in its arena: a corner of the cluster's triangle the vertex index names, those
  * past its triangles falling on its last vertex so their triangles are nothing; for a wireframe, an end of an edge,
- * those past falling on one vertex so their lines are nothing. One node for every build, which three builds once in
- * each, however many attributes read it.
+ * those past falling on one vertex so their lines are nothing. Built once a build, however many attributes read it.
  */
-const CLUSTER_VERTEX: Node<"uint"> = Fn((_: [], builder: NodeBuilder): Node<"uint"> => {
+const toClusterVertex = Fn((_: [], builder: NodeBuilder): Node<"uint"> => {
   const source: IClusterSource = toClusterSource(builder.geometry) as IClusterSource;
   const range = source.rangeNode.element(toClusterEntry(builder).x) as unknown as Node<"uvec4">;
   const last: Node<"uint"> = range.y.mul(3).sub(1);
@@ -65,8 +66,8 @@ const CLUSTER_VERTEX: Node<"uint"> = Fn((_: [], builder: NodeBuilder): Node<"uin
     corner = select(index.lessThan(last), index, last) as unknown as Node<"uint">;
   }
 
-  return range.z.add(source.indexNode.element(range.x.add(corner)) as unknown as Node<"uint">);
-})().toVar("clusterVertex") as unknown as Node<"uint">;
+  return range.z.add(source.indexNode.element(range.x.add(corner)) as unknown as Node<"uint">).toVar("clusterVertex");
+}).once();
 
 /**
  * A vertex attribute of a clustered build, read from its arena's words as its vertex buffer would have read it: a
@@ -78,13 +79,13 @@ const CLUSTER_VERTEX: Node<"uint"> = Fn((_: [], builder: NodeBuilder): Node<"uin
  */
 export function toClusterAttribute(builder: NodeBuilder, name: string): Nullable<Node> {
   const source: IClusterSource = toClusterSource(builder.geometry) as IClusterSource;
-  const stored: Nullable<IClusterAttribute> = source.layout.find((it) => it.name === name) ?? null;
+  const stored: Nullable<IClusterAttribute> = source.layout.find((it: IClusterAttribute) => it.name === name) ?? null;
 
   if (!stored) {
     return null;
   }
 
-  const first: Node<"uint"> = CLUSTER_VERTEX.mul(source.stride).add(stored.offset);
+  const first: Node<"uint"> = (toClusterVertex() as unknown as Node<"uint">).mul(source.stride).add(stored.offset);
 
   function word(component: number): Node<"uint"> {
     return source.wordNode.element(first.add(component)) as unknown as Node<"uint">;
@@ -100,7 +101,7 @@ export function toClusterAttribute(builder: NodeBuilder, name: string): Nullable
     case EClusterWordFormat.FLOAT: {
       const floats: Array<Node<"float">> = Array.from(
         { length: stored.itemSize },
-        (_, component: number) => bitcast(word(component), "float") as unknown as Node<"float">
+        (_: unknown, component: number) => bitcast(word(component), "float") as unknown as Node<"float">
       );
 
       switch (stored.itemSize) {

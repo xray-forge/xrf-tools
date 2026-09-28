@@ -1,7 +1,8 @@
 import { bool, float, Fn, max, min, screenCoordinate, select, vec2 } from "three/tsl";
 import { Node, Texture } from "three/webgpu";
 
-import { IFsrConstants, toScalarTexel } from "#/pass/fsr/fsr-common.tsl";
+import { toScalarTexel } from "#/pass/fsr/fsr-common.tsl";
+import { IFsrConstants } from "#/pass/fsr/fsr-constants";
 import { loadClamped, NEIGHBOURHOOD } from "#/shader/texel.tsl";
 
 // `ffx_fsr2_lock.h`: the thin features to lock, found at the render size. FSR writes each to the display pixel its

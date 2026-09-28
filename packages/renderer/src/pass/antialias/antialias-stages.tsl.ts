@@ -2,16 +2,9 @@ import { fxaa } from "three/addons/tsl/display/FXAANode.js";
 import { texture, uniform } from "three/tsl";
 import { Node, Texture, UniformNode, Vector2 } from "three/webgpu";
 
-import { ISmaaStages, toSmaaStages } from "#/pass/antialias/smaa-stages.tsl";
-
-/** What SMAA's stages sample, as textures the pass holds. */
-export interface ISmaaTextures {
-  frame: Texture;
-  edges: Texture;
-  weights: Texture;
-  area: Texture;
-  search: Texture;
-}
+import { ISmaaStages } from "#/pass/antialias/smaa-stages";
+import { toSmaaStages } from "#/pass/antialias/smaa-stages.tsl";
+import { ISmaaTextures } from "#/pass/antialias/smaa-textures";
 
 /**
  * @returns One over a frame's size in pixels, which the pass sets as the frame resizes.

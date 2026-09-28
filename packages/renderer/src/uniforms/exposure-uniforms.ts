@@ -1,7 +1,7 @@
 import { renderGroup, storage, uniform } from "three/tsl";
 import { Node, StorageBufferAttribute, UniformNode, Vector2 } from "three/webgpu";
 
-import { IRendererExposureSettings } from "#/contract/renderer-features";
+import { IRendererExposureSettings } from "#/contract/renderer-exposure-settings";
 
 /** Cells a side the frame's luminance is measured over, as `rt_LUM_64` is. */
 export const EXPOSURE_CELLS: number = 64;

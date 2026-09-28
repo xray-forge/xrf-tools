@@ -1,6 +1,6 @@
 import { Nullable } from "@xrf/types";
 
-import { IRendererSky } from "#/contract/renderer-lighting";
+import { IRendererSky } from "#/contract/renderer-sky";
 import { getPlaceholderSkyTexture } from "#/texture/placeholder-textures";
 import { RendererTextures } from "#/texture/renderer-textures";
 import { SkyUniforms } from "#/uniforms/sky-uniforms";

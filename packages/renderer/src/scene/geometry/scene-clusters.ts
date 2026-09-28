@@ -1,6 +1,6 @@
 import { Maybe, Nullable } from "@xrf/types";
 
-import { IRendererClusters } from "#/contract/scene/renderer-geometry";
+import { IRendererClusters } from "#/contract/scene/renderer-clusters";
 import { ISceneClusterRun } from "#/scene/geometry/scene-cluster-run";
 
 /** Unsigned integers one cluster's range takes, and floats its sphere. */

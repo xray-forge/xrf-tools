@@ -1,45 +1,28 @@
 import { Maybe, Nullable } from "@xrf/types";
 
-import { TRendererCamera, TRendererCameraCommand } from "#/contract/renderer-camera";
-import { TRendererCaptureSource } from "#/contract/renderer-capture";
-import { IRendererDevice } from "#/contract/renderer-device";
+import { IRendererClientOptions } from "#/client/renderer-client-options";
+import { IRenderInputEvent } from "#/contract/render-input-event";
+import { TRendererCamera } from "#/contract/renderer-camera";
+import { TRendererCameraCommand } from "#/contract/renderer-camera-command";
+import { TRendererCaptureSource } from "#/contract/renderer-capture-source";
 import { IRendererLighting } from "#/contract/renderer-lighting";
-import {
-  ERendererRequest,
-  ERendererResponse,
-  listRendererTransfers,
-  TRendererRequest,
-  TRendererResponse,
-} from "#/contract/renderer-messages";
-import { IRendererReport } from "#/contract/renderer-report";
+import { ERendererRequest, listRendererTransfers, TRendererRequest } from "#/contract/renderer-request";
+import { ERendererResponse, TRendererResponse } from "#/contract/renderer-response";
 import { IRendererSettings } from "#/contract/renderer-settings";
 import { IRendererViewSize } from "#/contract/renderer-view-size";
 import { IRendererGeometry } from "#/contract/scene/renderer-geometry";
 import { IRendererGrass } from "#/contract/scene/renderer-grass";
 import { IRendererImpostors } from "#/contract/scene/renderer-impostors";
 import { IRendererLights } from "#/contract/scene/renderer-lights";
+import { IRendererMotion } from "#/contract/scene/renderer-motion";
 import { IRendererObject } from "#/contract/scene/renderer-object";
 import { TRendererOverlay } from "#/contract/scene/renderer-overlay";
-import { IRendererMotion, IRendererPose, IRendererSkeleton } from "#/contract/scene/renderer-skeleton";
+import { IRendererPose } from "#/contract/scene/renderer-pose";
+import { IRendererSkeleton } from "#/contract/scene/renderer-skeleton";
 import { IRendererSurface } from "#/contract/scene/renderer-surface";
 import { TRendererTextureSource } from "#/contract/scene/renderer-texture-source";
-import { IDdsRefusal } from "#/dds/dds-refusal";
 import { IRenderTarget } from "#/frame/render-target";
 import { RenderInputForwarder } from "#/input/render-input-forwarder";
-
-/**
- * What a consumer hands the renderer, and what it is told back.
- */
-export interface IRendererClientOptions {
-  /** The renderer's worker, from `createRendererWorker`. */
-  worker: Worker;
-  settings: IRendererSettings;
-  onReady?: (device: IRendererDevice) => void;
-  onFailed?: (reason: string) => void;
-  onReport?: (report: IRendererReport) => void;
-  /** A texture's file was refused as stored; putting its decoded picture under the same key fills the slot. */
-  onTextureRefused?: (key: string, refusal: IDdsRefusal) => void;
-}
 
 /** A canvas showing the renderer's frames, and what watches it on the page. */
 interface IRendererClientView {
@@ -48,8 +31,15 @@ interface IRendererClientView {
   unobserve: () => void;
 }
 
+/** A promise the renderer answers, by its hands. */
+interface IRendererClientAnswer<T> {
+  resolve: (value: T) => void;
+  reject: (error: Error) => void;
+}
+
 /**
- * The renderer, from the page: one device for as long as the client lives, and a canvas while one is attached.
+ * The renderer, from the page: one device for as long as the client lives or until it fails, and a canvas while one is
+ * attached.
  */
 export class RendererClient {
   private static getSize(target: IRenderTarget): IRendererViewSize {
@@ -57,16 +47,20 @@ export class RendererClient {
   }
 
   private readonly worker: Worker;
-  private readonly captures: Map<number, (image: Nullable<ImageBitmap>) => void> = new Map();
-  private readonly settles: Map<number, () => void> = new Map();
+  private readonly onFailed: Maybe<(reason: string) => void>;
+  private readonly captures: Map<number, IRendererClientAnswer<Nullable<ImageBitmap>>> = new Map();
+  private readonly settles: Map<number, IRendererClientAnswer<void>> = new Map();
   private view: Nullable<IRendererClientView> = null;
-  /** Requests made in this page task, posted together once it ends. */
+  /** Requests made since the queue was last posted, which is once the code making them yields: a microtask. */
   private queue: Array<TRendererRequest> = [];
+  /** Why the renderer stopped for good, once it did. */
+  private failure: Nullable<string> = null;
   private captureId: number = 0;
   private settleId: number = 0;
 
   public constructor({ worker, settings, onReady, onFailed, onReport, onTextureRefused }: IRendererClientOptions) {
     this.worker = worker;
+    this.onFailed = onFailed;
 
     this.worker.onmessage = (event: MessageEvent<TRendererResponse>): void => {
       const response: TRendererResponse = event.data;
@@ -76,7 +70,7 @@ export class RendererClient {
           return onReady?.(response.device);
 
         case ERendererResponse.FAILED:
-          return onFailed?.(response.reason);
+          return this.fail(response.reason);
 
         case ERendererResponse.REPORT:
           return onReport?.(response.report);
@@ -88,24 +82,24 @@ export class RendererClient {
           return this.view?.input.setCursor(response.cursor);
 
         case ERendererResponse.CAPTURED: {
-          const resolve: Maybe<(image: Nullable<ImageBitmap>) => void> = this.captures.get(response.id);
+          const answer: Maybe<IRendererClientAnswer<Nullable<ImageBitmap>>> = this.captures.get(response.id);
 
           this.captures.delete(response.id);
 
-          return resolve ? resolve(response.image) : response.image?.close();
+          return answer ? answer.resolve(response.image) : response.image?.close();
         }
 
         case ERendererResponse.SETTLED: {
-          const resolve: Maybe<() => void> = this.settles.get(response.id);
+          const answer: Maybe<IRendererClientAnswer<void>> = this.settles.get(response.id);
 
           this.settles.delete(response.id);
 
-          return resolve?.();
+          return answer?.resolve();
         }
       }
     };
 
-    this.worker.onerror = (event: ErrorEvent): void => onFailed?.(`The renderer worker failed: ${event.message}`);
+    this.worker.onerror = (event: ErrorEvent): void => this.fail(`The renderer worker failed: ${event.message}`);
 
     this.post({ kind: ERendererRequest.START, settings });
   }
@@ -121,7 +115,9 @@ export class RendererClient {
     const canvas: HTMLCanvasElement = target.canvas;
 
     this.view = {
-      input: new RenderInputForwarder(canvas, (event) => this.post({ event, kind: ERendererRequest.INPUT })),
+      input: new RenderInputForwarder(canvas, (event: IRenderInputEvent) =>
+        this.post({ event, kind: ERendererRequest.INPUT })
+      ),
       target,
       unobserve: target.observe(() => this.post({ kind: ERendererRequest.RESIZE, ...RendererClient.getSize(target) })),
     };
@@ -297,13 +293,18 @@ export class RendererClient {
    * Draws a picture of the frame or of a texture.
    *
    * @param source - What to draw: a frame view, at the canvas's drawing size, or a bump plane at its own.
-   * @returns The picture, or null where there was nothing to draw, such as a frame with no view attached.
+   * @returns The picture, or null where there was nothing to draw, such as a frame with no view attached; refused with
+   *   why once the renderer failed.
    */
   public capture(source: TRendererCaptureSource): Promise<Nullable<ImageBitmap>> {
+    if (this.failure !== null) {
+      return Promise.reject(new Error(this.failure));
+    }
+
     const id: number = ++this.captureId;
 
-    return new Promise((resolve) => {
-      this.captures.set(id, resolve);
+    return new Promise((resolve: (image: Nullable<ImageBitmap>) => void, reject: (error: Error) => void): void => {
+      this.captures.set(id, { reject, resolve });
       this.post({ id, kind: ERendererRequest.CAPTURE, source });
     });
   }
@@ -313,13 +314,18 @@ export class RendererClient {
    * request follows every one before it, so a frame drawn before the last of them cannot answer it. Only a frame drawn
    * into a view does.
    *
-   * @returns Settles once such a frame has been drawn, or once the renderer is disposed.
+   * @returns Settles once such a frame has been drawn, or once the renderer is disposed; refused with why once it
+   *   failed.
    */
   public settle(): Promise<void> {
+    if (this.failure !== null) {
+      return Promise.reject(new Error(this.failure));
+    }
+
     const id: number = ++this.settleId;
 
-    return new Promise((resolve) => {
-      this.settles.set(id, resolve);
+    return new Promise((resolve: () => void, reject: (error: Error) => void): void => {
+      this.settles.set(id, { reject, resolve });
       this.post({ id, kind: ERendererRequest.SETTLE });
     });
   }
@@ -330,15 +336,33 @@ export class RendererClient {
     this.post({ kind: ERendererRequest.DISPOSE });
     this.flush();
     this.worker.terminate();
-    this.captures.forEach((resolve) => resolve(null));
+    this.captures.forEach((answer: IRendererClientAnswer<Nullable<ImageBitmap>>) => answer.resolve(null));
     this.captures.clear();
-    this.settles.forEach((resolve) => resolve());
+    this.settles.forEach((answer: IRendererClientAnswer<void>) => answer.resolve());
     this.settles.clear();
   }
 
   /**
-   * Queues a request, posting the task's queue as one batch once the task ends: whatever the page changes in one go,
-   * the renderer applies in one go.
+   * The renderer stopped for good: every settle and capture waiting is refused with why, and the consumer told.
+   *
+   * @param reason - Why it stopped.
+   */
+  private fail(reason: string): void {
+    if (this.failure !== null) {
+      return;
+    }
+
+    this.failure = reason;
+    this.captures.forEach((answer: IRendererClientAnswer<Nullable<ImageBitmap>>) => answer.reject(new Error(reason)));
+    this.captures.clear();
+    this.settles.forEach((answer: IRendererClientAnswer<void>) => answer.reject(new Error(reason)));
+    this.settles.clear();
+    this.onFailed?.(reason);
+  }
+
+  /**
+   * Queues a request, posting the queue as one batch once the code making it yields, in a microtask: whatever the page
+   * changes in one run the renderer applies in one go, and each await between requests starts another batch.
    */
   private post(request: TRendererRequest): void {
     if (!this.queue.length) {

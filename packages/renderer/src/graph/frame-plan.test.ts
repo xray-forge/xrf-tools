@@ -1,13 +1,10 @@
 import { describe, expect, it } from "@jest/globals";
 
-import {
-  ERendererAntialiasing,
-  ERendererPreset,
-  ERendererRenderScale,
-  IRendererFeatureSettings,
-  RENDERER_MAX_SHADOW_CASCADES,
-  RENDERER_PRESETS,
-} from "#/contract/renderer-features";
+import { ERendererAntialiasing } from "#/contract/renderer-antialiasing";
+import { IRendererFeatureSettings } from "#/contract/renderer-feature-settings";
+import { ERendererPreset, RENDERER_PRESETS } from "#/contract/renderer-preset";
+import { ERendererRenderScale } from "#/contract/renderer-render-scale";
+import { IRendererWaterSettings } from "#/contract/renderer-water-settings";
 import { toFramePlan } from "#/graph/frame-plan";
 
 const BASE: IRendererFeatureSettings = RENDERER_PRESETS[ERendererPreset.BASE];
@@ -62,12 +59,8 @@ describe("the frame plan", () => {
     expect(toFramePlan(toFeatures(ERendererAntialiasing.TAA, ERendererRenderScale.QUALITY, 0)).sharpen).toBeNull();
   });
 
-  it("draws at most the cascades the frame holds, and none while the sun's shadow is off", () => {
-    const cascades: Array<number> = Array.from({ length: RENDERER_MAX_SHADOW_CASCADES + 2 }, (_, index) => index + 1);
-
-    expect(toFramePlan({ ...BASE, shadows: { ...BASE.shadows, cascades } }).shadows?.count).toBe(
-      RENDERER_MAX_SHADOW_CASCADES
-    );
+  it("draws a cascade for every width, and none while the sun's shadow is off", () => {
+    expect(toFramePlan({ ...BASE, shadows: { ...BASE.shadows, cascades: [20, 40] } }).shadows?.count).toBe(2);
     expect(toFramePlan({ ...BASE, shadows: { ...BASE.shadows, isEnabled: false } }).shadows).toBeNull();
     expect(toFramePlan({ ...BASE, shadows: { ...BASE.shadows, cascades: [] } }).shadows).toBeNull();
   });
@@ -82,6 +75,20 @@ describe("the frame plan", () => {
       isLightShadowed: false,
       isLit: true,
     });
+  });
+
+  it("draws the water while it is on, and distorts what is behind it only then", () => {
+    const water: IRendererWaterSettings = BASE.water;
+
+    expect(toFramePlan({ ...BASE, water: { ...water, isDistorted: true, isEnabled: true } })).toMatchObject({
+      isDistorted: true,
+      isWatered: true,
+    });
+    expect(toFramePlan({ ...BASE, water: { ...water, isDistorted: true, isEnabled: false } })).toMatchObject({
+      isDistorted: false,
+      isWatered: false,
+    });
+    expect(toFramePlan({ ...BASE, water: { ...water, isDistorted: false, isEnabled: true } }).isDistorted).toBe(false);
   });
 
   it("culls what the depth hides while the features do, and drops its passes while they do not", () => {

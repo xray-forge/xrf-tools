@@ -12,9 +12,9 @@ import {
   vec3,
   vec4,
 } from "three/tsl";
-import { Node, StorageBufferNode } from "three/webgpu";
+import { Node } from "three/webgpu";
 
-import { IRendererSurface } from "#/contract/scene/renderer-surface";
+import { IGrassSurfaceSource } from "#/material/grass-surface-source";
 import { MaterialSamplers } from "#/material/material-samplers";
 import { ISurfaceShader } from "#/material/surface-shader";
 import { DEFAULT_GLOSS, DEFAULT_MATERIAL, MATERIAL_SLICES } from "#/material/surface-texel.tsl";
@@ -28,17 +28,6 @@ import { RendererUniforms } from "#/uniforms/renderer-uniforms";
 
 /** How far below its foot a tuft's normals point from, `deffer_detail_*_flat.vs`: up, and never zero. */
 const NORMAL_DROP: number = 0.75;
-
-/** What one model's grass is drawn from. */
-export interface IGrassSurfaceSource {
-  surface: IRendererSurface;
-  /** The model's bounding box height, which a vertex's share of the sway is measured against. */
-  height: number;
-  /** Every planted tuft, sorted by model: two vectors each, its place and turn, then its scale, light and wave. */
-  items: StorageBufferNode<"vec4">;
-  /** Where the model's tufts start among the items. */
-  start: Node<"uint">;
-}
 
 /**
  * `deffer_detail_w_flat.vs` and `deffer_detail_s_flat.vs` with `deffer_base_aref_flat.ps`: a tuft stood at its place,

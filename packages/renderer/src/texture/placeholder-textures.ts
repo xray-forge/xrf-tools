@@ -92,15 +92,16 @@ export function getClearTexture(): Texture {
  *   face, one block of each.
  */
 export function getPlaceholderSkyTexture(): Texture {
-  // One BC1 block of a single 565 colour, both endpoints alike and every index the first.
-  const color: number = (16 << 11) | (32 << 5) | 17;
-  const block: Array<number> = [color & 0xff, color >> 8, color & 0xff, color >> 8, 0, 0, 0, 0];
-  const data: Uint8Array = new Uint8Array(Array.from({ length: DDS_CUBE_FACES }, () => block).flat());
+  if (!sky) {
+    // One BC1 block of a single 565 colour, both endpoints alike and every index the first.
+    const color: number = (16 << 11) | (32 << 5) | 17;
+    const block: Array<number> = [color & 0xff, color >> 8, color & 0xff, color >> 8, 0, 0, 0, 0];
+    const data: Uint8Array = new Uint8Array(Array.from({ length: DDS_CUBE_FACES }, () => block).flat());
 
-  return (sky ??= createCubeTexture(
-    { height: 4, mipmaps: [{ data, height: 4, width: 4 }], width: 4 },
-    RGBA_S3TC_DXT1_Format
-  ));
+    sky = createCubeTexture({ height: 4, mipmaps: [{ data, height: 4, width: 4 }], width: 4 }, RGBA_S3TC_DXT1_Format);
+  }
+
+  return sky;
 }
 
 function createSolidTexture(red: number, green: number = red, blue: number = red, alpha: number = 255): Texture {

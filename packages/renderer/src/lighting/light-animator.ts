@@ -1,5 +1,5 @@
-import { TRendererColor } from "#/contract/renderer-lighting";
-import { IRendererLightAnimator } from "#/contract/scene/renderer-lights";
+import { TRendererColor } from "#/contract/renderer-color";
+import { IRendererLightAnimator } from "#/contract/scene/renderer-light-animator";
 
 /**
  * `CLAItem::CalculateRGB`: the frame a time falls on, the animation looping over its frames, and the colour there,

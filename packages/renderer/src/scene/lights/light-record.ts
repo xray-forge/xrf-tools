@@ -4,7 +4,9 @@
  * slot, the sphere it is binned by, its shadow's near and far planes and face count, then a face's square of the atlas
  * and how far the face has faded.
  */
-export const LIGHT_RECORD = {
+export const LIGHT_RECORD: Readonly<
+  Record<"position" | "color" | "axis" | "right" | "up" | "sphere" | "shadow" | "faces", number>
+> = {
   position: 0,
   color: 1,
   axis: 2,
@@ -13,7 +15,7 @@ export const LIGHT_RECORD = {
   sphere: 5,
   shadow: 6,
   faces: 7,
-} as const;
+};
 
 /** Faces a light's shadow takes at most: a point's six. */
 export const LIGHT_RECORD_FACES: number = 6;

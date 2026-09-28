@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
-import { PerspectiveCamera, Plane } from "three/webgpu";
+import { PerspectiveCamera, Vector4 } from "three/webgpu";
 
 import { adoptRendererConventions } from "#/internals/camera-conventions";
 import { CullView } from "#/visibility/cull-view";
@@ -41,11 +41,11 @@ describe("CullView", () => {
 
     view.take(camera);
 
-    const far: Plane = view.planes[4];
+    const far: Vector4 = view.planes[4];
 
     expect(camera.reversedDepth).toBe(true);
-    expect(far.normal.z).toBeCloseTo(1);
-    expect(far.constant).toBeCloseTo(100);
+    expect(far.z).toBeCloseTo(1);
+    expect(far.w).toBeCloseTo(100);
   });
 
   it("brings its far plane in to how far the view sees, leaving the camera's own", () => {
@@ -76,5 +76,23 @@ describe("CullView", () => {
     view.take(camera);
 
     expect(view.version).toBe(first + 1);
+  });
+
+  it("moves its version when how far the view sees changes, the camera staying put", () => {
+    const camera: PerspectiveCamera = createCamera();
+    const view: CullView = new CullView();
+
+    view.take(camera, 40);
+
+    const first: number = view.version;
+
+    view.take(camera, 40);
+
+    expect(view.version).toBe(first);
+
+    view.take(camera, 60);
+
+    expect(view.version).toBe(first + 1);
+    expect(view.classify(0, 0, -50, 5)).toBe(EVisibility.INSIDE);
   });
 });

@@ -10,7 +10,7 @@ import {
   WebGPURenderer,
 } from "three/webgpu";
 
-import { RENDERER_MAX_SHADOW_CASCADES } from "#/contract/renderer-features";
+import { RENDERER_MAX_SHADOW_CASCADES } from "#/contract/renderer-shadow-settings";
 import { initPreservedDepthTarget } from "#/internals/preserved-depth-target";
 import { IRendererFrameSize } from "#/sampling/renderer-frame-size";
 import { IGBufferTextures } from "#/shader/gbuffer-textures";
@@ -42,12 +42,12 @@ export class RendererTargets implements IGBufferTextures {
   public readonly composite: RenderTarget;
   /**
    * What the water is prepared in, in one quad: the depth behind it, each pixel's distance along the view in metres
-   * as the engine's `s_position.z` holds it, and the distortion target cleared to nothing.
+   * as the engine's `s_position.z` holds it, and the distortion target cleared to nothing. Allocated while watered.
    */
   public readonly waterPrepare: RenderTarget;
   /**
    * The frame and the distortion target, with the G-buffer's depth attached: the water composites over the one and
-   * writes what it distorts into the other in the same draw.
+   * writes what it distorts into the other in the same draw. Allocated while watered.
    */
   public readonly water: RenderTarget;
   /**
@@ -56,7 +56,7 @@ export class RendererTargets implements IGBufferTextures {
    */
   public readonly shadows: ReadonlyArray<RenderTarget> = Array.from(
     { length: RENDERER_MAX_SHADOW_CASCADES },
-    (_, view: number) => {
+    (_: unknown, view: number) => {
       // The colour a render target cannot go without, as small as a texel can be; nothing writes it.
       const target: RenderTarget = new RenderTarget(1, 1, { depthBuffer: true, format: RedFormat });
 
@@ -79,6 +79,11 @@ export class RendererTargets implements IGBufferTextures {
    * sways starts from. It shares the lights' colour, which nothing writes.
    */
   public readonly lightShadowsStill: RenderTarget = new RenderTarget(1, 1, { depthBuffer: true, format: RedFormat });
+
+  /** Whether the frame draws water, whose targets the next sizing allocates or frees. */
+  private isWatered: boolean = false;
+  /** Whether the water's targets are allocated now. */
+  private isWaterAllocated: boolean = false;
 
   public constructor() {
     this.lightShadows.texture.name = "light-shadows";
@@ -142,6 +147,11 @@ export class RendererTargets implements IGBufferTextures {
   }
 
   /** The depth behind the water, in metres along the view. */
+  /** Whether the targets have to be allocated again before the frame draws: the water's joined or left since. */
+  public get isStale(): boolean {
+    return this.isWatered !== this.isWaterAllocated;
+  }
+
   public get waterDepth(): Texture {
     return this.waterPrepare.textures[0];
   }
@@ -184,6 +194,12 @@ export class RendererTargets implements IGBufferTextures {
   public resize(renderer: WebGPURenderer, size: IRendererFrameSize): void {
     const { renderWidth, renderHeight } = size;
 
+    // The water's frame shares the frame's texture, so it joins or leaves only with every target over that texture
+    // freed: allocated or freed alone, it reallocates the texture under targets still holding views of the old one.
+    if (this.isStale) {
+      [this.scene, this.composite, this.waterPrepare, this.water].forEach((target: RenderTarget) => target.dispose());
+    }
+
     this.gbuffer.setSize(renderWidth, renderHeight);
     this.wallmarks.setSize(renderWidth, renderHeight);
     this.backgroundMotion.setSize(renderWidth, renderHeight);
@@ -204,8 +220,19 @@ export class RendererTargets implements IGBufferTextures {
 
     initPreservedDepthTarget(renderer, this.composite);
 
-    renderer.initRenderTarget(this.waterPrepare);
-    initPreservedDepthTarget(renderer, this.water);
+    if (this.isWatered) {
+      renderer.initRenderTarget(this.waterPrepare);
+      initPreservedDepthTarget(renderer, this.water);
+    }
+
+    this.isWaterAllocated = this.isWatered;
+  }
+
+  /**
+   * @param isWatered - Whether the frame draws water from its next sizing, which allocates its targets or frees them.
+   */
+  public setWatered(isWatered: boolean): void {
+    this.isWatered = isWatered;
   }
 
   public dispose(): void {

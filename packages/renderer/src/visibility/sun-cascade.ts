@@ -1,7 +1,9 @@
 import { OrthographicCamera, PerspectiveCamera, Vector3, Vector4 } from "three/webgpu";
 
 import { adoptRendererConventions } from "#/internals/camera-conventions";
-import { ISunViewRay, SunViewRays } from "#/visibility/sun-view-rays";
+import { SunCascadeBasis } from "#/visibility/sun-cascade-basis";
+import { placeSunCascade } from "#/visibility/sun-cascade-placement";
+import { SunViewRays } from "#/visibility/sun-view-rays";
 
 /** Numbers a cascade is fitted by: its square's place, width, resolution, reach, and the light's direction. */
 const KEY_LENGTH: number = 9;
@@ -9,32 +11,13 @@ const KEY_LENGTH: number = 9;
 /** How far a cascade's map reaches past its reach below its centre, in widths: the engine's `1.41421 * map_size`. */
 const DEPTH: number = 1.41421;
 
-/** The engine's `EPS_L`: a plane faces the view only past it, and a ray leaves a plane only past it. */
-const EPS_L: number = 0.001;
-
-/** The engine's `EPS_S`, under which a view along the light places nothing. */
-const EPS_S: number = 0.0000001;
-
-/** The engine's first guess at the nearest point behind a side, which any real one is nearer than. */
-const FAR_BEHIND: number = 10000;
-
-/**
- * How deep from the near plane, in widths, a cascade holds the whole view whatever the engine's placement says.
- * Brought up to where the edges start, a square leaves out the ground an edge runs back out through its back side to,
- * which is the ground nearest the camera once it looks down with the sun ahead; the engine's far pass reads that from
- * its map's clamped edge. A quarter of a width fits in the square at any angle.
- */
-const HELD: number = 0.25;
-
-/** The share of the width a held point is kept inside the square by: the sampling's own edge, and a little over. */
-const HELD_MARGIN: number = 0.03;
+/** The step, in widths, a cascade's place along the light is rounded to, so a move along it alone keeps the map. */
+const DEPTH_STEP: number = 1 / 16;
 
 /**
  * One cascade of the sun's shadow: a square of the level seen from the sun, placed every frame as the engine places it
- * (`compute_caster_model_fixed`). The sides of the square the view looks away from are brought up to the nearest
- * point the view's edges start from, so the square covers what is ahead rather than what is around; then the edges
- * are carried to where they leave it, for the next cascade to start there. The centre is snapped to the map's own
- * texels, so moving the camera slides the map a whole texel at a time and its edges do not shimmer.
+ * (`compute_caster_model_fixed`), then snapped to the map's own texels, so moving the camera slides the map a whole
+ * texel at a time and its edges do not shimmer.
  */
 export class SunCascade {
   /** What the cascade is drawn from: looking along the light, the square's width across. */
@@ -48,24 +31,13 @@ export class SunCascade {
   /** Bumped whenever the map moved, so its casters are culled again. */
   public version: number = 0;
 
-  private readonly right: Vector3 = new Vector3();
-  private readonly up: Vector3 = new Vector3();
-  private readonly light: Vector3 = new Vector3();
+  private readonly basis: SunCascadeBasis = new SunCascadeBasis();
   private readonly center: Vector3 = new Vector3();
   private readonly look: Vector3 = new Vector3();
-  /** The square's four sides' normals, pointing in: along `right`, against it, along `up` and against it. */
-  private readonly sides: ReadonlyArray<Vector3> = Array.from({ length: 4 }, () => new Vector3());
-  private readonly translation: Vector3 = new Vector3();
-  private readonly push: Vector3 = new Vector3();
-  private readonly across: Vector3 = new Vector3();
   /** What the cascade was last fitted by: its square's place, width, resolution, reach and the light. */
   private readonly key: Float64Array = new Float64Array(KEY_LENGTH).fill(NaN);
   /** What it is fitted by this frame, compared with the key before the key takes it. */
   private readonly next: Float64Array = new Float64Array(KEY_LENGTH);
-  /** The sides the view looks away from, at most two. */
-  private readonly behind: Array<number> = [];
-  /** The square's axes across the light, which the view is held within. */
-  private readonly axes: ReadonlyArray<Vector3> = [this.right, this.up];
   private readonly negated: Vector3 = new Vector3();
 
   public constructor() {
@@ -88,38 +60,26 @@ export class SunCascade {
     resolution: number,
     reach: number
   ): void {
-    const { right, up, light, center, look } = this;
+    const { basis, center, look } = this;
+    const { right, up, light } = basis;
 
-    light.copy(direction).normalize();
-    // The engine's basis: `x` across the light unless the light runs along it (`render_phase_sun.cpp`).
-    right.set(1, 0, 0);
-
-    if (Math.abs(right.dot(light)) > 0.99) {
-      right.set(0, 0, 1);
-    }
-
-    up.crossVectors(light, right).normalize();
-    right.crossVectors(up, light).normalize();
-
-    this.sides[0].copy(right);
-    this.sides[1].copy(right).negate();
-    this.sides[2].copy(up);
-    this.sides[3].copy(up).negate();
-
+    basis.take(direction);
     camera.getWorldPosition(center);
     camera.getWorldDirection(look);
 
     // The engine's light stands over the camera: the square starts centred on it, and is then moved across the light.
-    this.place(center, look, rays, width);
+    placeSunCascade(center, look, rays, basis, width);
 
     const texel: number = width / resolution;
     const x: number = Math.round(center.dot(right) / texel) * texel;
     const y: number = Math.round(center.dot(up) / texel) * texel;
-    const z: number = center.dot(light);
+    const step: number = width * DEPTH_STEP;
+    const z: number = Math.round(center.dot(light) / step) * step;
     const half: number = width / 2;
-    // As far below the centre as towards the sun, and the engine's margin past it: a camera flying high still has its
-    // ground in the map.
-    const far: number = 2 * reach + DEPTH * width;
+    // A step further each way than the rounding strays, towards the sun as far as the reach and below the centre as far
+    // again and the engine's margin: a camera flying high still has its ground in the map.
+    const back: number = reach + step;
+    const far: number = 2 * back + DEPTH * width;
 
     center.set(0, 0, 0).addScaledVector(right, x).addScaledVector(up, y).addScaledVector(light, z);
 
@@ -130,7 +90,7 @@ export class SunCascade {
     this.texel = texel;
     this.width = width;
     this.camera.up.copy(up);
-    this.camera.position.copy(center).addScaledVector(light, -reach);
+    this.camera.position.copy(center).addScaledVector(light, -back);
     this.camera.lookAt(look.copy(center));
     this.camera.left = -half;
     this.camera.right = half;
@@ -141,175 +101,13 @@ export class SunCascade {
     this.camera.updateProjectionMatrix();
     this.camera.updateMatrixWorld(true);
 
-    // The same box as planes: across the light either way, and from the reach towards the sun to its far side.
+    // The same box as planes: across the light either way, and from its near side towards the sun to its far side.
     this.setPlane(0, right, -(x - half));
     this.setPlane(1, this.negated.copy(right).negate(), x + half);
     this.setPlane(2, up, -(y - half));
     this.setPlane(3, this.negated.copy(up).negate(), y + half);
-    this.setPlane(4, light, -(z - reach));
-    this.setPlane(5, this.negated.copy(light).negate(), z - reach + far);
-  }
-
-  /**
-   * Moves the square, centred on `center`, across the light to cover the view ahead, holds the first stretch of the
-   * view in it, and carries the edges to where they leave it: `compute_caster_model_fixed`, step by step, and `HELD`.
-   *
-   * @param center - The square's centre, moved in place.
-   * @param look - Where the camera looks.
-   * @param rays - The view's edges, carried on in place.
-   * @param width - Metres the square is across.
-   */
-  private place(center: Vector3, look: Vector3, rays: SunViewRays, width: number): void {
-    // Looking along the light, no side faces away from the view and the edges stay where they are.
-    if (Math.abs(1 - Math.abs(look.dot(this.light))) < EPS_S) {
-      this.hold(center, look, rays.near, width);
-
-      return;
-    }
-
-    this.align(center, look, rays.rays, width);
-    this.hold(center, look, rays.near, width);
-    this.advance(center, rays.rays, width);
-  }
-
-  /**
-   * Brings the sides the view looks away from up to the nearest point an edge starts from, then back by the share an
-   * edge running out through them leaves at.
-   *
-   * @param center - The square's centre, moved in place.
-   * @param look - Where the camera looks.
-   * @param rays - Where the view's edges start for this cascade.
-   * @param width - Metres the square is across.
-   */
-  private align(center: Vector3, look: Vector3, rays: ReadonlyArray<ISunViewRay>, width: number): void {
-    const { sides, translation, push, across, behind } = this;
-    const half: number = width / 2;
-
-    // The one or two sides the view looks away from, behind the camera.
-    behind.length = 0;
-
-    for (let side: number = 0; side < sides.length && behind.length < 2; side += 1) {
-      if (look.dot(sides[side]) > EPS_L) {
-        behind.push(side);
-      }
-    }
-
-    // Each brought up to the nearest point an edge starts from.
-    translation.set(0, 0, 0);
-
-    for (const side of behind) {
-      let nearest: number = FAR_BEHIND;
-
-      for (const ray of rays) {
-        nearest = Math.min(nearest, this.inside(side, ray.origin, center, half));
-      }
-
-      translation.addScaledVector(sides[side], nearest);
-    }
-
-    // An edge running back out through a side it was brought up to pulls that side back by the share it leaves at.
-    push.set(0, 0, 0);
-
-    for (const side of behind) {
-      const normal: Vector3 = sides[side];
-      let share: number = 0;
-
-      across.crossVectors(normal, look).cross(look);
-
-      for (const ray of rays) {
-        const along: number = ray.direction.dot(normal);
-
-        if (along < 0) {
-          share = Math.max(share, -along / ray.direction.dot(across));
-        }
-      }
-
-      if (Math.abs(share) >= EPS_S) {
-        push.addScaledVector(normal, -normal.dot(translation) * share);
-      }
-    }
-
-    center.add(translation).add(push);
-  }
-
-  /**
-   * Moves the square across the light no further than it must to hold the view from the near plane to `HELD` of its
-   * width deep, which fits in it at any angle: the slice's widest extent is under three quarters of a width.
-   *
-   * @param center - The square's centre, moved in place.
-   * @param look - Where the camera looks, which the depth is measured along.
-   * @param near - The view's edges from the near plane.
-   * @param width - Metres the square is across.
-   */
-  private hold(center: Vector3, look: Vector3, near: ReadonlyArray<ISunViewRay>, width: number): void {
-    const reach: number = width * HELD;
-    const half: number = width * (0.5 - HELD_MARGIN);
-
-    for (const axis of this.axes) {
-      let least: number = Infinity;
-      let most: number = -Infinity;
-
-      for (const ray of near) {
-        const start: number = axis.dot(ray.origin);
-        const end: number = start + (axis.dot(ray.direction) * reach) / ray.direction.dot(look);
-
-        least = Math.min(least, start, end);
-        most = Math.max(most, start, end);
-      }
-
-      const at: number = axis.dot(center);
-      const lowest: number = most - half;
-      const highest: number = least + half;
-      const held: number = lowest > highest ? (least + most) / 2 : Math.min(Math.max(at, lowest), highest);
-
-      center.addScaledVector(axis, held - at);
-    }
-  }
-
-  /**
-   * Carries each edge to where it leaves the square, which is where the next cascade starts it.
-   *
-   * @param center - The square's centre.
-   * @param rays - The view's edges, carried on in place.
-   * @param width - Metres the square is across.
-   */
-  private advance(center: Vector3, rays: ReadonlyArray<ISunViewRay>, width: number): void {
-    const { sides } = this;
-    const half: number = width / 2;
-
-    for (const ray of rays) {
-      let nearest: number = 2 * width;
-
-      for (let side = 0; side < sides.length; side += 1) {
-        const along: number = sides[side].dot(ray.direction);
-        let distance: number = width;
-
-        if (along <= -0.1) {
-          const leave: number = -this.inside(side, ray.origin, center, half) / along;
-
-          distance = leave > 0 || Math.abs(leave) < EPS_S ? leave : 0;
-        }
-
-        if (distance > EPS_L && distance < nearest) {
-          nearest = distance;
-        }
-      }
-
-      ray.origin.addScaledVector(ray.direction, nearest);
-    }
-  }
-
-  /**
-   * @param side - One of the square's sides.
-   * @param point - A point.
-   * @param center - The square's centre.
-   * @param half - Half its width.
-   * @returns How far inside that side the point stands: the engine's `classify` against it.
-   */
-  private inside(side: number, point: Vector3, center: Vector3, half: number): number {
-    const normal: Vector3 = this.sides[side];
-
-    return normal.dot(point) - normal.dot(center) + half;
+    this.setPlane(4, light, -(z - back));
+    this.setPlane(5, this.negated.copy(light).negate(), z - back + far);
   }
 
   /**
@@ -318,7 +116,8 @@ export class SunCascade {
    * @returns Whether it differed, which is a new version of the cascade.
    */
   private rekey(x: number, y: number, z: number, width: number, resolution: number, reach: number): boolean {
-    const { key, next, light } = this;
+    const { key, next } = this;
+    const { light } = this.basis;
 
     next[0] = x;
     next[1] = y;
@@ -342,6 +141,6 @@ export class SunCascade {
   }
 
   private setPlane(index: number, normal: Vector3, constant: number): void {
-    (this.planes[index] as Vector4).set(normal.x, normal.y, normal.z, constant);
+    this.planes[index].set(normal.x, normal.y, normal.z, constant);
   }
 }

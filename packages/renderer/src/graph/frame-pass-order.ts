@@ -12,6 +12,9 @@ export interface IFrameOptionalPasses {
   /** The static draws the first phase's depth hid culled again and drawn, and the depth reduced after. */
   readonly occlusion: Nullable<IOcclusionFramePasses>;
   readonly motionBackground: Nullable<IRendererPass>;
+  /** The water, over the frame before the blended surfaces, and what it distorts moved once they are down. */
+  readonly water: Nullable<IRendererPass>;
+  readonly distortion: Nullable<IRendererPass>;
   readonly shadows: ReadonlyArray<IRendererPass>;
   readonly lightShadows: Nullable<IRendererPass>;
   readonly lights: Nullable<IRendererPass>;
@@ -62,9 +65,9 @@ export function toFramePassOrder(
     base.combine,
     ...some(optional.exposure),
     ...(resolve?.beforeBlended ?? []),
-    base.water,
+    ...some(optional.water),
     base.forward,
-    base.distortion,
+    ...some(optional.distortion),
     ...some(resolve),
     ...(spatial ? some(smoothing, spatial) : []),
     ...some(optional.sharpen),

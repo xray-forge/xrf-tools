@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
 
 import { IRendererLighting } from "#/contract/renderer-lighting";
-import { toBaseLightingConstants, toFogParams, toSunSpecular } from "#/lighting/base-lighting";
+import { IBaseLightingConstants, toBaseLightingConstants, toSunSpecular } from "#/lighting/base-lighting";
 import { DEFAULT_RENDERER_LIGHTING } from "#/lighting/default-lighting";
 
 describe("toSunSpecular", () => {
@@ -15,17 +15,19 @@ describe("toSunSpecular", () => {
   });
 });
 
-describe("toFogParams", () => {
-  it("ramps from 85% of the clear fraction to 99% of the distance", () => {
-    // Noon: distance 350, density 0.9, so near = 29.75 and far = 346.5.
-    const [offset, scale] = toFogParams(350, 0.9);
-
-    expect(offset).toBeCloseTo(-0.093923, 6);
-    expect(scale).toBeCloseTo(0.003157, 6);
-  });
-});
-
 describe("toBaseLightingConstants", () => {
+  it("ramps the fog from 85% of the clear fraction to 99% of the distance", () => {
+    // Noon: distance 350, density 0.9, so near = 29.75 and far = 346.5.
+    const constants: IBaseLightingConstants = toBaseLightingConstants({
+      ...DEFAULT_RENDERER_LIGHTING,
+      fog: { color: [0.5, 0.5, 0.5], density: 0.9, distance: 350 },
+    });
+
+    expect(constants.fogOffset).toBeCloseTo(-0.093923, 6);
+    expect(constants.fogScale).toBeCloseTo(0.003157, 6);
+    expect(constants.isFogged).toBe(true);
+  });
+
   it("doubles ambient and keeps it off zero", () => {
     const lighting: IRendererLighting = { ...DEFAULT_RENDERER_LIGHTING, ambientColor: [0.02, 0, 0.0001] };
 

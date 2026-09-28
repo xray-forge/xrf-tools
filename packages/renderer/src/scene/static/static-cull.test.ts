@@ -1,18 +1,20 @@
 import { describe, expect, it, jest } from "@jest/globals";
-import { ComputeNode, Scene, Vector4, WebGPURenderer } from "three/webgpu";
+import { ComputeNode, DepthTexture, PerspectiveCamera, Scene, Vector4, WebGPURenderer } from "three/webgpu";
 
 import { StaticCull } from "#/scene/static/static-cull";
 import { IStaticPools } from "#/scene/static/static-pools";
 import { LIGHT_SHADOW_FACE_BUDGET } from "#/uniforms/lights-uniforms";
-import { EStaticPool, STATIC_LIGHT_VIEW_START, StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
+import { STATIC_LIGHT_VIEW_START, StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
+import { EStaticPool } from "#/uniforms/static-pool";
+import { StorageRetirement } from "#/uniforms/storage-retirement";
+import { CullView } from "#/visibility/cull-view";
 import { IShadowFrustum } from "#/visibility/shadow-frustum";
 
-/** Passes a shadow view's cull dispatches: its arguments cleared, its single draws' clusters, then its rows'. */
 const VIEW_PASSES: number = 3;
 
-/** Pools of one of everything, whose version a test bumps as the draws would change. */
 interface IPoolsStub extends IStaticPools {
   version: number;
+  candidateExtent: number;
 }
 
 function createCull(): {
@@ -22,7 +24,7 @@ function createCull(): {
   renderer: WebGPURenderer;
   submissions: Array<Array<ComputeNode>>;
 } {
-  const buffers: StaticDrawBuffers = new StaticDrawBuffers({
+  const buffers: StaticDrawBuffers = new StaticDrawBuffers(new StorageRetirement(), {
     [EStaticPool.BATCHES]: 4,
     [EStaticPool.CLUSTERS]: 4,
     [EStaticPool.LODS]: 2,
@@ -35,6 +37,7 @@ function createCull(): {
   });
   const pools: IPoolsStub = {
     batchExtent: 1,
+    candidateExtent: 1,
     clusterExtent: 1,
     flush: () => {},
     lodExtent: 1,
@@ -162,6 +165,60 @@ describe("StaticCull occlusion", () => {
 
     expect(buffers.occlusion.previous.isTaken.value).toBe(0);
     expect(submissions).toHaveLength(1);
+    cull.dispose();
+  });
+
+  // The last cull before the camera stops tests the depth of the pose before: it is culled once more against its own.
+  it("culls a view that stopped once more against its own depth, and then not again", () => {
+    const { cull, renderer, submissions } = createCull();
+    const camera: PerspectiveCamera = new PerspectiveCamera();
+    const view: CullView = new CullView();
+    const depth: DepthTexture = new DepthTexture(4, 4);
+
+    /** Draws a frame the way the frame's passes do, and says whether its first cull ran. */
+    function frame(): boolean {
+      cull.take(view, camera);
+
+      const before: number = submissions.length;
+
+      cull.dispatch(renderer);
+
+      const isCulled: boolean = submissions.length > before;
+
+      cull.cullLate(renderer, depth, 4, 4);
+      cull.finish(renderer, depth, 4, 4);
+
+      return isCulled;
+    }
+
+    camera.updateMatrixWorld();
+    view.take(camera);
+
+    const still: Array<boolean> = [frame(), frame(), frame()];
+
+    camera.position.x += 1;
+    camera.updateMatrixWorld();
+    view.take(camera);
+
+    expect([...still, frame(), frame(), frame()]).toEqual([true, true, false, true, true, false]);
+    cull.dispose();
+  });
+
+  it("runs the second phase only as far as the camera's regions reach", () => {
+    const { cull, pools, renderer, submissions } = createCull();
+    const camera: PerspectiveCamera = new PerspectiveCamera();
+    const view: CullView = new CullView();
+
+    camera.updateMatrixWorld();
+    view.take(camera);
+    pools.candidateExtent = 3;
+    cull.take(view, camera);
+    cull.dispatch(renderer);
+    cull.cullLate(renderer, new DepthTexture(4, 4), 4, 4);
+
+    const [late] = submissions[submissions.length - 1];
+
+    expect(late.count).toBe(3);
     cull.dispose();
   });
 });

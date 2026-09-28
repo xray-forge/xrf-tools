@@ -1,4 +1,5 @@
-import { IRendererGeometry, IRendererGeometryGroup } from "#/contract/scene/renderer-geometry";
+import { IRendererGeometry } from "#/contract/scene/renderer-geometry";
+import { IRendererGeometryGroup } from "#/contract/scene/renderer-geometry-group";
 
 /** An axis of a face: across it, down it, or out of it. */
 type TAxis = 0 | 1 | 2;
@@ -30,30 +31,32 @@ export function createRendererBox(width: number, height: number, depth: number):
     [0, 1, 2, -1, -1, width, height, -depth],
   ];
 
-  faces.forEach(([across, down, out, acrossSign, downSign, faceWidth, faceHeight, faceDepth], slot: number) => {
-    const first: number = position.length / 3;
+  faces.forEach(
+    ([across, down, out, acrossSign, downSign, faceWidth, faceHeight, faceDepth]: TBoxFace, slot: number) => {
+      const first: number = position.length / 3;
 
-    for (let row = 0; row < 2; row += 1) {
-      for (let column = 0; column < 2; column += 1) {
-        const vertex: [number, number, number] = [0, 0, 0];
-        const facing: [number, number, number] = [0, 0, 0];
+      for (let row: number = 0; row < 2; row += 1) {
+        for (let column: number = 0; column < 2; column += 1) {
+          const vertex: [number, number, number] = [0, 0, 0];
+          const facing: [number, number, number] = [0, 0, 0];
 
-        vertex[across] = (column - 0.5) * faceWidth * acrossSign;
-        vertex[down] = (row - 0.5) * faceHeight * downSign;
-        vertex[out] = faceDepth / 2;
-        facing[out] = faceDepth > 0 ? 1 : -1;
+          vertex[across] = (column - 0.5) * faceWidth * acrossSign;
+          vertex[down] = (row - 0.5) * faceHeight * downSign;
+          vertex[out] = faceDepth / 2;
+          facing[out] = faceDepth > 0 ? 1 : -1;
 
-        position.push(...vertex);
-        normal.push(...facing);
-        // Top first, as X-Ray stores rows: the file's first row on the face's first row.
-        uv.push(column, row);
+          position.push(...vertex);
+          normal.push(...facing);
+          // Top first, as X-Ray stores rows: the file's first row on the face's first row.
+          uv.push(column, row);
+        }
       }
-    }
 
-    // Wound as three winds them, so every face is front facing from outside.
-    index.push(first, first + 2, first + 1, first + 2, first + 3, first + 1);
-    groups.push({ count: 6, slot, start: slot * 6 });
-  });
+      // Wound as three winds them, so every face is front facing from outside.
+      index.push(first, first + 2, first + 1, first + 2, first + 3, first + 1);
+      groups.push({ count: 6, slot, start: slot * 6 });
+    }
+  );
 
   return {
     groups,

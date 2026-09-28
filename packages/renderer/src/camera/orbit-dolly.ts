@@ -1,7 +1,4 @@
-/** One dolly step, matching the pan-zoom wheel notch so a zoom button feels the same in a scene as over a picture. */
-export const DOLLY_STEP: number = 1.2;
-
-export type TDollyPoint = readonly [number, number, number];
+import { TRendererVector } from "#/contract/renderer-vector";
 
 /**
  * Moves an orbiting camera along the line it is looking down.
@@ -14,12 +11,12 @@ export type TDollyPoint = readonly [number, number, number];
  * @returns The camera's new position, or its current one where the distance is already at the bound asked for.
  */
 export function toDolliedPosition(
-  position: TDollyPoint,
-  target: TDollyPoint,
+  position: TRendererVector,
+  target: TRendererVector,
   step: number,
   minDistance: number = 0,
   maxDistance: number = Number.POSITIVE_INFINITY
-): TDollyPoint {
+): TRendererVector {
   const offsetX: number = position[0] - target[0];
   const offsetY: number = position[1] - target[1];
   const offsetZ: number = position[2] - target[2];

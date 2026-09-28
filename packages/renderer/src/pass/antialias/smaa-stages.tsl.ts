@@ -6,30 +6,9 @@
 // assigns through swizzles (`a.xz = ...`), which its typings cannot express, so the stages are left untyped.
 
 import { abs, Break, dot, float, Fn, If, int, Loop, max, mix, sign, sqrt, step, uv, vec2, vec4 } from "three/tsl";
-import { Node, TextureNode, UniformNode, Vector2 } from "three/webgpu";
 
-/** What the three stages read. */
-export interface ISmaaInputs {
-  /** The frame being smoothed. */
-  sourceTexture: TextureNode;
-  /** What the first stage wrote. */
-  edgesTexture: TextureNode;
-  /** What the second stage wrote. */
-  weightsTexture: TextureNode;
-  /** `AreaTex`, the precomputed blending areas. */
-  areaTexture: TextureNode;
-  /** `SearchTex`, the precomputed search lengths. */
-  searchTexture: TextureNode;
-  /** One over the frame's size in pixels. */
-  invSize: UniformNode<"vec2", Vector2>;
-}
-
-/** Each stage's fragment, in the order they run. */
-export interface ISmaaStages {
-  edges: Node<"vec4">;
-  weights: Node<"vec4">;
-  blend: Node<"vec4">;
-}
+import { ISmaaInputs } from "#/pass/antialias/smaa-inputs";
+import { ISmaaStages } from "#/pass/antialias/smaa-stages";
 
 /**
  * @param inputs - What the stages read.

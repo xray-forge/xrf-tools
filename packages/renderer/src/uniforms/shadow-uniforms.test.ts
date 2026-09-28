@@ -1,8 +1,9 @@
 import { describe, expect, it } from "@jest/globals";
 import { Matrix4, PerspectiveCamera, Vector3, Vector4, WebGPUCoordinateSystem } from "three/webgpu";
 
-import { DEFAULT_RENDERER_SHADOW_SETTINGS } from "#/contract/renderer-features";
+import { DEFAULT_RENDERER_SHADOW_SETTINGS, RENDERER_MAX_SHADOW_CASCADES } from "#/contract/renderer-shadow-settings";
 import { ShadowUniforms } from "#/uniforms/shadow-uniforms";
+import { SunCascade } from "#/visibility/sun-cascade";
 
 function createCamera(): PerspectiveCamera {
   const camera: PerspectiveCamera = new PerspectiveCamera(67.5, 1.7, 0.2, 5000);
@@ -29,6 +30,18 @@ describe("ShadowUniforms", () => {
     shadows.fit(createCamera(), new Vector3(0, -1, 0), { ...DEFAULT_RENDERER_SHADOW_SETTINGS, isEnabled: false });
 
     expect(shadows.drawn).toBe(0);
+  });
+
+  it("holds a texel for every cascade there can be", () => {
+    const shadows: ShadowUniforms = new ShadowUniforms();
+
+    shadows.fit(createCamera(), new Vector3(0, -1, 0), DEFAULT_RENDERER_SHADOW_SETTINGS);
+
+    for (let view: number = 0; view < RENDERER_MAX_SHADOW_CASCADES; view += 1) {
+      shadows.commit(view);
+    }
+
+    expect(shadows.texels.value.toArray()).toEqual(shadows.cascades.map((cascade: SunCascade) => cascade.texel));
   });
 
   // The sun reads what a map holds: a cascade fitted but not drawn again keeps the matrix it was drawn with.

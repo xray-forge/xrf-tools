@@ -1,16 +1,10 @@
 import { clamp, float, floor, select, sqrt, uint } from "three/tsl";
 import { Node, StorageBufferNode } from "three/webgpu";
 
+import { toStaticScreenArea } from "#/scene/static/static-screen-area.tsl";
 import { LodUniforms } from "#/uniforms/lod-uniforms";
-import {
-  EStaticLodState,
-  STATIC_LOD_IMPOSTOR_ROW,
-  STATIC_NO_BAND,
-  STATIC_NO_LOD,
-} from "#/uniforms/static-draw-buffers";
-
-/** `EPS`, what `CalcSSA` adds to a squared distance so a camera standing at a centre divides by something. */
-const DISTANCE_EPSILON: number = 0.00001;
+import { STATIC_LOD_IMPOSTOR_ROW, STATIC_NO_BAND, STATIC_NO_LOD } from "#/uniforms/static-draw-buffers";
+import { EStaticLodState } from "#/uniforms/static-lod-state";
 
 /**
  * Whether a row's clump draws what the row is: a tree while its trees are near enough, the impostor's own draw while it
@@ -52,7 +46,7 @@ export function toBandDrawn(word: Node<"uint">, sphere: Node<"vec4">, lod: LodUn
   const bands: Node<"uint"> = word.shiftRight(8).bitAnd(255);
   const windows: Node<"uint"> = word.shiftRight(16);
   const offset: Node<"vec3"> = sphere.xyz.sub(lod.camera);
-  const ssa: Node<"float"> = sphere.w.div(offset.dot(offset).add(DISTANCE_EPSILON));
+  const ssa: Node<"float"> = toStaticScreenArea(sphere.w, offset);
   const detail: Node<"float"> = sqrt(clamp(ssa.sub(lod.glodEnd).div(lod.glodStart.sub(lod.glodEnd)), 0, 1));
   const window: Node<"uint"> = floor(
     float(1)

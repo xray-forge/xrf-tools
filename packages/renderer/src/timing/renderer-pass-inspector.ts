@@ -1,14 +1,13 @@
 import { Maybe, Nullable } from "@xrf/types";
 import { InspectorBase } from "three/webgpu";
 
+import { TIssuedRender } from "#/timing/issued-render";
+
 /** Matches the frame a render context's timestamp uid belongs to: three spells them `<context>:f<frame>`. */
 const FRAME_PATTERN: RegExp = /:f(\d+)$/;
 
 /** Frames kept waiting for their timings, so renders three never timed are let go of rather than walked every read. */
 const FRAME_LIMIT: number = 16;
-
-/** A render three times under its uid, with the pass that issued it. */
-export type TIssuedRender = readonly [uid: string, pass: string];
 
 /**
  * Tags every render three times with the pass that issued it, while the device is timing.

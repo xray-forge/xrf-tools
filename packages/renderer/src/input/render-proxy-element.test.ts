@@ -1,7 +1,9 @@
 import { describe, expect, it, jest } from "@jest/globals";
 
-import { ERenderInput, IRenderInputEvent } from "#/contract/renderer-input";
-import { IRenderProxyEvent, RenderProxyElement } from "#/input/render-proxy-element";
+import { ERenderInput } from "#/contract/render-input";
+import { IRenderInputEvent } from "#/contract/render-input-event";
+import { RenderProxyElement } from "#/input/render-proxy-element";
+import { IRenderProxyEvent } from "#/input/render-proxy-event";
 
 const SIZE = { height: 540, pixelRatio: 1, width: 960 };
 

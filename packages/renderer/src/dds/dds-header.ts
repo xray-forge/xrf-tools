@@ -1,8 +1,10 @@
 import { Nullable } from "@xrf/types";
 
+import { IDdsExtendedHeader } from "#/dds/dds-extended-header";
 import { toDdsFourCc } from "#/dds/dds-fourcc";
+import { IDdsHeaderRead } from "#/dds/dds-header-read";
 import { IDdsChannelMasks } from "#/dds/dds-masks";
-import { EDdsRefusal, IDdsRefusal } from "#/dds/dds-refusal";
+import { EDdsRefusalReason } from "#/dds/dds-refusal-reason";
 
 /** `DDS `, little endian. */
 const DDS_MAGIC: number = 0x20534444;
@@ -37,16 +39,6 @@ const OFF_DXGI_FORMAT: number = 0;
 const OFF_RESOURCE_DIMENSION: number = 1;
 const OFF_ARRAY_SIZE: number = 3;
 
-/** `D3D10_RESOURCE_DIMENSION_TEXTURE3D`, a volume, which no surface draws. */
-export const DDS_DIMENSION_TEXTURE_3D: number = 4;
-
-/** What the `DX10` extended header says about the resource. */
-export interface IDdsExtendedHeader {
-  dxgiFormat: number;
-  dimension: number;
-  arraySize: number;
-}
-
 /** A dds header, as the fields a read decides on. */
 export interface IDdsHeader {
   width: number;
@@ -63,12 +55,6 @@ export interface IDdsHeader {
   dataOffset: number;
 }
 
-/** What a header read came to: exactly one of the two is present. */
-export interface IDdsHeaderRead {
-  header: Nullable<IDdsHeader>;
-  refusal: Nullable<IDdsRefusal>;
-}
-
 /**
  * Reads a dds header, or says why the file has none worth reading.
  *
@@ -77,7 +63,7 @@ export interface IDdsHeaderRead {
  */
 export function readDdsHeader(bytes: ArrayBuffer): IDdsHeaderRead {
   if (bytes.byteLength < HEADER_INTS * 4) {
-    return refuse(EDdsRefusal.TRUNCATED, `the file is ${bytes.byteLength} bytes, short of a dds header`);
+    return refuse(EDdsRefusalReason.TRUNCATED, `the file is ${bytes.byteLength} bytes, short of a dds header`);
   }
 
   // Unsigned, because a channel mask reaches the top bit: read as `Int32Array`, `0xff000000` comes back negative
@@ -85,7 +71,7 @@ export function readDdsHeader(bytes: ArrayBuffer): IDdsHeaderRead {
   const words: Uint32Array = new Uint32Array(bytes, 0, HEADER_INTS);
 
   if (words[OFF_MAGIC] !== DDS_MAGIC) {
-    return refuse(EDdsRefusal.NOT_A_DDS, "the file does not open with the 'DDS ' magic number");
+    return refuse(EDdsRefusalReason.NOT_A_DDS, "the file does not open with the 'DDS ' magic number");
   }
 
   // Read off the tag rather than off `DDPF_FOURCC`: a pixel format storing channel masks leaves the tag zero, and
@@ -100,7 +86,7 @@ export function readDdsHeader(bytes: ArrayBuffer): IDdsHeaderRead {
     const at: number = (HEADER_INTS + 1) * 4;
 
     if (bytes.byteLength < at + EXTENDED_HEADER_INTS * 4) {
-      return refuse(EDdsRefusal.TRUNCATED, "the file declares a DX10 header and stops before it");
+      return refuse(EDdsRefusalReason.TRUNCATED, "the file declares a DX10 header and stops before it");
     }
 
     const extendedWords: Uint32Array = new Uint32Array(bytes, at, EXTENDED_HEADER_INTS);
@@ -136,6 +122,6 @@ export function readDdsHeader(bytes: ArrayBuffer): IDdsHeaderRead {
   };
 }
 
-function refuse(reason: EDdsRefusal, detail: string): IDdsHeaderRead {
+function refuse(reason: EDdsRefusalReason, detail: string): IDdsHeaderRead {
   return { header: null, refusal: { detail, reason } };
 }

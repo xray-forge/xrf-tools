@@ -1,35 +1,9 @@
 import { Nullable } from "@xrf/types";
 
-import { IRendererFeatureSettings } from "#/contract/renderer-features";
+import { ERendererDebugView } from "#/contract/renderer-debug-view";
+import { toRendererFeatureSettings } from "#/contract/renderer-feature-choice";
+import { IRendererFeatureSettings } from "#/contract/renderer-feature-settings";
 import { IRenderFramePacing } from "#/frame/render-frame-pacing";
-
-/**
- * Which picture reaches the canvas: the frame, or one of the targets it was built from.
- */
-export enum ERendererDebugView {
-  /** The finished frame. */
-  FINAL = "final",
-  /** The G-buffer's albedo, raw. */
-  ALBEDO = "albedo",
-  /** The gloss the albedo target carries in its alpha. */
-  GLOSS = "gloss",
-  /** The view space normal, remapped to colour. */
-  NORMAL = "normal",
-  /** The baked hemisphere occlusion. */
-  HEMI = "hemi",
-  /** The baked sun occlusion. */
-  SUN = "sun",
-  /** The lighting model slice, `(class + 0.5) / 4`. */
-  MATERIAL = "material",
-  /** View depth, near dark and far light. */
-  DEPTH = "depth",
-  /** What the lights accumulated: diffuse in colour. */
-  LIGHT = "light",
-  /** The screen's occlusion, white where it is off. */
-  AMBIENT_OCCLUSION = "ambient-occlusion",
-  /** How far each surface moved on the screen since the frame before: grey for none, eight pixels to a full shift. */
-  MOTION = "motion",
-}
 
 /**
  * How the consumer wants frames drawn.
@@ -55,4 +29,12 @@ export interface IRendererSettings {
   hemiStrength: number;
   /** What every feature is set to, the same for every consumer: a preset and what was changed on top of it. */
   features: IRendererFeatureSettings;
+}
+
+/**
+ * @param settings - The settings as a consumer sent them.
+ * @returns The same settings with their features held to the schema, which is all the renderer trusts past here.
+ */
+export function toRendererSettings(settings: IRendererSettings): IRendererSettings {
+  return { ...settings, features: toRendererFeatureSettings(settings.features) };
 }

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
 import { PerspectiveCamera } from "three/webgpu";
 
-import { DEFAULT_RENDERER_AMBIENT_OCCLUSION_SETTINGS } from "#/contract/renderer-features";
+import { DEFAULT_RENDERER_AMBIENT_OCCLUSION_SETTINGS } from "#/contract/renderer-ambient-occlusion-settings";
 import {
   AMBIENT_OCCLUSION_FINAL_POWER,
   AMBIENT_OCCLUSION_RADIUS_MULTIPLIER,

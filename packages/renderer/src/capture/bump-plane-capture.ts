@@ -2,7 +2,7 @@ import { Maybe } from "@xrf/types";
 import { NodeMaterial, QuadMesh, RenderTarget, WebGPURenderer } from "three/webgpu";
 
 import { toBumpPlaneFragment } from "#/capture/bump-plane-capture.tsl";
-import { ERendererBumpPlane } from "#/contract/renderer-capture";
+import { ERendererBumpPlane } from "#/contract/renderer-bump-plane";
 import { MaterialSamplers } from "#/material/material-samplers";
 import { createQuadMaterial } from "#/pass/quad-material";
 import { RendererTextures } from "#/texture/renderer-textures";
@@ -20,6 +20,11 @@ interface IPlaneMaterial {
  * Draws one plane of a bump pair face on, texel for texel, through the same decode the surfaces shade with.
  */
 export class BumpPlaneCapture {
+  private static release(entry: IPlaneMaterial): void {
+    entry.samplers.release();
+    entry.material.dispose();
+  }
+
   private readonly quad: QuadMesh = new QuadMesh();
   private readonly materials: Map<string, IPlaneMaterial> = new Map();
   private readonly textures: RendererTextures;
@@ -80,10 +85,5 @@ export class BumpPlaneCapture {
     }
 
     return entry;
-  }
-
-  private static release(entry: IPlaneMaterial): void {
-    entry.samplers.release();
-    entry.material.dispose();
   }
 }

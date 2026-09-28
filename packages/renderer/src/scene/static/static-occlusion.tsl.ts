@@ -19,26 +19,16 @@ import {
   vec3,
   vec4,
 } from "three/tsl";
-import { ComputeNode, Node, StorageBufferNode, Texture, UniformNode } from "three/webgpu";
+import { Node, StorageBufferNode, Texture } from "three/webgpu";
 
+import { IPyramidLevelShader } from "#/scene/static/pyramid-level-shader";
 import { OcclusionUniforms } from "#/uniforms/occlusion-uniforms";
 import { OcclusionView } from "#/uniforms/occlusion-view";
-import { EStaticPool, StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
+import { StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
+import { EStaticPool } from "#/uniforms/static-pool";
 
 /** Texels of the level below, or pixels of the depth, a pyramid texel takes the farthest of, per axis. */
 export const PYRAMID_REDUCTION: number = 4;
-
-/** A uniform the pyramid's builder sets per build. */
-type TLevelUniform = UniformNode<"uint", number>;
-
-/** One level of a depth pyramid being built, and the uniforms saying where it reads and writes. */
-export interface IPyramidLevelShader {
-  compute: ComputeNode;
-  /** Where the level it reduces starts, and its width and height: the depth texture's size for the first level. */
-  source: { offset: TLevelUniform; width: TLevelUniform; height: TLevelUniform };
-  /** Where this level starts, and its width. */
-  target: { offset: TLevelUniform; width: TLevelUniform };
-}
 
 /** The lesser of two unsigned integers: a texel clamped to the last of its row or column. */
 function toLesser(a: Node<"uint">, b: Node<"uint">): Node<"uint"> {
@@ -141,7 +131,7 @@ export function toOccluded(
 export function createPyramidShaders(buffers: StaticDrawBuffers, depth: Texture): Array<IPyramidLevelShader> {
   const pyramid = storage(buffers.pyramid, "float", buffers.capacity(EStaticPool.PYRAMID));
 
-  return Array.from({ length: buffers.occlusion.levels.length }, (_, index: number) => {
+  return Array.from({ length: buffers.occlusion.levels.length }, (_: unknown, index: number) => {
     const source = { height: uniform(1, "uint"), offset: uniform(0, "uint"), width: uniform(1, "uint") };
     const target = { offset: uniform(0, "uint"), width: uniform(1, "uint") };
 

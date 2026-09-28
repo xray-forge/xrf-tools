@@ -1,13 +1,14 @@
 import { Nullable } from "@xrf/types";
 import { Matrix4, Sphere, Vector3 } from "three/webgpu";
 
-import { IRendererPoolUse } from "#/contract/renderer-report";
 import { DirtySpan } from "#/scene/dirty-span";
 import { ISceneClusterRun } from "#/scene/geometry/scene-cluster-run";
 import { SCENE_CLUSTER_WORDS, SceneClusters } from "#/scene/geometry/scene-clusters";
 import { RangeAllocator } from "#/scene/static/range-allocator";
 import { IStaticRange } from "#/scene/static/static-range";
-import { EStaticPool, StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
+import { IStaticRunPool } from "#/scene/static/static-run-pool";
+import { StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
+import { EStaticPool } from "#/uniforms/static-pool";
 
 /** A sphere and a point, reused. */
 const SPHERE: Sphere = new Sphere();
@@ -18,7 +19,9 @@ const CENTRE: Vector3 = new Vector3();
  * indices and vertices start, how many triangles it has and which slot it is of, and the sphere it is culled by.
  * Handed out in runs, uploaded as one span a buffer.
  */
-export class StaticClusters {
+export class StaticClusters implements IStaticRunPool {
+  public readonly kind: EStaticPool = EStaticPool.CLUSTERS;
+
   private readonly buffers: StaticDrawBuffers;
   private readonly allocator: RangeAllocator = new RangeAllocator();
   private readonly span: DirtySpan = new DirtySpan();
@@ -29,9 +32,12 @@ export class StaticClusters {
     this.allocator.grow(buffers.capacity(EStaticPool.CLUSTERS));
   }
 
-  /** Clusters handed out, against what the buffers hold. */
-  public get use(): IRendererPoolUse {
-    return { capacity: this.allocator.capacity, used: this.allocator.used };
+  public get capacity(): number {
+    return this.allocator.capacity;
+  }
+
+  public get used(): number {
+    return this.allocator.used;
   }
 
   /** Clusters the cull has to look at: up to the end of the last run handed out. */
@@ -44,17 +50,14 @@ export class StaticClusters {
     return this.currentVersion;
   }
 
-  /**
-   * @param count - Clusters wanted.
-   * @returns Where they start, or null where there is no room until the buffers grow.
-   */
+  public fits(count: number): boolean {
+    return this.allocator.fits(count);
+  }
+
   public allocate(count: number): Nullable<number> {
     return this.allocator.allocate(count);
   }
 
-  /**
-   * @param capacity - Clusters the buffers hold from now on, more than they did.
-   */
   public grow(capacity: number): void {
     this.buffers.grow(EStaticPool.CLUSTERS, capacity);
     this.allocator.grow(capacity);
@@ -80,8 +83,8 @@ export class StaticClusters {
     range: IStaticRange,
     placement: Nullable<Matrix4>
   ): void {
-    const ranges = this.buffers.clusterRanges.array as Uint32Array;
-    const spheres = this.buffers.clusterSpheres.array as Float32Array;
+    const ranges: Uint32Array = this.buffers.clusterRanges.array as Uint32Array;
+    const spheres: Float32Array = this.buffers.clusterSpheres.array as Float32Array;
 
     for (let index = 0; index < run.count; index += 1) {
       const source: number = (run.start + index) * SCENE_CLUSTER_WORDS;
@@ -107,12 +110,9 @@ export class StaticClusters {
     this.currentVersion += 1;
   }
 
-  /**
-   * @param start - Where a slot's run starts, free for another from now on.
-   * @param count - Its length.
-   */
+  /** Leaves a slot's run drawing nothing, free for another. */
   public free(start: number, count: number): void {
-    const ranges = this.buffers.clusterRanges.array as Uint32Array;
+    const ranges: Uint32Array = this.buffers.clusterRanges.array as Uint32Array;
 
     // Of no triangles, a cluster left behind draws nothing if the cull still reaches it.
     for (let index = 0; index < count; index += 1) {
@@ -124,7 +124,6 @@ export class StaticClusters {
     this.currentVersion += 1;
   }
 
-  /** Marks what changed since the last upload to go up with the next use of the buffers. */
   public flush(): void {
     this.span.upload(this.buffers.clusterRanges, 4);
     this.span.upload(this.buffers.clusterSpheres, 4);

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { ERendererCameraController, IRendererFlyCamera } from "#/contract/renderer-camera";
+import { ERendererCameraController } from "#/contract/renderer-camera";
+import { IRendererFlyCamera } from "#/contract/renderer-fly-camera";
 import { RendererCameraRig } from "#/host/renderer-camera-rig";
 import { RenderProxyElement } from "#/input/render-proxy-element";
 

@@ -88,7 +88,7 @@ function toCompressedDataSize(width: number, height: number, mipmapCount: number
   let mipHeight: number = height;
 
   for (let mip: number = 0; mip < mipmapCount; mip += 1) {
-    size += (Math.max(4, mipWidth) / 4) * (Math.max(4, mipHeight) / 4) * blockBytes;
+    size += Math.ceil(mipWidth / 4) * Math.ceil(mipHeight / 4) * blockBytes;
 
     mipWidth = Math.max(mipWidth >> 1, 1);
     mipHeight = Math.max(mipHeight >> 1, 1);

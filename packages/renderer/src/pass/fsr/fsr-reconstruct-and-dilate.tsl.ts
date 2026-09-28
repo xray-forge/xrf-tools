@@ -19,9 +19,6 @@ import {
 import { ComputeNode, Node, StorageBufferAttribute } from "three/webgpu";
 
 import {
-  IFsrConstants,
-  IFsrInputs,
-  INearestDepth,
   isOnScreen,
   loadFsrMotion,
   RECONSTRUCTED_DEPTH_WEIGHT_THRESHOLD,
@@ -29,8 +26,12 @@ import {
   toPerceivedLuma,
   toScalarTexel,
 } from "#/pass/fsr/fsr-common.tsl";
+import { IFsrConstants } from "#/pass/fsr/fsr-constants";
+import { IFsrInputs } from "#/pass/fsr/fsr-inputs";
+import { INearestDepth } from "#/pass/fsr/nearest-depth";
+import { IBilinearFootprint } from "#/shader/bilinear-footprint";
 import { packOutputs, unpackOutputs } from "#/shader/packed-outputs.tsl";
-import { IBilinearFootprint, loadClamped, toBilinearFootprint } from "#/shader/texel.tsl";
+import { loadClamped, toBilinearFootprint } from "#/shader/texel.tsl";
 
 // `ffx_fsr2_reconstruct_dilated_velocity_and_previous_depth.h`: the scatter of each texel's nearest depth to where it
 // stood the frame before, as a compute, and the dilation, as a draw.

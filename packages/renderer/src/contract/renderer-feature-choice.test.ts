@@ -1,19 +1,18 @@
 import { describe, expect, it } from "@jest/globals";
 
+import { ERendererAmbientOcclusionQuality } from "#/contract/renderer-ambient-occlusion-quality";
+import { ERendererAntialiasing } from "#/contract/renderer-antialiasing";
 import {
   DEFAULT_RENDERER_FEATURE_CHOICE,
   isRendererFeatureChoiceCustom,
   mergeRendererFeatureOverrides,
   resolveRendererFeatures,
   toRendererFeatureChoice,
+  toRendererFeatureSettings,
 } from "#/contract/renderer-feature-choice";
-import {
-  ERendererAmbientOcclusionQuality,
-  ERendererAntialiasing,
-  ERendererPreset,
-  ERendererRenderScale,
-  RENDERER_PRESETS,
-} from "#/contract/renderer-features";
+import { IRendererFeatureSettings } from "#/contract/renderer-feature-settings";
+import { ERendererPreset, RENDERER_PRESETS } from "#/contract/renderer-preset";
+import { ERendererRenderScale } from "#/contract/renderer-render-scale";
 
 describe("renderer feature choices", () => {
   it("resolves a preset with nothing on top of it to the preset, and not as custom", () => {
@@ -122,6 +121,23 @@ describe("renderer feature choices", () => {
       toRendererFeatureChoice({ overrides: { upscaling: { scale: "ultra", sharpening: 2 } }, preset: "base" }).overrides
         .upscaling
     ).toEqual({ sharpening: 1 });
+  });
+
+  // What arrives with a configure is checked once, there: everything past it takes the features as they are.
+  it("holds arriving features to the schema, and takes Base's for any missing or unusable", () => {
+    const base: IRendererFeatureSettings = RENDERER_PRESETS[ERendererPreset.BASE];
+    const features: IRendererFeatureSettings = toRendererFeatureSettings({
+      ...base,
+      antialiasing: "msaa",
+      grass: { ...base.grass, density: 5, height: 9, radius: 1000 },
+      shadows: { ...base.shadows, blend: 0.5 },
+    });
+
+    expect(features.antialiasing).toBe(base.antialiasing);
+    expect(features.grass).toEqual({ density: 0.99, height: 2, isEnabled: true, radius: 300 });
+    expect(features.shadows.blend).toBe(0.4);
+    expect(features.lod).toEqual(base.lod);
+    expect(toRendererFeatureSettings(undefined)).toEqual(base);
   });
 
   it("merges changes into the overrides setting by setting, keeping the rest of each group", () => {

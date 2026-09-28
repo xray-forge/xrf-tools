@@ -1,7 +1,9 @@
 import { Sphere, Vector3 } from "three/webgpu";
 
-import { TRendererColor, TRendererVector } from "#/contract/renderer-lighting";
-import { ERendererLightKind, IRendererSpotLight, TRendererLight } from "#/contract/scene/renderer-lights";
+import { TRendererColor } from "#/contract/renderer-color";
+import { TRendererVector } from "#/contract/renderer-vector";
+import { ERendererLightKind, TRendererLight } from "#/contract/scene/renderer-light";
+import { IRendererSpotLight } from "#/contract/scene/renderer-spot-light";
 
 /** `ps_r2_slight_fade`: what a shadowed light's screen area is scaled by before it fades (`xrRender_console.cpp`). */
 const SHADOWED_FADE: number = 0.5;

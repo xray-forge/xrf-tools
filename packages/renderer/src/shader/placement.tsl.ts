@@ -18,6 +18,7 @@ import {
 import { Node, NodeBuilder } from "three/webgpu";
 
 import { INSTANCE_MATRIX_COLUMNS } from "#/geometry/vertex-attribute";
+import { IBufferPlacedWorlds } from "#/shader/buffer-placed-worlds";
 import { isClusteredBuild, toClusterAttribute, toClusterEntry, toVertexAttribute } from "#/shader/cluster-vertex.tsl";
 import { toCyclic } from "#/shader/cyclic-wave.tsl";
 import { isPackedBuild, isPackedTreeBuild, toPackedNormal, toPackedTreeRigidity } from "#/shader/packed-vertex.tsl";
@@ -127,12 +128,6 @@ export function toBufferPlacedPositionView(
   wind: TreeWindUniforms
 ): Node<"vec3"> {
   return cameraViewMatrix.mul(vec4(toBufferPlacedWorlds(builder, buffers, wind).current, 1)).xyz;
-}
-
-/** Where a static draw's vertex stands in the world this frame, and where it stood the frame before. */
-export interface IBufferPlacedWorlds {
-  readonly current: Node<"vec3">;
-  readonly previous: Node<"vec3">;
 }
 
 /**

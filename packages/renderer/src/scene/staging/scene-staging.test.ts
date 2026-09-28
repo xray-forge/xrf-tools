@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
 import { BufferAttribute, BufferGeometry, Material, Mesh, MeshBasicNodeMaterial } from "three/webgpu";
 
-import { ERendererPass } from "#/contract/scene/renderer-surface";
+import { ERendererPass } from "#/contract/scene/renderer-pass";
 import { ISurfaceMaterial, toOwnSurfaceDrawing } from "#/material/surface-material";
 import { SceneGeometry } from "#/scene/geometry/scene-geometry";
 import { ISceneObjectState } from "#/scene/object/scene-object-state";
@@ -15,9 +15,8 @@ function createState(shadow: MeshBasicNodeMaterial | null): { state: ISceneObjec
     dispose: () => {},
     isImpostor: false,
     keys: [],
-    ...toOwnSurfaceDrawing(new MeshBasicNodeMaterial()),
+    ...toOwnSurfaceDrawing(new MeshBasicNodeMaterial(), shadow),
     pass: ERendererPass.DEFERRED,
-    shadow,
     shadowKeys: [],
   };
 
@@ -76,6 +75,48 @@ describe("createSceneStaging", () => {
     expect(drawn).not.toBe(state.plain.drawn);
     expect(Object.keys(drawn.attributes)).toEqual(["position"]);
     expect(drawn.getAttribute("position").count).toBe(3);
+  });
+
+  // A part refused a static draw falls back to its surface's plain pair, which compiled on the frame when it did.
+  it("stages a static surface's plain pair over the plain layout too, and holds the object until it compiled", () => {
+    const own: MeshBasicNodeMaterial = new MeshBasicNodeMaterial();
+    const { state, surface } = createState(own);
+    const shared: MeshBasicNodeMaterial = new MeshBasicNodeMaterial();
+    const tabled: MeshBasicNodeMaterial = new MeshBasicNodeMaterial();
+    const readiness: MaterialReadiness = new MaterialReadiness();
+
+    state.static = { drawn: new BufferGeometry(), layout: "static" };
+    state.surfaces = [{ ...surface, material: shared, shadow: tabled }];
+
+    const staging: ISceneStaging = createSceneStaging([state], readiness, new LayoutProxies()) as ISceneStaging;
+
+    expect(staging.materials).toEqual([
+      [shared, "static"],
+      [tabled, "static"],
+      [surface.material, "plain"],
+      [own, "plain"],
+    ]);
+    expect(staging.scenes[ERendererPass.DEFERRED].children).toHaveLength(2);
+    expect(staging.shadows.children).toHaveLength(2);
+
+    staging.materials.slice(0, 2).forEach(([material, layout]) => readiness.mark(material, layout));
+
+    expect(readiness.isStateReady(state)).toBe(false);
+
+    staging.materials.forEach(([material, layout]) => readiness.mark(material, layout));
+
+    expect(readiness.isStateReady(state)).toBe(true);
+  });
+
+  it("stages no plain pair for an impostor, which is not drawn where it is refused a static draw", () => {
+    const { state, surface } = createState(null);
+
+    state.static = { drawn: new BufferGeometry(), layout: "static" };
+    state.surfaces = [{ ...surface, isImpostor: true }];
+
+    expect(
+      (createSceneStaging([state], new MaterialReadiness(), new LayoutProxies()) as ISceneStaging).materials
+    ).toEqual([[surface.material, "static"]]);
   });
 
   it("stages nothing for the cascades of a surface that casts none", () => {

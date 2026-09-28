@@ -22,5 +22,10 @@ export async function getRendererDeviceLimits(): Promise<Nullable<Record<string,
     return null;
   }
 
-  return Object.fromEntries(RAISED_LIMITS.map((name) => [name, adapter.limits[name]]));
+  return Object.fromEntries(
+    RAISED_LIMITS.map((name: "maxStorageBuffersPerShaderStage" | "maxStorageBufferBindingSize" | "maxBufferSize") => [
+      name,
+      adapter.limits[name],
+    ])
+  );
 }

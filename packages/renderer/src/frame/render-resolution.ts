@@ -29,7 +29,7 @@ export const DEFAULT_RENDER_RESOLUTION: ERenderResolution = ERenderResolution.WI
  * @returns One of the offered resolutions.
  */
 export function toRenderResolution(stored: unknown): ERenderResolution {
-  return RENDER_RESOLUTIONS.find((resolution) => resolution === stored) ?? DEFAULT_RENDER_RESOLUTION;
+  return RENDER_RESOLUTIONS.find((resolution: ERenderResolution) => resolution === stored) ?? DEFAULT_RENDER_RESOLUTION;
 }
 
 /**

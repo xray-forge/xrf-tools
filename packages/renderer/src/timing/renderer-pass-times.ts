@@ -1,6 +1,6 @@
 import { Optional } from "@xrf/types";
 
-import { TIssuedRender } from "#/timing/renderer-pass-inspector";
+import { TIssuedRender } from "#/timing/issued-render";
 
 /**
  * Sums resolved GPU durations into per-frame, per-pass totals.

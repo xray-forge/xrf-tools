@@ -1,27 +1,18 @@
-import { IRendererLighting, TRendererColor } from "#/contract/renderer-lighting";
+import { TRendererColor } from "#/contract/renderer-color";
+import { IRendererLighting } from "#/contract/renderer-lighting";
 import { DEFAULT_RENDERER_LIGHTING } from "#/lighting/default-lighting";
 
 /**
- * A lighting value with every colour turned to the grey of its own luminance: as bright as it was, and neutral.
- *
- * @param lighting - The lighting to neutralise.
- * @returns The same lighting, uncoloured.
+ * The engine's noon, every colour turned to the grey of its own luminance: what an asset viewer lights with, so a
+ * texture shows its own colours as brightly as noon lights them.
  */
-export function toNeutralRendererLighting(lighting: IRendererLighting): IRendererLighting {
-  return {
-    ...lighting,
-    ambientColor: toGrey(lighting.ambientColor),
-    fog: lighting.fog ? { ...lighting.fog, color: toGrey(lighting.fog.color) } : null,
-    hemisphereColor: toGrey(lighting.hemisphereColor),
-    skyIrradiance: toGrey(lighting.skyIrradiance),
-    sunColor: toGrey(lighting.sunColor),
-  };
-}
-
-/**
- * The engine's noon, uncoloured: what an asset viewer lights with, so a texture shows its own colours.
- */
-export const NEUTRAL_RENDERER_LIGHTING: IRendererLighting = toNeutralRendererLighting(DEFAULT_RENDERER_LIGHTING);
+export const NEUTRAL_RENDERER_LIGHTING: IRendererLighting = {
+  ...DEFAULT_RENDERER_LIGHTING,
+  ambientColor: toGrey(DEFAULT_RENDERER_LIGHTING.ambientColor),
+  hemisphereColor: toGrey(DEFAULT_RENDERER_LIGHTING.hemisphereColor),
+  skyIrradiance: toGrey(DEFAULT_RENDERER_LIGHTING.skyIrradiance),
+  sunColor: toGrey(DEFAULT_RENDERER_LIGHTING.sunColor),
+};
 
 /** Rec. 709 luma of the values as stored. */
 function toGrey(color: TRendererColor): TRendererColor {

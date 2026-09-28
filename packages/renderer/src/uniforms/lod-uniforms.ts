@@ -1,7 +1,7 @@
 import { uniform } from "three/tsl";
-import { PerspectiveCamera, Vector3 } from "three/webgpu";
+import { PerspectiveCamera, UniformNode, Vector3 } from "three/webgpu";
 
-import { IRendererLodSettings } from "#/contract/renderer-features";
+import { IRendererLodSettings } from "#/contract/renderer-lod-settings";
 
 /** `EPS_S`, what `g_fSCREEN`'s LOD scale is offset by so it is never zero (`xrCore/math_constants.h`). */
 const SCREEN_EPSILON: number = 0.0000001;
@@ -14,19 +14,19 @@ const REFERENCE_FIELD_OF_VIEW: number = 90;
  * screen area, which scale with the drawing's size and field of view (`r2_R_calculate.cpp`).
  */
 export class LodUniforms {
-  public readonly camera = uniform(new Vector3());
+  public readonly camera: UniformNode<"vec3", Vector3> = uniform(new Vector3());
   /** `r_ssaLOD_A`: below it the impostor draws. */
-  public readonly lodA = uniform(0);
+  public readonly lodA: UniformNode<"float", number> = uniform(0);
   /** `r_ssaLOD_B`: above it the trees draw. */
-  public readonly lodB = uniform(0);
+  public readonly lodB: UniformNode<"float", number> = uniform(0);
   /** `r_ssaDISCARD`: below it neither draws. */
-  public readonly discard = uniform(0);
+  public readonly discard: UniformNode<"float", number> = uniform(0);
   /** One where impostors draw at all, zero where every clump draws its trees. */
-  public readonly isEnabled = uniform(1);
+  public readonly isEnabled: UniformNode<"float", number> = uniform(1);
   /** `r_ssaGLOD_start`: above it a progressive mesh draws its whole detail. */
-  public readonly glodStart = uniform(0);
+  public readonly glodStart: UniformNode<"float", number> = uniform(0);
   /** `r_ssaGLOD_end`: below it a progressive mesh draws its coarsest window. */
-  public readonly glodEnd = uniform(0);
+  public readonly glodEnd: UniformNode<"float", number> = uniform(0);
 
   /**
    * @param settings - The consumer's LOD settings.

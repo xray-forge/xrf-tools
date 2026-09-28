@@ -6,6 +6,7 @@ import { ISurfaceInputs } from "#/material/surface-inputs";
 import { toSurfaceInputs } from "#/material/surface-inputs.tsl";
 import { ESurfaceSlot, SURFACE_SLOTS } from "#/material/surface-slot";
 import { SurfaceSlotArrayNode } from "#/material/surface-slot-array-node";
+import { SurfaceSlotNodes } from "#/material/surface-slot-nodes";
 import { toSurfaceRow } from "#/shader/surface-row.tsl";
 import { getPlaceholderArrayTexture } from "#/texture/placeholder-textures";
 import { StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
@@ -23,15 +24,17 @@ const COMPONENTS: ReadonlyArray<"x" | "y" | "z" | "w"> = ["x", "y", "z", "w"];
  * @param table - The surface table.
  * @param buffers - What static draws are placed by, whose slots name their rows.
  * @param arrayed - The slots sampled from arrays.
+ * @param nodes - The renderer's shared samplers, which each sampler built joins.
  * @returns The inputs.
  */
 export function toTabledSurfaceInputs(
   bias: Nullable<Node<"float">>,
   table: SurfaceTable,
   buffers: StaticDrawBuffers,
-  arrayed: ReadonlyArray<ESurfaceSlot>
+  arrayed: ReadonlyArray<ESurfaceSlot>,
+  nodes: SurfaceSlotNodes
 ): ISurfaceInputs {
-  const own: ISurfaceInputs = toSurfaceInputs(bias);
+  const own: ISurfaceInputs = toSurfaceInputs(bias, nodes);
   const row: Node<"uint"> = toSurfaceRow(buffers);
 
   function toWord(word: number): Node<"uint"> {
@@ -56,6 +59,7 @@ export function toTabledSurfaceInputs(
       const sampler: SurfaceSlotArrayNode = new SurfaceSlotArrayNode(getPlaceholderArrayTexture(), coordinates);
 
       sampler.slot = slot;
+      nodes.add(sampler);
 
       const layered: TextureNode = (nodeObject(sampler) as unknown as TextureNode).depth(
         toWord(SURFACE_TABLE_LAYER_WORD + SURFACE_SLOTS.indexOf(slot))
@@ -65,6 +69,6 @@ export function toTabledSurfaceInputs(
     },
     slice: toNumber(3),
     tiling: toNumber(0),
-    unbiased: (): ISurfaceInputs => toTabledSurfaceInputs(null, table, buffers, arrayed),
+    unbiased: (): ISurfaceInputs => toTabledSurfaceInputs(null, table, buffers, arrayed, nodes),
   };
 }

@@ -1,8 +1,9 @@
 import { Maybe } from "@xrf/types";
 import { Texture } from "three/webgpu";
 
-import { IRendererSurfaceTextures } from "#/contract/scene/renderer-surface";
-import { ESurfaceSlot, getSurfaceSlotPlaceholder, SURFACE_SLOTS, TSurfaceSlotTargets } from "#/material/surface-slot";
+import { IRendererSurfaceTextures } from "#/contract/scene/renderer-surface-textures";
+import { ESurfaceSlot, getSurfaceSlotPlaceholder, SURFACE_SLOTS } from "#/material/surface-slot";
+import { TSurfaceSlotTargets } from "#/material/surface-slot-targets";
 import { RendererTextures } from "#/texture/renderer-textures";
 import { ITextureTarget } from "#/texture/texture-target";
 
@@ -40,7 +41,7 @@ export class SurfaceSlots {
 
   /** The texture keys bound, which have to be uploaded before the material draws without a stall. */
   public get keys(): Array<string> {
-    return this.bound.map(([, key]) => key);
+    return this.bound.map(([, key]: [ESurfaceSlot, string, ITextureTarget]) => key);
   }
 
   /**
@@ -48,12 +49,14 @@ export class SurfaceSlots {
    * @returns The keys bound to it: none, or the one.
    */
   public keysOf(slot: ESurfaceSlot): Array<string> {
-    return this.bound.filter(([bound]) => bound === slot).map(([, key]) => key);
+    return this.bound
+      .filter(([bound]: [ESurfaceSlot, string, ITextureTarget]) => bound === slot)
+      .map(([, key]: [ESurfaceSlot, string, ITextureTarget]) => key);
   }
 
   /** Lets every binding go, for a material that is going away. */
   public release(): void {
-    this.bound.forEach(([, key, target]) => this.textures.unbind(key, target));
+    this.bound.forEach(([, key, target]: [ESurfaceSlot, string, ITextureTarget]) => this.textures.unbind(key, target));
     this.bound.length = 0;
   }
 }

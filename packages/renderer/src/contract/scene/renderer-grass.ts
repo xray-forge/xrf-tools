@@ -1,4 +1,4 @@
-import { IRendererSurface } from "#/contract/scene/renderer-surface";
+import { IRendererGrassModel } from "#/contract/scene/renderer-grass-model";
 
 /** `u32` words a planted slot takes: its stored sixteen bytes, then its triangle bin's start and length. */
 export const RENDERER_GRASS_SLOT_WORDS: number = 6;
@@ -7,31 +7,10 @@ export const RENDERER_GRASS_SLOT_WORDS: number = 6;
 export const RENDERER_GRASS_TRIANGLE_FLOATS: number = 9;
 
 /**
- * One detail model of a level's library, which the grass plants.
- */
-export interface IRendererGrassModel {
-  /** Three floats a vertex, in renderer space. */
-  positions: Float32Array;
-  /** Two floats a vertex. */
-  uvs: Float32Array;
-  indices: Uint16Array;
-  /** What it is dressed with: its base texture, cut out at its reference. */
-  surface: IRendererSurface;
-  /** Whether the wind moves it. */
-  isWaving: boolean;
-  /** The scale range it is planted at, as the library states it. */
-  minScale: number;
-  maxScale: number;
-  /** Its bounding box's height, which a vertex's share of the sway is measured against. */
-  height: number;
-  /** The radius of the sphere around its bounding box. */
-  radius: number;
-}
-
-/**
  * A level's grass as the engine plants it (`CDetailManager`): a grid of two metre slots, each naming up to four
- * models and how densely each grows at each corner, planted onto the collision triangles binned under it. The slots and
- * triangles are in the engine's own space, since the renderer plants them with the engine's own arithmetic.
+ * models and how densely each grows at each corner, planted onto the collision triangles binned under it. The slots are
+ * the engine's own, since the renderer plants them with the engine's own arithmetic; the triangles are in renderer
+ * space, as every position the renderer is handed is.
  */
 export interface IRendererGrass {
   /** The grid's size in slots, and how far its first cell stands from world slot zero. */
@@ -45,7 +24,7 @@ export interface IRendererGrass {
   slots: Uint32Array;
   /** One word an entry: a triangle, by its index. */
   bins: Uint32Array;
-  /** `RENDERER_GRASS_TRIANGLE_FLOATS` a triangle, in the engine's space and winding. */
+  /** `RENDERER_GRASS_TRIANGLE_FLOATS` a triangle, in renderer space, wound for it. */
   triangles: Float32Array;
   models: ReadonlyArray<IRendererGrassModel>;
 }
@@ -63,5 +42,5 @@ export function listRendererGrassTransfers(grass: IRendererGrass): Array<Transfe
     grass.bins,
     grass.triangles,
     ...grass.models.flatMap((model: IRendererGrassModel) => [model.positions, model.uvs, model.indices]),
-  ].map((array) => array.buffer);
+  ].map((array: ArrayBufferView) => array.buffer);
 }

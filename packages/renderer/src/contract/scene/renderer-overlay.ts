@@ -1,4 +1,4 @@
-import { TRendererColor } from "#/contract/renderer-lighting";
+import { TRendererColor } from "#/contract/renderer-color";
 
 /**
  * What kind of helper an overlay draws.

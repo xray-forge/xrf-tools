@@ -1,10 +1,12 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { DOLLY_STEP, TDollyPoint, toDolliedPosition } from "#/camera/orbit-dolly";
+import { toDolliedPosition } from "#/camera/orbit-dolly";
+import { DOLLY_STEP } from "#/contract/renderer-camera-command";
+import { TRendererVector } from "#/contract/renderer-vector";
 
 describe("toDolliedPosition", () => {
   it("moves along the line to what the camera orbits, without turning it", () => {
-    const moved: TDollyPoint = toDolliedPosition([0, 0, 10], [0, 0, 0], 1 / DOLLY_STEP);
+    const moved: TRendererVector = toDolliedPosition([0, 0, 10], [0, 0, 0], 1 / DOLLY_STEP);
 
     expect(moved[2]).toBeCloseTo(10 / DOLLY_STEP);
     expect(moved[0]).toBe(0);
@@ -12,8 +14,8 @@ describe("toDolliedPosition", () => {
   });
 
   it("steps by a share rather than a length, so a notch feels the same at any distance", () => {
-    const near: TDollyPoint = toDolliedPosition([0, 0, 1], [0, 0, 0], DOLLY_STEP);
-    const far: TDollyPoint = toDolliedPosition([0, 0, 1000], [0, 0, 0], DOLLY_STEP);
+    const near: TRendererVector = toDolliedPosition([0, 0, 1], [0, 0, 0], DOLLY_STEP);
+    const far: TRendererVector = toDolliedPosition([0, 0, 1000], [0, 0, 0], DOLLY_STEP);
 
     // A fixed length would leave a pistol untouched and throw an actor out of frame, the two extremes this viewer
     // opens back to back.
@@ -21,7 +23,7 @@ describe("toDolliedPosition", () => {
   });
 
   it("orbits whatever the camera is looking at, not the origin", () => {
-    const moved: TDollyPoint = toDolliedPosition([10, 5, 0], [8, 5, 0], 0.5);
+    const moved: TRendererVector = toDolliedPosition([10, 5, 0], [8, 5, 0], 0.5);
 
     expect(moved).toEqual([9, 5, 0]);
   });

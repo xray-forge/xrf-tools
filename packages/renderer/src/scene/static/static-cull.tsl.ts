@@ -1,15 +1,14 @@
 import { atomicAdd, Fn, If, instanceIndex, mat4, select, storage, uint, uniformArray, uvec2, vec4 } from "three/tsl";
 import { ComputeNode, Node, StorageBufferNode, UniformArrayNode, Vector4 } from "three/webgpu";
 
+import { IStaticCullShader } from "#/scene/static/static-cull-shader";
 import { toInFrustum } from "#/scene/static/static-frustum.tsl";
 import { createLodCullShader } from "#/scene/static/static-lod-cull.tsl";
 import { toOccluded } from "#/scene/static/static-occlusion.tsl";
 import { toBandDrawn, toFinestBand, toImpostorRow, toLodDrawn } from "#/scene/static/static-row-tests.tsl";
+import { IStaticViewCullShader } from "#/scene/static/static-view-cull-shader";
 import { loopNamed } from "#/shader/named-loop.tsl";
 import {
-  EStaticPool,
-  EStaticSlotKind,
-  EStaticView,
   STATIC_BATCH_ARGUMENTS,
   STATIC_CLUSTER_VERTICES,
   STATIC_CLUSTER_WIRE_VERTICES,
@@ -20,32 +19,9 @@ import {
   STATIC_SHADOW_VIEWS,
   StaticDrawBuffers,
 } from "#/uniforms/static-draw-buffers";
-
-/**
- * The culls of the static draws, a frame's worth, each built over the buffers as they are laid out and dispatched only
- * as far as their clusters, rows and batches are used.
- */
-export interface IStaticCullShader {
-  /**
-   * The camera's first view, in dispatch order: its arguments and the second view's cleared, the LOD cull, then its
-   * single draws' clusters, then its instanced draws' rows and their clusters.
-   */
-  early: ReadonlyArray<ComputeNode>;
-  /** The camera's second view: what the first left as hidden, tested against this frame's depth. */
-  late: ComputeNode;
-  /** Each of the camera's views' arguments rewritten for its wireframe draw, the first then the second. */
-  wire: ReadonlyArray<ComputeNode>;
-  /** Six planes, normals pointing in, `w` the constant. */
-  planes: ReadonlyArray<Vector4>;
-  /** Each shadow view's cull: its arguments cleared, its single draws' clusters, its rows', and the planes they read. */
-  views: ReadonlyArray<IStaticViewCullShader>;
-}
-
-/** One shadow view's cull: no occlusion and no second phase, only its frustum. */
-export interface IStaticViewCullShader {
-  cull: ReadonlyArray<ComputeNode>;
-  planes: ReadonlyArray<Vector4>;
-}
+import { EStaticPool } from "#/uniforms/static-pool";
+import { EStaticSlotKind } from "#/uniforms/static-slot-kind";
+import { EStaticView } from "#/uniforms/static-view";
 
 /** The nodes one cull reads and writes the buffers through, its own: an atomic node is not a read-only one. */
 interface ICullNodes {
@@ -85,7 +61,7 @@ export function createStaticCullShader(buffers: StaticDrawBuffers): IStaticCullS
     late: createLateShader(buffers),
     planes,
     wire: [createWireShader(buffers, 0), createWireShader(buffers, 1)],
-    views: Array.from({ length: STATIC_SHADOW_VIEWS }, (_, shadow: number) => {
+    views: Array.from({ length: STATIC_SHADOW_VIEWS }, (_: unknown, shadow: number): IStaticViewCullShader => {
       const view: number = EStaticView.SHADOW + shadow;
       const viewPlanes: Array<Vector4> = Array.from({ length: 6 }, () => new Vector4());
       const viewPlaneNodes = uniformArray(viewPlanes, "vec4");

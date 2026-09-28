@@ -3,10 +3,11 @@ import { Material, Scene } from "three/webgpu";
 
 import { createSceneMesh } from "#/scene/object/scene-mesh";
 import { ISceneObjectDraw } from "#/scene/object/scene-object-draw";
-import { ISceneObjectState, toSurfaceDraw } from "#/scene/object/scene-object-state";
+import { ISceneObjectState } from "#/scene/object/scene-object-state";
 import { toPassRecord, TPassRecord } from "#/scene/pass-record";
 import { LayoutProxies } from "#/scene/staging/layout-proxies";
 import { MaterialReadiness } from "#/scene/surface/material-readiness";
+import { ISurfacePipeline, toSurfacePipelines } from "#/scene/surface/surface-pipeline";
 
 /**
  * Meshes standing in for objects whose materials are not compiled yet, for the renderer to compile off the frame. They
@@ -56,14 +57,11 @@ export function createSceneStaging(
         continue;
       }
 
-      const draw: ISceneObjectDraw = toSurfaceDraw(state, surface);
-
-      stage(scenes[surface.pass], surface.material, state, draw);
-
-      // What draws it into the cascades, over the same layout: compiled with it, so its first cascade stalls nothing.
-      if (surface.shadow) {
-        stage(shadows, surface.shadow, state, draw);
-      }
+      // Its shadow material compiled with it, so its first cascade stalls nothing, and its plain fallback, so a part
+      // refused a static draw stalls nothing either.
+      toSurfacePipelines(state, surface).forEach(({ draw, isShadow, material }: ISurfacePipeline) =>
+        stage(isShadow ? shadows : scenes[surface.pass], material, state, draw)
+      );
     }
   }
 
@@ -72,7 +70,9 @@ export function createSceneStaging(
   }
 
   return {
-    materials: [...staged].flatMap(([material, layouts]) => [...layouts].map((it) => [material, it] as const)),
+    materials: [...staged].flatMap(([material, layouts]: [Material, Set<string>]) =>
+      [...layouts].map((layout: string) => [material, layout] as const)
+    ),
     scenes,
     shadows,
   };

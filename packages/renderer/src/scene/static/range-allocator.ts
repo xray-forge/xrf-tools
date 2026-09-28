@@ -1,5 +1,7 @@
 import { Maybe, Nullable } from "@xrf/types";
 
+import { IStaticRuns } from "#/scene/static/static-runs";
+
 /** A run of free elements. */
 interface IFreeRange {
   start: number;
@@ -9,7 +11,7 @@ interface IFreeRange {
 /**
  * Hands out runs of a buffer's elements, first fit, joining a released run with the free ones beside it.
  */
-export class RangeAllocator {
+export class RangeAllocator implements IStaticRuns {
   private readonly free: Array<IFreeRange> = [];
   private currentCapacity: number = 0;
 
@@ -32,9 +34,21 @@ export class RangeAllocator {
 
   /**
    * @param count - Elements wanted.
-   * @returns Where the run starts, or null where no free run is that long.
+   * @returns Whether a free run is that long; a run of none always is.
+   */
+  public fits(count: number): boolean {
+    return !count || this.free.some((range: IFreeRange) => range.count >= count);
+  }
+
+  /**
+   * @param count - Elements wanted.
+   * @returns Where the run starts, or null where no free run is that long. A run of none starts at 0, however full.
    */
   public allocate(count: number): Nullable<number> {
+    if (!count) {
+      return 0;
+    }
+
     const index: number = this.free.findIndex((range: IFreeRange) => range.count >= count);
 
     if (index < 0) {

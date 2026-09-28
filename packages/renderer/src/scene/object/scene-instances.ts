@@ -1,5 +1,6 @@
 import { Nullable } from "@xrf/types";
 import {
+  BufferAttribute,
   InstancedBufferAttribute,
   InstancedBufferGeometry,
   InstancedInterleavedBuffer,
@@ -12,9 +13,11 @@ import {
   IRendererInstances,
   RENDERER_FLOATS_PER_INSTANCE,
   RENDERER_HEMI_FLOATS_PER_INSTANCE,
-} from "#/contract/scene/renderer-object";
+} from "#/contract/scene/renderer-instances";
 import { EVertexAttribute, INSTANCE_MATRIX_COLUMNS } from "#/geometry/vertex-attribute";
 import { queueBufferUpload } from "#/scene/buffer-upload";
+import { GeometryReleases } from "#/scene/geometry/geometry-releases";
+import { disposeSharingGeometry } from "#/scene/geometry/part-geometry";
 import { SceneGeometry } from "#/scene/geometry/scene-geometry";
 import { CullView } from "#/visibility/cull-view";
 import { collectVisibleInstances, FLOATS_PER_SPHERE, toInstanceSpheres } from "#/visibility/instance-spheres";
@@ -57,7 +60,7 @@ export class SceneInstances {
     this.hemi = source.hemi
       ? new InstancedBufferAttribute(source.hemi.slice(), RENDERER_HEMI_FLOATS_PER_INSTANCE)
       : null;
-    this.drawn = Uint32Array.from({ length: this.count }, (_, index: number) => index);
+    this.drawn = Uint32Array.from({ length: this.count }, (_: unknown, index: number) => index);
     this.drawnCount = this.count;
     this.seen = new Uint32Array(this.count);
     this.visibleCount = this.count;
@@ -73,11 +76,6 @@ export class SceneInstances {
   /** Every place's sphere in renderer space, four floats each, as its object's matrix last placed it. */
   public get placeSpheres(): Float32Array {
     return this.spheres;
-  }
-
-  /** How many places the view last culled against sees. */
-  public get visible(): number {
-    return this.visibleCount;
   }
 
   /**
@@ -141,9 +139,14 @@ export class SceneInstances {
     }
   }
 
-  /** Frees the buffers it drew with, the base's included: three frees whatever a disposed geometry names. */
-  public dispose(): void {
-    this.geometry.dispose();
+  /**
+   * Lets go of the places' buffers, which it owns, leaving the base's to the base.
+   *
+   * @param releases - Where its own buffers are freed: three frees only a drawn geometry's, and this one is never drawn.
+   */
+  public dispose(releases: GeometryReleases): void {
+    disposeSharingGeometry(this.geometry, this.base.buffer);
+    releases.release(Object.values(this.geometry.attributes));
   }
 
   private createGeometry(): InstancedBufferGeometry {
@@ -151,7 +154,10 @@ export class SceneInstances {
     const { buffer } = this.base;
 
     geometry.index = buffer.index;
-    Object.entries(buffer.attributes).forEach(([name, attribute]) => geometry.setAttribute(name, attribute));
+    Object.entries(buffer.attributes).forEach(
+      ([name, attribute]: [string, BufferAttribute | InterleavedBufferAttribute]) =>
+        geometry.setAttribute(name, attribute)
+    );
     INSTANCE_MATRIX_COLUMNS.forEach((column: string, index: number) =>
       geometry.setAttribute(column, new InterleavedBufferAttribute(this.columns, 4, index * 4))
     );

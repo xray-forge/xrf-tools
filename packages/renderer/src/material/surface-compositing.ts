@@ -12,7 +12,8 @@ import {
   ZeroFactor,
 } from "three/webgpu";
 
-import { ERendererDraw, IRendererSurface } from "#/contract/scene/renderer-surface";
+import { ERendererDraw } from "#/contract/scene/renderer-draw";
+import { IRendererSurface } from "#/contract/scene/renderer-surface";
 
 /** Reversed float depth steps a composited surface is pulled towards the eye by, so a decal never loses to its wall. */
 const COMPOSITED_DEPTH_BIAS: number = 256;

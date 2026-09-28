@@ -1,7 +1,7 @@
 import { abs, float, Fn, If, int, min, mix, saturate, select, sqrt, texture, vec2, vec4 } from "three/tsl";
 import { Node, Texture } from "three/webgpu";
 
-import { RENDERER_MAX_SHADOW_CASCADES } from "#/contract/renderer-features";
+import { RENDERER_MAX_SHADOW_CASCADES } from "#/contract/renderer-shadow-settings";
 import { loopNamed } from "#/shader/named-loop.tsl";
 import { ShadowUniforms } from "#/uniforms/shadow-uniforms";
 

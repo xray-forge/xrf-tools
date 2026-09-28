@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
 import { NodeBuilder } from "three/webgpu";
 
-import { RenderObjectRefreshType } from "#/internals/render-object-refresh";
+import { RenderObjectRefreshType } from "#/internals/render-object-refresh-type";
 import { StaticDrawObserver } from "#/material/static-draw-observer";
 
 const { FULL, NONE, SHARED } = RenderObjectRefreshType;

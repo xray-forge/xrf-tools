@@ -1,5 +1,5 @@
 import { describe, expect, it, jest } from "@jest/globals";
-import { BufferGeometry, Mesh, Scene } from "three/webgpu";
+import { Mesh, Scene } from "three/webgpu";
 
 import { ISceneChangeHandler } from "#/scene/change/scene-change-handler";
 import { SceneChangeQueue } from "#/scene/change/scene-change-queue";
@@ -152,19 +152,17 @@ describe("SceneChangeQueue", () => {
     expect(handler.applied).toEqual(["a", "b", "c", "d", "e", "f"]);
   });
 
-  it("draws a released object's meshes until its release applies, then lets its geometry go", () => {
+  it("draws a released object's meshes until its release applies, then lets what it drew with go", () => {
     const handler = createHandler();
     const queue: SceneChangeQueue<string> = new SceneChangeQueue(handler);
     const scene: Scene = new Scene();
     const mesh: Mesh = new Mesh();
-    const geometry: BufferGeometry = new BufferGeometry();
     const onDisposed = jest.fn();
 
-    geometry.addEventListener("dispose", onDisposed);
     scene.add(mesh);
     queue.transact(() => queue.enlist("a"));
     queue.transact(() => {
-      queue.withdraw("a", [mesh], () => geometry.dispose());
+      queue.withdraw("a", [mesh], onDisposed);
       queue.enlist("b");
     });
 
@@ -177,5 +175,46 @@ describe("SceneChangeQueue", () => {
     expect(handler.applied).toEqual(["b"]);
     expect(mesh.parent).toBeNull();
     expect(onDisposed).toHaveBeenCalledTimes(1);
+  });
+
+  it("lets a retired resource go with its change, only once every change before it has applied", () => {
+    const handler = createHandler();
+    const queue: SceneChangeQueue<string> = new SceneChangeQueue(handler);
+    const release = jest.fn();
+
+    queue.transact(() => queue.enlist("a"));
+    handler.ready.add("b");
+    queue.transact(() => {
+      queue.retire(release);
+      queue.enlist("b");
+    });
+
+    // `a` may still draw what `b`'s change retired.
+    expect(handler.applied).toEqual([]);
+    expect(release).not.toHaveBeenCalled();
+
+    handler.ready.add("a");
+    queue.advance();
+
+    expect(handler.applied).toEqual(["a", "b"]);
+    expect(release).toHaveBeenCalledTimes(1);
+  });
+
+  it("closes a transaction that threw with what it added, leaving the next one a change of its own", () => {
+    const handler = createHandler();
+    const queue: SceneChangeQueue<string> = new SceneChangeQueue(handler);
+
+    expect(() =>
+      queue.transact(() => {
+        queue.enlist("a");
+        throw new Error("refused");
+      })
+    ).toThrow("refused");
+
+    handler.ready.add("b");
+    queue.transact(() => queue.enlist("b"));
+
+    expect(handler.applied).toEqual(["b"]);
+    expect([...queue.pending]).toEqual(["a"]);
   });
 });

@@ -1,7 +1,7 @@
 import { cubeTexture, renderGroup, uniform } from "three/tsl";
 import { CubeTexture, CubeTextureNode, UniformNode, Vector3 } from "three/webgpu";
 
-import { IRendererSky } from "#/contract/renderer-lighting";
+import { IRendererSky } from "#/contract/renderer-sky";
 import { getPlaceholderSkyTexture } from "#/texture/placeholder-textures";
 
 /**

@@ -1,7 +1,8 @@
 import { describe, expect, it } from "@jest/globals";
 import { Nullable } from "@xrf/types";
 
-import { ILightShadowTile, LightShadowAtlas } from "#/scene/lights/light-shadow-atlas";
+import { LightShadowAtlas } from "#/scene/lights/light-shadow-atlas";
+import { ILightShadowTile } from "#/scene/lights/light-shadow-tile";
 
 describe("LightShadowAtlas", () => {
   it("cuts a square into quarters for a smaller face, taking the least free square that holds it", () => {

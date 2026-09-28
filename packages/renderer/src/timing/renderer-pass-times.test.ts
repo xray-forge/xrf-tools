@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { TIssuedRender } from "#/timing/renderer-pass-inspector";
+import { TIssuedRender } from "#/timing/issued-render";
 import { toFramePassTimes } from "#/timing/renderer-pass-times";
 
 describe("toFramePassTimes", () => {

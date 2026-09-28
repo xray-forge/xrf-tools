@@ -15,13 +15,14 @@ import { IRendererObject } from "#/contract/scene/renderer-object";
 import { IRendererProgressive } from "#/contract/scene/renderer-progressive";
 import { disposeObject } from "#/internals/object-disposal";
 import { ISurfaceMaterial } from "#/material/surface-material";
+import { createPartGeometry, disposeSharingGeometry } from "#/scene/geometry/part-geometry";
 import { ISceneClusterRun } from "#/scene/geometry/scene-cluster-run";
 import { SceneClusters } from "#/scene/geometry/scene-clusters";
 import { ISceneSection } from "#/scene/geometry/scene-section";
 import { createSceneMesh } from "#/scene/object/scene-mesh";
+import { EShadowCasterMotion } from "#/scene/static/shadow-caster-motion";
 import { StaticDraws } from "#/scene/static/static-draws";
 import { IStaticRange } from "#/scene/static/static-range";
-import { EShadowCasterMotion } from "#/scene/static/static-shadow-changes";
 import { STATIC_NO_BAND, toStaticBandWord } from "#/uniforms/static-draw-buffers";
 
 /** What a part narrowed to nothing draws: no clusters. */
@@ -36,7 +37,7 @@ const SKINNED_REACH: number = 1.5;
  * issues an indirect draw of, and the GPU culls it.
  */
 export class ScenePart {
-  /** Its own geometry over the object's buffers, which it disposes. */
+  /** Its own geometry over the object's buffers, which it makes and disposes, owning none of them. */
   public readonly geometry: BufferGeometry;
   /** Its section's position among the geometry's, which its surface is found by. */
   public readonly section: number;
@@ -46,10 +47,12 @@ export class ScenePart {
   private readonly castSphere: Sphere = new Sphere();
 
   private readonly source: ISceneSection;
+  /** What its geometry draws the buffers of. */
+  private readonly drawn: BufferGeometry;
   private readonly draws: StaticDraws;
   private readonly matrix: Matrix4 = new Matrix4();
-  private currentMesh: Mesh;
-  private skeleton: Nullable<Skeleton>;
+  private readonly currentMesh: Mesh;
+  private readonly skeleton: Nullable<Skeleton>;
   /** Its twin in the shadow views' plain casters while it is drawn plainly by a surface that casts, made the first time. */
   private shadowMesh: Nullable<Mesh> = null;
   /** The range the object's narrowing leaves it. */
@@ -59,27 +62,28 @@ export class ScenePart {
   private slots: Array<number> = [];
 
   /**
-   * @param geometry - Its part geometry.
+   * @param drawn - What it draws a section of: the geometry put, or the one standing it in every place.
    * @param section - Its section's position among the geometry's.
    * @param source - The section itself.
    * @param skeleton - What its mesh is skinned to, or null.
    * @param draws - The static draws it is one of while drawn statically.
    */
   public constructor(
-    geometry: BufferGeometry,
+    drawn: BufferGeometry,
     section: number,
     source: ISceneSection,
     skeleton: Nullable<Skeleton>,
     draws: StaticDraws
   ) {
-    this.geometry = geometry;
+    this.geometry = createPartGeometry(drawn, source);
+    this.drawn = drawn;
     this.section = section;
     this.source = source;
     this.draws = draws;
     this.start = source.start;
     this.count = source.count;
     this.skeleton = skeleton;
-    this.currentMesh = createSceneMesh(geometry, skeleton);
+    this.currentMesh = createSceneMesh(this.geometry, skeleton);
   }
 
   /** Its mesh, which draws it plainly. */
@@ -90,16 +94,6 @@ export class ScenePart {
   /** Whether it is drawn statically. */
   public get isStatic(): boolean {
     return this.slots.length > 0;
-  }
-
-  /**
-   * @param skeleton - What its mesh is skinned to now; a new mesh over the same geometry, shown nowhere yet.
-   */
-  public remesh(skeleton: Nullable<Skeleton>): void {
-    this.dispose();
-    this.skeleton = skeleton;
-    this.currentMesh = createSceneMesh(this.geometry, skeleton);
-    this.shadowMesh = null;
   }
 
   /**
@@ -210,7 +204,7 @@ export class ScenePart {
   ): boolean {
     const progressive: Maybe<IRendererProgressive> = this.source.progressive;
     const bands: number = progressive?.bands.length ?? 1;
-    const runs: Array<Nullable<ISceneClusterRun>> = Array.from({ length: bands }, (_, band: number) => {
+    const runs: Array<Nullable<ISceneClusterRun>> = Array.from({ length: bands }, (_: unknown, band: number) => {
       const [start, count] =
         band && progressive ? [progressive.bands[band].start, progressive.bands[band].count] : [this.start, this.count];
 
@@ -258,9 +252,13 @@ export class ScenePart {
     this.cull(count > 0);
   }
 
-  /** Takes it out of whatever draws it and lets three forget its meshes; its geometry goes with its object's buffers. */
+  /**
+   * Takes it out of whatever draws it and lets three forget it: its geometry first, while the render objects three
+   * frees a geometry's buffers through are current, then its meshes.
+   */
   public dispose(): void {
     this.detach();
+    disposeSharingGeometry(this.geometry, this.drawn);
     disposeObject(this.currentMesh);
 
     if (this.shadowMesh) {

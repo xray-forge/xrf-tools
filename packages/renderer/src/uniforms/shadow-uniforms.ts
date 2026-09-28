@@ -5,7 +5,7 @@ import {
   IRendererShadowSettings,
   RENDERER_MAX_SHADOW_CASCADES,
   toShadowCascadeCount,
-} from "#/contract/renderer-features";
+} from "#/contract/renderer-shadow-settings";
 import { SunCascade } from "#/visibility/sun-cascade";
 import { SunViewRays } from "#/visibility/sun-view-rays";
 
@@ -23,20 +23,23 @@ export class ShadowUniforms {
   public readonly matrices: ReadonlyArray<UniformNode<"mat4", Matrix4>> = this.cascades.map(() =>
     uniform(new Matrix4()).setGroup(renderGroup)
   );
-  /** Each cascade's texel, in metres, a component a cascade. */
-  public readonly texels = uniform(new Vector4()).setGroup(renderGroup);
+  /** Each cascade's texel, in metres, a component a cascade: why `RENDERER_MAX_SHADOW_CASCADES` is four. */
+  public readonly texels: UniformNode<"vec4", Vector4> = uniform(new Vector4()).setGroup(renderGroup);
   /** Cascades drawn: none while shadows are off. */
-  public readonly count = uniform(0).setGroup(renderGroup);
+  public readonly count: UniformNode<"float", number> = uniform(0).setGroup(renderGroup);
   /** Texels the filter reaches each way. */
-  public readonly filter = uniform(1).setGroup(renderGroup);
+  public readonly filter: UniformNode<"float", number> = uniform(1).setGroup(renderGroup);
   /** Texels a point moves along its normal before it is compared. */
-  public readonly bias = uniform(1).setGroup(renderGroup);
+  public readonly bias: UniformNode<"float", number> = uniform(1).setGroup(renderGroup);
   /** How far in from a cascade's edge the next is mixed in, as a share of its width. */
-  public readonly blend = uniform(0).setGroup(renderGroup);
+  public readonly blend: UniformNode<"float", number> = uniform(0).setGroup(renderGroup);
   /** Texels each map is across. */
-  public readonly resolution = uniform(1).setGroup(renderGroup);
+  public readonly resolution: UniformNode<"float", number> = uniform(1).setGroup(renderGroup);
   /** Where the camera looks, which the last cascade fades out towards. */
-  public readonly forward = uniform(new Vector3(0, 0, -1)).setGroup(renderGroup);
+  public readonly forward: UniformNode<"vec3", Vector3> = uniform(new Vector3(0, 0, -1)).setGroup(renderGroup);
+
+  /** Whether cascades are drawn at their staggered rates. */
+  public isStaggered: boolean = true;
 
   /** The view's edges, which the cascades are placed along one after another. */
   private readonly rays: SunViewRays = new SunViewRays();
@@ -45,9 +48,6 @@ export class ShadowUniforms {
   public get drawn(): number {
     return this.count.value;
   }
-
-  /** Whether cascades are drawn at their staggered rates. */
-  public isStaggered: boolean = true;
 
   /**
    * Fits every cascade the settings draw to the camera, for this frame. What the sun samples a cascade by changes only
@@ -63,8 +63,7 @@ export class ShadowUniforms {
     this.count.value = count;
     this.filter.value = settings.filter;
     this.bias.value = settings.bias;
-    // Kept short of the map's middle, where every point would blend.
-    this.blend.value = Math.min(Math.max(settings.blend, 0), 0.4);
+    this.blend.value = settings.blend;
     this.resolution.value = settings.resolution;
     this.isStaggered = settings.isStaggered;
 

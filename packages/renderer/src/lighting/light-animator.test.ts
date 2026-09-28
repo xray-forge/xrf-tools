@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { IRendererLightAnimator } from "#/contract/scene/renderer-lights";
+import { IRendererLightAnimator } from "#/contract/scene/renderer-light-animator";
 import { toAnimatedColor, toInterpolatedColor } from "#/lighting/light-animator";
 
 const ANIMATOR: IRendererLightAnimator = {

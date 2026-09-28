@@ -11,8 +11,9 @@ import {
   WebGPURenderer,
 } from "three/webgpu";
 
-import { IRendererGrassSettings } from "#/contract/renderer-features";
-import { IRendererGrass, IRendererGrassModel } from "#/contract/scene/renderer-grass";
+import { IRendererGrassSettings } from "#/contract/renderer-grass-settings";
+import { IRendererGrass } from "#/contract/scene/renderer-grass";
+import { IRendererGrassModel } from "#/contract/scene/renderer-grass-model";
 import { toGrassSurfaceShader } from "#/material/grass-surface.tsl";
 import { MaterialSamplers } from "#/material/material-samplers";
 import { SurfaceNodeMaterial } from "#/material/surface-node-material";

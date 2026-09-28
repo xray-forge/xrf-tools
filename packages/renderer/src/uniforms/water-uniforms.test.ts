@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { DEFAULT_RENDERER_WATER_SETTINGS } from "#/contract/renderer-features";
+import { DEFAULT_RENDERER_WATER_SETTINGS } from "#/contract/renderer-water-settings";
 import { WaterUniforms } from "#/uniforms/water-uniforms";
 
 describe("WaterUniforms", () => {
@@ -16,10 +16,5 @@ describe("WaterUniforms", () => {
     expect(uniforms.waveHeight.value).toBe(0.05);
     expect(uniforms.intensity.value).toBe(0.5);
     expect(uniforms.time.value).toBe(12.5);
-  });
-
-  // The pipelines the water compiles against bind a float depth, whatever the frame's depth behind is later.
-  it("reads a far depth before the frame's is made", () => {
-    expect((new WaterUniforms().depth.value.image as { data: Float32Array }).data[0]).toBeGreaterThan(1000);
   });
 });

@@ -12,12 +12,11 @@ import {
   WebGPURenderer,
 } from "three/webgpu";
 
-import { destroyStorageAttribute } from "#/internals/renderer-backend";
 import { createColourTarget, IColourAttachment } from "#/pass/colour-target";
 import { FrameCopyPass } from "#/pass/frame-copy-pass";
 import { toFsrAccumulate } from "#/pass/fsr/fsr-accumulate.tsl";
-import { IFsrInputs } from "#/pass/fsr/fsr-common.tsl";
 import { toFsrDepthClip } from "#/pass/fsr/fsr-depth-clip.tsl";
+import { IFsrInputs } from "#/pass/fsr/fsr-inputs";
 import { toFsrLock } from "#/pass/fsr/fsr-lock.tsl";
 import { LUMA_FIRST_STEP, toLumaFirstStep, toLumaShadingChange } from "#/pass/fsr/fsr-luminance-pyramid.tsl";
 import { toFsrReactive } from "#/pass/fsr/fsr-reactive.tsl";
@@ -37,6 +36,7 @@ import { IRendererFrameSize } from "#/sampling/renderer-frame-size";
 import { toUpscaledDepth } from "#/shader/drawn-sample.tsl";
 import { FsrUniforms, toShadingChangeMipSide } from "#/uniforms/fsr-uniforms";
 import { RendererUniforms } from "#/uniforms/renderer-uniforms";
+import { StorageRetirement } from "#/uniforms/storage-retirement";
 
 /** One channel of half floats. */
 const RED_HALF: Omit<IColourAttachment, "name"> = { format: RedFormat };
@@ -74,6 +74,7 @@ export class FsrPass implements ITemporalUpscaler {
   public readonly beforeBlended: ReadonlyArray<IRendererPass>;
 
   private readonly constants: FsrUniforms = new FsrUniforms();
+  private readonly retirement: StorageRetirement;
   private readonly inputs: IFsrInputs;
   private readonly quad: QuadMesh = new QuadMesh();
   /** The frame before the blended surfaces drew, which the reactive mask compares with. */
@@ -96,7 +97,6 @@ export class FsrPass implements ITemporalUpscaler {
   };
 
   private reconstruction: Nullable<IFsrReconstruction> = null;
-  private renderer: Nullable<WebGPURenderer> = null;
   private size: Nullable<IRendererFrameSize> = null;
   /** Frames resolved since the history was reset: FSR's `FrameIndex`. */
   private frameIndex: number = 0;
@@ -106,6 +106,7 @@ export class FsrPass implements ITemporalUpscaler {
    * @param uniforms - What the frame's shaders read.
    */
   public constructor(targets: RendererTargets, uniforms: RendererUniforms) {
+    this.retirement = uniforms.retirement;
     this.inputs = { color: targets.scene.texture, depth: targets.depth, motion: targets.motion };
     this.opaque = new FrameCopyPass("fsr2-opaque", targets.scene.texture);
     this.beforeBlended = [this.opaque];
@@ -169,7 +170,6 @@ export class FsrPass implements ITemporalUpscaler {
   public resize(renderer: WebGPURenderer, size: IRendererFrameSize): void {
     const { renderWidth, renderHeight } = size;
 
-    this.renderer = renderer;
     this.size = size;
 
     for (const target of [
@@ -236,7 +236,7 @@ export class FsrPass implements ITemporalUpscaler {
       this.reactive,
       this.clip,
       this.locks,
-      ...this.frames.both.map((it) => it.dilate),
+      ...this.frames.both.map((it: IFsrFrame) => it.dilate),
     ].forEach((target: RenderTarget) => target.dispose());
     this.resolved.dispose();
   }
@@ -277,9 +277,9 @@ export class FsrPass implements ITemporalUpscaler {
     });
   }
 
-  /** Lets the reconstructed depth go, and the materials and computes built with it. */
+  /** Lets the reconstructed depth go once no frame binds it, and the materials and computes built with it. */
   private release(): void {
-    const { reconstruction, renderer } = this;
+    const { reconstruction } = this;
 
     if (!reconstruction) {
       return;
@@ -292,10 +292,7 @@ export class FsrPass implements ITemporalUpscaler {
       frame.clip = null;
     });
 
-    if (renderer) {
-      destroyStorageAttribute(renderer, reconstruction.depths);
-    }
-
+    this.retirement.retire([reconstruction.depths]);
     this.reconstruction = null;
   }
 

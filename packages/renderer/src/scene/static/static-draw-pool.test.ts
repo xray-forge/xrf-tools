@@ -1,11 +1,13 @@
 import { describe, expect, it } from "@jest/globals";
 
 import { StaticDrawPool } from "#/scene/static/static-draw-pool";
-import { EStaticSlotKind, STATIC_NO_BATCH, STATIC_SLOT_WORDS, StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
+import { STATIC_NO_BATCH, STATIC_SLOT_WORDS, StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
+import { EStaticSlotKind } from "#/uniforms/static-slot-kind";
+import { StorageRetirement } from "#/uniforms/storage-retirement";
 import { SURFACE_NO_ROW } from "#/uniforms/surface-table";
 
 function createPool(): { pool: StaticDrawPool; buffers: StaticDrawBuffers } {
-  const buffers: StaticDrawBuffers = new StaticDrawBuffers();
+  const buffers: StaticDrawBuffers = new StaticDrawBuffers(new StorageRetirement());
   const pool: StaticDrawPool = new StaticDrawPool(buffers);
 
   pool.isEnabled = true;
@@ -21,7 +23,7 @@ function toRecord(buffers: StaticDrawBuffers, slot: number): Array<number> {
 
 describe("StaticDrawPool", () => {
   it("hands out no slot while static draws are off", () => {
-    expect(new StaticDrawPool(new StaticDrawBuffers()).allocate()).toBeNull();
+    expect(new StaticDrawPool(new StaticDrawBuffers(new StorageRetirement())).allocate()).toBeNull();
   });
 
   it("writes a draw's clusters, place, kind, batches and row into its slot's record", () => {
@@ -35,6 +37,18 @@ describe("StaticDrawPool", () => {
     pool.write(slot, EStaticSlotKind.SINGLE, { count: 3, start: 40 }, 9, 2, STATIC_NO_BATCH);
 
     expect(toRecord(buffers, slot)[6]).toBe(SURFACE_NO_ROW);
+  });
+
+  it("gives a slot released twice to one draw only", () => {
+    const { pool } = createPool();
+    const slot: number = pool.allocate() as number;
+
+    pool.release(slot);
+    pool.release(slot);
+
+    expect(pool.allocate()).toBe(slot);
+    expect(pool.allocate()).not.toBe(slot);
+    expect(pool.count).toBe(2);
   });
 
   // The cull reads every slot up to the last handed out; a released one draws nothing and belongs to no batch.

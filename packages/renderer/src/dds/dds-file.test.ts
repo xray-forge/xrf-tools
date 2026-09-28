@@ -2,10 +2,13 @@ import { describe, expect, it } from "@jest/globals";
 
 import { EDdsBlockFormat } from "#/dds/dds-block-format";
 import { EDdsChannels } from "#/dds/dds-channels";
-import { IDdsFile, IDdsRead, readDdsFile } from "#/dds/dds-file";
+import { IDdsFile, readDdsFile } from "#/dds/dds-file";
 import { mockCubeDdsFile, mockDdsFile, mockDx10DdsFile, mockUncompressedDdsFile } from "#/dds/dds-fixtures";
 import { EDdsLayout } from "#/dds/dds-layout";
-import { EDdsRefusal, IDdsRefusal } from "#/dds/dds-refusal";
+import { IDdsMipmap } from "#/dds/dds-mipmap";
+import { IDdsRead } from "#/dds/dds-read";
+import { IDdsRefusal } from "#/dds/dds-refusal";
+import { EDdsRefusalReason } from "#/dds/dds-refusal-reason";
 
 /** The file a read produced, failing the case rather than the assertion when it was refused. */
 function readFile(bytes: ArrayBuffer): IDdsFile {
@@ -67,22 +70,24 @@ describe("readDdsFile refusals", () => {
     // The category is what a caller matches on; the detail is what a report shows a person.
     expect(refusalOf(mockDx10DdsFile(1))).toEqual({
       detail: "DXGI_FORMAT 1 is not modelled",
-      reason: EDdsRefusal.UNSUPPORTED_DXGI,
+      reason: EDdsRefusalReason.UNSUPPORTED_DXGI,
     });
     expect(refusalOf(mockDdsFile({ fourCC: "YUY2" }))).toEqual({
       detail: "the four character tag 'YUY2' is not modelled",
-      reason: EDdsRefusal.UNSUPPORTED_FOURCC,
+      reason: EDdsRefusalReason.UNSUPPORTED_FOURCC,
     });
 
     const masks: IDdsRefusal = refusalOf(mockUncompressedDdsFile({ bitCount: 16, blueMask: 0x001f, redMask: 0xf800 }));
 
-    expect(masks.reason).toBe(EDdsRefusal.UNSUPPORTED_MASKS);
+    expect(masks.reason).toBe(EDdsRefusalReason.UNSUPPORTED_MASKS);
     expect(masks.detail).toContain("16 bit");
   });
 
   it("refuses a texture array or a volume, which a surface has no way to draw", () => {
-    expect(refusalOf(mockDx10DdsFile(77, { arraySize: 6 })).reason).toBe(EDdsRefusal.UNSUPPORTED_DIMENSION);
-    expect(refusalOf(mockDx10DdsFile(77, { resourceDimension: 4 })).reason).toBe(EDdsRefusal.UNSUPPORTED_DIMENSION);
+    expect(refusalOf(mockDx10DdsFile(77, { arraySize: 6 })).reason).toBe(EDdsRefusalReason.UNSUPPORTED_DIMENSION);
+    expect(refusalOf(mockDx10DdsFile(77, { resourceDimension: 4 })).reason).toBe(
+      EDdsRefusalReason.UNSUPPORTED_DIMENSION
+    );
   });
 
   it("refuses a cubemap missing a face", () => {
@@ -92,7 +97,7 @@ describe("readDdsFile refusals", () => {
 
     expect(refusalOf(partial)).toEqual({
       detail: "the file is a cubemap missing faces",
-      reason: EDdsRefusal.CUBEMAP,
+      reason: EDdsRefusalReason.CUBEMAP,
     });
   });
 
@@ -112,17 +117,48 @@ describe("readDdsFile refusals", () => {
     // A view over a buffer that is one block short throws; refusing it is what keeps a bad file from taking the app.
     const complete: ArrayBuffer = mockDdsFile({ fourCC: "DXT5", height: 8, mipmapCount: 1, width: 8 });
 
-    expect(refusalOf(complete.slice(0, complete.byteLength - 1)).reason).toBe(EDdsRefusal.TRUNCATED);
+    expect(refusalOf(complete.slice(0, complete.byteLength - 1)).reason).toBe(EDdsRefusalReason.TRUNCATED);
   });
 
-  // The defect this exists for: WebGL answers `INVALID_OPERATION` and WebGPU invalidates the texture for a block
-  // compressed base level narrower than its block, and a texture that failed to upload samples as black. Anomaly
-  // ships seven leaf sprays as 2x2 fully transparent DXT1 files to switch that geometry off, and they drew as solid
-  // black cards. Direct3D takes them, which is why the game does not show this.
-  it("refuses a block compressed picture smaller than one block, so the backend expands it instead", () => {
-    const refusal: IDdsRefusal = refusalOf(mockDdsFile({ fourCC: "DXT1", height: 2, width: 2 }));
+  // The defect this exists for: WebGPU invalidates a block compressed texture whose base level is not whole blocks,
+  // and a texture that failed to upload samples as black. Anomaly ships seven leaf sprays as 2x2 fully transparent
+  // DXT1 files to switch that geometry off, and they drew as solid black cards. Direct3D takes them, which is why the
+  // game does not show this.
+  it("refuses a block compressed picture that is not whole blocks, so the backend expands it instead", () => {
+    const small: IDdsRefusal = refusalOf(mockDdsFile({ fourCC: "DXT1", height: 2, width: 2 }));
 
-    expect(refusal.reason).toBe(EDdsRefusal.SUB_BLOCK);
-    expect(refusal.detail).toContain("2x2");
+    expect(small.reason).toBe(EDdsRefusalReason.UNALIGNED_BLOCKS);
+    expect(small.detail).toContain("2x2");
+    expect(refusalOf(mockDdsFile({ fourCC: "DXT5", height: 6, width: 6 })).reason).toBe(
+      EDdsRefusalReason.UNALIGNED_BLOCKS
+    );
+    expect(refusalOf(mockDdsFile({ fourCC: "DXT5", height: 6, width: 12 })).reason).toBe(
+      EDdsRefusalReason.UNALIGNED_BLOCKS
+    );
+  });
+
+  it("reads each level of a chain that ends mid block from where the level before stopped", () => {
+    const bytes: ArrayBuffer = mockDdsFile({ fourCC: "DXT5", height: 768, mipmapCount: 11, width: 1024 });
+    const { mipmaps }: IDdsFile = readFile(bytes);
+
+    expect(mipmaps.map(({ width, height }: IDdsMipmap) => `${width}x${height}`).slice(6)).toEqual([
+      "16x12",
+      "8x6",
+      "4x3",
+      "2x1",
+      "1x1",
+    ]);
+    // 8x6 is two blocks by two, where halving the texels would read a block and a half.
+    expect(mipmaps[7].data.byteLength).toBe(4 * 16);
+
+    for (let level: number = 1; level < mipmaps.length; level += 1) {
+      const before: Uint8Array = mipmaps[level - 1].data;
+
+      expect(mipmaps[level].data.byteOffset).toBe(before.byteOffset + before.byteLength);
+    }
+
+    const last: Uint8Array = mipmaps[mipmaps.length - 1].data;
+
+    expect(last.byteOffset + last.byteLength).toBe(bytes.byteLength);
   });
 });

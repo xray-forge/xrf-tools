@@ -6,13 +6,16 @@ import {
   QuadMesh,
   RenderTarget,
   Texture,
+  UniformNode,
+  Vector2,
   WebGPURenderer,
 } from "three/webgpu";
 
-import { ERendererAntialiasing, TRendererSmoothingAntialiasing } from "#/contract/renderer-features";
+import { ERendererAntialiasing } from "#/contract/renderer-antialiasing";
+import { TRendererSmoothingAntialiasing } from "#/contract/renderer-smoothing-antialiasing";
 import { createAntialiasSize, toFxaaStage, toSmaaPipeline } from "#/pass/antialias/antialias-stages.tsl";
 import { SMAA_AREA_TEXTURE, SMAA_SEARCH_TEXTURE } from "#/pass/antialias/smaa-lookup";
-import { ISmaaStages } from "#/pass/antialias/smaa-stages.tsl";
+import { ISmaaStages } from "#/pass/antialias/smaa-stages";
 import { toFrameCopy } from "#/pass/frame-copy-pass.tsl";
 import { createQuadMaterial } from "#/pass/quad-material";
 import { IRendererFrame } from "#/pass/renderer-frame";
@@ -37,10 +40,12 @@ export class AntialiasPass implements IRendererPass {
 
   private readonly quad: QuadMesh = new QuadMesh();
   private readonly source: RenderTarget;
-  private readonly invSize = createAntialiasSize();
+  private readonly invSize: UniformNode<"vec2", Vector2> = createAntialiasSize();
   private readonly stages: Array<IAntialiasStage>;
   private readonly targets: Array<RenderTarget> = [];
   private readonly lookups: Array<Texture> = [];
+  /** The lookups' decoded pictures, which a texture never closes. */
+  private readonly bitmaps: Array<ImageBitmap> = [];
   /** A copy of the frame, drawn in place of the stages until what they sample has arrived. */
   private readonly copy: IAntialiasStage;
   private pending: number = 0;
@@ -76,6 +81,7 @@ export class AntialiasPass implements IRendererPass {
     [this.copy, ...this.stages].forEach((stage: IAntialiasStage) => stage.material.dispose());
     [this.output, ...this.targets].forEach((target: RenderTarget) => target.dispose());
     this.lookups.forEach((lookup: Texture) => lookup.dispose());
+    this.bitmaps.forEach((bitmap: ImageBitmap) => bitmap.close());
   }
 
   private draw(renderer: WebGPURenderer, stage: IAntialiasStage): void {
@@ -148,12 +154,13 @@ export class AntialiasPass implements IRendererPass {
           return;
         }
 
+        this.bitmaps.push(bitmap);
         lookup.image = bitmap;
         lookup.needsUpdate = true;
         this.pending -= 1;
       })
       // Left pending, the frame is drawn unsmoothed rather than smoothed from nothing.
-      .catch(() => {});
+      .catch((error: unknown) => console.error("SMAA's lookup failed to decode, so the frame is not smoothed:", error));
 
     return lookup;
   }

@@ -8,6 +8,7 @@ import {
 } from "#/contract/scene/renderer-impostors";
 import { StaticLods } from "#/scene/static/static-lods";
 import { STATIC_LOD_CORNER_COLUMNS, StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
+import { StorageRetirement } from "#/uniforms/storage-retirement";
 
 /** One impostor whose corners count up: each float is its corner's index times ten plus its own. */
 function createImpostors(): IRendererImpostors {
@@ -25,7 +26,7 @@ function createImpostors(): IRendererImpostors {
 
 describe("StaticLods", () => {
   it("writes a corner as two columns: position and hemi, then its coordinates and sun", () => {
-    const buffers: StaticDrawBuffers = new StaticDrawBuffers();
+    const buffers: StaticDrawBuffers = new StaticDrawBuffers(new StorageRetirement());
     const lods: StaticLods = new StaticLods(buffers);
     const start: number = lods.allocate(1) as number;
     const corners = buffers.lodCorners.array as Float32Array;
@@ -41,7 +42,7 @@ describe("StaticLods", () => {
   });
 
   it("leaves a freed impostor with no sphere, for the LOD cull to pass over", () => {
-    const buffers: StaticDrawBuffers = new StaticDrawBuffers();
+    const buffers: StaticDrawBuffers = new StaticDrawBuffers(new StorageRetirement());
     const lods: StaticLods = new StaticLods(buffers);
     const start: number = lods.allocate(1) as number;
 
@@ -49,6 +50,6 @@ describe("StaticLods", () => {
     lods.free(start, 1);
 
     expect((buffers.lodSpheres.array as Float32Array)[start * 4 + 3]).toBe(-1);
-    expect(lods.use.used).toBe(0);
+    expect(lods.used).toBe(0);
   });
 });

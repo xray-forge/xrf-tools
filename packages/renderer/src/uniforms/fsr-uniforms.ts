@@ -1,5 +1,5 @@
 import { uniform } from "three/tsl";
-import { PerspectiveCamera, Vector2, Vector4 } from "three/webgpu";
+import { PerspectiveCamera, UniformNode, Vector2, Vector4 } from "three/webgpu";
 
 import { IRendererFrameJitter } from "#/sampling/renderer-frame-jitter";
 import { IRendererFrameSize } from "#/sampling/renderer-frame-size";
@@ -22,16 +22,16 @@ export function toShadingChangeMipSide(side: number): number {
  * `cbFSR2` as FSR 2's passes read it, taken once a frame before they draw.
  */
 export class FsrUniforms {
-  public readonly renderSize = uniform(new Vector2(1, 1));
-  public readonly displaySize = uniform(new Vector2(1, 1));
+  public readonly renderSize: UniformNode<"vec2", Vector2> = uniform(new Vector2(1, 1));
+  public readonly displaySize: UniformNode<"vec2", Vector2> = uniform(new Vector2(1, 1));
   /** In FSR's sense, the renderer's jitter turned: a drawn texel `m` stands at `m + 0.5 - jitter`. */
-  public readonly jitter = uniform(new Vector2());
-  public readonly downscale = uniform(new Vector2(1, 1));
-  public readonly deviceToView = uniform(new Vector4(0, 1, 1, 1));
-  public readonly lumaMipSize = uniform(new Vector2(1, 1));
-  public readonly jitterPhaseCount = uniform(8);
+  public readonly jitter: UniformNode<"vec2", Vector2> = uniform(new Vector2());
+  public readonly downscale: UniformNode<"vec2", Vector2> = uniform(new Vector2(1, 1));
+  public readonly deviceToView: UniformNode<"vec4", Vector4> = uniform(new Vector4(0, 1, 1, 1));
+  public readonly lumaMipSize: UniformNode<"vec2", Vector2> = uniform(new Vector2(1, 1));
+  public readonly jitterPhaseCount: UniformNode<"float", number> = uniform(8);
   /** Zero on the first frame after a reset. */
-  public readonly frameIndex = uniform(0);
+  public readonly frameIndex: UniformNode<"float", number> = uniform(0);
 
   /**
    * @param camera - The drawing camera.

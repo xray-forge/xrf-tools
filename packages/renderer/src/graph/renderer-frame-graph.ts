@@ -1,16 +1,16 @@
 import { Nullable } from "@xrf/types";
 import { PerspectiveCamera, RenderTarget, Texture, WebGPURenderer } from "three/webgpu";
 
-import {
-  ERendererAmbientOcclusionQuality,
-  ERendererAntialiasing,
-  IRendererFeatureSettings,
-  TRendererSmoothingAntialiasing,
-  TRendererTemporalAntialiasing,
-} from "#/contract/renderer-features";
+import { ERendererAmbientOcclusionQuality } from "#/contract/renderer-ambient-occlusion-quality";
+import { ERendererAntialiasing } from "#/contract/renderer-antialiasing";
+import { IRendererFeatureSettings } from "#/contract/renderer-feature-settings";
+import { TRendererSmoothingAntialiasing } from "#/contract/renderer-smoothing-antialiasing";
+import { TRendererTemporalAntialiasing } from "#/contract/renderer-temporal-antialiasing";
 import { createBaseFramePasses, IBaseFramePasses } from "#/graph/base-frame-passes";
+import { IFrameCompileTargets } from "#/graph/frame-compile-targets";
 import { toFramePassOrder } from "#/graph/frame-pass-order";
-import { IFramePlanShadows, IRendererFramePlan, toFramePlan } from "#/graph/frame-plan";
+import { IFramePlan, toFramePlan } from "#/graph/frame-plan";
+import { IFramePlanShadows } from "#/graph/frame-plan-shadows";
 import { FrameStage } from "#/graph/frame-stage";
 import { createOcclusionFramePasses, IOcclusionFramePasses } from "#/graph/occlusion-frame-passes";
 import { AmbientOcclusionPass } from "#/pass/ambient-occlusion-pass";
@@ -32,6 +32,8 @@ import { SpatialUpscalePass } from "#/pass/spatial-upscale-pass";
 import { TemporalAntialiasPass } from "#/pass/temporal-antialias-pass";
 import { TemporalJitter } from "#/pass/temporal-jitter";
 import { ITemporalUpscaler } from "#/pass/temporal-upscaler";
+import { WaterDistortionPass } from "#/pass/water-distortion-pass";
+import { WaterPass } from "#/pass/water-pass";
 import { IRendererFrameJitter } from "#/sampling/renderer-frame-jitter";
 import { IRendererFrameSize, isSameRendererFrameSize, toRendererFrameSize } from "#/sampling/renderer-frame-size";
 import { SceneGrass } from "#/scene/grass/scene-grass";
@@ -63,8 +65,6 @@ export class RendererFrameGraph {
   public readonly targets: RendererTargets = new RendererTargets();
   /** The last pass, which a capture also draws into a target of its own. */
   public readonly present: PresentPass;
-  /** The passes drawing the consumer's scenes, whose materials compile against their targets. */
-  public readonly scenePasses: ReadonlyArray<IRendererScenePass>;
   /** Every pass's name, in frame order, as the frame report states them. */
   public passNames: ReadonlyArray<string> = [];
 
@@ -76,6 +76,7 @@ export class RendererFrameGraph {
   private readonly base: IBaseFramePasses;
   private readonly stages = {
     ambientOcclusion: new FrameStage<AmbientOcclusionPass>(release),
+    distortion: new FrameStage<WaterDistortionPass>(release),
     exposure: new FrameStage<ExposurePass>(release),
     grass: new FrameStage<GrassPass>(release),
     jitter: new FrameStage<TemporalJitter>((jitter: TemporalJitter) => jitter.dispose()),
@@ -90,10 +91,13 @@ export class RendererFrameGraph {
     sharpen: new FrameStage<SharpenPass>(release),
     smoothing: new FrameStage<AntialiasPass>(release),
     spatial: new FrameStage<SpatialUpscalePass>(release),
+    water: new FrameStage<WaterPass>(release),
   };
 
   private passes: ReadonlyArray<IRendererPass> = [];
-  private plan: Nullable<IRendererFramePlan> = null;
+  /** The passes among them drawing the consumer's scenes, in frame order. */
+  private scenePasses: ReadonlyArray<IRendererScenePass> = [];
+  private plan: Nullable<IFramePlan> = null;
   private renderer: Nullable<WebGPURenderer> = null;
   /** The output's size, in device pixels, which the plan's upscale divides. */
   private width: number = 1;
@@ -127,13 +131,23 @@ export class RendererFrameGraph {
     this.lights = lights;
     this.present = new PresentPass(this.targets, uniforms.camera);
     this.base = createBaseFramePasses(this.targets, uniforms, overlays, cull);
-    this.scenePasses = Object.values(this.base).filter(isRendererScenePass);
+    // The water's shaders read the frame's depth behind it, a texture that stays while its memory comes and goes.
+    uniforms.water.depth.value = this.targets.waterDepth;
     this.link();
   }
 
   /** The frame's size as last sized, the scene's as drawn among it. */
   public get size(): IRendererFrameSize {
     return this.sizing?.size ?? toRendererFrameSize(this.width, this.height, 1);
+  }
+
+  /** Where what the frame draws now compiles: its passes drawing the consumer's scenes, the shadows and the grass. */
+  public get compileTargets(): IFrameCompileTargets {
+    return {
+      grass: this.targets.gbuffer,
+      passes: this.scenePasses,
+      shadow: { camera: this.uniforms.shadows.cascades[0].camera, target: this.targets.shadows[0] },
+    };
   }
 
   /** Where this frame's samples stand within the pixel, while a resolve jitters them. */
@@ -147,13 +161,16 @@ export class RendererFrameGraph {
    * @param features - What the features are set to.
    */
   public configure(features: IRendererFeatureSettings): void {
-    const plan: IRendererFramePlan = toFramePlan(features);
+    const plan: IFramePlan = toFramePlan(features);
     const { stages, targets, uniforms, casters, cull } = this;
     const isResolved: Nullable<true> = toWanted(plan.resolve !== null);
 
     this.plan = plan;
     stages.jitter.reconcile(isResolved, () => new TemporalJitter(uniforms.motion));
     stages.motionBackground.reconcile(isResolved, () => new MotionBackgroundPass(targets, uniforms.motion));
+    targets.setWatered(plan.isWatered);
+    stages.water.reconcile(toWanted(plan.isWatered), () => new WaterPass(targets, uniforms));
+    stages.distortion.reconcile(toWanted(plan.isDistorted), () => new WaterDistortionPass(targets, uniforms));
     stages.grass.reconcile(toWanted(plan.isGrassy), () => new GrassPass(this.grass, targets));
     stages.exposure.reconcile(toWanted(plan.isExposed), () => new ExposurePass(targets, uniforms.exposure));
     stages.exposure.value?.setSettings(features.exposure);
@@ -173,7 +190,7 @@ export class RendererFrameGraph {
       ({ count, resolution }: IFramePlanShadows) =>
         Array.from(
           { length: count },
-          (_, view: number) =>
+          (_: unknown, view: number) =>
             new ShadowPass(view, targets, casters, cull, uniforms.shadows, uniforms.treeWind, resolution)
         ),
       ({ count, resolution }: IFramePlanShadows) => `${count}:${resolution}`
@@ -206,12 +223,10 @@ export class RendererFrameGraph {
     const shown: Nullable<RenderTarget> = stages.sharpen.value?.output ?? upscaled;
 
     stages.lights.value?.setFilter(features.lights.shadowFilter);
-    this.base.water.setEnabled(features.water.isEnabled);
-    this.base.distortion.setDistorted(features.water.isEnabled && features.water.isDistorted);
     stages.sharpen.value?.setSharpening(features.upscaling.sharpening);
     this.base.combine.setAmbientOcclusion(occlusion);
     this.present.setAmbientOcclusion(occlusion);
-    this.base.overlay.setTarget(shown);
+    this.base.overlay.setTarget(shown ?? targets.composite);
     this.present.setFrame(shown ?? stages.smoothing.value?.output ?? targets.scene);
     this.link();
     this.isResizedByConfigure ||= this.applySizing();
@@ -255,8 +270,12 @@ export class RendererFrameGraph {
   public render(frame: IRendererFrame, inspector: RendererPassInspector): void {
     for (const pass of this.passes) {
       inspector.enter(pass.name);
-      pass.render(frame);
-      inspector.leave();
+
+      try {
+        pass.render(frame);
+      } finally {
+        inspector.leave();
+      }
     }
 
     this.stages.jitter.value?.advance();
@@ -273,7 +292,7 @@ export class RendererFrameGraph {
    * Sizes the targets and every pass not yet sized for the frame as it is now, once there is a renderer to size by: a
    * new renderer, output size or upscale sizes all of them again, a pass joining the frame just itself.
    *
-   * @returns Whether the frame's sizing changed.
+   * @returns Whether the frame's sizing changed, or its targets were allocated again.
    */
   private applySizing(): boolean {
     const { renderer, sizing: current, sized } = this;
@@ -288,10 +307,11 @@ export class RendererFrameGraph {
         ? current
         : { renderer, size };
     const jitter: Nullable<TemporalJitter> = this.stages.jitter.value;
+    const isReallocated: boolean = this.targets.isStale;
 
     this.sizing = sizing;
 
-    if (sized.get(this.targets) !== sizing) {
+    if (isReallocated || sized.get(this.targets) !== sizing) {
       this.targets.resize(renderer, sizing.size);
       sized.set(this.targets, sizing);
     }
@@ -308,7 +328,7 @@ export class RendererFrameGraph {
       }
     }
 
-    return sizing !== current;
+    return sizing !== current || isReallocated;
   }
 
   /** Orders the passes the stages hold now. */
@@ -324,16 +344,19 @@ export class RendererFrameGraph {
         lightShadows: stages.lightShadows.value,
         lights: stages.lights.value,
         motionBackground: stages.motionBackground.value,
+        distortion: stages.distortion.value,
         occlusion: stages.occlusion.value,
         resolve: stages.resolve.value,
         sharpen: stages.sharpen.value,
         shadows: stages.shadows.value ?? [],
         smoothing: stages.smoothing.value,
         spatial: stages.spatial.value,
+        water: stages.water.value,
       },
       this.present
     );
     this.passNames = this.passes.map((pass: IRendererPass) => pass.name);
+    this.scenePasses = this.passes.filter(isRendererScenePass);
   }
 }
 

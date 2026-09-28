@@ -1,6 +1,5 @@
 import { Nullable } from "@xrf/types";
 
-import { IRendererPoolUse } from "#/contract/renderer-report";
 import {
   IRendererImpostors,
   RENDERER_IMPOSTOR_CORNER_FLOATS,
@@ -9,13 +8,17 @@ import {
 } from "#/contract/scene/renderer-impostors";
 import { DirtySpan } from "#/scene/dirty-span";
 import { RangeAllocator } from "#/scene/static/range-allocator";
-import { EStaticPool, STATIC_LOD_CORNER_COLUMNS, StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
+import { IStaticRunPool } from "#/scene/static/static-run-pool";
+import { STATIC_LOD_CORNER_COLUMNS, StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
+import { EStaticPool } from "#/uniforms/static-pool";
 
 /**
  * The impostors of clumps of trees, one slot each, that the LOD cull decides between a clump and its impostor by:
  * handed out in runs a set each, uploaded as one span a buffer.
  */
-export class StaticLods {
+export class StaticLods implements IStaticRunPool {
+  public readonly kind: EStaticPool = EStaticPool.LODS;
+
   private readonly buffers: StaticDrawBuffers;
   private readonly lods: RangeAllocator = new RangeAllocator();
   /** The slots written since the buffers last went up. */
@@ -32,9 +35,12 @@ export class StaticLods {
     return this.currentVersion;
   }
 
-  /** Impostors handed out, against what the buffers hold. */
-  public get use(): IRendererPoolUse {
-    return { capacity: this.lods.capacity, used: this.lods.used };
+  public get capacity(): number {
+    return this.lods.capacity;
+  }
+
+  public get used(): number {
+    return this.lods.used;
   }
 
   /** Slots the LOD cull has to look at: up to the end of the last run handed out. */
@@ -42,17 +48,14 @@ export class StaticLods {
     return this.lods.extent;
   }
 
-  /**
-   * @param count - Impostors wanted.
-   * @returns Where they start, or null where there is no room until the pool grows.
-   */
+  public fits(count: number): boolean {
+    return this.lods.fits(count);
+  }
+
   public allocate(count: number): Nullable<number> {
     return this.lods.allocate(count);
   }
 
-  /**
-   * @param capacity - What the pool holds from now on, more than it did.
-   */
   public grow(capacity: number): void {
     this.buffers.grow(EStaticPool.LODS, capacity);
     this.lods.grow(capacity);
@@ -67,7 +70,7 @@ export class StaticLods {
    */
   public write(start: number, impostors: IRendererImpostors): void {
     const count: number = impostors.factors.length;
-    const corners = this.buffers.lodCorners.array as Float32Array;
+    const corners: Float32Array = this.buffers.lodCorners.array as Float32Array;
 
     (this.buffers.lodSpheres.array as Float32Array).set(impostors.spheres, start * 4);
     (this.buffers.lodFactors.array as Float32Array).set(impostors.factors, start);
@@ -88,12 +91,9 @@ export class StaticLods {
     this.currentVersion += 1;
   }
 
-  /**
-   * @param start - Where a run starts, holding no impostor from now on.
-   * @param count - Its length.
-   */
+  /** Leaves a run holding no impostor, for the LOD cull to pass over. */
   public free(start: number, count: number): void {
-    const spheres = this.buffers.lodSpheres.array as Float32Array;
+    const spheres: Float32Array = this.buffers.lodSpheres.array as Float32Array;
 
     for (let index = 0; index < count; index += 1) {
       spheres[(start + index) * 4 + 3] = -1;
@@ -104,7 +104,6 @@ export class StaticLods {
     this.currentVersion += 1;
   }
 
-  /** Marks what changed since the last upload to go up with the next use of the buffers. */
   public flush(): void {
     const { span } = this;
 

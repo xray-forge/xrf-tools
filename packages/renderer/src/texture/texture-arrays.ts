@@ -1,6 +1,7 @@
 import { Maybe, Nullable } from "@xrf/types";
 import { CompressedTexture, Texture } from "three/webgpu";
 
+import { ITextureCopy } from "#/internals/texture-copy";
 import { TextureArray } from "#/texture/texture-array";
 import { toTextureArrayClass } from "#/texture/texture-array-class";
 import { ITextureArrayFlush } from "#/texture/texture-array-flush";
@@ -72,6 +73,24 @@ export class TextureArrays {
   }
 
   /**
+   * @param key - A texture's key.
+   * @returns Whether an array holds it.
+   */
+  public holds(key: string): boolean {
+    return this.claims.has(key);
+  }
+
+  /**
+   * @param key - A texture's key, sampled from its array by one more surface, whatever its own texture holds now.
+   * @returns Where it is held, or null for a key no array holds.
+   */
+  public retain(key: string): Nullable<ITextureLayer> {
+    const claim: Maybe<ITextureClaim> = this.claims.get(key);
+
+    return claim && claim.held.array.retain(key) ? claim.held : null;
+  }
+
+  /**
    * @param key - A texture's key one surface no longer samples from its array.
    */
   public release(key: string): void {
@@ -97,6 +116,28 @@ export class TextureArrays {
     claim.held.array.refresh(key, texture);
 
     return true;
+  }
+
+  /**
+   * @param skipped - Copies the frame could not make.
+   * @returns The keys they were for, each copied again with the next flush.
+   */
+  public retry(skipped: ReadonlyArray<ITextureCopy>): Set<string> {
+    const keys: Set<string> = new Set();
+
+    for (const copy of skipped) {
+      for (const arrays of this.arrays.values()) {
+        for (const array of arrays) {
+          const key: Nullable<string> = array.retry(copy);
+
+          if (key) {
+            keys.add(key);
+          }
+        }
+      }
+    }
+
+    return keys;
   }
 
   /**

@@ -96,7 +96,7 @@ describe("SunCascade", () => {
       if (t > 0 && t < 10) {
         const ground: Vector3 = ray.origin.clone().addScaledVector(ray.direction, t);
 
-        expect(isInside(cascades[0].planes, ground)).toBe(true);
+        cascades.forEach((cascade: SunCascade) => expect(isInside(cascade.planes, ground)).toBe(true));
       }
     }
   });
@@ -139,6 +139,36 @@ describe("SunCascade", () => {
     expect(
       Math.abs(cascade.camera.position.x / cascade.texel - Math.round(cascade.camera.position.x / cascade.texel))
     ).toBeLessThan(1e-6);
+  });
+
+  // Along an oblique light, a camera moving across the level moves along the light too, which moves no texel.
+  it("keeps its place along an oblique light to a step, and says it moved only once it takes the next", () => {
+    const light: Vector3 = new Vector3(1, -2, 0.5).normalize();
+    const cascade: SunCascade = new SunCascade();
+    const rays: SunViewRays = new SunViewRays();
+
+    function fit(along: number): void {
+      const camera: PerspectiveCamera = createCamera(light.x * along, light.y * along, light.z * along);
+
+      rays.reset(camera);
+      cascade.fit(camera, rays, light, 20, 2048, 400);
+    }
+
+    fit(0);
+
+    const version: number = cascade.version;
+    const position: Vector3 = cascade.camera.position.clone();
+
+    fit(0.5);
+
+    expect(cascade.version).toBe(version);
+    expect(cascade.camera.position.distanceTo(position)).toBe(0);
+
+    fit(2);
+
+    expect(cascade.version).toBe(version + 1);
+    // The camera, a step along the light from where the map was placed, is still in its box.
+    expect(isInside(cascade.planes, new Vector3(light.x * 2, light.y * 2, light.z * 2))).toBe(true);
   });
 
   it("stays over the camera looking along the light", () => {

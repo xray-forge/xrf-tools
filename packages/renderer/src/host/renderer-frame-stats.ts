@@ -1,5 +1,7 @@
-import { IRendererCameraPose } from "#/contract/renderer-camera";
-import { IRendererLightsReport, IRendererReport, IRendererStaticDrawReport } from "#/contract/renderer-report";
+import { IRendererCameraPose } from "#/contract/renderer-camera-pose";
+import { IRendererLightsReport } from "#/contract/renderer-lights-report";
+import { IRendererReport } from "#/contract/renderer-report";
+import { IRendererStaticDrawReport } from "#/contract/renderer-static-draw-report";
 import { RendererDevice } from "#/device/renderer-device";
 import { RenderFrameTimer } from "#/frame/render-frame-timer";
 import { RendererGpuTimings } from "#/host/renderer-gpu-timings";
@@ -99,12 +101,5 @@ export class RendererFrameStats {
   /** Forgets every pass's timing, for timing that stopped or started again: a mean over the gap would lie. */
   public resetTimings(): void {
     this.gpuTimings.reset();
-  }
-
-  /** Forgets everything, for a device that went away. */
-  public reset(): void {
-    this.frameTimer.reset();
-    this.gpuTimings.reset();
-    this.reportedAt = 0;
   }
 }

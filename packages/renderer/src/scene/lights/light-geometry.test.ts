@@ -1,7 +1,9 @@
 import { describe, expect, it } from "@jest/globals";
 import { Sphere, Vector3 } from "three/webgpu";
 
-import { ERendererLightKind, IRendererPointLight, IRendererSpotLight } from "#/contract/scene/renderer-lights";
+import { ERendererLightKind } from "#/contract/scene/renderer-light";
+import { IRendererPointLight } from "#/contract/scene/renderer-point-light";
+import { IRendererSpotLight } from "#/contract/scene/renderer-spot-light";
 import {
   createLightBasis,
   ILightBasis,

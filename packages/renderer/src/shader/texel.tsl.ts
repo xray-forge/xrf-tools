@@ -1,6 +1,8 @@
 import { clamp, floor, int, ivec2, texture, textureLoad, vec2 } from "three/tsl";
 import { DepthTexture, Node, Texture } from "three/webgpu";
 
+import { IBilinearFootprint } from "#/shader/bilinear-footprint";
+
 /** The 3x3 neighbourhood about a texel, row by row, the centre fifth. */
 export const NEIGHBOURHOOD: ReadonlyArray<readonly [number, number]> = [-1, 0, 1].flatMap((y: number) =>
   [-1, 0, 1].map((x: number) => [x, y] as const)
@@ -41,13 +43,6 @@ export function loadClamped(source: Texture, position: Node<"vec2">, size: Node<
  */
 export function loadDepth(depth: DepthTexture, position: Node<"vec2">, size: Node<"vec2">): Node<"float"> {
   return textureLoad(depth, toClampedTexel(position, size)) as unknown as Node<"float">;
-}
-
-/** The four texels a bilinear read of a point takes, and each one's weight. */
-export interface IBilinearFootprint {
-  /** The first texel, held as floats. */
-  base: Node<"vec2">;
-  corners: ReadonlyArray<{ offset: readonly [number, number]; weight: Node<"float"> }>;
 }
 
 /**

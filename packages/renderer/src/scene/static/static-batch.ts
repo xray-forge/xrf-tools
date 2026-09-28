@@ -1,33 +1,21 @@
 import { Maybe, Nullable } from "@xrf/types";
-import {
-  BufferGeometry,
-  BundleGroup,
-  IndirectStorageBufferAttribute,
-  LineSegments,
-  Material,
-  Mesh,
-  Object3D,
-} from "three/webgpu";
+import { BufferGeometry, BundleGroup, Material } from "three/webgpu";
 
 import { disposeObject } from "#/internals/object-disposal";
 import { createSceneLines, createSceneMesh } from "#/scene/object/scene-mesh";
 import { StaticArena } from "#/scene/static/static-arena";
+import { TStaticBatchArguments } from "#/scene/static/static-batch-arguments";
+import { TStaticBatchMesh } from "#/scene/static/static-batch-mesh";
 import { IStaticRegion } from "#/scene/static/static-region";
-import { EStaticListSpace, STATIC_BATCH_ARGUMENT_BYTES } from "#/uniforms/static-draw-buffers";
+import { STATIC_BATCH_ARGUMENT_BYTES } from "#/uniforms/static-draw-buffers";
+import { EStaticListSpace } from "#/uniforms/static-list-space";
 
 /** What an idle batch's mesh holds instead of the material it last drew, so that one can go. */
 const IDLE_MATERIAL: Material = new Material();
 
-/** The arguments one phase of a batch draws by, read again whenever the batches' growth replaced them. */
-export type TStaticBatchArguments = () => IndirectStorageBufferAttribute;
-
-/** What a batch draws a phase with: a mesh of its clusters' triangles, or line segments of their edges. */
-export type TStaticBatchMesh = Mesh | LineSegments;
-
 /** One phase's draw of a batch: its mesh, drawn by that phase's arguments at the batch's offset. */
 interface IBatchPhase {
   toArgs: TStaticBatchArguments;
-  geometry: BufferGeometry;
   mesh: TStaticBatchMesh;
 }
 
@@ -167,27 +155,9 @@ export class StaticBatch {
     }
   }
 
-  /** Draws by the arguments as they are now, where the batches' growth replaced them. */
+  /** Draws by the arguments as they are now, where the batches' growth replaced them, from the same meshes. */
   public refresh(): void {
-    for (const phases of [this.phases, this.wires ?? []]) {
-      phases.forEach((phase: IBatchPhase, index: number) => {
-        if (phase.geometry.indirect === phase.toArgs()) {
-          return;
-        }
-
-        const parent: Nullable<Object3D> = phase.mesh.parent;
-        const replaced: IBatchPhase = this.createPhase(
-          phase.toArgs,
-          phase.mesh.material as Material,
-          phases === this.wires
-        );
-
-        StaticBatch.disposePhase(phase);
-        parent?.add(replaced.mesh);
-        phases[index] = replaced;
-      });
-    }
-
+    [...this.phases, ...(this.wires ?? [])].forEach((phase: IBatchPhase) => this.point(phase));
     this.invalidate();
   }
 
@@ -199,20 +169,25 @@ export class StaticBatch {
   private static disposePhase(phase: IBatchPhase): void {
     phase.mesh.removeFromParent();
     disposeObject(phase.mesh);
-    phase.geometry.dispose();
+    phase.mesh.geometry.dispose();
   }
 
   private createPhase(toArgs: TStaticBatchArguments, material: Material, isWire: boolean): IBatchPhase {
     const geometry: BufferGeometry = this.arena.createGeometry();
-
-    geometry.setIndirect(toArgs(), this.id * STATIC_BATCH_ARGUMENT_BYTES);
-    // Drawn by its indirect arguments alone; the range only keeps three's count of what a recording drew honest.
-    geometry.setDrawRange(0, 0);
-
-    return {
-      geometry,
+    const phase: IBatchPhase = {
       mesh: isWire ? createSceneLines(geometry, material) : createSceneMesh(geometry, null, material),
       toArgs,
     };
+
+    this.point(phase);
+    // Drawn by its indirect arguments alone; the range only keeps three's count of what a recording drew honest.
+    geometry.setDrawRange(0, 0);
+
+    return phase;
+  }
+
+  /** Points a phase's geometry at its arguments as they are now, at the batch's offset. */
+  private point(phase: IBatchPhase): void {
+    phase.mesh.geometry.setIndirect(phase.toArgs(), this.id * STATIC_BATCH_ARGUMENT_BYTES);
   }
 }

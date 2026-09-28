@@ -1,4 +1,5 @@
 import { uniform } from "three/tsl";
+import { UniformNode } from "three/webgpu";
 
 /**
  * How far one build's ring reaches: the planting's reach, or less where the build holds fewer cells, so a build still
@@ -6,7 +7,7 @@ import { uniform } from "three/tsl";
  */
 export class GrassRingUniforms {
   /** Slots the ring reaches each way from the camera's. */
-  public readonly reach = uniform(0);
+  public readonly reach: UniformNode<"float", number> = uniform(0);
 
   /** Cells the ring holds at its reach. */
   public get cells(): number {

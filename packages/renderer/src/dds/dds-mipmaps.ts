@@ -1,22 +1,9 @@
 import { Nullable } from "@xrf/types";
 
-import { EDdsLayout, getDdsStoredLength, TDdsLayout } from "#/dds/dds-layout";
+import { EDdsLayout, getDdsStoredLength } from "#/dds/dds-layout";
+import { IDdsMipmap } from "#/dds/dds-mipmap";
+import { IDdsMipmapChain } from "#/dds/dds-mipmap-chain";
 import { expandDdsTexels } from "#/dds/dds-texel-expansion";
-
-/** One mip: block bytes untouched, or texels already expanded to rgba. */
-export interface IDdsMipmap {
-  data: Uint8Array;
-  width: number;
-  height: number;
-}
-
-/** What a mip walk needs to know about the file it is walking. */
-export interface IDdsMipmapChain {
-  width: number;
-  height: number;
-  mipmapCount: number;
-  layout: TDdsLayout;
-}
 
 /**
  * Walks a mip chain, halving until the chain is spent.

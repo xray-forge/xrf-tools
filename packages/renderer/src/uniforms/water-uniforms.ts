@@ -1,8 +1,8 @@
 import { renderGroup, texture, uniform } from "three/tsl";
-import { DataTexture, FloatType, RedFormat, TextureNode } from "three/webgpu";
+import { TextureNode, UniformNode } from "three/webgpu";
 
-import { DEFAULT_RENDERER_WATER_SETTINGS, IRendererWaterSettings } from "#/contract/renderer-features";
 import { IRendererLighting } from "#/contract/renderer-lighting";
+import { DEFAULT_RENDERER_WATER_SETTINGS, IRendererWaterSettings } from "#/contract/renderer-water-settings";
 
 /**
  * What the water's shaders read: the engine's `timers` and `water_intensity`, and the settings standing
@@ -10,22 +10,33 @@ import { IRendererLighting } from "#/contract/renderer-lighting";
  */
 export class WaterUniforms {
   /** `timers.x`: seconds the renderer has been running. */
-  public readonly time = uniform(0).setGroup(renderGroup);
-  public readonly waveHeight = uniform(DEFAULT_RENDERER_WATER_SETTINGS.waveHeight).setGroup(renderGroup);
-  public readonly waveSpeed = uniform(DEFAULT_RENDERER_WATER_SETTINGS.waveSpeed).setGroup(renderGroup);
-  public readonly ripple = uniform(DEFAULT_RENDERER_WATER_SETTINGS.ripple).setGroup(renderGroup);
-  public readonly reflection = uniform(DEFAULT_RENDERER_WATER_SETTINGS.reflection).setGroup(renderGroup);
+  public readonly time: UniformNode<"float", number> = uniform(0).setGroup(renderGroup);
+  public readonly waveHeight: UniformNode<"float", number> = uniform(
+    DEFAULT_RENDERER_WATER_SETTINGS.waveHeight
+  ).setGroup(renderGroup);
+  public readonly waveSpeed: UniformNode<"float", number> = uniform(DEFAULT_RENDERER_WATER_SETTINGS.waveSpeed).setGroup(
+    renderGroup
+  );
+  public readonly ripple: UniformNode<"float", number> = uniform(DEFAULT_RENDERER_WATER_SETTINGS.ripple).setGroup(
+    renderGroup
+  );
+  public readonly reflection: UniformNode<"float", number> = uniform(
+    DEFAULT_RENDERER_WATER_SETTINGS.reflection
+  ).setGroup(renderGroup);
   /** `def_distort`: how far the distortion moves what is behind it, a share of the screen. */
-  public readonly distortion = uniform(DEFAULT_RENDERER_WATER_SETTINGS.distortion).setGroup(renderGroup);
+  public readonly distortion: UniformNode<"float", number> = uniform(
+    DEFAULT_RENDERER_WATER_SETTINGS.distortion
+  ).setGroup(renderGroup);
   /** One while soft water reads the depth behind it, zero for the engine without `r2_soft_water`. */
-  public readonly soft = uniform(1).setGroup(renderGroup);
+  public readonly soft: UniformNode<"float", number> = uniform(1).setGroup(renderGroup);
   /** `water_intensity`. */
-  public readonly intensity = uniform(1).setGroup(renderGroup);
+  public readonly intensity: UniformNode<"float", number> = uniform(1).setGroup(renderGroup);
   /**
    * The depth behind the water, each pixel's distance along the view in metres, the engine's `s_position.z`: the
-   * frame's own once the water pass is made, and nothing near until then.
+   * frame's own, which the frame points it at as it is made.
    */
-  public readonly depth: TextureNode = texture(createFarDepthTexture());
+  public readonly depth: TextureNode = texture();
+
   /**
    * @param settings - How the water is drawn.
    */
@@ -51,13 +62,4 @@ export class WaterUniforms {
   public update(time: number): void {
     this.time.value = time;
   }
-}
-
-/** A texel of a depth farther than any water is deep, in the layout the frame's depth behind the water has. */
-function createFarDepthTexture(): DataTexture {
-  const far: DataTexture = new DataTexture(new Float32Array([1e6]), 1, 1, RedFormat, FloatType);
-
-  far.needsUpdate = true;
-
-  return far;
 }

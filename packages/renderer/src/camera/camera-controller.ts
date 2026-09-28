@@ -1,6 +1,8 @@
 import { PerspectiveCamera } from "three/webgpu";
 
-import { IRendererCameraPose, TRendererCamera, TRendererCameraCommand } from "#/contract/renderer-camera";
+import { TRendererCamera } from "#/contract/renderer-camera";
+import { TRendererCameraCommand } from "#/contract/renderer-camera-command";
+import { IRendererCameraPose } from "#/contract/renderer-camera-pose";
 
 /**
  * Drives the drawing camera from what the consumer described and what the person does to the canvas.

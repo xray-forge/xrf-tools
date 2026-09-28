@@ -23,6 +23,8 @@ interface ITextureEntry {
   version: number;
   /** Whether a picture is still decoding for it. */
   isDecoding: boolean;
+  /** Whether what it draws was let go on the GPU, an array's layer holding it: asked for, it goes up again. */
+  isEvicted: boolean;
 }
 
 /**
@@ -158,22 +160,43 @@ export class RendererTextures {
   /**
    * @param key - A texture's key.
    * @returns Whether what the key holds is on the GPU, so drawing with it stalls nothing; true for a key holding
-   *   nothing, whose samplers draw their placeholder.
+   *   nothing, whose samplers draw their placeholder. An evicted key is not, and goes up again with the uploads.
    */
   public isUploaded(key: string): boolean {
     const entry: Maybe<ITextureEntry> = this.entries.get(key);
 
-    return !entry || (!entry.isDecoding && entry.drawn === entry.texture);
+    return !entry || this.isResident(key, entry);
   }
 
   /**
    * @param key - A texture's key.
-   * @returns What it holds on the GPU and draws, or null for one holding nothing there yet.
+   * @returns What it holds on the GPU and draws, or null for one holding nothing there yet; an evicted key holds
+   *   nothing there, and goes up again with the uploads.
    */
   public getUploaded(key: string): Nullable<Texture> {
     const entry: Maybe<ITextureEntry> = this.entries.get(key);
 
-    return entry && !entry.isDecoding && entry.drawn === entry.texture ? entry.drawn : null;
+    return entry && this.isResident(key, entry) ? entry.drawn : null;
+  }
+
+  /**
+   * Lets a key's texture go on the GPU, an array's layer holding a copy of it: whatever asks for it again has it
+   * uploaded again, within the budget.
+   *
+   * @param key - A texture's key.
+   * @returns The texture let go, or null for a key holding nothing on the GPU.
+   */
+  public evict(key: string): Nullable<Texture> {
+    const entry: Maybe<ITextureEntry> = this.entries.get(key);
+
+    if (!entry?.drawn || entry.isEvicted || entry.isDecoding || entry.drawn !== entry.texture) {
+      return null;
+    }
+
+    entry.isEvicted = true;
+    entry.drawn.dispose();
+
+    return entry.drawn;
   }
 
   /** Whether any texture waits to go up. */
@@ -195,7 +218,7 @@ export class RendererTextures {
 
       const entry: Maybe<ITextureEntry> = this.entries.get(key);
 
-      if (!entry?.texture || entry.drawn === entry.texture) {
+      if (!entry?.texture || (entry.drawn === entry.texture && !entry.isEvicted)) {
         continue;
       }
 
@@ -209,11 +232,14 @@ export class RendererTextures {
   }
 
   public dispose(): void {
-    this.entries.forEach((entry: ITextureEntry) => {
-      entry.texture?.dispose();
+    this.entries.forEach(({ drawn, isEvicted, texture }: ITextureEntry) => {
+      // An evicted texture went already.
+      if (texture && (texture !== drawn || !isEvicted)) {
+        texture.dispose();
+      }
 
-      if (entry.drawn !== entry.texture) {
-        entry.drawn?.dispose();
+      if (drawn && drawn !== texture && !isEvicted) {
+        drawn.dispose();
       }
     });
     this.entries.clear();
@@ -224,7 +250,7 @@ export class RendererTextures {
     let entry: Maybe<ITextureEntry> = this.entries.get(key);
 
     if (!entry) {
-      entry = { drawn: null, isDecoding: false, samplers: new Map(), texture: null, version: 0 };
+      entry = { drawn: null, isDecoding: false, isEvicted: false, samplers: new Map(), texture: null, version: 0 };
       this.entries.set(key, entry);
     }
 
@@ -251,20 +277,39 @@ export class RendererTextures {
     }
   }
 
-  /** Points every sampler of an entry at what it draws now, letting go of what it drew before. */
+  /**
+   * @returns Whether what a key holds is on the GPU and drawn; an evicted key is queued to go up again.
+   */
+  private isResident(key: string, entry: ITextureEntry): boolean {
+    if (entry.isEvicted) {
+      this.queued.add(key);
+
+      return false;
+    }
+
+    return !entry.isDecoding && entry.drawn === entry.texture;
+  }
+
+  /**
+   * Points every sampler of an entry at what it draws now, letting go of what it drew before. A texture uploaded again
+   * after its eviction is told of too, since what waited for it can draw now.
+   */
   private draw(key: string, entry: ITextureEntry, texture: Nullable<Texture>): void {
     const previous: Nullable<Texture> = entry.drawn;
+    const wasEvicted: boolean = entry.isEvicted;
 
     entry.drawn = texture;
+    entry.isEvicted = false;
     entry.samplers.forEach(
       (placeholder: Texture, sampler: ITextureTarget) => (sampler.value = toDrawn(texture, placeholder))
     );
 
-    if (entry.samplers.size && previous !== texture) {
+    if (entry.samplers.size && (previous !== texture || wasEvicted)) {
       this.onRebound(key);
     }
 
-    if (previous && previous !== texture) {
+    // An evicted texture went already.
+    if (previous && previous !== texture && !wasEvicted) {
       previous.dispose();
     }
   }

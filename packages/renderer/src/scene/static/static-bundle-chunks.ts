@@ -1,7 +1,7 @@
 import { Maybe } from "@xrf/types";
 import { BundleGroup, Object3D } from "three/webgpu";
 
-import { TStaticBatchMesh } from "#/scene/static/static-batch";
+import { TStaticBatchMesh } from "#/scene/static/static-batch-mesh";
 
 /**
  * Batches one set of bundles holds: every bundle costs the frame on its own to replay, and a change records its
@@ -38,11 +38,6 @@ export class StaticBundleChunks {
    */
   public constructor(scenes: ReadonlyArray<Object3D>) {
     this.scenes = scenes;
-  }
-
-  /** How many bundles stand in the scenes. */
-  public get bundles(): number {
-    return this.chunks.filter((chunk: IBundleChunk) => chunk.count > 0).length * this.scenes.length;
   }
 
   /**

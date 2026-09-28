@@ -1,5 +1,5 @@
 import { uniform } from "three/tsl";
-import { PerspectiveCamera, Vector4 } from "three/webgpu";
+import { PerspectiveCamera, UniformNode, Vector4 } from "three/webgpu";
 
 /** Shadow faces drawn at most in one frame, so a level opening fills the atlas over a few frames rather than in one. */
 export const LIGHT_SHADOW_FACE_BUDGET: number = 8;
@@ -18,11 +18,11 @@ export const LIGHT_CLUSTER_CAPACITY: number = 64;
  * sliced exponentially from the near plane to the far one.
  */
 export class LightsUniforms {
-  public readonly count = uniform(0, "uint");
-  public readonly near = uniform(0.1);
-  public readonly far = uniform(1000);
+  public readonly count: UniformNode<"uint", number> = uniform(0, "uint");
+  public readonly near: UniformNode<"float", number> = uniform(0.1);
+  public readonly far: UniformNode<"float", number> = uniform(1000);
   /** The projection's `x` and `y` scales and its offsets, jitter included: `elements` 0, 5, 8 and 9. */
-  public readonly projection = uniform(new Vector4(1, 1, 0, 0));
+  public readonly projection: UniformNode<"vec4", Vector4> = uniform(new Vector4(1, 1, 0, 0));
 
   /**
    * @param camera - The camera drawing the frame, its projection jittered as the frame draws it.

@@ -1,13 +1,13 @@
 import { uniform } from "three/tsl";
-import { Matrix4, PerspectiveCamera } from "three/webgpu";
+import { Matrix4, PerspectiveCamera, UniformNode } from "three/webgpu";
 
 /** One view an occlusion test projects by: the camera's view and projection, and its near plane. */
 export class OcclusionView {
-  public readonly view = uniform(new Matrix4());
-  public readonly projection = uniform(new Matrix4());
-  public readonly near = uniform(0.1);
+  public readonly view: UniformNode<"mat4", Matrix4> = uniform(new Matrix4());
+  public readonly projection: UniformNode<"mat4", Matrix4> = uniform(new Matrix4());
+  public readonly near: UniformNode<"float", number> = uniform(0.1);
   /** One once a view has been taken, zero before: a test against no view occludes nothing. */
-  public readonly isTaken = uniform(0);
+  public readonly isTaken: UniformNode<"float", number> = uniform(0);
 
   /**
    * @param camera - The camera, with its matrices current.

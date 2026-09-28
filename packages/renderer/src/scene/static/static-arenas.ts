@@ -1,10 +1,10 @@
 import { Maybe, Nullable } from "@xrf/types";
-import { BufferAttribute, StorageBufferNode } from "three/webgpu";
 
 import { SceneGeometry } from "#/scene/geometry/scene-geometry";
 import { StaticArena } from "#/scene/static/static-arena";
 import { IStaticRange } from "#/scene/static/static-range";
 import { IStaticRoom } from "#/scene/static/static-room";
+import { StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
 
 /** A geometry placed in an arena, and how many objects draw it from there. */
 interface IPlacement {
@@ -23,38 +23,27 @@ export class StaticArenas {
   private readonly placements: Map<SceneGeometry, IPlacement> = new Map();
   /** Each geometry's layout, which takes sorting its attributes to tell. */
   private readonly signatures: WeakMap<SceneGeometry, Nullable<string>> = new WeakMap();
-  private readonly onGrown: (arena: StaticArena) => void;
-  private readonly onDisposed: (arena: StaticArena) => void;
+  private readonly buffers: StaticDrawBuffers;
   private readonly toUpcoming: () => Iterable<SceneGeometry>;
-  private readonly toLimit: () => number;
-  private readonly entryNode: StorageBufferNode<"uvec2">;
-  private readonly rangeNode: StorageBufferNode<"uvec4">;
-  /** Buffers of arenas gone, whose GPU buffers go once nothing binds them. */
-  private retired: Array<BufferAttribute> = [];
 
   /**
-   * @param onGrown - Told an arena replaced its buffers, which whatever draws them binds once it records again.
-   * @param onDisposed - Told an arena goes, with the static draws, and whatever draws it with it.
+   * @param buffers - What every static draw reads: the lists and ranges a clustered draw reads, the storage limit
+   *   that caps an arena's buffers, and where the buffers they replace go.
    * @param toUpcoming - The geometries objects still waiting to draw will draw statically, which a growing arena
    *   makes room for at once.
-   * @param toLimit - Bytes one storage buffer may hold on the device, which caps an arena's buffers.
-   * @param entryNode - Every view's kept clusters, which a clustered draw's instances are.
-   * @param rangeNode - Every cluster's range, which an entry names.
    */
-  public constructor(
-    onGrown: (arena: StaticArena) => void,
-    onDisposed: (arena: StaticArena) => void,
-    toUpcoming: () => Iterable<SceneGeometry>,
-    toLimit: () => number,
-    entryNode: StorageBufferNode<"uvec2">,
-    rangeNode: StorageBufferNode<"uvec4">
-  ) {
-    this.entryNode = entryNode;
-    this.rangeNode = rangeNode;
-    this.onGrown = onGrown;
-    this.onDisposed = onDisposed;
+  public constructor(buffers: StaticDrawBuffers, toUpcoming: () => Iterable<SceneGeometry>) {
+    this.buffers = buffers;
     this.toUpcoming = toUpcoming;
-    this.toLimit = toLimit;
+  }
+
+  /** Bumped whenever an arena replaces its buffers, which whatever draws them binds once it records again. */
+  public get generation(): number {
+    let generation: number = 0;
+
+    this.arenas.forEach((arena: StaticArena) => (generation += arena.generation));
+
+    return generation;
   }
 
   /**
@@ -71,7 +60,12 @@ export class StaticArenas {
     let arena: Maybe<StaticArena> = this.arenas.get(signature);
 
     if (!arena) {
-      arena = new StaticArena(geometry.buffer, this.entryNode, this.rangeNode);
+      arena = new StaticArena(
+        geometry.buffer,
+        this.buffers.listEntries,
+        this.buffers.clusterRangeWords,
+        this.buffers.retirement
+      );
       this.arenas.set(signature, arena);
     }
 
@@ -87,8 +81,7 @@ export class StaticArenas {
 
     if (!placement) {
       const arena: Nullable<StaticArena> = this.toArena(geometry);
-      const limit: number = this.toLimit();
-      const generation: Nullable<number> = arena?.generation ?? null;
+      const limit: number = this.buffers.storageLimit;
 
       placement = {
         range: arena
@@ -100,10 +93,6 @@ export class StaticArenas {
         users: 0,
       };
       this.placements.set(geometry, placement);
-
-      if (arena && arena.generation !== generation) {
-        this.onGrown(arena);
-      }
     }
 
     placement.users += 1;
@@ -128,16 +117,6 @@ export class StaticArenas {
     }
 
     placement.range.arena.free(placement.range);
-  }
-
-  /** @returns Every arena's buffers replaced or given up since the last call, for their GPU buffers to go. */
-  public takeRetired(): Array<BufferAttribute> {
-    const retired: Array<BufferAttribute> = this.retired;
-
-    this.arenas.forEach((arena: StaticArena) => retired.push(...arena.takeRetired()));
-    this.retired = [];
-
-    return retired;
   }
 
   private toSignature(geometry: SceneGeometry): Nullable<string> {
@@ -168,11 +147,7 @@ export class StaticArenas {
   }
 
   public dispose(): void {
-    this.arenas.forEach((arena: StaticArena) => {
-      this.onDisposed(arena);
-      arena.dispose();
-      this.retired.push(...arena.takeRetired());
-    });
+    this.arenas.forEach((arena: StaticArena) => arena.dispose());
     this.arenas.clear();
     this.placements.clear();
   }

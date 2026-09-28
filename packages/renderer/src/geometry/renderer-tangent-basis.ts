@@ -3,6 +3,13 @@ import { IRendererGeometry } from "#/contract/scene/renderer-geometry";
 /** Three components of a vector. */
 type TVector = [number, number, number];
 
+/** The squared length under which a vertex's summed tangent says nothing, as mirrored seams leave it. */
+const DEGENERATE: number = 1e-12;
+
+const X_AXIS: TVector = [1, 0, 0];
+
+const Y_AXIS: TVector = [0, 1, 0];
+
 /**
  * Adds the tangent basis a bump pair rotates through, derived from the uvs, for geometry that carries none.
  *
@@ -17,14 +24,18 @@ export function withRendererTangentBasis(geometry: IRendererGeometry): IRenderer
   }
 
   const count: number = position.length / 3;
-  const corners: ArrayLike<number> = geometry.index ?? Array.from({ length: count }, (_, at: number) => at);
+  const corners: ArrayLike<number> = geometry.index ?? Array.from({ length: count }, (_: unknown, at: number) => at);
   const tangentSum: Float64Array = new Float64Array(count * 3);
   const binormalSum: Float64Array = new Float64Array(count * 3);
 
-  for (let at = 0; at + 2 < corners.length; at += 3) {
+  for (let at: number = 0; at + 2 < corners.length; at += 3) {
     const triangle: TVector = [corners[at], corners[at + 1], corners[at + 2]];
-    const edge1: TVector = toVector((axis) => position[triangle[1] * 3 + axis] - position[triangle[0] * 3 + axis]);
-    const edge2: TVector = toVector((axis) => position[triangle[2] * 3 + axis] - position[triangle[0] * 3 + axis]);
+    const edge1: TVector = toVector(
+      (axis: number) => position[triangle[1] * 3 + axis] - position[triangle[0] * 3 + axis]
+    );
+    const edge2: TVector = toVector(
+      (axis: number) => position[triangle[2] * 3 + axis] - position[triangle[0] * 3 + axis]
+    );
     const du1: number = uv[triangle[1] * 2] - uv[triangle[0] * 2];
     const dv1: number = uv[triangle[1] * 2 + 1] - uv[triangle[0] * 2 + 1];
     const du2: number = uv[triangle[2] * 2] - uv[triangle[0] * 2];
@@ -37,7 +48,7 @@ export function withRendererTangentBasis(geometry: IRendererGeometry): IRenderer
     }
 
     for (const corner of triangle) {
-      for (let axis = 0; axis < 3; axis += 1) {
+      for (let axis: number = 0; axis < 3; axis += 1) {
         tangentSum[corner * 3 + axis] += (edge1[axis] * dv2 - edge2[axis] * dv1) / determinant;
         binormalSum[corner * 3 + axis] += (edge2[axis] * du1 - edge1[axis] * du2) / determinant;
       }
@@ -47,15 +58,15 @@ export function withRendererTangentBasis(geometry: IRendererGeometry): IRenderer
   const tangent: Float32Array = new Float32Array(count * 3);
   const binormal: Float32Array = new Float32Array(count * 3);
 
-  for (let vertex = 0; vertex < count; vertex += 1) {
-    const n: TVector = toVector((axis) => normal[vertex * 3 + axis]);
-    const sum: TVector = toVector((axis) => tangentSum[vertex * 3 + axis]);
+  for (let vertex: number = 0; vertex < count; vertex += 1) {
+    const n: TVector = toVector((axis: number) => normal[vertex * 3 + axis]);
+    const sum: TVector = toVector((axis: number) => tangentSum[vertex * 3 + axis]);
     const along: number = dot(n, sum);
-    let t: TVector = toVector((axis) => sum[axis] - n[axis] * along);
+    let t: TVector = toVector((axis: number) => sum[axis] - n[axis] * along);
 
-    if (dot(t, t) === 0) {
-      // Nothing accumulated here, so any direction in the surface will do rather than a zero basis.
-      t = cross([n[2], n[0], n[1]], n);
+    if (dot(t, t) < DEGENERATE) {
+      // Nothing accumulated here, or what did cancelled out, so any direction in the surface will do.
+      t = cross(Math.abs(n[0]) < 0.9 ? X_AXIS : Y_AXIS, n);
     }
 
     t = normalise(t);
@@ -65,10 +76,10 @@ export function withRendererTangentBasis(geometry: IRendererGeometry): IRenderer
     if (
       dot(
         b,
-        toVector((axis) => binormalSum[vertex * 3 + axis])
+        toVector((axis: number) => binormalSum[vertex * 3 + axis])
       ) < 0
     ) {
-      b = toVector((axis) => -b[axis]);
+      b = toVector((axis: number) => -b[axis]);
     }
 
     tangent.set(t, vertex * 3);

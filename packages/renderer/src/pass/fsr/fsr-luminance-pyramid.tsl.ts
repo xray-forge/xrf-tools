@@ -1,7 +1,9 @@
 import { float, Fn, int, screenCoordinate, select, texture, vec2 } from "three/tsl";
 import { Node, Texture } from "three/webgpu";
 
-import { IFsrConstants, IFsrInputs, toClampedUv, toLogLuma, toScalarTexel } from "#/pass/fsr/fsr-common.tsl";
+import { toClampedUv, toLogLuma, toScalarTexel } from "#/pass/fsr/fsr-common.tsl";
+import { IFsrConstants } from "#/pass/fsr/fsr-constants";
+import { IFsrInputs } from "#/pass/fsr/fsr-inputs";
 import { loadClamped, toTextureSize } from "#/shader/texel.tsl";
 
 // `ffx_fsr2_compute_luminance_pyramid.h`: SPD's box reduction of the frame's log luma, as far as the mip the locks watch

@@ -1,5 +1,11 @@
 import { Maybe, Nullable } from "@xrf/types";
-import { CompressedArrayTexture, CompressedPixelFormat, CompressedTexture, Texture } from "three/webgpu";
+import {
+  CompressedArrayTexture,
+  CompressedPixelFormat,
+  CompressedTexture,
+  CompressedTextureMipmap,
+  Texture,
+} from "three/webgpu";
 
 import { DDS_BLOCK_SIZE } from "#/dds/dds-block-format";
 import { ITextureCopy } from "#/internals/texture-copy";
@@ -132,6 +138,20 @@ export class TextureArray {
   }
 
   /**
+   * @param key - A texture's key, sampled from here by one more surface, whatever its own texture holds now.
+   * @returns Whether it is held here, so the surface samples its layer.
+   */
+  public retain(key: string): boolean {
+    const held: Maybe<ITextureArrayLayer> = this.layers.get(key);
+
+    if (held) {
+      held.users += 1;
+    }
+
+    return Boolean(held);
+  }
+
+  /**
    * @param key - A texture's key one surface no longer samples from here.
    * @returns Whether no surface samples it any more, so its layer was given back.
    */
@@ -156,12 +176,12 @@ export class TextureArray {
 
   /**
    * @param key - A key held here whose texture was replaced by another of the class, copied into its layer again.
-   * @param source - What it holds now.
+   * @param source - What it holds now; the texture its layer was copied from, uploaded again, copies nothing.
    */
   public refresh(key: string, source: Texture): void {
     const held: Maybe<ITextureArrayLayer> = this.layers.get(key);
 
-    if (held) {
+    if (held && held.source !== source) {
       held.source = source;
       this.copies.add(key);
     }
@@ -189,10 +209,13 @@ export class TextureArray {
     const outgrown: Nullable<CompressedArrayTexture> = this.outgrown;
 
     if (outgrown) {
+      // Layers let go since it was outgrown are nothing's, and may lie past the end of an array fitted since.
+      const layers: number = Math.min(this.outgrownLayers, this.used);
+
       this.outgrown = null;
 
-      if (this.outgrownLayers > 0) {
-        this.pushCopies(flush, outgrown, 0, this.outgrownLayers, 0);
+      if (layers > 0) {
+        this.pushCopies(flush, outgrown, 0, layers, 0);
       }
 
       flush.disposals.push(outgrown);
@@ -206,14 +229,32 @@ export class TextureArray {
       const held: ITextureArrayLayer = this.layers.get(key) as ITextureArrayLayer;
 
       this.pushCopies(flush, held.source, 0, 1, held.layer);
-      // Its layer is the only copy anything samples from now on.
-      flush.disposals.push(held.source);
       flush.evicted.push(key);
     }
 
     this.copies.clear();
 
     return flush;
+  }
+
+  /**
+   * @param copy - A copy of a key's layer the frame could not make.
+   * @returns The key, copied again with the next flush, or null for a copy of no key's layer here.
+   */
+  public retry(copy: ITextureCopy): Nullable<string> {
+    if (copy.destination !== this.texture) {
+      return null;
+    }
+
+    for (const [key, held] of this.layers) {
+      if (held.layer === copy.destinationLayer && held.source === copy.source) {
+        this.copies.add(key);
+
+        return key;
+      }
+    }
+
+    return null;
   }
 
   /** What to dispose where the array goes whole: itself, and anything it still waits to let go. */
@@ -288,7 +329,7 @@ export class TextureArray {
   private createTexture(layers: number): CompressedArrayTexture {
     const { prototype } = this;
     const { width, height } = prototype.image as { width: number; height: number };
-    const mipmaps = prototype.mipmaps.map((mipmap, level: number) => ({
+    const mipmaps = prototype.mipmaps.map((mipmap: CompressedTextureMipmap, level: number) => ({
       data: this.zeros(this.extents[level].bytes),
       height: (mipmap as { height: number }).height,
       width: (mipmap as { width: number }).width,
@@ -324,7 +365,7 @@ export class TextureArray {
 function toExtents(prototype: CompressedTexture): Array<ILevelExtent> {
   const { width, height } = prototype.image as { width: number; height: number };
 
-  return prototype.mipmaps.map((mipmap, level: number) => ({
+  return prototype.mipmaps.map((mipmap: CompressedTextureMipmap, level: number) => ({
     bytes: (mipmap as { data: ArrayBufferView }).data.byteLength,
     height: Math.ceil(Math.max(1, height >> level) / DDS_BLOCK_SIZE) * DDS_BLOCK_SIZE,
     width: Math.ceil(Math.max(1, width >> level) / DDS_BLOCK_SIZE) * DDS_BLOCK_SIZE,

@@ -15,8 +15,9 @@ import {
   vec2,
   vec3,
 } from "three/tsl";
-import { ComputeNode, Node, StorageBufferAttribute } from "three/webgpu";
+import { ComputeNode, Node } from "three/webgpu";
 
+import { ILightBinningBuffers } from "#/scene/lights/light-binning-buffers";
 import { LIGHT_RECORD } from "#/scene/lights/light-record";
 import { loopNamed } from "#/shader/named-loop.tsl";
 import {
@@ -27,15 +28,6 @@ import {
   LIGHT_CLUSTERS_Z,
   LightsUniforms,
 } from "#/uniforms/lights-uniforms";
-
-/** What the lights are binned from and into. */
-export interface ILightBinningBuffers {
-  readonly records: StorageBufferAttribute;
-  readonly counts: StorageBufferAttribute;
-  readonly items: StorageBufferAttribute;
-  /** Lights each cluster was reached by and could not hold. */
-  readonly drops: StorageBufferAttribute;
-}
 
 /**
  * @param uniforms - What the lights are binned by.
@@ -146,7 +138,7 @@ export function createLightBinning(
     const kept = uint(0).toVar();
     const dropped = uint(0).toVar();
 
-    loopNamed({ end: uniforms.count, name: "light", start: uint(0), type: "uint" }, (light) => {
+    loopNamed({ end: uniforms.count, name: "light", start: uint(0), type: "uint" }, (light: Node<"uint">) => {
       const sphere = records.element(light.mul(vectors).add(LIGHT_RECORD.sphere));
       const nearest = sphere.xyz.clamp(least, most);
       const offset = sphere.xyz.sub(nearest);

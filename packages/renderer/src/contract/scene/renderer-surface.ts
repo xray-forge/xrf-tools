@@ -1,73 +1,7 @@
-import { TRendererColor } from "#/contract/renderer-lighting";
-
-/**
- * How a surface reaches the frame, as the engine's blender for it decides.
- */
-export enum ERendererDraw {
-  /** Into the G-buffer, every texel. */
-  OPAQUE = "opaque",
-  /** Into the G-buffer, texels at or below the reference discarded. */
-  CUT_OUT = "cutOut",
-  /** Composited by alpha, after the deferred passes. */
-  BLENDED = "blended",
-  /** Added to what is under it, whole. */
-  ADDED = "added",
-  /** Added to what is under it, weighted by its own alpha. */
-  ALPHA_ADDED = "alphaAdded",
-  /** Multiplied into what is under it. */
-  MULTIPLIED = "multiplied",
-  /** Multiplied at twice the strength, so mid grey leaves what is under it alone. */
-  MULTIPLIED_2X = "multiplied2x",
-  /** Submitted and drawn, writing nothing. */
-  INVISIBLE = "invisible",
-  /** Water, as the engine's `water` programs draw it: rippled, reflecting the sky, distorting what is behind it. */
-  WATER = "water",
-}
-
-/**
- * The textures a surface samples, by the key each was put under.
- */
-export interface IRendererSurfaceTextures {
-  base?: string;
-  detail?: string;
-  /** The first half of a bump pair: the packed normal and its gloss. */
-  bump?: string;
-  /** The second half: the correction and the height. */
-  bumpCompanion?: string;
-  /** A baked lightmap: hemisphere occlusion in alpha, sun occlusion in green. */
-  hemi?: string;
-  /** Water's normal map, `s_nmap`, sampled twice as it scrolls. */
-  normal?: string;
-  /** Water's foam, `s_leaves`, laid where the water is shallow. */
-  foam?: string;
-  /** Water's distortion, `s_distort`: how far what is behind it is moved. */
-  distortion?: string;
-}
-
-/**
- * Anomaly's own water (`shaders/r2/water.ps` in its gamedata), by the switches each of its programs defines: the whole
- * sky mixed with the base rather than the engine's share of it, a sun highlight, and foam only where asked.
- */
-export interface IRendererAnomalyWater {
-  /** `NEED_REFLECTIONS`: the sky mixed with the base by the base's alpha; without it, the base alone. */
-  isReflecting: boolean;
-  /** `NEED_SPECULARS`: the sun's Phong highlight, four times over. */
-  isSpecular: boolean;
-  /** `NEED_TRANSPARENT`: the base lit before it is mixed. */
-  isTransparent: boolean;
-  /** `NEED_FOAM`: foam in the shallows. */
-  isFoamed: boolean;
-}
-
-/**
- * How a water surface is drawn, as its script's programs say.
- */
-export interface IRendererSurfaceWater {
-  /** A program that blends over what is behind it by how deep the water there is. Plain `water` is drawn whole. */
-  isSoft: boolean;
-  /** Anomaly's model where the program is one of its own, or null for OpenXRay's. */
-  anomaly: IRendererAnomalyWater | null;
-}
+import { TRendererColor } from "#/contract/renderer-color";
+import { ERendererDraw } from "#/contract/scene/renderer-draw";
+import { IRendererSurfaceTextures } from "#/contract/scene/renderer-surface-textures";
+import { IRendererSurfaceWater } from "#/contract/scene/renderer-surface-water";
 
 /**
  * One surface, as a level's shader table or a model's submesh describes it.
@@ -100,34 +34,4 @@ export interface IRendererSurface {
   isImpostor?: boolean;
   /** How a water surface is drawn; only a surface drawn as water reads it. */
   water?: IRendererSurfaceWater;
-}
-
-/**
- * Which pass of the frame draws a surface, as the engine orders them.
- */
-export enum ERendererPass {
-  /** Into the G-buffer, lit by the deferred passes. */
-  DEFERRED = "deferred",
-  /** Into the G-buffer's albedo, before any light: the engine's wall mark phase. */
-  WALLMARK = "wallmark",
-  /** Composited over the tonemapped frame. */
-  FORWARD = "forward",
-  /** Composited over the lit frame before the forward surfaces, the distortion it causes written beside it. */
-  WATER = "water",
-}
-
-/**
- * @param surface - What a consumer puts, or as much of it as decides this.
- * @returns The pass its draw puts it in.
- */
-export function toRendererPass(surface: Pick<IRendererSurface, "draw" | "isWallmark">): ERendererPass {
-  if (surface.draw === ERendererDraw.OPAQUE || surface.draw === ERendererDraw.CUT_OUT) {
-    return ERendererPass.DEFERRED;
-  }
-
-  if (surface.draw === ERendererDraw.WATER) {
-    return ERendererPass.WATER;
-  }
-
-  return surface.isWallmark ? ERendererPass.WALLMARK : ERendererPass.FORWARD;
 }

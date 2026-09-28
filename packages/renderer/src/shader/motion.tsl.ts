@@ -1,7 +1,8 @@
 import { Fn, modelWorldMatrix, positionLocal, varying, vec2, vec4 } from "three/tsl";
 import { Node, NodeBuilder, SkinnedMesh } from "three/webgpu";
 
-import { IBufferPlacedWorlds, isBufferPlacedBuild, toBufferPlacedWorlds } from "#/shader/placement.tsl";
+import { IBufferPlacedWorlds } from "#/shader/buffer-placed-worlds";
+import { isBufferPlacedBuild, toBufferPlacedWorlds } from "#/shader/placement.tsl";
 import { previousSkinnedPosition } from "#/shader/skinned-basis.tsl";
 import { MotionUniforms } from "#/uniforms/motion-uniforms";
 import { RendererUniforms } from "#/uniforms/renderer-uniforms";

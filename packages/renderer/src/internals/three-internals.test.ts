@@ -1,3 +1,7 @@
+/// <reference types="node" />
+
+import { readFileSync } from "node:fs";
+
 import { describe, expect, it } from "@jest/globals";
 import {
   BundleGroup,
@@ -6,14 +10,23 @@ import {
   NodeMaterialObserver,
   Object3D,
   PerspectiveCamera,
+  RenderTarget,
   StorageBufferAttribute,
   StorageBufferNode,
+  WebGPUBackend,
   WebGPURenderer,
 } from "three/webgpu";
 
 import { adoptRendererConventions } from "#/internals/camera-conventions";
-import { RenderObjectRefreshType } from "#/internals/render-object-refresh";
+import { RenderObjectRefreshType } from "#/internals/render-object-refresh-type";
 import { getRendererBackend, IRendererBackend } from "#/internals/renderer-backend";
+
+function readThreeMethod(file: string, method: string): string {
+  const source: string = readFileSync(require.resolve(`three/src/${file}`), "utf8");
+  const start: number = source.indexOf(`\n\t${method}(`);
+
+  return start < 0 ? "" : source.slice(start, source.indexOf("\n\t}\n", start));
+}
 
 /**
  * Every read of three the renderer makes past its types, pinned against the installed three: an upgrade that moves
@@ -84,6 +97,16 @@ describe("three's internals, as the renderer reads them", () => {
     expect(backend.has?.(new StorageBufferAttribute(new Float32Array(4), 4))).toBe(false);
   });
 
+  it("keeps the record of every attribute it uploaded on the renderer, which frees a geometry's buffers", () => {
+    // `destroyGeometryAttribute` deletes through it, as three's own geometry disposal does.
+    const renderer: WebGPURenderer = new WebGPURenderer({ canvas: {} as HTMLCanvasElement });
+    const init: string = String(Object.getPrototypeOf(WebGPURenderer.prototype).init);
+
+    expect(renderer).toHaveProperty("_attributes", null);
+    expect(init).toContain("this._attributes = new Attributes(backend");
+    expect(init).toContain("new Geometries(this._attributes");
+  });
+
   it("lets an object go by an event of its own, which is what its render objects are freed on", () => {
     // `disposeObject`: three's render objects keep an object's geometry until the object or its material is disposed.
     const object: Object3D = new Object3D();
@@ -116,6 +139,51 @@ describe("three's internals, as the renderer reads them", () => {
 
     expect(render.toString()).toContain("renderTargetData.depthInitialized !== true");
     expect(new WebGPURenderer({ canvas: {} as HTMLCanvasElement })).toHaveProperty("_textures");
+  });
+
+  it("frees every colour a target holds as it is sized or let go, and its depth only where it claimed it first", () => {
+    // `RendererTargets.resize`, `ResolvedTarget` and `resizeBorrowedDepthTarget` size a target sharing a texture only
+    // with its owner, before either is allocated; a borrowed depth stays its lender's.
+    const destroy: string = readThreeMethod("renderers/common/Textures.js", "_destroyRenderTarget");
+    const claim: unknown = Object.getOwnPropertyDescriptor(RenderTarget.prototype, "depthTexture")?.set;
+
+    expect(destroy).toContain("this._destroyTexture( textures[ i ] )");
+    expect(destroy).toContain("depthTexture.renderTarget === renderTarget");
+    expect(String(RenderTarget.prototype.setSize)).toContain("this.dispose()");
+    expect(String(claim)).toContain("current.renderTarget === null");
+  });
+
+  it("allocates every colour of a target allocated for the first time again, and keeps its pass views until resized", () => {
+    // `RendererTargets.resize`: the water's target shares the frame's texture, so it joins or leaves with every
+    // target over that texture freed, since a target left allocated keeps views of what the join reallocated.
+    const update: string = readThreeMethod("renderers/common/Textures.js", "updateRenderTarget");
+    const descriptor: string = String(
+      (WebGPUBackend.prototype as unknown as { _getRenderPassDescriptor: unknown })._getRenderPassDescriptor
+    );
+
+    expect(update).toContain("if ( renderTargetData.width !== size.width || size.height !== renderTargetData.height )");
+    expect(update).toContain("if ( textureNeedsUpdate ) texture.needsUpdate = true;");
+    expect(descriptor).toContain("renderTargetData.width !== renderTarget.width");
+  });
+
+  it("stands a shared placeholder in for a texture with nothing to upload, and says so in its data", () => {
+    // `copyTextures` copies nothing into or out of a texture in that state, and finds each end's own on the backend.
+    const update: string = readThreeMethod("renderers/common/Textures.js", "updateTexture");
+
+    expect(update).toContain("backend.createDefaultTexture( texture );");
+    expect(update).toContain("textureData.isDefaultTexture = true;");
+    expect(getRendererBackend(new WebGPURenderer({ canvas: {} as HTMLCanvasElement }))).toHaveProperty("get");
+    expect((WebGPUBackend.prototype as unknown as { get: unknown }).get).toBeInstanceOf(Function);
+  });
+
+  it("takes the target a compile builds for as the compile starts, before it first waits on anything but its init", () => {
+    // `RendererSceneCompiler` sets each pass's target around the call alone, and chains the calls.
+    const compile: string = String(Object.getPrototypeOf(WebGPURenderer.prototype).compileAsync);
+    const prefix: string = compile.slice(0, compile.indexOf("this._renderTarget"));
+
+    expect(prefix.length).toBeGreaterThan(0);
+    expect(prefix.match(/await /g)).toEqual(["await "]);
+    expect(prefix).toContain("await this.init()");
   });
 
   it("builds a reversed depth renderer and a storage buffer node", () => {

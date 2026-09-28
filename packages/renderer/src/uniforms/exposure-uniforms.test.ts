@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
 import { uniform } from "three/tsl";
 
-import { DEFAULT_RENDERER_EXPOSURE_SETTINGS } from "#/contract/renderer-features";
+import { DEFAULT_RENDERER_EXPOSURE_SETTINGS } from "#/contract/renderer-exposure-settings";
 import { ExposureUniforms } from "#/uniforms/exposure-uniforms";
 
 describe("ExposureUniforms", () => {

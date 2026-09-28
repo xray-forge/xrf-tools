@@ -1,16 +1,7 @@
 import { Loop } from "three/tsl";
 import { Node } from "three/webgpu";
 
-/** A loop's bounds, as three's `Loop` takes them, with the name its counter is declared under. */
-export interface INamedLoop<T extends "int" | "uint"> {
-  start: Node<T>;
-  end: Node<T>;
-  type: T;
-  /** `<` unless said otherwise. */
-  condition?: "<" | "<=";
-  /** Unique within any loop it nests in. */
-  name: string;
-}
+import { INamedLoop } from "#/shader/named-loop";
 
 /**
  * Three's `Loop` with its counter named: three names every loop's counter `i` unless told otherwise, so a loop nested

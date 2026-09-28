@@ -1,9 +1,9 @@
 import { Nullable } from "@xrf/types";
-import { RenderTarget, Vector2, WebGPURenderer } from "three/webgpu";
+import { RenderTarget, TypedArray, Vector2, WebGPURenderer } from "three/webgpu";
 
 import { BumpPlaneCapture } from "#/capture/bump-plane-capture";
 import { unpadReadbackRows } from "#/capture/readback-rows";
-import { ERendererCaptureSource, TRendererCaptureSource } from "#/contract/renderer-capture";
+import { ERendererCaptureSource, TRendererCaptureSource } from "#/contract/renderer-capture-source";
 import { PresentPass } from "#/pass/present-pass";
 import { RendererTextures } from "#/texture/renderer-textures";
 
@@ -25,8 +25,7 @@ export class RendererCaptures {
   private readonly textures: RendererTextures;
   private readonly reply: TCaptureReply;
   private pending: Array<IPendingCapture> = [];
-  /** Bumped by every cancel, so a read finishing late can tell its device went away. */
-  private generation: number = 0;
+  private isDisposed: boolean = false;
 
   public constructor(present: PresentPass, textures: RendererTextures, reply: TCaptureReply) {
     this.present = present;
@@ -67,12 +66,14 @@ export class RendererCaptures {
         if (!hasView) {
           this.reply(id, null);
         } else if (drawn) {
-          this.read(renderer, id, drawn.x, drawn.y, (target) => this.present.draw(renderer, source.view, target));
+          this.read(renderer, id, drawn.x, drawn.y, (target: RenderTarget) =>
+            this.present.draw(renderer, source.view, target)
+          );
         } else {
           this.pending.push(capture);
         }
       } else if (this.textures.isUploaded(source.bump) && this.textures.isUploaded(source.companion)) {
-        this.read(renderer, id, source.width, source.height, (target) =>
+        this.read(renderer, id, source.width, source.height, (target: RenderTarget) =>
           this.bumpPlanes.draw(renderer, source.plane, source.bump, source.companion, target)
         );
       } else {
@@ -81,15 +82,10 @@ export class RendererCaptures {
     }
   }
 
-  /** Answers every waiting capture with nothing, and drops every read in flight, for a device going away. */
-  public cancel(): void {
-    this.generation += 1;
-    this.pending.forEach(({ id }) => this.reply(id, null));
-    this.pending = [];
-  }
-
+  /** Drops every capture waiting and every read in flight unanswered: the renderer is gone, which answers them. */
   public dispose(): void {
-    this.cancel();
+    this.isDisposed = true;
+    this.pending = [];
     this.bumpPlanes.dispose();
   }
 
@@ -106,24 +102,21 @@ export class RendererCaptures {
       return;
     }
 
-    const generation: number = this.generation;
     const target: RenderTarget = new RenderTarget(width, height, { depthBuffer: false });
 
     draw(target);
 
     renderer
       .readRenderTargetPixelsAsync(target, 0, 0, width, height)
-      .then((pixels) => createImageBitmap(new ImageData(unpadReadbackRows(pixels as Uint8Array, width, height), width)))
-      .then((image: ImageBitmap) => {
-        if (generation === this.generation) {
-          this.reply(id, image);
-        } else {
-          // Superseded, yet still answered: whoever asked is waiting on it.
-          image.close();
+      .then((pixels: TypedArray) =>
+        createImageBitmap(new ImageData(unpadReadbackRows(pixels as Uint8Array, width, height), width))
+      )
+      .then((image: ImageBitmap) => (this.isDisposed ? image.close() : this.reply(id, image)))
+      .catch(() => {
+        if (!this.isDisposed) {
           this.reply(id, null);
         }
       })
-      .catch(() => this.reply(id, null))
       .finally(() => target.dispose());
   }
 }

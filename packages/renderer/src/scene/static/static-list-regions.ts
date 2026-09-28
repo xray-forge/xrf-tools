@@ -1,11 +1,13 @@
 import { Nullable } from "@xrf/types";
 
-import { IRendererPoolUse } from "#/contract/renderer-report";
+import { IRendererPoolUse } from "#/contract/renderer-pool-use";
 import { DirtySpan } from "#/scene/dirty-span";
 import { RangeAllocator } from "#/scene/static/range-allocator";
 import { StaticBatch } from "#/scene/static/static-batch";
-import { STATIC_HEADROOM, toGrownCapacity } from "#/scene/static/static-growth";
-import { EStaticListSpace, EStaticPool, StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
+import { allocateGrowing, STATIC_HEADROOM } from "#/scene/static/static-growth";
+import { StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
+import { EStaticListSpace } from "#/uniforms/static-list-space";
+import { EStaticPool } from "#/uniforms/static-pool";
 
 /** The pool each list space is. */
 const SPACE_POOLS: Readonly<Record<EStaticListSpace, EStaticPool.SURFACE_LIST | EStaticPool.SHADOW_LIST>> = {
@@ -48,17 +50,24 @@ export class StaticListRegions {
   }
 
   /**
+   * @param space - A list space.
+   * @returns Where its last region ends: no view lists an entry at or past it.
+   */
+  public extent(space: EStaticListSpace): number {
+    return this.spaces[space].extent;
+  }
+
+  /**
    * Gives a batch a region holding what it may list, moving it where it outgrew the one it had.
    *
    * @param batch - A batch whose slots changed.
-   * @returns Whether the batch's region holds its demand; not where the space cannot grow to hold it.
+   * @returns Whether the batch's region holds its demand; not where the space cannot grow to hold it, the region it
+   *   had kept.
    */
   public fit(batch: StaticBatch): boolean {
     if (batch.region && batch.region.capacity >= batch.demand) {
       return true;
     }
-
-    this.release(batch);
 
     const capacity: number = Math.max(1, Math.ceil(batch.demand * STATIC_HEADROOM));
     const start: Nullable<number> = this.allocate(batch.space, capacity);
@@ -67,6 +76,7 @@ export class StaticListRegions {
       return false;
     }
 
+    this.release(batch);
     batch.region = { capacity, start };
     this.write(batch.id, start, capacity, batch.space);
 
@@ -90,31 +100,21 @@ export class StaticListRegions {
     this.span.clear();
   }
 
-  /** A run of a space, grown until one fits or the device's limit says it never will. */
+  /** A run of a space, the space grown once where none fits, or null where the device's limit says it never will. */
   private allocate(space: EStaticListSpace, count: number): Nullable<number> {
     const allocator: RangeAllocator = this.spaces[space];
     const pool: EStaticPool.SURFACE_LIST | EStaticPool.SHADOW_LIST = SPACE_POOLS[space];
-    let start: Nullable<number> = allocator.allocate(count);
 
-    while (start === null) {
-      const capacity: number = toGrownCapacity(
-        allocator.used,
-        count,
-        allocator.capacity,
-        this.buffers.initial(pool),
-        this.buffers.limit(pool)
-      );
-
-      if (capacity <= allocator.capacity) {
-        return null;
+    return allocateGrowing(
+      allocator,
+      count,
+      this.buffers.initial(pool),
+      this.buffers.limit(pool),
+      (capacity: number) => {
+        this.buffers.grow(pool, capacity);
+        allocator.grow(capacity);
       }
-
-      this.buffers.grow(pool, capacity);
-      allocator.grow(capacity);
-      start = allocator.allocate(count);
-    }
-
-    return start;
+    );
   }
 
   private write(batch: number, start: number, capacity: number, space: EStaticListSpace): void {

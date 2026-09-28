@@ -1,7 +1,8 @@
 import { Maybe } from "@xrf/types";
 import { Material, MeshBasicNodeMaterial, WebGPURenderer } from "three/webgpu";
 
-import { ERendererDraw, IRendererSurface } from "#/contract/scene/renderer-surface";
+import { ERendererDraw } from "#/contract/scene/renderer-draw";
+import { IRendererSurface } from "#/contract/scene/renderer-surface";
 import { createOpaqueShadowMaterial, createSurfaceMaterial, ISurfaceMaterial } from "#/material/surface-material";
 import { SurfacePrograms } from "#/material/surface-programs";
 import { SurfaceBatching } from "#/scene/surface/surface-batching";
@@ -41,8 +42,8 @@ export class SurfaceLibrary {
   private readonly opaqueShadow: MeshBasicNodeMaterial;
   /** Which of its surfaces a static batch draws by a material they share. */
   private readonly batching: SurfaceBatching;
-  /** The keys each material is put under, which its users are found by. */
-  private readonly keysOf: Map<ISurfaceMaterial, Set<string>> = new Map();
+  /** The key each material is put under, which its users are found by. */
+  private readonly keyOf: Map<ISurfaceMaterial, string> = new Map();
 
   /**
    * @param textures - Where the materials bind their textures.
@@ -76,7 +77,11 @@ export class SurfaceLibrary {
    */
   public rebind(key: string): void {
     for (const material of this.batching.rebind(key)) {
-      this.keysOf.get(material)?.forEach((surface: string) => this.onReplaced(surface));
+      const surface: Maybe<string> = this.keyOf.get(material);
+
+      if (surface !== undefined) {
+        this.onReplaced(surface);
+      }
     }
   }
 
@@ -87,9 +92,9 @@ export class SurfaceLibrary {
     this.batching.flush(renderer);
   }
 
-  /** Whether any material waits for nothing to draw it. */
+  /** Whether any material waits for nothing to draw it, a shared one no surface draws by among them. */
   public get hasRetired(): boolean {
-    return this.retired.size > 0;
+    return this.retired.size > 0 || this.batching.hasIdle;
   }
 
   public get(key: string): Maybe<ISurfaceMaterial> {
@@ -113,7 +118,7 @@ export class SurfaceLibrary {
     this.descriptions.delete(key);
 
     if (previous) {
-      this.forget(previous, key);
+      this.keyOf.delete(previous);
       this.retired.add(previous);
     }
 
@@ -178,11 +183,6 @@ export class SurfaceLibrary {
 
       this.retired.delete(surface);
 
-      // A material still named under another key draws on; only its retirement under this one ends here.
-      if (this.keysOf.has(surface)) {
-        continue;
-      }
-
       const description: Maybe<string> = this.built.get(surface);
 
       this.batching.untrack(surface);
@@ -215,7 +215,8 @@ export class SurfaceLibrary {
     this.wireframe = undefined;
     this.batching.dispose();
     this.opaqueShadow.dispose();
-    this.keysOf.clear();
+    this.programs.dispose();
+    this.keyOf.clear();
 
     this.materials.clear();
     this.retired.clear();
@@ -242,31 +243,13 @@ export class SurfaceLibrary {
     this.materials.set(key, material);
 
     if (previous) {
-      this.forget(previous, key);
+      this.keyOf.delete(previous);
       this.retired.add(previous);
     }
 
-    let keys: Maybe<Set<string>> = this.keysOf.get(material);
-
-    if (!keys) {
-      keys = new Set();
-      this.keysOf.set(material, keys);
-    }
-
-    keys.add(key);
+    this.keyOf.set(material, key);
     this.batching.track(material, surface);
     this.onReplaced(key);
-  }
-
-  /** Forgets that a material was put under a key. */
-  private forget(material: ISurfaceMaterial, key: string): void {
-    const keys: Maybe<Set<string>> = this.keysOf.get(material);
-
-    keys?.delete(key);
-
-    if (keys && !keys.size) {
-      this.keysOf.delete(material);
-    }
   }
 
   /** What a surface is built from, as one comparable string. */

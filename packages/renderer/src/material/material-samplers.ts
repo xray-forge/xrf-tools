@@ -37,7 +37,7 @@ export class MaterialSamplers {
 
   /** The texture keys bound, which have to be uploaded before the material draws without a stall. */
   public get keys(): ReadonlyArray<string> {
-    return this.bound.map(([key]) => key);
+    return this.bound.map(([key]: [string, TextureNode]) => key);
   }
 
   /**
@@ -66,7 +66,7 @@ export class MaterialSamplers {
 
   /** Lets every binding go, for a material that is going away. */
   public release(): void {
-    this.bound.forEach(([key, sampler]) => this.textures.unbind(key, sampler));
+    this.bound.forEach(([key, sampler]: [string, TextureNode]) => this.textures.unbind(key, sampler));
     this.bound.length = 0;
   }
 }

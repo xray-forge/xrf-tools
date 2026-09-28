@@ -1,6 +1,6 @@
 import { Matrix4, Sphere } from "three/webgpu";
 
-import { RENDERER_FLOATS_PER_INSTANCE } from "#/contract/scene/renderer-object";
+import { RENDERER_FLOATS_PER_INSTANCE } from "#/contract/scene/renderer-instances";
 import { CullView } from "#/visibility/cull-view";
 import { EVisibility } from "#/visibility/visibility";
 
@@ -21,7 +21,7 @@ export function toInstanceSpheres(sphere: Sphere, transforms: Float32Array, plac
   const matrix: Matrix4 = new Matrix4();
   const placed: Sphere = new Sphere();
 
-  for (let index = 0; index < count; index += 1) {
+  for (let index: number = 0; index < count; index += 1) {
     const at: number = index * FLOATS_PER_SPHERE;
 
     matrix.fromArray(transforms, index * RENDERER_FLOATS_PER_INSTANCE).premultiply(placement);
@@ -44,7 +44,7 @@ export function toInstanceSpheres(sphere: Sphere, transforms: Float32Array, plac
 export function collectVisibleInstances(view: CullView, spheres: Float32Array, into: Uint32Array): number {
   let count: number = 0;
 
-  for (let at = 0, index = 0; at < spheres.length; index += 1, at += FLOATS_PER_SPHERE) {
+  for (let at: number = 0, index: number = 0; at < spheres.length; index += 1, at += FLOATS_PER_SPHERE) {
     if (view.classify(spheres[at], spheres[at + 1], spheres[at + 2], spheres[at + 3]) !== EVisibility.OUTSIDE) {
       into[count] = index;
       count += 1;

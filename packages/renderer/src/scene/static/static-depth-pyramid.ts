@@ -1,8 +1,10 @@
 import { Nullable } from "@xrf/types";
 import { ComputeNode, StorageBufferAttribute, Texture, WebGPURenderer } from "three/webgpu";
 
-import { createPyramidShaders, IPyramidLevelShader, PYRAMID_REDUCTION } from "#/scene/static/static-occlusion.tsl";
-import { EStaticPool, StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
+import { IPyramidLevelShader } from "#/scene/static/pyramid-level-shader";
+import { createPyramidShaders, PYRAMID_REDUCTION } from "#/scene/static/static-occlusion.tsl";
+import { StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
+import { EStaticPool } from "#/uniforms/static-pool";
 
 /**
  * The depth a frame drew, reduced level by level to the farthest depth under each texel, for occlusion tests to read
@@ -65,7 +67,7 @@ export class StaticDepthPyramid {
   private fit(width: number, height: number): void {
     const { buffers } = this;
     const texels: number = StaticDepthPyramid.toLevels(width, height, buffers.occlusion.levels.length).reduce(
-      (total: number, [levelWidth, levelHeight]) => total + levelWidth * levelHeight,
+      (total: number, [levelWidth, levelHeight]: [number, number]) => total + levelWidth * levelHeight,
       0
     );
 

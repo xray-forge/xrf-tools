@@ -2,7 +2,7 @@ import { describe, expect, it } from "@jest/globals";
 
 import { EDdsBlockFormat } from "#/dds/dds-block-format";
 import { EDdsChannels } from "#/dds/dds-channels";
-import { getDdsStoredLength, toDdsBlockLayout, toDdsTexelLayout } from "#/dds/dds-layout";
+import { getDdsStoredLength, TDdsLayout, toDdsBlockLayout, toDdsTexelLayout } from "#/dds/dds-layout";
 
 describe("getDdsStoredLength", () => {
   it("costs a block layout whole blocks, and never less than one", () => {
@@ -11,6 +11,16 @@ describe("getDdsStoredLength", () => {
     expect(getDdsStoredLength(layout, 8, 8)).toBe(32);
     // A chain runs below one block, and the smallest levels still cost a whole one.
     expect(getDdsStoredLength(layout, 2, 1)).toBe(8);
+  });
+
+  it("costs a block layout every block a level ends inside of, as a chain of any size does", () => {
+    const layout: TDdsLayout = toDdsBlockLayout(EDdsBlockFormat.BC3, 16);
+
+    expect(getDdsStoredLength(layout, 6, 6)).toBe(4 * 16);
+    expect(getDdsStoredLength(layout, 12, 6)).toBe(6 * 16);
+    // 1024x768's eighth level.
+    expect(getDdsStoredLength(layout, 8, 6)).toBe(4 * 16);
+    expect(getDdsStoredLength(layout, 3, 1)).toBe(16);
   });
 
   it("costs a texel layout what the file stores, not what it expands to", () => {

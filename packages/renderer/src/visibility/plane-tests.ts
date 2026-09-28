@@ -1,5 +1,7 @@
 import { Box3, Sphere, Vector3, Vector4 } from "three/webgpu";
 
+import { EVisibility } from "#/visibility/visibility";
+
 /** A corner of a box, reused. */
 const CORNER: Vector3 = new Vector3();
 
@@ -26,14 +28,44 @@ export function isBoxInPlanes(box: Box3, planes: ReadonlyArray<Vector4>): boolea
 }
 
 /**
+ * @param x - The sphere's centre.
+ * @param y - Its centre.
+ * @param z - Its centre.
+ * @param radius - Its radius.
+ * @param planes - A volume's planes, normals pointing in, `w` the constant.
+ * @returns How much of the sphere the volume holds: none once it is wholly behind a plane.
+ */
+export function toSphereVisibility(
+  x: number,
+  y: number,
+  z: number,
+  radius: number,
+  planes: ReadonlyArray<Vector4>
+): EVisibility {
+  let visibility: EVisibility = EVisibility.INSIDE;
+
+  for (const plane of planes) {
+    const distance: number = plane.x * x + plane.y * y + plane.z * z + plane.w;
+
+    if (distance < -radius) {
+      return EVisibility.OUTSIDE;
+    }
+
+    if (distance < radius) {
+      visibility = EVisibility.INTERSECTS;
+    }
+  }
+
+  return visibility;
+}
+
+/**
  * @param sphere - A sphere.
  * @param planes - A volume's planes, normals pointing in, `w` the constant.
- * @returns Whether any of the sphere may be inside the volume: its centre no further behind any plane than its radius.
+ * @returns Whether any of the sphere may be inside the volume.
  */
 export function isSphereInPlanes(sphere: Sphere, planes: ReadonlyArray<Vector4>): boolean {
   const { center, radius } = sphere;
 
-  return planes.every(
-    (plane: Vector4) => plane.x * center.x + plane.y * center.y + plane.z * center.z + plane.w >= -radius
-  );
+  return toSphereVisibility(center.x, center.y, center.z, radius, planes) !== EVisibility.OUTSIDE;
 }

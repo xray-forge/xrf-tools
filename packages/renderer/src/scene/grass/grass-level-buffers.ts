@@ -1,6 +1,7 @@
 import { IndirectStorageBufferAttribute, StorageBufferAttribute } from "three/webgpu";
 
-import { IRendererGrass, IRendererGrassModel } from "#/contract/scene/renderer-grass";
+import { IRendererGrass } from "#/contract/scene/renderer-grass";
+import { IRendererGrassModel } from "#/contract/scene/renderer-grass-model";
 import { createGrassDither } from "#/scene/grass/grass-dither";
 import { STATIC_DRAW_ARGUMENTS } from "#/uniforms/static-draw-buffers";
 

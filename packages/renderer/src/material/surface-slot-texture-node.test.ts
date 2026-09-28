@@ -1,7 +1,8 @@
 import { describe, expect, it } from "@jest/globals";
 import { NodeFrame, NodeUpdateType, Texture } from "three/webgpu";
 
-import { ESurfaceSlot, getSurfaceSlotPlaceholder, SURFACE_SLOTS, TSurfaceSlotTargets } from "#/material/surface-slot";
+import { ESurfaceSlot, getSurfaceSlotPlaceholder, SURFACE_SLOTS } from "#/material/surface-slot";
+import { TSurfaceSlotTargets } from "#/material/surface-slot-targets";
 import { SurfaceSlotTextureNode } from "#/material/surface-slot-texture-node";
 
 function toFrame(slots: TSurfaceSlotTargets): NodeFrame {

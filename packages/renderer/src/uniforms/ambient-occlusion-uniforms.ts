@@ -1,7 +1,7 @@
 import { uniform } from "three/tsl";
-import { PerspectiveCamera } from "three/webgpu";
+import { PerspectiveCamera, UniformNode } from "three/webgpu";
 
-import { IRendererAmbientOcclusionSettings } from "#/contract/renderer-features";
+import { IRendererAmbientOcclusionSettings } from "#/contract/renderer-ambient-occlusion-settings";
 
 /** XeGTAO's `FinalValuePower`, the curve a strength of one gives. */
 export const AMBIENT_OCCLUSION_FINAL_POWER: number = 2.2;
@@ -17,13 +17,13 @@ const AMBIENT_OCCLUSION_MAX_REACH: number = 0.25;
  */
 export class AmbientOcclusionUniforms {
   /** Metres around a point that what stands there occludes it from: XeGTAO's `EffectRadius * RadiusMultiplier`. */
-  public readonly radius = uniform(AMBIENT_OCCLUSION_RADIUS_MULTIPLIER);
+  public readonly radius: UniformNode<"float", number> = uniform(AMBIENT_OCCLUSION_RADIUS_MULTIPLIER);
   /** What the visibility is raised to: XeGTAO's curve times the strength. */
-  public readonly power = uniform(AMBIENT_OCCLUSION_FINAL_POWER);
+  public readonly power: UniformNode<"float", number> = uniform(AMBIENT_OCCLUSION_FINAL_POWER);
   /** Metres one pixel of the search target spans at a metre from the camera. */
-  public readonly spread = uniform(1);
+  public readonly spread: UniformNode<"float", number> = uniform(1);
   /** Pixels of the search target a horizon is searched across at most. */
-  public readonly reach = uniform(1);
+  public readonly reach: UniformNode<"float", number> = uniform(1);
 
   /**
    * @param settings - What the occlusion is set to.

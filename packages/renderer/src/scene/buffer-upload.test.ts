@@ -17,6 +17,16 @@ describe("queueBufferUpload", () => {
     expect(attribute.version).toBeGreaterThan(version);
   });
 
+  it("joins every run still queued, whoever queued them", () => {
+    const attribute: BufferAttribute = new BufferAttribute(new Uint32Array(100), 1);
+
+    attribute.addUpdateRange(60, 10);
+    attribute.addUpdateRange(5, 2);
+    queueBufferUpload(attribute, 30, 4);
+
+    expect(attribute.updateRanges).toEqual([{ count: 65, start: 5 }]);
+  });
+
   it("queues a run of its own once three sent and cleared the last", () => {
     const attribute: BufferAttribute = new BufferAttribute(new Uint32Array(100), 1);
 

@@ -1,8 +1,8 @@
 import { Nullable } from "@xrf/types";
 import { renderGroup, uniform } from "three/tsl";
-import { Vector3, Vector4 } from "three/webgpu";
+import { UniformNode, Vector3, Vector4 } from "three/webgpu";
 
-import { IRendererTreeWind } from "#/contract/renderer-lighting";
+import { IRendererTreeWind } from "#/contract/renderer-tree-wind";
 
 /**
  * The sway of the trees as their shaders read it, built each frame as `FTreeVisual_setup::calculate` builds it: a wind
@@ -11,13 +11,13 @@ import { IRendererTreeWind } from "#/contract/renderer-lighting";
  */
 export class TreeWindUniforms {
   /** The engine's `wind`: which way the trees lean, and how far, across the ground. */
-  public readonly wind = uniform(new Vector3()).setGroup(renderGroup);
+  public readonly wind: UniformNode<"vec3", Vector3> = uniform(new Vector3()).setGroup(renderGroup);
   /** The engine's `wave`: its direction through the level, and its phase in `w`, both over a turn. */
-  public readonly wave = uniform(new Vector4()).setGroup(renderGroup);
+  public readonly wave: UniformNode<"vec4", Vector4> = uniform(new Vector4()).setGroup(renderGroup);
   /** The wind the frame before, where a tree's vertex stood then for the motion it wrote. */
-  public readonly previousWind = uniform(new Vector3()).setGroup(renderGroup);
+  public readonly previousWind: UniformNode<"vec3", Vector3> = uniform(new Vector3()).setGroup(renderGroup);
   /** The wave the frame before. */
-  public readonly previousWave = uniform(new Vector4()).setGroup(renderGroup);
+  public readonly previousWave: UniformNode<"vec4", Vector4> = uniform(new Vector4()).setGroup(renderGroup);
 
   private trees: Nullable<IRendererTreeWind> = null;
 

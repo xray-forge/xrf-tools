@@ -25,21 +25,13 @@ export interface IRendererImpostors {
 }
 
 /**
- * The impostors an instanced object's places belong to.
- */
-export interface IRendererInstanceImpostors {
-  /** The key the set was put under. */
-  key: string;
-  /** One integer a place: its impostor's position in the set, or -1 for a place none stands in for. */
-  indices: Int32Array;
-}
-
-/**
  * What of a set moves between threads: its arrays, never copied.
  *
  * @param impostors - The set about to be posted.
  * @returns Its buffers.
  */
 export function listRendererImpostorsTransfers(impostors: IRendererImpostors): Array<Transferable> {
-  return [impostors.spheres, impostors.factors, impostors.corners, impostors.normals].map((array) => array.buffer);
+  return [impostors.spheres, impostors.factors, impostors.corners, impostors.normals].map(
+    (array: ArrayBufferView) => array.buffer
+  );
 }

@@ -1,12 +1,18 @@
 import { Nullable } from "@xrf/types";
 import { DoubleSide, MeshBasicNodeMaterial } from "three/webgpu";
 
-import { ERendererDraw, ERendererPass, IRendererSurface } from "#/contract/scene/renderer-surface";
+import { ERendererDraw } from "#/contract/scene/renderer-draw";
+import { ERendererPass } from "#/contract/scene/renderer-pass";
+import { IRendererSurface } from "#/contract/scene/renderer-surface";
+import { TSurfaceArrayTargets } from "#/material/surface-array-targets";
+import { ISurfaceBatchMaterial } from "#/material/surface-batch-material";
 import { applySurfaceCompositing, ISurfaceCompositing, toSurfaceCompositing } from "#/material/surface-compositing";
 import { SurfaceNodeMaterial } from "#/material/surface-node-material";
+import { ISurfacePlain } from "#/material/surface-plain";
 import { SurfacePrograms } from "#/material/surface-programs";
 import { ISurfaceShader } from "#/material/surface-shader";
-import { ESurfaceSlot, TSurfaceArrayTargets, TSurfaceSlotTargets } from "#/material/surface-slot";
+import { ESurfaceSlot } from "#/material/surface-slot";
+import { TSurfaceSlotTargets } from "#/material/surface-slot-targets";
 import { SurfaceSlots } from "#/material/surface-slots";
 import { ISurfaceValues, toSurfaceValues } from "#/material/surface-values";
 import { ISurfaceVariant, toSampledSlots, toSurfaceVariant } from "#/material/surface-variant";
@@ -19,8 +25,8 @@ import { SURFACE_NO_ROW } from "#/uniforms/surface-table";
  */
 export interface ISurfaceMaterial {
   material: MeshBasicNodeMaterial;
-  /** What a part of it drawn plainly draws with: the material itself, or for a batched view the surface's own. */
-  plainMaterial: MeshBasicNodeMaterial;
+  /** What a part of it drawn plainly draws with: its material and shadow, or for a batched view the surface's own. */
+  plain: ISurfacePlain;
   /**
    * Its view in a static batch drawn by a material its surfaces share, or null while it draws static batches by its own
    * material: its array slots' textures not up yet, or of no class an array holds.
@@ -66,10 +72,7 @@ export function createSurfaceMaterial(
   const compositing: Nullable<ISurfaceCompositing> = toSurfaceCompositing(surface);
   const material: SurfaceNodeMaterial = createSharedMaterial(programs, uniforms, slots.targets, values);
 
-  material.fragmentNode = shader.fragmentNode ?? null;
-  material.colorNode = shader.colorNode ?? null;
-  material.alphaTestNode = shader.alphaTestNode ?? null;
-  material.positionViewNode = shader.positionViewNode ?? null;
+  applySurfaceShader(material, shader);
 
   if (variant.isImpostor) {
     // Its quad turns to face the camera, from whichever side it is seen.
@@ -98,34 +101,25 @@ export function createSurfaceMaterial(
         shadow?.dispose();
       }
     },
-    ...toOwnSurfaceDrawing(material),
+    ...toOwnSurfaceDrawing(material, shadow),
     isImpostor: variant.isImpostor,
     keys: slots.keys,
     pass: variant.pass,
-    shadow,
     shadowKeys: isCasting && isCutOut ? slots.keysOf(ESurfaceSlot.BASE) : [],
   };
 }
 
 /**
  * @param material - A surface's own material.
- * @returns What a surface drawing by it says of the static batches: that it draws them by it, reading no row.
+ * @param shadow - What casts it, or null for a surface that casts none.
+ * @returns What a surface drawing by them says of the static batches: that it draws them by them, reading no row,
+ *   and draws its plain parts so too.
  */
 export function toOwnSurfaceDrawing(
-  material: MeshBasicNodeMaterial
-): Pick<ISurfaceMaterial, "batched" | "material" | "plainMaterial" | "row"> {
-  return { batched: null, material, plainMaterial: material, row: SURFACE_NO_ROW };
-}
-
-/** A static batch's shared material, and the texture keys it binds of its own. */
-export interface ISurfaceBatchMaterial {
-  material: SurfaceNodeMaterial;
-  keys: ReadonlyArray<string>;
-  /** What draws its cut-out casters into a shadow map, sharing its arrays; null for a variant casting as opaque. */
-  shadow: Nullable<SurfaceNodeMaterial>;
-  /** The texture keys that shadow binds of its own: the base, where no array holds it. */
-  shadowKeys: ReadonlyArray<string>;
-  dispose(): void;
+  material: MeshBasicNodeMaterial,
+  shadow: Nullable<MeshBasicNodeMaterial>
+): Pick<ISurfaceMaterial, "batched" | "material" | "plain" | "row" | "shadow"> {
+  return { batched: null, material, plain: { material, shadow }, row: SURFACE_NO_ROW, shadow };
 }
 
 /**
@@ -156,10 +150,7 @@ export function createSurfaceBatchMaterial(
   const material: SurfaceNodeMaterial = createSharedMaterial(programs, uniforms, slots.targets, null);
 
   material.surfaceArrays = arrays;
-  material.fragmentNode = shader.fragmentNode ?? null;
-  material.colorNode = shader.colorNode ?? null;
-  material.alphaTestNode = shader.alphaTestNode ?? null;
-  material.positionViewNode = shader.positionViewNode ?? null;
+  applySurfaceShader(material, shader);
 
   const isCutOut: boolean = variant.draw === ERendererDraw.CUT_OUT && !variant.isImpostor;
   let shadow: Nullable<SurfaceNodeMaterial> = null;
@@ -220,6 +211,14 @@ function createShadowMaterial(
   material.side = DoubleSide;
 
   return material;
+}
+
+/** Has a material draw with a shader's nodes. */
+function applySurfaceShader(material: SurfaceNodeMaterial, shader: ISurfaceShader): void {
+  material.fragmentNode = shader.fragmentNode ?? null;
+  material.colorNode = shader.colorNode ?? null;
+  material.alphaTestNode = shader.alphaTestNode ?? null;
+  material.positionViewNode = shader.positionViewNode ?? null;
 }
 
 /** A material drawing with its variant's shared nodes, carrying what they read of it. */

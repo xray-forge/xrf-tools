@@ -1,4 +1,4 @@
-import { describe, expect, it } from "@jest/globals";
+import { describe, expect, it, jest } from "@jest/globals";
 import { storage } from "three/tsl";
 import { BufferAttribute, BufferGeometry, StorageBufferAttribute } from "three/webgpu";
 
@@ -7,8 +7,8 @@ import { EVertexAttribute } from "#/geometry/vertex-attribute";
 import { StaticArena } from "#/scene/static/static-arena";
 import { IStaticRange } from "#/scene/static/static-range";
 import { IStaticRoom } from "#/scene/static/static-room";
+import { StorageRetirement } from "#/uniforms/storage-retirement";
 
-/** A buffer of `count` vertices, positions counting up, drawn backwards by an index where it has one. */
 function createBuffer(count: number, isIndexed: boolean = true): BufferGeometry {
   const buffer: BufferGeometry = new BufferGeometry();
 
@@ -32,15 +32,29 @@ function createBuffer(count: number, isIndexed: boolean = true): BufferGeometry 
   return buffer;
 }
 
-function createArena(buffer: BufferGeometry = createBuffer(3)): StaticArena {
+function createArena(
+  buffer: BufferGeometry = createBuffer(3),
+  retirement: StorageRetirement = new StorageRetirement()
+): StaticArena {
   return new StaticArena(
     buffer,
     storage(new StorageBufferAttribute(new Uint32Array(2), 2), "uvec2", 1).toReadOnly(),
-    storage(new StorageBufferAttribute(new Uint32Array(4), 4), "uvec4", 1).toReadOnly()
+    storage(new StorageBufferAttribute(new Uint32Array(4), 4), "uvec4", 1).toReadOnly(),
+    retirement
   );
 }
 
-/** Nothing placed after the geometry in question. */
+function createRetirement(): { retirement: StorageRetirement; retired: Array<BufferAttribute> } {
+  const retirement: StorageRetirement = new StorageRetirement();
+  const retired: Array<BufferAttribute> = [];
+
+  jest
+    .spyOn(retirement, "retire")
+    .mockImplementation((attributes: Iterable<BufferAttribute>) => void retired.push(...attributes));
+
+  return { retired, retirement };
+}
+
 function toNothingComing(): IStaticRoom {
   return { indices: 0, vertices: 0 };
 }
@@ -108,24 +122,26 @@ describe("StaticArena", () => {
     expect(Array.from(toIndices(arena).subarray(0, 5))).toEqual([2, 1, 0, 0, 1]);
   });
 
-  it("gives a freed geometry's room to the next, and says when it goes empty", () => {
+  it("gives a freed geometry's room to the next", () => {
     const arena: StaticArena = createArena();
     const first: IStaticRange = arena.place(createBuffer(3), toNothingComing, LIMITS) as IStaticRange;
 
     arena.free(first);
 
-    expect(arena.isEmpty).toBe(true);
     expect((arena.place(createBuffer(3), toNothingComing, LIMITS) as IStaticRange).vertexStart).toBe(0);
   });
 
   // The nodes stay, pointed at the new buffers, so no shader over the arena is built again.
-  it("grows by replacing its buffers behind the same nodes, keeping what they held, and retires the old", () => {
-    const arena: StaticArena = createArena();
+  it("grows by replacing its short buffer behind the same node, keeping what it held, and retires the old", () => {
+    const { retired, retirement } = createRetirement();
+    const arena: StaticArena = createArena(createBuffer(3), retirement);
 
     arena.place(createBuffer(3), toNothingComing, LIMITS);
 
     const generation: number = arena.generation;
     const node = arena.wordNode;
+    const words: BufferAttribute = arena.wordNode.value;
+    const index: BufferAttribute = arena.indexNode.value;
     const range: IStaticRange = arena.place(createBuffer(1 << 17), toNothingComing, LIMITS) as IStaticRange;
 
     expect(arena.generation).toBeGreaterThan(generation);
@@ -133,8 +149,10 @@ describe("StaticArena", () => {
     expect(range.vertexStart).toBe(3);
     expect(toWords(arena).length).toBeGreaterThanOrEqual((3 + (1 << 17)) * arena.stride);
     expect(Array.from(toIndices(arena).subarray(0, 3))).toEqual([2, 1, 0]);
-    expect(arena.takeRetired().length).toBeGreaterThan(0);
-    expect(arena.takeRetired()).toEqual([]);
+    // The indices had room: only the words were copied.
+    expect(retired).toContain(words);
+    expect(retired).not.toContain(index);
+    expect(arena.indexNode.value).toBe(index);
   });
 
   it("grows once for everything still to come, so what comes next fits without growing again", () => {
@@ -149,10 +167,21 @@ describe("StaticArena", () => {
     expect(arena.generation).toBe(generation);
   });
 
-  it("holds no geometry past the device's limit", () => {
-    const arena: StaticArena = createArena();
+  // A refused geometry copied the whole arena for nothing, every time one was refused.
+  it("holds no geometry past the device's limit, and copies nothing for it", () => {
+    const { retired, retirement } = createRetirement();
+    const arena: StaticArena = createArena(createBuffer(3), retirement);
+    const limits: IStaticRoom = { indices: 1 << 25, vertices: 1 << 16 };
 
-    expect(arena.place(createBuffer(64), toNothingComing, { indices: 1 << 25, vertices: 32 })).toBeNull();
+    arena.place(createBuffer(3), toNothingComing, limits);
+
+    const generation: number = arena.generation;
+
+    retired.length = 0;
+
+    expect(arena.place(createBuffer(1 << 16), toNothingComing, limits)).toBeNull();
+    expect(arena.generation).toBe(generation);
+    expect(retired).toEqual([]);
   });
 
   // A batch's geometry keys the programs it is drawn with by the arena's layout and mark, as the prototype a material

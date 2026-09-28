@@ -51,7 +51,7 @@ export class PlainShadowCasters {
 
   /**
    * @param planes - A shadow view's planes.
-   * @returns Whether it holds any twin, each shown or hidden by whether it reaches in.
+   * @returns Whether any twin is shown, each shown or hidden by whether it reaches in.
    */
   public show(planes: ReadonlyArray<Vector4>): boolean {
     let isAny: boolean = false;

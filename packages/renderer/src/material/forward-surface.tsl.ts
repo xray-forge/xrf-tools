@@ -1,7 +1,7 @@
 import { Fn, mix, positionView, vec3, vec4 } from "three/tsl";
 import { Node } from "three/webgpu";
 
-import { ERendererDraw } from "#/contract/scene/renderer-surface";
+import { ERendererDraw } from "#/contract/scene/renderer-draw";
 import { ISurfaceInputs } from "#/material/surface-inputs";
 import { ISurfaceShader } from "#/material/surface-shader";
 import { ISurfaceTexel } from "#/material/surface-texel";

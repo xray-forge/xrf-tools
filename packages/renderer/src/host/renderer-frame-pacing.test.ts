@@ -62,24 +62,4 @@ describe("RendererFramePacing", () => {
 
     expect(pacing.isReady).toBe(true);
   });
-
-  it("forgets the frames of a device let go, and never counts them against the next", async () => {
-    const onReady: jest.Mock<() => void> = jest.fn();
-    const pacing: RendererFramePacing = new RendererFramePacing(onReady);
-    const stale: IDeferred = toDeferred();
-
-    pacing.limit = 1;
-    pacing.submitted(stale.promise);
-    pacing.reset();
-
-    expect(pacing.isReady).toBe(true);
-
-    pacing.submitted(new Promise<void>(() => undefined));
-    stale.resolve();
-    await stale.promise;
-    await Promise.resolve();
-
-    expect(pacing.isReady).toBe(false);
-    expect(onReady).not.toHaveBeenCalled();
-  });
 });

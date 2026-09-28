@@ -57,15 +57,18 @@ export function createExposureMeasure(frame: Texture, exposure: ExposureUniforms
     ).toVar();
     const total = float(0).toVar();
 
-    loopNamed({ end: uint(CELL_SAMPLES * CELL_SAMPLES), name: "sample", start: uint(0), type: "uint" }, (sample) => {
-      const offset: Node<"vec2"> = vec2(float(sample.mod(CELL_SAMPLES)), float(sample.div(CELL_SAMPLES)))
-        .add(0.5)
-        .div(CELL_SAMPLES);
-      const at: Node<"vec2"> = cell.add(offset).div(EXPOSURE_CELLS).mul(size);
-      const low: Node<"vec3"> = textureLoad(frame, ivec2(at)).xyz;
+    loopNamed(
+      { end: uint(CELL_SAMPLES * CELL_SAMPLES), name: "sample", start: uint(0), type: "uint" },
+      (sample: Node<"uint">) => {
+        const offset: Node<"vec2"> = vec2(float(sample.mod(CELL_SAMPLES)), float(sample.div(CELL_SAMPLES)))
+          .add(0.5)
+          .div(CELL_SAMPLES);
+        const at: Node<"vec2"> = cell.add(offset).div(EXPOSURE_CELLS).mul(size);
+        const low: Node<"vec3"> = textureLoad(frame, ivec2(at)).xyz;
 
-      total.addAssign(dot(toUntonemapped(low), vec3(...LUMINANCE)).mul(2));
-    });
+        total.addAssign(dot(toUntonemapped(low), vec3(...LUMINANCE)).mul(2));
+      }
+    );
 
     cells.element(instanceIndex).assign(total.div(CELL_SAMPLES * CELL_SAMPLES));
   })().compute(EXPOSURE_CELLS * EXPOSURE_CELLS);
@@ -86,9 +89,12 @@ export function createExposureAdaptation(exposure: ExposureUniforms): ComputeNod
   return Fn(() => {
     const total = float(0).toVar();
 
-    loopNamed({ end: uint(EXPOSURE_CELLS * EXPOSURE_CELLS), name: "cell", start: uint(0), type: "uint" }, (cell) => {
-      total.addAssign(cells.element(cell));
-    });
+    loopNamed(
+      { end: uint(EXPOSURE_CELLS * EXPOSURE_CELLS), name: "cell", start: uint(0), type: "uint" },
+      (cell: Node<"uint">) => {
+        total.addAssign(cells.element(cell));
+      }
+    );
 
     const luminance: Node<"float"> = total.div(EXPOSURE_CELLS * EXPOSURE_CELLS);
     const scale: Node<"float"> = exposure.target.div(luminance.mul(exposure.weight).add(exposure.floor));

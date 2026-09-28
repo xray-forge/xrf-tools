@@ -1,13 +1,9 @@
 import { NodeMaterialObserver } from "three/webgpu";
 
-import {
-  adoptRenderCamera,
-  callBaseNeedsRefresh,
-  IObservedFrame,
-  IObservedObject,
-  RenderObjectRefreshType,
-  TRenderObjectRefreshType,
-} from "#/internals/render-object-refresh";
+import { IObservedFrame } from "#/internals/observed-frame";
+import { IObservedObject } from "#/internals/observed-object";
+import { adoptRenderCamera, callBaseNeedsRefresh } from "#/internals/render-object-refresh";
+import { RenderObjectRefreshType, TRenderObjectRefreshType } from "#/internals/render-object-refresh-type";
 
 /**
  * How three refreshes a static draw's render object before drawing it: fully when its bundle records, and on a replay

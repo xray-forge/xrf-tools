@@ -1,4 +1,3 @@
-import { Nullable } from "@xrf/types";
 import { RenderTarget, Vector2 } from "three/webgpu";
 
 import { IRendererFrame } from "#/pass/renderer-frame";
@@ -14,24 +13,34 @@ export class OverlayPass implements IRendererPass {
 
   private readonly overlays: RendererOverlays;
   private readonly size: Vector2 = new Vector2();
-  /** Where the helpers draw instead of the composited frame, once a pass upscaled it into a target of its own. */
-  private target: Nullable<RenderTarget> = null;
-
-  public constructor(overlays: RendererOverlays) {
-    this.overlays = overlays;
-  }
+  /** The frame the helpers draw over, with a depth of its size. */
+  private target: RenderTarget;
 
   /**
-   * @param target - The frame the helpers draw over from now on, with a depth of its size; null for the composited one.
+   * @param overlays - The helpers.
+   * @param target - The frame they draw over until another is set.
    */
-  public setTarget(target: Nullable<RenderTarget>): void {
+  public constructor(overlays: RendererOverlays, target: RenderTarget) {
+    this.overlays = overlays;
     this.target = target;
   }
 
-  public render({ renderer, viewCamera, targets }: IRendererFrame): void {
+  /**
+   * @param target - The frame the helpers draw over from now on, with a depth of its size.
+   */
+  public setTarget(target: RenderTarget): void {
+    this.target = target;
+  }
+
+  /** The frame the helpers draw over now. */
+  public get frame(): RenderTarget {
+    return this.target;
+  }
+
+  public render({ renderer, viewCamera }: IRendererFrame): void {
     renderer.getDrawingBufferSize(this.size);
     this.overlays.update(viewCamera, this.size.y);
-    renderer.setRenderTarget(this.target ?? targets.composite);
+    renderer.setRenderTarget(this.target);
     renderer.render(this.overlays.scene, viewCamera);
   }
 

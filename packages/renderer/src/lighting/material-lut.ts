@@ -16,9 +16,9 @@ const EPS_S: number = 0.0000001;
 export function createMaterialLut(): Uint8Array {
   const data: Uint8Array = new Uint8Array(MATERIAL_LUT_LDOTN * MATERIAL_LUT_LDOTH * MATERIAL_LUT_COUNT * 2);
 
-  for (let slice = 0; slice < MATERIAL_LUT_COUNT; slice++) {
-    for (let y = 0; y < MATERIAL_LUT_LDOTH; y++) {
-      for (let x = 0; x < MATERIAL_LUT_LDOTN; x++) {
+  for (let slice: number = 0; slice < MATERIAL_LUT_COUNT; slice += 1) {
+    for (let y: number = 0; y < MATERIAL_LUT_LDOTH; y += 1) {
+      for (let x: number = 0; x < MATERIAL_LUT_LDOTN; x += 1) {
         const at: number = ((slice * MATERIAL_LUT_LDOTH + y) * MATERIAL_LUT_LDOTN + x) * 2;
         const isCorner: boolean = y === MATERIAL_LUT_LDOTH - 1 && x === MATERIAL_LUT_LDOTN - 1;
         const [diffuse, specular] = isCorner ? [255, 255] : sampleMaterial(slice, x, y);

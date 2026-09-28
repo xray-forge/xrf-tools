@@ -1,6 +1,6 @@
 import { RenderTarget } from "three/webgpu";
 
-import { ERendererPass } from "#/contract/scene/renderer-surface";
+import { ERendererPass } from "#/contract/scene/renderer-pass";
 import { IRendererFrame } from "#/pass/renderer-frame";
 import { IRendererScenePass } from "#/pass/renderer-scene-pass";
 import { RendererTargets } from "#/pass/renderer-targets";
@@ -11,6 +11,7 @@ import { RendererTargets } from "#/pass/renderer-targets";
  */
 export class WallmarkPass implements IRendererScenePass {
   public readonly name: string = "wallmarks";
+  public readonly isScenePass = true as const;
   public readonly scene: ERendererPass = ERendererPass.WALLMARK;
   public readonly target: RenderTarget;
 

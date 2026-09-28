@@ -1,14 +1,10 @@
-import { Nullable } from "@xrf/types";
+import { Maybe, Nullable } from "@xrf/types";
 
 import { DirtySpan } from "#/scene/dirty-span";
 import { ISceneClusterRun } from "#/scene/geometry/scene-cluster-run";
-import {
-  EStaticPool,
-  EStaticSlotKind,
-  STATIC_NO_BATCH,
-  STATIC_SLOT_WORDS,
-  StaticDrawBuffers,
-} from "#/uniforms/static-draw-buffers";
+import { STATIC_NO_BATCH, STATIC_SLOT_WORDS, StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
+import { EStaticPool } from "#/uniforms/static-pool";
+import { EStaticSlotKind } from "#/uniforms/static-slot-kind";
 import { SURFACE_NO_ROW } from "#/uniforms/surface-table";
 
 /**
@@ -21,6 +17,8 @@ export class StaticDrawPool {
 
   private readonly buffers: StaticDrawBuffers;
   private readonly free: Array<number> = [];
+  /** The slots free again, which a slot released twice is not given out twice by. */
+  private readonly freed: Set<number> = new Set();
   /** Slots handed out at least once; the cull only reads below it. */
   private used: number = 0;
   /** The slots written since the buffers last went up. */
@@ -59,8 +57,12 @@ export class StaticDrawPool {
       return null;
     }
 
-    if (this.free.length) {
-      return this.free.pop() as number;
+    const slot: Maybe<number> = this.free.pop();
+
+    if (slot !== undefined) {
+      this.freed.delete(slot);
+
+      return slot;
     }
 
     if (this.used === this.capacity) {
@@ -98,14 +100,19 @@ export class StaticDrawPool {
   }
 
   /**
-   * @param slot - A slot drawing nothing from now on, free for another draw.
+   * @param slot - A slot drawing nothing from now on, free for another draw; one free already stays as it is.
    */
   public release(slot: number): void {
+    if (this.freed.has(slot) || slot >= this.used) {
+      return;
+    }
+
     (this.buffers.slots.array as Uint32Array).set(
       [0, 0, 0, EStaticSlotKind.NONE, STATIC_NO_BATCH, STATIC_NO_BATCH, SURFACE_NO_ROW, 0],
       slot * STATIC_SLOT_WORDS
     );
     this.free.push(slot);
+    this.freed.add(slot);
     this.touch(slot);
   }
 

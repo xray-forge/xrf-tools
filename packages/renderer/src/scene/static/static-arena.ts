@@ -1,20 +1,33 @@
 import { Maybe, Nullable } from "@xrf/types";
-import { BufferAttribute, BufferGeometry, StorageBufferAttribute, StorageBufferNode, TypedArray } from "three/webgpu";
+import {
+  BufferAttribute,
+  BufferGeometry,
+  InterleavedBufferAttribute,
+  StorageBufferAttribute,
+  StorageBufferNode,
+  TypedArray,
+} from "three/webgpu";
 
-import { EClusterWordFormat, IClusterAttribute, IClusterSource } from "#/geometry/cluster-source";
-import { isPackedTreeGeometry } from "#/geometry/renderer-packed-coordinate";
+import { IClusterAttribute } from "#/geometry/cluster-attribute";
+import { IClusterSource } from "#/geometry/cluster-source";
+import { EClusterWordFormat } from "#/geometry/cluster-word-format";
+import { isPackedTreeGeometry } from "#/geometry/packed-tree-geometry";
 import { EVertexAttribute } from "#/geometry/vertex-attribute";
 import { queueBufferUpload } from "#/scene/buffer-upload";
 import { RangeAllocator } from "#/scene/static/range-allocator";
 import { createArenaNode } from "#/scene/static/static-arena-nodes.tsl";
-import { STATIC_HEADROOM, toGrownCapacity } from "#/scene/static/static-growth";
+import { toFittedCapacity } from "#/scene/static/static-growth";
 import { IStaticRange } from "#/scene/static/static-range";
 import { IStaticRoom } from "#/scene/static/static-room";
+import { StorageRetirement } from "#/uniforms/storage-retirement";
 
 /** Vertices an arena starts with. */
 const INITIAL_VERTICES: number = 1 << 16;
 /** Indices an arena starts with. */
 const INITIAL_INDICES: number = 1 << 18;
+
+/** Nothing still to be placed. */
+const NOTHING_COMING: IStaticRoom = { indices: 0, vertices: 0 };
 
 type TTypedArrayConstructor = new (length: number) => TypedArray;
 
@@ -50,8 +63,11 @@ export class StaticArena implements IClusterSource {
     const attributes: Array<IClusterAttribute> = [];
     let offset: number = 0;
 
-    for (const [name, attribute] of Object.entries(buffer.attributes).sort(([left], [right]) =>
-      left.localeCompare(right)
+    for (const [name, attribute] of Object.entries(buffer.attributes).sort(
+      (
+        [left]: [string, BufferAttribute | InterleavedBufferAttribute],
+        [right]: [string, BufferAttribute | InterleavedBufferAttribute]
+      ) => left.localeCompare(right)
     )) {
       // Read only by water, which draws plainly: an arena stores it for nothing, and would split its layouts by it.
       if (name === EVertexAttribute.PACKED_COLOR) {
@@ -113,23 +129,24 @@ export class StaticArena implements IClusterSource {
 
   private readonly vertices: RangeAllocator = new RangeAllocator();
   private readonly indices: RangeAllocator = new RangeAllocator();
+  private readonly retirement: StorageRetirement;
   private words: StorageBufferAttribute;
   private index: StorageBufferAttribute;
-  /** Buffers a growth replaced, whose GPU buffers go once nothing binds them. */
-  private retired: Array<BufferAttribute> = [];
   private currentGeneration: number = 0;
-  private placed: number = 0;
 
   /**
    * @param buffer - A geometry whose layout the arena holds, which has one (`toSignature`).
    * @param entryNode - Every view's kept clusters, which a clustered draw's instances are.
    * @param rangeNode - Every cluster's range, which an entry names.
+   * @param retirement - Where the buffers a growth replaces go.
    */
   public constructor(
     buffer: BufferGeometry,
     entryNode: StorageBufferNode<"uvec2">,
-    rangeNode: StorageBufferNode<"uvec4">
+    rangeNode: StorageBufferNode<"uvec4">,
+    retirement: StorageRetirement
   ) {
+    this.retirement = retirement;
     this.entryNode = entryNode;
     this.rangeNode = rangeNode;
     this.layout = StaticArena.toAttributes(buffer) as Array<IClusterAttribute>;
@@ -148,49 +165,50 @@ export class StaticArena implements IClusterSource {
     return this.currentGeneration;
   }
 
-  /** Whether no geometry is placed in it. */
-  public get isEmpty(): boolean {
-    return this.placed === 0;
-  }
-
   /**
-   * Copies a geometry in, growing the arena where it does not fit: once for everything still to come where that is
-   * known, since every growth copies and uploads the whole arena again.
+   * Copies a geometry in, growing the arena once where it does not fit: for everything still to come where that is
+   * known, since every growth copies and uploads the whole arena again, and only the buffer that is short.
    *
    * @param buffer - A geometry in the arena's layout.
    * @param toComing - The room the geometries still to be placed after it will take, asked only when the arena grows.
    * @param limits - The most vertices and indices the device lets a buffer of the arena hold.
-   * @returns Where it sits, or null where the arena cannot grow to hold it.
+   * @returns Where it sits, or null where the arena cannot grow to hold it, nothing grown.
    */
   public place(buffer: BufferGeometry, toComing: () => IStaticRoom, limits: IStaticRoom): Nullable<IStaticRange> {
     const vertexCount: number = buffer.getAttribute("position").count;
     const index: ArrayLike<number> = buffer.index?.array ?? StaticArena.createSequence(vertexCount);
+    const isShort: boolean = !this.vertices.fits(vertexCount) || !this.indices.fits(index.length);
+    const coming: IStaticRoom = isShort ? toComing() : NOTHING_COMING;
+    const vertices: Nullable<number> = toFittedCapacity(
+      this.vertices,
+      vertexCount,
+      INITIAL_VERTICES,
+      limits.vertices,
+      () => coming.vertices
+    );
+    const indices: Nullable<number> = toFittedCapacity(
+      this.indices,
+      index.length,
+      INITIAL_INDICES,
+      limits.indices,
+      () => coming.indices
+    );
 
-    if (!this.vertices.capacity || !this.fits(vertexCount, index.length)) {
-      const coming: IStaticRoom = toComing();
-
-      this.grow(
-        StaticArena.toCapacity(this.vertices, vertexCount + coming.vertices, INITIAL_VERTICES, limits.vertices),
-        StaticArena.toCapacity(this.indices, index.length + coming.indices, INITIAL_INDICES, limits.indices)
-      );
-    }
-
-    const vertexStart: Nullable<number> = this.allocate(this.vertices, vertexCount, limits.vertices);
-    const indexStart: Nullable<number> =
-      vertexStart === null ? null : this.allocate(this.indices, index.length, limits.indices);
-
-    if (vertexStart === null || indexStart === null) {
-      if (vertexStart !== null) {
-        this.vertices.release(vertexStart, vertexCount);
-      }
-
+    if (vertices === null || indices === null) {
       return null;
     }
+
+    if (vertices > this.vertices.capacity || indices > this.indices.capacity) {
+      this.grow(vertices, indices);
+    }
+
+    // Both fit now, as sized.
+    const vertexStart: number = this.vertices.allocate(vertexCount) ?? 0;
+    const indexStart: number = this.indices.allocate(index.length) ?? 0;
 
     this.writeVertices(buffer, vertexStart, vertexCount);
     (this.index.array as Uint32Array).set(index, indexStart);
     queueBufferUpload(this.index, indexStart, index.length);
-    this.placed += 1;
 
     return { arena: this, indexCount: index.length, indexStart, vertexCount, vertexStart };
   }
@@ -201,7 +219,6 @@ export class StaticArena implements IClusterSource {
   public free(range: IStaticRange): void {
     this.vertices.release(range.vertexStart, range.vertexCount);
     this.indices.release(range.indexStart, range.indexCount);
-    this.placed -= 1;
   }
 
   /**
@@ -220,19 +237,10 @@ export class StaticArena implements IClusterSource {
     return geometry;
   }
 
-  /** @returns The buffers replaced since the last call, for their GPU buffers to go. */
-  public takeRetired(): Array<BufferAttribute> {
-    const retired: Array<BufferAttribute> = this.retired;
-
-    this.retired = [];
-
-    return retired;
-  }
-
   /** Gives its buffers up, for them to go once nothing binds them. */
   public dispose(): void {
     this.prototype.dispose();
-    this.retired.push(this.words, this.index);
+    this.retirement.retire([this.words, this.index]);
   }
 
   private static createSequence(count: number): Uint32Array {
@@ -272,70 +280,31 @@ export class StaticArena implements IClusterSource {
     queueBufferUpload(this.words, vertexStart * this.stride, vertexCount * this.stride);
   }
 
-  /** Whether both runs fit as the arena stands, without growing it. */
-  private fits(vertexCount: number, indexCount: number): boolean {
-    const vertexStart: Nullable<number> = this.vertices.allocate(vertexCount);
-
-    if (vertexStart === null) {
-      return false;
-    }
-
-    this.vertices.release(vertexStart, vertexCount);
-
-    const indexStart: Nullable<number> = this.indices.allocate(indexCount);
-
-    if (indexStart === null) {
-      return false;
-    }
-
-    this.indices.release(indexStart, indexCount);
-
-    return true;
-  }
-
-  /**
-   * @returns What a buffer grows to so that `wanted` more elements fit beside what it holds, with headroom: at least
-   *   its initial size, more than it was, and never past its limit.
-   */
-  private static toCapacity(allocator: RangeAllocator, wanted: number, initial: number, limit: number): number {
-    return toGrownCapacity(allocator.used, wanted, allocator.capacity, initial, limit);
-  }
-
-  /** A run of a buffer's elements, the buffers grown until it fits or the limit says it never will. */
-  private allocate(allocator: RangeAllocator, count: number, limit: number): Nullable<number> {
-    let start: Nullable<number> = allocator.allocate(count);
-
-    while (start === null && allocator.capacity < limit) {
-      // Room freed in runs too short for it: grown past the whole run it needs.
-      const capacity: number = Math.min(limit, Math.ceil((allocator.capacity + count) * STATIC_HEADROOM));
-
-      if (allocator === this.vertices) {
-        this.grow(capacity, this.indices.capacity);
-      } else {
-        this.grow(this.vertices.capacity, capacity);
-      }
-
-      start = allocator.allocate(count);
-    }
-
-    return start;
-  }
-
   /** Buffers of the sizes given, holding everything the current ones do, uploaded whole with their next use. */
   private grow(vertices: number, indices: number): void {
-    const words: Uint32Array = new Uint32Array(Math.max(vertices, 1) * this.stride);
-    const index: Uint32Array = new Uint32Array(Math.max(indices, 1));
+    if (vertices > this.vertices.capacity) {
+      this.words = this.replace(this.words, vertices * this.stride);
+      this.wordNode.value = this.words;
+      this.vertices.grow(vertices);
+    }
 
-    words.set((this.words.array as Uint32Array).subarray(0, Math.min(this.words.array.length, words.length)));
-    index.set((this.index.array as Uint32Array).subarray(0, Math.min(this.index.array.length, index.length)));
-    this.retired.push(this.words, this.index);
-    this.words = new StorageBufferAttribute(words, 1);
-    this.index = new StorageBufferAttribute(index, 1);
-    this.wordNode.value = this.words;
-    this.indexNode.value = this.index;
-    this.vertices.grow(vertices);
-    this.indices.grow(indices);
+    if (indices > this.indices.capacity) {
+      this.index = this.replace(this.index, indices);
+      this.indexNode.value = this.index;
+      this.indices.grow(indices);
+    }
+
     this.currentGeneration += 1;
+  }
+
+  /** A buffer of the length given holding everything the one it replaces does, which is retired. */
+  private replace(attribute: StorageBufferAttribute, length: number): StorageBufferAttribute {
+    const array: Uint32Array = new Uint32Array(length);
+
+    array.set(attribute.array as Uint32Array);
+    this.retirement.retire([attribute]);
+
+    return new StorageBufferAttribute(array, 1);
   }
 
   /** Three vertices in the arena's layout, and the mark of the arena, which programs built for it are keyed by. */

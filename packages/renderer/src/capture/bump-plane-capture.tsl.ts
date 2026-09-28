@@ -1,7 +1,7 @@
 import { screenUV, vec3, vec4 } from "three/tsl";
 import { Node, TextureNode } from "three/webgpu";
 
-import { ERendererBumpPlane } from "#/contract/renderer-capture";
+import { ERendererBumpPlane } from "#/contract/renderer-bump-plane";
 import { MaterialSamplers } from "#/material/material-samplers";
 import { decodeBumpGloss, decodeBumpHeight, decodeBumpNormal } from "#/shader/bump.tsl";
 import { getFlatBumpCompanionTexture, getFlatBumpTexture } from "#/texture/placeholder-textures";

@@ -21,32 +21,13 @@ import {
   vec3,
   vec4,
 } from "three/tsl";
-import { DepthTexture, Node, Texture } from "three/webgpu";
+import { Node, Texture } from "three/webgpu";
 
+import { ITemporalResolveInputs } from "#/pass/temporal-resolve-inputs";
+import { ITemporalResolveUniforms } from "#/pass/temporal-resolve-uniforms";
 import { toOutputDither } from "#/shader/dither.tsl";
 import { toNearestDrawnTexel, toUpscaledCoverage } from "#/shader/drawn-sample.tsl";
 import { loadClamped, loadDepth, NEIGHBOURHOOD, toTextureSize } from "#/shader/texel.tsl";
-import { CameraUniforms } from "#/uniforms/camera-uniforms";
-import { MotionUniforms } from "#/uniforms/motion-uniforms";
-import { TemporalUniforms } from "#/uniforms/temporal-uniforms";
-
-/** What the resolve reads: this frame at its own size, and the history at the output's. */
-export interface ITemporalInputs {
-  /** The tonemapped frame, drawn jittered. */
-  frame: Texture;
-  depth: DepthTexture;
-  /** How far each pixel's surface moved since the frame before, in texture coordinates, the sky's included. */
-  motion: Texture;
-  /** The resolved frame before: colour, and the distance along the view of what it showed. */
-  history: Texture;
-}
-
-/** The uniforms the resolve reads. */
-export interface ITemporalUniforms {
-  camera: CameraUniforms;
-  motion: MotionUniforms;
-  temporal: TemporalUniforms;
-}
 
 /** Share of a point's distance its history's may differ by and still be taken as the same surface. */
 const DISTANCE_TOLERANCE: number = 0.1;
@@ -63,7 +44,7 @@ const WINDOW: number = -2.29;
  * @param uniforms - The uniforms it reads.
  * @returns Two outputs: the history, colour and distance, and the frame as shown, colour and coverage.
  */
-export function toTemporalResolve(inputs: ITemporalInputs, uniforms: ITemporalUniforms): Node {
+export function toTemporalResolve(inputs: ITemporalResolveInputs, uniforms: ITemporalResolveUniforms): Node {
   const { camera, motion, temporal } = uniforms;
   const inputSize: Node<"vec2"> = toTextureSize(inputs.frame);
   const outputSize: Node<"vec2"> = toTextureSize(inputs.history);

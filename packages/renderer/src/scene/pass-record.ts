@@ -1,4 +1,4 @@
-import { ERendererPass } from "#/contract/scene/renderer-surface";
+import { ERendererPass } from "#/contract/scene/renderer-pass";
 
 /** One of something for every pass that draws the consumer's scene. */
 export type TPassRecord<T> = Record<ERendererPass, T>;

@@ -26,9 +26,10 @@ import {
 } from "three/webgpu";
 
 import { EDdsBlockFormat } from "#/dds/dds-block-format";
-import { DDS_CUBE_FACES, IDdsFile, IDdsRead, readDdsFile } from "#/dds/dds-file";
+import { DDS_CUBE_FACES, IDdsFile, readDdsFile } from "#/dds/dds-file";
 import { EDdsLayout } from "#/dds/dds-layout";
-import { IDdsMipmap } from "#/dds/dds-mipmaps";
+import { IDdsMipmap } from "#/dds/dds-mipmap";
+import { IDdsRead } from "#/dds/dds-read";
 import { IDdsRefusal } from "#/dds/dds-refusal";
 
 /** The engine's `ps_r__tf_Anisotropic` default (`Layers/xrRender/xrRender_console.cpp`). */

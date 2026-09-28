@@ -2,7 +2,7 @@ import { Nullable } from "@xrf/types";
 import { float, Fn, int, log, screenCoordinate, screenUV, select, texture, vec2, vec3, vec4 } from "three/tsl";
 import { Node, RenderTarget, Texture } from "three/webgpu";
 
-import { ERendererDebugView } from "#/contract/renderer-settings";
+import { ERendererDebugView } from "#/contract/renderer-debug-view";
 import { RendererTargets } from "#/pass/renderer-targets";
 import { toUpsampledAmbientOcclusion } from "#/shader/ambient-occlusion.tsl";
 import { toOutputDither } from "#/shader/dither.tsl";

@@ -1,7 +1,7 @@
 import { vec4 } from "three/tsl";
 import { Node } from "three/webgpu";
 
-import { ERendererDraw } from "#/contract/scene/renderer-surface";
+import { ERendererDraw } from "#/contract/scene/renderer-draw";
 import { toImpostorSurfaceShader } from "#/material/impostor-surface.tsl";
 import { ISurfaceInputs } from "#/material/surface-inputs";
 import { ISurfaceShader } from "#/material/surface-shader";

@@ -14,6 +14,23 @@ describe("RangeAllocator", () => {
     expect(allocator.allocate(2)).toBe(8);
   });
 
+  // A draw of no clusters, or of no places, takes nothing and never makes a full pool grow.
+  it("hands a run of none out however full it is, and takes nothing for it", () => {
+    const allocator: RangeAllocator = new RangeAllocator();
+
+    allocator.grow(4);
+    allocator.allocate(4);
+
+    expect(allocator.fits(0)).toBe(true);
+    expect(allocator.fits(1)).toBe(false);
+    expect(allocator.allocate(0)).toBe(0);
+    expect(allocator.used).toBe(4);
+
+    allocator.release(0, 0);
+
+    expect(allocator.used).toBe(4);
+  });
+
   it("joins a released run with its free neighbours, so a longer run fits again", () => {
     const allocator: RangeAllocator = new RangeAllocator();
 

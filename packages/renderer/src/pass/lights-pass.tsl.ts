@@ -22,37 +22,25 @@ import {
   vec3,
   vec4,
 } from "three/tsl";
-import { Data3DTexture, Node, StorageBufferAttribute, StorageBufferNode, Texture, TextureNode } from "three/webgpu";
+import { Node, StorageBufferNode, Texture, TextureNode } from "three/webgpu";
 
-import { ERendererLightShadowFilter } from "#/contract/renderer-features";
-import { TRendererVector } from "#/contract/renderer-lighting";
+import { ERendererLightShadowFilter } from "#/contract/renderer-light-shadow-filter";
+import { TRendererVector } from "#/contract/renderer-vector";
+import { ILightsPassInputs } from "#/pass/lights-pass-inputs";
 import { toLightCluster } from "#/scene/lights/light-clusters.tsl";
 import { LIGHT_RECORD, LIGHT_VECTORS, MAX_LIGHTS } from "#/scene/lights/light-record";
+import { LIGHT_SHADOW_ATLAS_SIZE } from "#/scene/lights/light-shadow-atlas";
 import {
+  ILightShadowFaceBasis,
   LIGHT_SHADOW_POINT_CONE,
   LIGHT_SHADOW_POINT_FACES,
   toLightShadowScale,
 } from "#/scene/lights/light-shadow-faces";
-import { LIGHT_SHADOW_ATLAS_SIZE } from "#/scene/lights/light-shadow-planner";
 import { IGBufferSample } from "#/shader/gbuffer-sample";
-import { IGBufferTextures } from "#/shader/gbuffer-textures";
 import { readGBuffer } from "#/shader/gbuffer.tsl";
 import { loopNamed } from "#/shader/named-loop.tsl";
 import { CameraUniforms } from "#/uniforms/camera-uniforms";
 import { LIGHT_CLUSTER_CAPACITY, LIGHT_CLUSTERS, LightsUniforms } from "#/uniforms/lights-uniforms";
-
-/** What the lights are accumulated from. */
-export interface ILightsPassInputs {
-  gbuffer: IGBufferTextures;
-  records: StorageBufferAttribute;
-  counts: StorageBufferAttribute;
-  items: StorageBufferAttribute;
-  lut: Data3DTexture;
-  /** A sampler a projector slot. */
-  projectors: ReadonlyArray<TextureNode>;
-  /** The shadow atlas's depth, reversed. */
-  atlas: Texture;
-}
 
 /** `gbd.P += gbd.N * 0.015`: the virtual offset `accum_base` moves a point by with the optimised G-buffer. */
 const VIRTUAL_OFFSET: number = 0.015;
@@ -77,38 +65,42 @@ export function toLightsPassFragment(
   uniforms: LightsUniforms,
   filter: ERendererLightShadowFilter
 ): Node<"vec4"> {
-  const records = storage(inputs.records, "vec4", MAX_LIGHTS * LIGHT_VECTORS).toReadOnly();
-  const counts = storage(inputs.counts, "uint", LIGHT_CLUSTERS).toReadOnly();
-  const items = storage(inputs.items, "uint", LIGHT_CLUSTERS * LIGHT_CLUSTER_CAPACITY).toReadOnly();
+  const records: StorageBufferNode<"vec4"> = storage(inputs.records, "vec4", MAX_LIGHTS * LIGHT_VECTORS).toReadOnly();
+  const counts: StorageBufferNode<"uint"> = storage(inputs.counts, "uint", LIGHT_CLUSTERS).toReadOnly();
+  const items: StorageBufferNode<"uint"> = storage(
+    inputs.items,
+    "uint",
+    LIGHT_CLUSTERS * LIGHT_CLUSTER_CAPACITY
+  ).toReadOnly();
 
   return Fn(() => {
     const sample: IGBufferSample = readGBuffer(inputs.gbuffer, camera);
     const { position, normal, slice } = sample.point;
-    const depth = position.z.negate();
+    const depth: Node<"float"> = position.z.negate();
 
-    const cluster = toLightCluster(uniforms, screenUV, depth);
-    const toEye = normalize(position.negate());
-    const offset = position.add(normal.mul(VIRTUAL_OFFSET));
-    const total = vec4(0).toVar();
+    const cluster: Node<"uint"> = toLightCluster(uniforms, screenUV, depth);
+    const toEye: Node<"vec3"> = normalize(position.negate());
+    const offset: Node<"vec3"> = position.add(normal.mul(VIRTUAL_OFFSET));
+    const total: Node<"vec4"> = vec4(0).toVar();
 
     // Nothing drawn there, nothing to light: its depth rebuilds no point.
-    const reaching = sample.depth.greaterThan(0).select(counts.element(cluster), uint(0));
+    const reaching: Node<"uint"> = sample.depth.greaterThan(0).select(counts.element(cluster), uint(0));
 
-    loopNamed({ end: reaching, name: "reaching", start: uint(0), type: "uint" }, (index) => {
-      const base = items.element(cluster.mul(LIGHT_CLUSTER_CAPACITY).add(index)).mul(LIGHT_VECTORS);
-      const place = records.element(base.add(LIGHT_RECORD.position));
-      const color = records.element(base.add(LIGHT_RECORD.color));
-      const axis = records.element(base.add(LIGHT_RECORD.axis));
-      const right = records.element(base.add(LIGHT_RECORD.right));
-      const up = records.element(base.add(LIGHT_RECORD.up));
-      const shadow = records.element(base.add(LIGHT_RECORD.shadow));
-      const isSpot = axis.w.greaterThan(-1);
-      const isShadowed = shadow.z.greaterThan(0);
+    loopNamed({ end: reaching, name: "reaching", start: uint(0), type: "uint" }, (index: Node<"uint">) => {
+      const base: Node<"uint"> = items.element(cluster.mul(LIGHT_CLUSTER_CAPACITY).add(index)).mul(LIGHT_VECTORS);
+      const place: Node<"vec4"> = records.element(base.add(LIGHT_RECORD.position));
+      const color: Node<"vec4"> = records.element(base.add(LIGHT_RECORD.color));
+      const axis: Node<"vec4"> = records.element(base.add(LIGHT_RECORD.axis));
+      const right: Node<"vec4"> = records.element(base.add(LIGHT_RECORD.right));
+      const up: Node<"vec4"> = records.element(base.add(LIGHT_RECORD.up));
+      const shadow: Node<"vec4"> = records.element(base.add(LIGHT_RECORD.shadow));
+      const isSpot: Node<"bool"> = axis.w.greaterThan(-1);
+      const isShadowed: Node<"bool"> = shadow.z.greaterThan(0);
       // `accum_base`, a spot's and a shadowed omni part's, offsets the point; the unshadowed omni shader does not.
-      const point = isSpot.or(isShadowed).select(offset, position);
-      const toPoint = point.sub(place.xyz);
+      const point: Node<"vec3"> = isSpot.or(isShadowed).select(offset, position);
+      const toPoint: Node<"vec3"> = point.sub(place.xyz);
       // `plight_local`: falloff by the squared distance, to zero at 95% of the range.
-      const falloff = saturate(float(1).sub(dot(toPoint, toPoint).mul(place.w)));
+      const falloff: Node<"float"> = saturate(float(1).sub(dot(toPoint, toPoint).mul(place.w)));
       const lookup: ILightShadowLookup = {
         atlas: inputs.atlas,
         axis,
@@ -124,18 +116,21 @@ export function toLightsPassFragment(
 
       // Past the light's reach nothing below adds anything: no material, projector or shadow is read there.
       If(falloff.greaterThan(0), () => {
-        const toLight = normalize(toPoint.negate());
-        const half = normalize(toLight.add(toEye));
-        const material = texture3D(inputs.lut, vec3(dot(toLight, normal), dot(half, normal), slice)).level(float(0));
-        const light = vec4(material.x, material.x, material.x, material.y).mul(falloff).toVar();
+        const toLight: Node<"vec3"> = normalize(toPoint.negate());
+        const half: Node<"vec3"> = normalize(toLight.add(toEye));
+        const material: Node<"vec4"> = texture3D(
+          inputs.lut,
+          vec3(dot(toLight, normal), dot(half, normal), slice)
+        ).level(float(0));
+        const light: Node<"vec4"> = vec4(material.x, material.x, material.x, material.y).mul(falloff).toVar();
 
         If(isSpot, () => {
-          const along = dot(toPoint, axis.xyz);
+          const along: Node<"float"> = dot(toPoint, axis.xyz);
           // In front of the apex and within the cone: the rest of a spot's clusters stays dark, its apex undivided.
-          const isInCone = along.greaterThan(0).and(along.greaterThanEqual(axis.w.mul(toPoint.length())));
+          const isInCone: Node<"bool"> = along.greaterThan(0).and(along.greaterThanEqual(axis.w.mul(toPoint.length())));
 
           If(isInCone, () => {
-            const across = vec2(dot(toPoint, right.xyz), dot(toPoint, up.xyz));
+            const across: Node<"vec2"> = vec2(dot(toPoint, right.xyz), dot(toPoint, up.xyz));
 
             light.mulAssign(toProjected(inputs.projectors, int(up.w), toFaceUv(across, along, right.w)));
 
@@ -182,12 +177,14 @@ interface IPointFace {
 }
 
 /** A point light's faces, each camera's right `direction x up`. */
-const POINT_FACES: ReadonlyArray<IPointFace> = LIGHT_SHADOW_POINT_FACES.map(({ direction, up }): IPointFace => {
-  const [dx, dy, dz] = direction;
-  const [ux, uy, uz] = up;
+const POINT_FACES: ReadonlyArray<IPointFace> = LIGHT_SHADOW_POINT_FACES.map(
+  ({ direction, up }: ILightShadowFaceBasis): IPointFace => {
+    const [dx, dy, dz] = direction;
+    const [ux, uy, uz] = up;
 
-  return { direction, right: [dy * uz - dz * uy, dz * ux - dx * uz, dx * uy - dy * ux], up };
-});
+    return { direction, right: [dy * uz - dz * uy, dz * ux - dx * uz, dx * uy - dy * ux], up };
+  }
+);
 
 /**
  * Texels of its face a point is moved along its normal before it is compared: a departure from the engine, whose maps
@@ -243,19 +240,19 @@ function toLightShadow(
 ): Node<"float"> {
   const { atlas, records, base, axis, right, up, shadow, toPoint, normal, isSpot } = lookup;
   // The face's basis and the point, where the face stands: a spot's in view space, a point light's faces in the world.
-  const faceRight = right.xyz.toVar();
-  const faceUp = up.xyz.toVar();
-  const faceAxis = axis.xyz.toVar();
-  const point = toPoint.toVar();
-  const bent = normal.toVar();
-  const scale = right.w.toVar();
-  const face = uint(0).toVar();
+  const faceRight: Node<"vec3"> = right.xyz.toVar();
+  const faceUp: Node<"vec3"> = up.xyz.toVar();
+  const faceAxis: Node<"vec3"> = axis.xyz.toVar();
+  const point: Node<"vec3"> = toPoint.toVar();
+  const bent: Node<"vec3"> = normal.toVar();
+  const scale: Node<"float"> = right.w.toVar();
+  const face: Node<"uint"> = uint(0).toVar();
 
   If(isSpot.not(), () => {
-    const world = camera.viewToWorld.mul(vec4(toPoint, 0)).xyz.toVar();
-    const size = abs(world);
-    const onX = size.x.greaterThanEqual(size.y).and(size.x.greaterThanEqual(size.z));
-    const onY = size.y.greaterThanEqual(size.z);
+    const world: Node<"vec3"> = camera.viewToWorld.mul(vec4(toPoint, 0)).xyz.toVar();
+    const size: Node<"vec3"> = abs(world);
+    const onX: Node<"bool"> = size.x.greaterThanEqual(size.y).and(size.x.greaterThanEqual(size.z));
+    const onY: Node<"bool"> = size.y.greaterThanEqual(size.z);
 
     face.assign(
       select(
@@ -267,7 +264,7 @@ function toLightShadow(
     scale.assign(toLightShadowScale(LIGHT_SHADOW_POINT_CONE));
     point.assign(world);
     bent.assign(camera.viewToWorld.mul(vec4(normal, 0)).xyz);
-    POINT_FACES.forEach((basis, index: number) => {
+    POINT_FACES.forEach((basis: IPointFace, index: number) => {
       If(face.equal(index), () => {
         faceRight.assign(vec3(...basis.right));
         faceUp.assign(vec3(...basis.up));
@@ -276,33 +273,34 @@ function toLightShadow(
     });
   });
 
-  const rect = records.element(base.add(LIGHT_RECORD.faces).add(face));
-  const texel = float(ATLAS_TEXEL);
-  const side = rect.z.div(texel);
+  const rect: Node<"vec4"> = records.element(base.add(LIGHT_RECORD.faces).add(face));
+  const texel: Node<"float"> = float(ATLAS_TEXEL);
+  const side: Node<"float"> = rect.z.div(texel);
   // A texel of the face across, in metres where the point stands: the face's `2 / scale` of its depth over its texels.
-  const reach = dot(point, faceAxis)
+  const reach: Node<"float"> = dot(point, faceAxis)
     .mul(2)
     .div(scale.mul(side.sub(2)));
-  const shifted = point.add(bent.mul(reach.mul(NORMAL_OFFSET))).toVar();
-  const across = vec2(dot(shifted, faceRight), dot(shifted, faceUp));
-  const along = dot(shifted, faceAxis);
-  const [near, far] = [shadow.x, shadow.y];
-  const depth = max(along, near);
+  const shifted: Node<"vec3"> = point.add(bent.mul(reach.mul(NORMAL_OFFSET))).toVar();
+  const across: Node<"vec2"> = vec2(dot(shifted, faceRight), dot(shifted, faceUp));
+  const along: Node<"float"> = dot(shifted, faceAxis);
+  const near: Node<"float"> = shadow.x;
+  const far: Node<"float"> = shadow.y;
+  const depth: Node<"float"> = max(along, near);
   // The face's own depth as the engine stores it, `0` near and `1` far, moved as `m_TexelAdjust` moves it; the atlas
   // holds depth reversed, `1` near.
-  const engineDepth = far.mul(depth.sub(near)).div(depth.mul(far.sub(near)));
-  const moved = engineDepth.mul(DEPTH_SCALE).add(DEPTH_BIAS[filter]);
-  const reference = float(1).sub(moved);
-  const uv = toFaceUv(across, along, scale);
+  const engineDepth: Node<"float"> = far.mul(depth.sub(near)).div(depth.mul(far.sub(near)));
+  const moved: Node<"float"> = engineDepth.mul(DEPTH_SCALE).add(DEPTH_BIAS[filter]);
+  const reference: Node<"float"> = float(1).sub(moved);
+  const uv: Node<"vec2"> = toFaceUv(across, along, scale);
   // In texels of the atlas: the face maps into its square a texel in, as the engine maps a face into its sub-rect;
   // each tap is kept inside the square, where the engine's kernel may read a neighbour's texel.
-  const corner = rect.xy.div(texel);
-  const least = corner.add(0.5);
-  const most = corner.add(side).sub(0.5);
-  const centre = corner.add(1).add(uv.mul(side.sub(2)));
+  const corner: Node<"vec2"> = rect.xy.div(texel);
+  const least: Node<"vec2"> = corner.add(0.5);
+  const most: Node<"vec2"> = corner.add(side).sub(0.5);
+  const centre: Node<"vec2"> = corner.add(1).add(uv.mul(side.sub(2)));
 
   // A point's faces fade each on its own, as the engine's omni parts do.
-  const faded = rect.w;
+  const faded: Node<"float"> = rect.w;
 
   if (filter === ERendererLightShadowFilter.SOFT) {
     return toPenumbraLit(atlas, centre, least, most, texel, moved).mul(faded);
@@ -316,7 +314,7 @@ function toLightShadow(
     [-1, 1],
     [1, 1],
   ]) {
-    const tap = clamp(centre.add(vec2(x * SHADOW_KERNEL, y * SHADOW_KERNEL)), least, most);
+    const tap: Node<"vec2"> = clamp(centre.add(vec2(x * SHADOW_KERNEL, y * SHADOW_KERNEL)), least, most);
 
     lit = lit.add(toComparedTexels(atlas, tap, texel, reference));
   }
@@ -344,29 +342,29 @@ function toPenumbraLit(
   texel: Node<"float">,
   depth: Node<"float">
 ): Node<"float"> {
-  const found = float(0).toVar();
-  const blockers = float(0).toVar();
-  const texelCentre = floor(centre).add(0.5);
-  const reference = float(1).sub(depth);
+  const found: Node<"float"> = float(0).toVar();
+  const blockers: Node<"float"> = float(0).toVar();
+  const texelCentre: Node<"vec2"> = floor(centre).add(0.5);
+  const reference: Node<"float"> = float(1).sub(depth);
 
   for (const row of [-PCSS_PIXEL, 0, PCSS_PIXEL]) {
     for (const column of [-PCSS_PIXEL, 0, PCSS_PIXEL]) {
-      const at = clamp(texelCentre.add(vec2(column, row)), least, most);
+      const at: Node<"vec2"> = clamp(texelCentre.add(vec2(column, row)), least, most);
       // Held reversed: the engine's own depth is its complement.
-      const stored = float(1).sub(texture(atlas, at.mul(texel)).level(int(0)).x);
-      const isBlocker = float(1).sub(step(depth.sub(0.0001), stored));
+      const stored: Node<"float"> = float(1).sub(texture(atlas, at.mul(texel)).level(int(0)).x);
+      const isBlocker: Node<"float"> = float(1).sub(step(depth.sub(0.0001), stored));
 
       blockers.addAssign(isBlocker);
       found.addAssign(stored.mul(isBlocker));
     }
   }
 
-  const lit = select(blockers.greaterThanEqual(9), float(0), float(1)).toVar();
+  const lit: Node<"float"> = select(blockers.greaterThanEqual(9), float(0), float(1)).toVar();
 
   If(blockers.greaterThanEqual(1).and(blockers.lessThan(9)), () => {
-    const blocker = found.div(blockers);
-    const ratio = saturate(depth.sub(blocker).mul(PCSS_WIDTH).div(blocker));
-    const radius = max(float(PCSS_PIXEL_MIN), ratio.mul(ratio).mul(PCSS_PIXEL));
+    const blocker: Node<"float"> = found.div(blockers);
+    const ratio: Node<"float"> = saturate(depth.sub(blocker).mul(PCSS_WIDTH).div(blocker));
+    const radius: Node<"float"> = max(float(PCSS_PIXEL_MIN), ratio.mul(ratio).mul(PCSS_PIXEL));
     let total: Node<"float"> = float(0);
 
     for (const [x, y] of POISSON_DISK) {
@@ -397,7 +395,7 @@ function toComparedTexels(
   texel: Node<"float">,
   reference: Node<"float">
 ): Node<"float"> {
-  const corner = at.sub(0.5);
+  const corner: Node<"vec2"> = at.sub(0.5);
   const first = floor(corner);
   const blend = corner.sub(first);
 

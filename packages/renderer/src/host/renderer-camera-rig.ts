@@ -3,13 +3,9 @@ import { PerspectiveCamera } from "three/webgpu";
 import { IRendererCameraController } from "#/camera/camera-controller";
 import { FlyCameraController } from "#/camera/fly-camera-controller";
 import { OrbitCameraController } from "#/camera/orbit-camera-controller";
-import {
-  ERendererCameraCommand,
-  ERendererCameraController,
-  IRendererCameraPose,
-  TRendererCamera,
-  TRendererCameraCommand,
-} from "#/contract/renderer-camera";
+import { ERendererCameraController, TRendererCamera } from "#/contract/renderer-camera";
+import { ERendererCameraCommand, TRendererCameraCommand } from "#/contract/renderer-camera-command";
+import { IRendererCameraPose } from "#/contract/renderer-camera-pose";
 import { RenderProxyElement } from "#/input/render-proxy-element";
 import { adoptRendererConventions } from "#/internals/camera-conventions";
 
@@ -18,8 +14,8 @@ const CAMERA_CONTROLLERS: Record<
   ERendererCameraController,
   (element: RenderProxyElement) => IRendererCameraController
 > = {
-  [ERendererCameraController.FLY]: (element) => new FlyCameraController(element),
-  [ERendererCameraController.ORBIT]: (element) => new OrbitCameraController(element),
+  [ERendererCameraController.FLY]: (element: RenderProxyElement) => new FlyCameraController(element),
+  [ERendererCameraController.ORBIT]: (element: RenderProxyElement) => new OrbitCameraController(element),
 };
 
 /**

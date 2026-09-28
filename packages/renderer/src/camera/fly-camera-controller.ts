@@ -2,19 +2,17 @@ import { Maybe, Nullable } from "@xrf/types";
 import { Euler, PerspectiveCamera, Vector3 } from "three/webgpu";
 
 import { IRendererCameraController } from "#/camera/camera-controller";
+import { setCameraAspect, setCameraLens } from "#/camera/camera-lens";
+import { isSameCameraStart, toCameraPose } from "#/camera/camera-pose";
 import { DragCursor } from "#/camera/drag-cursor";
 import { EFlyKey, getFlyKey } from "#/camera/fly-keys";
-import {
-  ERendererCameraCommand,
-  ERendererCameraController,
-  IRendererCameraPose,
-  IRendererFlyCamera,
-  TRendererCamera,
-  TRendererCameraCommand,
-} from "#/contract/renderer-camera";
-import { ERenderInput } from "#/contract/renderer-input";
-import { TRendererVector } from "#/contract/renderer-lighting";
-import { IRenderProxyEvent, RenderProxyElement } from "#/input/render-proxy-element";
+import { ERenderInput } from "#/contract/render-input";
+import { ERendererCameraController, TRendererCamera } from "#/contract/renderer-camera";
+import { ERendererCameraCommand, TRendererCameraCommand } from "#/contract/renderer-camera-command";
+import { IRendererCameraPose } from "#/contract/renderer-camera-pose";
+import { IRendererFlyCamera } from "#/contract/renderer-fly-camera";
+import { RenderProxyElement } from "#/input/render-proxy-element";
+import { IRenderProxyEvent } from "#/input/render-proxy-event";
 
 /** Just short of straight up, so looking at the sky never flips the horizon over. */
 const MAX_PITCH: number = Math.PI / 2 - 0.001;
@@ -58,8 +56,8 @@ export class FlyCameraController implements IRendererCameraController {
   /** Pointer movement gathered since the last frame, which is what applies it. */
   private lookX: number = 0;
   private lookY: number = 0;
-  /** Where the dragging pointer last was, or null while nothing drags. */
-  private dragged: Nullable<{ x: number; y: number }> = null;
+  /** The pointer dragging and where it last was, or null while nothing drags. */
+  private dragged: Nullable<{ id: number; x: number; y: number }> = null;
   private readonly cursor: DragCursor;
 
   public constructor(element: RenderProxyElement) {
@@ -70,7 +68,9 @@ export class FlyCameraController implements IRendererCameraController {
       element.addEventListener(type, listener);
     }
 
-    this.describe(DEFAULT_FLY_CAMERA);
+    setCameraLens(this.camera, this.description);
+
+    this.reset();
   }
 
   public describe(description: TRendererCamera): boolean {
@@ -78,24 +78,17 @@ export class FlyCameraController implements IRendererCameraController {
       return false;
     }
 
-    const isMoved: boolean =
-      !isSameVector(description.position, this.description.position) ||
-      !isSameVector(description.target, this.description.target);
+    // The same start again is new speeds or a new lens, not a request to go back.
+    const isMoved: boolean = !isSameCameraStart(description, this.description);
 
     this.description = description;
-    this.camera.fov = description.fieldOfView;
-    this.camera.near = description.near;
-    this.camera.far = description.far;
-    this.camera.updateProjectionMatrix();
+    setCameraLens(this.camera, description);
 
-    // The same start again is new speeds or a new lens, not a request to go back.
-    const isReset: boolean = isMoved || description === DEFAULT_FLY_CAMERA;
-
-    if (isReset) {
+    if (isMoved) {
       this.reset();
     }
 
-    return isReset;
+    return isMoved;
   }
 
   public command(command: TRendererCameraCommand): void {
@@ -105,12 +98,7 @@ export class FlyCameraController implements IRendererCameraController {
   }
 
   public resize(width: number, height: number): void {
-    const aspect: number = width / Math.max(height, 1);
-
-    if (aspect !== this.camera.aspect) {
-      this.camera.aspect = aspect;
-      this.camera.updateProjectionMatrix();
-    }
+    setCameraAspect(this.camera, width, height);
   }
 
   public update(delta: number): void {
@@ -143,10 +131,9 @@ export class FlyCameraController implements IRendererCameraController {
   }
 
   public get pose(): IRendererCameraPose {
-    const { position } = this.camera;
-    const ahead: Vector3 = new Vector3(0, 0, -1).applyQuaternion(this.camera.quaternion).add(position);
+    const { position, quaternion } = this.camera;
 
-    return { position: [position.x, position.y, position.z], target: [ahead.x, ahead.y, ahead.z] };
+    return toCameraPose(position, new Vector3(0, 0, -1).applyQuaternion(quaternion).add(position));
   }
 
   public dispose(): void {
@@ -180,18 +167,21 @@ export class FlyCameraController implements IRendererCameraController {
 
   private readonly listeners: Readonly<Record<string, (event: IRenderProxyEvent) => void>> = {
     [ERenderInput.POINTER_DOWN]: (event: IRenderProxyEvent): void => {
-      this.dragged = { x: event.clientX, y: event.clientY };
-      this.cursor.start();
-    },
-    [ERenderInput.POINTER_MOVE]: (event: IRenderProxyEvent): void => {
-      if (this.dragged) {
-        this.lookX += event.clientX - this.dragged.x;
-        this.lookY += event.clientY - this.dragged.y;
-        this.dragged = { x: event.clientX, y: event.clientY };
+      // The main button of the first pointer down alone: a second finger or another button would fight it.
+      if (event.isPrimary && event.button === 0) {
+        this.dragged = { id: event.pointerId, x: event.clientX, y: event.clientY };
+        this.cursor.start();
       }
     },
-    [ERenderInput.POINTER_UP]: (): void => this.release(),
-    [ERenderInput.POINTER_CANCEL]: (): void => this.release(),
+    [ERenderInput.POINTER_MOVE]: (event: IRenderProxyEvent): void => {
+      if (this.dragged?.id === event.pointerId) {
+        this.lookX += event.clientX - this.dragged.x;
+        this.lookY += event.clientY - this.dragged.y;
+        this.dragged = { id: event.pointerId, x: event.clientX, y: event.clientY };
+      }
+    },
+    [ERenderInput.POINTER_UP]: (event: IRenderProxyEvent): void => this.releasePointer(event),
+    [ERenderInput.POINTER_CANCEL]: (event: IRenderProxyEvent): void => this.releasePointer(event),
     [ERenderInput.KEY_DOWN]: (event: IRenderProxyEvent): void => this.hold(event.code, true),
     [ERenderInput.KEY_UP]: (event: IRenderProxyEvent): void => this.hold(event.code, false),
     // A canvas that loses focus holds no key, which would otherwise fly the camera away unattended.
@@ -211,12 +201,14 @@ export class FlyCameraController implements IRendererCameraController {
     }
   }
 
+  private releasePointer(event: IRenderProxyEvent): void {
+    if (this.dragged?.id === event.pointerId) {
+      this.release();
+    }
+  }
+
   private release(): void {
     this.dragged = null;
     this.cursor.end();
   }
-}
-
-function isSameVector(left: TRendererVector, right: TRendererVector): boolean {
-  return left[0] === right[0] && left[1] === right[1] && left[2] === right[2];
 }

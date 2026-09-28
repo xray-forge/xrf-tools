@@ -1,7 +1,7 @@
 import { Nullable } from "@xrf/types";
 import { CustomBlending, NodeMaterial, OneFactor, QuadMesh, Texture } from "three/webgpu";
 
-import { ERendererLightShadowFilter } from "#/contract/renderer-features";
+import { ERendererLightShadowFilter } from "#/contract/renderer-light-shadow-filter";
 import { toLightsPassFragment } from "#/pass/lights-pass.tsl";
 import { createQuadMaterial } from "#/pass/quad-material";
 import { IRendererFrame } from "#/pass/renderer-frame";
@@ -45,14 +45,14 @@ export class LightsPass implements IRendererPass {
     this.filter = filter;
   }
 
-  public render({ renderer, targets }: IRendererFrame): void {
+  public render({ renderer }: IRendererFrame): void {
     if (this.lights.count === 0) {
       return;
     }
 
     this.lights.clusters.bin(renderer);
     this.quad.material = this.getMaterial();
-    renderer.setRenderTarget(targets.light);
+    renderer.setRenderTarget(this.targets.light);
     this.quad.render(renderer);
   }
 

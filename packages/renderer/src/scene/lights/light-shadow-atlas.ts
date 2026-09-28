@@ -1,11 +1,9 @@
 import { Nullable } from "@xrf/types";
 
-/** A square of the atlas, in texels from its top left corner. */
-export interface ILightShadowTile {
-  readonly x: number;
-  readonly y: number;
-  readonly size: number;
-}
+import { ILightShadowTile } from "#/scene/lights/light-shadow-tile";
+
+/** Texels the lights' shadow atlas is across. */
+export const LIGHT_SHADOW_ATLAS_SIZE: number = 4096;
 
 /**
  * Where the lights' shadow faces are drawn: one square texture cut into squares of powers of two, a quarter of a free
@@ -31,6 +29,28 @@ export class LightShadowAtlas {
     this.free.forEach((tile: ILightShadowTile) => (free += tile.size * tile.size));
 
     return this.size * this.size - free;
+  }
+
+  /**
+   * @param size - Texels a square is across.
+   * @returns How many squares that large the free ones hold, however they are taken.
+   */
+  public capacity(size: number): number {
+    let count: number = 0;
+
+    this.free.forEach((tile: ILightShadowTile) => (count += tile.size >= size ? (tile.size / size) ** 2 : 0));
+
+    return count;
+  }
+
+  /** A copy of it as it is now, to try giving back squares on. */
+  public clone(): LightShadowAtlas {
+    const atlas: LightShadowAtlas = new LightShadowAtlas(this.size);
+
+    atlas.free.clear();
+    this.free.forEach((tile: ILightShadowTile, key: string) => atlas.free.set(key, tile));
+
+    return atlas;
   }
 
   /**
@@ -82,13 +102,13 @@ export class LightShadowAtlas {
         { size: current.size, x: x + current.size, y },
         { size: current.size, x, y: y + current.size },
         { size: current.size, x: x + current.size, y: y + current.size },
-      ].filter((it) => it.x !== current.x || it.y !== current.y);
+      ].filter((it: ILightShadowTile) => it.x !== current.x || it.y !== current.y);
 
-      if (!siblings.every((it) => this.free.has(toKey(it)))) {
+      if (!siblings.every((it: ILightShadowTile) => this.free.has(toKey(it)))) {
         break;
       }
 
-      siblings.forEach((it) => this.free.delete(toKey(it)));
+      siblings.forEach((it: ILightShadowTile) => this.free.delete(toKey(it)));
       current = { size: parent, x, y };
     }
 

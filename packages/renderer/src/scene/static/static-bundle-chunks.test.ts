@@ -5,18 +5,22 @@ import { BufferAttribute, BufferGeometry, Scene, StorageBufferAttribute } from "
 import { StaticArena } from "#/scene/static/static-arena";
 import { StaticBatch } from "#/scene/static/static-batch";
 import { StaticBundleChunks } from "#/scene/static/static-bundle-chunks";
-import { EStaticListSpace, EStaticView, StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
+import { StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
+import { EStaticListSpace } from "#/uniforms/static-list-space";
+import { EStaticView } from "#/uniforms/static-view";
+import { StorageRetirement } from "#/uniforms/storage-retirement";
 
 function createBatches(count: number): Array<StaticBatch> {
   const buffer: BufferGeometry = new BufferGeometry();
-  const buffers: StaticDrawBuffers = new StaticDrawBuffers();
+  const buffers: StaticDrawBuffers = new StaticDrawBuffers(new StorageRetirement());
 
   buffer.setAttribute("position", new BufferAttribute(new Float32Array(9), 3));
 
   const arena: StaticArena = new StaticArena(
     buffer,
     storage(new StorageBufferAttribute(new Uint32Array(2), 2), "uvec2", 1).toReadOnly(),
-    storage(new StorageBufferAttribute(new Uint32Array(4), 4), "uvec4", 1).toReadOnly()
+    storage(new StorageBufferAttribute(new Uint32Array(4), 4), "uvec4", 1).toReadOnly(),
+    new StorageRetirement()
   );
 
   return Array.from(
@@ -40,7 +44,6 @@ describe("StaticBundleChunks", () => {
     expect(scene.children).toHaveLength(2);
     expect(late.children).toHaveLength(2);
     expect(scene.children[0].children).toHaveLength(32);
-    expect(chunks.bundles).toBe(4);
   });
 
   it("records a chunk again when a batch leaves it, and takes an emptied chunk out of the scenes", () => {

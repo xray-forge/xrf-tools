@@ -1,28 +1,6 @@
-import { IRendererInstanceImpostors } from "#/contract/scene/renderer-impostors";
+import { Maybe } from "@xrf/types";
 
-/** Floats one instance's transform takes. */
-export const RENDERER_FLOATS_PER_INSTANCE: number = 16;
-
-/** Floats one instance's hemisphere terms take. */
-export const RENDERER_HEMI_FLOATS_PER_INSTANCE: number = 2;
-
-/**
- * The places one geometry stands, drawn together.
- */
-export interface IRendererInstances {
-  /** Sixteen floats an instance, column major, placing it in renderer space. */
-  transforms: Float32Array;
-  /**
-   * Two floats an instance, scaling then offsetting its vertices' hemisphere term: a tree's `c_scale.w` and
-   * `c_bias.w`, as the engine binds them.
-   */
-  hemi?: Float32Array;
-  /**
-   * The impostor each place belongs to. A tree's place is drawn only while its impostor is near enough; the places of an
-   * impostor surface are the impostors themselves, drawn only while theirs is far enough.
-   */
-  impostors?: IRendererInstanceImpostors;
-}
+import { IRendererInstances } from "#/contract/scene/renderer-instances";
 
 /**
  * A geometry drawn with surfaces, where a transform or a set of instances places it.
@@ -49,7 +27,7 @@ export interface IRendererObject {
  * @returns Its buffers.
  */
 export function listRendererObjectTransfers(object: IRendererObject): Array<Transferable> {
-  return [object.instances?.transforms, object.instances?.hemi, object.instances?.impostors?.indices]
-    .filter((array): array is Float32Array | Int32Array => array !== undefined)
-    .map((array) => array.buffer);
+  return [object.instances?.transforms, object.instances?.hemi, object.instances?.impostors?.indices].flatMap(
+    (array: Maybe<ArrayBufferView>) => (array ? [array.buffer] : [])
+  );
 }

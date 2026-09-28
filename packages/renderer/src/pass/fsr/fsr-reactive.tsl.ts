@@ -1,7 +1,9 @@
 import { abs, float, Fn, max, screenCoordinate, select } from "three/tsl";
 import { Node, Texture } from "three/webgpu";
 
-import { IFsrConstants, IFsrInputs, toScalarTexel } from "#/pass/fsr/fsr-common.tsl";
+import { toScalarTexel } from "#/pass/fsr/fsr-common.tsl";
+import { IFsrConstants } from "#/pass/fsr/fsr-constants";
+import { IFsrInputs } from "#/pass/fsr/fsr-inputs";
 import { loadClamped } from "#/shader/texel.tsl";
 
 // `ffx_fsr2_autogen_reactive_pass.hlsl`: the reactive mask from what the blended surfaces changed, with its tonemap,

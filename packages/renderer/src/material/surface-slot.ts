@@ -1,4 +1,3 @@
-import { Nullable } from "@xrf/types";
 import { Texture } from "three/webgpu";
 
 import {
@@ -9,7 +8,6 @@ import {
   getNeutralDetailTexture,
   getWhiteTexture,
 } from "#/texture/placeholder-textures";
-import { ITextureTarget } from "#/texture/texture-target";
 
 /**
  * The textures a surface's shader samples, named as the surface's own textures are.
@@ -54,17 +52,4 @@ export function getSurfaceSlotPlaceholder(slot: ESurfaceSlot): Texture {
     case ESurfaceSlot.HEMI:
       return getWhiteTexture();
   }
-}
-
-/** What a material's slots draw, each pointed at its key's texture as that uploads. */
-export type TSurfaceSlotTargets = Readonly<Record<ESurfaceSlot, ITextureTarget>>;
-
-/** What a shared material's array slots sample: each slot's array as it is now, for the slots it samples so. */
-export type TSurfaceArrayTargets = Readonly<Partial<Record<ESurfaceSlot, ITextureTarget>>>;
-
-/** A material whose slots a shared shader samples. */
-export interface ISurfaceSlotted {
-  surfaceSlots: Nullable<TSurfaceSlotTargets>;
-  /** The arrays its array slots sample, or null for a material sampling every slot from a texture of its own. */
-  surfaceArrays: Nullable<TSurfaceArrayTargets>;
 }

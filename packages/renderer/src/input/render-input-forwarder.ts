@@ -1,7 +1,6 @@
-import { ERenderInput, IRenderInputEvent, toRenderInputEvent } from "#/contract/renderer-input";
-
-/** What the forwarder does with a gesture it has taken. */
-export type TRenderInputSink = (event: IRenderInputEvent) => void;
+import { ERenderInput } from "#/contract/render-input";
+import { toRenderInputEvent } from "#/contract/render-input-event";
+import { TRenderInputSink } from "#/input/render-input-sink";
 
 /** Gestures taken on the canvas itself, which is what a scene's controls listen to. */
 const ELEMENT_INPUT: ReadonlyArray<ERenderInput> = [
@@ -115,11 +114,38 @@ export class RenderInputForwarder {
   };
 
   private readonly onWindowInput = (event: Event): void => {
+    const pointerId: number = (event as PointerEvent).pointerId ?? 0;
+
+    // Another pointer, pressed elsewhere, is none of the canvas's business.
+    if (!this.pressed.has(pointerId)) {
+      return;
+    }
+
     this.sink(toRenderInputEvent(event.type as ERenderInput, event));
 
     if (event.type === ERenderInput.POINTER_UP) {
-      this.press((event as PointerEvent).pointerId ?? 0, false);
+      this.press(pointerId, false);
     }
+  };
+
+  /** The window lost focus mid drag, so no let go will arrive: every pointer down is cancelled as the browser would. */
+  private readonly onWindowBlur = (event: Event): void => {
+    // The window's own, not an element's losing focus within it.
+    if (event.target !== window) {
+      return;
+    }
+
+    for (const pointerId of this.pressed) {
+      this.sink(
+        toRenderInputEvent(
+          ERenderInput.POINTER_CANCEL,
+          Object.assign(new Event(ERenderInput.POINTER_CANCEL), { pointerId })
+        )
+      );
+    }
+
+    this.pressed.clear();
+    this.setWindowListened(false);
   };
 
   private press(pointerId: number, isPressed: boolean): void {
@@ -139,6 +165,12 @@ export class RenderInputForwarder {
       } else {
         window.removeEventListener(type, this.onWindowInput);
       }
+    }
+
+    if (isListened) {
+      window.addEventListener("blur", this.onWindowBlur);
+    } else {
+      window.removeEventListener("blur", this.onWindowBlur);
     }
   }
 }

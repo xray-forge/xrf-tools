@@ -1,10 +1,6 @@
 import { MathUtils, PerspectiveCamera, Vector3 } from "three/webgpu";
 
-/** One edge of the view: where it starts and which way it runs, normalized. */
-export interface ISunViewRay {
-  readonly origin: Vector3;
-  readonly direction: Vector3;
-}
+import { ISunViewRay } from "#/visibility/sun-view-ray";
 
 /** A corner of the near plane, in the camera's own space, reused. */
 const CORNER: Vector3 = new Vector3();

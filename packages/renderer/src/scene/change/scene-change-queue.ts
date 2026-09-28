@@ -1,5 +1,5 @@
 import { Maybe, Nullable } from "@xrf/types";
-import { BufferGeometry, Object3D } from "three/webgpu";
+import { Object3D } from "three/webgpu";
 
 import { ISceneChange } from "#/scene/change/scene-change";
 import { ISceneChangeHandler } from "#/scene/change/scene-change-handler";
@@ -15,6 +15,9 @@ const APPLIED_PER_SETTLE: number = 32;
  *
  * A transaction is one change. A change that touches an object an older change still waits on takes the older one
  * with it, so neither applies without the other. What a change adds is only valid inside a transaction.
+ *
+ * A keyed resource put again or released goes through the change that rebuilds its users: its registry keeps it whole
+ * and hands `retire` what lets it go, which runs once that change and every one before it apply.
  */
 export class SceneChangeQueue<T> {
   private readonly handler: ISceneChangeHandler<T>;
@@ -63,10 +66,14 @@ export class SceneChangeQueue<T> {
       change();
     } finally {
       this.depth -= 1;
+
+      // A change that threw is closed with what it added, rather than taking the next transaction's too.
+      if (!this.depth) {
+        this.open = null;
+      }
     }
 
     if (!this.depth) {
-      this.open = null;
       this.settle();
     }
   }
@@ -105,10 +112,11 @@ export class SceneChangeQueue<T> {
   }
 
   /**
-   * @param geometry - A geometry no longer put, disposed once the running change applies.
+   * @param release - Lets go of a keyed resource replaced or released: once the running change and every change before
+   *   it apply, since any of them may still draw it.
    */
-  public retireGeometry(geometry: BufferGeometry): void {
-    this.current.geometries.add(geometry);
+  public retire(release: () => void): void {
+    this.current.retired.push(release);
   }
 
   /**
@@ -130,8 +138,8 @@ export class SceneChangeQueue<T> {
   public dispose(): void {
     for (const change of this.changes) {
       change.leaving.forEach((it: Object3D) => it.removeFromParent());
-      change.geometries.forEach((geometry: BufferGeometry) => geometry.dispose());
       change.disposals.forEach((dispose: () => void) => dispose());
+      change.retired.forEach((release: () => void) => release());
     }
 
     this.changes.length = 0;
@@ -142,7 +150,7 @@ export class SceneChangeQueue<T> {
   /** The change the running transaction adds to. */
   private get current(): ISceneChange<T> {
     if (!this.open) {
-      this.open = { disposals: [], geometries: new Set(), leaving: [], objects: new Set(), textures: new Set() };
+      this.open = { disposals: [], leaving: [], objects: new Set(), retired: [], textures: new Set() };
       this.changes.push(this.open);
     }
 
@@ -170,7 +178,7 @@ export class SceneChangeQueue<T> {
 
     into.leaving.push(...from.leaving);
     into.disposals.push(...from.disposals);
-    from.geometries.forEach((geometry: BufferGeometry) => into.geometries.add(geometry));
+    into.retired.push(...from.retired);
     from.textures.forEach((key: string) => into.textures.add(key));
     this.changes.splice(this.changes.indexOf(from), 1);
   }
@@ -178,8 +186,8 @@ export class SceneChangeQueue<T> {
   /**
    * Applies every change that can draw now, each whole: what a consumer changed together appears together, and what
    * it released goes in the same frame. Changes wait only for themselves - a sector whose materials are compiled does
-   * not wait behind one whose are not - except one letting textures go, which waits for every change before it, since
-   * any of those may be about to sample them. Past the budget the rest wait for the next settle.
+   * not wait behind one whose are not - except one letting textures or retired resources go, which waits for every
+   * change before it, since any of those may still draw them. Past the budget the rest wait for the next settle.
    */
   private settle(): void {
     let applied: number = 0;
@@ -190,7 +198,7 @@ export class SceneChangeQueue<T> {
         break;
       }
 
-      if (!this.canApply(change) || (isBlocked && change.textures.size)) {
+      if (!this.canApply(change) || (isBlocked && (change.textures.size > 0 || change.retired.length > 0))) {
         isBlocked = true;
         continue;
       }
@@ -203,8 +211,8 @@ export class SceneChangeQueue<T> {
         this.handler.apply(object);
       });
       change.leaving.forEach((it: Object3D) => it.removeFromParent());
-      change.geometries.forEach((geometry: BufferGeometry) => geometry.dispose());
       change.disposals.forEach((dispose: () => void) => dispose());
+      change.retired.forEach((release: () => void) => release());
       change.textures.forEach((key: string) => this.handler.releaseTexture(key));
     }
 

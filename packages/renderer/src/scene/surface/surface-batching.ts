@@ -1,13 +1,15 @@
 import { Maybe, Nullable } from "@xrf/types";
 import { Material, Texture, WebGPURenderer } from "three/webgpu";
 
-import { ERendererPass, IRendererSurface } from "#/contract/scene/renderer-surface";
+import { ERendererPass } from "#/contract/scene/renderer-pass";
+import { IRendererSurface } from "#/contract/scene/renderer-surface";
 import { copyTextures } from "#/internals/texture-copies";
+import { TSurfaceArrayTargets } from "#/material/surface-array-targets";
+import { ISurfaceBatchMaterial } from "#/material/surface-batch-material";
 import { toSurfaceCompositing } from "#/material/surface-compositing";
-import { createSurfaceBatchMaterial, ISurfaceBatchMaterial, ISurfaceMaterial } from "#/material/surface-material";
+import { createSurfaceBatchMaterial, ISurfaceMaterial } from "#/material/surface-material";
 import { SurfacePrograms } from "#/material/surface-programs";
-import { ESurfaceSlot, SURFACE_SLOTS, TSurfaceArrayTargets } from "#/material/surface-slot";
-import { SurfaceSlotNodes } from "#/material/surface-slot-nodes";
+import { ESurfaceSlot, SURFACE_SLOTS } from "#/material/surface-slot";
 import { ISurfaceValues, toSurfaceValues } from "#/material/surface-values";
 import { ISurfaceVariant, toSampledSlots, toSurfaceVariant, toSurfaceVariantKey } from "#/material/surface-variant";
 import { RendererTextures } from "#/texture/renderer-textures";
@@ -186,7 +188,9 @@ export class SurfaceBatching {
     }
 
     const materials: Array<ISurfaceMaterial> = [...users];
-    const before: Array<Nullable<ISharedMaterial>> = materials.map((it) => this.tracked.get(it)?.shared ?? null);
+    const before: Array<Nullable<ISharedMaterial>> = materials.map(
+      (it: ISurfaceMaterial) => this.tracked.get(it)?.shared ?? null
+    );
 
     // Every user lets it go before any claims it again, so a texture of another class is held as that one.
     materials.forEach((material: ISurfaceMaterial) =>
@@ -198,6 +202,11 @@ export class SurfaceBatching {
     return materials.filter(
       (material: ISurfaceMaterial, index: number) => before[index] !== null || material.batched !== null
     );
+  }
+
+  /** Whether any shared material waits for no batch to draw it, to be disposed. */
+  public get hasIdle(): boolean {
+    return this.idle.size > 0;
   }
 
   /**
@@ -226,13 +235,26 @@ export class SurfaceBatching {
 
     const { copies, disposals, evicted }: ITextureArrayFlush = this.arrays.flush();
 
-    copyTextures(renderer, copies);
-    // Sent, so the GPU finishes reading them first; a bundle still sampling one records again, and three uploads it.
-    disposals.forEach((texture: Texture) => {
-      SurfaceSlotNodes.forget(texture);
-      texture.dispose();
+    // A key whose copy could not be made keeps its own texture, to be copied from again next flush.
+    const retried: Set<string> = this.arrays.retry(copyTextures(renderer, copies));
+
+    // Sent, so the GPU finishes reading them first. A key copied lets its own texture go, its layer drawing it; a
+    // bundle still sampling that records again.
+    const evictions: Array<readonly [string, Texture]> = evicted.flatMap((key: string) => {
+      if (retried.has(key)) {
+        return [];
+      }
+
+      const texture: Nullable<Texture> = this.textures.evict(key);
+
+      return texture ? [[key, texture] as const] : [];
     });
-    evicted.forEach((key: string) => this.onInvalidated(key));
+
+    this.programs.nodes.forget(
+      new Set([...disposals, ...evictions.map(([, texture]: readonly [string, Texture]) => texture)])
+    );
+    disposals.forEach((texture: Texture) => texture.dispose());
+    evictions.forEach(([key]: readonly [string, Texture]) => this.onInvalidated(key));
     this.table.flush();
 
     if (this.table.version !== this.tableVersion) {
@@ -250,48 +272,37 @@ export class SurfaceBatching {
   }
 
   /**
-   * Batches a surface once its array slots' textures are up, each held in an array of its class or sampled as its own
-   * where none holds it; unbatches it while any is not up.
+   * Batches a surface just tracked or just unbatched once its array slots' textures are up, each held in an array of
+   * its class or sampled as its own where none holds it.
+   *
+   * @returns Whether it is batched now.
    */
   private evaluate(material: ISurfaceMaterial): boolean {
     const tracking: ISurfaceTracking = this.tracked.get(material) as ISurfaceTracking;
     const layers: Array<readonly [ESurfaceSlot, string, ITextureLayer]> = [];
-    const claims: Array<string> = [];
+    // A key held already draws from its layer, its own texture on the GPU or not. Every other is asked for, not only
+    // the first missing, so every one evicted goes up again in the same uploads.
+    const missing: ReadonlyArray<readonly [ESurfaceSlot, string]> = tracking.arrayed.filter(
+      ([, key]: readonly [ESurfaceSlot, string]) => !this.arrays.holds(key) && !this.textures.getUploaded(key)
+    );
 
-    for (const [slot, key] of tracking.arrayed) {
-      const texture: Nullable<Texture> = this.textures.getUploaded(key);
-
-      if (!texture) {
-        claims.forEach((claimed: string) => this.arrays.release(claimed));
-
-        return this.unbatch(material, tracking);
-      }
-
-      const held: Nullable<ITextureLayer> = this.arrays.claim(key, texture);
-
-      if (held) {
-        layers.push([slot, key, held]);
-        claims.push(key);
-      }
-    }
-
-    // Claimed again before the claims before are let go, so a layer both hold stays where it is.
-    tracking.claims.forEach((claimed: string) => this.arrays.release(claimed));
-    tracking.claims = claims;
-
-    const shared: ISharedMaterial = this.getShared(tracking, layers);
-
-    if (tracking.row === SURFACE_NO_ROW) {
-      tracking.row = this.table.allocate();
-    }
-
-    this.writeRow(tracking, layers);
-
-    if (tracking.shared === shared) {
+    if (missing.length) {
       return false;
     }
 
-    this.leave(tracking);
+    for (const [slot, key] of tracking.arrayed) {
+      const held: Nullable<ITextureLayer> = this.arrays.retain(key) ?? this.claim(key);
+
+      if (held) {
+        layers.push([slot, key, held]);
+      }
+    }
+
+    const shared: ISharedMaterial = this.getShared(tracking, layers);
+
+    tracking.claims = layers.map(([, key]: readonly [ESurfaceSlot, string, ITextureLayer]) => key);
+    tracking.row = this.table.allocate();
+    this.writeRow(tracking, layers);
     this.idle.delete(shared);
     shared.users += 1;
     tracking.shared = shared;
@@ -300,13 +311,27 @@ export class SurfaceBatching {
     return true;
   }
 
-  /** Lets go of what a surface holds for its batching; it draws its static batches by its own material again. */
-  private unbatch(material: ISurfaceMaterial, tracking: ISurfaceTracking): boolean {
-    const wasBatched: boolean = tracking.shared !== null;
+  /** A key's layer claimed from its uploaded texture, or null for a texture of no class an array holds. */
+  private claim(key: string): Nullable<ITextureLayer> {
+    const texture: Nullable<Texture> = this.textures.getUploaded(key);
+
+    return texture ? this.arrays.claim(key, texture) : null;
+  }
+
+  /**
+   * Lets go of what a surface holds for its batching; it draws its static batches by its own material again, and the
+   * shared material it drew by goes idle once no surface does.
+   */
+  private unbatch(material: ISurfaceMaterial, tracking: ISurfaceTracking): void {
+    const { shared } = tracking;
 
     tracking.claims.forEach((claimed: string) => this.arrays.release(claimed));
     tracking.claims = [];
-    this.leave(tracking);
+    tracking.shared = null;
+
+    if (shared && --shared.users === 0) {
+      this.idle.add(shared);
+    }
 
     if (tracking.row !== SURFACE_NO_ROW) {
       this.table.release(tracking.row);
@@ -314,19 +339,6 @@ export class SurfaceBatching {
     }
 
     material.batched = null;
-
-    return wasBatched;
-  }
-
-  /** Takes a surface out of the shared material it drew by, which goes idle once no surface does. */
-  private leave(tracking: ISurfaceTracking): void {
-    const previous: Nullable<ISharedMaterial> = tracking.shared;
-
-    tracking.shared = null;
-
-    if (previous && --previous.users === 0) {
-      this.idle.add(previous);
-    }
   }
 
   /** The shared material of a surface's variant, own textures and arrays, made the first time any surface asks. */
@@ -334,7 +346,9 @@ export class SurfaceBatching {
     tracking: ISurfaceTracking,
     layers: ReadonlyArray<readonly [ESurfaceSlot, string, ITextureLayer]>
   ): ISharedMaterial {
-    const arrayed: ReadonlyArray<ESurfaceSlot> = layers.map(([slot]) => slot);
+    const arrayed: ReadonlyArray<ESurfaceSlot> = layers.map(
+      ([slot]: readonly [ESurfaceSlot, string, ITextureLayer]) => slot
+    );
     const own: string = toSampledSlots(tracking.variant)
       .filter((slot: ESurfaceSlot) => !arrayed.includes(slot))
       .map((slot: ESurfaceSlot) => `${slot}=${tracking.textures[slot] ?? ""}`)
@@ -342,17 +356,19 @@ export class SurfaceBatching {
     const key: string = [
       toSurfaceVariantKey(tracking.variant),
       own,
-      layers.map(([slot, , held]) => `${slot}@${held.array.key}`).join(","),
+      layers
+        .map(([slot, , held]: readonly [ESurfaceSlot, string, ITextureLayer]) => `${slot}@${held.array.key}`)
+        .join(","),
     ].join("|");
     let shared: Maybe<ISharedMaterial> = this.shared.get(key);
 
     if (!shared) {
       const arrays: TSurfaceArrayTargets = Object.fromEntries(
-        layers.map(([slot, , held]) => [slot, held.array.target])
+        layers.map(([slot, , held]: readonly [ESurfaceSlot, string, ITextureLayer]) => [slot, held.array.target])
       ) as TSurfaceArrayTargets;
 
       shared = {
-        arrayKeys: layers.map(([, , held]) => held.array.key),
+        arrayKeys: layers.map(([, , held]: readonly [ESurfaceSlot, string, ITextureLayer]) => held.array.key),
         batch: createSurfaceBatchMaterial(
           tracking.variant,
           tracking.textures,
@@ -377,7 +393,10 @@ export class SurfaceBatching {
     const { values } = tracking;
     const words: Array<number> = SURFACE_SLOTS.map(() => 0);
 
-    layers.forEach(([slot, , held]) => (words[SURFACE_SLOTS.indexOf(slot)] = held.layer));
+    layers.forEach(
+      ([slot, , held]: readonly [ESurfaceSlot, string, ITextureLayer]) =>
+        (words[SURFACE_SLOTS.indexOf(slot)] = held.layer)
+    );
     this.table.write(tracking.row, {
       alphaReference: values.alphaReference,
       color: [values.color.x, values.color.y, values.color.z],
@@ -388,16 +407,18 @@ export class SurfaceBatching {
     });
   }
 
-  /** A surface as a static batch draws it by a shared material: its row, the shared material, and its own otherwise. */
+  /**
+   * A surface as a static batch draws it by a shared material: its row, the shared material, and its own for its plain
+   * parts.
+   */
   private createView(material: ISurfaceMaterial, shared: ISharedMaterial, row: number): ISurfaceMaterial {
     return {
       ...material,
       batched: null,
       dispose: () => {},
-      // Its own keys too: its array slots' textures have to be up before it draws, and their swaps record it again.
-      keys: [...material.keys, ...shared.batch.keys, ...shared.arrayKeys, this.table.key],
+      // Its array slots' keys are the arrays': its layers draw them, their own textures on the GPU or not.
+      keys: [...shared.batch.keys, ...shared.arrayKeys, this.table.key],
       material: shared.batch.material,
-      plainMaterial: material.material,
       row,
       shadow: shared.batch.shadow ?? material.shadow,
       shadowKeys: shared.batch.shadow

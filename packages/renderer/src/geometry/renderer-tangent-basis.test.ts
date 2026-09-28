@@ -22,7 +22,7 @@ const BODIES: ReadonlyArray<[string, IRendererGeometry]> = [
 
 describe("withRendererTangentBasis", () => {
   it.each(BODIES)("keeps the %s's basis unit length and square to the normal, poles included", (_, geometry) => {
-    for (let vertex = 0; vertex < geometry.position.length / 3; vertex += 1) {
+    for (let vertex: number = 0; vertex < geometry.position.length / 3; vertex += 1) {
       const normal: TVector = vectorAt(geometry.normal!, vertex);
       const tangent: TVector = vectorAt(geometry.tangent!, vertex);
       const binormal: TVector = vectorAt(geometry.binormal!, vertex);
@@ -49,24 +49,28 @@ describe("withRendererTangentBasis", () => {
     expect(vectorAt(box.binormal!, corner)[1]).toBeCloseTo(-1, 5);
   });
 
+  // A vertex whose triangles are collapsed in uv sums no tangent; one with every component equal once gave a zero one.
+  it.each([
+    ["an equal-component normal", [1, 1, 1]],
+    ["a normal along x", [1, 0, 0]],
+  ])("finds a basis in the surface for %s that summed no tangent", (_: string, direction: Array<number>) => {
+    const length: number = Math.hypot(direction[0], direction[1], direction[2]);
+    const normal: TVector = [direction[0] / length, direction[1] / length, direction[2] / length];
+    const geometry: IRendererGeometry = withRendererTangentBasis({
+      groups: [],
+      normal: new Float32Array([...normal, ...normal, ...normal]),
+      position: new Float32Array([0, 0, 0, 1, 0, 0, 0, 1, 0]),
+      uv: new Float32Array(6),
+    });
+    const tangent: TVector = vectorAt(geometry.tangent!, 0);
+    const binormal: TVector = vectorAt(geometry.binormal!, 0);
+
+    expect(Math.sqrt(dot(tangent, tangent))).toBeCloseTo(1, 5);
+    expect(Math.sqrt(dot(binormal, binormal))).toBeCloseTo(1, 5);
+    expect(dot(tangent, normal)).toBeCloseTo(0, 5);
+  });
+
   it("refuses geometry with nothing to derive a basis from", () => {
     expect(() => withRendererTangentBasis({ groups: [], position: new Float32Array(9) })).toThrow();
-  });
-});
-
-describe("createRendererBox", () => {
-  it("draws each face with its own slot, in three's face order", () => {
-    const box: IRendererGeometry = createRendererBox(2, 2, 2);
-
-    expect(box.groups.map((group) => group.slot)).toEqual([0, 1, 2, 3, 4, 5]);
-    // The +z face faces +z.
-    expect(vectorAt(box.normal!, box.index![box.groups[4].start])).toEqual([0, 0, 1]);
-  });
-
-  it("keeps the depth it was given, so a slab turned away shows an edge", () => {
-    const box: IRendererGeometry = createRendererBox(2, 2, 0.04);
-    const depths: Array<number> = Array.from({ length: box.position.length / 3 }, (_, at) => box.position[at * 3 + 2]);
-
-    expect(Math.max(...depths) - Math.min(...depths)).toBeCloseTo(0.04);
   });
 });

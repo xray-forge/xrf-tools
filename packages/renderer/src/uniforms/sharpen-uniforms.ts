@@ -1,4 +1,5 @@
 import { uniform } from "three/tsl";
+import { UniformNode } from "three/webgpu";
 
 /**
  * @param sharpening - How sharp, from none to the most.
@@ -13,7 +14,7 @@ export function toSharpenStrength(sharpening: number): number {
  */
 export class SharpenUniforms {
   /** RCAS's `con`: `exp2(-stops)`, one sharpening most. */
-  public readonly strength = uniform(1);
+  public readonly strength: UniformNode<"float", number> = uniform(1);
 
   /**
    * @param sharpening - How sharp, from none to the most.

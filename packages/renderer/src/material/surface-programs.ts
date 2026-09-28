@@ -1,7 +1,7 @@
 import { Maybe } from "@xrf/types";
 import { Node } from "three/webgpu";
 
-import { ERendererPass } from "#/contract/scene/renderer-surface";
+import { ERendererPass } from "#/contract/scene/renderer-pass";
 import { toDeferredSurfaceShader } from "#/material/deferred-surface.tsl";
 import { toForwardSurfaceShader } from "#/material/forward-surface.tsl";
 import { toShadowSurfaceShader } from "#/material/shadow-surface.tsl";
@@ -9,6 +9,7 @@ import { ISurfaceInputs } from "#/material/surface-inputs";
 import { toSurfaceInputs } from "#/material/surface-inputs.tsl";
 import { ISurfaceShader } from "#/material/surface-shader";
 import { ESurfaceSlot } from "#/material/surface-slot";
+import { SurfaceSlotNodes } from "#/material/surface-slot-nodes";
 import { toTabledSurfaceInputs } from "#/material/surface-table-inputs.tsl";
 import { ISurfaceVariant, toSurfaceVariantKey } from "#/material/surface-variant";
 import { toWallmarkSurfaceShader } from "#/material/wallmark-surface.tsl";
@@ -36,6 +37,8 @@ const SURFACE_SHADERS: Record<
 export class SurfacePrograms {
   /** Where every surface stands its vertices. */
   public readonly position: Node<"vec3"> = instancedPosition();
+  /** Every shared slot sampler its shaders built. */
+  public readonly nodes: SurfaceSlotNodes = new SurfaceSlotNodes();
 
   private readonly uniforms: RendererUniforms;
   private readonly inputs: ISurfaceInputs;
@@ -50,7 +53,7 @@ export class SurfacePrograms {
    */
   public constructor(uniforms: RendererUniforms) {
     this.uniforms = uniforms;
-    this.inputs = toSurfaceInputs(uniforms.settings.textureBias);
+    this.inputs = toSurfaceInputs(uniforms.settings.textureBias, this.nodes);
   }
 
   /**
@@ -84,7 +87,8 @@ export class SurfacePrograms {
         this.uniforms.settings.textureBias,
         this.uniforms.surfaceTable,
         this.uniforms.staticDraws,
-        arrayed
+        arrayed,
+        this.nodes
       );
 
       shader = SURFACE_SHADERS[variant.pass](variant, inputs, this.uniforms);
@@ -104,7 +108,7 @@ export class SurfacePrograms {
 
     if (!shader) {
       shader = toShadowSurfaceShader(
-        toTabledSurfaceInputs(null, this.uniforms.surfaceTable, this.uniforms.staticDraws, arrayed)
+        toTabledSurfaceInputs(null, this.uniforms.surfaceTable, this.uniforms.staticDraws, arrayed, this.nodes)
       );
       this.tabledShadows.set(key, shader);
     }
@@ -126,5 +130,15 @@ export class SurfacePrograms {
     this.opaqueShadow ??= toShadowSurfaceShader(null);
 
     return this.opaqueShadow;
+  }
+
+  /** Lets go of every sampler its shaders built, and the shaders with them. */
+  public dispose(): void {
+    this.nodes.clear();
+    this.shaders.clear();
+    this.tabled.clear();
+    this.tabledShadows.clear();
+    this.cutOutShadow = undefined;
+    this.opaqueShadow = undefined;
   }
 }

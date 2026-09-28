@@ -33,6 +33,16 @@ const PORTED: ReadonlyArray<string> = ["pass/antialias/smaa-stages.tsl.ts"];
 /** Modules that build nodes without being shaders: uniforms, and the binding of textures to samplers. */
 const NODE_BUILDERS: ReadonlyArray<string> = ["uniforms/", "texture/renderer-textures.ts"];
 
+/** A class, a variable, or a constant made with `new`, at a module's top. */
+const STATEFUL_DECLARATION: RegExp = /^(export )?(class|let|var)\b|^(export )?const \w+(: [^=]+)? = new\b/m;
+
+/** A constant at a module's top made by one of TSL's node factories, or by a `Fn` called on the spot. */
+const MODULE_NODE: RegExp =
+  /^(export )?const \w+(: [^=]+)? = (uniform|uniformArray|storage|texture|attribute|varying|float|int|uint|u?vec[234]|ivec[234]|mat[234])\(|^(export )?const \w+(: [^=]+)? = Fn\(.*\)\(\)/m;
+
+/** A `Fn` whose body spans lines, called on the spot at a module's top. */
+const MODULE_CALL: RegExp = /^\}\)\(/m;
+
 /** Every source module but the tests, relative to the root, with forward slashes. */
 function listModules(directory: string = SOURCE): Array<string> {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
@@ -102,10 +112,12 @@ describe("the renderer's architecture", () => {
     expect(violations).toEqual([]);
   });
 
+  // A node made at the module's top is one instance every builder shares: a node is built by a function, and one a
+  // build shares is a `Fn(...).once()`.
   it("keeps `.tsl.ts` modules free of state: they build nodes and hold nothing", () => {
     const violations: Array<string> = shaders.filter((module: string) =>
-      /^(export )?(class|let|var)\b|^(export )?const \w+(: [^=]+)? = new\b/m.test(
-        readFileSync(join(SOURCE, module), "utf8")
+      [STATEFUL_DECLARATION, MODULE_NODE, MODULE_CALL].some((pattern: RegExp) =>
+        pattern.test(readFileSync(join(SOURCE, module), "utf8"))
       )
     );
 

@@ -11,18 +11,21 @@ interface IImpostorSet {
 }
 
 /**
- * The impostor sets a consumer put, by key: each a run of the LOD pool the cull decides clumps of trees by.
+ * The impostor sets a consumer put, by key: each a run of the LOD pool the cull decides clumps of trees by. A set put
+ * again or released keeps its run until the change rebuilding its users lets it go, since the places they wrote name
+ * it until then.
  */
 export class RendererImpostorSets {
   private readonly sets: Map<string, IImpostorSet> = new Map();
   private readonly draws: StaticDraws;
-  private readonly onReplaced: (key: string) => void;
+  private readonly onReplaced: (key: string, release: Nullable<() => void>) => void;
 
   /**
    * @param draws - The static draws whose LOD pool the sets are written into.
-   * @param onReplaced - Told when a key's set is put or released, so whatever names it can draw by it again.
+   * @param onReplaced - Told when a key's set is put or released, so whatever names it can draw by it again, with what
+   *   lets the run it replaced go once nothing draws by it, or null for none.
    */
-  public constructor(draws: StaticDraws, onReplaced: (key: string) => void) {
+  public constructor(draws: StaticDraws, onReplaced: (key: string, release: Nullable<() => void>) => void) {
     this.draws = draws;
     this.onReplaced = onReplaced;
   }
@@ -36,34 +39,39 @@ export class RendererImpostorSets {
   }
 
   public put(key: string, impostors: IRendererImpostors): void {
-    this.free(key);
-
+    const release: Nullable<() => void> = this.toRelease(key);
     const count: number = impostors.factors.length;
     const start: Nullable<number> = count ? this.draws.allocateLods(count) : null;
 
     if (start !== null) {
-      this.draws.lods.write(start, impostors);
+      this.draws.writeLods(start, impostors);
     }
 
     this.sets.set(key, { count, start });
-    this.onReplaced(key);
+    this.onReplaced(key, release);
   }
 
   public release(key: string): void {
-    this.free(key);
+    const release: Nullable<() => void> = this.toRelease(key);
+
     this.sets.delete(key);
-    this.onReplaced(key);
+    this.onReplaced(key, release);
   }
 
   public dispose(): void {
     this.sets.clear();
   }
 
-  private free(key: string): void {
+  /** What frees the run a key's set holds now, or null for one holding none. */
+  private toRelease(key: string): Nullable<() => void> {
     const set: Maybe<IImpostorSet> = this.sets.get(key);
 
-    if (set?.start !== null && set?.start !== undefined) {
-      this.draws.lods.free(set.start, set.count);
+    if (!set || set.start === null) {
+      return null;
     }
+
+    const { start, count } = set;
+
+    return () => this.draws.freeLods(start, count);
   }
 }

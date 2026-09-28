@@ -1,10 +1,9 @@
-import {
-  ERendererDraw,
-  ERendererPass,
-  IRendererAnomalyWater,
-  IRendererSurface,
-  toRendererPass,
-} from "#/contract/scene/renderer-surface";
+import { Nullable } from "@xrf/types";
+
+import { IRendererAnomalyWater } from "#/contract/scene/renderer-anomaly-water";
+import { ERendererDraw } from "#/contract/scene/renderer-draw";
+import { ERendererPass, toRendererPass } from "#/contract/scene/renderer-pass";
+import { IRendererSurface } from "#/contract/scene/renderer-surface";
 import { ESurfaceSlot } from "#/material/surface-slot";
 
 /**
@@ -29,7 +28,7 @@ export interface ISurfaceVariant {
   /** Whether water is drawn by `water_soft`, blended over the depth behind it. */
   isSoftWater: boolean;
   /** Anomaly's water model, or null for OpenXRay's or for a surface that is not water. */
-  anomalyWater: IRendererAnomalyWater | null;
+  anomalyWater: Nullable<IRendererAnomalyWater>;
 }
 
 /**
@@ -72,7 +71,7 @@ export function toSurfaceVariantKey(variant: ISurfaceVariant): string {
     variant.isSoftWater,
     variant.anomalyWater
       ? ["isReflecting", "isSpecular", "isTransparent", "isFoamed"]
-          .map((it) => Number(variant.anomalyWater?.[it as keyof IRendererAnomalyWater]))
+          .map((it: string) => Number(variant.anomalyWater?.[it as keyof IRendererAnomalyWater]))
           .join("")
       : "-",
   ].join(":");

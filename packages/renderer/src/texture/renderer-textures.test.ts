@@ -37,4 +37,56 @@ describe("RendererTextures", () => {
     expect(cubeFlat.value).toBe(getWhiteTexture());
     expect(flat.value).not.toBe(getWhiteTexture());
   });
+
+  it("lets an evicted texture go once, and uploads it again within the budget once it is asked for", () => {
+    const rebound: Array<string> = [];
+    const textures: RendererTextures = new RendererTextures(
+      () => {},
+      (key: string) => rebound.push(key)
+    );
+    const target: ITextureTarget = createTarget(getWhiteTexture());
+    let disposals: number = 0;
+
+    textures.target("brick", getWhiteTexture(), target);
+    textures.put("brick", { bytes: mockDdsFile(), encoding: ERendererTextureEncoding.DDS });
+    textures.upload(RENDERER, Infinity);
+
+    const texture: Texture = textures.getUploaded("brick") as Texture;
+
+    texture.addEventListener("dispose", () => (disposals += 1));
+    rebound.length = 0;
+
+    expect(textures.evict("brick")).toBe(texture);
+    expect(textures.evict("brick")).toBeNull();
+    expect(disposals).toBe(1);
+    expect(textures.hasQueued).toBe(false);
+    expect(textures.isUploaded("brick")).toBe(false);
+    expect(textures.getUploaded("brick")).toBeNull();
+    expect(textures.hasQueued).toBe(true);
+
+    textures.upload(RENDERER, Infinity);
+
+    // The same texture, which its targets never stopped drawing: what waited for it is told it can draw.
+    expect(textures.getUploaded("brick")).toBe(texture);
+    expect(target.value).toBe(texture);
+    expect(rebound).toEqual(["brick"]);
+
+    textures.evict("brick");
+    textures.release("brick");
+
+    expect(disposals).toBe(2);
+    expect(target.value).toBe(getWhiteTexture());
+  });
+
+  it("evicts nothing of a key whose latest texture is not up yet", () => {
+    const textures: RendererTextures = new RendererTextures(
+      () => {},
+      () => {}
+    );
+
+    textures.put("brick", { bytes: mockDdsFile(), encoding: ERendererTextureEncoding.DDS });
+
+    expect(textures.evict("brick")).toBeNull();
+    expect(textures.evict("plaster")).toBeNull();
+  });
 });

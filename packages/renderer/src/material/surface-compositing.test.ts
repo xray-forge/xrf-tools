@@ -8,7 +8,7 @@ import {
   ZeroFactor,
 } from "three/webgpu";
 
-import { ERendererDraw } from "#/contract/scene/renderer-surface";
+import { ERendererDraw } from "#/contract/scene/renderer-draw";
 import { toSurfaceCompositing } from "#/material/surface-compositing";
 
 describe("toSurfaceCompositing", () => {

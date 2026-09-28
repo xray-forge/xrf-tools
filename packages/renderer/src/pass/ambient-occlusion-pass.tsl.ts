@@ -34,16 +34,11 @@ import {
 } from "three/tsl";
 import { Node, Texture } from "three/webgpu";
 
+import { IAmbientOcclusionSearch } from "#/pass/ambient-occlusion-search";
 import { IGBufferTextures } from "#/shader/gbuffer-textures";
 import { decodeOctahedral } from "#/shader/octahedral-normal.tsl";
 import { AmbientOcclusionUniforms } from "#/uniforms/ambient-occlusion-uniforms";
 import { CameraUniforms } from "#/uniforms/camera-uniforms";
-
-/** How a quality searches: directions around the view, and steps each way along each. */
-export interface IAmbientOcclusionSearch {
-  slices: number;
-  steps: number;
-}
 
 /** XeGTAO's `EffectFalloffRange`: the outer share of the radius over which an occluder fades out. */
 const FALLOFF_RANGE: number = 0.615;

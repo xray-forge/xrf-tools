@@ -224,6 +224,8 @@ export function createGrassDecompress(
         const px = float(x).div(float(steps)).mul(2).add(minX).add(jitterX).toVar();
         const pz = float(z).div(float(steps)).mul(2).add(minZ).add(jitterZ).toVar();
         const y = minY.sub(5).toVar();
+        // The slot is walked in engine's space and its triangles arrive in the renderer's, whose z runs the other way.
+        const origin = vec3(px, maxY, pz.negate()).toVar();
 
         loopNamed(
           { end: binStart.add(binCount), name: "entry", start: binStart, type: "uint" },
@@ -236,7 +238,7 @@ export function createGrassDecompress(
                 triangles.element(corners.add(corner * 3 + 2))
               )
             );
-            const range = toRayRange(vec3(px, maxY, pz), p0, p1, p2);
+            const range = toRayRange(origin, p0, p1, p2);
 
             y.assign(max(y, select(range.greaterThanEqual(0), maxY.sub(range), y)));
           }

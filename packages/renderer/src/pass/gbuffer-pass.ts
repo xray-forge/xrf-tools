@@ -1,6 +1,6 @@
 import { RenderTarget } from "three/webgpu";
 
-import { ERendererPass } from "#/contract/scene/renderer-surface";
+import { ERendererPass } from "#/contract/scene/renderer-pass";
 import { IRendererFrame } from "#/pass/renderer-frame";
 import { IRendererScenePass } from "#/pass/renderer-scene-pass";
 import { RendererTargets } from "#/pass/renderer-targets";
@@ -12,6 +12,7 @@ import { drawUnsorted } from "#/pass/unsorted-draw";
  */
 export class GBufferPass implements IRendererScenePass {
   public readonly name: string = "gbuffer";
+  public readonly isScenePass = true as const;
   public readonly scene: ERendererPass = ERendererPass.DEFERRED;
   public readonly target: RenderTarget;
 

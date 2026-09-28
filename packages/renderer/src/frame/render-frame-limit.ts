@@ -16,7 +16,7 @@ export const DEFAULT_FRAME_RATE_LIMIT: TFrameRateLimit = "60";
  * @returns One of the offered limits.
  */
 export function toFrameRateLimit(stored: unknown): TFrameRateLimit {
-  return FRAME_RATE_LIMITS.find((limit) => limit === stored) ?? DEFAULT_FRAME_RATE_LIMIT;
+  return FRAME_RATE_LIMITS.find((limit: TFrameRateLimit) => limit === stored) ?? DEFAULT_FRAME_RATE_LIMIT;
 }
 
 /**

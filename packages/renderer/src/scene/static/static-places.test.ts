@@ -1,11 +1,13 @@
 import { describe, expect, it } from "@jest/globals";
 import { Matrix4 } from "three/webgpu";
 
+import { IRendererInstances } from "#/contract/scene/renderer-instances";
 import { StaticPlaces } from "#/scene/static/static-places";
-import { EStaticPool, STATIC_PLACE_COLUMNS, StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
+import { STATIC_PLACE_COLUMNS, StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
+import { EStaticPool } from "#/uniforms/static-pool";
+import { StorageRetirement } from "#/uniforms/storage-retirement";
 
-/** Two places, one moved one metre along x, the other two, with hemisphere terms or without. */
-function createInstances(hasHemi: boolean) {
+function createInstances(hasHemi: boolean): IRendererInstances {
   return {
     hemi: hasHemi ? new Float32Array([0.5, 0.25, 0.75, 0.125]) : undefined,
     transforms: new Float32Array([
@@ -17,10 +19,10 @@ function createInstances(hasHemi: boolean) {
 
 describe("StaticPlaces", () => {
   it("stands each place where its object's matrix puts its instance, with its hemisphere terms", () => {
-    const buffers: StaticDrawBuffers = new StaticDrawBuffers();
+    const buffers: StaticDrawBuffers = new StaticDrawBuffers(new StorageRetirement());
     const places: StaticPlaces = new StaticPlaces(buffers);
-    const start: number = places.allocatePlaces(2) as number;
-    const array = buffers.places.array as Float32Array;
+    const start: number = places.allocate(2) as number;
+    const array: Float32Array = buffers.places.array as Float32Array;
     const at: number = (start + 1) * STATIC_PLACE_COLUMNS * 4;
 
     places.writePlaces(start, createInstances(true), new Matrix4().makeTranslation(0, 10, 0));
@@ -30,64 +32,43 @@ describe("StaticPlaces", () => {
   });
 
   it("leaves the vertex hemi as it is for instances without terms of their own", () => {
-    const buffers: StaticDrawBuffers = new StaticDrawBuffers();
+    const buffers: StaticDrawBuffers = new StaticDrawBuffers(new StorageRetirement());
     const places: StaticPlaces = new StaticPlaces(buffers);
 
-    places.writePlaces(places.allocatePlaces(2) as number, createInstances(false), new Matrix4());
+    places.writePlaces(places.allocate(2) as number, createInstances(false), new Matrix4());
 
     expect(Array.from((buffers.places.array as Float32Array).subarray(16, 18))).toEqual([1, 0]);
   });
 
-  it("makes a row a place of one draw, which stands the draw's clusters there, and a freed row tests nothing", () => {
-    const buffers: StaticDrawBuffers = new StaticDrawBuffers();
+  it("grows with what is written and handed out kept, and bumps its version", () => {
+    const buffers: StaticDrawBuffers = new StaticDrawBuffers(new StorageRetirement(), { [EStaticPool.PLACES]: 2 });
     const places: StaticPlaces = new StaticPlaces(buffers);
-    const start: number = places.allocateRows(2) as number;
-    const version: number = places.version;
-
-    places.writeRows(start, new Float32Array([0, 0, 0, 1, 5, 0, 0, 1]), 40, 7);
-
-    expect(Array.from((buffers.rowTargets.array as Uint32Array).subarray(4, 8))).toEqual([41, 7, 0, 0]);
-    expect(places.version).toBeGreaterThan(version);
-
-    places.freeRows(start, 2);
-
-    expect((buffers.rowSpheres.array as Float32Array)[7]).toBe(-1);
-  });
-
-  it("grows the places and the rows with what is written and handed out kept, and bumps its version", () => {
-    const buffers: StaticDrawBuffers = new StaticDrawBuffers({ [EStaticPool.PLACES]: 2, [EStaticPool.ROWS]: 2 });
-    const places: StaticPlaces = new StaticPlaces(buffers);
-    const start: number = places.allocatePlaces(2) as number;
+    const start: number = places.allocate(2) as number;
 
     places.writePlaces(start, createInstances(true), new Matrix4());
-    places.writeRows(places.allocateRows(2) as number, new Float32Array([0, 0, 0, 1, 5, 0, 0, 1]), start, 3);
 
-    expect(places.allocatePlaces(1)).toBeNull();
+    expect(places.allocate(1)).toBeNull();
 
     const version: number = places.version;
 
-    places.grow(EStaticPool.PLACES, 8);
-    places.grow(EStaticPool.ROWS, 8);
+    places.grow(8);
 
-    expect(places.allocatePlaces(1)).toBe(2);
-    expect(places.allocateRows(6)).toBe(2);
-    expect(places.placeUse).toEqual({ capacity: 8, used: 3 });
-    expect(places.rowUse).toEqual({ capacity: 8, used: 8 });
+    expect(places.allocate(1)).toBe(2);
+    expect([places.capacity, places.used]).toEqual([8, 3]);
     expect(places.version).toBeGreaterThan(version);
     expect((buffers.places.array as Float32Array)[STATIC_PLACE_COLUMNS * 4 + 12]).toBe(2);
-    expect(Array.from((buffers.rowTargets.array as Uint32Array).subarray(4, 8))).toEqual([1, 3, 0, 0]);
   });
 
   // An instanced cluster's sphere is in its mesh's own space: the cull stands it in the place, scaled by the greatest.
   it("keeps each place's greatest scale, and gives a single draw a place of its own drawing its vertex hemi", () => {
-    const buffers: StaticDrawBuffers = new StaticDrawBuffers();
+    const buffers: StaticDrawBuffers = new StaticDrawBuffers(new StorageRetirement());
     const places: StaticPlaces = new StaticPlaces(buffers);
-    const start: number = places.allocatePlaces(3) as number;
+    const start: number = places.allocate(3) as number;
 
     places.writePlaces(start, createInstances(true), new Matrix4().makeScale(1, 3, 2));
     places.writePlace(start + 2, new Matrix4().makeTranslation(7, 0, 0));
 
-    const floats = buffers.places.array as Float32Array;
+    const floats: Float32Array = buffers.places.array as Float32Array;
 
     expect(floats[STATIC_PLACE_COLUMNS * 4 * start + 19]).toBe(3);
     expect(
@@ -100,14 +81,30 @@ describe("StaticPlaces", () => {
     ).toEqual([1, 0, -1, 1]);
   });
 
-  it("uploads what changed as one span a buffer", () => {
-    const buffers: StaticDrawBuffers = new StaticDrawBuffers();
+  it("names each place's impostor from where its set starts, and none for a place without", () => {
+    const buffers: StaticDrawBuffers = new StaticDrawBuffers(new StorageRetirement());
+    const places: StaticPlaces = new StaticPlaces(buffers);
+    const start: number = places.allocate(2) as number;
+    const floats: Float32Array = buffers.places.array as Float32Array;
+
+    places.writePlaces(
+      start,
+      { ...createInstances(false), impostors: { indices: new Int32Array([3, -1]), key: "clump" } },
+      new Matrix4(),
+      40
+    );
+
+    expect(floats[STATIC_PLACE_COLUMNS * 4 * start + 18]).toBe(43);
+    expect(floats[STATIC_PLACE_COLUMNS * 4 * (start + 1) + 18]).toBe(-1);
+  });
+
+  it("uploads what changed as one span", () => {
+    const buffers: StaticDrawBuffers = new StaticDrawBuffers(new StorageRetirement());
     const places: StaticPlaces = new StaticPlaces(buffers);
 
-    places.writeRows(places.allocateRows(2) as number, new Float32Array(8), 0, 0);
+    places.writePlace(places.allocate(2) as number, new Matrix4());
     places.flush();
 
-    expect(buffers.rowTargets.updateRanges).toEqual([{ count: 8, start: 0 }]);
-    expect(buffers.places.updateRanges).toEqual([]);
+    expect(buffers.places.updateRanges).toEqual([{ count: STATIC_PLACE_COLUMNS * 4, start: 0 }]);
   });
 });

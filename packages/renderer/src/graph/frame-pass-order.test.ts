@@ -11,9 +11,7 @@ function toPass(name: string): IRendererPass {
 }
 
 const BASE: IBaseFramePasses = Object.fromEntries(
-  ["cull", "gbuffer", "wallmarks", "sun", "combine", "water", "forward", "distortion", "overlay"].map(
-    (name: string) => [name, toPass(name)]
-  )
+  ["cull", "gbuffer", "wallmarks", "sun", "combine", "forward", "overlay"].map((name: string) => [name, toPass(name)])
 ) as unknown as IBaseFramePasses;
 
 const OCCLUSION: IOcclusionFramePasses = {
@@ -24,6 +22,7 @@ const OCCLUSION: IOcclusionFramePasses = {
 
 const NONE: IFrameOptionalPasses = {
   ambientOcclusion: null,
+  distortion: null,
   exposure: null,
   grass: null,
   lightShadows: null,
@@ -35,6 +34,7 @@ const NONE: IFrameOptionalPasses = {
   sharpen: null,
   smoothing: null,
   spatial: null,
+  water: null,
 };
 
 /** The names of the frame's passes in order, with the optional ones given. */
@@ -44,24 +44,14 @@ function toOrder(optional: Partial<IFrameOptionalPasses>): Array<string> {
 
 describe("the frame's pass order", () => {
   it("draws the base alone with every feature off", () => {
-    expect(toOrder({})).toEqual([
-      "cull",
-      "gbuffer",
-      "wallmarks",
-      "sun",
-      "combine",
-      "water",
-      "forward",
-      "distortion",
-      "overlay",
-      "present",
-    ]);
+    expect(toOrder({})).toEqual(["cull", "gbuffer", "wallmarks", "sun", "combine", "forward", "overlay", "present"]);
   });
 
   it("puts every stage of a resolved frame where it reads what it needs", () => {
     expect(
       toOrder({
         ambientOcclusion: toPass("ao"),
+        distortion: toPass("distortion"),
         grass: toPass("grass"),
         lightShadows: toPass("light-shadows"),
         lights: toPass("lights"),
@@ -70,6 +60,7 @@ describe("the frame's pass order", () => {
         resolve: { ...toPass("fsr2"), beforeBlended: [toPass("fsr2-opaque")] },
         shadows: [toPass("shadow-0"), toPass("shadow-1")],
         sharpen: toPass("rcas"),
+        water: toPass("water"),
       })
     ).toEqual([
       "cull",
@@ -102,7 +93,7 @@ describe("the frame's pass order", () => {
     expect(toOrder({ smoothing: toPass("antialias") }).slice(-3)).toEqual(["overlay", "antialias", "present"]);
     expect(
       toOrder({ sharpen: toPass("rcas"), smoothing: toPass("antialias"), spatial: toPass("fsr1") }).slice(-6)
-    ).toEqual(["distortion", "antialias", "fsr1", "rcas", "overlay", "present"]);
+    ).toEqual(["forward", "antialias", "fsr1", "rcas", "overlay", "present"]);
   });
 
   // The second phase reads the first's depth and draws on into the G-buffer; the pyramid reduces the whole of it.

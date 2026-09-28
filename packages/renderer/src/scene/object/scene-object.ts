@@ -1,9 +1,10 @@
 import { Maybe, Nullable } from "@xrf/types";
 import { BufferGeometry, Matrix4, Mesh, Scene, Skeleton, Sphere } from "three/webgpu";
 
-import { IRendererInstances, IRendererObject } from "#/contract/scene/renderer-object";
+import { IRendererInstances } from "#/contract/scene/renderer-instances";
+import { IRendererObject } from "#/contract/scene/renderer-object";
 import { ISurfaceMaterial } from "#/material/surface-material";
-import { createPartGeometry } from "#/scene/geometry/part-geometry";
+import { GeometryReleases } from "#/scene/geometry/geometry-releases";
 import { SceneClusters } from "#/scene/geometry/scene-clusters";
 import { SceneGeometry } from "#/scene/geometry/scene-geometry";
 import { ISceneSection } from "#/scene/geometry/scene-section";
@@ -29,6 +30,7 @@ export class SceneObject {
   public object: IRendererObject;
 
   private readonly draws: StaticDraws;
+  private readonly releases: GeometryReleases;
   private parts: Array<ScenePart> = [];
   /** What the parts draw over plainly, the geometry put or the places it stands. */
   private drawn: Nullable<BufferGeometry> = null;
@@ -54,11 +56,13 @@ export class SceneObject {
    * @param key - What it was put under.
    * @param object - What it is.
    * @param draws - The static draws its static parts are.
+   * @param releases - Where the buffers of the places it stood in are freed.
    */
-  public constructor(key: string, object: IRendererObject, draws: StaticDraws) {
+  public constructor(key: string, object: IRendererObject, draws: StaticDraws, releases: GeometryReleases) {
     this.key = key;
     this.object = object;
     this.draws = draws;
+    this.releases = releases;
   }
 
   /** Every mesh of its parts, whether or not a scene holds it. */
@@ -91,7 +95,7 @@ export class SceneObject {
 
     if (!this.staged?.isFor(geometry, source)) {
       // Staged for a change that never applied: nothing draws it.
-      this.staged?.dispose();
+      this.staged?.dispose(this.releases);
       this.staged = new SceneInstances(geometry, source);
     }
 
@@ -106,18 +110,21 @@ export class SceneObject {
    */
   public apply(state: Nullable<ISceneObjectState>, scenes: TPassRecord<Scene>): void {
     if (!state) {
-      this.detach();
+      this.clear();
 
       return;
     }
 
-    if (state.plain.drawn !== this.drawn) {
+    // New parts for a new skeleton too: a part's geometry is let go of with the mesh that first drew it.
+    if (state.plain.drawn !== this.drawn || state.skeleton !== this.skeleton) {
       this.rebuild(state);
-    } else if (state.skeleton !== this.skeleton) {
-      this.parts.forEach((part: ScenePart) => part.remesh(state.skeleton));
     }
 
-    this.skeleton = state.skeleton;
+    // Staged for places it no longer names: nothing draws it.
+    if (this.staged !== state.instances) {
+      this.staged?.dispose(this.releases);
+    }
+
     this.staged = null;
 
     if (this.object.matrix) {
@@ -179,30 +186,27 @@ export class SceneObject {
     }
   }
 
-  /** Takes every part out of what draws it, letting its static slots and its place in an arena go. */
-  public detach(): void {
-    this.parts.forEach((part: ScenePart) => part.detach());
-    this.unplace();
-    this.freePlaces();
-  }
-
   /** Lets everything it drew with go, for an object released. */
   public dispose(): void {
+    this.clear();
+  }
+
+  /** Lets everything it drew with go, its places included, for an object released or whose geometry went. */
+  private clear(): void {
     this.release();
     this.unplace();
     this.freePlaces();
-    this.instances?.dispose();
-    this.staged?.dispose();
+    this.instances?.dispose(this.releases);
+    this.staged?.dispose(this.releases);
     this.instances = null;
     this.staged = null;
+    this.drawn = null;
+    this.skeleton = null;
   }
 
-  /** Lets its parts go, and with them the buffers they drew with. */
+  /** Lets its parts go. */
   private release(): void {
-    this.parts.forEach((part: ScenePart) => {
-      part.dispose();
-      part.geometry.dispose();
-    });
+    this.parts.forEach((part: ScenePart) => part.dispose());
     this.parts = [];
   }
 
@@ -212,20 +216,23 @@ export class SceneObject {
 
     // The places it stood before are nothing's once its parts draw the new ones.
     if (this.instances && this.instances !== state.instances) {
-      this.instances.dispose();
+      this.instances.dispose(this.releases);
     }
 
     this.drawn = state.plain.drawn;
+    this.skeleton = state.skeleton;
     this.instances = state.instances;
     this.parts = state.geometry.sections.map(
       (section: ISceneSection, index: number) =>
-        new ScenePart(createPartGeometry(state.plain.drawn, section), index, section, state.skeleton, this.draws)
+        new ScenePart(state.plain.drawn, index, section, state.skeleton, this.draws)
     );
   }
 
   /** Puts each part where its surface draws it: its material's batch for a static draw, its pass's scene otherwise. */
   private show(state: ISceneObjectState, scenes: TPassRecord<Scene>): void {
-    const range: Nullable<IStaticRange> = state.surfaces.some((surface) => isStaticDraw(state, surface))
+    const range: Nullable<IStaticRange> = state.surfaces.some((surface: Maybe<ISurfaceMaterial>) =>
+      isStaticDraw(state, surface)
+    )
       ? this.place(state.geometry)
       : null;
     const placeStart: Nullable<number> =
@@ -248,7 +255,11 @@ export class SceneObject {
         // An impostor draws only where the LOD cull decides it does, which only a static draw is culled by.
         part.showPlain(null, null);
       } else {
-        part.showPlain(surface?.plainMaterial ?? null, surface ? scenes[surface.pass] : null, surface?.shadow ?? null);
+        part.showPlain(
+          surface?.plain.material ?? null,
+          surface ? scenes[surface.pass] : null,
+          surface?.plain.shadow ?? null
+        );
       }
     }
 

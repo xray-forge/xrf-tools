@@ -1,20 +1,19 @@
 import { BufferAttribute, BufferGeometry, Sphere, Vector3 } from "three/webgpu";
 
-import {
-  IRendererBounds,
-  IRendererGeometry,
-  IRendererGeometryGroup,
-  IRendererPackedVertices,
-} from "#/contract/scene/renderer-geometry";
+import { IRendererBounds } from "#/contract/scene/renderer-bounds";
+import { IRendererGeometry } from "#/contract/scene/renderer-geometry";
+import { IRendererGeometryGroup } from "#/contract/scene/renderer-geometry-group";
+import { IRendererPackedVertices } from "#/contract/scene/renderer-packed-vertices";
 import { EVertexAttribute } from "#/geometry/vertex-attribute";
+import { GeometryReleases } from "#/scene/geometry/geometry-releases";
 import { cutSceneClusters } from "#/scene/geometry/scene-cluster-cut";
 import { SceneClusters } from "#/scene/geometry/scene-clusters";
 import { ISceneSection } from "#/scene/geometry/scene-section";
 import { toSectionSphere } from "#/scene/geometry/section-sphere";
 
 /**
- * A geometry a consumer put: the buffers every object drawing it shares, over the very arrays that crossed, and the
- * sections those objects draw and cull it by.
+ * A geometry a consumer put: the buffers every object drawing it shares, which it owns, over the very arrays that
+ * crossed, and the sections those objects draw and cull it by.
  */
 export class SceneGeometry {
   /** A sphere as the contract states one. */
@@ -43,7 +42,9 @@ export class SceneGeometry {
   private static setPackedAttributes(buffer: BufferGeometry, geometry: IRendererGeometry): void {
     const packed: IRendererPackedVertices = geometry.packed as IRendererPackedVertices;
     const vertices: number = geometry.position.length / 3;
-    const both: Array<keyof IRendererGeometry> = SceneGeometry.PACKED_REPLACES.filter((key) => geometry[key]);
+    const both: Array<keyof IRendererGeometry> = SceneGeometry.PACKED_REPLACES.filter(
+      (key: keyof IRendererGeometry) => geometry[key]
+    );
 
     if (both.length) {
       throw new Error(`A geometry carries its vertices packed and as floats both: ${both.join(", ")}`);
@@ -168,7 +169,13 @@ export class SceneGeometry {
     return this.buffer.boundingSphere as Sphere;
   }
 
-  public dispose(): void {
+  /**
+   * @param releases - Where its buffers are freed: three frees only a drawn geometry's, and this one is never drawn.
+   */
+  public dispose(releases: GeometryReleases): void {
+    const { index, attributes } = this.buffer;
+
+    releases.release(index ? [...Object.values(attributes), index] : Object.values(attributes));
     this.buffer.dispose();
   }
 }

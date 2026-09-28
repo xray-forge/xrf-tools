@@ -1,5 +1,7 @@
-import { Frustum, Matrix4, PerspectiveCamera, Plane, Sphere, Vector3 } from "three/webgpu";
+import { Frustum, Matrix4, PerspectiveCamera, Sphere, Vector3, Vector4 } from "three/webgpu";
 
+import { toPlaneVectors } from "#/visibility/camera-frustum";
+import { toSphereVisibility } from "#/visibility/plane-tests";
 import { EVisibility } from "#/visibility/visibility";
 
 /** Where the far plane of three's frustum sits among its planes. */
@@ -11,6 +13,9 @@ const FAR_PLANE: number = 4;
  * A view keeps its version while its camera and distance stay put, so whatever was culled against it stays culled.
  */
 export class CullView {
+  /** The frustum's six planes, normals pointing in, `w` the constant. */
+  public readonly planes: ReadonlyArray<Vector4> = Array.from({ length: 6 }, () => new Vector4());
+
   private readonly frustum: Frustum = new Frustum();
   private readonly projection: Matrix4 = new Matrix4();
   private readonly next: Matrix4 = new Matrix4();
@@ -18,11 +23,6 @@ export class CullView {
   private readonly point: Vector3 = new Vector3();
   private distance: number = Infinity;
   private currentVersion: number = 0;
-
-  /** The frustum's six planes, normals pointing in. */
-  public get planes(): ReadonlyArray<Plane> {
-    return this.frustum.planes;
-  }
 
   /** Bumped whenever the view sees something else. */
   public get version(): number {
@@ -51,6 +51,7 @@ export class CullView {
       this.frustum.planes[FAR_PLANE].setFromNormalAndCoplanarPoint(this.forward.negate(), this.point);
     }
 
+    toPlaneVectors(this.frustum.planes, this.planes);
     this.currentVersion += 1;
   }
 
@@ -62,21 +63,7 @@ export class CullView {
    * @returns How much of the sphere the view sees.
    */
   public classify(x: number, y: number, z: number, radius: number): EVisibility {
-    let isInside: boolean = true;
-
-    for (const { normal, constant } of this.frustum.planes as ReadonlyArray<Plane>) {
-      const distance: number = normal.x * x + normal.y * y + normal.z * z + constant;
-
-      if (distance < -radius) {
-        return EVisibility.OUTSIDE;
-      }
-
-      if (distance < radius) {
-        isInside = false;
-      }
-    }
-
-    return isInside ? EVisibility.INSIDE : EVisibility.INTERSECTS;
+    return toSphereVisibility(x, y, z, radius, this.planes);
   }
 
   /**

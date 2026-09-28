@@ -1,5 +1,6 @@
+import { Maybe } from "@xrf/types";
 import { renderGroup, uniform } from "three/tsl";
-import { Matrix4, Object3D, PerspectiveCamera, Vector2 } from "three/webgpu";
+import { Matrix4, NodeFrame, Object3D, PerspectiveCamera, UniformNode, Vector2 } from "three/webgpu";
 
 /** Where an object stood in the frame it was last drawn in, and the one before. */
 interface IObjectPlacement {
@@ -15,18 +16,18 @@ interface IObjectPlacement {
  */
 export class MotionUniforms {
   /** World to clip, this frame, unjittered. */
-  public readonly viewProjection = uniform(new Matrix4()).setGroup(renderGroup);
+  public readonly viewProjection: UniformNode<"mat4", Matrix4> = uniform(new Matrix4()).setGroup(renderGroup);
   /** Clip to world, this frame, unjittered: where a pixel of the sky looks. */
-  public readonly inverseViewProjection = uniform(new Matrix4()).setGroup(renderGroup);
+  public readonly inverseViewProjection: UniformNode<"mat4", Matrix4> = uniform(new Matrix4()).setGroup(renderGroup);
   /** World to clip, the frame before, unjittered. */
-  public readonly previousViewProjection = uniform(new Matrix4()).setGroup(renderGroup);
+  public readonly previousViewProjection: UniformNode<"mat4", Matrix4> = uniform(new Matrix4()).setGroup(renderGroup);
   /** World to view, the frame before: how far a point stood from the camera then. */
-  public readonly previousView = uniform(new Matrix4()).setGroup(renderGroup);
+  public readonly previousView: UniformNode<"mat4", Matrix4> = uniform(new Matrix4()).setGroup(renderGroup);
   /** Where this frame's samples sit off each pixel's centre, in its pixels, `y` down. */
-  public readonly jitter = uniform(new Vector2()).setGroup(renderGroup);
+  public readonly jitter: UniformNode<"vec2", Vector2> = uniform(new Vector2()).setGroup(renderGroup);
   /** A plain object's world matrix the frame before, read per object as it draws. */
-  public readonly previousModelWorld = uniform(new Matrix4()).onObjectUpdate(({ object }) =>
-    this.toPreviousMatrix(object as Object3D)
+  public readonly previousModelWorld: UniformNode<"mat4", Matrix4> = uniform(new Matrix4()).onObjectUpdate(
+    ({ object }: NodeFrame) => this.toPreviousMatrix(object as Object3D)
   );
 
   private readonly placements: WeakMap<Object3D, IObjectPlacement> = new WeakMap();
@@ -64,7 +65,7 @@ export class MotionUniforms {
    * draws or back in view after a while, since where it stood when last drawn is not where it stood a frame ago.
    */
   private toPreviousMatrix(object: Object3D): Matrix4 {
-    let placement: IObjectPlacement | undefined = this.placements.get(object);
+    let placement: Maybe<IObjectPlacement> = this.placements.get(object);
 
     if (!placement) {
       placement = { current: object.matrixWorld.clone(), frame: this.frame, previous: object.matrixWorld.clone() };

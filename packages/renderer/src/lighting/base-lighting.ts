@@ -1,4 +1,6 @@
-import { IRendererLighting, TRendererColor, TRendererVector } from "#/contract/renderer-lighting";
+import { TRendererColor } from "#/contract/renderer-color";
+import { IRendererLighting } from "#/contract/renderer-lighting";
+import { TRendererVector } from "#/contract/renderer-vector";
 
 /** The engine's `EPS`, which `env_color` carries so a black hemisphere is never exactly zero. */
 const EPS: number = 0.00001;
@@ -76,7 +78,7 @@ export function toSunSpecular(color: TRendererColor): number {
  * @param density - `fog_density`.
  * @returns `x` and `w` of `fog_params`.
  */
-export function toFogParams(distance: number, density: number): [number, number] {
+function toFogParams(distance: number, density: number): [number, number] {
   // `CEnvDescriptorMixer::lerp` and `cl_fog_params` (`xrEngine/Environment_misc.cpp`, `Blender_Recorder_StandartBinding`).
   const near: number = (1 - density) * 0.85 * distance;
   const far: number = 0.99 * distance;

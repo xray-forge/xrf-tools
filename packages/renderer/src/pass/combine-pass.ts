@@ -40,11 +40,11 @@ export class CombinePass implements IRendererPass {
     this.material = this.createMaterial();
   }
 
-  public render({ renderer, targets, settings }: IRendererFrame): void {
+  public render({ renderer, settings }: IRendererFrame): void {
     // The hex is bytes the page shows, so it reaches the canvas as written rather than decoded from srgb.
     this.backdrop.setHex(settings.backdrop ?? 0, LinearSRGBColorSpace);
     renderer.setClearColor(this.backdrop, settings.backdrop === null ? 0 : 1);
-    renderer.setRenderTarget(targets.scene);
+    renderer.setRenderTarget(this.targets.scene);
     renderer.clear(true, false, false);
     this.quad.material = this.material;
     this.quad.render(renderer);

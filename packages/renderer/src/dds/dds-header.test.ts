@@ -2,7 +2,7 @@ import { describe, expect, it } from "@jest/globals";
 
 import { mockDdsFile, mockDx10DdsFile, mockUncompressedDdsFile } from "#/dds/dds-fixtures";
 import { IDdsHeader, readDdsHeader } from "#/dds/dds-header";
-import { EDdsRefusal } from "#/dds/dds-refusal";
+import { EDdsRefusalReason } from "#/dds/dds-refusal-reason";
 
 /** The header a read produced, failing the case rather than the assertion when it was refused. */
 function readHeader(bytes: ArrayBuffer): IDdsHeader {
@@ -51,16 +51,16 @@ describe("readDdsHeader", () => {
 
   it("tells a file that is not a dds from one that stops short", () => {
     // The two used to look identical from outside, and they are opposite fixes.
-    expect(readDdsHeader(new Uint8Array([1, 2, 3, 4]).buffer).refusal?.reason).toBe(EDdsRefusal.TRUNCATED);
+    expect(readDdsHeader(new Uint8Array([1, 2, 3, 4]).buffer).refusal?.reason).toBe(EDdsRefusalReason.TRUNCATED);
 
     const notADds: ArrayBuffer = mockDdsFile();
 
     new Int32Array(notADds)[0] = 0;
 
-    expect(readDdsHeader(notADds).refusal?.reason).toBe(EDdsRefusal.NOT_A_DDS);
+    expect(readDdsHeader(notADds).refusal?.reason).toBe(EDdsRefusalReason.NOT_A_DDS);
   });
 
   it("refuses a file that declares a DX10 header and stops before it", () => {
-    expect(readDdsHeader(mockDx10DdsFile(77).slice(0, 130)).refusal?.reason).toBe(EDdsRefusal.TRUNCATED);
+    expect(readDdsHeader(mockDx10DdsFile(77).slice(0, 130)).refusal?.reason).toBe(EDdsRefusalReason.TRUNCATED);
   });
 });

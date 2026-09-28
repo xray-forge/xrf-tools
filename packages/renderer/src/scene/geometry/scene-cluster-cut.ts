@@ -1,6 +1,8 @@
 import { Nullable } from "@xrf/types";
 
-import { IRendererClusters, IRendererGeometry, RENDERER_CLUSTER_TRIANGLES } from "#/contract/scene/renderer-geometry";
+import { IRendererClusters, RENDERER_CLUSTER_TRIANGLES } from "#/contract/scene/renderer-clusters";
+import { IRendererGeometry } from "#/contract/scene/renderer-geometry";
+import { IRendererProgressive } from "#/contract/scene/renderer-progressive";
 import { ISceneSection } from "#/scene/geometry/scene-section";
 
 /**
@@ -22,7 +24,9 @@ export function cutSceneClusters(
   const cut: Set<string> = new Set();
   const runs: Array<readonly [number, number]> = sections.flatMap((section: ISceneSection) => [
     [section.start, section.count] as const,
-    ...(section.progressive?.bands.map((band) => [band.start, band.count] as const) ?? []),
+    ...(section.progressive?.bands.map(
+      (band: IRendererProgressive["bands"][number]) => [band.start, band.count] as const
+    ) ?? []),
   ]);
 
   for (const [start, count] of runs) {

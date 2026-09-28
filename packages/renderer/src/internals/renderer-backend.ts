@@ -1,5 +1,5 @@
-import { Maybe } from "@xrf/types";
-import { BufferAttribute, WebGPURenderer } from "three/webgpu";
+import { Maybe, Nullable } from "@xrf/types";
+import { BufferAttribute, InterleavedBufferAttribute, WebGPURenderer } from "three/webgpu";
 
 /**
  * The part of three's backend the renderer reads, which its typings do not state.
@@ -18,6 +18,11 @@ export interface IRendererBackend {
   getTimestamp?(uid: string): number;
   has?(object: object): boolean;
   destroyAttribute?(attribute: BufferAttribute): void;
+}
+
+/** The record of every attribute three uploaded, on its renderer, which its typings do not state. */
+interface IRendererAttributes {
+  _attributes: Nullable<{ delete(attribute: BufferAttribute | InterleavedBufferAttribute): unknown }>;
 }
 
 /**
@@ -90,4 +95,18 @@ export function destroyStorageAttribute(renderer: WebGPURenderer, attribute: Buf
   if (backend.has?.(attribute)) {
     backend.destroyAttribute?.(attribute);
   }
+}
+
+/**
+ * Frees the GPU buffer behind a vertex or index attribute no drawn geometry names, as three frees a disposed geometry's:
+ * through its record of what it uploaded, so one never uploaded or freed already is passed over.
+ *
+ * @param renderer - The renderer that uploaded it.
+ * @param attribute - The attribute.
+ */
+export function destroyGeometryAttribute(
+  renderer: WebGPURenderer,
+  attribute: BufferAttribute | InterleavedBufferAttribute
+): void {
+  (renderer as unknown as IRendererAttributes)._attributes?.delete(attribute);
 }

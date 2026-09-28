@@ -1,18 +1,16 @@
 import { describe, expect, it } from "@jest/globals";
 import { PerspectiveCamera } from "three/webgpu";
 
-import { DEFAULT_RENDERER_LIGHTS_SETTINGS, IRendererLightsSettings } from "#/contract/renderer-features";
-import { EMPTY_RENDERER_LIGHTS_REPORT } from "#/contract/renderer-report";
-import {
-  ERendererLightKind,
-  IRendererPointLight,
-  IRendererSpotLight,
-  TRendererLight,
-} from "#/contract/scene/renderer-lights";
+import { EMPTY_RENDERER_LIGHTS_REPORT } from "#/contract/renderer-lights-report";
+import { DEFAULT_RENDERER_LIGHTS_SETTINGS, IRendererLightsSettings } from "#/contract/renderer-lights-settings";
+import { ERendererLightKind, TRendererLight } from "#/contract/scene/renderer-light";
+import { IRendererPointLight } from "#/contract/scene/renderer-point-light";
+import { IRendererSpotLight } from "#/contract/scene/renderer-spot-light";
 import { adoptRendererConventions } from "#/internals/camera-conventions";
 import { toSunSpecular } from "#/lighting/base-lighting";
-import { LIGHT_NO_CONE, LIGHT_RECORD, MAX_LIGHTS } from "#/scene/lights/light-record";
-import { ISceneLightsFrame, SceneLights } from "#/scene/lights/scene-lights";
+import { LIGHT_NO_CONE, LIGHT_RECORD, LIGHT_VECTORS, MAX_LIGHTS } from "#/scene/lights/light-record";
+import { SceneLights } from "#/scene/lights/scene-lights";
+import { ISceneLightsFrame } from "#/scene/lights/scene-lights-frame";
 import { StaticShadowChanges } from "#/scene/static/static-shadow-changes";
 import { RendererTextures } from "#/texture/renderer-textures";
 import { LodUniforms } from "#/uniforms/lod-uniforms";
@@ -74,7 +72,9 @@ function createFrame(part: Partial<ISceneLightsFrame> = {}): ISceneLightsFrame {
 
 /** One vector of a light's record. */
 function readVector(lights: SceneLights, light: number, vector: number): Array<number> {
-  return Array.from(lights.records.read(light).subarray(vector * 4, vector * 4 + 4));
+  const at: number = (light * LIGHT_VECTORS + vector) * 4;
+
+  return Array.from((lights.records.buffer.array as Float32Array).subarray(at, at + 4));
 }
 
 describe("SceneLights", () => {
@@ -254,6 +254,27 @@ describe("SceneLights", () => {
     expect(lights.report.excessLights).toBe(6);
     // The nearest first: the last put, standing nearest.
     expect(readVector(lights, 0, LIGHT_RECORD.position)[2]).toBeCloseTo(-10.1, 4);
+  });
+
+  it("leaves the record of a shadowed light waiting for its faces to the next light in view", () => {
+    const lights: SceneLights = createLights();
+    // Two shadowed points nearest, twelve faces at eight a frame, then as many as fill the records past them.
+    const crowd: Array<TRendererLight> = [
+      { ...POINT, isShadowed: true, position: [0, 0, -5] },
+      { ...POINT, isShadowed: true, position: [0, 0, -6] },
+      ...Array.from({ length: MAX_LIGHTS - 1 }, (_: unknown, index: number): IRendererPointLight => ({
+        ...POINT,
+        position: [0, 0, -10 - index * 0.1],
+        range: 1,
+      })),
+    ];
+
+    lights.put({ animators: [], lights: crowd });
+    lights.update(createFrame());
+
+    expect(lights.count).toBe(MAX_LIGHTS);
+    expect(lights.shadowed).toBe(1);
+    expect(lights.report.excessLights).toBe(0);
   });
 
   it("reports nothing once the lights are let go", () => {

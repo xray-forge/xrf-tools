@@ -1,6 +1,8 @@
 import { renderGroup, uniform } from "three/tsl";
+import { UniformNode } from "three/webgpu";
 
-import { ERendererAntialiasing, IRendererFeatureSettings, toRendererUpscale } from "#/contract/renderer-features";
+import { ERendererAntialiasing } from "#/contract/renderer-antialiasing";
+import { IRendererFeatureSettings, toRendererUpscale } from "#/contract/renderer-feature-settings";
 import { IRendererSettings } from "#/contract/renderer-settings";
 
 /**
@@ -8,15 +10,15 @@ import { IRendererSettings } from "#/contract/renderer-settings";
  */
 export class SettingsUniforms {
   /** One while light shades the frame, zero for raw albedo. */
-  public readonly lit = uniform(1).setGroup(renderGroup);
+  public readonly lit: UniformNode<"float", number> = uniform(1).setGroup(renderGroup);
   /** One while bump pairs shade the surfaces that bind them. */
-  public readonly bumped = uniform(1).setGroup(renderGroup);
+  public readonly bumped: UniformNode<"float", number> = uniform(1).setGroup(renderGroup);
   /** How much of the baked hemisphere occlusion applies. */
-  public readonly hemiStrength = uniform(1).setGroup(renderGroup);
+  public readonly hemiStrength: UniformNode<"float", number> = uniform(1).setGroup(renderGroup);
   /** What the tonemap multiplies by first. */
-  public readonly tonemapScale = uniform(1).setGroup(renderGroup);
+  public readonly tonemapScale: UniformNode<"float", number> = uniform(1).setGroup(renderGroup);
   /** Mip levels every surface texture is sampled finer by, so a scene drawn smaller keeps its shown detail. */
-  public readonly textureBias = uniform(0).setGroup(renderGroup);
+  public readonly textureBias: UniformNode<"float", number> = uniform(0).setGroup(renderGroup);
 
   /**
    * @param settings - The consumer's settings.

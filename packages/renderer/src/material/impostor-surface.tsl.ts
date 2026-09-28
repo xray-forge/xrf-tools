@@ -109,7 +109,7 @@ export function toImpostorSurfaceShader(inputs: ISurfaceInputs, uniforms: Render
       albedo,
       toViewNormal(companion.xyz),
       companion.w.mul(hemi),
-      // Unoccluded, as a tree writes it: the engine lights both with the sun's shadow map, which this renderer has not.
+      // No baked sun occlusion, as a tree writes none: the sun's cascades shadow both.
       float(1),
       uniform((IMPOSTOR_MATERIAL + 0.5) / MATERIAL_SLICES),
       toWorldMotion(uniforms.motion, position)

@@ -1,18 +1,15 @@
 import { storage } from "three/tsl";
-import {
-  BufferAttribute,
-  IndirectStorageBufferAttribute,
-  StorageBufferAttribute,
-  StorageBufferNode,
-  TypedArray,
-} from "three/webgpu";
+import { IndirectStorageBufferAttribute, StorageBufferAttribute, StorageBufferNode, TypedArray } from "three/webgpu";
 
-import { RENDERER_MAX_SHADOW_CASCADES } from "#/contract/renderer-features";
-import { RENDERER_CLUSTER_TRIANGLES } from "#/contract/scene/renderer-geometry";
+import { RENDERER_MAX_SHADOW_CASCADES } from "#/contract/renderer-shadow-settings";
+import { RENDERER_CLUSTER_TRIANGLES } from "#/contract/scene/renderer-clusters";
 import { DEFAULT_STORAGE_LIMIT } from "#/internals/renderer-backend";
 import { LIGHT_SHADOW_FACE_BUDGET } from "#/uniforms/lights-uniforms";
 import { LodUniforms } from "#/uniforms/lod-uniforms";
 import { OcclusionUniforms } from "#/uniforms/occlusion-uniforms";
+import { EStaticPool } from "#/uniforms/static-pool";
+import { EStaticView } from "#/uniforms/static-view";
+import { StorageRetirement } from "#/uniforms/storage-retirement";
 
 /** Unsigned integers one indexed indirect draw takes: index count, instance count, first index, base vertex, first instance. */
 export const STATIC_DRAW_ARGUMENTS: number = 5;
@@ -47,24 +44,8 @@ export const STATIC_SHADOW_VIEWS: number = RENDERER_MAX_SHADOW_CASCADES + LIGHT_
 /** The first local-light face slot, after the sun cascades. A batch uses consecutive slots from here. */
 export const STATIC_LIGHT_VIEW_START: number = RENDERER_MAX_SHADOW_CASCADES;
 
-/** The camera's views, then each shadow view's: what the lists of kept clusters and the batches' arguments are per. */
-export enum EStaticView {
-  /** The first phase: what the last frame's depth does not hide. */
-  EARLY = 0,
-  /** The second: what the first's depth no longer hides of what the last frame's did. */
-  LATE = 1,
-  /** The first shadow view; shadow view `n` is `SHADOW + n`. */
-  SHADOW = 2,
-}
-
 /** Views a static draw is culled for. */
 export const STATIC_VIEWS: number = EStaticView.SHADOW + STATIC_SHADOW_VIEWS;
-
-/** The list space a batch's region is in: the camera's batches, or the shadow views'. */
-export enum EStaticListSpace {
-  SURFACES = 0,
-  SHADOWS = 1,
-}
 
 /** What a slot names for a batch where none of that grouping draws it. */
 export const STATIC_NO_BATCH: number = 0xffffffff;
@@ -97,43 +78,6 @@ export function toStaticBandWord(band: number, bands: number, windows: number): 
   return (band | (bands << 8) | (windows << 16)) >>> 0;
 }
 
-/** What a slot draws, a flag of its record's fourth word. */
-export enum EStaticSlotKind {
-  /** Nothing: a slot free or drawing no index. */
-  NONE = 0,
-  /** Its clusters once, where its place puts them, each tested by its own sphere. */
-  SINGLE = 1,
-  /** Its clusters in every place a row of it keeps. */
-  LISTED = 2,
-}
-
-/**
- * The pools of the static draw buffers, each grown on its own: slots a draw each, places an instance each, rows a
- * place of one instanced draw each, impostors of clumps of trees, clusters, batches, the lists a view's kept clusters
- * are written to, and the depth pyramid's texels.
- */
-export enum EStaticPool {
-  SLOTS = "slots",
-  PLACES = "places",
-  ROWS = "rows",
-  LODS = "lods",
-  CLUSTERS = "clusters",
-  BATCHES = "batches",
-  /** Entries of the camera's batches' regions, a view each of the camera's two. */
-  SURFACE_LIST = "surfaceList",
-  /** Entries of the shadow batches' regions, a view each of the shadow views. */
-  SHADOW_LIST = "shadowList",
-  PYRAMID = "pyramid",
-}
-
-/** What the LOD cull decided a clump draws as, bits of its terms' fourth word. */
-export enum EStaticLodState {
-  /** Its trees, near enough to be drawn in full. */
-  TREES = 1,
-  /** Its impostor, far enough to be drawn in their place. */
-  IMPOSTOR = 2,
-}
-
 /** What each pool holds before it first grows: more than any level measured puts in its resident sectors. */
 export const INITIAL_STATIC_CAPACITY: Readonly<Record<EStaticPool, number>> = {
   [EStaticPool.SLOTS]: 1 << 14,
@@ -148,6 +92,24 @@ export const INITIAL_STATIC_CAPACITY: Readonly<Record<EStaticPool, number>> = {
   [EStaticPool.PYRAMID]: 1 << 20,
 };
 
+/** Bytes one entry of the lists takes: a cluster and its place. */
+const LIST_ENTRY_BYTES: number = 8;
+
+/** The pool of a list space; both are laid out in the one buffer of every view's list. */
+type TListPool = EStaticPool.SURFACE_LIST | EStaticPool.SHADOW_LIST;
+
+/** Views each list space is laid out for in that buffer. */
+const LIST_VIEWS: Readonly<Record<TListPool, number>> = {
+  [EStaticPool.SURFACE_LIST]: 2,
+  [EStaticPool.SHADOW_LIST]: STATIC_SHADOW_VIEWS,
+};
+
+/** The list space sharing that buffer with each. */
+const OTHER_LIST: Readonly<Record<TListPool, TListPool>> = {
+  [EStaticPool.SURFACE_LIST]: EStaticPool.SHADOW_LIST,
+  [EStaticPool.SHADOW_LIST]: EStaticPool.SURFACE_LIST,
+};
+
 /** Bytes the widest buffer of each pool takes an element, which is what a storage buffer's limit caps the pool by. */
 const ELEMENT_BYTES: Readonly<Record<EStaticPool, number>> = {
   [EStaticPool.SLOTS]: STATIC_SLOT_WORDS * 4,
@@ -156,9 +118,8 @@ const ELEMENT_BYTES: Readonly<Record<EStaticPool, number>> = {
   [EStaticPool.LODS]: STATIC_LOD_CORNER_COLUMNS * 16,
   [EStaticPool.CLUSTERS]: 16,
   [EStaticPool.BATCHES]: STATIC_BATCH_ARGUMENT_BYTES,
-  // The list is two regions of the surfaces' and one a shadow view of the shadows', eight bytes an entry.
-  [EStaticPool.SURFACE_LIST]: 8 * 2,
-  [EStaticPool.SHADOW_LIST]: 8 * STATIC_SHADOW_VIEWS,
+  [EStaticPool.SURFACE_LIST]: LIST_ENTRY_BYTES * 2,
+  [EStaticPool.SHADOW_LIST]: LIST_ENTRY_BYTES * STATIC_SHADOW_VIEWS,
   [EStaticPool.PYRAMID]: 4,
 };
 
@@ -191,6 +152,8 @@ function toGrown<T extends TStorageAttribute>(attribute: T, count: number, fill:
 export class StaticDrawBuffers {
   /** Bytes one storage buffer may hold, which the device says once it is open. */
   public storageLimit: number = DEFAULT_STORAGE_LIMIT;
+  /** Where every buffer a static draw replaces or gives up goes, freed once nothing binds it. */
+  public readonly retirement: StorageRetirement;
 
   /**
    * Each slot's record: its first cluster, its clusters, its place, its `EStaticSlotKind`; then its surface batch, its
@@ -271,19 +234,19 @@ export class StaticDrawBuffers {
 
   private readonly initials: Readonly<Record<EStaticPool, number>>;
   private readonly capacities: Record<EStaticPool, number>;
-  /** Buffers replaced by a growth, whose GPU buffers go once nothing binds them. */
-  private retired: Array<BufferAttribute> = [];
   private currentLayout: number = 0;
 
   /**
+   * @param retirement - Where a buffer a growth replaced goes.
    * @param initial - What each pool holds before it first grows, where not `INITIAL_STATIC_CAPACITY`.
    */
-  public constructor(initial: Partial<Record<EStaticPool, number>> = {}) {
+  public constructor(retirement: StorageRetirement, initial: Partial<Record<EStaticPool, number>> = {}) {
     const capacities: Record<EStaticPool, number> = { ...INITIAL_STATIC_CAPACITY, ...initial };
     const rows: number = capacities[EStaticPool.ROWS];
     const lods: number = capacities[EStaticPool.LODS];
     const batches: number = capacities[EStaticPool.BATCHES];
 
+    this.retirement = retirement;
     this.initials = { ...capacities };
     this.capacities = capacities;
     this.slots = new StorageBufferAttribute(new Uint32Array(capacities[EStaticPool.SLOTS] * STATIC_SLOT_WORDS), 4);
@@ -355,9 +318,18 @@ export class StaticDrawBuffers {
 
   /**
    * @param pool - A pool.
-   * @returns What it may grow to: as many elements as its widest buffer holds within the storage limit.
+   * @returns What it may grow to: as many elements as its widest buffer holds within the storage limit, and for a list
+   *   space, beside what the other space takes of the buffer they share.
    */
   public limit(pool: EStaticPool): number {
+    if (pool === EStaticPool.SURFACE_LIST || pool === EStaticPool.SHADOW_LIST) {
+      const other: TListPool = OTHER_LIST[pool];
+      const free: number =
+        Math.floor(this.storageLimit / LIST_ENTRY_BYTES) - LIST_VIEWS[other] * this.capacities[other];
+
+      return Math.max(0, Math.floor(free / LIST_VIEWS[pool]));
+    }
+
     return Math.floor(this.storageLimit / ELEMENT_BYTES[pool]);
   }
 
@@ -405,8 +377,8 @@ export class StaticDrawBuffers {
 
       case EStaticPool.BATCHES:
         this.batchRegions = this.replace(this.batchRegions, capacity);
-        this.viewArgs = this.viewArgs.map((args) => this.replaceArgs(args, capacity));
-        this.wireArgs = this.wireArgs.map((args) => this.replaceArgs(args, capacity));
+        this.viewArgs = this.viewArgs.map((args: IndirectStorageBufferAttribute) => this.replaceArgs(args, capacity));
+        this.wireArgs = this.wireArgs.map((args: IndirectStorageBufferAttribute) => this.replaceArgs(args, capacity));
         break;
 
       case EStaticPool.SURFACE_LIST:
@@ -421,30 +393,13 @@ export class StaticDrawBuffers {
     this.capacities[pool] = capacity;
 
     if (pool === EStaticPool.SURFACE_LIST || pool === EStaticPool.SHADOW_LIST) {
-      this.retired.push(this.lists, this.candidates);
+      this.retirement.retire([this.lists, this.candidates]);
       this.lists = new StorageBufferAttribute(new Uint32Array(this.toListLength() * 2), 2);
       this.candidates = new StorageBufferAttribute(new Uint32Array(this.capacities[EStaticPool.SURFACE_LIST] * 2), 2);
       this.listEntries.value = this.lists;
     }
 
     this.currentLayout += 1;
-  }
-
-  /**
-   * @param attributes - Buffers of what draws static draws, given up, to go with the pools' own once nothing binds
-   *   them.
-   */
-  public retire(attributes: Iterable<BufferAttribute>): void {
-    this.retired.push(...attributes);
-  }
-
-  /** @returns The buffers replaced since the last call, for their GPU buffers to go. */
-  public takeRetired(): Array<BufferAttribute> {
-    const retired: Array<BufferAttribute> = this.retired;
-
-    this.retired = [];
-
-    return retired;
   }
 
   /** Entries every view's list together takes. */
@@ -455,14 +410,14 @@ export class StaticDrawBuffers {
   private replace<T extends TStorageAttribute>(attribute: T, count: number, fill: number = 0): T {
     const grown: T = toGrown(attribute, count, fill);
 
-    this.retired.push(attribute);
+    this.retirement.retire([attribute]);
 
     return grown;
   }
 
   /** New arguments for a view, which the cull writes whole each time it runs, so nothing of the old is kept. */
   private replaceArgs(args: IndirectStorageBufferAttribute, batches: number): IndirectStorageBufferAttribute {
-    this.retired.push(args);
+    this.retirement.retire([args]);
 
     return StaticDrawBuffers.createArgs(batches);
   }

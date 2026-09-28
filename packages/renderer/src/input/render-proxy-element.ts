@@ -1,14 +1,7 @@
-import { IRenderInputEvent } from "#/contract/renderer-input";
+import { IRenderInputEvent } from "#/contract/render-input-event";
 import { IRendererViewSize } from "#/contract/renderer-view-size";
-
-/** Told whatever the controls wrote on the element's cursor, for the side that has a cursor. */
-export type TRenderCursorSink = (cursor: string) => void;
-
-/** The event as it crossed, plus the two calls a control makes on one. */
-export interface IRenderProxyEvent extends IRenderInputEvent {
-  preventDefault(): void;
-  stopPropagation(): void;
-}
+import { TRenderCursorSink } from "#/input/render-cursor-sink";
+import { IRenderProxyEvent } from "#/input/render-proxy-event";
 
 /** What a listener is given. */
 type TProxyListener = (event: IRenderProxyEvent) => void;
