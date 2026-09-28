@@ -17,18 +17,14 @@ import { toGrassSurfaceShader } from "#/material/grass-surface.tsl";
 import { MaterialSamplers } from "#/material/material-samplers";
 import { SurfaceNodeMaterial } from "#/material/surface-node-material";
 import { ISurfaceShader } from "#/material/surface-shader";
-import {
-  createGrassItemBuffers,
-  createGrassLevelBuffers,
-  IGrassItemBuffers,
-  IGrassLevelBuffers,
-  listGrassItemStorage,
-  listGrassLevelStorage,
-  TGrassBuffers,
-  toGrassCachePerCell,
-  toGrassItemCapacity,
-} from "#/scene/grass/grass-buffers";
-import { createGrassPlanting, IGrassPlanting, toGrassItems, toGrassStarts } from "#/scene/grass/grass-planting.tsl";
+import { IGrassBuffers } from "#/scene/grass/grass-buffers";
+import { IGrassBuildSize, isGrassBuildOutgrown, toGrassBuildSize } from "#/scene/grass/grass-build-size";
+import { createGrassCacheBuffers, IGrassCacheBuffers, listGrassCacheStorage } from "#/scene/grass/grass-cache-buffers";
+import { createGrassItemBuffers, IGrassItemBuffers, listGrassItemStorage } from "#/scene/grass/grass-item-buffers";
+import { toGrassSorted, toGrassStarts } from "#/scene/grass/grass-items.tsl";
+import { createGrassLevelBuffers, IGrassLevelBuffers, listGrassLevelStorage } from "#/scene/grass/grass-level-buffers";
+import { IGrassPlanting, listGrassPlantingPasses } from "#/scene/grass/grass-planting";
+import { createGrassPlanting } from "#/scene/grass/grass-planting.tsl";
 import { ISceneGrassStaging } from "#/scene/grass/scene-grass-staging";
 import { createSceneMesh, createSceneRoot } from "#/scene/object/scene-mesh";
 import { RendererTextures } from "#/texture/renderer-textures";
@@ -43,24 +39,28 @@ interface IGrassDraw {
   samplers: MaterialSamplers;
 }
 
-/** Item lists of one capacity, the passes planting into them, and the draws reading them. */
+/** A ring and item lists of one size, the passes planting into them, and the draws reading them. */
 interface IGrassBuild {
-  capacity: number;
+  /** The level's buffers it binds, which it lets go with itself where the grass let them go meanwhile. */
+  level: IGrassLevelBuffers;
+  size: IGrassBuildSize;
+  cache: IGrassCacheBuffers;
   items: IGrassItemBuffers;
-  passes: IGrassPlanting;
-  /** The five passes, in the order a frame runs them. */
-  dispatches: Array<ComputeNode>;
+  planting: IGrassPlanting;
+  /** The planting's passes, in the order a frame dispatches them. */
+  passes: Array<ComputeNode>;
   draws: Array<IGrassDraw>;
   /** What the draws are in, drawn once they compiled. */
   scene: Scene;
 }
 
 /**
- * A level's grass on the GPU: what it is planted from, the passes planting it around the camera every frame, and a
- * draw a model, each drawing the tufts the planting sorted into its range. The item lists grow when a setting needs
- * more room than they hold; any other change of the settings is only what the passes are dispatched over. Lists of a
- * new capacity are staged for the renderer to compile off the frame while the ones before keep planting, so no frame
- * builds a draw's pipeline.
+ * A level's grass on the GPU: what it is planted from, a ring of planted slots around the camera, the passes keeping
+ * the ring planted and culling it every frame, and a draw a model, each drawing the tufts the planting sorted into its
+ * range. The ring and the lists grow when a setting needs more room than they hold; any other change of the settings
+ * is only what the passes are dispatched over, and a density changed plants the ring again. A build of a new size is
+ * staged for the renderer to compile off the frame while the one before keeps planting, so no frame builds a draw's
+ * pipeline.
  */
 export class SceneGrass {
   /** Where the camera stands and what the planting is set to, as the planting reads them. */
@@ -105,10 +105,12 @@ export class SceneGrass {
 
   /** Lets the grass go. */
   public release(): void {
+    // A build compiling goes once its compile ends, the level's buffers it binds with it: three is still building it.
+    const compiling: Nullable<IGrassBuild> = this.isCompiling ? this.pending : null;
+
     this.disposeBuild(this.current);
 
-    // A build compiling goes once its compile ends: three is still building it.
-    if (!this.isCompiling) {
+    if (!compiling) {
       this.disposeBuild(this.pending);
     }
 
@@ -116,7 +118,7 @@ export class SceneGrass {
     this.pending = null;
     this.isCompiling = false;
 
-    if (this.level) {
+    if (this.level && compiling?.level !== this.level) {
       this.rendererUniforms.retirement.retire(listGrassLevelStorage(this.level));
     }
 
@@ -144,8 +146,8 @@ export class SceneGrass {
   }
 
   /**
-   * Plants the frame's grass around where the view stands: the four passes, over as many slots as the settings cover.
-   * Lists the settings outgrow are built again and staged.
+   * Plants the frame's grass around where the view stands, over as many slots as the settings cover. A build the
+   * settings outgrow is built again and staged.
    *
    * @param renderer - The renderer drawing.
    * @param view - The view's camera, unjittered, which the planting centres on and culls by.
@@ -162,17 +164,11 @@ export class SceneGrass {
     uniforms.configure(settings);
     uniforms.follow(view, grass.sizeX, grass.sizeZ, grass.offsetX, grass.offsetZ);
 
-    const { storageLimit } = this.rendererUniforms.staticDraws;
-    const needed: number = uniforms.slotCount * uniforms.candidateCount;
-    const capacity: number = toGrassItemCapacity(needed, storageLimit);
-    const cells: number = uniforms.slotCount;
-    const perCell: number = toGrassCachePerCell(cells, uniforms.candidateCount, storageLimit);
-    const held: Nullable<IGrassItemBuffers> = this.current?.items ?? null;
-    const isOutgrown: boolean = !held || capacity > held.capacity || cells > held.cells || perCell > held.perCell;
+    const wanted: IGrassBuildSize = toGrassBuildSize(uniforms, this.rendererUniforms.staticDraws.storageLimit);
 
     // One build waits at a time; settings outgrowing it meanwhile are built for once it is in.
-    if (isOutgrown && !this.pending) {
-      this.pending = this.build(grass, level, capacity, cells, perCell);
+    if ((!this.current || isGrassBuildOutgrown(this.current.size, wanted)) && !this.pending) {
+      this.pending = this.build(grass, level, wanted);
     }
 
     const { current } = this;
@@ -181,11 +177,19 @@ export class SceneGrass {
       return null;
     }
 
-    current.passes.refresh.count = Math.max(uniforms.slotCount, 1);
-    current.passes.plant.count = Math.max(uniforms.slotCount, 1);
+    const { ring, rank, decompress, cull, scatter } = current.planting;
+
+    // A build smaller than the settings want plants within its own ring until the larger one is in.
+    ring.fit(uniforms.reach.value, current.size.bands);
+
+    const cells: number = ring.cells;
+
+    rank.count = cells;
+    decompress.count = cells;
+    cull.count = cells;
     // Past the lists' room the planting drops what does not fit, so nothing past it is scattered.
-    current.passes.scatter.count = Math.max(Math.min(needed, current.capacity), 1);
-    renderer.compute(current.dispatches);
+    scatter.count = Math.max(Math.min(cells * uniforms.candidateCount, current.size.capacity), 1);
+    renderer.compute(current.passes);
 
     return current.scene;
   }
@@ -196,9 +200,13 @@ export class SceneGrass {
 
   /** A staged build's compile ended: compiled, it replaces the one before; abandoned, it waits to be taken again. */
   private settle(build: IGrassBuild, isCompiled: boolean): void {
-    // Released while it compiled.
+    // Released while it compiled: the level's buffers it held back go with it.
     if (build !== this.pending) {
       this.disposeBuild(build);
+
+      if (build.level !== this.level) {
+        this.rendererUniforms.retirement.retire(listGrassLevelStorage(build.level));
+      }
 
       return;
     }
@@ -212,22 +220,17 @@ export class SceneGrass {
     }
   }
 
-  /** Item lists and a slot cache as large as asked, and the passes and draws reading them. */
-  private build(
-    grass: IRendererGrass,
-    level: IGrassLevelBuffers,
-    capacity: number,
-    cells: number,
-    perCell: number
-  ): IGrassBuild {
-    const items: IGrassItemBuffers = createGrassItemBuffers(capacity, cells, perCell);
-    const buffers: TGrassBuffers = { ...level, ...items };
-    const passes: IGrassPlanting = createGrassPlanting(
+  /** A ring and item lists as large as asked, and the passes and draws reading them. */
+  private build(grass: IRendererGrass, level: IGrassLevelBuffers, size: IGrassBuildSize): IGrassBuild {
+    const cache: IGrassCacheBuffers = createGrassCacheBuffers(size.cells, size.perCell, size.bands);
+    const items: IGrassItemBuffers = createGrassItemBuffers(size.capacity);
+    const buffers: IGrassBuffers = { cache, items, level };
+    const planting: IGrassPlanting = createGrassPlanting(
       buffers,
       this.uniforms,
       this.rendererUniforms.staticDraws.lod.discard
     );
-    const sorted: StorageBufferNode<"vec4"> = toGrassItems(items);
+    const sorted: StorageBufferNode<"vec4"> = toGrassSorted(items).toReadOnly() as never;
     const starts: StorageBufferNode<"uint"> = toGrassStarts(level);
     const scene: Scene = createSceneRoot();
     const draws: Array<IGrassDraw> = grass.models.map((model: IRendererGrassModel, index: number) => {
@@ -262,17 +265,10 @@ export class SceneGrass {
       return { material, mesh, samplers };
     });
 
-    return {
-      capacity,
-      dispatches: [passes.refresh, passes.clear, passes.plant, passes.arrange, passes.scatter],
-      draws,
-      items,
-      passes,
-      scene,
-    };
+    return { cache, draws, items, level, passes: listGrassPlantingPasses(planting), planting, scene, size };
   }
 
-  /** Takes down a build's item lists and what reads them, keeping what the grass is planted from. */
+  /** Takes down a build's ring, item lists and what reads them, keeping what the grass is planted from. */
   private disposeBuild(build: Nullable<IGrassBuild>): void {
     if (!build) {
       return;
@@ -284,8 +280,11 @@ export class SceneGrass {
       material.dispose();
       samplers.release();
     });
-    this.rendererUniforms.retirement.retire(listGrassItemStorage(build.items));
-    // Their capacity and model count are in their shaders, so each rebuild is five pipelines three keeps until told.
-    build.dispatches.forEach((compute: ComputeNode) => compute.dispose());
+    this.rendererUniforms.retirement.retire([
+      ...listGrassCacheStorage(build.cache),
+      ...listGrassItemStorage(build.items),
+    ]);
+    // Their sizes are in their shaders, so each rebuild is new pipelines three keeps until told.
+    build.passes.forEach((compute: ComputeNode) => compute.dispose());
   }
 }

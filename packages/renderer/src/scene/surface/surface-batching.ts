@@ -12,7 +12,8 @@ import { ISurfaceValues, toSurfaceValues } from "#/material/surface-values";
 import { ISurfaceVariant, toSampledSlots, toSurfaceVariant, toSurfaceVariantKey } from "#/material/surface-variant";
 import { RendererTextures } from "#/texture/renderer-textures";
 import { ITextureArrayFlush } from "#/texture/texture-array-flush";
-import { ITextureLayer, TextureArrays } from "#/texture/texture-arrays";
+import { TextureArrays } from "#/texture/texture-arrays";
+import { ITextureLayer } from "#/texture/texture-layer";
 import { RendererUniforms } from "#/uniforms/renderer-uniforms";
 import { SURFACE_NO_ROW, SurfaceTable } from "#/uniforms/surface-table";
 

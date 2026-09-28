@@ -2,11 +2,12 @@ import { describe, expect, it } from "@jest/globals";
 import { CompressedArrayTexture, Texture } from "three/webgpu";
 
 import { mockDdsFile } from "#/dds/dds-fixtures";
+import { ITextureCopy } from "#/internals/texture-copy";
 import { createRendererTexture } from "#/texture/renderer-texture";
 import { toTextureArrayClass } from "#/texture/texture-array-class";
 import { ITextureArrayFlush } from "#/texture/texture-array-flush";
-import { ITextureLayer, TextureArrays } from "#/texture/texture-arrays";
-import { ITextureCopy } from "#/texture/texture-copy";
+import { TextureArrays } from "#/texture/texture-arrays";
+import { ITextureLayer } from "#/texture/texture-layer";
 
 /** A clock reading long after every claim a test makes. */
 const IDLE: number = performance.now() + 60_000;

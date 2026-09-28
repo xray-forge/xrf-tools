@@ -62,6 +62,7 @@ export class GrassUniforms {
     const radius: number = (toRendererSettingValue(grass.radius, settings.radius) as Maybe<number>) ?? grass.radius.min;
     const density: number =
       (toRendererSettingValue(grass.density, settings.density) as Maybe<number>) ?? grass.density.max;
+    const height: number = (toRendererSettingValue(grass.height, settings.height) as Maybe<number>) ?? 1;
 
     // `dm_current_size` and `dm_current_fade`, from `r__detail_radius`.
     const steps: number = Math.ceil(GRASS_SLOT_METERS / density);
@@ -75,7 +76,7 @@ export class GrassUniforms {
     this.fade.value = 2 * this.reach.value - 0.5;
     this.steps.value = steps;
     this.jitter.value = jitter;
-    this.height.value = settings.height;
+    this.height.value = height;
   }
 
   /**

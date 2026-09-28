@@ -16,8 +16,8 @@ const SOURCE: string = __dirname;
 const LAYERS: ReadonlyArray<ReadonlyArray<string>> = [
   ["dds", "frame", "sampling"],
   ["contract"],
-  ["geometry", "input", "internals", "lighting", "texture", "timing"],
-  ["camera", "device", "visibility"],
+  ["geometry", "input", "internals", "lighting", "timing"],
+  ["camera", "device", "texture", "visibility"],
   ["uniforms"],
   ["shader"],
   ["material"],

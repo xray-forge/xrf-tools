@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { createGrassDither } from "#/scene/grass/grass-planting.tsl";
+import { createGrassDither } from "#/scene/grass/grass-dither";
 
 describe("createGrassDither", () => {
   // `bwdithermap(2, dither)`: `magic4x4` spread over sixteen by sixteen, the coarse cell's value scaled by 254 / 16

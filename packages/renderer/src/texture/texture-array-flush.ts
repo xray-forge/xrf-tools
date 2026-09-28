@@ -1,6 +1,6 @@
 import { Texture } from "three/webgpu";
 
-import { ITextureCopy } from "#/texture/texture-copy";
+import { ITextureCopy } from "#/internals/texture-copy";
 
 /** What an array asks the frame to do before it draws: copies, in order, then textures to let go once they are sent. */
 export interface ITextureArrayFlush {

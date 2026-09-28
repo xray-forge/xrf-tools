@@ -1,18 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { toGrassCachePerCell, toGrassItemCapacity } from "#/scene/grass/grass-buffers";
-
-describe("toGrassCachePerCell", () => {
-  it("holds every candidate a slot lays out while the cache fits one storage buffer", () => {
-    expect(toGrassCachePerCell(49 * 49, 25, 1 << 27)).toBe(25);
-  });
-
-  it("holds fewer where every candidate would not fit, and one at the least", () => {
-    // 32 bytes a tuft: 100 slots in 32,000 bytes hold ten each.
-    expect(toGrassCachePerCell(100, 25, 32_000)).toBe(10);
-    expect(toGrassCachePerCell(100_000, 25, 32_000)).toBe(1);
-  });
-});
+import { toGrassItemCapacity } from "#/scene/grass/grass-item-buffers";
 
 describe("toGrassItemCapacity", () => {
   it("rounds a need up to the next power of two, so a setting dragged up rebuilds the lists rarely", () => {

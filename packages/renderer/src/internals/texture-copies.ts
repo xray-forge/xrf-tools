@@ -1,17 +1,7 @@
 import { Maybe } from "@xrf/types";
 import { Texture, WebGPURenderer } from "three/webgpu";
 
-/** One copy between textures on the GPU, as the caller states it. */
-export interface ITextureCopyCommand {
-  source: Texture;
-  destination: Texture;
-  level: number;
-  width: number;
-  height: number;
-  sourceLayer: number;
-  layers: number;
-  destinationLayer: number;
-}
+import { ITextureCopy } from "#/internals/texture-copy";
 
 /** The part of a WebGPU texture copy's endpoint three's typings leave out. */
 interface ICopyEndpoint {
@@ -43,7 +33,7 @@ interface ICopyBackend {
  * @param renderer - A renderer, its device open.
  * @param copies - The copies, in the order they have to happen.
  */
-export function copyTextures(renderer: WebGPURenderer, copies: ReadonlyArray<ITextureCopyCommand>): void {
+export function copyTextures(renderer: WebGPURenderer, copies: ReadonlyArray<ITextureCopy>): void {
   const backend: ICopyBackend = renderer.backend as unknown as ICopyBackend;
 
   if (!copies.length || !backend.device) {
