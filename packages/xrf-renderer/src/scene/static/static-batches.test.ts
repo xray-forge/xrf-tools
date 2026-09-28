@@ -111,6 +111,29 @@ describe("StaticBatches", () => {
     expect(swaying.children).toHaveLength(0);
   });
 
+  // A swaying tree moves the depth the culls test, so a still view is culled again while the wind blows over one.
+  it("says it sways only while a surface batch draws over an arena that sways", () => {
+    const batches: StaticBatches = new StaticBatches(
+      new StaticDrawBuffers(new StorageRetirement()),
+      new Scene(),
+      new Scene(),
+      [new Scene()],
+      [new Scene()]
+    );
+
+    batches.put(1, createArena(), createSurface(null), 1);
+
+    const still: boolean = batches.isSwaying;
+
+    batches.put(2, createArena(true), createSurface(null), 1);
+
+    const swaying: boolean = batches.isSwaying;
+
+    batches.withdraw(2);
+
+    expect([still, swaying, batches.isSwaying]).toEqual([false, true, false]);
+  });
+
   // Drawn from each surface batch's own region by one material, a wireframe compiles nothing a surface and builds no
   // line index; an impostor keeps its own material, which turns its quad to the camera.
   it("draws every batch's edges by one material while a wireframe draws, and its triangles again after", () => {

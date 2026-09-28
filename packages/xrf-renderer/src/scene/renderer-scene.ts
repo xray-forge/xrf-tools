@@ -7,7 +7,6 @@ import { IRendererGrass } from "#/contract/scene/renderer-grass";
 import { IRendererImpostors } from "#/contract/scene/renderer-impostors";
 import { IRendererLights } from "#/contract/scene/renderer-lights";
 import { IRendererObject } from "#/contract/scene/renderer-object";
-import { ERendererPass } from "#/contract/scene/renderer-pass";
 import { IRendererSurface } from "#/contract/scene/renderer-surface";
 import { TRendererTextureSource } from "#/contract/scene/renderer-texture-source";
 import { IDdsRefusal } from "#/dds/dds-refusal";
@@ -80,9 +79,7 @@ export class RendererScene {
   });
 
   public constructor(uniforms: RendererUniforms, onTextureRefused: (key: string, refusal: IDdsRefusal) => void) {
-    this.staticDraws = new StaticDraws(uniforms.staticDraws, this.scenes[ERendererPass.DEFERRED], () =>
-      this.toUpcomingStatic()
-    );
+    this.staticDraws = new StaticDraws(uniforms.staticDraws, uniforms.treeWind, () => this.toUpcomingStatic());
     this.staticCull = this.staticDraws.cull;
     this.textures = new RendererTextures(onTextureRefused, (key: string) => {
       this.surfaces.rebind(key);

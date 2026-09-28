@@ -62,14 +62,14 @@ export class StaticBatches {
 
   /**
    * @param buffers - What every static draw reads.
-   * @param scene - Where a batch's first draw stands.
+   * @param early - Where a batch's first draw stands.
    * @param late - Where its draw by the second cull's list stands.
    * @param stillScenes - Where a shadow batch of what stands still draws, by each shadow view's arguments.
    * @param swayingScenes - Where one of what sways with the wind draws.
    */
   public constructor(
     buffers: StaticDrawBuffers,
-    scene: Object3D,
+    early: Object3D,
     late: Object3D,
     stillScenes: ReadonlyArray<Object3D>,
     swayingScenes: ReadonlyArray<Object3D>
@@ -87,11 +87,11 @@ export class StaticBatches {
     this.surfaces = StaticBatches.createGrouping(
       EStaticListSpace.SURFACES,
       [() => buffers.viewArgs[EStaticView.EARLY], () => buffers.viewArgs[EStaticView.LATE]],
-      [scene, late]
+      [early, late]
     );
     this.shadows = StaticBatches.createGrouping(EStaticListSpace.SHADOWS, toShadowArgs(), stillScenes);
     this.swayingShadows = StaticBatches.createGrouping(EStaticListSpace.SHADOWS, toShadowArgs(), swayingScenes);
-    this.wires = new StaticBundleChunks([scene, late]);
+    this.wires = new StaticBundleChunks([early, late]);
     this.wires.setShown(false);
     this.groupings = [this.surfaces, this.shadows, this.swayingShadows];
   }
@@ -108,6 +108,17 @@ export class StaticBatches {
     this.surfaces.drawing.forEach((batches: Map<Material, StaticBatch>) => (count += batches.size));
 
     return count;
+  }
+
+  /** Whether any surface batch draws over an arena that sways with the wind. */
+  public get isSwaying(): boolean {
+    for (const [arena, batches] of this.surfaces.drawing) {
+      if (arena.isSwaying && batches.size) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
   /** Batches the cull has to clear the arguments of: every number ever handed out. */

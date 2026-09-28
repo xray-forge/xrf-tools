@@ -4,7 +4,7 @@ import { RendererTargets } from "#/pass/renderer-targets";
 import { StaticCull } from "#/scene/static/static-cull";
 
 /**
- * Reduces the depth the frame finished its G-buffer with, for the next frame's first cull to read.
+ * Reduces the depth the static draws finished with, before any plain draw, for the next frame's first cull to read.
  */
 export class DepthPyramidPass implements IRendererPass {
   public readonly name: string = "pyramid";

@@ -36,6 +36,7 @@ import {
 import { EStaticSlotKind } from "#/uniforms/static-slot-kind";
 import { EStaticView } from "#/uniforms/static-view";
 import { StorageRetirement } from "#/uniforms/storage-retirement";
+import { TreeWindUniforms } from "#/uniforms/tree-wind-uniforms";
 import { CullView } from "#/visibility/cull-view";
 
 /** A surface drawn by a pass, with nothing behind it. */
@@ -109,10 +110,10 @@ function toCluster(buffers: StaticDrawBuffers, cluster: number): Array<number> {
   return Array.from((buffers.clusterRanges.array as Uint32Array).subarray(cluster * 4, cluster * 4 + 4));
 }
 
-/** Static draws on, standing their batches in the G-buffer pass's scene. */
-function createDraws(scenes: TPassRecord<Scene>): { buffers: StaticDrawBuffers; draws: StaticDraws } {
+/** Static draws on, standing their batches' first draws in a scene of their own. */
+function createDraws(): { buffers: StaticDrawBuffers; draws: StaticDraws } {
   const buffers: StaticDrawBuffers = new StaticDrawBuffers(new StorageRetirement());
-  const draws: StaticDraws = new StaticDraws(buffers, scenes[ERendererPass.DEFERRED], () => []);
+  const draws: StaticDraws = new StaticDraws(buffers, new TreeWindUniforms(), () => []);
 
   draws.isEnabled = true;
 
@@ -125,7 +126,11 @@ function toBatchMeshes(scene: Scene): Array<Mesh> {
 }
 
 describe("SceneObject", () => {
-  const plain: StaticDraws = new StaticDraws(new StaticDrawBuffers(new StorageRetirement()), new Scene(), () => []);
+  const plain: StaticDraws = new StaticDraws(
+    new StaticDrawBuffers(new StorageRetirement()),
+    new TreeWindUniforms(),
+    () => []
+  );
   const releases: GeometryReleases = new GeometryReleases();
 
   it("draws each section in the scene of the pass its surface names", () => {
@@ -180,7 +185,7 @@ describe("SceneObject", () => {
 
   it("draws G-buffer sections as static draws of their material's batch, and the rest plainly", () => {
     const scenes: TPassRecord<Scene> = toPassRecord(() => new Scene());
-    const { buffers, draws } = createDraws(scenes);
+    const { buffers, draws } = createDraws();
     const geometry: SceneGeometry = createGeometry();
     const entry: SceneObject = new SceneObject("wall", { geometry: "wall", surfaces: ["a", "b"] }, draws, releases);
 
@@ -189,9 +194,11 @@ describe("SceneObject", () => {
       scenes
     );
 
-    const [batch] = toBatchMeshes(scenes[ERendererPass.DEFERRED]);
+    const [batch] = toBatchMeshes(draws.early);
 
-    expect(scenes[ERendererPass.DEFERRED].children).toHaveLength(1);
+    // Apart from every plain draw, which the depth the culls test never holds.
+    expect(draws.early.children).toHaveLength(1);
+    expect(scenes[ERendererPass.DEFERRED].children).toEqual([]);
     expect(batch.geometry.indirect).toBe(buffers.viewArgs[EStaticView.EARLY]);
     expect(batch.geometry.indirectOffset).toBe(0);
     expect(scenes[ERendererPass.FORWARD].children).toEqual(entry.placed);
@@ -204,7 +211,7 @@ describe("SceneObject", () => {
   // What an object draws plainly samples its surfaces' own textures, which stay up while it does.
   it("names the textures its parts drawn plainly sample, and none of its static draws'", () => {
     const scenes: TPassRecord<Scene> = toPassRecord(() => new Scene());
-    const { draws } = createDraws(scenes);
+    const { draws } = createDraws();
     const entry: SceneObject = new SceneObject("wall", { geometry: "wall", surfaces: ["a", "b"] }, draws, releases);
     const wall: ISurfaceMaterial = createSurface(ERendererPass.DEFERRED);
     const glass: ISurfaceMaterial = createSurface(ERendererPass.FORWARD);
@@ -230,7 +237,7 @@ describe("SceneObject", () => {
 
   it("issues every static draw of one material over one layout from one batch, whichever object it is of", () => {
     const scenes: TPassRecord<Scene> = toPassRecord(() => new Scene());
-    const { buffers, draws } = createDraws(scenes);
+    const { buffers, draws } = createDraws();
     const surface: ISurfaceMaterial = createSurface(ERendererPass.DEFERRED);
     const first: SceneGeometry = createGeometry();
     const second: SceneGeometry = createGeometry();
@@ -244,7 +251,7 @@ describe("SceneObject", () => {
       scenes
     );
 
-    const batches: Array<Mesh> = toBatchMeshes(scenes[ERendererPass.DEFERRED]);
+    const batches: Array<Mesh> = toBatchMeshes(draws.early);
 
     expect(batches).toHaveLength(1);
     expect(batches[0].geometry.indirectOffset).toBe(0);
@@ -255,7 +262,7 @@ describe("SceneObject", () => {
 
   it("never culls a static draw on the CPU", () => {
     const scenes: TPassRecord<Scene> = toPassRecord(() => new Scene());
-    const { draws } = createDraws(scenes);
+    const { draws } = createDraws();
     const geometry: SceneGeometry = createGeometry();
     const entry: SceneObject = new SceneObject("wall", { geometry: "wall", surfaces: ["a", "a"] }, draws, releases);
     const surface: ISurfaceMaterial = createSurface(ERendererPass.DEFERRED);
@@ -263,13 +270,13 @@ describe("SceneObject", () => {
     entry.apply(toState(geometry, [surface, surface], draws), scenes);
     entry.cull(createView());
 
-    expect(scenes[ERendererPass.DEFERRED].children[0].visible).toBe(true);
+    expect(draws.early.children[0].visible).toBe(true);
     expect(entry.placed).toEqual([]);
   });
 
   it("lets its slots go when released, and a batch drawing nothing leaves the scene", () => {
     const scenes: TPassRecord<Scene> = toPassRecord(() => new Scene());
-    const { buffers, draws } = createDraws(scenes);
+    const { buffers, draws } = createDraws();
     const geometry: SceneGeometry = createGeometry();
     const entry: SceneObject = new SceneObject("wall", { geometry: "wall", surfaces: ["a", "a"] }, draws, releases);
     const surface: ISurfaceMaterial = createSurface(ERendererPass.DEFERRED);
@@ -277,13 +284,13 @@ describe("SceneObject", () => {
     entry.apply(toState(geometry, [surface, surface], draws), scenes);
     entry.dispose();
 
-    expect(scenes[ERendererPass.DEFERRED].children).toEqual([]);
+    expect(draws.early.children).toEqual([]);
     expect(toSlot(buffers, 0)).toEqual([0, 0, 0, EStaticSlotKind.NONE, STATIC_NO_BATCH, STATIC_NO_BATCH]);
   });
 
   it("draws an instanced object's G-buffer sections as instanced static draws, a row a place, culled on the GPU", () => {
     const scenes: TPassRecord<Scene> = toPassRecord(() => new Scene());
-    const { buffers, draws } = createDraws(scenes);
+    const { buffers, draws } = createDraws();
     const geometry: SceneGeometry = createGeometry();
     const source = {
       transforms: new Float32Array([...new Matrix4().elements, ...new Matrix4().makeTranslation(0, 0, 50).elements]),
@@ -308,7 +315,7 @@ describe("SceneObject", () => {
     );
     entry.cull(createView());
 
-    const [batch] = toBatchMeshes(scenes[ERendererPass.DEFERRED]);
+    const [batch] = toBatchMeshes(draws.early);
 
     expect(Object.keys(batch.geometry.attributes).some((name) => name.startsWith(EVertexAttribute.CLUSTER_ARENA))).toBe(
       true
@@ -324,7 +331,7 @@ describe("SceneObject", () => {
 
   it("names each row's impostor for the LOD cull: a tree's by index, an impostor's own marked, no impostor as none", () => {
     const scenes: TPassRecord<Scene> = toPassRecord(() => new Scene());
-    const { buffers, draws } = createDraws(scenes);
+    const { buffers, draws } = createDraws();
     const geometry: SceneGeometry = createGeometry();
 
     function place(surface: ISurfaceMaterial): void {
@@ -378,7 +385,7 @@ describe("SceneObject", () => {
   // places whose detail falls in it, so the first draws the whole detail and the last the coarsest.
   it("draws a progressive mesh a band at a time, every band's rows naming the band they keep", () => {
     const scenes: TPassRecord<Scene> = toPassRecord(() => new Scene());
-    const { buffers, draws } = createDraws(scenes);
+    const { buffers, draws } = createDraws();
     const geometry: SceneGeometry = new SceneGeometry({
       groups: [
         {

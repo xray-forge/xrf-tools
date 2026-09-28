@@ -5,12 +5,13 @@ import { IFrameOptionalPasses } from "#/graph/frame-optional-passes";
 import { IRendererPass } from "#/pass/renderer-pass";
 
 /**
- * The frame's passes in order: the grass into the G-buffer, what its depth hid culled again and drawn into it, the
- * sky's motion once the G-buffer is whole, its depth reduced for the next frame, the shadow
- * cascades and light faces before the sun reads them, the local lights after it, the occlusion before combine, what the
- * resolve needs before the water and the blended surfaces, what the water distorts moved once they are down, and the
- * upscaling and its sharpening before the helpers. The smoothing of
- * a mode that does not jitter comes after the helpers, which it smooths too, unless FSR 1 upscales what it smoothed.
+ * The frame's passes in order: the static draws into the G-buffer, what their depth hid culled again and drawn into
+ * it, their depth reduced for the next frame, and only then the plain draws and the grass, which move with no version
+ * the culls see; the sky's motion once the G-buffer is whole, the shadow cascades and light faces before the sun reads
+ * them, the local lights after it, the occlusion before combine, what the resolve needs before the water and the
+ * blended surfaces, what the water distorts moved once they are down, and the upscaling and its sharpening before the
+ * helpers. The smoothing of a mode that does not jitter comes after the helpers, which it smooths too, unless FSR 1
+ * upscales what it smoothed.
  *
  * @param base - The passes every frame draws.
  * @param optional - The ones the features add.
@@ -30,11 +31,10 @@ export function toFramePassOrder(
 
   return [
     base.cull,
+    base.gbufferEarly,
+    ...(occlusion ? [occlusion.lateCull, occlusion.gbufferLate, occlusion.pyramid] : []),
     base.gbuffer,
-    ...some(optional.grass),
-    ...(occlusion ? [occlusion.lateCull, occlusion.gbufferLate] : []),
-    ...some(optional.motionBackground),
-    ...some(occlusion?.pyramid ?? null),
+    ...some(optional.grass, optional.motionBackground),
     base.wallmarks,
     ...optional.shadows,
     ...some(optional.lightShadows),

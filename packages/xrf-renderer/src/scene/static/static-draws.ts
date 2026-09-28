@@ -1,5 +1,5 @@
 import { Maybe, Nullable } from "@xrf/types";
-import { Box3, Material, Matrix4, Object3D, Scene, Sphere, Vector3 } from "three/webgpu";
+import { Box3, Material, Matrix4, Scene, Sphere, Vector3 } from "three/webgpu";
 
 import { IRendererPoolUse } from "#/contract/renderer-pool-use";
 import { IRendererStaticDrawReport } from "#/contract/renderer-static-draw-report";
@@ -39,6 +39,7 @@ import {
 import { EStaticListSpace } from "#/uniforms/static-list-space";
 import { EStaticPool } from "#/uniforms/static-pool";
 import { EStaticSlotKind } from "#/uniforms/static-slot-kind";
+import { TreeWindUniforms } from "#/uniforms/tree-wind-uniforms";
 
 /** What one object still waiting to draw will take of each pool it is known to take of. */
 const UPCOMING_DEMAND: Readonly<Partial<Record<EStaticPool, (upcoming: IStaticUpcoming) => number>>> = {
@@ -60,7 +61,9 @@ const PLACE_CORNER: Vector3 = new Vector3();
 export class StaticDraws implements IStaticShadowCasters, IStaticPools {
   /** What culls the static draws on the GPU, which the frame dispatches before drawing them and again between. */
   public readonly cull: StaticCull;
-  /** Where the batches' second draws stand, drawn into the G-buffer after the second cull. */
+  /** Where the batches' first draws stand, drawn into the G-buffer before any plain draw: the depth the culls test. */
+  public readonly early: Scene = createSceneRoot();
+  /** Where their second draws stand, drawn into the G-buffer after the second cull. */
   public readonly late: Scene = createSceneRoot();
   /** What each shadow view draws of the casting batches that stand still, by the view's arguments. */
   public readonly stillShadowScenes: ReadonlyArray<Scene> = Array.from(
@@ -99,10 +102,10 @@ export class StaticDraws implements IStaticShadowCasters, IStaticPools {
 
   /**
    * @param buffers - What every static draw reads.
-   * @param scene - The scene of the pass drawing static draws, where the batches stand.
+   * @param wind - How the trees sway, which moves the depth the batches over a swaying arena write.
    * @param toUpcoming - What the objects still waiting to draw will take of the static draws.
    */
-  public constructor(buffers: StaticDrawBuffers, scene: Object3D, toUpcoming: () => Iterable<IStaticUpcoming>) {
+  public constructor(buffers: StaticDrawBuffers, wind: TreeWindUniforms, toUpcoming: () => Iterable<IStaticUpcoming>) {
     this.buffers = buffers;
     this.toUpcoming = toUpcoming;
     this.pool = new StaticDrawPool(buffers);
@@ -111,11 +114,11 @@ export class StaticDraws implements IStaticShadowCasters, IStaticPools {
     this.lods = new StaticLods(buffers);
     this.clusters = new StaticClusters(buffers);
     this.holds = new StaticSlotHolds((pool: StaticRunPool, count: number) => this.allocateRun(pool, count));
-    this.batches = new StaticBatches(buffers, scene, this.late, this.stillShadowScenes, this.swayingShadowScenes);
+    this.batches = new StaticBatches(buffers, this.early, this.late, this.stillShadowScenes, this.swayingShadowScenes);
     this.arenas = new StaticArenas(buffers, () =>
       [...toUpcoming()].map((upcoming: IStaticUpcoming) => upcoming.geometry)
     );
-    this.cull = new StaticCull(buffers, this, this.late);
+    this.cull = new StaticCull(buffers, this, wind, this.early, this.late);
   }
 
   /** Whether static draws are drawn at all: only on a device drawing an indirect draw's first instance. */
@@ -159,6 +162,10 @@ export class StaticDraws implements IStaticShadowCasters, IStaticPools {
 
   public get candidateExtent(): number {
     return this.batches.listExtent(EStaticListSpace.SURFACES);
+  }
+
+  public get isSwaying(): boolean {
+    return this.batches.isSwaying;
   }
 
   /** Queues every pool's changes for upload, the batches recorded again over whatever grew. */

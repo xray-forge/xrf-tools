@@ -1,6 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
 import { Nullable } from "@xrf/types";
-import { Scene } from "three/webgpu";
 
 import {
   IRendererImpostors,
@@ -14,6 +13,7 @@ import { StaticDraws } from "#/scene/static/static-draws";
 import { StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
 import { EStaticPool } from "#/uniforms/static-pool";
 import { StorageRetirement } from "#/uniforms/storage-retirement";
+import { TreeWindUniforms } from "#/uniforms/tree-wind-uniforms";
 
 function createImpostors(count: number): IRendererImpostors {
   return {
@@ -32,7 +32,7 @@ function createSets(): {
 } {
   const draws: StaticDraws = new StaticDraws(
     new StaticDrawBuffers(new StorageRetirement(), { [EStaticPool.LODS]: 4 }),
-    new Scene(),
+    new TreeWindUniforms(),
     () => []
   );
   const ready: Set<string> = new Set();

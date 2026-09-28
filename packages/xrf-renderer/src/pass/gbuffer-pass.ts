@@ -7,8 +7,8 @@ import { RendererTargets } from "#/pass/renderer-targets";
 import { drawUnsorted } from "#/pass/unsorted-draw";
 
 /**
- * Fills the G-buffer with everything the deferred passes light that the first cull kept: its static draws and every
- * plain draw. The second phase draws on into it after.
+ * Draws on into the G-buffer every plain draw the deferred passes light, once the static draws' phases and the pyramid
+ * are done: a plain draw moves with no version the culls see, so it never hides a static draw.
  */
 export class GBufferPass implements IRendererScenePass {
   public readonly name: string = "gbuffer";
@@ -24,9 +24,7 @@ export class GBufferPass implements IRendererScenePass {
   }
 
   public render({ renderer, camera, scenes }: IRendererFrame): void {
-    renderer.setClearColor(0x000000, 0);
     renderer.setRenderTarget(this.target);
-    renderer.clear(true, true, false);
     // In scene order, where an object's parts stand together and share their buffers from one draw to the next:
     // sorted by depth, every draw rebinds them, and the CPU is what a frame waits on.
     drawUnsorted(renderer, () => renderer.render(scenes[this.scene], camera));

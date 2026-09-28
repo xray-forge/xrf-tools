@@ -12,7 +12,10 @@ function toPass(name: string): IRendererPass {
 }
 
 const BASE: IBaseFramePasses = Object.fromEntries(
-  ["cull", "gbuffer", "wallmarks", "sun", "combine", "forward", "overlay"].map((name: string) => [name, toPass(name)])
+  ["cull", "gbufferEarly", "gbuffer", "wallmarks", "sun", "combine", "forward", "overlay"].map((name: string) => [
+    name,
+    toPass(name),
+  ])
 ) as unknown as IBaseFramePasses;
 
 const OCCLUSION: IOcclusionFramePasses = {
@@ -45,7 +48,17 @@ function toOrder(optional: Partial<IFrameOptionalPasses>): Array<string> {
 
 describe("the frame's pass order", () => {
   it("draws the base alone with every feature off", () => {
-    expect(toOrder({})).toEqual(["cull", "gbuffer", "wallmarks", "sun", "combine", "forward", "overlay", "present"]);
+    expect(toOrder({})).toEqual([
+      "cull",
+      "gbufferEarly",
+      "gbuffer",
+      "wallmarks",
+      "sun",
+      "combine",
+      "forward",
+      "overlay",
+      "present",
+    ]);
   });
 
   it("puts every stage of a resolved frame where it reads what it needs", () => {
@@ -65,12 +78,13 @@ describe("the frame's pass order", () => {
       })
     ).toEqual([
       "cull",
-      "gbuffer",
-      "grass",
+      "gbufferEarly",
       "lateCull",
       "gbufferLate",
-      "motion-background",
       "pyramid",
+      "gbuffer",
+      "grass",
+      "motion-background",
       "wallmarks",
       "shadow-0",
       "shadow-1",
@@ -97,15 +111,17 @@ describe("the frame's pass order", () => {
     ).toEqual(["forward", "antialias", "fsr1", "rcas", "overlay", "present"]);
   });
 
-  // The second phase reads the first's depth and draws on into the G-buffer; the pyramid reduces the whole of it.
-  it("culls what the depth hides after the G-buffer's first phase, and reduces its depth once it is whole", () => {
-    expect(toOrder({ grass: toPass("grass"), occlusion: OCCLUSION }).slice(0, 7)).toEqual([
+  // The plain draws and the grass move with no version the culls see: in the depth, a cluster they hid while the
+  // camera stood still would stay culled after they moved.
+  it("reduces the static draws' depth alone, both phases', before any plain draw or the grass", () => {
+    expect(toOrder({ grass: toPass("grass"), occlusion: OCCLUSION }).slice(0, 8)).toEqual([
       "cull",
-      "gbuffer",
-      "grass",
+      "gbufferEarly",
       "lateCull",
       "gbufferLate",
       "pyramid",
+      "gbuffer",
+      "grass",
       "wallmarks",
     ]);
   });

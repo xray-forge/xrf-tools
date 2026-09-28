@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
-import { Matrix4, MeshBasicNodeMaterial, Scene, Sphere, Vector3 } from "three/webgpu";
+import { Matrix4, MeshBasicNodeMaterial, Sphere, Vector3 } from "three/webgpu";
 
 import { ERendererPass } from "#/contract/scene/renderer-pass";
 import { ISurfaceMaterial, toOwnSurfaceDrawing } from "#/material/surface-material";
@@ -13,6 +13,7 @@ import { IStaticUpcoming } from "#/scene/static/static-upcoming";
 import { StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
 import { EStaticPool } from "#/uniforms/static-pool";
 import { StorageRetirement } from "#/uniforms/storage-retirement";
+import { TreeWindUniforms } from "#/uniforms/tree-wind-uniforms";
 
 /** Static draws over buffers of two slots and two places, with what the queue brings. */
 function createDraws(upcoming: Array<IStaticUpcoming> = []): { buffers: StaticDrawBuffers; draws: StaticDraws } {
@@ -20,7 +21,7 @@ function createDraws(upcoming: Array<IStaticUpcoming> = []): { buffers: StaticDr
     [EStaticPool.SLOTS]: 2,
     [EStaticPool.PLACES]: 2,
   });
-  const draws: StaticDraws = new StaticDraws(buffers, new Scene(), () => upcoming);
+  const draws: StaticDraws = new StaticDraws(buffers, new TreeWindUniforms(), () => upcoming);
 
   draws.isEnabled = true;
 
@@ -75,7 +76,7 @@ describe("StaticDraws", () => {
   // A draw of no clusters used to find no free run of none in a full pool, and grow it or fall back.
   it("draws a slot of no clusters over a full cluster pool without growing it", () => {
     const buffers: StaticDrawBuffers = new StaticDrawBuffers(new StorageRetirement(), { [EStaticPool.CLUSTERS]: 1 });
-    const draws: StaticDraws = new StaticDraws(buffers, new Scene(), () => []);
+    const draws: StaticDraws = new StaticDraws(buffers, new TreeWindUniforms(), () => []);
     const geometry: SceneGeometry = new SceneGeometry({ groups: [], position: new Float32Array(9) });
     const surface: ISurfaceMaterial = {
       dispose: () => {},

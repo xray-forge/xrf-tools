@@ -1,5 +1,6 @@
 import { CombinePass } from "#/pass/combine-pass";
 import { ForwardPass } from "#/pass/forward-pass";
+import { GBufferEarlyPass } from "#/pass/gbuffer-early-pass";
 import { GBufferPass } from "#/pass/gbuffer-pass";
 import { OverlayPass } from "#/pass/overlay-pass";
 import { IRendererPass } from "#/pass/renderer-pass";
@@ -14,6 +15,7 @@ import { RendererUniforms } from "#/uniforms/renderer-uniforms";
 /** `Base`'s passes every frame draws, by their place in it. */
 export interface IBaseFramePasses {
   readonly cull: IRendererPass;
+  readonly gbufferEarly: IRendererPass;
   readonly gbuffer: IRendererPass;
   readonly wallmarks: IRendererPass;
   readonly sun: IRendererPass;
@@ -23,8 +25,9 @@ export interface IBaseFramePasses {
 }
 
 /**
- * `Base`'s frame, in R4's order: the static draws culled, the G-buffer, wall marks into its albedo, the sun, combine
- * with its fog and tonemap, then the blended surfaces over the tonemapped frame, and the helpers over it all.
+ * `Base`'s frame, in R4's order: the static draws culled, the G-buffer (the static draws, then the plain ones), wall
+ * marks into its albedo, the sun, combine with its fog and tonemap, then the blended surfaces over the tonemapped
+ * frame, and the helpers over it all.
  *
  * @param targets - What the passes draw into.
  * @param uniforms - What their shaders read.
@@ -43,6 +46,7 @@ export function createBaseFramePasses(
     cull: new StaticCullPass(cull),
     forward: new ForwardPass(targets),
     gbuffer: new GBufferPass(targets),
+    gbufferEarly: new GBufferEarlyPass(targets, cull),
     overlay: new OverlayPass(overlays, targets.composite),
     sun: new SunPass(targets, uniforms),
     wallmarks: new WallmarkPass(targets),

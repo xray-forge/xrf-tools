@@ -1,12 +1,14 @@
 import { describe, expect, it, jest } from "@jest/globals";
-import { ComputeNode, DepthTexture, PerspectiveCamera, Scene, Vector4, WebGPURenderer } from "three/webgpu";
+import { ComputeNode, DepthTexture, Mesh, PerspectiveCamera, Scene, Vector4, WebGPURenderer } from "three/webgpu";
 
+import { DEFAULT_RENDERER_TREE_WIND } from "#/lighting/default-lighting";
 import { StaticCull } from "#/scene/static/static-cull";
 import { IStaticPools } from "#/scene/static/static-pools";
 import { LIGHT_SHADOW_FACE_BUDGET } from "#/uniforms/lights-uniforms";
 import { STATIC_LIGHT_VIEW_START, StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
 import { EStaticPool } from "#/uniforms/static-pool";
 import { StorageRetirement } from "#/uniforms/storage-retirement";
+import { TreeWindUniforms } from "#/uniforms/tree-wind-uniforms";
 import { CullView } from "#/visibility/cull-view";
 import { IShadowFrustum } from "#/visibility/shadow-frustum";
 
@@ -15,14 +17,18 @@ const VIEW_PASSES: number = 3;
 interface IPoolsStub extends IStaticPools {
   version: number;
   candidateExtent: number;
+  isSwaying: boolean;
 }
 
 function createCull(): {
   buffers: StaticDrawBuffers;
   cull: StaticCull;
+  early: Scene;
   pools: IPoolsStub;
   renderer: WebGPURenderer;
+  rendered: Array<Scene>;
   submissions: Array<Array<ComputeNode>>;
+  wind: TreeWindUniforms;
 } {
   const buffers: StaticDrawBuffers = new StaticDrawBuffers(new StorageRetirement(), {
     [EStaticPool.BATCHES]: 4,
@@ -40,20 +46,59 @@ function createCull(): {
     candidateExtent: 1,
     clusterExtent: 1,
     flush: () => {},
+    isSwaying: false,
     lodExtent: 1,
     rowExtent: 1,
     version: 0,
   };
-  const cull: StaticCull = new StaticCull(buffers, pools, new Scene());
+  const wind: TreeWindUniforms = new TreeWindUniforms();
+  const early: Scene = new Scene();
+  const cull: StaticCull = new StaticCull(buffers, pools, wind, early, new Scene());
   const submissions: Array<Array<ComputeNode>> = [];
-  // The tests record dispatches; WebGPU execution and the resulting lists are checked in the app.
+  const rendered: Array<Scene> = [];
+  // The tests record dispatches and draws; WebGPU execution and the resulting lists are checked in the app.
   const renderer = {
     compute: (nodes: ComputeNode | Array<ComputeNode>): void => {
       submissions.push(Array.isArray(nodes) ? [...nodes] : [nodes]);
     },
+    render: (scene: Scene): void => void rendered.push(scene),
   } as unknown as WebGPURenderer;
 
-  return { buffers, cull, pools, renderer, submissions };
+  return { buffers, cull, early, pools, renderer, rendered, submissions, wind };
+}
+
+/**
+ * @returns A camera standing still until moved, its view, and what draws a frame of it the way the frame's passes do
+ *   and says whether its first cull ran.
+ */
+function createFrames(
+  cull: StaticCull,
+  renderer: WebGPURenderer,
+  submissions: ReadonlyArray<Array<ComputeNode>>
+): { camera: PerspectiveCamera; view: CullView; frame: () => boolean } {
+  const camera: PerspectiveCamera = new PerspectiveCamera();
+  const view: CullView = new CullView();
+  const depth: DepthTexture = new DepthTexture(4, 4);
+
+  function frame(): boolean {
+    cull.take(view, camera);
+
+    const before: number = submissions.length;
+
+    cull.dispatch(renderer);
+
+    const isCulled: boolean = submissions.length > before;
+
+    cull.cullLate(renderer, depth, 4, 4);
+    cull.finish(renderer, depth, 4, 4);
+
+    return isCulled;
+  }
+
+  camera.updateMatrixWorld();
+  view.take(camera);
+
+  return { camera, frame, view };
 }
 
 function createFrustum(version: number = 1): IShadowFrustum {
@@ -171,29 +216,7 @@ describe("StaticCull occlusion", () => {
   // The last cull before the camera stops tests the depth of the pose before: it is culled once more against its own.
   it("culls a view that stopped once more against its own depth, and then not again", () => {
     const { cull, renderer, submissions } = createCull();
-    const camera: PerspectiveCamera = new PerspectiveCamera();
-    const view: CullView = new CullView();
-    const depth: DepthTexture = new DepthTexture(4, 4);
-
-    /** Draws a frame the way the frame's passes do, and says whether its first cull ran. */
-    function frame(): boolean {
-      cull.take(view, camera);
-
-      const before: number = submissions.length;
-
-      cull.dispatch(renderer);
-
-      const isCulled: boolean = submissions.length > before;
-
-      cull.cullLate(renderer, depth, 4, 4);
-      cull.finish(renderer, depth, 4, 4);
-
-      return isCulled;
-    }
-
-    camera.updateMatrixWorld();
-    view.take(camera);
-
+    const { camera, frame, view } = createFrames(cull, renderer, submissions);
     const still: Array<boolean> = [frame(), frame(), frame()];
 
     camera.position.x += 1;
@@ -201,6 +224,57 @@ describe("StaticCull occlusion", () => {
     view.take(camera);
 
     expect([...still, frame(), frame(), frame()]).toEqual([true, true, false, true, true, false]);
+    cull.dispose();
+  });
+
+  // The depth holds the static draws alone, which stand still while nothing they list changes: a plain draw walking
+  // past a still camera never hid anything, so its lists stay right however long it stands.
+  it("keeps a still view's cull however long it stands while the trees stand still", () => {
+    const { cull, pools, renderer, submissions, wind } = createCull();
+    const { frame } = createFrames(cull, renderer, submissions);
+
+    pools.isSwaying = true;
+    wind.take({ ...DEFAULT_RENDERER_TREE_WIND, amplitude: 0 });
+
+    expect(Array.from({ length: 6 }, frame)).toEqual([true, true, false, false, false, false]);
+    cull.dispose();
+  });
+
+  // A swaying tree moves the depth it wrote with no version saying so, as it moves a light face's map.
+  it("culls a still view every frame while the wind sways a batch it draws, and stops once the wind drops", () => {
+    const { cull, pools, renderer, submissions, wind } = createCull();
+    const { frame } = createFrames(cull, renderer, submissions);
+
+    pools.isSwaying = true;
+    wind.take(DEFAULT_RENDERER_TREE_WIND);
+
+    const windy: Array<boolean> = [frame(), frame(), frame()];
+
+    wind.take(null);
+
+    expect([...windy, frame(), frame()]).toEqual([true, true, true, false, false]);
+    cull.dispose();
+  });
+
+  it("keeps a still view's cull in the wind while no batch it draws sways", () => {
+    const { cull, renderer, submissions, wind } = createCull();
+    const { frame } = createFrames(cull, renderer, submissions);
+
+    wind.take(DEFAULT_RENDERER_TREE_WIND);
+
+    expect([frame(), frame(), frame()]).toEqual([true, true, false]);
+    cull.dispose();
+  });
+
+  it("draws the first phase's batches, and nothing while none stands", () => {
+    const { cull, early, renderer, rendered } = createCull();
+    const camera: PerspectiveCamera = new PerspectiveCamera();
+
+    cull.drawEarly(renderer, camera);
+    early.add(new Mesh());
+    cull.drawEarly(renderer, camera);
+
+    expect(rendered).toEqual([early]);
     cull.dispose();
   });
 

@@ -14,7 +14,8 @@ export interface IOcclusionFramePasses {
 
 /**
  * The second phase of the static draws' occlusion cull and the depth pyramid both phases read: the static draws the
- * first phase's depth hid culled again and drawn into the G-buffer, then its depth reduced for the next frame.
+ * first phase's depth hid culled again and drawn into the G-buffer, then the static draws' depth reduced for the next
+ * frame, before any plain draw.
  *
  * @param targets - What the passes draw into.
  * @param cull - What culls the static draws.

@@ -9,6 +9,7 @@ import { StaticDepthPyramid } from "#/scene/static/static-depth-pyramid";
 import { IStaticPools } from "#/scene/static/static-pools";
 import { IStaticViewCullShader } from "#/scene/static/static-view-cull-shader";
 import { STATIC_LIGHT_VIEW_START, STATIC_SHADOW_VIEWS, StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
+import { TreeWindUniforms } from "#/uniforms/tree-wind-uniforms";
 import { CullView } from "#/visibility/cull-view";
 import { IShadowFrustum } from "#/visibility/shadow-frustum";
 
@@ -19,11 +20,12 @@ const VIEW_KEY_LENGTH: number = 8;
  * Culls every static draw's clusters on the GPU against the view drawn for, into every batch's region of the view's
  * list, in two phases. The first keeps what the frustum keeps and the last frame's depth does not hide; the second
  * tests what that depth hid against this frame's depth so far and keeps what it no longer hides, so nothing appears a
- * frame late. Culled again only when the view moved or anything it lists changed; what it kept stays drawn meanwhile.
- * The depth it tests is the G-buffer's, plain draws' among it, taken on a frame that culls: a view culled against
- * another view's depth is culled once more against its own, and then not again while nothing changes, however the plain
- * draws move. Its shaders are built again whenever the buffers grow, and dispatched only as far as clusters, rows,
- * batches and regions are used.
+ * frame late. Culled again only when the view moved, anything it lists changed or the trees sway; what it kept stays
+ * drawn meanwhile. The depth it tests is the static draws' alone, taken before any plain draw or grass draws, since
+ * those move with no version saying so; the engine's occluders (`level.hom`) are static geometry alone too. A view culled
+ * against another view's depth is culled once more against its own, and then not again while nothing changes. Its
+ * shaders are built again whenever the buffers grow, and dispatched only as far as clusters, rows, batches and regions
+ * are used.
  */
 export class StaticCull {
   private readonly buffers: StaticDrawBuffers;
@@ -32,6 +34,10 @@ export class StaticCull {
   /** The buffers' layout the shaders were built over. */
   private layout: number;
   private readonly pyramid: StaticDepthPyramid;
+  /** How the trees sway, which moves the depth the batches over a swaying arena write while the view stands still. */
+  private readonly wind: TreeWindUniforms;
+  /** What the first phase draws, the G-buffer's first draws. */
+  private readonly early: Scene;
   /** What the second phase draws, which the G-buffer draws after the second cull. */
   private readonly late: Scene;
   /** What the last cull read back kept, and whether a read is in flight. */
@@ -64,11 +70,21 @@ export class StaticCull {
   /**
    * @param buffers - What every static draw reads.
    * @param pools - What the culls read, which says when they must run again and how far.
+   * @param wind - How the trees sway.
+   * @param early - The scene the first phase's batches stand in.
    * @param late - The scene the second phase's batches stand in.
    */
-  public constructor(buffers: StaticDrawBuffers, pools: IStaticPools, late: Scene) {
+  public constructor(
+    buffers: StaticDrawBuffers,
+    pools: IStaticPools,
+    wind: TreeWindUniforms,
+    early: Scene,
+    late: Scene
+  ) {
     this.buffers = buffers;
     this.pools = pools;
+    this.wind = wind;
+    this.early = early;
     this.late = late;
     this.shader = createStaticCullShader(buffers);
     this.layout = buffers.layout;
@@ -95,7 +111,15 @@ export class StaticCull {
    * @param camera - Its camera, which the depth it draws is seen from.
    */
   public take(view: CullView, camera: PerspectiveCamera): void {
-    if (!this.isLodChanged && view.version === this.viewVersion && this.pools.version === this.poolsVersion) {
+    // Swaying trees move the depth every frame, as they move a light face's map.
+    const isSwaying: boolean = this.wind.isSwaying && this.pools.isSwaying;
+
+    if (
+      !this.isLodChanged &&
+      !isSwaying &&
+      view.version === this.viewVersion &&
+      this.pools.version === this.poolsVersion
+    ) {
       return;
     }
 
@@ -158,8 +182,8 @@ export class StaticCull {
   }
 
   /**
-   * The second phase's cull, once the first has drawn into the G-buffer: its depth reduced, and what it hid culled
-   * again against it.
+   * The second phase's cull, once the first has drawn into the G-buffer and nothing else has: its depth reduced, and
+   * what it hid culled again against it.
    *
    * @param renderer - The renderer drawing.
    * @param depth - The G-buffer's depth.
@@ -176,6 +200,18 @@ export class StaticCull {
       if (this.isWireframe) {
         renderer.compute(this.shader.wire[1]);
       }
+    }
+  }
+
+  /**
+   * Draws what the first cull kept.
+   *
+   * @param renderer - The renderer drawing, with the G-buffer as its target.
+   * @param camera - The camera drawing.
+   */
+  public drawEarly(renderer: WebGPURenderer, camera: PerspectiveCamera): void {
+    if (this.early.children.length) {
+      renderer.render(this.early, camera);
     }
   }
 
@@ -250,7 +286,7 @@ export class StaticCull {
   }
 
   /**
-   * Reduces the depth the frame finished with, for the next frame's first cull to read.
+   * Reduces the depth the static draws finished with, before any plain draw, for the next frame's first cull to read.
    *
    * @param renderer - The renderer drawing.
    * @param depth - The G-buffer's depth.
