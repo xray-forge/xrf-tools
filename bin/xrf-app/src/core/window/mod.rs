@@ -2,6 +2,7 @@
 
 mod main_window;
 mod monitor_work_area;
+mod window_build_kind;
 mod window_geometry;
 mod window_geometry_fit;
 mod window_geometry_restore;

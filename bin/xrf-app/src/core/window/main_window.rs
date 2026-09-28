@@ -3,9 +3,11 @@ use std::error::Error;
 use tauri::utils::config::WindowConfig;
 use tauri::webview::{WebviewWindow, WebviewWindowBuilder};
 use tauri::{App, Runtime};
+use xrf_build_info::build_info;
 
 use crate::core::preferences::Preferences;
 use crate::core::webview_extensions::DevExtensions;
+use crate::core::window::window_build_kind::WindowBuildKind;
 use crate::core::window::window_geometry::WindowGeometry;
 use crate::core::window::window_geometry_restore::restore_window_geometry;
 use crate::core::window::window_geometry_tracker::track_window_geometry;
@@ -22,6 +24,7 @@ pub fn build_main_window<R: Runtime>(application: &App<R>) -> Result<(), Box<dyn
 
   let window: WebviewWindow<R> = WebviewWindowBuilder::from_config(application.handle(), config)?
     .with_dev_extensions()
+    .with_build_kind(build_info!().kind)?
     .build()?;
 
   // A window nobody can open is worse than one that forgot where it was.

@@ -1,5 +1,7 @@
 import { ReactElement } from "react";
 
+import { getBuildKind } from "@/core/configs";
+import { EBuildKind } from "@/core/ipc/types/xrf-build-info";
 import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
@@ -9,6 +11,13 @@ interface IXrfMarkProps extends BaseComponentProps {
   /** Names the mark for assistive technology. Omit where a label already sits beside it. */
   title?: string;
 }
+
+/** Core colour per build kind, matching the application icons in `bin/xrf-app/icons`. */
+const CORE_COLORS: Readonly<Record<EBuildKind, string>> = {
+  [EBuildKind.OPTIMIZED]: "#FFA200",
+  [EBuildKind.DEVELOPMENT]: "#8B9AFF",
+  [EBuildKind.LOCAL]: "#00C369",
+};
 
 export function XrfMark({
   "data-testid": dataTestId = "xrf-mark",
@@ -37,7 +46,10 @@ export function XrfMark({
         fill={"currentColor"}
       />
       <circle cx={128} cy={128} r={116} fill={"none"} stroke={"currentColor"} strokeWidth={18} />
-      <polygon points={"161 128 144.5 99.421 111.5 99.421 95 128 111.5 156.579 144.5 156.579"} fill={"#FFA200"} />
+      <polygon
+        points={"161 128 144.5 99.421 111.5 99.421 95 128 111.5 156.579 144.5 156.579"}
+        fill={CORE_COLORS[getBuildKind()]}
+      />
     </svg>
   );
 }

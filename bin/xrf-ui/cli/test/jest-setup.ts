@@ -3,6 +3,7 @@ import "@testing-library/jest-dom";
 import { afterEach, jest } from "@jest/globals";
 import { cleanup } from "@testing-library/react";
 
+import { resetMockBuildKind } from "@/fixtures/mocks/build-kind.mocks";
 import { resetMockBulk } from "@/fixtures/mocks/bulk.mocks";
 import { resetMockAppWindow, resetMockInvoke, resetMockIsTauri } from "@/fixtures/mocks/tauri.mocks";
 import { mockLogger } from "@/fixtures/setup/mock-logger";
@@ -25,4 +26,5 @@ afterEach(async () => {
   resetMockBulk();
   resetMockIsTauri();
   resetMockAppWindow();
+  resetMockBuildKind();
 });

@@ -11,10 +11,12 @@ cwd = "../xrf-ui"
 script = "pnpm run build"
 
 [tasks.build]
+env = { XRF_BUILD_KIND = "development" }
 command = "cargo"
 args = ["tauri", "build", "--debug"]
 
 [tasks.build-release]
+env = { XRF_BUILD_KIND = "optimized" }
 command = "cargo"
 args = ["tauri", "build"]
 dependencies = ["setup"]
