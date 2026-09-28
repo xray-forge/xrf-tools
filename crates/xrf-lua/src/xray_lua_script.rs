@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 use full_moon::ast::Ast;
@@ -6,15 +5,13 @@ use full_moon::{LuaVersion, parse_fallible};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::format_path;
 
-use crate::lua_method_call_collector::{LuaCollected, LuaMethodCallCollector};
+use crate::lua_method_call_collector::LuaMethodCallCollector;
 use crate::xray_lua_method_call::XRayLuaMethodCall;
 
-/// A parsed LuaJIT script with normalized method calls.
+/// A parsed LuaJIT script with normalized method calls, each argument read in the scope it is written in.
 #[derive(Clone, Debug, PartialEq)]
 pub struct XRayLuaScript {
   method_calls: Vec<XRayLuaMethodCall>,
-  /// Top-level locals bound to a literal string, as `local tex_base = "water\\water_water"` names a texture.
-  constants: HashMap<String, String>,
   path: PathBuf,
 }
 
@@ -26,14 +23,9 @@ impl XRayLuaScript {
   {
     let path: &Path = path.as_ref();
     let ast: Ast = Self::parse_ast(path, source)?;
-    let LuaCollected {
-      method_calls,
-      constants,
-    } = LuaMethodCallCollector::collect(&ast);
 
     Ok(Self {
-      constants,
-      method_calls,
+      method_calls: LuaMethodCallCollector::collect(&ast),
       path: path.to_path_buf(),
     })
   }
@@ -44,11 +36,6 @@ impl XRayLuaScript {
       .iter()
       .filter(|call| call.receiver() == receiver && call.method() == method)
       .collect()
-  }
-
-  /// The literal string a top-level local is bound to, for a name the script binds one to.
-  pub fn constant(&self, name: &str) -> Option<&str> {
-    self.constants.get(name).map(String::as_str)
   }
 
   pub fn path(&self) -> &Path {
@@ -75,6 +62,7 @@ mod tests {
   use xrf_error::XrfResult;
 
   use super::XRayLuaScript;
+  use crate::xray_lua_binding::XRayLuaBinding;
   use crate::xray_lua_chained_call::XRayLuaChainedCall;
   use crate::xray_lua_method_call::XRayLuaMethodCall;
   use crate::xray_lua_value::XRayLuaValue;
@@ -145,26 +133,182 @@ end
     Ok(())
   }
 
+  /// What the first argument of each `:texture` chained onto a `shader:sampler` reads as, in source order.
+  fn textures(script: &XRayLuaScript) -> Vec<XRayLuaValue> {
+    script
+      .method_calls("shader", "sampler")
+      .iter()
+      .filter_map(|call| {
+        call
+          .chained_call("texture")
+          .and_then(|texture| texture.argument(0))
+          .cloned()
+      })
+      .collect()
+  }
+
   // `effects_water.s` names its textures once at the top and binds them in two functions.
   #[test]
-  fn reads_the_literal_strings_top_level_locals_are_bound_to() -> XrfResult {
+  fn reads_a_name_bound_to_a_top_level_string_as_that_string() -> XrfResult {
     let script: XRayLuaScript = XRayLuaScript::parse(
       Path::new("effects_water.s"),
       r#"
 local tex_base = "water\\water_water"
-local tex_env0 = "$user$sky0"
 local count = 3
 
 function normal(shader)
-  local tex_base = "inner"
   shader:sampler("s_base"):texture(tex_base)
+  shader:sampler("s_count"):texture(count)
+  shader:sampler("s_rt"):texture(t_rt)
 end
 "#,
     )?;
 
-    assert_eq!(script.constant("tex_base"), Some(r"water\water_water"));
-    assert_eq!(script.constant("tex_env0"), Some("$user$sky0"));
-    assert_eq!(script.constant("count"), None);
+    assert_eq!(
+      textures(&script),
+      vec![
+        XRayLuaValue::Local {
+          binding: XRayLuaBinding::String(r"water\water_water".to_owned()),
+          name: "tex_base".to_owned(),
+        },
+        XRayLuaValue::Local {
+          binding: XRayLuaBinding::Other,
+          name: "count".to_owned(),
+        },
+        XRayLuaValue::Name("t_rt".to_owned()),
+      ]
+    );
+
+    Ok(())
+  }
+
+  // Lua resolves a name to its innermost declaration: a parameter or a local of the function hides the top-level one.
+  #[test]
+  fn reads_a_name_through_the_innermost_local_or_parameter_binding_it() -> XrfResult {
+    let script: XRayLuaScript = XRayLuaScript::parse(
+      Path::new("effects_water.s"),
+      r#"
+local tex_base = "outer"
+
+function normal(shader, tex_base)
+  shader:sampler("s_parameter"):texture(tex_base)
+end
+
+local function helper(shader)
+  local tex_base = "inner"
+  shader:sampler("s_local"):texture(tex_base)
+
+  if shader then
+    local tex_base = "block"
+  end
+
+  shader:sampler("s_after_block"):texture(tex_base)
+end
+
+callback = function(shader)
+  for _, tex_base in ipairs({}) do
+    shader:sampler("s_loop"):texture(tex_base)
+  end
+
+  shader:sampler("s_top"):texture(tex_base)
+end
+"#,
+    )?;
+    let bindings: Vec<Option<XRayLuaBinding>> = textures(&script)
+      .into_iter()
+      .map(|value| match value {
+        XRayLuaValue::Local { binding, .. } => Some(binding),
+        _ => None,
+      })
+      .collect();
+
+    assert_eq!(
+      bindings,
+      vec![
+        Some(XRayLuaBinding::Parameter),
+        Some(XRayLuaBinding::String("inner".to_owned())),
+        Some(XRayLuaBinding::String("inner".to_owned())),
+        Some(XRayLuaBinding::Other),
+        Some(XRayLuaBinding::String("outer".to_owned())),
+      ]
+    );
+
+    Ok(())
+  }
+
+  // A local is in scope only after the statement declaring it, and a function declared before it reads the global.
+  #[test]
+  fn reads_a_name_declared_after_its_use_as_the_global() -> XrfResult {
+    let script: XRayLuaScript = XRayLuaScript::parse(
+      Path::new("script.s"),
+      r#"
+function normal(shader)
+  shader:sampler("s_base"):texture(tex_base)
+end
+
+local tex_base = "late"
+local tex_self = tex_self
+shader:sampler("s_self"):texture(tex_self)
+"#,
+    )?;
+
+    assert_eq!(
+      textures(&script),
+      vec![
+        XRayLuaValue::Name("tex_base".to_owned()),
+        XRayLuaValue::Local {
+          binding: XRayLuaBinding::Other,
+          name: "tex_self".to_owned(),
+        },
+      ]
+    );
+
+    Ok(())
+  }
+
+  #[test]
+  fn reads_a_long_bracket_string_as_written() -> XrfResult {
+    let script: XRayLuaScript = XRayLuaScript::parse(Path::new("script.s"), "shader:begin([[a\\b]], [==[\nfirst]==])")?;
+
+    assert_eq!(
+      script.method_calls("shader", "begin")[0].literal_string_arguments(),
+      Some(vec![r"a\b".to_owned(), "first".to_owned()])
+    );
+
+    Ok(())
+  }
+
+  #[test]
+  fn decodes_every_escape_a_quoted_string_may_carry() -> XrfResult {
+    let script: XRayLuaScript = XRayLuaScript::parse(
+      Path::new("script.s"),
+      r#"shader:begin("\a\b\f\n\r\t\v\\\"\'", "\65\066\0671", "\x41\u{42}\u{44f}", "a\z
+          b", "tail\
+next")"#,
+    )?;
+
+    assert_eq!(
+      script.method_calls("shader", "begin")[0].literal_string_arguments(),
+      Some(vec![
+        "\u{7}\u{8}\u{c}\n\r\t\u{b}\\\"'".to_owned(),
+        "ABC1".to_owned(),
+        "AB\u{44f}".to_owned(),
+        "ab".to_owned(),
+        "tail\nnext".to_owned(),
+      ])
+    );
+
+    Ok(())
+  }
+
+  #[test]
+  fn reads_a_string_whose_escape_it_cannot_decode_as_nothing_it_knows() -> XrfResult {
+    let script: XRayLuaScript = XRayLuaScript::parse(Path::new("script.s"), r#"shader:begin("\256", "\xZZ", "\q")"#)?;
+
+    assert_eq!(
+      script.method_calls("shader", "begin")[0].arguments(),
+      &[XRayLuaValue::Other, XRayLuaValue::Other, XRayLuaValue::Other]
+    );
 
     Ok(())
   }
