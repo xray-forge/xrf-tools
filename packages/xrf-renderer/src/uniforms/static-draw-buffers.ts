@@ -271,6 +271,8 @@ export class StaticDrawBuffers {
     this.lodCorners = new StorageBufferAttribute(new Float32Array(lods * STATIC_LOD_CORNER_COLUMNS * 4), 4);
     this.lodTerms = new StorageBufferAttribute(new Uint32Array(lods * 4), 4);
     this.pyramid = new StorageBufferAttribute(new Float32Array(capacities[EStaticPool.PYRAMID]), 1);
+    // Written on the GPU alone: their arrays only size them.
+    retirement.retireArrays([this.lists, this.candidates, this.pyramid, ...this.viewArgs, ...this.wireArgs]);
     this.placeColumns = storage(
       this.places,
       "vec4",
@@ -387,7 +389,9 @@ export class StaticDrawBuffers {
         break;
 
       case EStaticPool.PYRAMID:
-        this.pyramid = this.replace(this.pyramid, capacity);
+        this.retirement.retire([this.pyramid]);
+        this.pyramid = new StorageBufferAttribute(new Float32Array(capacity), 1);
+        this.retirement.retireArrays([this.pyramid]);
         break;
     }
 
@@ -397,6 +401,7 @@ export class StaticDrawBuffers {
       this.retirement.retire([this.lists, this.candidates]);
       this.lists = new StorageBufferAttribute(new Uint32Array(this.toListLength() * 2), 2);
       this.candidates = new StorageBufferAttribute(new Uint32Array(this.capacities[EStaticPool.SURFACE_LIST] * 2), 2);
+      this.retirement.retireArrays([this.lists, this.candidates]);
       this.listEntries.value = this.lists;
     }
 

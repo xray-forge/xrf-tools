@@ -14,6 +14,7 @@ import {
 import { ERendererPass } from "#/contract/scene/renderer-pass";
 import { PACKED_TREE_COMPONENTS } from "#/geometry/renderer-packed-coordinate";
 import { EVertexAttribute } from "#/geometry/vertex-attribute";
+import { mockStorageDevice } from "#/internals/device-fixtures";
 import { ISurfaceMaterial, toOwnSurfaceDrawing } from "#/material/surface-material";
 import { StaticArena } from "#/scene/static/static-arena";
 import { StaticBatches } from "#/scene/static/static-batches";
@@ -307,6 +308,12 @@ describe("StaticBatches", () => {
 
     geometry.setAttribute("position", new BufferAttribute(new Float32Array(9), 3));
     arena.place(geometry, () => ({ indices: 0, vertices: 0 }), { indices: 1 << 20, vertices: 1 << 20 });
+    batches.flush();
+
+    // Grown only as it flushes, its buffers made on the GPU.
+    expect(bundle.version).toBe(grown);
+
+    arena.flush(mockStorageDevice().renderer);
     batches.flush();
 
     expect(bundle.version).toBeGreaterThan(grown);

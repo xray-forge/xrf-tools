@@ -3,9 +3,9 @@ import {
   BufferAttribute,
   BufferGeometry,
   InterleavedBufferAttribute,
-  StorageBufferAttribute,
   StorageBufferNode,
   TypedArray,
+  WebGPURenderer,
 } from "three/webgpu";
 
 import { IClusterAttribute } from "#/geometry/cluster-attribute";
@@ -13,9 +13,8 @@ import { IClusterSource } from "#/geometry/cluster-source";
 import { EClusterWordFormat } from "#/geometry/cluster-word-format";
 import { isPackedTreeGeometry } from "#/geometry/packed-tree-geometry";
 import { EVertexAttribute } from "#/geometry/vertex-attribute";
-import { queueBufferUpload } from "#/scene/buffer-upload";
 import { RangeAllocator } from "#/scene/static/range-allocator";
-import { createArenaNode } from "#/scene/static/static-arena-nodes.tsl";
+import { StaticArenaBuffer } from "#/scene/static/static-arena-buffer";
 import { toFittedCapacity } from "#/scene/static/static-growth";
 import { IStaticRange } from "#/scene/static/static-range";
 import { IStaticRoom } from "#/scene/static/static-room";
@@ -37,8 +36,9 @@ let arenaCount: number = 0;
 /**
  * One buffer of words holding every static geometry of a vertex layout, a vertex its attributes one after another, and
  * one of indices: every static draw of that layout reads its vertices from them by what its cluster names, so every
- * static draw of a material over the layout is drawn by one object. It grows by replacing its buffers, the nodes every
- * shader reads them through pointed at the new ones.
+ * static draw of a material over the layout is drawn by one object. Both live on the GPU alone: a geometry placed is
+ * sent with the next flush, and a growth copies a buffer into a larger one there, the nodes every shader reads them
+ * through pointed at the new ones.
  */
 export class StaticArena implements IClusterSource {
   /**
@@ -122,16 +122,11 @@ export class StaticArena implements IClusterSource {
   public readonly isSwaying: boolean;
   public readonly entryNode: StorageBufferNode<"uvec2">;
   public readonly rangeNode: StorageBufferNode<"uvec4">;
-  /** The words as the node every shader over the arena reads them through. */
-  public readonly wordNode: StorageBufferNode<"uint">;
-  /** The indices, likewise. */
-  public readonly indexNode: StorageBufferNode<"uint">;
 
   private readonly vertices: RangeAllocator = new RangeAllocator();
   private readonly indices: RangeAllocator = new RangeAllocator();
-  private readonly retirement: StorageRetirement;
-  private words: StorageBufferAttribute;
-  private index: StorageBufferAttribute;
+  private readonly words: StaticArenaBuffer;
+  private readonly index: StaticArenaBuffer;
   private currentGeneration: number = 0;
 
   /**
@@ -146,28 +141,36 @@ export class StaticArena implements IClusterSource {
     rangeNode: StorageBufferNode<"uvec4">,
     retirement: StorageRetirement
   ) {
-    this.retirement = retirement;
     this.entryNode = entryNode;
     this.rangeNode = rangeNode;
     this.layout = StaticArena.toAttributes(buffer) as Array<IClusterAttribute>;
     this.signature = StaticArena.toSignature(buffer) as string;
     this.stride = this.layout.reduce((total: number, attribute: IClusterAttribute) => total + attribute.words, 0);
     this.isSwaying = isPackedTreeGeometry(buffer);
-    this.words = new StorageBufferAttribute(new Uint32Array(this.stride), 1);
-    this.index = new StorageBufferAttribute(new Uint32Array(1), 1);
-    this.wordNode = createArenaNode(this.words);
-    this.indexNode = createArenaNode(this.index);
+    this.words = new StaticArenaBuffer(retirement);
+    this.index = new StaticArenaBuffer(retirement);
     this.prototype = this.createPrototype();
   }
 
-  /** Bumped whenever the arena's buffers are replaced. */
+  /** The words as the node every shader over the arena reads them through. */
+  public get wordNode(): StorageBufferNode<"uint"> {
+    return this.words.node;
+  }
+
+  /** The indices, likewise. */
+  public get indexNode(): StorageBufferNode<"uint"> {
+    return this.index.node;
+  }
+
+  /** Bumped whenever the arena's buffers are replaced, which happens as it flushes. */
   public get generation(): number {
     return this.currentGeneration;
   }
 
   /**
    * Copies a geometry in, growing the arena once where it does not fit: for everything still to come where that is
-   * known, since every growth copies and uploads the whole arena again, and only the buffer that is short.
+   * known, since every growth copies the whole arena again on the GPU, and only the buffer that is short. What it
+   * copies in waits on the CPU for the next flush.
    *
    * @param buffer - A geometry in the arena's layout.
    * @param toComing - The room the geometries still to be placed after it will take, asked only when the arena grows.
@@ -198,19 +201,46 @@ export class StaticArena implements IClusterSource {
       return null;
     }
 
-    if (vertices > this.vertices.capacity || indices > this.indices.capacity) {
-      this.grow(vertices, indices);
+    if (vertices > this.vertices.capacity) {
+      this.vertices.grow(vertices);
+      this.words.reserve(vertices * this.stride);
+    }
+
+    if (indices > this.indices.capacity) {
+      this.indices.grow(indices);
+      this.index.reserve(indices);
     }
 
     // Both fit now, as sized.
     const vertexStart: number = this.vertices.allocate(vertexCount) ?? 0;
     const indexStart: number = this.indices.allocate(index.length) ?? 0;
 
-    this.writeVertices(buffer, vertexStart, vertexCount);
-    (this.index.array as Uint32Array).set(index, indexStart);
-    queueBufferUpload(this.index, indexStart, index.length);
+    this.words.write(vertexStart * this.stride, this.toWords(buffer, vertexCount));
+    // A geometry's own indices are sent as they are, since nothing writes them: held until the flush, not copied.
+    this.index.write(indexStart, index instanceof Uint32Array ? index : Uint32Array.from(index));
 
     return { arena: this, indexCount: index.length, indexStart, vertexCount, vertexStart };
+  }
+
+  /**
+   * Sends every geometry placed since the last flush, each buffer grown on the GPU first where it was asked to hold
+   * more. Before the frame culls, records or draws anything over the arena.
+   *
+   * @param renderer - The renderer drawing.
+   */
+  public flush(renderer: WebGPURenderer): void {
+    // Both, whichever grew.
+    const isWordsReplaced: boolean = this.words.flush(renderer);
+    const isIndexReplaced: boolean = this.index.flush(renderer);
+
+    if (isWordsReplaced || isIndexReplaced) {
+      this.currentGeneration += 1;
+    }
+  }
+
+  /** The words and indices placed that wait for the next flush, which the CPU holds until then. */
+  public listPending(): Array<Uint32Array> {
+    return [...this.words.listPending(), ...this.index.listPending()];
   }
 
   /**
@@ -240,7 +270,8 @@ export class StaticArena implements IClusterSource {
   /** Gives its buffers up, for them to go once nothing binds them. */
   public dispose(): void {
     this.prototype.dispose();
-    this.retirement.retire([this.words, this.index]);
+    this.words.dispose();
+    this.index.dispose();
   }
 
   private static createSequence(count: number): Uint32Array {
@@ -253,10 +284,10 @@ export class StaticArena implements IClusterSource {
     return sequence;
   }
 
-  /** Copies each attribute of a geometry into its words of every vertex. */
-  private writeVertices(buffer: BufferGeometry, vertexStart: number, vertexCount: number): void {
-    const words: Uint32Array = this.words.array as Uint32Array;
-    const floats: Float32Array = new Float32Array(words.buffer, words.byteOffset, words.length);
+  /** A geometry's vertices as the arena stores them: each attribute's words of every vertex, one after another. */
+  private toWords(buffer: BufferGeometry, vertexCount: number): Uint32Array {
+    const words: Uint32Array = new Uint32Array(vertexCount * this.stride);
+    const floats: Float32Array = new Float32Array(words.buffer);
 
     for (const { name, format, itemSize, offset } of this.layout) {
       const source: TypedArray = buffer.getAttribute(name).array as TypedArray;
@@ -269,7 +300,7 @@ export class StaticArena implements IClusterSource {
       const width: number = format === EClusterWordFormat.UNORM8X4 ? 1 : itemSize;
 
       for (let vertex = 0; vertex < vertexCount; vertex += 1) {
-        const at: number = (vertexStart + vertex) * this.stride + offset;
+        const at: number = vertex * this.stride + offset;
 
         for (let component = 0; component < width; component += 1) {
           target[at + component] = values[vertex * width + component];
@@ -277,34 +308,7 @@ export class StaticArena implements IClusterSource {
       }
     }
 
-    queueBufferUpload(this.words, vertexStart * this.stride, vertexCount * this.stride);
-  }
-
-  /** Buffers of the sizes given, holding everything the current ones do, uploaded whole with their next use. */
-  private grow(vertices: number, indices: number): void {
-    if (vertices > this.vertices.capacity) {
-      this.words = this.replace(this.words, vertices * this.stride);
-      this.wordNode.value = this.words;
-      this.vertices.grow(vertices);
-    }
-
-    if (indices > this.indices.capacity) {
-      this.index = this.replace(this.index, indices);
-      this.indexNode.value = this.index;
-      this.indices.grow(indices);
-    }
-
-    this.currentGeneration += 1;
-  }
-
-  /** A buffer of the length given holding everything the one it replaces does, which is retired. */
-  private replace(attribute: StorageBufferAttribute, length: number): StorageBufferAttribute {
-    const array: Uint32Array = new Uint32Array(length);
-
-    array.set(attribute.array as Uint32Array);
-    this.retirement.retire([attribute]);
-
-    return new StorageBufferAttribute(array, 1);
+    return words;
   }
 
   /** Three vertices in the arena's layout, and the mark of the arena, which programs built for it are keyed by. */

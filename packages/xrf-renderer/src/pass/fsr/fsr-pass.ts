@@ -252,6 +252,9 @@ export class FsrPass implements ITemporalUpscaler {
 
     const depths: StorageBufferAttribute = new StorageBufferAttribute(new Uint32Array(count), 1);
 
+    // Cleared and written on the GPU alone.
+    this.retirement.retireArrays([depths]);
+
     this.reconstruction = {
       capacity: count,
       clear: createFsrDepthClear(depths, count),

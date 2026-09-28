@@ -141,12 +141,13 @@ export class RendererScene {
 
   /**
    * Puts what the static batches' shared materials read on the GPU, the layers their arrays wait for and their rows,
-   * and frees the buffers of the geometries nothing draws any more.
+   * sends the geometry the arenas placed, and frees the buffers of the geometries nothing draws any more.
    *
    * @param renderer - The renderer about to draw.
    */
   public flush(renderer: WebGPURenderer): void {
     this.surfaces.flush(renderer);
+    this.staticDraws.flushArenas(renderer);
     this.releases.free(renderer);
   }
 

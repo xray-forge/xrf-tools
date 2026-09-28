@@ -1,6 +1,8 @@
 import { describe, expect, it, jest } from "@jest/globals";
 import { BufferAttribute } from "three/webgpu";
 
+import { IStorageDeviceFixture, mockStorageDevice } from "#/internals/device-fixtures";
+import { createStorageBuffer } from "#/internals/storage-buffers";
 import {
   STATIC_BATCH_ARGUMENTS,
   STATIC_SHADOW_VIEWS,
@@ -128,5 +130,30 @@ describe("StaticDrawBuffers", () => {
     buffers.storageLimit = 1 << 10;
 
     expect(buffers.limit(EStaticPool.SHADOW_LIST)).toBe(0);
+  });
+
+  // The lists alone are tens of megabytes of zeroes the CPU never reads, on a level the size of Pripyat.
+  it("lets the arrays of what the GPU alone writes go once up, grown ones too, and keeps what the pools write", () => {
+    const device: IStorageDeviceFixture = mockStorageDevice();
+    const retirement: StorageRetirement = new StorageRetirement();
+    const buffers: StaticDrawBuffers = new StaticDrawBuffers(retirement, { [EStaticPool.PYRAMID]: 16 });
+
+    // Made by three as something first binds them.
+    [buffers.lists, buffers.pyramid, buffers.slots, buffers.viewArgs[EStaticView.EARLY]].forEach(
+      (attribute: BufferAttribute) => createStorageBuffer(device.renderer, attribute, attribute.array.byteLength)
+    );
+    retirement.free(device.renderer);
+
+    expect(buffers.lists.array).toHaveLength(2);
+    expect(buffers.pyramid.array).toHaveLength(1);
+    expect(buffers.viewArgs[EStaticView.EARLY].array).toHaveLength(STATIC_BATCH_ARGUMENTS);
+    expect(buffers.slots.array.length).toBeGreaterThan(4);
+
+    buffers.grow(EStaticPool.PYRAMID, 64);
+    createStorageBuffer(device.renderer, buffers.pyramid, 256);
+    retirement.free(device.renderer);
+
+    expect(buffers.pyramid.array).toHaveLength(1);
+    expect(buffers.pyramid.count).toBe(64);
   });
 });

@@ -1,5 +1,5 @@
 import { Maybe, Nullable } from "@xrf/types";
-import { Box3, Material, Matrix4, Scene, Sphere, Vector3 } from "three/webgpu";
+import { Box3, Material, Matrix4, Scene, Sphere, Vector3, WebGPURenderer } from "three/webgpu";
 
 import { IRendererPoolUse } from "#/contract/renderer-pool-use";
 import { IRendererStaticDrawReport } from "#/contract/renderer-static-draw-report";
@@ -176,6 +176,21 @@ export class StaticDraws implements IStaticShadowCasters, IStaticPools {
     this.lods.flush();
     this.clusters.flush();
     this.batches.flush();
+  }
+
+  /**
+   * Sends the geometry the arenas placed since the last frame, growing their buffers on the GPU first. Before the frame
+   * culls: a growth replaces what the batches bind.
+   *
+   * @param renderer - The renderer drawing.
+   */
+  public flushArenas(renderer: WebGPURenderer): void {
+    this.arenas.flush(renderer);
+  }
+
+  /** What the arenas placed and wait to send, which the CPU holds until the next frame. */
+  public listPending(): Array<Uint32Array> {
+    return this.arenas.listPending();
   }
 
   /**

@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 
 import { describe, expect, it } from "@jest/globals";
 import {
+  BufferAttribute,
   BundleGroup,
   Camera,
   NodeFrame,
@@ -205,5 +206,95 @@ describe("three's internals, as the renderer reads them", () => {
       true
     );
     expect(typeof StorageBufferNode).toBe("function");
+  });
+
+  it("makes an attribute's buffer only for one its backend holds none for, sized by its array", () => {
+    // `createStorageBuffer` makes an arena's buffer first, of the arena's size, over a one-element array.
+    const create: string = readThreeMethod("renderers/webgpu/utils/WebGPUAttributeUtils.js", "createAttribute");
+
+    expect(create).toContain("let buffer = bufferData.buffer;");
+    expect(create).toContain("if ( buffer === undefined ) {");
+    expect(create).toContain("const byteLength = array.byteLength;");
+    expect(create).toContain("bufferData.buffer = buffer;");
+  });
+
+  it("makes a storage attribute's buffer for storage, vertices and copies both ways", () => {
+    // `createStorageBuffer` asks for the same usage, which a growth's `copyBufferToBuffer` needs at both ends.
+    const create: string = readThreeMethod("renderers/webgpu/WebGPUBackend.js", "createStorageAttribute");
+
+    expect(create).toContain(
+      "GPUBufferUsage.STORAGE | GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST"
+    );
+  });
+
+  it("reads an attribute's array only to make its buffer, and again only once its version moves", () => {
+    // `releaseStorageArray` lets the array go once made, and nothing marks such an attribute for upload after.
+    const update: string = readThreeMethod("renderers/common/Attributes.js", "update");
+
+    expect(update).toContain("if ( data.version === undefined ) {");
+    expect(update).toContain("data.version < bufferAttribute.version || bufferAttribute.usage === DynamicDrawUsage");
+  });
+
+  it("keeps an attribute's count apart from its array, set as it is made", () => {
+    // `releaseStorageArray` swaps the array for one element's, and whatever reads the count still reads the buffer's.
+    const attribute: BufferAttribute = new BufferAttribute(new Uint32Array(8), 2);
+
+    attribute.array = new Uint32Array(2);
+
+    expect(attribute.count).toBe(4);
+  });
+
+  it("binds a storage buffer whole, from its attribute's backend data", () => {
+    // An arena's buffer is larger than its attribute's array, and a grown one is found by the attribute alone.
+    const bind: string = readThreeMethod("renderers/webgpu/utils/WebGPUBindingUtils.js", "createBindGroup");
+    const uniforms: string = readThreeMethod("renderers/webgpu/nodes/WGSLNodeBuilder.js", "getUniforms");
+
+    expect(bind).toContain("const buffer = backend.get( binding.attribute ).buffer;");
+    expect(bind).toContain("resource: { buffer: buffer }");
+    // A storage buffer's array has no length in its shader, whatever its node counts.
+    expect(uniforms).toContain("bufferCount > 0 && uniform.type === 'buffer'");
+  });
+
+  it("sends a texture's bytes only as it first makes it or its version moves, and none while its source is not ready", () => {
+    // `releaseTextureData` lets them go once it is up, and marks its source not ready for a texture made again.
+    const update: string = readThreeMethod("renderers/common/Textures.js", "updateTexture");
+
+    expect(update).toContain(
+      "if ( textureData.initialized === true && textureData.version === texture.version ) return;"
+    );
+    expect(update).toContain("if ( texture.source.dataReady === true ) backend.updateTexture( texture, options );");
+  });
+
+  it("makes a texture it let go anew with nothing in it, a copy's destination, while its source is not ready", () => {
+    // `SurfaceBatching.restore` has three make an evicted texture again, its bytes gone, then copies its layer into it.
+    const update: string = readThreeMethod("renderers/common/Textures.js", "updateTexture");
+    const destroy: string = readThreeMethod("renderers/common/Textures.js", "_destroyTexture");
+    const create: string = readThreeMethod("renderers/webgpu/utils/WebGPUTextureUtils.js", "createTexture");
+
+    expect(destroy).toContain("this.delete( texture );");
+    expect(update).toContain(
+      "if ( textureData.isDefaultTexture === undefined || textureData.isDefaultTexture === true ) {"
+    );
+    expect(update).toContain("backend.createTexture( texture, options );");
+    expect(create).toContain(
+      "let usage = GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.COPY_SRC;"
+    );
+  });
+
+  it("makes a binding's texture again as the binding is made, disposed or not", () => {
+    // The resurrection trap: a binding cloned from a template keeps the texture it was built with, gone or not, and
+    // three makes it again from its bytes, which a texture that let them go does not read.
+    const create: string = readThreeMethod("renderers/common/Bindings.js", "_createBindings");
+
+    expect(create).toContain("this.textures.updateTexture( binding.texture );");
+  });
+
+  it("calls a `Fn` through a node holding its function, whose body builds its nodes only as the call is built", () => {
+    // `isNodeReading` runs a body taking nothing itself, to see what the graph under it reads.
+    const call: string = readThreeMethod("nodes/tsl/TSLCore.js", "call");
+    const source: string = readFileSync(require.resolve("three/src/nodes/tsl/TSLCore.js"), "utf8");
+
+    expect(source).toContain("this.isShaderCallNodeInternal = true;");
+    expect(call).toContain("const jsFunc = shaderNode.jsFunc;");
   });
 });

@@ -1,4 +1,5 @@
 import { Maybe, Nullable } from "@xrf/types";
+import { WebGPURenderer } from "three/webgpu";
 
 import { SceneGeometry } from "#/scene/geometry/scene-geometry";
 import { StaticArena } from "#/scene/static/static-arena";
@@ -117,6 +118,20 @@ export class StaticArenas {
     }
 
     placement.range.arena.free(placement.range);
+  }
+
+  /**
+   * Sends what every arena placed since the last flush, growing its buffers on the GPU first.
+   *
+   * @param renderer - The renderer drawing.
+   */
+  public flush(renderer: WebGPURenderer): void {
+    this.arenas.forEach((arena: StaticArena) => arena.flush(renderer));
+  }
+
+  /** What the arenas placed and wait to send, which the CPU holds until the next flush. */
+  public listPending(): Array<Uint32Array> {
+    return [...this.arenas.values()].flatMap((arena: StaticArena) => arena.listPending());
   }
 
   private toSignature(geometry: SceneGeometry): Nullable<string> {

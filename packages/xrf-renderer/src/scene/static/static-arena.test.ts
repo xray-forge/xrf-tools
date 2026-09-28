@@ -1,21 +1,23 @@
 import { describe, expect, it, jest } from "@jest/globals";
 import { storage } from "three/tsl";
-import { BufferAttribute, BufferGeometry, StorageBufferAttribute } from "three/webgpu";
+import { BufferAttribute, BufferGeometry, StorageBufferAttribute, WebGPURenderer } from "three/webgpu";
 
 import { toClusterSource } from "#/geometry/cluster-source";
 import { EVertexAttribute } from "#/geometry/vertex-attribute";
+import { IStorageDeviceFixture, mockStorageDevice } from "#/internals/device-fixtures";
 import { StaticArena } from "#/scene/static/static-arena";
 import { IStaticRange } from "#/scene/static/static-range";
 import { IStaticRoom } from "#/scene/static/static-room";
 import { StorageRetirement } from "#/uniforms/storage-retirement";
 
-function createBuffer(count: number, isIndexed: boolean = true): BufferGeometry {
+/** A geometry of `count` vertices, its position components counting up from `first`. */
+function createBuffer(count: number, isIndexed: boolean = true, first: number = 0): BufferGeometry {
   const buffer: BufferGeometry = new BufferGeometry();
 
   buffer.setAttribute(
     "position",
     new BufferAttribute(
-      new Float32Array(count * 3).map((_, it) => it),
+      new Float32Array(count * 3).map((_, it) => first + it),
       3
     )
   );
@@ -62,12 +64,17 @@ function toNothingComing(): IStaticRoom {
 /** Room a buffer of the default limit holds, which no test reaches. */
 const LIMITS: IStaticRoom = { indices: 1 << 25, vertices: 1 << 23 };
 
-function toWords(arena: StaticArena): Uint32Array {
-  return arena.wordNode.value.array as Uint32Array;
-}
+/** What the GPU holds of an arena once it flushed: its words and its indices. */
+function flush(
+  arena: StaticArena,
+  device: IStorageDeviceFixture = mockStorageDevice()
+): { words: Uint32Array; indices: Uint32Array } {
+  arena.flush(device.renderer);
 
-function toIndices(arena: StaticArena): Uint32Array {
-  return arena.indexNode.value.array as Uint32Array;
+  return {
+    indices: device.read(arena.indexNode.value) as Uint32Array,
+    words: device.read(arena.wordNode.value) as Uint32Array,
+  };
 }
 
 describe("StaticArena", () => {
@@ -102,7 +109,7 @@ describe("StaticArena", () => {
     arena.place(packed, toNothingComing, LIMITS);
 
     const second: IStaticRange = arena.place(packed, toNothingComing, LIMITS) as IStaticRange;
-    const words: Uint32Array = toWords(arena);
+    const { words } = flush(arena);
     const floats: Float32Array = new Float32Array(words.buffer);
 
     // The normal's four bytes one word, before the position's three floats: attributes sorted by name.
@@ -119,7 +126,7 @@ describe("StaticArena", () => {
     const second: IStaticRange = arena.place(createBuffer(2, false), toNothingComing, LIMITS) as IStaticRange;
 
     expect([first.vertexStart, first.indexStart, second.vertexStart, second.indexStart]).toEqual([0, 0, 3, 3]);
-    expect(Array.from(toIndices(arena).subarray(0, 5))).toEqual([2, 1, 0, 0, 1]);
+    expect(Array.from(flush(arena).indices.subarray(0, 5))).toEqual([2, 1, 0, 0, 1]);
   });
 
   it("gives a freed geometry's room to the next", () => {
@@ -132,37 +139,96 @@ describe("StaticArena", () => {
   });
 
   // The nodes stay, pointed at the new buffers, so no shader over the arena is built again.
-  it("grows by replacing its short buffer behind the same node, keeping what it held, and retires the old", () => {
+  it("grows on the GPU as it flushes, copying its short buffer into a larger one behind the same node", () => {
+    const device: IStorageDeviceFixture = mockStorageDevice();
     const { retired, retirement } = createRetirement();
     const arena: StaticArena = createArena(createBuffer(3), retirement);
 
     arena.place(createBuffer(3), toNothingComing, LIMITS);
+    arena.flush(device.renderer);
 
     const generation: number = arena.generation;
     const node = arena.wordNode;
     const words: BufferAttribute = arena.wordNode.value;
     const index: BufferAttribute = arena.indexNode.value;
-    const range: IStaticRange = arena.place(createBuffer(1 << 17), toNothingComing, LIMITS) as IStaticRange;
+    const range: IStaticRange = arena.place(createBuffer(1 << 17, true, 100), toNothingComing, LIMITS) as IStaticRange;
+
+    // Nothing is replaced before the flush: what binds the arena binds what holds everything sent.
+    expect(arena.generation).toBe(generation);
+    expect(arena.wordNode.value).toBe(words);
+
+    const submits: number = device.submits;
+
+    arena.flush(device.renderer);
+
+    const grown: Float32Array = new Float32Array((device.read(arena.wordNode.value) as Uint32Array).buffer);
 
     expect(arena.generation).toBeGreaterThan(generation);
     expect(arena.wordNode).toBe(node);
+    expect(device.submits).toBe(submits + 1);
     expect(range.vertexStart).toBe(3);
-    expect(toWords(arena).length).toBeGreaterThanOrEqual((3 + (1 << 17)) * arena.stride);
-    expect(Array.from(toIndices(arena).subarray(0, 3))).toEqual([2, 1, 0]);
-    // The indices had room: only the words were copied.
+    expect(grown.length).toBeGreaterThanOrEqual((3 + (1 << 17)) * arena.stride);
+    // What the first held came across on the GPU, and the second was written after it.
+    expect(Array.from(grown.subarray(0, 3))).toEqual([0, 1, 2]);
+    expect(Array.from(grown.subarray(3 * arena.stride, 3 * arena.stride + 3))).toEqual([100, 101, 102]);
+    expect(Array.from((device.read(arena.indexNode.value) as Uint32Array).subarray(0, 3))).toEqual([2, 1, 0]);
+    // The indices had room: only the words grew.
     expect(retired).toContain(words);
     expect(retired).not.toContain(index);
     expect(arena.indexNode.value).toBe(index);
   });
 
+  // A copy landing after the writes would put back what the room held before.
+  it("writes what was placed in room freed below the old size over what the growth copied", () => {
+    const device: IStorageDeviceFixture = mockStorageDevice();
+    const arena: StaticArena = createArena();
+    const first: IStaticRange = arena.place(createBuffer(3), toNothingComing, LIMITS) as IStaticRange;
+
+    arena.flush(device.renderer);
+    arena.free(first);
+    arena.place(createBuffer(3, true, 50), toNothingComing, LIMITS);
+    arena.place(createBuffer(1 << 17), toNothingComing, LIMITS);
+    arena.flush(device.renderer);
+
+    const words: Float32Array = new Float32Array((device.read(arena.wordNode.value) as Uint32Array).buffer);
+
+    expect(Array.from(words.subarray(0, 3))).toEqual([50, 51, 52]);
+  });
+
+  it("holds on the CPU only what it placed since it last flushed", () => {
+    const arena: StaticArena = createArena();
+
+    arena.place(createBuffer(3), toNothingComing, LIMITS);
+
+    expect(arena.listPending().map((words: Uint32Array) => words.length)).toEqual([3 * arena.stride, 3]);
+
+    flush(arena);
+
+    expect(arena.listPending()).toEqual([]);
+  });
+
+  it("keeps everything placed for a flush with a device, sending and growing nothing without one", () => {
+    const arena: StaticArena = createArena();
+
+    arena.place(createBuffer(3), toNothingComing, LIMITS);
+    arena.flush({ backend: {} } as unknown as WebGPURenderer);
+
+    expect(arena.generation).toBe(0);
+    expect(arena.listPending()).toHaveLength(2);
+    expect(Array.from(flush(arena).indices.subarray(0, 3))).toEqual([2, 1, 0]);
+  });
+
   it("grows once for everything still to come, so what comes next fits without growing again", () => {
+    const device: IStorageDeviceFixture = mockStorageDevice();
     const arena: StaticArena = createArena();
 
     arena.place(createBuffer(3), () => ({ indices: 1 << 20, vertices: 1 << 20 }), LIMITS);
+    arena.flush(device.renderer);
 
     const generation: number = arena.generation;
 
     arena.place(createBuffer(1 << 20), toNothingComing, LIMITS);
+    arena.flush(device.renderer);
 
     expect(arena.generation).toBe(generation);
   });

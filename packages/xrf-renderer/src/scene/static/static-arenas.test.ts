@@ -1,6 +1,7 @@
 import { describe, expect, it, jest } from "@jest/globals";
 import { BufferAttribute } from "three/webgpu";
 
+import { mockStorageDevice } from "#/internals/device-fixtures";
 import { SceneGeometry } from "#/scene/geometry/scene-geometry";
 import { StaticArena } from "#/scene/static/static-arena";
 import { StaticArenas } from "#/scene/static/static-arenas";
@@ -68,14 +69,34 @@ describe("StaticArenas", () => {
     const { arenas } = createArenas([coming, createGeometry(1 << 18, true)]);
     const first: SceneGeometry = createGeometry();
 
+    const { renderer } = mockStorageDevice();
+
     arenas.acquire(first);
+    arenas.flush(renderer);
 
     const arena: StaticArena = arenas.toArena(first) as StaticArena;
     const generation: number = arenas.generation;
 
     arenas.acquire(coming);
+    arenas.flush(renderer);
 
     expect(arenas.generation).toBe(generation);
+    expect(arena.generation).toBe(1);
+  });
+
+  it("sends what every arena placed as it flushes, holding nothing of it on the CPU after", () => {
+    const { arenas } = createArenas();
+    const geometry: SceneGeometry = createGeometry();
+    const arena: StaticArena = arenas.toArena(geometry) as StaticArena;
+
+    arenas.acquire(geometry);
+    arenas.acquire(createGeometry(3, true));
+
+    expect(arenas.listPending()).toHaveLength(4);
+
+    arenas.flush(mockStorageDevice().renderer);
+
+    expect(arenas.listPending()).toEqual([]);
     expect(arena.generation).toBe(1);
   });
 
