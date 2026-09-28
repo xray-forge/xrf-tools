@@ -109,6 +109,13 @@ impl XrayProbePlan {
     Ok(steps)
   }
 
+  /// Forgets the recorded failures among the sources every step names, so mounting the plan again tries each of them.
+  pub fn forget_skipped_in(&self, vfs: &mut XrayVfs) {
+    for step in &self.steps {
+      vfs.forget_skipped_mounts_of(&step.plan);
+    }
+  }
+
   /// The steps [`Self::mount_into`] would return, where every source the plan names is settled already; `None` where
   /// one is not.
   ///

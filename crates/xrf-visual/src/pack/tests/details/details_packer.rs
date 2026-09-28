@@ -78,12 +78,12 @@ fn face(vertices: [u32; 3], material: u16) -> LevelCformFace {
   }
 }
 
-/// The corners of the ground at `y = 1` across world slots -1 and 0.
+/// The corners of the ground at `y = 1` across world slots -1 and 0, wound to face up to a ray cast down.
 fn ground() -> Vec<Vector3d> {
   vec![
     Vector3d::new(-2.0, 1.0, -1.0),
-    Vector3d::new(2.0, 1.0, 1.0),
     Vector3d::new(-2.0, 1.0, 1.0),
+    Vector3d::new(2.0, 1.0, 1.0),
   ]
 }
 
@@ -122,8 +122,8 @@ fn bins_each_planted_slot_with_the_solid_ground_under_it() {
     section(&words, description.grid.byte_offset, description.grid.byte_length),
     vec![1, 0, 0]
   );
-  assert_eq!(description.triangle_count, 1);
-  assert_eq!(description.bin_length, 1);
+  assert_eq!(description.get_triangle_count(), 1);
+  assert_eq!(description.get_bin_length(), 1);
 
   let record: Vec<u32> = section(&words, description.slots.byte_offset, description.slots.byte_length);
 
@@ -145,7 +145,7 @@ fn packs_the_triangles_in_renderer_space_wound_for_it() {
   .collect();
 
   // Each corner's z negated, and the last two corners swapped, which keeps the face turned up to a ray cast down.
-  assert_eq!(triangle, vec![-2.0, 1.0, 1.0, -2.0, 1.0, -1.0, 2.0, 1.0, -1.0]);
+  assert_eq!(triangle, vec![-2.0, 1.0, 1.0, 2.0, 1.0, -1.0, -2.0, 1.0, -1.0]);
 }
 
 #[test]
@@ -174,7 +174,9 @@ fn keeps_a_triangle_facing_up_through_the_space_change() {
   );
   let engine_determinant: f32 = engine_edge1.z * engine_edge2.x - engine_edge1.x * engine_edge2.z;
 
-  assert_eq!(determinant.signum(), engine_determinant.signum());
+  // Positive is what the culling test keeps, the engine's and the renderer's `toRayRange` alike.
+  assert!(engine_determinant > 0.0, "the ground faces up to the engine's ray");
+  assert!(determinant > 0.0, "and to the renderer's");
 }
 
 #[test]
@@ -194,7 +196,8 @@ fn packs_a_model_in_renderer_space_with_the_measures_its_planting_reads() {
     .collect();
 
   assert_eq!(positions[..3], [-1.0, 0.0, -1.0]);
-  assert_eq!(model.index_count, 3);
+  // One triangle of sixteen-bit indices.
+  assert_eq!(model.indices.byte_length, 3 * 2);
 }
 
 #[test]
@@ -216,7 +219,7 @@ fn bins_a_triangle_reaching_far_past_the_grid_over_the_part_inside_it_and_skips_
 
   // The wide ground reaches the first cell, the only one planted over it; the unplaced one is binned nowhere.
   assert_eq!(package.description.slot_count, 1);
-  assert_eq!(package.description.bin_length, 1);
+  assert_eq!(package.description.get_bin_length(), 1);
 
   Ok(())
 }

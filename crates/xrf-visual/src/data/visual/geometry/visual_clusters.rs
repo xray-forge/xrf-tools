@@ -9,7 +9,6 @@ use crate::data::visual::geometry::visual_section::VisualSection;
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct VisualClusters {
-  pub count: u32,
   /// Four unsigned integers a cluster: its first index, in the geometry's indices; its triangles; the drawable it is
   /// cut from, by its index in the visuals run, or [`VisualClusters::NO_DRAWABLE`]; then nothing.
   pub ranges: VisualSection,

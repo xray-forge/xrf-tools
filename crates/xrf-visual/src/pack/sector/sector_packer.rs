@@ -5,10 +5,10 @@ use byteorder::ByteOrder;
 use xrf_chunk::ChunkDataSource;
 use xrf_error::{XrfError, XrfResult};
 use xrf_level::{
-  LevelGeomSource, LevelSectorComposition, LevelShadersChunk, LevelVertexLayout, LevelVertexPayload, LevelVisual,
-  LevelVisualsChunk,
+  LevelGeomSlideWindowItem, LevelGeomSource, LevelSectorComposition, LevelShadersChunk, LevelVertexLayout,
+  LevelVertexPayload, LevelVisual, LevelVisualsChunk,
 };
-use xrf_ogf::{OgfGeometryContainerChunk, OgfLodDefinitionChunk, OgfSwiContainerChunk, OgfSwiDataChunk};
+use xrf_ogf::{OgfGeometryContainerChunk, OgfLodDefinitionChunk, OgfModelType, OgfSwiContainerChunk, OgfSwiDataChunk};
 
 use crate::data::sector::instance::sector_instance_group::SectorInstanceGroup;
 use crate::data::sector::instance::sector_progressive::SectorProgressive;
@@ -273,7 +273,6 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
       runs.push((start, gathering.drawables.iter().copied().zip(gathering.runs).collect()));
       sections.push(SectorSection {
         bounds: arrays.get_indexed_bounds(&gathering.indices),
-        clusters: VisualDrawRange::default(),
         draw: VisualDrawRange {
           count: gathering.indices.len() as u32,
           start,
@@ -288,19 +287,13 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
     let mut clusters: VisualClusterTable = VisualClusterTable::default();
 
     // A section's clusters are its drawables' own, so none spans two of them.
-    for (section, (start, drawables)) in sections.iter_mut().zip(runs) {
-      let first: u32 = clusters.get_count();
+    for (start, drawables) in runs {
       let mut at: u32 = start;
 
       for (drawable, count) in drawables {
         clusters.push_run(&indices, arrays.get_positions(), at, count, drawable);
         at += count;
       }
-
-      section.clusters = VisualDrawRange {
-        count: clusters.get_count() - first,
-        start: first,
-      };
     }
 
     let bounds: Option<VisualBounds> = arrays.get_bounds();
@@ -367,7 +360,7 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
     // Packed unplaced: the mesh is in its own space, and each instance's transform stands a copy of it.
     arrays.push::<T>(&payload)?;
 
-    let (window, mut progressive): (VisualIndexWindow, Option<SectorProgressive>) =
+    let (window, progressive): (VisualIndexWindow, Option<SectorProgressive>) =
       Self::get_instance_detail(key.indices.count, gathering.windows.as_deref())?;
     // Onto nought: the mesh is packed alone.
     let indices: Vec<u32> = key
@@ -376,32 +369,23 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
 
     let mut table: VisualClusterTable = VisualClusterTable::default();
     // A place draws its band's window, or the whole mesh: the whole detail is band nought.
-    let clusters: VisualDrawRange = match &mut progressive {
-      Some(progressive) => {
-        progressive.clusters = progressive
-          .bands
-          .iter()
-          .map(|band| {
-            table.push_run(
-              &indices,
-              arrays.get_positions(),
-              band.start,
-              band.count,
-              VisualClusters::NO_DRAWABLE,
-            )
-          })
-          .collect();
+    let whole: [VisualDrawRange; 1] = [VisualDrawRange {
+      count: indices.len() as u32,
+      start: 0,
+    }];
+    let runs: &[VisualDrawRange] = progressive
+      .as_ref()
+      .map_or(&whole, |progressive| progressive.bands.as_slice());
 
-        progressive.clusters[0]
-      }
-      None => table.push_run(
+    for run in runs {
+      table.push_run(
         &indices,
         arrays.get_positions(),
-        0,
-        indices.len() as u32,
+        run.start,
+        run.count,
         VisualClusters::NO_DRAWABLE,
-      ),
-    };
+      );
+    }
 
     let transforms: Vec<f32> = gathering
       .placements
@@ -417,7 +401,6 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
       .then(|| builder.push_i32_section(&gathering.impostors));
 
     Ok(SectorInstanceGroup {
-      clusters,
       drawables: gathering.drawables.clone(),
       geometry: arrays.write_into(&indices, &table, builder),
       hemi: builder.push_f32_section(&hemi),
@@ -453,6 +436,11 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
 
   /// Hands a visual's slide windows to `take`: its own, or those of the level's table it names; `None` for a visual
   /// naming none.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the windows cannot be read, the table named is not one the level holds, or a progressive
+  /// visual has no window, whose whole index run lays every window end to end.
   fn with_windows<R>(
     &self,
     visual: &LevelVisual,
@@ -460,6 +448,8 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
   ) -> XrfResult<Option<R>> {
     if let Some(swi) = &visual.swi {
       let swi: &OgfSwiDataChunk = swi.as_ref().map_err(|error| Self::unreadable("slide windows", error))?;
+
+      Self::require_windows(visual, swi.windows.len())?;
 
       return Ok(Some(take(
         &mut swi
@@ -470,27 +460,42 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
     }
 
     let Some(container) = &visual.swi_container else {
-      return Ok(None);
+      return Self::require_windows(visual, 0).map(|()| None);
     };
     let container: &OgfSwiContainerChunk = container
       .as_ref()
       .map_err(|error| Self::unreadable("slide window table", error))?;
+    let tables: &[LevelGeomSlideWindowItem] = &self.source.get_file().slide_windows;
+    // `CRender::getSWI` indexes the level's tables unchecked.
+    let table: &LevelGeomSlideWindowItem = tables.get(container.ext_swib_index as usize).ok_or_else(|| {
+      XrfError::new_invalid_error(format!(
+        "draws from slide window table {} of the {} the level holds",
+        container.ext_swib_index,
+        tables.len()
+      ))
+    })?;
 
-    Ok(
-      self
-        .source
-        .get_file()
-        .slide_windows
-        .get(container.ext_swib_index as usize)
-        .map(|table| {
-          take(
-            &mut table
-              .windows
-              .iter()
-              .map(|window| VisualIndexWindow::of_triangles(window.offset, window.triangles)),
-          )
-        }),
-    )
+    Self::require_windows(visual, table.windows.len())?;
+
+    Ok(Some(take(&mut table.windows.iter().map(|window| {
+      VisualIndexWindow::of_triangles(window.offset, window.triangles)
+    }))))
+  }
+
+  /// Refuses a progressive visual without a window to draw: the engine asserts it has them (`FProgressive::Load`,
+  /// `FTreeVisual_PM::Load`), and drawing its whole run instead draws every window at once.
+  fn require_windows(visual: &LevelVisual, windows: usize) -> XrfResult {
+    let is_progressive: bool =
+      OgfModelType::from_raw(visual.header.model_type).is_some_and(OgfModelType::is_progressive);
+
+    if is_progressive && windows == 0 {
+      return Err(XrfError::new_invalid_error(format!(
+        "is {} and carries no slide window, so its whole detail is unknown",
+        OgfModelType::label(visual.header.model_type)
+      )));
+    }
+
+    Ok(())
   }
 
   /// What of a tree mesh's indices is packed, and the bands its places pick among: the whole run of its windows with
@@ -533,7 +538,6 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
             }
           })
           .collect(),
-        clusters: Vec::new(),
         windows: count,
       }),
     ))

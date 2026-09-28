@@ -22,7 +22,7 @@ impl<'a> LevelVertexBytes<'a> {
 
   /// The three floats of the position element.
   pub fn get_position<T: ByteOrder>(&self) -> Vector3d {
-    let at: usize = self.layout.get_position_offset() as usize;
+    let at: usize = usize::from(self.layout.get_position_offset());
 
     Vector3d {
       x: T::read_f32(&self.bytes[at..at + 4]),
@@ -62,7 +62,7 @@ impl<'a> LevelVertexBytes<'a> {
       .take(self.layout.get_texture_coordinate_shorts())
       .enumerate()
     {
-      *short = self.take_short::<T>(offset + index as u16 * 2);
+      *short = self.take_short::<T>(usize::from(offset) + index * 2);
     }
 
     Some(shorts)
@@ -70,10 +70,11 @@ impl<'a> LevelVertexBytes<'a> {
 
   /// The lightmap coordinate's two shorts as stored.
   pub fn get_lightmap_coordinate<T: ByteOrder>(&self) -> Option<[i16; 2]> {
-    self
-      .layout
-      .get_lightmap_coordinate_offset()
-      .map(|offset| [self.take_short::<T>(offset), self.take_short::<T>(offset + 2)])
+    self.layout.get_lightmap_coordinate_offset().map(|offset| {
+      let at: usize = usize::from(offset);
+
+      [self.take_short::<T>(at), self.take_short::<T>(at + 2)]
+    })
   }
 
   /// What xrLC had before it quantized the vertex.
@@ -117,7 +118,7 @@ impl<'a> LevelVertexBytes<'a> {
 
   /// The four bytes of a `D3DCOLOR` element.
   fn take_four(&self, offset: u16) -> [u8; 4] {
-    let at: usize = offset as usize;
+    let at: usize = usize::from(offset);
     let mut bytes: [u8; 4] = [0; 4];
 
     bytes.copy_from_slice(&self.bytes[at..at + 4]);
@@ -125,10 +126,8 @@ impl<'a> LevelVertexBytes<'a> {
     bytes
   }
 
-  /// One signed 16-bit component of a coordinate element.
-  fn take_short<T: ByteOrder>(&self, offset: u16) -> i16 {
-    let at: usize = offset as usize;
-
+  /// One signed 16-bit component of a coordinate element, at a byte of the vertex counted wide.
+  fn take_short<T: ByteOrder>(&self, at: usize) -> i16 {
     T::read_i16(&self.bytes[at..at + 2])
   }
 }

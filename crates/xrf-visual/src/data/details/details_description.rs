@@ -23,9 +23,25 @@ pub struct DetailsDescription {
   pub slot_count: u32,
   /// One `u32` an entry: the triangle, by index into the triangles.
   pub bins: VisualSection,
-  pub bin_length: u32,
   /// Nine floats a triangle: its corners in renderer space, wound for it, passable ones left out.
   pub triangles: VisualSection,
-  pub triangle_count: u32,
   pub buffer_length: u32,
+}
+
+impl DetailsDescription {
+  /// Bytes one bin entry takes.
+  pub const BIN_ENTRY_BYTES: u32 = 4;
+
+  /// Bytes one triangle takes: nine floats.
+  pub const TRIANGLE_BYTES: u32 = 9 * 4;
+
+  /// Entries the bins hold, all of them together.
+  pub fn get_bin_length(&self) -> u32 {
+    self.bins.byte_length / Self::BIN_ENTRY_BYTES
+  }
+
+  /// Triangles the plantings are cast onto.
+  pub fn get_triangle_count(&self) -> u32 {
+    self.triangles.byte_length / Self::TRIANGLE_BYTES
+  }
 }

@@ -156,11 +156,25 @@ fn new_windows(windows: &[Window]) -> Vec<u8> {
 
 /// A progressive tree, `MT_TREE_PM`: a tree drawing its windows from the level's table `table`.
 pub(crate) fn new_progressive_tree(shader_id: u16, vertex_count: u32, index_count: u32, table: u32) -> Vec<u8> {
-  let mut bytes: Vec<u8> = new_tree(shader_id, 0, vertex_count, index_count, 0.0);
+  let mut bytes: Vec<u8> = new_progressive_tree_without_table(shader_id, vertex_count, index_count);
 
   bytes.extend(new_chunk(OgfSwiContainerChunk::CHUNK_ID, &table.to_le_bytes()));
 
   bytes
+}
+
+/// The same tree naming no table at all, which `FTreeVisual_PM::Load` asserts it names.
+pub(crate) fn new_progressive_tree_without_table(shader_id: u16, vertex_count: u32, index_count: u32) -> Vec<u8> {
+  new_placed(
+    // `MT_TREE_PM`.
+    11,
+    shader_id,
+    0,
+    vertex_count,
+    index_count,
+    0.0,
+    [0.0, 0.0],
+  )
 }
 
 /// A progressive static, `MT_PROGRESSIVE`: a baked visual carrying its own windows.
@@ -181,7 +195,16 @@ pub(crate) fn new_progressive_drawable_from(
   index_count: u32,
   windows: &[Window],
 ) -> Vec<u8> {
-  let mut bytes: Vec<u8> = new_drawable(shader_id, 0, vertex_count, index_base, index_count);
+  let mut bytes: Vec<u8> = new_visual(
+    // `MT_PROGRESSIVE`.
+    2,
+    shader_id,
+    0,
+    0,
+    vertex_count,
+    index_base,
+    index_count,
+  );
   let mut data: Vec<u8> = vec![0u8; 16];
 
   data.extend_from_slice(&(windows.len() as u32).to_le_bytes());
@@ -248,7 +271,29 @@ pub(crate) fn new_drawable_of_buffer(
   index_base: u32,
   index_count: u32,
 ) -> Vec<u8> {
-  let mut bytes: Vec<u8> = new_header(0, shader_id);
+  new_visual(
+    // `MT_NORMAL`.
+    0,
+    shader_id,
+    vertex_buffer,
+    vertex_base,
+    vertex_count,
+    index_base,
+    index_count,
+  )
+}
+
+/// A visual of the given model type drawing the given range of the level's shared buffers.
+fn new_visual(
+  model_type: u8,
+  shader_id: u16,
+  vertex_buffer: u32,
+  vertex_base: u32,
+  vertex_count: u32,
+  index_base: u32,
+  index_count: u32,
+) -> Vec<u8> {
+  let mut bytes: Vec<u8> = new_header(model_type, shader_id);
   let mut container: Vec<u8> = Vec::new();
 
   for value in [vertex_buffer, vertex_base, vertex_count, 0, index_base, index_count] {
@@ -313,7 +358,29 @@ pub(crate) fn new_lit_tree(
   at: f32,
   hemi: [f32; 2],
 ) -> Vec<u8> {
-  let mut bytes: Vec<u8> = new_drawable_of_buffer(shader_id, 0, vertex_base, vertex_count, 0, index_count);
+  new_placed(
+    // `MT_TREE_ST`.
+    7,
+    shader_id,
+    vertex_base,
+    vertex_count,
+    index_count,
+    at,
+    hemi,
+  )
+}
+
+/// A tree of the given model type, stood `at` along x.
+fn new_placed(
+  model_type: u8,
+  shader_id: u16,
+  vertex_base: u32,
+  vertex_count: u32,
+  index_count: u32,
+  at: f32,
+  hemi: [f32; 2],
+) -> Vec<u8> {
+  let mut bytes: Vec<u8> = new_visual(model_type, shader_id, 0, vertex_base, vertex_count, 0, index_count);
   let mut definition: Vec<u8> = Vec::new();
 
   // Row major, translation in the fourth row, as the engine stores one.

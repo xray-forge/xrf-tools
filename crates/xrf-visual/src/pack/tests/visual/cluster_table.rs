@@ -1,7 +1,6 @@
 //! How every packer cuts a drawn run of indices into clusters.
 
 use crate::data::visual::geometry::visual_clusters::VisualClusters;
-use crate::data::visual::geometry::visual_draw_range::VisualDrawRange;
 use crate::pack::visual_buffer_builder::VisualBufferBuilder;
 use crate::pack::visual_cluster_table::VisualClusterTable;
 
@@ -50,10 +49,7 @@ fn cuts_a_run_into_clusters_of_consecutive_triangles_the_last_holding_what_is_le
   let (indices, positions) = new_strip(150);
   let mut table: VisualClusterTable = VisualClusterTable::default();
 
-  assert_eq!(
-    table.push_run(&indices, &positions, 0, indices.len() as u32, 7),
-    VisualDrawRange { count: 3, start: 0 }
-  );
+  table.push_run(&indices, &positions, 0, indices.len() as u32, 7);
 
   let (ranges, _) = new_read(&table);
 
@@ -90,15 +86,11 @@ fn numbers_the_clusters_of_later_runs_after_earlier_ones() {
   let mut table: VisualClusterTable = VisualClusterTable::default();
 
   table.push_run(&indices, &positions, 0, 12, 1);
+  table.push_run(&indices, &positions, 12, 12, 2);
 
-  assert_eq!(
-    table.push_run(&indices, &positions, 12, 12, 2),
-    VisualDrawRange { count: 1, start: 1 }
-  );
   assert_eq!(new_read(&table).0, vec![0, 4, 1, 0, 12, 4, 2, 0]);
-  assert_eq!(
-    table.push_run(&indices, &positions, 24, 0, 3),
-    VisualDrawRange { count: 0, start: 2 },
-    "an empty run has none"
-  );
+
+  table.push_run(&indices, &positions, 24, 0, 3);
+
+  assert_eq!(table.get_count(), 2, "an empty run has none");
 }

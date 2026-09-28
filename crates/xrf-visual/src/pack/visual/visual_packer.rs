@@ -177,19 +177,17 @@ impl VisualPacker {
     reverse_triangle_winding(&mut wound_indices);
 
     // Skinned geometry moves with its bones, so only geometry drawn as stored is cut into clusters.
-    let (clusters, detail_clusters): (Option<VisualClusters>, Vec<VisualDrawRange>) = if skin.is_none() {
+    let clusters: Option<VisualClusters> = skin.is_none().then(|| {
       let cut: Vec<u32> = wound_indices.iter().map(|index| u32::from(*index)).collect();
       let points: Vec<[f32; 3]> = positions.iter().map(|it| [it.x, it.y, it.z]).collect();
       let mut table: VisualClusterTable = VisualClusterTable::default();
-      let runs: Vec<VisualDrawRange> = detail_levels
-        .iter()
-        .map(|level| table.push_run(&cut, &points, level.start, level.count, VisualClusters::NO_DRAWABLE))
-        .collect();
 
-      (Some(table.write_into(builder)), runs)
-    } else {
-      (None, Vec::new())
-    };
+      for level in &detail_levels {
+        table.push_run(&cut, &points, level.start, level.count, VisualClusters::NO_DRAWABLE);
+      }
+
+      table.write_into(builder)
+    });
 
     Ok(VisualGeometry {
       vertex_count: vertices.len() as u32,
@@ -206,7 +204,6 @@ impl VisualPacker {
       }),
       detail_levels,
       clusters,
-      detail_clusters,
       bounds,
     })
   }

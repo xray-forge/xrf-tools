@@ -7,8 +7,7 @@ use crate::data::visual::geometry::visual_section::VisualSection;
 #[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DetailsModel {
-  /// The shader and texture it is dressed with, as the library names them.
-  pub shader: String,
+  /// The texture it is dressed with, as the library names it; its surface is described beside it.
   pub texture: String,
   /// Whether the wind moves it: no `DO_NO_WAVING` flag.
   pub is_waving: bool,
@@ -19,8 +18,6 @@ pub struct DetailsModel {
   pub height: f32,
   /// The radius of the sphere around its bounding box, which its distance cull is measured by.
   pub radius: f32,
-  pub vertex_count: u32,
-  pub index_count: u32,
   /// Three floats a vertex, in renderer space.
   pub positions: VisualSection,
   /// Two floats a vertex.

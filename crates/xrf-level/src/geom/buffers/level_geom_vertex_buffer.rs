@@ -17,19 +17,19 @@ impl LevelGeomVertexBuffer {
   /// The stream the renderer takes a level vertex's stride from, `GetDeclVertexSize(dcl, 0)`.
   pub const VERTEX_STREAM: u16 = 0;
 
-  /// Bytes one vertex occupies.
+  /// Bytes one vertex occupies, measured wide: an element's offset and size both come from the file.
   pub fn get_vertex_size(&self) -> Option<u32> {
-    let mut size: u16 = 0;
+    let mut size: u32 = 0;
 
     for element in &self.declaration {
       if !element.is_fed_from(Self::VERTEX_STREAM) {
         continue;
       }
 
-      size = size.max(element.get_kind_size()? + element.offset);
+      size = size.max(u32::from(element.get_kind_size()?) + u32::from(element.offset));
     }
 
-    Some(size as u32)
+    Some(size)
   }
 
   /// Bytes of vertices the buffer carries, which is what a reader of its shape alone steps over.

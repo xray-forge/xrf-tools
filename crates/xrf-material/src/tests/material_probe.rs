@@ -4,7 +4,7 @@ use xrf_thm::ThmBumpMode;
 use xrf_vfs::{XrayLookupScope, XrayMountId, XrayProbe, XrayResolution, XrayVfs};
 
 use crate::fixtures::{FixtureTree, ThmFixture};
-use crate::{XrayMaterialDescriptor, XrayMaterialResolver};
+use crate::{XrayMaterialDescriptor, XrayMaterialResolver, XrayTextureScope};
 
 pub(crate) const BASE: &str = "act\\act_stalker";
 pub(crate) const BUMP: &str = "act\\act_stalker_bump";
@@ -19,7 +19,7 @@ pub(crate) fn describe(tree: &FixtureTree) -> XrayMaterialDescriptor {
   let mut vfs: XrayVfs = XrayVfs::new();
   let id: XrayMountId = vfs.mount_directory("", tree.root()).expect("tree mounts");
 
-  XrayMaterialResolver::describe_texture(&probe_over(&vfs, id), BASE)
+  XrayMaterialResolver::describe_texture(&probe_over(&vfs, id), &XrayTextureScope::shared(), BASE)
 }
 
 pub(crate) fn used_bump() -> ThmFixture {

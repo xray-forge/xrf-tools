@@ -13,8 +13,6 @@ pub struct SectorSection {
   /// Drawables packed into this section, by their index in the visuals run.
   pub drawables: Vec<u32>,
   pub draw: VisualDrawRange,
-  /// Its clusters, in its geometry's table.
-  pub clusters: VisualDrawRange,
   /// Extent its own vertices span, which it is culled by; absent when it reaches none.
   pub bounds: Option<VisualBounds>,
 }

@@ -1,5 +1,4 @@
 use crate::data::visual::geometry::visual_clusters::VisualClusters;
-use crate::data::visual::geometry::visual_draw_range::VisualDrawRange;
 use crate::pack::visual_buffer_builder::VisualBufferBuilder;
 
 /// The clusters of one geometry under construction, cut from each run of its indices that is drawn: every packer's
@@ -23,16 +22,9 @@ impl VisualClusterTable {
   /// * `count` - Indices in it, whole triangles.
   /// * `drawable` - The drawable it is of, or [`VisualClusters::NO_DRAWABLE`].
   ///
-  /// Returns where its clusters sit in the table.
-  pub fn push_run(
-    &mut self,
-    indices: &[u32],
-    positions: &[[f32; 3]],
-    start: u32,
-    count: u32,
-    drawable: u32,
-  ) -> VisualDrawRange {
-    let first: u32 = self.get_count();
+  /// A consumer finds a run's clusters by its start: the cluster starting there, and those after it that each start
+  /// where the one before ends.
+  pub fn push_run(&mut self, indices: &[u32], positions: &[[f32; 3]], start: u32, count: u32, drawable: u32) {
     let per_cluster: u32 = VisualClusters::MAX_TRIANGLES * 3;
     let mut at: u32 = start;
 
@@ -48,11 +40,6 @@ impl VisualClusterTable {
       self.spheres.extend(Self::get_sphere(&self.points));
       at += length;
     }
-
-    VisualDrawRange {
-      count: self.get_count() - first,
-      start: first,
-    }
   }
 
   /// Clusters cut so far.
@@ -63,7 +50,6 @@ impl VisualClusterTable {
   /// Writes the table into the buffer and says where it landed.
   pub fn write_into(&self, builder: &mut VisualBufferBuilder) -> VisualClusters {
     VisualClusters {
-      count: self.get_count(),
       ranges: builder.push_u32_section(&self.ranges),
       spheres: builder.push_f32_section(&self.spheres),
     }

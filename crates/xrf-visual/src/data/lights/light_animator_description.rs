@@ -7,7 +7,6 @@ use crate::data::lights::light_animator_key::LightAnimatorKey;
 #[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LightAnimatorDescription {
-  pub name: String,
   pub fps: f32,
   pub frame_count: u32,
   /// By frame, the first at frame zero.

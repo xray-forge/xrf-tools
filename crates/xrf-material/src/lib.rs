@@ -1,7 +1,8 @@
 //! What the X-Ray renderer builds for a surface, answered the way the engine would.
 //!
-//! Two halves, resolved from the two things a surface declares. From a texture's `.thm`: the bump pair, the detail
-//! association, and the outcome of resolving them, the way `CTextureDescrMngr` and `CRender::texture_load` read them.
+//! Two halves, resolved from the two things a surface declares. From a texture's `.thm`, and a loaded level's own over
+//! it: the bump pair, the detail association, and the outcome of resolving them, the way `CTextureDescrMngr` and
+//! `CRender::texture_load` read them.
 //! From a shader name and `shaders.xr`: whether alpha is read at all and how, the way the blender's own `Compile`
 //! decides it. Neither is derivable from the other, and neither is in the mesh.
 
@@ -31,3 +32,4 @@ pub use crate::data::xray_surface_draw::XraySurfaceDraw;
 pub use crate::data::xray_surface_sampler::XraySurfaceSampler;
 pub use crate::resolve::xray_material_resolver::XrayMaterialResolver;
 pub use crate::resolve::xray_surface_resolver::XraySurfaceResolver;
+pub use crate::resolve::xray_texture_scope::XrayTextureScope;

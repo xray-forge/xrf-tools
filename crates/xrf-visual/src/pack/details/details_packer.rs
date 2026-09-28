@@ -103,7 +103,6 @@ impl<'a> DetailsPacker<'a> {
 
     DetailsPackage {
       description: DetailsDescription {
-        bin_length: entries.len() as u32,
         bins: bins_section,
         buffer_length: builder.length(),
         grid: grid_section,
@@ -114,7 +113,6 @@ impl<'a> DetailsPacker<'a> {
         size_z: header.size_z,
         slot_count: (records.len() / Self::SLOT_WORDS) as u32,
         slots: slots_section,
-        triangle_count: (triangles.len() / 9) as u32,
         triangles: triangles_section,
       },
       buffer: builder.into_buffer(),
@@ -242,7 +240,6 @@ impl<'a> DetailsPacker<'a> {
 
     DetailsModel {
       height: maximum.y - minimum.y,
-      index_count: indices.len() as u32,
       indices: builder.push_u16_section(&indices),
       is_waving: model.is_waving(),
       max_scale: model.max_scale,
@@ -250,10 +247,8 @@ impl<'a> DetailsPacker<'a> {
       positions: builder.push_f32_section(&positions),
       // `Fbox::getsphere`: from the box's centre to its corner.
       radius: (half[0] * half[0] + half[1] * half[1] + half[2] * half[2]).sqrt(),
-      shader: model.shader.clone(),
       texture: model.texture.clone(),
       uvs: builder.push_f32_section(&uvs),
-      vertex_count: model.vertices.len() as u32,
     }
   }
 }

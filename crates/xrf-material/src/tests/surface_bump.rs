@@ -7,7 +7,7 @@ use xrf_vfs::{XrayMountId, XrayProbe, XrayVfs};
 
 use crate::fixtures::FixtureTree;
 use crate::tests::material_probe::{BASE, BUMP, COMPANION, located_path, probe_over, used_bump};
-use crate::{XrayMaterialDescriptor, XraySurfaceDescriptor, XraySurfaceResolver};
+use crate::{XrayMaterialDescriptor, XraySurfaceDescriptor, XraySurfaceResolver, XrayTextureScope};
 
 /// A tree whose library defines `blender` and whose base texture declares a located pair, as `PhongMetal` at a half.
 fn bumped_tree(case: &str, blender: ShaderBlenderFixture) -> FixtureTree {
@@ -25,7 +25,7 @@ fn describe(tree: &FixtureTree, shader: &str) -> XraySurfaceDescriptor {
   let id: XrayMountId = vfs.mount_directory("", tree.root()).expect("tree mounts");
   let probe: XrayProbe<'_> = probe_over(&vfs, id);
 
-  XraySurfaceResolver::open(&probe).describe(shader, &[BASE.to_owned()])
+  XraySurfaceResolver::open(&probe, XrayTextureScope::shared()).describe(shader, &[BASE.to_owned()])
 }
 
 #[test]

@@ -9,7 +9,6 @@ use crate::data::visual::geometry::visual_section::VisualSection;
 #[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SectorImpostors {
-  pub count: u32,
   /// Runs of impostors a surface each, in impostor order.
   pub groups: Vec<SectorImpostorGroup>,
   /// Four floats an impostor: its visual's sphere, centre then radius.

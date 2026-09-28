@@ -73,7 +73,6 @@ impl SectorImpostorArrays {
     }
 
     Some(SectorImpostors {
-      count: self.len(),
       corners: builder.push_f32_section(&self.corners),
       factors: builder.push_f32_section(&self.factors),
       groups: self.groups,

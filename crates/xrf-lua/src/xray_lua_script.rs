@@ -266,6 +266,136 @@ shader:sampler("s_self"):texture(tex_self)
     Ok(())
   }
 
+  /// What each `:texture` argument's binding is, `None` for one no local or parameter binds.
+  fn bindings(script: &XRayLuaScript) -> Vec<Option<XRayLuaBinding>> {
+    textures(script)
+      .into_iter()
+      .map(|value| match value {
+        XRayLuaValue::Local { binding, .. } => Some(binding),
+        _ => None,
+      })
+      .collect()
+  }
+
+  // Lua's `until` is inside the body's scope, and a loop's bounds are outside its variables.
+  #[test]
+  fn reads_a_repeat_condition_inside_its_body_and_a_loops_bounds_outside_it() -> XrfResult {
+    let script: XRayLuaScript = XRayLuaScript::parse(
+      Path::new("script.s"),
+      r#"
+local tex = "outer"
+
+repeat
+  local tex = "body"
+until shader:sampler("s_until"):texture(tex)
+
+shader:sampler("s_after_repeat"):texture(tex)
+
+for tex = 1, shader:sampler("s_bound"):texture(tex) do
+  shader:sampler("s_numeric"):texture(tex)
+end
+
+for _, tex in shader:sampler("s_iterated"):texture(tex) do
+  shader:sampler("s_generic"):texture(tex)
+end
+"#,
+    )?;
+
+    assert_eq!(
+      bindings(&script),
+      vec![
+        Some(XRayLuaBinding::String("body".to_owned())),
+        Some(XRayLuaBinding::String("outer".to_owned())),
+        Some(XRayLuaBinding::String("outer".to_owned())),
+        Some(XRayLuaBinding::Other),
+        Some(XRayLuaBinding::String("outer".to_owned())),
+        Some(XRayLuaBinding::Other),
+      ]
+    );
+
+    Ok(())
+  }
+
+  // `function object:method()` declares `self`; a label or a `goto` declares nothing.
+  #[test]
+  fn binds_self_in_a_method_and_nothing_for_a_label() -> XrfResult {
+    let script: XRayLuaScript = XRayLuaScript::parse(
+      Path::new("script.s"),
+      r#"
+local continue = "outer"
+
+function blender:normal(shader)
+  shader:sampler("s_self"):texture(self)
+end
+
+for index = 1, 2 do
+  goto continue
+  ::continue::
+end
+
+shader:sampler("s_after_label"):texture(continue)
+"#,
+    )?;
+
+    assert_eq!(
+      bindings(&script),
+      vec![
+        Some(XRayLuaBinding::Parameter),
+        Some(XRayLuaBinding::String("outer".to_owned())),
+      ]
+    );
+
+    Ok(())
+  }
+
+  // A reader walking in source order cannot tell which value an assigned local holds where it is read: the functions
+  // a script declares run after the whole chunk, so a later assignment at the top reaches them too.
+  #[test]
+  fn reads_a_local_some_assignment_changes_as_nothing_it_knows() -> XrfResult {
+    let script: XRayLuaScript = XRayLuaScript::parse(
+      Path::new("script.s"),
+      r#"
+local tex_base = "first"
+local tex_kept = "kept"
+local helper
+
+function normal(shader)
+  shader:sampler("s_base"):texture(tex_base)
+  shader:sampler("s_kept"):texture(tex_kept)
+  shader:sampler("s_helper"):texture(helper)
+end
+
+tex_base = "second"
+
+function helper() end
+"#,
+    )?;
+
+    assert_eq!(
+      bindings(&script),
+      vec![
+        Some(XRayLuaBinding::Other),
+        Some(XRayLuaBinding::String("kept".to_owned())),
+        Some(XRayLuaBinding::Other),
+      ]
+    );
+
+    Ok(())
+  }
+
+  #[test]
+  fn reads_nil_and_varargs_as_nothing_it_knows() -> XrfResult {
+    let script: XRayLuaScript =
+      XRayLuaScript::parse(Path::new("script.s"), "function f(...) shader:begin(nil, ...) end")?;
+
+    assert_eq!(
+      script.method_calls("shader", "begin")[0].arguments(),
+      &[XRayLuaValue::Other, XRayLuaValue::Other]
+    );
+
+    Ok(())
+  }
+
   #[test]
   fn reads_a_long_bracket_string_as_written() -> XrfResult {
     let script: XRayLuaScript = XRayLuaScript::parse(Path::new("script.s"), "shader:begin([[a\\b]], [==[\nfirst]==])")?;

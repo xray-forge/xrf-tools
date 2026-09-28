@@ -212,7 +212,11 @@ fn stands_a_lamp_whose_visual_lacks_the_bone_at_the_object_itself() {
 
 #[test]
 fn lights_each_lamp_of_the_objects_by_the_visual_it_names() {
-  let objects: Vec<AlifeObject> = vec![object("first", lamp(FLAG_R2, 0)), object("second", lamp(FLAG_R2, 1))];
+  let mut second: AlifeObject = object("second", lamp(FLAG_R2, 1));
+
+  second.position = vector(20.0, 2.0, 5.0);
+
+  let objects: Vec<AlifeObject> = vec![object("first", lamp(FLAG_R2, 0)), second];
   let mut packer: LightsPacker = LightsPacker::new(None);
   let mut reads: Vec<String> = Vec::new();
 
@@ -224,10 +228,10 @@ fn lights_each_lamp_of_the_objects_by_the_visual_it_names() {
 
   let description: LightsDescription = packer.pack();
 
-  assert_eq!(
-    description.lights.iter().map(|it| it.name.as_str()).collect::<Vec<_>>(),
-    vec!["first", "second"]
-  );
+  // In the objects' order, each a metre up its own lamp's bone.
+  assert_eq!(description.lights.len(), 2);
+  assert_close(&description.lights[0].position, vector(10.0, 3.0, -5.0));
+  assert_close(&description.lights[1].position, vector(20.0, 3.0, -5.0));
   assert_eq!(reads, vec![String::from("dynamics\\light\\light_lamp"); 2]);
 }
 
@@ -434,7 +438,6 @@ fn lights_a_zone_its_section_lights_over_it_by_its_animation_alone() {
     panic!("expected the campfire alone, got {:?}", description.lights)
   };
 
-  assert_eq!(fire.name, "campfire");
   assert_eq!(fire.kind, LightKind::Point);
   // Its height over the zone, in renderer space.
   assert_close(&fire.position, vector(10.0, 2.7, -5.0));
@@ -506,10 +509,11 @@ fn knows_a_signal_rocket_by_its_binder_where_the_configs_are_read() {
   let mut packer: LightsPacker = LightsPacker::new(None).with_sections(&ltx);
 
   // A mod's rocket under a section of its own, and vanilla's section rebound to a lamp that stays lit.
-  for section in ["flare_rocket", "lights_signal_light"] {
+  for (section, x) in [("flare_rocket", 10.0), ("lights_signal_light", 20.0)] {
     let mut object: AlifeObject = object(section, lamp(FLAG_R2, 0));
 
     object.section = String::from(section);
+    object.position = vector(x, 2.0, 5.0);
 
     let AlifeObjectInherited::CseAlifeObjectHangingLamp(lamp) = &object.inherited else {
       unreachable!()
@@ -518,13 +522,11 @@ fn knows_a_signal_rocket_by_its_binder_where_the_configs_are_read() {
     packer.add_lamp(&object, lamp, &mut |_| Some(lamp_pose()));
   }
 
-  assert_eq!(
-    packer
-      .pack()
-      .lights
-      .iter()
-      .map(|it| it.name.as_str())
-      .collect::<Vec<_>>(),
-    vec!["lights_signal_light"]
-  );
+  let description: LightsDescription = packer.pack();
+  let [lit] = description.lights.as_slice() else {
+    panic!("expected the rebound lamp alone, got {:?}", description.lights)
+  };
+
+  // The rebound lamp, which stands at 20.
+  assert_close(&lit.position, vector(20.0, 3.0, -5.0));
 }

@@ -60,6 +60,17 @@ impl XrayVfs {
     Some(mounted)
   }
 
+  /// Forgets the recorded failures among the sources a plan names, so mounting it again tries them, and leaves every
+  /// other plan's settled.
+  pub fn forget_skipped_mounts_of(&mut self, plan: &XrayMountPlan) {
+    self.forget_skipped(|path, kind| {
+      plan
+        .get_mounts()
+        .iter()
+        .any(|planned| planned.kind == kind && planned.path == path)
+    });
+  }
+
   /// The recorded failures among the sources a plan names, in plan order.
   pub fn list_skipped_mounts_of(&self, plan: &XrayMountPlan) -> Vec<XraySkippedMount> {
     plan

@@ -38,11 +38,11 @@ impl XRayLuaValue {
         .to_string()
         .parse::<f64>()
         .map_or(Self::Other, Self::Number),
-      // `true` and `false` arrive as symbols, as does `nil`, which is neither of them.
+      // `true` and `false` arrive as symbols, as do `nil` and `...`, which name nothing.
       Expression::Symbol(token) => match token.token().to_string().as_str() {
         "true" => Self::Boolean(true),
         "false" => Self::Boolean(false),
-        other => Self::Name(other.to_owned()),
+        _ => Self::Other,
       },
       Expression::Var(Var::Name(token)) => {
         let name: String = token.token().to_string();

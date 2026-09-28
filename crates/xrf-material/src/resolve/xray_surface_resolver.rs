@@ -16,10 +16,12 @@ use crate::resolve::xray_surface_bump_rule::XraySurfaceBumpRule;
 use crate::resolve::xray_surface_detail_rule::XraySurfaceDetailRule;
 use crate::resolve::xray_surface_rule::XraySurfaceRule;
 use crate::resolve::xray_surface_script::XraySurfaceScript;
+use crate::resolve::xray_texture_scope::XrayTextureScope;
 
 /// Answers how a surface is drawn from the shader name it declares and the textures it dresses with.
 pub struct XraySurfaceResolver<'probe, 'vfs> {
   probe: &'probe XrayProbe<'vfs>,
+  scope: XrayTextureScope,
   source: XraySurfaceSource,
 }
 
@@ -28,8 +30,9 @@ impl<'probe, 'vfs> XraySurfaceResolver<'probe, 'vfs> {
   /// (`Layers/xrRender/ResourceManager_Loader.cpp`).
   pub const SHADER_LIBRARY_LOGICAL_PATH: &'static str = XrayAssetType::SHADER_LIBRARY_PATH;
 
-  /// Locates and reads the shader library once, recording why it could not rather than failing.
-  pub fn open(probe: &'probe XrayProbe<'vfs>) -> Self {
+  /// Locates and reads the shader library once, recording why it could not rather than failing, for surfaces whose
+  /// textures are read within `scope`.
+  pub fn open(probe: &'probe XrayProbe<'vfs>, scope: XrayTextureScope) -> Self {
     let Some(asset) = probe
       .find(Self::SHADER_LIBRARY_LOGICAL_PATH)
       .ok()
@@ -37,12 +40,14 @@ impl<'probe, 'vfs> XraySurfaceResolver<'probe, 'vfs> {
     else {
       return Self {
         probe,
+        scope,
         source: XraySurfaceSource::Absent,
       };
     };
 
     Self {
       probe,
+      scope,
       source: match Self::read(probe, &asset) {
         Ok(library) => XraySurfaceSource::Read { asset, library },
         Err(error) => XraySurfaceSource::Unreadable {
@@ -101,7 +106,7 @@ impl<'probe, 'vfs> XraySurfaceResolver<'probe, 'vfs> {
     // The base texture's descriptor, which says the detail, the bump pair and the lighting model all at once.
     let base: Option<XrayMaterialDescriptor> = blender
       .base_texture(textures)
-      .map(|base| XrayMaterialResolver::describe_texture(self.probe, base));
+      .map(|base| XrayMaterialResolver::describe_texture(self.probe, &self.scope, base));
 
     XraySurfaceDescriptor {
       shader: None,

@@ -350,7 +350,7 @@ fn a_forgotten_failure_is_tried_again() {
   let mut vfs: XrayVfs = XrayVfs::new();
 
   plan.mount_into(&mut vfs).expect("roots mount");
-  vfs.forget_skipped_mounts();
+  plan.forget_skipped_in(&mut vfs);
 
   assert!(vfs.get_skipped_mounts().is_empty());
   assert_eq!(plan.find_mounted(&vfs), None, "a forgotten failure is unsettled again");
@@ -362,6 +362,41 @@ fn a_forgotten_failure_is_tried_again() {
     1,
     "the retry fails and is recorded once more"
   );
+}
+
+// Trying one set of roots again is no reason to try another's: its failures stay settled for every read of it.
+#[test]
+fn forgets_the_failures_of_the_plan_it_is_asked_about_alone() {
+  let retried: PathBuf = install(
+    "forgotten_retried",
+    &["db\\textures\\textures.db0", "gamedata\\configs\\system.ltx"],
+  );
+  let settled: PathBuf = install(
+    "forgotten_settled",
+    &["db\\textures\\textures.db0", "gamedata\\configs\\game.ltx"],
+  );
+  let retried_plan: XrayProbePlan = XrayRoots::one(retried, XrayMountMode::Installation)
+    .to_probe_plan()
+    .expect("roots plan");
+  let settled_plan: XrayProbePlan = XrayRoots::one(settled, XrayMountMode::Installation)
+    .to_probe_plan()
+    .expect("roots plan");
+
+  let mut vfs: XrayVfs = XrayVfs::new();
+
+  retried_plan.mount_into(&mut vfs).expect("roots mount");
+
+  let settled_steps: Vec<XrayProbeStep> = settled_plan.mount_into(&mut vfs).expect("roots mount");
+
+  retried_plan.forget_skipped_in(&mut vfs);
+
+  assert_eq!(retried_plan.find_mounted(&vfs), None, "its own failure is unsettled");
+  assert_eq!(
+    settled_plan.find_mounted(&vfs),
+    Some(settled_steps),
+    "the other plan's is kept, and still reported"
+  );
+  assert_eq!(vfs.get_skipped_mounts().len(), 1);
 }
 
 // A fork is what mounts copy-on-write: the world it came from keeps serving reads unchanged while it mounts more.

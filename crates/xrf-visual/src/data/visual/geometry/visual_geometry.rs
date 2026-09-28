@@ -28,8 +28,6 @@ pub struct VisualGeometry {
   /// The clusters every detail level is cut into, for geometry drawn as it is stored; `None` for skinned geometry,
   /// which moves with its bones.
   pub clusters: Option<VisualClusters>,
-  /// Each detail level's clusters, in the table, beside `detail_levels`; empty with the table.
-  pub detail_clusters: Vec<VisualDrawRange>,
   pub bounds: VisualBounds,
 }
 

@@ -5,18 +5,18 @@ Describes the texture dependencies and alpha behavior an X-Ray surface gets from
 ## Describe a material and surface
 
 ```rust,no_run
-use xrf_material::{XrayMaterialResolver, XraySurfaceResolver};
+use xrf_material::{XrayMaterialResolver, XraySurfaceResolver, XrayTextureScope};
 use xrf_vfs::{XrayLookupScope, XrayMountMode, XrayVfs};
 
 fn main() -> xrf_error::XrfResult {
   let vfs = XrayVfs::open(XrayMountMode::Directory, "gamedata")?;
   let probe = vfs.probe().with_step("gamedata", XrayLookupScope::all());
-  let material = XrayMaterialResolver::describe_texture(&probe, "wpn\\wpn_ak74");
+  let material = XrayMaterialResolver::describe_texture(&probe, &XrayTextureScope::shared(), "wpn\\wpn_ak74");
 
   println!("Bump outcome: {:?}", material.outcome);
 
-  let surfaces = XraySurfaceResolver::open(&probe);
-  let surface = surfaces.describe("models\\model");
+  let surfaces = XraySurfaceResolver::open(&probe, XrayTextureScope::shared());
+  let surface = surfaces.describe("models\\model", &["wpn\\wpn_ak74".to_owned()]);
 
   println!("Declaration: {:?}; draw: {:?}", surface.declaration, surface.draw);
 
@@ -29,10 +29,15 @@ its alpha draw mode; that comes from its shader declaration.
 
 ## Choose a resolver
 
-- `XrayMaterialResolver::describe_texture(probe, reference)` finds a texture's `.thm` and resolves its bump pair and
-  detail association. `describe_descriptor` starts from a THM asset already located by a scan.
-- Open `XraySurfaceResolver` once with a probe, then call `describe(shader_name)` for each surface. It reads the shader
-  library once and reports both the authored declaration and the resulting draw mode.
+- `XrayMaterialResolver::describe_texture(probe, scope, reference)` finds a texture's `.thm` and resolves its bump pair
+  and detail association. `describe_descriptor` starts from a THM asset already located by a scan, outside any level.
+- Open `XraySurfaceResolver` once with a probe and a scope, then call `describe(shader_name, textures)` for each
+  surface. It reads the shader library once and reports both the authored declaration and the resulting draw mode.
+- `XrayTextureScope` says where the renderer looks: `shared()` outside a level, `of_level(directory)` inside one. In a
+  level, the level's own `.thm` is read over the shared one as `LoadTHM("$level$")` does: it replaces the bump and the
+  material, and the detail only where it names a live one, and one the type gate skips changes nothing. Textures and
+  bump inputs resolve beside the level first, save that a `_bump` name the shared tree lacks is the engine's dummy;
+  `resolve_texture` answers that order for any other texture a level binds.
 
 Reuse one `XraySurfaceResolver` across all surfaces using the same library. A texture descriptor is per texture, while
 `shaders.xr` contains many surface declarations. Create a fresh resolver when the underlying library changes.

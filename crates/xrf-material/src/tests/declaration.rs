@@ -5,7 +5,10 @@ use xrf_vfs::{XrayMountId, XrayProbe, XrayVfs};
 
 use crate::fixtures::{FixtureTree, ThmFixture};
 use crate::tests::material_probe::{BASE, BUMP, COMPANION, describe, probe_over, used_bump};
-use crate::{XrayBumpMode, XrayBumpOutcome, XrayMaterialDeclaration, XrayMaterialDescriptor, XrayMaterialResolver};
+use crate::{
+  XrayBumpMode, XrayBumpOutcome, XrayMaterialDeclaration, XrayMaterialDescriptor, XrayMaterialResolver,
+  XrayTextureScope,
+};
 
 #[test]
 fn a_texture_without_a_descriptor_is_undeclared_and_flat() {
@@ -139,7 +142,7 @@ fn a_rejected_reference_is_undeclared() {
     let mut vfs: XrayVfs = XrayVfs::new();
     let id: XrayMountId = vfs.mount_directory("", tree.root()).expect("tree mounts");
 
-    XrayMaterialResolver::describe_texture(&probe_over(&vfs, id), "..\\..\\outside")
+    XrayMaterialResolver::describe_texture(&probe_over(&vfs, id), &XrayTextureScope::shared(), "..\\..\\outside")
   };
 
   assert_eq!(descriptor, XrayMaterialDescriptor::undeclared());
@@ -165,7 +168,7 @@ fn describing_a_located_descriptor_answers_the_same_as_describing_its_texture() 
 
   assert_eq!(
     XrayMaterialResolver::describe_descriptor(&probe, &located),
-    XrayMaterialResolver::describe_texture(&probe, BASE)
+    XrayMaterialResolver::describe_texture(&probe, &XrayTextureScope::shared(), BASE)
   );
 }
 
@@ -186,7 +189,7 @@ fn a_textures_ltx_in_the_roots_is_named_and_otherwise_unread() {
     Some(String::from(XrayMaterialResolver::TEXTURES_LTX_LOGICAL_PATH))
   );
   assert_eq!(
-    XrayMaterialResolver::describe_texture(&probe, BASE),
+    XrayMaterialResolver::describe_texture(&probe, &XrayTextureScope::shared(), BASE),
     XrayMaterialDescriptor::undeclared()
   );
 

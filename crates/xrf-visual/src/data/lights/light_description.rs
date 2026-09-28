@@ -8,8 +8,6 @@ use crate::data::lights::light_kind::LightKind;
 #[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LightDescription {
-  /// The spawned object it belongs to, or the level file's record for one of the level's own.
-  pub name: String,
   pub kind: LightKind,
   pub position: Vector3d,
   /// Where a spot points: its bone's third axis.

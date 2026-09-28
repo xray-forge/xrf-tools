@@ -107,7 +107,7 @@ impl XrayVfs {
     self.skipped.push(skipped);
   }
 
-  /// The recorded failure of a planned source, which settles it until [`Self::forget_skipped_mounts`].
+  /// The recorded failure of a planned source, which settles it until [`Self::forget_skipped_mounts_of`] forgets it.
   pub(crate) fn skipped_mount(&self, path: &Path, kind: XraySourceKind) -> Option<&XraySkippedMount> {
     self
       .failed
@@ -117,10 +117,26 @@ impl XrayVfs {
       .and_then(|(_, index)| self.skipped.get(*index))
   }
 
-  /// Forgets every source that failed to open, so the next plan naming one tries it again.
-  pub fn forget_skipped_mounts(&mut self) {
+  /// Forgets the failures of the planned sources `is_forgotten` picks by path and kind, keeping the rest in the order
+  /// they were recorded, so the next plan naming one of them tries it again.
+  pub(crate) fn forget_skipped(&mut self, is_forgotten: impl Fn(&Path, XraySourceKind) -> bool) {
+    let mut kinds: Vec<Option<XraySourceKind>> = vec![None; self.skipped.len()];
+
+    for (kind, index) in self.failed.values().flatten() {
+      if let Some(slot) = kinds.get_mut(*index) {
+        *slot = Some(*kind);
+      }
+    }
+
+    let recorded: Vec<XraySkippedMount> = std::mem::take(&mut self.skipped);
+
     self.failed.clear();
-    self.skipped.clear();
+
+    for (skipped, kind) in recorded.into_iter().zip(kinds) {
+      if let Some(kind) = kind.filter(|kind| !is_forgotten(&skipped.path, *kind)) {
+        self.record_skipped(kind, skipped);
+      }
+    }
   }
 
   /// The mount already opened from a planned path, when its kind still matches.

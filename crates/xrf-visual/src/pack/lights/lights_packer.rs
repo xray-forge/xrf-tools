@@ -94,9 +94,8 @@ impl<'a> LightsPacker<'a> {
   /// Adds the level file's own point lights, which the engine draws only with `r2_allow_r1_lights`: its position,
   /// range and colour, always shadowed. The directional one is the sun, lit elsewhere.
   pub fn add_level_lights(&mut self, lights: &[LevelDynamicLight]) {
-    for (index, light) in lights.iter().enumerate().filter(|(_, light)| !light.is_sun()) {
+    for light in lights.iter().filter(|light| !light.is_sun()) {
       self.lights.push(LightDescription {
-        name: format!("level light {index}"),
         kind: LightKind::Point,
         position: convert_vector(&light.position),
         direction: Vector3d::new(0.0, 0.0, 1.0),
@@ -160,7 +159,6 @@ impl<'a> LightsPacker<'a> {
     });
 
     self.lights.push(LightDescription {
-      name: object.name.clone(),
       kind: if is_spot { LightKind::Spot } else { LightKind::Point },
       position: main.c.clone(),
       direction: Self::to_direction(&main),
@@ -181,7 +179,6 @@ impl<'a> LightsPacker<'a> {
 
     if lamp.has_point_ambient() {
       self.lights.push(LightDescription {
-        name: format!("{} ambient", object.name),
         kind: LightKind::Point,
         position: ambient.c.clone(),
         direction: Self::to_direction(&ambient),
@@ -230,7 +227,6 @@ impl<'a> LightsPacker<'a> {
     let position: Vector3d = Vector3d::new(object.position.x, object.position.y + height, object.position.z);
 
     self.lights.push(LightDescription {
-      name: object.name.clone(),
       kind: LightKind::Point,
       position: convert_vector(&position),
       direction: Vector3d::new(0.0, 0.0, 1.0),
@@ -342,7 +338,6 @@ impl<'a> LightsPacker<'a> {
     keys.sort_by_key(|key| key.frame);
 
     LightAnimatorDescription {
-      name: item.name.clone(),
       fps: item.fps,
       frame_count: item.frame_count,
       keys: keys

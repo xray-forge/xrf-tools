@@ -61,6 +61,26 @@ impl FixtureTree {
     self
   }
 
+  /// A descriptor beside a level, at `levels\<level>\<reference>.thm`.
+  pub fn with_level_descriptor(self, level: &str, reference: &str, fixture: &ThmFixture) -> Self {
+    self.write(
+      &format!("levels/{level}/{}.thm", reference.replace('\\', "/")),
+      &fixture.to_bytes(),
+    );
+
+    self
+  }
+
+  /// Bytes at `levels\<level>\<reference>.thm` that are not a descriptor.
+  pub fn with_unreadable_level_descriptor(self, level: &str, reference: &str) -> Self {
+    self.write(
+      &format!("levels/{level}/{}.thm", reference.replace('\\', "/")),
+      b"not a thm",
+    );
+
+    self
+  }
+
   /// Bytes at `textures\<reference>.thm` that are not a descriptor.
   pub fn with_unreadable_descriptor(self, reference: &str) -> Self {
     self.write(&format!("textures/{}.thm", reference.replace('\\', "/")), b"not a thm");

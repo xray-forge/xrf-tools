@@ -1,6 +1,7 @@
 use xrf_chunk::XRayByteOrder;
 use xrf_error::XrfResult;
 
+use crate::geom::buffers::level_geom_vertex_buffer::LevelGeomVertexBuffer;
 use crate::geom::buffers::level_geom_vertex_element::LevelGeomVertexElement;
 use crate::geom::level_geom_file::LevelGeomFile;
 use crate::tests::fixtures::chunk;
@@ -93,6 +94,26 @@ fn takes_a_vertex_size_from_the_furthest_element_rather_than_the_sum() -> XrfRes
   assert_eq!(file.vertex_buffers[0].get_vertex_size(), Some(20));
 
   Ok(())
+}
+
+// An offset near the top of its sixteen bits plus the element's size passes what sixteen bits hold: measured narrow,
+// it panics a build checking overflow and wraps to a small stride in one that does not.
+#[test]
+fn measures_an_element_at_the_last_offset_sixteen_bits_hold_without_wrapping() {
+  let buffer: LevelGeomVertexBuffer = LevelGeomVertexBuffer {
+    declaration: vec![LevelGeomVertexElement {
+      kind: 2,
+      method: 0,
+      offset: u16::MAX,
+      stream: 0,
+      usage: 0,
+      usage_index: 0,
+    }],
+    payload_offset: 0,
+    vertex_count: 1,
+  };
+
+  assert_eq!(buffer.get_vertex_size(), Some(u32::from(u16::MAX) + 12));
 }
 
 #[test]

@@ -6,7 +6,7 @@ use xrf_vfs::{XrayMountId, XrayProbe, XrayVfs};
 
 use crate::fixtures::FixtureTree;
 use crate::tests::material_probe::probe_over;
-use crate::{XraySurfaceDeclaration, XraySurfaceDescriptor, XraySurfaceDraw, XraySurfaceResolver};
+use crate::{XraySurfaceDeclaration, XraySurfaceDescriptor, XraySurfaceDraw, XraySurfaceResolver, XrayTextureScope};
 
 const CUT_OUT: XraySurfaceDraw = XraySurfaceDraw::AlphaTested {
   reference: XraySurfaceDraw::DEFERRED_ALPHA_REFERENCE,
@@ -18,7 +18,7 @@ fn describe(tree: &FixtureTree, shader: &str) -> XraySurfaceDescriptor {
   let id: XrayMountId = vfs.mount_directory("", tree.root()).expect("tree mounts");
   let probe: XrayProbe<'_> = probe_over(&vfs, id);
 
-  XraySurfaceResolver::open(&probe).describe(shader, &[])
+  XraySurfaceResolver::open(&probe, XrayTextureScope::shared()).describe(shader, &[])
 }
 
 /// A tree whose library defines exactly `blenders`.
@@ -293,7 +293,7 @@ fn the_library_is_read_once_and_answers_every_surface_of_a_model() {
 
   let id: XrayMountId = vfs.mount_directory("", tree.root()).expect("tree mounts");
   let probe: XrayProbe<'_> = probe_over(&vfs, id);
-  let resolver: XraySurfaceResolver<'_, '_> = XraySurfaceResolver::open(&probe);
+  let resolver: XraySurfaceResolver<'_, '_> = XraySurfaceResolver::open(&probe, XrayTextureScope::shared());
   let opaque: XraySurfaceDescriptor = resolver.describe("models\\model", &[]);
 
   assert_eq!(opaque.draw, XraySurfaceDraw::Opaque);

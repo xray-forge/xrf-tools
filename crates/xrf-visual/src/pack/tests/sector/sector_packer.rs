@@ -8,6 +8,8 @@ use crate::data::sector::instance::sector_instance_group::SectorInstanceGroup;
 use crate::data::sector::instance::sector_progressive::SectorProgressive;
 use crate::data::sector::sector_attributes::SectorAttributes;
 use crate::data::sector::sector_description::SectorDescription;
+use crate::data::sector::sector_skip::SectorSkip;
+use crate::data::visual::geometry::visual_clusters::VisualClusters;
 use crate::data::visual::geometry::visual_draw_range::VisualDrawRange;
 use crate::data::visual::geometry::visual_skip_cause::VisualSkipCause;
 use crate::pack::sector::sector_package::SectorPackage;
@@ -16,8 +18,8 @@ use crate::pack::tests::sector::level_fixtures::{
   GeomBuffer, Window, new_chunk, new_drawable, new_drawable_of_buffer, new_geometry_fixture, new_hierarchy,
   new_lightmapped_declaration, new_lightmapped_vertex, new_lit_tree, new_lod, new_open_geometry, new_position_vertex,
   new_positions_declaration, new_progressive_drawable, new_progressive_drawable_from, new_progressive_tree,
-  new_shaders, new_slide_windows, new_tree, new_tree_declaration, new_tree_vertex, new_vertex_lit_declaration,
-  new_vertex_lit_vertex, new_visuals,
+  new_progressive_tree_without_table, new_shaders, new_slide_windows, new_tree, new_tree_declaration, new_tree_vertex,
+  new_vertex_lit_declaration, new_vertex_lit_vertex, new_visuals,
 };
 
 /// Four lightmapped vertices in one buffer, and six indices that draw two triangles out of them.
@@ -670,7 +672,8 @@ fn test_packs_an_impostor_and_names_it_from_every_tree_of_its_clump() {
     .as_ref()
     .expect("a sector composing an impostor");
 
-  assert_eq!(impostors.count, 1);
+  // One impostor, one factor each.
+  assert_eq!(new_read_floats(&package, impostors.factors).len(), 1);
   assert_eq!(impostors.groups.len(), 1);
   assert_eq!(impostors.groups[0].surface.texture_name.as_deref(), Some("level_lods"));
   // Mirrored into renderer space.
@@ -755,20 +758,28 @@ fn test_packs_a_progressive_tree_whole_with_a_band_for_each_window() {
         VisualDrawRange { count: 6, start: 3 },
         VisualDrawRange { count: 3, start: 0 },
       ],
-      // A cluster each: every band is cut from its own window.
-      clusters: vec![
-        VisualDrawRange { count: 1, start: 0 },
-        VisualDrawRange { count: 1, start: 1 },
-      ],
       windows: 2,
     })
   );
+  // A cluster each, cut from the band's own window, so a consumer finds a band's clusters where it starts.
   assert_eq!(
-    group.clusters,
-    VisualDrawRange { count: 1, start: 0 },
-    "the whole detail's"
+    new_read_bytes(&package, group.geometry.clusters.ranges)
+      .as_chunks::<4>()
+      .0
+      .iter()
+      .map(|bytes| u32::from_le_bytes(*bytes))
+      .collect::<Vec<u32>>(),
+    vec![
+      3,
+      2,
+      VisualClusters::NO_DRAWABLE,
+      0,
+      0,
+      1,
+      VisualClusters::NO_DRAWABLE,
+      0
+    ]
   );
-  assert_eq!(group.geometry.clusters.count, 2);
 }
 
 // Every band is a draw of its own, so a table of many windows is cut into a few: band `b` is window
@@ -858,7 +869,7 @@ fn test_cuts_each_drawable_of_a_section_into_clusters_of_its_own() {
     .collect();
 
   assert_eq!(description.sections.len(), 1, "one surface");
-  assert_eq!(description.sections[0].clusters, VisualDrawRange { count: 2, start: 0 });
+  assert_eq!(description.sections[0].draw, VisualDrawRange { count: 6, start: 0 });
   assert_eq!(
     ranges,
     vec![0, 1, 1, 0, 3, 1, 2, 0],
@@ -979,5 +990,51 @@ fn test_leaves_out_a_progressive_static_whose_windows_it_cannot_read() {
   assert_eq!(
     package.description.geometry.index_count, 6,
     "the other drawable still packs"
+  );
+}
+
+// Every window of a progressive mesh lies in its index run, so drawing the run for want of a table draws each window at
+// once; the engine asserts the table is there, and `VisualPacker` refuses a model without one the same way.
+#[test]
+fn test_leaves_out_a_progressive_tree_whose_window_table_the_level_lacks() {
+  let run: LevelVisualsChunk = new_visuals(&[
+    new_hierarchy(&[1, 2]),
+    new_progressive_tree(1, 4, 9, 5),
+    new_progressive_tree_without_table(2, 4, 9),
+  ]);
+  let source = new_open_geometry(new_progressive_geometry(true, &[&PROGRESSIVE_WINDOWS]));
+
+  let package: SectorPackage =
+    SectorPacker::new(&run, None, &source).pack::<XRayByteOrder>(0, &new_composition(&run), SectorAttributes::all());
+  let skipped: &[SectorSkip] = &package.description.skipped;
+
+  assert!(package.description.instances.is_empty());
+  assert_eq!(skipped.len(), 2);
+  assert_eq!(skipped[0].cause, VisualSkipCause::Malformed);
+  assert!(
+    skipped[0].reason.contains("slide window table 5 of the 1"),
+    "{}",
+    skipped[0].reason
+  );
+  assert!(
+    skipped[1].reason.contains("MT_TREE_PM and carries no slide window"),
+    "{}",
+    skipped[1].reason
+  );
+}
+
+#[test]
+fn test_leaves_out_a_progressive_static_carrying_no_window() {
+  let run: LevelVisualsChunk = new_visuals(&[new_hierarchy(&[1]), new_progressive_drawable(1, 4, 9, &[])]);
+  let source = new_open_geometry(new_progressive_geometry(false, &[]));
+
+  let package: SectorPackage =
+    SectorPacker::new(&run, None, &source).pack::<XRayByteOrder>(0, &new_composition(&run), SectorAttributes::all());
+
+  assert_eq!(package.description.geometry.index_count, 0);
+  assert!(
+    package.description.skipped[0]
+      .reason
+      .contains("MT_PROGRESSIVE and carries no slide window")
   );
 }
