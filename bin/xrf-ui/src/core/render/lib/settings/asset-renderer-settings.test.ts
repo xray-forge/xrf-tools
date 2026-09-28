@@ -1,22 +1,19 @@
 import { describe, expect, it } from "@jest/globals";
-import {
-  DEFAULT_RENDER_FRAME_PACING,
-  DEFAULT_RENDERER_FEATURE_CHOICE,
-  ERendererDebugView,
-  IRendererFeatureSettings,
-  IRendererSettings,
-  resolveRendererFeatures,
-} from "@xrf/renderer";
+import { ERendererDebugView, IRendererSettings } from "@xrf/renderer";
 
 import { toAssetRendererSettings } from "@/core/render/lib/settings/asset-renderer-settings";
+import { mockRenderSharedSettings } from "@/fixtures/mocks/render.mocks";
 
 describe("toAssetRendererSettings", () => {
   // One asset against a backdrop is no scene to adapt the exposure to, whatever the settings choose for a level.
   it("draws the viewer's choices at the engine's noon scale, with no sky and the exposure held", () => {
-    const features: IRendererFeatureSettings = resolveRendererFeatures(DEFAULT_RENDERER_FEATURE_CHOICE);
+    const { features } = mockRenderSharedSettings();
     const settings: IRendererSettings = toAssetRendererSettings(
-      { backdrop: 0x353535, isBumped: false, isLit: true, isWireframe: true, pacing: DEFAULT_RENDER_FRAME_PACING },
-      { ...features, exposure: { ...features.exposure, isEnabled: true } }
+      { backdrop: 0x353535, isBumped: false, isLit: true, isWireframe: true },
+      mockRenderSharedSettings({
+        features: { ...features, exposure: { ...features.exposure, isEnabled: true } },
+        isGpuTimed: true,
+      })
     );
 
     expect(settings).toMatchObject({
@@ -24,6 +21,7 @@ describe("toAssetRendererSettings", () => {
       debugView: ERendererDebugView.FINAL,
       hemiStrength: 1,
       isBumped: false,
+      isGpuTimed: true,
       isLit: true,
       isSkyDrawn: false,
       isTextured: true,

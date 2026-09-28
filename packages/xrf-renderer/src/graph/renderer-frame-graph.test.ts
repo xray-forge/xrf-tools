@@ -290,6 +290,7 @@ describe("RendererFrameGraph", () => {
         features: PLAIN,
         hemiStrength: 1,
         isBumped: true,
+        isGpuTimed: false,
         isLit: true,
         isSkyDrawn: false,
         isTextured: true,

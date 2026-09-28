@@ -15,6 +15,7 @@ const SENT: IRendererSettings = {
   features: BASE,
   hemiStrength: 0.5,
   isBumped: true,
+  isGpuTimed: false,
   isLit: true,
   isSkyDrawn: false,
   isTextured: true,

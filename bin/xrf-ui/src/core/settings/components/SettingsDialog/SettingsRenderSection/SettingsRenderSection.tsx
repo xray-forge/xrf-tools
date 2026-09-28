@@ -1,64 +1,68 @@
+import { Tab, Tabs } from "@mui/material";
 import { useInjection } from "@wirestate/react";
-import { ReactElement } from "react";
+import { Nullable } from "@xrf/types";
+import { ComponentType, ReactElement, RefObject, useRef, useState } from "react";
 
-import { RENDER_FRAME_RATE_OPTIONS, RENDER_RESOLUTION_OPTIONS } from "@/core/render/lib/features";
 import { SettingsService } from "@/core/settings/services/settings";
-import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
-import { ChoiceFormRow } from "@/core/ui/form/ChoiceFormRow";
 
-import { SettingsRendererAmbientOcclusion } from "./SettingsRendererAmbientOcclusion";
-import { SettingsRendererFeatures } from "./SettingsRendererFeatures";
-import { SettingsRendererGrass } from "./SettingsRendererGrass";
-import { SettingsRendererLights } from "./SettingsRendererLights";
-import { SettingsRendererLod } from "./SettingsRendererLod";
-import { SettingsRendererShadows } from "./SettingsRendererShadows";
+import {
+  ERenderSettingsTab,
+  IRenderSettingsTab,
+  isCustomRenderSettingsTab,
+  isPresetRenderSettingsTab,
+  RENDER_SETTINGS_TABS,
+} from "./render-settings-tabs";
+import { SettingsRendererPreset } from "./SettingsRendererPreset";
 
-/** How every viewport draws, which is neither application chrome nor any one editor's business. */
+/**
+ * How every viewport draws, which is neither application chrome nor any one editor's business: in tabs by what a
+ * setting changes, the preset over every tab it sets, and a mark on each tab where something differs from it.
+ */
 export function SettingsRenderSection(): ReactElement {
   const settingsService: SettingsService = useInjection(SettingsService);
 
+  const rootRef: RefObject<Nullable<HTMLDivElement>> = useRef<Nullable<HTMLDivElement>>(null);
+  const [tabId, setTabId] = useState<ERenderSettingsTab>(ERenderSettingsTab.DISPLAY);
+  const tab: IRenderSettingsTab =
+    RENDER_SETTINGS_TABS.find((it: IRenderSettingsTab) => it.id === tabId) ?? RENDER_SETTINGS_TABS[0];
+
   return (
-    <div className={"flex flex-col gap-6"}>
-      <ChoiceFormRow
-        label={"Frame rate limit"}
-        description={"How often a viewport redraws. A display faster than this costs power for frames nobody sees."}
-        options={RENDER_FRAME_RATE_OPTIONS}
-        value={settingsService.frameRateLimit}
-        onChange={settingsService.setFrameRateLimit}
-      />
+    <div ref={rootRef} className={"flex scroll-mt-6 flex-col gap-6"}>
+      <Tabs
+        className={"sticky -top-6 z-1 border-b border-divider surface-content"}
+        value={tab.id}
+        variant={"scrollable"}
+        onChange={(_: unknown, id: ERenderSettingsTab) => {
+          setTabId(id);
+          // A tab opens where the dialog first showed it, not where the last one was left.
+          rootRef.current?.scrollIntoView({ block: "start" });
+        }}
+      >
+        {RENDER_SETTINGS_TABS.map((it: IRenderSettingsTab) => (
+          <Tab
+            key={it.id}
+            value={it.id}
+            label={
+              <span className={"flex items-center gap-1.5"}>
+                {it.label}
+                {isCustomRenderSettingsTab(it, settingsService.rendererChoice) ? (
+                  <span
+                    aria-label={"changed from the preset"}
+                    className={"size-1.5 rounded-full bg-primary"}
+                    role={"img"}
+                  />
+                ) : null}
+              </span>
+            }
+          />
+        ))}
+      </Tabs>
 
-      <CheckboxFormRow
-        label={"Low latency"}
-        description={
-          "Waits for the GPU to be at most a frame behind before drawing another, so the camera answers a frame " +
-          "sooner where the GPU is what holds the frame rate back, for about a tenth fewer frames."
-        }
-        isChecked={settingsService.isLowLatency}
-        onChange={settingsService.setLowLatency}
-      />
+      {isPresetRenderSettingsTab(tab) ? <SettingsRendererPreset /> : null}
 
-      <ChoiceFormRow
-        label={"Resolution"}
-        description={
-          "How many pixels a viewport draws, whatever size the window is. Below the window it costs less and " +
-          "reads softer; above it, more, and edges read sharper."
-        }
-        options={RENDER_RESOLUTION_OPTIONS}
-        value={settingsService.renderResolution}
-        onChange={settingsService.setRenderResolution}
-      />
-
-      <SettingsRendererFeatures />
-
-      <SettingsRendererShadows />
-
-      <SettingsRendererLights />
-
-      <SettingsRendererAmbientOcclusion />
-
-      <SettingsRendererGrass />
-
-      <SettingsRendererLod />
+      {tab.sections.map((Section: ComponentType, index: number) => (
+        <Section key={index} />
+      ))}
     </div>
   );
 }

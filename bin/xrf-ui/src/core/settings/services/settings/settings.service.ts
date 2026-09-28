@@ -6,7 +6,6 @@ import {
   IRendererFeatureChoice,
   IRendererFeatureOverrides,
   IRendererFeatureSettings,
-  IRenderFramePacing,
   mergeRendererFeatureOverrides,
   resolveRendererFeatures,
   TFrameRateLimit,
@@ -16,11 +15,13 @@ import {
 } from "@xrf/renderer";
 import { Nullable } from "@xrf/types";
 
+import { IRenderSharedSettings } from "@/core/render/lib/settings/render-shared-settings";
 import { TCatalogView, toCatalogView } from "@/core/settings/lib/catalog-view";
 import {
   CATALOG_VIEW_STORAGE_KEY,
   DEV_MODE_STORAGE_KEY,
   FRAME_RATE_LIMIT_STORAGE_KEY,
+  GPU_TIMED_STORAGE_KEY,
   LOW_LATENCY_STORAGE_KEY,
   RENDER_RESOLUTION_STORAGE_KEY,
   RENDERER_FEATURES_STORAGE_KEY,
@@ -59,6 +60,10 @@ export class SettingsService {
   @Observable()
   public isLowLatency: boolean = getLocalStorageValue(LOW_LATENCY_STORAGE_KEY) !== String(false);
 
+  /** Whether every viewport times its passes on the GPU: never a preset's, as it costs a frame 1-4% of its rate. */
+  @Observable()
+  public isGpuTimed: boolean = getLocalStorageValue(GPU_TIMED_STORAGE_KEY) === String(true);
+
   @Observable()
   public renderResolution: ERenderResolution = toRenderResolution(getLocalStorageValue(RENDER_RESOLUTION_STORAGE_KEY));
 
@@ -69,16 +74,20 @@ export class SettingsService {
   @RefObservable()
   public rendererChoice: IRendererFeatureChoice = SettingsService.readRendererChoice();
 
-  /** How every viewport paces its frames. */
-  @Computed()
-  public get framePacing(): IRenderFramePacing {
-    return { isLowLatency: this.isLowLatency, rateLimit: this.frameRateLimit };
-  }
-
   /** Every renderer feature as the choice sets it. */
   @Computed()
   public get rendererFeatures(): IRendererFeatureSettings {
     return resolveRendererFeatures(this.rendererChoice);
+  }
+
+  /** What every viewport draws with alike: its pacing, its timing and its features. */
+  @Computed()
+  public get sharedRenderSettings(): IRenderSharedSettings {
+    return {
+      features: this.rendererFeatures,
+      isGpuTimed: this.isGpuTimed,
+      pacing: { isLowLatency: this.isLowLatency, rateLimit: this.frameRateLimit },
+    };
   }
 
   /**
@@ -129,6 +138,14 @@ export class SettingsService {
 
     this.isLowLatency = isLowLatency;
     setLocalStorageValue(LOW_LATENCY_STORAGE_KEY, String(isLowLatency));
+  }
+
+  @BoundAction()
+  public setGpuTimed(isGpuTimed: boolean): void {
+    this.log.info("Set GPU timing:", isGpuTimed);
+
+    this.isGpuTimed = isGpuTimed;
+    setLocalStorageValue(GPU_TIMED_STORAGE_KEY, String(isGpuTimed));
   }
 
   @BoundAction()

@@ -103,11 +103,7 @@ export class TextureRenderService extends RenderAssetService {
   }
 
   protected toSettings(): IRendererSettings {
-    return toTextureRendererSettings(
-      this.viewService.options,
-      this.settingsService.framePacing,
-      this.settingsService.rendererFeatures
-    );
+    return toTextureRendererSettings(this.viewService.options, this.settingsService.sharedRenderSettings);
   }
 
   protected start(client: RendererClient): Array<() => void> {

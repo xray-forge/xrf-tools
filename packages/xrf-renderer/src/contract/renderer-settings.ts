@@ -30,6 +30,8 @@ export interface IRendererSettings {
   isSkyDrawn: boolean;
   /** Whether surfaces draw as their triangles' edges. */
   isWireframe: boolean;
+  /** Whether every pass is timed on the GPU for the report, which costs a frame 1-4% of its rate. */
+  isGpuTimed: boolean;
   /** How much of the baked hemisphere occlusion applies: one as the engine applies it, zero ignoring it. */
   hemiStrength: number;
   /** What every feature is set to, the same for every consumer: a preset and what was changed on top of it. */

@@ -19,27 +19,18 @@ export function SettingsRendererLights(): ReactElement {
   const onSet = useRendererOverride("lights");
 
   return (
-    <DetailSection
-      title={"Lights"}
-      description={
-        "The lamps the game spawns on a level, point lights and spots through their projectors, animated as the game " +
-        "animates them."
-      }
-    >
+    <DetailSection title={"Lights"} description={"Dynamic point and spot lights spawned on the level."}>
       <div className={"mt-4 flex flex-col gap-6"}>
         <CheckboxFormRow
-          label={"Lights"}
-          description={"Off, only the sun and the baked light reach the level."}
+          label={"Dynamic lights"}
+          description={"Off, only the sun and baked lighting remain."}
           isChecked={lights.isEnabled}
           onChange={(isEnabled: boolean) => onSet({ isEnabled })}
         />
 
         <CheckboxFormRow
           label={"Shadows"}
-          description={
-            "The lamps the game shadows cast their shadows, each drawn once into an atlas and kept while nothing it " +
-            "casts from changes. A level fills it over its first frames."
-          }
+          description={"Shadows from lights the game marks as casting. Cached in an atlas and redrawn only on change."}
           isChecked={lights.isShadowed}
           onChange={(isShadowed: boolean) => onSet({ isShadowed })}
         />
@@ -47,9 +38,7 @@ export function SettingsRendererLights(): ReactElement {
         <ChoiceFormRow
           label={"Shadow filter"}
           description={
-            "How a shadow's edge is softened: the engine's four comparisons 0.6 of a texel off the point, or " +
-            "Anomaly's penumbra, " +
-            "wider the further the caster stands from what it shades, at a larger bias."
+            "Engine: the game's fixed four-tap filter. Soft: Anomaly's PCSS, wider with distance from the caster."
           }
           options={RENDER_LIGHT_SHADOW_FILTER_OPTIONS}
           value={lights.shadowFilter}
@@ -59,8 +48,7 @@ export function SettingsRendererLights(): ReactElement {
         <CheckboxFormRow
           label={"Level lights"}
           description={
-            "The level file's own lights, which the game draws only with r2_allow_r1_lights. Its light maps already " +
-            "hold them, so they light twice."
+            "Static lights from the level file (r2_allow_r1_lights). Already in the lightmaps, so they add on top."
           }
           isChecked={lights.isLevelLights}
           onChange={(isLevelLights: boolean) => onSet({ isLevelLights })}

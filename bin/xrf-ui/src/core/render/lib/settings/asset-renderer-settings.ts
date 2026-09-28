@@ -1,17 +1,22 @@
-import { ERendererDebugView, IRendererFeatureSettings, IRendererSettings } from "@xrf/renderer";
+import { ERendererDebugView, IRendererSettings } from "@xrf/renderer";
+
+import { IRenderSharedSettings } from "@/core/render/lib/settings/render-shared-settings";
 
 /**
  * The renderer's settings for one asset against a backdrop, which the texture and visual viewers both draw.
  *
- * @param view - What the viewer decides: its backdrop, its pacing and its toggles.
- * @param features - What the renderer's features are set to.
+ * @param view - What the viewer decides: its backdrop and its toggles.
+ * @param shared - What the application sets for every viewport.
  * @returns The renderer's settings.
  */
 export function toAssetRendererSettings(
-  view: Pick<IRendererSettings, "backdrop" | "isBumped" | "isLit" | "isWireframe" | "pacing">,
-  features: IRendererFeatureSettings
+  view: Pick<IRendererSettings, "backdrop" | "isBumped" | "isLit" | "isWireframe">,
+  shared: IRenderSharedSettings
 ): IRendererSettings {
+  const { features } = shared;
+
   return {
+    ...shared,
     ...view,
     debugView: ERendererDebugView.FINAL,
     // At the engine's noon scale: one asset against a backdrop is no scene to adapt the exposure to.

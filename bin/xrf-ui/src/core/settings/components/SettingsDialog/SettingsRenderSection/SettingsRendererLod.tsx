@@ -20,45 +20,45 @@ interface ILodThreshold {
 /** In the order the engine's console lists them (`xrRender_console.cpp`); its ranges are the renderer's schema's. */
 const LOD_THRESHOLDS: ReadonlyArray<ILodThreshold> = [
   {
-    description: "r__geometry_lod: every threshold below is taken against the drawing's area times this.",
+    description: "Scales every threshold below (r__geometry_lod).",
     digits: 2,
     key: "geometryLod",
     label: "Detail scale",
     step: 0.05,
   },
   {
-    description: "r2_ssa_lod_a: a clump smaller on screen than this draws as its impostor.",
+    description: "Clusters smaller on screen draw as impostors (r2_ssa_lod_a).",
     digits: 0,
     key: "ssaA",
     label: "Impostor below",
     step: 1,
   },
   {
-    description: "r2_ssa_lod_b: a clump larger than this draws its trees; between the two, both.",
+    description: "Clusters larger draw as trees; in between, both (r2_ssa_lod_b).",
     digits: 0,
     key: "ssaB",
     label: "Trees above",
     step: 1,
   },
   {
-    description: "r__ssa_discard: a clump smaller than this draws nothing at all.",
+    description: "Clusters smaller are not drawn (r__ssa_discard).",
     digits: 1,
     key: "ssaDiscard",
-    label: "Nothing below",
+    label: "Cull below",
     step: 0.5,
   },
   {
-    description: "r__ssa_glod_start: a progressive tree larger than this draws its whole detail.",
+    description: "Progressive trees larger draw at full detail (r__ssa_glod_start).",
     digits: 0,
     key: "ssaGlodStart",
-    label: "Whole detail above",
+    label: "Full detail above",
     step: 8,
   },
   {
-    description: "r__ssa_glod_end: a progressive tree smaller than this draws its coarsest band.",
+    description: "Progressive trees smaller draw at the lowest detail (r__ssa_glod_end).",
     digits: 0,
     key: "ssaGlodEnd",
-    label: "Coarsest below",
+    label: "Lowest detail below",
     step: 1,
   },
 ];
@@ -72,15 +72,12 @@ export function SettingsRendererLod(): ReactElement {
   return (
     <DetailSection
       title={"Levels of detail"}
-      description={
-        "The engine's own thresholds on how much of the screen a tree covers. A level's toolbar can move its " +
-        "impostors nearer or further on top of these, for that view alone."
-      }
+      description={"Engine thresholds by screen coverage. The level toolbar can offset impostor distance per view."}
     >
       <div className={"mt-4 flex flex-col gap-6"}>
         <CheckboxFormRow
           label={"Impostors"}
-          description={"Draws a distant clump of trees as its impostor. Off, every tree draws in full at any distance."}
+          description={"Draws distant tree clusters as impostors. Off, every tree renders at full detail."}
           isChecked={lod.isImpostors}
           onChange={(isImpostors: boolean) => settingsService.setRendererOverrides({ lod: { isImpostors } })}
         />

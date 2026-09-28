@@ -46,6 +46,8 @@ interface ILevelPreviewToolbarProps extends BaseComponentProps {
   featureView: TLevelFeatureView;
   /** What the renderer's settings draw every viewport with, which the toggles can only narrow. */
   settings: IRendererFeatureSettings;
+  /** Whether the settings time every viewport's passes. */
+  isGpuTimed: boolean;
   /** Value pickers the surface contributes, drawn last, as every toolbar in this application orders them. */
   actions?: ReactNode;
   onChangeOptions: (options: ILevelViewOptions) => void;
@@ -75,6 +77,7 @@ export function LevelPreviewToolbar({
   features,
   featureView,
   settings,
+  isGpuTimed,
   actions,
   onChangeOptions,
   onChangeLighting,
@@ -247,7 +250,7 @@ export function LevelPreviewToolbar({
 
           <LevelReadoutAction
             isOn={options.isStatsVisible}
-            isGpuTimed={settings.isGpuTimed}
+            isGpuTimed={isGpuTimed}
             onToggle={() => onToggle("isStatsVisible")}
             onChangeGpuTimed={onChangeGpuTimed}
           />

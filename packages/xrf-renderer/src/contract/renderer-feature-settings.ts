@@ -18,8 +18,6 @@ export interface IRendererFeatureSettings {
   antialiasing: ERendererAntialiasing;
   exposure: IRendererExposureSettings;
   grass: IRendererGrassSettings;
-  /** Whether every pass is timed on the GPU for the report. */
-  isGpuTimed: boolean;
   /**
    * Whether the static draws the depth hides are culled, in two phases: against the last frame's depth, then what that
    * hid against this frame's so far. Off, every static draw the frustum keeps is drawn, at no pyramid and no second

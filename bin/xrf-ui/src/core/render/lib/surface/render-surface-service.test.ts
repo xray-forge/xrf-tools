@@ -45,8 +45,8 @@ function defineMockService(Base: typeof import("./render-surface-service").Rende
 
     protected toSettings(): IRendererSettings {
       return toAssetRendererSettings(
-        { backdrop: null, isBumped: true, isLit: true, isWireframe: false, pacing: this.settingsService.framePacing },
-        this.settingsService.rendererFeatures
+        { backdrop: null, isBumped: true, isLit: true, isWireframe: false },
+        this.settingsService.sharedRenderSettings
       );
     }
 

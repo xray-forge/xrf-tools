@@ -29,23 +29,20 @@ export function SettingsRendererShadows(): ReactElement {
 
   return (
     <DetailSection
-      title={"Shadows"}
-      description={
-        "The sun's shadow in cascades of maps, the nearest the finest: four by default, where the game's are three, " +
-        "20, 40 and 160 metres across at 2048 texels."
-      }
+      title={"Sun shadows"}
+      description={"Cascaded shadow maps. The game uses three cascades at 2048 texels."}
     >
       <div className={"mt-4 flex flex-col gap-6"}>
         <CheckboxFormRow
           label={"Sun shadows"}
-          description={"Off, the sun lights every surface facing it, as the level's baked light alone shades it."}
+          description={"Off, surfaces facing the sun are shaded by baked lighting alone."}
           isChecked={shadows.isEnabled}
           onChange={(isEnabled: boolean) => onSet({ isEnabled })}
         />
 
         <ChoiceFormRow
           label={"Cascades"}
-          description={"How far the shadow reaches: 20, 40, 160, then 480 metres across."}
+          description={"Cascade count. Widths: 20, 40, 160 and 480 m."}
           options={RENDER_SHADOW_CASCADE_OPTIONS}
           value={String(shadows.cascades.length)}
           onChange={(count: string) => onSet({ cascades: RENDERER_SHADOW_CASCADE_WIDTHS.slice(0, Number(count)) })}
@@ -53,7 +50,7 @@ export function SettingsRendererShadows(): ReactElement {
 
         <ChoiceFormRow
           label={"Map resolution"}
-          description={"Texels each cascade's map is across. Finer edges cost more to draw and to hold."}
+          description={"Texels per cascade map. Higher is sharper and uses more memory."}
           options={RENDER_SHADOW_RESOLUTION_OPTIONS}
           value={String(shadows.resolution)}
           onChange={(resolution: string) => onSet({ resolution: Number(resolution) })}
@@ -61,7 +58,7 @@ export function SettingsRendererShadows(): ReactElement {
 
         <SliderFormRow
           label={"Filter"}
-          description={"Texels each way a shadow's edge is averaged over: none for the hardest edge."}
+          description={"PCF kernel radius in texels. 0 gives hard edges."}
           value={shadows.filter}
           {...RENDER_SHADOW_LIMITS.filter}
           format={formatShadowFilter}
@@ -70,9 +67,7 @@ export function SettingsRendererShadows(): ReactElement {
 
         <SliderFormRow
           label={"Normal offset"}
-          description={
-            "Texels a surface is moved off itself before it is compared, which keeps it from shadowing itself."
-          }
+          description={"Offset along the surface normal, in texels. Prevents self-shadowing."}
           value={shadows.bias}
           {...RENDER_SHADOW_LIMITS.bias}
           format={formatShadowBias}
@@ -82,8 +77,7 @@ export function SettingsRendererShadows(): ReactElement {
         <SliderFormRow
           label={"Cascade blend"}
           description={
-            "How far in from a cascade's edge the next one is mixed in, as a share of its width, so the switch to a " +
-            "coarser map is never a line. None switches at a line, as the game does."
+            "Transition band between cascades, as a share of cascade width. 0 switches abruptly, as the game does."
           }
           value={shadows.blend}
           {...RENDER_SHADOW_LIMITS.blend}
@@ -93,7 +87,7 @@ export function SettingsRendererShadows(): ReactElement {
 
         <SliderFormRow
           label={"Caster reach"}
-          description={"Metres towards the sun past a cascade that its casters may stand, as tall as a tower is."}
+          description={"Distance toward the sun beyond a cascade that still casts into it, in metres."}
           value={shadows.reach}
           {...RENDER_SHADOW_LIMITS.reach}
           format={formatShadowReach}
@@ -101,10 +95,9 @@ export function SettingsRendererShadows(): ReactElement {
         />
 
         <CheckboxFormRow
-          label={"Staggered redraws"}
+          label={"Staggered updates"}
           description={
-            "Draws the farther cascades every second and fourth frame. Exact for everything standing still, and " +
-            "what keeps a moving camera near the frame rate."
+            "Updates far cascades every second and fourth frame. Exact for static scenes; keeps camera motion smooth."
           }
           isChecked={shadows.isStaggered}
           onChange={(isStaggered: boolean) => onSet({ isStaggered })}

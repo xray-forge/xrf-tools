@@ -5,6 +5,7 @@ import { ERendererAntialiasing } from "#/contract/renderer-antialiasing";
 import {
   DEFAULT_RENDERER_FEATURE_CHOICE,
   isRendererFeatureChoiceCustom,
+  isRendererFeatureCustom,
   mergeRendererFeatureOverrides,
   resolveRendererFeatures,
   toRendererFeatureChoice,
@@ -45,13 +46,25 @@ describe("renderer feature choices", () => {
     ).toBe(false);
   });
 
+  it("tells which feature groups differ from the preset, a group set to the preset's own not among them", () => {
+    const choice = {
+      overrides: { antialiasing: ERendererAntialiasing.SMAA, isOcclusionCulled: false, lod: { ssaA: 80 } },
+      preset: ERendererPreset.BASE,
+    };
+
+    expect(isRendererFeatureCustom(choice, "antialiasing")).toBe(false);
+    expect(isRendererFeatureCustom(choice, "isOcclusionCulled")).toBe(true);
+    expect(isRendererFeatureCustom(choice, "lod")).toBe(true);
+    expect(isRendererFeatureCustom(choice, "shadows")).toBe(false);
+  });
+
   it("reads back a stored choice, dropping whatever the features do not take", () => {
     expect(
       toRendererFeatureChoice({
-        overrides: { antialiasing: "msaa", isGpuTimed: false, lod: { ssaA: Infinity, ssaB: 40, unknown: 1 } },
+        overrides: { antialiasing: "msaa", isGpuTimed: true, lod: { ssaA: Infinity, ssaB: 40, unknown: 1 } },
         preset: "editing",
       })
-    ).toEqual({ overrides: { isGpuTimed: false, lod: { ssaB: 40 } }, preset: ERendererPreset.EDITING });
+    ).toEqual({ overrides: { lod: { ssaB: 40 } }, preset: ERendererPreset.EDITING });
     expect(toRendererFeatureChoice("nonsense")).toBe(DEFAULT_RENDERER_FEATURE_CHOICE);
     expect(toRendererFeatureChoice({ preset: "ultra" }).preset).toBe(ERendererPreset.BASE);
   });

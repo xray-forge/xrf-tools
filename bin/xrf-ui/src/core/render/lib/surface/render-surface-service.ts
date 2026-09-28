@@ -198,7 +198,7 @@ export abstract class RenderSurfaceService implements IRenderSurfaceHost {
 
     this.reactions.push(
       reaction(
-        () => [this.settingsService.rendererChoice, this.settingsService.framePacing],
+        () => this.settingsService.sharedRenderSettings,
         () => this.sendSettings()
       ),
       reaction(

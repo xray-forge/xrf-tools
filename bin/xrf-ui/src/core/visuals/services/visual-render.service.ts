@@ -87,12 +87,7 @@ export class VisualRenderService extends RenderAssetService {
   }
 
   protected toSettings(): IRendererSettings {
-    return toVisualRendererSettings(
-      this.viewService.options,
-      this.config,
-      this.settingsService.framePacing,
-      this.settingsService.rendererFeatures
-    );
+    return toVisualRendererSettings(this.viewService.options, this.config, this.settingsService.sharedRenderSettings);
   }
 
   protected start(client: RendererClient): Array<() => void> {

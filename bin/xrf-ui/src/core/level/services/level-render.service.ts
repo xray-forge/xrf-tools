@@ -102,8 +102,7 @@ export class LevelRenderService extends RenderSurfaceService {
   protected toSettings(): IRendererSettings {
     return toLevelRendererSettings({
       config: this.config,
-      features: this.settingsService.rendererFeatures,
-      pacing: this.settingsService.framePacing,
+      shared: this.settingsService.sharedRenderSettings,
       lighting: this.viewService.lighting,
       lod: this.viewService.lod,
       options: this.viewService.options,

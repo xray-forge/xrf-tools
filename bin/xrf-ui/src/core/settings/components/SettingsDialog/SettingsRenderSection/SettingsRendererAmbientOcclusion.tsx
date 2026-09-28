@@ -25,24 +25,18 @@ export function SettingsRendererAmbientOcclusion(): ReactElement {
   const onSet = useRendererOverride("ambientOcclusion");
 
   return (
-    <DetailSection
-      title={"Ambient occlusion"}
-      description={
-        "GTAO from the frame's depth, as the game's SSAO: it darkens the sky's and the ambient light in creases, " +
-        "corners and under what stands close, over the occlusion the level baked."
-      }
-    >
+    <DetailSection title={"Ambient occlusion"} description={"Screen-space GTAO, the counterpart of the game's SSAO."}>
       <div className={"mt-4 flex flex-col gap-6"}>
         <CheckboxFormRow
           label={"Ambient occlusion"}
-          description={"Off, only the level's baked occlusion shades what the sky cannot reach."}
+          description={"Off, only baked occlusion remains."}
           isChecked={occlusion.isEnabled}
           onChange={(isEnabled: boolean) => onSet({ isEnabled })}
         />
 
         <ChoiceFormRow
           label={"Quality"}
-          description={"How many directions and steps each pixel searches. Higher is smoother and costs more."}
+          description={"Samples per pixel. Higher is smoother and more expensive."}
           options={RENDER_AMBIENT_OCCLUSION_QUALITY_OPTIONS}
           value={occlusion.quality}
           onChange={(quality: ERendererAmbientOcclusionQuality) => onSet({ quality })}
@@ -50,7 +44,7 @@ export function SettingsRendererAmbientOcclusion(): ReactElement {
 
         <SliderFormRow
           label={"Radius"}
-          description={"Metres around a point that what stands there shades it from."}
+          description={"Occlusion radius in metres."}
           value={occlusion.radius}
           {...RENDER_AMBIENT_OCCLUSION_LIMITS.radius}
           format={formatOcclusionRadius}
@@ -59,7 +53,7 @@ export function SettingsRendererAmbientOcclusion(): ReactElement {
 
         <SliderFormRow
           label={"Strength"}
-          description={"How dark the occlusion goes: one as XeGTAO draws it, none at zero."}
+          description={"Occlusion intensity. 1 matches XeGTAO."}
           value={occlusion.strength}
           {...RENDER_AMBIENT_OCCLUSION_LIMITS.strength}
           format={formatOcclusionStrength}

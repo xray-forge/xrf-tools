@@ -1,19 +1,18 @@
 import {
   ERendererCameraController,
   ERendererDraw,
-  IRendererFeatureSettings,
   IRendererGeometry,
   IRendererObject,
   IRendererOrbitCamera,
   IRendererSettings,
   IRendererSkeleton,
   IRendererSurface,
-  IRenderFramePacing,
 } from "@xrf/renderer";
 import { Nullable } from "@xrf/types";
 
 import { toRawColor } from "@/core/render/lib/scene/render-color";
 import { toAssetRendererSettings } from "@/core/render/lib/settings/asset-renderer-settings";
+import { IRenderSharedSettings } from "@/core/render/lib/settings/render-shared-settings";
 import { IVisualPreviewSceneConfig } from "@/core/visuals/lib/scene/scene-config";
 import { IVisualPreviewViewOptions } from "@/core/visuals/lib/scene/visual-view-options";
 import { IVisualBumpFiles } from "@/core/visuals/lib/visual-bump";
@@ -156,15 +155,13 @@ export function toVisualCamera(fit: IVisualCameraFit, config: IVisualPreviewScen
 /**
  * @param options - The toolbar's toggles.
  * @param config - The viewer's backdrop.
- * @param pacing - How the application paces a view's frames.
- * @param features - What the renderer's features are set to.
+ * @param shared - What the application sets for every viewport.
  * @returns The renderer's settings.
  */
 export function toVisualRendererSettings(
   options: IVisualPreviewViewOptions,
   config: IVisualPreviewSceneConfig,
-  pacing: IRenderFramePacing,
-  features: IRendererFeatureSettings
+  shared: IRenderSharedSettings
 ): IRendererSettings {
   return toAssetRendererSettings(
     {
@@ -172,8 +169,7 @@ export function toVisualRendererSettings(
       isBumped: options.isBumpVisible,
       isLit: true,
       isWireframe: options.isWireframe,
-      pacing,
     },
-    features
+    shared
   );
 }

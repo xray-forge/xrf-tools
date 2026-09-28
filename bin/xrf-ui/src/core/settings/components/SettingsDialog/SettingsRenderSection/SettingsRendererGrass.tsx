@@ -26,27 +26,18 @@ export function SettingsRendererGrass(): ReactElement {
   const onSet = useRendererOverride("grass");
 
   return (
-    <DetailSection
-      title={"Grass"}
-      description={
-        "The level's detail objects, planted around the camera as the game plants them: 49 metres round, at its " +
-        "own density."
-      }
-    >
+    <DetailSection title={"Grass"} description={"Detail objects around the camera. The game draws them within 49 m."}>
       <div className={"mt-4 flex flex-col gap-6"}>
         <CheckboxFormRow
           label={"Grass"}
-          description={"Off, the ground is bare, as the game draws it with detail objects off."}
+          description={"Off, terrain is drawn bare."}
           isChecked={grass.isEnabled}
           onChange={(isEnabled: boolean) => onSet({ isEnabled })}
         />
 
         <SliderFormRow
           label={"Density"}
-          description={
-            "How close together the tufts stand, as a multiple of the game's: at one, as the game plants them. Denser " +
-            "costs more to plant and to draw."
-          }
+          description={"Multiplier over the game's density. Higher costs more to generate and draw."}
           value={toGrassDensityScale(grass.density)}
           {...RENDER_GRASS_LIMITS.density}
           format={(scale: number) => formatGrassDensity(fromGrassDensityScale(scale))}
@@ -55,7 +46,7 @@ export function SettingsRendererGrass(): ReactElement {
 
         <SliderFormRow
           label={"Radius"}
-          description={"Metres around the camera the grass reaches, fading out towards the edge."}
+          description={"Draw distance in metres, fading at the edge."}
           value={grass.radius}
           {...RENDER_GRASS_LIMITS.radius}
           format={formatGrassRadius}
@@ -64,7 +55,7 @@ export function SettingsRendererGrass(): ReactElement {
 
         <SliderFormRow
           label={"Height"}
-          description={"What every tuft is scaled by."}
+          description={"Height multiplier."}
           value={grass.height}
           {...RENDER_GRASS_LIMITS.height}
           format={formatGrassHeight}

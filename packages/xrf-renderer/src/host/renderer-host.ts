@@ -413,7 +413,7 @@ export class RendererHost {
     const { features } = settings;
     const time: number = now / 1000;
 
-    if (device.setTiming(features.isGpuTimed)) {
+    if (device.setTiming(settings.isGpuTimed)) {
       this.stats.resetTimings();
     }
 

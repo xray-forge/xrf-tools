@@ -1,6 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
 import {
-  DEFAULT_RENDER_FRAME_PACING,
   DEFAULT_RENDERER_FEATURE_CHOICE,
   ERendererCameraController,
   ERendererDraw,
@@ -26,6 +25,7 @@ import { DEFAULT_VISUAL_PREVIEW_SCENE_CONFIG } from "@/core/visuals/lib/scene/sc
 import { DEFAULT_VISUAL_PREVIEW_VIEW_OPTIONS } from "@/core/visuals/lib/scene/visual-view-options";
 import { IVisualTextureFile } from "@/core/visuals/lib/visual-texture";
 import { IVisualSubmeshViews } from "@/core/visuals/lib/visual-views";
+import { mockRenderSharedSettings } from "@/fixtures/mocks/render.mocks";
 import { mockVisualModelViews, mockVisualSubmeshViews } from "@/fixtures/mocks/visual.mocks";
 
 const FEATURES: IRendererFeatureSettings = resolveRendererFeatures(DEFAULT_RENDERER_FEATURE_CHOICE);
@@ -139,8 +139,7 @@ describe("toVisualRendererSettings", () => {
     const settings: IRendererSettings = toVisualRendererSettings(
       { ...DEFAULT_VISUAL_PREVIEW_VIEW_OPTIONS, isWireframe: true },
       DEFAULT_VISUAL_PREVIEW_SCENE_CONFIG,
-      DEFAULT_RENDER_FRAME_PACING,
-      FEATURES
+      mockRenderSharedSettings({ features: FEATURES })
     );
 
     expect(settings.backdrop).toBe(DEFAULT_VISUAL_PREVIEW_SCENE_CONFIG.backgroundColor);

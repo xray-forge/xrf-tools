@@ -107,6 +107,7 @@ describe("listRendererTransfers", () => {
           hemiStrength: 1,
           pacing: { isLowLatency: true, rateLimit: "60" },
           isBumped: true,
+          isGpuTimed: false,
           features: RENDERER_PRESETS[ERendererPreset.BASE],
           isLit: true,
           isSkyDrawn: false,

@@ -24,6 +24,8 @@ export const MEDIA_VOLUME_STORAGE_KEY: string = buildStorageKey(EStorageNamespac
 export const FRAME_RATE_LIMIT_STORAGE_KEY: string = buildStorageKey(EStorageNamespace.PREFERENCE, "frame-rate-limit");
 /** Whether frames wait for the GPU to be at most a frame behind. */
 export const LOW_LATENCY_STORAGE_KEY: string = buildStorageKey(EStorageNamespace.PREFERENCE, "low-latency");
+/** Whether every viewport times its passes on the GPU. */
+export const GPU_TIMED_STORAGE_KEY: string = buildStorageKey(EStorageNamespace.PREFERENCE, "gpu-timed");
 
 /** The renderer's preset and what was changed on top of it, as JSON. */
 export const RENDERER_FEATURES_STORAGE_KEY: string = buildStorageKey(EStorageNamespace.PREFERENCE, "renderer-features");

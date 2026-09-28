@@ -25,7 +25,7 @@ export function RenderPassTimingFormRow({
       id={id}
       className={className}
       label={"GPU time per pass"}
-      description={"Lists each pass's GPU cost in every viewer's readout. Timing costs 1-4% of the frame rate."}
+      description={"Shows each pass's GPU time in the readout. Costs 1-5% of the frame rate."}
       isChecked={isChecked}
       onChange={onChange}
     />

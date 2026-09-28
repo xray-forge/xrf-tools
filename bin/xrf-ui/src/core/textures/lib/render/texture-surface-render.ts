@@ -3,18 +3,17 @@ import {
   createRendererSphere,
   ERendererCameraController,
   ERendererDraw,
-  IRendererFeatureSettings,
   IRendererGeometry,
   IRendererObject,
   IRendererOrbitCamera,
   IRendererSettings,
   IRendererSurface,
-  IRenderFramePacing,
   TRendererTextureSource,
   withRendererTangentBasis,
 } from "@xrf/renderer";
 
 import { toAssetRendererSettings } from "@/core/render/lib/settings/asset-renderer-settings";
+import { IRenderSharedSettings } from "@/core/render/lib/settings/render-shared-settings";
 import { toRendererTextureSource } from "@/core/render/lib/texture/render-texture-source";
 import {
   ETextureSurfaceAlpha,
@@ -145,14 +144,12 @@ export function toTextureSurfaceSource(file: ITextureSurfaceFile): TRendererText
 
 /**
  * @param options - How the texture is being looked at.
- * @param pacing - How the application paces a view's frames.
- * @param features - What the renderer's features are set to.
+ * @param shared - What the application sets for every viewport.
  * @returns The renderer's settings for it.
  */
 export function toTextureRendererSettings(
   options: ITextureSurfaceOptions,
-  pacing: IRenderFramePacing,
-  features: IRendererFeatureSettings
+  shared: IRenderSharedSettings
 ): IRendererSettings {
   return toAssetRendererSettings(
     {
@@ -161,8 +158,7 @@ export function toTextureRendererSettings(
       isBumped: options.isBumped,
       isLit: options.isLit,
       isWireframe: false,
-      pacing,
     },
-    features
+    shared
   );
 }

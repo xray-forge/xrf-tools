@@ -3,11 +3,9 @@ import {
   DEFAULT_RENDERER_LIGHTING,
   ERendererCameraController,
   ERendererDebugView,
-  IRendererFeatureSettings,
   IRendererFlyCamera,
   IRendererLighting,
   IRendererSettings,
-  IRenderFramePacing,
 } from "@xrf/renderer";
 import { Nullable } from "@xrf/types";
 
@@ -25,6 +23,7 @@ import { ILevelLodOptions, toLevelRendererLod } from "@/core/level/lib/lod/level
 import { ILevelRenderConfig } from "@/core/level/lib/render/level-render-config";
 import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
 import { toRendererLighting } from "@/core/render/lib/lighting/render-lighting";
+import { IRenderSharedSettings } from "@/core/render/lib/settings/render-shared-settings";
 
 /**
  * @param viewpoint - Where the camera stands and what it looks at.
@@ -84,10 +83,8 @@ export interface ILevelRendererSettingsInputs {
   lod: ILevelLodOptions;
   /** What the view sets over the settings' features for itself, which their toggles gate. */
   view: ILevelFeatureOptions;
-  /** How the application paces a view's frames. */
-  pacing: IRenderFramePacing;
-  /** What the renderer's features are set to, which the level's toolbar narrows. */
-  features: IRendererFeatureSettings;
+  /** What the application sets for every viewport, whose features the level's toolbar narrows. */
+  shared: IRenderSharedSettings;
   /** The backdrop. */
   config: ILevelRenderConfig;
 }
@@ -97,7 +94,8 @@ export interface ILevelRendererSettingsInputs {
  * @returns The renderer's settings.
  */
 export function toLevelRendererSettings(inputs: ILevelRendererSettingsInputs): IRendererSettings {
-  const { options, lighting, lod, view, pacing, features, config } = inputs;
+  const { options, lighting, lod, view, shared, config } = inputs;
+  const { features } = shared;
 
   return {
     // Fogged, the renderer draws the sky as total fog itself; this shows only where there is none.
@@ -114,13 +112,14 @@ export function toLevelRendererSettings(inputs: ILevelRendererSettingsInputs): I
       shadows: toLevelRendererFeature("shadows", features, view, options.isShadowed),
       water: toLevelRendererFeature("water", features, view, options.isWaterVisible),
     },
-    pacing,
     hemiStrength: options.isBaked ? lighting.hemiStrength : 0,
     isBumped: options.isBumped,
+    isGpuTimed: shared.isGpuTimed,
     isLit: true,
     isSkyDrawn: true,
     isTextured: options.isTextured,
     isWireframe: options.isWireframe,
+    pacing: shared.pacing,
     tonemapScale: 1,
   };
 }

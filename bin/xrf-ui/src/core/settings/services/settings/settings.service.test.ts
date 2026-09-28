@@ -1,5 +1,11 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
-import { ERendererAntialiasing, ERendererPreset, ERendererRenderScale, RENDERER_PRESETS } from "@xrf/renderer";
+import {
+  DEFAULT_RENDERER_FEATURE_CHOICE,
+  ERendererAntialiasing,
+  ERendererPreset,
+  ERendererRenderScale,
+  RENDERER_PRESETS,
+} from "@xrf/renderer";
 
 import { SettingsService } from "@/core/settings/services/settings/settings.service";
 import { mockInjectedService } from "@/fixtures/utils/container";
@@ -80,12 +86,25 @@ describe("SettingsService", () => {
   it("paces frames with low latency until told otherwise, and keeps what it was told", () => {
     const { service } = mockInjectedService(SettingsService);
 
-    expect(service.framePacing).toEqual({ isLowLatency: true, rateLimit: "60" });
+    expect(service.sharedRenderSettings.pacing).toEqual({ isLowLatency: true, rateLimit: "60" });
 
     service.setLowLatency(false);
 
     expect(window.localStorage.getItem("xrf.preference.low-latency")).toBe("false");
-    expect(mockInjectedService(SettingsService).service.framePacing.isLowLatency).toBe(false);
+    expect(mockInjectedService(SettingsService).service.sharedRenderSettings.pacing.isLowLatency).toBe(false);
+  });
+
+  // Timing is asked for, never a preset's: turning it on leaves the settings as the preset draws them.
+  it("times no passes until told to, and keeps it apart from the preset", () => {
+    const { service } = mockInjectedService(SettingsService);
+
+    expect(service.sharedRenderSettings.isGpuTimed).toBe(false);
+
+    service.setGpuTimed(true);
+
+    expect(service.rendererChoice).toEqual(DEFAULT_RENDERER_FEATURE_CHOICE);
+    expect(window.localStorage.getItem("xrf.preference.gpu-timed")).toBe("true");
+    expect(mockInjectedService(SettingsService).service.sharedRenderSettings.isGpuTimed).toBe(true);
   });
 
   it("draws with Base until another preset is chosen, and keeps what was changed on top of it", () => {

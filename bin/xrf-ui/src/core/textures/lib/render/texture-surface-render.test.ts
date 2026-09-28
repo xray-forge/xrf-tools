@@ -1,12 +1,9 @@
 import { describe, expect, it } from "@jest/globals";
 import {
-  DEFAULT_RENDER_FRAME_PACING,
-  DEFAULT_RENDERER_FEATURE_CHOICE,
   ERendererDraw,
   ERendererTextureEncoding,
   IRendererGeometry,
   IRendererObject,
-  resolveRendererFeatures,
   TRendererTextureSource,
 } from "@xrf/renderer";
 
@@ -25,6 +22,7 @@ import {
   ETextureSurfaceShape,
   ITextureSurfaceFile,
 } from "@/core/textures/lib/texture-surface";
+import { mockRenderSharedSettings } from "@/fixtures/mocks/render.mocks";
 
 const FILE: ITextureSurfaceFile = { bytes: new ArrayBuffer(8), height: 2, isDecoded: false, width: 2 };
 
@@ -97,8 +95,7 @@ describe("toTextureRendererSettings", () => {
   it("carries the lit and bump switches, over a transparent backdrop", () => {
     const settings = toTextureRendererSettings(
       { ...DEFAULT_TEXTURE_PREVIEW_OPTIONS, isBumped: false, isLit: false },
-      DEFAULT_RENDER_FRAME_PACING,
-      resolveRendererFeatures(DEFAULT_RENDERER_FEATURE_CHOICE)
+      mockRenderSharedSettings()
     );
 
     expect(settings.backdrop).toBeNull();

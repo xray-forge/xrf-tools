@@ -16,7 +16,7 @@ import {
   LevelViewportService,
   LevelViewService,
 } from "@/core/level/services";
-import { SettingsRendererFeatures } from "@/core/settings/components/SettingsDialog/SettingsRenderSection/SettingsRendererFeatures";
+import { SettingsRendererDisplay } from "@/core/settings/components/SettingsDialog/SettingsRenderSection/SettingsRendererDisplay";
 import { SettingsService } from "@/core/settings/services/settings";
 import { ApplicationStatusBar } from "@/core/shell/footer/ApplicationStatusBar";
 import { setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
@@ -320,16 +320,16 @@ describe("LevelPreviewLayout", () => {
     const view: RenderResult = renderWithProviders(
       <>
         <LevelPreviewLayout name={"levels\\zaton"} renderViewport={() => <div data-testid={"stub-viewport"} />} />
-        <SettingsRendererFeatures />
+        <SettingsRendererDisplay />
       </>,
       { container, route: "/level-viewer" }
     );
 
-    expect(settings.rendererFeatures.isGpuTimed).toBe(false);
+    expect(settings.isGpuTimed).toBe(false);
 
     await userEvent.click(within(await openReadout(view)).getByRole("checkbox", { name: "GPU time per pass" }));
 
-    expect(settings.rendererFeatures.isGpuTimed).toBe(true);
+    expect(settings.isGpuTimed).toBe(true);
 
     await closeReadout(view);
 
@@ -337,7 +337,7 @@ describe("LevelPreviewLayout", () => {
 
     await userEvent.click(view.getByRole("checkbox", { name: "GPU time per pass" }));
 
-    expect(settings.rendererFeatures.isGpuTimed).toBe(false);
+    expect(settings.isGpuTimed).toBe(false);
     expect(within(await openReadout(view)).getByRole("checkbox", { name: "GPU time per pass" })).not.toBeChecked();
   });
 

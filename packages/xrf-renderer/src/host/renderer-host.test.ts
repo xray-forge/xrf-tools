@@ -19,6 +19,7 @@ const SETTINGS: IRendererSettings = {
   features: RENDERER_PRESETS[ERendererPreset.BASE],
   hemiStrength: 1,
   isBumped: true,
+  isGpuTimed: false,
   isLit: true,
   isSkyDrawn: false,
   isTextured: true,
