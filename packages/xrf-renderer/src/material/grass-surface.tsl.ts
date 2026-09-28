@@ -2,6 +2,7 @@ import {
   cameraViewMatrix,
   cos,
   instanceIndex,
+  mix,
   normalize,
   positionLocal,
   select,
@@ -75,10 +76,10 @@ export function toGrassSurfaceShader(
     varying(cameraViewMatrix.mul(vec4(normalize(current.sub(place.xyz.sub(vec3(0, NORMAL_DROP, 0)))), 0)).xyz)
   );
   const base: Node<"vec4"> = samplers.bind(surface.textures.base, getWhiteTexture(), uv());
-  // `deffer_base_aref_flat.ps`: cut out at `def_aref`.
+  // `deffer_base_aref_flat.ps`: cut out at `def_aref`; white without textures, as grass states no flat colour.
   const albedo: Node<"vec4"> = toAlphaCut(
     base.w,
-    vec4(base.xyz, DEFAULT_GLOSS),
+    vec4(mix(vec3(1), base.xyz, uniforms.settings.textured), DEFAULT_GLOSS),
     uniform(surface.alphaReference ?? DEFAULT_ALPHA_REFERENCE)
   );
 

@@ -1,14 +1,23 @@
 import { describe, expect, it } from "@jest/globals";
-import { MeshBasicNodeMaterial } from "three/webgpu";
+import { storage, uint } from "three/tsl";
+import { MeshBasicNodeMaterial, Node, StorageBufferAttribute, StorageBufferNode } from "three/webgpu";
 
 import { ERendererDraw } from "#/contract/scene/renderer-draw";
 import { ERendererPass } from "#/contract/scene/renderer-pass";
 import { IRendererSurface } from "#/contract/scene/renderer-surface";
+import { isNodeReading } from "#/internals/node-fixtures.tsl";
+import { toGrassSurfaceShader } from "#/material/grass-surface.tsl";
+import { MaterialSamplers } from "#/material/material-samplers";
+import { toSurfaceInputs } from "#/material/surface-inputs.tsl";
 import { createOpaqueShadowMaterial, createSurfaceMaterial, ISurfaceMaterial } from "#/material/surface-material";
 import { SurfaceNodeMaterial } from "#/material/surface-node-material";
 import { SurfacePrograms } from "#/material/surface-programs";
+import { ISurfaceShader } from "#/material/surface-shader";
 import { ESurfaceSlot, getSurfaceSlotPlaceholder } from "#/material/surface-slot";
-import { toSampledSlots, toSurfaceVariant, toSurfaceVariantKey } from "#/material/surface-variant";
+import { SurfaceSlotNodes } from "#/material/surface-slot-nodes";
+import { ISurfaceTexel } from "#/material/surface-texel";
+import { toSurfaceTexel } from "#/material/surface-texel.tsl";
+import { ISurfaceVariant, toSampledSlots, toSurfaceVariant, toSurfaceVariantKey } from "#/material/surface-variant";
 import { RendererTextures } from "#/texture/renderer-textures";
 import { RendererUniforms } from "#/uniforms/renderer-uniforms";
 
@@ -54,11 +63,15 @@ describe("surface variants", () => {
     expect(toSurfaceVariantKey(toSurfaceVariant(BRICK))).toBe(toSurfaceVariantKey(toSurfaceVariant(PLASTER)));
   });
 
-  it("differ where the shader's shape does: a slot sampled, a tint, the draw", () => {
+  it("differ where the shader's shape does: a slot sampled, a flat colour, the draw", () => {
     const key: string = toSurfaceVariantKey(toSurfaceVariant(BRICK));
 
     expect(toSurfaceVariantKey(toSurfaceVariant({ ...BRICK, textures: { base: "brick" } }))).not.toBe(key);
     expect(toSurfaceVariantKey(toSurfaceVariant({ ...BRICK, color: [1, 0, 0] }))).not.toBe(key);
+    // A flat colour stands in for a base where none is bound, and only while textures are off where one is.
+    expect(toSurfaceVariantKey(toSurfaceVariant({ ...BRICK, color: [1, 0, 0], textures: {} }))).not.toBe(
+      toSurfaceVariantKey(toSurfaceVariant({ ...BRICK, color: [1, 0, 0], textures: { base: "brick" } }))
+    );
     expect(toSurfaceVariantKey(toSurfaceVariant({ ...BRICK, draw: ERendererDraw.OPAQUE }))).not.toBe(key);
   });
 
@@ -162,5 +175,82 @@ describe("water surfaces", () => {
         toSurfaceVariant({ ...WATER, water: { anomaly: { ...anomaly, isFoamed: true }, isSoft: true } })
       )
     ).not.toBe(toSurfaceVariantKey(toSurfaceVariant({ ...WATER, water: { anomaly, isSoft: true } })));
+  });
+});
+
+/** A bumped wall, whose normal and gloss come from its pair. */
+const BUMPED: IRendererSurface = {
+  draw: ERendererDraw.OPAQUE,
+  textures: { base: "wall", bump: "wall_bump", bumpCompanion: "wall_bump#", detail: "detail\\wall" },
+};
+
+/** Every pass's kind of surface, each drawn by its own program. */
+const SURFACES: Record<string, IRendererSurface> = {
+  deferred: BRICK,
+  forward: { draw: ERendererDraw.BLENDED, textures: { base: "glass" } },
+  impostor: { draw: ERendererDraw.OPAQUE, isImpostor: true, textures: { base: "trees\\lod", hemi: "trees\\lod_nm" } },
+  wallmark: { draw: ERendererDraw.BLENDED, isWallmark: true, textures: { base: "wm\\blood" } },
+  water: WATER,
+};
+
+/** @returns What a shader writes: its whole output, or its colour. */
+function toShaderOutput(shader: ISurfaceShader): Node {
+  return (shader.fragmentNode ?? shader.colorNode) as Node;
+}
+
+// Textures off is a setting: every program reads one uniform, so the toggle builds nothing and fetches nothing.
+describe("the textures switch", () => {
+  it.each(Object.keys(SURFACES))("is read by the %s program", (name: string) => {
+    const uniforms: RendererUniforms = new RendererUniforms();
+    const shader: ISurfaceShader = new SurfacePrograms(uniforms).get(toSurfaceVariant(SURFACES[name]));
+
+    expect(isNodeReading(toShaderOutput(shader), uniforms.settings.textured)).toBe(true);
+  });
+
+  it("is read by a static batch's shared program", () => {
+    const uniforms: RendererUniforms = new RendererUniforms();
+    const shader: ISurfaceShader = new SurfacePrograms(uniforms).getTabled(toSurfaceVariant(BRICK), [
+      ESurfaceSlot.BASE,
+      ESurfaceSlot.DETAIL,
+    ]);
+
+    expect(isNodeReading(toShaderOutput(shader), uniforms.settings.textured)).toBe(true);
+  });
+
+  it("is read by the grass program", () => {
+    const uniforms: RendererUniforms = new RendererUniforms();
+    const items: StorageBufferNode<"vec4"> = storage(new StorageBufferAttribute(new Float32Array(8), 4), "vec4", 2);
+    const shader: ISurfaceShader = toGrassSurfaceShader(
+      { height: 1, items, start: uint(0), surface: { draw: ERendererDraw.CUT_OUT, textures: { base: "grass" } } },
+      new MaterialSamplers(createTextures()),
+      uniforms
+    );
+
+    expect(isNodeReading(toShaderOutput(shader), uniforms.settings.textured)).toBe(true);
+  });
+
+  it("takes the bump off with the textures, and leaves the lightmap and alpha to the surface", () => {
+    const uniforms: RendererUniforms = new RendererUniforms();
+    const variant: ISurfaceVariant = toSurfaceVariant({ ...BUMPED, textures: { ...BUMPED.textures, hemi: "lmap" } });
+    const texel: ISurfaceTexel = toSurfaceTexel(variant, toSurfaceInputs(null, new SurfaceSlotNodes()), uniforms);
+    const { textured } = uniforms.settings;
+
+    expect(isNodeReading(texel.albedo, textured)).toBe(true);
+    expect(isNodeReading(texel.normal, textured)).toBe(true);
+    expect(isNodeReading(texel.gloss, textured)).toBe(true);
+    expect(isNodeReading(texel.hemi, textured)).toBe(false);
+    expect(isNodeReading(texel.alpha, textured)).toBe(false);
+  });
+
+  it("keeps every material on its program and every texture it binds as the settings turn textures off", () => {
+    const uniforms: RendererUniforms = new RendererUniforms();
+    const textures: RendererTextures = createTextures();
+    const bumped: ISurfaceMaterial = createMaterial(BUMPED, new SurfacePrograms(uniforms), uniforms, textures);
+    const key: string = bumped.material.customProgramCacheKey();
+
+    uniforms.settings.textured.value = 0;
+
+    expect(bumped.material.customProgramCacheKey()).toBe(key);
+    expect(bumped.keys).toEqual(["wall", "detail\\wall", "wall_bump", "wall_bump#"]);
   });
 });

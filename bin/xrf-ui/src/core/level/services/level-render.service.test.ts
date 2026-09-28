@@ -235,6 +235,30 @@ describe("LevelRenderService", () => {
     service.dispose();
   });
 
+  // Textures off is a uniform the surfaces' shaders read: turning them back on fetches and uploads nothing again.
+  it("draws the surfaces' textures by the textures toggle, putting no surface or texture again", async () => {
+    const { service, viewService } = await mockAttached();
+    const surfaces: number = stub.take(ERendererRequest.PUT_SURFACE).length;
+    const textures: number = stub.take(ERendererRequest.PUT_TEXTURE).length;
+
+    expect(drawnSettings()?.isTextured).toBe(true);
+
+    viewService.setOptions({ ...viewService.options, isTextured: false });
+    await stub.flush();
+
+    expect(drawnSettings()?.isTextured).toBe(false);
+
+    viewService.setOptions({ ...viewService.options, isTextured: true });
+    await stub.flush();
+
+    expect(drawnSettings()?.isTextured).toBe(true);
+    expect(stub.take(ERendererRequest.PUT_SURFACE)).toHaveLength(surfaces);
+    expect(stub.take(ERendererRequest.PUT_TEXTURE)).toHaveLength(textures);
+    expect(stub.take(ERendererRequest.RELEASE_SURFACE)).toHaveLength(0);
+
+    service.dispose();
+  });
+
   // A renderer is told its settings and its light as it starts, and then only what changed: a configure rebuilds
   // passes, and a toggle the settings do not read has nothing to rebuild.
   it("configures and lights only for what changed", async () => {

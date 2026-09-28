@@ -11,6 +11,8 @@ import { IRendererSettings } from "#/contract/renderer-settings";
 export class SettingsUniforms {
   /** One while light shades the frame, zero for raw albedo. */
   public readonly lit: UniformNode<"float", number> = uniform(1).setGroup(renderGroup);
+  /** One while surfaces draw their own textures, zero for their flat colours. */
+  public readonly textured: UniformNode<"float", number> = uniform(1).setGroup(renderGroup);
   /** One while bump pairs shade the surfaces that bind them. */
   public readonly bumped: UniformNode<"float", number> = uniform(1).setGroup(renderGroup);
   /** How much of the baked hemisphere occlusion applies. */
@@ -25,6 +27,7 @@ export class SettingsUniforms {
    */
   public apply(settings: IRendererSettings): void {
     this.lit.value = settings.isLit ? 1 : 0;
+    this.textured.value = settings.isTextured ? 1 : 0;
     this.bumped.value = settings.isBumped ? 1 : 0;
     this.hemiStrength.value = settings.hemiStrength;
     this.tonemapScale.value = settings.tonemapScale;

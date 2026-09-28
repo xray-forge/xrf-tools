@@ -1,17 +1,12 @@
 import { IRendererGeometry, IRendererObject, IRendererSurface, TRendererColor } from "@xrf/renderer";
-import { Maybe, Nullable } from "@xrf/types";
+import { Nullable } from "@xrf/types";
 
 import { LevelSpawnModelDescription, LevelSpawnModelsDescription, LevelSpawnPlacement } from "@/core/ipc/types/xrf-app";
 import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
 import { VisualTransform } from "@/core/ipc/types/xrf-visual";
 import { LEVEL_RENDER_KEYS } from "@/core/level/lib/render/level-render-keys";
 import { toLevelSurfaceColor } from "@/core/level/lib/render/level-render-surface";
-import {
-  ILevelSurfaceBump,
-  ILevelSurfaceDetail,
-  ILevelSurfaceRender,
-  toLevelSurfaceRender,
-} from "@/core/level/lib/surface/level-surface-render";
+import { ILevelSurfaceRender, toLevelSurfaceRender } from "@/core/level/lib/surface/level-surface-render";
 import { createVisualViews, IVisualModelViews, IVisualSubmeshViews } from "@/core/visuals/lib/visual-views";
 
 /** Floats one bone's transform takes: its basis, then its translation. */
@@ -263,28 +258,24 @@ function skinVertex(
  * detail its descriptor binds beside it, cut out or blended as the blender says.
  *
  * @param dressing - Its shader and base texture.
- * @param isTextured - Whether surfaces draw their textures.
- * @returns Its surface.
+ * @returns Its surface, which draws its colour while the settings draw no textures.
  */
-export function toLevelSpawnSurface(dressing: ILevelSpawnDressing, isTextured: boolean): IRendererSurface {
+export function toLevelSpawnSurface(dressing: ILevelSpawnDressing): IRendererSurface {
   const render: ILevelSurfaceRender = toLevelSurfaceRender(dressing.descriptor);
-  const base: Maybe<string> = (isTextured && dressing.texture) || undefined;
-  const detail: Nullable<ILevelSurfaceDetail> = isTextured ? render.detail : null;
-  const bump: Nullable<ILevelSurfaceBump> = isTextured ? render.bump : null;
 
   return {
     alphaReference: render.alphaReference,
-    color: base ? undefined : dressing.color,
-    detailScale: detail?.scale,
+    color: dressing.color,
+    detailScale: render.detail?.scale,
     draw: render.draw,
     isLit: render.isLit,
     isWallmark: render.isWallmark || undefined,
     material: render.material,
     textures: {
-      base,
-      bump: bump?.bump,
-      bumpCompanion: bump?.companion,
-      detail: detail?.reference,
+      base: dressing.texture || undefined,
+      bump: render.bump?.bump,
+      bumpCompanion: render.bump?.companion,
+      detail: render.detail?.reference,
     },
   };
 }

@@ -1,5 +1,5 @@
 import { Maybe } from "@xrf/types";
-import { float, mix, normalize, varying } from "three/tsl";
+import { float, mix, normalize, varying, vec3 } from "three/tsl";
 import { Node, TextureNode } from "three/webgpu";
 
 import { ISurfaceInputs } from "#/material/surface-inputs";
@@ -18,6 +18,7 @@ import { toPlacedNormalView, toPlacedViewDirection } from "#/shader/placement.ts
 import { skinnedBinormal, skinnedTangent } from "#/shader/skinned-basis.tsl";
 import { toVertexHemi } from "#/shader/vertex-hemi.tsl";
 import { RendererUniforms } from "#/uniforms/renderer-uniforms";
+import { SettingsUniforms } from "#/uniforms/settings-uniforms";
 
 /** `def_gloss`: what a surface without a bump reflects (`shaders/r3/common_defines.h`). */
 export const DEFAULT_GLOSS: number = 2 / 255;
@@ -40,13 +41,24 @@ export function toSurfaceCoordinates(inputs: ISurfaceInputs): Node<"vec2"> {
 }
 
 /**
- * @param color - The base's colour.
+ * @param textured - What the surface's textures colour it.
  * @param variant - The surface's variant.
  * @param inputs - What the material drawing carries.
- * @returns The colour times the surface's tint, where it gives one.
+ * @param settings - The settings, whose switch draws the textures or the flat colour.
+ * @returns The textures' colour, or the flat colour while the settings draw none; a surface binding no base keeps its
+ *   flat colour under whatever else it binds.
  */
-export function toTintedColor(color: Node<"vec3">, variant: ISurfaceVariant, inputs: ISurfaceInputs): Node<"vec3"> {
-  return variant.isTinted ? color.mul(inputs.color) : color;
+export function toShownColor(
+  textured: Node<"vec3">,
+  variant: ISurfaceVariant,
+  inputs: ISurfaceInputs,
+  settings: SettingsUniforms
+): Node<"vec3"> {
+  const flat: Node<"vec3"> = variant.hasColor ? inputs.color : vec3(1);
+  const drawn: Node<"vec3"> = variant.hasColor && !variant.hasBase ? textured.mul(flat) : textured;
+
+  // Mixed by the switch rather than selected, as the bump is.
+  return mix(flat, drawn, settings.textured);
 }
 
 /**
@@ -54,7 +66,8 @@ export function toTintedColor(color: Node<"vec3">, variant: ISurfaceVariant, inp
  *
  * @param variant - The surface's variant.
  * @param inputs - What the material drawing carries.
- * @param uniforms - What the frame's shaders read: the settings switch the bump, the static draw buffers place it.
+ * @param uniforms - What the frame's shaders read: the settings switch the textures and the bump, the static draw
+ *   buffers place it.
  * @returns The texel.
  */
 export function toSurfaceTexel(
@@ -66,7 +79,7 @@ export function toSurfaceTexel(
   const coordinates: Node<"vec2"> = toSurfaceCoordinates(inputs);
   const base: TextureNode = inputs.sample(ESurfaceSlot.BASE, coordinates);
   const surfaceNormal: Node<"vec3"> = toPlacedNormalView(staticDraws);
-  let albedo: Node<"vec3"> = toTintedColor(base.xyz, variant, inputs);
+  let textured: Node<"vec3"> = base.xyz;
   let normal: Node<"vec3"> = surfaceNormal;
   let gloss: Node<"float"> = float(DEFAULT_GLOSS);
 
@@ -74,7 +87,7 @@ export function toSurfaceTexel(
     // `D.rgb = 2 * D.rgb * detail.rgb`, sampled at the base coordinates times the detail scale.
     const detail: TextureNode = inputs.sample(ESurfaceSlot.DETAIL, coordinates.mul(inputs.detailScale));
 
-    albedo = albedo.mul(detail.xyz).mul(2);
+    textured = textured.mul(detail.xyz).mul(2);
   }
 
   if (variant.hasBump) {
@@ -91,9 +104,11 @@ export function toSurfaceTexel(
         .add(surfaceNormal.mul(tangentSpace.z))
     );
 
-    // Mixed by the switch rather than selected: a `select` between these two came out zero in a forward material.
-    normal = mix(surfaceNormal, bumped, settings.bumped);
-    gloss = mix(float(DEFAULT_GLOSS), decodeBumpGloss(bump), settings.bumped);
+    // Mixed by the switches rather than selected: a `select` between these two came out zero in a forward material.
+    const bumping: Node<"float"> = settings.bumped.mul(settings.textured);
+
+    normal = mix(surfaceNormal, bumped, bumping);
+    gloss = mix(float(DEFAULT_GLOSS), decodeBumpGloss(bump), bumping);
   }
 
   // `get_hemi` and `get_sun`: the lightmap's alpha and green, or the vertex's own hemisphere term where there is no
@@ -103,7 +118,7 @@ export function toSurfaceTexel(
     : undefined;
 
   return {
-    albedo,
+    albedo: toShownColor(textured, variant, inputs, settings),
     alpha: base.w,
     gloss,
     hemi: lightmap ? lightmap.w : varying(toVertexHemi(staticDraws)),

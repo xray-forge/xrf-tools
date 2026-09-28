@@ -24,8 +24,7 @@ const SURFACE_SHADERS: Record<
 > = {
   [ERendererPass.DEFERRED]: toDeferredSurfaceShader,
   [ERendererPass.FORWARD]: toForwardSurfaceShader,
-  [ERendererPass.WALLMARK]: (variant: ISurfaceVariant, inputs: ISurfaceInputs) =>
-    toWallmarkSurfaceShader(variant, inputs),
+  [ERendererPass.WALLMARK]: toWallmarkSurfaceShader,
   [ERendererPass.WATER]: toWaterSurfaceShader,
 };
 

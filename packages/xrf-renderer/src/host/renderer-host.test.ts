@@ -21,6 +21,7 @@ const SETTINGS: IRendererSettings = {
   isBumped: true,
   isLit: true,
   isSkyDrawn: false,
+  isTextured: true,
   isWireframe: false,
   pacing: DEFAULT_RENDER_FRAME_PACING,
   tonemapScale: 1,

@@ -17,7 +17,10 @@ export interface IRendererSurface {
   material?: number;
   /** How many times the base and every other texture repeat across the surface. */
   tiling?: number;
-  /** What the base is multiplied by, raw; white when left out. A viewer's affordance, not an engine term. */
+  /**
+   * Its flat colour, raw: what it draws where it draws no base, with none bound or while the settings draw no textures;
+   * white when left out. A viewer's affordance, not an engine term.
+   */
   color?: TRendererColor;
   /** Whether a composited surface is lit, as a scripted pass may say it is not; lit when left out. */
   isLit?: boolean;

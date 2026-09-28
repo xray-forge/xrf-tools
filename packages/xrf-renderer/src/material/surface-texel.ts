@@ -4,7 +4,7 @@ import { Node } from "three/webgpu";
  * A surface at one texel before any light: what the G-buffer stores, and what the forward path lights.
  */
 export interface ISurfaceTexel {
-  /** Raw albedo, detail and tint applied. */
+  /** Raw albedo, detail applied, or the flat colour while the settings draw no textures. */
   albedo: Node<"vec3">;
   /** The base's alpha, which only a cut-out or composited surface reads. */
   alpha: Node<"float">;

@@ -17,6 +17,7 @@ const SENT: IRendererSettings = {
   isBumped: true,
   isLit: true,
   isSkyDrawn: false,
+  isTextured: true,
   isWireframe: false,
   pacing: DEFAULT_RENDER_FRAME_PACING,
   tonemapScale: 2,
@@ -35,6 +36,13 @@ describe("toRendererSettings", () => {
     const sent: IRendererSettings = { ...SENT, features: { ...BASE, grass: { ...BASE.grass, height: 0 } } };
 
     expect(toRendererSettings(sent)).toEqual({ ...sent, features: { ...BASE, grass: { ...BASE.grass, height: 0.5 } } });
+  });
+
+  it("takes the view's switches as sent, textures off among them", () => {
+    expect(toRendererSettings({ ...SENT, isBumped: false, isTextured: false })).toMatchObject({
+      isBumped: false,
+      isTextured: false,
+    });
   });
 
   it("takes a run of cascades up to the most the sun samples, and the preset's run in place of a longer one", () => {

@@ -33,7 +33,7 @@ import { IRendererAnomalyWater } from "#/contract/scene/renderer-anomaly-water";
 import { ISurfaceInputs } from "#/material/surface-inputs";
 import { ISurfaceShader } from "#/material/surface-shader";
 import { ESurfaceSlot } from "#/material/surface-slot";
-import { toSurfaceCoordinates } from "#/material/surface-texel.tsl";
+import { toShownColor, toSurfaceCoordinates } from "#/material/surface-texel.tsl";
 import { ISurfaceVariant } from "#/material/surface-variant";
 import { discardBeyondFog, toFogAmount } from "#/shader/base-lighting.tsl";
 import { packOutputs, unpackOutputs } from "#/shader/packed-outputs.tsl";
@@ -88,7 +88,7 @@ interface IWaterShading {
  * OpenXRay's `water.ps`: the sky squared and doubled, a share of it by the fresnel, mixed with the base by its alpha.
  */
 function toEngineShading(
-  base: TextureNode,
+  base: Node<"vec4">,
   remapped: Node<"vec3">,
   power: Node<"float">,
   light: Node<"vec3">,
@@ -109,7 +109,7 @@ function toEngineShading(
  */
 function toAnomalyShading(
   anomaly: IRendererAnomalyWater,
-  base: TextureNode,
+  base: Node<"vec4">,
   reflected: Node<"vec3">,
   toPoint: Node<"vec3">,
   normal: Node<"vec3">,
@@ -173,7 +173,9 @@ export function toWaterSurfaceShader(
     const coordinates: Node<"vec2"> = toSurfaceCoordinates(inputs);
     const first: Node<"vec2"> = toScrolled(coordinates, world, 0, water);
     const second: Node<"vec2"> = toScrolled(coordinates, world, 1, water);
-    const base: TextureNode = inputs.sample(ESurfaceSlot.BASE, coordinates);
+    const sampled: TextureNode = inputs.sample(ESurfaceSlot.BASE, coordinates);
+    // Without textures, the flat colour mixed with the reflection by the base's own alpha.
+    const base: Node<"vec4"> = vec4(toShownColor(sampled.xyz, variant, inputs, settings), sampled.w);
     const bent: Node<"vec3"> = inputs
       .sample(ESurfaceSlot.NORMAL, first)
       .xyz.add(inputs.sample(ESurfaceSlot.NORMAL, second).xyz)
@@ -219,6 +221,7 @@ export function toWaterSurfaceShader(
     const foamed: Node<"float"> = smoothstep(0.025, 0.05, shallow)
       .mul(float(1).sub(smoothstep(0.075, 0.1, shallow)))
       .mul(foam.w)
+      .mul(settings.textured)
       .mul(variant.anomalyWater && !variant.anomalyWater.isFoamed ? 0 : 1);
     const softColor: Node<"vec3"> = mix(
       mix(deepened, foam.xyz.mul(water.intensity), foamed),

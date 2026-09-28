@@ -26,6 +26,7 @@ describe("toAssetRendererSettings", () => {
       isBumped: false,
       isLit: true,
       isSkyDrawn: false,
+      isTextured: true,
       isWireframe: true,
       tonemapScale: 1,
     });

@@ -213,8 +213,7 @@ export class LevelRenderService extends RenderSurfaceService {
   }
 
   @BoundAction()
-  private applyOptions(options: ILevelViewOptions): void {
-    this.content?.setOptions(options);
+  private applyOptions(): void {
     // The fog and the wind are the lighting's; the rest of what the settings read, the settings'.
     this.applyLighting(this.viewService.lighting);
     this.applyFrame();

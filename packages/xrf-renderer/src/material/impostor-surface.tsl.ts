@@ -19,7 +19,8 @@ import { Node, TextureNode } from "three/webgpu";
 import { ISurfaceInputs } from "#/material/surface-inputs";
 import { ISurfaceShader } from "#/material/surface-shader";
 import { ESurfaceSlot } from "#/material/surface-slot";
-import { DEFAULT_GLOSS, MATERIAL_SLICES } from "#/material/surface-texel.tsl";
+import { DEFAULT_GLOSS, MATERIAL_SLICES, toShownColor } from "#/material/surface-texel.tsl";
+import { ISurfaceVariant } from "#/material/surface-variant";
 import { toVertexAttribute } from "#/shader/cluster-vertex.tsl";
 import { toGBufferOutput } from "#/shader/gbuffer.tsl";
 import { toWorldMotion } from "#/shader/motion.tsl";
@@ -57,11 +58,16 @@ function toCornerColumn(lod: Node<"uint">, facet: Node<"uint">, vertex: Node<"ui
  * The atlas is sampled at both facets' coordinates and blended the same way, its alpha faded by the cull and cut at
  * 96; the `_nm` companion gives the view normal and the hemisphere term, times the corners'.
  *
+ * @param variant - The surfaces drawn.
  * @param inputs - What the material drawing carries: the atlas as its base, the companion as its lightmap.
  * @param uniforms - What the frame's shaders read.
  * @returns Its shader, placing its own vertices.
  */
-export function toImpostorSurfaceShader(inputs: ISurfaceInputs, uniforms: RendererUniforms): ISurfaceShader {
+export function toImpostorSurfaceShader(
+  variant: ISurfaceVariant,
+  inputs: ISurfaceInputs,
+  uniforms: RendererUniforms
+): ISurfaceShader {
   const buffers = uniforms.staticDraws;
   const lod: Node<"uint"> = toPlacedImpostor(buffers);
   const terms = buffers.lodTermColumns.element(lod) as unknown as Node<"uvec4">;
@@ -101,7 +107,7 @@ export function toImpostorSurfaceShader(inputs: ISurfaceInputs, uniforms: Render
       Discard();
     });
 
-    return vec4(color.xyz, DEFAULT_GLOSS);
+    return vec4(toShownColor(color.xyz, variant, inputs, uniforms.settings), DEFAULT_GLOSS);
   })();
 
   return {

@@ -121,6 +121,7 @@ export function toLevelRendererSettings(inputs: ILevelRendererSettingsInputs): I
     isBumped: options.isBumped,
     isLit: true,
     isSkyDrawn: true,
+    isTextured: options.isTextured,
     isWireframe: options.isWireframe,
     tonemapScale: 1,
   };

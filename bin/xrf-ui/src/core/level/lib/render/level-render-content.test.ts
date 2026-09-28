@@ -15,7 +15,6 @@ import { ILevelSectorDelivery, ILevelTextureDelivery } from "@/core/level/lib/re
 import { ILevelSpawnModelsDelivery } from "@/core/level/lib/render/level-render-spawn";
 import { toLevelSurfaceColor } from "@/core/level/lib/render/level-render-surface";
 import { ELevelSurfaceDressing } from "@/core/level/lib/surface/level-surface-dressing";
-import { DEFAULT_LEVEL_SURFACE_OPTIONS } from "@/core/level/lib/surface/level-surface-options";
 import {
   mockSectorDescription,
   mockSectorInstanceGroup,
@@ -172,22 +171,19 @@ describe("LevelRenderContent", () => {
     expect(content.measure().get(2)).toMatchObject({ triangles: 2 });
   });
 
-  it("dresses an entry with its base, its lightmap, and its colour only while untextured", () => {
+  it("dresses an entry with its base, its lightmap, and the colour it draws while textures are off", () => {
     const { content, sink } = mockContent();
 
     content.deliver({ delivered: [mockDelivery()], released: [] });
 
-    expect(sink.putSurface.mock.calls[0][1]).toMatchObject({
-      draw: ERendererDraw.OPAQUE,
-      textures: { base: "stone", hemi: "lmap#1_2" },
-    });
-    expect(sink.putSurface.mock.calls[0][1].color).toBeUndefined();
-
-    content.setOptions({ ...DEFAULT_LEVEL_SURFACE_OPTIONS, isTextured: false });
-
-    expect(sink.putSurface).toHaveBeenCalledTimes(4);
-    expect(sink.putSurface.mock.calls[2][1].textures.base).toBeUndefined();
-    expect(sink.putSurface.mock.calls[2][1].color).toHaveLength(3);
+    expect(sink.putSurface).toHaveBeenCalledTimes(2);
+    expect(sink.putSurface.mock.calls[0][1]).toEqual(
+      expect.objectContaining({
+        color: toLevelSurfaceColor(1),
+        draw: ERendererDraw.OPAQUE,
+        textures: expect.objectContaining({ base: "stone", hemi: "lmap#1_2" }),
+      })
+    );
   });
 
   it("hands the renderer where to fetch each file, and says what it came to once fetched", () => {
@@ -298,23 +294,16 @@ describe("LevelRenderContent", () => {
     expect(content.held()).toEqual({ bytes: 0, sectors: 0 });
   });
 
-  it("dresses spawned models again on a texture toggle without putting their geometry again", () => {
+  it("dresses spawned models with their base and a colour of their own, as a sector's surface is", () => {
     const { content, sink } = mockContent();
     const key: string = LEVEL_RENDER_KEYS.spawn(0, 0);
 
     content.stand(mockSpawnModels());
 
     expect(sink.putGeometry.mock.calls.map(([it]) => it)).toEqual([key]);
-    expect(sink.putSurface.mock.calls.at(-1)?.[1].textures?.base).toBe("lamp");
-
-    sink.putGeometry.mockClear();
-    content.setOptions({ ...DEFAULT_LEVEL_SURFACE_OPTIONS, isTextured: false });
-
-    expect(sink.putGeometry).not.toHaveBeenCalled();
-    // Untextured, a model takes a colour of its own as a sector's surface does, rather than drawing white.
     expect(sink.putSurface.mock.calls.at(-1)).toEqual([
       key,
-      expect.objectContaining({ color: toLevelSurfaceColor(0), textures: { base: undefined } }),
+      expect.objectContaining({ color: toLevelSurfaceColor(0), textures: { base: "lamp" } }),
     ]);
   });
 

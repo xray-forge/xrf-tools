@@ -37,7 +37,6 @@ import { ILevelHeld } from "@/core/level/lib/stats/level-stats";
 import { countSectorSurfaceGeometry, mergeLevelSurfaceGeometry } from "@/core/level/lib/surface/level-surface-count";
 import { ELevelSurfaceDressing, ILevelSurfaceDressing } from "@/core/level/lib/surface/level-surface-dressing";
 import { ILevelSurfaceGeometry } from "@/core/level/lib/surface/level-surface-geometry";
-import { DEFAULT_LEVEL_SURFACE_OPTIONS, ILevelSurfaceOptions } from "@/core/level/lib/surface/level-surface-options";
 import { ILevelSurfaceRender } from "@/core/level/lib/surface/level-surface-render";
 import { ILevelTextureProblem, ILevelTextureReport } from "@/core/level/lib/texture/level-texture-report";
 import { Timer } from "@/lib/logging";
@@ -75,12 +74,6 @@ interface IHeldSector {
   geometry: ReadonlyMap<number, ILevelSurfaceGeometry>;
 }
 
-/** A shader table entry put, with what its row names, so a toggle can put it again. */
-interface IPutSurface {
-  surface: SectorSurface;
-  render: ILevelSurfaceRender;
-}
-
 /**
  * The open level as the renderer holds it: sectors and textures put as they arrive and released as they go, one
  * surface per shader table entry, and what each of them came to for the panels.
@@ -88,12 +81,12 @@ interface IPutSurface {
 export class LevelRenderContent {
   private readonly sink: TLevelRenderSink;
   private table: ReadonlyArray<XraySurfaceDescriptor> = [];
-  private readonly surfaces: Map<number, IPutSurface> = new Map();
+  /** The shader table entries put, by id. */
+  private readonly surfaces: Set<number> = new Set();
   private readonly sectors: Map<number, IHeldSector> = new Map();
   /** What became of each reference supplied, in the order they were. */
   private readonly textures: Map<string, ILevelSurfaceDressing> = new Map();
-  private options: ILevelSurfaceOptions = DEFAULT_LEVEL_SURFACE_OPTIONS;
-  /** The spawned models' parts put, which a texture toggle dresses again. */
+  /** The spawned models' parts put. */
   private spawnParts: ReadonlyArray<ILevelSpawnPart> = [];
   /** Whether the quad every impostor draws over is put. */
   private isImpostorQuadPut: boolean = false;
@@ -157,7 +150,7 @@ export class LevelRenderContent {
 
     for (const part of this.spawnParts) {
       this.sink.putGeometry(part.key, part.geometry);
-      this.sink.putSurface(part.key, toLevelSpawnSurface(part.dressing, this.options.isTextured));
+      this.sink.putSurface(part.key, toLevelSpawnSurface(part.dressing));
       this.sink.putObject(part.key, part.object);
     }
   }
@@ -215,25 +208,6 @@ export class LevelRenderContent {
   }
 
   /**
-   * @param options - How the toolbar has the surfaces drawn; every surface is put again when that changes them, and
-   *   nothing else: a geometry does not change with its dressing.
-   */
-  public setOptions(options: ILevelSurfaceOptions): void {
-    const isChanged: boolean = options.isTextured !== this.options.isTextured;
-
-    this.options = options;
-
-    if (isChanged) {
-      this.surfaces.forEach(({ surface, render }, shaderId: number) =>
-        this.sink.putSurface(LEVEL_RENDER_KEYS.surface(shaderId), toLevelSurface(surface, render, options.isTextured))
-      );
-      this.spawnParts.forEach((part: ILevelSpawnPart) =>
-        this.sink.putSurface(part.key, toLevelSpawnSurface(part.dressing, options.isTextured))
-      );
-    }
-  }
-
-  /**
    * @returns What each shader table entry draws across the sectors held.
    */
   public measure(): ReadonlyMap<number, ILevelSurfaceGeometry> {
@@ -282,7 +256,7 @@ export class LevelRenderContent {
   /** Lets the level's sectors, surfaces and textures go. */
   private clear(): void {
     Array.from(this.sectors.keys()).forEach((sector: number) => this.drop(sector));
-    this.surfaces.forEach((_, shaderId: number) => this.sink.releaseSurface(LEVEL_RENDER_KEYS.surface(shaderId)));
+    this.surfaces.forEach((shaderId: number) => this.sink.releaseSurface(LEVEL_RENDER_KEYS.surface(shaderId)));
     this.surfaces.clear();
 
     if (this.isImpostorQuadPut) {
@@ -389,11 +363,8 @@ export class LevelRenderContent {
   /** Puts a shader table entry the first time a sector draws it: every sector drawing it shares it after. */
   private ensureSurface(surface: SectorSurface, render: ILevelSurfaceRender): void {
     if (!this.surfaces.has(surface.shaderId)) {
-      this.surfaces.set(surface.shaderId, { render, surface });
-      this.sink.putSurface(
-        LEVEL_RENDER_KEYS.surface(surface.shaderId),
-        toLevelSurface(surface, render, this.options.isTextured)
-      );
+      this.surfaces.add(surface.shaderId);
+      this.sink.putSurface(LEVEL_RENDER_KEYS.surface(surface.shaderId), toLevelSurface(surface, render));
     }
   }
 

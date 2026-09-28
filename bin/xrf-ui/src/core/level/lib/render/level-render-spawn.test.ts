@@ -51,21 +51,21 @@ describe("toLevelSpawnSurface", () => {
   const color: TRendererColor = [0.2, 0.4, 0.6];
 
   it("shades a part with the lighting model its descriptor sets, as a sector's surface is", () => {
-    const surface: IRendererSurface = toLevelSpawnSurface(
-      { color, descriptor: mockSurfaceDescriptor({ material: 3 }), texture: "lamp" },
-      true
-    );
+    const surface: IRendererSurface = toLevelSpawnSurface({
+      color,
+      descriptor: mockSurfaceDescriptor({ material: 3 }),
+      texture: "lamp",
+    });
 
     expect(surface.material).toBe(3);
     expect(surface.textures?.base).toBe("lamp");
-    expect(surface.color).toBeUndefined();
   });
 
-  it("draws an untextured part in its model's colour rather than white", () => {
-    const surface: IRendererSurface = toLevelSpawnSurface({ color, descriptor: null, texture: "lamp" }, false);
+  it("carries its model's colour beside its base, which the renderer draws while textures are off", () => {
+    const surface: IRendererSurface = toLevelSpawnSurface({ color, descriptor: null, texture: "lamp" });
 
     expect(surface.color).toEqual(color);
-    expect(surface.textures?.base).toBeUndefined();
+    expect(surface.textures?.base).toBe("lamp");
   });
 
   it("binds the bump pair and the detail its descriptor declares beside its base", () => {
@@ -78,7 +78,7 @@ describe("toLevelSpawnSurface", () => {
       },
       detail: { reference: "detail\\detail_metal", scale: 4 },
     });
-    const surface: IRendererSurface = toLevelSpawnSurface({ color, descriptor, texture: "lamp" }, true);
+    const surface: IRendererSurface = toLevelSpawnSurface({ color, descriptor, texture: "lamp" });
 
     expect(surface.textures).toEqual({
       base: "lamp",
@@ -87,15 +87,5 @@ describe("toLevelSpawnSurface", () => {
       detail: "detail\\detail_metal",
     });
     expect(surface.detailScale).toBe(4);
-  });
-
-  it("binds neither the pair nor the detail while textures are off", () => {
-    const descriptor: XraySurfaceDescriptor = mockSurfaceDescriptor({
-      detail: { reference: "detail\\detail_metal", scale: 4 },
-    });
-    const surface: IRendererSurface = toLevelSpawnSurface({ color, descriptor, texture: "lamp" }, false);
-
-    expect(surface.textures?.detail).toBeUndefined();
-    expect(surface.detailScale).toBeUndefined();
   });
 });

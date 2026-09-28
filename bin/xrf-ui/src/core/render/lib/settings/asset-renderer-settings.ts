@@ -18,6 +18,8 @@ export function toAssetRendererSettings(
     features: { ...features, exposure: { ...features.exposure, isEnabled: false } },
     hemiStrength: 1,
     isSkyDrawn: false,
+    // An asset viewer shows the asset as it is dressed: no toolbar there takes its textures off.
+    isTextured: true,
     tonemapScale: 1,
   };
 }

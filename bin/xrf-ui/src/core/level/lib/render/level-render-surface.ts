@@ -1,12 +1,8 @@
 import { ERendererDraw, IRendererSurface, TRendererColor } from "@xrf/renderer";
-import { Nullable } from "@xrf/types";
+import { Maybe } from "@xrf/types";
 
 import { SectorSurface } from "@/core/ipc/types/xrf-visual";
-import {
-  ILevelSurfaceBump,
-  ILevelSurfaceDetail,
-  ILevelSurfaceRender,
-} from "@/core/level/lib/surface/level-surface-render";
+import { ILevelSurfaceRender } from "@/core/level/lib/surface/level-surface-render";
 
 /** Turns of the golden angle, which spreads consecutive shader ids rather than grouping them into near hues. */
 const HUE_STEP: number = 137.508;
@@ -26,30 +22,26 @@ export function isLevelImpostorSurface(surface: SectorSurface): boolean {
 }
 
 /**
- * One shader table entry, as the renderer draws it.
+ * One shader table entry, as the renderer draws it: with every texture it binds, whether the settings draw them or not.
  *
  * @param surface - What the level's table names for it.
  * @param render - What its blender compiles to.
- * @param isTextured - Whether surfaces draw their textures.
  * @returns The surface.
  */
-export function toLevelSurface(
-  surface: SectorSurface,
-  render: ILevelSurfaceRender,
-  isTextured: boolean
-): IRendererSurface {
-  const base: Nullable<string> = isTextured ? surface.textureName : null;
-  const detail: Nullable<ILevelSurfaceDetail> = isTextured ? render.detail : null;
-  const bump: Nullable<ILevelSurfaceBump> = isTextured ? render.bump : null;
+export function toLevelSurface(surface: SectorSurface, render: ILevelSurfaceRender): IRendererSurface {
+  const base: Maybe<string> = surface.textureName ?? undefined;
+  const { detail, bump } = render;
+  // The entry's own colour, drawn without textures, so a level with them off is still read surface by surface.
+  const color: TRendererColor = toLevelSurfaceColor(surface.shaderId);
 
   if (isLevelImpostorSurface(surface)) {
     return {
-      color: base ? undefined : toLevelSurfaceColor(surface.shaderId),
+      color,
       draw: ERendererDraw.OPAQUE,
       isImpostor: true,
       textures: {
-        base: base ?? undefined,
-        hemi: surface.textureName ? `${surface.textureName}${LEVEL_IMPOSTOR_COMPANION_SUFFIX}` : undefined,
+        base,
+        hemi: base ? `${base}${LEVEL_IMPOSTOR_COMPANION_SUFFIX}` : undefined,
       },
     };
   }
@@ -58,14 +50,14 @@ export function toLevelSurface(
     const water = render.waterTextures;
 
     return {
-      color: base ? undefined : toLevelSurfaceColor(surface.shaderId),
+      color,
       draw: render.draw,
       isLit: render.isLit,
       textures: {
         // The script's own base, which is the water's colour and the mix of its reflection, over the row's.
-        base: isTextured ? (water.base ?? base ?? undefined) : undefined,
+        base: water.base ?? base,
         distortion: water.distortion ?? undefined,
-        foam: isTextured ? (water.foam ?? undefined) : undefined,
+        foam: water.foam ?? undefined,
         normal: water.normal ?? undefined,
       },
       water: render.water,
@@ -74,15 +66,14 @@ export function toLevelSurface(
 
   return {
     alphaReference: render.alphaReference,
-    // An untextured surface takes its entry's colour, so a level with textures off is still read surface by surface.
-    color: base ? undefined : toLevelSurfaceColor(surface.shaderId),
+    color,
     detailScale: detail?.scale,
     draw: render.draw,
     isLit: render.isLit,
     isWallmark: render.isWallmark || undefined,
     material: render.material,
     textures: {
-      base: base ?? undefined,
+      base,
       bump: bump?.bump,
       bumpCompanion: bump?.companion,
       detail: detail?.reference,

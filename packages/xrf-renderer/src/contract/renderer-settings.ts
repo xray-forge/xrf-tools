@@ -19,6 +19,11 @@ export interface IRendererSettings {
   tonemapScale: number;
   /** Whether light shades the frame; unlit, every surface shows its raw albedo, as the file itself reads. */
   isLit: boolean;
+  /**
+   * Whether surfaces draw their own textures; off, each draws its flat colour, its alpha kept, without its detail, bump
+   * pair or water foam.
+   */
+  isTextured: boolean;
   /** Whether bump pairs perturb the normal and supply gloss; off, every surface is shaded flat with `def_gloss`. */
   isBumped: boolean;
   /** Whether the sky is drawn behind the scene and the fog fades into it, as a level's is; off, the backdrop shows. */

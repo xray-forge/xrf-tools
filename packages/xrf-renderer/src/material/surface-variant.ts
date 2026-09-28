@@ -16,8 +16,10 @@ export interface ISurfaceVariant {
   isImpostor: boolean;
   /** Whether a blended surface is lit. */
   isLit: boolean;
-  /** Whether the base is multiplied by a colour. */
-  isTinted: boolean;
+  /** Whether it states a flat colour. */
+  hasColor: boolean;
+  /** Whether it binds a base, which its flat colour stands in for where it binds none. */
+  hasBase: boolean;
   /** Whether a forward surface is alpha tested. */
   isAlphaTested: boolean;
   hasDetail: boolean;
@@ -40,7 +42,9 @@ export function toSurfaceVariant(surface: IRendererSurface): ISurfaceVariant {
 
   return {
     draw: surface.draw,
+    hasBase: Boolean(textures.base),
     hasBump: Boolean(textures.bump && textures.bumpCompanion),
+    hasColor: Boolean(surface.color),
     hasDetail: Boolean(textures.detail),
     hasHemi: Boolean(textures.hemi),
     isAlphaTested: surface.alphaReference !== undefined,
@@ -48,7 +52,6 @@ export function toSurfaceVariant(surface: IRendererSurface): ISurfaceVariant {
     isSoftWater: surface.draw === ERendererDraw.WATER && Boolean(surface.water?.isSoft),
     anomalyWater: surface.draw === ERendererDraw.WATER ? (surface.water?.anomaly ?? null) : null,
     isLit: surface.isLit !== false,
-    isTinted: Boolean(surface.color),
     pass: toRendererPass(surface),
   };
 }
@@ -63,8 +66,9 @@ export function toSurfaceVariantKey(variant: ISurfaceVariant): string {
     variant.draw,
     variant.isImpostor,
     variant.isLit,
-    variant.isTinted,
+    variant.hasColor,
     variant.isAlphaTested,
+    variant.hasBase,
     variant.hasDetail,
     variant.hasBump,
     variant.hasHemi,

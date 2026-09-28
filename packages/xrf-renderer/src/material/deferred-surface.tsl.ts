@@ -27,7 +27,7 @@ export function toDeferredSurfaceShader(
   uniforms: RendererUniforms
 ): ISurfaceShader {
   if (variant.isImpostor) {
-    return toImpostorSurfaceShader(inputs, uniforms);
+    return toImpostorSurfaceShader(variant, inputs, uniforms);
   }
 
   const texel: ISurfaceTexel = toSurfaceTexel(variant, inputs, uniforms);
