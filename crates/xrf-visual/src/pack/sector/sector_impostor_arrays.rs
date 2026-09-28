@@ -2,8 +2,8 @@ use xrf_level::LevelVisual;
 use xrf_math::Vector3d;
 use xrf_ogf::{OgfLodDefinitionChunk, OgfLodVertex};
 
-use crate::data::sector::sector_impostor_group::SectorImpostorGroup;
-use crate::data::sector::sector_impostors::SectorImpostors;
+use crate::data::sector::impostor::sector_impostor_group::SectorImpostorGroup;
+use crate::data::sector::impostor::sector_impostors::SectorImpostors;
 use crate::pack::sector::sector_surface_table::SectorSurfaceTable;
 use crate::pack::visual_buffer_builder::VisualBufferBuilder;
 use crate::pack::visual_conversion::convert_vector;
@@ -46,8 +46,8 @@ impl SectorImpostorArrays {
       radius,
     ));
 
-    for (index, facet) in definition.facets.iter().enumerate() {
-      let normal: Vector3d = convert_vector(&definition.get_facet_normal(index));
+    for facet in &definition.facets {
+      let normal: Vector3d = convert_vector(&facet.get_normal());
 
       self.normals.extend_from_slice(&[normal.x, normal.y, normal.z, 0.0]);
 

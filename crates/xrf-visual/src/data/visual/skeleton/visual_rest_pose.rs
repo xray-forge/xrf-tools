@@ -1,7 +1,4 @@
-use xrf_ogf::OgfFile;
-
 use crate::data::visual::skeleton::visual_transform::VisualTransform;
-use crate::pack::visual::visual_skeleton::convert_bones;
 
 /// Where each bone of a visual stands while the visual stands still, in model and renderer space: the pose a spawned
 /// object is placed in, its `idle` cycle's first frame where it plays one, its bind pose otherwise.
@@ -14,22 +11,6 @@ pub struct VisualRestPose {
 }
 
 impl VisualRestPose {
-  /// The bind pose, or `None` for a visual with no bones, or none it can resolve.
-  pub fn of_bind(file: &OgfFile) -> Option<Self> {
-    let bones = convert_bones(
-      &file.bones.as_ref()?.bones,
-      file.ik_data.as_ref().map(|it| it.bones.as_slice()),
-    );
-
-    Self::of(
-      bones.iter().map(|it| it.name.clone()).collect(),
-      bones
-        .iter()
-        .map(|it| it.bind_transform.clone())
-        .collect::<Option<Vec<_>>>()?,
-    )
-  }
-
   /// A pose from transforms twelve floats a bone, basis then translation, as a baked motion's frame holds them.
   pub fn of_floats(names: Vec<String>, floats: &[f32]) -> Option<Self> {
     let transforms: Vec<VisualTransform> = floats
@@ -40,7 +21,7 @@ impl VisualRestPose {
       .map(VisualTransform::from_floats)
       .collect();
 
-    Self::of(names, transforms)
+    Self::new(names, transforms)
   }
 
   /// Its transforms as twelve floats a bone, basis then translation, the layout [`Self::of_floats`] reads.
@@ -55,7 +36,8 @@ impl VisualRestPose {
     self.transforms.get(index)
   }
 
-  fn of(names: Vec<String>, transforms: Vec<VisualTransform>) -> Option<Self> {
+  /// A pose of one transform a bone, or `None` for one naming no bone or naming them unevenly.
+  pub(crate) fn new(names: Vec<String>, transforms: Vec<VisualTransform>) -> Option<Self> {
     (names.len() == transforms.len() && !names.is_empty()).then_some(Self { names, transforms })
   }
 }

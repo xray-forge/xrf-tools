@@ -170,7 +170,18 @@ pub(crate) fn new_progressive_drawable(
   index_count: u32,
   windows: &[Window],
 ) -> Vec<u8> {
-  let mut bytes: Vec<u8> = new_drawable(shader_id, 0, vertex_count, 0, index_count);
+  new_progressive_drawable_from(shader_id, vertex_count, 0, index_count, windows)
+}
+
+/// The same, its indices stored from `index_base` of the shared buffer.
+pub(crate) fn new_progressive_drawable_from(
+  shader_id: u16,
+  vertex_count: u32,
+  index_base: u32,
+  index_count: u32,
+  windows: &[Window],
+) -> Vec<u8> {
+  let mut bytes: Vec<u8> = new_drawable(shader_id, 0, vertex_count, index_base, index_count);
   let mut data: Vec<u8> = vec![0u8; 16];
 
   data.extend_from_slice(&(windows.len() as u32).to_le_bytes());

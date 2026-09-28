@@ -1,4 +1,5 @@
 use std::collections::BTreeMap;
+use std::collections::btree_map::Entry;
 
 use byteorder::ByteOrder;
 use xrf_chunk::ChunkDataSource;
@@ -7,13 +8,13 @@ use xrf_level::{
   LevelGeomSource, LevelSectorComposition, LevelShadersChunk, LevelVertexLayout, LevelVertexPayload, LevelVisual,
   LevelVisualsChunk,
 };
-use xrf_ogf::OgfGeometryContainerChunk;
+use xrf_ogf::{OgfGeometryContainerChunk, OgfLodDefinitionChunk, OgfSwiContainerChunk, OgfSwiDataChunk};
 
+use crate::data::sector::instance::sector_instance_group::SectorInstanceGroup;
+use crate::data::sector::instance::sector_progressive::SectorProgressive;
 use crate::data::sector::sector_attributes::SectorAttributes;
 use crate::data::sector::sector_description::SectorDescription;
 use crate::data::sector::sector_geometry::SectorGeometry;
-use crate::data::sector::sector_instance_group::SectorInstanceGroup;
-use crate::data::sector::sector_progressive::SectorProgressive;
 use crate::data::sector::sector_section::SectorSection;
 use crate::data::sector::sector_skip::SectorSkip;
 use crate::data::visual::bounds::visual_bounds::VisualBounds;
@@ -21,19 +22,20 @@ use crate::data::visual::geometry::visual_clusters::VisualClusters;
 use crate::data::visual::geometry::visual_draw_range::VisualDrawRange;
 use crate::data::visual::geometry::visual_section::VisualSection;
 use crate::data::visual::geometry::visual_skip_cause::VisualSkipCause;
-use crate::pack::sector::sector_gathering::SectorGathering;
+use crate::pack::sector::gathering::sector_gathering::SectorGathering;
+use crate::pack::sector::gathering::sector_index_range::SectorIndexRange;
+use crate::pack::sector::gathering::sector_instance_gathering::SectorInstanceGathering;
+use crate::pack::sector::gathering::sector_instance_key::SectorInstanceKey;
+use crate::pack::sector::gathering::sector_section_gathering::SectorSectionGathering;
+use crate::pack::sector::gathering::sector_vertex_range::SectorVertexRange;
 use crate::pack::sector::sector_impostor_arrays::SectorImpostorArrays;
-use crate::pack::sector::sector_instance_gathering::SectorInstanceGathering;
-use crate::pack::sector::sector_instance_key::SectorInstanceKey;
 use crate::pack::sector::sector_package::SectorPackage;
-use crate::pack::sector::sector_section_gathering::SectorSectionGathering;
 use crate::pack::sector::sector_surface_table::SectorSurfaceTable;
 use crate::pack::sector::sector_vertex_arrays::SectorVertexArrays;
-use crate::pack::sector::sector_vertex_range::SectorVertexRange;
-use crate::pack::sector::sector_window::SectorWindow;
 use crate::pack::visual_buffer_builder::VisualBufferBuilder;
 use crate::pack::visual_cluster_table::VisualClusterTable;
-use crate::pack::visual_conversion::{convert_placement, convert_tree_hemi, reverse_triangle_winding};
+use crate::pack::visual_conversion::{convert_placement, convert_tree_hemi};
+use crate::pack::visual_index_window::VisualIndexWindow;
 
 /// Packs one sector's drawables into the single buffer a renderer draws it from.
 pub struct SectorPacker<'a, D: ChunkDataSource> {
@@ -74,7 +76,8 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
     let mut sections: BTreeMap<u16, SectorSectionGathering> = BTreeMap::new();
     let mut gathered: BTreeMap<SectorInstanceKey, SectorInstanceGathering> = BTreeMap::new();
     let mut skipped: Vec<SectorSkip> = Vec::new();
-    let (impostors, parents): (SectorImpostorArrays, BTreeMap<u32, u32>) = self.gather_impostors(composition);
+    let (impostors, parents): (SectorImpostorArrays, BTreeMap<u32, u32>) =
+      self.gather_impostors(composition, &mut skipped);
 
     for drawable in &composition.drawables {
       let Some((visual, container)) = Self::get_drawable(self.visuals, *drawable) else {
@@ -84,13 +87,22 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
       // A visual the level places is an instance of a mesh rather than geometry of its own: the mesh is packed once
       // below and stood in every place that names it.
       if let Some(tree) = &visual.tree {
-        let gathering: &mut SectorInstanceGathering = gathered
-          .entry(SectorInstanceKey::of(container, visual.header.shader_id))
-          .or_default();
+        // Every place of one mesh draws the windows of the first to name it.
+        let gathering: &mut SectorInstanceGathering =
+          match gathered.entry(SectorInstanceKey::of(container, visual.header.shader_id)) {
+            Entry::Occupied(entry) => entry.into_mut(),
+            Entry::Vacant(entry) => match self.get_windows(visual) {
+              Ok(windows) => entry.insert(SectorInstanceGathering {
+                windows,
+                ..SectorInstanceGathering::default()
+              }),
+              Err(error) => {
+                skipped.push(Self::skip(*drawable, &error));
 
-        if gathering.drawables.is_empty() {
-          gathering.windows = self.get_windows(visual);
-        }
+                continue;
+              }
+            },
+          };
 
         gathering.drawables.push(*drawable);
         gathering.placements.push(convert_placement(&tree.transform));
@@ -102,8 +114,15 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
         continue;
       }
 
-      let base: u32 = match self.pack_range::<T>(container, &mut arrays, &mut packed) {
-        Ok(base) => base,
+      // A progressive mesh's indices are every window laid end to end; baked into a section it draws the whole detail,
+      // its first window, since a section of many visuals has one range.
+      let packed_window: XrfResult<(VisualIndexWindow, u32)> = self.get_first_window(visual).and_then(|window| {
+        let base: u32 = self.pack_range::<T>(container, &mut arrays, &mut packed)?;
+
+        Ok((window.unwrap_or(VisualIndexWindow::whole(container.index_count)), base))
+      });
+      let (window, base): (VisualIndexWindow, u32) = match packed_window {
+        Ok(packed) => packed,
         Err(error) => {
           skipped.push(Self::skip(*drawable, &error));
 
@@ -111,17 +130,7 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
         }
       };
 
-      // A progressive mesh's indices are every window laid end to end; baked into a section it draws the whole detail,
-      // its first window, since a section of many visuals has one range.
-      let window: SectorWindow = self
-        .get_windows(visual)
-        .and_then(|windows| windows.first().copied())
-        .unwrap_or(SectorWindow {
-          offset: 0,
-          triangles: container.index_count / 3,
-        });
-
-      match self.read_indices::<T>(container, base, window) {
+      match SectorIndexRange::of(container).read_window::<T, D>(self.source, window, container.vertex_count, base) {
         Ok(indices) => {
           let gathering: &mut SectorSectionGathering = sections.entry(visual.header.shader_id).or_default();
 
@@ -145,34 +154,38 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
   }
 
   /// The impostors of the sector's `MT_LOD` visuals, a surface's contiguous, and which impostor each tree they compose
-  /// belongs to, by the tree's index in the visuals run.
-  fn gather_impostors(&self, composition: &LevelSectorComposition) -> (SectorImpostorArrays, BTreeMap<u32, u32>) {
-    let mut lods: Vec<(u16, u32)> = composition
-      .hierarchies
-      .iter()
-      .filter_map(|index| {
-        let visual: &LevelVisual = self.visuals.visuals.get(*index as usize)?;
+  /// belongs to, by the tree's index in the visuals run. A visual whose impostor cannot be read is left out, and its
+  /// trees stand without one.
+  fn gather_impostors(
+    &self,
+    composition: &LevelSectorComposition,
+    skipped: &mut Vec<SectorSkip>,
+  ) -> (SectorImpostorArrays, BTreeMap<u32, u32>) {
+    let mut lods: Vec<(u16, u32, &LevelVisual, &OgfLodDefinitionChunk)> = Vec::new();
 
-        visual.lod.as_ref().map(|_| (visual.header.shader_id, *index))
-      })
-      .collect();
+    for index in &composition.hierarchies {
+      let Some(visual) = self.visuals.visuals.get(*index as usize) else {
+        continue;
+      };
+
+      match &visual.lod {
+        Some(Ok(definition)) => lods.push((visual.header.shader_id, *index, visual, definition)),
+        Some(Err(error)) => skipped.push(Self::skip(*index, &Self::unreadable("impostor", error))),
+        None => {}
+      }
+    }
+
     let mut arrays: SectorImpostorArrays = SectorImpostorArrays::default();
     let mut parents: BTreeMap<u32, u32> = BTreeMap::new();
 
-    lods.sort_unstable();
+    lods.sort_unstable_by_key(|(shader_id, index, _, _)| (*shader_id, *index));
 
-    for (_, index) in lods {
-      let visual: &LevelVisual = &self.visuals.visuals[index as usize];
-
+    for (_, _, visual, definition) in lods {
       for child in &visual.children {
         parents.insert(*child, arrays.len());
       }
 
-      arrays.push(
-        visual,
-        visual.lod.as_ref().expect("gathered for its impostor"),
-        &self.surfaces,
-      );
+      arrays.push(visual, definition, &self.surfaces);
     }
 
     (arrays, parents)
@@ -238,38 +251,6 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
     packed.insert(range, base);
 
     Ok(base)
-  }
-
-  /// Reads the window of a drawable's indices it draws and moves them onto the vertices it was packed at.
-  fn read_indices<T: ByteOrder>(
-    &self,
-    container: &OgfGeometryContainerChunk,
-    base: u32,
-    window: SectorWindow,
-  ) -> XrfResult<Vec<u32>> {
-    Self::check_windows(container.index_count, &[window])?;
-
-    let indices: Vec<u16> = self.source.read_indices::<T>(
-      container.index_buffer_id,
-      container.index_base + window.offset,
-      window.get_index_count(),
-    )?;
-
-    if let Some(stray) = indices
-      .iter()
-      .find(|index| u32::from(**index) >= container.vertex_count)
-    {
-      return Err(XrfError::new_invalid_error(format!(
-        "draws index {stray}, past the {} vertices it declares",
-        container.vertex_count
-      )));
-    }
-
-    let mut rebased: Vec<u32> = indices.iter().map(|index| base + u32::from(*index)).collect();
-
-    reverse_triangle_winding(&mut rebased);
-
-    Ok(rebased)
   }
 
   /// Writes the arrays and the grouped indices into one buffer and describes what landed where.
@@ -379,27 +360,19 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
         .source
         .read_vertex_payload(key.vertices.buffer, key.vertices.base, key.vertices.count)?;
     let mut arrays: SectorVertexArrays = SectorVertexArrays::new(
-      SectorAttributes::of(&payload.layout).intersect(wanted),
-      SectorVertexArrays::uv_components_of(&payload.layout),
+      SectorAttributes::of(payload.get_layout()).intersect(wanted),
+      SectorVertexArrays::uv_components_of(payload.get_layout()),
     );
 
     // Packed unplaced: the mesh is in its own space, and each instance's transform stands a copy of it.
     arrays.push::<T>(&payload)?;
 
-    let (window, mut progressive): (SectorWindow, Option<SectorProgressive>) =
-      Self::get_instance_detail(key.index_count, gathering.windows.as_deref())?;
-    let mut indices: Vec<u32> = self
-      .source
-      .read_indices::<T>(
-        key.index_buffer,
-        key.index_base + window.offset,
-        window.get_index_count(),
-      )?
-      .iter()
-      .map(|index| u32::from(*index))
-      .collect();
-
-    reverse_triangle_winding(&mut indices);
+    let (window, mut progressive): (VisualIndexWindow, Option<SectorProgressive>) =
+      Self::get_instance_detail(key.indices.count, gathering.windows.as_deref())?;
+    // Onto nought: the mesh is packed alone.
+    let indices: Vec<u32> = key
+      .indices
+      .read_window::<T, D>(self.source, window, key.vertices.count, 0)?;
 
     let mut table: VisualClusterTable = VisualClusterTable::default();
     // A place draws its band's window, or the whole mesh: the whole detail is band nought.
@@ -456,33 +429,68 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
     })
   }
 
-  /// A progressive visual's slide windows, the whole detail first: its own, or the level's table it names.
-  fn get_windows(&self, visual: &LevelVisual) -> Option<Vec<SectorWindow>> {
-    let windows: Vec<SectorWindow> = if let Some(swi) = &visual.swi {
-      swi
-        .windows
-        .iter()
-        .map(|window| SectorWindow {
-          offset: window.offset,
-          triangles: u32::from(window.num_tris),
-        })
-        .collect()
-    } else {
+  /// A progressive visual's slide windows, the whole detail first, or `None` for a visual of one detail.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the visual's windows, or which table of the level's it draws them from, cannot be read.
+  fn get_windows(&self, visual: &LevelVisual) -> XrfResult<Option<Vec<VisualIndexWindow>>> {
+    Ok(
+      self
+        .with_windows(visual, |windows| windows.collect::<Vec<VisualIndexWindow>>())?
+        .filter(|windows| !windows.is_empty()),
+    )
+  }
+
+  /// A progressive visual's first window, its whole detail, without collecting the rest.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the visual's windows cannot be read.
+  fn get_first_window(&self, visual: &LevelVisual) -> XrfResult<Option<VisualIndexWindow>> {
+    Ok(self.with_windows(visual, |windows| windows.next())?.flatten())
+  }
+
+  /// Hands a visual's slide windows to `take`: its own, or those of the level's table it names; `None` for a visual
+  /// naming none.
+  fn with_windows<R>(
+    &self,
+    visual: &LevelVisual,
+    take: impl FnOnce(&mut dyn Iterator<Item = VisualIndexWindow>) -> R,
+  ) -> XrfResult<Option<R>> {
+    if let Some(swi) = &visual.swi {
+      let swi: &OgfSwiDataChunk = swi.as_ref().map_err(|error| Self::unreadable("slide windows", error))?;
+
+      return Ok(Some(take(
+        &mut swi
+          .windows
+          .iter()
+          .map(|window| VisualIndexWindow::of_triangles(window.offset, window.num_tris)),
+      )));
+    }
+
+    let Some(container) = &visual.swi_container else {
+      return Ok(None);
+    };
+    let container: &OgfSwiContainerChunk = container
+      .as_ref()
+      .map_err(|error| Self::unreadable("slide window table", error))?;
+
+    Ok(
       self
         .source
         .get_file()
         .slide_windows
-        .get(visual.swi_container.as_ref()?.ext_swib_index as usize)?
-        .windows
-        .iter()
-        .map(|window| SectorWindow {
-          offset: window.offset,
-          triangles: u32::from(window.triangles),
-        })
-        .collect()
-    };
-
-    (!windows.is_empty()).then_some(windows)
+        .get(container.ext_swib_index as usize)
+        .map(|table| {
+          take(
+            &mut table
+              .windows
+              .iter()
+              .map(|window| VisualIndexWindow::of_triangles(window.offset, window.triangles)),
+          )
+        }),
+    )
   }
 
   /// What of a tree mesh's indices is packed, and the bands its places pick among: the whole run of its windows with
@@ -493,18 +501,17 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
   /// Returns an error when a window reaches past the mesh's indices or does not start on a triangle.
   fn get_instance_detail(
     index_count: u32,
-    windows: Option<&[SectorWindow]>,
-  ) -> XrfResult<(SectorWindow, Option<SectorProgressive>)> {
-    let whole: SectorWindow = SectorWindow {
-      offset: 0,
-      triangles: index_count / 3,
-    };
+    windows: Option<&[VisualIndexWindow]>,
+  ) -> XrfResult<(VisualIndexWindow, Option<SectorProgressive>)> {
+    let whole: VisualIndexWindow = VisualIndexWindow::whole(index_count);
 
     let Some(windows) = windows else {
       return Ok((whole, None));
     };
 
-    Self::check_windows(index_count, windows)?;
+    for window in windows {
+      window.check(index_count)?;
+    }
 
     if windows.len() == 1 {
       return Ok((windows[0], None));
@@ -518,10 +525,10 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
       Some(SectorProgressive {
         bands: (0..bands)
           .map(|band| {
-            let window: SectorWindow = windows[SectorProgressive::get_band_window(band, bands, count) as usize];
+            let window: VisualIndexWindow = windows[SectorProgressive::get_band_window(band, bands, count) as usize];
 
             VisualDrawRange {
-              count: window.get_index_count(),
+              count: window.count,
               start: window.offset,
             }
           })
@@ -532,29 +539,16 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
     ))
   }
 
-  /// Checks that every window lies within the indices it slides over, on whole triangles.
-  ///
-  /// # Errors
-  ///
-  /// Returns an error naming the first window that does not.
-  fn check_windows(index_count: u32, windows: &[SectorWindow]) -> XrfResult {
-    match windows
-      .iter()
-      .find(|window| window.offset % 3 != 0 || window.offset + window.get_index_count() > index_count)
-    {
-      Some(window) => Err(XrfError::new_invalid_error(format!(
-        "draws a window of {} triangles from index {}, outside the {index_count} indices it declares",
-        window.triangles, window.offset
-      ))),
-      None => Ok(()),
-    }
-  }
-
   /// Records every instance of a mesh that could not be read, since none of them can be drawn without it.
   fn skip_all(gathering: &SectorInstanceGathering, error: &XrfError, skipped: &mut Vec<SectorSkip>) {
     for drawable in &gathering.drawables {
       skipped.push(Self::skip(*drawable, error));
     }
+  }
+
+  /// Why a part of a visual the file carries, which the level was read regardless of, cannot be drawn.
+  fn unreadable(part: &str, error: &XrfError) -> XrfError {
+    XrfError::new_invalid_error(format!("carries {part} that could not be read: {error}"))
   }
 
   /// Grades a drawable that produced nothing by whether the geometry is stored in a form the reader handles.

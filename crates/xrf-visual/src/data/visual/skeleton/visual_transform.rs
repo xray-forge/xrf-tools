@@ -1,6 +1,8 @@
 use serde::Serialize;
 use xrf_math::Vector3d;
 
+use crate::data::visual::skeleton::bind_transform::BindTransform;
+
 /// One transform in renderer space: three basis vectors and a translation.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Serialize)]
@@ -15,6 +17,11 @@ pub struct VisualTransform {
 impl VisualTransform {
   /// Floats one transform takes: its basis, then its translation.
   pub const FLOATS: usize = 12;
+
+  /// Where a spawned object stands, `CGameObject::net_Spawn`'s `XFORM`: `setXYZ(o_Angle)` at `o_Position`.
+  pub fn of_spawn(position: &Vector3d, angle: &Vector3d) -> Self {
+    BindTransform::from_angle(angle, position).to_renderer_space()
+  }
 
   /// A transform out of its twelve floats, basis then translation, as a baked motion's frame holds one.
   pub fn from_floats(floats: &[f32; Self::FLOATS]) -> Self {

@@ -3,6 +3,7 @@ use xrf_ogf::{OgfFile, OgfIkDataChunk};
 use crate::data::visual::skeleton::visual_rest_pose::VisualRestPose;
 use crate::data::visual::skeleton::visual_transform::VisualTransform;
 use crate::pack::tests::fixtures::{MODEL_TYPE_SKELETON_ANIM, bind, bones, vector, visual};
+use crate::pack::visual::visual_skeleton::VisualSkeleton;
 
 /// Two bones, the second a metre above the first.
 fn two_bones(binds: usize) -> OgfFile {
@@ -25,7 +26,7 @@ fn floats(bones: usize) -> Vec<f32> {
 
 #[test]
 fn finds_a_bone_by_its_name_without_regard_to_case() {
-  let pose: VisualRestPose = VisualRestPose::of_bind(&two_bones(2)).expect("the bind pose to resolve");
+  let pose: VisualRestPose = VisualSkeleton::get_rest_pose(&two_bones(2)).expect("the bind pose to resolve");
 
   assert_eq!(pose.find("bone_lamp").map(|it| it.c.y), Some(1.0));
   assert!(pose.find("bone_missing").is_none());
@@ -33,7 +34,7 @@ fn finds_a_bone_by_its_name_without_regard_to_case() {
 
 #[test]
 fn stands_in_no_bind_pose_where_the_bind_records_do_not_match_the_bones() {
-  assert!(VisualRestPose::of_bind(&two_bones(1)).is_none());
+  assert!(VisualSkeleton::get_rest_pose(&two_bones(1)).is_none());
 }
 
 #[test]

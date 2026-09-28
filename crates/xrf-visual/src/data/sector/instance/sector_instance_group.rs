@@ -1,7 +1,7 @@
 use serde::Serialize;
 
+use crate::data::sector::instance::sector_progressive::SectorProgressive;
 use crate::data::sector::sector_geometry::SectorGeometry;
-use crate::data::sector::sector_progressive::SectorProgressive;
 use crate::data::sector::sector_surface::SectorSurface;
 use crate::data::visual::geometry::visual_draw_range::VisualDrawRange;
 use crate::data::visual::geometry::visual_section::VisualSection;

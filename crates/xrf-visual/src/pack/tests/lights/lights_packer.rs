@@ -17,6 +17,7 @@ use crate::data::lights::lights_description::LightsDescription;
 use crate::data::visual::skeleton::visual_rest_pose::VisualRestPose;
 use crate::pack::lights::lights_packer::LightsPacker;
 use crate::pack::tests::fixtures::{MODEL_TYPE_SKELETON_ANIM, bind, bones, vector, visual};
+use crate::pack::visual::visual_skeleton::VisualSkeleton;
 
 const FLAG_CAST_SHADOW: u16 = AlifeObjectHangingLamp::FLAG_CAST_SHADOW;
 const FLAG_R2: u16 = AlifeObjectHangingLamp::FLAG_R2;
@@ -123,7 +124,7 @@ fn lamp_visual() -> OgfFile {
 }
 
 fn lamp_pose() -> Arc<VisualRestPose> {
-  Arc::new(VisualRestPose::of_bind(&lamp_visual()).expect("the lamp's bind pose to resolve"))
+  Arc::new(VisualSkeleton::get_rest_pose(&lamp_visual()).expect("the lamp's bind pose to resolve"))
 }
 
 fn pack_one(object: &AlifeObject, animations: Option<&LightAnimFile>) -> LightsDescription {
@@ -443,6 +444,22 @@ fn lights_a_zone_its_section_lights_over_it_by_its_animation_alone() {
   assert_eq!(fire.animator_scale, 1.0 / 255.0);
   // `idle_light_shadow` is on unless the section says otherwise.
   assert!(fire.is_shadowed);
+}
+
+// The engine refuses a zone whose animation `LALib` lacks, and a level read without `lanims.xr` lacks every one.
+#[test]
+fn lights_no_zone_without_a_library_to_find_its_animation_in() {
+  let ltx: Ltx = sections();
+  let mut packer: LightsPacker = LightsPacker::new(None).with_sections(&ltx);
+  let mut zone: AlifeObject = object("campfire", lamp(FLAG_R2, 0));
+
+  zone.section = String::from("campfire");
+  packer.add_zone(&zone);
+
+  let description: LightsDescription = packer.pack();
+
+  assert!(description.lights.is_empty());
+  assert!(description.animators.is_empty());
 }
 
 #[test]

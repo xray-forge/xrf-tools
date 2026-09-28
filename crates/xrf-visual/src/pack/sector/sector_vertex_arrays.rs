@@ -1,6 +1,6 @@
 use byteorder::ByteOrder;
 use xrf_error::{XrfError, XrfResult};
-use xrf_level::{LevelVertexLayout, LevelVertexPayload};
+use xrf_level::{LevelVertex, LevelVertexLayout, LevelVertexPayload};
 use xrf_math::Vector3d;
 
 use crate::data::sector::sector_attributes::SectorAttributes;
@@ -28,11 +28,8 @@ pub(crate) struct SectorVertexArrays {
 }
 
 impl SectorVertexArrays {
-  /// Shorts a baked base coordinate takes a vertex, `SHORT2`.
-  pub const BAKED_UV_COMPONENTS: u32 = 2;
-
-  /// Shorts a tree's takes, `SHORT4`: the coordinate, then its wind terms.
-  pub const TREE_UV_COMPONENTS: u32 = 4;
+  /// Shorts a baked base coordinate takes a vertex.
+  pub const BAKED_UV_COMPONENTS: u32 = LevelVertexLayout::BASE_COORDINATE_SHORTS as u32;
 
   /// What a vertex whose declaration carries no such direction packs: as near no direction as a byte comes, and
   /// nothing riding in the fourth byte, which is exact for a coordinate's low byte.
@@ -41,14 +38,8 @@ impl SectorVertexArrays {
   /// What a vertex whose declaration carries no colour packs: no baked light, and the sun unoccluded.
   const NEUTRAL_COLOR: [u8; 4] = [0, 0, 0, 255];
 
-  /// Where a direction's z sits among its bytes, which `D3DCOLOR` stores blue, green, red.
-  const DIRECTION_Z: usize = 0;
-
-  /// Bytes one packed direction takes.
-  const DIRECTION_BYTES: usize = 4;
-
-  /// Shorts a lightmap coordinate takes a vertex.
-  const LIGHTMAP_COMPONENTS: usize = 2;
+  /// What a vertex whose declaration carries no lightmap coordinate packs.
+  const NEUTRAL_LIGHTMAP: [i16; 2] = [0, 0];
 
   pub fn new(attributes: SectorAttributes, uv_components: u32) -> Self {
     Self {
@@ -66,11 +57,7 @@ impl SectorVertexArrays {
 
   /// Shorts a base coordinate of this declaration takes a vertex.
   pub const fn uv_components_of(layout: &LevelVertexLayout) -> u32 {
-    if layout.is_tree() {
-      Self::TREE_UV_COMPONENTS
-    } else {
-      Self::BAKED_UV_COMPONENTS
-    }
+    layout.get_texture_coordinate_shorts() as u32
   }
 
   /// Vertices packed so far, which is the base the next range is rebased onto.
@@ -87,10 +74,13 @@ impl SectorVertexArrays {
   /// Returns an error, packing nothing, when the range stores its base coordinate in another width than the arrays
   /// do: a tree's four shorts cannot share one array with a baked surface's two.
   pub fn push<T: ByteOrder>(&mut self, payload: &LevelVertexPayload) -> XrfResult {
-    let layout: &LevelVertexLayout = &payload.layout;
-    let uv_offset: Option<u16> = layout.get_texture_coordinate_offset();
+    let layout: &LevelVertexLayout = payload.get_layout();
+    let uv_components: usize = self.uv_components as usize;
 
-    if self.attributes.uvs && uv_offset.is_some() && Self::uv_components_of(layout) != self.uv_components {
+    if self.attributes.uvs
+      && layout.get_texture_coordinate_offset().is_some()
+      && Self::uv_components_of(layout) != self.uv_components
+    {
       return Err(XrfError::new_not_implemented_error(format!(
         "stores its base coordinate as {} shorts beside geometry storing {}, which one mesh cannot draw both of",
         Self::uv_components_of(layout),
@@ -99,49 +89,37 @@ impl SectorVertexArrays {
     }
 
     for vertex in payload.vertices() {
-      let position: usize = layout.get_position_offset() as usize;
-
-      Self::push_vector(
-        &mut self.positions,
-        &convert_vector(&Vector3d {
-          x: T::read_f32(&vertex[position..position + 4]),
-          y: T::read_f32(&vertex[position + 4..position + 8]),
-          z: T::read_f32(&vertex[position + 8..position + 12]),
-        }),
-      );
+      Self::push_vector(&mut self.positions, &convert_vector(&vertex.get_position::<T>()));
 
       if self.attributes.normals {
-        Self::push_direction(&mut self.normals, vertex, layout.get_normal_offset());
+        Self::push_direction(&mut self.normals, vertex.get_normal());
       }
 
       if self.attributes.tangents {
-        Self::push_direction(&mut self.tangents, vertex, layout.get_tangent_offset());
+        Self::push_direction(&mut self.tangents, vertex.get_tangent());
       }
 
       if self.attributes.binormals {
-        Self::push_direction(&mut self.binormals, vertex, layout.get_binormal_offset());
+        Self::push_direction(&mut self.binormals, vertex.get_binormal());
       }
 
       if self.attributes.uvs {
-        Self::push_shorts::<T>(&mut self.uvs, vertex, uv_offset, self.uv_components as usize);
+        let shorts: [i16; LevelVertexLayout::TREE_COORDINATE_SHORTS] =
+          vertex.get_texture_coordinate::<T>().unwrap_or_default();
+
+        self.uvs.extend_from_slice(&shorts[..uv_components]);
       }
 
       if self.attributes.lightmap_uvs {
-        Self::push_shorts::<T>(
-          &mut self.lightmap_uvs,
-          vertex,
-          layout.get_lightmap_coordinate_offset(),
-          Self::LIGHTMAP_COMPONENTS,
-        );
+        self
+          .lightmap_uvs
+          .extend_from_slice(&vertex.get_lightmap_coordinate::<T>().unwrap_or(Self::NEUTRAL_LIGHTMAP));
       }
 
       if self.attributes.colors {
-        match layout.get_color_offset() {
-          Some(offset) => self
-            .colors
-            .extend_from_slice(&vertex[offset as usize..offset as usize + 4]),
-          None => self.colors.extend_from_slice(&Self::NEUTRAL_COLOR),
-        }
+        self
+          .colors
+          .extend_from_slice(&vertex.get_color().unwrap_or(Self::NEUTRAL_COLOR));
       }
     }
 
@@ -205,33 +183,15 @@ impl SectorVertexArrays {
   }
 
   /// A direction's four bytes, its z negated into renderer space, or the neutral one where the vertex carries none.
-  fn push_direction(values: &mut Vec<u8>, vertex: &[u8], offset: Option<u16>) {
-    let Some(offset) = offset else {
+  fn push_direction(values: &mut Vec<u8>, direction: Option<[u8; 4]>) {
+    let Some(mut bytes) = direction else {
       values.extend_from_slice(&Self::NEUTRAL_DIRECTION);
 
       return;
     };
 
-    let at: usize = offset as usize;
-    let mut bytes: [u8; 4] = [0; 4];
-
-    bytes.copy_from_slice(&vertex[at..at + Self::DIRECTION_BYTES]);
-    bytes[Self::DIRECTION_Z] = u8::MAX - bytes[Self::DIRECTION_Z];
+    bytes[LevelVertex::DIRECTION_Z] = u8::MAX - bytes[LevelVertex::DIRECTION_Z];
     values.extend_from_slice(&bytes);
-  }
-
-  /// A coordinate's shorts as stored, or zeroes where the vertex carries none.
-  fn push_shorts<T: ByteOrder>(values: &mut Vec<i16>, vertex: &[u8], offset: Option<u16>, count: usize) {
-    match offset {
-      Some(offset) => {
-        for index in 0..count {
-          let at: usize = offset as usize + index * 2;
-
-          values.push(T::read_i16(&vertex[at..at + 2]));
-        }
-      }
-      None => values.extend(std::iter::repeat_n(0, count)),
-    }
   }
 
   fn push_vector(values: &mut Vec<f32>, vector: &Vector3d) {

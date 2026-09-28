@@ -11,11 +11,12 @@ use crate::data::visual::geometry::visual_submesh_content::VisualSubmeshContent;
 use crate::data::visual::visual_description::VisualDescription;
 use crate::pack::visual::flat_skin::FlatSkin;
 use crate::pack::visual::visual_package::VisualPackage;
-use crate::pack::visual::visual_skeleton::convert_bones;
+use crate::pack::visual::visual_skeleton::VisualSkeleton;
 use crate::pack::visual::visual_skip::VisualSkip;
 use crate::pack::visual_buffer_builder::VisualBufferBuilder;
 use crate::pack::visual_cluster_table::VisualClusterTable;
 use crate::pack::visual_conversion::{convert_declared_bounds, convert_uvs, convert_vector, reverse_triangle_winding};
+use crate::pack::visual_index_window::VisualIndexWindow;
 
 /// Flattens a parsed OGF visual into renderer ready buffers.
 pub struct VisualPacker {}
@@ -61,7 +62,7 @@ impl VisualPacker {
       bones: file
         .bones
         .as_ref()
-        .map(|it| convert_bones(&it.bones, file.ik_data.as_ref().map(|ik| ik.bones.as_slice())))
+        .map(|it| VisualSkeleton::convert_bones(&it.bones, file.ik_data.as_ref().map(|ik| ik.bones.as_slice())))
         .unwrap_or_default(),
       motion_refs: file
         .kinematics
@@ -325,25 +326,12 @@ impl VisualPacker {
 
   /// Reject a range that leaves the index buffer or addresses a vertex the submesh does not have.
   fn assert_level_in_range(indices: &[u16], range: VisualDrawRange, vertex_count: usize) -> Result<(), String> {
-    let start: usize = range.start as usize;
-    let count: usize = range.count as usize;
-
-    if range.start as u64 + range.count as u64 > indices.len() as u64 {
-      return Err(format!(
-        "draws {count} indices from offset {start}, past the {} the index chunk holds",
-        indices.len()
-      ));
+    VisualIndexWindow {
+      count: range.count,
+      offset: range.start,
     }
-
-    match indices[start..start + count]
-      .iter()
-      .copied()
-      .find(|index| *index as usize >= vertex_count)
-    {
-      Some(index) => Err(format!(
-        "references vertex {index}, past the {vertex_count} the vertex chunk holds"
-      )),
-      None => Ok(()),
-    }
+    .select(indices, u32::try_from(vertex_count).unwrap_or(u32::MAX))
+    .map(|_| ())
+    .map_err(|fault| fault.to_string())
   }
 }

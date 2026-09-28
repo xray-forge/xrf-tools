@@ -1,8 +1,8 @@
 use serde::Serialize;
 
+use crate::data::sector::impostor::sector_impostors::SectorImpostors;
+use crate::data::sector::instance::sector_instance_group::SectorInstanceGroup;
 use crate::data::sector::sector_geometry::SectorGeometry;
-use crate::data::sector::sector_impostors::SectorImpostors;
-use crate::data::sector::sector_instance_group::SectorInstanceGroup;
 use crate::data::sector::sector_section::SectorSection;
 use crate::data::sector::sector_skip::SectorSkip;
 use crate::data::visual::bounds::visual_bounds::VisualBounds;

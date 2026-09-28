@@ -48,16 +48,16 @@ impl DetailsSlotBox {
       }
     }
 
-    let e0: [f32; 3] = subtract(v1, v0);
-    let e1: [f32; 3] = subtract(v2, v1);
-    let normal: [f32; 3] = cross(e0, e1);
+    let e0: [f32; 3] = Self::subtract(v1, v0);
+    let e1: [f32; 3] = Self::subtract(v2, v1);
+    let normal: [f32; 3] = Self::cross(e0, e1);
 
-    if !plane_box_overlap(normal, -dot(normal, v0), self.extents) {
+    if !Self::plane_box_overlap(normal, -Self::dot(normal, v0), self.extents) {
       return false;
     }
 
     // `mLeafVerts[0] - mLeafVerts[2]`, from the unmoved corners, which is the same edge.
-    let e2: [f32; 3] = subtract(v0, v2);
+    let e2: [f32; 3] = Self::subtract(v0, v2);
     // The corners each edge's three axes project, as `AXISTEST_X01`, `_X2`, `_Y02`, `_Y1`, `_Z12` and `_Z0` pick them.
     let axes: [EdgeAxes; 3] = [
       (e0, [v0, v2], [v0, v2], [v1, v2]),
@@ -71,9 +71,9 @@ impl DetailsSlotBox {
       let project_y = |v: [f32; 3]| edge[0] * v[2] - edge[2] * v[0];
       let project_z = |v: [f32; 3]| edge[1] * v[0] - edge[0] * v[1];
 
-      if is_separated(project_x(on_x[0]), project_x(on_x[1]), f_z * e_y + f_y * e_z)
-        || is_separated(project_y(on_y[0]), project_y(on_y[1]), f_z * e_x + f_x * e_z)
-        || is_separated(project_z(on_z[0]), project_z(on_z[1]), f_y * e_x + f_x * e_y)
+      if Self::is_separated(project_x(on_x[0]), project_x(on_x[1]), f_z * e_y + f_y * e_z)
+        || Self::is_separated(project_y(on_y[0]), project_y(on_y[1]), f_z * e_x + f_x * e_z)
+        || Self::is_separated(project_z(on_z[0]), project_z(on_z[1]), f_y * e_x + f_x * e_y)
       {
         return false;
       }
@@ -81,47 +81,47 @@ impl DetailsSlotBox {
 
     true
   }
-}
 
-/// Whether two projections of a triangle both miss the box's projection of that radius.
-fn is_separated(first: f32, second: f32, radius: f32) -> bool {
-  first.min(second) > radius || first.max(second) < -radius
-}
+  /// Whether two projections of a triangle both miss the box's projection of that radius.
+  fn is_separated(first: f32, second: f32, radius: f32) -> bool {
+    first.min(second) > radius || first.max(second) < -radius
+  }
 
-/// `planeBoxOverlap`: whether the plane `normal . x + d = 0` passes through the box about the origin.
-fn plane_box_overlap(normal: [f32; 3], d: f32, extents: [f32; 3]) -> bool {
-  let mut minimum: [f32; 3] = [0.0; 3];
-  let mut maximum: [f32; 3] = [0.0; 3];
+  /// `planeBoxOverlap`: whether the plane `normal . x + d = 0` passes through the box about the origin.
+  fn plane_box_overlap(normal: [f32; 3], d: f32, extents: [f32; 3]) -> bool {
+    let mut minimum: [f32; 3] = [0.0; 3];
+    let mut maximum: [f32; 3] = [0.0; 3];
 
-  for axis in 0..3 {
-    if normal[axis] > 0.0 {
-      minimum[axis] = -extents[axis];
-      maximum[axis] = extents[axis];
-    } else {
-      minimum[axis] = extents[axis];
-      maximum[axis] = -extents[axis];
+    for axis in 0..3 {
+      if normal[axis] > 0.0 {
+        minimum[axis] = -extents[axis];
+        maximum[axis] = extents[axis];
+      } else {
+        minimum[axis] = extents[axis];
+        maximum[axis] = -extents[axis];
+      }
     }
+
+    if Self::dot(normal, minimum) + d > 0.0 {
+      return false;
+    }
+
+    Self::dot(normal, maximum) + d >= 0.0
   }
 
-  if dot(normal, minimum) + d > 0.0 {
-    return false;
+  fn subtract(a: [f32; 3], b: [f32; 3]) -> [f32; 3] {
+    [a[0] - b[0], a[1] - b[1], a[2] - b[2]]
   }
 
-  dot(normal, maximum) + d >= 0.0
-}
+  fn cross(a: [f32; 3], b: [f32; 3]) -> [f32; 3] {
+    [
+      a[1] * b[2] - a[2] * b[1],
+      a[2] * b[0] - a[0] * b[2],
+      a[0] * b[1] - a[1] * b[0],
+    ]
+  }
 
-fn subtract(a: [f32; 3], b: [f32; 3]) -> [f32; 3] {
-  [a[0] - b[0], a[1] - b[1], a[2] - b[2]]
-}
-
-fn cross(a: [f32; 3], b: [f32; 3]) -> [f32; 3] {
-  [
-    a[1] * b[2] - a[2] * b[1],
-    a[2] * b[0] - a[0] * b[2],
-    a[0] * b[1] - a[1] * b[0],
-  ]
-}
-
-fn dot(a: [f32; 3], b: [f32; 3]) -> f32 {
-  a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
+  fn dot(a: [f32; 3], b: [f32; 3]) -> f32 {
+    a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
+  }
 }

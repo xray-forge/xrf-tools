@@ -498,13 +498,43 @@ fn skips_a_progressive_child_with_no_detail_table() {
 #[test]
 fn skips_a_progressive_child_whose_detail_level_leaves_the_index_buffer() {
   let child: OgfFile = OgfFile {
-    swi_data: Some(swi(vec![window(10, 2, 6)])),
+    swi_data: Some(swi(vec![window(9, 2, 6)])),
     ..progressive_child()
   };
 
   assert_eq!(
     skipped_reason(child),
-    "Detail level 0 draws 6 indices from offset 10, past the 12 the index chunk holds"
+    "Detail level 0 draws 6 indices from offset 9, past the 12 the index chunk holds"
+  );
+}
+
+#[test]
+fn skips_a_progressive_child_whose_detail_level_starts_inside_a_triangle() {
+  let child: OgfFile = OgfFile {
+    swi_data: Some(swi(vec![window(1, 2, 6)])),
+    ..progressive_child()
+  };
+
+  assert_eq!(
+    skipped_reason(child),
+    "Detail level 0 draws from offset 1, which starts no triangle"
+  );
+}
+
+#[test]
+fn skips_a_progressive_child_whose_detail_level_wraps_past_what_32_bits_hold() {
+  // An offset that wraps back inside the buffer when added in 32 bits is still past its end.
+  let child: OgfFile = OgfFile {
+    swi_data: Some(swi(vec![window(u32::MAX, 2, 6)])),
+    ..progressive_child()
+  };
+
+  assert_eq!(
+    skipped_reason(child),
+    format!(
+      "Detail level 0 draws 6 indices from offset {}, past the 12 the index chunk holds",
+      u32::MAX
+    )
   );
 }
 

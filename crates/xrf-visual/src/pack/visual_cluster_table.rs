@@ -8,6 +8,8 @@ use crate::pack::visual_buffer_builder::VisualBufferBuilder;
 pub struct VisualClusterTable {
   ranges: Vec<u32>,
   spheres: Vec<f32>,
+  /// The positions one cluster reaches, kept between clusters so cutting one allocates nothing.
+  points: Vec<[f32; 3]>,
 }
 
 impl VisualClusterTable {
@@ -39,7 +41,11 @@ impl VisualClusterTable {
       let run: &[u32] = &indices[at as usize..(at + length) as usize];
 
       self.ranges.extend([at, length / 3, drawable, 0]);
-      self.spheres.extend(Self::get_sphere(run, positions));
+      self.points.clear();
+      self
+        .points
+        .extend(run.iter().filter_map(|index| positions.get(*index as usize)));
+      self.spheres.extend(Self::get_sphere(&self.points));
       at += length;
     }
 
@@ -63,15 +69,9 @@ impl VisualClusterTable {
     }
   }
 
-  /// The smaller of two spheres holding a run's vertices: about the centre of the box they span, and Ritter's, grown
-  /// from the two farthest apart; nought for a run reaching none.
-  fn get_sphere(run: &[u32], positions: &[[f32; 3]]) -> [f32; 4] {
-    let points: Vec<[f32; 3]> = run
-      .iter()
-      .filter_map(|index| positions.get(*index as usize))
-      .copied()
-      .collect();
-
+  /// The smaller of two spheres holding a cluster's points: about the centre of the box they span, and Ritter's, grown
+  /// from the two farthest apart; nought for a cluster reaching none.
+  fn get_sphere(points: &[[f32; 3]]) -> [f32; 4] {
     let Some(first) = points.first() else {
       return [0.0; 4];
     };
@@ -79,7 +79,7 @@ impl VisualClusterTable {
     let mut min: [f32; 3] = *first;
     let mut max: [f32; 3] = *first;
 
-    for point in &points {
+    for point in points {
       for axis in 0..3 {
         min[axis] = min[axis].min(point[axis]);
         max[axis] = max[axis].max(point[axis]);
@@ -87,8 +87,8 @@ impl VisualClusterTable {
     }
 
     let boxed: [f32; 3] = [0, 1, 2].map(|axis| (min[axis] + max[axis]) / 2.0);
-    let boxed_radius: f32 = Self::get_reach(&points, boxed);
-    let (ritter, ritter_radius): ([f32; 3], f32) = Self::get_ritter(&points);
+    let boxed_radius: f32 = Self::get_reach(points, boxed);
+    let (ritter, ritter_radius): ([f32; 3], f32) = Self::get_ritter(points);
 
     if ritter_radius < boxed_radius {
       [ritter[0], ritter[1], ritter[2], ritter_radius]

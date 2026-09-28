@@ -12,11 +12,6 @@ pub(crate) struct BindTransform {
   pub(crate) c: Vector3d,
 }
 
-/// `CGameObject::net_Spawn`'s `XFORM`, in the renderer's space: `setXYZ(o_Angle)` at `o_Position`.
-pub fn to_spawn_transform(position: &Vector3d, angle: &Vector3d) -> VisualTransform {
-  BindTransform::from_angle(angle, position).to_renderer_space()
-}
-
 impl BindTransform {
   /// The transform a root bone composes against, which is what the engine walks down from.
   pub(crate) fn identity() -> Self {

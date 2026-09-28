@@ -1,6 +1,6 @@
 use serde::Serialize;
 
-use crate::data::sector::sector_impostor_group::SectorImpostorGroup;
+use crate::data::sector::impostor::sector_impostor_group::SectorImpostorGroup;
 use crate::data::visual::geometry::visual_section::VisualSection;
 
 /// The impostors of a sector's `MT_LOD` visuals: what the engine draws in place of a clump of trees seen from far

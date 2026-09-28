@@ -3,11 +3,11 @@ use xrf_ogf::{OgfBone, OgfBoneIkData};
 use xrf_skeleton::{SAMPLE_FPS, SkeletonBoneMotion, SkeletonMotion, SkeletonMotionDefinition, SkeletonPart};
 use xrf_spawn::XRayByteOrder;
 
+use crate::data::visual::skeleton::bind_transform::BindTransform;
 use crate::data::visual::skeleton::visual_transform::VisualTransform;
 use crate::pack::visual::motion::visual_motion_bake::VisualMotionBake;
 use crate::pack::visual::motion::visual_motion_pose::VisualMotionPose;
-use crate::pack::visual::visual_skeleton::resolve_parents;
-use crate::pack::visual::visual_transform::BindTransform;
+use crate::pack::visual::visual_skeleton::VisualSkeleton;
 
 /// Floats one baked bone transform occupies: three basis vectors and a translation.
 pub const FLOATS_PER_BONE: usize = VisualTransform::FLOATS;
@@ -42,7 +42,7 @@ pub fn bake_motion(
   // through `find_bone_id` (`SkeletonMotions.cpp:106`). Positional pairing would animate the wrong bones whenever a
   // partition orders them differently from the bone chunk, which is the normal case.
   let animated: Vec<Option<usize>> = resolve_animated_bones(bones, parts, runs.len());
-  let parents: Vec<Option<usize>> = resolve_parents(bones);
+  let parents: Vec<Option<usize>> = VisualSkeleton::resolve_parents(bones);
   let bind_locals: Vec<BindTransform> = binds
     .iter()
     .map(|it| BindTransform::from_bind(&it.bind_rotation, &it.bind_position))

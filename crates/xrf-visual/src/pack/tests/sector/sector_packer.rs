@@ -4,19 +4,20 @@
 use xrf_chunk::XRayByteOrder;
 use xrf_level::{LevelSectorComposition, LevelShadersChunk, LevelVisualsChunk};
 
+use crate::data::sector::instance::sector_instance_group::SectorInstanceGroup;
+use crate::data::sector::instance::sector_progressive::SectorProgressive;
 use crate::data::sector::sector_attributes::SectorAttributes;
 use crate::data::sector::sector_description::SectorDescription;
-use crate::data::sector::sector_instance_group::SectorInstanceGroup;
-use crate::data::sector::sector_progressive::SectorProgressive;
 use crate::data::visual::geometry::visual_draw_range::VisualDrawRange;
 use crate::data::visual::geometry::visual_skip_cause::VisualSkipCause;
 use crate::pack::sector::sector_package::SectorPackage;
 use crate::pack::sector::sector_packer::SectorPacker;
 use crate::pack::tests::sector::level_fixtures::{
-  GeomBuffer, Window, new_drawable, new_drawable_of_buffer, new_geometry_fixture, new_hierarchy,
+  GeomBuffer, Window, new_chunk, new_drawable, new_drawable_of_buffer, new_geometry_fixture, new_hierarchy,
   new_lightmapped_declaration, new_lightmapped_vertex, new_lit_tree, new_lod, new_open_geometry, new_position_vertex,
-  new_positions_declaration, new_progressive_drawable, new_progressive_tree, new_shaders, new_slide_windows, new_tree,
-  new_tree_declaration, new_tree_vertex, new_vertex_lit_declaration, new_vertex_lit_vertex, new_visuals,
+  new_positions_declaration, new_progressive_drawable, new_progressive_drawable_from, new_progressive_tree,
+  new_shaders, new_slide_windows, new_tree, new_tree_declaration, new_tree_vertex, new_vertex_lit_declaration,
+  new_vertex_lit_vertex, new_visuals,
 };
 
 /// Four lightmapped vertices in one buffer, and six indices that draw two triangles out of them.
@@ -862,5 +863,121 @@ fn test_cuts_each_drawable_of_a_section_into_clusters_of_its_own() {
     ranges,
     vec![0, 1, 1, 0, 3, 1, 2, 0],
     "a triangle each, of drawables 1 and 2"
+  );
+}
+
+// A tree's indices reach the GPU as they are, so one naming a vertex its mesh does not have costs every place of it,
+// as it costs a baked drawable its own.
+#[test]
+fn test_leaves_out_a_tree_whose_indices_name_a_vertex_past_its_mesh() {
+  let run: LevelVisualsChunk = new_visuals(&[
+    new_hierarchy(&[1, 2]),
+    new_tree(1, 0, 1, 3, 0.0),
+    new_tree(1, 0, 1, 3, 5.0),
+  ]);
+  let source = new_open_geometry(new_tree_geometry());
+
+  let package: SectorPackage =
+    SectorPacker::new(&run, None, &source).pack::<XRayByteOrder>(0, &new_composition(&run), SectorAttributes::all());
+
+  assert!(package.description.instances.is_empty());
+  assert_eq!(
+    package
+      .description
+      .skipped
+      .iter()
+      .map(|skip| skip.drawable)
+      .collect::<Vec<u32>>(),
+    vec![1, 2]
+  );
+  assert!(
+    package.description.skipped[0]
+      .reason
+      .contains("references vertex 1, past the 1")
+  );
+}
+
+// Stored from near the end of what 32 bits address, a window's start wraps back inside the buffer when added in 32
+// bits, and the wrapped range reads real indices that belong to something else.
+#[test]
+fn test_leaves_out_a_drawable_whose_window_starts_past_what_a_buffer_addresses() {
+  let run: LevelVisualsChunk = new_visuals(&[
+    new_hierarchy(&[1]),
+    new_progressive_drawable_from(1, 4, u32::MAX - 2, 9, &PROGRESSIVE_WINDOWS),
+  ]);
+  let source = new_open_geometry(new_progressive_geometry(false, &[]));
+
+  let package: SectorPackage =
+    SectorPacker::new(&run, None, &source).pack::<XRayByteOrder>(0, &new_composition(&run), SectorAttributes::all());
+
+  assert_eq!(package.description.geometry.index_count, 0);
+  assert_eq!(package.description.skipped[0].cause, VisualSkipCause::Malformed);
+  assert!(
+    package.description.skipped[0]
+      .reason
+      .contains("past what a buffer addresses")
+  );
+}
+
+// A window's offset and length come from the file, so their sum is checked wide: added in 32 bits, this one wraps to a
+// window inside the indices.
+#[test]
+fn test_leaves_out_a_tree_whose_window_wraps_past_what_32_bits_hold() {
+  let run: LevelVisualsChunk = new_visuals(&[new_hierarchy(&[1]), new_progressive_tree(1, 4, 9, 0)]);
+  let source = new_open_geometry(new_progressive_geometry(true, &[&[(u32::MAX, 2, 4), (0, 1, 3)]]));
+
+  let package: SectorPackage =
+    SectorPacker::new(&run, None, &source).pack::<XRayByteOrder>(0, &new_composition(&run), SectorAttributes::all());
+
+  assert!(package.description.instances.is_empty());
+  assert!(
+    package.description.skipped[0]
+      .reason
+      .contains("past the 9 the index chunk holds")
+  );
+}
+
+// The impostor is a drawing detail of its clump: one that cannot be read leaves the clump's trees standing without
+// one rather than failing the level.
+#[test]
+fn test_stands_a_clump_without_an_impostor_it_cannot_read() {
+  let mut lod: Vec<u8> = new_lod(3, &[2]);
+  let facets: usize = lod.len() - 8 - 896;
+
+  // The impostor chunk cut short of its eight facets.
+  lod.truncate(facets);
+  lod.extend(new_chunk(xrf_ogf::OgfLodDefinitionChunk::CHUNK_ID, &[0; 100]));
+
+  let run: LevelVisualsChunk = new_visuals(&[new_hierarchy(&[1]), lod, new_tree(1, 0, 2, 3, 100.0)]);
+  let source = new_open_geometry(new_tree_geometry());
+
+  let package: SectorPackage =
+    SectorPacker::new(&run, None, &source).pack::<XRayByteOrder>(0, &new_composition(&run), SectorAttributes::all());
+
+  assert!(package.description.impostors.is_none());
+  assert_eq!(package.description.instances[0].drawables, vec![2]);
+  assert!(package.description.instances[0].impostors.is_none());
+  assert_eq!(package.description.skipped[0].drawable, 1);
+  assert!(package.description.skipped[0].reason.contains("impostor"));
+}
+
+// The same for a progressive static's own windows: it is left out, and the rest of the level packs.
+#[test]
+fn test_leaves_out_a_progressive_static_whose_windows_it_cannot_read() {
+  let mut broken: Vec<u8> = new_drawable(1, 0, 4, 0, 9);
+
+  broken.extend(new_chunk(xrf_ogf::OgfSwiDataChunk::CHUNK_ID, &[0; 3]));
+
+  let run: LevelVisualsChunk = new_visuals(&[new_hierarchy(&[1, 2]), broken, new_drawable(1, 0, 4, 3, 6)]);
+  let source = new_open_geometry(new_progressive_geometry(false, &[]));
+
+  let package: SectorPackage =
+    SectorPacker::new(&run, None, &source).pack::<XRayByteOrder>(0, &new_composition(&run), SectorAttributes::all());
+
+  assert_eq!(package.description.skipped.len(), 1);
+  assert_eq!(package.description.skipped[0].drawable, 1);
+  assert_eq!(
+    package.description.geometry.index_count, 6,
+    "the other drawable still packs"
   );
 }

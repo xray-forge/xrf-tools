@@ -1,8 +1,10 @@
 use std::collections::HashMap;
 use std::ops::RangeInclusive;
 
-use byteorder::ByteOrder;
-use xrf_level::{DETAIL_SLOT_METERS, DetailModel, LevelCformFace, LevelCformGeometry, LevelDetailsFile};
+use xrf_level::{
+  DETAIL_SLOT_METERS, DetailModel, LevelCformFace, LevelCformGeometry, LevelDetailsFile, LevelDetailsHeader,
+  LevelDetailsSlot,
+};
 use xrf_math::Vector3d;
 
 use crate::data::details::details_description::DetailsDescription;
@@ -11,13 +13,6 @@ use crate::pack::details::details_package::DetailsPackage;
 use crate::pack::details::details_slot_box::DetailsSlotBox;
 use crate::pack::visual_buffer_builder::VisualBufferBuilder;
 use crate::pack::visual_conversion::{convert_vector, reverse_triangle_winding};
-
-/// `u32` words a packed slot record takes.
-const SLOT_WORDS: usize = 6;
-
-/// Metres a triangle's footprint is widened by on each side before it is walked over the grid, covering the room the
-/// slot boxes grow by.
-const FOOTPRINT_MARGIN: f32 = 0.01;
 
 /// Packs a level's grass: its detail models, and each planted slot with the collision triangles its planting is cast
 /// down onto, binned once by the box query `CDetailManager::cache_Decompress` makes for it.
@@ -28,6 +23,13 @@ pub struct DetailsPacker<'a> {
 }
 
 impl<'a> DetailsPacker<'a> {
+  /// `u32` words a packed slot record takes: its stored words, then its bin's first entry and length.
+  const SLOT_WORDS: usize = LevelDetailsSlot::WORDS + 2;
+
+  /// Metres a triangle's footprint is widened by on each side before it is walked over the grid, covering the room the
+  /// slot boxes grow by.
+  const FOOTPRINT_MARGIN: f32 = 0.01;
+
   /// # Arguments
   ///
   /// * `is_passable` - Whether a game material, by its id, lets a planting fall through it (`flPassable`).
@@ -44,10 +46,9 @@ impl<'a> DetailsPacker<'a> {
   }
 
   /// The grass as the renderer plants it: every model, and each planted slot with the ground its planting falls on.
-  pub fn pack<T: ByteOrder>(&self) -> DetailsPackage {
-    let header = &self.details.header;
-    let (size_x, size_z) = (header.size_x as i64, header.size_z as i64);
-    let bins: Vec<Vec<u32>> = self.bin::<T>();
+  pub fn pack(&self) -> DetailsPackage {
+    let header: &LevelDetailsHeader = &self.details.header;
+    let bins: Vec<Vec<u32>> = self.bin();
 
     let mut triangles: Vec<f32> = Vec::new();
     let mut compacted: HashMap<u32, u32> = HashMap::new();
@@ -56,13 +57,20 @@ impl<'a> DetailsPacker<'a> {
     let mut grid: Vec<u32> = vec![0; bins.len()];
 
     for (cell, bin) in bins.iter().enumerate().filter(|(_, bin)| !bin.is_empty()) {
+      // A cell holding a bin is a cell `bin` found a stored slot for; skipping one would misalign every later record.
+      let stored: Option<&[u32; LevelDetailsSlot::WORDS]> = self.details.get_stored_slot(cell);
+
+      debug_assert!(stored.is_some(), "a binned cell {cell} holds a slot");
+
+      let Some(stored) = stored else {
+        continue;
+      };
+
       let start: u32 = entries.len() as u32;
 
       for face in bin {
         let index: u32 = *compacted.entry(*face).or_insert_with(|| {
-          for corner in self.triangle(*face) {
-            triangles.extend_from_slice(&corner);
-          }
+          triangles.extend(self.to_renderer_triangle(*face).as_flattened());
 
           (triangles.len() / 9 - 1) as u32
         });
@@ -70,16 +78,16 @@ impl<'a> DetailsPacker<'a> {
         entries.push(index);
       }
 
-      // A cell holding a bin is a cell `bin` found a stored slot for.
-      if let Some(stored) = self.details.get_stored_slot(cell) {
-        records.extend(stored.as_chunks::<4>().0.iter().map(|word| T::read_u32(word)));
-      }
-
+      records.extend_from_slice(stored);
       records.extend([start, bin.len() as u32]);
-      grid[cell] = (records.len() / SLOT_WORDS) as u32;
+      grid[cell] = (records.len() / Self::SLOT_WORDS) as u32;
     }
 
-    debug_assert_eq!(grid.len() as i64, size_x * size_z, "a grid holds a cell a slot");
+    debug_assert_eq!(
+      grid.len() as u64,
+      u64::from(header.size_x) * u64::from(header.size_z),
+      "a grid holds a cell a slot"
+    );
 
     let mut builder: VisualBufferBuilder = VisualBufferBuilder::new();
     let models: Vec<DetailsModel> = self
@@ -104,7 +112,7 @@ impl<'a> DetailsPacker<'a> {
         offset_z: header.offset_z,
         size_x: header.size_x,
         size_z: header.size_z,
-        slot_count: (records.len() / SLOT_WORDS) as u32,
+        slot_count: (records.len() / Self::SLOT_WORDS) as u32,
         slots: slots_section,
         triangle_count: (triangles.len() / 9) as u32,
         triangles: triangles_section,
@@ -115,17 +123,18 @@ impl<'a> DetailsPacker<'a> {
 
   /// Each cell's triangles, found by walking every solid triangle over the cells its footprint covers rather than
   /// every cell over every triangle.
-  fn bin<T: ByteOrder>(&self) -> Vec<Vec<u32>> {
-    let header = &self.details.header;
+  fn bin(&self) -> Vec<Vec<u32>> {
+    let header: &LevelDetailsHeader = &self.details.header;
     let size_x: i64 = i64::from(header.size_x);
-    let mut bins: Vec<Vec<u32>> = vec![Vec::new(); self.details.get_slots_count() as usize];
+    let boxes: Vec<Option<DetailsSlotBox>> = self.list_planted_boxes();
+    let mut bins: Vec<Vec<u32>> = vec![Vec::new(); boxes.len()];
 
-    for (index, face) in self.collision.faces.iter().enumerate() {
+    for (index, face) in self.collision.get_faces().iter().enumerate() {
       if (self.is_passable)(face.material) {
         continue;
       }
 
-      let triangle: [[f32; 3]; 3] = self.triangle(index as u32);
+      let triangle: [[f32; 3]; 3] = self.to_engine_triangle(face);
 
       if !triangle.as_flattened().iter().all(|value| value.is_finite()) {
         continue;
@@ -139,14 +148,8 @@ impl<'a> DetailsPacker<'a> {
       for z in rows {
         for x in columns.clone() {
           let cell: usize = (z * size_x + x) as usize;
-          let Some(slot) = self.details.get_slot::<T>(cell) else {
-            continue;
-          };
-          let (world_x, world_z) = self.to_world_slot(x, z);
 
-          if slot.is_planted()
-            && DetailsSlotBox::of(world_x, world_z, slot.base_height, slot.height).overlaps(&triangle)
-          {
+          if boxes[cell].is_some_and(|slot| slot.overlaps(&triangle)) {
             bins[cell].push(index as u32);
           }
         }
@@ -156,11 +159,25 @@ impl<'a> DetailsPacker<'a> {
     bins
   }
 
-  /// A cell's world slot, `CDetailManager::QueryDB` read backwards.
-  fn to_world_slot(&self, x: i64, z: i64) -> (i32, i32) {
-    let header = &self.details.header;
+  /// Each cell's slot box, decoded once however many triangles cross it, or `None` for a cell planting nothing.
+  fn list_planted_boxes(&self) -> Vec<Option<DetailsSlotBox>> {
+    let header: &LevelDetailsHeader = &self.details.header;
+    let size_x: usize = header.size_x as usize;
 
-    ((x - header.offset_x as i64) as i32, (z - header.offset_z as i64) as i32)
+    self
+      .details
+      .iter_slots()
+      .enumerate()
+      .map(|(cell, slot)| {
+        slot.is_planted().then(|| {
+          // `CDetailManager::QueryDB` read backwards: a cell's world slot.
+          let x: i32 = ((cell % size_x) as i64 - i64::from(header.offset_x)) as i32;
+          let z: i32 = ((cell / size_x) as i64 - i64::from(header.offset_z)) as i32;
+
+          DetailsSlotBox::of(x, z, slot.base_height, slot.height)
+        })
+      })
+      .collect()
   }
 
   /// The grid cells along one axis a span of finite values touches, with the room the slot boxes grow by, cut to the
@@ -171,16 +188,32 @@ impl<'a> DetailsPacker<'a> {
     // Saturating casts, so a span reaching past `i64` still cuts to the grid.
     let to_cell = |value: f32| ((value / DETAIL_SLOT_METERS).floor() as i64).saturating_add(i64::from(offset));
 
-    to_cell(minimum - FOOTPRINT_MARGIN).max(0)..=to_cell(maximum + FOOTPRINT_MARGIN).min(i64::from(size) - 1)
+    to_cell(minimum - Self::FOOTPRINT_MARGIN).max(0)
+      ..=to_cell(maximum + Self::FOOTPRINT_MARGIN).min(i64::from(size) - 1)
   }
 
-  fn triangle(&self, face: u32) -> [[f32; 3]; 3] {
-    let face: &LevelCformFace = &self.collision.faces[face as usize];
-
+  /// A face's corners in the engine's space and winding, which the slot boxes are measured in.
+  fn to_engine_triangle(&self, face: &LevelCformFace) -> [[f32; 3]; 3] {
     self
       .collision
       .get_triangle(face)
       .map(|corner| [corner.x, corner.y, corner.z])
+  }
+
+  /// A face's corners in renderer space, wound for it, which is what the planting casts its rays onto.
+  fn to_renderer_triangle(&self, face: u32) -> [[f32; 3]; 3] {
+    let mut corners: [[f32; 3]; 3] = self
+      .collision
+      .get_triangle(&self.collision.get_faces()[face as usize])
+      .map(|corner| {
+        let converted: Vector3d = convert_vector(&corner);
+
+        [converted.x, converted.y, converted.z]
+      });
+
+    reverse_triangle_winding(&mut corners);
+
+    corners
   }
 
   fn pack_model(model: &DetailModel, builder: &mut VisualBufferBuilder) -> DetailsModel {

@@ -12,26 +12,10 @@ use crate::data::lights::light_animator_key::LightAnimatorKey;
 use crate::data::lights::light_description::LightDescription;
 use crate::data::lights::light_kind::LightKind;
 use crate::data::lights::lights_description::LightsDescription;
+use crate::data::visual::skeleton::bind_transform::BindTransform;
 use crate::data::visual::skeleton::visual_rest_pose::VisualRestPose;
 use crate::data::visual::skeleton::visual_transform::VisualTransform;
-use crate::pack::visual::visual_transform::{BindTransform, to_spawn_transform};
 use crate::pack::visual_conversion::convert_vector;
-
-/// The binder of a signal rocket (`bind_signal_light.script`), which turns its lamp off on its first update: lit only
-/// while a scripted launch flies it.
-const SIGNAL_LIGHT_BINDING: &str = "bind_signal_light.init";
-
-/// The section vanilla binds it to, which is what a lamp is known by without configs to read its binding from.
-const SIGNAL_LIGHT_SECTION: &str = "lights_signal_light";
-
-/// What a spot with no projector of its own projects (`r2_rendertarget.cpp`).
-const DEFAULT_PROJECTOR: &str = "lights\\lights_spot01";
-
-/// `idle_light_range_delta`'s default (xray-16's `CCustomZone::Load`), and the only value xray-monolith knows.
-const ZONE_RANGE_JITTER: f32 = 0.25;
-
-/// The widest cone a spot takes here, so its projection stays finite; the engines pass any cone through.
-const MAX_CONE: f32 = 120.0 * std::f32::consts::PI / 180.0;
 
 /// Collects a level's lights as the engine would light with them: its hanging lamps, placed on their bones, and the
 /// lights of the level file itself.
@@ -48,6 +32,22 @@ pub struct LightsPacker<'a> {
 }
 
 impl<'a> LightsPacker<'a> {
+  /// The binder of a signal rocket (`bind_signal_light.script`), which turns its lamp off on its first update: lit only
+  /// while a scripted launch flies it.
+  const SIGNAL_LIGHT_BINDING: &'static str = "bind_signal_light.init";
+
+  /// The section vanilla binds it to, which is what a lamp is known by without configs to read its binding from.
+  const SIGNAL_LIGHT_SECTION: &'static str = "lights_signal_light";
+
+  /// What a spot with no projector of its own projects (`r2_rendertarget.cpp`).
+  const DEFAULT_PROJECTOR: &'static str = "lights\\lights_spot01";
+
+  /// `idle_light_range_delta`'s default (xray-16's `CCustomZone::Load`), and the only value xray-monolith knows.
+  const ZONE_RANGE_JITTER: f32 = 0.25;
+
+  /// The widest cone a spot takes here, so its projection stays finite; the engines pass any cone through.
+  const MAX_CONE: f32 = 120.0 * std::f32::consts::PI / 180.0;
+
   /// A packer resolving colour animations against `lanims.xr`, or animating nothing without one.
   pub fn new(animations: Option<&'a LightAnimFile>) -> Self {
     Self {
@@ -141,7 +141,7 @@ impl<'a> LightsPacker<'a> {
 
     let visual: Option<Arc<VisualRestPose>> = object.inherited.get_visual().and_then(pose_visual);
     let pose: Option<&VisualRestPose> = visual.as_deref();
-    let object_transform: VisualTransform = to_spawn_transform(&object.position, &object.direction);
+    let object_transform: VisualTransform = VisualTransform::of_spawn(&object.position, &object.direction);
     let main: VisualTransform = Self::place_on_bone(&object_transform, pose, &lamp.light_bone);
     let ambient: VisualTransform = if lamp.light_ambient_bone.eq_ignore_ascii_case(&lamp.light_bone) {
       main.clone()
@@ -153,7 +153,7 @@ impl<'a> LightsPacker<'a> {
     let is_spot: bool = lamp.is_spot();
     let projector: Option<u32> = is_spot.then(|| {
       self.find_projector(if lamp.light_texture.is_empty() {
-        DEFAULT_PROJECTOR
+        Self::DEFAULT_PROJECTOR
       } else {
         &lamp.light_texture
       })
@@ -168,7 +168,7 @@ impl<'a> LightsPacker<'a> {
       color,
       range: lamp.main_range,
       range_jitter: 0.0,
-      cone: lamp.spot_cone_angle.min(MAX_CONE),
+      cone: lamp.spot_cone_angle.min(Self::MAX_CONE),
       near: lamp.virtual_size,
       projector,
       animator,
@@ -215,7 +215,9 @@ impl<'a> LightsPacker<'a> {
     let Some(range) = section.get_f32("idle_light_range") else {
       return;
     };
-    let range_jitter: f32 = section.get_f32("idle_light_range_delta").unwrap_or(ZONE_RANGE_JITTER);
+    let range_jitter: f32 = section
+      .get_f32("idle_light_range_delta")
+      .unwrap_or(Self::ZONE_RANGE_JITTER);
     let height: f32 = section.get_f32("idle_light_height").unwrap_or(0.0);
     let is_shadowed: bool = section.get_bool("idle_light_shadow").unwrap_or(true);
     let Some(animator) = section
@@ -251,8 +253,8 @@ impl<'a> LightsPacker<'a> {
     match self.sections {
       Some(_) => section
         .and_then(|it| it.get("script_binding"))
-        .is_some_and(|binding| binding.trim().eq_ignore_ascii_case(SIGNAL_LIGHT_BINDING)),
-      None => object.section == SIGNAL_LIGHT_SECTION,
+        .is_some_and(|binding| binding.trim().eq_ignore_ascii_case(Self::SIGNAL_LIGHT_BINDING)),
+      None => object.section == Self::SIGNAL_LIGHT_SECTION,
     }
   }
 

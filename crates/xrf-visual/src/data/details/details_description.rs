@@ -24,7 +24,7 @@ pub struct DetailsDescription {
   /// One `u32` an entry: the triangle, by index into the triangles.
   pub bins: VisualSection,
   pub bin_length: u32,
-  /// Nine floats a triangle: its corners in the engine's space and winding, passable ones left out.
+  /// Nine floats a triangle: its corners in renderer space, wound for it, passable ones left out.
   pub triangles: VisualSection,
   pub triangle_count: u32,
   pub buffer_length: u32,

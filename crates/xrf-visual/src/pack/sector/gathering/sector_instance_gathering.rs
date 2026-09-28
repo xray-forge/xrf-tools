@@ -1,6 +1,6 @@
 use xrf_math::Matrix4x4;
 
-use crate::pack::sector::sector_window::SectorWindow;
+use crate::pack::visual_index_window::VisualIndexWindow;
 
 /// The places one mesh stands, gathered while a sector is walked.
 #[derive(Debug, Default)]
@@ -12,5 +12,5 @@ pub(crate) struct SectorInstanceGathering {
   /// Each place's impostor, or -1 for a tree no `MT_LOD` visual composes.
   pub(crate) impostors: Vec<i32>,
   /// The mesh's slide windows, which every place of one mesh shares; absent for a mesh of one detail.
-  pub(crate) windows: Option<Vec<SectorWindow>>,
+  pub(crate) windows: Option<Vec<VisualIndexWindow>>,
 }
