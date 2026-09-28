@@ -30,6 +30,8 @@ interface IFakeCaptures {
   renderer: WebGPURenderer;
   replies: Array<[number, Nullable<IFakeBitmap>]>;
   drawn: Array<RenderTarget>;
+  /** How many holds each texture key has. */
+  holds: Map<string, number>;
   /** Fails every read back from now on. */
   failReads(): void;
 }
@@ -43,7 +45,14 @@ function createCaptures(uploaded: ReadonlySet<string> = new Set()): IFakeCapture
       drawn.push(target);
     },
   };
-  const textures = { isUploaded: (key: string): boolean => uploaded.has(key) };
+  const holds: Map<string, number> = new Map();
+  const textures = {
+    hold: (keys: Iterable<string>): void =>
+      [...keys].forEach((key: string) => holds.set(key, (holds.get(key) ?? 0) + 1)),
+    isUploaded: (key: string): boolean => uploaded.has(key),
+    letGo: (keys: Iterable<string>): void =>
+      [...keys].forEach((key: string) => holds.set(key, (holds.get(key) ?? 0) - 1)),
+  };
   const renderer = {
     readRenderTargetPixelsAsync: (_target: RenderTarget, _x: number, _y: number, width: number, height: number) =>
       isFailing ? Promise.reject(new Error("lost")) : Promise.resolve(new Uint8Array(width * height * 4)),
@@ -59,6 +68,7 @@ function createCaptures(uploaded: ReadonlySet<string> = new Set()): IFakeCapture
     failReads: () => {
       isFailing = true;
     },
+    holds,
     renderer: renderer as unknown as WebGPURenderer,
     replies,
   };
@@ -146,6 +156,20 @@ describe("RendererCaptures", () => {
 
     expect(replies).toEqual([]);
     expect(captures.hasPending).toBe(true);
+  });
+
+  // Asking whether a half is up brings nothing back: a half an array's layer holds comes back only for a hold.
+  it("holds a waiting bump plane's pair until it is drawn or the renderer goes", () => {
+    const waiting: IFakeCaptures = createCaptures(new Set(["bump"]));
+
+    waiting.captures.push(1, BUMP);
+    waiting.captures.answer(waiting.renderer, false, null);
+
+    expect(Object.fromEntries(waiting.holds)).toEqual({ bump: 1, companion: 1 });
+
+    waiting.captures.dispose();
+
+    expect(Object.fromEntries(waiting.holds)).toEqual({ bump: 0, companion: 0 });
   });
 
   // The renderer going away is the answer: its client refuses every capture waiting.

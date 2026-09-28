@@ -2,12 +2,14 @@ import { describe, expect, it } from "@jest/globals";
 import { CompressedArrayTexture, Texture } from "three/webgpu";
 
 import { mockDdsFile } from "#/dds/dds-fixtures";
+import { ITextureDeviceFixture, mockTextureDevice } from "#/internals/device-fixtures";
 import { ITextureCopy } from "#/internals/texture-copy";
 import { createRendererTexture } from "#/texture/renderer-texture";
 import { TEXTURE_ARRAY_BYTES } from "#/texture/texture-array";
 import { toTextureArrayClass } from "#/texture/texture-array-class";
 import { ITextureArrayFlush } from "#/texture/texture-array-flush";
 import { TextureArrays } from "#/texture/texture-arrays";
+import { hasTextureData, listTextureData, releaseTextureData } from "#/texture/texture-data";
 import { ITextureLayer } from "#/texture/texture-layer";
 
 /** A clock reading long after every claim a test makes. */
@@ -138,6 +140,71 @@ describe("TextureArrays", () => {
     expect(copies[0]).toMatchObject({ destination: after, destinationLayer: 0, layers: 4, source: before });
     expect(copies[1]).toMatchObject({ destinationLayer: 4, layers: 1 });
     expect(disposals).toContain(before);
+  });
+
+  it("fills a key's own texture from its layer, every level, only once the layer holds a copy of that texture", () => {
+    const arrays: TextureArrays = new TextureArrays(() => {});
+    const brick: Texture = createTexture("DXT5", 8, 2);
+
+    arrays.claim("a", createTexture("DXT5", 8, 2));
+
+    const held: ITextureLayer = arrays.claim("brick", brick) as ITextureLayer;
+
+    // Still to be copied: the layer holds nothing of it yet.
+    expect(arrays.toRestoreCopies("brick", brick)).toBeNull();
+
+    arrays.flush();
+
+    expect(arrays.toRestoreCopies("brick", brick)).toEqual([
+      {
+        destination: brick,
+        destinationLayer: 0,
+        height: 8,
+        layers: 1,
+        level: 0,
+        source: held.array.target.value,
+        sourceLayer: 1,
+        width: 8,
+      },
+      {
+        destination: brick,
+        destinationLayer: 0,
+        height: 4,
+        layers: 1,
+        level: 1,
+        source: held.array.target.value,
+        sourceLayer: 1,
+        width: 4,
+      },
+    ]);
+    // Another texture, or a key no array holds.
+    expect(arrays.toRestoreCopies("brick", createTexture("DXT5", 8, 2))).toBeNull();
+    expect(arrays.toRestoreCopies("plaster", brick)).toBeNull();
+
+    arrays.release("brick", held);
+
+    expect(arrays.toRestoreCopies("brick", brick)).toBeNull();
+  });
+
+  it("fills a key's own texture from the array it outgrew until a flush moves its layer", () => {
+    const arrays: TextureArrays = new TextureArrays(() => {});
+    const brick: Texture = createTexture("DXT5", 8, 1);
+    const held: ITextureLayer = arrays.claim("brick", brick) as ITextureLayer;
+
+    ["b", "c", "d"].forEach((key: string) => arrays.claim(key, createTexture("DXT5", 8, 1)));
+    arrays.flush();
+
+    const outgrown: Texture = held.array.target.value;
+
+    arrays.claim("e", createTexture("DXT5", 8, 1));
+
+    expect(arrays.toRestoreCopies("brick", brick)?.map((copy: ITextureCopy) => copy.source)).toEqual([outgrown]);
+
+    arrays.flush();
+
+    expect(arrays.toRestoreCopies("brick", brick)?.map((copy: ITextureCopy) => copy.source)).toEqual([
+      held.array.target.value,
+    ]);
   });
 
   it("reuses the lowest free layer first, so the top stays what can be given up", () => {
@@ -343,5 +410,51 @@ describe("TextureArrays", () => {
 
     expect(again.copies.map((copy: ITextureCopy) => copy.source)).toEqual([texture, texture]);
     expect(again.evicted).toEqual(["lmap"]);
+  });
+
+  // A key's own texture lets its bytes go once it is up, and the class may first be seen in such a one.
+  it("makes an array of a class from a texture whose bytes went, each level's layer sized by the format", () => {
+    const arrays: TextureArrays = new TextureArrays(() => {});
+    const [block, colour]: Array<Texture> = [createTexture("DXT5", 8, 3), createTexture("DXT1", 8, 3)];
+
+    [block, colour].forEach((texture: Texture) => releaseTextureData(texture));
+
+    const sizes: Array<Array<number>> = [
+      arrays.claim("bump", block) as ITextureLayer,
+      arrays.claim("base", colour) as ITextureLayer,
+    ].map((held: ITextureLayer) =>
+      listTextureData(held.array.target.value).map((data: ArrayBufferView) => data.byteLength)
+    );
+
+    // Two blocks a side, one, then one for the smallest level: sixteen bytes a block, and eight for DXT1's.
+    expect(sizes).toEqual([
+      [64, 16, 16],
+      [32, 8, 8],
+    ]);
+  });
+
+  it("lets go of an array's zeroed layer once it is on the GPU, and an array made later makes its own", () => {
+    const device: ITextureDeviceFixture = mockTextureDevice();
+    const arrays: TextureArrays = new TextureArrays(() => {});
+
+    // An array a layer, so a key of a class held already opens another.
+    arrays.layerLimit = 1;
+
+    const up: ITextureLayer = arrays.claim("a", createTexture()) as ITextureLayer;
+    const waiting: ITextureLayer = arrays.claim("b", createTexture("DXT1")) as ITextureLayer;
+    const zeros: ArrayBufferView = listTextureData(waiting.array.target.value)[0];
+
+    device.renderer.initTexture(up.array.target.value);
+    arrays.releaseZeros(device.renderer);
+
+    // The other, not up yet, keeps what it is written from.
+    expect(hasTextureData(up.array.target.value)).toBe(false);
+    expect(listTextureData(waiting.array.target.value)[0]).toBe(zeros);
+
+    const later: ITextureLayer = arrays.claim("c", createTexture("DXT1")) as ITextureLayer;
+
+    expect(later.array).not.toBe(waiting.array);
+    expect(listTextureData(later.array.target.value)[0]).not.toBe(zeros);
+    expect(listTextureData(later.array.target.value)[0].byteLength).toBe(zeros.byteLength);
   });
 });

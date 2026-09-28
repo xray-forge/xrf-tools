@@ -99,6 +99,11 @@ describe("TextureRenderService", () => {
 
     expect(put.key).toBe("base");
     expect(put.source.encoding).toBe(ERendererTextureEncoding.DDS);
+
+    if (!("bytes" in put.source)) {
+      throw new Error("A surface's file is handed over as bytes");
+    }
+
     expect(put.source.bytes).not.toBe(base.bytes);
     expect(put.source.bytes.byteLength).toBe(16);
     expect(stub.take(ERendererRequest.PUT_SURFACE).at(-1)?.surface.textures.base).toBe("base");

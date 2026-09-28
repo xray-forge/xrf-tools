@@ -15,7 +15,7 @@ import { listRendererOverlayTransfers, TRendererOverlay } from "#/contract/scene
 import { IRendererPose } from "#/contract/scene/renderer-pose";
 import { IRendererSkeleton, listRendererSkeletonTransfers } from "#/contract/scene/renderer-skeleton";
 import { IRendererSurface } from "#/contract/scene/renderer-surface";
-import { TRendererTextureSource } from "#/contract/scene/renderer-texture-source";
+import { ERendererTextureEncoding, TRendererTextureSource } from "#/contract/scene/renderer-texture-source";
 
 /**
  * What a consumer tells the renderer.
@@ -33,7 +33,7 @@ export enum ERendererRequest {
   CONFIGURE = "@renderer/configure",
   /** Let everything go. */
   DISPOSE = "@renderer/dispose",
-  /** Hold this texture under this key, replacing whatever held it. */
+  /** Hold this texture under this key, replacing whatever held it, a fetch of it in flight included. */
   PUT_TEXTURE = "@renderer/putTexture",
   RELEASE_TEXTURE = "@renderer/releaseTexture",
   /** Hold this geometry under this key. */
@@ -134,7 +134,8 @@ function listRequestTransfers(request: TRendererRequest): Array<Transferable> {
       return [request.canvas];
 
     case ERendererRequest.PUT_TEXTURE:
-      return [request.source.bytes];
+      // A fetched texture's bytes are the renderer's own, and never were the page's to move.
+      return request.source.encoding === ERendererTextureEncoding.FETCH ? [] : [request.source.bytes];
 
     case ERendererRequest.PUT_GEOMETRY:
       return listRendererGeometryTransfers(request.geometry);

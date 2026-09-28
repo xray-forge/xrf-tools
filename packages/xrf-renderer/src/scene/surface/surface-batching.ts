@@ -4,6 +4,7 @@ import { Material, Texture, WebGPURenderer } from "three/webgpu";
 import { ERendererPass } from "#/contract/scene/renderer-pass";
 import { IRendererSurface } from "#/contract/scene/renderer-surface";
 import { copyTextures } from "#/internals/texture-copies";
+import { ITextureCopy } from "#/internals/texture-copy";
 import { TSurfaceArrayTargets } from "#/material/surface-array-targets";
 import { ISurfaceBatchMaterial } from "#/material/surface-batch-material";
 import { toSurfaceCompositing } from "#/material/surface-compositing";
@@ -75,7 +76,7 @@ export class SurfaceBatching {
   private readonly shared: Map<string, ISharedMaterial> = new Map();
   /** Shared materials no surface draws by any more, disposed once no batch draws them. */
   private readonly idle: Set<ISharedMaterial> = new Set();
-  /** Keys copied into their layers whose own textures something still draws, let go of once nothing does. */
+  /** Keys whose layers hold them and whose own textures are up, let go of once nothing holds them. */
   private readonly unevicted: Set<string> = new Set();
   private tableVersion: number = 0;
 
@@ -194,8 +195,11 @@ export class SurfaceBatching {
       return [];
     }
 
-    // Of the class it was held as: its layer is copied again, and nothing else changes.
+    // Of the class it was held as: its layer is copied again where the texture is another, and nothing else changes.
+    // Up again, a key brought back by a hold among them, its own texture goes again once nothing holds it.
     if (this.arrays.refresh(key, this.textures.getUploaded(key))) {
+      this.unevicted.add(key);
+
       return [];
     }
 
@@ -216,6 +220,35 @@ export class SurfaceBatching {
     }
 
     return changed;
+  }
+
+  /**
+   * Fills a key's own texture again from its layer, rather than fetching it: three makes it anew on the GPU with
+   * nothing in it, its bytes being gone, and the layer is copied into it. It is the texture the layer was copied from,
+   * so `rebind` copies nothing back, and re-arms it to go again once nothing holds it.
+   *
+   * @param renderer - The renderer uploading.
+   * @param key - A texture's key whose own texture was evicted and is held again.
+   * @param texture - That texture.
+   * @returns Whether it was filled: false where no layer holds a copy of it.
+   */
+  public restore(renderer: WebGPURenderer, key: string, texture: Texture): boolean {
+    const copies: Nullable<Array<ITextureCopy>> = this.arrays.toRestoreCopies(key, texture);
+
+    if (!copies) {
+      return false;
+    }
+
+    renderer.initTexture(texture);
+
+    // Made anew and nothing copied into it: let go again, for the key to be fetched.
+    if (copyTextures(renderer, copies).length) {
+      texture.dispose();
+
+      return false;
+    }
+
+    return true;
   }
 
   /** Whether any shared material waits for no batch to draw it, to be disposed. */
@@ -253,6 +286,9 @@ export class SurfaceBatching {
     const retried: Set<string> = this.arrays.retry(copyTextures(renderer, copies));
     const evictions: Array<readonly [string, Texture]> = [];
 
+    // Every array made since is up with the copies, and its zeroed first layer is nothing three sends again.
+    this.arrays.releaseZeros(renderer);
+
     evicted.forEach((key: string) => this.unevicted.add(key));
 
     // Sent, so the GPU finishes reading them first. A key copied lets its own texture go, its layer drawing it, once
@@ -268,8 +304,8 @@ export class SurfaceBatching {
         evictions.push([key, texture]);
       }
 
-      // Kept up by what draws it, or its latest put not up yet: tried again with the next flush. One let go already
-      // stays up once something asks for it again.
+      // Kept up by what holds it, or its latest put not up yet: tried again with the next flush. One let go already is
+      // tried again once a hold brings it back (`rebind`).
       if (texture || !this.arrays.holds(key) || this.textures.isEvicted(key)) {
         this.unevicted.delete(key);
       }
@@ -305,13 +341,13 @@ export class SurfaceBatching {
    */
   private evaluate(material: ISurfaceMaterial, tracking: ISurfaceTracking): boolean {
     const layers: Array<readonly [ESurfaceSlot, string, ITextureLayer]> = [];
-    // A key held already draws from its layer, its own texture on the GPU or not. Every other is asked for, not only
-    // the first missing, so every one evicted goes up again in the same uploads.
-    const missing: ReadonlyArray<readonly [ESurfaceSlot, string]> = tracking.arrayed.filter(
+    // A key held already draws from its layer, its own texture on the GPU or not. Every other has to be up, which an
+    // evicted one is again once something drawing the surface meanwhile holds it.
+    const isMissing: boolean = tracking.arrayed.some(
       ([, key]: readonly [ESurfaceSlot, string]) => !this.arrays.holds(key) && !this.textures.getUploaded(key)
     );
 
-    if (missing.length) {
+    if (isMissing) {
       return false;
     }
 

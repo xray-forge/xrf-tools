@@ -29,6 +29,10 @@ describe("createRenderCheckerSource", () => {
 
     expect(source).toMatchObject({ encoding: ERendererTextureEncoding.RGBA, height: 4, isNearest: true, width: 4 });
 
+    if (!("bytes" in source)) {
+      throw new Error("A checker carries its texels");
+    }
+
     const texels: Uint8Array = new Uint8Array(source.bytes);
 
     function at(x: number, y: number): Array<number> {

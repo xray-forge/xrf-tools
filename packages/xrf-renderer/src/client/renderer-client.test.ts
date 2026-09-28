@@ -8,6 +8,7 @@ import { ERendererPreset, RENDERER_PRESETS } from "#/contract/renderer-preset";
 import { ERendererRequest, TRendererRequest } from "#/contract/renderer-request";
 import { ERendererResponse, TRendererResponse } from "#/contract/renderer-response";
 import { IRendererSettings } from "#/contract/renderer-settings";
+import { IRendererTextureFetch } from "#/contract/scene/renderer-texture-fetch";
 import { DEFAULT_RENDER_FRAME_PACING } from "#/frame/render-frame-pacing";
 
 const SETTINGS: IRendererSettings = {
@@ -101,6 +102,21 @@ describe("RendererClient", () => {
       },
       { key: "c", kind: ERendererRequest.RELEASE_OBJECT },
     ]);
+  });
+
+  it("tells the consumer what each fetched texture came to, by its key", () => {
+    const fake: IFakeWorker = createWorker();
+    const fetched: Array<[string, IRendererTextureFetch]> = [];
+    const fetch: IRendererTextureFetch = { bytes: 12, duration: 3, failure: null, isDecoded: false, size: null };
+
+    new RendererClient({
+      onTextureFetched: (key: string, it: IRendererTextureFetch) => fetched.push([key, it]),
+      settings: SETTINGS,
+      worker: fake.worker,
+    });
+    fake.respond({ fetch, key: "brick", kind: ERendererResponse.TEXTURE_FETCHED });
+
+    expect(fetched).toEqual([["brick", fetch]]);
   });
 
   it("answers each capture and settle by the id it asked under", async () => {

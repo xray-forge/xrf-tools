@@ -24,6 +24,7 @@ import {
   UnsignedByteType,
 } from "three/webgpu";
 
+import { IRendererTextureSize } from "#/contract/scene/renderer-texture-size";
 import { EDdsBlockFormat } from "#/dds/dds-block-format";
 import { DDS_CUBE_FACES, IDdsFile, readDdsFile } from "#/dds/dds-file";
 import { EDdsLayout } from "#/dds/dds-layout";
@@ -38,19 +39,20 @@ export const XRAY_TEXTURE_ANISOTROPY: number = 8;
  * Uploads a dds file as the engine samples it: raw bytes, never decoded from srgb, with the file's own mip chain.
  *
  * @param bytes - The file as read.
- * @returns The texture, or the reason the file cannot be read.
+ * @returns The texture and the file's size, or the reason the file cannot be read.
  */
 export function createRendererTexture(bytes: ArrayBuffer): IRendererTextureUpload {
   const read: IDdsRead = readDdsFile(bytes);
 
   if (!read.file) {
-    return { refusal: read.refusal, texture: null };
+    return { refusal: read.refusal, size: null, texture: null };
   }
 
   const file: IDdsFile = read.file;
+  const size: IRendererTextureSize = { height: file.height, levels: file.mipmaps.length, width: file.width };
 
   if (file.isCube && file.layout.kind === EDdsLayout.BLOCK) {
-    return { refusal: null, texture: createCubeTexture(file, toCompressedFormat(file.layout.format)) };
+    return { refusal: null, size, texture: createCubeTexture(file, toCompressedFormat(file.layout.format)) };
   }
 
   const texture: Texture =
@@ -60,7 +62,7 @@ export function createRendererTexture(bytes: ArrayBuffer): IRendererTextureUploa
 
   describeSampling(texture, file.mipmaps.length);
 
-  return { refusal: null, texture };
+  return { refusal: null, size, texture };
 }
 
 /**

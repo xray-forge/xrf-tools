@@ -1,13 +1,23 @@
 import { describe, expect, it } from "@jest/globals";
 import { Nullable } from "@xrf/types";
-import { BufferAttribute, InterleavedBufferAttribute, Material, Mesh, TypedArray, WebGPURenderer } from "three/webgpu";
+import {
+  BufferAttribute,
+  InterleavedBufferAttribute,
+  Material,
+  Mesh,
+  Texture,
+  TypedArray,
+  WebGPURenderer,
+} from "three/webgpu";
 
 import { ERendererDraw } from "#/contract/scene/renderer-draw";
+import { IRendererFetchRequest } from "#/contract/scene/renderer-fetch-request";
 import { IRendererGeometry } from "#/contract/scene/renderer-geometry";
 import { ERendererPass } from "#/contract/scene/renderer-pass";
 import { IRendererSurface } from "#/contract/scene/renderer-surface";
 import { ERendererTextureEncoding } from "#/contract/scene/renderer-texture-source";
 import { mockDdsFile } from "#/dds/dds-fixtures";
+import { ITextureDeviceCopy, ITextureDeviceFixture, mockTextureDevice } from "#/internals/device-fixtures";
 import { createFreeingRenderer, IFreeingRenderer } from "#/scene/geometry/geometry-fixtures";
 import { RendererScene } from "#/scene/renderer-scene";
 import { ISceneStaging } from "#/scene/staging/scene-staging";
@@ -44,6 +54,88 @@ function compile(scene: RendererScene): void {
   if (staging) {
     scene.commit(staging, PASSES);
   }
+}
+
+/** Lets the fetches answered so far land, which takes a response's body stream a few turns of the event loop. */
+async function landFetches(): Promise<void> {
+  for (let turn: number = 0; turn < 5; turn += 1) {
+    await new Promise((resolve: (value: unknown) => void) => setTimeout(resolve, 0));
+  }
+}
+
+/**
+ * Runs a frame's work on the scene as the host orders it, once the fetches answered so far have landed.
+ *
+ * @param scene - The scene.
+ * @param renderer - What uploads, copies and frees.
+ */
+async function runFrame(scene: RendererScene, renderer: WebGPURenderer): Promise<void> {
+  await landFetches();
+  scene.textures.upload(renderer, Infinity);
+  scene.advance();
+  scene.flush(renderer);
+  compile(scene);
+}
+
+/**
+ * @param scene - The scene.
+ * @returns Whether a settle would resolve: nothing waiting to apply, and no texture waiting to go up.
+ */
+function isSettled(scene: RendererScene): boolean {
+  return !scene.hasPending && !scene.textures.hasQueued;
+}
+
+/** A scene fetching its textures from a stand-in answering every file at once, and what it fetched. */
+interface IFetchingScene {
+  scene: RendererScene;
+  renderer: WebGPURenderer;
+  /** The files fetched, in order. */
+  fetched: Array<string>;
+  /** Every copy between textures the device ran, in order. */
+  copies: Array<ITextureDeviceCopy>;
+  /** Puts textures the scene fetches itself, as a level's are. */
+  putFetched(keys: ReadonlyArray<string>): void;
+}
+
+/**
+ * @param test - What runs over the scene, with `fetch` answered for it.
+ */
+async function withFetchingScene(test: (fixture: IFetchingScene) => Promise<void>): Promise<void> {
+  const original: typeof fetch = globalThis.fetch;
+  const fetched: Array<string> = [];
+
+  globalThis.fetch = async (input: string | URL | Request): Promise<Response> => {
+    fetched.push(String(input));
+
+    return new Response(mockDdsFile({ fourCC: "DXT5" }));
+  };
+
+  try {
+    const scene: RendererScene = new RendererScene(new RendererUniforms(), () => {});
+    const device: ITextureDeviceFixture = mockTextureDevice();
+
+    await test({
+      copies: device.copies,
+      fetched,
+      putFetched: (keys: ReadonlyArray<string>) =>
+        keys.forEach((key: string) => {
+          const file: IRendererFetchRequest = { body: "{}", headers: {}, url: key };
+
+          scene.putTexture(key, { encoding: ERendererTextureEncoding.FETCH, file, picture: file });
+        }),
+      renderer: Object.assign(device.renderer, createFreeingRenderer().renderer),
+      scene,
+    });
+  } finally {
+    globalThis.fetch = original;
+  }
+}
+
+/** A lamp's glass, drawn plainly, which shares its base with the wall. */
+function putLamp(scene: RendererScene): void {
+  scene.putGeometry("lamp", createTriangle());
+  scene.putSurface("glass", { draw: ERendererDraw.BLENDED, textures: { base: "brick" } });
+  scene.putObject("lamp", { geometry: "lamp", surfaces: ["glass"] });
 }
 
 describe("RendererScene", () => {
@@ -205,5 +297,106 @@ describe("RendererScene", () => {
     scene.releaseObject("a");
 
     expect(scene.textures.evict("glass")).not.toBeNull();
+  });
+
+  // A spawned lamp sharing its texture with a batched wall: once the lamp is put, nothing it samples is let go.
+  it("keeps a key a waiting object draws plainly up from its put, whatever the frame's order, fetched once", async () => {
+    await withFetchingScene(async ({ fetched, putFetched, renderer, scene }: IFetchingScene) => {
+      putFetched(["brick", "lmap#1"]);
+      scene.putSurface("wall", { draw: ERendererDraw.OPAQUE, textures: { base: "brick", hemi: "lmap#1" } });
+      putLamp(scene);
+      await landFetches();
+      scene.textures.upload(renderer, Infinity);
+      // Copied and let go before the queue advances: the lamp holds its keys from its put, not from an advance.
+      scene.flush(renderer);
+
+      expect(scene.textures.isEvicted("brick")).toBe(false);
+      expect(scene.textures.isEvicted("lmap#1")).toBe(true);
+
+      for (let frame: number = 0; frame < 4; frame += 1) {
+        await runFrame(scene, renderer);
+
+        expect(scene.textures.isEvicted("brick")).toBe(false);
+      }
+
+      expect(isSettled(scene)).toBe(true);
+      expect(scene.scenes[ERendererPass.FORWARD].children).toHaveLength(1);
+
+      scene.releaseObject("lamp");
+      await runFrame(scene, renderer);
+
+      // Drawn by nothing but its layer: let go.
+      expect(scene.textures.isEvicted("brick")).toBe(true);
+      expect(isSettled(scene)).toBe(true);
+      expect(fetched).toEqual(["brick", "lmap#1"]);
+    });
+  });
+
+  // The live loop: a lamp drawn plainly shares its texture with a batched wall. The lamp waiting asked about the
+  // evicted key every frame, which brought it back, fetched again as a new texture; the wall's layer was copied from it
+  // and the key evicted again, every frame, so the lamp never applied and the level never settled. Fetched again after
+  // that fix, every key a spawned model shared with the sectors read before it cost a second file.
+  it("brings an arrayed key a later object draws plainly back from its layer, keeps it while drawn, and settles", async () => {
+    await withFetchingScene(async ({ copies, fetched, putFetched, renderer, scene }: IFetchingScene) => {
+      putFetched(["brick", "lmap#1"]);
+      await runFrame(scene, renderer);
+      scene.putSurface("wall", { draw: ERendererDraw.OPAQUE, textures: { base: "brick", hemi: "lmap#1" } });
+      await runFrame(scene, renderer);
+
+      // The wall's layers hold both, so neither's own texture is up.
+      expect(scene.textures.isEvicted("brick")).toBe(true);
+      expect(isSettled(scene)).toBe(true);
+
+      const brick: Texture = copies[0].source;
+
+      copies.length = 0;
+      putLamp(scene);
+
+      for (let frame: number = 0; frame < 8; frame += 1) {
+        await runFrame(scene, renderer);
+      }
+
+      // Its own texture again, filled from its layer, every level; nothing is copied into the layer again.
+      expect(scene.textures.getUploaded("brick")).toBe(brick);
+      expect(copies.map((copy: ITextureDeviceCopy) => copy.level)).toEqual(
+        brick.mipmaps.map((_: unknown, level: number) => level)
+      );
+      expect(copies.every((copy: ITextureDeviceCopy) => copy.destination === brick)).toBe(true);
+
+      expect(isSettled(scene)).toBe(true);
+      expect(scene.scenes[ERendererPass.FORWARD].children).toHaveLength(1);
+      expect(scene.textures.isEvicted("brick")).toBe(false);
+      expect(scene.textures.isEvicted("lmap#1")).toBe(true);
+
+      scene.releaseObject("lamp");
+      await runFrame(scene, renderer);
+      await runFrame(scene, renderer);
+
+      // Drawn by nothing but its layer again: let go, and never fetched again.
+      expect(scene.textures.isEvicted("brick")).toBe(true);
+      expect(isSettled(scene)).toBe(true);
+      expect(fetched).toEqual(["brick", "lmap#1"]);
+    });
+  });
+
+  it("counts what it holds on the CPU, a buffer several arrays view counted once", () => {
+    const uniforms: RendererUniforms = new RendererUniforms();
+    const scene: RendererScene = new RendererScene(uniforms, () => {});
+    const before: number = scene.cpuMemory;
+    const bytes: ArrayBuffer = new ArrayBuffer(48);
+
+    // A position and an index over one buffer, as a sector's arrays cross.
+    scene.putGeometry("rock", {
+      groups: [],
+      index: new Uint16Array(bytes, 36, 3),
+      normal: new Float32Array(9),
+      position: new Float32Array(bytes, 0, 9),
+    });
+    scene.putTexture("brick", { bytes: mockDdsFile({ height: 8, width: 8 }), encoding: ERendererTextureEncoding.DDS });
+
+    const after: number = scene.cpuMemory;
+
+    // The geometry's shared buffer once, its normals, and the file whole: its levels are views of it.
+    expect(after - before).toBe(48 + 36 + mockDdsFile({ height: 8, width: 8 }).byteLength);
   });
 });

@@ -15,4 +15,6 @@ export interface IRendererReport extends IRendererPassTimings {
   /** How full the static draws' pools are and what occlusion removed. */
   staticDraws: IRendererStaticDrawReport;
   lights: IRendererLightsReport;
+  /** Bytes the renderer holds on the CPU of what it draws, each buffer counted once. */
+  cpuMemory: number;
 }

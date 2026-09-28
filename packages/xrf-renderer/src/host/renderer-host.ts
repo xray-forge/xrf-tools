@@ -9,6 +9,7 @@ import { ERendererRequest, TRendererRequest } from "#/contract/renderer-request"
 import { ERendererResponse } from "#/contract/renderer-response";
 import { IRendererSettings, toRendererSettings } from "#/contract/renderer-settings";
 import { IRendererViewSize } from "#/contract/renderer-view-size";
+import { IRendererTextureFetch } from "#/contract/scene/renderer-texture-fetch";
 import { IDdsRefusal } from "#/dds/dds-refusal";
 import { RendererDevice } from "#/device/renderer-device";
 import { RendererDeviceFailure } from "#/device/renderer-device-failure";
@@ -81,8 +82,10 @@ export class RendererHost {
       this.reply({ cursor, kind: ERendererResponse.CURSOR })
     );
     this.rig = new RendererCameraRig(this.element);
-    this.scene = new RendererScene(this.uniforms, (key: string, refusal: IDdsRefusal) =>
-      this.reply({ key, kind: ERendererResponse.TEXTURE_REFUSED, refusal })
+    this.scene = new RendererScene(
+      this.uniforms,
+      (key: string, refusal: IDdsRefusal) => this.reply({ key, kind: ERendererResponse.TEXTURE_REFUSED, refusal }),
+      (key: string, fetch: IRendererTextureFetch) => this.reply({ fetch, key, kind: ERendererResponse.TEXTURE_FETCHED })
     );
     this.overlays = new RendererOverlays(this.scene.skeletons, this.uniforms.lighting.sunDirection);
     this.graph = new RendererFrameGraph(
@@ -501,7 +504,8 @@ export class RendererHost {
           this.graph.passNames,
           this.scene.staticCull.kept,
           this.scene.staticDrawReport,
-          this.scene.lights.report
+          this.scene.lights.report,
+          this.scene.cpuMemory
         ),
       });
     }

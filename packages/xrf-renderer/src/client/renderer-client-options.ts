@@ -1,6 +1,7 @@
 import { IRendererDevice } from "#/contract/renderer-device";
 import { IRendererReport } from "#/contract/renderer-report";
 import { IRendererSettings } from "#/contract/renderer-settings";
+import { IRendererTextureFetch } from "#/contract/scene/renderer-texture-fetch";
 import { IDdsRefusal } from "#/dds/dds-refusal";
 
 /**
@@ -16,4 +17,6 @@ export interface IRendererClientOptions {
   onReport?: (report: IRendererReport) => void;
   /** A texture's file was refused as stored; putting its decoded picture under the same key fills the slot. */
   onTextureRefused?: (key: string, refusal: IDdsRefusal) => void;
+  /** A texture the renderer fetched arrived or could not, for the put that asked for it: what it came to. */
+  onTextureFetched?: (key: string, fetch: IRendererTextureFetch) => void;
 }

@@ -1,5 +1,5 @@
 import { Maybe, Nullable } from "@xrf/types";
-import { CompressedTexture, Texture } from "three/webgpu";
+import { CompressedTexture, Texture, WebGPURenderer } from "three/webgpu";
 
 import { ITextureCopy } from "#/internals/texture-copy";
 import { TextureArray } from "#/texture/texture-array";
@@ -26,7 +26,10 @@ export class TextureArrays {
 
   private readonly arrays: Map<string, Array<TextureArray>> = new Map();
   private readonly claims: Map<string, ITextureClaim> = new Map();
-  /** A zeroed buffer of each size an array asked for, which every array of that size writes its first layer from. */
+  /**
+   * A zeroed buffer of each size an array asked for since the last `releaseZeros`, which every array of that size made
+   * meanwhile writes its first layer from.
+   */
   private readonly zeros: Map<number, Uint8Array> = new Map();
   private readonly onReplaced: (key: string) => void;
   private made: number = 0;
@@ -133,6 +136,15 @@ export class TextureArrays {
   }
 
   /**
+   * @param key - A texture's key whose own texture was let go.
+   * @param texture - That texture, to be filled again on the GPU.
+   * @returns The copies filling it from its layer, or null where no layer holds a copy of it.
+   */
+  public toRestoreCopies(key: string, texture: Texture): Nullable<Array<ITextureCopy>> {
+    return this.claims.get(key)?.held.array.toRestoreCopies(key, texture) ?? null;
+  }
+
+  /**
    * @param skipped - Copies the frame could not make, which are rare: a scan of the claims each.
    * @returns The keys they were for, each copied again with the next flush where it is still claimed there.
    */
@@ -200,6 +212,19 @@ export class TextureArrays {
    */
   public compact(now: number): void {
     this.arrays.forEach((arrays: Array<TextureArray>) => arrays.forEach((array: TextureArray) => array.compact(now)));
+  }
+
+  /**
+   * Lets go of the zeroed layer of every array on the GPU now, and of the zeroed buffers made for them: an array made
+   * later makes its own.
+   *
+   * @param renderer - The renderer that uploaded them.
+   */
+  public releaseZeros(renderer: WebGPURenderer): void {
+    this.arrays.forEach((arrays: Array<TextureArray>) =>
+      arrays.forEach((array: TextureArray) => array.releaseZeros(renderer))
+    );
+    this.zeros.clear();
   }
 
   public dispose(): void {

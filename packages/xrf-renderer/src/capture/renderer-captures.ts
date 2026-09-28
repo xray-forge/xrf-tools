@@ -40,10 +40,14 @@ export class RendererCaptures {
 
   /**
    * @param id - What the answer is sent under.
-   * @param source - What to draw.
+   * @param source - What to draw; a bump plane holds its pair until it is drawn, so an evicted half comes back for it.
    */
   public push(id: number, source: TRendererCaptureSource): void {
     this.pending.push({ id, source });
+
+    if (source.kind === ERendererCaptureSource.BUMP_PLANE) {
+      this.textures.hold([source.bump, source.companion]);
+    }
   }
 
   /**
@@ -76,6 +80,8 @@ export class RendererCaptures {
         this.read(renderer, id, source.width, source.height, (target: RenderTarget) =>
           this.bumpPlanes.draw(renderer, source.plane, source.bump, source.companion, target)
         );
+        // Drawn: the plane's material holds the pair for as long as it is kept.
+        this.textures.letGo([source.bump, source.companion]);
       } else {
         this.pending.push(capture);
       }
@@ -85,6 +91,13 @@ export class RendererCaptures {
   /** Drops every capture waiting and every read in flight unanswered: the renderer is gone, which answers them. */
   public dispose(): void {
     this.isDisposed = true;
+
+    for (const { source } of this.pending) {
+      if (source.kind === ERendererCaptureSource.BUMP_PLANE) {
+        this.textures.letGo([source.bump, source.companion]);
+      }
+    }
+
     this.pending = [];
     this.bumpPlanes.dispose();
   }

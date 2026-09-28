@@ -53,7 +53,7 @@ describe("RendererTextures", () => {
 
   // Three uploads again whatever a sampler still holds once it went, from the bytes left on the CPU, and a pipeline
   // compiled over such a target is one such sampler.
-  it("lets an evicted texture go, its targets drawing their placeholders, and uploads it again once asked for", () => {
+  it("lets an evicted texture go, its targets drawing their placeholders, and uploads it again once held", () => {
     const rebound: Array<string> = [];
     const textures: RendererTextures = new RendererTextures(
       () => {},
@@ -75,9 +75,13 @@ describe("RendererTextures", () => {
     expect(isDisposed).toBe(true);
     expect(target.value).toBe(getWhiteTexture());
     expect(textures.isEvicted("brick")).toBe(true);
-    expect(textures.hasQueued).toBe(false);
     expect(textures.isUploaded("brick")).toBe(false);
     expect(textures.getUploaded("brick")).toBeNull();
+    // Asking is no need: only a hold brings it back.
+    expect(textures.hasQueued).toBe(false);
+
+    textures.hold(["brick"]);
+
     expect(textures.hasQueued).toBe(true);
 
     textures.upload(RENDERER, Infinity);
@@ -163,6 +167,31 @@ describe("RendererTextures", () => {
     textures.upload(RENDERER, Infinity);
 
     expect(textures.evict("brick")).toBeNull();
+  });
+
+  // Something readying a batched surface asks about its keys every frame: asking brought the key back, its layer was
+  // copied again and the key evicted again, every frame, and the queue never emptied.
+  it("brings nothing back for being asked about, however often", () => {
+    const rebound: Array<string> = [];
+    const textures: RendererTextures = new RendererTextures(
+      () => {},
+      (key: string) => rebound.push(key)
+    );
+
+    textures.target("brick", getWhiteTexture(), createTarget(getWhiteTexture()));
+    upload(textures, "brick");
+    textures.evict("brick");
+    rebound.length = 0;
+
+    for (let frame: number = 0; frame < 3; frame += 1) {
+      expect(textures.isUploaded("brick")).toBe(false);
+      expect(textures.getUploaded("brick")).toBeNull();
+      textures.upload(RENDERER, Infinity);
+    }
+
+    expect(textures.hasQueued).toBe(false);
+    expect(textures.isEvicted("brick")).toBe(true);
+    expect(rebound).toEqual([]);
   });
 
   it("evicts nothing of a key whose latest texture is not up yet", () => {

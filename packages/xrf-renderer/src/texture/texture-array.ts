@@ -4,12 +4,22 @@ import {
   CompressedPixelFormat,
   CompressedTexture,
   CompressedTextureMipmap,
+  MagnificationTextureFilter,
+  MinificationTextureFilter,
+  RED_RGTC1_Format,
+  RGB_S3TC_DXT1_Format,
+  RGBA_S3TC_DXT1_Format,
+  SIGNED_RED_RGTC1_Format,
   Texture,
+  WebGPURenderer,
+  Wrapping,
 } from "three/webgpu";
 
-import { DDS_BLOCK_SIZE } from "#/dds/dds-block-format";
+import { DDS_BLOCK_SIZE, DDS_FULL_BLOCK_BYTES, DDS_HALF_BLOCK_BYTES } from "#/dds/dds-block-format";
 import { ITextureCopy } from "#/internals/texture-copy";
+import { isTextureOnGpu } from "#/internals/texture-residency";
 import { ITextureArrayFlush } from "#/texture/texture-array-flush";
+import { hasTextureData, releaseTextureData } from "#/texture/texture-data";
 import { ITextureTarget } from "#/texture/texture-target";
 
 /** Layers an array holds before it first grows. */
@@ -41,6 +51,34 @@ interface ILevelExtent {
   bytes: number;
 }
 
+/** A level's texels a side, as its texture states them. */
+interface ILevelSize {
+  width: number;
+  height: number;
+}
+
+/** What an array takes of the texture its class was first seen in: never the texture, whose bytes it would keep. */
+interface IArrayShape {
+  format: CompressedPixelFormat;
+  width: number;
+  height: number;
+  levels: ReadonlyArray<ILevelSize>;
+  colorSpace: string;
+  wrapS: Wrapping;
+  wrapT: Wrapping;
+  anisotropy: number;
+  magFilter: MagnificationTextureFilter;
+  minFilter: MinificationTextureFilter;
+}
+
+/** Formats a block of which takes half the bytes of the others': one plane, or colour with a bit of alpha. */
+const HALF_BLOCK_FORMATS: ReadonlySet<CompressedPixelFormat> = new Set<CompressedPixelFormat>([
+  RGB_S3TC_DXT1_Format,
+  RGBA_S3TC_DXT1_Format,
+  RED_RGTC1_Format,
+  SIGNED_RED_RGTC1_Format,
+]);
+
 /**
  * Textures of one class as the layers of one array, each copied on the GPU from its key's own texture, which then goes.
  * Grown by half again, to the device's layer limit or `TEXTURE_ARRAY_BYTES`, and fitted to the layers it uses once it
@@ -55,7 +93,7 @@ export class TextureArray {
   /** Layers it may hold at most: the device's limit, or what fits its bytes. */
   public readonly limit: number;
 
-  private readonly prototype: CompressedTexture;
+  private readonly shape: IArrayShape;
   private readonly extents: ReadonlyArray<ILevelExtent>;
   private readonly zeros: (bytes: number) => Uint8Array;
   private readonly layers: Map<string, ITextureArrayLayer> = new Map();
@@ -88,9 +126,9 @@ export class TextureArray {
    */
   public constructor(key: string, prototype: CompressedTexture, limit: number, zeros: (bytes: number) => Uint8Array) {
     this.key = key;
-    this.prototype = prototype;
+    this.shape = toShape(prototype);
     this.zeros = zeros;
-    this.extents = toExtents(prototype);
+    this.extents = toExtents(this.shape);
 
     const layerBytes: number = this.extents.reduce((total: number, extent: ILevelExtent) => total + extent.bytes, 0);
 
@@ -248,6 +286,25 @@ export class TextureArray {
   }
 
   /**
+   * @param key - A key held here whose own texture was let go.
+   * @param destination - That texture, to be filled again on the GPU.
+   * @returns The copies filling it from its layer, or null where the layer holds no copy of it: one of another texture,
+   *   or one still to be made.
+   */
+  public toRestoreCopies(key: string, destination: Texture): Nullable<Array<ITextureCopy>> {
+    const held: Maybe<ITextureArrayLayer> = this.layers.get(key);
+
+    if (!held || held.source !== destination || this.copies.has(key)) {
+      return null;
+    }
+
+    // Until a flush moves them, the layers held before a replacement are the outgrown array's.
+    const source: Texture = this.outgrown && held.layer < this.outgrownLayers ? this.outgrown : this.texture;
+
+    return this.toCopies(source, held.layer, destination, 0, 1);
+  }
+
+  /**
    * @param key - A key held here.
    * @param copy - A copy the frame could not make.
    * @returns Whether it was a copy of the key's layer, which is copied again with the next flush.
@@ -267,6 +324,17 @@ export class TextureArray {
     this.copies.add(key);
 
     return true;
+  }
+
+  /**
+   * Lets go of the zeroed layer the array was made with, once it is on the GPU: three never writes it again.
+   *
+   * @param renderer - The renderer that uploaded it.
+   */
+  public releaseZeros(renderer: WebGPURenderer): void {
+    if (hasTextureData(this.texture) && isTextureOnGpu(renderer, this.texture)) {
+      releaseTextureData(this.texture);
+    }
   }
 
   /** What to dispose where the array goes whole: itself, and anything it still waits to let go. */
@@ -321,45 +389,53 @@ export class TextureArray {
     this.changedAt = performance.now();
   }
 
-  /** Copies of layers of every level, block rows whole, the last level's included however small. */
+  /** Copies of layers of every level into the array. */
   private pushCopies(flush: ITextureArrayFlush, source: Texture, first: number, count: number, at: number): void {
-    this.extents.forEach(({ width, height }: ILevelExtent, level: number) =>
-      flush.copies.push({
-        destination: this.texture,
-        destinationLayer: at,
-        height,
-        layers: count,
-        level,
-        source,
-        sourceLayer: first,
-        width,
-      } satisfies ITextureCopy)
-    );
+    flush.copies.push(...this.toCopies(source, first, this.texture, at, count));
+  }
+
+  /** Copies of layers of every level, block rows whole, the last level's included however small. */
+  private toCopies(
+    source: Texture,
+    sourceLayer: number,
+    destination: Texture,
+    destinationLayer: number,
+    layers: number
+  ): Array<ITextureCopy> {
+    return this.extents.map(({ width, height }: ILevelExtent, level: number): ITextureCopy => ({
+      destination,
+      destinationLayer,
+      height,
+      layers,
+      level,
+      source,
+      sourceLayer,
+      width,
+    }));
   }
 
   /** An array of its class holding `layers` layers, its first written as nothing and the rest left to the device. */
   private createTexture(layers: number): CompressedArrayTexture {
-    const { prototype } = this;
-    const { width, height } = prototype.image as { width: number; height: number };
-    const mipmaps = prototype.mipmaps.map((mipmap: CompressedTextureMipmap, level: number) => ({
+    const { shape } = this;
+    const mipmaps = shape.levels.map(({ width, height }: ILevelSize, level: number) => ({
       data: this.zeros(this.extents[level].bytes),
-      height: (mipmap as { height: number }).height,
-      width: (mipmap as { width: number }).width,
+      height,
+      width,
     }));
     const texture: CompressedArrayTexture = new CompressedArrayTexture(
       mipmaps as unknown as ConstructorParameters<typeof CompressedArrayTexture>[0],
-      width,
-      height,
+      shape.width,
+      shape.height,
       layers,
-      prototype.format as CompressedPixelFormat
+      shape.format
     );
 
-    texture.colorSpace = prototype.colorSpace;
-    texture.wrapS = prototype.wrapS;
-    texture.wrapT = prototype.wrapT;
-    texture.anisotropy = prototype.anisotropy;
-    texture.magFilter = prototype.magFilter;
-    texture.minFilter = prototype.minFilter;
+    texture.colorSpace = shape.colorSpace;
+    texture.wrapS = shape.wrapS;
+    texture.wrapT = shape.wrapT;
+    texture.anisotropy = shape.anisotropy;
+    texture.magFilter = shape.magFilter;
+    texture.minFilter = shape.minFilter;
     texture.generateMipmaps = false;
     // Three writes a layer from one buffer holding every layer; the first alone is written, from a buffer of one, and
     // the device clears the rest.
@@ -371,15 +447,41 @@ export class TextureArray {
 }
 
 /**
- * @param prototype - A texture of the class.
- * @returns Each level's physical size, whole blocks, and its bytes a layer, as its own data holds them.
+ * @param prototype - A texture of the class, its bytes on the CPU or let go.
+ * @returns What an array of the class is made from.
  */
-function toExtents(prototype: CompressedTexture): Array<ILevelExtent> {
-  const { width, height } = prototype.image as { width: number; height: number };
+function toShape(prototype: CompressedTexture): IArrayShape {
+  const { width, height } = prototype.image as ILevelSize;
 
-  return prototype.mipmaps.map((mipmap: CompressedTextureMipmap, level: number) => ({
-    bytes: (mipmap as { data: ArrayBufferView }).data.byteLength,
-    height: Math.ceil(Math.max(1, height >> level) / DDS_BLOCK_SIZE) * DDS_BLOCK_SIZE,
-    width: Math.ceil(Math.max(1, width >> level) / DDS_BLOCK_SIZE) * DDS_BLOCK_SIZE,
-  }));
+  return {
+    anisotropy: prototype.anisotropy,
+    colorSpace: prototype.colorSpace,
+    format: prototype.format as CompressedPixelFormat,
+    height,
+    levels: prototype.mipmaps.map((mipmap: CompressedTextureMipmap) => {
+      const level: ILevelSize = mipmap as unknown as ILevelSize;
+
+      return { height: level.height, width: level.width };
+    }),
+    magFilter: prototype.magFilter,
+    minFilter: prototype.minFilter,
+    width,
+    wrapS: prototype.wrapS,
+    wrapT: prototype.wrapT,
+  };
+}
+
+/**
+ * @param shape - The class.
+ * @returns Each level's physical size, whole blocks, and its bytes a layer.
+ */
+function toExtents(shape: IArrayShape): Array<ILevelExtent> {
+  const blockBytes: number = HALF_BLOCK_FORMATS.has(shape.format) ? DDS_HALF_BLOCK_BYTES : DDS_FULL_BLOCK_BYTES;
+
+  return shape.levels.map((_: ILevelSize, level: number) => {
+    const width: number = Math.ceil(Math.max(1, shape.width >> level) / DDS_BLOCK_SIZE) * DDS_BLOCK_SIZE;
+    const height: number = Math.ceil(Math.max(1, shape.height >> level) / DDS_BLOCK_SIZE) * DDS_BLOCK_SIZE;
+
+    return { bytes: (width / DDS_BLOCK_SIZE) * (height / DDS_BLOCK_SIZE) * blockBytes, height, width };
+  });
 }

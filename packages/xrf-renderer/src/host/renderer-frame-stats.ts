@@ -57,6 +57,8 @@ export class RendererFrameStats {
    * @param passes - The frame's passes, in frame order.
    * @param kept - What the static cull kept, which three's own counts leave out.
    * @param staticDraws - How full the static draws' pools are and what occlusion removed.
+   * @param lights - What the local lights came to.
+   * @param cpuMemory - Bytes the scene holds on the CPU of what it draws.
    * @returns What the frames have been costing.
    */
   public toReport(
@@ -67,12 +69,14 @@ export class RendererFrameStats {
     passes: ReadonlyArray<string>,
     kept: IStaticCullCounts,
     staticDraws: IRendererStaticDrawReport,
-    lights: IRendererLightsReport
+    lights: IRendererLightsReport,
+    cpuMemory: number
   ): IRendererReport {
     const { render } = device.renderer.info;
 
     return {
       camera,
+      cpuMemory,
       frame: {
         drawnHeight: canvas.height,
         drawnWidth: canvas.width,

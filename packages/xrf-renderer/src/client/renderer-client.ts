@@ -59,7 +59,15 @@ export class RendererClient {
   private captureId: number = 0;
   private settleId: number = 0;
 
-  public constructor({ worker, settings, onReady, onFailed, onReport, onTextureRefused }: IRendererClientOptions) {
+  public constructor({
+    worker,
+    settings,
+    onReady,
+    onFailed,
+    onReport,
+    onTextureRefused,
+    onTextureFetched,
+  }: IRendererClientOptions) {
     this.worker = worker;
     this.onFailed = onFailed;
 
@@ -87,6 +95,9 @@ export class RendererClient {
 
         case ERendererResponse.TEXTURE_REFUSED:
           return onTextureRefused?.(response.key, response.refusal);
+
+        case ERendererResponse.TEXTURE_FETCHED:
+          return onTextureFetched?.(response.key, response.fetch);
 
         case ERendererResponse.CURSOR:
           return this.view?.input.setCursor(response.cursor);
@@ -167,7 +178,7 @@ export class RendererClient {
 
   /**
    * @param key - What the texture is held under; a surface names it by this.
-   * @param source - Its bytes, moved to the renderer and no longer usable here.
+   * @param source - Its bytes, moved to the renderer and no longer usable here, or where the renderer fetches them.
    */
   public putTexture(key: string, source: TRendererTextureSource): void {
     this.post({ key, kind: ERendererRequest.PUT_TEXTURE, source });

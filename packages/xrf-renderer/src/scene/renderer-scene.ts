@@ -1,5 +1,5 @@
 import { Maybe, Nullable } from "@xrf/types";
-import { Material, Mesh, Object3D, PerspectiveCamera, Scene, WebGPURenderer } from "three/webgpu";
+import { Material, Mesh, Object3D, PerspectiveCamera, Scene, Texture, WebGPURenderer } from "three/webgpu";
 
 import { IRendererStaticDrawReport } from "#/contract/renderer-static-draw-report";
 import { IRendererGeometry } from "#/contract/scene/renderer-geometry";
@@ -9,6 +9,7 @@ import { IRendererLights } from "#/contract/scene/renderer-lights";
 import { IRendererObject } from "#/contract/scene/renderer-object";
 import { ERendererPass } from "#/contract/scene/renderer-pass";
 import { IRendererSurface } from "#/contract/scene/renderer-surface";
+import { IRendererTextureFetch } from "#/contract/scene/renderer-texture-fetch";
 import { TRendererTextureSource } from "#/contract/scene/renderer-texture-source";
 import { IDdsRefusal } from "#/dds/dds-refusal";
 import { SceneChangeQueue } from "#/scene/change/scene-change-queue";
@@ -56,6 +57,7 @@ export class RendererScene {
   /** The skies the lighting names, which the water reflects. */
   public readonly sky: SceneSky;
 
+  private readonly uniforms: RendererUniforms;
   private readonly geometries: Map<string, SceneGeometry> = new Map();
   /** The buffers of geometries nothing draws any more, freed with the next flush. */
   private readonly releases: GeometryReleases = new GeometryReleases();
@@ -71,6 +73,11 @@ export class RendererScene {
   private readonly proxies: LayoutProxies = new LayoutProxies();
   /** The texture keys each drawn object samples, whose own textures stay on the GPU while it draws them. */
   private readonly held: Map<SceneObject, ReadonlyArray<string>> = new Map();
+  /**
+   * The texture keys each waiting object will sample, held from the moment it is queued: their own textures go up and
+   * stay up until it draws them.
+   */
+  private readonly waiting: Map<SceneObject, ReadonlyArray<string>> = new Map();
   /** What each drawn object was applied with, which a pass joining the frame compiles for. */
   private readonly applied: Map<SceneObject, ISceneObjectState> = new Map();
   /** The passes the frame draws or is joining, whose materials an object waits for. */
@@ -83,13 +90,23 @@ export class RendererScene {
     settled: () => this.retire(),
   });
 
-  public constructor(uniforms: RendererUniforms, onTextureRefused: (key: string, refusal: IDdsRefusal) => void) {
+  public constructor(
+    uniforms: RendererUniforms,
+    onTextureRefused: (key: string, refusal: IDdsRefusal) => void,
+    onTextureFetched: (key: string, fetch: IRendererTextureFetch) => void = () => {}
+  ) {
+    this.uniforms = uniforms;
     this.staticDraws = new StaticDraws(uniforms.staticDraws, uniforms.treeWind, () => this.toUpcomingStatic());
     this.staticCull = this.staticDraws.cull;
-    this.textures = new RendererTextures(onTextureRefused, (key: string) => {
-      this.surfaces.rebind(key);
-      this.staticDraws.invalidate(key);
-    });
+    this.textures = new RendererTextures(
+      onTextureRefused,
+      (key: string) => {
+        this.surfaces.rebind(key);
+        this.staticDraws.invalidate(key);
+      },
+      onTextureFetched,
+      (renderer: WebGPURenderer, key: string, texture: Texture) => this.surfaces.restore(renderer, key, texture)
+    );
     this.grass = new SceneGrass(this.textures, uniforms);
     this.lights = new SceneLights(this.textures, this.staticDraws.shadowChanges);
     this.sky = new SceneSky(this.textures, uniforms.sky);
@@ -149,6 +166,21 @@ export class RendererScene {
     this.surfaces.flush(renderer);
     this.staticDraws.flushArenas(renderer);
     this.releases.free(renderer);
+  }
+
+  /**
+   * Bytes the scene holds on the CPU of what it draws, each buffer counted once: textures not up yet or handed over as
+   * bytes, geometries' arrays, and the storage the CPU writes.
+   */
+  public get cpuMemory(): number {
+    return countBytes(new Set(), [
+      ...this.textures.listHeldData(),
+      ...[...this.geometries.values()].flatMap((geometry: SceneGeometry) => geometry.listArrays()),
+      ...this.uniforms.staticDraws.listArrays(),
+      this.uniforms.surfaceTable.rows.array,
+      ...this.staticDraws.listPending(),
+      ...this.grass.listArrays(),
+    ]);
   }
 
   /** Whether any object waits: for a material to compile, a texture to upload, or its turn to be applied. */
@@ -344,6 +376,8 @@ export class RendererScene {
           this.applied.delete(entry);
           this.hold(entry, []);
         });
+        this.textures.letGo(this.waiting.get(entry) ?? []);
+        this.waiting.delete(entry);
       });
     }
   }
@@ -365,6 +399,7 @@ export class RendererScene {
     this.geometries.clear();
     this.skeletons.dispose();
     this.held.clear();
+    this.waiting.clear();
     this.applied.clear();
     this.textures.dispose();
     this.staticDraws.dispose();
@@ -421,11 +456,12 @@ export class RendererScene {
     });
   }
 
-  /** Queues an object in the running change, to draw as it is put now. */
+  /** Queues an object in the running change, to draw as it is put now, holding what it will sample from now on. */
   private build(entry: SceneObject): void {
     // Only an object still held draws: one released while it waited is gone for good.
     if (this.objects.get(entry.key) === entry) {
       this.changes.enlist(entry);
+      this.holdWaiting(entry);
     }
   }
 
@@ -445,6 +481,9 @@ export class RendererScene {
 
     entry.apply(state, this.scenes);
     this.hold(entry, state ? [...new Set([...state.keys, ...entry.plainKeys])] : []);
+    // Drawn now, so what it drew holds its keys from here on.
+    this.textures.letGo(this.waiting.get(entry) ?? []);
+    this.waiting.delete(entry);
 
     if (state) {
       this.applied.set(entry, state);
@@ -465,6 +504,29 @@ export class RendererScene {
       this.held.set(entry, keys);
     } else {
       this.held.delete(entry);
+    }
+  }
+
+  /**
+   * Holds the keys a queued object will sample as it would draw now, in place of those it held before. What it resolves
+   * by changes only through `build`, so nothing it waits for is evicted from the moment it is known; an evicted key it
+   * samples plainly comes back for this hold, and stays up until the object draws it or is withdrawn.
+   */
+  private holdWaiting(entry: SceneObject): void {
+    const keys: ReadonlyArray<string> = this.resolver.resolve(entry)?.keys ?? [];
+    const held: ReadonlyArray<string> = this.waiting.get(entry) ?? [];
+
+    if (isSameKeys(keys, held)) {
+      return;
+    }
+
+    this.textures.hold(keys);
+    this.textures.letGo(held);
+
+    if (keys.length) {
+      this.waiting.set(entry, keys);
+    } else {
+      this.waiting.delete(entry);
     }
   }
 
@@ -530,4 +592,27 @@ export class RendererScene {
 
     this.surfaces.retire(drawn, (material: Material) => this.readiness.isCompiled(material));
   }
+}
+
+/** Whether two lists of keys name the same keys in the same order. */
+function isSameKeys(a: ReadonlyArray<string>, b: ReadonlyArray<string>): boolean {
+  return a.length === b.length && a.every((key: string, index: number) => key === b[index]);
+}
+
+/**
+ * @param counted - The buffers counted so far, which the arrays' own join.
+ * @param arrays - Arrays, several of them views of one buffer or of one counted already.
+ * @returns Bytes of the buffers behind them not counted before.
+ */
+function countBytes(counted: Set<ArrayBufferLike>, arrays: Iterable<ArrayBufferView>): number {
+  let bytes: number = 0;
+
+  for (const { buffer } of arrays) {
+    if (!counted.has(buffer)) {
+      counted.add(buffer);
+      bytes += buffer.byteLength;
+    }
+  }
+
+  return bytes;
 }

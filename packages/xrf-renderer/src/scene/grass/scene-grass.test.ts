@@ -4,7 +4,12 @@ import { BufferAttribute, Mesh, PerspectiveCamera, WebGPURenderer } from "three/
 import { DEFAULT_RENDERER_GRASS_SETTINGS, IRendererGrassSettings } from "#/contract/renderer-grass-settings";
 import { ERendererDraw } from "#/contract/scene/renderer-draw";
 import { IRendererGrass, RENDERER_GRASS_SLOT_WORDS } from "#/contract/scene/renderer-grass";
+import { IRendererGrassModel } from "#/contract/scene/renderer-grass-model";
+import { ERendererTextureEncoding } from "#/contract/scene/renderer-texture-source";
+import { mockDdsFile } from "#/dds/dds-fixtures";
 import { adoptRendererConventions } from "#/internals/camera-conventions";
+import { IStorageDeviceFixture, mockStorageDevice } from "#/internals/device-fixtures";
+import { createStorageBuffer } from "#/internals/storage-buffers";
 import { SceneGrass } from "#/scene/grass/scene-grass";
 import { ISceneGrassStaging } from "#/scene/grass/scene-grass-staging";
 import { RendererTextures } from "#/texture/renderer-textures";
@@ -15,6 +20,7 @@ const FAR: IRendererGrassSettings = { ...DEFAULT_RENDERER_GRASS_SETTINGS, radius
 
 interface IGrassFixture {
   grass: SceneGrass;
+  uniforms: RendererUniforms;
   renderer: WebGPURenderer;
   view: PerspectiveCamera;
   /** Every buffer retired so far. */
@@ -68,7 +74,7 @@ function createFixture(): IGrassFixture {
     );
   grass.put(createGrass());
 
-  return { grass, renderer: { compute: jest.fn() } as unknown as WebGPURenderer, retired, view };
+  return { grass, renderer: { compute: jest.fn() } as unknown as WebGPURenderer, retired, uniforms, view };
 }
 
 /** The draw arguments a staged build's draws read, which are the level's. */
@@ -77,6 +83,31 @@ function toLevelArguments(staging: ISceneGrassStaging): BufferAttribute {
 }
 
 describe("SceneGrass", () => {
+  // Asking whether its textures are up brings nothing back: one an array's layer holds comes back only for a hold.
+  it("holds the textures its models are dressed with from its put until it is let go", () => {
+    const textures: RendererTextures = new RendererTextures(
+      () => {},
+      () => {}
+    );
+    const grass: SceneGrass = new SceneGrass(textures, new RendererUniforms());
+    const dressed: IRendererGrass = createGrass();
+
+    dressed.models = dressed.models.map((model: IRendererGrassModel) => ({
+      ...model,
+      surface: { ...model.surface, textures: { base: "tuft" } },
+    }));
+    textures.put("tuft", { bytes: mockDdsFile(), encoding: ERendererTextureEncoding.DDS });
+    textures.upload({ initTexture: () => {} } as unknown as WebGPURenderer, Infinity);
+    grass.put(dressed);
+
+    expect(grass.isReady).toBe(true);
+    expect(textures.evict("tuft")).toBeNull();
+
+    grass.release();
+
+    expect(textures.evict("tuft")).not.toBeNull();
+  });
+
   it("draws nothing until its first build has compiled, handing that build over once", () => {
     const { grass, renderer, view }: IGrassFixture = createFixture();
 
@@ -194,5 +225,30 @@ describe("SceneGrass", () => {
     grass.release();
 
     expect(retired.has(level)).toBe(true);
+  });
+
+  // The level's slots and triangles are tens of megabytes on a large level, and the ring and the lists more.
+  it("lets the array of every buffer it plants from and into go once the GPU holds the buffer", () => {
+    const { grass, renderer, uniforms, view }: IGrassFixture = createFixture();
+    const device: IStorageDeviceFixture = mockStorageDevice();
+    const handed: Array<BufferAttribute> = [];
+
+    jest
+      .spyOn(uniforms.retirement, "retireArrays")
+      .mockImplementation((attributes: Iterable<BufferAttribute>) => void handed.push(...attributes));
+    grass.put(createGrass());
+    grass.plant(renderer, view, FAR);
+    jest.restoreAllMocks();
+
+    expect(grass.listArrays().some((array: ArrayBufferView) => array.byteLength > 16)).toBe(true);
+
+    uniforms.retirement.retireArrays(handed);
+    // Made by three as the build first binds them.
+    handed.forEach((attribute: BufferAttribute) =>
+      createStorageBuffer(device.renderer, attribute, attribute.array.byteLength)
+    );
+    uniforms.retirement.free(device.renderer);
+
+    expect(grass.listArrays().filter((array: ArrayBufferView) => array.byteLength > 16)).toEqual([]);
   });
 });

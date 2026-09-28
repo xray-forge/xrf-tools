@@ -1,4 +1,4 @@
-import { BufferAttribute, BufferGeometry, Sphere, Vector3 } from "three/webgpu";
+import { BufferAttribute, BufferGeometry, InterleavedBufferAttribute, Sphere, Vector3 } from "three/webgpu";
 
 import { IRendererBounds } from "#/contract/scene/renderer-bounds";
 import { IRendererGeometry } from "#/contract/scene/renderer-geometry";
@@ -167,6 +167,22 @@ export class SceneGeometry {
   /** What all of it spans, in its own space. */
   public get sphere(): Sphere {
     return this.buffer.boundingSphere as Sphere;
+  }
+
+  /**
+   * Its arrays, which stay on the CPU: a part drawing it plainly, from the first or as a static draw's fallback, is
+   * uploaded from them, and an arena places it from them again each time an object draws it statically after none did.
+   *
+   * @returns Every attribute's array and the index's.
+   */
+  public listArrays(): Array<ArrayBufferView> {
+    const { index, attributes } = this.buffer;
+    const arrays: Array<ArrayBufferView> = Object.values(attributes).map(
+      (attribute: BufferAttribute | InterleavedBufferAttribute) =>
+        attribute instanceof InterleavedBufferAttribute ? attribute.data.array : attribute.array
+    );
+
+    return index ? [...arrays, index.array] : arrays;
   }
 
   /**

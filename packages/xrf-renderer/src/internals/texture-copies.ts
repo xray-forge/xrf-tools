@@ -2,6 +2,7 @@ import { Maybe } from "@xrf/types";
 import { Texture, WebGPURenderer } from "three/webgpu";
 
 import { ITextureCopy } from "#/internals/texture-copy";
+import { isTextureOnGpu } from "#/internals/texture-residency";
 
 /** The part of a WebGPU texture copy's endpoint three's typings leave out. */
 interface ICopyEndpoint {
@@ -26,11 +27,6 @@ interface ICopyBackend {
   get(object: object): Maybe<{ texture?: unknown }>;
 }
 
-/** The part of three's renderer that knows whether a texture is up as itself, which its typings do not state. */
-interface ICopyRenderer {
-  _textures: { get(texture: Texture): { isDefaultTexture?: boolean } };
-}
-
 /**
  * Copies between textures on the GPU in one command buffer, where three's own `copyTextureToTexture` submits one a copy:
  * a texture array filled level by level is a few thousand of them.
@@ -42,26 +38,26 @@ interface ICopyRenderer {
  */
 export function copyTextures(renderer: WebGPURenderer, copies: ReadonlyArray<ITextureCopy>): Array<ITextureCopy> {
   const backend: ICopyBackend = renderer.backend as unknown as ICopyBackend;
-  const { _textures: textures }: ICopyRenderer = renderer as unknown as ICopyRenderer;
 
   if (!copies.length || !backend.device) {
     return [];
   }
 
-  // Up before anything reads them: an array just made, or a texture whose GPU copy was let go and is read again.
+  // Up before anything reads them: an array just made. A texture whose bytes went once it was up (`dataReady` false)
+  // is not sent again: gone from the GPU since, three would make it anew with nothing in it.
   new Set(copies.flatMap(({ source, destination }: ITextureCopy) => [source, destination])).forEach(
-    (texture: Texture) => renderer.initTexture(texture)
+    (texture: Texture) => {
+      if (texture.source.dataReady !== false) {
+        renderer.initTexture(texture);
+      }
+    }
   );
-
-  function isUp(texture: Texture): boolean {
-    return textures.get(texture).isDefaultTexture !== true && backend.get(texture)?.texture !== undefined;
-  }
 
   const made: Array<ITextureCopy> = [];
   const skipped: Array<ITextureCopy> = [];
 
   for (const copy of copies) {
-    (isUp(copy.source) && isUp(copy.destination) ? made : skipped).push(copy);
+    (isTextureOnGpu(renderer, copy.source) && isTextureOnGpu(renderer, copy.destination) ? made : skipped).push(copy);
   }
 
   if (skipped.length) {

@@ -2,15 +2,23 @@ import { Maybe, Nullable } from "@xrf/types";
 import { texture as sample } from "three/tsl";
 import { CubeTexture, Node, Texture, TextureNode, WebGPURenderer } from "three/webgpu";
 
+import { IRendererTextureFetch } from "#/contract/scene/renderer-texture-fetch";
 import { ERendererTextureEncoding, TRendererTextureSource } from "#/contract/scene/renderer-texture-source";
 import { IDdsRefusal } from "#/dds/dds-refusal";
+import { isTextureOnGpu } from "#/internals/texture-residency";
+import { fetchRendererTexture } from "#/texture/fetch-renderer-texture";
 import {
   createRendererImageTexture,
   createRendererRawTexture,
   createRendererTexture,
 } from "#/texture/renderer-texture";
+import { IRendererTextureLoad } from "#/texture/renderer-texture-load";
 import { IRendererTextureUpload } from "#/texture/renderer-texture-upload";
+import { hasTextureData, listTextureData, releaseTextureData } from "#/texture/texture-data";
 import { ITextureTarget } from "#/texture/texture-target";
+
+/** A put the renderer fetches itself, which it can fetch again. */
+type TFetchedSource = Extract<TRendererTextureSource, { encoding: ERendererTextureEncoding.FETCH }>;
 
 /** Something drawing a key's texture: what it draws while the key holds nothing, and whether it keeps it up. */
 interface ITextureBinding {
@@ -26,11 +34,18 @@ interface ITextureEntry {
   /** What the targets draw: always a texture already on the GPU, or nothing. */
   drawn: Nullable<Texture>;
   samplers: Map<ITextureTarget, ITextureBinding>;
-  /** Bumped by every put and release, so a picture decoding late can tell it was superseded. */
+  /** Bumped by every put and release, so a picture decoding or a file fetched late can tell it was superseded. */
   version: number;
-  /** Whether a picture is still decoding for it. */
-  isDecoding: boolean;
-  /** Whether what it draws was let go on the GPU, an array's layer holding it: asked for, it goes up again. */
+  /** Whether a picture is still decoding for it, or its file still fetching. */
+  isLoading: boolean;
+  /** Aborts the fetch in flight for it, or null for none. */
+  fetching: Nullable<AbortController>;
+  /**
+   * Where its latest put is fetched from, or null for one handed over as bytes: a fetched texture lets its bytes go once
+   * up, and is fetched again where it has to go up again and no array's layer holds a copy of it.
+   */
+  refetch: Nullable<TFetchedSource>;
+  /** Whether what it draws was let go on the GPU, an array's layer holding it: held again, it goes up again. */
   isEvicted: boolean;
   /** Holds of whatever draws its own texture; no eviction lets the texture go while any stays. */
   holds: number;
@@ -40,22 +55,39 @@ interface ITextureEntry {
  * The textures a consumer put, by key, bound into whatever samples them without recompiling anything.
  * A put texture goes up to the GPU in the frame loop, a few milliseconds a frame, and its samplers switch to it once it
  * is there: three uploads a texture the first time a binding needs it, which put a level's textures into one frame.
+ * A texture the renderer fetched lets its bytes go once it is up, three never reading them again; one evicted and held
+ * again is copied back on the GPU from the layer an array holds of it, and fetched anew only where none does. Asking
+ * whether a key is up changes nothing: only a hold brings an evicted key back.
  */
 export class RendererTextures {
   private readonly entries: Map<string, ITextureEntry> = new Map();
   /** Keys whose texture is not on the GPU yet, in the order they were put. */
   private readonly queued: Set<string> = new Set();
+  /** Keys whose texture is still decoding or fetching, so it is not even queued yet. */
+  private readonly loading: Set<string> = new Set();
   private readonly onRefused: (key: string, refusal: IDdsRefusal) => void;
   private readonly onRebound: (key: string) => void;
+  private readonly onFetched: (key: string, fetch: IRendererTextureFetch) => void;
+  private readonly restore: (renderer: WebGPURenderer, key: string, texture: Texture) => boolean;
 
   /**
    * @param onRefused - Told a file could not be uploaded as stored.
    * @param onRebound - Told a key's samplers were pointed at another texture, which a recorded bundle drawing them
    *   does not see until it is recorded again.
+   * @param onFetched - Told what a fetched texture came to, once its fetch settles for the put that asked for it.
+   * @param restore - Fills an evicted key's texture, its bytes gone, again on the GPU from the layer an array holds of
+   *   it; false where none does, for it to be fetched again.
    */
-  public constructor(onRefused: (key: string, refusal: IDdsRefusal) => void, onRebound: (key: string) => void) {
+  public constructor(
+    onRefused: (key: string, refusal: IDdsRefusal) => void,
+    onRebound: (key: string) => void,
+    onFetched: (key: string, fetch: IRendererTextureFetch) => void = () => {},
+    restore: (renderer: WebGPURenderer, key: string, texture: Texture) => boolean = () => false
+  ) {
     this.onRefused = onRefused;
     this.onRebound = onRebound;
+    this.onFetched = onFetched;
+    this.restore = restore;
   }
 
   /**
@@ -65,6 +97,16 @@ export class RendererTextures {
   public put(key: string, source: TRendererTextureSource): void {
     const entry: ITextureEntry = this.getEntry(key);
     const version: number = ++entry.version;
+
+    // Whatever an earlier put still decodes or fetches is superseded, and would otherwise leave the key loading.
+    this.stopLoading(key, entry);
+    entry.refetch = source.encoding === ERendererTextureEncoding.FETCH ? source : null;
+
+    if (source.encoding === ERendererTextureEncoding.FETCH) {
+      this.fetch(key, entry, source, version);
+
+      return;
+    }
 
     if (source.encoding === ERendererTextureEncoding.DDS) {
       const upload: IRendererTextureUpload = createRendererTexture(source.bytes);
@@ -84,20 +126,20 @@ export class RendererTextures {
       return;
     }
 
-    entry.isDecoding = true;
+    this.startLoading(key, entry);
 
     createRendererImageTexture(source.bytes, source.type)
       .then((texture: Texture) => {
         if (entry.version === version && this.entries.get(key) === entry) {
-          entry.isDecoding = false;
+          this.stopLoading(key, entry);
           this.assign(key, entry, texture);
         } else {
           texture.dispose();
         }
       })
       .catch(() => {
-        if (entry.version === version) {
-          entry.isDecoding = false;
+        if (entry.version === version && this.entries.get(key) === entry) {
+          this.stopLoading(key, entry);
           this.assign(key, entry, null);
         }
       });
@@ -114,7 +156,7 @@ export class RendererTextures {
     }
 
     entry.version += 1;
-    entry.isDecoding = false;
+    this.stopLoading(key, entry);
     this.assign(key, entry, null);
     this.prune(key, entry);
   }
@@ -170,8 +212,8 @@ export class RendererTextures {
   }
 
   /**
-   * Keeps keys' own textures on the GPU for something drawing them, whatever an array holds; an evicted key goes up
-   * again with the uploads. Each hold is let go of once, by `letGo`.
+   * Keeps keys' own textures on the GPU for something about to draw them or drawing them, whatever an array holds: the
+   * one way an evicted key goes up again, with the uploads. Each hold is let go of once, by `letGo`.
    *
    * @param keys - The keys drawn, a key held as often as it is named.
    */
@@ -203,29 +245,29 @@ export class RendererTextures {
 
   /**
    * @param key - A texture's key.
-   * @returns Whether what the key holds is on the GPU, so drawing with it stalls nothing; true for a key holding
-   *   nothing, whose samplers draw their placeholder. An evicted key is not, and goes up again with the uploads.
+   * @returns Whether what the key holds is on the GPU, so drawing it plainly stalls nothing; true for a key holding
+   *   nothing, whose samplers draw their placeholder. An evicted key is not, and only a hold brings it back.
    */
   public isUploaded(key: string): boolean {
     const entry: Maybe<ITextureEntry> = this.entries.get(key);
 
-    return !entry || this.isResident(key, entry);
+    return !entry || this.isResident(entry);
   }
 
   /**
    * @param key - A texture's key.
    * @returns What it holds on the GPU and draws, or null for one holding nothing there yet; an evicted key holds
-   *   nothing there, and goes up again with the uploads.
+   *   nothing there, and only a hold brings it back.
    */
   public getUploaded(key: string): Nullable<Texture> {
     const entry: Maybe<ITextureEntry> = this.entries.get(key);
 
-    return entry && this.isResident(key, entry) ? entry.drawn : null;
+    return entry && this.isResident(entry) ? entry.drawn : null;
   }
 
   /**
    * Lets a key's texture go on the GPU, an array's layer holding a copy of it. Its targets draw their placeholders, so
-   * nothing built or drawn after has three upload it again; whatever asks for it has it uploaded within the budget.
+   * nothing built or drawn after has three upload it again; whatever holds it has it uploaded within the budget.
    *
    * @param key - A texture's key.
    * @returns The texture let go, or null for one not let go: holding nothing on the GPU, its latest put not up yet, or
@@ -234,7 +276,7 @@ export class RendererTextures {
   public evict(key: string): Nullable<Texture> {
     const entry: Maybe<ITextureEntry> = this.entries.get(key);
 
-    if (!entry?.drawn || entry.holds > 0 || entry.isEvicted || entry.isDecoding || entry.drawn !== entry.texture) {
+    if (!entry?.drawn || entry.holds > 0 || entry.isEvicted || entry.isLoading || entry.drawn !== entry.texture) {
       return null;
     }
 
@@ -253,9 +295,26 @@ export class RendererTextures {
     return this.entries.get(key)?.isEvicted === true;
   }
 
-  /** Whether any texture waits to go up. */
+  /**
+   * @returns The byte arrays the textures hold on the CPU: those not up yet, and those up that cannot be fetched again.
+   */
+  public listHeldData(): Array<ArrayBufferView> {
+    const held: Array<ArrayBufferView> = [];
+
+    this.entries.forEach(({ texture, drawn }: ITextureEntry) => {
+      held.push(...(texture ? listTextureData(texture) : []));
+
+      if (drawn && drawn !== texture) {
+        held.push(...listTextureData(drawn));
+      }
+    });
+
+    return held;
+  }
+
+  /** Whether any texture waits to go up, one still decoding or fetching included. */
   public get hasQueued(): boolean {
-    return this.queued.size > 0;
+    return this.queued.size > 0 || this.loading.size > 0;
   }
 
   /**
@@ -272,11 +331,28 @@ export class RendererTextures {
 
       const entry: Maybe<ITextureEntry> = this.entries.get(key);
 
-      if (!entry?.texture || (entry.drawn === entry.texture && !entry.isEvicted)) {
+      // One loading is queued again as its bytes come.
+      if (!entry?.texture || entry.isLoading || (entry.drawn === entry.texture && !entry.isEvicted)) {
         continue;
       }
 
-      renderer.initTexture(entry.texture);
+      if (hasTextureData(entry.texture)) {
+        renderer.initTexture(entry.texture);
+
+        // Sent: three reads the bytes of a texture it holds never again, so only one it can fetch again lets them go.
+        if (entry.refetch && isTextureOnGpu(renderer, entry.texture)) {
+          releaseTextureData(entry.texture);
+        }
+      } else if (entry.holds === 0 || !this.restore(renderer, key, entry.texture)) {
+        // Evicted with its bytes gone and no layer holding it: fetched again while something still holds it, and
+        // queued once it comes.
+        if (entry.refetch && entry.holds > 0) {
+          this.fetch(key, entry, entry.refetch, ++entry.version);
+        }
+
+        continue;
+      }
+
       this.draw(key, entry, entry.texture);
 
       if (performance.now() - started >= budget) {
@@ -287,7 +363,8 @@ export class RendererTextures {
 
   public dispose(): void {
     // An evicted one too: three keeps nothing of a texture once it went, so a second dispose frees nothing twice.
-    this.entries.forEach(({ drawn, texture }: ITextureEntry) => {
+    this.entries.forEach(({ drawn, texture, fetching }: ITextureEntry) => {
+      fetching?.abort();
       texture?.dispose();
 
       if (drawn !== texture) {
@@ -296,6 +373,7 @@ export class RendererTextures {
     });
     this.entries.clear();
     this.queued.clear();
+    this.loading.clear();
   }
 
   private getEntry(key: string): ITextureEntry {
@@ -304,9 +382,11 @@ export class RendererTextures {
     if (!entry) {
       entry = {
         drawn: null,
+        fetching: null,
         holds: 0,
-        isDecoding: false,
         isEvicted: false,
+        isLoading: false,
+        refetch: null,
         samplers: new Map(),
         texture: null,
         version: 0,
@@ -337,17 +417,9 @@ export class RendererTextures {
     }
   }
 
-  /**
-   * @returns Whether what a key holds is on the GPU and drawn; an evicted key is queued to go up again.
-   */
-  private isResident(key: string, entry: ITextureEntry): boolean {
-    if (entry.isEvicted) {
-      this.queued.add(key);
-
-      return false;
-    }
-
-    return !entry.isDecoding && entry.drawn === entry.texture;
+  /** Whether what a key holds is on the GPU and drawn: not evicted, loading, or put again and not up yet. */
+  private isResident(entry: ITextureEntry): boolean {
+    return !entry.isEvicted && !entry.isLoading && entry.drawn === entry.texture;
   }
 
   /**
@@ -374,6 +446,40 @@ export class RendererTextures {
     }
   }
 
+  /** Fetches a key's file for the entry's version given, taking what it comes to unless that is superseded since. */
+  private fetch(key: string, entry: ITextureEntry, source: TFetchedSource, version: number): void {
+    const fetching: AbortController = new AbortController();
+
+    entry.fetching = fetching;
+    this.startLoading(key, entry);
+
+    void fetchRendererTexture(source.file, source.picture, fetching.signal).then((load: IRendererTextureLoad) => {
+      if (entry.version !== version || this.entries.get(key) !== entry) {
+        load.texture?.dispose();
+
+        return;
+      }
+
+      this.stopLoading(key, entry);
+      this.assign(key, entry, load.texture);
+      this.onFetched(key, load.fetch);
+    });
+  }
+
+  /** Marks a key as decoding or fetching: not uploaded, and waited for by a settle. */
+  private startLoading(key: string, entry: ITextureEntry): void {
+    entry.isLoading = true;
+    this.loading.add(key);
+  }
+
+  /** Ends whatever a key was decoding or fetching, aborting a fetch still in flight. */
+  private stopLoading(key: string, entry: ITextureEntry): void {
+    entry.fetching?.abort();
+    entry.fetching = null;
+    entry.isLoading = false;
+    this.loading.delete(key);
+  }
+
   /** Binds a target to a key, drawing what the key holds on the GPU now, which for an evicted key is nothing. */
   private attach(key: string, placeholder: Texture, target: ITextureTarget, isHolding: boolean): void {
     const entry: ITextureEntry = this.getEntry(key);
@@ -388,7 +494,7 @@ export class RendererTextures {
 
   /** Forgets a key nothing holds and nothing samples. */
   private prune(key: string, entry: ITextureEntry): void {
-    if (!entry.texture && !entry.drawn && entry.samplers.size === 0 && !entry.isDecoding && entry.holds === 0) {
+    if (!entry.texture && !entry.drawn && entry.samplers.size === 0 && !entry.isLoading && entry.holds === 0) {
       this.entries.delete(key);
       this.queued.delete(key);
     }

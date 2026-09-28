@@ -408,6 +408,32 @@ export class StaticDrawBuffers {
     this.currentLayout += 1;
   }
 
+  /** Every buffer's CPU array: the pools' in full, and one element's for each the GPU alone writes once it is up. */
+  public listArrays(): Array<ArrayBufferView> {
+    return [
+      this.slots,
+      this.places,
+      this.rowSpheres,
+      this.rowTargets,
+      this.rowLods,
+      this.clusterRanges,
+      this.clusterSpheres,
+      this.batchRegions,
+      ...this.viewArgs,
+      ...this.wireArgs,
+      this.lists,
+      this.candidates,
+      this.lodSpheres,
+      this.lodFactors,
+      this.lodNormals,
+      this.lodCorners,
+      this.lodTerms,
+      this.pyramid,
+      this.counts,
+      this.candidateCount,
+    ].map((attribute: TStorageAttribute) => attribute.array);
+  }
+
   /** Entries every view's list together takes. */
   private toListLength(): number {
     return this.toListBase(STATIC_VIEWS);
@@ -423,9 +449,12 @@ export class StaticDrawBuffers {
 
   /** New arguments for a view, which the cull writes whole each time it runs, so nothing of the old is kept. */
   private replaceArgs(args: IndirectStorageBufferAttribute, batches: number): IndirectStorageBufferAttribute {
-    this.retirement.retire([args]);
+    const replaced: IndirectStorageBufferAttribute = StaticDrawBuffers.createArgs(batches);
 
-    return StaticDrawBuffers.createArgs(batches);
+    this.retirement.retire([args]);
+    this.retirement.retireArrays([replaced]);
+
+    return replaced;
   }
 
   private static createArgs(batches: number): IndirectStorageBufferAttribute {

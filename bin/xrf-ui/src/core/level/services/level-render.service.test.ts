@@ -64,6 +64,7 @@ function drawnSettings(): Maybe<IRendererSettings> {
 function mockReport(position: [number, number, number]): IRendererReport {
   return {
     camera: { position, target: [position[0], position[1], position[2] - 1] },
+    cpuMemory: 0,
     frame: { draws: 12, triangles: 400 } as IRendererReport["frame"],
     isGpuTimed: false,
     lights: EMPTY_RENDERER_LIGHTS_REPORT,

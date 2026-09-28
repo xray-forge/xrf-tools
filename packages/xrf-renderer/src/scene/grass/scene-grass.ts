@@ -33,6 +33,9 @@ import { GrassUniforms } from "#/uniforms/grass-uniforms";
 import { RendererUniforms } from "#/uniforms/renderer-uniforms";
 import { STATIC_DRAW_ARGUMENT_BYTES } from "#/uniforms/static-draw-buffers";
 
+/** What of a level's grass is kept once its buffers are made: its grid's place and its models, not its arrays. */
+type TGrassLayout = Omit<IRendererGrass, "grid" | "slots" | "bins" | "triangles">;
+
 /** What one model draws with. */
 interface IGrassDraw {
   mesh: Mesh;
@@ -69,7 +72,9 @@ export class SceneGrass {
 
   private readonly textures: RendererTextures;
   private readonly rendererUniforms: RendererUniforms;
-  private grass: Nullable<IRendererGrass> = null;
+  private grass: Nullable<TGrassLayout> = null;
+  /** The textures its models are dressed with, held from its put: what it waits for comes up, and stays up for it. */
+  private held: ReadonlyArray<string> = [];
   private level: Nullable<IGrassLevelBuffers> = null;
   /** What plants and draws. */
   private current: Nullable<IGrassBuild> = null;
@@ -88,10 +93,7 @@ export class SceneGrass {
     return (
       this.grass !== null &&
       this.grass.models.length > 0 &&
-      this.grass.models.every(
-        (model: IRendererGrassModel) =>
-          !model.surface.textures.base || this.textures.isUploaded(model.surface.textures.base)
-      )
+      this.held.every((key: string) => this.textures.isUploaded(key))
     );
   }
 
@@ -99,9 +101,15 @@ export class SceneGrass {
    * @param grass - A level's grass, replacing any put before.
    */
   public put(grass: IRendererGrass): void {
+    const { sizeX, sizeZ, offsetX, offsetZ, models } = grass;
+
     this.release();
-    this.grass = grass;
+    // The arrays live in the level's buffers alone, which let them go once they are on the GPU.
+    this.grass = { models, offsetX, offsetZ, sizeX, sizeZ };
+    this.held = models.flatMap((model: IRendererGrassModel) => model.surface.textures.base ?? []);
+    this.textures.hold(this.held);
     this.level = createGrassLevelBuffers(grass);
+    this.rendererUniforms.retirement.retireArrays(listGrassLevelStorage(this.level));
   }
 
   /** Lets the grass go. */
@@ -125,6 +133,8 @@ export class SceneGrass {
 
     this.level = null;
     this.grass = null;
+    this.textures.letGo(this.held);
+    this.held = [];
   }
 
   /**
@@ -201,6 +211,21 @@ export class SceneGrass {
     return current.scene;
   }
 
+  /** The CPU arrays of every storage buffer it holds, each one element long once the GPU holds it. */
+  public listArrays(): Array<ArrayBufferView> {
+    const builds: Array<IGrassBuild> = [this.current, this.pending].filter(
+      (build: Nullable<IGrassBuild>): build is IGrassBuild => build !== null
+    );
+
+    return [
+      ...(this.level ? listGrassLevelStorage(this.level) : []),
+      ...builds.flatMap((build: IGrassBuild) => [
+        ...listGrassCacheStorage(build.cache),
+        ...listGrassItemStorage(build.items),
+      ]),
+    ].map((attribute: BufferAttribute) => attribute.array);
+  }
+
   public dispose(): void {
     this.release();
   }
@@ -228,9 +253,13 @@ export class SceneGrass {
   }
 
   /** A ring and item lists as large as asked, and the passes and draws reading them. */
-  private build(grass: IRendererGrass, level: IGrassLevelBuffers, size: IGrassBuildSize): IGrassBuild {
+  private build(grass: TGrassLayout, level: IGrassLevelBuffers, size: IGrassBuildSize): IGrassBuild {
     const cache: IGrassCacheBuffers = createGrassCacheBuffers(size.cells, size.perCell, size.bands);
     const items: IGrassItemBuffers = createGrassItemBuffers(size.capacity);
+
+    // Planted and read on the GPU alone.
+    this.rendererUniforms.retirement.retireArrays([...listGrassCacheStorage(cache), ...listGrassItemStorage(items)]);
+
     const buffers: IGrassBuffers = { cache, items, level };
     const planting: IGrassPlanting = createGrassPlanting(
       buffers,

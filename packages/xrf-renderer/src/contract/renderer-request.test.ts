@@ -3,6 +3,7 @@ import { describe, expect, it } from "@jest/globals";
 import { ERendererDebugView } from "#/contract/renderer-debug-view";
 import { ERendererPreset, RENDERER_PRESETS } from "#/contract/renderer-preset";
 import { ERendererRequest, listRendererTransfers } from "#/contract/renderer-request";
+import { IRendererFetchRequest } from "#/contract/scene/renderer-fetch-request";
 import { ERendererTextureEncoding } from "#/contract/scene/renderer-texture-source";
 
 describe("listRendererTransfers", () => {
@@ -24,6 +25,18 @@ describe("listRendererTransfers", () => {
         source: { bytes, encoding: ERendererTextureEncoding.DDS },
       })
     ).toEqual([bytes]);
+  });
+
+  it("moves nothing for a texture the renderer fetches itself", () => {
+    const file: IRendererFetchRequest = { body: "{}", headers: {}, url: "http://127.0.0.1:1/assets/read_asset" };
+
+    expect(
+      listRendererTransfers({
+        key: "a",
+        kind: ERendererRequest.PUT_TEXTURE,
+        source: { encoding: ERendererTextureEncoding.FETCH, file, picture: file },
+      })
+    ).toEqual([]);
   });
 
   // A level's sector is one buffer every attribute is a view over; listed twice, the post throws.

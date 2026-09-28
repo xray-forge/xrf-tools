@@ -6,6 +6,7 @@ import { ERendererDraw } from "#/contract/scene/renderer-draw";
 import { IRendererSurface } from "#/contract/scene/renderer-surface";
 import { ERendererTextureEncoding } from "#/contract/scene/renderer-texture-source";
 import { mockDdsFile, mockUncompressedDdsFile } from "#/dds/dds-fixtures";
+import { ITextureDeviceFixture, mockTextureDevice } from "#/internals/device-fixtures";
 import { TSurfaceArrayTargets } from "#/material/surface-array-targets";
 import { createOpaqueShadowMaterial, createSurfaceMaterial, ISurfaceMaterial } from "#/material/surface-material";
 import { SurfaceNodeMaterial } from "#/material/surface-node-material";
@@ -14,6 +15,7 @@ import { ESurfaceSlot, getSurfaceSlotPlaceholder, SURFACE_SLOTS } from "#/materi
 import { TSurfaceSlotTargets } from "#/material/surface-slot-targets";
 import { SurfaceBatching } from "#/scene/surface/surface-batching";
 import { RendererTextures } from "#/texture/renderer-textures";
+import { releaseTextureData } from "#/texture/texture-data";
 import { RendererUniforms } from "#/uniforms/renderer-uniforms";
 import { SURFACE_TABLE_LAYER_WORD, SURFACE_TABLE_LAYERS, SURFACE_TABLE_WORDS } from "#/uniforms/surface-table";
 
@@ -40,19 +42,28 @@ interface IBatchingFixture {
   upload(key: string, bytes?: ArrayBuffer): void;
 }
 
-function createFixture(): IBatchingFixture {
+/**
+ * @param renderer - What uploads and copies, the one the scene's frame hands the textures and the batching.
+ */
+function createFixture(renderer: WebGPURenderer = RENDERER): IBatchingFixture {
   const rebound: Array<string> = [];
   const invalidated: Array<string> = [];
-  const textures: RendererTextures = new RendererTextures(
-    () => {},
-    (key: string) => rebound.push(key)
-  );
   const uniforms: RendererUniforms = new RendererUniforms();
   const programs: SurfacePrograms = new SurfacePrograms(uniforms);
   const opaque: MeshBasicNodeMaterial = createOpaqueShadowMaterial(programs, uniforms);
+  // Wired as the scene wires them: an evicted key is filled again from its layer.
+  const textures: RendererTextures = new RendererTextures(
+    () => {},
+    (key: string) => rebound.push(key),
+    () => {},
+    (using: WebGPURenderer, key: string, texture: Texture) => batching.restore(using, key, texture)
+  );
+  const batching: SurfaceBatching = new SurfaceBatching(textures, uniforms, programs, (key: string) =>
+    invalidated.push(key)
+  );
 
   return {
-    batching: new SurfaceBatching(textures, uniforms, programs, (key: string) => invalidated.push(key)),
+    batching,
     create: (surface: IRendererSurface) => createSurfaceMaterial(surface, textures, uniforms, programs, opaque),
     invalidated,
     rebound,
@@ -60,7 +71,7 @@ function createFixture(): IBatchingFixture {
     uniforms,
     upload: (key: string, bytes: ArrayBuffer = mockDdsFile({ fourCC: "DXT5" })) => {
       textures.put(key, { bytes, encoding: ERendererTextureEncoding.DDS });
-      textures.upload(RENDERER, Infinity);
+      textures.upload(renderer, Infinity);
     },
   };
 }
@@ -382,7 +393,8 @@ describe("SurfaceBatching", () => {
     expect((next.batched as ISurfaceMaterial).keys).not.toContain("brick");
   });
 
-  it("uploads an evicted key again within the budget for a surface claiming it once no array holds it", () => {
+  // Whatever draws the surface meanwhile draws its own material, which holds its keys: that brings them back.
+  it("batches a surface claiming evicted keys no array holds once what draws it holds them, then lets them go", () => {
     const { batching, create, rebound, textures, upload } = createFixture();
     const wall: ISurfaceMaterial = create(WALL);
     const again: ISurfaceMaterial = create(WALL);
@@ -394,16 +406,146 @@ describe("SurfaceBatching", () => {
     rebound.length = 0;
 
     expect(batching.track(again, WALL)).toBe(false);
-    expect(textures.hasQueued).toBe(true);
+    expect(textures.hasQueued).toBe(false);
 
+    textures.hold(again.keys);
     textures.upload(RENDERER, Infinity);
 
-    // Both asked for at once, not the second once the first is up.
+    // Both held at once, so both go up in the same uploads.
     expect(rebound).toEqual(["brick", "lmap#1"]);
 
     batching.rebind("brick");
 
     expect(again.batched).not.toBeNull();
     expect(batching.rebind("lmap#1")).toEqual([]);
+
+    textures.letGo(again.keys);
+    batching.flush(RENDERER);
+
+    expect(textures.isEvicted("brick")).toBe(true);
+    expect(textures.isEvicted("lmap#1")).toBe(true);
+  });
+
+  // A plainly drawn object waiting to apply asked about an arrayed key every frame: it came back, its layer was copied
+  // again and it was evicted again, so the object never applied and the queue never emptied.
+  it("brings no arrayed key back for being asked about every frame, and copies nothing again", () => {
+    const { batching, create, rebound, textures, upload } = createFixture();
+    const wall: ISurfaceMaterial = create(WALL);
+
+    ["brick", "lmap#1"].forEach((key: string) => upload(key));
+    batching.track(wall, WALL);
+    batching.flush(RENDERER);
+    rebound.length = 0;
+
+    for (let frame: number = 0; frame < 3; frame += 1) {
+      textures.upload(RENDERER, Infinity);
+      expect(wall.keys.every((key: string) => textures.isUploaded(key))).toBe(false);
+      batching.flush(RENDERER);
+    }
+
+    // The batched view's own keys are its arrays', which draw whatever their keys' own textures hold.
+    expect((wall.batched as ISurfaceMaterial).keys.every((key: string) => textures.isUploaded(key))).toBe(true);
+    expect(textures.hasQueued).toBe(false);
+    expect(rebound).toEqual([]);
+    expect(textures.isEvicted("brick")).toBe(true);
+  });
+
+  // A fetched texture's bytes go once it is up: brought back by a fetch, it came back as another texture, whose layer
+  // was copied again.
+  it("fills a key a hold brings back from its layer, as the texture it was, copying nothing into the layer", () => {
+    const device: ITextureDeviceFixture = mockTextureDevice();
+    const { batching, create, rebound, textures, upload } = createFixture(device.renderer);
+    const wall: ISurfaceMaterial = create(WALL);
+
+    ["brick", "lmap#1"].forEach((key: string) => upload(key));
+
+    const brick: Texture = textures.getUploaded("brick") as Texture;
+
+    releaseTextureData(brick);
+    batching.track(wall, WALL);
+    batching.flush(device.renderer);
+
+    expect(textures.isEvicted("brick")).toBe(true);
+
+    const [layer] = device.copies;
+
+    device.copies.length = 0;
+    rebound.length = 0;
+    textures.hold(["brick"]);
+    textures.upload(device.renderer, Infinity);
+
+    expect(textures.getUploaded("brick")).toBe(brick);
+    expect(device.copies).toEqual([
+      {
+        ...layer,
+        destination: brick,
+        destinationLayer: 0,
+        source: layer.destination,
+        sourceLayer: layer.destinationLayer,
+      },
+    ]);
+    expect(rebound).toEqual(["brick"]);
+    expect(batching.rebind("brick")).toEqual([]);
+
+    batching.flush(device.renderer);
+
+    expect(device.copies).toHaveLength(1);
+    expect(textures.isEvicted("brick")).toBe(false);
+
+    textures.letGo(["brick"]);
+    batching.flush(device.renderer);
+
+    expect(textures.isEvicted("brick")).toBe(true);
+  });
+
+  it("fills nothing from a layer no surface holds any more, making nothing anew", () => {
+    const device: ITextureDeviceFixture = mockTextureDevice();
+    const { batching, create, textures, upload } = createFixture(device.renderer);
+    const wall: ISurfaceMaterial = create(WALL);
+
+    ["brick", "lmap#1"].forEach((key: string) => upload(key));
+
+    const brick: Texture = textures.getUploaded("brick") as Texture;
+
+    releaseTextureData(brick);
+    batching.track(wall, WALL);
+    batching.flush(device.renderer);
+    batching.untrack(wall)?.();
+    device.copies.length = 0;
+    device.uploads.length = 0;
+
+    expect(batching.restore(device.renderer, "brick", brick)).toBe(false);
+    expect(device.copies).toEqual([]);
+    expect(device.uploads).toEqual([]);
+  });
+
+  it("keeps a key a hold brought back up while held, and lets it go once the hold goes", () => {
+    const { batching, create, rebound, textures, upload } = createFixture();
+    const wall: ISurfaceMaterial = create(WALL);
+
+    ["brick", "lmap#1"].forEach((key: string) => upload(key));
+    batching.track(wall, WALL);
+    batching.flush(RENDERER);
+    rebound.length = 0;
+    textures.hold(["brick"]);
+    textures.upload(RENDERER, Infinity);
+
+    // The same texture back from its bytes: its layer is as it was, and nothing is copied or built again.
+    expect(rebound).toEqual(["brick"]);
+    expect(batching.rebind("brick")).toEqual([]);
+
+    for (let frame: number = 0; frame < 3; frame += 1) {
+      batching.flush(RENDERER);
+      textures.upload(RENDERER, Infinity);
+
+      expect(textures.isEvicted("brick")).toBe(false);
+    }
+
+    expect(textures.hasQueued).toBe(false);
+
+    textures.letGo(["brick"]);
+    batching.flush(RENDERER);
+
+    expect(textures.isEvicted("brick")).toBe(true);
   });
 });

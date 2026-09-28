@@ -1,5 +1,5 @@
 import { Maybe, Nullable } from "@xrf/types";
-import { Material, MeshBasicNodeMaterial, WebGPURenderer } from "three/webgpu";
+import { Material, MeshBasicNodeMaterial, Texture, WebGPURenderer } from "three/webgpu";
 
 import { ERendererDraw } from "#/contract/scene/renderer-draw";
 import { IRendererSurface } from "#/contract/scene/renderer-surface";
@@ -81,6 +81,16 @@ export class SurfaceLibrary {
     for (const [material, release] of this.batching.rebind(key)) {
       this.onReplaced(this.keyOf.get(material) as string, release);
     }
+  }
+
+  /**
+   * @param renderer - The renderer uploading.
+   * @param key - A texture's key whose own texture was evicted and is held again.
+   * @param texture - That texture, its bytes gone.
+   * @returns Whether it was filled again on the GPU from the layer an array holds of it.
+   */
+  public restore(renderer: WebGPURenderer, key: string, texture: Texture): boolean {
+    return this.batching.restore(renderer, key, texture);
   }
 
   /**

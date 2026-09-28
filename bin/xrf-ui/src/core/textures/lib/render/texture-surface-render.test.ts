@@ -7,6 +7,7 @@ import {
   IRendererGeometry,
   IRendererObject,
   resolveRendererFeatures,
+  TRendererTextureSource,
 } from "@xrf/renderer";
 
 import {
@@ -80,7 +81,11 @@ describe("toTextureSurface", () => {
 
 describe("toTextureSurfaceSource", () => {
   it("copies the bytes, so the transfer leaves the surface's own", () => {
-    const source = toTextureSurfaceSource(FILE);
+    const source: TRendererTextureSource = toTextureSurfaceSource(FILE);
+
+    if (!("bytes" in source)) {
+      throw new Error("A surface's file is handed over as bytes");
+    }
 
     expect(source.bytes).not.toBe(FILE.bytes);
     expect(source.encoding).toBe(ERendererTextureEncoding.DDS);
