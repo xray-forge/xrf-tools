@@ -1,6 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { ELevelStartOrigin } from "@/core/ipc/types/xrf-app";
 import { VisualBounds } from "@/core/ipc/types/xrf-visual";
 import { ILevelViewpoint, toLevelStartViewpoint } from "@/core/level/lib/camera/level-viewpoint";
 import { mockVisualBounds } from "@/fixtures/mocks/visual.mocks";
@@ -43,7 +42,6 @@ describe("toLevelStartViewpoint", () => {
   it("stands where the backend opens the level, looking the way it says", () => {
     const viewpoint: ILevelViewpoint = toLevelStartViewpoint(level(), {
       direction: { x: 0, y: 0, z: -1 },
-      origin: ELevelStartOrigin.ARRIVAL,
       position: { x: -78, y: 2.1, z: -96 },
     });
 

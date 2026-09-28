@@ -84,13 +84,12 @@ export class LevelRenderService extends RenderSurfaceService {
    */
   @BoundAction()
   public goTo(goTo: ILevelGoTo): void {
-    this.viewpoint = toLevelGoToViewpoint(goTo);
-    this.client?.setCamera(toLevelCameraAt(this.viewpoint, this.viewService.camera, this.config));
-    // The same place again moves nothing a description compares, and the camera has flown on since: stood there anew.
-    this.client?.commandCamera({ kind: ERendererCameraCommand.RESET });
+    const viewpoint: ILevelViewpoint = toLevelGoToViewpoint(goTo);
+
+    this.stand(viewpoint);
 
     if (this.level) {
-      void this.stream(this.viewpoint.position);
+      void this.stream(viewpoint.position);
     }
   }
 
@@ -189,13 +188,14 @@ export class LevelRenderService extends RenderSurfaceService {
     this.applyFrame();
 
     // The start frames the camera, and is where the level is first read around.
-    this.viewpoint = toLevelStartViewpoint(level?.bounds ?? null, level?.start ?? null);
-    this.client?.setCamera(toLevelCameraAt(this.viewpoint, this.viewService.camera, this.config));
+    const viewpoint: ILevelViewpoint = toLevelStartViewpoint(level?.bounds ?? null, level?.start ?? null);
+
+    this.stand(viewpoint);
     this.streamedFrom = null;
     this.viewportService.conceal();
 
     if (level) {
-      void this.reveal(opening, this.stream(this.viewpoint.position));
+      void this.reveal(opening, this.stream(viewpoint.position));
     }
   }
 
@@ -223,6 +223,18 @@ export class LevelRenderService extends RenderSurfaceService {
       this.viewpoint ?? toLevelStartViewpoint(this.level?.bounds ?? null, this.level?.start ?? null);
 
     this.client?.setCamera(toLevelCameraAt(viewpoint, camera, this.config));
+  }
+
+  /**
+   * Stands the camera at a place, anew: the same place again moves nothing a description compares, and the camera has
+   * flown on since.
+   *
+   * @param viewpoint - Where it stands and what it looks at.
+   */
+  private stand(viewpoint: ILevelViewpoint): void {
+    this.viewpoint = viewpoint;
+    this.client?.setCamera(toLevelCameraAt(viewpoint, this.viewService.camera, this.config));
+    this.client?.commandCamera({ kind: ERendererCameraCommand.RESET });
   }
 
   /** The grid, the extent, the axes and the sun, sized to the level and shown as the toolbar asks. */

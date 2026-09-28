@@ -1,82 +1,17 @@
 import { describe, expect, it } from "@jest/globals";
 import { ERendererDraw, IRendererGrass } from "@xrf/renderer";
 
-import { DetailsModel, VisualSection } from "@/core/ipc/types/xrf-visual";
+import { LevelDetailsDescription } from "@/core/ipc/types/xrf-app";
 import { toLevelRendererGrass } from "@/core/level/lib/render/level-render-grass";
 import { ILevelGrassDelivery } from "@/core/level/lib/render/level-render-protocol";
-import { mockSurfaceDescriptor } from "@/fixtures/mocks/visual.mocks";
-
-/** Lays sections out one after another, four-byte aligned, as the packer does. */
-class GrassBuffer {
-  private readonly parts: Array<Uint8Array> = [];
-  private length: number = 0;
-
-  public push(values: Uint32Array | Float32Array | Uint16Array): VisualSection {
-    const bytes: Uint8Array = new Uint8Array(values.buffer.slice(0));
-    const section: VisualSection = { byteLength: bytes.length, byteOffset: this.length };
-
-    this.parts.push(bytes);
-    this.length += Math.ceil(bytes.length / 4) * 4;
-
-    return section;
-  }
-
-  public toBuffer(): ArrayBuffer {
-    const buffer: Uint8Array = new Uint8Array(this.length);
-    let at: number = 0;
-
-    for (const part of this.parts) {
-      buffer.set(part, at);
-      at += Math.ceil(part.length / 4) * 4;
-    }
-
-    return buffer.buffer as ArrayBuffer;
-  }
-}
+import { mockLevelDetailsDescription } from "@/fixtures/mocks/level.mocks";
+import { MockVisualBuffer } from "@/fixtures/mocks/visual.mocks";
 
 function mockGrass(): ILevelGrassDelivery {
-  const buffer: GrassBuffer = new GrassBuffer();
-  const model: DetailsModel = {
-    height: 2,
-    indexCount: 3,
-    indices: buffer.push(new Uint16Array([0, 2, 1])),
-    isWaving: true,
-    maxScale: 1.5,
-    minScale: 0.5,
-    positions: buffer.push(new Float32Array([0, 0, 0, 1, 0, 0, 0, 2, 0])),
-    radius: 1.2,
-    shader: "details\\blend",
-    texture: "detail\\grass",
-    uvs: buffer.push(new Float32Array([0, 1, 1, 1, 0.5, 0])),
-    vertexCount: 3,
-  };
-  const grid: VisualSection = buffer.push(new Uint32Array([1, 0]));
-  const slots: VisualSection = buffer.push(new Uint32Array([1, 2, 3, 4, 0, 1]));
-  const bins: VisualSection = buffer.push(new Uint32Array([0]));
-  const triangles: VisualSection = buffer.push(new Float32Array([0, 1, 0, 2, 1, 0, 0, 1, 2]));
+  const buffer: MockVisualBuffer = new MockVisualBuffer();
+  const description: LevelDetailsDescription = mockLevelDetailsDescription(buffer);
 
-  return {
-    buffer: buffer.toBuffer(),
-    description: {
-      details: {
-        binLength: 1,
-        bins,
-        bufferLength: 0,
-        grid,
-        models: [model],
-        offsetX: 3,
-        offsetZ: -2,
-        sizeX: 2,
-        sizeZ: 1,
-        slotCount: 1,
-        slots,
-        triangleCount: 1,
-        triangles,
-      },
-      surfaces: [mockSurfaceDescriptor({ shader: "details\\blend", textures: ["detail\\grass"] })],
-      textures: [{ logicalPath: "textures\\detail\\grass.dds", reference: "detail\\grass" }],
-    },
-  };
+  return { buffer: buffer.toArrayBuffer(), description };
 }
 
 describe("toLevelRendererGrass", () => {

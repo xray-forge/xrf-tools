@@ -272,6 +272,12 @@ export class LevelLoadService {
     const settled: Array<PromiseSettledResult<ILevelTextureDelivery>> = await Promise.allSettled(
       wanted.map((request: ISectorTextureRequest) => this.reading.read(request))
     );
+
+    // Before anything is marked: `supplied` is the next level's by now, which may be reading the same reference.
+    if (!this.isOpen(sessionId)) {
+      return 0;
+    }
+
     const delivered: Array<ILevelTextureDelivery> = [];
 
     settled.forEach((result: PromiseSettledResult<ILevelTextureDelivery>, index: number) => {
@@ -284,11 +290,10 @@ export class LevelLoadService {
       }
     });
 
-    if (!this.isOpen(sessionId)) {
-      return 0;
+    // Nothing delivered and nothing retained says the whole set went, which a batch that only failed never means.
+    if (delivered.length) {
+      this.notifyTextures({ delivered, retained: null });
     }
-
-    this.notifyTextures({ delivered, retained: null });
 
     return delivered.length;
   }
@@ -510,10 +515,20 @@ export class LevelLoadService {
       return null;
     }
 
+    const buffer: ArrayBuffer = await levelsRawCommands.readDetails(sessionId, snapshot.sessionId);
+
+    // Refused before it is held, as a sector's or a model's pack is refused before it is viewed.
+    if (buffer.byteLength !== description.details.bufferLength) {
+      throw new Error(
+        `Grass buffer is ${buffer.byteLength} bytes but its description covers ${description.details.bufferLength}. ` +
+          "The description and the buffer came from different packs."
+      );
+    }
+
     return {
       summary: [`${description.details.slotCount} planted slots,`, `${description.details.models.length} models`],
       textures: description.textures,
-      value: { buffer: await levelsRawCommands.readDetails(sessionId, snapshot.sessionId), description },
+      value: { buffer, description },
     };
   }
 

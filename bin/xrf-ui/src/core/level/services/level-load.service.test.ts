@@ -4,10 +4,11 @@ import { mockDdsFile } from "@xrf/renderer/fixtures";
 import { Nullable } from "@xrf/types";
 
 import { createRoots } from "@/core/assets/lib";
-import { SelectedLevelDescription } from "@/core/ipc/types/xrf-app";
+import { LevelDetailsDescription, SelectedLevelDescription } from "@/core/ipc/types/xrf-app";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { SectorDescription, SectorOutline } from "@/core/ipc/types/xrf-visual";
 import {
+  ILevelGrassDelivery,
   ILevelSectorDelivery,
   ILevelTextureDelivery,
   ILevelTextureSupplyChange,
@@ -17,6 +18,7 @@ import { ISectorTextureRequest } from "@/core/level/lib/sector/level-sector-text
 import { EMPTY_LEVEL_STREAM_SUMMARY } from "@/core/level/lib/stream/level-stream-profile";
 import { LevelTextureReader } from "@/core/level/lib/texture/level-texture-reader";
 import {
+  mockLevelDetailsDescription,
   mockLevelTextureReference,
   mockSectorDescription,
   mockSectorOutline,
@@ -205,6 +207,31 @@ describe("LevelLoadService", () => {
     expect(await supplier.supply(sessionId, [{ reference: "stone" }])).toBe(1);
     expect(read).toHaveBeenCalledTimes(2);
     expect(supply.delivered.map((it) => it.reference)).toEqual(["stone"]);
+
+    read.mockRestore();
+  });
+
+  // Nothing delivered and nothing retained is how the loader says every texture went, which a failed batch is not.
+  it("tells nothing of a batch whose every read failed", async () => {
+    const { level } = mockStreamable([outlineAt(0, 5)]);
+    const { service } = mockInjectedService(LevelLoadService);
+
+    setMockInvokeResponses({
+      ["plugin:assets|read_asset"]: mockDdsFile(),
+      ["plugin:levels|get_level"]: mockSessionResponse({ ...level, textures: [mockLevelTextureReference("stone")] }),
+    });
+
+    await service.restore();
+    await service.whenHeldRead();
+
+    const read = jest.spyOn(LevelTextureReader.prototype, "read").mockRejectedValue(new Error("The read went away"));
+    const supply = recordSupply(service);
+    const supplier = service as unknown as {
+      supply: (sessionId: string, requests: ReadonlyArray<ISectorTextureRequest>) => Promise<number>;
+    };
+
+    expect(await supplier.supply(service.level.value?.selected.sessionId ?? "", [{ reference: "stone" }])).toBe(0);
+    expect(supply.retained).toEqual([]);
 
     read.mockRestore();
   });
@@ -963,6 +990,49 @@ describe("LevelLoadService held reads", () => {
 
     expect(told.every((it) => it === null)).toBe(true);
     expect(supply.delivered.map((it) => it.reference)).not.toContain("lamp");
+  });
+
+  function armGrass(level: SelectedLevelDescription, description: LevelDetailsDescription, buffer: ArrayBuffer): void {
+    setMockInvokeResponses({
+      ["plugin:assets|read_asset"]: mockDdsFile(),
+      ["plugin:levels|open_details"]: mockSessionResponse(description),
+      ["plugin:levels|open_level"]: mockSessionResponse(level),
+      ["plugin:levels|read_details"]: buffer,
+    });
+  }
+
+  it("holds the grass whose pack is the one its description covers", async () => {
+    const { level } = mockStreamable([outlineAt(0, 5)]);
+    const { service } = mockInjectedService(LevelLoadService);
+    const buffer: MockVisualBuffer = new MockVisualBuffer();
+    const description: LevelDetailsDescription = mockLevelDetailsDescription(buffer);
+    const told: Array<Nullable<ILevelGrassDelivery>> = [];
+
+    armGrass(level, description, buffer.toArrayBuffer());
+    service.grass.subscribe((grass: Nullable<ILevelGrassDelivery>) => told.push(grass));
+
+    await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS, false);
+    await service.whenHeldRead();
+
+    expect(told.at(-1)?.description).toEqual(description);
+    expect(told.at(-1)?.buffer.byteLength).toBe(description.details.bufferLength);
+  });
+
+  // A pack read against another opening of the grass would plant from offsets into the wrong bytes.
+  it("refuses grass whose pack is not the one its description covers, holding none of it", async () => {
+    const { level } = mockStreamable([outlineAt(0, 5)]);
+    const { service } = mockInjectedService(LevelLoadService);
+    const buffer: MockVisualBuffer = new MockVisualBuffer();
+    const description: LevelDetailsDescription = mockLevelDetailsDescription(buffer);
+    const told: Array<Nullable<ILevelGrassDelivery>> = [];
+
+    armGrass(level, description, new ArrayBuffer(description.details.bufferLength - 4));
+    service.grass.subscribe((grass: Nullable<ILevelGrassDelivery>) => told.push(grass));
+
+    await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS, false);
+    await service.whenHeldRead();
+
+    expect(told.every((it: Nullable<ILevelGrassDelivery>) => it === null)).toBe(true);
   });
 
   // A renderer started later is handed the lights again by their subscription; their projectors come with a redelivery.

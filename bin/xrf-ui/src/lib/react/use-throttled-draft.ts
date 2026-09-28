@@ -28,7 +28,7 @@ export interface IThrottledDraft {
  *
  * @param value - The owner's value.
  * @param step - The slider's step: values within half of one are the same position, since an owner storing a mapping of
- *   the value hands back its round trip, which floats need not return exactly.
+ *   the value hands back its round trip, which floats need not return exactly; only equal ones for a step of none.
  * @param onChange - Told what the value became.
  * @param intervalMs - The least time between two tellings.
  * @returns What to show, and the slider's `onChange` and `onChangeCommitted`.
@@ -51,9 +51,13 @@ export function useThrottledDraft(
   valueRef.current = value;
   onChangeRef.current = onChange;
 
+  // A step that is not a positive number has no half to be within: every value would read as an override.
+  const tolerance: number = step > 0 && Number.isFinite(step) ? step / 2 : 0;
+
   const isSame = useCallback(
-    (left: number, right: Nullable<number>): boolean => right !== null && Math.abs(left - right) < step / 2,
-    [step]
+    (left: number, right: Nullable<number>): boolean =>
+      right !== null && (tolerance > 0 ? Math.abs(left - right) < tolerance : Object.is(left, right)),
+    [tolerance]
   );
 
   const cancel = useCallback((): void => {

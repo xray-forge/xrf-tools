@@ -188,7 +188,9 @@ export function TextureChannelsPanel({
                 <canvas
                   ref={registers.get(tile.plane)}
                   data-testid={`texture-channel-${tile.plane}`}
+                  aria-label={tile.label}
                   className={"block size-full"}
+                  role={"img"}
                 />
               </div>
             </EditorPanelSection>

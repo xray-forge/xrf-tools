@@ -143,6 +143,21 @@ describe("useThrottledDraft", () => {
     expect(onChange.mock.calls).toEqual([[0.85], [0.9]]);
   });
 
+  // Nothing is within half of no step, so every value the owner took back used to read as an override of it.
+  it("keeps the gesture of a slider without a step while the owner follows it exactly", () => {
+    const onChange = jest.fn();
+    const { result, rerender } = renderHook(({ value }) => useThrottledDraft(value, 0, onChange, 200), {
+      initialProps: { value: 0 },
+    });
+
+    act(() => result.current.onChange(MOVE, 0.25));
+    act(() => result.current.onChange(MOVE, 0.5));
+    rerender({ value: 0.25 });
+    act(() => result.current.onChangeCommitted(RELEASE, 0.5));
+
+    expect(onChange.mock.calls).toEqual([[0.25], [0.5]]);
+  });
+
   it("keeps the draft while the owner follows it", () => {
     const onChange = jest.fn();
     const { result, rerender } = renderHook(({ value }) => useThrottledDraft(value, 1, onChange, 200), {

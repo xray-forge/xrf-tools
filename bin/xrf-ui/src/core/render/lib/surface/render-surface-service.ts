@@ -19,12 +19,12 @@ import { Logger } from "@/lib/logging";
 
 /**
  * A service owning one renderer: started on first use, drawn wherever a view attaches it, told everything through
- * reactions, and let go when the application deactivates.
+ * reactions, started again for the next view once it fails, and let go when the application deactivates.
  */
 export abstract class RenderSurfaceService implements IRenderSurfaceHost {
   public abstract readonly log: Logger;
 
-  /** Why the renderer stopped, or null while it draws. */
+  /** Why the renderer stopped, or null while it draws: kept until a view is attached again. */
   @RefObservable()
   public failure: Nullable<string> = null;
 
@@ -47,6 +47,11 @@ export abstract class RenderSurfaceService implements IRenderSurfaceHost {
    */
   public attach(container: HTMLElement): void {
     this.detach();
+
+    // A renderer that failed draws nothing more: a view shown again is drawn by another.
+    if (this.failure !== null) {
+      this.stop();
+    }
 
     const target: DomRenderTarget = new DomRenderTarget(container, this.settingsService.renderResolution);
 
@@ -74,17 +79,7 @@ export abstract class RenderSurfaceService implements IRenderSurfaceHost {
   @OnDeactivation()
   public dispose(): void {
     this.detach();
-    this.reactions.splice(0).forEach((stop: () => void) => stop());
-    this.client?.dispose();
-    this.client = null;
-    this.framed.clear();
-    this.sentSettings = null;
-    this.sentLighting = null;
-    this.release();
-
-    runInAction(() => {
-      this.failure = null;
-    });
+    this.stop();
   }
 
   /** @returns The settings the renderer draws with now. */
@@ -194,6 +189,21 @@ export abstract class RenderSurfaceService implements IRenderSurfaceHost {
     );
 
     return client;
+  }
+
+  /** Lets the renderer go with everything told to it, so the next one starts from nothing. */
+  private stop(): void {
+    this.reactions.splice(0).forEach((stop: () => void) => stop());
+    this.client?.dispose();
+    this.client = null;
+    this.framed.clear();
+    this.sentSettings = null;
+    this.sentLighting = null;
+    this.release();
+
+    runInAction(() => {
+      this.failure = null;
+    });
   }
 
   private fail(reason: string): void {

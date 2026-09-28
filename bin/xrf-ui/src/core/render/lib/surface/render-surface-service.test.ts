@@ -143,6 +143,30 @@ describe("RenderSurfaceService", () => {
     expect(service.failure).toBeNull();
   });
 
+  // A device lost once used to say "The renderer stopped" for as long as the tool stayed open, whatever was reopened.
+  it("draws a view shown after the renderer failed with another renderer, told everything again", async () => {
+    const { service } = mockService();
+    const failed: IRendererWorkerStub = stub;
+
+    service.attach(document.createElement("div"));
+    service.frame("sun", "shown");
+    await stub.flush();
+    stub.respond({ kind: ERendererResponse.FAILED, reason: "Device lost" });
+    service.detach();
+
+    stub = createRendererWorkerStub();
+    service.attach(document.createElement("div"));
+    service.frame("sun", "shown");
+    await stub.flush();
+
+    expect(failed.isTerminated()).toBe(true);
+    expect(service.failure).toBeNull();
+    expect(service.releases).toBe(1);
+    expect(stub.take(ERendererRequest.START)).toHaveLength(1);
+    expect(stub.take(ERendererRequest.ATTACH_VIEW)).toHaveLength(1);
+    expect(stub.take(ERendererRequest.PUT_OVERLAY)).toHaveLength(1);
+  });
+
   it("re-sends the settings when a setting they read changes, and not when nothing did", async () => {
     const { container, service } = mockService();
 

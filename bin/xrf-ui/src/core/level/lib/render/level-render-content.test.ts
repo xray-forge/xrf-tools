@@ -90,9 +90,7 @@ function mockSpawnModels(): ILevelSpawnModelsDelivery {
           textures: [],
         },
       ],
-      placements: [
-        { model: 0, name: "lamp_0", section: "physic_object", transform: mockVisualTransform({ x: 1, y: 2, z: 3 }) },
-      ],
+      placements: [{ model: 0, transform: mockVisualTransform({ x: 1, y: 2, z: 3 }) }],
     },
   };
 }

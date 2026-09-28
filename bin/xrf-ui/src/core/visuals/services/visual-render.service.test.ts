@@ -1,7 +1,13 @@
 import { beforeAll, beforeEach, describe, expect, it } from "@jest/globals";
 import { Container } from "@wirestate/core";
 import { makeAutoObservable, runInAction } from "@wirestate/mobx";
-import { ERendererOverlay, ERendererRequest, TRendererRequest } from "@xrf/renderer";
+import {
+  ERendererCameraCommand,
+  ERendererOverlay,
+  ERendererRequest,
+  TRendererCameraCommand,
+  TRendererRequest,
+} from "@xrf/renderer";
 import { createRendererWorkerStub, IRendererWorkerStub } from "@xrf/renderer/fixtures";
 
 import { BIND_POSE, IVisualRenderSource, VISUAL_RENDER_SOURCE } from "@/core/visuals/lib/render";
@@ -163,22 +169,33 @@ describe("VisualRenderService", () => {
     const source: IVisualRenderSource = mockSource({ model: mockVisualModelViews() });
     const { service } = mockAttached(source);
 
+    /** Framings so far: each a description and a reset, since the same start described again keeps the camera. */
+    function framings(): Array<number> {
+      return [
+        stub.take(ERendererRequest.CAMERA).length,
+        stub
+          .take(ERendererRequest.CAMERA_COMMAND)
+          .filter(({ command }: { command: TRendererCameraCommand }) => command.kind === ERendererCameraCommand.RESET)
+          .length,
+      ];
+    }
+
     runInAction(() => (source.model = mockVisualModelViews({ fit: { center: [0, 1, 0], radius: 4 } })));
     await stub.flush();
 
-    expect(stub.take(ERendererRequest.CAMERA)).toHaveLength(1);
+    expect(framings()).toEqual([1, 1]);
 
     // A view mounted again frames what it opens with.
     service.detach();
     service.attach(document.createElement("div"));
     await stub.flush();
 
-    expect(stub.take(ERendererRequest.CAMERA)).toHaveLength(2);
+    expect(framings()).toEqual([2, 2]);
 
     service.resetCamera();
     await stub.flush();
 
-    expect(stub.take(ERendererRequest.CAMERA)).toHaveLength(3);
+    expect(framings()).toEqual([3, 3]);
 
     service.dispose();
   });

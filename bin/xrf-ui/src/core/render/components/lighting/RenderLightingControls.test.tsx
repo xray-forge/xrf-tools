@@ -35,6 +35,12 @@ describe("RenderLightingControls", () => {
     expect(getByText("2.00")).toBeInTheDocument();
   });
 
+  it("says each value to a screen reader as it reads beside its name", () => {
+    const { getByRole } = renderControls();
+
+    expect(getByRole("slider", { name: "Elevation" })).toHaveAttribute("aria-valuetext", "45°");
+  });
+
   // The whole value travels, so a surface holding one of these never has to merge a partial answer.
   it("answers with the whole lighting, changed in one place", () => {
     const onChange = jest.fn<(lighting: IRenderLighting) => void>();

@@ -262,6 +262,25 @@ describe("LevelRenderService", () => {
     service.dispose();
   });
 
+  // The same start describes the same camera, which the renderer keeps flown where it was: opening it again stood
+  // nothing back at it.
+  it("stands the camera back at the start when the same level opens again", async () => {
+    const { container, service } = await mockAttached();
+    const loadService: LevelLoadService = container.get(LevelLoadService);
+
+    loadService.clear();
+    await loadService.restore();
+    await stub.flush();
+
+    const kinds: Array<ERendererRequest> = stub.requests.map((it: TRendererRequest) => it.kind);
+    const stood: number = kinds.lastIndexOf(ERendererRequest.CAMERA);
+    const reset: TRendererRequest = stub.requests[kinds.indexOf(ERendererRequest.CAMERA_COMMAND, stood)];
+
+    expect(reset).toMatchObject({ command: { kind: ERendererCameraCommand.RESET } });
+
+    service.dispose();
+  });
+
   // New speeds or a new lens are not a request to go back to the start.
   it("keeps the camera's start when the toolbar changes how it flies", async () => {
     const { service, viewService } = await mockAttached();
@@ -361,6 +380,29 @@ describe("LevelRenderService", () => {
 
     expect(service.failure).toBe("No WebGPU adapter");
     expect(container.get(LevelViewportService).isRevealed).toBe(false);
+
+    service.dispose();
+  });
+
+  it("opens the level again in the renderer a view shown after a failure starts", async () => {
+    const { container, service } = await mockAttached();
+
+    await takeSettle();
+    stub.respond({ kind: ERendererResponse.FAILED, reason: "Device lost" });
+    service.detach();
+
+    stub = createRendererWorkerStub();
+    service.attach(document.createElement("div"));
+
+    const settle = await takeSettle();
+
+    expect(service.failure).toBeNull();
+    expect(stub.take(ERendererRequest.START)).toHaveLength(1);
+
+    stub.respond({ id: settle.id, kind: ERendererResponse.SETTLED });
+    await stub.flush();
+
+    expect(container.get(LevelViewportService).isRevealed).toBe(true);
 
     service.dispose();
   });

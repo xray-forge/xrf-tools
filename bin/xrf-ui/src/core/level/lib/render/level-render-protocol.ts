@@ -84,7 +84,10 @@ export interface ILevelTextureDelivery {
 /** What changed about the textures a level holds. */
 export interface ILevelTextureSupplyChange {
   delivered: ReadonlyArray<ILevelTextureDelivery>;
-  /** References still worth keeping, everything else being released, or null where the whole set went. */
+  /**
+   * References still worth keeping, everything else being released; null releases nothing, and with nothing delivered
+   * says the whole set went.
+   */
   retained: Nullable<ReadonlySet<string>>;
 }
 

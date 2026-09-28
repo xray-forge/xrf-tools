@@ -13,7 +13,6 @@ function createImpostors(): ISectorImpostorViews {
 
   return {
     corners: new Float32Array(3 * 32 * 8),
-    count: 3,
     factors: new Float32Array([0.5, 0.5, 0.5]),
     groups: [
       { count: 1, render: getLevelSurfaceRender([], 3), start: 0, surface: { ...surface, shaderId: 3 } },

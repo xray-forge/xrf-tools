@@ -83,9 +83,7 @@ export class VisualRenderService extends RenderAssetService {
 
   /** Frames the open model again. */
   public resetCamera(): void {
-    if (this.model) {
-      this.client?.setCamera(toVisualCamera(this.model.fit, this.config));
-    }
+    this.frame();
   }
 
   protected toSettings(): IRendererSettings {
@@ -203,7 +201,15 @@ export class VisualRenderService extends RenderAssetService {
     }
 
     this.hasFramed = true;
-    this.client.setCamera(toVisualCamera(this.model.fit, this.config));
+    this.frame();
+  }
+
+  /** Fits the camera to the open model: described, then reset, since the same start again keeps the camera turned. */
+  private frame(): void {
+    if (this.model && this.client) {
+      this.client.setCamera(toVisualCamera(this.model.fit, this.config));
+      this.client.commandCamera({ kind: ERendererCameraCommand.RESET });
+    }
   }
 
   private applyTextures([textures, bumps]: readonly [

@@ -241,6 +241,35 @@ describe("LevelStreamScheduler", () => {
     expect(asked(reads)).toEqual([0, 1, 0, 1]);
   });
 
+  // The last level's read of sector 0 finishing used to take the new level's read of it out of flight and count it as
+  // arrived, which settled the new level's target - and revealed it - while its own sectors were still being read.
+  it("counts nothing a read started before a clear brings, towards the target after it", async () => {
+    const { host, reads, progress, settled } = mockHost();
+    const scheduler: LevelStreamScheduler = new LevelStreamScheduler(host);
+
+    void scheduler.setTarget([0]);
+    scheduler.clear();
+
+    let isSettled: boolean = false;
+
+    void scheduler.setTarget([0]).then(() => {
+      isSettled = true;
+    });
+
+    reads[0].finish();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect([isSettled, settled(), scheduler.reading]).toEqual([false, 0, 1]);
+
+    reads[1].finish();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect([isSettled, settled(), scheduler.reading]).toEqual([true, 1, 0]);
+    expect(progress).toEqual(["0/1", "0/1"]);
+  });
+
   // Nothing takes a sector back out of the in-flight set but the read finishing, so a host that throws where it
   // was expected to reject would wedge the queue for the rest of the level.
   it("survives a host that throws instead of rejecting", async () => {

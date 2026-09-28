@@ -48,6 +48,9 @@ export class LevelStreamScheduler {
 
   private settlement: Nullable<ISettlement> = null;
 
+  /** Bumped by every clear, so a read started before one never counts towards, or empties, the target after it. */
+  private generation: number = 0;
+
   public constructor(host: ILevelStreamSchedulerHost) {
     this.host = host;
   }
@@ -116,6 +119,7 @@ export class LevelStreamScheduler {
     this.loaded = 0;
     this.total = 0;
     this.settlement = null;
+    this.generation += 1;
 
     settlement?.resolve();
   }
@@ -152,6 +156,8 @@ export class LevelStreamScheduler {
         continue;
       }
 
+      const generation: number = this.generation;
+
       this.inFlight.add(sector);
 
       // Nothing takes a sector out of the in-flight set but its read finishing, so a host that throws where it
@@ -164,10 +170,14 @@ export class LevelStreamScheduler {
         reading = Promise.resolve();
       }
 
-      void reading.then(
-        () => this.onRead(sector),
-        () => this.onRead(sector)
-      );
+      // A sector number means nothing across levels: the last one's read of it is not this one's.
+      const onRead = (): void => {
+        if (generation === this.generation) {
+          this.onRead(sector);
+        }
+      };
+
+      void reading.then(onRead, onRead);
     }
   }
 

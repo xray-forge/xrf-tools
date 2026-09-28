@@ -82,7 +82,6 @@ export interface ISectorImpostorGroupViews extends SectorImpostorGroup {
 
 /** The impostors of a sector's clumps of trees, as views over the buffer it arrived in. */
 export interface ISectorImpostorViews {
-  count: number;
   groups: Array<ISectorImpostorGroupViews>;
   spheres: Float32Array;
   factors: Float32Array;
@@ -134,7 +133,6 @@ function toImpostorViews(
 ): ISectorImpostorViews {
   return {
     corners: toFloatView(buffer, impostors.corners),
-    count: impostors.count,
     factors: toFloatView(buffer, impostors.factors),
     groups: impostors.groups.map((group) => ({
       ...group,

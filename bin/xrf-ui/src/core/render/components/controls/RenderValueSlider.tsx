@@ -10,7 +10,7 @@ export interface IRenderValueSliderProps extends BaseComponentProps {
   min: number;
   max: number;
   step: number;
-  /** How the value reads beside its label, which is the only place a unit is stated. */
+  /** How the value reads beside its label and to a screen reader, which are the only places a unit is stated. */
   format: (value: number) => string;
   /** Told the value while it is dragged at most once an interval, and at once when it is let go. */
   onChange: (value: number) => void;
@@ -47,6 +47,7 @@ export function RenderValueSlider({
         step={step}
         value={draft.value}
         aria-label={label}
+        getAriaValueText={format}
         onChange={draft.onChange}
         onChangeCommitted={draft.onChangeCommitted}
       />
