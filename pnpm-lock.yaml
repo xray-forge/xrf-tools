@@ -222,13 +222,13 @@ importers:
         version: 1.0.0(mobx-react-lite@4.1.1(mobx@6.16.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(mobx@6.16.0)(react@19.3.0)
       '@xrf/math':
         specifier: workspace:*
-        version: link:../../packages/math
+        version: link:../../packages/xrf-math
       '@xrf/renderer':
         specifier: workspace:*
-        version: link:../../packages/renderer
+        version: link:../../packages/xrf-renderer
       '@xrf/types':
         specifier: workspace:*
-        version: link:../../packages/types
+        version: link:../../packages/xrf-types
       '@xyflow/react':
         specifier: ^12.11.6
         version: 12.11.6(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
@@ -400,7 +400,7 @@ importers:
         specifier: 'catalog:'
         version: 3.9.6
 
-  packages/math:
+  packages/xrf-math:
     devDependencies:
       '@jest/globals':
         specifier: 'catalog:'
@@ -424,14 +424,14 @@ importers:
         specifier: 'catalog:'
         version: '@typescript/typescript6@6.0.2'
 
-  packages/renderer:
+  packages/xrf-renderer:
     dependencies:
       '@xrf/math':
         specifier: workspace:*
-        version: link:../math
+        version: link:../xrf-math
       '@xrf/types':
         specifier: workspace:*
-        version: link:../types
+        version: link:../xrf-types
       three:
         specifier: 'catalog:'
         version: 0.186.0
@@ -467,7 +467,7 @@ importers:
         specifier: 'catalog:'
         version: '@typescript/typescript6@6.0.2'
 
-  packages/types:
+  packages/xrf-types:
     devDependencies:
       '@jest/globals':
         specifier: 'catalog:'
