@@ -8,7 +8,9 @@ import { IRendererSettings } from "#/contract/renderer-settings";
 import { RendererDevice } from "#/device/renderer-device";
 import { RendererDeviceFailure } from "#/device/renderer-device-failure";
 import { DEFAULT_RENDER_FRAME_PACING } from "#/frame/render-frame-pacing";
+import { TRendererFrameScheduler } from "#/host/renderer-frame-scheduler";
 import { RendererHost } from "#/host/renderer-host";
+import { RendererView } from "#/host/renderer-view";
 import { RendererScene } from "#/scene/renderer-scene";
 
 const SETTINGS: IRendererSettings = {
@@ -24,7 +26,7 @@ const SETTINGS: IRendererSettings = {
   tonemapScale: 1,
 };
 
-function createHost(): [RendererHost, Array<TRendererResponse>] {
+function createHost(schedule: TRendererFrameScheduler = () => 0): [RendererHost, Array<TRendererResponse>] {
   const replies: Array<TRendererResponse> = [];
   const host: RendererHost = new RendererHost(
     (response: TRendererResponse) => {
@@ -32,11 +34,24 @@ function createHost(): [RendererHost, Array<TRendererResponse>] {
         replies.push(response);
       }
     },
-    () => 0,
+    schedule,
     () => {}
   );
 
   return [host, replies];
+}
+
+function createDevice(): RendererDevice {
+  return {
+    describe: () => ({}),
+    dispose: () => {},
+    headless: {},
+    renderer: { backend: { device: { limits: {} } }, hasFeature: () => true, setCanvasTarget: () => {} },
+  } as unknown as RendererDevice;
+}
+
+interface IDrawingHost {
+  draw(): boolean;
 }
 
 async function settle(): Promise<void> {
@@ -131,5 +146,65 @@ describe("RendererHost", () => {
 
     expect(released).toEqual(["a:1", "b:1"]);
     expect(disposedAt).toEqual([0]);
+  });
+
+  // A capture taken on the frame the water was switched on for would show none: it joins once compiled.
+  it("answers a settle only with a frame drawn with every stage asked for, one joining among them", async () => {
+    const frames: Array<(now: number) => void> = [];
+    const [host, replies]: [RendererHost, Array<TRendererResponse>] = createHost((callback: (now: number) => void) =>
+      frames.push(callback)
+    );
+    const { features } = SETTINGS;
+    const unwatered: IRendererSettings = {
+      ...SETTINGS,
+      features: { ...features, water: { ...features.water, isEnabled: false } },
+    };
+    const watered: IRendererSettings = {
+      ...SETTINGS,
+      features: { ...features, water: { ...features.water, isEnabled: true } },
+    };
+    let now: number = 0;
+
+    function runFrame(): void {
+      now += 1000;
+      frames.shift()?.(now);
+    }
+
+    function toSettled(): Array<number> {
+      return replies.flatMap((reply: TRendererResponse) =>
+        reply.kind === ERendererResponse.SETTLED ? [reply.id] : []
+      );
+    }
+
+    jest.spyOn(RendererDevice, "open").mockResolvedValue(createDevice());
+    jest.spyOn(RendererView.prototype, "show").mockImplementation(() => {});
+    jest.spyOn(RendererView.prototype, "hide").mockImplementation(() => {});
+    jest.spyOn(RendererHost.prototype as unknown as IDrawingHost, "draw").mockReturnValue(false);
+
+    host.take({ kind: ERendererRequest.START, settings: unwatered });
+    await settle();
+    host.take({
+      canvas: {} as OffscreenCanvas,
+      height: 1,
+      kind: ERendererRequest.ATTACH_VIEW,
+      pixelRatio: 1,
+      width: 1,
+    });
+    host.take({ id: 1, kind: ERendererRequest.SETTLE });
+    runFrame();
+
+    expect(toSettled()).toEqual([1]);
+
+    host.take({ kind: ERendererRequest.CONFIGURE, settings: watered });
+    host.take({ id: 2, kind: ERendererRequest.SETTLE });
+    runFrame();
+
+    expect(toSettled()).toEqual([1]);
+
+    runFrame();
+
+    expect(toSettled()).toEqual([1, 2]);
+
+    host.take({ kind: ERendererRequest.DISPOSE });
   });
 });

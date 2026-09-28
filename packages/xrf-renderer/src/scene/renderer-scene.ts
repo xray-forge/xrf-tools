@@ -7,6 +7,7 @@ import { IRendererGrass } from "#/contract/scene/renderer-grass";
 import { IRendererImpostors } from "#/contract/scene/renderer-impostors";
 import { IRendererLights } from "#/contract/scene/renderer-lights";
 import { IRendererObject } from "#/contract/scene/renderer-object";
+import { ERendererPass } from "#/contract/scene/renderer-pass";
 import { IRendererSurface } from "#/contract/scene/renderer-surface";
 import { TRendererTextureSource } from "#/contract/scene/renderer-texture-source";
 import { IDdsRefusal } from "#/dds/dds-refusal";
@@ -70,6 +71,10 @@ export class RendererScene {
   private readonly proxies: LayoutProxies = new LayoutProxies();
   /** The texture keys each drawn object samples, whose own textures stay on the GPU while it draws them. */
   private readonly held: Map<SceneObject, ReadonlyArray<string>> = new Map();
+  /** What each drawn object was applied with, which a pass joining the frame compiles for. */
+  private readonly applied: Map<SceneObject, ISceneObjectState> = new Map();
+  /** The passes the frame draws or is joining, whose materials an object waits for. */
+  private framePasses: ReadonlySet<ERendererPass> = new Set(Object.values(ERendererPass));
   private readonly resolver: SceneObjectResolver;
   private readonly changes: SceneChangeQueue<SceneObject> = new SceneChangeQueue({
     apply: (entry: SceneObject) => this.apply(entry),
@@ -159,7 +164,7 @@ export class RendererScene {
     this.changes.transact(change);
   }
 
-  /** Applies what became ready since the last frame, a budget of it at a time. */
+  /** Applies what became ready since the last frame, a budget at a time. */
   public advance(): void {
     this.changes.advance();
   }
@@ -185,6 +190,14 @@ export class RendererScene {
   }
 
   /**
+   * @param passes - The passes the frame draws or is joining: an object waits for its materials in these alone, and
+   *   one drawn in a pass joining later is compiled for it then.
+   */
+  public setFramePasses(passes: ReadonlySet<ERendererPass>): void {
+    this.framePasses = passes;
+  }
+
+  /**
    * Stands the waiting objects with something to compile in scenes of their own, for the renderer to compile. Only
    * once their textures are up: a pipeline built while its samplers held placeholders would not be the one its first
    * frame draws with.
@@ -197,7 +210,7 @@ export class RendererScene {
     for (const entry of this.changes.pending) {
       const state: Nullable<ISceneObjectState> = this.resolver.resolve(entry);
 
-      if (state && !this.readiness.isStateReady(state) && this.isUploaded(state)) {
+      if (state && !this.readiness.isStateReady(state, this.framePasses) && this.isUploaded(state)) {
         states.push(state);
       }
     }
@@ -206,14 +219,28 @@ export class RendererScene {
   }
 
   /**
+   * Stands in what the objects draw now that is not compiled, for a pass joining the frame to compile before it draws:
+   * the materials of the passes the frame left out when they were applied.
+   *
+   * @returns The staging, or null when everything drawn is compiled.
+   */
+  public stageDrawn(): Nullable<ISceneStaging> {
+    return createSceneStaging(this.applied.values(), this.readiness, this.proxies);
+  }
+
+  /**
    * Marks what a staging compiled as ready, and applies every change that can draw now.
    *
    * @param staging - What was compiled.
+   * @param passes - The passes it was compiled for; its shadow materials always are.
    */
-  public commit(staging: ISceneStaging): void {
-    staging.materials.forEach(([material, layout]: readonly [Material, string]) =>
-      this.readiness.mark(material, layout)
-    );
+  public commit(staging: ISceneStaging, passes: ReadonlySet<ERendererPass>): void {
+    for (const { material, layout, pass } of staging.materials) {
+      if (pass === null || passes.has(pass)) {
+        this.readiness.mark(material, layout);
+      }
+    }
+
     this.transact(() => {});
   }
 
@@ -313,6 +340,7 @@ export class RendererScene {
         this.objects.delete(key);
         this.changes.withdraw(entry, entry.placed, () => {
           entry.dispose();
+          this.applied.delete(entry);
           this.hold(entry, []);
         });
       });
@@ -336,6 +364,7 @@ export class RendererScene {
     this.geometries.clear();
     this.skeletons.dispose();
     this.held.clear();
+    this.applied.clear();
     this.textures.dispose();
     this.staticDraws.dispose();
     this.proxies.dispose();
@@ -415,6 +444,12 @@ export class RendererScene {
 
     entry.apply(state, this.scenes);
     this.hold(entry, state ? [...new Set([...state.keys, ...entry.plainKeys])] : []);
+
+    if (state) {
+      this.applied.set(entry, state);
+    } else {
+      this.applied.delete(entry);
+    }
   }
 
   /**
@@ -461,7 +496,7 @@ export class RendererScene {
     const state: Nullable<ISceneObjectState> = this.resolver.resolve(entry);
 
     // One whose geometry is missing applies at once, as nothing drawn.
-    return !state || (this.readiness.isStateReady(state) && this.isUploaded(state));
+    return !state || (this.readiness.isStateReady(state, this.framePasses) && this.isUploaded(state));
   }
 
   private isUploaded(state: ISceneObjectState): boolean {

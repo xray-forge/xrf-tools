@@ -1,6 +1,8 @@
 import { Maybe, Nullable } from "@xrf/types";
 import { Camera, Object3D, PerspectiveCamera, RenderTarget, WebGPURenderer } from "three/webgpu";
 
+import { ERendererPass } from "#/contract/scene/renderer-pass";
+import { ICompilingFrame } from "#/graph/compiling-frame";
 import { IFrameCompileTargets } from "#/graph/frame-compile-targets";
 import { IRendererScenePass } from "#/pass/renderer-scene-pass";
 import { ISceneGrassStaging } from "#/scene/grass/scene-grass-staging";
@@ -11,6 +13,7 @@ import { ISceneStaging } from "#/scene/staging/scene-staging";
  * Compiles the materials waiting objects need, off the frame: three builds their pipelines asynchronously, and until
  * they are ready every waiting object keeps drawing what it drew before. One compile is in flight at a time, a batch's
  * passes one after another: three's asynchronous builds share its node state, and two interleaved corrupt bind groups.
+ * A pass joining the frame is compiled first for what the scene draws already, then admitted.
  */
 export class RendererSceneCompiler {
   private isCompilingBatch: boolean = false;
@@ -22,16 +25,18 @@ export class RendererSceneCompiler {
   }
 
   /**
+   * Starts the next batch, if none is compiling: a grass build, else a pass joining, else the waiting objects.
+   *
    * @param renderer - The renderer drawing.
-   * @param scene - The scene whose waiting objects compile.
-   * @param getTargets - Where the frame draws them as it stands, read again at each step of a batch: a pass that left
-   *   the frame meanwhile is not compiled into its freed target, and one that joined is compiled too.
+   * @param scene - The scene whose objects compile.
+   * @param frame - Where the frame draws them, read again at each step of a batch: a pass that left the frame
+   *   meanwhile is not compiled into its freed target, and one that joined is compiled too.
    * @param camera - The drawing camera.
    */
   public compile(
     renderer: WebGPURenderer,
     scene: RendererScene,
-    getTargets: () => IFrameCompileTargets,
+    frame: ICompilingFrame,
     camera: PerspectiveCamera
   ): void {
     if (this.isDisposed || this.isCompilingBatch) {
@@ -42,33 +47,95 @@ export class RendererSceneCompiler {
 
     if (grass) {
       return this.run(
-        () => compileInto(renderer, getTargets().grass, grass.scene, camera),
+        async () => compileInto(renderer, frame.compileTargets.grass, grass.scene, camera),
         "Grass failed to compile:",
         (isCurrent: boolean) => (isCurrent ? grass.commit() : grass.abandon())
       );
     }
 
+    if (!this.join(renderer, scene, frame, camera)) {
+      this.compileWaiting(renderer, scene, frame, camera);
+    }
+  }
+
+  /** Drops the batch in flight, and compiles nothing more. */
+  public dispose(): void {
+    this.isDisposed = true;
+  }
+
+  /**
+   * Compiles the first pass joining the frame for what the scene draws already, and admits it; one with nothing to
+   * compile, its pipelines built before, at once.
+   *
+   * @returns Whether a batch started.
+   */
+  private join(
+    renderer: WebGPURenderer,
+    scene: RendererScene,
+    frame: ICompilingFrame,
+    camera: PerspectiveCamera
+  ): boolean {
+    const pass: Maybe<IRendererScenePass> = frame.compileTargets.joining[0];
+
+    if (!pass) {
+      return false;
+    }
+
+    const staging: Nullable<ISceneStaging> = scene.stageDrawn();
+
+    if (!staging?.scenes[pass.scene].children.length) {
+      frame.admit(pass);
+
+      return false;
+    }
+
+    this.run(
+      async () => compileInto(renderer, pass.target, staging.scenes[pass.scene], camera),
+      "A pass joining the frame failed to compile:",
+      // Left or made again meanwhile, it is admitted to nothing, and what compiled stays compiled.
+      (isCurrent: boolean) => {
+        if (isCurrent) {
+          scene.commit(staging, new Set([pass.scene]));
+          frame.admit(pass);
+        }
+      }
+    );
+
+    return true;
+  }
+
+  /** Compiles the waiting objects for every scene pass the frame holds, then their shadow materials. */
+  private compileWaiting(
+    renderer: WebGPURenderer,
+    scene: RendererScene,
+    frame: ICompilingFrame,
+    camera: PerspectiveCamera
+  ): void {
     const staging: Nullable<ISceneStaging> = scene.hasPending ? scene.stage() : null;
 
     if (!staging) {
       return;
     }
 
+    // Each pass as it is tried: one that failed is taken as compiled, and one never reached is left for another batch.
+    const compiled: Set<ERendererPass> = new Set();
+
     this.run(
       async () => {
-        const compiled: Set<IRendererScenePass> = new Set();
+        const tried: Set<IRendererScenePass> = new Set();
 
         function next(): Maybe<IRendererScenePass> {
-          return getTargets().passes.find((pass: IRendererScenePass) => !compiled.has(pass));
+          return frame.compileTargets.passes.find((pass: IRendererScenePass) => !tried.has(pass));
         }
 
         for (let pass: Maybe<IRendererScenePass> = next(); pass && !this.isDisposed; pass = next()) {
-          compiled.add(pass);
+          tried.add(pass);
+          compiled.add(pass.scene);
           await compileInto(renderer, pass.target, staging.scenes[pass.scene], camera);
         }
 
         if (!this.isDisposed && staging.shadows.children.length) {
-          const { shadow }: IFrameCompileTargets = getTargets();
+          const { shadow }: IFrameCompileTargets = frame.compileTargets;
 
           await compileInto(renderer, shadow.target, staging.shadows, shadow.camera);
         }
@@ -76,15 +143,10 @@ export class RendererSceneCompiler {
       "Materials failed to compile:",
       (isCurrent: boolean) => {
         if (isCurrent) {
-          scene.commit(staging);
+          scene.commit(staging, compiled);
         }
       }
     );
-  }
-
-  /** Drops the batch in flight, and compiles nothing more. */
-  public dispose(): void {
-    this.isDisposed = true;
   }
 
   /**

@@ -104,6 +104,12 @@ describe("the frame's pass order", () => {
     ]);
   });
 
+  // Drawn over a distortion target nothing cleared, it would move the whole frame.
+  it("moves what the water distorts only in a frame the water draws in", () => {
+    expect(toOrder({ distortion: toPass("distortion") })).not.toContain("distortion");
+    expect(toOrder({ distortion: toPass("distortion"), water: toPass("water") })).toContain("distortion");
+  });
+
   it("smooths the helpers too, unless FSR 1 upscales what was smoothed before they draw", () => {
     expect(toOrder({ smoothing: toPass("antialias") }).slice(-3)).toEqual(["overlay", "antialias", "present"]);
     expect(

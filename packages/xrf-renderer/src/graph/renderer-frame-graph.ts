@@ -6,8 +6,11 @@ import { ERendererAntialiasing } from "#/contract/renderer-antialiasing";
 import { IRendererFeatureSettings } from "#/contract/renderer-feature-settings";
 import { TRendererSmoothingAntialiasing } from "#/contract/renderer-smoothing-antialiasing";
 import { TRendererTemporalAntialiasing } from "#/contract/renderer-temporal-antialiasing";
+import { ERendererPass } from "#/contract/scene/renderer-pass";
 import { createBaseFramePasses, IBaseFramePasses } from "#/graph/base-frame-passes";
+import { ICompilingFrame } from "#/graph/compiling-frame";
 import { IFrameCompileTargets } from "#/graph/frame-compile-targets";
+import { IFrameOptionalPasses } from "#/graph/frame-optional-passes";
 import { toFramePassOrder } from "#/graph/frame-pass-order";
 import { IFramePlan, toFramePlan } from "#/graph/frame-plan";
 import { IFramePlanShadows } from "#/graph/frame-plan-shadows";
@@ -59,9 +62,10 @@ interface IFrameSharpening {
 /**
  * The frame: every target it draws into, and its passes in order, the picture presented last. The features make a
  * plan; each optional stage is made for its part of it and kept while that stands, a stage reading another's output
- * made again with it.
+ * made again with it. A stage drawing a consumer scene joins once the compile lane admits it: until then the frame
+ * draws as if it were off, and so does whatever reads it.
  */
-export class RendererFrameGraph {
+export class RendererFrameGraph implements ICompilingFrame {
   public readonly targets: RendererTargets = new RendererTargets();
   /** The last pass, which a capture also draws into a target of its own. */
   public readonly present: PresentPass;
@@ -94,9 +98,16 @@ export class RendererFrameGraph {
     water: new FrameStage<WaterPass>(release),
   };
 
+  /** The passes drawn, in frame order. */
   private passes: ReadonlyArray<IRendererPass> = [];
-  /** The passes among them drawing the consumer's scenes, in frame order. */
+  /** Every pass the stages hold, in frame order: the drawn ones, and those held back until what they read joins. */
+  private held: ReadonlyArray<IRendererPass> = [];
+  /** The passes among them drawing the consumer's scenes, in frame order: the drawn ones and the joining ones. */
   private scenePasses: ReadonlyArray<IRendererScenePass> = [];
+  /** The scene passes waiting to join, drawn once the compile lane admits them. */
+  private joining: ReadonlyArray<IRendererScenePass> = [];
+  /** The scene passes compiled for everything the scene draws: every base one, and each stage's once admitted. */
+  private readonly admitted: WeakSet<IRendererScenePass> = new WeakSet();
   private plan: Nullable<IFramePlan> = null;
   private renderer: Nullable<WebGPURenderer> = null;
   /** The output's size, in device pixels, which the plan's upscale divides. */
@@ -131,6 +142,10 @@ export class RendererFrameGraph {
     this.lights = lights;
     this.present = new PresentPass(this.targets, uniforms.camera);
     this.base = createBaseFramePasses(this.targets, uniforms, overlays, cull);
+    // In the frame from the first, so everything the scene ever draws is compiled for them.
+    Object.values(this.base)
+      .filter(isRendererScenePass)
+      .forEach((pass: IRendererScenePass) => this.admitted.add(pass));
     // The water's shaders read the frame's depth behind it, a texture that stays while its memory comes and goes.
     uniforms.water.depth.value = this.targets.waterDepth;
     this.link();
@@ -141,13 +156,27 @@ export class RendererFrameGraph {
     return this.sizing?.size ?? toRendererFrameSize(this.width, this.height, 1);
   }
 
-  /** Where what the frame draws now compiles: its passes drawing the consumer's scenes, the shadows and the grass. */
+  /**
+   * Where what the frame draws now compiles: its passes drawing the consumer's scenes and those joining to, the shadows
+   * and the grass.
+   */
   public get compileTargets(): IFrameCompileTargets {
     return {
       grass: this.targets.gbuffer,
+      joining: this.joining,
       passes: this.scenePasses,
       shadow: { camera: this.uniforms.shadows.cascades[0].camera, target: this.targets.shadows[0] },
     };
+  }
+
+  /** The consumer's scenes the frame draws or is joining to draw, whose materials an object waits for. */
+  public get framePasses(): ReadonlySet<ERendererPass> {
+    return new Set(this.scenePasses.map((pass: IRendererScenePass) => pass.scene));
+  }
+
+  /** Whether a stage waits to join, which a frame drawn now is drawn without. */
+  public get isJoining(): boolean {
+    return this.joining.length > 0;
   }
 
   /** Where this frame's samples stand within the pixel, while a resolve jitters them. */
@@ -258,6 +287,13 @@ export class RendererFrameGraph {
     return this.stages.jitter.value?.take(view) ?? view;
   }
 
+  public admit(pass: IRendererScenePass): void {
+    if (this.joining.includes(pass)) {
+      this.admitted.add(pass);
+      this.link();
+    }
+  }
+
   /** Forgets what the resolve kept of the frames before, for a view that jumped. */
   public resetHistory(): void {
     this.stages.resolve.value?.resetHistory();
@@ -321,7 +357,8 @@ export class RendererFrameGraph {
       sized.set(jitter, sizing);
     }
 
-    for (const pass of this.passes) {
+    // The held ones too: a pass joining is compiled into what it holds before it draws.
+    for (const pass of this.held) {
       if (pass.resize && sized.get(pass) !== sizing) {
         pass.resize(renderer, sizing.size);
         sized.set(pass, sizing);
@@ -331,32 +368,36 @@ export class RendererFrameGraph {
     return sizing !== current || isReallocated;
   }
 
-  /** Orders the passes the stages hold now. */
+  /** Orders the passes the stages hold now, a scene pass not admitted yet held back from the drawn ones. */
   private link(): void {
-    const { stages } = this;
+    const { stages, admitted } = this;
+    const water: Nullable<WaterPass> = stages.water.value;
+    const optional: IFrameOptionalPasses = {
+      ambientOcclusion: stages.ambientOcclusion.value,
+      exposure: stages.exposure.value,
+      grass: stages.grass.value,
+      lightShadows: stages.lightShadows.value,
+      lights: stages.lights.value,
+      motionBackground: stages.motionBackground.value,
+      distortion: stages.distortion.value,
+      occlusion: stages.occlusion.value,
+      resolve: stages.resolve.value,
+      sharpen: stages.sharpen.value,
+      shadows: stages.shadows.value ?? [],
+      smoothing: stages.smoothing.value,
+      spatial: stages.spatial.value,
+      water,
+    };
 
+    this.held = toFramePassOrder(this.base, optional, this.present);
+    this.scenePasses = this.held.filter(isRendererScenePass);
+    this.joining = this.scenePasses.filter((pass: IRendererScenePass) => !admitted.has(pass));
     this.passes = toFramePassOrder(
       this.base,
-      {
-        ambientOcclusion: stages.ambientOcclusion.value,
-        exposure: stages.exposure.value,
-        grass: stages.grass.value,
-        lightShadows: stages.lightShadows.value,
-        lights: stages.lights.value,
-        motionBackground: stages.motionBackground.value,
-        distortion: stages.distortion.value,
-        occlusion: stages.occlusion.value,
-        resolve: stages.resolve.value,
-        sharpen: stages.sharpen.value,
-        shadows: stages.shadows.value ?? [],
-        smoothing: stages.smoothing.value,
-        spatial: stages.spatial.value,
-        water: stages.water.value,
-      },
+      { ...optional, water: water && admitted.has(water) ? water : null },
       this.present
     );
     this.passNames = this.passes.map((pass: IRendererPass) => pass.name);
-    this.scenePasses = this.passes.filter(isRendererScenePass);
   }
 }
 

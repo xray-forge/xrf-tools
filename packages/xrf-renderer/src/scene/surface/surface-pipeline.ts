@@ -1,5 +1,7 @@
+import { Nullable } from "@xrf/types";
 import { Material } from "three/webgpu";
 
+import { ERendererPass } from "#/contract/scene/renderer-pass";
 import { ISurfaceMaterial } from "#/material/surface-material";
 import { ISceneObjectDraw } from "#/scene/object/scene-object-draw";
 import { ISceneObjectState, toSurfaceDraw } from "#/scene/object/scene-object-state";
@@ -8,8 +10,8 @@ import { ISceneObjectState, toSurfaceDraw } from "#/scene/object/scene-object-st
 export interface ISurfacePipeline {
   material: Material;
   draw: ISceneObjectDraw;
-  /** Whether it draws into the shadow maps rather than its pass. */
-  isShadow: boolean;
+  /** The pass drawing it, against whose target it compiles, or null for the shadow maps. */
+  pass: Nullable<ERendererPass>;
 }
 
 /**
@@ -20,18 +22,18 @@ export interface ISurfacePipeline {
  */
 export function toSurfacePipelines(state: ISceneObjectState, surface: ISurfaceMaterial): Array<ISurfacePipeline> {
   const draw: ISceneObjectDraw = toSurfaceDraw(state, surface);
-  const pipelines: Array<ISurfacePipeline> = [{ draw, isShadow: false, material: surface.material }];
+  const pipelines: Array<ISurfacePipeline> = [{ draw, material: surface.material, pass: surface.pass }];
 
   if (surface.shadow) {
-    pipelines.push({ draw, isShadow: true, material: surface.shadow });
+    pipelines.push({ draw, material: surface.shadow, pass: null });
   }
 
   // An impostor refused a static draw is not drawn.
   if (draw !== state.plain && !surface.isImpostor) {
-    pipelines.push({ draw: state.plain, isShadow: false, material: surface.plain.material });
+    pipelines.push({ draw: state.plain, material: surface.plain.material, pass: surface.pass });
 
     if (surface.plain.shadow) {
-      pipelines.push({ draw: state.plain, isShadow: true, material: surface.plain.shadow });
+      pipelines.push({ draw: state.plain, material: surface.plain.shadow, pass: null });
     }
   }
 

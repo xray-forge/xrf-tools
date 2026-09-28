@@ -45,7 +45,8 @@ export function toFramePassOrder(
     ...(resolve?.beforeBlended ?? []),
     ...some(optional.water),
     base.forward,
-    ...some(optional.distortion),
+    // It moves what the water wrote, so it draws only where the water does.
+    ...(optional.water ? some(optional.distortion) : []),
     ...some(resolve),
     ...(spatial ? some(smoothing, spatial) : []),
     ...some(optional.sharpen),

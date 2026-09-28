@@ -311,6 +311,7 @@ export class RendererHost {
     this.uniforms.configure(settings);
     // The features' passes join or leave the frame here, never while one is drawn.
     this.graph.configure(settings.features);
+    this.scene.setFramePasses(this.graph.framePasses);
     this.scene.setWireframe(settings.isWireframe);
     // A limit raised lets a frame start that was waiting on the GPU.
     this.ensureScheduled();
@@ -376,12 +377,16 @@ export class RendererHost {
 
     if (view && (this.captures.hasPending || this.limiter.take(now, settings.pacing.rateLimit))) {
       const isResized: boolean = this.draw(now, device, view, settings);
+      // Asked before the compiler may admit a pass joining the frame, which this frame was drawn without.
+      const isJoined: boolean = !this.graph.isJoining;
 
-      this.compiler.compile(device.renderer, this.scene, () => this.graph.compileTargets, this.rig.camera);
+      this.compiler.compile(device.renderer, this.scene, this.graph, this.rig.camera);
 
-      // A frame still settling shows the scene half changed, and one that allocated the targets reads back cleared: a
-      // capture of either waits for a later frame. Asked after the compiler took what waits, a grass build among it.
-      const isSettled: boolean = !this.scene.hasPending && !this.compiler.isCompiling && !this.scene.textures.hasQueued;
+      // A frame still settling shows the scene half changed or a stage not joined yet, and one that allocated the
+      // targets reads back cleared: a capture of either waits for a later frame. Asked after the compiler took what
+      // waits, a grass build among it.
+      const isSettled: boolean =
+        isJoined && !this.scene.hasPending && !this.compiler.isCompiling && !this.scene.textures.hasQueued;
 
       drawn = isSettled && !isResized ? this.drawingSize : null;
 

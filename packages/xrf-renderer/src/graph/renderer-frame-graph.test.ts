@@ -6,6 +6,7 @@ import { ERendererDebugView } from "#/contract/renderer-debug-view";
 import { IRendererFeatureSettings } from "#/contract/renderer-feature-settings";
 import { ERendererPreset, RENDERER_PRESETS } from "#/contract/renderer-preset";
 import { ERendererRenderScale } from "#/contract/renderer-render-scale";
+import { ERendererPass } from "#/contract/scene/renderer-pass";
 import { DEFAULT_RENDER_FRAME_PACING } from "#/frame/render-frame-pacing";
 import { RendererFrameGraph } from "#/graph/renderer-frame-graph";
 import { IRendererFrame } from "#/pass/renderer-frame";
@@ -56,6 +57,16 @@ function createGraph(): RendererFrameGraph {
   return new RendererFrameGraph(uniforms, overlays, scene.staticCull, scene.shadowCasters, scene.grass, scene.lights);
 }
 
+const WATERED: IRendererFeatureSettings = { ...PLAIN, water: { ...PLAIN.water, isDistorted: true, isEnabled: true } };
+
+function admitAll(graph: RendererFrameGraph): void {
+  graph.compileTargets.joining.forEach((pass: IRendererScenePass) => graph.admit(pass));
+}
+
+function toCompiledNames(graph: RendererFrameGraph): Array<string> {
+  return graph.compileTargets.passes.map((pass: IRendererScenePass) => pass.name);
+}
+
 function createSizedGraph(features: IRendererFeatureSettings): [RendererFrameGraph, IFakeRenderer] {
   const graph: RendererFrameGraph = createGraph();
   const fake: IFakeRenderer = createRenderer();
@@ -85,11 +96,12 @@ describe("RendererFrameGraph", () => {
     expect(graph.passNames).not.toContain("distortion");
 
     graph.configure({ ...PLAIN, water: { ...PLAIN.water, isEnabled: true } });
+    admitAll(graph);
 
     expect(graph.passNames).toContain("water");
     expect(graph.passNames).not.toContain("distortion");
 
-    graph.configure({ ...PLAIN, water: { ...PLAIN.water, isDistorted: true, isEnabled: true } });
+    graph.configure(WATERED);
 
     expect(graph.passNames.slice(graph.passNames.indexOf("water"))).toEqual([
       "water",
@@ -104,19 +116,75 @@ describe("RendererFrameGraph", () => {
   it("compiles the scene passes the frame holds now, the water's with them while it is on", () => {
     const graph: RendererFrameGraph = createGraph();
 
-    function toNames(): Array<string> {
-      return graph.compileTargets.passes.map((pass: IRendererScenePass) => pass.name);
-    }
-
     graph.configure(PLAIN);
 
-    expect(toNames()).toEqual(["gbuffer", "wallmarks", "forward"]);
+    expect(toCompiledNames(graph)).toEqual(["gbuffer", "wallmarks", "forward"]);
+    expect(graph.framePasses).toEqual(new Set([ERendererPass.DEFERRED, ERendererPass.WALLMARK, ERendererPass.FORWARD]));
 
     graph.configure({ ...PLAIN, water: { ...PLAIN.water, isEnabled: true } });
 
-    expect(toNames()).toEqual(["gbuffer", "wallmarks", "water", "forward"]);
+    expect(toCompiledNames(graph)).toEqual(["gbuffer", "wallmarks", "water", "forward"]);
+    expect(graph.framePasses).toEqual(new Set(Object.values(ERendererPass)));
     expect(graph.compileTargets.grass).toBe(graph.targets.gbuffer);
     expect(graph.compileTargets.shadow.target).toBe(graph.targets.shadows[0]);
+  });
+
+  // Drawn at once, every water material would build its pipelines on that frame, freezing the whole window.
+  it("draws a water switched on only once admitted, and its distortion with it, its targets allocated before", () => {
+    const [graph, fake]: [RendererFrameGraph, IFakeRenderer] = createSizedGraph(PLAIN);
+
+    fake.allocated.length = 0;
+    graph.configure(WATERED);
+
+    expect(graph.isJoining).toBe(true);
+    expect(graph.compileTargets.joining.map((pass: IRendererScenePass) => pass.name)).toEqual(["water"]);
+    expect(graph.passNames).not.toContain("water");
+    expect(graph.passNames).not.toContain("distortion");
+    // Compiled into while it waits, so allocated with the frame now.
+    expect(fake.allocated).toContain(graph.targets.water);
+
+    admitAll(graph);
+
+    expect(graph.isJoining).toBe(false);
+    expect(graph.compileTargets.joining).toEqual([]);
+    expect(graph.passNames).toEqual(expect.arrayContaining(["water", "distortion"]));
+    expect(toCompiledNames(graph)).toContain("water");
+  });
+
+  it("admits nothing that left the frame while it joined, and has the water join again when it comes back", () => {
+    const graph: RendererFrameGraph = createGraph();
+
+    graph.configure(WATERED);
+
+    const [left]: ReadonlyArray<IRendererScenePass> = graph.compileTargets.joining;
+
+    graph.configure(PLAIN);
+    graph.admit(left);
+
+    expect(graph.isJoining).toBe(false);
+    expect(graph.passNames).not.toContain("water");
+    expect(toCompiledNames(graph)).not.toContain("water");
+
+    graph.configure(WATERED);
+
+    expect(graph.compileTargets.joining).toHaveLength(1);
+    expect(graph.compileTargets.joining[0]).not.toBe(left);
+
+    graph.admit(left);
+
+    expect(graph.passNames).not.toContain("water");
+  });
+
+  it("keeps an admitted water in the frame across a configure that leaves it on", () => {
+    const graph: RendererFrameGraph = createGraph();
+
+    graph.configure(WATERED);
+    admitAll(graph);
+    graph.configure({ ...WATERED, water: { ...WATERED.water, isDistorted: false } });
+
+    expect(graph.isJoining).toBe(false);
+    expect(graph.passNames).toContain("water");
+    expect(graph.passNames).not.toContain("distortion");
   });
 
   it("allocates the water's targets with the frame while it is on, and the frame again as it joins or leaves", () => {
@@ -128,6 +196,7 @@ describe("RendererFrameGraph", () => {
 
     fake.allocated.length = 0;
     graph.configure({ ...PLAIN, water: { ...PLAIN.water, isEnabled: true } });
+    admitAll(graph);
 
     expect(fake.allocated).toEqual(expect.arrayContaining([targets.scene, targets.composite, targets.water]));
     // Reported by the next frame, which reads back what was just allocated.

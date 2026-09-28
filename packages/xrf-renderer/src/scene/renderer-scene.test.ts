@@ -27,12 +27,22 @@ function toArrays(freed: IFreeingRenderer["freed"]): Array<TypedArray> {
   return freed.map((attribute: BufferAttribute | InterleavedBufferAttribute) => attribute.array as TypedArray);
 }
 
-/** Compiles what waits, as the compiler would, and applies what that lets draw. */
+/** Every pass the frame may draw. */
+const PASSES: ReadonlySet<ERendererPass> = new Set(Object.values(ERendererPass));
+
+/** The frame's passes with the water off. */
+const UNWATERED: ReadonlySet<ERendererPass> = new Set([
+  ERendererPass.DEFERRED,
+  ERendererPass.WALLMARK,
+  ERendererPass.FORWARD,
+]);
+
+/** Compiles what waits, as the compiler would for every pass, and applies what that lets draw. */
 function compile(scene: RendererScene): void {
   const staging: Nullable<ISceneStaging> = scene.stage();
 
   if (staging) {
-    scene.commit(staging);
+    scene.commit(staging, PASSES);
   }
 }
 
@@ -126,6 +136,55 @@ describe("RendererScene", () => {
     expect((scene.scenes[ERendererPass.DEFERRED].children as Array<Mesh>).map((it: Mesh) => it.material)).toEqual([
       material,
     ]);
+  });
+
+  // Marked ready while no water pass compiled it, a water material would build its pipelines on the frame water joins.
+  it("holds an object only for its materials in the frame's passes, and stages what it draws in a pass that joins", () => {
+    const scene: RendererScene = new RendererScene(new RendererUniforms(), () => {});
+
+    scene.setFramePasses(UNWATERED);
+    scene.putGeometry("pond", createTriangle());
+    scene.putSurface("water", { draw: ERendererDraw.WATER, textures: {} });
+    scene.putObject("a", { geometry: "pond", surfaces: ["water"] });
+
+    expect(scene.hasPending).toBe(false);
+    expect(scene.scenes[ERendererPass.WATER].children).toHaveLength(1);
+
+    scene.setFramePasses(PASSES);
+
+    const drawn: ISceneStaging = scene.stageDrawn() as ISceneStaging;
+
+    expect(drawn.scenes[ERendererPass.WATER].children).toHaveLength(1);
+
+    // Compiled for the other passes alone, it is still to compile for the water.
+    scene.commit(drawn, UNWATERED);
+
+    expect(scene.stageDrawn()).not.toBeNull();
+
+    scene.commit(drawn, PASSES);
+
+    expect(scene.stageDrawn()).toBeNull();
+  });
+
+  it("holds an object put while the water joins for its water materials too", () => {
+    const scene: RendererScene = new RendererScene(new RendererUniforms(), () => {});
+
+    scene.putGeometry("pond", createTriangle());
+    scene.putSurface("water", { draw: ERendererDraw.WATER, textures: {} });
+    scene.putObject("a", { geometry: "pond", surfaces: ["water"] });
+
+    expect(scene.hasPending).toBe(true);
+
+    const staging: ISceneStaging = scene.stage() as ISceneStaging;
+
+    scene.commit(staging, UNWATERED);
+
+    expect(scene.hasPending).toBe(true);
+
+    scene.commit(scene.stage() as ISceneStaging, PASSES);
+
+    expect(scene.hasPending).toBe(false);
+    expect(scene.stageDrawn()).toBeNull();
   });
 
   // An array's layer holding a copy lets a key's own texture go only once nothing draws the texture itself.

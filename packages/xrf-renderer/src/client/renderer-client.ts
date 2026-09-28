@@ -329,7 +329,8 @@ export class RendererClient {
   }
 
   /**
-   * Waits for a frame drawn with everything asked for so far: its textures on the GPU and its materials compiled. The
+   * Waits for a frame drawn with everything asked for so far: its textures on the GPU, its materials compiled and every
+   * stage the features turned on in the frame. The
    * request follows every one before it, so a frame drawn before the last of them cannot answer it. Only a frame drawn
    * into a view does.
    *

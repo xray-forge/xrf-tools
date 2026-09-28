@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
-import { BufferAttribute, BufferGeometry, Material, Mesh, MeshBasicNodeMaterial } from "three/webgpu";
+import { BufferAttribute, BufferGeometry, Mesh, MeshBasicNodeMaterial } from "three/webgpu";
 
 import { ERendererPass } from "#/contract/scene/renderer-pass";
 import { ISurfaceMaterial, toOwnSurfaceDrawing } from "#/material/surface-material";
@@ -7,7 +7,16 @@ import { SceneGeometry } from "#/scene/geometry/scene-geometry";
 import { ISceneObjectState } from "#/scene/object/scene-object-state";
 import { LayoutProxies } from "#/scene/staging/layout-proxies";
 import { createSceneStaging, ISceneStaging } from "#/scene/staging/scene-staging";
+import { IStagedPipeline } from "#/scene/staging/staged-pipeline";
 import { MaterialReadiness } from "#/scene/surface/material-readiness";
+
+/** Every pass the frame may draw. */
+const PASSES: ReadonlySet<ERendererPass> = new Set(Object.values(ERendererPass));
+
+/** Marks a staged pipeline compiled. */
+function mark(readiness: MaterialReadiness): (pipeline: IStagedPipeline) => void {
+  return ({ material, layout }: IStagedPipeline) => readiness.mark(material, layout);
+}
 
 /** An object drawn plainly by one surface, which casts through the shadow material given. */
 function createState(shadow: MeshBasicNodeMaterial | null): { state: ISceneObjectState; surface: ISurfaceMaterial } {
@@ -44,18 +53,15 @@ describe("createSceneStaging", () => {
 
     expect(staging.scenes[ERendererPass.DEFERRED].children).toHaveLength(1);
     expect(staging.shadows.children).toHaveLength(1);
-    expect(staging.materials.map(([material]: readonly [Material, string]) => material)).toEqual([
-      surface.material,
-      shadow,
-    ]);
+    expect(staging.materials.map(({ material }: IStagedPipeline) => material)).toEqual([surface.material, shadow]);
 
     readiness.mark(surface.material, "plain");
 
-    expect(readiness.isStateReady(state)).toBe(false);
+    expect(readiness.isStateReady(state, PASSES)).toBe(false);
 
     readiness.mark(shadow, "plain");
 
-    expect(readiness.isStateReady(state)).toBe(true);
+    expect(readiness.isStateReady(state, PASSES)).toBe(true);
     expect(createSceneStaging([state], readiness, new LayoutProxies())).toBeNull();
   });
 
@@ -91,21 +97,21 @@ describe("createSceneStaging", () => {
     const staging: ISceneStaging = createSceneStaging([state], readiness, new LayoutProxies()) as ISceneStaging;
 
     expect(staging.materials).toEqual([
-      [shared, "static"],
-      [tabled, "static"],
-      [surface.material, "plain"],
-      [own, "plain"],
+      { layout: "static", material: shared, pass: ERendererPass.DEFERRED },
+      { layout: "static", material: tabled, pass: null },
+      { layout: "plain", material: surface.material, pass: ERendererPass.DEFERRED },
+      { layout: "plain", material: own, pass: null },
     ]);
     expect(staging.scenes[ERendererPass.DEFERRED].children).toHaveLength(2);
     expect(staging.shadows.children).toHaveLength(2);
 
-    staging.materials.slice(0, 2).forEach(([material, layout]) => readiness.mark(material, layout));
+    staging.materials.slice(0, 2).forEach(mark(readiness));
 
-    expect(readiness.isStateReady(state)).toBe(false);
+    expect(readiness.isStateReady(state, PASSES)).toBe(false);
 
-    staging.materials.forEach(([material, layout]) => readiness.mark(material, layout));
+    staging.materials.forEach(mark(readiness));
 
-    expect(readiness.isStateReady(state)).toBe(true);
+    expect(readiness.isStateReady(state, PASSES)).toBe(true);
   });
 
   it("stages no plain pair for an impostor, which is not drawn where it is refused a static draw", () => {
@@ -116,7 +122,21 @@ describe("createSceneStaging", () => {
 
     expect(
       (createSceneStaging([state], new MaterialReadiness(), new LayoutProxies()) as ISceneStaging).materials
-    ).toEqual([[surface.material, "static"]]);
+    ).toEqual([{ layout: "static", material: surface.material, pass: ERendererPass.DEFERRED }]);
+  });
+
+  // A pass may join while the staging compiles, and one out of the frame holds nothing back until it joins.
+  it("stages a surface of a pass out of the frame, and holds its object for it only once the pass is in", () => {
+    const { state, surface } = createState(null);
+    const readiness: MaterialReadiness = new MaterialReadiness();
+
+    state.surfaces = [{ ...surface, pass: ERendererPass.WATER }];
+
+    const staging: ISceneStaging = createSceneStaging([state], readiness, new LayoutProxies()) as ISceneStaging;
+
+    expect(staging.scenes[ERendererPass.WATER].children).toHaveLength(1);
+    expect(readiness.isStateReady(state, new Set([ERendererPass.DEFERRED]))).toBe(true);
+    expect(readiness.isStateReady(state, PASSES)).toBe(false);
   });
 
   it("stages nothing for the cascades of a surface that casts none", () => {
