@@ -3,8 +3,9 @@ import { BoundAction, Computed, Observable } from "@wirestate/mobx";
 import { Nullable } from "@xrf/types";
 
 import { transformError } from "@/core/error/lib";
+import { fetchBulk } from "@/core/ipc/bulk";
 import { visualsCommands } from "@/core/ipc/commands/visuals";
-import { visualsRawCommands } from "@/core/ipc/commands/visuals-raw";
+import { visualsBulkRoutes } from "@/core/ipc/commands/visuals-bulk";
 import { requireSessionId } from "@/core/ipc/session";
 import { SessionSnapshot } from "@/core/ipc/types/xrf-app";
 import { VisualMotionBake } from "@/core/ipc/types/xrf-visual";
@@ -154,7 +155,7 @@ export class VisualMotionService {
       );
 
       const bake: VisualMotionBake = snapshot.value;
-      const bytes: ArrayBuffer = yield* call(visualsRawCommands.readMotion(sessionId, snapshot.sessionId));
+      const bytes: ArrayBuffer = yield* call(fetchBulk(visualsBulkRoutes.readMotion(sessionId, snapshot.sessionId)));
 
       const expected: number = bake.frameCount * bake.boneCount * bake.floatsPerBone * Float32Array.BYTES_PER_ELEMENT;
 

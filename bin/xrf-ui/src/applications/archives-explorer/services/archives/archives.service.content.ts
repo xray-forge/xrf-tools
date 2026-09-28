@@ -1,7 +1,8 @@
 import { getSubjectRoots, IArchiveEntry, TArchiveContent } from "@/core/archive/lib";
+import { fetchBulk } from "@/core/ipc/bulk";
 import { archivesCommands } from "@/core/ipc/commands/archives";
-import { archivesRawCommands } from "@/core/ipc/commands/archives-raw";
-import { assetsRawCommands } from "@/core/ipc/commands/assets-raw";
+import { archivesBulkRoutes } from "@/core/ipc/commands/archives-bulk";
+import { assetsBulkRoutes } from "@/core/ipc/commands/assets-bulk";
 import { ArchiveSubject, SessionId } from "@/core/ipc/types/xrf-app";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 
@@ -63,7 +64,7 @@ export class ArchiveContentReader {
 
     const [audio, bytes] = await Promise.all([
       archivesCommands.describeAudio(roots, entry.name),
-      assetsRawCommands.readAsset(roots, entry.name),
+      fetchBulk(assetsBulkRoutes.readAsset(roots, entry.name)),
     ]);
 
     return { bytes: new Uint8Array(bytes), descriptor: audio, kind: "audio" };
@@ -75,7 +76,7 @@ export class ArchiveContentReader {
 
     const [texture, bytes] = await Promise.all([
       archivesCommands.describeTexture(roots, entry.name),
-      archivesRawCommands.readTexture(roots, entry.name),
+      fetchBulk(archivesBulkRoutes.readTexture(roots, entry.name)),
     ]);
 
     return { bytes: new Uint8Array(bytes), descriptor: texture, kind: "texture" };
@@ -87,7 +88,7 @@ export class ArchiveContentReader {
 
     const [image, bytes] = await Promise.all([
       archivesCommands.describeImage(roots, entry.name),
-      assetsRawCommands.readAsset(roots, entry.name),
+      fetchBulk(assetsBulkRoutes.readAsset(roots, entry.name)),
     ]);
 
     return { bytes: new Uint8Array(bytes), descriptor: image, kind: "image" };

@@ -1,40 +1,43 @@
-import { beforeEach, describe, expect, it } from "@jest/globals";
-import { mockDdsFile } from "@xrf/renderer/fixtures";
+import { describe, expect, it } from "@jest/globals";
 
 import { createRoots } from "@/core/assets/lib";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { ILevelTextureDelivery } from "@/core/level/lib/render/level-render-protocol";
 import { ISectorTextureRequest } from "@/core/level/lib/sector/level-sector-textures";
 import { LevelTextureReader } from "@/core/level/lib/texture/level-texture-reader";
+import { MOCK_TRANSPORT_ENDPOINT, mockFetch } from "@/fixtures/mocks/bulk.mocks";
 import { mockLevelTextureReference } from "@/fixtures/mocks/level.mocks";
-import { mockInvoke, resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 
 const ROOTS: XrayRoots = createRoots(["C:/game/db"]);
-
-function countCalls(command: string): number {
-  return mockInvoke.mock.calls.filter(([name]) => name === command).length;
-}
 
 function request(reference: string): ISectorTextureRequest {
   return { reference };
 }
 
 describe("LevelTextureReader", () => {
-  beforeEach(() => {
-    resetMockInvoke();
-    setMockInvokeResponses({ ["plugin:assets|read_asset"]: mockDdsFile() });
-  });
-
-  it("reads the file a reference resolved to at open", async () => {
+  it("says where the file a reference resolved to is fetched, and where its picture is, without fetching either", async () => {
     const reader: LevelTextureReader = new LevelTextureReader();
+    const reference = mockLevelTextureReference("stone");
 
-    reader.open(ROOTS, [mockLevelTextureReference("stone")]);
+    reader.open(ROOTS, [reference]);
 
     const delivery: ILevelTextureDelivery = await reader.read(request("stone"));
+    const headers: Record<string, string> = {
+      Authorization: `Bearer ${MOCK_TRANSPORT_ENDPOINT.token}`,
+      "Content-Type": "application/json",
+    };
+    const body: string = JSON.stringify({ roots: ROOTS, logicalPath: reference.logicalPath });
 
-    expect(delivery.reason).toBeNull();
-    expect(delivery.bytes.byteLength).toBeGreaterThan(0);
-    expect(delivery.isDecoded).toBe(false);
+    expect(delivery).toEqual({
+      reason: null,
+      reference: "stone",
+      requests: {
+        file: { body, headers, url: `${MOCK_TRANSPORT_ENDPOINT.origin}/assets/read_asset` },
+        picture: { body, headers, url: `${MOCK_TRANSPORT_ENDPOINT.origin}/textures/read_texture` },
+      },
+    });
+    // The renderer fetches them: no byte of a level's textures crosses the page.
+    expect(mockFetch).not.toHaveBeenCalled();
   });
 
   it("says why there is no file where the roots answer to nothing", async () => {
@@ -44,41 +47,17 @@ describe("LevelTextureReader", () => {
 
     const delivery: ILevelTextureDelivery = await reader.read(request("stone"));
 
+    expect(delivery.requests).toBeNull();
     expect(delivery.reason).toContain("Nothing in the mounted roots answers to");
-    expect(countCalls("plugin:assets|read_asset")).toBe(0);
   });
 
-  it("says why there is no file where reading it failed", async () => {
+  it("answers for references added beside the open", async () => {
     const reader: LevelTextureReader = new LevelTextureReader();
 
-    setMockInvokeResponses({
-      ["plugin:assets|read_asset"]: () => {
-        throw new Error("the archive is truncated");
-      },
-    });
+    reader.open(ROOTS, []);
+    reader.add([mockLevelTextureReference("grass")]);
 
-    reader.open(ROOTS, [mockLevelTextureReference("stone")]);
-
-    expect((await reader.read(request("stone"))).reason).toBe("the archive is truncated");
-  });
-
-  // Whether the dds reader models the layout is a question about the file, not about the graphics context. Decided
-  // here, so the side that uploads never has to ask back for a picture it cannot fetch itself.
-  it("fetches a picture instead where the dds reader would not model the layout", async () => {
-    const reader: LevelTextureReader = new LevelTextureReader();
-
-    setMockInvokeResponses({
-      ["plugin:assets|read_asset"]: new ArrayBuffer(8),
-      ["plugin:textures|read_texture"]: new ArrayBuffer(16),
-    });
-
-    reader.open(ROOTS, [mockLevelTextureReference("stone")]);
-
-    const delivery: ILevelTextureDelivery = await reader.read(request("stone"));
-
-    expect(delivery.isDecoded).toBe(true);
-    expect(delivery.bytes.byteLength).toBe(16);
-    expect(countCalls("plugin:textures|read_texture")).toBe(1);
+    expect((await reader.read(request("grass"))).requests).not.toBeNull();
   });
 
   it("finds nothing once the level has closed", async () => {

@@ -57,6 +57,16 @@ impl IpcBindingsGenerator {
           &enumerations,
         );
       }
+
+      if !surface.bulk.is_empty() {
+        CommandModuleWriter::write_bulk(
+          &commands.join(format!("{}-bulk.ts", surface.name)),
+          surface.name,
+          surface.bulk,
+          &ownership,
+          &enumerations,
+        );
+      }
     }
   }
 

@@ -1,5 +1,5 @@
 import { toMean } from "@xrf/math";
-import { IDdsRefusal, RendererClient } from "@xrf/renderer";
+import { IRendererTextureFetch, RendererClient } from "@xrf/renderer";
 import { Maybe, Nullable } from "@xrf/types";
 
 import { LevelLightsDescription } from "@/core/ipc/types/xrf-app";
@@ -163,7 +163,7 @@ export class LevelRenderContent {
   }
 
   /**
-   * @param change - Files that were read, and what is still worth keeping.
+   * @param change - Files to fetch, and what is still worth keeping.
    */
   public supply(change: ILevelTextureSupplyChange): void {
     for (const delivery of change.delivered) {
@@ -183,22 +183,34 @@ export class LevelRenderContent {
   }
 
   /**
-   * Stands a checker in for a file the renderer could not upload as stored.
+   * Takes what a file the renderer fetched came to, standing a checker in for one it could not fetch.
    *
    * @param reference - What it was put under.
-   * @param refusal - Why.
+   * @param fetch - What it came to.
    */
-  public refuse(reference: string, refusal: IDdsRefusal): void {
-    if (!this.textures.has(reference)) {
+  public fetched(reference: string, fetch: IRendererTextureFetch): void {
+    // Released since, or put again as a checker: what it came to is nobody's any more.
+    if (this.textures.get(reference)?.state !== ELevelSurfaceDressing.FETCHING) {
       return;
     }
 
-    this.sink.putTexture(reference, createLevelCheckerSource());
+    if (fetch.failure) {
+      this.sink.putTexture(reference, createLevelCheckerSource());
+      this.textures.set(reference, {
+        reason: fetch.failure,
+        reference,
+        state: ELevelSurfaceDressing.STOOD_IN,
+        upload: null,
+      });
+
+      return;
+    }
+
     this.textures.set(reference, {
-      reason: `The renderer would not upload it: ${refusal.detail}`,
+      reason: null,
       reference,
-      state: ELevelSurfaceDressing.STOOD_IN,
-      upload: null,
+      state: ELevelSurfaceDressing.UPLOADED,
+      upload: LevelRenderContent.describeUpload(fetch),
     });
   }
 
@@ -251,14 +263,20 @@ export class LevelRenderContent {
    */
   public describeTextures(): ILevelTextureReport {
     const problems: Array<ILevelTextureProblem> = [];
+    let uploaded: number = 0;
 
     this.textures.forEach((dressing: ILevelSurfaceDressing, reference: string) => {
       if (dressing.reason) {
         problems.push({ reason: dressing.reason, reference });
       }
+
+      // A checker is uploaded as much as a file is; a fetch on its way is neither yet.
+      if (dressing.state !== ELevelSurfaceDressing.FETCHING) {
+        uploaded += 1;
+      }
     });
 
-    return { dressing: new Map(this.textures), problems, uploaded: this.textures.size };
+    return { dressing: new Map(this.textures), problems, uploaded };
   }
 
   /** Lets the level's sectors, surfaces and textures go. */
@@ -393,25 +411,23 @@ export class LevelRenderContent {
     }
   }
 
-  /** What one delivered file came to, as a panel reads it: described here, before its bytes move to the renderer. */
+  /** What one delivered file is until the renderer says what it came to: on its way, or a checker from the start. */
   private static toDressing(delivery: ILevelTextureDelivery): ILevelSurfaceDressing {
     const { reference } = delivery;
 
-    if (delivery.reason) {
-      return { reason: delivery.reason, reference, state: ELevelSurfaceDressing.STOOD_IN, upload: null };
+    return delivery.requests
+      ? { reason: null, reference, state: ELevelSurfaceDressing.FETCHING, upload: null }
+      : { reason: delivery.reason, reference, state: ELevelSurfaceDressing.STOOD_IN, upload: null };
+  }
+
+  /** How a fetched file was uploaded, as a panel reads it. */
+  private static describeUpload(fetch: IRendererTextureFetch): Nullable<string> {
+    const { size } = fetch;
+
+    if (fetch.isDecoded) {
+      return "decoded by the backend";
     }
 
-    if (delivery.isDecoded) {
-      return { reason: null, reference, state: ELevelSurfaceDressing.UPLOADED, upload: "decoded by the backend" };
-    }
-
-    const { size } = delivery;
-
-    return {
-      reason: null,
-      reference,
-      state: ELevelSurfaceDressing.UPLOADED,
-      upload: size ? `${size.width}×${size.height} · ${size.levels} ${size.levels === 1 ? "level" : "levels"}` : null,
-    };
+    return size ? `${size.width}×${size.height} · ${size.levels} ${size.levels === 1 ? "level" : "levels"}` : null;
   }
 }

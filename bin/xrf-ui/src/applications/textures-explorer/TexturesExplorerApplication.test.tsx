@@ -5,6 +5,7 @@ import { Binding, Container } from "@wirestate/core";
 
 import { TextureCatalogService } from "@/core/textures/services/catalog";
 import { TextureSelectionService } from "@/core/textures/services/selection";
+import { setMockBulkResponses } from "@/fixtures/mocks/bulk.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import {
@@ -52,7 +53,10 @@ describe("TexturesExplorerApplication", () => {
       ["plugin:textures|describe_catalog"]: [mockBumpedTextureSummary()],
       ["plugin:textures|get_roots"]: null,
       ["plugin:textures|open"]: mockSessionResponse(mockTextureCatalog([mockTextureEntry(MOCK_TEXTURE)])),
-      ["plugin:textures|read_texture"]: new ArrayBuffer(0),
+    });
+
+    setMockBulkResponses({
+      "textures/read_texture": new ArrayBuffer(0),
     });
 
     const container: Container = await mockApplicationContainer();
@@ -86,7 +90,10 @@ describe("TexturesExplorerApplication", () => {
       ["plugin:textures|describe_catalog"]: [mockBumpedTextureSummary()],
       ["plugin:textures|get_roots"]: null,
       ["plugin:textures|open"]: mockSessionResponse(mockTextureCatalog([mockTextureEntry(MOCK_TEXTURE)])),
-      ["plugin:textures|read_texture"]: new ArrayBuffer(0),
+    });
+
+    setMockBulkResponses({
+      "textures/read_texture": new ArrayBuffer(0),
     });
 
     const container: Container = await mockApplicationContainer();

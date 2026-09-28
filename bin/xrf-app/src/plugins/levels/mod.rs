@@ -5,6 +5,7 @@ pub mod lights;
 pub mod plugin;
 pub mod read;
 pub mod report;
+pub mod routes;
 pub mod spawn;
 pub mod spawn_visuals;
 pub mod start;

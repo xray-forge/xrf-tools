@@ -7,6 +7,7 @@ import { TextureEncodingService } from "@/applications/textures-editor/services/
 import { TextureDescription, TextureDescriptorForm, TextureVocabulary } from "@/core/ipc/types/xrf-app";
 import { JobsService } from "@/core/jobs/services/jobs";
 import { TextureSelectionService } from "@/core/textures/services/selection";
+import { setMockBulkResponses } from "@/fixtures/mocks/bulk.mocks";
 import { mockInvoke, resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import {
   MOCK_TEXTURE,
@@ -188,7 +189,10 @@ describe("TextureEditorService", () => {
     setMockInvokeResponses({
       ["plugin:textures|compare_encodings"]: mockTextureEncodingComparison(),
       ["plugin:textures|describe"]: mockTextureDescription(),
-      ["plugin:textures|read_texture"]: new ArrayBuffer(0),
+    });
+
+    setMockBulkResponses({
+      "textures/read_texture": new ArrayBuffer(0),
     });
 
     await container.get(TextureSelectionService).openFile("C:\\gamedata\\textures\\ston\\ston_beton05.dds");
@@ -230,12 +234,15 @@ describe("TextureEditorService", () => {
         return describedTexture(MOCK_TEXTURE, { form: form({ bumpName: `read-${describeCount}` }) });
       },
       ["plugin:textures|get_vocabulary"]: VOCABULARY,
-      ["plugin:textures|read_texture"]: new ArrayBuffer(0),
       ["plugin:textures|save"]: {
         descriptorFormat: null,
         outcome: "completed",
         written: [`C:\\gamedata\\textures\\${MOCK_TEXTURE}.thm`],
       },
+    });
+
+    setMockBulkResponses({
+      "textures/read_texture": new ArrayBuffer(0),
     });
 
     await selectionService.openFile(`C:\\gamedata\\textures\\${MOCK_TEXTURE}.dds`);
@@ -274,10 +281,13 @@ describe("TextureEditorService", () => {
 
     setMockInvokeResponses({
       ["plugin:textures|describe"]: describedTexture(MOCK_TEXTURE),
-      ["plugin:textures|read_texture"]: new ArrayBuffer(0),
       ["plugin:textures|compare_encodings"]: mockTextureEncodingComparison(),
-      ["plugin:textures|read_candidate"]: new ArrayBuffer(8),
       ["plugin:textures|save"]: { outcome: "completed", written: [], descriptorFormat: null },
+    });
+
+    setMockBulkResponses({
+      "textures/read_texture": new ArrayBuffer(0),
+      "textures/read_candidate": new ArrayBuffer(8),
     });
 
     await selection.openFile("C:/gamedata/textures/ston/ston_beton05.dds");

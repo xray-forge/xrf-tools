@@ -13,7 +13,8 @@ export class IpcCallMeasurement {
 
   /**
    * @param sink - What this call settles into.
-   * @param command - Fully qualified command name, such as `plugin:visuals|read_geometry`.
+   * @param command - Fully qualified command name, such as `plugin:configs|read_document`, or a bulk route's
+   *   name, such as `levels|read_sector`.
    */
   public constructor(sink: IIpcCallSink, command: string) {
     this.sink = sink;

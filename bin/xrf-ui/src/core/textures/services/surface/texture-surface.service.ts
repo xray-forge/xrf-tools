@@ -4,8 +4,9 @@ import { IDdsFile, IDdsRead, IDdsTexels, readDdsFile, readDdsTexels, toDdsPictur
 import { Nullable } from "@xrf/types";
 
 import { transformError } from "@/core/error/lib";
-import { assetsRawCommands } from "@/core/ipc/commands/assets-raw";
-import { texturesRawCommands } from "@/core/ipc/commands/textures-raw";
+import { fetchBulk } from "@/core/ipc/bulk";
+import { assetsBulkRoutes } from "@/core/ipc/commands/assets-bulk";
+import { texturesBulkRoutes } from "@/core/ipc/commands/textures-bulk";
 import { TextureDescription } from "@/core/ipc/types/xrf-app";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import {
@@ -136,7 +137,7 @@ export class TextureSurfaceService {
    */
   private readBase(roots: XrayRoots, logicalPath: string): Promise<Nullable<ITextureSurfaceFile>> {
     return this.guard(logicalPath, async () => {
-      const bytes: ArrayBuffer = await assetsRawCommands.readAsset(roots, logicalPath);
+      const bytes: ArrayBuffer = await fetchBulk(assetsBulkRoutes.readAsset(roots, logicalPath));
       const read: IDdsRead = readDdsFile(bytes);
       const picture: Nullable<IDdsFile> = toDdsPicture(read);
 
@@ -149,7 +150,7 @@ export class TextureSurfaceService {
 
       // Measured by whoever decodes the picture: the png says what it is, and nothing here has to parse it.
       return {
-        bytes: await texturesRawCommands.readTexture(roots, logicalPath),
+        bytes: await fetchBulk(texturesBulkRoutes.readTexture(roots, logicalPath)),
         height: 0,
         isDecoded: true,
         width: 0,
@@ -166,7 +167,7 @@ export class TextureSurfaceService {
    */
   private readBumpHalf(roots: XrayRoots, logicalPath: string): Promise<Nullable<ITextureBumpHalf>> {
     return this.guard(logicalPath, async () => {
-      const bytes: ArrayBuffer = await assetsRawCommands.readAsset(roots, logicalPath);
+      const bytes: ArrayBuffer = await fetchBulk(assetsBulkRoutes.readAsset(roots, logicalPath));
       const picture: Nullable<IDdsFile> = toDdsPicture(readDdsFile(bytes));
 
       // No fallback for a pair: the decode reads its packed values, and a picture of them shades nothing.

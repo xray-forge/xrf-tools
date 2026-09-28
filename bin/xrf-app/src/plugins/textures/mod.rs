@@ -23,7 +23,8 @@
 //! - [`save`] - writing a node's two files, or refusing to.
 //! - [`encoding`] - the candidate formats a texture could be written in, and the encodes a comparison keeps.
 //!
-//! And the plumbing every plugin has: [`request`] for the wire shapes commands take, [`lease`] for what a job holds
+//! And the plumbing every plugin has: [`request`] for the wire shapes commands take, [`routes`] for the pictures it
+//! serves over the transport, [`lease`] for what a job holds
 //! while it runs, [`state`] for what the plugin holds between calls, and [`plugin`] for assembly.
 
 pub mod catalog;
@@ -37,6 +38,7 @@ pub mod files;
 pub mod lease;
 pub mod plugin;
 pub mod request;
+pub mod routes;
 pub mod save;
 pub mod source;
 pub mod state;

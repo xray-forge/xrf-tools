@@ -4,7 +4,6 @@ import { Nullable } from "@xrf/types";
 
 import { AssetService } from "@/core/assets/services";
 import { texturesCommands } from "@/core/ipc/commands/textures";
-import { texturesRawCommands } from "@/core/ipc/commands/textures-raw";
 import { TextureDescription } from "@/core/ipc/types/xrf-app";
 import {
   DEFAULT_TEXTURE_PREVIEW_OPTIONS,
@@ -13,6 +12,7 @@ import {
 } from "@/core/textures/lib/texture-preview";
 import { TextureSelectionService } from "@/core/textures/services/selection";
 import { TextureViewService } from "@/core/textures/services/view";
+import { BulkRead, setMockBulkResponses } from "@/fixtures/mocks/bulk.mocks";
 import { mockTextureDescription } from "@/fixtures/mocks/texture.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
@@ -142,9 +142,11 @@ describe("TexturePreview", () => {
     const { service, container } = mockInjectedService(TextureSelectionService, [AssetService, TextureViewService]);
     const describeTexture = jest.spyOn(texturesCommands, "describe").mockResolvedValue(SHAPED);
     const readTexture = jest
-      .spyOn(texturesRawCommands, "readTexture")
+      .fn<BulkRead>()
       .mockRejectedValueOnce(new Error("Archive is temporarily unavailable"))
       .mockResolvedValue(new ArrayBuffer(4));
+
+    setMockBulkResponses({ "textures/read_texture": readTexture });
 
     await service.open(SHAPED.source, SHAPED.roots);
 

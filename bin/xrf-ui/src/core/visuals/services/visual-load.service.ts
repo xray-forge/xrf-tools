@@ -3,8 +3,9 @@ import { BoundAction, Computed, Observable, RefObservable, runInAction } from "@
 import { Nullable } from "@xrf/types";
 
 import { transformError } from "@/core/error/lib";
+import { fetchBulk } from "@/core/ipc/bulk";
 import { visualsCommands } from "@/core/ipc/commands/visuals";
-import { visualsRawCommands } from "@/core/ipc/commands/visuals-raw";
+import { visualsBulkRoutes } from "@/core/ipc/commands/visuals-bulk";
 import { Session } from "@/core/ipc/session";
 import { SelectedVisualDescription, SessionSnapshot, VisualSource } from "@/core/ipc/types/xrf-app";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
@@ -203,7 +204,7 @@ export class VisualLoadService {
     const timer: Timer = new Timer();
 
     // Geometry belongs to this parse, even if the same path has since been opened with different roots.
-    const buffer: ArrayBuffer = yield* call(visualsRawCommands.readGeometry(snapshot.sessionId));
+    const buffer: ArrayBuffer = yield* call(fetchBulk(visualsBulkRoutes.readGeometry(snapshot.sessionId)));
 
     this.log.info("Visual geometry read in:", formatDuration(timer.lap()));
 

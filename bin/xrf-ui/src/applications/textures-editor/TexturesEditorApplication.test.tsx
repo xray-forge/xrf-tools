@@ -6,6 +6,7 @@ import { TextureEditorService } from "@/applications/textures-editor/services/ed
 import { TextureVocabulary } from "@/core/ipc/types/xrf-app";
 import { TextureCatalogService } from "@/core/textures/services/catalog";
 import { TextureSelectionService } from "@/core/textures/services/selection";
+import { setMockBulkResponses } from "@/fixtures/mocks/bulk.mocks";
 import { resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { MOCK_TEXTURE, mockTextureDescription, mockTextureVocabulary } from "@/fixtures/mocks/texture.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
@@ -50,7 +51,10 @@ describe("TexturesEditorApplication", () => {
     setMockInvokeResponses({
       ["plugin:textures|describe"]: mockTextureDescription(),
       ["plugin:textures|get_vocabulary"]: VOCABULARY,
-      ["plugin:textures|read_texture"]: new ArrayBuffer(0),
+    });
+
+    setMockBulkResponses({
+      "textures/read_texture": new ArrayBuffer(0),
     });
 
     const container: Container = await mockApplicationContainer();

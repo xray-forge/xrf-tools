@@ -2,8 +2,8 @@ import { afterEach, describe, expect, it, jest } from "@jest/globals";
 import { reaction } from "@wirestate/mobx";
 
 import { visualsCommands } from "@/core/ipc/commands/visuals";
-import { visualsRawCommands } from "@/core/ipc/commands/visuals-raw";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
+import { BulkRead, setMockBulkResponses } from "@/fixtures/mocks/bulk.mocks";
 import { mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import {
   mockSelectedVisual,
@@ -24,7 +24,9 @@ function mockCache() {
   const open = jest.spyOn(visualsCommands, "openMotion").mockImplementation(async (_sessionId, motionId, name) => {
     return mockSessionSnapshot({ ...bake, name }, motionId);
   });
-  const read = jest.spyOn(visualsRawCommands, "readMotion").mockResolvedValue(bytes);
+  const read = jest.fn<BulkRead>().mockResolvedValue(bytes);
+
+  setMockBulkResponses({ "visuals/read_motion": read });
 
   loadService.visual = AsyncState.ready({
     selected: mockSessionSnapshot(mockSelectedVisual(), "model-session"),
@@ -62,7 +64,7 @@ describe("SequenceMotionCache", () => {
 
       expect(open).toHaveBeenCalledTimes(1);
       expect(read).toHaveBeenCalledTimes(1);
-      expect(read).toHaveBeenCalledWith("model-session", open.mock.calls[0][1]);
+      expect(read).toHaveBeenCalledWith({ motionId: open.mock.calls[0][1], sessionId: "model-session" });
       expect(cache.motions.get("first")).toEqual({
         bake,
         reason: null,
@@ -106,8 +108,8 @@ describe("SequenceMotionCache", () => {
 
     expect(open.mock.calls.map((call) => call[2])).toEqual(["first", "second"]);
     expect(read.mock.calls).toEqual([
-      ["model-session", open.mock.calls[0][1]],
-      ["model-session", open.mock.calls[1][1]],
+      [{ motionId: open.mock.calls[0][1], sessionId: "model-session" }],
+      [{ motionId: open.mock.calls[1][1], sessionId: "model-session" }],
     ]);
     expect(cache.motions.get("first")?.state).toBe(ESequenceMotionState.READY);
     expect(cache.motions.get("second")?.state).toBe(ESequenceMotionState.READY);

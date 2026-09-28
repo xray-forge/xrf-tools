@@ -4,3 +4,4 @@
 //! one: the roots travel with the request and the mounts are the application's shared ones.
 
 pub mod commands;
+pub mod routes;

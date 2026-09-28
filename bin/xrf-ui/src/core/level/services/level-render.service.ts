@@ -1,6 +1,12 @@
 import { inject, Injectable } from "@wirestate/core";
 import { BoundAction, reaction } from "@wirestate/mobx";
-import { ERendererCameraCommand, IDdsRefusal, IRendererReport, IRendererSettings, RendererClient } from "@xrf/renderer";
+import {
+  ERendererCameraCommand,
+  IRendererReport,
+  IRendererSettings,
+  IRendererTextureFetch,
+  RendererClient,
+} from "@xrf/renderer";
 import { Maybe, Nullable } from "@xrf/types";
 
 import { SelectedLevelDescription } from "@/core/ipc/types/xrf-app";
@@ -170,9 +176,9 @@ export class LevelRenderService extends RenderSurfaceService {
     }
   }
 
-  protected onTextureRefused(key: string, refusal: IDdsRefusal): void {
-    this.log.warn(`Texture '${key}' was refused by the renderer:`, refusal.detail);
-    this.content?.refuse(key, refusal);
+  protected onTextureFetched(key: string, fetch: IRendererTextureFetch): void {
+    super.onTextureFetched(key, fetch);
+    this.content?.fetched(key, fetch);
     this.publishTextures();
   }
 

@@ -5,6 +5,7 @@ import { AssetTextureDescriptor } from "@/core/ipc/types/xrf-app";
 import { ArchiveFileDescriptor } from "@/core/ipc/types/xrf-archive";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { mockArchiveFileDescriptor, mockArchiveReadPolicy, mockArchivesVolumes } from "@/fixtures/mocks/archive.mocks";
+import { listMockBulkCalls, setMockBulkResponses } from "@/fixtures/mocks/bulk.mocks";
 import { mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
@@ -39,7 +40,9 @@ describe("ArchivesService texture preview", () => {
   beforeEach(() => {
     setMockInvokeResponses({
       ["plugin:archives|describe_texture"]: DESCRIPTOR,
-      ["plugin:archives|read_texture"]: BYTES,
+    });
+    setMockBulkResponses({
+      "archives/read_texture": BYTES,
     });
   });
 
@@ -73,7 +76,7 @@ describe("ArchivesService texture preview", () => {
       roots: ROOTS,
       logicalPath: texture.name,
     });
-    expect(mockInvoke).toHaveBeenCalledWith("plugin:archives|read_texture", {
+    expect(listMockBulkCalls("archives/read_texture")).toContainEqual({
       roots: ROOTS,
       logicalPath: texture.name,
     });
@@ -104,9 +107,7 @@ describe("ArchivesService texture preview", () => {
     const [describeArguments] = mockInvoke.mock.calls
       .filter(([command]) => command === "plugin:archives|describe_texture")
       .map(([, args]) => args);
-    const [readArguments] = mockInvoke.mock.calls
-      .filter(([command]) => command === "plugin:archives|read_texture")
-      .map(([, args]) => args);
+    const [readArguments] = listMockBulkCalls("archives/read_texture");
 
     expect(describeArguments).toEqual(readArguments);
   });
@@ -136,7 +137,9 @@ describe("ArchivesService texture preview", () => {
 
     setMockInvokeResponses({
       ["plugin:archives|describe_texture"]: DESCRIPTOR,
-      ["plugin:archives|read_texture"]: () => {
+    });
+    setMockBulkResponses({
+      "archives/read_texture": () => {
         throw new Error("unsupported DXT format");
       },
     });
@@ -153,7 +156,7 @@ describe("ArchivesService texture preview", () => {
     await service.selectArchiveFile(TEXTURE);
     await service.retrySelectedFile();
 
-    const imageCalls = mockInvoke.mock.calls.filter(([command]) => command === "plugin:archives|read_texture");
+    const imageCalls = listMockBulkCalls("archives/read_texture");
 
     expect(imageCalls).toHaveLength(2);
     expect(mockInvoke).not.toHaveBeenCalledWith("plugin:archives|read_file", expect.anything());

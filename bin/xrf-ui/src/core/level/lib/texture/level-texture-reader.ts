@@ -1,17 +1,18 @@
-import { IDdsRead, readDdsFile } from "@xrf/renderer";
 import { Maybe, Nullable } from "@xrf/types";
 
 import { transformError } from "@/core/error/lib";
-import { assetsRawCommands } from "@/core/ipc/commands/assets-raw";
-import { texturesRawCommands } from "@/core/ipc/commands/textures-raw";
+import { IBulkRequest, requestBulk } from "@/core/ipc/bulk";
+import { assetsBulkRoutes } from "@/core/ipc/commands/assets-bulk";
+import { texturesBulkRoutes } from "@/core/ipc/commands/textures-bulk";
 import { LevelTextureReference } from "@/core/ipc/types/xrf-app";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
-import { ILevelTextureDelivery, ILevelTextureSize } from "@/core/level/lib/render/level-render-protocol";
+import { ILevelTextureDelivery } from "@/core/level/lib/render/level-render-protocol";
 import { ISectorTextureRequest } from "@/core/level/lib/sector/level-sector-textures";
 import { Logger } from "@/lib/logging";
 
 /**
- * Reads the files a level's textures come from.
+ * Says where a level's textures are fetched from: the renderer fetches them itself, so no byte of them crosses the
+ * page or the window's thread.
  */
 export class LevelTextureReader {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
@@ -62,61 +63,38 @@ export class LevelTextureReader {
   }
 
   /**
-   * Reads one reference's file.
+   * Says where one reference's file is fetched from.
    *
    * @param request - The reference, and what the surfaces drawn with it need of it.
-   * @returns Its bytes and how to sample them, or the reason there are none.
+   * @returns The requests fetching its file and the backend's picture of it, or the reason there are none.
    */
   public async read(request: ISectorTextureRequest): Promise<ILevelTextureDelivery> {
     const reference: string = request.reference;
     const logicalPath: Maybe<string> = this.paths.get(reference);
 
     if (!this.roots || !logicalPath) {
-      return this.toFailure(request, `Nothing in the mounted roots answers to '${reference}'`);
+      return LevelTextureReader.toFailure(reference, `Nothing in the mounted roots answers to '${reference}'`);
     }
 
     try {
-      const bytes: ArrayBuffer = await assetsRawCommands.readAsset(this.roots, logicalPath);
-      // Read here rather than where it is uploaded, because whether the reader models the layout is a question
-      // about the file and not about the graphics context. Deciding it on the far side would mean asking back.
-      const read: IDdsRead = readDdsFile(bytes);
+      // Both asked for now, though the picture is fetched only where the renderer's reader refuses the file: whether
+      // it does is a question about the file, answered where the file is read.
+      const [file, picture]: [IBulkRequest, IBulkRequest] = await Promise.all([
+        requestBulk(assetsBulkRoutes.readAsset(this.roots, logicalPath)),
+        requestBulk(texturesBulkRoutes.readTexture(this.roots, logicalPath)),
+      ]);
 
-      if (read.file) {
-        const size: ILevelTextureSize = {
-          height: read.file.height,
-          levels: read.file.mipmaps.length,
-          width: read.file.width,
-        };
-
-        return { bytes, isDecoded: false, reason: null, reference, size };
-      }
-
-      // A layout the reader does not model; the backend expands those to a picture instead.
-      this.log.info(`Texture '${reference}' is decoded rather than read as it is:`, read.refusal);
-
-      return {
-        bytes: await texturesRawCommands.readTexture(this.roots, logicalPath),
-        isDecoded: true,
-        reason: null,
-        reference,
-        size: null,
-      };
+      return { reason: null, reference, requests: { file, picture } };
     } catch (error: unknown) {
       const transformed: Error = transformError(error);
 
-      this.log.error(`Failed to read level texture '${reference}':`, transformed);
+      this.log.error(`Failed to ask for level texture '${reference}':`, transformed);
 
-      return this.toFailure(request, transformed.message);
+      return LevelTextureReader.toFailure(reference, transformed.message);
     }
   }
 
-  private toFailure(request: ISectorTextureRequest, reason: string): ILevelTextureDelivery {
-    return {
-      bytes: new ArrayBuffer(0),
-      isDecoded: false,
-      reason,
-      reference: request.reference,
-      size: null,
-    };
+  private static toFailure(reference: string, reason: string): ILevelTextureDelivery {
+    return { reason, reference, requests: null };
   }
 }

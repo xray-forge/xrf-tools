@@ -5,6 +5,7 @@ import { AudioDescriptor } from "@/core/ipc/types/xrf-app";
 import { ArchiveFileDescriptor } from "@/core/ipc/types/xrf-archive";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { mockArchiveFileDescriptor, mockArchiveReadPolicy, mockArchivesVolumes } from "@/fixtures/mocks/archive.mocks";
+import { listMockBulkCalls, setMockBulkResponses } from "@/fixtures/mocks/bulk.mocks";
 import { mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
@@ -41,7 +42,9 @@ describe("ArchivesService audio preview", () => {
   beforeEach(() => {
     setMockInvokeResponses({
       ["plugin:archives|describe_audio"]: DESCRIPTOR,
-      ["plugin:assets|read_asset"]: BYTES,
+    });
+    setMockBulkResponses({
+      "assets/read_asset": BYTES,
     });
   });
 
@@ -75,7 +78,7 @@ describe("ArchivesService audio preview", () => {
       roots: ROOTS,
       logicalPath: sound.name,
     });
-    expect(mockInvoke).toHaveBeenCalledWith("plugin:assets|read_asset", {
+    expect(listMockBulkCalls("assets/read_asset")).toContainEqual({
       roots: ROOTS,
       logicalPath: sound.name,
     });
@@ -105,9 +108,7 @@ describe("ArchivesService audio preview", () => {
     const [describeArguments] = mockInvoke.mock.calls
       .filter(([command]) => command === "plugin:archives|describe_audio")
       .map(([, args]) => args);
-    const [readArguments] = mockInvoke.mock.calls
-      .filter(([command]) => command === "plugin:assets|read_asset")
-      .map(([, args]) => args);
+    const [readArguments] = listMockBulkCalls("assets/read_asset");
 
     expect(describeArguments).toEqual(readArguments);
   });
@@ -141,7 +142,9 @@ describe("ArchivesService audio preview", () => {
       ["plugin:archives|describe_audio"]: () => {
         throw new Error("not a playable sound");
       },
-      ["plugin:assets|read_asset"]: BYTES,
+    });
+    setMockBulkResponses({
+      "assets/read_asset": BYTES,
     });
 
     await service.selectArchiveFile(SOUND);
@@ -155,7 +158,9 @@ describe("ArchivesService audio preview", () => {
 
     setMockInvokeResponses({
       ["plugin:archives|describe_audio"]: DESCRIPTOR,
-      ["plugin:assets|read_asset"]: () => {
+    });
+    setMockBulkResponses({
+      "assets/read_asset": () => {
         throw new Error("resolves to nothing in the mounted roots");
       },
     });

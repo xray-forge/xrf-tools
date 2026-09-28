@@ -6,16 +6,21 @@ import {
   IRendererLighting,
   IRendererReport,
   IRendererSettings,
+  IRendererTextureFetch,
   RendererClient,
   TRendererOverlay,
 } from "@xrf/renderer";
 import { createRendererWorker } from "@xrf/renderer/worker";
 import { Nullable } from "@xrf/types";
 
+import { IPC_METRICS } from "@/core/ipc/metrics";
 import { DomRenderTarget } from "@/core/render/lib/frame/dom-render-target";
 import { IRenderSurfaceHost } from "@/core/render/lib/surface/render-surface-host";
 import { SettingsService } from "@/core/settings/services/settings";
 import { Logger } from "@/lib/logging";
+
+/** What the renderer's own fetches of textures are counted under, beside the page's bulk fetches. */
+const FETCHED_TEXTURE_METRIC: string = "renderer|fetch_texture";
 
 /**
  * A service owning one renderer: started on first use, drawn wherever a view attaches it, told everything through
@@ -106,6 +111,20 @@ export abstract class RenderSurfaceService implements IRenderSurfaceHost {
     this.log.warn(`Texture '${key}' was refused by the renderer:`, refusal.detail);
   }
 
+  /**
+   * Counts what a texture the renderer fetched cost, the way the page's own fetches are counted.
+   *
+   * @param key - The texture fetched.
+   * @param fetch - What it came to.
+   */
+  protected onTextureFetched(key: string, fetch: IRendererTextureFetch): void {
+    IPC_METRICS.record(FETCHED_TEXTURE_METRIC, fetch.duration, fetch.bytes, fetch.failure !== null);
+
+    if (fetch.failure) {
+      this.log.warn(`Texture '${key}' could not be fetched by the renderer:`, fetch.failure);
+    }
+  }
+
   /** Called once a view is drawn into. */
   protected onAttached(): void {}
 
@@ -168,6 +187,7 @@ export abstract class RenderSurfaceService implements IRenderSurfaceHost {
     const client: RendererClient = new RendererClient({
       onFailed: (reason: string): void => this.fail(reason),
       onReport: (report: IRendererReport): void => this.onReport(report),
+      onTextureFetched: (key: string, fetch: IRendererTextureFetch): void => this.onTextureFetched(key, fetch),
       onTextureRefused: (key: string, refusal: IDdsRefusal): void => this.onTextureRefused(key, refusal),
       settings,
       worker: createRendererWorker(),

@@ -1,7 +1,13 @@
 import { describe, expect, it, jest } from "@jest/globals";
-import { ERendererDraw, ERendererTextureEncoding, IRendererGeometry, IRendererObject } from "@xrf/renderer";
-import { mockDdsFile } from "@xrf/renderer/fixtures";
+import {
+  ERendererDraw,
+  ERendererTextureEncoding,
+  IRendererGeometry,
+  IRendererObject,
+  IRendererTextureFetch,
+} from "@xrf/renderer";
 
+import { IBulkRequest } from "@/core/ipc/bulk";
 import { SectorDescription } from "@/core/ipc/types/xrf-visual";
 import { LevelRenderContent, TLevelRenderSink } from "@/core/level/lib/render/level-render-content";
 import { LEVEL_RENDER_KEYS } from "@/core/level/lib/render/level-render-keys";
@@ -60,11 +66,22 @@ function mockDelivery(sector: number = 4): ILevelSectorDelivery {
 }
 
 function mockTexture(reference: string, overrides: Partial<ILevelTextureDelivery> = {}): ILevelTextureDelivery {
+  const file: IBulkRequest = { body: "{}", headers: {}, url: `http://127.0.0.1:1/assets/read_asset#${reference}` };
+
   return {
-    bytes: mockDdsFile({ height: 8, mipmapCount: 4, width: 8 }),
-    isDecoded: false,
     reason: null,
     reference,
+    requests: { file, picture: { ...file, url: `http://127.0.0.1:1/textures/read_texture#${reference}` } },
+    ...overrides,
+  };
+}
+
+function mockFetched(overrides: Partial<IRendererTextureFetch> = {}): IRendererTextureFetch {
+  return {
+    bytes: 128,
+    duration: 2,
+    failure: null,
+    isDecoded: false,
     size: { height: 8, levels: 4, width: 8 },
     ...overrides,
   };
@@ -173,16 +190,37 @@ describe("LevelRenderContent", () => {
     expect(sink.putSurface.mock.calls[2][1].color).toHaveLength(3);
   });
 
-  it("uploads each file as it arrives and says what it came to", () => {
+  it("hands the renderer where to fetch each file, and says what it came to once fetched", () => {
     const { content, sink } = mockContent();
+    const delivery: ILevelTextureDelivery = mockTexture("stone");
 
-    content.supply({ delivered: [mockTexture("stone")], retained: null });
+    content.supply({ delivered: [delivery], retained: null });
 
-    expect(sink.putTexture.mock.calls[0][1].encoding).toBe(ERendererTextureEncoding.DDS);
+    expect(sink.putTexture.mock.calls[0][1]).toEqual({
+      encoding: ERendererTextureEncoding.FETCH,
+      file: delivery.requests?.file,
+      picture: delivery.requests?.picture,
+    });
+    expect(content.describeTextures().dressing.get("stone")?.state).toBe(ELevelSurfaceDressing.FETCHING);
+    // On its way is not uploaded yet.
+    expect(content.describeTextures().uploaded).toBe(0);
+
+    content.fetched("stone", mockFetched());
+
     expect(content.describeTextures().dressing.get("stone")).toMatchObject({
       state: ELevelSurfaceDressing.UPLOADED,
       upload: "8×8 · 4 levels",
     });
+    expect(content.describeTextures().uploaded).toBe(1);
+  });
+
+  it("says a file the renderer fetched as a picture was decoded by the backend", () => {
+    const { content } = mockContent();
+
+    content.supply({ delivered: [mockTexture("stone")], retained: null });
+    content.fetched("stone", mockFetched({ isDecoded: true, size: { height: 2, levels: 1, width: 2 } }));
+
+    expect(content.describeTextures().dressing.get("stone")?.upload).toBe("decoded by the backend");
   });
 
   // A surface whose file could not be read is drawn from a checker, which reads exactly like a blending fault unless
@@ -190,7 +228,10 @@ describe("LevelRenderContent", () => {
   it("stands a checker in for a file that could not be read, and says why", () => {
     const { content, sink } = mockContent();
 
-    content.supply({ delivered: [mockTexture("stone", { reason: "not in any root" })], retained: null });
+    content.supply({
+      delivered: [mockTexture("stone", { reason: "not in any root", requests: null })],
+      retained: null,
+    });
 
     expect(sink.putTexture.mock.calls[0][1]).toMatchObject({
       encoding: ERendererTextureEncoding.RGBA,
@@ -199,14 +240,32 @@ describe("LevelRenderContent", () => {
     expect(content.describeTextures().problems).toEqual([{ reason: "not in any root", reference: "stone" }]);
   });
 
-  it("stands a checker in for a file the renderer refused", () => {
+  it("stands a checker in for a file the renderer could not fetch, and says why", () => {
     const { content, sink } = mockContent();
 
     content.supply({ delivered: [mockTexture("stone")], retained: null });
-    content.refuse("stone", { detail: "BC9", reason: "unsupportedFourCc" as never });
+    content.fetched("stone", mockFetched({ failure: "Failed to read asset 'stone'", size: null }));
 
     expect(sink.putTexture.mock.calls[1][1].encoding).toBe(ERendererTextureEncoding.RGBA);
     expect(content.describeTextures().dressing.get("stone")?.state).toBe(ELevelSurfaceDressing.STOOD_IN);
+    expect(content.describeTextures().problems).toEqual([
+      { reason: "Failed to read asset 'stone'", reference: "stone" },
+    ]);
+  });
+
+  // A report crossing a release, or a checker put since: what it came to is nobody's any more.
+  it("ignores what a fetch came to for a reference no longer on its way", () => {
+    const { content, sink } = mockContent();
+
+    content.supply({ delivered: [mockTexture("stone")], retained: null });
+    content.supply({ delivered: [], retained: new Set() });
+    content.fetched("stone", mockFetched({ failure: "late" }));
+    content.supply({ delivered: [mockTexture("tree", { reason: "not in any root", requests: null })], retained: null });
+    content.fetched("tree", mockFetched());
+
+    expect(sink.putTexture).toHaveBeenCalledTimes(2);
+    expect(content.describeTextures().dressing.has("stone")).toBe(false);
+    expect(content.describeTextures().dressing.get("tree")?.state).toBe(ELevelSurfaceDressing.STOOD_IN);
   });
 
   it("lets go of what nothing resident names, and of everything when the set goes", () => {

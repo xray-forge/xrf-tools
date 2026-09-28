@@ -14,7 +14,12 @@ tauri-build = { version = "2.6.3", features = [
 ] }
 
 [dependencies]
+bytes = { workspace = true }
 env_logger = { workspace = true }
+getrandom = { workspace = true }
+http-body-util = { workspace = true }
+hyper = { workspace = true }
+hyper-util = { workspace = true }
 indexmap = { workspace = true }
 log = { workspace = true }
 percent-encoding = "2.3.2"
@@ -32,6 +37,7 @@ tauri-plugin-dialog = "2.7.3"
 tauri-plugin-fs = "2.5.2"
 tauri-plugin-shell = "2.3.6"
 tauri-plugin-store = "2.4.5"
+tokio = { workspace = true }
 uuid = { workspace = true, features = ["serde", "v4"] }
 xrf-archive = { workspace = true }
 xrf-chunk = { workspace = true }
@@ -75,6 +81,8 @@ xrf-spawn = { workspace = true }
 xrf-particles = { workspace = true }
 
 [dev-dependencies]
+# The mock runtime, which dispatches a command the way a webview would without one.
+tauri = { version = "2.11.5", features = ["test"] }
 xrf-material = { workspace = true, features = ["fixtures"] }
 xrf-test-utils = { workspace = true }
 

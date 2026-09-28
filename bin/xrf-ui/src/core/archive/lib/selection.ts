@@ -19,7 +19,7 @@ export type TArchiveSelection =
   | { kind: EPathEntryKind.DIRECTORY; path: string };
 
 /**
- * Bytes of one archived asset, as the raw commands deliver them.
+ * Bytes of one archived asset, as the bulk routes deliver them.
  *
  * Pinned to `ArrayBuffer` rather than left as the default `ArrayBufferLike`, because these are never shared memory and
  * a `Blob` refuses anything that might be. The alternative is casting at every use.

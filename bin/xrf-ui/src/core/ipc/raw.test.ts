@@ -6,11 +6,11 @@ import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks
 
 import { invokeRaw } from "./raw";
 
-const COMMAND: string = "plugin:visuals|read_geometry";
+const COMMAND: string = "plugin:fixture|read_bytes";
 
 /** @returns What the recorder holds for the command under test, if anything. */
 function recorded(): Optional<IIpcCommandMetrics> {
-  return IPC_METRICS.read().commands.find((it: IIpcCommandMetrics) => it.command === "visuals|read_geometry");
+  return IPC_METRICS.read().commands.find((it: IIpcCommandMetrics) => it.command === "fixture|read_bytes");
 }
 
 function bytes(values: Array<number>): ArrayBuffer {
@@ -69,7 +69,7 @@ describe("invokeRaw", () => {
     // caller building typed array views over nonsense and rendering the result.
     setMockInvokeResponses({ [COMMAND]: { unexpected: true } });
 
-    await expect(invokeRaw(COMMAND, {})).rejects.toThrow(/Expected raw bytes from 'plugin:visuals\|read_geometry'/);
+    await expect(invokeRaw(COMMAND, {})).rejects.toThrow(/Expected raw bytes from 'plugin:fixture\|read_bytes'/);
   });
 
   it("names the custom protocol in the failure, since that is what went wrong", async () => {
@@ -85,11 +85,11 @@ describe("invokeRaw", () => {
   it("propagates a command failure untouched", async () => {
     setMockInvokeResponses({
       [COMMAND]: () => {
-        throw new Error("visual is not open");
+        throw new Error("session is not open");
       },
     });
 
-    await expect(invokeRaw(COMMAND, {})).rejects.toThrow("visual is not open");
+    await expect(invokeRaw(COMMAND, {})).rejects.toThrow("session is not open");
   });
 
   it("counts the bytes it answered with, without being asked to weigh anything", async () => {
@@ -107,11 +107,11 @@ describe("invokeRaw", () => {
   it("counts a rejected call as a failure and not as a call", async () => {
     setMockInvokeResponses({
       [COMMAND]: () => {
-        throw new Error("visual is not open");
+        throw new Error("session is not open");
       },
     });
 
-    await expect(invokeRaw(COMMAND, {})).rejects.toThrow("visual is not open");
+    await expect(invokeRaw(COMMAND, {})).rejects.toThrow("session is not open");
 
     expect(recorded()?.calls).toBe(0);
     expect(recorded()?.failures).toBe(1);

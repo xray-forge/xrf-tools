@@ -1,5 +1,6 @@
 import { Nullable } from "@xrf/types";
 
+import { IBulkRequest } from "@/core/ipc/bulk";
 import { LevelDetailsDescription } from "@/core/ipc/types/xrf-app";
 import { SectorDescription } from "@/core/ipc/types/xrf-visual";
 
@@ -54,31 +55,21 @@ export interface ILevelHeldSource<T> {
   subscribe(listener: TLevelHeldListener<T>): () => void;
 }
 
-/** How large a texture file is, as its reader found it. */
-export interface ILevelTextureSize {
-  width: number;
-  height: number;
-  /** Mip levels it carries. */
-  levels: number;
+/** Where the renderer fetches one texture from: the file as stored, and the backend's picture of it. */
+export interface ILevelTextureRequests {
+  file: IBulkRequest;
+  /** Fetched only where the renderer cannot read the file's layout as stored. */
+  picture: IBulkRequest;
 }
 
-/** One texture's file, handed to whatever uploads it. */
+/** One texture handed to whatever uploads it: where the renderer fetches it, not its bytes. */
 export interface ILevelTextureDelivery {
   /** The reference as the shader table spells it. */
   reference: string;
-  /** The file itself, which is the only thing here worth transferring rather than copying. */
-  bytes: ArrayBuffer;
-  /**
-   * Whether the bytes are a picture rather than the file the level names.
-   *
-   * Decided by whoever read it, because deciding it is reading and not drawing: a layout the dds reader does not
-   * model is fetched already expanded, so the side that uploads never has to ask for anything.
-   */
-  isDecoded: boolean;
-  /** Why there is no file, for a reference that could not be read at all. */
+  /** Where its file is fetched from, or null for a reference that resolved to nothing. */
+  requests: Nullable<ILevelTextureRequests>;
+  /** Why there is nothing to fetch, for a reference that could not be asked for at all. */
   reason: Nullable<string>;
-  /** Its size as read, for a file the dds reader models; null for a decoded picture or none. */
-  size: Nullable<ILevelTextureSize>;
 }
 
 /** What changed about the textures a level holds. */
@@ -94,7 +85,7 @@ export interface ILevelTextureSupplyChange {
 /** Told what changed, so whatever uploads them uploads exactly that and releases the rest. */
 export type TLevelTextureSupplyListener = (change: ILevelTextureSupplyChange) => void;
 
-/** Textures as whatever uploads them takes them: a file and what to sample it as, never a texture. */
+/** Textures as whatever uploads them takes them: where to fetch each, never a texture. */
 export interface ILevelTextureSupply {
   /**
    * @param listener - Told what changed, from inside the call that changed it.

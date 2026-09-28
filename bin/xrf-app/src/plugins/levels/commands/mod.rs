@@ -6,6 +6,3 @@ pub(crate) mod open_level;
 pub(crate) mod open_lights;
 pub(crate) mod open_sector;
 pub(crate) mod open_spawn_models;
-pub(crate) mod read_details;
-pub(crate) mod read_sector;
-pub(crate) mod read_spawn_model;

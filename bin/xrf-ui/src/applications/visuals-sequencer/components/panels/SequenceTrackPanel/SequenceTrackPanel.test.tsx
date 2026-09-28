@@ -4,6 +4,7 @@ import { userEvent } from "@testing-library/user-event";
 
 import { VisualSequenceService } from "@/applications/visuals-sequencer/services/sequence";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
+import { setMockBulkResponses } from "@/fixtures/mocks/bulk.mocks";
 import { mockSessionResponse, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import {
@@ -29,7 +30,9 @@ async function renderTrack(names: ReadonlyArray<string> = ["first", "second"]) {
 
   setMockInvokeResponses({
     ["plugin:visuals|open_motion"]: mockSessionResponse(bake),
-    ["plugin:visuals|read_motion"]: mockVisualMotionTransforms(bake),
+  });
+  setMockBulkResponses({
+    "visuals/read_motion": mockVisualMotionTransforms(bake),
   });
 
   for (const name of names) {

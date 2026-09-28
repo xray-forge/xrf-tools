@@ -5,7 +5,8 @@ import { isComputedProp } from "@wirestate/mobx";
 import { TextureDescription } from "@/core/ipc/types/xrf-app";
 import { JobsService } from "@/core/jobs/services/jobs";
 import { TextureSelectionService } from "@/core/textures/services/selection";
-import { mockInvoke, resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
+import { listMockBulkCalls, setMockBulkResponses } from "@/fixtures/mocks/bulk.mocks";
+import { resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { MOCK_TEXTURE, mockTextureDescription, mockTextureEncodingComparison } from "@/fixtures/mocks/texture.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 import { noop } from "@/lib/callbacks/noop";
@@ -25,8 +26,11 @@ async function mockService(): Promise<{ service: TextureEncodingService; selecti
   setMockInvokeResponses({
     ["plugin:textures|compare_encodings"]: mockTextureEncodingComparison(),
     ["plugin:textures|describe"]: mockTextureDescription(),
-    ["plugin:textures|read_candidate"]: new ArrayBuffer(8),
-    ["plugin:textures|read_texture"]: new ArrayBuffer(0),
+  });
+
+  setMockBulkResponses({
+    "textures/read_candidate": new ArrayBuffer(8),
+    "textures/read_texture": new ArrayBuffer(0),
   });
 
   const container: Container = mockContainer([JobsService, TextureSelectionService, TextureEncodingService]);
@@ -77,7 +81,10 @@ describe("TextureEncodingService", () => {
 
     setMockInvokeResponses({
       ["plugin:textures|describe"]: mockTextureDescription("ston\\ston_beton06"),
-      ["plugin:textures|read_texture"]: new ArrayBuffer(0),
+    });
+
+    setMockBulkResponses({
+      "textures/read_texture": new ArrayBuffer(0),
     });
 
     await selection.openFile("C:\\gamedata\\textures\\ston\\ston_beton06.dds");
@@ -163,8 +170,8 @@ describe("TextureEncodingService", () => {
 
     await service.run(null);
 
-    setMockInvokeResponses({
-      ["plugin:textures|read_candidate"]: () => {
+    setMockBulkResponses({
+      "textures/read_candidate": () => {
         throw new Error("The held comparison does not carry that format");
       },
     });
@@ -182,7 +189,7 @@ describe("TextureEncodingService", () => {
     await service.run(null);
     await service.choose("bc3");
 
-    expect(mockInvoke).toHaveBeenLastCalledWith("plugin:textures|read_candidate", {
+    expect(listMockBulkCalls("textures/read_candidate").at(-1)).toEqual({
       sessionId: mockTextureEncodingComparison().sessionId,
       format: "bc3",
     });
@@ -202,8 +209,11 @@ describe("TextureEncodingService", () => {
 
     setMockInvokeResponses({
       ["plugin:textures|describe"]: description,
-      ["plugin:textures|read_texture"]: new ArrayBuffer(0),
     });
+    setMockBulkResponses({
+      "textures/read_texture": new ArrayBuffer(0),
+    });
+
     await selection.open(description.source, description.roots);
 
     expect(service.comparison).toBeNull();
@@ -216,7 +226,8 @@ describe("TextureEncodingService", () => {
     const pending = pendingPreview();
 
     await service.run(null);
-    setMockInvokeResponses({ ["plugin:textures|read_candidate"]: () => pending.promise });
+
+    setMockBulkResponses({ "textures/read_candidate": () => pending.promise });
 
     const choosing = service.choose("bc3");
 
@@ -233,11 +244,14 @@ describe("TextureEncodingService", () => {
     const pending = pendingPreview();
 
     await service.run(null);
+
     setMockInvokeResponses({
-      ["plugin:textures|read_candidate"]: () => pending.promise,
       ["plugin:textures|compare_encodings"]: mockTextureEncodingComparison({
         sessionId: "5ffb9fb7-b48b-4b55-b713-d7941d623cbe",
       }),
+    });
+    setMockBulkResponses({
+      "textures/read_candidate": () => pending.promise,
     });
 
     const choosing = service.choose("bc3");

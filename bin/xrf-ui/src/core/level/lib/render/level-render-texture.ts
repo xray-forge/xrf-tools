@@ -1,7 +1,7 @@
-import { TRendererTextureSource } from "@xrf/renderer";
+import { ERendererTextureEncoding, TRendererTextureSource } from "@xrf/renderer";
 
 import { ILevelTextureDelivery } from "@/core/level/lib/render/level-render-protocol";
-import { createRenderCheckerSource, toRendererTextureSource } from "@/core/render/lib/texture/render-texture-source";
+import { createRenderCheckerSource } from "@/core/render/lib/texture/render-texture-source";
 
 /** The stand-in's side, in texels: small, since it tiles, and all that matters is that it reads as a pattern. */
 const CHECKER_SIZE: number = 16;
@@ -13,11 +13,14 @@ const CHECKER_COLORS: readonly [readonly [number, number, number], readonly [num
 ];
 
 /**
- * @param delivery - One file the loader read, or the reason it could not.
- * @returns What the renderer uploads: the file, the backend's picture of it, or a checker standing in.
+ * @param delivery - Where one file is fetched from, or the reason it cannot be.
+ * @returns What the renderer uploads: the file it fetches, falling back to the backend's picture of it, or a checker
+ *   standing in.
  */
 export function toLevelTextureSource(delivery: ILevelTextureDelivery): TRendererTextureSource {
-  return delivery.reason ? createLevelCheckerSource() : toRendererTextureSource(delivery.bytes, delivery.isDecoded);
+  return delivery.requests
+    ? { encoding: ERendererTextureEncoding.FETCH, file: delivery.requests.file, picture: delivery.requests.picture }
+    : createLevelCheckerSource();
 }
 
 /**

@@ -7,6 +7,7 @@ pub mod logging;
 pub mod preferences;
 pub mod process;
 pub mod session;
+pub mod transport;
 pub mod types;
 pub mod webview_extensions;
 pub mod window;

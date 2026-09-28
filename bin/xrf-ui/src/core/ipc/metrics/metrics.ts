@@ -20,7 +20,8 @@ export class IpcMetricsRecorder implements IIpcCallSink {
   /**
    * Begins counting one command call.
    *
-   * @param command - Fully qualified command name, such as `plugin:visuals|read_geometry`.
+   * @param command - Fully qualified command name, such as `plugin:configs|read_document`, or a bulk route's
+   *   name, such as `levels|read_sector`.
    * @returns The measurement, to be settled exactly once.
    */
   public measure(command: string): IpcCallMeasurement {
@@ -61,6 +62,26 @@ export class IpcMetricsRecorder implements IIpcCallSink {
 
     entry.failures += 1;
     entry.failureDuration += duration;
+  }
+
+  /**
+   * Counts a call made and timed elsewhere, such as a fetch the renderer worker made and reported back: it was never
+   * in flight here.
+   *
+   * @param command - Name it is counted under.
+   * @param duration - How long it took, in milliseconds.
+   * @param received - Response bytes.
+   * @param isFailed - Whether it failed, which counts it apart from the answers.
+   */
+  public record(command: string, duration: number, received: number, isFailed: boolean): void {
+    // Settled as it enters, so the peak never counts it: the settling below takes it back out.
+    this.inFlight += 1;
+
+    if (isFailed) {
+      this.recordFailure(command, duration);
+    } else {
+      this.recordAnswer(command, duration, received, null);
+    }
   }
 
   /**

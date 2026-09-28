@@ -7,6 +7,7 @@ import { XrayMaterialDescriptor } from "@/core/ipc/types/xrf-material";
 import { XrayAsset, XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { EVisualTextureState } from "@/core/visuals/lib/visual-texture";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
+import { setMockBulkResponses } from "@/fixtures/mocks/bulk.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { InvokeHandler, resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import {
@@ -97,8 +98,10 @@ describe("VisualLoadService bump pairs", () => {
 
     setMockInvokeResponses({
       ["plugin:visuals|open_model"]: mockSessionResponse(selected),
-      ["plugin:visuals|read_geometry"]: buffer,
-      ["plugin:assets|read_asset"]: ((args) => {
+    });
+    setMockBulkResponses({
+      "visuals/read_geometry": buffer,
+      "assets/read_asset": ((args) => {
         reads.push(String(args?.logicalPath));
 
         return mockDdsFile({ fourCC: "DXT5" });
@@ -126,8 +129,10 @@ describe("VisualLoadService bump pairs", () => {
 
     setMockInvokeResponses({
       ["plugin:visuals|open_model"]: mockSessionResponse(selected),
-      ["plugin:visuals|read_geometry"]: buffer,
-      ["plugin:assets|read_asset"]: ((args) => {
+    });
+    setMockBulkResponses({
+      "visuals/read_geometry": buffer,
+      "assets/read_asset": ((args) => {
         reads.push(String(args?.logicalPath));
 
         return mockDdsFile({ fourCC: "DXT5" });
@@ -150,8 +155,10 @@ describe("VisualLoadService bump pairs", () => {
 
     setMockInvokeResponses({
       ["plugin:visuals|open_model"]: mockSessionResponse(selected),
-      ["plugin:visuals|read_geometry"]: buffer,
-      ["plugin:assets|read_asset"]: ((args) => {
+    });
+    setMockBulkResponses({
+      "visuals/read_geometry": buffer,
+      "assets/read_asset": ((args) => {
         return args?.logicalPath === BASE ? mockDdsFile({ fourCC: "DXT5" }) : mockDx10DdsFile(98);
       }) as InvokeHandler,
     });
@@ -176,8 +183,10 @@ describe("VisualLoadService bump pairs", () => {
 
     setMockInvokeResponses({
       ["plugin:visuals|open_model"]: mockSessionResponse(selected),
-      ["plugin:visuals|read_geometry"]: buffer,
-      ["plugin:assets|read_asset"]: ((args) => {
+    });
+    setMockBulkResponses({
+      "visuals/read_geometry": buffer,
+      "assets/read_asset": ((args) => {
         // A layout the reader does not model. A bump half never takes the backend's png fallback - a packed plane
         // re-encoded through an srgb path would report values it does not hold - so this half has nowhere else to go.
         return args?.logicalPath === COMPANION ? mockUndecodableDdsFile() : mockDdsFile({ fourCC: "DXT5" });
@@ -203,8 +212,10 @@ describe("VisualLoadService bump pairs", () => {
 
     setMockInvokeResponses({
       ["plugin:visuals|open_model"]: mockSessionResponse(selected),
-      ["plugin:visuals|read_geometry"]: buffer,
-      ["plugin:assets|read_asset"]: mockDdsFile({ fourCC: "DXT5" }),
+    });
+    setMockBulkResponses({
+      "visuals/read_geometry": buffer,
+      "assets/read_asset": mockDdsFile({ fourCC: "DXT5" }),
     });
 
     const { service } = mockInjectedService(VisualLoadService);

@@ -5,6 +5,7 @@ import { Nullable } from "@xrf/types";
 import { VisualMotionBake } from "@/core/ipc/types/xrf-visual";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
 import { VisualMotionService } from "@/core/visuals/services/visual-motion.service";
+import { setMockBulkResponses } from "@/fixtures/mocks/bulk.mocks";
 import { mockSessionResponse, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import {
@@ -38,7 +39,10 @@ function mockMotion(bake: VisualMotionBake = BAKE, transforms: ArrayBuffer = moc
   setMockInvokeResponses({
     ["plugin:visuals|list_motions"]: [bake.name, "norm_idle_0"],
     ["plugin:visuals|open_motion"]: mockSessionResponse(bake),
-    ["plugin:visuals|read_motion"]: transforms,
+  });
+
+  setMockBulkResponses({
+    "visuals/read_motion": transforms,
   });
 }
 
@@ -295,7 +299,10 @@ describe("VisualMotionService playback state", () => {
 
         return pendingSecond;
       }),
-      ["plugin:visuals|read_motion"]: (parameters?: Record<string, unknown>) =>
+    });
+
+    setMockBulkResponses({
+      "visuals/read_motion": (parameters?: Record<string, unknown>) =>
         mockVisualMotionTransforms(parameters?.motionId === firstMotionId ? first : second),
     });
 

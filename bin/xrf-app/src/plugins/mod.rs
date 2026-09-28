@@ -14,4 +14,5 @@ pub mod sprite_equipment;
 pub mod system;
 pub mod textures;
 pub mod translations;
+pub mod transport;
 pub mod visuals;

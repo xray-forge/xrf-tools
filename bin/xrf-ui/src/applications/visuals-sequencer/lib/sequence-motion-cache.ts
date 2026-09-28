@@ -2,8 +2,9 @@ import { BoundAction, Computed, makeObservable, Observable } from "@wirestate/mo
 import { Nullable } from "@xrf/types";
 
 import { transformError, XrfApplicationError } from "@/core/error/lib";
+import { fetchBulk } from "@/core/ipc/bulk";
 import { visualsCommands } from "@/core/ipc/commands/visuals";
-import { visualsRawCommands } from "@/core/ipc/commands/visuals-raw";
+import { visualsBulkRoutes } from "@/core/ipc/commands/visuals-bulk";
 import { requireSessionId } from "@/core/ipc/session";
 import { SessionSnapshot } from "@/core/ipc/types/xrf-app";
 import { VisualMotionBake } from "@/core/ipc/types/xrf-visual";
@@ -116,7 +117,7 @@ export class SequenceMotionCache {
       );
 
       const bake: VisualMotionBake = snapshot.value;
-      const bytes: ArrayBuffer = await visualsRawCommands.readMotion(sessionId, snapshot.sessionId);
+      const bytes: ArrayBuffer = await fetchBulk(visualsBulkRoutes.readMotion(sessionId, snapshot.sessionId));
       const expected: number = bake.frameCount * bake.boneCount * bake.floatsPerBone * Float32Array.BYTES_PER_ELEMENT;
 
       if (bytes.byteLength !== expected) {

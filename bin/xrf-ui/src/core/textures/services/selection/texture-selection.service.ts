@@ -4,8 +4,9 @@ import { Nullable } from "@xrf/types";
 
 import { createRoots } from "@/core/assets/lib";
 import { transformError } from "@/core/error/lib";
+import { fetchBulk } from "@/core/ipc/bulk";
 import { texturesCommands } from "@/core/ipc/commands/textures";
-import { texturesRawCommands } from "@/core/ipc/commands/textures-raw";
+import { texturesBulkRoutes } from "@/core/ipc/commands/textures-bulk";
 import { ETextureSource, TextureDescription, TextureSource } from "@/core/ipc/types/xrf-app";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { AsyncState } from "@/lib/async-state";
@@ -192,7 +193,7 @@ export class TextureSelectionService {
     this.preview = this.preview.asLoading(null);
 
     try {
-      const bytes: ArrayBuffer = yield* call(texturesRawCommands.readTexture(description.roots, logicalPath));
+      const bytes: ArrayBuffer = yield* call(fetchBulk(texturesBulkRoutes.readTexture(description.roots, logicalPath)));
 
       this.preview = this.preview.asReady(bytes);
 

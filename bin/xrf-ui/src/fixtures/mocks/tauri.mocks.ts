@@ -1,6 +1,8 @@
 import { jest } from "@jest/globals";
 import { Optional } from "@xrf/types";
 
+import { MOCK_TRANSPORT_ENDPOINT } from "@/fixtures/mocks/bulk.mocks";
+
 export type InvokeHandler = (args?: Record<string, unknown>) => unknown;
 
 /** Whether tests are running in the mocked desktop runtime. */
@@ -15,6 +17,9 @@ export const mockIsTauri = jest.fn((): boolean => true);
 export type InvokeMap = Record<string, unknown | InvokeHandler>;
 
 const state: { handlers: InvokeMap } = { handlers: {} };
+
+/** What a command answers when a test configures nothing for it, beside the null everything else answers. */
+const DEFAULT_RESPONSES: InvokeMap = { "plugin:transport|get_endpoint": MOCK_TRANSPORT_ENDPOINT };
 
 /**
  * Configures responses for mocked Tauri commands.
@@ -86,7 +91,7 @@ export function resetMockAppWindow(): void {
  * @returns A promise resolving to the configured response.
  */
 export const mockInvoke = jest.fn(async (command: string, args?: Record<string, unknown>): Promise<unknown> => {
-  const handler: unknown = state.handlers[command];
+  const handler: unknown = state.handlers[command] ?? DEFAULT_RESPONSES[command];
 
   if (typeof handler === "function") {
     return (handler as InvokeHandler)(args);

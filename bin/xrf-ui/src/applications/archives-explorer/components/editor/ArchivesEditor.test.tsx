@@ -15,6 +15,7 @@ import {
   mockArchivesVolumes,
   mockPathCollision,
 } from "@/fixtures/mocks/archive.mocks";
+import { setMockBulkResponses } from "@/fixtures/mocks/bulk.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
@@ -56,11 +57,14 @@ describe("opened archives editor", () => {
         size: BINARY_FILE.sizeReal,
         shape: { width: 64, height: 64, mipmapLevels: 1, format: "DXT1" },
       },
-      ["plugin:archives|read_texture"]: new Uint8Array([0x89, 0x50, 0x4e, 0x47]).buffer,
       ["plugin:archives|describe_file"]: {
         scope: { kind: EArchiveSubject.VOLUMES, volumes: 1 },
         format: { kind: "unsupported", reason: { kind: "noDescriber", extension: "omf" } },
       },
+    });
+
+    setMockBulkResponses({
+      "archives/read_texture": new Uint8Array([0x89, 0x50, 0x4e, 0x47]).buffer,
     });
   });
 
@@ -294,11 +298,14 @@ describe("opened archives editor", () => {
         size: BINARY_FILE.sizeReal,
         shape: { width: 64, height: 64, mipmapLevels: 1, format: "DXT1" },
       },
-      ["plugin:archives|read_texture"]: new Uint8Array([0x89, 0x50, 0x4e, 0x47]).buffer,
       ["plugin:archives|describe_file"]: {
         scope: { kind: EArchiveSubject.VOLUMES, volumes: 1 },
         format: { kind: "unsupported", reason: { kind: "noDescriber", extension: "omf" } },
       },
+    });
+
+    setMockBulkResponses({
+      "archives/read_texture": new Uint8Array([0x89, 0x50, 0x4e, 0x47]).buffer,
     });
 
     const { findByLabelText, findByText } = await act(async () =>
@@ -416,11 +423,14 @@ describe("opened archives editor", () => {
         size: BINARY_FILE.sizeReal,
         shape: { width: 64, height: 64, mipmapLevels: 1, format: "DXT1" },
       },
-      ["plugin:archives|read_texture"]: new Uint8Array([0x89, 0x50, 0x4e, 0x47]).buffer,
       ["plugin:archives|describe_file"]: {
         scope: { kind: EArchiveSubject.VOLUMES, volumes: 1 },
         format: { kind: "unsupported", reason: { kind: "noDescriber", extension: "omf" } },
       },
+    });
+
+    setMockBulkResponses({
+      "archives/read_texture": new Uint8Array([0x89, 0x50, 0x4e, 0x47]).buffer,
     });
 
     const { findByAltText, findByText, getByText } = renderEditor();

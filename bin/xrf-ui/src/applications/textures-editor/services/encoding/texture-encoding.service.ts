@@ -4,8 +4,9 @@ import { Nullable } from "@xrf/types";
 
 import { describeTextureCompareOutcome } from "@/applications/textures-editor/lib/describe-texture-compare-outcome";
 import { transformError } from "@/core/error/lib";
+import { fetchBulk } from "@/core/ipc/bulk";
 import { texturesCommands } from "@/core/ipc/commands/textures";
-import { texturesRawCommands } from "@/core/ipc/commands/textures-raw";
+import { texturesBulkRoutes } from "@/core/ipc/commands/textures-bulk";
 import { toEnumMember } from "@/core/ipc/enumeration";
 import { Session } from "@/core/ipc/session";
 import {
@@ -147,7 +148,7 @@ export class TextureEncodingService {
 
     try {
       const bytes: ArrayBuffer = yield* call(
-        texturesRawCommands.readCandidate(comparison.sessionId, toEnumMember(ETextureEncodingFormat, chosen))
+        fetchBulk(texturesBulkRoutes.readCandidate(comparison.sessionId, toEnumMember(ETextureEncodingFormat, chosen)))
       );
 
       if (this.comparison?.sessionId === comparison.sessionId) {

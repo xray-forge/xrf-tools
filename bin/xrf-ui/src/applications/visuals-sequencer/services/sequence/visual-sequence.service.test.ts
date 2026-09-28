@@ -6,6 +6,7 @@ import { ESequenceMotionState } from "@/applications/visuals-sequencer/lib/seque
 import { ISequenceClip, VisualSequenceService } from "@/applications/visuals-sequencer/services/sequence";
 import { VisualMotionBake } from "@/core/ipc/types/xrf-visual";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
+import { setMockBulkResponses } from "@/fixtures/mocks/bulk.mocks";
 import { mockSessionResponse, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { InvokeHandler, resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import {
@@ -59,7 +60,10 @@ function mockMotions(markers: Record<string, number>, failing: Array<string> = [
 
       return mockBake(name);
     }) as InvokeHandler),
-    ["plugin:visuals|read_motion"]: ((args) => {
+  });
+
+  setMockBulkResponses({
+    "visuals/read_motion": ((args) => {
       const name: string = names.get(String(args?.motionId)) ?? "";
 
       calls.push(`read:${name}`);

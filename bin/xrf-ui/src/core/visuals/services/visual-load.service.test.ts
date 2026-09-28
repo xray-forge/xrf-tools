@@ -8,6 +8,7 @@ import { SelectedVisualDescription } from "@/core/ipc/types/xrf-app";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { EVisualTextureState } from "@/core/visuals/lib/visual-texture";
 import { IOpenVisual, VisualLoadService } from "@/core/visuals/services/visual-load.service";
+import { setMockBulkResponses } from "@/fixtures/mocks/bulk.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { InvokeHandler, resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import {
@@ -69,7 +70,10 @@ describe("VisualLoadService", () => {
 
         return selected;
       }),
-      ["plugin:visuals|read_geometry"]: buffer,
+    });
+
+    setMockBulkResponses({
+      "visuals/read_geometry": buffer,
     });
 
     await service.load({ kind: "asset", logicalPath: ENTRY }, ROOTS);
@@ -118,8 +122,11 @@ describe("VisualLoadService", () => {
         ...selected,
         dependencies: { motions: [], textures: [mockTextureDependency({ submeshIndex: 0 })] },
       }),
-      ["plugin:visuals|read_geometry"]: buffer,
-      ["plugin:assets|read_asset"]: () => {
+    });
+
+    setMockBulkResponses({
+      "visuals/read_geometry": buffer,
+      "assets/read_asset": () => {
         read.issued?.();
 
         return new Promise<ArrayBuffer>((resolve) => {
@@ -161,8 +168,11 @@ describe("VisualLoadService", () => {
         ...selected,
         dependencies: { motions: [], textures: [mockTextureDependency({ submeshIndex: 0 })] },
       }),
-      ["plugin:visuals|read_geometry"]: buffer,
-      ["plugin:assets|read_asset"]: (parameters?: Record<string, unknown>) => {
+    });
+
+    setMockBulkResponses({
+      "visuals/read_geometry": buffer,
+      "assets/read_asset": (parameters?: Record<string, unknown>) => {
         readParameters = parameters ?? null;
 
         return mockDdsFile({ fourCC: "DXT1", height: 4, mipmapCount: 1, width: 4 });
@@ -189,8 +199,11 @@ describe("VisualLoadService", () => {
         ...selected,
         dependencies: { motions: [], textures: [mockTextureDependency({ submeshIndex: 0 })] },
       }),
-      ["plugin:visuals|read_geometry"]: buffer,
-      ["plugin:assets|read_asset"]: () => {
+    });
+
+    setMockBulkResponses({
+      "visuals/read_geometry": buffer,
+      "assets/read_asset": () => {
         openWhileReading = service.visual.value;
 
         return mockDdsFile({ fourCC: "DXT1", height: 4, mipmapCount: 1, width: 4 });
@@ -218,8 +231,11 @@ describe("VisualLoadService", () => {
 
     setMockInvokeResponses({
       ["plugin:visuals|open_model"]: mockSessionResponse(described),
-      ["plugin:visuals|read_geometry"]: buffer,
-      ["plugin:assets|read_asset"]: () => {
+    });
+
+    setMockBulkResponses({
+      "visuals/read_geometry": buffer,
+      "assets/read_asset": () => {
         shownWhileReading = service.sourceLabel;
 
         return mockDdsFile({ fourCC: "DXT1", height: 4, mipmapCount: 1, width: 4 });
@@ -233,8 +249,11 @@ describe("VisualLoadService", () => {
         ...described,
         source: { kind: "file", path: "C:\\gamedata\\meshes\\second.ogf" },
       }),
-      ["plugin:visuals|read_geometry"]: buffer,
-      ["plugin:assets|read_asset"]: () => {
+    });
+
+    setMockBulkResponses({
+      "visuals/read_geometry": buffer,
+      "assets/read_asset": () => {
         shownWhileReading = service.sourceLabel;
 
         return mockDdsFile({ fourCC: "DXT1", height: 4, mipmapCount: 1, width: 4 });
@@ -256,8 +275,11 @@ describe("VisualLoadService", () => {
         ...selected,
         dependencies: { motions: [], textures: [mockTextureDependency({ submeshIndex: 0 })] },
       }),
-      ["plugin:visuals|read_geometry"]: buffer,
-      ["plugin:assets|read_asset"]: mockDdsFile({ fourCC: "DXT1", height: 4, mipmapCount: 1, width: 4 }),
+    });
+
+    setMockBulkResponses({
+      "visuals/read_geometry": buffer,
+      "assets/read_asset": mockDdsFile({ fourCC: "DXT1", height: 4, mipmapCount: 1, width: 4 }),
     });
 
     await service.load({ kind: "asset", logicalPath: ENTRY }, ROOTS);
@@ -272,7 +294,10 @@ describe("VisualLoadService", () => {
 
         return { ...selected, dependencies: { motions: [], textures: [] } };
       }),
-      ["plugin:visuals|read_geometry"]: buffer,
+    });
+
+    setMockBulkResponses({
+      "visuals/read_geometry": buffer,
     });
 
     await service.load({ kind: "asset", logicalPath: ENTRY }, ROOTS);
@@ -292,12 +317,18 @@ describe("VisualLoadService", () => {
 
         return selected;
       }),
-      ["plugin:visuals|read_geometry"]: buffer,
+    });
+
+    setMockBulkResponses({
+      "visuals/read_geometry": buffer,
     });
 
     setMockInvokeResponses({
       ["plugin:visuals|get_model"]: mockSessionResponse(selected),
-      ["plugin:visuals|read_geometry"]: buffer,
+    });
+
+    setMockBulkResponses({
+      "visuals/read_geometry": buffer,
     });
 
     await service.restore();
@@ -312,7 +343,10 @@ describe("VisualLoadService", () => {
 
     setMockInvokeResponses({
       ["plugin:visuals|open_model"]: mockSessionResponse(selected),
-      ["plugin:visuals|read_geometry"]: buffer,
+    });
+
+    setMockBulkResponses({
+      "visuals/read_geometry": buffer,
     });
 
     await service.load({ kind: "asset", logicalPath: ENTRY }, ROOTS);
@@ -354,8 +388,11 @@ describe("VisualLoadService shared textures", () => {
 
     setMockInvokeResponses({
       ["plugin:visuals|open_model"]: mockSessionResponse(selected),
-      ["plugin:visuals|read_geometry"]: buffer,
-      ["plugin:assets|read_asset"]: ((args) => {
+    });
+
+    setMockBulkResponses({
+      "visuals/read_geometry": buffer,
+      "assets/read_asset": ((args) => {
         reads.push(String(args?.logicalPath));
 
         return mockDdsFile();
@@ -375,8 +412,11 @@ describe("VisualLoadService shared textures", () => {
 
     setMockInvokeResponses({
       ["plugin:visuals|open_model"]: mockSessionResponse(selected),
-      ["plugin:visuals|read_geometry"]: buffer,
-      ["plugin:assets|read_asset"]: mockDdsFile(),
+    });
+
+    setMockBulkResponses({
+      "visuals/read_geometry": buffer,
+      "assets/read_asset": mockDdsFile(),
     });
 
     const { service } = mockInjectedService(VisualLoadService);
@@ -393,8 +433,11 @@ describe("VisualLoadService shared textures", () => {
 
     setMockInvokeResponses({
       ["plugin:visuals|open_model"]: mockSessionResponse(selected),
-      ["plugin:visuals|read_geometry"]: buffer,
-      ["plugin:assets|read_asset"]: mockDdsFile(),
+    });
+
+    setMockBulkResponses({
+      "visuals/read_geometry": buffer,
+      "assets/read_asset": mockDdsFile(),
     });
 
     const { service } = mockInjectedService(VisualLoadService);
@@ -434,9 +477,12 @@ describe("VisualLoadService texture decoding", () => {
 
     setMockInvokeResponses({
       ["plugin:visuals|open_model"]: mockSessionResponse(selected),
-      ["plugin:visuals|read_geometry"]: buffer,
-      ["plugin:assets|read_asset"]: mockUndecodableDdsFile(),
-      ["plugin:visuals|read_texture"]: readTexture,
+    });
+
+    setMockBulkResponses({
+      "visuals/read_geometry": buffer,
+      "assets/read_asset": mockUndecodableDdsFile(),
+      "visuals/read_texture": readTexture,
     });
 
     await service.load({ kind: "asset", logicalPath: ENTRY }, ROOTS);
@@ -463,9 +509,12 @@ describe("VisualLoadService texture decoding", () => {
 
     setMockInvokeResponses({
       ["plugin:visuals|open_model"]: mockSessionResponse(selected),
-      ["plugin:visuals|read_geometry"]: buffer,
-      ["plugin:assets|read_asset"]: mockUndecodableDdsFile(),
-      ["plugin:visuals|read_texture"]: readTexture,
+    });
+
+    setMockBulkResponses({
+      "visuals/read_geometry": buffer,
+      "assets/read_asset": mockUndecodableDdsFile(),
+      "visuals/read_texture": readTexture,
     });
 
     await service.load({ kind: "asset", logicalPath: ENTRY }, ROOTS);
@@ -497,9 +546,12 @@ describe("VisualLoadService texture decoding", () => {
 
     setMockInvokeResponses({
       ["plugin:visuals|open_model"]: mockSessionResponse(selected),
-      ["plugin:visuals|read_geometry"]: buffer,
-      ["plugin:assets|read_asset"]: mockUndecodableDdsFile(),
-      ["plugin:visuals|read_texture"]: () => {
+    });
+
+    setMockBulkResponses({
+      "visuals/read_geometry": buffer,
+      "assets/read_asset": mockUndecodableDdsFile(),
+      "visuals/read_texture": () => {
         onReading();
 
         return reading;
@@ -534,9 +586,12 @@ describe("VisualLoadService texture decoding", () => {
         ...selected,
         dependencies: { motions: [], textures: [mockTextureDependency({ submeshIndex: 0 })] },
       }),
-      ["plugin:visuals|read_geometry"]: buffer,
-      ["plugin:assets|read_asset"]: mockUndecodableDdsFile(),
-      ["plugin:visuals|read_texture"]: (parameters?: Record<string, unknown>) => {
+    });
+
+    setMockBulkResponses({
+      "visuals/read_geometry": buffer,
+      "assets/read_asset": mockUndecodableDdsFile(),
+      "visuals/read_texture": (parameters?: Record<string, unknown>) => {
         decodedPath = (parameters?.logicalPath as string) ?? null;
 
         return new ArrayBuffer(8);
@@ -562,9 +617,12 @@ describe("VisualLoadService texture decoding", () => {
         ...selected,
         dependencies: { motions: [], textures: [mockTextureDependency({ submeshIndex: 0 })] },
       }),
-      ["plugin:visuals|read_geometry"]: buffer,
-      ["plugin:assets|read_asset"]: mockDdsFile({ fourCC: "DXT1", height: 4, mipmapCount: 1, width: 4 }),
-      ["plugin:visuals|read_texture"]: () => {
+    });
+
+    setMockBulkResponses({
+      "visuals/read_geometry": buffer,
+      "assets/read_asset": mockDdsFile({ fourCC: "DXT1", height: 4, mipmapCount: 1, width: 4 }),
+      "visuals/read_texture": () => {
         decoded += 1;
 
         return new ArrayBuffer(8);
@@ -587,9 +645,12 @@ describe("VisualLoadService texture decoding", () => {
         ...selected,
         dependencies: { motions: [], textures: [mockTextureDependency({ submeshIndex: 0 })] },
       }),
-      ["plugin:visuals|read_geometry"]: buffer,
-      ["plugin:assets|read_asset"]: mockUndecodableDdsFile(),
-      ["plugin:visuals|read_texture"]: () => {
+    });
+
+    setMockBulkResponses({
+      "visuals/read_geometry": buffer,
+      "assets/read_asset": mockUndecodableDdsFile(),
+      "visuals/read_texture": () => {
         throw new Error("DDS image format is not supported");
       },
     });

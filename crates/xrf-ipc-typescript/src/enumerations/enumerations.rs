@@ -128,9 +128,9 @@ impl Enumerations {
   /// Byte ranges of `blanked` that hold a command's return type.
   ///
   /// Tauri Specta writes a command body as `__TAURI_INVOKE<Return>("plugin:..", { .. })` and annotates no return
-  /// on the arrow, so the sole type argument of that call is the whole of the return surface. The raw wrappers
-  /// this is also applied to call `invokeRaw` and annotate `Promise<ArrayBuffer>`, which names no enum; nothing is
-  /// excluded there and nothing needs to be.
+  /// on the arrow, so the sole type argument of that call is the whole of the return surface. The raw and bulk
+  /// wrappers this is also applied to call `invokeRaw` or nothing, and annotate `Promise<ArrayBuffer>` or
+  /// `IBulkCall`, which name no enum; nothing is excluded there and nothing needs to be.
   fn invoke_return_ranges(blanked: &str) -> Vec<(usize, usize)> {
     const INVOKE: &str = "__TAURI_INVOKE";
 
@@ -244,6 +244,18 @@ mod tests {
         &renames()
       ),
       "  readCandidate: (kind: EXrayAssetType): Promise<ArrayBuffer> =>\n    invokeRaw(\"plugin:textures|read_candidate\", { kind }),\n"
+    );
+  }
+
+  #[test]
+  fn a_bulk_wrapper_has_no_invoke_call_and_is_rewritten_whole() {
+    // `IBulkCall` is every bulk wrapper's return and names no enum, so nothing there needs excluding.
+    assert_eq!(
+      Enumerations::rewrite_parameters_in(
+        "  readCandidate: (kind: XrayAssetType): IBulkCall => ({ args: { kind }, route: \"textures/read_candidate\" }),\n",
+        &renames()
+      ),
+      "  readCandidate: (kind: EXrayAssetType): IBulkCall => ({ args: { kind }, route: \"textures/read_candidate\" }),\n"
     );
   }
 

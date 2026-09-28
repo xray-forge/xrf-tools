@@ -10,6 +10,8 @@ import { Nullable } from "@xrf/types";
 export enum ELevelSurfaceDressing {
   /** Uploaded: the surface is drawn from the file the level names. */
   UPLOADED = "uploaded",
+  /** Asked for: the renderer is fetching the file, and draws nothing with it until it is up. */
+  FETCHING = "fetching",
   /** A checker stands in, because the file could not be read. */
   STOOD_IN = "stood-in",
   /** Never asked for, because no resident sector names it yet. */
@@ -40,6 +42,9 @@ export function describeLevelSurfaceDressing(dressing: ILevelSurfaceDressing): s
 
     case ELevelSurfaceDressing.UNREAD:
       return `${dressing.reference} · not read yet`;
+
+    case ELevelSurfaceDressing.FETCHING:
+      return `${dressing.reference} · on its way`;
 
     default:
       return dressing.upload ? `${dressing.reference} · ${dressing.upload}` : dressing.reference;

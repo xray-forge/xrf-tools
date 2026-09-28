@@ -102,38 +102,183 @@ import { invoke as __TAURI_INVOKE } from \"@/core/ipc/invoke\";";
       return;
     }
 
-    let mut wrappers: String = String::new();
+    let wrappers: String = commands
+      .iter()
+      .map(|(wire_name, arguments)| {
+        let (parameters, payload): (String, String) = Self::render_arguments(arguments);
 
-    for (wire_name, arguments) in commands {
-      let parameters: String = arguments
-        .iter()
-        .map(|(name, argument_type)| format!("{name}: {argument_type}"))
-        .collect::<Vec<String>>()
-        .join(", ");
-      let payload: String = arguments
-        .iter()
-        .map(|(name, _)| (*name).to_string())
-        .collect::<Vec<String>>()
-        .join(", ");
+        format!(
+          "  {}: ({parameters}): Promise<ArrayBuffer> =>\n    invokeRaw(\"plugin:{plugin}|{wire_name}\", {{ {payload} }}),\n",
+          to_camel_case(wire_name)
+        )
+      })
+      .collect();
 
-      wrappers.push_str(&format!(
-        "  {}: ({parameters}): Promise<ArrayBuffer> =>\n    invokeRaw(\"plugin:{plugin}|{wire_name}\", {{ {payload} }}),\n",
-        to_camel_case(wire_name)
-      ));
+    Self::write_wrappers(
+      path,
+      plugin,
+      &wrappers,
+      "import { invokeRaw } from \"@/core/ipc/raw\";",
+      &format!(
+        "/** Commands answering with raw bytes over IPC, which Specta cannot type. */\nexport const {}RawCommands",
+        to_camel_case(plugin)
+      ),
+      ownership,
+      enumerations,
+    );
+  }
+
+  /// Writes the wrappers for one domain's bulk routes.
+  ///
+  /// A route is not a command and Specta never sees it, so these are generated from the registry instead of written
+  /// by hand; the registry carries each argument's TypeScript type for exactly this reason. A wrapper answers the call
+  /// as data, its route and arguments, so the page can fetch it or hand it to another thread to fetch.
+  pub(crate) fn write_bulk(
+    path: &Path,
+    plugin: &str,
+    routes: &[(&str, &[(&str, &str)])],
+    ownership: &TypeOwnership,
+    enumerations: &Enumerations,
+  ) {
+    if routes.is_empty() {
+      return;
     }
 
+    let wrappers: String = routes
+      .iter()
+      .map(|(route, arguments)| {
+        let (parameters, payload): (String, String) = Self::render_arguments(arguments);
+
+        format!(
+          "  {}: ({parameters}): IBulkCall => ({{ args: {{ {payload} }}, route: \"{plugin}/{route}\" }}),\n",
+          to_camel_case(route)
+        )
+      })
+      .collect();
+
+    Self::write_wrappers(
+      path,
+      plugin,
+      &wrappers,
+      "import { IBulkCall } from \"@/core/ipc/bulk\";",
+      &format!(
+        "/** Routes answering with bytes over the loopback transport, which Specta never sees. */\nexport const {}BulkRoutes",
+        to_camel_case(plugin)
+      ),
+      ownership,
+      enumerations,
+    );
+  }
+
+  /// A registry declaration's arguments as a TypeScript parameter list and the object shorthand passing them on.
+  fn render_arguments(arguments: &[(&str, &str)]) -> (String, String) {
+    let parameters: String = arguments
+      .iter()
+      .map(|(name, argument_type)| format!("{name}: {argument_type}"))
+      .collect::<Vec<String>>()
+      .join(", ");
+    let payload: String = arguments
+      .iter()
+      .map(|(name, _)| (*name).to_string())
+      .collect::<Vec<String>>()
+      .join(", ");
+
+    (parameters, payload)
+  }
+
+  /// Writes a module of wrappers the registry spells by hand, under `declaration` and importing what they call.
+  fn write_wrappers(
+    path: &Path,
+    plugin: &str,
+    wrappers: &str,
+    import: &str,
+    declaration: &str,
+    ownership: &TypeOwnership,
+    enumerations: &Enumerations,
+  ) {
     // The registry spells these argument types by hand, so they take the same retyping as a Specta signature.
-    let wrappers: String = enumerations.rewrite_parameters(&wrappers);
+    let wrappers: String = enumerations.rewrite_parameters(wrappers);
 
     ownership.assert_no_foreign_references(&wrappers, plugin);
 
     write_generated(
       path,
       &format!(
-        "{GENERATED_HEADER}\nimport {{ invokeRaw }} from \"@/core/ipc/raw\";\n{}\n/** Commands answering with raw bytes, which Specta cannot type. */\nexport const {}RawCommands = {{\n{wrappers}}};\n",
-        ownership.imports_for(&wrappers),
-        to_camel_case(plugin)
+        "{GENERATED_HEADER}\n{import}\n{}\n{declaration} = {{\n{wrappers}}};\n",
+        ownership.imports_for(&wrappers)
       ),
     );
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use std::fs;
+  use std::path::PathBuf;
+
+  use specta::Types;
+  use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+
+  use crate::command_module_writer::CommandModuleWriter;
+  use crate::enumerations::Enumerations;
+  use crate::type_ownership::TypeOwnership;
+
+  /// Writes one kind of wrapper module with nothing collected, answering where it went.
+  fn written(name: &str, write: impl FnOnce(&PathBuf, &TypeOwnership, &Enumerations)) -> PathBuf {
+    let types: Types = Types::default();
+    let (ownership, _): (TypeOwnership, _) = TypeOwnership::resolve(&types);
+    let enumerations: Enumerations = Enumerations::resolve(&types, &types);
+    let path: PathBuf = build_absolute_generated_test_resource_path("command-module-writer").join(name);
+
+    fs::create_dir_all(path.parent().expect("module to have a directory")).expect("directory to be created");
+
+    write(&path, &ownership, &enumerations);
+
+    path
+  }
+
+  #[test]
+  fn a_raw_command_is_written_as_a_wrapper_invoking_it_raw() {
+    let path: PathBuf = written("fixture-raw.ts", |path, ownership, enumerations| {
+      CommandModuleWriter::write_raw(
+        path,
+        "fixture",
+        &[("read_bytes", &[("sessionId", "string"), ("length", "number")])],
+        ownership,
+        enumerations,
+      );
+    });
+
+    assert_eq!(
+      fs::read_to_string(&path).expect("module to be written"),
+      "// Auto-generated rust bindings. Do not edit it manually.\n\nimport { invokeRaw } from \"@/core/ipc/raw\";\n\n/** Commands answering with raw bytes over IPC, which Specta cannot type. */\nexport const fixtureRawCommands = {\n  readBytes: (sessionId: string, length: number): Promise<ArrayBuffer> =>\n    invokeRaw(\"plugin:fixture|read_bytes\", { sessionId, length }),\n};\n"
+    );
+  }
+
+  #[test]
+  fn a_bulk_route_is_written_as_a_wrapper_answering_the_call() {
+    let path: PathBuf = written("fixture-bulk.ts", |path, ownership, enumerations| {
+      CommandModuleWriter::write_bulk(
+        path,
+        "fixture",
+        &[("read_bytes", &[("length", "number")])],
+        ownership,
+        enumerations,
+      );
+    });
+
+    assert_eq!(
+      fs::read_to_string(&path).expect("module to be written"),
+      "// Auto-generated rust bindings. Do not edit it manually.\n\nimport { IBulkCall } from \"@/core/ipc/bulk\";\n\n/** Routes answering with bytes over the loopback transport, which Specta never sees. */\nexport const fixtureBulkRoutes = {\n  readBytes: (length: number): IBulkCall => ({ args: { length }, route: \"fixture/read_bytes\" }),\n};\n"
+    );
+  }
+
+  #[test]
+  fn a_plugin_without_raw_commands_gets_no_raw_module() {
+    let path: PathBuf = written("empty-raw.ts", |path, ownership, enumerations| {
+      CommandModuleWriter::write_raw(path, "empty", &[], ownership, enumerations);
+    });
+
+    assert!(!path.exists());
   }
 }

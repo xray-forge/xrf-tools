@@ -1,8 +1,9 @@
 import { Maybe } from "@xrf/types";
 
 import { transformError } from "@/core/error/lib";
+import { fetchBulk } from "@/core/ipc/bulk";
 import { levelsCommands } from "@/core/ipc/commands/levels";
-import { levelsRawCommands } from "@/core/ipc/commands/levels-raw";
+import { levelsBulkRoutes } from "@/core/ipc/commands/levels-bulk";
 import { SessionSnapshot } from "@/core/ipc/types/xrf-app";
 import { SectorDescription } from "@/core/ipc/types/xrf-visual";
 import { ILevelSectorDelivery } from "@/core/level/lib/render/level-render-protocol";
@@ -13,11 +14,11 @@ import { Logger, Timer } from "@/lib/logging";
 /** What one sector read needs of whoever owns the level, so the reader owns none of it. */
 export interface ILevelSectorReaderHost {
   /**
-   * Reads the files a sector's surfaces name, for whoever draws them to upload.
+   * Hands whoever draws a sector's surfaces the files they name, to fetch and upload.
    *
    * @param sessionId - The level opening the sector belongs to, whose textures alone are supplied.
    * @param requests - What its surfaces name, base textures and lightmaps alike.
-   * @returns How many files it actually fetched, which is what the round trips were spent on.
+   * @returns How many files it asked for that were not already held.
    */
   load(sessionId: string, requests: ReadonlyArray<ISectorTextureRequest>): Promise<number>;
   /** What one sector's surfaces name, joined against the level's shader table. */
@@ -97,7 +98,7 @@ export class LevelSectorReader {
     );
 
     const pack: number = stage.lap();
-    const buffer: ArrayBuffer = await levelsRawCommands.readSector(sessionId, snapshot.sessionId);
+    const buffer: ArrayBuffer = await fetchBulk(levelsBulkRoutes.readSector(sessionId, snapshot.sessionId));
     const transfer: number = stage.lap();
     // Read from the description rather than from views over the bytes: what a sector's surfaces name is the
     // shader table's answer, and this side of the boundary never looks inside the pack.
@@ -106,7 +107,8 @@ export class LevelSectorReader {
 
     this.claimed.set(key, requested);
 
-    // Before the sector is published, so a surface is never drawn untextured for a frame and then corrected.
+    // Before the sector is published: its textures are put first, so the renderer holds its objects back until they
+    // are up rather than drawing a surface untextured for a frame and then correcting it.
     const files: number = await this.host.load(sessionId, requested);
 
     const textures: number = stage.lap();

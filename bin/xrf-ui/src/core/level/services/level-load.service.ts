@@ -3,8 +3,9 @@ import { BoundAction, Computed, flowResult, Observable, runInAction } from "@wir
 import { Maybe, Nullable } from "@xrf/types";
 
 import { transformError } from "@/core/error/lib";
+import { fetchBulk } from "@/core/ipc/bulk";
 import { levelsCommands } from "@/core/ipc/commands/levels";
-import { levelsRawCommands } from "@/core/ipc/commands/levels-raw";
+import { levelsBulkRoutes } from "@/core/ipc/commands/levels-bulk";
 import { Session } from "@/core/ipc/session";
 import { requireSessionId } from "@/core/ipc/session/session.utils";
 import {
@@ -111,7 +112,7 @@ export class LevelLoadService {
   /** Told what has been delivered and what has gone, which is how whatever draws the level hears of it. */
   private readonly watchers: Set<TLevelSectorListener> = new Set();
 
-  /** Reads the files a level's textures come from, which is an `invoke` and so belongs on this side. */
+  /** Says where the renderer fetches a level's textures from, which takes the transport's endpoint from this side. */
   private readonly reading: LevelTextureReader = new LevelTextureReader();
 
   /** Told what files have been read and what is still worth keeping. */
@@ -249,12 +250,12 @@ export class LevelLoadService {
   }
 
   /**
-   * Reads the files a level's surfaces name, and supplies them to whatever uploads them, for a level still open: a
+   * Supplies whatever uploads the level's surfaces with where to fetch the files they name, for a level still open: a
    * read that outlives its level delivers nothing into the next.
    *
    * @param sessionId - The level opening that named them.
    * @param requests - What its sectors, grass, lights or spawned models name, base textures and lightmaps alike.
-   * @returns How many files it read.
+   * @returns How many files it asked for.
    */
   private async supply(sessionId: string, requests: ReadonlyArray<ISectorTextureRequest>): Promise<number> {
     const wanted: Array<ISectorTextureRequest> = requests.filter(
@@ -490,7 +491,7 @@ export class LevelLoadService {
     }
 
     const packs: Array<ArrayBuffer> = await Promise.all(
-      description.models.map((model) => levelsRawCommands.readSpawnModel(sessionId, model.name))
+      description.models.map((model) => fetchBulk(levelsBulkRoutes.readSpawnModel(sessionId, model.name)))
     );
 
     return {
@@ -515,7 +516,7 @@ export class LevelLoadService {
       return null;
     }
 
-    const buffer: ArrayBuffer = await levelsRawCommands.readDetails(sessionId, snapshot.sessionId);
+    const buffer: ArrayBuffer = await fetchBulk(levelsBulkRoutes.readDetails(sessionId, snapshot.sessionId));
 
     // Refused before it is held, as a sector's or a model's pack is refused before it is viewed.
     if (buffer.byteLength !== description.details.bufferLength) {

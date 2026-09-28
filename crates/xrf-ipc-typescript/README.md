@@ -20,7 +20,8 @@ fn verify<R: tauri::Runtime>(committed: &Path, scratch: &Path, surfaces: &[IpcCo
 }
 ```
 
-An [`IpcCommandSurface`] is one plugin: its `tauri_specta::Builder`, and the raw commands that builder cannot hold.
+An [`IpcCommandSurface`] is one plugin: its `tauri_specta::Builder`, and the raw commands and bulk routes that builder
+cannot hold.
 The order the steps run in belongs to the generator and is not a caller's to reproduce — commands are exported first
 because that is what collects the types they reference, the type modules are written next because only then is it known
 which module declares what, and each command module is finalized last because the type modules say which imports
@@ -34,8 +35,12 @@ imports tying the modules together, and rejects an import cycle. Which commands 
 belong to, is never known here — the caller supplies the Specta builders and the output directory.
 
 `finalize_command_module` rewrites Specta's `invoke` import to the counted one and asserts the rewrite happened, so
-IPC counting cannot silently stop. `export_raw_commands` writes wrappers for commands that return bytes and bypass
-Specta.
+IPC counting cannot silently stop. Two writers cover what Specta cannot type, each only for a plugin declaring any:
+
+- `CommandModuleWriter::write_raw` writes `<plugin>-raw.ts`: a wrapper per raw command, a Tauri command answering
+  `tauri::ipc::Response`, calling `invokeRaw` and returning `Promise<ArrayBuffer>`.
+- `CommandModuleWriter::write_bulk` writes `<plugin>-bulk.ts`: a wrapper per bulk route, served outside IPC, answering
+  the call as data (its route and arguments).
 
 ## Enumerations
 

@@ -14,4 +14,4 @@ mod typescript;
 
 pub use bindings_surface::SurfaceDrift;
 pub use ipc_bindings_generator::IpcBindingsGenerator;
-pub use ipc_command_surface::{IpcCommandSurface, RawCommandDeclaration};
+pub use ipc_command_surface::{BulkRouteDeclaration, IpcCommandSurface, RawCommandDeclaration};

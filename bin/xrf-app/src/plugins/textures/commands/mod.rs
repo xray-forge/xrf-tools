@@ -7,6 +7,4 @@ pub(crate) mod get_session;
 pub(crate) mod get_vocabulary;
 pub(crate) mod make_bump;
 pub(crate) mod open;
-pub(crate) mod read_candidate;
-pub(crate) mod read_texture;
 pub(crate) mod save;

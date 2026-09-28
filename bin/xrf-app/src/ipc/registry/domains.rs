@@ -1,5 +1,11 @@
 // Cargo compiles the application and its build script separately, so both adapters expand this token registry.
 // Keep each wire name beside its Rust command path; runtime dispatch, Specta, and ACL generation derive from the pair.
+// A domain's typed commands may be followed by `@raw { .. }`, then `@bulk { .. }`, in that order; either or both. Each
+// entry names its TypeScript arguments, for the generated wrapper Specta cannot write, and its Rust path.
+// - `@raw`: commands answering a small `tauri::ipc::Response`, dispatched and permitted like any command. No domain
+//   declares one today; the section is kept supported for the next byte answer that fits a command.
+// - `@bulk`: routes answering large bytes, served by the loopback transport (`core/transport/`) so they never touch the
+//   window's thread; each route function takes the application and a request deserialized from those arguments.
 macro_rules! for_each_tauri_command_domain {
   ($consumer:ident) => {
     $consumer! {
@@ -10,8 +16,8 @@ macro_rules! for_each_tauri_command_domain {
         list_assets => crate::plugins::assets::commands::list_assets::assets_list_assets,
         probe_root => crate::plugins::assets::commands::probe_root::assets_probe_root,
       }
-      @raw {
-        read_asset(roots: "XrayRoots", logicalPath: "string") => crate::plugins::assets::commands::read_asset::assets_read_asset,
+      @bulk {
+        read_asset(roots: "XrayRoots", logicalPath: "string") => crate::plugins::assets::routes::read_asset::assets_read_asset,
       }
       archives => "archives" {
         close_subject => crate::plugins::archives::browse::commands::close_subject::archives_close_subject,
@@ -43,8 +49,8 @@ macro_rules! for_each_tauri_command_domain {
         unpack_directory => crate::plugins::archives::unpack::commands::unpack_directory::archives_unpack_directory,
       }
       // Serves a decoded PNG rather than the stored DDS, so it stays here instead of joining the generic reads.
-      @raw {
-        read_texture(roots: "XrayRoots", logicalPath: "string") => crate::plugins::archives::preview::commands::read_texture::archives_read_texture,
+      @bulk {
+        read_texture(roots: "XrayRoots", logicalPath: "string") => crate::plugins::archives::preview::routes::read_texture::archives_read_texture,
       }
       configs => "configs" {
         check_directory_format => crate::plugins::configs::commands::check_directory_format::configs_check_directory_format,
@@ -93,10 +99,10 @@ macro_rules! for_each_tauri_command_domain {
         open_sector => crate::plugins::levels::commands::open_sector::levels_open_sector,
         open_spawn_models => crate::plugins::levels::commands::open_spawn_models::levels_open_spawn_models,
       }
-      @raw {
-        read_details(sessionId: "SessionId", detailsId: "SessionId") => crate::plugins::levels::commands::read_details::levels_read_details,
-        read_sector(sessionId: "SessionId", sectorId: "SessionId") => crate::plugins::levels::commands::read_sector::levels_read_sector,
-        read_spawn_model(sessionId: "SessionId", name: "string") => crate::plugins::levels::commands::read_spawn_model::levels_read_spawn_model,
+      @bulk {
+        read_details(sessionId: "SessionId", detailsId: "SessionId") => crate::plugins::levels::routes::read_details::levels_read_details,
+        read_sector(sessionId: "SessionId", sectorId: "SessionId") => crate::plugins::levels::routes::read_sector::levels_read_sector,
+        read_spawn_model(sessionId: "SessionId", name: "string") => crate::plugins::levels::routes::read_spawn_model::levels_read_spawn_model,
       }
       spawn => "spawn" {
         save_unpacked_directory => crate::plugins::spawn::commands::save_unpacked_directory::spawn_save_unpacked_directory,
@@ -141,10 +147,10 @@ macro_rules! for_each_tauri_command_domain {
         open => crate::plugins::textures::commands::open::textures_open,
         save => crate::plugins::textures::commands::save::textures_save,
       }
-      // The png fallback for a layout the webview's DDS loader refuses; stored bytes go through `assets|read_asset`.
-      @raw {
-        read_candidate(sessionId: "SessionId", format: "TextureEncodingFormat") => crate::plugins::textures::commands::read_candidate::textures_read_candidate,
-        read_texture(roots: "XrayRoots", logicalPath: "string") => crate::plugins::textures::commands::read_texture::textures_read_texture,
+      // The png fallback for a layout the webview's DDS loader refuses; stored bytes are the `assets/read_asset` route.
+      @bulk {
+        read_candidate(sessionId: "SessionId", format: "TextureEncodingFormat") => crate::plugins::textures::routes::read_candidate::textures_read_candidate,
+        read_texture(roots: "XrayRoots", logicalPath: "string") => crate::plugins::textures::routes::read_texture::textures_read_texture,
       }
       visuals => "visuals" {
         close_browse => crate::plugins::visuals::commands::close_browse::visuals_close_browse,
@@ -156,12 +162,10 @@ macro_rules! for_each_tauri_command_domain {
         open_model => crate::plugins::visuals::commands::open_model::visuals_open_model,
         open_motion => crate::plugins::visuals::commands::open_motion::visuals_open_motion,
       }
-      // Returns `tauri::ipc::Response`, so it is dispatched and permitted like any command but cannot join
-      // the Specta collection.
-      @raw {
-        read_geometry(sessionId: "SessionId") => crate::plugins::visuals::commands::read_geometry::visuals_read_geometry,
-        read_motion(sessionId: "SessionId", motionId: "SessionId") => crate::plugins::visuals::commands::read_motion::visuals_read_motion,
-        read_texture(roots: "XrayRoots", logicalPath: "string") => crate::plugins::visuals::commands::read_texture::visuals_read_texture,
+      @bulk {
+        read_geometry(sessionId: "SessionId") => crate::plugins::visuals::routes::read_geometry::visuals_read_geometry,
+        read_motion(sessionId: "SessionId", motionId: "SessionId") => crate::plugins::visuals::routes::read_motion::visuals_read_motion,
+        read_texture(roots: "XrayRoots", logicalPath: "string") => crate::plugins::visuals::routes::read_texture::visuals_read_texture,
       }
       translations => "translations" {
         build_project => crate::plugins::translations::commands::build_project::translations_build_project,
@@ -175,6 +179,10 @@ macro_rules! for_each_tauri_command_domain {
         save_file => crate::plugins::translations::commands::save_file::translations_save_file,
         validate_text => crate::plugins::translations::commands::validate_text::translations_validate_text,
         verify_project => crate::plugins::translations::commands::verify_project::translations_verify_project,
+      }
+      // Where the loopback transport listens; the `@bulk` routes are served there rather than over IPC.
+      transport => "transport" {
+        get_endpoint => crate::plugins::transport::commands::get_endpoint::transport_get_endpoint,
       }
     }
   };

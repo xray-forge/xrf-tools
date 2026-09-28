@@ -11,7 +11,7 @@ export interface ILevelStreamStages {
   transfer: number;
   /** Binding views over those bytes, which copies nothing and should stay near zero. */
   views: number;
-  /** Reading every texture it names that was not already held. */
+  /** Handing the renderer where to fetch every texture it names that was not already held; it fetches them itself. */
   textures: number;
   /** Handing it on to whatever draws it, which is what builds its geometry. */
   deliver: number;

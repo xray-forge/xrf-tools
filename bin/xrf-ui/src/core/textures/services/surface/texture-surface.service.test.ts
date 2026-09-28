@@ -5,7 +5,8 @@ import { mockDdsFile } from "@xrf/renderer/fixtures";
 import { TextureDescription } from "@/core/ipc/types/xrf-app";
 import { EMPTY_TEXTURE_SURFACE } from "@/core/textures/lib/texture-surface";
 import { TextureSurfaceService } from "@/core/textures/services/surface";
-import { resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
+import { setMockBulkResponses } from "@/fixtures/mocks/bulk.mocks";
+import { resetMockInvoke } from "@/fixtures/mocks/tauri.mocks";
 import { MOCK_TEXTURE, mockTextureDescription } from "@/fixtures/mocks/texture.mocks";
 import { mockMaterialDescriptor } from "@/fixtures/mocks/visual.mocks";
 import { muteConsole } from "@/fixtures/utils/console";
@@ -26,7 +27,7 @@ describe("TextureSurfaceService", () => {
 
   beforeEach(() => {
     resetMockInvoke();
-    setMockInvokeResponses({ ["plugin:assets|read_asset"]: mockUploadableTexture() });
+    setMockBulkResponses({ "assets/read_asset": mockUploadableTexture() });
   });
 
   afterEach(() => {
@@ -70,8 +71,8 @@ describe("TextureSurfaceService", () => {
     const { service } = mockInjectedService(TextureSurfaceService);
     const reads: Array<string> = [];
 
-    setMockInvokeResponses({
-      ["plugin:assets|read_asset"]: (args?: Record<string, unknown>) => {
+    setMockBulkResponses({
+      "assets/read_asset": (args?: Record<string, unknown>) => {
         const path: string = String(args?.logicalPath);
 
         reads.push(path);
@@ -98,8 +99,8 @@ describe("TextureSurfaceService", () => {
   it("keeps the base and publishes no pair when the companion cannot be read", async () => {
     const { service } = mockInjectedService(TextureSurfaceService);
 
-    setMockInvokeResponses({
-      ["plugin:assets|read_asset"]: (args?: Record<string, unknown>) => {
+    setMockBulkResponses({
+      "assets/read_asset": (args?: Record<string, unknown>) => {
         if (String(args?.logicalPath).endsWith("_bump#.dds")) {
           throw new Error("Unreadable companion");
         }
@@ -143,7 +144,7 @@ describe("TextureSurfaceService", () => {
       release = resolve;
     });
 
-    setMockInvokeResponses({ ["plugin:assets|read_asset"]: () => pending });
+    setMockBulkResponses({ "assets/read_asset": () => pending });
 
     const abandoned = service.load(mockTextureDescription());
 

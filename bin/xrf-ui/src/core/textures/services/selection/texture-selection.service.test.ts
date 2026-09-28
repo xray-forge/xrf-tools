@@ -3,10 +3,10 @@ import { flowResult } from "@wirestate/mobx";
 
 import { createRoots } from "@/core/assets/lib";
 import { texturesCommands } from "@/core/ipc/commands/textures";
-import { texturesRawCommands } from "@/core/ipc/commands/textures-raw";
 import { ETextureSource, TextureDescription } from "@/core/ipc/types/xrf-app";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { TextureSelectionService } from "@/core/textures/services/selection";
+import { BulkRead, setMockBulkResponses } from "@/fixtures/mocks/bulk.mocks";
 import { mockTextureDescription } from "@/fixtures/mocks/texture.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { noop } from "@/lib/callbacks/noop";
@@ -24,7 +24,9 @@ function mockService() {
   const description = mockTextureDescription();
   const preview = new ArrayBuffer(8);
   const describeTexture = jest.spyOn(texturesCommands, "describe").mockResolvedValue(description);
-  const readTexture = jest.spyOn(texturesRawCommands, "readTexture").mockResolvedValue(preview);
+  const readTexture = jest.fn<BulkRead>().mockResolvedValue(preview);
+
+  setMockBulkResponses({ "textures/read_texture": readTexture });
 
   return { service, description, preview, describeTexture, readTexture };
 }

@@ -2,8 +2,9 @@ import { readDdsFile, toDdsPicture } from "@xrf/renderer";
 import { Nullable, Optional } from "@xrf/types";
 
 import { transformError } from "@/core/error/lib";
-import { assetsRawCommands } from "@/core/ipc/commands/assets-raw";
-import { visualsRawCommands } from "@/core/ipc/commands/visuals-raw";
+import { fetchBulk } from "@/core/ipc/bulk";
+import { assetsBulkRoutes } from "@/core/ipc/commands/assets-bulk";
+import { visualsBulkRoutes } from "@/core/ipc/commands/visuals-bulk";
 import { SelectedVisualDescription } from "@/core/ipc/types/xrf-app";
 import { ILoadableBump, IVisualBumpFiles, IVisualBumpStatus, toLoadableBumps } from "@/core/visuals/lib/visual-bump";
 import { describeVisualSource } from "@/core/visuals/lib/visual-source";
@@ -131,7 +132,7 @@ export class VisualTextureSet {
         try {
           // Read by the logical path the open already resolved, so the bytes come from the file the description named
           // - a substituted dummy included - rather than from a second lookup that could answer differently.
-          const bytes: ArrayBuffer = await assetsRawCommands.readAsset(selected.roots, logicalPath);
+          const bytes: ArrayBuffer = await fetchBulk(assetsBulkRoutes.readAsset(selected.roots, logicalPath));
 
           return [logicalPath, { bytes, reason: null }];
         } catch (error: unknown) {
@@ -292,7 +293,7 @@ export class VisualTextureSet {
     await Promise.all(
       Array.from(submeshesByPath, async ([logicalPath, submeshes]) => {
         try {
-          const png: ArrayBuffer = await visualsRawCommands.readTexture(selected.roots, logicalPath);
+          const png: ArrayBuffer = await fetchBulk(visualsBulkRoutes.readTexture(selected.roots, logicalPath));
           const file: IVisualTextureFile = { bytes: png, isDecoded: true, logicalPath };
 
           for (const submeshIndex of submeshes) {

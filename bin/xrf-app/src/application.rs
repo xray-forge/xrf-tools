@@ -3,13 +3,15 @@
 use std::error::Error;
 use std::sync::Arc;
 
-use tauri::{App, Builder, Manager, Wry};
+use tauri::{App, AppHandle, Builder, Manager, Wry};
 use xrf_job::ExecutionRequest;
 
 use crate::core::assets::AssetMountState;
 use crate::core::execution::ExecutionState;
 use crate::core::jobs::JobRegistry;
+use crate::core::transport::{TransportEndpoint, TransportOrigins, TransportServer, TransportToken};
 use crate::core::window::build_main_window;
+use crate::ipc::registry::transport_routes;
 use crate::plugins::registry::domain_plugins;
 
 /// Assemble the application from its plugins and hand control to Tauri.
@@ -29,6 +31,7 @@ pub fn run() {
     .fold(builder, Builder::plugin)
     .setup(|application| {
       manage_shared_state(application)?;
+      start_transport(application)?;
       build_main_window(application)?;
 
       Ok(())
@@ -55,6 +58,30 @@ fn manage_shared_state(application: &mut App) -> Result<(), Box<dyn Error>> {
   );
 
   application.manage(execution);
+
+  Ok(())
+}
+
+/// Starts the loopback transport the bulk routes are served from, before the window can ask where it listens.
+fn start_transport(application: &mut App) -> Result<(), Box<dyn Error>> {
+  let token: TransportToken = TransportToken::generate()?;
+  let server: TransportServer<AppHandle> = TransportServer::new(
+    transport_routes(),
+    TransportOrigins::of_config(application.config()),
+    token.clone(),
+    application.handle().clone(),
+  );
+
+  let (address, serving) = server.bind()?;
+
+  tauri::async_runtime::spawn(serving);
+
+  log::info!("Transport listening on {address}");
+
+  application.manage(TransportEndpoint {
+    origin: format!("http://{address}"),
+    token: token.get_value().to_string(),
+  });
 
   Ok(())
 }

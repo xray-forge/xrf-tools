@@ -12,6 +12,7 @@ import {
   ERendererOverlay,
   ERendererRequest,
   ERendererResponse,
+  ERendererTextureEncoding,
   IRendererReport,
   IRendererSettings,
   TRendererRequest,
@@ -19,8 +20,10 @@ import {
 import { createRendererWorkerStub, IRendererWorkerStub } from "@xrf/renderer/fixtures";
 import { Maybe } from "@xrf/types";
 
+import { IPC_METRICS } from "@/core/ipc/metrics";
 import { DEFAULT_LEVEL_FOG, toLevelRendererFog } from "@/core/level/lib/lighting/level-fog";
 import { ILevelPoint } from "@/core/level/lib/residency/level-residency";
+import { ELevelSurfaceDressing } from "@/core/level/lib/surface/level-surface-dressing";
 import { LevelLoadService } from "@/core/level/services/level-load.service";
 import { LevelViewService } from "@/core/level/services/level-view.service";
 import { LevelViewportService } from "@/core/level/services/level-viewport.service";
@@ -306,6 +309,34 @@ describe("LevelRenderService", () => {
 
     expect(viewport.stats.draws).toBe(12);
     expect(viewport.camera?.position).toEqual({ x: 1, y: 2, z: -3 });
+
+    service.dispose();
+  });
+
+  it("hands the renderer where to fetch a level's textures, and says what each came to once it is told", async () => {
+    const { container, service } = await mockAttached();
+    const viewport: LevelViewportService = container.get(LevelViewportService);
+
+    await container.get(LevelLoadService).whenHeldRead();
+    await stub.flush();
+
+    const put = stub.take(ERendererRequest.PUT_TEXTURE).find((it) => it.key === "sky\\sky_7_cube");
+
+    expect(put?.source.encoding).toBe(ERendererTextureEncoding.FETCH);
+    expect(viewport.textureReport.dressing.get("sky\\sky_7_cube")?.state).toBe(ELevelSurfaceDressing.FETCHING);
+
+    stub.respond({
+      fetch: { bytes: 2048, duration: 5, failure: null, isDecoded: false, size: { height: 4, levels: 1, width: 4 } },
+      key: "sky\\sky_7_cube",
+      kind: ERendererResponse.TEXTURE_FETCHED,
+    });
+
+    expect(viewport.textureReport.dressing.get("sky\\sky_7_cube")).toMatchObject({
+      state: ELevelSurfaceDressing.UPLOADED,
+      upload: "4×4 · 1 level",
+    });
+    // Counted beside the page's own fetches, since the bytes crossed no seam the page measures.
+    expect(IPC_METRICS.read().commands.find((it) => it.command === "renderer|fetch_texture")?.received).toBe(2048);
 
     service.dispose();
   });

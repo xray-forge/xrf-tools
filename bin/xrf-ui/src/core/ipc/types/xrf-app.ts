@@ -2411,6 +2411,14 @@ export type TranslationsVerifyRequest = {
   language: string;
 };
 
+/** Where the transport listens, and the token every request to it carries. */
+export type TransportEndpoint = {
+  /** The server's origin, such as `http://127.0.0.1:52011`, which a route's path is appended to. */
+  origin: string;
+  /** Sent as `Authorization: Bearer <token>`; new every launch. */
+  token: string;
+};
+
 /** Every `kind` the `VisualSource` union is told apart by, so a switch or a comparison names one. */
 export enum EVisualSource {
   /** A loose `.ogf` file on disk, named by its filesystem path. */

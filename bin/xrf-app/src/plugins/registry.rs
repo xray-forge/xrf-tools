@@ -16,6 +16,7 @@ use crate::plugins::sprite_equipment::plugin::SpriteEquipmentPlugin;
 use crate::plugins::system::plugin::SystemPlugin;
 use crate::plugins::textures::plugin::TexturesPlugin;
 use crate::plugins::translations::plugin::TranslationsPlugin;
+use crate::plugins::transport::plugin::TransportPlugin;
 use crate::plugins::visuals::plugin::VisualsPlugin;
 
 /// The domain plugins this application registers, in the order their command surfaces are written.
@@ -34,6 +35,7 @@ pub(crate) fn domain_plugins<R: Runtime>() -> Vec<TauriPlugin<R>> {
     SystemPlugin::init(),
     TexturesPlugin::init(),
     TranslationsPlugin::init(),
+    TransportPlugin::init(),
     VisualsPlugin::init(),
   ]
 }

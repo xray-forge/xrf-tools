@@ -1,10 +1,10 @@
 import { describe, expect, it } from "@jest/globals";
 import { RenderResult } from "@testing-library/react";
 import { Container } from "@wirestate/core";
-import { mockDdsFile } from "@xrf/renderer/fixtures";
 
 import { EMPTY_LEVEL_TEXTURE_REPORT } from "@/core/level/lib/texture/level-texture-report";
 import { LevelLoadService, LevelViewportService } from "@/core/level/services";
+import { setMockBulkResponses } from "@/fixtures/mocks/bulk.mocks";
 import {
   mockLevelTextureReference,
   mockSectorDescription,
@@ -28,10 +28,12 @@ async function renderProblems(isPresent: boolean): Promise<RenderResult> {
   });
 
   setMockInvokeResponses({
-    ["plugin:assets|read_asset"]: mockDdsFile(),
     ["plugin:levels|open_level"]: mockSessionResponse(level),
     ["plugin:levels|open_sector"]: mockSessionResponse(description),
-    ["plugin:levels|read_sector"]: buffer.toArrayBuffer(),
+  });
+
+  setMockBulkResponses({
+    "levels/read_sector": buffer.toArrayBuffer(),
   });
 
   const container: Container = mockContainer([LevelLoadService, LevelViewportService]);

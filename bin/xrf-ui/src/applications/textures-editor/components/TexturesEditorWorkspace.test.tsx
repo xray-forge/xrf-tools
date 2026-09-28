@@ -13,6 +13,7 @@ import {
   TexturesSaveRequest,
 } from "@/core/ipc/types/xrf-app";
 import { TextureSelectionService } from "@/core/textures/services/selection";
+import { setMockBulkResponses } from "@/fixtures/mocks/bulk.mocks";
 import { resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { MOCK_TEXTURE, mockTextureDescription, mockTextureVocabulary } from "@/fixtures/mocks/texture.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
@@ -44,12 +45,15 @@ async function renderWorkspace(description: TextureDescription = describedTextur
     ["plugin:textures|describe"]: (): TextureDescription => ({ ...description, form: written ?? description.form }),
     ["plugin:textures|get_roots"]: null,
     ["plugin:textures|get_vocabulary"]: mockTextureVocabulary(),
-    ["plugin:textures|read_texture"]: new ArrayBuffer(0),
     ["plugin:textures|save"]: (args?: Record<string, unknown>): TextureSaveOutcome => {
       written = (args?.request as TexturesSaveRequest).descriptor?.form ?? null;
 
       return { descriptorFormat: null, outcome: "completed", written: [] };
     },
+  });
+
+  setMockBulkResponses({
+    "textures/read_texture": new ArrayBuffer(0),
   });
 
   // Built from the application's own bindings, so a workspace that grows a dependency cannot pass here while

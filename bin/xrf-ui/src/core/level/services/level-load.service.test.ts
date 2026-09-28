@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { isObservableProp, reaction } from "@wirestate/mobx";
-import { mockDdsFile } from "@xrf/renderer/fixtures";
 import { Nullable } from "@xrf/types";
 
 import { createRoots } from "@/core/assets/lib";
@@ -17,6 +16,7 @@ import { createLevelResidency } from "@/core/level/lib/residency/level-residency
 import { ISectorTextureRequest } from "@/core/level/lib/sector/level-sector-textures";
 import { EMPTY_LEVEL_STREAM_SUMMARY } from "@/core/level/lib/stream/level-stream-profile";
 import { LevelTextureReader } from "@/core/level/lib/texture/level-texture-reader";
+import { listMockBulkCalls, setMockBulkResponses } from "@/fixtures/mocks/bulk.mocks";
 import {
   mockLevelDetailsDescription,
   mockLevelTextureReference,
@@ -65,7 +65,10 @@ function armLevel(level: SelectedLevelDescription, description: SectorDescriptio
       ...description,
       sector: args?.sector as number,
     })),
-    ["plugin:levels|read_sector"]: buffer,
+  });
+
+  setMockBulkResponses({
+    "levels/read_sector": buffer,
   });
 }
 
@@ -125,7 +128,6 @@ describe("LevelLoadService", () => {
     const textures = [mockLevelTextureReference("stone")];
 
     setMockInvokeResponses({
-      ["plugin:assets|read_asset"]: mockDdsFile(),
       ["plugin:levels|get_level"]: mockSessionResponse({
         ...level,
         bounds: { ...level.bounds!, boundingSphere: { center: { x: 0, y: 0, z: 0 }, radius: 2000 } },
@@ -135,7 +137,10 @@ describe("LevelLoadService", () => {
         ...description,
         sector: args?.sector as number,
       })),
-      ["plugin:levels|read_sector"]: buffer,
+    });
+
+    setMockBulkResponses({
+      "levels/read_sector": buffer,
     });
 
     const supply = recordSupply(service);
@@ -143,9 +148,9 @@ describe("LevelLoadService", () => {
     await service.restore();
     await service.stream(ORIGIN);
 
-    // Read on this side and handed on as bytes: uploading it belongs to whichever side draws.
+    // Handed on as where the renderer fetches it: fetching and uploading it belong to whichever side draws.
     expect(supply.delivered.map((it) => it.reference)).toContain("stone");
-    expect(supply.delivered[0].bytes.byteLength).toBeGreaterThan(0);
+    expect(supply.delivered[0].requests?.file.url).toContain("assets/read_asset");
     // Sized from the description's own extent, which is the only place a restore can learn it from.
     expect(service.residency).toEqual(createLevelResidency(2000));
   });
@@ -158,13 +163,15 @@ describe("LevelLoadService", () => {
     const { service } = mockInjectedService(LevelLoadService);
 
     setMockInvokeResponses({
-      ["plugin:assets|read_asset"]: mockDdsFile(),
       ["plugin:levels|get_level"]: mockSessionResponse({ ...level, textures: [mockLevelTextureReference("stone")] }),
       ["plugin:levels|open_sector"]: mockSessionResponse((args?: Record<string, unknown>) => ({
         ...description,
         sector: args?.sector as number,
       })),
-      ["plugin:levels|read_sector"]: buffer,
+    });
+
+    setMockBulkResponses({
+      "levels/read_sector": buffer,
     });
 
     await service.restore();
@@ -177,7 +184,7 @@ describe("LevelLoadService", () => {
 
     expect(supply.delivered.map((it) => it.reference)).toContain("stone");
     expect(supply.delivered.every((it) => it.reason === null)).toBe(true);
-    expect(supply.delivered[0].bytes.byteLength).toBeGreaterThan(0);
+    expect(supply.delivered[0].requests).not.toBeNull();
   });
 
   // A read that rejected used to leave its reference marked as supplied, so nothing ever asked for the file again.
@@ -186,7 +193,6 @@ describe("LevelLoadService", () => {
     const { service } = mockInjectedService(LevelLoadService);
 
     setMockInvokeResponses({
-      ["plugin:assets|read_asset"]: mockDdsFile(),
       ["plugin:levels|get_level"]: mockSessionResponse({ ...level, textures: [mockLevelTextureReference("stone")] }),
     });
 
@@ -217,7 +223,6 @@ describe("LevelLoadService", () => {
     const { service } = mockInjectedService(LevelLoadService);
 
     setMockInvokeResponses({
-      ["plugin:assets|read_asset"]: mockDdsFile(),
       ["plugin:levels|get_level"]: mockSessionResponse({ ...level, textures: [mockLevelTextureReference("stone")] }),
     });
 
@@ -269,7 +274,10 @@ describe("LevelLoadService", () => {
         ...description,
         sector: args?.sector as number,
       })),
-      ["plugin:levels|read_sector"]: buffer,
+    });
+
+    setMockBulkResponses({
+      "levels/read_sector": buffer,
     });
 
     await service.restore();
@@ -312,7 +320,7 @@ describe("LevelLoadService", () => {
     expect(service.level.value?.selected.value.sectors).toHaveLength(1);
     expect(service.sectorReport.held).toHaveLength(0);
     expect(countCalls("plugin:levels|open_sector")).toBe(0);
-    expect(countCalls("plugin:levels|read_sector")).toBe(0);
+    expect(listMockBulkCalls("levels/read_sector")).toHaveLength(0);
   });
 
   it("brings the sectors near the camera into residency", async () => {
@@ -416,13 +424,15 @@ describe("LevelLoadService", () => {
 
     armLevel(level, description, buffer);
     setMockInvokeResponses({
-      ["plugin:assets|read_asset"]: mockDdsFile(),
       ["plugin:levels|open_level"]: mockSessionResponse(level),
       ["plugin:levels|open_sector"]: mockSessionResponse((args?: Record<string, unknown>) => ({
         ...description,
         sector: args?.sector as number,
       })),
-      ["plugin:levels|read_sector"]: buffer,
+    });
+
+    setMockBulkResponses({
+      "levels/read_sector": buffer,
     });
 
     await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS, false);
@@ -448,10 +458,12 @@ describe("LevelLoadService", () => {
 
     armLevel(level, description, buffer);
     setMockInvokeResponses({
-      ["plugin:assets|read_asset"]: mockDdsFile(),
       ["plugin:levels|open_level"]: mockSessionResponse(level),
       ["plugin:levels|open_sector"]: mockSessionResponse(description),
-      ["plugin:levels|read_sector"]: buffer,
+    });
+
+    setMockBulkResponses({
+      "levels/read_sector": buffer,
     });
 
     await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS, false);
@@ -596,7 +608,10 @@ describe("LevelLoadService streaming progress", () => {
 
         return { ...description, sector: args?.sector as number };
       }),
-      ["plugin:levels|read_sector"]: buffer,
+    });
+
+    setMockBulkResponses({
+      "levels/read_sector": buffer,
     });
 
     await service.stream(ORIGIN);
@@ -622,7 +637,10 @@ describe("LevelLoadService streaming progress", () => {
 
         return { ...description, sector: args?.sector as number };
       }),
-      ["plugin:levels|read_sector"]: buffer,
+    });
+
+    setMockBulkResponses({
+      "levels/read_sector": buffer,
     });
 
     const streaming: Promise<void> = service.stream(ORIGIN);
@@ -655,7 +673,10 @@ describe("LevelLoadService streaming progress", () => {
 
         return { ...description, sector: args?.sector as number };
       }),
-      ["plugin:levels|read_sector"]: buffer,
+    });
+
+    setMockBulkResponses({
+      "levels/read_sector": buffer,
     });
 
     await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS, false);
@@ -763,7 +784,10 @@ describe("LevelLoadService streaming progress", () => {
 
         return { ...description, sector: args?.sector as number };
       }),
-      ["plugin:levels|read_sector"]: buffer,
+    });
+
+    setMockBulkResponses({
+      "levels/read_sector": buffer,
     });
 
     // Three camera reports while the first pack is still in flight, which is what flying through a level does.
@@ -797,15 +821,6 @@ describe("LevelLoadService streaming progress", () => {
     }
 
     setMockInvokeResponses({
-      ["plugin:assets|read_asset"]: async (args?: Record<string, unknown>) => {
-        if (String(args?.logicalPath).includes("grass")) {
-          reach();
-
-          await held;
-        }
-
-        return mockDdsFile();
-      },
       ["plugin:levels|open_level"]: mockSessionResponse({
         ...level,
         textures: ["stone", "grass", "rock"].map((it) => mockLevelTextureReference(it)),
@@ -815,7 +830,24 @@ describe("LevelLoadService streaming progress", () => {
         sections: textured(args?.sector as number),
         sector: args?.sector as number,
       })),
-      ["plugin:levels|read_sector"]: buffer,
+    });
+
+    setMockBulkResponses({
+      "levels/read_sector": buffer,
+    });
+
+    const ask: LevelTextureReader["read"] = LevelTextureReader.prototype.read;
+    const read = jest.spyOn(LevelTextureReader.prototype, "read").mockImplementation(async function (
+      this: LevelTextureReader,
+      request: ISectorTextureRequest
+    ) {
+      if (request.reference === "grass") {
+        reach();
+
+        await held;
+      }
+
+      return ask.call(this, request);
     });
 
     await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS, false);
@@ -840,10 +872,12 @@ describe("LevelLoadService streaming progress", () => {
 
     await new Promise((resolve) => setTimeout(resolve, 0));
 
-    // The file was read before the move and is still supplied, so the sector arrives with something to draw
+    // The file was asked for before the move and is still supplied, so the sector arrives with something to draw
     // with rather than with a texture released out from under it.
     expect(supply.delivered.map((it) => it.reference)).toContain("stone");
     expect(supply.retained.some((it) => it?.has("stone"))).toBe(true);
+
+    read.mockRestore();
   });
 });
 
@@ -937,7 +971,6 @@ describe("LevelLoadService held reads", () => {
 
   function armLights(level: SelectedLevelDescription, lights: unknown): void {
     setMockInvokeResponses({
-      ["plugin:assets|read_asset"]: mockDdsFile(),
       ["plugin:levels|open_level"]: mockSessionResponse(level),
       ["plugin:levels|open_lights"]: mockSessionResponse(lights),
     });
@@ -973,7 +1006,6 @@ describe("LevelLoadService held reads", () => {
     const told: Array<unknown> = [];
 
     setMockInvokeResponses({
-      ["plugin:assets|read_asset"]: mockDdsFile(),
       ["plugin:levels|open_level"]: mockSessionResponse(level),
       ["plugin:levels|open_lights"]: async (args?: Record<string, unknown>) => {
         await held;
@@ -994,10 +1026,12 @@ describe("LevelLoadService held reads", () => {
 
   function armGrass(level: SelectedLevelDescription, description: LevelDetailsDescription, buffer: ArrayBuffer): void {
     setMockInvokeResponses({
-      ["plugin:assets|read_asset"]: mockDdsFile(),
       ["plugin:levels|open_details"]: mockSessionResponse(description),
       ["plugin:levels|open_level"]: mockSessionResponse(level),
-      ["plugin:levels|read_details"]: buffer,
+    });
+
+    setMockBulkResponses({
+      "levels/read_details": buffer,
     });
   }
 

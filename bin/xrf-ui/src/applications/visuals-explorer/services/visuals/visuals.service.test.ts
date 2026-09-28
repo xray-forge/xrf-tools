@@ -12,6 +12,7 @@ import { describeVisualSource } from "@/core/visuals/lib/visual-source";
 import { EVisualTextureState } from "@/core/visuals/lib/visual-texture";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
 import { VisualMotionService } from "@/core/visuals/services/visual-motion.service";
+import { setMockBulkResponses } from "@/fixtures/mocks/bulk.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import {
@@ -88,7 +89,10 @@ describe("VisualsService bone highlight", () => {
 
     setMockInvokeResponses({
       ["plugin:visuals|open_model"]: mockSessionResponse(selected),
-      ["plugin:visuals|read_geometry"]: buffer,
+    });
+
+    setMockBulkResponses({
+      "visuals/read_geometry": buffer,
     });
 
     await service.openFile("C:\\gamedata\\wpn_ak74.ogf");
@@ -124,7 +128,10 @@ describe("VisualsService bone highlight", () => {
 
     setMockInvokeResponses({
       ["plugin:visuals|open_model"]: mockSessionResponse(selected),
-      ["plugin:visuals|read_geometry"]: buffer,
+    });
+
+    setMockBulkResponses({
+      "visuals/read_geometry": buffer,
     });
 
     await service.openFile("C:\\gamedata\\other.ogf");
@@ -162,7 +169,10 @@ describe("VisualsService bone visibility", () => {
 
     setMockInvokeResponses({
       ["plugin:visuals|open_model"]: mockSessionResponse(selected),
-      ["plugin:visuals|read_geometry"]: buffer,
+    });
+
+    setMockBulkResponses({
+      "visuals/read_geometry": buffer,
     });
 
     await service.openFile("C:\\gamedata\\wpn_ak74.ogf");
@@ -217,7 +227,10 @@ describe("VisualsService bone visibility", () => {
 
     setMockInvokeResponses({
       ["plugin:visuals|open_model"]: mockSessionResponse(selected),
-      ["plugin:visuals|read_geometry"]: buffer,
+    });
+
+    setMockBulkResponses({
+      "visuals/read_geometry": buffer,
     });
 
     await service.openFile("C:\\gamedata\\other.ogf");
@@ -238,7 +251,10 @@ describe("VisualsService opening", () => {
 
     setMockInvokeResponses({
       ["plugin:visuals|open_model"]: mockSessionResponse(selected),
-      ["plugin:visuals|read_geometry"]: buffer,
+    });
+
+    setMockBulkResponses({
+      "visuals/read_geometry": buffer,
     });
 
     await service.openFile("C:\\gamedata\\wpn_ak74.ogf");
@@ -271,7 +287,10 @@ describe("VisualsService opening", () => {
 
     setMockInvokeResponses({
       ["plugin:visuals|get_model"]: mockSessionResponse(selected),
-      ["plugin:visuals|read_geometry"]: buffer,
+    });
+
+    setMockBulkResponses({
+      "visuals/read_geometry": buffer,
     });
 
     await service.onProvision();
@@ -320,7 +339,10 @@ describe("VisualsService opening", () => {
       ["plugin:visuals|open_model"]: mockSessionResponse((parameters?: Record<string, unknown>) =>
         isFirst(parameters) ? first.selected : second.selected
       ),
-      ["plugin:visuals|read_geometry"]: (parameters?: Record<string, unknown>) =>
+    });
+
+    setMockBulkResponses({
+      "visuals/read_geometry": (parameters?: Record<string, unknown>) =>
         firstSessions.has(parameters?.sessionId) ? pendingFirst : second.buffer,
     });
 
@@ -349,8 +371,11 @@ describe("VisualsService opening", () => {
         roots: (parameters as { roots: XrayRoots }).roots,
         dependencies: { motions: [], textures: [mockTextureDependency({ submeshIndex: 0 })] },
       })),
-      ["plugin:visuals|read_geometry"]: buffer,
-      ["plugin:assets|read_asset"]: (parameters?: Record<string, unknown>) => {
+    });
+
+    setMockBulkResponses({
+      "visuals/read_geometry": buffer,
+      "assets/read_asset": (parameters?: Record<string, unknown>) => {
         readParameters = parameters ?? null;
 
         return mockDdsFile({ fourCC: "DXT1", height: 4, mipmapCount: 1, width: 4 });
@@ -389,7 +414,10 @@ describe("VisualsService opening", () => {
 
         return selected;
       }),
-      ["plugin:visuals|read_geometry"]: buffer,
+    });
+
+    setMockBulkResponses({
+      "visuals/read_geometry": buffer,
     });
 
     await service.openAsset("meshes\\stalker.ogf", ["C:\\gamedata"]);
@@ -431,8 +459,11 @@ describe("VisualsService opening", () => {
 
     setMockInvokeResponses({
       ["plugin:visuals|open_model"]: mockSessionResponse(selected),
-      ["plugin:visuals|read_geometry"]: buffer,
       ["plugin:visuals|close_model"]: null,
+    });
+
+    setMockBulkResponses({
+      "visuals/read_geometry": buffer,
     });
 
     await service.openFile("C:\\gamedata\\wpn_ak74.ogf");
