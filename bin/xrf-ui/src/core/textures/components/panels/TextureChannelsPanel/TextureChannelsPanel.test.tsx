@@ -17,6 +17,8 @@ import { renderWithProviders } from "@/fixtures/utils/render";
 import { mockRendererThread } from "@/fixtures/utils/renderer";
 import { AsyncState } from "@/lib/async-state";
 
+import { TEXTURE_CHANNEL_TILES } from "./TextureChannelsPanel.utils";
+
 /** One capture the panel asked for, answered when the test says. */
 interface IHeldCapture {
   plane: ERendererBumpPlane;
@@ -157,6 +159,44 @@ describe("TextureChannelsPanel", () => {
       })
     );
 
-    expect(view.getByText("The renderer stopped: Device lost")).toBeInTheDocument();
+    expect(view.getByTestId("texture-channels-failure")).toHaveTextContent("Device lost");
+  });
+
+  // The readout is read from the cpu texels, so a machine without a gpu the renderer can use still reads every texel.
+  it("keeps the readout and every tile to hover once the renderer has stopped", () => {
+    const { container, view } = renderPanel();
+
+    act(() =>
+      runInAction(() => {
+        container.get(TextureSurfaceService).bumpTexels = {} as ITextureBumpTexels;
+        container.get(TextureRenderService).failure = "Device lost";
+      })
+    );
+
+    expect(view.getByTestId("texture-channels-readout")).toHaveTextContent("At");
+
+    for (const plane of Object.values(ERendererBumpPlane)) {
+      expect(getTile(view, plane)).toBeInTheDocument();
+    }
+  });
+
+  it("draws every plane again once a renderer starts after the one that stopped", () => {
+    const { container } = renderPanel();
+
+    act(() =>
+      runInAction(() => {
+        container.get(TextureRenderService).failure = "Device lost";
+      })
+    );
+
+    captures = [];
+
+    act(() =>
+      runInAction(() => {
+        container.get(TextureRenderService).failure = null;
+      })
+    );
+
+    expect(captures).toHaveLength(TEXTURE_CHANNEL_TILES.length);
   });
 });

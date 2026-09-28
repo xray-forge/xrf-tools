@@ -14,6 +14,7 @@ import { ITextureBumpTexels, ITextureSurfaceFiles } from "@/core/textures/lib/te
 import { TextureRenderService } from "@/core/textures/services/render";
 import { TextureSelectionService } from "@/core/textures/services/selection";
 import { TextureSurfaceService } from "@/core/textures/services/surface";
+import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { ABSENT_VALUE } from "@/lib/format/number";
 
@@ -53,9 +54,7 @@ export function TextureChannelsPanel({
   const texels: Nullable<ITextureBumpTexels> = surfaceService.bumpTexels;
   const isReading: boolean = surfaceService.files.isLoading;
   const failure: Nullable<string> = renderService.failure;
-  const gap: Nullable<string> = failure
-    ? `The renderer stopped: ${failure}`
-    : describeTextureChannelsGap(description, files, isReading);
+  const gap: Nullable<string> = describeTextureChannelsGap(description, files, isReading);
   const readout: Nullable<ITextureTexelReadout> = texels && position ? describeTextureTexel(texels, position) : null;
   // Laid out from the pair's own proportions, so a plane is never shown stretched into a square.
   const aspect: string = toTextureChannelAspect(files);
@@ -95,9 +94,16 @@ export function TextureChannelsPanel({
     }
   }, [renderService]);
 
+  // Cleared rather than left showing the last planes a stopped renderer drew, and drawn again by the one after it.
   useEffect(() => {
-    draw();
-  }, [draw, files]);
+    if (failure === null) {
+      draw();
+    } else {
+      for (const tile of tilesRef.current.values()) {
+        tile.getContext("2d")?.clearRect(0, 0, tile.width, tile.height);
+      }
+    }
+  }, [draw, files, failure]);
 
   // A panel is resized by hand and by the window, and a tile that is not redrawn afterwards keeps the last size it was
   // copied at, stretched.
@@ -177,10 +183,16 @@ export function TextureChannelsPanel({
             )}
           </EditorPanelSection>
 
+          {failure ? (
+            <EditorPanelSection data-testid={"texture-channels-failure"} title={"Planes"}>
+              <EditorPanelProperty label={"Not drawn: the renderer stopped"} value={failure} />
+            </EditorPanelSection>
+          ) : null}
+
           {TEXTURE_CHANNEL_TILES.map((tile: ITextureChannelTile) => (
             <EditorPanelSection key={tile.plane} title={tile.label} caption={tile.caption}>
               <div
-                className={"w-full checkerboard"}
+                className={cn("w-full", failure ? null : "checkerboard")}
                 style={{ aspectRatio: aspect }}
                 onPointerMove={onHover}
                 onPointerLeave={() => setPosition(null)}
