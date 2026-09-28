@@ -19,6 +19,20 @@ describe("GrassUniforms", () => {
     expect(uniforms.candidateCount).toBe(25);
   });
 
+  it("plants every held slot again when its density changes, and never for a radius or a height", () => {
+    const uniforms: GrassUniforms = new GrassUniforms();
+
+    uniforms.configure(DEFAULT_RENDERER_GRASS_SETTINGS);
+
+    const planted: number = uniforms.generation.value;
+
+    uniforms.configure({ ...DEFAULT_RENDERER_GRASS_SETTINGS, height: 1.5, radius: 100 });
+    expect(uniforms.generation.value).toBe(planted);
+
+    uniforms.configure({ ...DEFAULT_RENDERER_GRASS_SETTINGS, density: 0.3 });
+    expect(uniforms.generation.value).toBe(planted + 1);
+  });
+
   it("stands the camera over its slot in the engine's space, rounded to the nearest", () => {
     const uniforms: GrassUniforms = new GrassUniforms();
     const camera: PerspectiveCamera = new PerspectiveCamera();

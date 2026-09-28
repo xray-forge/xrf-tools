@@ -25,6 +25,7 @@ import {
   listGrassItemStorage,
   listGrassLevelStorage,
   TGrassBuffers,
+  toGrassCachePerCell,
   toGrassItemCapacity,
 } from "#/scene/grass/grass-buffers";
 import { createGrassPlanting, IGrassPlanting, toGrassItems, toGrassStarts } from "#/scene/grass/grass-planting.tsl";
@@ -47,7 +48,7 @@ interface IGrassBuild {
   capacity: number;
   items: IGrassItemBuffers;
   passes: IGrassPlanting;
-  /** The four passes, in the order a frame runs them. */
+  /** The five passes, in the order a frame runs them. */
   dispatches: Array<ComputeNode>;
   draws: Array<IGrassDraw>;
   /** What the draws are in, drawn once they compiled. */
@@ -161,12 +162,17 @@ export class SceneGrass {
     uniforms.configure(settings);
     uniforms.follow(view, grass.sizeX, grass.sizeZ, grass.offsetX, grass.offsetZ);
 
+    const { storageLimit } = this.rendererUniforms.staticDraws;
     const needed: number = uniforms.slotCount * uniforms.candidateCount;
-    const capacity: number = toGrassItemCapacity(needed, this.rendererUniforms.staticDraws.storageLimit);
+    const capacity: number = toGrassItemCapacity(needed, storageLimit);
+    const cells: number = uniforms.slotCount;
+    const perCell: number = toGrassCachePerCell(cells, uniforms.candidateCount, storageLimit);
+    const held: Nullable<IGrassItemBuffers> = this.current?.items ?? null;
+    const isOutgrown: boolean = !held || capacity > held.capacity || cells > held.cells || perCell > held.perCell;
 
     // One build waits at a time; settings outgrowing it meanwhile are built for once it is in.
-    if ((!this.current || capacity > this.current.capacity) && !this.pending) {
-      this.pending = this.build(grass, level, capacity);
+    if (isOutgrown && !this.pending) {
+      this.pending = this.build(grass, level, capacity, cells, perCell);
     }
 
     const { current } = this;
@@ -175,6 +181,7 @@ export class SceneGrass {
       return null;
     }
 
+    current.passes.refresh.count = Math.max(uniforms.slotCount, 1);
     current.passes.plant.count = Math.max(uniforms.slotCount, 1);
     // Past the lists' room the planting drops what does not fit, so nothing past it is scattered.
     current.passes.scatter.count = Math.max(Math.min(needed, current.capacity), 1);
@@ -205,9 +212,15 @@ export class SceneGrass {
     }
   }
 
-  /** Item lists as large as asked, and the passes and draws reading them. */
-  private build(grass: IRendererGrass, level: IGrassLevelBuffers, capacity: number): IGrassBuild {
-    const items: IGrassItemBuffers = createGrassItemBuffers(capacity);
+  /** Item lists and a slot cache as large as asked, and the passes and draws reading them. */
+  private build(
+    grass: IRendererGrass,
+    level: IGrassLevelBuffers,
+    capacity: number,
+    cells: number,
+    perCell: number
+  ): IGrassBuild {
+    const items: IGrassItemBuffers = createGrassItemBuffers(capacity, cells, perCell);
     const buffers: TGrassBuffers = { ...level, ...items };
     const passes: IGrassPlanting = createGrassPlanting(
       buffers,
@@ -251,7 +264,7 @@ export class SceneGrass {
 
     return {
       capacity,
-      dispatches: [passes.clear, passes.plant, passes.arrange, passes.scatter],
+      dispatches: [passes.refresh, passes.clear, passes.plant, passes.arrange, passes.scatter],
       draws,
       items,
       passes,
@@ -272,7 +285,7 @@ export class SceneGrass {
       samplers.release();
     });
     this.rendererUniforms.retirement.retire(listGrassItemStorage(build.items));
-    // Their capacity and model count are in their shaders, so each rebuild is four pipelines three keeps until told.
+    // Their capacity and model count are in their shaders, so each rebuild is five pipelines three keeps until told.
     build.dispatches.forEach((compute: ComputeNode) => compute.dispose());
   }
 }

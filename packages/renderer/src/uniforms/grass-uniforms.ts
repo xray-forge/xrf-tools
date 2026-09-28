@@ -28,6 +28,11 @@ export class GrassUniforms {
   public readonly jitter = uniform(0);
   /** What every tuft is scaled by, `ps_current_detail_height`. */
   public readonly height = uniform(1);
+  /**
+   * Counts what a slot plants changing, its density, so every slot the planting holds is planted again; a slot held
+   * under another stands for nothing.
+   */
+  public readonly generation = uniform(1);
   /** The grid's size and where its first cell stands. */
   public readonly grid = uniform(new Vector4());
   /** The view's six planes in renderer space, pointing in. */
@@ -59,10 +64,17 @@ export class GrassUniforms {
       (toRendererSettingValue(grass.density, settings.density) as Maybe<number>) ?? grass.density.max;
 
     // `dm_current_size` and `dm_current_fade`, from `r__detail_radius`.
+    const steps: number = Math.ceil(GRASS_SLOT_METERS / density);
+    const jitter: number = density / 1.7;
+
+    if (steps !== this.steps.value || jitter !== this.jitter.value) {
+      this.generation.value += 1;
+    }
+
     this.reach.value = Math.floor(radius / 4) * 2;
     this.fade.value = 2 * this.reach.value - 0.5;
-    this.steps.value = Math.ceil(GRASS_SLOT_METERS / density);
-    this.jitter.value = density / 1.7;
+    this.steps.value = steps;
+    this.jitter.value = jitter;
     this.height.value = settings.height;
   }
 

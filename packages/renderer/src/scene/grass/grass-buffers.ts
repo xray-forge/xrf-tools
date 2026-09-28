@@ -1,7 +1,7 @@
 import { IndirectStorageBufferAttribute, StorageBufferAttribute } from "three/webgpu";
 
 import { IRendererGrass, IRendererGrassModel } from "#/contract/scene/renderer-grass";
-import { createGrassDither, GRASS_ITEM_VECTORS } from "#/scene/grass/grass-planting.tsl";
+import { createGrassDither, GRASS_CACHE_VECTORS, GRASS_ITEM_VECTORS } from "#/scene/grass/grass-planting.tsl";
 import { STATIC_DRAW_ARGUMENTS } from "#/uniforms/static-draw-buffers";
 
 /** What the grass is planted from, and what each model's count and draw are kept in: the level's, made once. */
@@ -32,10 +32,20 @@ export interface IGrassLevelBuffers {
   args: IndirectStorageBufferAttribute;
 }
 
-/** The frame's planted items, as many as the planting's settings ask room for. */
+/** The frame's planted items, as many as the planting's settings ask room for, and the slots they are planted from. */
 export interface IGrassItemBuffers {
   /** Items the lists hold. */
   capacity: number;
+  /** Slots the cache holds, a ring around the camera as wide as the planting reaches. */
+  cells: number;
+  /** Tufts a cached slot holds at most. */
+  perCell: number;
+  /** Four words a cached slot: the world slot it holds, on each axis, the planting's generation, and its tufts. */
+  cacheKeys: StorageBufferAttribute;
+  /** A vector a cached slot: its ground's middle height and half its height, its hemisphere and its sun. */
+  cacheShapes: StorageBufferAttribute;
+  /** `GRASS_CACHE_VECTORS` a cached tuft: its place and turn, then its size, model and wave. */
+  cacheItems: StorageBufferAttribute;
   /** The frame's items as they were planted, and which model each is. */
   items: StorageBufferAttribute;
   itemModels: StorageBufferAttribute;
@@ -89,9 +99,14 @@ export function createGrassLevelBuffers(grass: IRendererGrass): IGrassLevelBuffe
  * @param capacity - Items the lists hold.
  * @returns The lists.
  */
-export function createGrassItemBuffers(capacity: number): IGrassItemBuffers {
+export function createGrassItemBuffers(capacity: number, cells: number, perCell: number): IGrassItemBuffers {
   return {
+    cacheItems: new StorageBufferAttribute(new Float32Array(cells * perCell * GRASS_CACHE_VECTORS * 4), 4),
+    cacheKeys: new StorageBufferAttribute(new Uint32Array(cells * 4), 1),
+    cacheShapes: new StorageBufferAttribute(new Float32Array(cells * 4), 4),
     capacity,
+    cells,
+    perCell,
     itemModels: new StorageBufferAttribute(new Uint32Array(capacity), 1),
     items: new StorageBufferAttribute(new Float32Array(capacity * GRASS_ITEM_VECTORS * 4), 4),
     sorted: new StorageBufferAttribute(new Float32Array(capacity * GRASS_ITEM_VECTORS * 4), 4),
@@ -115,6 +130,19 @@ export function toGrassItemCapacity(needed: number, storageLimit: number): numbe
 }
 
 /**
+ * Tufts a cached slot is made to hold: every candidate the settings lay out, or fewer where the cache would outgrow
+ * one storage buffer, the planting dropping the rest.
+ *
+ * @param cells - Slots the cache holds.
+ * @param candidates - Candidates a slot lays out.
+ * @param storageLimit - Bytes one storage buffer may hold and be bound whole.
+ * @returns Tufts a slot holds.
+ */
+export function toGrassCachePerCell(cells: number, candidates: number, storageLimit: number): number {
+  return Math.max(1, Math.min(candidates, Math.floor(storageLimit / (Math.max(cells, 1) * GRASS_CACHE_VECTORS * 16))));
+}
+
+/**
  * @param buffers - The level's buffers.
  * @returns Every storage buffer among them, for letting them go.
  */
@@ -129,7 +157,14 @@ export function listGrassLevelStorage(buffers: IGrassLevelBuffers): Array<Storag
  * @returns Every storage buffer among them, for letting them go.
  */
 export function listGrassItemStorage(buffers: IGrassItemBuffers): Array<StorageBufferAttribute> {
-  return [buffers.items, buffers.itemModels, buffers.sorted];
+  return [
+    buffers.items,
+    buffers.itemModels,
+    buffers.sorted,
+    buffers.cacheKeys,
+    buffers.cacheShapes,
+    buffers.cacheItems,
+  ];
 }
 
 /** A storage attribute over an array, one element long where the array is empty: a binding cannot be. */

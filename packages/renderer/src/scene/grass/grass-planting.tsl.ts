@@ -46,11 +46,16 @@ const BOX_GROWTH: number = 0.001;
 /** Vectors of four floats an item takes: its place and turn, then its scale, light and wave. */
 export const GRASS_ITEM_VECTORS: number = 2;
 
+/** Vectors of four floats a cached tuft takes: its place and turn, then its size, model and wave. */
+export const GRASS_CACHE_VECTORS: number = 2;
+
 /** The compute passes that plant a frame's grass, in the order they run. */
 export interface IGrassPlanting {
+  /** Plants the slots that came into the cache since the frame before, a thread a slot of it. */
+  refresh: ComputeNode;
   /** Zeroes the counts. */
   clear: ComputeNode;
-  /** Plants every slot around the camera, a thread a slot, and appends what it keeps. */
+  /** Culls every cached slot's tufts, a thread a slot, and appends what it keeps. */
   plant: ComputeNode;
   /** Lays each model's items out after the last's, and writes its draw. */
   arrange: ComputeNode;
@@ -105,11 +110,12 @@ export function toGrassItems(buffers: IGrassItemBuffers): StorageBufferNode<"vec
 }
 
 /**
- * The passes planting the grass, `CDetailManager::cache_Decompress` for every slot around the camera each frame: the
- * same generators seeded the same way and drawn in the same order, the same dither, the same ray cast down onto the
- * slot's own triangles, so a slot plants what the engine plants in it. Then `UpdateVisibleM`'s cull: a slot fades by
- * its distance, shrinking its tufts to nothing at `dm_fade`, a tuft too small to see is dropped, one too small to see
- * sway stands still, and anything outside the view is not kept.
+ * The passes planting the grass, as `CDetailManager` does. A ring of slots around the camera is its cache, and a slot
+ * coming into it is planted once, `cache_Decompress`: the same generators seeded the same way and drawn in the same
+ * order, the same dither, the same ray cast down onto the slot's own triangles, so a slot plants what the engine plants
+ * in it. Every frame then culls what the cache holds, `UpdateVisibleM`: a slot outside the view passes over, a slot
+ * fades by its distance, shrinking its tufts to nothing at `dm_fade`, a tuft too small to see is dropped, one too small
+ * to see sway stands still, and anything outside the view is not kept.
  *
  * @param buffers - What the grass is planted from and into.
  * @param uniforms - Where the camera stands and what the planting is set to.
@@ -177,27 +183,38 @@ export function createGrassPlanting(
     arrange,
     clear,
     plant: createPlant(buffers, uniforms, discard, capacity, counts, items, itemModels),
+    refresh: createRefresh(buffers, uniforms),
     scatter,
   };
 }
 
-/** The planting of every slot around the camera, a thread a slot. */
-function createPlant(
-  buffers: TGrassBuffers,
-  uniforms: GrassUniforms,
-  discard: Node<"float">,
-  capacity: number,
-  counts: StorageBufferNode<"uint">,
-  items: StorageBufferNode<"vec4">,
-  itemModels: StorageBufferNode<"uint">
-): ComputeNode {
+/**
+ * The world slot one of the ring's columns or rows holds while the camera stands over `center`: of the slots within
+ * `reach` of it, the one whose place in the ring is `cell`, wrapped round.
+ */
+function toRingSlot(center: Node<"int">, reach: Node<"int">, line: Node<"int">, cell: Node<"int">): Node<"int"> {
+  const first = center.sub(reach);
+
+  return first.add(cell.sub(first).mod(line).add(line).mod(line));
+}
+
+/**
+ * `cache_Update` and `cache_Decompress`: a thread a slot of the ring, planting the world slot it holds now where that is
+ * not the slot it holds already, or was planted under another generation. What a tuft keeps whatever the camera does is
+ * kept: its place, turn and size, its model and its wave; the slot's height and light beside.
+ */
+function createRefresh(buffers: TGrassBuffers, uniforms: GrassUniforms): ComputeNode {
   const models: number = buffers.modelCount;
+  const { cells, perCell } = buffers;
   const grid = storage(buffers.grid, "uint", buffers.gridLength).toReadOnly();
   const slots = storage(buffers.slots, "uint", buffers.slotWords).toReadOnly();
   const bins = storage(buffers.bins, "uint", buffers.binLength).toReadOnly();
   const triangles = storage(buffers.triangles, "float", buffers.triangleFloats).toReadOnly();
   const dither = storage(buffers.dither, "uint", 256).toReadOnly();
   const shapes = storage(buffers.models, "vec4", Math.max(models, 1) * 2).toReadOnly();
+  const keys = storage(buffers.cacheKeys, "uint", cells * 4);
+  const cellShapes = storage(buffers.cacheShapes, "vec4", cells);
+  const cached = storage(buffers.cacheItems, "vec4", cells * perCell * GRASS_CACHE_VECTORS);
 
   return Fn(() => {
     const reach = int(uniforms.reach).toVar();
@@ -208,9 +225,28 @@ function createPlant(
       Return();
     });
 
-    // The world slot this thread plants, and its cell in the grid.
-    const sx = int(uniforms.center.x).sub(reach).add(index.mod(line)).toVar();
-    const sz = int(uniforms.center.y).sub(reach).add(index.div(line)).toVar();
+    // The world slot this place in the ring holds now, and what it holds already.
+    const sx = toRingSlot(int(uniforms.center.x), reach, line, index.mod(line)).toVar();
+    const sz = toRingSlot(int(uniforms.center.y), reach, line, index.div(line)).toVar();
+    const key = uint(index).mul(4).toVar();
+    const generation = uint(uniforms.generation).toVar();
+
+    If(
+      keys
+        .element(key)
+        .equal(uint(sx))
+        .and(keys.element(key.add(1)).equal(uint(sz)))
+        .and(keys.element(key.add(2)).equal(generation)),
+      () => {
+        Return();
+      }
+    );
+
+    keys.element(key).assign(uint(sx));
+    keys.element(key.add(1)).assign(uint(sz));
+    keys.element(key.add(2)).assign(generation);
+    keys.element(key.add(3)).assign(uint(0));
+
     const cellX = sx.add(int(uniforms.grid.z)).toVar();
     const cellZ = sz.add(int(uniforms.grid.w)).toVar();
 
@@ -247,12 +283,8 @@ function createPlant(
       bitAnd(w1, uint(0x3f)),
       bitAnd(shiftRight(w1, uint(6)), uint(0x3f)),
     ].map((id) => id.toVar());
-    const sun = float(bitAnd(shiftRight(w1, uint(12)), uint(0xf)))
-      .div(15)
-      .toVar();
-    const hemi = float(bitAnd(shiftRight(w1, uint(16)), uint(0xf)))
-      .div(15)
-      .toVar();
+    const sun = float(bitAnd(shiftRight(w1, uint(12)), uint(0xf))).div(15);
+    const hemi = float(bitAnd(shiftRight(w1, uint(16)), uint(0xf))).div(15);
     const palettes: ReadonlyArray<Node<"uint">> = [
       bitAnd(w2, uint(0xffff)),
       shiftRight(w2, uint(16)),
@@ -260,37 +292,13 @@ function createPlant(
       shiftRight(w3, uint(16)),
     ].map((palette) => palette.toVar());
 
+    cellShapes.element(index).assign(vec4(base.add(top).mul(0.5), top.sub(base).mul(0.5), hemi, sun));
+
     // `vis.box`, grown by `EPS_L`.
     const minX = float(sx).mul(2).sub(BOX_GROWTH).toVar();
     const minZ = float(sz).mul(2).sub(BOX_GROWTH).toVar();
     const minY = base.sub(BOX_GROWTH).toVar();
     const maxY = top.add(BOX_GROWTH).toVar();
-
-    // `UpdateVisibleM`: the slot's distance from the eye fades every tuft in it, by squared metres from one to
-    // `dm_fade`.
-    const center = vec3(float(sx).mul(2).add(1), base.add(top).mul(0.5), float(sz).mul(2).add(1));
-    const offset = uniforms.eye.sub(center);
-    const distance = dot(offset, offset).toVar();
-    const fadeLimit = uniforms.fade.mul(uniforms.fade);
-
-    If(distance.greaterThan(fadeLimit), () => {
-      Return();
-    });
-
-    // `UpdateVisibleM`'s `testSAABB`: a slot outside the view is passed over before any of its candidates is laid
-    // out. Its sphere is grown by the largest tuft, since a tuft reaches past the ground its slot's box holds.
-    const half = top.sub(base).mul(0.5);
-    const bound = sqrt(float(2).add(half.mul(half)))
-      .add(BOX_GROWTH)
-      .add(uniforms.height.mul(buffers.tuftReach));
-
-    If(toOutside(uniforms, vec3(center.x, center.y, center.z.negate()), bound), () => {
-      Return();
-    });
-
-    const shrink = float(1)
-      .sub(select(distance.lessThan(1), float(0), distance.sub(1).div(fadeLimit.sub(1))))
-      .toVar();
 
     const seed = uint(SEED)
       .bitXor(uint(sx.mul(sz)))
@@ -300,6 +308,8 @@ function createPlant(
     const yaw = seed.toVar();
     const scale = seed.toVar();
     const steps = int(uniforms.steps).toVar();
+    const first = uint(index).mul(perCell).toVar();
+    const held = uint(0).toVar();
 
     // Each loop names its own counter: three names every loop's `i`, so a nested one would shadow the one outside it.
     loopNamed({ condition: "<=", end: steps, name: "row", start: int(0), type: "int" }, (z: Node<"int">) => {
@@ -365,12 +375,12 @@ function createPlant(
         loopNamed(
           { end: binStart.add(binCount), name: "entry", start: binStart, type: "uint" },
           (entry: Node<"uint">) => {
-            const first = bins.element(entry).mul(RENDERER_GRASS_TRIANGLE_FLOATS).toVar();
+            const corners = bins.element(entry).mul(RENDERER_GRASS_TRIANGLE_FLOATS).toVar();
             const [p0, p1, p2] = [0, 1, 2].map((corner: number) =>
               vec3(
-                triangles.element(first.add(corner * 3)),
-                triangles.element(first.add(corner * 3 + 1)),
-                triangles.element(first.add(corner * 3 + 2))
+                triangles.element(corners.add(corner * 3)),
+                triangles.element(corners.add(corner * 3 + 1)),
+                triangles.element(corners.add(corner * 3 + 2))
               )
             );
             const range = toRayRange(vec3(px, maxY, pz), p0, p1, p2);
@@ -384,45 +394,134 @@ function createPlant(
         });
 
         const shape = shapes.element(model.mul(2)).toVar();
-        const flags = shapes.element(model.mul(2).add(1)).toVar();
         const least = shape.x.mul(0.5);
-        const size = toRandomFloat(scale).mul(shape.y.mul(0.9).sub(least)).add(least).mul(uniforms.height).toVar();
+        // Before the settings' height scales it, which a frame applies, so a height changed plants nothing again.
+        const size = toRandomFloat(scale).mul(shape.y.mul(0.9).sub(least)).add(least).toVar();
         const turn = toRandomFloat(yaw)
           .mul(Math.PI * 2)
           .toVar();
-
-        // `UpdateVisibleM`: a tuft's screen area by its slot's distance, against the engine's thresholds.
-        const shrunk = size.mul(shrink).toVar();
-        const area = shrunk.mul(shrunk).mul(shape.z).mul(shape.z).div(max(distance, 0.0001)).toVar();
-
-        If(area.lessThan(discard), () => {
-          Continue();
-        });
-
         // The engine picks a waving tuft's wave by its own unseeded generator; this picks it by place, so it holds.
         const wave = select(
           int(x).add(z.mul(7)).add(sx.mul(3)).add(sz.mul(5)).mod(3).abs().equal(0),
           float(2),
           float(1)
         );
-        const isWaving = flags.x.greaterThan(0.5).and(area.greaterThan(discard.mul(16)));
-        const place = vec3(px, y, pz.negate()).toVar();
 
-        If(toOutside(uniforms, place.add(vec3(0, shape.w.mul(shrunk).mul(0.5), 0)), shape.z.mul(shrunk)), () => {
-          Continue();
+        If(held.lessThan(uint(perCell)), () => {
+          const to = first.add(held).mul(GRASS_CACHE_VECTORS);
+
+          cached.element(to).assign(vec4(px, y, pz.negate(), turn));
+          cached.element(to.add(1)).assign(vec4(size, float(model), wave, 0));
+          held.addAssign(1);
         });
-
-        const slot = (atomicAdd(counts.element(models), uint(1)) as unknown as Node<"uint">).toVar();
-
-        If(slot.greaterThanEqual(uint(capacity)), () => {
-          Continue();
-        });
-
-        items.element(slot.mul(GRASS_ITEM_VECTORS)).assign(vec4(place, turn));
-        items.element(slot.mul(GRASS_ITEM_VECTORS).add(1)).assign(vec4(shrunk, hemi, sun, select(isWaving, wave, 0)));
-        itemModels.element(slot).assign(model);
-        atomicAdd(counts.element(model), uint(1));
       });
+    });
+
+    keys.element(key.add(3)).assign(held);
+  })().compute(Math.max(uniforms.slotCount, 1));
+}
+
+/**
+ * `UpdateVisibleM`, a thread a slot of the ring: a slot outside the view or past `dm_fade` passes over, and each of its
+ * cached tufts is shrunk by the slot's distance, dropped where too small to see, stilled where too small to see sway,
+ * culled by the view, and appended.
+ */
+function createPlant(
+  buffers: TGrassBuffers,
+  uniforms: GrassUniforms,
+  discard: Node<"float">,
+  capacity: number,
+  counts: StorageBufferNode<"uint">,
+  items: StorageBufferNode<"vec4">,
+  itemModels: StorageBufferNode<"uint">
+): ComputeNode {
+  const models: number = buffers.modelCount;
+  const { cells, perCell } = buffers;
+  const shapes = storage(buffers.models, "vec4", Math.max(models, 1) * 2).toReadOnly();
+  const keys = storage(buffers.cacheKeys, "uint", cells * 4).toReadOnly();
+  const cellShapes = storage(buffers.cacheShapes, "vec4", cells).toReadOnly();
+  const cached = storage(buffers.cacheItems, "vec4", cells * perCell * GRASS_CACHE_VECTORS).toReadOnly();
+
+  return Fn(() => {
+    const reach = int(uniforms.reach).toVar();
+    const line = reach.mul(2).add(1).toVar();
+    const index = int(instanceIndex).toVar();
+
+    If(index.greaterThanEqual(line.mul(line)), () => {
+      Return();
+    });
+
+    const key = uint(index).mul(4).toVar();
+    const held = keys.element(key.add(3)).toVar();
+
+    If(held.equal(0).or(keys.element(key.add(2)).notEqual(uint(uniforms.generation))), () => {
+      Return();
+    });
+
+    const sx = int(keys.element(key)).toVar();
+    const sz = int(keys.element(key.add(1))).toVar();
+    const slot = cellShapes.element(index).toVar();
+
+    // The slot's distance from the eye fades every tuft in it, by squared metres from one to `dm_fade`.
+    const center = vec3(float(sx).mul(2).add(1), slot.x, float(sz).mul(2).add(1));
+    const offset = uniforms.eye.sub(center);
+    const distance = dot(offset, offset).toVar();
+    const fadeLimit = uniforms.fade.mul(uniforms.fade);
+
+    If(distance.greaterThan(fadeLimit), () => {
+      Return();
+    });
+
+    // `testSAABB`: a slot outside the view passes over whole. Its sphere is grown by the largest tuft, since a tuft
+    // reaches past the ground its slot's box holds.
+    const bound = sqrt(float(2).add(slot.y.mul(slot.y)))
+      .add(BOX_GROWTH)
+      .add(uniforms.height.mul(buffers.tuftReach));
+
+    If(toOutside(uniforms, vec3(center.x, center.y, center.z.negate()), bound), () => {
+      Return();
+    });
+
+    const shrink = float(1)
+      .sub(select(distance.lessThan(1), float(0), distance.sub(1).div(fadeLimit.sub(1))))
+      .toVar();
+    const first = uint(index).mul(perCell).toVar();
+
+    loopNamed({ end: held, name: "tuft", start: uint(0), type: "uint" }, (tuft: Node<"uint">) => {
+      const from = first.add(tuft).mul(GRASS_CACHE_VECTORS);
+      const placed = cached.element(from).toVar();
+      const kept = cached.element(from.add(1)).toVar();
+      const model = uint(kept.y).toVar();
+      const shape = shapes.element(model.mul(2)).toVar();
+      const flags = shapes.element(model.mul(2).add(1)).toVar();
+
+      // A tuft's screen area by its slot's distance, against the engine's thresholds.
+      const shrunk = kept.x.mul(uniforms.height).mul(shrink).toVar();
+      const area = shrunk.mul(shrunk).mul(shape.z).mul(shape.z).div(max(distance, 0.0001)).toVar();
+
+      If(area.lessThan(discard), () => {
+        Continue();
+      });
+
+      const isWaving = flags.x.greaterThan(0.5).and(area.greaterThan(discard.mul(16)));
+      const place = placed.xyz;
+
+      If(toOutside(uniforms, place.add(vec3(0, shape.w.mul(shrunk).mul(0.5), 0)), shape.z.mul(shrunk)), () => {
+        Continue();
+      });
+
+      const at = (atomicAdd(counts.element(models), uint(1)) as unknown as Node<"uint">).toVar();
+
+      If(at.greaterThanEqual(uint(capacity)), () => {
+        Continue();
+      });
+
+      items.element(at.mul(GRASS_ITEM_VECTORS)).assign(vec4(place, placed.w));
+      items
+        .element(at.mul(GRASS_ITEM_VECTORS).add(1))
+        .assign(vec4(shrunk, slot.z, slot.w, select(isWaving, kept.z, 0)));
+      itemModels.element(at).assign(model);
+      atomicAdd(counts.element(model), uint(1));
     });
   })().compute(Math.max(uniforms.slotCount, 1));
 }
