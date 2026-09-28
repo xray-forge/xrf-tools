@@ -2,7 +2,7 @@
 
 use xrf_math::Vector3d;
 use xrf_spawn::AlifeObjectInherited;
-use xrf_visual::VisualBounds;
+use xrf_visual::{VisualBounds, convert_vector};
 
 use crate::plugins::levels::state::{LevelSpawn, LevelStart, LevelStartOrigin};
 
@@ -50,24 +50,26 @@ fn to_eye(position: &Vector3d) -> Vector3d {
   Vector3d::new(position.x, position.y + ACTOR_EYE_HEIGHT, position.z)
 }
 
-/// An eye in the renderer's space, whose z runs the other way, turned to a heading as `CActor::MoveActor` turns it:
-/// `setHP` of the heading.
+/// An eye in the renderer's space, turned to a heading as `CActor::MoveActor` turns it: the forward axis of `setHP` of
+/// the heading.
 fn to_start(eye: &Vector3d, heading: f32, origin: LevelStartOrigin) -> LevelStart {
   LevelStart {
-    direction: Vector3d::new(-heading.sin(), 0.0, -heading.cos()),
+    direction: convert_vector(&Vector3d::new(-heading.sin(), 0.0, heading.cos())),
     origin,
-    position: Vector3d::new(eye.x, eye.y, -eye.z),
+    position: convert_vector(eye),
   }
 }
 
-/// The middle of an extent in the renderer's space, as the engine's x and z.
+/// The middle of an extent in the renderer's space, as the engine's x and z: the conversion is its own inverse.
 fn to_engine_centre(bounds: &VisualBounds) -> (f32, f32) {
   let VisualBounds { bounding_box, .. } = bounds;
-
-  (
+  let centre: Vector3d = convert_vector(&Vector3d::new(
     (bounding_box.min.x + bounding_box.max.x) / 2.0,
-    -(bounding_box.min.z + bounding_box.max.z) / 2.0,
-  )
+    (bounding_box.min.y + bounding_box.max.y) / 2.0,
+    (bounding_box.min.z + bounding_box.max.z) / 2.0,
+  ));
+
+  (centre.x, centre.z)
 }
 
 fn to_distance(position: &Vector3d, x: f32, z: f32) -> f32 {

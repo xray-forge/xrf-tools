@@ -3,6 +3,7 @@ use std::time::Instant;
 
 use tauri::State;
 use xrf_chunk::XRayByteOrder;
+use xrf_dltx::select_ltx_dialect;
 use xrf_level::LevelCformFile;
 use xrf_material::XraySurfaceDescriptor;
 use xrf_math::Vector3d;
@@ -22,7 +23,7 @@ use crate::plugins::levels::state::{
   PackedDetails, PackedSectors, SelectedLevel, SelectedLevelDescription,
 };
 use crate::plugins::levels::surfaces::resolve_surfaces;
-use crate::plugins::levels::textures::{resolve_sky, resolve_textures};
+use crate::plugins::levels::textures::{resolve_level_textures, resolve_sky};
 
 /// What the open reads and decides off the command's thread, kept together until the level is committed.
 struct OpenedLevel {
@@ -35,13 +36,15 @@ struct OpenedLevel {
   start: Option<LevelStart>,
 }
 
-/// Select a compiled level and report what it is built out of, without reading any of its geometry.
+/// Select a compiled level and report what it is built out of, without reading any of its geometry. `is_dltx` says
+/// whether the game's configs are read with the Monolith patch dialect.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "open_level"))]
 #[tauri::command(rename = "open_level")]
 pub async fn levels_open_level(
   session_id: SessionId,
   source: LevelSource,
   roots: XrayRoots,
+  is_dltx: bool,
   state: State<'_, LevelState>,
   assets: State<'_, AssetMountState>,
   execution: State<'_, ExecutionState>,
@@ -56,7 +59,7 @@ pub async fn levels_open_level(
   let assets: AssetMountState = AssetMountState::clone(&assets);
   let (opened, source, roots) = execution
     .run_blocking("Opening the level", move || {
-      let opened: OpenedLevel = assets.with_probe(&roots, |probe| open(&source, probe))??;
+      let opened: OpenedLevel = assets.with_fresh_probe(&roots, |probe| open(&source, probe))??;
 
       TauriResult::Ok((opened, source, roots))
     })
@@ -68,6 +71,7 @@ pub async fn levels_open_level(
     session_id,
     SelectedLevel {
       details: PackedDetails::new(),
+      dialect: select_ltx_dialect(is_dltx),
       spawn: opened.spawn.into(),
       sections: OnceLock::new(),
       spawn_visuals: LevelSpawnVisuals::new(),
@@ -108,7 +112,7 @@ fn open(source: &LevelSource, probe: &XrayProbe) -> TauriResult<OpenedLevel> {
   );
   let read: ReadLevel = read?;
   let surfaces: Vec<XraySurfaceDescriptor> = resolve_surfaces(&read.level, probe);
-  let textures: Vec<LevelTextureReference> = resolve_textures(&read.level, &surfaces, probe, directory.as_ref());
+  let textures: Vec<LevelTextureReference> = resolve_level_textures(&read.level, &surfaces, probe, directory.as_ref());
   let outlines: Vec<SectorOutline> = read
     .level
     .sectors
@@ -139,6 +143,7 @@ fn open(source: &LevelSource, probe: &XrayProbe) -> TauriResult<OpenedLevel> {
 /// covers nothing.
 fn find_open(source: &LevelSource, probe: &XrayProbe, eyes: &[Vector3d]) -> Vec<bool> {
   read_optional_file(source, probe, COLLISION_FILE)
+    .map_err(|error| log::warn!("{error}"))
     .ok()
     .flatten()
     .and_then(|bytes| {

@@ -13,6 +13,6 @@ pub struct LevelSpawnVisual {
   pub rest: Option<Arc<VisualRestPose>>,
   /// How the renderer draws each submesh, in their order.
   pub surfaces: Vec<XraySurfaceDescriptor>,
-  /// What each texture a submesh binds resolved to.
+  /// What each texture its surfaces bind resolved to: each base, and the bump pair and detail beside it.
   pub textures: Vec<LevelTextureReference>,
 }

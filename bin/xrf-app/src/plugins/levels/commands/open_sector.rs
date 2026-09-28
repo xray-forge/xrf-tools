@@ -2,8 +2,8 @@ use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
 use tauri::State;
+use xrf_chunk::XRayByteOrder;
 use xrf_level::{LevelSector, LevelSectorComposition};
-use xrf_spawn::XRayByteOrder;
 use xrf_visual::{SectorAttributes, SectorDescription, SectorPackage, SectorPacker};
 
 use crate::core::execution::ExecutionState;

@@ -3,8 +3,8 @@
 use std::sync::Arc;
 use std::time::Instant;
 
-use xrf_chunk::{ChunkReader, InMemoryChunkDataSource};
-use xrf_spawn::{SpawnFile, SpawnLevelObjects, XRayByteOrder};
+use xrf_chunk::{ChunkReader, InMemoryChunkDataSource, XRayByteOrder};
+use xrf_spawn::{SpawnFile, SpawnLevelObjects};
 use xrf_vfs::{XrayLogicalPath, XrayProbe};
 
 use crate::core::assets::read_located_asset;

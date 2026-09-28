@@ -2,7 +2,7 @@ use std::sync::{Arc, OnceLock};
 
 use xrf_chunk::InMemoryChunkDataSource;
 use xrf_level::{LevelFile, LevelGeomSource, LevelSector, LevelVisualsChunk};
-use xrf_ltx::Ltx;
+use xrf_ltx::{Ltx, LtxDialect};
 use xrf_material::XraySurfaceDescriptor;
 use xrf_vfs::XrayRoots;
 use xrf_visual::SectorOutline;
@@ -28,6 +28,8 @@ pub struct SelectedLevel {
   pub surfaces: Vec<XraySurfaceDescriptor>,
   /// The roots the level was opened in, kept so a later read searches what the open searched.
   pub roots: XrayRoots,
+  /// The rules the game's configs are resolved with, as the open was asked to read them.
+  pub dialect: Arc<dyn LtxDialect>,
   pub level: LevelFile,
   pub visuals: LevelVisualsChunk,
   /// What each sector is and where, taken at open from what the visuals declare, so a viewer can decide what to

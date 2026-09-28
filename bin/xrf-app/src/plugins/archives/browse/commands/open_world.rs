@@ -26,7 +26,7 @@ pub async fn archives_open_world(
 
   let world: ArchiveWorld = execution
     .run_blocking("Opening the archive world", move || {
-      assets.with_probe(&roots, |probe| ArchiveWorld::list(probe, roots.clone()))
+      assets.with_fresh_probe(&roots, |probe| ArchiveWorld::list(probe, roots.clone()))
     })
     .await?
     .map_err(|error| format!("Failed to open provided game folder: {error}"))?;

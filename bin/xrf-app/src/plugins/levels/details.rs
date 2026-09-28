@@ -53,7 +53,7 @@ pub fn pack_details(
     )?;
   let passable: HashSet<u16> = read_passable_materials(probe);
   let is_passable = |material: u16| passable.contains(&material);
-  let package: DetailsPackage = DetailsPacker::new(&details, &collision, &is_passable).pack::<XRayByteOrder>();
+  let package: DetailsPackage = DetailsPacker::new(&details, &collision, &is_passable).pack();
 
   let resolver: XraySurfaceResolver = XraySurfaceResolver::open(probe);
   let surfaces: Vec<XraySurfaceDescriptor> = details

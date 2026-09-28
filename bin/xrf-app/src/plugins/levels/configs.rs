@@ -4,7 +4,6 @@ use std::collections::BTreeSet;
 use std::sync::Arc;
 use std::time::Instant;
 
-use xrf_dltx::select_ltx_dialect;
 use xrf_ltx::{Ltx, LtxProject, LtxProjectOptions, LtxResolution};
 
 use crate::plugins::levels::report::report_sections;
@@ -17,8 +16,7 @@ const CONFIGS_DIRECTORY: &str = "configs";
 /// section's parents resolved, read the first time anything asks and kept with the level.
 ///
 /// The rest of the resolution is let go once read: a resolved tree is tens of megabytes, and the level reads a handful
-/// of keys of the sections its own objects name. Read with the DLTX dialect, which is what Anomaly's engine resolves
-/// with and which resolves a vanilla tree as the vanilla engine does.
+/// of keys of the sections its own objects name. Read with the dialect the level was opened with.
 ///
 /// # Errors
 ///
@@ -49,7 +47,7 @@ fn read_system_ltx(current: &SelectedLevel) -> Result<Arc<LtxResolution>, String
   let project: LtxProject = LtxProject::open_lean_at_roots_opt(
     &current.roots,
     Some(CONFIGS_DIRECTORY),
-    LtxProjectOptions::default().with_dialect(select_ltx_dialect(true)),
+    LtxProjectOptions::default().with_dialect(current.dialect.clone()),
   )
   .map_err(|error| format!("Failed to mount the configs of {}: {error}", current.source.get_label()))?;
 

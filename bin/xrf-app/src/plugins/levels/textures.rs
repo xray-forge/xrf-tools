@@ -22,7 +22,7 @@ pub const LEVEL_SKY_TEXTURE: &str = "sky\\sky_7_cube";
 
 /// Resolves every texture a level's surfaces bind: base textures, lightmaps, detail textures, bump pairs, and the
 /// companion an impostor's atlas is bound with.
-pub fn resolve_textures(
+pub fn resolve_level_textures(
   level: &LevelFile,
   surfaces: &[XraySurfaceDescriptor],
   probe: &XrayProbe,
@@ -44,6 +44,17 @@ pub fn resolve_textures(
     }
   }
 
+  resolve_surface_textures(references, surfaces, probe, directory)
+}
+
+/// Resolves the textures a run of surfaces binds beside those named for it: each one's detail, the files its script
+/// binds, and its bump pair, found as its descriptor found it.
+pub fn resolve_surface_textures(
+  mut references: BTreeSet<String>,
+  surfaces: &[XraySurfaceDescriptor],
+  probe: &XrayProbe,
+  directory: Option<&XrayLogicalPath>,
+) -> Vec<LevelTextureReference> {
   for detail in surfaces.iter().filter_map(|surface| surface.detail.as_ref()) {
     references.insert(detail.reference.clone());
   }

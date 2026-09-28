@@ -4,7 +4,7 @@ use std::time::Instant;
 
 use tauri::State;
 use xrf_vfs::XrayProbe;
-use xrf_visual::to_spawn_transform;
+use xrf_visual::VisualTransform;
 
 use crate::core::assets::AssetMountState;
 use crate::core::execution::ExecutionState;
@@ -73,7 +73,7 @@ fn describe_models(current: &SelectedLevel, probe: &XrayProbe) -> LevelSpawnMode
         model,
         name: object.name.clone(),
         section: object.section.clone(),
-        transform: to_spawn_transform(&object.position, &object.direction),
+        transform: VisualTransform::of_spawn(&object.position, &object.direction),
       });
     }
   }

@@ -5,16 +5,17 @@ use std::cell::OnceCell;
 use std::collections::BTreeSet;
 use std::sync::Arc;
 
+use xrf_chunk::XRayByteOrder;
 use xrf_material::{XraySurfaceDescriptor, XraySurfaceResolver};
 use xrf_ogf::OgfFile;
-use xrf_spawn::{AlifeObject, AlifeObjectInherited, XRayByteOrder};
+use xrf_spawn::{AlifeObject, AlifeObjectInherited};
 use xrf_vfs::{XrayAssetType, XrayLogicalPath, XrayProbe};
-use xrf_visual::{VisualDependencies, VisualDescription, VisualPackage, VisualPacker, VisualRestPose};
+use xrf_visual::{VisualDependencies, VisualDescription, VisualPackage, VisualPacker, VisualRestPose, VisualSkeleton};
 
 use crate::core::assets::read_referenced_asset;
 use crate::plugins::levels::report::{report_bind_rest_pose, report_empty_rest_motion, report_undrawn_visual};
-use crate::plugins::levels::state::{LevelSpawnVisual, LevelTextureReference, SelectedLevel};
-use crate::plugins::levels::textures::resolve_reference;
+use crate::plugins::levels::state::{LevelSpawnVisual, SelectedLevel};
+use crate::plugins::levels::textures::resolve_surface_textures;
 use crate::plugins::visuals::pose::bake_named_motion;
 use crate::plugins::visuals::skeleton::SelectedSkeleton;
 
@@ -86,22 +87,17 @@ impl<'probe, 'vfs> SpawnVisualReader<'probe, 'vfs> {
         resolver.describe(submesh.shader_name.as_deref().unwrap_or_default(), &textures)
       })
       .collect();
-    let references: BTreeSet<&str> = package
+    let references: BTreeSet<String> = package
       .description
       .submeshes
       .iter()
-      .filter_map(|submesh| submesh.texture_name.as_deref())
+      .filter_map(|submesh| submesh.texture_name.clone())
       .filter(|reference| !reference.is_empty())
       .collect();
 
     Ok(LevelSpawnVisual {
-      textures: references
-        .into_iter()
-        .map(|reference| LevelTextureReference {
-          logical_path: resolve_reference(probe, self.directory.as_ref(), reference),
-          reference: reference.to_owned(),
-        })
-        .collect(),
+      // Resolved as a level's own surfaces are, so a model shades with the bump pair and the detail its base declares.
+      textures: resolve_surface_textures(references, &surfaces, probe, self.directory.as_ref()),
       package,
       rest,
       surfaces,
@@ -125,12 +121,12 @@ fn to_rest_pose(
     Ok(baked) => VisualRestPose::of_floats(names, &baked.transforms).or_else(|| {
       report_empty_rest_motion(name, IDLE_MOTION);
 
-      VisualRestPose::of_bind(file)
+      VisualSkeleton::get_rest_pose(file)
     }),
     Err(error) => {
       report_bind_rest_pose(name, &error);
 
-      VisualRestPose::of_bind(file)
+      VisualSkeleton::get_rest_pose(file)
     }
   }
 }

@@ -25,7 +25,7 @@ export type DetailsDescription = {
   /** One `u32` an entry: the triangle, by index into the triangles. */
   bins: VisualSection;
   binLength: number;
-  /** Nine floats a triangle: its corners in the engine's space and winding, passable ones left out. */
+  /** Nine floats a triangle: its corners in renderer space, wound for it, passable ones left out. */
   triangles: VisualSection;
   triangleCount: number;
   bufferLength: number;

@@ -1703,7 +1703,7 @@ export type LevelSpawnModelDescription = {
   rest: Array<number | null> | null;
   /** How the renderer draws each submesh, in their order. */
   surfaces: Array<XraySurfaceDescriptor>;
-  /** What each texture a submesh binds resolved to. */
+  /** What each texture its surfaces bind resolved to: each base, and the bump pair and detail beside it. */
   textures: Array<LevelTextureReference>;
 };
 

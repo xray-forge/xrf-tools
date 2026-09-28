@@ -2,9 +2,8 @@ use std::fs;
 use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 
-use xrf_chunk::{ChunkReader, InMemoryChunkDataSource};
+use xrf_chunk::{ChunkReader, InMemoryChunkDataSource, XRayByteOrder};
 use xrf_level::{LevelFile, LevelGeomSource, LevelVisualsChunk};
-use xrf_spawn::XRayByteOrder;
 use xrf_vfs::{XrayLogicalPath, XrayProbe, XrayResolution};
 
 use crate::core::types::TauriResult;

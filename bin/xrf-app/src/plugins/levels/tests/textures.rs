@@ -1,15 +1,18 @@
 //! What a level's texture references come to, beside the level and in the shared tree.
 
+use std::collections::BTreeSet;
 use xrf_level::{LevelFile, LevelHeaderChunk, LevelShaderEntry, LevelShadersChunk};
+
 use xrf_material::fixtures::{FixtureTree, ThmFixture};
+use xrf_material::{XraySurfaceDescriptor, XraySurfaceResolver};
 use xrf_shaders::ShaderBlenderClass;
 use xrf_shaders::fixtures::ShaderBlenderFixture;
-use xrf_thm::ThmTextureFlag;
+use xrf_thm::{ThmBumpMode, ThmTextureFlag};
 use xrf_vfs::{XrayLogicalPath, XrayLookupScope, XrayMountId, XrayProbe, XrayVfs};
 
 use crate::plugins::levels::state::LevelTextureReference;
 use crate::plugins::levels::surfaces::resolve_surfaces;
-use crate::plugins::levels::textures::resolve_textures;
+use crate::plugins::levels::textures::{resolve_level_textures, resolve_surface_textures};
 
 const LEVEL: &str = "k00_marsh";
 const DIRECTORY: &str = "levels\\k00_marsh";
@@ -37,7 +40,7 @@ fn new_resolved(tree: &FixtureTree, level: &LevelFile, directory: Option<&str>) 
   let directory: Option<XrayLogicalPath> =
     directory.map(|directory| XrayLogicalPath::new(directory).expect("a level directory"));
 
-  resolve_textures(level, &resolve_surfaces(level, &probe), &probe, directory.as_ref())
+  resolve_level_textures(level, &resolve_surfaces(level, &probe), &probe, directory.as_ref())
 }
 
 fn get_path_of<'a>(references: &'a [LevelTextureReference], reference: &str) -> Option<&'a str> {
@@ -201,6 +204,56 @@ end
     Some("textures\\water\\water_foam.dds")
   );
   assert!(references.iter().all(|it| !it.reference.starts_with('$')));
+}
+
+// A spawned model names only its base textures; the pair and the detail it shades with come off the base's
+// descriptor, as a level surface's do, for a class binding both: a vertex-lit prop's.
+#[test]
+fn resolves_the_bump_pair_and_detail_a_models_surface_binds_beside_its_base() {
+  let tree: FixtureTree = FixtureTree::new("level_textures_model")
+    .with_shader_library(&[ShaderBlenderFixture::of(
+      ShaderBlenderClass::VERT,
+      "def_shaders\\def_vertex",
+    )])
+    .with_descriptor(
+      "lights\\lights_lamp",
+      &ThmFixture::image()
+        .with_bump(ThmBumpMode::Use, "lights\\lights_lamp_bump")
+        .with_detail("detail\\detail_metal", 4.0, &[ThmTextureFlag::DiffuseDetail]),
+    )
+    .with_texture("lights\\lights_lamp")
+    .with_texture("lights\\lights_lamp_bump")
+    .with_texture("lights\\lights_lamp_bump#")
+    .with_texture("detail\\detail_metal");
+  let mut vfs: XrayVfs = XrayVfs::new();
+  let id: XrayMountId = vfs.mount_directory("", tree.root()).expect("tree mounts");
+  let probe: XrayProbe = vfs.probe().with_step("tree", XrayLookupScope::only([id]));
+  let surfaces: Vec<XraySurfaceDescriptor> =
+    vec![XraySurfaceResolver::open(&probe).describe("def_shaders\\def_vertex", &["lights\\lights_lamp".to_owned()])];
+
+  let references: Vec<LevelTextureReference> = resolve_surface_textures(
+    BTreeSet::from(["lights\\lights_lamp".to_owned()]),
+    &surfaces,
+    &probe,
+    None,
+  );
+
+  assert_eq!(
+    get_path_of(&references, "lights\\lights_lamp"),
+    Some("textures\\lights\\lights_lamp.dds")
+  );
+  assert_eq!(
+    get_path_of(&references, "lights\\lights_lamp_bump"),
+    Some("textures\\lights\\lights_lamp_bump.dds")
+  );
+  assert_eq!(
+    get_path_of(&references, "lights\\lights_lamp_bump#"),
+    Some("textures\\lights\\lights_lamp_bump#.dds")
+  );
+  assert_eq!(
+    get_path_of(&references, "detail\\detail_metal"),
+    Some("textures\\detail\\detail_metal.dds")
+  );
 }
 
 #[test]

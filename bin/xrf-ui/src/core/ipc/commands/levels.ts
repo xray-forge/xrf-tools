@@ -29,9 +29,17 @@ export const levelsCommands = {
       sessionId,
       detailsId,
     }),
-  /** Select a compiled level and report what it is built out of, without reading any of its geometry. */
-  openLevel: (sessionId: SessionId, source: LevelSource, roots: XrayRoots) =>
-    __TAURI_INVOKE<SessionSnapshot<SelectedLevelDescription>>("plugin:levels|open_level", { sessionId, source, roots }),
+  /**
+   * Select a compiled level and report what it is built out of, without reading any of its geometry. `is_dltx` says
+   * whether the game's configs are read with the Monolith patch dialect.
+   */
+  openLevel: (sessionId: SessionId, source: LevelSource, roots: XrayRoots, isDltx: boolean) =>
+    __TAURI_INVOKE<SessionSnapshot<SelectedLevelDescription>>("plugin:levels|open_level", {
+      sessionId,
+      source,
+      roots,
+      isDltx,
+    }),
   /** Collect the open level's lights: the lamps the game spawns on it, and its own. */
   openLights: (sessionId: SessionId) =>
     __TAURI_INVOKE<SessionSnapshot<LevelLightsDescription>>("plugin:levels|open_lights", { sessionId }),
