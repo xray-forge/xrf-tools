@@ -16,6 +16,7 @@ import { IRendererInstances } from "#/contract/scene/renderer-instances";
 import { ERendererPass } from "#/contract/scene/renderer-pass";
 import { EVertexAttribute } from "#/geometry/vertex-attribute";
 import { ISurfaceMaterial, toOwnSurfaceDrawing } from "#/material/surface-material";
+import { createFreeingRenderer, IFreeingRenderer } from "#/scene/geometry/geometry-fixtures";
 import { GeometryReleases } from "#/scene/geometry/geometry-releases";
 import { SceneGeometry } from "#/scene/geometry/scene-geometry";
 import { SceneInstances } from "#/scene/object/scene-instances";
@@ -43,7 +44,7 @@ function createSurface(pass: ERendererPass, isImpostor: boolean = false): ISurfa
     dispose: () => {},
     isImpostor,
     keys: [],
-    ...toOwnSurfaceDrawing(new MeshBasicNodeMaterial(), null),
+    ...toOwnSurfaceDrawing(new MeshBasicNodeMaterial(), null, []),
     pass,
     shadowKeys: [],
   };
@@ -137,8 +138,8 @@ describe("SceneObject", () => {
       scenes
     );
 
-    expect(scenes[ERendererPass.DEFERRED].children).toEqual([entry.drawing[0]]);
-    expect(scenes[ERendererPass.FORWARD].children).toEqual([entry.drawing[1]]);
+    expect(scenes[ERendererPass.DEFERRED].children).toEqual([entry.placed[0]]);
+    expect(scenes[ERendererPass.FORWARD].children).toEqual([entry.placed[1]]);
   });
 
   it("culls each section drawn plainly by its own bounds", () => {
@@ -150,7 +151,7 @@ describe("SceneObject", () => {
     entry.apply(toState(geometry, [surface, surface]), scenes);
     entry.cull(createView());
 
-    expect(entry.drawing.map((mesh) => mesh.visible)).toEqual([true, false]);
+    expect(entry.placed.map((mesh: Mesh) => mesh.visible)).toEqual([true, false]);
   });
 
   it("leaves out a section whose surface is missing, and one its narrowing leaves empty", () => {
@@ -167,13 +168,14 @@ describe("SceneObject", () => {
     entry.apply(toState(geometry, [surface, undefined]), scenes);
     entry.cull(createView());
 
-    expect(scenes[ERendererPass.DEFERRED].children).toEqual([entry.drawing[0]]);
+    expect(scenes[ERendererPass.DEFERRED].children).toEqual(entry.placed);
+    expect(entry.placed).toHaveLength(1);
 
     entry.object = { ...entry.object, drawRange: { count: 3, start: 3 } };
     entry.apply(toState(geometry, [surface, surface]), scenes);
     entry.cull(createView());
 
-    expect(entry.drawing.map((mesh) => mesh.visible)).toEqual([false, false]);
+    expect(entry.placed.map((mesh: Mesh) => mesh.visible)).toEqual([false, false]);
   });
 
   it("draws G-buffer sections as static draws of their material's batch, and the rest plainly", () => {
@@ -192,11 +194,38 @@ describe("SceneObject", () => {
     expect(scenes[ERendererPass.DEFERRED].children).toHaveLength(1);
     expect(batch.geometry.indirect).toBe(buffers.viewArgs[EStaticView.EARLY]);
     expect(batch.geometry.indirectOffset).toBe(0);
-    expect(scenes[ERendererPass.FORWARD].children).toEqual([entry.drawing[1]]);
+    expect(scenes[ERendererPass.FORWARD].children).toEqual(entry.placed);
     // One cluster in a place of its own, drawn by the first batch and cast by none.
     expect(toSlot(buffers, 0)).toEqual([0, 1, 0, EStaticSlotKind.SINGLE, 0, STATIC_NO_BATCH]);
     // Its indices and vertices where its geometry sits in the arena.
     expect(toCluster(buffers, 0)).toEqual([0, 1, 0, 0]);
+  });
+
+  // What an object draws plainly samples its surfaces' own textures, which stay up while it does.
+  it("names the textures its parts drawn plainly sample, and none of its static draws'", () => {
+    const scenes: TPassRecord<Scene> = toPassRecord(() => new Scene());
+    const { draws } = createDraws(scenes);
+    const entry: SceneObject = new SceneObject("wall", { geometry: "wall", surfaces: ["a", "b"] }, draws, releases);
+    const wall: ISurfaceMaterial = createSurface(ERendererPass.DEFERRED);
+    const glass: ISurfaceMaterial = createSurface(ERendererPass.FORWARD);
+
+    entry.apply(
+      toState(
+        createGeometry(),
+        [
+          { ...wall, plain: { ...wall.plain, keys: ["brick"] } },
+          { ...glass, plain: { ...glass.plain, keys: ["glass"] } },
+        ],
+        draws
+      ),
+      scenes
+    );
+
+    expect(entry.plainKeys).toEqual(["glass"]);
+
+    entry.dispose();
+
+    expect(entry.plainKeys).toEqual([]);
   });
 
   it("issues every static draw of one material over one layout from one batch, whichever object it is of", () => {
@@ -397,28 +426,32 @@ describe("SceneObject", () => {
     expect([words[1], words[3]]).toEqual([toStaticBandWord(0, 2, 5), toStaticBandWord(1, 2, 5)]);
   });
 
-  it("lets its parts go without the buffers they share with every other object drawing the geometry", () => {
+  it("lets its parts go with the next flush, without the buffers they share with every other object drawing it", () => {
     const scenes: TPassRecord<Scene> = toPassRecord(() => new Scene());
     const geometry: SceneGeometry = createGeometry();
     const surface: ISurfaceMaterial = createSurface(ERendererPass.FORWARD);
-    const first: SceneObject = new SceneObject("a", { geometry: "rock", surfaces: ["a", "a"] }, plain, releases);
-    const second: SceneObject = new SceneObject("b", { geometry: "rock", surfaces: ["a", "a"] }, plain, releases);
-    const named: Array<number> = [];
+    const own: GeometryReleases = new GeometryReleases();
+    const first: SceneObject = new SceneObject("a", { geometry: "rock", surfaces: ["a", "a"] }, plain, own);
+    const second: SceneObject = new SceneObject("b", { geometry: "rock", surfaces: ["a", "a"] }, plain, own);
+    const { renderer, freed }: IFreeingRenderer = createFreeingRenderer();
+    const disposed = jest.fn();
 
     first.apply(toState(geometry, [surface, surface]), scenes);
     second.apply(toState(geometry, [surface, surface]), scenes);
-    // What three would free with each part: every buffer it names as it is disposed.
-    first.drawing.forEach(({ geometry: part }: Mesh) =>
-      part.addEventListener("dispose", () => named.push(Object.keys(part.attributes).length + (part.index ? 1 : 0)))
-    );
+    first.placed.forEach(({ geometry: part }: Mesh) => part.addEventListener("dispose", disposed));
     first.dispose();
 
-    expect(named).toEqual([0, 0]);
-    expect(second.drawing.map(({ geometry: part }: Mesh) => part.getAttribute("position"))).toEqual([
+    expect(disposed).not.toHaveBeenCalled();
+
+    own.free(renderer);
+
+    expect(disposed).toHaveBeenCalledTimes(2);
+    expect(freed).toEqual([]);
+    expect(second.placed.map(({ geometry: part }: Mesh) => part.getAttribute("position"))).toEqual([
       geometry.buffer.getAttribute("position"),
       geometry.buffer.getAttribute("position"),
     ]);
-    expect(second.drawing[0].geometry.index).toBe(geometry.buffer.index);
+    expect(second.placed[0].geometry.index).toBe(geometry.buffer.index);
   });
 
   it("draws over new parts once its skeleton changes, letting the old ones go", () => {
@@ -430,14 +463,15 @@ describe("SceneObject", () => {
 
     entry.apply(toState(geometry, [surface, surface]), scenes);
 
-    const [before] = entry.drawing;
+    const [before] = entry.placed;
 
     before.geometry.addEventListener("dispose", disposed);
     entry.apply({ ...toState(geometry, [surface, surface]), skeleton: new Skeleton([]) }, scenes);
+    releases.free(createFreeingRenderer().renderer);
 
-    expect(entry.drawing[0]).not.toBe(before);
-    expect(entry.drawing[0].geometry).not.toBe(before.geometry);
-    expect(entry.drawing[0]).toBeInstanceOf(SkinnedMesh);
+    expect(entry.placed[0]).not.toBe(before);
+    expect(entry.placed[0].geometry).not.toBe(before.geometry);
+    expect(entry.placed[0]).toBeInstanceOf(SkinnedMesh);
     expect(disposed).toHaveBeenCalledTimes(1);
   });
 
@@ -468,6 +502,7 @@ describe("SceneObject", () => {
     staged.geometry.addEventListener("dispose", disposed);
     entry.object = { ...entry.object, instances: source };
     entry.apply(toStanding(entry.toInstances(geometry) as SceneInstances), scenes);
+    releases.free(createFreeingRenderer().renderer);
 
     expect(staged).not.toBe(standing);
     expect(disposed).toHaveBeenCalledTimes(1);

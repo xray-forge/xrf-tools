@@ -15,7 +15,7 @@ function createState(shadow: MeshBasicNodeMaterial | null): { state: ISceneObjec
     dispose: () => {},
     isImpostor: false,
     keys: [],
-    ...toOwnSurfaceDrawing(new MeshBasicNodeMaterial(), shadow),
+    ...toOwnSurfaceDrawing(new MeshBasicNodeMaterial(), shadow, []),
     pass: ERendererPass.DEFERRED,
     shadowKeys: [],
   };

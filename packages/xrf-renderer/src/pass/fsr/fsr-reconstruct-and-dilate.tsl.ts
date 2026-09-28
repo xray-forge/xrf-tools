@@ -16,7 +16,7 @@ import {
   vec3,
   vec4,
 } from "three/tsl";
-import { ComputeNode, Node, StorageBufferAttribute } from "three/webgpu";
+import { ComputeNode, Node, StorageBufferAttribute, StorageBufferNode } from "three/webgpu";
 
 import {
   isOnScreen,
@@ -41,7 +41,7 @@ import { loadClamped, toBilinearFootprint } from "#/shader/texel.tsl";
  * reconstructed depth at the far plane, zero inverted.
  */
 export function createFsrDepthClear(buffer: StorageBufferAttribute, capacity: number): ComputeNode {
-  const depths = storage(buffer, "uint", capacity).toAtomic();
+  const depths: StorageBufferNode<"uint"> = storage(buffer, "uint", capacity).toAtomic();
 
   return Fn(() => {
     atomicStore(depths.element(instanceIndex), uint(0));
@@ -58,7 +58,7 @@ export function createFsrDepthReconstruction(
   capacity: number,
   constants: IFsrConstants
 ): ComputeNode {
-  const depths = storage(buffer, "uint", capacity).toAtomic();
+  const depths: StorageBufferNode<"uint"> = storage(buffer, "uint", capacity).toAtomic();
 
   return Fn(() => {
     const width: Node<"uint"> = uint(constants.renderSize.x);

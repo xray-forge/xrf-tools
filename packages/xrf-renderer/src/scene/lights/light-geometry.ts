@@ -4,6 +4,7 @@ import { TRendererColor } from "#/contract/renderer-color";
 import { TRendererVector } from "#/contract/renderer-vector";
 import { ERendererLightKind, TRendererLight } from "#/contract/scene/renderer-light";
 import { IRendererSpotLight } from "#/contract/scene/renderer-spot-light";
+import { ILightBasis } from "#/scene/lights/light-basis";
 
 /** `ps_r2_slight_fade`: what a shadowed light's screen area is scaled by before it fades (`xrRender_console.cpp`). */
 const SHADOWED_FADE: number = 0.5;
@@ -16,14 +17,6 @@ const RIGHT_EPSILON: number = EPS;
 
 /** How near parallel to the world's up a spot may point before `compute_xf_spot` takes the world's forward instead. */
 const PARALLEL: number = 0.99;
-
-/** A light's frame in world space: where it stands, and a spot's direction with its right and up square to it. */
-export interface ILightBasis {
-  readonly position: Vector3;
-  readonly direction: Vector3;
-  readonly right: Vector3;
-  readonly up: Vector3;
-}
 
 /** @returns A basis to write a light's into. */
 export function createLightBasis(): ILightBasis {

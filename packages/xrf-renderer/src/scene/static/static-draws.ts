@@ -23,7 +23,7 @@ import { StaticPlaces } from "#/scene/static/static-places";
 import { IStaticPools } from "#/scene/static/static-pools";
 import { IStaticRange } from "#/scene/static/static-range";
 import { StaticRows } from "#/scene/static/static-rows";
-import { IStaticRunPool } from "#/scene/static/static-run-pool";
+import { StaticRunPool } from "#/scene/static/static-run-pool";
 import { IStaticRuns } from "#/scene/static/static-runs";
 import { IStaticShadowCasters } from "#/scene/static/static-shadow-casters";
 import { StaticShadowChanges } from "#/scene/static/static-shadow-changes";
@@ -110,7 +110,7 @@ export class StaticDraws implements IStaticShadowCasters, IStaticPools {
     this.rows = new StaticRows(buffers);
     this.lods = new StaticLods(buffers);
     this.clusters = new StaticClusters(buffers);
-    this.holds = new StaticSlotHolds((pool: IStaticRunPool, count: number) => this.allocateRun(pool, count));
+    this.holds = new StaticSlotHolds((pool: StaticRunPool, count: number) => this.allocateRun(pool, count));
     this.batches = new StaticBatches(buffers, scene, this.late, this.stillShadowScenes, this.swayingShadowScenes);
     this.arenas = new StaticArenas(buffers, () =>
       [...toUpcoming()].map((upcoming: IStaticUpcoming) => upcoming.geometry)
@@ -520,7 +520,7 @@ export class StaticDraws implements IStaticShadowCasters, IStaticPools {
    * @returns A run of a pool, grown once where none fits (`allocateGrowing`), for what the queue brings besides; null
    *   where the device's limit stops it, counted as a fallback.
    */
-  private allocateRun(pool: IStaticRunPool, count: number): Nullable<number> {
+  private allocateRun(pool: StaticRunPool, count: number): Nullable<number> {
     const start: Nullable<number> = allocateGrowing(
       pool,
       count,

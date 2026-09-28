@@ -1,12 +1,10 @@
 import { Nullable } from "@xrf/types";
 import { Matrix4, Sphere, Vector3 } from "three/webgpu";
 
-import { DirtySpan } from "#/scene/dirty-span";
 import { ISceneClusterRun } from "#/scene/geometry/scene-cluster-run";
 import { SCENE_CLUSTER_WORDS, SceneClusters } from "#/scene/geometry/scene-clusters";
-import { RangeAllocator } from "#/scene/static/range-allocator";
 import { IStaticRange } from "#/scene/static/static-range";
-import { IStaticRunPool } from "#/scene/static/static-run-pool";
+import { StaticRunPool } from "#/scene/static/static-run-pool";
 import { StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
 import { EStaticPool } from "#/uniforms/static-pool";
 
@@ -19,49 +17,9 @@ const CENTRE: Vector3 = new Vector3();
  * indices and vertices start, how many triangles it has and which slot it is of, and the sphere it is culled by.
  * Handed out in runs, uploaded as one span a buffer.
  */
-export class StaticClusters implements IStaticRunPool {
-  public readonly kind: EStaticPool = EStaticPool.CLUSTERS;
-
-  private readonly buffers: StaticDrawBuffers;
-  private readonly allocator: RangeAllocator = new RangeAllocator();
-  private readonly span: DirtySpan = new DirtySpan();
-  private currentVersion: number = 0;
-
+export class StaticClusters extends StaticRunPool {
   public constructor(buffers: StaticDrawBuffers) {
-    this.buffers = buffers;
-    this.allocator.grow(buffers.capacity(EStaticPool.CLUSTERS));
-  }
-
-  public get capacity(): number {
-    return this.allocator.capacity;
-  }
-
-  public get used(): number {
-    return this.allocator.used;
-  }
-
-  /** Clusters the cull has to look at: up to the end of the last run handed out. */
-  public get extent(): number {
-    return this.allocator.extent;
-  }
-
-  /** Bumped whenever a cluster changes, so a cull knows to run again. */
-  public get version(): number {
-    return this.currentVersion;
-  }
-
-  public fits(count: number): boolean {
-    return this.allocator.fits(count);
-  }
-
-  public allocate(count: number): Nullable<number> {
-    return this.allocator.allocate(count);
-  }
-
-  public grow(capacity: number): void {
-    this.buffers.grow(EStaticPool.CLUSTERS, capacity);
-    this.allocator.grow(capacity);
-    this.currentVersion += 1;
+    super(buffers, EStaticPool.CLUSTERS);
   }
 
   /**
@@ -119,7 +77,7 @@ export class StaticClusters implements IStaticRunPool {
       ranges[(start + index) * 4 + 1] = 0;
     }
 
-    this.allocator.release(start, count);
+    this.runs.release(start, count);
     this.span.touch(start, start + count - 1);
     this.currentVersion += 1;
   }

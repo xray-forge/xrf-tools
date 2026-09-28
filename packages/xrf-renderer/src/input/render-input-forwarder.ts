@@ -72,14 +72,16 @@ export class RenderInputForwarder {
     this.canvas.style.cursor = cursor;
   }
 
-  /** Stops forwarding, and leaves the canvas as it was found. */
+  /**
+   * Stops forwarding, and leaves the canvas as it was found. A pointer still down is cancelled: the far side's controls
+   * outlive the canvas, and would hold it into the next.
+   */
   public dispose(): void {
     for (const type of ELEMENT_INPUT) {
       this.canvas.removeEventListener(type, this.onElementInput);
     }
 
-    this.pressed.clear();
-    this.setWindowListened(false);
+    this.cancelPressed();
 
     for (const type of FOCUS_INPUT) {
       this.canvas.removeEventListener(type, this.onFocusInput);
@@ -135,6 +137,11 @@ export class RenderInputForwarder {
       return;
     }
 
+    this.cancelPressed();
+  };
+
+  /** Cancels every pointer down, as the browser would, and stops listening to the window. */
+  private cancelPressed(): void {
     for (const pointerId of this.pressed) {
       this.sink(
         toRenderInputEvent(
@@ -146,7 +153,7 @@ export class RenderInputForwarder {
 
     this.pressed.clear();
     this.setWindowListened(false);
-  };
+  }
 
   private press(pointerId: number, isPressed: boolean): void {
     if (isPressed) {

@@ -49,7 +49,7 @@ export class StaticCull {
   private readonly nextKey: Float64Array = new Float64Array(VIEW_KEY_LENGTH);
   /** Which frustum owns each retained result; versions of different frustums need not be distinct. */
   private readonly viewFrustums: Array<Nullable<IShadowFrustum>> = new Array(STATIC_SHADOW_VIEWS).fill(null);
-  /** Dirty views' culls, retained as one compute batch between frames. */
+  /** The culls of a batch's views that changed, submitted together; an array reused by every batch. */
   private readonly pendingViews: Array<ComputeNode> = [];
   /** Whether the LOD thresholds or switch changed since the last dispatch. */
   private isLodChanged: boolean = true;

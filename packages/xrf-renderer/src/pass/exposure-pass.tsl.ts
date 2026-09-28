@@ -13,7 +13,7 @@ import {
   vec2,
   vec3,
 } from "three/tsl";
-import { ComputeNode, Node, Texture } from "three/webgpu";
+import { ComputeNode, Node, StorageBufferNode, Texture } from "three/webgpu";
 
 import { loopNamed } from "#/shader/named-loop.tsl";
 import { WHITE_INTENSITY_SQUARED } from "#/shader/tonemap.tsl";
@@ -48,14 +48,14 @@ function toUntonemapped(low: Node<"vec3">): Node<"vec3"> {
  * @returns The measurement, one invocation a cell.
  */
 export function createExposureMeasure(frame: Texture, exposure: ExposureUniforms, size: Node<"vec2">): ComputeNode {
-  const cells = storage(exposure.cells, "float", EXPOSURE_CELLS * EXPOSURE_CELLS);
+  const cells: StorageBufferNode<"float"> = storage(exposure.cells, "float", EXPOSURE_CELLS * EXPOSURE_CELLS);
 
   return Fn(() => {
     const cell: Node<"vec2"> = vec2(
       float(instanceIndex.mod(EXPOSURE_CELLS)),
       float(instanceIndex.div(EXPOSURE_CELLS))
     ).toVar();
-    const total = float(0).toVar();
+    const total: Node<"float"> = float(0).toVar();
 
     loopNamed(
       { end: uint(CELL_SAMPLES * CELL_SAMPLES), name: "sample", start: uint(0), type: "uint" },
@@ -83,11 +83,15 @@ export function createExposureMeasure(frame: Texture, exposure: ExposureUniforms
  * @returns The adaptation, one invocation.
  */
 export function createExposureAdaptation(exposure: ExposureUniforms): ComputeNode {
-  const cells = storage(exposure.cells, "float", EXPOSURE_CELLS * EXPOSURE_CELLS).toReadOnly();
-  const adapted = storage(exposure.adapted, "float", 1);
+  const cells: StorageBufferNode<"float"> = storage(
+    exposure.cells,
+    "float",
+    EXPOSURE_CELLS * EXPOSURE_CELLS
+  ).toReadOnly();
+  const adapted: StorageBufferNode<"float"> = storage(exposure.adapted, "float", 1);
 
   return Fn(() => {
-    const total = float(0).toVar();
+    const total: Node<"float"> = float(0).toVar();
 
     loopNamed(
       { end: uint(EXPOSURE_CELLS * EXPOSURE_CELLS), name: "cell", start: uint(0), type: "uint" },

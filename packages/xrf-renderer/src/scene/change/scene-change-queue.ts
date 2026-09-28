@@ -169,8 +169,21 @@ export class SceneChangeQueue<T> {
     return into;
   }
 
-  /** Makes an earlier change part of a later one, so neither applies without the other. */
+  /**
+   * Makes an earlier change part of a later one, so neither applies without the other. A change between them letting
+   * textures or retired resources go waited for the earlier one, which now applies later: it goes along with it.
+   */
   private merge(from: ISceneChange<T>, into: ISceneChange<T>): void {
+    const between: Array<ISceneChange<T>> = this.changes
+      .slice(this.changes.indexOf(from) + 1, this.changes.indexOf(into))
+      .filter((change: ISceneChange<T>) => change.textures.size > 0 || change.retired.length > 0);
+
+    this.absorb(from, into);
+    between.forEach((change: ISceneChange<T>) => this.absorb(change, into));
+  }
+
+  /** Moves everything a change holds into another, and takes it out of the queue. */
+  private absorb(from: ISceneChange<T>, into: ISceneChange<T>): void {
     for (const object of from.objects) {
       this.waiting.set(object, into);
       into.objects.add(object);

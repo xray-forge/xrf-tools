@@ -58,7 +58,8 @@ export class StaticListRegions {
   }
 
   /**
-   * Gives a batch a region holding what it may list, moving it where it outgrew the one it had.
+   * Gives a batch a region holding what it may list, moving it where it outgrew the one it had: with room to spare,
+   * or only its demand where the space's limit leaves no more.
    *
    * @param batch - A batch whose slots changed.
    * @returns Whether the batch's region holds its demand; not where the space cannot grow to hold it, the region it
@@ -69,8 +70,14 @@ export class StaticListRegions {
       return true;
     }
 
-    const capacity: number = Math.max(1, Math.ceil(batch.demand * STATIC_HEADROOM));
-    const start: Nullable<number> = this.allocate(batch.space, capacity);
+    const demand: number = Math.max(1, batch.demand);
+    let capacity: number = Math.max(demand, Math.ceil(batch.demand * STATIC_HEADROOM));
+    let start: Nullable<number> = this.allocate(batch.space, capacity);
+
+    if (start === null && capacity > demand) {
+      capacity = demand;
+      start = this.allocate(batch.space, capacity);
+    }
 
     if (start === null) {
       return false;

@@ -1,14 +1,17 @@
 import { describe, expect, it } from "@jest/globals";
+import { Nullable } from "@xrf/types";
 import { Material, MeshBasicNodeMaterial, Texture, WebGPURenderer } from "three/webgpu";
 
 import { ERendererDraw } from "#/contract/scene/renderer-draw";
 import { IRendererSurface } from "#/contract/scene/renderer-surface";
 import { ERendererTextureEncoding } from "#/contract/scene/renderer-texture-source";
 import { mockDdsFile, mockUncompressedDdsFile } from "#/dds/dds-fixtures";
+import { TSurfaceArrayTargets } from "#/material/surface-array-targets";
 import { createOpaqueShadowMaterial, createSurfaceMaterial, ISurfaceMaterial } from "#/material/surface-material";
 import { SurfaceNodeMaterial } from "#/material/surface-node-material";
 import { SurfacePrograms } from "#/material/surface-programs";
-import { ESurfaceSlot, SURFACE_SLOTS } from "#/material/surface-slot";
+import { ESurfaceSlot, getSurfaceSlotPlaceholder, SURFACE_SLOTS } from "#/material/surface-slot";
+import { TSurfaceSlotTargets } from "#/material/surface-slot-targets";
 import { SurfaceBatching } from "#/scene/surface/surface-batching";
 import { RendererTextures } from "#/texture/renderer-textures";
 import { RendererUniforms } from "#/uniforms/renderer-uniforms";
@@ -62,6 +65,15 @@ function createFixture(): IBatchingFixture {
   };
 }
 
+function toRebuilt(
+  rebuilt: ReadonlyArray<readonly [ISurfaceMaterial, Nullable<() => void>]>
+): Array<[ISurfaceMaterial, boolean]> {
+  return rebuilt.map(([material, release]: readonly [ISurfaceMaterial, Nullable<() => void>]) => [
+    material,
+    release !== null,
+  ]);
+}
+
 /** The layer a row names for the lightmap. */
 function toHemiLayer(uniforms: RendererUniforms, row: number): number {
   const words: Uint32Array = uniforms.surfaceTable.rows.array as Uint32Array;
@@ -85,7 +97,7 @@ describe("SurfaceBatching", () => {
 
     expect(a.material).toBe(b.material);
     expect(a.material).not.toBe(wall.material);
-    expect(a.plain).toEqual({ material: wall.material, shadow: wall.shadow });
+    expect(a.plain).toBe(wall.plain);
     expect(a.row).not.toBe(b.row);
     expect(toHemiLayer(uniforms, a.row)).not.toBe(toHemiLayer(uniforms, b.row));
     expect(
@@ -124,7 +136,7 @@ describe("SurfaceBatching", () => {
 
     upload("brick");
 
-    expect(batching.rebind("brick")).toEqual([wall]);
+    expect(toRebuilt(batching.rebind("brick"))).toEqual([[wall, false]]);
     expect(wall.batched).not.toBeNull();
     // Of its class again: the layer is copied, and nothing is built again.
     upload("brick");
@@ -163,7 +175,8 @@ describe("SurfaceBatching", () => {
     expect(batching.track(create(bare), bare)).toBe(false);
   });
 
-  it("gives a surface's row back once it is drawn no more", () => {
+  // What drew it reads its row and layers until the change rebuilding it applies, which is when the release runs.
+  it("gives a surface's row back only once the view it drew by is let go", () => {
     const { batching, create, uniforms, upload } = createFixture();
     const wall: ISurfaceMaterial = create(WALL);
 
@@ -172,11 +185,16 @@ describe("SurfaceBatching", () => {
     batching.track(wall, WALL);
 
     const row: number = (wall.batched as ISurfaceMaterial).row;
-
-    batching.untrack(wall);
+    const release: () => void = batching.untrack(wall) as () => void;
 
     expect(wall.batched).toBeNull();
+    expect(uniforms.surfaceTable.allocate()).not.toBe(row);
+
+    release();
+    release();
+
     expect(uniforms.surfaceTable.allocate()).toBe(row);
+    expect(uniforms.surfaceTable.allocate()).not.toBe(row);
   });
 
   it("names a layer word in a row for every slot", () => {
@@ -212,7 +230,10 @@ describe("SurfaceBatching", () => {
 
     upload("brick", mockDdsFile({ fourCC: "DXT1" }));
 
-    expect(batching.rebind("brick")).toEqual([wall, next]);
+    expect(toRebuilt(batching.rebind("brick"))).toEqual([
+      [wall, true],
+      [next, true],
+    ]);
 
     const after: SurfaceNodeMaterial = wall.batched?.material as SurfaceNodeMaterial;
 
@@ -220,6 +241,95 @@ describe("SurfaceBatching", () => {
     expect(after).not.toBe(before);
     expect(after.surfaceArrays?.base).not.toBe(before.surfaceArrays?.base);
     expect((wall.batched as ISurfaceMaterial).row).not.toBe((next.batched as ISurfaceMaterial).row);
+  });
+
+  // The views drawn before draw until their users are built again: their layers stay, and their other keys stay held.
+  it("keeps the layers of the views a class change supersedes until they are let go, their other keys held", () => {
+    const { batching, create, textures, upload } = createFixture();
+    const wall: ISurfaceMaterial = create(WALL);
+
+    // Of a class of its own, so the brick's array holds the brick alone.
+    upload("lmap#1", mockDdsFile({ fourCC: "DXT3" }));
+    upload("brick");
+    batching.track(wall, WALL);
+    batching.flush(RENDERER);
+
+    const shared: SurfaceNodeMaterial = (wall.batched as ISurfaceMaterial).material as SurfaceNodeMaterial;
+    const array: Texture = (shared.surfaceArrays as TSurfaceArrayTargets).base?.value as Texture;
+    let isDisposed: boolean = false;
+
+    array.addEventListener("dispose", () => (isDisposed = true));
+    upload("brick", mockDdsFile({ fourCC: "DXT1" }));
+
+    const [[, release]] = batching.rebind("brick");
+
+    // The lightmap went with the first flush: held on by the new view, it is not asked for again.
+    expect(wall.batched).not.toBeNull();
+    expect(textures.hasQueued).toBe(false);
+
+    batching.flush(RENDERER);
+
+    expect(isDisposed).toBe(false);
+
+    release?.();
+    batching.flush(RENDERER);
+
+    expect(isDisposed).toBe(true);
+  });
+
+  it("lets a copied key's own texture go only once nothing holds it, trying again with every flush", () => {
+    const { batching, create, textures, upload } = createFixture();
+    const wall: ISurfaceMaterial = create(WALL);
+
+    ["brick", "lmap#1"].forEach((key: string) => upload(key));
+    // Drawn plainly by something else too, such as a skinned object sharing the texture.
+    textures.hold(["brick"]);
+    batching.track(wall, WALL);
+    batching.flush(RENDERER);
+
+    expect(textures.isEvicted("brick")).toBe(false);
+    expect(textures.isEvicted("lmap#1")).toBe(true);
+
+    batching.flush(RENDERER);
+
+    expect(textures.isEvicted("brick")).toBe(false);
+
+    textures.letGo(["brick"]);
+    batching.flush(RENDERER);
+
+    expect(textures.isEvicted("brick")).toBe(true);
+  });
+
+  it("stops trying to let a key go that no array holds any more", () => {
+    const { batching, create, textures, upload } = createFixture();
+    const wall: ISurfaceMaterial = create(WALL);
+
+    ["brick", "lmap#1"].forEach((key: string) => upload(key));
+    textures.hold(["brick"]);
+    batching.track(wall, WALL);
+    batching.flush(RENDERER);
+    batching.untrack(wall)?.();
+    textures.letGo(["brick"]);
+    batching.flush(RENDERER);
+
+    expect(textures.isEvicted("brick")).toBe(false);
+  });
+
+  // A pipeline compiled over a surface's own material samples what its slots hold: an evicted texture would go up again.
+  it("points a batched surface's own slots at their placeholders once its textures are let go", () => {
+    const { batching, create, upload } = createFixture();
+    const wall: ISurfaceMaterial = create(WALL);
+    const slots: TSurfaceSlotTargets = (wall.material as SurfaceNodeMaterial).surfaceSlots as TSurfaceSlotTargets;
+
+    ["brick", "lmap#1"].forEach((key: string) => upload(key));
+    batching.track(wall, WALL);
+
+    expect(slots.base.value).not.toBe(getSurfaceSlotPlaceholder(ESurfaceSlot.BASE));
+
+    batching.flush(RENDERER);
+
+    expect(slots.base.value).toBe(getSurfaceSlotPlaceholder(ESurfaceSlot.BASE));
+    expect(slots.hemi.value).toBe(getSurfaceSlotPlaceholder(ESurfaceSlot.HEMI));
   });
 
   it("lets a shared material no surface draws by go once no batch draws it", () => {
@@ -236,7 +346,7 @@ describe("SurfaceBatching", () => {
 
     expect(batching.hasIdle).toBe(false);
 
-    batching.untrack(wall);
+    batching.untrack(wall)?.();
 
     expect(batching.hasIdle).toBe(true);
 
@@ -280,7 +390,7 @@ describe("SurfaceBatching", () => {
     ["brick", "lmap#1"].forEach((key: string) => upload(key));
     batching.track(wall, WALL);
     batching.flush(RENDERER);
-    batching.untrack(wall);
+    batching.untrack(wall)?.();
     rebound.length = 0;
 
     expect(batching.track(again, WALL)).toBe(false);

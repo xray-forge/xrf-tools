@@ -4,9 +4,9 @@ import { Sphere, Vector3 } from "three/webgpu";
 import { ERendererLightKind } from "#/contract/scene/renderer-light";
 import { IRendererPointLight } from "#/contract/scene/renderer-point-light";
 import { IRendererSpotLight } from "#/contract/scene/renderer-spot-light";
+import { ILightBasis } from "#/scene/lights/light-basis";
 import {
   createLightBasis,
-  ILightBasis,
   toLightBasis,
   toLightBound,
   toLightIntensity,

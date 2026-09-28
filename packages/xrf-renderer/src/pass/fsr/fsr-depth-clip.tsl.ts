@@ -21,7 +21,7 @@ import {
   vec3,
   vec4,
 } from "three/tsl";
-import { Node } from "three/webgpu";
+import { Node, StorageBufferNode } from "three/webgpu";
 
 import { IFsrClipInputs } from "#/pass/fsr/fsr-clip-inputs";
 import {
@@ -54,7 +54,7 @@ const DEPTH_SEPARATION: number = 1.37e-5;
  * @returns Two outputs: the prepared colour in YCoCg with its depth clip, and the reactive and accumulation masks.
  */
 export function toFsrDepthClip(inputs: IFsrInputs, clip: IFsrClipInputs, constants: IFsrConstants): Node {
-  const reconstructed = storage(clip.reconstructed, "uint", clip.capacity).toReadOnly();
+  const reconstructed: StorageBufferNode<"uint"> = storage(clip.reconstructed, "uint", clip.capacity).toReadOnly();
   const packed: Node<"mat4"> = Fn(() => {
     const { renderSize, displaySize } = constants;
     const position: Node<"vec2"> = screenCoordinate.xy.floor();

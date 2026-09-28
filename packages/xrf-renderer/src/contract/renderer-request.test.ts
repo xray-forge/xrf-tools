@@ -62,6 +62,26 @@ describe("listRendererTransfers", () => {
     ).toEqual([position.buffer, index.buffer]);
   });
 
+  it("moves a skeleton's binds and pairs, and a motion's transforms", () => {
+    const binds: Float32Array = new Float32Array(12);
+    const pairs: Uint16Array = new Uint16Array(2);
+    const transforms: Float32Array = new Float32Array(24);
+
+    expect(
+      listRendererTransfers({ key: "a", kind: ERendererRequest.PUT_SKELETON, skeleton: { binds, pairs } })
+    ).toEqual([binds.buffer, pairs.buffer]);
+    expect(listRendererTransfers({ key: "a", kind: ERendererRequest.PUT_SKELETON, skeleton: { binds } })).toEqual([
+      binds.buffer,
+    ]);
+    expect(
+      listRendererTransfers({
+        key: "b",
+        kind: ERendererRequest.PUT_MOTION,
+        motion: { floatsPerBone: 12, transforms },
+      })
+    ).toEqual([transforms.buffer]);
+  });
+
   it("moves nothing with any other message", () => {
     expect(listRendererTransfers({ height: 1, kind: ERendererRequest.RESIZE, pixelRatio: 1, width: 1 })).toEqual([]);
     expect(listRendererTransfers({ kind: ERendererRequest.DISPOSE })).toEqual([]);

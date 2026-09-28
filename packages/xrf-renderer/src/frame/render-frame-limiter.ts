@@ -1,6 +1,6 @@
 import { Nullable } from "@xrf/types";
 
-import { TFrameRateLimit, toFrameInterval } from "#/frame/render-frame-limit";
+import { TFrameRateLimit, toFrameInterval } from "#/frame/frame-rate-limit";
 
 /**
  * How much earlier than due a frame may land and still be drawn: a display's wakes wander by a fraction of a

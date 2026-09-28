@@ -1,11 +1,11 @@
 import { Maybe, Nullable } from "@xrf/types";
 import { Euler, PerspectiveCamera, Vector3 } from "three/webgpu";
 
-import { IRendererCameraController } from "#/camera/camera-controller";
 import { setCameraAspect, setCameraLens } from "#/camera/camera-lens";
 import { isSameCameraStart, toCameraPose } from "#/camera/camera-pose";
 import { DragCursor } from "#/camera/drag-cursor";
-import { EFlyKey, getFlyKey } from "#/camera/fly-keys";
+import { EFlyKey, getFlyKey } from "#/camera/fly-key";
+import { IRendererCameraController } from "#/camera/renderer-camera-controller";
 import { ERenderInput } from "#/contract/render-input";
 import { ERendererCameraController, TRendererCamera } from "#/contract/renderer-camera";
 import { ERendererCameraCommand, TRendererCameraCommand } from "#/contract/renderer-camera-command";

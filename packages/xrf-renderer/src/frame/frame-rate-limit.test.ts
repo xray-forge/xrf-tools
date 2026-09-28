@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { DEFAULT_FRAME_RATE_LIMIT, toFrameInterval, toFrameRateLimit } from "#/frame/render-frame-limit";
+import { DEFAULT_FRAME_RATE_LIMIT, toFrameInterval, toFrameRateLimit } from "#/frame/frame-rate-limit";
 
 describe("toFrameRateLimit", () => {
   it("takes a limit this build offers", () => {

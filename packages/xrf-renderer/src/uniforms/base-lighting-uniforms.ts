@@ -2,7 +2,7 @@ import { renderGroup, uniform } from "three/tsl";
 import { Camera, UniformNode, Vector3 } from "three/webgpu";
 
 import { TRendererColor } from "#/contract/renderer-color";
-import { IBaseLightingConstants } from "#/lighting/base-lighting";
+import { IBaseLightingConstants } from "#/lighting/base-lighting-constants";
 
 /**
  * The constants the base lighting passes read, as shader uniforms updated in place.

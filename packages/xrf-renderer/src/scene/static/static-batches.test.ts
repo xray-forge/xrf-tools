@@ -18,6 +18,7 @@ import { ISurfaceMaterial, toOwnSurfaceDrawing } from "#/material/surface-materi
 import { StaticArena } from "#/scene/static/static-arena";
 import { StaticBatches } from "#/scene/static/static-batches";
 import { STATIC_NO_BATCH, STATIC_SHADOW_VIEWS, StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
+import { EStaticListSpace } from "#/uniforms/static-list-space";
 import { EStaticPool } from "#/uniforms/static-pool";
 import { StorageRetirement } from "#/uniforms/storage-retirement";
 
@@ -27,7 +28,7 @@ function createSurface(shadow: MeshBasicNodeMaterial | null): ISurfaceMaterial {
     dispose: () => {},
     isImpostor: false,
     keys: [],
-    ...toOwnSurfaceDrawing(new MeshBasicNodeMaterial(), shadow),
+    ...toOwnSurfaceDrawing(new MeshBasicNodeMaterial(), shadow, []),
     pass: ERendererPass.DEFERRED,
     shadowKeys: [],
   };
@@ -193,6 +194,23 @@ describe("StaticBatches", () => {
     expect(Array.from(regions.subarray(batch * 4, batch * 4 + 2))).toEqual(region);
     expect(region[1]).toBeGreaterThanOrEqual(10);
     expect(batches.put(1, arena, surface, 10)?.surface).toBe(batch);
+  });
+
+  // The two spaces share one limit: a shadow region grown for a slot about to be refused shrank the surfaces' room.
+  it("makes no shadow batch or region for a slot its surface region was refused", () => {
+    const buffers: StaticDrawBuffers = new StaticDrawBuffers(new StorageRetirement(), {
+      [EStaticPool.SHADOW_LIST]: 1,
+      [EStaticPool.SURFACE_LIST]: 64,
+    });
+    const batches: StaticBatches = new StaticBatches(buffers, new Scene(), new Scene(), [new Scene()], [new Scene()]);
+
+    buffers.storageLimit = 8 * (2 * 100 + STATIC_SHADOW_VIEWS);
+
+    expect(batches.put(1, createArena(), createSurface(new MeshBasicNodeMaterial()), 200)).toBeNull();
+    // The surface's batch alone was numbered.
+    expect(batches.extent).toBe(1);
+    expect(buffers.capacity(EStaticPool.SHADOW_LIST)).toBe(1);
+    expect(batches.listUse(EStaticListSpace.SHADOWS).used).toBe(0);
   });
 
   // A slot put again over an arena that sways kept its old shadow batch, and the demand it made there.

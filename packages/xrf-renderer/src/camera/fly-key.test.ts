@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { EFlyKey, getFlyKey } from "#/camera/fly-keys";
+import { EFlyKey, getFlyKey } from "#/camera/fly-key";
 
 describe("getFlyKey", () => {
   it("answers both WASD and the arrows, with rising and sinking on E and Q", () => {

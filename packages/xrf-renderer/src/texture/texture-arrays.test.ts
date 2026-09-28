@@ -36,11 +36,11 @@ describe("TextureArrays", () => {
     expect(arrays.claim("lmap#1", texture)).toEqual(first);
     expect((arrays.claim("lmap#2", createTexture()) as ITextureLayer).layer).toBe(1);
 
-    arrays.release("lmap#1");
+    arrays.release("lmap#1", first);
 
     expect((arrays.claim("lmap#3", createTexture()) as ITextureLayer).layer).toBe(2);
 
-    arrays.release("lmap#1");
+    arrays.release("lmap#1", first);
 
     expect((arrays.claim("lmap#4", createTexture()) as ITextureLayer).layer).toBe(first.layer);
   });
@@ -143,9 +143,12 @@ describe("TextureArrays", () => {
   it("reuses the lowest free layer first, so the top stays what can be given up", () => {
     const arrays: TextureArrays = new TextureArrays(() => {});
 
-    ["a", "b", "c", "d"].forEach((key: string) => arrays.claim(key, createTexture()));
-    arrays.release("c");
-    arrays.release("a");
+    const held: Array<ITextureLayer> = ["a", "b", "c", "d"].map(
+      (key: string) => arrays.claim(key, createTexture()) as ITextureLayer
+    );
+
+    arrays.release("c", held[2]);
+    arrays.release("a", held[0]);
 
     expect((arrays.claim("e", createTexture()) as ITextureLayer).layer).toBe(0);
     expect((arrays.claim("f", createTexture()) as ITextureLayer).layer).toBe(2);
@@ -154,15 +157,15 @@ describe("TextureArrays", () => {
 
   it("gives up the layers let go from the top, so an array fitted afterwards is smaller", () => {
     const arrays: TextureArrays = new TextureArrays(() => {});
-    const [first] = ["a", "b", "c", "d", "e"].map(
+    const [first, second, , fourth, fifth] = ["a", "b", "c", "d", "e"].map(
       (key: string) => arrays.claim(key, createTexture("DXT5", 8, 1)) as ITextureLayer
     );
 
     arrays.flush();
     // The top two are given up, and the one below them stays free inside what is used.
-    arrays.release("d");
-    arrays.release("e");
-    arrays.release("b");
+    arrays.release("d", fourth);
+    arrays.release("e", fifth);
+    arrays.release("b", second);
     arrays.compact(IDLE);
 
     const { copies }: ITextureArrayFlush = arrays.flush();
@@ -178,7 +181,7 @@ describe("TextureArrays", () => {
     const texture: Texture = held.array.target.value;
 
     arrays.flush();
-    arrays.release("a");
+    arrays.release("a", held);
 
     const { disposals }: ITextureArrayFlush = arrays.flush();
 
@@ -204,11 +207,11 @@ describe("TextureArrays", () => {
     expect(arrays.retain("a")).toEqual(held);
     expect(arrays.retain("b")).toBeNull();
 
-    arrays.release("a");
+    arrays.release("a", held);
 
     expect((arrays.claim("b", createTexture()) as ITextureLayer).layer).not.toBe(held.layer);
 
-    arrays.release("a");
+    arrays.release("a", held);
 
     expect(arrays.retain("a")).toBeNull();
   });
@@ -254,7 +257,7 @@ describe("TextureArrays", () => {
     );
 
     // Grown to six and not flushed yet, then all but two let go and fitted.
-    ["c", "d", "e"].forEach((key: string) => arrays.release(key));
+    ["c", "d", "e"].forEach((key: string, index: number) => arrays.release(key, held[index + 2]));
     arrays.compact(IDLE);
 
     const fitted: CompressedArrayTexture = held[0].array.target.value as CompressedArrayTexture;
@@ -262,6 +265,66 @@ describe("TextureArrays", () => {
 
     expect(fitted.image.depth).toBe(2);
     expect(outgrown).toMatchObject({ destination: fitted, layers: 2 });
+  });
+
+  it("holds a detached key anew as its new class, the layer held before kept until the views holding it let go", () => {
+    const replaced: Array<string> = [];
+    const arrays: TextureArrays = new TextureArrays((key: string) => replaced.push(key));
+    const before: ITextureLayer = arrays.claim("a", createTexture()) as ITextureLayer;
+    const drawn: Texture = before.array.target.value;
+
+    arrays.flush();
+    arrays.detach("a");
+
+    expect(arrays.holds("a")).toBe(false);
+
+    const after: ITextureLayer = arrays.claim("a", createTexture("DXT1")) as ITextureLayer;
+
+    expect(after.array).not.toBe(before.array);
+    expect(arrays.retain("a")).toEqual(after);
+    expect(arrays.flush().disposals).not.toContain(drawn);
+
+    arrays.release("a", before);
+
+    expect(arrays.holds("a")).toBe(true);
+    expect(arrays.flush().disposals).toContain(drawn);
+    expect(replaced).toEqual([before.array.key]);
+  });
+
+  it("copies nothing more into a detached key's layer, and again into it for a key claimed back as its class", () => {
+    const arrays: TextureArrays = new TextureArrays(() => {});
+    const first: Texture = createTexture();
+    const before: ITextureLayer = arrays.claim("a", first) as ITextureLayer;
+
+    arrays.detach("a");
+
+    expect(arrays.flush().copies).toHaveLength(0);
+
+    const back: Texture = createTexture();
+
+    arrays.claim("a", createTexture("DXT1"));
+    arrays.detach("a");
+
+    expect(arrays.claim("a", back)).toEqual(before);
+    expect(
+      arrays
+        .flush()
+        .copies.filter((copy: ITextureCopy) => copy.destination === before.array.target.value)
+        .map((copy: ITextureCopy) => copy.source)
+    ).toEqual([back, back]);
+  });
+
+  it("copies nothing again with the next flush for a key detached since the copy was skipped", () => {
+    const arrays: TextureArrays = new TextureArrays(() => {});
+
+    arrays.claim("lmap", createTexture());
+
+    const { copies }: ITextureArrayFlush = arrays.flush();
+
+    arrays.detach("lmap");
+
+    expect(arrays.retry(copies)).toEqual(new Set());
+    expect(arrays.flush().copies).toHaveLength(0);
   });
 
   it("copies a key's layer again with the next flush where the frame could not, and nothing else", () => {

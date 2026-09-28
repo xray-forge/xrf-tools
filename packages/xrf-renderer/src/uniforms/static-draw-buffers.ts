@@ -79,7 +79,7 @@ export function toStaticBandWord(band: number, bands: number, windows: number): 
 }
 
 /** What each pool holds before it first grows: more than any level measured puts in its resident sectors. */
-export const INITIAL_STATIC_CAPACITY: Readonly<Record<EStaticPool, number>> = {
+const INITIAL_STATIC_CAPACITY: Readonly<Record<EStaticPool, number>> = {
   [EStaticPool.SLOTS]: 1 << 14,
   [EStaticPool.PLACES]: 1 << 15,
   [EStaticPool.ROWS]: 1 << 15,
@@ -88,7 +88,7 @@ export const INITIAL_STATIC_CAPACITY: Readonly<Record<EStaticPool, number>> = {
   [EStaticPool.BATCHES]: 1 << 11,
   [EStaticPool.SURFACE_LIST]: 1 << 18,
   [EStaticPool.SHADOW_LIST]: 1 << 18,
-  // A drawing of 4096 by 4096.
+  // Every level of a drawing of about 3960 by 3960.
   [EStaticPool.PYRAMID]: 1 << 20,
 };
 
@@ -110,16 +110,17 @@ const OTHER_LIST: Readonly<Record<TListPool, TListPool>> = {
   [EStaticPool.SHADOW_LIST]: EStaticPool.SURFACE_LIST,
 };
 
-/** Bytes the widest buffer of each pool takes an element, which is what a storage buffer's limit caps the pool by. */
-const ELEMENT_BYTES: Readonly<Record<EStaticPool, number>> = {
+/**
+ * Bytes the widest buffer of each pool but the list spaces takes an element, which is what a storage buffer's limit
+ * caps the pool by; the list spaces share one buffer, and are capped by `LIST_VIEWS`.
+ */
+const ELEMENT_BYTES: Readonly<Record<Exclude<EStaticPool, TListPool>, number>> = {
   [EStaticPool.SLOTS]: STATIC_SLOT_WORDS * 4,
   [EStaticPool.PLACES]: STATIC_PLACE_COLUMNS * 16,
   [EStaticPool.ROWS]: 16,
   [EStaticPool.LODS]: STATIC_LOD_CORNER_COLUMNS * 16,
   [EStaticPool.CLUSTERS]: 16,
   [EStaticPool.BATCHES]: STATIC_BATCH_ARGUMENT_BYTES,
-  [EStaticPool.SURFACE_LIST]: LIST_ENTRY_BYTES * 2,
-  [EStaticPool.SHADOW_LIST]: LIST_ENTRY_BYTES * STATIC_SHADOW_VIEWS,
   [EStaticPool.PYRAMID]: 4,
 };
 

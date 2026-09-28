@@ -1,7 +1,8 @@
 import { describe, expect, it } from "@jest/globals";
 
 import { IBaseFramePasses } from "#/graph/base-frame-passes";
-import { IFrameOptionalPasses, toFramePassOrder } from "#/graph/frame-pass-order";
+import { IFrameOptionalPasses } from "#/graph/frame-optional-passes";
+import { toFramePassOrder } from "#/graph/frame-pass-order";
 import { IOcclusionFramePasses } from "#/graph/occlusion-frame-passes";
 import { IRendererPass } from "#/pass/renderer-pass";
 

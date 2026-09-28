@@ -168,12 +168,23 @@ describe("RenderInputForwarder", () => {
     expect(canvas.tabIndex).toBe(-1);
   });
 
+  // The far side's controls outlive the canvas: told nothing, they would hold the pointer into the next view.
+  it("cancels every pointer still down as it is disposed", () => {
+    const { canvas, sent, forwarder } = mockForwarder();
+
+    sendTo(canvas, ERenderInput.POINTER_DOWN, { pointerId: 4 });
+    sent.length = 0;
+    forwarder.dispose();
+
+    expect(sent).toEqual([expect.objectContaining({ pointerId: 4, type: ERenderInput.POINTER_CANCEL })]);
+  });
+
   it("stops sending once it is disposed", () => {
     const { canvas, sent, forwarder } = mockForwarder();
 
     sendTo(canvas, ERenderInput.POINTER_DOWN);
-    sent.length = 0;
     forwarder.dispose();
+    sent.length = 0;
 
     sendTo(canvas, ERenderInput.POINTER_DOWN);
     sendTo(window, ERenderInput.POINTER_MOVE);

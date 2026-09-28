@@ -8,23 +8,32 @@ import {
   createRendererImageTexture,
   createRendererRawTexture,
   createRendererTexture,
-  IRendererTextureUpload,
 } from "#/texture/renderer-texture";
+import { IRendererTextureUpload } from "#/texture/renderer-texture-upload";
 import { ITextureTarget } from "#/texture/texture-target";
 
-/** One key's texture and everything drawing it, each with what it draws while the key holds nothing. */
+/** Something drawing a key's texture: what it draws while the key holds nothing, and whether it keeps it up. */
+interface ITextureBinding {
+  placeholder: Texture;
+  /** Whether it draws the key plainly, so no eviction lets the texture go while it is bound: a sampler of `bind`. */
+  isHolding: boolean;
+}
+
+/** One key's texture and everything drawing it. */
 interface ITextureEntry {
   /** The texture last put, which may not be on the GPU yet. */
   texture: Nullable<Texture>;
   /** What the targets draw: always a texture already on the GPU, or nothing. */
   drawn: Nullable<Texture>;
-  samplers: Map<ITextureTarget, Texture>;
+  samplers: Map<ITextureTarget, ITextureBinding>;
   /** Bumped by every put and release, so a picture decoding late can tell it was superseded. */
   version: number;
   /** Whether a picture is still decoding for it. */
   isDecoding: boolean;
   /** Whether what it draws was let go on the GPU, an array's layer holding it: asked for, it goes up again. */
   isEvicted: boolean;
+  /** Holds of whatever draws its own texture; no eviction lets the texture go while any stays. */
+  holds: number;
 }
 
 /**
@@ -125,23 +134,22 @@ export class RendererTextures {
 
     const sampler: TextureNode = sample(placeholder, coordinates);
 
-    this.target(key, placeholder, sampler);
+    // Drawn plainly by whatever builds with it, so its key's own texture stays up however an array holds it.
+    this.attach(key, placeholder, sampler, true);
 
     return sampler;
   }
 
   /**
-   * Points a target at whatever the key holds, now and after every later put.
+   * Points a target at whatever the key holds, now and after every later put. A target holds nothing up: what draws it
+   * holds its keys, and an evicted key's targets draw their placeholders.
    *
    * @param key - The texture's key.
    * @param placeholder - What it draws while the key holds nothing on the GPU.
    * @param target - What draws it.
    */
   public target(key: string, placeholder: Texture, target: ITextureTarget): void {
-    const entry: ITextureEntry = this.getEntry(key);
-
-    target.value = toDrawn(entry.drawn, placeholder);
-    entry.samplers.set(target, placeholder);
+    this.attach(key, placeholder, target, false);
   }
 
   /**
@@ -152,8 +160,44 @@ export class RendererTextures {
     const entry: Maybe<ITextureEntry> = key ? this.entries.get(key) : undefined;
 
     if (key && entry) {
+      if (entry.samplers.get(sampler)?.isHolding) {
+        entry.holds -= 1;
+      }
+
       entry.samplers.delete(sampler);
       this.prune(key, entry);
+    }
+  }
+
+  /**
+   * Keeps keys' own textures on the GPU for something drawing them, whatever an array holds; an evicted key goes up
+   * again with the uploads. Each hold is let go of once, by `letGo`.
+   *
+   * @param keys - The keys drawn, a key held as often as it is named.
+   */
+  public hold(keys: Iterable<string>): void {
+    for (const key of keys) {
+      const entry: ITextureEntry = this.getEntry(key);
+
+      entry.holds += 1;
+
+      if (entry.isEvicted) {
+        this.queued.add(key);
+      }
+    }
+  }
+
+  /**
+   * @param keys - Keys held before, which what held them draws no more.
+   */
+  public letGo(keys: Iterable<string>): void {
+    for (const key of keys) {
+      const entry: Maybe<ITextureEntry> = this.entries.get(key);
+
+      if (entry) {
+        entry.holds -= 1;
+        this.prune(key, entry);
+      }
     }
   }
 
@@ -180,23 +224,33 @@ export class RendererTextures {
   }
 
   /**
-   * Lets a key's texture go on the GPU, an array's layer holding a copy of it: whatever asks for it again has it
-   * uploaded again, within the budget.
+   * Lets a key's texture go on the GPU, an array's layer holding a copy of it. Its targets draw their placeholders, so
+   * nothing built or drawn after has three upload it again; whatever asks for it has it uploaded within the budget.
    *
    * @param key - A texture's key.
-   * @returns The texture let go, or null for a key holding nothing on the GPU.
+   * @returns The texture let go, or null for one not let go: holding nothing on the GPU, its latest put not up yet, or
+   *   held by something drawing it.
    */
   public evict(key: string): Nullable<Texture> {
     const entry: Maybe<ITextureEntry> = this.entries.get(key);
 
-    if (!entry?.drawn || entry.isEvicted || entry.isDecoding || entry.drawn !== entry.texture) {
+    if (!entry?.drawn || entry.holds > 0 || entry.isEvicted || entry.isDecoding || entry.drawn !== entry.texture) {
       return null;
     }
 
     entry.isEvicted = true;
+    entry.samplers.forEach(({ placeholder }: ITextureBinding, target: ITextureTarget) => (target.value = placeholder));
     entry.drawn.dispose();
 
     return entry.drawn;
+  }
+
+  /**
+   * @param key - A texture's key.
+   * @returns Whether its texture was let go on the GPU and has not gone up again since.
+   */
+  public isEvicted(key: string): boolean {
+    return this.entries.get(key)?.isEvicted === true;
   }
 
   /** Whether any texture waits to go up. */
@@ -232,14 +286,12 @@ export class RendererTextures {
   }
 
   public dispose(): void {
-    this.entries.forEach(({ drawn, isEvicted, texture }: ITextureEntry) => {
-      // An evicted texture went already.
-      if (texture && (texture !== drawn || !isEvicted)) {
-        texture.dispose();
-      }
+    // An evicted one too: three keeps nothing of a texture once it went, so a second dispose frees nothing twice.
+    this.entries.forEach(({ drawn, texture }: ITextureEntry) => {
+      texture?.dispose();
 
-      if (drawn && drawn !== texture && !isEvicted) {
-        drawn.dispose();
+      if (drawn !== texture) {
+        drawn?.dispose();
       }
     });
     this.entries.clear();
@@ -250,7 +302,15 @@ export class RendererTextures {
     let entry: Maybe<ITextureEntry> = this.entries.get(key);
 
     if (!entry) {
-      entry = { drawn: null, isDecoding: false, isEvicted: false, samplers: new Map(), texture: null, version: 0 };
+      entry = {
+        drawn: null,
+        holds: 0,
+        isDecoding: false,
+        isEvicted: false,
+        samplers: new Map(),
+        texture: null,
+        version: 0,
+      };
       this.entries.set(key, entry);
     }
 
@@ -301,22 +361,34 @@ export class RendererTextures {
     entry.drawn = texture;
     entry.isEvicted = false;
     entry.samplers.forEach(
-      (placeholder: Texture, sampler: ITextureTarget) => (sampler.value = toDrawn(texture, placeholder))
+      ({ placeholder }: ITextureBinding, sampler: ITextureTarget) => (sampler.value = toDrawn(texture, placeholder))
     );
 
     if (entry.samplers.size && (previous !== texture || wasEvicted)) {
       this.onRebound(key);
     }
 
-    // An evicted texture went already.
-    if (previous && previous !== texture && !wasEvicted) {
+    // An evicted one too, which frees nothing twice.
+    if (previous && previous !== texture) {
       previous.dispose();
+    }
+  }
+
+  /** Binds a target to a key, drawing what the key holds on the GPU now, which for an evicted key is nothing. */
+  private attach(key: string, placeholder: Texture, target: ITextureTarget, isHolding: boolean): void {
+    const entry: ITextureEntry = this.getEntry(key);
+
+    target.value = entry.isEvicted ? placeholder : toDrawn(entry.drawn, placeholder);
+    entry.samplers.set(target, { isHolding, placeholder });
+
+    if (isHolding) {
+      this.hold([key]);
     }
   }
 
   /** Forgets a key nothing holds and nothing samples. */
   private prune(key: string, entry: ITextureEntry): void {
-    if (!entry.texture && !entry.drawn && entry.samplers.size === 0 && !entry.isDecoding) {
+    if (!entry.texture && !entry.drawn && entry.samplers.size === 0 && !entry.isDecoding && entry.holds === 0) {
       this.entries.delete(key);
       this.queued.delete(key);
     }

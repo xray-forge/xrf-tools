@@ -39,7 +39,7 @@ interface IRendererClientAnswer<T> {
 
 /**
  * The renderer, from the page: one device for as long as the client lives or until it fails, and a canvas while one is
- * attached.
+ * attached. Failed or disposed, it is done: it posts nothing more, and answers what is asked of it at once.
  */
 export class RendererClient {
   private static getSize(target: IRenderTarget): IRendererViewSize {
@@ -55,6 +55,7 @@ export class RendererClient {
   private queue: Array<TRendererRequest> = [];
   /** Why the renderer stopped for good, once it did. */
   private failure: Nullable<string> = null;
+  private isDisposed: boolean = false;
   private captureId: number = 0;
   private settleId: number = 0;
 
@@ -64,6 +65,15 @@ export class RendererClient {
 
     this.worker.onmessage = (event: MessageEvent<TRendererResponse>): void => {
       const response: TRendererResponse = event.data;
+
+      // A worker that failed on its own may still be talking; the consumer was told it stopped.
+      if (this.failure !== null) {
+        if (response.kind === ERendererResponse.CAPTURED) {
+          response.image?.close();
+        }
+
+        return;
+      }
 
       switch (response.kind) {
         case ERendererResponse.READY:
@@ -105,12 +115,17 @@ export class RendererClient {
   }
 
   /**
-   * Shows frames on a page canvas, handing its drawing over for good: a canvas is transferred once.
+   * Shows frames on a page canvas, handing its drawing over for good: a canvas is transferred once. A client that is
+   * done takes none, so the canvas stays the page's for the next.
    *
    * @param target - The canvas and its size.
    */
   public attach(target: IRenderTarget): void {
     this.detach();
+
+    if (this.isDone) {
+      return;
+    }
 
     const canvas: HTMLCanvasElement = target.canvas;
 
@@ -293,12 +308,16 @@ export class RendererClient {
    * Draws a picture of the frame or of a texture.
    *
    * @param source - What to draw: a frame view, at the canvas's drawing size, or a bump plane at its own.
-   * @returns The picture, or null where there was nothing to draw, such as a frame with no view attached; refused with
-   *   why once the renderer failed.
+   * @returns The picture, or null where there was nothing to draw, such as a frame with no view attached or a client
+   *   disposed; refused with why once the renderer failed.
    */
   public capture(source: TRendererCaptureSource): Promise<Nullable<ImageBitmap>> {
     if (this.failure !== null) {
       return Promise.reject(new Error(this.failure));
+    }
+
+    if (this.isDisposed) {
+      return Promise.resolve(null);
     }
 
     const id: number = ++this.captureId;
@@ -322,6 +341,10 @@ export class RendererClient {
       return Promise.reject(new Error(this.failure));
     }
 
+    if (this.isDisposed) {
+      return Promise.resolve();
+    }
+
     const id: number = ++this.settleId;
 
     return new Promise((resolve: () => void, reject: (error: Error) => void): void => {
@@ -332,14 +355,24 @@ export class RendererClient {
 
   /** Stops the renderer and its thread. */
   public dispose(): void {
+    if (this.isDisposed) {
+      return;
+    }
+
     this.detach();
     this.post({ kind: ERendererRequest.DISPOSE });
     this.flush();
+    this.isDisposed = true;
     this.worker.terminate();
     this.captures.forEach((answer: IRendererClientAnswer<Nullable<ImageBitmap>>) => answer.resolve(null));
     this.captures.clear();
     this.settles.forEach((answer: IRendererClientAnswer<void>) => answer.resolve());
     this.settles.clear();
+  }
+
+  /** Whether the client failed or was disposed, after which nothing reaches the renderer. */
+  private get isDone(): boolean {
+    return this.failure !== null || this.isDisposed;
   }
 
   /**
@@ -365,6 +398,10 @@ export class RendererClient {
    * changes in one run the renderer applies in one go, and each await between requests starts another batch.
    */
   private post(request: TRendererRequest): void {
+    if (this.isDone) {
+      return;
+    }
+
     if (!this.queue.length) {
       queueMicrotask(() => this.flush());
     }

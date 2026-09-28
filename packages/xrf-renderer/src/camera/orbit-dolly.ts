@@ -7,15 +7,15 @@ import { TRendererVector } from "#/contract/renderer-vector";
  * @param target - What it orbits, which the step moves toward or away from.
  * @param step - Multiplier on the distance; above one moves away, below one moves closer.
  * @param minDistance - Closest the camera may come, as `OrbitControls` reports it.
- * @param maxDistance - Furthest it may go, which is `Infinity` unless a scene says otherwise.
+ * @param maxDistance - Furthest it may go, as `OrbitControls` reports it.
  * @returns The camera's new position, or its current one where the distance is already at the bound asked for.
  */
 export function toDolliedPosition(
   position: TRendererVector,
   target: TRendererVector,
   step: number,
-  minDistance: number = 0,
-  maxDistance: number = Number.POSITIVE_INFINITY
+  minDistance: number,
+  maxDistance: number
 ): TRendererVector {
   const offsetX: number = position[0] - target[0];
   const offsetY: number = position[1] - target[1];

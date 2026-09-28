@@ -1,4 +1,5 @@
-import { MathUtils, PerspectiveCamera, Vector3 } from "three/webgpu";
+import { toRadians } from "@xrf/math";
+import { PerspectiveCamera, Vector3 } from "three/webgpu";
 
 import { ISunViewRay } from "#/visibility/sun-view-ray";
 
@@ -26,7 +27,7 @@ export class SunViewRays {
    * @param camera - The camera drawing, its world matrix current.
    */
   public reset(camera: PerspectiveCamera): void {
-    const y: number = Math.tan(MathUtils.degToRad(camera.fov) / 2);
+    const y: number = Math.tan(toRadians(camera.fov) / 2);
     const x: number = y * camera.aspect;
 
     this.rays.forEach((ray: ISunViewRay, index: number) => {

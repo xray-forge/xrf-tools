@@ -13,10 +13,7 @@ export function toMean(samples: ReadonlyArray<number>): number {
 }
 
 /**
- * The largest of a series.
- *
- * Reported beside a mean wherever a series is a cost: a stutter is a worst case, and a mean is exactly the
- * statistic that hides one.
+ * The largest of a series of costs, reported beside a mean because a mean hides a stutter.
  *
  * @param samples - What was measured, in any order.
  * @returns The largest, or zero for an empty series.

@@ -10,3 +10,13 @@ export interface IRendererSkeleton {
   /** Child and parent bone indices, two a segment, for the skeleton overlay; left out, it draws nothing. */
   pairs?: Uint16Array;
 }
+
+/**
+ * What of a skeleton moves between threads: its arrays, never copied.
+ *
+ * @param skeleton - The skeleton about to be posted.
+ * @returns Its buffers.
+ */
+export function listRendererSkeletonTransfers(skeleton: IRendererSkeleton): Array<Transferable> {
+  return skeleton.pairs ? [skeleton.binds.buffer, skeleton.pairs.buffer] : [skeleton.binds.buffer];
+}

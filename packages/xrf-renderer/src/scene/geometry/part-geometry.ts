@@ -4,7 +4,8 @@ import { ISceneSection } from "#/scene/geometry/scene-section";
 
 /**
  * A geometry drawing one section of another: the same buffers, uploaded once for every part sharing them, drawn over
- * the section's own range and bounded by its own sphere. It owns none of them: `disposeSharingGeometry` lets it go.
+ * the section's own range and bounded by its own sphere. It owns none of them: `GeometryReleases.releaseSharing` lets
+ * it go.
  *
  * @param source - The geometry whose buffers it draws, instanced or not.
  * @param section - The range it draws.
@@ -26,27 +27,4 @@ export function createPartGeometry<T extends BufferGeometry>(source: T, section:
   }
 
   return part;
-}
-
-/**
- * Disposes a geometry drawing another's buffers without them: three frees every buffer a disposed geometry names, and
- * these are the source's, drawn by every other geometry sharing them.
- *
- * @param geometry - A part, or another geometry built over the source's buffers.
- * @param source - The geometry whose buffers it shares.
- */
-export function disposeSharingGeometry(geometry: BufferGeometry, source: BufferGeometry): void {
-  if (geometry.index === source.index) {
-    geometry.setIndex(null);
-  }
-
-  Object.entries(source.attributes).forEach(
-    ([name, attribute]: [string, BufferAttribute | InterleavedBufferAttribute]) => {
-      if (geometry.getAttribute(name) === attribute) {
-        geometry.deleteAttribute(name);
-      }
-    }
-  );
-
-  geometry.dispose();
 }

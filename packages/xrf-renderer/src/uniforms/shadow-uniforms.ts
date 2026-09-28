@@ -71,7 +71,7 @@ export class ShadowUniforms {
     // Each cascade starts where the view's edges leave the one before it, the first at the near plane.
     this.rays.reset(camera);
 
-    for (let view = 0; view < count; view += 1) {
+    for (let view: number = 0; view < count; view += 1) {
       this.cascades[view].fit(
         camera,
         this.rays,

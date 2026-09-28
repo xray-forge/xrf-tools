@@ -168,9 +168,9 @@ export class StaticBatches {
       entries,
       surface.isImpostor
     );
-    const cast: Nullable<StaticBatch> = surface.shadow
-      ? this.putIn(shadows, slot, arena, surface.shadow, surface.shadowKeys, entries)
-      : null;
+    // Not for a slot its surface refused: its shadow region would go at once, the list the spaces share grown for it.
+    const cast: Nullable<StaticBatch> =
+      drawn && surface.shadow ? this.putIn(shadows, slot, arena, surface.shadow, surface.shadowKeys, entries) : null;
 
     if (!drawn || (surface.shadow && !cast)) {
       this.withdraw(slot);
@@ -259,44 +259,32 @@ export class StaticBatches {
       );
     }
 
-    for (const arena of new Set(this.groupings.flatMap((grouping: IBatchGrouping) => [...grouping.drawing.keys()]))) {
-      if (this.generations.get(arena) !== arena.generation) {
-        this.generations.set(arena, arena.generation);
-        // Every batch over an arena that grew binds its new buffers.
-        this.groupings.forEach((grouping: IBatchGrouping) =>
-          grouping.drawing.get(arena)?.forEach((batch: StaticBatch) => batch.invalidate())
-        );
-      }
+    for (const grouping of this.groupings) {
+      grouping.drawing.forEach((_: Map<Material, StaticBatch>, arena: StaticArena) => {
+        if (this.generations.get(arena) !== arena.generation) {
+          this.generations.set(arena, arena.generation);
+          // Every batch over an arena that grew binds its new buffers, in every grouping.
+          this.groupings.forEach((it: IBatchGrouping) =>
+            it.drawing.get(arena)?.forEach((batch: StaticBatch) => batch.invalidate())
+          );
+        }
+      });
     }
 
     this.regions.flush();
   }
 
-  /**
-   * @param arena - An arena going, which no batch draws any more.
-   */
-  public release(arena: StaticArena): void {
-    for (const grouping of this.groupings) {
-      grouping.drawing.get(arena)?.forEach((batch: StaticBatch) => this.drop(grouping, batch));
-      grouping.idle.get(arena)?.forEach((batch: StaticBatch) => this.drop(grouping, batch));
-      grouping.drawing.delete(arena);
-      grouping.idle.delete(arena);
-    }
-
-    this.generations.delete(arena);
-    this.currentVersion += 1;
-  }
-
+  /** Lets every batch go with the static draws; the arenas persist until then, so none goes before. */
   public dispose(): void {
-    new Set(
-      this.groupings.flatMap((grouping: IBatchGrouping) => [...grouping.drawing.keys(), ...grouping.idle.keys()])
-    ).forEach((arena: StaticArena) => this.release(arena));
-
     for (const grouping of this.groupings) {
+      StaticBatches.all(grouping).forEach((batch: StaticBatch) => this.drop(grouping, batch));
+      grouping.drawing.clear();
+      grouping.idle.clear();
       grouping.chunks.clear();
       grouping.slots.clear();
     }
 
+    this.generations.clear();
     this.wires.clear();
   }
 
@@ -429,7 +417,7 @@ export class StaticBatches {
     }
   }
 
-  /** Lets a batch go with its arena: out of its bundles, its region and its number free. */
+  /** Lets a batch go: out of its bundles, its region and its number free. */
   private drop(grouping: IBatchGrouping, batch: StaticBatch): void {
     this.unbundle(grouping, batch);
     batch.dispose();

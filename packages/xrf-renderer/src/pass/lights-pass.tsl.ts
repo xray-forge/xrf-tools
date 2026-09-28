@@ -30,8 +30,8 @@ import { ILightsPassInputs } from "#/pass/lights-pass-inputs";
 import { toLightCluster } from "#/scene/lights/light-clusters.tsl";
 import { LIGHT_RECORD, LIGHT_VECTORS, MAX_LIGHTS } from "#/scene/lights/light-record";
 import { LIGHT_SHADOW_ATLAS_SIZE } from "#/scene/lights/light-shadow-atlas";
+import { ILightShadowFaceBasis } from "#/scene/lights/light-shadow-face-basis";
 import {
-  ILightShadowFaceBasis,
   LIGHT_SHADOW_POINT_CONE,
   LIGHT_SHADOW_POINT_FACES,
   toLightShadowScale,
@@ -396,8 +396,8 @@ function toComparedTexels(
   reference: Node<"float">
 ): Node<"float"> {
   const corner: Node<"vec2"> = at.sub(0.5);
-  const first = floor(corner);
-  const blend = corner.sub(first);
+  const first: Node<"vec2"> = floor(corner);
+  const blend: Node<"vec2"> = corner.sub(first);
 
   function lit(x: number, y: number): Node<"float"> {
     return step(texture(atlas, first.add(vec2(x + 0.5, y + 0.5)).mul(texel)).level(int(0)).x, reference);
@@ -426,7 +426,7 @@ function toFaceUv(across: Node<"vec2">, along: Node<"float">, scale: Node<"float
  * @returns The projector's texel, white for a spot without one.
  */
 function toProjected(projectors: ReadonlyArray<TextureNode>, slot: Node<"int">, uv: Node<"vec2">): Node<"vec4"> {
-  const texel = vec4(1).toVar();
+  const texel: Node<"vec4"> = vec4(1).toVar();
 
   projectors.forEach((projector: TextureNode, index: number) => {
     If(slot.equal(index), () => {

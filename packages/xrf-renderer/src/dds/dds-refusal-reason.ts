@@ -4,6 +4,8 @@ export enum EDdsRefusalReason {
   NOT_A_DDS = "notADds",
   /** The file stops short of the header, or of the texels the header declares. */
   TRUNCATED = "truncated",
+  /** The header declares no texels, or more levels than its size halves to. */
+  MALFORMED = "malformed",
   /** A `DDPF_FOURCC` tag this does not model. */
   UNSUPPORTED_FOURCC = "unsupportedFourCc",
   /** A `DXGI_FORMAT` this does not model. */

@@ -17,7 +17,6 @@ import {
 import { EVertexAttribute, INSTANCE_MATRIX_COLUMNS } from "#/geometry/vertex-attribute";
 import { queueBufferUpload } from "#/scene/buffer-upload";
 import { GeometryReleases } from "#/scene/geometry/geometry-releases";
-import { disposeSharingGeometry } from "#/scene/geometry/part-geometry";
 import { SceneGeometry } from "#/scene/geometry/scene-geometry";
 import { CullView } from "#/visibility/cull-view";
 import { collectVisibleInstances, FLOATS_PER_SPHERE, toInstanceSpheres } from "#/visibility/instance-spheres";
@@ -142,11 +141,10 @@ export class SceneInstances {
   /**
    * Lets go of the places' buffers, which it owns, leaving the base's to the base.
    *
-   * @param releases - Where its own buffers are freed: three frees only a drawn geometry's, and this one is never drawn.
+   * @param releases - Where its geometry and its own buffers are let go of, with the next flush.
    */
   public dispose(releases: GeometryReleases): void {
-    disposeSharingGeometry(this.geometry, this.base.buffer);
-    releases.release(Object.values(this.geometry.attributes));
+    releases.releaseSharing(this.geometry, this.base.buffer);
   }
 
   private createGeometry(): InstancedBufferGeometry {

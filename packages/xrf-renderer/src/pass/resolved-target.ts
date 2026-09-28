@@ -1,7 +1,8 @@
 import { DepthTexture, FloatType, RenderTarget, WebGPURenderer } from "three/webgpu";
 
 import { initPreservedDepthTarget } from "#/internals/preserved-depth-target";
-import { createColourTarget, IColourAttachment } from "#/pass/colour-target";
+import { IColourAttachment } from "#/pass/colour-attachment";
+import { createColourTarget } from "#/pass/colour-target";
 
 /**
  * A frame resolved at the output's size: its colour, and a depth of its own the resolve writes for the helpers drawn

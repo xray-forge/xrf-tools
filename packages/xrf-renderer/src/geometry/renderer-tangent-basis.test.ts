@@ -21,19 +21,22 @@ const BODIES: ReadonlyArray<[string, IRendererGeometry]> = [
 ];
 
 describe("withRendererTangentBasis", () => {
-  it.each(BODIES)("keeps the %s's basis unit length and square to the normal, poles included", (_, geometry) => {
-    for (let vertex: number = 0; vertex < geometry.position.length / 3; vertex += 1) {
-      const normal: TVector = vectorAt(geometry.normal!, vertex);
-      const tangent: TVector = vectorAt(geometry.tangent!, vertex);
-      const binormal: TVector = vectorAt(geometry.binormal!, vertex);
+  it.each(BODIES)(
+    "keeps the %s's basis unit length and square to the normal, poles included",
+    (_: string, geometry: IRendererGeometry) => {
+      for (let vertex: number = 0; vertex < geometry.position.length / 3; vertex += 1) {
+        const normal: TVector = vectorAt(geometry.normal!, vertex);
+        const tangent: TVector = vectorAt(geometry.tangent!, vertex);
+        const binormal: TVector = vectorAt(geometry.binormal!, vertex);
 
-      // A zero-length basis shades a vertex black, which a sphere's collapsed pole triangles would give.
-      expect(Math.sqrt(dot(tangent, tangent))).toBeCloseTo(1, 5);
-      expect(Math.sqrt(dot(binormal, binormal))).toBeCloseTo(1, 5);
-      expect(dot(tangent, normal)).toBeCloseTo(0, 5);
-      expect(dot(binormal, normal)).toBeCloseTo(0, 5);
+        // A zero-length basis shades a vertex black, which a sphere's collapsed pole triangles would give.
+        expect(Math.sqrt(dot(tangent, tangent))).toBeCloseTo(1, 5);
+        expect(Math.sqrt(dot(binormal, binormal))).toBeCloseTo(1, 5);
+        expect(dot(tangent, normal)).toBeCloseTo(0, 5);
+        expect(dot(binormal, normal)).toBeCloseTo(0, 5);
+      }
     }
-  });
+  );
 
   it("runs u right and v down on a face looking at +z, as X-Ray stores rows and packs its normals", () => {
     const [, box] = BODIES[0];

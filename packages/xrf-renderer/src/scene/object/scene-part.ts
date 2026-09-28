@@ -15,7 +15,8 @@ import { IRendererObject } from "#/contract/scene/renderer-object";
 import { IRendererProgressive } from "#/contract/scene/renderer-progressive";
 import { disposeObject } from "#/internals/object-disposal";
 import { ISurfaceMaterial } from "#/material/surface-material";
-import { createPartGeometry, disposeSharingGeometry } from "#/scene/geometry/part-geometry";
+import { GeometryReleases } from "#/scene/geometry/geometry-releases";
+import { createPartGeometry } from "#/scene/geometry/part-geometry";
 import { ISceneClusterRun } from "#/scene/geometry/scene-cluster-run";
 import { SceneClusters } from "#/scene/geometry/scene-clusters";
 import { ISceneSection } from "#/scene/geometry/scene-section";
@@ -253,17 +254,19 @@ export class ScenePart {
   }
 
   /**
-   * Takes it out of whatever draws it and lets three forget it: its geometry first, while the render objects three
-   * frees a geometry's buffers through are current, then its meshes.
+   * Takes it out of whatever draws it and lets three forget its meshes, its geometry with the next flush.
+   *
+   * @param releases - Where its geometry is let go of, without the buffers it shares.
    */
-  public dispose(): void {
+  public dispose(releases: GeometryReleases): void {
     this.detach();
-    disposeSharingGeometry(this.geometry, this.drawn);
     disposeObject(this.currentMesh);
 
     if (this.shadowMesh) {
       disposeObject(this.shadowMesh);
     }
+
+    releases.releaseSharing(this.geometry, this.drawn);
   }
 
   /** Takes it out of whatever draws it, and lets its slot go. */

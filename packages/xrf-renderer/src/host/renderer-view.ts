@@ -7,9 +7,26 @@ import { IRendererViewSize } from "#/contract/renderer-view-size";
  * The page canvas frames are shown on, handed to this thread, and the size the page last measured it at.
  */
 export class RendererView {
-  /** A size a pixel across at least: a hidden element measures nothing, and nothing allocates an empty target. */
+  /**
+   * A size a device pixel across at least: a hidden element measures nothing, a ratio under one floors a css pixel to
+   * none, and nothing allocates an empty target.
+   */
   private static toDrawnSize(size: IRendererViewSize): IRendererViewSize {
-    return { ...size, height: Math.max(1, size.height), width: Math.max(1, size.width) };
+    const { width, height, pixelRatio } = size;
+
+    return {
+      ...size,
+      height: RendererView.toDrawnSide(height, pixelRatio),
+      width: RendererView.toDrawnSide(width, pixelRatio),
+    };
+  }
+
+  /** A css side three draws at least one device pixel of: it floors the side times the ratio. */
+  private static toDrawnSide(side: number, pixelRatio: number): number {
+    const drawn: number = Math.max(1, side, pixelRatio > 0 ? Math.ceil(1 / pixelRatio) : 1);
+
+    // Rounding can leave the least side a hair short of its pixel.
+    return pixelRatio > 0 && Math.floor(drawn * pixelRatio) < 1 ? drawn + 1 : drawn;
   }
 
   public readonly canvas: OffscreenCanvas;

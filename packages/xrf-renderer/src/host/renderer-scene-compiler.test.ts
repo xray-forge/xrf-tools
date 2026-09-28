@@ -112,6 +112,10 @@ function createTargets(): IFrameCompileTargets {
   };
 }
 
+function toGetter(targets: IFrameCompileTargets): () => IFrameCompileTargets {
+  return () => targets;
+}
+
 async function settle(): Promise<void> {
   for (let turn: number = 0; turn < 8; turn += 1) {
     await Promise.resolve();
@@ -135,7 +139,7 @@ describe("RendererSceneCompiler", () => {
     const previous: RenderTarget = new RenderTarget();
 
     fake.renderer.setRenderTarget(previous);
-    compiler.compile(fake.renderer, scene, targets, new PerspectiveCamera());
+    compiler.compile(fake.renderer, scene, toGetter(targets), new PerspectiveCamera());
 
     expect(fake.calls).toHaveLength(1);
     expect(fake.current()).toBe(previous);
@@ -158,13 +162,40 @@ describe("RendererSceneCompiler", () => {
     expect(compiler.isCompiling).toBe(false);
   });
 
+  // Compiled into its freed target, a pass that left would have three allocate that target outside the frame's sizing.
+  it("compiles the passes the frame holds at each step: none that left it meanwhile, and one that joined", async () => {
+    const fake: IFakeRenderer = createRenderer();
+    const { scene, commit }: IFakeScene = createScene();
+    const [deferred, wallmarks, forward, water] = [
+      ERendererPass.DEFERRED,
+      ERendererPass.WALLMARK,
+      ERendererPass.FORWARD,
+      ERendererPass.WATER,
+    ].map(toPass);
+    let targets: IFrameCompileTargets = { ...createTargets(), passes: [deferred, forward, water] };
+    const compiler: RendererSceneCompiler = new RendererSceneCompiler();
+
+    compiler.compile(fake.renderer, scene, () => targets, new PerspectiveCamera());
+    // The water leaves the frame, and the wall marks join it, while the first pass compiles.
+    targets = { ...targets, passes: [deferred, wallmarks, forward] };
+    await finishAll(fake);
+
+    expect(fake.calls.map((call: ICompileCall) => call.target)).toEqual([
+      deferred.target,
+      wallmarks.target,
+      forward.target,
+      targets.shadow.target,
+    ]);
+    expect(commit).toHaveBeenCalledTimes(1);
+  });
+
   it("starts nothing while a batch compiles", () => {
     const fake: IFakeRenderer = createRenderer();
     const { scene }: IFakeScene = createScene();
     const compiler: RendererSceneCompiler = new RendererSceneCompiler();
 
-    compiler.compile(fake.renderer, scene, createTargets(), new PerspectiveCamera());
-    compiler.compile(fake.renderer, scene, createTargets(), new PerspectiveCamera());
+    compiler.compile(fake.renderer, scene, toGetter(createTargets()), new PerspectiveCamera());
+    compiler.compile(fake.renderer, scene, toGetter(createTargets()), new PerspectiveCamera());
 
     expect(fake.calls).toHaveLength(1);
   });
@@ -176,7 +207,7 @@ describe("RendererSceneCompiler", () => {
     const targets: IFrameCompileTargets = createTargets();
     const compiler: RendererSceneCompiler = new RendererSceneCompiler();
 
-    compiler.compile(fake.renderer, scene, targets, new PerspectiveCamera());
+    compiler.compile(fake.renderer, scene, toGetter(targets), new PerspectiveCamera());
 
     expect(fake.calls.map((call: ICompileCall) => [call.scene, call.target])).toEqual([[grass.scene, targets.grass]]);
 
@@ -185,7 +216,7 @@ describe("RendererSceneCompiler", () => {
     expect(grass.commit).toHaveBeenCalledTimes(1);
     expect(commit).not.toHaveBeenCalled();
 
-    compiler.compile(fake.renderer, scene, targets, new PerspectiveCamera());
+    compiler.compile(fake.renderer, scene, toGetter(targets), new PerspectiveCamera());
 
     expect(fake.calls).toHaveLength(2);
     expect(fake.calls[1].target).toBe(targets.passes[0].target);
@@ -200,7 +231,7 @@ describe("RendererSceneCompiler", () => {
 
     (fake.renderer as unknown as { compileAsync: () => Promise<void> }).compileAsync = () =>
       Promise.reject(new Error("refused"));
-    compiler.compile(fake.renderer, scene, createTargets(), new PerspectiveCamera());
+    compiler.compile(fake.renderer, scene, toGetter(createTargets()), new PerspectiveCamera());
     await settle();
 
     expect(commit).toHaveBeenCalledWith(staging);
@@ -217,17 +248,39 @@ describe("RendererSceneCompiler", () => {
     const second: IFakeScene = createScene();
     const compiler: RendererSceneCompiler = new RendererSceneCompiler();
 
-    compiler.compile(fake.renderer, first.scene, createTargets(), new PerspectiveCamera());
+    compiler.compile(fake.renderer, first.scene, toGetter(createTargets()), new PerspectiveCamera());
     compiler.dispose();
     await finishAll(fake);
 
     expect(grass.commit).not.toHaveBeenCalled();
     expect(grass.abandon).toHaveBeenCalledTimes(1);
 
-    compiler.compile(fake.renderer, second.scene, createTargets(), new PerspectiveCamera());
+    compiler.compile(fake.renderer, second.scene, toGetter(createTargets()), new PerspectiveCamera());
 
     expect(fake.calls).toHaveLength(1);
     expect(second.commit).not.toHaveBeenCalled();
+  });
+
+  it("logs nothing of a batch that fails once dropped, as the renderer goes", async () => {
+    const fake: IFakeRenderer = createRenderer();
+    const { scene, commit }: IFakeScene = createScene();
+    const compiler: RendererSceneCompiler = new RendererSceneCompiler();
+    const error: jest.SpiedFunction<typeof console.error> = jest.spyOn(console, "error").mockImplementation(() => {});
+    const compiling: { reject: (error: Error) => void } = { reject: () => {} };
+
+    (fake.renderer as unknown as { compileAsync: () => Promise<void> }).compileAsync = () =>
+      new Promise((_: () => void, reject: (error: Error) => void) => {
+        compiling.reject = reject;
+      });
+    compiler.compile(fake.renderer, scene, toGetter(createTargets()), new PerspectiveCamera());
+    compiler.dispose();
+    compiling.reject(new Error("the device was destroyed"));
+    await settle();
+
+    expect(error).not.toHaveBeenCalled();
+    expect(commit).not.toHaveBeenCalled();
+
+    error.mockRestore();
   });
 
   it("starts no further pass of a batch once disposed mid batch", async () => {
@@ -235,7 +288,7 @@ describe("RendererSceneCompiler", () => {
     const { scene, commit }: IFakeScene = createScene();
     const compiler: RendererSceneCompiler = new RendererSceneCompiler();
 
-    compiler.compile(fake.renderer, scene, createTargets(), new PerspectiveCamera());
+    compiler.compile(fake.renderer, scene, toGetter(createTargets()), new PerspectiveCamera());
     compiler.dispose();
     await finishAll(fake);
 

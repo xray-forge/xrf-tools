@@ -3,7 +3,8 @@ import { Nullable } from "@xrf/types";
 import { Box3, Vector3, Vector4 } from "three/webgpu";
 
 import { ERendererLightKind } from "#/contract/scene/renderer-light";
-import { createLightBasis, ILightBasis, toLightBasis } from "#/scene/lights/light-geometry";
+import { ILightBasis } from "#/scene/lights/light-basis";
+import { createLightBasis, toLightBasis } from "#/scene/lights/light-geometry";
 import { ILightShadowEntry } from "#/scene/lights/light-shadow-entry";
 import { ILightShadowFace } from "#/scene/lights/light-shadow-face";
 import {
@@ -427,6 +428,19 @@ describe("LightShadowPlanner", () => {
     expect(next).not.toBe(old);
     expect(next.size).toBe(512);
     expect(planner.atlas.used).toBe(512 * 512);
+  });
+
+  it("keeps showing its old faces and drops their replacement once it asks for the old size again", () => {
+    const planner: LightShadowPlanner = new LightShadowPlanner(new StaticShadowChanges());
+    // Bright enough for the near one to leave the far one's band: 512 far, 1024 near.
+    const far: ILightShadowRequest = createRequest({ distance: 12, intensity: 16 });
+    const [old] = plan(planner, [far]) as Array<ILightShadowEntry>;
+
+    expect(plan(planner, [createRequest({ intensity: 16 })], { budget: 0 })).toEqual([old]);
+    expect(planner.atlas.used).toBe(512 * 512 + 1024 * 1024);
+    expect(plan(planner, [far], { budget: 0 })).toEqual([old]);
+    expect(planner.atlas.used).toBe(512 * 512);
+    expect(planner.queue).toHaveLength(0);
   });
 
   it("draws every face again once the atlas lost what it held, in the squares it had", () => {

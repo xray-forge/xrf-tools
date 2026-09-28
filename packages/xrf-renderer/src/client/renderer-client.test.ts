@@ -161,6 +161,52 @@ describe("RendererClient", () => {
     expect(onFailed.mock.calls).toEqual([["The renderer worker failed: out of memory"]]);
   });
 
+  it("takes nothing once failed: posts nothing, takes no canvas, and passes nothing more on", async () => {
+    const fake: IFakeWorker = createWorker();
+    const onReport: jest.Mock<() => void> = jest.fn();
+    const client: RendererClient = new RendererClient({ onReport, settings: SETTINGS, worker: fake.worker });
+    const transfer: jest.Mock<() => OffscreenCanvas> = jest.fn(() => ({}) as OffscreenCanvas);
+    const image: ImageBitmap = toImage();
+
+    await flush();
+    fake.crash("out of memory");
+    fake.posts.length = 0;
+    client.releaseTexture("a");
+    client.attach({
+      canvas: { transferControlToOffscreen: transfer } as unknown as HTMLCanvasElement,
+      dispose: () => {},
+      height: 1,
+      observe: () => () => {},
+      pixelRatio: 1,
+      width: 1,
+    });
+    await flush();
+    // A worker failing on its own may talk on.
+    fake.respond({ kind: ERendererResponse.REPORT, report: {} as never });
+    fake.respond({ id: 1, image, kind: ERendererResponse.CAPTURED });
+
+    expect(fake.posts).toEqual([]);
+    expect(transfer).not.toHaveBeenCalled();
+    expect(onReport).not.toHaveBeenCalled();
+    expect(image.close).toHaveBeenCalledTimes(1);
+  });
+
+  it("answers every settle and capture asked once disposed at once, and posts nothing more", async () => {
+    const fake: IFakeWorker = createWorker();
+    const client: RendererClient = new RendererClient({ settings: SETTINGS, worker: fake.worker });
+
+    client.dispose();
+    fake.posts.length = 0;
+
+    await expect(client.settle()).resolves.toBeUndefined();
+    await expect(client.capture(FRAME)).resolves.toBeNull();
+    client.releaseTexture("a");
+    client.dispose();
+    await flush();
+
+    expect(fake.posts).toEqual([]);
+  });
+
   it("answers what waits once disposed, and lets the thread go", async () => {
     const fake: IFakeWorker = createWorker();
     const client: RendererClient = new RendererClient({ settings: SETTINGS, worker: fake.worker });

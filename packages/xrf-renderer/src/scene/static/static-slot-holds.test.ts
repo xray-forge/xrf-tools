@@ -3,7 +3,7 @@ import { Nullable } from "@xrf/types";
 
 import { StaticPlaces } from "#/scene/static/static-places";
 import { StaticRows } from "#/scene/static/static-rows";
-import { IStaticRunPool } from "#/scene/static/static-run-pool";
+import { StaticRunPool } from "#/scene/static/static-run-pool";
 import { StaticSlotHolds } from "#/scene/static/static-slot-holds";
 import { StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
 import { EStaticPool } from "#/uniforms/static-pool";
@@ -16,7 +16,7 @@ function createHolds(): { holds: StaticSlotHolds; places: StaticPlaces; rows: St
   });
 
   return {
-    holds: new StaticSlotHolds((pool: IStaticRunPool, count: number): Nullable<number> => pool.allocate(count)),
+    holds: new StaticSlotHolds((pool: StaticRunPool, count: number): Nullable<number> => pool.allocate(count)),
     places: new StaticPlaces(buffers),
     rows: new StaticRows(buffers),
   };

@@ -135,6 +135,25 @@ describe("SceneGrass", () => {
     expect(retired.has(level)).toBe(false);
   });
 
+  it("builds again a build not yet taken to compile once the settings outgrow it, letting it go", () => {
+    const { grass, renderer, retired, view }: IGrassFixture = createFixture();
+
+    grass.plant(renderer, view, DEFAULT_RENDERER_GRASS_SETTINGS);
+
+    const kept: number = retired.size;
+
+    grass.plant(renderer, view, FAR);
+
+    const staging: ISceneGrassStaging = grass.takeStaged() as ISceneGrassStaging;
+
+    expect(retired.size).toBeGreaterThan(kept);
+
+    staging.commit();
+    grass.plant(renderer, view, FAR);
+
+    expect(grass.takeStaged()).toBeNull();
+  });
+
   it("builds nothing again for settings its build still holds", () => {
     const { grass, renderer, view }: IGrassFixture = createFixture();
 

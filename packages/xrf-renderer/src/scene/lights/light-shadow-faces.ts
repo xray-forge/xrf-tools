@@ -1,10 +1,4 @@
-import { TRendererVector } from "#/contract/renderer-vector";
-
-/** One face of a point light's shadow: where it looks, and which way is up in it. */
-export interface ILightShadowFaceBasis {
-  readonly direction: TRendererVector;
-  readonly up: TRendererVector;
-}
+import { ILightShadowFaceBasis } from "#/scene/lights/light-shadow-face-basis";
 
 /**
  * A point light's six shadow faces, `light::Export`'s omni parts, along the world's axes: `+x`, `-x`, `+y`, `-y`,

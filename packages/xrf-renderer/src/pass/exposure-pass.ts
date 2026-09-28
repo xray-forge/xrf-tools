@@ -56,8 +56,10 @@ export class ExposurePass implements IRendererPass {
     renderer.compute([this.measure, this.adapt]);
   }
 
-  /** Leaves the frame at the noon answer again. */
+  /** Leaves the frame at the noon answer again, and lets three forget both computes. */
   public dispose(): void {
+    this.measure.dispose();
+    this.adapt.dispose();
     this.exposure.reset();
   }
 }

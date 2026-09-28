@@ -1,7 +1,8 @@
 import { describe, expect, it } from "@jest/globals";
 
 import { IRendererLighting } from "#/contract/renderer-lighting";
-import { IBaseLightingConstants, toBaseLightingConstants, toSunSpecular } from "#/lighting/base-lighting";
+import { toBaseLightingConstants, toSunSpecular } from "#/lighting/base-lighting";
+import { IBaseLightingConstants } from "#/lighting/base-lighting-constants";
 import { DEFAULT_RENDERER_LIGHTING } from "#/lighting/default-lighting";
 
 describe("toSunSpecular", () => {

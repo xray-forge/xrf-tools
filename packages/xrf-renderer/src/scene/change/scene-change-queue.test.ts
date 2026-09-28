@@ -111,6 +111,30 @@ describe("SceneChangeQueue", () => {
     expect(handler.released).toEqual(["rock"]);
   });
 
+  it("lets a texture go only after the change before its release, merged into a later one, has applied", () => {
+    const handler = createHandler();
+    const queue: SceneChangeQueue<string> = new SceneChangeQueue(handler);
+    const retired = jest.fn();
+
+    queue.transact(() => queue.enlist("a"));
+    queue.transact(() => {
+      queue.releaseTexture("rock");
+      queue.retire(retired);
+    });
+    // `a` again before its first change applied: that change now applies with this one, after the release.
+    queue.transact(() => queue.enlist("a"));
+
+    expect(handler.released).toEqual([]);
+    expect(retired).not.toHaveBeenCalled();
+
+    handler.ready.add("a");
+    queue.advance();
+
+    expect(handler.applied).toEqual(["a"]);
+    expect(handler.released).toEqual(["rock"]);
+    expect(retired).toHaveBeenCalledTimes(1);
+  });
+
   it("keeps a texture put again before its release applied", () => {
     const handler = createHandler();
     const queue: SceneChangeQueue<string> = new SceneChangeQueue(handler);

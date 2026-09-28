@@ -7,7 +7,7 @@ export * from "#/dds/dds-fourcc";
 export * from "#/dds/dds-header";
 export * from "#/dds/dds-header-read";
 export * from "#/dds/dds-layout";
-export * from "#/dds/dds-masks";
+export * from "#/dds/dds-channel-masks";
 export * from "#/dds/dds-mipmap";
 export * from "#/dds/dds-mipmap-chain";
 export * from "#/dds/dds-mipmaps";

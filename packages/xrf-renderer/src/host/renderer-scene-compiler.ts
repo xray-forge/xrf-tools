@@ -1,7 +1,8 @@
-import { Nullable } from "@xrf/types";
+import { Maybe, Nullable } from "@xrf/types";
 import { Camera, Object3D, PerspectiveCamera, RenderTarget, WebGPURenderer } from "three/webgpu";
 
 import { IFrameCompileTargets } from "#/graph/frame-compile-targets";
+import { IRendererScenePass } from "#/pass/renderer-scene-pass";
 import { ISceneGrassStaging } from "#/scene/grass/scene-grass-staging";
 import { RendererScene } from "#/scene/renderer-scene";
 import { ISceneStaging } from "#/scene/staging/scene-staging";
@@ -23,13 +24,14 @@ export class RendererSceneCompiler {
   /**
    * @param renderer - The renderer drawing.
    * @param scene - The scene whose waiting objects compile.
-   * @param targets - Where the frame draws them.
+   * @param getTargets - Where the frame draws them as it stands, read again at each step of a batch: a pass that left
+   *   the frame meanwhile is not compiled into its freed target, and one that joined is compiled too.
    * @param camera - The drawing camera.
    */
   public compile(
     renderer: WebGPURenderer,
     scene: RendererScene,
-    targets: IFrameCompileTargets,
+    getTargets: () => IFrameCompileTargets,
     camera: PerspectiveCamera
   ): void {
     if (this.isDisposed || this.isCompilingBatch) {
@@ -40,7 +42,7 @@ export class RendererSceneCompiler {
 
     if (grass) {
       return this.run(
-        () => compileInto(renderer, targets.grass, grass.scene, camera),
+        () => compileInto(renderer, getTargets().grass, grass.scene, camera),
         "Grass failed to compile:",
         (isCurrent: boolean) => (isCurrent ? grass.commit() : grass.abandon())
       );
@@ -54,16 +56,21 @@ export class RendererSceneCompiler {
 
     this.run(
       async () => {
-        for (const pass of targets.passes) {
-          if (this.isDisposed) {
-            return;
-          }
+        const compiled: Set<IRendererScenePass> = new Set();
 
+        function next(): Maybe<IRendererScenePass> {
+          return getTargets().passes.find((pass: IRendererScenePass) => !compiled.has(pass));
+        }
+
+        for (let pass: Maybe<IRendererScenePass> = next(); pass && !this.isDisposed; pass = next()) {
+          compiled.add(pass);
           await compileInto(renderer, pass.target, staging.scenes[pass.scene], camera);
         }
 
         if (!this.isDisposed && staging.shadows.children.length) {
-          await compileInto(renderer, targets.shadow.target, staging.shadows, targets.shadow.camera);
+          const { shadow }: IFrameCompileTargets = getTargets();
+
+          await compileInto(renderer, shadow.target, staging.shadows, shadow.camera);
         }
       },
       "Materials failed to compile:",
@@ -91,7 +98,12 @@ export class RendererSceneCompiler {
     // A batch that failed settles too, its objects drawing what three makes of their materials: staged again, it would
     // fail the same way every frame, and nothing would ever settle.
     batch()
-      .catch((error: unknown) => console.error(failure, error))
+      .catch((error: unknown) => {
+        // One the host dropped fails as the renderer goes, which says nothing about its materials.
+        if (!this.isDisposed) {
+          console.error(failure, error);
+        }
+      })
       .then(() => settle(!this.isDisposed))
       .finally(() => {
         this.isCompilingBatch = false;

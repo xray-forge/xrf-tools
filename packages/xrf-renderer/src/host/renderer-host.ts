@@ -377,7 +377,7 @@ export class RendererHost {
     if (view && (this.captures.hasPending || this.limiter.take(now, settings.pacing.rateLimit))) {
       const isResized: boolean = this.draw(now, device, view, settings);
 
-      this.compiler.compile(device.renderer, this.scene, this.graph.compileTargets, this.rig.camera);
+      this.compiler.compile(device.renderer, this.scene, () => this.graph.compileTargets, this.rig.camera);
 
       // A frame still settling shows the scene half changed, and one that allocated the targets reads back cleared: a
       // capture of either waits for a later frame. Asked after the compiler took what waits, a grass build among it.

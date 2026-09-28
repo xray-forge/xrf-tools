@@ -1,4 +1,4 @@
-import { DEFAULT_FRAME_RATE_LIMIT, TFrameRateLimit } from "#/frame/render-frame-limit";
+import { DEFAULT_FRAME_RATE_LIMIT, TFrameRateLimit } from "#/frame/frame-rate-limit";
 
 /** Frames the GPU may still be working on as the next starts, with low latency on: one drawn, one queued behind it. */
 export const LOW_LATENCY_FRAMES_IN_FLIGHT: number = 2;

@@ -239,6 +239,25 @@ describe("SceneLights", () => {
     expect(lights.report.shadowed).toBe(2);
   });
 
+  it("draws every face again once the lights' shadows are back on, the atlas having gone with them", () => {
+    const lights: SceneLights = createLights();
+    const unshadowed: IRendererLightsSettings = { ...DEFAULT_RENDERER_LIGHTS_SETTINGS, isShadowed: false };
+
+    lights.put({ animators: [], lights: [{ ...POINT, isShadowed: true }] });
+    lights.update(createFrame());
+    lights.shadows.markDrawn();
+    lights.update(createFrame());
+
+    expect(lights.shadows.queue).toHaveLength(0);
+
+    lights.update(createFrame({ settings: unshadowed }));
+    lights.update(createFrame());
+
+    // Lit this frame from its six faces drawn again in it, not from the atlas the shadows had before.
+    expect(lights.shadows.queue).toHaveLength(6);
+    expect(lights.shadowed).toBe(1);
+  });
+
   it("keeps the nearest lights the records hold, and counts the rest", () => {
     const lights: SceneLights = createLights();
     const crowd: Array<TRendererLight> = Array.from({ length: MAX_LIGHTS + 6 }, (_, index: number) => ({

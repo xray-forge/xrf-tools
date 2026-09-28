@@ -9,11 +9,11 @@ import { IRendererGeometry, listRendererGeometryTransfers } from "#/contract/sce
 import { IRendererGrass, listRendererGrassTransfers } from "#/contract/scene/renderer-grass";
 import { IRendererImpostors, listRendererImpostorsTransfers } from "#/contract/scene/renderer-impostors";
 import { IRendererLights } from "#/contract/scene/renderer-lights";
-import { IRendererMotion } from "#/contract/scene/renderer-motion";
+import { IRendererMotion, listRendererMotionTransfers } from "#/contract/scene/renderer-motion";
 import { IRendererObject, listRendererObjectTransfers } from "#/contract/scene/renderer-object";
 import { listRendererOverlayTransfers, TRendererOverlay } from "#/contract/scene/renderer-overlay";
 import { IRendererPose } from "#/contract/scene/renderer-pose";
-import { IRendererSkeleton } from "#/contract/scene/renderer-skeleton";
+import { IRendererSkeleton, listRendererSkeletonTransfers } from "#/contract/scene/renderer-skeleton";
 import { IRendererSurface } from "#/contract/scene/renderer-surface";
 import { TRendererTextureSource } from "#/contract/scene/renderer-texture-source";
 
@@ -149,10 +149,10 @@ function listRequestTransfers(request: TRendererRequest): Array<Transferable> {
       return listRendererGrassTransfers(request.grass);
 
     case ERendererRequest.PUT_SKELETON:
-      return [request.skeleton.binds.buffer, ...(request.skeleton.pairs ? [request.skeleton.pairs.buffer] : [])];
+      return listRendererSkeletonTransfers(request.skeleton);
 
     case ERendererRequest.PUT_MOTION:
-      return [request.motion.transforms.buffer];
+      return listRendererMotionTransfers(request.motion);
 
     case ERendererRequest.PUT_OVERLAY:
       return listRendererOverlayTransfers(request.overlay);

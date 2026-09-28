@@ -6,7 +6,7 @@ import { loopNamed } from "#/shader/named-loop.tsl";
 import { ShadowUniforms } from "#/uniforms/shadow-uniforms";
 
 /** A cascade's component of a per-cascade vector. */
-const COMPONENTS = ["x", "y", "z", "w"] as const;
+const COMPONENTS: ReadonlyArray<"x" | "y" | "z" | "w"> = ["x", "y", "z", "w"];
 
 /** The share of a map's edge a point is kept off, so the filter never reads past it into the next cascade's edge. */
 const EDGE: number = 0.02;
@@ -43,11 +43,11 @@ export function toSunShadow(
   maps: ReadonlyArray<Texture>
 ): Node<"float"> {
   return Fn(() => {
-    const lit = float(1).toVar();
-    const stage = int(LOOKING).toVar();
+    const lit: Node<"float"> = float(1).toVar();
+    const stage: Node<"int"> = int(LOOKING).toVar();
     // How far in from its edge the point stands in the cascade that holds it, past the margin, in shares of its width.
-    const inset = float(0).toVar();
-    const lean = float(1)
+    const inset: Node<"float"> = float(0).toVar();
+    const lean: Node<"float"> = float(1)
       .add(sqrt(float(1).sub(saturate(facing).mul(saturate(facing)))))
       .toVar();
 
@@ -55,8 +55,8 @@ export function toSunShadow(
       If(stage.notEqual(DONE).and(shadows.count.greaterThan(view)), () => {
         const texel: Node<"float"> = shadows.texels[COMPONENTS[view]];
         const moved: Node<"vec3"> = position.add(normal.mul(shadows.bias.mul(texel).mul(lean)));
-        const clip = shadows.matrices[view].mul(vec4(moved, 1)).toVar();
-        const uv = vec2(clip.x.mul(0.5).add(0.5), clip.y.mul(-0.5).add(0.5)).toVar();
+        const clip: Node<"vec4"> = shadows.matrices[view].mul(vec4(moved, 1)).toVar();
+        const uv: Node<"vec2"> = vec2(clip.x.mul(0.5).add(0.5), clip.y.mul(-0.5).add(0.5)).toVar();
         const isInside: Node<"bool"> = uv.x
           .greaterThan(EDGE)
           .and(uv.x.lessThan(1 - EDGE))
@@ -66,7 +66,7 @@ export function toSunShadow(
           .and(clip.z.lessThan(1));
 
         If(isInside, () => {
-          const viewLit = toCascadeLit(view, clip, uv, shadows, maps);
+          const viewLit: Node<"float"> = toCascadeLit(view, clip, uv, shadows, maps);
 
           If(stage.equal(LOOKING), () => {
             lit.assign(viewLit);
@@ -108,33 +108,33 @@ function toCascadeLit(
   shadows: ShadowUniforms,
   maps: ReadonlyArray<Texture>
 ): Node<"float"> {
-  const step = float(1).div(shadows.resolution).toVar();
-  const total = float(0).toVar();
-  const taps = float(0).toVar();
+  const step: Node<"float"> = float(1).div(shadows.resolution).toVar();
+  const total: Node<"float"> = float(0).toVar();
+  const taps: Node<"float"> = float(0).toVar();
 
   // Each loop names its own counter: three names every loop's `i`, so the inner one would shadow the outer and the
   // filter would sample its diagonal alone.
-  const filter = int(shadows.filter);
+  const filter: Node<"int"> = int(shadows.filter);
 
   loopNamed({ condition: "<=", end: filter, name: "tapX", start: filter.negate(), type: "int" }, (x: Node<"int">) => {
     loopNamed({ condition: "<=", end: filter, name: "tapY", start: filter.negate(), type: "int" }, (y: Node<"int">) => {
       // At level zero: a sample inside a branch takes no derivatives.
-      const stored = texture(maps[view], uv.add(vec2(float(x), float(y)).mul(step))).level(int(0)).x;
+      const stored: Node<"float"> = texture(maps[view], uv.add(vec2(float(x), float(y)).mul(step))).level(int(0)).x;
 
       total.addAssign(select(clip.z.greaterThanEqual(stored), float(1), float(0)));
       taps.addAssign(1);
     });
   });
 
-  const lit = total.div(taps).toVar();
+  const lit: Node<"float"> = total.div(taps).toVar();
 
   If(shadows.count.equal(view + 1), () => {
     // The view's direction in the map, and how far out the point stands from its centre, on that side only.
-    const ahead = shadows.matrices[view].mul(vec4(shadows.forward, 0));
-    const offset = uv.sub(0.5).toVar();
-    const isAhead = offset.dot(vec2(ahead.x, ahead.y.negate())).greaterThanEqual(0);
-    const out = select(isAhead, abs(offset), vec2(0));
-    const kept = float(1)
+    const ahead: Node<"vec4"> = shadows.matrices[view].mul(vec4(shadows.forward, 0));
+    const offset: Node<"vec2"> = uv.sub(0.5).toVar();
+    const isAhead: Node<"bool"> = offset.dot(vec2(ahead.x, ahead.y.negate())).greaterThanEqual(0);
+    const out: Node<"vec2"> = select(isAhead, abs(offset), vec2(0));
+    const kept: Node<"float"> = float(1)
       .sub(saturate(out.x.sub(BORDER).div(0.5 - BORDER)))
       .mul(float(1).sub(saturate(out.y.sub(BORDER).div(0.5 - BORDER))));
 

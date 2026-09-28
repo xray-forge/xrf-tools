@@ -167,8 +167,19 @@ export class LightShadowPlanner {
 
     for (const ask of asks) {
       const slot: ILightShadowSlot = this.slots.take(ask.index);
+      const asked: number = toLightShadowTileSize(
+        ask.engineSize * this.sizeScale,
+        (slot.next ?? slot.shown)?.asked ?? 0,
+        isTight
+      );
+
+      // Back at the size it shows while another was being drawn: the shown faces stand, and the other goes.
+      if (slot.next && slot.shown?.asked === asked) {
+        this.slots.release(slot.next);
+        slot.next = null;
+      }
+
       const current: Nullable<ILightShadowEntry> = slot.next ?? slot.shown;
-      const asked: number = toLightShadowTileSize(ask.engineSize * this.sizeScale, current?.asked ?? 0, isTight);
       const made: Nullable<ILightShadowEntry> = current?.asked === asked ? current : this.replace(ask, slot, asked);
 
       // Given less than it asked, or nothing: the asks want more than the atlas holds.

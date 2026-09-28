@@ -25,7 +25,7 @@ export function toSunPassFragment(
     const position: Node<"vec3"> = viewToWorld.mul(vec4(sample.point.position, 1)).xyz;
     const normal: Node<"vec3"> = normalize(viewToWorld.mul(vec4(sample.point.normal, 0)).xyz);
 
-    const facing = dot(sample.point.normal, uniforms.lighting.sunDirectionView.negate());
+    const facing: Node<"float"> = dot(sample.point.normal, uniforms.lighting.sunDirectionView.negate());
 
     return toSunLight(sample.point, uniforms).mul(toSunShadow(position, normal, facing, uniforms.shadows, shadows));
   })();

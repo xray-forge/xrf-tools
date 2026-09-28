@@ -2,6 +2,7 @@ import { describe, expect, it } from "@jest/globals";
 
 import { mockDdsFile, mockDx10DdsFile, mockUncompressedDdsFile } from "#/dds/dds-fixtures";
 import { IDdsHeader, readDdsHeader } from "#/dds/dds-header";
+import { IDdsHeaderRead } from "#/dds/dds-header-read";
 import { EDdsRefusalReason } from "#/dds/dds-refusal-reason";
 
 /** The header a read produced, failing the case rather than the assertion when it was refused. */
@@ -58,6 +59,18 @@ describe("readDdsHeader", () => {
     new Int32Array(notADds)[0] = 0;
 
     expect(readDdsHeader(notADds).refusal?.reason).toBe(EDdsRefusalReason.NOT_A_DDS);
+  });
+
+  // A zero side passes every block check and uploads nothing; levels past 1x1 read what follows, a cubemap's next face.
+  it("refuses a header declaring no texels, or more levels than its size halves to", () => {
+    const empty: IDdsHeaderRead = readDdsHeader(mockDdsFile({ height: 0, width: 8 }));
+    const long: IDdsHeaderRead = readDdsHeader(mockDdsFile({ height: 64, mipmapCount: 8, width: 32 }));
+
+    expect(empty.refusal?.reason).toBe(EDdsRefusalReason.MALFORMED);
+    expect(long.refusal?.reason).toBe(EDdsRefusalReason.MALFORMED);
+    expect(long.refusal?.detail).toContain("7 levels, not 8");
+    expect(readHeader(mockDdsFile({ height: 64, mipmapCount: 7, width: 32 })).mipmapCount).toBe(7);
+    expect(readHeader(mockDdsFile({ height: 1, mipmapCount: 1, width: 1 })).mipmapCount).toBe(1);
   });
 
   it("refuses a file that declares a DX10 header and stops before it", () => {

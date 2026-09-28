@@ -51,12 +51,14 @@ export class SceneObject {
   private readonly sphere: Sphere = new Sphere();
   /** The version of the view it was last culled against. */
   private culledAt: number = -1;
+  /** The texture keys its parts drawn plainly sample, a part's surface's own. */
+  private plainTextureKeys: Array<string> = [];
 
   /**
    * @param key - What it was put under.
    * @param object - What it is.
    * @param draws - The static draws its static parts are.
-   * @param releases - Where the buffers of the places it stood in are freed.
+   * @param releases - Where its parts' geometries and the buffers of the places it stood in are let go of.
    */
   public constructor(key: string, object: IRendererObject, draws: StaticDraws, releases: GeometryReleases) {
     this.key = key;
@@ -65,14 +67,17 @@ export class SceneObject {
     this.releases = releases;
   }
 
-  /** Every mesh of its parts, whether or not a scene holds it. */
-  public get drawing(): ReadonlyArray<Mesh> {
-    return this.parts.map((part: ScenePart) => part.mesh);
-  }
-
-  /** What stands in a scene for it: the meshes of the parts drawn plainly. */
+  /**
+   * What stands in a scene for it: the meshes of the parts drawn plainly. A part's mesh out of every scene keeps the
+   * last material it was shown with, which it is given again before it is placed.
+   */
   public get placed(): ReadonlyArray<Mesh> {
     return this.parts.map((part: ScenePart) => part.mesh).filter((mesh: Mesh) => mesh.parent);
+  }
+
+  /** The texture keys its parts drawn plainly sample, a part refused a static draw among them, as last applied. */
+  public get plainKeys(): ReadonlyArray<string> {
+    return this.plainTextureKeys;
   }
 
   /**
@@ -115,7 +120,7 @@ export class SceneObject {
       return;
     }
 
-    // New parts for a new skeleton too: a part's geometry is let go of with the mesh that first drew it.
+    // New parts for a new skeleton too: a skinned mesh is another kind of mesh, bound to its skeleton as it is made.
     if (state.plain.drawn !== this.drawn || state.skeleton !== this.skeleton) {
       this.rebuild(state);
     }
@@ -202,11 +207,12 @@ export class SceneObject {
     this.staged = null;
     this.drawn = null;
     this.skeleton = null;
+    this.plainTextureKeys = [];
   }
 
   /** Lets its parts go. */
   private release(): void {
-    this.parts.forEach((part: ScenePart) => part.dispose());
+    this.parts.forEach((part: ScenePart) => part.dispose(this.releases));
     this.parts = [];
   }
 
@@ -239,6 +245,8 @@ export class SceneObject {
       range && state.instances ? this.placeInstances(state.instances, state.lodStart) : null;
     let staticParts: number = 0;
 
+    this.plainTextureKeys = [];
+
     for (const part of this.parts) {
       const surface: Maybe<ISurfaceMaterial> = state.surfaces[part.section];
 
@@ -260,6 +268,7 @@ export class SceneObject {
           surface ? scenes[surface.pass] : null,
           surface?.plain.shadow ?? null
         );
+        this.plainTextureKeys.push(...(surface?.plain.keys ?? []));
       }
     }
 

@@ -1,13 +1,13 @@
 import { Nullable } from "@xrf/types";
 
 import { DDS_BLOCK_SIZE } from "#/dds/dds-block-format";
+import { describeDdsMasks, getDdsMaskLayout } from "#/dds/dds-channel-masks";
 import { getDdsDxgiLayout } from "#/dds/dds-dxgi";
 import { DDS_DIMENSION_TEXTURE_3D } from "#/dds/dds-extended-header";
 import { getDdsFourCcLayout } from "#/dds/dds-fourcc";
 import { IDdsHeader, readDdsHeader } from "#/dds/dds-header";
 import { IDdsHeaderRead } from "#/dds/dds-header-read";
 import { EDdsLayout, TDdsLayout } from "#/dds/dds-layout";
-import { describeDdsMasks, getDdsMaskLayout } from "#/dds/dds-masks";
 import { IDdsMipmap } from "#/dds/dds-mipmap";
 import { IDdsMipmapChain } from "#/dds/dds-mipmap-chain";
 import { readDdsMipmaps } from "#/dds/dds-mipmaps";

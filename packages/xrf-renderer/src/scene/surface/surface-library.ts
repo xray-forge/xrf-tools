@@ -1,4 +1,4 @@
-import { Maybe } from "@xrf/types";
+import { Maybe, Nullable } from "@xrf/types";
 import { Material, MeshBasicNodeMaterial, WebGPURenderer } from "three/webgpu";
 
 import { ERendererDraw } from "#/contract/scene/renderer-draw";
@@ -22,7 +22,7 @@ const WIREFRAME_SURFACE: IRendererSurface = { color: [0.75, 0.75, 0.75], draw: E
 export class SurfaceLibrary {
   private readonly textures: RendererTextures;
   private readonly uniforms: RendererUniforms;
-  private readonly onReplaced: (key: string) => void;
+  private readonly onReplaced: (key: string, release: Nullable<() => void>) => void;
 
   private readonly materials: Map<string, ISurfaceMaterial> = new Map();
   /** The description each key's material was built from. */
@@ -48,14 +48,15 @@ export class SurfaceLibrary {
   /**
    * @param textures - Where the materials bind their textures.
    * @param uniforms - What their shaders read.
-   * @param onReplaced - Told when a key's material changed, so whatever draws it can draw the new one.
+   * @param onReplaced - Told when a key's material or its batched view changed, so whatever draws it can draw the new
+   *   one, with what lets go of the view it drew by once that change applies, or null for none.
    * @param onInvalidated - Told a key as a texture's where what the shared materials bind under it was replaced, which
    *   bundles drawing them record again for.
    */
   public constructor(
     textures: RendererTextures,
     uniforms: RendererUniforms,
-    onReplaced: (key: string) => void,
+    onReplaced: (key: string, release: Nullable<() => void>) => void,
     onInvalidated: (key: string) => void
   ) {
     this.textures = textures;
@@ -76,12 +77,9 @@ export class SurfaceLibrary {
    *   changed with it is drawn again.
    */
   public rebind(key: string): void {
-    for (const material of this.batching.rebind(key)) {
-      const surface: Maybe<string> = this.keyOf.get(material);
-
-      if (surface !== undefined) {
-        this.onReplaced(surface);
-      }
+    // Only a material put under a key is tracked: one retired lets its view go with the change that retired it.
+    for (const [material, release] of this.batching.rebind(key)) {
+      this.onReplaced(this.keyOf.get(material) as string, release);
     }
   }
 
@@ -116,13 +114,7 @@ export class SurfaceLibrary {
 
     this.materials.delete(key);
     this.descriptions.delete(key);
-
-    if (previous) {
-      this.keyOf.delete(previous);
-      this.retired.add(previous);
-    }
-
-    this.onReplaced(key);
+    this.onReplaced(key, previous ? this.retireMaterial(previous) : null);
   }
 
   /** What a wireframe draws every static surface's edges with, over the arenas' line indices. */
@@ -185,8 +177,6 @@ export class SurfaceLibrary {
 
       const description: Maybe<string> = this.built.get(surface);
 
-      this.batching.untrack(surface);
-
       if (description && isCompiled(surface.material) && !this.cache.has(description)) {
         this.cache.set(description, surface);
       } else {
@@ -242,14 +232,24 @@ export class SurfaceLibrary {
     this.descriptions.set(key, description);
     this.materials.set(key, material);
 
-    if (previous) {
-      this.keyOf.delete(previous);
-      this.retired.add(previous);
-    }
+    const release: Nullable<() => void> = previous ? this.retireMaterial(previous) : null;
 
     this.keyOf.set(material, key);
     this.batching.track(material, surface);
-    this.onReplaced(key);
+    this.onReplaced(key, release);
+  }
+
+  /**
+   * Retires a material no key names any more, kept until nothing draws it; its batched view goes with the change that
+   * rebuilds what drew it, which the view's static draws read until then.
+   *
+   * @returns What lets go of the view, or null for a material batched by none.
+   */
+  private retireMaterial(material: ISurfaceMaterial): Nullable<() => void> {
+    this.keyOf.delete(material);
+    this.retired.add(material);
+
+    return this.batching.untrack(material);
   }
 
   /** What a surface is built from, as one comparable string. */

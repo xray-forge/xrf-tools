@@ -146,12 +146,12 @@ export class RendererTargets implements IGBufferTextures {
     this.water.depthTexture = this.gbuffer.depthTexture;
   }
 
-  /** The depth behind the water, in metres along the view. */
   /** Whether the targets have to be allocated again before the frame draws: the water's joined or left since. */
   public get isStale(): boolean {
     return this.isWatered !== this.isWaterAllocated;
   }
 
+  /** The depth behind the water, in metres along the view. */
   public get waterDepth(): Texture {
     return this.waterPrepare.textures[0];
   }

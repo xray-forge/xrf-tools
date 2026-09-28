@@ -12,7 +12,8 @@ import {
   WebGPURenderer,
 } from "three/webgpu";
 
-import { createColourTarget, IColourAttachment } from "#/pass/colour-target";
+import { IColourAttachment } from "#/pass/colour-attachment";
+import { createColourTarget } from "#/pass/colour-target";
 import { FrameCopyPass } from "#/pass/frame-copy-pass";
 import { toFsrAccumulate } from "#/pass/fsr/fsr-accumulate.tsl";
 import { toFsrDepthClip } from "#/pass/fsr/fsr-depth-clip.tsl";

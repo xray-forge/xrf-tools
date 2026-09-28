@@ -91,6 +91,19 @@ describe("StaticListRegions", () => {
     expect(buffers.capacity(EStaticPool.SURFACE_LIST)).toBe(100);
   });
 
+  it("gives a batch a region of only its demand where the limit leaves no room to spare", () => {
+    const { buffers, regions, toBatch } = createRegions();
+    const first: StaticBatch = toBatch(8);
+    const second: StaticBatch = toBatch(80);
+
+    buffers.storageLimit = 8 * (2 * 100 + STATIC_SHADOW_VIEWS);
+    regions.fit(first);
+
+    expect(regions.fit(second)).toBe(true);
+    expect(toRegion(buffers, second)).toEqual([10, 80, EStaticListSpace.SURFACES]);
+    expect(buffers.capacity(EStaticPool.SURFACE_LIST)).toBe(100);
+  });
+
   // Regions move whenever a batch outgrows one, so a fragmented space is the usual one.
   it("grows a fragmented space once, straight past its last region by the new one", () => {
     const { buffers, regions, toBatch } = createRegions();

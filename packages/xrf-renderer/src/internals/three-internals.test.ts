@@ -107,6 +107,19 @@ describe("three's internals, as the renderer reads them", () => {
     expect(init).toContain("new Geometries(this._attributes");
   });
 
+  it("keeps each drawn geometry's dispose handler and wireframe index on its record of geometries", () => {
+    // `disposeSharingGeometry` takes the handler off, which frees through the first render object's cached list.
+    const init: string = String(Object.getPrototypeOf(WebGPURenderer.prototype).init);
+    const initGeometry: string = readThreeMethod("renderers/common/Geometries.js", "initGeometry");
+    const getIndex: string = readThreeMethod("renderers/common/Geometries.js", "getIndex");
+
+    expect(init).toContain("this._geometries = new Geometries(");
+    expect(initGeometry).toContain("for ( const attribute of renderObject.getAttributes() )");
+    expect(initGeometry).toContain("this._geometryDisposeListeners.set( geometry, onDispose )");
+    expect(initGeometry).toContain("this.info.memory.geometries --");
+    expect(getIndex).toContain("wireframes.set( geometry, wireframeAttribute )");
+  });
+
   it("lets an object go by an event of its own, which is what its render objects are freed on", () => {
     // `disposeObject`: three's render objects keep an object's geometry until the object or its material is disposed.
     const object: Object3D = new Object3D();

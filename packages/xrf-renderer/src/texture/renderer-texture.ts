@@ -1,4 +1,3 @@
-import { Nullable } from "@xrf/types";
 import {
   ClampToEdgeWrapping,
   CompressedCubeTexture,
@@ -30,16 +29,10 @@ import { DDS_CUBE_FACES, IDdsFile, readDdsFile } from "#/dds/dds-file";
 import { EDdsLayout } from "#/dds/dds-layout";
 import { IDdsMipmap } from "#/dds/dds-mipmap";
 import { IDdsRead } from "#/dds/dds-read";
-import { IDdsRefusal } from "#/dds/dds-refusal";
+import { IRendererTextureUpload } from "#/texture/renderer-texture-upload";
 
 /** The engine's `ps_r__tf_Anisotropic` default (`Layers/xrRender/xrRender_console.cpp`). */
 export const XRAY_TEXTURE_ANISOTROPY: number = 8;
-
-/** What a dds upload came to: exactly one of the two is present. */
-export interface IRendererTextureUpload {
-  texture: Nullable<Texture>;
-  refusal: Nullable<IDdsRefusal>;
-}
 
 /**
  * Uploads a dds file as the engine samples it: raw bytes, never decoded from srgb, with the file's own mip chain.

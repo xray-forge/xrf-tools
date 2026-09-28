@@ -8,10 +8,10 @@ import { IRendererLights } from "#/contract/scene/renderer-lights";
 import { IRendererSpotLight } from "#/contract/scene/renderer-spot-light";
 import { toSunSpecular } from "#/lighting/base-lighting";
 import { toAnimatedColor } from "#/lighting/light-animator";
+import { ILightBasis } from "#/scene/lights/light-basis";
 import { LightClusters } from "#/scene/lights/light-clusters";
 import {
   createLightBasis,
-  ILightBasis,
   toLightBasis,
   toLightBound,
   toLightFaceSphere,
@@ -25,7 +25,8 @@ import { LightRecords } from "#/scene/lights/light-records";
 import { LIGHT_SHADOW_ATLAS_SIZE } from "#/scene/lights/light-shadow-atlas";
 import { ILightShadowEntry } from "#/scene/lights/light-shadow-entry";
 import { ILightShadowFace } from "#/scene/lights/light-shadow-face";
-import { ILightShadowFaceBasis, LIGHT_SHADOW_POINT_FACES, toLightShadowScale } from "#/scene/lights/light-shadow-faces";
+import { ILightShadowFaceBasis } from "#/scene/lights/light-shadow-face-basis";
+import { LIGHT_SHADOW_POINT_FACES, toLightShadowScale } from "#/scene/lights/light-shadow-faces";
 import { LightShadowPlanner } from "#/scene/lights/light-shadow-planner";
 import { ILightShadowRequest } from "#/scene/lights/light-shadow-request";
 import { byDistance, takeSorted } from "#/scene/lights/light-sorting";
@@ -73,6 +74,8 @@ export class SceneLights {
 
   private readonly random: () => number;
   private lights: Nullable<IRendererLights> = null;
+  /** Whether the last frame drew the lights' shadows: the atlas goes with the pass while they are off. */
+  private wasShadowing: boolean = false;
   private readonly inView: Array<IInViewLight> = [];
   /** The first of them this frame, nearest first, sorted in an array kept between frames. */
   private readonly visible: Array<IInViewLight> = [];
@@ -152,9 +155,16 @@ export class SceneLights {
     this.shadowed = 0;
     this.excess = 0;
 
-    if (settings.isEnabled && this.lights) {
-      const isShadowing: boolean = settings.isShadowed;
+    const isShadowing: boolean = settings.isEnabled && settings.isShadowed && this.lights !== null;
 
+    // Shadows back on draw into an atlas allocated again: every face is drawn again before its light lights.
+    if (isShadowing && !this.wasShadowing) {
+      this.shadows.forgetDrawn();
+    }
+
+    this.wasShadowing = isShadowing;
+
+    if (settings.isEnabled && this.lights) {
       view.getWorldPosition(this.eye);
       view.getWorldDirection(this.forward);
       toCameraFrustum(view, this.frustum);

@@ -112,7 +112,8 @@ export class TextureArray {
 
   /**
    * @param key - A texture's key, sampled from here by one more surface.
-   * @param source - What the key holds on the GPU, of this array's class.
+   * @param source - What the key holds on the GPU, of this array's class; a layer still held for views drawn before is
+   *   copied again from it.
    * @returns Its layer, or null where the array is full.
    */
   public claim(key: string, source: Texture): Nullable<number> {
@@ -120,6 +121,7 @@ export class TextureArray {
 
     if (held) {
       held.users += 1;
+      this.refresh(key, source);
 
       return held.layer;
     }
@@ -188,6 +190,14 @@ export class TextureArray {
   }
 
   /**
+   * @param key - A key held here that the surfaces claiming it from now on hold elsewhere: the views drawn before keep
+   *   its layer as it is until they let it go, and nothing is copied into it again.
+   */
+  public detach(key: string): void {
+    this.copies.delete(key);
+  }
+
+  /**
    * Fits the array to the layers it uses, once it has gone unchanged a while: a copy on the GPU, once a level.
    *
    * @param now - Milliseconds, on the clock claims are stamped by.
@@ -238,23 +248,25 @@ export class TextureArray {
   }
 
   /**
-   * @param copy - A copy of a key's layer the frame could not make.
-   * @returns The key, copied again with the next flush, or null for a copy of no key's layer here.
+   * @param key - A key held here.
+   * @param copy - A copy the frame could not make.
+   * @returns Whether it was a copy of the key's layer, which is copied again with the next flush.
    */
-  public retry(copy: ITextureCopy): Nullable<string> {
-    if (copy.destination !== this.texture) {
-      return null;
+  public retry(key: string, copy: ITextureCopy): boolean {
+    const held: Maybe<ITextureArrayLayer> = this.layers.get(key);
+
+    if (
+      !held ||
+      copy.destination !== this.texture ||
+      copy.destinationLayer !== held.layer ||
+      copy.source !== held.source
+    ) {
+      return false;
     }
 
-    for (const [key, held] of this.layers) {
-      if (held.layer === copy.destinationLayer && held.source === copy.source) {
-        this.copies.add(key);
+    this.copies.add(key);
 
-        return key;
-      }
-    }
-
-    return null;
+    return true;
   }
 
   /** What to dispose where the array goes whole: itself, and anything it still waits to let go. */

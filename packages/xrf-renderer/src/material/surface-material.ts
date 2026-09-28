@@ -101,7 +101,7 @@ export function createSurfaceMaterial(
         shadow?.dispose();
       }
     },
-    ...toOwnSurfaceDrawing(material, shadow),
+    ...toOwnSurfaceDrawing(material, shadow, slots.keys),
     isImpostor: variant.isImpostor,
     keys: slots.keys,
     pass: variant.pass,
@@ -112,14 +112,16 @@ export function createSurfaceMaterial(
 /**
  * @param material - A surface's own material.
  * @param shadow - What casts it, or null for a surface that casts none.
+ * @param keys - The texture keys both sample.
  * @returns What a surface drawing by them says of the static batches: that it draws them by them, reading no row,
  *   and draws its plain parts so too.
  */
 export function toOwnSurfaceDrawing(
   material: MeshBasicNodeMaterial,
-  shadow: Nullable<MeshBasicNodeMaterial>
+  shadow: Nullable<MeshBasicNodeMaterial>,
+  keys: ReadonlyArray<string>
 ): Pick<ISurfaceMaterial, "batched" | "material" | "plain" | "row" | "shadow"> {
-  return { batched: null, material, plain: { material, shadow }, row: SURFACE_NO_ROW, shadow };
+  return { batched: null, material, plain: { keys, material, shadow }, row: SURFACE_NO_ROW, shadow };
 }
 
 /**

@@ -1,14 +1,10 @@
-import { Nullable } from "@xrf/types";
-
 import {
   IRendererImpostors,
   RENDERER_IMPOSTOR_CORNER_FLOATS,
   RENDERER_IMPOSTOR_CORNERS,
   RENDERER_IMPOSTOR_FACETS,
 } from "#/contract/scene/renderer-impostors";
-import { DirtySpan } from "#/scene/dirty-span";
-import { RangeAllocator } from "#/scene/static/range-allocator";
-import { IStaticRunPool } from "#/scene/static/static-run-pool";
+import { StaticRunPool } from "#/scene/static/static-run-pool";
 import { STATIC_LOD_CORNER_COLUMNS, StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
 import { EStaticPool } from "#/uniforms/static-pool";
 
@@ -16,50 +12,9 @@ import { EStaticPool } from "#/uniforms/static-pool";
  * The impostors of clumps of trees, one slot each, that the LOD cull decides between a clump and its impostor by:
  * handed out in runs a set each, uploaded as one span a buffer.
  */
-export class StaticLods implements IStaticRunPool {
-  public readonly kind: EStaticPool = EStaticPool.LODS;
-
-  private readonly buffers: StaticDrawBuffers;
-  private readonly lods: RangeAllocator = new RangeAllocator();
-  /** The slots written since the buffers last went up. */
-  private readonly span: DirtySpan = new DirtySpan();
-  private currentVersion: number = 0;
-
+export class StaticLods extends StaticRunPool {
   public constructor(buffers: StaticDrawBuffers) {
-    this.buffers = buffers;
-    this.lods.grow(buffers.capacity(EStaticPool.LODS));
-  }
-
-  /** Bumped whenever an impostor is written or freed, so a cull knows to run again. */
-  public get version(): number {
-    return this.currentVersion;
-  }
-
-  public get capacity(): number {
-    return this.lods.capacity;
-  }
-
-  public get used(): number {
-    return this.lods.used;
-  }
-
-  /** Slots the LOD cull has to look at: up to the end of the last run handed out. */
-  public get extent(): number {
-    return this.lods.extent;
-  }
-
-  public fits(count: number): boolean {
-    return this.lods.fits(count);
-  }
-
-  public allocate(count: number): Nullable<number> {
-    return this.lods.allocate(count);
-  }
-
-  public grow(capacity: number): void {
-    this.buffers.grow(EStaticPool.LODS, capacity);
-    this.lods.grow(capacity);
-    this.currentVersion += 1;
+    super(buffers, EStaticPool.LODS);
   }
 
   /**
@@ -99,7 +54,7 @@ export class StaticLods implements IStaticRunPool {
       spheres[(start + index) * 4 + 3] = -1;
     }
 
-    this.lods.release(start, count);
+    this.runs.release(start, count);
     this.span.touch(start, start + count - 1);
     this.currentVersion += 1;
   }

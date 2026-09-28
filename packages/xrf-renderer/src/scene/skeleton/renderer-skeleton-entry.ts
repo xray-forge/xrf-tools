@@ -4,7 +4,7 @@ import { Bone, Matrix4, Skeleton } from "three/webgpu";
 import { IRendererMotion } from "#/contract/scene/renderer-motion";
 import { IRendererPose } from "#/contract/scene/renderer-pose";
 import { IRendererSkeleton, RENDERER_FLOATS_PER_BONE } from "#/contract/scene/renderer-skeleton";
-import { PREVIOUS_BONE_MATRICES, TPreviousSkeleton } from "#/shader/previous-bones";
+import { PREVIOUS_BONE_MATRICES, TPreviousSkeleton } from "#/shader/previous-skeleton";
 
 /** Where a bone's translation starts within its twelve floats. */
 const TRANSLATION_OFFSET: number = 9;
@@ -72,9 +72,13 @@ export class RendererSkeletonEntry {
     const count: number = this.bones.length;
     const stride: number = motion ? motion.floatsPerBone : RENDERER_FLOATS_PER_BONE;
     const base: number = pose.frame * count * stride;
-    // A frame outside the motion shows the bind pose rather than reading past the buffer.
+    // A frame outside the motion, before it, past it or between two, shows the bind pose rather than reading outside it.
     const isInMotion: boolean =
-      Boolean(motion) && stride >= RENDERER_FLOATS_PER_BONE && motion!.transforms.length >= base + count * stride;
+      Boolean(motion) &&
+      stride >= RENDERER_FLOATS_PER_BONE &&
+      Number.isInteger(pose.frame) &&
+      pose.frame >= 0 &&
+      motion!.transforms.length >= base + count * stride;
     const source: Float32Array = isInMotion ? motion!.transforms : this.binds;
     const offset: number = isInMotion ? base : 0;
     const boneStride: number = isInMotion ? stride : RENDERER_FLOATS_PER_BONE;

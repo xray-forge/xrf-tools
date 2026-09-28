@@ -167,7 +167,13 @@ export class SceneGrass {
 
     const wanted: IGrassBuildSize = toGrassBuildSize(uniforms, this.rendererUniforms.staticDraws.storageLimit);
 
-    // One build waits at a time; settings outgrowing it meanwhile are built for once it is in.
+    // One build waits at a time: one not taken yet that the settings outgrew is built again, and settings outgrowing
+    // one compiling are built for once it is in.
+    if (this.pending && !this.isCompiling && isGrassBuildOutgrown(this.pending.size, wanted)) {
+      this.disposeBuild(this.pending);
+      this.pending = null;
+    }
+
     if ((!this.current || isGrassBuildOutgrown(this.current.size, wanted)) && !this.pending) {
       this.pending = this.build(grass, level, wanted);
     }

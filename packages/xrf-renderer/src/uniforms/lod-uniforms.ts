@@ -33,7 +33,7 @@ export class LodUniforms {
    * @param width - The drawing's width, in pixels.
    * @param height - Its height.
    * @param camera - The camera drawing it, with its matrices current.
-   * @returns Whether anything the cull reads changed.
+   * @returns Whether a threshold changed; the camera's moves reach the cull through its view's version.
    */
   public take(settings: IRendererLodSettings, width: number, height: number, camera: PerspectiveCamera): boolean {
     const fieldOfView: number = REFERENCE_FIELD_OF_VIEW / camera.fov;

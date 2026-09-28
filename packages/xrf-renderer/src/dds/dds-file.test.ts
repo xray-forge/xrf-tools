@@ -161,4 +161,30 @@ describe("readDdsFile refusals", () => {
 
     expect(last.byteOffset + last.byteLength).toBe(bytes.byteLength);
   });
+
+  // Literal counts, where the fixture sizes its files by the same sum the reader walks.
+  it("reads a full chain as many bytes as the format stores, down to its one block levels", () => {
+    function toChainBytes(file: IDdsFile): number {
+      return file.mipmaps.reduce((total: number, { data }: IDdsMipmap) => total + data.byteLength, 0);
+    }
+
+    const wide: IDdsFile = readFile(mockDdsFile({ fourCC: "DXT1", height: 4, mipmapCount: 9, width: 256 }));
+
+    expect(toChainBytes(readFile(mockDdsFile({ fourCC: "DXT5", height: 768, mipmapCount: 11, width: 1024 })))).toBe(
+      1_048_624
+    );
+    // 256x4 to 1x1: 64, 32, 16, 8, 4, 2 blocks, then three levels of one.
+    expect(toChainBytes(wide)).toBe(1_032);
+    expect(wide.mipmaps.map(({ width, height }: IDdsMipmap) => `${width}x${height}`)).toEqual([
+      "256x4",
+      "128x2",
+      "64x1",
+      "32x1",
+      "16x1",
+      "8x1",
+      "4x1",
+      "2x1",
+      "1x1",
+    ]);
+  });
 });

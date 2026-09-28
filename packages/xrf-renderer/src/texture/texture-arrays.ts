@@ -58,7 +58,7 @@ export class TextureArrays {
       return claim.held;
     }
 
-    // Held as another class before: every surface sampling it moves when it is claimed again.
+    // Held as another class: sampled as its own until it is detached, which a texture changing class is.
     if (claim) {
       return null;
     }
@@ -91,12 +91,26 @@ export class TextureArrays {
   }
 
   /**
-   * @param key - A texture's key one surface no longer samples from its array.
+   * @param key - A texture's key one surface no longer samples from an array.
+   * @param held - Where that surface sampled it: where it was claimed, whether or not the key was detached since.
    */
-  public release(key: string): void {
+  public release(key: string, held: ITextureLayer): void {
+    if (held.array.release(key) && this.claims.get(key)?.held.array === held.array) {
+      this.claims.delete(key);
+    }
+  }
+
+  /**
+   * Lets the surfaces claiming a key from now on hold it anew, as the class its texture is now: the ones holding it
+   * still keep its layer as it was until they let it go.
+   *
+   * @param key - A texture's key whose texture changed class, or holds nothing now.
+   */
+  public detach(key: string): void {
     const claim: Maybe<ITextureClaim> = this.claims.get(key);
 
-    if (claim && claim.held.array.release(key)) {
+    if (claim) {
+      claim.held.array.detach(key);
       this.claims.delete(key);
     }
   }
@@ -119,20 +133,16 @@ export class TextureArrays {
   }
 
   /**
-   * @param skipped - Copies the frame could not make.
-   * @returns The keys they were for, each copied again with the next flush.
+   * @param skipped - Copies the frame could not make, which are rare: a scan of the claims each.
+   * @returns The keys they were for, each copied again with the next flush where it is still claimed there.
    */
   public retry(skipped: ReadonlyArray<ITextureCopy>): Set<string> {
     const keys: Set<string> = new Set();
 
     for (const copy of skipped) {
-      for (const arrays of this.arrays.values()) {
-        for (const array of arrays) {
-          const key: Nullable<string> = array.retry(copy);
-
-          if (key) {
-            keys.add(key);
-          }
+      for (const [key, { held }] of this.claims) {
+        if (held.array.retry(key, copy)) {
+          keys.add(key);
         }
       }
     }

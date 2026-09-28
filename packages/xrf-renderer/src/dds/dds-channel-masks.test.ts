@@ -1,8 +1,8 @@
 import { describe, expect, it } from "@jest/globals";
 
+import { describeDdsMasks, getDdsMaskLayout, IDdsChannelMasks } from "#/dds/dds-channel-masks";
 import { EDdsChannels } from "#/dds/dds-channels";
 import { EDdsLayout } from "#/dds/dds-layout";
-import { describeDdsMasks, getDdsMaskLayout, IDdsChannelMasks } from "#/dds/dds-masks";
 
 const A8R8G8B8: IDdsChannelMasks = {
   alpha: 0xff000000,

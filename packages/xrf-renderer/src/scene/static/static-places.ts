@@ -6,9 +6,7 @@ import {
   RENDERER_FLOATS_PER_INSTANCE,
   RENDERER_HEMI_FLOATS_PER_INSTANCE,
 } from "#/contract/scene/renderer-instances";
-import { DirtySpan } from "#/scene/dirty-span";
-import { RangeAllocator } from "#/scene/static/range-allocator";
-import { IStaticRunPool } from "#/scene/static/static-run-pool";
+import { StaticRunPool } from "#/scene/static/static-run-pool";
 import { STATIC_PLACE_COLUMNS, StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
 import { EStaticPool } from "#/uniforms/static-pool";
 
@@ -19,54 +17,15 @@ const FLOATS_PER_PLACE: number = STATIC_PLACE_COLUMNS * 4;
  * Where static draws stand: a matrix, hemisphere terms, an impostor and the greatest scale each, a single draw's one
  * and an instanced draw's one an instance. Handed out in runs, uploaded as one span.
  */
-export class StaticPlaces implements IStaticRunPool {
-  public readonly kind: EStaticPool = EStaticPool.PLACES;
-
-  private readonly buffers: StaticDrawBuffers;
-  private readonly places: RangeAllocator = new RangeAllocator();
-  /** The places written since the buffers last went up. */
-  private readonly span: DirtySpan = new DirtySpan();
+export class StaticPlaces extends StaticRunPool {
   private readonly matrix: Matrix4 = new Matrix4();
-  private currentVersion: number = 0;
 
   public constructor(buffers: StaticDrawBuffers) {
-    this.buffers = buffers;
-    this.places.grow(buffers.capacity(EStaticPool.PLACES));
-  }
-
-  public get capacity(): number {
-    return this.places.capacity;
-  }
-
-  public get used(): number {
-    return this.places.used;
-  }
-
-  public get extent(): number {
-    return this.places.extent;
-  }
-
-  /** Bumped whenever a place is written or the places grow, so a cull knows to run again. */
-  public get version(): number {
-    return this.currentVersion;
-  }
-
-  public fits(count: number): boolean {
-    return this.places.fits(count);
-  }
-
-  public allocate(count: number): Nullable<number> {
-    return this.places.allocate(count);
-  }
-
-  public grow(capacity: number): void {
-    this.buffers.grow(EStaticPool.PLACES, capacity);
-    this.places.grow(capacity);
-    this.currentVersion += 1;
+    super(buffers, EStaticPool.PLACES);
   }
 
   public free(start: number, count: number): void {
-    this.places.release(start, count);
+    this.runs.release(start, count);
   }
 
   /**

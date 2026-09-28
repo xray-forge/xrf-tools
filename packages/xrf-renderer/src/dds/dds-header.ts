@@ -1,9 +1,9 @@
 import { Nullable } from "@xrf/types";
 
+import { IDdsChannelMasks } from "#/dds/dds-channel-masks";
 import { IDdsExtendedHeader } from "#/dds/dds-extended-header";
 import { toDdsFourCc } from "#/dds/dds-fourcc";
 import { IDdsHeaderRead } from "#/dds/dds-header-read";
-import { IDdsChannelMasks } from "#/dds/dds-masks";
 import { EDdsRefusalReason } from "#/dds/dds-refusal-reason";
 
 /** `DDS `, little endian. */
@@ -99,6 +99,25 @@ export function readDdsHeader(bytes: ArrayBuffer): IDdsHeaderRead {
     dataOffset += EXTENDED_HEADER_INTS * 4;
   }
 
+  const width: number = words[OFF_WIDTH];
+  const height: number = words[OFF_HEIGHT];
+  const mipmapCount: number = words[OFF_FLAGS] & DDSD_MIPMAPCOUNT ? Math.max(1, words[OFF_MIPMAP_COUNT]) : 1;
+
+  if (!width || !height) {
+    return refuse(EDdsRefusalReason.MALFORMED, `the picture is ${width}x${height}`);
+  }
+
+  const chain: number = toDdsChainLength(width, height);
+
+  // Levels past the 1x1 would be read from the texels that follow, a cubemap's next face among them, and a texture
+  // of more levels than its size has is refused by the device.
+  if (mipmapCount > chain) {
+    return refuse(
+      EDdsRefusalReason.MALFORMED,
+      `the ${width}x${height} picture has ${chain} levels, not ${mipmapCount}`
+    );
+  }
+
   const caps2: number = words[OFF_CAPS2];
 
   return {
@@ -107,7 +126,7 @@ export function readDdsHeader(bytes: ArrayBuffer): IDdsHeaderRead {
       dataOffset,
       extended,
       fourCc,
-      height: words[OFF_HEIGHT],
+      height,
       masks: {
         alpha: words[OFF_A_MASK],
         bitCount: words[OFF_RGB_BIT_COUNT],
@@ -115,11 +134,20 @@ export function readDdsHeader(bytes: ArrayBuffer): IDdsHeaderRead {
         green: words[OFF_G_MASK],
         red: words[OFF_R_MASK],
       },
-      mipmapCount: words[OFF_FLAGS] & DDSD_MIPMAPCOUNT ? Math.max(1, words[OFF_MIPMAP_COUNT]) : 1,
-      width: words[OFF_WIDTH],
+      mipmapCount,
+      width,
     },
     refusal: null,
   };
+}
+
+/**
+ * @param width - The top level's width.
+ * @param height - And its height.
+ * @returns Levels a full chain of that size has, halving to 1x1.
+ */
+function toDdsChainLength(width: number, height: number): number {
+  return 32 - Math.clz32(Math.max(width, height));
 }
 
 function refuse(reason: EDdsRefusalReason, detail: string): IDdsHeaderRead {

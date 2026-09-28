@@ -81,7 +81,7 @@ describe("StaticDraws", () => {
       dispose: () => {},
       isImpostor: false,
       keys: [],
-      ...toOwnSurfaceDrawing(new MeshBasicNodeMaterial(), null),
+      ...toOwnSurfaceDrawing(new MeshBasicNodeMaterial(), null, []),
       pass: ERendererPass.DEFERRED,
       shadowKeys: [],
     };
@@ -141,7 +141,7 @@ describe("listed tree shadow invalidation", () => {
       dispose: () => {},
       isImpostor: false,
       keys: [],
-      ...toOwnSurfaceDrawing(new MeshBasicNodeMaterial(), new MeshBasicNodeMaterial()),
+      ...toOwnSurfaceDrawing(new MeshBasicNodeMaterial(), new MeshBasicNodeMaterial(), []),
       pass: ERendererPass.DEFERRED,
       shadowKeys: [],
     };

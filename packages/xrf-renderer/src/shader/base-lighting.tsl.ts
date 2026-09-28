@@ -30,9 +30,9 @@ export function toSunLight(point: IBaseShadingPoint, uniforms: RendererUniforms)
   const { lighting, lut } = uniforms;
 
   // `plight_infinity`: L towards the light, V towards the eye, H halfway.
-  const toLight = lighting.sunDirectionView.negate();
-  const half = normalize(toLight.add(normalize(point.position).negate()));
-  const sample = texture3D(lut, vec3(dot(toLight, point.normal), dot(half, point.normal), point.slice));
+  const toLight: Node<"vec3"> = lighting.sunDirectionView.negate();
+  const half: Node<"vec3"> = normalize(toLight.add(normalize(point.position).negate()));
+  const sample: Node<"vec4"> = texture3D(lut, vec3(dot(toLight, point.normal), dot(half, point.normal), point.slice));
 
   return vec4(lighting.sunColor.mul(sample.x), lighting.sunSpecular.mul(sample.y));
 }
@@ -89,15 +89,20 @@ function toBaseColor(
   { camera, lighting, lut }: RendererUniforms
 ): Node<"vec3"> {
   // `hmodel`: the hemisphere looked up by occlusion and by how far the reflection turns from the view.
-  const normalWorld = normalize(camera.viewToWorld.mul(vec4(point.normal, 0)).xyz);
-  const toPointWorld = normalize(camera.viewToWorld.mul(vec4(point.position, 0)).xyz);
-  const hemisphereSpecular = float(0.5).add(dot(reflect(toPointWorld, normalWorld), toPointWorld).mul(0.5));
-  const hemisphere = texture3D(lut, vec3(hemi, hemisphereSpecular, point.slice));
+  const normalWorld: Node<"vec3"> = normalize(camera.viewToWorld.mul(vec4(point.normal, 0)).xyz);
+  const toPointWorld: Node<"vec3"> = normalize(camera.viewToWorld.mul(vec4(point.position, 0)).xyz);
+  const hemisphereSpecular: Node<"float"> = float(0.5).add(
+    dot(reflect(toPointWorld, normalWorld), toPointWorld).mul(0.5)
+  );
+  const hemisphere: Node<"vec4"> = texture3D(lut, vec3(hemi, hemisphereSpecular, point.slice));
   // The irradiance cube stands in as one colour until weather supplies the cube itself.
-  const environment = lighting.environment.mul(lighting.skyIrradiance);
-  const environmentSquared = environment.mul(environment);
-  const hemisphereDiffuse = environmentSquared.mul(hemisphere.x).add(lighting.ambient).mul(ambientOcclusion);
-  const hemisphereGloss = environmentSquared.mul(hemisphere.y).mul(gloss).mul(ambientOcclusion);
+  const environment: Node<"vec3"> = lighting.environment.mul(lighting.skyIrradiance);
+  const environmentSquared: Node<"vec3"> = environment.mul(environment);
+  const hemisphereDiffuse: Node<"vec3"> = environmentSquared
+    .mul(hemisphere.x)
+    .add(lighting.ambient)
+    .mul(ambientOcclusion);
+  const hemisphereGloss: Node<"vec3"> = environmentSquared.mul(hemisphere.y).mul(gloss).mul(ambientOcclusion);
 
   return albedo.mul(light.xyz.add(hemisphereDiffuse)).add(gloss.mul(light.w)).add(hemisphereGloss);
 }

@@ -54,6 +54,32 @@ describe("placeSunCascade", () => {
     });
   });
 
+  // Under a 120 degree lens on a 32:9 view the first quarter width of the view is wider than the square.
+  it("centres a slice of the view wider than the square on it, rather than holding one side", () => {
+    const camera: PerspectiveCamera = new PerspectiveCamera(120, 32 / 9, 0.2, 5000);
+
+    camera.coordinateSystem = WebGPUCoordinateSystem;
+    camera.position.set(0, 1.5, 0);
+    camera.lookAt(0.4, 1.5, 1);
+    camera.updateMatrixWorld(true);
+
+    const width: number = 20;
+    const { center } = place(camera, DOWN, width);
+    const look: Vector3 = camera.getWorldDirection(new Vector3());
+    const rays: SunViewRays = new SunViewRays();
+    const across: Array<number> = [];
+
+    rays.reset(camera);
+
+    // The slice's ends along the square's `x`, from the near plane to a quarter of a width deep.
+    for (const ray of rays.near) {
+      across.push(ray.origin.x, ray.origin.x + (ray.direction.x * width * 0.25) / ray.direction.dot(look));
+    }
+
+    expect(Math.max(...across) - Math.min(...across)).toBeGreaterThan(width);
+    expect(center.x).toBeCloseTo((Math.max(...across) + Math.min(...across)) / 2);
+  });
+
   it("stays over the camera looking along the light, and carries no edge on", () => {
     const camera: PerspectiveCamera = createCamera(new Vector3(3, 10, 4), new Vector3(3, 0, 4));
     const { center, rays } = place(camera, DOWN, 20);

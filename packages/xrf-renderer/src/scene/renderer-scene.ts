@@ -69,6 +69,8 @@ export class RendererScene {
   private readonly staticDraws: StaticDraws;
   private readonly readiness: MaterialReadiness = new MaterialReadiness();
   private readonly proxies: LayoutProxies = new LayoutProxies();
+  /** The texture keys each drawn object samples, whose own textures stay on the GPU while it draws them. */
+  private readonly held: Map<SceneObject, ReadonlyArray<string>> = new Map();
   private readonly resolver: SceneObjectResolver;
   private readonly changes: SceneChangeQueue<SceneObject> = new SceneChangeQueue({
     apply: (entry: SceneObject) => this.apply(entry),
@@ -95,7 +97,7 @@ export class RendererScene {
     this.surfaces = new SurfaceLibrary(
       this.textures,
       uniforms,
-      (key: string) => this.buildUsers(this.surfaceUsers.get(key)),
+      (key: string, release: Nullable<() => void>) => this.replace(this.surfaceUsers.get(key), release),
       (key: string) => this.staticDraws.invalidate(key)
     );
     this.impostors = new RendererImpostorSets(this.staticDraws, (key: string, release: Nullable<() => void>) =>
@@ -110,7 +112,7 @@ export class RendererScene {
     );
   }
 
-  /** What each shadow cascade draws: every casting static batch, a cell at a time. */
+  /** What each shadow view draws: every casting static batch, by what its cull kept. */
   public get shadowCasters(): IStaticShadowCasters {
     return this.staticDraws;
   }
@@ -234,17 +236,19 @@ export class RendererScene {
     const entry: SceneGeometry = new SceneGeometry(geometry);
 
     this.transact(() => {
-      this.retireGeometry(key);
+      const release: Nullable<() => void> = this.toGeometryRelease(key);
+
       this.geometries.set(key, entry);
-      this.buildUsers(this.geometryUsers.get(key));
+      this.replace(this.geometryUsers.get(key), release);
     });
   }
 
   public releaseGeometry(key: string): void {
     this.transact(() => {
-      this.retireGeometry(key);
+      const release: Nullable<() => void> = this.toGeometryRelease(key);
+
       this.geometries.delete(key);
-      this.buildUsers(this.geometryUsers.get(key));
+      this.replace(this.geometryUsers.get(key), release);
     });
   }
 
@@ -310,7 +314,10 @@ export class RendererScene {
       this.transact(() => {
         this.unindex(entry);
         this.objects.delete(key);
-        this.changes.withdraw(entry, entry.placed, () => entry.dispose());
+        this.changes.withdraw(entry, entry.placed, () => {
+          entry.dispose();
+          this.hold(entry, []);
+        });
       });
     }
   }
@@ -331,6 +338,7 @@ export class RendererScene {
     this.geometries.forEach((geometry: SceneGeometry) => geometry.dispose(this.releases));
     this.geometries.clear();
     this.skeletons.dispose();
+    this.held.clear();
     this.textures.dispose();
     this.staticDraws.dispose();
     this.proxies.dispose();
@@ -394,18 +402,37 @@ export class RendererScene {
     }
   }
 
-  /** A geometry no longer put under its key, its buffers freed once the change replacing it applies. */
-  private retireGeometry(key: string): void {
+  /**
+   * @param key - A geometry's key, about to be put again or released.
+   * @returns What frees the geometry it holds now, or null for none.
+   */
+  private toGeometryRelease(key: string): Nullable<() => void> {
     const geometry: Maybe<SceneGeometry> = this.geometries.get(key);
 
-    if (geometry) {
-      this.changes.retire(() => geometry.dispose(this.releases));
-    }
+    return geometry ? () => geometry.dispose(this.releases) : null;
   }
 
   /** Draws an object as it is put now. */
   private apply(entry: SceneObject): void {
-    entry.apply(this.resolver.resolve(entry), this.scenes);
+    const state: Nullable<ISceneObjectState> = this.resolver.resolve(entry);
+
+    entry.apply(state, this.scenes);
+    this.hold(entry, state ? [...new Set([...state.keys, ...entry.plainKeys])] : []);
+  }
+
+  /**
+   * Keeps the own textures of what an object draws now on the GPU, whatever the arrays hold, and lets go of what it
+   * drew before: its static batches' keys, and its parts drawn plainly, a part refused a static draw among them.
+   */
+  private hold(entry: SceneObject, keys: ReadonlyArray<string>): void {
+    this.textures.hold(keys);
+    this.textures.letGo(this.held.get(entry) ?? []);
+
+    if (keys.length) {
+      this.held.set(entry, keys);
+    } else {
+      this.held.delete(entry);
+    }
   }
 
   /** What the waiting objects will take of the static draws. */
@@ -457,7 +484,8 @@ export class RendererScene {
       leaving.traverse((it: Object3D) => it instanceof Mesh && meshes.push(it));
     }
 
-    this.objects.forEach((entry: SceneObject) => meshes.push(...entry.drawing));
+    // Placed only: a part's mesh out of every scene still names the material it was last shown with.
+    this.objects.forEach((entry: SceneObject) => meshes.push(...entry.placed));
 
     for (const mesh of meshes) {
       (Array.isArray(mesh.material) ? mesh.material : [mesh.material]).forEach((it: Material) => drawn.add(it));

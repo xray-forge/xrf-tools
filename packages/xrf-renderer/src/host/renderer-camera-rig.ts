@@ -1,8 +1,8 @@
 import { PerspectiveCamera } from "three/webgpu";
 
-import { IRendererCameraController } from "#/camera/camera-controller";
 import { FlyCameraController } from "#/camera/fly-camera-controller";
 import { OrbitCameraController } from "#/camera/orbit-camera-controller";
+import { IRendererCameraController } from "#/camera/renderer-camera-controller";
 import { ERendererCameraController, TRendererCamera } from "#/contract/renderer-camera";
 import { ERendererCameraCommand, TRendererCameraCommand } from "#/contract/renderer-camera-command";
 import { IRendererCameraPose } from "#/contract/renderer-camera-pose";

@@ -36,7 +36,7 @@ export class RendererUniforms {
   /** What every static draw is culled and placed by. */
   public readonly staticDraws: StaticDrawBuffers = new StaticDrawBuffers(this.retirement);
   /** The numbers and array layers of every surface a static batch's shared material draws. */
-  public readonly surfaceTable: SurfaceTable = new SurfaceTable();
+  public readonly surfaceTable: SurfaceTable = new SurfaceTable(this.retirement);
   /** The sun's shadow cascades, fitted every frame. */
   public readonly shadows: ShadowUniforms = new ShadowUniforms();
   /** How the trees sway, built each frame. */
@@ -59,7 +59,6 @@ export class RendererUniforms {
    * @param renderer - The renderer that uploaded it.
    */
   public freeRetired(renderer: WebGPURenderer): void {
-    this.retirement.retire(this.surfaceTable.takeRetired());
     this.retirement.free(renderer);
   }
 

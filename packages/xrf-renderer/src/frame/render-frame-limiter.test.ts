@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { TFrameRateLimit } from "#/frame/render-frame-limit";
+import { TFrameRateLimit } from "#/frame/frame-rate-limit";
 import { RenderFrameLimiter } from "#/frame/render-frame-limiter";
 
 /**

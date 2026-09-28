@@ -1,11 +1,23 @@
 import { describe, expect, it } from "@jest/globals";
-import { StorageBufferAttribute } from "three/webgpu";
+import { BufferAttribute, StorageBufferAttribute } from "three/webgpu";
 
+import { StorageRetirement } from "#/uniforms/storage-retirement";
 import { SURFACE_TABLE_LAYER_WORD, SURFACE_TABLE_WORDS, SurfaceTable } from "#/uniforms/surface-table";
+
+function createTable(): [SurfaceTable, Array<BufferAttribute>] {
+  const retired: Array<BufferAttribute> = [];
+  const retirement: StorageRetirement = new StorageRetirement();
+
+  retirement.retire = (attributes: Iterable<BufferAttribute>): void => {
+    retired.push(...attributes);
+  };
+
+  return [new SurfaceTable(retirement), retired];
+}
 
 describe("SurfaceTable", () => {
   it("writes a row's numbers as floats and its layers as words", () => {
-    const table: SurfaceTable = new SurfaceTable();
+    const [table] = createTable();
     const row: number = table.allocate();
 
     table.write(row, {
@@ -24,7 +36,7 @@ describe("SurfaceTable", () => {
   });
 
   it("hands a released row out again, and uploads what was written as one span", () => {
-    const table: SurfaceTable = new SurfaceTable();
+    const [table] = createTable();
     const first: number = table.allocate();
     const second: number = table.allocate();
     const values = { alphaReference: 0, color: [1, 1, 1] as const, detailScale: 1, layers: [], slice: 0, tiling: 1 };
@@ -42,7 +54,7 @@ describe("SurfaceTable", () => {
 
   // The node every shared material reads is the same one, pointed at the larger buffer; the old one goes a frame later.
   it("grows by replacing its buffer, keeping what it held", () => {
-    const table: SurfaceTable = new SurfaceTable();
+    const [table, retired] = createTable();
     const before: StorageBufferAttribute = table.rows;
     const rows: Array<number> = Array.from({ length: 1025 }, () => table.allocate());
 
@@ -51,7 +63,7 @@ describe("SurfaceTable", () => {
     expect(table.rows).not.toBe(before);
     expect(table.words.value).toBe(table.rows);
     expect(table.version).toBe(1);
-    expect(table.takeRetired()).toEqual([before]);
+    expect(retired).toEqual([before]);
     expect((table.rows.array as Uint32Array)[3 * SURFACE_TABLE_WORDS + SURFACE_TABLE_LAYER_WORD]).toBe(9);
   });
 });

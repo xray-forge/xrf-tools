@@ -1,6 +1,7 @@
 import { storage } from "three/tsl";
-import { BufferAttribute, StorageBufferAttribute, StorageBufferNode } from "three/webgpu";
+import { StorageBufferAttribute, StorageBufferNode } from "three/webgpu";
 
+import { StorageRetirement } from "#/uniforms/storage-retirement";
 import { ISurfaceTableRow } from "#/uniforms/surface-table-row";
 
 /** Words one row takes: the surface's numbers, then a layer for each slot it samples from an array. */
@@ -27,16 +28,20 @@ export class SurfaceTable {
   /** The rows as one node every shared material reads, four words an element. */
   public readonly words: StorageBufferNode<"uvec4">;
 
+  private readonly retirement: StorageRetirement;
   private readonly free: Array<number> = [];
   /** The rows written since the last upload, as one span. */
   private first: number = Infinity;
   private last: number = -1;
-  private retired: Array<BufferAttribute> = [];
   private capacity: number = INITIAL_ROWS;
   private used: number = 0;
   private currentVersion: number = 0;
 
-  public constructor() {
+  /**
+   * @param retirement - Where a buffer a growth replaced goes.
+   */
+  public constructor(retirement: StorageRetirement) {
+    this.retirement = retirement;
     this.rows = new StorageBufferAttribute(new Uint32Array(INITIAL_ROWS * SURFACE_TABLE_WORDS), 4);
     this.words = storage(this.rows, "uvec4", INITIAL_ROWS * (SURFACE_TABLE_WORDS / 4)).toReadOnly();
   }
@@ -102,20 +107,11 @@ export class SurfaceTable {
     this.last = -1;
   }
 
-  /** @returns The buffers growths replaced, to free once nothing binds them. */
-  public takeRetired(): Array<BufferAttribute> {
-    const retired: Array<BufferAttribute> = this.retired;
-
-    this.retired = [];
-
-    return retired;
-  }
-
   private grow(capacity: number): void {
     const rows: Uint32Array = new Uint32Array(capacity * SURFACE_TABLE_WORDS);
 
     rows.set(this.rows.array as Uint32Array);
-    this.retired.push(this.rows);
+    this.retirement.retire([this.rows]);
     this.rows = new StorageBufferAttribute(rows, 4);
     this.words.value = this.rows;
     this.capacity = capacity;
