@@ -1,3 +1,6 @@
+import { Nullable } from "@xrf/types";
+import { Scene } from "three/webgpu";
+
 import { IRendererFrame } from "#/pass/renderer-frame";
 import { IRendererPass } from "#/pass/renderer-pass";
 import { RendererTargets } from "#/pass/renderer-targets";
@@ -29,9 +32,12 @@ export class GrassPass implements IRendererPass {
     }
 
     // Planted around the view unjittered, so the jitter never moves which cells are planted; drawn as the scene draws.
-    this.grass.plant(renderer, viewCamera, settings.features.grass);
-    renderer.setRenderTarget(this.targets.gbuffer);
-    renderer.render(this.grass.scene, camera);
+    const scene: Nullable<Scene> = this.grass.plant(renderer, viewCamera, settings.features.grass);
+
+    if (scene) {
+      renderer.setRenderTarget(this.targets.gbuffer);
+      renderer.render(scene, camera);
+    }
   }
 
   /** The grass is the scene's, which lets it go with the rest of what the consumer put. */

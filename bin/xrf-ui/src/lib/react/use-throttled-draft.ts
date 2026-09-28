@@ -1,8 +1,8 @@
 import { Nullable } from "@xrf/types";
 import { SyntheticEvent, useCallback, useEffect, useRef, useState } from "react";
 
-/** How often a control dragged by hand tells its owner, in milliseconds: the in-between values are not worth a frame. */
-export const DEFAULT_DRAFT_INTERVAL: number = 200;
+/** How often a control dragged by hand tells its owner, in milliseconds: about every third frame, which reads as live. */
+export const DEFAULT_DRAFT_INTERVAL: number = 50;
 
 /** Commits a slider reports for one discrete step rather than for letting go: a key, or its hidden input changing. */
 const STEP_COMMIT_EVENTS: ReadonlySet<string> = new Set(["keydown", "change"]);

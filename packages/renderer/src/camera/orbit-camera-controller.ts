@@ -15,12 +15,6 @@ import {
 } from "#/contract/renderer-camera";
 import { RenderProxyElement } from "#/input/render-proxy-element";
 
-/** The share of a turn three's orbit controls apply each sixtieth of a second, its own `dampingFactor`. */
-const ORBIT_DAMPING: number = 0.05;
-
-/** The longest frame the damping advances by, so one after a stall does not end a turn in a jump. */
-const MAX_DELTA: number = 0.25;
-
 /** Where a camera starts before its consumer describes one: a unit of distance back from the origin. */
 const DEFAULT_ORBIT_CAMERA: IRendererOrbitCamera = {
   far: 100,
@@ -46,7 +40,8 @@ export class OrbitCameraController implements IRendererCameraController {
     // Cast because three types an element it only ever listens to, measures and writes a cursor on - which is
     // exactly what a stand-in for one answers.
     this.controls = new OrbitControls(this.camera, element as unknown as HTMLElement);
-    this.controls.enableDamping = true;
+    // Undamped, a drag turns the camera by exactly what the pointer moved, and stops when it stops.
+    this.controls.enableDamping = false;
     this.unbindCursor = bindDragCursor(this.controls, element);
     this.describe(DEFAULT_ORBIT_CAMERA);
   }
@@ -111,13 +106,8 @@ export class OrbitCameraController implements IRendererCameraController {
     }
   }
 
-  /**
-   * Advances the damping, once a frame, by the frame's time: three's factor is a sixtieth of a second's.
-   *
-   * @param delta - Seconds since the last frame.
-   */
-  public update(delta: number): void {
-    this.controls.dampingFactor = 1 - (1 - ORBIT_DAMPING) ** (Math.min(delta, MAX_DELTA) * 60);
+  /** Applies what the gestures moved since the frame before. */
+  public update(): void {
     this.controls.update();
   }
 

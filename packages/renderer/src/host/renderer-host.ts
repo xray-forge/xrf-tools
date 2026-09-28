@@ -334,10 +334,14 @@ export class RendererHost {
         this.answerSettles();
       }
 
-      this.compiler.compile(device.renderer, this.scene, this.graph.scenePasses, this.rig.camera, {
-        camera: this.uniforms.shadows.cascades[0].camera,
-        target: this.graph.targets.shadows[0],
-      });
+      this.compiler.compile(
+        device.renderer,
+        this.scene,
+        this.graph.scenePasses,
+        this.rig.camera,
+        { camera: this.uniforms.shadows.cascades[0].camera, target: this.graph.targets.shadows[0] },
+        this.graph.targets.gbuffer
+      );
     }
 
     this.captures.answer(device.renderer, view !== null, drawn);

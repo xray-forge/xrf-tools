@@ -2,6 +2,7 @@ import { Nullable } from "@xrf/types";
 import { Camera, PerspectiveCamera, RenderTarget, WebGPURenderer } from "three/webgpu";
 
 import { IRendererScenePass } from "#/pass/renderer-scene-pass";
+import { ISceneGrassStaging } from "#/scene/grass/scene-grass-staging";
 import { RendererScene } from "#/scene/renderer-scene";
 import { ISceneStaging } from "#/scene/staging/scene-staging";
 
@@ -31,15 +32,27 @@ export class RendererSceneCompiler {
    * @param passes - The passes drawing its scenes, each compiled against the target it draws into.
    * @param camera - The drawing camera.
    * @param shadow - Where the shadow materials compile.
+   * @param grass - Where the grass draws, which its staged builds compile against.
    */
   public compile(
     renderer: WebGPURenderer,
     scene: RendererScene,
     passes: ReadonlyArray<IRendererScenePass>,
     camera: PerspectiveCamera,
-    shadow: IRendererShadowCompile
+    shadow: IRendererShadowCompile,
+    grass: RenderTarget
   ): void {
-    if (this.isCompilingBatch || !scene.hasPending) {
+    if (this.isCompilingBatch) {
+      return;
+    }
+
+    const staged: Nullable<ISceneGrassStaging> = scene.grass.takeStaged();
+
+    if (staged) {
+      return this.compileGrass(renderer, staged, camera, grass);
+    }
+
+    if (!scene.hasPending) {
       return;
     }
 
@@ -89,5 +102,32 @@ export class RendererSceneCompiler {
   public reset(): void {
     this.generation += 1;
     this.isCompilingBatch = false;
+  }
+
+  /** Compiles a grass build as a batch of its own: three's asynchronous builds share its node state, one at a time. */
+  private compileGrass(
+    renderer: WebGPURenderer,
+    staged: ISceneGrassStaging,
+    camera: PerspectiveCamera,
+    target: RenderTarget
+  ): void {
+    const generation: number = this.generation;
+    const previous: Nullable<RenderTarget> = renderer.getRenderTarget();
+
+    this.isCompilingBatch = true;
+    renderer.setRenderTarget(target);
+
+    const compiled: Promise<unknown> = renderer.compileAsync(staged.scene, camera);
+
+    renderer.setRenderTarget(previous);
+
+    compiled
+      .catch((error: unknown) => console.error("Grass failed to compile:", error))
+      .then(() => (generation === this.generation ? staged.commit() : staged.abandon()))
+      .finally(() => {
+        if (generation === this.generation) {
+          this.isCompilingBatch = false;
+        }
+      });
   }
 }
