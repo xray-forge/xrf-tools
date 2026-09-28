@@ -1,3 +1,4 @@
+import { Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ERendererBumpPlane } from "@xrf/renderer";
 import { Nullable } from "@xrf/types";
@@ -183,16 +184,10 @@ export function TextureChannelsPanel({
             )}
           </EditorPanelSection>
 
-          {failure ? (
-            <EditorPanelSection data-testid={"texture-channels-failure"} title={"Planes"}>
-              <EditorPanelProperty label={"Not drawn: the renderer stopped"} value={failure} />
-            </EditorPanelSection>
-          ) : null}
-
           {TEXTURE_CHANNEL_TILES.map((tile: ITextureChannelTile) => (
             <EditorPanelSection key={tile.plane} title={tile.label} caption={tile.caption}>
               <div
-                className={cn("w-full", failure ? null : "checkerboard")}
+                className={cn("relative w-full", failure ? null : "checkerboard")}
                 style={{ aspectRatio: aspect }}
                 onPointerMove={onHover}
                 onPointerLeave={() => setPosition(null)}
@@ -204,9 +199,24 @@ export function TextureChannelsPanel({
                   className={"block size-full"}
                   role={"img"}
                 />
+
+                {failure ? (
+                  <Typography
+                    className={"pointer-events-none absolute inset-0 grid place-items-center text-text-disabled"}
+                    variant={"caption"}
+                  >
+                    Not drawn
+                  </Typography>
+                ) : null}
               </div>
             </EditorPanelSection>
           ))}
+
+          {failure ? (
+            <EditorPanelSection data-testid={"texture-channels-failure"} title={"Planes"}>
+              <EditorPanelProperty label={"Not drawn: the renderer stopped"} value={failure} />
+            </EditorPanelSection>
+          ) : null}
         </>
       )}
     </EditorPanel>

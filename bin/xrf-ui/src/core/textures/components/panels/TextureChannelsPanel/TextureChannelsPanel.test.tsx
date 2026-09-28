@@ -180,6 +180,22 @@ describe("TextureChannelsPanel", () => {
     }
   });
 
+  it("says why below every tile, so a failure never moves a tile under the pointer", () => {
+    const { container, view } = renderPanel();
+
+    act(() =>
+      runInAction(() => {
+        container.get(TextureRenderService).failure = "Device lost";
+      })
+    );
+
+    const failure: HTMLElement = view.getByTestId("texture-channels-failure");
+
+    for (const plane of Object.values(ERendererBumpPlane)) {
+      expect(getTile(view, plane).compareDocumentPosition(failure) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    }
+  });
+
   it("draws every plane again once a renderer starts after the one that stopped", () => {
     const { container } = renderPanel();
 
