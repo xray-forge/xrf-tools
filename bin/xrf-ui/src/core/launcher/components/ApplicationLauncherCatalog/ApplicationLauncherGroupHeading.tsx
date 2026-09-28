@@ -31,7 +31,11 @@ export function ApplicationLauncherGroupHeading({
         {group.label}
       </Typography>
 
-      <Typography variant={"caption"} className={"text-text-secondary opacity-70"}>
+      <Typography
+        className={"rounded-full border border-divider px-1.5 text-badge leading-[1.7] text-text-secondary"}
+        component={"span"}
+        variant={"caption"}
+      >
         {count}
       </Typography>
     </div>

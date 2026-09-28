@@ -24,14 +24,14 @@ export function ApplicationLauncherCardGrid({
   onOpen,
 }: IApplicationLauncherCardGridProps): ReactElement {
   return (
-    <div data-testid={dataTestId} id={id} className={cn("flex flex-col gap-8", className)}>
+    <div data-testid={dataTestId} id={id} className={cn("flex flex-col gap-10", className)}>
       {sections.map((section: ICatalogSection) => (
-        <div key={section.group?.id ?? "ranked"} className={"flex flex-col gap-2"}>
+        <div key={section.group?.id ?? "ranked"} className={"flex flex-col gap-3"}>
           {section.group ? (
             <ApplicationLauncherGroupHeading group={section.group} count={section.entries.length} />
           ) : null}
 
-          <div className={"grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4"}>
+          <div className={"grid grid-cols-[repeat(auto-fill,minmax(16rem,1fr))] gap-4"}>
             {section.entries.map(({ application, group }: ICatalogEntry) => (
               <ApplicationLauncherCard
                 key={application.id}
