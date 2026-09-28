@@ -5,6 +5,7 @@ import { ReactElement, useCallback, useEffect, useMemo, useState } from "react";
 import { createRoots } from "@/core/assets/lib";
 import { LevelEntry } from "@/core/ipc/types/xrf-app";
 import { LevelListService, LevelLoadService } from "@/core/level/services";
+import { ConfigsDialectFormRow } from "@/core/ltx/components/configs-dialect/ConfigsDialectFormRow";
 import { EApplicationId } from "@/core/routing/application";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
 import { ChoiceListFormRow, IPathField, PathFormRow, usePathField } from "@/core/ui/form";
@@ -29,6 +30,7 @@ export function LevelViewerOpenForm({
 
   const [selected, setSelected] = useState<string>("");
   const [listedRoot, setListedRoot] = useState<Nullable<string>>(null);
+  const [isDltx, setDltx] = useState<boolean>(false);
 
   const isLoading: boolean = listService.levels.isLoading || loadService.level.isLoading;
 
@@ -71,10 +73,10 @@ export function LevelViewerOpenForm({
       return;
     }
 
-    await loadService.load({ kind: "asset", logicalPath: selected }, createRoots([root.value]));
+    await loadService.load({ kind: "asset", logicalPath: selected }, createRoots([root.value]), isDltx);
 
     onFinished?.();
-  }, [loadService, onFinished, root.value, selected]);
+  }, [isDltx, loadService, onFinished, root.value, selected]);
 
   useEffect(() => {
     if (listedRoot !== null && listedRoot !== root.value) {
@@ -120,6 +122,8 @@ export function LevelViewerOpenForm({
           onChange={setSelected}
         />
       ) : null}
+
+      {isListed ? <ConfigsDialectFormRow isDltx={isDltx} isDisabled={isLoading} onChange={setDltx} /> : null}
     </PickerForm>
   );
 }

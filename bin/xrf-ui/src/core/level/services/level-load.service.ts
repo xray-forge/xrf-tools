@@ -130,9 +130,9 @@ export class LevelLoadService {
   private readonly heldGrass: LevelHeld<ILevelGrassDelivery> = new LevelHeld();
   private readonly heldLights: LevelHeld<LevelLightsDescription> = new LevelHeld();
   private readonly heldSpawnModels: LevelHeld<ILevelSpawnModelsDelivery> = new LevelHeld();
-  /** The sky cube the level is lit under, which its water reflects. */
+  /** The sky cube the level is lit under, which its water reflects: held only so its texture is claimed and kept. */
   private readonly heldSky: LevelHeld<LevelTextureReference> = new LevelHeld();
-  /** The open level's grass, lights and spawned models being read, settling once all three have. */
+  /** The open level's grass, lights, spawned models and sky being read, settling once all four have. */
   private heldReads: Promise<void> = Promise.resolve();
 
   /** Where the camera last reported from, which is what the level is filled in around once it settles. */
@@ -269,9 +269,20 @@ export class LevelLoadService {
       this.supplied.add(request.reference);
     }
 
-    const delivered: Array<ILevelTextureDelivery> = await Promise.all(
+    const settled: Array<PromiseSettledResult<ILevelTextureDelivery>> = await Promise.allSettled(
       wanted.map((request: ISectorTextureRequest) => this.reading.read(request))
     );
+    const delivered: Array<ILevelTextureDelivery> = [];
+
+    settled.forEach((result: PromiseSettledResult<ILevelTextureDelivery>, index: number) => {
+      if (result.status === "fulfilled") {
+        delivered.push(result.value);
+      } else {
+        // Asked again by the next sector naming it, rather than never.
+        this.supplied.delete(wanted[index].reference);
+        this.log.error("Failed to read texture:", wanted[index].reference, result.reason);
+      }
+    });
 
     if (!this.isOpen(sessionId)) {
       return 0;
@@ -279,7 +290,7 @@ export class LevelLoadService {
 
     this.notifyTextures({ delivered, retained: null });
 
-    return wanted.length;
+    return delivered.length;
   }
 
   private notifyTextures(change: ILevelTextureSupplyChange): void {
@@ -293,9 +304,11 @@ export class LevelLoadService {
    *
    * @param source - Level directory or mounted asset to open.
    * @param roots - Roots the level and its textures are searched in.
+   * @param isDltx - Whether the game's configs, which its lights are read from, resolve with the Monolith/Anomaly
+   *   patch dialect.
    */
   @LatestFlow("level")
-  public *load(source: LevelSource, roots: XrayRoots): TFlow {
+  public *load(source: LevelSource, roots: XrayRoots, isDltx: boolean): TFlow {
     const timer: Timer = new Timer();
 
     this.log.info("Loading level:", describeLevelSource(source));
@@ -304,7 +317,7 @@ export class LevelLoadService {
       this.level = this.level.asLoading();
 
       const selected: SessionSnapshot<SelectedLevelDescription> = yield* call(
-        this.session.open(levelsCommands.openLevel, source, roots)
+        this.session.open(levelsCommands.openLevel, source, roots, isDltx)
       );
 
       this.adopt(selected);
@@ -402,7 +415,7 @@ export class LevelLoadService {
   }
 
   /**
-   * @returns Settles once the open level's grass, lights and spawned models are held, or have failed and said so;
+   * @returns Settles once the open level's grass, lights, spawned models and sky are held, or have failed and said so;
    *   each is handed on as it is held, so what draws them has them all by then.
    */
   public whenHeldRead(): Promise<void> {
@@ -679,12 +692,11 @@ export class LevelLoadService {
   }
 
   /**
-   * Forgets what is resident and reads it again, for a level that has to be handed to a different renderer: the
-   * sectors from where the camera was, and the textures of what the level holds, which the renderer is handed again.
+   * Forgets what was delivered, for a level handed to a different renderer: the textures of what the level holds are
+   * supplied again, and its sectors are read again wherever that renderer's camera next streams from.
    */
   @BoundAction()
-  public restream(): Promise<void> {
-    const from: Nullable<ILevelPoint> = this.streamedFrom;
+  public redeliver(): void {
     const open: Nullable<IOpenLevel> = this.level.value;
 
     this.scheduler.clear();
@@ -701,8 +713,6 @@ export class LevelLoadService {
         Array.from(held, (reference: string) => ({ reference }))
       );
     }
-
-    return from ? this.stream(from) : Promise.resolve();
   }
 
   /**

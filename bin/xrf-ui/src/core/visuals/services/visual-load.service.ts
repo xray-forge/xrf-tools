@@ -207,7 +207,7 @@ export class VisualLoadService {
 
     this.log.info("Visual geometry read in:", formatDuration(timer.lap()));
 
-    // Joined once, and read by both the meshes that draw the surfaces and the uploads that have to carry their alpha.
+    // Joined once, and carried by the meshes that draw the surfaces.
     const surfaces: Map<number, IRendererSurfaceDraw> = createVisualSurfaces(
       selected.description.submeshes,
       selected.surfaces
@@ -216,7 +216,7 @@ export class VisualLoadService {
 
     this.log.info("Visual views built in:", formatDuration(timer.lap()));
 
-    const loaded: VisualTextureSet = yield* VisualTextureSet.load(selected, surfaces);
+    const loaded: VisualTextureSet = yield* VisualTextureSet.load(selected);
 
     // Geometry, textures and their statuses land together, so the scene builds a mesh and dresses it in the same
     // commit. Published separately, a model showed untextured for as long as its textures took to arrive - brief,

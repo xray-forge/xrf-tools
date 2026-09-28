@@ -1,14 +1,6 @@
-import { Nullable } from "@xrf/types";
-
-import { getLocatedAsset } from "@/core/assets/lib/resolution";
 import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
-import { XrayAsset } from "@/core/ipc/types/xrf-vfs";
-import { VisualSubmesh, VisualTextureDependency } from "@/core/ipc/types/xrf-visual";
-import {
-  getRendererSurfaceDraw,
-  IRendererSurfaceDraw,
-  isAlphaRendererSurfaceDraw,
-} from "@/core/render/lib/surface/renderer-surface-draw";
+import { VisualSubmesh } from "@/core/ipc/types/xrf-visual";
+import { getRendererSurfaceDraw, IRendererSurfaceDraw } from "@/core/render/lib/surface/renderer-surface-draw";
 
 /**
  * The material state of every submesh, by the index the submesh reports.
@@ -27,29 +19,4 @@ export function createVisualSurfaces(
       getRendererSurfaceDraw(surfaces, position),
     ])
   );
-}
-
-/**
- * Logical paths of the texture files a model reads alpha out of.
- *
- * @param surfaces - Material state per submesh index, as {@link createVisualSurfaces} joined it, keyed by index.
- * @param textures - The model's texture references, resolved or not.
- * @returns The located logical paths whose alpha is read by at least one surface.
- */
-export function toAlphaTexturePaths(
-  surfaces: ReadonlyMap<number, IRendererSurfaceDraw>,
-  textures: Array<VisualTextureDependency>
-): ReadonlySet<string> {
-  const paths: Set<string> = new Set();
-
-  for (const texture of textures) {
-    const surface: Nullable<IRendererSurfaceDraw> = surfaces.get(texture.submeshIndex) ?? null;
-    const asset: Nullable<XrayAsset> = getLocatedAsset(texture.resolution);
-
-    if (asset && surface && isAlphaRendererSurfaceDraw(surface)) {
-      paths.add(asset.logicalPath);
-    }
-  }
-
-  return paths;
 }

@@ -2,9 +2,10 @@ import { IRendererPoolUse, IRendererStaticDrawReport } from "@xrf/renderer";
 import { ReactElement } from "react";
 
 import { EditorPanelProperty, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
+import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatCount } from "@/lib/format/number";
 
-interface ILevelStreamStaticDrawsSectionProps {
+interface ILevelStreamStaticDrawsSectionProps extends BaseComponentProps {
   staticDraws: IRendererStaticDrawReport;
 }
 
@@ -17,11 +18,16 @@ function formatPoolUse({ used, capacity }: IRendererPoolUse): string {
  * How full the static draws' pools are, what the culls kept and occlusion removed, and how often one fell back to
  * drawing plainly.
  */
-export function LevelStreamStaticDrawsSection({ staticDraws }: ILevelStreamStaticDrawsSectionProps): ReactElement {
+export function LevelStreamStaticDrawsSection({
+  "data-testid": dataTestId = "level-stream-static-draws-section",
+  id,
+  className,
+  staticDraws,
+}: ILevelStreamStaticDrawsSectionProps): ReactElement {
   const { kept, lists, occluded } = staticDraws;
 
   return (
-    <EditorPanelSection title={"Static draws"}>
+    <EditorPanelSection data-testid={dataTestId} id={id} className={className} title={"Static draws"}>
       <EditorPanelProperty label={"Slots"} value={formatPoolUse(staticDraws.slots)} />
       <EditorPanelProperty label={"Clusters"} value={formatPoolUse(staticDraws.clusters)} />
       <EditorPanelProperty label={"Places"} value={formatPoolUse(staticDraws.places)} />

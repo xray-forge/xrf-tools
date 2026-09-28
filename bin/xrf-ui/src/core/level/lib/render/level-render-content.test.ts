@@ -7,6 +7,7 @@ import { LevelRenderContent, TLevelRenderSink } from "@/core/level/lib/render/le
 import { LEVEL_RENDER_KEYS } from "@/core/level/lib/render/level-render-keys";
 import { ILevelSectorDelivery, ILevelTextureDelivery } from "@/core/level/lib/render/level-render-protocol";
 import { ILevelSpawnModelsDelivery } from "@/core/level/lib/render/level-render-spawn";
+import { toLevelSurfaceColor } from "@/core/level/lib/render/level-render-surface";
 import { ELevelSurfaceDressing } from "@/core/level/lib/surface/level-surface-dressing";
 import { DEFAULT_LEVEL_SURFACE_OPTIONS } from "@/core/level/lib/surface/level-surface-options";
 import {
@@ -253,9 +254,10 @@ describe("LevelRenderContent", () => {
     content.setOptions({ ...DEFAULT_LEVEL_SURFACE_OPTIONS, isTextured: false });
 
     expect(sink.putGeometry).not.toHaveBeenCalled();
+    // Untextured, a model takes a colour of its own as a sector's surface does, rather than drawing white.
     expect(sink.putSurface.mock.calls.at(-1)).toEqual([
       key,
-      expect.objectContaining({ textures: { base: undefined } }),
+      expect.objectContaining({ color: toLevelSurfaceColor(0), textures: { base: undefined } }),
     ]);
   });
 

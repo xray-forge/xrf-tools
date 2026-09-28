@@ -1,5 +1,7 @@
 import { IRendererLodSettings } from "@xrf/renderer";
 
+import { formatNumber } from "@/lib/format/number";
+
 /**
  * How far the viewer draws a clump of trees in full before its impostor takes over.
  */
@@ -17,6 +19,14 @@ export const LEVEL_LOD_LIMITS = {
   /** A twentieth of the engine's distance, where a clump turns at arm's length, to three times it, past any fog. */
   distance: { max: 3, min: 0.05, step: 0.05 },
 } as const;
+
+/**
+ * @param distance - A distance a clump switches at, against the engine's own.
+ * @returns It as the toolbar reads it: a multiple of the game's.
+ */
+export function formatLevelLodDistance(distance: number): string {
+  return `${formatNumber(distance, 2)}×`;
+}
 
 /**
  * @param features - The LOD the renderer's settings set, for every viewport.

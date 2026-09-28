@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "@jest/globals";
+import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { isObservableProp, reaction } from "@wirestate/mobx";
 import { mockDdsFile } from "@xrf/renderer/fixtures";
 import { Nullable } from "@xrf/types";
@@ -13,7 +13,9 @@ import {
   ILevelTextureSupplyChange,
 } from "@/core/level/lib/render/level-render-protocol";
 import { createLevelResidency } from "@/core/level/lib/residency/level-residency";
+import { ISectorTextureRequest } from "@/core/level/lib/sector/level-sector-textures";
 import { EMPTY_LEVEL_STREAM_SUMMARY } from "@/core/level/lib/stream/level-stream-profile";
+import { LevelTextureReader } from "@/core/level/lib/texture/level-texture-reader";
 import {
   mockLevelTextureReference,
   mockSectorDescription,
@@ -168,11 +170,43 @@ describe("LevelLoadService", () => {
 
     const supply = recordSupply(service);
 
-    await service.restream();
+    service.redeliver();
+    await service.stream(ORIGIN);
 
     expect(supply.delivered.map((it) => it.reference)).toContain("stone");
     expect(supply.delivered.every((it) => it.reason === null)).toBe(true);
     expect(supply.delivered[0].bytes.byteLength).toBeGreaterThan(0);
+  });
+
+  // A read that rejected used to leave its reference marked as supplied, so nothing ever asked for the file again.
+  it("asks for a texture again after a read of it failed", async () => {
+    const { level } = mockStreamable([outlineAt(0, 5)]);
+    const { service } = mockInjectedService(LevelLoadService);
+
+    setMockInvokeResponses({
+      ["plugin:assets|read_asset"]: mockDdsFile(),
+      ["plugin:levels|get_level"]: mockSessionResponse({ ...level, textures: [mockLevelTextureReference("stone")] }),
+    });
+
+    await service.restore();
+    await service.whenHeldRead();
+
+    const read = jest
+      .spyOn(LevelTextureReader.prototype, "read")
+      .mockRejectedValueOnce(new Error("The read went away"));
+
+    const supply = recordSupply(service);
+    const supplier = service as unknown as {
+      supply: (sessionId: string, requests: ReadonlyArray<ISectorTextureRequest>) => Promise<number>;
+    };
+    const sessionId: string = service.level.value?.selected.sessionId ?? "";
+
+    expect(await supplier.supply(sessionId, [{ reference: "stone" }])).toBe(0);
+    expect(await supplier.supply(sessionId, [{ reference: "stone" }])).toBe(1);
+    expect(read).toHaveBeenCalledTimes(2);
+    expect(supply.delivered.map((it) => it.reference)).toEqual(["stone"]);
+
+    read.mockRestore();
   });
 
   // Nothing is held any more, so whatever draws now is told so before it is given anything.
@@ -182,14 +216,15 @@ describe("LevelLoadService", () => {
 
     armLevel(level, description, buffer);
 
-    await service.load({ kind: "level", path: "levels\\zaton" } as never, ROOTS);
+    await service.load({ kind: "level", path: "levels\\zaton" } as never, ROOTS, false);
     await service.stream(ORIGIN);
 
     const released: Array<Nullable<ReadonlyArray<number>>> = [];
 
     service.sectors.subscribe((change) => released.push(change.released));
 
-    await service.restream();
+    service.redeliver();
+    await service.stream(ORIGIN);
 
     expect(released[0]).toBeNull();
     expect(service.sectorReport.held).toEqual([0]);
@@ -245,7 +280,7 @@ describe("LevelLoadService", () => {
 
     armLevel(level, description, buffer);
 
-    await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS);
+    await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS, false);
 
     expect(service.level.value?.selected.value.sectors).toHaveLength(1);
     expect(service.sectorReport.held).toHaveLength(0);
@@ -259,7 +294,7 @@ describe("LevelLoadService", () => {
 
     armLevel(level, description, buffer);
 
-    await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS);
+    await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS, false);
 
     // Without the floor, so this is about the distances rather than about never drawing nothing.
     service.residency = { ...service.residency, minSectors: 0 };
@@ -285,7 +320,7 @@ describe("LevelLoadService", () => {
 
     armLevel(level, description, buffer);
 
-    await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS);
+    await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS, false);
     await service.stream(ORIGIN);
 
     expect(service.sectorReport.held.length).toBeGreaterThan(0);
@@ -300,7 +335,7 @@ describe("LevelLoadService", () => {
 
     armLevel(level, description, buffer);
 
-    await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS);
+    await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS, false);
 
     service.residency = { ...service.residency, maxSectors: 1, minSectors: 1 };
 
@@ -324,7 +359,7 @@ describe("LevelLoadService", () => {
 
     armLevel(level, description, buffer);
 
-    await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS);
+    await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS, false);
     await service.stream(ORIGIN);
     await service.stream(ORIGIN);
 
@@ -337,7 +372,7 @@ describe("LevelLoadService", () => {
 
     armLevel(level, description, buffer);
 
-    await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS);
+    await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS, false);
 
     service.residency = { ...service.residency, maxSectors: 2 };
 
@@ -363,7 +398,7 @@ describe("LevelLoadService", () => {
       ["plugin:levels|read_sector"]: buffer,
     });
 
-    await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS);
+    await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS, false);
 
     service.residency = { ...service.residency, maxSectors: 1, minSectors: 1 };
 
@@ -392,7 +427,7 @@ describe("LevelLoadService", () => {
       ["plugin:levels|read_sector"]: buffer,
     });
 
-    await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS);
+    await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS, false);
     await service.stream(ORIGIN);
 
     const supply = recordSupply(service);
@@ -422,7 +457,7 @@ describe("LevelLoadService", () => {
       }),
     });
 
-    await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS);
+    await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS, false);
 
     expect(service.level.value).toBeNull();
     expect(service.level.error?.message).toBe("level carries no visuals chunk, so it draws nothing");
@@ -448,7 +483,7 @@ describe("LevelLoadService streaming progress", () => {
 
     armLevel(level, description, buffer);
 
-    await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS);
+    await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS, false);
 
     const stop = reaction(
       () => service.streaming,
@@ -470,7 +505,7 @@ describe("LevelLoadService streaming progress", () => {
 
     armLevel(level, description, buffer);
 
-    await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS);
+    await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS, false);
     await service.stream(ORIGIN);
 
     expect(service.streaming).toEqual(IDLE_LEVEL_STREAM);
@@ -484,12 +519,12 @@ describe("LevelLoadService streaming progress", () => {
 
     armLevel(level, description, buffer);
 
-    await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS);
+    await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS, false);
     await service.stream(ORIGIN);
 
     expect(service.streamProfile).not.toEqual(EMPTY_LEVEL_STREAM_SUMMARY);
 
-    await service.load({ kind: "asset", logicalPath: "levels\\jupiter" }, ROOTS);
+    await service.load({ kind: "asset", logicalPath: "levels\\jupiter" }, ROOTS, false);
 
     expect(service.streamProfile).toEqual(EMPTY_LEVEL_STREAM_SUMMARY);
     expect(service.streaming).toEqual(IDLE_LEVEL_STREAM);
@@ -502,7 +537,7 @@ describe("LevelLoadService streaming progress", () => {
 
     armLevel(level, description, buffer);
 
-    await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS);
+    await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS, false);
 
     setMockInvokeResponses({
       ["plugin:levels|open_sector"]: mockSessionResponse(() => {
@@ -524,7 +559,7 @@ describe("LevelLoadService streaming progress", () => {
 
     armLevel(level, description, buffer);
 
-    await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS);
+    await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS, false);
 
     setMockInvokeResponses({
       ["plugin:levels|open_sector"]: mockSessionResponse((args?: Record<string, unknown>) => {
@@ -552,7 +587,7 @@ describe("LevelLoadService streaming progress", () => {
 
     armLevel(level, description, buffer);
 
-    await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS);
+    await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS, false);
 
     setMockInvokeResponses({
       ["plugin:levels|open_sector"]: mockSessionResponse(async (args?: Record<string, unknown>) => {
@@ -596,7 +631,7 @@ describe("LevelLoadService streaming progress", () => {
       ["plugin:levels|read_sector"]: buffer,
     });
 
-    await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS);
+    await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS, false);
 
     // Left running: its reads are still packing when the next level opens, which is what a person clicking
     // through the picker does.
@@ -606,7 +641,7 @@ describe("LevelLoadService streaming progress", () => {
 
     armLevel(level, description, buffer);
 
-    await service.load({ kind: "asset", logicalPath: "levels\\jupiter" }, ROOTS);
+    await service.load({ kind: "asset", logicalPath: "levels\\jupiter" }, ROOTS, false);
     await service.stream(ORIGIN);
 
     release();
@@ -627,7 +662,7 @@ describe("LevelLoadService streaming progress", () => {
 
     armLevel(level, description, buffer);
 
-    await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS);
+    await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS, false);
 
     service.residency = { ...service.residency, maxSectors: 1, minSectors: 1 };
 
@@ -648,7 +683,7 @@ describe("LevelLoadService streaming progress", () => {
 
     armLevel(level, description, buffer);
 
-    await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS);
+    await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS, false);
 
     service.residency = { ...service.residency, isPreloaded: false, maxSectors: 1, minSectors: 1 };
 
@@ -665,7 +700,7 @@ describe("LevelLoadService streaming progress", () => {
 
     armLevel(level, description, buffer);
 
-    await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS);
+    await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS, false);
     await service.stream(ORIGIN);
 
     const reads: number = countCalls("plugin:levels|open_sector");
@@ -693,7 +728,7 @@ describe("LevelLoadService streaming progress", () => {
 
     armLevel(level, description, buffer);
 
-    await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS);
+    await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS, false);
 
     setMockInvokeResponses({
       ["plugin:levels|open_sector"]: mockSessionResponse(async (args?: Record<string, unknown>) => {
@@ -756,7 +791,7 @@ describe("LevelLoadService streaming progress", () => {
       ["plugin:levels|read_sector"]: buffer,
     });
 
-    await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS);
+    await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS, false);
 
     service.residency = { ...service.residency, maxSectors: 1, minSectors: 1 };
 
@@ -798,7 +833,7 @@ describe("LevelLoadService texture supply", () => {
 
     armLevel(level, description, buffer);
 
-    await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS);
+    await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS, false);
 
     const supply = recordSupply(service);
 
@@ -816,7 +851,7 @@ describe("LevelLoadService texture supply", () => {
 
     const supply = recordSupply(service);
 
-    await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS);
+    await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS, false);
 
     expect(supply.retained).toEqual([null]);
     expect(supply.delivered).toEqual([]);
@@ -830,7 +865,7 @@ describe("LevelLoadService texture supply", () => {
 
     armLevel(level, description, buffer);
 
-    await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS);
+    await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS, false);
 
     const supply = recordSupply(service);
 
@@ -847,7 +882,7 @@ describe("LevelLoadService texture supply", () => {
 
     armLevel(level, description, buffer);
 
-    await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS);
+    await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS, false);
     await service.stream(ORIGIN);
 
     const supply = recordSupply(service);
@@ -891,7 +926,7 @@ describe("LevelLoadService held reads", () => {
     armLights(level, LIGHTS);
     service.lights.subscribe((lights) => told.push(lights));
 
-    await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS);
+    await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS, false);
     await settle();
 
     expect(told.at(-1)).toEqual(LIGHTS);
@@ -921,7 +956,7 @@ describe("LevelLoadService held reads", () => {
     });
     service.lights.subscribe((lights) => told.push(lights));
 
-    await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS);
+    await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS, false);
     service.clear();
     release();
     await settle();
@@ -930,19 +965,19 @@ describe("LevelLoadService held reads", () => {
     expect(supply.delivered.map((it) => it.reference)).not.toContain("lamp");
   });
 
-  // A renderer started later is handed the lights again by their subscription; their projectors come with a restream.
+  // A renderer started later is handed the lights again by their subscription; their projectors come with a redelivery.
   it("supplies what the level holds again when it is read for a second renderer", async () => {
     const { level } = mockStreamable([outlineAt(0, 5)]);
     const { service } = mockInjectedService(LevelLoadService);
 
     armLights(level, LIGHTS);
 
-    await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS);
+    await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, ROOTS, false);
     await settle();
 
     const supply = recordSupply(service);
 
-    await service.restream();
+    service.redeliver();
     await settle();
 
     expect(supply.delivered.map((it) => it.reference)).toEqual(["lamp", SKY]);

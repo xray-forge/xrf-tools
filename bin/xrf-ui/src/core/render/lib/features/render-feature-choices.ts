@@ -4,9 +4,13 @@ import {
   ERendererAntialiasing,
   ERendererLightShadowFilter,
   ERendererRenderScale,
+  ERenderResolution,
+  FRAME_RATE_LIMITS,
   IRendererNumberField,
+  RENDER_RESOLUTIONS,
   RENDERER_FEATURE_SCHEMA,
   RENDERER_SHADOW_CASCADE_WIDTHS,
+  TFrameRateLimit,
 } from "@xrf/renderer";
 
 import { formatNumber } from "@/lib/format/number";
@@ -67,6 +71,16 @@ export function formatCascadeBlend(blend: number): string {
   return blend > 0 ? `${Math.round(blend * 100)}%` : "Hard";
 }
 
+/** @returns A shadow's normal offset, in texels. */
+export function formatShadowBias(bias: number): string {
+  return formatNumber(bias, 2);
+}
+
+/** @returns How far towards the sun a cascade's casters may stand, in metres. */
+export function formatShadowReach(reach: number): string {
+  return `${formatNumber(reach, 0)} m`;
+}
+
 /** The engine's grass density, `r__detail_density`, which is a spacing: a smaller one plants more. */
 const GAME_GRASS_DENSITY: number = DEFAULT_RENDERER_GRASS_SETTINGS.density;
 
@@ -121,6 +135,11 @@ export const RENDER_SHARPENING_LIMITS: IRenderLimits = toRenderLimits(
   0.05
 );
 
+/** @returns How much the upscaled frame is sharpened. */
+export function formatSharpening(sharpening: number): string {
+  return formatNumber(sharpening, 2);
+}
+
 /** The bounds each ambient occlusion value is offered between. */
 export const RENDER_AMBIENT_OCCLUSION_LIMITS = {
   radius: toRenderLimits(RENDERER_FEATURE_SCHEMA.ambientOcclusion.radius, 0.25),
@@ -140,6 +159,16 @@ export const RENDER_EXPOSURE_LIMITS = {
   middleGray: toRenderLimits(RENDERER_FEATURE_SCHEMA.exposure.middleGray, 0.05),
 } as const;
 
+/** @returns An exposure value that reads in hundredths: its middle gray, amount or adaptation speed. */
+export function formatExposure(value: number): string {
+  return formatNumber(value, 2);
+}
+
+/** @returns The luminance the measured one is floored at, which is set in ten-thousandths. */
+export function formatLowLuminance(luminance: number): string {
+  return formatNumber(luminance, 4);
+}
+
 /** The bounds each water value is offered between. */
 export const RENDER_WATER_LIMITS = {
   distortion: toRenderLimits(RENDERER_FEATURE_SCHEMA.water.distortion, 0.005),
@@ -152,6 +181,11 @@ export const RENDER_WATER_LIMITS = {
 /** @returns A wave's height, in centimetres, which is the size the engine's are. */
 export function formatWaveHeight(height: number): string {
   return `${formatNumber(height * 100, 1)} cm`;
+}
+
+/** @returns How fast the waves travel, in the engine's own units. */
+export function formatWaveSpeed(speed: number): string {
+  return formatNumber(speed, 0);
 }
 
 /** @returns A multiple of the engine's own value. */
@@ -259,3 +293,32 @@ export const RENDER_LIGHT_SHADOW_FILTER_OPTIONS: ReadonlyArray<IRenderChoiceOpti
     label: describeRenderLightShadowFilter(value),
     value,
   }));
+
+/** The frame rate limits, in the order they are offered. */
+export const RENDER_FRAME_RATE_OPTIONS: ReadonlyArray<IRenderChoiceOption<TFrameRateLimit>> = FRAME_RATE_LIMITS.map(
+  (value: TFrameRateLimit) => ({ label: value === "unlimited" ? "Unlimited" : `${value} fps`, value })
+);
+
+/**
+ * @param resolution - A resolution every viewport may draw at.
+ * @returns Its name as the settings say it.
+ */
+export function describeRenderResolution(resolution: ERenderResolution): string {
+  switch (resolution) {
+    case ERenderResolution.WINDOW:
+      return "Window";
+    case ERenderResolution.HEIGHT_720:
+      return "720p";
+    case ERenderResolution.HEIGHT_1080:
+      return "1080p";
+    case ERenderResolution.HEIGHT_1440:
+      return "1440p";
+    case ERenderResolution.HEIGHT_2160:
+      return "4K";
+  }
+}
+
+/** The resolutions, in the order they are offered. */
+export const RENDER_RESOLUTION_OPTIONS: ReadonlyArray<IRenderChoiceOption<ERenderResolution>> = RENDER_RESOLUTIONS.map(
+  (value: ERenderResolution) => ({ label: describeRenderResolution(value), value })
+);

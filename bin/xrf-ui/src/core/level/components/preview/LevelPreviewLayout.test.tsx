@@ -11,6 +11,7 @@ import {
   IDLE_LEVEL_STREAM,
   ILevelStreamProgress,
   LevelLoadService,
+  LevelRenderService,
   LevelViewportService,
   LevelViewService,
 } from "@/core/level/services";
@@ -39,7 +40,12 @@ function renderReporting(onRender: () => void = () => undefined): {
   view: RenderResult;
   viewport: LevelViewportService;
 } {
-  const container: Container = mockContainer([LevelLoadService, LevelViewService, LevelViewportService]);
+  const container: Container = mockContainer([
+    LevelLoadService,
+    LevelRenderService,
+    LevelViewService,
+    LevelViewportService,
+  ]);
 
   const view: RenderResult = renderWithProviders(
     <>
@@ -63,7 +69,12 @@ function renderLayout(
   overrides: Partial<Parameters<typeof LevelPreviewLayout>[0]> = {},
   streaming: ILevelStreamProgress = IDLE_LEVEL_STREAM
 ): RenderResult {
-  const container: Container = mockContainer([LevelLoadService, LevelViewService, LevelViewportService]);
+  const container: Container = mockContainer([
+    LevelLoadService,
+    LevelRenderService,
+    LevelViewService,
+    LevelViewportService,
+  ]);
 
   setStreaming(container.get(LevelLoadService), streaming);
 
@@ -109,9 +120,38 @@ describe("LevelPreviewLayout", () => {
     expect(view.queryByTestId("level-stream-progress")).not.toBeInTheDocument();
   });
 
+  // A renderer that failed never draws the level, so the cover stays, and says why rather than waiting on.
+  it("keeps the level covered and says why when the renderer fails", () => {
+    const container: Container = mockContainer([
+      LevelLoadService,
+      LevelRenderService,
+      LevelViewService,
+      LevelViewportService,
+    ]);
+
+    container.get(LevelViewportService).reveal();
+    runInAction(() => {
+      container.get(LevelRenderService).failure = "No WebGPU adapter";
+    });
+
+    const view: RenderResult = renderWithProviders(
+      <LevelPreviewLayout name={"levels\\zaton"} renderViewport={() => <div data-testid={"stub-viewport"} />} />,
+      { container, route: "/level-viewer" }
+    );
+
+    expect(view.getByTestId("level-preview-cover")).toHaveClass("opacity-100");
+    expect(view.getByRole("alert")).toHaveTextContent("The renderer stoppedNo WebGPU adapter");
+    expect(view.queryByRole("progressbar")).not.toBeInTheDocument();
+  });
+
   // Once shown, streaming does not take it away: what has arrived is drawn and flyable, so the progress sits over it.
   it("reports streaming without taking the viewport away once the level is shown", () => {
-    const container: Container = mockContainer([LevelLoadService, LevelViewService, LevelViewportService]);
+    const container: Container = mockContainer([
+      LevelLoadService,
+      LevelRenderService,
+      LevelViewService,
+      LevelViewportService,
+    ]);
 
     setStreaming(container.get(LevelLoadService), { loaded: 3, total: 24 });
     container.get(LevelViewportService).reveal();

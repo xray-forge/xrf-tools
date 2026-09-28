@@ -6,17 +6,14 @@ import { TextureSelectionService } from "@/core/textures/services/selection";
 import { TextureSurfaceService } from "@/core/textures/services/surface";
 import { TextureViewService } from "@/core/textures/services/view";
 import { renderWithProviders } from "@/fixtures/utils/render";
+import { mockRendererThread } from "@/fixtures/utils/renderer";
 
 let TextureSurface: typeof import("./TextureSurface").TextureSurface;
 let TextureRenderService: typeof import("@/core/textures/services/render").TextureRenderService;
 let dragLight: ReturnType<typeof jest.spyOn>;
 
 beforeAll(async () => {
-  // Stubbed at the thread boundary: jsdom has neither a GPU nor an offscreen canvas.
-  jest.doMock("@xrf/renderer/worker", () => ({ createRendererWorker: () => createRendererWorkerStub().worker }));
-  HTMLCanvasElement.prototype.transferControlToOffscreen = function () {
-    return {} as OffscreenCanvas;
-  };
+  mockRendererThread(() => createRendererWorkerStub().worker);
 
   ({ TextureSurface } = await import("./TextureSurface"));
   ({ TextureRenderService } = await import("@/core/textures/services/render"));

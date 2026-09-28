@@ -4,7 +4,9 @@ import { ReactElement } from "react";
 
 import {
   formatCascadeBlend,
+  formatShadowBias,
   formatShadowFilter,
+  formatShadowReach,
   RENDER_SHADOW_CASCADE_OPTIONS,
   RENDER_SHADOW_LIMITS,
   RENDER_SHADOW_RESOLUTION_OPTIONS,
@@ -14,7 +16,6 @@ import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 import { ChoiceFormRow } from "@/core/ui/form/ChoiceFormRow";
 import { SliderFormRow } from "@/core/ui/form/SliderFormRow";
 import { DetailSection } from "@/core/ui/layout/DetailSection";
-import { formatNumber } from "@/lib/format/number";
 
 import { useRendererOverride } from "./use-renderer-override";
 
@@ -74,7 +75,7 @@ export function SettingsRendererShadows(): ReactElement {
           }
           value={shadows.bias}
           {...RENDER_SHADOW_LIMITS.bias}
-          format={(value: number) => formatNumber(value, 2)}
+          format={formatShadowBias}
           onChange={(bias: number) => onSet({ bias })}
         />
 
@@ -95,7 +96,7 @@ export function SettingsRendererShadows(): ReactElement {
           description={"Metres towards the sun past a cascade that its casters may stand, as tall as a tower is."}
           value={shadows.reach}
           {...RENDER_SHADOW_LIMITS.reach}
-          format={(value: number) => `${value} m`}
+          format={formatShadowReach}
           onChange={(reach: number) => onSet({ reach })}
         />
 

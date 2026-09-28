@@ -6,7 +6,9 @@ import { Container } from "@wirestate/core";
 import { AssetService } from "@/core/assets/services";
 import { LevelEntry } from "@/core/ipc/types/xrf-app";
 import { LevelListService, LevelLoadService } from "@/core/level/services";
-import { resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
+import { mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
+import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
+import { mockInvoke, resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
@@ -87,6 +89,28 @@ describe("LevelViewerOpenForm", () => {
     await userEvent.click(form.getByRole("button", { name: "List levels" }));
 
     expect(await form.findByRole("button", { name: "Open" })).toBeDisabled();
+  });
+
+  // The lights of a level are read from the game's configs, which resolve as the dialect the person chose says.
+  it("opens the level with the configs dialect chosen", async () => {
+    setMockInvokeResponses({
+      ["plugin:levels|list_levels"]: [mockEntry("zaton")],
+      ["plugin:levels|open_level"]: mockSessionResponse(mockSelectedLevelDescription()),
+    });
+
+    const form: RenderResult = renderForm();
+
+    setRoot(form, INSTALLATION);
+    await userEvent.click(form.getByRole("button", { name: "List levels" }));
+    await userEvent.click(await form.findByRole("option", { name: "zaton" }));
+    await userEvent.click(form.getByRole("button", { name: "DLTX" }));
+    await userEvent.click(form.getByRole("button", { name: "Open" }));
+
+    const opened: ReadonlyArray<unknown> | undefined = mockInvoke.mock.calls.find(
+      ([name]: ReadonlyArray<unknown>) => name === "plugin:levels|open_level"
+    );
+
+    expect(opened?.[1]).toMatchObject({ isDltx: true, source: { kind: "asset", logicalPath: "levels\\zaton" } });
   });
 
   it("leaves a failed listing on its own button to retry", async () => {

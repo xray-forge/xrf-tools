@@ -1,13 +1,14 @@
-import { beforeAll, beforeEach, describe, expect, it, jest } from "@jest/globals";
-import { act } from "@testing-library/react";
+import { beforeAll, beforeEach, describe, expect, it } from "@jest/globals";
+import { act, RenderResult } from "@testing-library/react";
 import { Binding } from "@wirestate/core";
 import { makeAutoObservable, runInAction } from "@wirestate/mobx";
-import { ERendererRequest } from "@xrf/renderer";
+import { ERendererRequest, ERendererResponse } from "@xrf/renderer";
 import { createRendererWorkerStub, IRendererWorkerStub } from "@xrf/renderer/fixtures";
 
 import { IVisualRenderSource, VISUAL_RENDER_SOURCE } from "@/core/visuals/lib/render";
 import { mockVisualModelViews, mockVisualSubmeshViews } from "@/fixtures/mocks/visual.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
+import { mockRendererThread } from "@/fixtures/utils/renderer";
 
 let stubs: Array<IRendererWorkerStub>;
 let VisualPreviewViewport: typeof import("./VisualPreviewViewport").VisualPreviewViewport;
@@ -15,19 +16,13 @@ let bindings: Array<Binding>;
 let source: IVisualRenderSource;
 
 beforeAll(async () => {
-  // The renderer's thread is what is stubbed; jsdom has neither a GPU nor an offscreen canvas.
-  jest.doMock("@xrf/renderer/worker", () => ({
-    createRendererWorker: () => {
-      const stub: IRendererWorkerStub = createRendererWorkerStub();
+  mockRendererThread((): Worker => {
+    const stub: IRendererWorkerStub = createRendererWorkerStub();
 
-      stubs.push(stub);
+    stubs.push(stub);
 
-      return stub.worker;
-    },
-  }));
-  HTMLCanvasElement.prototype.transferControlToOffscreen = function () {
-    return {} as OffscreenCanvas;
-  };
+    return stub.worker;
+  });
 
   const { VisualRenderService } = await import("@/core/visuals/services/visual-render.service");
   const { VisualViewService } = await import("@/core/visuals/services/visual-view.service");
@@ -77,6 +72,20 @@ describe("VisualPreviewViewport", () => {
     expect(stubs).toHaveLength(1);
     expect(stubs[0].take(ERendererRequest.RELEASE_GEOMETRY)).toHaveLength(1);
     expect(stubs[0].take(ERendererRequest.PUT_GEOMETRY)).toHaveLength(2);
+  });
+
+  it("covers the viewport and says why when the renderer fails", async () => {
+    runInAction(() => (source.model = mockVisualModelViews({ submeshes: [mockVisualSubmeshViews()] })));
+
+    const view: RenderResult = renderWithProviders(<VisualPreviewViewport />, { bindings });
+
+    await stubs[0].flush();
+    act(() => stubs[0].respond({ kind: ERendererResponse.FAILED, reason: "No WebGPU adapter" }));
+
+    expect(view.getByTestId("render-failure-cover")).toHaveTextContent("No WebGPU adapter");
+    expect(view.queryByTestId("render-frame-readout")).not.toBeInTheDocument();
+
+    view.unmount();
   });
 
   it("attaches a fresh canvas after a strict mode remount rather than leaking the first", async () => {

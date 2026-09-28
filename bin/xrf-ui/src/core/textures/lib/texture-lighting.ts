@@ -1,4 +1,4 @@
-import { IRenderLighting } from "@/core/render/lib/lighting/render-lighting";
+import { IRenderLighting, RENDER_LIGHTING_LIMITS } from "@/core/render/lib/lighting/render-lighting";
 
 /**
  * What a texture's body is lit by before anyone touches it: the engine's noon, from the upper right.
@@ -15,11 +15,12 @@ export const DEFAULT_TEXTURE_LIGHTING: IRenderLighting = {
 /** How far a drag across the whole viewport swings the light, in degrees. */
 export const TEXTURE_LIGHT_DRAG_SPEED: number = 180;
 
-/** Short of the poles, where a directional light stops telling a bumped surface from a flat one. */
+/** Short of the zenith, where a directional light stops telling a bumped surface from a flat one. */
 export const TEXTURE_LIGHT_ELEVATION_LIMIT: number = 87;
 
 /**
- * Swings the light by a drag across the viewport.
+ * Swings the light by a drag across the viewport, within what the sliders offer: the azimuth wrapped round, the
+ * elevation held between the sliders' floor and short of the zenith.
  *
  * @param lighting - Where the light is.
  * @param deltaX - Horizontal movement in pixels.
@@ -35,11 +36,14 @@ export function dragTextureLighting(
   width: number,
   height: number
 ): IRenderLighting {
+  const { sunAzimuth, sunElevation } = RENDER_LIGHTING_LIMITS;
+  const azimuth: number = lighting.sunAzimuth + (deltaX / (width || 1)) * TEXTURE_LIGHT_DRAG_SPEED;
   const elevation: number = lighting.sunElevation - (deltaY / (height || 1)) * TEXTURE_LIGHT_DRAG_SPEED;
+  const turn: number = sunAzimuth.max - sunAzimuth.min;
 
   return {
     ...lighting,
-    sunAzimuth: lighting.sunAzimuth + (deltaX / (width || 1)) * TEXTURE_LIGHT_DRAG_SPEED,
-    sunElevation: Math.max(-TEXTURE_LIGHT_ELEVATION_LIMIT, Math.min(TEXTURE_LIGHT_ELEVATION_LIMIT, elevation)),
+    sunAzimuth: ((((azimuth - sunAzimuth.min) % turn) + turn) % turn) + sunAzimuth.min,
+    sunElevation: Math.max(sunElevation.min, Math.min(TEXTURE_LIGHT_ELEVATION_LIMIT, elevation)),
   };
 }

@@ -2,9 +2,7 @@ import {
   createRendererBox,
   createRendererSphere,
   ERendererCameraController,
-  ERendererDebugView,
   ERendererDraw,
-  ERendererTextureEncoding,
   IRendererFeatureSettings,
   IRendererGeometry,
   IRendererObject,
@@ -16,6 +14,8 @@ import {
   withRendererTangentBasis,
 } from "@xrf/renderer";
 
+import { toAssetRendererSettings } from "@/core/render/lib/settings/asset-renderer-settings";
+import { toRendererTextureSource } from "@/core/render/lib/texture/render-texture-source";
 import {
   ETextureSurfaceAlpha,
   ETextureSurfaceShape,
@@ -140,11 +140,7 @@ export function toTextureSurfaceObject(shape: ETextureSurfaceShape, aspect: numb
  * @returns Its bytes, and how they are encoded.
  */
 export function toTextureSurfaceSource(file: ITextureSurfaceFile): TRendererTextureSource {
-  const bytes: ArrayBuffer = file.bytes.slice(0);
-
-  return file.isDecoded
-    ? { bytes, encoding: ERendererTextureEncoding.IMAGE, type: "image/png" }
-    : { bytes, encoding: ERendererTextureEncoding.DDS };
+  return toRendererTextureSource(file.bytes.slice(0), file.isDecoded);
 }
 
 /**
@@ -158,18 +154,15 @@ export function toTextureRendererSettings(
   pacing: IRenderFramePacing,
   features: IRendererFeatureSettings
 ): IRendererSettings {
-  return {
-    // Transparent, so the checkerboard the frame already draws shows wherever the texture's alpha does.
-    backdrop: null,
-    debugView: ERendererDebugView.FINAL,
-    // At the engine's noon scale: one asset against a backdrop is no scene to adapt the exposure to.
-    features: { ...features, exposure: { ...features.exposure, isEnabled: false } },
-    pacing,
-    hemiStrength: 1,
-    isBumped: options.isBumped,
-    isLit: options.isLit,
-    isSkyDrawn: false,
-    isWireframe: false,
-    tonemapScale: 1,
-  };
+  return toAssetRendererSettings(
+    {
+      // Transparent, so the checkerboard the frame already draws shows wherever the texture's alpha does.
+      backdrop: null,
+      isBumped: options.isBumped,
+      isLit: options.isLit,
+      isWireframe: false,
+      pacing,
+    },
+    features
+  );
 }

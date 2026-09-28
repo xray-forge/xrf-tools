@@ -42,15 +42,6 @@ export interface ILevelFeatureOptions {
   water: Partial<TLevelWaterOptions>;
 }
 
-export const DEFAULT_LEVEL_FEATURE_OPTIONS: ILevelFeatureOptions = {
-  ambientOcclusion: {},
-  antialiasing: null,
-  grass: {},
-  lights: {},
-  shadows: {},
-  water: {},
-};
-
 /** The modes a view picks from, which smooth something: turning it off is the toggle's. */
 export const LEVEL_ANTIALIASING_MODES: ReadonlyArray<ERendererAntialiasing> = Object.values(
   ERendererAntialiasing

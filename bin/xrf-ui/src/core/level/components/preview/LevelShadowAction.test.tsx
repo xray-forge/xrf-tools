@@ -3,7 +3,8 @@ import { userEvent } from "@testing-library/user-event";
 import { DEFAULT_RENDERER_SHADOW_SETTINGS } from "@xrf/renderer";
 
 import { LevelShadowAction } from "@/core/level/components/preview/LevelShadowAction";
-import { DEFAULT_LEVEL_FEATURE_OPTIONS, ILevelFeatureOptions } from "@/core/level/lib/features/level-feature-options";
+import { ILevelFeatureOptions } from "@/core/level/lib/features/level-feature-options";
+import { mockLevelFeatureOptions } from "@/fixtures/mocks/level.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
 describe("LevelShadowAction", () => {
@@ -13,7 +14,7 @@ describe("LevelShadowAction", () => {
       <LevelShadowAction
         isOn
         state={{ isAvailable: true, value: DEFAULT_RENDERER_SHADOW_SETTINGS }}
-        features={DEFAULT_LEVEL_FEATURE_OPTIONS}
+        features={mockLevelFeatureOptions()}
         onToggle={() => {}}
         onChange={onChange}
       />
@@ -27,7 +28,7 @@ describe("LevelShadowAction", () => {
     await findByRole("dialog", { name: "Shadows" });
     await userEvent.click(getByRole("button", { name: "1" }));
 
-    expect(onChange).toHaveBeenLastCalledWith({ ...DEFAULT_LEVEL_FEATURE_OPTIONS, shadows: { cascades: [20] } });
+    expect(onChange).toHaveBeenLastCalledWith({ ...mockLevelFeatureOptions(), shadows: { cascades: [20] } });
   });
 
   it("is disabled, with the reason, while the settings draw no shadows", () => {
@@ -35,7 +36,7 @@ describe("LevelShadowAction", () => {
       <LevelShadowAction
         isOn
         state={{ isAvailable: false, value: DEFAULT_RENDERER_SHADOW_SETTINGS }}
-        features={DEFAULT_LEVEL_FEATURE_OPTIONS}
+        features={mockLevelFeatureOptions()}
         onToggle={() => {}}
         onChange={() => {}}
       />

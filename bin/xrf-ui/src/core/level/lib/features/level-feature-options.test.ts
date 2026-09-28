@@ -9,7 +9,6 @@ import {
 } from "@xrf/renderer";
 
 import {
-  DEFAULT_LEVEL_FEATURE_OPTIONS,
   describeLevelFeatureToggle,
   ILevelFeatureOptions,
   LEVEL_ANTIALIASING_MODES,
@@ -19,12 +18,12 @@ import {
   toLevelRendererAntialiasing,
   toLevelRendererFeature,
 } from "@/core/level/lib/features/level-feature-options";
+import { mockLevelFeatureOptions } from "@/fixtures/mocks/level.mocks";
 
 const SETTINGS: IRendererFeatureSettings = RENDERER_PRESETS[ERendererPreset.BASE];
 
-/** A view setting one value of every group over the settings. */
 const VIEW: ILevelFeatureOptions = {
-  ...DEFAULT_LEVEL_FEATURE_OPTIONS,
+  ...mockLevelFeatureOptions(),
   ambientOcclusion: { quality: ERendererAmbientOcclusionQuality.LOW },
   grass: { radius: 80 },
   lights: { shadowFilter: ERendererLightShadowFilter.SOFT },
@@ -35,17 +34,17 @@ const KEYS: ReadonlyArray<TLevelFeatureKey> = ["ambientOcclusion", "grass", "lig
 
 describe("level feature options", () => {
   it("follows the settings by default", () => {
-    expect(toLevelRendererAntialiasing(ERendererAntialiasing.SMAA, DEFAULT_LEVEL_FEATURE_OPTIONS, true)).toBe(
+    expect(toLevelRendererAntialiasing(ERendererAntialiasing.SMAA, mockLevelFeatureOptions(), true)).toBe(
       ERendererAntialiasing.SMAA
     );
 
     for (const key of KEYS) {
-      expect(toLevelRendererFeature(key, SETTINGS, DEFAULT_LEVEL_FEATURE_OPTIONS, true)).toEqual(SETTINGS[key]);
+      expect(toLevelRendererFeature(key, SETTINGS, mockLevelFeatureOptions(), true)).toEqual(SETTINGS[key]);
     }
   });
 
   it("smooths with the view's own mode, which can be any but none", () => {
-    const view: ILevelFeatureOptions = { ...DEFAULT_LEVEL_FEATURE_OPTIONS, antialiasing: ERendererAntialiasing.FXAA };
+    const view: ILevelFeatureOptions = { ...mockLevelFeatureOptions(), antialiasing: ERendererAntialiasing.FXAA };
 
     expect(toLevelRendererAntialiasing(ERendererAntialiasing.SMAA, view, true)).toBe(ERendererAntialiasing.FXAA);
     expect(toLevelRendererAntialiasing(ERendererAntialiasing.SMAA, view, false)).toBe(ERendererAntialiasing.NONE);
@@ -54,7 +53,7 @@ describe("level feature options", () => {
   });
 
   it("cannot smooth what the settings leave unsmoothed", () => {
-    const view: ILevelFeatureOptions = { ...DEFAULT_LEVEL_FEATURE_OPTIONS, antialiasing: ERendererAntialiasing.SMAA };
+    const view: ILevelFeatureOptions = { ...mockLevelFeatureOptions(), antialiasing: ERendererAntialiasing.SMAA };
 
     expect(toLevelRendererAntialiasing(ERendererAntialiasing.NONE, view, true)).toBe(ERendererAntialiasing.NONE);
   });
@@ -112,7 +111,7 @@ describe("level feature options", () => {
         lights: { shadowFilter: "anomaly" },
         lod: { ssaA: 20 },
       })
-    ).toEqual({ ...DEFAULT_LEVEL_FEATURE_OPTIONS, grass: { radius: 300 } });
-    expect(toLevelFeatureOptions(null)).toEqual(DEFAULT_LEVEL_FEATURE_OPTIONS);
+    ).toEqual({ ...mockLevelFeatureOptions(), grass: { radius: 300 } });
+    expect(toLevelFeatureOptions(null)).toEqual(mockLevelFeatureOptions());
   });
 });

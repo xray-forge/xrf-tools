@@ -1,25 +1,16 @@
-import { inject, Injectable, OnDeactivation } from "@wirestate/core";
-import { BoundAction, reaction, RefObservable } from "@wirestate/mobx";
+import { inject, Injectable } from "@wirestate/core";
+import { BoundAction, reaction } from "@wirestate/mobx";
 import {
-  EMPTY_RENDER_FRAME_COST,
-  EMPTY_RENDERER_PASS_TIMINGS,
   ERendererBumpPlane,
   ERendererCameraCommand,
   ERendererCaptureSource,
-  ERenderResolution,
-  IDdsRefusal,
-  IRendererPassTimings,
-  IRendererReport,
-  IRenderFrameCost,
-  NEUTRAL_RENDERER_LIGHTING,
+  IRendererSettings,
   RendererClient,
 } from "@xrf/renderer";
-import { createRendererWorker } from "@xrf/renderer/worker";
 import { Nullable } from "@xrf/types";
 
-import { DomRenderTarget } from "@/core/render/lib/frame/dom-render-target";
-import { IRenderLighting, toRendererLighting } from "@/core/render/lib/lighting/render-lighting";
-import { RenderSurfaceService } from "@/core/render/lib/surface/render-surface-service";
+import { IRenderLighting } from "@/core/render/lib/lighting/render-lighting";
+import { RenderAssetService } from "@/core/render/lib/surface/render-asset-service";
 import { SettingsService } from "@/core/settings/services/settings";
 import {
   createTextureSurfaceGeometry,
@@ -46,32 +37,20 @@ import { Logger } from "@/lib/logging";
  * bump pair whenever a panel asks, with or without that view.
  */
 @Injectable()
-export class TextureRenderService extends RenderSurfaceService {
+export class TextureRenderService extends RenderAssetService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
-  /** What frames are costing, for whatever draws the readout over them. */
-  @RefObservable()
-  public frameCost: IRenderFrameCost = EMPTY_RENDER_FRAME_COST;
-
-  /** What each pass of them cost on the GPU, for the same readout. */
-  @RefObservable()
-  public timings: IRendererPassTimings = EMPTY_RENDERER_PASS_TIMINGS;
-
-  private client: Nullable<RendererClient> = null;
-  private target: Nullable<DomRenderTarget> = null;
   /** The body the geometry was last put for, so an option change that keeps it does not rebuild it. */
   private shape: Nullable<ETextureSurfaceShape> = null;
   /** Set while a new renderer is told everything at once, so the face is put once rather than once per reaction. */
   private isStarting: boolean = false;
 
-  private readonly reactions: Array<() => void> = [];
-
   public constructor(
     private readonly viewService: TextureViewService = inject(TextureViewService),
     private readonly surfaceService: TextureSurfaceService = inject(TextureSurfaceService),
-    private readonly settingsService: SettingsService = inject(SettingsService)
+    settingsService: SettingsService = inject(SettingsService)
   ) {
-    super();
+    super(settingsService);
   }
 
   /**
@@ -80,7 +59,7 @@ export class TextureRenderService extends RenderSurfaceService {
    * @param plane - The plane wanted.
    * @param width - Width in device pixels.
    * @param height - Height in device pixels.
-   * @returns The picture, or null while there is no pair to draw.
+   * @returns The picture, or null while there is no pair to draw; rejects once the renderer has failed.
    */
   public captureBumpPlane(plane: ERendererBumpPlane, width: number, height: number): Promise<Nullable<ImageBitmap>> {
     if (!this.surfaceService.files.value?.bump) {
@@ -123,79 +102,40 @@ export class TextureRenderService extends RenderSurfaceService {
     this.client?.commandCamera({ kind: ERendererCameraCommand.RESET });
   }
 
-  /** Releases the renderer and stops telling it anything. */
-  @OnDeactivation()
-  public dispose(): void {
-    this.detach();
-
-    this.reactions.forEach((stop: () => void) => stop());
-    this.reactions.length = 0;
-    this.client?.dispose();
-    this.client = null;
-    this.shape = null;
+  protected toSettings(): IRendererSettings {
+    return toTextureRendererSettings(
+      this.viewService.options,
+      this.settingsService.framePacing,
+      this.settingsService.rendererFeatures
+    );
   }
 
-  protected mount(container: HTMLElement): void {
-    const target: DomRenderTarget = new DomRenderTarget(container, this.settingsService.renderResolution);
-
-    this.target = target;
-    this.ensureClient().attach(target);
-  }
-
-  protected unmount(): void {
-    this.client?.detach();
-
-    // Released here because it was made here: the canvas on the page is this service's.
-    this.target?.dispose();
-    this.target = null;
-
-    this.takeCost(EMPTY_RENDER_FRAME_COST);
-  }
-
-  /**
-   * The renderer, started on first use and told what is open as it is now, then again whenever any of it changes.
-   */
-  private ensureClient(): RendererClient {
-    if (this.client) {
-      return this.client;
-    }
-
-    const client: RendererClient = new RendererClient({
-      onFailed: (reason: string): void => this.log.error("The texture renderer failed:", reason),
-      onReport: (report: IRendererReport): void => this.takeCost(report.frame, report),
-      onTextureRefused: (key: string, refusal: IDdsRefusal): void =>
-        this.log.warn(`Texture '${key}' was refused by the renderer:`, refusal),
-      settings: toTextureRendererSettings(
-        this.viewService.options,
-        this.settingsService.framePacing,
-        this.settingsService.rendererFeatures
-      ),
-      worker: createRendererWorker(),
-    });
-
-    this.client = client;
+  protected start(client: RendererClient): Array<() => void> {
     client.setCamera(TEXTURE_SURFACE_CAMERA);
     client.putSurface(TEXTURE_SURFACE_KEYS.edge, TEXTURE_EDGE_SURFACE);
 
     this.isStarting = true;
-    this.reactions.push(
-      reaction(() => this.surfaceService.files.value, this.applyFiles, { fireImmediately: true }),
-      reaction(() => this.viewService.options, this.applyOptions, { fireImmediately: true }),
-      reaction(() => this.viewService.lighting, this.applyLighting, { fireImmediately: true }),
-      reaction(
-        () => this.settingsService.framePacing,
-        () => this.applySettings()
-      ),
-      reaction(
-        () => this.settingsService.rendererChoice,
-        () => this.applySettings()
-      ),
-      reaction(() => this.settingsService.renderResolution, this.applyResolution)
-    );
-    this.isStarting = false;
-    this.applySurface();
 
-    return client;
+    try {
+      return [
+        reaction(() => this.surfaceService.files.value, this.applyFiles, { fireImmediately: true }),
+        reaction(() => this.viewService.options, this.applyOptions, { fireImmediately: true }),
+        reaction(
+          () => this.viewService.lighting,
+          (lighting: IRenderLighting) => this.sendAssetLighting(lighting),
+          {
+            fireImmediately: true,
+          }
+        ),
+      ];
+    } finally {
+      this.isStarting = false;
+      this.applySurface();
+    }
+  }
+
+  protected release(): void {
+    this.shape = null;
   }
 
   @BoundAction()
@@ -239,7 +179,7 @@ export class TextureRenderService extends RenderSurfaceService {
     }
 
     this.applySurface();
-    this.applySettings();
+    this.sendSettings();
   }
 
   /** Puts the face and the body for what is open and how it is looked at. */
@@ -253,32 +193,5 @@ export class TextureRenderService extends RenderSurfaceService {
 
     this.client.putSurface(TEXTURE_SURFACE_KEYS.face, toTextureSurface(files, options));
     this.client.putObject(TEXTURE_SURFACE_KEYS.body, toTextureSurfaceObject(options.shape, files.aspect));
-  }
-
-  private applySettings(): void {
-    this.client?.configure(
-      toTextureRendererSettings(
-        this.viewService.options,
-        this.settingsService.framePacing,
-        this.settingsService.rendererFeatures
-      )
-    );
-  }
-
-  @BoundAction()
-  private applyLighting(lighting: IRenderLighting): void {
-    // Neutral rather than the game's warm noon, so the texture shows its own colours.
-    this.client?.setLighting(toRendererLighting(lighting, NEUTRAL_RENDERER_LIGHTING));
-  }
-
-  @BoundAction()
-  private applyResolution(resolution: ERenderResolution): void {
-    this.target?.setResolution(resolution);
-  }
-
-  @BoundAction()
-  private takeCost(cost: IRenderFrameCost, timings: IRendererPassTimings = EMPTY_RENDERER_PASS_TIMINGS): void {
-    this.frameCost = cost;
-    this.timings = { isGpuTimed: timings.isGpuTimed, passes: timings.passes };
   }
 }

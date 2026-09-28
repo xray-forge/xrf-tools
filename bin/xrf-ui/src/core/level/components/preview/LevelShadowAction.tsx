@@ -3,22 +3,20 @@ import { Button } from "@mui/material";
 import { IRendererShadowSettings, RENDERER_SHADOW_CASCADE_WIDTHS } from "@xrf/renderer";
 import { ReactElement } from "react";
 
-import {
-  describeLevelFeatureToggle,
-  ILevelFeatureActionProps,
-  useLevelFeatureOverride,
-} from "@/core/level/lib/features";
+import { ILevelFeatureActionProps } from "@/core/level/components/preview/level-feature-action-props";
+import { useLevelFeatureOverride } from "@/core/level/components/preview/use-level-feature-override";
+import { describeLevelFeatureToggle } from "@/core/level/lib/features";
 import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
 import {
   formatCascadeBlend,
+  formatShadowBias,
   formatShadowFilter,
   RENDER_SHADOW_CASCADE_OPTIONS,
   RENDER_SHADOW_LIMITS,
   RENDER_SHADOW_RESOLUTION_OPTIONS,
 } from "@/core/render/lib/features";
 import { EditorPopoverToggle } from "@/core/shell/editor/EditorPopoverToggle";
-import { formatNumber } from "@/lib/format/number";
 
 /**
  * Whether the sun casts shadows in this view, and in how many cascades, how fine and how soft.
@@ -83,7 +81,7 @@ export function LevelShadowAction({
         label={"Normal offset"}
         value={shadows.bias}
         {...RENDER_SHADOW_LIMITS.bias}
-        format={(value: number) => formatNumber(value, 2)}
+        format={formatShadowBias}
         onChange={(bias: number) => set({ bias })}
       />
 

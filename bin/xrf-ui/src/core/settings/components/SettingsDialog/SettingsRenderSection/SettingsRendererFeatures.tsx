@@ -10,6 +10,9 @@ import {
 import { ReactElement } from "react";
 
 import {
+  formatExposure,
+  formatLowLuminance,
+  formatSharpening,
   RENDER_ANTIALIASING_OPTIONS,
   RENDER_EXPOSURE_LIMITS,
   RENDER_SCALE_OPTIONS,
@@ -20,7 +23,6 @@ import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 import { ChoiceFormRow, IChoiceFormRowOption } from "@/core/ui/form/ChoiceFormRow";
 import { SliderFormRow } from "@/core/ui/form/SliderFormRow";
 import { DetailSection } from "@/core/ui/layout/DetailSection";
-import { formatNumber } from "@/lib/format/number";
 
 const PRESET_LABELS: Record<ERendererPreset, string> = {
   [ERendererPreset.BASE]: "Base",
@@ -92,7 +94,7 @@ export function SettingsRendererFeatures(): ReactElement {
           value={features.upscaling.sharpening}
           {...RENDER_SHARPENING_LIMITS}
           isDisabled={features.upscaling.scale === ERendererRenderScale.NATIVE}
-          format={(value: number) => formatNumber(value, 2)}
+          format={formatSharpening}
           onChange={(sharpening: number) => settingsService.setRendererOverrides({ upscaling: { sharpening } })}
         />
 
@@ -112,7 +114,7 @@ export function SettingsRendererFeatures(): ReactElement {
           value={features.exposure.middleGray}
           {...RENDER_EXPOSURE_LIMITS.middleGray}
           isDisabled={!features.exposure.isEnabled}
-          format={(value: number) => formatNumber(value, 2)}
+          format={formatExposure}
           onChange={(middleGray: number) => settingsService.setRendererOverrides({ exposure: { middleGray } })}
         />
 
@@ -122,7 +124,7 @@ export function SettingsRendererFeatures(): ReactElement {
           value={features.exposure.amount}
           {...RENDER_EXPOSURE_LIMITS.amount}
           isDisabled={!features.exposure.isEnabled}
-          format={(value: number) => formatNumber(value, 2)}
+          format={formatExposure}
           onChange={(amount: number) => settingsService.setRendererOverrides({ exposure: { amount } })}
         />
 
@@ -132,7 +134,7 @@ export function SettingsRendererFeatures(): ReactElement {
           value={features.exposure.lowLuminance}
           {...RENDER_EXPOSURE_LIMITS.lowLuminance}
           isDisabled={!features.exposure.isEnabled}
-          format={(value: number) => formatNumber(value, 4)}
+          format={formatLowLuminance}
           onChange={(lowLuminance: number) => settingsService.setRendererOverrides({ exposure: { lowLuminance } })}
         />
 
@@ -142,7 +144,7 @@ export function SettingsRendererFeatures(): ReactElement {
           value={features.exposure.adaptation}
           {...RENDER_EXPOSURE_LIMITS.adaptation}
           isDisabled={!features.exposure.isEnabled}
-          format={(value: number) => formatNumber(value, 2)}
+          format={formatExposure}
           onChange={(adaptation: number) => settingsService.setRendererOverrides({ exposure: { adaptation } })}
         />
 

@@ -1,6 +1,6 @@
 import { useInjection } from "@wirestate/react";
 import { Maybe } from "@xrf/types";
-import { ReactElement, useEffect, useMemo, useState } from "react";
+import { ReactElement, useMemo } from "react";
 
 import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
 import { ILevelSurfaceDressing } from "@/core/level/lib/surface/level-surface-dressing";
@@ -38,10 +38,6 @@ export function LevelSurfacesPanel({
   const report: ILevelTextureReport = viewportService.textureReport;
   const surfaces: Maybe<ReadonlyArray<XraySurfaceDescriptor>> = loadService.level.value?.selected.value.surfaces;
 
-  // Asked for rather than read: measuring it samples the coordinates of every draw of every sector held, and
-  // the viewport that holds them may not be on this thread.
-  const [drawn, setDrawn] = useState<ReadonlyMap<number, ILevelSurfaceGeometry>>(new Map());
-
   const { named, total } = useMemo(() => {
     const summaries: Array<ILevelSurfaceSummary> = listLevelSurfaces(surfaces ?? []);
 
@@ -59,19 +55,12 @@ export function LevelSurfacesPanel({
     [named, report]
   );
 
-  useEffect(() => {
-    let isCurrent: boolean = true;
-
-    void renderService.measureSurfaceGeometry().then((measured: ReadonlyMap<number, ILevelSurfaceGeometry>) => {
-      if (isCurrent) {
-        setDrawn(measured);
-      }
-    });
-
-    return () => {
-      isCurrent = false;
-    };
-  }, [renderService, held]);
+  // Measured again as the sectors held change, which is what it samples: every draw of every one of them.
+  const drawn: ReadonlyMap<number, ILevelSurfaceGeometry> = useMemo(
+    () => renderService.measureSurfaceGeometry(),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [renderService, held]
+  );
 
   if (!loadService.level.value) {
     return (

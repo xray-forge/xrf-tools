@@ -2,9 +2,10 @@ import { IRendererLightsReport } from "@xrf/renderer";
 import { ReactElement } from "react";
 
 import { EditorPanelProperty, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
+import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatPercent } from "@/lib/format/number";
 
-interface ILevelStreamLightsSectionProps {
+interface ILevelStreamLightsSectionProps extends BaseComponentProps {
   lights: IRendererLightsReport;
 }
 
@@ -12,9 +13,14 @@ interface ILevelStreamLightsSectionProps {
  * What the local lights came to: how many stood in view, how many with their shadows, the atlas they are drawn in, and
  * what the frame could not hold.
  */
-export function LevelStreamLightsSection({ lights }: ILevelStreamLightsSectionProps): ReactElement {
+export function LevelStreamLightsSection({
+  "data-testid": dataTestId = "level-stream-lights-section",
+  id,
+  className,
+  lights,
+}: ILevelStreamLightsSectionProps): ReactElement {
   return (
-    <EditorPanelSection title={"Lights"}>
+    <EditorPanelSection data-testid={dataTestId} id={id} className={className} title={"Lights"}>
       <EditorPanelProperty label={"In view"} value={lights.inView} />
       <EditorPanelProperty label={"Shadowed"} value={lights.shadowed} />
       <EditorPanelProperty

@@ -7,6 +7,7 @@ import { RenderValueSlider } from "@/core/render/components/controls/RenderValue
 import { EditorPopoverToggle } from "@/core/shell/editor/EditorPopoverToggle";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatPercent } from "@/lib/format/number";
+import { usePartialChange } from "@/lib/react/use-partial-change";
 
 interface ILevelBakedActionProps extends BaseComponentProps {
   isOn: boolean;
@@ -27,6 +28,8 @@ export function LevelBakedAction({
   onToggle,
   onChange,
 }: ILevelBakedActionProps): ReactElement {
+  const onSet = usePartialChange(lighting, onChange);
+
   return (
     <EditorPopoverToggle
       data-testid={dataTestId}
@@ -46,13 +49,10 @@ export function LevelBakedAction({
         max={1}
         step={0.05}
         format={formatPercent}
-        onChange={(hemiStrength: number) => onChange({ ...lighting, hemiStrength })}
+        onChange={(hemiStrength: number) => onSet({ hemiStrength })}
       />
 
-      <Button
-        size={"small"}
-        onClick={() => onChange({ ...lighting, hemiStrength: DEFAULT_LEVEL_LIGHTING.hemiStrength })}
-      >
+      <Button size={"small"} onClick={() => onSet({ hemiStrength: DEFAULT_LEVEL_LIGHTING.hemiStrength })}>
         Back to the whole occlusion
       </Button>
     </EditorPopoverToggle>

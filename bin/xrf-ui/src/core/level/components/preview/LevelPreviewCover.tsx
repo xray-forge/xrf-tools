@@ -1,7 +1,14 @@
 import { useInjection } from "@wirestate/react";
+import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
-import { ILevelStreamProgress, LevelLoadService, LevelViewportService } from "@/core/level/services";
+import {
+  ILevelStreamProgress,
+  LevelLoadService,
+  LevelRenderService,
+  LevelViewportService,
+} from "@/core/level/services";
+import { RenderFailureNotice } from "@/core/render/components/overlay/RenderFailureNotice";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
@@ -13,7 +20,8 @@ interface ILevelPreviewCoverProps extends BaseComponentProps {
 
 /**
  * What hides the viewport until a level has been drawn with everything it opens with, so it never assembles in view:
- * opaque, taking the pointer from the canvas under it, and faded out once the level is shown.
+ * opaque, taking the pointer from the canvas under it, and faded out once the level is shown. A renderer that failed
+ * never shows it, so the cover stays and says why.
  */
 export function LevelPreviewCover({
   "data-testid": dataTestId = "level-preview-cover",
@@ -22,15 +30,18 @@ export function LevelPreviewCover({
   isLoading,
 }: ILevelPreviewCoverProps): ReactElement {
   const loadService: LevelLoadService = useInjection(LevelLoadService);
+  const renderService: LevelRenderService = useInjection(LevelRenderService);
   const viewportService: LevelViewportService = useInjection(LevelViewportService);
+
   const streaming: ILevelStreamProgress = loadService.streaming;
-  const isCovering: boolean = isLoading || !viewportService.isRevealed;
+  const failure: Nullable<string> = renderService.failure;
+  const isCovering: boolean = failure !== null || isLoading || !viewportService.isRevealed;
 
   let label: string = "Preparing the level…";
 
   if (isLoading) {
     label = "Opening level…";
-  } else if (streaming.total > 0) {
+  } else if (loadService.isStreaming) {
     label = `Reading sectors, ${streaming.loaded} of ${streaming.total}`;
   }
 
@@ -45,7 +56,9 @@ export function LevelPreviewCover({
         className
       )}
     >
-      {isCovering ? <DelayedProgress isOnViewport={true} label={label} /> : null}
+      {failure !== null ? <RenderFailureNotice failure={failure} /> : null}
+
+      {failure === null && isCovering ? <DelayedProgress isOnViewport={true} label={label} /> : null}
     </div>
   );
 }

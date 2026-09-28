@@ -31,7 +31,7 @@ export function RenderValueSlider({
   format,
   onChange,
 }: IRenderValueSliderProps): ReactElement {
-  const draft: IThrottledDraft = useThrottledDraft(value, onChange);
+  const draft: IThrottledDraft = useThrottledDraft(value, step, onChange);
 
   return (
     <div data-testid={dataTestId} id={id} className={className}>

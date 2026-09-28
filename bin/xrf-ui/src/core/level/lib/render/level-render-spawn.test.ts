@@ -1,8 +1,11 @@
 import { describe, expect, it } from "@jest/globals";
-import { ERendererDraw, IRendererGeometry } from "@xrf/renderer";
+import { ERendererDraw, IRendererGeometry, IRendererSurface, TRendererColor } from "@xrf/renderer";
 
-import { toPosedGeometry } from "@/core/level/lib/render/level-render-spawn";
+import { EXrayBumpMode, XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
+import { EXrayResolution } from "@/core/ipc/types/xrf-vfs";
+import { toLevelSpawnSurface, toPosedGeometry } from "@/core/level/lib/render/level-render-spawn";
 import { IVisualSubmeshViews } from "@/core/visuals/lib/visual-views";
+import { mockSurfaceDescriptor } from "@/fixtures/mocks/visual.mocks";
 
 /** One vertex a metre and a half up, facing `+x`, hung entirely from bone zero. */
 function createSubmesh(): IVisualSubmeshViews {
@@ -41,5 +44,58 @@ describe("toPosedGeometry", () => {
     const geometry: IRendererGeometry = toPosedGeometry(createSubmesh(), null, null);
 
     expect(Array.from(geometry.position ?? [])).toEqual([0, 1.5, 0]);
+  });
+});
+
+describe("toLevelSpawnSurface", () => {
+  const color: TRendererColor = [0.2, 0.4, 0.6];
+
+  it("shades a part with the lighting model its descriptor sets, as a sector's surface is", () => {
+    const surface: IRendererSurface = toLevelSpawnSurface(
+      { color, descriptor: mockSurfaceDescriptor({ material: 3 }), texture: "lamp" },
+      true
+    );
+
+    expect(surface.material).toBe(3);
+    expect(surface.textures?.base).toBe("lamp");
+    expect(surface.color).toBeUndefined();
+  });
+
+  it("draws an untextured part in its model's colour rather than white", () => {
+    const surface: IRendererSurface = toLevelSpawnSurface({ color, descriptor: null, texture: "lamp" }, false);
+
+    expect(surface.color).toEqual(color);
+    expect(surface.textures?.base).toBeUndefined();
+  });
+
+  it("binds the bump pair and the detail its descriptor declares beside its base", () => {
+    const descriptor: XraySurfaceDescriptor = mockSurfaceDescriptor({
+      bump: {
+        bump: { reference: "lamp_bump", resolution: { kind: EXrayResolution.MISSING, roots: [] } },
+        companion: { reference: "lamp_bump#", resolution: { kind: EXrayResolution.MISSING, roots: [] } },
+        mode: EXrayBumpMode.USE,
+        virtualHeight: null,
+      },
+      detail: { reference: "detail\\detail_metal", scale: 4 },
+    });
+    const surface: IRendererSurface = toLevelSpawnSurface({ color, descriptor, texture: "lamp" }, true);
+
+    expect(surface.textures).toEqual({
+      base: "lamp",
+      bump: "lamp_bump",
+      bumpCompanion: "lamp_bump#",
+      detail: "detail\\detail_metal",
+    });
+    expect(surface.detailScale).toBe(4);
+  });
+
+  it("binds neither the pair nor the detail while textures are off", () => {
+    const descriptor: XraySurfaceDescriptor = mockSurfaceDescriptor({
+      detail: { reference: "detail\\detail_metal", scale: 4 },
+    });
+    const surface: IRendererSurface = toLevelSpawnSurface({ color, descriptor, texture: "lamp" }, false);
+
+    expect(surface.textures?.detail).toBeUndefined();
+    expect(surface.detailScale).toBeUndefined();
   });
 });

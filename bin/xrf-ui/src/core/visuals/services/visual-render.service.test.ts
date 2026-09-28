@@ -1,4 +1,4 @@
-import { beforeAll, beforeEach, describe, expect, it, jest } from "@jest/globals";
+import { beforeAll, beforeEach, describe, expect, it } from "@jest/globals";
 import { Container } from "@wirestate/core";
 import { makeAutoObservable, runInAction } from "@wirestate/mobx";
 import { ERendererOverlay, ERendererRequest, TRendererRequest } from "@xrf/renderer";
@@ -9,16 +9,13 @@ import { IVisualTextureFile } from "@/core/visuals/lib/visual-texture";
 import { VisualViewService } from "@/core/visuals/services/visual-view.service";
 import { mockVisualModelViews, mockVisualSubmeshViews } from "@/fixtures/mocks/visual.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
+import { mockRendererThread } from "@/fixtures/utils/renderer";
 
 let stub: IRendererWorkerStub;
 let VisualRenderService: typeof import("./visual-render.service").VisualRenderService;
 
 beforeAll(async () => {
-  // The worker entry reads `import.meta.url`, which the test transform cannot, and the thread is what is stubbed.
-  jest.doMock("@xrf/renderer/worker", () => ({ createRendererWorker: () => stub.worker }));
-  HTMLCanvasElement.prototype.transferControlToOffscreen = function () {
-    return {} as OffscreenCanvas;
-  };
+  mockRendererThread(() => stub.worker);
 
   ({ VisualRenderService } = await import("./visual-render.service"));
 });
@@ -28,7 +25,7 @@ beforeEach(() => {
 });
 
 function mockTextureFile(): IVisualTextureFile {
-  return { bytes: new ArrayBuffer(8), isAlphaRead: false, isDecoded: false, logicalPath: "textures\\wall" };
+  return { bytes: new ArrayBuffer(8), isDecoded: false, logicalPath: "textures\\wall" };
 }
 
 function mockSource(overrides: Partial<IVisualRenderSource> = {}): IVisualRenderSource {

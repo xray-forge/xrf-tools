@@ -5,10 +5,8 @@ import { transformError } from "@/core/error/lib";
 import { assetsRawCommands } from "@/core/ipc/commands/assets-raw";
 import { visualsRawCommands } from "@/core/ipc/commands/visuals-raw";
 import { SelectedVisualDescription } from "@/core/ipc/types/xrf-app";
-import { IRendererSurfaceDraw } from "@/core/render/lib/surface/renderer-surface-draw";
 import { ILoadableBump, IVisualBumpFiles, IVisualBumpStatus, toLoadableBumps } from "@/core/visuals/lib/visual-bump";
 import { describeVisualSource } from "@/core/visuals/lib/visual-source";
-import { toAlphaTexturePaths } from "@/core/visuals/lib/visual-surface";
 import {
   EVisualTextureState,
   ILoadableTexture,
@@ -42,18 +40,14 @@ export class VisualTextureSet {
    * Prepares textures inside the caller's cancellable flow.
    *
    * @param selected - Description whose resolved roots and logical paths address the reads.
-   * @param surfaces - Material state per submesh, deciding which base textures must retain alpha.
    * @returns What was read, to publish with the geometry it belongs to.
    */
-  public static *load(
-    selected: SelectedVisualDescription,
-    surfaces: ReadonlyMap<number, IRendererSurfaceDraw>
-  ): TFlow<VisualTextureSet> {
+  public static *load(selected: SelectedVisualDescription): TFlow<VisualTextureSet> {
     const timer: Timer = new Timer();
     const loaded: VisualTextureSet = new VisualTextureSet();
     const reads: Map<string, IVisualTextureRead> = yield* call(loaded.readTextureFiles(selected));
 
-    loaded.resolveTextures(selected, surfaces, reads);
+    loaded.resolveTextures(selected, reads);
 
     loaded.log.info(`Loaded ${reads.size} texture files in:`, formatDuration(timer.lap()));
 
@@ -157,14 +151,9 @@ export class VisualTextureSet {
    * Decide what each submesh is drawn from, and say what became of its reference.
    *
    * @param selected - Visual the textures belong to.
-   * @param surfaces - Material state per submesh index, which decides whether a file's alpha has to survive upload.
    * @param reads - What each texture read produced.
    */
-  private resolveTextures(
-    selected: SelectedVisualDescription,
-    surfaces: ReadonlyMap<number, IRendererSurfaceDraw>,
-    reads: Map<string, IVisualTextureRead>
-  ): void {
+  private resolveTextures(selected: SelectedVisualDescription, reads: Map<string, IVisualTextureRead>): void {
     for (const texture of selected.dependencies.textures) {
       this.textureStatusMap.set(texture.submeshIndex, {
         reason: null,
@@ -176,9 +165,6 @@ export class VisualTextureSet {
     // One answer per file, shared by every submesh naming it: whether three.js takes a layout is a property
     // of the file, and asking twice would say the same thing twice.
     const taken: Map<string, Nullable<IVisualTextureFile>> = new Map();
-    // Per file rather than per submesh, because the upload is: a DXT1 file drawn by a cut-out surface has to keep the
-    // alpha bit its blocks carry, and one upload serves every submesh naming it.
-    const alpha: ReadonlySet<string> = toAlphaTexturePaths(surfaces, selected.dependencies.textures);
 
     for (const { submeshIndex, logicalPath } of toLoadableTextures(selected.dependencies.textures)) {
       const read: Optional<IVisualTextureRead> = reads.get(logicalPath);
@@ -194,15 +180,9 @@ export class VisualTextureSet {
       }
 
       if (!taken.has(logicalPath)) {
-        const isAlphaRead: boolean = alpha.has(logicalPath);
-
-        // A base texture is a picture, so it is read as sRGB where it is uploaded; whether its alpha survives
-        // is the surface's answer, and it travels with the file because only this side knows the surfaces.
         taken.set(
           logicalPath,
-          toDdsPicture(readDdsFile(read.bytes))
-            ? { bytes: read.bytes, isAlphaRead, isDecoded: false, logicalPath }
-            : null
+          toDdsPicture(readDdsFile(read.bytes)) ? { bytes: read.bytes, isDecoded: false, logicalPath } : null
         );
       }
 
@@ -275,9 +255,7 @@ export class VisualTextureSet {
       // in it. The file says which answer it wants, because the side that uploads cannot know.
       taken.set(
         logicalPath,
-        toDdsPicture(readDdsFile(read.bytes))
-          ? { bytes: read.bytes, isAlphaRead: false, isDecoded: false, logicalPath }
-          : null
+        toDdsPicture(readDdsFile(read.bytes)) ? { bytes: read.bytes, isDecoded: false, logicalPath } : null
       );
     }
 
@@ -315,7 +293,7 @@ export class VisualTextureSet {
       Array.from(submeshesByPath, async ([logicalPath, submeshes]) => {
         try {
           const png: ArrayBuffer = await visualsRawCommands.readTexture(selected.roots, logicalPath);
-          const file: IVisualTextureFile = { bytes: png, isAlphaRead: false, isDecoded: true, logicalPath };
+          const file: IVisualTextureFile = { bytes: png, isDecoded: true, logicalPath };
 
           for (const submeshIndex of submeshes) {
             this.textureMap.set(submeshIndex, file);

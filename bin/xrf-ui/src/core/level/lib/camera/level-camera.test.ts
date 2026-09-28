@@ -8,7 +8,7 @@ function placed(position: TRendererVector, target: TRendererVector): ILevelCamer
   return toLevelCameraReading({ position, target });
 }
 
-describe("toLevelCamera", () => {
+describe("toLevelCameraReading", () => {
   // The packer negates `z`, so a readout taken straight off the camera would disagree with the level's own data on
   // one axis - and only on one, which is exactly the kind of wrong that goes unnoticed.
   it("states the position in the level's own axes", () => {

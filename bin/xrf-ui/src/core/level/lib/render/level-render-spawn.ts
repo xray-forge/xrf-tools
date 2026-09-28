@@ -1,11 +1,17 @@
-import { IRendererGeometry, IRendererObject, IRendererSurface } from "@xrf/renderer";
-import { Nullable } from "@xrf/types";
+import { IRendererGeometry, IRendererObject, IRendererSurface, TRendererColor } from "@xrf/renderer";
+import { Maybe, Nullable } from "@xrf/types";
 
 import { LevelSpawnModelDescription, LevelSpawnModelsDescription, LevelSpawnPlacement } from "@/core/ipc/types/xrf-app";
 import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
 import { VisualTransform } from "@/core/ipc/types/xrf-visual";
 import { LEVEL_RENDER_KEYS } from "@/core/level/lib/render/level-render-keys";
-import { ILevelSurfaceRender, toLevelSurfaceRender } from "@/core/level/lib/surface/level-surface-render";
+import { toLevelSurfaceColor } from "@/core/level/lib/render/level-render-surface";
+import {
+  ILevelSurfaceBump,
+  ILevelSurfaceDetail,
+  ILevelSurfaceRender,
+  toLevelSurfaceRender,
+} from "@/core/level/lib/surface/level-surface-render";
 import { createVisualViews, IVisualModelViews, IVisualSubmeshViews } from "@/core/visuals/lib/visual-views";
 
 /** Floats one bone's transform takes: its basis, then its translation. */
@@ -17,10 +23,12 @@ export interface ILevelSpawnModelsDelivery {
   buffers: ReadonlyMap<string, ArrayBuffer>;
 }
 
-/** What a submesh is dressed as: its shader as it resolved, and its base texture. */
+/** What a submesh is dressed as: its shader as it resolved, its base texture, and its colour without one. */
 export interface ILevelSpawnDressing {
   descriptor: Nullable<XraySurfaceDescriptor>;
   texture: Nullable<string>;
+  /** The model's own, so one model reads as one wherever it stands while textures are off. */
+  color: TRendererColor;
 }
 
 /** What one submesh of one model puts into the renderer, under one key. */
@@ -57,6 +65,7 @@ export function toLevelSpawnParts(delivery: ILevelSpawnModelsDelivery): Array<IL
 
       return {
         dressing: {
+          color: toLevelSurfaceColor(index),
           descriptor: model.surfaces[submesh.index] ?? null,
           texture: model.description.submeshes[submesh.index]?.textureName ?? null,
         },
@@ -89,9 +98,13 @@ export function toPosedGeometry(
 
   if (submesh.skinIndices && submesh.skinWeights && binds && rest) {
     const skins: Array<Float32Array> = toSkinMatrices(binds, rest);
+    const directions: ReadonlyArray<Float32Array> = [normals, tangents, binormals];
+    // Reused by every vertex: a submesh can hold tens of thousands, and this runs on the page.
+    const moved: Float32Array = new Float32Array(3 + directions.length * 3);
+    const scratch: Float32Array = new Float32Array(3);
 
     for (let vertex: number = 0; vertex < positions.length / 3; vertex += 1) {
-      skinVertex(vertex, submesh, skins, positions, [normals, tangents, binormals]);
+      skinVertex(vertex, submesh, skins, positions, directions, moved, scratch);
     }
   }
 
@@ -199,17 +212,19 @@ function rotate(transform: ArrayLike<number>, x: number, y: number, z: number, o
   out[at + 2] = transform[2] * x + transform[5] * y + transform[8] * z;
 }
 
-/** One vertex moved by its weighted bones, and its directions turned with it. */
+/** One vertex moved by its weighted bones, and its directions turned with it, summed in `moved`. */
 function skinVertex(
   vertex: number,
   submesh: IVisualSubmeshViews,
   skins: ReadonlyArray<Float32Array>,
   positions: Float32Array,
-  directions: ReadonlyArray<Float32Array>
+  directions: ReadonlyArray<Float32Array>,
+  moved: Float32Array,
+  scratch: Float32Array
 ): void {
   const at: number = vertex * 3;
-  const moved: Float32Array = new Float32Array(3 + directions.length * 3);
-  const scratch: Float32Array = new Float32Array(3);
+
+  moved.fill(0);
 
   for (let link: number = 0; link < 4; link += 1) {
     const weight: number = (submesh.skinWeights as Float32Array)[vertex * 4 + link];
@@ -244,7 +259,8 @@ function skinVertex(
 }
 
 /**
- * A submesh dressed as its shader resolved: its base texture, cut out or blended as the blender says.
+ * A submesh dressed as its shader resolved, as a sector's surface is: its base texture with the bump pair and the
+ * detail its descriptor binds beside it, cut out or blended as the blender says.
  *
  * @param dressing - Its shader and base texture.
  * @param isTextured - Whether surfaces draw their textures.
@@ -252,11 +268,23 @@ function skinVertex(
  */
 export function toLevelSpawnSurface(dressing: ILevelSpawnDressing, isTextured: boolean): IRendererSurface {
   const render: ILevelSurfaceRender = toLevelSurfaceRender(dressing.descriptor);
+  const base: Maybe<string> = (isTextured && dressing.texture) || undefined;
+  const detail: Nullable<ILevelSurfaceDetail> = isTextured ? render.detail : null;
+  const bump: Nullable<ILevelSurfaceBump> = isTextured ? render.bump : null;
 
   return {
     alphaReference: render.alphaReference,
+    color: base ? undefined : dressing.color,
+    detailScale: detail?.scale,
     draw: render.draw,
     isLit: render.isLit,
-    textures: { base: (isTextured && dressing.texture) || undefined },
+    isWallmark: render.isWallmark || undefined,
+    material: render.material,
+    textures: {
+      base,
+      bump: bump?.bump,
+      bumpCompanion: bump?.companion,
+      detail: detail?.reference,
+    },
   };
 }

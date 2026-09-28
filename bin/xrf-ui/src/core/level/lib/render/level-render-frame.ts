@@ -2,9 +2,9 @@ import { ERendererOverlay, TRendererOverlay } from "@xrf/renderer";
 
 import { ILevelBox, toBoxFloor, toBoxReach, toOriginReach } from "@/core/level/lib/extent/level-extent";
 import { ILevelRenderConfig } from "@/core/level/lib/render/level-render-config";
+import { toRawColor } from "@/core/render/lib/scene/render-color";
 import {
   IRenderLines,
-  toRawColor,
   toRenderAxesLines,
   toRenderBoxLines,
   toRenderGridLines,

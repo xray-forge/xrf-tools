@@ -10,6 +10,7 @@ import {
   SectorSection,
   SectorSurface,
 } from "@/core/ipc/types/xrf-visual";
+import { ILevelFeatureOptions } from "@/core/level/lib/features/level-feature-options";
 import { ELevelSurfaceDressing } from "@/core/level/lib/surface/level-surface-dressing";
 import { ILevelTextureReport } from "@/core/level/lib/texture/level-texture-report";
 import { mockVisualBounds, MockVisualBuffer } from "@/fixtures/mocks/visual.mocks";
@@ -236,4 +237,14 @@ export function mockLevelTextureReport(entries: Record<string, IMockLevelTexture
       .map(([reference, loaded]) => ({ reason: loaded.reason as string, reference })),
     uploaded: Object.keys(entries).length,
   };
+}
+
+/**
+ * Creates what a level view sets over the renderer's features: nothing, unless told.
+ *
+ * @param overrides - The groups the view sets.
+ * @returns The view's feature options.
+ */
+export function mockLevelFeatureOptions(overrides: Partial<ILevelFeatureOptions> = {}): ILevelFeatureOptions {
+  return { ambientOcclusion: {}, antialiasing: null, grass: {}, lights: {}, shadows: {}, water: {}, ...overrides };
 }

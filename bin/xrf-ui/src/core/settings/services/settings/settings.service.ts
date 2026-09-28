@@ -26,7 +26,12 @@ import {
   RENDERER_FEATURES_STORAGE_KEY,
 } from "@/core/storage";
 import { isDevelopmentBuild } from "@/lib/env";
-import { getLocalStorageValue, setLocalStorageValue } from "@/lib/local-storage";
+import {
+  getLocalStorageValue,
+  parseLocalStorageValueSafe,
+  setLocalStorageValue,
+  setLocalStorageValueSafe,
+} from "@/lib/local-storage";
 import { Logger } from "@/lib/logging";
 
 /**
@@ -80,11 +85,7 @@ export class SettingsService {
    * @returns The stored choice, or the default where none was stored or it does not parse.
    */
   private static readRendererChoice(): IRendererFeatureChoice {
-    try {
-      return toRendererFeatureChoice(JSON.parse(getLocalStorageValue(RENDERER_FEATURES_STORAGE_KEY) ?? "null"));
-    } catch {
-      return toRendererFeatureChoice(null);
-    }
+    return toRendererFeatureChoice(parseLocalStorageValueSafe(RENDERER_FEATURES_STORAGE_KEY));
   }
 
   /**
@@ -169,6 +170,6 @@ export class SettingsService {
 
   private storeRendererChoice(choice: IRendererFeatureChoice): void {
     this.rendererChoice = toRendererFeatureChoice(choice);
-    setLocalStorageValue(RENDERER_FEATURES_STORAGE_KEY, JSON.stringify(this.rendererChoice));
+    setLocalStorageValueSafe(RENDERER_FEATURES_STORAGE_KEY, JSON.stringify(this.rendererChoice));
   }
 }

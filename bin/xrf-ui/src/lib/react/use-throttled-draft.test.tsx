@@ -18,7 +18,7 @@ describe("useThrottledDraft", () => {
 
   it("shows every value dragged to, and tells the owner at most once an interval, the latest last", () => {
     const onChange = jest.fn();
-    const { result } = renderHook(() => useThrottledDraft(0, onChange, 200));
+    const { result } = renderHook(() => useThrottledDraft(0, 1, onChange, 200));
 
     act(() => result.current.onChange(MOVE, 1));
     act(() => result.current.onChange(MOVE, 2));
@@ -34,7 +34,7 @@ describe("useThrottledDraft", () => {
 
   it("tells the value let go at at once, and falls back to the owner's after", () => {
     const onChange = jest.fn();
-    const { result, rerender } = renderHook(({ value }) => useThrottledDraft(value, onChange, 200), {
+    const { result, rerender } = renderHook(({ value }) => useThrottledDraft(value, 1, onChange, 200), {
       initialProps: { value: 0 },
     });
 
@@ -52,7 +52,7 @@ describe("useThrottledDraft", () => {
 
   it("tells nothing twice when the value let go at is the one already told", () => {
     const onChange = jest.fn();
-    const { result } = renderHook(() => useThrottledDraft(0, onChange, 200));
+    const { result } = renderHook(() => useThrottledDraft(0, 1, onChange, 200));
 
     act(() => result.current.onChange(MOVE, 1));
     act(() => result.current.onChangeCommitted(RELEASE, 1));
@@ -62,7 +62,7 @@ describe("useThrottledDraft", () => {
 
   it("tells nothing for a press that never moved, whatever value the slider commits", () => {
     const onChange = jest.fn();
-    const { result } = renderHook(() => useThrottledDraft(2, onChange, 200));
+    const { result } = renderHook(() => useThrottledDraft(2, 1, onChange, 200));
 
     act(() => result.current.onChangeCommitted(RELEASE, 2));
     act(() => result.current.onChangeCommitted(RELEASE, 7));
@@ -73,7 +73,7 @@ describe("useThrottledDraft", () => {
 
   it("never tells a stale value after the owner resets", () => {
     const onChange = jest.fn();
-    const { result, rerender } = renderHook(({ value }) => useThrottledDraft(value, onChange, 200), {
+    const { result, rerender } = renderHook(({ value }) => useThrottledDraft(value, 1, onChange, 200), {
       initialProps: { value: 0 },
     });
 
@@ -90,7 +90,7 @@ describe("useThrottledDraft", () => {
 
   it("tells a value again once the owner moved away from it", () => {
     const onChange = jest.fn();
-    const { result, rerender } = renderHook(({ value }) => useThrottledDraft(value, onChange, 200), {
+    const { result, rerender } = renderHook(({ value }) => useThrottledDraft(value, 1, onChange, 200), {
       initialProps: { value: 0 },
     });
 
@@ -107,7 +107,7 @@ describe("useThrottledDraft", () => {
 
   it("drops a draft the owner overrides mid-drag, and never sends what was pending", () => {
     const onChange = jest.fn();
-    const { result, rerender } = renderHook(({ value }) => useThrottledDraft(value, onChange, 200), {
+    const { result, rerender } = renderHook(({ value }) => useThrottledDraft(value, 1, onChange, 200), {
       initialProps: { value: 0 },
     });
 
@@ -122,9 +122,30 @@ describe("useThrottledDraft", () => {
     expect(onChange.mock.calls).toEqual([[1]]);
   });
 
+  // The grass density slider shows a scale the settings store as a spacing, and 0.85 comes back 0.8500000000000001.
+  it("keeps the gesture when the owner hands back an inexact round trip of what it was told", () => {
+    function roundTrip(scale: number): number {
+      return 0.6 / (0.6 / scale);
+    }
+
+    const onChange = jest.fn();
+    const { result, rerender } = renderHook(({ value }) => useThrottledDraft(value, 0.05, onChange, 200), {
+      initialProps: { value: 1 },
+    });
+
+    expect(roundTrip(0.85)).not.toBe(0.85);
+
+    act(() => result.current.onChange(MOVE, 0.85));
+    act(() => result.current.onChange(MOVE, 0.9));
+    rerender({ value: roundTrip(0.85) });
+    act(() => result.current.onChangeCommitted(RELEASE, 0.9));
+
+    expect(onChange.mock.calls).toEqual([[0.85], [0.9]]);
+  });
+
   it("keeps the draft while the owner follows it", () => {
     const onChange = jest.fn();
-    const { result, rerender } = renderHook(({ value }) => useThrottledDraft(value, onChange, 200), {
+    const { result, rerender } = renderHook(({ value }) => useThrottledDraft(value, 1, onChange, 200), {
       initialProps: { value: 0 },
     });
 
@@ -137,7 +158,7 @@ describe("useThrottledDraft", () => {
 
   it("throttles held keys like a drag, and still tells the last one", () => {
     const onChange = jest.fn();
-    const { result, rerender } = renderHook(({ value }) => useThrottledDraft(value, onChange, 200), {
+    const { result, rerender } = renderHook(({ value }) => useThrottledDraft(value, 1, onChange, 200), {
       initialProps: { value: 0 },
     });
 
@@ -162,7 +183,7 @@ describe("useThrottledDraft", () => {
 
   it("tells what it was dragged to when taken down mid-drag", () => {
     const onChange = jest.fn();
-    const { result, unmount } = renderHook(() => useThrottledDraft(0, onChange, 200));
+    const { result, unmount } = renderHook(() => useThrottledDraft(0, 1, onChange, 200));
 
     act(() => result.current.onChange(MOVE, 1));
     act(() => result.current.onChange(MOVE, 2));

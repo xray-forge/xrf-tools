@@ -2,7 +2,7 @@ import { useInjection } from "@wirestate/react";
 import { DOLLY_STEP } from "@xrf/renderer";
 import { ReactElement, useCallback } from "react";
 
-import { RenderFrameReadout } from "@/core/render/components/overlay";
+import { RenderFailureCover, RenderFrameReadout } from "@/core/render/components/overlay";
 import { RenderSurface } from "@/core/render/components/RenderSurface";
 import { ViewportControls } from "@/core/ui/media/ViewportControls";
 import { IVisualRenderSource, VISUAL_RENDER_SOURCE } from "@/core/visuals/lib/render";
@@ -27,13 +27,15 @@ export function VisualPreviewViewport(): ReactElement {
         <RenderSurface host={renderService} />
       </div>
 
-      {source.model ? (
+      {source.model && !renderService.failure ? (
         <>
           <RenderFrameReadout cost={renderService.frameCost} timings={renderService.timings} />
 
           <ViewportControls onZoomIn={onZoomIn} onZoomOut={onZoomOut} onReset={onReset} />
         </>
       ) : null}
+
+      <RenderFailureCover failure={renderService.failure} />
     </div>
   );
 }

@@ -4,7 +4,7 @@ import { Nullable } from "@xrf/types";
 import { PointerEvent, ReactElement, useCallback, useRef } from "react";
 
 import { TextureDescription } from "@/core/ipc/types/xrf-app";
-import { RenderFrameReadout } from "@/core/render/components/overlay";
+import { RenderFailureCover, RenderFrameReadout } from "@/core/render/components/overlay";
 import { RenderSurface } from "@/core/render/components/RenderSurface";
 import { EMPTY_TEXTURE_SURFACE, ITextureSurfaceFiles } from "@/core/textures/lib/texture-surface";
 import { TextureRenderService } from "@/core/textures/services/render";
@@ -121,13 +121,15 @@ export function TextureSurface({
         </div>
       ) : null}
 
-      {isUploading || isUntextured ? null : (
+      {isUploading || isUntextured || renderService.failure ? null : (
         <>
           <RenderFrameReadout cost={renderService.frameCost} timings={renderService.timings} />
 
           <ViewportControls onZoomIn={onZoomIn} onZoomOut={onZoomOut} onReset={onReset} />
         </>
       )}
+
+      <RenderFailureCover failure={renderService.failure} />
     </div>
   );
 }

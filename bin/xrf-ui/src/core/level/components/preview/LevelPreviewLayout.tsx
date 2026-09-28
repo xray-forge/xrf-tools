@@ -23,7 +23,7 @@ import { ILevelPreviewViewportProps, LevelPreviewViewport } from "@/core/level/c
 import { ILevelCamera } from "@/core/level/lib/camera/level-camera";
 import { ILevelGoTo } from "@/core/level/lib/camera/level-camera-goto";
 import { ILevelFeatureOptions, TLevelFeatureView, toLevelFeatureView } from "@/core/level/lib/features";
-import { LevelLoadService, LevelViewportService, LevelViewService } from "@/core/level/services";
+import { LevelLoadService, LevelRenderService, LevelViewportService, LevelViewService } from "@/core/level/services";
 import { SettingsService } from "@/core/settings/services/settings";
 import { EditorFileHeader } from "@/core/shell/editor/EditorFileHeader";
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
@@ -38,7 +38,7 @@ interface ILevelPreviewLayoutProps extends BaseComponentProps {
   /** Whether the level itself is being opened, which is a different wait from streaming its sectors. */
   isLoading?: boolean;
   error?: string;
-  /** Draws the viewport, for a surface with no webgl context to give one - a test, or a headless render. */
+  /** Draws the viewport, for a surface with no GPU to give one - a test, or a headless render. */
   renderViewport?: (props: ILevelPreviewViewportProps) => ReactNode;
   onRetry?: () => void;
   onBack?: () => void;
@@ -65,6 +65,7 @@ export function LevelPreviewLayout({
   const viewService: LevelViewService = useInjection(LevelViewService);
   const settingsService: SettingsService = useInjection(SettingsService);
   const viewportService: LevelViewportService = useInjection(LevelViewportService);
+  const renderService: LevelRenderService = useInjection(LevelRenderService);
 
   const isOpen: boolean = Boolean(name);
   const settings: IRendererFeatureSettings = settingsService.rendererFeatures;
@@ -74,7 +75,7 @@ export function LevelPreviewLayout({
   const featureView: TLevelFeatureView = useMemo(() => toLevelFeatureView(settings, features), [settings, features]);
 
   const readCamera = useCallback((): Nullable<ILevelCamera> => viewportService.camera, [viewportService]);
-  const onGoTo = useCallback((goTo: ILevelGoTo) => viewService.requestGoTo(goTo), [viewService]);
+  const onGoTo = useCallback((goTo: ILevelGoTo) => renderService.goTo(goTo), [renderService]);
 
   const actions: ReactElement = useMemo(
     () => (

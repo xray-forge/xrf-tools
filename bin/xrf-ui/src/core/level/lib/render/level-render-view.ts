@@ -11,10 +11,8 @@ import {
 } from "@xrf/renderer";
 import { Nullable } from "@xrf/types";
 
-import { LevelStart } from "@/core/ipc/types/xrf-app";
-import { VisualBounds } from "@/core/ipc/types/xrf-visual";
 import { ILevelCameraOptions } from "@/core/level/lib/camera/level-camera-options";
-import { ILevelViewpoint, toLevelStartViewpoint } from "@/core/level/lib/camera/level-viewpoint";
+import { ILevelViewpoint } from "@/core/level/lib/camera/level-viewpoint";
 import {
   ILevelFeatureOptions,
   toLevelRendererAntialiasing,
@@ -27,24 +25,6 @@ import { ILevelLodOptions, toLevelRendererLod } from "@/core/level/lib/lod/level
 import { ILevelRenderConfig } from "@/core/level/lib/render/level-render-config";
 import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
 import { toRendererLighting } from "@/core/render/lib/lighting/render-lighting";
-
-/**
- * Where a level opens, flown by the toolbar's speeds.
- *
- * @param bounds - The level's extent, or null for a level that reports none.
- * @param start - Where the backend opens the level, or null where it names nowhere.
- * @param options - The camera the toolbar asks for.
- * @param config - The near and far planes.
- * @returns The camera.
- */
-export function toLevelCamera(
-  bounds: Nullable<VisualBounds>,
-  start: Nullable<LevelStart>,
-  options: ILevelCameraOptions,
-  config: ILevelRenderConfig
-): IRendererFlyCamera {
-  return toLevelCameraAt(toLevelStartViewpoint(bounds, start), options, config);
-}
 
 /**
  * @param viewpoint - Where the camera stands and what it looks at.

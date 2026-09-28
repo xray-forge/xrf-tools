@@ -1,4 +1,4 @@
-import { beforeAll, beforeEach, describe, expect, it, jest } from "@jest/globals";
+import { beforeAll, beforeEach, describe, expect, it } from "@jest/globals";
 import { Container } from "@wirestate/core";
 import { runInAction } from "@wirestate/mobx";
 import {
@@ -23,18 +23,14 @@ import {
 import { TextureSurfaceService } from "@/core/textures/services/surface";
 import { TextureViewService } from "@/core/textures/services/view";
 import { mockContainer } from "@/fixtures/utils/container";
+import { mockRendererThread } from "@/fixtures/utils/renderer";
 import { AsyncState } from "@/lib/async-state";
 
 let stub: IRendererWorkerStub;
 let TextureRenderService: typeof import("./texture-render.service").TextureRenderService;
 
 beforeAll(async () => {
-  // The worker entry reads `import.meta.url`, which the test transform cannot, and the thread is what is stubbed.
-  jest.doMock("@xrf/renderer/worker", () => ({ createRendererWorker: () => stub.worker }));
-  // jsdom has no offscreen canvas; the client only hands the result to the worker.
-  HTMLCanvasElement.prototype.transferControlToOffscreen = function () {
-    return {} as OffscreenCanvas;
-  };
+  mockRendererThread(() => stub.worker);
 
   ({ TextureRenderService } = await import("./texture-render.service"));
 });
@@ -144,7 +140,8 @@ describe("TextureRenderService", () => {
     const { service, viewService } = mockService();
 
     service.attach(document.createElement("div"));
-    service.dragLight(10, 0);
+    // A pixel of a viewport jsdom lays out at no width: half a turn, rather than a whole number of them.
+    service.dragLight(1, 0);
     await stub.flush();
 
     expect(viewService.lighting.sunAzimuth).not.toBe(DEFAULT_TEXTURE_LIGHTING.sunAzimuth);

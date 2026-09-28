@@ -2,10 +2,10 @@ import { beforeEach, describe, expect, it } from "@jest/globals";
 import { ERendererAntialiasing } from "@xrf/renderer";
 
 import { DEFAULT_LEVEL_CAMERA_OPTIONS, ILevelCameraOptions } from "@/core/level/lib/camera/level-camera-options";
-import { DEFAULT_LEVEL_FEATURE_OPTIONS } from "@/core/level/lib/features/level-feature-options";
 import { DEFAULT_LEVEL_LIGHTING, ILevelLighting } from "@/core/level/lib/lighting/level-lighting";
 import { DEFAULT_LEVEL_VIEW_OPTIONS, ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
 import { LevelViewService } from "@/core/level/services/level-view.service";
+import { mockLevelFeatureOptions } from "@/fixtures/mocks/level.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 
 describe("LevelViewService", () => {
@@ -61,7 +61,7 @@ describe("LevelViewService", () => {
 
     service.setOptions({ ...DEFAULT_LEVEL_VIEW_OPTIONS, isGridVisible: !DEFAULT_LEVEL_VIEW_OPTIONS.isGridVisible });
     service.setCamera(camera);
-    service.setFeatures({ ...DEFAULT_LEVEL_FEATURE_OPTIONS, shadows: { filter: 0 } });
+    service.setFeatures({ ...mockLevelFeatureOptions(), shadows: { filter: 0 } });
     service.clear();
 
     expect(service.options).toEqual(DEFAULT_LEVEL_VIEW_OPTIONS);
@@ -73,7 +73,7 @@ describe("LevelViewService", () => {
     const first = mockInjectedService(LevelViewService).service;
 
     first.setCamera({ ...DEFAULT_LEVEL_CAMERA_OPTIONS, speed: 30 });
-    first.setFeatures({ ...DEFAULT_LEVEL_FEATURE_OPTIONS, antialiasing: ERendererAntialiasing.TAA });
+    first.setFeatures({ ...mockLevelFeatureOptions(), antialiasing: ERendererAntialiasing.TAA });
 
     const { service } = mockInjectedService(LevelViewService);
 
@@ -88,6 +88,6 @@ describe("LevelViewService", () => {
     const { service } = mockInjectedService(LevelViewService);
 
     expect(service.camera).toEqual(DEFAULT_LEVEL_CAMERA_OPTIONS);
-    expect(service.features).toEqual(DEFAULT_LEVEL_FEATURE_OPTIONS);
+    expect(service.features).toEqual(mockLevelFeatureOptions());
   });
 });

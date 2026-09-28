@@ -7,12 +7,14 @@ import {
   EMPTY_RENDERER_LIGHTS_REPORT,
   EMPTY_RENDERER_STATIC_DRAW_REPORT,
   ERendererAntialiasing,
+  ERendererCameraCommand,
   ERendererCameraController,
   ERendererOverlay,
   ERendererRequest,
   ERendererResponse,
   IRendererReport,
   IRendererSettings,
+  TRendererRequest,
 } from "@xrf/renderer";
 import { createRendererWorkerStub, IRendererWorkerStub } from "@xrf/renderer/fixtures";
 import { Maybe } from "@xrf/types";
@@ -26,25 +28,10 @@ import { mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
+import { mockRendererThread } from "@/fixtures/utils/renderer";
 
 let stub: IRendererWorkerStub;
 let LevelRenderService: typeof import("./level-render.service").LevelRenderService;
-
-beforeAll(async () => {
-  // The worker entry reads `import.meta.url`, which the test transform cannot, and the thread is what is stubbed.
-  jest.doMock("@xrf/renderer/worker", () => ({ createRendererWorker: () => stub.worker }));
-  HTMLCanvasElement.prototype.transferControlToOffscreen = function () {
-    return {} as OffscreenCanvas;
-  };
-
-  ({ LevelRenderService } = await import("./level-render.service"));
-});
-
-beforeEach(() => {
-  stub = createRendererWorkerStub();
-  resetMockInvoke();
-  window.localStorage.clear();
-});
 
 async function mockAttached(): Promise<{
   container: Container;
@@ -70,7 +57,6 @@ async function mockAttached(): Promise<{
   return { container, service, viewService: container.get(LevelViewService) };
 }
 
-/** The settings the renderer draws with now: the last it was configured with, or those it started with. */
 function drawnSettings(): Maybe<IRendererSettings> {
   return stub.take(ERendererRequest.CONFIGURE).at(-1)?.settings ?? stub.take(ERendererRequest.START).at(-1)?.settings;
 }
@@ -85,6 +71,30 @@ function mockReport(position: [number, number, number]): IRendererReport {
     staticDraws: EMPTY_RENDERER_STATIC_DRAW_REPORT,
   };
 }
+
+async function takeSettle(): Promise<Extract<TRendererRequest, { kind: ERendererRequest.SETTLE }>> {
+  for (let flush: number = 0; flush < 20 && !stub.take(ERendererRequest.SETTLE).length; flush += 1) {
+    await stub.flush();
+  }
+
+  const [settle] = stub.take(ERendererRequest.SETTLE);
+
+  expect(settle).toBeDefined();
+
+  return settle;
+}
+
+beforeAll(async () => {
+  mockRendererThread(() => stub.worker);
+
+  ({ LevelRenderService } = await import("./level-render.service"));
+});
+
+beforeEach(() => {
+  stub = createRendererWorkerStub();
+  resetMockInvoke();
+  window.localStorage.clear();
+});
 
 describe("LevelRenderService", () => {
   it("starts nothing until a view attaches", () => {
@@ -300,20 +310,57 @@ describe("LevelRenderService", () => {
   it("keeps the level covered until the renderer has drawn it with everything it opens with", async () => {
     const { container, service } = await mockAttached();
     const viewportService: LevelViewportService = container.get(LevelViewportService);
+    const settle = await takeSettle();
 
-    for (let flush: number = 0; flush < 20 && !stub.take(ERendererRequest.SETTLE).length; flush += 1) {
-      await stub.flush();
-    }
-
-    const [settle] = stub.take(ERendererRequest.SETTLE);
-
-    expect(settle).toBeDefined();
     expect(viewportService.isRevealed).toBe(false);
 
     stub.respond({ id: settle.id, kind: ERendererResponse.SETTLED });
     await stub.flush();
 
     expect(viewportService.isRevealed).toBe(true);
+
+    service.dispose();
+  });
+
+  it("stands the camera where it is sent, anew, and reads the level around it", async () => {
+    const { container, service } = await mockAttached();
+    const loadService = container.get(LevelLoadService) as unknown as { stream: (point: ILevelPoint) => Promise<void> };
+    const stream = jest.spyOn(loadService, "stream");
+
+    service.goTo({ heading: 0, pitch: 0, x: 10, y: 2, z: 300 });
+    await stub.flush();
+
+    // Stated in the level's own axes, stood in the renderer's.
+    expect(stub.take(ERendererRequest.CAMERA).at(-1)?.camera.position).toEqual([10, 2, -300]);
+    expect(stub.take(ERendererRequest.CAMERA_COMMAND).at(-1)?.command.kind).toBe(ERendererCameraCommand.RESET);
+    expect(stream).toHaveBeenLastCalledWith({ x: 10, y: 2, z: -300 });
+
+    service.dispose();
+  });
+
+  // The loader resolves what a closed level was streaming, which used to reveal the viewport over nothing.
+  it("reveals nothing for a level closed while it was prepared", async () => {
+    const { container, service } = await mockAttached();
+    const settle = await takeSettle();
+
+    container.get(LevelLoadService).clear();
+    stub.respond({ id: settle.id, kind: ERendererResponse.SETTLED });
+    await stub.flush();
+
+    expect(container.get(LevelViewportService).isRevealed).toBe(false);
+
+    service.dispose();
+  });
+
+  it("keeps the level covered and says why when the renderer fails", async () => {
+    const { container, service } = await mockAttached();
+
+    await takeSettle();
+    stub.respond({ kind: ERendererResponse.FAILED, reason: "No WebGPU adapter" });
+    await stub.flush();
+
+    expect(service.failure).toBe("No WebGPU adapter");
+    expect(container.get(LevelViewportService).isRevealed).toBe(false);
 
     service.dispose();
   });

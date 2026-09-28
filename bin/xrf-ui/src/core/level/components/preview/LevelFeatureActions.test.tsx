@@ -10,7 +10,8 @@ import { ReactElement } from "react";
 import { LevelAmbientOcclusionAction } from "@/core/level/components/preview/LevelAmbientOcclusionAction";
 import { LevelGrassAction } from "@/core/level/components/preview/LevelGrassAction";
 import { LevelLightsAction } from "@/core/level/components/preview/LevelLightsAction";
-import { DEFAULT_LEVEL_FEATURE_OPTIONS, ILevelFeatureOptions, TLevelFeatureKey } from "@/core/level/lib/features";
+import { ILevelFeatureOptions, TLevelFeatureKey } from "@/core/level/lib/features";
+import { mockLevelFeatureOptions } from "@/fixtures/mocks/level.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
 /** One feature popover, how it is named, and what its settings say while they keep it off. */
@@ -29,7 +30,7 @@ const CASES: ReadonlyArray<IFeatureActionCase> = [
       <LevelGrassAction
         isOn
         state={{ isAvailable, value: DEFAULT_RENDERER_GRASS_SETTINGS }}
-        features={{ ...DEFAULT_LEVEL_FEATURE_OPTIONS, grass: { radius: 80 } }}
+        features={{ ...mockLevelFeatureOptions(), grass: { radius: 80 } }}
         onToggle={() => {}}
         onChange={onChange}
       />
@@ -43,7 +44,7 @@ const CASES: ReadonlyArray<IFeatureActionCase> = [
       <LevelLightsAction
         isOn
         state={{ isAvailable, value: DEFAULT_RENDERER_LIGHTS_SETTINGS }}
-        features={{ ...DEFAULT_LEVEL_FEATURE_OPTIONS, lights: { isShadowed: false } }}
+        features={{ ...mockLevelFeatureOptions(), lights: { isShadowed: false } }}
         onToggle={() => {}}
         onChange={onChange}
       />
@@ -57,7 +58,7 @@ const CASES: ReadonlyArray<IFeatureActionCase> = [
       <LevelAmbientOcclusionAction
         isOn
         state={{ isAvailable, value: DEFAULT_RENDERER_AMBIENT_OCCLUSION_SETTINGS }}
-        features={{ ...DEFAULT_LEVEL_FEATURE_OPTIONS, ambientOcclusion: { radius: 2 } }}
+        features={{ ...mockLevelFeatureOptions(), ambientOcclusion: { radius: 2 } }}
         onToggle={() => {}}
         onChange={onChange}
       />
@@ -77,7 +78,7 @@ describe("level feature actions", () => {
       await findByRole("dialog", { name: label });
       await userEvent.click(getByRole("button", { name: "Back to the settings" }));
 
-      expect(onChange).toHaveBeenLastCalledWith({ ...DEFAULT_LEVEL_FEATURE_OPTIONS, [key]: {} });
+      expect(onChange).toHaveBeenLastCalledWith({ ...mockLevelFeatureOptions(), [key]: {} });
     }
   );
 

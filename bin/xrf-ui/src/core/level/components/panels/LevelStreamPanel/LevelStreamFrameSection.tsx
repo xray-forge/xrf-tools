@@ -2,19 +2,25 @@ import { ReactElement } from "react";
 
 import { ILevelStats } from "@/core/level/lib/stats/level-stats";
 import { EditorPanelProperty, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
+import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatMilliseconds } from "@/lib/format/duration";
 import { formatCount } from "@/lib/format/number";
 
-interface ILevelStreamFrameSectionProps {
+interface ILevelStreamFrameSectionProps extends BaseComponentProps {
   stats: ILevelStats;
 }
 
 /**
  * What a frame costs: its time and its worst, the drawing inside it, and what it drew.
  */
-export function LevelStreamFrameSection({ stats }: ILevelStreamFrameSectionProps): ReactElement {
+export function LevelStreamFrameSection({
+  "data-testid": dataTestId = "level-stream-frame-section",
+  id,
+  className,
+  stats,
+}: ILevelStreamFrameSectionProps): ReactElement {
   return (
-    <EditorPanelSection title={"Frame"}>
+    <EditorPanelSection data-testid={dataTestId} id={id} className={className} title={"Frame"}>
       <EditorPanelProperty label={"Frame time"} value={formatMilliseconds(stats.frameTime)} />
       <EditorPanelProperty label={"Worst frame"} value={formatMilliseconds(stats.worstFrameTime)} />
       <EditorPanelProperty

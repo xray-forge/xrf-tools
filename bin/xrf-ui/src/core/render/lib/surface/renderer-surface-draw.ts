@@ -1,5 +1,5 @@
 import { ERendererDraw, IRendererAnomalyWater, IRendererSurfaceWater } from "@xrf/renderer";
-import { Maybe, Nullable } from "@xrf/types";
+import { assertExhaustive, Maybe, Nullable } from "@xrf/types";
 
 import {
   EXraySurfaceDeclaration,
@@ -108,10 +108,26 @@ export function getRendererSurfaceDraw(
 
 /**
  * @param surface - How a surface is drawn.
- * @returns Whether its draw reads the base texture's alpha.
+ * @returns Whether its draw reads the base texture's alpha: to cut it out, to blend it, or to weigh what it adds.
  */
 export function isAlphaRendererSurfaceDraw(surface: IRendererSurfaceDraw): boolean {
-  return surface.draw !== ERendererDraw.OPAQUE;
+  switch (surface.draw) {
+    case ERendererDraw.CUT_OUT:
+    case ERendererDraw.BLENDED:
+    case ERendererDraw.ALPHA_ADDED:
+      return true;
+
+    case ERendererDraw.OPAQUE:
+    case ERendererDraw.ADDED:
+    case ERendererDraw.MULTIPLIED:
+    case ERendererDraw.MULTIPLIED_2X:
+    case ERendererDraw.INVISIBLE:
+    case ERendererDraw.WATER:
+      return false;
+
+    default:
+      return assertExhaustive(surface.draw);
+  }
 }
 
 /**

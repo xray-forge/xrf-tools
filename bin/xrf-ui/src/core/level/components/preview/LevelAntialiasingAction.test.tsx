@@ -3,7 +3,8 @@ import { userEvent } from "@testing-library/user-event";
 import { ERendererAntialiasing } from "@xrf/renderer";
 
 import { LevelAntialiasingAction } from "@/core/level/components/preview/LevelAntialiasingAction";
-import { DEFAULT_LEVEL_FEATURE_OPTIONS, ILevelFeatureOptions } from "@/core/level/lib/features/level-feature-options";
+import { ILevelFeatureOptions } from "@/core/level/lib/features/level-feature-options";
+import { mockLevelFeatureOptions } from "@/fixtures/mocks/level.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
 describe("LevelAntialiasingAction", () => {
@@ -13,7 +14,7 @@ describe("LevelAntialiasingAction", () => {
       <LevelAntialiasingAction
         isOn
         settingsMode={ERendererAntialiasing.SMAA}
-        features={DEFAULT_LEVEL_FEATURE_OPTIONS}
+        features={mockLevelFeatureOptions()}
         onToggle={() => {}}
         onChange={onChange}
       />
@@ -24,13 +25,13 @@ describe("LevelAntialiasingAction", () => {
     await userEvent.click(getByRole("button", { name: "FXAA" }));
 
     expect(onChange).toHaveBeenLastCalledWith({
-      ...DEFAULT_LEVEL_FEATURE_OPTIONS,
+      ...mockLevelFeatureOptions(),
       antialiasing: ERendererAntialiasing.FXAA,
     });
 
     await userEvent.click(getByRole("button", { name: "Back to the settings" }));
 
-    expect(onChange).toHaveBeenLastCalledWith(DEFAULT_LEVEL_FEATURE_OPTIONS);
+    expect(onChange).toHaveBeenLastCalledWith(mockLevelFeatureOptions());
   });
 
   it("is disabled while the settings smooth nothing", () => {
@@ -38,7 +39,7 @@ describe("LevelAntialiasingAction", () => {
       <LevelAntialiasingAction
         isOn
         settingsMode={ERendererAntialiasing.NONE}
-        features={DEFAULT_LEVEL_FEATURE_OPTIONS}
+        features={mockLevelFeatureOptions()}
         onToggle={() => {}}
         onChange={() => {}}
       />

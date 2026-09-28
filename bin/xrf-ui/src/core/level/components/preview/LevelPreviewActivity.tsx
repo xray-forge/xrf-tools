@@ -21,7 +21,7 @@ export function LevelPreviewActivity({ isOpen, isLoading }: ILevelPreviewActivit
   const loadService: LevelLoadService = useInjection(LevelLoadService);
   const viewportService: LevelViewportService = useInjection(LevelViewportService);
   const streaming: ILevelStreamProgress = loadService.streaming;
-  const isStreaming: boolean = streaming.total > 0;
+  const isStreaming: boolean = loadService.isStreaming;
 
   let activity: Nullable<string> = isOpen ? null : "No level open";
 

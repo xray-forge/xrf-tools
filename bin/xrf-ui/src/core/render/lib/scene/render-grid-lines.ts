@@ -1,5 +1,6 @@
 import { TRendererColor } from "@xrf/renderer";
 
+import { toRawColor } from "@/core/render/lib/scene/render-color";
 import { toRenderGridStep } from "@/core/render/lib/scene/render-grid-step";
 
 /** Line segments as the renderer's line overlay takes them. */
@@ -127,12 +128,4 @@ export function toRenderAxesLines(size: number): IRenderLines {
   });
 
   return { colors: new Float32Array(colors), positions: new Float32Array(positions) };
-}
-
-/**
- * @param hex - A hex colour as a page writes one.
- * @returns Its bytes as raw values, which is what the renderer's overlays draw.
- */
-export function toRawColor(hex: number): TRendererColor {
-  return [((hex >> 16) & 0xff) / 255, ((hex >> 8) & 0xff) / 255, (hex & 0xff) / 255];
 }

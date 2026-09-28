@@ -27,12 +27,15 @@ export interface IThrottledDraft {
  * else drops the draft, which also ends a gesture the browser cancelled.
  *
  * @param value - The owner's value.
+ * @param step - The slider's step: values within half of one are the same position, since an owner storing a mapping of
+ *   the value hands back its round trip, which floats need not return exactly.
  * @param onChange - Told what the value became.
  * @param intervalMs - The least time between two tellings.
  * @returns What to show, and the slider's `onChange` and `onChangeCommitted`.
  */
 export function useThrottledDraft(
   value: number,
+  step: number,
   onChange: (value: number) => void,
   intervalMs: number = DEFAULT_DRAFT_INTERVAL
 ): IThrottledDraft {
@@ -48,6 +51,11 @@ export function useThrottledDraft(
   valueRef.current = value;
   onChangeRef.current = onChange;
 
+  const isSame = useCallback(
+    (left: number, right: Nullable<number>): boolean => right !== null && Math.abs(left - right) < step / 2,
+    [step]
+  );
+
   const cancel = useCallback((): void => {
     if (timer.current !== null) {
       clearTimeout(timer.current);
@@ -62,7 +70,7 @@ export function useThrottledDraft(
 
     pending.current = null;
 
-    if (next !== null && !Object.is(next, sent.current) && !Object.is(next, valueRef.current)) {
+    if (next !== null && !isSame(next, sent.current) && !isSame(next, valueRef.current)) {
       sent.current = next;
       sentAt.current = performance.now();
       onChangeRef.current(next);
@@ -72,7 +80,7 @@ export function useThrottledDraft(
       isEnding.current = false;
       setDraft(null);
     }
-  }, []);
+  }, [isSame]);
 
   const change = useCallback(
     (_: Event, next: TSliderValue): void => {
@@ -112,14 +120,14 @@ export function useThrottledDraft(
 
   // The owner holding something this hook did not send overrides whatever was being dragged.
   useEffect(() => {
-    if (!Object.is(value, sent.current)) {
+    if (!isSame(value, sent.current)) {
       cancel();
       pending.current = null;
       sent.current = null;
       isEnding.current = false;
       setDraft(null);
     }
-  }, [value, cancel]);
+  }, [value, cancel, isSame]);
 
   // A control taken down mid-drag still tells what it was dragged to.
   useEffect(

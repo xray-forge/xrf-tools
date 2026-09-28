@@ -3,16 +3,21 @@ import { Button } from "@mui/material";
 import { ReactElement } from "react";
 
 import { describeLevelFeatureToggle } from "@/core/level/lib/features";
-import { DEFAULT_LEVEL_LOD_OPTIONS, ILevelLodOptions, LEVEL_LOD_LIMITS } from "@/core/level/lib/lod/level-lod-options";
+import {
+  DEFAULT_LEVEL_LOD_OPTIONS,
+  formatLevelLodDistance,
+  ILevelLodOptions,
+  LEVEL_LOD_LIMITS,
+} from "@/core/level/lib/lod/level-lod-options";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
 import { EditorPopoverToggle } from "@/core/shell/editor/EditorPopoverToggle";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { formatNumber } from "@/lib/format/number";
+import { usePartialChange } from "@/lib/react/use-partial-change";
 
 interface ILevelLodActionProps extends BaseComponentProps {
   isOn: boolean;
   /** Whether the renderer's settings draw impostors at all, which this view can only narrow. */
-  isAvailable?: boolean;
+  isAvailable: boolean;
   lod: ILevelLodOptions;
   onToggle: () => void;
   onChange: (lod: ILevelLodOptions) => void;
@@ -26,12 +31,12 @@ export function LevelLodAction({
   id,
   className,
   isOn,
-  isAvailable = true,
+  isAvailable,
   lod,
   onToggle,
   onChange,
 }: ILevelLodActionProps): ReactElement {
-  const distance: string = `${formatNumber(lod.distance, 2)}×`;
+  const onSet = usePartialChange(lod, onChange);
 
   return (
     <EditorPopoverToggle
@@ -45,7 +50,7 @@ export function LevelLodAction({
         isPlural: true,
         label: "Impostors",
         off: "Impostors off, every tree drawn",
-        on: `Impostors past ${distance} the game's distance`,
+        on: `Impostors past ${formatLevelLodDistance(lod.distance)} the game's distance`,
       })}
       icon={<ForestIcon />}
       isOn={isOn && isAvailable}
@@ -57,8 +62,8 @@ export function LevelLodAction({
         label={"Distance"}
         value={lod.distance}
         {...LEVEL_LOD_LIMITS.distance}
-        format={(value: number) => `${formatNumber(value, 2)}×`}
-        onChange={(value: number) => onChange({ ...lod, distance: value })}
+        format={formatLevelLodDistance}
+        onChange={(distance: number) => onSet({ distance })}
       />
 
       <Button size={"small"} onClick={() => onChange(DEFAULT_LEVEL_LOD_OPTIONS)}>

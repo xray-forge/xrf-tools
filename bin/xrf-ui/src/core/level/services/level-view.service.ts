@@ -1,8 +1,6 @@
 import { Injectable, OnDeactivation } from "@wirestate/core";
 import { BoundAction, RefObservable } from "@wirestate/mobx";
-import { Nullable } from "@xrf/types";
 
-import { ILevelGoTo } from "@/core/level/lib/camera/level-camera-goto";
 import { ILevelCameraOptions, toLevelCameraOptions } from "@/core/level/lib/camera/level-camera-options";
 import { ILevelFeatureOptions, toLevelFeatureOptions } from "@/core/level/lib/features/level-feature-options";
 import { DEFAULT_LEVEL_LIGHTING, ILevelLighting } from "@/core/level/lib/lighting/level-lighting";
@@ -38,18 +36,6 @@ export class LevelViewService {
    */
   @RefObservable()
   public features: ILevelFeatureOptions = toLevelFeatureOptions(parseLocalStorageValueSafe(LEVEL_FEATURES_STORAGE_KEY));
-
-  /** The last place asked to be gone to, a new object each time so the same place asked again is asked again. */
-  @RefObservable()
-  public goTo: Nullable<Readonly<ILevelGoTo>> = null;
-
-  /**
-   * @param goTo - Where the camera is asked to stand, as the readout states it.
-   */
-  @BoundAction()
-  public requestGoTo(goTo: ILevelGoTo): void {
-    this.goTo = { ...goTo };
-  }
 
   @BoundAction()
   public setOptions(options: ILevelViewOptions): void {
@@ -88,6 +74,5 @@ export class LevelViewService {
     this.options = DEFAULT_LEVEL_VIEW_OPTIONS;
     this.lighting = DEFAULT_LEVEL_LIGHTING;
     this.lod = DEFAULT_LEVEL_LOD_OPTIONS;
-    this.goTo = null;
   }
 }

@@ -3,16 +3,15 @@ import { Button } from "@mui/material";
 import { IRendererWaterSettings } from "@xrf/renderer";
 import { ReactElement } from "react";
 
-import {
-  describeLevelFeatureToggle,
-  ILevelFeatureActionProps,
-  useLevelFeatureOverride,
-} from "@/core/level/lib/features";
+import { ILevelFeatureActionProps } from "@/core/level/components/preview/level-feature-action-props";
+import { useLevelFeatureOverride } from "@/core/level/components/preview/use-level-feature-override";
+import { describeLevelFeatureToggle } from "@/core/level/lib/features";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
 import {
   formatWaterDistortion,
   formatWaterMultiple,
   formatWaveHeight,
+  formatWaveSpeed,
   RENDER_WATER_LIMITS,
 } from "@/core/render/lib/features";
 import { EditorPopoverToggle } from "@/core/shell/editor/EditorPopoverToggle";
@@ -79,7 +78,7 @@ export function LevelWaterAction({
         label={"Wave speed"}
         value={water.waveSpeed}
         {...RENDER_WATER_LIMITS.waveSpeed}
-        format={(speed: number) => `${speed}`}
+        format={formatWaveSpeed}
         onChange={(waveSpeed: number) => set({ waveSpeed })}
       />
 

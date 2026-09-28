@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
-import { RenderResult, waitFor } from "@testing-library/react";
+import { RenderResult } from "@testing-library/react";
 import { Container } from "@wirestate/core";
 
 import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
@@ -157,20 +157,20 @@ describe("LevelSurfacesPanel", () => {
     expect(getAllByText("nothing resident draws it")).toHaveLength(3);
   });
 
-  // Measuring what a surface draws samples the coordinates of every draw of every sector held, so it is asked
-  // for rather than published - and the viewport holding them may not be on this thread.
-  it("shows what the viewport answers when asked what each entry draws", async () => {
+  // Measuring what a surface draws samples the coordinates of every draw of every sector held, so it is asked of
+  // whoever holds them rather than published.
+  it("shows what the renderer's content answers when asked what each entry draws", async () => {
     const { getAllByText } = await renderPanel(undefined, (render: LevelRenderService) => {
       jest
         .spyOn(render, "measureSurfaceGeometry")
-        .mockResolvedValue(
+        .mockReturnValue(
           new Map(
             [0, 1, 2, 3].map((shaderId) => [shaderId, { drawables: 2, narrowest: null, span: null, triangles: 70 }])
           )
         );
     });
 
-    await waitFor(() => expect(getAllByText("2 drawables · 70 triangles · 35.0 each").length).toBeGreaterThan(0));
+    expect(getAllByText("2 drawables · 70 triangles · 35.0 each").length).toBeGreaterThan(0);
   });
 
   // The table keeps the places of the entries naming nothing, so the count is said once rather than listed.

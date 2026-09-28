@@ -34,7 +34,7 @@ export function SliderFormRow({
   isDisabled = false,
   onChange,
 }: ISliderFormRowProps): ReactElement {
-  const draft: IThrottledDraft = useThrottledDraft(value, onChange);
+  const draft: IThrottledDraft = useThrottledDraft(value, step, onChange);
 
   return (
     <FormRow label={label} description={description} controlId={id}>

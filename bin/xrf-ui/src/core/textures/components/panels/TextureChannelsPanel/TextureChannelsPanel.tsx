@@ -1,7 +1,7 @@
 import { useInjection } from "@wirestate/react";
 import { ERendererBumpPlane } from "@xrf/renderer";
 import { Nullable } from "@xrf/types";
-import { PointerEvent, ReactElement, useCallback, useEffect, useRef, useState } from "react";
+import { PointerEvent, ReactElement, RefCallback, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { TextureDescription } from "@/core/ipc/types/xrf-app";
 import {
@@ -43,7 +43,8 @@ export function TextureChannelsPanel({
   const renderService: TextureRenderService = useInjection(TextureRenderService);
 
   const tilesRef = useRef<Map<ERendererBumpPlane, HTMLCanvasElement>>(new Map());
-  const requestsRef = useRef<Map<HTMLCanvasElement, number>>(new Map());
+  // By plane, and only ever counted up: a tile mounted again must not take an answer asked for by the one before it.
+  const requestsRef = useRef<Map<ERendererBumpPlane, number>>(new Map());
 
   const [position, setPosition] = useState<Nullable<ITextureTexelPosition>>(null);
 
@@ -51,7 +52,10 @@ export function TextureChannelsPanel({
   const files: Nullable<ITextureSurfaceFiles> = surfaceService.files.value;
   const texels: Nullable<ITextureBumpTexels> = surfaceService.bumpTexels;
   const isReading: boolean = surfaceService.files.isLoading;
-  const gap: Nullable<string> = describeTextureChannelsGap(description, files, isReading);
+  const failure: Nullable<string> = renderService.failure;
+  const gap: Nullable<string> = failure
+    ? `The renderer stopped: ${failure}`
+    : describeTextureChannelsGap(description, files, isReading);
   const readout: Nullable<ITextureTexelReadout> = texels && position ? describeTextureTexel(texels, position) : null;
   // Laid out from the pair's own proportions, so a plane is never shown stretched into a square.
   const aspect: string = toTextureChannelAspect(files);
@@ -64,26 +68,30 @@ export function TextureChannelsPanel({
     for (const [plane, tile] of tilesRef.current) {
       const width: number = Math.round(tile.clientWidth * ratio);
       const height: number = Math.round(tile.clientHeight * ratio);
-      const request: number = (requestsRef.current.get(tile) ?? 0) + 1;
+      const request: number = (requestsRef.current.get(plane) ?? 0) + 1;
 
       if (!width || !height) {
         continue;
       }
 
-      requestsRef.current.set(tile, request);
+      requestsRef.current.set(plane, request);
 
-      void renderService.captureBumpPlane(plane, width, height).then((image: Nullable<ImageBitmap>) => {
-        if (requestsRef.current.get(tile) !== request || !image) {
-          image?.close();
+      renderService.captureBumpPlane(plane, width, height).then(
+        (image: Nullable<ImageBitmap>) => {
+          if (requestsRef.current.get(plane) !== request || tilesRef.current.get(plane) !== tile || !image) {
+            image?.close();
 
-          return;
-        }
+            return;
+          }
 
-        tile.width = image.width;
-        tile.height = image.height;
-        tile.getContext("2d")?.drawImage(image, 0, 0);
-        image.close();
-      });
+          tile.width = image.width;
+          tile.height = image.height;
+          tile.getContext("2d")?.drawImage(image, 0, 0);
+          image.close();
+        },
+        // A renderer that failed draws no tile; the panel says why instead.
+        () => undefined
+      );
     }
   }, [renderService]);
 
@@ -103,20 +111,21 @@ export function TextureChannelsPanel({
     return () => observer.disconnect();
   }, [draw, gap]);
 
-  const registerTile = useCallback(
-    (plane: ERendererBumpPlane) => (tile: Nullable<HTMLCanvasElement>) => {
-      if (tile) {
-        tilesRef.current.set(plane, tile);
-      } else {
-        const previous: Nullable<HTMLCanvasElement> = tilesRef.current.get(plane) ?? null;
-
-        tilesRef.current.delete(plane);
-
-        if (previous) {
-          requestsRef.current.delete(previous);
-        }
-      }
-    },
+  // One callback per plane for the panel's life: a new one each render would detach and attach every tile each time.
+  const registers: ReadonlyMap<ERendererBumpPlane, RefCallback<HTMLCanvasElement>> = useMemo(
+    () =>
+      new Map(
+        TEXTURE_CHANNEL_TILES.map((tile: ITextureChannelTile) => [
+          tile.plane,
+          (canvas: Nullable<HTMLCanvasElement>): void => {
+            if (canvas) {
+              tilesRef.current.set(tile.plane, canvas);
+            } else {
+              tilesRef.current.delete(tile.plane);
+            }
+          },
+        ])
+      ),
     []
   );
 
@@ -177,7 +186,7 @@ export function TextureChannelsPanel({
                 onPointerLeave={() => setPosition(null)}
               >
                 <canvas
-                  ref={registerTile(tile.plane)}
+                  ref={registers.get(tile.plane)}
                   data-testid={`texture-channel-${tile.plane}`}
                   className={"block size-full"}
                 />

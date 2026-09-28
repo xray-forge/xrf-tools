@@ -1,8 +1,6 @@
 import {
   ERendererCameraController,
-  ERendererDebugView,
   ERendererDraw,
-  ERendererTextureEncoding,
   IRendererFeatureSettings,
   IRendererGeometry,
   IRendererObject,
@@ -11,11 +9,11 @@ import {
   IRendererSkeleton,
   IRendererSurface,
   IRenderFramePacing,
-  TRendererTextureSource,
 } from "@xrf/renderer";
 import { Nullable } from "@xrf/types";
 
-import { toRawColor } from "@/core/render/lib/scene/render-grid-lines";
+import { toRawColor } from "@/core/render/lib/scene/render-color";
+import { toAssetRendererSettings } from "@/core/render/lib/settings/asset-renderer-settings";
 import { IVisualPreviewSceneConfig } from "@/core/visuals/lib/scene/scene-config";
 import { IVisualPreviewViewOptions } from "@/core/visuals/lib/scene/visual-view-options";
 import { IVisualBumpFiles } from "@/core/visuals/lib/visual-bump";
@@ -156,45 +154,6 @@ export function toVisualCamera(fit: IVisualCameraFit, config: IVisualPreviewScen
 }
 
 /**
- * @param file - A texture as it was read.
- * @returns It as the renderer takes it, copied, so the model keeps its own bytes.
- */
-export function toVisualTextureSource(file: IVisualTextureFile): TRendererTextureSource {
-  const bytes: ArrayBuffer = file.bytes.slice(0);
-
-  return file.isDecoded
-    ? { bytes, encoding: ERendererTextureEncoding.IMAGE, type: "image/png" }
-    : { bytes, encoding: ERendererTextureEncoding.DDS };
-}
-
-/**
- * The uv checker that stands in for every texture while the toolbar asks: squares of white and dark, sampled nearest.
- *
- * @param config - The checker's size.
- * @returns Its texels.
- */
-export function createVisualCheckerSource(config: IVisualPreviewSceneConfig): TRendererTextureSource {
-  const { checkerSize } = config;
-  const bytes: Uint8Array<ArrayBuffer> = new Uint8Array(checkerSize * checkerSize * 4);
-
-  for (let y = 0; y < checkerSize; y += 1) {
-    for (let x = 0; x < checkerSize; x += 1) {
-      const value: number = (x + y) % 2 === 0 ? 0xff : 0x40;
-
-      bytes.set([value, value, value, 0xff], (y * checkerSize + x) * 4);
-    }
-  }
-
-  return {
-    bytes: bytes.buffer,
-    encoding: ERendererTextureEncoding.RGBA,
-    height: checkerSize,
-    isNearest: true,
-    width: checkerSize,
-  };
-}
-
-/**
  * @param options - The toolbar's toggles.
  * @param config - The viewer's backdrop.
  * @param pacing - How the application paces a view's frames.
@@ -207,17 +166,14 @@ export function toVisualRendererSettings(
   pacing: IRenderFramePacing,
   features: IRendererFeatureSettings
 ): IRendererSettings {
-  return {
-    backdrop: config.backgroundColor,
-    debugView: ERendererDebugView.FINAL,
-    // At the engine's noon scale: one asset against a backdrop is no scene to adapt the exposure to.
-    features: { ...features, exposure: { ...features.exposure, isEnabled: false } },
-    pacing,
-    hemiStrength: 1,
-    isBumped: options.isBumpVisible,
-    isLit: true,
-    isSkyDrawn: false,
-    isWireframe: options.isWireframe,
-    tonemapScale: 1,
-  };
+  return toAssetRendererSettings(
+    {
+      backdrop: config.backgroundColor,
+      isBumped: options.isBumpVisible,
+      isLit: true,
+      isWireframe: options.isWireframe,
+      pacing,
+    },
+    features
+  );
 }
