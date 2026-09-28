@@ -12,6 +12,8 @@ pub struct LevelStart {
   pub position: Vector3d,
   /// Which way it looks, level with the horizon.
   pub direction: Vector3d,
-  /// What the place was taken from.
+  /// What the place was taken from, which only the log says.
+  #[serde(skip)]
+  #[cfg_attr(feature = "typescript-bindings", specta(skip))]
   pub origin: LevelStartOrigin,
 }

@@ -2,7 +2,9 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use tauri::State;
-use xrf_material::{XrayMaterialDescriptor, XrayMaterialResolver, XraySurfaceDescriptor, XraySurfaceResolver};
+use xrf_material::{
+  XrayMaterialDescriptor, XrayMaterialResolver, XraySurfaceDescriptor, XraySurfaceResolver, XrayTextureScope,
+};
 use xrf_ogf::OgfFile;
 use xrf_vfs::{XrayAsset, XrayProbe, XrayRoots};
 use xrf_visual::{VisualDependencies, VisualDescription, VisualPackage, VisualPacker};
@@ -104,7 +106,7 @@ fn describe_materials(probe: &XrayProbe, dependencies: &VisualDependencies) -> H
 
     described.insert(
       texture.reference.clone(),
-      XrayMaterialResolver::describe_texture(probe, &texture.reference),
+      XrayMaterialResolver::describe_texture(probe, &XrayTextureScope::shared(), &texture.reference),
     );
   }
 
@@ -113,7 +115,7 @@ fn describe_materials(probe: &XrayProbe, dependencies: &VisualDependencies) -> H
 
 /// Describes how the renderer draws each submesh of the model, in the order the model declares them.
 fn describe_surfaces(probe: &XrayProbe, description: &VisualDescription) -> Vec<XraySurfaceDescriptor> {
-  let resolver: XraySurfaceResolver = XraySurfaceResolver::open(probe);
+  let resolver: XraySurfaceResolver = XraySurfaceResolver::open(probe, XrayTextureScope::shared());
 
   description
     .submeshes

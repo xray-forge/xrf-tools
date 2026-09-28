@@ -5,9 +5,9 @@ use tauri::State;
 use xrf_chunk::XRayByteOrder;
 use xrf_dltx::select_ltx_dialect;
 use xrf_level::LevelCformFile;
-use xrf_material::XraySurfaceDescriptor;
+use xrf_material::{XraySurfaceDescriptor, XrayTextureScope};
 use xrf_math::Vector3d;
-use xrf_vfs::{XrayLogicalPath, XrayProbe, XrayRoots};
+use xrf_vfs::{XrayProbe, XrayRoots};
 use xrf_visual::SectorOutline;
 
 use crate::core::assets::AssetMountState;
@@ -96,7 +96,7 @@ pub async fn levels_open_level(
 
 /// Reads the level and its spawn side by side, outlines its sectors and decides where it opens.
 fn open(source: &LevelSource, probe: &XrayProbe) -> TauriResult<OpenedLevel> {
-  let directory: Option<XrayLogicalPath> = source.get_logical_directory();
+  let scope: XrayTextureScope = source.get_texture_scope();
   // The spawn, and what stands over the places it has an actor at, are read beside the level rather than after it.
   let (read, (spawn, open)) = rayon::join(
     || read_source(source, probe),
@@ -111,8 +111,8 @@ fn open(source: &LevelSource, probe: &XrayProbe) -> TauriResult<OpenedLevel> {
     },
   );
   let read: ReadLevel = read?;
-  let surfaces: Vec<XraySurfaceDescriptor> = resolve_surfaces(&read.level, probe);
-  let textures: Vec<LevelTextureReference> = resolve_level_textures(&read.level, &surfaces, probe, directory.as_ref());
+  let surfaces: Vec<XraySurfaceDescriptor> = resolve_surfaces(&read.level, probe, &scope);
+  let textures: Vec<LevelTextureReference> = resolve_level_textures(&read.level, &surfaces, probe, &scope);
   let outlines: Vec<SectorOutline> = read
     .level
     .sectors
@@ -131,7 +131,7 @@ fn open(source: &LevelSource, probe: &XrayProbe) -> TauriResult<OpenedLevel> {
   Ok(OpenedLevel {
     outlines,
     read,
-    sky: resolve_sky(probe),
+    sky: resolve_sky(probe, &scope),
     spawn,
     start,
     surfaces,

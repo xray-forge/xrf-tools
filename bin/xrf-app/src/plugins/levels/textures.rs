@@ -2,10 +2,9 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use xrf_error::XrfResult;
 use xrf_level::LevelFile;
-use xrf_material::XraySurfaceDescriptor;
-use xrf_vfs::{XrayAssetRules, XrayAssetType, XrayLogicalPath, XrayProbe, XrayResolution};
+use xrf_material::{XraySurfaceDescriptor, XrayTextureScope};
+use xrf_vfs::{XrayProbe, XrayResolution};
 
 use crate::plugins::levels::state::LevelTextureReference;
 
@@ -26,7 +25,7 @@ pub fn resolve_level_textures(
   level: &LevelFile,
   surfaces: &[XraySurfaceDescriptor],
   probe: &XrayProbe,
-  directory: Option<&XrayLogicalPath>,
+  scope: &XrayTextureScope,
 ) -> Vec<LevelTextureReference> {
   let mut references: BTreeSet<String> = BTreeSet::new();
 
@@ -44,7 +43,7 @@ pub fn resolve_level_textures(
     }
   }
 
-  resolve_surface_textures(references, surfaces, probe, directory)
+  resolve_surface_textures(references, surfaces, probe, scope)
 }
 
 /// Resolves the textures a run of surfaces binds beside those named for it: each one's detail, the files its script
@@ -53,7 +52,7 @@ pub fn resolve_surface_textures(
   mut references: BTreeSet<String>,
   surfaces: &[XraySurfaceDescriptor],
   probe: &XrayProbe,
-  directory: Option<&XrayLogicalPath>,
+  scope: &XrayTextureScope,
 ) -> Vec<LevelTextureReference> {
   for detail in surfaces.iter().filter_map(|surface| surface.detail.as_ref()) {
     references.insert(detail.reference.clone());
@@ -64,24 +63,20 @@ pub fn resolve_surface_textures(
     references.insert(sampler.texture.clone());
   }
 
-  // A bump pair is found as the descriptor that declared it found it, the engine's dummy where its file is absent.
+  // A bump pair is found as the descriptor that declared it found it, beside the level first and the engine's dummy
+  // where its file is absent.
   let bumps: BTreeMap<String, Option<String>> = surfaces
     .iter()
     .filter_map(|surface| surface.bump.as_ref())
     .flat_map(|bump| [&bump.bump, &bump.companion])
-    .map(|input| {
-      (
-        input.reference.clone(),
-        get_resolution_logical_path(Ok(input.resolution.clone())),
-      )
-    })
+    .map(|input| (input.reference.clone(), get_located_path(&input.resolution)))
     .collect();
 
   let located: Vec<LevelTextureReference> = references
     .into_iter()
     .filter(|reference| !bumps.contains_key(reference))
     .map(|reference| LevelTextureReference {
-      logical_path: resolve_reference(probe, directory, &reference),
+      logical_path: resolve_reference(probe, scope, &reference),
       reference,
     })
     .collect();
@@ -100,37 +95,26 @@ pub fn resolve_surface_textures(
 }
 
 /// The sky cube a level is lit under, resolved as any other texture.
-pub fn resolve_sky(probe: &XrayProbe) -> LevelTextureReference {
+pub fn resolve_sky(probe: &XrayProbe, scope: &XrayTextureScope) -> LevelTextureReference {
   LevelTextureReference {
-    logical_path: resolve_reference(probe, None, LEVEL_SKY_TEXTURE),
+    logical_path: resolve_reference(probe, scope, LEVEL_SKY_TEXTURE),
     reference: LEVEL_SKY_TEXTURE.to_owned(),
   }
 }
 
-/// Locates one texture reference the way the engine's own loader does.
-pub fn resolve_reference(probe: &XrayProbe, directory: Option<&XrayLogicalPath>, reference: &str) -> Option<String> {
-  if let Some(beside) = directory
-    .zip(XrayAssetType::Dds.get_rules())
-    .and_then(|(directory, rules)| beside_level(directory, &rules, reference))
-    .and_then(|beside| get_resolution_logical_path(probe.find(beside.as_str())))
-  {
-    return Some(beside);
-  }
-
-  get_resolution_logical_path(probe.resolve(XrayAssetType::Dds, reference))
+/// Locates one texture reference the way the engine's own loader does, treating a rejected reference as absent rather
+/// than failing the open.
+pub fn resolve_reference(probe: &XrayProbe, scope: &XrayTextureScope, reference: &str) -> Option<String> {
+  scope
+    .resolve_texture(probe, reference)
+    .ok()
+    .as_ref()
+    .and_then(get_located_path)
 }
 
-/// The path a reference names beside the level rather than below the shared texture tree, `None` for one no path
-/// can name.
-fn beside_level(directory: &XrayLogicalPath, rules: &XrayAssetRules, reference: &str) -> Option<XrayLogicalPath> {
-  directory.join(&rules.to_logical_path(reference)).ok()
-}
-
-/// The logical path a lookup landed on, treating a rejected reference as absent rather than failing the open.
-fn get_resolution_logical_path(resolution: XrfResult<XrayResolution>) -> Option<String> {
-  resolution.ok().and_then(|resolution| {
-    resolution
-      .get_asset()
-      .map(|asset| asset.get_logical_path().as_str().to_owned())
-  })
+/// The logical path a lookup landed on.
+fn get_located_path(resolution: &XrayResolution) -> Option<String> {
+  resolution
+    .get_asset()
+    .map(|asset| asset.get_logical_path().as_str().to_owned())
 }

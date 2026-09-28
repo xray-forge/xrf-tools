@@ -152,3 +152,38 @@ fn tries_the_roots_again_when_they_are_opened_afresh() {
   assert_eq!(skipped, 0);
   assert!(is_found);
 }
+
+// Opening one set of roots afresh tries its own failures again and leaves another's settled: that one's volume is not
+// opened again, so it keeps the reason it first failed with even once the file behind it is gone.
+#[test]
+fn leaves_other_roots_failures_settled_when_one_is_opened_afresh() {
+  let opened: PathBuf = install("fresh_opened", &["db/textures.db0"]);
+  let other: PathBuf = install("fresh_other", &["db/textures.db0"]);
+  let state: AssetMountState = AssetMountState::new();
+  let reasons = |probe: &XrayProbe| -> Vec<String> {
+    probe
+      .list_skipped_sources()
+      .iter()
+      .map(|skipped| skipped.reason.clone())
+      .collect()
+  };
+
+  state.with_probe(&roots(&opened), |_| ()).expect("the roots mount");
+
+  let first: Vec<String> = state
+    .with_probe(&roots(&other), reasons)
+    .expect("the other roots mount");
+
+  fs::remove_file(other.join("db/textures.db0")).expect("volume removed");
+  state
+    .with_fresh_probe(&roots(&opened), |_| ())
+    .expect("the roots mount afresh");
+
+  assert_eq!(first.len(), 1);
+  assert_eq!(
+    state
+      .with_probe(&roots(&other), reasons)
+      .expect("the other roots are found"),
+    first
+  );
+}

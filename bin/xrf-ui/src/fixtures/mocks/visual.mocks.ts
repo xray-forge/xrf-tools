@@ -144,7 +144,6 @@ export function mockPackedSubmesh(
         skin: null,
         detailLevels: [{ start: 0, count: 3 }],
         clusters: null,
-        detailClusters: [],
         bounds: mockVisualBounds(),
         ...geometryOverrides,
       },

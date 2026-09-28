@@ -5,8 +5,8 @@ use std::collections::{BTreeSet, HashSet};
 use xrf_chunk::XRayByteOrder;
 use xrf_gamemtl::GameMtlFile;
 use xrf_level::{LevelCformFile, LevelCformGeometry, LevelDetailsFile};
-use xrf_material::{XraySurfaceDescriptor, XraySurfaceResolver};
-use xrf_vfs::{XrayLogicalPath, XrayProbe};
+use xrf_material::{XraySurfaceDescriptor, XraySurfaceResolver, XrayTextureScope};
+use xrf_vfs::XrayProbe;
 use xrf_visual::{DetailsPackage, DetailsPacker};
 
 use crate::core::assets::read_located_asset;
@@ -27,11 +27,7 @@ pub struct PackedLevelDetails {
 }
 
 /// Packs a level's grass, or answers `None` for a level with no detail library.
-pub fn pack_details(
-  source: &LevelSource,
-  probe: &XrayProbe,
-  directory: Option<&XrayLogicalPath>,
-) -> TauriResult<Option<PackedLevelDetails>> {
+pub fn pack_details(source: &LevelSource, probe: &XrayProbe) -> TauriResult<Option<PackedLevelDetails>> {
   let Some(details) = read_optional_file(source, probe, DETAILS_FILE)? else {
     return Ok(None);
   };
@@ -55,7 +51,8 @@ pub fn pack_details(
   let is_passable = |material: u16| passable.contains(&material);
   let package: DetailsPackage = DetailsPacker::new(&details, &collision, &is_passable).pack();
 
-  let resolver: XraySurfaceResolver = XraySurfaceResolver::open(probe);
+  let scope: XrayTextureScope = source.get_texture_scope();
+  let resolver: XraySurfaceResolver = XraySurfaceResolver::open(probe, scope.clone());
   let surfaces: Vec<XraySurfaceDescriptor> = details
     .objects
     .iter()
@@ -74,7 +71,7 @@ pub fn pack_details(
     textures: references
       .into_iter()
       .map(|reference| LevelTextureReference {
-        logical_path: resolve_reference(probe, directory, reference),
+        logical_path: resolve_reference(probe, &scope, reference),
         reference: reference.to_owned(),
       })
       .collect(),

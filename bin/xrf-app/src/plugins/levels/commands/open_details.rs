@@ -2,7 +2,6 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use tauri::State;
-use xrf_vfs::XrayLogicalPath;
 
 use crate::core::assets::AssetMountState;
 use crate::core::execution::ExecutionState;
@@ -28,11 +27,7 @@ pub async fn levels_open_details(
   let read: Arc<SessionSnapshot<SelectedLevel>> = Arc::clone(&current);
   let packed: Option<PackedLevelDetails> = execution
     .run_blocking("Packing the level grass", move || {
-      let directory: Option<XrayLogicalPath> = read.source.get_logical_directory();
-
-      assets.with_probe(&read.roots, |probe| {
-        pack_details(&read.source, probe, directory.as_ref())
-      })
+      assets.with_probe(&read.roots, |probe| pack_details(&read.source, probe))
     })
     .await???;
 

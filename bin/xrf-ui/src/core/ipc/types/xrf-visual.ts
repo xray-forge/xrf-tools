@@ -24,17 +24,14 @@ export type DetailsDescription = {
   slotCount: number;
   /** One `u32` an entry: the triangle, by index into the triangles. */
   bins: VisualSection;
-  binLength: number;
   /** Nine floats a triangle: its corners in renderer space, wound for it, passable ones left out. */
   triangles: VisualSection;
-  triangleCount: number;
   bufferLength: number;
 };
 
 /** One detail model of a level's library, packed for the renderer to plant. */
 export type DetailsModel = {
-  /** The shader and texture it is dressed with, as the library names them. */
-  shader: string;
+  /** The texture it is dressed with, as the library names it; its surface is described beside it. */
   texture: string;
   /** Whether the wind moves it: no `DO_NO_WAVING` flag. */
   isWaving: boolean;
@@ -45,8 +42,6 @@ export type DetailsModel = {
   height: number | null;
   /** The radius of the sphere around its bounding box, which its distance cull is measured by. */
   radius: number | null;
-  vertexCount: number;
-  indexCount: number;
   /** Three floats a vertex, in renderer space. */
   positions: VisualSection;
   /** Two floats a vertex. */
@@ -57,7 +52,6 @@ export type DetailsModel = {
 
 /** A colour animation of `lanims.xr` (`CLAItem`), which replaces the colour of every light it drives. */
 export type LightAnimatorDescription = {
-  name: string;
   fps: number | null;
   frameCount: number;
   /** By frame, the first at frame zero. */
@@ -72,8 +66,6 @@ export type LightAnimatorKey = {
 
 /** One light of a level, in renderer space, as the engine would light with it. */
 export type LightDescription = {
-  /** The spawned object it belongs to, or the level file's record for one of the level's own. */
-  name: string;
   kind: LightKind;
   position: Vector3d;
   /** Where a spot points: its bone's third axis. */
@@ -189,7 +181,6 @@ export type SectorImpostorGroup = {
  * enough away, each eight facets looking at it from eight sides, in renderer space.
  */
 export type SectorImpostors = {
-  count: number;
   /** Runs of impostors a surface each, in impostor order. */
   groups: Array<SectorImpostorGroup>;
   /** Four floats an impostor: its visual's sphere, centre then radius. */
@@ -212,8 +203,6 @@ export type SectorInstanceGroup = {
   drawables: Array<number>;
   /** The mesh itself, in its own space, its indices counting from its own first vertex. */
   geometry: SectorGeometry;
-  /** The clusters of what a place draws of it at its whole detail, in its geometry's table. */
-  clusters: VisualDrawRange;
   instanceCount: number;
   /** Sixteen floats for each instance, exactly as the engine stores a matrix. */
   transforms: VisualSection;
@@ -252,11 +241,6 @@ export type SectorProgressive = {
    * so a place drawing the band its window falls in is never coarser than the engine would draw it.
    */
   bands: Array<VisualDrawRange>;
-  /**
-   * Each band's clusters, in its mesh's table: cut from the band's own window, so windows sharing triangles each
-   * take entries and no index is rewritten.
-   */
-  clusters: Array<VisualDrawRange>;
 };
 
 /** One draw of a sector's own geometry: the indices to draw, and the surface they are drawn with. */
@@ -265,8 +249,6 @@ export type SectorSection = {
   /** Drawables packed into this section, by their index in the visuals run. */
   drawables: Array<number>;
   draw: VisualDrawRange;
-  /** Its clusters, in its geometry's table. */
-  clusters: VisualDrawRange;
   /** Extent its own vertices span, which it is culled by; absent when it reaches none. */
   bounds: VisualBounds | null;
 };
@@ -319,7 +301,6 @@ export type VisualBox = {
  * on its own.
  */
 export type VisualClusters = {
-  count: number;
   /**
    * Four unsigned integers a cluster: its first index, in the geometry's indices; its triangles; the drawable it is
    * cut from, by its index in the visuals run, or [`VisualClusters::NO_DRAWABLE`]; then nothing.
@@ -383,8 +364,6 @@ export type VisualGeometry = {
    * which moves with its bones.
    */
   clusters: VisualClusters | null;
-  /** Each detail level's clusters, in the table, beside `detail_levels`; empty with the table. */
-  detailClusters: Array<VisualDrawRange>;
   bounds: VisualBounds;
 };
 

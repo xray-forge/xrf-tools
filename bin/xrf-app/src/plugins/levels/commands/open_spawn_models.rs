@@ -71,8 +71,6 @@ fn describe_models(current: &SelectedLevel, probe: &XrayProbe) -> LevelSpawnMode
     if let Some(model) = model {
       placements.push(LevelSpawnPlacement {
         model,
-        name: object.name.clone(),
-        section: object.section.clone(),
         transform: VisualTransform::of_spawn(&object.position, &object.direction),
       });
     }

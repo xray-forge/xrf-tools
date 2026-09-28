@@ -5,7 +5,8 @@ use std::time::Instant;
 use xrf_chunk::XRayByteOrder;
 use xrf_light_anim::LightAnimFile;
 use xrf_ltx::Ltx;
-use xrf_vfs::{XrayLogicalPath, XrayProbe};
+use xrf_material::XrayTextureScope;
+use xrf_vfs::XrayProbe;
 use xrf_visual::{LightsDescription, LightsPacker};
 
 use crate::core::assets::read_located_asset;
@@ -54,7 +55,7 @@ pub fn pack_lights(current: &SelectedLevel, probe: &XrayProbe, sections: Option<
   }
 
   let lights: LightsDescription = packer.pack();
-  let directory: Option<XrayLogicalPath> = current.source.get_logical_directory();
+  let scope: XrayTextureScope = current.source.get_texture_scope();
 
   report_lights(&current.source, &lights, started);
 
@@ -63,7 +64,7 @@ pub fn pack_lights(current: &SelectedLevel, probe: &XrayProbe, sections: Option<
       .projectors
       .iter()
       .map(|reference| LevelTextureReference {
-        logical_path: resolve_reference(probe, directory.as_ref(), reference),
+        logical_path: resolve_reference(probe, &scope, reference),
         reference: reference.clone(),
       })
       .collect(),

@@ -90,8 +90,9 @@ impl AssetMountState {
 
     let mut fork: XrayVfs = current.fork();
 
+    // Only this plan's failures: another's stay settled for every read of it.
     if is_retrying {
-      fork.forget_skipped_mounts();
+      plan.forget_skipped_in(&mut fork);
     }
 
     let steps: Vec<XrayProbeStep> = plan

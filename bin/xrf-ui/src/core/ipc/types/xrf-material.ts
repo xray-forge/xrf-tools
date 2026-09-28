@@ -128,13 +128,16 @@ export type XrayMaterialDeclaration =
 
 /** The material the renderer builds for one texture, resolved. */
 export type XrayMaterialDescriptor = {
-  /** The `.thm` the declaration was read from, or `None` when no root holds one. */
+  /** The `.thm` the declaration was read from, a level's own over the shared one, or `None` when no root holds one. */
   descriptor: XrayAsset | null;
   declaration: XrayMaterialDeclaration;
   /** The bound pair, present exactly when the declaration is [`XrayMaterialDeclaration::Declared`]. */
   bump: XrayMaterialBump | null;
   outcome: XrayBumpOutcome;
-  /** The detail association the descriptor names, when the type gate lets the engine read it and it names one. */
+  /**
+   * The detail association the descriptor names, when the type gate lets the engine read it and it names one; the
+   * shared descriptor's live one where a level's names none.
+   */
   detail: XrayMaterialDetail | null;
   /**
    * The lighting model the texture's surfaces shade with, `m_material`: its class plus its weight, or the engine's

@@ -319,8 +319,8 @@ pub fn report_details(source: &LevelSource, details: Option<&DetailsDescription>
     source.get_label(),
     xrf_utils::format_duration(started.elapsed()),
     details.slot_count,
-    details.triangle_count,
-    details.bin_length,
+    details.get_triangle_count(),
+    details.get_bin_length(),
     details.models.len(),
     xrf_utils::format_bytes(u64::from(details.buffer_length))
   );

@@ -6,10 +6,10 @@ use std::collections::BTreeSet;
 use std::sync::Arc;
 
 use xrf_chunk::XRayByteOrder;
-use xrf_material::{XraySurfaceDescriptor, XraySurfaceResolver};
+use xrf_material::{XraySurfaceDescriptor, XraySurfaceResolver, XrayTextureScope};
 use xrf_ogf::OgfFile;
 use xrf_spawn::{AlifeObject, AlifeObjectInherited};
-use xrf_vfs::{XrayAssetType, XrayLogicalPath, XrayProbe};
+use xrf_vfs::{XrayAssetType, XrayProbe};
 use xrf_visual::{VisualDependencies, VisualDescription, VisualPackage, VisualPacker, VisualRestPose, VisualSkeleton};
 
 use crate::core::assets::read_referenced_asset;
@@ -36,7 +36,7 @@ pub fn get_drawn_visual(object: &AlifeObject) -> Option<&str> {
 pub struct SpawnVisualReader<'probe, 'vfs> {
   current: &'probe SelectedLevel,
   probe: &'probe XrayProbe<'vfs>,
-  directory: Option<XrayLogicalPath>,
+  scope: XrayTextureScope,
   resolver: OnceCell<XraySurfaceResolver<'probe, 'vfs>>,
 }
 
@@ -45,7 +45,7 @@ impl<'probe, 'vfs> SpawnVisualReader<'probe, 'vfs> {
     Self {
       current,
       probe,
-      directory: current.source.get_logical_directory(),
+      scope: current.source.get_texture_scope(),
       resolver: OnceCell::new(),
     }
   }
@@ -76,7 +76,9 @@ impl<'probe, 'vfs> SpawnVisualReader<'probe, 'vfs> {
       .map_err(|error| format!("Failed to read visual '{name}': {error}"))?;
     let package: VisualPackage = VisualPacker::pack(&file);
     let rest: Option<Arc<VisualRestPose>> = to_rest_pose(probe, name, &file, &package.description).map(Arc::new);
-    let resolver: &XraySurfaceResolver = self.resolver.get_or_init(|| XraySurfaceResolver::open(probe));
+    let resolver: &XraySurfaceResolver = self
+      .resolver
+      .get_or_init(|| XraySurfaceResolver::open(probe, self.scope.clone()));
     let surfaces: Vec<XraySurfaceDescriptor> = package
       .description
       .submeshes
@@ -97,7 +99,7 @@ impl<'probe, 'vfs> SpawnVisualReader<'probe, 'vfs> {
 
     Ok(LevelSpawnVisual {
       // Resolved as a level's own surfaces are, so a model shades with the bump pair and the detail its base declares.
-      textures: resolve_surface_textures(references, &surfaces, probe, self.directory.as_ref()),
+      textures: resolve_surface_textures(references, &surfaces, probe, &self.scope),
       package,
       rest,
       surfaces,

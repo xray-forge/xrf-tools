@@ -1715,8 +1715,6 @@ export type LevelSpawnModelsDescription = {
 
 /** Where one spawned object stands, and which model it is drawn as. */
 export type LevelSpawnPlacement = {
-  name: string;
-  section: string;
   /** The model, by its index among the description's models. */
   model: number;
   /** The object's `XFORM`, in renderer space. */
@@ -1729,20 +1727,7 @@ export type LevelStart = {
   position: Vector3d;
   /** Which way it looks, level with the horizon. */
   direction: Vector3d;
-  /** What the place was taken from. */
-  origin: LevelStartOrigin;
 };
-
-/** What a level's start was taken from. */
-export enum ELevelStartOrigin {
-  /** Where a changer of another level leading here puts the actor. */
-  ARRIVAL = "arrival",
-  /** Where the level's own actor is spawned. */
-  ACTOR = "actor",
-}
-
-/** Every `ELevelStartOrigin` as the spelling it crosses IPC as, for a value no member has narrowed. */
-export type LevelStartOrigin = `${ELevelStartOrigin}`;
 
 /** The sun xrLC compiled the level against, as the light chunk records it. */
 export type LevelSunDescription = {

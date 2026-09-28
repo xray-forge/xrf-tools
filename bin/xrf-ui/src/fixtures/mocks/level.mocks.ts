@@ -1,19 +1,27 @@
 import { Nullable } from "@xrf/types";
 
 import { createRoots } from "@/core/assets/lib";
-import { LevelEntry, LevelTextureReference, SelectedLevelDescription } from "@/core/ipc/types/xrf-app";
 import {
+  LevelDetailsDescription,
+  LevelEntry,
+  LevelTextureReference,
+  SelectedLevelDescription,
+} from "@/core/ipc/types/xrf-app";
+import {
+  DetailsDescription,
+  DetailsModel,
   SectorDescription,
   SectorGeometry,
   SectorInstanceGroup,
   SectorOutline,
   SectorSection,
   SectorSurface,
+  VisualSection,
 } from "@/core/ipc/types/xrf-visual";
 import { ILevelFeatureOptions } from "@/core/level/lib/features/level-feature-options";
 import { ELevelSurfaceDressing } from "@/core/level/lib/surface/level-surface-dressing";
 import { ILevelTextureReport } from "@/core/level/lib/texture/level-texture-report";
-import { mockVisualBounds, MockVisualBuffer } from "@/fixtures/mocks/visual.mocks";
+import { mockSurfaceDescriptor, mockVisualBounds, MockVisualBuffer } from "@/fixtures/mocks/visual.mocks";
 
 /**
  * One packed mesh: positions and thirty-two bit indices written into the buffer.
@@ -29,7 +37,7 @@ export function mockSectorGeometry(buffer: MockVisualBuffer): SectorGeometry {
 
   return {
     binormals: null,
-    clusters: { count: 1, ranges, spheres },
+    clusters: { ranges, spheres },
     indexCount: 3,
     indices,
     lightmapUvs: null,
@@ -68,7 +76,6 @@ export function mockSectorSurface(overrides: Partial<SectorSurface> = {}): Secto
 export function mockSectorSection(overrides: Partial<SectorSection> = {}): SectorSection {
   return {
     bounds: null,
-    clusters: { count: 1, start: 0 },
     draw: { start: 0, count: 3 },
     drawables: [1],
     surface: mockSectorSurface(),
@@ -123,7 +130,6 @@ export function mockSectorInstanceGroup(
   const hemi = buffer.pushFloats(places.flatMap(() => [1, 0]));
 
   return {
-    clusters: { count: 1, start: 0 },
     drawables: places.map((_, index: number) => index + 1),
     geometry,
     hemi,
@@ -149,6 +155,55 @@ export function mockSectorOutline(overrides: Partial<SectorOutline> = {}): Secto
     root: 0,
     sector: 0,
     ...overrides,
+  };
+}
+
+/**
+ * A level's grass packed the way the rust packer packs it: one model, and a two cell grid whose first cell plants over
+ * one triangle.
+ *
+ * @param buffer - Buffer the sections are written into, so the offsets a test reads are real ones.
+ * @param overrides - Fields to replace on the packed grass.
+ * @returns A description covering exactly what was written.
+ */
+export function mockLevelDetailsDescription(
+  buffer: MockVisualBuffer,
+  overrides: Partial<DetailsDescription> = {}
+): LevelDetailsDescription {
+  const model: DetailsModel = {
+    height: 2,
+    indices: buffer.pushIndices([0, 2, 1]),
+    isWaving: true,
+    maxScale: 1.5,
+    minScale: 0.5,
+    positions: buffer.pushFloats([0, 0, 0, 1, 0, 0, 0, 2, 0]),
+    radius: 1.2,
+    texture: "detail\\grass",
+    uvs: buffer.pushFloats([0, 1, 1, 1, 0.5, 0]),
+  };
+  const grid: VisualSection = buffer.pushIndices32([1, 0]);
+  const slots: VisualSection = buffer.pushIndices32([1, 2, 3, 4, 0, 1]);
+  const bins: VisualSection = buffer.pushIndices32([0]);
+  const triangles: VisualSection = buffer.pushFloats([0, 1, 0, 2, 1, 0, 0, 1, 2]);
+
+  return {
+    details: {
+      bins,
+      grid,
+      models: [model],
+      offsetX: 3,
+      offsetZ: -2,
+      sizeX: 2,
+      sizeZ: 1,
+      slotCount: 1,
+      slots,
+      triangles,
+      ...overrides,
+      // Last, so a caller that wrote more into the buffer still gets a length covering all of it.
+      bufferLength: overrides.bufferLength ?? buffer.byteLength,
+    },
+    surfaces: [mockSurfaceDescriptor({ shader: "details\\blend", textures: ["detail\\grass"] })],
+    textures: [mockLevelTextureReference("detail\\grass")],
   };
 }
 

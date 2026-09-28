@@ -3,7 +3,9 @@
 
 use xrf_level::{LevelFile, LevelHeaderChunk, LevelShaderEntry, LevelShadersChunk};
 use xrf_material::fixtures::{FixtureTree, ThmFixture};
-use xrf_material::{XraySurfaceDeclaration, XraySurfaceDescriptor, XraySurfaceDetail, XraySurfaceDraw};
+use xrf_material::{
+  XraySurfaceDeclaration, XraySurfaceDescriptor, XraySurfaceDetail, XraySurfaceDraw, XrayTextureScope,
+};
 use xrf_shaders::fixtures::ShaderBlenderFixture;
 use xrf_thm::ThmTextureFlag;
 use xrf_vfs::{XrayLookupScope, XrayMountId, XrayProbe, XrayVfs};
@@ -35,7 +37,7 @@ fn new_resolved(tree: &FixtureTree, level: &LevelFile) -> Vec<XraySurfaceDescrip
   let id: XrayMountId = vfs.mount_directory("", tree.root()).expect("tree mounts");
   let probe: XrayProbe = vfs.probe().with_step("tree", XrayLookupScope::only([id]));
 
-  resolve_surfaces(level, &probe)
+  resolve_surfaces(level, &probe, &XrayTextureScope::shared())
 }
 
 #[test]

@@ -1,6 +1,7 @@
 use std::path::Path;
 
 use serde::{Deserialize, Serialize};
+use xrf_material::XrayTextureScope;
 use xrf_vfs::XrayLogicalPath;
 
 use crate::plugins::levels::state::LEVELS_DIRECTORY;
@@ -45,6 +46,14 @@ impl LevelSource {
             .ok()
         }),
     }
+  }
+
+  /// Where its surfaces' textures and descriptors are read: beside the level, which the engine mounts as `$level$`,
+  /// then the shared tree; the shared tree alone for a level with no engine identity.
+  pub fn get_texture_scope(&self) -> XrayTextureScope {
+    self
+      .get_logical_directory()
+      .map_or_else(XrayTextureScope::shared, XrayTextureScope::of_level)
   }
 
   /// The level's name, the last component of its engine identity, which the game graph knows it by.

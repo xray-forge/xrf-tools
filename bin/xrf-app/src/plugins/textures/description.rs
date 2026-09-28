@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use serde::Serialize;
-use xrf_material::{XrayMaterialBumpInput, XrayMaterialDescriptor, XrayMaterialResolver};
+use xrf_material::{XrayMaterialBumpInput, XrayMaterialDescriptor, XrayMaterialResolver, XrayTextureScope};
 use xrf_spawn::XRayByteOrder;
 use xrf_thm::ThmFile;
 use xrf_vfs::{
@@ -66,7 +66,8 @@ impl TextureDescription {
       .map_err(|error| format!("Rejected texture '{reference}': {error}"))?
       .get_asset()
       .cloned();
-    let material: XrayMaterialDescriptor = XrayMaterialResolver::describe_texture(probe, &reference);
+    let material: XrayMaterialDescriptor =
+      XrayMaterialResolver::describe_texture(probe, &XrayTextureScope::shared(), &reference);
 
     // Whichever file the engine ended up binding for a half, declared or substituted, is the one worth describing.
     let describe_bound = |input: &XrayMaterialBumpInput| -> Option<AssetTextureDescriptor> {

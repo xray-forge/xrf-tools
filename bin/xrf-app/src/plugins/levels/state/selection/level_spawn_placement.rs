@@ -6,8 +6,6 @@ use xrf_visual::VisualTransform;
 #[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LevelSpawnPlacement {
-  pub name: String,
-  pub section: String,
   /// The model, by its index among the description's models.
   pub model: u32,
   /// The object's `XFORM`, in renderer space.
