@@ -3,6 +3,7 @@ import { BoundAction, RefObservable, runInAction } from "@wirestate/mobx";
 import { Nullable } from "@xrf/types";
 
 import { IEditorPanel } from "@/core/shell/editor-shell/editor-panel";
+import { isSameStatusSegment, TEditorStatusSegment } from "@/core/shell/editor-shell/editor-status-segment";
 import { EMPTY_ARRAY } from "@/lib/types/array";
 
 interface IEditorShellRegistration<T> {
@@ -15,7 +16,7 @@ interface IEditorShellRegistration<T> {
 @Injectable()
 export class EditorShellService {
   @RefObservable()
-  private status: Nullable<IEditorShellRegistration<string>> = null;
+  private status: Nullable<IEditorShellRegistration<TEditorStatusSegment>> = null;
 
   // Panel descriptors contain React elements and render closures; observe replacement without transforming them.
   @RefObservable()
@@ -30,7 +31,7 @@ export class EditorShellService {
   }
 
   /** Returns status only for the application currently being rendered. */
-  public getStatus(application: string): ReadonlyArray<string> {
+  public getStatus(application: string): ReadonlyArray<TEditorStatusSegment> {
     return this.status?.application === application ? this.status.values : EMPTY_ARRAY;
   }
 
@@ -39,16 +40,16 @@ export class EditorShellService {
     return this.panels?.application === application ? this.panels.values : EMPTY_ARRAY;
   }
 
-  /** Publishes status, retaining its snapshot when the same owner repeats unchanged text. */
+  /** Publishes status, retaining its snapshot when the same owner repeats unchanged segments. */
   @BoundAction()
-  public publishStatus(owner: string, application: string, segments: ReadonlyArray<string>): void {
+  public publishStatus(owner: string, application: string, segments: ReadonlyArray<TEditorStatusSegment>): void {
     const previous = this.status;
 
     if (
       previous?.owner === owner &&
       previous.application === application &&
       previous.values.length === segments.length &&
-      previous.values.every((value, index) => value === segments[index])
+      previous.values.every((value: TEditorStatusSegment, index: number) => isSameStatusSegment(value, segments[index]))
     ) {
       return;
     }

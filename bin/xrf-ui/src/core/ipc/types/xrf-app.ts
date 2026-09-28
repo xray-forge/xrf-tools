@@ -1756,6 +1756,14 @@ export type MachineUsage = {
   availableMemory: number;
 };
 
+/** What the application and its webview hold in memory at one instant. */
+export type MemoryUsage = {
+  /** The backend process itself. */
+  application: ProcessMemory;
+  /** Every webview process still running, in the order the environment listed them. */
+  webview: Array<WebviewProcessMemory>;
+};
+
 /** What an equipment sprite pack was asked to do. */
 export type PackSpriteRequest = {
   /** Directory of loose icons to draw from. */
@@ -1784,6 +1792,19 @@ export enum EPathKind {
 
 /** Every `EPathKind` as the spelling it crosses IPC as, for a value no member has narrowed. */
 export type PathKind = `${EPathKind}`;
+
+/** What one process holds in memory. */
+export type ProcessMemory = {
+  /** Private commit: memory charged to this process alone, resident or not. */
+  committed: number;
+  /** Working set: physical memory the process occupies, shared pages included. */
+  workingSet: number;
+  /**
+   * Private working set: resident pages no other process shares, which Task Manager's Memory column shows.
+   * Absent before Windows 10 1809.
+   */
+  privateWorkingSet: number | null;
+};
 
 /** What one process holds. */
 export type ProcessUsage = {
@@ -2433,3 +2454,34 @@ export type VisualSource =
   | { kind: "file"; path: string }
   /** An asset of the roots, loose or archived, named by its engine identity. */
   | { kind: "asset"; logicalPath: string };
+
+/** What a webview process does, as WebView2 names it (`COREWEBVIEW2_PROCESS_KIND`). */
+export enum EWebviewProcessKind {
+  /** The browser process, which owns the others. */
+  BROWSER = "browser",
+  /** Runs the page and its workers: the script heaps and every array buffer. */
+  RENDERER = "renderer",
+  /** Runs the GPU driver on the page's behalf: WebGPU buffers and textures, and their staging. */
+  GPU = "gpu",
+  /** A service process, such as the network or audio service. */
+  UTILITY = "utility",
+  /** Helps the sandbox start the others. */
+  SANDBOX_HELPER = "sandboxHelper",
+  /** Hosts a plugin, which nothing this application loads uses. */
+  PPAPI_PLUGIN = "ppapiPlugin",
+  /** Brokers a plugin, which nothing this application loads uses. */
+  PPAPI_BROKER = "ppapiBroker",
+  /** A kind newer than this build knows. */
+  OTHER = "other",
+}
+
+/** Every `EWebviewProcessKind` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type WebviewProcessKind = `${EWebviewProcessKind}`;
+
+/** What one webview process holds. */
+export type WebviewProcessMemory = {
+  kind: WebviewProcessKind;
+  /** The process's own identifier, for pairing it with a task manager. */
+  pid: number;
+  memory: ProcessMemory;
+};

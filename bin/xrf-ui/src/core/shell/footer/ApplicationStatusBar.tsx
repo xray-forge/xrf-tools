@@ -1,7 +1,8 @@
-import { Typography } from "@mui/material";
+import { Tooltip, Typography } from "@mui/material";
 import { ReactElement } from "react";
 
-import { useEditorStatusSegments } from "@/core/shell/editor-shell";
+import { TEditorStatusSegment, useEditorStatusSegments } from "@/core/shell/editor-shell";
+import { ApplicationStatusDetails } from "@/core/shell/footer/ApplicationStatusDetails";
 import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
@@ -13,7 +14,7 @@ export function ApplicationStatusBar({
   id = "application-status-bar",
   className,
 }: BaseComponentProps): ReactElement {
-  const segments: ReadonlyArray<string> = useEditorStatusSegments();
+  const segments: ReadonlyArray<TEditorStatusSegment> = useEditorStatusSegments();
 
   return (
     <div
@@ -21,13 +22,24 @@ export function ApplicationStatusBar({
       id={id}
       className={cn("flex h-status-bar min-h-status-bar items-center justify-end gap-3 px-10", className)}
     >
-      {segments.length
-        ? segments.map((segment: string, index: number) => (
-            <Typography key={segment + index} className={"text-text-secondary"} variant={"caption"} noWrap>
-              {segment}
+      {/* Keyed by position or id, never by text: a key that follows a reading remounts its open tooltip. */}
+      {segments.map((segment: TEditorStatusSegment, index: number) =>
+        typeof segment === "string" ? (
+          <Typography key={`text:${index}`} className={"text-text-secondary"} variant={"caption"} noWrap>
+            {segment}
+          </Typography>
+        ) : (
+          <Tooltip
+            key={`segment:${segment.id}`}
+            describeChild
+            title={<ApplicationStatusDetails details={segment.details} />}
+          >
+            <Typography className={"text-text-secondary"} variant={"caption"} tabIndex={0} noWrap>
+              {segment.text}
             </Typography>
-          ))
-        : null}
+          </Tooltip>
+        )
+      )}
     </div>
   );
 }

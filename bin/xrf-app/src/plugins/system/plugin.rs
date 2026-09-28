@@ -2,6 +2,7 @@ use tauri::plugin::TauriPlugin;
 use tauri::{Manager, Runtime};
 
 use crate::plugins::system::diagnostics::MachineProbeState;
+use crate::plugins::system::diagnostics::memory::WebviewProcessProbe;
 use crate::plugins::system::paths::SystemPathsState;
 
 /// Desktop integration that belongs to no editor in particular.
@@ -17,6 +18,7 @@ impl SystemPlugin {
       .setup(|application, _| {
         application.manage(SystemPathsState::new(application.path().app_local_data_dir().ok()));
         application.manage(MachineProbeState::new());
+        application.manage(WebviewProcessProbe::new(application.clone()));
 
         Ok(())
       })

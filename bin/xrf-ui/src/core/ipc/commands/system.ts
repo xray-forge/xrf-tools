@@ -1,7 +1,13 @@
 // Auto-generated rust bindings. Do not edit it manually.
 
 import { invoke as __TAURI_INVOKE } from "@/core/ipc/invoke";
-import { HostInfo, PathDescription, RuntimeSnapshot } from "@/core/ipc/types/xrf-app";
+import {
+  HostInfo,
+  PathDescription,
+  ProcessMemory,
+  RuntimeSnapshot,
+  WebviewProcessMemory,
+} from "@/core/ipc/types/xrf-app";
 import { BuildInfo } from "@/core/ipc/types/xrf-build-info";
 
 /** Commands */
@@ -14,6 +20,14 @@ export const systemCommands = {
   getDefaultOutputRoot: () => __TAURI_INVOKE<string>("plugin:system|get_default_output_root"),
   /** Report what the application is running on and with. */
   getHostInfo: () => __TAURI_INVOKE<HostInfo>("plugin:system|get_host_info"),
+  /** Report what the application and each of its webview's processes hold in memory, where the platform can say. */
+  getMemoryUsage: () =>
+    __TAURI_INVOKE<{
+      /** The backend process itself. */
+      application: ProcessMemory;
+      /** Every webview process still running, in the order the environment listed them. */
+      webview: Array<WebviewProcessMemory>;
+    } | null>("plugin:system|get_memory_usage"),
   /** Report what the application currently costs the machine, and how long it has been running. */
   getRuntimeSnapshot: () => __TAURI_INVOKE<RuntimeSnapshot>("plugin:system|get_runtime_snapshot"),
   /** Show a path in the desktop's own file manager. */

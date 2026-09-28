@@ -132,6 +132,7 @@ macro_rules! for_each_tauri_command_domain {
         get_build_info => crate::plugins::system::diagnostics::commands::get_build_info::system_get_build_info,
         get_default_output_root => crate::plugins::system::paths::commands::get_default_output_root::system_get_default_output_root,
         get_host_info => crate::plugins::system::diagnostics::commands::get_host_info::system_get_host_info,
+        get_memory_usage => crate::plugins::system::diagnostics::commands::get_memory_usage::system_get_memory_usage,
         get_runtime_snapshot => crate::plugins::system::diagnostics::commands::get_runtime_snapshot::system_get_runtime_snapshot,
         reveal_path => crate::plugins::system::paths::commands::reveal_path::system_reveal_path,
       }

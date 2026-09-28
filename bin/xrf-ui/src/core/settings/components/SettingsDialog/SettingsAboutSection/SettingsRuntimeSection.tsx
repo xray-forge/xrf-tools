@@ -2,8 +2,9 @@ import { Typography } from "@mui/material";
 import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
+import { useMemoryUsage } from "@/core/diagnostics/lib";
 import { systemCommands } from "@/core/ipc/commands/system";
-import { RuntimeSnapshot } from "@/core/ipc/types/xrf-app";
+import { MemoryUsage, RuntimeSnapshot } from "@/core/ipc/types/xrf-app";
 import { DetailSection } from "@/core/ui/layout/DetailSection";
 import { StatFigure } from "@/core/ui/stats/StatFigure";
 import { formatDuration } from "@/lib/format/duration";
@@ -11,6 +12,8 @@ import { formatInstant } from "@/lib/format/instant";
 import { Logger, useLogger } from "@/lib/logging";
 import { formatBytes } from "@/lib/memory/format";
 import { usePolledValue } from "@/lib/react";
+
+import { describeBackendMemory, describeWebviewMemory } from "./SettingsRuntimeSection.utils";
 
 /**
  * When this session started, and what it is costing the machine right now.
@@ -27,6 +30,7 @@ export function SettingsRuntimeSection(): ReactElement {
       }),
     1_000
   );
+  const memory: Nullable<MemoryUsage> = useMemoryUsage((usage: MemoryUsage): MemoryUsage => usage);
 
   return (
     <DetailSection
@@ -39,13 +43,8 @@ export function SettingsRuntimeSection(): ReactElement {
         <div className={"mt-2 flex flex-wrap gap-4"}>
           <StatFigure label={"Started"} value={formatInstant(snapshot.startedAt)} />
           <StatFigure label={"Uptime"} value={formatDuration(snapshot.uptime)} />
-          <StatFigure label={"Backend"} value={formatBytes(snapshot.process.residentMemory)} hint={"resident"} />
-          <StatFigure
-            label={"Webview"}
-            value={formatBytes(snapshot.descendants.residentMemory)}
-            hint={snapshot.descendants.processes === 1 ? "1 process" : `${snapshot.descendants.processes} processes`}
-          />
-          <StatFigure label={"Address space"} value={formatBytes(snapshot.process.virtualMemory)} hint={"reserved"} />
+          <StatFigure label={"Backend"} {...describeBackendMemory(snapshot, memory)} />
+          <StatFigure label={"Webview"} {...describeWebviewMemory(snapshot, memory)} />
           <StatFigure
             label={"Machine"}
             value={formatBytes(snapshot.machine.usedMemory)}

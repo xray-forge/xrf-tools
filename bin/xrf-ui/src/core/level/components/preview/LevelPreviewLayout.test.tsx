@@ -16,6 +16,7 @@ import {
   LevelViewService,
 } from "@/core/level/services";
 import { ApplicationStatusBar } from "@/core/shell/footer/ApplicationStatusBar";
+import { setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
@@ -252,6 +253,27 @@ describe("LevelPreviewLayout", () => {
 
     expect(await view.findByText("x 19.0 y 12.5 z 87.3")).toBeInTheDocument();
     expect(renders).toBe(before);
+  });
+
+  it("says what the backend and the webview hold in the status bar", async () => {
+    const megabyte: number = 1024 * 1024;
+
+    setMockInvokeResponses({
+      ["plugin:system|get_memory_usage"]: {
+        application: { committed: 410 * megabyte, workingSet: 300 * megabyte, privateWorkingSet: 260 * megabyte },
+        webview: [
+          {
+            kind: "gpu",
+            pid: 8,
+            memory: { committed: 3667 * megabyte, workingSet: 2100 * megabyte, privateWorkingSet: 2048 * megabyte },
+          },
+        ],
+      },
+    });
+
+    const { view } = renderReporting();
+
+    expect(await view.findByText("Backend 260 MB · Webview 2 GB")).toBeInTheDocument();
   });
 
   // A sector lands many times a second while a level streams in, and only the progress and the status bar say so.

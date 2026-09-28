@@ -20,7 +20,7 @@ function measure(
   frame: IRenderFrameCost,
   staticDraws: IRendererStaticDrawReport = EMPTY_RENDERER_STATIC_DRAW_REPORT
 ): ILevelStats {
-  return measureLevelStats(held, frame, 0, staticDraws, EMPTY_RENDERER_LIGHTS_REPORT);
+  return measureLevelStats(held, frame, 0, staticDraws, EMPTY_RENDERER_LIGHTS_REPORT, 0);
 }
 
 describe("level stats", () => {

@@ -21,12 +21,15 @@ export interface ILevelStats extends IRenderFrameCost {
   staticDraws: IRendererStaticDrawReport;
   /** What the local lights came to: how many stood in view and were shadowed, the atlas, and full clusters. */
   lights: IRendererLightsReport;
+  /** Bytes the renderer holds on the CPU of what it draws. */
+  rendererMemory: number;
 }
 
 export const EMPTY_LEVEL_STATS: ILevelStats = {
   ...EMPTY_RENDER_FRAME_COST,
   bytes: 0,
   lights: EMPTY_RENDERER_LIGHTS_REPORT,
+  rendererMemory: 0,
   sceneTime: 0,
   sectors: 0,
   staticDraws: EMPTY_RENDERER_STATIC_DRAW_REPORT,
@@ -48,6 +51,7 @@ export interface ILevelHeld {
  * @param sceneTime - What the scene has been paying to take one arriving sector.
  * @param staticDraws - What the renderer said of its static draws.
  * @param lights - What it said of its local lights.
+ * @param rendererMemory - Bytes it said it holds on the CPU.
  * @returns What the viewport is spending.
  */
 export function measureLevelStats(
@@ -55,7 +59,8 @@ export function measureLevelStats(
   frame: IRenderFrameCost,
   sceneTime: number,
   staticDraws: IRendererStaticDrawReport,
-  lights: IRendererLightsReport
+  lights: IRendererLightsReport,
+  rendererMemory: number
 ): ILevelStats {
-  return { ...frame, bytes: held.bytes, lights, sceneTime, sectors: held.sectors, staticDraws };
+  return { ...frame, bytes: held.bytes, lights, rendererMemory, sceneTime, sectors: held.sectors, staticDraws };
 }

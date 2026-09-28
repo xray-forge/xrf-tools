@@ -4,7 +4,10 @@ import { useEffect, useRef, useState } from "react";
 import { Logger } from "@/lib/logging";
 
 /**
- * Re-reads a value on an interval for as long as the component is mounted.
+ * Re-reads a value on an interval for as long as the component is mounted and the document is visible.
+ *
+ * A hidden document (a minimized window) skips its ticks and reads once as soon as it is shown again, since nobody is
+ * looking at the value in between.
  *
  * @param read - Reads the current value, synchronously or not.
  * @param intervalMs - How long to wait between reads.
@@ -21,7 +24,7 @@ export function usePolledValue<T>(read: () => T | Promise<T>, intervalMs: number
     let isReading: boolean = false;
 
     async function poll(): Promise<void> {
-      if (isReading) {
+      if (isReading || document.visibilityState === "hidden") {
         return;
       }
 
@@ -40,14 +43,21 @@ export function usePolledValue<T>(read: () => T | Promise<T>, intervalMs: number
       }
     }
 
+    function onVisibilityChange(): void {
+      void poll();
+    }
+
     void poll();
 
     const timer: ReturnType<typeof setInterval> = setInterval(() => void poll(), intervalMs);
+
+    document.addEventListener("visibilitychange", onVisibilityChange);
 
     return () => {
       isMounted = false;
 
       clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
     };
   }, [intervalMs]);
 

@@ -194,6 +194,41 @@ describe("usePolledValue", () => {
     }
   });
 
+  it("skips ticks while the document is hidden and reads once it is shown again", async () => {
+    jest.useFakeTimers();
+
+    const visibility: jest.SpiedGetter<DocumentVisibilityState> = jest
+      .spyOn(document, "visibilityState", "get")
+      .mockReturnValue("visible");
+
+    try {
+      const read = jest.fn(() => 1);
+
+      renderHook(() => usePolledValue(read, 1000));
+
+      expect(read).toHaveBeenCalledTimes(1);
+
+      visibility.mockReturnValue("hidden");
+
+      await act(async () => {
+        await jest.advanceTimersByTimeAsync(5000);
+      });
+
+      expect(read).toHaveBeenCalledTimes(1);
+
+      visibility.mockReturnValue("visible");
+
+      await act(async () => {
+        document.dispatchEvent(new Event("visibilitychange"));
+      });
+
+      expect(read).toHaveBeenCalledTimes(2);
+    } finally {
+      visibility.mockRestore();
+      jest.useRealTimers();
+    }
+  });
+
   it("resumes polling after a synchronous reader throws", async () => {
     jest.useFakeTimers();
 

@@ -63,6 +63,36 @@ describe("EditorShellService", () => {
     expect(service.getStatus(FIRST)).toEqual(original);
   });
 
+  it("keeps equal detailed segments stable and replaces them when a detail changes", () => {
+    const { service } = mockInjectedService(EditorShellService);
+
+    service.publishStatus("owner", FIRST, [
+      "3 files",
+      { id: "memory", text: "350 MB", details: [{ label: "Backend", value: "350 MB" }] },
+    ]);
+
+    const original = service.getStatus(FIRST);
+
+    service.publishStatus("owner", FIRST, [
+      "3 files",
+      { id: "memory", text: "350 MB", details: [{ label: "Backend", value: "350 MB" }] },
+    ]);
+
+    expect(service.getStatus(FIRST)).toBe(original);
+
+    service.publishStatus("owner", FIRST, [
+      "3 files",
+      { id: "memory", text: "350 MB", details: [{ label: "Backend", value: "351 MB" }] },
+    ]);
+
+    expect(service.getStatus(FIRST)).not.toBe(original);
+    expect(service.getStatus(FIRST)[1]).toEqual({
+      id: "memory",
+      text: "350 MB",
+      details: [{ label: "Backend", value: "351 MB" }],
+    });
+  });
+
   it("snapshots caller arrays without transforming panel descriptors or renderers", () => {
     const { service } = mockInjectedService(EditorShellService);
     const current = panel("current");

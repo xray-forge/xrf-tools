@@ -6876,6 +6876,8 @@ dependencies = [
  "tauri-specta",
  "tokio",
  "uuid",
+ "webview2-com",
+ "windows 0.61.3",
  "xrf-animation-envelope",
  "xrf-anm",
  "xrf-archive",
