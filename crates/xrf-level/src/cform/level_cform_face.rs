@@ -9,7 +9,9 @@ use xrf_error::XrfResult;
 pub struct LevelCformFace {
   /// Its corners, by index into the form's vertices, in the engine's winding.
   pub vertices: [u32; 3],
-  /// The game material it is made of, by the material's id in `gamemtl.xr`.
+  /// The game material it is made of, by the material's id in `gamemtl.xr`: the level editor writes the id, and the
+  /// engine translates it to an index on load (`xrGame/Level_load.cpp`), which is the index `GetMaterialByIdx` then
+  /// takes in `DetailManager_Decompress.cpp`.
   pub material: u16,
   /// Whether it casts no shadow.
   pub is_shadow_suppressed: bool,

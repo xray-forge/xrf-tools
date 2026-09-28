@@ -22,21 +22,37 @@ pub struct LevelVertex {
 }
 
 impl LevelVertex {
+  /// Where a `D3DCOLOR` element keeps a direction's x, its red byte: the element is stored blue, green, red, alpha.
+  pub const DIRECTION_X: usize = 2;
+
+  /// Where it keeps y, its green byte.
+  pub const DIRECTION_Y: usize = 1;
+
+  /// Where it keeps z, its blue byte.
+  pub const DIRECTION_Z: usize = 0;
+
+  /// Where it keeps the byte riding along with the direction, its alpha.
+  pub const DIRECTION_EXTRA: usize = 3;
+
   /// Decodes one `D3DCOLOR`-packed direction and the byte riding along with it.
   pub fn decode_direction(bytes: [u8; 4]) -> (Vector3d, u8) {
     (
       Vector3d {
-        x: f32::from(bytes[2]) / 127.5 - 1.0,
-        y: f32::from(bytes[1]) / 127.5 - 1.0,
-        z: f32::from(bytes[0]) / 127.5 - 1.0,
+        x: f32::from(bytes[Self::DIRECTION_X]) / 127.5 - 1.0,
+        y: f32::from(bytes[Self::DIRECTION_Y]) / 127.5 - 1.0,
+        z: f32::from(bytes[Self::DIRECTION_Z]) / 127.5 - 1.0,
       },
-      bytes[3],
+      bytes[Self::DIRECTION_EXTRA],
     )
   }
 
   /// The colour of a `D3DCOLOR` element, as the red, green and blue the packing puts on disk.
   pub const fn decode_color(bytes: [u8; 4]) -> (u8, u8, u8) {
-    (bytes[2], bytes[1], bytes[0])
+    (
+      bytes[Self::DIRECTION_X],
+      bytes[Self::DIRECTION_Y],
+      bytes[Self::DIRECTION_Z],
+    )
   }
 }
 

@@ -1,5 +1,4 @@
 use std::fs::File;
-use std::io::Write;
 use std::path::Path;
 
 use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
@@ -63,9 +62,9 @@ pub struct LevelDetailsFile {
   pub header: LevelDetailsHeader,
   /// The library the grid indexes into, in the order the file numbers its chunks.
   pub objects: Vec<DetailModel>,
-  /// The grid as stored, `size_x * size_z` records of [`LevelDetailsSlot::SERIALIZED_SIZE`] bytes.
+  /// The grid, `size_x * size_z` slots of [`LevelDetailsSlot::WORDS`] words each, in the byte order it was read with.
   #[serde(skip)]
-  pub slots: Vec<u8>,
+  pub slots: Vec<[u32; LevelDetailsSlot::WORDS]>,
 }
 
 impl LevelDetailsFile {
@@ -151,17 +150,24 @@ impl LevelDetailsFile {
       )));
     }
 
-    let slots: Vec<u8> = find_required_chunk_by_id(&chunks, Self::SLOTS_CHUNK_ID)?.read_remaining()?;
+    let stored: Vec<u8> = find_required_chunk_by_id(&chunks, Self::SLOTS_CHUNK_ID)?.read_remaining()?;
     let expected: u64 = u64::from(header.size_x) * u64::from(header.size_z) * LevelDetailsSlot::SERIALIZED_SIZE as u64;
 
-    if slots.len() as u64 != expected {
+    if stored.len() as u64 != expected {
       return Err(XrfError::new_invalid_error(format!(
         "Unexpected level details grid of {} bytes, a {}x{} grid is {expected}",
-        slots.len(),
+        stored.len(),
         header.size_x,
         header.size_z
       )));
     }
+
+    let slots: Vec<[u32; LevelDetailsSlot::WORDS]> = stored
+      .as_chunks::<{ LevelDetailsSlot::SERIALIZED_SIZE }>()
+      .0
+      .iter()
+      .map(|slot| std::array::from_fn(|word| T::read_u32(&slot[word * 4..word * 4 + 4])))
+      .collect();
 
     Ok(Self { header, objects, slots })
   }
@@ -202,7 +208,10 @@ impl LevelDetailsFile {
 
     let mut slots: ChunkWriter = ChunkWriter::new();
 
-    slots.write_all(&self.slots)?;
+    for word in self.slots.as_flattened() {
+      slots.write_u32::<T>(*word)?;
+    }
+
     slots.flush_chunk_into::<T>(&mut writer.buffer, Self::SLOTS_CHUNK_ID)?;
 
     let mut header: ChunkWriter = ChunkWriter::new();
@@ -229,39 +238,30 @@ impl LevelDetailsFile {
   }
 
   /// Every slot of the grid, decoded in the order the file stores them.
-  pub fn iter_slots<T: ByteOrder>(&self) -> impl Iterator<Item = LevelDetailsSlot> {
-    self.iter_stored_slots().map(LevelDetailsSlot::of::<T>)
+  pub fn iter_slots(&self) -> impl Iterator<Item = LevelDetailsSlot> + '_ {
+    self.slots.iter().map(LevelDetailsSlot::of)
   }
 
-  /// Every slot of the grid as the file stores it, for a reader passing the packed bytes on rather than decoding them.
-  pub fn iter_stored_slots(&self) -> impl Iterator<Item = &[u8; LevelDetailsSlot::SERIALIZED_SIZE]> + '_ {
-    self.slots.as_chunks::<{ LevelDetailsSlot::SERIALIZED_SIZE }>().0.iter()
-  }
-
-  /// One cell's slot as the file stores it, by its index in the grid.
-  pub fn get_stored_slot(&self, cell: usize) -> Option<&[u8; LevelDetailsSlot::SERIALIZED_SIZE]> {
-    self
-      .slots
-      .as_chunks::<{ LevelDetailsSlot::SERIALIZED_SIZE }>()
-      .0
-      .get(cell)
+  /// One cell's slot as its words, by its index in the grid, for a reader passing them on rather than decoding them.
+  pub fn get_stored_slot(&self, cell: usize) -> Option<&[u32; LevelDetailsSlot::WORDS]> {
+    self.slots.get(cell)
   }
 
   /// One cell's slot, decoded, by its index in the grid.
-  pub fn get_slot<T: ByteOrder>(&self, cell: usize) -> Option<LevelDetailsSlot> {
-    self.get_stored_slot(cell).map(LevelDetailsSlot::of::<T>)
+  pub fn get_slot(&self, cell: usize) -> Option<LevelDetailsSlot> {
+    self.get_stored_slot(cell).map(LevelDetailsSlot::of)
   }
 
   /// Slots planting at least one object, which is what decides how much of a level is actually dressed.
-  pub fn get_planted_slots_count<T: ByteOrder>(&self) -> u64 {
-    self.iter_slots::<T>().filter(LevelDetailsSlot::is_planted).count() as u64
+  pub fn get_planted_slots_count(&self) -> u64 {
+    self.iter_slots().filter(LevelDetailsSlot::is_planted).count() as u64
   }
 
   /// How many corners across the whole grid each library object is planted in, by library index.
-  pub fn get_object_usage<T: ByteOrder>(&self) -> Vec<u64> {
+  pub fn get_object_usage(&self) -> Vec<u64> {
     let mut usage: Vec<u64> = vec![0; self.objects.len()];
 
-    for slot in self.iter_slots::<T>() {
+    for slot in self.iter_slots() {
       for object in slot.objects.into_iter().flatten() {
         if let Some(count) = usage.get_mut(usize::from(object)) {
           *count += 1;

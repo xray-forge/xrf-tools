@@ -1,5 +1,5 @@
 use byteorder::ByteOrder;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use xrf_chunk::{ChunkDataSource, ChunkReader};
 use xrf_error::{XrfError, XrfResult};
 use xrf_math::Vector3d;
@@ -8,12 +8,13 @@ use crate::cform::level_cform_face::LevelCformFace;
 use crate::cform::level_cform_file::LevelCformHeader;
 
 /// The collision form's payload, which follows its header: `Fvector[vertcount]` then `CDB::TRI[facecount]`.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LevelCformGeometry {
   /// Every vertex, in the engine's own space.
-  pub vertices: Vec<Vector3d<f32>>,
-  pub faces: Vec<LevelCformFace>,
+  vertices: Vec<Vector3d<f32>>,
+  /// Every face, each naming only vertices the form holds.
+  faces: Vec<LevelCformFace>,
 }
 
 impl LevelCformGeometry {
@@ -45,19 +46,37 @@ impl LevelCformGeometry {
       faces.push(reader.read_xr::<T, _>()?);
     }
 
-    let vertex_count: u32 = header.vertex_count;
+    Self::new(vertices, faces)
+  }
 
+  /// A form of the given vertices and the faces between them.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when a face names a vertex the form does not hold.
+  pub fn new(vertices: Vec<Vector3d<f32>>, faces: Vec<LevelCformFace>) -> XrfResult<Self> {
     if let Some(face) = faces
       .iter()
-      .find(|face| face.vertices.iter().any(|index| *index >= vertex_count))
+      .find(|face| face.vertices.iter().any(|index| *index as usize >= vertices.len()))
     {
       return Err(XrfError::new_invalid_error(format!(
-        "A collision form face names vertex {:?} of {vertex_count}",
-        face.vertices
+        "A collision form face names vertex {:?} of {}",
+        face.vertices,
+        vertices.len()
       )));
     }
 
     Ok(Self { vertices, faces })
+  }
+
+  /// Every vertex, in the engine's own space.
+  pub fn get_vertices(&self) -> &[Vector3d<f32>] {
+    &self.vertices
+  }
+
+  /// Every face.
+  pub fn get_faces(&self) -> &[LevelCformFace] {
+    &self.faces
   }
 
   /// A face's three corners.

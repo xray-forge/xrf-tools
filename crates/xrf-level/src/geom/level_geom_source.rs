@@ -4,7 +4,6 @@ use std::path::Path;
 use byteorder::ByteOrder;
 use xrf_chunk::{ChunkDataSource, ChunkReader, find_required_chunk_by_id};
 use xrf_error::{XrfError, XrfResult};
-use xrf_math::Vector3d;
 use xrf_utils::format_path;
 
 use crate::geom::buffers::level_geom_index_buffer::LevelGeomIndexBuffer;
@@ -87,12 +86,7 @@ impl<D: ChunkDataSource> LevelGeomSource<D> {
   pub fn read_vertices<T: ByteOrder>(&self, buffer: u32, base: u32, count: u32) -> XrfResult<Vec<LevelVertex>> {
     let payload: LevelVertexPayload = self.read_vertex_payload(buffer, base, count)?;
 
-    Ok(
-      payload
-        .vertices()
-        .map(|vertex| Self::decode_vertex::<T>(&payload.layout, vertex))
-        .collect(),
-    )
+    Ok(payload.vertices().map(|vertex| vertex.decode::<T>()).collect())
   }
 
   /// Reads one visual's vertices as they are stored, with the declaration that says where each attribute sits.
@@ -112,15 +106,14 @@ impl<D: ChunkDataSource> LevelGeomSource<D> {
 
     let layout: LevelVertexLayout = LevelVertexLayout::of(declared)?;
 
-    Ok(LevelVertexPayload {
-      bytes: Self::read_payload(
-        &self.vertices,
-        declared.payload_offset + u64::from(base) * u64::from(layout.stride),
-        count as usize * layout.stride as usize,
-        "vertices",
-      )?,
-      layout,
-    })
+    let bytes: Vec<u8> = Self::read_payload(
+      &self.vertices,
+      declared.payload_offset + u64::from(base) * u64::from(layout.get_stride()),
+      count as usize * layout.get_stride() as usize,
+      "vertices",
+    )?;
+
+    Ok(LevelVertexPayload::new(layout, bytes))
   }
 
   /// Reads one visual's indices.
@@ -152,86 +145,6 @@ impl<D: ChunkDataSource> LevelGeomSource<D> {
         .map(|index| T::read_u16(index))
         .collect(),
     )
-  }
-
-  /// Turns one vertex's bytes into what xrLC had before it quantized them.
-  fn decode_vertex<T: ByteOrder>(layout: &LevelVertexLayout, vertex: &[u8]) -> LevelVertex {
-    let (normal, hemi): (Vector3d, u8) = match layout.get_normal_offset() {
-      Some(offset) => LevelVertex::decode_direction(Self::take_four(vertex, offset)),
-      None => (Vector3d { x: 0.0, y: 0.0, z: 0.0 }, 0),
-    };
-
-    // The low byte of each base coordinate rides in a tangent or binormal alpha, so the coordinate is rebuilt from
-    // two elements rather than one. A tree carries both but adds neither: `deffer_tree_*.vs` scales `I.tc` by
-    // `consts` alone.
-    let tangent: Option<(Vector3d, u8)> = layout
-      .get_tangent_offset()
-      .map(|offset| LevelVertex::decode_direction(Self::take_four(vertex, offset)));
-    let binormal: Option<(Vector3d, u8)> = layout
-      .get_binormal_offset()
-      .map(|offset| LevelVertex::decode_direction(Self::take_four(vertex, offset)));
-
-    let fraction_u: u8 = if layout.is_tree() {
-      0
-    } else {
-      tangent.as_ref().map_or(0, |(_, fraction)| *fraction)
-    };
-    let fraction_v: u8 = if layout.is_tree() {
-      0
-    } else {
-      binormal.as_ref().map_or(0, |(_, fraction)| *fraction)
-    };
-
-    LevelVertex {
-      binormal: binormal.map(|(direction, _)| direction),
-      color: layout
-        .get_color_offset()
-        .map(|offset| LevelVertex::decode_color(Self::take_four(vertex, offset))),
-      hemi,
-      lightmap_coordinate: layout.get_lightmap_coordinate_offset().map(|offset| {
-        (
-          f32::from(Self::take_short::<T>(vertex, offset)) / LevelVertexLayout::LIGHTMAP_QUANT,
-          f32::from(Self::take_short::<T>(vertex, offset + 2)) / LevelVertexLayout::LIGHTMAP_QUANT,
-        )
-      }),
-      normal,
-      position: Self::take_position::<T>(vertex, layout.get_position_offset()),
-      tangent: tangent.map(|(direction, _)| direction),
-      texture_coordinate: layout.get_texture_coordinate_offset().map_or((0.0, 0.0), |offset| {
-        (
-          layout.rebuild_coordinate(Self::take_short::<T>(vertex, offset), fraction_u),
-          layout.rebuild_coordinate(Self::take_short::<T>(vertex, offset + 2), fraction_v),
-        )
-      }),
-    }
-  }
-
-  /// The four bytes of a `D3DCOLOR` element. The layout validated the offset, so the slice is there.
-  fn take_four(vertex: &[u8], offset: u16) -> [u8; 4] {
-    let at: usize = offset as usize;
-    let mut bytes: [u8; 4] = [0; 4];
-
-    bytes.copy_from_slice(&vertex[at..at + 4]);
-
-    bytes
-  }
-
-  /// One signed 16-bit component of a coordinate element.
-  fn take_short<T: ByteOrder>(vertex: &[u8], offset: u16) -> i16 {
-    let at: usize = offset as usize;
-
-    T::read_i16(&vertex[at..at + 2])
-  }
-
-  /// The three floats of a position element.
-  fn take_position<T: ByteOrder>(vertex: &[u8], offset: u16) -> Vector3d {
-    let at: usize = offset as usize;
-
-    Vector3d {
-      x: T::read_f32(&vertex[at..at + 4]),
-      y: T::read_f32(&vertex[at + 4..at + 8]),
-      z: T::read_f32(&vertex[at + 8..at + 12]),
-    }
   }
 
   /// Takes the bytes of one payload that a range covers, leaving the chunk where it was.

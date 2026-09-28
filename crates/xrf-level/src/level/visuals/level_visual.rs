@@ -22,12 +22,13 @@ pub struct LevelVisual {
   pub children: Vec<u32>,
   /// Where a tree stands and how it is lit, absent for every visual that is not one.
   pub tree: Option<OgfTreeDefinitionChunk>,
-  /// The impostor a `MT_LOD` visual draws in place of the trees it composes, seen from far enough away.
-  pub lod: Option<OgfLodDefinitionChunk>,
-  /// The windows of a progressive static mesh, stored with the visual.
-  pub swi: Option<OgfSwiDataChunk>,
-  /// Which of `level.geom`'s window tables a progressive tree draws from.
-  pub swi_container: Option<OgfSwiContainerChunk>,
+  /// The impostor a `MT_LOD` visual draws in place of the trees it composes, seen from far enough away, or why it could
+  /// not be read: a drawing detail, which costs the visual that part rather than the level.
+  pub lod: Option<XrfResult<OgfLodDefinitionChunk>>,
+  /// The windows of a progressive static mesh, stored with the visual, or why they could not be read.
+  pub swi: Option<XrfResult<OgfSwiDataChunk>>,
+  /// Which of `level.geom`'s window tables a progressive tree draws from, or why that could not be read.
+  pub swi_container: Option<XrfResult<OgfSwiContainerChunk>>,
 }
 
 impl LevelVisual {
@@ -36,7 +37,7 @@ impl LevelVisual {
   /// # Errors
   ///
   /// Returns an error when the visual carries no header, or when a chunk it does carry does not end where its record
-  /// says it should.
+  /// says it should; its impostor and slide windows are kept as read or as the reason they were not instead.
   pub fn read_from_chunk<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let chunks: Vec<ChunkReader<D>> = reader.read_children()?;
 
@@ -59,18 +60,10 @@ impl LevelVisual {
         Some(mut chunk) => Some(chunk.read_xr::<T, _>()?),
         None => None,
       },
-      lod: match find_optional_chunk_by_id(&chunks, OgfLodDefinitionChunk::CHUNK_ID) {
-        Some(mut chunk) => Some(chunk.read_xr::<T, _>()?),
-        None => None,
-      },
-      swi: match find_optional_chunk_by_id(&chunks, OgfSwiDataChunk::CHUNK_ID) {
-        Some(mut chunk) => Some(chunk.read_xr::<T, _>()?),
-        None => None,
-      },
-      swi_container: match find_optional_chunk_by_id(&chunks, OgfSwiContainerChunk::CHUNK_ID) {
-        Some(mut chunk) => Some(chunk.read_xr::<T, _>()?),
-        None => None,
-      },
+      lod: find_optional_chunk_by_id(&chunks, OgfLodDefinitionChunk::CHUNK_ID).map(|mut chunk| chunk.read_xr::<T, _>()),
+      swi: find_optional_chunk_by_id(&chunks, OgfSwiDataChunk::CHUNK_ID).map(|mut chunk| chunk.read_xr::<T, _>()),
+      swi_container: find_optional_chunk_by_id(&chunks, OgfSwiContainerChunk::CHUNK_ID)
+        .map(|mut chunk| chunk.read_xr::<T, _>()),
     })
   }
 

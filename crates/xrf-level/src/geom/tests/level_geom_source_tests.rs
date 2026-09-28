@@ -6,7 +6,9 @@ use crate::geom::buffers::level_geom_vertex_element::LevelGeomVertexElement;
 use crate::geom::level_geom_file::LevelGeomFile;
 use crate::geom::level_geom_source::LevelGeomSource;
 use crate::geom::vertex::level_vertex::LevelVertex;
+use crate::geom::vertex::level_vertex_bytes::LevelVertexBytes;
 use crate::geom::vertex::level_vertex_layout::LevelVertexLayout;
+use crate::geom::vertex::level_vertex_payload::LevelVertexPayload;
 use crate::tests::fixtures::chunk;
 
 /// One declaration element as the file stores it: stream, offset, type, method, usage, usage index.
@@ -242,7 +244,7 @@ fn test_reads_the_fastpath_declaration_that_carries_positions_alone() -> XrfResu
 
   assert!(layout.is_fastpath());
   assert!(!layout.is_lightmapped());
-  assert_eq!(layout.stride, 12);
+  assert_eq!(layout.get_stride(), 12);
 
   let vertices: Vec<LevelVertex> = source.read_vertices::<XRayByteOrder>(0, 0, 1)?;
 
@@ -355,9 +357,68 @@ fn test_reads_a_range_of_vertices_as_stored_beside_its_layout() -> XrfResult {
 
   let payload = source.read_vertex_payload(0, 1, 1)?;
 
-  assert_eq!(payload.layout.stride, 32);
+  assert_eq!(payload.get_layout().get_stride(), 32);
   assert_eq!(payload.len(), 1);
-  assert_eq!(payload.bytes, second, "the second vertex, byte for byte");
+  assert_eq!(payload.get_bytes(), second, "the second vertex, byte for byte");
+
+  Ok(())
+}
+
+#[test]
+fn test_reads_each_element_of_a_stored_vertex_as_it_is_stored() -> XrfResult {
+  let source: LevelGeomSource<_> = LevelGeomSource::open_from_bytes::<XRayByteOrder>(new_geometry(
+    &new_lightmapped_declaration(),
+    &new_lightmapped_vertex(),
+    1,
+    &[0],
+  )?)?;
+  let payload: LevelVertexPayload = source.read_vertex_payload(0, 0, 1)?;
+  let vertex: LevelVertexBytes = payload.vertices().next().expect("one vertex");
+
+  assert_eq!(vertex.get_position::<XRayByteOrder>(), Vector3d::new(1.5, 2.5, 3.5));
+  assert_eq!(vertex.get_normal(), Some([0, 128, 255, 77]));
+  assert_eq!(vertex.get_tangent(), Some([0, 128, 255, 128]));
+  assert_eq!(vertex.get_binormal(), Some([255, 128, 0, 64]));
+  assert_eq!(vertex.get_color(), None);
+  // Two shorts, and zeroes where a tree's wind terms would be.
+  assert_eq!(
+    vertex.get_texture_coordinate::<XRayByteOrder>(),
+    Some([1024, 512, 0, 0])
+  );
+  assert_eq!(vertex.get_lightmap_coordinate::<XRayByteOrder>(), Some([16384, -16384]));
+  assert_eq!(
+    vertex.decode::<XRayByteOrder>(),
+    source.read_vertices::<XRayByteOrder>(0, 0, 1)?[0]
+  );
+
+  Ok(())
+}
+
+#[test]
+fn test_reads_a_trees_coordinate_as_its_four_shorts() -> XrfResult {
+  let mut declaration: Vec<u8> = new_element(0, 2, 0, 0);
+
+  declaration.extend(new_element(12, 7, 5, 0)); // TEXCOORD0:SHORT4
+  declaration.extend(new_terminator());
+
+  let mut vertex: Vec<u8> = vec![0; 12];
+
+  for short in [2048i16, 1024, 7, 9] {
+    vertex.extend_from_slice(&short.to_le_bytes());
+  }
+
+  let source: LevelGeomSource<_> =
+    LevelGeomSource::open_from_bytes::<XRayByteOrder>(new_geometry(&declaration, &vertex, 1, &[0])?)?;
+  let payload: LevelVertexPayload = source.read_vertex_payload(0, 0, 1)?;
+
+  assert_eq!(payload.get_layout().get_texture_coordinate_shorts(), 4);
+  assert_eq!(
+    payload
+      .vertices()
+      .next()
+      .and_then(|vertex| vertex.get_texture_coordinate::<XRayByteOrder>()),
+    Some([2048, 1024, 7, 9])
+  );
 
   Ok(())
 }

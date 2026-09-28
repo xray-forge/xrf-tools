@@ -119,9 +119,9 @@ fn a_grid_reports_what_it_plants_rather_than_how_many_cells_it_has() -> XrfResul
   let library: LevelDetailsFile = LevelDetailsFile::read_from_bytes::<XRayByteOrder>(library_bytes()?)?;
 
   assert_eq!(library.get_slots_count(), 4);
-  assert_eq!(library.get_planted_slots_count::<XRayByteOrder>(), 2);
+  assert_eq!(library.get_planted_slots_count(), 2);
   // Corners, not slots: object 0 sits in two of them and object 1 in one.
-  assert_eq!(library.get_object_usage::<XRayByteOrder>(), vec![2, 1]);
+  assert_eq!(library.get_object_usage(), vec![2, 1]);
 
   Ok(())
 }
@@ -141,17 +141,13 @@ fn a_grid_covers_the_ground_its_slot_size_gives_it() -> XrfResult {
 #[test]
 fn a_slot_is_decoded_only_where_one_is_looked_at() -> XrfResult {
   let library: LevelDetailsFile = LevelDetailsFile::read_from_bytes::<XRayByteOrder>(library_bytes()?)?;
-  let slots: Vec<LevelDetailsSlot> = library.iter_slots::<XRayByteOrder>().collect();
+  let slots: Vec<LevelDetailsSlot> = library.iter_slots().collect();
 
   assert_eq!(slots.len(), 4);
   assert_eq!(slots[1].objects, [Some(0), Some(1), None, None]);
   assert!(!slots[3].is_planted());
-  assert_eq!(library.get_slot::<XRayByteOrder>(1), Some(slots[1]));
-  assert_eq!(
-    library.get_slot::<XRayByteOrder>(4),
-    None,
-    "a cell past the grid holds no slot"
-  );
+  assert_eq!(library.get_slot(1), Some(slots[1]));
+  assert_eq!(library.get_slot(4), None, "a cell past the grid holds no slot");
 
   Ok(())
 }

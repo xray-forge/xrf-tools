@@ -44,6 +44,7 @@ pub use crate::geom::buffers::level_geom_vertex_element::*;
 pub use crate::geom::level_geom_file::*;
 pub use crate::geom::level_geom_source::*;
 pub use crate::geom::vertex::level_vertex::*;
+pub use crate::geom::vertex::level_vertex_bytes::*;
 pub use crate::geom::vertex::level_vertex_coordinate::*;
 pub use crate::geom::vertex::level_vertex_layout::*;
 pub use crate::geom::vertex::level_vertex_payload::*;

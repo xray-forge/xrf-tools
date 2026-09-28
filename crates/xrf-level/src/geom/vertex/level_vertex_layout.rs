@@ -1,4 +1,4 @@
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use xrf_error::{XrfError, XrfResult};
 
 use crate::geom::buffers::level_geom_vertex_buffer::LevelGeomVertexBuffer;
@@ -6,10 +6,11 @@ use crate::geom::buffers::level_geom_vertex_element::LevelGeomVertexElement;
 use crate::geom::vertex::level_vertex_coordinate::LevelVertexCoordinate;
 
 /// Where each attribute of a level vertex sits, and how to turn its bytes back into what xrLC had.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LevelVertexLayout {
-  pub stride: u32,
+  /// Bytes a vertex takes, which every element this places fits inside.
+  stride: u32,
   position: u16,
   normal: Option<u16>,
   tangent: Option<u16>,
@@ -41,6 +42,12 @@ impl LevelVertexLayout {
   const KIND_SHORT2: u8 = 6;
   /// `D3DDECLTYPE_SHORT4`.
   const KIND_SHORT4: u8 = 7;
+
+  /// Shorts a baked surface's base coordinate element holds, `SHORT2`.
+  pub const BASE_COORDINATE_SHORTS: usize = 2;
+
+  /// Shorts a tree's holds, `SHORT4`: the coordinate, then its wind terms.
+  pub const TREE_COORDINATE_SHORTS: usize = 4;
 
   /// What a base coordinate is divided by: `unpack_tc_base` scales by `32.0 / 32768.0` (`common_functions.h`).
   pub const BASE_QUANT: f32 = 1024.0;
@@ -143,6 +150,20 @@ impl LevelVertexLayout {
   /// Rebuilds a base coordinate from its 16-bit part and the low byte that rides in a tangent or binormal alpha.
   pub fn rebuild_coordinate(&self, primary: i16, fraction: u8) -> f32 {
     (f32::from(primary) + f32::from(fraction) / Self::BASE_FRACTION) / self.get_base_quant()
+  }
+
+  /// Bytes a vertex takes.
+  pub const fn get_stride(&self) -> u32 {
+    self.stride
+  }
+
+  /// Shorts the base coordinate element holds, which is a tree's four or a baked surface's two.
+  pub const fn get_texture_coordinate_shorts(&self) -> usize {
+    if self.is_tree() {
+      Self::TREE_COORDINATE_SHORTS
+    } else {
+      Self::BASE_COORDINATE_SHORTS
+    }
   }
 
   /// Where the position of a vertex sits, relative to the start of that vertex.
