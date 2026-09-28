@@ -1,29 +1,30 @@
 import { default as QueryStatsIcon } from "@mui/icons-material/QueryStats";
 import { ReactElement } from "react";
 
+import { RenderPassTimingFormRow } from "@/core/render/components/controls/RenderPassTimingFormRow";
 import { EditorPopoverToggle } from "@/core/shell/editor/EditorPopoverToggle";
-import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface ILevelReadoutActionProps extends BaseComponentProps {
   isOn: boolean;
-  /** Whether the frame readout lists each pass's GPU time. */
-  isAdvanced: boolean;
+  /** Whether the settings time every pass on the GPU, which the frame readout then lists. */
+  isGpuTimed: boolean;
   onToggle: () => void;
-  onToggleAdvanced: () => void;
+  /** Sets in the settings whether every viewport times its passes. */
+  onChangeGpuTimed: (isGpuTimed: boolean) => void;
 }
 
 /**
- * Whether the readouts are laid over the viewport, and whether the frame's lists what each pass cost.
+ * Whether the readouts are laid over the viewport, and whether every pass is timed for the frame's.
  */
 export function LevelReadoutAction({
   "data-testid": dataTestId = "level-readout-action",
   id,
   className,
   isOn,
-  isAdvanced,
+  isGpuTimed,
   onToggle,
-  onToggleAdvanced,
+  onChangeGpuTimed,
 }: ILevelReadoutActionProps): ReactElement {
   return (
     <EditorPopoverToggle
@@ -33,7 +34,7 @@ export function LevelReadoutAction({
       label={"Readout"}
       description={
         isOn
-          ? isAdvanced
+          ? isGpuTimed
             ? "Frame cost with each pass's GPU time, and the camera's place"
             : "Frame cost and the camera's place"
           : "Readouts off, a clean look at the level"
@@ -43,7 +44,7 @@ export function LevelReadoutAction({
       toggleLabel={"Show the readouts"}
       onToggle={onToggle}
     >
-      <CheckboxFormRow label={"Advanced stats: GPU time per pass"} isChecked={isAdvanced} onChange={onToggleAdvanced} />
+      <RenderPassTimingFormRow isChecked={isGpuTimed} onChange={onChangeGpuTimed} />
     </EditorPopoverToggle>
   );
 }

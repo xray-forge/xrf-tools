@@ -8,25 +8,25 @@ import { ILevelRendererSettingsInputs, toLevelRendererSettings } from "@/core/le
 import { DEFAULT_LEVEL_VIEW_OPTIONS } from "@/core/level/lib/view/level-view-options";
 import { mockLevelFeatureOptions } from "@/fixtures/mocks/level.mocks";
 
-function toInputs(isTimed: boolean, isAdvancedStatsVisible: boolean): ILevelRendererSettingsInputs {
+function toInputs(isGpuTimed: boolean): ILevelRendererSettingsInputs {
   return {
     config: DEFAULT_LEVEL_RENDER_CONFIG,
-    features: { ...resolveRendererFeatures(DEFAULT_RENDERER_FEATURE_CHOICE), isGpuTimed: isTimed },
+    features: { ...resolveRendererFeatures(DEFAULT_RENDERER_FEATURE_CHOICE), isGpuTimed },
     lighting: DEFAULT_LEVEL_LIGHTING,
     lod: DEFAULT_LEVEL_LOD_OPTIONS,
-    options: { ...DEFAULT_LEVEL_VIEW_OPTIONS, isAdvancedStatsVisible },
+    options: DEFAULT_LEVEL_VIEW_OPTIONS,
     pacing: DEFAULT_RENDER_FRAME_PACING,
     view: mockLevelFeatureOptions(),
   };
 }
 
 describe("toLevelRendererSettings", () => {
-  it("times the GPU only while the readout shows what each pass cost", () => {
-    expect(toLevelRendererSettings(toInputs(true, false)).features.isGpuTimed).toBe(false);
-    expect(toLevelRendererSettings(toInputs(true, true)).features.isGpuTimed).toBe(true);
-  });
-
-  it("leaves timing off where the settings turn it off, whatever the readout shows", () => {
-    expect(toLevelRendererSettings(toInputs(false, true)).features.isGpuTimed).toBe(false);
+  it("times the GPU exactly as the settings do, whatever the toolbar shows", () => {
+    expect(toLevelRendererSettings(toInputs(true)).features.isGpuTimed).toBe(true);
+    expect(toLevelRendererSettings(toInputs(false)).features.isGpuTimed).toBe(false);
+    expect(
+      toLevelRendererSettings({ ...toInputs(true), options: { ...DEFAULT_LEVEL_VIEW_OPTIONS, isStatsVisible: false } })
+        .features.isGpuTimed
+    ).toBe(true);
   });
 });

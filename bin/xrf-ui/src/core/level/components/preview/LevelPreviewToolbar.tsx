@@ -54,6 +54,8 @@ interface ILevelPreviewToolbarProps extends BaseComponentProps {
   onChangeFeatures: (features: ILevelFeatureOptions) => void;
   /** Sets the render scale in the settings, every viewport's. */
   onChangeScale: (scale: ERendererRenderScale) => void;
+  /** Sets in the settings whether every viewport times its passes. */
+  onChangeGpuTimed: (isGpuTimed: boolean) => void;
   onBack?: () => void;
 }
 
@@ -79,6 +81,7 @@ export function LevelPreviewToolbar({
   onChangeLod,
   onChangeFeatures,
   onChangeScale,
+  onChangeGpuTimed,
   onBack,
 }: ILevelPreviewToolbarProps): ReactElement {
   const onToggle = useCallback(
@@ -244,9 +247,9 @@ export function LevelPreviewToolbar({
 
           <LevelReadoutAction
             isOn={options.isStatsVisible}
-            isAdvanced={options.isAdvancedStatsVisible}
+            isGpuTimed={settings.isGpuTimed}
             onToggle={() => onToggle("isStatsVisible")}
-            onToggleAdvanced={() => onToggle("isAdvancedStatsVisible")}
+            onChangeGpuTimed={onChangeGpuTimed}
           />
 
           {actions ? (

@@ -9,6 +9,7 @@ import {
 } from "@xrf/renderer";
 import { ReactElement } from "react";
 
+import { RenderPassTimingFormRow } from "@/core/render/components/controls/RenderPassTimingFormRow";
 import {
   formatExposure,
   formatLowLuminance,
@@ -178,9 +179,7 @@ export function SettingsRendererFeatures(): ReactElement {
           onChange={(isOcclusionCulled: boolean) => settingsService.setRendererOverrides({ isOcclusionCulled })}
         />
 
-        <CheckboxFormRow
-          label={"GPU timings"}
-          description={"Times every pass on the GPU for the readout."}
+        <RenderPassTimingFormRow
           isChecked={features.isGpuTimed}
           onChange={(isGpuTimed: boolean) => settingsService.setRendererOverrides({ isGpuTimed })}
         />

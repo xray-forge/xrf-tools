@@ -24,7 +24,8 @@ export const RENDERER_PRESETS: Readonly<Record<ERendererPreset, IRendererFeature
     antialiasing: ERendererAntialiasing.SMAA,
     exposure: DEFAULT_RENDERER_EXPOSURE_SETTINGS,
     grass: DEFAULT_RENDERER_GRASS_SETTINGS,
-    isGpuTimed: true,
+    // Timing every pass costs 1-4% of the frame rate, so it is asked for rather than paid by default.
+    isGpuTimed: false,
     isOcclusionCulled: true,
     lights: DEFAULT_RENDERER_LIGHTS_SETTINGS,
     lod: DEFAULT_RENDERER_LOD_SETTINGS,
@@ -37,7 +38,7 @@ export const RENDERER_PRESETS: Readonly<Record<ERendererPreset, IRendererFeature
     antialiasing: ERendererAntialiasing.NONE,
     exposure: DEFAULT_RENDERER_EXPOSURE_SETTINGS,
     grass: { ...DEFAULT_RENDERER_GRASS_SETTINGS, isEnabled: false },
-    isGpuTimed: true,
+    isGpuTimed: false,
     isOcclusionCulled: true,
     // Unshadowed, the lights cost a pass over the screen: an editor keeps seeing what lights a room.
     lights: { ...DEFAULT_RENDERER_LIGHTS_SETTINGS, isShadowed: false },

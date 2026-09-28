@@ -92,6 +92,11 @@ export function LevelPreviewLayout({
     [settingsService]
   );
 
+  const onChangeGpuTimed = useCallback(
+    (isGpuTimed: boolean) => settingsService.setRendererOverrides({ isGpuTimed }),
+    [settingsService]
+  );
+
   useEditorPanels(
     (): Array<IEditorPanel> => [
       {
@@ -141,6 +146,7 @@ export function LevelPreviewLayout({
           onChangeLod={viewService.setLod}
           onChangeFeatures={viewService.setFeatures}
           onChangeScale={onChangeScale}
+          onChangeGpuTimed={onChangeGpuTimed}
           onBack={onBack}
         />
       }

@@ -1,5 +1,6 @@
 import { describe, expect, it, jest } from "@jest/globals";
-import { act, fireEvent, RenderResult } from "@testing-library/react";
+import { act, fireEvent, RenderResult, waitFor, within } from "@testing-library/react";
+import { userEvent } from "@testing-library/user-event";
 import { Container } from "@wirestate/core";
 import { runInAction } from "@wirestate/mobx";
 
@@ -15,6 +16,8 @@ import {
   LevelViewportService,
   LevelViewService,
 } from "@/core/level/services";
+import { SettingsRendererFeatures } from "@/core/settings/components/SettingsDialog/SettingsRenderSection/SettingsRendererFeatures";
+import { SettingsService } from "@/core/settings/services/settings";
 import { ApplicationStatusBar } from "@/core/shell/footer/ApplicationStatusBar";
 import { setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
@@ -93,6 +96,18 @@ function setStreaming(loader: LevelLoadService, streaming: ILevelStreamProgress)
   runInAction(() => {
     loader.streaming = streaming;
   });
+}
+
+/** Opens the readout's settings with a right click, and answers the popover. */
+async function openReadout(view: RenderResult): Promise<HTMLElement> {
+  await userEvent.pointer({ keys: "[MouseRight]", target: view.getByRole("button", { name: "Readout" }) });
+
+  return view.findByRole("dialog", { name: "Readout" });
+}
+
+async function closeReadout(view: RenderResult): Promise<void> {
+  await userEvent.keyboard("{Escape}");
+  await waitFor(() => expect(view.queryByRole("dialog", { name: "Readout" })).not.toBeInTheDocument());
 }
 
 describe("LevelPreviewLayout", () => {
@@ -274,6 +289,56 @@ describe("LevelPreviewLayout", () => {
     const { view } = renderReporting();
 
     expect(await view.findByText("Backend 260 MB · Webview 2 GB")).toBeInTheDocument();
+  });
+
+  // With the settings timing the passes, the readout lists them as the renderer reports them.
+  it("lists each pass's GPU time in the readout while the renderer reports them timed", () => {
+    const { view, viewport } = renderReporting();
+
+    act(() =>
+      viewport.report(EMPTY_LEVEL_STATS, camera(), { isGpuTimed: true, passes: [{ gpuTime: 0.5, name: "gbuffer" }] })
+    );
+
+    expect(view.getByTestId("render-frame-passes")).toHaveTextContent("GPU0.50 msgbuffer0.50");
+
+    act(() => viewport.report(EMPTY_LEVEL_STATS, camera(), { isGpuTimed: false, passes: [] }));
+
+    expect(view.queryByTestId("render-frame-passes")).not.toBeInTheDocument();
+  });
+
+  // One switch, offered where the readout is and where the settings are: either place sets it, and both show it.
+  it("times the passes from the readout's popover and from the settings alike", async () => {
+    window.localStorage.clear();
+
+    const container: Container = mockContainer([
+      LevelLoadService,
+      LevelRenderService,
+      LevelViewService,
+      LevelViewportService,
+    ]);
+    const settings: SettingsService = container.get(SettingsService);
+    const view: RenderResult = renderWithProviders(
+      <>
+        <LevelPreviewLayout name={"levels\\zaton"} renderViewport={() => <div data-testid={"stub-viewport"} />} />
+        <SettingsRendererFeatures />
+      </>,
+      { container, route: "/level-viewer" }
+    );
+
+    expect(settings.rendererFeatures.isGpuTimed).toBe(false);
+
+    await userEvent.click(within(await openReadout(view)).getByRole("checkbox", { name: "GPU time per pass" }));
+
+    expect(settings.rendererFeatures.isGpuTimed).toBe(true);
+
+    await closeReadout(view);
+
+    expect(view.getByRole("checkbox", { name: "GPU time per pass" })).toBeChecked();
+
+    await userEvent.click(view.getByRole("checkbox", { name: "GPU time per pass" }));
+
+    expect(settings.rendererFeatures.isGpuTimed).toBe(false);
+    expect(within(await openReadout(view)).getByRole("checkbox", { name: "GPU time per pass" })).not.toBeChecked();
   });
 
   // A sector lands many times a second while a level streams in, and only the progress and the status bar say so.
