@@ -1,8 +1,7 @@
 use std::sync::Arc;
 
-use xrf_chunk::ChunkReader;
+use xrf_chunk::{ChunkReader, XRayByteOrder};
 use xrf_error::XrfResult;
-use xrf_spawn::XRayByteOrder;
 use xrf_thm::{ThmBumpChunk, ThmFile, ThmMaterialChunk, ThmTextureType};
 use xrf_vfs::{XrayAsset, XrayAssetType, XrayProbe, XrayResolution};
 

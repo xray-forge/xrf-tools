@@ -4,8 +4,9 @@ use xrf_shaders::ShaderBlenderClass;
 pub(crate) struct XraySurfaceBumpRule;
 
 impl XraySurfaceBumpRule {
-  /// Whether a class compiles its deferred element through `uber_deffer` asking for a bump, which binds the base
-  /// texture's pair wherever it declares one (`blenders/uber_deffer.cpp`, `r2_blenders.cpp`).
+  /// Whether a class binds its base texture's bump pair where the base declares one: every class `uber_deffer` compiles,
+  /// which binds it whenever `bump_exist()` (`uber_deffer.cpp`), save grass, whose `deffer_detail_*` programs ship
+  /// only `_flat` in every tree.
   pub(crate) const fn is_bumped(class: ShaderBlenderClass) -> bool {
     matches!(
       class,

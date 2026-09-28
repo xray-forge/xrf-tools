@@ -42,7 +42,7 @@ impl XRayShaderScript {
           .filter(|sampler| {
             sampler.function() == method_call.function() && sampler.line_number() >= from && sampler.line_number() < to
           })
-          .filter_map(|sampler| XRayShaderSampler::of(sampler, &lua_script))
+          .filter_map(|sampler| XRayShaderSampler::of(sampler))
           .collect();
 
         Some(XRayShaderPass::of(method_call, vertex_shader.clone(), pixel_shader.clone()).with_samplers(bound))
@@ -230,6 +230,45 @@ end
       Some(XRayShaderSamplerTexture::Named(r"water\water_dudv".to_owned()))
     );
     assert!(special.sampler("s_nmap").is_none());
+
+    Ok(())
+  }
+
+  // A parameter or a local of the pass's function hides a top-level name of the same spelling, as it does in Lua.
+  #[test]
+  fn reads_a_samplers_texture_through_the_binding_nearest_it() -> XrfResult {
+    let script: XRayShaderScript = XRayShaderScript::parse(
+      Path::new("shaders/r2/effects_shadowed.s"),
+      r#"
+local t_base   = "outer\\base"
+local tex_nmap = "outer\\normal"
+
+function normal(shader, t_base, t_second, t_detail)
+  local tex_nmap = "inner\\normal"
+
+  shader:begin("model_def_lq", "model_def_lq")
+  shader:sampler("s_base"):texture(t_base)
+  shader:sampler("s_nmap"):texture(tex_nmap)
+  shader:sampler("s_image"):texture(t_rt)
+end
+"#,
+    )?;
+
+    let normal: &XRayShaderPass = script.pass_of(XRayShaderPass::BASE_FUNCTION).expect("a base pass");
+    let texture = |name: &str| normal.sampler(name).map(|sampler| sampler.texture().clone());
+
+    assert_eq!(
+      texture("s_base"),
+      Some(XRayShaderSamplerTexture::Parameter("t_base".to_owned()))
+    );
+    assert_eq!(
+      texture("s_nmap"),
+      Some(XRayShaderSamplerTexture::Named(r"inner\normal".to_owned()))
+    );
+    assert_eq!(
+      texture("s_image"),
+      Some(XRayShaderSamplerTexture::Global("t_rt".to_owned()))
+    );
 
     Ok(())
   }

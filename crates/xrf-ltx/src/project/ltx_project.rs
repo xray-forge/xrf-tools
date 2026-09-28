@@ -95,7 +95,6 @@ impl LtxProject {
     Ok(Self {
       dialect: options.dialect,
       is_caching_resolutions: options.is_caching_resolutions,
-      root: PathBuf::from(roots.describe()),
       scope,
       vfs,
       ..Self::empty(roots.describe())

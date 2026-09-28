@@ -71,6 +71,8 @@ fn every_class_compiling_through_uber_deffer_binds_the_pair() {
   }
 }
 
+// `uber_deffer` would bind grass's pair as it binds any other's, but no tree ships a `deffer_detail_*_bump` program to
+// draw it with: grass draws flat, the only way the engine can.
 #[test]
 fn grass_binds_no_pair_whatever_its_base_declares() {
   let tree: FixtureTree = bumped_tree("surface_bump_detail", ShaderBlenderFixture::detail("details\\blend"));

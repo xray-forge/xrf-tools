@@ -364,6 +364,52 @@ fn a_forgotten_failure_is_tried_again() {
   );
 }
 
+// A fork is what mounts copy-on-write: the world it came from keeps serving reads unchanged while it mounts more.
+#[test]
+fn a_fork_mounts_more_without_changing_the_world_it_came_from() {
+  let first: PathBuf = install("fork_first", &["gamedata\\configs\\system.ltx"]);
+  let second: PathBuf = install(
+    "fork_second",
+    &["db\\textures\\textures.db0", "gamedata\\configs\\game.ltx"],
+  );
+  let first_plan: XrayProbePlan = XrayRoots::one(first, XrayMountMode::Installation)
+    .to_probe_plan()
+    .expect("roots plan");
+  let second_plan: XrayProbePlan = XrayRoots::one(second, XrayMountMode::Installation)
+    .to_probe_plan()
+    .expect("roots plan");
+
+  let mut original: XrayVfs = XrayVfs::new();
+  let steps: Vec<XrayProbeStep> = first_plan.mount_into(&mut original).expect("roots mount");
+  let mut fork: XrayVfs = original.fork();
+
+  assert_eq!(
+    first_plan.find_mounted(&fork),
+    Some(steps),
+    "a fork holds every mount it came from"
+  );
+
+  second_plan.mount_into(&mut fork).expect("roots mount into the fork");
+
+  assert_eq!(
+    second_plan.find_mounted(&original),
+    None,
+    "the original holds none of the fork's mounts"
+  );
+  assert!(original.get_skipped_mounts().is_empty());
+  assert!(second_plan.find_mounted(&fork).is_some());
+  assert_eq!(
+    fork.get_skipped_mounts().len(),
+    1,
+    "its own failure, settled in it alone"
+  );
+  assert_eq!(
+    fork.fork().get_skipped_mounts().len(),
+    1,
+    "and carried on into a fork of it"
+  );
+}
+
 #[test]
 fn a_probe_lists_what_sits_directly_inside_a_directory() {
   let root: PathBuf = install(

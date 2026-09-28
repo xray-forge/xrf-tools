@@ -37,7 +37,8 @@ impl SpawnALifeSpawnsChunk {
   ///
   /// # Errors
   ///
-  /// Returns an error when the chunk's own layout cannot be read: its count, its objects, or one object's chunk.
+  /// Returns an error when the chunk's own layout cannot be read: its count, its objects, or one object's chunk, or when
+  /// it holds another number of objects than it declares.
   pub fn read_each<T: ByteOrder, D: ChunkDataSource>(
     reader: &mut ChunkReader<D>,
     visit: impl FnMut(u32, XrfResult<AlifeObject>),
@@ -64,10 +65,20 @@ impl SpawnALifeSpawnsChunk {
       "alife objects",
     )?;
 
+    let mut visited: u32 = 0;
+
     for object_reader in ChunkIterator::from_start(&mut objects_reader)? {
       let mut object_reader: ChunkReader<D> = object_reader?;
 
       visit(object_reader.id, Self::read_object::<T, _>(&mut object_reader));
+      visited += 1;
+    }
+
+    // Answering the count is answering how many objects there are, so it has to be how many the chunk holds.
+    if visited != count {
+      return Err(XrfError::new_invalid_error(format!(
+        "Unexpected ALife spawns chunk holding {visited} objects, its count chunk declares {count}"
+      )));
     }
 
     Ok((count, objects_reader))
@@ -319,6 +330,35 @@ mod tests {
 
     assert_eq!(count, 2);
     assert_eq!(read, vec![(0, Some(restrictor())), (1, None)]);
+
+    Ok(())
+  }
+
+  // A lenient reader answers the declared count as the spawn's total, so a chunk holding fewer objects than it declares
+  // is refused rather than overstating it.
+  #[test]
+  fn refuses_to_answer_a_count_the_objects_do_not_add_up_to() -> XrfResult {
+    let mut readable: ChunkWriter = ChunkWriter::new();
+    let mut count_writer: ChunkWriter = ChunkWriter::new();
+    let mut objects_writer: ChunkWriter = ChunkWriter::new();
+    let mut spawns_writer: ChunkWriter = ChunkWriter::new();
+
+    restrictor().write::<XRayByteOrder>(&mut readable)?;
+    count_writer.write_u32::<XRayByteOrder>(2)?;
+    // One object, which is room enough for the count's bound to pass it.
+    objects_writer.write_all(&object_chunk(0, &mut readable)?)?;
+    spawns_writer.write_all(&count_writer.flush_chunk_into_buffer::<XRayByteOrder>(0)?)?;
+    spawns_writer.write_all(&objects_writer.flush_chunk_into_buffer::<XRayByteOrder>(1)?)?;
+    spawns_writer.write_all(&ChunkWriter::new().flush_chunk_into_buffer::<XRayByteOrder>(2)?)?;
+
+    let mut reader: ChunkReader<InMemoryChunkDataSource> =
+      ChunkReader::from_vec(spawns_writer.flush_chunk_into_buffer::<XRayByteOrder>(0)?)?.read_child_by_index(0)?;
+
+    let error: String = SpawnALifeSpawnsChunk::read_each::<XRayByteOrder, _>(&mut reader, |_, _| {})
+      .expect_err("a count the objects fall short of")
+      .to_string();
+
+    assert!(error.contains("holding 1 objects"), "{error}");
 
     Ok(())
   }

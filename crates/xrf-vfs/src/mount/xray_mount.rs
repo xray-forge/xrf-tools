@@ -1,4 +1,5 @@
 use std::borrow::Cow;
+use std::sync::Arc;
 
 use serde::Serialize;
 use xrf_error::XrfResult;
@@ -16,14 +17,14 @@ pub struct XrayMountId(pub(crate) usize);
 /// One source mounted at a logical base.
 ///
 /// The base maps source-relative paths into the engine namespace. An empty base mounts a complete root; a base such as
-/// `configs\weapons` mounts only that logical subtree.
-#[derive(Debug)]
+/// `configs\weapons` mounts only that logical subtree. A clone shares the source, and with it the index read for it.
+#[derive(Clone, Debug)]
 pub struct XrayMount {
   id: XrayMountId,
   base: String,
   /// How the plan that produced this mount described it, absent for a source mounted by hand.
   origin: Option<String>,
-  source: Box<dyn XrayAssetSource>,
+  source: Arc<dyn XrayAssetSource>,
 }
 
 impl XrayMount {
@@ -37,7 +38,7 @@ impl XrayMount {
       base: normalize_base(base)?,
       id,
       origin: None,
-      source,
+      source: Arc::from(source),
     })
   }
 

@@ -7264,7 +7264,6 @@ dependencies = [
  "xrf-error",
  "xrf-particles",
  "xrf-shaders",
- "xrf-spawn",
  "xrf-test-utils",
  "xrf-thm",
  "xrf-vfs",

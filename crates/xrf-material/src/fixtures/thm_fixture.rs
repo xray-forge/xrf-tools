@@ -1,4 +1,4 @@
-use xrf_spawn::XRayByteOrder;
+use xrf_chunk::XRayByteOrder;
 use xrf_thm::{
   ThmBumpChunk, ThmBumpMode, ThmDetailChunk, ThmFile, ThmMaterial, ThmMaterialChunk, ThmTextureFlag,
   ThmTextureParamChunk, ThmTextureType,

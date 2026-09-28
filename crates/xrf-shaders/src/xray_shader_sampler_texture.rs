@@ -1,12 +1,15 @@
 /// What a script binds to one of its samplers, as far as reading it without running it can tell.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum XRayShaderSamplerTexture {
-  /// A texture named outright, or through a top-level local bound to its name: `water\water_normal`, or an engine
-  /// target such as `$user$sky0`.
+  /// A texture named outright, or through a local bound to its name where the sampler is written:
+  /// `water\water_normal`, or an engine target such as `$user$sky0`.
   Named(String),
   /// A value the renderer hands the function, such as `t_base`, the surface's own texture.
   Parameter(String),
-  /// Anything else: an expression, or nothing bound at all.
+  /// A name no local or parameter binds where the sampler is written, such as `t_rt`: whatever the renderer's state
+  /// holds under it.
+  Global(String),
+  /// Anything else: an expression, a local bound to one, or nothing bound at all.
   Unresolved,
 }
 

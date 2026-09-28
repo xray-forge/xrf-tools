@@ -1,6 +1,7 @@
 use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::format_path;
@@ -21,11 +22,13 @@ pub struct XrayVfs {
   mounts: Vec<XrayMount>,
   /// Parsed assets this world retains, governed by its own policy and empty unless a caller sets one.
   cache: XrayAssetCache,
-  /// Per-path account of what was physically read, absent unless a caller asked to be told.
-  trace: Option<XrayReadTrace>,
+  /// Per-path account of what was physically read, absent unless a caller asked to be told; one account however many
+  /// forks read.
+  trace: Option<Arc<XrayReadTrace>>,
   skipped: Vec<XraySkippedMount>,
-  /// Where in `skipped` each planned source that failed to open sits, so a failure is settled rather than retried.
-  failed: HashMap<(PathBuf, XraySourceKind), usize>,
+  /// Where in `skipped` each planned source that failed to open sits, by its path and then its kind, so a failure is
+  /// settled rather than retried and a lookup borrows the path it is asked about.
+  failed: HashMap<PathBuf, Vec<(XraySourceKind, usize)>>,
   /// Paths already mounted from a plan, so a later plan naming the same source reuses it.
   planned: HashMap<PathBuf, XrayMountId>,
 }
@@ -50,14 +53,30 @@ impl XrayVfs {
 
   /// Accounts for every physical read this world performs from here on.
   pub fn with_read_trace(mut self) -> Self {
-    self.trace = Some(XrayReadTrace::default());
+    self.trace = Some(Arc::default());
 
     self
   }
 
   /// What this world has read, or `None` when it was never asked to account for it.
   pub fn get_read_trace(&self) -> Option<&XrayReadTrace> {
-    self.trace.as_ref()
+    self.trace.as_deref()
+  }
+
+  /// A world over the same mounts, sharing each source and the index read for it rather than reading them again, to
+  /// mount more into while this one goes on serving reads.
+  ///
+  /// It keeps this world's cache policy, read trace and settled failures, and starts with nothing cached, as a mount
+  /// into it would leave it anyway.
+  pub fn fork(&self) -> Self {
+    Self {
+      cache: XrayAssetCache::new(self.cache.get_policy().clone()),
+      failed: self.failed.clone(),
+      mounts: self.mounts.clone(),
+      planned: self.planned.clone(),
+      skipped: self.skipped.clone(),
+      trace: self.trace.clone(),
+    }
   }
 
   /// Reads through a mount, accounting for the read when this world is tracing.
@@ -78,13 +97,13 @@ impl XrayVfs {
 
   /// Records a source that a plan named but could not open, once however many plans name it.
   pub(crate) fn record_skipped(&mut self, kind: XraySourceKind, skipped: XraySkippedMount) {
-    let key: (PathBuf, XraySourceKind) = (skipped.path.clone(), kind);
-
-    if self.failed.contains_key(&key) {
+    if self.skipped_mount(&skipped.path, kind).is_some() {
       return;
     }
 
-    self.failed.insert(key, self.skipped.len());
+    let index: usize = self.skipped.len();
+
+    self.failed.entry(skipped.path.clone()).or_default().push((kind, index));
     self.skipped.push(skipped);
   }
 
@@ -92,8 +111,10 @@ impl XrayVfs {
   pub(crate) fn skipped_mount(&self, path: &Path, kind: XraySourceKind) -> Option<&XraySkippedMount> {
     self
       .failed
-      .get(&(path.to_path_buf(), kind))
-      .and_then(|index| self.skipped.get(*index))
+      .get(path)?
+      .iter()
+      .find(|(failed, _)| *failed == kind)
+      .and_then(|(_, index)| self.skipped.get(*index))
   }
 
   /// Forgets every source that failed to open, so the next plan naming one tries it again.
