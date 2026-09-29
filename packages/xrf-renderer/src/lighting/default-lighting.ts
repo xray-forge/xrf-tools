@@ -35,6 +35,7 @@ export const DEFAULT_RENDERER_LIGHTING: IRendererLighting = {
   ambientColor: [0.02, 0.02, 0.02],
   fog: null,
   hemisphereColor: [0.470588, 0.368627, 0.329412],
+  isExtendedShading: false,
   rain: null,
   skyIrradiance: [0.5, 0.511, 0.548],
   sunColor: [0.905882, 0.839216, 0.694118],

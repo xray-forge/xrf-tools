@@ -1,9 +1,11 @@
 import {
+  abs,
   Discard,
   dot,
   float,
   If,
   length,
+  max,
   mix,
   normalize,
   reflect,
@@ -113,7 +115,8 @@ export function toFogColor(uniforms: RendererUniforms): Node<"vec3"> {
 
 /**
  * `hmodel` and `combine_1`: the hemisphere and ambient, times the screen's occlusion as `combine_1` multiplies
- * `hdiffuse` and `hspecular` by `occ`, added to what the lights accumulated.
+ * `hdiffuse` and `hspecular` by `occ`, added to what the lights accumulated. Vanilla adds every reflection white;
+ * Anomaly's tints the lights' by their colour and multiplies the lit albedo by the hemisphere's.
  */
 function toBaseColor(
   albedo: Node<"vec3">,
@@ -136,15 +139,38 @@ function toBaseColor(
     .mul(hemisphere.x)
     .add(lighting.ambient)
     .mul(ambientOcclusion);
-  const hemisphereGloss: Node<"vec3"> = toHemisphereEnvironment(
-    vec3(reflected.x, reflected.y.mul(2).sub(1), reflected.z),
-    uniforms
-  )
+  const isExtended: Node<"bool"> = lighting.extendedShading.greaterThan(0.5);
+  // Anomaly's `hmodel` reads the reflection on the cube's faces, remapped short of the top one, and weighs it by the
+  // rain: none while dry, a sheen as it pours, brightest where the hemisphere lights least.
+  const onFaces: Node<"vec3"> = reflected.div(max(max(abs(reflected.x), abs(reflected.y)), abs(reflected.z)));
+  const lookup: Node<"vec3"> = select(
+    isExtended,
+    vec3(onFaces.x, select(onFaces.y.lessThan(0.999), onFaces.y.mul(2).sub(1), onFaces.y), onFaces.z),
+    vec3(reflected.x, reflected.y.mul(2).sub(1), reflected.z)
+  );
+  const rain: Node<"float"> = lighting.rainDensity;
+  const weight: Node<"float"> = select(
+    isExtended,
+    gloss
+      .add(rain.mul(0.25))
+      .mul(hemisphere.x.oneMinus())
+      .mul(rain.mul(2 * 15)),
+    gloss
+  );
+  const hemisphereGloss: Node<"vec3"> = toHemisphereEnvironment(lookup, uniforms)
     .mul(hemisphere.y)
-    .mul(gloss)
+    .mul(weight)
     .mul(ambientOcclusion);
 
-  return albedo.mul(light.xyz.add(hemisphereDiffuse)).add(gloss.mul(light.w)).add(hemisphereGloss);
+  // `C = D * light`: the lit albedo, and the gloss times what the lights reflect.
+  const lit: Node<"vec3"> = albedo.mul(light.xyz.add(hemisphereDiffuse));
+  const glossed: Node<"float"> = gloss.mul(light.w);
+
+  return select(
+    isExtended,
+    lit.add(light.xyz.mul(glossed)).add(hemisphereGloss.mul(lit)),
+    lit.add(glossed).add(hemisphereGloss)
+  );
 }
 
 /**

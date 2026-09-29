@@ -29,6 +29,8 @@ export function toBaseLightingConstants(lighting: IRendererLighting): IBaseLight
     fogOffset,
     fogScale,
     isFogged: lighting.fog !== null,
+    isExtendedShading: lighting.isExtendedShading,
+    rainDensity: lighting.rain?.density ?? 0,
     skyIrradiance: lighting.skyIrradiance,
     sunColor: lighting.sunColor,
     sunDirection: normalise(lighting.sunDirection),

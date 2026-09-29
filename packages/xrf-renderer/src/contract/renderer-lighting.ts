@@ -35,6 +35,12 @@ export interface IRendererLighting {
   waterIntensity: number;
   /** How hard it rains, or null for no rain. */
   rain: Nullable<IRendererRainfall>;
+  /**
+   * Whether surfaces are shaded as Anomaly's `hmodel` and `combine_1` shade them: the hemisphere's reflection following
+   * the rain, none while it is dry, and tinting the lit albedo, the lights' reflection tinted by their colour. Vanilla's
+   * adds both white, the hemisphere's by the gloss alone.
+   */
+  isExtendedShading: boolean;
   /** The bolt striking this frame, or null for none. */
   thunderbolt: Nullable<IRendererThunderboltStrike>;
 }

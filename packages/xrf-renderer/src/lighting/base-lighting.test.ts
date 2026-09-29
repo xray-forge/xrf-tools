@@ -17,6 +17,20 @@ describe("toSunSpecular", () => {
 });
 
 describe("toBaseLightingConstants", () => {
+  // Anomaly's `hmodel` weighs the hemisphere's reflection by `rain_params.x`, nought while it is dry.
+  it("carries whether the hemisphere's reflection follows the rain, and how hard it rains", () => {
+    const rain = { color: [0.5, 0.5, 0.5] as const, density: 0.7, windDirection: 0, windVelocity: 0 };
+
+    expect(toBaseLightingConstants({ ...DEFAULT_RENDERER_LIGHTING, isExtendedShading: true, rain })).toMatchObject({
+      isExtendedShading: true,
+      rainDensity: 0.7,
+    });
+    expect(toBaseLightingConstants(DEFAULT_RENDERER_LIGHTING)).toMatchObject({
+      isExtendedShading: false,
+      rainDensity: 0,
+    });
+  });
+
   it("ramps the fog from 85% of the clear fraction to 99% of the distance", () => {
     // Noon: distance 350, density 0.9, so near = 29.75 and far = 346.5.
     const constants: IBaseLightingConstants = toBaseLightingConstants({

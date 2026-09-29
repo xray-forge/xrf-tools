@@ -20,6 +20,10 @@ export class BaseLightingUniforms {
   public readonly fogColor: UniformNode<"vec3", Vector3> = uniform(new Vector3()).setGroup(renderGroup);
   /** One while there is fog, zero without. */
   public readonly fogged: UniformNode<"float", number> = uniform(0).setGroup(renderGroup);
+  /** One while surfaces are shaded as Anomaly's `hmodel` and `combine_1` shade them. */
+  public readonly extendedShading: UniformNode<"float", number> = uniform(0).setGroup(renderGroup);
+  /** `rain_params.x`: how hard it rains. */
+  public readonly rainDensity: UniformNode<"float", number> = uniform(0).setGroup(renderGroup);
 
   private readonly sunDirectionWorld: Vector3 = new Vector3(0, -1, 0);
 
@@ -42,6 +46,8 @@ export class BaseLightingUniforms {
     this.fogOffset.value = constants.fogOffset;
     this.fogScale.value = constants.fogScale;
     this.fogged.value = constants.isFogged ? 1 : 0;
+    this.extendedShading.value = constants.isExtendedShading ? 1 : 0;
+    this.rainDensity.value = constants.rainDensity;
     this.sunDirectionWorld.set(...constants.sunDirection);
   }
 

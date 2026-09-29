@@ -461,6 +461,7 @@ export class WeatherPlayer {
         : null,
       grass: isWindy ? DEFAULT_RENDERER_GRASS_WIND : null,
       hemisphereColor: [mix.hemiColor[0], mix.hemiColor[1], mix.hemiColor[2]],
+      isExtendedShading: this.weather?.engine === ERendererWeatherEngine.EXTENDED,
       rain:
         isRainy && this.weather?.rain && mix.rainDensity >= RAIN_THRESHOLD
           ? {

@@ -23,4 +23,8 @@ export interface IBaseLightingConstants {
   fogColor: TRendererColor;
   /** Whether there is fog, and so a distance past which it hides everything. */
   isFogged: boolean;
+  /** Whether surfaces are shaded as Anomaly's `hmodel` and `combine_1` shade them. */
+  isExtendedShading: boolean;
+  /** `rain_params.x`: how hard it rains, nought where it does not. */
+  rainDensity: number;
 }

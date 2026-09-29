@@ -47,6 +47,7 @@ export function toFadedLighting(step: IWeatherFadeStep): IRendererLighting {
     fog: fadeFog(from.fog, to.fog, { lerp, triple }),
     grass: to.grass,
     hemisphereColor: triple(from.hemisphereColor, to.hemisphereColor),
+    isExtendedShading: to.isExtendedShading,
     rain: fadeRain(from.rain, to.rain, { lerp, triple }),
     sky: fadeSky(from.sky, to.sky, t),
     skyIrradiance: triple(from.skyIrradiance, to.skyIrradiance),
