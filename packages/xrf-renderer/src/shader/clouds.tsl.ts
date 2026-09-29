@@ -1,9 +1,8 @@
 import { float, max, mix, normalize, pow, saturate, vec2, vec3 } from "three/tsl";
 import { Node } from "three/webgpu";
 
+import { ISkyWithCloudsUniforms } from "#/shader/sky-with-clouds-uniforms";
 import { toBoxDirection } from "#/shader/sky.tsl";
-import { CloudUniforms } from "#/uniforms/cloud-uniforms";
-import { SkyUniforms } from "#/uniforms/sky-uniforms";
 
 /** `mScale.scale(10, 0.4f, 10)`: the dome `RenderClouds` draws, wide and flat around the camera. */
 const DOME_WIDTH: number = 10;
@@ -34,14 +33,6 @@ const WIND_1: readonly [number, number] = [
   toPacked(-Math.sin(Math.PI / 4 + Math.PI / 8)),
   toPacked(Math.cos(Math.PI / 4 + Math.PI / 8)),
 ];
-
-/** What the clouds are laid over the sky by. */
-interface ISkyWithCloudsUniforms {
-  sky: SkyUniforms;
-  clouds: CloudUniforms;
-  /** What the tonemap multiplies by. */
-  scale: Node<"float">;
-}
 
 /**
  * The clouds as `RenderClouds` lays them over the sky before combine (`clouds.vs`, `clouds.ps`): the dome met along the

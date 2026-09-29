@@ -23,7 +23,7 @@ import { IGBufferSample } from "#/shader/gbuffer-sample";
 import { IGBufferTextures } from "#/shader/gbuffer-textures";
 import { readGBuffer } from "#/shader/gbuffer.tsl";
 import { toSkyColor, toSkyHaze } from "#/shader/sky.tsl";
-import { toToneMapped } from "#/shader/tonemap.tsl";
+import { toToneMapped, toUntoneMapped } from "#/shader/tonemap.tsl";
 import { RendererUniforms } from "#/uniforms/renderer-uniforms";
 
 /**
@@ -78,14 +78,18 @@ export function toCombinePassFragment(
     // The engine fogs towards `fog_color`, then fades into the sky itself by the fog squared.
     const faded: Node<"vec3"> = select(isSkyDrawn, mix(lit, sky, fog.mul(fog)), lit).toVar();
 
-    // The haze takes the place of both: the distance takes the colour of the sky behind it, no clouds showing through,
-    // by the same curve the engine's two blends make, `1 - (1 - fog)(1 - fog²)`.
+    // The haze takes the place of both, by the engine's own two blends: the distance takes the colour of the sky behind
+    // it, no cloud's shape showing, the fog towards the haze's lit colour before the tonemap.
     If(uniforms.sky.hazed.greaterThan(0.5).and(isSkyDrawn).and(isEmpty.not()), () => {
-      const haze: Node<"vec3"> = toSkyHaze(direction, uniforms.sky, uniforms.exposure.scale);
-      const clear: Node<"vec3"> = select(isLit, toToneMapped(shaded, uniforms.exposure.scale), sample.albedo);
-      const toHaze: Node<"float"> = float(1).sub(fog.oneMinus().mul(fog.mul(fog).oneMinus()));
+      const { scale } = uniforms.exposure;
+      const haze: Node<"vec3"> = toSkyHaze(direction, uniforms.sky);
+      const fogged: Node<"vec3"> = select(
+        isLit,
+        toToneMapped(mix(shaded, toUntoneMapped(haze, scale), fog), scale),
+        mix(sample.albedo, haze, fog)
+      );
 
-      faded.assign(mix(clear, haze, toHaze));
+      faded.assign(mix(fogged, haze, fog.mul(fog)));
     });
 
     const shown: Node<"vec3"> = select(isEmpty, select(isSkyDrawn, sky, toFogColor(uniforms)), faded);

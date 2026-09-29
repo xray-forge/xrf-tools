@@ -27,7 +27,7 @@ export class CombinePass implements IRendererPass {
     this.targets = targets;
     this.uniforms = uniforms;
     // Before the material, which is built sampling the haze maps it points the sky at.
-    this.haze = new SkyHaze(uniforms.sky);
+    this.haze = new SkyHaze({ clouds: uniforms.clouds, scale: uniforms.exposure.scale, sky: uniforms.sky });
     this.material = this.createMaterial();
   }
 

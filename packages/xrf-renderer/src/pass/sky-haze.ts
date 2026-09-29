@@ -3,32 +3,28 @@ import { HalfFloatType, NodeMaterial, QuadMesh, RenderTarget, WebGPURenderer } f
 import { createColourTarget } from "#/pass/colour-target";
 import { createQuadMaterial } from "#/pass/quad-material";
 import { toSkyHazeFragment } from "#/shader/sky-haze.tsl";
-import { SkyUniforms } from "#/uniforms/sky-uniforms";
+import { ISkyWithCloudsUniforms } from "#/shader/sky-with-clouds-uniforms";
 
-/** A haze map's texels across, one a bearing, and down, one a height. */
+/** The haze map's texels across, one a bearing, and down, one a height. */
 const WIDTH: number = 64;
 const HEIGHT: number = 32;
 
 /**
- * Both skies blurred into haze maps the distance fades into, drawn again every frame they are read, which costs a few
- * thousand texels: the skies change as they upload, and the pair changes as the clock moves.
+ * The sky as drawn, clouds and all, blurred into the haze map the distance fades into, drawn again every frame it is
+ * read, which costs a few thousand texels: the skies blend as the clock moves and the clouds drift.
  */
 export class SkyHaze {
-  private readonly targets: readonly [RenderTarget, RenderTarget];
-  private readonly materials: readonly [NodeMaterial, NodeMaterial];
+  private readonly target: RenderTarget = SkyHaze.createTarget();
+  private readonly material: NodeMaterial;
   private readonly quad: QuadMesh = new QuadMesh();
 
   /**
-   * @param sky - The skies, whose haze maps it points at what it draws.
+   * @param uniforms - What the sky is drawn with, whose haze map it points at what it draws.
    */
-  public constructor(sky: SkyUniforms) {
-    this.targets = [SkyHaze.createTarget(), SkyHaze.createTarget()];
-    this.materials = [
-      createQuadMaterial(toSkyHazeFragment(sky.cubes[0])),
-      createQuadMaterial(toSkyHazeFragment(sky.cubes[1])),
-    ];
-    sky.hazes[0].value = this.targets[0].texture;
-    sky.hazes[1].value = this.targets[1].texture;
+  public constructor(uniforms: ISkyWithCloudsUniforms) {
+    this.material = createQuadMaterial(toSkyHazeFragment(uniforms));
+    this.quad.material = this.material;
+    uniforms.sky.haze.value = this.target.texture;
   }
 
   /**
@@ -37,17 +33,14 @@ export class SkyHaze {
   public render(renderer: WebGPURenderer): void {
     const previous = renderer.getRenderTarget();
 
-    this.targets.forEach((target: RenderTarget, index: number) => {
-      renderer.setRenderTarget(target);
-      this.quad.material = this.materials[index];
-      this.quad.render(renderer);
-    });
+    renderer.setRenderTarget(this.target);
+    this.quad.render(renderer);
     renderer.setRenderTarget(previous);
   }
 
   public dispose(): void {
-    this.targets.forEach((target: RenderTarget) => target.dispose());
-    this.materials.forEach((material: NodeMaterial) => material.dispose());
+    this.target.dispose();
+    this.material.dispose();
   }
 
   private static createTarget(): RenderTarget {
