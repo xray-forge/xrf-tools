@@ -37,7 +37,7 @@ export function LevelWeatherCycleSelect({
       label={reading ? `Cycle, reading ${reading}` : "Cycle"}
       value={selected ?? ""}
       disabled={reading !== null || !cycles.length}
-      slotProps={{ select: { renderValue: (value: unknown) => String(value) } }}
+      slotProps={{ inputLabel: { shrink: true }, select: { renderValue: (value: unknown) => String(value) } }}
       onChange={(event: ChangeEvent<HTMLInputElement>) => onSelect(event.target.value)}
     >
       {cycles.map((cycle: ILevelWeatherCycleChoice) => (

@@ -4,12 +4,9 @@ import { ReactElement, useCallback, useMemo } from "react";
 
 import { LevelWeatherCycle, LevelWeatherDescription } from "@/core/ipc/types/xrf-app";
 import { LevelWeatherClockSection } from "@/core/level/components/panels/LevelWeatherPanel/LevelWeatherClockSection";
-import { LevelWeatherCyclesSection } from "@/core/level/components/panels/LevelWeatherPanel/LevelWeatherCyclesSection";
-import { LevelWeatherEffectsSection } from "@/core/level/components/panels/LevelWeatherPanel/LevelWeatherEffectsSection";
 import { LevelWeatherFindingsSection } from "@/core/level/components/panels/LevelWeatherPanel/LevelWeatherFindingsSection";
 import { LevelWeatherModifiersSection } from "@/core/level/components/panels/LevelWeatherPanel/LevelWeatherModifiersSection";
-import { LevelWeatherSourceSection } from "@/core/level/components/panels/LevelWeatherPanel/LevelWeatherSourceSection";
-import { LevelWeatherSunSection } from "@/core/level/components/panels/LevelWeatherPanel/LevelWeatherSunSection";
+import { LevelWeatherPlaySection } from "@/core/level/components/panels/LevelWeatherPanel/LevelWeatherPlaySection";
 import { ILevelWeatherCycleChoice, listLevelWeatherCycles } from "@/core/level/lib/weather/level-weather-cycle-choice";
 import { LevelLoadService, LevelWeatherService } from "@/core/level/services";
 import { EditorPanel, EditorPanelEmpty } from "@/core/shell/editor/EditorPanel";
@@ -50,14 +47,20 @@ export function LevelWeatherPanel({
 
   return (
     <EditorPanel data-testid={dataTestId} id={id} className={className} title={"Weather"}>
-      <LevelWeatherSourceSection
-        isFirst
+      <LevelWeatherPlaySection
         source={weatherService.source}
         isPlayable={weatherService.playable !== null}
         isManual={isManual}
         seed={weatherService.seed}
         failure={weatherService.failure}
-        onChange={weatherService.setSource}
+        cycles={cycles}
+        cycle={cycle?.name ?? null}
+        reading={weatherService.reading}
+        effects={description?.effects ?? []}
+        effect={isWeather ? (weatherService.report?.effect ?? null) : null}
+        onSource={weatherService.setSource}
+        onCycle={onSelectCycle}
+        onEffect={weatherService.playEffect}
       />
 
       {description ? (
@@ -67,36 +70,17 @@ export function LevelWeatherPanel({
             keyframes={keyframes}
             report={isWeather ? weatherService.report : null}
             control={weatherService.control}
-            isDisabled={!isWeather}
+            engine={description.engine}
+            isManual={isManual}
             onSeek={weatherService.seekTo}
             onPlaying={weatherService.setPlaying}
             onFactor={weatherService.setFactor}
-          />
-
-          <LevelWeatherSunSection
-            engine={description.engine}
-            isDynamicSun={weatherService.control.isDynamicSun && !isManual}
-            isDisabled={!isWeather || isManual}
-            onChange={weatherService.setDynamicSun}
-          />
-
-          <LevelWeatherEffectsSection
-            effects={description.effects}
-            playing={isWeather ? (weatherService.report?.effect ?? null) : null}
-            isDisabled={!isWeather}
-            onPlay={weatherService.playEffect}
+            onDynamicSun={weatherService.setDynamicSun}
           />
 
           <LevelWeatherModifiersSection
             count={description.modifiers.length}
             reaching={isWeather ? (weatherService.report?.modifiers ?? 0) : 0}
-          />
-
-          <LevelWeatherCyclesSection
-            cycles={cycles}
-            selected={cycle?.name ?? null}
-            reading={weatherService.reading}
-            onSelect={onSelectCycle}
           />
 
           {cycle ? <LevelWeatherFindingsSection file={cycle.file} findings={cycle.findings} /> : null}

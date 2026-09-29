@@ -91,7 +91,7 @@ describe("LevelWeatherPanel", () => {
 
     expect(weather.source).toBe(ELevelWeatherSource.MANUAL);
     await waitFor(() => expect(weather.weather?.keyframes).toHaveLength(1));
-    expect(getByTestId("level-weather-source-section").textContent).toContain("Seeded from");
+    expect(getByTestId("level-weather-play-section").textContent).toContain("Seeded from");
     expect(getByRole("checkbox", { name: "Dynamic sun" })).toBeDisabled();
 
     await userEvent.click(getByRole("combobox", { name: "Cycle" }));
@@ -126,7 +126,7 @@ describe("LevelWeatherPanel", () => {
 
     expect(getByRole("button", { name: "Weather" })).toBeDisabled();
     expect(getByRole("button", { name: "Manual" })).toHaveAttribute("aria-pressed", "true");
-    expect(getByTestId("level-weather-source-section").textContent).toContain("The configs are gone");
+    expect(getByTestId("level-weather-play-section").textContent).toContain("The configs are gone");
   });
 
   it("stands the sun by the table on extended", async () => {
@@ -137,7 +137,7 @@ describe("LevelWeatherPanel", () => {
     });
 
     expect(queryByRole("checkbox", { name: "Dynamic sun" })).not.toBeInTheDocument();
-    expect(getByTestId("level-weather-sun-section").textContent).toContain("sun table");
+    expect(getByTestId("level-weather-clock-section").textContent).toContain("sun table");
   });
 
   it("plays an effect over the cycle, and says what is left of the one playing with a way to end it", async () => {
@@ -151,7 +151,7 @@ describe("LevelWeatherPanel", () => {
     weather.noteReport(mockRendererWeatherReport({ effect: { name: "fx_blowout", remaining: 125 }, time: 43_300 }));
 
     await waitFor(() =>
-      expect(getByTestId("level-weather-effects-section").textContent).toContain("00:02:05 of game time left")
+      expect(getByTestId("level-weather-play-section").textContent).toContain("00:02:05 of game time left")
     );
 
     await userEvent.click(getByRole("combobox", { name: "Effect" }));

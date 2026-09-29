@@ -1,13 +1,16 @@
+import { Typography } from "@mui/material";
 import { IRendererWeatherReport } from "@xrf/renderer";
 import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
+import { EXrayEngine, XrayEngine } from "@/core/ipc/types/xrf-engine-target";
 import { LevelWeatherClock } from "@/core/level/components/weather/LevelWeatherClock";
 import { ILevelWeatherControl } from "@/core/level/lib/weather/level-weather-control";
 import { LEVEL_WEATHER_FACTOR_LIMITS } from "@/core/level/lib/weather/level-weather-memory";
 import { formatLevelWeatherTime } from "@/core/level/lib/weather/level-weather-time";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
 import { EditorPanelProperty, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
+import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatPercent } from "@/lib/format/number";
 
@@ -19,14 +22,19 @@ interface ILevelWeatherClockSectionProps extends BaseComponentProps {
   /** Where the renderer's weather stood when it last reported, or null before it has. */
   report: Nullable<IRendererWeatherReport>;
   control: ILevelWeatherControl;
-  isDisabled?: boolean;
+  /** The engine the weather is read for, which says how its sun stands. */
+  engine: XrayEngine;
+  /** Whether the keyframe set by hand lights the level, standing the sun by its own angles. */
+  isManual: boolean;
   onSeek: (time: number) => void;
   onPlaying: (isPlaying: boolean) => void;
   onFactor: (factor: number) => void;
+  onDynamicSun: (isDynamicSun: boolean) => void;
 }
 
 /**
- * The time of day: where the clock stands between which keyframes, whether it runs, and how fast.
+ * The time of day: whether the clock runs and how fast, where it stands between which keyframes, and how the sun
+ * stands for it.
  */
 export function LevelWeatherClockSection({
   "data-testid": dataTestId = "level-weather-clock-section",
@@ -36,10 +44,12 @@ export function LevelWeatherClockSection({
   keyframes,
   report,
   control,
-  isDisabled = false,
+  engine,
+  isManual,
   onSeek,
   onPlaying,
   onFactor,
+  onDynamicSun,
 }: ILevelWeatherClockSectionProps): ReactElement {
   return (
     <EditorPanelSection data-testid={dataTestId} id={id} className={className} title={"Time"}>
@@ -47,7 +57,6 @@ export function LevelWeatherClockSection({
         time={time}
         isPlaying={!control.isPaused}
         keyframes={keyframes}
-        isDisabled={isDisabled}
         onSeek={onSeek}
         onPlaying={onPlaying}
       />
@@ -55,14 +64,12 @@ export function LevelWeatherClockSection({
       {report ? (
         <EditorPanelProperty
           label={"Between"}
-          value={`${formatLevelWeatherTime(report.between[0])} and ${formatLevelWeatherTime(
-            report.between[1]
-          )}, ${formatPercent(report.weight)} of the way`}
+          value={`${formatLevelWeatherTime(report.between[0])}-${formatLevelWeatherTime(report.between[1])}, ${formatPercent(report.weight)}`}
         />
       ) : null}
 
       <RenderValueSlider
-        className={"mt-2"}
+        className={"mt-1"}
         label={"Speed"}
         value={Math.log10(control.factor)}
         min={Math.log10(LEVEL_WEATHER_FACTOR_LIMITS.min)}
@@ -71,6 +78,28 @@ export function LevelWeatherClockSection({
         format={(value: number) => `${Math.round(10 ** value)}× real time`}
         onChange={(value: number) => onFactor(10 ** value)}
       />
+
+      {engine === EXrayEngine.VANILLA ? (
+        <CheckboxFormRow
+          label={"Dynamic sun"}
+          description={
+            isManual
+              ? "The keyframe set by hand stands the sun by its own angles"
+              : control.isDynamicSun
+                ? "Computed for the time of day, as OpenXRay does by default"
+                : "At the angles the keyframes write"
+          }
+          isChecked={control.isDynamicSun && !isManual}
+          isDisabled={isManual}
+          onChange={onDynamicSun}
+        />
+      ) : (
+        <Typography className={"block text-text-secondary"} variant={"caption"}>
+          {isManual
+            ? "The keyframe set by hand stands the sun by its own angles."
+            : "The sun stands by the game's sun table, hour by hour."}
+        </Typography>
+      )}
     </EditorPanelSection>
   );
 }

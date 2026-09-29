@@ -54,7 +54,7 @@ export function LevelWeatherClock({
           </span>
         </Tooltip>
 
-        <Typography className={"font-mono tabular-nums"} variant={"h6"}>
+        <Typography className={"font-mono tabular-nums"} variant={"body1"}>
           {formatLevelWeatherTime(draft.value, true)}
         </Typography>
       </div>

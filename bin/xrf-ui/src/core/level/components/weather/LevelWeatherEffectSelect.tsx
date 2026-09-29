@@ -42,7 +42,10 @@ export function LevelWeatherEffectSelect({
       value={playing?.name ?? NONE}
       disabled={isDisabled || !effects.length}
       helperText={playing ? `${formatLevelWeatherTime(playing.remaining, true)} of game time left` : undefined}
-      slotProps={{ select: { displayEmpty: true, renderValue: (value: unknown) => String(value) || "None" } }}
+      slotProps={{
+        inputLabel: { shrink: true },
+        select: { displayEmpty: true, renderValue: (value: unknown) => String(value) || "None" },
+      }}
       onChange={(event: ChangeEvent<HTMLInputElement>) => onPlay(event.target.value || null)}
     >
       <MenuItem dense value={NONE}>
