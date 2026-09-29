@@ -45,5 +45,7 @@ export function toLevelRendererFog(fog: ILevelFog): IRendererFog {
     ],
     density: fog.fogDensity,
     distance: fog.fogDistance,
+    // The engine ends the view where the fog is total, which is all the hand-set fog says of it.
+    farPlane: fog.fogDistance,
   };
 }

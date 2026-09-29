@@ -251,7 +251,10 @@ export function mockSelectedLevelDescription(
     sectors: [mockSectorOutline()],
     start: null,
     shaderEntries: 4,
-    sky: { logicalPath: "textures\\sky\\sky_7_cube.dds", reference: "sky\\sky_7_cube" },
+    sky: {
+      environment: { logicalPath: "textures\\sky\\sky_7_cube#small.dds", reference: "sky\\sky_7_cube#small" },
+      texture: { logicalPath: "textures\\sky\\sky_7_cube.dds", reference: "sky\\sky_7_cube" },
+    },
     source: { kind: "directory", path: "C:\\levels\\zaton" },
     surfaces: [],
     textures: [],

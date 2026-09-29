@@ -43,7 +43,7 @@ export function GamedataVerifierApplication(): ReactElement {
 
     log.info("Verifying gamedata:", root);
 
-    await verifierService.verify(root, isStrict, settingsService.engine);
+    await verifierService.verify({ engine: settingsService.engine, isStrict, root });
   }, [isStrict, log, root, settingsService, verifierService]);
 
   useEffect(() => {

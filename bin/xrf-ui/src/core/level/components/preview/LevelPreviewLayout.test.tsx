@@ -15,6 +15,7 @@ import {
   LevelRenderService,
   LevelViewportService,
   LevelViewService,
+  LevelWeatherService,
 } from "@/core/level/services";
 import { SettingsRendererDisplay } from "@/core/settings/components/SettingsDialog/SettingsRenderSection/SettingsRendererDisplay";
 import { SettingsService } from "@/core/settings/services/settings";
@@ -49,6 +50,7 @@ function renderReporting(onRender: () => void = () => undefined): {
     LevelRenderService,
     LevelViewService,
     LevelViewportService,
+    LevelWeatherService,
   ]);
 
   const view: RenderResult = renderWithProviders(
@@ -78,6 +80,7 @@ function renderLayout(
     LevelRenderService,
     LevelViewService,
     LevelViewportService,
+    LevelWeatherService,
   ]);
 
   setStreaming(container.get(LevelLoadService), streaming);
@@ -143,6 +146,7 @@ describe("LevelPreviewLayout", () => {
       LevelRenderService,
       LevelViewService,
       LevelViewportService,
+      LevelWeatherService,
     ]);
 
     container.get(LevelViewportService).reveal();
@@ -167,6 +171,7 @@ describe("LevelPreviewLayout", () => {
       LevelRenderService,
       LevelViewService,
       LevelViewportService,
+      LevelWeatherService,
     ]);
 
     setStreaming(container.get(LevelLoadService), { loaded: 3, total: 24 });
@@ -315,6 +320,7 @@ describe("LevelPreviewLayout", () => {
       LevelRenderService,
       LevelViewService,
       LevelViewportService,
+      LevelWeatherService,
     ]);
     const settings: SettingsService = container.get(SettingsService);
     const view: RenderResult = renderWithProviders(

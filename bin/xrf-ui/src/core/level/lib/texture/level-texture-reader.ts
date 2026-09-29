@@ -6,7 +6,7 @@ import { assetsBulkRoutes } from "@/core/ipc/commands/assets-bulk";
 import { texturesBulkRoutes } from "@/core/ipc/commands/textures-bulk";
 import { LevelTextureReference } from "@/core/ipc/types/xrf-app";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
-import { ILevelTextureDelivery } from "@/core/level/lib/render/level-render-protocol";
+import { ILevelTextureDelivery, ILevelTextureRequests } from "@/core/level/lib/render/level-render-protocol";
 import { ISectorTextureRequest } from "@/core/level/lib/sector/level-sector-textures";
 import { Logger } from "@/lib/logging";
 
@@ -77,14 +77,7 @@ export class LevelTextureReader {
     }
 
     try {
-      // Both asked for now, though the picture is fetched only where the renderer's reader refuses the file: whether
-      // it does is a question about the file, answered where the file is read.
-      const [file, picture]: [IBulkRequest, IBulkRequest] = await Promise.all([
-        requestBulk(assetsBulkRoutes.readAsset(this.roots, logicalPath)),
-        requestBulk(texturesBulkRoutes.readTexture(this.roots, logicalPath)),
-      ]);
-
-      return { reason: null, reference, requests: { file, picture } };
+      return { reason: null, reference, requests: await LevelTextureReader.request(this.roots, logicalPath) };
     } catch (error: unknown) {
       const transformed: Error = transformError(error);
 
@@ -92,6 +85,22 @@ export class LevelTextureReader {
 
       return LevelTextureReader.toFailure(reference, transformed.message);
     }
+  }
+
+  /**
+   * @param roots - Roots the file is read from.
+   * @param logicalPath - Where a texture reference resolved to.
+   * @returns The requests fetching its file and the backend's picture of it.
+   */
+  public static async request(roots: XrayRoots, logicalPath: string): Promise<ILevelTextureRequests> {
+    // Both asked for now, though the picture is fetched only where the renderer's reader refuses the file: whether it
+    // does is a question about the file, answered where the file is read.
+    const [file, picture]: [IBulkRequest, IBulkRequest] = await Promise.all([
+      requestBulk(assetsBulkRoutes.readAsset(roots, logicalPath)),
+      requestBulk(texturesBulkRoutes.readTexture(roots, logicalPath)),
+    ]);
+
+    return { file, picture };
   }
 
   private static toFailure(reference: string, reason: string): ILevelTextureDelivery {

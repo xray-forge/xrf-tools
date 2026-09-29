@@ -11,6 +11,8 @@ import { requireSessionId } from "@/core/ipc/session/session.utils";
 import {
   LevelDetailsDescription,
   LevelLightsDescription,
+  LevelOpenRequest,
+  LevelSky,
   LevelSource,
   LevelSpawnModelsDescription,
   LevelTextureReference,
@@ -18,8 +20,6 @@ import {
   SessionRestore,
   SessionSnapshot,
 } from "@/core/ipc/types/xrf-app";
-import { EXrayEngine } from "@/core/ipc/types/xrf-engine-target";
-import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { SectorDescription } from "@/core/ipc/types/xrf-visual";
 import { LevelHeld } from "@/core/level/lib/render/level-held";
 import {
@@ -133,7 +133,7 @@ export class LevelLoadService {
   private readonly heldLights: LevelHeld<LevelLightsDescription> = new LevelHeld();
   private readonly heldSpawnModels: LevelHeld<ILevelSpawnModelsDelivery> = new LevelHeld();
   /** The sky cube the level is lit under, which its water reflects: held only so its texture is claimed and kept. */
-  private readonly heldSky: LevelHeld<LevelTextureReference> = new LevelHeld();
+  private readonly heldSky: LevelHeld<LevelSky> = new LevelHeld();
   /** The open level's grass, lights, spawned models and sky being read, settling once all four have. */
   private heldReads: Promise<void> = Promise.resolve();
 
@@ -309,14 +309,11 @@ export class LevelLoadService {
   /**
    * Open a level and report what it is built out of.
    *
-   * @param source - Level directory or mounted asset to open.
-   * @param roots - Roots the level and its textures are searched in.
-   * @param isDltx - Whether the game's configs, which its lights are read from, resolve with the Monolith/Anomaly
-   *   patch dialect.
-   * @param engine - Which engine the game's configs, its weather among them, are read as.
+   * @param request - The level to open, the roots it is searched in, and how the game's configs beside it are read.
    */
   @LatestFlow("level")
-  public *load(source: LevelSource, roots: XrayRoots, isDltx: boolean, engine: EXrayEngine): TFlow {
+  public *load(request: LevelOpenRequest): TFlow {
+    const { source } = request;
     const timer: Timer = new Timer();
 
     this.log.info("Loading level:", describeLevelSource(source));
@@ -325,7 +322,7 @@ export class LevelLoadService {
       this.level = this.level.asLoading();
 
       const selected: SessionSnapshot<SelectedLevelDescription> = yield* call(
-        this.session.open(levelsCommands.openLevel, { source, roots, isDltx, engine })
+        this.session.open(levelsCommands.openLevel, request)
       );
 
       this.adopt(selected);
@@ -414,8 +411,8 @@ export class LevelLoadService {
       ),
       this.readHeld(selected.sessionId, "sky", this.heldSky, () =>
         Promise.resolve({
-          summary: [selected.value.sky.reference],
-          textures: [selected.value.sky],
+          summary: [selected.value.sky.texture.reference],
+          textures: [selected.value.sky.texture, selected.value.sky.environment],
           value: selected.value.sky,
         })
       ),

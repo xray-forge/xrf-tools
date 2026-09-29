@@ -8,6 +8,7 @@ describe("toLevelRendererFog", () => {
       color: [0.304609, 0.328138, 0.367354],
       density: 0.75,
       distance: 750,
+      farPlane: 750,
     });
   });
 

@@ -5,7 +5,13 @@ import { Container } from "@wirestate/core";
 import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
 import { LevelSurfacesPanel } from "@/core/level/components/panels/LevelSurfacesPanel";
 import { ILevelTextureReport } from "@/core/level/lib/texture/level-texture-report";
-import { LevelLoadService, LevelRenderService, LevelViewportService, LevelViewService } from "@/core/level/services";
+import {
+  LevelLoadService,
+  LevelRenderService,
+  LevelViewportService,
+  LevelViewService,
+  LevelWeatherService,
+} from "@/core/level/services";
 import { mockLevelTextureReport, mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
@@ -63,6 +69,7 @@ async function renderPanel(
     LevelRenderService,
     LevelViewService,
     LevelViewportService,
+    LevelWeatherService,
   ]);
   const service: LevelLoadService = container.get(LevelLoadService);
 
@@ -89,6 +96,7 @@ describe("LevelSurfacesPanel", () => {
       LevelRenderService,
       LevelViewService,
       LevelViewportService,
+      LevelWeatherService,
     ]);
     const { getByText } = renderWithProviders(<LevelSurfacesPanel />, { container, route: "/level-viewer" });
 

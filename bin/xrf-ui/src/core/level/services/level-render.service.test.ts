@@ -24,30 +24,37 @@ import { IPC_METRICS } from "@/core/ipc/metrics";
 import { DEFAULT_LEVEL_FOG, toLevelRendererFog } from "@/core/level/lib/lighting/level-fog";
 import { ILevelPoint } from "@/core/level/lib/residency/level-residency";
 import { ELevelSurfaceDressing } from "@/core/level/lib/surface/level-surface-dressing";
+import { ELevelWeatherSource } from "@/core/level/lib/weather/level-weather-source";
 import { LevelLoadService } from "@/core/level/services/level-load.service";
 import { LevelViewService } from "@/core/level/services/level-view.service";
 import { LevelViewportService } from "@/core/level/services/level-viewport.service";
+import { LevelWeatherService } from "@/core/level/services/level-weather.service";
 import { mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
-import { resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
+import { InvokeMap, resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
+import { mockLevelWeatherDescription } from "@/fixtures/mocks/weather.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 import { mockRendererThread } from "@/fixtures/utils/renderer";
 
 let stub: IRendererWorkerStub;
 let LevelRenderService: typeof import("./level-render.service").LevelRenderService;
 
-async function mockAttached(): Promise<{
+async function mockAttached(responses: InvokeMap = {}): Promise<{
   container: Container;
   service: InstanceType<typeof LevelRenderService>;
   viewService: LevelViewService;
 }> {
-  setMockInvokeResponses({ ["plugin:levels|get_level"]: mockSessionResponse(mockSelectedLevelDescription()) });
+  setMockInvokeResponses({
+    ["plugin:levels|get_level"]: mockSessionResponse(mockSelectedLevelDescription()),
+    ...responses,
+  });
 
   const container: Container = mockContainer([
     LevelLoadService,
     LevelViewService,
     LevelViewportService,
     LevelRenderService,
+    LevelWeatherService,
   ]);
 
   await container.get(LevelLoadService).restore();
@@ -73,6 +80,7 @@ function mockReport(position: [number, number, number]): IRendererReport {
     lights: EMPTY_RENDERER_LIGHTS_REPORT,
     passes: [],
     staticDraws: EMPTY_RENDERER_STATIC_DRAW_REPORT,
+    weather: null,
   };
 }
 
@@ -102,9 +110,13 @@ beforeEach(() => {
 
 describe("LevelRenderService", () => {
   it("starts nothing until a view attaches", () => {
-    mockContainer([LevelLoadService, LevelViewService, LevelViewportService, LevelRenderService]).get(
-      LevelRenderService
-    );
+    mockContainer([
+      LevelLoadService,
+      LevelViewService,
+      LevelViewportService,
+      LevelRenderService,
+      LevelWeatherService,
+    ]).get(LevelRenderService);
 
     expect(stub.requests).toHaveLength(0);
   });
@@ -143,6 +155,46 @@ describe("LevelRenderService", () => {
 
     expect(stub.take(ERendererRequest.LIGHTING).at(-1)?.lighting.fog).toBeNull();
     expect(drawnSettings()?.backdrop).toBe(0x202428);
+
+    service.dispose();
+  });
+
+  it("plays the level's weather from where the clock stands, told the view's toggles and every seek", async () => {
+    const { container, service, viewService } = await mockAttached({
+      ["plugin:levels|read_level_weather"]: mockSessionResponse(mockLevelWeatherDescription()),
+    });
+    const weatherService: LevelWeatherService = container.get(LevelWeatherService);
+
+    for (let flush: number = 0; flush < 20 && !weatherService.weather; flush += 1) {
+      await stub.flush();
+    }
+
+    await stub.flush();
+
+    expect(stub.take(ERendererRequest.WEATHER).at(-1)?.weather?.keyframes).toHaveLength(2);
+    expect(stub.take(ERendererRequest.WEATHER_CONTROL).at(-1)?.control).toEqual({
+      factor: 12,
+      isDynamicSun: false,
+      isFogged: true,
+      isPaused: true,
+      isWindy: true,
+      time: 43_200,
+    });
+
+    viewService.setOptions({ ...viewService.options, isFogged: false });
+    await stub.flush();
+
+    expect(stub.take(ERendererRequest.WEATHER_CONTROL).at(-1)?.control).toMatchObject({ isFogged: false, time: null });
+
+    weatherService.seekTo(3_600);
+    await stub.flush();
+
+    expect(stub.take(ERendererRequest.WEATHER_CONTROL).at(-1)?.control.time).toBe(3_600);
+
+    weatherService.setSource(ELevelWeatherSource.MANUAL);
+    await stub.flush();
+
+    expect(stub.take(ERendererRequest.WEATHER).at(-1)?.weather).toBeNull();
 
     service.dispose();
   });

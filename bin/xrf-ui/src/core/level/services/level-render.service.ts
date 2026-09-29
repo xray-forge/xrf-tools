@@ -5,6 +5,7 @@ import {
   IRendererReport,
   IRendererSettings,
   IRendererTextureFetch,
+  IRendererWeather,
   RendererClient,
 } from "@xrf/renderer";
 import { Maybe, Nullable } from "@xrf/types";
@@ -35,9 +36,11 @@ import { ILevelPoint } from "@/core/level/lib/residency/level-residency";
 import { measureLevelStats } from "@/core/level/lib/stats/level-stats";
 import { ILevelSurfaceGeometry } from "@/core/level/lib/surface/level-surface-geometry";
 import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
+import { ILevelWeatherSeek } from "@/core/level/lib/weather/level-weather-seek";
 import { LevelLoadService } from "@/core/level/services/level-load.service";
 import { LevelViewService } from "@/core/level/services/level-view.service";
 import { LevelViewportService } from "@/core/level/services/level-viewport.service";
+import { LevelWeatherService } from "@/core/level/services/level-weather.service";
 import { RenderSurfaceService } from "@/core/render/lib/surface/render-surface-service";
 import { SettingsService } from "@/core/settings/services/settings";
 import { Logger } from "@/lib/logging";
@@ -71,6 +74,7 @@ export class LevelRenderService extends RenderSurfaceService {
     private readonly loadService: LevelLoadService = inject(LevelLoadService),
     private readonly viewService: LevelViewService = inject(LevelViewService),
     private readonly viewportService: LevelViewportService = inject(LevelViewportService),
+    private readonly weatherService: LevelWeatherService = inject(LevelWeatherService),
     settingsService: SettingsService = inject(SettingsService)
   ) {
     super(settingsService);
@@ -136,6 +140,21 @@ export class LevelRenderService extends RenderSurfaceService {
       reaction(() => this.loadService.level.value?.selected.value ?? null, this.openLevel, { fireImmediately: true }),
       reaction(() => this.viewService.options, this.applyOptions, { fireImmediately: true }),
       reaction(() => this.viewService.lighting, this.applyLighting, { fireImmediately: true }),
+      // The level's weather is read once it opens, and played by the renderer once its skies are asked for.
+      reaction(
+        () => this.loadService.level.value?.selected ?? null,
+        (selected) => void this.weatherService.open(selected),
+        { fireImmediately: true }
+      ),
+      reaction(() => this.weatherService.weather, this.applyWeather, { fireImmediately: true }),
+      reaction(
+        () => [this.weatherService.control, this.viewService.options.isFogged, this.viewService.options.isWindy],
+        () => this.sendWeatherControl(null)
+      ),
+      reaction(
+        () => this.weatherService.seek,
+        (seek: Nullable<ILevelWeatherSeek>) => seek && this.sendWeatherControl(seek.time)
+      ),
       reaction(() => this.viewService.camera, this.applyCamera),
       // Whatever else the settings are made of; the options and the lighting configure as they apply.
       reaction(
@@ -163,6 +182,8 @@ export class LevelRenderService extends RenderSurfaceService {
     }
 
     const [x, y, z] = report.camera.position;
+
+    this.weatherService.noteReport(report.weather);
 
     this.viewportService.report(
       measureLevelStats(
@@ -222,9 +243,32 @@ export class LevelRenderService extends RenderSurfaceService {
   private applyLighting(lighting: ILevelLighting): void {
     const { isFogged, isWindy } = this.viewService.options;
 
-    this.sendLighting(toLevelRendererLighting(lighting, isFogged, isWindy, this.level?.sky.reference ?? null));
+    this.sendLighting(toLevelRendererLighting({ isFogged, isWindy, lighting, sky: this.level?.sky ?? null }));
     // The hemisphere strength is the lighting's, which the settings carry.
     this.sendSettings();
+  }
+
+  /**
+   * Plays a weather, or lights by hand again, from where the clock last stood.
+   *
+   * @param weather - What the renderer plays, or null to light by the toolbar's lighting.
+   */
+  @BoundAction()
+  private applyWeather(weather: Nullable<IRendererWeather>): void {
+    this.client?.setWeather(weather);
+
+    if (weather) {
+      this.sendWeatherControl(this.weatherService.time);
+    }
+  }
+
+  /**
+   * @param time - Seconds since midnight to play on from, or null to play on from where the renderer's clock stands.
+   */
+  private sendWeatherControl(time: Nullable<number>): void {
+    const { isFogged, isWindy } = this.viewService.options;
+
+    this.client?.setWeatherControl({ ...this.weatherService.control, isFogged, isWindy, time });
   }
 
   /** The toolbar's speeds and lens, from the same place: the camera keeps where it has flown. */

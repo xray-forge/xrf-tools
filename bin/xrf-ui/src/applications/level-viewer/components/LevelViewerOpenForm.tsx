@@ -75,12 +75,12 @@ export function LevelViewerOpenForm({
       return;
     }
 
-    await loadService.load(
-      { kind: "asset", logicalPath: selected },
-      createRoots([root.value]),
+    await loadService.load({
+      engine: settingsService.engine,
       isDltx,
-      settingsService.engine
-    );
+      roots: createRoots([root.value]),
+      source: { kind: "asset", logicalPath: selected },
+    });
 
     onFinished?.();
   }, [isDltx, loadService, onFinished, root.value, selected, settingsService]);

@@ -9,6 +9,7 @@ import {
 } from "@xrf/renderer";
 import { Nullable } from "@xrf/types";
 
+import { LevelSky } from "@/core/ipc/types/xrf-app";
 import { ILevelCameraOptions } from "@/core/level/lib/camera/level-camera-options";
 import { ILevelViewpoint } from "@/core/level/lib/camera/level-viewpoint";
 import {
@@ -51,24 +52,36 @@ export function toLevelCameraAt(
   };
 }
 
+/** What a level is lit by while no weather plays. */
+export interface ILevelRendererLightingInput {
+  /** The level's light, fog and wind, as its controls set them. */
+  lighting: ILevelLighting;
+  /** Whether the fog is drawn. */
+  isFogged: boolean;
+  /** Whether the trees and the grass sway: the trees by the wind's controls, the grass as the game's calm. */
+  isWindy: boolean;
+  /** The sky cube the level is lit under and its irradiance cube, or null for the engine's noon sky. */
+  sky: Nullable<LevelSky>;
+}
+
 /**
- * @param lighting - The level's light, fog and wind, as its controls set them.
- * @param isFogged - Whether the fog is drawn.
- * @param isWindy - Whether the trees and the grass sway: the trees by the wind's controls, the grass as the game's calm.
- * @param sky - The texture key of the sky cube the level is lit under, or null for the engine's noon sky.
+ * @param input - The controls, and the level's sky.
  * @returns The engine's noon, pointed and scaled by those controls, under the level's sky.
  */
-export function toLevelRendererLighting(
-  lighting: ILevelLighting,
-  isFogged: boolean,
-  isWindy: boolean,
-  sky: Nullable<string> = null
-): IRendererLighting {
+export function toLevelRendererLighting(input: ILevelRendererLightingInput): IRendererLighting {
+  const { lighting, isFogged, isWindy, sky } = input;
+
   return {
     ...toRendererLighting(lighting, DEFAULT_RENDERER_LIGHTING),
     fog: isFogged ? toLevelRendererFog(lighting) : null,
     grass: isWindy ? DEFAULT_RENDERER_GRASS_WIND : null,
-    sky: sky ? { ...DEFAULT_RENDERER_LIGHTING.sky, textures: [sky, sky] } : DEFAULT_RENDERER_LIGHTING.sky,
+    sky: sky
+      ? {
+          ...DEFAULT_RENDERER_LIGHTING.sky,
+          environments: [sky.environment.reference, sky.environment.reference],
+          textures: [sky.texture.reference, sky.texture.reference],
+        }
+      : DEFAULT_RENDERER_LIGHTING.sky,
     trees: isWindy ? toLevelRendererTreeWind(lighting) : null,
   };
 }

@@ -40,7 +40,12 @@ async function renderProblems(isPresent: boolean): Promise<RenderResult> {
   const container: Container = mockContainer([LevelLoadService, LevelViewportService]);
   const service: LevelLoadService = container.get(LevelLoadService);
 
-  await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, level.roots, false, EXrayEngine.VANILLA);
+  await service.load({
+    source: { kind: "asset", logicalPath: "levels\\zaton" },
+    roots: level.roots,
+    isDltx: false,
+    engine: EXrayEngine.VANILLA,
+  });
   await service.stream({ x: 0, y: 0, z: 0 });
 
   // What the textures came to is the answer of whichever side uploaded them, so the panel is given it rather

@@ -1,9 +1,9 @@
 import { inject, Injectable, OnEvent, WireEvent } from "@wirestate/core";
 
 import { describeGamedataVerifyOutcome } from "@/applications/gamedata-verifier/lib/describe-gamedata-verify-outcome";
+import { IGamedataVerification } from "@/applications/gamedata-verifier/lib/gamedata-verification";
 import { gamedataCommands } from "@/core/ipc/commands/gamedata";
 import { EJobKind, GamedataVerifySummary } from "@/core/ipc/types/xrf-app";
-import { EXrayEngine } from "@/core/ipc/types/xrf-engine-target";
 import { IJobNotice, IJobOutcome, IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { JobOperation } from "@/core/jobs/lib/job-operation";
 import { JobsService } from "@/core/jobs/services/jobs";
@@ -26,12 +26,12 @@ export class GamedataVerifierService {
   /**
    * Runs every check this build knows over a gamedata root.
    *
-   * @param root - Gamedata root to verify.
-   * @param isStrict - Whether a check that would warn should fail instead.
-   * @param engine - Which engine the tree is meant for.
+   * @param verification - The root to verify, whether warnings fail it, and which engine it is meant for.
    */
   @ExclusiveFlow("operation")
-  public *verify(root: string, isStrict: boolean, engine: EXrayEngine): TFlow {
+  public *verify(verification: IGamedataVerification): TFlow {
+    const { root, isStrict } = verification;
+
     if (this.operation.isRunning) {
       return;
     }
@@ -42,8 +42,7 @@ export class GamedataVerifierService {
       kind: EJobKind.GAMEDATA_VERIFY,
       // Every check this build knows: narrowing the selection is a refinement worth adding once somebody has watched a
       // full run and knows which one they want to repeat.
-      invoke: (id: string, progress) =>
-        gamedataCommands.verifyProject({ root, checks: null, engine, isStrict }, id, progress),
+      invoke: (id: string, progress) => gamedataCommands.verifyProject({ ...verification, checks: null }, id, progress),
       describe: (outcome: IJobOutcome<GamedataVerifySummary>): IJobNotice =>
         describeGamedataVerifyOutcome(root, outcome),
     });
