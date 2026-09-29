@@ -162,6 +162,7 @@ export class WeatherThunder {
 
   private toFlash(strike: IWeatherStrike, thunder: IRendererThunder): IWeatherThunderFlash {
     const { life, size } = strike;
+    const [i, j, k] = strike.axes;
     const { bolt, name } = strike.bolt;
     const progress: number = life > 0 ? strike.time / life : 1;
     const phase: number = Math.min(Math.max(1.5 * progress, 0), 1);
@@ -180,16 +181,21 @@ export class WeatherThunder {
       color: [clamp(color[0] / 255), clamp(color[1] / 255), clamp(color[2] / 255)],
       direction: strike.direction,
       strike: {
-        axes: strike.axes,
+        // The model's `z` is negated into renderer space as its mesh is, so its third axis turns about too.
+        axes: [toRenderer(i), toRenderer(j), scale(toRenderer(k), -1)],
         center: {
           extent: [bolt.center.radius[0] * size, bolt.center.radius[1] * size],
           opacity,
-          position: strike.center,
+          position: toRenderer(strike.center),
         },
         bolt: name,
-        position: strike.position,
+        position: toRenderer(strike.position),
         shift: phase > 0.5 ? Math.min(Math.floor(this.random() * 2), 1) * 0.5 : phase * 0.5,
-        top: { extent: [bolt.top.radius[0] * size, bolt.top.radius[1] * size], opacity, position: strike.position },
+        top: {
+          extent: [bolt.top.radius[0] * size, bolt.top.radius[1] * size],
+          opacity,
+          position: toRenderer(strike.position),
+        },
       },
     };
   }
@@ -242,6 +248,11 @@ function toGround(from: TRendererVector, down: TRendererVector, range: number): 
   const distance: number = -from[1] / down[1];
 
   return distance >= 0 && distance <= range ? distance : range;
+}
+
+/** Engine `z` negated into renderer space. */
+function toRenderer([x, y, z]: TRendererVector): TRendererVector {
+  return [x, y, -z];
 }
 
 function add(a: TRendererVector, b: TRendererVector): TRendererVector {

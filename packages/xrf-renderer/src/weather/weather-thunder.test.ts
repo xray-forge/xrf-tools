@@ -78,7 +78,8 @@ describe("WeatherThunder", () => {
   it("strikes across the sky from the sun, at the far plane, down to the ground", () => {
     const flash = run(new WeatherThunder(() => 0.5), [0, 11])[1] as IWeatherThunderFlash;
     const { position, axes } = flash.strike;
-    const [ox, oy, oz] = [position[0] - VIEW[0], position[1] - VIEW[1], position[2] - VIEW[2]];
+    // The strike is in renderer space, the view in engine space: `z` negated back.
+    const [ox, oy, oz] = [position[0] - VIEW[0], position[1] - VIEW[1], -position[2] - VIEW[2]];
     const bottom: number = position[1] - axes[1][1];
 
     // Opposite the sun's heading, twenty degrees up, between 0.94 and 0.95 of the far plane.

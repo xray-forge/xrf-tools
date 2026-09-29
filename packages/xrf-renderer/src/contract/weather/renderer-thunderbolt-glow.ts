@@ -4,7 +4,7 @@ import { TRendererVector } from "#/contract/renderer-vector";
  * One of a striking bolt's glows, where it stands this frame.
  */
 export interface IRendererThunderboltGlow {
-  /** In engine space. */
+  /** In renderer space. */
   position: TRendererVector;
   /** Half its width and half its height, in metres. */
   extent: readonly [number, number];

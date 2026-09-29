@@ -36,10 +36,7 @@ function createGlowUniforms(): IThunderGlowUniforms {
 }
 
 function takeGlow(uniforms: IThunderGlowUniforms, glow: IRendererThunderboltGlow): void {
-  const [x, y, z] = glow.position;
-
-  // Engine `z` negated into renderer space.
-  uniforms.position.value.set(x, y, -z);
+  uniforms.position.value.set(...glow.position);
   uniforms.extent.value.set(glow.extent[0], glow.extent[1]);
   uniforms.opacity.value = glow.opacity;
 }

@@ -165,15 +165,12 @@ export class SceneThunder {
     }
   }
 
-  /**
-   * `current_xform` in renderer space: the engine's `z` negated on both sides of it, the model's vertices negated
-   * already.
-   */
+  /** `current_xform`: the model's axes as the strike points them, from where it strikes. */
   private place(mesh: Mesh, strike: IRendererThunderboltStrike): void {
     const [i, j, k] = strike.axes;
     const [x, y, z] = strike.position;
 
-    this.matrix.set(i[0], j[0], -k[0], x, i[1], j[1], -k[1], y, -i[2], -j[2], k[2], -z, 0, 0, 0, 1);
+    this.matrix.set(i[0], j[0], k[0], x, i[1], j[1], k[1], y, i[2], j[2], k[2], z, 0, 0, 0, 1);
     mesh.matrix.copy(this.matrix);
     mesh.matrixWorld.copy(this.matrix);
   }
