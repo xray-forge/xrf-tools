@@ -8,6 +8,8 @@ export const LEVEL_MANUAL_WEATHER_LIMITS = {
   skyRotation: { max: 360, min: 0, step: 1 },
   sunAltitude: { max: 180, min: -180, step: 1 },
   sunLongitude: { max: 90, min: -90, step: 1 },
+  thunderboltDuration: { max: 2, min: 0, step: 0.01 },
+  thunderboltPeriod: { max: 30, min: 0, step: 0.5 },
   treesAmplitude: { max: 0.05, min: 0, step: 0.001 },
   treesRotation: { max: 45, min: 0, step: 1 },
   treesSpeed: { max: 5, min: 0, step: 0.05 },

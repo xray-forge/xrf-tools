@@ -44,4 +44,10 @@ export interface IRendererWeatherKeyframe {
   treeSpeed: number;
   treeRotation: number;
   treeWave: TRendererVector;
+  /** The `thunderbolt_collections.ltx` section struck with, or null for none. */
+  thunderboltCollection: Nullable<string>;
+  /** Seconds between strikes, zero without a collection. */
+  thunderboltPeriod: number;
+  /** Seconds a strike lasts, zero without a collection. */
+  thunderboltDuration: number;
 }

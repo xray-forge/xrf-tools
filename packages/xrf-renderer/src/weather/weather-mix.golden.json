@@ -154,9 +154,9 @@
           0.01,
           0.11
         ],
-        "thunderboltCollection": "bolts",
-        "thunderboltPeriod": 10.0,
-        "thunderboltDuration": 0.5,
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 0.0,
+        "thunderboltDuration": 0.0,
         "hemiVibrance": 0.0,
         "hemiContrast": 0.0,
         "wetSurfaceFactor": 0.0,
@@ -317,7 +317,7 @@
           0.11
         ],
         "thunderboltCollection": "bolts",
-        "thunderboltPeriod": 10.0,
+        "thunderboltPeriod": 20.0,
         "thunderboltDuration": 0.5,
         "hemiVibrance": 0.0,
         "hemiContrast": 0.0,
@@ -404,7 +404,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": "bolts",
+        "thunderboltPeriod": 10.0,
+        "thunderboltDuration": 0.5
       },
       {
         "time": 1.0,
@@ -478,7 +481,10 @@
           0.099999994,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": "bolts",
+        "thunderboltPeriod": 9.9995365,
+        "thunderboltDuration": 0.49997684
       },
       {
         "time": 3600.0,
@@ -552,7 +558,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": "bolts",
+        "thunderboltPeriod": 8.333333,
+        "thunderboltDuration": 0.41666666
       },
       {
         "time": 21599.0,
@@ -626,7 +635,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 0.0004631281,
+        "thunderboltDuration": 0.000023156404
       },
       {
         "time": 21600.0,
@@ -700,7 +712,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 0.0,
+        "thunderboltDuration": 0.0
       },
       {
         "time": 25000.0,
@@ -774,7 +789,10 @@
           0.10000001,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 1.574074,
+        "thunderboltDuration": 0.0787037
       },
       {
         "time": 28800.0,
@@ -848,7 +866,10 @@
           0.099999994,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 3.3333335,
+        "thunderboltDuration": 0.16666667
       },
       {
         "time": 43200.0,
@@ -922,7 +943,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": "bolts",
+        "thunderboltPeriod": 10.0,
+        "thunderboltDuration": 0.5
       },
       {
         "time": 50000.0,
@@ -996,7 +1020,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": "bolts",
+        "thunderboltPeriod": 12.098765,
+        "thunderboltDuration": 0.5
       },
       {
         "time": 64000.0,
@@ -1070,7 +1097,10 @@
           0.10000001,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": "bolts",
+        "thunderboltPeriod": 16.419754,
+        "thunderboltDuration": 0.5
       },
       {
         "time": 75600.0,
@@ -1144,7 +1174,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": "bolts",
+        "thunderboltPeriod": 20.0,
+        "thunderboltDuration": 0.5
       },
       {
         "time": 81000.0,
@@ -1218,7 +1251,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": "bolts",
+        "thunderboltPeriod": 15.0,
+        "thunderboltDuration": 0.5
       },
       {
         "time": 86399.0,
@@ -1292,7 +1328,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": "bolts",
+        "thunderboltPeriod": 10.000925,
+        "thunderboltDuration": 0.5
       },
       {
         "time": 3600.0,
@@ -1366,7 +1405,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": "bolts",
+        "thunderboltPeriod": 8.333333,
+        "thunderboltDuration": 0.41666666
       }
     ]
   },
@@ -1525,9 +1567,9 @@
           0.01,
           0.11
         ],
-        "thunderboltCollection": "bolts",
-        "thunderboltPeriod": 10.0,
-        "thunderboltDuration": 0.5,
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 0.0,
+        "thunderboltDuration": 0.0,
         "hemiVibrance": 0.0,
         "hemiContrast": 0.0,
         "wetSurfaceFactor": 0.0,
@@ -1688,7 +1730,7 @@
           0.11
         ],
         "thunderboltCollection": "bolts",
-        "thunderboltPeriod": 10.0,
+        "thunderboltPeriod": 20.0,
         "thunderboltDuration": 0.5,
         "hemiVibrance": 0.0,
         "hemiContrast": 0.0,
@@ -1775,7 +1817,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": "bolts",
+        "thunderboltPeriod": 10.0,
+        "thunderboltDuration": 0.5
       },
       {
         "time": 1.0,
@@ -1849,7 +1894,10 @@
           0.099999994,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": "bolts",
+        "thunderboltPeriod": 9.9995365,
+        "thunderboltDuration": 0.49997684
       },
       {
         "time": 3600.0,
@@ -1923,7 +1971,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": "bolts",
+        "thunderboltPeriod": 8.333333,
+        "thunderboltDuration": 0.41666666
       },
       {
         "time": 21599.0,
@@ -1997,7 +2048,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 0.0004631281,
+        "thunderboltDuration": 0.000023156404
       },
       {
         "time": 21600.0,
@@ -2071,7 +2125,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 0.0,
+        "thunderboltDuration": 0.0
       },
       {
         "time": 25000.0,
@@ -2145,7 +2202,10 @@
           0.10000001,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 1.574074,
+        "thunderboltDuration": 0.0787037
       },
       {
         "time": 28800.0,
@@ -2219,7 +2279,10 @@
           0.099999994,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 3.3333335,
+        "thunderboltDuration": 0.16666667
       },
       {
         "time": 43200.0,
@@ -2293,7 +2356,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": "bolts",
+        "thunderboltPeriod": 10.0,
+        "thunderboltDuration": 0.5
       },
       {
         "time": 50000.0,
@@ -2367,7 +2433,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": "bolts",
+        "thunderboltPeriod": 12.098765,
+        "thunderboltDuration": 0.5
       },
       {
         "time": 64000.0,
@@ -2441,7 +2510,10 @@
           0.10000001,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": "bolts",
+        "thunderboltPeriod": 16.419754,
+        "thunderboltDuration": 0.5
       },
       {
         "time": 75600.0,
@@ -2515,7 +2587,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": "bolts",
+        "thunderboltPeriod": 20.0,
+        "thunderboltDuration": 0.5
       },
       {
         "time": 81000.0,
@@ -2589,7 +2664,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": "bolts",
+        "thunderboltPeriod": 15.0,
+        "thunderboltDuration": 0.5
       },
       {
         "time": 86399.0,
@@ -2663,7 +2741,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": "bolts",
+        "thunderboltPeriod": 10.000925,
+        "thunderboltDuration": 0.5
       },
       {
         "time": 3600.0,
@@ -2737,7 +2818,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": "bolts",
+        "thunderboltPeriod": 8.333333,
+        "thunderboltDuration": 0.41666666
       }
     ]
   },
@@ -3150,7 +3234,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 0.0,
+        "thunderboltDuration": 0.0
       },
       {
         "time": 1.0,
@@ -3224,7 +3311,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 0.0,
+        "thunderboltDuration": 0.0
       },
       {
         "time": 3600.0,
@@ -3298,7 +3388,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 0.0,
+        "thunderboltDuration": 0.0
       },
       {
         "time": 21599.0,
@@ -3372,7 +3465,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 0.0,
+        "thunderboltDuration": 0.0
       },
       {
         "time": 21600.0,
@@ -3446,7 +3542,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 0.0,
+        "thunderboltDuration": 0.0
       },
       {
         "time": 25000.0,
@@ -3520,7 +3619,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 0.0,
+        "thunderboltDuration": 0.0
       },
       {
         "time": 28800.0,
@@ -3594,7 +3696,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 0.0,
+        "thunderboltDuration": 0.0
       },
       {
         "time": 43200.0,
@@ -3668,7 +3773,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 0.0,
+        "thunderboltDuration": 0.0
       },
       {
         "time": 50000.0,
@@ -3742,7 +3850,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 0.0,
+        "thunderboltDuration": 0.0
       },
       {
         "time": 64000.0,
@@ -3816,7 +3927,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 0.0,
+        "thunderboltDuration": 0.0
       },
       {
         "time": 75600.0,
@@ -3890,7 +4004,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 0.0,
+        "thunderboltDuration": 0.0
       },
       {
         "time": 81000.0,
@@ -3964,7 +4081,10 @@
           0.10000001,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 0.0,
+        "thunderboltDuration": 0.0
       },
       {
         "time": 86399.0,
@@ -4038,7 +4158,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 0.0,
+        "thunderboltDuration": 0.0
       },
       {
         "time": 3600.0,
@@ -4112,7 +4235,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 0.0,
+        "thunderboltDuration": 0.0
       }
     ]
   },
@@ -4271,9 +4397,9 @@
           0.01,
           0.11
         ],
-        "thunderboltCollection": "bolts",
-        "thunderboltPeriod": 10.0,
-        "thunderboltDuration": 0.5,
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 0.0,
+        "thunderboltDuration": 0.0,
         "hemiVibrance": 0.0,
         "hemiContrast": 0.0,
         "wetSurfaceFactor": 0.0,
@@ -4434,7 +4560,7 @@
           0.11
         ],
         "thunderboltCollection": "bolts",
-        "thunderboltPeriod": 10.0,
+        "thunderboltPeriod": 20.0,
         "thunderboltDuration": 0.5,
         "hemiVibrance": 0.0,
         "hemiContrast": 0.0,
@@ -4586,7 +4712,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": "bolts",
+        "thunderboltPeriod": 10.0,
+        "thunderboltDuration": 0.5
       },
       {
         "time": 1.0,
@@ -4660,7 +4789,10 @@
           0.099999994,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": "bolts",
+        "thunderboltPeriod": 9.9995365,
+        "thunderboltDuration": 0.49997684
       },
       {
         "time": 3600.0,
@@ -4734,7 +4866,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": "bolts",
+        "thunderboltPeriod": 8.333333,
+        "thunderboltDuration": 0.41666666
       },
       {
         "time": 21599.0,
@@ -4808,7 +4943,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 0.0004631281,
+        "thunderboltDuration": 0.000023156404
       },
       {
         "time": 21600.0,
@@ -4882,7 +5020,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 0.0,
+        "thunderboltDuration": 0.0
       },
       {
         "time": 25000.0,
@@ -4956,7 +5097,10 @@
           0.10000001,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 1.574074,
+        "thunderboltDuration": 0.0787037
       },
       {
         "time": 28800.0,
@@ -5030,7 +5174,10 @@
           0.099999994,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 3.3333335,
+        "thunderboltDuration": 0.16666667
       },
       {
         "time": 43200.0,
@@ -5104,7 +5251,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": "bolts",
+        "thunderboltPeriod": 10.0,
+        "thunderboltDuration": 0.5
       },
       {
         "time": 50000.0,
@@ -5178,7 +5328,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": "bolts",
+        "thunderboltPeriod": 12.098765,
+        "thunderboltDuration": 0.5
       },
       {
         "time": 64000.0,
@@ -5252,7 +5405,10 @@
           0.10000001,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": "bolts",
+        "thunderboltPeriod": 16.419754,
+        "thunderboltDuration": 0.5
       },
       {
         "time": 75600.0,
@@ -5326,7 +5482,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": "bolts",
+        "thunderboltPeriod": 20.0,
+        "thunderboltDuration": 0.5
       },
       {
         "time": 81000.0,
@@ -5400,7 +5559,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": "bolts",
+        "thunderboltPeriod": 15.0,
+        "thunderboltDuration": 0.5
       },
       {
         "time": 86399.0,
@@ -5474,7 +5636,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": "bolts",
+        "thunderboltPeriod": 10.000925,
+        "thunderboltDuration": 0.5
       },
       {
         "time": 3600.0,
@@ -5548,7 +5713,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": "bolts",
+        "thunderboltPeriod": 8.333333,
+        "thunderboltDuration": 0.41666666
       },
       {
         "time": 0.0,
@@ -5622,7 +5790,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": "bolts",
+        "thunderboltPeriod": 10.0,
+        "thunderboltDuration": 0.5
       },
       {
         "time": 1.0,
@@ -5696,7 +5867,10 @@
           0.099999994,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": "bolts",
+        "thunderboltPeriod": 9.9995365,
+        "thunderboltDuration": 0.49997684
       },
       {
         "time": 3600.0,
@@ -5770,7 +5944,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": "bolts",
+        "thunderboltPeriod": 8.333333,
+        "thunderboltDuration": 0.41666666
       },
       {
         "time": 21599.0,
@@ -5844,7 +6021,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 0.0004631281,
+        "thunderboltDuration": 0.000023156404
       },
       {
         "time": 21600.0,
@@ -5918,7 +6098,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 0.0,
+        "thunderboltDuration": 0.0
       },
       {
         "time": 25000.0,
@@ -5992,7 +6175,10 @@
           0.10000001,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 1.574074,
+        "thunderboltDuration": 0.0787037
       },
       {
         "time": 28800.0,
@@ -6066,7 +6252,10 @@
           0.099999994,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 3.3333335,
+        "thunderboltDuration": 0.16666667
       },
       {
         "time": 43200.0,
@@ -6140,7 +6329,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": "bolts",
+        "thunderboltPeriod": 10.0,
+        "thunderboltDuration": 0.5
       },
       {
         "time": 50000.0,
@@ -6214,7 +6406,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": "bolts",
+        "thunderboltPeriod": 12.098765,
+        "thunderboltDuration": 0.5
       },
       {
         "time": 64000.0,
@@ -6288,7 +6483,10 @@
           0.10000001,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": "bolts",
+        "thunderboltPeriod": 16.419754,
+        "thunderboltDuration": 0.5
       },
       {
         "time": 75600.0,
@@ -6362,7 +6560,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": "bolts",
+        "thunderboltPeriod": 20.0,
+        "thunderboltDuration": 0.5
       },
       {
         "time": 81000.0,
@@ -6436,7 +6637,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": "bolts",
+        "thunderboltPeriod": 15.0,
+        "thunderboltDuration": 0.5
       },
       {
         "time": 86399.0,
@@ -6510,7 +6714,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": "bolts",
+        "thunderboltPeriod": 10.000925,
+        "thunderboltDuration": 0.5
       },
       {
         "time": 3600.0,
@@ -6584,7 +6791,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": "bolts",
+        "thunderboltPeriod": 8.333333,
+        "thunderboltDuration": 0.41666666
       },
       {
         "time": 0.0,
@@ -6658,7 +6868,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": "bolts",
+        "thunderboltPeriod": 10.0,
+        "thunderboltDuration": 0.5
       },
       {
         "time": 1.0,
@@ -6732,7 +6945,10 @@
           0.099999994,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": "bolts",
+        "thunderboltPeriod": 9.9995365,
+        "thunderboltDuration": 0.49997684
       },
       {
         "time": 3600.0,
@@ -6806,7 +7022,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": "bolts",
+        "thunderboltPeriod": 8.333333,
+        "thunderboltDuration": 0.41666666
       },
       {
         "time": 21599.0,
@@ -6880,7 +7099,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 0.0004631281,
+        "thunderboltDuration": 0.000023156404
       },
       {
         "time": 21600.0,
@@ -6954,7 +7176,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 0.0,
+        "thunderboltDuration": 0.0
       },
       {
         "time": 25000.0,
@@ -7028,7 +7253,10 @@
           0.10000001,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 1.574074,
+        "thunderboltDuration": 0.0787037
       },
       {
         "time": 28800.0,
@@ -7102,7 +7330,10 @@
           0.099999994,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 3.3333335,
+        "thunderboltDuration": 0.16666667
       },
       {
         "time": 43200.0,
@@ -7176,7 +7407,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": "bolts",
+        "thunderboltPeriod": 10.0,
+        "thunderboltDuration": 0.5
       },
       {
         "time": 50000.0,
@@ -7250,7 +7484,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": "bolts",
+        "thunderboltPeriod": 12.098765,
+        "thunderboltDuration": 0.5
       },
       {
         "time": 64000.0,
@@ -7324,7 +7561,10 @@
           0.10000001,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": "bolts",
+        "thunderboltPeriod": 16.419754,
+        "thunderboltDuration": 0.5
       },
       {
         "time": 75600.0,
@@ -7398,7 +7638,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": "bolts",
+        "thunderboltPeriod": 20.0,
+        "thunderboltDuration": 0.5
       },
       {
         "time": 81000.0,
@@ -7472,7 +7715,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": "bolts",
+        "thunderboltPeriod": 15.0,
+        "thunderboltDuration": 0.5
       },
       {
         "time": 86399.0,
@@ -7546,7 +7792,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": "bolts",
+        "thunderboltPeriod": 10.000925,
+        "thunderboltDuration": 0.5
       },
       {
         "time": 3600.0,
@@ -7620,7 +7869,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": "bolts",
+        "thunderboltPeriod": 8.333333,
+        "thunderboltDuration": 0.41666666
       },
       {
         "time": 0.0,
@@ -7694,7 +7946,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": "bolts",
+        "thunderboltPeriod": 10.0,
+        "thunderboltDuration": 0.5
       },
       {
         "time": 1.0,
@@ -7768,7 +8023,10 @@
           0.099999994,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": "bolts",
+        "thunderboltPeriod": 9.9995365,
+        "thunderboltDuration": 0.49997684
       },
       {
         "time": 3600.0,
@@ -7842,7 +8100,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": "bolts",
+        "thunderboltPeriod": 8.333333,
+        "thunderboltDuration": 0.41666666
       },
       {
         "time": 21599.0,
@@ -7916,7 +8177,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 0.0004631281,
+        "thunderboltDuration": 0.000023156404
       },
       {
         "time": 21600.0,
@@ -7990,7 +8254,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 0.0,
+        "thunderboltDuration": 0.0
       },
       {
         "time": 25000.0,
@@ -8064,7 +8331,10 @@
           0.10000001,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 1.574074,
+        "thunderboltDuration": 0.0787037
       },
       {
         "time": 28800.0,
@@ -8138,7 +8408,10 @@
           0.099999994,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 3.3333335,
+        "thunderboltDuration": 0.16666667
       },
       {
         "time": 43200.0,
@@ -8212,7 +8485,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": "bolts",
+        "thunderboltPeriod": 10.0,
+        "thunderboltDuration": 0.5
       },
       {
         "time": 50000.0,
@@ -8286,7 +8562,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": "bolts",
+        "thunderboltPeriod": 12.098765,
+        "thunderboltDuration": 0.5
       },
       {
         "time": 64000.0,
@@ -8360,7 +8639,10 @@
           0.10000001,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": "bolts",
+        "thunderboltPeriod": 16.419754,
+        "thunderboltDuration": 0.5
       },
       {
         "time": 75600.0,
@@ -8434,7 +8716,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": "bolts",
+        "thunderboltPeriod": 20.0,
+        "thunderboltDuration": 0.5
       },
       {
         "time": 81000.0,
@@ -8508,7 +8793,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": "bolts",
+        "thunderboltPeriod": 15.0,
+        "thunderboltDuration": 0.5
       },
       {
         "time": 86399.0,
@@ -8582,7 +8870,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": "bolts",
+        "thunderboltPeriod": 10.000925,
+        "thunderboltDuration": 0.5
       },
       {
         "time": 3600.0,
@@ -8656,7 +8947,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": "bolts",
+        "thunderboltPeriod": 8.333333,
+        "thunderboltDuration": 0.41666666
       }
     ]
   },
@@ -9134,7 +9428,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 0.0,
+        "thunderboltDuration": 0.0
       },
       {
         "time": 1.0,
@@ -9208,7 +9505,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 0.0,
+        "thunderboltDuration": 0.0
       },
       {
         "time": 3600.0,
@@ -9282,7 +9582,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 0.0,
+        "thunderboltDuration": 0.0
       },
       {
         "time": 21599.0,
@@ -9356,7 +9659,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 0.0,
+        "thunderboltDuration": 0.0
       },
       {
         "time": 21600.0,
@@ -9430,7 +9736,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 0.0,
+        "thunderboltDuration": 0.0
       },
       {
         "time": 25000.0,
@@ -9504,7 +9813,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 0.0,
+        "thunderboltDuration": 0.0
       },
       {
         "time": 28800.0,
@@ -9578,7 +9890,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 0.0,
+        "thunderboltDuration": 0.0
       },
       {
         "time": 43200.0,
@@ -9652,7 +9967,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 0.0,
+        "thunderboltDuration": 0.0
       },
       {
         "time": 50000.0,
@@ -9726,7 +10044,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 0.0,
+        "thunderboltDuration": 0.0
       },
       {
         "time": 64000.0,
@@ -9800,7 +10121,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 0.0,
+        "thunderboltDuration": 0.0
       },
       {
         "time": 75600.0,
@@ -9874,7 +10198,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 0.0,
+        "thunderboltDuration": 0.0
       },
       {
         "time": 81000.0,
@@ -9948,7 +10275,10 @@
           0.10000001,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 0.0,
+        "thunderboltDuration": 0.0
       },
       {
         "time": 86399.0,
@@ -10022,7 +10352,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 0.0,
+        "thunderboltDuration": 0.0
       },
       {
         "time": 3600.0,
@@ -10096,7 +10429,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 0.0,
+        "thunderboltDuration": 0.0
       },
       {
         "time": 0.0,
@@ -10170,7 +10506,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 0.0,
+        "thunderboltDuration": 0.0
       },
       {
         "time": 1.0,
@@ -10244,7 +10583,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 0.0,
+        "thunderboltDuration": 0.0
       },
       {
         "time": 3600.0,
@@ -10318,7 +10660,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 0.0,
+        "thunderboltDuration": 0.0
       },
       {
         "time": 21599.0,
@@ -10392,7 +10737,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 0.0,
+        "thunderboltDuration": 0.0
       },
       {
         "time": 21600.0,
@@ -10466,7 +10814,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 0.0,
+        "thunderboltDuration": 0.0
       },
       {
         "time": 25000.0,
@@ -10540,7 +10891,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 0.0,
+        "thunderboltDuration": 0.0
       },
       {
         "time": 28800.0,
@@ -10614,7 +10968,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 0.0,
+        "thunderboltDuration": 0.0
       },
       {
         "time": 43200.0,
@@ -10688,7 +11045,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 0.0,
+        "thunderboltDuration": 0.0
       },
       {
         "time": 50000.0,
@@ -10762,7 +11122,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 0.0,
+        "thunderboltDuration": 0.0
       },
       {
         "time": 64000.0,
@@ -10836,7 +11199,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 0.0,
+        "thunderboltDuration": 0.0
       },
       {
         "time": 75600.0,
@@ -10910,7 +11276,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 0.0,
+        "thunderboltDuration": 0.0
       },
       {
         "time": 81000.0,
@@ -10984,7 +11353,10 @@
           0.10000001,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 0.0,
+        "thunderboltDuration": 0.0
       },
       {
         "time": 86399.0,
@@ -11058,7 +11430,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 0.0,
+        "thunderboltDuration": 0.0
       },
       {
         "time": 3600.0,
@@ -11132,7 +11507,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 0.0,
+        "thunderboltDuration": 0.0
       },
       {
         "time": 0.0,
@@ -11206,7 +11584,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 0.0,
+        "thunderboltDuration": 0.0
       },
       {
         "time": 1.0,
@@ -11280,7 +11661,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 0.0,
+        "thunderboltDuration": 0.0
       },
       {
         "time": 3600.0,
@@ -11354,7 +11738,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 0.0,
+        "thunderboltDuration": 0.0
       },
       {
         "time": 21599.0,
@@ -11428,7 +11815,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 0.0,
+        "thunderboltDuration": 0.0
       },
       {
         "time": 21600.0,
@@ -11502,7 +11892,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 0.0,
+        "thunderboltDuration": 0.0
       },
       {
         "time": 25000.0,
@@ -11576,7 +11969,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 0.0,
+        "thunderboltDuration": 0.0
       },
       {
         "time": 28800.0,
@@ -11650,7 +12046,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 0.0,
+        "thunderboltDuration": 0.0
       },
       {
         "time": 43200.0,
@@ -11724,7 +12123,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 0.0,
+        "thunderboltDuration": 0.0
       },
       {
         "time": 50000.0,
@@ -11798,7 +12200,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 0.0,
+        "thunderboltDuration": 0.0
       },
       {
         "time": 64000.0,
@@ -11872,7 +12277,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 0.0,
+        "thunderboltDuration": 0.0
       },
       {
         "time": 75600.0,
@@ -11946,7 +12354,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 0.0,
+        "thunderboltDuration": 0.0
       },
       {
         "time": 81000.0,
@@ -12020,7 +12431,10 @@
           0.10000001,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 0.0,
+        "thunderboltDuration": 0.0
       },
       {
         "time": 86399.0,
@@ -12094,7 +12508,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 0.0,
+        "thunderboltDuration": 0.0
       },
       {
         "time": 3600.0,
@@ -12168,7 +12585,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 0.0,
+        "thunderboltDuration": 0.0
       },
       {
         "time": 0.0,
@@ -12242,7 +12662,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 0.0,
+        "thunderboltDuration": 0.0
       },
       {
         "time": 1.0,
@@ -12316,7 +12739,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 0.0,
+        "thunderboltDuration": 0.0
       },
       {
         "time": 3600.0,
@@ -12390,7 +12816,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 0.0,
+        "thunderboltDuration": 0.0
       },
       {
         "time": 21599.0,
@@ -12464,7 +12893,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 0.0,
+        "thunderboltDuration": 0.0
       },
       {
         "time": 21600.0,
@@ -12538,7 +12970,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 0.0,
+        "thunderboltDuration": 0.0
       },
       {
         "time": 25000.0,
@@ -12612,7 +13047,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 0.0,
+        "thunderboltDuration": 0.0
       },
       {
         "time": 28800.0,
@@ -12686,7 +13124,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 0.0,
+        "thunderboltDuration": 0.0
       },
       {
         "time": 43200.0,
@@ -12760,7 +13201,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 0.0,
+        "thunderboltDuration": 0.0
       },
       {
         "time": 50000.0,
@@ -12834,7 +13278,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 0.0,
+        "thunderboltDuration": 0.0
       },
       {
         "time": 64000.0,
@@ -12908,7 +13355,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 0.0,
+        "thunderboltDuration": 0.0
       },
       {
         "time": 75600.0,
@@ -12982,7 +13432,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 0.0,
+        "thunderboltDuration": 0.0
       },
       {
         "time": 81000.0,
@@ -13056,7 +13509,10 @@
           0.10000001,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 0.0,
+        "thunderboltDuration": 0.0
       },
       {
         "time": 86399.0,
@@ -13130,7 +13586,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 0.0,
+        "thunderboltDuration": 0.0
       },
       {
         "time": 3600.0,
@@ -13204,7 +13663,10 @@
           0.1,
           0.01,
           0.11
-        ]
+        ],
+        "thunderboltCollection": null,
+        "thunderboltPeriod": 0.0,
+        "thunderboltDuration": 0.0
       }
     ]
   }

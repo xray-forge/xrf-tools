@@ -14,11 +14,14 @@ describe("toLevelManualWeatherLtx", () => {
     const lines: Array<string> = text.split("\n");
 
     expect(lines[0]).toBe("[12:34:56]");
-    expect(text).toContain("sky_texture      = sky\\sky_7_cube\n");
-    expect(text).toContain("clouds_color     = 0.5, 0.5, 0.5, 0.8, 2\n");
-    expect(text).toContain("sun_altitude     = -68.999985\n");
-    expect(text).toContain("fog_color        = 0.304609, 0.328138, 0.367354\n");
-    expect(text).toContain("trees_wave       = 0.1, 0.01, 0.11\n");
+    // Aligned to the longest key.
+    expect(text).toContain("sky_texture            = sky\\sky_7_cube\n");
+    expect(text).toContain("clouds_color           = 0.5, 0.5, 0.5, 0.8, 2\n");
+    expect(text).toContain("sun_altitude           = -68.999985\n");
+    expect(text).toContain("fog_color              = 0.304609, 0.328138, 0.367354\n");
+    expect(text).toContain("trees_wave             = 0.1, 0.01, 0.11\n");
+    expect(text).toContain("thunderbolt_collection = \n");
+    expect(text).toContain("thunderbolt_period     = 0\n");
     expect(text).not.toContain("tree_amplitude_intensity");
   });
 

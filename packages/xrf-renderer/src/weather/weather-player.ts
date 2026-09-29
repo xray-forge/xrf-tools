@@ -393,6 +393,9 @@ export class WeatherPlayer {
       waterIntensity: mix.waterIntensity,
       windDirection: mix.windDirection,
       windVelocity: mix.windVelocity,
+      thunderboltCollection: mix.thunderboltCollection,
+      thunderboltDuration: mix.thunderboltDuration,
+      thunderboltPeriod: mix.thunderboltPeriod,
     };
   }
 

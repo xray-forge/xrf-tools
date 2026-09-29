@@ -41,6 +41,7 @@ fn vanilla_day() -> String {
       vanilla_keyframe("06:00:00"),
       &[
         ("sky_texture", "sky\\dawn"),
+        ("thunderbolt_collection", ""),
         ("sun_altitude", "80"),
         ("sun_longitude", "-8"),
         ("sky_rotation", "20"),
@@ -66,6 +67,7 @@ fn vanilla_day() -> String {
         ("sun_altitude", "-150"),
         ("sun_longitude", "-3"),
         ("sky_rotation", "300"),
+        ("thunderbolt_period", "20"),
         ("rain_density", "0.6"),
         ("rain_color", "0.4, 0.45, 0.5"),
         ("wind_velocity", "12"),
@@ -178,6 +180,29 @@ fn mixes_fog_as_the_engine_does() {
   assert!((mix.fog_near - (1.0 - 0.175) * 0.85 * 650.0).abs() < 1e-3);
   assert!((mix.fog_far - 0.99 * 650.0).abs() < 1e-3);
   assert!(mix.sun_direction[1] < 0.0);
+}
+
+// `CEnvDescriptorMixer::lerp`: the collection is the nearer keyframe's, the timings blended.
+#[test]
+fn mixes_thunderbolts_as_the_engine_does() {
+  let (keyframes, _) = read_cycle(&vanilla_fixture(), XrayEngine::Vanilla);
+  let mixer = WeatherMixer {
+    engine: XrayEngine::Vanilla,
+    keyframes: &keyframes,
+    sun: WeatherSunSource::Authored,
+    modifiers: &[],
+  };
+  // A quarter from six, which strikes with nothing, to noon; then three quarters.
+  let early: WeatherMix = mixer.mix(at(27_000.0)).unwrap();
+  let late: WeatherMix = mixer.mix(at(37_800.0)).unwrap();
+  // Halfway from nine in the evening to midnight.
+  let night: WeatherMix = mixer.mix(at(81_000.0)).unwrap();
+
+  assert_eq!(early.thunderbolt_collection, None);
+  assert!((early.thunderbolt_period - 2.5).abs() < 1e-5);
+  assert_eq!(late.thunderbolt_collection.as_deref(), Some("bolts"));
+  assert!((late.thunderbolt_duration - 0.375).abs() < 1e-5);
+  assert!((night.thunderbolt_period - 15.0).abs() < 1e-4);
 }
 
 #[test]

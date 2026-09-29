@@ -43,6 +43,12 @@ export interface ILevelManualWeather {
   treesSpeed: number;
   treesRotation: number;
   treesWave: TRendererVector;
+  /** The `thunderbolt_collections.ltx` section struck with, empty for none. */
+  thunderboltCollection: string;
+  /** Seconds between strikes. */
+  thunderboltPeriod: number;
+  /** Seconds a strike lasts. */
+  thunderboltDuration: number;
 }
 
 /** `default_clear` at noon (`configs/environment/weathers/default_clear.ltx`, `[12:00:00]`), with the engine's sway. */
@@ -68,6 +74,9 @@ export const DEFAULT_LEVEL_MANUAL_WEATHER: ILevelManualWeather = {
   treesRotation: 10,
   treesSpeed: 1,
   treesWave: [0.1, 0.01, 0.11],
+  thunderboltCollection: "",
+  thunderboltDuration: 0,
+  thunderboltPeriod: 0,
   waterIntensity: 1,
   windDirection: 0,
   windVelocity: 0,
@@ -111,6 +120,10 @@ export function toLevelManualKeyframe(manual: ILevelManualWeather, time: number)
     treeRotation: manual.treesRotation,
     treeSpeed: manual.treesSpeed,
     treeWave: manual.treesWave,
+    // Zero without a collection, as the engine loads a keyframe that strikes with none.
+    thunderboltCollection: manual.thunderboltCollection || null,
+    thunderboltDuration: manual.thunderboltCollection ? manual.thunderboltDuration : 0,
+    thunderboltPeriod: manual.thunderboltCollection ? manual.thunderboltPeriod : 0,
     waterIntensity: manual.waterIntensity,
     windDirection: toRadians(manual.windDirection),
     windVelocity: manual.windVelocity,
@@ -146,6 +159,9 @@ export function toLevelManualWeather(current: IRendererWeatherKeyframe): ILevelM
     treesRotation: current.treeRotation,
     treesSpeed: current.treeSpeed,
     treesWave: current.treeWave,
+    thunderboltCollection: current.thunderboltCollection ?? "",
+    thunderboltDuration: current.thunderboltDuration,
+    thunderboltPeriod: current.thunderboltPeriod,
     waterIntensity: current.waterIntensity,
     windDirection: toDegrees(current.windDirection),
     windVelocity: current.windVelocity,

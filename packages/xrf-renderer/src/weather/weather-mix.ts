@@ -1,3 +1,5 @@
+import { Nullable } from "@xrf/types";
+
 import { TRendererColor } from "#/contract/renderer-color";
 import { TRendererVector } from "#/contract/renderer-vector";
 
@@ -40,4 +42,10 @@ export interface IWeatherMix {
   treeSpeed: number;
   treeRotation: number;
   treeWave: TRendererVector;
+  /** The collection struck with: the first keyframe's before halfway, the second's after. */
+  thunderboltCollection: Nullable<string>;
+  /** Seconds. */
+  thunderboltPeriod: number;
+  /** Seconds. */
+  thunderboltDuration: number;
 }

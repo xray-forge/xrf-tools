@@ -37,6 +37,8 @@ function expectClose(actual: unknown, expected: unknown, path: string): void {
       path,
       true,
     ]);
+  } else if (expected === null || typeof expected !== "object") {
+    expect([path, actual]).toEqual([path, expected]);
   } else if (Array.isArray(expected)) {
     expected.forEach((value: unknown, index: number) =>
       expectClose((actual as Array<unknown>)[index], value, `${path}[${index}]`)

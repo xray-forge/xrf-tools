@@ -15,8 +15,8 @@ export interface ILevelManualWeatherLtxInput {
 }
 
 /**
- * A keyframe set by hand as a weather config's `[HH:MM:SS]` section, with the keys the engine target reads; `sun`,
- * `ambient` and the thunderbolts are the file's own and are left out.
+ * A keyframe set by hand as a weather config's `[HH:MM:SS]` section, with the keys the engine target reads; `sun` and
+ * `ambient` are the file's own and are left out.
  *
  * @param input - The keyframe, its time and the engine target.
  * @returns The section's text.
@@ -45,6 +45,9 @@ export function toLevelManualWeatherLtx(input: ILevelManualWeatherLtxInput): str
     ["sun_color", toList(manual.sunColor)],
     ["ambient_color", toList(manual.ambientColor)],
     ["water_intensity", toNumber(manual.waterIntensity)],
+    ["thunderbolt_collection", manual.thunderboltCollection],
+    ["thunderbolt_duration", toNumber(manual.thunderboltDuration)],
+    ["thunderbolt_period", toNumber(manual.thunderboltPeriod)],
     ...(isVanilla
       ? ([
           ["sun_altitude", toNumber(manual.sunAltitude)],

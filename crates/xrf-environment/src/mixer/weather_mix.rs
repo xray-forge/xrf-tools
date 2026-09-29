@@ -40,4 +40,10 @@ pub struct WeatherMix {
   pub tree_speed: f32,
   pub tree_rotation: f32,
   pub tree_wave: [f32; 3],
+  /// The collection struck with: the first keyframe's before halfway, the second's after.
+  pub thunderbolt_collection: Option<String>,
+  /// Seconds.
+  pub thunderbolt_period: f32,
+  /// Seconds.
+  pub thunderbolt_duration: f32,
 }
