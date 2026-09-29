@@ -1,32 +1,68 @@
 use xrf_engine_target::XrayEngine;
 
 use crate::mixer::weather_mix::WeatherMix;
+use crate::mixer::weather_mix_point::WeatherMixPoint;
+use crate::mixer::weather_modifier::WeatherModifier;
+use crate::mixer::weather_modifiers_sum::WeatherModifiersSum;
 use crate::mixer::weather_sun_source::WeatherSunSource;
 use crate::weather::{WeatherDescriptor, WeatherTime};
 
 /// `EPS`, what `TimeWeight` takes a zero span by.
 const EPS: f32 = 0.000_01;
 
-/// Mixes a cycle's keyframes at a time of day as `CEnvironment::lerp` does, without modifiers.
+/// Mixes a cycle's keyframes at a time of day as `CEnvironment::lerp` does, with the modifiers reaching the view.
 #[derive(Clone, Copy, Debug)]
 pub struct WeatherMixer<'a> {
   /// Sorted by time, as a cycle holds them.
   pub keyframes: &'a [WeatherDescriptor],
   pub engine: XrayEngine,
   pub sun: WeatherSunSource<'a>,
+  /// The level's `level.env_mod` volumes.
+  pub modifiers: &'a [WeatherModifier],
 }
 
 impl WeatherMixer<'_> {
-  /// The keyframes mixed at a time of day, in seconds since midnight; none for a cycle without any.
-  pub fn mix(&self, time: f32) -> Option<WeatherMix> {
+  /// The keyframes mixed at a time of day, seen from a point; none for a cycle without any.
+  pub fn mix(&self, point: WeatherMixPoint) -> Option<WeatherMix> {
+    let WeatherMixPoint { time, view } = point;
     let time: f32 = time.rem_euclid(WeatherTime::DAY as f32);
+    let modified: WeatherModifiersSum = WeatherModifiersSum::at(self.modifiers, view);
+    let scale: f32 = modified.get_scale();
     let [from, to] = self.select(time)?;
     let (a, b) = (&self.keyframes[from], &self.keyframes[to]);
     let f: f32 = Self::weigh(time, [a.time as f32, b.time as f32]);
     let scalar = |a: f32, b: f32| (1.0 - f) * a + f * b;
     let vector = |a: &[f32], b: &[f32]| -> Vec<f32> { a.iter().zip(b).map(|(a, b)| scalar(*a, *b)).collect() };
-    let far_plane: f32 = scalar(a.far_plane, b.far_plane);
-    let fog_density: f32 = scalar(a.fog_density, b.fog_density);
+    // A value some modifier reaches is the mix plus what they add, of which the environment keeps its share.
+    let modify = |flag: u16, value: f32, added: f32| {
+      if modified.has(flag) {
+        (value + added) * scale
+      } else {
+        value
+      }
+    };
+    let modify_vector = |flag: u16, value: Vec<f32>, added: [f32; 3]| -> [f32; 3] {
+      std::array::from_fn(|axis| modify(flag, value[axis], added[axis]))
+    };
+    let far_plane: f32 = modify(
+      WeatherModifier::FAR_PLANE,
+      scalar(a.far_plane, b.far_plane),
+      modified.far_plane,
+    );
+    let fog_density: f32 = modify(
+      WeatherModifier::FOG_DENSITY,
+      scalar(a.fog_density, b.fog_density),
+      modified.fog_density,
+    );
+    let hemi_color: [f32; 4] = {
+      let [red, green, blue] = modify_vector(
+        WeatherModifier::HEMI_COLOR,
+        vector(&a.hemi_color, &b.hemi_color),
+        modified.hemi_color,
+      );
+
+      [red, green, blue, scalar(a.hemi_color[3], b.hemi_color[3])]
+    };
     let fog_distance: f32 = match self.engine {
       XrayEngine::Vanilla => scalar(a.fog_distance, b.fog_distance),
       // `clamp(fog_distance, 1.f, far_plane - 10)`, the low bound first.
@@ -63,20 +99,35 @@ impl WeatherMixer<'_> {
     };
 
     Some(WeatherMix {
-      ambient_color: to_array(&vector(&a.ambient_color, &b.ambient_color)),
+      ambient_color: modify_vector(
+        WeatherModifier::AMBIENT_COLOR,
+        vector(&a.ambient_color, &b.ambient_color),
+        modified.ambient,
+      ),
+      clouds_color: to_array(&vector(&a.clouds_color, &b.clouds_color)),
+      clouds_rotation: scalar(a.clouds_rotation, b.clouds_rotation),
       far_plane,
-      fog_color: to_array(&vector(&a.fog_color, &b.fog_color)),
+      fog_color: modify_vector(
+        WeatherModifier::FOG_COLOR,
+        vector(&a.fog_color, &b.fog_color),
+        modified.fog_color,
+      ),
       fog_density,
       fog_distance,
       fog_far: 0.99 * fog_distance,
       fog_near: (1.0 - fog_density) * 0.85 * fog_distance,
-      hemi_color: to_array(&vector(&a.hemi_color, &b.hemi_color)),
+      hemi_color,
       keyframes: [from, to],
-      sky_color: to_array(&vector(&a.sky_color, &b.sky_color)),
+      sky_color: modify_vector(
+        WeatherModifier::SKY_COLOR,
+        vector(&a.sky_color, &b.sky_color),
+        modified.sky_color,
+      ),
       sky_rotation: scalar(a.sky_rotation, b.sky_rotation),
       sun_color,
       sun_direction,
       time,
+      view,
       tree_amplitude: scalar(a.tree_amplitude, b.tree_amplitude),
       tree_rotation: scalar(a.tree_rotation, b.tree_rotation),
       tree_speed: scalar(a.tree_speed, b.tree_speed),

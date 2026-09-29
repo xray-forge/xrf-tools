@@ -4,7 +4,9 @@ use serde::Serialize;
 use xrf_engine_target::XrayEngine;
 
 use super::fixtures::{EnvironmentFixture, extended_keyframe, sun_table, vanilla_keyframe};
-use crate::{SunPosition, WeatherDescriptor, WeatherMix, WeatherMixer, WeatherSunSource};
+use crate::{
+  SunPosition, WeatherDescriptor, WeatherMix, WeatherMixPoint, WeatherMixer, WeatherModifier, WeatherSunSource,
+};
 
 /// A keyframe with some of its keys written otherwise.
 fn keyframe(written: String, overrides: &[(&str, &str)]) -> String {
@@ -111,6 +113,14 @@ fn read_cycle(fixture: &EnvironmentFixture, engine: XrayEngine) -> (Vec<WeatherD
   )
 }
 
+/// A time of day, seen from the origin.
+fn at(time: f32) -> WeatherMixPoint {
+  WeatherMixPoint {
+    time,
+    view: [0.0, 0.0, 0.0],
+  }
+}
+
 fn vanilla_fixture() -> EnvironmentFixture {
   EnvironmentFixture::new().with("environment\\weathers\\test.ltx", &vanilla_day())
 }
@@ -128,6 +138,7 @@ fn selects_the_keyframes_around_a_time_and_around_midnight() {
     engine: XrayEngine::Vanilla,
     keyframes: &keyframes,
     sun: WeatherSunSource::Authored,
+    modifiers: &[],
   };
 
   assert_eq!(mixer.select(0.0), Some([3, 0]));
@@ -137,12 +148,12 @@ fn selects_the_keyframes_around_a_time_and_around_midnight() {
   assert_eq!(mixer.select(80_000.0), Some([3, 0]));
 
   // From nine in the evening to midnight, weighed across it.
-  let late: WeatherMix = mixer.mix(81_000.0).unwrap();
+  let late: WeatherMix = mixer.mix(at(81_000.0)).unwrap();
 
   assert!((late.weight - 5_400.0 / 10_800.0).abs() < 1e-6);
-  assert_eq!(mixer.mix(21_600.0).unwrap().weight, 1.0);
+  assert_eq!(mixer.mix(at(21_600.0)).unwrap().weight, 1.0);
   // A time outside the day wraps into it.
-  assert_eq!(mixer.mix(86_400.0 + 30_000.0), mixer.mix(30_000.0));
+  assert_eq!(mixer.mix(at(86_400.0 + 30_000.0)), mixer.mix(at(30_000.0)));
 }
 
 #[test]
@@ -152,8 +163,9 @@ fn mixes_fog_as_the_engine_does() {
     engine: XrayEngine::Vanilla,
     keyframes: &keyframes,
     sun: WeatherSunSource::Authored,
+    modifiers: &[],
   }
-  .mix(32_400.0)
+  .mix(at(32_400.0))
   .unwrap();
 
   // Halfway from six (450 at 0.25) to noon (850 at 0.1).
@@ -172,8 +184,9 @@ fn keeps_monolith_fog_inside_its_far_plane() {
     engine: XrayEngine::Extended,
     keyframes: &keyframes,
     sun: WeatherSunSource::Table(&positions),
+    modifiers: &[],
   }
-  .mix(28_800.0)
+  .mix(at(28_800.0))
   .unwrap();
 
   assert_eq!(mix.far_plane, 400.0);
@@ -204,6 +217,76 @@ fn lerps_the_sun_table_by_the_minute() {
   assert!(direction.iter().zip(expected).all(|(a, b)| (a - b).abs() < 1e-5));
 }
 
+/// Two volumes, one adding to everything and one to the fog alone, overlapping.
+fn modifiers() -> Vec<WeatherModifier> {
+  vec![
+    WeatherModifier {
+      ambient: [0.2, 0.1, 0.0],
+      far_plane: 300.0,
+      flags: WeatherModifier::ALL,
+      fog_color: [0.1, 0.2, 0.3],
+      fog_density: 0.5,
+      hemi_color: [0.3, 0.3, 0.1],
+      position: [0.0, 0.0, 0.0],
+      power: 1.0,
+      radius: 50.0,
+      sky_color: [0.5, 0.4, 0.3],
+    },
+    WeatherModifier {
+      ambient: [1.0, 1.0, 1.0],
+      far_plane: 1000.0,
+      flags: WeatherModifier::FOG_COLOR | WeatherModifier::FOG_DENSITY,
+      fog_color: [0.9, 0.1, 0.1],
+      fog_density: 1.0,
+      hemi_color: [1.0, 1.0, 1.0],
+      position: [30.0, 0.0, 0.0],
+      power: 0.5,
+      radius: 40.0,
+      sky_color: [1.0, 1.0, 1.0],
+    },
+  ]
+}
+
+#[test]
+fn weighs_the_modifiers_reaching_the_view() {
+  let (keyframes, _) = read_cycle(&vanilla_fixture(), XrayEngine::Vanilla);
+  let modifiers: Vec<WeatherModifier> = modifiers();
+  let mixer = WeatherMixer {
+    engine: XrayEngine::Vanilla,
+    keyframes: &keyframes,
+    modifiers: &modifiers,
+    sun: WeatherSunSource::Authored,
+  };
+  let point = |view: [f32; 3]| mixer.mix(WeatherMixPoint { time: 43_200.0, view }).unwrap();
+  let plain: WeatherMix = WeatherMixer {
+    modifiers: &[],
+    ..mixer
+  }
+  .mix(at(43_200.0))
+  .unwrap();
+
+  // Out of every reach, nothing changes.
+  assert_eq!(point([200.0, 0.0, 0.0]).far_plane, 900.0);
+  assert_eq!(point([200.0, 0.0, 0.0]).fog_density, plain.fog_density);
+
+  // At the first's centre it adds all of itself, the second an eighth of its power, and the environment keeps what
+  // the power of both leaves it.
+  let centre: WeatherMix = point([0.0, 0.0, 0.0]);
+  let scale: f32 = 1.0 / (1.0 + 1.0 + 0.125);
+
+  assert!((centre.far_plane - (900.0 + 300.0) * scale).abs() < 1e-3);
+  assert!((centre.fog_density - (0.1 + 0.5 + 0.125) * scale).abs() < 1e-6);
+  assert!((centre.fog_near - (1.0 - centre.fog_density) * 0.85 * centre.fog_distance).abs() < 1e-3);
+  assert_eq!(centre.hemi_color[3], plain.hemi_color[3]);
+
+  // Where only the second reaches, only the fog is touched.
+  let fogged: WeatherMix = point([60.0, 0.0, 0.0]);
+
+  assert_eq!(fogged.far_plane, plain.far_plane);
+  assert_eq!(fogged.sky_color, plain.sky_color);
+  assert_ne!(fogged.fog_color, plain.fog_color);
+}
+
 /// One cycle mixed through a day, as the renderer's own mixer replays it.
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -213,6 +296,7 @@ struct GoldenCase {
   sun: &'static str,
   keyframes: Vec<WeatherDescriptor>,
   sun_table: Option<Vec<SunPosition>>,
+  modifiers: Vec<WeatherModifier>,
   mixes: Vec<WeatherMix>,
 }
 
@@ -222,6 +306,9 @@ const GOLDEN_TIMES: [f32; 14] = [
   86_399.0, 90_000.0,
 ];
 
+/// Views across the golden modifiers: both centres, where they overlap, and out of reach.
+const GOLDEN_VIEWS: [[f32; 3]; 4] = [[0.0, 0.0, 0.0], [20.0, 5.0, -3.0], [30.0, 0.0, 0.0], [100.0, 0.0, 0.0]];
+
 /// Writes the golden vectors the renderer's weather tests replay: `cargo test -p xrf-environment -- --ignored`.
 #[test]
 #[ignore = "writes the renderer's golden vectors"]
@@ -229,43 +316,83 @@ fn writes_the_renderer_golden_vectors() {
   let (vanilla, _) = read_cycle(&vanilla_fixture(), XrayEngine::Vanilla);
   let (extended, positions) = read_cycle(&extended_fixture(), XrayEngine::Extended);
   let positions: Vec<SunPosition> = positions.unwrap();
-  let case = |name: &'static str, engine: XrayEngine, keyframes: &[WeatherDescriptor], sun: WeatherSunSource| {
-    let mixer = WeatherMixer { engine, keyframes, sun };
-
-    GoldenCase {
-      engine,
-      keyframes: keyframes.to_vec(),
-      mixes: GOLDEN_TIMES.iter().map(|time| mixer.mix(*time).unwrap()).collect(),
-      name,
-      sun: match sun {
-        WeatherSunSource::Authored => "authored",
-        WeatherSunSource::Dynamic => "dynamic",
-        WeatherSunSource::Table(_) => "table",
-      },
-      sun_table: match sun {
-        WeatherSunSource::Table(positions) => Some(positions.to_vec()),
-        _ => None,
-      },
-    }
+  let modifiers: Vec<WeatherModifier> = modifiers();
+  let case = |name: &'static str, mixer: WeatherMixer, views: &[[f32; 3]]| GoldenCase {
+    engine: mixer.engine,
+    keyframes: mixer.keyframes.to_vec(),
+    mixes: views
+      .iter()
+      .flat_map(|view| {
+        GOLDEN_TIMES.iter().map(|time| WeatherMixPoint {
+          time: *time,
+          view: *view,
+        })
+      })
+      .map(|point| mixer.mix(point).unwrap())
+      .collect(),
+    modifiers: mixer.modifiers.to_vec(),
+    name,
+    sun: match mixer.sun {
+      WeatherSunSource::Authored => "authored",
+      WeatherSunSource::Dynamic => "dynamic",
+      WeatherSunSource::Table(_) => "table",
+    },
+    sun_table: match mixer.sun {
+      WeatherSunSource::Table(positions) => Some(positions.to_vec()),
+      _ => None,
+    },
   };
+  let origin: &[[f32; 3]] = &GOLDEN_VIEWS[..1];
   let cases: Vec<GoldenCase> = vec![
     case(
       "vanilla, authored sun",
-      XrayEngine::Vanilla,
-      &vanilla,
-      WeatherSunSource::Authored,
+      WeatherMixer {
+        engine: XrayEngine::Vanilla,
+        keyframes: &vanilla,
+        modifiers: &[],
+        sun: WeatherSunSource::Authored,
+      },
+      origin,
     ),
     case(
       "vanilla, dynamic sun",
-      XrayEngine::Vanilla,
-      &vanilla,
-      WeatherSunSource::Dynamic,
+      WeatherMixer {
+        engine: XrayEngine::Vanilla,
+        keyframes: &vanilla,
+        modifiers: &[],
+        sun: WeatherSunSource::Dynamic,
+      },
+      origin,
     ),
     case(
       "extended, sun table",
-      XrayEngine::Extended,
-      &extended,
-      WeatherSunSource::Table(&positions),
+      WeatherMixer {
+        engine: XrayEngine::Extended,
+        keyframes: &extended,
+        modifiers: &[],
+        sun: WeatherSunSource::Table(&positions),
+      },
+      origin,
+    ),
+    case(
+      "vanilla, modified",
+      WeatherMixer {
+        engine: XrayEngine::Vanilla,
+        keyframes: &vanilla,
+        modifiers: &modifiers,
+        sun: WeatherSunSource::Authored,
+      },
+      &GOLDEN_VIEWS,
+    ),
+    case(
+      "extended, modified",
+      WeatherMixer {
+        engine: XrayEngine::Extended,
+        keyframes: &extended,
+        modifiers: &modifiers,
+        sun: WeatherSunSource::Table(&positions),
+      },
+      &GOLDEN_VIEWS,
     ),
   ];
   let path: PathBuf =

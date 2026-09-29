@@ -35,7 +35,9 @@ pub use crate::key::{EnvironmentDefault, EnvironmentKey, EnvironmentKeyUse, Envi
 pub use crate::level::{
   AtmosfearCycle, LevelWeather, LevelWeatherOption, WeatherGraph, WeatherGraphState, WeatherGraphs,
 };
-pub use crate::mixer::{WeatherMix, WeatherMixer, WeatherSunSource};
+pub use crate::mixer::{
+  WeatherMix, WeatherMixPoint, WeatherMixer, WeatherModifier, WeatherModifiersSum, WeatherSunSource,
+};
 pub use crate::section::{EnvironmentOrigin, EnvironmentSection};
 pub use crate::sun::{LensFlare, LensFlareKey, SunPosition, SunPositionKey, SunTable};
 pub use crate::thunderbolt::{

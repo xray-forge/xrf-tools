@@ -7,6 +7,8 @@ use serde::Serialize;
 pub struct WeatherMix {
   /// Seconds since midnight, as asked.
   pub time: f32,
+  /// Where it was seen from, in engine space, as asked.
+  pub view: [f32; 3],
   /// The keyframes either side, by index.
   pub keyframes: [usize; 2],
   /// How far from the first to the second.
@@ -14,6 +16,9 @@ pub struct WeatherMix {
   pub sky_color: [f32; 3],
   /// Radians.
   pub sky_rotation: f32,
+  pub clouds_color: [f32; 4],
+  /// Radians.
+  pub clouds_rotation: f32,
   pub far_plane: f32,
   pub fog_color: [f32; 3],
   pub fog_density: f32,
