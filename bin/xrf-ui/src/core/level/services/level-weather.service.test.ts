@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "@jest/globals";
 import { ERendererEngine, ERendererTextureEncoding, ERendererWeatherTransition, IRendererWeather } from "@xrf/renderer";
-import { Nullable } from "@xrf/types";
+import { Nullable, Optional } from "@xrf/types";
 
 import { LevelTextureReference, SelectedLevelDescription, SessionSnapshot } from "@/core/ipc/types/xrf-app";
 import { EXrayEngine } from "@/core/ipc/types/xrf-engine-target";
@@ -232,6 +232,43 @@ describe("LevelWeatherService", () => {
     await settle();
 
     expect(asked).toEqual([listLevelManualWeatherTextures(DEFAULT_LEVEL_MANUAL_WEATHER)]);
+  });
+
+  it("keeps where a texture set by hand resolves to the level it was asked for", async () => {
+    const gate: { release: Optional<() => void> } = { release: undefined };
+    const held: Promise<void> = new Promise((resolve) => {
+      gate.release = resolve;
+    });
+
+    setMockInvokeResponses({
+      ["plugin:levels|read_level_weather"]: mockSessionResponse(mockLevelWeatherDescription()),
+      ["plugin:levels|resolve_level_textures"]: mockSessionResponse(
+        async ({ sessionId, references }: { sessionId: string; references: Array<string> }) => {
+          // The first level's answer comes only once another level is open.
+          if (sessionId === SELECTED.sessionId) {
+            await held;
+          }
+
+          return references.map((reference: string) => ({ logicalPath: `${sessionId}/${reference}.dds`, reference }));
+        }
+      ),
+    });
+
+    const service: LevelWeatherService = createService();
+
+    await service.open(SELECTED);
+    service.editManual({ rainDensity: 0.5 });
+    await settle();
+    await service.open({ ...SELECTED, sessionId: "other" });
+    gate.release?.();
+    await settle();
+    service.editManual({ rainDensity: 0.6 });
+    await settle();
+
+    const fetched: string = JSON.stringify(service.manualPlayable?.textures);
+
+    expect(fetched).toContain("other/sky");
+    expect(fetched).not.toContain(`${SELECTED.sessionId}/`);
   });
 
   it("hears the clock from the renderer, and seeks anew every time", () => {

@@ -31,11 +31,11 @@ import {
   DEFAULT_LEVEL_WEATHER_CONTROL,
   ILevelWeatherControl,
   LEVEL_WEATHER_NOON,
+  toLevelWeatherFactor,
 } from "@/core/level/lib/weather/level-weather-control";
 import { ILevelWeatherEffectRequest } from "@/core/level/lib/weather/level-weather-effect-request";
 import {
   ILevelWeatherMemory,
-  LEVEL_WEATHER_FACTOR_LIMITS,
   readLevelWeatherMemory,
   toLevelWeatherMemoryKey,
   writeLevelWeatherMemory,
@@ -219,8 +219,8 @@ export class LevelWeatherService {
       }
 
       // A remembered cycle the game no longer has gives way to the level's own.
-      if (!memory?.cycle || !(await this.play(selected, memory.cycle, false))) {
-        await this.play(selected, first.name, true);
+      if (!memory?.cycle || !(await this.playRemembered(selected, memory.cycle))) {
+        await this.play(selected, first.name);
       }
     } catch (error: unknown) {
       this.fail(selected.sessionId, error);
@@ -245,7 +245,7 @@ export class LevelWeatherService {
 
     try {
       if (this.cycle?.name !== name) {
-        await this.play(selected, name, true);
+        await this.play(selected, name);
       }
 
       this.setSource(ELevelWeatherSource.WEATHER);
@@ -307,10 +307,7 @@ export class LevelWeatherService {
    */
   @BoundAction()
   public setFactor(factor: number): void {
-    this.control = {
-      ...this.control,
-      factor: Math.min(Math.max(Math.round(factor), LEVEL_WEATHER_FACTOR_LIMITS.min), LEVEL_WEATHER_FACTOR_LIMITS.max),
-    };
+    this.control = { ...this.control, factor: toLevelWeatherFactor(factor) };
     this.persist();
   }
 
@@ -414,6 +411,11 @@ export class LevelWeatherService {
       if (unknown.length) {
         const { value } = await levelsCommands.resolveLevelTextures(selected.sessionId, unknown);
 
+        // Found in the level asked about: another level open since finds its textures in its own roots.
+        if (this.sessionId !== selected.sessionId) {
+          return;
+        }
+
         value.forEach((it: LevelTextureReference) => this.located.set(it.reference, it));
       }
 
@@ -439,62 +441,63 @@ export class LevelWeatherService {
   }
 
   /**
-   * Reads a cycle and asks where its skies are fetched from, then plays it, for a level still open.
+   * Plays the cycle a level was last played with, where it still reads.
    *
    * @param selected - The level it plays in.
    * @param name - The cycle's name.
-   * @param isRequired - Whether a cycle that cannot be read is a failure, rather than an answer of false.
    * @returns Whether it plays.
    */
-  private async play(
-    selected: SessionSnapshot<SelectedLevelDescription>,
-    name: string,
-    isRequired: boolean
-  ): Promise<boolean> {
-    runInAction(() => {
-      this.reading = name;
-    });
-
+  private async playRemembered(selected: SessionSnapshot<SelectedLevelDescription>, name: string): Promise<boolean> {
     try {
-      const cycle: LevelWeatherCycle =
-        this.description?.offered.find((it: LevelWeatherCycle) => it.name === name) ??
-        (await levelsCommands.readLevelCycle(selected.sessionId, { kind: EWeatherCycleKind.CYCLE, name })).value;
-      const description: Nullable<LevelWeatherDescription> = this.description;
-
-      if (!description) {
-        return false;
-      }
-
-      const playable: IRendererWeather = await toLevelRendererWeather({
-        cycle,
-        description,
-        roots: selected.value.roots,
-      });
-
-      if (this.sessionId !== selected.sessionId || this.reading !== name) {
-        return true;
-      }
-
-      runInAction(() => {
-        const shown: Nullable<IRendererWeather> = this.weather;
-
-        this.cycle = cycle;
-        this.playable = playable;
-        this.failure = null;
-        this.reading = null;
-        this.noteShown(shown, ERendererWeatherTransition.FADE);
-      });
+      await this.play(selected, name);
 
       return true;
     } catch (error: unknown) {
-      if (isRequired) {
-        throw error;
-      }
-
       this.log.warn(`The remembered cycle '${name}' is not played:`, transformError(error).message);
 
       return false;
     }
+  }
+
+  /**
+   * Reads a cycle and asks where its skies are fetched from, then plays it, for a level still open.
+   *
+   * @param selected - The level it plays in.
+   * @param name - The cycle's name.
+   */
+  private async play(selected: SessionSnapshot<SelectedLevelDescription>, name: string): Promise<void> {
+    runInAction(() => {
+      this.reading = name;
+    });
+
+    const cycle: LevelWeatherCycle =
+      this.description?.offered.find((it: LevelWeatherCycle) => it.name === name) ??
+      (await levelsCommands.readLevelCycle(selected.sessionId, { kind: EWeatherCycleKind.CYCLE, name })).value;
+    const description: Nullable<LevelWeatherDescription> = this.description;
+
+    if (!description) {
+      return;
+    }
+
+    const playable: IRendererWeather = await toLevelRendererWeather({
+      cycle,
+      description,
+      roots: selected.value.roots,
+    });
+
+    if (this.sessionId !== selected.sessionId || this.reading !== name) {
+      return;
+    }
+
+    runInAction(() => {
+      const shown: Nullable<IRendererWeather> = this.weather;
+
+      this.cycle = cycle;
+      this.playable = playable;
+      this.failure = null;
+      this.reading = null;
+      this.noteShown(shown, ERendererWeatherTransition.FADE);
+    });
   }
 
   /**

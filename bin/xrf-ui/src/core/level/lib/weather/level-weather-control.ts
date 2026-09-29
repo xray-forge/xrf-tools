@@ -1,6 +1,9 @@
 /** Seconds from midnight to noon. */
 export const LEVEL_WEATHER_NOON: number = 12 * 60 * 60;
 
+/** The engine's own bounds on its time factor. */
+export const LEVEL_WEATHER_FACTOR_LIMITS = { max: 1000, min: 1 } as const;
+
 /**
  * How the level's weather plays.
  */
@@ -18,3 +21,11 @@ export const DEFAULT_LEVEL_WEATHER_CONTROL: ILevelWeatherControl = {
   isDynamicSun: false,
   isPaused: true,
 };
+
+/**
+ * @param factor - Game seconds a real second, as asked for.
+ * @returns The same in whole seconds, within the engine's bounds.
+ */
+export function toLevelWeatherFactor(factor: number): number {
+  return Math.min(Math.max(Math.round(factor), LEVEL_WEATHER_FACTOR_LIMITS.min), LEVEL_WEATHER_FACTOR_LIMITS.max);
+}

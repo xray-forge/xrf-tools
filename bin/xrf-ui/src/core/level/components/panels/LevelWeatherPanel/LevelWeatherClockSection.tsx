@@ -5,8 +5,7 @@ import { ReactElement } from "react";
 
 import { EXrayEngine, XrayEngine } from "@/core/ipc/types/xrf-engine-target";
 import { LevelWeatherClock } from "@/core/level/components/weather/LevelWeatherClock";
-import { ILevelWeatherControl } from "@/core/level/lib/weather/level-weather-control";
-import { LEVEL_WEATHER_FACTOR_LIMITS } from "@/core/level/lib/weather/level-weather-memory";
+import { ILevelWeatherControl, LEVEL_WEATHER_FACTOR_LIMITS } from "@/core/level/lib/weather/level-weather-control";
 import { formatLevelWeatherTime } from "@/core/level/lib/weather/level-weather-time";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
 import { EditorPanelProperty, EditorPanelSection } from "@/core/shell/editor/EditorPanel";

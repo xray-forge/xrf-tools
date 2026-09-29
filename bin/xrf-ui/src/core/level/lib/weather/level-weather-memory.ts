@@ -2,7 +2,11 @@ import { Maybe, Nullable } from "@xrf/types";
 
 import { SelectedLevelDescription } from "@/core/ipc/types/xrf-app";
 import { ILevelManualWeather, readLevelManualWeather } from "@/core/level/lib/weather/level-manual-weather";
-import { DEFAULT_LEVEL_WEATHER_CONTROL, ILevelWeatherControl } from "@/core/level/lib/weather/level-weather-control";
+import {
+  DEFAULT_LEVEL_WEATHER_CONTROL,
+  ILevelWeatherControl,
+  toLevelWeatherFactor,
+} from "@/core/level/lib/weather/level-weather-control";
 import { ILevelWeatherSeed } from "@/core/level/lib/weather/level-weather-seed";
 import { ELevelWeatherSource } from "@/core/level/lib/weather/level-weather-source";
 import { LEVEL_WEATHER_DAY } from "@/core/level/lib/weather/level-weather-time";
@@ -17,9 +21,6 @@ const REMEMBERED_LENGTH: number = 64 * 1024;
 
 /** The shape a memory is written in: one of any other is let go rather than read, and nothing is migrated. */
 export const LEVEL_WEATHER_MEMORY_VERSION: number = 2;
-
-/** The engine's own bounds on its time factor. */
-export const LEVEL_WEATHER_FACTOR_LIMITS = { max: 1000, min: 1 } as const;
 
 /**
  * How a level's weather was last played, which it plays again when it opens.
@@ -107,7 +108,7 @@ export function toLevelWeatherMemory(stored: unknown): Nullable<ILevelWeatherMem
     control: {
       factor:
         typeof factor === "number" && Number.isFinite(factor)
-          ? Math.min(Math.max(factor, LEVEL_WEATHER_FACTOR_LIMITS.min), LEVEL_WEATHER_FACTOR_LIMITS.max)
+          ? toLevelWeatherFactor(factor)
           : DEFAULT_LEVEL_WEATHER_CONTROL.factor,
       isDynamicSun: control.isDynamicSun === true,
       isPaused: control.isPaused !== false,
