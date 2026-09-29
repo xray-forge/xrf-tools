@@ -6,6 +6,7 @@ import { IRendererRainDrop } from "#/contract/weather/renderer-rain-drop";
 import { IRainSurface, toRainSplashSurface, toRainStreakSurface } from "#/material/rain-surface.tsl";
 import { createSceneMesh, createSceneRoot } from "#/scene/object/scene-mesh";
 import { ISceneRainStaging } from "#/scene/rain/scene-rain-staging";
+import { isSameDefinition } from "#/scene/same-definition";
 import { getClearTexture } from "#/texture/placeholder-textures";
 import { RendererTextures } from "#/texture/renderer-textures";
 import { RAIN_STREAKS, RainUniforms } from "#/uniforms/rain-uniforms";
@@ -43,6 +44,8 @@ export class SceneRain {
   /** What waits to compile. */
   private pending: Nullable<IRainBuild> = null;
   private isCompiling: boolean = false;
+  /** What was last taken, which a weather sent again unchanged keeps built. */
+  private taken: Nullable<IRendererRain> = null;
 
   /**
    * @param textures - Where the rain's textures are put.
@@ -62,6 +65,13 @@ export class SceneRain {
    * @param rain - What the weather's rain is drawn with, or null for none.
    */
   public take(rain: Nullable<IRendererRain>): void {
+    // A keyframe edited by hand sends its weather again, the rain as it was: nothing is built again for it.
+    if (isSameDefinition(rain, this.taken)) {
+      return;
+    }
+
+    this.taken = rain;
+
     if (this.pending) {
       this.release(this.pending);
     }
@@ -97,6 +107,7 @@ export class SceneRain {
     [this.current, this.pending].forEach((build: Nullable<IRainBuild>) => build && this.release(build));
     this.current = null;
     this.pending = null;
+    this.taken = null;
   }
 
   private settle(build: IRainBuild, isCompiled: boolean): void {

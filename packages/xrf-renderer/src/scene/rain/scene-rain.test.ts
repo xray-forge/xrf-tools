@@ -94,4 +94,19 @@ describe("SceneRain", () => {
 
     expect(rain.drawn).toBeNull();
   });
+
+  // A keyframe edited by hand sends the whole weather again, as often as a slider moves.
+  it("builds nothing again for the same rain sent again", () => {
+    const { rain } = createRain();
+
+    rain.take(RAIN);
+    rain.takeStaged()?.commit();
+
+    const drawn: Nullable<Scene> = rain.drawn;
+
+    rain.take(structuredClone(RAIN));
+
+    expect(rain.takeStaged()).toBeNull();
+    expect(rain.drawn).toBe(drawn);
+  });
 });

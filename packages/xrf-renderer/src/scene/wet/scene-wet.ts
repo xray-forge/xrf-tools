@@ -5,11 +5,18 @@ import { ERendererTextureEncoding, TRendererTextureSource } from "#/contract/sce
 import { IRendererWeather } from "#/contract/weather/renderer-weather";
 import { IDdsVolume } from "#/dds/dds-volume";
 import { readDdsVolume } from "#/dds/dds-volume-read";
+import { isSameDefinition } from "#/scene/same-definition";
 import { fetchRendererBytes } from "#/texture/fetch-renderer-bytes";
 import { getNeutralDetailTexture } from "#/texture/placeholder-textures";
 import { RendererTextures } from "#/texture/renderer-textures";
 import { prepareVolume, WetUniforms } from "#/uniforms/wet-uniforms";
 import { WeatherTextures } from "#/weather/weather-textures";
+
+/** The textures a weather wets surfaces with: the flow's reference, and where the splashes' volume is fetched from. */
+interface IWetTaken {
+  flow: string;
+  splash: Nullable<TRendererTextureSource>;
+}
 
 /**
  * The textures rain wets surfaces with, for the weather that names them: the flow through the texture store, and the
@@ -20,8 +27,8 @@ export class SceneWet {
   private readonly textures: RendererTextures;
   private readonly wet: WetUniforms;
   private flowKey: Nullable<string> = null;
-  /** The splash volume's request, as sent, which a weather naming the same one keeps. */
-  private splashRequest: Nullable<string> = null;
+  /** What was last taken, which a weather naming the same textures keeps. */
+  private taken: Nullable<IWetTaken> = null;
   private volume: Nullable<Data3DTexture> = null;
   private fetching: Nullable<AbortController> = null;
   private readonly neutral: Texture;
@@ -42,30 +49,28 @@ export class SceneWet {
   public take(weather: Nullable<IRendererWeather>): void {
     const surfaces = weather?.wet;
     const source: Maybe<TRendererTextureSource> = surfaces ? weather?.textures[surfaces.splash] : undefined;
-    const flowKey: Nullable<string> = surfaces ? WeatherTextures.toKey(surfaces.flow) : null;
-    const splashRequest: Nullable<string> =
-      source?.encoding === ERendererTextureEncoding.FETCH ? JSON.stringify(source.file) : null;
+    const taken: Nullable<IWetTaken> = surfaces ? { flow: surfaces.flow, splash: source ?? null } : null;
 
-    // A keyframe edited sends its weather again, naming the same textures: nothing is fetched again for it.
-    if (flowKey === this.flowKey && splashRequest === this.splashRequest) {
+    // A keyframe edited by hand sends its weather again, naming the same textures: nothing is fetched again for it.
+    if (isSameDefinition(taken, this.taken)) {
       return;
     }
 
     this.release();
+    this.taken = taken;
 
-    if (!flowKey) {
+    if (!taken) {
       return;
     }
 
-    this.flowKey = flowKey;
-    this.splashRequest = splashRequest;
-    this.textures.target(flowKey, getNeutralDetailTexture(), this.wet.flow);
+    this.flowKey = WeatherTextures.toKey(taken.flow);
+    this.textures.target(this.flowKey, getNeutralDetailTexture(), this.wet.flow);
 
-    if (source?.encoding === ERendererTextureEncoding.FETCH) {
+    if (taken.splash?.encoding === ERendererTextureEncoding.FETCH) {
       const fetching: AbortController = new AbortController();
 
       this.fetching = fetching;
-      void this.load(source.file, fetching);
+      void this.load(taken.splash.file, fetching);
     }
   }
 
@@ -105,7 +110,7 @@ export class SceneWet {
   private release(): void {
     this.fetching?.abort();
     this.fetching = null;
-    this.splashRequest = null;
+    this.taken = null;
 
     if (this.flowKey) {
       this.textures.unbind(this.flowKey, this.wet.flow);

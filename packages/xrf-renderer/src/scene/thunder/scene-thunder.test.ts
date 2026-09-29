@@ -90,4 +90,15 @@ describe("SceneThunder", () => {
 
     expect(model.matrixWorld.elements).toEqual([300, 0, 0, 0, 0, 300, 0, 0, 0, 0, 300, 0, 10, 200, 20, 1]);
   });
+
+  // A keyframe edited by hand sends the whole weather again, as often as a slider moves.
+  it("builds nothing again for the same thunder sent again", () => {
+    const thunder: SceneThunder = createThunder();
+
+    thunder.take(THUNDER);
+    thunder.takeStaged()?.commit();
+    thunder.take(structuredClone(THUNDER));
+
+    expect(thunder.takeStaged()).toBeNull();
+  });
 });

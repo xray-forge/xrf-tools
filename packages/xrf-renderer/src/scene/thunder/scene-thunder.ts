@@ -9,6 +9,7 @@ import { IRendererThunderboltModel } from "#/contract/weather/renderer-thunderbo
 import { IRendererThunderboltStrike } from "#/contract/weather/renderer-thunderbolt-strike";
 import { IThunderSurface, toThunderboltSurface, toThunderGlowSurface } from "#/material/thunder-surface.tsl";
 import { createSceneMesh, createSceneRoot } from "#/scene/object/scene-mesh";
+import { isSameDefinition } from "#/scene/same-definition";
 import { ISceneThunderStaging } from "#/scene/thunder/scene-thunder-staging";
 import { getClearTexture } from "#/texture/placeholder-textures";
 import { RendererTextures } from "#/texture/renderer-textures";
@@ -51,6 +52,8 @@ export class SceneThunder {
   private current: Nullable<IThunderBuild> = null;
   private pending: Nullable<IThunderBuild> = null;
   private isCompiling: boolean = false;
+  /** What was last taken, which a weather sent again unchanged keeps built. */
+  private taken: Nullable<IRendererThunder> = null;
   /** The bolt striking now, shown on whatever build draws. */
   private shown: Nullable<IRendererThunderboltStrike> = null;
   private readonly matrix: Matrix4 = new Matrix4();
@@ -73,6 +76,13 @@ export class SceneThunder {
    * @param thunder - What the weather strikes with, or null for none.
    */
   public take(thunder: Nullable<IRendererThunder>): void {
+    // A keyframe edited by hand sends its weather again, the bolts as they were: nothing is built again for them.
+    if (isSameDefinition(thunder, this.taken)) {
+      return;
+    }
+
+    this.taken = thunder;
+
     if (this.pending) {
       this.release(this.pending);
     }
@@ -119,6 +129,7 @@ export class SceneThunder {
     [this.current, this.pending].forEach((build: Nullable<IThunderBuild>) => build && this.release(build));
     this.current = null;
     this.pending = null;
+    this.taken = null;
   }
 
   private settle(build: IThunderBuild, isCompiled: boolean): void {
