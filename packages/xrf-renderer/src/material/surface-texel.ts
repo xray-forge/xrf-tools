@@ -8,6 +8,8 @@ export interface ISurfaceTexel {
   albedo: Node<"vec3">;
   /** The base's alpha, which only a cut-out or composited surface reads. */
   alpha: Node<"float">;
+  /** The alpha a cut-out is cut by: the base's, scaled up by the mip level it is sampled at. */
+  coverage: Node<"float">;
   /** The view space normal, bumped where the surface binds a pair. */
   normal: Node<"vec3">;
   gloss: Node<"float">;

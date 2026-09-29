@@ -6,6 +6,7 @@ import { ISurfaceInputs } from "#/material/surface-inputs";
 import { ESurfaceSlot } from "#/material/surface-slot";
 import { ISurfaceTexel } from "#/material/surface-texel";
 import { ISurfaceVariant } from "#/material/surface-variant";
+import { toCoverageAlpha } from "#/shader/alpha-coverage.tsl";
 import { decodeBumpGloss, decodeBumpNormal } from "#/shader/bump.tsl";
 import { toVertexAttribute } from "#/shader/cluster-vertex.tsl";
 import {
@@ -138,6 +139,7 @@ export function toSurfaceTexel(
   return {
     albedo: toShownColor(textured, variant, inputs, settings),
     alpha: base.w,
+    coverage: toCoverageAlpha(base.w, coordinates, base),
     gloss,
     hemi: lightmap ? lightmap.w : varying(toVertexHemi(staticDraws)),
     normal,

@@ -13,13 +13,14 @@ import {
   vec3,
   vec4,
 } from "three/tsl";
-import { Node } from "three/webgpu";
+import { Node, TextureNode } from "three/webgpu";
 
 import { IGrassSurfaceSource } from "#/material/grass-surface-source";
 import { MaterialSamplers } from "#/material/material-samplers";
 import { ISurfaceShader } from "#/material/surface-shader";
 import { DEFAULT_GLOSS, DEFAULT_MATERIAL, MATERIAL_SLICES } from "#/material/surface-texel.tsl";
-import { DEFAULT_ALPHA_REFERENCE, toAlphaCut } from "#/shader/alpha-cut.tsl";
+import { toCoverageAlpha } from "#/shader/alpha-coverage.tsl";
+import { DEFAULT_ALPHA_REFERENCE, toHashedAlphaCut } from "#/shader/alpha-cut.tsl";
 import { toCyclic } from "#/shader/cyclic-wave.tsl";
 import { toGBufferOutput } from "#/shader/gbuffer.tsl";
 import { toPointMotion } from "#/shader/motion.tsl";
@@ -75,13 +76,14 @@ export function toGrassSurfaceShader(
   const normal: Node<"vec3"> = normalize(
     varying(cameraViewMatrix.mul(vec4(normalize(current.sub(place.xyz.sub(vec3(0, NORMAL_DROP, 0)))), 0)).xyz)
   );
-  const base: Node<"vec4"> = samplers.bind(surface.textures.base, getWhiteTexture(), uv());
+  const base: TextureNode = samplers.bind(surface.textures.base, getWhiteTexture(), uv());
   // `deffer_base_aref_flat.ps`: cut out at `def_aref`; white without textures, as grass states no flat colour.
-  const albedo: Node<"vec4"> = toAlphaCut(
-    base.w,
-    vec4(mix(vec3(1), base.xyz, uniforms.settings.textured), DEFAULT_GLOSS),
-    uniform(surface.alphaReference ?? DEFAULT_ALPHA_REFERENCE)
-  );
+  const albedo: Node<"vec4"> = toHashedAlphaCut({
+    alpha: toCoverageAlpha(base.w, uv(), base),
+    output: vec4(mix(vec3(1), base.xyz, uniforms.settings.textured), DEFAULT_GLOSS),
+    reference: uniform(surface.alphaReference ?? DEFAULT_ALPHA_REFERENCE),
+    settings: uniforms.settings,
+  });
 
   return {
     fragmentNode: toGBufferOutput(

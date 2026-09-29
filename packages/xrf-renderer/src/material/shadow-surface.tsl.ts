@@ -6,6 +6,7 @@ import { ISurfaceInputs } from "#/material/surface-inputs";
 import { ISurfaceShader } from "#/material/surface-shader";
 import { ESurfaceSlot } from "#/material/surface-slot";
 import { toSurfaceCoordinates } from "#/material/surface-texel.tsl";
+import { toCoverageAlpha } from "#/shader/alpha-coverage.tsl";
 import { toAlphaCut } from "#/shader/alpha-cut.tsl";
 
 /**
@@ -20,8 +21,10 @@ export function toShadowSurfaceShader(inputs: Nullable<ISurfaceInputs>): ISurfac
     return { fragmentNode: vec4(0) };
   }
 
-  const base: TextureNode = inputs.sample(ESurfaceSlot.BASE, toSurfaceCoordinates(inputs));
+  const coordinates = toSurfaceCoordinates(inputs);
+  const base: TextureNode = inputs.sample(ESurfaceSlot.BASE, coordinates);
 
-  // Cut where the G-buffer cuts it.
-  return { fragmentNode: toAlphaCut(base.w, vec4(0), inputs.alphaReference) };
+  // Cut by the coverage the G-buffer cuts by, at a fixed reference: a shadow map is kept over frames, so a moving
+  // threshold would freeze into it as noise.
+  return { fragmentNode: toAlphaCut(toCoverageAlpha(base.w, coordinates, base), vec4(0), inputs.alphaReference) };
 }

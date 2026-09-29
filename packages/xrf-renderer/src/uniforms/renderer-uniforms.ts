@@ -102,6 +102,7 @@ export class RendererUniforms {
    * @param camera - The camera about to draw, with its matrices current.
    */
   public follow(camera: PerspectiveCamera): void {
+    this.settings.advance();
     this.camera.follow(camera);
     this.lighting.follow(camera);
   }

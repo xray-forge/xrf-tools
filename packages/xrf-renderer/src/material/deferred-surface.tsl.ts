@@ -8,7 +8,7 @@ import { ISurfaceShader } from "#/material/surface-shader";
 import { ISurfaceTexel } from "#/material/surface-texel";
 import { toSurfaceTexel } from "#/material/surface-texel.tsl";
 import { ISurfaceVariant } from "#/material/surface-variant";
-import { toAlphaCut } from "#/shader/alpha-cut.tsl";
+import { toHashedAlphaCut } from "#/shader/alpha-cut.tsl";
 import { toGBufferOutput } from "#/shader/gbuffer.tsl";
 import { toSurfaceMotion } from "#/shader/motion.tsl";
 import { RendererUniforms } from "#/uniforms/renderer-uniforms";
@@ -35,7 +35,14 @@ export function toDeferredSurfaceShader(
 
   return {
     fragmentNode: toGBufferOutput(
-      variant.draw === ERendererDraw.CUT_OUT ? toAlphaCut(texel.alpha, albedo, inputs.alphaReference) : albedo,
+      variant.draw === ERendererDraw.CUT_OUT
+        ? toHashedAlphaCut({
+            alpha: texel.coverage,
+            output: albedo,
+            reference: inputs.alphaReference,
+            settings: uniforms.settings,
+          })
+        : albedo,
       texel.normal,
       texel.hemi,
       texel.sun,
