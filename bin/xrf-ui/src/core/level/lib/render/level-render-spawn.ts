@@ -276,6 +276,8 @@ export function toLevelSpawnSurface(dressing: ILevelSpawnDressing): IRendererSur
       bump: render.bump?.bump,
       bumpCompanion: render.bump?.companion,
       detail: render.detail?.reference,
+      detailBump: render.detail?.bump?.bump,
+      detailBumpCompanion: render.detail?.bump?.companion,
     },
   };
 }

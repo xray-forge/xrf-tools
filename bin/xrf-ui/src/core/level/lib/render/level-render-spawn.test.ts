@@ -76,7 +76,19 @@ describe("toLevelSpawnSurface", () => {
         mode: EXrayBumpMode.USE,
         virtualHeight: null,
       },
-      detail: { reference: "detail\\detail_metal", scale: 4 },
+      detail: {
+        bump: {
+          bump: { reference: "detail\\detail_metal_bump", resolution: { kind: EXrayResolution.MISSING, roots: [] } },
+          companion: {
+            reference: "detail\\detail_metal_bump#",
+            resolution: { kind: EXrayResolution.MISSING, roots: [] },
+          },
+          mode: EXrayBumpMode.USE,
+          virtualHeight: null,
+        },
+        reference: "detail\\detail_metal",
+        scale: 4,
+      },
     });
     const surface: IRendererSurface = toLevelSpawnSurface({ color, descriptor, texture: "lamp" });
 
@@ -85,6 +97,8 @@ describe("toLevelSpawnSurface", () => {
       bump: "lamp_bump",
       bumpCompanion: "lamp_bump#",
       detail: "detail\\detail_metal",
+      detailBump: "detail\\detail_metal_bump",
+      detailBumpCompanion: "detail\\detail_metal_bump#",
     });
     expect(surface.detailScale).toBe(4);
   });

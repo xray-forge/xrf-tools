@@ -92,7 +92,9 @@ describe("toLevelSurface's colour", () => {
   it("names every texture the entry binds beside the entry's own colour, which the renderer draws without them", () => {
     const surface: IRendererSurface = toLevelSurface(
       mockSectorSurface({ hemi: "lmap#1", shaderId: 7, textureName: "ston\\wall" }),
-      toLevelSurfaceRender(mockSurfaceDescriptor({ detail: { reference: "detail\\detail_stone", scale: 4 } }))
+      toLevelSurfaceRender(
+        mockSurfaceDescriptor({ detail: { bump: null, reference: "detail\\detail_stone", scale: 4 } })
+      )
     );
 
     expect(surface.color).toEqual(toLevelSurfaceColor(7));

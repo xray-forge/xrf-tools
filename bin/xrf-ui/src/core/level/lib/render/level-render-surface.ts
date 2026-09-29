@@ -77,6 +77,8 @@ export function toLevelSurface(surface: SectorSurface, render: ILevelSurfaceRend
       bump: bump?.bump,
       bumpCompanion: bump?.companion,
       detail: detail?.reference,
+      detailBump: detail?.bump?.bump,
+      detailBumpCompanion: detail?.bump?.companion,
       // The row's third texture, which `uber_deffer` binds as `s_hemi`: the second is R1's baked colour.
       hemi: surface.hemi ?? undefined,
     },

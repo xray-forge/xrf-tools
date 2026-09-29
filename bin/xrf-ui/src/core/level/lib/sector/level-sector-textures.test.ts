@@ -88,7 +88,7 @@ describe("level sector surfaces", () => {
   // bare whole-level photograph its base texture is.
   it("asks for the detail texture a surface is modulated with", () => {
     const detailed: XraySurfaceDescriptor = mockSurfaceDescriptor({
-      detail: { reference: "detail\\detail_grnd_earth", scale: 150 },
+      detail: { bump: null, reference: "detail\\detail_grnd_earth", scale: 150 },
     });
     const views: ISectorViews = viewsOf(sectorDrawing([]), table(detailed));
 

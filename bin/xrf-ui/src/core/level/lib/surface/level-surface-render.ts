@@ -16,6 +16,8 @@ export interface ILevelSurfaceDetail {
   reference: string;
   /** Times it repeats across the surface's base coordinate. */
   scale: number;
+  /** The detail's own bump pair, added to the surface's, or null where the surface binds none of it. */
+  bump: Nullable<ILevelSurfaceBump>;
 }
 
 /**
@@ -92,7 +94,14 @@ export function toLevelSurfaceRender(descriptor: Nullable<XraySurfaceDescriptor>
     ...toRendererSurfaceDraw(descriptor),
     bump: bump ? { bump: bump.bump.reference, companion: bump.companion.reference } : null,
     // Dropped where it carries no tiling: the engine binds no scaler there either, and none can be invented for it.
-    detail: detail && detail.scale !== null ? { reference: detail.reference, scale: detail.scale } : null,
+    detail:
+      detail && detail.scale !== null
+        ? {
+            bump: detail.bump ? { bump: detail.bump.bump.reference, companion: detail.bump.companion.reference } : null,
+            reference: detail.reference,
+            scale: detail.scale,
+          }
+        : null,
     isWallmark: isWallmarkSurface(descriptor),
     material: descriptor?.material ?? LEVEL_SURFACE_DEFAULT_MATERIAL,
     waterTextures: descriptor?.draw.kind === EXraySurfaceDraw.WATER ? toWaterTextures(descriptor.samplers) : null,

@@ -75,6 +75,12 @@ function collectSurfaceTextures(references: Set<string>, { surface, render }: IS
     references.add(render.detail.reference);
   }
 
+  // The detail's own pair, which its descriptor names and a bumped surface adds to its own.
+  if (render.detail?.bump) {
+    references.add(render.detail.bump.bump);
+    references.add(render.detail.bump.companion);
+  }
+
   // Named by the base texture's descriptor, and bound as a pair.
   if (render.bump) {
     references.add(render.bump.bump);
