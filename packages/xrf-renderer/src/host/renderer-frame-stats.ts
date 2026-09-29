@@ -1,12 +1,8 @@
-import { IRendererCameraPose } from "#/contract/renderer-camera-pose";
-import { IRendererLightsReport } from "#/contract/renderer-lights-report";
 import { IRendererReport } from "#/contract/renderer-report";
-import { IRendererStaticDrawReport } from "#/contract/renderer-static-draw-report";
 import { RendererDevice } from "#/device/renderer-device";
 import { RenderFrameTimer } from "#/frame/render-frame-timer";
 import { RendererGpuTimings } from "#/host/renderer-gpu-timings";
-import { IRendererFrameSize } from "#/sampling/renderer-frame-size";
-import { IStaticCullCounts } from "#/scene/static/static-cull-counts";
+import { IRendererReportInput } from "#/host/renderer-report-input";
 
 /** How often the frame report is sent, in milliseconds. */
 const REPORT_INTERVAL: number = 250;
@@ -50,28 +46,11 @@ export class RendererFrameStats {
   }
 
   /**
-   * @param device - The device drawing.
-   * @param canvas - The canvas drawn on.
-   * @param size - The frame's size, the scene's as drawn among it.
-   * @param camera - Where the camera stands.
-   * @param passes - The frame's passes, in frame order.
-   * @param kept - What the static cull kept, which three's own counts leave out.
-   * @param staticDraws - How full the static draws' pools are and what occlusion removed.
-   * @param lights - What the local lights came to.
-   * @param cpuMemory - Bytes the scene holds on the CPU of what it draws.
+   * @param input - What the report is taken from.
    * @returns What the frames have been costing.
    */
-  public toReport(
-    device: RendererDevice,
-    canvas: OffscreenCanvas,
-    size: IRendererFrameSize,
-    camera: IRendererCameraPose,
-    passes: ReadonlyArray<string>,
-    kept: IStaticCullCounts,
-    staticDraws: IRendererStaticDrawReport,
-    lights: IRendererLightsReport,
-    cpuMemory: number
-  ): IRendererReport {
+  public toReport(input: IRendererReportInput): IRendererReport {
+    const { device, canvas, size, camera, passes, kept, staticDraws, lights, cpuMemory, weather } = input;
     const { render } = device.renderer.info;
 
     return {
@@ -94,6 +73,7 @@ export class RendererFrameStats {
       lights,
       passes: this.gpuTimings.describe(passes),
       staticDraws,
+      weather,
     };
   }
 

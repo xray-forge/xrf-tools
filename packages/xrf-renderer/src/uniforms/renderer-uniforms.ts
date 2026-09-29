@@ -50,7 +50,7 @@ export class RendererUniforms {
   /** What the motion every G-buffer surface writes is measured with. */
   public readonly motion: MotionUniforms = new MotionUniforms();
 
-  private fogDistance: Nullable<number> = null;
+  private farPlane: Nullable<number> = null;
   private isLit: boolean = true;
 
   /**
@@ -62,12 +62,9 @@ export class RendererUniforms {
     this.retirement.free(renderer);
   }
 
-  /**
-   * How far anything can be seen: to where the fog is total while the frame is lit and fogged, which is where the
-   * engine puts its far plane, and without end otherwise.
-   */
+  /** How far anything can be seen: to the weather's far plane while the frame is lit and fogged, without end otherwise. */
   public get viewDistance(): number {
-    return this.isLit && this.fogDistance !== null ? this.fogDistance : Infinity;
+    return this.isLit && this.farPlane !== null ? this.farPlane : Infinity;
   }
 
   /**
@@ -89,7 +86,7 @@ export class RendererUniforms {
     this.grassWind.take(lighting.grass);
     this.water.take(lighting);
     this.sky.take(lighting.sky);
-    this.fogDistance = lighting.fog?.distance ?? null;
+    this.farPlane = lighting.fog?.farPlane ?? null;
   }
 
   /**

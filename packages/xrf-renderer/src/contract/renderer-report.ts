@@ -1,7 +1,10 @@
+import { Nullable } from "@xrf/types";
+
 import { IRendererCameraPose } from "#/contract/renderer-camera-pose";
 import { IRendererLightsReport } from "#/contract/renderer-lights-report";
 import { IRendererPassTimings } from "#/contract/renderer-pass-timings";
 import { IRendererStaticDrawReport } from "#/contract/renderer-static-draw-report";
+import { IRendererWeatherReport } from "#/contract/weather/renderer-weather-report";
 import { IRenderFrameCost } from "#/frame/render-frame-cost";
 
 /**
@@ -17,4 +20,6 @@ export interface IRendererReport extends IRendererPassTimings {
   lights: IRendererLightsReport;
   /** Bytes the renderer holds on the CPU of what it draws, each buffer counted once. */
   cpuMemory: number;
+  /** Where the weather stands, or null while none plays. */
+  weather: Nullable<IRendererWeatherReport>;
 }

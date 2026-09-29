@@ -21,6 +21,8 @@ import { IRendererPose } from "#/contract/scene/renderer-pose";
 import { IRendererSkeleton } from "#/contract/scene/renderer-skeleton";
 import { IRendererSurface } from "#/contract/scene/renderer-surface";
 import { TRendererTextureSource } from "#/contract/scene/renderer-texture-source";
+import { IRendererWeather } from "#/contract/weather/renderer-weather";
+import { IRendererWeatherControl } from "#/contract/weather/renderer-weather-control";
 import { IRenderTarget } from "#/frame/render-target";
 import { RenderInputForwarder } from "#/input/render-input-forwarder";
 
@@ -299,6 +301,20 @@ export class RendererClient {
    */
   public setLighting(lighting: IRendererLighting): void {
     this.post({ kind: ERendererRequest.LIGHTING, lighting });
+  }
+
+  /**
+   * @param weather - The weather to play, lighting the scene in place of the lighting; null to light by it again.
+   */
+  public setWeather(weather: Nullable<IRendererWeather>): void {
+    this.post({ kind: ERendererRequest.WEATHER, weather });
+  }
+
+  /**
+   * @param control - How to play the weather from now on.
+   */
+  public setWeatherControl(control: IRendererWeatherControl): void {
+    this.post({ control, kind: ERendererRequest.WEATHER_CONTROL });
   }
 
   /**

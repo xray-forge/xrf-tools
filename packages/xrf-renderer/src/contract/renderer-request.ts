@@ -1,3 +1,5 @@
+import { Nullable } from "@xrf/types";
+
 import { IRenderInputEvent } from "#/contract/render-input-event";
 import { TRendererCamera } from "#/contract/renderer-camera";
 import { TRendererCameraCommand } from "#/contract/renderer-camera-command";
@@ -16,6 +18,8 @@ import { IRendererPose } from "#/contract/scene/renderer-pose";
 import { IRendererSkeleton, listRendererSkeletonTransfers } from "#/contract/scene/renderer-skeleton";
 import { IRendererSurface } from "#/contract/scene/renderer-surface";
 import { ERendererTextureEncoding, TRendererTextureSource } from "#/contract/scene/renderer-texture-source";
+import { IRendererWeather } from "#/contract/weather/renderer-weather";
+import { IRendererWeatherControl } from "#/contract/weather/renderer-weather-control";
 
 /**
  * What a consumer tells the renderer.
@@ -64,8 +68,12 @@ export enum ERendererRequest {
   /** Draw this helper under this key. */
   PUT_OVERLAY = "@renderer/putOverlay",
   RELEASE_OVERLAY = "@renderer/releaseOverlay",
-  /** Light the scene like this. */
+  /** Light the scene like this, while no weather plays. */
   LIGHTING = "@renderer/lighting",
+  /** Play this weather, lighting the scene by it in place of the lighting; null to light by the lighting again. */
+  WEATHER = "@renderer/weather",
+  /** Play the weather like this. */
+  WEATHER_CONTROL = "@renderer/weatherControl",
   /** Drive the camera like this. */
   CAMERA = "@renderer/camera",
   /** Do this with the camera. */
@@ -110,6 +118,8 @@ export type TRendererRequest =
   | { kind: ERendererRequest.PUT_OVERLAY; key: string; overlay: TRendererOverlay }
   | { kind: ERendererRequest.RELEASE_OVERLAY; key: string }
   | { kind: ERendererRequest.LIGHTING; lighting: IRendererLighting }
+  | { kind: ERendererRequest.WEATHER; weather: Nullable<IRendererWeather> }
+  | { kind: ERendererRequest.WEATHER_CONTROL; control: IRendererWeatherControl }
   | { kind: ERendererRequest.CAMERA; camera: TRendererCamera }
   | { kind: ERendererRequest.CAMERA_COMMAND; command: TRendererCameraCommand }
   | { kind: ERendererRequest.INPUT; event: IRenderInputEvent }

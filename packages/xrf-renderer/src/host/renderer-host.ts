@@ -10,6 +10,7 @@ import { ERendererResponse } from "#/contract/renderer-response";
 import { IRendererSettings, toRendererSettings } from "#/contract/renderer-settings";
 import { IRendererViewSize } from "#/contract/renderer-view-size";
 import { IRendererTextureFetch } from "#/contract/scene/renderer-texture-fetch";
+import { IRendererWeather } from "#/contract/weather/renderer-weather";
 import { IDdsRefusal } from "#/dds/dds-refusal";
 import { RendererDevice } from "#/device/renderer-device";
 import { RendererDeviceFailure } from "#/device/renderer-device-failure";
@@ -31,6 +32,7 @@ import { RendererOverlays } from "#/scene/overlay/renderer-overlays";
 import { RendererScene } from "#/scene/renderer-scene";
 import { RendererUniforms } from "#/uniforms/renderer-uniforms";
 import { CullView } from "#/visibility/cull-view";
+import { WeatherPlayer } from "#/weather/weather-player";
 
 /**
  * Milliseconds a frame may spend uploading textures, which three would otherwise upload all at once in whichever frame
@@ -61,6 +63,10 @@ export class RendererHost {
   private readonly drawingSize: Vector2 = new Vector2();
   /** What the camera sees, which the scene is culled against before every frame. */
   private readonly cullView: CullView = new CullView();
+  /** The weather the renderer plays, which lights the scene in place of the consumer's lighting while it plays. */
+  private readonly weather: WeatherPlayer;
+  /** The consumer's lighting, which lights the scene while no weather plays. */
+  private lighting: IRendererLighting = DEFAULT_RENDERER_LIGHTING;
 
   private device: Nullable<RendererDevice> = null;
   private view: Nullable<RendererView> = null;
@@ -87,6 +93,7 @@ export class RendererHost {
       (key: string, refusal: IDdsRefusal) => this.reply({ key, kind: ERendererResponse.TEXTURE_REFUSED, refusal }),
       (key: string, fetch: IRendererTextureFetch) => this.reply({ fetch, key, kind: ERendererResponse.TEXTURE_FETCHED })
     );
+    this.weather = new WeatherPlayer(this.scene.textures);
     this.overlays = new RendererOverlays(this.scene.skeletons, this.uniforms.lighting.sunDirection);
     this.graph = new RendererFrameGraph(
       this.uniforms,
@@ -111,6 +118,30 @@ export class RendererHost {
   private light(lighting: IRendererLighting): void {
     this.uniforms.light(lighting);
     this.scene.sky.take(lighting.sky);
+  }
+
+  /**
+   * @param lighting - The consumer's lighting, which lights the scene at once unless a weather plays.
+   */
+  private takeLighting(lighting: IRendererLighting): void {
+    this.lighting = lighting;
+
+    if (!this.weather.isPlaying) {
+      this.light(lighting);
+    }
+  }
+
+  /**
+   * @param weather - What to play from now on, or null to light by the consumer's lighting again.
+   */
+  private takeWeather(weather: Nullable<IRendererWeather>): void {
+    this.weather.take(weather);
+
+    if (!weather) {
+      this.light(this.lighting);
+    }
+
+    this.ensureScheduled();
   }
 
   /**
@@ -215,7 +246,15 @@ export class RendererHost {
         return this.overlays.release(request.key);
 
       case ERendererRequest.LIGHTING:
-        return this.light(request.lighting);
+        return this.takeLighting(request.lighting);
+
+      case ERendererRequest.WEATHER:
+        return this.takeWeather(request.weather);
+
+      case ERendererRequest.WEATHER_CONTROL:
+        this.weather.setControl(request.control);
+
+        return this.ensureScheduled();
 
       case ERendererRequest.CAMERA:
         return this.rig.describe(request.camera);
@@ -371,10 +410,12 @@ export class RendererHost {
     }
 
     this.uniforms.freeRetired(device.renderer);
+    this.advanceWeather(now);
     // Before the frame, and whether or not one is drawn: a capture without a view waits on the same uploads.
     this.scene.textures.upload(device.renderer, TEXTURE_UPLOAD_BUDGET);
     this.scene.advance();
     this.scene.flush(device.renderer);
+    this.scene.sky.update();
 
     let drawn: Nullable<Vector2> = null;
 
@@ -496,21 +537,36 @@ export class RendererHost {
       this.scene.lights.readClusterDrops(renderer);
       this.reply({
         kind: ERendererResponse.REPORT,
-        report: this.stats.toReport(
+        report: this.stats.toReport({
+          camera: this.rig.pose,
+          canvas: view.canvas,
+          cpuMemory: this.scene.cpuMemory,
           device,
-          view.canvas,
-          this.graph.size,
-          this.rig.pose,
-          this.graph.passNames,
-          this.scene.staticCull.kept,
-          this.scene.staticDrawReport,
-          this.scene.lights.report,
-          this.scene.cpuMemory
-        ),
+          kept: this.scene.staticCull.kept,
+          lights: this.scene.lights.report,
+          passes: this.graph.passNames,
+          size: this.graph.size,
+          staticDraws: this.scene.staticDrawReport,
+          weather: this.weather.report,
+        }),
       });
     }
 
     return isResized;
+  }
+
+  /**
+   * Moves the weather's clock on to a frame, lighting the scene by it where anything changed; its skies are put before
+   * the frame's uploads, so a sky fetched already goes up in the same frame.
+   *
+   * @param now - When the frame began.
+   */
+  private advanceWeather(now: number): void {
+    const lighting: Nullable<IRendererLighting> = this.weather.advance(now);
+
+    if (lighting) {
+      this.light(lighting);
+    }
   }
 
   /** Tells every settle waiting that a frame was drawn with everything it came after. */
@@ -553,6 +609,7 @@ export class RendererHost {
     this.graph.dispose();
     this.captures.dispose();
     this.overlays.dispose();
+    this.weather.dispose();
     this.scene.dispose();
     this.rig.dispose();
     this.uniforms.dispose();

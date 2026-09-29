@@ -68,6 +68,22 @@ function toBlendedCubes(lookup: Node<"vec3">, sky: SkyUniforms): Node<"vec3"> {
 }
 
 /**
+ * @param direction - A direction in world space, which need not be of unit length.
+ * @param sky - The sky's uniforms.
+ * @returns The two irradiance cubes along it, blended, as `hmodel` samples `env_s0` and `env_s1`: unturned by the
+ *   sky's rotation, at their top level.
+ */
+export function toSkyEnvironment(direction: Node<"vec3">, sky: SkyUniforms): Node<"vec3"> {
+  const lookup: Node<"vec3"> = toCubeLookup(vec3(direction.x, direction.y, direction.z.negate()));
+
+  return mix(
+    sky.environments[0].sample(lookup).level(float(0)).xyz,
+    sky.environments[1].sample(lookup).level(float(0)).xyz,
+    sky.blend
+  );
+}
+
+/**
  * @param direction - A direction in renderer space.
  * @param sky - The sky's uniforms.
  * @returns The two skies along it, as a surface reflecting them reads the cube: straight, with no box between.

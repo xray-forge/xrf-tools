@@ -54,3 +54,4 @@ export * from "#/contract/renderer-view-size";
 export * from "#/contract/renderer-water-settings";
 export * from "#/contract/renderer-widths-field";
 export * from "#/contract/scene/index";
+export * from "#/contract/weather/index";

@@ -10,4 +10,6 @@ export interface IRendererFog {
   distance: number;
   /** `fog_density`, from zero (fog starts at 85% of the distance) to one (it starts at the eye). */
   density: number;
+  /** `far_plane`, in metres: where the view ends. */
+  farPlane: number;
 }

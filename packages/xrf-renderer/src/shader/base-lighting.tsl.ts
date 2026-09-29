@@ -16,8 +16,19 @@ import {
 import { Node } from "three/webgpu";
 
 import { IBaseShadingPoint } from "#/shader/base-shading-point";
+import { toSkyEnvironment } from "#/shader/sky.tsl";
 import { toToneMapped } from "#/shader/tonemap.tsl";
 import { RendererUniforms } from "#/uniforms/renderer-uniforms";
+
+/**
+ * `env_color * lerp(env_s0, env_s1, w)`, squared as `hmodel` squares it: the lighting's stand-in until both cubes are up.
+ */
+function toHemisphereEnvironment(direction: Node<"vec3">, { lighting, sky }: RendererUniforms): Node<"vec3"> {
+  const irradiance: Node<"vec3"> = mix(lighting.skyIrradiance, toSkyEnvironment(direction, sky), sky.environmentsUp);
+  const environment: Node<"vec3"> = lighting.environment.mul(irradiance);
+
+  return environment.mul(environment);
+}
 
 /**
  * The sun at a point, as `accum_sun` accumulates it: `Ldynamic_color * plight_infinity(m, P, N, L)`.
@@ -86,23 +97,27 @@ function toBaseColor(
   hemi: Node<"float">,
   ambientOcclusion: Node<"float">,
   point: IBaseShadingPoint,
-  { camera, lighting, lut }: RendererUniforms
+  uniforms: RendererUniforms
 ): Node<"vec3"> {
+  const { camera, lighting, lut } = uniforms;
   // `hmodel`: the hemisphere looked up by occlusion and by how far the reflection turns from the view.
   const normalWorld: Node<"vec3"> = normalize(camera.viewToWorld.mul(vec4(point.normal, 0)).xyz);
   const toPointWorld: Node<"vec3"> = normalize(camera.viewToWorld.mul(vec4(point.position, 0)).xyz);
-  const hemisphereSpecular: Node<"float"> = float(0.5).add(
-    dot(reflect(toPointWorld, normalWorld), toPointWorld).mul(0.5)
-  );
+  const reflected: Node<"vec3"> = reflect(toPointWorld, normalWorld);
+  const hemisphereSpecular: Node<"float"> = float(0.5).add(dot(reflected, toPointWorld).mul(0.5));
   const hemisphere: Node<"vec4"> = texture3D(lut, vec3(hemi, hemisphereSpecular, point.slice));
-  // The irradiance cube stands in as one colour until weather supplies the cube itself.
-  const environment: Node<"vec3"> = lighting.environment.mul(lighting.skyIrradiance);
-  const environmentSquared: Node<"vec3"> = environment.mul(environment);
-  const hemisphereDiffuse: Node<"vec3"> = environmentSquared
+  // The irradiance cubes along the normal and, remapped as `hmodel` fakes it, along the reflection.
+  const hemisphereDiffuse: Node<"vec3"> = toHemisphereEnvironment(normalWorld, uniforms)
     .mul(hemisphere.x)
     .add(lighting.ambient)
     .mul(ambientOcclusion);
-  const hemisphereGloss: Node<"vec3"> = environmentSquared.mul(hemisphere.y).mul(gloss).mul(ambientOcclusion);
+  const hemisphereGloss: Node<"vec3"> = toHemisphereEnvironment(
+    vec3(reflected.x, reflected.y.mul(2).sub(1), reflected.z),
+    uniforms
+  )
+    .mul(hemisphere.y)
+    .mul(gloss)
+    .mul(ambientOcclusion);
 
   return albedo.mul(light.xyz.add(hemisphereDiffuse)).add(gloss.mul(light.w)).add(hemisphereGloss);
 }

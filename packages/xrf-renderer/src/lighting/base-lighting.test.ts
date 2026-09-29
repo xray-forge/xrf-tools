@@ -21,7 +21,7 @@ describe("toBaseLightingConstants", () => {
     // Noon: distance 350, density 0.9, so near = 29.75 and far = 346.5.
     const constants: IBaseLightingConstants = toBaseLightingConstants({
       ...DEFAULT_RENDERER_LIGHTING,
-      fog: { color: [0.5, 0.5, 0.5], density: 0.9, distance: 350 },
+      fog: { color: [0.5, 0.5, 0.5], density: 0.9, distance: 350, farPlane: 350 },
     });
 
     expect(constants.fogOffset).toBeCloseTo(-0.093923, 6);

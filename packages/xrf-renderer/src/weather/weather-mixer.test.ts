@@ -1,0 +1,98 @@
+/// <reference types="node" />
+
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
+import { describe, expect, it } from "@jest/globals";
+import { Nullable } from "@xrf/types";
+
+import { IRendererSunPosition } from "#/contract/weather/renderer-sun-position";
+import { ERendererWeatherEngine } from "#/contract/weather/renderer-weather-engine";
+import { IRendererWeatherKeyframe } from "#/contract/weather/renderer-weather-keyframe";
+import { IWeatherMix } from "#/weather/weather-mix";
+import { mixWeather, selectWeatherKeyframes, weighWeatherTime } from "#/weather/weather-mixer";
+import { EWeatherSun, TWeatherSun } from "#/weather/weather-sun";
+
+/** One cycle `xrf-environment` mixed through a day. */
+interface IGoldenCase {
+  name: string;
+  engine: ERendererWeatherEngine;
+  sun: EWeatherSun;
+  keyframes: Array<IRendererWeatherKeyframe>;
+  sunTable: Nullable<Array<IRendererSunPosition>>;
+  mixes: Array<IWeatherMix>;
+}
+
+/** Written by `xrf-environment`'s ignored `writes_the_renderer_golden_vectors`, from the engine's own mixer port. */
+const GOLDEN: ReadonlyArray<IGoldenCase> = JSON.parse(
+  readFileSync(join(__dirname, "weather-mix.golden.json"), "utf8")
+) as ReadonlyArray<IGoldenCase>;
+
+/** The Rust mixer works in `f32`, as the engine does. */
+function expectClose(actual: unknown, expected: unknown, path: string): void {
+  if (typeof expected === "number") {
+    expect([path, Math.abs((actual as number) - expected) <= 1e-4 * Math.max(1, Math.abs(expected))]).toEqual([
+      path,
+      true,
+    ]);
+  } else if (Array.isArray(expected)) {
+    expected.forEach((value: unknown, index: number) =>
+      expectClose((actual as Array<unknown>)[index], value, `${path}[${index}]`)
+    );
+  } else {
+    Object.entries(expected as Record<string, unknown>).forEach(([key, value]: [string, unknown]) =>
+      expectClose((actual as Record<string, unknown>)[key], value, `${path}.${key}`)
+    );
+  }
+}
+
+function toSun(golden: IGoldenCase): TWeatherSun {
+  return golden.sun === EWeatherSun.TABLE
+    ? { kind: EWeatherSun.TABLE, positions: golden.sunTable ?? [] }
+    : { kind: golden.sun };
+}
+
+describe("mixWeather", () => {
+  it.each(GOLDEN.map((golden: IGoldenCase) => [golden.name, golden] as const))(
+    "mixes %s as xrf-environment does",
+    (_: string, golden: IGoldenCase) => {
+      expect(golden.mixes.length).toBeGreaterThan(0);
+
+      for (const expected of golden.mixes) {
+        const actual: Nullable<IWeatherMix> = mixWeather(
+          { engine: golden.engine, keyframes: golden.keyframes, sun: toSun(golden) },
+          expected.time
+        );
+
+        expect(actual?.keyframes).toEqual(expected.keyframes);
+        expectClose(actual, expected, `${golden.name} at ${expected.time}`);
+      }
+    }
+  );
+
+  it("mixes nothing for a cycle without keyframes", () => {
+    expect(
+      mixWeather({ engine: ERendererWeatherEngine.VANILLA, keyframes: [], sun: { kind: EWeatherSun.AUTHORED } }, 0)
+    ).toBeNull();
+  });
+});
+
+describe("selectWeatherKeyframes", () => {
+  it("wraps around midnight either side of the day's keyframes", () => {
+    const keyframes: Array<IRendererWeatherKeyframe> = GOLDEN[0].keyframes;
+
+    expect(selectWeatherKeyframes(keyframes, 0)).toEqual([keyframes.length - 1, 0]);
+    expect(selectWeatherKeyframes(keyframes, 86_399)).toEqual([keyframes.length - 1, 0]);
+  });
+});
+
+describe("weighWeatherTime", () => {
+  it("weighs across midnight", () => {
+    expect(weighWeatherTime(0, [82_800, 3_600])).toBeCloseTo(0.5, 10);
+    expect(weighWeatherTime(40_000, [82_800, 3_600])).toBe(0);
+  });
+
+  it("weighs a span of nothing at nothing", () => {
+    expect(weighWeatherTime(100, [100, 100])).toBe(0);
+  });
+});

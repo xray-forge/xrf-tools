@@ -5,8 +5,8 @@ import { IRendererSky } from "#/contract/renderer-sky";
 import { getPlaceholderSkyTexture } from "#/texture/placeholder-textures";
 
 /**
- * The sky as the environment binds it (`dxEnvironmentRender::lerp`): the two keyframes' cubes, how far from the first
- * to the second, the keyframes' `sky_color` and `sky_rotation`, and whether the frame draws it at all.
+ * The sky as the environment binds it (`dxEnvironmentRender::lerp`): the two keyframes' cubes and their irradiance
+ * cubes, how far from the first to the second, the keyframes' `sky_color` and `sky_rotation`, and whether the frame draws it at all.
  */
 export class SkyUniforms {
   /** `$user$sky0` and `$user$sky1`, pointed at the lighting's two skies as they upload. */
@@ -14,6 +14,13 @@ export class SkyUniforms {
     cubeTexture(getPlaceholderSkyTexture() as CubeTexture),
     cubeTexture(getPlaceholderSkyTexture() as CubeTexture),
   ];
+  /** `env_s0` and `env_s1`, the two skies' irradiance cubes, pointed at them as they upload. */
+  public readonly environments: readonly [CubeTextureNode, CubeTextureNode] = [
+    cubeTexture(getPlaceholderSkyTexture() as CubeTexture),
+    cubeTexture(getPlaceholderSkyTexture() as CubeTexture),
+  ];
+  /** One while both irradiance cubes are up, zero while the lighting's stand-in lights the hemisphere. */
+  public readonly environmentsUp: UniformNode<"float", number> = uniform(0).setGroup(renderGroup);
   /** How far from the first sky to the second, `L_ambient.w`. */
   public readonly blend: UniformNode<"float", number> = uniform(0).setGroup(renderGroup);
   /** `sky_color`, the box's vertex colour. */

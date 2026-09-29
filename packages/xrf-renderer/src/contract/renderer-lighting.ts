@@ -19,7 +19,7 @@ export interface IRendererLighting {
   hemisphereColor: TRendererColor;
   /** `ambient_color`. */
   ambientColor: TRendererColor;
-  /** What the sky's irradiance cube returns, standing in for one until a weather supplies it. */
+  /** What the sky's irradiance cubes return, standing in for them while either is not up. */
   skyIrradiance: TRendererColor;
   /** Distance fog, or none. */
   fog: Nullable<IRendererFog>;

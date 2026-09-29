@@ -21,7 +21,7 @@ const LAYERS: ReadonlyArray<ReadonlyArray<string>> = [
   ["contract"],
   ["geometry", "input", "internals", "lighting", "timing"],
   ["camera", "device", "texture", "visibility"],
-  ["uniforms"],
+  ["uniforms", "weather"],
   ["shader"],
   ["material"],
   ["scene"],
