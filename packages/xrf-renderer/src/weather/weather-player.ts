@@ -268,13 +268,15 @@ export class WeatherPlayer {
     this.isForced = false;
     this.isJumped = false;
 
-    const lighting: IRendererLighting = this.fade(now, target);
-
+    // Put before the fade asks whether they are up: a key never put reads as settled.
     this.textures.keep([
       ...WeatherPlayer.listNear(keyframes, pair),
       ...WeatherPlayer.listRain(weather),
       ...(this.fading?.held ?? []),
     ]);
+
+    const lighting: IRendererLighting = this.fade(now, target);
+
     this.shown = lighting;
 
     return lighting;

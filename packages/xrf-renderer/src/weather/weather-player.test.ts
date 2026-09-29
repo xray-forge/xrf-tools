@@ -332,6 +332,35 @@ describe("WeatherPlayer", () => {
     expect(player.advance(2_000, ORIGIN)?.sky).toEqual(cycle?.sky);
   });
 
+  // The store calls a key never put settled, so the skies are put before the fade asks.
+  it("puts the skies a fade goes to before it asks whether they are up", () => {
+    const { player, textures, held } = createPlayer();
+    const uploaded: Set<string> = new Set();
+    const night: IRendererWeather = {
+      ...WEATHER,
+      keyframes: KEYFRAMES.map((keyframe: IRendererWeatherKeyframe) => ({
+        ...keyframe,
+        fogDistance: 10,
+        skyTexture: `${keyframe.skyTexture}_night`,
+      })),
+      textures: Object.fromEntries(
+        KEYFRAMES.map((keyframe: IRendererWeatherKeyframe) => [`${keyframe.skyTexture}_night`, SOURCE])
+      ),
+    };
+
+    jest.spyOn(textures, "isUploaded").mockImplementation((key: string) => !held.has(key) || uploaded.has(key));
+    player.take(WEATHER, ERendererWeatherTransition.CUT);
+    player.setControl({ ...PLAYING, isPaused: true, time: 12 * 3600 });
+
+    const before: number = player.advance(0, ORIGIN)?.fog?.distance ?? 0;
+
+    held.forEach((key: string) => uploaded.add(key));
+    player.take(night, ERendererWeatherTransition.FADE);
+
+    expect(player.advance(100, ORIGIN)?.fog?.distance).toBeCloseTo(before, 6);
+    expect(player.advance(900, ORIGIN)?.fog?.distance).toBeCloseTo(before, 6);
+  });
+
   it("starts a fade once the skies it fades into are up, or two seconds after it was asked for", () => {
     const { player, textures } = createPlayer();
     const night: IRendererWeather = {
