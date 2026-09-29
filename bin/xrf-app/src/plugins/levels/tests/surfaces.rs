@@ -7,7 +7,7 @@ use xrf_material::{
   XraySurfaceDeclaration, XraySurfaceDescriptor, XraySurfaceDetail, XraySurfaceDraw, XrayTextureScope,
 };
 use xrf_shaders::fixtures::ShaderBlenderFixture;
-use xrf_thm::ThmTextureFlag;
+use xrf_thm::{ThmBumpMode, ThmTextureFlag};
 use xrf_vfs::{XrayLookupScope, XrayMountId, XrayProbe, XrayVfs};
 
 use crate::plugins::levels::surfaces::resolve_surfaces;
@@ -150,6 +150,7 @@ fn a_detailed_class_takes_the_texture_its_blender_names_and_the_tiling_its_base_
       reference: String::from("detail\\detail_grnd_earth"),
       // The tiling never comes from anywhere but the descriptor, whichever texture is bound.
       scale: 150.0,
+      bump: None,
     })
   );
 }
@@ -174,8 +175,76 @@ fn a_class_with_no_detail_of_its_own_takes_the_one_its_base_texture_associates()
     Some(XraySurfaceDetail {
       reference: String::from("detail\\detail_beton_det4"),
       scale: 8.0,
+      bump: None,
     })
   );
+}
+
+// `uber_deffer`'s `_db`: a bumped surface whose detail usage bumps adds the pair the detail's own descriptor names.
+#[test]
+fn a_bumping_detail_of_a_bumped_surface_brings_the_pair_its_own_descriptor_names() {
+  let tree: FixtureTree = FixtureTree::new("level_surfaces_detail_bump")
+    .with_shader_library(&[ShaderBlenderFixture::of(
+      xrf_shaders::ShaderBlenderClass::VERT,
+      "def_shaders\\def_vertex",
+    )])
+    .with_descriptor(
+      "grnd\\grnd_rocks_02",
+      &ThmFixture::image()
+        .with_bump(ThmBumpMode::Use, "grnd\\grnd_rocks_02_bump")
+        .with_detail(
+          "detail\\detail_rocks_det1",
+          8.0,
+          &[ThmTextureFlag::DiffuseDetail, ThmTextureFlag::BumpDetail],
+        ),
+    )
+    .with_descriptor(
+      "detail\\detail_rocks_det1",
+      &ThmFixture::image().with_bump(ThmBumpMode::Use, "detail\\detail_rocks_det1_bump"),
+    );
+
+  let surfaces: Vec<XraySurfaceDescriptor> =
+    new_resolved(&tree, &new_level(&["def_shaders\\def_vertex/grnd\\grnd_rocks_02"]));
+  let detail: &XraySurfaceDetail = surfaces[0].detail.as_ref().expect("the detail is bound");
+  let bump = detail.bump.as_ref().expect("the detail's own pair is bound");
+
+  assert_eq!(detail.reference, "detail\\detail_rocks_det1");
+  assert_eq!(bump.bump.reference, "detail\\detail_rocks_det1_bump");
+  assert_eq!(bump.companion.reference, "detail\\detail_rocks_det1_bump#");
+}
+
+#[test]
+fn a_diffuse_detail_or_an_unbumped_surface_binds_no_detail_pair() {
+  let tree: FixtureTree = FixtureTree::new("level_surfaces_detail_no_bump")
+    .with_shader_library(&[ShaderBlenderFixture::of(
+      xrf_shaders::ShaderBlenderClass::VERT,
+      "def_shaders\\def_vertex",
+    )])
+    .with_descriptor(
+      "grnd\\grnd_rocks_01",
+      &ThmFixture::image()
+        .with_bump(ThmBumpMode::Use, "grnd\\grnd_rocks_01_bump")
+        .with_detail("detail\\detail_rocks_det1", 8.0, &[ThmTextureFlag::DiffuseDetail]),
+    )
+    .with_descriptor(
+      "grnd\\grnd_rocks_03",
+      &ThmFixture::image().with_detail("detail\\detail_rocks_det1", 8.0, &[ThmTextureFlag::BumpDetail]),
+    )
+    .with_descriptor(
+      "detail\\detail_rocks_det1",
+      &ThmFixture::image().with_bump(ThmBumpMode::Use, "detail\\detail_rocks_det1_bump"),
+    );
+
+  let surfaces: Vec<XraySurfaceDescriptor> = new_resolved(
+    &tree,
+    &new_level(&[
+      "def_shaders\\def_vertex/grnd\\grnd_rocks_01",
+      "def_shaders\\def_vertex/grnd\\grnd_rocks_03",
+    ]),
+  );
+
+  assert_eq!(surfaces[0].detail.as_ref().and_then(|it| it.bump.as_ref()), None);
+  assert_eq!(surfaces[1].detail.as_ref().and_then(|it| it.bump.as_ref()), None);
 }
 
 // Two rows over one shader, detailed apart by the textures they dress with, which is the whole reason an answer is

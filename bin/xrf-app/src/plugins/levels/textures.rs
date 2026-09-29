@@ -62,7 +62,12 @@ pub fn resolve_surface_textures(
   // where its file is absent.
   let bumps: BTreeMap<String, Option<String>> = surfaces
     .iter()
-    .filter_map(|surface| surface.bump.as_ref())
+    .flat_map(|surface| {
+      surface
+        .bump
+        .iter()
+        .chain(surface.detail.as_ref().and_then(|detail| detail.bump.as_ref()))
+    })
     .flat_map(|bump| [&bump.bump, &bump.companion])
     .map(|input| (input.reference.clone(), get_located_path(&input.resolution)))
     .collect();

@@ -5,6 +5,8 @@ use xrf_error::XrfResult;
 use xrf_shaders::{ShaderBlender, ShaderLibraryFile};
 use xrf_vfs::{XrayAsset, XrayAssetType, XrayProbe};
 
+use crate::data::xray_detail_usage::XrayDetailUsage;
+use crate::data::xray_material_bump::XrayMaterialBump;
 use crate::data::xray_material_descriptor::XrayMaterialDescriptor;
 use crate::data::xray_material_detail::XrayMaterialDetail;
 use crate::data::xray_surface_declaration::XraySurfaceDeclaration;
@@ -107,6 +109,10 @@ impl<'probe, 'vfs> XraySurfaceResolver<'probe, 'vfs> {
     let base: Option<XrayMaterialDescriptor> = blender
       .base_texture(textures)
       .map(|base| XrayMaterialResolver::describe_texture(self.probe, &self.scope, base));
+    let bump: Option<XrayMaterialBump> = base
+      .as_ref()
+      .filter(|_| XraySurfaceBumpRule::is_bumped(blender.class))
+      .and_then(|descriptor| descriptor.bump.clone());
 
     XraySurfaceDescriptor {
       shader: None,
@@ -121,28 +127,42 @@ impl<'probe, 'vfs> XraySurfaceResolver<'probe, 'vfs> {
       draw: rule.draw(blender, alpha),
       detail: base
         .as_ref()
-        .and_then(|descriptor| Self::describe_detail(blender, descriptor)),
+        .and_then(|descriptor| self.describe_detail(blender, descriptor, bump.is_some())),
       samplers: Vec::new(),
-      bump: base
-        .as_ref()
-        .filter(|_| XraySurfaceBumpRule::is_bumped(blender.class))
-        .and_then(|descriptor| descriptor.bump.clone()),
+      bump,
       material: base.map_or(XrayMaterialDescriptor::DEFAULT_MATERIAL, |descriptor| {
         descriptor.material
       }),
     }
   }
 
-  /// The detail texture the blender's class binds, laid out at the tiling its base texture's descriptor sets.
-  fn describe_detail(blender: &ShaderBlender, descriptor: &XrayMaterialDescriptor) -> Option<XraySurfaceDetail> {
+  /// The detail texture the blender's class binds, laid out at the tiling its base texture's descriptor sets, with the
+  /// bump pair its own descriptor names where its usage bumps a surface bumped itself.
+  fn describe_detail(
+    &self,
+    blender: &ShaderBlender,
+    descriptor: &XrayMaterialDescriptor,
+    is_bumped: bool,
+  ) -> Option<XraySurfaceDetail> {
     let rule: XraySurfaceDetailRule = XraySurfaceDetailRule::of(blender.class)?;
     let associated: &XrayMaterialDetail = descriptor
       .detail
       .as_ref()
       .filter(|_| descriptor.is_detail_associated())?;
+    let reference: String = rule.reference(blender, Some(associated.name.as_str()))?.to_owned();
+    // `r2_detail_bump` is on by default, which leaves a bumping usage bumping (`Blender_Recorder.cpp`).
+    let is_detail_bumped: bool = is_bumped
+      && matches!(
+        associated.usage,
+        Some(XrayDetailUsage::Bump | XrayDetailUsage::DiffuseAndBump)
+      );
+    let bump: Option<XrayMaterialBump> = is_detail_bumped
+      .then(|| XrayMaterialResolver::describe_texture(self.probe, &self.scope, &reference).bump)
+      .flatten();
 
     Some(XraySurfaceDetail {
-      reference: rule.reference(blender, Some(associated.name.as_str()))?.to_owned(),
+      bump,
+      reference,
       scale: associated.scale,
     })
   }

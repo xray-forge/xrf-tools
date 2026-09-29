@@ -267,6 +267,11 @@ export type XraySurfaceDetail = {
   reference: string;
   /** Times it repeats across the surface's base coordinate, `dt_params.xyz` (`TextureDescrManager.cpp`). */
   scale: number | null;
+  /**
+   * The bump pair the detail texture's own descriptor names, added to the surface's where its usage bumps and the
+   * surface binds a pair of its own (`uber_deffer.cpp`, `_db`); `None` otherwise.
+   */
+  bump: XrayMaterialBump | null;
 };
 
 /** Every `kind` the `XraySurfaceDraw` union is told apart by, so a switch or a comparison names one. */
