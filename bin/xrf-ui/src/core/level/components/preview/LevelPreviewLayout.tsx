@@ -2,6 +2,7 @@ import { default as InfoOutlinedIcon } from "@mui/icons-material/InfoOutlined";
 import { default as LayersIcon } from "@mui/icons-material/Layers";
 import { default as SpeedIcon } from "@mui/icons-material/Speed";
 import { default as WarningIcon } from "@mui/icons-material/WarningAmber";
+import { default as WbCloudyIcon } from "@mui/icons-material/WbCloudy";
 import { useInjection } from "@wirestate/react";
 import { ERendererRenderScale, IRendererFeatureSettings } from "@xrf/renderer";
 import { Nullable } from "@xrf/types";
@@ -11,6 +12,7 @@ import { LevelHeaderPanel } from "@/core/level/components/panels/LevelHeaderPane
 import { LevelProblemsPanel } from "@/core/level/components/panels/LevelProblemsPanel";
 import { LevelStreamPanel } from "@/core/level/components/panels/LevelStreamPanel";
 import { LevelSurfacesPanel } from "@/core/level/components/panels/LevelSurfacesPanel";
+import { LevelWeatherPanel } from "@/core/level/components/panels/LevelWeatherPanel";
 import { LevelCameraAction } from "@/core/level/components/preview/LevelCameraAction";
 import { LevelGoToAction } from "@/core/level/components/preview/LevelGoToAction";
 import { LevelPreviewActivity } from "@/core/level/components/preview/LevelPreviewActivity";
@@ -23,7 +25,13 @@ import { ILevelPreviewViewportProps, LevelPreviewViewport } from "@/core/level/c
 import { ILevelCamera } from "@/core/level/lib/camera/level-camera";
 import { ILevelGoTo } from "@/core/level/lib/camera/level-camera-goto";
 import { ILevelFeatureOptions, TLevelFeatureView, toLevelFeatureView } from "@/core/level/lib/features";
-import { LevelLoadService, LevelRenderService, LevelViewportService, LevelViewService } from "@/core/level/services";
+import {
+  LevelLoadService,
+  LevelRenderService,
+  LevelViewportService,
+  LevelViewService,
+  LevelWeatherService,
+} from "@/core/level/services";
 import { SettingsService } from "@/core/settings/services/settings";
 import { EditorFileHeader } from "@/core/shell/editor/EditorFileHeader";
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
@@ -66,6 +74,7 @@ export function LevelPreviewLayout({
   const settingsService: SettingsService = useInjection(SettingsService);
   const viewportService: LevelViewportService = useInjection(LevelViewportService);
   const renderService: LevelRenderService = useInjection(LevelRenderService);
+  const weatherService: LevelWeatherService = useInjection(LevelWeatherService);
 
   const isOpen: boolean = Boolean(name);
   const settings: IRendererFeatureSettings = settingsService.rendererFeatures;
@@ -94,6 +103,14 @@ export function LevelPreviewLayout({
 
   useEditorPanels(
     (): Array<IEditorPanel> => [
+      {
+        icon: <WbCloudyIcon />,
+        id: "weather",
+        isOpenByDefault: true,
+        label: "Weather",
+        render: () => <LevelWeatherPanel />,
+        side: "left",
+      },
       {
         icon: <InfoOutlinedIcon />,
         id: "level",
@@ -136,6 +153,7 @@ export function LevelPreviewLayout({
           featureView={featureView}
           settings={settings}
           isGpuTimed={settingsService.isGpuTimed}
+          lightingLock={weatherService.lightingLock}
           actions={actions}
           onChangeOptions={viewService.setOptions}
           onChangeLighting={viewService.setLighting}

@@ -3,6 +3,7 @@ import {
   ERendererWeatherEngine,
   IRendererWeather,
   IRendererWeatherKeyframe,
+  IRendererWeatherModifier,
   TRendererVector,
 } from "@xrf/renderer";
 import { Nullable } from "@xrf/types";
@@ -10,9 +11,14 @@ import { Nullable } from "@xrf/types";
 import { LevelTextureReference, LevelWeatherCycle, LevelWeatherDescription } from "@/core/ipc/types/xrf-app";
 import { EXrayEngine } from "@/core/ipc/types/xrf-engine-target";
 import { SunPosition, WeatherDescriptor } from "@/core/ipc/types/xrf-environment";
+import { EnvModifier } from "@/core/ipc/types/xrf-level";
+import { Vector3d } from "@/core/ipc/types/xrf-math";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { ILevelTextureRequests } from "@/core/level/lib/render/level-render-protocol";
 import { LevelTextureReader } from "@/core/level/lib/texture/level-texture-reader";
+
+/** Every value a modifier adds to, what a file older than the flags stands for. */
+const ALL_MODIFIER_FLAGS: number = 0xffff;
 
 /** What a weather the renderer plays is built from. */
 export interface ILevelRendererWeatherInput {
@@ -26,13 +32,21 @@ export interface ILevelRendererWeatherInput {
 
 /**
  * @param input - The cycle, the level's weather it belongs to and where its skies are read from.
- * @returns What the renderer plays, with where each sky that resolved is fetched from.
+ * @returns What the renderer plays: the cycle, every effect and the level's modifiers, with where each texture that
+ *   resolved is fetched from.
  */
 export async function toLevelRendererWeather(input: ILevelRendererWeatherInput): Promise<IRendererWeather> {
   const { description, cycle, roots } = input;
-  const located: Array<LevelTextureReference & { logicalPath: string }> = cycle.textures.filter(
-    (it: LevelTextureReference): it is LevelTextureReference & { logicalPath: string } => it.logicalPath !== null
-  );
+  const located: Array<LevelTextureReference & { logicalPath: string }> = [
+    ...new Map(
+      [cycle, ...description.effects]
+        .flatMap((it: LevelWeatherCycle) => it.textures)
+        .filter(
+          (it: LevelTextureReference): it is LevelTextureReference & { logicalPath: string } => it.logicalPath !== null
+        )
+        .map((it) => [it.reference, it] as const)
+    ).values(),
+  ];
   const requests: Array<ILevelTextureRequests> = await Promise.all(
     located.map((it) => LevelTextureReader.request(roots, it.logicalPath))
   );
@@ -40,7 +54,14 @@ export async function toLevelRendererWeather(input: ILevelRendererWeatherInput):
   return {
     engine:
       description.engine === EXrayEngine.EXTENDED ? ERendererWeatherEngine.EXTENDED : ERendererWeatherEngine.VANILLA,
+    effects: Object.fromEntries(
+      description.effects.map((effect: LevelWeatherCycle) => [
+        effect.name,
+        effect.keyframes.map(toLevelRendererWeatherKeyframe),
+      ])
+    ),
     keyframes: cycle.keyframes.map(toLevelRendererWeatherKeyframe),
+    modifiers: description.modifiers.map(toLevelRendererWeatherModifier),
     sunTable:
       description.sunTable?.map((position: SunPosition) => ({
         altitude: position.altitude ?? 0,
@@ -62,6 +83,14 @@ export async function toLevelRendererWeather(input: ILevelRendererWeatherInput):
 export function toLevelRendererWeatherKeyframe(keyframe: WeatherDescriptor): IRendererWeatherKeyframe {
   return {
     ambientColor: toTriple(keyframe.ambientColor),
+    cloudsColor: [
+      keyframe.cloudsColor[0] ?? 0,
+      keyframe.cloudsColor[1] ?? 0,
+      keyframe.cloudsColor[2] ?? 0,
+      keyframe.cloudsColor[3] ?? 0,
+    ],
+    cloudsRotation: keyframe.cloudsRotation ?? 0,
+    cloudsTexture: keyframe.cloudsTexture,
     farPlane: keyframe.farPlane ?? 0,
     fogColor: toTriple(keyframe.fogColor),
     fogDensity: keyframe.fogDensity ?? 0,
@@ -86,6 +115,29 @@ export function toLevelRendererWeatherKeyframe(keyframe: WeatherDescriptor): IRe
     treeWave: toTriple(keyframe.treeWave),
     waterIntensity: keyframe.waterIntensity ?? 0,
   };
+}
+
+/**
+ * @param modifier - One `level.env_mod` volume, as the level file holds it.
+ * @returns What the renderer's mixer weighs of it, in engine space.
+ */
+export function toLevelRendererWeatherModifier(modifier: EnvModifier): IRendererWeatherModifier {
+  return {
+    ambient: toVector(modifier.ambient),
+    farPlane: modifier.farPlane ?? 0,
+    flags: modifier.useFlags ?? ALL_MODIFIER_FLAGS,
+    fogColor: toVector(modifier.fogColor),
+    fogDensity: modifier.fogDensity ?? 0,
+    hemiColor: toVector(modifier.hemiColor),
+    position: toVector(modifier.position),
+    power: modifier.power ?? 0,
+    radius: modifier.radius ?? 0,
+    skyColor: toVector(modifier.skyColor),
+  };
+}
+
+function toVector(value: Vector3d): TRendererVector {
+  return [value.x ?? 0, value.y ?? 0, value.z ?? 0];
 }
 
 function toTriple(value: readonly [Nullable<number>, Nullable<number>, Nullable<number>]): TRendererVector {

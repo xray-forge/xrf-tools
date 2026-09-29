@@ -191,6 +191,11 @@ describe("LevelRenderService", () => {
 
     expect(stub.take(ERendererRequest.WEATHER_CONTROL).at(-1)?.control.time).toBe(3_600);
 
+    weatherService.playEffect("fx_blowout");
+    await stub.flush();
+
+    expect(stub.take(ERendererRequest.WEATHER_EFFECT).at(-1)?.effect).toBe("fx_blowout");
+
     weatherService.setSource(ELevelWeatherSource.MANUAL);
     await stub.flush();
 

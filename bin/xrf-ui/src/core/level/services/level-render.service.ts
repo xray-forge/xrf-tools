@@ -36,6 +36,7 @@ import { ILevelPoint } from "@/core/level/lib/residency/level-residency";
 import { measureLevelStats } from "@/core/level/lib/stats/level-stats";
 import { ILevelSurfaceGeometry } from "@/core/level/lib/surface/level-surface-geometry";
 import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
+import { ILevelWeatherEffectRequest } from "@/core/level/lib/weather/level-weather-effect-request";
 import { ILevelWeatherSeek } from "@/core/level/lib/weather/level-weather-seek";
 import { LevelLoadService } from "@/core/level/services/level-load.service";
 import { LevelViewService } from "@/core/level/services/level-view.service";
@@ -154,6 +155,10 @@ export class LevelRenderService extends RenderSurfaceService {
       reaction(
         () => this.weatherService.seek,
         (seek: Nullable<ILevelWeatherSeek>) => seek && this.sendWeatherControl(seek.time)
+      ),
+      reaction(
+        () => this.weatherService.effect,
+        (effect: Nullable<ILevelWeatherEffectRequest>) => effect && this.client?.playWeatherEffect(effect.name)
       ),
       reaction(() => this.viewService.camera, this.applyCamera),
       // Whatever else the settings are made of; the options and the lighting configure as they apply.

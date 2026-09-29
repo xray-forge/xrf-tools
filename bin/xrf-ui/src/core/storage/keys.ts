@@ -38,6 +38,8 @@ export const RENDER_RESOLUTION_STORAGE_KEY: string = buildStorageKey(EStorageNam
 export const LEVEL_CAMERA_STORAGE_KEY: string = buildStorageKey(EStorageNamespace.PREFERENCE, "level-camera");
 /** What the level viewer sets over the renderer's features for itself, as JSON. */
 export const LEVEL_FEATURES_STORAGE_KEY: string = buildStorageKey(EStorageNamespace.PREFERENCE, "level-features");
+/** How each level's weather was last played, by level, as JSON. */
+export const LEVEL_WEATHER_STORAGE_KEY: string = buildStorageKey(EStorageNamespace.PREFERENCE, "level-weather");
 
 /** Chords a person bound themselves, as one command id to chords map. */
 export const KEYBINDS_STORAGE_KEY: string = buildStorageKey(EStorageNamespace.PREFERENCE, "keybinds");

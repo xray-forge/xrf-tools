@@ -1,0 +1,116 @@
+import { useInjection } from "@wirestate/react";
+import { Nullable } from "@xrf/types";
+import { ReactElement, useCallback, useMemo } from "react";
+
+import { LevelWeatherCycle, LevelWeatherDescription } from "@/core/ipc/types/xrf-app";
+import { LevelWeatherClockSection } from "@/core/level/components/panels/LevelWeatherPanel/LevelWeatherClockSection";
+import { LevelWeatherCyclesSection } from "@/core/level/components/panels/LevelWeatherPanel/LevelWeatherCyclesSection";
+import { LevelWeatherEffectsSection } from "@/core/level/components/panels/LevelWeatherPanel/LevelWeatherEffectsSection";
+import { LevelWeatherFindingsSection } from "@/core/level/components/panels/LevelWeatherPanel/LevelWeatherFindingsSection";
+import { LevelWeatherModifiersSection } from "@/core/level/components/panels/LevelWeatherPanel/LevelWeatherModifiersSection";
+import { LevelWeatherSourceSection } from "@/core/level/components/panels/LevelWeatherPanel/LevelWeatherSourceSection";
+import { LevelWeatherSunSection } from "@/core/level/components/panels/LevelWeatherPanel/LevelWeatherSunSection";
+import { ILevelWeatherCycleChoice, listLevelWeatherCycles } from "@/core/level/lib/weather/level-weather-cycle-choice";
+import { ELevelWeatherSource } from "@/core/level/lib/weather/level-weather-source";
+import { LevelLoadService, LevelWeatherService } from "@/core/level/services";
+import { EditorPanel, EditorPanelEmpty } from "@/core/shell/editor/EditorPanel";
+import { BaseComponentProps } from "@/lib/dom/element-types";
+
+/**
+ * The level's weather: what lights it, the time of day and how it runs, the sun, the effects over it, the level's own
+ * overrides, the cycle, and what is wrong in it.
+ */
+export function LevelWeatherPanel({
+  "data-testid": dataTestId = "level-weather-panel",
+  id,
+  className,
+}: BaseComponentProps): ReactElement {
+  const loadService: LevelLoadService = useInjection(LevelLoadService);
+  const weatherService: LevelWeatherService = useInjection(LevelWeatherService);
+
+  const description: Nullable<LevelWeatherDescription> = weatherService.description;
+  const cycle: Nullable<LevelWeatherCycle> = weatherService.cycle;
+  const isWeather: boolean = weatherService.weather !== null;
+
+  const cycles: Array<ILevelWeatherCycleChoice> = useMemo(
+    () => (description ? listLevelWeatherCycles(description) : []),
+    [description]
+  );
+  const keyframes: Array<number> = useMemo(() => cycle?.keyframes.map((it) => it.time) ?? [], [cycle]);
+
+  // Picking a cycle is asking to see it, so a level lit by hand is lit by the weather again.
+  const onSelectCycle = useCallback(
+    (name: string) => {
+      weatherService.setSource(ELevelWeatherSource.WEATHER);
+      void weatherService.selectCycle(name);
+    },
+    [weatherService]
+  );
+
+  if (!loadService.level.value) {
+    return (
+      <EditorPanel data-testid={dataTestId} id={id} className={className} title={"Weather"}>
+        <EditorPanelEmpty label={"No level open. Open one to play its weather."} />
+      </EditorPanel>
+    );
+  }
+
+  return (
+    <EditorPanel data-testid={dataTestId} id={id} className={className} title={"Weather"}>
+      <LevelWeatherSourceSection
+        isFirst
+        source={weatherService.source}
+        isPlayable={weatherService.playable !== null}
+        failure={weatherService.failure}
+        onChange={weatherService.setSource}
+      />
+
+      {description ? (
+        <>
+          <LevelWeatherClockSection
+            time={weatherService.time}
+            keyframes={keyframes}
+            report={isWeather ? weatherService.report : null}
+            control={weatherService.control}
+            isDisabled={!isWeather}
+            onSeek={weatherService.seekTo}
+            onPlaying={weatherService.setPlaying}
+            onFactor={weatherService.setFactor}
+          />
+
+          <LevelWeatherSunSection
+            engine={description.engine}
+            isDynamicSun={weatherService.control.isDynamicSun}
+            isDisabled={!isWeather}
+            onChange={weatherService.setDynamicSun}
+          />
+
+          <LevelWeatherEffectsSection
+            effects={description.effects}
+            playing={isWeather ? (weatherService.report?.effect ?? null) : null}
+            isDisabled={!isWeather}
+            onPlay={weatherService.playEffect}
+          />
+
+          <LevelWeatherModifiersSection
+            count={description.modifiers.length}
+            reaching={isWeather ? (weatherService.report?.modifiers ?? 0) : 0}
+          />
+
+          <LevelWeatherCyclesSection
+            cycles={cycles}
+            selected={cycle?.name ?? null}
+            reading={weatherService.reading}
+            onSelect={onSelectCycle}
+          />
+
+          {cycle ? <LevelWeatherFindingsSection file={cycle.file} findings={cycle.findings} /> : null}
+        </>
+      ) : (
+        <EditorPanelEmpty
+          label={weatherService.failure ? "The level's weather is not read." : "Reading the weather."}
+        />
+      )}
+    </EditorPanel>
+  );
+}
