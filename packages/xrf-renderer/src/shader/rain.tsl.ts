@@ -102,7 +102,7 @@ export function toRainFall(streak: Node<"float">, rain: RainUniforms): IRainFall
   // It starts `source_offset` over the camera, set back along its way so it falls through its column.
   const start: Node<"float"> = float(SOURCE_OFFSET).div(direction.y.negate());
   const head: Node<"vec3"> = column.add(direction.mul(speed.mul(age).sub(start)));
-  const cover: Node<"float"> = toCoverHeight(column, rain);
+  const cover: Node<"float"> = toRainCoverHeight(column, rain);
   const reach: Node<"float"> = cover.sub(column.y).div(direction.y);
   const landing: Node<"float"> = reach.add(start).div(speed);
 
@@ -174,8 +174,12 @@ export function toRainSplashPosition(fall: IRainFall, vertex: Node<"vec3">): Nod
 /**
  * The height of the first thing over a column that a drop lands on: read from the cover's depth, straight down from
  * the height it is seen from; nothing at all outside it.
+ *
+ * @param column - A point of the column, in world space.
+ * @param rain - The rain's uniforms, the cover among them.
+ * @returns The height, in world space.
  */
-function toCoverHeight(column: Node<"vec3">, rain: RainUniforms): Node<"float"> {
+export function toRainCoverHeight(column: Node<"vec3">, rain: RainUniforms): Node<"float"> {
   const { window } = rain;
   const uv: Node<"vec2"> = vec2(column.x.sub(window.x), column.z.sub(window.y)).div(window.z.mul(2)).add(0.5);
   const isInside: Node<"bool"> = uv.x

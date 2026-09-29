@@ -8,6 +8,7 @@ import { ILevelManualWeather, toLevelManualKeyframe } from "@/core/level/lib/wea
 import { listLevelThunderTextures } from "@/core/level/lib/weather/level-renderer-thunder";
 import {
   listLevelRainTextures,
+  listLevelWetTextures,
   toLevelRendererTextures,
   toLevelRendererWeatherBase,
   toLevelRendererWeatherEngine,
@@ -39,7 +40,14 @@ export async function toLevelManualRendererWeather(input: ILevelManualRendererWe
   const keyframe: IRendererWeatherKeyframe = toLevelManualKeyframe(manual, 0);
   const base = description
     ? toLevelRendererWeatherBase(description)
-    : { effects: {}, engine: toLevelRendererWeatherEngine(engine), modifiers: [], rain: null, thunder: null };
+    : {
+        effects: {},
+        engine: toLevelRendererWeatherEngine(engine),
+        modifiers: [],
+        rain: null,
+        thunder: null,
+        wet: null,
+      };
 
   return {
     ...base,
@@ -57,6 +65,7 @@ export async function toLevelManualRendererWeather(input: ILevelManualRendererWe
       ...located,
       ...(description ? description.effects.flatMap((it: LevelWeatherCycle) => it.textures) : []),
       ...(description ? listLevelRainTextures(description.rain) : []),
+      ...(description ? listLevelWetTextures(description.wet) : []),
       ...(description ? listLevelThunderTextures(description.thunderbolts) : []),
     ]),
   };

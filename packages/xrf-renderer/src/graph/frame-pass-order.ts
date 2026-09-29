@@ -39,6 +39,7 @@ export function toFramePassOrder(
     ...optional.shadows,
     ...some(optional.lightShadows),
     base.rainCover,
+    base.wet,
     base.sun,
     ...some(optional.lights, optional.ambientOcclusion),
     base.combine,

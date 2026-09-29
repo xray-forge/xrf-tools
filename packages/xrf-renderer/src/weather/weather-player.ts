@@ -510,11 +510,15 @@ export class WeatherPlayer {
     return keyframe.cloudsTexture ? WeatherTextures.toKey(keyframe.cloudsTexture) : null;
   }
 
-  /** The rain's textures, held while its weather plays so a shower starting has them. */
+  /** The rain's textures and what it wets surfaces with, held while its weather plays so a shower starting has them. */
   private static listRain(weather: IRendererWeather): Array<string> {
-    const { rain } = weather;
+    const { rain, wet } = weather;
 
-    return rain ? [rain.streak, ...(rain.drop ? [rain.drop.texture] : [])] : [];
+    return [
+      ...(rain ? [rain.streak, ...(rain.drop ? [rain.drop.texture] : [])] : []),
+      // The splashes' volume is fetched and decoded by the wet surfaces alone: the texture store refuses a volume.
+      ...(wet ? [wet.flow] : []),
+    ];
   }
 
   /** The bolts' textures, held while their weather plays so a strike has them. */

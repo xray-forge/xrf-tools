@@ -7,6 +7,7 @@ import { IRendererThunder } from "#/contract/weather/renderer-thunder";
 import { ERendererWeatherEngine } from "#/contract/weather/renderer-weather-engine";
 import { IRendererWeatherKeyframe } from "#/contract/weather/renderer-weather-keyframe";
 import { IRendererWeatherModifier } from "#/contract/weather/renderer-weather-modifier";
+import { IRendererWetSurfaces } from "#/contract/weather/renderer-wet-surfaces";
 
 /**
  * A weather cycle the renderer plays by itself: its keyframes, where its sun stands, the effects it can play over it,
@@ -26,6 +27,8 @@ export interface IRendererWeather {
   rain: Nullable<IRendererRain>;
   /** What it strikes with, or null for a weather that strikes nothing. */
   thunder: Nullable<IRendererThunder>;
+  /** What its rain wets surfaces with, or null for none. */
+  wet: Nullable<IRendererWetSurfaces>;
   /** Where each texture the keyframes name is fetched from, by reference; one left out is not drawn. */
   textures: Readonly<Record<string, Extract<TRendererTextureSource, { encoding: ERendererTextureEncoding.FETCH }>>>;
 }

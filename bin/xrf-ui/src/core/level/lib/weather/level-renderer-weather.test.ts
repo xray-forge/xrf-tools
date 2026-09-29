@@ -121,9 +121,18 @@ describe("toLevelRendererWeather", () => {
 
     expect(Object.keys(weather.effects)).toEqual(["fx_blowout"]);
     expect(Object.keys(weather.textures).sort()).toEqual(
-      ["fx\\fx_rain", "sky\\blowout", "sky\\sky_night", "sky\\sky_night#small", "sky\\sky_noon"].sort()
+      [
+        "fx\\fx_rain",
+        "sky\\blowout",
+        "sky\\sky_night",
+        "sky\\sky_night#small",
+        "sky\\sky_noon",
+        "water\\water_SBumpVolume",
+        "water\\water_flowing_nmap",
+      ].sort()
     );
     expect(weather.modifiers).toEqual([]);
     expect(weather.rain).toEqual({ drop: null, streak: "fx\\fx_rain" });
+    expect(weather.wet).toEqual({ flow: "water\\water_flowing_nmap", splash: "water\\water_SBumpVolume" });
   });
 });

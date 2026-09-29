@@ -38,6 +38,7 @@ const WEATHER: IRendererWeather = {
   rain: null,
   sunTable: null,
   thunder: null,
+  wet: null,
   textures: Object.fromEntries(
     KEYFRAMES.flatMap((keyframe: IRendererWeatherKeyframe) => [
       keyframe.skyTexture,

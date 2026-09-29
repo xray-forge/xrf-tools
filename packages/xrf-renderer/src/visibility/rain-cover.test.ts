@@ -44,7 +44,7 @@ describe("RainCover", () => {
 
     expect(ahead.distanceTo(new Vector3(0, -1, 0))).toBeCloseTo(0, 6);
     // A point east of centre projects to the right, one south of it (towards `+z`) to the bottom.
-    expect(new Vector3(8, 0, 0).project(cover.camera).x).toBeCloseTo(0.5, 6);
-    expect(new Vector3(0, 0, 8).project(cover.camera).y).toBeCloseTo(-0.5, 6);
+    expect(new Vector3(RAIN_COVER_WIDTH / 4, 0, 0).project(cover.camera).x).toBeCloseTo(0.5, 6);
+    expect(new Vector3(0, 0, RAIN_COVER_WIDTH / 4).project(cover.camera).y).toBeCloseTo(-0.5, 6);
   });
 });

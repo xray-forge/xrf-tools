@@ -92,6 +92,8 @@ describe("LevelWeatherService", () => {
       "sky\\sky_night#small",
       "sky\\sky_noon",
       "fx\\fx_rain",
+      "water\\water_SBumpVolume",
+      "water\\water_flowing_nmap",
     ]);
     expect(weather?.textures["sky\\sky_noon"]?.encoding).toBe(ERendererTextureEncoding.FETCH);
     expect(service.failure).toBeNull();

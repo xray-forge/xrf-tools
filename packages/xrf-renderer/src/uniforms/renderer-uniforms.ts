@@ -21,6 +21,7 @@ import { SurfaceTable } from "#/uniforms/surface-table";
 import { ThunderUniforms } from "#/uniforms/thunder-uniforms";
 import { TreeWindUniforms } from "#/uniforms/tree-wind-uniforms";
 import { WaterUniforms } from "#/uniforms/water-uniforms";
+import { WetUniforms } from "#/uniforms/wet-uniforms";
 
 /**
  * Everything the frame's shaders read besides the scene: uniforms updated in place, so no change recompiles a
@@ -54,6 +55,8 @@ export class RendererUniforms {
   public readonly rain: RainUniforms = new RainUniforms();
   /** The bolt striking, drawn after the rain. */
   public readonly thunder: ThunderUniforms = new ThunderUniforms();
+  /** What the rain wets the G-buffer with, before any light. */
+  public readonly wet: WetUniforms = new WetUniforms();
   /** How the water moves. */
   public readonly water: WaterUniforms = new WaterUniforms();
   /** What the motion every G-buffer surface writes is measured with. */
@@ -99,6 +102,7 @@ export class RendererUniforms {
     this.clouds.take(lighting.sky.clouds);
     this.rain.take(lighting.rain);
     this.thunder.take(lighting.thunderbolt);
+    this.wet.take(lighting.rain);
     this.farPlane = lighting.fog?.farPlane ?? null;
   }
 

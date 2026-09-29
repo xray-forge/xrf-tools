@@ -2,11 +2,14 @@ import { OrthographicCamera, Vector3, Vector4 } from "three/webgpu";
 
 import { adoptRendererConventions } from "#/internals/camera-conventions";
 
-/** Metres the cover is across: every streak's column falls within it, however far the camera is from its centre. */
-export const RAIN_COVER_WIDTH: number = 32;
+/**
+ * Metres the cover is across: every streak's column falls within it, however far the camera is from its centre, and
+ * every surface the rain wets, 25 metres out at most on the extended engine.
+ */
+export const RAIN_COVER_WIDTH: number = 56;
 
-/** Texels it is across. */
-export const RAIN_COVER_RESOLUTION: number = 512;
+/** Texels it is across, some five centimetres each. */
+export const RAIN_COVER_RESOLUTION: number = 1024;
 
 /** Metres above the camera it is seen from, past where every streak starts. */
 const HEIGHT: number = 60;

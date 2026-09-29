@@ -46,6 +46,6 @@ describe("RainUniforms", () => {
     rain.cover.fit(new Vector3(9, 3, -7));
     rain.commitCover();
 
-    expect(rain.window.value.toArray()).toEqual([8, -8, 16, 64]);
+    expect(rain.window.value.toArray()).toEqual([8, -8, 28, 64]);
   });
 });

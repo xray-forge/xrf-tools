@@ -31,6 +31,10 @@ export class RendererTargets implements IGBufferTextures {
   public readonly wallmarks: RenderTarget;
   /** The motion alone, which the sky's motion is written into where the G-buffer drew nothing. */
   public readonly backgroundMotion: RenderTarget;
+  /** The normal alone, which the rain's patched normals are written back into. */
+  public readonly wetNormal: RenderTarget;
+  /** The albedo alone without the depth, which the rain darkens and glosses over the whole screen. */
+  public readonly wetAlbedo: RenderTarget;
   /** What the lights accumulate: diffuse in colour, specular in alpha. */
   public readonly light: RenderTarget;
   /** The tonemapped frame, as combine writes it: no depth, since combine samples the G-buffer's. */
@@ -120,6 +124,14 @@ export class RendererTargets implements IGBufferTextures {
     this.backgroundMotion.texture.dispose();
     this.backgroundMotion.texture = this.gbuffer.textures[3];
 
+    this.wetNormal = new RenderTarget(1, 1, { depthBuffer: false });
+    this.wetNormal.texture.dispose();
+    this.wetNormal.texture = this.gbuffer.textures[1];
+
+    this.wetAlbedo = new RenderTarget(1, 1, { depthBuffer: false });
+    this.wetAlbedo.texture.dispose();
+    this.wetAlbedo.texture = this.gbuffer.textures[0];
+
     this.light = new RenderTarget(1, 1, { depthBuffer: false, type: HalfFloatType });
     this.scene = new RenderTarget(1, 1, { depthBuffer: false });
     this.composite = new RenderTarget(1, 1, { depthBuffer: true });
@@ -203,6 +215,8 @@ export class RendererTargets implements IGBufferTextures {
     this.gbuffer.setSize(renderWidth, renderHeight);
     this.wallmarks.setSize(renderWidth, renderHeight);
     this.backgroundMotion.setSize(renderWidth, renderHeight);
+    this.wetNormal.setSize(renderWidth, renderHeight);
+    this.wetAlbedo.setSize(renderWidth, renderHeight);
     this.light.setSize(renderWidth, renderHeight);
     this.scene.setSize(renderWidth, renderHeight);
     this.composite.setSize(renderWidth, renderHeight);
@@ -214,6 +228,8 @@ export class RendererTargets implements IGBufferTextures {
     initPreservedDepthTarget(renderer, this.wallmarks);
 
     renderer.initRenderTarget(this.backgroundMotion);
+    renderer.initRenderTarget(this.wetNormal);
+    renderer.initRenderTarget(this.wetAlbedo);
 
     renderer.initRenderTarget(this.light);
     renderer.initRenderTarget(this.scene);
@@ -240,6 +256,8 @@ export class RendererTargets implements IGBufferTextures {
       this.gbuffer,
       this.wallmarks,
       this.backgroundMotion,
+      this.wetNormal,
+      this.wetAlbedo,
       this.light,
       this.scene,
       this.composite,

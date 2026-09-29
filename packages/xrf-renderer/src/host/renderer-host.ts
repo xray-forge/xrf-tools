@@ -134,6 +134,7 @@ export class RendererHost {
     this.weather.take(weather, transition);
     this.scene.rain.take(weather?.rain ?? null);
     this.scene.thunder.take(weather?.thunder ?? null);
+    this.scene.wet.take(weather);
 
     if (!weather) {
       this.light(this.lighting);
@@ -499,6 +500,7 @@ export class RendererHost {
     this.uniforms.water.update(time);
     this.uniforms.clouds.update(time);
     this.uniforms.rain.update(time);
+    this.uniforms.wet.update(time);
 
     // What the view sees, from the view unjittered, so the jitter never flickers a choice.
     this.cullView.take(viewCamera, this.uniforms.viewDistance);

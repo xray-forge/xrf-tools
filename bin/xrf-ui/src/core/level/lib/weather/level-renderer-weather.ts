@@ -9,7 +9,13 @@ import {
 } from "@xrf/renderer";
 import { Nullable } from "@xrf/types";
 
-import { LevelRain, LevelTextureReference, LevelWeatherCycle, LevelWeatherDescription } from "@/core/ipc/types/xrf-app";
+import {
+  LevelRain,
+  LevelTextureReference,
+  LevelWeatherCycle,
+  LevelWeatherDescription,
+  LevelWetSurfaces,
+} from "@/core/ipc/types/xrf-app";
 import { EXrayEngine, XrayEngine } from "@/core/ipc/types/xrf-engine-target";
 import { SunPosition, WeatherDescriptor } from "@/core/ipc/types/xrf-environment";
 import { EnvModifier } from "@/core/ipc/types/xrf-level";
@@ -51,6 +57,7 @@ export async function toLevelRendererWeather(input: ILevelRendererWeatherInput):
     textures: await toLevelRendererTextures(roots, [
       ...[cycle, ...description.effects].flatMap((it: LevelWeatherCycle) => it.textures),
       ...listLevelRainTextures(description.rain),
+      ...listLevelWetTextures(description.wet),
       ...listLevelThunderTextures(description.thunderbolts),
     ]),
   };
@@ -59,11 +66,11 @@ export async function toLevelRendererWeather(input: ILevelRendererWeatherInput):
 /**
  * @param description - The open level's weather.
  * @returns What any weather of the level plays over whatever keyframes it plays: its engine, effects, the level's
- *   modifiers, its rain and its thunder.
+ *   modifiers, its rain, what the rain wets surfaces with, and its thunder.
  */
 export function toLevelRendererWeatherBase(
   description: LevelWeatherDescription
-): Pick<IRendererWeather, "engine" | "effects" | "modifiers" | "rain" | "thunder"> {
+): Pick<IRendererWeather, "engine" | "effects" | "modifiers" | "rain" | "thunder" | "wet"> {
   return {
     effects: Object.fromEntries(
       description.effects.map((effect: LevelWeatherCycle) => [
@@ -75,6 +82,7 @@ export function toLevelRendererWeatherBase(
     modifiers: description.modifiers.map(toLevelRendererWeatherModifier),
     rain: toLevelRendererRain(description.rain),
     thunder: toLevelRendererThunder(description.thunderbolts),
+    wet: { flow: description.wet.flow.reference, splash: description.wet.splash.reference },
   };
 }
 
@@ -92,6 +100,14 @@ export function toLevelRendererWeatherEngine(engine: XrayEngine): ERendererWeath
  */
 export function listLevelRainTextures(rain: LevelRain): Array<LevelTextureReference> {
   return [rain.streak, ...(rain.drop ? [rain.drop.texture] : [])];
+}
+
+/**
+ * @param wet - What the level's rain wets surfaces with.
+ * @returns The textures it names.
+ */
+export function listLevelWetTextures(wet: LevelWetSurfaces): Array<LevelTextureReference> {
+  return [wet.splash, wet.flow];
 }
 
 /**
