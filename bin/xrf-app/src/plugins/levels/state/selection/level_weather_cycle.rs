@@ -17,7 +17,7 @@ pub struct LevelWeatherCycle {
   /// Sorted by time, a keyframe whose name the engine refuses left out.
   pub keyframes: Vec<WeatherDescriptor>,
   pub findings: Vec<EnvironmentFinding>,
-  /// Every sky and irradiance cube its keyframes name, each once, as the level finds them.
+  /// Every sky, irradiance cube and clouds texture its keyframes name, each once, as the level finds them.
   pub textures: Vec<LevelTextureReference>,
 }
 
@@ -33,8 +33,18 @@ impl LevelWeatherCycle {
     // A keyframe without a sky names only the suffix of its irradiance cube, which nothing answers to.
     let references: BTreeSet<&str> = keyframes
       .iter()
-      .filter(|keyframe| !keyframe.sky_texture.is_empty())
-      .flat_map(|keyframe| [keyframe.sky_texture.as_str(), keyframe.sky_texture_env.as_str()])
+      .flat_map(|keyframe| {
+        [
+          keyframe.sky_texture.as_str(),
+          if keyframe.sky_texture.is_empty() {
+            ""
+          } else {
+            keyframe.sky_texture_env.as_str()
+          },
+          keyframe.clouds_texture.as_str(),
+        ]
+      })
+      .filter(|reference| !reference.is_empty())
       .collect();
 
     Self {

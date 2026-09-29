@@ -1841,7 +1841,7 @@ export type LevelWeatherCycle = {
   /** Sorted by time, a keyframe whose name the engine refuses left out. */
   keyframes: Array<WeatherDescriptor>;
   findings: Array<EnvironmentFinding>;
-  /** Every sky and irradiance cube its keyframes name, each once, as the level finds them. */
+  /** Every sky, irradiance cube and clouds texture its keyframes name, each once, as the level finds them. */
   textures: Array<LevelTextureReference>;
 };
 
