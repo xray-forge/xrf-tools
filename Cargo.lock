@@ -6993,6 +6993,7 @@ dependencies = [
  "xrf-dds",
  "xrf-dialog",
  "xrf-dltx",
+ "xrf-engine-target",
  "xrf-error",
  "xrf-export",
  "xrf-extension",
@@ -7073,6 +7074,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "xrf-engine-target"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "specta",
+]
+
+[[package]]
+name = "xrf-environment"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "specta",
+ "xrf-dltx",
+ "xrf-engine-target",
+ "xrf-error",
+ "xrf-extension",
+ "xrf-job",
+ "xrf-ltx",
+ "xrf-test-utils",
+ "xrf-vfs",
+]
+
+[[package]]
 name = "xrf-error"
 version = "0.1.0"
 dependencies = [
@@ -7131,6 +7158,8 @@ dependencies = [
  "uuid",
  "xrf-chunk",
  "xrf-dds",
+ "xrf-engine-target",
+ "xrf-environment",
  "xrf-error",
  "xrf-extension",
  "xrf-job",

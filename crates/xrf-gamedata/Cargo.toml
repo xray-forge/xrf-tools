@@ -13,6 +13,8 @@ xrf-chunk = { workspace = true }
 xrf-math = { workspace = true }
 xrf-ogf = { workspace = true }
 xrf-dds = { workspace = true }
+xrf-engine-target = { workspace = true }
+xrf-environment = { workspace = true }
 xrf-error = { workspace = true }
 xrf-extension = { workspace = true }
 xrf-job = { workspace = true }
