@@ -15,7 +15,7 @@ import { IWeatherThunderInput } from "#/weather/weather-thunder-input";
 const MAX_DISTANCE: number = 0.95;
 
 /** `EPS_L`: real seconds a strike followed at once waits after the last one ends. */
-const SECOND_DELAY: number = 0.0001;
+const SECOND_DELAY: number = 0.001;
 
 /** The longest real step a strike takes at once, so a view shown again after a while does not skip one. */
 const LONGEST_STEP: number = 1;
