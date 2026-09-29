@@ -117,7 +117,7 @@ fn a_whole_sweep_parses_each_config_once() {
       GamedataVerificationType::Ltx,
       GamedataVerificationType::Sounds,
       GamedataVerificationType::Weapons,
-      GamedataVerificationType::Weathers,
+      GamedataVerificationType::Environment,
     ],
   );
 

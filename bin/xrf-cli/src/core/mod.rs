@@ -5,6 +5,7 @@ pub mod command_context;
 pub mod command_error;
 #[cfg(test)]
 pub mod command_testing;
+pub mod engine_target;
 pub mod execution;
 pub mod generic_command;
 pub mod logging;

@@ -91,7 +91,9 @@ pub fn read_engine_integer(value: &str) -> i32 {
   }
 
   // `atoi` overflows as the platform does; saturating is the one reading that is never worse.
-  text[..sign + digits].parse::<i64>().map_or(0, |number| number.clamp(i32::MIN.into(), i32::MAX.into()) as i32)
+  text[..sign + digits]
+    .parse::<i64>()
+    .map_or(0, |number| number.clamp(i32::MIN.into(), i32::MAX.into()) as i32)
 }
 
 #[cfg(test)]

@@ -35,6 +35,7 @@ xrf-ltx-inspect = { workspace = true }
 xrf-output = { workspace = true }
 xrf-report = { workspace = true }
 xrf-dltx = { workspace = true }
+xrf-engine-target = { workspace = true }
 xrf-error = { workspace = true }
 xrf-extension = { workspace = true }
 xrf-job = { workspace = true, features = ["rayon"] }

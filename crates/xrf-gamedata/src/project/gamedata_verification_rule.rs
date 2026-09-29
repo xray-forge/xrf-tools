@@ -16,6 +16,18 @@ pub enum GamedataVerificationRule {
   CollisionsUnreachable,
   #[display("coverage.skipped-mount")]
   CoverageSkippedMount,
+  /// A texture an environment config names that the game does not hold.
+  #[display("environment.asset")]
+  EnvironmentAsset,
+  /// Loaded by the engine, against a convention strong enough to be a mistake.
+  #[display("environment.convention")]
+  EnvironmentConvention,
+  /// Refused or misread by the engine.
+  #[display("environment.engine")]
+  EnvironmentEngine,
+  /// A section naming another the engine cannot find.
+  #[display("environment.reference")]
+  EnvironmentReference,
   #[display("levels.ai-guid")]
   LevelsAiGuid,
   #[display("levels.ai-node-count")]
@@ -132,12 +144,6 @@ pub enum GamedataVerificationRule {
   TexturesValidation,
   #[display("weapons.validation")]
   WeaponsValidation,
-  #[display("weathers.definitions")]
-  WeathersDefinitions,
-  #[display("weathers.files")]
-  WeathersFiles,
-  #[display("weathers.validation")]
-  WeathersValidation,
 }
 
 #[cfg(test)]

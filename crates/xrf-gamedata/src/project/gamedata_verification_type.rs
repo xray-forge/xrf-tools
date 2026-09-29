@@ -8,9 +8,6 @@ use crate::{GamedataCheckResult, GamedataProject, GamedataProjectVerifyOptions, 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, Display)]
 pub enum GamedataVerificationType {
   /// Files one source holds but the engine cannot reach, rather than any kind of asset authored inside them.
-  ///
-  /// Outside [`Self::ALL`], so `--checks` neither offers nor parses it: an unreachable file is missing
-  /// from the game whichever kinds a caller asked about, and [`GamedataProject::verify`] runs this on every run.
   #[display("collisions")]
   Collisions,
   /// Declared sources the run could not open, rather than anything authored inside the ones it did.
@@ -18,6 +15,9 @@ pub enum GamedataVerificationType {
   Coverage,
   #[display("animations")]
   Animations,
+  /// Everything under `configs\environment` the engine reads, and the textures its keyframes name.
+  #[display("environment")]
+  Environment,
   #[display("levels")]
   Levels,
   #[display("ltx")]
@@ -40,17 +40,13 @@ pub enum GamedataVerificationType {
   Textures,
   #[display("weapons")]
   Weapons,
-  #[display("weathers")]
-  Weathers,
 }
 
 impl GamedataVerificationType {
   /// Every check a caller can select, which is every kind of authored asset.
-  ///
-  /// [`Self::Collisions`] and [`Self::Coverage`] are absent on purpose; they judge the project's own inputs
-  /// rather than a kind, and always run.
   pub const ALL: [Self; 13] = [
     Self::Animations,
+    Self::Environment,
     Self::Levels,
     Self::Ltx,
     Self::Meshes,
@@ -62,7 +58,6 @@ impl GamedataVerificationType {
     Self::Spawns,
     Self::Textures,
     Self::Weapons,
-    Self::Weathers,
   ];
 
   pub fn get_all() -> Vec<GamedataVerificationType> {
@@ -78,6 +73,7 @@ impl GamedataVerificationType {
       Self::Collisions => Self::check_report(self, project.verify_collisions(options)),
       Self::Coverage => Self::check_report(self, project.verify_coverage(options)),
       Self::Animations => Self::check_report(self, project.verify_animations(options)),
+      Self::Environment => Self::check_report(self, project.verify_environment(options)),
       Self::Levels => Self::check_report(self, project.verify_levels(options)),
       Self::Ltx => Self::check_report(self, project.verify_ltx(options)),
       Self::Meshes => Self::check_report(self, project.verify_meshes(options)),
@@ -89,7 +85,6 @@ impl GamedataVerificationType {
       Self::Spawns => Self::check_report(self, project.verify_spawns(options)),
       Self::Textures => Self::check_report(self, project.verify_textures(options)),
       Self::Weapons => Self::check_report(self, project.verify_weapons(options)),
-      Self::Weathers => Self::check_report(self, project.verify_weathers(options)),
     }
   }
 

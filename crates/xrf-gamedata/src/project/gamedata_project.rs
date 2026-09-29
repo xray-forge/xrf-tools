@@ -4,6 +4,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use xrf_chunk::{ChunkReader, InMemoryChunkDataSource};
+use xrf_engine_target::XrayEngine;
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{LtxProject, LtxProjectOptions};
 use xrf_utils::format_path;
@@ -23,13 +24,12 @@ const SYSTEM_LTX_LOGICAL_PATH: &str = "configs\\system.ltx";
 #[derive(Debug)]
 pub struct GamedataProject {
   /// Owns the mounted sources, since a config project needs them for the same reasons a check does.
-  ///
-  /// The project resolves assets through the same mounts under a wider scope: `ltx_project` narrows to `configs`, while an
-  /// asset lookup spans the whole tree. One VFS, two scopes, rather than mounting an installation twice.
   pub(crate) ltx_project: LtxProject,
   pub(crate) scope: XrayLookupScope,
   /// Location shown in output, which for an installation is the game directory rather than any one mount.
   pub(crate) root: PathBuf,
+  /// The engine the tree is meant for, which the environment check reads its configs as.
+  pub(crate) engine: XrayEngine,
 }
 
 impl GamedataProject {
@@ -38,11 +38,6 @@ impl GamedataProject {
   }
 
   /// Opens a project at a path, reading it the way `mode` says.
-  ///
-  /// A gamedata tree and a game installation are both accepted: an installation mounts its `fsgame.ltx` sources, so the
-  /// checks see assets inside `db\` volumes. Every check resolves and reads through the VFS, which is what makes that
-  /// honest — while any of them still read a single loose directory, an installation would have reported success over
-  /// assets it never looked at.
   ///
   /// # Errors
   ///
@@ -109,6 +104,7 @@ impl GamedataProject {
     .map_err(|error| XrfError::new_asset_error(format!("Failed to open gamedata project ltx configs: {}", error)))?;
 
     Ok(Self {
+      engine: options.engine,
       ltx_project,
       root: options.root.clone(),
       scope,
@@ -126,18 +122,11 @@ impl GamedataProject {
   }
 
   /// How well retention has served this project's reads so far.
-  ///
-  /// Cumulative over the project's lifetime rather than per operation, because the store belongs to the mounted world
-  /// and outlives any one sweep. A caller that runs a single operation may read it as that operation's account; one
-  /// that runs several has to difference it itself.
   pub fn get_cache_stats(&self) -> XrayCacheStats {
     self.vfs().get_cache().get_stats()
   }
 
   /// What this project physically read, or `None` unless it was opened with `is_tracing_reads`.
-  ///
-  /// `hottest` caps the paths named individually; the summary's `paths` reports the untruncated count, so a capped
-  /// list never reads as a complete one.
   pub fn get_read_trace_summary(&self, hottest: usize) -> Option<XrayReadTraceSummary> {
     self.vfs().get_read_trace().map(|trace| trace.get_summary(hottest))
   }
@@ -149,10 +138,6 @@ impl GamedataProject {
 
   /// Reads an asset's bytes through the VFS, whether it is loose or inside an archive volume.
   ///
-  /// For content with no parsed form worth keeping — a Lua script's source, an xml document a check reads once. Anything
-  /// that becomes a typed value goes through [`Self::read_parsed`] instead, so retention is a policy question rather
-  /// than a per-call-site one.
-  ///
   /// # Errors
   ///
   /// Returns an error when nothing in scope holds the path, or the source cannot read it.
@@ -161,11 +146,6 @@ impl GamedataProject {
   }
 
   /// Reads and parses a chunked asset, serving what this project is already holding.
-  ///
-  /// The parse runs only when nothing is retained, so a second reader of a shared asset performs no I/O at all — which
-  /// for an archived entry is a whole-entry decompression avoided rather than just a file open. Retention is the
-  /// project policy's business, not this call site's: a kind the policy excludes reads and parses exactly as it would
-  /// have without a cache, so enabling it later changes no code here.
   ///
   /// # Errors
   ///
@@ -183,26 +163,17 @@ impl GamedataProject {
   }
 
   /// Files any mount holds but cannot reach, because another file in the same mount claims their engine identity.
-  ///
-  /// Reported rather than refused at open time: a tool has to be able to load a project and say what is wrong with it.
   pub fn collisions(&self) -> Vec<XrayPathCollision> {
     self.vfs().scoped(&self.scope).list_collisions()
   }
 
   /// Sources this project's installation declared that could not be opened.
-  ///
-  /// Every check runs over what mounted, so a skipped source silently shrinks what verification covers — its assets are
-  /// reported missing, or simply never counted. Any report of this project's results has to state these alongside them.
   pub fn skipped_mounts(&self) -> &[XraySkippedMount] {
     self.vfs().get_skipped_mounts()
   }
 }
 
 /// Asset access bound to this project's scope.
-///
-/// A check should never name the scope: the project owns the `(vfs, scope)` pair, and threading both through every call
-/// site is how the two drift apart. These delegate to [`XrayVfs`] with the project's own scope supplied, so a check reads
-/// as what it wants rather than where to look for it.
 impl GamedataProject {
   /// The winning asset for a logical path, or `None` when nothing in the project holds it.
   ///
@@ -283,9 +254,6 @@ impl GamedataProject {
   }
 
   /// Reads an asset the project already resolved.
-  ///
-  /// Preferred over [`Self::read_asset`] when a lookup or enumeration produced the asset: it reads from the source that
-  /// answered instead of searching the mounts again by path.
   ///
   /// # Errors
   ///

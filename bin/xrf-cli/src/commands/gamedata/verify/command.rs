@@ -12,15 +12,13 @@ use xrf_utils::format_path;
 use super::verification_report::GamedataVerificationReportPayload;
 use crate::core::command_context::CommandContext;
 use crate::core::command_error::CommandError;
+use crate::core::engine_target::{EngineTargetArguments, requested_engine};
 use crate::core::execution::ExecutionArguments;
 use crate::core::generic_command::{CommandResult, GenericCommand};
 use crate::core::ltx_dialect::{LtxDialectArguments, requested_ltx_dialect};
 use crate::core::progress::new_logging_job;
 
 /// How many of the most-read paths `--trace-reads` names individually.
-///
-/// A sweep touches tens of thousands, and the redundancy worth chasing has always been concentrated: four animation
-/// banks accounted for 47GB of one Anomaly run. The summary reports the untruncated path count beside the list.
 const HOTTEST_READ_PATHS_REPORTED: usize = 25;
 
 #[derive(Default)]
@@ -76,6 +74,7 @@ impl GenericCommand for VerifyCommand {
           .action(ArgAction::SetTrue),
       )
       .with_ltx_dialect()
+      .with_engine_target()
       .with_jobs()
   }
 
@@ -117,6 +116,7 @@ impl GenericCommand for VerifyCommand {
       is_strict,
       is_tracing_reads: matches.get_flag("trace-reads"),
       dialect: requested_ltx_dialect(matches),
+      engine: requested_engine(matches),
     };
 
     // Created before the project opens, so the reported total covers mounting and indexing.

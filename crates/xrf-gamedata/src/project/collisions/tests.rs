@@ -1,8 +1,4 @@
 //! Covers the always-run collisions check, over a source built to collide.
-//!
-//! A loose case-only pair cannot exist in one directory on a case-insensitive filesystem, which is where this
-//! workspace's tests run, so the collision is arranged through the source seam [`XrayAssetSource`] exists for rather
-//! than through a platform-gated fixture that would never execute in CI.
 
 use std::path::{Path, PathBuf};
 
@@ -19,9 +15,6 @@ use crate::{
 };
 
 /// A mount that holds nothing and reports the collisions it was built with.
-///
-/// Only [`XrayAssetSource::get_collisions`] carries data: the check reads the recorded collisions and never the entries
-/// around them, so entries would say nothing about it either way.
 #[derive(Debug)]
 struct CollidingSource {
   collisions: Vec<XrayPathCollision>,
@@ -101,6 +94,7 @@ fn project(collisions: Vec<XrayPathCollision>) -> GamedataProject {
     .expect("the test source mounts at the logical root");
 
   GamedataProject {
+    engine: xrf_engine_target::XrayEngine::Vanilla,
     ltx_project: LtxProject::open_at_scope_opt(
       PathBuf::new(),
       vfs,

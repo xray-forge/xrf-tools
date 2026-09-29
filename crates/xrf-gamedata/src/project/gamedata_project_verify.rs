@@ -13,11 +13,6 @@ use crate::{
 };
 
 /// How many checks may be working at once while somebody is reading.
-///
-/// Not a bound on the machine — the plan already is one — but on how far ahead of the console a sweep may get. Output
-/// is released in selection order, so a slow early check holds everything behind it: with all fifteen started at once
-/// an Anomaly sweep said nothing for six seconds and then said all three thousand lines at once. In waves of this size
-/// it starts speaking after two.
 const CHECK_WINDOW: usize = 6;
 
 impl GamedataProject {
@@ -138,6 +133,7 @@ mod tests {
   /// A project with nothing mounted, for asserting which checks run rather than what they find.
   fn empty_project() -> GamedataProject {
     GamedataProject {
+      engine: xrf_engine_target::XrayEngine::Vanilla,
       ltx_project: LtxProject::empty(PathBuf::new()),
       root: PathBuf::new(),
       scope: XrayLookupScope::all(),

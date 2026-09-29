@@ -1,6 +1,7 @@
 pub(crate) mod animations;
 pub(crate) mod collisions;
 pub(crate) mod coverage;
+pub(crate) mod environment;
 pub(crate) mod gamedata_check_result;
 pub(crate) mod gamedata_check_schedule;
 pub(crate) mod gamedata_finding_factory;
@@ -21,7 +22,6 @@ pub(crate) mod sounds;
 pub(crate) mod spawns;
 pub(crate) mod textures;
 pub(crate) mod weapons;
-pub(crate) mod weathers;
 
 #[cfg(test)]
 mod tests;
