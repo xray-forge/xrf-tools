@@ -1,8 +1,9 @@
-import { cubeTexture, renderGroup, uniform } from "three/tsl";
+import { renderGroup, uniform } from "three/tsl";
 import { CubeTexture, CubeTextureNode, UniformNode, Vector3 } from "three/webgpu";
 
 import { IRendererSky } from "#/contract/renderer-sky";
 import { getPlaceholderSkyTexture } from "#/texture/placeholder-textures";
+import { SlotCubeTextureNode } from "#/texture/slot-cube-texture-node";
 
 /**
  * The sky as the environment binds it (`dxEnvironmentRender::lerp`): the two keyframes' cubes and their irradiance
@@ -11,13 +12,13 @@ import { getPlaceholderSkyTexture } from "#/texture/placeholder-textures";
 export class SkyUniforms {
   /** `$user$sky0` and `$user$sky1`, pointed at the lighting's two skies as they upload. */
   public readonly cubes: readonly [CubeTextureNode, CubeTextureNode] = [
-    cubeTexture(getPlaceholderSkyTexture() as CubeTexture),
-    cubeTexture(getPlaceholderSkyTexture() as CubeTexture),
+    new SlotCubeTextureNode(getPlaceholderSkyTexture() as CubeTexture),
+    new SlotCubeTextureNode(getPlaceholderSkyTexture() as CubeTexture),
   ];
   /** `env_s0` and `env_s1`, the two skies' irradiance cubes, pointed at them as they upload. */
   public readonly environments: readonly [CubeTextureNode, CubeTextureNode] = [
-    cubeTexture(getPlaceholderSkyTexture() as CubeTexture),
-    cubeTexture(getPlaceholderSkyTexture() as CubeTexture),
+    new SlotCubeTextureNode(getPlaceholderSkyTexture() as CubeTexture),
+    new SlotCubeTextureNode(getPlaceholderSkyTexture() as CubeTexture),
   ];
   /** One while both irradiance cubes are up, zero while the lighting's stand-in lights the hemisphere. */
   public readonly environmentsUp: UniformNode<"float", number> = uniform(0).setGroup(renderGroup);

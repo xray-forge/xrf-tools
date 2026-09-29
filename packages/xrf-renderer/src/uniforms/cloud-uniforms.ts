@@ -1,9 +1,10 @@
 import { Nullable } from "@xrf/types";
-import { renderGroup, texture, uniform } from "three/tsl";
+import { renderGroup, uniform } from "three/tsl";
 import { TextureNode, UniformNode, Vector4 } from "three/webgpu";
 
 import { IRendererClouds } from "#/contract/renderer-clouds";
 import { getClearTexture } from "#/texture/placeholder-textures";
+import { SlotTextureNode } from "#/texture/slot-texture-node";
 
 /** `EPS_L`, the cover under which the engine draws no clouds at all. */
 const EPS_L: number = 0.001;
@@ -15,8 +16,8 @@ const EPS_L: number = 0.001;
 export class CloudUniforms {
   /** `s_clouds0` and `s_clouds1`, pointed at the lighting's two textures as they upload, and at nothing without. */
   public readonly textures: readonly [TextureNode, TextureNode] = [
-    texture(getClearTexture()),
-    texture(getClearTexture()),
+    new SlotTextureNode(getClearTexture()),
+    new SlotTextureNode(getClearTexture()),
   ];
   /** The vertex colour: `clouds_color`, clamped as a colour byte clamps it. */
   public readonly color: UniformNode<"vec4", Vector4> = uniform(new Vector4()).setGroup(renderGroup);

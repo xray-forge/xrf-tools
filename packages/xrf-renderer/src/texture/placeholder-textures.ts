@@ -13,6 +13,7 @@ import {
 
 import { DDS_CUBE_FACES } from "#/dds/dds-file";
 import { createCubeTexture } from "#/texture/renderer-texture";
+import { markRendererTextureNew } from "#/texture/renderer-texture-version";
 
 let white: Nullable<Texture> = null;
 let grey: Nullable<Texture> = null;
@@ -37,7 +38,7 @@ export function getPlaceholderArrayTexture(): Texture {
     // Filtered, as every array it stands in for is: three declares no sampler for a texture sampled nearest.
     texture.minFilter = LinearFilter;
     texture.magFilter = LinearFilter;
-    texture.needsUpdate = true;
+    markRendererTextureNew(texture);
     array = texture;
   }
 
@@ -118,7 +119,7 @@ function createSolidTexture(red: number, green: number = red, blue: number = red
   texture.minFilter = LinearFilter;
   texture.wrapS = RepeatWrapping;
   texture.wrapT = RepeatWrapping;
-  texture.needsUpdate = true;
+  markRendererTextureNew(texture);
 
   return texture;
 }

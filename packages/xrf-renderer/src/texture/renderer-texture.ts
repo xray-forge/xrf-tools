@@ -31,6 +31,7 @@ import { EDdsLayout } from "#/dds/dds-layout";
 import { IDdsMipmap } from "#/dds/dds-mipmap";
 import { IDdsRead } from "#/dds/dds-read";
 import { IRendererTextureUpload } from "#/texture/renderer-texture-upload";
+import { markRendererTextureNew } from "#/texture/renderer-texture-version";
 
 /** The engine's `ps_r__tf_Anisotropic` default (`Layers/xrRender/xrRender_console.cpp`). */
 export const XRAY_TEXTURE_ANISOTROPY: number = 8;
@@ -166,7 +167,7 @@ function describeSampling(texture: Texture, levels: number): void {
   texture.generateMipmaps = false;
   texture.magFilter = LinearFilter;
   texture.minFilter = levels > 1 ? LinearMipmapLinearFilter : LinearFilter;
-  texture.needsUpdate = true;
+  markRendererTextureNew(texture);
 }
 
 /** The three constant WebGPU uploads a block layout under; its transfer is linear, so each lands on `-unorm`. */

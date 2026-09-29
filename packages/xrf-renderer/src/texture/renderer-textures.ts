@@ -1,5 +1,5 @@
 import { Maybe, Nullable } from "@xrf/types";
-import { texture as sample } from "three/tsl";
+import { nodeObject } from "three/tsl";
 import { CubeTexture, Node, Texture, TextureNode, WebGPURenderer } from "three/webgpu";
 
 import { IRendererTextureFetch } from "#/contract/scene/renderer-texture-fetch";
@@ -14,6 +14,7 @@ import {
 } from "#/texture/renderer-texture";
 import { IRendererTextureLoad } from "#/texture/renderer-texture-load";
 import { IRendererTextureUpload } from "#/texture/renderer-texture-upload";
+import { SlotTextureNode } from "#/texture/slot-texture-node";
 import { hasTextureData, listTextureData, releaseTextureData } from "#/texture/texture-data";
 import { ITextureTarget } from "#/texture/texture-target";
 
@@ -170,11 +171,12 @@ export class RendererTextures {
    * @returns The sampler.
    */
   public bind(key: Maybe<string>, placeholder: Texture, coordinates: Node): TextureNode {
-    if (!key) {
-      return sample(placeholder, coordinates);
-    }
+    // Its own binding: samplers built holding one placeholder would otherwise share one and all sample the first.
+    const sampler: TextureNode = nodeObject(new SlotTextureNode(placeholder, coordinates)) as unknown as TextureNode;
 
-    const sampler: TextureNode = sample(placeholder, coordinates);
+    if (!key) {
+      return sampler;
+    }
 
     // Drawn plainly by whatever builds with it, so its key's own texture stays up however an array holds it.
     this.attach(key, placeholder, sampler, true);

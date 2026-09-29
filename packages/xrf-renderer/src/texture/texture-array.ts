@@ -18,6 +18,7 @@ import {
 import { DDS_BLOCK_SIZE, DDS_FULL_BLOCK_BYTES, DDS_HALF_BLOCK_BYTES } from "#/dds/dds-block-format";
 import { ITextureCopy } from "#/internals/texture-copy";
 import { isTextureOnGpu } from "#/internals/texture-residency";
+import { markRendererTextureNew } from "#/texture/renderer-texture-version";
 import { ITextureArrayFlush } from "#/texture/texture-array-flush";
 import { hasTextureData, releaseTextureData } from "#/texture/texture-data";
 import { ITextureTarget } from "#/texture/texture-target";
@@ -440,7 +441,7 @@ export class TextureArray {
     // Three writes a layer from one buffer holding every layer; the first alone is written, from a buffer of one, and
     // the device clears the rest.
     texture.addLayerUpdate(0);
-    texture.needsUpdate = true;
+    markRendererTextureNew(texture);
 
     return texture;
   }
