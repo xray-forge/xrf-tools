@@ -98,6 +98,8 @@ export const CONTROL = {
   smallHeight: 38,
   /** MUI's own `sizeSmall` padding above and below the input; the line box is whatever height is left. */
   smallInputPaddingY: 8.5,
+  /** A select's list, which scrolls past about eight entries rather than running down the window. */
+  selectMenuMaxHeight: 320,
 } as const;
 
 /** A form somebody sits down and fills: the picker screens' card and the settings dialog. */

@@ -3,6 +3,7 @@ import { Nullable } from "@xrf/types";
 import { ChangeEvent, ReactElement } from "react";
 
 import { ILevelWeatherCycleChoice } from "@/core/level/lib/weather/level-weather-cycle-choice";
+import { CONTROL } from "@/core/theme/tokens";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface ILevelWeatherCycleSelectProps extends BaseComponentProps {
@@ -37,7 +38,13 @@ export function LevelWeatherCycleSelect({
       label={reading ? `Cycle, reading ${reading}` : "Cycle"}
       value={selected ?? ""}
       disabled={reading !== null || !cycles.length}
-      slotProps={{ inputLabel: { shrink: true }, select: { renderValue: (value: unknown) => String(value) } }}
+      slotProps={{
+        inputLabel: { shrink: true },
+        select: {
+          MenuProps: { slotProps: { paper: { sx: { maxHeight: CONTROL.selectMenuMaxHeight } } } },
+          renderValue: (value: unknown) => String(value),
+        },
+      }}
       onChange={(event: ChangeEvent<HTMLInputElement>) => onSelect(event.target.value)}
     >
       {cycles.map((cycle: ILevelWeatherCycleChoice) => (

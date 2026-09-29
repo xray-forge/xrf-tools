@@ -5,6 +5,7 @@ import { ChangeEvent, ReactElement } from "react";
 
 import { LevelWeatherCycle } from "@/core/ipc/types/xrf-app";
 import { formatLevelWeatherTime } from "@/core/level/lib/weather/level-weather-time";
+import { CONTROL } from "@/core/theme/tokens";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /** What the select holds while no effect plays. */
@@ -44,7 +45,11 @@ export function LevelWeatherEffectSelect({
       helperText={playing ? `${formatLevelWeatherTime(playing.remaining, true)} of game time left` : undefined}
       slotProps={{
         inputLabel: { shrink: true },
-        select: { displayEmpty: true, renderValue: (value: unknown) => String(value) || "None" },
+        select: {
+          displayEmpty: true,
+          MenuProps: { slotProps: { paper: { sx: { maxHeight: CONTROL.selectMenuMaxHeight } } } },
+          renderValue: (value: unknown) => String(value) || "None",
+        },
       }}
       onChange={(event: ChangeEvent<HTMLInputElement>) => onPlay(event.target.value || null)}
     >
