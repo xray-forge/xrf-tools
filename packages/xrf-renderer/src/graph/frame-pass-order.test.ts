@@ -12,9 +12,19 @@ function toPass(name: string): IRendererPass {
 }
 
 const BASE: IBaseFramePasses = Object.fromEntries(
-  ["cull", "gbufferEarly", "gbuffer", "wallmarks", "rainCover", "sun", "combine", "forward", "rain", "overlay"].map(
-    (name: string) => [name, toPass(name)]
-  )
+  [
+    "cull",
+    "gbufferEarly",
+    "gbuffer",
+    "wallmarks",
+    "rainCover",
+    "sun",
+    "combine",
+    "forward",
+    "rain",
+    "thunder",
+    "overlay",
+  ].map((name: string) => [name, toPass(name)])
 ) as unknown as IBaseFramePasses;
 
 const OCCLUSION: IOcclusionFramePasses = {
@@ -57,6 +67,7 @@ describe("the frame's pass order", () => {
       "combine",
       "forward",
       "rain",
+      "thunder",
       "overlay",
       "present",
     ]);
@@ -99,6 +110,7 @@ describe("the frame's pass order", () => {
       "water",
       "forward",
       "rain",
+      "thunder",
       "distortion",
       "fsr2",
       "rcas",
@@ -117,7 +129,7 @@ describe("the frame's pass order", () => {
     expect(toOrder({ smoothing: toPass("antialias") }).slice(-3)).toEqual(["overlay", "antialias", "present"]);
     expect(
       toOrder({ sharpen: toPass("rcas"), smoothing: toPass("antialias"), spatial: toPass("fsr1") }).slice(-6)
-    ).toEqual(["rain", "antialias", "fsr1", "rcas", "overlay", "present"]);
+    ).toEqual(["thunder", "antialias", "fsr1", "rcas", "overlay", "present"]);
   });
 
   // The plain draws and the grass move with no version the culls see: in the depth, a cluster they hid while the

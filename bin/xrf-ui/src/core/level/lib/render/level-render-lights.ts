@@ -21,13 +21,21 @@ export function toLevelRendererLights(lights: LevelLightsDescription): IRenderer
   const { animators, projectors } = lights.lights;
 
   return {
-    animators: animators.map((animator: LightAnimatorDescription): IRendererLightAnimator => ({
-      colors: animator.keys.map((key: LightAnimatorKey) => [key.color[0] ?? 0, key.color[1] ?? 0, key.color[2] ?? 0]),
-      fps: animator.fps ?? 0,
-      frameCount: animator.frameCount,
-      frames: animator.keys.map((key: LightAnimatorKey) => key.frame),
-    })),
+    animators: animators.map(toLevelRendererLightAnimator),
     lights: lights.lights.lights.map((light: LightDescription) => toLevelRendererLight(light, projectors)),
+  };
+}
+
+/**
+ * @param animator - A colour animation of `lanims.xr`.
+ * @returns It as the renderer plays it.
+ */
+export function toLevelRendererLightAnimator(animator: LightAnimatorDescription): IRendererLightAnimator {
+  return {
+    colors: animator.keys.map((key: LightAnimatorKey) => [key.color[0] ?? 0, key.color[1] ?? 0, key.color[2] ?? 0]),
+    fps: animator.fps ?? 0,
+    frameCount: animator.frameCount,
+    frames: animator.keys.map((key: LightAnimatorKey) => key.frame),
   };
 }
 

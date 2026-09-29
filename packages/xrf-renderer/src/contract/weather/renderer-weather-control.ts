@@ -17,4 +17,6 @@ export interface IRendererWeatherControl {
   isClouded: boolean;
   /** Whether it rains where the weather rains. */
   isRainy: boolean;
+  /** Whether bolts strike where the weather strikes them. */
+  isThundering: boolean;
 }

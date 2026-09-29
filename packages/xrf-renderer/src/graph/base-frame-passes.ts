@@ -9,6 +9,7 @@ import { RainPass } from "#/pass/rain-pass";
 import { IRendererPass } from "#/pass/renderer-pass";
 import { StaticCullPass } from "#/pass/static-cull-pass";
 import { SunPass } from "#/pass/sun-pass";
+import { ThunderPass } from "#/pass/thunder-pass";
 import { WallmarkPass } from "#/pass/wallmark-pass";
 
 /** `Base`'s passes every frame draws, by their place in it. */
@@ -22,19 +23,20 @@ export interface IBaseFramePasses {
   readonly forward: IRendererPass;
   readonly rainCover: IRendererPass;
   readonly rain: IRendererPass;
+  readonly thunder: IRendererPass;
   readonly overlay: OverlayPass;
 }
 
 /**
  * `Base`'s frame, in R4's order: the static draws culled, the G-buffer (the static draws, then the plain ones), wall
  * marks into its albedo, the sun, combine with its fog and tonemap, then the blended surfaces over the tonemapped
- * frame, the rain over them, and the helpers over it all.
+ * frame, the rain and the bolt striking over them, and the helpers over it all.
  *
  * @param input - What the passes are made over.
  * @returns The passes, by their place in the frame.
  */
 export function createBaseFramePasses(input: IBaseFramePassesInput): IBaseFramePasses {
-  const { targets, uniforms, overlays, cull, casters, rain } = input;
+  const { targets, uniforms, overlays, cull, casters, rain, thunder } = input;
 
   return {
     combine: new CombinePass(targets, uniforms),
@@ -46,6 +48,7 @@ export function createBaseFramePasses(input: IBaseFramePassesInput): IBaseFrameP
     rain: new RainPass(targets, rain, uniforms.rain),
     rainCover: new RainCoverPass(casters, cull, uniforms.rain),
     sun: new SunPass(targets, uniforms),
+    thunder: new ThunderPass(targets, thunder),
     wallmarks: new WallmarkPass(targets),
   };
 }

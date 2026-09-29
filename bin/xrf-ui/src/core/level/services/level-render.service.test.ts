@@ -162,6 +162,7 @@ describe("LevelRenderService", () => {
       isFogged: true,
       isPaused: true,
       isRainy: true,
+      isThundering: true,
       isWindy: true,
       time: 43_200,
     });

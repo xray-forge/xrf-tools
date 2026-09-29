@@ -18,6 +18,7 @@ import { SkyUniforms } from "#/uniforms/sky-uniforms";
 import { StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
 import { StorageRetirement } from "#/uniforms/storage-retirement";
 import { SurfaceTable } from "#/uniforms/surface-table";
+import { ThunderUniforms } from "#/uniforms/thunder-uniforms";
 import { TreeWindUniforms } from "#/uniforms/tree-wind-uniforms";
 import { WaterUniforms } from "#/uniforms/water-uniforms";
 
@@ -51,6 +52,8 @@ export class RendererUniforms {
   public readonly clouds: CloudUniforms = new CloudUniforms();
   /** The rain the frame draws over its forward surfaces, and the cover over it. */
   public readonly rain: RainUniforms = new RainUniforms();
+  /** The bolt striking, drawn after the rain. */
+  public readonly thunder: ThunderUniforms = new ThunderUniforms();
   /** How the water moves. */
   public readonly water: WaterUniforms = new WaterUniforms();
   /** What the motion every G-buffer surface writes is measured with. */
@@ -95,6 +98,7 @@ export class RendererUniforms {
     this.sky.take(lighting.sky);
     this.clouds.take(lighting.sky.clouds);
     this.rain.take(lighting.rain);
+    this.thunder.take(lighting.thunderbolt);
     this.farPlane = lighting.fog?.farPlane ?? null;
   }
 

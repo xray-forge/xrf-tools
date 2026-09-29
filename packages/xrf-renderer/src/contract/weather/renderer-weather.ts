@@ -3,6 +3,7 @@ import { Nullable } from "@xrf/types";
 import { ERendererTextureEncoding, TRendererTextureSource } from "#/contract/scene/renderer-texture-source";
 import { IRendererRain } from "#/contract/weather/renderer-rain";
 import { IRendererSunPosition } from "#/contract/weather/renderer-sun-position";
+import { IRendererThunder } from "#/contract/weather/renderer-thunder";
 import { ERendererWeatherEngine } from "#/contract/weather/renderer-weather-engine";
 import { IRendererWeatherKeyframe } from "#/contract/weather/renderer-weather-keyframe";
 import { IRendererWeatherModifier } from "#/contract/weather/renderer-weather-modifier";
@@ -23,6 +24,8 @@ export interface IRendererWeather {
   modifiers: ReadonlyArray<IRendererWeatherModifier>;
   /** What its rain is drawn with, or null for a weather that draws none. */
   rain: Nullable<IRendererRain>;
+  /** What it strikes with, or null for a weather that strikes nothing. */
+  thunder: Nullable<IRendererThunder>;
   /** Where each texture the keyframes name is fetched from, by reference; one left out is not drawn. */
   textures: Readonly<Record<string, Extract<TRendererTextureSource, { encoding: ERendererTextureEncoding.FETCH }>>>;
 }

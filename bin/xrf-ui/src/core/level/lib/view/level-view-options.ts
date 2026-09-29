@@ -20,6 +20,8 @@ export interface ILevelViewOptions extends ILevelSurfaceOptions {
   isClouded: boolean;
   /** Rains where the weather rains. */
   isRainy: boolean;
+  /** Strikes bolts where the weather strikes them. */
+  isThundering: boolean;
   /** Draws a distant clump of trees as its impostor, as the game does, rather than every tree at every distance. */
   isImpostors: boolean;
   /** Casts the sun's shadows, while the settings draw them. */
@@ -62,5 +64,6 @@ export const DEFAULT_LEVEL_VIEW_OPTIONS: ILevelViewOptions = {
   isWindy: true,
   isStatsVisible: true,
   isSunVisible: true,
+  isThundering: true,
   isWaterVisible: true,
 };

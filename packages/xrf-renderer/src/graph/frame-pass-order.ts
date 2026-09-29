@@ -47,6 +47,7 @@ export function toFramePassOrder(
     ...some(optional.water),
     base.forward,
     base.rain,
+    base.thunder,
     // It moves what the water wrote, so it draws only where the water does.
     ...(optional.water ? some(optional.distortion) : []),
     ...some(resolve),

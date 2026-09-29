@@ -20,6 +20,9 @@ import { mixWeatherPair } from "#/weather/weather-mixer";
 import { WeatherPair } from "#/weather/weather-pair";
 import { EWeatherSun, TWeatherSun } from "#/weather/weather-sun";
 import { WeatherTextures } from "#/weather/weather-textures";
+import { WeatherThunder } from "#/weather/weather-thunder";
+import { IWeatherThunderFlash } from "#/weather/weather-thunder-flash";
+import { toThunderedLighting } from "#/weather/weather-thundered-lighting";
 
 /** Seconds from midnight to noon. */
 const NOON: number = 12 * 60 * 60;
@@ -32,6 +35,7 @@ const DEFAULT_CONTROL: IRendererWeatherControl = {
   isFogged: true,
   isPaused: true,
   isRainy: true,
+  isThundering: true,
   isWindy: true,
   time: NOON,
 };
@@ -81,6 +85,7 @@ interface IWeatherFading {
 export class WeatherPlayer {
   private readonly textures: WeatherTextures;
   private readonly pair: WeatherPair = new WeatherPair();
+  private readonly thunder: WeatherThunder;
   private weather: Nullable<IRendererWeather> = null;
   private control: IRendererWeatherControl = DEFAULT_CONTROL;
   private time: number = NOON;
@@ -96,12 +101,16 @@ export class WeatherPlayer {
   private isForced: boolean = false;
   /** Whether a pair the clock never walked to was set since the last frame, as an effect starting or ending sets one. */
   private isJumped: boolean = false;
+  /** Whether the last frame was lit by a strike, which the frame after it ends lights without. */
+  private isFlashing: boolean = false;
 
   /**
    * @param textures - Where the weather's skies are put.
+   * @param random - A number in `[0, 1)` each call, which bolts strike by.
    */
-  public constructor(textures: RendererTextures) {
+  public constructor(textures: RendererTextures, random: () => number = Math.random) {
     this.textures = new WeatherTextures(textures);
+    this.thunder = new WeatherThunder(random);
   }
 
   /** Whether a weather plays, lighting the scene in place of the consumer's lighting. */
@@ -141,6 +150,7 @@ export class WeatherPlayer {
     this.effect = null;
     this.mix = null;
     this.pair.reset();
+    this.thunder.reset();
     this.isChanged = true;
     this.textures.take(weather?.textures ?? {});
 
@@ -205,7 +215,7 @@ export class WeatherPlayer {
   }
 
   /**
-   * Moves the clock on to a frame, and mixes the weather again where anything changed.
+   * Moves the clock on to a frame, mixes the weather again where anything changed, and strikes over it.
    *
    * @param now - Milliseconds, as the frame loop counts them.
    * @param view - Where the camera stands, in engine space.
@@ -238,10 +248,15 @@ export class WeatherPlayer {
       this.isChanged = true;
     }
 
-    if (!this.isChanged) {
-      return null;
-    }
+    return this.flash(now, view, this.isChanged ? this.relight(now, weather) : null);
+  }
 
+  /**
+   * @param now - Milliseconds, as the frame loop counts them.
+   * @param weather - What plays.
+   * @returns What the weather shows now, faded into from what was shown.
+   */
+  private relight(now: number, weather: IRendererWeather): Nullable<IRendererLighting> {
     const keyframes: ReadonlyArray<IRendererWeatherKeyframe> = this.effect?.timeline.keyframes ?? weather.keyframes;
 
     this.isChanged = false;
@@ -272,12 +287,46 @@ export class WeatherPlayer {
     this.textures.keep([
       ...WeatherPlayer.listNear(keyframes, pair),
       ...WeatherPlayer.listRain(weather),
+      ...WeatherPlayer.listThunder(weather),
       ...(this.fading?.held ?? []),
     ]);
 
     const lighting: IRendererLighting = this.fade(now, target);
 
     this.shown = lighting;
+
+    return lighting;
+  }
+
+  /**
+   * @param now - Milliseconds, as the frame loop counts them.
+   * @param view - Where the camera stands, in engine space.
+   * @param lighting - What the weather shows now, or null where that did not change.
+   * @returns What is shown lit by the strike under way, what is shown once more the frame after one ends, or the same.
+   */
+  private flash(
+    now: number,
+    view: TRendererVector,
+    lighting: Nullable<IRendererLighting>
+  ): Nullable<IRendererLighting> {
+    const { weather, mix, shown } = this;
+    const thunder = weather?.thunder;
+    const flash: Nullable<IWeatherThunderFlash> =
+      thunder && mix && shown
+        ? this.thunder.advance({ isEnabled: this.control.isThundering, mix, now: now / 1000, thunder, view })
+        : null;
+
+    if (flash && thunder?.settings) {
+      this.isFlashing = true;
+
+      return toThunderedLighting(lighting ?? (shown as IRendererLighting), flash, thunder.settings);
+    }
+
+    if (this.isFlashing) {
+      this.isFlashing = false;
+
+      return lighting ?? shown;
+    }
 
     return lighting;
   }
@@ -321,6 +370,7 @@ export class WeatherPlayer {
     this.mix = null;
     this.shown = null;
     this.fading = null;
+    this.thunder.reset();
   }
 
   /** Runs the clock on, and the effect playing with it, which gives the cycle back once it has run out. */
@@ -436,6 +486,7 @@ export class WeatherPlayer {
       sunColor: mix.sunColor,
       // Engine `z` negated into renderer space.
       sunDirection: [x, y, -z],
+      thunderbolt: null,
       trees: isWindy
         ? { amplitude: mix.treeAmplitude, rotation: mix.treeRotation, speed: mix.treeSpeed, wave: mix.treeWave }
         : null,
@@ -462,6 +513,20 @@ export class WeatherPlayer {
     const { rain } = weather;
 
     return rain ? [rain.streak, ...(rain.drop ? [rain.drop.texture] : [])] : [];
+  }
+
+  /** The bolts' textures, held while their weather plays so a strike has them. */
+  private static listThunder(weather: IRendererWeather): Array<string> {
+    const { thunder } = weather;
+
+    if (!thunder) {
+      return [];
+    }
+
+    return [
+      ...thunder.models.map((model) => model.texture),
+      ...Object.values(thunder.bolts).flatMap((bolt) => [bolt.top.texture, bolt.center.texture]),
+    ];
   }
 
   /** The skies of the pair and of the keyframe after it, fetched before the clock reaches it. */

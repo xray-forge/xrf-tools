@@ -9,6 +9,7 @@ import { ISceneGrassStaging } from "#/scene/grass/scene-grass-staging";
 import { ISceneRainStaging } from "#/scene/rain/scene-rain-staging";
 import { RendererScene } from "#/scene/renderer-scene";
 import { ISceneStaging } from "#/scene/staging/scene-staging";
+import { ISceneThunderStaging } from "#/scene/thunder/scene-thunder-staging";
 
 /**
  * Compiles the materials waiting objects need, off the frame: three builds their pipelines asynchronously, and until
@@ -26,8 +27,8 @@ export class RendererSceneCompiler {
   }
 
   /**
-   * Starts the next batch, if none is compiling: a grass build, else a rain build, else a pass joining, else the
-   * waiting objects.
+   * Starts the next batch, if none is compiling: a grass build, else a rain build, else a thunder build, else a pass
+   * joining, else the waiting objects.
    *
    * @param renderer - The renderer drawing.
    * @param scene - The scene whose objects compile.
@@ -62,6 +63,16 @@ export class RendererSceneCompiler {
         async () => compileInto(renderer, frame.compileTargets.rain, rain.scene, camera),
         "Rain failed to compile:",
         (isCurrent: boolean) => (isCurrent ? rain.commit() : rain.abandon())
+      );
+    }
+
+    const thunder: Nullable<ISceneThunderStaging> = scene.thunder.takeStaged();
+
+    if (thunder) {
+      return this.run(
+        async () => compileInto(renderer, frame.compileTargets.thunder, thunder.scene, camera),
+        "Thunder failed to compile:",
+        (isCurrent: boolean) => (isCurrent ? thunder.commit() : thunder.abandon())
       );
     }
 

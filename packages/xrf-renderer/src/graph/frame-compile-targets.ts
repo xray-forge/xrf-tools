@@ -14,4 +14,6 @@ export interface IFrameCompileTargets {
   readonly grass: RenderTarget;
   /** Where the rain draws, which its staged builds compile against. */
   readonly rain: RenderTarget;
+  /** Where the bolts draw, which their staged builds compile against. */
+  readonly thunder: RenderTarget;
 }

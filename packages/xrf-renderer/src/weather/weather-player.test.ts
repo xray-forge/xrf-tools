@@ -8,7 +8,9 @@ import { Nullable } from "@xrf/types";
 
 import { IRendererLighting } from "#/contract/renderer-lighting";
 import { TRendererVector } from "#/contract/renderer-vector";
+import { ERendererDraw } from "#/contract/scene/renderer-draw";
 import { ERendererTextureEncoding } from "#/contract/scene/renderer-texture-source";
+import { IRendererThunder } from "#/contract/weather/renderer-thunder";
 import { IRendererWeather } from "#/contract/weather/renderer-weather";
 import { IRendererWeatherControl } from "#/contract/weather/renderer-weather-control";
 import { ERendererWeatherEngine } from "#/contract/weather/renderer-weather-engine";
@@ -39,6 +41,7 @@ const WEATHER: IRendererWeather = {
   modifiers: [],
   rain: null,
   sunTable: null,
+  thunder: null,
   textures: Object.fromEntries(
     KEYFRAMES.flatMap((keyframe: IRendererWeatherKeyframe) => [
       keyframe.skyTexture,
@@ -55,11 +58,51 @@ const PLAYING: IRendererWeatherControl = {
   isFogged: true,
   isPaused: false,
   isRainy: true,
+  isThundering: true,
   isWindy: true,
   time: 6 * 3600,
 };
 
-function createPlayer(): { player: WeatherPlayer; held: Set<string>; textures: RendererTextures } {
+/** One bolt, lit white then black over its strike, where vanilla's `[environment]` strikes it. */
+const THUNDER: IRendererThunder = {
+  animators: [
+    {
+      colors: [
+        [255, 255, 255],
+        [0, 0, 0],
+      ],
+      fps: 2,
+      frameCount: 2,
+      frames: [0, 1],
+    },
+  ],
+  bolts: {
+    bolt: {
+      center: { draw: ERendererDraw.ADDED, opacity: 0.6, radius: [2, 1], texture: "fx\\fx_thunderbolts_gradient" },
+      color: 0,
+      model: 0,
+      top: { draw: ERendererDraw.ADDED, opacity: 0.6, radius: [0.5, 0.25], texture: "fx\\fx_thunderbolts_gradient" },
+    },
+  },
+  collections: { bolts: ["bolt"] },
+  models: [{ draw: ERendererDraw.ADDED, indices: [], positions: [], texture: "fx\\fx_lightning", uvs: [] }],
+  settings: {
+    altitude: [0.35, 0.35],
+    deltaLongitude: 0.5,
+    fogColor: 0.1,
+    minDistance: 0.94,
+    secondProbability: 0.5,
+    skyColor: 0.1,
+    sunColor: 0.9,
+    tilt: 0.3,
+  },
+};
+
+function createPlayer(random: () => number = Math.random): {
+  player: WeatherPlayer;
+  held: Set<string>;
+  textures: RendererTextures;
+} {
   const textures: RendererTextures = new RendererTextures(
     () => {},
     () => {}
@@ -69,7 +112,7 @@ function createPlayer(): { player: WeatherPlayer; held: Set<string>; textures: R
   jest.spyOn(textures, "put").mockImplementation((key: string) => void held.add(key));
   jest.spyOn(textures, "release").mockImplementation((key: string) => void held.delete(key));
 
-  return { held, player: new WeatherPlayer(textures), textures };
+  return { held, player: new WeatherPlayer(textures, random), textures };
 }
 
 describe("WeatherPlayer", () => {
@@ -431,5 +474,60 @@ describe("WeatherPlayer", () => {
       skyTexture: noon.skyTexture,
       time: 3_000,
     });
+  });
+
+  // Noon strikes with the bolts every ten seconds for half a second; the clock stands still, real time runs.
+  it("strikes on a paused clock, lighting every frame of the strike and the frame after it ends", () => {
+    const { player, held } = createPlayer(() => 0.5);
+    const noon: IRendererWeatherKeyframe = KEYFRAMES[2];
+
+    player.take(
+      {
+        ...WEATHER,
+        keyframes: [noon],
+        textures: { ...WEATHER.textures, [THUNDER.models[0].texture]: SOURCE },
+        thunder: THUNDER,
+      },
+      ERendererWeatherTransition.CUT
+    );
+    player.setControl({ ...PLAYING, isPaused: true, time: 43_200 });
+
+    const calm: Nullable<IRendererLighting> = player.advance(0, ORIGIN);
+
+    expect(calm?.thunderbolt).toBeNull();
+    expect(held).toContain("@weather/fx\\fx_lightning");
+    expect(player.advance(5_000, ORIGIN)).toBeNull();
+    expect(player.advance(9_990, ORIGIN)).toBeNull();
+
+    const struck: Nullable<IRendererLighting> = player.advance(10_010, ORIGIN);
+
+    expect(struck?.thunderbolt?.bolt).toBe("bolt");
+    // Lit white: the sun by 0.9 of it, the sky by a tenth, clamped, and the sun turned to come down from the bolt.
+    expect(struck?.sunColor[0]).toBeCloseTo((calm?.sunColor[0] ?? 0) + 0.9, 5);
+    expect(struck?.sky.color[0]).toBeCloseTo(Math.min((calm?.sky.color[0] ?? 0) + 0.1, 1), 5);
+    expect(struck?.sunDirection[1]).toBeLessThan(0);
+
+    const frames: Array<Nullable<IRendererLighting>> = [10_110, 10_210, 10_310, 10_410, 10_510, 10_610].map(
+      (now: number) => player.advance(now, ORIGIN)
+    );
+
+    expect(frames.every((frame) => frame?.thunderbolt)).toBe(true);
+    expect(player.advance(10_710, ORIGIN)).toEqual(calm);
+    expect(player.advance(10_810, ORIGIN)).toBeNull();
+  });
+
+  it("strikes nothing while thunder is switched off", () => {
+    const { player } = createPlayer(() => 0.5);
+
+    player.take({ ...WEATHER, keyframes: [KEYFRAMES[2]], thunder: THUNDER }, ERendererWeatherTransition.CUT);
+    player.setControl({ ...PLAYING, isPaused: true, isThundering: false, time: 43_200 });
+    player.advance(0, ORIGIN);
+
+    expect([5_000, 10_010, 10_200, 20_000].map((now: number) => player.advance(now, ORIGIN))).toEqual([
+      null,
+      null,
+      null,
+      null,
+    ]);
   });
 });

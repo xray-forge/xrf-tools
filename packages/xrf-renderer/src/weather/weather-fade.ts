@@ -52,6 +52,7 @@ export function toFadedLighting(step: IWeatherFadeStep): IRendererLighting {
     skyIrradiance: triple(from.skyIrradiance, to.skyIrradiance),
     sunColor: triple(from.sunColor, to.sunColor),
     sunDirection: normalise(triple(from.sunDirection, to.sunDirection)),
+    thunderbolt: to.thunderbolt,
     trees: fadeTrees(from.trees, to.trees, { lerp, triple }),
     waterIntensity: lerp(from.waterIntensity, to.waterIntensity),
   };

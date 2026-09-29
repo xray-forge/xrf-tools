@@ -153,6 +153,7 @@ export class LevelRenderService extends RenderSurfaceService {
           this.viewService.options.isClouded,
           this.viewService.options.isFogged,
           this.viewService.options.isRainy,
+          this.viewService.options.isThundering,
           this.viewService.options.isWindy,
         ],
         () => this.sendWeatherControl(null)
@@ -265,7 +266,7 @@ export class LevelRenderService extends RenderSurfaceService {
    * @param time - Seconds since midnight to play on from, or null to play on from where the renderer's clock stands.
    */
   private sendWeatherControl(time: Nullable<number>): void {
-    const { isClouded, isFogged, isRainy, isWindy } = this.viewService.options;
+    const { isClouded, isFogged, isRainy, isThundering, isWindy } = this.viewService.options;
     const { control, isManual } = this.weatherService;
 
     this.client?.setWeatherControl({
@@ -275,6 +276,7 @@ export class LevelRenderService extends RenderSurfaceService {
       isDynamicSun: control.isDynamicSun && !isManual,
       isFogged,
       isRainy,
+      isThundering,
       isWindy,
       time,
     });

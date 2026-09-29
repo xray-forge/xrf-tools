@@ -7,6 +7,7 @@ import { IRendererRainfall } from "#/contract/renderer-rainfall";
 import { IRendererSky } from "#/contract/renderer-sky";
 import { IRendererTreeWind } from "#/contract/renderer-tree-wind";
 import { TRendererVector } from "#/contract/renderer-vector";
+import { IRendererThunderboltStrike } from "#/contract/weather/renderer-thunderbolt-strike";
 
 /**
  * What a scene is lit by, in the terms a weather keyframe uses.
@@ -34,4 +35,6 @@ export interface IRendererLighting {
   waterIntensity: number;
   /** How hard it rains, or null for no rain. */
   rain: Nullable<IRendererRainfall>;
+  /** The bolt striking this frame, or null for none. */
+  thunderbolt: Nullable<IRendererThunderboltStrike>;
 }

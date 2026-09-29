@@ -35,6 +35,7 @@ import { IStaticShadowCasters } from "#/scene/static/static-shadow-casters";
 import { IStaticUpcoming } from "#/scene/static/static-upcoming";
 import { MaterialReadiness } from "#/scene/surface/material-readiness";
 import { SurfaceLibrary } from "#/scene/surface/surface-library";
+import { SceneThunder } from "#/scene/thunder/scene-thunder";
 import { RendererTextures } from "#/texture/renderer-textures";
 import { RendererUniforms } from "#/uniforms/renderer-uniforms";
 import { CullView } from "#/visibility/cull-view";
@@ -59,6 +60,8 @@ export class RendererScene {
   public readonly sky: SceneSky;
   /** The rain's streaks and splashes, built for the weather that names them. */
   public readonly rain: SceneRain;
+  /** The bolts' models and glows, built for the weather that strikes them. */
+  public readonly thunder: SceneThunder;
 
   private readonly uniforms: RendererUniforms;
   private readonly geometries: Map<string, SceneGeometry> = new Map();
@@ -114,6 +117,7 @@ export class RendererScene {
     this.lights = new SceneLights(this.textures, this.staticDraws.shadowChanges);
     this.sky = new SceneSky(this.textures, uniforms);
     this.rain = new SceneRain(this.textures, uniforms.rain);
+    this.thunder = new SceneThunder(this.textures, uniforms.thunder);
     this.skeletons = new RendererSkeletons((key: string, release: Nullable<() => void>) =>
       this.replace(this.skeletonUsers.get(key), release)
     );
@@ -391,6 +395,7 @@ export class RendererScene {
     this.lights.dispose();
     this.sky.dispose();
     this.rain.dispose();
+    this.thunder.dispose();
     this.objects.forEach((entry: SceneObject) => entry.dispose());
     this.objects.clear();
     this.changes.dispose();

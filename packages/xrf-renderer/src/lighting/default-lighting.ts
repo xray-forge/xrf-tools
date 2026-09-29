@@ -48,6 +48,7 @@ export const DEFAULT_RENDERER_LIGHTING: IRendererLighting = {
     textures: [DEFAULT_RENDERER_SKY_TEXTURE, DEFAULT_RENDERER_SKY_TEXTURE],
   },
   sunDirection: toRendererSunDirection(-68.999985, -30),
+  thunderbolt: null,
   trees: DEFAULT_RENDERER_TREE_WIND,
   waterIntensity: 1,
 };

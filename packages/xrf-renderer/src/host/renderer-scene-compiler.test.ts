@@ -12,6 +12,7 @@ import { toPassRecord } from "#/scene/pass-record";
 import { ISceneRainStaging } from "#/scene/rain/scene-rain-staging";
 import { RendererScene } from "#/scene/renderer-scene";
 import { ISceneStaging } from "#/scene/staging/scene-staging";
+import { ISceneThunderStaging } from "#/scene/thunder/scene-thunder-staging";
 
 interface ICompileCall {
   scene: Object3D;
@@ -70,6 +71,7 @@ interface IFakeScene {
   commit: jest.Mock<TCommit>;
   grass: Nullable<ISceneGrassStaging>;
   rain: Nullable<ISceneRainStaging>;
+  thunder: Nullable<ISceneThunderStaging>;
 }
 
 function createStaging(): ISceneStaging {
@@ -92,6 +94,7 @@ function createScene(grass: Nullable<ISceneGrassStaging> = null): IFakeScene {
     rain: null,
     scene: null as unknown as RendererScene,
     staging: createStaging(),
+    thunder: null,
   };
   let isStaged: boolean = false;
 
@@ -111,6 +114,15 @@ function createScene(grass: Nullable<ISceneGrassStaging> = null): IFakeScene {
         const taken: Nullable<ISceneRainStaging> = fake.rain;
 
         fake.rain = null;
+
+        return taken;
+      },
+    },
+    thunder: {
+      takeStaged: (): Nullable<ISceneThunderStaging> => {
+        const taken: Nullable<ISceneThunderStaging> = fake.thunder;
+
+        fake.thunder = null;
 
         return taken;
       },
@@ -138,6 +150,7 @@ function createTargets(): IFrameCompileTargets {
     grass: new RenderTarget(),
     joining: [],
     rain: new RenderTarget(),
+    thunder: new RenderTarget(),
     passes: [toPass(ERendererPass.DEFERRED), toPass(ERendererPass.FORWARD), toPass(ERendererPass.WATER)],
     shadow: { camera: new PerspectiveCamera(), target: new RenderTarget() },
   };
@@ -296,6 +309,27 @@ describe("RendererSceneCompiler", () => {
     await finishAll(fake);
 
     expect(rain.commit).toHaveBeenCalledTimes(1);
+    expect(fakeScene.commit).not.toHaveBeenCalled();
+  });
+
+  // Drawn on its first strike, the bolt would build its pipelines there and hitch the flash.
+  it("compiles a thunder build as a batch of its own, against where the bolts draw, before the scene's", async () => {
+    const fake: IFakeRenderer = createRenderer();
+    const thunder: ISceneThunderStaging = { abandon: jest.fn(), commit: jest.fn(), scene: new Scene() };
+    const fakeScene: IFakeScene = createScene();
+    const { frame, targets }: IFakeFrame = createFrame();
+    const compiler: RendererSceneCompiler = new RendererSceneCompiler();
+
+    fakeScene.thunder = thunder;
+    compiler.compile(fake.renderer, fakeScene.scene, frame, new PerspectiveCamera());
+
+    expect(fake.calls.map((call: ICompileCall) => [call.scene, call.target])).toEqual([
+      [thunder.scene, targets.thunder],
+    ]);
+
+    await finishAll(fake);
+
+    expect(thunder.commit).toHaveBeenCalledTimes(1);
     expect(fakeScene.commit).not.toHaveBeenCalled();
   });
 

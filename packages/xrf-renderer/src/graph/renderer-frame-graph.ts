@@ -137,6 +137,7 @@ export class RendererFrameGraph implements ICompilingFrame {
       cull,
       overlays,
       rain: scene.rain,
+      thunder: scene.thunder,
       targets: this.targets,
       uniforms,
     });
@@ -163,6 +164,7 @@ export class RendererFrameGraph implements ICompilingFrame {
       grass: this.targets.gbuffer,
       joining: this.joining,
       rain: this.targets.composite,
+      thunder: this.targets.composite,
       passes: this.scenePasses,
       shadow: { camera: this.uniforms.shadows.cascades[0].camera, target: this.targets.shadows[0] },
     };

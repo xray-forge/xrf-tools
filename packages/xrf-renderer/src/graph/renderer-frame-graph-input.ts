@@ -8,6 +8,6 @@ export interface IRendererFrameGraphInput {
   uniforms: RendererUniforms;
   /** The helpers drawn last. */
   overlays: RendererOverlays;
-  /** What the consumer put that the frame's own passes draw: the static cull and casters, grass, lights and rain. */
-  scene: Pick<RendererScene, "staticCull" | "shadowCasters" | "grass" | "lights" | "rain">;
+  /** What the consumer put that the frame's own passes draw: the static cull and casters, grass, lights, rain, thunder. */
+  scene: Pick<RendererScene, "staticCull" | "shadowCasters" | "grass" | "lights" | "rain" | "thunder">;
 }

@@ -107,6 +107,7 @@ describe("RendererFrameGraph", () => {
       "water",
       "forward",
       "rain",
+      "thunder",
       "distortion",
       "overlay",
       "present",

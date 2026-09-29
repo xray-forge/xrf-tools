@@ -17,6 +17,7 @@ import { Vector3d } from "@/core/ipc/types/xrf-math";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { ILevelTextureRequests } from "@/core/level/lib/render/level-render-protocol";
 import { LevelTextureReader } from "@/core/level/lib/texture/level-texture-reader";
+import { listLevelThunderTextures, toLevelRendererThunder } from "@/core/level/lib/weather/level-renderer-thunder";
 
 /** Every value a modifier adds to, what a file older than the flags stands for. */
 const ALL_MODIFIER_FLAGS: number = 0xffff;
@@ -50,6 +51,7 @@ export async function toLevelRendererWeather(input: ILevelRendererWeatherInput):
     textures: await toLevelRendererTextures(roots, [
       ...[cycle, ...description.effects].flatMap((it: LevelWeatherCycle) => it.textures),
       ...listLevelRainTextures(description.rain),
+      ...listLevelThunderTextures(description.thunderbolts),
     ]),
   };
 }
@@ -57,11 +59,11 @@ export async function toLevelRendererWeather(input: ILevelRendererWeatherInput):
 /**
  * @param description - The open level's weather.
  * @returns What any weather of the level plays over whatever keyframes it plays: its engine, effects, the level's
- *   modifiers and its rain.
+ *   modifiers, its rain and its thunder.
  */
 export function toLevelRendererWeatherBase(
   description: LevelWeatherDescription
-): Pick<IRendererWeather, "engine" | "effects" | "modifiers" | "rain"> {
+): Pick<IRendererWeather, "engine" | "effects" | "modifiers" | "rain" | "thunder"> {
   return {
     effects: Object.fromEntries(
       description.effects.map((effect: LevelWeatherCycle) => [
@@ -72,6 +74,7 @@ export function toLevelRendererWeatherBase(
     engine: toLevelRendererWeatherEngine(description.engine),
     modifiers: description.modifiers.map(toLevelRendererWeatherModifier),
     rain: toLevelRendererRain(description.rain),
+    thunder: toLevelRendererThunder(description.thunderbolts),
   };
 }
 
