@@ -30,6 +30,8 @@ export class SkyUniforms {
   public readonly rotation: UniformNode<"float", number> = uniform(0).setGroup(renderGroup);
   /** One while the frame draws the sky behind the scene and fades the fog into it, zero for its backdrop. */
   public readonly drawn: UniformNode<"float", number> = uniform(0).setGroup(renderGroup);
+  /** One while the distance fades into the sky's haze rather than into the sky itself. */
+  public readonly hazed: UniformNode<"float", number> = uniform(0).setGroup(renderGroup);
 
   /**
    * @param sky - The sky the lighting names.
@@ -45,5 +47,12 @@ export class SkyUniforms {
    */
   public setDrawn(isDrawn: boolean): void {
     this.drawn.value = isDrawn ? 1 : 0;
+  }
+
+  /**
+   * @param isHazed - Whether the distance fades into the sky's haze rather than into the sky itself.
+   */
+  public setHazed(isHazed: boolean): void {
+    this.hazed.value = isHazed ? 1 : 0;
   }
 }

@@ -80,6 +80,7 @@ export class RendererUniforms {
     this.settings.apply(settings);
     this.water.apply(settings.features.water);
     this.sky.setDrawn(settings.isSkyDrawn);
+    this.sky.setHazed(settings.isSkyHazed);
     this.isLit = settings.isLit;
   }
 

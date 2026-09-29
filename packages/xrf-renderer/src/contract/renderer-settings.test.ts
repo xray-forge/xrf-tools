@@ -18,6 +18,7 @@ const SENT: IRendererSettings = {
   isGpuTimed: false,
   isLit: true,
   isSkyDrawn: false,
+  isSkyHazed: false,
   isTextured: true,
   isWireframe: false,
   pacing: DEFAULT_RENDER_FRAME_PACING,

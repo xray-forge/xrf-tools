@@ -22,7 +22,7 @@ import { toOutputDither } from "#/shader/dither.tsl";
 import { IGBufferSample } from "#/shader/gbuffer-sample";
 import { IGBufferTextures } from "#/shader/gbuffer-textures";
 import { readGBuffer } from "#/shader/gbuffer.tsl";
-import { toSkyColor } from "#/shader/sky.tsl";
+import { toSkyColor, toSkyHaze } from "#/shader/sky.tsl";
 import { RendererUniforms } from "#/uniforms/renderer-uniforms";
 
 /**
@@ -72,7 +72,14 @@ export function toCombinePassFragment(
       sky: uniforms.sky,
     });
     const fog: Node<"float"> = toFogAmount(sample.point.position, uniforms);
-    const faded: Node<"vec3"> = select(isSkyDrawn, mix(lit, sky, fog.mul(fog)), lit);
+    // The engine fades into the sky itself; the haze keeps the clouds from showing through what stands far off.
+    const behind: Node<"vec3"> = sky.toVar();
+
+    If(uniforms.sky.hazed.greaterThan(0.5).and(isEmpty.not()), () => {
+      behind.assign(toSkyHaze(direction, uniforms.sky, uniforms.exposure.scale));
+    });
+
+    const faded: Node<"vec3"> = select(isSkyDrawn, mix(lit, behind, fog.mul(fog)), lit);
 
     const shown: Node<"vec3"> = select(isEmpty, select(isSkyDrawn, sky, toFogColor(uniforms)), faded);
 

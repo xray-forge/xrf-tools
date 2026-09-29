@@ -28,6 +28,11 @@ export interface IRendererSettings {
   isBumped: boolean;
   /** Whether the sky is drawn behind the scene and the fog fades into it, as a level's is; off, the backdrop shows. */
   isSkyDrawn: boolean;
+  /**
+   * Whether the distance fades into the sky's haze - its irradiance cube along the view, without clouds - rather than
+   * into the sky itself as the engine fades it, which shows the clouds through far surfaces.
+   */
+  isSkyHazed: boolean;
   /** Whether surfaces draw as their triangles' edges. */
   isWireframe: boolean;
   /** Whether every pass is timed on the GPU for the report, which costs a frame 1-4% of its rate. */

@@ -111,6 +111,7 @@ describe("listRendererTransfers", () => {
           features: RENDERER_PRESETS[ERendererPreset.BASE],
           isLit: true,
           isSkyDrawn: false,
+          isSkyHazed: false,
           isTextured: true,
           isWireframe: false,
           tonemapScale: 1,

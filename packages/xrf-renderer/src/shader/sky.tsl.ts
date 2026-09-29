@@ -93,6 +93,42 @@ export function toSkyCubes(direction: Node<"vec3">, sky: SkyUniforms): Node<"vec
 }
 
 /**
+ * The sky's haze along a direction: the cubes at its bearing where the sky meets the horizon, averaged around the
+ * compass as the sky averages its fold and lit as the sky is, without its clouds. The distance fades into it
+ * without showing the clouds through what stands there.
+ *
+ * @param direction - A direction in renderer space.
+ * @param sky - The sky's uniforms.
+ * @param scale - What the tonemap multiplies by.
+ * @returns The haze's colour as the frame shows it.
+ */
+export function toSkyHaze(direction: Node<"vec3">, sky: SkyUniforms, scale: Node<"float">): Node<"vec3"> {
+  const box: Node<"vec3"> = toBoxDirection(direction, sky.rotation);
+  // Its bearing, where the sky meets the horizon, whatever its height.
+  const rim: Node<"vec3"> = vec3(box.x, max(abs(box.x), abs(box.z)).mul(HAZE_TOP / 2), box.z);
+
+  return toRimHaze(rim, sky).mul(sky.color).mul(scale.mul(SKY_FACTOR));
+}
+
+/** The cubes around a box direction under the fold, averaged around the compass so the rim's texels do not show. */
+function toRimHaze(box: Node<"vec3">, sky: SkyUniforms): Node<"vec3"> {
+  let sum: Node<"vec3"> = vec3(0);
+
+  for (let tap: number = 0; tap < HAZE_TAPS; tap += 1) {
+    const angle: number = (tap - (HAZE_TAPS - 1) / 2) * HAZE_TAP_ANGLE;
+    const turned: Node<"vec3"> = vec3(
+      box.x.mul(Math.cos(angle)).sub(box.z.mul(Math.sin(angle))),
+      box.y,
+      box.x.mul(Math.sin(angle)).add(box.z.mul(Math.cos(angle)))
+    );
+
+    sum = sum.add(toBlendedCubes(toCubeLookup(toBoxLookup(turned)), sky));
+  }
+
+  return sum.div(HAZE_TAPS);
+}
+
+/**
  * The sky as `RenderSky` draws it: the cubes through the half box, times `sky_color`, on the exposure's scale, written
  * without the tonemap's curve as `sky2.ps` writes it.
  *
@@ -109,20 +145,7 @@ export function toSkyColor(direction: Node<"vec3">, sky: SkyUniforms, scale: Nod
   // Below the fold every pixel of a column reads one texel of the bottom rim, which draws its block noise as streaks
   // the height of the band; averaged around the compass there, it keeps the haze and loses the texels.
   If(height.lessThan(HAZE_TOP), () => {
-    let sum: Node<"vec3"> = vec3(0);
-
-    for (let tap: number = 0; tap < HAZE_TAPS; tap += 1) {
-      const angle: number = (tap - (HAZE_TAPS - 1) / 2) * HAZE_TAP_ANGLE;
-      const turned: Node<"vec3"> = vec3(
-        box.x.mul(Math.cos(angle)).sub(box.z.mul(Math.sin(angle))),
-        box.y,
-        box.x.mul(Math.sin(angle)).add(box.z.mul(Math.cos(angle)))
-      );
-
-      sum = sum.add(toBlendedCubes(toCubeLookup(toBoxLookup(turned)), sky));
-    }
-
-    color.assign(mix(sum.div(HAZE_TAPS), color, smoothstep(BOX_HORIZON, HAZE_TOP, height)));
+    color.assign(mix(toRimHaze(box, sky), color, smoothstep(BOX_HORIZON, HAZE_TOP, height)));
   });
 
   return color.mul(sky.color).mul(scale.mul(SKY_FACTOR));
