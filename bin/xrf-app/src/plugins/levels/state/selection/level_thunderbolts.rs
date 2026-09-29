@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use serde::Serialize;
 use xrf_chunk::XRayByteOrder;
 use xrf_environment::{Thunderbolt, ThunderboltCollection, ThunderboltKey};
@@ -34,115 +36,142 @@ impl LevelThunderbolts {
   /// Every collection and bolt of the catalog, their models read and their textures found in the level's probe.
   pub fn read(source: &LevelWeatherSource) -> Self {
     let catalog = source.catalog;
-    let resolver: XraySurfaceResolver = XraySurfaceResolver::open(source.probe, source.scope.clone());
-    let animations: Option<LightAnimFile> = read_located_asset(source.probe, ANIMATIONS_FILE)
-      .and_then(LightAnimFile::read_from_bytes::<XRayByteOrder>)
-      .inspect_err(|error| log::warn!("Thunderbolts are not coloured, '{ANIMATIONS_FILE}' does not read: {error}"))
-      .ok();
-    let mut read: Self = Self {
-      animators: Vec::new(),
-      bolts: Vec::new(),
-      collections: catalog.thunderbolt_collections.clone(),
-      models: Vec::new(),
-      settings: catalog
-        .thunderbolt_settings
-        .as_ref()
-        .map(|settings| LevelThunderboltSettings::of(settings, catalog.engine)),
-    };
-    let mut animator_names: Vec<String> = Vec::new();
+    let mut reader: BoltReader = BoltReader::open(source);
+    let mut bolts: Vec<LevelThunderbolt> = Vec::new();
 
     for name in catalog
       .thunderbolt_collections
       .iter()
       .flat_map(|collection| &collection.thunderbolts)
     {
-      if read.bolts.iter().any(|it| it.name == *name) {
+      if bolts.iter().any(|it| it.name == *name) {
         continue;
       }
 
-      let Some(bolt) = catalog.find_thunderbolt(name) else {
-        continue;
-      };
-      let text = |key: ThunderboltKey| bolt.get_text(key, catalog.engine);
-      let model: Option<u32> = read.find_model(source, &resolver, text(ThunderboltKey::LightningModel));
-      let color: Option<u32> = Self::find_animator(
-        &mut read.animators,
-        &mut animator_names,
-        animations.as_ref(),
-        text(ThunderboltKey::ColorAnim),
-      );
-
-      read.bolts.push(LevelThunderbolt {
-        center: Self::read_gradient(source, &resolver, bolt, GradientKeys::CENTER),
-        color,
-        model,
-        name: name.clone(),
-        top: Self::read_gradient(source, &resolver, bolt, GradientKeys::TOP),
-      });
+      if let Some(bolt) = catalog.find_thunderbolt(name) {
+        bolts.push(reader.read_bolt(name, bolt));
+      }
     }
 
-    read
+    Self {
+      animators: reader.animators,
+      bolts,
+      collections: catalog.thunderbolt_collections.clone(),
+      models: reader.models,
+      settings: catalog
+        .thunderbolt_settings
+        .as_ref()
+        .map(|settings| LevelThunderboltSettings::of(settings, catalog.engine)),
+    }
+  }
+}
+
+/// Reads bolts, adding each model and colour animation once however many bolts name it, a missing one looked for once.
+struct BoltReader<'s, 'a, 'p> {
+  source: &'s LevelWeatherSource<'a, 'p>,
+  resolver: XraySurfaceResolver<'a, 'p>,
+  animations: Option<LightAnimFile>,
+  models: Vec<LevelThunderboltModel>,
+  model_indices: HashMap<String, Option<u32>>,
+  animators: Vec<LightAnimatorDescription>,
+  animator_indices: HashMap<String, Option<u32>>,
+}
+
+impl<'s, 'a, 'p> BoltReader<'s, 'a, 'p> {
+  fn open(source: &'s LevelWeatherSource<'a, 'p>) -> Self {
+    Self {
+      animations: read_located_asset(source.probe, ANIMATIONS_FILE)
+        .and_then(LightAnimFile::read_from_bytes::<XRayByteOrder>)
+        .inspect_err(|error| log::warn!("Thunderbolts are not coloured, '{ANIMATIONS_FILE}' does not read: {error}"))
+        .ok(),
+      animator_indices: HashMap::new(),
+      animators: Vec::new(),
+      model_indices: HashMap::new(),
+      models: Vec::new(),
+      resolver: XraySurfaceResolver::open(source.probe, source.scope.clone()),
+      source,
+    }
   }
 
-  /// `CreateModel`: the model under `meshes`, read once however many bolts name it.
-  fn find_model(&mut self, source: &LevelWeatherSource, resolver: &XraySurfaceResolver, name: &str) -> Option<u32> {
-    if let Some(index) = self.models.iter().position(|it| it.name == name) {
-      return Some(index as u32);
+  fn read_bolt(&mut self, name: &str, bolt: &Thunderbolt) -> LevelThunderbolt {
+    let engine = self.source.catalog.engine;
+
+    LevelThunderbolt {
+      center: self.read_gradient(bolt, GradientKeys::CENTER),
+      color: self.find_animator(bolt.get_text(ThunderboltKey::ColorAnim, engine)),
+      model: self.find_model(bolt.get_text(ThunderboltKey::LightningModel, engine)),
+      name: name.to_owned(),
+      top: self.read_gradient(bolt, GradientKeys::TOP),
+    }
+  }
+
+  /// `CreateModel`: the model under `meshes`.
+  fn find_model(&mut self, name: &str) -> Option<u32> {
+    if name.is_empty() {
+      return None;
     }
 
-    let model = source
+    if let Some(index) = self.model_indices.get(name) {
+      return *index;
+    }
+
+    let found: Option<u32> = self
+      .source
       .read_model(&format!("meshes\\{name}"))
       .inspect_err(|error| log::warn!("Thunderbolt model '{name}' is not drawn: {error}"))
-      .ok()?;
+      .ok()
+      .map(|model| {
+        self.models.push(LevelThunderboltModel {
+          draw: self.describe_draw(&model.shader, &model.texture),
+          mesh: LevelWeatherModel::of(&model, self.source.locate(&model.texture)),
+          name: name.to_owned(),
+        });
 
-    self.models.push(LevelThunderboltModel {
-      draw: Self::describe_draw(resolver, &model.shader, &model.texture),
-      mesh: LevelWeatherModel::of(&model, source.locate(&model.texture)),
-      name: name.to_owned(),
-    });
+        (self.models.len() - 1) as u32
+      });
 
-    Some((self.models.len() - 1) as u32)
+    self.model_indices.insert(name.to_owned(), found);
+
+    found
   }
 
-  /// `LALib.FindItem`: the animation by its exact name, added once however many bolts name it.
-  fn find_animator(
-    animators: &mut Vec<LightAnimatorDescription>,
-    names: &mut Vec<String>,
-    animations: Option<&LightAnimFile>,
-    name: &str,
-  ) -> Option<u32> {
-    if let Some(index) = names.iter().position(|it| it == name) {
-      return Some(index as u32);
+  /// `LALib.FindItem`: the animation by its exact name.
+  fn find_animator(&mut self, name: &str) -> Option<u32> {
+    if name.is_empty() {
+      return None;
     }
 
-    let file: &LightAnimFile = animations?;
-    let item = file.items.iter().find(|item| item.name == name)?;
+    if let Some(index) = self.animator_indices.get(name) {
+      return *index;
+    }
 
-    animators.push(LightAnimatorDescription::of(item, file.is_bgr()));
-    names.push(name.to_owned());
+    let found: Option<u32> = self.animations.as_ref().and_then(|file| {
+      let item = file.items.iter().find(|item| item.name == name)?;
 
-    Some((animators.len() - 1) as u32)
+      self.animators.push(LightAnimatorDescription::of(item, file.is_bgr()));
+
+      Some((self.animators.len() - 1) as u32)
+    });
+
+    self.animator_indices.insert(name.to_owned(), found);
+
+    found
   }
 
-  fn read_gradient(
-    source: &LevelWeatherSource,
-    resolver: &XraySurfaceResolver,
-    bolt: &Thunderbolt,
-    keys: GradientKeys,
-  ) -> LevelThunderboltGradient {
-    let engine = source.catalog.engine;
+  fn read_gradient(&self, bolt: &Thunderbolt, keys: GradientKeys) -> LevelThunderboltGradient {
+    let engine = self.source.catalog.engine;
     let texture: &str = bolt.get_text(keys.texture, engine);
 
     LevelThunderboltGradient {
-      draw: Self::describe_draw(resolver, bolt.get_text(keys.shader, engine), texture),
+      draw: self.describe_draw(bolt.get_text(keys.shader, engine), texture),
       opacity: bolt.get_number(keys.opacity, engine),
       radius: bolt.get_vector(keys.radius, engine),
-      texture: source.locate(texture),
+      texture: self.source.locate(texture),
     }
   }
 
-  fn describe_draw(resolver: &XraySurfaceResolver, shader: &str, texture: &str) -> XraySurfaceDraw {
-    resolver.describe(shader, &[texture.to_owned()]).draw
+  fn describe_draw(&self, shader: &str, texture: &str) -> XraySurfaceDraw {
+    self.resolver.describe(shader, &[texture.to_owned()]).draw
   }
 }
 
