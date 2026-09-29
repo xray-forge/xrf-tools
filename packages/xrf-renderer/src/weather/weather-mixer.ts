@@ -1,3 +1,4 @@
+import { EPS } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 
 import { ERendererEngine } from "#/contract/renderer-engine";
@@ -12,9 +13,6 @@ import { IWeatherMixPoint } from "#/weather/weather-mix-point";
 import { IWeatherModifiersSum, toWeatherModifiersSum, WEATHER_MODIFIER_FLAGS } from "#/weather/weather-modifiers-sum";
 import { IWeatherPairMixer } from "#/weather/weather-pair-mixer";
 import { EWeatherSun } from "#/weather/weather-sun";
-
-/** `EPS`, what `TimeWeight` takes a zero span by. */
-const EPS: number = 0.00001;
 
 /** Where an authored sun stands for a keyframe that stands none. */
 const DOWN: TRendererVector = [0, -1, 0];

@@ -1,3 +1,4 @@
+import { EPS } from "@xrf/math";
 import {
   bitAnd,
   bitOr,
@@ -40,8 +41,8 @@ const SEED: number = 0x12071980;
 /** `DetailSlot::ID_Empty`: a corner planting nothing. */
 const EMPTY_ID: number = 0x3f;
 
-/** `EPS`: the determinant below which a ray is taken to lie in a triangle's plane (`xrCore/math_constants.h`). */
-const RAY_EPSILON: number = 0.00001;
+/** `EPS`: the determinant below which a ray is taken to lie in a triangle's plane. */
+const RAY_EPSILON: number = EPS;
 
 /**
  * `cache_Decompress`, a thread a cell of the ring: a stale cell the schedule admits plants the world slot it holds now,

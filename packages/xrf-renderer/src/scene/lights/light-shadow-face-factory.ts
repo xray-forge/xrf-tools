@@ -1,3 +1,4 @@
+import { EPS_S } from "@xrf/math";
 import { Frustum, PerspectiveCamera, Sphere, Vector3, Vector4 } from "three/webgpu";
 
 import { adoptRendererConventions } from "#/internals/camera-conventions";
@@ -14,7 +15,7 @@ import { EShadowCasterMotion } from "#/scene/static/shadow-caster-motion";
 import { toCameraFrustum, toPlaneVectors } from "#/visibility/camera-frustum";
 
 /** `EPS_S`: what a face's far plane stands past the light's range. */
-const FAR_EPSILON: number = 0.0000001;
+const FAR_EPSILON: number = EPS_S;
 
 /** Where a face's projection starts where the light gives none: `light::virtual_size`'s default. */
 const DEFAULT_NEAR: number = 0.1;

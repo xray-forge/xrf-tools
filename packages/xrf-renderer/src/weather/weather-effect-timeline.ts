@@ -1,3 +1,4 @@
+import { EPS } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 
 import { IRendererWeatherKeyframe } from "#/contract/weather/renderer-weather-keyframe";
@@ -8,9 +9,6 @@ import { WeatherPair } from "#/weather/weather-pair";
 
 /** `WFX_TRANS_TIME`: real seconds an effect takes to lead in, and to lead back into the cycle. */
 const TRANSITION: number = 5;
-
-/** `EPS`, under which a span is none. */
-const EPS: number = 0.00001;
 
 /**
  * A weather effect laid over the cycle from the time it started, as `SetWeatherFX` lays it.

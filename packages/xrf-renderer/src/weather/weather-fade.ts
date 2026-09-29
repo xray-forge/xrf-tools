@@ -1,3 +1,4 @@
+import { EPS_L } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 
 import { IRendererClouds } from "#/contract/renderer-clouds";
@@ -8,9 +9,6 @@ import { IRendererSky } from "#/contract/renderer-sky";
 import { IRendererTreeWind } from "#/contract/renderer-tree-wind";
 import { TRendererVector } from "#/contract/renderer-vector";
 import { IWeatherFadeStep } from "#/weather/weather-fade-step";
-
-/** `EPS_L`, under which it does not rain at all. */
-const RAIN_THRESHOLD: number = 0.001;
 
 /** Two of what a sky slot holds, and how far from the first to the second the shader blends. */
 interface IWeatherSlots<T> {
@@ -44,10 +42,10 @@ export function toFadedLighting(step: IWeatherFadeStep): IRendererLighting {
 
   return {
     ambientColor: triple(from.ambientColor, to.ambientColor),
+    engine: to.engine,
     fog: fadeFog(from.fog, to.fog, { lerp, triple }),
     grass: to.grass,
     hemisphereColor: triple(from.hemisphereColor, to.hemisphereColor),
-    engine: to.engine,
     rain: fadeRain(from.rain, to.rain, { lerp, triple }),
     sky: fadeSky(from.sky, to.sky, t),
     skyIrradiance: triple(from.skyIrradiance, to.skyIrradiance),
@@ -113,7 +111,8 @@ function fadeRain(
 
   const density: number = blends.lerp(from?.density ?? 0, to?.density ?? 0);
 
-  if (density < RAIN_THRESHOLD) {
+  // Under `EPS_L` it does not rain at all.
+  if (density < EPS_L) {
     return null;
   }
 

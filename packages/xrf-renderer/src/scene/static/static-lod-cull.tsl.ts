@@ -1,3 +1,4 @@
+import { EPS_S } from "@xrf/math";
 import { clamp, float, floor, Fn, If, instanceIndex, max, normalize, storage, uint, uvec4 } from "three/tsl";
 import { ComputeNode, Node } from "three/webgpu";
 
@@ -8,7 +9,7 @@ import { EStaticLodState } from "#/uniforms/static-lod-state";
 import { EStaticPool } from "#/uniforms/static-pool";
 
 /** `EPS_S`, the least the fade's range is taken as. */
-const RANGE_EPSILON: number = 0.0000001;
+const RANGE_EPSILON: number = EPS_S;
 
 /**
  * `add_leafs_static`'s `MT_LOD` case and `render_lods`'s terms, one invocation an impostor. A clump's screen area is

@@ -1,12 +1,11 @@
+import { EPS_S } from "@xrf/math";
+
 /** Columns: `dot(L, N)`, nearly linear, so few. */
 export const MATERIAL_LUT_LDOTN: number = 128;
 /** Rows: `dot(H, N)`, the specular lobe, so many. */
 export const MATERIAL_LUT_LDOTH: number = 256;
 /** Slices: the four lighting models a texture descriptor chooses between. */
 export const MATERIAL_LUT_COUNT: number = 4;
-
-/** The engine's `EPS_S` (`xrCore/math_constants.h`). */
-const EPS_S: number = 0.0000001;
 
 /**
  * The engine's `$user$material` lookup, built as `r4_rendertarget_build_textures.cpp` builds it.

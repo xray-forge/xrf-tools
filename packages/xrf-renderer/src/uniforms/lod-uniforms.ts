@@ -1,10 +1,11 @@
+import { EPS_S } from "@xrf/math";
 import { uniform } from "three/tsl";
 import { PerspectiveCamera, UniformNode, Vector3 } from "three/webgpu";
 
 import { IRendererLodSettings } from "#/contract/renderer-lod-settings";
 
-/** `EPS_S`, what `g_fSCREEN`'s LOD scale is offset by so it is never zero (`xrCore/math_constants.h`). */
-const SCREEN_EPSILON: number = 0.0000001;
+/** `EPS_S`, what `g_fSCREEN`'s LOD scale is offset by so it is never zero. */
+const SCREEN_EPSILON: number = EPS_S;
 
 /** The field of view the engine's thresholds are measured against, which a wider one shrinks every clump by. */
 const REFERENCE_FIELD_OF_VIEW: number = 90;

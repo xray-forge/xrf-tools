@@ -1,11 +1,8 @@
-import { toRadians } from "@xrf/math";
+import { EPS_S, toRadians } from "@xrf/math";
 
 import { TRendererVector } from "#/contract/renderer-vector";
 import { WEATHER_DAY_LENGTH } from "#/weather/weather-day";
 import { toWeatherHeading } from "#/weather/weather-heading";
-
-/** `EPS_S`, what `fis_zero` compares against by default. */
-const EPS_S: number = 0.0000001;
 
 /** Where the engine puts its sun: Chernobyl's latitude, and a longitude its clock is offset by. */
 const LATITUDE: number = toRadians(50.27);

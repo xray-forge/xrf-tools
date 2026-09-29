@@ -1,10 +1,11 @@
+import { EPS_L } from "@xrf/math";
 import { dot } from "three/tsl";
 import { Node } from "three/webgpu";
 
 import { GrassUniforms } from "#/uniforms/grass-uniforms";
 
 /** `EPS_L`, which every slot's box grows by. */
-export const GRASS_BOX_GROWTH: number = 0.001;
+export const GRASS_BOX_GROWTH: number = EPS_L;
 
 /**
  * @param uniforms - The view's planes among them.

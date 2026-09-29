@@ -1,3 +1,4 @@
+import { EPS_L } from "@xrf/math";
 import { Maybe, Nullable } from "@xrf/types";
 import { Frustum, Matrix4, Sphere, Vector3, WebGPURenderer } from "three/webgpu";
 
@@ -39,9 +40,6 @@ import { toCameraFrustum } from "#/visibility/camera-frustum";
 
 /** What a light's falloff reaches zero at, a share of its range: `L_R` (`r3_rendertarget_accum_point.cpp`). */
 const FALLOFF_RANGE: number = 0.95;
-
-/** `EPS_L`: the level of detail a shadowed light must pass to be drawn at all. */
-const EPS_L: number = 0.001;
 
 /** A light standing in view this frame. */
 interface IInViewLight {
@@ -246,7 +244,8 @@ export class SceneLights {
         return;
       }
 
-      // `light::get_LOD`, a light the engine shadows alone: by its sphere's share of the screen, a point's each face.
+      // `light::get_LOD`, a light the engine shadows alone: by its sphere's share of the screen, a point's each face,
+      // drawn at all only past `EPS_L`.
       if (this.toFade(light, entry, settings.isShadowed, lod) <= EPS_L) {
         return;
       }

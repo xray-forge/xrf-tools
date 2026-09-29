@@ -1,7 +1,8 @@
+import { EPS } from "@xrf/math";
 import { Node } from "three/webgpu";
 
 /** `EPS`, what `CalcSSA` adds to a squared distance so a camera standing at a centre divides by something. */
-const DISTANCE_EPSILON: number = 0.00001;
+const DISTANCE_EPSILON: number = EPS;
 
 /**
  * @param radius - A sphere's radius.

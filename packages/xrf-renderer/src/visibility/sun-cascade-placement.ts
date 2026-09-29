@@ -1,14 +1,9 @@
+import { EPS_L, EPS_S } from "@xrf/math";
 import { Vector3 } from "three/webgpu";
 
 import { SunCascadeBasis } from "#/visibility/sun-cascade-basis";
 import { ISunViewRay } from "#/visibility/sun-view-ray";
 import { SunViewRays } from "#/visibility/sun-view-rays";
-
-/** The engine's `EPS_L`: a plane faces the view only past it, and a ray leaves a plane only past it. */
-const EPS_L: number = 0.001;
-
-/** The engine's `EPS_S`, under which a view along the light places nothing. */
-const EPS_S: number = 0.0000001;
 
 /** The engine's first guess at the nearest point behind a side, which any real one is nearer than. */
 const FAR_BEHIND: number = 10000;
@@ -78,6 +73,7 @@ function align(
   BEHIND.length = 0;
 
   for (let side: number = 0; side < sides.length && BEHIND.length < 2; side += 1) {
+    // A plane faces the view only past `EPS_L`.
     if (look.dot(sides[side]) > EPS_L) {
       BEHIND.push(side);
     }
@@ -182,6 +178,7 @@ function advance(center: Vector3, rays: ReadonlyArray<ISunViewRay>, { sides }: S
         distance = leave > 0 || Math.abs(leave) < EPS_S ? leave : 0;
       }
 
+      // A ray leaves a plane only past `EPS_L`.
       if (distance > EPS_L && distance < nearest) {
         nearest = distance;
       }

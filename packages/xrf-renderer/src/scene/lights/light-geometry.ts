@@ -1,3 +1,4 @@
+import { EPS } from "@xrf/math";
 import { Sphere, Vector3 } from "three/webgpu";
 
 import { TRendererColor } from "#/contract/renderer-color";
@@ -8,9 +9,6 @@ import { ILightBasis } from "#/scene/lights/light-basis";
 
 /** `ps_r2_slight_fade`: what a shadowed light's screen area is scaled by before it fades (`xrRender_console.cpp`). */
 const SHADOWED_FADE: number = 0.5;
-
-/** `EPS`: what `light::get_LOD` adds to the squared distance, so a camera inside the light divides by no zero. */
-const EPS: number = 0.00001;
 
 /** A spot `compute_xf_spot` gives up the given right of, and takes the world's up in its place. */
 const RIGHT_EPSILON: number = EPS;
@@ -149,6 +147,7 @@ export function toLightFaceSphere(light: TRendererLight, direction: TRendererVec
  * @returns Its level of detail, one whole, zero gone.
  */
 export function toLightLod(spatial: Sphere, eye: Vector3, start: number, end: number): number {
+  // `EPS` added to the squared distance, so a camera inside the light divides by no zero.
   const area: number = (SHADOWED_FADE * spatial.radius) / (eye.distanceToSquared(spatial.center) + EPS);
 
   return start > end ? Math.sqrt(Math.min(Math.max((area - end) / (start - end), 0), 1)) : 1;

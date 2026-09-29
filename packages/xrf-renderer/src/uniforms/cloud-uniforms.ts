@@ -1,3 +1,4 @@
+import { EPS_L } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 import { renderGroup, uniform } from "three/tsl";
 import { TextureNode, UniformNode, Vector4 } from "three/webgpu";
@@ -5,9 +6,6 @@ import { TextureNode, UniformNode, Vector4 } from "three/webgpu";
 import { IRendererClouds } from "#/contract/renderer-clouds";
 import { getClearTexture } from "#/texture/placeholder-textures";
 import { SlotTextureNode } from "#/texture/slot-texture-node";
-
-/** `EPS_L`, the cover under which the engine draws no clouds at all. */
-const EPS_L: number = 0.001;
 
 /**
  * The clouds as `RenderClouds` draws them: the two keyframes' textures, their colour and cover, the dome's turn, and
@@ -36,6 +34,7 @@ export class CloudUniforms {
 
     this.color.value.set(red, green, blue, cover);
     this.rotation.value = ((clouds?.rotation ?? 0) * Math.PI) / 180;
+    // Under `EPS_L` of cover the engine draws no clouds at all.
     this.drawn.value = clouds && cover > EPS_L ? 1 : 0;
   }
 

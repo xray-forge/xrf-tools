@@ -1,4 +1,4 @@
-import { toDegrees } from "@xrf/math";
+import { EPS_L, toDegrees } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 
 import { IRendererLighting } from "#/contract/renderer-lighting";
@@ -7,9 +7,6 @@ import { DEFAULT_RENDERER_GRASS_WIND, DEFAULT_RENDERER_LIGHTING } from "#/lighti
 import { IWeatherLightingInput } from "#/weather/weather-lighting-input";
 import { IWeatherMixedKeyframeInput } from "#/weather/weather-mixed-keyframe-input";
 import { WeatherTextures } from "#/weather/weather-textures";
-
-/** `EPS_L`, under which it does not rain at all. */
-const RAIN_THRESHOLD: number = 0.001;
 
 /**
  * A weather's mix as the scene is lit by it, in renderer space: the view's switches hiding what they hide, the skies
@@ -32,8 +29,9 @@ export function toWeatherLighting(input: IWeatherLightingInput): IRendererLighti
       : null,
     grass: isWindy ? DEFAULT_RENDERER_GRASS_WIND : null,
     hemisphereColor: [mix.hemiColor[0], mix.hemiColor[1], mix.hemiColor[2]],
+    // Under `EPS_L` it does not rain at all.
     rain:
-      isRainy && weather.rain && mix.rainDensity >= RAIN_THRESHOLD
+      isRainy && weather.rain && mix.rainDensity >= EPS_L
         ? {
             color: mix.rainColor,
             density: mix.rainDensity,

@@ -1,11 +1,10 @@
+import { EPS } from "@xrf/math";
+
 import { TRendererColor } from "#/contract/renderer-color";
 import { ERendererEngine } from "#/contract/renderer-engine";
 import { IRendererLighting } from "#/contract/renderer-lighting";
 import { TRendererVector } from "#/contract/renderer-vector";
 import { IBaseLightingConstants } from "#/lighting/base-lighting-constants";
-
-/** The engine's `EPS`, which `env_color` carries so a black hemisphere is never exactly zero. */
-const EPS: number = 0.00001;
 
 /** `ps_r2_gloss_factor` (`Layers/xrRender/xrRender_console.cpp`). */
 const GLOSS_FACTOR: number = 4;
@@ -24,7 +23,8 @@ export function toBaseLightingConstants(lighting: IRendererLighting): IBaseLight
 
   return {
     ambient: scale(lighting.ambientColor, (channel: number) => Math.max(channel * 2, MINIMUM_AMBIENT)),
-    // `hemi_color * 2 + EPS` in `CEnvDescriptorMixer::lerp`, then doubled again by `phase_combine`.
+    // `hemi_color * 2 + EPS` in `CEnvDescriptorMixer::lerp`, so a black hemisphere is never exactly zero, then doubled
+    // again by `phase_combine`.
     environment: scale(lighting.hemisphereColor, (channel: number) => (channel * 2 + EPS) * 2),
     fogColor: lighting.fog?.color ?? [0, 0, 0],
     fogOffset,

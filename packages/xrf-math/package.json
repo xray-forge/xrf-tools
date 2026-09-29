@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "description": "Numeric helpers every xrf-tools TypeScript member shares: angles and series.",
+  "description": "Numeric helpers every xrf-tools TypeScript member shares: angles, series and the engine's epsilons.",
   "exports": {
     ".": "./src/index.ts"
   },
