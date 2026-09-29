@@ -7,6 +7,10 @@ import { TRendererVector } from "#/contract/renderer-vector";
 export interface IWeatherMix {
   /** Seconds since midnight. */
   time: number;
+  /** Where it was seen from, in engine space. */
+  view: TRendererVector;
+  /** How many of the level's modifiers reach the view. */
+  modifiers: number;
   /** The keyframes either side, by index. */
   keyframes: readonly [number, number];
   /** How far from the first to the second. */
@@ -14,6 +18,9 @@ export interface IWeatherMix {
   skyColor: TRendererColor;
   /** Radians. */
   skyRotation: number;
+  cloudsColor: readonly [number, number, number, number];
+  /** Radians. */
+  cloudsRotation: number;
   farPlane: number;
   fogColor: TRendererColor;
   fogDensity: number;

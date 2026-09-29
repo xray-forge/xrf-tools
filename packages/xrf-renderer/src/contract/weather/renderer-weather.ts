@@ -4,10 +4,11 @@ import { ERendererTextureEncoding, TRendererTextureSource } from "#/contract/sce
 import { IRendererSunPosition } from "#/contract/weather/renderer-sun-position";
 import { ERendererWeatherEngine } from "#/contract/weather/renderer-weather-engine";
 import { IRendererWeatherKeyframe } from "#/contract/weather/renderer-weather-keyframe";
+import { IRendererWeatherModifier } from "#/contract/weather/renderer-weather-modifier";
 
 /**
- * A weather cycle the renderer plays by itself: its keyframes, where its sun stands, and where every sky it names
- * is fetched from.
+ * A weather cycle the renderer plays by itself: its keyframes, where its sun stands, the effects it can play over it,
+ * the level's modifiers, and where every texture they name is fetched from.
  */
 export interface IRendererWeather {
   engine: ERendererWeatherEngine;
@@ -15,6 +16,10 @@ export interface IRendererWeather {
   keyframes: ReadonlyArray<IRendererWeatherKeyframe>;
   /** Twenty-four hours, midnight first, on an engine that stands the sun by its table; null otherwise. */
   sunTable: Nullable<ReadonlyArray<IRendererSunPosition>>;
-  /** Where each sky and irradiance cube the keyframes name is fetched from, by reference; one left out is not drawn. */
+  /** Every weather effect by name, its keyframes sorted by their time from its start. */
+  effects: Readonly<Record<string, ReadonlyArray<IRendererWeatherKeyframe>>>;
+  /** The level's `level.env_mod` volumes. */
+  modifiers: ReadonlyArray<IRendererWeatherModifier>;
+  /** Where each texture the keyframes name is fetched from, by reference; one left out is not drawn. */
   textures: Readonly<Record<string, Extract<TRendererTextureSource, { encoding: ERendererTextureEncoding.FETCH }>>>;
 }

@@ -9,6 +9,7 @@ import { Nullable } from "@xrf/types";
 import { IRendererSunPosition } from "#/contract/weather/renderer-sun-position";
 import { ERendererWeatherEngine } from "#/contract/weather/renderer-weather-engine";
 import { IRendererWeatherKeyframe } from "#/contract/weather/renderer-weather-keyframe";
+import { IRendererWeatherModifier } from "#/contract/weather/renderer-weather-modifier";
 import { IWeatherMix } from "#/weather/weather-mix";
 import { mixWeather, selectWeatherKeyframes, weighWeatherTime } from "#/weather/weather-mixer";
 import { EWeatherSun, TWeatherSun } from "#/weather/weather-sun";
@@ -20,6 +21,7 @@ interface IGoldenCase {
   sun: EWeatherSun;
   keyframes: Array<IRendererWeatherKeyframe>;
   sunTable: Nullable<Array<IRendererSunPosition>>;
+  modifiers: Array<IRendererWeatherModifier>;
   mixes: Array<IWeatherMix>;
 }
 
@@ -60,19 +62,22 @@ describe("mixWeather", () => {
 
       for (const expected of golden.mixes) {
         const actual: Nullable<IWeatherMix> = mixWeather(
-          { engine: golden.engine, keyframes: golden.keyframes, sun: toSun(golden) },
-          expected.time
+          { engine: golden.engine, keyframes: golden.keyframes, modifiers: golden.modifiers, sun: toSun(golden) },
+          { time: expected.time, view: expected.view }
         );
 
         expect(actual?.keyframes).toEqual(expected.keyframes);
-        expectClose(actual, expected, `${golden.name} at ${expected.time}`);
+        expectClose(actual, expected, `${golden.name} at ${expected.time} from ${expected.view.join(", ")}`);
       }
     }
   );
 
   it("mixes nothing for a cycle without keyframes", () => {
     expect(
-      mixWeather({ engine: ERendererWeatherEngine.VANILLA, keyframes: [], sun: { kind: EWeatherSun.AUTHORED } }, 0)
+      mixWeather(
+        { engine: ERendererWeatherEngine.VANILLA, keyframes: [], modifiers: [], sun: { kind: EWeatherSun.AUTHORED } },
+        { time: 0, view: [0, 0, 0] }
+      )
     ).toBeNull();
   });
 });

@@ -7,6 +7,7 @@ import { describe, expect, it, jest } from "@jest/globals";
 import { Nullable } from "@xrf/types";
 
 import { IRendererLighting } from "#/contract/renderer-lighting";
+import { TRendererVector } from "#/contract/renderer-vector";
 import { ERendererTextureEncoding } from "#/contract/scene/renderer-texture-source";
 import { IRendererWeather } from "#/contract/weather/renderer-weather";
 import { IRendererWeatherControl } from "#/contract/weather/renderer-weather-control";
@@ -27,14 +28,21 @@ const SOURCE = {
   picture: { body: "", headers: {}, url: "picture" },
 } as const;
 
+/** Where the camera stands, in engine space. */
+const ORIGIN: TRendererVector = [0, 0, 0];
+
 const WEATHER: IRendererWeather = {
+  effects: {},
   engine: ERendererWeatherEngine.VANILLA,
   keyframes: KEYFRAMES,
+  modifiers: [],
   sunTable: null,
   textures: Object.fromEntries(
-    KEYFRAMES.flatMap((keyframe: IRendererWeatherKeyframe) => [keyframe.skyTexture, keyframe.skyTextureEnv]).map(
-      (reference: string) => [reference, SOURCE]
-    )
+    KEYFRAMES.flatMap((keyframe: IRendererWeatherKeyframe) => [
+      keyframe.skyTexture,
+      keyframe.skyTextureEnv,
+      keyframe.cloudsTexture,
+    ]).map((reference: string) => [reference, SOURCE])
   ),
 };
 
@@ -64,7 +72,7 @@ describe("WeatherPlayer", () => {
   it("lights nothing while no weather plays", () => {
     const { player } = createPlayer();
 
-    expect(player.advance(0)).toBeNull();
+    expect(player.advance(0, ORIGIN)).toBeNull();
     expect(player.isPlaying).toBe(false);
     expect(player.report).toBeNull();
   });
@@ -74,15 +82,15 @@ describe("WeatherPlayer", () => {
 
     player.take(WEATHER);
     player.setControl(PLAYING);
-    player.advance(1_000);
-    player.advance(1_500);
+    player.advance(1_000, ORIGIN);
+    player.advance(1_500, ORIGIN);
 
     expect(player.report?.time).toBeCloseTo(6 * 3600 + 30, 6);
 
     player.setControl({ ...PLAYING, isPaused: true, time: null });
 
-    expect(player.advance(2_000)).not.toBeNull();
-    expect(player.advance(3_000)).toBeNull();
+    expect(player.advance(2_000, ORIGIN)).not.toBeNull();
+    expect(player.advance(3_000, ORIGIN)).toBeNull();
     expect(player.report?.time).toBeCloseTo(6 * 3600 + 30, 6);
   });
 
@@ -91,12 +99,19 @@ describe("WeatherPlayer", () => {
 
     player.take(WEATHER);
     player.setControl({ ...PLAYING, isPaused: true, time: 7 * 3600 });
-    player.advance(0);
+    player.advance(0, ORIGIN);
 
     // Between six and noon, with nine at night next.
     expect([...held].sort()).toEqual(
-      [KEYFRAMES[1], KEYFRAMES[2], KEYFRAMES[3]]
-        .flatMap((keyframe: IRendererWeatherKeyframe) => [keyframe.skyTexture, keyframe.skyTextureEnv])
+      [
+        ...new Set(
+          [KEYFRAMES[1], KEYFRAMES[2], KEYFRAMES[3]].flatMap((keyframe: IRendererWeatherKeyframe) => [
+            keyframe.skyTexture,
+            keyframe.skyTextureEnv,
+            keyframe.cloudsTexture,
+          ])
+        ),
+      ]
         .map((reference: string) => `@weather/${reference}`)
         .sort()
     );
@@ -112,7 +127,7 @@ describe("WeatherPlayer", () => {
     player.take(WEATHER);
     player.setControl({ ...PLAYING, isPaused: true, time: 12 * 3600 });
 
-    const lit: Nullable<IRendererLighting> = player.advance(0);
+    const lit: Nullable<IRendererLighting> = player.advance(0, ORIGIN);
     const noon: IRendererWeatherKeyframe = KEYFRAMES[2];
     const [x, y, z] = noon.sunDirection ?? [0, 0, 0];
 
@@ -121,6 +136,11 @@ describe("WeatherPlayer", () => {
     expect(lit?.sunDirection[2]).toBeCloseTo(-z, 5);
     expect(lit?.sky.textures).toEqual([`@weather/${KEYFRAMES[1].skyTexture}`, `@weather/${noon.skyTexture}`]);
     expect(lit?.sky.blend).toBe(1);
+    expect(lit?.sky.clouds).toEqual({
+      color: noon.cloudsColor,
+      rotation: expect.closeTo((noon.cloudsRotation * 180) / Math.PI, 4),
+      textures: [`@weather/${KEYFRAMES[1].cloudsTexture}`, `@weather/${noon.cloudsTexture}`],
+    });
     expect(lit?.fog).toEqual({
       color: noon.fogColor,
       density: noon.fogDensity,
@@ -130,7 +150,7 @@ describe("WeatherPlayer", () => {
 
     player.setControl({ ...PLAYING, isFogged: false, isPaused: true, isWindy: false, time: null });
 
-    const plain: Nullable<IRendererLighting> = player.advance(0);
+    const plain: Nullable<IRendererLighting> = player.advance(0, ORIGIN);
 
     expect(plain?.fog).toBeNull();
     expect(plain?.trees).toBeNull();
@@ -143,6 +163,70 @@ describe("WeatherPlayer", () => {
     player.take(WEATHER);
     player.setControl({ ...PLAYING, isDynamicSun: true, isPaused: true, time: 0 });
 
-    expect(player.advance(0)?.sunColor).toEqual([0, 0, 0]);
+    expect(player.advance(0, ORIGIN)?.sunColor).toEqual([0, 0, 0]);
+  });
+
+  it("plays an effect over the cycle until it gives the cycle back, and ends it on a seek", () => {
+    const { player } = createPlayer();
+    const effect: ReadonlyArray<IRendererWeatherKeyframe> = [0, 60].map((time: number) => ({
+      ...KEYFRAMES[0],
+      fogDistance: 5,
+      time,
+    }));
+
+    player.take({ ...WEATHER, effects: { fx_test: effect } });
+    player.setControl({ ...PLAYING, factor: 60, time: 43_000 });
+    player.advance(0, ORIGIN);
+    player.playEffect("fx_test");
+    player.advance(0, ORIGIN);
+
+    expect(player.report?.effect).toEqual({ name: "fx_test", remaining: expect.any(Number) });
+    expect(player.report?.keyframes).toBeNull();
+
+    // Five real seconds of lead-in at sixty to one, then a minute of game time to the effect's own keyframe.
+    for (let second: number = 1; second <= 5; second += 1) {
+      player.advance(second * 1000, ORIGIN);
+    }
+
+    expect(player.advance(6_000, ORIGIN)?.fog?.distance).toBeCloseTo(5, 6);
+
+    player.setControl({ ...PLAYING, time: 43_000 });
+    player.advance(6_500, ORIGIN);
+
+    expect(player.report?.effect).toBeNull();
+    expect(player.report?.keyframes).not.toBeNull();
+  });
+
+  it("weighs the level's modifiers from where the camera stands", () => {
+    const { player } = createPlayer();
+
+    player.take({
+      ...WEATHER,
+      modifiers: [
+        {
+          ambient: [0, 0, 0],
+          farPlane: 1000,
+          fogColor: [0, 0, 0],
+          fogDensity: 0,
+          flags: 1,
+          hemiColor: [0, 0, 0],
+          position: [0, 0, 0],
+          power: 1,
+          radius: 10,
+          skyColor: [0, 0, 0],
+        },
+      ],
+    });
+    player.setControl({ ...PLAYING, isPaused: true, time: 43_200 });
+
+    const inside: Nullable<IRendererLighting> = player.advance(0, ORIGIN);
+
+    expect(inside?.fog?.farPlane).toBeCloseTo((KEYFRAMES[2].farPlane + 1000) / 2, 3);
+    expect(player.report?.modifiers).toBe(1);
+
+    expect(player.advance(100, [20, 0, 0])?.fog?.farPlane).toBeCloseTo(KEYFRAMES[2].farPlane, 3);
+    expect(player.report?.modifiers).toBe(0);
+    // A camera barely moved weighs nothing again.
+    expect(player.advance(200, [20.1, 0, 0])).toBeNull();
   });
 });

@@ -256,6 +256,11 @@ export class RendererHost {
 
         return this.ensureScheduled();
 
+      case ERendererRequest.WEATHER_EFFECT:
+        this.weather.playEffect(request.effect);
+
+        return this.ensureScheduled();
+
       case ERendererRequest.CAMERA:
         return this.rig.describe(request.camera);
 
@@ -494,6 +499,7 @@ export class RendererHost {
     this.uniforms.treeWind.update(time);
     this.uniforms.grassWind.update(time);
     this.uniforms.water.update(time);
+    this.uniforms.clouds.update(time);
 
     // What the view sees, from the view unjittered, so the jitter never flickers a choice.
     this.cullView.take(viewCamera, this.uniforms.viewDistance);
@@ -562,7 +568,9 @@ export class RendererHost {
    * @param now - When the frame began.
    */
   private advanceWeather(now: number): void {
-    const lighting: Nullable<IRendererLighting> = this.weather.advance(now);
+    const { x, y, z } = this.rig.camera.position;
+    // Engine `z` is renderer `z` negated.
+    const lighting: Nullable<IRendererLighting> = this.weather.advance(now, [x, y, -z]);
 
     if (lighting) {
       this.light(lighting);

@@ -311,6 +311,13 @@ export class RendererClient {
   }
 
   /**
+   * @param effect - The weather effect to play over the cycle from the clock's time, or null to end the one playing.
+   */
+  public playWeatherEffect(effect: Nullable<string>): void {
+    this.post({ effect, kind: ERendererRequest.WEATHER_EFFECT });
+  }
+
+  /**
    * @param control - How to play the weather from now on.
    */
   public setWeatherControl(control: IRendererWeatherControl): void {

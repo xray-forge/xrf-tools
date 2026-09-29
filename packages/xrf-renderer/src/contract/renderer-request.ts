@@ -74,6 +74,8 @@ export enum ERendererRequest {
   WEATHER = "@renderer/weather",
   /** Play the weather like this. */
   WEATHER_CONTROL = "@renderer/weatherControl",
+  /** Play this weather effect over the cycle from the clock's time, or end the one playing. */
+  WEATHER_EFFECT = "@renderer/weatherEffect",
   /** Drive the camera like this. */
   CAMERA = "@renderer/camera",
   /** Do this with the camera. */
@@ -120,6 +122,7 @@ export type TRendererRequest =
   | { kind: ERendererRequest.LIGHTING; lighting: IRendererLighting }
   | { kind: ERendererRequest.WEATHER; weather: Nullable<IRendererWeather> }
   | { kind: ERendererRequest.WEATHER_CONTROL; control: IRendererWeatherControl }
+  | { kind: ERendererRequest.WEATHER_EFFECT; effect: Nullable<string> }
   | { kind: ERendererRequest.CAMERA; camera: TRendererCamera }
   | { kind: ERendererRequest.CAMERA_COMMAND; command: TRendererCameraCommand }
   | { kind: ERendererRequest.INPUT; event: IRenderInputEvent }

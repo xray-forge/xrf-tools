@@ -3,10 +3,13 @@ import { Nullable } from "@xrf/types";
 import { TRendererVector } from "#/contract/renderer-vector";
 import { ERendererWeatherEngine } from "#/contract/weather/renderer-weather-engine";
 import { IRendererWeatherKeyframe } from "#/contract/weather/renderer-weather-keyframe";
+import { IRendererWeatherModifier } from "#/contract/weather/renderer-weather-modifier";
 import { IDynamicSun, toDynamicSun } from "#/weather/dynamic-sun";
 import { toSunTableDirection } from "#/weather/sun-table-direction";
 import { toWeatherTimeOfDay, WEATHER_DAY_LENGTH } from "#/weather/weather-day";
 import { IWeatherMix } from "#/weather/weather-mix";
+import { IWeatherMixPoint } from "#/weather/weather-mix-point";
+import { IWeatherModifiersSum, toWeatherModifiersSum, WEATHER_MODIFIER_FLAGS } from "#/weather/weather-modifiers-sum";
 import { EWeatherSun, TWeatherSun } from "#/weather/weather-sun";
 
 /** `EPS`, what `TimeWeight` takes a zero span by. */
@@ -16,25 +19,29 @@ const EPS: number = 0.00001;
 const DOWN: TRendererVector = [0, -1, 0];
 
 /**
- * What a cycle is mixed from: `CEnvironment::lerp` without modifiers.
+ * What a cycle is mixed from: `CEnvironment::lerp`, with the modifiers reaching the view.
  */
 export interface IWeatherMixer {
   /** Sorted by time. */
   keyframes: ReadonlyArray<IRendererWeatherKeyframe>;
   engine: ERendererWeatherEngine;
   sun: TWeatherSun;
+  /** The level's `level.env_mod` volumes. */
+  modifiers: ReadonlyArray<IRendererWeatherModifier>;
 }
 
 /**
- * `CEnvDescriptorMixer::lerp` of the keyframes around a time of day.
+ * `CEnvDescriptorMixer::lerp` of the keyframes around a time of day, seen from a point.
  *
  * @param mixer - What is mixed.
- * @param at - Seconds, wrapped into the day.
+ * @param point - When, wrapped into the day, and from where.
  * @returns The mix, or null for a cycle without keyframes.
  */
-export function mixWeather(mixer: IWeatherMixer, at: number): Nullable<IWeatherMix> {
-  const { keyframes, engine, sun } = mixer;
-  const time: number = toWeatherTimeOfDay(at);
+export function mixWeather(mixer: IWeatherMixer, point: IWeatherMixPoint): Nullable<IWeatherMix> {
+  const { keyframes, engine, sun, modifiers } = mixer;
+  const time: number = toWeatherTimeOfDay(point.time);
+  const modified: IWeatherModifiersSum = toWeatherModifiersSum(modifiers, point.view);
+  const scale: number = 1 / (modified.power + 1);
   const selected: Nullable<readonly [number, number]> = selectWeatherKeyframes(keyframes, time);
 
   if (!selected) {
@@ -53,8 +60,30 @@ export function mixWeather(mixer: IWeatherMixer, at: number): Nullable<IWeatherM
     return from.map((value: number, index: number) => scalar(value, to[index])) as unknown as T;
   }
 
-  const farPlane: number = scalar(a.farPlane, b.farPlane);
-  const fogDensity: number = scalar(a.fogDensity, b.fogDensity);
+  // A value some modifier reaches is the mix plus what they add, of which the environment keeps its share.
+  function modify(flag: number, value: number, added: number): number {
+    return modified.flags & flag ? (value + added) * scale : value;
+  }
+
+  function modifyVector(flag: number, value: TRendererVector, added: TRendererVector): TRendererVector {
+    return [modify(flag, value[0], added[0]), modify(flag, value[1], added[1]), modify(flag, value[2], added[2])];
+  }
+
+  const farPlane: number = modify(WEATHER_MODIFIER_FLAGS.FAR_PLANE, scalar(a.farPlane, b.farPlane), modified.farPlane);
+  const fogDensity: number = modify(
+    WEATHER_MODIFIER_FLAGS.FOG_DENSITY,
+    scalar(a.fogDensity, b.fogDensity),
+    modified.fogDensity
+  );
+  const hemiColor: TRendererVector = modifyVector(
+    WEATHER_MODIFIER_FLAGS.HEMI_COLOR,
+    [
+      scalar(a.hemiColor[0], b.hemiColor[0]),
+      scalar(a.hemiColor[1], b.hemiColor[1]),
+      scalar(a.hemiColor[2], b.hemiColor[2]),
+    ],
+    modified.hemiColor
+  );
   const fogDistance: number = toFogDistance(engine, scalar(a.fogDistance, b.fogDistance), farPlane);
 
   let sunColor: TRendererVector = vector(a.sunColor, b.sunColor);
@@ -81,20 +110,28 @@ export function mixWeather(mixer: IWeatherMixer, at: number): Nullable<IWeatherM
   }
 
   return {
-    ambientColor: vector(a.ambientColor, b.ambientColor),
+    ambientColor: modifyVector(
+      WEATHER_MODIFIER_FLAGS.AMBIENT_COLOR,
+      vector(a.ambientColor, b.ambientColor),
+      modified.ambient
+    ),
+    cloudsColor: vector(a.cloudsColor, b.cloudsColor),
+    cloudsRotation: scalar(a.cloudsRotation, b.cloudsRotation),
     farPlane,
-    fogColor: vector(a.fogColor, b.fogColor),
+    fogColor: modifyVector(WEATHER_MODIFIER_FLAGS.FOG_COLOR, vector(a.fogColor, b.fogColor), modified.fogColor),
     fogDensity,
     fogDistance,
     fogFar: 0.99 * fogDistance,
     fogNear: (1 - fogDensity) * 0.85 * fogDistance,
-    hemiColor: vector(a.hemiColor, b.hemiColor),
+    hemiColor: [...hemiColor, scalar(a.hemiColor[3], b.hemiColor[3])],
     keyframes: selected,
-    skyColor: vector(a.skyColor, b.skyColor),
+    modifiers: modified.count,
+    skyColor: modifyVector(WEATHER_MODIFIER_FLAGS.SKY_COLOR, vector(a.skyColor, b.skyColor), modified.skyColor),
     skyRotation: scalar(a.skyRotation, b.skyRotation),
     sunColor,
     sunDirection,
     time,
+    view: point.view,
     treeAmplitude: scalar(a.treeAmplitude, b.treeAmplitude),
     treeRotation: scalar(a.treeRotation, b.treeRotation),
     treeSpeed: scalar(a.treeSpeed, b.treeSpeed),

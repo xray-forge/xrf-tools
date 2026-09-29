@@ -16,6 +16,12 @@ export interface IRendererWeatherKeyframe {
   skyColor: TRendererColor;
   /** Radians. */
   skyRotation: number;
+  /** The `clouds_texture` reference, a key of the weather's textures; empty for none. */
+  cloudsTexture: string;
+  /** The colour scaled by its multiplier, the cover in alpha. */
+  cloudsColor: readonly [number, number, number, number];
+  /** Radians. */
+  cloudsRotation: number;
   farPlane: number;
   fogColor: TRendererColor;
   fogDensity: number;
