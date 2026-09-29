@@ -1,4 +1,5 @@
 import { Typography } from "@mui/material";
+import { Nullable } from "@xrf/types";
 import { ReactElement, ReactNode, useCallback } from "react";
 
 import { EditorPopoverAction } from "@/core/shell/editor/EditorPopoverAction";
@@ -15,6 +16,8 @@ export interface IEditorPopoverToggleProps extends BaseComponentProps {
   /** Names the checkbox at the head of the popover, which is the toggle for a keyboard. */
   toggleLabel: string;
   isDisabled?: boolean;
+  /** Why the settings behind it do nothing now, said in their place; the toggle still turns over. */
+  lockedReason?: Nullable<string>;
   onToggle: () => void;
   /** The settings the toggle turns on and off. */
   children: ReactNode;
@@ -33,6 +36,7 @@ export function EditorPopoverToggle({
   isOn,
   toggleLabel,
   isDisabled = false,
+  lockedReason = null,
   onToggle,
   children,
 }: IEditorPopoverToggleProps): ReactElement {
@@ -57,7 +61,13 @@ export function EditorPopoverToggle({
 
         <CheckboxFormRow label={toggleLabel} isChecked={isOn} onChange={onToggle} />
 
-        {children}
+        {lockedReason ? (
+          <Typography className={"text-text-secondary"} variant={"caption"}>
+            {lockedReason}
+          </Typography>
+        ) : (
+          children
+        )}
       </div>
     </EditorPopoverAction>
   );

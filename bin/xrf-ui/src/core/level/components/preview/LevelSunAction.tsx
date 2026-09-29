@@ -18,6 +18,8 @@ interface ILevelSunActionProps extends BaseComponentProps {
   lighting: ILevelLighting;
   /** The sun the open level was compiled against, or null where it names none. */
   sun: Nullable<LevelSunDescription>;
+  /** Why its settings do nothing now, or null while they light the level. */
+  lockedReason?: Nullable<string>;
   onToggle: () => void;
   onChange: (lighting: ILevelLighting) => void;
 }
@@ -32,6 +34,7 @@ export function LevelSunAction({
   isOn,
   lighting,
   sun,
+  lockedReason = null,
   onToggle,
   onChange,
 }: ILevelSunActionProps): ReactElement {
@@ -66,10 +69,15 @@ export function LevelSunAction({
       id={id}
       className={className}
       label={"Sun"}
-      description={`Sun ${formatDegrees(lighting.sunElevation)} up at ${formatDegrees(lighting.sunAzimuth)}`}
+      description={
+        lockedReason
+          ? "Sun where the weather stands it"
+          : `Sun ${formatDegrees(lighting.sunElevation)} up at ${formatDegrees(lighting.sunAzimuth)}`
+      }
       icon={<WbSunnyIcon />}
       isOn={isOn}
       toggleLabel={"Show the sun in the sky"}
+      lockedReason={lockedReason}
       onToggle={onToggle}
     >
       <RenderLightingControls lighting={lighting} onChange={onSet} />

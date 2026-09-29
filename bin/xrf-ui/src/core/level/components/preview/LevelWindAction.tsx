@@ -1,5 +1,6 @@
 import { default as AirIcon } from "@mui/icons-material/Air";
 import { Button } from "@mui/material";
+import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
 import { ILevelLighting } from "@/core/level/lib/lighting/level-lighting";
@@ -13,6 +14,8 @@ import { usePartialChange } from "@/lib/react/use-partial-change";
 interface ILevelWindActionProps extends BaseComponentProps {
   isOn: boolean;
   lighting: ILevelLighting;
+  /** Why its settings do nothing now, or null while they light the level. */
+  lockedReason?: Nullable<string>;
   onToggle: () => void;
   onChange: (lighting: ILevelLighting) => void;
 }
@@ -26,6 +29,7 @@ export function LevelWindAction({
   className,
   isOn,
   lighting,
+  lockedReason = null,
   onToggle,
   onChange,
 }: ILevelWindActionProps): ReactElement {
@@ -38,11 +42,16 @@ export function LevelWindAction({
       className={className}
       label={"Wind"}
       description={
-        isOn ? `Trees sway, ${formatNumber(lighting.windAmplitude, 3)} of their height` : "Wind off, trees stand still"
+        !isOn
+          ? "Wind off, trees stand still"
+          : lockedReason
+            ? "Trees sway as the weather blows"
+            : `Trees sway, ${formatNumber(lighting.windAmplitude, 3)} of their height`
       }
       icon={<AirIcon />}
       isOn={isOn}
       toggleLabel={"Sway the trees"}
+      lockedReason={lockedReason}
       onToggle={onToggle}
     >
       <RenderValueSlider

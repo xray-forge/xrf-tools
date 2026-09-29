@@ -65,4 +65,32 @@ describe("EditorPopoverToggle", () => {
       "Fog total at 350 m"
     );
   });
+
+  it("says why its settings do nothing in their place, and still turns over from its checkbox", async () => {
+    const onToggle = jest.fn();
+    const { getByRole, findByRole, queryByRole } = renderWithProviders(
+      <EditorPopoverToggle
+        label={"Fog"}
+        description={"Fog as the weather sets it"}
+        icon={<FoggyIcon />}
+        isOn
+        toggleLabel={"Draw the fog"}
+        lockedReason={"The weather sets it"}
+        onToggle={onToggle}
+      >
+        <button>Distance</button>
+      </EditorPopoverToggle>
+    );
+
+    fireEvent.contextMenu(getByRole("button", { name: "Fog" }));
+
+    const dialog: HTMLElement = await findByRole("dialog", { name: "Fog" });
+
+    expect(dialog).toHaveTextContent("The weather sets it");
+    expect(queryByRole("button", { name: "Distance" })).not.toBeInTheDocument();
+
+    await userEvent.click(getByRole("checkbox", { name: "Draw the fog" }));
+
+    expect(onToggle).toHaveBeenCalledTimes(1);
+  });
 });

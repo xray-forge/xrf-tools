@@ -1,5 +1,6 @@
 import { default as FoggyIcon } from "@mui/icons-material/Foggy";
 import { Button } from "@mui/material";
+import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
 import { DEFAULT_LEVEL_FOG, LEVEL_FOG_LIMITS } from "@/core/level/lib/lighting/level-fog";
@@ -13,6 +14,8 @@ import { usePartialChange } from "@/lib/react/use-partial-change";
 interface ILevelFogActionProps extends BaseComponentProps {
   isOn: boolean;
   lighting: ILevelLighting;
+  /** Why its settings do nothing now, or null while they light the level. */
+  lockedReason?: Nullable<string>;
   onToggle: () => void;
   onChange: (lighting: ILevelLighting) => void;
 }
@@ -26,6 +29,7 @@ export function LevelFogAction({
   className,
   isOn,
   lighting,
+  lockedReason = null,
   onToggle,
   onChange,
 }: ILevelFogActionProps): ReactElement {
@@ -37,10 +41,13 @@ export function LevelFogAction({
       id={id}
       className={className}
       label={"Fog"}
-      description={isOn ? `Fog total at ${lighting.fogDistance} m` : "Fog off"}
+      description={
+        isOn ? (lockedReason ? "Fog as the weather sets it" : `Fog total at ${lighting.fogDistance} m`) : "Fog off"
+      }
       icon={<FoggyIcon />}
       isOn={isOn}
       toggleLabel={"Draw the fog"}
+      lockedReason={lockedReason}
       onToggle={onToggle}
     >
       <RenderValueSlider

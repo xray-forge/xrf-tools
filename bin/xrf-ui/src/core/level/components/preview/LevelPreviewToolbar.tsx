@@ -48,6 +48,8 @@ interface ILevelPreviewToolbarProps extends BaseComponentProps {
   settings: IRendererFeatureSettings;
   /** Whether the settings time every viewport's passes. */
   isGpuTimed: boolean;
+  /** Why the sun, fog and wind settings do nothing now, or null while they light the level. */
+  lightingLock?: Nullable<string>;
   /** Value pickers the surface contributes, drawn last, as every toolbar in this application orders them. */
   actions?: ReactNode;
   onChangeOptions: (options: ILevelViewOptions) => void;
@@ -78,6 +80,7 @@ export function LevelPreviewToolbar({
   featureView,
   settings,
   isGpuTimed,
+  lightingLock = null,
   actions,
   onChangeOptions,
   onChangeLighting,
@@ -174,6 +177,7 @@ export function LevelPreviewToolbar({
             isOn={options.isSunVisible}
             lighting={lighting}
             sun={sun}
+            lockedReason={lightingLock}
             onToggle={() => onToggle("isSunVisible")}
             onChange={onChangeLighting}
           />
@@ -205,6 +209,7 @@ export function LevelPreviewToolbar({
           <LevelFogAction
             isOn={options.isFogged}
             lighting={lighting}
+            lockedReason={lightingLock}
             onToggle={() => onToggle("isFogged")}
             onChange={onChangeLighting}
           />
@@ -228,6 +233,7 @@ export function LevelPreviewToolbar({
           <LevelWindAction
             isOn={options.isWindy}
             lighting={lighting}
+            lockedReason={lightingLock}
             onToggle={() => onToggle("isWindy")}
             onChange={onChangeLighting}
           />
