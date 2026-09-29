@@ -2,14 +2,12 @@ import { default as WaterDropIcon } from "@mui/icons-material/WaterDrop";
 import { ReactElement } from "react";
 
 import { ThunderboltCollection } from "@/core/ipc/types/xrf-environment";
+import { LevelManualWeatherSlider } from "@/core/level/components/weather/LevelManualWeatherSlider";
+import { LevelManualWeatherVectorField } from "@/core/level/components/weather/LevelManualWeatherVectorField";
 import { LevelWeatherCollectionSelect } from "@/core/level/components/weather/LevelWeatherCollectionSelect";
 import { LevelWeatherResetButton } from "@/core/level/components/weather/LevelWeatherResetButton";
-import { LevelWeatherVectorField } from "@/core/level/components/weather/LevelWeatherVectorField";
 import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
 import { ILevelManualWeather } from "@/core/level/lib/weather/level-manual-weather";
-import { LEVEL_MANUAL_WEATHER_LIMITS } from "@/core/level/lib/weather/level-manual-weather-limits";
-import { toLevelWeatherTriple } from "@/core/level/lib/weather/level-weather-vector";
-import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
 import { EditorPopoverGroup, EditorPopoverGroupSection } from "@/core/shell/editor/EditorPopoverGroup";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatSeconds } from "@/lib/format/duration";
@@ -65,20 +63,9 @@ export function LevelRainAction({
       isActive={isRaining || isStriking}
     >
       <EditorPopoverGroupSection label={"Rain"} isOn={isRainy} onToggle={() => onToggle("isRainy")}>
-        <RenderValueSlider
-          label={"rain_density"}
-          value={manual.rainDensity}
-          {...LEVEL_MANUAL_WEATHER_LIMITS.rainDensity}
-          format={formatPercent}
-          onChange={(rainDensity: number) => onEdit({ rainDensity })}
-        />
+        <LevelManualWeatherSlider field={"rainDensity"} manual={manual} format={formatPercent} onEdit={onEdit} />
 
-        <LevelWeatherVectorField
-          label={"rain_color"}
-          isColor
-          value={manual.rainColor}
-          onChange={(rainColor) => onEdit({ rainColor: toLevelWeatherTriple(rainColor) })}
-        />
+        <LevelManualWeatherVectorField field={"rainColor"} isColor manual={manual} onEdit={onEdit} />
       </EditorPopoverGroupSection>
 
       <EditorPopoverGroupSection label={"Thunder"} isOn={isThundering} onToggle={() => onToggle("isThundering")}>
@@ -88,20 +75,13 @@ export function LevelRainAction({
           onChange={(thunderboltCollection: string) => onEdit({ thunderboltCollection })}
         />
 
-        <RenderValueSlider
-          label={"thunderbolt_period"}
-          value={manual.thunderboltPeriod}
-          {...LEVEL_MANUAL_WEATHER_LIMITS.thunderboltPeriod}
-          format={formatSeconds}
-          onChange={(thunderboltPeriod: number) => onEdit({ thunderboltPeriod })}
-        />
+        <LevelManualWeatherSlider field={"thunderboltPeriod"} manual={manual} format={formatSeconds} onEdit={onEdit} />
 
-        <RenderValueSlider
-          label={"thunderbolt_duration"}
-          value={manual.thunderboltDuration}
-          {...LEVEL_MANUAL_WEATHER_LIMITS.thunderboltDuration}
+        <LevelManualWeatherSlider
+          field={"thunderboltDuration"}
+          manual={manual}
           format={formatSeconds}
-          onChange={(thunderboltDuration: number) => onEdit({ thunderboltDuration })}
+          onEdit={onEdit}
         />
       </EditorPopoverGroupSection>
 

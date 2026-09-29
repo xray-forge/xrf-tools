@@ -2,13 +2,11 @@ import { default as FoggyIcon } from "@mui/icons-material/Foggy";
 import { ReactElement } from "react";
 
 import { ILevelManualWeatherActionProps } from "@/core/level/components/weather/level-manual-weather-action-props";
+import { LevelManualWeatherSlider } from "@/core/level/components/weather/LevelManualWeatherSlider";
+import { LevelManualWeatherVectorField } from "@/core/level/components/weather/LevelManualWeatherVectorField";
 import { LevelWeatherResetButton } from "@/core/level/components/weather/LevelWeatherResetButton";
-import { LevelWeatherVectorField } from "@/core/level/components/weather/LevelWeatherVectorField";
 import { ILevelManualWeather } from "@/core/level/lib/weather/level-manual-weather";
-import { LEVEL_MANUAL_WEATHER_LIMITS } from "@/core/level/lib/weather/level-manual-weather-limits";
-import { toLevelWeatherTriple } from "@/core/level/lib/weather/level-weather-vector";
 import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
-import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
 import { IRenderChoiceOption } from "@/core/render/lib/features";
 import { EditorPopoverToggle } from "@/core/shell/editor/EditorPopoverToggle";
 import { formatNumber, formatPercent } from "@/lib/format/number";
@@ -54,35 +52,22 @@ export function LevelFogAction({
       toggleLabel={"Draw the fog"}
       onToggle={onToggle}
     >
-      <LevelWeatherVectorField
-        label={"fog_color"}
-        isColor
-        value={manual.fogColor}
-        onChange={(fogColor) => onEdit({ fogColor: toLevelWeatherTriple(fogColor) })}
-      />
+      <LevelManualWeatherVectorField field={"fogColor"} isColor manual={manual} onEdit={onEdit} />
 
-      <RenderValueSlider
-        label={"fog_distance"}
-        value={manual.fogDistance}
-        {...LEVEL_MANUAL_WEATHER_LIMITS.fogDistance}
+      <LevelManualWeatherSlider
+        field={"fogDistance"}
+        manual={manual}
         format={(value: number) => `${formatNumber(value, 0)} m`}
-        onChange={(fogDistance: number) => onEdit({ fogDistance })}
+        onEdit={onEdit}
       />
 
-      <RenderValueSlider
-        label={"fog_density"}
-        value={manual.fogDensity}
-        {...LEVEL_MANUAL_WEATHER_LIMITS.fogDensity}
-        format={formatPercent}
-        onChange={(fogDensity: number) => onEdit({ fogDensity })}
-      />
+      <LevelManualWeatherSlider field={"fogDensity"} manual={manual} format={formatPercent} onEdit={onEdit} />
 
-      <RenderValueSlider
-        label={"far_plane"}
-        value={manual.farPlane}
-        {...LEVEL_MANUAL_WEATHER_LIMITS.farPlane}
+      <LevelManualWeatherSlider
+        field={"farPlane"}
+        manual={manual}
         format={(value: number) => `${formatNumber(value, 0)} m`}
-        onChange={(farPlane: number) => onEdit({ farPlane })}
+        onEdit={onEdit}
       />
 
       <RenderValueChoice

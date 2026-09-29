@@ -198,10 +198,10 @@ export function LevelPreviewToolbar({
             isOn={options.isWaterVisible}
             state={featureView.water}
             features={features}
-            waterIntensity={manual.waterIntensity}
+            manual={manual}
             onToggle={() => onToggle("isWaterVisible")}
             onChange={onChangeFeatures}
-            onWaterIntensity={(waterIntensity: number) => onEditManual({ waterIntensity })}
+            onEdit={onEditManual}
           />
 
           <LevelGrassAction

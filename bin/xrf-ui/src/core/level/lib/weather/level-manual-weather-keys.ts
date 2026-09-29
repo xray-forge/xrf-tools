@@ -1,0 +1,32 @@
+import { ILevelManualWeather } from "@/core/level/lib/weather/level-manual-weather";
+
+/** The key a weather config writes each field of a keyframe set by hand under, as OpenXRay reads it. */
+export const LEVEL_MANUAL_WEATHER_KEYS: Readonly<Record<keyof ILevelManualWeather, string>> = {
+  ambientColor: "ambient_color",
+  cloudsColor: "clouds_color",
+  cloudsRotation: "clouds_rotation",
+  cloudsTexture: "clouds_texture",
+  farPlane: "far_plane",
+  fogColor: "fog_color",
+  fogDensity: "fog_density",
+  fogDistance: "fog_distance",
+  hemisphereColor: "hemisphere_color",
+  rainColor: "rain_color",
+  rainDensity: "rain_density",
+  skyColor: "sky_color",
+  skyRotation: "sky_rotation",
+  skyTexture: "sky_texture",
+  sunAltitude: "sun_altitude",
+  sunColor: "sun_color",
+  sunLongitude: "sun_longitude",
+  thunderboltCollection: "thunderbolt_collection",
+  thunderboltDuration: "thunderbolt_duration",
+  thunderboltPeriod: "thunderbolt_period",
+  treesAmplitude: "trees_amplitude",
+  treesRotation: "trees_rotation",
+  treesSpeed: "trees_speed",
+  treesWave: "trees_wave",
+  waterIntensity: "water_intensity",
+  windDirection: "wind_direction",
+  windVelocity: "wind_velocity",
+};

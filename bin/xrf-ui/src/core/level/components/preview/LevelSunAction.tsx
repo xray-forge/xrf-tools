@@ -5,12 +5,10 @@ import { ReactElement, useCallback, useMemo } from "react";
 
 import { LevelSunDescription } from "@/core/ipc/types/xrf-app";
 import { ILevelManualWeatherActionProps } from "@/core/level/components/weather/level-manual-weather-action-props";
+import { LevelManualWeatherSlider } from "@/core/level/components/weather/LevelManualWeatherSlider";
+import { LevelManualWeatherVectorField } from "@/core/level/components/weather/LevelManualWeatherVectorField";
 import { LevelWeatherResetButton } from "@/core/level/components/weather/LevelWeatherResetButton";
-import { LevelWeatherVectorField } from "@/core/level/components/weather/LevelWeatherVectorField";
 import { ILevelManualWeather, toLevelManualSun } from "@/core/level/lib/weather/level-manual-weather";
-import { LEVEL_MANUAL_WEATHER_LIMITS } from "@/core/level/lib/weather/level-manual-weather-limits";
-import { toLevelWeatherQuad, toLevelWeatherTriple } from "@/core/level/lib/weather/level-weather-vector";
-import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
 import { EditorPopoverToggle } from "@/core/shell/editor/EditorPopoverToggle";
 import { formatDegrees } from "@/lib/format/angle";
 
@@ -65,46 +63,19 @@ export function LevelSunAction({
       toggleLabel={"Show the sun in the sky"}
       onToggle={onToggle}
     >
-      <LevelWeatherVectorField
-        label={"sun_color"}
-        isColor
-        value={manual.sunColor}
-        onChange={(sunColor) => onEdit({ sunColor: toLevelWeatherTriple(sunColor) })}
-      />
+      <LevelManualWeatherVectorField field={"sunColor"} isColor manual={manual} onEdit={onEdit} />
 
-      <RenderValueSlider
-        label={"sun_altitude"}
-        value={manual.sunAltitude}
-        {...LEVEL_MANUAL_WEATHER_LIMITS.sunAltitude}
-        format={formatDegrees}
-        onChange={(sunAltitude: number) => onEdit({ sunAltitude })}
-      />
+      <LevelManualWeatherSlider field={"sunAltitude"} manual={manual} format={formatDegrees} onEdit={onEdit} />
 
-      <RenderValueSlider
-        label={"sun_longitude"}
-        value={manual.sunLongitude}
-        {...LEVEL_MANUAL_WEATHER_LIMITS.sunLongitude}
-        format={formatDegrees}
-        onChange={(sunLongitude: number) => onEdit({ sunLongitude })}
-      />
+      <LevelManualWeatherSlider field={"sunLongitude"} manual={manual} format={formatDegrees} onEdit={onEdit} />
 
       <Typography className={"block text-text-secondary"} variant={"caption"}>
         {`setHP stands it ${reading}.`}
       </Typography>
 
-      <LevelWeatherVectorField
-        label={"ambient_color"}
-        isColor
-        value={manual.ambientColor}
-        onChange={(ambientColor) => onEdit({ ambientColor: toLevelWeatherTriple(ambientColor) })}
-      />
+      <LevelManualWeatherVectorField field={"ambientColor"} isColor manual={manual} onEdit={onEdit} />
 
-      <LevelWeatherVectorField
-        label={"hemisphere_color"}
-        isColor
-        value={manual.hemisphereColor}
-        onChange={(hemisphereColor) => onEdit({ hemisphereColor: toLevelWeatherQuad(hemisphereColor) })}
-      />
+      <LevelManualWeatherVectorField field={"hemisphereColor"} isColor manual={manual} onEdit={onEdit} />
 
       <Button size={"small"} disabled={!compiled} onClick={onUseCompiled}>
         {compiled ? "Use the level's compiled sun" : "This level names no sun"}

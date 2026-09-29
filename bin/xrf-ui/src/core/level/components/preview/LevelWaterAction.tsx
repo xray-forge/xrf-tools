@@ -5,8 +5,9 @@ import { ReactElement } from "react";
 
 import { ILevelFeatureActionProps } from "@/core/level/components/preview/level-feature-action-props";
 import { useLevelFeatureOverride } from "@/core/level/components/preview/use-level-feature-override";
+import { LevelManualWeatherSlider } from "@/core/level/components/weather/LevelManualWeatherSlider";
 import { describeLevelFeatureToggle } from "@/core/level/lib/features";
-import { LEVEL_MANUAL_WEATHER_LIMITS } from "@/core/level/lib/weather/level-manual-weather-limits";
+import { ILevelManualWeather } from "@/core/level/lib/weather/level-manual-weather";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
 import {
   formatWaterDistortion,
@@ -20,9 +21,9 @@ import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 import { formatPercent } from "@/lib/format/number";
 
 interface ILevelWaterActionProps extends ILevelFeatureActionProps<"water"> {
-  /** `water_intensity` of the keyframe on screen, which scales what the water reflects. */
-  waterIntensity: number;
-  onWaterIntensity: (waterIntensity: number) => void;
+  /** The keyframe on screen, whose `water_intensity` scales what the water reflects. */
+  manual: ILevelManualWeather;
+  onEdit: (patch: Partial<ILevelManualWeather>) => void;
 }
 
 /**
@@ -36,10 +37,10 @@ export function LevelWaterAction({
   isOn,
   state,
   features,
-  waterIntensity,
+  manual,
   onToggle,
   onChange,
-  onWaterIntensity,
+  onEdit,
 }: ILevelWaterActionProps): ReactElement {
   const { set, reset } = useLevelFeatureOverride("water", features, onChange);
   const water: IRendererWaterSettings = state.value;
@@ -63,13 +64,7 @@ export function LevelWaterAction({
       toggleLabel={"Draw the water"}
       onToggle={onToggle}
     >
-      <RenderValueSlider
-        label={"water_intensity"}
-        value={waterIntensity}
-        {...LEVEL_MANUAL_WEATHER_LIMITS.waterIntensity}
-        format={formatPercent}
-        onChange={onWaterIntensity}
-      />
+      <LevelManualWeatherSlider field={"waterIntensity"} manual={manual} format={formatPercent} onEdit={onEdit} />
 
       <CheckboxFormRow
         label={"Soft"}

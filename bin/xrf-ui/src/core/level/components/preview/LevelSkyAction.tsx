@@ -2,14 +2,12 @@ import { default as NightsStayIcon } from "@mui/icons-material/NightsStay";
 import { ReactElement } from "react";
 
 import { LevelWeatherTexture } from "@/core/ipc/types/xrf-app";
+import { LevelManualWeatherSlider } from "@/core/level/components/weather/LevelManualWeatherSlider";
+import { LevelManualWeatherVectorField } from "@/core/level/components/weather/LevelManualWeatherVectorField";
 import { LevelWeatherResetButton } from "@/core/level/components/weather/LevelWeatherResetButton";
 import { LevelWeatherTextureField } from "@/core/level/components/weather/LevelWeatherTextureField";
-import { LevelWeatherVectorField } from "@/core/level/components/weather/LevelWeatherVectorField";
 import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
 import { ILevelManualWeather } from "@/core/level/lib/weather/level-manual-weather";
-import { LEVEL_MANUAL_WEATHER_LIMITS } from "@/core/level/lib/weather/level-manual-weather-limits";
-import { toLevelWeatherQuad, toLevelWeatherTriple } from "@/core/level/lib/weather/level-weather-vector";
-import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
 import { EditorPopoverGroup, EditorPopoverGroupSection } from "@/core/shell/editor/EditorPopoverGroup";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatDegrees } from "@/lib/format/angle";
@@ -75,20 +73,9 @@ export function LevelSkyAction({
           onChange={(skyTexture: string) => onEdit({ skyTexture })}
         />
 
-        <LevelWeatherVectorField
-          label={"sky_color"}
-          isColor
-          value={manual.skyColor}
-          onChange={(skyColor) => onEdit({ skyColor: toLevelWeatherTriple(skyColor) })}
-        />
+        <LevelManualWeatherVectorField field={"skyColor"} isColor manual={manual} onEdit={onEdit} />
 
-        <RenderValueSlider
-          label={"sky_rotation"}
-          value={manual.skyRotation}
-          {...LEVEL_MANUAL_WEATHER_LIMITS.skyRotation}
-          format={formatDegrees}
-          onChange={(skyRotation: number) => onEdit({ skyRotation })}
-        />
+        <LevelManualWeatherSlider field={"skyRotation"} manual={manual} format={formatDegrees} onEdit={onEdit} />
       </EditorPopoverGroupSection>
 
       <EditorPopoverGroupSection label={"Clouds"} isOn={isClouded} onToggle={() => onToggle("isClouded")}>
@@ -99,20 +86,9 @@ export function LevelSkyAction({
           onChange={(cloudsTexture: string) => onEdit({ cloudsTexture })}
         />
 
-        <LevelWeatherVectorField
-          label={"clouds_color"}
-          isColor
-          value={manual.cloudsColor}
-          onChange={(cloudsColor) => onEdit({ cloudsColor: toLevelWeatherQuad(cloudsColor) })}
-        />
+        <LevelManualWeatherVectorField field={"cloudsColor"} isColor manual={manual} onEdit={onEdit} />
 
-        <RenderValueSlider
-          label={"clouds_rotation"}
-          value={manual.cloudsRotation}
-          {...LEVEL_MANUAL_WEATHER_LIMITS.cloudsRotation}
-          format={formatDegrees}
-          onChange={(cloudsRotation: number) => onEdit({ cloudsRotation })}
-        />
+        <LevelManualWeatherSlider field={"cloudsRotation"} manual={manual} format={formatDegrees} onEdit={onEdit} />
       </EditorPopoverGroupSection>
 
       <LevelWeatherResetButton keys={SKY_KEYS} onEdit={onEdit} />
