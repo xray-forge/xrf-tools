@@ -104,6 +104,7 @@ macro_rules! for_each_tauri_command_domain {
         open_spawn_models => crate::plugins::levels::commands::open_spawn_models::levels_open_spawn_models,
         read_level_cycle => crate::plugins::levels::commands::read_level_cycle::levels_read_level_cycle,
         read_level_weather => crate::plugins::levels::commands::read_level_weather::levels_read_level_weather,
+        resolve_level_textures => crate::plugins::levels::commands::resolve_level_textures::levels_resolve_level_textures,
       }
       @bulk {
         read_details(sessionId: "SessionId", detailsId: "SessionId") => crate::plugins::levels::routes::read_details::levels_read_details,

@@ -1765,13 +1765,6 @@ export type LevelRainDrop = {
   indices: Array<number>;
 };
 
-/** The sky cube a level is lit under while no weather plays, and its irradiance cube. */
-export type LevelSky = {
-  texture: LevelTextureReference;
-  /** Its `#small` twin, which lights the hemisphere. */
-  environment: LevelTextureReference;
-};
-
 /** Every `kind` the `LevelSource` union is told apart by, so a switch or a comparison names one. */
 export enum ELevelSource {
   /** A compiled level directory on disk, named by its filesystem path. */
@@ -1880,6 +1873,18 @@ export type LevelWeatherDescription = {
   /** The level's local overrides, `level.env_mod`; none where it has none. */
   modifiers: Array<EnvModifier>;
   rain: LevelRain;
+  /** Every sky the cycles and effects name, by reference, for a hand-set keyframe to be given. */
+  skies: Array<LevelWeatherTexture>;
+  /** Every clouds texture they name. */
+  clouds: Array<LevelWeatherTexture>;
+};
+
+/** A texture the game's weather names, which a hand-set keyframe may be given. */
+export type LevelWeatherTexture = {
+  /** The reference, and what it resolves to beside the level. */
+  texture: LevelTextureReference;
+  /** How many keyframes of the cycles and effects name it. */
+  uses: number;
 };
 
 /** What the machine as a whole is using. */
@@ -1988,8 +1993,6 @@ export type SelectedLevelDescription = {
    * search.
    */
   textures: Array<LevelTextureReference>;
-  /** The sky cube the level is lit under, which its water reflects. */
-  sky: LevelSky;
   /**
    * How the renderer draws each entry of the shader table, in its order, so a surface is cut out, blended and
    * detailed the way its blender says rather than drawn flat. Indexed by the shader id a packed surface carries.

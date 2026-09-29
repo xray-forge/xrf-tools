@@ -2,22 +2,17 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use xrf_environment::WeatherDescriptor;
 use xrf_level::LevelFile;
 use xrf_material::{XraySurfaceDescriptor, XrayTextureScope};
 use xrf_vfs::{XrayProbe, XrayResolution};
 
-use crate::plugins::levels::state::{LevelSky, LevelTextureReference};
+use crate::plugins::levels::state::LevelTextureReference;
 
 /// The shader an impostor is drawn with, whose atlas is bound beside a companion of its own.
 const IMPOSTOR_SHADER: &str = "details\\lod";
 
 /// What `details_lod.s` appends to the atlas for its `s_hemi`: a normal in colour, the hemisphere term in alpha.
 const IMPOSTOR_COMPANION_SUFFIX: &str = "_nm";
-
-/// The sky `default_clear` names at noon (`configs/environment/weathers/default_clear.ltx`, `[12:00:00]`), which the
-/// viewer draws a level under while no weather plays.
-pub const LEVEL_SKY_TEXTURE: &str = "sky\\sky_7_cube";
 
 /// Resolves every texture a level's surfaces bind: base textures, lightmaps, detail textures, bump pairs, and the
 /// companion an impostor's atlas is bound with.
@@ -92,19 +87,6 @@ pub fn resolve_surface_textures(
         }),
     )
     .collect()
-}
-
-/// The sky cube a level is lit under while no weather plays and its irradiance cube, resolved as any other texture.
-pub fn resolve_sky(probe: &XrayProbe, scope: &XrayTextureScope) -> LevelSky {
-  let locate = |reference: String| LevelTextureReference {
-    logical_path: resolve_reference(probe, scope, &reference),
-    reference,
-  };
-
-  LevelSky {
-    environment: locate(format!("{LEVEL_SKY_TEXTURE}{}", WeatherDescriptor::ENVIRONMENT_SUFFIX)),
-    texture: locate(LEVEL_SKY_TEXTURE.to_owned()),
-  }
 }
 
 /// Locates one texture reference the way the engine's own loader does, treating a rejected reference as absent rather

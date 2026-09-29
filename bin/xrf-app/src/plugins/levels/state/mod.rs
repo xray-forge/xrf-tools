@@ -24,7 +24,6 @@ pub(crate) use packed_sector::PackedSector;
 pub(crate) use packed_sectors::PackedSectors;
 pub(crate) use selection::level_details_description::LevelDetailsDescription;
 pub(crate) use selection::level_lights_description::LevelLightsDescription;
-pub(crate) use selection::level_sky::LevelSky;
 pub(crate) use selection::level_spawn_model_description::LevelSpawnModelDescription;
 pub(crate) use selection::level_spawn_models_description::LevelSpawnModelsDescription;
 pub(crate) use selection::level_spawn_placement::LevelSpawnPlacement;

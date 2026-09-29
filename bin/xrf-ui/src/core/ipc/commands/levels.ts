@@ -7,6 +7,7 @@ import {
   LevelLightsDescription,
   LevelOpenRequest,
   LevelSpawnModelsDescription,
+  LevelTextureReference,
   LevelWeatherCycle,
   LevelWeatherDescription,
   SelectedLevelDescription,
@@ -56,4 +57,10 @@ export const levelsCommands = {
    */
   readLevelWeather: (sessionId: SessionId) =>
     __TAURI_INVOKE<SessionSnapshot<LevelWeatherDescription>>("plugin:levels|read_level_weather", { sessionId }),
+  /** Resolve texture references as the open level resolves its own, for a viewer drawing one the level does not name. */
+  resolveLevelTextures: (sessionId: SessionId, references: Array<string>) =>
+    __TAURI_INVOKE<SessionSnapshot<Array<LevelTextureReference>>>("plugin:levels|resolve_level_textures", {
+      sessionId,
+      references,
+    }),
 };

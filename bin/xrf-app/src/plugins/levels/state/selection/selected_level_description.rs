@@ -4,7 +4,6 @@ use xrf_vfs::XrayRoots;
 use xrf_visual::{SectorOutline, VisualBounds};
 
 use crate::plugins::levels::state::level_source::LevelSource;
-use crate::plugins::levels::state::selection::level_sky::LevelSky;
 use crate::plugins::levels::state::selection::level_start::LevelStart;
 use crate::plugins::levels::state::selection::level_sun_description::LevelSunDescription;
 use crate::plugins::levels::state::selection::level_texture_reference::LevelTextureReference;
@@ -33,8 +32,6 @@ pub struct SelectedLevelDescription {
   /// Every texture the level's surfaces bind, resolved once so a sector arriving later is a lookup rather than a
   /// search.
   pub textures: Vec<LevelTextureReference>,
-  /// The sky cube the level is lit under, which its water reflects.
-  pub sky: LevelSky,
   /// How the renderer draws each entry of the shader table, in its order, so a surface is cut out, blended and
   /// detailed the way its blender says rather than drawn flat. Indexed by the shader id a packed surface carries.
   pub surfaces: Vec<XraySurfaceDescriptor>,

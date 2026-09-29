@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use xrf_chunk::XRayByteOrder;
 use xrf_environment::{
-  EnvironmentCatalog, EnvironmentReadOptions, EnvironmentReader, LevelWeather, SunTable, WeatherCycle,
+  EnvironmentCatalog, EnvironmentReadOptions, EnvironmentReader, LevelWeather, SunTable, WeatherCycle, WeatherKey,
 };
 use xrf_level::{EnvModifier, LevelEnvModFile};
 use xrf_ltx::LtxProject;
@@ -16,6 +16,7 @@ use crate::plugins::levels::state::selection::level_thunderbolts::LevelThunderbo
 use crate::plugins::levels::state::selection::level_weather_cycle::LevelWeatherCycle;
 use crate::plugins::levels::state::selection::level_weather_description::LevelWeatherDescription;
 use crate::plugins::levels::state::selection::level_weather_source::LevelWeatherSource;
+use crate::plugins::levels::state::selection::level_weather_texture::LevelWeatherTexture;
 use crate::plugins::levels::state::selection::selected_level::SelectedLevel;
 
 /// The game's environment configs as the open level's engine reads them, and which of its cycles the level plays.
@@ -71,7 +72,9 @@ impl LevelEnvironment {
         .collect(),
       engine: catalog.engine,
       modifiers: Self::read_modifiers(current, probe),
+      clouds: self.list_textures(&source, WeatherKey::CloudsTexture),
       rain: LevelRain::read(&source),
+      skies: self.list_textures(&source, WeatherKey::SkyTexture),
       offered: offered
         .iter()
         .map(|cycle| LevelWeatherCycle::of(cycle, &source))
@@ -89,6 +92,19 @@ impl LevelEnvironment {
       probe,
       scope: current.source.get_texture_scope(),
     }
+  }
+
+  /// Every texture of one kind the catalog's cycles and effects name, each once by name, with how many keyframes do.
+  fn list_textures(&self, source: &LevelWeatherSource, key: WeatherKey) -> Vec<LevelWeatherTexture> {
+    self
+      .catalog
+      .count_texts(key)
+      .into_iter()
+      .map(|(reference, uses)| LevelWeatherTexture {
+        texture: source.locate(&reference),
+        uses,
+      })
+      .collect()
   }
 
   /// The cycles the level's weather resolves to that the game has, each once, in the order offered.

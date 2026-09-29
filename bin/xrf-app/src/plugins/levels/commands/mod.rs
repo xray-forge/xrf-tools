@@ -8,3 +8,4 @@ pub(crate) mod open_sector;
 pub(crate) mod open_spawn_models;
 pub(crate) mod read_level_cycle;
 pub(crate) mod read_level_weather;
+pub(crate) mod resolve_level_textures;

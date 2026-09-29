@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use serde::Serialize;
 use xrf_engine_target::XrayEngine;
 
@@ -6,7 +8,7 @@ use crate::finding::EnvironmentFinding;
 use crate::level::WeatherGraphs;
 use crate::sun::{LensFlare, SunTable};
 use crate::thunderbolt::{Thunderbolt, ThunderboltCollection, ThunderboltSettings};
-use crate::weather::WeatherCycle;
+use crate::weather::{WeatherCycle, WeatherKey};
 
 /// A game's environment configs, everything under `configs\environment` that its engine reads, read as that engine
 /// reads them, with every problem found on the way.
@@ -77,5 +79,25 @@ impl EnvironmentCatalog {
 
   pub fn find_ambient_effect(&self, name: &str) -> Option<&AmbientEffect> {
     self.ambient_effects.iter().find(|effect| effect.name == name)
+  }
+
+  /// Every value of a text key the cycles and effects write, each once, with how many keyframes write it.
+  pub fn count_texts(&self, key: WeatherKey) -> BTreeMap<String, u32> {
+    let mut counts: BTreeMap<String, u32> = BTreeMap::new();
+
+    for keyframe in self
+      .cycles
+      .iter()
+      .chain(&self.effects)
+      .flat_map(|cycle| &cycle.keyframes)
+    {
+      let text: &str = keyframe.section.get_text(key, self.engine);
+
+      if !text.is_empty() {
+        *counts.entry(text.to_owned()).or_default() += 1;
+      }
+    }
+
+    counts
   }
 }

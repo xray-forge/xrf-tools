@@ -300,3 +300,28 @@ fn records_where_each_value_came_from_when_asked() {
       .contains_key("far_plane")
   );
 }
+
+#[test]
+fn counts_each_texture_the_cycles_and_effects_write_by_the_keyframes_writing_it() {
+  let night: String = vanilla_keyframe("00:00:00").replace("sky_texture = sky\\sky_cube", "sky_texture = sky\\night");
+  let clear: String = vanilla_keyframe("12:00:00").replace("clouds_texture = sky\\clouds", "clouds_texture =");
+  let fixture: EnvironmentFixture =
+    vanilla_cycle(&(night + &clear)).with("environment\\weather_effects\\flash.ltx", &vanilla_keyframe("00:00:05"));
+  let catalog = fixture.read(XrayEngine::Vanilla);
+
+  assert_eq!(
+    catalog
+      .count_texts(WeatherKey::SkyTexture)
+      .into_iter()
+      .collect::<Vec<_>>(),
+    vec![("sky\\night".to_owned(), 1), ("sky\\sky_cube".to_owned(), 2)]
+  );
+  // A keyframe writing none names no texture.
+  assert_eq!(
+    catalog
+      .count_texts(WeatherKey::CloudsTexture)
+      .into_iter()
+      .collect::<Vec<_>>(),
+    vec![("sky\\clouds".to_owned(), 2)]
+  );
+}

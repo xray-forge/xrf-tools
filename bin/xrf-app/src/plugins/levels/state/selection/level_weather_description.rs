@@ -7,6 +7,7 @@ use crate::plugins::environment::description::environment_cycle_entry::Environme
 use crate::plugins::levels::state::selection::level_rain::LevelRain;
 use crate::plugins::levels::state::selection::level_thunderbolts::LevelThunderbolts;
 use crate::plugins::levels::state::selection::level_weather_cycle::LevelWeatherCycle;
+use crate::plugins::levels::state::selection::level_weather_texture::LevelWeatherTexture;
 
 /// Everything a viewer plays the open level's weather from, as its engine loads it.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -28,4 +29,8 @@ pub struct LevelWeatherDescription {
   /// The level's local overrides, `level.env_mod`; none where it has none.
   pub modifiers: Vec<EnvModifier>,
   pub rain: LevelRain,
+  /// Every sky the cycles and effects name, by reference, for a hand-set keyframe to be given.
+  pub skies: Vec<LevelWeatherTexture>,
+  /// Every clouds texture they name.
+  pub clouds: Vec<LevelWeatherTexture>,
 }
