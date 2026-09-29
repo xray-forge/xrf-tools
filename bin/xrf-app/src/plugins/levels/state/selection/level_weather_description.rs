@@ -1,6 +1,6 @@
 use serde::Serialize;
 use xrf_engine_target::XrayEngine;
-use xrf_environment::{LevelWeather, SunTable};
+use xrf_environment::{LevelWeather, SunPosition};
 use xrf_level::EnvModifier;
 
 use crate::plugins::environment::description::environment_cycle_entry::EnvironmentCycleEntry;
@@ -22,8 +22,8 @@ pub struct LevelWeatherDescription {
   /// Every weather effect, which the game plays over a cycle.
   pub effects: Vec<LevelWeatherCycle>,
   pub thunderbolts: LevelThunderbolts,
-  /// Monolith's table of where the sun stands; none on OpenXRay.
-  pub sun_table: Option<SunTable>,
+  /// Monolith's table of where the sun stands, midnight first; none on OpenXRay.
+  pub sun_table: Option<Vec<SunPosition>>,
   /// The level's local overrides, `level.env_mod`; none where it has none.
   pub modifiers: Vec<EnvModifier>,
 }

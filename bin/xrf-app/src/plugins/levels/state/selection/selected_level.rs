@@ -14,6 +14,7 @@ use crate::plugins::levels::state::level_spawn::LevelSpawn;
 use crate::plugins::levels::state::level_spawn_visuals::LevelSpawnVisuals;
 use crate::plugins::levels::state::packed_details::PackedDetails;
 use crate::plugins::levels::state::packed_sectors::PackedSectors;
+use crate::plugins::levels::state::selection::level_sky::LevelSky;
 use crate::plugins::levels::state::selection::level_start::LevelStart;
 use crate::plugins::levels::state::selection::level_sun_description::LevelSunDescription;
 use crate::plugins::levels::state::selection::level_texture_reference::LevelTextureReference;
@@ -25,7 +26,7 @@ pub struct SelectedLevel {
   /// What each texture reference the level's surfaces bind came to, decided at open.
   pub textures: Vec<LevelTextureReference>,
   /// The sky cube the level is lit under, resolved at open.
-  pub sky: LevelTextureReference,
+  pub sky: LevelSky,
   /// How the renderer draws each entry of the shader table, in its order, decided at open.
   pub surfaces: Vec<XraySurfaceDescriptor>,
   /// The roots the level was opened in, kept so a later read searches what the open searched.

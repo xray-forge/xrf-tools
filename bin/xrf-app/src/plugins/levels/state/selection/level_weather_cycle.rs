@@ -1,6 +1,10 @@
+use std::collections::BTreeSet;
+
 use serde::Serialize;
-use xrf_engine_target::XrayEngine;
 use xrf_environment::{EnvironmentCatalog, EnvironmentFinding, WeatherCycle, WeatherCycleKind, WeatherDescriptor};
+
+use crate::plugins::levels::state::selection::level_texture_reference::LevelTextureReference;
+use crate::plugins::levels::state::selection::level_weather_source::LevelWeatherSource;
 
 /// One cycle or effect as the engine loads it, which a viewer mixes, and what is wrong in its config.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -13,10 +17,26 @@ pub struct LevelWeatherCycle {
   /// Sorted by time, a keyframe whose name the engine refuses left out.
   pub keyframes: Vec<WeatherDescriptor>,
   pub findings: Vec<EnvironmentFinding>,
+  /// Every sky and irradiance cube its keyframes name, each once, as the level finds them.
+  pub textures: Vec<LevelTextureReference>,
 }
 
 impl LevelWeatherCycle {
-  pub fn of(cycle: &WeatherCycle, catalog: &EnvironmentCatalog, engine: XrayEngine) -> Self {
+  pub fn of(cycle: &WeatherCycle, source: &LevelWeatherSource) -> Self {
+    let catalog: &EnvironmentCatalog = source.catalog;
+    let keyframes: Vec<WeatherDescriptor> = cycle
+      .keyframes
+      .iter()
+      .filter(|keyframe| keyframe.time.is_some())
+      .map(|keyframe| WeatherDescriptor::new(keyframe, catalog.engine))
+      .collect();
+    // A keyframe without a sky names only the suffix of its irradiance cube, which nothing answers to.
+    let references: BTreeSet<&str> = keyframes
+      .iter()
+      .filter(|keyframe| !keyframe.sky_texture.is_empty())
+      .flat_map(|keyframe| [keyframe.sky_texture.as_str(), keyframe.sky_texture_env.as_str()])
+      .collect();
+
     Self {
       file: cycle.file.clone(),
       findings: catalog
@@ -25,14 +45,13 @@ impl LevelWeatherCycle {
         .filter(|finding| finding.file == cycle.file)
         .cloned()
         .collect(),
-      keyframes: cycle
-        .keyframes
-        .iter()
-        .filter(|keyframe| keyframe.time.is_some())
-        .map(|keyframe| WeatherDescriptor::new(keyframe, engine))
-        .collect(),
       kind: cycle.kind,
       name: cycle.name.clone(),
+      textures: references
+        .into_iter()
+        .map(|reference| source.locate(reference))
+        .collect(),
+      keyframes,
     }
   }
 }

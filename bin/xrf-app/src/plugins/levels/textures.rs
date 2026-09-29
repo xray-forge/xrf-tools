@@ -2,11 +2,12 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
+use xrf_environment::WeatherDescriptor;
 use xrf_level::LevelFile;
 use xrf_material::{XraySurfaceDescriptor, XrayTextureScope};
 use xrf_vfs::{XrayProbe, XrayResolution};
 
-use crate::plugins::levels::state::LevelTextureReference;
+use crate::plugins::levels::state::{LevelSky, LevelTextureReference};
 
 /// The shader an impostor is drawn with, whose atlas is bound beside a companion of its own.
 const IMPOSTOR_SHADER: &str = "details\\lod";
@@ -14,9 +15,8 @@ const IMPOSTOR_SHADER: &str = "details\\lod";
 /// What `details_lod.s` appends to the atlas for its `s_hemi`: a normal in colour, the hemisphere term in alpha.
 const IMPOSTOR_COMPANION_SUFFIX: &str = "_nm";
 
-/// The sky `default_clear` names at noon (`configs/environment/weathers/default_clear.ltx`, `[12:00:00]`), which is
-/// the lighting the viewer draws every level under.
-// todo: Resolve the sky of the level's own weather cycle at the viewer's time once the weather is read.
+/// The sky `default_clear` names at noon (`configs/environment/weathers/default_clear.ltx`, `[12:00:00]`), which the
+/// viewer draws a level under while no weather plays.
 pub const LEVEL_SKY_TEXTURE: &str = "sky\\sky_7_cube";
 
 /// Resolves every texture a level's surfaces bind: base textures, lightmaps, detail textures, bump pairs, and the
@@ -94,11 +94,16 @@ pub fn resolve_surface_textures(
     .collect()
 }
 
-/// The sky cube a level is lit under, resolved as any other texture.
-pub fn resolve_sky(probe: &XrayProbe, scope: &XrayTextureScope) -> LevelTextureReference {
-  LevelTextureReference {
-    logical_path: resolve_reference(probe, scope, LEVEL_SKY_TEXTURE),
-    reference: LEVEL_SKY_TEXTURE.to_owned(),
+/// The sky cube a level is lit under while no weather plays and its irradiance cube, resolved as any other texture.
+pub fn resolve_sky(probe: &XrayProbe, scope: &XrayTextureScope) -> LevelSky {
+  let locate = |reference: String| LevelTextureReference {
+    logical_path: resolve_reference(probe, scope, &reference),
+    reference,
+  };
+
+  LevelSky {
+    environment: locate(format!("{LEVEL_SKY_TEXTURE}{}", WeatherDescriptor::ENVIRONMENT_SUFFIX)),
+    texture: locate(LEVEL_SKY_TEXTURE.to_owned()),
   }
 }
 

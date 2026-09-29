@@ -1,5 +1,6 @@
 pub(crate) mod level_details_description;
 pub(crate) mod level_lights_description;
+pub(crate) mod level_sky;
 pub(crate) mod level_spawn_model_description;
 pub(crate) mod level_spawn_models_description;
 pub(crate) mod level_spawn_placement;
@@ -10,5 +11,6 @@ pub(crate) mod level_texture_reference;
 pub(crate) mod level_thunderbolts;
 pub(crate) mod level_weather_cycle;
 pub(crate) mod level_weather_description;
+pub(crate) mod level_weather_source;
 pub(crate) mod selected_level;
 pub(crate) mod selected_level_description;

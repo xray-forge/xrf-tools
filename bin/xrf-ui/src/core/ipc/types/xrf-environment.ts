@@ -105,15 +105,12 @@ export type LevelWeatherOption = {
   state: string | null;
 };
 
-/**
- * Monolith's `environment\sun_positions.ltx`: where the sun stands at each whole hour, lerped by the minute
- * (`calculate_config_sun_dir`) in place of any keyframe's.
- */
-export type SunTable = {
-  /** The config, as a logical path. */
-  file: string;
-  /** Twenty-four hours, midnight first; an hour the config does not write is left empty, at the engine's zero. */
-  hours: Array<EnvironmentSection>;
+/** Where the sun stands at one hour of Monolith's sun table, in degrees, named as the table names them. */
+export type SunPosition = {
+  /** `sun_altitude`, which `setHP` makes the heading. */
+  altitude: number | null;
+  /** `sun_longitude`, which `setHP` makes the pitch. */
+  longitude: number | null;
 };
 
 /**
@@ -137,6 +134,13 @@ export type WeatherCycle = {
   kind: WeatherCycleKind;
   /** Sorted by time as the engine sorts them, a keyframe whose name it refuses last. */
   keyframes: Array<WeatherKeyframe>;
+};
+
+/** Which cycle or effect: the list the engine keeps it in, and its name there. */
+export type WeatherCycleId = {
+  kind: WeatherCycleKind;
+  /** The file's name without its extension. */
+  name: string;
 };
 
 /** Which list the engine keeps a cycle in. */

@@ -6,7 +6,7 @@ import {
   EnvironmentCycleDescription,
   EnvironmentRequest,
 } from "@/core/ipc/types/xrf-app";
-import { EWeatherCycleKind } from "@/core/ipc/types/xrf-environment";
+import { WeatherCycleId } from "@/core/ipc/types/xrf-environment";
 
 /** Commands */
 export const environmentCommands = {
@@ -14,6 +14,6 @@ export const environmentCommands = {
   readCatalog: (request: EnvironmentRequest) =>
     __TAURI_INVOKE<EnvironmentCatalogDescription>("plugin:environment|read_catalog", { request }),
   /** Read one cycle or effect as authored, recording where each value came from, with every finding in its config. */
-  readCycle: (request: EnvironmentRequest, kind: EWeatherCycleKind, name: string) =>
-    __TAURI_INVOKE<EnvironmentCycleDescription>("plugin:environment|read_cycle", { request, kind, name }),
+  readCycle: (request: EnvironmentRequest, cycle: WeatherCycleId) =>
+    __TAURI_INVOKE<EnvironmentCycleDescription>("plugin:environment|read_cycle", { request, cycle }),
 };

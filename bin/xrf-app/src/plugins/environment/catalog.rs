@@ -2,7 +2,6 @@
 
 use std::sync::Arc;
 
-use xrf_engine_target::XrayEngine;
 use xrf_environment::{EnvironmentCatalog, EnvironmentReadOptions, EnvironmentReader};
 use xrf_ltx::{LtxDialect, LtxProject, LtxProjectOptions};
 use xrf_vfs::XrayRoots;
@@ -29,11 +28,7 @@ pub fn open_configs(roots: &XrayRoots, dialect: Arc<dyn LtxDialect>) -> Result<L
 /// # Errors
 ///
 /// Returns the reason the configs cannot be listed.
-pub fn read_catalog(
-  project: &LtxProject,
-  engine: XrayEngine,
-  options: &EnvironmentReadOptions,
-) -> Result<EnvironmentCatalog, String> {
-  EnvironmentReader::read_opt(project, engine, options)
+pub fn read_catalog(project: &LtxProject, options: &EnvironmentReadOptions) -> Result<EnvironmentCatalog, String> {
+  EnvironmentReader::read_opt(project, options)
     .map_err(|error| format!("Failed to read the game's environment configs: {error}"))
 }

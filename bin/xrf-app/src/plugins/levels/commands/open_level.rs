@@ -15,12 +15,12 @@ use crate::core::execution::ExecutionState;
 use crate::core::session::{SessionId, SessionSnapshot};
 use crate::core::types::TauriResult;
 use crate::plugins::levels::read::{ReadLevel, read_optional_file, read_source};
-use crate::plugins::levels::request::LevelOpenRequest;
 use crate::plugins::levels::report::{report_open, report_opening, report_start};
+use crate::plugins::levels::request::LevelOpenRequest;
 use crate::plugins::levels::spawn::read_source_spawn;
 use crate::plugins::levels::start::{list_level_start_eyes, resolve_level_start};
 use crate::plugins::levels::state::{
-  COLLISION_FILE, LevelSource, LevelSpawn, LevelSpawnVisuals, LevelStart, LevelState, LevelTextureReference,
+  COLLISION_FILE, LevelSky, LevelSource, LevelSpawn, LevelSpawnVisuals, LevelStart, LevelState, LevelTextureReference,
   PackedDetails, PackedSectors, SelectedLevel, SelectedLevelDescription,
 };
 use crate::plugins::levels::surfaces::resolve_surfaces;
@@ -30,7 +30,7 @@ use crate::plugins::levels::textures::{resolve_level_textures, resolve_sky};
 struct OpenedLevel {
   read: ReadLevel,
   textures: Vec<LevelTextureReference>,
-  sky: LevelTextureReference,
+  sky: LevelSky,
   surfaces: Vec<XraySurfaceDescriptor>,
   spawn: Result<Arc<LevelSpawn>, String>,
   outlines: Vec<SectorOutline>,

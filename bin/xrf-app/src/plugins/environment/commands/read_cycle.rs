@@ -3,7 +3,7 @@ use std::sync::Arc;
 use tauri::State;
 use xrf_dltx::select_ltx_dialect;
 use xrf_environment::{
-  EnvironmentCatalog, EnvironmentFinding, EnvironmentReadOptions, EnvironmentReader, WeatherCycleKind,
+  EnvironmentCatalog, EnvironmentFinding, EnvironmentReadOptions, EnvironmentReader, WeatherCycleId,
 };
 use xrf_ltx::LtxProject;
 
@@ -19,8 +19,7 @@ use crate::plugins::environment::state::EnvironmentState;
 #[tauri::command(rename = "read_cycle")]
 pub async fn environment_read_cycle(
   request: EnvironmentRequest,
-  kind: WeatherCycleKind,
-  name: String,
+  cycle: WeatherCycleId,
   state: State<'_, EnvironmentState>,
   execution: State<'_, ExecutionState>,
 ) -> TauriResult<EnvironmentCycleDescription> {
@@ -30,22 +29,28 @@ pub async fn environment_read_cycle(
     .run_blocking("Reading a weather cycle", move || {
       let project: LtxProject = open_configs(&read.roots, select_ltx_dialect(read.is_dltx))?;
       // Findings about what the cycle names are the whole catalog's to find, so it is read where none is held.
+      let options: EnvironmentReadOptions = EnvironmentReadOptions::default().with_engine(read.engine);
       let catalog: Arc<EnvironmentCatalog> = match held {
         Some(catalog) => catalog,
-        None => Arc::new(read_catalog(&project, read.engine, &EnvironmentReadOptions::default())?),
+        None => Arc::new(read_catalog(&project, &options)?),
       };
-      let explained: EnvironmentReadOptions = EnvironmentReadOptions::default().with_explained(true);
-      let (cycle, _) = EnvironmentReader::read_cycle(&project, read.engine, kind, &name, &explained)
-        .map_err(|error| format!("Failed to read weather cycle '{name}': {error}"))?
-        .ok_or_else(|| format!("There is no weather cycle '{name}'"))?;
+      let (authored, _) = EnvironmentReader::read_cycle(&project, &cycle, &options.with_explained(true))
+        .map_err(|error| format!("Failed to read weather cycle '{}': {error}", cycle.name))?
+        .ok_or_else(|| format!("There is no weather cycle '{}'", cycle.name))?;
       let findings: Vec<EnvironmentFinding> = catalog
         .findings
         .iter()
-        .filter(|finding| finding.file == cycle.file)
+        .filter(|finding| finding.file == authored.file)
         .cloned()
         .collect();
 
-      TauriResult::Ok((EnvironmentCycleDescription { cycle, findings }, catalog))
+      TauriResult::Ok((
+        EnvironmentCycleDescription {
+          cycle: authored,
+          findings,
+        },
+        catalog,
+      ))
     })
     .await??;
 

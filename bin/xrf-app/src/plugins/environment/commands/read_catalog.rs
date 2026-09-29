@@ -25,7 +25,7 @@ pub async fn environment_read_catalog(
     .run_blocking("Reading the environment configs", move || {
       let project: LtxProject = open_configs(&read.roots, select_ltx_dialect(read.is_dltx))?;
 
-      read_catalog(&project, read.engine, &EnvironmentReadOptions::default()).map(Arc::new)
+      read_catalog(&project, &EnvironmentReadOptions::default().with_engine(read.engine)).map(Arc::new)
     })
     .await??;
 

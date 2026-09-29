@@ -7,7 +7,7 @@ import {
   EnvironmentFinding,
   EnvironmentSection,
   LevelWeather,
-  SunTable,
+  SunPosition,
   ThunderboltCollection,
   WeatherCycle,
   WeatherCycleKind,
@@ -1747,6 +1747,13 @@ export type LevelOpenRequest = {
   engine: XrayEngine;
 };
 
+/** The sky cube a level is lit under while no weather plays, and its irradiance cube. */
+export type LevelSky = {
+  texture: LevelTextureReference;
+  /** Its `#small` twin, which lights the hemisphere. */
+  environment: LevelTextureReference;
+};
+
 /** Every `kind` the `LevelSource` union is told apart by, so a switch or a comparison names one. */
 export enum ELevelSource {
   /** A compiled level directory on disk, named by its filesystem path. */
@@ -1834,6 +1841,8 @@ export type LevelWeatherCycle = {
   /** Sorted by time, a keyframe whose name the engine refuses left out. */
   keyframes: Array<WeatherDescriptor>;
   findings: Array<EnvironmentFinding>;
+  /** Every sky and irradiance cube its keyframes name, each once, as the level finds them. */
+  textures: Array<LevelTextureReference>;
 };
 
 /** Everything a viewer plays the open level's weather from, as its engine loads it. */
@@ -1848,8 +1857,8 @@ export type LevelWeatherDescription = {
   /** Every weather effect, which the game plays over a cycle. */
   effects: Array<LevelWeatherCycle>;
   thunderbolts: LevelThunderbolts;
-  /** Monolith's table of where the sun stands; none on OpenXRay. */
-  sunTable: SunTable | null;
+  /** Monolith's table of where the sun stands, midnight first; none on OpenXRay. */
+  sunTable: Array<SunPosition> | null;
   /** The level's local overrides, `level.env_mod`; none where it has none. */
   modifiers: Array<EnvModifier>;
 };
@@ -1961,7 +1970,7 @@ export type SelectedLevelDescription = {
    */
   textures: Array<LevelTextureReference>;
   /** The sky cube the level is lit under, which its water reflects. */
-  sky: LevelTextureReference;
+  sky: LevelSky;
   /**
    * How the renderer draws each entry of the shader table, in its order, so a surface is cut out, blended and
    * detailed the way its blender says rather than drawn flat. Indexed by the shader id a packed surface carries.
