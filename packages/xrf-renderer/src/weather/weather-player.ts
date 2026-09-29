@@ -1,4 +1,3 @@
-import { toDegrees } from "@xrf/math";
 import { Maybe, Nullable } from "@xrf/types";
 
 import { ERendererEngine } from "#/contract/renderer-engine";
@@ -9,12 +8,13 @@ import { IRendererWeatherControl } from "#/contract/weather/renderer-weather-con
 import { IRendererWeatherKeyframe } from "#/contract/weather/renderer-weather-keyframe";
 import { IRendererWeatherReport } from "#/contract/weather/renderer-weather-report";
 import { ERendererWeatherTransition } from "#/contract/weather/renderer-weather-transition";
-import { DEFAULT_RENDERER_GRASS_WIND, DEFAULT_RENDERER_LIGHTING } from "#/lighting/default-lighting";
 import { RendererTextures } from "#/texture/renderer-textures";
 import { toWeatherTimeOfDay } from "#/weather/weather-day";
 import { IWeatherEffectTimeline, toWeatherEffectTimeline } from "#/weather/weather-effect-timeline";
 import { toFadedLighting } from "#/weather/weather-fade";
+import { listWeatherTextures } from "#/weather/weather-held-textures";
 import { TWeatherKeyframePair } from "#/weather/weather-keyframe-pair";
+import { toWeatherLighting, toWeatherMixedKeyframe } from "#/weather/weather-lighting";
 import { IWeatherMix } from "#/weather/weather-mix";
 import { mixWeatherPair } from "#/weather/weather-mixer";
 import { WeatherPair } from "#/weather/weather-pair";
@@ -42,9 +42,6 @@ const DEFAULT_CONTROL: IRendererWeatherControl = {
 
 /** The longest real step the clock takes at once, so a view shown again after a while does not skip hours. */
 const LONGEST_STEP: number = 1000;
-
-/** `EPS_L`, under which it does not rain at all. */
-const RAIN_THRESHOLD: number = 0.001;
 
 /** Metres the view moves before the modifiers are weighed again. */
 const VIEW_STEP: number = 0.5;
@@ -273,7 +270,7 @@ export class WeatherPlayer {
       { time: this.time, view: this.view }
     );
 
-    const target: IRendererLighting = this.toLighting(pair, this.mix);
+    const target: IRendererLighting = toWeatherLighting({ control: this.control, mix: this.mix, pair, weather });
 
     // Faded over rather than cut to, as the skies of the engine's own blend never jump.
     if (this.isJumped && !this.isForced && !this.fading && this.shown) {
@@ -284,12 +281,7 @@ export class WeatherPlayer {
     this.isJumped = false;
 
     // Put before the fade asks whether they are up: a key never put reads as settled.
-    this.textures.keep([
-      ...WeatherPlayer.listNear(keyframes, pair),
-      ...WeatherPlayer.listRain(weather),
-      ...WeatherPlayer.listThunder(weather),
-      ...(this.fading?.held ?? []),
-    ]);
+    this.textures.keep([...listWeatherTextures({ keyframes, pair, weather }), ...(this.fading?.held ?? [])]);
 
     const lighting: IRendererLighting = this.fade(now, target);
 
@@ -405,94 +397,14 @@ export class WeatherPlayer {
     return { kind: this.control.isDynamicSun ? EWeatherSun.DYNAMIC : EWeatherSun.AUTHORED };
   }
 
-  /**
-   * What is mixed now as one keyframe, without the level's modifiers, which a keyframe seeded from it gets again: the
-   * heavier keyframe's textures, the sun where it stands.
-   */
+  /** What is mixed now as one keyframe, without the level's modifiers, which a keyframe seeded from it gets again. */
   private toCurrent(weather: IRendererWeather, pair: TWeatherKeyframePair): IRendererWeatherKeyframe {
     const mix: IWeatherMix = mixWeatherPair(
       { engine: weather.engine, modifiers: [], pair, sun: this.toSun(weather) },
       { time: this.time, view: this.view }
     );
-    const heavier: IRendererWeatherKeyframe = pair[mix.weight >= 0.5 ? 1 : 0];
 
-    return {
-      ambientColor: mix.ambientColor,
-      cloudsColor: mix.cloudsColor,
-      cloudsRotation: mix.cloudsRotation,
-      cloudsTexture: heavier.cloudsTexture,
-      farPlane: mix.farPlane,
-      fogColor: mix.fogColor,
-      fogDensity: mix.fogDensity,
-      fogDistance: mix.fogDistance,
-      hemiColor: mix.hemiColor,
-      rainColor: mix.rainColor,
-      rainDensity: mix.rainDensity,
-      skyColor: mix.skyColor,
-      skyRotation: mix.skyRotation,
-      skyTexture: heavier.skyTexture,
-      skyTextureEnv: heavier.skyTextureEnv,
-      sunAzimuth: heavier.sunAzimuth,
-      sunColor: mix.sunColor,
-      sunDirection: mix.sunDirection,
-      time: this.time,
-      treeAmplitude: mix.treeAmplitude,
-      treeRotation: mix.treeRotation,
-      treeSpeed: mix.treeSpeed,
-      treeWave: mix.treeWave,
-      waterIntensity: mix.waterIntensity,
-      windDirection: mix.windDirection,
-      windVelocity: mix.windVelocity,
-      thunderboltCollection: mix.thunderboltCollection,
-      thunderboltDuration: mix.thunderboltDuration,
-      thunderboltPeriod: mix.thunderboltPeriod,
-    };
-  }
-
-  private toLighting(pair: TWeatherKeyframePair, mix: IWeatherMix): IRendererLighting {
-    const { isClouded, isFogged, isRainy, isWindy } = this.control;
-    const [a, b] = pair;
-    const [x, y, z]: TRendererVector = mix.sunDirection;
-
-    return {
-      ambientColor: mix.ambientColor,
-      fog: isFogged
-        ? { color: mix.fogColor, density: mix.fogDensity, distance: mix.fogDistance, farPlane: mix.farPlane }
-        : null,
-      grass: isWindy ? DEFAULT_RENDERER_GRASS_WIND : null,
-      hemisphereColor: [mix.hemiColor[0], mix.hemiColor[1], mix.hemiColor[2]],
-      engine: this.weather?.engine ?? ERendererEngine.VANILLA,
-      rain:
-        isRainy && this.weather?.rain && mix.rainDensity >= RAIN_THRESHOLD
-          ? {
-              color: mix.rainColor,
-              density: mix.rainDensity,
-              windDirection: mix.windDirection,
-              windVelocity: mix.windVelocity,
-            }
-          : null,
-      sky: {
-        blend: mix.weight,
-        clouds: {
-          color: mix.cloudsColor,
-          rotation: toDegrees(mix.cloudsRotation),
-          textures: isClouded ? [WeatherPlayer.toCloudsKey(a), WeatherPlayer.toCloudsKey(b)] : [null, null],
-        },
-        color: mix.skyColor,
-        environments: [WeatherTextures.toKey(a.skyTextureEnv), WeatherTextures.toKey(b.skyTextureEnv)],
-        rotation: toDegrees(mix.skyRotation),
-        textures: [WeatherTextures.toKey(a.skyTexture), WeatherTextures.toKey(b.skyTexture)],
-      },
-      skyIrradiance: DEFAULT_RENDERER_LIGHTING.skyIrradiance,
-      sunColor: mix.sunColor,
-      // Engine `z` negated into renderer space.
-      sunDirection: [x, y, -z],
-      thunderbolt: null,
-      trees: isWindy
-        ? { amplitude: mix.treeAmplitude, rotation: mix.treeRotation, speed: mix.treeSpeed, wave: mix.treeWave }
-        : null,
-      waterIntensity: mix.waterIntensity,
-    };
+    return toWeatherMixedKeyframe({ mix, pair, time: this.time });
   }
 
   /** Every key a lighting's sky draws. */
@@ -501,48 +413,6 @@ export class WeatherPlayer {
 
     return [...sky.textures, ...sky.environments, ...(sky.clouds?.textures ?? [])].filter(
       (key: Nullable<string>): key is string => key !== null
-    );
-  }
-
-  /** The key a keyframe's clouds are put under, or null for a keyframe that names none. */
-  private static toCloudsKey(keyframe: IRendererWeatherKeyframe): Nullable<string> {
-    return keyframe.cloudsTexture ? WeatherTextures.toKey(keyframe.cloudsTexture) : null;
-  }
-
-  /** The rain's textures and what it wets surfaces with, held while its weather plays so a shower starting has them. */
-  private static listRain(weather: IRendererWeather): Array<string> {
-    const { rain, wet } = weather;
-
-    return [
-      ...(rain ? [rain.streak, ...(rain.drop ? [rain.drop.texture] : [])] : []),
-      // The splashes' volume is fetched and decoded by the wet surfaces alone: the texture store refuses a volume.
-      ...(wet ? [wet.flow] : []),
-    ];
-  }
-
-  /** The bolts' textures, held while their weather plays so a strike has them. */
-  private static listThunder(weather: IRendererWeather): Array<string> {
-    const { thunder } = weather;
-
-    if (!thunder) {
-      return [];
-    }
-
-    return [
-      ...thunder.models.map((model) => model.texture),
-      ...Object.values(thunder.bolts).flatMap((bolt) => [bolt.top.texture, bolt.center.texture]),
-    ];
-  }
-
-  /** The skies of the pair and of the keyframe after it, fetched before the clock reaches it. */
-  private static listNear(
-    keyframes: ReadonlyArray<IRendererWeatherKeyframe>,
-    pair: TWeatherKeyframePair
-  ): Array<string> {
-    const next: Maybe<IRendererWeatherKeyframe> = WeatherPair.selectNext(keyframes, pair[1].time + 0.5);
-
-    return [pair[0], pair[1], next].flatMap((keyframe: Maybe<IRendererWeatherKeyframe>) =>
-      keyframe ? [keyframe.skyTexture, keyframe.skyTextureEnv, keyframe.cloudsTexture] : []
     );
   }
 }
