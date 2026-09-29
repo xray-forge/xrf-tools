@@ -9,13 +9,7 @@ import {
 } from "@xrf/renderer";
 import { Nullable } from "@xrf/types";
 
-import {
-  LevelRain,
-  LevelTextureReference,
-  LevelWeatherCycle,
-  LevelWeatherDescription,
-  LevelWetSurfaces,
-} from "@/core/ipc/types/xrf-app";
+import { LevelRain, LevelTextureReference, LevelWeatherCycle, LevelWeatherDescription } from "@/core/ipc/types/xrf-app";
 import { EXrayEngine, XrayEngine } from "@/core/ipc/types/xrf-engine-target";
 import { SunPosition, WeatherDescriptor } from "@/core/ipc/types/xrf-environment";
 import { EnvModifier } from "@/core/ipc/types/xrf-level";
@@ -55,10 +49,8 @@ export async function toLevelRendererWeather(input: ILevelRendererWeatherInput):
         longitude: position.longitude ?? 0,
       })) ?? null,
     textures: await toLevelRendererTextures(roots, [
-      ...[cycle, ...description.effects].flatMap((it: LevelWeatherCycle) => it.textures),
-      ...listLevelRainTextures(description.rain),
-      ...listLevelWetTextures(description.wet),
-      ...listLevelThunderTextures(description.thunderbolts),
+      ...cycle.textures,
+      ...listLevelRendererWeatherBaseTextures(description),
     ]),
   };
 }
@@ -87,27 +79,31 @@ export function toLevelRendererWeatherBase(
 }
 
 /**
+ * @param description - The open level's weather.
+ * @returns Every texture what `toLevelRendererWeatherBase` plays names: the effects' skies and clouds, the rain's, what
+ *   it wets surfaces with, and the bolts'.
+ */
+export function listLevelRendererWeatherBaseTextures(
+  description: LevelWeatherDescription
+): Array<LevelTextureReference> {
+  const { rain, wet } = description;
+
+  return [
+    ...description.effects.flatMap((it: LevelWeatherCycle) => it.textures),
+    rain.streak,
+    ...(rain.drop ? [rain.drop.texture] : []),
+    wet.splash,
+    wet.flow,
+    ...listLevelThunderTextures(description.thunderbolts),
+  ];
+}
+
+/**
  * @param engine - The engine target configs are read as.
  * @returns The same, as the renderer names it.
  */
 export function toLevelRendererEngine(engine: XrayEngine): ERendererEngine {
   return engine === EXrayEngine.EXTENDED ? ERendererEngine.EXTENDED : ERendererEngine.VANILLA;
-}
-
-/**
- * @param rain - What the level's rain is drawn with.
- * @returns The textures it names.
- */
-export function listLevelRainTextures(rain: LevelRain): Array<LevelTextureReference> {
-  return [rain.streak, ...(rain.drop ? [rain.drop.texture] : [])];
-}
-
-/**
- * @param wet - What the level's rain wets surfaces with.
- * @returns The textures it names.
- */
-export function listLevelWetTextures(wet: LevelWetSurfaces): Array<LevelTextureReference> {
-  return [wet.splash, wet.flow];
 }
 
 /**

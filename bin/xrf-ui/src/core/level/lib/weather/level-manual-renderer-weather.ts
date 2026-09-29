@@ -1,14 +1,12 @@
 import { IRendererWeather, IRendererWeatherKeyframe } from "@xrf/renderer";
 import { Nullable } from "@xrf/types";
 
-import { LevelTextureReference, LevelWeatherCycle, LevelWeatherDescription } from "@/core/ipc/types/xrf-app";
+import { LevelTextureReference, LevelWeatherDescription } from "@/core/ipc/types/xrf-app";
 import { XrayEngine } from "@/core/ipc/types/xrf-engine-target";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { ILevelManualWeather, toLevelManualKeyframe } from "@/core/level/lib/weather/level-manual-weather";
-import { listLevelThunderTextures } from "@/core/level/lib/weather/level-renderer-thunder";
 import {
-  listLevelRainTextures,
-  listLevelWetTextures,
+  listLevelRendererWeatherBaseTextures,
   toLevelRendererEngine,
   toLevelRendererTextures,
   toLevelRendererWeatherBase,
@@ -63,10 +61,7 @@ export async function toLevelManualRendererWeather(input: ILevelManualRendererWe
     sunTable: null,
     textures: await toLevelRendererTextures(roots, [
       ...located,
-      ...(description ? description.effects.flatMap((it: LevelWeatherCycle) => it.textures) : []),
-      ...(description ? listLevelRainTextures(description.rain) : []),
-      ...(description ? listLevelWetTextures(description.wet) : []),
-      ...(description ? listLevelThunderTextures(description.thunderbolts) : []),
+      ...(description ? listLevelRendererWeatherBaseTextures(description) : []),
     ]),
   };
 }
