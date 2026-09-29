@@ -8,7 +8,7 @@ use crate::finding::EnvironmentFinding;
 use crate::level::WeatherGraphs;
 use crate::sun::{LensFlare, SunTable};
 use crate::thunderbolt::{Thunderbolt, ThunderboltCollection, ThunderboltSettings};
-use crate::weather::{WeatherCycle, WeatherKey};
+use crate::weather::{WeatherCycle, WeatherCycleId, WeatherCycleKind, WeatherKey};
 
 /// A game's environment configs, everything under `configs\environment` that its engine reads, read as that engine
 /// reads them, with every problem found on the way.
@@ -48,6 +48,14 @@ impl EnvironmentCatalog {
 
   pub fn find_effect(&self, name: &str) -> Option<&WeatherCycle> {
     self.effects.iter().find(|effect| effect.name == name)
+  }
+
+  /// The cycle or effect an id names.
+  pub fn find_by_id(&self, id: &WeatherCycleId) -> Option<&WeatherCycle> {
+    match id.kind {
+      WeatherCycleKind::Cycle => self.find_cycle(&id.name),
+      WeatherCycleKind::Effect => self.find_effect(&id.name),
+    }
   }
 
   pub fn find_sun(&self, name: &str) -> Option<&LensFlare> {

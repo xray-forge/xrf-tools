@@ -340,7 +340,7 @@ describe("LevelWeatherService", () => {
     });
     setMockInvokeResponses({
       ["plugin:levels|read_level_weather"]: mockSessionResponse(mockLevelWeatherDescription()),
-      ["plugin:levels|read_level_cycle"]: () => Promise.reject(new Error("There is no weather cycle 'gone'")),
+      ["plugin:levels|read_level_cycle"]: () => Promise.reject(new Error("There is no weather 'gone'")),
       ...RESOLVE,
     });
 

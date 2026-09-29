@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use tauri::State;
-use xrf_environment::{WeatherCycle, WeatherCycleId, WeatherCycleKind};
+use xrf_environment::{WeatherCycle, WeatherCycleId};
 
 use crate::core::assets::AssetMountState;
 use crate::core::execution::ExecutionState;
@@ -25,12 +25,13 @@ pub async fn levels_read_level_cycle(
   let cycle: LevelWeatherCycle = execution
     .run_blocking("Reading a weather cycle", move || {
       let environment: Arc<LevelEnvironment> = LevelEnvironment::of(&current)?;
-      let found: Option<&WeatherCycle> = match cycle.kind {
-        WeatherCycleKind::Cycle => environment.catalog.find_cycle(&cycle.name),
-        WeatherCycleKind::Effect => environment.catalog.find_effect(&cycle.name),
-      };
-
-      let found: &WeatherCycle = found.ok_or_else(|| format!("There is no weather cycle '{}'", cycle.name))?;
+      let found: &WeatherCycle = environment.catalog.find_by_id(&cycle).ok_or_else(|| {
+        format!(
+          "There is no {} '{}'",
+          cycle.kind.get_subject().to_lowercase(),
+          cycle.name
+        )
+      })?;
 
       assets.with_probe(&current.roots, |probe| {
         LevelWeatherCycle::of(found, &environment.get_source(&current, probe))

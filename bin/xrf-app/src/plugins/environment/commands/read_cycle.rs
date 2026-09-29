@@ -35,8 +35,20 @@ pub async fn environment_read_cycle(
         None => Arc::new(read_catalog(&project, &options)?),
       };
       let (authored, _) = EnvironmentReader::read_cycle(&project, &cycle, &options.with_explained(true))
-        .map_err(|error| format!("Failed to read weather cycle '{}': {error}", cycle.name))?
-        .ok_or_else(|| format!("There is no weather cycle '{}'", cycle.name))?;
+        .map_err(|error| {
+          format!(
+            "Failed to read {} '{}': {error}",
+            cycle.kind.get_subject().to_lowercase(),
+            cycle.name
+          )
+        })?
+        .ok_or_else(|| {
+          format!(
+            "There is no {} '{}'",
+            cycle.kind.get_subject().to_lowercase(),
+            cycle.name
+          )
+        })?;
       let findings: Vec<EnvironmentFinding> = catalog
         .findings
         .iter()
