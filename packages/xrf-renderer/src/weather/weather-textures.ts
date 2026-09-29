@@ -51,6 +51,20 @@ export class WeatherTextures {
     this.sources = { ...kept, ...sources };
   }
 
+  /**
+   * @param keys - Keys the weather's textures are put under.
+   * @returns Whether every one is up, or settled on its placeholder for good.
+   */
+  public isUploaded(keys: Iterable<string>): boolean {
+    for (const key of keys) {
+      if (!this.textures.isUploaded(key)) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
   /** The references held now. */
   public listHeld(): Array<string> {
     return [...this.held];

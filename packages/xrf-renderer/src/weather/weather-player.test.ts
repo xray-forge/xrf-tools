@@ -59,7 +59,7 @@ const PLAYING: IRendererWeatherControl = {
   time: 6 * 3600,
 };
 
-function createPlayer(): { player: WeatherPlayer; held: Set<string> } {
+function createPlayer(): { player: WeatherPlayer; held: Set<string>; textures: RendererTextures } {
   const textures: RendererTextures = new RendererTextures(
     () => {},
     () => {}
@@ -69,7 +69,7 @@ function createPlayer(): { player: WeatherPlayer; held: Set<string> } {
   jest.spyOn(textures, "put").mockImplementation((key: string) => void held.add(key));
   jest.spyOn(textures, "release").mockImplementation((key: string) => void held.delete(key));
 
-  return { held, player: new WeatherPlayer(textures) };
+  return { held, player: new WeatherPlayer(textures), textures };
 }
 
 describe("WeatherPlayer", () => {
@@ -294,6 +294,76 @@ describe("WeatherPlayer", () => {
     expect(player.advance(1_600, ORIGIN)?.fog?.distance).toBeCloseTo(10, 6);
     // Done, and still: nothing to light again.
     expect(player.advance(1_700, ORIGIN)).toBeNull();
+  });
+
+  it("fades into the pair an effect starts on and out of the one it ends on, and cuts on a seek", () => {
+    const { player } = createPlayer();
+    const effect: ReadonlyArray<IRendererWeatherKeyframe> = [0, 60].map((time: number) => ({
+      ...KEYFRAMES[0],
+      skyTexture: "sky\\storm",
+      time,
+    }));
+
+    player.take({ ...WEATHER, effects: { fx_test: effect } }, ERendererWeatherTransition.CUT);
+    player.setControl({ ...PLAYING, factor: 60, isPaused: true, time: 30_000 });
+
+    const cycle: Nullable<IRendererLighting> = player.advance(0, ORIGIN);
+
+    player.playEffect("fx_test");
+
+    // The lead-in keeps the sky shown, which a paused clock then holds.
+    expect(player.advance(100, ORIGIN)?.sky).toEqual(cycle?.sky);
+
+    const led: Nullable<IRendererLighting> = player.advance(1_700, ORIGIN);
+
+    expect(player.advance(1_800, ORIGIN)).toBeNull();
+
+    // Ending it sets the cycle's pair after its end, which is faded into from the sky shown.
+    player.playEffect(null);
+
+    expect(player.advance(1_900, ORIGIN)?.sky).toEqual(led?.sky);
+
+    const ended: Nullable<IRendererLighting> = player.advance(3_500, ORIGIN);
+
+    expect(ended?.sky.textures).not.toEqual(led?.sky.textures);
+
+    player.setControl({ ...PLAYING, factor: 60, isPaused: true, time: 30_000 });
+
+    expect(player.advance(2_000, ORIGIN)?.sky).toEqual(cycle?.sky);
+  });
+
+  it("starts a fade once the skies it fades into are up, or two seconds after it was asked for", () => {
+    const { player, textures } = createPlayer();
+    const night: IRendererWeather = {
+      ...WEATHER,
+      keyframes: KEYFRAMES.map((keyframe: IRendererWeatherKeyframe) => ({ ...keyframe, fogDistance: 10 })),
+    };
+    const uploaded: jest.SpiedFunction<(key: string) => boolean> = jest
+      .spyOn(textures, "isUploaded")
+      .mockReturnValue(false);
+
+    player.take(WEATHER, ERendererWeatherTransition.CUT);
+    player.setControl({ ...PLAYING, isPaused: true, time: 12 * 3600 });
+
+    const before: number = player.advance(0, ORIGIN)?.fog?.distance ?? 0;
+
+    player.take(night, ERendererWeatherTransition.FADE);
+
+    expect(player.advance(100, ORIGIN)?.fog?.distance).toBeCloseTo(before, 6);
+    expect(player.advance(1_000, ORIGIN)?.fog?.distance).toBeCloseTo(before, 6);
+
+    uploaded.mockReturnValue(true);
+    player.advance(1_100, ORIGIN);
+
+    expect(player.advance(1_850, ORIGIN)?.fog?.distance).toBeCloseTo((before + 10) / 2, 6);
+
+    // Where they never go up, it starts without them.
+    uploaded.mockReturnValue(false);
+    player.take(WEATHER, ERendererWeatherTransition.FADE);
+    player.advance(3_000, ORIGIN);
+    player.advance(5_000, ORIGIN);
+
+    expect(player.advance(5_750, ORIGIN)?.fog?.distance).toBeGreaterThan(10);
   });
 
   it("hands the cycle back the keyframes an effect ends on, and reports what it blends", () => {
