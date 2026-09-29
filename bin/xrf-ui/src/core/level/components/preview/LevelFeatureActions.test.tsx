@@ -1,13 +1,8 @@
 import { describe, expect, it, jest } from "@jest/globals";
 import { userEvent } from "@testing-library/user-event";
-import {
-  DEFAULT_RENDERER_AMBIENT_OCCLUSION_SETTINGS,
-  DEFAULT_RENDERER_GRASS_SETTINGS,
-  DEFAULT_RENDERER_LIGHTS_SETTINGS,
-} from "@xrf/renderer";
+import { DEFAULT_RENDERER_GRASS_SETTINGS, DEFAULT_RENDERER_LIGHTS_SETTINGS } from "@xrf/renderer";
 import { ReactElement } from "react";
 
-import { LevelAmbientOcclusionAction } from "@/core/level/components/preview/LevelAmbientOcclusionAction";
 import { LevelGrassAction } from "@/core/level/components/preview/LevelGrassAction";
 import { LevelLightsAction } from "@/core/level/components/preview/LevelLightsAction";
 import { ILevelFeatureOptions, TLevelFeatureKey } from "@/core/level/lib/features";
@@ -16,7 +11,7 @@ import { renderWithProviders } from "@/fixtures/utils/render";
 
 /** One feature popover, how it is named, and what its settings say while they keep it off. */
 interface IFeatureActionCase {
-  key: Exclude<TLevelFeatureKey, "shadows">;
+  key: Exclude<TLevelFeatureKey, "shadows" | "ambientOcclusion">;
   label: string;
   unavailable: string;
   render: (isAvailable: boolean, onChange: (features: ILevelFeatureOptions) => void) => ReactElement;
@@ -50,20 +45,6 @@ const CASES: ReadonlyArray<IFeatureActionCase> = [
       />
     ),
     unavailable: "Lights are off in Settings, under Rendering",
-  },
-  {
-    key: "ambientOcclusion",
-    label: "Ambient occlusion",
-    render: (isAvailable, onChange) => (
-      <LevelAmbientOcclusionAction
-        isOn
-        state={{ isAvailable, value: DEFAULT_RENDERER_AMBIENT_OCCLUSION_SETTINGS }}
-        features={{ ...mockLevelFeatureOptions(), ambientOcclusion: { radius: 2 } }}
-        onToggle={() => {}}
-        onChange={onChange}
-      />
-    ),
-    unavailable: "Ambient occlusion is off in Settings, under Rendering",
   },
 ];
 

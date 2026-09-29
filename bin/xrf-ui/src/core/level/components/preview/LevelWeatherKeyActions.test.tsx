@@ -1,10 +1,10 @@
 import { describe, expect, it, jest } from "@jest/globals";
 import { userEvent } from "@testing-library/user-event";
 
-import { LevelCloudsAction } from "@/core/level/components/preview/LevelCloudsAction";
 import { LevelFogAction } from "@/core/level/components/preview/LevelFogAction";
 import { LevelSkyAction } from "@/core/level/components/preview/LevelSkyAction";
 import { LevelSunAction } from "@/core/level/components/preview/LevelSunAction";
+import { DEFAULT_LEVEL_VIEW_OPTIONS } from "@/core/level/lib/view/level-view-options";
 import { DEFAULT_LEVEL_MANUAL_WEATHER, ILevelManualWeather } from "@/core/level/lib/weather/level-manual-weather";
 import { mockLevelTextureReference } from "@/fixtures/mocks/level.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
@@ -94,18 +94,19 @@ describe("level weather key actions", () => {
     const onEdit = jest.fn<TEdit>();
     const { getByRole, findByRole } = renderWithProviders(
       <LevelSkyAction
-        isOn
+        options={DEFAULT_LEVEL_VIEW_OPTIONS}
         manual={DEFAULT_LEVEL_MANUAL_WEATHER}
         skies={[
           { texture: mockLevelTextureReference("sky\\sky_night"), uses: 7 },
           { texture: mockLevelTextureReference("sky\\gone", false), uses: 1 },
         ]}
+        clouds={[]}
         onToggle={() => {}}
         onEdit={onEdit}
       />
     );
 
-    await open(getByRole, "Sky");
+    await userEvent.click(getByRole("button", { name: "Sky" }));
     await findByRole("dialog", { name: "Sky" });
     await userEvent.click(getByRole("combobox", { name: "sky_texture" }));
 
@@ -119,11 +120,18 @@ describe("level weather key actions", () => {
   it("takes a clouds reference typed in, and none for an empty one", async () => {
     const onEdit = jest.fn<TEdit>();
     const { getByRole, findByRole } = renderWithProviders(
-      <LevelCloudsAction isOn manual={DEFAULT_LEVEL_MANUAL_WEATHER} clouds={[]} onToggle={() => {}} onEdit={onEdit} />
+      <LevelSkyAction
+        options={DEFAULT_LEVEL_VIEW_OPTIONS}
+        manual={DEFAULT_LEVEL_MANUAL_WEATHER}
+        skies={[]}
+        clouds={[]}
+        onToggle={() => {}}
+        onEdit={onEdit}
+      />
     );
 
-    await open(getByRole, "Clouds");
-    await findByRole("dialog", { name: "Clouds" });
+    await userEvent.click(getByRole("button", { name: "Sky" }));
+    await findByRole("dialog", { name: "Sky" });
 
     const field: HTMLElement = getByRole("combobox", { name: "clouds_texture" });
 

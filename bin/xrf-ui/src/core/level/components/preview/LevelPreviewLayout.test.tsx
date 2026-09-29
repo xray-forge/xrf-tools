@@ -101,16 +101,16 @@ function setStreaming(loader: LevelLoadService, streaming: ILevelStreamProgress)
   });
 }
 
-/** Opens the readout's settings with a right click, and answers the popover. */
-async function openReadout(view: RenderResult): Promise<HTMLElement> {
-  await userEvent.pointer({ keys: "[MouseRight]", target: view.getByRole("button", { name: "Readout" }) });
+/** Opens the overlays, the readouts among them, and answers the popover. */
+async function openOverlays(view: RenderResult): Promise<HTMLElement> {
+  await userEvent.click(view.getByRole("button", { name: "Overlays" }));
 
-  return view.findByRole("dialog", { name: "Readout" });
+  return view.findByRole("dialog", { name: "Overlays" });
 }
 
-async function closeReadout(view: RenderResult): Promise<void> {
+async function closeOverlays(view: RenderResult): Promise<void> {
   await userEvent.keyboard("{Escape}");
-  await waitFor(() => expect(view.queryByRole("dialog", { name: "Readout" })).not.toBeInTheDocument());
+  await waitFor(() => expect(view.queryByRole("dialog", { name: "Overlays" })).not.toBeInTheDocument());
 }
 
 describe("LevelPreviewLayout", () => {
@@ -241,7 +241,7 @@ describe("LevelPreviewLayout", () => {
 
   // A clean view of the level is the reason to turn them off, and half a clean view is no use, so one switch takes
   // both away.
-  it("takes both readouts off the viewport together", () => {
+  it("takes both readouts off the viewport together", async () => {
     const { view, viewport } = renderReporting();
 
     act(() => viewport.report(EMPTY_LEVEL_STATS, camera()));
@@ -249,7 +249,7 @@ describe("LevelPreviewLayout", () => {
     expect(view.getByTestId("level-preview-metrics")).toBeInTheDocument();
     expect(view.getByTestId("level-preview-coordinates")).toBeInTheDocument();
 
-    fireEvent.click(view.getByRole("button", { name: "Readout" }));
+    await userEvent.click(within(await openOverlays(view)).getByRole("checkbox", { name: "Readouts" }));
 
     expect(view.queryByTestId("level-preview-metrics")).not.toBeInTheDocument();
     expect(view.queryByTestId("level-preview-coordinates")).not.toBeInTheDocument();
@@ -312,7 +312,7 @@ describe("LevelPreviewLayout", () => {
   });
 
   // One switch, offered where the readout is and where the settings are: either place sets it, and both show it.
-  it("times the passes from the readout's popover and from the settings alike", async () => {
+  it("times the passes from the overlays' popover and from the settings alike", async () => {
     window.localStorage.clear();
 
     const container: Container = mockContainer([
@@ -333,18 +333,18 @@ describe("LevelPreviewLayout", () => {
 
     expect(settings.isGpuTimed).toBe(false);
 
-    await userEvent.click(within(await openReadout(view)).getByRole("checkbox", { name: "GPU time per pass" }));
+    await userEvent.click(within(await openOverlays(view)).getByRole("checkbox", { name: "GPU time per pass" }));
 
     expect(settings.isGpuTimed).toBe(true);
 
-    await closeReadout(view);
+    await closeOverlays(view);
 
     expect(view.getByRole("checkbox", { name: "GPU time per pass" })).toBeChecked();
 
     await userEvent.click(view.getByRole("checkbox", { name: "GPU time per pass" }));
 
     expect(settings.isGpuTimed).toBe(false);
-    expect(within(await openReadout(view)).getByRole("checkbox", { name: "GPU time per pass" })).not.toBeChecked();
+    expect(within(await openOverlays(view)).getByRole("checkbox", { name: "GPU time per pass" })).not.toBeChecked();
   });
 
   // A sector lands many times a second while a level streams in, and only the progress and the status bar say so.

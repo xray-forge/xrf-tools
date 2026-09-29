@@ -4,7 +4,7 @@ import { default as SpeedIcon } from "@mui/icons-material/Speed";
 import { default as WarningIcon } from "@mui/icons-material/WarningAmber";
 import { default as WbCloudyIcon } from "@mui/icons-material/WbCloudy";
 import { useInjection } from "@wirestate/react";
-import { ERendererRenderScale, IRendererFeatureSettings } from "@xrf/renderer";
+import { IRendererFeatureSettings } from "@xrf/renderer";
 import { Nullable } from "@xrf/types";
 import { ReactElement, ReactNode, useCallback, useMemo } from "react";
 
@@ -100,11 +100,6 @@ export function LevelPreviewLayout({
     [viewService.camera, viewService.setCamera, isOpen, readCamera, onGoTo]
   );
 
-  const onChangeScale = useCallback(
-    (scale: ERendererRenderScale) => settingsService.setRendererOverrides({ upscaling: { scale } }),
-    [settingsService]
-  );
-
   useEditorPanels(
     (): Array<IEditorPanel> => [
       {
@@ -166,7 +161,6 @@ export function LevelPreviewLayout({
           onEditManual={weatherService.editManual}
           onChangeLod={viewService.setLod}
           onChangeFeatures={viewService.setFeatures}
-          onChangeScale={onChangeScale}
           onChangeGpuTimed={settingsService.setGpuTimed}
           onBack={onBack}
         />
