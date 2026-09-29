@@ -1,4 +1,5 @@
 use xrf_engine_target::XrayEngine;
+use xrf_math::EPS;
 
 use crate::mixer::weather_mix::WeatherMix;
 use crate::mixer::weather_mix_point::WeatherMixPoint;
@@ -6,9 +7,6 @@ use crate::mixer::weather_modifier::WeatherModifier;
 use crate::mixer::weather_modifiers_sum::WeatherModifiersSum;
 use crate::mixer::weather_sun_source::WeatherSunSource;
 use crate::weather::{WeatherDescriptor, WeatherTime};
-
-/// `EPS`, what `TimeWeight` takes a zero span by.
-const EPS: f32 = 0.000_01;
 
 /// Mixes a cycle's keyframes at a time of day as `CEnvironment::lerp` does, with the modifiers reaching the view.
 #[derive(Clone, Copy, Debug)]

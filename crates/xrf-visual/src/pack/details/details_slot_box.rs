@@ -1,4 +1,5 @@
 use xrf_level::DETAIL_SLOT_METERS;
+use xrf_math::EPS_L;
 
 /// An edge of a triangle, and the pairs of its corners its three axis tests project.
 type EdgeAxes = ([f32; 3], [[f32; 3]; 2], [[f32; 3]; 2], [[f32; 3]; 2]);
@@ -13,7 +14,7 @@ pub(crate) struct DetailsSlotBox {
 
 impl DetailsSlotBox {
   /// `EPS_L`, which the box grows by on every side.
-  const GROWTH: f32 = 0.001;
+  const GROWTH: f32 = EPS_L;
 
   /// The box of world slot `(x, z)`, from its base height to its top.
   pub(crate) fn of(x: i32, z: i32, base: f32, height: f32) -> Self {

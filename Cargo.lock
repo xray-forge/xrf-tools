@@ -7097,6 +7097,7 @@ dependencies = [
  "xrf-extension",
  "xrf-job",
  "xrf-ltx",
+ "xrf-math",
  "xrf-test-utils",
  "xrf-vfs",
 ]

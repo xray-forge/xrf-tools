@@ -1,10 +1,9 @@
 use std::f32::consts::{FRAC_PI_2, PI};
 
+use xrf_math::EPS_S;
+
 use crate::sun::SunPosition;
 use crate::weather::{WeatherDescriptor, WeatherTime};
-
-/// `EPS_S`, what `fis_zero` compares against by default.
-const EPS_S: f32 = 0.000_000_1;
 
 /// Where a mix stands the sun.
 #[derive(Clone, Copy, Debug, PartialEq)]
