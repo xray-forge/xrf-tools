@@ -8,6 +8,7 @@ import { ERendererRenderScale, IRendererFeatureSettings } from "@xrf/renderer";
 import { Nullable } from "@xrf/types";
 import { ReactElement, ReactNode, useCallback, useMemo } from "react";
 
+import { LevelWeatherTexture } from "@/core/ipc/types/xrf-app";
 import { LevelHeaderPanel } from "@/core/level/components/panels/LevelHeaderPanel";
 import { LevelProblemsPanel } from "@/core/level/components/panels/LevelProblemsPanel";
 import { LevelStreamPanel } from "@/core/level/components/panels/LevelStreamPanel";
@@ -38,6 +39,9 @@ import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { IEditorPanel, useEditorPanels } from "@/core/shell/editor-shell";
 import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
+
+/** What the sky and clouds popovers offer before the level's weather is read. */
+const EMPTY_TEXTURES: ReadonlyArray<LevelWeatherTexture> = [];
 
 interface ILevelPreviewLayoutProps extends BaseComponentProps {
   /** What the open level is called. Its presence is what draws the file header over the viewport. */
@@ -146,17 +150,20 @@ export function LevelPreviewLayout({
         <LevelPreviewToolbar
           subtitle={subtitle}
           options={viewService.options}
-          lighting={viewService.lighting}
+          hemiStrength={viewService.hemiStrength}
+          manual={weatherService.shown}
+          skies={weatherService.description?.skies ?? EMPTY_TEXTURES}
+          clouds={weatherService.description?.clouds ?? EMPTY_TEXTURES}
           sun={loadService.level.value?.selected.value.sun ?? null}
           lod={viewService.lod}
           features={features}
           featureView={featureView}
           settings={settings}
           isGpuTimed={settingsService.isGpuTimed}
-          lightingLock={weatherService.lightingLock}
           actions={actions}
           onChangeOptions={viewService.setOptions}
-          onChangeLighting={viewService.setLighting}
+          onChangeHemiStrength={viewService.setHemiStrength}
+          onEditManual={weatherService.editManual}
           onChangeLod={viewService.setLod}
           onChangeFeatures={viewService.setFeatures}
           onChangeScale={onChangeScale}

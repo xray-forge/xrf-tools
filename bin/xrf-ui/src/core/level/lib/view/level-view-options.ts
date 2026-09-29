@@ -12,6 +12,12 @@ export interface ILevelViewOptions extends ILevelSurfaceOptions {
   isStatsVisible: boolean;
   /** Draws the fog, which closes the level in at its distance. */
   isFogged: boolean;
+  /** Draws the sky cube, rather than the backdrop behind the level. */
+  isSkyVisible: boolean;
+  /** Draws the clouds over the sky. */
+  isClouded: boolean;
+  /** Rains where the weather rains. */
+  isRainy: boolean;
   /** Draws a distant clump of trees as its impostor, as the game does, rather than every tree at every distance. */
   isImpostors: boolean;
   /** Casts the sun's shadows, while the settings draw them. */
@@ -32,10 +38,14 @@ export interface ILevelViewOptions extends ILevelSurfaceOptions {
   isWaterVisible: boolean;
 }
 
+/** The baked hemisphere occlusion applied whole, as the engine applies it. */
+export const DEFAULT_LEVEL_HEMI_STRENGTH: number = 1;
+
 export const DEFAULT_LEVEL_VIEW_OPTIONS: ILevelViewOptions = {
   ...DEFAULT_LEVEL_SURFACE_OPTIONS,
   isAntialiased: true,
   isAxesVisible: false,
+  isClouded: true,
   isFogged: true,
   isGrassy: true,
   isGridVisible: false,
@@ -43,7 +53,9 @@ export const DEFAULT_LEVEL_VIEW_OPTIONS: ILevelViewOptions = {
   isLamplit: true,
   isOccluded: true,
   isOcclusionCulled: true,
+  isRainy: true,
   isShadowed: true,
+  isSkyVisible: true,
   isWindy: true,
   isStatsVisible: true,
   isSunVisible: true,

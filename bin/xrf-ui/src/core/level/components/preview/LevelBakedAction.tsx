@@ -2,18 +2,18 @@ import { default as LightbulbIcon } from "@mui/icons-material/Lightbulb";
 import { Button } from "@mui/material";
 import { ReactElement } from "react";
 
-import { DEFAULT_LEVEL_LIGHTING, ILevelLighting } from "@/core/level/lib/lighting/level-lighting";
+import { DEFAULT_LEVEL_HEMI_STRENGTH } from "@/core/level/lib/view/level-view-options";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
 import { EditorPopoverToggle } from "@/core/shell/editor/EditorPopoverToggle";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatPercent } from "@/lib/format/number";
-import { usePartialChange } from "@/lib/react/use-partial-change";
 
 interface ILevelBakedActionProps extends BaseComponentProps {
   isOn: boolean;
-  lighting: ILevelLighting;
+  /** How much the baked hemisphere darkens the ambient. */
+  hemiStrength: number;
   onToggle: () => void;
-  onChange: (lighting: ILevelLighting) => void;
+  onChange: (hemiStrength: number) => void;
 }
 
 /**
@@ -24,19 +24,17 @@ export function LevelBakedAction({
   id,
   className,
   isOn,
-  lighting,
+  hemiStrength,
   onToggle,
   onChange,
 }: ILevelBakedActionProps): ReactElement {
-  const onSet = usePartialChange(lighting, onChange);
-
   return (
     <EditorPopoverToggle
       data-testid={dataTestId}
       id={id}
       className={className}
       label={"Baked light"}
-      description={isOn ? `Baked occlusion at ${formatPercent(lighting.hemiStrength)}` : "Baked occlusion off"}
+      description={isOn ? `Baked occlusion at ${formatPercent(hemiStrength)}` : "Baked occlusion off"}
       icon={<LightbulbIcon />}
       isOn={isOn}
       toggleLabel={"Apply the baked occlusion"}
@@ -44,15 +42,15 @@ export function LevelBakedAction({
     >
       <RenderValueSlider
         label={"Occlusion"}
-        value={lighting.hemiStrength}
+        value={hemiStrength}
         min={0}
         max={1}
         step={0.05}
         format={formatPercent}
-        onChange={(hemiStrength: number) => onSet({ hemiStrength })}
+        onChange={onChange}
       />
 
-      <Button size={"small"} onClick={() => onSet({ hemiStrength: DEFAULT_LEVEL_LIGHTING.hemiStrength })}>
+      <Button size={"small"} onClick={() => onChange(DEFAULT_LEVEL_HEMI_STRENGTH)}>
         Back to the whole occlusion
       </Button>
     </EditorPopoverToggle>

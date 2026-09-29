@@ -1,82 +1,75 @@
 import { default as FoggyIcon } from "@mui/icons-material/Foggy";
-import { Button } from "@mui/material";
-import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
-import { DEFAULT_LEVEL_FOG, LEVEL_FOG_LIMITS } from "@/core/level/lib/lighting/level-fog";
-import { ILevelLighting } from "@/core/level/lib/lighting/level-lighting";
+import { ILevelManualWeatherActionProps } from "@/core/level/components/weather/level-manual-weather-action-props";
+import { LevelWeatherResetButton } from "@/core/level/components/weather/LevelWeatherResetButton";
+import { LevelWeatherVectorField } from "@/core/level/components/weather/LevelWeatherVectorField";
+import { ILevelManualWeather } from "@/core/level/lib/weather/level-manual-weather";
+import { LEVEL_MANUAL_WEATHER_LIMITS } from "@/core/level/lib/weather/level-manual-weather-limits";
+import { toLevelWeatherTriple } from "@/core/level/lib/weather/level-weather-vector";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
 import { EditorPopoverToggle } from "@/core/shell/editor/EditorPopoverToggle";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatNumber, formatPercent } from "@/lib/format/number";
-import { usePartialChange } from "@/lib/react/use-partial-change";
 
-interface ILevelFogActionProps extends BaseComponentProps {
-  isOn: boolean;
-  lighting: ILevelLighting;
-  /** Why its settings do nothing now, or null while they light the level. */
-  lockedReason?: Nullable<string>;
-  onToggle: () => void;
-  onChange: (lighting: ILevelLighting) => void;
-}
+/** The keys the popover sets. */
+const FOG_KEYS: ReadonlyArray<keyof ILevelManualWeather> = ["fogColor", "fogDistance", "fogDensity", "farPlane"];
 
 /**
- * Whether the noon fog closes the level in, and where and how thickly it does.
+ * The fog closing the level in, and where the view ends; whether it is drawn.
  */
 export function LevelFogAction({
   "data-testid": dataTestId = "level-fog-action",
   id,
   className,
   isOn,
-  lighting,
-  lockedReason = null,
+  manual,
   onToggle,
-  onChange,
-}: ILevelFogActionProps): ReactElement {
-  const onSet = usePartialChange(lighting, onChange);
-
+  onEdit,
+}: ILevelManualWeatherActionProps): ReactElement {
   return (
     <EditorPopoverToggle
       data-testid={dataTestId}
       id={id}
       className={className}
       label={"Fog"}
-      description={
-        isOn ? (lockedReason ? "Fog as the weather sets it" : `Fog total at ${lighting.fogDistance} m`) : "Fog off"
-      }
+      description={isOn ? `Fog total at ${formatNumber(manual.fogDistance, 0)} m` : "Fog off"}
       icon={<FoggyIcon />}
       isOn={isOn}
       toggleLabel={"Draw the fog"}
-      lockedReason={lockedReason}
       onToggle={onToggle}
     >
-      <RenderValueSlider
-        label={"Distance"}
-        value={lighting.fogDistance}
-        {...LEVEL_FOG_LIMITS.fogDistance}
-        format={(value: number) => `${value} m`}
-        onChange={(fogDistance: number) => onSet({ fogDistance })}
+      <LevelWeatherVectorField
+        label={"fog_color"}
+        isColor
+        value={manual.fogColor}
+        onChange={(fogColor) => onEdit({ fogColor: toLevelWeatherTriple(fogColor) })}
       />
 
       <RenderValueSlider
-        label={"Density"}
-        value={lighting.fogDensity}
-        {...LEVEL_FOG_LIMITS.fogDensity}
+        label={"fog_distance"}
+        value={manual.fogDistance}
+        {...LEVEL_MANUAL_WEATHER_LIMITS.fogDistance}
+        format={(value: number) => `${formatNumber(value, 0)} m`}
+        onChange={(fogDistance: number) => onEdit({ fogDistance })}
+      />
+
+      <RenderValueSlider
+        label={"fog_density"}
+        value={manual.fogDensity}
+        {...LEVEL_MANUAL_WEATHER_LIMITS.fogDensity}
         format={formatPercent}
-        onChange={(fogDensity: number) => onSet({ fogDensity })}
+        onChange={(fogDensity: number) => onEdit({ fogDensity })}
       />
 
       <RenderValueSlider
-        label={"Brightness"}
-        value={lighting.fogIntensity}
-        {...LEVEL_FOG_LIMITS.fogIntensity}
-        format={(value: number) => formatNumber(value, 2)}
-        onChange={(fogIntensity: number) => onSet({ fogIntensity })}
+        label={"far_plane"}
+        value={manual.farPlane}
+        {...LEVEL_MANUAL_WEATHER_LIMITS.farPlane}
+        format={(value: number) => `${formatNumber(value, 0)} m`}
+        onChange={(farPlane: number) => onEdit({ farPlane })}
       />
 
-      <Button size={"small"} onClick={() => onSet(DEFAULT_LEVEL_FOG)}>
-        Back to the noon fog
-      </Button>
+      <LevelWeatherResetButton keys={FOG_KEYS} onEdit={onEdit} />
     </EditorPopoverToggle>
   );
 }

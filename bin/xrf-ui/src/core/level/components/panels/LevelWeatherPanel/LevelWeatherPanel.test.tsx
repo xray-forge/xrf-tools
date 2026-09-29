@@ -7,10 +7,14 @@ import { EXrayEngine } from "@/core/ipc/types/xrf-engine-target";
 import { EEnvironmentRule, WeatherCycleId } from "@/core/ipc/types/xrf-environment";
 import { ELevelWeatherSource } from "@/core/level/lib/weather/level-weather-source";
 import { LevelLoadService, LevelWeatherService } from "@/core/level/services";
-import { mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
+import { mockLevelTextureReference, mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { InvokeMap, resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
-import { mockLevelWeatherCycle, mockLevelWeatherDescription } from "@/fixtures/mocks/weather.mocks";
+import {
+  mockLevelWeatherCycle,
+  mockLevelWeatherDescription,
+  mockRendererWeatherReport,
+} from "@/fixtures/mocks/weather.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
@@ -41,6 +45,9 @@ async function renderPanel(responses: InvokeMap = {}): Promise<RenderResult & { 
         ],
       })
     ),
+    ["plugin:levels|resolve_level_textures"]: mockSessionResponse(({ references }: { references: Array<string> }) =>
+      references.map((reference: string) => mockLevelTextureReference(reference))
+    ),
     ...responses,
   });
 
@@ -62,24 +69,45 @@ afterEach(() => {
 describe("LevelWeatherPanel", () => {
   it("plays the level's own cycle first, marked, then the game's others, with the playing one's findings", async () => {
     const { getByRole, getByTestId } = await renderPanel();
-    const cycles: HTMLElement = getByTestId("level-weather-cycles-section");
 
     expect(getByRole("button", { name: "Weather" })).toHaveAttribute("aria-pressed", "true");
-    expect(cycles.textContent).toMatch(/default_clear.*Level.*default_rain.*3 findings/);
+    expect(getByRole("combobox", { name: "Cycle" }).textContent).toBe("default_clear");
+
+    await userEvent.click(getByRole("combobox", { name: "Cycle" }));
+
+    expect(getByRole("listbox").textContent).toMatch(/default_clear · level.*default_rain.*3 findings/);
     expect(getByTestId("level-weather-findings-section").textContent).toContain("writes 2 of fog_color");
     expect(getByTestId("level-weather-clock-section").textContent).toContain("12:00:00");
   });
 
-  it("plays a cycle picked from the list, and lights by hand on asking", async () => {
-    const { getByRole, weather } = await renderPanel();
+  it("plays a cycle picked from the list, lights by hand on asking, and by the weather again on a pick", async () => {
+    const { getByRole, getByTestId, weather } = await renderPanel();
 
-    await userEvent.click(getByRole("button", { name: /default_rain/ }));
+    await userEvent.click(getByRole("combobox", { name: "Cycle" }));
+    await userEvent.click(getByRole("option", { name: /default_rain/ }));
     await waitFor(() => expect(weather.cycle?.name).toBe("default_rain"));
 
     await userEvent.click(getByRole("button", { name: "Manual" }));
 
     expect(weather.source).toBe(ELevelWeatherSource.MANUAL);
-    expect(weather.weather).toBeNull();
+    await waitFor(() => expect(weather.weather?.keyframes).toHaveLength(1));
+    expect(getByTestId("level-weather-source-section").textContent).toContain("Seeded from");
+    expect(getByRole("checkbox", { name: "Dynamic sun" })).toBeDisabled();
+
+    await userEvent.click(getByRole("combobox", { name: "Cycle" }));
+    await userEvent.click(getByRole("option", { name: /default_clear/ }));
+
+    await waitFor(() => expect(weather.source).toBe(ELevelWeatherSource.WEATHER));
+    expect(weather.cycle?.name).toBe("default_clear");
+  });
+
+  it("goes back to the weather from the keyframe set by hand", async () => {
+    const { getByRole, weather } = await renderPanel();
+
+    await userEvent.click(getByRole("button", { name: "Manual" }));
+    await userEvent.click(getByRole("button", { name: "Back to weather" }));
+
+    expect(weather.source).toBe(ELevelWeatherSource.WEATHER);
   });
 
   it("runs the clock from its button, and offers the dynamic sun on vanilla alone", async () => {
@@ -115,23 +143,19 @@ describe("LevelWeatherPanel", () => {
   it("plays an effect over the cycle, and says what is left of the one playing with a way to end it", async () => {
     const { getByRole, getByTestId, weather } = await renderPanel();
 
-    await userEvent.click(getByRole("button", { name: /fx_blowout/ }));
+    await userEvent.click(getByRole("combobox", { name: "Effect" }));
+    await userEvent.click(getByRole("option", { name: /fx_blowout/ }));
 
     expect(weather.effect).toEqual({ name: "fx_blowout" });
 
-    weather.noteReport({
-      effect: { name: "fx_blowout", remaining: 125 },
-      keyframes: null,
-      modifiers: 0,
-      time: 43_300,
-      weight: 0.5,
-    });
+    weather.noteReport(mockRendererWeatherReport({ effect: { name: "fx_blowout", remaining: 125 }, time: 43_300 }));
 
     await waitFor(() =>
       expect(getByTestId("level-weather-effects-section").textContent).toContain("00:02:05 of game time left")
     );
 
-    await userEvent.click(getByRole("button", { name: "Stop" }));
+    await userEvent.click(getByRole("combobox", { name: "Effect" }));
+    await userEvent.click(getByRole("option", { name: "None" }));
 
     expect(weather.effect).toEqual({ name: null });
   });
@@ -164,7 +188,7 @@ describe("LevelWeatherPanel", () => {
 
     expect(section()).toMatch(/Volumes\s*1.*Around the camera\s*0/);
 
-    weather.noteReport({ effect: null, keyframes: [0, 1], modifiers: 1, time: 43_200, weight: 1 });
+    weather.noteReport(mockRendererWeatherReport({ modifiers: 1, weight: 1 }));
 
     await waitFor(() => expect(section()).toMatch(/Around the camera\s*1/));
   });

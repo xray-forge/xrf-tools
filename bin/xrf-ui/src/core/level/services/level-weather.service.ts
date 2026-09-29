@@ -1,17 +1,31 @@
-import { Injectable, OnDeactivation } from "@wirestate/core";
+import { inject, Injectable, OnDeactivation } from "@wirestate/core";
 import { BoundAction, RefObservable, runInAction } from "@wirestate/mobx";
-import { IRendererWeather, IRendererWeatherReport } from "@xrf/renderer";
+import {
+  ERendererWeatherTransition,
+  IRendererWeather,
+  IRendererWeatherKeyframe,
+  IRendererWeatherReport,
+} from "@xrf/renderer";
 import { Maybe, Nullable } from "@xrf/types";
 
 import { transformError } from "@/core/error/lib";
 import { levelsCommands } from "@/core/ipc/commands/levels";
 import {
+  LevelTextureReference,
   LevelWeatherCycle,
   LevelWeatherDescription,
   SelectedLevelDescription,
   SessionSnapshot,
 } from "@/core/ipc/types/xrf-app";
+import { XrayEngine } from "@/core/ipc/types/xrf-engine-target";
 import { EWeatherCycleKind } from "@/core/ipc/types/xrf-environment";
+import { toLevelManualRendererWeather } from "@/core/level/lib/weather/level-manual-renderer-weather";
+import {
+  DEFAULT_LEVEL_MANUAL_WEATHER,
+  ILevelManualWeather,
+  listLevelManualWeatherTextures,
+  toLevelManualWeather,
+} from "@/core/level/lib/weather/level-manual-weather";
 import { toLevelRendererWeather } from "@/core/level/lib/weather/level-renderer-weather";
 import {
   DEFAULT_LEVEL_WEATHER_CONTROL,
@@ -26,16 +40,16 @@ import {
   toLevelWeatherMemoryKey,
   writeLevelWeatherMemory,
 } from "@/core/level/lib/weather/level-weather-memory";
+import { ILevelWeatherSeed } from "@/core/level/lib/weather/level-weather-seed";
 import { ILevelWeatherSeek } from "@/core/level/lib/weather/level-weather-seek";
 import { ELevelWeatherSource } from "@/core/level/lib/weather/level-weather-source";
+import { SettingsService } from "@/core/settings/services/settings";
 import { Logger } from "@/lib/logging";
 
-/** Why the toolbar's sun, fog and wind settings do nothing while a weather lights the level. */
-const LIGHTING_LOCK: string = "The weather sets it. Switch the Weather panel to Manual to set it by hand";
-
 /**
- * The open level's weather: what it plays, how, and where the renderer's clock stands. The renderer plays the cycle
- * by itself; this only says which cycle and how, hears the time back, and remembers it per level.
+ * The open level's weather: what it plays, how, and where the renderer's clock stands. The renderer plays the cycle,
+ * or the keyframe set by hand, by itself; this only says which and how, hears the time back, and remembers it per
+ * level. The keyframe set by hand is also what lights a level whose weather does not play.
  */
 @Injectable()
 export class LevelWeatherService {
@@ -52,6 +66,22 @@ export class LevelWeatherService {
   /** The chosen cycle as the renderer plays it, or null while it is still being asked for or there is none. */
   @RefObservable()
   public playable: Nullable<IRendererWeather> = null;
+
+  /** The keyframe set by hand, or null before one was. */
+  @RefObservable()
+  public manual: Nullable<ILevelManualWeather> = null;
+
+  /** What the keyframe set by hand was seeded from, or null for none the level played. */
+  @RefObservable()
+  public seed: Nullable<ILevelWeatherSeed> = null;
+
+  /** The keyframe set by hand as the renderer plays it, or null while it is being built or there is none. */
+  @RefObservable()
+  public manualPlayable: Nullable<IRendererWeather> = null;
+
+  /** How the weather the renderer is handed next takes over from what it shows. */
+  @RefObservable()
+  public transition: ERendererWeatherTransition = ERendererWeatherTransition.CUT;
 
   /** Why the last cycle asked for does not play, or null. */
   @RefObservable()
@@ -89,19 +119,47 @@ export class LevelWeatherService {
   private memoryKey: Nullable<string> = null;
   /** The level open, which a cycle is read against. */
   private selected: Nullable<SessionSnapshot<SelectedLevelDescription>> = null;
+  /** What each texture the keyframe set by hand named came to, so an edit that names none new asks for nothing. */
+  private readonly located: Map<string, LevelTextureReference> = new Map();
+  /** The cycle the level was last played with, kept until one plays so a level left early forgets nothing. */
+  private remembered: string = "";
+  /** Bumped by every build of the keyframe set by hand, so only the latest is played. */
+  private build: number = 0;
 
-  /** What the renderer plays, or null while the level is lit by hand. */
+  public constructor(private readonly settingsService: SettingsService = inject(SettingsService)) {}
+
+  /**
+   * What the renderer plays: the keyframe set by hand once built while it lights the level, the cycle otherwise, and
+   * the keyframe again where no cycle plays; null while neither is ready.
+   */
   public get weather(): Nullable<IRendererWeather> {
-    return this.source === ELevelWeatherSource.WEATHER ? this.playable : null;
+    if (this.source === ELevelWeatherSource.MANUAL && this.manualPlayable) {
+      return this.manualPlayable;
+    }
+
+    return this.playable ?? this.manualPlayable;
   }
 
-  /** Why the toolbar's lighting settings do nothing now, or null while they light the level. */
-  public get lightingLock(): Nullable<string> {
-    return this.weather ? LIGHTING_LOCK : null;
+  /** The engine the weather is read for: the level's, or the setting's where its weather does not read. */
+  public get engine(): XrayEngine {
+    return this.description?.engine ?? this.settingsService.engine;
+  }
+
+  /** The keyframe on screen as one set by hand: the one set, or the weather's mix, which a first edit seeds it from. */
+  public get shown(): ILevelManualWeather {
+    const current: Maybe<IRendererWeatherKeyframe> = this.report?.current;
+
+    return !this.isManual && current ? toLevelManualWeather(current) : (this.manual ?? DEFAULT_LEVEL_MANUAL_WEATHER);
+  }
+
+  /** Whether the keyframe set by hand lights the level, by choice or because no cycle plays. */
+  public get isManual(): boolean {
+    return this.source === ELevelWeatherSource.MANUAL || !this.playable;
   }
 
   /**
-   * Reads a level's weather and plays the cycle it was last played with, or the first it offers, once per level.
+   * Reads a level's weather and plays the cycle it was last played with, or the first it offers, once per level; or
+   * the keyframe set by hand, where that is what it was lit by, or where its weather does not play.
    *
    * @param selected - The level open now, or null for none.
    */
@@ -130,7 +188,10 @@ export class LevelWeatherService {
         this.source = memory.source;
         this.control = memory.control;
         this.time = memory.time;
+        this.manual = memory.manual;
+        this.seed = memory.seed;
       });
+      this.remembered = memory.cycle;
     }
 
     try {
@@ -146,6 +207,11 @@ export class LevelWeatherService {
         this.description = description;
       });
 
+      // Lit by hand, the keyframe is built first, so the cycle is never shown before it.
+      if (this.source === ELevelWeatherSource.MANUAL) {
+        await this.buildManual(ERendererWeatherTransition.CUT);
+      }
+
       const first: Maybe<LevelWeatherCycle> = description.offered[0];
 
       if (!first) {
@@ -153,16 +219,19 @@ export class LevelWeatherService {
       }
 
       // A remembered cycle the game no longer has gives way to the level's own.
-      if (!memory || !(await this.play(selected, memory.cycle, false))) {
+      if (!memory?.cycle || !(await this.play(selected, memory.cycle, false))) {
         await this.play(selected, first.name, true);
       }
     } catch (error: unknown) {
       this.fail(selected.sessionId, error);
+      // The keyframe set by hand is what lights a level whose weather does not play.
+      await this.buildManual(ERendererWeatherTransition.CUT);
     }
   }
 
   /**
-   * Plays another cycle from where the clock stands.
+   * Plays another cycle from where the clock stands, faded into from what is shown; picking one is asking to see it,
+   * so a level lit by hand is lit by the weather again once it is read.
    *
    * @param name - The cycle's name.
    */
@@ -170,21 +239,60 @@ export class LevelWeatherService {
     const sessionId: Nullable<string> = this.sessionId;
     const selected: Nullable<SessionSnapshot<SelectedLevelDescription>> = this.selected;
 
-    if (!sessionId || !selected || this.cycle?.name === name) {
+    if (!sessionId || !selected) {
       return;
     }
 
     try {
-      await this.play(selected, name, true);
+      if (this.cycle?.name !== name) {
+        await this.play(selected, name, true);
+      }
+
+      this.setSource(ELevelWeatherSource.WEATHER);
       this.persist();
     } catch (error: unknown) {
       this.fail(sessionId, error);
     }
   }
 
+  /**
+   * Lights the level by its weather or by the keyframe set by hand, faded into; the keyframe is seeded from what is
+   * shown the first time it is asked for.
+   *
+   * @param source - What lights it from now on.
+   */
   @BoundAction()
   public setSource(source: ELevelWeatherSource): void {
+    if (source === this.source) {
+      return;
+    }
+
+    this.transition = ERendererWeatherTransition.FADE;
     this.source = source;
+
+    if (source === ELevelWeatherSource.MANUAL) {
+      this.manual ??= this.seedManual();
+      void this.buildManual(ERendererWeatherTransition.FADE);
+    }
+
+    this.persist();
+  }
+
+  /**
+   * Changes the keyframe set by hand, which lights the level from now on: one edited while the weather lights it is
+   * seeded from what is shown first, so only the change is seen, and eased into.
+   *
+   * @param patch - The keys changed.
+   */
+  @BoundAction()
+  public editManual(patch: Partial<ILevelManualWeather>): void {
+    if (!this.isManual) {
+      this.manual = this.seedManual();
+      this.source = ELevelWeatherSource.MANUAL;
+    }
+
+    this.manual = { ...(this.manual ?? DEFAULT_LEVEL_MANUAL_WEATHER), ...patch };
+    void this.buildManual(ERendererWeatherTransition.EASE);
     this.persist();
   }
 
@@ -250,9 +358,16 @@ export class LevelWeatherService {
     this.sessionId = null;
     this.memoryKey = null;
     this.selected = null;
+    this.remembered = "";
+    this.located.clear();
+    this.build += 1;
     this.description = null;
     this.cycle = null;
     this.playable = null;
+    this.manual = null;
+    this.seed = null;
+    this.manualPlayable = null;
+    this.transition = ERendererWeatherTransition.CUT;
     this.failure = null;
     this.reading = null;
     this.seek = null;
@@ -261,6 +376,66 @@ export class LevelWeatherService {
     this.source = ELevelWeatherSource.WEATHER;
     this.control = DEFAULT_LEVEL_WEATHER_CONTROL;
     this.time = LEVEL_WEATHER_NOON;
+  }
+
+  /** A keyframe set by hand from what is shown, noon of `default_clear` where the weather shows nothing yet. */
+  private seedManual(): ILevelManualWeather {
+    const current = this.report?.current;
+
+    this.seed = current && this.cycle ? { cycle: this.cycle.name, time: this.time } : null;
+
+    return current ? toLevelManualWeather(current) : DEFAULT_LEVEL_MANUAL_WEATHER;
+  }
+
+  /**
+   * Builds what the renderer plays of the keyframe set by hand, its textures resolved as the level resolves its own,
+   * only the latest build played.
+   *
+   * @param transition - How it takes over from what is shown.
+   */
+  private async buildManual(transition: ERendererWeatherTransition): Promise<void> {
+    const { selected } = this;
+    const build: number = ++this.build;
+
+    runInAction(() => {
+      this.manual ??= DEFAULT_LEVEL_MANUAL_WEATHER;
+    });
+
+    const manual: Nullable<ILevelManualWeather> = this.manual;
+
+    if (!selected || !manual) {
+      return;
+    }
+
+    try {
+      const references: Array<string> = listLevelManualWeatherTextures(manual);
+      const unknown: Array<string> = references.filter((it: string) => !this.located.has(it));
+
+      if (unknown.length) {
+        const { value } = await levelsCommands.resolveLevelTextures(selected.sessionId, unknown);
+
+        value.forEach((it: LevelTextureReference) => this.located.set(it.reference, it));
+      }
+
+      const weather: IRendererWeather = await toLevelManualRendererWeather({
+        description: this.description,
+        engine: this.settingsService.engine,
+        located: references.flatMap((it: string) => this.located.get(it) ?? []),
+        manual,
+        roots: selected.value.roots,
+      });
+
+      if (build === this.build && this.sessionId === selected.sessionId) {
+        runInAction(() => {
+          const shown: Nullable<IRendererWeather> = this.weather;
+
+          this.manualPlayable = weather;
+          this.noteShown(shown, transition);
+        });
+      }
+    } catch (error: unknown) {
+      this.log.warn("The keyframe set by hand is not played:", transformError(error).message);
+    }
   }
 
   /**
@@ -301,10 +476,13 @@ export class LevelWeatherService {
       }
 
       runInAction(() => {
+        const shown: Nullable<IRendererWeather> = this.weather;
+
         this.cycle = cycle;
         this.playable = playable;
         this.failure = null;
         this.reading = null;
+        this.noteShown(shown, ERendererWeatherTransition.FADE);
       });
 
       return true;
@@ -316,6 +494,18 @@ export class LevelWeatherService {
       this.log.warn(`The remembered cycle '${name}' is not played:`, transformError(error).message);
 
       return false;
+    }
+  }
+
+  /**
+   * Says how what the renderer plays now takes over, where it changed: the first weather the level shows cuts in.
+   *
+   * @param shown - What it played before.
+   * @param transition - How anything after the first takes over.
+   */
+  private noteShown(shown: Nullable<IRendererWeather>, transition: ERendererWeatherTransition): void {
+    if (this.weather !== shown) {
+      this.transition = shown ? transition : ERendererWeatherTransition.CUT;
     }
   }
 
@@ -332,12 +522,16 @@ export class LevelWeatherService {
     }
   }
 
-  /** Remembers how the open level's weather plays, once a cycle does. */
+  /** Remembers how the open level's weather plays, once a cycle or the keyframe set by hand does. */
   private persist(): void {
-    if (this.memoryKey && this.cycle) {
+    const cycle: string = this.cycle?.name ?? this.remembered;
+
+    if (this.memoryKey && (cycle || this.manual)) {
       writeLevelWeatherMemory(this.memoryKey, {
         control: this.control,
-        cycle: this.cycle.name,
+        cycle,
+        manual: this.manual,
+        seed: this.seed,
         source: this.source,
         time: this.time,
       });

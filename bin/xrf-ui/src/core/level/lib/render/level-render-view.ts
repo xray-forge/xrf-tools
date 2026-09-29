@@ -1,15 +1,5 @@
-import {
-  DEFAULT_RENDERER_GRASS_WIND,
-  DEFAULT_RENDERER_LIGHTING,
-  ERendererCameraController,
-  ERendererDebugView,
-  IRendererFlyCamera,
-  IRendererLighting,
-  IRendererSettings,
-} from "@xrf/renderer";
-import { Nullable } from "@xrf/types";
+import { ERendererCameraController, ERendererDebugView, IRendererFlyCamera, IRendererSettings } from "@xrf/renderer";
 
-import { LevelSky } from "@/core/ipc/types/xrf-app";
 import { ILevelCameraOptions } from "@/core/level/lib/camera/level-camera-options";
 import { ILevelViewpoint } from "@/core/level/lib/camera/level-viewpoint";
 import {
@@ -17,13 +7,9 @@ import {
   toLevelRendererAntialiasing,
   toLevelRendererFeature,
 } from "@/core/level/lib/features/level-feature-options";
-import { toLevelRendererFog } from "@/core/level/lib/lighting/level-fog";
-import { ILevelLighting } from "@/core/level/lib/lighting/level-lighting";
-import { toLevelRendererTreeWind } from "@/core/level/lib/lighting/level-wind";
 import { ILevelLodOptions, toLevelRendererLod } from "@/core/level/lib/lod/level-lod-options";
 import { ILevelRenderConfig } from "@/core/level/lib/render/level-render-config";
 import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
-import { toRendererLighting } from "@/core/render/lib/lighting/render-lighting";
 import { IRenderSharedSettings } from "@/core/render/lib/settings/render-shared-settings";
 
 /**
@@ -52,46 +38,12 @@ export function toLevelCameraAt(
   };
 }
 
-/** What a level is lit by while no weather plays. */
-export interface ILevelRendererLightingInput {
-  /** The level's light, fog and wind, as its controls set them. */
-  lighting: ILevelLighting;
-  /** Whether the fog is drawn. */
-  isFogged: boolean;
-  /** Whether the trees and the grass sway: the trees by the wind's controls, the grass as the game's calm. */
-  isWindy: boolean;
-  /** The sky cube the level is lit under and its irradiance cube, or null for the engine's noon sky. */
-  sky: Nullable<LevelSky>;
-}
-
-/**
- * @param input - The controls, and the level's sky.
- * @returns The engine's noon, pointed and scaled by those controls, under the level's sky.
- */
-export function toLevelRendererLighting(input: ILevelRendererLightingInput): IRendererLighting {
-  const { lighting, isFogged, isWindy, sky } = input;
-
-  return {
-    ...toRendererLighting(lighting, DEFAULT_RENDERER_LIGHTING),
-    fog: isFogged ? toLevelRendererFog(lighting) : null,
-    grass: isWindy ? DEFAULT_RENDERER_GRASS_WIND : null,
-    sky: sky
-      ? {
-          ...DEFAULT_RENDERER_LIGHTING.sky,
-          environments: [sky.environment.reference, sky.environment.reference],
-          textures: [sky.texture.reference, sky.texture.reference],
-        }
-      : DEFAULT_RENDERER_LIGHTING.sky,
-    trees: isWindy ? toLevelRendererTreeWind(lighting) : null,
-  };
-}
-
 /** What a level view's renderer settings are made of. */
 export interface ILevelRendererSettingsInputs {
   /** The toolbar's toggles. */
   options: ILevelViewOptions;
-  /** The level's light, whose hemisphere strength the baked light toggle gates. */
-  lighting: ILevelLighting;
+  /** How much the baked hemisphere darkens the ambient, which the baked light toggle gates. */
+  hemiStrength: number;
   /** How far trees are drawn in full, which the impostors toggle gates. */
   lod: ILevelLodOptions;
   /** What the view sets over the settings' features for itself, which their toggles gate. */
@@ -107,7 +59,7 @@ export interface ILevelRendererSettingsInputs {
  * @returns The renderer's settings.
  */
 export function toLevelRendererSettings(inputs: ILevelRendererSettingsInputs): IRendererSettings {
-  const { options, lighting, lod, view, shared, config } = inputs;
+  const { options, hemiStrength, lod, view, shared, config } = inputs;
   const { features } = shared;
 
   return {
@@ -125,11 +77,11 @@ export function toLevelRendererSettings(inputs: ILevelRendererSettingsInputs): I
       shadows: toLevelRendererFeature("shadows", features, view, options.isShadowed),
       water: toLevelRendererFeature("water", features, view, options.isWaterVisible),
     },
-    hemiStrength: options.isBaked ? lighting.hemiStrength : 0,
+    hemiStrength: options.isBaked ? hemiStrength : 0,
     isBumped: options.isBumped,
     isGpuTimed: shared.isGpuTimed,
     isLit: true,
-    isSkyDrawn: true,
+    isSkyDrawn: options.isSkyVisible,
     isTextured: options.isTextured,
     isWireframe: options.isWireframe,
     pacing: shared.pacing,

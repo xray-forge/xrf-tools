@@ -1,67 +1,57 @@
 import { default as WbSunnyIcon } from "@mui/icons-material/WbSunny";
-import { Button } from "@mui/material";
+import { Button, Typography } from "@mui/material";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useMemo } from "react";
 
 import { LevelSunDescription } from "@/core/ipc/types/xrf-app";
-import { DEFAULT_LEVEL_LIGHTING, ILevelLighting } from "@/core/level/lib/lighting/level-lighting";
-import { ILevelSunAngles, toSunAngles } from "@/core/level/lib/lighting/level-sun";
-import { RenderLightingControls } from "@/core/render/components/lighting/RenderLightingControls";
+import { ILevelManualWeatherActionProps } from "@/core/level/components/weather/level-manual-weather-action-props";
+import { LevelWeatherResetButton } from "@/core/level/components/weather/LevelWeatherResetButton";
+import { LevelWeatherVectorField } from "@/core/level/components/weather/LevelWeatherVectorField";
+import { ILevelManualWeather, toLevelManualSun } from "@/core/level/lib/weather/level-manual-weather";
+import { LEVEL_MANUAL_WEATHER_LIMITS } from "@/core/level/lib/weather/level-manual-weather-limits";
+import { toLevelWeatherQuad, toLevelWeatherTriple } from "@/core/level/lib/weather/level-weather-vector";
+import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
 import { EditorPopoverToggle } from "@/core/shell/editor/EditorPopoverToggle";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatDegrees } from "@/lib/format/angle";
-import { usePartialChange } from "@/lib/react/use-partial-change";
 
-interface ILevelSunActionProps extends BaseComponentProps {
-  /** Whether the sun is drawn in the sky, which is what the toggle turns over; the light it casts stays. */
-  isOn: boolean;
-  lighting: ILevelLighting;
+/** The keys the popover sets. */
+const SUN_KEYS: ReadonlyArray<keyof ILevelManualWeather> = [
+  "sunColor",
+  "sunAltitude",
+  "sunLongitude",
+  "ambientColor",
+  "hemisphereColor",
+];
+
+interface ILevelSunActionProps extends ILevelManualWeatherActionProps {
   /** The sun the open level was compiled against, or null where it names none. */
   sun: Nullable<LevelSunDescription>;
-  /** Why its settings do nothing now, or null while they light the level. */
-  lockedReason?: Nullable<string>;
-  onToggle: () => void;
-  onChange: (lighting: ILevelLighting) => void;
 }
 
 /**
- * Where the sun stands and how strongly it and the ambient light the level, and whether it is drawn in the sky.
+ * The sun, the ambient and the hemisphere, by the keys a weather writes them with; whether the sun is drawn in the sky.
  */
 export function LevelSunAction({
   "data-testid": dataTestId = "level-sun-action",
   id,
   className,
   isOn,
-  lighting,
+  manual,
   sun,
-  lockedReason = null,
   onToggle,
-  onChange,
+  onEdit,
 }: ILevelSunActionProps): ReactElement {
-  const angles: Nullable<ILevelSunAngles> = useMemo(() => toSunAngles(sun?.direction ?? null), [sun]);
+  const compiled = useMemo(() => toLevelManualSun(sun?.direction ?? null), [sun]);
 
-  const onSet = usePartialChange(lighting, onChange);
-
-  // The one thing about its lighting a level can answer for: the occlusion it carries was computed for this
-  // direction, so lighting a preview from it is lighting it the way the compiler assumed.
-  const onUseLevelSun = useCallback(() => {
-    if (angles) {
-      onSet({ sunAzimuth: Math.round(angles.azimuth), sunElevation: Math.round(angles.elevation) });
+  // The occlusion a level carries was computed for its sun, so lighting it from there is lighting it as xrLC assumed.
+  const onUseCompiled = useCallback(() => {
+    if (compiled) {
+      onEdit(compiled);
     }
-  }, [angles, onSet]);
+  }, [compiled, onEdit]);
 
-  const onReset = useCallback(
-    () =>
-      onSet({
-        ambientColor: DEFAULT_LEVEL_LIGHTING.ambientColor,
-        ambientIntensity: DEFAULT_LEVEL_LIGHTING.ambientIntensity,
-        sunAzimuth: DEFAULT_LEVEL_LIGHTING.sunAzimuth,
-        sunColor: DEFAULT_LEVEL_LIGHTING.sunColor,
-        sunElevation: DEFAULT_LEVEL_LIGHTING.sunElevation,
-        sunIntensity: DEFAULT_LEVEL_LIGHTING.sunIntensity,
-      }),
-    [onSet]
-  );
+  // `setHP` turns the light's heading by the altitude and tilts it down by the longitude.
+  const reading: string = `${formatDegrees(-manual.sunLongitude)} up at a bearing of ${formatDegrees(manual.sunAltitude)}`;
 
   return (
     <EditorPopoverToggle
@@ -69,26 +59,58 @@ export function LevelSunAction({
       id={id}
       className={className}
       label={"Sun"}
-      description={
-        lockedReason
-          ? "Sun where the weather stands it"
-          : `Sun ${formatDegrees(lighting.sunElevation)} up at ${formatDegrees(lighting.sunAzimuth)}`
-      }
+      description={`Sun ${reading}`}
       icon={<WbSunnyIcon />}
       isOn={isOn}
       toggleLabel={"Show the sun in the sky"}
-      lockedReason={lockedReason}
       onToggle={onToggle}
     >
-      <RenderLightingControls lighting={lighting} onChange={onSet} />
+      <LevelWeatherVectorField
+        label={"sun_color"}
+        isColor
+        value={manual.sunColor}
+        onChange={(sunColor) => onEdit({ sunColor: toLevelWeatherTriple(sunColor) })}
+      />
 
-      <Button size={"small"} disabled={!angles} onClick={onUseLevelSun}>
-        {angles ? "Use the level's own sun" : "This level names no sun"}
+      <RenderValueSlider
+        label={"sun_altitude"}
+        value={manual.sunAltitude}
+        {...LEVEL_MANUAL_WEATHER_LIMITS.sunAltitude}
+        format={formatDegrees}
+        onChange={(sunAltitude: number) => onEdit({ sunAltitude })}
+      />
+
+      <RenderValueSlider
+        label={"sun_longitude"}
+        value={manual.sunLongitude}
+        {...LEVEL_MANUAL_WEATHER_LIMITS.sunLongitude}
+        format={formatDegrees}
+        onChange={(sunLongitude: number) => onEdit({ sunLongitude })}
+      />
+
+      <Typography className={"block text-text-secondary"} variant={"caption"}>
+        {`setHP stands it ${reading}.`}
+      </Typography>
+
+      <LevelWeatherVectorField
+        label={"ambient_color"}
+        isColor
+        value={manual.ambientColor}
+        onChange={(ambientColor) => onEdit({ ambientColor: toLevelWeatherTriple(ambientColor) })}
+      />
+
+      <LevelWeatherVectorField
+        label={"hemisphere_color"}
+        isColor
+        value={manual.hemisphereColor}
+        onChange={(hemisphereColor) => onEdit({ hemisphereColor: toLevelWeatherQuad(hemisphereColor) })}
+      />
+
+      <Button size={"small"} disabled={!compiled} onClick={onUseCompiled}>
+        {compiled ? "Use the level's compiled sun" : "This level names no sun"}
       </Button>
 
-      <Button size={"small"} onClick={onReset}>
-        Back to the default light
-      </Button>
+      <LevelWeatherResetButton keys={SUN_KEYS} onEdit={onEdit} />
     </EditorPopoverToggle>
   );
 }

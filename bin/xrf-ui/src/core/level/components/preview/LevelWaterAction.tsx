@@ -6,6 +6,7 @@ import { ReactElement } from "react";
 import { ILevelFeatureActionProps } from "@/core/level/components/preview/level-feature-action-props";
 import { useLevelFeatureOverride } from "@/core/level/components/preview/use-level-feature-override";
 import { describeLevelFeatureToggle } from "@/core/level/lib/features";
+import { LEVEL_MANUAL_WEATHER_LIMITS } from "@/core/level/lib/weather/level-manual-weather-limits";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
 import {
   formatWaterDistortion,
@@ -16,9 +17,17 @@ import {
 } from "@/core/render/lib/features";
 import { EditorPopoverToggle } from "@/core/shell/editor/EditorPopoverToggle";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
+import { formatPercent } from "@/lib/format/number";
+
+interface ILevelWaterActionProps extends ILevelFeatureActionProps<"water"> {
+  /** `water_intensity` of the keyframe on screen, which scales what the water reflects. */
+  waterIntensity: number;
+  onWaterIntensity: (waterIntensity: number) => void;
+}
 
 /**
- * Whether this view draws the water, and how it moves, reflects and distorts: the engine's own by default.
+ * Whether this view draws the water, how strongly the weather has it reflect, and how it moves, reflects and
+ * distorts: the engine's own by default.
  */
 export function LevelWaterAction({
   "data-testid": dataTestId = "level-water-action",
@@ -27,9 +36,11 @@ export function LevelWaterAction({
   isOn,
   state,
   features,
+  waterIntensity,
   onToggle,
   onChange,
-}: ILevelFeatureActionProps<"water">): ReactElement {
+  onWaterIntensity,
+}: ILevelWaterActionProps): ReactElement {
   const { set, reset } = useLevelFeatureOverride("water", features, onChange);
   const water: IRendererWaterSettings = state.value;
 
@@ -52,6 +63,14 @@ export function LevelWaterAction({
       toggleLabel={"Draw the water"}
       onToggle={onToggle}
     >
+      <RenderValueSlider
+        label={"water_intensity"}
+        value={waterIntensity}
+        {...LEVEL_MANUAL_WEATHER_LIMITS.waterIntensity}
+        format={formatPercent}
+        onChange={onWaterIntensity}
+      />
+
       <CheckboxFormRow
         label={"Soft"}
         description={"Fades by how deep it is, and lays foam in the shallows: r2_soft_water."}

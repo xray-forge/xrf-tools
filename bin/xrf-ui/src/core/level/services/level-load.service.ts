@@ -12,7 +12,6 @@ import {
   LevelDetailsDescription,
   LevelLightsDescription,
   LevelOpenRequest,
-  LevelSky,
   LevelSource,
   LevelSpawnModelsDescription,
   LevelTextureReference,
@@ -132,9 +131,7 @@ export class LevelLoadService {
   private readonly heldGrass: LevelHeld<ILevelGrassDelivery> = new LevelHeld();
   private readonly heldLights: LevelHeld<LevelLightsDescription> = new LevelHeld();
   private readonly heldSpawnModels: LevelHeld<ILevelSpawnModelsDelivery> = new LevelHeld();
-  /** The sky cube the level is lit under, which its water reflects: held only so its texture is claimed and kept. */
-  private readonly heldSky: LevelHeld<LevelSky> = new LevelHeld();
-  /** The open level's grass, lights, spawned models and sky being read, settling once all four have. */
+  /** The open level's grass, lights and spawned models being read, settling once all three have. */
   private heldReads: Promise<void> = Promise.resolve();
 
   /** Where the camera last reported from, which is what the level is filled in around once it settles. */
@@ -409,18 +406,11 @@ export class LevelLoadService {
       this.readHeld(selected.sessionId, "spawned models", this.heldSpawnModels, () =>
         this.readSpawnModels(selected.sessionId)
       ),
-      this.readHeld(selected.sessionId, "sky", this.heldSky, () =>
-        Promise.resolve({
-          summary: [selected.value.sky.texture.reference],
-          textures: [selected.value.sky.texture, selected.value.sky.environment],
-          value: selected.value.sky,
-        })
-      ),
     ]).then(() => undefined);
   }
 
   /**
-   * @returns Settles once the open level's grass, lights, spawned models and sky are held, or have failed and said so;
+   * @returns Settles once the open level's grass, lights and spawned models are held, or have failed and said so;
    *   each is handed on as it is held, so what draws them has them all by then.
    */
   public whenHeldRead(): Promise<void> {
@@ -537,7 +527,6 @@ export class LevelLoadService {
     this.heldGrass.release();
     this.heldLights.release();
     this.heldSpawnModels.release();
-    this.heldSky.release();
   }
 
   /**
@@ -774,12 +763,7 @@ export class LevelLoadService {
 
   /** @returns What the level's grass, lights and spawned models bind, held or claimed. */
   private listHeldTextures(): Set<string> {
-    return new Set([
-      ...this.heldGrass.textures,
-      ...this.heldLights.textures,
-      ...this.heldSpawnModels.textures,
-      ...this.heldSky.textures,
-    ]);
+    return new Set([...this.heldGrass.textures, ...this.heldLights.textures, ...this.heldSpawnModels.textures]);
   }
 
   private publishSectorReport(): void {

@@ -16,7 +16,6 @@ import { ILevelCameraOptions } from "@/core/level/lib/camera/level-camera-option
 import { toLevelCameraReading } from "@/core/level/lib/camera/level-camera-reading";
 import { ILevelViewpoint, toLevelStartViewpoint } from "@/core/level/lib/camera/level-viewpoint";
 import { ILevelBox, toLevelBox } from "@/core/level/lib/extent/level-extent";
-import { ILevelLighting } from "@/core/level/lib/lighting/level-lighting";
 import { DEFAULT_LEVEL_RENDER_CONFIG, ILevelRenderConfig } from "@/core/level/lib/render/level-render-config";
 import { LevelRenderContent } from "@/core/level/lib/render/level-render-content";
 import {
@@ -27,11 +26,7 @@ import {
   toLevelSunOverlay,
 } from "@/core/level/lib/render/level-render-frame";
 import { LEVEL_RENDER_KEYS } from "@/core/level/lib/render/level-render-keys";
-import {
-  toLevelCameraAt,
-  toLevelRendererLighting,
-  toLevelRendererSettings,
-} from "@/core/level/lib/render/level-render-view";
+import { toLevelCameraAt, toLevelRendererSettings } from "@/core/level/lib/render/level-render-view";
 import { ILevelPoint } from "@/core/level/lib/residency/level-residency";
 import { measureLevelStats } from "@/core/level/lib/stats/level-stats";
 import { ILevelSurfaceGeometry } from "@/core/level/lib/surface/level-surface-geometry";
@@ -108,7 +103,7 @@ export class LevelRenderService extends RenderSurfaceService {
     return toLevelRendererSettings({
       config: this.config,
       shared: this.settingsService.sharedRenderSettings,
-      lighting: this.viewService.lighting,
+      hemiStrength: this.viewService.hemiStrength,
       lod: this.viewService.lod,
       options: this.viewService.options,
       view: this.viewService.features,
@@ -140,7 +135,10 @@ export class LevelRenderService extends RenderSurfaceService {
       // Told the level and the view as they are now, then again whenever either moves.
       reaction(() => this.loadService.level.value?.selected.value ?? null, this.openLevel, { fireImmediately: true }),
       reaction(() => this.viewService.options, this.applyOptions, { fireImmediately: true }),
-      reaction(() => this.viewService.lighting, this.applyLighting, { fireImmediately: true }),
+      reaction(
+        () => this.viewService.hemiStrength,
+        () => this.sendSettings()
+      ),
       // The level's weather is read once it opens, and played by the renderer once its skies are asked for.
       reaction(
         () => this.loadService.level.value?.selected ?? null,
@@ -149,7 +147,14 @@ export class LevelRenderService extends RenderSurfaceService {
       ),
       reaction(() => this.weatherService.weather, this.applyWeather, { fireImmediately: true }),
       reaction(
-        () => [this.weatherService.control, this.viewService.options.isFogged, this.viewService.options.isWindy],
+        () => [
+          this.weatherService.control,
+          this.weatherService.isManual,
+          this.viewService.options.isClouded,
+          this.viewService.options.isFogged,
+          this.viewService.options.isRainy,
+          this.viewService.options.isWindy,
+        ],
         () => this.sendWeatherControl(null)
       ),
       reaction(
@@ -220,8 +225,6 @@ export class LevelRenderService extends RenderSurfaceService {
 
     this.level = level;
     this.content?.open(level?.surfaces ?? []);
-    // The level names the sky its water reflects.
-    this.applyLighting(this.viewService.lighting);
     this.publishTextures();
     this.applyFrame();
 
@@ -239,28 +242,19 @@ export class LevelRenderService extends RenderSurfaceService {
 
   @BoundAction()
   private applyOptions(): void {
-    // The fog and the wind are the lighting's; the rest of what the settings read, the settings'.
-    this.applyLighting(this.viewService.lighting);
+    this.sendSettings();
     this.applyFrame();
   }
 
-  @BoundAction()
-  private applyLighting(lighting: ILevelLighting): void {
-    const { isFogged, isWindy } = this.viewService.options;
-
-    this.sendLighting(toLevelRendererLighting({ isFogged, isWindy, lighting, sky: this.level?.sky ?? null }));
-    // The hemisphere strength is the lighting's, which the settings carry.
-    this.sendSettings();
-  }
-
   /**
-   * Plays a weather, or lights by hand again, from where the clock last stood.
+   * Plays a weather, or the keyframe set by hand, from where the clock last stood, taking over as the weather service
+   * says.
    *
-   * @param weather - What the renderer plays, or null to light by the toolbar's lighting.
+   * @param weather - What the renderer plays, or null for none ready yet.
    */
   @BoundAction()
   private applyWeather(weather: Nullable<IRendererWeather>): void {
-    this.client?.setWeather(weather);
+    this.client?.setWeather(weather, this.weatherService.transition);
 
     if (weather) {
       this.sendWeatherControl(this.weatherService.time);
@@ -271,9 +265,19 @@ export class LevelRenderService extends RenderSurfaceService {
    * @param time - Seconds since midnight to play on from, or null to play on from where the renderer's clock stands.
    */
   private sendWeatherControl(time: Nullable<number>): void {
-    const { isFogged, isWindy } = this.viewService.options;
+    const { isClouded, isFogged, isRainy, isWindy } = this.viewService.options;
+    const { control, isManual } = this.weatherService;
 
-    this.client?.setWeatherControl({ ...this.weatherService.control, isFogged, isWindy, time });
+    this.client?.setWeatherControl({
+      ...control,
+      isClouded,
+      // The keyframe set by hand stands its sun by its own angles.
+      isDynamicSun: control.isDynamicSun && !isManual,
+      isFogged,
+      isRainy,
+      isWindy,
+      time,
+    });
   }
 
   /** The toolbar's speeds and lens, from the same place: the camera keeps where it has flown. */

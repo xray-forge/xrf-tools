@@ -8,24 +8,28 @@ import { ERendererRenderScale, IRendererFeatureSettings } from "@xrf/renderer";
 import { Nullable } from "@xrf/types";
 import { ReactElement, ReactNode, useCallback } from "react";
 
-import { LevelSunDescription } from "@/core/ipc/types/xrf-app";
+import { LevelSunDescription, LevelWeatherTexture } from "@/core/ipc/types/xrf-app";
 import { LevelAmbientOcclusionAction } from "@/core/level/components/preview/LevelAmbientOcclusionAction";
 import { LevelAntialiasingAction } from "@/core/level/components/preview/LevelAntialiasingAction";
 import { LevelBakedAction } from "@/core/level/components/preview/LevelBakedAction";
+import { LevelCloudsAction } from "@/core/level/components/preview/LevelCloudsAction";
 import { LevelFogAction } from "@/core/level/components/preview/LevelFogAction";
 import { LevelGrassAction } from "@/core/level/components/preview/LevelGrassAction";
 import { LevelLightsAction } from "@/core/level/components/preview/LevelLightsAction";
 import { LevelLodAction } from "@/core/level/components/preview/LevelLodAction";
+import { LevelRainAction } from "@/core/level/components/preview/LevelRainAction";
 import { LevelReadoutAction } from "@/core/level/components/preview/LevelReadoutAction";
 import { LevelRenderScaleAction } from "@/core/level/components/preview/LevelRenderScaleAction";
 import { LevelShadowAction } from "@/core/level/components/preview/LevelShadowAction";
+import { LevelSkyAction } from "@/core/level/components/preview/LevelSkyAction";
 import { LevelSunAction } from "@/core/level/components/preview/LevelSunAction";
 import { LevelWaterAction } from "@/core/level/components/preview/LevelWaterAction";
+import { LevelWeatherAction } from "@/core/level/components/preview/LevelWeatherAction";
 import { LevelWindAction } from "@/core/level/components/preview/LevelWindAction";
 import { ILevelFeatureOptions, TLevelFeatureView } from "@/core/level/lib/features";
-import { ILevelLighting } from "@/core/level/lib/lighting/level-lighting";
 import { ILevelLodOptions } from "@/core/level/lib/lod/level-lod-options";
 import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
+import { ILevelManualWeather } from "@/core/level/lib/weather/level-manual-weather";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
 import { EditorToolbarSeparator } from "@/core/shell/editor/EditorToolbarSeparator";
 import { EditorViewToggle } from "@/core/shell/editor/EditorViewToggle";
@@ -34,8 +38,14 @@ import { BaseComponentProps } from "@/lib/dom/element-types";
 interface ILevelPreviewToolbarProps extends BaseComponentProps {
   subtitle?: ReactNode;
   options: ILevelViewOptions;
-  /** What the level is lit and fogged with, which the light and fog toggles carry the settings of. */
-  lighting: ILevelLighting;
+  /** How much the baked hemisphere darkens the ambient, which the baked light toggle carries. */
+  hemiStrength: number;
+  /** The keyframe on screen, which the sun, sky, clouds, fog, rain, water and wind popovers edit. */
+  manual: ILevelManualWeather;
+  /** Every sky the game's weather names, which the sky's popover offers. */
+  skies: ReadonlyArray<LevelWeatherTexture>;
+  /** Every clouds texture it names. */
+  clouds: ReadonlyArray<LevelWeatherTexture>;
   /** The sun the open level was compiled against, which the sun's popover offers to light it from. */
   sun: Nullable<LevelSunDescription>;
   /** How far trees are drawn in full, which the impostors toggle carries. */
@@ -48,12 +58,12 @@ interface ILevelPreviewToolbarProps extends BaseComponentProps {
   settings: IRendererFeatureSettings;
   /** Whether the settings time every viewport's passes. */
   isGpuTimed: boolean;
-  /** Why the sun, fog and wind settings do nothing now, or null while they light the level. */
-  lightingLock?: Nullable<string>;
   /** Value pickers the surface contributes, drawn last, as every toolbar in this application orders them. */
   actions?: ReactNode;
   onChangeOptions: (options: ILevelViewOptions) => void;
-  onChangeLighting: (lighting: ILevelLighting) => void;
+  onChangeHemiStrength: (hemiStrength: number) => void;
+  /** Sets keys of the keyframe set by hand, which lights the level from then on. */
+  onEditManual: (patch: Partial<ILevelManualWeather>) => void;
   onChangeLod: (lod: ILevelLodOptions) => void;
   onChangeFeatures: (features: ILevelFeatureOptions) => void;
   /** Sets the render scale in the settings, every viewport's. */
@@ -73,17 +83,20 @@ export function LevelPreviewToolbar({
   className,
   subtitle,
   options,
-  lighting,
+  hemiStrength,
+  manual,
+  skies,
+  clouds,
   sun,
   lod,
   features,
   featureView,
   settings,
   isGpuTimed,
-  lightingLock = null,
   actions,
   onChangeOptions,
-  onChangeLighting,
+  onChangeHemiStrength,
+  onEditManual,
   onChangeLod,
   onChangeFeatures,
   onChangeScale,
@@ -166,20 +179,14 @@ export function LevelPreviewToolbar({
 
           <EditorToolbarSeparator />
 
-          <LevelBakedAction
-            isOn={options.isBaked}
-            lighting={lighting}
-            onToggle={() => onToggle("isBaked")}
-            onChange={onChangeLighting}
-          />
+          <LevelWeatherAction />
 
           <LevelSunAction
             isOn={options.isSunVisible}
-            lighting={lighting}
+            manual={manual}
             sun={sun}
-            lockedReason={lightingLock}
             onToggle={() => onToggle("isSunVisible")}
-            onChange={onChangeLighting}
+            onEdit={onEditManual}
           />
 
           <LevelLightsAction
@@ -206,12 +213,51 @@ export function LevelPreviewToolbar({
             onChange={onChangeFeatures}
           />
 
+          <LevelBakedAction
+            isOn={options.isBaked}
+            hemiStrength={hemiStrength}
+            onToggle={() => onToggle("isBaked")}
+            onChange={onChangeHemiStrength}
+          />
+
+          <LevelSkyAction
+            isOn={options.isSkyVisible}
+            manual={manual}
+            skies={skies}
+            onToggle={() => onToggle("isSkyVisible")}
+            onEdit={onEditManual}
+          />
+
+          <LevelCloudsAction
+            isOn={options.isClouded}
+            manual={manual}
+            clouds={clouds}
+            onToggle={() => onToggle("isClouded")}
+            onEdit={onEditManual}
+          />
+
           <LevelFogAction
             isOn={options.isFogged}
-            lighting={lighting}
-            lockedReason={lightingLock}
+            manual={manual}
             onToggle={() => onToggle("isFogged")}
-            onChange={onChangeLighting}
+            onEdit={onEditManual}
+          />
+
+          <LevelRainAction
+            isOn={options.isRainy}
+            manual={manual}
+            onToggle={() => onToggle("isRainy")}
+            onEdit={onEditManual}
+          />
+
+          <LevelWaterAction
+            isOn={options.isWaterVisible}
+            state={featureView.water}
+            features={features}
+            waterIntensity={manual.waterIntensity}
+            onToggle={() => onToggle("isWaterVisible")}
+            onChange={onChangeFeatures}
+            onWaterIntensity={(waterIntensity: number) => onEditManual({ waterIntensity })}
           />
 
           <LevelGrassAction
@@ -222,20 +268,11 @@ export function LevelPreviewToolbar({
             onChange={onChangeFeatures}
           />
 
-          <LevelWaterAction
-            isOn={options.isWaterVisible}
-            state={featureView.water}
-            features={features}
-            onToggle={() => onToggle("isWaterVisible")}
-            onChange={onChangeFeatures}
-          />
-
           <LevelWindAction
             isOn={options.isWindy}
-            lighting={lighting}
-            lockedReason={lightingLock}
+            manual={manual}
             onToggle={() => onToggle("isWindy")}
-            onChange={onChangeLighting}
+            onEdit={onEditManual}
           />
 
           <EditorToolbarSeparator />

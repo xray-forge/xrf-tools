@@ -10,7 +10,7 @@ import {
 import { Nullable } from "@xrf/types";
 
 import { LevelRain, LevelTextureReference, LevelWeatherCycle, LevelWeatherDescription } from "@/core/ipc/types/xrf-app";
-import { EXrayEngine } from "@/core/ipc/types/xrf-engine-target";
+import { EXrayEngine, XrayEngine } from "@/core/ipc/types/xrf-engine-target";
 import { SunPosition, WeatherDescriptor } from "@/core/ipc/types/xrf-environment";
 import { EnvModifier } from "@/core/ipc/types/xrf-level";
 import { Vector3d } from "@/core/ipc/types/xrf-math";
@@ -38,13 +38,71 @@ export interface ILevelRendererWeatherInput {
  */
 export async function toLevelRendererWeather(input: ILevelRendererWeatherInput): Promise<IRendererWeather> {
   const { description, cycle, roots } = input;
+
+  return {
+    ...toLevelRendererWeatherBase(description),
+    keyframes: cycle.keyframes.map(toLevelRendererWeatherKeyframe),
+    sunTable:
+      description.sunTable?.map((position: SunPosition) => ({
+        altitude: position.altitude ?? 0,
+        longitude: position.longitude ?? 0,
+      })) ?? null,
+    textures: await toLevelRendererTextures(roots, [
+      ...[cycle, ...description.effects].flatMap((it: LevelWeatherCycle) => it.textures),
+      ...listLevelRainTextures(description.rain),
+    ]),
+  };
+}
+
+/**
+ * @param description - The open level's weather.
+ * @returns What any weather of the level plays over whatever keyframes it plays: its engine, effects, the level's
+ *   modifiers and its rain.
+ */
+export function toLevelRendererWeatherBase(
+  description: LevelWeatherDescription
+): Pick<IRendererWeather, "engine" | "effects" | "modifiers" | "rain"> {
+  return {
+    effects: Object.fromEntries(
+      description.effects.map((effect: LevelWeatherCycle) => [
+        effect.name,
+        effect.keyframes.map(toLevelRendererWeatherKeyframe),
+      ])
+    ),
+    engine: toLevelRendererWeatherEngine(description.engine),
+    modifiers: description.modifiers.map(toLevelRendererWeatherModifier),
+    rain: toLevelRendererRain(description.rain),
+  };
+}
+
+/**
+ * @param engine - The engine target configs are read as.
+ * @returns The same, as the renderer names it.
+ */
+export function toLevelRendererWeatherEngine(engine: XrayEngine): ERendererWeatherEngine {
+  return engine === EXrayEngine.EXTENDED ? ERendererWeatherEngine.EXTENDED : ERendererWeatherEngine.VANILLA;
+}
+
+/**
+ * @param rain - What the level's rain is drawn with.
+ * @returns The textures it names.
+ */
+export function listLevelRainTextures(rain: LevelRain): Array<LevelTextureReference> {
+  return [rain.streak, ...(rain.drop ? [rain.drop.texture] : [])];
+}
+
+/**
+ * @param roots - Roots the level was opened in.
+ * @param references - Textures and what they resolved to, each once by reference however often it is named.
+ * @returns Where the renderer fetches each that resolved.
+ */
+export async function toLevelRendererTextures(
+  roots: XrayRoots,
+  references: ReadonlyArray<LevelTextureReference>
+): Promise<IRendererWeather["textures"]> {
   const located: Array<LevelTextureReference & { logicalPath: string }> = [
     ...new Map(
-      [
-        ...[cycle, ...description.effects].flatMap((it: LevelWeatherCycle) => it.textures),
-        description.rain.streak,
-        ...(description.rain.drop ? [description.rain.drop.texture] : []),
-      ]
+      references
         .filter(
           (it: LevelTextureReference): it is LevelTextureReference & { logicalPath: string } => it.logicalPath !== null
         )
@@ -55,30 +113,12 @@ export async function toLevelRendererWeather(input: ILevelRendererWeatherInput):
     located.map((it) => LevelTextureReader.request(roots, it.logicalPath))
   );
 
-  return {
-    engine:
-      description.engine === EXrayEngine.EXTENDED ? ERendererWeatherEngine.EXTENDED : ERendererWeatherEngine.VANILLA,
-    effects: Object.fromEntries(
-      description.effects.map((effect: LevelWeatherCycle) => [
-        effect.name,
-        effect.keyframes.map(toLevelRendererWeatherKeyframe),
-      ])
-    ),
-    keyframes: cycle.keyframes.map(toLevelRendererWeatherKeyframe),
-    modifiers: description.modifiers.map(toLevelRendererWeatherModifier),
-    rain: toLevelRendererRain(description.rain),
-    sunTable:
-      description.sunTable?.map((position: SunPosition) => ({
-        altitude: position.altitude ?? 0,
-        longitude: position.longitude ?? 0,
-      })) ?? null,
-    textures: Object.fromEntries(
-      located.map((it, index: number) => [
-        it.reference,
-        { encoding: ERendererTextureEncoding.FETCH, file: requests[index].file, picture: requests[index].picture },
-      ])
-    ),
-  };
+  return Object.fromEntries(
+    located.map((it, index: number) => [
+      it.reference,
+      { encoding: ERendererTextureEncoding.FETCH, file: requests[index].file, picture: requests[index].picture },
+    ])
+  );
 }
 
 /**

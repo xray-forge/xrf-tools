@@ -1,40 +1,39 @@
 import { default as AirIcon } from "@mui/icons-material/Air";
-import { Button } from "@mui/material";
-import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
-import { ILevelLighting } from "@/core/level/lib/lighting/level-lighting";
-import { DEFAULT_LEVEL_WIND, LEVEL_WIND_LIMITS } from "@/core/level/lib/lighting/level-wind";
+import { ILevelManualWeatherActionProps } from "@/core/level/components/weather/level-manual-weather-action-props";
+import { LevelWeatherResetButton } from "@/core/level/components/weather/LevelWeatherResetButton";
+import { LevelWeatherVectorField } from "@/core/level/components/weather/LevelWeatherVectorField";
+import { ILevelManualWeather } from "@/core/level/lib/weather/level-manual-weather";
+import { LEVEL_MANUAL_WEATHER_LIMITS } from "@/core/level/lib/weather/level-manual-weather-limits";
+import { toLevelWeatherTriple } from "@/core/level/lib/weather/level-weather-vector";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
 import { EditorPopoverToggle } from "@/core/shell/editor/EditorPopoverToggle";
-import { BaseComponentProps } from "@/lib/dom/element-types";
+import { formatDegrees } from "@/lib/format/angle";
 import { formatNumber } from "@/lib/format/number";
-import { usePartialChange } from "@/lib/react/use-partial-change";
 
-interface ILevelWindActionProps extends BaseComponentProps {
-  isOn: boolean;
-  lighting: ILevelLighting;
-  /** Why its settings do nothing now, or null while they light the level. */
-  lockedReason?: Nullable<string>;
-  onToggle: () => void;
-  onChange: (lighting: ILevelLighting) => void;
-}
+/** The keys the popover sets. */
+const WIND_KEYS: ReadonlyArray<keyof ILevelManualWeather> = [
+  "windVelocity",
+  "windDirection",
+  "treesAmplitude",
+  "treesSpeed",
+  "treesRotation",
+  "treesWave",
+];
 
 /**
- * Whether the trees sway in the wind, as the game sways them, and how far and how fast.
+ * The wind the rain drifts on and the trees' sway; whether the trees and the grass sway at all.
  */
 export function LevelWindAction({
   "data-testid": dataTestId = "level-wind-action",
   id,
   className,
   isOn,
-  lighting,
-  lockedReason = null,
+  manual,
   onToggle,
-  onChange,
-}: ILevelWindActionProps): ReactElement {
-  const onSet = usePartialChange(lighting, onChange);
-
+  onEdit,
+}: ILevelManualWeatherActionProps): ReactElement {
   return (
     <EditorPopoverToggle
       data-testid={dataTestId}
@@ -42,37 +41,62 @@ export function LevelWindAction({
       className={className}
       label={"Wind"}
       description={
-        !isOn
-          ? "Wind off, trees stand still"
-          : lockedReason
-            ? "Trees sway as the weather blows"
-            : `Trees sway, ${formatNumber(lighting.windAmplitude, 3)} of their height`
+        isOn
+          ? `Wind ${formatNumber(manual.windVelocity, 1)} m/s, trees sway ${formatNumber(manual.treesAmplitude, 3)}`
+          : "Wind off, trees stand still"
       }
       icon={<AirIcon />}
       isOn={isOn}
       toggleLabel={"Sway the trees"}
-      lockedReason={lockedReason}
       onToggle={onToggle}
     >
       <RenderValueSlider
-        label={"Lean"}
-        value={lighting.windAmplitude}
-        {...LEVEL_WIND_LIMITS.windAmplitude}
-        format={(value: number) => formatNumber(value, 3)}
-        onChange={(windAmplitude: number) => onSet({ windAmplitude })}
+        label={"wind_velocity"}
+        value={manual.windVelocity}
+        {...LEVEL_MANUAL_WEATHER_LIMITS.windVelocity}
+        format={(value: number) => `${formatNumber(value, 1)} m/s`}
+        onChange={(windVelocity: number) => onEdit({ windVelocity })}
       />
 
       <RenderValueSlider
-        label={"Pace"}
-        value={lighting.windSpeed}
-        {...LEVEL_WIND_LIMITS.windSpeed}
-        format={(value: number) => `${formatNumber(value, 1)}×`}
-        onChange={(windSpeed: number) => onSet({ windSpeed })}
+        label={"wind_direction"}
+        value={manual.windDirection}
+        {...LEVEL_MANUAL_WEATHER_LIMITS.windDirection}
+        format={formatDegrees}
+        onChange={(windDirection: number) => onEdit({ windDirection })}
       />
 
-      <Button size={"small"} onClick={() => onSet(DEFAULT_LEVEL_WIND)}>
-        Back to the game&apos;s wind
-      </Button>
+      <RenderValueSlider
+        label={"trees_amplitude"}
+        value={manual.treesAmplitude}
+        {...LEVEL_MANUAL_WEATHER_LIMITS.treesAmplitude}
+        format={(value: number) => formatNumber(value, 3)}
+        onChange={(treesAmplitude: number) => onEdit({ treesAmplitude })}
+      />
+
+      <RenderValueSlider
+        label={"trees_speed"}
+        value={manual.treesSpeed}
+        {...LEVEL_MANUAL_WEATHER_LIMITS.treesSpeed}
+        format={(value: number) => formatNumber(value, 2)}
+        onChange={(treesSpeed: number) => onEdit({ treesSpeed })}
+      />
+
+      <RenderValueSlider
+        label={"trees_rotation"}
+        value={manual.treesRotation}
+        {...LEVEL_MANUAL_WEATHER_LIMITS.treesRotation}
+        format={formatDegrees}
+        onChange={(treesRotation: number) => onEdit({ treesRotation })}
+      />
+
+      <LevelWeatherVectorField
+        label={"trees_wave"}
+        value={manual.treesWave}
+        onChange={(treesWave) => onEdit({ treesWave: toLevelWeatherTriple(treesWave) })}
+      />
+
+      <LevelWeatherResetButton keys={WIND_KEYS} onEdit={onEdit} />
     </EditorPopoverToggle>
   );
 }

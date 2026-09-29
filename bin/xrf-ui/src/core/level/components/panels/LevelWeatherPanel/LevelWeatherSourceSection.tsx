@@ -1,7 +1,10 @@
-import { ToggleButton, ToggleButtonGroup, Typography } from "@mui/material";
+import { Typography } from "@mui/material";
 import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
+import { LevelWeatherSeedNote } from "@/core/level/components/weather/LevelWeatherSeedNote";
+import { LevelWeatherSourceChoice } from "@/core/level/components/weather/LevelWeatherSourceChoice";
+import { ILevelWeatherSeed } from "@/core/level/lib/weather/level-weather-seed";
 import { ELevelWeatherSource } from "@/core/level/lib/weather/level-weather-source";
 import { EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
@@ -10,6 +13,10 @@ interface ILevelWeatherSourceSectionProps extends BaseComponentProps {
   source: ELevelWeatherSource;
   /** Whether a cycle is ready to play. */
   isPlayable: boolean;
+  /** Whether the keyframe set by hand lights the level. */
+  isManual: boolean;
+  /** What the keyframe set by hand was seeded from, or null for none the level played. */
+  seed: Nullable<ILevelWeatherSeed>;
   /** Why the last cycle asked for does not play, or null. */
   failure: Nullable<string>;
   isFirst?: boolean;
@@ -17,7 +24,7 @@ interface ILevelWeatherSourceSectionProps extends BaseComponentProps {
 }
 
 /**
- * Whether the level's weather lights it, or the toolbar's sun, fog and wind.
+ * Whether the level's weather lights it, or the keyframe set by hand, which the toolbar's popovers edit.
  */
 export function LevelWeatherSourceSection({
   "data-testid": dataTestId = "level-weather-source-section",
@@ -25,32 +32,15 @@ export function LevelWeatherSourceSection({
   className,
   source,
   isPlayable,
+  isManual,
+  seed,
   failure,
   isFirst,
   onChange,
 }: ILevelWeatherSourceSectionProps): ReactElement {
-  const shown: ELevelWeatherSource = isPlayable ? source : ELevelWeatherSource.MANUAL;
-
   return (
     <EditorPanelSection data-testid={dataTestId} id={id} className={className} title={"Lit by"} isFirst={isFirst}>
-      <ToggleButtonGroup
-        exclusive
-        fullWidth
-        color={"primary"}
-        size={"small"}
-        value={shown}
-        aria-label={"Lit by"}
-        onChange={(_, next: Nullable<ELevelWeatherSource>) => {
-          if (next !== null) {
-            onChange(next);
-          }
-        }}
-      >
-        <ToggleButton value={ELevelWeatherSource.WEATHER} disabled={!isPlayable}>
-          Weather
-        </ToggleButton>
-        <ToggleButton value={ELevelWeatherSource.MANUAL}>Manual</ToggleButton>
-      </ToggleButtonGroup>
+      <LevelWeatherSourceChoice source={source} isPlayable={isPlayable} onChange={onChange} />
 
       {failure ? (
         <Typography className={"mt-2 block wrap-anywhere text-warning"} variant={"caption"}>
@@ -58,10 +48,13 @@ export function LevelWeatherSourceSection({
         </Typography>
       ) : null}
 
-      {!failure && shown === ELevelWeatherSource.MANUAL ? (
-        <Typography className={"mt-2 block text-text-secondary"} variant={"caption"}>
-          The toolbar&apos;s sun, fog and wind light the level.
-        </Typography>
+      {isManual ? (
+        <LevelWeatherSeedNote
+          className={"mt-2"}
+          seed={seed}
+          isPlayable={isPlayable}
+          onBack={() => onChange(ELevelWeatherSource.WEATHER)}
+        />
       ) : null}
     </EditorPanelSection>
   );

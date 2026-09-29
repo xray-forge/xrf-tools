@@ -1,6 +1,9 @@
+import { IRendererWeatherReport } from "@xrf/renderer";
+
 import { LevelWeatherCycle, LevelWeatherDescription } from "@/core/ipc/types/xrf-app";
 import { EXrayEngine } from "@/core/ipc/types/xrf-engine-target";
 import { EWeatherCycleKind, WeatherDescriptor } from "@/core/ipc/types/xrf-environment";
+import { DEFAULT_LEVEL_MANUAL_WEATHER, toLevelManualKeyframe } from "@/core/level/lib/weather/level-manual-weather";
 
 /**
  * Creates a keyframe fixture, a clear noon unless told otherwise.
@@ -98,9 +101,34 @@ export function mockLevelWeatherDescription(overrides: Partial<LevelWeatherDescr
       drop: null,
       streak: { logicalPath: "textures\\fx\\fx_rain.dds", reference: "fx\\fx_rain" },
     },
+    skies: [
+      { texture: { logicalPath: "textures\\sky\\sky_night.dds", reference: "sky\\sky_night" }, uses: 1 },
+      { texture: { logicalPath: "textures\\sky\\sky_noon.dds", reference: "sky\\sky_noon" }, uses: 1 },
+    ],
+    clouds: [{ texture: { logicalPath: "textures\\sky\\sky_oblaka.dds", reference: "sky\\sky_oblaka" }, uses: 2 }],
     sunTable: null,
     thunderbolts: { collections: [], settings: null, thunderbolts: [] },
     weather: { key: "default", level: "zaton", options: [{ cycle: "default_clear", graph: null, state: null }] },
+    ...overrides,
+  };
+}
+
+/**
+ * Creates a renderer weather report fixture: noon of `default_clear`, halfway between two keyframes.
+ *
+ * @param overrides - Field values to override.
+ * @returns Where the renderer's weather stands.
+ */
+export function mockRendererWeatherReport(overrides: Partial<IRendererWeatherReport> = {}): IRendererWeatherReport {
+  const time: number = overrides.time ?? 43_200;
+
+  return {
+    between: [0, 43_200],
+    current: toLevelManualKeyframe(DEFAULT_LEVEL_MANUAL_WEATHER, time),
+    effect: null,
+    modifiers: 0,
+    time,
+    weight: 0.5,
     ...overrides,
   };
 }

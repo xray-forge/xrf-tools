@@ -3,9 +3,12 @@ import { BoundAction, RefObservable } from "@wirestate/mobx";
 
 import { ILevelCameraOptions, toLevelCameraOptions } from "@/core/level/lib/camera/level-camera-options";
 import { ILevelFeatureOptions, toLevelFeatureOptions } from "@/core/level/lib/features/level-feature-options";
-import { DEFAULT_LEVEL_LIGHTING, ILevelLighting } from "@/core/level/lib/lighting/level-lighting";
 import { DEFAULT_LEVEL_LOD_OPTIONS, ILevelLodOptions } from "@/core/level/lib/lod/level-lod-options";
-import { DEFAULT_LEVEL_VIEW_OPTIONS, ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
+import {
+  DEFAULT_LEVEL_HEMI_STRENGTH,
+  DEFAULT_LEVEL_VIEW_OPTIONS,
+  ILevelViewOptions,
+} from "@/core/level/lib/view/level-view-options";
 import { LEVEL_CAMERA_STORAGE_KEY, LEVEL_FEATURES_STORAGE_KEY } from "@/core/storage";
 import { parseLocalStorageValueSafe, setLocalStorageValueSafe } from "@/lib/local-storage";
 
@@ -18,9 +21,9 @@ export class LevelViewService {
   @RefObservable()
   public options: ILevelViewOptions = DEFAULT_LEVEL_VIEW_OPTIONS;
 
-  /** What the viewer is lighting with, which is its own answer rather than anything the level carries. */
+  /** How much the baked hemisphere term darkens the ambient, `0` ignoring it and `1` applying it whole. */
   @RefObservable()
-  public lighting: ILevelLighting = DEFAULT_LEVEL_LIGHTING;
+  public hemiStrength: number = DEFAULT_LEVEL_HEMI_STRENGTH;
 
   /** What the camera sees and how it answers input: a preference, kept over runs. */
   @RefObservable()
@@ -43,8 +46,8 @@ export class LevelViewService {
   }
 
   @BoundAction()
-  public setLighting(lighting: ILevelLighting): void {
-    this.lighting = lighting;
+  public setHemiStrength(hemiStrength: number): void {
+    this.hemiStrength = hemiStrength;
   }
 
   @BoundAction()
@@ -72,7 +75,7 @@ export class LevelViewService {
   @BoundAction()
   public clear(): void {
     this.options = DEFAULT_LEVEL_VIEW_OPTIONS;
-    this.lighting = DEFAULT_LEVEL_LIGHTING;
+    this.hemiStrength = DEFAULT_LEVEL_HEMI_STRENGTH;
     this.lod = DEFAULT_LEVEL_LOD_OPTIONS;
   }
 }

@@ -1,10 +1,17 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { DEFAULT_LEVEL_LIGHTING, ILevelLighting } from "@/core/level/lib/lighting/level-lighting";
-import { toRenderSunPosition } from "@/core/render/lib/lighting/render-lighting";
+import { IRenderLighting, toRenderSunPosition } from "@/core/render/lib/lighting/render-lighting";
 
-function lighting(overrides: Partial<ILevelLighting> = {}): ILevelLighting {
-  return { ...DEFAULT_LEVEL_LIGHTING, ...overrides };
+function lighting(overrides: Partial<IRenderLighting> = {}): IRenderLighting {
+  return {
+    ambientColor: 0xffffff,
+    ambientIntensity: 1,
+    sunAzimuth: -69,
+    sunColor: 0xffffff,
+    sunElevation: 30,
+    sunIntensity: 1,
+    ...overrides,
+  };
 }
 
 describe("toRenderSunPosition", () => {

@@ -11,7 +11,6 @@ import { LevelWeatherModifiersSection } from "@/core/level/components/panels/Lev
 import { LevelWeatherSourceSection } from "@/core/level/components/panels/LevelWeatherPanel/LevelWeatherSourceSection";
 import { LevelWeatherSunSection } from "@/core/level/components/panels/LevelWeatherPanel/LevelWeatherSunSection";
 import { ILevelWeatherCycleChoice, listLevelWeatherCycles } from "@/core/level/lib/weather/level-weather-cycle-choice";
-import { ELevelWeatherSource } from "@/core/level/lib/weather/level-weather-source";
 import { LevelLoadService, LevelWeatherService } from "@/core/level/services";
 import { EditorPanel, EditorPanelEmpty } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
@@ -31,6 +30,7 @@ export function LevelWeatherPanel({
   const description: Nullable<LevelWeatherDescription> = weatherService.description;
   const cycle: Nullable<LevelWeatherCycle> = weatherService.cycle;
   const isWeather: boolean = weatherService.weather !== null;
+  const isManual: boolean = weatherService.isManual;
 
   const cycles: Array<ILevelWeatherCycleChoice> = useMemo(
     () => (description ? listLevelWeatherCycles(description) : []),
@@ -38,14 +38,7 @@ export function LevelWeatherPanel({
   );
   const keyframes: Array<number> = useMemo(() => cycle?.keyframes.map((it) => it.time) ?? [], [cycle]);
 
-  // Picking a cycle is asking to see it, so a level lit by hand is lit by the weather again.
-  const onSelectCycle = useCallback(
-    (name: string) => {
-      weatherService.setSource(ELevelWeatherSource.WEATHER);
-      void weatherService.selectCycle(name);
-    },
-    [weatherService]
-  );
+  const onSelectCycle = useCallback((name: string) => void weatherService.selectCycle(name), [weatherService]);
 
   if (!loadService.level.value) {
     return (
@@ -61,6 +54,8 @@ export function LevelWeatherPanel({
         isFirst
         source={weatherService.source}
         isPlayable={weatherService.playable !== null}
+        isManual={isManual}
+        seed={weatherService.seed}
         failure={weatherService.failure}
         onChange={weatherService.setSource}
       />
@@ -80,8 +75,8 @@ export function LevelWeatherPanel({
 
           <LevelWeatherSunSection
             engine={description.engine}
-            isDynamicSun={weatherService.control.isDynamicSun}
-            isDisabled={!isWeather}
+            isDynamicSun={weatherService.control.isDynamicSun && !isManual}
+            isDisabled={!isWeather || isManual}
             onChange={weatherService.setDynamicSun}
           />
 

@@ -3,7 +3,6 @@ import { Container } from "@wirestate/core";
 import {
   DEFAULT_RENDERER_AMBIENT_OCCLUSION_SETTINGS,
   DEFAULT_RENDERER_SHADOW_SETTINGS,
-  DEFAULT_RENDERER_TREE_WIND,
   EMPTY_RENDERER_LIGHTS_REPORT,
   EMPTY_RENDERER_STATIC_DRAW_REPORT,
   ERendererAntialiasing,
@@ -13,6 +12,7 @@ import {
   ERendererRequest,
   ERendererResponse,
   ERendererTextureEncoding,
+  ERendererWeatherTransition,
   IRendererReport,
   IRendererSettings,
   TRendererRequest,
@@ -21,7 +21,6 @@ import { createRendererWorkerStub, IRendererWorkerStub } from "@xrf/renderer/fix
 import { Maybe } from "@xrf/types";
 
 import { IPC_METRICS } from "@/core/ipc/metrics";
-import { DEFAULT_LEVEL_FOG, toLevelRendererFog } from "@/core/level/lib/lighting/level-fog";
 import { ILevelPoint } from "@/core/level/lib/residency/level-residency";
 import { ELevelSurfaceDressing } from "@/core/level/lib/surface/level-surface-dressing";
 import { ELevelWeatherSource } from "@/core/level/lib/weather/level-weather-source";
@@ -29,7 +28,7 @@ import { LevelLoadService } from "@/core/level/services/level-load.service";
 import { LevelViewService } from "@/core/level/services/level-view.service";
 import { LevelViewportService } from "@/core/level/services/level-viewport.service";
 import { LevelWeatherService } from "@/core/level/services/level-weather.service";
-import { mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
+import { mockLevelTextureReference, mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { InvokeMap, resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockLevelWeatherDescription } from "@/fixtures/mocks/weather.mocks";
@@ -139,29 +138,12 @@ describe("LevelRenderService", () => {
     service.dispose();
   });
 
-  // The game's noon closes the level in at 350 metres; off, a whole level is inspectable from anywhere in it.
-  it("draws the fog while the toolbar asks, as its controls set it", async () => {
-    const { service, viewService } = await mockAttached();
-
-    expect(stub.take(ERendererRequest.LIGHTING).at(-1)?.lighting.fog).toEqual(toLevelRendererFog(DEFAULT_LEVEL_FOG));
-
-    viewService.setLighting({ ...viewService.lighting, fogDistance: 800 });
-    await stub.flush();
-
-    expect(stub.take(ERendererRequest.LIGHTING).at(-1)?.lighting.fog?.distance).toBe(800);
-
-    viewService.setOptions({ ...viewService.options, isFogged: false });
-    await stub.flush();
-
-    expect(stub.take(ERendererRequest.LIGHTING).at(-1)?.lighting.fog).toBeNull();
-    expect(drawnSettings()?.backdrop).toBe(0x202428);
-
-    service.dispose();
-  });
-
   it("plays the level's weather from where the clock stands, told the view's toggles and every seek", async () => {
     const { container, service, viewService } = await mockAttached({
       ["plugin:levels|read_level_weather"]: mockSessionResponse(mockLevelWeatherDescription()),
+      ["plugin:levels|resolve_level_textures"]: mockSessionResponse(({ references }: { references: Array<string> }) =>
+        references.map((reference: string) => mockLevelTextureReference(reference))
+      ),
     });
     const weatherService: LevelWeatherService = container.get(LevelWeatherService);
 
@@ -172,11 +154,14 @@ describe("LevelRenderService", () => {
     await stub.flush();
 
     expect(stub.take(ERendererRequest.WEATHER).at(-1)?.weather?.keyframes).toHaveLength(2);
-    expect(stub.take(ERendererRequest.WEATHER_CONTROL).at(-1)?.control).toEqual({
+    expect(stub.take(ERendererRequest.WEATHER).at(-1)?.transition).toBe(ERendererWeatherTransition.CUT);
+    expect(stub.take(ERendererRequest.WEATHER_CONTROL).find((it) => it.control.time !== null)?.control).toEqual({
       factor: 12,
+      isClouded: true,
       isDynamicSun: false,
       isFogged: true,
       isPaused: true,
+      isRainy: true,
       isWindy: true,
       time: 43_200,
     });
@@ -197,9 +182,17 @@ describe("LevelRenderService", () => {
     expect(stub.take(ERendererRequest.WEATHER_EFFECT).at(-1)?.effect).toBe("fx_blowout");
 
     weatherService.setSource(ELevelWeatherSource.MANUAL);
+
+    for (let flush: number = 0; flush < 20 && weatherService.weather !== weatherService.manualPlayable; flush += 1) {
+      await stub.flush();
+    }
+
     await stub.flush();
 
-    expect(stub.take(ERendererRequest.WEATHER).at(-1)?.weather).toBeNull();
+    // The keyframe set by hand is faded into, its sun standing by its own angles.
+    expect(stub.take(ERendererRequest.WEATHER).at(-1)?.weather?.keyframes).toHaveLength(1);
+    expect(stub.take(ERendererRequest.WEATHER).at(-1)?.transition).toBe(ERendererWeatherTransition.FADE);
+    expect(stub.take(ERendererRequest.WEATHER_CONTROL).at(-1)?.control.isDynamicSun).toBe(false);
 
     service.dispose();
   });
@@ -262,25 +255,6 @@ describe("LevelRenderService", () => {
     service.dispose();
   });
 
-  // The game sways its trees by the weather's wind; off, they stand still for an inspection.
-  it("sways the trees while the toolbar asks, as its controls set the wind", async () => {
-    const { service, viewService } = await mockAttached();
-
-    expect(stub.take(ERendererRequest.LIGHTING).at(-1)?.lighting.trees).toEqual(DEFAULT_RENDERER_TREE_WIND);
-
-    viewService.setLighting({ ...viewService.lighting, windAmplitude: 0.02 });
-    await stub.flush();
-
-    expect(stub.take(ERendererRequest.LIGHTING).at(-1)?.lighting.trees?.amplitude).toBe(0.02);
-
-    viewService.setOptions({ ...viewService.options, isWindy: false });
-    await stub.flush();
-
-    expect(stub.take(ERendererRequest.LIGHTING).at(-1)?.lighting.trees).toBeNull();
-
-    service.dispose();
-  });
-
   it("gates the baked hemisphere by the baked light toggle", async () => {
     const { service, viewService } = await mockAttached();
 
@@ -316,33 +290,33 @@ describe("LevelRenderService", () => {
     service.dispose();
   });
 
-  // A renderer is told its settings and its light as it starts, and then only what changed: a configure rebuilds
-  // passes, and a toggle the settings do not read has nothing to rebuild.
-  it("configures and lights only for what changed", async () => {
+  // A renderer is told its settings as it starts, and then only what changed: a configure rebuilds passes, and a
+  // toggle the settings do not read has nothing to rebuild. The weather lights the level, never a lighting of its own.
+  it("configures only for what changed", async () => {
     const { service, viewService } = await mockAttached();
 
     expect(stub.take(ERendererRequest.START)).toHaveLength(1);
     expect(stub.take(ERendererRequest.CONFIGURE)).toHaveLength(0);
-    expect(stub.take(ERendererRequest.LIGHTING)).toHaveLength(1);
+    expect(stub.take(ERendererRequest.LIGHTING)).toHaveLength(0);
 
     viewService.setOptions({ ...viewService.options, isAxesVisible: true, isGridVisible: true, isSunVisible: false });
     viewService.setOptions({ ...viewService.options, isStatsVisible: false });
     await stub.flush();
 
     expect(stub.take(ERendererRequest.CONFIGURE)).toHaveLength(0);
-    expect(stub.take(ERendererRequest.LIGHTING)).toHaveLength(1);
+    expect(stub.take(ERendererRequest.LIGHTING)).toHaveLength(0);
 
     viewService.setOptions({ ...viewService.options, isFogged: false });
     await stub.flush();
 
     expect(stub.take(ERendererRequest.CONFIGURE)).toHaveLength(0);
-    expect(stub.take(ERendererRequest.LIGHTING)).toHaveLength(2);
+    expect(stub.take(ERendererRequest.LIGHTING)).toHaveLength(0);
 
     viewService.setOptions({ ...viewService.options, isShadowed: false });
     await stub.flush();
 
     expect(stub.take(ERendererRequest.CONFIGURE)).toHaveLength(1);
-    expect(stub.take(ERendererRequest.LIGHTING)).toHaveLength(2);
+    expect(stub.take(ERendererRequest.LIGHTING)).toHaveLength(0);
 
     service.dispose();
   });
@@ -395,24 +369,29 @@ describe("LevelRenderService", () => {
   });
 
   it("hands the renderer where to fetch a level's textures, and says what each came to once it is told", async () => {
-    const { container, service } = await mockAttached();
+    const { container, service } = await mockAttached({
+      ["plugin:levels|open_lights"]: mockSessionResponse({
+        lights: { animators: [], lights: [] },
+        projectors: [mockLevelTextureReference("lamp")],
+      }),
+    });
     const viewport: LevelViewportService = container.get(LevelViewportService);
 
     await container.get(LevelLoadService).whenHeldRead();
     await stub.flush();
 
-    const put = stub.take(ERendererRequest.PUT_TEXTURE).find((it) => it.key === "sky\\sky_7_cube");
+    const put = stub.take(ERendererRequest.PUT_TEXTURE).find((it) => it.key === "lamp");
 
     expect(put?.source.encoding).toBe(ERendererTextureEncoding.FETCH);
-    expect(viewport.textureReport.dressing.get("sky\\sky_7_cube")?.state).toBe(ELevelSurfaceDressing.FETCHING);
+    expect(viewport.textureReport.dressing.get("lamp")?.state).toBe(ELevelSurfaceDressing.FETCHING);
 
     stub.respond({
       fetch: { bytes: 2048, duration: 5, failure: null, isDecoded: false, size: { height: 4, levels: 1, width: 4 } },
-      key: "sky\\sky_7_cube",
+      key: "lamp",
       kind: ERendererResponse.TEXTURE_FETCHED,
     });
 
-    expect(viewport.textureReport.dressing.get("sky\\sky_7_cube")).toMatchObject({
+    expect(viewport.textureReport.dressing.get("lamp")).toMatchObject({
       state: ELevelSurfaceDressing.UPLOADED,
       upload: "4×4 · 1 level",
     });
