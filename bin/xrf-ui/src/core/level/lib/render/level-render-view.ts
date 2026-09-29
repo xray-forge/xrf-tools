@@ -82,6 +82,7 @@ export function toLevelRendererSettings(inputs: ILevelRendererSettingsInputs): I
     isGpuTimed: shared.isGpuTimed,
     isLit: true,
     isSkyDrawn: options.isSkyVisible,
+    isSkyHazed: options.isSkyHazed,
     isTextured: options.isTextured,
     isWireframe: options.isWireframe,
     pacing: shared.pacing,

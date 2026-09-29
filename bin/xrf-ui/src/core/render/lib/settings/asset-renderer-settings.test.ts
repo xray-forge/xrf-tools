@@ -24,6 +24,7 @@ describe("toAssetRendererSettings", () => {
       isGpuTimed: true,
       isLit: true,
       isSkyDrawn: false,
+      isSkyHazed: false,
       isTextured: true,
       isWireframe: true,
       tonemapScale: 1,

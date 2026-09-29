@@ -176,8 +176,10 @@ export function LevelPreviewToolbar({
           <LevelFogAction
             isOn={options.isFogged}
             manual={manual}
+            isHazed={options.isSkyHazed}
             onToggle={() => onToggle("isFogged")}
             onEdit={onEditManual}
+            onHazed={(isSkyHazed: boolean) => onChangeOptions({ ...options, isSkyHazed })}
           />
 
           <LevelRainAction

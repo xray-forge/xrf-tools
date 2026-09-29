@@ -19,7 +19,14 @@ describe("level weather key actions", () => {
   it("edits a colour component as typed, once it is let go, leaving the others as held", async () => {
     const onEdit = jest.fn<TEdit>();
     const { getByRole, findByRole } = renderWithProviders(
-      <LevelFogAction isOn manual={DEFAULT_LEVEL_MANUAL_WEATHER} onToggle={() => {}} onEdit={onEdit} />
+      <LevelFogAction
+        isOn
+        manual={DEFAULT_LEVEL_MANUAL_WEATHER}
+        isHazed={false}
+        onToggle={() => {}}
+        onEdit={onEdit}
+        onHazed={() => {}}
+      />
     );
 
     await open(getByRole, "Fog");
@@ -40,7 +47,14 @@ describe("level weather key actions", () => {
   it("drops a component typed as no number", async () => {
     const onEdit = jest.fn<TEdit>();
     const { getByRole, findByRole } = renderWithProviders(
-      <LevelFogAction isOn manual={DEFAULT_LEVEL_MANUAL_WEATHER} onToggle={() => {}} onEdit={onEdit} />
+      <LevelFogAction
+        isOn
+        manual={DEFAULT_LEVEL_MANUAL_WEATHER}
+        isHazed={false}
+        onToggle={() => {}}
+        onEdit={onEdit}
+        onHazed={() => {}}
+      />
     );
 
     await open(getByRole, "Fog");
@@ -53,6 +67,29 @@ describe("level weather key actions", () => {
 
     expect(onEdit).not.toHaveBeenCalled();
     expect(red).toHaveValue("0.304609");
+  });
+
+  it("fades the distance into the sky's haze on asking, the engine's sky by default", async () => {
+    const onHazed = jest.fn<(isHazed: boolean) => void>();
+    const { getByRole, findByRole } = renderWithProviders(
+      <LevelFogAction
+        isOn
+        manual={DEFAULT_LEVEL_MANUAL_WEATHER}
+        isHazed={false}
+        onToggle={() => {}}
+        onEdit={() => {}}
+        onHazed={onHazed}
+      />
+    );
+
+    await open(getByRole, "Fog");
+    await findByRole("dialog", { name: "Fog" });
+
+    expect(getByRole("button", { name: "Sky (engine)" })).toHaveAttribute("aria-pressed", "true");
+
+    await userEvent.click(getByRole("button", { name: "Sky haze" }));
+
+    expect(onHazed).toHaveBeenCalledWith(true);
   });
 
   it("stands the sun where the level was compiled against, and sets its keys back to default_clear's noon", async () => {
