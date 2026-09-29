@@ -1,8 +1,3 @@
-/// <reference types="node" />
-
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
-
 import { describe, expect, it, jest } from "@jest/globals";
 import { Nullable } from "@xrf/types";
 
@@ -17,13 +12,14 @@ import { ERendererWeatherEngine } from "#/contract/weather/renderer-weather-engi
 import { IRendererWeatherKeyframe } from "#/contract/weather/renderer-weather-keyframe";
 import { ERendererWeatherTransition } from "#/contract/weather/renderer-weather-transition";
 import { RendererTextures } from "#/texture/renderer-textures";
+import { readWeatherMixGolden } from "#/weather/weather-mix-fixtures";
 import { WeatherPlayer } from "#/weather/weather-player";
 
-const KEYFRAMES: ReadonlyArray<IRendererWeatherKeyframe> = (
-  JSON.parse(readFileSync(join(__dirname, "weather-mix.golden.json"), "utf8")) as Array<{
+const KEYFRAMES: ReadonlyArray<IRendererWeatherKeyframe> = readWeatherMixGolden<
+  Array<{
     keyframes: Array<IRendererWeatherKeyframe>;
   }>
-)[0].keyframes;
+>()[0].keyframes;
 
 const SOURCE = {
   encoding: ERendererTextureEncoding.FETCH,

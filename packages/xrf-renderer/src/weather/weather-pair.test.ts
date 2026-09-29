@@ -1,19 +1,15 @@
-/// <reference types="node" />
-
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
-
 import { describe, expect, it } from "@jest/globals";
 
 import { IRendererWeatherKeyframe } from "#/contract/weather/renderer-weather-keyframe";
+import { readWeatherMixGolden } from "#/weather/weather-mix-fixtures";
 import { WeatherPair } from "#/weather/weather-pair";
 
 /** Midnight, six, noon and nine at night. */
-const CYCLE: ReadonlyArray<IRendererWeatherKeyframe> = (
-  JSON.parse(readFileSync(join(__dirname, "weather-mix.golden.json"), "utf8")) as Array<{
+const CYCLE: ReadonlyArray<IRendererWeatherKeyframe> = readWeatherMixGolden<
+  Array<{
     keyframes: Array<IRendererWeatherKeyframe>;
   }>
-)[0].keyframes;
+>()[0].keyframes;
 
 /** The same day with every keyframe an hour later, as another cycle. */
 const OTHER: ReadonlyArray<IRendererWeatherKeyframe> = CYCLE.map((it: IRendererWeatherKeyframe) => ({

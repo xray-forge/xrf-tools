@@ -1,22 +1,18 @@
-/// <reference types="node" />
-
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
-
 import { describe, expect, it } from "@jest/globals";
 import { Nullable } from "@xrf/types";
 
 import { IRendererWeatherKeyframe } from "#/contract/weather/renderer-weather-keyframe";
 import { IWeatherEffectTimeline, toWeatherEffectTimeline } from "#/weather/weather-effect-timeline";
 import { TWeatherKeyframePair } from "#/weather/weather-keyframe-pair";
+import { readWeatherMixGolden } from "#/weather/weather-mix-fixtures";
 import { selectWeatherKeyframes, weighWeatherTime } from "#/weather/weather-mixer";
 
 /** Midnight, six, noon and nine at night. */
-const CYCLE: ReadonlyArray<IRendererWeatherKeyframe> = (
-  JSON.parse(readFileSync(join(__dirname, "weather-mix.golden.json"), "utf8")) as Array<{
+const CYCLE: ReadonlyArray<IRendererWeatherKeyframe> = readWeatherMixGolden<
+  Array<{
     keyframes: Array<IRendererWeatherKeyframe>;
   }>
-)[0].keyframes;
+>()[0].keyframes;
 
 /** An effect a minute a keyframe, its own first replaced by the cycle's next as the engine replaces it. */
 const EFFECT: ReadonlyArray<IRendererWeatherKeyframe> = [0, 60, 120].map((time: number) => ({

@@ -1,8 +1,3 @@
-/// <reference types="node" />
-
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
-
 import { describe, expect, it } from "@jest/globals";
 import { Nullable } from "@xrf/types";
 
@@ -11,6 +6,7 @@ import { ERendererWeatherEngine } from "#/contract/weather/renderer-weather-engi
 import { IRendererWeatherKeyframe } from "#/contract/weather/renderer-weather-keyframe";
 import { IRendererWeatherModifier } from "#/contract/weather/renderer-weather-modifier";
 import { IWeatherCycleMix } from "#/weather/weather-cycle-mix";
+import { readWeatherMixGolden } from "#/weather/weather-mix-fixtures";
 import { mixWeather, selectWeatherKeyframes, weighWeatherTime } from "#/weather/weather-mixer";
 import { EWeatherSun, TWeatherSun } from "#/weather/weather-sun";
 
@@ -25,10 +21,7 @@ interface IGoldenCase {
   mixes: Array<IWeatherCycleMix>;
 }
 
-/** Written by `xrf-environment`'s ignored `writes_the_renderer_golden_vectors`, from the engine's own mixer port. */
-const GOLDEN: ReadonlyArray<IGoldenCase> = JSON.parse(
-  readFileSync(join(__dirname, "weather-mix.golden.json"), "utf8")
-) as ReadonlyArray<IGoldenCase>;
+const GOLDEN: ReadonlyArray<IGoldenCase> = readWeatherMixGolden<ReadonlyArray<IGoldenCase>>();
 
 /** The Rust mixer works in `f32`, as the engine does. */
 function expectClose(actual: unknown, expected: unknown, path: string): void {

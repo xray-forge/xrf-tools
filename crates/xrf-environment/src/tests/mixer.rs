@@ -425,7 +425,7 @@ fn writes_the_renderer_golden_vectors() {
     ),
   ];
   let path: PathBuf =
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../packages/xrf-renderer/src/weather/weather-mix.golden.json");
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("resources/weather-mix.golden.json");
 
   std::fs::create_dir_all(path.parent().unwrap()).unwrap();
   std::fs::write(&path, serde_json::to_string_pretty(&cases).unwrap() + "\n").unwrap();
