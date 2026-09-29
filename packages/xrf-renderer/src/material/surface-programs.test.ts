@@ -86,6 +86,31 @@ describe("surface variants", () => {
       ESurfaceSlot.BASE,
     ]);
   });
+
+  // `_db`: a detail's own pair is added only over a pair of the surface's, and only with the detail it belongs to.
+  it("sample a detail's bump pair only over the surface's own pair and its detail", () => {
+    const pair = { bump: "rock_bump", bumpCompanion: "rock_bump#" };
+    const detailPair = { detailBump: "detail_bump", detailBumpCompanion: "detail_bump#" };
+
+    expect(
+      toSampledSlots(
+        toSurfaceVariant({ ...BRICK, textures: { base: "rock", detail: "detail", ...pair, ...detailPair } })
+      )
+    ).toEqual([
+      ESurfaceSlot.BASE,
+      ESurfaceSlot.DETAIL,
+      ESurfaceSlot.BUMP,
+      ESurfaceSlot.BUMP_COMPANION,
+      ESurfaceSlot.DETAIL_BUMP,
+      ESurfaceSlot.DETAIL_BUMP_COMPANION,
+    ]);
+    expect(
+      toSurfaceVariant({ ...BRICK, textures: { base: "rock", detail: "detail", ...detailPair } }).hasDetailBump
+    ).toBe(false);
+    expect(toSurfaceVariant({ ...BRICK, textures: { base: "rock", ...pair, ...detailPair } }).hasDetailBump).toBe(
+      false
+    );
+  });
 });
 
 describe("SurfacePrograms", () => {

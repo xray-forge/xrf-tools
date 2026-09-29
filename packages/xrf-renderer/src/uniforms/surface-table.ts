@@ -4,8 +4,8 @@ import { StorageBufferAttribute, StorageBufferNode } from "three/webgpu";
 import { StorageRetirement } from "#/uniforms/storage-retirement";
 import { ISurfaceTableRow } from "#/uniforms/surface-table-row";
 
-/** Words one row takes: the surface's numbers, then a layer for each slot it samples from an array. */
-export const SURFACE_TABLE_WORDS: number = 16;
+/** Words one row takes: the surface's numbers, then a layer for each slot, rounded up to whole `uvec4`s. */
+export const SURFACE_TABLE_WORDS: number = 20;
 
 /** Where a row's layers start, one word a slot, in the order a material binds its slots. */
 export const SURFACE_TABLE_LAYER_WORD: number = 8;

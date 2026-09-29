@@ -83,17 +83,35 @@ export function toSurfaceTexel(
   let normal: Node<"vec3"> = surfaceNormal;
   let gloss: Node<"float"> = float(DEFAULT_GLOSS);
 
-  if (variant.hasDetail) {
-    // `D.rgb = 2 * D.rgb * detail.rgb`, sampled at the base coordinates times the detail scale.
-    const detail: TextureNode = inputs.sample(ESurfaceSlot.DETAIL, coordinates.mul(inputs.detailScale));
+  // The detail's coordinates, `tcdbump`: the base's times the detail scale.
+  const detailCoordinates: Node<"vec2"> = coordinates.mul(inputs.detailScale);
+  const detail: Maybe<TextureNode> = variant.hasDetail
+    ? inputs.sample(ESurfaceSlot.DETAIL, detailCoordinates)
+    : undefined;
 
+  if (detail) {
+    // `D.rgb = 2 * D.rgb * detail.rgb`.
     textured = textured.mul(detail.xyz).mul(2);
   }
 
   if (variant.hasBump) {
     const bump: TextureNode = inputs.sample(ESurfaceSlot.BUMP, coordinates);
     const companion: TextureNode = inputs.sample(ESurfaceSlot.BUMP_COMPANION, coordinates);
-    const tangentSpace: Node<"vec3"> = decodeBumpNormal(bump, companion);
+    let tangentSpace: Node<"vec3"> = decodeBumpNormal(bump, companion);
+    let bumpGloss: Node<"float"> = decodeBumpGloss(bump);
+
+    if (variant.hasDetailBump) {
+      // `sload`'s `USE_TDETAIL_BUMP`: the detail's own pair added to the surface's, its gloss scaling the surface's.
+      const detailBump: TextureNode = inputs.sample(ESurfaceSlot.DETAIL_BUMP, detailCoordinates);
+      const detailCompanion: TextureNode = inputs.sample(ESurfaceSlot.DETAIL_BUMP_COMPANION, detailCoordinates);
+
+      tangentSpace = tangentSpace.add(decodeBumpNormal(detailBump, detailCompanion));
+      bumpGloss = bumpGloss.mul(detailBump.x).mul(2);
+    } else if (detail) {
+      // Without a detail pair, the detail's alpha scales the gloss.
+      bumpGloss = bumpGloss.mul(detail.w).mul(2);
+    }
+
     // `deffer_model_bump`: the authored basis through the model view, the decoded normal rotated along it.
     const tangent: Node<"vec3"> = varying(toPlacedViewDirection(toSurfaceTangent(skinnedTangent), staticDraws));
     const binormal: Node<"vec3"> = varying(toPlacedViewDirection(toSurfaceBinormal(skinnedBinormal()), staticDraws));
@@ -108,7 +126,7 @@ export function toSurfaceTexel(
     const bumping: Node<"float"> = settings.bumped.mul(settings.textured);
 
     normal = mix(surfaceNormal, bumped, bumping);
-    gloss = mix(float(DEFAULT_GLOSS), decodeBumpGloss(bump), bumping);
+    gloss = mix(float(DEFAULT_GLOSS), bumpGloss, bumping);
   }
 
   // `get_hemi` and `get_sun`: the lightmap's alpha and green, or the vertex's own hemisphere term where there is no

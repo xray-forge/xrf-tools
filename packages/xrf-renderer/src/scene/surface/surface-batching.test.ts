@@ -209,7 +209,7 @@ describe("SurfaceBatching", () => {
   });
 
   it("names a layer word in a row for every slot", () => {
-    expect(SURFACE_TABLE_LAYERS).toBe(SURFACE_SLOTS.length);
+    expect(SURFACE_TABLE_LAYERS).toBeGreaterThanOrEqual(SURFACE_SLOTS.length);
   });
 
   // A part refused a static draw is drawn plainly: cast by the tabled shadow, it read a row it has none of.

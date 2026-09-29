@@ -18,6 +18,8 @@ import { markRendererTextureNew } from "#/texture/renderer-texture-version";
 let white: Nullable<Texture> = null;
 let grey: Nullable<Texture> = null;
 let flatBump: Nullable<Texture> = null;
+let neutralDetailBump: Nullable<Texture> = null;
+let neutralDetailBumpCompanion: Nullable<Texture> = null;
 let flatBumpCompanion: Nullable<Texture> = null;
 let sky: Nullable<Texture> = null;
 let flatNormal: Nullable<Texture> = null;
@@ -53,10 +55,26 @@ export function getWhiteTexture(): Texture {
 }
 
 /**
- * @returns What a detail slot samples without its texture: a half that the engine's doubling cancels.
+ * @returns What a detail slot samples without its texture: a half that the engine's doubling cancels, in its colour
+ *   and in the alpha that scales the gloss.
  */
 export function getNeutralDetailTexture(): Texture {
-  return (grey ??= createSolidTexture(128));
+  return (grey ??= createSolidTexture(128, 128, 128, 128));
+}
+
+/**
+ * @returns What a detail's bump slot samples before its file arrives: a normal that, with its companion's, adds
+ *   nothing, and a gloss the doubling leaves as it is.
+ */
+export function getNeutralDetailBumpTexture(): Texture {
+  return (neutralDetailBump ??= createSolidTexture(128, 255, 128, 128));
+}
+
+/**
+ * @returns What a detail's companion slot samples before its file arrives: what cancels the neutral detail bump.
+ */
+export function getNeutralDetailBumpCompanionTexture(): Texture {
+  return (neutralDetailBumpCompanion ??= createSolidTexture(128, 128, 0, 0));
 }
 
 /**

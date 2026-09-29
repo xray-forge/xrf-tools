@@ -5,6 +5,8 @@ import {
   getFlatBumpCompanionTexture,
   getFlatBumpTexture,
   getFlatNormalTexture,
+  getNeutralDetailBumpCompanionTexture,
+  getNeutralDetailBumpTexture,
   getNeutralDetailTexture,
   getWhiteTexture,
 } from "#/texture/placeholder-textures";
@@ -17,6 +19,9 @@ export enum ESurfaceSlot {
   DETAIL = "detail",
   BUMP = "bump",
   BUMP_COMPANION = "bumpCompanion",
+  // Before the lightmap, so every slot a static batch samples from arrays has a layer word in the surface table.
+  DETAIL_BUMP = "detailBump",
+  DETAIL_BUMP_COMPANION = "detailBumpCompanion",
   HEMI = "hemi",
   NORMAL = "normal",
   FOAM = "foam",
@@ -47,6 +52,12 @@ export function getSurfaceSlotPlaceholder(slot: ESurfaceSlot): Texture {
 
     case ESurfaceSlot.BUMP_COMPANION:
       return getFlatBumpCompanionTexture();
+
+    case ESurfaceSlot.DETAIL_BUMP:
+      return getNeutralDetailBumpTexture();
+
+    case ESurfaceSlot.DETAIL_BUMP_COMPANION:
+      return getNeutralDetailBumpCompanionTexture();
 
     case ESurfaceSlot.BASE:
     case ESurfaceSlot.HEMI:

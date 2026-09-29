@@ -26,6 +26,8 @@ export const SURFACE_ARRAY_SLOTS: ReadonlyArray<ESurfaceSlot> = [
   ESurfaceSlot.DETAIL,
   ESurfaceSlot.BUMP,
   ESurfaceSlot.BUMP_COMPANION,
+  ESurfaceSlot.DETAIL_BUMP,
+  ESurfaceSlot.DETAIL_BUMP_COMPANION,
   ESurfaceSlot.HEMI,
 ];
 

@@ -25,6 +25,8 @@ export interface ISurfaceVariant {
   hasDetail: boolean;
   /** Whether it binds both halves of a bump pair. */
   hasBump: boolean;
+  /** Whether it binds its detail's own bump pair as well, which a detail adds to a bumped surface (`_db`). */
+  hasDetailBump: boolean;
   /** Whether it binds a lightmap. */
   hasHemi: boolean;
   /** Whether water is drawn by `water_soft`, blended over the depth behind it. */
@@ -44,6 +46,9 @@ export function toSurfaceVariant(surface: IRendererSurface): ISurfaceVariant {
     draw: surface.draw,
     hasBase: Boolean(textures.base),
     hasBump: Boolean(textures.bump && textures.bumpCompanion),
+    hasDetailBump: Boolean(
+      textures.detail && textures.bump && textures.bumpCompanion && textures.detailBump && textures.detailBumpCompanion
+    ),
     hasColor: Boolean(surface.color),
     hasDetail: Boolean(textures.detail),
     hasHemi: Boolean(textures.hemi),
@@ -71,6 +76,7 @@ export function toSurfaceVariantKey(variant: ISurfaceVariant): string {
     variant.hasBase,
     variant.hasDetail,
     variant.hasBump,
+    variant.hasDetailBump,
     variant.hasHemi,
     variant.isSoftWater,
     variant.anomalyWater
@@ -102,6 +108,10 @@ export function toSampledSlots(variant: ISurfaceVariant): Array<ESurfaceSlot> {
 
   if (variant.hasBump && !variant.isImpostor) {
     slots.push(ESurfaceSlot.BUMP, ESurfaceSlot.BUMP_COMPANION);
+  }
+
+  if (variant.hasDetailBump && !variant.isImpostor) {
+    slots.push(ESurfaceSlot.DETAIL_BUMP, ESurfaceSlot.DETAIL_BUMP_COMPANION);
   }
 
   if (variant.hasHemi) {

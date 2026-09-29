@@ -8,6 +8,10 @@ export interface IRendererSurfaceTextures {
   bump?: string;
   /** The second half: the correction and the height. */
   bumpCompanion?: string;
+  /** The detail texture's own bump pair, added to the surface's where it binds one: `s_detailBump`. */
+  detailBump?: string;
+  /** Its second half, `s_detailBumpX`. */
+  detailBumpCompanion?: string;
   /** A baked lightmap: hemisphere occlusion in alpha, sun occlusion in green. */
   hemi?: string;
   /** Water's normal map, `s_nmap`, sampled twice as it scrolls. */
