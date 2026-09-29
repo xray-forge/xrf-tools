@@ -56,6 +56,8 @@ xrf-extension = { workspace = true }
 xrf-gamedata = { workspace = true }
 xrf-ipc-typescript = { workspace = true, optional = true }
 xrf-dltx = { workspace = true }
+xrf-engine-target = { workspace = true }
+xrf-environment = { workspace = true }
 xrf-level = { workspace = true }
 xrf-ltx = { workspace = true }
 xrf-ltx-inspect = { workspace = true }
@@ -114,6 +116,9 @@ typescript-bindings = [
   "xrf-spawn/typescript-bindings",
   "xrf-math/typescript-bindings",
   "xrf-dialog/typescript-bindings",
+  "xrf-engine-target/typescript-bindings",
+  "xrf-environment/typescript-bindings",
+  "xrf-level/typescript-bindings",
   "xrf-error/typescript-bindings",
   "xrf-export/typescript-bindings",
   "xrf-ltx/typescript-bindings",

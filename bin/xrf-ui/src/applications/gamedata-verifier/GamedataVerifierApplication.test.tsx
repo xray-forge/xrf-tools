@@ -3,6 +3,7 @@ import { act, fireEvent, waitFor } from "@testing-library/react";
 
 import { GamedataVerifierService } from "@/applications/gamedata-verifier/services/verifier";
 import { GamedataVerifySummary } from "@/core/ipc/types/xrf-app";
+import { EXrayEngine } from "@/core/ipc/types/xrf-engine-target";
 import { JobsService } from "@/core/jobs/services/jobs";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
@@ -40,7 +41,8 @@ describe("GamedataVerifierApplication", () => {
     const id = jobs.jobs[0]?.id;
 
     expect(mockInvoke).toHaveBeenCalledWith("plugin:gamedata|verify_project", {
-      request: { root: "C:\\gamedata", checks: null, isStrict: false },
+      // The engine the settings read configs as, which a first run leaves at vanilla.
+      request: { root: "C:\\gamedata", checks: null, engine: EXrayEngine.VANILLA, isStrict: false },
       jobId: id,
       progress: expect.anything(),
     });

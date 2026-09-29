@@ -146,14 +146,23 @@ impl<'a> EnvironmentReadPass<'a> {
   }
 
   /// One cycle or effect by name, and what its own config says about it; none where there is no such config.
-  pub fn run_cycle(mut self, kind: WeatherCycleKind, name: &str) -> XrfResult<Option<(WeatherCycle, Vec<EnvironmentFinding>)>> {
+  pub fn run_cycle(
+    mut self,
+    kind: WeatherCycleKind,
+    name: &str,
+  ) -> XrfResult<Option<(WeatherCycle, Vec<EnvironmentFinding>)>> {
     let (directory, subject) = Self::directory_of(kind);
     let path: XrayLogicalPath = self.project.config_path(directory)?.join(&format!("{name}.ltx"))?;
     let Some(config) = self.open(&path)? else {
       return Ok(None);
     };
-    let mut reader: EnvironmentSectionReader =
-      EnvironmentSectionReader::new(self.engine, subject, &config.file, config.get_provenance(), &mut self.findings);
+    let mut reader: EnvironmentSectionReader = EnvironmentSectionReader::new(
+      self.engine,
+      subject,
+      &config.file,
+      config.get_provenance(),
+      &mut self.findings,
+    );
     let cycle: WeatherCycle = WeatherCycle::read(&mut reader, name, kind, config.get_ltx());
 
     self.findings.sort();

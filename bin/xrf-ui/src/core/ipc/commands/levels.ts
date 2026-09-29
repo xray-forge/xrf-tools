@@ -5,13 +5,16 @@ import {
   LevelDetailsDescription,
   LevelEntry,
   LevelLightsDescription,
-  LevelSource,
+  LevelOpenRequest,
   LevelSpawnModelsDescription,
+  LevelWeatherCycle,
+  LevelWeatherDescription,
   SelectedLevelDescription,
   SessionId,
   SessionRestore,
   SessionSnapshot,
 } from "@/core/ipc/types/xrf-app";
+import { EWeatherCycleKind } from "@/core/ipc/types/xrf-environment";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { SectorDescription } from "@/core/ipc/types/xrf-visual";
 
@@ -29,17 +32,9 @@ export const levelsCommands = {
       sessionId,
       detailsId,
     }),
-  /**
-   * Select a compiled level and report what it is built out of, without reading any of its geometry. `is_dltx` says
-   * whether the game's configs are read with the Monolith patch dialect.
-   */
-  openLevel: (sessionId: SessionId, source: LevelSource, roots: XrayRoots, isDltx: boolean) =>
-    __TAURI_INVOKE<SessionSnapshot<SelectedLevelDescription>>("plugin:levels|open_level", {
-      sessionId,
-      source,
-      roots,
-      isDltx,
-    }),
+  /** Select a compiled level and report what it is built out of, without reading any of its geometry. */
+  openLevel: (sessionId: SessionId, request: LevelOpenRequest) =>
+    __TAURI_INVOKE<SessionSnapshot<SelectedLevelDescription>>("plugin:levels|open_level", { sessionId, request }),
   /** Collect the open level's lights: the lamps the game spawns on it, and its own. */
   openLights: (sessionId: SessionId) =>
     __TAURI_INVOKE<SessionSnapshot<LevelLightsDescription>>("plugin:levels|open_lights", { sessionId }),
@@ -49,4 +44,16 @@ export const levelsCommands = {
   /** Describe the models the open level's spawned objects are drawn as, and where each object stands. */
   openSpawnModels: (sessionId: SessionId) =>
     __TAURI_INVOKE<SessionSnapshot<LevelSpawnModelsDescription>>("plugin:levels|open_spawn_models", { sessionId }),
+  /**
+   * Read any cycle or effect of the game as the open level's engine loads it, for a viewer playing one the level does
+   * not offer itself.
+   */
+  readLevelCycle: (sessionId: SessionId, kind: EWeatherCycleKind, name: string) =>
+    __TAURI_INVOKE<SessionSnapshot<LevelWeatherCycle>>("plugin:levels|read_level_cycle", { sessionId, kind, name }),
+  /**
+   * Read the open level's weather as its engine loads it: the cycles it plays, the effects, what they strike with,
+   * the sun table and the level's own overrides.
+   */
+  readLevelWeather: (sessionId: SessionId) =>
+    __TAURI_INVOKE<SessionSnapshot<LevelWeatherDescription>>("plugin:levels|read_level_weather", { sessionId }),
 };

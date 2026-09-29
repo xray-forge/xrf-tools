@@ -15,6 +15,7 @@ use crate::core::execution::ExecutionState;
 use crate::core::session::{SessionId, SessionSnapshot};
 use crate::core::types::TauriResult;
 use crate::plugins::levels::read::{ReadLevel, read_optional_file, read_source};
+use crate::plugins::levels::request::LevelOpenRequest;
 use crate::plugins::levels::report::{report_open, report_opening, report_start};
 use crate::plugins::levels::spawn::read_source_spawn;
 use crate::plugins::levels::start::{list_level_start_eyes, resolve_level_start};
@@ -36,19 +37,23 @@ struct OpenedLevel {
   start: Option<LevelStart>,
 }
 
-/// Select a compiled level and report what it is built out of, without reading any of its geometry. `is_dltx` says
-/// whether the game's configs are read with the Monolith patch dialect.
+/// Select a compiled level and report what it is built out of, without reading any of its geometry.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "open_level"))]
 #[tauri::command(rename = "open_level")]
 pub async fn levels_open_level(
   session_id: SessionId,
-  source: LevelSource,
-  roots: XrayRoots,
-  is_dltx: bool,
+  request: LevelOpenRequest,
   state: State<'_, LevelState>,
   assets: State<'_, AssetMountState>,
   execution: State<'_, ExecutionState>,
 ) -> TauriResult<SessionSnapshot<SelectedLevelDescription>> {
+  let LevelOpenRequest {
+    source,
+    roots,
+    is_dltx,
+    engine,
+  } = request;
+
   state.selected.begin_open(session_id)?;
 
   let started: Instant = Instant::now();
@@ -72,6 +77,8 @@ pub async fn levels_open_level(
     SelectedLevel {
       details: PackedDetails::new(),
       dialect: select_ltx_dialect(is_dltx),
+      engine,
+      environment: OnceLock::new(),
       spawn: opened.spawn.into(),
       sections: OnceLock::new(),
       spawn_visuals: LevelSpawnVisuals::new(),

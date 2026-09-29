@@ -1,12 +1,14 @@
 use std::sync::{Arc, OnceLock};
 
 use xrf_chunk::InMemoryChunkDataSource;
+use xrf_engine_target::XrayEngine;
 use xrf_level::{LevelFile, LevelGeomSource, LevelSector, LevelVisualsChunk};
 use xrf_ltx::{Ltx, LtxDialect};
 use xrf_material::XraySurfaceDescriptor;
 use xrf_vfs::XrayRoots;
 use xrf_visual::SectorOutline;
 
+use crate::plugins::levels::state::level_environment::LevelEnvironment;
 use crate::plugins::levels::state::level_source::LevelSource;
 use crate::plugins::levels::state::level_spawn::LevelSpawn;
 use crate::plugins::levels::state::level_spawn_visuals::LevelSpawnVisuals;
@@ -30,6 +32,8 @@ pub struct SelectedLevel {
   pub roots: XrayRoots,
   /// The rules the game's configs are resolved with, as the open was asked to read them.
   pub dialect: Arc<dyn LtxDialect>,
+  /// The engine the game's configs are read as, where the engines read them differently.
+  pub engine: XrayEngine,
   pub level: LevelFile,
   pub visuals: LevelVisualsChunk,
   /// What each sector is and where, taken at open from what the visuals declare, so a viewer can decide what to
@@ -52,6 +56,8 @@ pub struct SelectedLevel {
   /// The sections of the game's resolved `system.ltx` its spawned objects name, which their lights are read from;
   /// kept likewise.
   pub sections: OnceLock<Result<Arc<Ltx>, String>>,
+  /// The game's environment configs and the level's cycles, which its weather is played from; kept likewise.
+  pub environment: OnceLock<Result<Arc<LevelEnvironment>, String>>,
 }
 
 impl SelectedLevel {

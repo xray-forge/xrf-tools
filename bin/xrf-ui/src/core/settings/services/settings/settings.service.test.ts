@@ -7,6 +7,7 @@ import {
   RENDERER_PRESETS,
 } from "@xrf/renderer";
 
+import { EXrayEngine } from "@/core/ipc/types/xrf-engine-target";
 import { SettingsService } from "@/core/settings/services/settings/settings.service";
 import { mockInjectedService } from "@/fixtures/utils/container";
 
@@ -81,6 +82,17 @@ describe("SettingsService", () => {
     expect(service.frameRateLimit).toBe("30");
     expect(window.localStorage.getItem("xrf.preference.frame-rate-limit")).toBe("30");
     expect(mockInjectedService(SettingsService).service.frameRateLimit).toBe("30");
+  });
+
+  it("reads configs as the vanilla engine until told otherwise, and keeps what it was told", () => {
+    const { service } = mockInjectedService(SettingsService);
+
+    expect(service.engine).toBe(EXrayEngine.VANILLA);
+
+    service.setEngine(EXrayEngine.EXTENDED);
+
+    expect(window.localStorage.getItem("xrf.preference.engine")).toBe("extended");
+    expect(mockInjectedService(SettingsService).service.engine).toBe(EXrayEngine.EXTENDED);
   });
 
   it("paces frames with low latency until told otherwise, and keeps what it was told", () => {

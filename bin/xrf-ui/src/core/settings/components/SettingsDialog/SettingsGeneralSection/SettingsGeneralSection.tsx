@@ -2,6 +2,7 @@ import { useColorScheme } from "@mui/material/styles";
 import { useInjection } from "@wirestate/react";
 import { ReactElement } from "react";
 
+import { EXrayEngine } from "@/core/ipc/types/xrf-engine-target";
 import { SettingsService } from "@/core/settings/services/settings";
 import { COLOR_SCHEME_MODES, ColorSchemeMode, DEFAULT_COLOR_SCHEME_MODE } from "@/core/theme";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
@@ -18,6 +19,11 @@ const COLOR_SCHEME_OPTIONS: ReadonlyArray<IChoiceFormRowOption<ColorSchemeMode>>
   label: COLOR_SCHEME_MODE_LABELS[value],
 }));
 
+const ENGINE_OPTIONS: ReadonlyArray<IChoiceFormRowOption<EXrayEngine>> = [
+  { label: "Vanilla", value: EXrayEngine.VANILLA },
+  { label: "Extended", value: EXrayEngine.EXTENDED },
+];
+
 /** Switches that belong to the application rather than to any one editor. */
 export function SettingsGeneralSection(): ReactElement {
   const settingsService: SettingsService = useInjection(SettingsService);
@@ -32,6 +38,16 @@ export function SettingsGeneralSection(): ReactElement {
         options={COLOR_SCHEME_OPTIONS}
         value={mode ?? DEFAULT_COLOR_SCHEME_MODE}
         onChange={setMode}
+      />
+
+      <ChoiceFormRow
+        label={"Engine"}
+        description={
+          "How game configs are read where engines differ. Vanilla: OpenXRay and Call of Pripyat. Extended: Anomaly and forks."
+        }
+        options={ENGINE_OPTIONS}
+        value={settingsService.engine}
+        onChange={settingsService.setEngine}
       />
 
       <CheckboxFormRow

@@ -18,6 +18,7 @@ import {
   SessionRestore,
   SessionSnapshot,
 } from "@/core/ipc/types/xrf-app";
+import { EXrayEngine } from "@/core/ipc/types/xrf-engine-target";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { SectorDescription } from "@/core/ipc/types/xrf-visual";
 import { LevelHeld } from "@/core/level/lib/render/level-held";
@@ -312,9 +313,10 @@ export class LevelLoadService {
    * @param roots - Roots the level and its textures are searched in.
    * @param isDltx - Whether the game's configs, which its lights are read from, resolve with the Monolith/Anomaly
    *   patch dialect.
+   * @param engine - Which engine the game's configs, its weather among them, are read as.
    */
   @LatestFlow("level")
-  public *load(source: LevelSource, roots: XrayRoots, isDltx: boolean): TFlow {
+  public *load(source: LevelSource, roots: XrayRoots, isDltx: boolean, engine: EXrayEngine): TFlow {
     const timer: Timer = new Timer();
 
     this.log.info("Loading level:", describeLevelSource(source));
@@ -323,7 +325,7 @@ export class LevelLoadService {
       this.level = this.level.asLoading();
 
       const selected: SessionSnapshot<SelectedLevelDescription> = yield* call(
-        this.session.open(levelsCommands.openLevel, source, roots, isDltx)
+        this.session.open(levelsCommands.openLevel, { source, roots, isDltx, engine })
       );
 
       this.adopt(selected);

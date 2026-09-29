@@ -10,13 +10,14 @@ use crate::section::environment_origin::EnvironmentOrigin;
 /// it, and every other key as written.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase", bound(serialize = "K: Serialize"))]
+#[serde(rename_all = "camelCase")]
 pub struct EnvironmentSection<K: EnvironmentKey> {
   /// The section's name as its header writes it.
   pub name: String,
   /// The config it was read from, as a logical path.
   pub file: String,
   /// Every key of the table the section writes, whether or not this engine reads it.
+  #[cfg_attr(feature = "typescript-bindings", specta(type = BTreeMap<String, EnvironmentValue>))]
   pub values: BTreeMap<K, EnvironmentValue>,
   /// Keys outside the table, as written, so a writer can keep them.
   pub extras: BTreeMap<String, String>,

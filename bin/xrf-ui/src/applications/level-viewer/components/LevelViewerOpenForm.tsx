@@ -7,6 +7,7 @@ import { LevelEntry } from "@/core/ipc/types/xrf-app";
 import { LevelListService, LevelLoadService } from "@/core/level/services";
 import { ConfigsDialectFormRow } from "@/core/ltx/components/configs-dialect/ConfigsDialectFormRow";
 import { EApplicationId } from "@/core/routing/application";
+import { SettingsService } from "@/core/settings/services/settings";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
 import { ChoiceListFormRow, IPathField, PathFormRow, usePathField } from "@/core/ui/form";
 import { BaseComponentProps } from "@/lib/dom/element-types";
@@ -27,6 +28,7 @@ export function LevelViewerOpenForm({
 }: ILevelViewerOpenFormProps): ReactElement {
   const listService: LevelListService = useInjection(LevelListService);
   const loadService: LevelLoadService = useInjection(LevelLoadService);
+  const settingsService: SettingsService = useInjection(SettingsService);
 
   const [selected, setSelected] = useState<string>("");
   const [listedRoot, setListedRoot] = useState<Nullable<string>>(null);
@@ -73,10 +75,15 @@ export function LevelViewerOpenForm({
       return;
     }
 
-    await loadService.load({ kind: "asset", logicalPath: selected }, createRoots([root.value]), isDltx);
+    await loadService.load(
+      { kind: "asset", logicalPath: selected },
+      createRoots([root.value]),
+      isDltx,
+      settingsService.engine
+    );
 
     onFinished?.();
-  }, [isDltx, loadService, onFinished, root.value, selected]);
+  }, [isDltx, loadService, onFinished, root.value, selected, settingsService]);
 
   useEffect(() => {
     if (listedRoot !== null && listedRoot !== root.value) {

@@ -110,7 +110,9 @@ describe("LevelViewerOpenForm", () => {
       ([name]: ReadonlyArray<unknown>) => name === "plugin:levels|open_level"
     );
 
-    expect(opened?.[1]).toMatchObject({ isDltx: true, source: { kind: "asset", logicalPath: "levels\\zaton" } });
+    expect(opened?.[1]).toMatchObject({
+      request: { engine: "vanilla", isDltx: true, source: { kind: "asset", logicalPath: "levels\\zaton" } },
+    });
   });
 
   it("leaves a failed listing on its own button to retry", async () => {

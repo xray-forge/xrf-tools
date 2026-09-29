@@ -2,6 +2,7 @@ import { describe, expect, it } from "@jest/globals";
 import { RenderResult } from "@testing-library/react";
 import { Container } from "@wirestate/core";
 
+import { EXrayEngine } from "@/core/ipc/types/xrf-engine-target";
 import { EMPTY_LEVEL_TEXTURE_REPORT } from "@/core/level/lib/texture/level-texture-report";
 import { LevelLoadService, LevelViewportService } from "@/core/level/services";
 import { setMockBulkResponses } from "@/fixtures/mocks/bulk.mocks";
@@ -39,7 +40,7 @@ async function renderProblems(isPresent: boolean): Promise<RenderResult> {
   const container: Container = mockContainer([LevelLoadService, LevelViewportService]);
   const service: LevelLoadService = container.get(LevelLoadService);
 
-  await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, level.roots, false);
+  await service.load({ kind: "asset", logicalPath: "levels\\zaton" }, level.roots, false, EXrayEngine.VANILLA);
   await service.stream({ x: 0, y: 0, z: 0 });
 
   // What the textures came to is the answer of whichever side uploaded them, so the panel is given it rather

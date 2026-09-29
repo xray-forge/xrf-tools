@@ -6,6 +6,7 @@ use crate::plugins::archives::plugin::ArchivesPlugin;
 use crate::plugins::assets::plugin::AssetsPlugin;
 use crate::plugins::configs::plugin::ConfigsPlugin;
 use crate::plugins::dialogs::plugin::DialogsPlugin;
+use crate::plugins::environment::plugin::EnvironmentPlugin;
 use crate::plugins::exports::plugin::ExportsPlugin;
 use crate::plugins::gamedata::plugin::GamedataPlugin;
 use crate::plugins::jobs::plugin::JobsPlugin;
@@ -47,6 +48,12 @@ pub(crate) fn command_surfaces<R: tauri::Runtime>() -> Vec<IpcCommandSurface<R>>
       DialogsPlugin::specta_builder::<R>(),
       crate::ipc::registry::dialogs::RAW_COMMANDS,
       crate::ipc::registry::dialogs::BULK_ROUTES,
+    ),
+    IpcCommandSurface::new(
+      EnvironmentPlugin::NAME,
+      EnvironmentPlugin::specta_builder::<R>(),
+      crate::ipc::registry::environment::RAW_COMMANDS,
+      crate::ipc::registry::environment::BULK_ROUTES,
     ),
     IpcCommandSurface::new(
       ExportsPlugin::NAME,

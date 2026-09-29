@@ -6888,6 +6888,8 @@ dependencies = [
  "xrf-dialog",
  "xrf-dltx",
  "xrf-efd",
+ "xrf-engine-target",
+ "xrf-environment",
  "xrf-error",
  "xrf-export",
  "xrf-extension",

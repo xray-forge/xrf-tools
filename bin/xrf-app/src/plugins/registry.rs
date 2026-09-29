@@ -7,6 +7,7 @@ use crate::plugins::archives::plugin::ArchivesPlugin;
 use crate::plugins::assets::plugin::AssetsPlugin;
 use crate::plugins::configs::plugin::ConfigsPlugin;
 use crate::plugins::dialogs::plugin::DialogsPlugin;
+use crate::plugins::environment::plugin::EnvironmentPlugin;
 use crate::plugins::exports::plugin::ExportsPlugin;
 use crate::plugins::gamedata::plugin::GamedataPlugin;
 use crate::plugins::jobs::plugin::JobsPlugin;
@@ -26,6 +27,7 @@ pub(crate) fn domain_plugins<R: Runtime>() -> Vec<TauriPlugin<R>> {
     ArchivesPlugin::init(),
     ConfigsPlugin::init(),
     DialogsPlugin::init(),
+    EnvironmentPlugin::init(),
     ExportsPlugin::init(),
     GamedataPlugin::init(),
     JobsPlugin::init(),

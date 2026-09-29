@@ -1,6 +1,7 @@
 //! What the level plugin holds between calls, one type to a file.
 
 pub(crate) mod level_entry;
+pub(crate) mod level_environment;
 pub(crate) mod level_source;
 pub(crate) mod level_spawn;
 pub(crate) mod level_spawn_visual;
@@ -12,6 +13,7 @@ pub(crate) mod packed_sectors;
 pub(crate) mod selection;
 
 pub(crate) use level_entry::LevelEntry;
+pub(crate) use level_environment::LevelEnvironment;
 pub(crate) use level_source::LevelSource;
 pub(crate) use level_spawn::LevelSpawn;
 pub(crate) use level_spawn_visual::LevelSpawnVisual;
@@ -28,6 +30,9 @@ pub(crate) use selection::level_spawn_placement::LevelSpawnPlacement;
 pub(crate) use selection::level_start::LevelStart;
 pub(crate) use selection::level_start_origin::LevelStartOrigin;
 pub(crate) use selection::level_texture_reference::LevelTextureReference;
+pub(crate) use selection::level_thunderbolts::LevelThunderbolts;
+pub(crate) use selection::level_weather_cycle::LevelWeatherCycle;
+pub(crate) use selection::level_weather_description::LevelWeatherDescription;
 pub(crate) use selection::selected_level::SelectedLevel;
 pub(crate) use selection::selected_level_description::SelectedLevelDescription;
 

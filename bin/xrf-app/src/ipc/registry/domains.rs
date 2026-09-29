@@ -72,6 +72,10 @@ macro_rules! for_each_tauri_command_domain {
         get_project => crate::plugins::dialogs::commands::get_project::dialogs_get_project,
         open_project => crate::plugins::dialogs::commands::open_project::dialogs_open_project,
       }
+      environment => "environment" {
+        read_catalog => crate::plugins::environment::commands::read_catalog::environment_read_catalog,
+        read_cycle => crate::plugins::environment::commands::read_cycle::environment_read_cycle,
+      }
       exports => "exports" {
         close_project => crate::plugins::exports::commands::close_project::exports_close_project,
         export_manifest => crate::plugins::exports::commands::export_manifest::exports_export_manifest,
@@ -98,6 +102,8 @@ macro_rules! for_each_tauri_command_domain {
         open_lights => crate::plugins::levels::commands::open_lights::levels_open_lights,
         open_sector => crate::plugins::levels::commands::open_sector::levels_open_sector,
         open_spawn_models => crate::plugins::levels::commands::open_spawn_models::levels_open_spawn_models,
+        read_level_cycle => crate::plugins::levels::commands::read_level_cycle::levels_read_level_cycle,
+        read_level_weather => crate::plugins::levels::commands::read_level_weather::levels_read_level_weather,
       }
       @bulk {
         read_details(sessionId: "SessionId", detailsId: "SessionId") => crate::plugins::levels::routes::read_details::levels_read_details,

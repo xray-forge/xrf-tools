@@ -34,6 +34,7 @@
     "archives:default",
     "configs:default",
     "dialogs:default",
+    "environment:default",
     "exports:default",
     "gamedata:default",
     "jobs:default",

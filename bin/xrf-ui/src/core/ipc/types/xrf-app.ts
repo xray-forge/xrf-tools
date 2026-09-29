@@ -2,7 +2,19 @@
 
 import { ArchiveProject, ArchiveReadPolicy } from "@/core/ipc/types/xrf-archive";
 import { DialogProjectMode } from "@/core/ipc/types/xrf-dialog";
+import { XrayEngine } from "@/core/ipc/types/xrf-engine-target";
+import {
+  EnvironmentFinding,
+  EnvironmentSection,
+  LevelWeather,
+  SunTable,
+  ThunderboltCollection,
+  WeatherCycle,
+  WeatherCycleKind,
+  WeatherDescriptor,
+} from "@/core/ipc/types/xrf-environment";
 import { JobOutcome, JobProgress } from "@/core/ipc/types/xrf-job";
+import { EnvModifier } from "@/core/ipc/types/xrf-level";
 import { LtxAnchoredFinding, LtxFileStructure, LtxFileText, LtxInventory } from "@/core/ipc/types/xrf-ltx-inspect";
 import { XrayMaterialDescriptor, XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
 import { Vector3d } from "@/core/ipc/types/xrf-math";
@@ -1442,6 +1454,52 @@ export type DialogsReadRequest = {
   language: string | null;
 };
 
+/** What a catalog holds, as a browser lists it, and every finding in it. */
+export type EnvironmentCatalogDescription = {
+  engine: XrayEngine;
+  /** Every config read. */
+  configs: Array<string>;
+  cycles: Array<EnvironmentCycleEntry>;
+  effects: Array<EnvironmentCycleEntry>;
+  suns: Array<EnvironmentDefinitionEntry>;
+  thunderboltCollections: Array<EnvironmentDefinitionEntry>;
+  ambients: Array<EnvironmentDefinitionEntry>;
+  findings: Array<EnvironmentFinding>;
+};
+
+/** One cycle or effect as authored, where each value came from, and what is wrong in its config. */
+export type EnvironmentCycleDescription = {
+  cycle: WeatherCycle;
+  findings: Array<EnvironmentFinding>;
+};
+
+/** One cycle or effect of a catalog, as a list shows it. */
+export type EnvironmentCycleEntry = {
+  name: string;
+  file: string;
+  kind: WeatherCycleKind;
+  keyframes: number;
+  /** Findings in its config. */
+  findings: number;
+};
+
+/** One definition of a catalog, a sun, a collection or an ambient, as a list shows it. */
+export type EnvironmentDefinitionEntry = {
+  name: string;
+  file: string;
+  /** Findings in its section. */
+  findings: number;
+};
+
+/** Which game's environment configs to read, and as which engine. */
+export type EnvironmentRequest = {
+  /** Trees to search, and how each is read. */
+  roots: XrayRoots;
+  /** Whether to resolve with the Monolith/Anomaly DLTX patch dialect. */
+  isDltx: boolean;
+  engine: XrayEngine;
+};
+
 /** Every `kind` the `EquipmentConfigSource` union is told apart by, so a switch or a comparison names one. */
 export enum EEquipmentConfigSource {
   /** A `system.ltx` on disk, named by its filesystem path. */
@@ -1528,6 +1586,8 @@ export type GamedataVerifyRequest = {
   checks: Array<string> | null;
   /** Whether a check that would warn should fail instead. */
   isStrict: boolean;
+  /** The engine the tree is meant for, which configs the engines read differently are read as. */
+  engine: XrayEngine;
 };
 
 /** What a whole verification reports back to the desktop surface. */
@@ -1676,6 +1736,17 @@ export type LevelLightsDescription = {
   projectors: Array<LevelTextureReference>;
 };
 
+/** What opening a level was asked to read, and how the game's configs beside it are read. */
+export type LevelOpenRequest = {
+  source: LevelSource;
+  /** Trees the level and its textures are searched in. */
+  roots: XrayRoots;
+  /** Whether the game's configs resolve with the Monolith/Anomaly DLTX patch dialect. */
+  isDltx: boolean;
+  /** Which engine the game's configs, its weather among them, are read as. */
+  engine: XrayEngine;
+};
+
 /** Every `kind` the `LevelSource` union is told apart by, so a switch or a comparison names one. */
 export enum ELevelSource {
   /** A compiled level directory on disk, named by its filesystem path. */
@@ -1743,6 +1814,44 @@ export type LevelTextureReference = {
   reference: string;
   /** What it resolved to, or `None` for a reference the roots hold nothing for. */
   logicalPath: string | null;
+};
+
+/**
+ * What a level's weather strikes with: the collections its cycles and effects name, their bolts, and where every
+ * bolt is struck from.
+ */
+export type LevelThunderbolts = {
+  collections: Array<ThunderboltCollection>;
+  thunderbolts: Array<EnvironmentSection>;
+  settings: EnvironmentSection | null;
+};
+
+/** One cycle or effect as the engine loads it, which a viewer mixes, and what is wrong in its config. */
+export type LevelWeatherCycle = {
+  name: string;
+  file: string;
+  kind: WeatherCycleKind;
+  /** Sorted by time, a keyframe whose name the engine refuses left out. */
+  keyframes: Array<WeatherDescriptor>;
+  findings: Array<EnvironmentFinding>;
+};
+
+/** Everything a viewer plays the open level's weather from, as its engine loads it. */
+export type LevelWeatherDescription = {
+  engine: XrayEngine;
+  /** What the level's `weathers` resolves to. */
+  weather: LevelWeather;
+  /** The cycles it resolves to that the game has, in the order it offers them. */
+  offered: Array<LevelWeatherCycle>;
+  /** Every cycle of the game, which a viewer offers after the level's own. */
+  cycles: Array<EnvironmentCycleEntry>;
+  /** Every weather effect, which the game plays over a cycle. */
+  effects: Array<LevelWeatherCycle>;
+  thunderbolts: LevelThunderbolts;
+  /** Monolith's table of where the sun stands; none on OpenXRay. */
+  sunTable: SunTable | null;
+  /** The level's local overrides, `level.env_mod`; none where it has none. */
+  modifiers: Array<EnvModifier>;
 };
 
 /** What the machine as a whole is using. */

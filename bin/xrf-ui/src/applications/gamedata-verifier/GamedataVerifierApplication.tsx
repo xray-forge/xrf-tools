@@ -6,6 +6,7 @@ import { GamedataVerifierService } from "@/applications/gamedata-verifier/servic
 import { JobProgressView } from "@/core/jobs/components/JobProgressView";
 import { IJobState } from "@/core/jobs/lib";
 import { EApplicationId } from "@/core/routing/application";
+import { SettingsService } from "@/core/settings/services/settings";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
 import { CheckboxFormRow, IPathField, PathFormRow, usePathField } from "@/core/ui/form";
 import { Logger, useLogger } from "@/lib/logging";
@@ -16,6 +17,7 @@ export function GamedataVerifierApplication(): ReactElement {
   const log: Logger = useLogger(__MODULE_NAME__);
 
   const verifierService: GamedataVerifierService = useInjection(GamedataVerifierService);
+  const settingsService: SettingsService = useInjection(SettingsService);
 
   const [isStrict, setIsStrict] = useState<boolean>(false);
 
@@ -41,8 +43,8 @@ export function GamedataVerifierApplication(): ReactElement {
 
     log.info("Verifying gamedata:", root);
 
-    await verifierService.verify(root, isStrict);
-  }, [isStrict, log, root, verifierService]);
+    await verifierService.verify(root, isStrict, settingsService.engine);
+  }, [isStrict, log, root, settingsService, verifierService]);
 
   useEffect(() => {
     verifierService.operation.reset();

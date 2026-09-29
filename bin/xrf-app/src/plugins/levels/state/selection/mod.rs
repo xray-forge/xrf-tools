@@ -7,5 +7,8 @@ pub(crate) mod level_start;
 pub(crate) mod level_start_origin;
 pub(crate) mod level_sun_description;
 pub(crate) mod level_texture_reference;
+pub(crate) mod level_thunderbolts;
+pub(crate) mod level_weather_cycle;
+pub(crate) mod level_weather_description;
 pub(crate) mod selected_level;
 pub(crate) mod selected_level_description;
