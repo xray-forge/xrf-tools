@@ -17,6 +17,7 @@ import { Node, Texture } from "three/webgpu";
 
 import { toUpsampledAmbientOcclusion } from "#/shader/ambient-occlusion.tsl";
 import { toBaseLitColor, toFogAmount, toFogColor } from "#/shader/base-lighting.tsl";
+import { toSkyWithClouds } from "#/shader/clouds.tsl";
 import { toOutputDither } from "#/shader/dither.tsl";
 import { IGBufferSample } from "#/shader/gbuffer-sample";
 import { IGBufferTextures } from "#/shader/gbuffer-textures";
@@ -65,7 +66,11 @@ export function toCombinePassFragment(
 
     const toPixel: Node<"vec3"> = getViewPosition(screenUV, float(0.5), uniforms.camera.projectionInverse);
     const direction: Node<"vec3"> = normalize(uniforms.camera.viewToWorld.mul(vec4(toPixel, 0)).xyz);
-    const sky: Node<"vec3"> = toSkyColor(direction, uniforms.sky, uniforms.exposure.scale);
+    const sky: Node<"vec3"> = toSkyWithClouds(direction, toSkyColor(direction, uniforms.sky, uniforms.exposure.scale), {
+      clouds: uniforms.clouds,
+      scale: uniforms.exposure.scale,
+      sky: uniforms.sky,
+    });
     const fog: Node<"float"> = toFogAmount(sample.point.position, uniforms);
     const faded: Node<"vec3"> = select(isSkyDrawn, mix(lit, sky, fog.mul(fog)), lit);
 

@@ -1,3 +1,6 @@
+import { Nullable } from "@xrf/types";
+
+import { IRendererClouds } from "#/contract/renderer-clouds";
 import { TRendererColor } from "#/contract/renderer-color";
 
 /**
@@ -14,4 +17,6 @@ export interface IRendererSky {
   color: TRendererColor;
   /** `sky_rotation`, in degrees about the vertical. */
   rotation: number;
+  /** The clouds over it, or none. */
+  clouds: Nullable<IRendererClouds>;
 }

@@ -10,6 +10,7 @@ export * from "#/contract/renderer-camera-pose";
 export * from "#/contract/renderer-camera";
 export * from "#/contract/renderer-capture-source";
 export * from "#/contract/renderer-choice-field";
+export * from "#/contract/renderer-clouds";
 export * from "#/contract/renderer-color";
 export * from "#/contract/renderer-debug-view";
 export * from "#/contract/renderer-device";

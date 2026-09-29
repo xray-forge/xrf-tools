@@ -40,6 +40,7 @@ export const DEFAULT_RENDERER_LIGHTING: IRendererLighting = {
   grass: DEFAULT_RENDERER_GRASS_WIND,
   sky: {
     blend: 0,
+    clouds: null,
     color: [0.851001, 0.851001, 0.851001],
     environments: [DEFAULT_RENDERER_SKY_ENVIRONMENT, DEFAULT_RENDERER_SKY_ENVIRONMENT],
     rotation: 0,

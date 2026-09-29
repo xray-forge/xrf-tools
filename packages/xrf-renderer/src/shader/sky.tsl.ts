@@ -23,7 +23,7 @@ const HAZE_TAP_ANGLE: number = (0.35 * Math.PI) / 180;
  * A renderer-space direction in the sky box's own axes: the engine's `z` negated back, then turned back by the
  * `rotateY(sky_rotation)` the box is drawn with.
  */
-function toBoxDirection(direction: Node<"vec3">, rotation: Node<"float">): Node<"vec3"> {
+export function toBoxDirection(direction: Node<"vec3">, rotation: Node<"float">): Node<"vec3"> {
   const x: Node<"float"> = direction.x;
   const z: Node<"float"> = direction.z.negate();
   const c: Node<"float"> = cos(rotation);

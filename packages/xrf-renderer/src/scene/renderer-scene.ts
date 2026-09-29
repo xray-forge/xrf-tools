@@ -109,7 +109,7 @@ export class RendererScene {
     );
     this.grass = new SceneGrass(this.textures, uniforms);
     this.lights = new SceneLights(this.textures, this.staticDraws.shadowChanges);
-    this.sky = new SceneSky(this.textures, uniforms.sky);
+    this.sky = new SceneSky(this.textures, uniforms);
     this.skeletons = new RendererSkeletons((key: string, release: Nullable<() => void>) =>
       this.replace(this.skeletonUsers.get(key), release)
     );

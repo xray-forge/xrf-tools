@@ -1,37 +1,56 @@
 import { Nullable } from "@xrf/types";
-import { CubeTextureNode } from "three/webgpu";
+import { Texture } from "three/webgpu";
 
 import { IRendererSky } from "#/contract/renderer-sky";
-import { getPlaceholderSkyTexture } from "#/texture/placeholder-textures";
+import { getClearTexture, getPlaceholderSkyTexture } from "#/texture/placeholder-textures";
 import { RendererTextures } from "#/texture/renderer-textures";
+import { ITextureTarget } from "#/texture/texture-target";
+import { RendererUniforms } from "#/uniforms/renderer-uniforms";
 import { SkyUniforms } from "#/uniforms/sky-uniforms";
 
+/** The two skies, their irradiance cubes, then the two clouds textures. */
+const SLOTS: number = 6;
+
+/** Where the irradiance cubes start among the slots. */
+const ENVIRONMENTS: number = 2;
+
 /**
- * The two skies the lighting names and their irradiance cubes, bound into what samples them by their texture keys:
- * each draws its placeholder until the consumer's cube is up, then the cube.
+ * The two skies the lighting names, their irradiance cubes and their clouds, bound into what samples them by their
+ * texture keys: each draws its placeholder until the consumer's texture is up, then the texture.
  */
 export class SceneSky {
   private readonly textures: RendererTextures;
   private readonly sky: SkyUniforms;
-  /** The two skies' keys, then their irradiance cubes'. */
-  private readonly keys: Array<Nullable<string>> = [null, null, null, null];
-  private readonly samplers: ReadonlyArray<CubeTextureNode>;
+  private readonly keys: Array<Nullable<string>> = new Array(SLOTS).fill(null);
+  private readonly samplers: ReadonlyArray<ITextureTarget>;
+  private readonly placeholders: ReadonlyArray<Texture>;
 
   /**
-   * @param textures - Where the skies' cubes are put.
-   * @param sky - What samples them.
+   * @param textures - Where the skies' textures are put.
+   * @param uniforms - What samples them.
    */
-  public constructor(textures: RendererTextures, sky: SkyUniforms) {
+  public constructor(textures: RendererTextures, uniforms: Pick<RendererUniforms, "sky" | "clouds">) {
     this.textures = textures;
-    this.sky = sky;
-    this.samplers = [...sky.cubes, ...sky.environments];
+    this.sky = uniforms.sky;
+    this.samplers = [...uniforms.sky.cubes, ...uniforms.sky.environments, ...uniforms.clouds.textures];
+    this.placeholders = [
+      ...new Array<Texture>(4).fill(getPlaceholderSkyTexture()),
+      getClearTexture(),
+      getClearTexture(),
+    ];
   }
 
   /**
    * @param sky - The skies the lighting names now.
    */
   public take(sky: IRendererSky): void {
-    [...sky.textures, ...sky.environments].forEach((key: string, index: number) => {
+    const keys: ReadonlyArray<Nullable<string>> = [
+      ...sky.textures,
+      ...sky.environments,
+      ...(sky.clouds?.textures ?? [null, null]),
+    ];
+
+    keys.forEach((key: Nullable<string>, index: number) => {
       const previous: Nullable<string> = this.keys[index];
 
       if (previous === key) {
@@ -42,14 +61,20 @@ export class SceneSky {
         this.textures.unbind(previous, this.samplers[index]);
       }
 
-      this.textures.target(key, getPlaceholderSkyTexture(), this.samplers[index]);
+      if (key) {
+        this.textures.target(key, this.placeholders[index], this.samplers[index]);
+      } else {
+        this.samplers[index].value = this.placeholders[index];
+      }
+
       this.keys[index] = key;
     });
   }
 
   /** Lights the hemisphere by the irradiance cubes once both are up, by the lighting's stand-in until then. */
   public update(): void {
-    const [, , first, second] = this.keys;
+    const first: Nullable<string> = this.keys[ENVIRONMENTS];
+    const second: Nullable<string> = this.keys[ENVIRONMENTS + 1];
     const isUp: boolean =
       first !== null &&
       second !== null &&

@@ -6,6 +6,7 @@ import { IRendererSettings } from "#/contract/renderer-settings";
 import { toBaseLightingConstants } from "#/lighting/base-lighting";
 import { BaseLightingUniforms } from "#/uniforms/base-lighting-uniforms";
 import { CameraUniforms } from "#/uniforms/camera-uniforms";
+import { CloudUniforms } from "#/uniforms/cloud-uniforms";
 import { ExposureUniforms } from "#/uniforms/exposure-uniforms";
 import { GrassWindUniforms } from "#/uniforms/grass-wind-uniforms";
 import { createMaterialLutTexture } from "#/uniforms/material-lut-texture";
@@ -45,6 +46,8 @@ export class RendererUniforms {
   public readonly grassWind: GrassWindUniforms = new GrassWindUniforms();
   /** The sky the frame draws behind the scene and the water reflects. */
   public readonly sky: SkyUniforms = new SkyUniforms();
+  /** The clouds the frame draws over the sky. */
+  public readonly clouds: CloudUniforms = new CloudUniforms();
   /** How the water moves. */
   public readonly water: WaterUniforms = new WaterUniforms();
   /** What the motion every G-buffer surface writes is measured with. */
@@ -86,6 +89,7 @@ export class RendererUniforms {
     this.grassWind.take(lighting.grass);
     this.water.take(lighting);
     this.sky.take(lighting.sky);
+    this.clouds.take(lighting.sky.clouds);
     this.farPlane = lighting.fog?.farPlane ?? null;
   }
 
