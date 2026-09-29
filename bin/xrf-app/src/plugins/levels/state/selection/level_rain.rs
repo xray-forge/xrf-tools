@@ -1,10 +1,7 @@
 use serde::Serialize;
-use xrf_chunk::XRayByteOrder;
-use xrf_level::DetailModel;
-use xrf_vfs::XrayResolution;
 
-use crate::plugins::levels::state::selection::level_rain_drop::LevelRainDrop;
 use crate::plugins::levels::state::selection::level_texture_reference::LevelTextureReference;
+use crate::plugins::levels::state::selection::level_weather_model::LevelWeatherModel;
 use crate::plugins::levels::state::selection::level_weather_source::LevelWeatherSource;
 
 /// What rain is drawn with, as `dxRainRender` loads it: the streak's texture and the splash's model.
@@ -14,7 +11,7 @@ use crate::plugins::levels::state::selection::level_weather_source::LevelWeather
 pub struct LevelRain {
   pub streak: LevelTextureReference,
   /// None where the model is not there or does not read, which draws no splashes.
-  pub drop: Option<LevelRainDrop>,
+  pub drop: Option<LevelWeatherModel>,
 }
 
 impl LevelRain {
@@ -32,22 +29,9 @@ impl LevelRain {
     }
   }
 
-  fn read_drop(source: &LevelWeatherSource) -> Option<LevelRainDrop> {
-    let read = source
-      .probe
-      .find(Self::DROP_MODEL)
-      .map_err(|error| error.to_string())
-      .and_then(|resolution: XrayResolution| {
-        let asset = resolution
-          .get_asset()
-          .ok_or_else(|| format!("'{}' is not in the mounted roots", Self::DROP_MODEL))?;
-
-        source.probe.read_asset_bytes(asset).map_err(|error| error.to_string())
-      })
-      .and_then(|bytes| DetailModel::read_from_bytes::<XRayByteOrder>(bytes).map_err(|error| error.to_string()));
-
-    match read {
-      Ok(model) => Some(LevelRainDrop::of(&model, source.locate(&model.texture))),
+  fn read_drop(source: &LevelWeatherSource) -> Option<LevelWeatherModel> {
+    match source.read_model(Self::DROP_MODEL) {
+      Ok(model) => Some(LevelWeatherModel::of(&model, source.locate(&model.texture))),
       Err(error) => {
         log::warn!("Rain splashes are not drawn: {error}");
 

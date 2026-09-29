@@ -3,11 +3,11 @@ use xrf_level::{DetailModel, DetailVertex};
 
 use crate::plugins::levels::state::selection::level_texture_reference::LevelTextureReference;
 
-/// The splash a raindrop leaves where it lands, `dm\rain.dm`: its mesh and the texture it draws with.
+/// A detail model the weather draws, rain's splash or a thunderbolt: its mesh and the texture it draws with.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct LevelRainDrop {
+pub struct LevelWeatherModel {
   pub texture: LevelTextureReference,
   /// Three floats a vertex, in engine space.
   pub positions: Vec<f32>,
@@ -17,7 +17,7 @@ pub struct LevelRainDrop {
   pub indices: Vec<u16>,
 }
 
-impl LevelRainDrop {
+impl LevelWeatherModel {
   /// The model's mesh, its texture located as the level locates its own.
   pub fn of(model: &DetailModel, texture: LevelTextureReference) -> Self {
     Self {

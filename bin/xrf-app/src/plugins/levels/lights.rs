@@ -17,7 +17,7 @@ use crate::plugins::levels::state::{LevelTextureReference, SelectedLevel};
 use crate::plugins::levels::textures::resolve_reference;
 
 /// The colour animations lights name.
-const ANIMATIONS_FILE: &str = "lanims.xr";
+pub(crate) const ANIMATIONS_FILE: &str = "lanims.xr";
 
 /// A level's lights, and what each projector a spot names resolved to.
 pub struct PackedLevelLights {

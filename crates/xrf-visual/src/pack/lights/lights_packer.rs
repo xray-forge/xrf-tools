@@ -1,14 +1,13 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 use xrf_level::LevelDynamicLight;
-use xrf_light_anim::{LightAnimFile, LightAnimItem, LightAnimKey};
+use xrf_light_anim::LightAnimFile;
 use xrf_ltx::{Ltx, Section};
 use xrf_math::Vector3d;
 
 use xrf_spawn::{AlifeObject, AlifeObjectHangingLamp, AlifeObjectInherited};
 
 use crate::data::lights::light_animator_description::LightAnimatorDescription;
-use crate::data::lights::light_animator_key::LightAnimatorKey;
 use crate::data::lights::light_description::LightDescription;
 use crate::data::lights::light_kind::LightKind;
 use crate::data::lights::lights_description::LightsDescription;
@@ -280,7 +279,7 @@ impl<'a> LightsPacker<'a> {
           .map(|item| (file, item))
       })
       .map(|(file, item)| {
-        self.animators.push(Self::describe_animator(item, file.is_bgr()));
+        self.animators.push(LightAnimatorDescription::of(item, file.is_bgr()));
 
         (self.animators.len() - 1) as u32
       });
@@ -328,29 +327,5 @@ impl<'a> LightsPacker<'a> {
   /// `Fcolor(color)` times the lamp's brightness: an `ARGB` colour, each channel over 255, its alpha dropped.
   fn unpack_color(color: u32, brightness: f32) -> [f32; 3] {
     [16, 8, 0].map(|shift| ((color >> shift) & 0xFF) as f32 / 255.0 * brightness)
-  }
-
-  /// The keys as the engine holds them once loaded, each as the `RGB` a lamp takes: a version 0 library stores `BGR`,
-  /// which the load swaps, and `CHangingLamp` swaps `CalculateBGR`'s result back.
-  fn describe_animator(item: &LightAnimItem, is_bgr: bool) -> LightAnimatorDescription {
-    let mut keys: Vec<&LightAnimKey> = item.keys.iter().collect();
-
-    keys.sort_by_key(|key| key.frame);
-
-    LightAnimatorDescription {
-      fps: item.fps,
-      frame_count: item.frame_count,
-      keys: keys
-        .into_iter()
-        .map(|key| {
-          let shifts: [u32; 3] = if is_bgr { [0, 8, 16] } else { [16, 8, 0] };
-
-          LightAnimatorKey {
-            frame: key.frame,
-            color: shifts.map(|shift| ((key.color >> shift) & 0xFF) as f32),
-          }
-        })
-        .collect(),
-    }
   }
 }

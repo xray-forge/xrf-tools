@@ -5,7 +5,6 @@ import { DialogProjectMode } from "@/core/ipc/types/xrf-dialog";
 import { XrayEngine } from "@/core/ipc/types/xrf-engine-target";
 import {
   EnvironmentFinding,
-  EnvironmentSection,
   LevelWeather,
   SunPosition,
   ThunderboltCollection,
@@ -16,7 +15,7 @@ import {
 import { JobOutcome, JobProgress } from "@/core/ipc/types/xrf-job";
 import { EnvModifier } from "@/core/ipc/types/xrf-level";
 import { LtxAnchoredFinding, LtxFileStructure, LtxFileText, LtxInventory } from "@/core/ipc/types/xrf-ltx-inspect";
-import { XrayMaterialDescriptor, XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
+import { XrayMaterialDescriptor, XraySurfaceDescriptor, XraySurfaceDraw } from "@/core/ipc/types/xrf-material";
 import { Vector3d } from "@/core/ipc/types/xrf-math";
 import { ArchivePackConfig, ArchivePatchConfig } from "@/core/ipc/types/xrf-pack";
 import { SpawnHeaderChunk } from "@/core/ipc/types/xrf-spawn";
@@ -31,6 +30,7 @@ import {
 import { XrayAsset, XrayAssetContainer, XrayPathCollision, XrayRoots, XraySourceKind } from "@/core/ipc/types/xrf-vfs";
 import {
   DetailsDescription,
+  LightAnimatorDescription,
   LightsDescription,
   SectorOutline,
   VisualBounds,
@@ -1751,18 +1751,7 @@ export type LevelOpenRequest = {
 export type LevelRain = {
   streak: LevelTextureReference;
   /** None where the model is not there or does not read, which draws no splashes. */
-  drop: LevelRainDrop | null;
-};
-
-/** The splash a raindrop leaves where it lands, `dm\rain.dm`: its mesh and the texture it draws with. */
-export type LevelRainDrop = {
-  texture: LevelTextureReference;
-  /** Three floats a vertex, in engine space. */
-  positions: Array<number | null>;
-  /** Two floats a vertex. */
-  uvs: Array<number | null>;
-  /** A triangle list. */
-  indices: Array<number>;
+  drop: LevelWeatherModel | null;
 };
 
 /** Every `kind` the `LevelSource` union is told apart by, so a switch or a comparison names one. */
@@ -1834,14 +1823,66 @@ export type LevelTextureReference = {
   logicalPath: string | null;
 };
 
+/** A `thunderbolts.ltx` section as `SThunderboltDesc` loads it. */
+export type LevelThunderbolt = {
+  name: string;
+  /** Its `lightning_model`, by index among the bolts' models; none where the model does not read. */
+  model: number | null;
+  /** Its `color_anim`, by index among the bolts' animators; none where `lanims.xr` has no such animation. */
+  color: number | null;
+  top: LevelThunderboltGradient;
+  center: LevelThunderboltGradient;
+};
+
+/** A glow a thunderbolt draws facing the view, `SThunderboltDesc::SFlare`: at the bolt's top, or at its middle. */
+export type LevelThunderboltGradient = {
+  /** Times the strike's phase. */
+  opacity: number | null;
+  /** Across and up, as fractions of the bolt's length. */
+  radius: [number | null, number | null];
+  texture: LevelTextureReference;
+  draw: XraySurfaceDraw;
+};
+
+/** A thunderbolt's `lightning_model`, and how the shader it names composites it. */
+export type LevelThunderboltModel = {
+  /** The model as its file names it, under `meshes`. */
+  name: string;
+  mesh: LevelWeatherModel;
+  draw: XraySurfaceDraw;
+};
+
+/** Where bolts strike and how far they light the scene, as `CEffect_Thunderbolt` loads them: angles in radians. */
+export type LevelThunderboltSettings = {
+  /** Above the horizon, the least and the most. */
+  altitude: [number | null, number | null];
+  /** Either way of the heading opposite the sun. */
+  deltaLongitude: number | null;
+  /** The nearest a bolt strikes, of the far plane. */
+  minDistance: number | null;
+  /** The most a bolt leans off the vertical. */
+  tilt: number | null;
+  /** The chance a strike is followed at once by another, clamped to a unit. */
+  secondProbability: number | null;
+  /** How much of the strike's colour each is lit by. */
+  skyColor: number | null;
+  sunColor: number | null;
+  fogColor: number | null;
+};
+
 /**
- * What a level's weather strikes with: the collections its cycles and effects name, their bolts, and where every
- * bolt is struck from.
+ * What the game's weather strikes with: every collection, the bolts they name as the engine loads them, the models and
+ * colour animations those share, and where bolts strike.
  */
 export type LevelThunderbolts = {
+  /** Every collection of the game, which a keyframe set by hand may strike with as well as the level's own. */
   collections: Array<ThunderboltCollection>;
-  thunderbolts: Array<EnvironmentSection>;
-  settings: EnvironmentSection | null;
+  /** Every bolt the collections name that the game has. */
+  bolts: Array<LevelThunderbolt>;
+  models: Array<LevelThunderboltModel>;
+  animators: Array<LightAnimatorDescription>;
+  /** None where the game has neither `[environment]` nor `[thunderbolt_common]`, which strikes nothing. */
+  settings: LevelThunderboltSettings | null;
 };
 
 /** One cycle or effect as the engine loads it, which a viewer mixes, and what is wrong in its config. */
@@ -1877,6 +1918,17 @@ export type LevelWeatherDescription = {
   skies: Array<LevelWeatherTexture>;
   /** Every clouds texture they name. */
   clouds: Array<LevelWeatherTexture>;
+};
+
+/** A detail model the weather draws, rain's splash or a thunderbolt: its mesh and the texture it draws with. */
+export type LevelWeatherModel = {
+  texture: LevelTextureReference;
+  /** Three floats a vertex, in engine space. */
+  positions: Array<number | null>;
+  /** Two floats a vertex. */
+  uvs: Array<number | null>;
+  /** A triangle list. */
+  indices: Array<number>;
 };
 
 /** A texture the game's weather names, which a hand-set keyframe may be given. */

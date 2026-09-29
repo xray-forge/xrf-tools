@@ -107,7 +107,7 @@ export function mockLevelWeatherDescription(overrides: Partial<LevelWeatherDescr
     ],
     clouds: [{ texture: { logicalPath: "textures\\sky\\sky_oblaka.dds", reference: "sky\\sky_oblaka" }, uses: 2 }],
     sunTable: null,
-    thunderbolts: { collections: [], settings: null, thunderbolts: [] },
+    thunderbolts: { animators: [], bolts: [], collections: [], models: [], settings: null },
     weather: { key: "default", level: "zaton", options: [{ cycle: "default_clear", graph: null, state: null }] },
     ...overrides,
   };

@@ -80,7 +80,7 @@ impl LevelEnvironment {
         .map(|cycle| LevelWeatherCycle::of(cycle, &source))
         .collect(),
       sun_table: catalog.sun_table.as_ref().map(SunTable::list_positions),
-      thunderbolts: LevelThunderbolts::of(catalog, offered.into_iter().chain(&catalog.effects)),
+      thunderbolts: LevelThunderbolts::read(&source),
       weather: self.weather.clone(),
     }
   }
