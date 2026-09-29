@@ -20,6 +20,7 @@ import { IRendererSurface } from "#/contract/scene/renderer-surface";
 import { ERendererTextureEncoding, TRendererTextureSource } from "#/contract/scene/renderer-texture-source";
 import { IRendererWeather } from "#/contract/weather/renderer-weather";
 import { IRendererWeatherControl } from "#/contract/weather/renderer-weather-control";
+import { ERendererWeatherTransition } from "#/contract/weather/renderer-weather-transition";
 
 /**
  * What a consumer tells the renderer.
@@ -120,7 +121,7 @@ export type TRendererRequest =
   | { kind: ERendererRequest.PUT_OVERLAY; key: string; overlay: TRendererOverlay }
   | { kind: ERendererRequest.RELEASE_OVERLAY; key: string }
   | { kind: ERendererRequest.LIGHTING; lighting: IRendererLighting }
-  | { kind: ERendererRequest.WEATHER; weather: Nullable<IRendererWeather> }
+  | { kind: ERendererRequest.WEATHER; weather: Nullable<IRendererWeather>; transition: ERendererWeatherTransition }
   | { kind: ERendererRequest.WEATHER_CONTROL; control: IRendererWeatherControl }
   | { kind: ERendererRequest.WEATHER_EFFECT; effect: Nullable<string> }
   | { kind: ERendererRequest.CAMERA; camera: TRendererCamera }

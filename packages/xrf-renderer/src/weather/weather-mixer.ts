@@ -3,14 +3,15 @@ import { Nullable } from "@xrf/types";
 import { TRendererVector } from "#/contract/renderer-vector";
 import { ERendererWeatherEngine } from "#/contract/weather/renderer-weather-engine";
 import { IRendererWeatherKeyframe } from "#/contract/weather/renderer-weather-keyframe";
-import { IRendererWeatherModifier } from "#/contract/weather/renderer-weather-modifier";
 import { IDynamicSun, toDynamicSun } from "#/weather/dynamic-sun";
 import { toSunTableDirection } from "#/weather/sun-table-direction";
+import { IWeatherCycleMix } from "#/weather/weather-cycle-mix";
 import { toWeatherTimeOfDay, WEATHER_DAY_LENGTH } from "#/weather/weather-day";
 import { IWeatherMix } from "#/weather/weather-mix";
 import { IWeatherMixPoint } from "#/weather/weather-mix-point";
 import { IWeatherModifiersSum, toWeatherModifiersSum, WEATHER_MODIFIER_FLAGS } from "#/weather/weather-modifiers-sum";
-import { EWeatherSun, TWeatherSun } from "#/weather/weather-sun";
+import { IWeatherPairMixer } from "#/weather/weather-pair-mixer";
+import { EWeatherSun } from "#/weather/weather-sun";
 
 /** `EPS`, what `TimeWeight` takes a zero span by. */
 const EPS: number = 0.00001;
@@ -21,35 +22,46 @@ const DOWN: TRendererVector = [0, -1, 0];
 /**
  * What a cycle is mixed from: `CEnvironment::lerp`, with the modifiers reaching the view.
  */
-export interface IWeatherMixer {
+export interface IWeatherMixer extends Omit<IWeatherPairMixer, "pair"> {
   /** Sorted by time. */
   keyframes: ReadonlyArray<IRendererWeatherKeyframe>;
-  engine: ERendererWeatherEngine;
-  sun: TWeatherSun;
-  /** The level's `level.env_mod` volumes. */
-  modifiers: ReadonlyArray<IRendererWeatherModifier>;
 }
 
 /**
- * `CEnvDescriptorMixer::lerp` of the keyframes around a time of day, seen from a point.
+ * The keyframes around a time of day, selected as `SelectEnvs` selects them on a forced start, then mixed.
  *
  * @param mixer - What is mixed.
  * @param point - When, wrapped into the day, and from where.
- * @returns The mix, or null for a cycle without keyframes.
+ * @returns The mix and which keyframes it is of, or null for a cycle without keyframes.
  */
-export function mixWeather(mixer: IWeatherMixer, point: IWeatherMixPoint): Nullable<IWeatherMix> {
-  const { keyframes, engine, sun, modifiers } = mixer;
+export function mixWeather(mixer: IWeatherMixer, point: IWeatherMixPoint): Nullable<IWeatherCycleMix> {
+  const { keyframes } = mixer;
+  const selected: Nullable<readonly [number, number]> = selectWeatherKeyframes(
+    keyframes,
+    toWeatherTimeOfDay(point.time)
+  );
+
+  return selected
+    ? {
+        ...mixWeatherPair({ ...mixer, pair: [keyframes[selected[0]], keyframes[selected[1]]] }, point),
+        keyframes: selected,
+      }
+    : null;
+}
+
+/**
+ * `CEnvDescriptorMixer::lerp` of two keyframes at a time of day, seen from a point.
+ *
+ * @param mixer - The pair, and what it is mixed by.
+ * @param point - When, wrapped into the day, and from where.
+ * @returns The mix.
+ */
+export function mixWeatherPair(mixer: IWeatherPairMixer, point: IWeatherMixPoint): IWeatherMix {
+  const { pair, engine, sun, modifiers } = mixer;
+  const [a, b] = pair;
   const time: number = toWeatherTimeOfDay(point.time);
   const modified: IWeatherModifiersSum = toWeatherModifiersSum(modifiers, point.view);
   const scale: number = 1 / (modified.power + 1);
-  const selected: Nullable<readonly [number, number]> = selectWeatherKeyframes(keyframes, time);
-
-  if (!selected) {
-    return null;
-  }
-
-  const a: IRendererWeatherKeyframe = keyframes[selected[0]];
-  const b: IRendererWeatherKeyframe = keyframes[selected[1]];
   const f: number = weighWeatherTime(time, [a.time, b.time]);
 
   function scalar(from: number, to: number): number {
@@ -124,7 +136,6 @@ export function mixWeather(mixer: IWeatherMixer, point: IWeatherMixPoint): Nulla
     fogFar: 0.99 * fogDistance,
     fogNear: (1 - fogDensity) * 0.85 * fogDistance,
     hemiColor: [...hemiColor, scalar(a.hemiColor[3], b.hemiColor[3])],
-    keyframes: selected,
     modifiers: modified.count,
     skyColor: modifyVector(WEATHER_MODIFIER_FLAGS.SKY_COLOR, vector(a.skyColor, b.skyColor), modified.skyColor),
     skyRotation: scalar(a.skyRotation, b.skyRotation),

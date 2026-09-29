@@ -11,6 +11,7 @@ import { IRendererSettings, toRendererSettings } from "#/contract/renderer-setti
 import { IRendererViewSize } from "#/contract/renderer-view-size";
 import { IRendererTextureFetch } from "#/contract/scene/renderer-texture-fetch";
 import { IRendererWeather } from "#/contract/weather/renderer-weather";
+import { ERendererWeatherTransition } from "#/contract/weather/renderer-weather-transition";
 import { IDdsRefusal } from "#/dds/dds-refusal";
 import { RendererDevice } from "#/device/renderer-device";
 import { RendererDeviceFailure } from "#/device/renderer-device-failure";
@@ -126,9 +127,10 @@ export class RendererHost {
 
   /**
    * @param weather - What to play from now on, or null to light by the consumer's lighting again.
+   * @param transition - How it takes over from what was shown.
    */
-  private takeWeather(weather: Nullable<IRendererWeather>): void {
-    this.weather.take(weather);
+  private takeWeather(weather: Nullable<IRendererWeather>, transition: ERendererWeatherTransition): void {
+    this.weather.take(weather, transition);
     this.scene.rain.take(weather?.rain ?? null);
 
     if (!weather) {
@@ -243,7 +245,7 @@ export class RendererHost {
         return this.takeLighting(request.lighting);
 
       case ERendererRequest.WEATHER:
-        return this.takeWeather(request.weather);
+        return this.takeWeather(request.weather, request.transition);
 
       case ERendererRequest.WEATHER_CONTROL:
         this.weather.setControl(request.control);

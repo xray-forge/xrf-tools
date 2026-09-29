@@ -34,11 +34,26 @@ export class WeatherTextures {
   }
 
   /**
-   * @param sources - Where a new weather's skies are fetched from; every sky of the last one is let go.
+   * @param sources - Where a new weather's skies are fetched from. What the last one holds stays until the next keep
+   *   leaves it out, so a fade from it still has its skies.
    */
   public take(sources: Readonly<Record<string, TWeatherTextureSource>>): void {
-    this.keep([]);
-    this.sources = sources;
+    const kept: Record<string, TWeatherTextureSource> = {};
+
+    for (const reference of this.held) {
+      const source: Maybe<TWeatherTextureSource> = this.sources[reference];
+
+      if (source) {
+        kept[reference] = source;
+      }
+    }
+
+    this.sources = { ...kept, ...sources };
+  }
+
+  /** The references held now. */
+  public listHeld(): Array<string> {
+    return [...this.held];
   }
 
   /**

@@ -8,7 +8,8 @@ import { Nullable } from "@xrf/types";
 
 import { IRendererWeatherKeyframe } from "#/contract/weather/renderer-weather-keyframe";
 import { IWeatherEffectTimeline, toWeatherEffectTimeline } from "#/weather/weather-effect-timeline";
-import { weighWeatherTime } from "#/weather/weather-mixer";
+import { TWeatherKeyframePair } from "#/weather/weather-keyframe-pair";
+import { selectWeatherKeyframes, weighWeatherTime } from "#/weather/weather-mixer";
 
 /** Midnight, six, noon and nine at night. */
 const CYCLE: ReadonlyArray<IRendererWeatherKeyframe> = (
@@ -24,53 +25,39 @@ const EFFECT: ReadonlyArray<IRendererWeatherKeyframe> = [0, 60, 120].map((time: 
   time,
 }));
 
+/** The pair a forced start blends at a time. */
+function toCurrent(time: number): TWeatherKeyframePair {
+  const [from, to] = selectWeatherKeyframes(CYCLE, time) as readonly [number, number];
+
+  return [CYCLE[from], CYCLE[to]];
+}
+
+function toTimeline(time: number, factor: number): Nullable<IWeatherEffectTimeline> {
+  return toWeatherEffectTimeline({ current: toCurrent(time), cycle: CYCLE, effect: EFFECT, factor, name: "fx", time });
+}
+
 describe("toWeatherEffectTimeline", () => {
-  it("leads in at the weight the clock stands at, plays the effect, and holds the cycle's next until its time", () => {
+  it("leads in at the weight the clock stands at, plays the effect, and hands the cycle back its next keyframes", () => {
     // Seven in the morning, a sixth of the way from six to noon, at twelve game seconds a real one.
-    const timeline: Nullable<IWeatherEffectTimeline> = toWeatherEffectTimeline({
-      cycle: CYCLE,
-      effect: EFFECT,
-      factor: 12,
-      name: "fx_test",
-      time: 25_200,
-    });
+    const timeline: Nullable<IWeatherEffectTimeline> = toTimeline(25_200, 12);
 
     expect(timeline?.keyframes.map((it: IRendererWeatherKeyframe) => it.time)).toEqual([
-      25_188, 25_260, 25_320, 25_380, 25_440, 43_200,
+      25_188, 25_260, 25_320, 25_380, 25_440,
     ]);
+    expect(timeline?.start.map((it: IRendererWeatherKeyframe) => it.time)).toEqual([25_188, 25_260]);
     expect(weighWeatherTime(25_200, [25_188, 25_260])).toBeCloseTo(1 / 6, 10);
     // The lead-in reaches the cycle's noon, the effect's own first keyframe standing in for it.
     expect(timeline?.keyframes[1].fogDistance).toBe(CYCLE[2].fogDistance);
     expect(timeline?.keyframes[2].fogDistance).toBe(70);
-    expect(timeline?.keyframes[5].fogDistance).toBe(CYCLE[2].fogDistance);
-    expect(timeline?.duration).toBe(43_200 - 25_200);
-  });
-
-  it("gives the cycle back a lead-in after the effect where its next keyframe is nearer", () => {
-    const timeline: Nullable<IWeatherEffectTimeline> = toWeatherEffectTimeline({
-      cycle: CYCLE,
-      effect: EFFECT,
-      factor: 12,
-      name: "fx_test",
-      time: 43_000,
-    });
-
-    // Noon falls inside the lead-out, so the cycle takes over from it as the lead-out ends.
-    expect(timeline?.keyframes.slice(1).map((it: IRendererWeatherKeyframe) => it.time)).toEqual([
-      43_060, 43_120, 43_180, 43_240,
-    ]);
-    expect(timeline?.duration).toBe(240);
+    // `WFX_end_desc`: the cycle's noon, at or after the effect's last, and the keyframe after it; the lead-out copies
+    // the first a lead-in past the effect's last, which is when the effect ends.
+    expect(timeline?.end).toEqual([CYCLE[2], CYCLE[3]]);
+    expect(timeline?.keyframes[4].fogDistance).toBe(CYCLE[2].fogDistance);
+    expect(timeline?.duration).toBe(25_440 - 25_200);
   });
 
   it("carries the weight across midnight", () => {
-    const timeline: Nullable<IWeatherEffectTimeline> = toWeatherEffectTimeline({
-      cycle: CYCLE,
-      effect: EFFECT,
-      factor: 100,
-      name: "fx_test",
-      time: 86_300,
-    });
-
+    const timeline: Nullable<IWeatherEffectTimeline> = toTimeline(86_300, 100);
     const keyframes: ReadonlyArray<IRendererWeatherKeyframe> = timeline?.keyframes ?? [];
 
     expect(keyframes.every((it: IRendererWeatherKeyframe) => it.time >= 0 && it.time < 86_400)).toBe(true);
@@ -82,6 +69,8 @@ describe("toWeatherEffectTimeline", () => {
   });
 
   it("plays nothing without the effect's keyframes", () => {
-    expect(toWeatherEffectTimeline({ cycle: CYCLE, effect: [], factor: 12, name: "fx", time: 0 })).toBeNull();
+    expect(
+      toWeatherEffectTimeline({ current: toCurrent(0), cycle: CYCLE, effect: [], factor: 12, name: "fx", time: 0 })
+    ).toBeNull();
   });
 });

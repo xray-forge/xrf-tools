@@ -23,6 +23,7 @@ import { IRendererSurface } from "#/contract/scene/renderer-surface";
 import { TRendererTextureSource } from "#/contract/scene/renderer-texture-source";
 import { IRendererWeather } from "#/contract/weather/renderer-weather";
 import { IRendererWeatherControl } from "#/contract/weather/renderer-weather-control";
+import { ERendererWeatherTransition } from "#/contract/weather/renderer-weather-transition";
 import { IRenderTarget } from "#/frame/render-target";
 import { RenderInputForwarder } from "#/input/render-input-forwarder";
 
@@ -305,9 +306,10 @@ export class RendererClient {
 
   /**
    * @param weather - The weather to play, lighting the scene in place of the lighting; null to light by it again.
+   * @param transition - How it takes over from what was shown.
    */
-  public setWeather(weather: Nullable<IRendererWeather>): void {
-    this.post({ kind: ERendererRequest.WEATHER, weather });
+  public setWeather(weather: Nullable<IRendererWeather>, transition: ERendererWeatherTransition): void {
+    this.post({ kind: ERendererRequest.WEATHER, transition, weather });
   }
 
   /**

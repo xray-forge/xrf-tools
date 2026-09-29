@@ -13,4 +13,8 @@ export interface IRendererWeatherControl {
   isDynamicSun: boolean;
   isFogged: boolean;
   isWindy: boolean;
+  /** Whether the clouds are drawn over the sky. */
+  isClouded: boolean;
+  /** Whether it rains where the weather rains. */
+  isRainy: boolean;
 }

@@ -11,8 +11,6 @@ export interface IWeatherMix {
   view: TRendererVector;
   /** How many of the level's modifiers reach the view. */
   modifiers: number;
-  /** The keyframes either side, by index. */
-  keyframes: readonly [number, number];
   /** How far from the first to the second. */
   weight: number;
   skyColor: TRendererColor;

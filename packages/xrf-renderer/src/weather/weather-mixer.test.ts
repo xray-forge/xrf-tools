@@ -10,7 +10,7 @@ import { IRendererSunPosition } from "#/contract/weather/renderer-sun-position";
 import { ERendererWeatherEngine } from "#/contract/weather/renderer-weather-engine";
 import { IRendererWeatherKeyframe } from "#/contract/weather/renderer-weather-keyframe";
 import { IRendererWeatherModifier } from "#/contract/weather/renderer-weather-modifier";
-import { IWeatherMix } from "#/weather/weather-mix";
+import { IWeatherCycleMix } from "#/weather/weather-cycle-mix";
 import { mixWeather, selectWeatherKeyframes, weighWeatherTime } from "#/weather/weather-mixer";
 import { EWeatherSun, TWeatherSun } from "#/weather/weather-sun";
 
@@ -22,7 +22,7 @@ interface IGoldenCase {
   keyframes: Array<IRendererWeatherKeyframe>;
   sunTable: Nullable<Array<IRendererSunPosition>>;
   modifiers: Array<IRendererWeatherModifier>;
-  mixes: Array<IWeatherMix>;
+  mixes: Array<IWeatherCycleMix>;
 }
 
 /** Written by `xrf-environment`'s ignored `writes_the_renderer_golden_vectors`, from the engine's own mixer port. */
@@ -61,7 +61,7 @@ describe("mixWeather", () => {
       expect(golden.mixes.length).toBeGreaterThan(0);
 
       for (const expected of golden.mixes) {
-        const actual: Nullable<IWeatherMix> = mixWeather(
+        const actual: Nullable<IWeatherCycleMix> = mixWeather(
           { engine: golden.engine, keyframes: golden.keyframes, modifiers: golden.modifiers, sun: toSun(golden) },
           { time: expected.time, view: expected.view }
         );

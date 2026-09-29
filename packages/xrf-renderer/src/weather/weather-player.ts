@@ -8,12 +8,16 @@ import { IRendererWeatherControl } from "#/contract/weather/renderer-weather-con
 import { ERendererWeatherEngine } from "#/contract/weather/renderer-weather-engine";
 import { IRendererWeatherKeyframe } from "#/contract/weather/renderer-weather-keyframe";
 import { IRendererWeatherReport } from "#/contract/weather/renderer-weather-report";
+import { ERendererWeatherTransition } from "#/contract/weather/renderer-weather-transition";
 import { DEFAULT_RENDERER_GRASS_WIND, DEFAULT_RENDERER_LIGHTING } from "#/lighting/default-lighting";
 import { RendererTextures } from "#/texture/renderer-textures";
 import { toWeatherTimeOfDay } from "#/weather/weather-day";
 import { IWeatherEffectTimeline, toWeatherEffectTimeline } from "#/weather/weather-effect-timeline";
+import { toFadedLighting } from "#/weather/weather-fade";
+import { TWeatherKeyframePair } from "#/weather/weather-keyframe-pair";
 import { IWeatherMix } from "#/weather/weather-mix";
-import { mixWeather } from "#/weather/weather-mixer";
+import { mixWeatherPair } from "#/weather/weather-mixer";
+import { WeatherPair } from "#/weather/weather-pair";
 import { EWeatherSun, TWeatherSun } from "#/weather/weather-sun";
 import { WeatherTextures } from "#/weather/weather-textures";
 
@@ -23,9 +27,11 @@ const NOON: number = 12 * 60 * 60;
 /** How a weather plays until told otherwise: paused at noon, at the engine's own time factor. */
 const DEFAULT_CONTROL: IRendererWeatherControl = {
   factor: 12,
+  isClouded: true,
   isDynamicSun: false,
   isFogged: true,
   isPaused: true,
+  isRainy: true,
   isWindy: true,
   time: NOON,
 };
@@ -39,24 +45,46 @@ const RAIN_THRESHOLD: number = 0.001;
 /** Metres the view moves before the modifiers are weighed again. */
 const VIEW_STEP: number = 0.5;
 
+/** Real milliseconds each transition takes. */
+const TRANSITION_TIME: Readonly<Record<ERendererWeatherTransition, number>> = {
+  [ERendererWeatherTransition.CUT]: 0,
+  [ERendererWeatherTransition.EASE]: 250,
+  [ERendererWeatherTransition.FADE]: 1500,
+};
+
 /** An effect playing, and the game seconds it has left. */
 interface IPlayingEffect {
   timeline: IWeatherEffectTimeline;
   remaining: number;
 }
 
+/** A fade from what was shown into what the weather shows now. */
+interface IWeatherFading {
+  from: IRendererLighting;
+  /** Milliseconds it started at, or null until the frame after it was asked for. */
+  startedAt: Nullable<number>;
+  duration: number;
+  /** The textures what it fades from shows, held until it ends. */
+  held: ReadonlyArray<string>;
+}
+
 /**
- * The weather the renderer plays by itself: its clock, the effect over it, the mix at the clock's time seen from the
- * view, and the skies held around it.
+ * The weather the renderer plays by itself: its clock, the engine's pair of keyframes kept from frame to frame, the
+ * effect over it, the mix seen from the view, a fade from what was shown when the consumer hands over another weather,
+ * and the skies held around it all.
  */
 export class WeatherPlayer {
   private readonly textures: WeatherTextures;
+  private readonly pair: WeatherPair = new WeatherPair();
   private weather: Nullable<IRendererWeather> = null;
   private control: IRendererWeatherControl = DEFAULT_CONTROL;
   private time: number = NOON;
   private effect: Nullable<IPlayingEffect> = null;
   private view: TRendererVector = [0, 0, 0];
   private mix: Nullable<IWeatherMix> = null;
+  /** What was last drawn, which a fade starts from. */
+  private shown: Nullable<IRendererLighting> = null;
+  private fading: Nullable<IWeatherFading> = null;
   private advancedAt: Nullable<number> = null;
   private isChanged: boolean = false;
 
@@ -74,32 +102,50 @@ export class WeatherPlayer {
 
   /** Where the weather stands, or null while none plays. */
   public get report(): Nullable<IRendererWeatherReport> {
-    const { mix, effect } = this;
+    const { mix, effect, weather } = this;
+    const pair: Nullable<TWeatherKeyframePair> = this.pair.current;
 
-    return mix
-      ? {
-          effect: effect ? { name: effect.timeline.name, remaining: effect.remaining } : null,
-          keyframes: effect ? null : mix.keyframes,
-          modifiers: mix.modifiers,
-          time: this.time,
-          weight: mix.weight,
-        }
-      : null;
+    if (!mix || !pair || !weather) {
+      return null;
+    }
+
+    return {
+      between: [pair[0].time, pair[1].time],
+      current: this.toCurrent(weather, pair),
+      effect: effect ? { name: effect.timeline.name, remaining: effect.remaining } : null,
+      modifiers: mix.modifiers,
+      time: this.time,
+      weight: mix.weight,
+    };
   }
 
   /**
    * @param weather - What to play from now on, or null to play nothing.
+   * @param transition - How it takes over from what was shown.
    */
-  public take(weather: Nullable<IRendererWeather>): void {
+  public take(weather: Nullable<IRendererWeather>, transition: ERendererWeatherTransition): void {
+    const duration: number = TRANSITION_TIME[transition];
+
+    this.fading =
+      weather && this.shown && duration > 0
+        ? { duration, from: this.shown, held: this.textures.listHeld(), startedAt: null }
+        : null;
     this.weather = weather;
     this.effect = null;
     this.mix = null;
+    this.pair.reset();
     this.isChanged = true;
     this.textures.take(weather?.textures ?? {});
+
+    // Nothing fades into no weather: what it held goes at once.
+    if (!weather) {
+      this.textures.keep([]);
+      this.shown = null;
+    }
   }
 
   /**
-   * @param control - How to play it from now on; a time to play from ends the effect playing.
+   * @param control - How to play it from now on; a time to play from is a forced start, which ends the effect playing.
    */
   public setControl(control: IRendererWeatherControl): void {
     this.control = control;
@@ -108,28 +154,44 @@ export class WeatherPlayer {
     if (control.time !== null) {
       this.time = toWeatherTimeOfDay(control.time);
       this.effect = null;
+      this.pair.reset();
     }
   }
 
   /**
+   * `SetWeatherFX`, or `StopWFX` for none: an effect already playing gives the cycle back first.
+   *
    * @param name - The effect to play over the cycle from the clock's time, or null to end the one playing.
    */
   public playEffect(name: Nullable<string>): void {
     const { weather } = this;
-    const effect: Maybe<ReadonlyArray<IRendererWeatherKeyframe>> = name ? weather?.effects[name] : undefined;
-    const timeline: Nullable<IWeatherEffectTimeline> =
-      name && weather && effect
-        ? toWeatherEffectTimeline({
-            cycle: weather.keyframes,
-            effect,
-            factor: this.control.factor,
-            name,
-            time: this.time,
-          })
-        : null;
 
-    this.effect = timeline ? { remaining: timeline.duration, timeline } : null;
-    this.isChanged = true;
+    this.stopEffect();
+
+    const effect: Maybe<ReadonlyArray<IRendererWeatherKeyframe>> = name ? weather?.effects[name] : undefined;
+
+    if (!name || !weather || !effect) {
+      return;
+    }
+
+    this.pair.advance(weather.keyframes, this.time);
+
+    const current: Nullable<TWeatherKeyframePair> = this.pair.current;
+    const timeline: Nullable<IWeatherEffectTimeline> = current
+      ? toWeatherEffectTimeline({
+          current,
+          cycle: weather.keyframes,
+          effect,
+          factor: this.control.factor,
+          name,
+          time: this.time,
+        })
+      : null;
+
+    if (timeline) {
+      this.effect = { remaining: timeline.duration, timeline };
+      this.pair.set(timeline.start);
+    }
   }
 
   /**
@@ -141,7 +203,7 @@ export class WeatherPlayer {
    */
   public advance(now: number, view: TRendererVector): Nullable<IRendererLighting> {
     const step: number = this.advancedAt === null ? 0 : Math.min(Math.max(now - this.advancedAt, 0), LONGEST_STEP);
-    const { weather, control } = this;
+    const { weather, control, fading } = this;
 
     this.advancedAt = now;
 
@@ -161,6 +223,11 @@ export class WeatherPlayer {
       this.isChanged = true;
     }
 
+    if (fading) {
+      fading.startedAt ??= now;
+      this.isChanged = true;
+    }
+
     if (!this.isChanged) {
       return null;
     }
@@ -168,18 +235,35 @@ export class WeatherPlayer {
     const keyframes: ReadonlyArray<IRendererWeatherKeyframe> = this.effect?.timeline.keyframes ?? weather.keyframes;
 
     this.isChanged = false;
-    this.mix = mixWeather(
-      { engine: weather.engine, keyframes, modifiers: weather.modifiers, sun: this.toSun(weather) },
-      { time: this.time, view: this.view }
-    );
+    this.pair.advance(keyframes, this.time);
 
-    if (!this.mix) {
+    const pair: Nullable<TWeatherKeyframePair> = this.pair.current;
+
+    if (!pair) {
       return null;
     }
 
-    this.textures.keep([...WeatherPlayer.listNear(keyframes, this.mix), ...WeatherPlayer.listRain(weather)]);
+    this.mix = mixWeatherPair(
+      { engine: weather.engine, modifiers: weather.modifiers, pair, sun: this.toSun(weather) },
+      { time: this.time, view: this.view }
+    );
 
-    return this.toLighting(keyframes, this.mix);
+    const target: IRendererLighting = this.toLighting(pair, this.mix);
+    const progress: number = fading ? (now - (fading.startedAt ?? now)) / fading.duration : 1;
+    const lighting: IRendererLighting = fading ? toFadedLighting({ from: fading.from, progress, to: target }) : target;
+
+    if (progress >= 1) {
+      this.fading = null;
+    }
+
+    this.textures.keep([
+      ...WeatherPlayer.listNear(keyframes, pair),
+      ...WeatherPlayer.listRain(weather),
+      ...(this.fading?.held ?? []),
+    ]);
+    this.shown = lighting;
+
+    return lighting;
   }
 
   public dispose(): void {
@@ -187,6 +271,8 @@ export class WeatherPlayer {
     this.weather = null;
     this.effect = null;
     this.mix = null;
+    this.shown = null;
+    this.fading = null;
   }
 
   /** Runs the clock on, and the effect playing with it, which gives the cycle back once it has run out. */
@@ -198,8 +284,17 @@ export class WeatherPlayer {
       this.effect.remaining -= seconds;
 
       if (this.effect.remaining <= 0) {
-        this.effect = null;
+        this.stopEffect();
       }
+    }
+  }
+
+  /** `StopWFX`: the cycle takes over from the effect's end, blending its keyframe there and the one after. */
+  private stopEffect(): void {
+    if (this.effect) {
+      this.pair.set(this.effect.timeline.end);
+      this.effect = null;
+      this.isChanged = true;
     }
   }
 
@@ -211,10 +306,50 @@ export class WeatherPlayer {
     return { kind: this.control.isDynamicSun ? EWeatherSun.DYNAMIC : EWeatherSun.AUTHORED };
   }
 
-  private toLighting(keyframes: ReadonlyArray<IRendererWeatherKeyframe>, mix: IWeatherMix): IRendererLighting {
-    const { isFogged, isWindy } = this.control;
-    const a: IRendererWeatherKeyframe = keyframes[mix.keyframes[0]];
-    const b: IRendererWeatherKeyframe = keyframes[mix.keyframes[1]];
+  /**
+   * What is mixed now as one keyframe, without the level's modifiers, which a keyframe seeded from it gets again: the
+   * heavier keyframe's textures, the sun where it stands.
+   */
+  private toCurrent(weather: IRendererWeather, pair: TWeatherKeyframePair): IRendererWeatherKeyframe {
+    const mix: IWeatherMix = mixWeatherPair(
+      { engine: weather.engine, modifiers: [], pair, sun: this.toSun(weather) },
+      { time: this.time, view: this.view }
+    );
+    const heavier: IRendererWeatherKeyframe = pair[mix.weight >= 0.5 ? 1 : 0];
+
+    return {
+      ambientColor: mix.ambientColor,
+      cloudsColor: mix.cloudsColor,
+      cloudsRotation: mix.cloudsRotation,
+      cloudsTexture: heavier.cloudsTexture,
+      farPlane: mix.farPlane,
+      fogColor: mix.fogColor,
+      fogDensity: mix.fogDensity,
+      fogDistance: mix.fogDistance,
+      hemiColor: mix.hemiColor,
+      rainColor: mix.rainColor,
+      rainDensity: mix.rainDensity,
+      skyColor: mix.skyColor,
+      skyRotation: mix.skyRotation,
+      skyTexture: heavier.skyTexture,
+      skyTextureEnv: heavier.skyTextureEnv,
+      sunAzimuth: heavier.sunAzimuth,
+      sunColor: mix.sunColor,
+      sunDirection: mix.sunDirection,
+      time: this.time,
+      treeAmplitude: mix.treeAmplitude,
+      treeRotation: mix.treeRotation,
+      treeSpeed: mix.treeSpeed,
+      treeWave: mix.treeWave,
+      waterIntensity: mix.waterIntensity,
+      windDirection: mix.windDirection,
+      windVelocity: mix.windVelocity,
+    };
+  }
+
+  private toLighting(pair: TWeatherKeyframePair, mix: IWeatherMix): IRendererLighting {
+    const { isClouded, isFogged, isRainy, isWindy } = this.control;
+    const [a, b] = pair;
     const [x, y, z]: TRendererVector = mix.sunDirection;
 
     return {
@@ -224,12 +359,21 @@ export class WeatherPlayer {
         : null,
       grass: isWindy ? DEFAULT_RENDERER_GRASS_WIND : null,
       hemisphereColor: [mix.hemiColor[0], mix.hemiColor[1], mix.hemiColor[2]],
+      rain:
+        isRainy && this.weather?.rain && mix.rainDensity >= RAIN_THRESHOLD
+          ? {
+              color: mix.rainColor,
+              density: mix.rainDensity,
+              windDirection: mix.windDirection,
+              windVelocity: mix.windVelocity,
+            }
+          : null,
       sky: {
         blend: mix.weight,
         clouds: {
           color: mix.cloudsColor,
           rotation: toDegrees(mix.cloudsRotation),
-          textures: [WeatherPlayer.toCloudsKey(a), WeatherPlayer.toCloudsKey(b)],
+          textures: isClouded ? [WeatherPlayer.toCloudsKey(a), WeatherPlayer.toCloudsKey(b)] : [null, null],
         },
         color: mix.skyColor,
         environments: [WeatherTextures.toKey(a.skyTextureEnv), WeatherTextures.toKey(b.skyTextureEnv)],
@@ -244,15 +388,6 @@ export class WeatherPlayer {
         ? { amplitude: mix.treeAmplitude, rotation: mix.treeRotation, speed: mix.treeSpeed, wave: mix.treeWave }
         : null,
       waterIntensity: mix.waterIntensity,
-      rain:
-        this.weather?.rain && mix.rainDensity >= RAIN_THRESHOLD
-          ? {
-              color: mix.rainColor,
-              density: mix.rainDensity,
-              windDirection: mix.windDirection,
-              windVelocity: mix.windVelocity,
-            }
-          : null,
     };
   }
 
@@ -268,13 +403,15 @@ export class WeatherPlayer {
     return rain ? [rain.streak, ...(rain.drop ? [rain.drop.texture] : [])] : [];
   }
 
-  /** The skies of the two keyframes mixed and of the one after, fetched before the clock reaches it. */
-  private static listNear(keyframes: ReadonlyArray<IRendererWeatherKeyframe>, mix: IWeatherMix): Array<string> {
-    const next: Maybe<IRendererWeatherKeyframe> = keyframes[(mix.keyframes[1] + 1) % keyframes.length];
+  /** The skies of the pair and of the keyframe after it, fetched before the clock reaches it. */
+  private static listNear(
+    keyframes: ReadonlyArray<IRendererWeatherKeyframe>,
+    pair: TWeatherKeyframePair
+  ): Array<string> {
+    const next: Maybe<IRendererWeatherKeyframe> = WeatherPair.selectNext(keyframes, pair[1].time + 0.5);
 
-    return [keyframes[mix.keyframes[0]], keyframes[mix.keyframes[1]], next].flatMap(
-      (keyframe: Maybe<IRendererWeatherKeyframe>) =>
-        keyframe ? [keyframe.skyTexture, keyframe.skyTextureEnv, keyframe.cloudsTexture] : []
+    return [pair[0], pair[1], next].flatMap((keyframe: Maybe<IRendererWeatherKeyframe>) =>
+      keyframe ? [keyframe.skyTexture, keyframe.skyTextureEnv, keyframe.cloudsTexture] : []
     );
   }
 }

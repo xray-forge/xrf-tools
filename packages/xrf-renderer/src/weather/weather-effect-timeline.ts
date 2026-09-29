@@ -3,7 +3,8 @@ import { Nullable } from "@xrf/types";
 import { IRendererWeatherKeyframe } from "#/contract/weather/renderer-weather-keyframe";
 import { toWeatherTimeOfDay, WEATHER_DAY_LENGTH } from "#/weather/weather-day";
 import { IWeatherEffectStart } from "#/weather/weather-effect-start";
-import { selectWeatherKeyframes } from "#/weather/weather-mixer";
+import { TWeatherKeyframePair } from "#/weather/weather-keyframe-pair";
+import { WeatherPair } from "#/weather/weather-pair";
 
 /** `WFX_TRANS_TIME`: real seconds an effect takes to lead in, and to lead back into the cycle. */
 const TRANSITION: number = 5;
@@ -18,28 +19,31 @@ export interface IWeatherEffectTimeline {
   name: string;
   /** Sorted by time of day: the lead-in, the effect's own keyframes, and the way back into the cycle. */
   keyframes: ReadonlyArray<IRendererWeatherKeyframe>;
-  /** Game seconds from its start until the cycle takes over again. */
+  /** The pair it starts blending: the lead-in and the cycle's next keyframe, `C0` and `C1`. */
+  start: TWeatherKeyframePair;
+  /** The pair it hands the cycle back as it ends, `WFX_end_desc`. */
+  end: TWeatherKeyframePair;
+  /** Game seconds from its start until the cycle takes over again, `wfx_time`. */
   duration: number;
 }
 
 /**
  * `SetWeatherFX`: the cycle's two keyframes around the start, carried on at the weight they stand at into the second
  * one a lead-in later; the effect's keyframes after that, its first replaced by that second one as the engine
- * replaces it; then the cycle's keyframe at or after the effect's last, a lead-in on, held until its own time.
+ * replaces it; then the cycle's keyframe at or after the effect's last, a lead-in on, from which the cycle takes over
+ * with it and the one after.
  *
  * @param start - The effect, the cycle, and when and how fast it starts.
  * @returns Its timeline, or null for an effect or a cycle with no keyframes.
  */
 export function toWeatherEffectTimeline(start: IWeatherEffectStart): Nullable<IWeatherEffectTimeline> {
-  const { name, effect, cycle, time, factor } = start;
-  const selected: Nullable<readonly [number, number]> = selectWeatherKeyframes(cycle, time);
+  const { name, effect, cycle, current, time, factor } = start;
 
-  if (!selected || !effect.length) {
+  if (!effect.length || !cycle.length) {
     return null;
   }
 
-  const a: IRendererWeatherKeyframe = cycle[selected[0]];
-  const b: IRendererWeatherKeyframe = cycle[selected[1]];
+  const [a, b] = current;
   const rewind: number = TRANSITION * factor;
   const begin: number = time + rewind;
   const toNext: number = toElapsed(time, b.time);
@@ -57,22 +61,21 @@ export function toWeatherEffectTimeline(start: IWeatherEffectStart): Nullable<IW
     })),
   ];
   const last: number = effect.length > 1 ? begin + effect[effect.length - 1].time : begin;
-  // `SelectEnv`: the cycle's first keyframe at or after the effect's last.
-  const back: IRendererWeatherKeyframe =
-    cycle[(selectWeatherKeyframes(cycle, toWeatherTimeOfDay(last)) ?? selected)[1]];
-  const end: number = last + rewind;
-  const held: number = toElapsed(toWeatherTimeOfDay(last), back.time);
-  const keyframes: Array<IRendererWeatherKeyframe> = [leadIn, ...played, { ...back, time: toWeatherTimeOfDay(end) }];
-
-  // Played on from where the effect left it, the cycle holds its keyframe until the clock reaches it.
-  if (held > rewind) {
-    keyframes.push({ ...back, time: back.time });
-  }
+  // `SelectEnv` twice: the cycle's first keyframe at or after the effect's last, and the one after that.
+  const back: IRendererWeatherKeyframe = WeatherPair.selectNext(cycle, toWeatherTimeOfDay(last)) ?? b;
+  const after: IRendererWeatherKeyframe = WeatherPair.selectNext(cycle, toWeatherTimeOfDay(back.time + 0.5)) ?? back;
+  const keyframes: Array<IRendererWeatherKeyframe> = [
+    leadIn,
+    ...played,
+    { ...back, time: toWeatherTimeOfDay(last + rewind) },
+  ];
 
   return {
-    duration: Math.max(held, rewind) + (last - time),
-    keyframes: keyframes.sort((first, second) => first.time - second.time),
+    duration: last + rewind - time,
+    end: [back, after],
+    keyframes: [...keyframes].sort((first, second) => first.time - second.time),
     name,
+    start: [leadIn, played[0]],
   };
 }
 
