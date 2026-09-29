@@ -2,6 +2,7 @@ import { describe, expect, it, jest } from "@jest/globals";
 import { userEvent } from "@testing-library/user-event";
 
 import { LevelFogAction } from "@/core/level/components/preview/LevelFogAction";
+import { LevelRainAction } from "@/core/level/components/preview/LevelRainAction";
 import { LevelSkyAction } from "@/core/level/components/preview/LevelSkyAction";
 import { LevelSunAction } from "@/core/level/components/preview/LevelSunAction";
 import { DEFAULT_LEVEL_VIEW_OPTIONS } from "@/core/level/lib/view/level-view-options";
@@ -176,5 +177,38 @@ describe("level weather key actions", () => {
     await userEvent.type(field, "sky\\clouds_storm{Enter}");
 
     expect(onEdit).toHaveBeenLastCalledWith({ cloudsTexture: "sky\\clouds_storm" });
+  });
+
+  it("strikes with a collection the game has, or none, and switches the thunder apart from the rain", async () => {
+    const onEdit = jest.fn<TEdit>();
+    const onToggle = jest.fn<(option: string) => void>();
+    const { getByRole, findByRole } = renderWithProviders(
+      <LevelRainAction
+        options={DEFAULT_LEVEL_VIEW_OPTIONS}
+        manual={{ ...DEFAULT_LEVEL_MANUAL_WEATHER, thunderboltCollection: "collection_stancia" }}
+        collections={[
+          { file: "environment\\thunderbolt_collections.ltx", name: "collection_default", thunderbolts: ["a", "b"] },
+        ]}
+        onToggle={onToggle}
+        onEdit={onEdit}
+      />
+    );
+
+    await userEvent.click(getByRole("button", { name: "Rain" }));
+    await findByRole("dialog", { name: "Rain" });
+    await userEvent.click(getByRole("checkbox", { name: "Thunder" }));
+
+    expect(onToggle).toHaveBeenCalledWith("isThundering");
+
+    await userEvent.click(getByRole("combobox", { name: "thunderbolt_collection" }));
+
+    // A collection the game no longer has is kept, so the keyframe still says what it names.
+    expect(getByRole("listbox").textContent).toMatch(
+      /None.*collection_stancianot in the game.*collection_default2 bolts/
+    );
+
+    await userEvent.click(getByRole("option", { name: /collection_default/ }));
+
+    expect(onEdit).toHaveBeenCalledWith({ thunderboltCollection: "collection_default" });
   });
 });

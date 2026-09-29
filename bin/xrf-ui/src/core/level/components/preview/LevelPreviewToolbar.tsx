@@ -3,6 +3,7 @@ import { Nullable } from "@xrf/types";
 import { ReactElement, ReactNode, useCallback } from "react";
 
 import { LevelSunDescription, LevelWeatherTexture } from "@/core/ipc/types/xrf-app";
+import { ThunderboltCollection } from "@/core/ipc/types/xrf-environment";
 import { LevelAntialiasingAction } from "@/core/level/components/preview/LevelAntialiasingAction";
 import { LevelCullingAction } from "@/core/level/components/preview/LevelCullingAction";
 import { LevelFogAction } from "@/core/level/components/preview/LevelFogAction";
@@ -31,12 +32,14 @@ interface ILevelPreviewToolbarProps extends BaseComponentProps {
   options: ILevelViewOptions;
   /** How much the baked hemisphere darkens the ambient, which the baked light toggle carries. */
   hemiStrength: number;
-  /** The keyframe on screen, which the sun, sky, clouds, fog, rain, water and wind popovers edit. */
+  /** The keyframe on screen, which the sun, sky, clouds, fog, rain, thunder, water and wind popovers edit. */
   manual: ILevelManualWeather;
   /** Every sky the game's weather names, which the sky's popover offers. */
   skies: ReadonlyArray<LevelWeatherTexture>;
   /** Every clouds texture it names. */
   clouds: ReadonlyArray<LevelWeatherTexture>;
+  /** Every thunderbolt collection of the game, which the rain's popover offers. */
+  collections: ReadonlyArray<ThunderboltCollection>;
   /** The sun the open level was compiled against, which the sun's popover offers to light it from. */
   sun: Nullable<LevelSunDescription>;
   /** How far trees are drawn in full, which the impostors toggle carries. */
@@ -76,6 +79,7 @@ export function LevelPreviewToolbar({
   manual,
   skies,
   clouds,
+  collections,
   sun,
   lod,
   features,
@@ -183,9 +187,10 @@ export function LevelPreviewToolbar({
           />
 
           <LevelRainAction
-            isOn={options.isRainy}
+            options={options}
             manual={manual}
-            onToggle={() => onToggle("isRainy")}
+            collections={collections}
+            onToggle={onToggle}
             onEdit={onEditManual}
           />
 
