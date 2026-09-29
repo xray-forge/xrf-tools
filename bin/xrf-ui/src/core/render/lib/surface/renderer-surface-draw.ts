@@ -52,32 +52,54 @@ export function toRendererSurfaceDraw(descriptor: Nullable<XraySurfaceDescriptor
   }
 
   const alphaReference: Maybe<number> = "reference" in draw ? draw.reference / ALPHA_REFERENCE_SCALE : undefined;
+  const rendererDraw: ERendererDraw = toRendererDraw(draw);
 
-  switch (draw.kind) {
-    case EXraySurfaceDraw.OPAQUE:
-      return { draw: ERendererDraw.OPAQUE, isLit };
-
-    case EXraySurfaceDraw.ALPHA_TESTED:
-      return { alphaReference, draw: ERendererDraw.CUT_OUT, isLit };
-
-    case EXraySurfaceDraw.BLENDED:
-      return { alphaReference, draw: ERendererDraw.BLENDED, isLit };
-
-    case EXraySurfaceDraw.ADDED:
-      return { alphaReference, draw: draw.isWeighted ? ERendererDraw.ALPHA_ADDED : ERendererDraw.ADDED, isLit };
-
-    case EXraySurfaceDraw.MULTIPLIED:
-      return { draw: draw.isDoubled ? ERendererDraw.MULTIPLIED_2X : ERendererDraw.MULTIPLIED, isLit };
-
-    case EXraySurfaceDraw.INVISIBLE:
-      return { draw: ERendererDraw.INVISIBLE, isLit };
+  switch (rendererDraw) {
+    case ERendererDraw.CUT_OUT:
+    case ERendererDraw.BLENDED:
+    case ERendererDraw.ADDED:
+    case ERendererDraw.ALPHA_ADDED:
+      return { alphaReference, draw: rendererDraw, isLit };
 
     // Lit by the water's own programs, whatever its blend says.
-    case EXraySurfaceDraw.WATER:
-      return { draw: ERendererDraw.WATER, isLit: true, water: toRendererSurfaceWater(descriptor, draw.isSoft) };
+    case ERendererDraw.WATER:
+      return {
+        draw: rendererDraw,
+        isLit: true,
+        water: toRendererSurfaceWater(descriptor, draw.kind === EXraySurfaceDraw.WATER && draw.isSoft),
+      };
 
     default:
-      return { ...OPAQUE_RENDERER_SURFACE_DRAW, isLit };
+      return { draw: rendererDraw, isLit };
+  }
+}
+
+/**
+ * @param draw - How the backend resolved a shader to composite.
+ * @returns The same, as the renderer draws it; opaque for a kind it does not know.
+ */
+export function toRendererDraw(draw: XraySurfaceDraw): ERendererDraw {
+  switch (draw.kind) {
+    case EXraySurfaceDraw.ALPHA_TESTED:
+      return ERendererDraw.CUT_OUT;
+
+    case EXraySurfaceDraw.BLENDED:
+      return ERendererDraw.BLENDED;
+
+    case EXraySurfaceDraw.ADDED:
+      return draw.isWeighted ? ERendererDraw.ALPHA_ADDED : ERendererDraw.ADDED;
+
+    case EXraySurfaceDraw.MULTIPLIED:
+      return draw.isDoubled ? ERendererDraw.MULTIPLIED_2X : ERendererDraw.MULTIPLIED;
+
+    case EXraySurfaceDraw.INVISIBLE:
+      return ERendererDraw.INVISIBLE;
+
+    case EXraySurfaceDraw.WATER:
+      return ERendererDraw.WATER;
+
+    default:
+      return ERendererDraw.OPAQUE;
   }
 }
 

@@ -1,4 +1,4 @@
-import { ERendererDraw, IRendererThunder, IRendererThunderboltGradient } from "@xrf/renderer";
+import { IRendererThunder, IRendererThunderboltGradient } from "@xrf/renderer";
 import { Nullable } from "@xrf/types";
 
 import {
@@ -9,8 +9,8 @@ import {
   LevelThunderbolts,
 } from "@/core/ipc/types/xrf-app";
 import { ThunderboltCollection } from "@/core/ipc/types/xrf-environment";
-import { EXraySurfaceDraw, XraySurfaceDraw } from "@/core/ipc/types/xrf-material";
 import { toLevelRendererLightAnimator } from "@/core/level/lib/render/level-render-lights";
+import { toRendererDraw } from "@/core/render/lib/surface/renderer-surface-draw";
 
 /**
  * @param thunderbolts - What the game's weather strikes with.
@@ -40,7 +40,7 @@ export function toLevelRendererThunder(thunderbolts: LevelThunderbolts): Nullabl
       thunderbolts.collections.map((collection: ThunderboltCollection) => [collection.name, collection.thunderbolts])
     ),
     models: thunderbolts.models.map((model: LevelThunderboltModel) => ({
-      draw: toThunderDraw(model.draw),
+      draw: toRendererDraw(model.draw),
       indices: model.mesh.indices,
       positions: model.mesh.positions.map((it: Nullable<number>) => it ?? 0),
       texture: model.mesh.texture.reference,
@@ -72,23 +72,9 @@ export function listLevelThunderTextures(thunderbolts: LevelThunderbolts): Array
 
 function toGradient(gradient: LevelThunderboltGradient): IRendererThunderboltGradient {
   return {
-    draw: toThunderDraw(gradient.draw),
+    draw: toRendererDraw(gradient.draw),
     opacity: gradient.opacity ?? 0,
     radius: [gradient.radius[0] ?? 0, gradient.radius[1] ?? 0],
     texture: gradient.texture.reference,
   };
-}
-
-/** How a bolt's shader composites it: added or blended, as its blender says; added where it says neither. */
-function toThunderDraw(draw: XraySurfaceDraw): ERendererDraw {
-  switch (draw.kind) {
-    case EXraySurfaceDraw.ADDED:
-      return draw.isWeighted ? ERendererDraw.ALPHA_ADDED : ERendererDraw.ADDED;
-
-    case EXraySurfaceDraw.BLENDED:
-      return ERendererDraw.BLENDED;
-
-    default:
-      return ERendererDraw.ADDED;
-  }
 }

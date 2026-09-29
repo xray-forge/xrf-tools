@@ -78,8 +78,8 @@ describe("toLevelRendererThunder", () => {
       },
       color: 0,
       model: 0,
-      // A shader that composites nothing still lights the air.
-      top: { draw: ERendererDraw.ADDED, opacity: 0.6, radius: [0.5, 0.25], texture: "fx\\fx_thunderbolts_gradient" },
+      // A shader that composites nothing as it resolved: the renderer's thunder adds it anyway.
+      top: { draw: ERendererDraw.OPAQUE, opacity: 0.6, radius: [0.5, 0.25], texture: "fx\\fx_thunderbolts_gradient" },
     });
     expect(thunder?.models[0]).toMatchObject({ draw: ERendererDraw.ADDED, positions: [0, 0, 0, 0, -1, 0, 0.1, 0, 0] });
     expect(thunder?.animators[0]).toEqual({
