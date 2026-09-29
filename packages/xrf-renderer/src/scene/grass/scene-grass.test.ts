@@ -11,7 +11,7 @@ import { adoptRendererConventions } from "#/internals/camera-conventions";
 import { IStorageDeviceFixture, mockStorageDevice } from "#/internals/device-fixtures";
 import { createStorageBuffer } from "#/internals/storage-buffers";
 import { SceneGrass } from "#/scene/grass/scene-grass";
-import { ISceneGrassStaging } from "#/scene/grass/scene-grass-staging";
+import { ISceneBuildStaging } from "#/scene/staging/scene-build-staging";
 import { RendererTextures } from "#/texture/renderer-textures";
 import { RendererUniforms } from "#/uniforms/renderer-uniforms";
 
@@ -78,7 +78,7 @@ function createFixture(): IGrassFixture {
 }
 
 /** The draw arguments a staged build's draws read, which are the level's. */
-function toLevelArguments(staging: ISceneGrassStaging): BufferAttribute {
+function toLevelArguments(staging: ISceneBuildStaging): BufferAttribute {
   return ((staging.scene.children[0] as Mesh).geometry as unknown as { indirect: BufferAttribute }).indirect;
 }
 
@@ -113,7 +113,7 @@ describe("SceneGrass", () => {
 
     expect(grass.plant(renderer, view, DEFAULT_RENDERER_GRASS_SETTINGS)).toBeNull();
 
-    const staging: ISceneGrassStaging = grass.takeStaged() as ISceneGrassStaging;
+    const staging: ISceneBuildStaging = grass.takeStaged() as ISceneBuildStaging;
 
     expect(grass.takeStaged()).toBeNull();
     expect(grass.plant(renderer, view, DEFAULT_RENDERER_GRASS_SETTINGS)).toBeNull();
@@ -131,7 +131,7 @@ describe("SceneGrass", () => {
 
     grass.plant(renderer, view, DEFAULT_RENDERER_GRASS_SETTINGS);
 
-    const staging: ISceneGrassStaging = grass.takeStaged() as ISceneGrassStaging;
+    const staging: ISceneBuildStaging = grass.takeStaged() as ISceneBuildStaging;
 
     staging.abandon();
 
@@ -143,14 +143,14 @@ describe("SceneGrass", () => {
 
     grass.plant(renderer, view, DEFAULT_RENDERER_GRASS_SETTINGS);
 
-    const first: ISceneGrassStaging = grass.takeStaged() as ISceneGrassStaging;
+    const first: ISceneBuildStaging = grass.takeStaged() as ISceneBuildStaging;
     const level: BufferAttribute = toLevelArguments(first);
 
     first.commit();
 
     expect(grass.plant(renderer, view, FAR)).toBe(first.scene);
 
-    const larger: ISceneGrassStaging = grass.takeStaged() as ISceneGrassStaging;
+    const larger: ISceneBuildStaging = grass.takeStaged() as ISceneBuildStaging;
 
     expect(larger.scene).not.toBe(first.scene);
     // The engine's radius is 49 metres, 25 slots of two each way: its build holds no more.
@@ -175,7 +175,7 @@ describe("SceneGrass", () => {
 
     grass.plant(renderer, view, FAR);
 
-    const staging: ISceneGrassStaging = grass.takeStaged() as ISceneGrassStaging;
+    const staging: ISceneBuildStaging = grass.takeStaged() as ISceneBuildStaging;
 
     expect(retired.size).toBeGreaterThan(kept);
 
@@ -189,7 +189,7 @@ describe("SceneGrass", () => {
     const { grass, renderer, view }: IGrassFixture = createFixture();
 
     grass.plant(renderer, view, FAR);
-    (grass.takeStaged() as ISceneGrassStaging).commit();
+    (grass.takeStaged() as ISceneBuildStaging).commit();
     grass.plant(renderer, view, { ...FAR, radius: 90 });
 
     expect(grass.takeStaged()).toBeNull();
@@ -201,12 +201,12 @@ describe("SceneGrass", () => {
 
     grass.plant(renderer, view, FAR);
 
-    const larger: ISceneGrassStaging = grass.takeStaged() as ISceneGrassStaging;
+    const larger: ISceneBuildStaging = grass.takeStaged() as ISceneBuildStaging;
 
     larger.commit();
     grass.plant(renderer, view, DEFAULT_RENDERER_GRASS_SETTINGS);
 
-    const smaller: ISceneGrassStaging = grass.takeStaged() as ISceneGrassStaging;
+    const smaller: ISceneBuildStaging = grass.takeStaged() as ISceneBuildStaging;
     const kept: number = retired.size;
 
     expect(smaller.scene).not.toBe(larger.scene);
@@ -224,7 +224,7 @@ describe("SceneGrass", () => {
 
     grass.plant(renderer, view, DEFAULT_RENDERER_GRASS_SETTINGS);
 
-    const staging: ISceneGrassStaging = grass.takeStaged() as ISceneGrassStaging;
+    const staging: ISceneBuildStaging = grass.takeStaged() as ISceneBuildStaging;
     const level: BufferAttribute = toLevelArguments(staging);
 
     grass.release();
@@ -242,7 +242,7 @@ describe("SceneGrass", () => {
 
     grass.plant(renderer, view, DEFAULT_RENDERER_GRASS_SETTINGS);
 
-    const staging: ISceneGrassStaging = grass.takeStaged() as ISceneGrassStaging;
+    const staging: ISceneBuildStaging = grass.takeStaged() as ISceneBuildStaging;
     const level: BufferAttribute = toLevelArguments(staging);
 
     staging.commit();

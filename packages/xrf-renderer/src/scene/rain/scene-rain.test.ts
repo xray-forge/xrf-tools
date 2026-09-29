@@ -4,7 +4,7 @@ import { BufferGeometry, Mesh, Scene } from "three/webgpu";
 
 import { IRendererRain } from "#/contract/weather/renderer-rain";
 import { SceneRain } from "#/scene/rain/scene-rain";
-import { ISceneRainStaging } from "#/scene/rain/scene-rain-staging";
+import { ISceneBuildStaging } from "#/scene/staging/scene-build-staging";
 import { RendererTextures } from "#/texture/renderer-textures";
 import { RAIN_STREAKS, RainUniforms } from "#/uniforms/rain-uniforms";
 
@@ -37,7 +37,7 @@ describe("SceneRain", () => {
 
     expect(rain.drawn).toBeNull();
 
-    const staged: Nullable<ISceneRainStaging> = rain.takeStaged();
+    const staged: Nullable<ISceneBuildStaging> = rain.takeStaged();
 
     expect(rain.takeStaged()).toBeNull();
 
@@ -87,12 +87,32 @@ describe("SceneRain", () => {
 
     rain.take(RAIN);
 
-    const staged: Nullable<ISceneRainStaging> = rain.takeStaged();
+    const staged: Nullable<ISceneBuildStaging> = rain.takeStaged();
 
     rain.take(null);
     staged?.commit();
 
     expect(rain.drawn).toBeNull();
+  });
+
+  // Three is still building its pipelines: taken down at once, the compile would bind what is gone.
+  it("takes a build down once its compile ends, where another weather replaced it meanwhile", () => {
+    const { rain } = createRain();
+
+    rain.take(RAIN);
+
+    const staged: Nullable<ISceneBuildStaging> = rain.takeStaged();
+    const disposed = jest.spyOn((staged?.scene.children[0] as Mesh).geometry as BufferGeometry, "dispose");
+
+    rain.take({ drop: null, streak: "fx\\fx_rain" });
+
+    expect(disposed).not.toHaveBeenCalled();
+
+    staged?.commit();
+
+    expect(disposed).toHaveBeenCalled();
+    expect(rain.drawn).toBeNull();
+    expect(rain.takeStaged()?.scene.children).toHaveLength(1);
   });
 
   // A keyframe edited by hand sends the whole weather again, as often as a slider moves.

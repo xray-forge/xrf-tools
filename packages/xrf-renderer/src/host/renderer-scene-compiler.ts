@@ -5,11 +5,16 @@ import { ERendererPass } from "#/contract/scene/renderer-pass";
 import { ICompilingFrame } from "#/graph/compiling-frame";
 import { IFrameCompileTargets } from "#/graph/frame-compile-targets";
 import { IRendererScenePass } from "#/pass/renderer-scene-pass";
-import { ISceneGrassStaging } from "#/scene/grass/scene-grass-staging";
-import { ISceneRainStaging } from "#/scene/rain/scene-rain-staging";
 import { RendererScene } from "#/scene/renderer-scene";
+import { ISceneBuildStaging } from "#/scene/staging/scene-build-staging";
 import { ISceneStaging } from "#/scene/staging/scene-staging";
-import { ISceneThunderStaging } from "#/scene/thunder/scene-thunder-staging";
+
+/** What the scene builds apart from its objects, each compiled against its own target, in the order compiled. */
+const STAGED_BUILDS = [
+  { failure: "Grass failed to compile:", source: "grass" },
+  { failure: "Rain failed to compile:", source: "rain" },
+  { failure: "Thunder failed to compile:", source: "thunder" },
+] as const;
 
 /**
  * Compiles the materials waiting objects need, off the frame: three builds their pipelines asynchronously, and until
@@ -27,8 +32,8 @@ export class RendererSceneCompiler {
   }
 
   /**
-   * Starts the next batch, if none is compiling: a grass build, else a rain build, else a thunder build, else a pass
-   * joining, else the waiting objects.
+   * Starts the next batch, if none is compiling: a staged build, grass first, else a pass joining, else the waiting
+   * objects.
    *
    * @param renderer - The renderer drawing.
    * @param scene - The scene whose objects compile.
@@ -46,34 +51,16 @@ export class RendererSceneCompiler {
       return;
     }
 
-    const grass: Nullable<ISceneGrassStaging> = scene.grass.takeStaged();
+    for (const { failure, source } of STAGED_BUILDS) {
+      const staging: Nullable<ISceneBuildStaging> = scene[source].takeStaged();
 
-    if (grass) {
-      return this.run(
-        async () => compileInto(renderer, frame.compileTargets.grass, grass.scene, camera),
-        "Grass failed to compile:",
-        (isCurrent: boolean) => (isCurrent ? grass.commit() : grass.abandon())
-      );
-    }
-
-    const rain: Nullable<ISceneRainStaging> = scene.rain.takeStaged();
-
-    if (rain) {
-      return this.run(
-        async () => compileInto(renderer, frame.compileTargets.rain, rain.scene, camera),
-        "Rain failed to compile:",
-        (isCurrent: boolean) => (isCurrent ? rain.commit() : rain.abandon())
-      );
-    }
-
-    const thunder: Nullable<ISceneThunderStaging> = scene.thunder.takeStaged();
-
-    if (thunder) {
-      return this.run(
-        async () => compileInto(renderer, frame.compileTargets.thunder, thunder.scene, camera),
-        "Thunder failed to compile:",
-        (isCurrent: boolean) => (isCurrent ? thunder.commit() : thunder.abandon())
-      );
+      if (staging) {
+        return this.run(
+          async () => compileInto(renderer, frame.compileTargets[source], staging.scene, camera),
+          failure,
+          (isCurrent: boolean) => (isCurrent ? staging.commit() : staging.abandon())
+        );
+      }
     }
 
     if (!this.join(renderer, scene, frame, camera)) {

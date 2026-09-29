@@ -5,8 +5,9 @@ import { IRendererRain } from "#/contract/weather/renderer-rain";
 import { IRendererRainDrop } from "#/contract/weather/renderer-rain-drop";
 import { IRainSurface, toRainSplashSurface, toRainStreakSurface } from "#/material/rain-surface.tsl";
 import { createSceneMesh, createSceneRoot } from "#/scene/object/scene-mesh";
-import { ISceneRainStaging } from "#/scene/rain/scene-rain-staging";
 import { isSameDefinition } from "#/scene/same-definition";
+import { ISceneBuildStaging } from "#/scene/staging/scene-build-staging";
+import { StagedBuilds } from "#/scene/staging/staged-builds";
 import { getClearTexture } from "#/texture/placeholder-textures";
 import { RendererTextures } from "#/texture/renderer-textures";
 import { RAIN_STREAKS, RainUniforms } from "#/uniforms/rain-uniforms";
@@ -39,11 +40,9 @@ interface IRainBuild {
 export class SceneRain {
   private readonly textures: RendererTextures;
   private readonly rain: RainUniforms;
-  /** What draws, once compiled. */
-  private current: Nullable<IRainBuild> = null;
-  /** What waits to compile. */
-  private pending: Nullable<IRainBuild> = null;
-  private isCompiling: boolean = false;
+  private readonly builds: StagedBuilds<IRainBuild> = new StagedBuilds({
+    release: (build: IRainBuild) => this.release(build),
+  });
   /** What was last taken, which a weather sent again unchanged keeps built. */
   private taken: Nullable<IRendererRain> = null;
 
@@ -58,7 +57,7 @@ export class SceneRain {
 
   /** What to draw, or null while nothing has compiled or no weather names rain. */
   public get drawn(): Nullable<Scene> {
-    return this.current?.scene ?? null;
+    return this.builds.current?.scene ?? null;
   }
 
   /**
@@ -72,58 +71,23 @@ export class SceneRain {
 
     this.taken = rain;
 
-    if (this.pending) {
-      this.release(this.pending);
-    }
-
-    this.pending = rain ? this.build(rain) : null;
-
-    if (!rain && this.current) {
-      this.release(this.current);
-      this.current = null;
+    if (rain) {
+      this.builds.stage(this.build(rain));
+    } else {
+      this.builds.clear();
     }
   }
 
   /**
    * @returns The build waiting to compile, handed over once, or null.
    */
-  public takeStaged(): Nullable<ISceneRainStaging> {
-    const build: Nullable<IRainBuild> = this.pending;
-
-    if (!build || this.isCompiling) {
-      return null;
-    }
-
-    this.isCompiling = true;
-
-    return {
-      abandon: (): void => this.settle(build, false),
-      commit: (): void => this.settle(build, true),
-      scene: build.scene,
-    };
+  public takeStaged(): Nullable<ISceneBuildStaging> {
+    return this.builds.takeStaged();
   }
 
   public dispose(): void {
-    [this.current, this.pending].forEach((build: Nullable<IRainBuild>) => build && this.release(build));
-    this.current = null;
-    this.pending = null;
+    this.builds.clear();
     this.taken = null;
-  }
-
-  private settle(build: IRainBuild, isCompiled: boolean): void {
-    this.isCompiling = false;
-
-    // Taken again meanwhile, the build was let go already.
-    if (!isCompiled || build !== this.pending) {
-      return;
-    }
-
-    if (this.current) {
-      this.release(this.current);
-    }
-
-    this.current = build;
-    this.pending = null;
   }
 
   private build(rain: IRendererRain): IRainBuild {

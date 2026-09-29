@@ -7,12 +7,10 @@ import { ICompilingFrame } from "#/graph/compiling-frame";
 import { IFrameCompileTargets } from "#/graph/frame-compile-targets";
 import { RendererSceneCompiler } from "#/host/renderer-scene-compiler";
 import { IRendererScenePass } from "#/pass/renderer-scene-pass";
-import { ISceneGrassStaging } from "#/scene/grass/scene-grass-staging";
 import { toPassRecord } from "#/scene/pass-record";
-import { ISceneRainStaging } from "#/scene/rain/scene-rain-staging";
 import { RendererScene } from "#/scene/renderer-scene";
+import { ISceneBuildStaging } from "#/scene/staging/scene-build-staging";
 import { ISceneStaging } from "#/scene/staging/scene-staging";
-import { ISceneThunderStaging } from "#/scene/thunder/scene-thunder-staging";
 
 interface ICompileCall {
   scene: Object3D;
@@ -69,9 +67,9 @@ interface IFakeScene {
   staging: ISceneStaging;
   drawn: Nullable<ISceneStaging>;
   commit: jest.Mock<TCommit>;
-  grass: Nullable<ISceneGrassStaging>;
-  rain: Nullable<ISceneRainStaging>;
-  thunder: Nullable<ISceneThunderStaging>;
+  grass: Nullable<ISceneBuildStaging>;
+  rain: Nullable<ISceneBuildStaging>;
+  thunder: Nullable<ISceneBuildStaging>;
 }
 
 function createStaging(): ISceneStaging {
@@ -82,7 +80,7 @@ function createStaging(): ISceneStaging {
   };
 }
 
-function createScene(grass: Nullable<ISceneGrassStaging> = null): IFakeScene {
+function createScene(grass: Nullable<ISceneBuildStaging> = null): IFakeScene {
   const fake: IFakeScene = {
     commit: jest.fn((staging: object) => {
       if (staging === fake.drawn) {
@@ -101,8 +99,8 @@ function createScene(grass: Nullable<ISceneGrassStaging> = null): IFakeScene {
   fake.scene = {
     commit: fake.commit,
     grass: {
-      takeStaged: (): Nullable<ISceneGrassStaging> => {
-        const taken: Nullable<ISceneGrassStaging> = fake.grass;
+      takeStaged: (): Nullable<ISceneBuildStaging> => {
+        const taken: Nullable<ISceneBuildStaging> = fake.grass;
 
         fake.grass = null;
 
@@ -110,8 +108,8 @@ function createScene(grass: Nullable<ISceneGrassStaging> = null): IFakeScene {
       },
     },
     rain: {
-      takeStaged: (): Nullable<ISceneRainStaging> => {
-        const taken: Nullable<ISceneRainStaging> = fake.rain;
+      takeStaged: (): Nullable<ISceneBuildStaging> => {
+        const taken: Nullable<ISceneBuildStaging> = fake.rain;
 
         fake.rain = null;
 
@@ -119,8 +117,8 @@ function createScene(grass: Nullable<ISceneGrassStaging> = null): IFakeScene {
       },
     },
     thunder: {
-      takeStaged: (): Nullable<ISceneThunderStaging> => {
-        const taken: Nullable<ISceneThunderStaging> = fake.thunder;
+      takeStaged: (): Nullable<ISceneBuildStaging> => {
+        const taken: Nullable<ISceneBuildStaging> = fake.thunder;
 
         fake.thunder = null;
 
@@ -273,7 +271,7 @@ describe("RendererSceneCompiler", () => {
 
   it("compiles a grass build as a batch of its own, against where the grass draws, before the scene's", async () => {
     const fake: IFakeRenderer = createRenderer();
-    const grass: ISceneGrassStaging = { abandon: jest.fn(), commit: jest.fn(), scene: new Scene() };
+    const grass: ISceneBuildStaging = { abandon: jest.fn(), commit: jest.fn(), scene: new Scene() };
     const { scene, commit }: IFakeScene = createScene(grass);
     const { frame, targets }: IFakeFrame = createFrame();
     const compiler: RendererSceneCompiler = new RendererSceneCompiler();
@@ -296,7 +294,7 @@ describe("RendererSceneCompiler", () => {
   // Drawn on its first frame, the rain would build its pipelines there as the first shower starts.
   it("compiles a rain build as a batch of its own, against where the rain draws, before the scene's", async () => {
     const fake: IFakeRenderer = createRenderer();
-    const rain: ISceneRainStaging = { abandon: jest.fn(), commit: jest.fn(), scene: new Scene() };
+    const rain: ISceneBuildStaging = { abandon: jest.fn(), commit: jest.fn(), scene: new Scene() };
     const fakeScene: IFakeScene = createScene();
     const { frame, targets }: IFakeFrame = createFrame();
     const compiler: RendererSceneCompiler = new RendererSceneCompiler();
@@ -315,7 +313,7 @@ describe("RendererSceneCompiler", () => {
   // Drawn on its first strike, the bolt would build its pipelines there and hitch the flash.
   it("compiles a thunder build as a batch of its own, against where the bolts draw, before the scene's", async () => {
     const fake: IFakeRenderer = createRenderer();
-    const thunder: ISceneThunderStaging = { abandon: jest.fn(), commit: jest.fn(), scene: new Scene() };
+    const thunder: ISceneBuildStaging = { abandon: jest.fn(), commit: jest.fn(), scene: new Scene() };
     const fakeScene: IFakeScene = createScene();
     const { frame, targets }: IFakeFrame = createFrame();
     const compiler: RendererSceneCompiler = new RendererSceneCompiler();
@@ -453,7 +451,7 @@ describe("RendererSceneCompiler", () => {
 
   it("takes nothing it compiled once disposed, lets a grass build go, and compiles nothing more", async () => {
     const fake: IFakeRenderer = createRenderer();
-    const grass: ISceneGrassStaging = { abandon: jest.fn(), commit: jest.fn(), scene: new Scene() };
+    const grass: ISceneBuildStaging = { abandon: jest.fn(), commit: jest.fn(), scene: new Scene() };
     const first: IFakeScene = createScene(grass);
     const second: IFakeScene = createScene();
     const { frame }: IFakeFrame = createFrame();

@@ -31,8 +31,9 @@ import { toGrassSorted, toGrassStarts } from "#/scene/grass/grass-items.tsl";
 import { createGrassLevelBuffers, IGrassLevelBuffers, listGrassLevelStorage } from "#/scene/grass/grass-level-buffers";
 import { IGrassPlanting, listGrassPlantingPasses } from "#/scene/grass/grass-planting";
 import { createGrassPlanting } from "#/scene/grass/grass-planting.tsl";
-import { ISceneGrassStaging } from "#/scene/grass/scene-grass-staging";
 import { createSceneMesh, createSceneRoot } from "#/scene/object/scene-mesh";
+import { ISceneBuildStaging } from "#/scene/staging/scene-build-staging";
+import { StagedBuilds } from "#/scene/staging/staged-builds";
 import { RendererTextures } from "#/texture/renderer-textures";
 import { GrassUniforms } from "#/uniforms/grass-uniforms";
 import { RendererUniforms } from "#/uniforms/renderer-uniforms";
@@ -82,12 +83,10 @@ export class SceneGrass {
   /** The textures its models are dressed with, held from its put: what it waits for comes up, and stays up for it. */
   private held: ReadonlyArray<string> = [];
   private level: Nullable<IGrassLevelBuffers> = null;
-  /** What plants and draws. */
-  private current: Nullable<IGrassBuild> = null;
-  /** What is built to replace it, waiting to compile or compiling. */
-  private pending: Nullable<IGrassBuild> = null;
-  /** Whether the renderer took the pending build to compile. */
-  private isCompiling: boolean = false;
+  /** What plants and draws, and what is built to replace it. */
+  private readonly builds: StagedBuilds<IGrassBuild> = new StagedBuilds({
+    release: (build: IGrassBuild) => this.letGo(build),
+  });
 
   public constructor(textures: RendererTextures, uniforms: RendererUniforms) {
     this.textures = textures;
@@ -120,20 +119,10 @@ export class SceneGrass {
 
   /** Lets the grass go. */
   public release(): void {
+    this.builds.clear();
+
     // A build compiling goes once its compile ends, the level's buffers it binds with it: three is still building it.
-    const compiling: Nullable<IGrassBuild> = this.isCompiling ? this.pending : null;
-
-    this.disposeBuild(this.current);
-
-    if (!compiling) {
-      this.disposeBuild(this.pending);
-    }
-
-    this.current = null;
-    this.pending = null;
-    this.isCompiling = false;
-
-    if (this.level && compiling?.level !== this.level) {
+    if (this.level && this.builds.compiling?.level !== this.level) {
       this.rendererUniforms.retirement.retire(listGrassLevelStorage(this.level));
     }
 
@@ -146,20 +135,8 @@ export class SceneGrass {
   /**
    * @returns The build waiting to compile, handed over once, or null.
    */
-  public takeStaged(): Nullable<ISceneGrassStaging> {
-    const build: Nullable<IGrassBuild> = this.pending;
-
-    if (!build || this.isCompiling) {
-      return null;
-    }
-
-    this.isCompiling = true;
-
-    return {
-      abandon: (): void => this.settle(build, false),
-      commit: (): void => this.settle(build, true),
-      scene: build.scene,
-    };
+  public takeStaged(): Nullable<ISceneBuildStaging> {
+    return this.builds.takeStaged();
   }
 
   /**
@@ -185,16 +162,17 @@ export class SceneGrass {
 
     // One build waits at a time: one not taken yet that no longer fits the settings is built again, and settings one
     // compiling no longer fits are built for once it is in.
-    if (this.pending && !this.isCompiling && !SceneGrass.isFitting(this.pending.size, wanted)) {
-      this.disposeBuild(this.pending);
-      this.pending = null;
+    const waiting: Nullable<IGrassBuild> = this.builds.waiting;
+
+    if (waiting && !SceneGrass.isFitting(waiting.size, wanted)) {
+      this.builds.stage(null);
     }
 
-    if ((!this.current || !SceneGrass.isFitting(this.current.size, wanted)) && !this.pending) {
-      this.pending = this.build(grass, level, wanted);
-    }
+    const current: Nullable<IGrassBuild> = this.builds.current;
 
-    const { current } = this;
+    if ((!current || !SceneGrass.isFitting(current.size, wanted)) && !this.builds.pending) {
+      this.builds.stage(this.build(grass, level, wanted));
+    }
 
     if (!current) {
       return null;
@@ -219,7 +197,7 @@ export class SceneGrass {
 
   /** The CPU arrays of every storage buffer it holds, each one element long once the GPU holds it. */
   public listArrays(): Array<ArrayBufferView> {
-    const builds: Array<IGrassBuild> = [this.current, this.pending].filter(
+    const builds: Array<IGrassBuild> = [this.builds.current, this.builds.pending].filter(
       (build: Nullable<IGrassBuild>): build is IGrassBuild => build !== null
     );
 
@@ -236,25 +214,12 @@ export class SceneGrass {
     this.release();
   }
 
-  /** A staged build's compile ended: compiled, it replaces the one before; abandoned, it waits to be taken again. */
-  private settle(build: IGrassBuild, isCompiled: boolean): void {
-    // Released while it compiled: the level's buffers it held back go with it.
-    if (build !== this.pending) {
-      this.disposeBuild(build);
+  /** Takes a build down, and the level's buffers it held back where the grass plants from others since. */
+  private letGo(build: IGrassBuild): void {
+    this.disposeBuild(build);
 
-      if (build.level !== this.level) {
-        this.rendererUniforms.retirement.retire(listGrassLevelStorage(build.level));
-      }
-
-      return;
-    }
-
-    this.isCompiling = false;
-
-    if (isCompiled) {
-      this.disposeBuild(this.current);
-      this.current = build;
-      this.pending = null;
+    if (build.level !== this.level) {
+      this.rendererUniforms.retirement.retire(listGrassLevelStorage(build.level));
     }
   }
 
@@ -316,11 +281,7 @@ export class SceneGrass {
   }
 
   /** Takes down a build's ring, item lists and what reads them, keeping what the grass is planted from. */
-  private disposeBuild(build: Nullable<IGrassBuild>): void {
-    if (!build) {
-      return;
-    }
-
+  private disposeBuild(build: IGrassBuild): void {
     build.draws.forEach(({ mesh, material, samplers }: IGrassDraw) => {
       build.scene.remove(mesh);
       mesh.geometry.dispose();

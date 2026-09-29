@@ -10,7 +10,8 @@ import { IRendererThunderboltStrike } from "#/contract/weather/renderer-thunderb
 import { IThunderSurface, toThunderboltSurface, toThunderGlowSurface } from "#/material/thunder-surface.tsl";
 import { createSceneMesh, createSceneRoot } from "#/scene/object/scene-mesh";
 import { isSameDefinition } from "#/scene/same-definition";
-import { ISceneThunderStaging } from "#/scene/thunder/scene-thunder-staging";
+import { ISceneBuildStaging } from "#/scene/staging/scene-build-staging";
+import { StagedBuilds } from "#/scene/staging/staged-builds";
 import { getClearTexture } from "#/texture/placeholder-textures";
 import { RendererTextures } from "#/texture/renderer-textures";
 import { ThunderUniforms } from "#/uniforms/thunder-uniforms";
@@ -49,9 +50,10 @@ interface IThunderBuild {
 export class SceneThunder {
   private readonly textures: RendererTextures;
   private readonly thunder: ThunderUniforms;
-  private current: Nullable<IThunderBuild> = null;
-  private pending: Nullable<IThunderBuild> = null;
-  private isCompiling: boolean = false;
+  private readonly builds: StagedBuilds<IThunderBuild> = new StagedBuilds({
+    onCommit: (build: IThunderBuild) => this.show(build, this.shown),
+    release: (build: IThunderBuild) => this.release(build),
+  });
   /** What was last taken, which a weather sent again unchanged keeps built. */
   private taken: Nullable<IRendererThunder> = null;
   /** The bolt striking now, shown on whatever build draws. */
@@ -69,7 +71,7 @@ export class SceneThunder {
 
   /** What to draw, or null while no bolt strikes or nothing has compiled. */
   public get drawn(): Nullable<Scene> {
-    return this.shown ? (this.current?.scene ?? null) : null;
+    return this.shown ? (this.builds.current?.scene ?? null) : null;
   }
 
   /**
@@ -83,15 +85,10 @@ export class SceneThunder {
 
     this.taken = thunder;
 
-    if (this.pending) {
-      this.release(this.pending);
-    }
-
-    this.pending = thunder ? this.build(thunder) : null;
-
-    if (!thunder && this.current) {
-      this.release(this.current);
-      this.current = null;
+    if (thunder) {
+      this.builds.stage(this.build(thunder));
+    } else {
+      this.builds.clear();
     }
   }
 
@@ -101,52 +98,21 @@ export class SceneThunder {
   public strike(strike: Nullable<IRendererThunderboltStrike>): void {
     this.shown = strike;
 
-    if (this.current) {
-      this.show(this.current, strike);
+    if (this.builds.current) {
+      this.show(this.builds.current, strike);
     }
   }
 
   /**
    * @returns The build waiting to compile, handed over once, or null.
    */
-  public takeStaged(): Nullable<ISceneThunderStaging> {
-    const build: Nullable<IThunderBuild> = this.pending;
-
-    if (!build || this.isCompiling) {
-      return null;
-    }
-
-    this.isCompiling = true;
-
-    return {
-      abandon: (): void => this.settle(build, false),
-      commit: (): void => this.settle(build, true),
-      scene: build.scene,
-    };
+  public takeStaged(): Nullable<ISceneBuildStaging> {
+    return this.builds.takeStaged();
   }
 
   public dispose(): void {
-    [this.current, this.pending].forEach((build: Nullable<IThunderBuild>) => build && this.release(build));
-    this.current = null;
-    this.pending = null;
+    this.builds.clear();
     this.taken = null;
-  }
-
-  private settle(build: IThunderBuild, isCompiled: boolean): void {
-    this.isCompiling = false;
-
-    // Taken again meanwhile, the build was let go already.
-    if (!isCompiled || build !== this.pending) {
-      return;
-    }
-
-    if (this.current) {
-      this.release(this.current);
-    }
-
-    this.current = build;
-    this.pending = null;
-    this.show(build, this.shown);
   }
 
   /** Hides every draw but the striking bolt's model and glows, its model placed where it strikes. */
