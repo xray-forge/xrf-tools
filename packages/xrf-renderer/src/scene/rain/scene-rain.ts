@@ -1,17 +1,17 @@
 import { Nullable } from "@xrf/types";
-import { BufferAttribute, BufferGeometry, Mesh, Scene } from "three/webgpu";
+import { BufferAttribute, BufferGeometry, Scene } from "three/webgpu";
 
 import { IRendererRain } from "#/contract/weather/renderer-rain";
 import { IRendererRainDrop } from "#/contract/weather/renderer-rain-drop";
-import { IRainSurface, toRainSplashSurface, toRainStreakSurface } from "#/material/rain-surface.tsl";
-import { createSceneMesh, createSceneRoot } from "#/scene/object/scene-mesh";
+import { toRainSplashSurface, toRainStreakSurface } from "#/material/rain-surface.tsl";
+import { createSceneRoot } from "#/scene/object/scene-mesh";
 import { isSameDefinition } from "#/scene/same-definition";
 import { ISceneBuildStaging } from "#/scene/staging/scene-build-staging";
 import { StagedBuilds } from "#/scene/staging/staged-builds";
-import { getClearTexture } from "#/texture/placeholder-textures";
+import { IWeatherDraw } from "#/scene/weather/weather-draw";
+import { createWeatherDraw, releaseWeatherDraw } from "#/scene/weather/weather-draws";
 import { RendererTextures } from "#/texture/renderer-textures";
 import { RAIN_STREAKS, RainUniforms } from "#/uniforms/rain-uniforms";
-import { WeatherTextures } from "#/weather/weather-textures";
 
 /** One streak's quad: across it from minus one to one, then from its tail to its head. */
 const CORNERS: ReadonlyArray<number> = [-1, 0, 1, 0, -1, 1, 1, 1];
@@ -19,17 +19,10 @@ const CORNERS: ReadonlyArray<number> = [-1, 0, 1, 0, -1, 1, 1, 1];
 /** Its two triangles. */
 const QUAD: ReadonlyArray<number> = [0, 1, 2, 2, 1, 3];
 
-/** One draw of the rain: its mesh, its surface, and the texture key its sampler is bound to. */
-interface IRainDraw {
-  mesh: Mesh;
-  surface: IRainSurface;
-  key: string;
-}
-
 /** The rain built for a weather: the streaks, and the splashes where the weather has a model for them. */
 interface IRainBuild {
   scene: Scene;
-  draws: ReadonlyArray<IRainDraw>;
+  draws: ReadonlyArray<IWeatherDraw>;
 }
 
 /**
@@ -55,9 +48,9 @@ export class SceneRain {
     this.rain = rain;
   }
 
-  /** What to draw, or null while nothing has compiled or no weather names rain. */
+  /** What to draw, or null while it does not rain, nothing has compiled, or no weather names rain. */
   public get drawn(): Nullable<Scene> {
-    return this.builds.current?.scene ?? null;
+    return this.rain.isFalling ? (this.builds.current?.scene ?? null) : null;
   }
 
   /**
@@ -92,31 +85,34 @@ export class SceneRain {
 
   private build(rain: IRendererRain): IRainBuild {
     const scene: Scene = createSceneRoot();
-    const draws: Array<IRainDraw> = [this.toDraw(createStreakGeometry(), toRainStreakSurface(this.rain), rain.streak)];
+    const { textures } = this;
+    const draws: Array<IWeatherDraw> = [
+      createWeatherDraw({
+        geometry: createStreakGeometry(),
+        reference: rain.streak,
+        surface: toRainStreakSurface(this.rain),
+        textures,
+      }),
+    ];
 
     if (rain.drop) {
-      draws.push(this.toDraw(createSplashGeometry(rain.drop), toRainSplashSurface(this.rain), rain.drop.texture));
+      draws.push(
+        createWeatherDraw({
+          geometry: createSplashGeometry(rain.drop),
+          reference: rain.drop.texture,
+          surface: toRainSplashSurface(this.rain),
+          textures,
+        })
+      );
     }
 
-    draws.forEach((draw: IRainDraw) => scene.add(draw.mesh));
+    draws.forEach((draw: IWeatherDraw) => scene.add(draw.mesh));
 
     return { draws, scene };
   }
 
-  private toDraw(geometry: BufferGeometry, surface: IRainSurface, reference: string): IRainDraw {
-    const key: string = WeatherTextures.toKey(reference);
-
-    this.textures.target(key, getClearTexture(), surface.texture);
-
-    return { key, mesh: createSceneMesh(geometry, null, surface.material), surface };
-  }
-
   private release(build: IRainBuild): void {
-    for (const { mesh, surface, key } of build.draws) {
-      this.textures.unbind(key, surface.texture);
-      mesh.geometry.dispose();
-      surface.material.dispose();
-    }
+    build.draws.forEach((draw: IWeatherDraw) => releaseWeatherDraw(this.textures, draw));
   }
 }
 

@@ -1,6 +1,7 @@
 import { Maybe, Nullable } from "@xrf/types";
 import { Material, Mesh, Object3D, PerspectiveCamera, Scene, Texture, WebGPURenderer } from "three/webgpu";
 
+import { IRendererLighting } from "#/contract/renderer-lighting";
 import { IRendererStaticDrawReport } from "#/contract/renderer-static-draw-report";
 import { IRendererGeometry } from "#/contract/scene/renderer-geometry";
 import { IRendererGrass } from "#/contract/scene/renderer-grass";
@@ -11,6 +12,7 @@ import { ERendererPass } from "#/contract/scene/renderer-pass";
 import { IRendererSurface } from "#/contract/scene/renderer-surface";
 import { IRendererTextureFetch } from "#/contract/scene/renderer-texture-fetch";
 import { TRendererTextureSource } from "#/contract/scene/renderer-texture-source";
+import { IRendererWeather } from "#/contract/weather/renderer-weather";
 import { IDdsRefusal } from "#/dds/dds-refusal";
 import { SceneChangeQueue } from "#/scene/change/scene-change-queue";
 import { GeometryReleases } from "#/scene/geometry/geometry-releases";
@@ -330,6 +332,23 @@ export class RendererScene {
 
   public releaseGrass(): void {
     this.grass.release();
+  }
+
+  /**
+   * @param weather - What the weather draws with from now on, its rain, bolts and wet surfaces, or null for none.
+   */
+  public takeWeather(weather: Nullable<IRendererWeather>): void {
+    this.rain.take(weather?.rain ?? null);
+    this.thunder.take(weather?.thunder ?? null);
+    this.wet.take(weather);
+  }
+
+  /**
+   * @param lighting - The skies the scene is lit under, and the bolt striking, if any.
+   */
+  public light(lighting: IRendererLighting): void {
+    this.sky.take(lighting.sky);
+    this.thunder.strike(lighting.thunderbolt);
   }
 
   /**

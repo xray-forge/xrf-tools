@@ -7,15 +7,15 @@ import { IRendererThunderbolt } from "#/contract/weather/renderer-thunderbolt";
 import { IRendererThunderboltGradient } from "#/contract/weather/renderer-thunderbolt-gradient";
 import { IRendererThunderboltModel } from "#/contract/weather/renderer-thunderbolt-model";
 import { IRendererThunderboltStrike } from "#/contract/weather/renderer-thunderbolt-strike";
-import { IThunderSurface, toThunderboltSurface, toThunderGlowSurface } from "#/material/thunder-surface.tsl";
-import { createSceneMesh, createSceneRoot } from "#/scene/object/scene-mesh";
+import { toThunderboltSurface, toThunderGlowSurface } from "#/material/thunder-surface.tsl";
+import { createSceneRoot } from "#/scene/object/scene-mesh";
 import { isSameDefinition } from "#/scene/same-definition";
 import { ISceneBuildStaging } from "#/scene/staging/scene-build-staging";
 import { StagedBuilds } from "#/scene/staging/staged-builds";
-import { getClearTexture } from "#/texture/placeholder-textures";
+import { IWeatherDraw } from "#/scene/weather/weather-draw";
+import { createWeatherDraw, releaseWeatherDraw } from "#/scene/weather/weather-draws";
 import { RendererTextures } from "#/texture/renderer-textures";
 import { ThunderUniforms } from "#/uniforms/thunder-uniforms";
-import { WeatherTextures } from "#/weather/weather-textures";
 
 /** A glow's quad: its corners across and up, from minus one to one. */
 const CORNERS: ReadonlyArray<number> = [1, 1, 1, -1, -1, 1, -1, -1];
@@ -26,21 +26,14 @@ const QUAD: ReadonlyArray<number> = [0, 1, 2, 2, 1, 3];
 /** Which of a bolt's glows a draw is. */
 type TThunderGlow = "top" | "center";
 
-/** One draw of the thunder: its mesh, its surface, and the texture key its sampler is bound to. */
-interface IThunderDraw {
-  mesh: Mesh;
-  surface: IThunderSurface;
-  key: string;
-}
-
 /** The thunder built for a weather: a draw for every model, and one for every glow the bolts draw. */
 interface IThunderBuild {
   scene: Scene;
   thunder: IRendererThunder;
   /** By model index. */
-  models: ReadonlyArray<IThunderDraw>;
+  models: ReadonlyArray<IWeatherDraw>;
   /** By `toGlowKey`. */
-  glows: ReadonlyMap<string, IThunderDraw>;
+  glows: ReadonlyMap<string, IWeatherDraw>;
 }
 
 /**
@@ -119,14 +112,14 @@ export class SceneThunder {
   private show(build: IThunderBuild, strike: Nullable<IRendererThunderboltStrike>): void {
     const bolt: Maybe<IRendererThunderbolt> = strike ? build.thunder.bolts[strike.bolt] : undefined;
 
-    build.models.forEach((draw: IThunderDraw) => (draw.mesh.visible = false));
-    build.glows.forEach((draw: IThunderDraw) => (draw.mesh.visible = false));
+    build.models.forEach((draw: IWeatherDraw) => (draw.mesh.visible = false));
+    build.glows.forEach((draw: IWeatherDraw) => (draw.mesh.visible = false));
 
     if (!strike || !bolt) {
       return;
     }
 
-    const model: Maybe<IThunderDraw> = bolt.model === null ? undefined : build.models[bolt.model];
+    const model: Maybe<IWeatherDraw> = bolt.model === null ? undefined : build.models[bolt.model];
 
     if (model) {
       this.place(model.mesh, strike);
@@ -134,7 +127,7 @@ export class SceneThunder {
     }
 
     for (const glow of ["top", "center"] as const) {
-      const draw: Maybe<IThunderDraw> = build.glows.get(toGlowKey(glow, bolt[glow]));
+      const draw: Maybe<IWeatherDraw> = build.glows.get(toGlowKey(glow, bolt[glow]));
 
       if (draw) {
         draw.mesh.visible = true;
@@ -154,10 +147,17 @@ export class SceneThunder {
 
   private build(thunder: IRendererThunder): IThunderBuild {
     const scene: Scene = createSceneRoot();
-    const models: Array<IThunderDraw> = thunder.models.map((model: IRendererThunderboltModel) =>
-      this.toDraw(createModelGeometry(model), toThunderboltSurface(model.draw, this.thunder), model.texture, 0)
+    const { textures } = this;
+    // The model first, then its top glow and its middle one, as the engine draws them.
+    const models: Array<IWeatherDraw> = thunder.models.map((model: IRendererThunderboltModel) =>
+      createWeatherDraw({
+        geometry: createModelGeometry(model),
+        reference: model.texture,
+        surface: toThunderboltSurface(model.draw, this.thunder),
+        textures,
+      })
     );
-    const glows: Map<string, IThunderDraw> = new Map();
+    const glows: Map<string, IWeatherDraw> = new Map();
 
     for (const bolt of Object.values(thunder.bolts)) {
       for (const [glow, order] of [
@@ -170,39 +170,25 @@ export class SceneThunder {
         if (!glows.has(key)) {
           glows.set(
             key,
-            this.toDraw(
-              createGlowGeometry(),
-              toThunderGlowSurface(gradient.draw, this.thunder[glow]),
-              gradient.texture,
-              order
-            )
+            createWeatherDraw({
+              geometry: createGlowGeometry(),
+              order,
+              reference: gradient.texture,
+              surface: toThunderGlowSurface(gradient.draw, this.thunder[glow]),
+              textures,
+            })
           );
         }
       }
     }
 
-    [...models, ...glows.values()].forEach((draw: IThunderDraw) => scene.add(draw.mesh));
+    [...models, ...glows.values()].forEach((draw: IWeatherDraw) => scene.add(draw.mesh));
 
     return { glows, models, scene, thunder };
   }
 
-  private toDraw(geometry: BufferGeometry, surface: IThunderSurface, reference: string, order: number): IThunderDraw {
-    const key: string = WeatherTextures.toKey(reference);
-    const mesh: Mesh = createSceneMesh(geometry, null, surface.material);
-
-    this.textures.target(key, getClearTexture(), surface.texture);
-    // The model first, then its top glow and its middle one, as the engine draws them.
-    mesh.renderOrder = order;
-
-    return { key, mesh, surface };
-  }
-
   private release(build: IThunderBuild): void {
-    for (const { mesh, surface, key } of [...build.models, ...build.glows.values()]) {
-      this.textures.unbind(key, surface.texture);
-      mesh.geometry.dispose();
-      surface.material.dispose();
-    }
+    [...build.models, ...build.glows.values()].forEach((draw: IWeatherDraw) => releaseWeatherDraw(this.textures, draw));
   }
 }
 

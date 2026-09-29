@@ -111,8 +111,7 @@ export class RendererHost {
    */
   private light(lighting: IRendererLighting): void {
     this.uniforms.light(lighting);
-    this.scene.sky.take(lighting.sky);
-    this.scene.thunder.strike(lighting.thunderbolt);
+    this.scene.light(lighting);
   }
 
   /**
@@ -132,9 +131,7 @@ export class RendererHost {
    */
   private takeWeather(weather: Nullable<IRendererWeather>, transition: ERendererWeatherTransition): void {
     this.weather.take(weather, transition);
-    this.scene.rain.take(weather?.rain ?? null);
-    this.scene.thunder.take(weather?.thunder ?? null);
-    this.scene.wet.take(weather);
+    this.scene.takeWeather(weather);
 
     if (!weather) {
       this.light(this.lighting);

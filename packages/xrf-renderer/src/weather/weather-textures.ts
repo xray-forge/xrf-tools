@@ -3,14 +3,15 @@ import { Maybe } from "@xrf/types";
 import { IRendererWeather } from "#/contract/weather/renderer-weather";
 import { RendererTextures } from "#/texture/renderer-textures";
 
-/** Where one sky of a weather is fetched from. */
+/** Where one of a weather's textures is fetched from. */
 type TWeatherTextureSource = IRendererWeather["textures"][string];
 
 /** What a weather's textures are put under, apart from any key the consumer puts. */
 const KEY_PREFIX: string = "@weather/";
 
 /**
- * The skies a weather plays, put under keys of their own: only those the clock stands near are held, the rest let go.
+ * The textures a weather plays with, put under keys of their own: only those it draws with now are held, the rest let
+ * go, such as the skies the clock no longer stands near.
  */
 export class WeatherTextures {
   private readonly textures: RendererTextures;
@@ -19,7 +20,7 @@ export class WeatherTextures {
   private readonly held: Set<string> = new Set();
 
   /**
-   * @param textures - Where the skies are put.
+   * @param textures - Where the textures are put.
    */
   public constructor(textures: RendererTextures) {
     this.textures = textures;
@@ -34,8 +35,8 @@ export class WeatherTextures {
   }
 
   /**
-   * @param sources - Where a new weather's skies are fetched from. What the last one holds stays until the next keep
-   *   leaves it out, so a fade from it still has its skies.
+   * @param sources - Where a new weather's textures are fetched from. What the last one holds stays until the next
+   *   keep leaves it out, so a fade from it still has its skies.
    */
   public take(sources: Readonly<Record<string, TWeatherTextureSource>>): void {
     const kept: Record<string, TWeatherTextureSource> = {};
@@ -71,7 +72,7 @@ export class WeatherTextures {
   }
 
   /**
-   * @param references - The skies to hold now; one the weather gave no source for is left out.
+   * @param references - The textures to hold now; one the weather gave no source for is left out.
    */
   public keep(references: Iterable<string>): void {
     const wanted: Set<string> = new Set();

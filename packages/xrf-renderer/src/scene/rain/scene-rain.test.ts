@@ -2,6 +2,7 @@ import { describe, expect, it, jest } from "@jest/globals";
 import { Nullable } from "@xrf/types";
 import { BufferGeometry, Mesh, Scene } from "three/webgpu";
 
+import { IRendererRainfall } from "#/contract/renderer-rainfall";
 import { IRendererRain } from "#/contract/weather/renderer-rain";
 import { SceneRain } from "#/scene/rain/scene-rain";
 import { ISceneBuildStaging } from "#/scene/staging/scene-build-staging";
@@ -19,13 +20,19 @@ const RAIN: IRendererRain = {
   streak: "fx\\fx_rain",
 };
 
-function createRain(): { rain: SceneRain; textures: RendererTextures } {
+/** Rain falling, which its draws are shown for. */
+const RAINFALL: IRendererRainfall = { color: [0.5, 0.5, 0.5], density: 0.5, windDirection: 0, windVelocity: 0 };
+
+function createRain(): { rain: SceneRain; textures: RendererTextures; uniforms: RainUniforms } {
   const textures: RendererTextures = new RendererTextures(
     () => {},
     () => {}
   );
+  const uniforms: RainUniforms = new RainUniforms();
 
-  return { rain: new SceneRain(textures, new RainUniforms()), textures };
+  uniforms.take(RAINFALL);
+
+  return { rain: new SceneRain(textures, uniforms), textures, uniforms };
 }
 
 describe("SceneRain", () => {
@@ -80,6 +87,20 @@ describe("SceneRain", () => {
     expect(rain.drawn).toBeNull();
     expect(disposed).toHaveBeenCalled();
     expect(unbind).toHaveBeenCalled();
+  });
+
+  it("draws nothing while it does not rain", () => {
+    const { rain, uniforms } = createRain();
+
+    rain.take(RAIN);
+    rain.takeStaged()?.commit();
+    uniforms.take(null);
+
+    expect(rain.drawn).toBeNull();
+
+    uniforms.take(RAINFALL);
+
+    expect(rain.drawn).not.toBeNull();
   });
 
   it("drops a build taken again before it compiled", () => {
