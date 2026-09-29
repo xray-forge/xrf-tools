@@ -19,7 +19,12 @@ import { MaterialSamplers } from "#/material/material-samplers";
 import { SurfaceNodeMaterial } from "#/material/surface-node-material";
 import { ISurfaceShader } from "#/material/surface-shader";
 import { IGrassBuffers } from "#/scene/grass/grass-buffers";
-import { IGrassBuildSize, isGrassBuildOutgrown, toGrassBuildSize } from "#/scene/grass/grass-build-size";
+import {
+  IGrassBuildSize,
+  isGrassBuildOutgrown,
+  isGrassBuildOversized,
+  toGrassBuildSize,
+} from "#/scene/grass/grass-build-size";
 import { createGrassCacheBuffers, IGrassCacheBuffers, listGrassCacheStorage } from "#/scene/grass/grass-cache-buffers";
 import { createGrassItemBuffers, IGrassItemBuffers, listGrassItemStorage } from "#/scene/grass/grass-item-buffers";
 import { toGrassSorted, toGrassStarts } from "#/scene/grass/grass-items.tsl";
@@ -61,8 +66,9 @@ interface IGrassBuild {
 /**
  * A level's grass on the GPU: what it is planted from, a ring of planted slots around the camera, the passes keeping
  * the ring planted and culling it every frame, and a draw a model, each drawing the tufts the planting sorted into its
- * range. The ring and the lists grow when a setting needs more room than they hold; any other change of the settings
- * is only what the passes are dispatched over, and a density changed plants the ring again. A build of a new size is
+ * range. The ring and the lists grow when a setting needs more room than they hold, and shrink when it needs less than
+ * half; any other change of the settings is only what the passes are dispatched over, and a density changed plants the
+ * ring again. A build of a new size is
  * staged for the renderer to compile off the frame while the one before keeps planting, so no frame builds a draw's
  * pipeline.
  */
@@ -177,14 +183,14 @@ export class SceneGrass {
 
     const wanted: IGrassBuildSize = toGrassBuildSize(uniforms, this.rendererUniforms.staticDraws.storageLimit);
 
-    // One build waits at a time: one not taken yet that the settings outgrew is built again, and settings outgrowing
-    // one compiling are built for once it is in.
-    if (this.pending && !this.isCompiling && isGrassBuildOutgrown(this.pending.size, wanted)) {
+    // One build waits at a time: one not taken yet that no longer fits the settings is built again, and settings one
+    // compiling no longer fits are built for once it is in.
+    if (this.pending && !this.isCompiling && !SceneGrass.isFitting(this.pending.size, wanted)) {
       this.disposeBuild(this.pending);
       this.pending = null;
     }
 
-    if ((!this.current || isGrassBuildOutgrown(this.current.size, wanted)) && !this.pending) {
+    if ((!this.current || !SceneGrass.isFitting(this.current.size, wanted)) && !this.pending) {
       this.pending = this.build(grass, level, wanted);
     }
 
@@ -250,6 +256,11 @@ export class SceneGrass {
       this.current = build;
       this.pending = null;
     }
+  }
+
+  /** Whether a build holds what the settings want, without more than twice the room. */
+  private static isFitting(held: IGrassBuildSize, wanted: IGrassBuildSize): boolean {
+    return !isGrassBuildOutgrown(held, wanted) && !isGrassBuildOversized(held, wanted);
   }
 
   /** A ring and item lists as large as asked, and the passes and draws reading them. */

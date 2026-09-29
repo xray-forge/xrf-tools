@@ -185,14 +185,38 @@ describe("SceneGrass", () => {
     expect(grass.takeStaged()).toBeNull();
   });
 
-  it("builds nothing again for settings its build still holds", () => {
+  it("builds nothing again for settings its build holds within half its room", () => {
     const { grass, renderer, view }: IGrassFixture = createFixture();
 
     grass.plant(renderer, view, FAR);
     (grass.takeStaged() as ISceneGrassStaging).commit();
-    grass.plant(renderer, view, DEFAULT_RENDERER_GRASS_SETTINGS);
+    grass.plant(renderer, view, { ...FAR, radius: 90 });
 
     expect(grass.takeStaged()).toBeNull();
+  });
+
+  // The owner saw the renderer's memory grow as the density was dragged about: the build only ever grew.
+  it("builds again smaller for settings wanting less than half its room, letting the larger go once that is in", () => {
+    const { grass, renderer, retired, view }: IGrassFixture = createFixture();
+
+    grass.plant(renderer, view, FAR);
+
+    const larger: ISceneGrassStaging = grass.takeStaged() as ISceneGrassStaging;
+
+    larger.commit();
+    grass.plant(renderer, view, DEFAULT_RENDERER_GRASS_SETTINGS);
+
+    const smaller: ISceneGrassStaging = grass.takeStaged() as ISceneGrassStaging;
+    const kept: number = retired.size;
+
+    expect(smaller.scene).not.toBe(larger.scene);
+    // The larger keeps planting until the smaller is in.
+    expect(grass.plant(renderer, view, DEFAULT_RENDERER_GRASS_SETTINGS)).toBe(larger.scene);
+
+    smaller.commit();
+
+    expect(grass.plant(renderer, view, DEFAULT_RENDERER_GRASS_SETTINGS)).toBe(smaller.scene);
+    expect(retired.size).toBeGreaterThan(kept);
   });
 
   it("holds the level's buffers back while a build binding them compiles, and lets them go once it ends", () => {

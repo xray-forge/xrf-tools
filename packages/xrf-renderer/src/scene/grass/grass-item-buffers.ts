@@ -29,9 +29,9 @@ export function createGrassItemBuffers(capacity: number): IGrassItemBuffers {
 }
 
 /**
- * Items the lists are made to hold for a need: the next power of two, so a setting dragged up rebuilds them a handful of
- * times rather than at every step, and one brought back down rebuilds nothing. Never past what one storage buffer may
- * hold: a need past it plants what fits, the planting dropping the rest.
+ * Items the lists are made to hold for a need: the next power of two, so a setting dragged up or down rebuilds them a
+ * handful of times rather than at every step. Never past what one storage buffer may hold: a need past it plants what
+ * fits, the planting dropping the rest.
  *
  * @param needed - Items the settings plant at most.
  * @param storageLimit - Bytes one storage buffer may hold and be bound whole.
