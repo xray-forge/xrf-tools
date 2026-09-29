@@ -17,10 +17,14 @@ import {
 } from "three/tsl";
 import { Node } from "three/webgpu";
 
+import { toToneMapped } from "#/shader/tonemap.tsl";
 import { SkyUniforms } from "#/uniforms/sky-uniforms";
 
 /** `sky2.vs` and `sky2.ps`: the colour doubled on the tonemap's scale, then the blended cubes a third of it. */
 const SKY_FACTOR: number = 2 * 0.33;
+
+/** Anomaly's `sky2.vs`: the colour 1.7 times the tonemap's scale, which its `sky2.ps` then takes through the curve. */
+const CURVED_SKY_FACTOR: number = 1.7;
 
 /** Where `hbox_verts` puts the ring the box's sides fold at, just under the horizon. */
 const BOX_HORIZON: number = -0.01;
@@ -157,7 +161,7 @@ function toRimHaze(box: Node<"vec3">, sky: SkyUniforms): Node<"vec3"> {
 
 /**
  * The sky as `RenderSky` draws it: the cubes through the half box, times `sky_color`, on the exposure's scale, written
- * without the tonemap's curve as `sky2.ps` writes it.
+ * without the tonemap's curve as vanilla's `sky2.ps` writes it, or through it as Anomaly's does.
  *
  * @param direction - A direction in renderer space.
  * @param sky - The sky's uniforms.
@@ -175,5 +179,11 @@ export function toSkyColor(direction: Node<"vec3">, sky: SkyUniforms, scale: Nod
     color.assign(mix(toRimHaze(box, sky), color, smoothstep(BOX_HORIZON, HAZE_TOP, height)));
   });
 
-  return color.mul(sky.color).mul(scale.mul(SKY_FACTOR));
+  const lit: Node<"vec3"> = color.mul(sky.color);
+
+  return select(
+    sky.curved.greaterThan(0.5),
+    toToneMapped(lit.mul(CURVED_SKY_FACTOR), scale),
+    lit.mul(scale.mul(SKY_FACTOR))
+  );
 }

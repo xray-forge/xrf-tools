@@ -479,6 +479,7 @@ export class WeatherPlayer {
         },
         color: mix.skyColor,
         environments: [WeatherTextures.toKey(a.skyTextureEnv), WeatherTextures.toKey(b.skyTextureEnv)],
+        isCurved: this.weather?.engine === ERendererWeatherEngine.EXTENDED,
         rotation: toDegrees(mix.skyRotation),
         textures: [WeatherTextures.toKey(a.skyTexture), WeatherTextures.toKey(b.skyTexture)],
       },

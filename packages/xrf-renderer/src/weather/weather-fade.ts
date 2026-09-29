@@ -152,6 +152,7 @@ function fadeSky(from: IRendererSky, to: IRendererSky, t: number): IRendererSky 
       from.color[2] + (to.color[2] - from.color[2]) * t,
     ],
     environments: environments.pair,
+    isCurved: to.isCurved,
     rotation: from.rotation + (to.rotation - from.rotation) * t,
     textures: skies.pair,
   };

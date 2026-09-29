@@ -44,6 +44,7 @@ export const DEFAULT_RENDERER_LIGHTING: IRendererLighting = {
     clouds: null,
     color: [0.851001, 0.851001, 0.851001],
     environments: [DEFAULT_RENDERER_SKY_ENVIRONMENT, DEFAULT_RENDERER_SKY_ENVIRONMENT],
+    isCurved: false,
     rotation: 0,
     textures: [DEFAULT_RENDERER_SKY_TEXTURE, DEFAULT_RENDERER_SKY_TEXTURE],
   },

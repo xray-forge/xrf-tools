@@ -512,6 +512,20 @@ describe("WeatherPlayer", () => {
     expect(player.advance(10_810, ORIGIN)).toBeNull();
   });
 
+  // Anomaly's `sky2` takes the sky through the tonemap's curve; vanilla's does not.
+  it("draws the sky through the curve on the extended engine alone", () => {
+    const { player } = createPlayer();
+
+    player.take(WEATHER, ERendererWeatherTransition.CUT);
+    player.setControl({ ...PLAYING, isPaused: true });
+
+    expect(player.advance(0, ORIGIN)?.sky.isCurved).toBe(false);
+
+    player.take({ ...WEATHER, engine: ERendererWeatherEngine.EXTENDED }, ERendererWeatherTransition.CUT);
+
+    expect(player.advance(100, ORIGIN)?.sky.isCurved).toBe(true);
+  });
+
   it("strikes nothing while thunder is switched off", () => {
     const { player } = createPlayer(() => 0.5);
 

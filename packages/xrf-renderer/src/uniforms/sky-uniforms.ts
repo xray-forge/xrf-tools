@@ -33,6 +33,8 @@ export class SkyUniforms {
   public readonly rotation: UniformNode<"float", number> = uniform(0).setGroup(renderGroup);
   /** One while the frame draws the sky behind the scene and fades the fog into it, zero for its backdrop. */
   public readonly drawn: UniformNode<"float", number> = uniform(0).setGroup(renderGroup);
+  /** One while the sky is drawn through the tonemap's curve, as Anomaly's `sky2` draws it. */
+  public readonly curved: UniformNode<"float", number> = uniform(0).setGroup(renderGroup);
   /** One while the distance fades into the sky's haze rather than into the sky itself. */
   public readonly hazed: UniformNode<"float", number> = uniform(0).setGroup(renderGroup);
 
@@ -43,6 +45,7 @@ export class SkyUniforms {
     this.blend.value = sky.blend;
     this.color.value.set(sky.color[0], sky.color[1], sky.color[2]);
     this.rotation.value = (sky.rotation * Math.PI) / 180;
+    this.curved.value = sky.isCurved ? 1 : 0;
   }
 
   /**
