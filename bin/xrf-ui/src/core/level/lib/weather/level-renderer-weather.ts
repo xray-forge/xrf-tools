@@ -1,6 +1,6 @@
 import {
+  ERendererEngine,
   ERendererTextureEncoding,
-  ERendererWeatherEngine,
   IRendererRain,
   IRendererWeather,
   IRendererWeatherKeyframe,
@@ -78,7 +78,7 @@ export function toLevelRendererWeatherBase(
         effect.keyframes.map(toLevelRendererWeatherKeyframe),
       ])
     ),
-    engine: toLevelRendererWeatherEngine(description.engine),
+    engine: toLevelRendererEngine(description.engine),
     modifiers: description.modifiers.map(toLevelRendererWeatherModifier),
     rain: toLevelRendererRain(description.rain),
     thunder: toLevelRendererThunder(description.thunderbolts),
@@ -90,8 +90,8 @@ export function toLevelRendererWeatherBase(
  * @param engine - The engine target configs are read as.
  * @returns The same, as the renderer names it.
  */
-export function toLevelRendererWeatherEngine(engine: XrayEngine): ERendererWeatherEngine {
-  return engine === EXrayEngine.EXTENDED ? ERendererWeatherEngine.EXTENDED : ERendererWeatherEngine.VANILLA;
+export function toLevelRendererEngine(engine: XrayEngine): ERendererEngine {
+  return engine === EXrayEngine.EXTENDED ? ERendererEngine.EXTENDED : ERendererEngine.VANILLA;
 }
 
 /**

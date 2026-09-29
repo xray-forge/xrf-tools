@@ -47,7 +47,7 @@ export function toFadedLighting(step: IWeatherFadeStep): IRendererLighting {
     fog: fadeFog(from.fog, to.fog, { lerp, triple }),
     grass: to.grass,
     hemisphereColor: triple(from.hemisphereColor, to.hemisphereColor),
-    isExtendedShading: to.isExtendedShading,
+    engine: to.engine,
     rain: fadeRain(from.rain, to.rain, { lerp, triple }),
     sky: fadeSky(from.sky, to.sky, t),
     skyIrradiance: triple(from.skyIrradiance, to.skyIrradiance),
@@ -153,7 +153,6 @@ function fadeSky(from: IRendererSky, to: IRendererSky, t: number): IRendererSky 
       from.color[2] + (to.color[2] - from.color[2]) * t,
     ],
     environments: environments.pair,
-    isCurved: to.isCurved,
     rotation: from.rotation + (to.rotation - from.rotation) * t,
     textures: skies.pair,
   };

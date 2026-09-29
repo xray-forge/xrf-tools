@@ -1,6 +1,7 @@
 import { Nullable } from "@xrf/types";
 
 import { TRendererColor } from "#/contract/renderer-color";
+import { ERendererEngine } from "#/contract/renderer-engine";
 import { IRendererFog } from "#/contract/renderer-fog";
 import { IRendererGrassWind } from "#/contract/renderer-grass-wind";
 import { IRendererRainfall } from "#/contract/renderer-rainfall";
@@ -35,12 +36,8 @@ export interface IRendererLighting {
   waterIntensity: number;
   /** How hard it rains, or null for no rain. */
   rain: Nullable<IRendererRainfall>;
-  /**
-   * Whether surfaces are shaded as Anomaly's `hmodel` and `combine_1` shade them: the hemisphere's reflection following
-   * the rain, none while it is dry, and tinting the lit albedo, the lights' reflection tinted by their colour. Vanilla's
-   * adds both white, the hemisphere's by the gloss alone.
-   */
-  isExtendedShading: boolean;
+  /** Whose shaders the scene is drawn by: its sky, its surfaces' reflections, and how far the rain wets them. */
+  engine: ERendererEngine;
   /** The bolt striking this frame, or null for none. */
   thunderbolt: Nullable<IRendererThunderboltStrike>;
 }

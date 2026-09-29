@@ -14,6 +14,7 @@ export * from "#/contract/renderer-clouds";
 export * from "#/contract/renderer-color";
 export * from "#/contract/renderer-debug-view";
 export * from "#/contract/renderer-device";
+export * from "#/contract/renderer-engine";
 export * from "#/contract/renderer-exposure-settings";
 export * from "#/contract/renderer-feature-choice";
 export * from "#/contract/renderer-feature-overrides";

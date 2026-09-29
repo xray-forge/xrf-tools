@@ -1,6 +1,7 @@
 import { describe, expect, it, jest } from "@jest/globals";
 import { Nullable } from "@xrf/types";
 
+import { ERendererEngine } from "#/contract/renderer-engine";
 import { IRendererLighting } from "#/contract/renderer-lighting";
 import { TRendererVector } from "#/contract/renderer-vector";
 import { ERendererDraw } from "#/contract/scene/renderer-draw";
@@ -8,7 +9,6 @@ import { ERendererTextureEncoding } from "#/contract/scene/renderer-texture-sour
 import { IRendererThunder } from "#/contract/weather/renderer-thunder";
 import { IRendererWeather } from "#/contract/weather/renderer-weather";
 import { IRendererWeatherControl } from "#/contract/weather/renderer-weather-control";
-import { ERendererWeatherEngine } from "#/contract/weather/renderer-weather-engine";
 import { IRendererWeatherKeyframe } from "#/contract/weather/renderer-weather-keyframe";
 import { ERendererWeatherTransition } from "#/contract/weather/renderer-weather-transition";
 import { RendererTextures } from "#/texture/renderer-textures";
@@ -32,7 +32,7 @@ const ORIGIN: TRendererVector = [0, 0, 0];
 
 const WEATHER: IRendererWeather = {
   effects: {},
-  engine: ERendererWeatherEngine.VANILLA,
+  engine: ERendererEngine.VANILLA,
   keyframes: KEYFRAMES,
   modifiers: [],
   rain: null,
@@ -513,18 +513,18 @@ describe("WeatherPlayer", () => {
     expect(player.advance(10_810, ORIGIN)).toBeNull();
   });
 
-  // Anomaly's `sky2` takes the sky through the tonemap's curve; vanilla's does not.
-  it("draws the sky through the curve on the extended engine alone", () => {
+  // Anomaly's shaders draw its sky through the tonemap's curve and reflect it by the rain; vanilla's do neither.
+  it("lights the scene as drawn by its weather's engine", () => {
     const { player } = createPlayer();
 
     player.take(WEATHER, ERendererWeatherTransition.CUT);
     player.setControl({ ...PLAYING, isPaused: true });
 
-    expect(player.advance(0, ORIGIN)?.sky.isCurved).toBe(false);
+    expect(player.advance(0, ORIGIN)?.engine).toBe(ERendererEngine.VANILLA);
 
-    player.take({ ...WEATHER, engine: ERendererWeatherEngine.EXTENDED }, ERendererWeatherTransition.CUT);
+    player.take({ ...WEATHER, engine: ERendererEngine.EXTENDED }, ERendererWeatherTransition.CUT);
 
-    expect(player.advance(100, ORIGIN)?.sky.isCurved).toBe(true);
+    expect(player.advance(100, ORIGIN)?.engine).toBe(ERendererEngine.EXTENDED);
   });
 
   it("strikes nothing while thunder is switched off", () => {

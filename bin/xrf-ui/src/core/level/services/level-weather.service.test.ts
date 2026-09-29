@@ -1,10 +1,5 @@
 import { afterEach, describe, expect, it } from "@jest/globals";
-import {
-  ERendererTextureEncoding,
-  ERendererWeatherEngine,
-  ERendererWeatherTransition,
-  IRendererWeather,
-} from "@xrf/renderer";
+import { ERendererEngine, ERendererTextureEncoding, ERendererWeatherTransition, IRendererWeather } from "@xrf/renderer";
 import { Nullable } from "@xrf/types";
 
 import { LevelTextureReference, SelectedLevelDescription, SessionSnapshot } from "@/core/ipc/types/xrf-app";
@@ -83,7 +78,7 @@ describe("LevelWeatherService", () => {
     const weather: Nullable<IRendererWeather> = service.weather;
 
     expect(service.cycle?.name).toBe("default_clear");
-    expect(weather?.engine).toBe(ERendererWeatherEngine.EXTENDED);
+    expect(weather?.engine).toBe(ERendererEngine.EXTENDED);
     expect(weather?.keyframes.map((keyframe) => keyframe.time)).toEqual([0, LEVEL_WEATHER_NOON]);
     expect(weather?.sunTable).toEqual([{ altitude: 15, longitude: 0 }]);
     // The noon irradiance cube resolved to nothing, so it is left out.

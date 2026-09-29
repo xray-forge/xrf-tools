@@ -1,11 +1,11 @@
 import { toDegrees } from "@xrf/math";
 import { Maybe, Nullable } from "@xrf/types";
 
+import { ERendererEngine } from "#/contract/renderer-engine";
 import { IRendererLighting } from "#/contract/renderer-lighting";
 import { TRendererVector } from "#/contract/renderer-vector";
 import { IRendererWeather } from "#/contract/weather/renderer-weather";
 import { IRendererWeatherControl } from "#/contract/weather/renderer-weather-control";
-import { ERendererWeatherEngine } from "#/contract/weather/renderer-weather-engine";
 import { IRendererWeatherKeyframe } from "#/contract/weather/renderer-weather-keyframe";
 import { IRendererWeatherReport } from "#/contract/weather/renderer-weather-report";
 import { ERendererWeatherTransition } from "#/contract/weather/renderer-weather-transition";
@@ -398,7 +398,7 @@ export class WeatherPlayer {
   }
 
   private toSun(weather: IRendererWeather): TWeatherSun {
-    if (weather.engine === ERendererWeatherEngine.EXTENDED && weather.sunTable) {
+    if (weather.engine === ERendererEngine.EXTENDED && weather.sunTable) {
       return { kind: EWeatherSun.TABLE, positions: weather.sunTable };
     }
 
@@ -461,7 +461,7 @@ export class WeatherPlayer {
         : null,
       grass: isWindy ? DEFAULT_RENDERER_GRASS_WIND : null,
       hemisphereColor: [mix.hemiColor[0], mix.hemiColor[1], mix.hemiColor[2]],
-      isExtendedShading: this.weather?.engine === ERendererWeatherEngine.EXTENDED,
+      engine: this.weather?.engine ?? ERendererEngine.VANILLA,
       rain:
         isRainy && this.weather?.rain && mix.rainDensity >= RAIN_THRESHOLD
           ? {
@@ -480,7 +480,6 @@ export class WeatherPlayer {
         },
         color: mix.skyColor,
         environments: [WeatherTextures.toKey(a.skyTextureEnv), WeatherTextures.toKey(b.skyTextureEnv)],
-        isCurved: this.weather?.engine === ERendererWeatherEngine.EXTENDED,
         rotation: toDegrees(mix.skyRotation),
         textures: [WeatherTextures.toKey(a.skyTexture), WeatherTextures.toKey(b.skyTexture)],
       },

@@ -7,7 +7,8 @@ describe("SkyUniforms", () => {
   it("reads the lighting's sky, its rotation in radians, its curve, and whether the frame draws it", () => {
     const sky: SkyUniforms = new SkyUniforms();
 
-    sky.take({ ...DEFAULT_RENDERER_LIGHTING.sky, blend: 0.25, color: [0.5, 0.6, 0.7], isCurved: true, rotation: 90 });
+    sky.take({ ...DEFAULT_RENDERER_LIGHTING.sky, blend: 0.25, color: [0.5, 0.6, 0.7], rotation: 90 });
+    sky.setCurved(true);
     sky.setDrawn(true);
     sky.setHazed(true);
 

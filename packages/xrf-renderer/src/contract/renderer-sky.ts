@@ -19,9 +19,4 @@ export interface IRendererSky {
   rotation: number;
   /** The clouds over it, or none. */
   clouds: Nullable<IRendererClouds>;
-  /**
-   * Whether it is drawn through the tonemap's curve, 1.7 times the scale first, as Anomaly's `sky2` draws it; vanilla's
-   * writes the cubes at two thirds of the scale, uncurved.
-   */
-  isCurved: boolean;
 }

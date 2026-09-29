@@ -17,7 +17,6 @@ import { RendererTargets } from "#/pass/renderer-targets";
 import { toWetGlossFragment, toWetNormalFragment, toWetPatchFragment } from "#/shader/wet.tsl";
 import { RainUniforms } from "#/uniforms/rain-uniforms";
 import { RendererUniforms } from "#/uniforms/renderer-uniforms";
-import { WetUniforms } from "#/uniforms/wet-uniforms";
 
 /**
  * Rain on the G-buffer before any light, as `draw_rain` wets it (`r3_rendertarget_draw_rain.cpp`): where the rain
@@ -29,7 +28,6 @@ export class WetPass implements IRendererPass {
 
   private readonly targets: RendererTargets;
   private readonly rain: RainUniforms;
-  private readonly wet: WetUniforms;
   /** The patched normal in colour, the wetness in alpha: `rt_Accumulator` as the engine borrows it. */
   private readonly patched: RenderTarget = new RenderTarget(1, 1, { depthBuffer: false, type: HalfFloatType });
   private readonly materials: readonly [NodeMaterial, NodeMaterial, NodeMaterial];
@@ -42,7 +40,6 @@ export class WetPass implements IRendererPass {
   public constructor(targets: RendererTargets, uniforms: RendererUniforms) {
     this.targets = targets;
     this.rain = uniforms.rain;
-    this.wet = uniforms.wet;
     this.patched.texture.name = "wet-patched";
     this.patched.texture.minFilter = this.patched.texture.magFilter = NearestFilter;
 
@@ -66,7 +63,7 @@ export class WetPass implements IRendererPass {
   }
 
   public render({ renderer }: IRendererFrame): void {
-    if (!this.rain.isFalling || !this.wet.isRaining) {
+    if (!this.rain.isFalling) {
       return;
     }
 

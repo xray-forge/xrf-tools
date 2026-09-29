@@ -45,7 +45,13 @@ export class SkyUniforms {
     this.blend.value = sky.blend;
     this.color.value.set(sky.color[0], sky.color[1], sky.color[2]);
     this.rotation.value = (sky.rotation * Math.PI) / 180;
-    this.curved.value = sky.isCurved ? 1 : 0;
+  }
+
+  /**
+   * @param isCurved - Whether the sky is drawn through the tonemap's curve, as Anomaly's `sky2` draws it.
+   */
+  public setCurved(isCurved: boolean): void {
+    this.curved.value = isCurved ? 1 : 0;
   }
 
   /**

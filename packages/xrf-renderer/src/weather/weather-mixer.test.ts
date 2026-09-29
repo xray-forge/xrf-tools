@@ -1,8 +1,8 @@
 import { describe, expect, it } from "@jest/globals";
 import { Nullable } from "@xrf/types";
 
+import { ERendererEngine } from "#/contract/renderer-engine";
 import { IRendererSunPosition } from "#/contract/weather/renderer-sun-position";
-import { ERendererWeatherEngine } from "#/contract/weather/renderer-weather-engine";
 import { IRendererWeatherKeyframe } from "#/contract/weather/renderer-weather-keyframe";
 import { IRendererWeatherModifier } from "#/contract/weather/renderer-weather-modifier";
 import { IWeatherCycleMix } from "#/weather/weather-cycle-mix";
@@ -13,7 +13,7 @@ import { EWeatherSun, TWeatherSun } from "#/weather/weather-sun";
 /** One cycle `xrf-environment` mixed through a day. */
 interface IGoldenCase {
   name: string;
-  engine: ERendererWeatherEngine;
+  engine: ERendererEngine;
   sun: EWeatherSun;
   keyframes: Array<IRendererWeatherKeyframe>;
   sunTable: Nullable<Array<IRendererSunPosition>>;
@@ -70,7 +70,7 @@ describe("mixWeather", () => {
   it("mixes nothing for a cycle without keyframes", () => {
     expect(
       mixWeather(
-        { engine: ERendererWeatherEngine.VANILLA, keyframes: [], modifiers: [], sun: { kind: EWeatherSun.AUTHORED } },
+        { engine: ERendererEngine.VANILLA, keyframes: [], modifiers: [], sun: { kind: EWeatherSun.AUTHORED } },
         { time: 0, view: [0, 0, 0] }
       )
     ).toBeNull();

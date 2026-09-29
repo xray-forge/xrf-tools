@@ -1,7 +1,7 @@
 import { Nullable } from "@xrf/types";
 
+import { ERendererEngine } from "#/contract/renderer-engine";
 import { TRendererVector } from "#/contract/renderer-vector";
-import { ERendererWeatherEngine } from "#/contract/weather/renderer-weather-engine";
 import { IRendererWeatherKeyframe } from "#/contract/weather/renderer-weather-keyframe";
 import { IDynamicSun, toDynamicSun } from "#/weather/dynamic-sun";
 import { toSunTableDirection } from "#/weather/sun-table-direction";
@@ -208,8 +208,8 @@ function toElapsed(from: number, to: number): number {
 }
 
 /** Monolith's `clamp(fog_distance, 1.f, far_plane - 10)`, the low bound first. */
-function toFogDistance(engine: ERendererWeatherEngine, distance: number, farPlane: number): number {
-  if (engine === ERendererWeatherEngine.VANILLA) {
+function toFogDistance(engine: ERendererEngine, distance: number, farPlane: number): number {
+  if (engine === ERendererEngine.VANILLA) {
     return distance;
   }
 

@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, it, jest } from "@jest/globals";
 import { Data3DTexture } from "three/webgpu";
 
+import { ERendererEngine } from "#/contract/renderer-engine";
 import { ERendererTextureEncoding } from "#/contract/scene/renderer-texture-source";
 import { IRendererWeather } from "#/contract/weather/renderer-weather";
-import { ERendererWeatherEngine } from "#/contract/weather/renderer-weather-engine";
 import { SceneWet } from "#/scene/wet/scene-wet";
 import { RendererTextures } from "#/texture/renderer-textures";
 import { WetUniforms } from "#/uniforms/wet-uniforms";
@@ -26,10 +26,10 @@ function createVolume(): ArrayBuffer {
 const REQUEST = { body: "", headers: {}, url: "volume" };
 
 /** A weather that rains, its surfaces wetted with a volume and a flow. */
-function toWeather(engine: ERendererWeatherEngine = ERendererWeatherEngine.VANILLA): IRendererWeather {
+function toWeather(): IRendererWeather {
   return {
     effects: {},
-    engine,
+    engine: ERendererEngine.VANILLA,
     keyframes: [],
     modifiers: [],
     rain: null,
@@ -85,19 +85,17 @@ describe("SceneWet", () => {
     expect(wet.splash.value).toBe(volume);
   });
 
-  it("draws as the extended engine does for its weather, and lets the volume go without one", async () => {
+  it("lets the volume go without a weather", async () => {
     const { scene, wet } = createWet();
     const neutral = wet.splash.value;
 
-    scene.take(toWeather(ERendererWeatherEngine.EXTENDED));
+    scene.take(toWeather());
     await new Promise((resolve) => setTimeout(resolve, 0));
 
-    expect(wet.extended.value).toBe(1);
     expect(wet.splash.value).not.toBe(neutral);
 
     scene.take(null);
 
-    expect(wet.extended.value).toBe(0);
     expect(wet.splash.value).toBe(neutral);
   });
 });

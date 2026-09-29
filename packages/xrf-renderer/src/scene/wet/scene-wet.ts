@@ -3,7 +3,6 @@ import { Data3DTexture, Texture } from "three/webgpu";
 
 import { ERendererTextureEncoding, TRendererTextureSource } from "#/contract/scene/renderer-texture-source";
 import { IRendererWeather } from "#/contract/weather/renderer-weather";
-import { ERendererWeatherEngine } from "#/contract/weather/renderer-weather-engine";
 import { IDdsVolume } from "#/dds/dds-volume";
 import { readDdsVolume } from "#/dds/dds-volume-read";
 import { fetchRendererBytes } from "#/texture/fetch-renderer-bytes";
@@ -41,8 +40,6 @@ export class SceneWet {
    * @param weather - What plays from now on, or null for nothing.
    */
   public take(weather: Nullable<IRendererWeather>): void {
-    this.wet.setExtended(weather?.engine === ERendererWeatherEngine.EXTENDED);
-
     const surfaces = weather?.wet;
     const source: Maybe<TRendererTextureSource> = surfaces ? weather?.textures[surfaces.splash] : undefined;
     const flowKey: Nullable<string> = surfaces ? WeatherTextures.toKey(surfaces.flow) : null;

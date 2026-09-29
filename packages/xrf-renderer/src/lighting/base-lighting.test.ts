@@ -1,5 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 
+import { ERendererEngine } from "#/contract/renderer-engine";
 import { IRendererLighting } from "#/contract/renderer-lighting";
 import { toBaseLightingConstants, toSunSpecular } from "#/lighting/base-lighting";
 import { IBaseLightingConstants } from "#/lighting/base-lighting-constants";
@@ -21,7 +22,9 @@ describe("toBaseLightingConstants", () => {
   it("carries whether the hemisphere's reflection follows the rain, and how hard it rains", () => {
     const rain = { color: [0.5, 0.5, 0.5] as const, density: 0.7, windDirection: 0, windVelocity: 0 };
 
-    expect(toBaseLightingConstants({ ...DEFAULT_RENDERER_LIGHTING, isExtendedShading: true, rain })).toMatchObject({
+    expect(
+      toBaseLightingConstants({ ...DEFAULT_RENDERER_LIGHTING, engine: ERendererEngine.EXTENDED, rain })
+    ).toMatchObject({
       isExtendedShading: true,
       rainDensity: 0.7,
     });

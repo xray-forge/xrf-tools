@@ -9,9 +9,9 @@ import { listLevelThunderTextures } from "@/core/level/lib/weather/level-rendere
 import {
   listLevelRainTextures,
   listLevelWetTextures,
+  toLevelRendererEngine,
   toLevelRendererTextures,
   toLevelRendererWeatherBase,
-  toLevelRendererWeatherEngine,
 } from "@/core/level/lib/weather/level-renderer-weather";
 
 /** What a hand-set keyframe the renderer plays is built from. */
@@ -42,7 +42,7 @@ export async function toLevelManualRendererWeather(input: ILevelManualRendererWe
     ? toLevelRendererWeatherBase(description)
     : {
         effects: {},
-        engine: toLevelRendererWeatherEngine(engine),
+        engine: toLevelRendererEngine(engine),
         modifiers: [],
         rain: null,
         thunder: null,

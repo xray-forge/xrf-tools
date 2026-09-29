@@ -419,7 +419,7 @@ export class LevelWeatherService {
 
       const weather: IRendererWeather = await toLevelManualRendererWeather({
         description: this.description,
-        engine: this.settingsService.engine,
+        engine: this.engine,
         located: references.flatMap((it: string) => this.located.get(it) ?? []),
         manual,
         roots: selected.value.roots,

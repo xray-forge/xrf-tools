@@ -1,10 +1,10 @@
 import { Nullable } from "@xrf/types";
 
+import { ERendererEngine } from "#/contract/renderer-engine";
 import { ERendererTextureEncoding, TRendererTextureSource } from "#/contract/scene/renderer-texture-source";
 import { IRendererRain } from "#/contract/weather/renderer-rain";
 import { IRendererSunPosition } from "#/contract/weather/renderer-sun-position";
 import { IRendererThunder } from "#/contract/weather/renderer-thunder";
-import { ERendererWeatherEngine } from "#/contract/weather/renderer-weather-engine";
 import { IRendererWeatherKeyframe } from "#/contract/weather/renderer-weather-keyframe";
 import { IRendererWeatherModifier } from "#/contract/weather/renderer-weather-modifier";
 import { IRendererWetSurfaces } from "#/contract/weather/renderer-wet-surfaces";
@@ -14,7 +14,7 @@ import { IRendererWetSurfaces } from "#/contract/weather/renderer-wet-surfaces";
  * the level's modifiers, and where every texture they name is fetched from.
  */
 export interface IRendererWeather {
-  engine: ERendererWeatherEngine;
+  engine: ERendererEngine;
   /** Sorted by time, at least one. */
   keyframes: ReadonlyArray<IRendererWeatherKeyframe>;
   /** Twenty-four hours, midnight first, on an engine that stands the sun by its table; null otherwise. */

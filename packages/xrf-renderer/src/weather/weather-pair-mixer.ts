@@ -1,4 +1,4 @@
-import { ERendererWeatherEngine } from "#/contract/weather/renderer-weather-engine";
+import { ERendererEngine } from "#/contract/renderer-engine";
 import { IRendererWeatherModifier } from "#/contract/weather/renderer-weather-modifier";
 import { TWeatherKeyframePair } from "#/weather/weather-keyframe-pair";
 import { TWeatherSun } from "#/weather/weather-sun";
@@ -8,7 +8,7 @@ import { TWeatherSun } from "#/weather/weather-sun";
  */
 export interface IWeatherPairMixer {
   pair: TWeatherKeyframePair;
-  engine: ERendererWeatherEngine;
+  engine: ERendererEngine;
   sun: TWeatherSun;
   /** The level's `level.env_mod` volumes. */
   modifiers: ReadonlyArray<IRendererWeatherModifier>;

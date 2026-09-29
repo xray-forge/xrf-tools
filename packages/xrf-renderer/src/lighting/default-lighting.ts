@@ -1,3 +1,4 @@
+import { ERendererEngine } from "#/contract/renderer-engine";
 import { IRendererGrassWind } from "#/contract/renderer-grass-wind";
 import { IRendererLighting } from "#/contract/renderer-lighting";
 import { IRendererTreeWind } from "#/contract/renderer-tree-wind";
@@ -35,7 +36,7 @@ export const DEFAULT_RENDERER_LIGHTING: IRendererLighting = {
   ambientColor: [0.02, 0.02, 0.02],
   fog: null,
   hemisphereColor: [0.470588, 0.368627, 0.329412],
-  isExtendedShading: false,
+  engine: ERendererEngine.VANILLA,
   rain: null,
   skyIrradiance: [0.5, 0.511, 0.548],
   sunColor: [0.905882, 0.839216, 0.694118],
@@ -45,7 +46,6 @@ export const DEFAULT_RENDERER_LIGHTING: IRendererLighting = {
     clouds: null,
     color: [0.851001, 0.851001, 0.851001],
     environments: [DEFAULT_RENDERER_SKY_ENVIRONMENT, DEFAULT_RENDERER_SKY_ENVIRONMENT],
-    isCurved: false,
     rotation: 0,
     textures: [DEFAULT_RENDERER_SKY_TEXTURE, DEFAULT_RENDERER_SKY_TEXTURE],
   },

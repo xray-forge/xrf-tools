@@ -32,14 +32,10 @@ export class WetUniforms {
   /** `s_waterFall`: flat until its file is up. */
   public readonly flow: TextureNode = new SlotTextureNode(getNeutralDetailTexture());
 
-  /** Whether it rains. */
-  public isRaining: boolean = false;
-
   /**
    * @param rain - How hard it rains now, or null for no rain.
    */
   public take(rain: Nullable<IRendererRainfall>): void {
-    this.isRaining = rain !== null;
     this.density.value = rain ? Math.min(Math.max(rain.density, 0), 1) : 0;
   }
 
