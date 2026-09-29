@@ -80,12 +80,11 @@ impl EnvironmentFixture {
   }
 
   pub fn read_explained(&self, engine: XrayEngine) -> EnvironmentCatalog {
-    EnvironmentReader::read_opt(
-      &self.open(),
-      engine,
-      &EnvironmentReadOptions::default().with_explained(true),
-    )
-    .unwrap()
+    let options: EnvironmentReadOptions = EnvironmentReadOptions::default()
+      .with_engine(engine)
+      .with_explained(true);
+
+    EnvironmentReader::read_opt(&self.open(), &options).unwrap()
   }
 }
 

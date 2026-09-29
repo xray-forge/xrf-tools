@@ -1,8 +1,11 @@
+use xrf_engine_target::XrayEngine;
 use xrf_job::JobHandle;
 
 /// How an environment read behaves.
 #[derive(Clone, Default)]
 pub struct EnvironmentReadOptions {
+  /// The engine the configs are read as.
+  pub engine: XrayEngine,
   /// Where cancellation comes from.
   pub job: JobHandle,
   /// Whether each section records where its keys' values came from, for an editor to write an edit back to. Resolves
@@ -11,6 +14,11 @@ pub struct EnvironmentReadOptions {
 }
 
 impl EnvironmentReadOptions {
+  pub fn with_engine(mut self, engine: XrayEngine) -> Self {
+    self.engine = engine;
+    self
+  }
+
   pub fn with_job(mut self, job: JobHandle) -> Self {
     self.job = job;
     self

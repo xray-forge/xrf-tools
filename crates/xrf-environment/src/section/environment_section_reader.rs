@@ -9,33 +9,19 @@ use crate::section::environment_section::EnvironmentSection;
 /// Reads sections of one config against a key table, as one engine reads them, and says what that engine would refuse
 /// or misread.
 pub(crate) struct EnvironmentSectionReader<'a> {
-  engine: XrayEngine,
+  pub engine: XrayEngine,
   /// How messages name the kind of section: `Weather`, `Sun`, `Thunderbolt`.
-  subject: &'static str,
-  file: &'a str,
-  provenance: Option<&'a LtxProvenance>,
-  findings: &'a mut Vec<EnvironmentFinding>,
+  pub subject: &'static str,
+  /// The config the sections are read from, as a logical path.
+  pub file: &'a str,
+  /// Where each key came from, where the read records it.
+  pub provenance: Option<&'a LtxProvenance>,
+  pub findings: &'a mut Vec<EnvironmentFinding>,
 }
 
 impl<'a> EnvironmentSectionReader<'a> {
   /// The words `r_bool` is written with, either way; any other is read as false, which is worth saying.
   const FLAG_WORDS: [&'static str; 8] = ["on", "yes", "true", "1", "off", "no", "false", "0"];
-
-  pub fn new(
-    engine: XrayEngine,
-    subject: &'static str,
-    file: &'a str,
-    provenance: Option<&'a LtxProvenance>,
-    findings: &'a mut Vec<EnvironmentFinding>,
-  ) -> Self {
-    Self {
-      engine,
-      file,
-      findings,
-      provenance,
-      subject,
-    }
-  }
 
   pub fn get_engine(&self) -> XrayEngine {
     self.engine
@@ -166,15 +152,7 @@ impl<'a> EnvironmentSectionReader<'a> {
 
         EnvironmentValue::Integer(integer)
       }
-      EnvironmentValueKind::Vector { least, most } => {
-        let components: Vec<f32> = read_engine_floats(value, usize::from(most));
-
-        if is_read {
-          self.judge_vector(section, name, value, &components, least, most);
-        }
-
-        EnvironmentValue::Vector(components)
-      }
+      EnvironmentValueKind::Vector { .. } => EnvironmentValue::Vector(self.read_vector(section, key, value)),
       EnvironmentValueKind::Flag => {
         if is_read && !Self::FLAG_WORDS.iter().any(|word| value.eq_ignore_ascii_case(word)) {
           let message: String = format!(
@@ -192,8 +170,19 @@ impl<'a> EnvironmentSectionReader<'a> {
     }
   }
 
-  /// Says what `sscanf` made of a vector that is not written as the engine reads one.
-  fn judge_vector(&mut self, section: &str, name: &str, value: &str, components: &[f32], least: u8, most: u8) {
+  /// A vector as `sscanf` reads it, saying what it made of one not written as the engine reads one.
+  fn read_vector<K: EnvironmentKey>(&mut self, section: &str, key: K, value: &str) -> Vec<f32> {
+    let EnvironmentValueKind::Vector { least, most } = key.get_kind() else {
+      return Vec::new();
+    };
+    let components: Vec<f32> = read_engine_floats(value, usize::from(most));
+
+    // A key the engine does not read cannot be misread by it.
+    if !key.get_use(self.engine).is_read() {
+      return components;
+    }
+
+    let name: &str = key.get_name();
     let written: usize = if value.is_empty() { 0 } else { value.split(',').count() };
     let is_clean: bool = value
       .split(',')
@@ -216,6 +205,8 @@ impl<'a> EnvironmentSectionReader<'a> {
 
       self.report(EnvironmentRule::Convention, section, Some(name), message);
     }
+
+    components
   }
 
   /// A list as `_GetItemCount` and `_GetItem` walk it: comma-separated, each item trimmed, none in empty text.

@@ -23,12 +23,11 @@ use crate::sun::{LensFlare, LensFlareKey, SunTable};
 use crate::thunderbolt::{
   Thunderbolt, ThunderboltCollection, ThunderboltKey, ThunderboltSettings, ThunderboltSettingsKey,
 };
-use crate::weather::{WeatherCycle, WeatherCycleKind, WeatherKey};
+use crate::weather::{WeatherCycle, WeatherCycleId, WeatherCycleKind, WeatherKey};
 
 /// One read of a game's environment configs: what it has found so far, and `system.ltx` once it has been needed.
 pub(crate) struct EnvironmentReadPass<'a> {
   project: &'a LtxProject,
-  engine: XrayEngine,
   options: &'a EnvironmentReadOptions,
   findings: Vec<EnvironmentFinding>,
   configs: Vec<String>,
@@ -58,10 +57,9 @@ impl<'a> EnvironmentReadPass<'a> {
   const THUNDERBOLT_SETTINGS: &'static str = "environment";
   const THUNDERBOLT_COMMON: &'static str = "thunderbolt_common";
 
-  pub fn new(project: &'a LtxProject, engine: XrayEngine, options: &'a EnvironmentReadOptions) -> Self {
+  pub fn new(project: &'a LtxProject, options: &'a EnvironmentReadOptions) -> Self {
     Self {
       configs: Vec::new(),
-      engine,
       findings: Vec::new(),
       options,
       progress: options.job.enter("environment", None),
@@ -89,7 +87,7 @@ impl<'a> EnvironmentReadPass<'a> {
       self.read_definitions(Self::SOUND_CHANNELS, "Sound channel", SoundChannelKey::read)?;
     let ambient_effects: Vec<AmbientEffect> = self.read_definitions(Self::EFFECTS, "Effect", AmbientEffectKey::read)?;
     let level_ambients: Vec<LevelAmbients> = self.read_level_ambients()?;
-    let sun_table: Option<SunTable> = match self.engine {
+    let sun_table: Option<SunTable> = match self.options.engine {
       XrayEngine::Extended => self.read_sun_table()?,
       XrayEngine::Vanilla => None,
     };
@@ -120,7 +118,7 @@ impl<'a> EnvironmentReadPass<'a> {
       thunderbolts: &thunderbolts,
     };
 
-    definitions.demote_unloaded(self.engine, &mut self.findings);
+    definitions.demote_unloaded(self.options.engine, &mut self.findings);
 
     let mut catalog: EnvironmentCatalog = EnvironmentCatalog {
       ambient_effects,
@@ -128,7 +126,7 @@ impl<'a> EnvironmentReadPass<'a> {
       configs: self.configs,
       cycles,
       effects,
-      engine: self.engine,
+      engine: self.options.engine,
       findings: self.findings,
       graphs,
       level_ambients,
@@ -146,24 +144,14 @@ impl<'a> EnvironmentReadPass<'a> {
   }
 
   /// One cycle or effect by name, and what its own config says about it; none where there is no such config.
-  pub fn run_cycle(
-    mut self,
-    kind: WeatherCycleKind,
-    name: &str,
-  ) -> XrfResult<Option<(WeatherCycle, Vec<EnvironmentFinding>)>> {
-    let (directory, subject) = Self::directory_of(kind);
-    let path: XrayLogicalPath = self.project.config_path(directory)?.join(&format!("{name}.ltx"))?;
+  pub fn run_cycle(mut self, id: &WeatherCycleId) -> XrfResult<Option<(WeatherCycle, Vec<EnvironmentFinding>)>> {
+    let (directory, subject) = Self::directory_of(id.kind);
+    let path: XrayLogicalPath = self.project.config_path(directory)?.join(&format!("{}.ltx", id.name))?;
     let Some(config) = self.open(&path)? else {
       return Ok(None);
     };
-    let mut reader: EnvironmentSectionReader = EnvironmentSectionReader::new(
-      self.engine,
-      subject,
-      &config.file,
-      config.get_provenance(),
-      &mut self.findings,
-    );
-    let cycle: WeatherCycle = WeatherCycle::read(&mut reader, name, kind, config.get_ltx());
+    let mut reader: EnvironmentSectionReader = self.reader(subject, &config);
+    let cycle: WeatherCycle = WeatherCycle::read(&mut reader, id, config.get_ltx());
 
     self.findings.sort();
 
@@ -202,16 +190,13 @@ impl<'a> EnvironmentReadPass<'a> {
       let Some(config) = self.open(&file)? else {
         continue;
       };
-      let name: &str = Self::stem_of(&file);
-      let mut reader: EnvironmentSectionReader = EnvironmentSectionReader::new(
-        self.engine,
-        subject,
-        &config.file,
-        config.get_provenance(),
-        &mut self.findings,
-      );
+      let id: WeatherCycleId = WeatherCycleId {
+        kind,
+        name: Self::stem_of(&file).to_owned(),
+      };
+      let mut reader: EnvironmentSectionReader = self.reader(subject, &config);
 
-      cycles.push(WeatherCycle::read(&mut reader, name, kind, config.get_ltx()));
+      cycles.push(WeatherCycle::read(&mut reader, &id, config.get_ltx()));
     }
 
     Ok(cycles)
@@ -231,24 +216,16 @@ impl<'a> EnvironmentReadPass<'a> {
       return Ok(Vec::new());
     };
 
-    Ok(Self::read_sections(
-      self.engine,
-      &config,
-      subject,
-      &mut self.findings,
-      read,
-    ))
+    Ok(self.read_sections(&config, subject, read))
   }
 
   fn read_sections<T>(
-    engine: XrayEngine,
+    &mut self,
     config: &EnvironmentConfig,
     subject: &'static str,
-    findings: &mut Vec<EnvironmentFinding>,
     read: impl Fn(&mut EnvironmentSectionReader, &str, &Section) -> T,
   ) -> Vec<T> {
-    let mut reader: EnvironmentSectionReader =
-      EnvironmentSectionReader::new(engine, subject, &config.file, config.get_provenance(), findings);
+    let mut reader: EnvironmentSectionReader = self.reader(subject, config);
 
     config
       .get_ltx()
@@ -256,6 +233,17 @@ impl<'a> EnvironmentReadPass<'a> {
       .filter(|(name, _)| !name.is_empty())
       .map(|(name, section)| read(&mut reader, name, section))
       .collect()
+  }
+
+  /// A reader of one config's sections, reporting into this read's findings.
+  fn reader<'b>(&'b mut self, subject: &'static str, config: &'b EnvironmentConfig) -> EnvironmentSectionReader<'b> {
+    EnvironmentSectionReader {
+      engine: self.options.engine,
+      file: &config.file,
+      findings: &mut self.findings,
+      provenance: config.get_provenance(),
+      subject,
+    }
   }
 
   /// `environment.ltx`'s `[environment]`; on OpenXRay without the file, `system.ltx`'s `[thunderbolt_common]`. The
@@ -268,7 +256,7 @@ impl<'a> EnvironmentReadPass<'a> {
         Some(config) => (Arc::new(config), Self::THUNDERBOLT_SETTINGS),
         None => return Ok(None),
       }
-    } else if self.engine == XrayEngine::Vanilla {
+    } else if self.options.engine == XrayEngine::Vanilla {
       match self.get_system()? {
         Some(system) => (system, Self::THUNDERBOLT_COMMON),
         None => return Ok(None),
@@ -288,13 +276,7 @@ impl<'a> EnvironmentReadPass<'a> {
       return Ok(None);
     };
 
-    let mut reader: EnvironmentSectionReader = EnvironmentSectionReader::new(
-      self.engine,
-      "Thunderbolt settings",
-      &config.file,
-      config.get_provenance(),
-      &mut self.findings,
-    );
+    let mut reader: EnvironmentSectionReader = self.reader("Thunderbolt settings", &config);
 
     match config.get_ltx().section(section) {
       Some(found) => Ok(Some(ThunderboltSettingsKey::read(&mut reader, section, found))),
@@ -339,7 +321,7 @@ impl<'a> EnvironmentReadPass<'a> {
       };
 
       levels.push(LevelAmbients {
-        ambients: Self::read_sections(self.engine, &config, "Ambient", &mut self.findings, AmbientKey::read),
+        ambients: self.read_sections(&config, "Ambient", AmbientKey::read),
         file: config.file.clone(),
         level: Self::stem_of(&file).to_owned(),
       });
@@ -370,13 +352,7 @@ impl<'a> EnvironmentReadPass<'a> {
     let Some(config) = self.open(&path)? else {
       return Ok(None);
     };
-    let mut reader: EnvironmentSectionReader = EnvironmentSectionReader::new(
-      self.engine,
-      "Sun position",
-      &config.file,
-      config.get_provenance(),
-      &mut self.findings,
-    );
+    let mut reader: EnvironmentSectionReader = self.reader("Sun position", &config);
 
     Ok(Some(SunTable::read(&mut reader, config.get_ltx())))
   }
@@ -385,7 +361,7 @@ impl<'a> EnvironmentReadPass<'a> {
     let path: XrayLogicalPath = self.project.config_path(Self::GRAPHS)?;
 
     Ok(match self.open(&path)? {
-      Some(config) => WeatherGraphs::read(config.get_ltx(), self.engine),
+      Some(config) => WeatherGraphs::read(config.get_ltx(), self.options.engine),
       None => WeatherGraphs::default(),
     })
   }
@@ -394,7 +370,7 @@ impl<'a> EnvironmentReadPass<'a> {
   fn read_own_channels(&mut self, ambients: &[Ambient]) -> XrfResult<Vec<SoundChannel>> {
     let own: Vec<&Ambient> = ambients
       .iter()
-      .filter(|ambient| AmbientKey::is_own_channel(ambient, self.engine))
+      .filter(|ambient| AmbientKey::is_own_channel(ambient, self.options.engine))
       .collect();
 
     if own.is_empty() {
@@ -405,13 +381,7 @@ impl<'a> EnvironmentReadPass<'a> {
     let Some(config) = self.open(&path)? else {
       return Ok(Vec::new());
     };
-    let mut reader: EnvironmentSectionReader = EnvironmentSectionReader::new(
-      self.engine,
-      "Ambient",
-      &config.file,
-      config.get_provenance(),
-      &mut self.findings,
-    );
+    let mut reader: EnvironmentSectionReader = self.reader("Ambient", &config);
 
     Ok(
       own
@@ -444,9 +414,9 @@ impl<'a> EnvironmentReadPass<'a> {
   ) -> XrfResult<()> {
     for keyframe in &cycle.keyframes {
       let section = &keyframe.section;
-      let sun: &str = section.get_text(WeatherKey::Sun, self.engine);
-      let collection: &str = section.get_text(WeatherKey::ThunderboltCollection, self.engine);
-      let ambient: &str = section.get_text(WeatherKey::Ambient, self.engine);
+      let sun: &str = section.get_text(WeatherKey::Sun, self.options.engine);
+      let collection: &str = section.get_text(WeatherKey::ThunderboltCollection, self.options.engine);
+      let ambient: &str = section.get_text(WeatherKey::Ambient, self.options.engine);
 
       if !sun.is_empty() && !suns.iter().any(|it| it.name == sun) && !self.take_system_sun(sun, suns)? {
         self.report_reference(cycle, &section.name, "sun", format!("sun [{sun}]"));
@@ -508,7 +478,7 @@ impl<'a> EnvironmentReadPass<'a> {
   }
 
   fn resolve_ambient_references(&mut self, ambient: &Ambient, channels: &[SoundChannel], effects: &[AmbientEffect]) {
-    if !AmbientKey::is_own_channel(ambient, self.engine) {
+    if !AmbientKey::is_own_channel(ambient, self.options.engine) {
       for channel in AmbientKey::list_channels(ambient) {
         if !channel.is_empty() && !channels.iter().any(|it| it.name == *channel) {
           let message: String = format!(
@@ -551,7 +521,7 @@ impl<'a> EnvironmentReadPass<'a> {
   where
     T: EnvironmentNamed,
   {
-    if self.engine != XrayEngine::Vanilla {
+    if self.options.engine != XrayEngine::Vanilla {
       return Ok(false);
     }
 
@@ -569,13 +539,7 @@ impl<'a> EnvironmentReadPass<'a> {
     let Some(section) = system.get_ltx().section(name) else {
       return Ok(false);
     };
-    let mut reader: EnvironmentSectionReader = EnvironmentSectionReader::new(
-      self.engine,
-      subject,
-      &system.file,
-      system.get_provenance(),
-      &mut self.findings,
-    );
+    let mut reader: EnvironmentSectionReader = self.reader(subject, &system);
 
     list.push(read(&mut reader, name, section));
 

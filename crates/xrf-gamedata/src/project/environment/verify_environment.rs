@@ -30,11 +30,10 @@ impl GamedataProject {
     xrf_output::heading!(options.output, "Verify environment:");
 
     let started_at: Instant = Instant::now();
-    let catalog: EnvironmentCatalog = EnvironmentReader::read_opt(
-      &self.ltx_project,
-      self.engine,
-      &EnvironmentReadOptions::default().with_job(options.job.clone()),
-    )?;
+    let read: EnvironmentReadOptions = EnvironmentReadOptions::default()
+      .with_engine(self.engine)
+      .with_job(options.job.clone());
+    let catalog: EnvironmentCatalog = EnvironmentReader::read_opt(&self.ltx_project, &read)?;
 
     let mut findings: Vec<Finding> = catalog
       .findings

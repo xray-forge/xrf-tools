@@ -6,6 +6,7 @@ use xrf_ltx::Ltx;
 
 use crate::finding::EnvironmentRule;
 use crate::section::EnvironmentSectionReader;
+use crate::weather::weather_cycle_id::WeatherCycleId;
 use crate::weather::weather_cycle_kind::WeatherCycleKind;
 use crate::weather::weather_key::WeatherKey;
 use crate::weather::weather_keyframe::WeatherKeyframe;
@@ -27,7 +28,7 @@ pub struct WeatherCycle {
 
 impl WeatherCycle {
   /// Reads every section of a resolved cycle config as a keyframe.
-  pub(crate) fn read(reader: &mut EnvironmentSectionReader, name: &str, kind: WeatherCycleKind, ltx: &Ltx) -> Self {
+  pub(crate) fn read(reader: &mut EnvironmentSectionReader, id: &WeatherCycleId, ltx: &Ltx) -> Self {
     let mut keyframes: Vec<WeatherKeyframe> = ltx
       .iter()
       .filter(|(section_name, _)| !section_name.is_empty())
@@ -40,8 +41,8 @@ impl WeatherCycle {
     let cycle: Self = Self {
       file: reader.get_file().to_owned(),
       keyframes,
-      kind,
-      name: name.to_owned(),
+      kind: id.kind,
+      name: id.name.clone(),
     };
 
     cycle.judge(reader);

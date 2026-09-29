@@ -1,5 +1,4 @@
 use serde::Serialize;
-use xrf_engine_target::XrayEngine;
 use xrf_ltx::Condlist;
 
 use crate::level::level_weather_option::LevelWeatherOption;
@@ -25,7 +24,7 @@ impl LevelWeather {
 
   /// Resolves a level's `weathers`: each result its condlist can pick, a graph to its states, `atmosfear` on Monolith
   /// to its presets, anything else to the cycle it names. A condlist that does not parse is taken as one name.
-  pub fn resolve(level: &str, key: &str, graphs: &WeatherGraphs, engine: XrayEngine) -> Self {
+  pub fn resolve(level: &str, key: &str, graphs: &WeatherGraphs) -> Self {
     let key: String = key.trim().to_owned();
     let picks: Vec<String> = match Condlist::parse(&key) {
       Ok(condlist) => condlist
@@ -39,7 +38,7 @@ impl LevelWeather {
     let mut options: Vec<LevelWeatherOption> = Vec::new();
 
     for pick in picks {
-      for option in Self::resolve_pick(&pick, graphs, engine) {
+      for option in Self::resolve_pick(&pick, graphs) {
         if !options.contains(&option) {
           options.push(option);
         }
@@ -53,8 +52,9 @@ impl LevelWeather {
     }
   }
 
-  fn resolve_pick(pick: &str, graphs: &WeatherGraphs, engine: XrayEngine) -> Vec<LevelWeatherOption> {
-    if engine == XrayEngine::Extended && pick == WeatherGraphs::ATMOSFEAR && !graphs.atmosfear.is_empty() {
+  /// Atmosfear's states are read only on Monolith, so a vanilla read has none to resolve `atmosfear` to.
+  fn resolve_pick(pick: &str, graphs: &WeatherGraphs) -> Vec<LevelWeatherOption> {
+    if pick == WeatherGraphs::ATMOSFEAR && !graphs.atmosfear.is_empty() {
       return graphs
         .atmosfear
         .iter()

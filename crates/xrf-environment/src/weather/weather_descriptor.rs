@@ -71,6 +71,9 @@ pub struct WeatherDescriptor {
 }
 
 impl WeatherDescriptor {
+  /// What names a sky's irradiance cube after the sky's own reference.
+  pub const ENVIRONMENT_SUFFIX: &'static str = "#small";
+
   /// The keyframe as the engine loads it.
   pub fn new(keyframe: &WeatherKeyframe, engine: XrayEngine) -> Self {
     let section: &EnvironmentSection<WeatherKey> = &keyframe.section;
@@ -126,7 +129,7 @@ impl WeatherDescriptor {
       rain_density: number(WeatherKey::RainDensity).clamp(0.0, 1.0),
       sky_color: section.get_vector(WeatherKey::SkyColor, engine),
       sky_rotation,
-      sky_texture_env: format!("{sky_texture}#small"),
+      sky_texture_env: format!("{sky_texture}{}", Self::ENVIRONMENT_SUFFIX),
       sky_texture,
       sun: named(WeatherKey::Sun),
       sun_azimuth: number(WeatherKey::SunAzimuth).clamp(0.0, 360.0).to_radians(),

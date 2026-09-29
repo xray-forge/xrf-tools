@@ -1,7 +1,7 @@
 use xrf_engine_target::XrayEngine;
 
 use super::fixtures::{EnvironmentFixture, extended_keyframe, messages, sun_table, vanilla_keyframe};
-use crate::{EnvironmentRule, EnvironmentValue, WeatherCycleKind, WeatherDescriptor, WeatherKey};
+use crate::{EnvironmentRule, EnvironmentValue, SunPosition, WeatherCycleKind, WeatherDescriptor, WeatherKey};
 
 fn vanilla_cycle(keyframes: &str) -> EnvironmentFixture {
   EnvironmentFixture::new().with("environment\\weathers\\test.ltx", keyframes)
@@ -258,7 +258,10 @@ fn reads_an_extended_keyframe_by_monoliths_rules() {
   assert_eq!(noon.tree_speed, 1.0);
   assert_eq!(
     catalog.sun_table.as_ref().map(|table| table.get_hour(12)),
-    Some((180.0, -26.0))
+    Some(SunPosition {
+      altitude: 180.0,
+      longitude: -26.0
+    })
   );
 
   // The same keyframe on OpenXRay lacks the sun's angles.

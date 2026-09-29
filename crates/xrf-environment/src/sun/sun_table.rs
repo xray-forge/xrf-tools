@@ -4,6 +4,7 @@ use xrf_ltx::Ltx;
 
 use crate::finding::EnvironmentRule;
 use crate::section::{EnvironmentSection, EnvironmentSectionReader};
+use crate::sun::sun_position::SunPosition;
 use crate::sun::sun_position_key::SunPositionKey;
 
 /// Monolith's `environment\sun_positions.ltx`: where the sun stands at each whole hour, lerped by the minute
@@ -47,13 +48,19 @@ impl SunTable {
     }
   }
 
-  /// The sun's altitude and longitude at a whole hour, in degrees.
-  pub fn get_hour(&self, hour: usize) -> (f32, f32) {
-    self.hours.get(hour % Self::HOURS).map_or((0.0, 0.0), |position| {
-      (
-        position.get_number(SunPositionKey::SunAltitude, XrayEngine::Extended),
-        position.get_number(SunPositionKey::SunLongitude, XrayEngine::Extended),
-      )
-    })
+  /// Where the sun stands at a whole hour.
+  pub fn get_hour(&self, hour: usize) -> SunPosition {
+    self
+      .hours
+      .get(hour % Self::HOURS)
+      .map_or_else(SunPosition::default, |position| SunPosition {
+        altitude: position.get_number(SunPositionKey::SunAltitude, XrayEngine::Extended),
+        longitude: position.get_number(SunPositionKey::SunLongitude, XrayEngine::Extended),
+      })
+  }
+
+  /// Every hour's position, midnight first.
+  pub fn list_positions(&self) -> Vec<SunPosition> {
+    (0..Self::HOURS).map(|hour| self.get_hour(hour)).collect()
   }
 }

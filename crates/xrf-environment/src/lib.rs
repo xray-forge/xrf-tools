@@ -9,6 +9,7 @@
 //! - `weather` — cycles, effects, their keyframes, and a keyframe as the engine loads it.
 //! - `sun`, `thunderbolt`, `ambient` — the definitions a keyframe names.
 //! - `level` — which cycles a level plays.
+//! - `mixer` — a cycle mixed at a time of day.
 //! - `catalog` — reading all of it at once.
 
 pub(crate) mod ambient;
@@ -16,6 +17,7 @@ pub(crate) mod catalog;
 pub(crate) mod finding;
 pub(crate) mod key;
 pub(crate) mod level;
+pub(crate) mod mixer;
 pub(crate) mod section;
 pub(crate) mod sun;
 pub(crate) mod thunderbolt;
@@ -33,9 +35,12 @@ pub use crate::key::{EnvironmentDefault, EnvironmentKey, EnvironmentKeyUse, Envi
 pub use crate::level::{
   AtmosfearCycle, LevelWeather, LevelWeatherOption, WeatherGraph, WeatherGraphState, WeatherGraphs,
 };
+pub use crate::mixer::{WeatherMix, WeatherMixer, WeatherSunSource};
 pub use crate::section::{EnvironmentOrigin, EnvironmentSection};
-pub use crate::sun::{LensFlare, LensFlareKey, SunPositionKey, SunTable};
+pub use crate::sun::{LensFlare, LensFlareKey, SunPosition, SunPositionKey, SunTable};
 pub use crate::thunderbolt::{
   Thunderbolt, ThunderboltCollection, ThunderboltKey, ThunderboltSettings, ThunderboltSettingsKey,
 };
-pub use crate::weather::{WeatherCycle, WeatherCycleKind, WeatherDescriptor, WeatherKey, WeatherKeyframe, WeatherTime};
+pub use crate::weather::{
+  WeatherCycle, WeatherCycleId, WeatherCycleKind, WeatherDescriptor, WeatherKey, WeatherKeyframe, WeatherTime,
+};
