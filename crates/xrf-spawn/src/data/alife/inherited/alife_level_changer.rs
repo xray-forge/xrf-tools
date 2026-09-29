@@ -17,7 +17,6 @@ pub struct AlifeLevelChanger {
   pub dest_level_vertex_id: u32,
   pub dest_position: Vector3d<f32>,
   pub dest_direction: Vector3d<f32>,
-  pub angle_y: f32,
   pub dest_level_name: String,
   pub dest_graph_point: String,
   pub silent_mode: u8,
@@ -35,7 +34,6 @@ impl ChunkReadWrite for AlifeLevelChanger {
       dest_level_vertex_id: reader.read_u32::<T>()?,
       dest_position: reader.read_xr::<T, _>()?,
       dest_direction: reader.read_xr::<T, _>()?,
-      angle_y: reader.read_f32::<T>()?,
       dest_level_name: reader.read_w1251_string()?,
       dest_graph_point: reader.read_w1251_string()?,
       silent_mode: reader.read_u8()?,
@@ -63,7 +61,6 @@ impl ChunkReadWrite for AlifeLevelChanger {
     writer.write_xr::<XRayByteOrder, _>(&self.dest_position)?;
     writer.write_xr::<XRayByteOrder, _>(&self.dest_direction)?;
 
-    writer.write_f32::<XRayByteOrder>(self.angle_y)?;
     writer.write_w1251_string(&self.dest_level_name)?;
     writer.write_w1251_string(&self.dest_graph_point)?;
     writer.write_u8(self.silent_mode)?;
@@ -93,7 +90,6 @@ impl LtxImportExport for AlifeLevelChanger {
       dest_level_vertex_id: read_ltx_field("level_changer.dest_level_vertex_id", section)?,
       dest_position: read_ltx_field("level_changer.dest_position", section)?,
       dest_direction: read_ltx_field("level_changer.dest_direction", section)?,
-      angle_y: read_ltx_field("level_changer.angle_y", section)?,
       dest_level_name: read_ltx_field("level_changer.dest_level_name", section)?,
       dest_graph_point: read_ltx_field("level_changer.dest_graph_point", section)?,
       silent_mode: read_ltx_field("level_changer.silent_mode", section)?,
@@ -119,7 +115,6 @@ impl LtxImportExport for AlifeLevelChanger {
       )
       .set("level_changer.dest_position", self.dest_position.to_string())
       .set("level_changer.dest_direction", self.dest_direction.to_string())
-      .set("level_changer.angle_y", self.angle_y.to_string())
       .set("level_changer.dest_level_name", &self.dest_level_name)
       .set("level_changer.dest_graph_point", &self.dest_graph_point)
       .set("level_changer.silent_mode", self.silent_mode.to_string())
@@ -185,7 +180,6 @@ mod tests {
       dest_level_vertex_id: 3312,
       dest_position: Vector3d::new(4.0, 3.0, 2.0),
       dest_direction: Vector3d::new(1.0, 2.0, 3.0),
-      angle_y: 35.0,
       dest_level_name: String::from("dest-level"),
       dest_graph_point: String::from("dest-graph-point"),
       silent_mode: 1,
@@ -196,16 +190,16 @@ mod tests {
 
     original.write::<XRayByteOrder>(&mut writer)?;
 
-    assert_eq!(writer.bytes_written(), 177);
+    assert_eq!(writer.bytes_written(), 173);
 
     let bytes_written: usize =
       writer.flush_chunk_into::<XRayByteOrder>(&mut overwrite_generated_test_resource_as_file(&filename)?, 0)?;
 
-    assert_eq!(bytes_written, 177);
+    assert_eq!(bytes_written, 173);
 
     let file: FileSlice = open_generated_test_resource_as_slice(&filename)?;
 
-    assert_eq!(file.bytes_remaining(), 177 + 8);
+    assert_eq!(file.bytes_remaining(), 173 + 8);
 
     let mut reader: ChunkReader = ChunkReader::from_slice(file)?.read_child_by_index(0)?;
     let read_object: AlifeLevelChanger = AlifeLevelChanger::read::<XRayByteOrder, _>(&mut reader)?;
@@ -247,7 +241,6 @@ mod tests {
       dest_level_vertex_id: 3312,
       dest_position: Vector3d::new(4.0, 3.0, 5.0),
       dest_direction: Vector3d::new(5.0, 2.0, 3.0),
-      angle_y: 35.0,
       dest_level_name: String::from("dest-level"),
       dest_graph_point: String::from("dest-graph-point"),
       silent_mode: 1,
@@ -296,7 +289,6 @@ mod tests {
       dest_level_vertex_id: 3312,
       dest_position: Vector3d::new(40.0, 30.0, 20.0),
       dest_direction: Vector3d::new(10.0, 20.0, 30.0),
-      angle_y: 350.0,
       dest_level_name: String::from("dest-level"),
       dest_graph_point: String::from("dest-graph-point"),
       silent_mode: 0,

@@ -39,7 +39,6 @@ mod tests {
 
   fn new_changer(dest_level_name: &str) -> AlifeLevelChanger {
     AlifeLevelChanger {
-      angle_y: 0.0,
       base: AlifeObjectSpaceRestrictor {
         base: AlifeObjectAbstract {
           custom_data: String::new(),

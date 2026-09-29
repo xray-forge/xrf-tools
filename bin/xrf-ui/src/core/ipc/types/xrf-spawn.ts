@@ -28,7 +28,6 @@ export type AlifeLevelChanger = {
   destLevelVertexId: number;
   destPosition: Vector3d;
   destDirection: Vector3d;
-  angleY: number | null;
   destLevelName: string;
   destGraphPoint: string;
   silentMode: number;
