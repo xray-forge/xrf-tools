@@ -1914,6 +1914,7 @@ export type LevelWeatherDescription = {
   /** The level's local overrides, `level.env_mod`; none where it has none. */
   modifiers: Array<EnvModifier>;
   rain: LevelRain;
+  wet: LevelWetSurfaces;
   /** Every sky the cycles and effects name, by reference, for a hand-set keyframe to be given. */
   skies: Array<LevelWeatherTexture>;
   /** Every clouds texture they name. */
@@ -1937,6 +1938,14 @@ export type LevelWeatherTexture = {
   texture: LevelTextureReference;
   /** How many keyframes of the cycles and effects name it. */
   uses: number;
+};
+
+/** What rain wets surfaces with, as `CBlender_rain` binds it: the splashes' volume and the streaks down walls. */
+export type LevelWetSurfaces = {
+  /** `s_water`, a volume of rippling normals, a slice a moment. */
+  splash: LevelTextureReference;
+  /** `s_waterFall`, the normals of water running down. */
+  flow: LevelTextureReference;
 };
 
 /** What the machine as a whole is using. */

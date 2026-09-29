@@ -17,6 +17,7 @@ use crate::plugins::levels::state::selection::level_weather_cycle::LevelWeatherC
 use crate::plugins::levels::state::selection::level_weather_description::LevelWeatherDescription;
 use crate::plugins::levels::state::selection::level_weather_source::LevelWeatherSource;
 use crate::plugins::levels::state::selection::level_weather_texture::LevelWeatherTexture;
+use crate::plugins::levels::state::selection::level_wet_surfaces::LevelWetSurfaces;
 use crate::plugins::levels::state::selection::selected_level::SelectedLevel;
 
 /// The game's environment configs as the open level's engine reads them, and which of its cycles the level plays.
@@ -74,6 +75,7 @@ impl LevelEnvironment {
       modifiers: Self::read_modifiers(current, probe),
       clouds: self.list_textures(&source, WeatherKey::CloudsTexture),
       rain: LevelRain::read(&source),
+      wet: LevelWetSurfaces::read(&source),
       skies: self.list_textures(&source, WeatherKey::SkyTexture),
       offered: offered
         .iter()

@@ -18,5 +18,6 @@ pub(crate) mod level_weather_description;
 pub(crate) mod level_weather_model;
 pub(crate) mod level_weather_source;
 pub(crate) mod level_weather_texture;
+pub(crate) mod level_wet_surfaces;
 pub(crate) mod selected_level;
 pub(crate) mod selected_level_description;

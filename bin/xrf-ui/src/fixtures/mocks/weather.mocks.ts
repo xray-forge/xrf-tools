@@ -108,6 +108,10 @@ export function mockLevelWeatherDescription(overrides: Partial<LevelWeatherDescr
     clouds: [{ texture: { logicalPath: "textures\\sky\\sky_oblaka.dds", reference: "sky\\sky_oblaka" }, uses: 2 }],
     sunTable: null,
     thunderbolts: { animators: [], bolts: [], collections: [], models: [], settings: null },
+    wet: {
+      flow: { logicalPath: "textures\\water\\water_flowing_nmap.dds", reference: "water\\water_flowing_nmap" },
+      splash: { logicalPath: "textures\\water\\water_sbumpvolume.dds", reference: "water\\water_SBumpVolume" },
+    },
     weather: { key: "default", level: "zaton", options: [{ cycle: "default_clear", graph: null, state: null }] },
     ...overrides,
   };
