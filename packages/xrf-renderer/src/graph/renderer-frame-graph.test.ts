@@ -54,7 +54,7 @@ function createGraph(): RendererFrameGraph {
   const scene: RendererScene = new RendererScene(uniforms, () => {});
   const overlays: RendererOverlays = new RendererOverlays(scene.skeletons, uniforms.lighting.sunDirection);
 
-  return new RendererFrameGraph(uniforms, overlays, scene.staticCull, scene.shadowCasters, scene.grass, scene.lights);
+  return new RendererFrameGraph({ overlays, scene, uniforms });
 }
 
 const WATERED: IRendererFeatureSettings = { ...PLAIN, water: { ...PLAIN.water, isDistorted: true, isEnabled: true } };
@@ -106,6 +106,7 @@ describe("RendererFrameGraph", () => {
     expect(graph.passNames.slice(graph.passNames.indexOf("water"))).toEqual([
       "water",
       "forward",
+      "rain",
       "distortion",
       "overlay",
       "present",

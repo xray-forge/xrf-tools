@@ -1,6 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
 
 import {
+  toLevelRendererRain,
   toLevelRendererWeather,
   toLevelRendererWeatherKeyframe,
   toLevelRendererWeatherModifier,
@@ -75,6 +76,30 @@ describe("toLevelRendererWeatherModifier", () => {
   });
 });
 
+describe("toLevelRendererRain", () => {
+  it("hands the renderer the splash's mesh as the model holds it, by texture reference", () => {
+    expect(
+      toLevelRendererRain({
+        drop: {
+          indices: [0, 1, 2],
+          positions: [0, null, 1, 1, 0, 0, 0, 0, 0],
+          texture: { logicalPath: null, reference: "fx_splash" },
+          uvs: [0, 0, 1, 0, 0, 1],
+        },
+        streak: { logicalPath: null, reference: "fx_rain" },
+      })
+    ).toEqual({
+      drop: {
+        indices: [0, 1, 2],
+        positions: [0, 0, 1, 1, 0, 0, 0, 0, 0],
+        texture: "fx_splash",
+        uvs: [0, 0, 1, 0, 0, 1],
+      },
+      streak: "fx_rain",
+    });
+  });
+});
+
 describe("toLevelRendererWeather", () => {
   it("hands the renderer every effect and where their textures are fetched from, each texture once", async () => {
     const weather = await toLevelRendererWeather({
@@ -96,8 +121,9 @@ describe("toLevelRendererWeather", () => {
 
     expect(Object.keys(weather.effects)).toEqual(["fx_blowout"]);
     expect(Object.keys(weather.textures).sort()).toEqual(
-      ["sky\\blowout", "sky\\sky_night", "sky\\sky_night#small", "sky\\sky_noon"].sort()
+      ["fx\\fx_rain", "sky\\blowout", "sky\\sky_night", "sky\\sky_night#small", "sky\\sky_noon"].sort()
     );
     expect(weather.modifiers).toEqual([]);
+    expect(weather.rain).toEqual({ drop: null, streak: "fx\\fx_rain" });
   });
 });

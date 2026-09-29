@@ -8,7 +8,12 @@ import { createStaticCullShader } from "#/scene/static/static-cull.tsl";
 import { StaticDepthPyramid } from "#/scene/static/static-depth-pyramid";
 import { IStaticPools } from "#/scene/static/static-pools";
 import { IStaticViewCullShader } from "#/scene/static/static-view-cull-shader";
-import { STATIC_LIGHT_VIEW_START, STATIC_SHADOW_VIEWS, StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
+import {
+  STATIC_LIGHT_VIEW_START,
+  STATIC_RAIN_VIEW,
+  STATIC_SHADOW_VIEWS,
+  StaticDrawBuffers,
+} from "#/uniforms/static-draw-buffers";
 import { TreeWindUniforms } from "#/uniforms/tree-wind-uniforms";
 import { CullView } from "#/visibility/cull-view";
 import { IShadowFrustum } from "#/visibility/shadow-frustum";
@@ -260,7 +265,8 @@ export class StaticCull {
    * @param frustums - The frustums in slot order, at most the number of reserved slots.
    */
   public cullViews(renderer: WebGPURenderer, firstView: number, frustums: ReadonlyArray<IShadowFrustum>): void {
-    if (firstView < 0 || firstView + frustums.length > this.shader.views.length) {
+    // The rain's cover is culled on its own, never in a batch.
+    if (firstView < 0 || firstView + frustums.length > Math.min(STATIC_RAIN_VIEW, this.shader.views.length)) {
       throw new RangeError("Shadow cull batch exceeds its view slots");
     }
 

@@ -1,5 +1,7 @@
 pub(crate) mod level_details_description;
 pub(crate) mod level_lights_description;
+pub(crate) mod level_rain;
+pub(crate) mod level_rain_drop;
 pub(crate) mod level_sky;
 pub(crate) mod level_spawn_model_description;
 pub(crate) mod level_spawn_models_description;

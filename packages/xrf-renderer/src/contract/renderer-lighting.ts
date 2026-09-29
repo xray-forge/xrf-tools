@@ -3,6 +3,7 @@ import { Nullable } from "@xrf/types";
 import { TRendererColor } from "#/contract/renderer-color";
 import { IRendererFog } from "#/contract/renderer-fog";
 import { IRendererGrassWind } from "#/contract/renderer-grass-wind";
+import { IRendererRainfall } from "#/contract/renderer-rainfall";
 import { IRendererSky } from "#/contract/renderer-sky";
 import { IRendererTreeWind } from "#/contract/renderer-tree-wind";
 import { TRendererVector } from "#/contract/renderer-vector";
@@ -31,4 +32,6 @@ export interface IRendererLighting {
   sky: IRendererSky;
   /** `water_intensity`: how bright the depth of soft water and its foam are, one by a clear day. */
   waterIntensity: number;
+  /** How hard it rains, or null for no rain. */
+  rain: Nullable<IRendererRainfall>;
 }

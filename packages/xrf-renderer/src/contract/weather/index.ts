@@ -1,3 +1,5 @@
+export * from "#/contract/weather/renderer-rain-drop";
+export * from "#/contract/weather/renderer-rain";
 export * from "#/contract/weather/renderer-sun-position";
 export * from "#/contract/weather/renderer-weather-control";
 export * from "#/contract/weather/renderer-weather-effect-report";

@@ -95,14 +95,7 @@ export class RendererHost {
     );
     this.weather = new WeatherPlayer(this.scene.textures);
     this.overlays = new RendererOverlays(this.scene.skeletons, this.uniforms.lighting.sunDirection);
-    this.graph = new RendererFrameGraph(
-      this.uniforms,
-      this.overlays,
-      this.scene.staticCull,
-      this.scene.shadowCasters,
-      this.scene.grass,
-      this.scene.lights
-    );
+    this.graph = new RendererFrameGraph({ overlays: this.overlays, scene: this.scene, uniforms: this.uniforms });
     this.captures = new RendererCaptures(
       this.graph.present,
       this.scene.textures,
@@ -136,6 +129,7 @@ export class RendererHost {
    */
   private takeWeather(weather: Nullable<IRendererWeather>): void {
     this.weather.take(weather);
+    this.scene.rain.take(weather?.rain ?? null);
 
     if (!weather) {
       this.light(this.lighting);
@@ -500,6 +494,7 @@ export class RendererHost {
     this.uniforms.grassWind.update(time);
     this.uniforms.water.update(time);
     this.uniforms.clouds.update(time);
+    this.uniforms.rain.update(time);
 
     // What the view sees, from the view unjittered, so the jitter never flickers a choice.
     this.cullView.take(viewCamera, this.uniforms.viewDistance);

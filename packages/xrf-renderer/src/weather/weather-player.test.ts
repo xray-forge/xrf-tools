@@ -36,6 +36,7 @@ const WEATHER: IRendererWeather = {
   engine: ERendererWeatherEngine.VANILLA,
   keyframes: KEYFRAMES,
   modifiers: [],
+  rain: null,
   sunTable: null,
   textures: Object.fromEntries(
     KEYFRAMES.flatMap((keyframe: IRendererWeatherKeyframe) => [
@@ -228,5 +229,33 @@ describe("WeatherPlayer", () => {
     expect(player.report?.modifiers).toBe(0);
     // A camera barely moved weighs nothing again.
     expect(player.advance(200, [20.1, 0, 0])).toBeNull();
+  });
+
+  it("rains as hard as the keyframes say where the weather draws rain, holding its textures while it plays", () => {
+    const { player, held } = createPlayer();
+    const rainy: IRendererWeather = {
+      ...WEATHER,
+      rain: { drop: null, streak: "fx\\fx_rain" },
+      textures: { ...WEATHER.textures, ["fx\\fx_rain"]: SOURCE },
+    };
+
+    player.take(rainy);
+    // Nine at night, where the fixture rains.
+    player.setControl({ ...PLAYING, isPaused: true, time: 21 * 3600 });
+
+    const lit: Nullable<IRendererLighting> = player.advance(0, ORIGIN);
+
+    expect(lit?.rain).toEqual({
+      color: KEYFRAMES[3].rainColor,
+      density: KEYFRAMES[3].rainDensity,
+      windDirection: KEYFRAMES[3].windDirection,
+      windVelocity: KEYFRAMES[3].windVelocity,
+    });
+    expect(held.has("@weather/fx\\fx_rain")).toBe(true);
+
+    // Noon is dry.
+    player.setControl({ ...PLAYING, isPaused: true, time: 12 * 3600 });
+
+    expect(player.advance(100, ORIGIN)?.rain).toBeNull();
   });
 });

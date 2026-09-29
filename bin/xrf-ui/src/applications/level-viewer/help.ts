@@ -18,7 +18,8 @@ export const LEVEL_VIEWER_HELP: IApplicationHelp = {
   ],
   limitations: [
     "The sun term the engine reads out of a lightmap and out of the vertex colour is not applied, so a surface facing away from the viewer's sun is lit only by the ambient standing in for the sky.",
-    "The weather plays its light, fog, sky, clouds and wind, its effects and the level's own `level.env_mod` overrides; rain, thunder and wet surfaces are not drawn yet, and neither its sounds nor its particles play.",
+    "The weather plays its light, fog, sky, clouds and wind, its effects, its rain and the level's own `level.env_mod` overrides; thunder and wet surfaces are not drawn yet, and neither its sounds nor its particles play.",
+    "Rain stops at what stands over it as the level's shadow casters see it from above, rather than at the collision form the game's drops are ray-picked against, so it lands on a surface whose shape the two draw differently.",
     "Grass casts no shadow, as the game draws it by default (`r2_sun_details` off), and a waving tuft picks its wave by its place where the game picks it at random.",
     "Only levels shipping `level.geom` are offered, since a level without it has no geometry to draw.",
   ],

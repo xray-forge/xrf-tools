@@ -1747,6 +1747,24 @@ export type LevelOpenRequest = {
   engine: XrayEngine;
 };
 
+/** What rain is drawn with, as `dxRainRender` loads it: the streak's texture and the splash's model. */
+export type LevelRain = {
+  streak: LevelTextureReference;
+  /** None where the model is not there or does not read, which draws no splashes. */
+  drop: LevelRainDrop | null;
+};
+
+/** The splash a raindrop leaves where it lands, `dm\rain.dm`: its mesh and the texture it draws with. */
+export type LevelRainDrop = {
+  texture: LevelTextureReference;
+  /** Three floats a vertex, in engine space. */
+  positions: Array<number | null>;
+  /** Two floats a vertex. */
+  uvs: Array<number | null>;
+  /** A triangle list. */
+  indices: Array<number>;
+};
+
 /** The sky cube a level is lit under while no weather plays, and its irradiance cube. */
 export type LevelSky = {
   texture: LevelTextureReference;
@@ -1861,6 +1879,7 @@ export type LevelWeatherDescription = {
   sunTable: Array<SunPosition> | null;
   /** The level's local overrides, `level.env_mod`; none where it has none. */
   modifiers: Array<EnvModifier>;
+  rain: LevelRain;
 };
 
 /** What the machine as a whole is using. */

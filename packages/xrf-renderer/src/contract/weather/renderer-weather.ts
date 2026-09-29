@@ -1,6 +1,7 @@
 import { Nullable } from "@xrf/types";
 
 import { ERendererTextureEncoding, TRendererTextureSource } from "#/contract/scene/renderer-texture-source";
+import { IRendererRain } from "#/contract/weather/renderer-rain";
 import { IRendererSunPosition } from "#/contract/weather/renderer-sun-position";
 import { ERendererWeatherEngine } from "#/contract/weather/renderer-weather-engine";
 import { IRendererWeatherKeyframe } from "#/contract/weather/renderer-weather-keyframe";
@@ -20,6 +21,8 @@ export interface IRendererWeather {
   effects: Readonly<Record<string, ReadonlyArray<IRendererWeatherKeyframe>>>;
   /** The level's `level.env_mod` volumes. */
   modifiers: ReadonlyArray<IRendererWeatherModifier>;
+  /** What its rain is drawn with, or null for a weather that draws none. */
+  rain: Nullable<IRendererRain>;
   /** Where each texture the keyframes name is fetched from, by reference; one left out is not drawn. */
   textures: Readonly<Record<string, Extract<TRendererTextureSource, { encoding: ERendererTextureEncoding.FETCH }>>>;
 }

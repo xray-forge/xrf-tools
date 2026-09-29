@@ -12,10 +12,9 @@ function toPass(name: string): IRendererPass {
 }
 
 const BASE: IBaseFramePasses = Object.fromEntries(
-  ["cull", "gbufferEarly", "gbuffer", "wallmarks", "sun", "combine", "forward", "overlay"].map((name: string) => [
-    name,
-    toPass(name),
-  ])
+  ["cull", "gbufferEarly", "gbuffer", "wallmarks", "rainCover", "sun", "combine", "forward", "rain", "overlay"].map(
+    (name: string) => [name, toPass(name)]
+  )
 ) as unknown as IBaseFramePasses;
 
 const OCCLUSION: IOcclusionFramePasses = {
@@ -53,9 +52,11 @@ describe("the frame's pass order", () => {
       "gbufferEarly",
       "gbuffer",
       "wallmarks",
+      "rainCover",
       "sun",
       "combine",
       "forward",
+      "rain",
       "overlay",
       "present",
     ]);
@@ -89,6 +90,7 @@ describe("the frame's pass order", () => {
       "shadow-0",
       "shadow-1",
       "light-shadows",
+      "rainCover",
       "sun",
       "lights",
       "ao",
@@ -96,6 +98,7 @@ describe("the frame's pass order", () => {
       "fsr2-opaque",
       "water",
       "forward",
+      "rain",
       "distortion",
       "fsr2",
       "rcas",
@@ -114,7 +117,7 @@ describe("the frame's pass order", () => {
     expect(toOrder({ smoothing: toPass("antialias") }).slice(-3)).toEqual(["overlay", "antialias", "present"]);
     expect(
       toOrder({ sharpen: toPass("rcas"), smoothing: toPass("antialias"), spatial: toPass("fsr1") }).slice(-6)
-    ).toEqual(["forward", "antialias", "fsr1", "rcas", "overlay", "present"]);
+    ).toEqual(["rain", "antialias", "fsr1", "rcas", "overlay", "present"]);
   });
 
   // The plain draws and the grass move with no version the culls see: in the depth, a cluster they hid while the

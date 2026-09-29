@@ -11,6 +11,7 @@ use xrf_vfs::XrayProbe;
 use crate::plugins::environment::catalog::{open_configs, read_catalog};
 use crate::plugins::environment::description::environment_cycle_entry::EnvironmentCycleEntry;
 use crate::plugins::levels::read::read_optional_file;
+use crate::plugins::levels::state::selection::level_rain::LevelRain;
 use crate::plugins::levels::state::selection::level_thunderbolts::LevelThunderbolts;
 use crate::plugins::levels::state::selection::level_weather_cycle::LevelWeatherCycle;
 use crate::plugins::levels::state::selection::level_weather_description::LevelWeatherDescription;
@@ -70,6 +71,7 @@ impl LevelEnvironment {
         .collect(),
       engine: catalog.engine,
       modifiers: Self::read_modifiers(current, probe),
+      rain: LevelRain::read(&source),
       offered: offered
         .iter()
         .map(|cycle| LevelWeatherCycle::of(cycle, &source))

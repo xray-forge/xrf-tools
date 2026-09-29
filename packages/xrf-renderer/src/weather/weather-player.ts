@@ -33,6 +33,9 @@ const DEFAULT_CONTROL: IRendererWeatherControl = {
 /** The longest real step the clock takes at once, so a view shown again after a while does not skip hours. */
 const LONGEST_STEP: number = 1000;
 
+/** `EPS_L`, under which it does not rain at all. */
+const RAIN_THRESHOLD: number = 0.001;
+
 /** Metres the view moves before the modifiers are weighed again. */
 const VIEW_STEP: number = 0.5;
 
@@ -174,7 +177,7 @@ export class WeatherPlayer {
       return null;
     }
 
-    this.textures.keep(WeatherPlayer.listNear(keyframes, this.mix));
+    this.textures.keep([...WeatherPlayer.listNear(keyframes, this.mix), ...WeatherPlayer.listRain(weather)]);
 
     return this.toLighting(keyframes, this.mix);
   }
@@ -241,12 +244,28 @@ export class WeatherPlayer {
         ? { amplitude: mix.treeAmplitude, rotation: mix.treeRotation, speed: mix.treeSpeed, wave: mix.treeWave }
         : null,
       waterIntensity: mix.waterIntensity,
+      rain:
+        this.weather?.rain && mix.rainDensity >= RAIN_THRESHOLD
+          ? {
+              color: mix.rainColor,
+              density: mix.rainDensity,
+              windDirection: mix.windDirection,
+              windVelocity: mix.windVelocity,
+            }
+          : null,
     };
   }
 
   /** The key a keyframe's clouds are put under, or null for a keyframe that names none. */
   private static toCloudsKey(keyframe: IRendererWeatherKeyframe): Nullable<string> {
     return keyframe.cloudsTexture ? WeatherTextures.toKey(keyframe.cloudsTexture) : null;
+  }
+
+  /** The rain's textures, held while its weather plays so a shower starting has them. */
+  private static listRain(weather: IRendererWeather): Array<string> {
+    const { rain } = weather;
+
+    return rain ? [rain.streak, ...(rain.drop ? [rain.drop.texture] : [])] : [];
   }
 
   /** The skies of the two keyframes mixed and of the one after, fetched before the clock reaches it. */

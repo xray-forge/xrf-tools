@@ -36,6 +36,7 @@ export * from "#/contract/renderer-pass-cost";
 export * from "#/contract/renderer-pass-timings";
 export * from "#/contract/renderer-pool-use";
 export * from "#/contract/renderer-preset";
+export * from "#/contract/renderer-rainfall";
 export * from "#/contract/renderer-render-scale";
 export * from "#/contract/renderer-report";
 export * from "#/contract/renderer-request";

@@ -33,6 +33,11 @@ export interface IWeatherMix {
   /** Normalised, the way sunlight travels, in engine space. */
   sunDirection: TRendererVector;
   waterIntensity: number;
+  rainDensity: number;
+  rainColor: TRendererColor;
+  windVelocity: number;
+  /** Radians. */
+  windDirection: number;
   treeAmplitude: number;
   treeSpeed: number;
   treeRotation: number;

@@ -31,6 +31,11 @@ pub struct WeatherMix {
   /// Normalised, the way sunlight travels, in engine space.
   pub sun_direction: [f32; 3],
   pub water_intensity: f32,
+  pub rain_density: f32,
+  pub rain_color: [f32; 3],
+  pub wind_velocity: f32,
+  /// Radians.
+  pub wind_direction: f32,
   pub tree_amplitude: f32,
   pub tree_speed: f32,
   pub tree_rotation: f32,

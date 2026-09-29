@@ -94,6 +94,10 @@ export function mockLevelWeatherDescription(overrides: Partial<LevelWeatherDescr
     engine: EXrayEngine.VANILLA,
     modifiers: [],
     offered: [mockLevelWeatherCycle()],
+    rain: {
+      drop: null,
+      streak: { logicalPath: "textures\\fx\\fx_rain.dds", reference: "fx\\fx_rain" },
+    },
     sunTable: null,
     thunderbolts: { collections: [], settings: null, thunderbolts: [] },
     weather: { key: "default", level: "zaton", options: [{ cycle: "default_clear", graph: null, state: null }] },

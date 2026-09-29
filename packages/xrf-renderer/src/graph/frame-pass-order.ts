@@ -38,6 +38,7 @@ export function toFramePassOrder(
     base.wallmarks,
     ...optional.shadows,
     ...some(optional.lightShadows),
+    base.rainCover,
     base.sun,
     ...some(optional.lights, optional.ambientOcclusion),
     base.combine,
@@ -45,6 +46,7 @@ export function toFramePassOrder(
     ...(resolve?.beforeBlended ?? []),
     ...some(optional.water),
     base.forward,
+    base.rain,
     // It moves what the water wrote, so it draws only where the water does.
     ...(optional.water ? some(optional.distortion) : []),
     ...some(resolve),

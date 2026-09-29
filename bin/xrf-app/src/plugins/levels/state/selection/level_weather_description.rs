@@ -4,6 +4,7 @@ use xrf_environment::{LevelWeather, SunPosition};
 use xrf_level::EnvModifier;
 
 use crate::plugins::environment::description::environment_cycle_entry::EnvironmentCycleEntry;
+use crate::plugins::levels::state::selection::level_rain::LevelRain;
 use crate::plugins::levels::state::selection::level_thunderbolts::LevelThunderbolts;
 use crate::plugins::levels::state::selection::level_weather_cycle::LevelWeatherCycle;
 
@@ -26,4 +27,5 @@ pub struct LevelWeatherDescription {
   pub sun_table: Option<Vec<SunPosition>>,
   /// The level's local overrides, `level.env_mod`; none where it has none.
   pub modifiers: Vec<EnvModifier>,
+  pub rain: LevelRain,
 }

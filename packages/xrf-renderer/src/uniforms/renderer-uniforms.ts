@@ -11,6 +11,7 @@ import { ExposureUniforms } from "#/uniforms/exposure-uniforms";
 import { GrassWindUniforms } from "#/uniforms/grass-wind-uniforms";
 import { createMaterialLutTexture } from "#/uniforms/material-lut-texture";
 import { MotionUniforms } from "#/uniforms/motion-uniforms";
+import { RainUniforms } from "#/uniforms/rain-uniforms";
 import { SettingsUniforms } from "#/uniforms/settings-uniforms";
 import { ShadowUniforms } from "#/uniforms/shadow-uniforms";
 import { SkyUniforms } from "#/uniforms/sky-uniforms";
@@ -48,6 +49,8 @@ export class RendererUniforms {
   public readonly sky: SkyUniforms = new SkyUniforms();
   /** The clouds the frame draws over the sky. */
   public readonly clouds: CloudUniforms = new CloudUniforms();
+  /** The rain the frame draws over its forward surfaces, and the cover over it. */
+  public readonly rain: RainUniforms = new RainUniforms();
   /** How the water moves. */
   public readonly water: WaterUniforms = new WaterUniforms();
   /** What the motion every G-buffer surface writes is measured with. */
@@ -90,6 +93,7 @@ export class RendererUniforms {
     this.water.take(lighting);
     this.sky.take(lighting.sky);
     this.clouds.take(lighting.sky.clouds);
+    this.rain.take(lighting.rain);
     this.farPlane = lighting.fog?.farPlane ?? null;
   }
 
@@ -103,5 +107,6 @@ export class RendererUniforms {
 
   public dispose(): void {
     this.lut.dispose();
+    this.rain.dispose();
   }
 }

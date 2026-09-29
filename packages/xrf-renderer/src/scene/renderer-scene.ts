@@ -24,6 +24,7 @@ import { SceneObject } from "#/scene/object/scene-object";
 import { SceneObjectResolver } from "#/scene/object/scene-object-resolver";
 import { ISceneObjectState, isStaticDraw } from "#/scene/object/scene-object-state";
 import { toPassRecord, TPassRecord } from "#/scene/pass-record";
+import { SceneRain } from "#/scene/rain/scene-rain";
 import { RendererSkeletons } from "#/scene/skeleton/renderer-skeletons";
 import { SceneSky } from "#/scene/sky/scene-sky";
 import { LayoutProxies } from "#/scene/staging/layout-proxies";
@@ -56,6 +57,8 @@ export class RendererScene {
   public readonly lights: SceneLights;
   /** The skies the lighting names, which the water reflects. */
   public readonly sky: SceneSky;
+  /** The rain's streaks and splashes, built for the weather that names them. */
+  public readonly rain: SceneRain;
 
   private readonly uniforms: RendererUniforms;
   private readonly geometries: Map<string, SceneGeometry> = new Map();
@@ -110,6 +113,7 @@ export class RendererScene {
     this.grass = new SceneGrass(this.textures, uniforms);
     this.lights = new SceneLights(this.textures, this.staticDraws.shadowChanges);
     this.sky = new SceneSky(this.textures, uniforms);
+    this.rain = new SceneRain(this.textures, uniforms.rain);
     this.skeletons = new RendererSkeletons((key: string, release: Nullable<() => void>) =>
       this.replace(this.skeletonUsers.get(key), release)
     );
@@ -386,6 +390,7 @@ export class RendererScene {
     this.grass.dispose();
     this.lights.dispose();
     this.sky.dispose();
+    this.rain.dispose();
     this.objects.forEach((entry: SceneObject) => entry.dispose());
     this.objects.clear();
     this.changes.dispose();

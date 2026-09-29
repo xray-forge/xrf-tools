@@ -16,6 +16,7 @@ import { IFramePlan, toFramePlan } from "#/graph/frame-plan";
 import { IFramePlanShadows } from "#/graph/frame-plan-shadows";
 import { FrameStage } from "#/graph/frame-stage";
 import { createOcclusionFramePasses, IOcclusionFramePasses } from "#/graph/occlusion-frame-passes";
+import { IRendererFrameGraphInput } from "#/graph/renderer-frame-graph-input";
 import { AmbientOcclusionPass } from "#/pass/ambient-occlusion-pass";
 import { AntialiasPass } from "#/pass/antialias/antialias-pass";
 import { ExposurePass } from "#/pass/exposure-pass";
@@ -41,7 +42,6 @@ import { IRendererFrameJitter } from "#/sampling/renderer-frame-jitter";
 import { IRendererFrameSize, isSameRendererFrameSize, toRendererFrameSize } from "#/sampling/renderer-frame-size";
 import { SceneGrass } from "#/scene/grass/scene-grass";
 import { SceneLights } from "#/scene/lights/scene-lights";
-import { RendererOverlays } from "#/scene/overlay/renderer-overlays";
 import { StaticCull } from "#/scene/static/static-cull";
 import { IStaticShadowCasters } from "#/scene/static/static-shadow-casters";
 import { RendererPassInspector } from "#/timing/renderer-pass-inspector";
@@ -120,28 +120,26 @@ export class RendererFrameGraph implements ICompilingFrame {
   private readonly sized: WeakMap<object, IFrameSizing> = new WeakMap();
 
   /**
-   * @param uniforms - What the frame's shaders read.
-   * @param overlays - The helpers drawn last.
-   * @param cull - What culls the static draws.
-   * @param casters - What each shadow cascade draws.
-   * @param grass - The level's grass, which the grass pass plants and draws.
-   * @param lights - The local lights, which the lights pass bins and accumulates.
+   * @param input - What the frame is drawn from.
    */
-  public constructor(
-    uniforms: RendererUniforms,
-    overlays: RendererOverlays,
-    cull: StaticCull,
-    casters: IStaticShadowCasters,
-    grass: SceneGrass,
-    lights: SceneLights
-  ) {
+  public constructor(input: IRendererFrameGraphInput) {
+    const { uniforms, overlays, scene } = input;
+    const cull: StaticCull = scene.staticCull;
+
     this.uniforms = uniforms;
     this.cull = cull;
-    this.casters = casters;
-    this.grass = grass;
-    this.lights = lights;
+    this.casters = scene.shadowCasters;
+    this.grass = scene.grass;
+    this.lights = scene.lights;
     this.present = new PresentPass(this.targets, uniforms.camera);
-    this.base = createBaseFramePasses(this.targets, uniforms, overlays, cull);
+    this.base = createBaseFramePasses({
+      casters: scene.shadowCasters,
+      cull,
+      overlays,
+      rain: scene.rain,
+      targets: this.targets,
+      uniforms,
+    });
     // In the frame from the first, so everything the scene ever draws is compiled for them.
     Object.values(this.base)
       .filter(isRendererScenePass)
@@ -164,6 +162,7 @@ export class RendererFrameGraph implements ICompilingFrame {
     return {
       grass: this.targets.gbuffer,
       joining: this.joining,
+      rain: this.targets.composite,
       passes: this.scenePasses,
       shadow: { camera: this.uniforms.shadows.cascades[0].camera, target: this.targets.shadows[0] },
     };

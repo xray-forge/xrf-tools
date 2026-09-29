@@ -9,6 +9,7 @@ import { RendererSceneCompiler } from "#/host/renderer-scene-compiler";
 import { IRendererScenePass } from "#/pass/renderer-scene-pass";
 import { ISceneGrassStaging } from "#/scene/grass/scene-grass-staging";
 import { toPassRecord } from "#/scene/pass-record";
+import { ISceneRainStaging } from "#/scene/rain/scene-rain-staging";
 import { RendererScene } from "#/scene/renderer-scene";
 import { ISceneStaging } from "#/scene/staging/scene-staging";
 
@@ -68,6 +69,7 @@ interface IFakeScene {
   drawn: Nullable<ISceneStaging>;
   commit: jest.Mock<TCommit>;
   grass: Nullable<ISceneGrassStaging>;
+  rain: Nullable<ISceneRainStaging>;
 }
 
 function createStaging(): ISceneStaging {
@@ -87,6 +89,7 @@ function createScene(grass: Nullable<ISceneGrassStaging> = null): IFakeScene {
     }),
     drawn: null,
     grass,
+    rain: null,
     scene: null as unknown as RendererScene,
     staging: createStaging(),
   };
@@ -99,6 +102,15 @@ function createScene(grass: Nullable<ISceneGrassStaging> = null): IFakeScene {
         const taken: Nullable<ISceneGrassStaging> = fake.grass;
 
         fake.grass = null;
+
+        return taken;
+      },
+    },
+    rain: {
+      takeStaged: (): Nullable<ISceneRainStaging> => {
+        const taken: Nullable<ISceneRainStaging> = fake.rain;
+
+        fake.rain = null;
 
         return taken;
       },
@@ -125,6 +137,7 @@ function createTargets(): IFrameCompileTargets {
   return {
     grass: new RenderTarget(),
     joining: [],
+    rain: new RenderTarget(),
     passes: [toPass(ERendererPass.DEFERRED), toPass(ERendererPass.FORWARD), toPass(ERendererPass.WATER)],
     shadow: { camera: new PerspectiveCamera(), target: new RenderTarget() },
   };
@@ -265,6 +278,25 @@ describe("RendererSceneCompiler", () => {
 
     expect(fake.calls).toHaveLength(2);
     expect(fake.calls[1].target).toBe(targets.passes[0].target);
+  });
+
+  // Drawn on its first frame, the rain would build its pipelines there as the first shower starts.
+  it("compiles a rain build as a batch of its own, against where the rain draws, before the scene's", async () => {
+    const fake: IFakeRenderer = createRenderer();
+    const rain: ISceneRainStaging = { abandon: jest.fn(), commit: jest.fn(), scene: new Scene() };
+    const fakeScene: IFakeScene = createScene();
+    const { frame, targets }: IFakeFrame = createFrame();
+    const compiler: RendererSceneCompiler = new RendererSceneCompiler();
+
+    fakeScene.rain = rain;
+    compiler.compile(fake.renderer, fakeScene.scene, frame, new PerspectiveCamera());
+
+    expect(fake.calls.map((call: ICompileCall) => [call.scene, call.target])).toEqual([[rain.scene, targets.rain]]);
+
+    await finishAll(fake);
+
+    expect(rain.commit).toHaveBeenCalledTimes(1);
+    expect(fakeScene.commit).not.toHaveBeenCalled();
   });
 
   // Drawn on its first frame, the water's surfaces would build their pipelines there, freezing the whole window.

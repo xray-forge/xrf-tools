@@ -1,6 +1,7 @@
 import {
   ERendererTextureEncoding,
   ERendererWeatherEngine,
+  IRendererRain,
   IRendererWeather,
   IRendererWeatherKeyframe,
   IRendererWeatherModifier,
@@ -8,7 +9,7 @@ import {
 } from "@xrf/renderer";
 import { Nullable } from "@xrf/types";
 
-import { LevelTextureReference, LevelWeatherCycle, LevelWeatherDescription } from "@/core/ipc/types/xrf-app";
+import { LevelRain, LevelTextureReference, LevelWeatherCycle, LevelWeatherDescription } from "@/core/ipc/types/xrf-app";
 import { EXrayEngine } from "@/core/ipc/types/xrf-engine-target";
 import { SunPosition, WeatherDescriptor } from "@/core/ipc/types/xrf-environment";
 import { EnvModifier } from "@/core/ipc/types/xrf-level";
@@ -39,8 +40,11 @@ export async function toLevelRendererWeather(input: ILevelRendererWeatherInput):
   const { description, cycle, roots } = input;
   const located: Array<LevelTextureReference & { logicalPath: string }> = [
     ...new Map(
-      [cycle, ...description.effects]
-        .flatMap((it: LevelWeatherCycle) => it.textures)
+      [
+        ...[cycle, ...description.effects].flatMap((it: LevelWeatherCycle) => it.textures),
+        description.rain.streak,
+        ...(description.rain.drop ? [description.rain.drop.texture] : []),
+      ]
         .filter(
           (it: LevelTextureReference): it is LevelTextureReference & { logicalPath: string } => it.logicalPath !== null
         )
@@ -62,6 +66,7 @@ export async function toLevelRendererWeather(input: ILevelRendererWeatherInput):
     ),
     keyframes: cycle.keyframes.map(toLevelRendererWeatherKeyframe),
     modifiers: description.modifiers.map(toLevelRendererWeatherModifier),
+    rain: toLevelRendererRain(description.rain),
     sunTable:
       description.sunTable?.map((position: SunPosition) => ({
         altitude: position.altitude ?? 0,
@@ -113,7 +118,31 @@ export function toLevelRendererWeatherKeyframe(keyframe: WeatherDescriptor): IRe
     treeRotation: keyframe.treeRotation ?? 0,
     treeSpeed: keyframe.treeSpeed ?? 0,
     treeWave: toTriple(keyframe.treeWave),
+    rainColor: toTriple(keyframe.rainColor),
+    rainDensity: keyframe.rainDensity ?? 0,
     waterIntensity: keyframe.waterIntensity ?? 0,
+    windDirection: keyframe.windDirection ?? 0,
+    windVelocity: keyframe.windVelocity ?? 0,
+  };
+}
+
+/**
+ * @param rain - What the level's rain is drawn with.
+ * @returns The same for the renderer, by texture reference, the splash's mesh as it is.
+ */
+export function toLevelRendererRain(rain: LevelRain): IRendererRain {
+  const { drop } = rain;
+
+  return {
+    drop: drop
+      ? {
+          indices: drop.indices,
+          positions: drop.positions.map((it: Nullable<number>) => it ?? 0),
+          texture: drop.texture.reference,
+          uvs: drop.uvs.map((it: Nullable<number>) => it ?? 0),
+        }
+      : null,
+    streak: rain.streak.reference,
   };
 }
 

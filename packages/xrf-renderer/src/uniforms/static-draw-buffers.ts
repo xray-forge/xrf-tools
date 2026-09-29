@@ -37,9 +37,13 @@ export const STATIC_SLOT_WORDS: number = 8;
 
 /**
  * Shadow views a static draw is culled for besides the camera's: each sun cascade, then a reusable slot for each
- * local-light face scheduled in one frame. The slots are bounded by the execution budget, not the resident lights.
+ * local-light face scheduled in one frame, then the rain's cover from above. The slots are bounded by the execution
+ * budget, not the resident lights.
  */
-export const STATIC_SHADOW_VIEWS: number = RENDERER_MAX_SHADOW_CASCADES + LIGHT_SHADOW_FACE_BUDGET;
+export const STATIC_SHADOW_VIEWS: number = RENDERER_MAX_SHADOW_CASCADES + LIGHT_SHADOW_FACE_BUDGET + 1;
+
+/** The view the rain's cover is drawn from: its casters seen from above. */
+export const STATIC_RAIN_VIEW: number = RENDERER_MAX_SHADOW_CASCADES + LIGHT_SHADOW_FACE_BUDGET;
 
 /** The first local-light face slot, after the sun cascades. A batch uses consecutive slots from here. */
 export const STATIC_LIGHT_VIEW_START: number = RENDERER_MAX_SHADOW_CASCADES;

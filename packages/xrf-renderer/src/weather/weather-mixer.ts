@@ -137,6 +137,10 @@ export function mixWeather(mixer: IWeatherMixer, point: IWeatherMixPoint): Nulla
     treeSpeed: scalar(a.treeSpeed, b.treeSpeed),
     treeWave: vector(a.treeWave, b.treeWave),
     waterIntensity: scalar(a.waterIntensity, b.waterIntensity),
+    rainColor: vector(a.rainColor, b.rainColor),
+    rainDensity: scalar(a.rainDensity, b.rainDensity),
+    windDirection: scalar(a.windDirection, b.windDirection),
+    windVelocity: scalar(a.windVelocity, b.windVelocity),
     weight: f,
   };
 }

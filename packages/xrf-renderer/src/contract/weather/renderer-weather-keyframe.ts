@@ -34,6 +34,12 @@ export interface IRendererWeatherKeyframe {
   /** Radians, what the astronomical sun is turned by. */
   sunAzimuth: number;
   waterIntensity: number;
+  /** Clamped to a unit. */
+  rainDensity: number;
+  rainColor: TRendererColor;
+  windVelocity: number;
+  /** Radians. */
+  windDirection: number;
   treeAmplitude: number;
   treeSpeed: number;
   treeRotation: number;

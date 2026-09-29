@@ -66,6 +66,10 @@ fn vanilla_day() -> String {
         ("sun_altitude", "-150"),
         ("sun_longitude", "-3"),
         ("sky_rotation", "300"),
+        ("rain_density", "0.6"),
+        ("rain_color", "0.4, 0.45, 0.5"),
+        ("wind_velocity", "12"),
+        ("wind_direction", "45"),
       ],
     ),
   ]

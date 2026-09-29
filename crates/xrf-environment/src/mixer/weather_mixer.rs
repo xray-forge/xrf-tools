@@ -133,6 +133,10 @@ impl WeatherMixer<'_> {
       tree_speed: scalar(a.tree_speed, b.tree_speed),
       tree_wave: to_array(&vector(&a.tree_wave, &b.tree_wave)),
       water_intensity: scalar(a.water_intensity, b.water_intensity),
+      rain_color: to_array(&vector(&a.rain_color, &b.rain_color)),
+      rain_density: scalar(a.rain_density, b.rain_density),
+      wind_direction: scalar(a.wind_direction, b.wind_direction),
+      wind_velocity: scalar(a.wind_velocity, b.wind_velocity),
       weight: f,
     })
   }

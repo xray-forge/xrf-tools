@@ -55,7 +55,12 @@ describe("LevelWeatherService", () => {
     expect(weather?.keyframes.map((keyframe) => keyframe.time)).toEqual([0, LEVEL_WEATHER_NOON]);
     expect(weather?.sunTable).toEqual([{ altitude: 15, longitude: 0 }]);
     // The noon irradiance cube resolved to nothing, so it is left out.
-    expect(Object.keys(weather?.textures ?? {})).toEqual(["sky\\sky_night", "sky\\sky_night#small", "sky\\sky_noon"]);
+    expect(Object.keys(weather?.textures ?? {})).toEqual([
+      "sky\\sky_night",
+      "sky\\sky_night#small",
+      "sky\\sky_noon",
+      "fx\\fx_rain",
+    ]);
     expect(weather?.textures["sky\\sky_noon"]?.encoding).toBe(ERendererTextureEncoding.FETCH);
     expect(service.failure).toBeNull();
   });
