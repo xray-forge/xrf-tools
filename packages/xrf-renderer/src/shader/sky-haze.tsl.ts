@@ -66,5 +66,5 @@ function sample(direction: Node<"vec3">, uniforms: ISkyWithCloudsUniforms): Node
     vec3(direction.x, max(direction.y, length(direction.xz).mul(HAZE_TOP)), direction.z)
   );
 
-  return toSkyWithClouds(lifted, toSkyColor(lifted, uniforms.sky, uniforms.scale), uniforms);
+  return toSkyWithClouds(lifted, toSkyColor(lifted, uniforms), uniforms);
 }

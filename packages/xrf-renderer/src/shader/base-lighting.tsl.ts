@@ -18,6 +18,7 @@ import {
 import { Node } from "three/webgpu";
 
 import { IBaseShadingPoint } from "#/shader/base-shading-point";
+import { isExtendedEngine } from "#/shader/engine-value.tsl";
 import { toSkyEnvironment } from "#/shader/sky.tsl";
 import { toToneMapped } from "#/shader/tonemap.tsl";
 import { RendererUniforms } from "#/uniforms/renderer-uniforms";
@@ -139,7 +140,7 @@ function toBaseColor(
     .mul(hemisphere.x)
     .add(lighting.ambient)
     .mul(ambientOcclusion);
-  const isExtended: Node<"bool"> = lighting.extendedShading.greaterThan(0.5);
+  const isExtended: Node<"bool"> = isExtendedEngine(uniforms.engine);
   // Anomaly's `hmodel` reads the reflection on the cube's faces, remapped short of the top one, and weighs it by the
   // rain: none while dry, a sheen as it pours, brightest where the hemisphere lights least.
   const onFaces: Node<"vec3"> = reflected.div(max(max(abs(reflected.x), abs(reflected.y)), abs(reflected.z)));

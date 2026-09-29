@@ -17,16 +17,14 @@ import { markRendererTextureNew } from "#/texture/renderer-texture-version";
 import { SlotTextureNode } from "#/texture/slot-texture-node";
 
 /**
- * What `rain_patch_normal` reads: how hard it rains, the time the ripples run by, the engine it is drawn as, and the
- * two textures it wets surfaces with.
+ * What `rain_patch_normal` reads: how hard it rains, the time the ripples run by, and the two textures it wets surfaces
+ * with.
  */
 export class WetUniforms {
   /** `RainDensity.x`. */
   public readonly density: UniformNode<"float", number> = uniform(0).setGroup(renderGroup);
   /** `timers.x`: seconds the renderer has been running. */
   public readonly time: UniformNode<"float", number> = uniform(0).setGroup(renderGroup);
-  /** One on the extended engine, whose shaders reach farther, tilt the ripples and brighten what the rain dries. */
-  public readonly extended: UniformNode<"float", number> = uniform(0).setGroup(renderGroup);
   /** `s_water`: nothing rippling until the volume is decoded. */
   public readonly splash: Texture3DNode = texture3D(createNeutralVolume());
   /** `s_waterFall`: flat until its file is up. */
@@ -37,13 +35,6 @@ export class WetUniforms {
    */
   public take(rain: Nullable<IRendererRainfall>): void {
     this.density.value = rain ? Math.min(Math.max(rain.density, 0), 1) : 0;
-  }
-
-  /**
-   * @param isExtended - Whether the weather is drawn as the extended engine draws it.
-   */
-  public setExtended(isExtended: boolean): void {
-    this.extended.value = isExtended ? 1 : 0;
   }
 
   /**

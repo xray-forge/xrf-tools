@@ -22,6 +22,7 @@ import { toOutputDither } from "#/shader/dither.tsl";
 import { IGBufferSample } from "#/shader/gbuffer-sample";
 import { IGBufferTextures } from "#/shader/gbuffer-textures";
 import { readGBuffer } from "#/shader/gbuffer.tsl";
+import { ISkyWithCloudsUniforms } from "#/shader/sky-with-clouds-uniforms";
 import { toSkyColor, toSkyHaze } from "#/shader/sky.tsl";
 import { toToneMapped, toUntoneMapped } from "#/shader/tonemap.tsl";
 import { RendererUniforms } from "#/uniforms/renderer-uniforms";
@@ -69,11 +70,13 @@ export function toCombinePassFragment(
 
     const toPixel: Node<"vec3"> = getViewPosition(screenUV, float(0.5), uniforms.camera.projectionInverse);
     const direction: Node<"vec3"> = normalize(uniforms.camera.viewToWorld.mul(vec4(toPixel, 0)).xyz);
-    const sky: Node<"vec3"> = toSkyWithClouds(direction, toSkyColor(direction, uniforms.sky, uniforms.exposure.scale), {
+    const skies: ISkyWithCloudsUniforms = {
       clouds: uniforms.clouds,
+      engine: uniforms.engine,
       scale: uniforms.exposure.scale,
       sky: uniforms.sky,
-    });
+    };
+    const sky: Node<"vec3"> = toSkyWithClouds(direction, toSkyColor(direction, skies), skies);
     const fog: Node<"float"> = toFogAmount(sample.point.position, uniforms);
     // The engine fogs towards `fog_color`, then fades into the sky itself by the fog squared.
     const faded: Node<"vec3"> = select(isSkyDrawn, mix(lit, sky, fog.mul(fog)), lit).toVar();

@@ -1,13 +1,13 @@
 import { Nullable } from "@xrf/types";
 import { Data3DTexture, PerspectiveCamera, WebGPURenderer } from "three/webgpu";
 
-import { ERendererEngine } from "#/contract/renderer-engine";
 import { IRendererLighting } from "#/contract/renderer-lighting";
 import { IRendererSettings } from "#/contract/renderer-settings";
 import { toBaseLightingConstants } from "#/lighting/base-lighting";
 import { BaseLightingUniforms } from "#/uniforms/base-lighting-uniforms";
 import { CameraUniforms } from "#/uniforms/camera-uniforms";
 import { CloudUniforms } from "#/uniforms/cloud-uniforms";
+import { EngineUniforms } from "#/uniforms/engine-uniforms";
 import { ExposureUniforms } from "#/uniforms/exposure-uniforms";
 import { GrassWindUniforms } from "#/uniforms/grass-wind-uniforms";
 import { createMaterialLutTexture } from "#/uniforms/material-lut-texture";
@@ -49,6 +49,8 @@ export class RendererUniforms {
   /** How the grass sways, built each frame beside the trees' wind. */
   public readonly grassWind: GrassWindUniforms = new GrassWindUniforms();
   /** The sky the frame draws behind the scene and the water reflects. */
+  /** The engine the scene is drawn as, which the sky, the surfaces and the wet surfaces are drawn by. */
+  public readonly engine: EngineUniforms = new EngineUniforms();
   public readonly sky: SkyUniforms = new SkyUniforms();
   /** The clouds the frame draws over the sky. */
   public readonly clouds: CloudUniforms = new CloudUniforms();
@@ -99,13 +101,12 @@ export class RendererUniforms {
     this.treeWind.take(lighting.trees);
     this.grassWind.take(lighting.grass);
     this.water.take(lighting);
+    this.engine.take(lighting.engine);
     this.sky.take(lighting.sky);
-    this.sky.setCurved(lighting.engine === ERendererEngine.EXTENDED);
     this.clouds.take(lighting.sky.clouds);
     this.rain.take(lighting.rain);
     this.thunder.take(lighting.thunderbolt);
     this.wet.take(lighting.rain);
-    this.wet.setExtended(lighting.engine === ERendererEngine.EXTENDED);
     this.farPlane = lighting.fog?.farPlane ?? null;
   }
 

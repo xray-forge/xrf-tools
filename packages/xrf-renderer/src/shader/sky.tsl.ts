@@ -17,6 +17,8 @@ import {
 } from "three/tsl";
 import { Node } from "three/webgpu";
 
+import { isExtendedEngine } from "#/shader/engine-value.tsl";
+import { ISkyWithCloudsUniforms } from "#/shader/sky-with-clouds-uniforms";
 import { toToneMapped } from "#/shader/tonemap.tsl";
 import { SkyUniforms } from "#/uniforms/sky-uniforms";
 
@@ -164,11 +166,11 @@ function toRimHaze(box: Node<"vec3">, sky: SkyUniforms): Node<"vec3"> {
  * without the tonemap's curve as vanilla's `sky2.ps` writes it, or through it as Anomaly's does.
  *
  * @param direction - A direction in renderer space.
- * @param sky - The sky's uniforms.
- * @param scale - What the tonemap multiplies by.
+ * @param uniforms - The sky's uniforms, the engine it is drawn as, and what the tonemap multiplies by.
  * @returns The sky's colour as the frame shows it.
  */
-export function toSkyColor(direction: Node<"vec3">, sky: SkyUniforms, scale: Node<"float">): Node<"vec3"> {
+export function toSkyColor(direction: Node<"vec3">, uniforms: ISkyWithCloudsUniforms): Node<"vec3"> {
+  const { sky, scale } = uniforms;
   const box: Node<"vec3"> = toBoxDirection(direction, sky.rotation);
   const height: Node<"float"> = box.y.div(max(abs(box.x), abs(box.z)));
   const color: Node<"vec3"> = toBlendedCubes(toCubeLookup(toBoxLookup(box)), sky).toVar();
@@ -182,7 +184,7 @@ export function toSkyColor(direction: Node<"vec3">, sky: SkyUniforms, scale: Nod
   const lit: Node<"vec3"> = color.mul(sky.color);
 
   return select(
-    sky.curved.greaterThan(0.5),
+    isExtendedEngine(uniforms.engine),
     toToneMapped(lit.mul(CURVED_SKY_FACTOR), scale),
     lit.mul(scale.mul(SKY_FACTOR))
   );

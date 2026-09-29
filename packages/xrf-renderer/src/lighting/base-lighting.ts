@@ -1,7 +1,6 @@
 import { EPS } from "@xrf/math";
 
 import { TRendererColor } from "#/contract/renderer-color";
-import { ERendererEngine } from "#/contract/renderer-engine";
 import { IRendererLighting } from "#/contract/renderer-lighting";
 import { TRendererVector } from "#/contract/renderer-vector";
 import { IBaseLightingConstants } from "#/lighting/base-lighting-constants";
@@ -30,7 +29,6 @@ export function toBaseLightingConstants(lighting: IRendererLighting): IBaseLight
     fogOffset,
     fogScale,
     isFogged: lighting.fog !== null,
-    isExtendedShading: lighting.engine === ERendererEngine.EXTENDED,
     rainDensity: lighting.rain?.density ?? 0,
     skyIrradiance: lighting.skyIrradiance,
     sunColor: lighting.sunColor,

@@ -44,7 +44,12 @@ export class WetPass implements IRendererPass {
     this.patched.texture.minFilter = this.patched.texture.magFilter = NearestFilter;
 
     const gloss: NodeMaterial = createQuadMaterial(
-      toWetGlossFragment(this.patched.texture, targets.depth, uniforms.wet)
+      toWetGlossFragment({
+        depth: targets.depth,
+        engine: uniforms.engine,
+        patched: this.patched.texture,
+        wet: uniforms.wet,
+      })
     );
 
     // `blend(zero, srccolor)` on colour and `(one, one)` on alpha: the albedo multiplied, the gloss added.
@@ -55,7 +60,13 @@ export class WetPass implements IRendererPass {
     gloss.blendDstAlpha = OneFactor;
     this.materials = [
       createQuadMaterial(
-        toWetPatchFragment({ camera: uniforms.camera, rain: uniforms.rain, textures: targets, wet: uniforms.wet })
+        toWetPatchFragment({
+          camera: uniforms.camera,
+          engine: uniforms.engine,
+          rain: uniforms.rain,
+          textures: targets,
+          wet: uniforms.wet,
+        })
       ),
       createQuadMaterial(toWetNormalFragment(this.patched.texture, targets.depth)),
       gloss,

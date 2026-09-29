@@ -1,6 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { ERendererEngine } from "#/contract/renderer-engine";
 import { IRendererLighting } from "#/contract/renderer-lighting";
 import { toBaseLightingConstants, toSunSpecular } from "#/lighting/base-lighting";
 import { IBaseLightingConstants } from "#/lighting/base-lighting-constants";
@@ -19,19 +18,11 @@ describe("toSunSpecular", () => {
 
 describe("toBaseLightingConstants", () => {
   // Anomaly's `hmodel` weighs the hemisphere's reflection by `rain_params.x`, nought while it is dry.
-  it("carries whether the hemisphere's reflection follows the rain, and how hard it rains", () => {
+  it("carries how hard it rains", () => {
     const rain = { color: [0.5, 0.5, 0.5] as const, density: 0.7, windDirection: 0, windVelocity: 0 };
 
-    expect(
-      toBaseLightingConstants({ ...DEFAULT_RENDERER_LIGHTING, engine: ERendererEngine.EXTENDED, rain })
-    ).toMatchObject({
-      isExtendedShading: true,
-      rainDensity: 0.7,
-    });
-    expect(toBaseLightingConstants(DEFAULT_RENDERER_LIGHTING)).toMatchObject({
-      isExtendedShading: false,
-      rainDensity: 0,
-    });
+    expect(toBaseLightingConstants({ ...DEFAULT_RENDERER_LIGHTING, rain })).toMatchObject({ rainDensity: 0.7 });
+    expect(toBaseLightingConstants(DEFAULT_RENDERER_LIGHTING)).toMatchObject({ rainDensity: 0 });
   });
 
   it("ramps the fog from 85% of the clear fraction to 99% of the distance", () => {
