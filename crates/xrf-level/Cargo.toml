@@ -21,7 +21,7 @@ xrf-utils = { workspace = true }
 
 [features]
 # Emits TypeScript mirrors of the serialized types. Nothing in a normal build turns this on.
-typescript-bindings = ["specta"]
+typescript-bindings = ["specta", "xrf-math/typescript-bindings"]
 
 [dev-dependencies]
 xrf-test-utils = { workspace = true }

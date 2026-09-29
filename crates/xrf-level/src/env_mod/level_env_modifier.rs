@@ -15,6 +15,7 @@ pub const ENV_MOD_PARAMETERS: [(u16, &str); 6] = [
 ];
 
 /// One local override of the level's weather, `CEnvModifier` (`xrEngine/Environment_misc.cpp`).
+#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct EnvModifier {

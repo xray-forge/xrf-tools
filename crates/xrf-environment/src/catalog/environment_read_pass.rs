@@ -145,12 +145,33 @@ impl<'a> EnvironmentReadPass<'a> {
     Ok(catalog)
   }
 
-  /// Every cycle or effect in its directory, a config the dialect attaches to another left out.
-  fn read_cycles(&mut self, kind: WeatherCycleKind) -> XrfResult<Vec<WeatherCycle>> {
-    let (directory, subject) = match kind {
+  /// One cycle or effect by name, and what its own config says about it; none where there is no such config.
+  pub fn run_cycle(mut self, kind: WeatherCycleKind, name: &str) -> XrfResult<Option<(WeatherCycle, Vec<EnvironmentFinding>)>> {
+    let (directory, subject) = Self::directory_of(kind);
+    let path: XrayLogicalPath = self.project.config_path(directory)?.join(&format!("{name}.ltx"))?;
+    let Some(config) = self.open(&path)? else {
+      return Ok(None);
+    };
+    let mut reader: EnvironmentSectionReader =
+      EnvironmentSectionReader::new(self.engine, subject, &config.file, config.get_provenance(), &mut self.findings);
+    let cycle: WeatherCycle = WeatherCycle::read(&mut reader, name, kind, config.get_ltx());
+
+    self.findings.sort();
+
+    Ok(Some((cycle, self.findings)))
+  }
+
+  /// Where a kind of cycle is kept, and how messages name one.
+  fn directory_of(kind: WeatherCycleKind) -> (&'static str, &'static str) {
+    match kind {
       WeatherCycleKind::Cycle => (Self::WEATHERS, "Weather"),
       WeatherCycleKind::Effect => (Self::WEATHER_EFFECTS, "Weather effect"),
-    };
+    }
+  }
+
+  /// Every cycle or effect in its directory, a config the dialect attaches to another left out.
+  fn read_cycles(&mut self, kind: WeatherCycleKind) -> XrfResult<Vec<WeatherCycle>> {
+    let (directory, subject) = Self::directory_of(kind);
     let files: Vec<XrayLogicalPath> = self.list_configs(directory)?;
 
     // `R_ASSERT2(!WeatherCycles.empty(), "Empty weathers.")`.

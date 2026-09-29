@@ -8,7 +8,9 @@ use xrf_vfs::XrayLogicalPath;
 use crate::catalog::environment_catalog::EnvironmentCatalog;
 use crate::catalog::environment_read_options::EnvironmentReadOptions;
 use crate::catalog::environment_read_pass::EnvironmentReadPass;
+use crate::finding::EnvironmentFinding;
 use crate::level::LevelWeather;
+use crate::weather::{WeatherCycle, WeatherCycleKind};
 
 /// Reads a game's environment configs as one engine reads them.
 pub struct EnvironmentReader;
@@ -38,6 +40,22 @@ impl EnvironmentReader {
     options: &EnvironmentReadOptions,
   ) -> XrfResult<EnvironmentCatalog> {
     EnvironmentReadPass::new(project, engine, options).run()
+  }
+
+  /// One cycle or effect by name, with the findings its own config holds; none where there is no such config. The
+  /// findings about what it names are the whole catalog's.
+  ///
+  /// # Errors
+  ///
+  /// As [`Self::read`], and on cancellation.
+  pub fn read_cycle(
+    project: &LtxProject,
+    engine: XrayEngine,
+    kind: WeatherCycleKind,
+    name: &str,
+    options: &EnvironmentReadOptions,
+  ) -> XrfResult<Option<(WeatherCycle, Vec<EnvironmentFinding>)>> {
+    EnvironmentReadPass::new(project, engine, options).run_cycle(kind, name)
   }
 
   /// The cycles one level can be lit under: its `game.ltx` section's `weathers`, `[default]` where it writes none,

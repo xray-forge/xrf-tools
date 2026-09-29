@@ -17,6 +17,8 @@ Package names use hyphens (`xrf-ltx`); Rust imports use underscores (`xrf_ltx`).
 | [xrf-dds](xrf-dds/README.md)                               | Decode, encode, and compare DDS textures and mipmaps                               |
 | [xrf-dialog](xrf-dialog/README.md)                         | Read dialog trees, source ranges, and translated phrases                           |
 | [xrf-dltx](xrf-dltx/README.md)                             | Resolve the Monolith DLTX patch dialect                                            |
+| [xrf-engine-target](xrf-engine-target/README.md)           | Name which engine a game data tree targets: vanilla or extended                    |
+| [xrf-environment](xrf-environment/README.md)               | Read weather, suns, thunderbolts and ambients as the target engine reads them      |
 | [xrf-error](xrf-error/README.md)                           | Share typed errors and results                                                     |
 | [xrf-error-derive](xrf-error-derive/README.md)             | Generate message-based error constructors                                          |
 | [xrf-export](xrf-export/README.md)                         | Extract TypeScript extern contracts and render documentation                       |
