@@ -145,12 +145,14 @@ impl<'a> EnvironmentReadPass<'a> {
 
   /// One cycle or effect by name, and what its own config says about it; none where there is no such config.
   pub fn run_cycle(mut self, id: &WeatherCycleId) -> XrfResult<Option<(WeatherCycle, Vec<EnvironmentFinding>)>> {
-    let (directory, subject) = Self::directory_of(id.kind);
-    let path: XrayLogicalPath = self.project.config_path(directory)?.join(&format!("{}.ltx", id.name))?;
+    let path: XrayLogicalPath = self
+      .project
+      .config_path(Self::directory_of(id.kind))?
+      .join(&format!("{}.ltx", id.name))?;
     let Some(config) = self.open(&path)? else {
       return Ok(None);
     };
-    let mut reader: EnvironmentSectionReader = self.reader(subject, &config);
+    let mut reader: EnvironmentSectionReader = self.reader(id.kind.get_subject(), &config);
     let cycle: WeatherCycle = WeatherCycle::read(&mut reader, id, config.get_ltx());
 
     self.findings.sort();
@@ -158,17 +160,17 @@ impl<'a> EnvironmentReadPass<'a> {
     Ok(Some((cycle, self.findings)))
   }
 
-  /// Where a kind of cycle is kept, and how messages name one.
-  fn directory_of(kind: WeatherCycleKind) -> (&'static str, &'static str) {
+  /// Where a kind of cycle is kept.
+  fn directory_of(kind: WeatherCycleKind) -> &'static str {
     match kind {
-      WeatherCycleKind::Cycle => (Self::WEATHERS, "Weather"),
-      WeatherCycleKind::Effect => (Self::WEATHER_EFFECTS, "Weather effect"),
+      WeatherCycleKind::Cycle => Self::WEATHERS,
+      WeatherCycleKind::Effect => Self::WEATHER_EFFECTS,
     }
   }
 
   /// Every cycle or effect in its directory, a config the dialect attaches to another left out.
   fn read_cycles(&mut self, kind: WeatherCycleKind) -> XrfResult<Vec<WeatherCycle>> {
-    let (directory, subject) = Self::directory_of(kind);
+    let directory: &str = Self::directory_of(kind);
     let files: Vec<XrayLogicalPath> = self.list_configs(directory)?;
 
     // `R_ASSERT2(!WeatherCycles.empty(), "Empty weathers.")`.
@@ -194,7 +196,7 @@ impl<'a> EnvironmentReadPass<'a> {
         kind,
         name: Self::stem_of(&file).to_owned(),
       };
-      let mut reader: EnvironmentSectionReader = self.reader(subject, &config);
+      let mut reader: EnvironmentSectionReader = self.reader(kind.get_subject(), &config);
 
       cycles.push(WeatherCycle::read(&mut reader, &id, config.get_ltx()));
     }
@@ -547,11 +549,7 @@ impl<'a> EnvironmentReadPass<'a> {
   }
 
   fn report_reference(&mut self, cycle: &WeatherCycle, section: &str, key: &str, target: String) {
-    let subject: &str = match cycle.kind {
-      WeatherCycleKind::Cycle => "Weather",
-      WeatherCycleKind::Effect => "Weather effect",
-    };
-    let message: String = format!("{subject} [{section}] references missing {target}");
+    let message: String = format!("{} [{section}] references missing {target}", cycle.kind.get_subject());
     let file: &str = &cycle.file;
 
     self.push_reference(file, section, Some(key), message);

@@ -162,6 +162,7 @@ fn reports_a_sky_the_game_does_not_hold() {
       ),
     ]
   );
+  assert_eq!(result.get_failure_message(), "4/5 environment configs valid");
 }
 
 // Anomaly's cycles name no clouds at all, which draws none rather than a missing texture.

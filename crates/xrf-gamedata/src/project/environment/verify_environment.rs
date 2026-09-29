@@ -5,8 +5,8 @@ use std::path::PathBuf;
 use std::time::Instant;
 
 use xrf_environment::{
-  EnvironmentCatalog, EnvironmentFinding, EnvironmentReadOptions, EnvironmentReader, EnvironmentRule, WeatherCycle,
-  WeatherCycleKind, WeatherKey,
+  EnvironmentCatalog, EnvironmentFinding, EnvironmentReadOptions, EnvironmentReader, EnvironmentRule,
+  WeatherDescriptor, WeatherKey,
 };
 use xrf_error::{XrfError, XrfResult};
 use xrf_vfs::XrayLogicalPath;
@@ -40,8 +40,13 @@ impl GamedataProject {
       .iter()
       .map(|finding| self.report_environment_finding(finding))
       .collect::<XrfResult<_>>()?;
+    let mut invalid: BTreeSet<&str> = catalog.findings.iter().map(|finding| finding.file.as_str()).collect();
 
-    findings.extend(self.verify_environment_textures(&catalog, options)?);
+    for (file, finding) in self.verify_environment_textures(&catalog, options)? {
+      invalid.insert(file);
+      findings.push(finding);
+    }
+
     findings.sort_by(GamedataFindingFactory::cmp_by_asset_path_and_message);
 
     for finding in &findings {
@@ -54,7 +59,6 @@ impl GamedataProject {
     }
 
     let configs: BTreeSet<&str> = catalog.configs.iter().map(String::as_str).collect();
-    let invalid: BTreeSet<&str> = catalog.findings.iter().map(|finding| finding.file.as_str()).collect();
     let checked_configs_count: u32 = u32::try_from(configs.union(&invalid).count())
       .map_err(|_| XrfError::new_verify_error("Environment config count exceeds the supported result range"))?;
     let invalid_configs_count: u32 = u32::try_from(invalid.len())
@@ -78,14 +82,15 @@ impl GamedataProject {
     })
   }
 
-  /// Every sky cube, its `#small` twin and every clouds texture a keyframe names, each looked up once.
-  fn verify_environment_textures(
+  /// Every sky cube, its `#small` twin and every clouds texture a keyframe names, each looked up once; each finding
+  /// with the config it is in.
+  fn verify_environment_textures<'c>(
     &self,
-    catalog: &EnvironmentCatalog,
+    catalog: &'c EnvironmentCatalog,
     options: &GamedataProjectVerifyOptions,
-  ) -> XrfResult<Vec<Finding>> {
+  ) -> XrfResult<Vec<(&'c str, Finding)>> {
     let mut is_present: HashMap<String, bool> = HashMap::new();
-    let mut findings: Vec<Finding> = Vec::new();
+    let mut findings: Vec<(&'c str, Finding)> = Vec::new();
 
     for cycle in catalog.cycles.iter().chain(&catalog.effects) {
       options.job.check_cancelled()?;
@@ -96,44 +101,46 @@ impl GamedataProject {
         let section = &keyframe.section;
         let sky: &str = section.get_text(WeatherKey::SkyTexture, catalog.engine);
         let clouds: &str = section.get_text(WeatherKey::CloudsTexture, catalog.engine);
-        let references: [(&str, String); 3] = [
-          ("sky texture", sky.to_owned()),
-          ("sky texture", format!("{sky}#small")),
-          ("clouds texture", clouds.to_owned()),
+        let environment: String = format!("{sky}{}", WeatherDescriptor::ENVIRONMENT_SUFFIX);
+        let references: [(&str, &str); 3] = [
+          ("sky texture", sky),
+          ("sky texture", if sky.is_empty() { "" } else { &environment }),
+          ("clouds texture", clouds),
         ];
 
         for (what, texture) in references {
           // An empty name draws nothing rather than a missing texture: Anomaly's cycles have no clouds.
-          if texture.is_empty() || texture == "#small" {
+          if texture.is_empty() {
             continue;
           }
 
-          let is_found: bool = match is_present.get(&texture) {
+          let is_found: bool = match is_present.get(texture) {
             Some(is_found) => *is_found,
             None => {
               let is_found: bool = self
                 .vfs()
                 .scoped(self.scope())
-                .dds_texture(&texture)
+                .dds_texture(texture)
                 .ok()
                 .flatten()
                 .is_some();
 
-              is_present.insert(texture.clone(), is_found);
+              is_present.insert(texture.to_owned(), is_found);
 
               is_found
             }
           };
 
           if !is_found {
-            findings.push(GamedataFindingFactory::for_asset(
-              GamedataVerificationRule::EnvironmentAsset,
-              &reported,
-              format!(
-                "{} [{}] references missing {what} [{texture}]",
-                Self::subject_of(cycle),
-                section.name
-              ),
+            let message: String = format!(
+              "{} [{}] references missing {what} [{texture}]",
+              cycle.kind.get_subject(),
+              section.name
+            );
+
+            findings.push((
+              cycle.file.as_str(),
+              GamedataFindingFactory::for_asset(GamedataVerificationRule::EnvironmentAsset, &reported, message),
             ));
           }
         }
@@ -156,12 +163,5 @@ impl GamedataProject {
       reported,
       finding.message.clone(),
     ))
-  }
-
-  fn subject_of(cycle: &WeatherCycle) -> &'static str {
-    match cycle.kind {
-      WeatherCycleKind::Cycle => "Weather",
-      WeatherCycleKind::Effect => "Weather effect",
-    }
   }
 }

@@ -11,3 +11,13 @@ pub enum WeatherCycleKind {
   /// engine with keyframes of its own at midnight either end: `load_weather_effects`.
   Effect,
 }
+
+impl WeatherCycleKind {
+  /// How a finding names a keyframe of this kind.
+  pub fn get_subject(self) -> &'static str {
+    match self {
+      Self::Cycle => "Weather",
+      Self::Effect => "Weather effect",
+    }
+  }
+}
