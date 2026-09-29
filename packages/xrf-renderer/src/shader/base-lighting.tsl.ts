@@ -71,11 +71,36 @@ export function toBaseLitColor(
   uniforms: RendererUniforms,
   ambientOcclusion: Node<"float"> = float(1)
 ): Node<"vec3"> {
-  const { settings } = uniforms;
-  const occlusion: Node<"float"> = mix(float(1), hemi, settings.hemiStrength);
-  const color: Node<"vec3"> = toBaseColor(albedo, gloss, light, occlusion, ambientOcclusion, point, uniforms);
+  const color: Node<"vec3"> = toBaseShadedColor(albedo, gloss, hemi, light, point, uniforms, ambientOcclusion);
 
-  return select(settings.lit.greaterThan(0.5), toFinishedColor(color, point.position, uniforms), albedo);
+  return select(uniforms.settings.lit.greaterThan(0.5), toFinishedColor(color, point.position, uniforms), albedo);
+}
+
+/**
+ * `hmodel` and `combine_1` over what the lights accumulated, before the fog and the tonemap, for a pass that finishes
+ * the colour its own way.
+ *
+ * @param albedo - Raw albedo.
+ * @param gloss - The surface's gloss.
+ * @param hemi - The baked hemisphere occlusion, before the settings weigh it.
+ * @param light - What the lights accumulated there.
+ * @param point - The point shaded.
+ * @param uniforms - What the frame's shaders read.
+ * @param ambientOcclusion - How much of the hemisphere and ambient light reaches the point.
+ * @returns The colour, linear and unfogged.
+ */
+export function toBaseShadedColor(
+  albedo: Node<"vec3">,
+  gloss: Node<"float">,
+  hemi: Node<"float">,
+  light: Node<"vec4">,
+  point: IBaseShadingPoint,
+  uniforms: RendererUniforms,
+  ambientOcclusion: Node<"float"> = float(1)
+): Node<"vec3"> {
+  const occlusion: Node<"float"> = mix(float(1), hemi, uniforms.settings.hemiStrength);
+
+  return toBaseColor(albedo, gloss, light, occlusion, ambientOcclusion, point, uniforms);
 }
 
 /**
@@ -149,8 +174,15 @@ export function discardBeyondFog(position: Node<"vec3">, uniforms: RendererUnifo
   });
 }
 
-/** Fog by distance, then the engine's tonemap: what `combine_2` does to a lit colour. */
-function toFinishedColor(color: Node<"vec3">, position: Node<"vec3">, uniforms: RendererUniforms): Node<"vec3"> {
+/**
+ * Fog by distance, then the engine's tonemap: what `combine_2` does to a lit colour.
+ *
+ * @param color - The colour, linear and unfogged.
+ * @param position - The point in view space.
+ * @param uniforms - What the frame's shaders read.
+ * @returns The colour as the frame shows it.
+ */
+export function toFinishedColor(color: Node<"vec3">, position: Node<"vec3">, uniforms: RendererUniforms): Node<"vec3"> {
   const { lighting, exposure } = uniforms;
 
   return toToneMapped(mix(color, lighting.fogColor, toFogAmount(position, uniforms)), exposure.scale);

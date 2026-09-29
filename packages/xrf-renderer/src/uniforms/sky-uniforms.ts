@@ -2,8 +2,9 @@ import { renderGroup, uniform } from "three/tsl";
 import { CubeTexture, CubeTextureNode, UniformNode, Vector3 } from "three/webgpu";
 
 import { IRendererSky } from "#/contract/renderer-sky";
-import { getPlaceholderSkyTexture } from "#/texture/placeholder-textures";
+import { getClearTexture, getPlaceholderSkyTexture } from "#/texture/placeholder-textures";
 import { SlotCubeTextureNode } from "#/texture/slot-cube-texture-node";
+import { SlotTextureNode } from "#/texture/slot-texture-node";
 
 /**
  * The sky as the environment binds it (`dxEnvironmentRender::lerp`): the two keyframes' cubes and their irradiance
@@ -19,6 +20,11 @@ export class SkyUniforms {
   public readonly environments: readonly [CubeTextureNode, CubeTextureNode] = [
     new SlotCubeTextureNode(getPlaceholderSkyTexture() as CubeTexture),
     new SlotCubeTextureNode(getPlaceholderSkyTexture() as CubeTexture),
+  ];
+  /** The two skies blurred into haze maps the distance fades into, pointed at what `SkyHaze` draws. */
+  public readonly hazes: readonly [SlotTextureNode, SlotTextureNode] = [
+    new SlotTextureNode(getClearTexture()),
+    new SlotTextureNode(getClearTexture()),
   ];
   /** One while both irradiance cubes are up, zero while the lighting's stand-in lights the hemisphere. */
   public readonly environmentsUp: UniformNode<"float", number> = uniform(0).setGroup(renderGroup);

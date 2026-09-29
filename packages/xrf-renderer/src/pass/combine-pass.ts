@@ -6,6 +6,7 @@ import { createQuadMaterial } from "#/pass/quad-material";
 import { IRendererFrame } from "#/pass/renderer-frame";
 import { IRendererPass } from "#/pass/renderer-pass";
 import { RendererTargets } from "#/pass/renderer-targets";
+import { SkyHaze } from "#/pass/sky-haze";
 import { RendererUniforms } from "#/uniforms/renderer-uniforms";
 
 /**
@@ -15,6 +16,7 @@ export class CombinePass implements IRendererPass {
   public readonly name: string = "combine";
 
   private readonly quad: QuadMesh = new QuadMesh();
+  private readonly haze: SkyHaze;
   private readonly backdrop: Color = new Color();
   private readonly targets: RendererTargets;
   private readonly uniforms: RendererUniforms;
@@ -24,6 +26,8 @@ export class CombinePass implements IRendererPass {
   public constructor(targets: RendererTargets, uniforms: RendererUniforms) {
     this.targets = targets;
     this.uniforms = uniforms;
+    // Before the material, which is built sampling the haze maps it points the sky at.
+    this.haze = new SkyHaze(uniforms.sky);
     this.material = this.createMaterial();
   }
 
@@ -41,6 +45,10 @@ export class CombinePass implements IRendererPass {
   }
 
   public render({ renderer, settings }: IRendererFrame): void {
+    if (settings.isSkyDrawn && settings.isSkyHazed) {
+      this.haze.render(renderer);
+    }
+
     // The hex is bytes the page shows, so it reaches the canvas as written rather than decoded from srgb.
     this.backdrop.setHex(settings.backdrop ?? 0, LinearSRGBColorSpace);
     renderer.setClearColor(this.backdrop, settings.backdrop === null ? 0 : 1);
@@ -51,6 +59,7 @@ export class CombinePass implements IRendererPass {
   }
 
   public dispose(): void {
+    this.haze.dispose();
     this.material.dispose();
   }
 

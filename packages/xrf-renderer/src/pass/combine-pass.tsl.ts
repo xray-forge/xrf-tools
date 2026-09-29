@@ -16,13 +16,14 @@ import {
 import { Node, Texture } from "three/webgpu";
 
 import { toUpsampledAmbientOcclusion } from "#/shader/ambient-occlusion.tsl";
-import { toBaseLitColor, toFogAmount, toFogColor } from "#/shader/base-lighting.tsl";
+import { toBaseShadedColor, toFinishedColor, toFogAmount, toFogColor } from "#/shader/base-lighting.tsl";
 import { toSkyWithClouds } from "#/shader/clouds.tsl";
 import { toOutputDither } from "#/shader/dither.tsl";
 import { IGBufferSample } from "#/shader/gbuffer-sample";
 import { IGBufferTextures } from "#/shader/gbuffer-textures";
 import { readGBuffer } from "#/shader/gbuffer.tsl";
 import { toSkyColor, toSkyHaze } from "#/shader/sky.tsl";
+import { toToneMapped } from "#/shader/tonemap.tsl";
 import { RendererUniforms } from "#/uniforms/renderer-uniforms";
 
 /**
@@ -52,7 +53,7 @@ export function toCombinePassFragment(
       Discard();
     });
 
-    const lit: Node<"vec3"> = toBaseLitColor(
+    const shaded: Node<"vec3"> = toBaseShadedColor(
       sample.albedo,
       sample.gloss,
       sample.hemi,
@@ -63,6 +64,8 @@ export function toCombinePassFragment(
         ? toUpsampledAmbientOcclusion(ambientOcclusion, sample.point.position.z.negate(), isEmpty.not())
         : float(1)
     );
+    const isLit: Node<"bool"> = uniforms.settings.lit.greaterThan(0.5);
+    const lit: Node<"vec3"> = select(isLit, toFinishedColor(shaded, sample.point.position, uniforms), sample.albedo);
 
     const toPixel: Node<"vec3"> = getViewPosition(screenUV, float(0.5), uniforms.camera.projectionInverse);
     const direction: Node<"vec3"> = normalize(uniforms.camera.viewToWorld.mul(vec4(toPixel, 0)).xyz);
@@ -72,14 +75,18 @@ export function toCombinePassFragment(
       sky: uniforms.sky,
     });
     const fog: Node<"float"> = toFogAmount(sample.point.position, uniforms);
-    // The engine fades into the sky itself; the haze keeps the clouds from showing through what stands far off.
-    const behind: Node<"vec3"> = sky.toVar();
+    // The engine fogs towards `fog_color`, then fades into the sky itself by the fog squared.
+    const faded: Node<"vec3"> = select(isSkyDrawn, mix(lit, sky, fog.mul(fog)), lit).toVar();
 
-    If(uniforms.sky.hazed.greaterThan(0.5).and(isEmpty.not()), () => {
-      behind.assign(toSkyHaze(direction, uniforms.sky, uniforms.exposure.scale));
+    // The haze takes the place of both: the distance takes the colour of the sky behind it, no clouds showing through,
+    // by the same curve the engine's two blends make, `1 - (1 - fog)(1 - fog²)`.
+    If(uniforms.sky.hazed.greaterThan(0.5).and(isSkyDrawn).and(isEmpty.not()), () => {
+      const haze: Node<"vec3"> = toSkyHaze(direction, uniforms.sky, uniforms.exposure.scale);
+      const clear: Node<"vec3"> = select(isLit, toToneMapped(shaded, uniforms.exposure.scale), sample.albedo);
+      const toHaze: Node<"float"> = float(1).sub(fog.oneMinus().mul(fog.mul(fog).oneMinus()));
+
+      faded.assign(mix(clear, haze, toHaze));
     });
-
-    const faded: Node<"vec3"> = select(isSkyDrawn, mix(lit, behind, fog.mul(fog)), lit);
 
     const shown: Node<"vec3"> = select(isEmpty, select(isSkyDrawn, sky, toFogColor(uniforms)), faded);
 

@@ -1,4 +1,20 @@
-import { abs, cos, float, If, max, mix, select, sin, smoothstep, vec3 } from "three/tsl";
+import {
+  abs,
+  asin,
+  atan,
+  clamp,
+  cos,
+  float,
+  If,
+  max,
+  mix,
+  normalize,
+  select,
+  sin,
+  smoothstep,
+  vec2,
+  vec3,
+} from "three/tsl";
 import { Node } from "three/webgpu";
 
 import { SkyUniforms } from "#/uniforms/sky-uniforms";
@@ -36,7 +52,7 @@ export function toBoxDirection(direction: Node<"vec3">, rotation: Node<"float">)
  * The cube coordinate `hbox_verts` gives a direction: the top face as it is, each side's whole height folded into
  * the sky above the horizon, and everything below it reading the bottom rim, which is the haze a cube is painted with.
  */
-function toBoxLookup(box: Node<"vec3">): Node<"vec3"> {
+export function toBoxLookup(box: Node<"vec3">): Node<"vec3"> {
   const side: Node<"float"> = max(abs(box.x), abs(box.z));
   const height: Node<"float"> = box.y.div(side);
   // Each side's two bands, straight across in the face's plane as its vertices interpolate: `half` to the top, the
@@ -54,7 +70,7 @@ function toBoxLookup(box: Node<"vec3">): Node<"vec3"> {
 }
 
 /** An engine cube coordinate as three samples it: its own flip of `x` on cube lookups undone. */
-function toCubeLookup(engine: Node<"vec3">): Node<"vec3"> {
+export function toCubeLookup(engine: Node<"vec3">): Node<"vec3"> {
   return vec3(engine.x.negate(), engine.y, engine.z);
 }
 
@@ -93,21 +109,35 @@ export function toSkyCubes(direction: Node<"vec3">, sky: SkyUniforms): Node<"vec
 }
 
 /**
- * The sky's haze along a direction: the cubes at its bearing where the sky meets the horizon, averaged around the
- * compass as the sky averages its fold and lit as the sky is, without its clouds. The distance fades into it
- * without showing the clouds through what stands there.
+ * The sky's haze along a direction: both skies blurred along it, blended and lit as the sky is, without its clouds.
+ * The distance fades into it without showing the clouds through what stands there, and it follows the sky's own
+ * gradient: the horizon's haze at the horizon, the rim under it, the sky's own colour above.
  *
  * @param direction - A direction in renderer space.
- * @param sky - The sky's uniforms.
+ * @param sky - The sky's uniforms, the haze maps among them.
  * @param scale - What the tonemap multiplies by.
  * @returns The haze's colour as the frame shows it.
  */
 export function toSkyHaze(direction: Node<"vec3">, sky: SkyUniforms, scale: Node<"float">): Node<"vec3"> {
-  const box: Node<"vec3"> = toBoxDirection(direction, sky.rotation);
-  // Its bearing, where the sky meets the horizon, whatever its height.
-  const rim: Node<"vec3"> = vec3(box.x, max(abs(box.x), abs(box.z)).mul(HAZE_TOP / 2), box.z);
+  const uv: Node<"vec2"> = toHazeCoordinates(normalize(toBoxDirection(direction, sky.rotation)));
+  const haze: Node<"vec3"> = mix(sky.hazes[0].sample(uv).xyz, sky.hazes[1].sample(uv).xyz, sky.blend);
 
-  return toRimHaze(rim, sky).mul(sky.color).mul(scale.mul(SKY_FACTOR));
+  return haze.mul(sky.color).mul(scale.mul(SKY_FACTOR));
+}
+
+/**
+ * @param box - A unit direction in the sky box's own axes.
+ * @returns Where a haze map holds it: the bearing across, the height from the nadir up.
+ */
+export function toHazeCoordinates(box: Node<"vec3">): Node<"vec2"> {
+  return vec2(
+    atan(box.x, box.z)
+      .div(Math.PI * 2)
+      .add(0.5),
+    asin(clamp(box.y, -1, 1))
+      .div(Math.PI)
+      .add(0.5)
+  );
 }
 
 /** The cubes around a box direction under the fold, averaged around the compass so the rim's texels do not show. */
