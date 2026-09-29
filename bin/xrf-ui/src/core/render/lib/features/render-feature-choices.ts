@@ -101,8 +101,8 @@ export function fromGrassDensityScale(scale: number): number {
 }
 
 /**
- * The bounds each grass value is offered between, the engine console's: density as how many times the game's the tufts
- * stand, from its sparsest to its densest.
+ * The bounds each grass value is offered between, the settings' own: density as how many times the game's the tufts
+ * stand, from its sparsest to three times it.
  */
 export const RENDER_GRASS_LIMITS = {
   density: {

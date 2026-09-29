@@ -85,13 +85,13 @@ describe("renderer feature choices", () => {
     ).toBe(true);
   });
 
-  it("reads back stored grass overrides within the engine's console bounds, a radius in whole metres", () => {
+  it("reads back stored grass overrides within their bounds, a radius in whole metres", () => {
     expect(
       toRendererFeatureChoice({
         overrides: { grass: { density: 0, height: 9, isEnabled: false, radius: 60.4 } },
         preset: "base",
       }).overrides.grass
-    ).toEqual({ density: 0.1, height: 2, isEnabled: false, radius: 60 });
+    ).toEqual({ density: 0.2, height: 2, isEnabled: false, radius: 60 });
     expect(isRendererFeatureChoiceCustom({ overrides: { grass: { radius: 49 } }, preset: ERendererPreset.BASE })).toBe(
       false
     );

@@ -41,8 +41,9 @@ export const RENDERER_FEATURE_SCHEMA: TRendererSettingSchema<IRendererFeatureSet
     middleGray: toNumber(0, 2),
   },
   grass: {
-    // `r__detail_density`: a spacing, 0.1 the densest.
-    density: toNumber(0.1, 0.99),
+    // `r__detail_density`: a spacing. The console goes to 0.1, six times the game's; past three times it at the widest
+    // radius the grass's buffers outgrow what the GPU process holds and the renderer crashes.
+    density: toNumber(0.2, 0.99),
     height: toNumber(0.5, 2),
     isEnabled: FLAG,
     radius: toNumber(49, 300, true),
