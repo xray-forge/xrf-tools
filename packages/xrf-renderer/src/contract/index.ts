@@ -48,6 +48,7 @@ export * from "#/contract/renderer-settings";
 export * from "#/contract/renderer-shadow-settings";
 export * from "#/contract/renderer-sky";
 export * from "#/contract/renderer-smoothing-antialiasing";
+export * from "#/contract/renderer-space";
 export * from "#/contract/renderer-static-draw-report";
 export * from "#/contract/renderer-temporal-antialiasing";
 export * from "#/contract/renderer-tree-wind";

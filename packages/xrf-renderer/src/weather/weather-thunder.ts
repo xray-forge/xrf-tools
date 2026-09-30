@@ -1,6 +1,7 @@
 import { addVectors, clamp, EPS_L, mix, saturate, scaleVector, toDirection, toHeadingPitch, wrap } from "@xrf/math";
 import { Maybe, Nullable } from "@xrf/types";
 
+import { toRendererVector } from "#/contract/renderer-space";
 import { TRendererVector } from "#/contract/renderer-vector";
 import { IRendererLightAnimator } from "#/contract/scene/renderer-light-animator";
 import { IRendererThunder } from "#/contract/weather/renderer-thunder";
@@ -182,19 +183,19 @@ export class WeatherThunder {
       direction: strike.direction,
       strike: {
         // The model's `z` is negated into renderer space as its mesh is, so its third axis turns about too.
-        axes: [toRenderer(i), toRenderer(j), scaleVector(toRenderer(k), -1)],
+        axes: [toRendererVector(i), toRendererVector(j), scaleVector(toRendererVector(k), -1)],
         center: {
           extent: [bolt.center.radius[0] * size, bolt.center.radius[1] * size],
           opacity,
-          position: toRenderer(strike.center),
+          position: toRendererVector(strike.center),
         },
         bolt: name,
-        position: toRenderer(strike.position),
+        position: toRendererVector(strike.position),
         shift: phase > 0.5 ? Math.min(Math.floor(this.random() * 2), 1) * 0.5 : phase * 0.5,
         top: {
           extent: [bolt.top.radius[0] * size, bolt.top.radius[1] * size],
           opacity,
-          position: toRenderer(strike.position),
+          position: toRendererVector(strike.position),
         },
       },
     };
@@ -243,9 +244,4 @@ function toGround(from: TRendererVector, down: TRendererVector, range: number): 
   const distance: number = -from[1] / down[1];
 
   return distance >= 0 && distance <= range ? distance : range;
-}
-
-/** Engine `z` negated into renderer space. */
-function toRenderer([x, y, z]: TRendererVector): TRendererVector {
-  return [x, y, -z];
 }

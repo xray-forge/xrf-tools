@@ -1,4 +1,5 @@
 import { toDirection, toHeadingPitch, wrap } from "@xrf/math";
+import { toEngineVector, toRendererVector } from "@xrf/renderer";
 /**
  * A point in one of the two spaces an X-Ray asset is ever in.
  */
@@ -15,7 +16,9 @@ export interface IRenderPoint {
  * @returns The same place, as the engine states it.
  */
 export function toXraySpace(point: IRenderPoint): IRenderPoint {
-  return { x: point.x, y: point.y, z: negate(point.z) };
+  const [x, y, z] = toEngineVector([point.x, point.y, point.z]);
+
+  return { x, y, z };
 }
 
 /**
@@ -25,12 +28,9 @@ export function toXraySpace(point: IRenderPoint): IRenderPoint {
  * @returns The same place in renderer space.
  */
 export function toRendererSpace(point: IRenderPoint): IRenderPoint {
-  return { x: point.x, y: point.y, z: negate(point.z) };
-}
+  const [x, y, z] = toRendererVector([point.x, point.y, point.z]);
 
-/** Negation that leaves zero alone, so a readout at the origin says `0.0` rather than `-0.0`. */
-function negate(value: number): number {
-  return value === 0 ? 0 : -value;
+  return { x, y, z };
 }
 
 /**

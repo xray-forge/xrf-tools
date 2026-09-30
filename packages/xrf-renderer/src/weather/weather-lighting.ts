@@ -2,6 +2,7 @@ import { EPS_L, toDegrees } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 
 import { IRendererLighting } from "#/contract/renderer-lighting";
+import { toRendererVector } from "#/contract/renderer-space";
 import { IRendererWeatherKeyframe } from "#/contract/weather/renderer-weather-keyframe";
 import { DEFAULT_RENDERER_GRASS_WIND, DEFAULT_RENDERER_LIGHTING } from "#/lighting/default-lighting";
 import { IWeatherLightingInput } from "#/weather/weather-lighting-input";
@@ -19,7 +20,6 @@ export function toWeatherLighting(input: IWeatherLightingInput): IRendererLighti
   const { weather, pair, mix, control } = input;
   const { isClouded, isFogged, isRainy, isWindy } = control;
   const [a, b] = pair;
-  const [x, y, z] = mix.sunDirection;
 
   return {
     ambientColor: mix.ambientColor,
@@ -53,8 +53,7 @@ export function toWeatherLighting(input: IWeatherLightingInput): IRendererLighti
     },
     skyIrradiance: DEFAULT_RENDERER_LIGHTING.skyIrradiance,
     sunColor: mix.sunColor,
-    // Engine `z` negated into renderer space.
-    sunDirection: [x, y, -z],
+    sunDirection: toRendererVector(mix.sunDirection),
     thunderbolt: null,
     trees: isWindy
       ? { amplitude: mix.treeAmplitude, rotation: mix.treeRotation, speed: mix.treeSpeed, wave: mix.treeWave }
