@@ -13,20 +13,20 @@ use xrf_visual::{HemiEstimator, VisualSphere, VisualTransform};
 
 use crate::plugins::levels::read::{read_file, read_optional_file};
 use crate::plugins::levels::report::{report_hemi, report_missing_hemi, report_unreadable_lights};
+use crate::plugins::levels::spawn_objects::get_drawn_visual;
 use crate::plugins::levels::state::{
-  COLLISION_FILE, LIGHTS_FILE, LevelSource, LevelSpawn, LevelSpawnCategory, LevelSpawnObjectHemi, SelectedLevel,
+  COLLISION_FILE, LIGHTS_FILE, LevelSource, LevelSpawn, LevelSpawnObjectHemi, SelectedLevel,
 };
 
-/// The open level's estimator, built the first time anything asks and kept with the level.
+/// The open level's estimator, built the first time a batch asks and held until every visual is described.
 ///
 /// # Errors
 ///
-/// Returns why the collision form cannot be read, which every later ask answers with again.
+/// Returns why the collision form cannot be read, which every later ask while it is held answers with again.
 pub fn get_level_hemi(current: &SelectedLevel, probe: &XrayProbe) -> Result<Arc<HemiEstimator>, String> {
   current
-    .hemi
-    .get_or_init(|| read_hemi(&current.source, probe).inspect_err(|error| report_missing_hemi(&current.source, error)))
-    .clone()
+    .spawn_lighting
+    .get_or_build(|| read_hemi(&current.source, probe).inspect_err(|error| report_missing_hemi(&current.source, error)))
 }
 
 /// The cube of every spawned object the viewer draws standing as one of `spheres`' visuals, where it stands, in
@@ -41,9 +41,8 @@ pub fn estimate_spawn_hemi(
     .par_iter()
     .enumerate()
     .filter_map(|(index, object)| {
-      LevelSpawnCategory::of(&object.inherited)?;
-
-      let sphere: &VisualSphere = spheres.get(object.inherited.get_visual()?)?;
+      let (_, visual) = get_drawn_visual(object)?;
+      let sphere: &VisualSphere = spheres.get(visual)?;
       // The visual's sphere is in renderer space, and so is where the object stands it; the form is the engine's.
       let centre: Vector3d =
         VisualTransform::of_spawn(&object.position, &object.direction).apply_to_point(&sphere.center);

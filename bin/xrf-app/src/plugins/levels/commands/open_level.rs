@@ -20,8 +20,8 @@ use crate::plugins::levels::request::LevelOpenRequest;
 use crate::plugins::levels::spawn::read_source_spawn;
 use crate::plugins::levels::start::{list_level_start_eyes, resolve_level_start};
 use crate::plugins::levels::state::{
-  COLLISION_FILE, LevelSource, LevelSpawn, LevelSpawnVisuals, LevelStart, LevelState, LevelTextureReference,
-  PackedDetails, PackedSectors, SelectedLevel, SelectedLevelDescription,
+  COLLISION_FILE, LevelSource, LevelSpawn, LevelSpawnLighting, LevelSpawnVisuals, LevelStart, LevelState,
+  LevelTextureReference, PackedDetails, PackedSectors, SelectedLevel, SelectedLevelDescription,
 };
 use crate::plugins::levels::surfaces::resolve_surfaces;
 use crate::plugins::levels::textures::resolve_level_textures;
@@ -81,7 +81,7 @@ pub async fn levels_open_level(
       spawn: opened.spawn.into(),
       sections: OnceLock::new(),
       spawn_visuals: LevelSpawnVisuals::new(),
-      hemi: OnceLock::new(),
+      spawn_lighting: LevelSpawnLighting::new(),
       geometry: opened.read.geometry,
       level: opened.read.level,
       outlines: opened.outlines,

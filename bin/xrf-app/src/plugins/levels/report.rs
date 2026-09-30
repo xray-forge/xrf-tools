@@ -271,9 +271,9 @@ pub fn report_lights(source: &LevelSource, lights: &LightsDescription, started: 
   );
 }
 
-/// That the spawn could not be read, so the level stands no spawned model.
-pub fn report_missing_spawn_models(source: &LevelSource, error: &impl Display) {
-  log::warn!("No spawned models for {}: {error}", source.get_label());
+/// That the spawn could not be read, so the level stands no spawned object.
+pub fn report_missing_spawn_objects(source: &LevelSource, error: &impl Display) {
+  log::warn!("No spawned objects for {}: {error}", source.get_label());
 }
 
 /// That a spawned visual could not be read, so it is not drawn.

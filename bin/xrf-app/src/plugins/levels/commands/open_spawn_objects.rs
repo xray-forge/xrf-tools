@@ -8,12 +8,13 @@ use crate::core::assets::AssetMountState;
 use crate::core::execution::ExecutionState;
 use crate::core::session::{SessionId, SessionSnapshot};
 use crate::core::types::TauriResult;
-use crate::plugins::levels::report::{report_missing_spawn_models, report_spawn_objects};
+use crate::plugins::levels::report::{report_missing_spawn_objects, report_spawn_objects};
 use crate::plugins::levels::spawn::get_level_spawn;
 use crate::plugins::levels::spawn_objects::describe_spawn_objects;
-use crate::plugins::levels::state::{LevelSpawnObjectsDescription, LevelState, SelectedLevel};
+use crate::plugins::levels::state::{LevelSpawn, LevelSpawnObjectsDescription, LevelState, SelectedLevel};
 
-/// Describe the open level's spawned objects the viewer draws, and the visuals they stand as, reading no visual.
+/// Describe the open level's spawned objects the viewer draws, and the visuals they stand as, reading no visual; an
+/// error where the spawn cannot be read.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "open_spawn_objects"))]
 #[tauri::command(rename = "open_spawn_objects")]
 pub async fn levels_open_spawn_objects(
@@ -28,29 +29,20 @@ pub async fn levels_open_spawn_objects(
     .run_blocking("Describing the level spawned objects", move || {
       assets.with_probe(&current.roots, |probe| describe_objects(&current, probe))
     })
-    .await??;
+    .await???;
 
   Ok(SessionSnapshot { session_id, value })
 }
 
-fn describe_objects(current: &SelectedLevel, probe: &XrayProbe) -> LevelSpawnObjectsDescription {
+fn describe_objects(current: &SelectedLevel, probe: &XrayProbe) -> TauriResult<LevelSpawnObjectsDescription> {
   let started: Instant = Instant::now();
+  let spawn: Arc<LevelSpawn> =
+    get_level_spawn(current, probe).inspect_err(|error| report_missing_spawn_objects(&current.source, error))?;
+  let described: LevelSpawnObjectsDescription = describe_spawn_objects(&spawn);
 
-  match get_level_spawn(current, probe) {
-    Ok(spawn) => {
-      let described: LevelSpawnObjectsDescription = describe_spawn_objects(&spawn);
+  // Every visual named is one a batch will describe, and the lighting is held until the last of them is.
+  current.spawn_lighting.expect(&described.visuals)?;
+  report_spawn_objects(&current.source, &described, started);
 
-      report_spawn_objects(&current.source, &described, started);
-
-      described
-    }
-    Err(error) => {
-      report_missing_spawn_models(&current.source, &error);
-
-      LevelSpawnObjectsDescription {
-        objects: Vec::new(),
-        visuals: Vec::new(),
-      }
-    }
-  }
+  Ok(described)
 }

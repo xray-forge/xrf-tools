@@ -15,7 +15,7 @@ pub fn describe_spawn_objects(spawn: &LevelSpawn) -> LevelSpawnObjectsDescriptio
   let mut objects: Vec<LevelSpawnObject> = Vec::new();
 
   for (index, object) in spawn.objects.iter().enumerate() {
-    let Some((category, name)) = get_drawn(object) else {
+    let Some((category, name)) = get_drawn_visual(object) else {
       continue;
     };
 
@@ -40,8 +40,9 @@ pub fn describe_spawn_objects(spawn: &LevelSpawn) -> LevelSpawnObjectsDescriptio
   LevelSpawnObjectsDescription { visuals, objects }
 }
 
-/// What an object is drawn in and as, or `None` for one drawn as nothing.
-fn get_drawn(object: &AlifeObject) -> Option<(LevelSpawnCategory, &str)> {
+/// What an object is drawn in and as, or `None` for one drawn as nothing: the one rule every reader of the drawn
+/// objects goes by.
+pub fn get_drawn_visual(object: &AlifeObject) -> Option<(LevelSpawnCategory, &str)> {
   Some((
     LevelSpawnCategory::of(&object.inherited)?,
     object.inherited.get_visual()?,

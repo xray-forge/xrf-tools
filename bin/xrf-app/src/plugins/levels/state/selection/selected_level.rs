@@ -6,11 +6,12 @@ use xrf_level::{LevelFile, LevelGeomSource, LevelSector, LevelVisualsChunk};
 use xrf_ltx::{Ltx, LtxDialect};
 use xrf_material::XraySurfaceDescriptor;
 use xrf_vfs::XrayRoots;
-use xrf_visual::{HemiEstimator, SectorOutline};
+use xrf_visual::SectorOutline;
 
 use crate::plugins::levels::state::level_environment::LevelEnvironment;
 use crate::plugins::levels::state::level_source::LevelSource;
 use crate::plugins::levels::state::level_spawn::LevelSpawn;
+use crate::plugins::levels::state::level_spawn_lighting::LevelSpawnLighting;
 use crate::plugins::levels::state::level_spawn_visuals::LevelSpawnVisuals;
 use crate::plugins::levels::state::packed_details::PackedDetails;
 use crate::plugins::levels::state::packed_sectors::PackedSectors;
@@ -51,9 +52,8 @@ pub struct SelectedLevel {
   pub spawn: OnceLock<Result<Arc<LevelSpawn>, String>>,
   /// Each visual a spawned object stands as, read the first time anything asks and kept, or why it cannot be.
   pub spawn_visuals: LevelSpawnVisuals,
-  /// How the level lights its spawned objects, built from its collision form the first time anything asks; kept
-  /// likewise.
-  pub hemi: OnceLock<Result<Arc<HemiEstimator>, String>>,
+  /// How the level lights its spawned objects, held while their models are read.
+  pub spawn_lighting: LevelSpawnLighting,
   /// The sections of the game's resolved `system.ltx` its spawned objects name, which their lights are read from;
   /// kept likewise.
   pub sections: OnceLock<Result<Arc<Ltx>, String>>,
