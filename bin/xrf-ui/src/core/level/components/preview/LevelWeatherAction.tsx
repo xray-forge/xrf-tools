@@ -1,7 +1,7 @@
 import { default as FilterDramaIcon } from "@mui/icons-material/FilterDrama";
 import { Button, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
-import { ReactElement, useCallback, useEffect, useMemo, useState } from "react";
+import { ReactElement, useCallback, useMemo } from "react";
 
 import { LevelWeatherClock } from "@/core/level/components/weather/LevelWeatherClock";
 import { LevelWeatherCycleSelect } from "@/core/level/components/weather/LevelWeatherCycleSelect";
@@ -16,9 +16,7 @@ import { LevelWeatherService } from "@/core/level/services/level-weather.service
 import { EditorPopoverAction } from "@/core/shell/editor/EditorPopoverAction";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Logger, useLogger } from "@/lib/logging";
-
-/** Milliseconds the copy button says it copied. */
-const COPIED_FOR: number = 1500;
+import { useCopiedText } from "@/lib/react/use-copied-text";
 
 /**
  * The weather in short: what lights the level, the cycle and the effect, and the clock; the panel keeps the detail.
@@ -30,35 +28,27 @@ export function LevelWeatherAction({
 }: BaseComponentProps): ReactElement {
   const log: Logger = useLogger(__MODULE_NAME__);
   const weatherService: LevelWeatherService = useInjection(LevelWeatherService);
-  const [isCopied, setIsCopied] = useState<boolean>(false);
 
   const { description, cycle, source, time, control, report, isManual, seed } = weatherService;
   const isPlayable: boolean = weatherService.playable !== null;
   const isPlaying: boolean = !control.isPaused;
   const cycles = useMemo(() => (description ? listLevelWeatherCycles(description) : []), [description]);
 
-  const onCopy = useCallback(() => {
-    const text: string = toLevelManualWeatherLtx({
-      engine: weatherService.engine,
-      manual: weatherService.shown,
-      time: weatherService.time,
-    });
+  const onFailure = useCallback((error: unknown) => log.error("Failed to copy the keyframe:", error), [log]);
 
-    navigator.clipboard
-      ?.writeText(text)
-      .then(() => setIsCopied(true))
-      .catch((error: unknown) => log.error("Failed to copy the keyframe:", error));
-  }, [log, weatherService]);
+  const { isCopied, copy } = useCopiedText(onFailure);
 
-  useEffect(() => {
-    if (!isCopied) {
-      return;
-    }
-
-    const timeout: ReturnType<typeof setTimeout> = setTimeout(() => setIsCopied(false), COPIED_FOR);
-
-    return () => clearTimeout(timeout);
-  }, [isCopied]);
+  const onCopy = useCallback(
+    () =>
+      copy(
+        toLevelManualWeatherLtx({
+          engine: weatherService.engine,
+          manual: weatherService.shown,
+          time: weatherService.time,
+        })
+      ),
+    [copy, weatherService]
+  );
 
   const at: string = formatLevelWeatherTime(time);
 

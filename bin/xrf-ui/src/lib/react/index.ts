@@ -1,3 +1,4 @@
+export * from "./use-copied-text";
 export * from "./use-element-size";
 export * from "./use-force-update";
 export * from "./use-mount-effect";
