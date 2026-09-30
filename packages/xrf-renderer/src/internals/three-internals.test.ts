@@ -296,6 +296,17 @@ describe("three's internals, as the renderer reads them", () => {
     expect(create).toContain("this.textures.updateTexture( binding.texture );");
   });
 
+  it("gives a compile's render context the renderer's depth and stencil, where a draw gives it its target's", () => {
+    // `compileInto` hands the compile the target's, or a target without a depth compiles a pipeline no draw uses.
+    const compile: string = readThreeMethod("renderers/common/Renderer.js", "async compileAsync");
+    const render: string = readThreeMethod("renderers/common/Renderer.js", "_renderScene");
+
+    expect(compile).toContain("renderContext.depth = this.depth;");
+    expect(compile).toContain("renderContext.stencil = this.stencil;");
+    expect(render).toContain("renderContext.depth = renderTarget.depthBuffer;");
+    expect(render).toContain("renderContext.stencil = renderTarget.stencilBuffer;");
+  });
+
   it("calls a `Fn` through a node holding its function, whose body builds its nodes only as the call is built", () => {
     // `isNodeReading` runs a body taking nothing itself, to see what the graph under it reads.
     const call: string = readThreeMethod("nodes/tsl/TSLCore.js", "call");

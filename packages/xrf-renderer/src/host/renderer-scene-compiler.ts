@@ -185,7 +185,9 @@ export class RendererSceneCompiler {
 
 /**
  * Compiles a scene's pipelines for a target. Three takes the target as the compile starts and builds each shader later
- * for the render context it took then, so the target current before is restored at once.
+ * for the render context it took then, so the target current before is restored at once. It gives that context the
+ * renderer's own depth and stencil where a draw gives it the target's, so the compile is handed the target's: a
+ * pipeline built with a depth its target lacks is one no draw uses.
  *
  * @param renderer - The renderer drawing.
  * @param target - Where the scene draws.
@@ -195,11 +197,16 @@ export class RendererSceneCompiler {
  */
 function compileInto(renderer: WebGPURenderer, target: RenderTarget, scene: Object3D, camera: Camera): Promise<void> {
   const previous: Nullable<RenderTarget> = renderer.getRenderTarget();
+  const { depth, stencil } = renderer;
 
   renderer.setRenderTarget(target);
+  renderer.depth = target.depthBuffer;
+  renderer.stencil = target.stencilBuffer;
 
   const compiled: Promise<void> = renderer.compileAsync(scene, camera);
 
+  renderer.depth = depth;
+  renderer.stencil = stencil;
   renderer.setRenderTarget(previous);
 
   return compiled;
