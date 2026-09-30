@@ -4,6 +4,7 @@ import { format } from "date-fns";
 import { ReactElement, useState } from "react";
 
 import { JobDescription } from "@/core/ipc/types/xrf-app";
+import { describeJobStatus, IJobStatus } from "@/core/jobs/lib/job-status";
 import { formatProgressRate, formatProgressUnits } from "@/core/jobs/lib/progress-format";
 import { IJobPhase, IJobProfile } from "@/core/jobs/metrics";
 import { cn } from "@/lib/dom/dom-name";
@@ -11,7 +12,7 @@ import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatDuration } from "@/lib/format/duration";
 import { ABSENT_VALUE } from "@/lib/format/number";
 
-import { describeJobOutcome, toPhaseShare } from "./SettingsJobsSection.utils";
+import { toPhaseShare } from "./SettingsJobsSection.utils";
 
 export interface ISettingsJobsRunProps extends BaseComponentProps {
   job: JobDescription;
@@ -30,7 +31,7 @@ export function SettingsJobsRun({
 }: ISettingsJobsRunProps): ReactElement {
   const [isOpen, setOpen] = useState<boolean>(false);
 
-  const outcome = describeJobOutcome(job);
+  const outcome: IJobStatus = describeJobStatus(job);
   const sampled: number = (profile?.phases ?? []).reduce((total: number, it: IJobPhase) => total + it.duration, 0);
 
   return (

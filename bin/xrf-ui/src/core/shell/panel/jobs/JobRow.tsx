@@ -2,17 +2,12 @@ import { Button, Chip, LinearProgress, Typography } from "@mui/material";
 import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
-import { JobConclusion, JobDescription } from "@/core/ipc/types/xrf-app";
+import { JobDescription } from "@/core/ipc/types/xrf-app";
 import { ProgressLevel } from "@/core/ipc/types/xrf-job";
 import { findJobKind, IJobKindDescriptor } from "@/core/jobs/lib";
+import { describeJobStatus, IJobStatus } from "@/core/jobs/lib/job-status";
 import { formatProgressCounts, toProgressPercent } from "@/core/jobs/lib/progress-format";
 import { formatDuration } from "@/lib/format/duration";
-
-const CONCLUSION_COLORS: Record<JobConclusion, string> = {
-  completed: "success.main",
-  cancelled: "text.secondary",
-  failed: "error.main",
-};
 
 export interface IJobRowProps {
   job: JobDescription;
@@ -30,6 +25,7 @@ export function JobRow({ job, onCancel }: IJobRowProps): ReactElement {
   const described: Nullable<IJobKindDescriptor> = findJobKind(job.kind);
   const active: Nullable<ProgressLevel> = job.progress?.levels.at(-1) ?? null;
   const percent: Nullable<number> = active ? toProgressPercent(active) : null;
+  const status: IJobStatus = describeJobStatus(job);
 
   return (
     <div className={"flex flex-col gap-1 px-3 py-2"}>
@@ -38,12 +34,8 @@ export function JobRow({ job, onCancel }: IJobRowProps): ReactElement {
           {described?.label ?? job.kind}
         </Typography>
 
-        <Typography
-          className={"shrink-0"}
-          variant={"caption"}
-          sx={{ color: job.conclusion ? CONCLUSION_COLORS[job.conclusion] : "text.secondary" }}
-        >
-          {job.conclusion ?? (job.isCancelRequested ? "stopping" : "running")}
+        <Typography className={"shrink-0"} variant={"caption"} sx={{ color: status.color }}>
+          {status.label}
         </Typography>
       </div>
 
