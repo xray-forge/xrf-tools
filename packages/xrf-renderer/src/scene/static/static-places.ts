@@ -6,6 +6,7 @@ import {
   RENDERER_FLOATS_PER_INSTANCE,
   RENDERER_HEMI_FLOATS_PER_INSTANCE,
 } from "#/contract/scene/renderer-instances";
+import { packStaticHemiCube } from "#/scene/static/static-hemi-cube";
 import { StaticRunPool } from "#/scene/static/static-run-pool";
 import { STATIC_PLACE_COLUMNS, StaticDrawBuffers } from "#/uniforms/static-draw-buffers";
 import { EStaticPool } from "#/uniforms/static-pool";
@@ -13,9 +14,12 @@ import { EStaticPool } from "#/uniforms/static-pool";
 /** Floats one place takes in the places buffer. */
 const FLOATS_PER_PLACE: number = STATIC_PLACE_COLUMNS * 4;
 
+/** Where a place's hemisphere cube starts: its sixth column. */
+const HEMI_CUBE_OFFSET: number = 20;
+
 /**
- * Where static draws stand: a matrix, hemisphere terms, an impostor and the greatest scale each, a single draw's one
- * and an instanced draw's one an instance. Handed out in runs, uploaded as one span.
+ * Where static draws stand: a matrix, hemisphere terms, an impostor, the greatest scale and a hemisphere cube each, a
+ * single draw's one and an instanced draw's one an instance. Handed out in runs, uploaded as one span.
  */
 export class StaticPlaces extends StaticRunPool {
   private readonly matrix: Matrix4 = new Matrix4();
@@ -43,6 +47,7 @@ export class StaticPlaces extends StaticRunPool {
     const impostors: Nullable<Int32Array> = lodStart === null ? null : (instances.impostors?.indices ?? null);
     const count: number = instances.transforms.length / RENDERER_FLOATS_PER_INSTANCE;
     const places: Float32Array = this.buffers.places.array as Float32Array;
+    const words: Uint32Array = new Uint32Array(places.buffer, places.byteOffset, places.length);
 
     for (let index = 0; index < count; index += 1) {
       const at: number = (start + index) * FLOATS_PER_PLACE;
@@ -56,6 +61,14 @@ export class StaticPlaces extends StaticRunPool {
       places[at + 18] = impostors && lodStart !== null && impostors[index] >= 0 ? lodStart + impostors[index] : -1;
       // What a cluster's sphere, in its mesh's own space, is scaled by where the place stands it.
       places[at + 19] = this.matrix.getMaxScaleOnAxis();
+
+      // Written as bits: the packed halves are words, which a float view would read as numbers.
+      if (instances.hemiCube) {
+        packStaticHemiCube(instances.hemiCube, index, words, at + HEMI_CUBE_OFFSET);
+        places[at + HEMI_CUBE_OFFSET + 3] = 1;
+      } else {
+        places.fill(0, at + HEMI_CUBE_OFFSET, at + HEMI_CUBE_OFFSET + 4);
+      }
     }
 
     this.span.touch(start, start + count - 1);
@@ -71,7 +84,7 @@ export class StaticPlaces extends StaticRunPool {
     const first: number = at * FLOATS_PER_PLACE;
 
     places.set(matrix.elements, first);
-    places.set([1, 0, -1, matrix.getMaxScaleOnAxis()], first + 16);
+    places.set([1, 0, -1, matrix.getMaxScaleOnAxis(), 0, 0, 0, 0], first + 16);
     this.span.touch(at);
     this.currentVersion += 1;
   }

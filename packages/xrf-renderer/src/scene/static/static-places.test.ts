@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
-import { Matrix4 } from "three/webgpu";
+import { DataUtils, Matrix4 } from "three/webgpu";
 
 import { IRendererInstances } from "#/contract/scene/renderer-instances";
 import { StaticPlaces } from "#/scene/static/static-places";
@@ -40,6 +40,34 @@ describe("StaticPlaces", () => {
     expect(Array.from((buffers.places.array as Float32Array).subarray(16, 18))).toEqual([1, 0]);
   });
 
+  // Read back as `unpackHalf2x16` does: the words' low halves first.
+  it("packs each place's hemisphere cube as half floats beside its mark, and marks a place without one", () => {
+    const buffers: StaticDrawBuffers = new StaticDrawBuffers(new StorageRetirement());
+    const places: StaticPlaces = new StaticPlaces(buffers);
+    const start: number = places.allocate(2) as number;
+    const array: Float32Array = buffers.places.array as Float32Array;
+    const words: Uint32Array = new Uint32Array(array.buffer, array.byteOffset, array.length);
+    const at: number = (start + 1) * STATIC_PLACE_COLUMNS * 4 + 20;
+
+    places.writePlaces(
+      start,
+      { ...createInstances(false), hemiCube: new Float32Array([0, 0, 0, 0, 0, 0, 0.25, 0.5, 0.75, 1, 0.125, 0.0625]) },
+      new Matrix4()
+    );
+
+    const faces: Array<number> = [0, 1, 2].flatMap((word: number) => [
+      DataUtils.fromHalfFloat(words[at + word] & 0xffff),
+      DataUtils.fromHalfFloat(words[at + word] >>> 16),
+    ]);
+
+    expect(faces).toEqual([0.25, 0.5, 0.75, 1, 0.125, 0.0625]);
+    expect(array[at + 3]).toBe(1);
+
+    places.writePlaces(start, createInstances(false), new Matrix4());
+
+    expect(Array.from(array.subarray(at, at + 4))).toEqual([0, 0, 0, 0]);
+  });
+
   it("grows with what is written and handed out kept, and bumps its version", () => {
     const buffers: StaticDrawBuffers = new StaticDrawBuffers(new StorageRetirement(), { [EStaticPool.PLACES]: 2 });
     const places: StaticPlaces = new StaticPlaces(buffers);
@@ -78,7 +106,7 @@ describe("StaticPlaces", () => {
     ).toEqual([7]);
     expect(
       Array.from(floats.subarray(STATIC_PLACE_COLUMNS * 4 * (start + 2) + 16, STATIC_PLACE_COLUMNS * 4 * (start + 3)))
-    ).toEqual([1, 0, -1, 1]);
+    ).toEqual([1, 0, -1, 1, 0, 0, 0, 0]);
   });
 
   it("names each place's impostor from where its set starts, and none for a place without", () => {

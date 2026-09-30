@@ -12,6 +12,7 @@ import {
 import {
   IRendererInstances,
   RENDERER_FLOATS_PER_INSTANCE,
+  RENDERER_HEMI_CUBE_FLOATS_PER_INSTANCE,
   RENDERER_HEMI_FLOATS_PER_INSTANCE,
 } from "#/contract/scene/renderer-instances";
 import { EVertexAttribute, INSTANCE_MATRIX_COLUMNS } from "#/geometry/vertex-attribute";
@@ -39,6 +40,8 @@ export class SceneInstances {
   /** The transforms drawn, the places seen first. */
   private readonly columns: InstancedInterleavedBuffer;
   private readonly hemi: Nullable<InstancedBufferAttribute>;
+  /** The hemisphere cubes drawn, both halves of each in one buffer. */
+  private readonly hemiCube: Nullable<InstancedInterleavedBuffer>;
   /** Which place each drawn instance is, and how many of them are current. */
   private readonly drawn: Uint32Array;
   private drawnCount: number;
@@ -58,6 +61,9 @@ export class SceneInstances {
     this.columns = new InstancedInterleavedBuffer(source.transforms.slice(), RENDERER_FLOATS_PER_INSTANCE);
     this.hemi = source.hemi
       ? new InstancedBufferAttribute(source.hemi.slice(), RENDERER_HEMI_FLOATS_PER_INSTANCE)
+      : null;
+    this.hemiCube = source.hemiCube
+      ? new InstancedInterleavedBuffer(source.hemiCube.slice(), RENDERER_HEMI_CUBE_FLOATS_PER_INSTANCE)
       : null;
     this.drawn = Uint32Array.from({ length: this.count }, (_: unknown, index: number) => index);
     this.drawnCount = this.count;
@@ -127,11 +133,7 @@ export class SceneInstances {
         return this.show(0);
 
       case EVisibility.INSIDE:
-        for (let index = 0; index < this.count; index += 1) {
-          this.seen[index] = index;
-        }
-
-        return this.show(this.count);
+        return this.show(collectVisibleInstances(view, this.spheres, this.seen, true));
 
       case EVisibility.INTERSECTS:
         return this.show(collectVisibleInstances(view, this.spheres, this.seen));
@@ -162,6 +164,17 @@ export class SceneInstances {
 
     if (this.hemi) {
       geometry.setAttribute(EVertexAttribute.INSTANCE_HEMI, this.hemi);
+    }
+
+    if (this.hemiCube) {
+      geometry.setAttribute(
+        EVertexAttribute.INSTANCE_HEMI_POSITIVE,
+        new InterleavedBufferAttribute(this.hemiCube, 3, 0)
+      );
+      geometry.setAttribute(
+        EVertexAttribute.INSTANCE_HEMI_NEGATIVE,
+        new InterleavedBufferAttribute(this.hemiCube, 3, 3)
+      );
     }
 
     geometry.instanceCount = this.count;
@@ -197,7 +210,7 @@ export class SceneInstances {
   }
 
   private upload(count: number): void {
-    const { transforms, hemi } = this.source;
+    const { transforms, hemi, hemiCube } = this.source;
     const drawnTransforms: Float32Array = this.columns.array as Float32Array;
 
     for (let index = 0; index < count; index += 1) {
@@ -215,6 +228,16 @@ export class SceneInstances {
           index * RENDERER_HEMI_FLOATS_PER_INSTANCE
         );
       }
+
+      if (this.hemiCube && hemiCube) {
+        (this.hemiCube.array as Float32Array).set(
+          hemiCube.subarray(
+            place * RENDERER_HEMI_CUBE_FLOATS_PER_INSTANCE,
+            (place + 1) * RENDERER_HEMI_CUBE_FLOATS_PER_INSTANCE
+          ),
+          index * RENDERER_HEMI_CUBE_FLOATS_PER_INSTANCE
+        );
+      }
     }
 
     this.drawnCount = count;
@@ -222,6 +245,10 @@ export class SceneInstances {
 
     if (this.hemi) {
       queueBufferUpload(this.hemi, 0, count * RENDERER_HEMI_FLOATS_PER_INSTANCE);
+    }
+
+    if (this.hemiCube) {
+      queueBufferUpload(this.hemiCube, 0, count * RENDERER_HEMI_CUBE_FLOATS_PER_INSTANCE);
     }
   }
 }

@@ -10,8 +10,8 @@ function createGeometry(): SceneGeometry {
   return new SceneGeometry({ groups: [], position: new Float32Array([-0.5, 0, 0, 0.5, 0, 0, 0, 0.5, 0]) });
 }
 
-/** A view from the origin down -z, to a hundred metres. */
-function createView(x: number = 0): CullView {
+/** A view from the origin down -z, to a hundred metres, dropping what is at or below `discard` on screen. */
+function createView(x: number = 0, discard: number = 0): CullView {
   const camera: PerspectiveCamera = new PerspectiveCamera(90, 1, 1, 100);
   const view: CullView = new CullView();
 
@@ -19,7 +19,7 @@ function createView(x: number = 0): CullView {
   camera.position.x = x;
   camera.updateProjectionMatrix();
   camera.updateMatrixWorld();
-  view.take(camera);
+  view.take(camera, Infinity, discard);
 
   return view;
 }
@@ -42,6 +42,17 @@ describe("SceneInstances", () => {
     const drawn = (instances.geometry.getAttribute("instanceMatrix0") as InterleavedBufferAttribute).data.array;
 
     expect(Array.from(drawn.slice(0, 32))).toEqual([...place(0, 0, -10), ...place(1, 0, -20)]);
+  });
+
+  // The triangle's sphere is about half a metre: about 0.0056 on screen at ten metres, 0.0014 at twenty.
+  it("drops a place too small on screen, as the engine discards a visual", () => {
+    const instances: SceneInstances = new SceneInstances(createGeometry(), { transforms });
+
+    expect(instances.cull(createView(0, 0.002))).toBe(1);
+
+    const drawn = (instances.geometry.getAttribute("instanceMatrix0") as InterleavedBufferAttribute).data.array;
+
+    expect(Array.from(drawn.slice(0, 16))).toEqual(place(0, 0, -10));
   });
 
   it("uploads nothing when a moved view still sees the same places", () => {
@@ -70,5 +81,19 @@ describe("SceneInstances", () => {
       3,
       expect.closeTo(0.3),
     ]);
+  });
+
+  it("carries each drawn place's hemisphere cube with it, both halves from one buffer", () => {
+    const hemiCube: Float32Array = Float32Array.from({ length: 18 }, (_: unknown, index: number) => index);
+    const instances: SceneInstances = new SceneInstances(createGeometry(), { hemiCube, transforms });
+
+    instances.cull(createView());
+
+    const positive = instances.geometry.getAttribute("instanceHemiPositive") as InterleavedBufferAttribute;
+    const negative = instances.geometry.getAttribute("instanceHemiNegative") as InterleavedBufferAttribute;
+
+    // The first and third places, which the view sees.
+    expect(Array.from(positive.data.array.slice(0, 12))).toEqual([0, 1, 2, 3, 4, 5, 12, 13, 14, 15, 16, 17]);
+    expect(negative.offset).toBe(3);
   });
 });

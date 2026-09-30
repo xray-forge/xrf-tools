@@ -508,10 +508,10 @@ export class RendererHost {
     this.uniforms.rain.update(time);
     this.uniforms.wet.update(time);
 
-    // What the view sees, from the view unjittered, so the jitter never flickers a choice.
-    this.cullView.take(viewCamera, this.uniforms.viewDistance);
-    // Thresholds on a clump's screen area, which scale with how many pixels the drawing has.
+    // Thresholds on a place's screen area, which scale with how many pixels the drawing has.
     this.scene.staticCull.takeLod(features.lod, this.drawingSize.x, this.drawingSize.y, viewCamera);
+    // What the view sees, from the view unjittered, so the jitter never flickers a choice.
+    this.cullView.take(viewCamera, this.uniforms.viewDistance, this.uniforms.staticDraws.lod.discard.value);
     this.uniforms.shadows.fit(viewCamera, this.uniforms.lighting.sunDirection, features.shadows);
 
     const camera: PerspectiveCamera = this.graph.takeCamera(viewCamera);

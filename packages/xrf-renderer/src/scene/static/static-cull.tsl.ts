@@ -5,7 +5,13 @@ import { IStaticCullShader } from "#/scene/static/static-cull-shader";
 import { toInFrustum } from "#/scene/static/static-frustum.tsl";
 import { createLodCullShader } from "#/scene/static/static-lod-cull.tsl";
 import { toOccluded } from "#/scene/static/static-occlusion.tsl";
-import { toBandDrawn, toFinestBand, toImpostorRow, toLodDrawn } from "#/scene/static/static-row-tests.tsl";
+import {
+  toBandDrawn,
+  toDiscardKept,
+  toFinestBand,
+  toImpostorRow,
+  toLodDrawn,
+} from "#/scene/static/static-row-tests.tsl";
 import { IStaticViewCullShader } from "#/scene/static/static-view-cull-shader";
 import { loopNamed } from "#/shader/named-loop.tsl";
 import {
@@ -212,7 +218,8 @@ function createSingleShader(buffers: StaticDrawBuffers, view: number, planes: Un
  * picks, and which reaches into the view, keeps every cluster of its draw's that reaches into it too, stood in the
  * row's place. The camera's first view leaves what the last frame's depth hides, the whole row's or a cluster's, for
  * its second. A shadow view casts every clump as its trees and never as its impostor (`add_leafs_static`), and a
- * progressive tree into a cascade at the band its detail picks, as it draws, and into a light's face at its finest.
+ * progressive tree into a cascade at the band its detail picks, as it draws, and into a light's face at its finest. A
+ * place too small on screen is discarded from the camera and the cascades, as the engine does.
  */
 function createRowShader(buffers: StaticDrawBuffers, view: number, planes: UniformArrayNode<string>): ComputeNode {
   const rows: number = buffers.capacity(EStaticPool.ROWS);
@@ -224,19 +231,23 @@ function createRowShader(buffers: StaticDrawBuffers, view: number, planes: Unifo
   const lodTerms = storage(buffers.lodTerms, "uvec4", buffers.capacity(EStaticPool.LODS)).toReadOnly();
   const base: number = buffers.toListBase(view);
   const isCamera: boolean = view === EStaticView.EARLY;
+  const isLight: boolean = view - EStaticView.SHADOW >= STATIC_LIGHT_VIEW_START;
 
   return Fn(() => {
     const sphere = rowSpheres.element(instanceIndex) as unknown as Node<"vec4">;
     const words = rowLods.element(instanceIndex) as unknown as Node<"uvec2">;
     const target = rowTargets.element(instanceIndex) as unknown as Node<"uvec4">;
+    // A light's face is kept while nothing it casts from changes, so it casts what the camera would discard too.
     const isDrawn: Node<"bool"> = isCamera
-      ? toLodDrawn(words.x, lodTerms).and(toBandDrawn(words.y, sphere, buffers.lod))
+      ? toLodDrawn(words.x, lodTerms)
+          .and(toBandDrawn(words.y, sphere, buffers.lod))
+          .and(toDiscardKept(words.x, sphere, buffers.lod))
       : toImpostorRow(words.x)
           .not()
           .and(
-            view - EStaticView.SHADOW >= STATIC_LIGHT_VIEW_START
+            isLight
               ? toFinestBand(words.y)
-              : toBandDrawn(words.y, sphere, buffers.lod)
+              : toBandDrawn(words.y, sphere, buffers.lod).and(toDiscardKept(words.x, sphere, buffers.lod))
           );
 
     If(isDrawn.and(toInFrustum(sphere, planes).equal(1)), () => {

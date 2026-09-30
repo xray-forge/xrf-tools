@@ -29,8 +29,11 @@ export const STATIC_CLUSTER_VERTICES: number = RENDERER_CLUSTER_TRIANGLES * 3;
 /** Vertices a wireframe draws a cluster with: each triangle's three edges, two ends each. */
 export const STATIC_CLUSTER_WIRE_VERTICES: number = RENDERER_CLUSTER_TRIANGLES * 6;
 
-/** Columns one place takes: its matrix's four, then its hemisphere scale and offset, impostor and greatest scale. */
-export const STATIC_PLACE_COLUMNS: number = 5;
+/**
+ * Columns one place takes: its matrix's four, then its hemisphere scale and offset, impostor and greatest scale, then its
+ * hemisphere cube packed as half floats and whether it has one.
+ */
+export const STATIC_PLACE_COLUMNS: number = 6;
 
 /** Unsigned integers one slot's record takes, in two words of four: its clusters and place, then its batches and row. */
 export const STATIC_SLOT_WORDS: number = 8;

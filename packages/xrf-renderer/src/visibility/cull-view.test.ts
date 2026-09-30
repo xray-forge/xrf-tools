@@ -95,4 +95,22 @@ describe("CullView", () => {
     expect(view.version).toBe(first + 1);
     expect(view.classify(0, 0, -50, 5)).toBe(EVisibility.INSIDE);
   });
+
+  // `CalcSSA` against `r_ssaDISCARD`: a radius over its squared distance, dropped at the threshold or below it.
+  it("drops a sphere too small on screen, from where the camera stands, only while a threshold is taken", () => {
+    const camera: PerspectiveCamera = createCamera();
+    const view: CullView = new CullView();
+
+    view.take(camera, Infinity, 0.001);
+
+    expect(view.isDiscarded(0, 0, -10, 0.2)).toBe(false);
+    expect(view.isDiscarded(0, 0, -10, 0.05)).toBe(true);
+
+    const first: number = view.version;
+
+    view.take(camera);
+
+    expect(view.version).toBe(first + 1);
+    expect(view.isDiscarded(0, 0, -10, 0.05)).toBe(false);
+  });
 });

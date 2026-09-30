@@ -23,6 +23,10 @@ export enum EVertexAttribute {
   PACKED_COLOR = "packedColor",
   /** Its scale and offset, per place a geometry stands. */
   INSTANCE_HEMI = "instanceHemi",
+  /** Its hemisphere cube's faces toward `+x +y +z`, per place a geometry stands. */
+  INSTANCE_HEMI_POSITIVE = "instanceHemiPositive",
+  /** Its hemisphere cube's faces toward `-x -y -z`. */
+  INSTANCE_HEMI_NEGATIVE = "instanceHemiNegative",
   /**
    * The mark of a clustered static draw's arena, followed by the arena's number: never read, only named, so the
    * programs built for one arena's draws, which read its buffers by name, are its own.

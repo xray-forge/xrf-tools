@@ -5,6 +5,7 @@ import {
   mat3,
   mat4,
   modelViewMatrix,
+  modelWorldMatrix,
   normalize,
   normalLocal,
   normalView,
@@ -81,6 +82,33 @@ export function toPlacedImpostor(buffers: StaticDrawBuffers): Node<"uint"> {
  */
 export function toPlacedHemiTerms(builder: NodeBuilder, buffers: StaticDrawBuffers): Node<"vec2"> {
   return buffers.placeColumns.element(toEntryPlace(builder).add(4)).xy as Node<"vec2">;
+}
+
+/**
+ * @param builder - The builder of a clustered build.
+ * @param buffers - What static draws are placed by.
+ * @returns The hemisphere cube of the place of the entry drawn, its three words as float bits, and one where it has
+ *   one.
+ */
+export function toPlacedHemiCube(builder: NodeBuilder, buffers: StaticDrawBuffers): Node<"vec4"> {
+  return buffers.placeColumns.element(toEntryPlace(builder).add(5)) as unknown as Node<"vec4">;
+}
+
+/**
+ * @param builder - The builder of the shader in question.
+ * @param buffers - What static draws are placed by.
+ * @returns The vertex's normal in the world, turned by whatever places it.
+ */
+export function toPlacedNormalWorld(builder: NodeBuilder, buffers: StaticDrawBuffers): Node<"vec3"> {
+  if (isBufferPlacedBuild(builder)) {
+    return normalize(toTransformedNormal(toBufferMatrix(builder, buffers), toLocalNormal(builder)));
+  }
+
+  const matrix: Node<"mat4"> = isInstancedBuild(builder)
+    ? (modelWorldMatrix.mul(toInstanceMatrix()) as unknown as Node<"mat4">)
+    : modelWorldMatrix;
+
+  return normalize(toTransformedNormal(matrix, toLocalNormal(builder)));
 }
 
 /** The vertex's normal in its geometry's own space: the engine's packed one, or its float one. */

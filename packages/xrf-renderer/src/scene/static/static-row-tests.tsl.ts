@@ -68,3 +68,15 @@ export function toBandDrawn(word: Node<"uint">, sphere: Node<"vec4">, lod: LodUn
 export function toFinestBand(word: Node<"uint">): Node<"bool"> {
   return word.equal(STATIC_NO_BAND).or(word.bitAnd(255).equal(0));
 }
+
+/**
+ * Whether a place is large enough on screen to draw at all (`r_ssaDISCARD`): the engine drops any visual whose screen
+ * area, from the camera, falls to the threshold, in every phase. An impostor's own draw is left to the LOD cull.
+ *
+ * @param row - The row's impostor word.
+ * @param sphere - The place's sphere.
+ * @param lod - The threshold and the camera it is measured from.
+ */
+export function toDiscardKept(row: Node<"uint">, sphere: Node<"vec4">, lod: LodUniforms): Node<"bool"> {
+  return toImpostorRow(row).or(toStaticScreenArea(sphere.w, sphere.xyz.sub(lod.camera)).greaterThan(lod.discard));
+}

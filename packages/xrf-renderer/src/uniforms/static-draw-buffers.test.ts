@@ -5,6 +5,7 @@ import { IStorageDeviceFixture, mockStorageDevice } from "#/internals/device-fix
 import { createStorageBuffer } from "#/internals/storage-buffers";
 import {
   STATIC_BATCH_ARGUMENTS,
+  STATIC_PLACE_COLUMNS,
   STATIC_SHADOW_VIEWS,
   STATIC_SLOT_WORDS,
   STATIC_VIEWS,
@@ -101,7 +102,7 @@ describe("StaticDrawBuffers", () => {
     buffers.storageLimit = 1 << 20;
 
     expect(buffers.limit(EStaticPool.SLOTS)).toBe((1 << 20) / 32);
-    expect(buffers.limit(EStaticPool.PLACES)).toBe(Math.floor((1 << 20) / 80));
+    expect(buffers.limit(EStaticPool.PLACES)).toBe(Math.floor((1 << 20) / (STATIC_PLACE_COLUMNS * 16)));
     expect(buffers.limit(EStaticPool.SHADOW_LIST)).toBe(Math.floor((1 << 20) / (8 * STATIC_SHADOW_VIEWS)));
     expect(buffers.limit(EStaticPool.PYRAMID)).toBe((1 << 20) / 4);
   });

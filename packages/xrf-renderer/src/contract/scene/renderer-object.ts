@@ -27,7 +27,10 @@ export interface IRendererObject {
  * @returns Its buffers.
  */
 export function listRendererObjectTransfers(object: IRendererObject): Array<Transferable> {
-  return [object.instances?.transforms, object.instances?.hemi, object.instances?.impostors?.indices].flatMap(
-    (array: Maybe<ArrayBufferView>) => (array ? [array.buffer] : [])
-  );
+  return [
+    object.instances?.transforms,
+    object.instances?.hemi,
+    object.instances?.hemiCube,
+    object.instances?.impostors?.indices,
+  ].flatMap((array: Maybe<ArrayBufferView>) => (array ? [array.buffer] : []));
 }
