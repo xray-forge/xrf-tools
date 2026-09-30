@@ -4,6 +4,7 @@ import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
 import { ELevelProblemRule, ILevelProblemSources, listLevelProblems } from "@/core/level/lib/problems";
 import { ILevelSectorSkip } from "@/core/level/lib/sector/level-sector-report";
 import { ISectorViews } from "@/core/level/lib/sector/level-sector-views";
+import { EMPTY_LEVEL_SPAWN_REPORT } from "@/core/level/lib/spawn/level-spawn-report";
 import { IEditorProblem } from "@/core/shell/editor/EditorProblemsPanel";
 import { mockSurfaceDescriptor } from "@/fixtures/mocks/visual.mocks";
 
@@ -12,7 +13,7 @@ function sectorOf(sector: number, skipped: ISectorViews["skipped"]): ReadonlyArr
 }
 
 function mockSources(overrides: Partial<ILevelProblemSources> = {}): ILevelProblemSources {
-  return { skipped: [], spawn: [], surfaces: [], textures: [], ...overrides };
+  return { skipped: [], spawn: EMPTY_LEVEL_SPAWN_REPORT, surfaces: [], textures: [], ...overrides };
 }
 
 describe("listLevelProblems", () => {
@@ -78,7 +79,9 @@ describe("listLevelProblems", () => {
 
   it("names a spawned visual that could not be read, whose objects are absent", () => {
     const problems: Array<IEditorProblem> = listLevelProblems(
-      mockSources({ spawn: [{ name: "physics\\box", reason: "Failed to read visual" }] })
+      mockSources({
+        spawn: { ...EMPTY_LEVEL_SPAWN_REPORT, failures: [{ name: "physics\\box", reason: "Failed to read visual" }] },
+      })
     );
 
     expect(problems).toEqual([
@@ -90,10 +93,26 @@ describe("listLevelProblems", () => {
     ]);
   });
 
+  // A spawn that cannot be read leaves the level without a spawned object, which the picture alone never says.
+  it("names the spawn itself where it could not be read, before any visual", () => {
+    const problems: Array<IEditorProblem> = listLevelProblems(
+      mockSources({
+        spawn: {
+          ...EMPTY_LEVEL_SPAWN_REPORT,
+          failure: "Failed to read 'spawns\\all.spawn': truncated chunk",
+          failures: [{ name: "box", reason: "missing" }],
+        },
+      })
+    );
+
+    expect(problems.map((it) => it.subject)).toEqual(["spawns\\all.spawn", "box"]);
+    expect(problems[0].message).toBe("No spawned object is drawn: Failed to read 'spawns\\all.spawn': truncated chunk");
+  });
+
   it("orders the four sources, so one reading is always in the same place", () => {
     const problems: Array<IEditorProblem> = listLevelProblems({
       skipped: sectorOf(0, [{ cause: "malformed", drawable: 1, reason: "bad range" }]),
-      spawn: [{ name: "box", reason: "missing" }],
+      spawn: { ...EMPTY_LEVEL_SPAWN_REPORT, failures: [{ name: "box", reason: "missing" }] },
       surfaces: [mockSurfaceDescriptor({ declaration: { kind: "undefined" } })],
       textures: [{ reason: "missing", reference: "stone" }],
     });

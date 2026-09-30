@@ -115,6 +115,8 @@ export class LevelRenderService extends RenderSurfaceService {
     const content: LevelRenderContent = new LevelRenderContent(client);
 
     this.content = content;
+    // Before the held spawn is handed over, so a category hidden already is never put only to go again.
+    content.showSpawn(toLevelSpawnVisibility(this.viewService.options));
 
     const subscriptions: Array<() => void> = [
       this.loadService.sectors.subscribe((change) => content.deliver(change)),

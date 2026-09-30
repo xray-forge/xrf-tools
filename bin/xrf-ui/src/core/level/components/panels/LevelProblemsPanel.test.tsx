@@ -40,6 +40,8 @@ async function renderProblems({ isPresent, unreadable }: IRenderProblemsOptions)
   setMockInvokeResponses({
     ["plugin:levels|open_level"]: mockSessionResponse(level),
     ["plugin:levels|open_sector"]: mockSessionResponse(description),
+    // A spawn placing nothing drawn, which a clean level may well have.
+    ["plugin:levels|open_spawn_objects"]: mockSessionResponse({ objects: [], visuals: [] }),
     ...(unreadable
       ? {
           ["plugin:levels|describe_spawn_models"]: mockSessionResponse({

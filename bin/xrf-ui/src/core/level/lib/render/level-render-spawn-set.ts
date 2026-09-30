@@ -115,7 +115,12 @@ export class LevelRenderSpawnSet {
         if (isWanted && !this.shown.has(key)) {
           this.sink.putObject(
             key,
-            toLevelSpawnObject(LEVEL_RENDER_KEYS.spawnGeometry(visual), surfaces, objects, this.hemi)
+            toLevelSpawnObject({
+              geometry: LEVEL_RENDER_KEYS.spawnGeometry(visual),
+              hemi: this.hemi,
+              objects,
+              surfaces,
+            })
           );
           this.shown.add(key);
         } else if (!isWanted && this.shown.has(key)) {

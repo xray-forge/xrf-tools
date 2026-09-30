@@ -21,6 +21,8 @@ import { createRendererWorkerStub, IRendererWorkerStub } from "@xrf/renderer/fix
 import { Maybe } from "@xrf/types";
 
 import { IPC_METRICS } from "@/core/ipc/metrics";
+import { ELevelSpawnCategory } from "@/core/ipc/types/xrf-app";
+import { LEVEL_RENDER_KEYS } from "@/core/level/lib/render/level-render-keys";
 import { ILevelPoint } from "@/core/level/lib/residency/level-residency";
 import { ELevelSurfaceDressing } from "@/core/level/lib/surface/level-surface-dressing";
 import { ELevelWeatherSource } from "@/core/level/lib/weather/level-weather-source";
@@ -28,7 +30,13 @@ import { LevelLoadService } from "@/core/level/services/level-load.service";
 import { LevelViewService } from "@/core/level/services/level-view.service";
 import { LevelViewportService } from "@/core/level/services/level-viewport.service";
 import { LevelWeatherService } from "@/core/level/services/level-weather.service";
-import { mockLevelTextureReference, mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
+import { setMockBulkResponses } from "@/fixtures/mocks/bulk.mocks";
+import {
+  mockLevelSpawnModel,
+  mockLevelSpawnObject,
+  mockLevelTextureReference,
+  mockSelectedLevelDescription,
+} from "@/fixtures/mocks/level.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { InvokeMap, resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockLevelWeatherDescription } from "@/fixtures/mocks/weather.mocks";
@@ -496,6 +504,52 @@ describe("LevelRenderService", () => {
     await stub.flush();
 
     expect(container.get(LevelViewportService).isRevealed).toBe(true);
+
+    service.dispose();
+  });
+
+  // A renderer started after the spawn was read is handed it at once, and a category hidden by then is never put.
+  it("stands only the shown categories of a spawn held before the renderer started", async () => {
+    setMockInvokeResponses({
+      ["plugin:levels|describe_spawn_models"]: mockSessionResponse({
+        failures: [],
+        hemi: [],
+        models: [mockLevelSpawnModel("crate").description],
+      }),
+      ["plugin:levels|get_level"]: mockSessionResponse(mockSelectedLevelDescription()),
+      ["plugin:levels|open_spawn_objects"]: mockSessionResponse({
+        objects: [
+          mockLevelSpawnObject({ index: 0 }),
+          mockLevelSpawnObject({ category: ELevelSpawnCategory.ITEMS, index: 1 }),
+        ],
+        visuals: ["crate"],
+      }),
+    });
+    setMockBulkResponses({ "levels/read_spawn_model": mockLevelSpawnModel("crate").buffer });
+
+    const container: Container = mockContainer([
+      LevelLoadService,
+      LevelViewService,
+      LevelViewportService,
+      LevelRenderService,
+      LevelWeatherService,
+    ]);
+    const viewService: LevelViewService = container.get(LevelViewService);
+
+    viewService.setOptions({ ...viewService.options, isSpawnedProps: false });
+    await container.get(LevelLoadService).restore();
+    await container.get(LevelLoadService).whenHeldRead();
+
+    const service = container.get(LevelRenderService);
+
+    service.attach(document.createElement("div"));
+    await stub.flush();
+
+    const put: Array<string> = stub.take(ERendererRequest.PUT_OBJECT).map((it) => it.key);
+
+    expect(put).toContain(LEVEL_RENDER_KEYS.spawnObject(0, ELevelSpawnCategory.ITEMS));
+    expect(put).not.toContain(LEVEL_RENDER_KEYS.spawnObject(0, ELevelSpawnCategory.PROPS));
+    expect(stub.take(ERendererRequest.RELEASE_OBJECT)).toEqual([]);
 
     service.dispose();
   });

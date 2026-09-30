@@ -14,7 +14,7 @@ import {
   SessionSnapshot,
 } from "@/core/ipc/types/xrf-app";
 import { ILevelSpawnDelivery, ILevelSpawnModel } from "@/core/level/lib/render/level-render-protocol";
-import { ILevelSpawnReport } from "@/core/level/lib/spawn/level-spawn-report";
+import { EMPTY_LEVEL_SPAWN_REPORT, ILevelSpawnReport } from "@/core/level/lib/spawn/level-spawn-report";
 
 /** Visuals described a call: a level's few hundred take a dozen calls, and the first objects stand early. */
 export const LEVEL_SPAWN_BATCH: number = 24;
@@ -56,13 +56,13 @@ export class LevelSpawnReader {
 
   /**
    * @param sessionId - The level opening to read the spawn of.
-   * @returns What the read came to, or null for a level drawing no object or closed meanwhile.
+   * @returns What the read came to, or null for a level drawing no object, a spawn that could not be read, which is
+   *   noted, or a level closed meanwhile.
    */
   public async read(sessionId: string): Promise<Nullable<ILevelSpawnReport>> {
-    const { value: objects }: SessionSnapshot<LevelSpawnObjectsDescription> =
-      await levelsCommands.openSpawnObjects(sessionId);
+    const objects: Nullable<LevelSpawnObjectsDescription> = await this.readObjects(sessionId);
 
-    if (!objects.visuals.length || !this.host.isOpen(sessionId)) {
+    if (!objects?.visuals.length || !this.host.isOpen(sessionId)) {
       return null;
     }
 
@@ -72,6 +72,7 @@ export class LevelSpawnReader {
     const textures: Array<LevelTextureReference> = [];
     const failures: Array<LevelSpawnModelFailure> = [];
     let report: ILevelSpawnReport = {
+      failure: null,
       failures,
       objects: objects.objects.length,
       read: 0,
@@ -117,6 +118,19 @@ export class LevelSpawnReader {
     }
 
     return report;
+  }
+
+  /** The objects the spawn places, or null for a spawn that could not be read, which is noted as the read's failure. */
+  private async readObjects(sessionId: string): Promise<Nullable<LevelSpawnObjectsDescription>> {
+    try {
+      return (await levelsCommands.openSpawnObjects(sessionId)).value;
+    } catch (error: unknown) {
+      if (this.host.isOpen(sessionId)) {
+        this.host.note({ ...EMPTY_LEVEL_SPAWN_REPORT, failure: transformError(error).message });
+      }
+
+      return null;
+    }
   }
 
   /** One batch's models and their packs; a batch that could not be read is every one of its visuals unreadable. */

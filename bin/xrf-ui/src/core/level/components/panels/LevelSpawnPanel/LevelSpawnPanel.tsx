@@ -9,7 +9,7 @@ import { useLevelHeld } from "@/core/level/components/panels/LevelSpawnPanel/use
 import { useLevelSpawnDetails } from "@/core/level/components/panels/LevelSpawnPanel/use-level-spawn-details";
 import { toLevelFramedGoTo } from "@/core/level/lib/camera/level-camera-frame";
 import { ILevelSpawnDelivery } from "@/core/level/lib/render/level-render-protocol";
-import { isLevelSpawnReading } from "@/core/level/lib/spawn/level-spawn-report";
+import { ILevelSpawnReport, isLevelSpawnReading } from "@/core/level/lib/spawn/level-spawn-report";
 import { toLevelSpawnSphere } from "@/core/level/lib/spawn/level-spawn-sphere";
 import {
   listLevelSpawnGroupIds,
@@ -46,7 +46,7 @@ export function LevelSpawnPanel({
 
   const spawn: Nullable<ILevelSpawnDelivery> = useLevelHeld(loadService.spawn);
   const tree: IUseTreeState = useTreeState();
-  const { expandAll } = tree;
+  const { expandAll, select } = tree;
   const [filter, setFilter] = useState<string>("");
   // Read here rather than in the rows' callback, so a switch from the toolbar redraws the eyes.
   const options: ILevelViewOptions = viewService.options;
@@ -73,6 +73,9 @@ export function LevelSpawnPanel({
     loadService.level.value?.selected.sessionId ?? null,
     selected?.index ?? null
   );
+
+  // Another level's objects are numbered afresh, so what was chosen names some other object now.
+  useEffect(() => select(null), [description, select]);
 
   // A filter that matched inside a group opens it, because a closed group answering a query looks like no answer.
   useEffect(() => {
@@ -152,11 +155,7 @@ export function LevelSpawnPanel({
         data-testid={dataTestId}
         id={id}
         className={className}
-        label={
-          isLevelSpawnReading(loadService.spawnReport)
-            ? "Reading the level's spawn."
-            : "The level's spawn places nothing the viewer draws."
-        }
+        label={toEmptyLabel(loadService.spawnReport)}
       />
     );
   }
@@ -204,6 +203,20 @@ export function LevelSpawnPanel({
       ) : null}
     </div>
   );
+}
+
+/**
+ * What the panel says while it lists nothing: why the spawn could not be read, that it is being read, or that it
+ * places nothing the viewer draws.
+ */
+function toEmptyLabel(report: ILevelSpawnReport): string {
+  if (report.failure) {
+    return `The level's spawn could not be read: ${report.failure}`;
+  }
+
+  return isLevelSpawnReading(report)
+    ? "Reading the level's spawn."
+    : "The level's spawn places nothing the viewer draws.";
 }
 
 /** How many objects a row stands for: a group's count, or one. */

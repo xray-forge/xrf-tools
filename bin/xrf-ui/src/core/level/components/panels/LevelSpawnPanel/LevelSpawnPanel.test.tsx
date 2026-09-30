@@ -154,4 +154,26 @@ describe("LevelSpawnPanel", () => {
     expect(sent[0]).toMatchObject({ heading: 0, pitch: expect.closeTo(-20), x: expect.closeTo(5) });
     expect(sent[0].z).toBeLessThan(8);
   });
+
+  // Another opening numbers its objects afresh, so object 0 of the last level is not object 0 of this one.
+  it("forgets the chosen object when the level opens again", async () => {
+    const { container, view } = await renderPanel();
+    const service: LevelLoadService = container.get(LevelLoadService);
+
+    await userEvent.click(await view.findByText("Props"));
+    await userEvent.keyboard("{ArrowRight}{ArrowDown}{ArrowRight}{ArrowDown}");
+
+    expect(await view.findByTestId("level-spawn-details")).toBeInTheDocument();
+
+    await service.load({
+      source: { kind: "asset", logicalPath: "levels\\zaton" },
+      roots: mockSelectedLevelDescription().roots,
+      isDltx: false,
+      engine: EXrayEngine.VANILLA,
+    });
+    await service.whenHeldRead();
+
+    await waitFor(() => expect(view.queryByTestId("level-spawn-details")).not.toBeInTheDocument());
+    expect(await view.findByRole("tree", { name: "Spawned objects" })).toBeInTheDocument();
+  });
 });

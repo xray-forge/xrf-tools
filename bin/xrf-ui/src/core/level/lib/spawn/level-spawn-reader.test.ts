@@ -91,6 +91,7 @@ describe("LevelSpawnReader", () => {
     expect(host.supplied.map((it) => it.length)).toEqual([LEVEL_SPAWN_BATCH, LEVEL_SPAWN_BATCH + 2]);
     expect(host.notes.map((it) => it.read)).toEqual([0, LEVEL_SPAWN_BATCH, LEVEL_SPAWN_BATCH + 2]);
     expect(report).toEqual({
+      failure: null,
       failures: [],
       objects: LEVEL_SPAWN_BATCH + 2,
       read: LEVEL_SPAWN_BATCH + 2,
@@ -167,6 +168,23 @@ describe("LevelSpawnReader", () => {
     expect(await host.reader.read("session")).toBeNull();
     expect(host.delivered).toEqual([]);
     expect(countDescribes()).toBe(1);
+  });
+
+  // A spawn the backend cannot read leaves the level without any object, which is noted rather than only logged.
+  it("notes why the spawn could not be read, and reads no model", async () => {
+    const host: IMockHost = mockHost();
+
+    setMockInvokeResponses({
+      ["plugin:levels|open_spawn_objects"]: () => {
+        throw new Error("Failed to read 'spawns\\all.spawn': truncated chunk");
+      },
+    });
+
+    expect(await host.reader.read("session")).toBeNull();
+    expect(host.notes).toEqual([
+      expect.objectContaining({ failure: "Failed to read 'spawns\\all.spawn': truncated chunk" }),
+    ]);
+    expect(countDescribes()).toBe(0);
   });
 
   it("reads nothing for a level drawing no object", async () => {

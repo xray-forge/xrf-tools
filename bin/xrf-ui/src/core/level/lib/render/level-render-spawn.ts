@@ -66,32 +66,37 @@ export function toLevelSpawnModelParts(visual: number, model: ILevelSpawnModel):
   };
 }
 
+/** What the objects of one category standing as one visual are drawn from. */
+export interface ILevelSpawnStanding {
+  /** The key its visual's geometry is put under. */
+  geometry: string;
+  /** The keys its groups' surfaces are put under, by slot. */
+  surfaces: ReadonlyArray<string>;
+  objects: ReadonlyArray<LevelSpawnObject>;
+  /** Each object's hemisphere cube, by its index among the level's spawned objects. */
+  hemi: ReadonlyMap<number, ReadonlyArray<number>>;
+}
+
 /**
  * The objects standing as one visual, drawn as its geometry in every place one stands, each lit by its hemisphere
  * cube where the backend estimated one.
  *
- * @param geometry - The key its visual's geometry is put under.
- * @param surfaces - The keys its groups' surfaces are put under, by slot.
- * @param standing - The objects.
- * @param hemi - Each object's hemisphere cube, by its index among the level's spawned objects.
+ * @param standing - The objects and what they are drawn from.
  * @returns What the renderer stands them as.
  */
-export function toLevelSpawnObject(
-  geometry: string,
-  surfaces: ReadonlyArray<string>,
-  standing: ReadonlyArray<LevelSpawnObject>,
-  hemi: ReadonlyMap<number, ReadonlyArray<number>>
-): IRendererObject {
-  const cubes: Array<Maybe<ReadonlyArray<number>>> = standing.map((object: LevelSpawnObject) => hemi.get(object.index));
+export function toLevelSpawnObject(standing: ILevelSpawnStanding): IRendererObject {
+  const cubes: Array<Maybe<ReadonlyArray<number>>> = standing.objects.map((object: LevelSpawnObject) =>
+    standing.hemi.get(object.index)
+  );
 
   return {
-    geometry,
+    geometry: standing.geometry,
     instances: {
       // All or none: an object without a cube of its own would read the next one's.
       hemiCube: cubes.every(Boolean) ? toHemiCubes(cubes as Array<ReadonlyArray<number>>) : undefined,
-      transforms: toInstanceTransforms(standing),
+      transforms: toInstanceTransforms(standing.objects),
     },
-    surfaces,
+    surfaces: standing.surfaces,
   };
 }
 

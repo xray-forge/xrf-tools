@@ -32,7 +32,7 @@ export function LevelProblemsPanel({
     () =>
       listLevelProblems({
         skipped: sectors.skipped,
-        spawn: spawn.failures,
+        spawn,
         surfaces: surfaces ?? [],
         textures: report.problems,
       }),

@@ -1,6 +1,6 @@
-import { LevelSpawnModelFailure } from "@/core/ipc/types/xrf-app";
 import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
 import { ILevelSectorSkip } from "@/core/level/lib/sector/level-sector-report";
+import { ILevelSpawnReport } from "@/core/level/lib/spawn/level-spawn-report";
 import { ILevelTextureProblem } from "@/core/level/lib/texture/level-texture-report";
 import { IEditorProblem } from "@/core/shell/editor/EditorProblemsPanel";
 
@@ -17,8 +17,8 @@ export interface ILevelProblemSources {
   surfaces: ReadonlyArray<XraySurfaceDescriptor>;
   /** What the resident packs could not read. */
   skipped: ReadonlyArray<ILevelSectorSkip>;
-  /** The spawned visuals that could not be read. */
-  spawn: ReadonlyArray<LevelSpawnModelFailure>;
+  /** What the spawn's read came to: the spawn itself and every visual that could not be read. */
+  spawn: ILevelSpawnReport;
 }
 
 /**

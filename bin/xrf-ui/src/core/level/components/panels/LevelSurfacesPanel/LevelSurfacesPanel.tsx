@@ -46,7 +46,7 @@ export function LevelSurfacesPanel({
   const viewportService: LevelViewportService = useInjection(LevelViewportService);
 
   const tree: IUseTreeState = useTreeState();
-  const { expandAll } = tree;
+  const { expandAll, select } = tree;
   const [filter, setFilter] = useState<string>("");
 
   const held: ReadonlyArray<number> = loadService.sectorReport.held;
@@ -88,6 +88,9 @@ export function LevelSurfacesPanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [renderService, held, selected]
   );
+
+  // Another level's table is numbered afresh, so what was chosen names some other entry now.
+  useEffect(() => select(null), [named, select]);
 
   // A filter that matched inside a shader opens it, because a closed shader answering a query looks like no answer.
   useEffect(() => {
