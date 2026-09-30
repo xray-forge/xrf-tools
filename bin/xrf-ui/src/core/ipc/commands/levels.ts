@@ -59,7 +59,10 @@ export const levelsCommands = {
   /** Pack one sector of the open level and report what it became. */
   openSector: (sessionId: SessionId, sectorId: SessionId, sector: number) =>
     __TAURI_INVOKE<SessionSnapshot<SectorDescription>>("plugin:levels|open_sector", { sessionId, sectorId, sector }),
-  /** Describe the open level's spawned objects the viewer draws, and the visuals they stand as, reading no visual. */
+  /**
+   * Describe the open level's spawned objects the viewer draws, and the visuals they stand as, reading no visual; an
+   * error where the spawn cannot be read.
+   */
   openSpawnObjects: (sessionId: SessionId) =>
     __TAURI_INVOKE<SessionSnapshot<LevelSpawnObjectsDescription>>("plugin:levels|open_spawn_objects", { sessionId }),
   /**
