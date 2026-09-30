@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
-import { RenderResult } from "@testing-library/react";
+import { RenderResult, waitFor } from "@testing-library/react";
 import { Container } from "@wirestate/core";
 
 import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
@@ -73,8 +73,6 @@ async function renderPanel(
   ]);
   const service: LevelLoadService = container.get(LevelLoadService);
 
-  await service.restore();
-
   // What a level's textures came to, which no test here streams for itself: given one, the panel reads it.
   if (textures) {
     container.get(LevelViewportService).noteTextures(textures);
@@ -82,7 +80,12 @@ async function renderPanel(
 
   arrange?.(container.get(LevelRenderService));
 
-  return renderWithProviders(<LevelSurfacesPanel />, { container, route: "/level-viewer" });
+  const result: RenderResult = renderWithProviders(<LevelSurfacesPanel />, { container, route: "/level-viewer" });
+
+  // Mounting provisions the container, and that restores the level the backend holds.
+  await waitFor(() => expect(service.isReady).toBe(true));
+
+  return result;
 }
 
 describe("LevelSurfacesPanel", () => {

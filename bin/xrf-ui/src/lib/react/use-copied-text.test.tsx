@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals";
-import { act, render } from "@testing-library/react";
+import { act, fireEvent, render } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { ReactElement } from "react";
 
@@ -25,16 +25,20 @@ describe("useCopiedText", () => {
 
   it("says a copy is done for a moment, then no longer", async () => {
     writeText.mockResolvedValue();
-    jest.useFakeTimers({ advanceTimers: true });
+    jest.useFakeTimers();
 
     const { getByRole } = render(<Component onFailure={() => {}} />);
 
-    await userEvent.click(getByRole("button"));
+    await act(async () => fireEvent.click(getByRole("button")));
 
     expect(writeText).toHaveBeenCalledWith("text");
     expect(getByRole("button").textContent).toBe("Copied");
 
-    act(() => jest.advanceTimersByTime(COPIED_FOR));
+    act(() => jest.advanceTimersByTime(COPIED_FOR - 1));
+
+    expect(getByRole("button").textContent).toBe("Copied");
+
+    act(() => jest.advanceTimersByTime(1));
 
     expect(getByRole("button").textContent).toBe("Copy");
   });

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "@jest/globals";
-import { RenderResult, waitFor } from "@testing-library/react";
+import { act, RenderResult, waitFor } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { Container } from "@wirestate/core";
 
@@ -55,10 +55,13 @@ async function renderPanel(responses: InvokeMap = {}): Promise<RenderResult & { 
   const load: LevelLoadService = container.get(LevelLoadService);
   const weather: LevelWeatherService = container.get(LevelWeatherService);
 
-  await load.restore();
-  await weather.open(load.level.value?.selected ?? null);
+  const result: RenderResult = renderWithProviders(<LevelWeatherPanel />, { container });
 
-  return { ...renderWithProviders(<LevelWeatherPanel />, { container }), weather };
+  // Mounting provisions the container, and that restores the level the backend holds.
+  await waitFor(() => expect(load.isReady).toBe(true));
+  await act(() => weather.open(load.level.value?.selected ?? null));
+
+  return { ...result, weather };
 }
 
 afterEach(() => {
@@ -148,7 +151,9 @@ describe("LevelWeatherPanel", () => {
 
     expect(weather.effect).toEqual({ name: "fx_blowout" });
 
-    weather.noteReport(mockRendererWeatherReport({ effect: { name: "fx_blowout", remaining: 125 }, time: 43_300 }));
+    act(() =>
+      weather.noteReport(mockRendererWeatherReport({ effect: { name: "fx_blowout", remaining: 125 }, time: 43_300 }))
+    );
 
     await waitFor(() =>
       expect(getByTestId("level-weather-play-section").textContent).toContain("00:02:05 of game time left")
@@ -188,7 +193,7 @@ describe("LevelWeatherPanel", () => {
 
     expect(section()).toMatch(/Volumes\s*1.*Around the camera\s*0/);
 
-    weather.noteReport(mockRendererWeatherReport({ modifiers: 1, weight: 1 }));
+    act(() => weather.noteReport(mockRendererWeatherReport({ modifiers: 1, weight: 1 })));
 
     await waitFor(() => expect(section()).toMatch(/Around the camera\s*1/));
   });

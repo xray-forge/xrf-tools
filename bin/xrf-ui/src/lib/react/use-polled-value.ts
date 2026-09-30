@@ -16,6 +16,7 @@ import { Logger } from "@/lib/logging";
 export function usePolledValue<T>(read: () => T | Promise<T>, intervalMs: number): Nullable<T> {
   const [value, setValue] = useState<Nullable<T>>(null);
   const readRef = useRef<() => T | Promise<T>>(read);
+  const valueRef = useRef<Nullable<T>>(null);
 
   readRef.current = read;
 
@@ -33,7 +34,9 @@ export function usePolledValue<T>(read: () => T | Promise<T>, intervalMs: number
       try {
         const next: T = await readRef.current();
 
-        if (isMounted) {
+        // A reading equal to the last one schedules nothing, where React would only sometimes bail out of it.
+        if (isMounted && !Object.is(next, valueRef.current)) {
+          valueRef.current = next;
           setValue(next);
         }
       } catch (error) {
