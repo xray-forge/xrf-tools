@@ -1,10 +1,12 @@
-import { inject, Injectable } from "@wirestate/core";
+import { CommandBus, inject, Injectable } from "@wirestate/core";
 import { BoundAction, reaction } from "@wirestate/mobx";
 import {
   ERendererCameraCommand,
+  IRendererHit,
   IRendererReport,
   IRendererSettings,
   IRendererTextureFetch,
+  IRendererViewPoint,
   IRendererWeather,
   RendererClient,
 } from "@xrf/renderer";
@@ -16,6 +18,8 @@ import { ILevelCameraOptions } from "@/core/level/lib/camera/level-camera-option
 import { toLevelCameraReading } from "@/core/level/lib/camera/level-camera-reading";
 import { ILevelViewpoint, toLevelStartViewpoint } from "@/core/level/lib/camera/level-viewpoint";
 import { ILevelBox, toLevelBox } from "@/core/level/lib/extent/level-extent";
+import { LEVEL_PICK_PANELS } from "@/core/level/lib/panels/level-pick-panels";
+import { TLevelPick } from "@/core/level/lib/pick/level-pick";
 import { DEFAULT_LEVEL_RENDER_CONFIG, ILevelRenderConfig } from "@/core/level/lib/render/level-render-config";
 import { LevelRenderContent } from "@/core/level/lib/render/level-render-content";
 import {
@@ -38,8 +42,10 @@ import { LevelLoadService } from "@/core/level/services/level-load.service";
 import { LevelViewService } from "@/core/level/services/level-view.service";
 import { LevelViewportService } from "@/core/level/services/level-viewport.service";
 import { LevelWeatherService } from "@/core/level/services/level-weather.service";
+import { listenRenderClicks } from "@/core/render/lib/frame/render-clicks";
 import { RenderSurfaceService } from "@/core/render/lib/surface/render-surface-service";
 import { SettingsService } from "@/core/settings/services/settings";
+import { IPanelSetActiveCommand, PANEL_SET_ACTIVE_COMMAND } from "@/core/shell/panel/panel-messages";
 import { Logger } from "@/lib/logging";
 
 /** Metres the camera has to move before the loader is asked again, which keeps streaming off every report. */
@@ -66,12 +72,15 @@ export class LevelRenderService extends RenderSurfaceService {
   private viewpoint: Nullable<ILevelViewpoint> = null;
   /** Bumped by every level opened or closed, so a reveal waiting on one since replaced reveals nothing. */
   private opening: number = 0;
+  /** Stops hearing clicks on the canvas drawn into, while one is. */
+  private unlistenClicks: Nullable<() => void> = null;
 
   public constructor(
     private readonly loadService: LevelLoadService = inject(LevelLoadService),
     private readonly viewService: LevelViewService = inject(LevelViewService),
     private readonly viewportService: LevelViewportService = inject(LevelViewportService),
     private readonly weatherService: LevelWeatherService = inject(LevelWeatherService),
+    private readonly commandBus: CommandBus = inject(CommandBus),
     settingsService: SettingsService = inject(SettingsService)
   ) {
     super(settingsService);
@@ -98,6 +107,60 @@ export class LevelRenderService extends RenderSurfaceService {
     if (this.level) {
       void this.stream(viewpoint.position);
     }
+  }
+
+  /**
+   * Says what of the open level is drawn under a point of the viewport, and opens the panel it is chosen in.
+   *
+   * @param point - Where, in css pixels from the canvas's top left corner.
+   * @returns Settles once the pick is noted: what it hit, or nothing.
+   */
+  public async pick(point: IRendererViewPoint): Promise<void> {
+    const { client, content } = this;
+
+    if (!client || !content || !this.level) {
+      return;
+    }
+
+    let hit: Nullable<IRendererHit>;
+
+    try {
+      hit = await client.pick(point);
+    } catch {
+      // A renderer that failed draws nothing more; its cover says why.
+      return;
+    }
+
+    // Asked of a renderer or a level since replaced, it names something else now.
+    if (content !== this.content) {
+      return;
+    }
+
+    const picked: Nullable<TLevelPick> = hit ? content.toPick(hit) : null;
+
+    this.viewportService.notePicked(picked);
+
+    // Opened here rather than as a view reacts: the panel mounts synchronously, which it cannot do mid-render.
+    if (picked) {
+      this.commandBus.execute<void, IPanelSetActiveCommand>(
+        PANEL_SET_ACTIVE_COMMAND,
+        { panelId: LEVEL_PICK_PANELS[picked.kind], side: "left" },
+        { optional: true }
+      );
+    }
+  }
+
+  protected onAttached(): void {
+    const canvas: Maybe<HTMLCanvasElement> = this.target?.canvas;
+
+    this.unlistenClicks = canvas
+      ? listenRenderClicks(canvas, (point: IRendererViewPoint) => void this.pick(point))
+      : null;
+  }
+
+  protected onDetached(): void {
+    this.unlistenClicks?.();
+    this.unlistenClicks = null;
   }
 
   protected toSettings(): IRendererSettings {
@@ -249,6 +312,8 @@ export class LevelRenderService extends RenderSurfaceService {
     this.stand(viewpoint);
     this.streamedFrom = null;
     this.viewportService.conceal();
+    // Another level's surfaces and objects are numbered afresh.
+    this.viewportService.notePicked(null);
 
     if (level) {
       void this.reveal(opening, this.stream(viewpoint.position));

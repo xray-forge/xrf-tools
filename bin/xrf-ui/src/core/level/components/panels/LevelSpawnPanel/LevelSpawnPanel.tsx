@@ -8,13 +8,16 @@ import { LevelSpawnVisibilityToggle } from "@/core/level/components/panels/Level
 import { useLevelHeld } from "@/core/level/components/panels/LevelSpawnPanel/use-level-held";
 import { useLevelSpawnDetails } from "@/core/level/components/panels/LevelSpawnPanel/use-level-spawn-details";
 import { toLevelFramedGoTo } from "@/core/level/lib/camera/level-camera-frame";
+import { ELevelPick, TLevelPick } from "@/core/level/lib/pick/level-pick";
 import { ILevelSpawnDelivery } from "@/core/level/lib/render/level-render-protocol";
 import { ILevelSpawnReport, isLevelSpawnReading } from "@/core/level/lib/spawn/level-spawn-report";
 import { toLevelSpawnSphere } from "@/core/level/lib/spawn/level-spawn-sphere";
 import {
   listLevelSpawnGroupIds,
   TLevelSpawnTreeRow,
+  toLevelSpawnCategoryId,
   toLevelSpawnObjectId,
+  toLevelSpawnSectionId,
   toLevelSpawnTree,
 } from "@/core/level/lib/spawn/level-spawn-tree";
 import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
@@ -50,6 +53,7 @@ export function LevelSpawnPanel({
   const [filter, setFilter] = useState<string>("");
   // Read here rather than in the rows' callback, so a switch from the toolbar redraws the eyes.
   const options: ILevelViewOptions = viewService.options;
+  const picked: Nullable<TLevelPick> = viewportService.picked;
 
   const description: Nullable<LevelSpawnObjectsDescription> = spawn?.objects ?? null;
   const items: Array<ITreeNode<TLevelSpawnTreeRow>> = useMemo(
@@ -76,6 +80,18 @@ export function LevelSpawnPanel({
 
   // Another level's objects are numbered afresh, so what was chosen names some other object now.
   useEffect(() => select(null), [description, select]);
+
+  // An object clicked in the viewport is chosen here, what stands above it opened and any filter hiding it cleared.
+  // The click opens the panel, so the spawn reaches it after the pick: chosen once it has, after the reset above.
+  useEffect(() => {
+    if (description && picked?.kind === ELevelPick.SPAWN) {
+      const { category, index, section } = picked.object;
+
+      setFilter("");
+      expandAll([toLevelSpawnCategoryId(category), toLevelSpawnSectionId(category, section)]);
+      select(toLevelSpawnObjectId(index));
+    }
+  }, [description, expandAll, picked, select]);
 
   // A filter that matched inside a group opens it, because a closed group answering a query looks like no answer.
   useEffect(() => {

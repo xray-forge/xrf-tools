@@ -3,6 +3,7 @@ import { Maybe, Nullable } from "@xrf/types";
 import { ReactElement, ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 
 import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
+import { ELevelPick, TLevelPick } from "@/core/level/lib/pick/level-pick";
 import { ILevelSurfaceDressing } from "@/core/level/lib/surface/level-surface-dressing";
 import { ILevelSurfaceGeometry, NO_LEVEL_SURFACE_GEOMETRY } from "@/core/level/lib/surface/level-surface-geometry";
 import {
@@ -14,6 +15,7 @@ import {
   listLevelSurfaceGroupIds,
   TLevelSurfaceTreeRow,
   toLevelSurfaceEntryId,
+  toLevelSurfaceShaderId,
   toLevelSurfaceTree,
 } from "@/core/level/lib/surface/level-surface-tree";
 import { listLevelSurfaceDressing } from "@/core/level/lib/texture/level-texture-report";
@@ -91,6 +93,20 @@ export function LevelSurfacesPanel({
 
   // Another level's table is numbered afresh, so what was chosen names some other entry now.
   useEffect(() => select(null), [named, select]);
+
+  // A surface clicked in the viewport chooses its entry here, its shader opened and any filter hiding it cleared.
+  const picked: Nullable<TLevelPick> = viewportService.picked;
+
+  useEffect(() => {
+    const summary: Maybe<ILevelSurfaceSummary> =
+      picked?.kind === ELevelPick.SURFACE ? byId.get(toLevelSurfaceEntryId(picked.shaderId)) : undefined;
+
+    if (summary) {
+      setFilter("");
+      expandAll([toLevelSurfaceShaderId(summary.shader)]);
+      select(toLevelSurfaceEntryId(summary.shaderId));
+    }
+  }, [byId, expandAll, picked, select]);
 
   // A filter that matched inside a shader opens it, because a closed shader answering a query looks like no answer.
   useEffect(() => {

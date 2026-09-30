@@ -10,6 +10,7 @@ import {
 import { IBulkRequest } from "@/core/ipc/bulk";
 import { ELevelSpawnCategory } from "@/core/ipc/types/xrf-app";
 import { SectorDescription } from "@/core/ipc/types/xrf-visual";
+import { ELevelPick } from "@/core/level/lib/pick/level-pick";
 import { LevelRenderContent, TLevelRenderSink } from "@/core/level/lib/render/level-render-content";
 import { LEVEL_RENDER_KEYS } from "@/core/level/lib/render/level-render-keys";
 import {
@@ -275,6 +276,59 @@ describe("LevelRenderContent", () => {
     ]);
     expect(sink.releaseTexture).toHaveBeenCalledWith("stone");
     expect(content.held()).toEqual({ bytes: 0, sectors: 0 });
+  });
+
+  it("reads a hit on a sector as its surface, by its entry, and where a mesh it stands was hit, which place", () => {
+    const { content } = mockContent();
+
+    content.deliver({ delivered: [mockDelivery(4)], released: [] });
+
+    expect(
+      content.toPick({ instance: null, object: LEVEL_RENDER_KEYS.sector(4), point: [1, 2, 3], surface: "surface:1" })
+    ).toEqual({
+      isImpostor: false,
+      kind: ELevelPick.SURFACE,
+      mesh: null,
+      place: null,
+      // The level's own coordinates, `z` the engine's.
+      point: { x: 1, y: 2, z: -3 },
+      sector: 4,
+      shaderId: 1,
+    });
+    expect(
+      content.toPick({ instance: 1, object: LEVEL_RENDER_KEYS.instance(4, 0), point: [0, 0, 0], surface: "surface:2" })
+    ).toMatchObject({ mesh: 0, place: 1, sector: 4, shaderId: 2 });
+    expect(
+      content.toPick({
+        instance: 5,
+        object: LEVEL_RENDER_KEYS.impostorGroup(4, 0),
+        point: [0, 0, 0],
+        surface: "surface:2",
+      })
+    ).toMatchObject({ isImpostor: true, mesh: null, place: 5 });
+  });
+
+  it("reads a hit on spawned objects as the object standing at the place hit, and a helper as nothing", () => {
+    const { content } = mockContent();
+    const second = mockLevelSpawnObject({ index: 1, name: "crate_2" });
+
+    content.stand({ ...mockSpawn(), objects: { objects: [mockLevelSpawnObject(), second], visuals: ["lamp"] } });
+
+    const hit = {
+      instance: 1,
+      object: LEVEL_RENDER_KEYS.spawnObject(0, ELevelSpawnCategory.PROPS),
+      point: [0, 0, 0] as const,
+      surface: LEVEL_RENDER_KEYS.spawnSurface(0, 0),
+    };
+
+    expect(content.toPick(hit)).toEqual({
+      kind: ELevelPick.SPAWN,
+      object: second,
+      point: { x: 0, y: 0, z: 0 },
+      visual: "lamp",
+    });
+    expect(content.toPick({ ...hit, instance: 9 })).toBeNull();
+    expect(content.toPick({ ...hit, object: LEVEL_RENDER_KEYS.grid })).toBeNull();
   });
 
   // A renderer started after the models were read is handed them before the level's own reaction opens it.

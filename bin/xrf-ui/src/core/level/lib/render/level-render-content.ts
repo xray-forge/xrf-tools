@@ -1,12 +1,18 @@
 import { toMean } from "@xrf/math";
-import { IRendererTextureFetch, RendererClient } from "@xrf/renderer";
+import { IRendererHit, IRendererTextureFetch, RendererClient } from "@xrf/renderer";
 import { Maybe, Nullable } from "@xrf/types";
 
-import { LevelLightsDescription, LevelSpawnCategory } from "@/core/ipc/types/xrf-app";
+import { LevelLightsDescription, LevelSpawnCategory, LevelSpawnObject } from "@/core/ipc/types/xrf-app";
 import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
 import { SectorSurface } from "@/core/ipc/types/xrf-visual";
+import { ELevelPick, TLevelPick } from "@/core/level/lib/pick/level-pick";
 import { toLevelRendererGrass } from "@/core/level/lib/render/level-render-grass";
-import { LEVEL_RENDER_KEYS } from "@/core/level/lib/render/level-render-keys";
+import {
+  LEVEL_RENDER_KEYS,
+  readLevelObjectKey,
+  readLevelSurfaceKey,
+  TLevelRenderObjectKey,
+} from "@/core/level/lib/render/level-render-keys";
 import { toLevelRendererLights } from "@/core/level/lib/render/level-render-lights";
 import {
   ILevelGrassDelivery,
@@ -35,6 +41,7 @@ import { ELevelSurfaceDressing, ILevelSurfaceDressing } from "@/core/level/lib/s
 import { ILevelSurfaceGeometry } from "@/core/level/lib/surface/level-surface-geometry";
 import { ILevelSurfaceRender } from "@/core/level/lib/surface/level-surface-render";
 import { ILevelTextureProblem, ILevelTextureReport } from "@/core/level/lib/texture/level-texture-report";
+import { toXraySpace } from "@/core/render/lib/scene/render-space";
 import { Timer } from "@/lib/logging";
 
 /** What of the renderer a level is put through. */
@@ -202,6 +209,40 @@ export class LevelRenderContent {
       state: ELevelSurfaceDressing.UPLOADED,
       upload: LevelRenderContent.describeUpload(fetch),
     });
+  }
+
+  /**
+   * @param hit - What the renderer found under a click.
+   * @returns What of the level it is: a sector's surface by its shader table entry, or a spawned object; null for
+   *   anything else drawn, such as a helper, or an object no longer held.
+   */
+  public toPick(hit: IRendererHit): Nullable<TLevelPick> {
+    const key: Nullable<TLevelRenderObjectKey> = readLevelObjectKey(hit.object);
+    const [x, y, z] = hit.point;
+    const point = toXraySpace({ x, y, z });
+
+    if (key?.kind === "spawn") {
+      const object: Nullable<LevelSpawnObject> =
+        hit.instance === null ? null : this.spawn.find(key.visual, key.category, hit.instance);
+
+      return object ? { kind: ELevelPick.SPAWN, object, point, visual: this.spawn.nameVisual(key.visual) ?? "" } : null;
+    }
+
+    const shaderId: Nullable<number> = readLevelSurfaceKey(hit.surface);
+
+    if (key?.kind !== "sector" || shaderId === null) {
+      return null;
+    }
+
+    return {
+      isImpostor: key.impostors !== null,
+      kind: ELevelPick.SURFACE,
+      mesh: key.mesh,
+      place: hit.instance,
+      point,
+      sector: key.sector,
+      shaderId,
+    };
   }
 
   /**

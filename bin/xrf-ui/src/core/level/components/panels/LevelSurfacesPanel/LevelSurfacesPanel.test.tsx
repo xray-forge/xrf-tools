@@ -1,10 +1,12 @@
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
-import { RenderResult, waitFor, within } from "@testing-library/react";
+import { act, RenderResult, waitFor, within } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { Container } from "@wirestate/core";
+import { Nullable } from "@xrf/types";
 
 import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
 import { LevelSurfacesPanel } from "@/core/level/components/panels/LevelSurfacesPanel";
+import { ELevelPick } from "@/core/level/lib/pick/level-pick";
 import { ILevelTextureReport } from "@/core/level/lib/texture/level-texture-report";
 import {
   LevelLoadService,
@@ -59,7 +61,7 @@ const TABLE: Array<XraySurfaceDescriptor> = [
 
 async function renderPanel(
   textures?: ILevelTextureReport,
-  arrange?: (render: LevelRenderService) => void
+  arrange?: (container: Container) => void
 ): Promise<RenderResult> {
   setMockInvokeResponses({
     ["plugin:levels|get_level"]: mockSessionResponse(mockSelectedLevelDescription({ surfaces: TABLE })),
@@ -79,7 +81,7 @@ async function renderPanel(
     container.get(LevelViewportService).noteTextures(textures);
   }
 
-  arrange?.(container.get(LevelRenderService));
+  arrange?.(container);
 
   const result: RenderResult = renderWithProviders(<LevelSurfacesPanel />, { container, route: "/level-viewer" });
 
@@ -206,7 +208,9 @@ describe("LevelSurfacesPanel", () => {
           [0, 1, 2, 3].map((shaderId) => [shaderId, { drawables: 2, narrowest: null, span: null, triangles: 70 }])
         )
     );
-    const view: RenderResult = await renderPanel(undefined, (render: LevelRenderService) => {
+    const view: RenderResult = await renderPanel(undefined, (container: Container) => {
+      const render: LevelRenderService = container.get(LevelRenderService);
+
       jest.spyOn(render, "measureSurfaceGeometry").mockImplementation(measure);
     });
 
@@ -215,5 +219,32 @@ describe("LevelSurfacesPanel", () => {
     const details: HTMLElement = await choose(view, "poteki", "2 · decal\\decal_poteki");
 
     expect(within(details).getByText("2 drawables · 70 triangles · 35.0 each")).toBeInTheDocument();
+  });
+
+  // A click on a surface in the viewport is the other way of choosing its entry, and a filter must not hide it.
+  it("chooses the entry a surface clicked in the viewport draws with, clearing a filter that hides it", async () => {
+    let viewport: Nullable<LevelViewportService> = null;
+    const view: RenderResult = await renderPanel(undefined, (container: Container) => {
+      viewport = container.get(LevelViewportService);
+    });
+    const filter: HTMLElement = view.getByRole("textbox", { name: "Filter surfaces" });
+
+    await userEvent.type(filter, "default");
+    act(() =>
+      (viewport as unknown as LevelViewportService).notePicked({
+        isImpostor: false,
+        kind: ELevelPick.SURFACE,
+        mesh: null,
+        place: null,
+        point: { x: 0, y: 0, z: 0 },
+        sector: 3,
+        shaderId: 3,
+      })
+    );
+
+    expect(await view.findByTestId("level-surface-row")).toHaveTextContent(
+      "3 · effects\\wallmarkmult · decal\\decal_rza_a"
+    );
+    expect(filter).toHaveValue("");
   });
 });

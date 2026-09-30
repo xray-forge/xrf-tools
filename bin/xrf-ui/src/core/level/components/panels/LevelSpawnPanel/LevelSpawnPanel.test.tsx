@@ -1,11 +1,12 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
-import { RenderResult, waitFor, within } from "@testing-library/react";
+import { act, RenderResult, waitFor, within } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { Container, Injectable } from "@wirestate/core";
 
 import { ELevelSpawnCategory, LevelSpawnObjectsDescription } from "@/core/ipc/types/xrf-app";
 import { EXrayEngine } from "@/core/ipc/types/xrf-engine-target";
 import { ILevelGoTo } from "@/core/level/lib/camera/level-camera-goto";
+import { ELevelPick } from "@/core/level/lib/pick/level-pick";
 import {
   LevelLoadService,
   LevelRenderService,
@@ -54,7 +55,9 @@ class TestLevelRenderService extends LevelRenderService {
   }
 }
 
-async function renderPanel(): Promise<{ container: Container; view: RenderResult }> {
+async function renderPanel(
+  arrange?: (container: Container) => void
+): Promise<{ container: Container; view: RenderResult }> {
   const level = mockSelectedLevelDescription({ sectors: [] });
 
   setMockInvokeResponses({
@@ -92,6 +95,7 @@ async function renderPanel(): Promise<{ container: Container; view: RenderResult
     engine: EXrayEngine.VANILLA,
   });
   await service.whenHeldRead();
+  arrange?.(container);
 
   return { container, view: renderWithProviders(<LevelSpawnPanel />, { container }) };
 }
@@ -153,6 +157,40 @@ describe("LevelSpawnPanel", () => {
     expect(sent).toHaveLength(1);
     expect(sent[0]).toMatchObject({ heading: 0, pitch: expect.closeTo(-20), x: expect.closeTo(5) });
     expect(sent[0].z).toBeLessThan(8);
+  });
+
+  // What a click in the viewport picked is chosen here as a click on its row would choose it, however deep it lies.
+  it("chooses an object clicked in the viewport, opening what stands above it", async () => {
+    const { container, view } = await renderPanel();
+
+    await view.findByRole("tree", { name: "Spawned objects" });
+    act(() =>
+      container.get(LevelViewportService).notePicked({
+        kind: ELevelPick.SPAWN,
+        object: OBJECTS.objects[2],
+        point: { x: 0, y: 0, z: 0 },
+        visual: "dynamics\\medkit",
+      })
+    );
+
+    expect(await view.findByTestId("level-spawn-details")).toHaveTextContent("medkit");
+    expect(view.getByRole("treeitem", { name: "medkit", selected: true })).toBeInTheDocument();
+  });
+
+  // The click opens the panel, which mounts before the spawn it lists reaches it; that arrival must not forget the
+  // object as a new level's would.
+  it("chooses an object picked before the panel mounted, once the spawn reaches it", async () => {
+    const { view } = await renderPanel((container: Container) =>
+      container.get(LevelViewportService).notePicked({
+        kind: ELevelPick.SPAWN,
+        object: OBJECTS.objects[1],
+        point: { x: 0, y: 0, z: 0 },
+        visual: OBJECTS.visuals[0],
+      })
+    );
+
+    expect(await view.findByTestId("level-spawn-details")).toHaveTextContent("crate_2");
+    expect(view.getByRole("treeitem", { name: "crate_2", selected: true })).toBeInTheDocument();
   });
 
   // Another opening numbers its objects afresh, so object 0 of the last level is not object 0 of this one.

@@ -1,5 +1,5 @@
 import { beforeAll, beforeEach, describe, expect, it, jest } from "@jest/globals";
-import { Container } from "@wirestate/core";
+import { CommandBus, Container } from "@wirestate/core";
 import {
   DEFAULT_RENDERER_AMBIENT_OCCLUSION_SETTINGS,
   DEFAULT_RENDERER_SHADOW_SETTINGS,
@@ -22,6 +22,8 @@ import { Maybe } from "@xrf/types";
 
 import { IPC_METRICS } from "@/core/ipc/metrics";
 import { ELevelSpawnCategory } from "@/core/ipc/types/xrf-app";
+import { ELevelPanelId } from "@/core/level/lib/panels/level-panel-id";
+import { ELevelPick } from "@/core/level/lib/pick/level-pick";
 import { LEVEL_RENDER_KEYS } from "@/core/level/lib/render/level-render-keys";
 import { ILevelPoint } from "@/core/level/lib/residency/level-residency";
 import { ELevelSurfaceDressing } from "@/core/level/lib/surface/level-surface-dressing";
@@ -30,6 +32,7 @@ import { LevelLoadService } from "@/core/level/services/level-load.service";
 import { LevelViewService } from "@/core/level/services/level-view.service";
 import { LevelViewportService } from "@/core/level/services/level-viewport.service";
 import { LevelWeatherService } from "@/core/level/services/level-weather.service";
+import { IPanelSetActiveCommand, PANEL_SET_ACTIVE_COMMAND } from "@/core/shell/panel/panel-messages";
 import { setMockBulkResponses } from "@/fixtures/mocks/bulk.mocks";
 import {
   mockLevelSpawnModel,
@@ -550,6 +553,90 @@ describe("LevelRenderService", () => {
     expect(put).toContain(LEVEL_RENDER_KEYS.spawnObject(0, ELevelSpawnCategory.ITEMS));
     expect(put).not.toContain(LEVEL_RENDER_KEYS.spawnObject(0, ELevelSpawnCategory.PROPS));
     expect(stub.take(ERendererRequest.RELEASE_OBJECT)).toEqual([]);
+
+    service.dispose();
+  });
+
+  // The fly camera looks by dragging the main button, so only a press let go where it went down asks what is there.
+  it("picks what a click on the canvas lands on, opens the panel it is chosen in, and asks nothing of a drag", async () => {
+    setMockInvokeResponses({
+      ["plugin:levels|describe_spawn_models"]: mockSessionResponse({
+        failures: [],
+        hemi: [],
+        models: [mockLevelSpawnModel("crate").description],
+      }),
+      ["plugin:levels|get_level"]: mockSessionResponse(mockSelectedLevelDescription()),
+      ["plugin:levels|open_spawn_objects"]: mockSessionResponse({
+        objects: [mockLevelSpawnObject({ index: 0 }), mockLevelSpawnObject({ index: 1, name: "crate_2" })],
+        visuals: ["crate"],
+      }),
+    });
+    setMockBulkResponses({ "levels/read_spawn_model": mockLevelSpawnModel("crate").buffer });
+
+    const container: Container = mockContainer([
+      LevelLoadService,
+      LevelViewService,
+      LevelViewportService,
+      LevelRenderService,
+      LevelWeatherService,
+    ]);
+
+    const opened: Array<IPanelSetActiveCommand> = [];
+
+    container.get(CommandBus).register(PANEL_SET_ACTIVE_COMMAND, (message: IPanelSetActiveCommand) => {
+      opened.push(message);
+    });
+    await container.get(LevelLoadService).restore();
+    await container.get(LevelLoadService).whenHeldRead();
+
+    const service = container.get(LevelRenderService);
+    const element: HTMLElement = document.createElement("div");
+
+    service.attach(element);
+    await stub.flush();
+
+    const canvas: HTMLCanvasElement = element.querySelector("canvas") as HTMLCanvasElement;
+
+    function press(type: string, x: number): void {
+      const event: MouseEvent = new MouseEvent(type, { button: 0, clientX: x, clientY: 20 });
+
+      Object.defineProperties(event, { isPrimary: { value: true }, pointerId: { value: 1 } });
+      canvas.dispatchEvent(event);
+    }
+
+    press("pointerdown", 10);
+    press("pointerup", 40);
+    await stub.flush();
+
+    expect(stub.take(ERendererRequest.PICK)).toEqual([]);
+
+    press("pointerdown", 10);
+    press("pointerup", 11);
+    await stub.flush();
+
+    const [pick] = stub.take(ERendererRequest.PICK);
+
+    expect(pick.point).toEqual({ x: 11, y: 20 });
+
+    stub.respond({
+      hit: {
+        instance: 1,
+        object: LEVEL_RENDER_KEYS.spawnObject(0, ELevelSpawnCategory.PROPS),
+        point: [1, 2, 3],
+        surface: LEVEL_RENDER_KEYS.spawnSurface(0, 0),
+      },
+      id: pick.id,
+      kind: ERendererResponse.PICKED,
+    });
+    await stub.flush();
+
+    expect(container.get(LevelViewportService).picked).toMatchObject({
+      kind: ELevelPick.SPAWN,
+      object: { index: 1, name: "crate_2" },
+      point: { x: 1, y: 2, z: -3 },
+      visual: "crate",
+    });
+    expect(opened).toEqual([{ panelId: ELevelPanelId.SPAWN, side: "left" }]);
 
     service.dispose();
   });

@@ -20,6 +20,15 @@ export function toLevelSpawnCategoryId(category: LevelSpawnCategory): string {
 }
 
 /**
+ * @param category - A category.
+ * @param section - A section its objects are of.
+ * @returns Its row's id, which groups the category's objects of the section.
+ */
+export function toLevelSpawnSectionId(category: LevelSpawnCategory, section: string): string {
+  return `section:${category}:${section}`;
+}
+
+/**
  * @param index - An object, by its place among the level's spawned objects.
  * @returns Its row's id.
  */
@@ -102,7 +111,7 @@ function toSectionNodes(
           label: object.name,
           payload: { kind: "object" as const, object },
         })),
-      id: `section:${category}:${section}`,
+      id: toLevelSpawnSectionId(category, section),
       label: section,
       payload: { count: members.length, kind: "section" as const, section },
     }));

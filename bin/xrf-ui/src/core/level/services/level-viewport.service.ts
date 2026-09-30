@@ -4,6 +4,7 @@ import { EMPTY_RENDERER_PASS_TIMINGS, IRendererPassTimings } from "@xrf/renderer
 import { Nullable } from "@xrf/types";
 
 import { ILevelCamera } from "@/core/level/lib/camera/level-camera";
+import { TLevelPick } from "@/core/level/lib/pick/level-pick";
 import { EMPTY_LEVEL_STATS, ILevelStats } from "@/core/level/lib/stats/level-stats";
 import { EMPTY_LEVEL_TEXTURE_REPORT, ILevelTextureReport } from "@/core/level/lib/texture/level-texture-report";
 
@@ -34,6 +35,10 @@ export class LevelViewportService {
   @RefObservable()
   public isRevealed: boolean = false;
 
+  /** What the last click in the viewport picked, or null where it picked nothing of the level or none was made. */
+  @RefObservable()
+  public picked: Nullable<TLevelPick> = null;
+
   /** Shows the level, drawn whole. */
   @BoundAction()
   public reveal(): void {
@@ -54,6 +59,14 @@ export class LevelViewportService {
   @BoundAction()
   public noteTextures(report: ILevelTextureReport): void {
     this.textureReport = report;
+  }
+
+  /**
+   * @param pick - What a click picked, or null for nothing of the level.
+   */
+  @BoundAction()
+  public notePicked(pick: Nullable<TLevelPick>): void {
+    this.picked = pick;
   }
 
   /**
@@ -82,6 +95,7 @@ export class LevelViewportService {
     this.camera = null;
     this.textureReport = EMPTY_LEVEL_TEXTURE_REPORT;
     this.isRevealed = false;
+    this.picked = null;
   }
 
   @OnDeactivation()

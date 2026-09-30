@@ -17,6 +17,14 @@ export function toLevelSurfaceEntryId(shaderId: number): string {
 }
 
 /**
+ * @param shader - A shader the table names.
+ * @returns Its row's id, which groups its entries.
+ */
+export function toLevelSurfaceShaderId(shader: string): string {
+  return `shader:${shader}`;
+}
+
+/**
  * A level's shader table as a tree, `shader -> entry`: a level names one entry per shader and texture set, so the
  * shader groups what only the texture tells apart. Only the entries a filter matches by shader, texture or id are kept.
  *
@@ -50,7 +58,7 @@ export function toLevelSurfaceTree(
         label: `${summary.shaderId} · ${summary.textures[0] ?? "no texture"}`,
         payload: { kind: "entry" as const, summary },
       })),
-      id: `shader:${shader}`,
+      id: toLevelSurfaceShaderId(shader),
       label: shader,
       payload: { count: entries.length, kind: "shader" as const, shader },
     }));

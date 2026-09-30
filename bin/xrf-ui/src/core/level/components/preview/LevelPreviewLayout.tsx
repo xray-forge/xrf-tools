@@ -24,11 +24,13 @@ import { LevelPreviewCoordinates } from "@/core/level/components/preview/LevelPr
 import { LevelPreviewCover } from "@/core/level/components/preview/LevelPreviewCover";
 import { LevelPreviewEmpty } from "@/core/level/components/preview/LevelPreviewEmpty";
 import { LevelPreviewMetrics } from "@/core/level/components/preview/LevelPreviewMetrics";
+import { LevelPreviewPick } from "@/core/level/components/preview/LevelPreviewPick";
 import { LevelPreviewToolbar } from "@/core/level/components/preview/LevelPreviewToolbar";
 import { ILevelPreviewViewportProps, LevelPreviewViewport } from "@/core/level/components/preview/LevelPreviewViewport";
 import { ILevelCamera } from "@/core/level/lib/camera/level-camera";
 import { ILevelGoTo } from "@/core/level/lib/camera/level-camera-goto";
 import { ILevelFeatureOptions, TLevelFeatureView, toLevelFeatureView } from "@/core/level/lib/features";
+import { ELevelPanelId } from "@/core/level/lib/panels/level-panel-id";
 import {
   LevelLoadService,
   LevelRenderService,
@@ -110,7 +112,7 @@ export function LevelPreviewLayout({
     (): Array<IEditorPanel> => [
       {
         icon: <WbCloudyIcon />,
-        id: "weather",
+        id: ELevelPanelId.WEATHER,
         isOpenByDefault: true,
         label: "Weather",
         render: () => <LevelWeatherPanel />,
@@ -118,34 +120,34 @@ export function LevelPreviewLayout({
       },
       {
         icon: <Inventory2Icon />,
-        id: "spawn",
+        id: ELevelPanelId.SPAWN,
         label: "Spawn",
         render: () => <LevelSpawnPanel />,
         side: "left",
       },
       {
         icon: <InfoOutlinedIcon />,
-        id: "level",
+        id: ELevelPanelId.LEVEL,
         isOpenByDefault: true,
         label: "Level",
         render: () => <LevelHeaderPanel />,
       },
       {
         icon: <SpeedIcon />,
-        id: "streaming",
+        id: ELevelPanelId.STREAMING,
         label: "Streaming",
         render: () => <LevelStreamPanel />,
       },
       {
         icon: <LayersIcon />,
-        id: "surfaces",
+        id: ELevelPanelId.SURFACES,
         label: "Surfaces",
         render: () => <LevelSurfacesPanel />,
         side: "left",
       },
       {
         icon: <WarningIcon />,
-        id: "problems",
+        id: ELevelPanelId.PROBLEMS,
         label: "Problems",
         render: () => <LevelProblemsPanel />,
       },
@@ -205,6 +207,8 @@ export function LevelPreviewLayout({
               <LevelPreviewCoordinates />
             </>
           ) : null}
+
+          {isOpen ? <LevelPreviewPick /> : null}
 
           {!isOpen && !isLoading ? <LevelPreviewEmpty error={error} onRetry={onRetry} /> : null}
 

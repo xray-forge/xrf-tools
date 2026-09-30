@@ -72,6 +72,24 @@ export class LevelRenderSpawnSet {
     this.showWanted();
   }
 
+  /**
+   * @param visual - The visual the objects stand as.
+   * @param category - Their category.
+   * @param instance - Which of the renderer's places of their object, which stand in the order they are held.
+   * @returns The object standing there, or null for none held so.
+   */
+  public find(visual: number, category: LevelSpawnCategory, instance: number): Nullable<LevelSpawnObject> {
+    return this.standing.get(visual)?.get(category)?.[instance] ?? null;
+  }
+
+  /**
+   * @param visual - A visual objects stand as, by its index among the objects' visuals.
+   * @returns Its name as the spawn gives it, or null for none held.
+   */
+  public nameVisual(visual: number): Nullable<string> {
+    return this.objects?.visuals[visual] ?? null;
+  }
+
   /** Lets everything go. */
   public release(): void {
     this.shown.forEach((key: string) => this.sink.releaseObject(key));
