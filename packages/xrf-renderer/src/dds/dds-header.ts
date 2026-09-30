@@ -19,12 +19,16 @@ const DDSD_MIPMAPCOUNT: number = 0x20000;
 const DDSCAPS2_CUBEMAP: number = 0x200;
 const CUBEMAP_FACES: ReadonlyArray<number> = [0x400, 0x800, 0x1000, 0x2000, 0x4000, 0x8000];
 
+/** `DDSCAPS2_VOLUME`. */
+const DDSCAPS2_VOLUME: number = 0x200000;
+
 /** Offsets into the header, counted in `u32`. */
 const OFF_MAGIC: number = 0;
 const OFF_SIZE: number = 1;
 const OFF_FLAGS: number = 2;
 const OFF_HEIGHT: number = 3;
 const OFF_WIDTH: number = 4;
+const OFF_DEPTH: number = 6;
 const OFF_MIPMAP_COUNT: number = 7;
 const OFF_PF_FOURCC: number = 21;
 const OFF_RGB_BIT_COUNT: number = 22;
@@ -51,6 +55,8 @@ export interface IDdsHeader {
   extended: Nullable<IDdsExtendedHeader>;
   /** Whether the caps call the file a cubemap, and whether all six faces accompany the claim. */
   cubemap: Nullable<{ isWhole: boolean }>;
+  /** Whether the caps call the file a volume, and the slices it holds. */
+  volume: Nullable<{ depth: number }>;
   /** Where the first mip starts. */
   dataOffset: number;
 }
@@ -135,6 +141,7 @@ export function readDdsHeader(bytes: ArrayBuffer): IDdsHeaderRead {
         red: words[OFF_R_MASK],
       },
       mipmapCount,
+      volume: caps2 & DDSCAPS2_VOLUME ? { depth: Math.max(words[OFF_DEPTH], 1) } : null,
       width,
     },
     refusal: null,

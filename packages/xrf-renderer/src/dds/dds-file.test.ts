@@ -90,6 +90,20 @@ describe("readDdsFile refusals", () => {
     );
   });
 
+  // The legacy header states a volume in its caps alone, as `water_SBumpVolume` does; read, its slices would be levels.
+  it("refuses a volume the legacy header states", () => {
+    const volume: ArrayBuffer = mockDdsFile({ fourCC: "DXT5" });
+    const words: Uint32Array = new Uint32Array(volume);
+
+    words[6] = 16;
+    words[28] = 0x200000;
+
+    expect(refusalOf(volume)).toEqual({
+      detail: "the file is a volume of 16 slices",
+      reason: EDdsRefusalReason.UNSUPPORTED_DIMENSION,
+    });
+  });
+
   it("refuses a cubemap missing a face", () => {
     const partial: ArrayBuffer = mockDdsFile();
 

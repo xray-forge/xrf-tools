@@ -124,6 +124,14 @@ function readCubeMipmaps(bytes: ArrayBuffer, start: number, chain: IDdsMipmapCha
 
 /** The layout a header declares, from whichever of its three places declares it. */
 function toLayout(header: IDdsHeader): TDdsLayout | IDdsRefusal {
+  // A surface draws no volume: its slices after the first would be read as the next levels.
+  if (header.volume) {
+    return {
+      detail: `the file is a volume of ${header.volume.depth} slices`,
+      reason: EDdsRefusalReason.UNSUPPORTED_DIMENSION,
+    };
+  }
+
   if (header.extended) {
     const { dimension, arraySize, dxgiFormat } = header.extended;
 

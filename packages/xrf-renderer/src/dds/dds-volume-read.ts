@@ -1,18 +1,16 @@
 import { Nullable } from "@xrf/types";
 
+import { DDS_BLOCK_SIZE, EDdsBlockFormat } from "#/dds/dds-block-format";
+import { getDdsFourCcLayout } from "#/dds/dds-fourcc";
+import { IDdsHeader, readDdsHeader } from "#/dds/dds-header";
+import { EDdsLayout, TDdsLayout } from "#/dds/dds-layout";
 import { IDdsVolume } from "#/dds/dds-volume";
 
-/** `DDS `, little endian. */
-const MAGIC: number = 0x20534444;
+/** The block formats a volume is decoded from: DXT1, DXT3 and DXT5. */
+const DECODED: ReadonlySet<EDdsBlockFormat> = new Set([EDdsBlockFormat.BC1, EDdsBlockFormat.BC2, EDdsBlockFormat.BC3]);
 
-/** `DDSCAPS2_VOLUME`. */
-const CAPS2_VOLUME: number = 0x200000;
-
-/** Bytes before a legacy header's texels: the magic and the header. */
-const DATA_OFFSET: number = 128;
-
-/** Bytes a block of four by four texels takes, by `fourCC`. */
-const BLOCK_BYTES: Readonly<Record<string, number>> = { DXT1: 8, DXT3: 16, DXT5: 16 };
+/** Bytes a decoded block takes: sixteen texels of four. */
+const DECODED_BLOCK_BYTES: number = DDS_BLOCK_SIZE * DDS_BLOCK_SIZE * 4;
 
 /**
  * A volume the texture reader refuses, since no surface draws one, read as `rain_patch_normal` samples it: its top
@@ -22,44 +20,40 @@ const BLOCK_BYTES: Readonly<Record<string, number>> = { DXT1: 8, DXT3: 16, DXT5:
  * @returns The volume, or null for a file that is no DXT1, DXT3 or DXT5 volume.
  */
 export function readDdsVolume(bytes: ArrayBuffer): Nullable<IDdsVolume> {
-  if (bytes.byteLength < DATA_OFFSET) {
+  const header: Nullable<IDdsHeader> = readDdsHeader(bytes).header;
+  const layout: Nullable<TDdsLayout> = header?.volume ? getDdsFourCcLayout(header.fourCc) : null;
+
+  if (!header?.volume || layout?.kind !== EDdsLayout.BLOCK || !DECODED.has(layout.format)) {
     return null;
   }
 
-  const view: DataView = new DataView(bytes);
-  const fourCC: string = String.fromCharCode(...new Uint8Array(bytes, 84, 4));
-  const blockBytes: number | undefined = BLOCK_BYTES[fourCC];
+  const { width, height, dataOffset } = header;
+  const { depth } = header.volume;
+  const { format, blockBytes } = layout;
+  const across: number = Math.ceil(width / DDS_BLOCK_SIZE);
+  const down: number = Math.ceil(height / DDS_BLOCK_SIZE);
 
-  if (view.getUint32(0, true) !== MAGIC || !(view.getUint32(112, true) & CAPS2_VOLUME) || !blockBytes) {
+  if (dataOffset + across * down * depth * blockBytes > bytes.byteLength) {
     return null;
   }
 
-  const height: number = view.getUint32(12, true);
-  const width: number = view.getUint32(16, true);
-  const depth: number = Math.max(view.getUint32(24, true), 1);
-  const across: number = Math.max(Math.ceil(width / 4), 1);
-  const down: number = Math.max(Math.ceil(height / 4), 1);
-
-  if (DATA_OFFSET + across * down * depth * blockBytes > bytes.byteLength) {
-    return null;
-  }
-
-  const source: Uint8Array = new Uint8Array(bytes, DATA_OFFSET);
+  const source: Uint8Array = new Uint8Array(bytes, dataOffset);
   const rgba: Uint8Array = new Uint8Array(width * height * depth * 4);
-  const block: Uint8Array = new Uint8Array(64);
+  const block: Uint8Array = new Uint8Array(DECODED_BLOCK_BYTES);
 
   for (let slice: number = 0; slice < depth; slice += 1) {
     for (let row: number = 0; row < down; row += 1) {
       for (let column: number = 0; column < across; column += 1) {
         const at: number = ((slice * down + row) * across + column) * blockBytes;
 
-        decodeBlock(source, at, fourCC, block);
+        decodeBlock(source, at, format, block);
 
-        for (let y: number = 0; y < 4 && row * 4 + y < height; y += 1) {
-          for (let x: number = 0; x < 4 && column * 4 + x < width; x += 1) {
-            const to: number = ((slice * height + row * 4 + y) * width + column * 4 + x) * 4;
+        for (let y: number = 0; y < DDS_BLOCK_SIZE && row * DDS_BLOCK_SIZE + y < height; y += 1) {
+          for (let x: number = 0; x < DDS_BLOCK_SIZE && column * DDS_BLOCK_SIZE + x < width; x += 1) {
+            const texel: number = (y * DDS_BLOCK_SIZE + x) * 4;
+            const to: number = ((slice * height + row * DDS_BLOCK_SIZE + y) * width + column * DDS_BLOCK_SIZE + x) * 4;
 
-            rgba.set(block.subarray((y * 4 + x) * 4, (y * 4 + x) * 4 + 4), to);
+            rgba.set(block.subarray(texel, texel + 4), to);
           }
         }
       }
@@ -70,14 +64,15 @@ export function readDdsVolume(bytes: ArrayBuffer): Nullable<IDdsVolume> {
 }
 
 /** One block's sixteen texels, four bytes each, row by row. */
-function decodeBlock(source: Uint8Array, at: number, fourCC: string, out: Uint8Array): void {
-  const colorAt: number = fourCC === "DXT1" ? at : at + 8;
+function decodeBlock(source: Uint8Array, at: number, format: EDdsBlockFormat, out: Uint8Array): void {
+  const isBc1: boolean = format === EDdsBlockFormat.BC1;
 
-  decodeColors(source, colorAt, fourCC === "DXT1", out);
+  // Every format but DXT1 stores its alpha first, in the block's first half.
+  decodeColors(source, isBc1 ? at : at + 8, isBc1, out);
 
-  if (fourCC === "DXT5") {
+  if (format === EDdsBlockFormat.BC3) {
     decodeInterpolatedAlpha(source, at, out);
-  } else if (fourCC === "DXT3") {
+  } else if (format === EDdsBlockFormat.BC2) {
     for (let texel: number = 0; texel < 16; texel += 1) {
       const nibble: number = (source[at + (texel >> 1)] >> ((texel & 1) * 4)) & 0xf;
 
