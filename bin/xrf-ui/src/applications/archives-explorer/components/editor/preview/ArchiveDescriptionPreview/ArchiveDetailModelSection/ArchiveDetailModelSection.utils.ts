@@ -1,6 +1,7 @@
 import { Nullable } from "@xrf/types";
 
 import { ArchiveBounds, ArchiveDetailModel } from "@/core/ipc/types/xrf-app";
+import { formatHex } from "@/lib/format/hex";
 import { formatNumber } from "@/lib/format/number";
 
 /**
@@ -62,7 +63,7 @@ export function describeModelDetail(model: ArchiveDetailModel): string {
   }
 
   if (model.unnamedFlags) {
-    detail.push(`unnamed bits 0x${(model.unnamedFlags >>> 0).toString(16).toUpperCase()}`);
+    detail.push(`unnamed bits ${formatHex(model.unnamedFlags)}`);
   }
 
   return detail.join(" · ");

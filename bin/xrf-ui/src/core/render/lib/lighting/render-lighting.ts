@@ -1,6 +1,8 @@
 import { toRadians } from "@xrf/math";
 import { IRendererLighting, TRendererColor } from "@xrf/renderer";
 
+import { toRawColor } from "@/core/render/lib/scene/render-color";
+
 /**
  * How a preview is lit, which is the viewer's own answer rather than anything an X-Ray file carries.
  */
@@ -62,9 +64,7 @@ export function toRendererLighting(lighting: IRenderLighting, noon: IRendererLig
 
 /** A noon colour, tinted by a control's hex colour and scaled by its intensity. */
 function toScaled(color: TRendererColor, tint: number, intensity: number): TRendererColor {
-  return [
-    color[0] * (((tint >> 16) & 0xff) / 255) * intensity,
-    color[1] * (((tint >> 8) & 0xff) / 255) * intensity,
-    color[2] * ((tint & 0xff) / 255) * intensity,
-  ];
+  const [red, green, blue] = toRawColor(tint);
+
+  return [color[0] * red * intensity, color[1] * green * intensity, color[2] * blue * intensity];
 }

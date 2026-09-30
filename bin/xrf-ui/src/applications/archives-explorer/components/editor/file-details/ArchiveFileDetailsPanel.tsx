@@ -13,6 +13,7 @@ import {
   EditorPanelSection,
 } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
+import { formatHex } from "@/lib/format/hex";
 import { formatBytes } from "@/lib/memory/format";
 import { getFileExtension } from "@/lib/path/extension";
 
@@ -74,11 +75,7 @@ export function ArchiveFileDetailsPanel({
 
             <EditorPanelProperty label={"Compression"} value={getCompressionLabel(descriptor)} />
 
-            <EditorPanelProperty
-              label={"CRC32"}
-              value={`0x${descriptor.crc.toString(16).padStart(8, "0").toUpperCase()}`}
-              isMonospace
-            />
+            <EditorPanelProperty label={"CRC32"} value={formatHex(descriptor.crc, 8)} isMonospace />
 
             <EditorPanelProperty
               label={"Offset"}

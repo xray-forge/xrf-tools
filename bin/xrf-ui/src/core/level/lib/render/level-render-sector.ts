@@ -9,6 +9,7 @@ import {
   ISectorInstanceViews,
   ISectorViews,
 } from "@/core/level/lib/sector/level-sector-views";
+import { toRenderVector } from "@/core/render/lib/scene/render-vector";
 
 /**
  * @param views - A sector as it arrived.
@@ -160,5 +161,5 @@ function toLevelBounds(bounds: Nullable<VisualBounds>): IRendererBounds | undefi
     return undefined;
   }
 
-  return { center: [sphere.center.x ?? 0, sphere.center.y ?? 0, sphere.center.z ?? 0], radius: sphere.radius };
+  return { center: toRenderVector(sphere.center), radius: sphere.radius };
 }

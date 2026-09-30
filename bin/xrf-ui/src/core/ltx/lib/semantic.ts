@@ -4,9 +4,9 @@ import { LtxFileStructure, LtxStructureInclude, LtxStructureSection } from "@/co
 import { toLexicalLine } from "@/core/ltx/lib/lexical";
 import { ESyntaxToken, ISyntaxSpan } from "@/core/syntax/lib";
 import { ECodeLineMark, ICodeLine, ICodeLineSource } from "@/core/ui/code/code-line";
+import { EMPTY_ARRAY } from "@/lib/types/array";
 
 /** Shared, because a config is mostly blank lines and each of them would otherwise allocate. */
-const NO_SPANS: ReadonlyArray<ISyntaxSpan> = Object.freeze([]);
 
 /**
  * Turn one config's text and structure into a source a viewer renders.
@@ -50,7 +50,7 @@ export function toDocumentLineSource(
       return toSectionSpans(section, line ?? "");
     }
 
-    return line ? toLexicalLine(line) : NO_SPANS;
+    return line ? toLexicalLine(line) : EMPTY_ARRAY;
   }
 
   return {

@@ -10,6 +10,7 @@ import {
 } from "@/core/ipc/types/xrf-app";
 import { MOTION_DEFAULT_SPEED } from "@/core/visuals/lib/visual-motion";
 import { formatSeconds } from "@/lib/format/duration";
+import { formatHex } from "@/lib/format/hex";
 import { formatNumber } from "@/lib/format/number";
 
 /** Decimals a mark's own interval keeps, matching what `formatSeconds` gives the durations beside it. */
@@ -109,7 +110,7 @@ export function describeMotionDetail(motion: ArchiveOmfMotion): Array<string> {
   }
 
   if (motion.unnamedFlags) {
-    detail.push(`unnamed bits 0x${(motion.unnamedFlags >>> 0).toString(16).toUpperCase()}`);
+    detail.push(`unnamed bits ${formatHex(motion.unnamedFlags)}`);
   }
 
   for (const mark of motion.marks) {

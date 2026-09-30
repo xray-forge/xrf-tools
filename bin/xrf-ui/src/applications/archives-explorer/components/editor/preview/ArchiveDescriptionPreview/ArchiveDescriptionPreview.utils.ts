@@ -7,6 +7,7 @@ import {
   EArchiveDescribeScope,
   EArchiveReferenceStatus,
 } from "@/core/ipc/types/xrf-app";
+import { formatHex } from "@/lib/format/hex";
 import { formatNumber } from "@/lib/format/number";
 
 /** Shown where a file declares no value at all, which is not the same as declaring a default one. */
@@ -44,7 +45,7 @@ export function describeReferenceStatus(reference: ArchiveReference, scope: Arch
  * @returns The word in the spelling an author would compare against.
  */
 export function formatColorWord(value: number): string {
-  return `0x${(value >>> 0).toString(16).padStart(8, "0").toUpperCase()}`;
+  return formatHex(value, 8);
 }
 
 /**
@@ -54,7 +55,7 @@ export function formatColorWord(value: number): string {
  * @returns The id as four hex digits.
  */
 export function formatChunkId(id: number): string {
-  return `0x${(id >>> 0).toString(16).padStart(4, "0").toUpperCase()}`;
+  return formatHex(id, 4);
 }
 
 /**

@@ -3,6 +3,7 @@ import { ReactElement } from "react";
 import { ArchiveDescribeScope, ArchiveDetailModel } from "@/core/ipc/types/xrf-app";
 import { EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
+import { formatHex } from "@/lib/format/hex";
 
 import { NOT_DECLARED } from "../ArchiveDescriptionPreview.utils";
 import { ArchiveDescriptionReference } from "../ArchiveDescriptionReference";
@@ -70,7 +71,7 @@ export function ArchiveDetailModelSection({
       {model.unnamedFlags ? (
         <ArchiveDescriptionRow
           label={"Unnamed flags"}
-          value={`0x${(model.unnamedFlags >>> 0).toString(16).toUpperCase()}`}
+          value={formatHex(model.unnamedFlags)}
           caption={"Bits of the flag word the engine gives no name"}
         />
       ) : null}

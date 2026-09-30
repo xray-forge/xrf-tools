@@ -13,12 +13,12 @@ import { LevelRain, LevelTextureReference, LevelWeatherCycle, LevelWeatherDescri
 import { EXrayEngine, XrayEngine } from "@/core/ipc/types/xrf-engine-target";
 import { SunPosition, WeatherDescriptor } from "@/core/ipc/types/xrf-environment";
 import { EnvModifier } from "@/core/ipc/types/xrf-level";
-import { Vector3d } from "@/core/ipc/types/xrf-math";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { ILevelTextureRequests } from "@/core/level/lib/render/level-render-protocol";
 import { LevelTextureReader } from "@/core/level/lib/texture/level-texture-reader";
 import { listLevelThunderTextures, toLevelRendererThunder } from "@/core/level/lib/weather/level-renderer-thunder";
 import { TLevelRendererWeatherBase } from "@/core/level/lib/weather/level-renderer-weather-base";
+import { toRenderVector } from "@/core/render/lib/scene/render-vector";
 
 /** Every value a modifier adds to, what a file older than the flags stands for. */
 const ALL_MODIFIER_FLAGS: number = 0xffff;
@@ -220,21 +220,17 @@ export function toLevelRendererRain(rain: LevelRain): IRendererRain {
  */
 export function toLevelRendererWeatherModifier(modifier: EnvModifier): IRendererWeatherModifier {
   return {
-    ambient: toVector(modifier.ambient),
+    ambient: toRenderVector(modifier.ambient),
     farPlane: modifier.farPlane ?? 0,
     flags: modifier.useFlags ?? ALL_MODIFIER_FLAGS,
-    fogColor: toVector(modifier.fogColor),
+    fogColor: toRenderVector(modifier.fogColor),
     fogDensity: modifier.fogDensity ?? 0,
-    hemiColor: toVector(modifier.hemiColor),
-    position: toVector(modifier.position),
+    hemiColor: toRenderVector(modifier.hemiColor),
+    position: toRenderVector(modifier.position),
     power: modifier.power ?? 0,
     radius: modifier.radius ?? 0,
-    skyColor: toVector(modifier.skyColor),
+    skyColor: toRenderVector(modifier.skyColor),
   };
-}
-
-function toVector(value: Vector3d): TRendererVector {
-  return [value.x ?? 0, value.y ?? 0, value.z ?? 0];
 }
 
 function toTriple(value: readonly [Nullable<number>, Nullable<number>, Nullable<number>]): TRendererVector {

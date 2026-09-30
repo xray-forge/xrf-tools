@@ -7,8 +7,8 @@ import {
 } from "@xrf/renderer";
 
 import { LevelLightsDescription } from "@/core/ipc/types/xrf-app";
-import { Vector3d } from "@/core/ipc/types/xrf-math";
 import { ELightKind, LightAnimatorDescription, LightAnimatorKey, LightDescription } from "@/core/ipc/types/xrf-visual";
+import { toRenderVector } from "@/core/render/lib/scene/render-vector";
 
 /**
  * A level's lights as the renderer lights with them, a spot's projector named by the reference its texture is put
@@ -52,7 +52,7 @@ function toLevelRendererLight(light: LightDescription, projectors: ReadonlyArray
     isLevel: light.isLevel,
     isShadowed: light.isShadowed,
     near: light.near ?? 0,
-    position: toVector(light.position),
+    position: toRenderVector(light.position),
     range: light.range ?? 0,
     rangeJitter: light.rangeJitter ?? undefined,
   };
@@ -64,13 +64,9 @@ function toLevelRendererLight(light: LightDescription, projectors: ReadonlyArray
   return {
     ...base,
     cone: light.cone ?? 0,
-    direction: toVector(light.direction),
+    direction: toRenderVector(light.direction),
     kind: ERendererLightKind.SPOT,
     projector: light.projector === null ? undefined : projectors[light.projector],
-    right: toVector(light.right),
+    right: toRenderVector(light.right),
   };
-}
-
-function toVector(vector: Vector3d): [number, number, number] {
-  return [vector.x ?? 0, vector.y ?? 0, vector.z ?? 0];
 }
