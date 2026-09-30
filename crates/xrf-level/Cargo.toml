@@ -10,6 +10,7 @@ path = "src/lib.rs"
 
 [dependencies]
 byteorder = { workspace = true }
+rayon = { workspace = true }
 serde = { workspace = true }
 uuid = { workspace = true, features = ["v4", "serde"] }
 specta = { workspace = true, optional = true }

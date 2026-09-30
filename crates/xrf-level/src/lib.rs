@@ -25,6 +25,7 @@ pub use crate::ai::level_ai_file::*;
 pub use crate::cform::level_cform_face::*;
 pub use crate::cform::level_cform_file::*;
 pub use crate::cform::level_cform_geometry::*;
+pub use crate::cform::level_cform_tracer::*;
 pub use crate::details::detail_model::*;
 pub use crate::details::detail_vertex::*;
 pub use crate::details::level_details_file::*;

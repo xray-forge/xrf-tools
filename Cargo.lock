@@ -7232,6 +7232,7 @@ name = "xrf-level"
 version = "0.1.0"
 dependencies = [
  "byteorder",
+ "rayon",
  "serde",
  "specta",
  "uuid",
