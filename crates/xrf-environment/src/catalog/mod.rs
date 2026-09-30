@@ -6,6 +6,8 @@ pub(crate) mod environment_definitions;
 pub(crate) mod environment_named;
 pub(crate) mod environment_read_options;
 pub(crate) mod environment_read_pass;
+pub(crate) mod environment_read_pass_definitions;
+pub(crate) mod environment_read_pass_references;
 pub(crate) mod environment_reader;
 
 pub use crate::catalog::environment_catalog::EnvironmentCatalog;
