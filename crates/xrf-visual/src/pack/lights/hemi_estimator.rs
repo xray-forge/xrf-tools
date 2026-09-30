@@ -135,6 +135,12 @@ impl HemiEstimator {
           + light.attenuation_quadratic * distance * distance)
         - distance * light.falloff)
         .max(0.0);
+
+      // A light the compiler wrote with no attenuation at all reaches everything infinitely: nothing to add.
+      if !attenuation.is_finite() {
+        continue;
+      }
+
       let brightness: f32 = (light.diffuse.x + light.diffuse.y + light.diffuse.z) / 3.0 * SEEN_LIGHT_SHARE;
 
       cube.accumulate(&[-along.x, -along.y, -along.z], brightness * attenuation * LIGHT_SCALE);

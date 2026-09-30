@@ -119,6 +119,23 @@ fn ignores_a_light_the_form_hides_and_one_out_of_its_reach() -> XrfResult {
   Ok(())
 }
 
+// A light written with no attenuation would add without end, and would draw its object white wherever it stood.
+#[test]
+fn adds_nothing_of_a_light_without_attenuation() -> XrfResult {
+  let unattenuated: Vec<LevelLight> = vec![LevelLight {
+    attenuation_constant: 0.0,
+    ..point_light(Vector3d::new(1.5, 1.15, 0.0))
+  }];
+  let unlit: HemiCube = HemiEstimator::new(roof()?, &[]).estimate(&Vector3d::new(0.0, 1.0, 0.0), 0.5);
+
+  assert_eq!(
+    HemiEstimator::new(roof()?, &unattenuated).estimate(&Vector3d::new(0.0, 1.0, 0.0), 0.5),
+    unlit
+  );
+
+  Ok(())
+}
+
 #[test]
 fn swaps_the_faces_along_z_into_renderer_space() {
   let cube: HemiCube = HemiCube {
