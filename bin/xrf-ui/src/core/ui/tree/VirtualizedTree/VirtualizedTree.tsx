@@ -178,12 +178,16 @@ export function VirtualizedTree<T>({
   // Both the virtualizer's listeners and keyboard scrolling need the scroller node.
   const handleScrollerRef = useForkRef(scrollerRef, containerProps.ref);
 
-  /** Scrolls a row into view by arithmetic, since every row is exactly one `TREE.rowHeight` tall. */
-  const revealRow = useCallback((index: number): void => {
+  /**
+   * Scrolls a row into view by arithmetic, since every row is exactly one `TREE.rowHeight` tall.
+   *
+   * @returns Whether the scroller could reach it: not while its content is shorter than the rows ending with it.
+   */
+  const revealRow = useCallback((index: number): boolean => {
     const scroller: Nullable<HTMLElement> = scrollerRef.current;
 
     if (!scroller || index < 0) {
-      return;
+      return true;
     }
 
     const top: number = index * TREE.rowHeight;
@@ -194,7 +198,11 @@ export function VirtualizedTree<T>({
     } else if (bottom > scroller.scrollTop + scroller.clientHeight) {
       scroller.scrollTop = bottom - scroller.clientHeight;
     }
+
+    return scroller.scrollHeight >= bottom;
   }, []);
+  /** A row chosen past the content's end, which the virtualizer grows a render later: revealed once it has. */
+  const pendingRevealRef = useRef<number>(-1);
 
   const moveTo = useCallback(
     (index: number): void => {
@@ -292,7 +300,16 @@ export function VirtualizedTree<T>({
 
   // Covers a selection the tree did not make: a filter result, or a session restored into a directory that had
   // to be opened before the row existed at all.
-  useEffect(() => revealRow(selectedIndex), [revealRow, selectedIndex]);
+  useEffect(() => {
+    pendingRevealRef.current = revealRow(selectedIndex) ? -1 : selectedIndex;
+  }, [revealRow, selectedIndex]);
+
+  // A row opened in the same change that chose it lies past the content until the virtualizer has sized it.
+  useEffect(() => {
+    if (pendingRevealRef.current !== -1 && revealRow(pendingRevealRef.current)) {
+      pendingRevealRef.current = -1;
+    }
+  }, [contentProps, revealRow]);
 
   return (
     <div

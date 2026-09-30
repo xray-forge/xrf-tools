@@ -3,6 +3,7 @@ import { RenderResult } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { ReactElement } from "react";
 
+import { TREE } from "@/core/theme/tokens";
 import { IPathTreeItem, parsePathTree, toDirectoryItemId, toFileItemId } from "@/core/ui/tree/path-tree";
 import { ITreeNode } from "@/core/ui/tree/tree-node";
 import { IUseTreeState, useTreeState } from "@/core/ui/tree/use-tree-state";
@@ -275,6 +276,53 @@ describe("VirtualizedTree", () => {
     expect(onSelect).not.toHaveBeenCalled();
     expect(onActivate).not.toHaveBeenCalled();
     expect(onToggleExpanded).not.toHaveBeenCalled();
+  });
+
+  // A row chosen from outside in the same change that opens its directory lies past the content until the
+  // virtualizer has grown it, and a browser clamps a scroll to the content it has.
+  it("scrolls to a row chosen as its directory opens, once the content reaches it", async () => {
+    function Revealing(): ReactElement {
+      const state: IUseTreeState = useTreeState();
+
+      return (
+        <>
+          <button type={"button"} onClick={() => state.reveal(toFileItemId(getAt("meshes", "pm.ogf")))}>
+            Reveal
+          </button>
+          <VirtualizedTree<string>
+            ariaLabel={"Visuals"}
+            items={mockTree()}
+            expandedIds={state.expandedIds}
+            selectedId={state.selectedId}
+            onSelect={() => {}}
+            onActivate={() => {}}
+            onToggleExpanded={state.toggleExpanded}
+          />
+        </>
+      );
+    }
+
+    const view: RenderResult = renderWithProviders(<Revealing />);
+    const tree: HTMLElement = view.getByRole("tree");
+    const content: HTMLElement = tree.firstElementChild as HTMLElement;
+    let scrollTop: number = 0;
+
+    // A scroller one row tall over the content as the virtualizer sizes it.
+    Object.defineProperties(tree, {
+      clientHeight: { get: () => TREE.rowHeight },
+      scrollHeight: { get: () => parseFloat(content.style.height) || 0 },
+      scrollTop: {
+        get: () => scrollTop,
+        set: (value: number) => {
+          scrollTop = Math.max(0, Math.min(value, tree.scrollHeight - tree.clientHeight));
+        },
+      },
+    });
+
+    await userEvent.click(view.getByRole("button", { name: "Reveal" }));
+
+    // The third row of four: its bottom three rows down, one row visible.
+    expect(scrollTop).toBe(2 * TREE.rowHeight);
   });
 
   // Windowing itself is not asserted here on purpose: jsdom lays nothing out, and the virtualizer's
