@@ -6,18 +6,14 @@ import { VisualSequenceService } from "@/applications/visuals-sequencer/services
 import { createRoots } from "@/core/assets/lib";
 import { transformError } from "@/core/error/lib";
 import { visualsCommands } from "@/core/ipc/commands/visuals";
-import { EVisualSource, SelectedVisualDescription, VisualSource } from "@/core/ipc/types/xrf-app";
+import { EVisualSource, VisualSource } from "@/core/ipc/types/xrf-app";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
-import { VisualBone } from "@/core/ipc/types/xrf-visual";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
 import { EApplicationId } from "@/core/routing/application";
-import { IVisualInspection } from "@/core/visuals/components/panels/visual-inspection";
 import { IVisualPose } from "@/core/visuals/lib/render";
-import { IVisualBumpFiles, IVisualBumpStatus } from "@/core/visuals/lib/visual-bump";
 import { describeVisualSource } from "@/core/visuals/lib/visual-source";
-import { IVisualTextureFile, IVisualTextureStatus } from "@/core/visuals/lib/visual-texture";
-import { IVisualModelViews } from "@/core/visuals/lib/visual-views";
-import { IOpenVisual, VisualLoadService } from "@/core/visuals/services/visual-load.service";
+import { VisualInspectionService } from "@/core/visuals/services/visual-inspection.service";
+import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
 import { AsyncState } from "@/lib/async-state";
 import { formatDuration } from "@/lib/format/duration";
 import { Logger, Timer } from "@/lib/logging";
@@ -26,7 +22,7 @@ import { Logger, Timer } from "@/lib/logging";
  * The visual a sequence is being written against, and the motions it can be written out of.
  */
 @Injectable()
-export class SequencerService implements IVisualInspection {
+export class SequencerService extends VisualInspectionService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
   @Observable()
@@ -35,19 +31,6 @@ export class SequencerService implements IVisualInspection {
   /** Every motion the open visual can play, which is what clips are picked from. */
   @Observable()
   public motions: AsyncState<Array<string>> = AsyncState.idle([]);
-
-  /**
-   * @returns The visual being shown, straight from the loader.
-   */
-  @Computed()
-  public get visual(): AsyncState<IOpenVisual> {
-    return this.loadService.visual;
-  }
-
-  @Computed()
-  public get model(): Nullable<IVisualModelViews> {
-    return this.loadService.model;
-  }
 
   /**
    * @returns How the model stands, which here is the track rather than any one picked motion.
@@ -61,42 +44,6 @@ export class SequencerService implements IVisualInspection {
     };
   }
 
-  @Computed()
-  public get textures(): ReadonlyMap<number, IVisualTextureFile> {
-    return this.loadService.textures;
-  }
-
-  /**
-   * @returns What the backend reported about the open visual, or null when nothing is open.
-   */
-  @Computed()
-  public get selected(): Nullable<SelectedVisualDescription> {
-    return this.visual.value?.selected.value ?? null;
-  }
-
-  /**
-   * @returns The open model's skeleton, or no bones at all when nothing is open.
-   */
-  @Computed()
-  public get bones(): Array<VisualBone> {
-    return this.selected?.description.bones ?? [];
-  }
-
-  @Computed()
-  public get textureStatuses(): ReadonlyMap<number, IVisualTextureStatus> {
-    return this.loadService.textureStatuses;
-  }
-
-  @Computed()
-  public get bumps(): ReadonlyMap<number, IVisualBumpFiles> {
-    return this.loadService.bumps;
-  }
-
-  @Computed()
-  public get bumpStatuses(): ReadonlyMap<number, IVisualBumpStatus> {
-    return this.loadService.bumpStatuses;
-  }
-
   /**
    * @returns Nothing: a sequencer composes motions rather than inspecting a skeleton, so its bone panel reads.
    *
@@ -107,21 +54,13 @@ export class SequencerService implements IVisualInspection {
     return null;
   }
 
-  @Computed()
-  public get sourceLabel(): Nullable<string> {
-    return this.loadService.sourceLabel;
-  }
-
-  @Computed()
-  public get hasMotions(): boolean {
-    return this.loadService.hasMotions;
-  }
-
   public constructor(
     private readonly eventBus: EventBus = inject(EventBus),
-    private readonly loadService: VisualLoadService = inject(VisualLoadService),
+    loadService: VisualLoadService = inject(VisualLoadService),
     private readonly sequenceService: VisualSequenceService = inject(VisualSequenceService)
-  ) {}
+  ) {
+    super(loadService);
+  }
 
   /**
    * Restore whatever the backend still has selected.

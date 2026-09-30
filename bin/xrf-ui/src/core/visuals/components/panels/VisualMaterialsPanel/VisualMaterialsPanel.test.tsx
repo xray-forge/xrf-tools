@@ -2,14 +2,13 @@ import { describe, expect, it } from "@jest/globals";
 import { RenderResult } from "@testing-library/react";
 import { Container } from "@wirestate/core";
 
-import { VisualsService } from "@/applications/visuals-explorer/services/visuals";
 import { SelectedVisualDescription } from "@/core/ipc/types/xrf-app";
 import { VISUAL_INSPECTION } from "@/core/visuals/components/panels/visual-inspection";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
-import { VisualMotionService } from "@/core/visuals/services/visual-motion.service";
 import { setMockBulkResponses } from "@/fixtures/mocks/bulk.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
+import { MockVisualInspectionService } from "@/fixtures/mocks/visual-inspection.mocks";
 import {
   mockMaterialDescriptor,
   mockPackedSubmesh,
@@ -45,12 +44,11 @@ async function renderPanel(overrides: Partial<SelectedVisualDescription>): Promi
 
   const container: Container = mockContainer([
     VisualLoadService,
-    VisualMotionService,
-    VisualsService,
-    { token: VISUAL_INSPECTION, factory: (it: Container) => it.get(VisualsService) },
+    MockVisualInspectionService,
+    { token: VISUAL_INSPECTION, factory: (it: Container) => it.get(MockVisualInspectionService) },
   ]);
 
-  await container.get(VisualsService).openFile("C:\\gamedata\\wpn_ak74.ogf");
+  await container.get(MockVisualInspectionService).openFile("C:\\gamedata\\wpn_ak74.ogf");
 
   return renderWithProviders(<VisualMaterialsPanel />, { container });
 }

@@ -4,22 +4,19 @@ import { Nullable, Optional } from "@xrf/types";
 
 import { createRoots } from "@/core/assets/lib";
 import { transformError } from "@/core/error/lib";
-import { EVisualSource, SelectedVisualDescription, VisualSource } from "@/core/ipc/types/xrf-app";
+import { EVisualSource, VisualSource } from "@/core/ipc/types/xrf-app";
 import { Vector3d } from "@/core/ipc/types/xrf-math";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { VisualBone } from "@/core/ipc/types/xrf-visual";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
 import { EApplicationId } from "@/core/routing/application";
-import { IVisualBoneControls, IVisualInspection } from "@/core/visuals/components/panels/visual-inspection";
+import { IVisualBoneControls } from "@/core/visuals/components/panels/visual-inspection";
 import { IVisualPose } from "@/core/visuals/lib/render";
 import { selectAddonBones, selectHiddenBoneIndices } from "@/core/visuals/lib/visual-bones";
-import { IVisualBumpFiles, IVisualBumpStatus } from "@/core/visuals/lib/visual-bump";
 import { describeVisualSource } from "@/core/visuals/lib/visual-source";
-import { IVisualTextureFile, IVisualTextureStatus } from "@/core/visuals/lib/visual-texture";
-import { IVisualModelViews } from "@/core/visuals/lib/visual-views";
-import { IOpenVisual, VisualLoadService } from "@/core/visuals/services/visual-load.service";
+import { VisualInspectionService } from "@/core/visuals/services/visual-inspection.service";
+import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
 import { VisualMotionService } from "@/core/visuals/services/visual-motion.service";
-import { AsyncState } from "@/lib/async-state";
 import { Logger } from "@/lib/logging";
 import { findLastSeparator } from "@/lib/path/separator";
 
@@ -43,7 +40,7 @@ interface IVisualOpenAttempt {
  * drops the backend's selection.
  */
 @Injectable()
-export class VisualsService implements IVisualInspection {
+export class VisualsService extends VisualInspectionService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
   @Observable()
@@ -62,21 +59,6 @@ export class VisualsService implements IVisualInspection {
   public hiddenBones: ReadonlySet<string> = new Set();
 
   /**
-   * @returns The visual being shown, straight from the loader.
-   *
-   * Forwarded rather than mirrored: two copies of one state is how a screen ends up disagreeing with itself.
-   */
-  @Computed()
-  public get visual(): AsyncState<IOpenVisual> {
-    return this.loadService.visual;
-  }
-
-  @Computed()
-  public get model(): Nullable<IVisualModelViews> {
-    return this.loadService.model;
-  }
-
-  /**
    * @returns How the model stands, which here is whichever motion the motions panel is playing.
    */
   @Computed()
@@ -86,55 +68,6 @@ export class VisualsService implements IVisualInspection {
       frame: this.motionService.frame,
       transforms: this.motionService.posed.value?.transforms ?? null,
     };
-  }
-
-  @Computed()
-  public get textures(): ReadonlyMap<number, IVisualTextureFile> {
-    return this.loadService.textures;
-  }
-
-  @Computed()
-  public get textureStatuses(): ReadonlyMap<number, IVisualTextureStatus> {
-    return this.loadService.textureStatuses;
-  }
-
-  @Computed()
-  public get bumps(): ReadonlyMap<number, IVisualBumpFiles> {
-    return this.loadService.bumps;
-  }
-
-  @Computed()
-  public get bumpStatuses(): ReadonlyMap<number, IVisualBumpStatus> {
-    return this.loadService.bumpStatuses;
-  }
-
-  @Computed()
-  public get sourceLabel(): Nullable<string> {
-    return this.loadService.sourceLabel;
-  }
-
-  @Computed()
-  public get hasMotions(): boolean {
-    return this.loadService.hasMotions;
-  }
-
-  /**
-   * @returns What the backend reported about the open visual, or null when nothing is open.
-   *
-   * The one place the async state is unwrapped for its contents, so a panel asking what the model contains does not also
-   * acquire an opinion about whether it is still arriving.
-   */
-  @Computed()
-  public get selected(): Nullable<SelectedVisualDescription> {
-    return this.visual.value?.selected.value ?? null;
-  }
-
-  /**
-   * @returns The open model's skeleton, or no bones at all when nothing is open.
-   */
-  @Computed()
-  public get bones(): Array<VisualBone> {
-    return this.selected?.description.bones ?? [];
   }
 
   /**
@@ -208,9 +141,11 @@ export class VisualsService implements IVisualInspection {
 
   public constructor(
     private readonly eventBus: EventBus = inject(EventBus),
-    private readonly loadService: VisualLoadService = inject(VisualLoadService),
+    loadService: VisualLoadService = inject(VisualLoadService),
     private readonly motionService: VisualMotionService = inject(VisualMotionService)
-  ) {}
+  ) {
+    super(loadService);
+  }
 
   /**
    * Restore whatever the backend still has selected.

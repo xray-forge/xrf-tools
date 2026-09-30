@@ -1,18 +1,22 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
+import { createElement } from "react";
 
-import { SPRITE_EQUIPMENT_EDITOR_APPLICATION } from "@/applications/sprite-equipment-editor";
-import { RELOAD_EQUIPMENT_SPRITE_KEYBIND_COMMAND } from "@/applications/sprite-equipment-editor/commands";
 import { defineKeybindCommand, EKeybindCommandCategory, IKeybindCommand } from "@/core/commands";
 import { ROOT_KEYBIND_COMMANDS } from "@/core/commands/root-commands";
 import { IKeybinding, IKeymap } from "@/core/keybinds/lib/keymap";
 import { LAUNCHER_KEYBIND_COMMANDS } from "@/core/launcher/commands";
+import {
+  EApplicationGroupId,
+  EApplicationId,
+  EApplicationStatus,
+  IApplicationDescriptor,
+} from "@/core/routing/application";
+import { createApplicationDescriptor } from "@/core/routing/application-descriptor";
 import { FOCUS_SEARCH_KEYBIND_COMMAND } from "@/core/search/commands";
 import { KEYBINDS_STORAGE_KEY } from "@/core/storage";
 import { mockInjectedService } from "@/fixtures/utils/container";
 
 import { KeymapService } from "./keymap.service";
-
-const RELOAD_ID: string = RELOAD_EQUIPMENT_SPRITE_KEYBIND_COMMAND.id;
 
 function toIds(commands: ReadonlyArray<IKeybindCommand>): Array<string> {
   return commands.map((command: IKeybindCommand) => command.id);
@@ -25,6 +29,23 @@ const RELOAD: IKeybindCommand = defineKeybindCommand({
   id: "fixture/reload",
   label: "Reload",
 });
+
+const RELOAD_ID: string = RELOAD.id;
+
+/** An application whose one declaration is the fixture's reload, which is all these cases need of one. */
+const RELOADING_APPLICATION: IApplicationDescriptor = createApplicationDescriptor(
+  {
+    description: "Reloads.",
+    group: EApplicationGroupId.SPRITES,
+    icon: createElement("span"),
+    id: EApplicationId.SPRITE_EQUIPMENT_EDITOR,
+    keybindCommands: [RELOAD],
+    label: "Reloading",
+    path: "/reloading",
+    status: EApplicationStatus.READY,
+  },
+  { Component: () => null }
+);
 
 describe("KeymapService", () => {
   // The service reads storage once, when it is constructed, so each case needs its own starting state.
@@ -128,7 +149,7 @@ describe("KeymapService", () => {
   it("leaves an application that declares none with the root set, not the home screen's", () => {
     const { service } = mockInjectedService(KeymapService);
 
-    service.setApplication({ ...SPRITE_EQUIPMENT_EDITOR_APPLICATION, keybindCommands: undefined });
+    service.setApplication({ ...RELOADING_APPLICATION, keybindCommands: undefined });
 
     expect(toIds(service.commands)).toEqual(toIds(ROOT_KEYBIND_COMMANDS));
     expect(toIds(service.commands)).not.toContain(FOCUS_SEARCH_KEYBIND_COMMAND.id);
@@ -137,7 +158,7 @@ describe("KeymapService", () => {
   it("adds the routed application's declarations, and drops them when it closes", () => {
     const { service } = mockInjectedService(KeymapService);
 
-    service.setApplication(SPRITE_EQUIPMENT_EDITOR_APPLICATION);
+    service.setApplication(RELOADING_APPLICATION);
 
     // The home screen's own declarations go with it: a routed application replaces them rather than adding to them.
     expect(toIds(service.commands)).toEqual([...toIds(ROOT_KEYBIND_COMMANDS), RELOAD_ID]);
@@ -151,8 +172,8 @@ describe("KeymapService", () => {
     const { service } = mockInjectedService(KeymapService);
 
     service.setApplication({
-      ...SPRITE_EQUIPMENT_EDITOR_APPLICATION,
-      keybindCommands: [...ROOT_KEYBIND_COMMANDS, RELOAD_EQUIPMENT_SPRITE_KEYBIND_COMMAND],
+      ...RELOADING_APPLICATION,
+      keybindCommands: [...ROOT_KEYBIND_COMMANDS, RELOAD],
     });
 
     expect(toIds(service.commands)).toEqual([...toIds(ROOT_KEYBIND_COMMANDS), RELOAD_ID]);
@@ -161,7 +182,7 @@ describe("KeymapService", () => {
   it("builds a keymap through the overrides it holds, and rebuilds it when one changes", () => {
     const { service } = mockInjectedService(KeymapService);
 
-    service.setApplication(SPRITE_EQUIPMENT_EDITOR_APPLICATION);
+    service.setApplication(RELOADING_APPLICATION);
 
     const declared: IKeymap = service.keymap;
 
