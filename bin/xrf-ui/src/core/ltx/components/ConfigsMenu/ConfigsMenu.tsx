@@ -3,9 +3,10 @@ import { ReactElement, useCallback, useEffect, useMemo } from "react";
 
 import { LtxInventoryFile } from "@/core/ipc/types/xrf-ltx-inspect";
 import { EditorSearchMenu } from "@/core/shell/editor/EditorSearchMenu";
+import { toPathSearchRow } from "@/core/shell/editor/EditorSearchMenu/path-search-row";
 import { IEditorSearchResultRow } from "@/core/shell/editor/EditorSearchResults";
 import { EmptyListing } from "@/core/ui/layout";
-import { IPathTreeItem, parsePathTree, splitLogicalPath, toFileItemId } from "@/core/ui/tree/path-tree";
+import { IPathTreeItem, parsePathTree, toFileItemId } from "@/core/ui/tree/path-tree";
 import { ITreeNode } from "@/core/ui/tree/tree-node";
 import { ARCHIVED_CAPTION, TreeRowLabel } from "@/core/ui/tree/TreeRowLabel";
 import { IUseTreeState, useTreeState } from "@/core/ui/tree/use-tree-state";
@@ -74,11 +75,7 @@ export function ConfigsMenu({
 
   const toConfigSearchText = useCallback((file: LtxInventoryFile): string => file.path, []);
 
-  const toConfigRow = useCallback((file: LtxInventoryFile): IEditorSearchResultRow => {
-    const { name, directory } = splitLogicalPath(file.path);
-
-    return { id: file.path, label: name, description: directory ?? undefined };
-  }, []);
+  const toConfigRow = useCallback((file: LtxInventoryFile): IEditorSearchResultRow => toPathSearchRow(file.path), []);
 
   useEffect(() => {
     if (openItemId) {

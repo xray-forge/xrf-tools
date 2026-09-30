@@ -7,8 +7,9 @@ import { IArchiveEntry, IArchiveTreeItem, parseTree, toArchiveSelectionItemId } 
 import { isLooseContainer } from "@/core/assets/lib";
 import { XrayAssetContainer } from "@/core/ipc/types/xrf-vfs";
 import { EditorSearchMenu } from "@/core/shell/editor/EditorSearchMenu";
+import { toPathSearchRow } from "@/core/shell/editor/EditorSearchMenu/path-search-row";
 import { EmptyListing } from "@/core/ui/layout";
-import { getDirectoryItemPath, splitLogicalPath, toFileItemId } from "@/core/ui/tree/path-tree";
+import { getDirectoryItemPath, toFileItemId } from "@/core/ui/tree/path-tree";
 import { ITreeNode } from "@/core/ui/tree/tree-node";
 import { ARCHIVED_CAPTION, TreeRowLabel } from "@/core/ui/tree/TreeRowLabel";
 import { IUseTreeState, useTreeState } from "@/core/ui/tree/use-tree-state";
@@ -109,11 +110,7 @@ export function ArchivesMenu({
       resultsLabel={"Archive search results"}
       items={files}
       toSearchText={toSearchText}
-      toRow={(entry) => {
-        const { name, directory } = splitLogicalPath(entry.name);
-
-        return { id: entry.name, label: name, description: directory ?? undefined };
-      }}
+      toRow={(entry) => toPathSearchRow(entry.name)}
       isActivationDisabled={isWriting}
       onSelect={onOpenEntry}
     >

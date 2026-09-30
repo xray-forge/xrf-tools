@@ -7,6 +7,7 @@ import { ReactElement, ReactNode, useCallback, useMemo, useState } from "react";
 
 import { TextureSource } from "@/core/ipc/types/xrf-app";
 import { EditorSearchMenu } from "@/core/shell/editor/EditorSearchMenu";
+import { toPathSearchRow } from "@/core/shell/editor/EditorSearchMenu/path-search-row";
 import { IEditorSearchResultRow } from "@/core/shell/editor/EditorSearchResults";
 import { TextureBadgeFilters } from "@/core/textures/components/tree/TextureBadgeFilters";
 import {
@@ -20,7 +21,7 @@ import { getTextureSourceKey } from "@/core/textures/lib/texture-identity";
 import { TextureCatalogService } from "@/core/textures/services/catalog";
 import { TextureSelectionService } from "@/core/textures/services/selection";
 import { EmptyListing } from "@/core/ui/layout/EmptyListing";
-import { IPathTreeItem, parsePathTree, splitLogicalPath, toFileItemId } from "@/core/ui/tree/path-tree";
+import { IPathTreeItem, parsePathTree, toFileItemId } from "@/core/ui/tree/path-tree";
 import { ITreeNode } from "@/core/ui/tree/tree-node";
 import { IUseTreeState, useTreeState } from "@/core/ui/tree/use-tree-state";
 import { IVirtualizedTreeIcons, VirtualizedTree } from "@/core/ui/tree/VirtualizedTree";
@@ -117,12 +118,10 @@ export function TexturesMenu({
     [onOpenNode]
   );
 
-  const toTextureRow = useCallback((node: ITextureNode): IEditorSearchResultRow => {
-    const path: string = toTextureNodePath(node);
-    const { name, directory } = splitLogicalPath(path);
-
-    return { id: path, label: name, description: directory ?? undefined };
-  }, []);
+  const toTextureRow = useCallback(
+    (node: ITextureNode): IEditorSearchResultRow => toPathSearchRow(toTextureNodePath(node)),
+    []
+  );
 
   return (
     <EditorSearchMenu
