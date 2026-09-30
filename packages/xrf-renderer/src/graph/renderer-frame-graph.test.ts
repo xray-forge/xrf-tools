@@ -297,6 +297,7 @@ describe("RendererFrameGraph", () => {
         isSkyDrawn: false,
         isSkyHazed: false,
         isTextured: true,
+        isWallmarkDrawn: true,
         isWireframe: false,
         pacing: DEFAULT_RENDER_FRAME_PACING,
         tonemapScale: 1,

@@ -11,7 +11,7 @@ interface ILevelSurfacesActionProps extends BaseComponentProps {
 }
 
 /**
- * How the surfaces are drawn: as wireframe, with their textures, with their bumps.
+ * How the surfaces are drawn: as wireframe, with their textures, with their bumps, under their wall marks.
  */
 export function LevelSurfacesAction({
   "data-testid": dataTestId = "level-surfaces-action",
@@ -20,7 +20,7 @@ export function LevelSurfacesAction({
   options,
   onToggle,
 }: ILevelSurfacesActionProps): ReactElement {
-  const { isWireframe, isTextured, isBumped } = options;
+  const { isWireframe, isTextured, isBumped, isWallmarked } = options;
 
   return (
     <EditorPopoverGroup
@@ -32,9 +32,10 @@ export function LevelSurfacesAction({
         isWireframe ? "Wireframe" : "Solid",
         isTextured ? "textured" : "untextured",
         isBumped ? "bumped" : "flat",
+        isWallmarked ? "with wall marks" : "without wall marks",
       ].join(", ")}
       icon={<TextureIcon />}
-      isActive={isWireframe || isTextured || isBumped}
+      isActive={isWireframe || isTextured || isBumped || isWallmarked}
     >
       <EditorPopoverGroupSection label={"Wireframe"} isOn={isWireframe} onToggle={() => onToggle("isWireframe")} />
 
@@ -45,6 +46,13 @@ export function LevelSurfacesAction({
         description={isBumped ? "Shaded with the bump pairs their textures declare" : "Shaded flat, as though unbound"}
         isOn={isBumped}
         onToggle={() => onToggle("isBumped")}
+      />
+
+      <EditorPopoverGroupSection
+        label={"Wall marks"}
+        description={isWallmarked ? "The decals compiled into the level, over what they mark" : "The surfaces bare"}
+        isOn={isWallmarked}
+        onToggle={() => onToggle("isWallmarked")}
       />
     </EditorPopoverGroup>
   );

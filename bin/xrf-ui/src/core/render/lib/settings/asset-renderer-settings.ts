@@ -26,6 +26,7 @@ export function toAssetRendererSettings(
     isSkyHazed: false,
     // An asset viewer shows the asset as it is dressed: no toolbar there takes its textures off.
     isTextured: true,
+    isWallmarkDrawn: true,
     tonemapScale: 1,
   };
 }

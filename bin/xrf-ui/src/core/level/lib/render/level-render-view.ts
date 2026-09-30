@@ -84,6 +84,7 @@ export function toLevelRendererSettings(inputs: ILevelRendererSettingsInputs): I
     isSkyDrawn: options.isSkyVisible,
     isSkyHazed: options.isSkyHazed,
     isTextured: options.isTextured,
+    isWallmarkDrawn: options.isWallmarked,
     isWireframe: options.isWireframe,
     pacing: shared.pacing,
     tonemapScale: 1,

@@ -33,6 +33,8 @@ export interface IRendererSettings {
    * into the sky itself as the engine fades it, which shows the clouds through far surfaces.
    */
   isSkyHazed: boolean;
+  /** Whether wall marks composite into the albedo; off, the surfaces beneath them show bare. */
+  isWallmarkDrawn: boolean;
   /** Whether surfaces draw as their triangles' edges. */
   isWireframe: boolean;
   /** Whether every pass is timed on the GPU for the report, which costs a frame 1-4% of its rate. */

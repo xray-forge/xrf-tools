@@ -19,7 +19,12 @@ export class WallmarkPass implements IRendererScenePass {
     this.target = targets.wallmarks;
   }
 
-  public render({ renderer, camera, scenes }: IRendererFrame): void {
+  public render({ renderer, camera, scenes, settings }: IRendererFrame): void {
+    // The target is the G-buffer's own albedo, so a frame that skips the marks leaves nothing stale behind.
+    if (!settings.isWallmarkDrawn) {
+      return;
+    }
+
     renderer.setRenderTarget(this.target);
     renderer.render(scenes[this.scene], camera);
   }

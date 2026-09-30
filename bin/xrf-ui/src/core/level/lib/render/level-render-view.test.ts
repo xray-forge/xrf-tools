@@ -27,4 +27,12 @@ describe("toLevelRendererSettings", () => {
         .isGpuTimed
     ).toBe(true);
   });
+
+  it("composites the wall marks while the toolbar shows them", () => {
+    expect(toLevelRendererSettings(toInputs(false)).isWallmarkDrawn).toBe(true);
+    expect(
+      toLevelRendererSettings({ ...toInputs(false), options: { ...DEFAULT_LEVEL_VIEW_OPTIONS, isWallmarked: false } })
+        .isWallmarkDrawn
+    ).toBe(false);
+  });
 });

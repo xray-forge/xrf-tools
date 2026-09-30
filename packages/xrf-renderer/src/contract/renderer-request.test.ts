@@ -113,6 +113,7 @@ describe("listRendererTransfers", () => {
           isSkyDrawn: false,
           isSkyHazed: false,
           isTextured: true,
+          isWallmarkDrawn: true,
           isWireframe: false,
           tonemapScale: 1,
         },

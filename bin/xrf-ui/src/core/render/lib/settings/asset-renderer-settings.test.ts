@@ -26,6 +26,7 @@ describe("toAssetRendererSettings", () => {
       isSkyDrawn: false,
       isSkyHazed: false,
       isTextured: true,
+      isWallmarkDrawn: true,
       isWireframe: true,
       tonemapScale: 1,
     });

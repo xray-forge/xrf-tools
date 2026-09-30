@@ -22,14 +22,17 @@ describe("level toolbar groups", () => {
       <LevelSurfacesAction options={DEFAULT_LEVEL_VIEW_OPTIONS} onToggle={onToggle} />
     );
 
-    expect(getByRole("button", { name: "Surfaces" })).toHaveAccessibleDescription("Solid, textured, bumped");
+    expect(getByRole("button", { name: "Surfaces" })).toHaveAccessibleDescription(
+      "Solid, textured, bumped, with wall marks"
+    );
 
     await userEvent.click(getByRole("button", { name: "Surfaces" }));
     await findByRole("dialog", { name: "Surfaces" });
     await userEvent.click(getByRole("checkbox", { name: "Wireframe" }));
     await userEvent.click(getByRole("checkbox", { name: "Bumps" }));
+    await userEvent.click(getByRole("checkbox", { name: "Wall marks" }));
 
-    expect(onToggle.mock.calls).toEqual([["isWireframe"], ["isBumped"]]);
+    expect(onToggle.mock.calls).toEqual([["isWireframe"], ["isBumped"], ["isWallmarked"]]);
   });
 
   it("names the spawned categories shown, and turns each over by its own checkbox", async () => {
