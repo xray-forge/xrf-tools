@@ -1,22 +1,25 @@
 import { Nullable } from "@xrf/types";
-import { NodeMaterial, QuadMesh, RenderTarget, Texture, WebGPURenderer } from "three/webgpu";
+import { RenderTarget, Texture, WebGPURenderer } from "three/webgpu";
 
 import { ERendererDebugView } from "#/contract/renderer-debug-view";
+import { IRendererSettings } from "#/contract/renderer-settings";
+import { FullScreenDraw } from "#/pass/full-screen-draw";
 import { toPresentPassFragment } from "#/pass/present-pass.tsl";
 import { createQuadMaterial } from "#/pass/quad-material";
 import { IRendererFrame } from "#/pass/renderer-frame";
 import { IRendererPass } from "#/pass/renderer-pass";
+import { IRendererPipelines } from "#/pass/renderer-pipelines";
 import { RendererTargets } from "#/pass/renderer-targets";
 import { CameraUniforms } from "#/uniforms/camera-uniforms";
 
 /**
- * Puts the chosen picture on the canvas: the frame, or one target shown raw.
+ * Puts the chosen picture on the canvas: the frame, or one target shown raw. A picture's draw is made as it is first
+ * wanted, and a capture draws it into a target of its own.
  */
 export class PresentPass implements IRendererPass {
   public readonly name: string = "present";
 
-  private readonly quad: QuadMesh = new QuadMesh();
-  private readonly materials: Map<ERendererDebugView, NodeMaterial> = new Map();
+  private readonly draws: Map<ERendererDebugView, FullScreenDraw> = new Map();
   private readonly targets: RendererTargets;
   private readonly camera: CameraUniforms;
   /** What the finished frame is read from: the tonemapped frame, or what smoothed it. */
@@ -44,8 +47,7 @@ export class PresentPass implements IRendererPass {
     }
 
     this.shown = frame;
-    this.materials.get(ERendererDebugView.FINAL)?.dispose();
-    this.materials.delete(ERendererDebugView.FINAL);
+    this.forget(ERendererDebugView.FINAL);
   }
 
   /**
@@ -57,12 +59,16 @@ export class PresentPass implements IRendererPass {
     }
 
     this.ambientOcclusion = ambientOcclusion;
-    this.materials.get(ERendererDebugView.AMBIENT_OCCLUSION)?.dispose();
-    this.materials.delete(ERendererDebugView.AMBIENT_OCCLUSION);
+    this.forget(ERendererDebugView.AMBIENT_OCCLUSION);
+  }
+
+  /** The picture the settings show, made where it was not wanted before. */
+  public listPipelines(pipelines: IRendererPipelines, settings: IRendererSettings): void {
+    pipelines.draw(this.getDraw(settings.debugView));
   }
 
   public render({ renderer, settings }: IRendererFrame): void {
-    this.draw(renderer, settings.debugView, null);
+    this.getDraw(settings.debugView).render(renderer);
   }
 
   /**
@@ -71,22 +77,31 @@ export class PresentPass implements IRendererPass {
    * @param target - Where it goes: the canvas when null.
    */
   public draw(renderer: WebGPURenderer, view: ERendererDebugView, target: Nullable<RenderTarget>): void {
-    let material: Nullable<NodeMaterial> = this.materials.get(view) ?? null;
-
-    if (!material) {
-      material = createQuadMaterial(
-        toPresentPassFragment(view, this.targets, this.camera, this.shown, this.ambientOcclusion)
-      );
-      this.materials.set(view, material);
-    }
-
-    this.quad.material = material;
-    renderer.setRenderTarget(target);
-    this.quad.render(renderer);
+    this.getDraw(view).render(renderer, target);
   }
 
   public dispose(): void {
-    this.materials.forEach((material: NodeMaterial) => material.dispose());
-    this.materials.clear();
+    this.draws.forEach((draw: FullScreenDraw) => draw.dispose());
+    this.draws.clear();
+  }
+
+  private getDraw(view: ERendererDebugView): FullScreenDraw {
+    let draw: Nullable<FullScreenDraw> = this.draws.get(view) ?? null;
+
+    if (!draw) {
+      draw = new FullScreenDraw(
+        createQuadMaterial(toPresentPassFragment(view, this.targets, this.camera, this.shown, this.ambientOcclusion)),
+        null
+      );
+      this.draws.set(view, draw);
+    }
+
+    return draw;
+  }
+
+  /** Lets a picture's draw go, made again as it is next wanted. */
+  private forget(view: ERendererDebugView): void {
+    this.draws.get(view)?.dispose();
+    this.draws.delete(view);
   }
 }

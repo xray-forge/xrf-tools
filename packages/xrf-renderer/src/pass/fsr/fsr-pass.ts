@@ -2,8 +2,6 @@ import { Nullable } from "@xrf/types";
 import {
   ComputeNode,
   FloatType,
-  NodeMaterial,
-  QuadMesh,
   RedFormat,
   RenderTarget,
   RGFormat,
@@ -26,10 +24,12 @@ import {
   createFsrDepthReconstruction,
   toFsrDilate,
 } from "#/pass/fsr/fsr-reconstruct-and-dilate.tsl";
+import { FullScreenDraw } from "#/pass/full-screen-draw";
 import { PingPong } from "#/pass/ping-pong";
 import { createDepthWritingQuadMaterial, createQuadMaterial } from "#/pass/quad-material";
 import { IRendererFrame } from "#/pass/renderer-frame";
 import { IRendererPass } from "#/pass/renderer-pass";
+import { IRendererPipelines } from "#/pass/renderer-pipelines";
 import { RendererTargets } from "#/pass/renderer-targets";
 import { ResolvedTarget } from "#/pass/resolved-target";
 import { ITemporalUpscaler } from "#/pass/temporal-upscaler";
@@ -50,12 +50,11 @@ const RED_BYTE: Omit<IColourAttachment, "name"> = { format: RedFormat, isFiltere
 interface IFsrFrame {
   /** The dilated depth, the dilated motion, and the lock luma. */
   dilate: RenderTarget;
-  /** The history, the lock status and the luma history it writes, and the output. */
-  accumulation: RenderTarget;
-  accumulate: NodeMaterial;
-  lock: NodeMaterial;
+  /** Into the history, the lock status and the luma history, and the output. */
+  accumulate: FullScreenDraw;
+  lock: FullScreenDraw;
   /** Built with the reconstructed depth, which grows with the drawing. */
-  clip: Nullable<NodeMaterial>;
+  clip: Nullable<FullScreenDraw>;
 }
 
 /** The depth of the frame before as each texel's nearest depth reprojected puts it, and what writes it. */
@@ -64,6 +63,8 @@ interface IFsrReconstruction {
   capacity: number;
   clear: ComputeNode;
   reconstruct: ComputeNode;
+  /** Both, as the pass names them. */
+  kernels: ReadonlyArray<ComputeNode>;
 }
 
 /**
@@ -77,7 +78,6 @@ export class FsrPass implements ITemporalUpscaler {
   private readonly constants: FsrUniforms = new FsrUniforms();
   private readonly retirement: StorageRetirement;
   private readonly inputs: IFsrInputs;
-  private readonly quad: QuadMesh = new QuadMesh();
   /** The frame before the blended surfaces drew, which the reactive mask compares with. */
   private readonly opaque: FrameCopyPass;
   private readonly lumaFirst: RenderTarget = createColourTarget([{ name: "fsr2-luma-8", ...RED_HALF }]);
@@ -90,11 +90,12 @@ export class FsrPass implements ITemporalUpscaler {
   private readonly locks: RenderTarget = createColourTarget([{ name: "fsr2-locks", ...RED_BYTE }]);
   private readonly resolved: ResolvedTarget = new ResolvedTarget("fsr2");
   private readonly frames: PingPong<IFsrFrame>;
-  private readonly materials: {
-    lumaFirst: NodeMaterial;
-    lumaShading: NodeMaterial;
-    dilate: NodeMaterial;
-    reactive: NodeMaterial;
+  private readonly draws: {
+    lumaFirst: FullScreenDraw;
+    lumaShading: FullScreenDraw;
+    /** Into either frame's dilate, which it is drawn into by turns. */
+    dilate: FullScreenDraw;
+    reactive: FullScreenDraw;
   };
 
   private reconstruction: Nullable<IFsrReconstruction> = null;
@@ -111,12 +112,6 @@ export class FsrPass implements ITemporalUpscaler {
     this.inputs = { color: targets.scene.texture, depth: targets.depth, motion: targets.motion };
     this.opaque = new FrameCopyPass("fsr2-opaque", targets.scene.texture);
     this.beforeBlended = [this.opaque];
-    this.materials = {
-      dilate: createQuadMaterial(toFsrDilate(this.inputs, this.constants)),
-      lumaFirst: createQuadMaterial(toLumaFirstStep(this.inputs, this.constants)),
-      lumaShading: createQuadMaterial(toLumaShadingChange(this.lumaFirst.texture)),
-      reactive: createQuadMaterial(toFsrReactive(this.opaque.output.texture, this.inputs, this.constants)),
-    };
 
     // Each frame's targets first, since each frame's materials read the other's.
     const dilates: ReadonlyArray<RenderTarget> = [0, 1].map((index: number) =>
@@ -134,32 +129,46 @@ export class FsrPass implements ITemporalUpscaler {
       ])
     );
 
+    this.draws = {
+      dilate: new FullScreenDraw(createQuadMaterial(toFsrDilate(this.inputs, this.constants)), dilates[0]),
+      lumaFirst: new FullScreenDraw(createQuadMaterial(toLumaFirstStep(this.inputs, this.constants)), this.lumaFirst),
+      lumaShading: new FullScreenDraw(
+        createQuadMaterial(toLumaShadingChange(this.lumaFirst.texture)),
+        this.lumaShading
+      ),
+      reactive: new FullScreenDraw(
+        createQuadMaterial(toFsrReactive(this.opaque.output.texture, this.inputs, this.constants)),
+        this.reactive
+      ),
+    };
     this.frames = new PingPong((index: 0 | 1) => {
       const previous: RenderTarget = accumulations[index === 0 ? 1 : 0];
 
       return {
-        accumulate: createDepthWritingQuadMaterial(
-          toFsrAccumulate(
-            {
-              dilatedMotion: dilates[index].textures[1],
-              frame: this.inputs.color,
-              history: previous.textures[0],
-              lockStatus: previous.textures[1],
-              locks: this.locks.texture,
-              lumaHistory: previous.textures[2],
-              prepared: this.clip.textures[0],
-              reactiveMasks: this.clip.textures[1],
-              shadingLuma: this.lumaShading.texture,
-            },
-            this.constants,
-            uniforms.motion.jitter
+        accumulate: new FullScreenDraw(
+          createDepthWritingQuadMaterial(
+            toFsrAccumulate(
+              {
+                dilatedMotion: dilates[index].textures[1],
+                frame: this.inputs.color,
+                history: previous.textures[0],
+                lockStatus: previous.textures[1],
+                locks: this.locks.texture,
+                lumaHistory: previous.textures[2],
+                prepared: this.clip.textures[0],
+                reactiveMasks: this.clip.textures[1],
+                shadingLuma: this.lumaShading.texture,
+              },
+              this.constants,
+              uniforms.motion.jitter
+            ),
+            toUpscaledDepth(this.inputs.color, this.inputs.depth, uniforms.motion.jitter)
           ),
-          toUpscaledDepth(this.inputs.color, this.inputs.depth, uniforms.motion.jitter)
+          accumulations[index]
         ),
-        accumulation: accumulations[index],
         clip: null,
         dilate: dilates[index],
-        lock: createQuadMaterial(toFsrLock(dilates[index].textures[2], this.constants)),
+        lock: new FullScreenDraw(createQuadMaterial(toFsrLock(dilates[index].textures[2], this.constants)), this.locks),
       };
     });
   }
@@ -195,6 +204,29 @@ export class FsrPass implements ITemporalUpscaler {
     this.frameIndex = 0;
   }
 
+  /** Both frames', and what the reconstructed depth is built with once the pass is sized. */
+  public listPipelines(pipelines: IRendererPipelines): void {
+    const { draws, reconstruction } = this;
+
+    pipelines.draw(draws.lumaFirst);
+    pipelines.draw(draws.lumaShading);
+    pipelines.draw(draws.dilate);
+    pipelines.draw(draws.reactive);
+
+    for (const { accumulate, clip, lock } of this.frames.both) {
+      pipelines.draw(accumulate);
+      pipelines.draw(lock);
+
+      if (clip) {
+        pipelines.draw(clip);
+      }
+    }
+
+    if (reconstruction) {
+      pipelines.compute(reconstruction.kernels);
+    }
+  }
+
   public render({ renderer, camera, jitter }: IRendererFrame): void {
     const { reconstruction, size } = this;
     const frame: IFsrFrame = this.frames.current;
@@ -208,14 +240,14 @@ export class FsrPass implements ITemporalUpscaler {
     reconstruction.reconstruct.count = reconstruction.clear.count;
 
     renderer.compute(reconstruction.clear);
-    this.draw(renderer, this.materials.lumaFirst, this.lumaFirst);
-    this.draw(renderer, this.materials.lumaShading, this.lumaShading);
+    this.draws.lumaFirst.render(renderer);
+    this.draws.lumaShading.render(renderer);
     renderer.compute(reconstruction.reconstruct);
-    this.draw(renderer, this.materials.dilate, frame.dilate);
-    this.draw(renderer, this.materials.reactive, this.reactive);
-    this.draw(renderer, frame.clip, this.clip);
-    this.draw(renderer, frame.lock, this.locks);
-    this.draw(renderer, frame.accumulate, frame.accumulation);
+    this.draws.dilate.render(renderer, frame.dilate);
+    this.draws.reactive.render(renderer);
+    frame.clip.render(renderer);
+    frame.lock.render(renderer);
+    frame.accumulate.render(renderer);
 
     this.frames.swap();
     this.frameIndex += 1;
@@ -226,11 +258,9 @@ export class FsrPass implements ITemporalUpscaler {
     this.release();
     this.opaque.dispose();
     [
-      ...Object.values(this.materials),
-      ...this.frames.both.flatMap(({ accumulate, lock, clip }: IFsrFrame) =>
-        clip ? [accumulate, lock, clip] : [accumulate, lock]
-      ),
-    ].forEach((material: NodeMaterial) => material.dispose());
+      ...Object.values(this.draws),
+      ...this.frames.both.flatMap(({ accumulate, lock }: IFsrFrame) => [accumulate, lock]),
+    ].forEach((draw: FullScreenDraw) => draw.dispose());
     [
       this.lumaFirst,
       this.lumaShading,
@@ -251,32 +281,32 @@ export class FsrPass implements ITemporalUpscaler {
     this.release();
 
     const depths: StorageBufferAttribute = new StorageBufferAttribute(new Uint32Array(count), 1);
+    const clear: ComputeNode = createFsrDepthClear(depths, count);
+    const reconstruct: ComputeNode = createFsrDepthReconstruction(this.inputs, depths, count, this.constants);
 
     // Cleared and written on the GPU alone.
     this.retirement.retireArrays([depths]);
 
-    this.reconstruction = {
-      capacity: count,
-      clear: createFsrDepthClear(depths, count),
-      depths,
-      reconstruct: createFsrDepthReconstruction(this.inputs, depths, count, this.constants),
-    };
+    this.reconstruction = { capacity: count, clear, depths, kernels: [clear, reconstruct], reconstruct };
     this.frames.both.forEach((frame: IFsrFrame, index: number) => {
       const other: IFsrFrame = this.frames.both[index === 0 ? 1 : 0];
 
-      frame.clip = createQuadMaterial(
-        toFsrDepthClip(
-          this.inputs,
-          {
-            capacity: count,
-            dilatedDepth: frame.dilate.textures[0],
-            dilatedMotion: frame.dilate.textures[1],
-            previousDilatedMotion: other.dilate.textures[1],
-            reactive: this.reactive.texture,
-            reconstructed: depths,
-          },
-          this.constants
-        )
+      frame.clip = new FullScreenDraw(
+        createQuadMaterial(
+          toFsrDepthClip(
+            this.inputs,
+            {
+              capacity: count,
+              dilatedDepth: frame.dilate.textures[0],
+              dilatedMotion: frame.dilate.textures[1],
+              previousDilatedMotion: other.dilate.textures[1],
+              reactive: this.reactive.texture,
+              reconstructed: depths,
+            },
+            this.constants
+          )
+        ),
+        this.clip
       );
     });
   }
@@ -298,11 +328,5 @@ export class FsrPass implements ITemporalUpscaler {
 
     this.retirement.retire([reconstruction.depths]);
     this.reconstruction = null;
-  }
-
-  private draw(renderer: WebGPURenderer, material: NodeMaterial, target: RenderTarget): void {
-    this.quad.material = material;
-    renderer.setRenderTarget(target);
-    this.quad.render(renderer);
   }
 }

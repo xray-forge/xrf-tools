@@ -1,9 +1,11 @@
-import { NodeMaterial, QuadMesh, RenderTarget, Texture, WebGPURenderer } from "three/webgpu";
+import { RenderTarget, Texture, WebGPURenderer } from "three/webgpu";
 
+import { FullScreenDraw } from "#/pass/full-screen-draw";
 import { PingPong } from "#/pass/ping-pong";
 import { createDepthWritingQuadMaterial } from "#/pass/quad-material";
 import { IRendererFrame } from "#/pass/renderer-frame";
 import { IRendererPass } from "#/pass/renderer-pass";
+import { IRendererPipelines } from "#/pass/renderer-pipelines";
 import { RendererTargets } from "#/pass/renderer-targets";
 import { ResolvedTarget } from "#/pass/resolved-target";
 import { toTemporalResolve } from "#/pass/temporal-antialias-pass.tsl";
@@ -12,12 +14,6 @@ import { IRendererFrameSize } from "#/sampling/renderer-frame-size";
 import { toUpscaledDepth } from "#/shader/drawn-sample.tsl";
 import { RendererUniforms } from "#/uniforms/renderer-uniforms";
 import { TemporalUniforms } from "#/uniforms/temporal-uniforms";
-
-/** One frame's resolve: where it writes its history and the output, and the material reading the other history. */
-interface ITemporalStage {
-  target: RenderTarget;
-  material: NodeMaterial;
-}
 
 /**
  * TAA: the jittered frame resolved with its history, found through the motion every surface writes, at the output's
@@ -29,8 +25,8 @@ export class TemporalAntialiasPass implements ITemporalUpscaler {
 
   private readonly resolved: ResolvedTarget = new ResolvedTarget("taa");
   private readonly temporal: TemporalUniforms = new TemporalUniforms();
-  private readonly quad: QuadMesh = new QuadMesh();
-  private readonly stages: PingPong<ITemporalStage>;
+  /** Each frame's resolve: into its history and the output, reading the other history. */
+  private readonly stages: PingPong<FullScreenDraw>;
 
   /**
    * @param targets - The frame's targets, whose tonemapped frame is resolved.
@@ -45,16 +41,16 @@ export class TemporalAntialiasPass implements ITemporalUpscaler {
     this.stages = new PingPong((index: 0 | 1) => {
       const history: Texture = writers[index === 0 ? 1 : 0].textures[0];
 
-      return {
-        material: createDepthWritingQuadMaterial(
+      return new FullScreenDraw(
+        createDepthWritingQuadMaterial(
           toTemporalResolve(
             { depth: targets.depth, frame: targets.scene.texture, history, motion: targets.motion },
             { camera: uniforms.camera, motion: uniforms.motion, temporal: this.temporal }
           ),
           toUpscaledDepth(targets.scene.texture, targets.depth, uniforms.motion.jitter)
         ),
-        target: writers[index],
-      };
+        writers[index]
+      );
     });
   }
 
@@ -71,18 +67,20 @@ export class TemporalAntialiasPass implements ITemporalUpscaler {
     this.temporal.isHistoryValid.value = 0;
   }
 
-  public render({ renderer }: IRendererFrame): void {
-    const { material, target } = this.stages.current;
+  public listPipelines(pipelines: IRendererPipelines): void {
+    for (const stage of this.stages.both) {
+      pipelines.draw(stage);
+    }
+  }
 
-    this.quad.material = material;
-    renderer.setRenderTarget(target);
-    this.quad.render(renderer);
+  public render({ renderer }: IRendererFrame): void {
+    this.stages.current.render(renderer);
     this.stages.swap();
     this.temporal.isHistoryValid.value = 1;
   }
 
   public dispose(): void {
-    this.stages.both.forEach(({ material }: ITemporalStage) => material.dispose());
+    this.stages.both.forEach((stage: FullScreenDraw) => stage.dispose());
     this.resolved.dispose();
   }
 }

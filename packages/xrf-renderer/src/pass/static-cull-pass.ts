@@ -1,5 +1,7 @@
+import { IRendererSettings } from "#/contract/renderer-settings";
 import { IRendererFrame } from "#/pass/renderer-frame";
 import { IRendererPass } from "#/pass/renderer-pass";
+import { IRendererPipelines } from "#/pass/renderer-pipelines";
 import { StaticCull } from "#/scene/static/static-cull";
 
 /**
@@ -12,6 +14,15 @@ export class StaticCullPass implements IRendererPass {
 
   public constructor(cull: StaticCull) {
     this.cull = cull;
+  }
+
+  /** The wireframe's arguments too while the edges draw, which the second phase's pass rewrites again after it. */
+  public listPipelines(pipelines: IRendererPipelines, { isWireframe }: IRendererSettings): void {
+    pipelines.compute(this.cull.earlyKernels);
+
+    if (isWireframe) {
+      pipelines.compute(this.cull.wireKernels);
+    }
   }
 
   public render({ renderer }: IRendererFrame): void {

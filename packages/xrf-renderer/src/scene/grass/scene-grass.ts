@@ -57,8 +57,8 @@ interface IGrassBuild {
   cache: IGrassCacheBuffers;
   items: IGrassItemBuffers;
   planting: IGrassPlanting;
-  /** The planting's passes, in the order a frame dispatches them. */
-  passes: Array<ComputeNode>;
+  /** The planting's passes, in the order a frame dispatches them, compiled with the draws. */
+  kernels: Array<ComputeNode>;
   draws: Array<IGrassDraw>;
   /** What the draws are in, drawn once they compiled. */
   scene: Scene;
@@ -69,9 +69,8 @@ interface IGrassBuild {
  * the ring planted and culling it every frame, and a draw a model, each drawing the tufts the planting sorted into its
  * range. The ring and the lists grow when a setting needs more room than they hold, and shrink when it needs less than
  * half; any other change of the settings is only what the passes are dispatched over, and a density changed plants the
- * ring again. A build of a new size is
- * staged for the renderer to compile off the frame while the one before keeps planting, so no frame builds a draw's
- * pipeline.
+ * ring again. A build of a new size is staged for the renderer to compile off the frame, its draws and its passes,
+ * while the one before keeps planting, so no frame builds a pipeline of it.
  */
 export class SceneGrass {
   /** Where the camera stands and what the planting is set to, as the planting reads them. */
@@ -190,7 +189,7 @@ export class SceneGrass {
     cull.count = cells;
     // Past the lists' room the planting drops what does not fit, so nothing past it is scattered.
     scatter.count = Math.max(Math.min(cells * uniforms.candidateCount, current.size.capacity), 1);
-    renderer.compute(current.passes);
+    renderer.compute(current.kernels);
 
     return current.scene;
   }
@@ -277,7 +276,7 @@ export class SceneGrass {
       return { material, mesh, samplers };
     });
 
-    return { cache, draws, items, level, passes: listGrassPlantingPasses(planting), planting, scene, size };
+    return { cache, draws, items, kernels: listGrassPlantingPasses(planting), level, planting, scene, size };
   }
 
   /** Takes down a build's ring, item lists and what reads them, keeping what the grass is planted from. */
@@ -293,6 +292,6 @@ export class SceneGrass {
       ...listGrassItemStorage(build.items),
     ]);
     // Their sizes are in their shaders, so each rebuild is new pipelines three keeps until told.
-    build.passes.forEach((compute: ComputeNode) => compute.dispose());
+    build.kernels.forEach((compute: ComputeNode) => compute.dispose());
   }
 }

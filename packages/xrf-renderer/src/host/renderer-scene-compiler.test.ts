@@ -1,11 +1,23 @@
 import { describe, expect, it, jest } from "@jest/globals";
 import { Nullable } from "@xrf/types";
-import { Camera, Mesh, Object3D, PerspectiveCamera, RenderTarget, Scene, WebGPURenderer } from "three/webgpu";
+import {
+  Camera,
+  ComputeNode,
+  Mesh,
+  NodeMaterial,
+  Object3D,
+  PerspectiveCamera,
+  RenderTarget,
+  Scene,
+  WebGPURenderer,
+} from "three/webgpu";
 
 import { ERendererPass } from "#/contract/scene/renderer-pass";
 import { ICompilingFrame } from "#/graph/compiling-frame";
 import { IFrameCompileTargets } from "#/graph/frame-compile-targets";
+import { FramePipelines } from "#/graph/frame-pipelines";
 import { RendererSceneCompiler } from "#/host/renderer-scene-compiler";
+import { FullScreenDraw } from "#/pass/full-screen-draw";
 import { IRendererScenePass } from "#/pass/renderer-scene-pass";
 import { toPassRecord } from "#/scene/pass-record";
 import { RendererScene } from "#/scene/renderer-scene";
@@ -13,13 +25,15 @@ import { ISceneBuildStaging } from "#/scene/staging/scene-build-staging";
 import { ISceneStaging } from "#/scene/staging/scene-staging";
 
 interface ICompileCall {
-  scene: Object3D;
+  /** What compiled: a scene or object, or compute kernels. */
+  scene: Object3D | ReadonlyArray<ComputeNode>;
   target: Nullable<RenderTarget>;
   finish: () => void;
 }
 
 interface IFakeRenderer {
   renderer: WebGPURenderer;
+  /** Every compile in the order it started, of a scene or of kernels. */
   calls: Array<ICompileCall>;
   /** The most compiles ever pending together. */
   mostPending(): number;
@@ -32,20 +46,25 @@ function createRenderer(): IFakeRenderer {
   let pending: number = 0;
   let most: number = 0;
 
+  function start(scene: Object3D | ReadonlyArray<ComputeNode>): Promise<void> {
+    return new Promise((resolve: () => void) => {
+      pending += 1;
+      most = Math.max(most, pending);
+      calls.push({
+        finish: () => {
+          pending -= 1;
+          resolve();
+        },
+        scene,
+        target: current,
+      });
+    });
+  }
+
   const renderer = {
-    compileAsync: (scene: Object3D, _camera: Camera): Promise<void> =>
-      new Promise((resolve: () => void) => {
-        pending += 1;
-        most = Math.max(most, pending);
-        calls.push({
-          finish: () => {
-            pending -= 1;
-            resolve();
-          },
-          scene,
-          target: current,
-        });
-      }),
+    _nodes: { getForCompute: (): void => {}, getForRender: (): void => {} },
+    compileAsync: (scene: Object3D, _camera: Camera): Promise<void> => start(scene),
+    compileComputeAsync: (kernels: ReadonlyArray<ComputeNode>): Promise<void> => start(kernels),
     getRenderTarget: (): Nullable<RenderTarget> => current,
     setRenderTarget: (target: Nullable<RenderTarget>): void => {
       current = target;
@@ -163,6 +182,7 @@ interface IFakeFrame {
 
 function createFrame(targets: IFrameCompileTargets = createTargets()): IFakeFrame {
   const fake: IFakeFrame = { admitted: [], frame: null as unknown as ICompilingFrame, targets };
+  const pipelines: FramePipelines = new FramePipelines();
 
   fake.frame = {
     admit: (pass: IRendererScenePass): void => {
@@ -171,9 +191,18 @@ function createFrame(targets: IFrameCompileTargets = createTargets()): IFakeFram
     get compileTargets(): IFrameCompileTargets {
       return fake.targets;
     },
+    pipelines,
   };
 
   return fake;
+}
+
+function createStagedBuild(kernels: ReadonlyArray<ComputeNode> = []): ISceneBuildStaging {
+  return { abandon: jest.fn(), commit: jest.fn(), kernels, scene: new Scene() };
+}
+
+function toKernel(): ComputeNode {
+  return { isComputeNode: true } as unknown as ComputeNode;
 }
 
 async function settle(): Promise<void> {
@@ -271,7 +300,7 @@ describe("RendererSceneCompiler", () => {
 
   it("compiles a grass build as a batch of its own, against where the grass draws, before the scene's", async () => {
     const fake: IFakeRenderer = createRenderer();
-    const grass: ISceneBuildStaging = { abandon: jest.fn(), commit: jest.fn(), scene: new Scene() };
+    const grass: ISceneBuildStaging = createStagedBuild();
     const { scene, commit }: IFakeScene = createScene(grass);
     const { frame, targets }: IFakeFrame = createFrame();
     const compiler: RendererSceneCompiler = new RendererSceneCompiler();
@@ -294,7 +323,7 @@ describe("RendererSceneCompiler", () => {
   // Drawn on its first frame, the rain would build its pipelines there as the first shower starts.
   it("compiles a rain build as a batch of its own, against where the rain draws, before the scene's", async () => {
     const fake: IFakeRenderer = createRenderer();
-    const rain: ISceneBuildStaging = { abandon: jest.fn(), commit: jest.fn(), scene: new Scene() };
+    const rain: ISceneBuildStaging = createStagedBuild();
     const fakeScene: IFakeScene = createScene();
     const { frame, targets }: IFakeFrame = createFrame();
     const compiler: RendererSceneCompiler = new RendererSceneCompiler();
@@ -313,7 +342,7 @@ describe("RendererSceneCompiler", () => {
   // Drawn on its first strike, the bolt would build its pipelines there and hitch the flash.
   it("compiles a thunder build as a batch of its own, against where the bolts draw, before the scene's", async () => {
     const fake: IFakeRenderer = createRenderer();
-    const thunder: ISceneBuildStaging = { abandon: jest.fn(), commit: jest.fn(), scene: new Scene() };
+    const thunder: ISceneBuildStaging = createStagedBuild();
     const fakeScene: IFakeScene = createScene();
     const { frame, targets }: IFakeFrame = createFrame();
     const compiler: RendererSceneCompiler = new RendererSceneCompiler();
@@ -429,6 +458,61 @@ describe("RendererSceneCompiler", () => {
     expect(fake.calls[calls].scene).toBe(fakeScene.staging.scenes[ERendererPass.DEFERRED]);
   });
 
+  // Built as the frame draws, a pass's own pipeline is made on the thread drawing the window.
+  it("compiles the frame's own pipelines side by side before anything else waits, each draw for its target", async () => {
+    const fake: IFakeRenderer = createRenderer();
+    const grass: ISceneBuildStaging = createStagedBuild();
+    const { scene }: IFakeScene = createScene(grass);
+    const { frame }: IFakeFrame = createFrame();
+    const compiler: RendererSceneCompiler = new RendererSceneCompiler();
+    const draws: Array<FullScreenDraw> = [new RenderTarget(), null].map(
+      (target: Nullable<RenderTarget>) => new FullScreenDraw(new NodeMaterial(), target)
+    );
+    const kernels: Array<ComputeNode> = [toKernel(), toKernel()];
+
+    frame.pipelines.draw(draws[0]);
+    frame.pipelines.draw(draws[1]);
+    frame.pipelines.compute(kernels);
+    compiler.compile(fake.renderer, scene, frame, new PerspectiveCamera());
+
+    expect(fake.calls.map((call: ICompileCall) => call.target)).toEqual([draws[0].target, null, null, null]);
+    expect(fake.calls.slice(2).map((call: ICompileCall) => call.scene)).toEqual([[kernels[0]], [kernels[1]]]);
+
+    await finishAll(fake);
+    // The batch settles a few turns after its last compile.
+    await settle();
+
+    expect(fake.mostPending()).toBe(4);
+    expect(frame.pipelines.isWaiting).toBe(false);
+    expect(grass.commit).not.toHaveBeenCalled();
+
+    compiler.compile(fake.renderer, scene, frame, new PerspectiveCamera());
+
+    expect(fake.calls[4].scene).toBe(grass.scene);
+  });
+
+  // Dispatched on their first frame, the planting's passes would build their pipelines there as the grass comes in.
+  it("compiles a staged build's kernels after its draws, and takes the build once both compiled", async () => {
+    const fake: IFakeRenderer = createRenderer();
+    const kernels: Array<ComputeNode> = [toKernel()];
+    const grass: ISceneBuildStaging = createStagedBuild(kernels);
+    const { scene }: IFakeScene = createScene(grass);
+    const { frame }: IFakeFrame = createFrame();
+    const compiler: RendererSceneCompiler = new RendererSceneCompiler();
+
+    compiler.compile(fake.renderer, scene, frame, new PerspectiveCamera());
+    fake.calls[0].finish();
+    await settle();
+
+    expect(fake.calls.map((call: ICompileCall) => call.scene)).toEqual([grass.scene, kernels]);
+    expect(grass.commit).not.toHaveBeenCalled();
+
+    fake.calls[1].finish();
+    await settle();
+
+    expect(grass.commit).toHaveBeenCalledTimes(1);
+  });
+
   // Staged again, a batch that failed would fail the same way every frame, and nothing would ever settle.
   it("takes a batch that failed to compile as compiled for the passes it tried, as three makes of its materials", async () => {
     const fake: IFakeRenderer = createRenderer();
@@ -451,7 +535,7 @@ describe("RendererSceneCompiler", () => {
 
   it("takes nothing it compiled once disposed, lets a grass build go, and compiles nothing more", async () => {
     const fake: IFakeRenderer = createRenderer();
-    const grass: ISceneBuildStaging = { abandon: jest.fn(), commit: jest.fn(), scene: new Scene() };
+    const grass: ISceneBuildStaging = createStagedBuild();
     const first: IFakeScene = createScene(grass);
     const second: IFakeScene = createScene();
     const { frame }: IFakeFrame = createFrame();

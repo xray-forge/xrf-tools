@@ -1,8 +1,10 @@
-import { NodeMaterial, QuadMesh, RenderTarget } from "three/webgpu";
+import { RenderTarget } from "three/webgpu";
 
+import { FullScreenDraw } from "#/pass/full-screen-draw";
 import { createQuadMaterial } from "#/pass/quad-material";
 import { IRendererFrame } from "#/pass/renderer-frame";
 import { IRendererPass } from "#/pass/renderer-pass";
+import { IRendererPipelines } from "#/pass/renderer-pipelines";
 import { RendererTargets } from "#/pass/renderer-targets";
 import { toSunPassFragment } from "#/pass/sun-pass.tsl";
 import { RendererUniforms } from "#/uniforms/renderer-uniforms";
@@ -14,29 +16,34 @@ export class SunPass implements IRendererPass {
   public readonly name: string = "sun";
 
   private readonly targets: RendererTargets;
-  private readonly material: NodeMaterial;
-  private readonly quad: QuadMesh;
+  private readonly draw: FullScreenDraw;
 
   public constructor(targets: RendererTargets, uniforms: RendererUniforms) {
     this.targets = targets;
-    this.material = createQuadMaterial(
-      toSunPassFragment(
-        targets,
-        uniforms,
-        targets.shadows.map((target: RenderTarget) => target.depthTexture as NonNullable<typeof target.depthTexture>)
-      )
+    this.draw = new FullScreenDraw(
+      createQuadMaterial(
+        toSunPassFragment(
+          targets,
+          uniforms,
+          targets.shadows.map((target: RenderTarget) => target.depthTexture as NonNullable<typeof target.depthTexture>)
+        )
+      ),
+      targets.light
     );
-    this.quad = new QuadMesh(this.material);
+  }
+
+  public listPipelines(pipelines: IRendererPipelines): void {
+    pipelines.draw(this.draw);
   }
 
   public render({ renderer }: IRendererFrame): void {
     renderer.setClearColor(0x000000, 0);
     renderer.setRenderTarget(this.targets.light);
     renderer.clear(true, false, false);
-    this.quad.render(renderer);
+    this.draw.render(renderer);
   }
 
   public dispose(): void {
-    this.material.dispose();
+    this.draw.dispose();
   }
 }

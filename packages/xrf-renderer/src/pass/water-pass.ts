@@ -1,8 +1,10 @@
-import { NodeMaterial, QuadMesh, RenderTarget, Scene } from "three/webgpu";
+import { RenderTarget, Scene } from "three/webgpu";
 
 import { ERendererPass } from "#/contract/scene/renderer-pass";
+import { FullScreenDraw } from "#/pass/full-screen-draw";
 import { createQuadMaterial } from "#/pass/quad-material";
 import { IRendererFrame } from "#/pass/renderer-frame";
+import { IRendererPipelines } from "#/pass/renderer-pipelines";
 import { IRendererScenePass } from "#/pass/renderer-scene-pass";
 import { RendererTargets } from "#/pass/renderer-targets";
 import { toWaterPrepareFragment } from "#/pass/water-pass.tsl";
@@ -19,19 +21,24 @@ export class WaterPass implements IRendererScenePass {
   public readonly scene: ERendererPass = ERendererPass.WATER;
   public readonly target: RenderTarget;
 
-  private readonly targets: RendererTargets;
-  private readonly material: NodeMaterial;
-  private readonly quad: QuadMesh;
+  /** The depth behind the water taken, and the distortion target cleared. */
+  private readonly prepare: FullScreenDraw;
 
   /**
    * @param targets - What the frame draws into.
    * @param uniforms - What the frame's shaders read.
    */
   public constructor(targets: RendererTargets, uniforms: RendererUniforms) {
-    this.targets = targets;
     this.target = targets.water;
-    this.material = createQuadMaterial(toWaterPrepareFragment(targets.depth, uniforms.camera));
-    this.quad = new QuadMesh(this.material);
+    this.prepare = new FullScreenDraw(
+      createQuadMaterial(toWaterPrepareFragment(targets.depth, uniforms.camera)),
+      targets.waterPrepare
+    );
+  }
+
+  /** Its own, apart from the water's surfaces, which compile as the scene's. */
+  public listPipelines(pipelines: IRendererPipelines): void {
+    pipelines.draw(this.prepare);
   }
 
   public render({ renderer, camera, scenes }: IRendererFrame): void {
@@ -41,13 +48,12 @@ export class WaterPass implements IRendererScenePass {
       return;
     }
 
-    renderer.setRenderTarget(this.targets.waterPrepare);
-    this.quad.render(renderer);
+    this.prepare.render(renderer);
     renderer.setRenderTarget(this.target);
     renderer.render(scene, camera);
   }
 
   public dispose(): void {
-    this.material.dispose();
+    this.prepare.dispose();
   }
 }

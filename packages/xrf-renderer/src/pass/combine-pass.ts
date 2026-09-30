@@ -1,10 +1,12 @@
 import { Nullable } from "@xrf/types";
-import { Color, LinearSRGBColorSpace, NodeMaterial, QuadMesh, Texture } from "three/webgpu";
+import { Color, LinearSRGBColorSpace, Texture } from "three/webgpu";
 
 import { toCombinePassFragment } from "#/pass/combine-pass.tsl";
+import { FullScreenDraw } from "#/pass/full-screen-draw";
 import { createQuadMaterial } from "#/pass/quad-material";
 import { IRendererFrame } from "#/pass/renderer-frame";
 import { IRendererPass } from "#/pass/renderer-pass";
+import { IRendererPipelines } from "#/pass/renderer-pipelines";
 import { RendererTargets } from "#/pass/renderer-targets";
 import { SkyHaze } from "#/pass/sky-haze";
 import { RendererUniforms } from "#/uniforms/renderer-uniforms";
@@ -15,12 +17,11 @@ import { RendererUniforms } from "#/uniforms/renderer-uniforms";
 export class CombinePass implements IRendererPass {
   public readonly name: string = "combine";
 
-  private readonly quad: QuadMesh = new QuadMesh();
   private readonly haze: SkyHaze;
   private readonly backdrop: Color = new Color();
   private readonly targets: RendererTargets;
   private readonly uniforms: RendererUniforms;
-  private material: NodeMaterial;
+  private draw: FullScreenDraw;
   private ambientOcclusion: Nullable<Texture> = null;
 
   public constructor(targets: RendererTargets, uniforms: RendererUniforms) {
@@ -33,7 +34,7 @@ export class CombinePass implements IRendererPass {
       scale: uniforms.exposure.scale,
       sky: uniforms.sky,
     });
-    this.material = this.createMaterial();
+    this.draw = this.createDraw();
   }
 
   /**
@@ -45,8 +46,14 @@ export class CombinePass implements IRendererPass {
     }
 
     this.ambientOcclusion = ambientOcclusion;
-    this.material.dispose();
-    this.material = this.createMaterial();
+    this.draw.dispose();
+    this.draw = this.createDraw();
+  }
+
+  /** The haze too, which draws whenever the sky is hazed. */
+  public listPipelines(pipelines: IRendererPipelines): void {
+    this.haze.listPipelines(pipelines);
+    pipelines.draw(this.draw);
   }
 
   public render({ renderer, settings }: IRendererFrame): void {
@@ -59,18 +66,20 @@ export class CombinePass implements IRendererPass {
     renderer.setClearColor(this.backdrop, settings.backdrop === null ? 0 : 1);
     renderer.setRenderTarget(this.targets.scene);
     renderer.clear(true, false, false);
-    this.quad.material = this.material;
-    this.quad.render(renderer);
+    this.draw.render(renderer);
   }
 
   public dispose(): void {
     this.haze.dispose();
-    this.material.dispose();
+    this.draw.dispose();
   }
 
-  private createMaterial(): NodeMaterial {
-    return createQuadMaterial(
-      toCombinePassFragment(this.targets, this.targets.light.texture, this.uniforms, this.ambientOcclusion)
+  private createDraw(): FullScreenDraw {
+    return new FullScreenDraw(
+      createQuadMaterial(
+        toCombinePassFragment(this.targets, this.targets.light.texture, this.uniforms, this.ambientOcclusion)
+      ),
+      this.targets.scene
     );
   }
 }

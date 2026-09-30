@@ -23,6 +23,9 @@ export class LightClusters {
   /** Lights left out of a cluster they reached, as the last read found them: a light missing from two counts twice. */
   public droppedLights: number = 0;
 
+  /** The binning, which the pass binning the lights names for the compile lane. */
+  public readonly kernels: ReadonlyArray<ComputeNode>;
+
   private readonly binning: ComputeNode;
   /** Bumped by every forgetting, so a read begun before one lands on nothing. */
   private generation: number = 0;
@@ -38,6 +41,7 @@ export class LightClusters {
       LIGHT_VECTORS,
       MAX_LIGHTS
     );
+    this.kernels = [this.binning];
   }
 
   /**

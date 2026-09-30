@@ -1,6 +1,6 @@
 import { IDdsRefusal } from "@xrf/dds";
 import { Maybe, Nullable } from "@xrf/types";
-import { PerspectiveCamera, Vector2 } from "three/webgpu";
+import { PerspectiveCamera, Vector2, WebGPURenderer } from "three/webgpu";
 
 import { RendererCaptures } from "#/capture/renderer-captures";
 import { ERenderInput } from "#/contract/render-input";
@@ -79,6 +79,8 @@ export class RendererHost {
   private view: Nullable<RendererView> = null;
   private settings: Nullable<IRendererSettings> = null;
   private drawnAt: Nullable<number> = null;
+  /** Whether the frame was sized again since a frame was last drawn, which a frame waiting on pipelines skipped. */
+  private isResizedSinceDrawn: boolean = false;
   private readonly limiter: RenderFrameLimiter = new RenderFrameLimiter();
   private isStarted: boolean = false;
   private isDisposed: boolean = false;
@@ -448,9 +450,18 @@ export class RendererHost {
       view &&
       (this.captures.hasPending || this.picks.hasPending || this.limiter.take(now, settings.pacing.rateLimit))
     ) {
-      const isResized: boolean = this.draw(now, device, view, settings);
+      // Sized before the passes name what they draw with, which a size of its own may make again.
+      this.isResizedSinceDrawn = this.resize(device.renderer, view) || this.isResizedSinceDrawn;
+      // A pass whose pipelines have not compiled would build them as it draws, on the thread drawing the window: the
+      // frame is drawn once the compiler built them, the canvas showing the frame before meanwhile.
+      isDrawn = this.graph.prepare(settings);
 
-      isDrawn = true;
+      const isResized: boolean = this.isResizedSinceDrawn;
+
+      if (isDrawn) {
+        this.draw(now, device, view, settings);
+        this.isResizedSinceDrawn = false;
+      }
 
       // Asked before the compiler may admit a pass joining the frame, which this frame was drawn without.
       const isJoined: boolean = !this.graph.isJoining;
@@ -461,7 +472,7 @@ export class RendererHost {
       // targets reads back cleared: a capture of either waits for a later frame. Asked after the compiler took what
       // waits, a grass build among it.
       const isSettled: boolean =
-        isJoined && !this.scene.hasPending && !this.compiler.isCompiling && !this.scene.textures.hasQueued;
+        isDrawn && isJoined && !this.scene.hasPending && !this.compiler.isCompiling && !this.scene.textures.hasQueued;
 
       drawn = isSettled && !isResized ? this.drawingSize : null;
 
@@ -481,12 +492,29 @@ export class RendererHost {
   }
 
   /**
+   * Sizes the drawing to the view, and the frame to the drawing.
+   *
+   * @returns Whether the frame was sized again, which reallocated its targets.
+   */
+  private resize(renderer: WebGPURenderer, view: RendererView): boolean {
+    if (view.takeResize()) {
+      const { width, height, pixelRatio } = view.size;
+
+      renderer.setPixelRatio(pixelRatio);
+      renderer.setSize(width, height, false);
+      renderer.getDrawingBufferSize(this.drawingSize);
+      this.rig.resize(width, height);
+    }
+
+    // Every frame, which also tells whether a configure sized the frame again since the last.
+    return this.graph.resize(renderer, this.drawingSize.x, this.drawingSize.y);
+  }
+
+  /**
    * The frame, in its phases: the view moved and measured, what changes over time advanced, what the view sees chosen
    * from the view unjittered, then the scene drawn with this frame's camera.
-   *
-   * @returns Whether the frame resized the targets.
    */
-  private draw(now: number, device: RendererDevice, view: RendererView, settings: IRendererSettings): boolean {
+  private draw(now: number, device: RendererDevice, view: RendererView, settings: IRendererSettings): void {
     const { renderer } = device;
     const { features } = settings;
     const time: number = now / 1000;
@@ -499,18 +527,6 @@ export class RendererHost {
     renderer.info.reset();
 
     const startedAt: number = performance.now();
-
-    if (view.takeResize()) {
-      const { width, height, pixelRatio } = view.size;
-
-      renderer.setPixelRatio(pixelRatio);
-      renderer.setSize(width, height, false);
-      renderer.getDrawingBufferSize(this.drawingSize);
-      this.rig.resize(width, height);
-    }
-
-    // Every frame, which also tells whether a configure sized the frame again since the last.
-    const isResized: boolean = this.graph.resize(renderer, this.drawingSize.x, this.drawingSize.y);
     // The first frame of a view, or of a camera that jumped, has no frame before it to follow.
     // The rig's flag taken first, so a view's first frame spends it rather than leaving it to the second.
     const isCut: boolean = this.rig.takeCut() || this.drawnAt === null;
@@ -591,8 +607,6 @@ export class RendererHost {
         }),
       });
     }
-
-    return isResized;
   }
 
   /**

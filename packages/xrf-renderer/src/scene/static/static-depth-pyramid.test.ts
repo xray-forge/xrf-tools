@@ -53,6 +53,27 @@ describe("StaticDepthPyramid", () => {
     pyramid.dispose();
   });
 
+  // Built as the frame dispatches them, its kernels would build their pipelines on the frame.
+  it("builds every level's kernel for a depth before a frame, and dispatches those it lays out", () => {
+    const { builds, pyramid, renderer } = createPyramid();
+
+    // Grown to the drawing first, which builds the kernels again over the grown buffer.
+    pyramid.build(renderer, new DepthTexture(64, 16), 64, 16);
+
+    const depth: DepthTexture = new DepthTexture(64, 16);
+    const kernels: ReadonlyArray<ComputeNode> = pyramid.prepare(depth);
+
+    expect(kernels.length).toBeGreaterThanOrEqual(3);
+    expect(kernels.some((node: ComputeNode) => builds[0].includes(node))).toBe(false);
+    expect(pyramid.prepare(depth)).toBe(kernels);
+
+    pyramid.build(renderer, depth, 64, 16);
+
+    expect(builds[1].every((node: ComputeNode, index: number) => node === kernels[index])).toBe(true);
+    expect(builds[1]).toHaveLength(3);
+    pyramid.dispose();
+  });
+
   // A test of a larger rectangle is skipped, not wrong.
   it("leaves the levels past a buffer its limit kept short untested", () => {
     const { buffers, pyramid, renderer } = createPyramid();

@@ -12,6 +12,7 @@ import { ERendererWeatherTransition } from "#/contract/weather/renderer-weather-
 import { RendererDevice } from "#/device/renderer-device";
 import { RendererDeviceFailure } from "#/device/renderer-device-failure";
 import { DEFAULT_RENDER_FRAME_PACING } from "#/frame/render-frame-pacing";
+import { RendererFrameGraph } from "#/graph/renderer-frame-graph";
 import { TRendererFrameScheduler } from "#/host/renderer-frame-scheduler";
 import { RendererHost } from "#/host/renderer-host";
 import { RendererView } from "#/host/renderer-view";
@@ -58,8 +59,10 @@ function createDevice(): RendererDevice {
   } as unknown as RendererDevice;
 }
 
+/** What of a frame the tests leave out: the sizing and the drawing, which want a device. */
 interface IDrawingHost {
-  draw(): boolean;
+  resize(): boolean;
+  draw(): void;
 }
 
 async function settle(): Promise<void> {
@@ -187,7 +190,9 @@ describe("RendererHost", () => {
     jest.spyOn(RendererDevice, "open").mockResolvedValue(createDevice());
     jest.spyOn(RendererView.prototype, "show").mockImplementation(() => {});
     jest.spyOn(RendererView.prototype, "hide").mockImplementation(() => {});
-    jest.spyOn(RendererHost.prototype as unknown as IDrawingHost, "draw").mockReturnValue(false);
+    jest.spyOn(RendererHost.prototype as unknown as IDrawingHost, "resize").mockReturnValue(false);
+    jest.spyOn(RendererHost.prototype as unknown as IDrawingHost, "draw").mockImplementation(() => {});
+    jest.spyOn(RendererFrameGraph.prototype, "prepare").mockReturnValue(true);
 
     host.take({ kind: ERendererRequest.START, settings: unwatered });
     await settle();
@@ -212,6 +217,52 @@ describe("RendererHost", () => {
     runFrame();
 
     expect(toSettled()).toEqual([1, 2]);
+
+    host.take({ kind: ERendererRequest.DISPOSE });
+  });
+
+  // Drawn with a pass whose pipelines have not compiled, the frame would build them on the thread drawing the window.
+  it("draws no frame while the frame's own pipelines compile, and answers a settle only once one is drawn", async () => {
+    const frames: Array<(now: number) => void> = [];
+    const [host, replies]: [RendererHost, Array<TRendererResponse>] = createHost((callback: (now: number) => void) =>
+      frames.push(callback)
+    );
+    let now: number = 0;
+
+    jest.spyOn(RendererDevice, "open").mockResolvedValue(createDevice());
+    jest.spyOn(RendererView.prototype, "show").mockImplementation(() => {});
+    jest.spyOn(RendererView.prototype, "hide").mockImplementation(() => {});
+    jest.spyOn(RendererHost.prototype as unknown as IDrawingHost, "resize").mockReturnValue(false);
+
+    const draw = jest.spyOn(RendererHost.prototype as unknown as IDrawingHost, "draw").mockImplementation(() => {});
+    const prepare = jest.spyOn(RendererFrameGraph.prototype, "prepare").mockReturnValue(false);
+
+    host.take({ kind: ERendererRequest.START, settings: SETTINGS });
+    await settle();
+    host.take({
+      canvas: {} as OffscreenCanvas,
+      height: 1,
+      kind: ERendererRequest.ATTACH_VIEW,
+      pixelRatio: 1,
+      width: 1,
+    });
+    host.take({ id: 1, kind: ERendererRequest.SETTLE });
+    now += 1000;
+    frames.shift()?.(now);
+
+    expect(draw).not.toHaveBeenCalled();
+    expect(replies.some((reply: TRendererResponse) => reply.kind === ERendererResponse.SETTLED)).toBe(false);
+    // The loop runs on, for the next frame to find them compiled.
+    expect(frames).toHaveLength(1);
+
+    prepare.mockReturnValue(true);
+    now += 1000;
+    frames.shift()?.(now);
+
+    expect(draw).toHaveBeenCalledTimes(1);
+    expect(replies.filter((reply: TRendererResponse) => reply.kind === ERendererResponse.SETTLED)).toEqual([
+      { id: 1, kind: ERendererResponse.SETTLED },
+    ]);
 
     host.take({ kind: ERendererRequest.DISPOSE });
   });

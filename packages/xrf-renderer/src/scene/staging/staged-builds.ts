@@ -1,5 +1,5 @@
 import { Nullable } from "@xrf/types";
-import { Scene } from "three/webgpu";
+import { ComputeNode, Scene } from "three/webgpu";
 
 import { ISceneBuildStaging } from "#/scene/staging/scene-build-staging";
 import { IStagedBuildsInput } from "#/scene/staging/staged-builds-input";
@@ -9,7 +9,7 @@ import { IStagedBuildsInput } from "#/scene/staging/staged-builds-input";
  * frame builds a draw's pipeline. One build waits at a time, and one is compiled at a time. A build let go while it
  * compiles is taken down once its compile ends, since three is still building its pipelines until then.
  */
-export class StagedBuilds<TBuild extends { scene: Scene }> {
+export class StagedBuilds<TBuild extends { scene: Scene; kernels?: ReadonlyArray<ComputeNode> }> {
   private readonly release: (build: TBuild) => void;
   private readonly onCommit: (build: TBuild) => void;
   private drawing: Nullable<TBuild> = null;
@@ -76,6 +76,7 @@ export class StagedBuilds<TBuild extends { scene: Scene }> {
     return {
       abandon: (): void => this.settle(build, false),
       commit: (): void => this.settle(build, true),
+      kernels: build.kernels ?? [],
       scene: build.scene,
     };
   }

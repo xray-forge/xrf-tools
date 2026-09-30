@@ -1,19 +1,21 @@
 import { Nullable } from "@xrf/types";
 import {
   DepthTexture,
+  Node,
   NodeMaterial,
   Object3D,
   PerspectiveCamera,
-  QuadMesh,
   RenderTarget,
   Scene,
   WebGPURenderer,
 } from "three/webgpu";
 
 import { adoptRendererConventions } from "#/internals/camera-conventions";
+import { FullScreenDraw } from "#/pass/full-screen-draw";
 import { toFarDepth, toKeptDepth, toNoColor } from "#/pass/light-shadow-pass.tsl";
 import { IRendererFrame } from "#/pass/renderer-frame";
 import { IRendererPass } from "#/pass/renderer-pass";
+import { IRendererPipelines } from "#/pass/renderer-pipelines";
 import { RendererTargets } from "#/pass/renderer-targets";
 import { drawUnsorted } from "#/pass/unsorted-draw";
 import { LIGHT_SHADOW_ATLAS_SIZE } from "#/scene/lights/light-shadow-atlas";
@@ -21,6 +23,7 @@ import { ILightShadowFace } from "#/scene/lights/light-shadow-face";
 import { LightShadowPlanner } from "#/scene/lights/light-shadow-planner";
 import { StaticCull } from "#/scene/static/static-cull";
 import { IStaticShadowCasters } from "#/scene/static/static-shadow-casters";
+import { LIGHT_SHADOW_FACE_BUDGET } from "#/uniforms/lights-uniforms";
 import { STATIC_LIGHT_VIEW_START } from "#/uniforms/static-draw-buffers";
 
 /**
@@ -40,11 +43,10 @@ export class LightShadowPass implements IRendererPass {
   private readonly casters: IStaticShadowCasters;
   private readonly cull: StaticCull;
   private readonly camera: PerspectiveCamera = new PerspectiveCamera();
-  private readonly clear: QuadMesh;
-  private readonly clearMaterial: NodeMaterial = new NodeMaterial();
+  /** Clears a face's square of the still atlas to the far depth. */
+  private readonly clear: FullScreenDraw;
   /** Writes what a face kept of what stands still into its square, as its draw over what sways starts. */
-  private readonly keep: QuadMesh;
-  private readonly keepMaterial: NodeMaterial = new NodeMaterial();
+  private readonly keep: FullScreenDraw;
   /** The renderer the atlas was allocated by: another starts it out holding nothing. */
   private renderer: Nullable<WebGPURenderer> = null;
 
@@ -69,20 +71,11 @@ export class LightShadowPass implements IRendererPass {
     // Its matrices are a face's, copied whole before each draw.
     this.camera.matrixAutoUpdate = false;
     this.camera.matrixWorldAutoUpdate = false;
-    this.clearMaterial.fragmentNode = toNoColor();
-    this.clearMaterial.depthNode = toFarDepth();
-    // Written whatever it stands over: three turns `AlwaysDepth` into `NeverDepth` for a reversed depth buffer, so
-    // the test is turned off instead, which compares always and still writes.
-    this.clearMaterial.depthTest = false;
-    this.clearMaterial.depthWrite = true;
-    this.clearMaterial.colorWrite = false;
-    this.clear = new QuadMesh(this.clearMaterial);
-    this.keepMaterial.fragmentNode = toNoColor();
-    this.keepMaterial.depthNode = toKeptDepth(this.still.depthTexture as DepthTexture);
-    this.keepMaterial.depthTest = false;
-    this.keepMaterial.depthWrite = true;
-    this.keepMaterial.colorWrite = false;
-    this.keep = new QuadMesh(this.keepMaterial);
+    this.clear = new FullScreenDraw(createDepthOnlyMaterial(toFarDepth()), this.still);
+    this.keep = new FullScreenDraw(
+      createDepthOnlyMaterial(toKeptDepth(this.still.depthTexture as DepthTexture)),
+      this.target
+    );
   }
 
   /** Allocates the atlas for a renderer, whatever the frame's size: a new one holds no face, so each is drawn again. */
@@ -98,6 +91,16 @@ export class LightShadowPass implements IRendererPass {
     renderer.initRenderTarget(this.target);
     renderer.initRenderTarget(this.still);
     this.planner.forgetDrawn();
+  }
+
+  /** Every face slot's cull, whether or not a face is queued, so the first light to cast draws at once. */
+  public listPipelines(pipelines: IRendererPipelines): void {
+    pipelines.draw(this.clear);
+    pipelines.draw(this.keep);
+
+    for (let index: number = 0; index < LIGHT_SHADOW_FACE_BUDGET; index += 1) {
+      pipelines.compute(this.cull.getViewKernels(STATIC_LIGHT_VIEW_START + index));
+    }
   }
 
   public render({ renderer }: IRendererFrame): void {
@@ -120,8 +123,8 @@ export class LightShadowPass implements IRendererPass {
   public dispose(): void {
     this.target.setSize(1, 1);
     this.still.setSize(1, 1);
-    this.clearMaterial.dispose();
-    this.keepMaterial.dispose();
+    this.clear.dispose();
+    this.keep.dispose();
   }
 
   /**
@@ -138,13 +141,11 @@ export class LightShadowPass implements IRendererPass {
 
     if (!isStillKept) {
       this.still.viewport.set(x, y, size, size);
-      renderer.setRenderTarget(this.still);
       this.clear.render(renderer);
       renderIfShown(renderer, this.casters.stillShadowScenes[view], this.camera);
     }
 
     this.target.viewport.set(x, y, size, size);
-    renderer.setRenderTarget(this.target);
     this.keep.render(renderer);
     renderIfShown(renderer, this.casters.swayingShadowScenes[view], this.camera);
 
@@ -163,6 +164,26 @@ export class LightShadowPass implements IRendererPass {
     camera.projectionMatrix.copy(face.projection);
     camera.projectionMatrixInverse.copy(face.projection).invert();
   }
+}
+
+/**
+ * A full screen material writing a depth of its own at every pixel and no colour, whatever stood there: the test is
+ * left off, since three turns `AlwaysDepth` into `NeverDepth` for a reversed depth buffer, and so it compares always
+ * and still writes.
+ *
+ * @param depth - The depth each pixel writes.
+ * @returns The material.
+ */
+function createDepthOnlyMaterial(depth: Node<"float">): NodeMaterial {
+  const material: NodeMaterial = new NodeMaterial();
+
+  material.fragmentNode = toNoColor();
+  material.depthNode = depth;
+  material.depthTest = false;
+  material.depthWrite = true;
+  material.colorWrite = false;
+
+  return material;
 }
 
 /**

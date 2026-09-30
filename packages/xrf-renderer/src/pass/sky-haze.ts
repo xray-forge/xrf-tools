@@ -1,7 +1,9 @@
-import { HalfFloatType, NodeMaterial, QuadMesh, RenderTarget, WebGPURenderer } from "three/webgpu";
+import { HalfFloatType, RenderTarget, WebGPURenderer } from "three/webgpu";
 
 import { createColourTarget } from "#/pass/colour-target";
+import { FullScreenDraw } from "#/pass/full-screen-draw";
 import { createQuadMaterial } from "#/pass/quad-material";
+import { IRendererPipelines } from "#/pass/renderer-pipelines";
 import { toSkyHazeFragment } from "#/shader/sky-haze.tsl";
 import { ISkyWithCloudsUniforms } from "#/shader/sky-with-clouds-uniforms";
 
@@ -15,16 +17,21 @@ const HEIGHT: number = 32;
  */
 export class SkyHaze {
   private readonly target: RenderTarget = SkyHaze.createTarget();
-  private readonly material: NodeMaterial;
-  private readonly quad: QuadMesh = new QuadMesh();
+  private readonly draw: FullScreenDraw;
 
   /**
    * @param uniforms - What the sky is drawn with, whose haze map it points at what it draws.
    */
   public constructor(uniforms: ISkyWithCloudsUniforms) {
-    this.material = createQuadMaterial(toSkyHazeFragment(uniforms));
-    this.quad.material = this.material;
+    this.draw = new FullScreenDraw(createQuadMaterial(toSkyHazeFragment(uniforms)), this.target);
     uniforms.sky.haze.value = this.target.texture;
+  }
+
+  /**
+   * @param pipelines - Where the pass drawing it names what it draws with.
+   */
+  public listPipelines(pipelines: IRendererPipelines): void {
+    pipelines.draw(this.draw);
   }
 
   /**
@@ -33,14 +40,13 @@ export class SkyHaze {
   public render(renderer: WebGPURenderer): void {
     const previous = renderer.getRenderTarget();
 
-    renderer.setRenderTarget(this.target);
-    this.quad.render(renderer);
+    this.draw.render(renderer);
     renderer.setRenderTarget(previous);
   }
 
   public dispose(): void {
     this.target.dispose();
-    this.material.dispose();
+    this.draw.dispose();
   }
 
   private static createTarget(): RenderTarget {

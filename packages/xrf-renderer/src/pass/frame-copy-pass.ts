@@ -1,9 +1,11 @@
-import { NodeMaterial, QuadMesh, RenderTarget, Texture, WebGPURenderer } from "three/webgpu";
+import { RenderTarget, Texture, WebGPURenderer } from "three/webgpu";
 
 import { toFrameCopy } from "#/pass/frame-copy-pass.tsl";
+import { FullScreenDraw } from "#/pass/full-screen-draw";
 import { createQuadMaterial } from "#/pass/quad-material";
 import { IRendererFrame } from "#/pass/renderer-frame";
 import { IRendererPass } from "#/pass/renderer-pass";
+import { IRendererPipelines } from "#/pass/renderer-pipelines";
 import { IRendererFrameSize } from "#/sampling/renderer-frame-size";
 
 /**
@@ -14,8 +16,7 @@ export class FrameCopyPass implements IRendererPass {
   /** The copy, at the drawing's size. */
   public readonly output: RenderTarget = new RenderTarget(1, 1, { depthBuffer: false });
 
-  private readonly material: NodeMaterial;
-  private readonly quad: QuadMesh;
+  private readonly draw: FullScreenDraw;
 
   /**
    * @param name - What the frame report states it under, and the device labels its copy.
@@ -24,8 +25,7 @@ export class FrameCopyPass implements IRendererPass {
   public constructor(name: string, frame: Texture) {
     this.name = name;
     this.output.texture.name = name;
-    this.material = createQuadMaterial(toFrameCopy(frame));
-    this.quad = new QuadMesh(this.material);
+    this.draw = new FullScreenDraw(createQuadMaterial(toFrameCopy(frame)), this.output);
   }
 
   public resize(renderer: WebGPURenderer, { renderWidth, renderHeight }: IRendererFrameSize): void {
@@ -33,13 +33,16 @@ export class FrameCopyPass implements IRendererPass {
     renderer.initRenderTarget(this.output);
   }
 
+  public listPipelines(pipelines: IRendererPipelines): void {
+    pipelines.draw(this.draw);
+  }
+
   public render({ renderer }: IRendererFrame): void {
-    renderer.setRenderTarget(this.output);
-    this.quad.render(renderer);
+    this.draw.render(renderer);
   }
 
   public dispose(): void {
-    this.material.dispose();
+    this.draw.dispose();
     this.output.dispose();
   }
 }

@@ -1,9 +1,11 @@
-import { NodeMaterial, QuadMesh, RenderTarget } from "three/webgpu";
+import { RenderTarget } from "three/webgpu";
 
+import { FullScreenDraw } from "#/pass/full-screen-draw";
 import { toBackgroundMotion } from "#/pass/motion-background-pass.tsl";
 import { createQuadMaterial } from "#/pass/quad-material";
 import { IRendererFrame } from "#/pass/renderer-frame";
 import { IRendererPass } from "#/pass/renderer-pass";
+import { IRendererPipelines } from "#/pass/renderer-pipelines";
 import { RendererTargets } from "#/pass/renderer-targets";
 import { MotionUniforms } from "#/uniforms/motion-uniforms";
 
@@ -16,8 +18,7 @@ export class MotionBackgroundPass implements IRendererPass {
 
   /** The motion target alone, the frame's targets' own: the depth is read, not attached. */
   private readonly target: RenderTarget;
-  private readonly material: NodeMaterial;
-  private readonly quad: QuadMesh;
+  private readonly draw: FullScreenDraw;
 
   /**
    * @param targets - The frame's targets, whose motion is completed and whose depth tells where nothing was drawn.
@@ -25,17 +26,19 @@ export class MotionBackgroundPass implements IRendererPass {
    */
   public constructor(targets: RendererTargets, motion: MotionUniforms) {
     this.target = targets.backgroundMotion;
-    this.material = createQuadMaterial(toBackgroundMotion(targets.depth, motion));
-    this.quad = new QuadMesh(this.material);
+    this.draw = new FullScreenDraw(createQuadMaterial(toBackgroundMotion(targets.depth, motion)), this.target);
+  }
+
+  public listPipelines(pipelines: IRendererPipelines): void {
+    pipelines.draw(this.draw);
   }
 
   public render({ renderer }: IRendererFrame): void {
-    renderer.setRenderTarget(this.target);
-    this.quad.render(renderer);
+    this.draw.render(renderer);
   }
 
   /** The target is the frame's, which sizes and frees it. */
   public dispose(): void {
-    this.material.dispose();
+    this.draw.dispose();
   }
 }

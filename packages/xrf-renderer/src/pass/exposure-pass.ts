@@ -5,6 +5,7 @@ import { IRendererExposureSettings } from "#/contract/renderer-exposure-settings
 import { createExposureAdaptation, createExposureMeasure } from "#/pass/exposure-pass.tsl";
 import { IRendererFrame } from "#/pass/renderer-frame";
 import { IRendererPass } from "#/pass/renderer-pass";
+import { IRendererPipelines } from "#/pass/renderer-pipelines";
 import { RendererTargets } from "#/pass/renderer-targets";
 import { IRendererFrameSize } from "#/sampling/renderer-frame-size";
 import { ExposureUniforms } from "#/uniforms/exposure-uniforms";
@@ -22,6 +23,8 @@ export class ExposurePass implements IRendererPass {
   private readonly exposure: ExposureUniforms;
   private readonly measure: ComputeNode;
   private readonly adapt: ComputeNode;
+  /** Both, measured first, as they dispatch. */
+  private readonly kernels: ReadonlyArray<ComputeNode>;
   private adaptation: number = 1;
   /** The frame's time it last adapted at, in seconds, or null before it adapted at all. */
   private last: Nullable<number> = null;
@@ -34,6 +37,7 @@ export class ExposurePass implements IRendererPass {
     this.exposure = exposure;
     this.measure = createExposureMeasure(targets.scene.texture, exposure, exposure.size);
     this.adapt = createExposureAdaptation(exposure);
+    this.kernels = [this.measure, this.adapt];
   }
 
   /**
@@ -46,6 +50,10 @@ export class ExposurePass implements IRendererPass {
 
   public resize(_renderer: WebGPURenderer, { renderWidth, renderHeight }: IRendererFrameSize): void {
     this.exposure.size.value.set(renderWidth, renderHeight);
+  }
+
+  public listPipelines(pipelines: IRendererPipelines): void {
+    pipelines.compute(this.kernels);
   }
 
   public render({ renderer, time }: IRendererFrame): void {

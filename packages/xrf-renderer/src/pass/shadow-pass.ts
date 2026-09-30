@@ -3,6 +3,7 @@ import { RenderTarget } from "three/webgpu";
 
 import { IRendererFrame } from "#/pass/renderer-frame";
 import { IRendererPass } from "#/pass/renderer-pass";
+import { IRendererPipelines } from "#/pass/renderer-pipelines";
 import { RendererTargets } from "#/pass/renderer-targets";
 import { drawUnsorted } from "#/pass/unsorted-draw";
 import { EShadowCasterMotion } from "#/scene/static/shadow-caster-motion";
@@ -62,6 +63,10 @@ export class ShadowPass implements IRendererPass {
     this.shadows = shadows;
     this.wind = wind;
     this.target.setSize(resolution, resolution);
+  }
+
+  public listPipelines(pipelines: IRendererPipelines): void {
+    pipelines.compute(this.cull.getViewKernels(this.view));
   }
 
   public render({ renderer }: IRendererFrame): void {

@@ -2,8 +2,6 @@ import {
   HalfFloatType,
   LinearFilter,
   NearestFilter,
-  NodeMaterial,
-  QuadMesh,
   RenderTarget,
   Texture,
   UniformNode,
@@ -17,17 +15,13 @@ import { createAntialiasSize, toFxaaStage, toSmaaPipeline } from "#/pass/antiali
 import { SMAA_AREA_TEXTURE, SMAA_SEARCH_TEXTURE } from "#/pass/antialias/smaa-lookup";
 import { ISmaaStages } from "#/pass/antialias/smaa-stages";
 import { toFrameCopy } from "#/pass/frame-copy-pass.tsl";
+import { FullScreenDraw } from "#/pass/full-screen-draw";
 import { createQuadMaterial } from "#/pass/quad-material";
 import { IRendererFrame } from "#/pass/renderer-frame";
 import { IRendererPass } from "#/pass/renderer-pass";
+import { IRendererPipelines } from "#/pass/renderer-pipelines";
 import { RendererTargets } from "#/pass/renderer-targets";
 import { IRendererFrameSize } from "#/sampling/renderer-frame-size";
-
-/** One stage of a mode: what it draws, and where. */
-interface IAntialiasStage {
-  material: NodeMaterial;
-  target: RenderTarget;
-}
 
 /**
  * Smooths the finished frame's edges into a target of its own, which the frame then presents. In the frame only while a
@@ -38,16 +32,16 @@ export class AntialiasPass implements IRendererPass {
   /** The smoothed frame. */
   public readonly output: RenderTarget = new RenderTarget(1, 1, { depthBuffer: false });
 
-  private readonly quad: QuadMesh = new QuadMesh();
   private readonly source: RenderTarget;
   private readonly invSize: UniformNode<"vec2", Vector2> = createAntialiasSize();
-  private readonly stages: Array<IAntialiasStage>;
+  /** The mode's stages, in order, each into its target. */
+  private readonly stages: ReadonlyArray<FullScreenDraw>;
   private readonly targets: Array<RenderTarget> = [];
   private readonly lookups: Array<Texture> = [];
   /** The lookups' decoded pictures, which a texture never closes. */
   private readonly bitmaps: Array<ImageBitmap> = [];
   /** A copy of the frame, drawn in place of the stages until what they sample has arrived. */
-  private readonly copy: IAntialiasStage;
+  private readonly copy: FullScreenDraw;
   private pending: number = 0;
   private isDisposed: boolean = false;
 
@@ -58,7 +52,7 @@ export class AntialiasPass implements IRendererPass {
   public constructor(mode: TRendererSmoothingAntialiasing, targets: RendererTargets) {
     this.source = targets.scene;
     this.output.texture.name = "antialiased";
-    this.copy = { material: createQuadMaterial(toFrameCopy(this.source.texture)), target: this.output };
+    this.copy = new FullScreenDraw(createQuadMaterial(toFrameCopy(this.source.texture)), this.output);
     this.stages = mode === ERendererAntialiasing.FXAA ? this.createFxaa() : this.createSmaa();
   }
 
@@ -70,33 +64,42 @@ export class AntialiasPass implements IRendererPass {
     this.invSize.value.set(1 / renderWidth, 1 / renderHeight);
   }
 
+  /** The copy too, which draws until the lookups arrive. */
+  public listPipelines(pipelines: IRendererPipelines): void {
+    pipelines.draw(this.copy);
+
+    for (const stage of this.stages) {
+      pipelines.draw(stage);
+    }
+  }
+
   public render({ renderer }: IRendererFrame): void {
-    for (const stage of this.pending ? [this.copy] : this.stages) {
-      this.draw(renderer, stage);
+    if (this.pending) {
+      this.copy.render(renderer);
+
+      return;
+    }
+
+    for (const stage of this.stages) {
+      stage.render(renderer);
     }
   }
 
   public dispose(): void {
     this.isDisposed = true;
-    [this.copy, ...this.stages].forEach((stage: IAntialiasStage) => stage.material.dispose());
+    [this.copy, ...this.stages].forEach((stage: FullScreenDraw) => stage.dispose());
     [this.output, ...this.targets].forEach((target: RenderTarget) => target.dispose());
     this.lookups.forEach((lookup: Texture) => lookup.dispose());
     this.bitmaps.forEach((bitmap: ImageBitmap) => bitmap.close());
   }
 
-  private draw(renderer: WebGPURenderer, stage: IAntialiasStage): void {
-    this.quad.material = stage.material;
-    renderer.setRenderTarget(stage.target);
-    this.quad.render(renderer);
-  }
-
   /** One stage, three's own `FXAANode` over the frame. */
-  private createFxaa(): Array<IAntialiasStage> {
-    return [{ material: createQuadMaterial(toFxaaStage(this.source.texture)), target: this.output }];
+  private createFxaa(): Array<FullScreenDraw> {
+    return [new FullScreenDraw(createQuadMaterial(toFxaaStage(this.source.texture)), this.output)];
   }
 
   /** SMAA's three stages, the first two into targets of their own, as three's node draws them. */
-  private createSmaa(): Array<IAntialiasStage> {
+  private createSmaa(): Array<FullScreenDraw> {
     const edges: RenderTarget = this.createStageTarget("smaa-edges");
     const weights: RenderTarget = this.createStageTarget("smaa-weights");
     const area: Texture = this.createLookup(SMAA_AREA_TEXTURE, LinearFilter, LinearFilter);
@@ -107,9 +110,9 @@ export class AntialiasPass implements IRendererPass {
     );
 
     return [
-      { material: createQuadMaterial(stages.edges), target: edges },
-      { material: createQuadMaterial(stages.weights), target: weights },
-      { material: createQuadMaterial(stages.blend), target: this.output },
+      new FullScreenDraw(createQuadMaterial(stages.edges), edges),
+      new FullScreenDraw(createQuadMaterial(stages.weights), weights),
+      new FullScreenDraw(createQuadMaterial(stages.blend), this.output),
     ];
   }
 

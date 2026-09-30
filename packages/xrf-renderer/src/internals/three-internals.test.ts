@@ -191,7 +191,7 @@ describe("three's internals, as the renderer reads them", () => {
   });
 
   it("takes the target a compile builds for as the compile starts, before it first waits on anything but its init", () => {
-    // `RendererSceneCompiler` sets each pass's target around the call alone, and chains the calls.
+    // `compileInto` sets the target around the call alone, and the compile lane chains the calls.
     const compile: string = String(Object.getPrototypeOf(WebGPURenderer.prototype).compileAsync);
     const prefix: string = compile.slice(0, compile.indexOf("this._renderTarget"));
 
@@ -305,6 +305,46 @@ describe("three's internals, as the renderer reads them", () => {
     expect(compile).toContain("renderContext.stencil = this.stencil;");
     expect(render).toContain("renderContext.depth = renderTarget.depthBuffer;");
     expect(render).toContain("renderContext.stencil = renderTarget.stencilBuffer;");
+  });
+
+  it("builds a compile's shaders through the node manager's asynchronous builds, beside whole ones of the same state", () => {
+    // `compileSideBySide` stands the whole builds in for the asynchronous ones while a batch compiles side by side.
+    const render: string = readThreeMethod("renderers/common/Renderer.js", "async compileAsync");
+    const compute: string = readThreeMethod("renderers/common/Renderer.js", "async compileComputeAsync");
+    const forRender: string = readThreeMethod("renderers/common/nodes/NodeManager.js", "getForRenderAsync");
+    const forCompute: string = readThreeMethod("renderers/common/nodes/NodeManager.js", "getForComputeAsync");
+
+    expect(render).toContain("await this._nodes.getForRenderAsync( renderObject );");
+    expect(compute).toContain("await nodes.getForComputeAsync( computeNode );");
+    expect(forRender).toContain("const result = this.getForRender( renderObject, true );");
+    expect(forCompute).toContain("const result = this.getForCompute( computeNode, true );");
+    expect(readThreeMethod("renderers/common/nodes/NodeManager.js", "getForRender")).toContain(
+      "getForRender( renderObject, useAsync = false )"
+    );
+    expect(readThreeMethod("renderers/common/nodes/NodeManager.js", "getForCompute")).toContain(
+      "getForCompute( computeNode, useAsync = false )"
+    );
+  });
+
+  it("compiles compute kernels with each pipeline made asynchronously, which its types leave out", () => {
+    // `compileComputeAsync` in `internals/compute-compile.ts` calls it for the frame's kernels and a staged build's.
+    const compile: string = readThreeMethod("renderers/common/Renderer.js", "async compileComputeAsync");
+
+    expect(compile).toContain("pipelines.getForCompute( computeNode, computeBindings, compilationPromises );");
+    expect(compile).toContain("await Promise.all( compilationPromises );");
+  });
+
+  it("keys a render context by its target's attachments, so targets alike share their draws' render objects", () => {
+    // `FullScreenDraw` compiles for its own target and draws into another of the same attachments with nothing built
+    // again; a compile takes the context a top-level render takes, at the call depth that render draws at.
+    const get: string = readThreeMethod("renderers/common/RenderContexts.js", "get");
+    const compile: string = readThreeMethod("renderers/common/Renderer.js", "async compileAsync");
+
+    expect(get).toContain(
+      "attachmentState = `${ count }:${ format }:${ type }:${ renderTarget.samples }:${ renderTarget.depthBuffer }:${ renderTarget.stencilBuffer }`;"
+    );
+    expect(get).toContain("get( renderTarget = null, mrt = null, callDepth = 0 )");
+    expect(compile).toContain("this._renderContexts.get( renderTarget, this._mrt );");
   });
 
   it("calls a `Fn` through a node holding its function, whose body builds its nodes only as the call is built", () => {

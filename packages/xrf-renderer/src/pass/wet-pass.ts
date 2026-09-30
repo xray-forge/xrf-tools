@@ -4,15 +4,16 @@ import {
   NearestFilter,
   NodeMaterial,
   OneFactor,
-  QuadMesh,
   RenderTarget,
   SrcColorFactor,
   ZeroFactor,
 } from "three/webgpu";
 
+import { FullScreenDraw } from "#/pass/full-screen-draw";
 import { createQuadMaterial } from "#/pass/quad-material";
 import { IRendererFrame } from "#/pass/renderer-frame";
 import { IRendererPass } from "#/pass/renderer-pass";
+import { IRendererPipelines } from "#/pass/renderer-pipelines";
 import { RendererTargets } from "#/pass/renderer-targets";
 import { toWetGlossFragment, toWetNormalFragment, toWetPatchFragment } from "#/shader/wet.tsl";
 import { RainUniforms } from "#/uniforms/rain-uniforms";
@@ -30,8 +31,8 @@ export class WetPass implements IRendererPass {
   private readonly rain: RainUniforms;
   /** The patched normal in colour, the wetness in alpha: `rt_Accumulator` as the engine borrows it. */
   private readonly patched: RenderTarget = new RenderTarget(1, 1, { depthBuffer: false, type: HalfFloatType });
-  private readonly materials: readonly [NodeMaterial, NodeMaterial, NodeMaterial];
-  private readonly quad: QuadMesh = new QuadMesh();
+  /** The normals patched, written back, then the albedo and gloss wetted. */
+  private readonly draws: readonly [FullScreenDraw, FullScreenDraw, FullScreenDraw];
 
   /**
    * @param targets - The frame's targets, whose G-buffer is wetted.
@@ -58,19 +59,32 @@ export class WetPass implements IRendererPass {
     gloss.blendDst = SrcColorFactor;
     gloss.blendSrcAlpha = OneFactor;
     gloss.blendDstAlpha = OneFactor;
-    this.materials = [
-      createQuadMaterial(
-        toWetPatchFragment({
-          camera: uniforms.camera,
-          engine: uniforms.engine,
-          rain: uniforms.rain,
-          textures: targets,
-          wet: uniforms.wet,
-        })
+    this.draws = [
+      new FullScreenDraw(
+        createQuadMaterial(
+          toWetPatchFragment({
+            camera: uniforms.camera,
+            engine: uniforms.engine,
+            rain: uniforms.rain,
+            textures: targets,
+            wet: uniforms.wet,
+          })
+        ),
+        this.patched
       ),
-      createQuadMaterial(toWetNormalFragment(this.patched.texture, targets.depth)),
-      gloss,
+      new FullScreenDraw(
+        createQuadMaterial(toWetNormalFragment(this.patched.texture, targets.depth)),
+        targets.wetNormal
+      ),
+      new FullScreenDraw(gloss, targets.wetAlbedo),
     ];
+  }
+
+  /** Named whether or not it rains, so the first rain draws at once. */
+  public listPipelines(pipelines: IRendererPipelines): void {
+    for (const draw of this.draws) {
+      pipelines.draw(draw);
+    }
   }
 
   public render({ renderer }: IRendererFrame): void {
@@ -84,15 +98,13 @@ export class WetPass implements IRendererPass {
       this.patched.setSize(width, height);
     }
 
-    [this.patched, this.targets.wetNormal, this.targets.wetAlbedo].forEach((target: RenderTarget, index: number) => {
-      renderer.setRenderTarget(target);
-      this.quad.material = this.materials[index];
-      this.quad.render(renderer);
-    });
+    for (const draw of this.draws) {
+      draw.render(renderer);
+    }
   }
 
   public dispose(): void {
     this.patched.dispose();
-    this.materials.forEach((material: NodeMaterial) => material.dispose());
+    this.draws.forEach((draw: FullScreenDraw) => draw.dispose());
   }
 }

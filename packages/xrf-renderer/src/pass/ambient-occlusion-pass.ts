@@ -1,20 +1,13 @@
-import {
-  HalfFloatType,
-  NearestFilter,
-  NodeMaterial,
-  QuadMesh,
-  RenderTarget,
-  RGFormat,
-  Texture,
-  WebGPURenderer,
-} from "three/webgpu";
+import { HalfFloatType, NearestFilter, RenderTarget, RGFormat, Texture, WebGPURenderer } from "three/webgpu";
 
 import { ERendererAmbientOcclusionQuality } from "#/contract/renderer-ambient-occlusion-quality";
 import { toAmbientOcclusionDenoise, toAmbientOcclusionSearch } from "#/pass/ambient-occlusion-pass.tsl";
 import { IAmbientOcclusionSearch } from "#/pass/ambient-occlusion-search";
+import { FullScreenDraw } from "#/pass/full-screen-draw";
 import { createQuadMaterial } from "#/pass/quad-material";
 import { IRendererFrame } from "#/pass/renderer-frame";
 import { IRendererPass } from "#/pass/renderer-pass";
+import { IRendererPipelines } from "#/pass/renderer-pipelines";
 import { RendererTargets } from "#/pass/renderer-targets";
 import { IRendererFrameSize } from "#/sampling/renderer-frame-size";
 import { AmbientOcclusionUniforms } from "#/uniforms/ambient-occlusion-uniforms";
@@ -48,15 +41,13 @@ function createAmbientOcclusionTarget(name: string): RenderTarget {
 export class AmbientOcclusionPass implements IRendererPass {
   public readonly name: string = "gtao";
 
-  private readonly quad: QuadMesh = new QuadMesh();
   private readonly uniforms: AmbientOcclusionUniforms = new AmbientOcclusionUniforms();
   /** What the search and the second way of the denoise write, and combine reads. */
   private readonly searched: RenderTarget = createAmbientOcclusionTarget("gtao");
   /** What the first way of the denoise writes. */
   private readonly denoised: RenderTarget = createAmbientOcclusionTarget("gtao-denoise");
-  private readonly search: NodeMaterial;
-  private readonly across: NodeMaterial;
-  private readonly down: NodeMaterial;
+  /** The search into the searched target, then the denoise across into the other and down back into it. */
+  private readonly draws: ReadonlyArray<FullScreenDraw>;
 
   /**
    * @param quality - How many directions and steps each pixel searches.
@@ -64,11 +55,16 @@ export class AmbientOcclusionPass implements IRendererPass {
    * @param camera - The drawing camera's uniforms.
    */
   public constructor(quality: ERendererAmbientOcclusionQuality, targets: RendererTargets, camera: CameraUniforms) {
-    this.search = createQuadMaterial(
-      toAmbientOcclusionSearch(targets, camera, this.uniforms, AMBIENT_OCCLUSION_SEARCHES[quality])
-    );
-    this.across = createQuadMaterial(toAmbientOcclusionDenoise(this.searched.texture, [1, 0]));
-    this.down = createQuadMaterial(toAmbientOcclusionDenoise(this.denoised.texture, [0, 1]));
+    this.draws = [
+      new FullScreenDraw(
+        createQuadMaterial(
+          toAmbientOcclusionSearch(targets, camera, this.uniforms, AMBIENT_OCCLUSION_SEARCHES[quality])
+        ),
+        this.searched
+      ),
+      new FullScreenDraw(createQuadMaterial(toAmbientOcclusionDenoise(this.searched.texture, [1, 0])), this.denoised),
+      new FullScreenDraw(createQuadMaterial(toAmbientOcclusionDenoise(this.denoised.texture, [0, 1])), this.searched),
+    ];
   }
 
   /** The occlusion at half resolution: visibility in red, distance along the view in green. */
@@ -83,22 +79,22 @@ export class AmbientOcclusionPass implements IRendererPass {
     }
   }
 
+  public listPipelines(pipelines: IRendererPipelines): void {
+    for (const draw of this.draws) {
+      pipelines.draw(draw);
+    }
+  }
+
   public render({ renderer, camera, settings }: IRendererFrame): void {
     this.uniforms.take(settings.features.ambientOcclusion, camera, this.searched.width, this.searched.height);
 
-    for (const [material, target] of [
-      [this.search, this.searched],
-      [this.across, this.denoised],
-      [this.down, this.searched],
-    ] as const) {
-      this.quad.material = material;
-      renderer.setRenderTarget(target);
-      this.quad.render(renderer);
+    for (const draw of this.draws) {
+      draw.render(renderer);
     }
   }
 
   public dispose(): void {
-    [this.search, this.across, this.down].forEach((material: NodeMaterial) => material.dispose());
+    this.draws.forEach((draw: FullScreenDraw) => draw.dispose());
     this.searched.dispose();
     this.denoised.dispose();
   }

@@ -4,6 +4,7 @@ import { PerspectiveCamera, RenderTarget, Texture, WebGPURenderer } from "three/
 import { ERendererAmbientOcclusionQuality } from "#/contract/renderer-ambient-occlusion-quality";
 import { ERendererAntialiasing } from "#/contract/renderer-antialiasing";
 import { IRendererFeatureSettings } from "#/contract/renderer-feature-settings";
+import { IRendererSettings } from "#/contract/renderer-settings";
 import { TRendererSmoothingAntialiasing } from "#/contract/renderer-smoothing-antialiasing";
 import { TRendererTemporalAntialiasing } from "#/contract/renderer-temporal-antialiasing";
 import { ERendererPass } from "#/contract/scene/renderer-pass";
@@ -12,6 +13,7 @@ import { ICompilingFrame } from "#/graph/compiling-frame";
 import { IFrameCompileTargets } from "#/graph/frame-compile-targets";
 import { IFrameOptionalPasses } from "#/graph/frame-optional-passes";
 import { toFramePassOrder } from "#/graph/frame-pass-order";
+import { FramePipelines } from "#/graph/frame-pipelines";
 import { IFramePlan, toFramePlan } from "#/graph/frame-plan";
 import { IFramePlanShadows } from "#/graph/frame-plan-shadows";
 import { FrameStage } from "#/graph/frame-stage";
@@ -63,12 +65,15 @@ interface IFrameSharpening {
  * The frame: every target it draws into, and its passes in order, the picture presented last. The features make a
  * plan; each optional stage is made for its part of it and kept while that stands, a stage reading another's output
  * made again with it. A stage drawing a consumer scene joins once the compile lane admits it: until then the frame
- * draws as if it were off, and so does whatever reads it.
+ * draws as if it were off, and so does whatever reads it. The pipelines the passes draw with of their own are compiled
+ * by the lane before the frame draws them: the frame waits for those, drawing nothing meanwhile.
  */
 export class RendererFrameGraph implements ICompilingFrame {
   public readonly targets: RendererTargets = new RendererTargets();
   /** The last pass, which a capture also draws into a target of its own. */
   public readonly present: PresentPass;
+  /** The pipelines of the passes' own, which the frame is drawn once compiled. */
+  public readonly pipelines: FramePipelines = new FramePipelines();
   /** Every pass's name, in frame order, as the frame report states them. */
   public passNames: ReadonlyArray<string> = [];
 
@@ -78,24 +83,28 @@ export class RendererFrameGraph implements ICompilingFrame {
   private readonly grass: SceneGrass;
   private readonly lights: SceneLights;
   private readonly base: IBaseFramePasses;
+  /** Lets a pass leaving the frame go, once three builds nothing of it any more. */
+  private readonly release = (pass: IRendererPass): void => this.pipelines.retire(() => pass.dispose());
   private readonly stages = {
-    ambientOcclusion: new FrameStage<AmbientOcclusionPass>(release),
-    distortion: new FrameStage<WaterDistortionPass>(release),
-    exposure: new FrameStage<ExposurePass>(release),
-    grass: new FrameStage<GrassPass>(release),
+    ambientOcclusion: new FrameStage<AmbientOcclusionPass>(this.release),
+    distortion: new FrameStage<WaterDistortionPass>(this.release),
+    exposure: new FrameStage<ExposurePass>(this.release),
+    grass: new FrameStage<GrassPass>(this.release),
     jitter: new FrameStage<TemporalJitter>((jitter: TemporalJitter) => jitter.dispose()),
-    lightShadows: new FrameStage<LightShadowPass>(release),
-    lights: new FrameStage<LightsPass>(release),
-    motionBackground: new FrameStage<MotionBackgroundPass>(release),
+    lightShadows: new FrameStage<LightShadowPass>(this.release),
+    lights: new FrameStage<LightsPass>(this.release),
+    motionBackground: new FrameStage<MotionBackgroundPass>(this.release),
     occlusion: new FrameStage<IOcclusionFramePasses>((passes: IOcclusionFramePasses) =>
-      Object.values(passes).forEach(release)
+      Object.values(passes).forEach(this.release)
     ),
-    resolve: new FrameStage<ITemporalUpscaler>(release),
-    shadows: new FrameStage<ReadonlyArray<ShadowPass>>((passes: ReadonlyArray<ShadowPass>) => passes.forEach(release)),
-    sharpen: new FrameStage<SharpenPass>(release),
-    smoothing: new FrameStage<AntialiasPass>(release),
-    spatial: new FrameStage<SpatialUpscalePass>(release),
-    water: new FrameStage<WaterPass>(release),
+    resolve: new FrameStage<ITemporalUpscaler>(this.release),
+    shadows: new FrameStage<ReadonlyArray<ShadowPass>>((passes: ReadonlyArray<ShadowPass>) =>
+      passes.forEach(this.release)
+    ),
+    sharpen: new FrameStage<SharpenPass>(this.release),
+    smoothing: new FrameStage<AntialiasPass>(this.release),
+    spatial: new FrameStage<SpatialUpscalePass>(this.release),
+    water: new FrameStage<WaterPass>(this.release),
   };
 
   /** The passes drawn, in frame order. */
@@ -288,6 +297,23 @@ export class RendererFrameGraph implements ICompilingFrame {
     return this.stages.jitter.value?.take(view) ?? view;
   }
 
+  /**
+   * Has every pass the frame holds name the pipelines of its own it draws the next frame with, once the frame is sized
+   * for it.
+   *
+   * @param settings - What the frame is drawn with.
+   * @returns Whether all of them compiled, so the frame can be drawn.
+   */
+  public prepare(settings: IRendererSettings): boolean {
+    this.pipelines.begin();
+
+    for (const pass of this.held) {
+      pass.listPipelines?.(this.pipelines, settings);
+    }
+
+    return !this.pipelines.isWaiting;
+  }
+
   public admit(pass: IRendererScenePass): void {
     if (this.joining.includes(pass)) {
       this.admitted.add(pass);
@@ -319,10 +345,11 @@ export class RendererFrameGraph implements ICompilingFrame {
   }
 
   public dispose(): void {
+    this.pipelines.dispose();
     Object.values(this.stages).forEach((stage: { dispose(): void }) => stage.dispose());
-    Object.values(this.base).forEach(release);
-    this.present.dispose();
-    this.targets.dispose();
+    Object.values(this.base).forEach(this.release);
+    this.release(this.present);
+    this.pipelines.retire(() => this.targets.dispose());
   }
 
   /**
@@ -408,11 +435,4 @@ export class RendererFrameGraph implements ICompilingFrame {
  */
 function toWanted(isWanted: boolean): Nullable<true> {
   return isWanted ? true : null;
-}
-
-/**
- * @param pass - A pass leaving the frame.
- */
-function release(pass: IRendererPass): void {
-  pass.dispose();
 }

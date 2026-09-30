@@ -187,6 +187,32 @@ describe("StaticCull shadow batches", () => {
     expect(disposed).toHaveBeenCalledTimes(2 * VIEW_PASSES);
   });
 
+  // Built as the frame dispatches them, the kernels a growth made again build their pipelines on the frame.
+  it("hands out its kernels over the buffers as they are laid out, built again before a frame where they grew", () => {
+    const { buffers, cull, renderer, submissions } = createCull();
+    const early: ReadonlyArray<ComputeNode> = cull.earlyKernels;
+    const view: ReadonlyArray<ComputeNode> = cull.getViewKernels(STATIC_LIGHT_VIEW_START);
+
+    expect(early).toHaveLength(5);
+    expect(cull.lateKernels).toHaveLength(1);
+    expect(cull.wireKernels).toHaveLength(2);
+    expect(view).toHaveLength(VIEW_PASSES);
+    expect(cull.earlyKernels).toBe(early);
+
+    buffers.grow(EStaticPool.CLUSTERS, 8);
+
+    const grown: ReadonlyArray<ComputeNode> = cull.getViewKernels(STATIC_LIGHT_VIEW_START);
+
+    expect(grown.some((node: ComputeNode) => view.includes(node))).toBe(false);
+    expect(cull.earlyKernels.some((node: ComputeNode) => early.includes(node))).toBe(false);
+
+    // What the frame then dispatches is what it was handed.
+    cull.cullViews(renderer, STATIC_LIGHT_VIEW_START, [createFrustum()]);
+
+    expect(submissions[0]).toHaveLength(grown.length);
+    expect(submissions[0].every((node: ComputeNode, index: number) => node === grown[index])).toBe(true);
+  });
+
   it("rejects a batch larger than the reserved slots before submitting any work", () => {
     const { cull, renderer, submissions } = createCull();
     const faces: Array<IShadowFrustum> = Array.from({ length: LIGHT_SHADOW_FACE_BUDGET + 1 }, () => createFrustum());

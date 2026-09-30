@@ -1,5 +1,6 @@
 import { IRendererFrame } from "#/pass/renderer-frame";
 import { IRendererPass } from "#/pass/renderer-pass";
+import { IRendererPipelines } from "#/pass/renderer-pipelines";
 import { RendererTargets } from "#/pass/renderer-targets";
 import { StaticCull } from "#/scene/static/static-cull";
 
@@ -19,6 +20,12 @@ export class StaticLateCullPass implements IRendererPass {
   public constructor(targets: RendererTargets, cull: StaticCull) {
     this.targets = targets;
     this.cull = cull;
+  }
+
+  /** The pyramid the cull reads too, which it reduces first; the wireframe's are the first phase's pass's. */
+  public listPipelines(pipelines: IRendererPipelines): void {
+    pipelines.compute(this.cull.getPyramidKernels(this.targets.depth));
+    pipelines.compute(this.cull.lateKernels);
   }
 
   public render({ renderer }: IRendererFrame): void {

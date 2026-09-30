@@ -1,5 +1,6 @@
 import { IRendererFrame } from "#/pass/renderer-frame";
 import { IRendererPass } from "#/pass/renderer-pass";
+import { IRendererPipelines } from "#/pass/renderer-pipelines";
 import { RendererTargets } from "#/pass/renderer-targets";
 import { StaticCull } from "#/scene/static/static-cull";
 
@@ -19,6 +20,10 @@ export class DepthPyramidPass implements IRendererPass {
   public constructor(targets: RendererTargets, cull: StaticCull) {
     this.targets = targets;
     this.cull = cull;
+  }
+
+  public listPipelines(pipelines: IRendererPipelines): void {
+    pipelines.compute(this.cull.getPyramidKernels(this.targets.depth));
   }
 
   public render({ renderer }: IRendererFrame): void {

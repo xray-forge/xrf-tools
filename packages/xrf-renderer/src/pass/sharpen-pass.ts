@@ -1,9 +1,11 @@
-import { NodeMaterial, QuadMesh, RenderTarget, WebGPURenderer } from "three/webgpu";
+import { RenderTarget, WebGPURenderer } from "three/webgpu";
 
 import { resizeBorrowedDepthTarget } from "#/internals/preserved-depth-target";
+import { FullScreenDraw } from "#/pass/full-screen-draw";
 import { createQuadMaterial } from "#/pass/quad-material";
 import { IRendererFrame } from "#/pass/renderer-frame";
 import { IRendererPass } from "#/pass/renderer-pass";
+import { IRendererPipelines } from "#/pass/renderer-pipelines";
 import { toSharpened } from "#/pass/sharpen-pass.tsl";
 import { IRendererFrameSize } from "#/sampling/renderer-frame-size";
 import { SharpenUniforms } from "#/uniforms/sharpen-uniforms";
@@ -18,8 +20,7 @@ export class SharpenPass implements IRendererPass {
   public readonly output: RenderTarget = new RenderTarget(1, 1, { depthBuffer: true });
 
   private readonly uniforms: SharpenUniforms = new SharpenUniforms();
-  private readonly material: NodeMaterial;
-  private readonly quad: QuadMesh;
+  private readonly draw: FullScreenDraw;
 
   /**
    * @param frame - The upscaled frame and its depth, at the output's size.
@@ -28,8 +29,10 @@ export class SharpenPass implements IRendererPass {
   public constructor(frame: RenderTarget, isDenoised: boolean) {
     this.output.texture.name = "rcas";
     this.output.depthTexture = frame.depthTexture;
-    this.material = createQuadMaterial(toSharpened(frame.texture, this.uniforms.strength, isDenoised));
-    this.quad = new QuadMesh(this.material);
+    this.draw = new FullScreenDraw(
+      createQuadMaterial(toSharpened(frame.texture, this.uniforms.strength, isDenoised)),
+      this.output
+    );
   }
 
   /**
@@ -44,14 +47,17 @@ export class SharpenPass implements IRendererPass {
     resizeBorrowedDepthTarget(renderer, this.output, width, height);
   }
 
+  public listPipelines(pipelines: IRendererPipelines): void {
+    pipelines.draw(this.draw);
+  }
+
   public render({ renderer }: IRendererFrame): void {
-    renderer.setRenderTarget(this.output);
-    this.quad.render(renderer);
+    this.draw.render(renderer);
   }
 
   /** Its colour goes with it; the depth is the upscaler's. */
   public dispose(): void {
-    this.material.dispose();
+    this.draw.dispose();
     this.output.dispose();
   }
 }

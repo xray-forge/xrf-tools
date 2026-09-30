@@ -6,6 +6,7 @@ import { ERendererDebugView } from "#/contract/renderer-debug-view";
 import { IRendererFeatureSettings } from "#/contract/renderer-feature-settings";
 import { ERendererPreset, RENDERER_PRESETS } from "#/contract/renderer-preset";
 import { ERendererRenderScale } from "#/contract/renderer-render-scale";
+import { IRendererSettings } from "#/contract/renderer-settings";
 import { ERendererPass } from "#/contract/scene/renderer-pass";
 import { DEFAULT_RENDER_FRAME_PACING } from "#/frame/render-frame-pacing";
 import { RendererFrameGraph } from "#/graph/renderer-frame-graph";
@@ -59,6 +60,38 @@ function createGraph(): RendererFrameGraph {
 
 const WATERED: IRendererFeatureSettings = { ...PLAIN, water: { ...PLAIN.water, isDistorted: true, isEnabled: true } };
 
+/** What a frame is drawn with, the features aside. */
+const SETTINGS: Omit<IRendererSettings, "features"> = {
+  backdrop: null,
+  debugView: ERendererDebugView.FINAL,
+  hemiStrength: 1,
+  isBumped: true,
+  isGpuTimed: false,
+  isLit: true,
+  isSkyDrawn: false,
+  isSkyHazed: false,
+  isTextured: true,
+  isWallmarkDrawn: true,
+  isWireframe: false,
+  pacing: DEFAULT_RENDER_FRAME_PACING,
+  tonemapScale: 1,
+};
+
+/** A renderer whose every compile settles at once. */
+function createCompilingRenderer(): WebGPURenderer {
+  let target: unknown = null;
+
+  return {
+    _nodes: { getForCompute: (): void => {}, getForRender: (): void => {} },
+    compileAsync: (): Promise<void> => Promise.resolve(),
+    compileComputeAsync: (): Promise<void> => Promise.resolve(),
+    getRenderTarget: (): unknown => target,
+    setRenderTarget: (next: unknown): void => {
+      target = next;
+    },
+  } as unknown as WebGPURenderer;
+}
+
 function admitAll(graph: RendererFrameGraph): void {
   graph.compileTargets.joining.forEach((pass: IRendererScenePass) => graph.admit(pass));
 }
@@ -78,6 +111,22 @@ function createSizedGraph(features: IRendererFeatureSettings): [RendererFrameGra
 }
 
 describe("RendererFrameGraph", () => {
+  // A pass building its pipelines as it draws makes them on the thread drawing the window.
+  it("is drawn once every pipeline its passes name compiled, a joining pass's among them", async () => {
+    const [graph] = createSizedGraph({ ...WATERED, exposure: { ...WATERED.exposure, isEnabled: true } });
+    const settings: IRendererSettings = { ...SETTINGS, features: WATERED };
+
+    expect(graph.compileTargets.joining.map((pass: IRendererScenePass) => pass.name)).toEqual(["water"]);
+    expect(graph.prepare(settings)).toBe(false);
+
+    await graph.pipelines.compile(createCompilingRenderer());
+
+    expect(graph.prepare(settings)).toBe(true);
+
+    // A picture not shown before is made, and waits.
+    expect(graph.prepare({ ...settings, debugView: ERendererDebugView.NORMAL })).toBe(false);
+  });
+
   // SMAA's lookups decode off the page, which node cannot, and say so.
   let error: jest.SpiedFunction<typeof console.error>;
 

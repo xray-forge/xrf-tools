@@ -1,9 +1,11 @@
 import { Maybe, Nullable } from "@xrf/types";
-import { Camera, Object3D, PerspectiveCamera, RenderTarget, WebGPURenderer } from "three/webgpu";
+import { PerspectiveCamera, WebGPURenderer } from "three/webgpu";
 
 import { ERendererPass } from "#/contract/scene/renderer-pass";
 import { ICompilingFrame } from "#/graph/compiling-frame";
 import { IFrameCompileTargets } from "#/graph/frame-compile-targets";
+import { compileComputeAsync } from "#/internals/compute-compile";
+import { compileInto } from "#/pass/compile-into";
 import { IRendererScenePass } from "#/pass/renderer-scene-pass";
 import { RendererScene } from "#/scene/renderer-scene";
 import { ISceneBuildStaging } from "#/scene/staging/scene-build-staging";
@@ -17,10 +19,11 @@ const STAGED_BUILDS = [
 ] as const;
 
 /**
- * Compiles the materials waiting objects need, off the frame: three builds their pipelines asynchronously, and until
- * they are ready every waiting object keeps drawing what it drew before. One compile is in flight at a time, a batch's
- * passes one after another: three's asynchronous builds share its node state, and two interleaved corrupt bind groups.
- * A pass joining the frame is compiled first for what the scene draws already, then admitted.
+ * Compiles what the frame and the scene draw with, off the frame: three builds their pipelines asynchronously, off the
+ * thread drawing the window. The frame's own passes come first, since the frame waits for them; until the rest are
+ * ready every waiting object keeps drawing what it drew before. One compile is in flight at a time, a batch's passes one
+ * after another: three's asynchronous builds share its node state, and two interleaved corrupt bind groups. A pass
+ * joining the frame is compiled first for what the scene draws already, then admitted.
  */
 export class RendererSceneCompiler {
   private isCompilingBatch: boolean = false;
@@ -32,8 +35,8 @@ export class RendererSceneCompiler {
   }
 
   /**
-   * Starts the next batch, if none is compiling: a staged build, grass first, else a pass joining, else the waiting
-   * objects.
+   * Starts the next batch, if none is compiling: the frame's own pipelines, else a staged build, grass first, else a
+   * pass joining, else the waiting objects.
    *
    * @param renderer - The renderer drawing.
    * @param scene - The scene whose objects compile.
@@ -51,12 +54,27 @@ export class RendererSceneCompiler {
       return;
     }
 
+    if (frame.pipelines.isWaiting) {
+      // Each counts as compiled once its compile settles, a failed one too.
+      return this.run(
+        async () => frame.pipelines.compile(renderer),
+        "The frame's pipelines failed to compile:",
+        () => {}
+      );
+    }
+
     for (const { failure, source } of STAGED_BUILDS) {
       const staging: Nullable<ISceneBuildStaging> = scene[source].takeStaged();
 
       if (staging) {
         return this.run(
-          async () => compileInto(renderer, frame.compileTargets[source], staging.scene, camera),
+          async () => {
+            await compileInto(renderer, frame.compileTargets[source], staging.scene, camera);
+
+            if (staging.kernels.length) {
+              await compileComputeAsync(renderer, staging.kernels);
+            }
+          },
           failure,
           (isCurrent: boolean) => (isCurrent ? staging.commit() : staging.abandon())
         );
@@ -181,33 +199,4 @@ export class RendererSceneCompiler {
         this.isCompilingBatch = false;
       });
   }
-}
-
-/**
- * Compiles a scene's pipelines for a target. Three takes the target as the compile starts and builds each shader later
- * for the render context it took then, so the target current before is restored at once. It gives that context the
- * renderer's own depth and stencil where a draw gives it the target's, so the compile is handed the target's: a
- * pipeline built with a depth its target lacks is one no draw uses.
- *
- * @param renderer - The renderer drawing.
- * @param target - Where the scene draws.
- * @param scene - What compiles.
- * @param camera - What it draws with.
- * @returns Settles once every pipeline is built.
- */
-function compileInto(renderer: WebGPURenderer, target: RenderTarget, scene: Object3D, camera: Camera): Promise<void> {
-  const previous: Nullable<RenderTarget> = renderer.getRenderTarget();
-  const { depth, stencil } = renderer;
-
-  renderer.setRenderTarget(target);
-  renderer.depth = target.depthBuffer;
-  renderer.stencil = target.stencilBuffer;
-
-  const compiled: Promise<void> = renderer.compileAsync(scene, camera);
-
-  renderer.depth = depth;
-  renderer.stencil = stencil;
-  renderer.setRenderTarget(previous);
-
-  return compiled;
 }

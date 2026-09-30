@@ -20,6 +20,8 @@ export class StaticDepthPyramid {
   private width: number = 0;
   private height: number = 0;
   private levels: Array<ComputeNode> = [];
+  /** Every level's kernel, laid out or not. */
+  private kernels: ReadonlyArray<ComputeNode> = [];
 
   public constructor(buffers: StaticDrawBuffers) {
     this.buffers = buffers;
@@ -37,13 +39,7 @@ export class StaticDepthPyramid {
       this.fit(width, height);
     }
 
-    if (this.depth !== depth || this.source !== this.buffers.pyramid) {
-      this.shaders?.forEach((shader: IPyramidLevelShader) => shader.compute.dispose());
-      this.shaders = createPyramidShaders(this.buffers, depth);
-      this.depth = depth;
-      this.source = this.buffers.pyramid;
-      this.width = 0;
-    }
+    this.prepare(depth);
 
     const isLaidOut: boolean = width !== this.width || height !== this.height;
 
@@ -58,9 +54,28 @@ export class StaticDepthPyramid {
     return isLaidOut;
   }
 
+  /**
+   * @param depth - The depth texture the pyramid reduces.
+   * @returns Every level's kernel over it and the buffer as it is now, built again where either changed.
+   */
+  public prepare(depth: Texture): ReadonlyArray<ComputeNode> {
+    if (this.depth !== depth || this.source !== this.buffers.pyramid) {
+      this.shaders?.forEach((shader: IPyramidLevelShader) => shader.compute.dispose());
+      this.shaders = createPyramidShaders(this.buffers, depth);
+      this.kernels = this.shaders.map((shader: IPyramidLevelShader) => shader.compute);
+      this.depth = depth;
+      this.source = this.buffers.pyramid;
+      this.width = 0;
+    }
+
+    return this.kernels;
+  }
+
   public dispose(): void {
     this.shaders?.forEach((shader: IPyramidLevelShader) => shader.compute.dispose());
     this.shaders = null;
+    this.kernels = [];
+    this.depth = null;
   }
 
   /** Grows the buffer to hold every level a drawing of this size has, within its limit. */

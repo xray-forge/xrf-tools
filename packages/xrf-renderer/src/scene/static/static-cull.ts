@@ -30,12 +30,15 @@ const VIEW_KEY_LENGTH: number = 8;
  * those move with no version saying so; the engine's occluders (`level.hom`) are static geometry alone too. A view culled
  * against another view's depth is culled once more against its own, and then not again while nothing changes. Its
  * shaders are built again whenever the buffers grow, and dispatched only as far as clusters, rows, batches and regions
- * are used.
+ * are used. The passes dispatching them name their kernels before each frame, which builds them again first where the
+ * buffers grew since: a growth during the frame, the pyramid's alone, builds them as they dispatch.
  */
 export class StaticCull {
   private readonly buffers: StaticDrawBuffers;
   private readonly pools: IStaticPools;
   private shader: IStaticCullShader;
+  /** The second phase's kernel, as its pass names it. */
+  private lateKernelList: ReadonlyArray<ComputeNode>;
   /** The buffers' layout the shaders were built over. */
   private layout: number;
   private readonly pyramid: StaticDepthPyramid;
@@ -92,6 +95,7 @@ export class StaticCull {
     this.early = early;
     this.late = late;
     this.shader = createStaticCullShader(buffers);
+    this.lateKernelList = [this.shader.late];
     this.layout = buffers.layout;
     this.pyramid = new StaticDepthPyramid(buffers);
   }
@@ -99,6 +103,39 @@ export class StaticCull {
   /** What the last cull read back kept, which lags the frame by the read. */
   public get kept(): IStaticCullCounts {
     return this.counts;
+  }
+
+  /** The first phase's kernels, over the buffers as they are laid out now. */
+  public get earlyKernels(): ReadonlyArray<ComputeNode> {
+    return this.rebuild().early;
+  }
+
+  /** The second phase's kernel, over the buffers as they are laid out now. */
+  public get lateKernels(): ReadonlyArray<ComputeNode> {
+    this.rebuild();
+
+    return this.lateKernelList;
+  }
+
+  /** The camera's views' arguments rewritten for their wireframe draws, over the buffers as they are laid out now. */
+  public get wireKernels(): ReadonlyArray<ComputeNode> {
+    return this.rebuild().wire;
+  }
+
+  /**
+   * @param view - A shadow view, from zero.
+   * @returns Its cull's kernels, over the buffers as they are laid out now.
+   */
+  public getViewKernels(view: number): ReadonlyArray<ComputeNode> {
+    return this.rebuild().views[view].cull;
+  }
+
+  /**
+   * @param depth - The depth the pyramid reduces.
+   * @returns The pyramid's kernels over it.
+   */
+  public getPyramidKernels(depth: Texture): ReadonlyArray<ComputeNode> {
+    return this.pyramid.prepare(depth);
   }
 
   /**
@@ -390,8 +427,10 @@ export class StaticCull {
     ].forEach((compute: ComputeNode) => compute.dispose());
   }
 
-  /** Builds the shaders again over buffers that grew, and sizes their dispatches to what is in use. */
-  private build(): void {
+  /**
+   * @returns The shaders over the buffers as they are laid out now, built again where they grew.
+   */
+  private rebuild(): IStaticCullShader {
     if (this.layout !== this.buffers.layout) {
       const planes: ReadonlyArray<Vector4> = this.shader.planes;
 
@@ -400,8 +439,16 @@ export class StaticCull {
       this.viewKeys.forEach((it: Float64Array) => it.fill(NaN));
       this.shader = createStaticCullShader(this.buffers);
       this.shader.planes.forEach((plane: Vector4, index: number) => plane.copy(planes[index]));
+      this.lateKernelList = [this.shader.late];
       this.layout = this.buffers.layout;
     }
+
+    return this.shader;
+  }
+
+  /** Builds the shaders again over buffers that grew, and sizes their dispatches to what is in use. */
+  private build(): void {
+    this.rebuild();
 
     // An invocation a cluster, row, batch, impostor and candidate up to the last run handed out: none past it is used.
     const clusters: number = Math.max(this.pools.clusterExtent, 1);

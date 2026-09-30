@@ -2,6 +2,7 @@ import { Nullable } from "@xrf/types";
 
 import { IRendererFrame } from "#/pass/renderer-frame";
 import { IRendererPass } from "#/pass/renderer-pass";
+import { IRendererPipelines } from "#/pass/renderer-pipelines";
 import { drawUnsorted } from "#/pass/unsorted-draw";
 import { StaticCull } from "#/scene/static/static-cull";
 import { IStaticShadowCasters } from "#/scene/static/static-shadow-casters";
@@ -31,6 +32,11 @@ export class RainCoverPass implements IRendererPass {
     this.casters = casters;
     this.cull = cull;
     this.rain = rain;
+  }
+
+  /** Named whether or not it rains, so the first rain draws at once. */
+  public listPipelines(pipelines: IRendererPipelines): void {
+    pipelines.compute(this.cull.getViewKernels(STATIC_RAIN_VIEW));
   }
 
   public render({ renderer, viewCamera }: IRendererFrame): void {
