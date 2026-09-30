@@ -282,10 +282,18 @@ export class WeatherPlayer {
     this.isForced = false;
     this.isJumped = false;
 
+    const kept: Array<string> = listWeatherTextures({ keyframes, pair, weather });
+    const isFading: boolean = this.fader.isFading;
+
     // Put before the fade asks whether they are up: a key never put reads as settled.
-    this.textures.keep([...listWeatherTextures({ keyframes, pair, weather }), ...this.fader.held]);
+    this.textures.keep([...kept, ...this.fader.held]);
 
     const lighting: IRendererLighting = this.fader.apply(now, target);
+
+    // Ended on this frame, what it held goes now: a paused clock may not relight again for a long while.
+    if (isFading && !this.fader.isFading) {
+      this.textures.keep(kept);
+    }
 
     this.shown = lighting;
 

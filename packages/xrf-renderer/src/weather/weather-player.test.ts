@@ -336,6 +336,32 @@ describe("WeatherPlayer", () => {
     expect(player.advance(1_700, ORIGIN)).toBeNull();
   });
 
+  // Paused, nothing moves after the fade to let them go later: its last frame has to.
+  it("lets the skies a fade held go as it ends, on a paused clock", () => {
+    const { held, player } = createPlayer();
+    const other: IRendererWeather = {
+      ...WEATHER,
+      keyframes: KEYFRAMES.map((keyframe: IRendererWeatherKeyframe) => ({ ...keyframe, skyTexture: "sky\\other" })),
+      textures: { ...WEATHER.textures, ["sky\\other"]: SOURCE },
+    };
+
+    player.take(WEATHER, ERendererWeatherTransition.CUT);
+    player.setControl({ ...PLAYING, isPaused: true, time: 12 * 3600 });
+    player.advance(0, ORIGIN);
+
+    const skies: Array<string> = [...held].filter((key: string) => /noon$|dusk$|dawn$/.test(key));
+
+    player.take(other, ERendererWeatherTransition.FADE);
+
+    for (let now: number = 100; now <= 2_000; now += 100) {
+      player.advance(now, ORIGIN);
+    }
+
+    expect(skies.length).toBeGreaterThan(0);
+    expect(skies.filter((key: string) => held.has(key))).toEqual([]);
+    expect(held.has("@weather/sky\\other")).toBe(true);
+  });
+
   it("fades into the pair an effect starts on and out of the one it ends on, and cuts on a seek", () => {
     const { player } = createPlayer();
     const effect: ReadonlyArray<IRendererWeatherKeyframe> = [0, 60].map((time: number) => ({
