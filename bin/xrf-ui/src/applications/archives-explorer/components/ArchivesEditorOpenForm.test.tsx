@@ -5,6 +5,7 @@ import { userEvent } from "@testing-library/user-event";
 import { Container } from "@wirestate/core";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
+import { VOLUME_INDEX_COUNT } from "@/core/archive/lib";
 import { AssetService } from "@/core/assets/services";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
@@ -80,30 +81,10 @@ describe("ArchivesEditorOpenForm", () => {
       filters: [
         {
           name: "Archive volume",
-          extensions: [
-            "db",
-            "db0",
-            "db1",
-            "db2",
-            "db3",
-            "db4",
-            "db5",
-            "db6",
-            "db7",
-            "db8",
-            "db9",
-            "xdb",
-            "xdb0",
-            "xdb1",
-            "xdb2",
-            "xdb3",
-            "xdb4",
-            "xdb5",
-            "xdb6",
-            "xdb7",
-            "xdb8",
-            "xdb9",
-          ],
+          extensions: ["db", "xdb"].flatMap((stem: string) => [
+            stem,
+            ...Array.from({ length: VOLUME_INDEX_COUNT }, (_, index: number) => `${stem}${index}`),
+          ]),
         },
         { name: "All files", extensions: ["*"] },
       ],

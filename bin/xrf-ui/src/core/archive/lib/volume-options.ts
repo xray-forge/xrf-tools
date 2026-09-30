@@ -11,8 +11,14 @@ export const ARCHIVE_VOLUME_SUFFIX: Readonly<Record<EArchiveVolumeExtension, str
   [EArchiveVolumeExtension.XDB]: "xdb",
 };
 
-/** How many indexed volumes a dialog offers per stem, which is as many as a pack run can publish. */
-const VOLUME_INDEX_COUNT: number = 10;
+/**
+ * How many indexed volumes a dialog offers per stem: every two-digit index.
+ *
+ * The writer numbers volumes without a limit (`ArchivePackConfig::volume_name`) and the reader takes any `db*` or
+ * `xdb*` (`ArchiveDescriptor::is_valid_db_path`), but a dialog filter lists spellings, not patterns. A hundred
+ * volumes at the default size is 190 GB, past any game tree; a set past it opens through `All files`.
+ */
+export const VOLUME_INDEX_COUNT: number = 100;
 
 /**
  * Every file name suffix a published volume set can carry, for the dialog filters that browse one.
