@@ -18,7 +18,7 @@ import { IRendererPose } from "#/contract/scene/renderer-pose";
 import { IRendererSkeleton, listRendererSkeletonTransfers } from "#/contract/scene/renderer-skeleton";
 import { IRendererSurface } from "#/contract/scene/renderer-surface";
 import { ERendererTextureEncoding, TRendererTextureSource } from "#/contract/scene/renderer-texture-source";
-import { IRendererWeather } from "#/contract/weather/renderer-weather";
+import { TRendererWeatherChange } from "#/contract/weather/renderer-weather-change";
 import { IRendererWeatherControl } from "#/contract/weather/renderer-weather-control";
 import { ERendererWeatherTransition } from "#/contract/weather/renderer-weather-transition";
 
@@ -121,7 +121,11 @@ export type TRendererRequest =
   | { kind: ERendererRequest.PUT_OVERLAY; key: string; overlay: TRendererOverlay }
   | { kind: ERendererRequest.RELEASE_OVERLAY; key: string }
   | { kind: ERendererRequest.LIGHTING; lighting: IRendererLighting }
-  | { kind: ERendererRequest.WEATHER; weather: Nullable<IRendererWeather>; transition: ERendererWeatherTransition }
+  | {
+      kind: ERendererRequest.WEATHER;
+      weather: Nullable<TRendererWeatherChange>;
+      transition: ERendererWeatherTransition;
+    }
   | { kind: ERendererRequest.WEATHER_CONTROL; control: IRendererWeatherControl }
   | { kind: ERendererRequest.WEATHER_EFFECT; effect: Nullable<string> }
   | { kind: ERendererRequest.CAMERA; camera: TRendererCamera }

@@ -15,4 +15,5 @@ export * from "#/contract/weather/renderer-weather-modifier";
 export * from "#/contract/weather/renderer-weather-report";
 export * from "#/contract/weather/renderer-weather-transition";
 export * from "#/contract/weather/renderer-weather";
+export * from "#/contract/weather/renderer-weather-change";
 export * from "#/contract/weather/renderer-wet-surfaces";

@@ -11,6 +11,7 @@ import { IRendererSettings, toRendererSettings } from "#/contract/renderer-setti
 import { IRendererViewSize } from "#/contract/renderer-view-size";
 import { IRendererTextureFetch } from "#/contract/scene/renderer-texture-fetch";
 import { IRendererWeather } from "#/contract/weather/renderer-weather";
+import { TRendererWeatherChange } from "#/contract/weather/renderer-weather-change";
 import { ERendererWeatherTransition } from "#/contract/weather/renderer-weather-transition";
 import { IDdsRefusal } from "#/dds/dds-refusal";
 import { RendererDevice } from "#/device/renderer-device";
@@ -68,6 +69,8 @@ export class RendererHost {
   private readonly weather: WeatherPlayer;
   /** The consumer's lighting, which lights the scene while no weather plays. */
   private lighting: IRendererLighting = DEFAULT_RENDERER_LIGHTING;
+  /** The weather playing as the consumer handed it over, which each change is laid over. */
+  private heldWeather: Nullable<IRendererWeather> = null;
 
   private device: Nullable<RendererDevice> = null;
   private view: Nullable<RendererView> = null;
@@ -126,10 +129,16 @@ export class RendererHost {
   }
 
   /**
-   * @param weather - What to play from now on, or null to light by the consumer's lighting again.
+   * @param change - What changed of the weather to play from now on, or null to light by the consumer's lighting again.
    * @param transition - How it takes over from what was shown.
    */
-  private takeWeather(weather: Nullable<IRendererWeather>, transition: ERendererWeatherTransition): void {
+  private takeWeather(change: Nullable<TRendererWeatherChange>, transition: ERendererWeatherTransition): void {
+    // Laid over the weather held: a part not sent is the one the consumer handed over last.
+    const weather: Nullable<IRendererWeather> = change
+      ? ({ ...this.heldWeather, ...change } as IRendererWeather)
+      : null;
+
+    this.heldWeather = weather;
     this.weather.take(weather, transition);
     this.scene.takeWeather(weather);
 

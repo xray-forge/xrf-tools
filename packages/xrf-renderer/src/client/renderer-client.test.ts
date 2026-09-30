@@ -4,11 +4,14 @@ import { Nullable } from "@xrf/types";
 import { RendererClient } from "#/client/renderer-client";
 import { ERendererCaptureSource, TRendererCaptureSource } from "#/contract/renderer-capture-source";
 import { ERendererDebugView } from "#/contract/renderer-debug-view";
+import { ERendererEngine } from "#/contract/renderer-engine";
 import { ERendererPreset, RENDERER_PRESETS } from "#/contract/renderer-preset";
 import { ERendererRequest, TRendererRequest } from "#/contract/renderer-request";
 import { ERendererResponse, TRendererResponse } from "#/contract/renderer-response";
 import { IRendererSettings } from "#/contract/renderer-settings";
 import { IRendererTextureFetch } from "#/contract/scene/renderer-texture-fetch";
+import { IRendererWeather } from "#/contract/weather/renderer-weather";
+import { ERendererWeatherTransition } from "#/contract/weather/renderer-weather-transition";
 import { DEFAULT_RENDER_FRAME_PACING } from "#/frame/render-frame-pacing";
 
 const SETTINGS: IRendererSettings = {
@@ -105,6 +108,35 @@ describe("RendererClient", () => {
       },
       { key: "c", kind: ERendererRequest.RELEASE_OBJECT },
     ]);
+  });
+
+  it("sends a weather whole after none, and what changed of it after one", async () => {
+    const fake: IFakeWorker = createWorker();
+    const client: RendererClient = new RendererClient({ settings: SETTINGS, worker: fake.worker });
+    const weather: IRendererWeather = {
+      effects: {},
+      engine: ERendererEngine.VANILLA,
+      keyframes: [],
+      modifiers: [],
+      rain: null,
+      sunTable: null,
+      textures: {},
+      thunder: null,
+      wet: null,
+    };
+    const keyframes: IRendererWeather["keyframes"] = [];
+
+    client.setWeather(weather, ERendererWeatherTransition.CUT);
+    client.setWeather({ ...weather, keyframes }, ERendererWeatherTransition.EASE);
+    client.setWeather(null, ERendererWeatherTransition.CUT);
+    client.setWeather(weather, ERendererWeatherTransition.CUT);
+    await flush();
+
+    const sent = (fake.posts[0] as Extract<TRendererRequest, { kind: ERendererRequest.BATCH }>).requests.flatMap(
+      (request: TRendererRequest) => (request.kind === ERendererRequest.WEATHER ? [request.weather] : [])
+    );
+
+    expect(sent).toEqual([weather, { keyframes }, null, weather]);
   });
 
   it("tells the consumer what each fetched texture came to, by its key", () => {

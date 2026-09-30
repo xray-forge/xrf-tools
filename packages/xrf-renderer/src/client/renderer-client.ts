@@ -1,6 +1,7 @@
 import { Maybe, Nullable } from "@xrf/types";
 
 import { IRendererClientOptions } from "#/client/renderer-client-options";
+import { toRendererWeatherChange } from "#/client/renderer-weather-change";
 import { IRenderInputEvent } from "#/contract/render-input-event";
 import { TRendererCamera } from "#/contract/renderer-camera";
 import { TRendererCameraCommand } from "#/contract/renderer-camera-command";
@@ -61,6 +62,8 @@ export class RendererClient {
   private isDisposed: boolean = false;
   private captureId: number = 0;
   private settleId: number = 0;
+  /** The weather sent last, whose parts a later one hands over as the same objects are not sent again. */
+  private sentWeather: Nullable<IRendererWeather> = null;
 
   public constructor({
     worker,
@@ -309,7 +312,15 @@ export class RendererClient {
    * @param transition - How it takes over from what was shown.
    */
   public setWeather(weather: Nullable<IRendererWeather>, transition: ERendererWeatherTransition): void {
-    this.post({ kind: ERendererRequest.WEATHER, transition, weather });
+    const sent: Nullable<IRendererWeather> = this.sentWeather;
+
+    // The parts handed over as they were stay as the worker holds them: a keyframe set by hand sends itself alone.
+    this.sentWeather = weather;
+    this.post({
+      kind: ERendererRequest.WEATHER,
+      transition,
+      weather: weather ? toRendererWeatherChange(sent, weather) : null,
+    });
   }
 
   /**

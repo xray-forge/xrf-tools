@@ -1,10 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals";
+import { Nullable } from "@xrf/types";
 
 import { ERendererDebugView } from "#/contract/renderer-debug-view";
+import { ERendererEngine } from "#/contract/renderer-engine";
 import { ERendererPreset, RENDERER_PRESETS } from "#/contract/renderer-preset";
 import { ERendererRequest, TRendererRequest } from "#/contract/renderer-request";
 import { ERendererResponse, TRendererResponse } from "#/contract/renderer-response";
 import { IRendererSettings } from "#/contract/renderer-settings";
+import { IRendererWeather } from "#/contract/weather/renderer-weather";
+import { ERendererWeatherTransition } from "#/contract/weather/renderer-weather-transition";
 import { RendererDevice } from "#/device/renderer-device";
 import { RendererDeviceFailure } from "#/device/renderer-device-failure";
 import { DEFAULT_RENDER_FRAME_PACING } from "#/frame/render-frame-pacing";
@@ -207,6 +211,37 @@ describe("RendererHost", () => {
     runFrame();
 
     expect(toSettled()).toEqual([1, 2]);
+
+    host.take({ kind: ERendererRequest.DISPOSE });
+  });
+
+  // A keyframe set by hand sends its keyframes alone: the rest is the weather the consumer handed over before.
+  it("lays what changed of a weather over the one it holds", () => {
+    const [host] = createHost();
+    const taken: Array<Nullable<IRendererWeather>> = [];
+    const weather: IRendererWeather = {
+      effects: {},
+      engine: ERendererEngine.VANILLA,
+      keyframes: [],
+      modifiers: [],
+      rain: { drop: null, streak: "fx\fx_rain" },
+      sunTable: null,
+      textures: {},
+      thunder: null,
+      wet: null,
+    };
+    const keyframes: IRendererWeather["keyframes"] = [];
+
+    jest.spyOn(RendererScene.prototype, "takeWeather").mockImplementation((it) => void taken.push(it));
+
+    host.take({ kind: ERendererRequest.WEATHER, transition: ERendererWeatherTransition.CUT, weather });
+    host.take({ kind: ERendererRequest.WEATHER, transition: ERendererWeatherTransition.EASE, weather: { keyframes } });
+    host.take({ kind: ERendererRequest.WEATHER, transition: ERendererWeatherTransition.CUT, weather: null });
+
+    expect(taken[1]).toEqual({ ...weather, keyframes });
+    expect(taken[1]?.keyframes).toBe(keyframes);
+    expect(taken[1]?.rain).toBe(taken[0]?.rain);
+    expect(taken[2]).toBeNull();
 
     host.take({ kind: ERendererRequest.DISPOSE });
   });
