@@ -17,6 +17,9 @@ import { IRenderProxyEvent } from "#/input/render-proxy-event";
 /** Just short of straight up, so looking at the sky never flips the horizon over. */
 const MAX_PITCH: number = Math.PI / 2 - 0.001;
 
+/** Radians a second a held arrow key turns the camera by: an eighth of a turn. */
+const TURN_SPEED: number = Math.PI / 4;
+
 /**
  * The longest step one frame moves by, so a frame after a stall, a hidden window's, does not throw the camera across
  * the level. Any frame faster than four a second moves its whole time's worth.
@@ -37,7 +40,8 @@ const DEFAULT_FLY_CAMERA: IRendererFlyCamera = {
 };
 
 /**
- * A free camera: a drag turns it, the keys move it along where it faces, rising along its own up as it is pitched.
+ * A free camera: a drag or the arrow keys turn it, the other keys move it along where it faces, rising along its own up
+ * as it is pitched.
  * It holds yaw and pitch itself, since a rotation read back off the camera cannot tell `+π` from `-π`.
  */
 export class FlyCameraController implements IRendererCameraController {
@@ -104,9 +108,18 @@ export class FlyCameraController implements IRendererCameraController {
   public update(delta: number): void {
     const { sensitivity, speed, boost } = this.description;
 
+    const step: number = Math.min(delta, MAX_DELTA);
+    const turned: number = TURN_SPEED * step;
+
     // Looking before moving, because where the camera walks is where it faces.
-    this.yaw -= this.lookX * sensitivity;
-    this.pitch = Math.max(-MAX_PITCH, Math.min(MAX_PITCH, this.pitch - this.lookY * sensitivity));
+    this.yaw += this.axis(EFlyKey.TURN_LEFT, EFlyKey.TURN_RIGHT) * turned - this.lookX * sensitivity;
+    this.pitch = Math.max(
+      -MAX_PITCH,
+      Math.min(
+        MAX_PITCH,
+        this.pitch + this.axis(EFlyKey.LOOK_UP, EFlyKey.LOOK_DOWN) * turned - this.lookY * sensitivity
+      )
+    );
     this.lookX = 0;
     this.lookY = 0;
     this.camera.quaternion.setFromEuler(this.euler.set(this.pitch, this.yaw, 0));
@@ -119,7 +132,7 @@ export class FlyCameraController implements IRendererCameraController {
       return;
     }
 
-    const distance: number = speed * (this.held.has(EFlyKey.FAST) ? boost : 1) * Math.min(delta, MAX_DELTA);
+    const distance: number = speed * (this.held.has(EFlyKey.FAST) ? boost : 1) * step;
 
     this.ahead.set(0, 0, -1).applyQuaternion(this.camera.quaternion);
     this.across.set(1, 0, 0).applyQuaternion(this.camera.quaternion);

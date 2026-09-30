@@ -12,14 +12,18 @@ export enum EFlyKey {
   DOWN = "down",
   /** Held to move faster, which a level the size of Zaton needs to cross at all. */
   FAST = "fast",
+  TURN_LEFT = "turnLeft",
+  TURN_RIGHT = "turnRight",
+  LOOK_UP = "lookUp",
+  LOOK_DOWN = "lookDown",
 }
 
-/** Keyboard codes each direction answers to, laid out for both WASD and the arrow keys. */
+/** Keyboard codes each key answers to: WASD, `E` and `Q` move the camera, and the arrow keys turn it. */
 const FLY_KEYS: Readonly<Record<string, EFlyKey>> = {
-  ArrowDown: EFlyKey.BACK,
-  ArrowLeft: EFlyKey.LEFT,
-  ArrowRight: EFlyKey.RIGHT,
-  ArrowUp: EFlyKey.FORWARD,
+  ArrowDown: EFlyKey.LOOK_DOWN,
+  ArrowLeft: EFlyKey.TURN_LEFT,
+  ArrowRight: EFlyKey.TURN_RIGHT,
+  ArrowUp: EFlyKey.LOOK_UP,
   KeyA: EFlyKey.LEFT,
   KeyD: EFlyKey.RIGHT,
   KeyE: EFlyKey.UP,

@@ -97,6 +97,32 @@ describe("FlyCameraController", () => {
     expect(look.z).toBeLessThan(0);
   });
 
+  it("turns on a held arrow key an eighth of a turn a second, where it stands", () => {
+    const { controller, element } = createController([0, 10, -1]);
+
+    press(element, "ArrowLeft");
+    controller.update(0.25);
+    controller.update(0.25);
+
+    const facing: Vector3 = new Vector3(0, 0, -1).applyQuaternion(controller.camera.quaternion);
+
+    // A sixteenth of a turn left of `-z`, towards `-x`.
+    expect(facing.x).toBeCloseTo(-Math.sin(Math.PI / 8), 6);
+    expect(facing.z).toBeCloseTo(-Math.cos(Math.PI / 8), 6);
+    expect(controller.camera.position.toArray()).toEqual([0, 10, 0]);
+
+    element.dispatch({ ...toRenderInputEvent(ERenderInput.KEY_UP, new Event("keyup")), code: "ArrowLeft" });
+    press(element, "ArrowUp");
+
+    for (let frame: number = 0; frame < 12; frame += 1) {
+      controller.update(0.25);
+    }
+
+    // Held past straight up, it stops just short of it, as a drag does.
+    expect(new Vector3(0, 0, -1).applyQuaternion(controller.camera.quaternion).y).toBeCloseTo(1, 5);
+    expect(new Vector3(0, 0, -1).applyQuaternion(controller.camera.quaternion).y).toBeLessThan(1);
+  });
+
   it("never pitches past straight up or down, so the horizon never flips", () => {
     const { controller, element } = createController([0, 10, -1]);
 
