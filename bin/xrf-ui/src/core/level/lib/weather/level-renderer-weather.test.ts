@@ -3,6 +3,7 @@ import { describe, expect, it } from "@jest/globals";
 import {
   toLevelRendererRain,
   toLevelRendererWeather,
+  toLevelRendererWeatherBase,
   toLevelRendererWeatherKeyframe,
   toLevelRendererWeatherModifier,
 } from "@/core/level/lib/weather/level-renderer-weather";
@@ -102,8 +103,8 @@ describe("toLevelRendererRain", () => {
 
 describe("toLevelRendererWeather", () => {
   it("hands the renderer every effect and where their textures are fetched from, each texture once", async () => {
-    const weather = await toLevelRendererWeather({
-      cycle: mockLevelWeatherCycle(),
+    const roots = mockSelectedLevelDescription().roots;
+    const base = await toLevelRendererWeatherBase({
       description: mockLevelWeatherDescription({
         effects: [
           mockLevelWeatherCycle({
@@ -116,8 +117,9 @@ describe("toLevelRendererWeather", () => {
           }),
         ],
       }),
-      roots: mockSelectedLevelDescription().roots,
+      roots,
     });
+    const weather = await toLevelRendererWeather({ base, cycle: mockLevelWeatherCycle(), roots });
 
     expect(Object.keys(weather.effects)).toEqual(["fx_blowout"]);
     expect(Object.keys(weather.textures).sort()).toEqual(
@@ -134,5 +136,8 @@ describe("toLevelRendererWeather", () => {
     expect(weather.modifiers).toEqual([]);
     expect(weather.rain).toEqual({ drop: null, streak: "fx\\fx_rain" });
     expect(weather.wet).toEqual({ flow: "water\\water_flowing_nmap", splash: "water\\water_SBumpVolume" });
+    // Built once for the level: every weather over it hands the renderer the same parts.
+    expect(weather.thunder).toBe(base.thunder);
+    expect(weather.effects).toBe(base.effects);
   });
 });

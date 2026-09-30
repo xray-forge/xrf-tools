@@ -48,8 +48,9 @@ function toResolved(references: Array<string>): Array<LevelTextureReference> {
 
 /** Lets the builds of the keyframe set by hand, which ask the backend, settle. */
 async function settle(): Promise<void> {
-  for (let index: number = 0; index < 10; index += 1) {
-    await Promise.resolve();
+  // A few turns of the event loop: each drains every promise the build chained on the one before.
+  for (let index: number = 0; index < 3; index += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 0));
   }
 }
 
@@ -84,14 +85,16 @@ describe("LevelWeatherService", () => {
     expect(weather?.keyframes.map((keyframe) => keyframe.time)).toEqual([0, LEVEL_WEATHER_NOON]);
     expect(weather?.sunTable).toEqual([{ altitude: 15, longitude: 0 }]);
     // The noon irradiance cube resolved to nothing, so it is left out.
-    expect(Object.keys(weather?.textures ?? {})).toEqual([
-      "sky\\sky_night",
-      "sky\\sky_night#small",
-      "sky\\sky_noon",
-      "fx\\fx_rain",
-      "water\\water_SBumpVolume",
-      "water\\water_flowing_nmap",
-    ]);
+    expect(Object.keys(weather?.textures ?? {}).sort()).toEqual(
+      [
+        "fx\\fx_rain",
+        "sky\\sky_night",
+        "sky\\sky_night#small",
+        "sky\\sky_noon",
+        "water\\water_SBumpVolume",
+        "water\\water_flowing_nmap",
+      ].sort()
+    );
     expect(weather?.textures["sky\\sky_noon"]?.encoding).toBe(ERendererTextureEncoding.FETCH);
     expect(service.failure).toBeNull();
   });

@@ -18,51 +18,55 @@ import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { ILevelTextureRequests } from "@/core/level/lib/render/level-render-protocol";
 import { LevelTextureReader } from "@/core/level/lib/texture/level-texture-reader";
 import { listLevelThunderTextures, toLevelRendererThunder } from "@/core/level/lib/weather/level-renderer-thunder";
+import { TLevelRendererWeatherBase } from "@/core/level/lib/weather/level-renderer-weather-base";
 
 /** Every value a modifier adds to, what a file older than the flags stands for. */
 const ALL_MODIFIER_FLAGS: number = 0xffff;
 
 /** What a weather the renderer plays is built from. */
 export interface ILevelRendererWeatherInput {
-  /** The open level's weather. */
-  description: LevelWeatherDescription;
   /** The cycle played. */
   cycle: LevelWeatherCycle;
+  /** What every weather of the level plays with. */
+  base: TLevelRendererWeatherBase;
   /** Roots the level was opened in, which its skies are read from. */
   roots: XrayRoots;
 }
 
+/** What the level's weather is built from once. */
+export interface ILevelRendererWeatherBaseInput {
+  /** The open level's weather. */
+  description: LevelWeatherDescription;
+  /** Roots the level was opened in, which its textures are read from. */
+  roots: XrayRoots;
+}
+
 /**
- * @param input - The cycle, the level's weather it belongs to and where its skies are read from.
- * @returns What the renderer plays: the cycle, every effect and the level's modifiers, with where each texture that
- *   resolved is fetched from.
+ * @param input - The cycle, what the level's every weather plays with, and where its skies are read from.
+ * @returns What the renderer plays: the cycle over the level's weather, with where each texture that resolved is
+ *   fetched from.
  */
 export async function toLevelRendererWeather(input: ILevelRendererWeatherInput): Promise<IRendererWeather> {
-  const { description, cycle, roots } = input;
+  const { cycle, base, roots } = input;
 
   return {
-    ...toLevelRendererWeatherBase(description),
+    ...base,
     keyframes: cycle.keyframes.map(toLevelRendererWeatherKeyframe),
-    sunTable:
-      description.sunTable?.map((position: SunPosition) => ({
-        altitude: position.altitude ?? 0,
-        longitude: position.longitude ?? 0,
-      })) ?? null,
-    textures: await toLevelRendererTextures(roots, [
-      ...cycle.textures,
-      ...listLevelRendererWeatherBaseTextures(description),
-    ]),
+    textures: { ...base.textures, ...(await toLevelRendererTextures(roots, cycle.textures)) },
   };
 }
 
 /**
- * @param description - The open level's weather.
+ * @param input - The open level's weather and where its textures are read from.
  * @returns What any weather of the level plays over whatever keyframes it plays: its engine, effects, the level's
- *   modifiers, its rain, what the rain wets surfaces with, and its thunder.
+ *   modifiers, its rain, what the rain wets surfaces with, its thunder, its sun table, and where every texture of
+ *   theirs that resolved is fetched from.
  */
-export function toLevelRendererWeatherBase(
-  description: LevelWeatherDescription
-): Pick<IRendererWeather, "engine" | "effects" | "modifiers" | "rain" | "thunder" | "wet"> {
+export async function toLevelRendererWeatherBase(
+  input: ILevelRendererWeatherBaseInput
+): Promise<TLevelRendererWeatherBase> {
+  const { description, roots } = input;
+
   return {
     effects: Object.fromEntries(
       description.effects.map((effect: LevelWeatherCycle) => [
@@ -73,6 +77,12 @@ export function toLevelRendererWeatherBase(
     engine: toLevelRendererEngine(description.engine),
     modifiers: description.modifiers.map(toLevelRendererWeatherModifier),
     rain: toLevelRendererRain(description.rain),
+    sunTable:
+      description.sunTable?.map((position: SunPosition) => ({
+        altitude: position.altitude ?? 0,
+        longitude: position.longitude ?? 0,
+      })) ?? null,
+    textures: await toLevelRendererTextures(roots, listLevelRendererWeatherBaseTextures(description)),
     thunder: toLevelRendererThunder(description.thunderbolts),
     wet: { flow: description.wet.flow.reference, splash: description.wet.splash.reference },
   };
@@ -80,7 +90,7 @@ export function toLevelRendererWeatherBase(
 
 /**
  * @param description - The open level's weather.
- * @returns Every texture what `toLevelRendererWeatherBase` plays names: the effects' skies and clouds, the rain's, what
+ * @returns Every texture what `toLevelRendererWeatherBase` builds names: the effects' skies and clouds, the rain's, what
  *   it wets surfaces with, and the bolts'.
  */
 export function listLevelRendererWeatherBaseTextures(
