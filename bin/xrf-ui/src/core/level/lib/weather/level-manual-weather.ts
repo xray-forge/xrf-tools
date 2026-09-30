@@ -1,4 +1,4 @@
-import { toDegrees, toDirection, toHeadingPitch, toRadians } from "@xrf/math";
+import { saturate, toDegrees, toDirection, toHeadingPitch, toRadians } from "@xrf/math";
 import { IRendererWeatherKeyframe, TRendererVector } from "@xrf/renderer";
 import { Nullable } from "@xrf/types";
 
@@ -107,7 +107,7 @@ export function toLevelManualKeyframe(manual: ILevelManualWeather, time: number)
     fogDistance: manual.fogDistance,
     hemiColor: manual.hemisphereColor,
     rainColor: manual.rainColor,
-    rainDensity: Math.min(Math.max(manual.rainDensity, 0), 1),
+    rainDensity: saturate(manual.rainDensity),
     skyColor: manual.skyColor,
     skyRotation: toRadians(manual.skyRotation),
     skyTexture: manual.skyTexture,

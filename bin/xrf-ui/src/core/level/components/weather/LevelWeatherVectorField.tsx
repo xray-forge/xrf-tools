@@ -1,4 +1,5 @@
 import { InputBase } from "@mui/material";
+import { saturate } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 import { FocusEvent, KeyboardEvent, ReactElement, useCallback, useState } from "react";
 
@@ -89,7 +90,7 @@ export function LevelWeatherVectorField({
 }
 
 function toSwatch(value: ReadonlyArray<number>): string {
-  const [red = 0, green = 0, blue = 0] = value.map((it: number) => Math.round(Math.min(Math.max(it, 0), 1) * 255));
+  const [red = 0, green = 0, blue = 0] = value.map((it: number) => Math.round(saturate(it) * 255));
 
   return `rgb(${red}, ${green}, ${blue})`;
 }

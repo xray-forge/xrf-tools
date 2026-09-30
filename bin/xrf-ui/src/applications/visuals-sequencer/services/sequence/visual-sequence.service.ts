@@ -1,5 +1,6 @@
 import { inject, Injectable, OnDeactivation } from "@wirestate/core";
 import { BoundAction, Computed, Observable } from "@wirestate/mobx";
+import { clamp } from "@xrf/math";
 import { Nullable, Optional } from "@xrf/types";
 
 import { ISequenceMotion, SequenceMotionCache } from "@/applications/visuals-sequencer/lib/sequence-motion-cache";
@@ -227,8 +228,8 @@ export class VisualSequenceService {
     this.stopTicker();
 
     this.isPlaying = false;
-    this.clipIndex = Math.max(0, Math.min(clipIndex, Math.max(0, this.clips.length - 1)));
-    this.frame = Math.max(0, Math.min(frame, Math.max(0, this.frameCount - 1)));
+    this.clipIndex = clamp(clipIndex, 0, Math.max(0, this.clips.length - 1));
+    this.frame = clamp(frame, 0, Math.max(0, this.frameCount - 1));
   }
 
   @BoundAction()
@@ -317,8 +318,8 @@ export class VisualSequenceService {
   private follow(id: Nullable<string>): void {
     const at: number = id === null ? this.clipIndex : this.clips.findIndex((clip: ISequenceClip) => clip.id === id);
 
-    this.clipIndex = Math.max(0, Math.min(at < 0 ? this.clipIndex : at, Math.max(0, this.clips.length - 1)));
-    this.frame = Math.max(0, Math.min(this.frame, Math.max(0, this.frameCount - 1)));
+    this.clipIndex = clamp(at < 0 ? this.clipIndex : at, 0, Math.max(0, this.clips.length - 1));
+    this.frame = clamp(this.frame, 0, Math.max(0, this.frameCount - 1));
 
     if (!this.clips.length) {
       this.pause();

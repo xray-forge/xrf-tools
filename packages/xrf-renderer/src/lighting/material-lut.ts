@@ -1,4 +1,4 @@
-import { EPS_S } from "@xrf/math";
+import { clamp, EPS_S } from "@xrf/math";
 
 /** Columns: `dot(L, N)`, nearly linear, so few. */
 export const MATERIAL_LUT_LDOTN: number = 128;
@@ -73,5 +73,5 @@ function sampleMaterial(slice: number, x: number, y: number): [number, number] {
 
 /** `clampr(iFloor(value * 255.5f), 0, 255)`. */
 function quantise(value: number): number {
-  return Math.min(Math.max(Math.floor(value * 255.5), 0), 255);
+  return clamp(Math.floor(value * 255.5), 0, 255);
 }

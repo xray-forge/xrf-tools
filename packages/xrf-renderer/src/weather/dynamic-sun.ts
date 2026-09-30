@@ -1,4 +1,4 @@
-import { EPS_S, toDirection, toRadians } from "@xrf/math";
+import { clamp, EPS_S, saturate, toDirection, toRadians } from "@xrf/math";
 
 import { TRendererVector } from "#/contract/renderer-vector";
 import { WEATHER_DAY_LENGTH } from "#/weather/weather-day";
@@ -73,11 +73,7 @@ export function toDynamicSun(time: number, azimuth: number): IDynamicSun {
   const heading: number = Math.acos(azimuthCos) + azimuth;
 
   return {
-    blend: clamp((elevation - LOWEST) / (FULL - LOWEST), 0, 1),
+    blend: saturate((elevation - LOWEST) / (FULL - LOWEST)),
     direction: toDirection({ heading: hourAngle < 0 ? 2 * Math.PI - heading : heading, pitch: -elevation }),
   };
-}
-
-function clamp(value: number, low: number, high: number): number {
-  return Math.min(Math.max(value, low), high);
 }

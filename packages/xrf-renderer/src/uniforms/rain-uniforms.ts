@@ -1,4 +1,4 @@
-import { toDirection } from "@xrf/math";
+import { saturate, toDirection } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 import { renderGroup, uniform } from "three/tsl";
 import { DepthTexture, FloatType, RedFormat, RenderTarget, UniformNode, Vector3, Vector4 } from "three/webgpu";
@@ -59,9 +59,9 @@ export class RainUniforms {
       return;
     }
 
-    const density: number = Math.min(Math.max(rain.density, 0), 1);
-    const [red, green, blue] = rain.color.map((it: number) => Math.min(Math.max(it, 0), 1));
-    const lean: number = Math.min(Math.max((rain.windVelocity * GUST) / MAX_LEAN_WIND, 0), 1);
+    const density: number = saturate(rain.density);
+    const [red, green, blue] = rain.color.map(saturate);
+    const lean: number = saturate((rain.windVelocity * GUST) / MAX_LEAN_WIND);
     const pitch: number = MAX_LEAN * lean - Math.PI / 2;
 
     this.count.value = Math.floor(0.5 * (1 + density) * RAIN_STREAKS);

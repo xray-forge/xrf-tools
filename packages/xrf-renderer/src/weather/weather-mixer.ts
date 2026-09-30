@@ -1,4 +1,4 @@
-import { EPS } from "@xrf/math";
+import { EPS, saturate } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 
 import { ERendererEngine } from "#/contract/renderer-engine";
@@ -171,7 +171,7 @@ export function weighWeatherTime(time: number, span: readonly [number, number]):
 
   const isWithin: boolean = from > to ? time >= from || time <= to : time >= from && time <= to;
 
-  return isWithin ? Math.min(Math.max(toElapsed(from, time) / length, 0), 1) : 0;
+  return isWithin ? saturate(toElapsed(from, time) / length) : 0;
 }
 
 /** `TimeDiff`: seconds from one time of day to the next, around midnight where it comes first. */

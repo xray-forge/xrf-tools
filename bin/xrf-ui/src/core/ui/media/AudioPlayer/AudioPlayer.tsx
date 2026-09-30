@@ -1,4 +1,5 @@
 import { Alert } from "@mui/material";
+import { clamp } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 import { ReactElement, SyntheticEvent, useCallback, useEffect, useRef, useState } from "react";
 
@@ -60,7 +61,7 @@ export function AudioPlayer({ src, bytes }: IAudioPlayerProps): ReactElement {
       const audio: Nullable<HTMLAudioElement> = audioRef.current;
 
       if (audio && duration > 0 && Number.isFinite(next)) {
-        audio.currentTime = Math.min(duration, Math.max(0, next));
+        audio.currentTime = clamp(next, 0, duration);
         // Repeated key presses must use the new position before the next media timeupdate event.
         setPosition(audio.currentTime);
       }

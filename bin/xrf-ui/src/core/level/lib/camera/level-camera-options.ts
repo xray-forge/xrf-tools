@@ -1,3 +1,5 @@
+import { clamp } from "@xrf/math";
+
 import { DEFAULT_LEVEL_FLY_OPTIONS, ILevelFlyOptions } from "@/core/level/lib/camera/level-fly-options";
 
 /**
@@ -41,7 +43,7 @@ export function toLevelCameraOptions(stored: unknown): ILevelCameraOptions {
     const { min, max } = LEVEL_CAMERA_LIMITS[key];
 
     return typeof value === "number" && Number.isFinite(value)
-      ? Math.min(max, Math.max(min, value))
+      ? clamp(value, min, max)
       : DEFAULT_LEVEL_CAMERA_OPTIONS[key];
   }
 

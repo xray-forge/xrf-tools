@@ -1,6 +1,7 @@
 import { useTheme } from "@mui/material";
 import { useColorScheme } from "@mui/material/styles";
 import { useForkRef } from "@mui/material/utils";
+import { clamp } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 import { KeyboardEvent, MouseEvent, ReactElement, useLayoutEffect, useMemo, useRef } from "react";
 
@@ -43,7 +44,7 @@ export function AudioWaveform({
   const samples: Nullable<Float32Array> = useAudioSamples(src, bytes);
 
   const length: number = Number.isFinite(duration) ? Math.max(0, duration) : 0;
-  const current: number = Number.isFinite(position) ? Math.min(length, Math.max(0, position)) : 0;
+  const current: number = Number.isFinite(position) ? clamp(position, 0, length) : 0;
   const width: number = size?.width ?? 0;
   const peaks: Nullable<Float32Array> = useMemo(
     () => (samples && width > 0 ? extractPeaks(samples, Math.max(1, Math.floor(width * PEAKS_PER_PIXEL))) : null),
@@ -54,7 +55,7 @@ export function AudioWaveform({
 
   function seek(next: number): void {
     if (length > 0) {
-      onSeek(Math.min(length, Math.max(0, next)));
+      onSeek(clamp(next, 0, length));
     }
   }
 

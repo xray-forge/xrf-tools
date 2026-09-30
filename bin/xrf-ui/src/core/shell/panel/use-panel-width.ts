@@ -1,3 +1,4 @@
+import { clamp } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 import { useCallback, useState } from "react";
 
@@ -21,7 +22,7 @@ function readPreferredWidth(side: TEditorPanelSide): number {
   const stored: Nullable<string> = getLocalStorageValue(getPanelWidthStorageKey(side));
   const parsed: number = stored === null ? NaN : Number(stored);
 
-  return Number.isFinite(parsed) ? Math.min(PANEL.maxWidth, Math.max(PANEL.minWidth, parsed)) : PANEL.defaultWidth;
+  return Number.isFinite(parsed) ? clamp(parsed, PANEL.minWidth, PANEL.maxWidth) : PANEL.defaultWidth;
 }
 
 /**

@@ -1,3 +1,4 @@
+import { saturate } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 import { renderGroup, texture3D, uniform } from "three/tsl";
 import {
@@ -34,7 +35,7 @@ export class WetUniforms {
    * @param rain - How hard it rains now, or null for no rain.
    */
   public take(rain: Nullable<IRendererRainfall>): void {
-    this.density.value = rain ? Math.min(Math.max(rain.density, 0), 1) : 0;
+    this.density.value = rain ? saturate(rain.density) : 0;
   }
 
   /**

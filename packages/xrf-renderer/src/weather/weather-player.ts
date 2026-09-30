@@ -1,3 +1,4 @@
+import { clamp } from "@xrf/math";
 import { Maybe, Nullable } from "@xrf/types";
 
 import { ERendererEngine } from "#/contract/renderer-engine";
@@ -210,7 +211,7 @@ export class WeatherPlayer {
    * @returns What the scene is lit by now, or null where that did not change or no weather plays.
    */
   public advance(now: number, view: TRendererVector): Nullable<IRendererLighting> {
-    const step: number = this.advancedAt === null ? 0 : Math.min(Math.max(now - this.advancedAt, 0), LONGEST_STEP);
+    const step: number = this.advancedAt === null ? 0 : clamp(now - this.advancedAt, 0, LONGEST_STEP);
     const { weather, control } = this;
 
     this.advancedAt = now;

@@ -1,3 +1,5 @@
+import { clamp } from "@xrf/math";
+
 import { IRendererChoiceField } from "#/contract/renderer-choice-field";
 import { IRendererFlagField } from "#/contract/renderer-flag-field";
 import { IRendererNumberField } from "#/contract/renderer-number-field";
@@ -45,7 +47,7 @@ export function toRendererSettingValue(field: TRendererSettingField, stored: unk
         stored.length > 0 &&
         stored.length <= field.most &&
         stored.every((width: unknown) => typeof width === "number" && Number.isFinite(width) && width > 0)
-        ? stored.map((width: number) => Math.min(Math.max(width, field.min), field.max))
+        ? stored.map((width: number) => clamp(width, field.min, field.max))
         : undefined;
   }
 }
@@ -63,7 +65,7 @@ export function isSameRendererSetting(field: TRendererSettingField, a: unknown, 
 }
 
 function toBounded(field: IRendererNumberField, value: number): number {
-  const bounded: number = Math.min(Math.max(value, field.min), field.max);
+  const bounded: number = clamp(value, field.min, field.max);
 
   return field.isInteger ? Math.round(bounded) : bounded;
 }

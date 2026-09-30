@@ -1,3 +1,5 @@
+import { clamp } from "@xrf/math";
+
 /**
  * Reduces raw samples to one peak per horizontal pixel.
  *
@@ -20,7 +22,7 @@ export function extractPeaks(samples: Float32Array, buckets: number): Float32Arr
 
   for (let bucket = 0; bucket < buckets; bucket += 1) {
     const start: number = Math.floor(bucket * perBucket);
-    const end: number = Math.min(samples.length, Math.max(start + 1, Math.floor((bucket + 1) * perBucket)));
+    const end: number = clamp(Math.floor((bucket + 1) * perBucket), start + 1, samples.length);
 
     let peak: number = 0;
 

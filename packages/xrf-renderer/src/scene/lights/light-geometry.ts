@@ -1,4 +1,4 @@
-import { EPS } from "@xrf/math";
+import { EPS, saturate } from "@xrf/math";
 import { Sphere, Vector3 } from "three/webgpu";
 
 import { TRendererColor } from "#/contract/renderer-color";
@@ -150,7 +150,7 @@ export function toLightLod(spatial: Sphere, eye: Vector3, start: number, end: nu
   // `EPS` added to the squared distance, so a camera inside the light divides by no zero.
   const area: number = (SHADOWED_FADE * spatial.radius) / (eye.distanceToSquared(spatial.center) + EPS);
 
-  return start > end ? Math.sqrt(Math.min(Math.max((area - end) / (start - end), 0), 1)) : 1;
+  return start > end ? Math.sqrt(saturate((area - end) / (start - end))) : 1;
 }
 
 /**

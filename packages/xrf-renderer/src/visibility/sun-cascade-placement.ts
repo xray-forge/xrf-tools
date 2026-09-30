@@ -1,4 +1,4 @@
-import { EPS_L, EPS_S } from "@xrf/math";
+import { clamp, EPS_L, EPS_S } from "@xrf/math";
 import { Vector3 } from "three/webgpu";
 
 import { SunCascadeBasis } from "#/visibility/sun-cascade-basis";
@@ -156,7 +156,7 @@ function holdAlong(
   const at: number = axis.dot(center);
   const lowest: number = most - half;
   const highest: number = least + half;
-  const held: number = lowest > highest ? (least + most) / 2 : Math.min(Math.max(at, lowest), highest);
+  const held: number = lowest > highest ? (least + most) / 2 : clamp(at, lowest, highest);
 
   center.addScaledVector(axis, held - at);
 }

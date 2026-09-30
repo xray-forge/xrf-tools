@@ -1,5 +1,6 @@
 import { inject, Injectable, OnDeactivation } from "@wirestate/core";
 import { BoundAction, Computed, Observable } from "@wirestate/mobx";
+import { clamp } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 
 import { transformError } from "@/core/error/lib";
@@ -196,7 +197,7 @@ export class VisualMotionService {
   public seek(frame: number): void {
     this.stopTicker();
     this.isPlaying = false;
-    this.frame = Math.max(0, Math.min(frame, Math.max(0, this.frameCount - 1)));
+    this.frame = clamp(frame, 0, Math.max(0, this.frameCount - 1));
   }
 
   @BoundAction()

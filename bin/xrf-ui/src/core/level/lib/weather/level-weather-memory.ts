@@ -1,3 +1,4 @@
+import { clamp } from "@xrf/math";
 import { Maybe, Nullable } from "@xrf/types";
 
 import { SelectedLevelDescription } from "@/core/ipc/types/xrf-app";
@@ -117,7 +118,7 @@ export function toLevelWeatherMemory(stored: unknown): Nullable<ILevelWeatherMem
     manual,
     seed,
     source: source as ELevelWeatherSource,
-    time: Math.min(Math.max(time, 0), LEVEL_WEATHER_DAY - 1),
+    time: clamp(time, 0, LEVEL_WEATHER_DAY - 1),
   };
 }
 

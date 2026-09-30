@@ -1,5 +1,6 @@
 import { useForkRef } from "@mui/material/utils";
 import { LayoutList, RenderContext, useVirtualizer, Virtualization } from "@mui/x-virtualizer";
+import { clamp } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 import { KeyboardEvent, ReactElement, useCallback, useEffect, useId, useMemo, useRef } from "react";
 
@@ -194,7 +195,7 @@ export function VirtualizedLines({
 
   const moveTo = useCallback(
     (index: number): void => {
-      const next: number = Math.min(Math.max(index, 0), count - 1);
+      const next: number = clamp(index, 0, count - 1);
       const line: Nullable<ICodeLine> = next < 0 ? null : source.getLine(next);
 
       if (line) {

@@ -1,4 +1,4 @@
-import { EPS_L } from "@xrf/math";
+import { EPS_L, saturate } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 import { renderGroup, uniform } from "three/tsl";
 import { TextureNode, UniformNode, Vector4 } from "three/webgpu";
@@ -30,7 +30,7 @@ export class CloudUniforms {
    * @param clouds - The clouds the lighting names, or none.
    */
   public take(clouds: Nullable<IRendererClouds>): void {
-    const [red, green, blue, cover] = (clouds?.color ?? [0, 0, 0, 0]).map((it: number) => Math.min(Math.max(it, 0), 1));
+    const [red, green, blue, cover] = (clouds?.color ?? [0, 0, 0, 0]).map(saturate);
 
     this.color.value.set(red, green, blue, cover);
     this.rotation.value = ((clouds?.rotation ?? 0) * Math.PI) / 180;

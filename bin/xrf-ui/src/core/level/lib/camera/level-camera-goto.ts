@@ -1,4 +1,4 @@
-import { toDegrees, toRadians } from "@xrf/math";
+import { clamp, toDegrees, toRadians } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 
 import { ILevelCamera } from "@/core/level/lib/camera/level-camera";
@@ -77,7 +77,7 @@ export function parseLevelGoTo(text: string, current: ILevelGoTo): Nullable<ILev
  */
 export function toLevelGoToViewpoint(goTo: ILevelGoTo): ILevelViewpoint {
   const position: IRenderPoint = toRendererSpace({ x: goTo.x, y: goTo.y, z: goTo.z });
-  const pitch: number = Math.max(-MAX_PITCH, Math.min(MAX_PITCH, goTo.pitch));
+  const pitch: number = clamp(goTo.pitch, -MAX_PITCH, MAX_PITCH);
   const facing: IRenderPoint = toRendererFacing({ heading: toRadians(goTo.heading), pitch: toRadians(pitch) });
 
   return {

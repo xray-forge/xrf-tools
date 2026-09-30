@@ -1,3 +1,4 @@
+import { clamp } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 
 import { SectorOutline } from "@/core/ipc/types/xrf-visual";
@@ -168,7 +169,7 @@ export function planLevelResidency(
 
   // The distances decide how much is worth holding; the two counts decide how much is held regardless. A camera
   // outside the whole level still draws its nearest sectors rather than nothing.
-  const take: number = Math.min(Math.max(within, options.minSectors), Math.max(0, options.maxSectors));
+  const take: number = clamp(within, options.minSectors, Math.max(0, options.maxSectors));
   const estimate: number = getSectorEstimate(held);
   const resident: Array<number> = [];
 

@@ -1,3 +1,5 @@
+import { saturate } from "@xrf/math";
+
 import { TRendererColor } from "#/contract/renderer-color";
 import { IRendererLighting } from "#/contract/renderer-lighting";
 import { IRendererThunderSettings } from "#/contract/weather/renderer-thunder-settings";
@@ -28,14 +30,10 @@ export function toThunderedLighting(
   return {
     ...lighting,
     fog: lighting.fog ? { ...lighting.fog, color: added(lighting.fog.color, settings.fogColor) } : null,
-    sky: { ...lighting.sky, color: [clamp(sky[0]), clamp(sky[1]), clamp(sky[2])] },
+    sky: { ...lighting.sky, color: [saturate(sky[0]), saturate(sky[1]), saturate(sky[2])] },
     sunColor: added(lighting.sunColor, settings.sunColor),
     // Engine `z` negated into renderer space.
     sunDirection: [direction[0], direction[1], -direction[2]],
     thunderbolt: flash.strike,
   };
-}
-
-function clamp(value: number): number {
-  return Math.min(Math.max(value, 0), 1);
 }

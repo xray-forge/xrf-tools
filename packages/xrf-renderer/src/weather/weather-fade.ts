@@ -1,4 +1,4 @@
-import { EPS_L } from "@xrf/math";
+import { EPS_L, saturate } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 
 import { IRendererClouds } from "#/contract/renderer-clouds";
@@ -26,7 +26,7 @@ interface IWeatherSlots<T> {
  */
 export function toFadedLighting(step: IWeatherFadeStep): IRendererLighting {
   const { from, to } = step;
-  const t: number = Math.min(Math.max(step.progress, 0), 1);
+  const t: number = saturate(step.progress);
 
   if (t >= 1) {
     return to;

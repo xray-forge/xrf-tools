@@ -1,3 +1,5 @@
+import { clamp, saturate } from "@xrf/math";
+
 import { ILightShadowAsk } from "#/scene/lights/light-shadow-ask";
 import { LIGHT_SHADOW_ATLAS_SIZE } from "#/scene/lights/light-shadow-atlas";
 import { LIGHT_SHADOW_POINT_CONE, toLightShadowFaceCount } from "#/scene/lights/light-shadow-faces";
@@ -38,7 +40,7 @@ export const LIGHT_SHADOW_MIN_SIZE: number = SMAP_MIN;
  * @returns The size the engine would draw its map at.
  */
 export function toLightShadowSize(request: ILightShadowRequest): number {
-  const area: number = Math.min(Math.max((request.range * request.range) / (1 + request.distance ** 2), 0), 1);
+  const area: number = saturate((request.range * request.range) / (1 + request.distance ** 2));
   const cone: number = request.isSpot ? request.cone : LIGHT_SHADOW_POINT_CONE;
   const factor: number =
     Math.sqrt(area) *
@@ -47,7 +49,7 @@ export function toLightShadowSize(request: ILightShadowRequest): number {
     Math.pow(request.range / 8, 1 / 4) *
     Math.sqrt(cone / (Math.PI / 2));
 
-  return Math.min(Math.max(Math.floor(factor * SMAP_OPTIMAL), SMAP_MIN), SMAP_MAX);
+  return clamp(Math.floor(factor * SMAP_OPTIMAL), SMAP_MIN, SMAP_MAX);
 }
 
 /**
@@ -58,14 +60,14 @@ export function toLightShadowSize(request: ILightShadowRequest): number {
  */
 export function toLightShadowTileSize(size: number, current: number, isTight: boolean = false): number {
   if (isTight) {
-    return Math.min(Math.max(2 ** Math.floor(Math.log2(Math.max(size, 1))), SMAP_MIN), TILE_MAX);
+    return clamp(2 ** Math.floor(Math.log2(Math.max(size, 1))), SMAP_MIN, TILE_MAX);
   }
 
   if (current > 0 && size <= current * GROW && size >= current * SHRINK) {
     return current;
   }
 
-  return Math.min(Math.max(2 ** Math.round(Math.log2(Math.max(size, 1))), SMAP_MIN), TILE_MAX);
+  return clamp(2 ** Math.round(Math.log2(Math.max(size, 1))), SMAP_MIN, TILE_MAX);
 }
 
 /**

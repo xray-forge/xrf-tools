@@ -3,6 +3,7 @@ import { convertFileSrc } from "@tauri-apps/api/core";
 import { exists } from "@tauri-apps/plugin-fs";
 import { EventBus, inject, Injectable, OnDeactivation, OnProvision } from "@wirestate/core";
 import { BoundAction, Computed, flowResult, Observable } from "@wirestate/mobx";
+import { clamp } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 
 import { RELOAD_EQUIPMENT_SPRITE_KEYBIND_COMMAND } from "@/applications/sprite-equipment-editor/commands";
@@ -180,7 +181,7 @@ export class SpriteEquipmentEditorService {
 
   @BoundAction()
   public setGridSize(size: number): void {
-    this.gridSize = Math.round(Math.min(100, Math.max(10, size)));
+    this.gridSize = Math.round(clamp(size, 10, 100));
   }
 
   /**

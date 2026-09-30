@@ -1,3 +1,4 @@
+import { saturate } from "@xrf/math";
 import { ReactElement } from "react";
 
 import { cn } from "@/lib/dom/dom-name";
@@ -23,7 +24,7 @@ export function StatBar({
   total,
   label,
 }: IStatBarProps): ReactElement {
-  const share: number = total > 0 ? Math.min(1, Math.max(0, value / total)) : 0;
+  const share: number = total > 0 ? saturate(value / total) : 0;
 
   return (
     <div

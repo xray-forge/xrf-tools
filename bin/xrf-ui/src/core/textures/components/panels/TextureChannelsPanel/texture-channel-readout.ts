@@ -1,3 +1,4 @@
+import { clamp } from "@xrf/math";
 import { readDdsTexel } from "@xrf/renderer";
 
 import { decodeXrayBumpTexel, IMaterialBumpTexel } from "@/core/materials/lib/material-bump-texel";
@@ -70,17 +71,12 @@ export function toTextureTexelPosition(
   down: number
 ): ITextureTexelPosition {
   return {
-    x: clamp(Math.floor(across * texels.bump.width), texels.bump.width),
-    y: clamp(Math.floor(down * texels.bump.height), texels.bump.height),
+    x: clamp(Math.floor(across * texels.bump.width), 0, texels.bump.width - 1),
+    y: clamp(Math.floor(down * texels.bump.height), 0, texels.bump.height - 1),
   };
 }
 
 /** One texel's channels as the bytes a file holds, which is how a packer's output is read. */
 function describeBytes(texel: ReadonlyArray<number>): string {
   return texel.map((it: number) => Math.round(it * 255)).join(", ");
-}
-
-/** Keeps an index inside a plane. */
-function clamp(value: number, size: number): number {
-  return Math.min(Math.max(value, 0), size - 1);
 }

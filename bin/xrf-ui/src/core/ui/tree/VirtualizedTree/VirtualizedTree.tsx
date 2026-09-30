@@ -1,5 +1,6 @@
 import { useForkRef } from "@mui/material/utils";
 import { LayoutList, useVirtualizer } from "@mui/x-virtualizer";
+import { clamp } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 import { KeyboardEvent, ReactElement, ReactNode, useCallback, useEffect, useId, useMemo, useRef } from "react";
 
@@ -206,7 +207,7 @@ export function VirtualizedTree<T>({
 
   const moveTo = useCallback(
     (index: number): void => {
-      const next: number = Math.min(Math.max(index, 0), rows.length - 1);
+      const next: number = clamp(index, 0, rows.length - 1);
       const row: Nullable<IFlatTreeRow<T>> = rows[next] ?? null;
 
       if (row) {

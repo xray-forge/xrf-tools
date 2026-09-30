@@ -1,3 +1,5 @@
+import { clamp } from "@xrf/math";
+
 /** A point, in whichever space the function taking it names. */
 export interface IPanZoomPoint {
   x: number;
@@ -72,7 +74,7 @@ const WHEEL_STEP: number = 1.2;
  * @returns The scale, bounded by the minimum and maximum this module allows.
  */
 export function clampScale(scale: number): number {
-  return Math.min(PAN_ZOOM_MAXIMUM_SCALE, Math.max(PAN_ZOOM_MINIMUM_SCALE, scale));
+  return clamp(scale, PAN_ZOOM_MINIMUM_SCALE, PAN_ZOOM_MAXIMUM_SCALE);
 }
 
 /**

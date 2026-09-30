@@ -1,3 +1,4 @@
+import { saturate } from "@xrf/math";
 import { IRendererClusters } from "@xrf/renderer";
 import { Nullable, Optional } from "@xrf/types";
 
@@ -285,7 +286,7 @@ function toTransformFloats(transform: VisualTransform): Array<number> {
 export function getVisualSubmeshLevel(submesh: IVisualSubmeshViews, detail: number): IVisualSubmeshLevel {
   const coarsest: number = submesh.levels.length - 1;
 
-  return submesh.levels[Math.round(Math.min(Math.max(detail, 0), 1) * coarsest)];
+  return submesh.levels[Math.round(saturate(detail) * coarsest)];
 }
 
 /**

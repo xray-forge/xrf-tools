@@ -1,3 +1,4 @@
+import { saturate } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 import { useCallback, useState } from "react";
 
@@ -49,5 +50,5 @@ function readStoredVolume(): number {
  * @returns The level clamped to `[0, 1]`.
  */
 function clampVolume(value: number): number {
-  return Number.isFinite(value) ? Math.min(1, Math.max(0, value)) : DEFAULT_VOLUME;
+  return Number.isFinite(value) ? saturate(value) : DEFAULT_VOLUME;
 }

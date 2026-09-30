@@ -1,3 +1,5 @@
+import { clamp } from "@xrf/math";
+
 import { TRendererVector } from "#/contract/renderer-vector";
 
 /**
@@ -27,7 +29,7 @@ export function toDolliedPosition(
     return position;
   }
 
-  const next: number = Math.min(Math.max(distance * step, minDistance), maxDistance);
+  const next: number = clamp(distance * step, minDistance, maxDistance);
   const ratio: number = next / distance;
 
   return [target[0] + offsetX * ratio, target[1] + offsetY * ratio, target[2] + offsetZ * ratio];

@@ -1,4 +1,4 @@
-import { EPS_L, toDirection, toHeadingPitch } from "@xrf/math";
+import { clamp, EPS_L, saturate, toDirection, toHeadingPitch } from "@xrf/math";
 import { Maybe, Nullable } from "@xrf/types";
 
 import { TRendererVector } from "#/contract/renderer-vector";
@@ -81,7 +81,7 @@ export class WeatherThunder {
    */
   public advance(input: IWeatherThunderInput): Nullable<IWeatherThunderFlash> {
     const { thunder, mix, now } = input;
-    const step: number = this.advancedAt === null ? 0 : Math.min(Math.max(now - this.advancedAt, 0), LONGEST_STEP);
+    const step: number = this.advancedAt === null ? 0 : clamp(now - this.advancedAt, 0, LONGEST_STEP);
     const palette: ReadonlyArray<IWeatherBolt> = input.isEnabled ? WeatherThunder.listPalette(thunder, mix) : [];
     const isEnabled: boolean = palette.length > 0 && thunder.settings !== null;
 
@@ -165,7 +165,7 @@ export class WeatherThunder {
     const [i, j, k] = strike.axes;
     const { bolt, name } = strike.bolt;
     const progress: number = life > 0 ? strike.time / life : 1;
-    const phase: number = Math.min(Math.max(1.5 * progress, 0), 1);
+    const phase: number = saturate(1.5 * progress);
     const animator: Maybe<IRendererLightAnimator> = bolt.color === null ? undefined : thunder.animators[bolt.color];
     const color: Array<number> = [0, 0, 0];
 
@@ -178,7 +178,7 @@ export class WeatherThunder {
     const opacity: number = bolt.top.opacity * phase;
 
     return {
-      color: [clamp(color[0] / 255), clamp(color[1] / 255), clamp(color[2] / 255)],
+      color: [saturate(color[0] / 255), saturate(color[1] / 255), saturate(color[2] / 255)],
       direction: strike.direction,
       strike: {
         // The model's `z` is negated into renderer space as its mesh is, so its third axis turns about too.
@@ -256,8 +256,4 @@ function add(a: TRendererVector, b: TRendererVector): TRendererVector {
 
 function scale(a: TRendererVector, by: number): TRendererVector {
   return [a[0] * by, a[1] * by, a[2] * by];
-}
-
-function clamp(value: number): number {
-  return Math.min(Math.max(value, 0), 1);
 }

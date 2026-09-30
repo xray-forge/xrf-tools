@@ -1,3 +1,4 @@
+import { clamp } from "@xrf/math";
 import { Nullable, Optional } from "@xrf/types";
 
 import { readDdsFile } from "#/dds/dds-file";
@@ -42,8 +43,8 @@ export function readDdsTexels(bytes: ArrayBuffer): Nullable<IDdsTexels> {
  * @returns Its four channels, each in `[0, 1]`.
  */
 export function readDdsTexel(texels: IDdsTexels, x: number, y: number): [number, number, number, number] {
-  const column: number = Math.min(Math.max(x, 0), texels.width - 1);
-  const row: number = Math.min(Math.max(y, 0), texels.height - 1);
+  const column: number = clamp(x, 0, texels.width - 1);
+  const row: number = clamp(y, 0, texels.height - 1);
   const at: number = (row * texels.width + column) * 4;
 
   return [texels.data[at] / 255, texels.data[at + 1] / 255, texels.data[at + 2] / 255, texels.data[at + 3] / 255];

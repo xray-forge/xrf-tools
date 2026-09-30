@@ -1,3 +1,5 @@
+import { clamp } from "@xrf/math";
+
 /** Seconds from midnight to noon. */
 export const LEVEL_WEATHER_NOON: number = 12 * 60 * 60;
 
@@ -27,5 +29,5 @@ export const DEFAULT_LEVEL_WEATHER_CONTROL: ILevelWeatherControl = {
  * @returns The same in whole seconds, within the engine's bounds.
  */
 export function toLevelWeatherFactor(factor: number): number {
-  return Math.min(Math.max(Math.round(factor), LEVEL_WEATHER_FACTOR_LIMITS.min), LEVEL_WEATHER_FACTOR_LIMITS.max);
+  return clamp(Math.round(factor), LEVEL_WEATHER_FACTOR_LIMITS.min, LEVEL_WEATHER_FACTOR_LIMITS.max);
 }

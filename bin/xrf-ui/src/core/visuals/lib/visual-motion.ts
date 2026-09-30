@@ -1,3 +1,4 @@
+import { clamp } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 
 /** Frames a second an X-Ray motion samples at, which is what playback has to run at to look right. */
@@ -22,7 +23,7 @@ export const MOTION_MAX_FPS: number = 120;
  * @returns The rate playback will run at.
  */
 export function clampMotionFps(fps: number): number {
-  return Math.max(MOTION_MIN_FPS, Math.min(fps, MOTION_MAX_FPS));
+  return clamp(fps, MOTION_MIN_FPS, MOTION_MAX_FPS);
 }
 
 /**

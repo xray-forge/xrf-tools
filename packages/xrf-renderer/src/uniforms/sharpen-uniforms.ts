@@ -1,3 +1,4 @@
+import { saturate } from "@xrf/math";
 import { uniform } from "three/tsl";
 import { UniformNode } from "three/webgpu";
 
@@ -6,7 +7,7 @@ import { UniformNode } from "three/webgpu";
  * @returns RCAS's strength: FSR 2's remap of a sharpness to stops, `(1 - sharpening) * 2`, as `exp2(-stops)`.
  */
 export function toSharpenStrength(sharpening: number): number {
-  return 2 ** -((1 - Math.min(Math.max(sharpening, 0), 1)) * 2);
+  return 2 ** -((1 - saturate(sharpening)) * 2);
 }
 
 /**
