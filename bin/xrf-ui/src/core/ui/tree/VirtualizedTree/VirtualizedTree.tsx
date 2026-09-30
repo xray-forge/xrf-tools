@@ -44,6 +44,8 @@ interface IVirtualizedTreeProps<T> extends BaseComponentProps {
   renderLabel?: (item: ITreeNode<T>) => ReactNode;
   /** Tints a row's icon, for a tree whose rows come from sources worth telling apart. */
   decorateIcon?: (item: ITreeNode<T>) => Nullable<ITreeIconDecoration>;
+  /** Controls drawn at a row's end, such as a visibility toggle; their clicks neither select nor open the row. */
+  renderActions?: (item: ITreeNode<T>) => ReactNode;
   onToggleExpanded: (id: string) => void;
   /** A row was chosen for inspection, by click or by arrow key. */
   onSelect: (item: ITreeNode<T>) => void;
@@ -71,6 +73,7 @@ export function VirtualizedTree<T>({
   icons,
   renderLabel,
   decorateIcon,
+  renderActions,
   onToggleExpanded,
   onSelect,
   onActivate,
@@ -159,6 +162,7 @@ export function VirtualizedTree<T>({
           isSelected={row.item.id === selectedId}
           isActive={row.item.id === activeId}
           label={labelOf?.(row.item)}
+          actions={renderActions?.(row.item)}
           onSelect={select}
           onActivate={activate}
           onToggleExpanded={onToggleExpanded}

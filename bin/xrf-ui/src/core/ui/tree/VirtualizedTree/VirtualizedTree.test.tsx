@@ -246,6 +246,37 @@ describe("VirtualizedTree", () => {
     expect(onSelect).toHaveBeenLastCalledWith(expect.objectContaining({ label: "readme.txt" }));
   });
 
+  // A row's own control, such as a visibility eye, is the control's: neither the row's selection nor its opening.
+  it("draws each row's actions at its end, their clicks neither selecting nor opening the row", async () => {
+    const onPress = jest.fn();
+    const onSelect = jest.fn();
+    const onActivate = jest.fn();
+    const onToggleExpanded = jest.fn();
+    const render_: RenderResult = renderWithProviders(
+      <VirtualizedTree<string>
+        ariaLabel={"Visuals"}
+        items={mockTree()}
+        expandedIds={new Set()}
+        selectedId={null}
+        renderActions={(item: ITreeNode<string>) => (
+          <button type={"button"} onClick={() => onPress(item.label)}>
+            {`Hide ${item.label}`}
+          </button>
+        )}
+        onSelect={onSelect}
+        onActivate={onActivate}
+        onToggleExpanded={onToggleExpanded}
+      />
+    );
+
+    await userEvent.dblClick(render_.getByRole("button", { name: "Hide meshes" }));
+
+    expect(onPress).toHaveBeenCalledWith("meshes");
+    expect(onSelect).not.toHaveBeenCalled();
+    expect(onActivate).not.toHaveBeenCalled();
+    expect(onToggleExpanded).not.toHaveBeenCalled();
+  });
+
   // Windowing itself is not asserted here on purpose: jsdom lays nothing out, and the virtualizer's
   // measurement runs through a throttled ResizeObserver, so every row renders no matter what the
   // element is told its size is. Row count, the focus ring, and the chevron column are verified

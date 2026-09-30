@@ -27,6 +27,8 @@ interface IVirtualizedTreeRowProps<T> {
   iconDecoration: Nullable<ITreeIconDecoration>;
   /** Overrides the plain label, for a consumer that decorates its rows. */
   label?: ReactNode;
+  /** Controls at the row's end, whose clicks stay theirs. */
+  actions?: ReactNode;
   onSelect: (row: IFlatTreeRow<T>) => void;
   onActivate: (row: IFlatTreeRow<T>) => void;
   onToggleExpanded: (id: string) => void;
@@ -48,6 +50,7 @@ export function VirtualizedTreeRow<T>({
   icon,
   iconDecoration,
   label,
+  actions,
   onSelect,
   onActivate,
   onToggleExpanded,
@@ -107,6 +110,17 @@ export function VirtualizedTreeRow<T>({
       >
         {label ?? item.label}
       </span>
+
+      {actions ? (
+        <div
+          data-testid={"virtualized-tree-actions"}
+          className={"ml-auto flex shrink-0 items-center"}
+          onClick={(event: MouseEvent<HTMLElement>) => event.stopPropagation()}
+          onDoubleClick={(event: MouseEvent<HTMLElement>) => event.stopPropagation()}
+        >
+          {actions}
+        </div>
+      ) : null}
     </div>
   );
 }
