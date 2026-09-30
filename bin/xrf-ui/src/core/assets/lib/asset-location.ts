@@ -1,8 +1,8 @@
 import { Nullable } from "@xrf/types";
 
+import { describeAssetContainer } from "@/core/assets/lib/container";
 import { XrayAsset } from "@/core/ipc/types/xrf-vfs";
 import { IEditorLocation } from "@/core/shell/editor/EditorToolbarLocation";
-import { LOGICAL_PATH_SEPARATOR } from "@/lib/path/separator";
 
 /**
  * Where an asset the VFS located was read out of.
@@ -18,9 +18,5 @@ export function toAssetLocation(asset: Nullable<XrayAsset>): Nullable<IEditorLoc
     return null;
   }
 
-  if (asset.container.kind === "archive") {
-    return { path: asset.container.path };
-  }
-
-  return { path: [asset.container.root, asset.container.relativePath].join(LOGICAL_PATH_SEPARATOR) };
+  return { path: describeAssetContainer(asset.container) };
 }

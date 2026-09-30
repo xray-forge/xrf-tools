@@ -1,3 +1,5 @@
+import { findLastSeparator } from "@/lib/path/separator";
+
 /**
  * Rank buckets, best first. The numbers are only compared to each other.
  */
@@ -32,8 +34,7 @@ export interface IRankedSearchOutcome<T> {
   total: number;
 }
 
-/** Only these end a path segment. A dot separates words inside a name, it does not start a new leaf. */
-const PATH_SEPARATORS: string = "\\/";
+/** What ends a word inside a path; only a path separator also starts a new leaf, a dot never does. */
 const SEGMENT_SEPARATORS: string = "\\/.";
 
 /**
@@ -55,15 +56,7 @@ export function buildSearchIndex<T>(
   return items.map((item: T) => {
     const text: string = toSearchText(item).toLowerCase();
 
-    let leafAt: number = 0;
-
-    for (let index = text.length - 1; index >= 0; index -= 1) {
-      if (PATH_SEPARATORS.includes(text[index])) {
-        leafAt = index + 1;
-        break;
-      }
-    }
-
+    const leafAt: number = findLastSeparator(text) + 1;
     const dotAt: number = text.lastIndexOf(".");
     const stemEnd: number = dotAt > leafAt ? dotAt : text.length;
 

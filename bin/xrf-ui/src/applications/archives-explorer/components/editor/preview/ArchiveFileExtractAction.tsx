@@ -7,10 +7,10 @@ import { ReactElement, useCallback } from "react";
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { IArchiveEntry } from "@/core/archive/lib";
 import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
-import { splitLogicalPath } from "@/core/ui/tree/path-tree";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Logger, useLogger } from "@/lib/logging";
 import { getFileExtension } from "@/lib/path/extension";
+import { splitLogicalPath } from "@/lib/path/separator";
 
 export interface IArchiveFileExtractActionProps extends BaseComponentProps {
   entry: IArchiveEntry;

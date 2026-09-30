@@ -9,12 +9,12 @@ import { IDialogTreeEntry, IDialogTreeLeaf } from "@/applications/dialogs-editor
 import { DialogsService } from "@/applications/dialogs-editor/services/dialogs";
 import { EditorSearchMenu } from "@/core/shell/editor/EditorSearchMenu";
 import { IEditorSearchResultRow } from "@/core/shell/editor/EditorSearchResults";
-import { IPathTreeItem, parsePathTree, splitLogicalPath, toFileItemId } from "@/core/ui/tree/path-tree";
+import { IPathTreeItem, parsePathTree, toFileItemId } from "@/core/ui/tree/path-tree";
 import { ITreeNode } from "@/core/ui/tree/tree-node";
 import { IUseTreeState, useTreeState } from "@/core/ui/tree/use-tree-state";
 import { IVirtualizedTreeIcons, VirtualizedTree } from "@/core/ui/tree/VirtualizedTree";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { LOGICAL_PATH_SEPARATOR } from "@/lib/path/separator";
+import { LOGICAL_PATH_SEPARATOR, splitLogicalPath } from "@/lib/path/separator";
 
 /**
  * Hoisted so the tree is handed the same icons every render rather than a fresh set.

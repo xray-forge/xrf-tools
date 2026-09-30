@@ -18,32 +18,6 @@ export const TREE_ITEM_ID = {
 /** Id of the synthetic root, which stands for the whole tree rather than for a path. */
 export const TREE_ROOT_ID: string = `${TREE_ITEM_ID.directory}~`;
 
-/** A logical path split where a reader needs it: the file's own name, and the directories standing above it. */
-export interface ILogicalPathParts {
-  /** The last segment, which is the file name. */
-  name: string;
-  /** Everything above it, or null when the path names a file at the root. */
-  directory: Nullable<string>;
-}
-
-/**
- * Splits a logical path into the part a reader identifies it by and the part that only places it.
- *
- * One policy rather than three: a search row shows the name loudly and the directory quietly, and a save dialog offers
- * the name alone. Every one of those was splitting on its own `lastIndexOf` before, which is how a separator ends up
- * spelled in four files and corrected in three.
- *
- * @param path - Engine logical path, `\`-separated.
- * @returns The file name, and the directories above it when there are any.
- */
-export function splitLogicalPath(path: string): ILogicalPathParts {
-  const separatorAt: number = path.lastIndexOf(LOGICAL_PATH_SEPARATOR);
-
-  return separatorAt === -1
-    ? { directory: null, name: path }
-    : { directory: path.slice(0, separatorAt), name: path.slice(separatorAt + 1) };
-}
-
 /**
  * The id a leaf carries for a path.
  *

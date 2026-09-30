@@ -3,9 +3,8 @@ import { Nullable, Optional } from "@xrf/types";
 import { ReactElement } from "react";
 
 import { EditorPanel, EditorPanelEmpty } from "@/core/shell/editor/EditorPanel";
-import { splitLogicalPath } from "@/core/ui/tree/path-tree";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { LOGICAL_PATH_SEPARATOR } from "@/lib/path/separator";
+import { getPathName } from "@/lib/path/separator";
 
 /** Where a problem can be opened, for a surface that can take a reader there. */
 export interface IEditorProblemLocation {
@@ -56,9 +55,7 @@ export function EditorProblemsPanel({
             const rule: string = finding.rule.startsWith(rulePrefix)
               ? finding.rule.slice(rulePrefix.length)
               : finding.rule;
-            const subject: Nullable<string> = finding.subject
-              ? splitLogicalPath(finding.subject.replaceAll("/", LOGICAL_PATH_SEPARATOR)).name || finding.subject
-              : null;
+            const subject: Nullable<string> = finding.subject ? getPathName(finding.subject) || finding.subject : null;
 
             const location: Optional<IEditorProblemLocation> = onSelect ? finding.location : undefined;
             const content: ReactElement = (

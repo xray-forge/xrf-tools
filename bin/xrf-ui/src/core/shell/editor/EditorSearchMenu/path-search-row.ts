@@ -1,5 +1,5 @@
 import { IEditorSearchResultRow } from "@/core/shell/editor/EditorSearchResults";
-import { ILogicalPathParts, splitLogicalPath } from "@/core/ui/tree/path-tree";
+import { ILogicalPathParts, splitLogicalPath } from "@/lib/path/separator";
 
 /**
  * A search result for a logical path: its name, with the directory it sits in beneath.
