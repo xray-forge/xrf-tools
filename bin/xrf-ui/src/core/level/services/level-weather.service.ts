@@ -216,13 +216,15 @@ export class LevelWeatherService {
 
       const first: Maybe<LevelWeatherCycle> = description.offered[0];
 
-      if (!first) {
-        throw new Error("The level's weathers resolve to no cycle the game has");
+      // A remembered cycle the game no longer has gives way to the level's own.
+      if (remembered && (await this.playRemembered(selected, remembered))) {
+        return;
       }
 
-      // A remembered cycle the game no longer has gives way to the level's own.
-      if (!remembered || !(await this.playRemembered(selected, remembered))) {
+      if (first) {
         await this.play(selected, first.name);
+      } else if (this.source !== ELevelWeatherSource.MANUAL) {
+        await this.buildManual(ERendererWeatherTransition.CUT);
       }
     } catch (error: unknown) {
       this.fail(selected.sessionId, error);

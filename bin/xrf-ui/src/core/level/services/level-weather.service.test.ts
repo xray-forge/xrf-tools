@@ -99,7 +99,7 @@ describe("LevelWeatherService", () => {
     expect(service.failure).toBeNull();
   });
 
-  it("plays the keyframe set by hand, saying why, where the level offers no cycle", async () => {
+  it("plays the keyframe set by hand, without failing, where the level offers no cycle", async () => {
     setMockInvokeResponses({
       ["plugin:levels|read_level_weather"]: mockSessionResponse(mockLevelWeatherDescription({ offered: [] })),
       ...RESOLVE,
@@ -114,7 +114,33 @@ describe("LevelWeatherService", () => {
     expect(service.weather?.keyframes[0]?.skyTexture).toBe(DEFAULT_LEVEL_MANUAL_WEATHER.skyTexture);
     expect(service.weather?.sunTable).toBeNull();
     expect(service.transition).toBe(ERendererWeatherTransition.CUT);
-    expect(service.failure).toBe("The level's weathers resolve to no cycle the game has");
+    expect(service.failure).toBeNull();
+  });
+
+  it("plays the remembered cycle where the level offers no cycle", async () => {
+    writeLevelWeatherMemory(toLevelWeatherMemoryKey(SELECTED.value), {
+      control: { factor: 12, isDynamicSun: false, isPaused: true },
+      cycle: "w_clear",
+      manual: null,
+      seed: null,
+      source: ELevelWeatherSource.WEATHER,
+      time: 600,
+    });
+    setMockInvokeResponses({
+      ["plugin:levels|read_level_weather"]: mockSessionResponse(mockLevelWeatherDescription({ offered: [] })),
+      ["plugin:levels|read_level_cycle"]: mockSessionResponse(({ cycle }: { cycle: WeatherCycleId }) =>
+        mockLevelWeatherCycle({ name: cycle.name })
+      ),
+      ...RESOLVE,
+    });
+
+    const service: LevelWeatherService = createService();
+
+    await service.open(SELECTED);
+
+    expect(service.cycle?.name).toBe("w_clear");
+    expect(service.isManual).toBe(false);
+    expect(service.failure).toBeNull();
   });
 
   it("plays the keyframe set by hand for the engine target where the level's weather does not read", async () => {
