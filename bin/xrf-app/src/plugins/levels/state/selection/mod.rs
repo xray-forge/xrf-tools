@@ -6,6 +6,7 @@ pub(crate) mod level_spawn_model_description;
 pub(crate) mod level_spawn_model_failure;
 pub(crate) mod level_spawn_models_description;
 pub(crate) mod level_spawn_object;
+pub(crate) mod level_spawn_object_details;
 pub(crate) mod level_spawn_object_hemi;
 pub(crate) mod level_spawn_objects_description;
 pub(crate) mod level_start;

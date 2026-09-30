@@ -1,4 +1,5 @@
 import { default as InfoOutlinedIcon } from "@mui/icons-material/InfoOutlined";
+import { default as Inventory2Icon } from "@mui/icons-material/Inventory2";
 import { default as LayersIcon } from "@mui/icons-material/Layers";
 import { default as SpeedIcon } from "@mui/icons-material/Speed";
 import { default as WarningIcon } from "@mui/icons-material/WarningAmber";
@@ -12,6 +13,7 @@ import { LevelWeatherTexture } from "@/core/ipc/types/xrf-app";
 import { ThunderboltCollection } from "@/core/ipc/types/xrf-environment";
 import { LevelHeaderPanel } from "@/core/level/components/panels/LevelHeaderPanel";
 import { LevelProblemsPanel } from "@/core/level/components/panels/LevelProblemsPanel";
+import { LevelSpawnPanel } from "@/core/level/components/panels/LevelSpawnPanel";
 import { LevelStreamPanel } from "@/core/level/components/panels/LevelStreamPanel";
 import { LevelSurfacesPanel } from "@/core/level/components/panels/LevelSurfacesPanel";
 import { LevelWeatherPanel } from "@/core/level/components/panels/LevelWeatherPanel";
@@ -112,6 +114,13 @@ export function LevelPreviewLayout({
         isOpenByDefault: true,
         label: "Weather",
         render: () => <LevelWeatherPanel />,
+        side: "left",
+      },
+      {
+        icon: <Inventory2Icon />,
+        id: "spawn",
+        label: "Spawn",
+        render: () => <LevelSpawnPanel />,
         side: "left",
       },
       {

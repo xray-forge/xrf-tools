@@ -1,5 +1,6 @@
 pub(crate) mod close_level;
 pub(crate) mod describe_spawn_models;
+pub(crate) mod describe_spawn_object;
 pub(crate) mod get_level;
 pub(crate) mod list_levels;
 pub(crate) mod open_details;

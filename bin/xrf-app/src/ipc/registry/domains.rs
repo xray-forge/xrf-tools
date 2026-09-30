@@ -96,6 +96,7 @@ macro_rules! for_each_tauri_command_domain {
       levels => "levels" {
         close_level => crate::plugins::levels::commands::close_level::levels_close_level,
         describe_spawn_models => crate::plugins::levels::commands::describe_spawn_models::levels_describe_spawn_models,
+        describe_spawn_object => crate::plugins::levels::commands::describe_spawn_object::levels_describe_spawn_object,
         get_level => crate::plugins::levels::commands::get_level::levels_get_level,
         list_levels => crate::plugins::levels::commands::list_levels::levels_list_levels,
         open_details => crate::plugins::levels::commands::open_details::levels_open_details,

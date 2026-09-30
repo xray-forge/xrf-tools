@@ -1833,6 +1833,18 @@ export type LevelSpawnObject = {
   transform: VisualTransform;
 };
 
+/** What the viewer shows of one spawned object beyond where it stands: what the game knows it by and what it carries. */
+export type LevelSpawnObjectDetails = {
+  /** Its ALife id in the spawn. */
+  id: number;
+  /** The game graph vertex it stands at, which places it among the levels. */
+  gameVertexId: number;
+  /** The level graph vertex it stands at, which places it on the level's AI map. */
+  levelVertexId: number;
+  /** Its `custom_data`, the logic and settings a script reads, empty where it has none. */
+  customData: string;
+};
+
 /** How much sky and light reach one spawned object from each way, as the game estimates it for a dynamic object. */
 export type LevelSpawnObjectHemi = {
   /** The object, by its place among the level's spawned objects. */

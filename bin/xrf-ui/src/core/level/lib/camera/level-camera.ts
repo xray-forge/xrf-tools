@@ -18,9 +18,17 @@ export interface ILevelCamera extends IXrayHeading {
  * @returns The position, in the engine's own axis order.
  */
 export function formatLevelPosition(camera: ILevelCamera): string {
-  const { position } = camera;
+  return formatLevelPoint(camera.position);
+}
 
-  return `x ${position.x.toFixed(1)} y ${position.y.toFixed(1)} z ${position.z.toFixed(1)}`;
+/**
+ * A point in the coordinates the level's own data is written in, as the camera readout states one.
+ *
+ * @param point - The point, in the engine's own axis order.
+ * @returns It, a decimal an axis.
+ */
+export function formatLevelPoint(point: ILevelPoint): string {
+  return `x ${point.x.toFixed(1)} y ${point.y.toFixed(1)} z ${point.z.toFixed(1)}`;
 }
 
 /**

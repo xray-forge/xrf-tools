@@ -29,6 +29,7 @@ pub(crate) use selection::level_spawn_model_description::LevelSpawnModelDescript
 pub(crate) use selection::level_spawn_model_failure::LevelSpawnModelFailure;
 pub(crate) use selection::level_spawn_models_description::LevelSpawnModelsDescription;
 pub(crate) use selection::level_spawn_object::LevelSpawnObject;
+pub(crate) use selection::level_spawn_object_details::LevelSpawnObjectDetails;
 pub(crate) use selection::level_spawn_object_hemi::LevelSpawnObjectHemi;
 pub(crate) use selection::level_spawn_objects_description::LevelSpawnObjectsDescription;
 pub(crate) use selection::level_start::LevelStart;

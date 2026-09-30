@@ -7,6 +7,7 @@ import {
   LevelLightsDescription,
   LevelOpenRequest,
   LevelSpawnModelsDescription,
+  LevelSpawnObjectDetails,
   LevelSpawnObjectsDescription,
   LevelTextureReference,
   LevelWeatherCycle,
@@ -32,6 +33,12 @@ export const levelsCommands = {
     __TAURI_INVOKE<SessionSnapshot<LevelSpawnModelsDescription>>("plugin:levels|describe_spawn_models", {
       sessionId,
       names,
+    }),
+  /** Describe one of the open level's spawned objects, by its place among them, as open_spawn_objects numbered it. */
+  describeSpawnObject: (sessionId: SessionId, index: number) =>
+    __TAURI_INVOKE<SessionSnapshot<LevelSpawnObjectDetails>>("plugin:levels|describe_spawn_object", {
+      sessionId,
+      index,
     }),
   /** Restore the committed level descriptor without reading the level again. */
   getLevel: () => __TAURI_INVOKE<SessionRestore<SelectedLevelDescription>>("plugin:levels|get_level"),
