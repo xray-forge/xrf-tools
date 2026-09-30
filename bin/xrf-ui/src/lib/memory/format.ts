@@ -15,6 +15,16 @@ export function formatBytes(bytes: number): string {
 }
 
 /**
+ * Formats a byte count as {@link formatBytes} does, its unit written against the number, as a status bar reads it.
+ *
+ * @param bytes - Byte count to format. Negative values are treated as zero.
+ * @returns The byte count, such as `20MB`.
+ */
+export function formatBytesCompact(bytes: number): string {
+  return formatBytes(bytes).replace(" ", "");
+}
+
+/**
  * Formats two byte counts that are meant to be compared, both in the larger value's unit.
  *
  * A pack summary reads `1.17 GB source, 0.78 GB written`: with each size picking its own unit the ratio
