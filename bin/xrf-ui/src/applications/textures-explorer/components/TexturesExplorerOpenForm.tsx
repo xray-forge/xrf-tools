@@ -12,7 +12,7 @@ import {
 import { AssetRootFormRow } from "@/core/assets/components/AssetRootFormRow";
 import { useAssetRootField } from "@/core/assets/lib";
 import { useRootProbe } from "@/core/assets/lib/use-root-probe";
-import { EXrayExtension } from "@/core/ipc/types/xrf-extension";
+import { TEXTURE_FILE_FILTERS } from "@/core/path/file-filters";
 import { EApplicationId } from "@/core/routing/application";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
 import { TextureCatalogService } from "@/core/textures/services/catalog";
@@ -82,7 +82,7 @@ export function TexturesExplorerOpenForm(): ReactElement {
     }),
     [ETextureOpenMode.TEXTURE]: usePathField({
       application: EApplicationId.TEXTURES_EXPLORER,
-      filters: [{ extensions: [EXrayExtension.DDS, EXrayExtension.THM], name: "Texture or descriptor" }],
+      filters: TEXTURE_FILE_FILTERS,
       id: "texture",
       isDisabled: isLoading,
       title: "Select dds texture or thm descriptor",

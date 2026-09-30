@@ -17,3 +17,21 @@ const XRAY_EXTENSION_BY_SPELLING: ReadonlyMap<string, EXrayExtension> = new Map(
 export function getXrayExtension(name: string): Nullable<EXrayExtension> {
   return XRAY_EXTENSION_BY_SPELLING.get(getFoldedFileExtension(name)) ?? null;
 }
+
+/**
+ * A path that names a format the backend reads, appending `fallback` to one that names none.
+ *
+ * @param path - The path as a save dialog returned it.
+ * @param supported - The extensions the backend takes a format from.
+ * @param fallback - The extension a path naming none of them takes.
+ * @returns The path unchanged when its extension is supported, otherwise the path with the fallback appended.
+ */
+export function withSupportedExtension(
+  path: string,
+  supported: ReadonlyArray<EXrayExtension>,
+  fallback: EXrayExtension
+): string {
+  const extension: Nullable<EXrayExtension> = getXrayExtension(path);
+
+  return extension !== null && supported.includes(extension) ? path : `${path}.${fallback}`;
+}

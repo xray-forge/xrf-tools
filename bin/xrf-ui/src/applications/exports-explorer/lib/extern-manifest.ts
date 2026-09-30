@@ -1,7 +1,8 @@
-import { Nullable } from "@xrf/types";
+import { DialogFilter } from "@tauri-apps/plugin-dialog";
 
 import { EXrayExtension } from "@/core/ipc/types/xrf-extension";
-import { getXrayExtension } from "@/core/path/extension";
+import { withSupportedExtension } from "@/core/path/extension";
+import { toFormatFilters } from "@/core/path/file-filters";
 
 /** Formats the extern manifest can be written as, in the order the save dialog offers them. */
 export const EXTERN_MANIFEST_FORMATS: ReadonlyArray<EXrayExtension> = [
@@ -17,10 +18,10 @@ export const DEFAULT_EXTERN_MANIFEST_FORMAT: EXrayExtension = EXrayExtension.JSO
 export const DEFAULT_MANIFEST_NAME: string = `extern.${DEFAULT_EXTERN_MANIFEST_FORMAT}`;
 
 /** Filters the save dialog offers, one entry per format, so the chosen extension is what picks the writer. */
-export const MANIFEST_FILTERS = EXTERN_MANIFEST_FORMATS.map((format: EXrayExtension) => ({
-  name: `${format.toUpperCase()} manifest`,
-  extensions: [format],
-}));
+export const MANIFEST_FILTERS: Array<DialogFilter> = toFormatFilters(
+  EXTERN_MANIFEST_FORMATS,
+  (format: EXrayExtension) => `${format.toUpperCase()} manifest`
+);
 
 /**
  * Extensions the backend infers a format from.
@@ -37,9 +38,5 @@ const SUPPORTED_EXTENSIONS: ReadonlyArray<EXrayExtension> = [...EXTERN_MANIFEST_
  * @returns The original path when its extension names a format, otherwise the path with `.json` appended.
  */
 export function withExternManifestExtension(path: string): string {
-  const extension: Nullable<EXrayExtension> = getXrayExtension(path);
-
-  return extension !== null && SUPPORTED_EXTENSIONS.includes(extension)
-    ? path
-    : `${path}.${DEFAULT_EXTERN_MANIFEST_FORMAT}`;
+  return withSupportedExtension(path, SUPPORTED_EXTENSIONS, DEFAULT_EXTERN_MANIFEST_FORMAT);
 }

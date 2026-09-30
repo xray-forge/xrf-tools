@@ -6,8 +6,8 @@ import { ReactElement, useCallback, useMemo, useState } from "react";
 import { SpriteEquipmentEditorService } from "@/applications/sprite-equipment-editor/services/editor";
 import { createRoots } from "@/core/assets/lib";
 import { EquipmentSpriteOpen } from "@/core/ipc/types/xrf-app";
-import { EXrayExtension } from "@/core/ipc/types/xrf-extension";
 import { ConfigsDialectFormRow } from "@/core/ltx/components/configs-dialect/ConfigsDialectFormRow";
+import { DDS_FILE_FILTERS, LTX_FILE_FILTERS } from "@/core/path/file-filters";
 import { EApplicationId } from "@/core/routing/application";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
 import { ChoiceFormRow, FormRow, IPathField, PathFormRow, usePathField, useRememberedValue } from "@/core/ui/form";
@@ -53,7 +53,7 @@ export function SpriteEquipmentOpenForm({
     application: EApplicationId.SPRITE_EQUIPMENT_EDITOR,
     id: "sprite",
     title: "Select equipment sprite",
-    filters: [{ name: "dds", extensions: [EXrayExtension.DDS] }],
+    filters: DDS_FILE_FILTERS,
     isDisabled: isLoading,
   });
 
@@ -61,7 +61,7 @@ export function SpriteEquipmentOpenForm({
     application: EApplicationId.SPRITE_EQUIPMENT_EDITOR,
     id: "system-ltx",
     title: "Select system.ltx",
-    filters: [{ name: "ltx", extensions: [EXrayExtension.LTX] }],
+    filters: LTX_FILE_FILTERS,
     isDisabled: isLoading,
   });
 

@@ -7,8 +7,8 @@ import { ReactElement, useCallback, useEffect, useMemo, useState } from "react";
 
 import { EPatcherSection, PatcherService } from "@/applications/archives-patcher/services/patcher";
 import { ARCHIVE_CONFIG_EXTENSIONS, withArchiveConfigExtension } from "@/core/archive/lib";
+import { ARCHIVE_CONFIG_EXPORT_FILTERS } from "@/core/archive/lib/config-format";
 import { ArchivesPatchRequest } from "@/core/ipc/types/xrf-app";
-import { EXrayExtension } from "@/core/ipc/types/xrf-extension";
 import { ArchivePatchConfig } from "@/core/ipc/types/xrf-pack";
 import { JobProgressView } from "@/core/jobs/components/JobProgressView";
 import { IJobState } from "@/core/jobs/lib";
@@ -39,12 +39,6 @@ import {
 const IMPORT_CONFIG_FILTERS: Array<DialogFilter> = [
   { name: "Patching configuration", extensions: [...ARCHIVE_CONFIG_EXTENSIONS] },
 ];
-
-/** Filters the save dialog offers, one entry per format. */
-const EXPORT_CONFIG_FILTERS: Array<DialogFilter> = ARCHIVE_CONFIG_EXTENSIONS.map((extension: EXrayExtension) => ({
-  name: extension,
-  extensions: [extension],
-}));
 
 export function ArchivesPatcherApplication(): ReactElement {
   const log: Logger = useLogger(__MODULE_NAME__);
@@ -137,7 +131,7 @@ export function ArchivesPatcherApplication(): ReactElement {
   const onExport = useCallback(async () => {
     const selected: Nullable<string> = await save({
       title: "Export patching configuration",
-      filters: EXPORT_CONFIG_FILTERS,
+      filters: ARCHIVE_CONFIG_EXPORT_FILTERS,
     });
 
     if (selected) {

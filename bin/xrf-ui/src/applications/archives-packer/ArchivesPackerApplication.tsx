@@ -7,7 +7,7 @@ import { ReactElement, useCallback, useEffect, useMemo, useState } from "react";
 
 import { EPackerSection, PackerService } from "@/applications/archives-packer/services/packer";
 import { ARCHIVE_CONFIG_EXTENSIONS, withArchiveConfigExtension } from "@/core/archive/lib";
-import { EXrayExtension } from "@/core/ipc/types/xrf-extension";
+import { ARCHIVE_CONFIG_EXPORT_FILTERS } from "@/core/archive/lib/config-format";
 import { ArchivePackConfig } from "@/core/ipc/types/xrf-pack";
 import { JobProgressView } from "@/core/jobs/components/JobProgressView";
 import { IJobState } from "@/core/jobs/lib";
@@ -35,12 +35,6 @@ import {
 const IMPORT_CONFIG_FILTERS: Array<DialogFilter> = [
   { name: "Packing configuration", extensions: [...ARCHIVE_CONFIG_EXTENSIONS] },
 ];
-
-/** Filters the save dialog offers, one entry per format. */
-const EXPORT_CONFIG_FILTERS: Array<DialogFilter> = ARCHIVE_CONFIG_EXTENSIONS.map((extension: EXrayExtension) => ({
-  name: extension,
-  extensions: [extension],
-}));
 
 export function ArchivesPackerApplication(): ReactElement {
   const packerService: PackerService = useInjection(PackerService);
@@ -102,7 +96,7 @@ export function ArchivesPackerApplication(): ReactElement {
   const onExport = useCallback(async () => {
     const selected: Nullable<string> = await save({
       title: "Export packing configuration",
-      filters: EXPORT_CONFIG_FILTERS,
+      filters: ARCHIVE_CONFIG_EXPORT_FILTERS,
     });
 
     if (selected) {

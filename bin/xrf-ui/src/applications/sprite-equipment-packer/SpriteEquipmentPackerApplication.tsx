@@ -2,9 +2,9 @@ import { flowResult } from "@wirestate/mobx";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useEffect, useState } from "react";
 
-import { EXrayExtension } from "@/core/ipc/types/xrf-extension";
 import { JobPickerForm } from "@/core/jobs/components/JobPickerForm";
 import { ConfigsDialectFormRow } from "@/core/ltx/components/configs-dialect/ConfigsDialectFormRow";
+import { DDS_FILE_FILTERS, LTX_FILE_FILTERS } from "@/core/path/file-filters";
 import { EApplicationId } from "@/core/routing/application";
 import { SpriteEquipmentPackerService } from "@/core/sprite-equipment/services/packer";
 import { IPathField, PathFormRow, usePathField } from "@/core/ui/form";
@@ -36,7 +36,7 @@ export function SpriteEquipmentPackerApplication(): ReactElement {
     application: EApplicationId.SPRITE_EQUIPMENT_PACKER,
     id: "output",
     title: "Select output sprite",
-    filters: [{ name: "dds", extensions: [EXrayExtension.DDS] }],
+    filters: DDS_FILE_FILTERS,
     isSave: true,
     isDisabled: isRunning,
   });
@@ -45,7 +45,7 @@ export function SpriteEquipmentPackerApplication(): ReactElement {
     application: EApplicationId.SPRITE_EQUIPMENT_PACKER,
     id: "system-ltx",
     title: "Select system.ltx",
-    filters: [{ name: "ltx", extensions: [EXrayExtension.LTX] }],
+    filters: LTX_FILE_FILTERS,
     isDisabled: isRunning,
   });
 

@@ -5,7 +5,7 @@ import { useInjection } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useState } from "react";
 
-import { EXrayExtension } from "@/core/ipc/types/xrf-extension";
+import { SPAWN_FILE_FILTERS } from "@/core/path/file-filters";
 import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
 import { SpawnFileService } from "@/core/spawn/services";
 import { ConfirmDialog } from "@/core/ui/dialog/ConfirmDialog";
@@ -30,7 +30,7 @@ export function SpawnEditorActions({
     // The save dialog asks about overwriting an existing file itself, so there is no second prompt here.
     const path: Nullable<string> = await dialog.save({
       title: "Save spawn file",
-      filters: [{ name: "spawn", extensions: [EXrayExtension.SPAWN] }],
+      filters: SPAWN_FILE_FILTERS,
     });
 
     if (path) {

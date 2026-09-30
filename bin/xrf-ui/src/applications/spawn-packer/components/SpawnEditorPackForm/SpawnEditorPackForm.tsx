@@ -1,8 +1,8 @@
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useEffect } from "react";
 
-import { EXrayExtension } from "@/core/ipc/types/xrf-extension";
 import { JobPickerForm } from "@/core/jobs/components/JobPickerForm";
+import { SPAWN_FILE_FILTERS } from "@/core/path/file-filters";
 import { EApplicationId } from "@/core/routing/application";
 import { resolveOutputPath } from "@/core/settings/lib/output-path";
 import { SpawnConversionOutcome } from "@/core/spawn/components/SpawnConversionOutcome";
@@ -32,7 +32,7 @@ export function SpawnEditorPackForm(): ReactElement {
     application: EApplicationId.SPAWN_PACKER,
     id: "destination",
     title: "Select spawn file output",
-    filters: [{ name: "spawn", extensions: [EXrayExtension.SPAWN] }],
+    filters: SPAWN_FILE_FILTERS,
     isSave: true,
     isDisabled: isLoading,
     seed: () => resolveOutputPath(EApplicationId.SPAWN_PACKER, "all.spawn"),
