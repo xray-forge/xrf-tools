@@ -100,10 +100,30 @@ impl WeatherKeyframe {
   }
 
   fn judge_values(&self, reader: &mut EnvironmentSectionReader) {
+    self.judge_colors(reader);
+    self.judge_signs(reader);
+    self.judge_clamped(reader);
+
+    let name: &str = &self.section.name;
+
+    if self.section.has(WeatherKey::SkyTexture)
+      && self
+        .section
+        .get_text(WeatherKey::SkyTexture, reader.get_engine())
+        .is_empty()
+    {
+      let message: String = format!("{} names no [sky_texture]", reader.describe(name));
+
+      reader.report(EnvironmentRule::Convention, name, Some("sky_texture"), message);
+    }
+  }
+
+  /// `C_CHECK`: a colour component past what the engine takes for valid, which it warns about.
+  fn judge_colors(&self, reader: &mut EnvironmentSectionReader) {
     let section: &EnvironmentSection<WeatherKey> = &self.section;
     let engine: XrayEngine = reader.get_engine();
     let name: &str = &section.name;
-    // `C_CHECK`'s bound: OpenXRay warns past two, Monolith past five.
+    // OpenXRay warns past two, Monolith past five.
     let color_limit: f32 = match engine {
       XrayEngine::Vanilla => 2.0,
       XrayEngine::Extended => 5.0,
@@ -129,9 +149,14 @@ impl WeatherKeyframe {
         reader.report(EnvironmentRule::Convention, name, Some(key.get_name()), message);
       }
     }
+  }
+
+  /// A value that means nothing below zero.
+  fn judge_signs(&self, reader: &mut EnvironmentSectionReader) {
+    let name: &str = &self.section.name;
 
     for key in Self::NON_NEGATIVE {
-      if let Some(value) = section.get(key).and_then(EnvironmentValue::as_number)
+      if let Some(value) = self.section.get(key).and_then(EnvironmentValue::as_number)
         && value < 0.0
       {
         let message: String = format!("{} has a negative [{}]", reader.describe(name), key.get_name());
@@ -139,6 +164,12 @@ impl WeatherKeyframe {
         reader.report(EnvironmentRule::Convention, name, Some(key.get_name()), message);
       }
     }
+  }
+
+  /// A value the engine clamps into its range as it loads the keyframe.
+  fn judge_clamped(&self, reader: &mut EnvironmentSectionReader) {
+    let section: &EnvironmentSection<WeatherKey> = &self.section;
+    let name: &str = &section.name;
 
     if let Some(density) = section
       .get(WeatherKey::RainDensity)
@@ -153,7 +184,7 @@ impl WeatherKeyframe {
       reader.report(EnvironmentRule::Convention, name, Some("rain_density"), message);
     }
 
-    if engine == XrayEngine::Vanilla
+    if reader.get_engine() == XrayEngine::Vanilla
       && let Some(azimuth) = section
         .get(WeatherKey::SunAzimuth)
         .and_then(EnvironmentValue::as_number)
@@ -165,12 +196,6 @@ impl WeatherKeyframe {
       );
 
       reader.report(EnvironmentRule::Convention, name, Some("sun_azimuth"), message);
-    }
-
-    if section.has(WeatherKey::SkyTexture) && section.get_text(WeatherKey::SkyTexture, engine).is_empty() {
-      let message: String = format!("{} names no [sky_texture]", reader.describe(name));
-
-      reader.report(EnvironmentRule::Convention, name, Some("sky_texture"), message);
     }
   }
 

@@ -108,66 +108,75 @@ impl<'a> EnvironmentSectionReader<'a> {
     let value: &str = raw.trim();
     // A key the engine does not read cannot be misread by it, so it is kept and not judged.
     let is_read: bool = key.get_use(self.engine).is_read();
-    let name: &str = key.get_name();
+    let place: (&str, &str) = (section, key.get_name());
 
     match key.get_kind() {
-      EnvironmentValueKind::Number => {
-        let number: Option<(f32, usize)> = scan_engine_float(value);
-
-        match number {
-          _ if !is_read => {}
-          None => {
-            let message: String = format!(
-              "{} has [{name}] = '{value}', which is not a number; the engine reads it as 0",
-              self.describe(section)
-            );
-
-            self.report(EnvironmentRule::Engine, section, Some(name), message);
-          }
-          // `atof` reads the number and stops, so `0.25f` is the 0.25 it was meant to be: written loosely, not misread.
-          Some((read, used)) if used != value.len() => {
-            let message: String = format!(
-              "{} has [{name}] = '{value}', whose trailing text the engine ignores, reading {read}",
-              self.describe(section)
-            );
-
-            self.report(EnvironmentRule::Convention, section, Some(name), message);
-          }
-          Some(_) => {}
-        }
-
-        EnvironmentValue::Number(number.map_or(0.0, |(number, _)| number))
-      }
-      EnvironmentValueKind::Integer => {
-        let integer: i32 = read_engine_integer(value);
-
-        if is_read && value.parse::<i32>().is_err() {
-          let message: String = format!(
-            "{} has [{name}] = '{value}', which is not a whole number; the engine reads it as {integer}",
-            self.describe(section)
-          );
-
-          self.report(EnvironmentRule::Engine, section, Some(name), message);
-        }
-
-        EnvironmentValue::Integer(integer)
-      }
+      EnvironmentValueKind::Number => EnvironmentValue::Number(self.parse_number(place, value, is_read)),
+      EnvironmentValueKind::Integer => EnvironmentValue::Integer(self.parse_integer(place, value, is_read)),
       EnvironmentValueKind::Vector { .. } => EnvironmentValue::Vector(self.read_vector(section, key, value)),
-      EnvironmentValueKind::Flag => {
-        if is_read && !Self::FLAG_WORDS.iter().any(|word| value.eq_ignore_ascii_case(word)) {
-          let message: String = format!(
-            "{} has [{name}] = '{value}', which the engine reads as false",
-            self.describe(section)
-          );
-
-          self.report(EnvironmentRule::Convention, section, Some(name), message);
-        }
-
-        EnvironmentValue::Flag(read_engine_bool(value))
-      }
+      EnvironmentValueKind::Flag => EnvironmentValue::Flag(self.parse_flag(place, value, is_read)),
       EnvironmentValueKind::Text => EnvironmentValue::Text(value.to_owned()),
       EnvironmentValueKind::List => EnvironmentValue::List(Self::split_list(value)),
     }
+  }
+
+  /// A number as `atof` reads it, saying what it made of one not written as a number.
+  fn parse_number(&mut self, (section, name): (&str, &str), value: &str, is_read: bool) -> f32 {
+    let number: Option<(f32, usize)> = scan_engine_float(value);
+
+    match number {
+      _ if !is_read => {}
+      None => {
+        let message: String = format!(
+          "{} has [{name}] = '{value}', which is not a number; the engine reads it as 0",
+          self.describe(section)
+        );
+
+        self.report(EnvironmentRule::Engine, section, Some(name), message);
+      }
+      // `atof` reads the number and stops, so `0.25f` is the 0.25 it was meant to be: written loosely, not misread.
+      Some((read, used)) if used != value.len() => {
+        let message: String = format!(
+          "{} has [{name}] = '{value}', whose trailing text the engine ignores, reading {read}",
+          self.describe(section)
+        );
+
+        self.report(EnvironmentRule::Convention, section, Some(name), message);
+      }
+      Some(_) => {}
+    }
+
+    number.map_or(0.0, |(number, _)| number)
+  }
+
+  /// A whole number as `atoi` reads it, saying what it made of one not written as one.
+  fn parse_integer(&mut self, (section, name): (&str, &str), value: &str, is_read: bool) -> i32 {
+    let integer: i32 = read_engine_integer(value);
+
+    if is_read && value.parse::<i32>().is_err() {
+      let message: String = format!(
+        "{} has [{name}] = '{value}', which is not a whole number; the engine reads it as {integer}",
+        self.describe(section)
+      );
+
+      self.report(EnvironmentRule::Engine, section, Some(name), message);
+    }
+
+    integer
+  }
+
+  /// A flag as `CInifile::r_bool` reads it, saying where a word it does not know reads as false.
+  fn parse_flag(&mut self, (section, name): (&str, &str), value: &str, is_read: bool) -> bool {
+    if is_read && !Self::FLAG_WORDS.iter().any(|word| value.eq_ignore_ascii_case(word)) {
+      let message: String = format!(
+        "{} has [{name}] = '{value}', which the engine reads as false",
+        self.describe(section)
+      );
+
+      self.report(EnvironmentRule::Convention, section, Some(name), message);
+    }
+
+    read_engine_bool(value)
   }
 
   /// A vector as `sscanf` reads it, saying what it made of one not written as the engine reads one.
