@@ -60,7 +60,7 @@ export function TextureDescriptorPanel({
     );
   }
 
-  const isAuthoring: boolean = description.form === null;
+  const isAuthoring: boolean = !description.hasDescriptor;
   const primaryFlags: Array<TextureFlagEntry> = vocabulary.flags.filter((flag: TextureFlagEntry) =>
     PRIMARY_FLAG_LABELS.includes(flag.label)
   );

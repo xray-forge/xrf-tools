@@ -84,8 +84,8 @@ pub struct TexturesMakeBumpRequest {
   pub gloss_constant: f32,
   /// Path of a normal map to use instead of deriving one from the height, of the same size.
   pub normal_map: Option<String>,
-  /// `bump_virtual_height` of the descriptor, read here and nowhere at runtime.
-  pub virtual_height: f32,
+  /// `bump_virtual_height` of the descriptor, read here and nowhere at runtime; the SDK's default when absent.
+  pub virtual_height: Option<f32>,
   /// Kernel the pair's chain is reduced with, by its SDK name.
   pub mip_filter: Option<String>,
   pub quality: TextureEncodingQuality,

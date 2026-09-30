@@ -4,9 +4,11 @@ use std::path::PathBuf;
 
 use xrf_material::XrayMaterialDescriptor;
 use xrf_material::fixtures::{FixtureTree, ThmFixture};
+use xrf_thm::{ThmFile, ThmTextureFlags};
 use xrf_vfs::{XrayProbe, XrayRoots, XrayVfs};
 
 use crate::plugins::textures::description::TextureDescription;
+use crate::plugins::textures::descriptor_form::TextureDescriptorForm;
 use crate::plugins::textures::source::TextureSource;
 use crate::plugins::textures::tests::fixtures::{
   BASE, BUMP, COMPANION, bumped_tree, file_source, loose_directory, mount, probe_over, roots_of, to_dds_bytes,
@@ -119,11 +121,17 @@ fn a_standalone_texture_reads_the_descriptor_beside_it_and_offers_to_author_one(
   let (vfs, id) = mount(&FixtureTree::new("textures_standalone_descriptor_roots"));
   let probe: XrayProbe = probe_over(&vfs, id);
 
-  // With no `.thm` beside it the form is absent and the editor authors one; the target says so by expecting nothing.
+  // With no `.thm` beside it the editor authors one from the SDK's defaults; the target says so by expecting nothing.
   let authoring: TextureDescription =
     TextureDescription::describe(&probe, file_source(texture.clone()), XrayRoots::default()).expect("described");
 
-  assert!(authoring.form.is_none());
+  assert!(!authoring.has_descriptor);
+  assert_eq!(authoring.form, TextureDescriptorForm::read(&ThmFile::new_texture()));
+  assert_eq!(
+    authoring.form.flags,
+    ThmTextureFlags::DEFAULT.raw(),
+    "expect a new descriptor to generate mips and dither"
+  );
   assert_eq!(
     authoring
       .targets
@@ -145,7 +153,7 @@ fn a_standalone_texture_reads_the_descriptor_beside_it_and_offers_to_author_one(
   let described: TextureDescription =
     TextureDescription::describe(&probe, file_source(texture), XrayRoots::default()).expect("described");
 
-  assert!(described.form.is_some());
+  assert!(described.has_descriptor);
   assert!(
     described
       .targets
@@ -170,7 +178,7 @@ fn a_descriptor_opened_on_its_own_outside_a_root_finds_its_texture() {
   .expect("described");
 
   assert_eq!(description.reference, "wall");
-  assert!(description.form.is_some());
+  assert!(description.has_descriptor);
   assert!(description.base.is_some(), "expect the dds beside the descriptor");
 }
 

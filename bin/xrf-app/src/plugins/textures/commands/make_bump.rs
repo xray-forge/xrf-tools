@@ -110,7 +110,9 @@ fn to_options(
       Some(path) => Some(read_image_as_rgba(path).map_err(error_to_string)?),
       None => None,
     },
-    virtual_height: request.virtual_height,
+    virtual_height: request
+      .virtual_height
+      .unwrap_or(GenerateBumpOptions::DEFAULT_VIRTUAL_HEIGHT),
     mip_filter,
     quality: request.quality.to_quality(),
   })

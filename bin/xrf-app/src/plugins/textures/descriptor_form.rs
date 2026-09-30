@@ -37,6 +37,14 @@ pub struct TextureDescriptorForm {
 }
 
 impl TextureDescriptorForm {
+  /// The fields of a descriptor, or of a new one with the SDK's defaults when there is none.
+  pub fn of(file: Option<&ThmFile>) -> Self {
+    match file {
+      Some(file) => Self::read(file),
+      None => Self::read(&ThmFile::new_texture()),
+    }
+  }
+
   /// Reads the editable fields of a descriptor.
   pub fn read(file: &ThmFile) -> Self {
     let param: ThmTextureParamChunk = file.texture_param.unwrap_or_default();

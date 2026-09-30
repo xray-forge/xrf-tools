@@ -42,7 +42,8 @@ async function renderWorkspace(description: TextureDescription = describedTextur
   let written: Nullable<TextureDescriptorForm> = null;
 
   setMockInvokeResponses({
-    ["plugin:textures|describe"]: (): TextureDescription => ({ ...description, form: written ?? description.form }),
+    ["plugin:textures|describe"]: (): TextureDescription =>
+      written ? { ...description, form: written, hasDescriptor: true } : description,
     ["plugin:textures|get_roots"]: null,
     ["plugin:textures|get_vocabulary"]: mockTextureVocabulary(),
     ["plugin:textures|save"]: (args?: Record<string, unknown>): TextureSaveOutcome => {

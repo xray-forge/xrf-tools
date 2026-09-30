@@ -3,45 +3,7 @@ import { Nullable } from "@xrf/types";
 import { TextureDescription, TextureDescriptorForm } from "@/core/ipc/types/xrf-app";
 
 /**
- * The relief depth a descriptor starts at.
- *
- * The SDK's own `bump_virtual_height` default. Named rather than spelled where it is needed, because the field is
- * nullable on the wire and every surface that fills that null in has to fill it in with the same number - the form a
- * new descriptor opens on, and the depth a bump generation derives at when the draft has yet to say.
- */
-export const DEFAULT_VIRTUAL_HEIGHT: number = 0.05;
-
-/**
- * The form a texture with no descriptor starts from.
- *
- * What the editor shows before anybody touches it, and nothing more. A save of an authored descriptor applies the form
- * onto `ThmFile::new_texture` in the backend, so what actually reaches disk is the SDK's own defaults; these values
- * only decide what a person sees first. Width and height are zero here because they belong to the DDS header, which
- * `toEditableForm` fills in.
- */
-export const EMPTY_TEXTURE_DESCRIPTOR_FORM: TextureDescriptorForm = {
-  bumpMode: 0,
-  bumpName: "",
-  borderColor: 0,
-  detailName: "",
-  detailScale: 1,
-  extNormalMapName: "",
-  fadeAmount: 0,
-  fadeColor: 0,
-  fadeDelay: 0,
-  flags: 0,
-  format: 0,
-  height: 0,
-  material: 0,
-  materialWeight: 0,
-  mipFilter: 0,
-  textureType: 0,
-  virtualHeight: DEFAULT_VIRTUAL_HEIGHT,
-  width: 0,
-};
-
-/**
- * The form to edit for a described texture: the descriptor it has, or a new one shaped by the file beside it.
+ * The form to edit for a described texture, shaped by the file beside it.
  *
  * @param description - What the backend answered for the selected texture, or null when none is selected.
  * @returns The form to bind, or null when nothing is selected.
@@ -52,7 +14,8 @@ export function toEditableForm(description: Nullable<TextureDescription>): Nulla
   }
 
   const shape = description.base?.shape ?? null;
-  const form: TextureDescriptorForm = description.form ?? EMPTY_TEXTURE_DESCRIPTOR_FORM;
+  // The backend's own for a texture with no descriptor: `ThmFile::new_texture`, the defaults the SDK authors with.
+  const form: TextureDescriptorForm = description.form;
 
   return shape ? { ...form, height: shape.height, width: shape.width } : form;
 }

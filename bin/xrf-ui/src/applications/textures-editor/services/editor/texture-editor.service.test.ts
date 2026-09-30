@@ -2,9 +2,8 @@ import { beforeEach, describe, expect, it } from "@jest/globals";
 import { Container } from "@wirestate/core";
 import { isComputedProp, isObservableProp } from "@wirestate/mobx";
 
-import { EMPTY_TEXTURE_DESCRIPTOR_FORM } from "@/applications/textures-editor/lib/texture-descriptor-form";
 import { TextureEncodingService } from "@/applications/textures-editor/services/encoding";
-import { TextureDescription, TextureDescriptorForm, TextureVocabulary } from "@/core/ipc/types/xrf-app";
+import { TextureDescription, TextureVocabulary } from "@/core/ipc/types/xrf-app";
 import { JobsService } from "@/core/jobs/services/jobs";
 import { TextureSelectionService } from "@/core/textures/services/selection";
 import { setMockBulkResponses } from "@/fixtures/mocks/bulk.mocks";
@@ -12,6 +11,7 @@ import { mockInvoke, resetMockInvoke, setMockInvokeResponses } from "@/fixtures/
 import {
   MOCK_TEXTURE,
   mockTextureDescription,
+  mockTextureDescriptorForm,
   mockTextureEncodingComparison,
   mockTextureVocabulary,
 } from "@/fixtures/mocks/texture.mocks";
@@ -21,14 +21,11 @@ import { TextureEditorService } from "./texture-editor.service";
 
 const VOCABULARY: TextureVocabulary = mockTextureVocabulary();
 
-function form(overrides: Partial<TextureDescriptorForm> = {}): TextureDescriptorForm {
-  return { ...EMPTY_TEXTURE_DESCRIPTOR_FORM, ...overrides };
-}
-
 /** A described texture that has a descriptor and a file to write it back to. */
 function describedTexture(reference: string, overrides: Partial<TextureDescription> = {}): TextureDescription {
   return mockTextureDescription(reference, {
-    form: form({ bumpName: "ston\\ston_beton05_bump" }),
+    form: mockTextureDescriptorForm({ bumpName: "ston\\ston_beton05_bump" }),
+    hasDescriptor: true,
     targets: {
       descriptor: { expected: { modifiedMs: 1, size: 2 }, path: `C:\\gamedata\\textures\\${reference}.thm` },
       texture: { expected: { modifiedMs: 1, size: 3 }, path: `C:\\gamedata\\textures\\${reference}.dds` },
@@ -104,7 +101,7 @@ describe("TextureEditorService", () => {
 
     service.bind(describedTexture(MOCK_TEXTURE));
     service.edit({ detailScale: 0.5 });
-    service.edit({ detailScale: EMPTY_TEXTURE_DESCRIPTOR_FORM.detailScale });
+    service.edit({ detailScale: mockTextureDescriptorForm().detailScale });
 
     expect(service.isDirty).toBe(false);
   });
@@ -139,7 +136,7 @@ describe("TextureEditorService", () => {
     // Most textures have none, so authoring one is an ordinary act rather than an error state.
     const service: TextureEditorService = mockEditorService();
 
-    service.bind(describedTexture(MOCK_TEXTURE, { form: null }));
+    service.bind(describedTexture(MOCK_TEXTURE, { hasDescriptor: false }));
 
     expect(service.draft).not.toBeNull();
     expect(service.isDirty).toBe(false);
@@ -231,7 +228,9 @@ describe("TextureEditorService", () => {
       ["plugin:textures|describe"]: () => {
         describeCount += 1;
 
-        return describedTexture(MOCK_TEXTURE, { form: form({ bumpName: `read-${describeCount}` }) });
+        return describedTexture(MOCK_TEXTURE, {
+          form: mockTextureDescriptorForm({ bumpName: `read-${describeCount}` }),
+        });
       },
       ["plugin:textures|get_vocabulary"]: VOCABULARY,
       ["plugin:textures|save"]: {

@@ -24,8 +24,8 @@ export interface ITextureBumpSources {
   glossConstant: number;
   /** Normals to use instead of the ones the height implies, of the same size. */
   normalMap: Nullable<string>;
-  /** `bump_virtual_height` of the descriptor, which decides how deep the relief is derived at. */
-  virtualHeight: number;
+  /** `bump_virtual_height` of the descriptor, which decides how deep the relief is derived at; null for the SDK's. */
+  virtualHeight: Nullable<number>;
 }
 
 /**

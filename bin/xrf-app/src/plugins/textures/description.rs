@@ -35,8 +35,10 @@ pub struct TextureDescription {
   pub bump: Option<AssetTextureDescriptor>,
   /// What the bound bump companion file is, on the same terms.
   pub companion: Option<AssetTextureDescriptor>,
-  /// The descriptor's editable fields, when a `.thm` was located and parsed.
-  pub form: Option<TextureDescriptorForm>,
+  /// Whether a `.thm` was located and parsed, so the editor edits one rather than authoring it.
+  pub has_descriptor: bool,
+  /// The descriptor's editable fields, or the SDK's defaults a descriptor authored for this texture starts from.
+  pub form: TextureDescriptorForm,
   /// Where an edit of this texture would write, absent for a texture served out of an archive.
   pub targets: Option<TextureEditTargets>,
 }
@@ -74,13 +76,14 @@ impl TextureDescription {
       AssetTextureDescriptor::describe(probe, input.resolution.get_asset()?)
     };
 
+    let descriptor: Option<ThmFile> = material
+      .descriptor
+      .as_ref()
+      .and_then(|asset| read_descriptor(probe, asset));
+
     Ok(Self {
-      form: material
-        .descriptor
-        .as_ref()
-        .and_then(|asset| read_descriptor(probe, asset))
-        .as_ref()
-        .map(TextureDescriptorForm::read),
+      has_descriptor: descriptor.is_some(),
+      form: TextureDescriptorForm::of(descriptor.as_ref()),
       targets: match &texture {
         Some(asset) => TextureEditTargets::of(asset, material.descriptor.as_ref())?,
         None => None,
@@ -120,10 +123,11 @@ impl TextureDescription {
     // file no tree can place answers to its own name in its own directory or to nothing at all.
     let roots: XrayRoots = with_own_directory(roots, &texture_path);
 
+    let descriptor: Option<ThmFile> = read_descriptor_from_path(&descriptor_path);
+
     Ok(Self {
-      form: read_descriptor_from_path(&descriptor_path)
-        .as_ref()
-        .map(TextureDescriptorForm::read),
+      has_descriptor: descriptor.is_some(),
+      form: TextureDescriptorForm::of(descriptor.as_ref()),
       targets: Some(TextureEditTargets::of_paths(&descriptor_path, &texture_path)?),
       base: texture
         .as_ref()

@@ -2275,8 +2275,10 @@ export type TextureDescription = {
   bump: AssetTextureDescriptor | null;
   /** What the bound bump companion file is, on the same terms. */
   companion: AssetTextureDescriptor | null;
-  /** The descriptor's editable fields, when a `.thm` was located and parsed. */
-  form: TextureDescriptorForm | null;
+  /** Whether a `.thm` was located and parsed, so the editor edits one rather than authoring it. */
+  hasDescriptor: boolean;
+  /** The descriptor's editable fields, or the SDK's defaults a descriptor authored for this texture starts from. */
+  form: TextureDescriptorForm;
   /** Where an edit of this texture would write, absent for a texture served out of an archive. */
   targets: TextureEditTargets | null;
 };
@@ -2562,7 +2564,7 @@ export type TexturesMakeBumpRequest = {
   glossConstant: number | null;
   /** Path of a normal map to use instead of deriving one from the height, of the same size. */
   normalMap: string | null;
-  /** `bump_virtual_height` of the descriptor, read here and nowhere at runtime. */
+  /** `bump_virtual_height` of the descriptor, read here and nowhere at runtime; the SDK's default when absent. */
   virtualHeight: number | null;
   /** Kernel the pair's chain is reduced with, by its SDK name. */
   mipFilter: string | null;

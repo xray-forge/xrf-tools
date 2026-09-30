@@ -2,6 +2,7 @@ import {
   TextureBadges,
   TextureCatalog,
   TextureDescription,
+  TextureDescriptorForm,
   TextureEncodingComparison,
   TextureEntry,
   TextureMaterialSummary,
@@ -105,6 +106,31 @@ export function mockFlatMaterial(overrides: Partial<XrayMaterialDescriptor> = {}
   };
 }
 
+/** A descriptor's editable fields, neutral where a case does not set them. */
+export function mockTextureDescriptorForm(overrides: Partial<TextureDescriptorForm> = {}): TextureDescriptorForm {
+  return {
+    borderColor: 0,
+    bumpMode: 0,
+    bumpName: "",
+    detailName: "",
+    detailScale: 1,
+    extNormalMapName: "",
+    fadeAmount: 0,
+    fadeColor: 0,
+    fadeDelay: 0,
+    flags: 0,
+    format: 0,
+    height: 0,
+    material: 0,
+    materialWeight: 0,
+    mipFilter: 0,
+    textureType: 0,
+    virtualHeight: 0.05,
+    width: 0,
+    ...overrides,
+  };
+}
+
 export function mockTextureDescription(
   reference: string = MOCK_TEXTURE,
   overrides: Partial<TextureDescription> = {}
@@ -113,7 +139,8 @@ export function mockTextureDescription(
     base: { shape: null, size: 1024 },
     bump: null,
     companion: null,
-    form: null,
+    form: mockTextureDescriptorForm(),
+    hasDescriptor: false,
     material: mockFlatMaterial(),
     reference,
     roots: mockTextureRoots(),

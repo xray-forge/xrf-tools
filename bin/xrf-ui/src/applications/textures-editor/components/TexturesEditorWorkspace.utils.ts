@@ -20,7 +20,7 @@ export function describeEditedTextureStatus(description: Nullable<TextureDescrip
     status.push(`${shape.width}x${shape.height}`, shape.format);
   }
 
-  status.push(description.form ? "has descriptor" : "no descriptor");
+  status.push(description.hasDescriptor ? "has descriptor" : "no descriptor");
 
   return status;
 }

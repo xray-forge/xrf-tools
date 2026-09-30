@@ -81,6 +81,7 @@ function describedTexture(overrides: Partial<TextureDescription> = {}): TextureD
       virtualHeight: 0.05,
       width: 512,
     },
+    hasDescriptor: true,
     targets: {
       descriptor: { expected: { modifiedMs: 1, size: 2 }, path: "C:\\gamedata\\textures\\ston\\ston_beton05.thm" },
       texture: { expected: { modifiedMs: 1, size: 3 }, path: "C:\\gamedata\\textures\\ston\\ston_beton05.dds" },
@@ -170,7 +171,7 @@ describe("TextureDescriptorPanel", () => {
   });
 
   it("offers to author a descriptor for a texture that has none", async () => {
-    const { render } = await renderPanel(describedTexture({ form: null }));
+    const { render } = await renderPanel(describedTexture({ hasDescriptor: false }));
 
     await waitFor(() => expect(render.getByTestId("texture-field-format")).toBeTruthy());
 

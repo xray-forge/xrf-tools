@@ -1,20 +1,21 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { TextureDescriptorForm } from "@/core/ipc/types/xrf-app";
-import { mockTextureDescription } from "@/fixtures/mocks/texture.mocks";
+import { mockTextureDescriptorForm as form, mockTextureDescription } from "@/fixtures/mocks/texture.mocks";
 
-import { EMPTY_TEXTURE_DESCRIPTOR_FORM, isSameDescriptorForm, toEditableForm } from "./texture-descriptor-form";
-
-function form(overrides: Partial<TextureDescriptorForm> = {}): TextureDescriptorForm {
-  return { ...EMPTY_TEXTURE_DESCRIPTOR_FORM, ...overrides };
-}
+import { isSameDescriptorForm, toEditableForm } from "./texture-descriptor-form";
 
 describe("toEditableForm", () => {
-  it("should offer a form for a texture with no descriptor, because most textures have none", () => {
-    const editable = toEditableForm(mockTextureDescription("ston\\ston_beton05", { form: null }));
+  it("should offer the backend's authoring form for a texture with no descriptor, because most textures have none", () => {
+    const authoring = form({ flags: 3, material: 1 });
+    const editable = toEditableForm(
+      mockTextureDescription("ston\\ston_beton05", {
+        base: { shape: null, size: 1 },
+        form: authoring,
+        hasDescriptor: false,
+      })
+    );
 
-    expect(editable).not.toBeNull();
-    expect(editable?.format).toBe(EMPTY_TEXTURE_DESCRIPTOR_FORM.format);
+    expect(editable).toEqual(authoring);
   });
 
   it("should take width and height from the dds header rather than from the descriptor's own copy", () => {

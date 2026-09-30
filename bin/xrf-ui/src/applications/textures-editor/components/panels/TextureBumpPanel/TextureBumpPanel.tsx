@@ -5,7 +5,6 @@ import { ReactElement, useCallback, useState } from "react";
 
 import { DEFAULT_GLOSS_POWER } from "@/applications/textures-editor/lib/texture-bump-gloss";
 import { toBumpReference, toCompanionReference } from "@/applications/textures-editor/lib/texture-bump-target";
-import { DEFAULT_VIRTUAL_HEIGHT } from "@/applications/textures-editor/lib/texture-descriptor-form";
 import { TextureBumpService } from "@/applications/textures-editor/services/bump";
 import { TextureEditorService } from "@/applications/textures-editor/services/editor";
 import { TextureDescription } from "@/core/ipc/types/xrf-app";
@@ -84,7 +83,7 @@ export function TextureBumpPanel({
         height: height.value ?? "",
         normalMap: normalMap.value,
         // The descriptor's own, so generating twice at different depths is a deliberate act rather than a surprise.
-        virtualHeight: editorService.draft?.virtualHeight ?? DEFAULT_VIRTUAL_HEIGHT,
+        virtualHeight: editorService.draft?.virtualHeight ?? null,
       }),
     [bumpService, editorService.draft?.virtualHeight, gloss.value, glossConstant, height.value, normalMap.value]
   );
