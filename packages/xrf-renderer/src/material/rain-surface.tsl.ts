@@ -41,6 +41,9 @@ function toRainSurface(coordinates: Node<"vec2">, rain: RainUniforms): IWeatherS
 
   material.fragmentNode = vec4(texel.xyz.mul(rain.color.xyz), texel.w.mul(rain.color.w));
   material.side = DoubleSide;
+  // Both sides in one draw, as the engine's `CULL_NONE`: three draws a blended double side back then front, flipping its
+  // side for the draw alone, which a compile never sees and so builds pipelines neither draw uses.
+  material.forceSinglePass = true;
   material.fog = false;
   applySurfaceCompositing(material, RAIN_COMPOSITING);
 

@@ -21,6 +21,9 @@ function createThunderMaterial(draw: ERendererDraw, fragment: (sampler: TextureN
 
   material.fragmentNode = fragment(sampler);
   material.side = DoubleSide;
+  // Both sides in one draw, as the engine's `CULL_NONE`: three draws a blended double side back then front, flipping its
+  // side for the draw alone, which a compile never sees and so builds pipelines neither draw uses.
+  material.forceSinglePass = true;
   material.fog = false;
   applySurfaceCompositing(material, { ...compositing, isPulled: false });
 
