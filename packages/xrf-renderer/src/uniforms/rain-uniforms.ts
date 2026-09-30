@@ -1,3 +1,4 @@
+import { toDirection } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 import { renderGroup, uniform } from "three/tsl";
 import { DepthTexture, FloatType, RedFormat, RenderTarget, UniformNode, Vector3, Vector4 } from "three/webgpu";
@@ -62,12 +63,14 @@ export class RainUniforms {
     const [red, green, blue] = rain.color.map((it: number) => Math.min(Math.max(it, 0), 1));
     const lean: number = Math.min(Math.max((rain.windVelocity * GUST) / MAX_LEAN_WIND, 0), 1);
     const pitch: number = MAX_LEAN * lean - Math.PI / 2;
-    const heading: number = rain.windDirection;
 
     this.count.value = Math.floor(0.5 * (1 + density) * RAIN_STREAKS);
     this.color.value.set(red, green, blue, density / 2 + 0.5);
+
     // `axis.setHP(wind_direction, pitch)`, engine `z` negated into renderer space.
-    this.axis.value.set(-Math.cos(pitch) * Math.sin(heading), Math.sin(pitch), -(Math.cos(pitch) * Math.cos(heading)));
+    const [x, y, z] = toDirection({ heading: rain.windDirection, pitch });
+
+    this.axis.value.set(x, y, -z);
   }
 
   /**

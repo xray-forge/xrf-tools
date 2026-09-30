@@ -24,7 +24,6 @@ import { setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
-/** A camera placed where a readout has something to say about every axis. */
 function camera(position: Partial<ILevelPoint> = {}): ILevelCamera {
   return {
     // A quarter turn, which reads as 90 degrees rather than as a signed radian.
@@ -34,12 +33,6 @@ function camera(position: Partial<ILevelPoint> = {}): ILevelCamera {
   };
 }
 
-/**
- * Renders the layout beside the real status bar, over a stub viewport.
- *
- * @param onRender - Called on every render of the stub, so a test can count what the telemetry redraws.
- * @returns The rendered tree, and the service a test reports through.
- */
 function renderReporting(onRender: () => void = () => undefined): {
   loader: LevelLoadService;
   view: RenderResult;

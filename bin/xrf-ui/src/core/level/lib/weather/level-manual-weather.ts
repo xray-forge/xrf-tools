@@ -1,4 +1,4 @@
-import { toDegrees, toRadians } from "@xrf/math";
+import { toDegrees, toDirection, toHeadingPitch, toRadians } from "@xrf/math";
 import { IRendererWeatherKeyframe, TRendererVector } from "@xrf/renderer";
 import { Nullable } from "@xrf/types";
 
@@ -114,7 +114,7 @@ export function toLevelManualKeyframe(manual: ILevelManualWeather, time: number)
     skyTextureEnv: `${manual.skyTexture}${ENVIRONMENT_SUFFIX}`,
     sunAzimuth: 0,
     sunColor: manual.sunColor,
-    sunDirection: toSunDirection(toRadians(manual.sunAltitude), toRadians(manual.sunLongitude)),
+    sunDirection: toDirection({ heading: toRadians(manual.sunAltitude), pitch: toRadians(manual.sunLongitude) }),
     time,
     treeAmplitude: manual.treesAmplitude,
     treeRotation: manual.treesRotation,
@@ -219,19 +219,11 @@ export function toLevelManualSun(
   return toSunAngles([x / length, y / length, z / length]);
 }
 
-/** `Fvector::getHP`: a direction's heading and pitch, in degrees. */
+/** `getHP` of the sun's direction, in degrees: `sun_altitude` is its heading and `sun_longitude` its pitch. */
 function toSunAngles(direction: TRendererVector): Pick<ILevelManualWeather, "sunAltitude" | "sunLongitude"> {
-  const [x, y, z] = direction;
+  const { heading, pitch } = toHeadingPitch(direction);
 
-  return {
-    sunAltitude: toDegrees(Math.atan2(-x, z)),
-    sunLongitude: toDegrees(Math.asin(Math.min(Math.max(y, -1), 1))),
-  };
-}
-
-/** `Fvector::setHP(h, p)`, in engine space. */
-function toSunDirection(heading: number, pitch: number): TRendererVector {
-  return [-Math.cos(pitch) * Math.sin(heading), Math.sin(pitch), Math.cos(pitch) * Math.cos(heading)];
+  return { sunAltitude: toDegrees(heading), sunLongitude: toDegrees(pitch) };
 }
 
 function isFiniteNumber(value: unknown): boolean {

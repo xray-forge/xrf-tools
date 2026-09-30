@@ -1,8 +1,7 @@
-import { EPS_S, toRadians } from "@xrf/math";
+import { EPS_S, toDirection, toRadians } from "@xrf/math";
 
 import { TRendererVector } from "#/contract/renderer-vector";
 import { WEATHER_DAY_LENGTH } from "#/weather/weather-day";
-import { toWeatherHeading } from "#/weather/weather-heading";
 
 /** Where the engine puts its sun: Chernobyl's latitude, and a longitude its clock is offset by. */
 const LATITUDE: number = toRadians(50.27);
@@ -75,7 +74,7 @@ export function toDynamicSun(time: number, azimuth: number): IDynamicSun {
 
   return {
     blend: clamp((elevation - LOWEST) / (FULL - LOWEST), 0, 1),
-    direction: toWeatherHeading(hourAngle < 0 ? 2 * Math.PI - heading : heading, -elevation),
+    direction: toDirection({ heading: hourAngle < 0 ? 2 * Math.PI - heading : heading, pitch: -elevation }),
   };
 }
 

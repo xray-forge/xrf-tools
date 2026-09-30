@@ -1,4 +1,4 @@
-import { toRadians } from "@xrf/math";
+import { toDirection, toRadians } from "@xrf/math";
 
 import { TRendererVector } from "#/contract/renderer-vector";
 
@@ -14,8 +14,7 @@ import { TRendererVector } from "#/contract/renderer-vector";
  * @returns The direction, normalised, with engine `z` negated into renderer space.
  */
 export function toRendererSunDirection(altitude: number, longitude: number): TRendererVector {
-  const h: number = toRadians(altitude);
-  const p: number = toRadians(longitude);
+  const [x, y, z] = toDirection({ heading: toRadians(altitude), pitch: toRadians(longitude) });
 
-  return [-Math.cos(p) * Math.sin(h), Math.sin(p), -(Math.cos(p) * Math.cos(h))];
+  return [x, y, -z];
 }

@@ -1,3 +1,4 @@
 export * from "#/angle";
+export * from "#/heading-pitch";
 export * from "#/math-constants";
 export * from "#/series";

@@ -1,3 +1,4 @@
+import { toDirection, toHeadingPitch } from "@xrf/math";
 /**
  * A point in one of the two spaces an X-Ray asset is ever in.
  */
@@ -49,15 +50,10 @@ export interface IXrayHeading {
  * @returns Its heading and pitch, as the engine states them.
  */
 export function toXrayHeading(direction: IRenderPoint): IXrayHeading {
-  const facing: IRenderPoint = toXraySpace(direction);
-  const flat: number = Math.hypot(facing.x, facing.z);
+  const { x, y, z } = toXraySpace(direction);
+  const { heading, pitch } = toHeadingPitch([x, y, z]);
 
-  return {
-    // The engine measures its heading the other way round from `atan2`, which is the whole content of `getHP`. A
-    // direction straight up or down has no heading to read, and `getHP` answers zero for it rather than guessing.
-    heading: flat === 0 ? 0 : toTurn(-Math.atan2(facing.x, facing.z)),
-    pitch: Math.atan2(facing.y, flat),
-  };
+  return { heading: toTurn(heading), pitch };
 }
 
 /**
@@ -67,11 +63,9 @@ export function toXrayHeading(direction: IRenderPoint): IXrayHeading {
  * @returns Which way it faces, normalized, in renderer space.
  */
 export function toRendererFacing(heading: IXrayHeading): IRenderPoint {
-  return toRendererSpace({
-    x: -Math.cos(heading.pitch) * Math.sin(heading.heading),
-    y: Math.sin(heading.pitch),
-    z: Math.cos(heading.pitch) * Math.cos(heading.heading),
-  });
+  const [x, y, z] = toDirection(heading);
+
+  return toRendererSpace({ x, y, z });
 }
 
 /** The same angle counted from zero round one turn, so a bearing never arrives negative. */

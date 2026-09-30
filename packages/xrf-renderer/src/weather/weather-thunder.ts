@@ -1,4 +1,4 @@
-import { EPS_L } from "@xrf/math";
+import { EPS_L, toDirection, toHeadingPitch } from "@xrf/math";
 import { Maybe, Nullable } from "@xrf/types";
 
 import { TRendererVector } from "#/contract/renderer-vector";
@@ -7,7 +7,6 @@ import { IRendererThunder } from "#/contract/weather/renderer-thunder";
 import { IRendererThunderSettings } from "#/contract/weather/renderer-thunder-settings";
 import { IRendererThunderbolt } from "#/contract/weather/renderer-thunderbolt";
 import { toInterpolatedColor } from "#/lighting/light-animator";
-import { toWeatherHeading } from "#/weather/weather-heading";
 import { IWeatherMix } from "#/weather/weather-mix";
 import { IWeatherThunderFlash } from "#/weather/weather-thunder-flash";
 import { IWeatherThunderInput } from "#/weather/weather-thunder-input";
@@ -123,7 +122,7 @@ export class WeatherThunder {
     const lasting: number = mix.thunderboltDuration;
     const life: number = lasting + this.between(-lasting * 0.5, lasting * 0.5);
     const bolt: IWeatherBolt = palette[Math.min(Math.floor(this.random() * palette.length), palette.length - 1)];
-    const sunHeading: number = toHeading(mix.sunDirection);
+    const sunHeading: number = toHeadingPitch(mix.sunDirection).heading;
     const far: number = mix.farPlane;
     const period: number = mix.thunderboltPeriod;
     const altitude: number = this.between(settings.altitude[0], settings.altitude[1]);
@@ -132,7 +131,7 @@ export class WeatherThunder {
       sunHeading + settings.deltaLongitude + Math.PI
     );
     const distance: number = this.between(far * settings.minDistance, far * MAX_DISTANCE);
-    const toward: TRendererVector = toWeatherHeading(longitude, altitude);
+    const toward: TRendererVector = toDirection({ heading: longitude, pitch: altitude });
     const position: TRendererVector = add(view, scale(toward, distance));
     const deviation: TRendererVector = [
       this.between(-settings.tilt, settings.tilt),
@@ -218,11 +217,6 @@ export class WeatherThunder {
       return bolt ? [{ bolt, name }] : [];
     });
   }
-}
-
-/** `Fvector::getHP`'s heading. */
-function toHeading([x, , z]: TRendererVector): number {
-  return x === 0 && z === 0 ? 0 : Math.atan2(-x, z);
 }
 
 /** `Fmatrix::setHPB`'s first three rows. */
