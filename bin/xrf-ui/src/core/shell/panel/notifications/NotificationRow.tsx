@@ -17,6 +17,7 @@ import { IApplicationDescriptor, IApplicationGroup } from "@/core/routing/applic
 import { INotificationEntry, isAttentionSeverity } from "@/core/shell/panel/notifications/notification-list";
 import { cn } from "@/lib/dom/dom-name";
 import { Logger, useLogger } from "@/lib/logging";
+import { ICopiedText, useCopiedText } from "@/lib/react/use-copied-text";
 
 /** Lines of `details` shown inline before the rest has to be asked for. */
 const DETAILS_LINE_LIMIT: number = 8;
@@ -84,11 +85,10 @@ export function NotificationRow({ entry, isExpanded, onToggleExpanded }: INotifi
   const collapsedBody: string = `${lines[0] ?? ""}${lines.length > 1 ? " …" : ""}`;
   const body: string = isExpanded ? expandedBody : collapsedBody;
 
-  const onCopyDetails = useCallback(() => {
-    navigator.clipboard?.writeText(notification.details ?? "").catch((error: unknown) => {
-      log.error("Failed to copy notification details:", error);
-    });
-  }, [log, notification.details]);
+  const onCopyFailed = useCallback((error: unknown) => log.error("Failed to copy notification details:", error), [log]);
+  const { copy }: ICopiedText = useCopiedText(onCopyFailed);
+
+  const onCopyDetails = useCallback(() => copy(notification.details ?? ""), [copy, notification.details]);
 
   return (
     <div className={"group border-b border-divider px-3 py-1.5"}>

@@ -8,9 +8,7 @@ import {
   XraySurfaceDescriptor,
   XraySurfaceDraw,
 } from "@/core/ipc/types/xrf-material";
-
-/** What an alpha reference is stated out of. */
-const ALPHA_REFERENCE_SCALE: number = 255;
+import { ALPHA_REFERENCE_SCALE } from "@/core/materials/lib/material-surface";
 
 /**
  * How a surface reaches the renderer's frame, from what the backend resolved for its shader.

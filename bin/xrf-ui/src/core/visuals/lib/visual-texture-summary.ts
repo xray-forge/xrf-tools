@@ -1,6 +1,6 @@
 import { listLocatedAssets } from "@/core/assets/lib/resolution";
 import { AssetTextureDescriptor } from "@/core/ipc/types/xrf-app";
-import { XrayMaterialDescriptor } from "@/core/ipc/types/xrf-material";
+import { EXrayBumpOutcome, XrayBumpOutcome, XrayMaterialDescriptor } from "@/core/ipc/types/xrf-material";
 import { VisualTextureDependency } from "@/core/ipc/types/xrf-visual";
 import { formatBytes } from "@/lib/memory/format";
 
@@ -57,13 +57,13 @@ export function summarizeVisualTextures(
 
     declared.add(dependency.reference);
 
-    const outcome: string = materials[dependency.reference]?.outcome ?? "flat";
+    const outcome: XrayBumpOutcome = materials[dependency.reference]?.outcome ?? EXrayBumpOutcome.FLAT;
 
-    if (outcome !== "flat") {
+    if (outcome !== EXrayBumpOutcome.FLAT) {
       bumped += 1;
     }
 
-    if (outcome === "dummy" || outcome === "missing") {
+    if (outcome === EXrayBumpOutcome.DUMMY || outcome === EXrayBumpOutcome.MISSING) {
       degraded += 1;
     }
   }

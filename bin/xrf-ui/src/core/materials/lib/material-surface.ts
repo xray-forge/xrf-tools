@@ -12,7 +12,7 @@ import { XrayAsset } from "@/core/ipc/types/xrf-vfs";
 import { IMaterialStateDescriptor } from "./material-description";
 
 /** The range an alpha reference is stated in, so a row reads `200/255` rather than a bare number. */
-const ALPHA_REFERENCE_SCALE: number = 255;
+export const ALPHA_REFERENCE_SCALE: number = 255;
 
 /**
  * Wording and severity for what the renderer ends up drawing for a surface.

@@ -25,6 +25,6 @@ export function withoutAt<T>(items: Array<T>, index: number): Array<T> {
  * @param value - Replacement value.
  * @returns A new list.
  */
-export function withValueAt(items: Array<string>, index: number, value: string): Array<string> {
+export function withValueAt<T>(items: Array<T>, index: number, value: T): Array<T> {
   return items.map((item, at) => (at === index ? value : item));
 }
