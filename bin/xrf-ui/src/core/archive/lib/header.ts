@@ -13,10 +13,30 @@ export const RESERVED_HEADER_KEYS: ReadonlyArray<string> = [HEADER_ENTRY_POINT, 
 export const DEFAULT_ENTRY_POINT: string = "$fs_root$\\gamedata\\";
 
 /**
+ * Whether two header keys name the same value, which the engine decides with case ignored: it lower-cases the
+ * section before reading it (`ArchivePackHeaderEntry::over_default`).
+ *
+ * @param left - One key, as written.
+ * @param right - The other.
+ * @returns Whether they are the same key.
+ */
+export function isSameHeaderKey(left: string, right: string): boolean {
+  return left.trim().toLowerCase() === right.trim().toLowerCase();
+}
+
+/**
+ * @param key - A header key, as written.
+ * @returns Whether an editor gives it a control of its own.
+ */
+export function isReservedHeaderKey(key: string): boolean {
+  return RESERVED_HEADER_KEYS.some((reserved: string) => isSameHeaderKey(key, reserved));
+}
+
+/**
  * Reads the first matching header value.
  *
  * @param header - Header text, or `null`.
- * @param key - Case-sensitive key.
+ * @param key - Key, matched with case ignored.
  * @returns The trimmed value, or `null` when absent.
  */
 export function readHeaderValue(header: Nullable<string>, key: string): Nullable<string> {
@@ -27,7 +47,7 @@ export function readHeaderValue(header: Nullable<string>, key: string): Nullable
   for (const line of header.split(/\r?\n/)) {
     const [name, ...rest] = line.split("=");
 
-    if (rest.length && name.trim() === key) {
+    if (rest.length && isSameHeaderKey(name, key)) {
       return rest.join("=").trim();
     }
   }
@@ -40,7 +60,7 @@ export function readHeaderValue(header: Nullable<string>, key: string): Nullable
  * endings.
  *
  * @param header - Current header text.
- * @param key - Key to replace.
+ * @param key - Key to replace, matched with case ignored.
  * @param value - Value to trim and write.
  * @returns Updated header, or `null` if no lines remain.
  */
@@ -48,7 +68,7 @@ export function writeHeaderValue(header: Nullable<string>, key: string, value: s
   const lines: Array<string> = (header ?? "")
     .split(/\r?\n/)
     .filter((line) => line.trim() && !line.trim().startsWith("["))
-    .filter((line) => line.split("=")[0]?.trim() !== key);
+    .filter((line) => !isSameHeaderKey(line.split("=")[0] ?? "", key));
 
   if (value.trim()) {
     lines.push(`${key} = ${value.trim()}`);
@@ -65,7 +85,7 @@ export function writeHeaderValue(header: Nullable<string>, key: string, value: s
  * Reads a header flag.
  *
  * @param header - Header text, or `null`.
- * @param key - Case-sensitive key.
+ * @param key - Key, matched with case ignored.
  * @returns Whether the value is `true`, `on`, `yes`, or `1`, ignoring case.
  */
 export function readHeaderFlag(header: Nullable<string>, key: string): boolean {

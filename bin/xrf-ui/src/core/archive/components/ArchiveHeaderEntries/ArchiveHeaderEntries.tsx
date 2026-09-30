@@ -3,7 +3,7 @@ import { Stack, TextField, Typography } from "@mui/material";
 import { Nullable } from "@xrf/types";
 import { ChangeEvent, ReactElement, useCallback, useState } from "react";
 
-import { readHeaderEntries, RESERVED_HEADER_KEYS, writeHeaderValue } from "@/core/archive/lib";
+import { isReservedHeaderKey, isSameHeaderKey, readHeaderEntries, writeHeaderValue } from "@/core/archive/lib";
 import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
 import { EditableListItem, FormRow } from "@/core/ui/form";
 import { BaseComponentProps } from "@/lib/dom/element-types";
@@ -29,10 +29,10 @@ export function ArchiveHeaderEntries({
   const [newValue, setNewValue] = useState<string>("");
 
   const entries: Array<[string, string]> = readHeaderEntries(header);
-  const customEntries: Array<[string, string]> = entries.filter(([key]) => !RESERVED_HEADER_KEYS.includes(key));
+  const customEntries: Array<[string, string]> = entries.filter(([key]) => !isReservedHeaderKey(key));
 
   const trimmedKey: string = newKey.trim();
-  const isDuplicateKey: boolean = Boolean(trimmedKey && entries.some(([key]) => key === trimmedKey));
+  const isDuplicateKey: boolean = Boolean(trimmedKey && entries.some(([key]) => isSameHeaderKey(key, trimmedKey)));
   const keyError: Nullable<string> = isDuplicateKey ? "That key is already in the header" : null;
 
   const onAddEntry = useCallback((): void => {
