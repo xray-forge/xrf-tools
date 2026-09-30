@@ -4,6 +4,7 @@ import { Nullable } from "@xrf/types";
 import { ReactElement, useMemo, useState } from "react";
 
 import { EditorFilterInput } from "@/core/shell/editor/EditorFilterInput";
+import { pathColumn } from "@/core/ui/table/columns";
 
 /** One id, as the pair of languages currently in view sees it. */
 export interface ITranslationRow {
@@ -70,7 +71,7 @@ export function TranslationsTable({
 
   const columns: Array<GridColDef> = useMemo(
     () => [
-      { field: "id", headerName: "Id", flex: 1, minWidth: 220, cellClassName: "monospace" },
+      pathColumn("id", "Id", 220),
       {
         field: "reference",
         headerName: "Reference",

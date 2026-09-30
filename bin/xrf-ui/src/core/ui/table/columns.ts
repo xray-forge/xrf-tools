@@ -53,6 +53,18 @@ export function identifierColumn(field: string, headerName: string, width?: numb
 }
 
 /**
+ * Creates a monospace column that takes the rest of the row, for paths and names of any length.
+ *
+ * @param field - Field name read from each row.
+ * @param headerName - Label shown in the column header.
+ * @param minWidth - The width it never shrinks below, in pixels.
+ * @returns Grid column definition.
+ */
+export function pathColumn(field: string, headerName: string, minWidth: number = 320): GridColDef {
+  return { field, headerName, flex: 1, minWidth, cellClassName: MONOSPACE_CLASS };
+}
+
+/**
  * Creates a fixed-precision vector column.
  *
  * @param field - Field name read from each row.

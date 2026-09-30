@@ -8,6 +8,7 @@ import { EApplicationId } from "@/core/routing/application";
 import { CommandResult, ICommandResultStat } from "@/core/ui/command-result/CommandResult";
 import { CommandResultFindings } from "@/core/ui/command-result/CommandResultFindings";
 import { RevealPathButton } from "@/core/ui/reveal/RevealPathButton";
+import { identifierColumn } from "@/core/ui/table/columns";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 type TLanguageRow = TranslationBuildLanguageSummary & { id: string };
@@ -27,7 +28,7 @@ export function TranslationsBuildResult({
 }: ITranslationsBuildResultProps): ReactElement {
   const columns: Array<GridColDef> = useMemo(
     () => [
-      { field: "language", headerName: "Language", width: 140, cellClassName: "monospace" },
+      identifierColumn("language", "Language", 140),
       { field: "files", headerName: "String tables", width: 150, type: "number" },
       { field: "entries", headerName: "Ids compiled", width: 150, type: "number" },
     ],

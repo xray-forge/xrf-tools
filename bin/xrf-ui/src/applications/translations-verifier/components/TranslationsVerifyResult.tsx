@@ -5,6 +5,7 @@ import { TranslationVerifySummary } from "@/core/ipc/types/xrf-app";
 import { TranslationVerifyLanguageSummary } from "@/core/ipc/types/xrf-translation";
 import { CommandResult, ICommandResultStat } from "@/core/ui/command-result/CommandResult";
 import { CommandResultFindings } from "@/core/ui/command-result/CommandResultFindings";
+import { identifierColumn, pathColumn } from "@/core/ui/table/columns";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 type TLanguageRow = TranslationVerifyLanguageSummary & { id: string; complete: number };
@@ -21,8 +22,8 @@ export function TranslationsVerifyResult({
 }: ITranslationsVerifyResultProps): ReactElement {
   const columns: Array<GridColDef> = useMemo(
     () => [
-      { field: "file", headerName: "File", flex: 1, minWidth: 260, cellClassName: "monospace" },
-      { field: "language", headerName: "Language", width: 120, cellClassName: "monospace" },
+      pathColumn("file", "File", 260),
+      identifierColumn("language", "Language", 120),
       { field: "checked", headerName: "Ids", width: 100, type: "number" },
       { field: "missing", headerName: "Missing", width: 110, type: "number" },
       { field: "complete", headerName: "Complete", width: 120, valueFormatter: (value: number) => `${value}%` },

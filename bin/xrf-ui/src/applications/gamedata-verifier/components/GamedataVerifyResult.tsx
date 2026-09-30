@@ -5,6 +5,7 @@ import { selectFailedChecks } from "@/applications/gamedata-verifier/lib/describ
 import { GamedataCheckSummary, GamedataVerifySummary } from "@/core/ipc/types/xrf-app";
 import { CommandResult, ICommandResultStat, TCommandResultTone } from "@/core/ui/command-result/CommandResult";
 import { CommandResultFindings } from "@/core/ui/command-result/CommandResultFindings";
+import { identifierColumn } from "@/core/ui/table/columns";
 import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatDuration } from "@/lib/format/duration";
@@ -31,7 +32,7 @@ export function GamedataVerifyResult({
 }: IGamedataVerifyResultProps): ReactElement {
   const columns: Array<GridColDef> = useMemo(
     () => [
-      { field: "check", headerName: "Check", width: 160, cellClassName: "monospace" },
+      identifierColumn("check", "Check", 160),
       {
         field: "status",
         headerName: "Verdict",

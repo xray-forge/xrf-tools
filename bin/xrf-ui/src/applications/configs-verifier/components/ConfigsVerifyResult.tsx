@@ -5,6 +5,7 @@ import { LtxProjectVerifyResult } from "@/core/ipc/types/xrf-ltx";
 import { TLtxSchemeError, toLtxSchemeErrors } from "@/core/ltx";
 import { CommandResult, ICommandResultStat } from "@/core/ui/command-result/CommandResult";
 import { CommandResultFindings } from "@/core/ui/command-result/CommandResultFindings";
+import { identifierColumn } from "@/core/ui/table/columns";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatDuration } from "@/lib/format/duration";
 
@@ -20,8 +21,8 @@ export function ConfigsVerifyResult({
 }: IConfigsVerifyResultProps): ReactElement {
   const columns: Array<GridColDef> = useMemo(
     () => [
-      { field: "section", headerName: "Section", width: 180, cellClassName: "monospace" },
-      { field: "field", headerName: "Field", width: 150, cellClassName: "monospace" },
+      identifierColumn("section", "Section", 180),
+      identifierColumn("field", "Field", 150),
       { field: "message", headerName: "Problem", flex: 1, minWidth: 220 },
       {
         field: "at",

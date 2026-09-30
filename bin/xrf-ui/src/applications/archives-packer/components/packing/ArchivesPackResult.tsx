@@ -1,10 +1,9 @@
-import { GridColDef } from "@mui/x-data-grid";
 import { ReactElement, useMemo } from "react";
 
 import { ArchivePackResult } from "@/core/ipc/types/xrf-pack";
 import { EApplicationId } from "@/core/routing/application";
 import { CommandResult, ICommandResultStat } from "@/core/ui/command-result/CommandResult";
-import { CommandResultFindings } from "@/core/ui/command-result/CommandResultFindings";
+import { CommandResultPathList } from "@/core/ui/command-result/CommandResultPathList";
 import { RevealPathButton } from "@/core/ui/reveal/RevealPathButton";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatDuration } from "@/lib/format/duration";
@@ -20,13 +19,6 @@ export function ArchivesPackResult({
   className,
   result,
 }: IArchivesPackResultProps): ReactElement {
-  const columns: Array<GridColDef> = useMemo(
-    () => [{ field: "volume", headerName: "Volume", flex: 1, minWidth: 320, cellClassName: "monospace" }],
-    []
-  );
-
-  const rows: Array<{ volume: string }> = useMemo(() => result.volumes.map((volume) => ({ volume })), [result.volumes]);
-
   const stats: Array<ICommandResultStat> = useMemo(() => {
     // One unit for both sizes, so the compression ratio stays readable at a glance.
     const [sizeSource, sizeWritten] = formatBytesPair(result.sizeSource, result.sizeWritten);
@@ -63,11 +55,9 @@ export function ArchivesPackResult({
         />
       }
     >
-      <CommandResultFindings<{ volume: string }>
-        rows={rows}
-        columns={columns}
-        getRowId={(row) => row.volume}
-        getSearchText={(row) => row.volume}
+      <CommandResultPathList
+        paths={result.volumes}
+        column={"Volume"}
         emptyLabel={"No volumes were written."}
         searchPlaceholder={"Filter by volume"}
       />

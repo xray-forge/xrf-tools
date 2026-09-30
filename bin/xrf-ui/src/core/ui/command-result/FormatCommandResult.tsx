@@ -1,8 +1,7 @@
-import { GridColDef } from "@mui/x-data-grid";
 import { ReactElement, useMemo } from "react";
 
 import { CommandResult, ICommandResultStat, TCommandResultTone } from "@/core/ui/command-result/CommandResult";
-import { CommandResultFindings } from "@/core/ui/command-result/CommandResultFindings";
+import { CommandResultPathList } from "@/core/ui/command-result/CommandResultPathList";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatDuration } from "@/lib/format/duration";
 
@@ -44,13 +43,6 @@ export function FormatCommandResult({
   nouns,
   result,
 }: IFormatCommandResultProps): ReactElement {
-  const columns: Array<GridColDef> = useMemo(
-    () => [{ field: "file", headerName: nouns.column, flex: 1, minWidth: 320, cellClassName: "monospace" }],
-    [nouns.column]
-  );
-
-  const rows: Array<{ file: string }> = useMemo(() => result.toFormat.map((file) => ({ file })), [result.toFormat]);
-
   // In check mode an item that needs formatting is a failure; in write mode the same number is work done.
   const tone: TCommandResultTone = result.invalidFiles ? (isCheck ? "error" : "warning") : "success";
 
@@ -80,11 +72,9 @@ export function FormatCommandResult({
       tone={tone}
       stats={stats}
     >
-      <CommandResultFindings<{ file: string }>
-        rows={rows}
-        columns={columns}
-        getRowId={(row) => row.file}
-        getSearchText={(row) => row.file}
+      <CommandResultPathList
+        paths={result.toFormat}
+        column={nouns.column}
         emptyLabel={"Nothing to format."}
         searchPlaceholder={`Filter by ${nouns.item}`}
       />

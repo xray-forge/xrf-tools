@@ -1,11 +1,10 @@
-import { GridColDef } from "@mui/x-data-grid";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useMemo } from "react";
 
 import { ArchiveUnpackResult } from "@/core/ipc/types/xrf-pack";
 import { EApplicationId } from "@/core/routing/application";
 import { CommandResult, ICommandResultStat } from "@/core/ui/command-result/CommandResult";
-import { CommandResultFindings } from "@/core/ui/command-result/CommandResultFindings";
+import { CommandResultPathList } from "@/core/ui/command-result/CommandResultPathList";
 import { RevealPathButton } from "@/core/ui/reveal/RevealPathButton";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatDuration } from "@/lib/format/duration";
@@ -24,16 +23,6 @@ export function ArchivesUnpackResult({
   result,
   outputPath,
 }: IArchivesUnpackResultProps): ReactElement {
-  const columns: Array<GridColDef> = useMemo(
-    () => [{ field: "archive", headerName: "Archive", flex: 1, minWidth: 320, cellClassName: "monospace" }],
-    []
-  );
-
-  const rows: Array<{ archive: string }> = useMemo(
-    () => result.archives.map((archive) => ({ archive })),
-    [result.archives]
-  );
-
   const stats: Array<ICommandResultStat> = useMemo(
     () => [
       { label: "archives", value: result.archives.length },
@@ -57,11 +46,9 @@ export function ArchivesUnpackResult({
         <RevealPathButton application={EApplicationId.ARCHIVES_UNPACKER} path={outputPath} label={"Show output"} />
       }
     >
-      <CommandResultFindings
-        rows={rows}
-        columns={columns}
-        getRowId={(row) => row.archive}
-        getSearchText={(row) => row.archive}
+      <CommandResultPathList
+        paths={result.archives}
+        column={"Archive"}
         emptyLabel={"No archives were unpacked."}
         searchPlaceholder={"Filter by archive"}
       />

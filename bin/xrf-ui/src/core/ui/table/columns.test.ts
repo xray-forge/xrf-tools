@@ -5,6 +5,7 @@ import {
   decimalColumn,
   flagsColumn,
   identifierColumn,
+  pathColumn,
   textColumn,
   tupleColumn,
   vectorColumn,
@@ -22,6 +23,17 @@ function readCell(column: GridColDef, value: unknown): unknown {
 }
 
 describe("table columns", () => {
+  it("lets a path column take the rest of the row, in monospace, down to its floor", () => {
+    expect(pathColumn("file", "File")).toEqual({
+      cellClassName: "monospace",
+      field: "file",
+      flex: 1,
+      headerName: "File",
+      minWidth: 320,
+    });
+    expect(pathColumn("id", "Id", 220).minWidth).toBe(220);
+  });
+
   it("leaves a plain column without a getter", () => {
     expect(textColumn("version", "Version")).toEqual({ field: "version", headerName: "Version" });
     expect(textColumn("version", "Version", 120).width).toBe(120);

@@ -7,6 +7,7 @@ import { EApplicationId } from "@/core/routing/application";
 import { CommandResult, ICommandResultStat, TCommandResultTone } from "@/core/ui/command-result/CommandResult";
 import { CommandResultFindings } from "@/core/ui/command-result/CommandResultFindings";
 import { RevealPathButton } from "@/core/ui/reveal/RevealPathButton";
+import { identifierColumn, pathColumn } from "@/core/ui/table/columns";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 export interface ITranslationsParseResultProps extends BaseComponentProps {
@@ -24,8 +25,8 @@ export function TranslationsParseResult({
 }: ITranslationsParseResultProps): ReactElement {
   const columns: Array<GridColDef> = useMemo(
     () => [
-      { field: "subject", headerName: "File", flex: 1, minWidth: 280, cellClassName: "monospace" },
-      { field: "rule", headerName: "Rule", width: 220, cellClassName: "monospace" },
+      pathColumn("subject", "File", 280),
+      identifierColumn("rule", "Rule", 220),
       { field: "message", headerName: "Detail", flex: 2, minWidth: 320 },
     ],
     []

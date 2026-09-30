@@ -9,6 +9,7 @@ import { EApplicationId } from "@/core/routing/application";
 import { CommandResult, ICommandResultStat } from "@/core/ui/command-result/CommandResult";
 import { CommandResultFindings } from "@/core/ui/command-result/CommandResultFindings";
 import { RevealPathButton } from "@/core/ui/reveal/RevealPathButton";
+import { pathColumn } from "@/core/ui/table/columns";
 import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatDuration } from "@/lib/format/duration";
@@ -60,8 +61,8 @@ export function ArchivesPatchResult({
         valueFormatter: (value: number) => formatBytes(value),
         cellClassName: "monospace",
       },
-      { field: "name", headerName: "Entry", flex: 1, minWidth: 320, cellClassName: "monospace" },
-      { field: "origin", headerName: "Read from", flex: 1, minWidth: 240, cellClassName: "monospace" },
+      pathColumn("name", "Entry"),
+      pathColumn("origin", "Read from", 240),
     ],
     []
   );
