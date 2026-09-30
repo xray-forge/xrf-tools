@@ -1,4 +1,4 @@
-import { clamp } from "@xrf/math";
+import { clamp, wrap } from "@xrf/math";
 
 import { IRenderLighting, RENDER_LIGHTING_LIMITS } from "@/core/render/lib/lighting/render-lighting";
 
@@ -45,7 +45,7 @@ export function dragTextureLighting(
 
   return {
     ...lighting,
-    sunAzimuth: ((((azimuth - sunAzimuth.min) % turn) + turn) % turn) + sunAzimuth.min,
+    sunAzimuth: wrap(azimuth - sunAzimuth.min, turn) + sunAzimuth.min,
     sunElevation: clamp(elevation, sunElevation.min, TEXTURE_LIGHT_ELEVATION_LIMIT),
   };
 }

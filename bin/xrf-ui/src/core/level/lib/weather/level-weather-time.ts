@@ -1,3 +1,5 @@
+import { wrap } from "@xrf/math";
+
 /** Seconds a day lasts. */
 export const LEVEL_WEATHER_DAY: number = 86_400;
 
@@ -7,7 +9,7 @@ export const LEVEL_WEATHER_DAY: number = 86_400;
  * @returns The time of day as a keyframe names one, `HH:MM` or `HH:MM:SS`.
  */
 export function formatLevelWeatherTime(seconds: number, isPrecise: boolean = false): string {
-  const whole: number = Math.floor(((seconds % LEVEL_WEATHER_DAY) + LEVEL_WEATHER_DAY) % LEVEL_WEATHER_DAY);
+  const whole: number = Math.floor(wrap(seconds, LEVEL_WEATHER_DAY));
   const parts: Array<number> = [Math.floor(whole / 3600), Math.floor(whole / 60) % 60];
 
   if (isPrecise) {

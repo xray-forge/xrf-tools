@@ -1,4 +1,4 @@
-import { clamp, EPS_L, saturate, toDirection, toHeadingPitch } from "@xrf/math";
+import { clamp, EPS_L, saturate, toDirection, toHeadingPitch, wrap } from "@xrf/math";
 import { Maybe, Nullable } from "@xrf/types";
 
 import { TRendererVector } from "#/contract/renderer-vector";
@@ -171,7 +171,7 @@ export class WeatherThunder {
 
     // `CalculateRGB` with the frame rate set to the frame count: the whole animation over the strike's life.
     if (animator) {
-      toInterpolatedColor(animator, Math.floor((((progress % 1) + 1) % 1) * animator.frameCount), color);
+      toInterpolatedColor(animator, Math.floor(wrap(progress, 1) * animator.frameCount), color);
     }
 
     // The top glow's opacity lights both, as `dxThunderboltRender` has it.

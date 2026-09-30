@@ -1,4 +1,4 @@
-import { toDirection, toHeadingPitch } from "@xrf/math";
+import { toDirection, toHeadingPitch, wrap } from "@xrf/math";
 /**
  * A point in one of the two spaces an X-Ray asset is ever in.
  */
@@ -53,7 +53,8 @@ export function toXrayHeading(direction: IRenderPoint): IXrayHeading {
   const { x, y, z } = toXraySpace(direction);
   const { heading, pitch } = toHeadingPitch([x, y, z]);
 
-  return { heading: toTurn(heading), pitch };
+  // Counted from zero round one turn, so a bearing never arrives negative.
+  return { heading: wrap(heading, Math.PI * 2), pitch };
 }
 
 /**
@@ -66,11 +67,4 @@ export function toRendererFacing(heading: IXrayHeading): IRenderPoint {
   const [x, y, z] = toDirection(heading);
 
   return toRendererSpace({ x, y, z });
-}
-
-/** The same angle counted from zero round one turn, so a bearing never arrives negative. */
-function toTurn(radians: number): number {
-  const turn: number = Math.PI * 2;
-
-  return ((radians % turn) + turn) % turn;
 }

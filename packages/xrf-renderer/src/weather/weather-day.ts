@@ -1,3 +1,5 @@
+import { wrap } from "@xrf/math";
+
 /** Seconds a day lasts, `DAY_LENGTH`. */
 export const WEATHER_DAY_LENGTH: number = 86_400;
 
@@ -6,5 +8,5 @@ export const WEATHER_DAY_LENGTH: number = 86_400;
  * @returns The time of day it falls at, in seconds since midnight.
  */
 export function toWeatherTimeOfDay(time: number): number {
-  return ((time % WEATHER_DAY_LENGTH) + WEATHER_DAY_LENGTH) % WEATHER_DAY_LENGTH;
+  return wrap(time, WEATHER_DAY_LENGTH);
 }
