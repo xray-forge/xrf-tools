@@ -285,7 +285,7 @@ export class FsrPass implements ITemporalUpscaler {
     const reconstruct: ComputeNode = createFsrDepthReconstruction(this.inputs, depths, count, this.constants);
 
     // Cleared and written on the GPU alone.
-    this.retirement.retireArrays([depths]);
+    this.retirement.retireZeroed([depths]);
 
     this.reconstruction = { capacity: count, clear, depths, kernels: [clear, reconstruct], reconstruct };
     this.frames.both.forEach((frame: IFsrFrame, index: number) => {

@@ -6,6 +6,7 @@ import { RendererDeviceFailure } from "#/device/renderer-device-failure";
 import { getRendererDeviceLimits } from "#/device/renderer-device-limits";
 import { getRendererBackend, IRendererBackend, setRendererTimestamps } from "#/internals/renderer-backend";
 import { adoptStableBufferNames } from "#/internals/stable-buffer-names";
+import { adoptZeroedStorage } from "#/internals/zeroed-storage";
 import { RendererPassInspector } from "#/timing/renderer-pass-inspector";
 
 /**
@@ -20,6 +21,8 @@ export class RendererDevice {
   public static async open(onLost: (reason: string) => void): Promise<RendererDevice> {
     // Before anything builds a shader: what is built then is keyed by its text in the browser's pipeline cache.
     adoptStableBufferNames();
+    // Before anything makes a buffer: one written on the GPU alone is made with nothing sent.
+    adoptZeroedStorage();
 
     const limits: Nullable<Record<string, number>> = await getRendererDeviceLimits();
     let renderer: WebGPURenderer;

@@ -233,7 +233,7 @@ export class SceneGrass {
     const items: IGrassItemBuffers = createGrassItemBuffers(size.capacity);
 
     // Planted and read on the GPU alone.
-    this.rendererUniforms.retirement.retireArrays([...listGrassCacheStorage(cache), ...listGrassItemStorage(items)]);
+    this.rendererUniforms.retirement.retireZeroed([...listGrassCacheStorage(cache), ...listGrassItemStorage(items)]);
 
     const buffers: IGrassBuffers = { cache, items, level };
     const planting: IGrassPlanting = createGrassPlanting(

@@ -2,6 +2,7 @@ import { BufferAttribute, WebGPURenderer } from "three/webgpu";
 
 import { destroyStorageAttribute } from "#/internals/renderer-backend";
 import { releaseStorageArray } from "#/internals/storage-buffers";
+import { markZeroedStorage } from "#/internals/zeroed-storage";
 
 /**
  * Storage buffers let go of, freed a frame after, once no frame still being built can bind them: one queue for every
@@ -34,6 +35,15 @@ export class StorageRetirement {
     for (const attribute of attributes) {
       this.uploading.add(attribute);
     }
+  }
+
+  /**
+   * @param attributes - Buffers written on the GPU alone and zero until then: made on the device at their arrays' size
+   *   with nothing sent, and their arrays let go as three holds them.
+   */
+  public retireZeroed(attributes: ReadonlyArray<BufferAttribute>): void {
+    markZeroedStorage(attributes);
+    this.retireArrays(attributes);
   }
 
   /**

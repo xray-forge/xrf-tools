@@ -326,6 +326,22 @@ describe("three's internals, as the renderer reads them", () => {
     );
   });
 
+  it("makes a storage and an indirect attribute's buffer through the backend, with the usages it states", () => {
+    // `adoptZeroedStorage` makes a marked attribute's buffer first, with the same usage, for three to find and keep.
+    const storage: string = readThreeMethod("renderers/webgpu/WebGPUBackend.js", "createStorageAttribute");
+    const indirect: string = readThreeMethod("renderers/webgpu/WebGPUBackend.js", "createIndirectStorageAttribute");
+    const create: string = readThreeMethod("renderers/webgpu/utils/WebGPUAttributeUtils.js", "createAttribute");
+
+    expect(storage).toContain(
+      "GPUBufferUsage.STORAGE | GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST"
+    );
+    expect(indirect).toContain(
+      "GPUBufferUsage.STORAGE | GPUBufferUsage.INDIRECT | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST"
+    );
+    expect(create).toContain("_bufferDescriptor.mappedAtCreation = true;");
+    expect(create).toContain("if ( buffer === undefined ) {");
+  });
+
   it("compiles compute kernels with each pipeline made asynchronously, which its types leave out", () => {
     // `compileComputeAsync` in `internals/compute-compile.ts` calls it for the frame's kernels and a staged build's.
     const compile: string = readThreeMethod("renderers/common/Renderer.js", "async compileComputeAsync");
