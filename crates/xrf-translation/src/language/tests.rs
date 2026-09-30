@@ -65,3 +65,28 @@ fn finds_the_character_an_encoding_cannot_hold() {
   // Cyrillic is not in 1250 either, which is what makes a Polish target refuse it.
   assert_eq!(find_unencodable_character("Й", new_windows1250_encoder()), Some('Й'));
 }
+
+#[test]
+fn a_language_crosses_the_wire_as_the_code_it_parses_from() {
+  for language in TranslationLanguage::get_all()
+    .into_iter()
+    .chain([TranslationLanguage::All])
+  {
+    let wire: String = serde_json::to_string(&language).expect("serialized");
+
+    assert_eq!(wire, format!("\"{language}\""));
+    assert_eq!(
+      serde_json::from_str::<TranslationLanguage>(&wire).expect("deserialized"),
+      language
+    );
+  }
+}
+
+#[test]
+fn only_all_is_refused_as_a_single_language() {
+  assert!(TranslationLanguage::All.into_single().is_err());
+  assert_eq!(
+    TranslationLanguage::Polish.into_single().expect("a single language"),
+    TranslationLanguage::Polish
+  );
+}

@@ -24,7 +24,7 @@ pub struct TranslationParseRequest {
   /// Roots holding the raw XML, read through the VFS so an installation imports like a loose tree.
   pub roots: XrayRoots,
   /// The language every entry this run reads is filed under. Never `all`.
-  pub language: String,
+  pub language: TranslationLanguage,
   /// Where inside those roots to look, or nothing to let the run resolve it.
   pub prefix: Option<String>,
   /// Directory the JSON sources are written to, which may already hold some.
@@ -74,8 +74,7 @@ pub async fn translations_parse_project(
 ) -> TauriResult<TranslationParseSummary> {
   let start: JobStart = JobStart::new(job_id, JobKind::TranslationsParse).with_request(&request);
 
-  let language: TranslationLanguage =
-    TranslationLanguage::from_str_single(&request.language).map_err(error_to_string)?;
+  let language: TranslationLanguage = request.language.into_single().map_err(error_to_string)?;
 
   log::info!(
     "Parsing translations: {} root(s), '{language}', into {}{}",

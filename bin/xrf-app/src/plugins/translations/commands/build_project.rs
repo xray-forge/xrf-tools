@@ -1,5 +1,4 @@
 use std::path::PathBuf;
-use std::str::FromStr;
 use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
@@ -28,7 +27,7 @@ pub struct TranslationBuildRequest {
   /// Where inside those roots to look, or nothing for the whole set.
   pub prefix: Option<String>,
   /// The language to build, or `all`.
-  pub language: String,
+  pub language: TranslationLanguage,
   /// Directory the string tables are written into, which is always a host path.
   pub output_dir: PathBuf,
   /// Whether to sort entries within each table.
@@ -64,7 +63,7 @@ pub async fn translations_build_project(
   let start: JobStart = JobStart::new(job_id, JobKind::TranslationsBuild).with_request(&request);
 
   // `all` is accepted: compiling every language at once is the ordinary build.
-  let language: TranslationLanguage = TranslationLanguage::from_str(&request.language)?;
+  let language: TranslationLanguage = request.language;
 
   log::info!(
     "Building translations: {} root(s), '{language}', into {}",

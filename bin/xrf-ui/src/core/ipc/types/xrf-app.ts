@@ -22,6 +22,7 @@ import { ClsId, SpawnHeaderChunk } from "@/core/ipc/types/xrf-spawn";
 import { EquipmentSlotOccupant, ImageShape } from "@/core/ipc/types/xrf-texture";
 import {
   TranslationBuildLanguageSummary,
+  TranslationLanguage,
   TranslationParseCensus,
   TranslationProjectDescriptor,
   TranslationProjectMode,
@@ -2588,7 +2589,7 @@ export type TranslationBuildRequest = {
   /** Where inside those roots to look, or nothing for the whole set. */
   prefix: string | null;
   /** The language to build, or `all`. */
-  language: string;
+  language: TranslationLanguage;
   /** Directory the string tables are written into, which is always a host path. */
   outputDir: string;
   /** Whether to sort entries within each table. */
@@ -2620,7 +2621,7 @@ export type TranslationParseRequest = {
   /** Roots holding the raw XML, read through the VFS so an installation imports like a loose tree. */
   roots: XrayRoots;
   /** The language every entry this run reads is filed under. Never `all`. */
-  language: string;
+  language: TranslationLanguage;
   /** Where inside those roots to look, or nothing to let the run resolve it. */
   prefix: string | null;
   /** Directory the JSON sources are written to, which may already hold some. */
@@ -2695,8 +2696,8 @@ export type TranslationsVerifyRequest = {
   roots: XrayRoots;
   /** Scope inside those trees, or nothing for all of them. */
   prefix: string | null;
-  /** Language the check is about. */
-  language: string;
+  /** Language the check is about, or `all`. */
+  language: TranslationLanguage;
 };
 
 /** Where the transport listens, and the token every request to it carries. */

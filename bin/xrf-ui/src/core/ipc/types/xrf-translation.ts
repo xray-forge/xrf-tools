@@ -99,6 +99,22 @@ export type TranslationFormatResult = {
   validFiles: number;
 };
 
+/** A language a translation is written in, spelled on the wire as its code; `all` stands for every one at once. */
+export enum ETranslationLanguage {
+  ALL = "all",
+  ENGLISH = "eng",
+  RUSSIAN = "rus",
+  UKRAINIAN = "ukr",
+  POLISH = "pol",
+  FRENCH = "fra",
+  GERMAN = "ger",
+  ITALIAN = "ita",
+  SPANISH = "spa",
+}
+
+/** Every `ETranslationLanguage` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type TranslationLanguage = `${ETranslationLanguage}`;
+
 /** How much one import run moved. */
 export type TranslationParseCensus = {
   /** String tables read out of the scope. */

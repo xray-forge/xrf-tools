@@ -1,28 +1,40 @@
 use std::str::FromStr;
 
 use derive_more::Display;
+use serde::{Deserialize, Serialize};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::{XRayEncoding, new_windows1250_encoder, new_windows1251_encoder, new_windows1252_encoder};
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Display)]
+/// A language a translation is written in, spelled on the wire as its code; `all` stands for every one at once.
+#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Display, Serialize, Deserialize)]
 pub enum TranslationLanguage {
   #[display("all")]
+  #[serde(rename = "all")]
   All,
   #[display("eng")]
+  #[serde(rename = "eng")]
   English,
   #[display("rus")]
+  #[serde(rename = "rus")]
   Russian,
   #[display("ukr")]
+  #[serde(rename = "ukr")]
   Ukrainian,
   #[display("pol")]
+  #[serde(rename = "pol")]
   Polish,
   #[display("fra")]
+  #[serde(rename = "fra")]
   French,
   #[display("ger")]
+  #[serde(rename = "ger")]
   German,
   #[display("ita")]
+  #[serde(rename = "ita")]
   Italian,
   #[display("spa")]
+  #[serde(rename = "spa")]
   Spanish,
 }
 
@@ -80,7 +92,18 @@ impl TranslationLanguage {
   }
 
   pub fn from_str_single(language: &str) -> XrfResult<Self> {
-    match Self::from_str(language).map_err(|it| XrfError::new_parsing_error(it.to_string()))? {
+    Self::from_str(language)
+      .map_err(|it| XrfError::new_parsing_error(it.to_string()))?
+      .into_single()
+  }
+
+  /// This language, refused when it stands for every language at once.
+  ///
+  /// # Errors
+  ///
+  /// Returns an unknown-language error for [`Self::All`].
+  pub fn into_single(self) -> XrfResult<Self> {
+    match self {
       Self::All => Err(XrfError::new_unknown_language_error(String::from(
         "Unexpected language 'all' provided'",
       ))),

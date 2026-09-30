@@ -1,4 +1,3 @@
-use std::str::FromStr;
 use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
@@ -7,8 +6,7 @@ use tauri::ipc::Channel;
 use uuid::Uuid;
 use xrf_job::{JobHandle, JobProgress};
 use xrf_translation::{
-  TranslationLanguage, TranslationVerifier, TranslationVerifyLanguageSummary, TranslationVerifyOptions,
-  TranslationVerifyResult,
+  TranslationVerifier, TranslationVerifyLanguageSummary, TranslationVerifyOptions, TranslationVerifyResult,
 };
 
 use crate::core::execution::ExecutionState;
@@ -49,8 +47,6 @@ pub async fn translations_verify_project(
     prefix,
     language,
   } = request;
-
-  let language: TranslationLanguage = TranslationLanguage::from_str(&language)?;
 
   log::info!("Verifying translations: {} root(s), '{language}'", roots.roots.len());
 

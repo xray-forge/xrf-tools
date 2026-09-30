@@ -4,6 +4,7 @@ import { describeTranslationVerifyOutcome } from "@/applications/translations-ve
 import { createRoots } from "@/core/assets/lib";
 import { translationsCommands } from "@/core/ipc/commands/translations";
 import { EJobKind, TranslationVerifySummary } from "@/core/ipc/types/xrf-app";
+import { ETranslationLanguage } from "@/core/ipc/types/xrf-translation";
 import { IJobNotice, IJobOutcome, IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { JobOperation } from "@/core/jobs/lib/job-operation";
 import { JobsService } from "@/core/jobs/services/jobs";
@@ -30,7 +31,7 @@ export class TranslationsVerifierService {
    * @param language - Language to narrow to, or `all`.
    */
   @ExclusiveFlow("operation")
-  public *verify(sources: string, language: string): TFlow {
+  public *verify(sources: string, language: ETranslationLanguage): TFlow {
     if (this.operation.isRunning) {
       return;
     }

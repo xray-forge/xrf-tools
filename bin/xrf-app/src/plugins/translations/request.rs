@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
+use xrf_translation::TranslationLanguage;
 use xrf_vfs::XrayRoots;
 
 /// What a translation verification was asked to do.
@@ -12,8 +13,8 @@ pub struct TranslationsVerifyRequest {
   pub roots: XrayRoots,
   /// Scope inside those trees, or nothing for all of them.
   pub prefix: Option<String>,
-  /// Language the check is about.
-  pub language: String,
+  /// Language the check is about, or `all`.
+  pub language: TranslationLanguage,
 }
 
 /// What a translation formatting run, or a check of one, was asked to do.

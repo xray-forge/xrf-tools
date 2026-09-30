@@ -1,6 +1,7 @@
 import { describe, expect, it, jest } from "@jest/globals";
 import { userEvent } from "@testing-library/user-event";
 
+import { ETranslationLanguage } from "@/core/ipc/types/xrf-translation";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
 import { TranslationLanguageField } from "./TranslationLanguageField";
@@ -14,7 +15,7 @@ describe("TranslationLanguageField", () => {
         id={"build-language"}
         className={"build-field"}
         description={"Languages to compile"}
-        value={"all"}
+        value={ETranslationLanguage.ALL}
         isAllAllowed
         onChange={onChange}
       />
@@ -43,7 +44,7 @@ describe("TranslationLanguageField", () => {
         <TranslationLanguageField
           id={"build-language"}
           description={"Languages to compile"}
-          value={"ukr"}
+          value={ETranslationLanguage.UKRAINIAN}
           isAllAllowed
           onChange={onChange}
         />
@@ -55,7 +56,11 @@ describe("TranslationLanguageField", () => {
 
   it("offers only individual languages unless all is allowed", async () => {
     const { getByRole, queryByRole } = renderWithProviders(
-      <TranslationLanguageField description={"Language to import"} value={"eng"} onChange={jest.fn()} />
+      <TranslationLanguageField
+        description={"Language to import"}
+        value={ETranslationLanguage.ENGLISH}
+        onChange={jest.fn()}
+      />
     );
 
     await userEvent.click(getByRole("combobox", { name: /^Language/ }));
@@ -69,8 +74,17 @@ describe("TranslationLanguageField", () => {
     const onChange = jest.fn();
     const { getAllByRole, queryByRole } = renderWithProviders(
       <>
-        <TranslationLanguageField description={"Language to build"} value={"eng"} onChange={onChange} />
-        <TranslationLanguageField description={"Language to check"} value={"ukr"} isDisabled onChange={onChange} />
+        <TranslationLanguageField
+          description={"Language to build"}
+          value={ETranslationLanguage.ENGLISH}
+          onChange={onChange}
+        />
+        <TranslationLanguageField
+          description={"Language to check"}
+          value={ETranslationLanguage.UKRAINIAN}
+          isDisabled
+          onChange={onChange}
+        />
       </>
     );
     const [build, verify] = getAllByRole("combobox", { name: /^Language/ });

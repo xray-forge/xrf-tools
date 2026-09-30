@@ -3,6 +3,7 @@ import { inject, Injectable, OnEvent, WireEvent } from "@wirestate/core";
 import { describeTranslationParseOutcome } from "@/applications/translations-parser/lib/describe-parse-outcome";
 import { translationsCommands } from "@/core/ipc/commands/translations";
 import { EJobKind, TranslationParseSummary } from "@/core/ipc/types/xrf-app";
+import { ETranslationLanguage } from "@/core/ipc/types/xrf-translation";
 import { IJobNotice, IJobOutcome, IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { JobOperation } from "@/core/jobs/lib/job-operation";
 import { JobsService } from "@/core/jobs/services/jobs";
@@ -33,7 +34,13 @@ export class TranslationsParserService {
    * @param isDryRun - Whether to compute the answer without writing it.
    */
   @ExclusiveFlow("operation")
-  public *parse(sources: string, language: string, outputDir: string, isOverwrite: boolean, isDryRun: boolean): TFlow {
+  public *parse(
+    sources: string,
+    language: ETranslationLanguage,
+    outputDir: string,
+    isOverwrite: boolean,
+    isDryRun: boolean
+  ): TFlow {
     if (this.operation.isRunning) {
       return;
     }

@@ -4,6 +4,7 @@ import { describeTranslationBuildOutcome } from "@/applications/translations-bui
 import { createRoots } from "@/core/assets/lib";
 import { translationsCommands } from "@/core/ipc/commands/translations";
 import { EJobKind, TranslationBuildSummary } from "@/core/ipc/types/xrf-app";
+import { ETranslationLanguage } from "@/core/ipc/types/xrf-translation";
 import { IJobNotice, IJobOutcome, IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { JobOperation } from "@/core/jobs/lib/job-operation";
 import { JobsService } from "@/core/jobs/services/jobs";
@@ -36,7 +37,7 @@ export class TranslationsBuilderService {
    * @param isSorted - Whether to sort entries within each table.
    */
   @ExclusiveFlow("operation")
-  public *build(sources: string, language: string, outputDir: string, isSorted: boolean): TFlow {
+  public *build(sources: string, language: ETranslationLanguage, outputDir: string, isSorted: boolean): TFlow {
     if (this.operation.isRunning) {
       return;
     }
