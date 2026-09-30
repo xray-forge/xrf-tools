@@ -4,7 +4,6 @@ import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useState } from "react";
 
 import { DEFAULT_GLOSS_POWER } from "@/applications/textures-editor/lib/texture-bump-gloss";
-import { toBumpReference, toCompanionReference } from "@/applications/textures-editor/lib/texture-bump-target";
 import { TextureBumpService } from "@/applications/textures-editor/services/bump";
 import { TextureEditorService } from "@/applications/textures-editor/services/editor";
 import { TextureDescription } from "@/core/ipc/types/xrf-app";
@@ -96,8 +95,6 @@ export function TextureBumpPanel({
     );
   }
 
-  const bumpReference: string = toBumpReference(description);
-
   return (
     <EditorPanel data-testid={dataTestId} id={id} className={className} title={"Bump"}>
       {bumpService.destination === null ? (
@@ -107,8 +104,8 @@ export function TextureBumpPanel({
       ) : null}
 
       <EditorPanelSection title={"Writes"} caption={"Derived from the texture, not chosen"} isFirst>
-        <EditorPanelProperty label={"Bump"} value={bumpReference} isMonospace />
-        <EditorPanelProperty label={"Companion"} value={toCompanionReference(bumpReference)} isMonospace />
+        <EditorPanelProperty label={"Bump"} value={description.generatedBump.bump} isMonospace />
+        <EditorPanelProperty label={"Companion"} value={description.generatedBump.companion} isMonospace />
       </EditorPanelSection>
 
       <EditorPanelSection title={"Sources"} caption={"The relief is required; everything else refines it"}>
@@ -127,7 +124,12 @@ export function TextureBumpPanel({
         />
 
         {gloss.value ? null : (
-          <TextureGlossField value={glossConstant} isDisabled={isRunning} onChange={setGlossConstant} />
+          <TextureGlossField
+            value={glossConstant}
+            minimum={editorService.vocabulary.value?.minimumGlossPower ?? null}
+            isDisabled={isRunning}
+            onChange={setGlossConstant}
+          />
         )}
 
         <PathFormRow

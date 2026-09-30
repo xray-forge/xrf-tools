@@ -178,6 +178,8 @@ fn a_descriptor_opened_on_its_own_outside_a_root_finds_its_texture() {
   .expect("described");
 
   assert_eq!(description.reference, "wall");
+  assert_eq!(description.generated_bump.bump, "wall_bump");
+  assert_eq!(description.generated_bump.companion, "wall_bump#");
   assert!(description.has_descriptor);
   assert!(description.base.is_some(), "expect the dds beside the descriptor");
 }

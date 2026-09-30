@@ -1,8 +1,8 @@
+import { Nullable } from "@xrf/types";
+
 import { TextureMakeBumpOutcome } from "@/core/ipc/types/xrf-app";
 import { IJobNotice, IJobOutcome } from "@/core/jobs/lib";
 import { ENotificationSeverity } from "@/core/notifications/lib";
-
-import { MINIMUM_GLOSS_POWER } from "./texture-bump-gloss";
 
 /**
  * What the notification centre says when a bump generation ends.
@@ -13,11 +13,13 @@ import { MINIMUM_GLOSS_POWER } from "./texture-bump-gloss";
  *
  * @param reference - Engine reference of the texture the pair belongs to.
  * @param outcome - How the run ended.
+ * @param minimumGlossPower - The threshold the backend measured the gloss against, or null before its vocabulary.
  * @returns What to record about it.
  */
 export function describeTextureBumpOutcome(
   reference: string,
-  outcome: IJobOutcome<TextureMakeBumpOutcome>
+  outcome: IJobOutcome<TextureMakeBumpOutcome>,
+  minimumGlossPower: Nullable<number>
 ): IJobNotice {
   const { result, error } = outcome;
 
@@ -41,7 +43,8 @@ export function describeTextureBumpOutcome(
     return {
       details: [
         reference,
-        `Gloss power is ${(result.glossPower ?? 0).toFixed(3)}, below ${MINIMUM_GLOSS_POWER}.`,
+        `Gloss power is ${(result.glossPower ?? 0).toFixed(3)}` +
+          (minimumGlossPower === null ? ", too dark." : `, below ${minimumGlossPower}.`),
         "The pair was written; the surface will show almost no specular response.",
         result.bump,
         result.companion,

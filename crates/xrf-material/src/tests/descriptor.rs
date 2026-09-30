@@ -65,6 +65,7 @@ fn a_detail_is_associated_only_when_a_flag_switches_it_on() {
 
 #[test]
 fn a_companion_is_the_bump_name_with_the_suffix_the_renderer_appends() {
+  assert_eq!(XrayBumpNaming::bump_of(BASE), BUMP, "expect the generator's own naming");
   assert_eq!(XrayBumpNaming::companion_of(BUMP), COMPANION);
   assert!(XrayBumpNaming::is_companion(COMPANION) && !XrayBumpNaming::is_companion(BUMP));
   assert!(XrayBumpNaming::is_conventional_bump(BUMP) && !XrayBumpNaming::is_conventional_bump(BASE));

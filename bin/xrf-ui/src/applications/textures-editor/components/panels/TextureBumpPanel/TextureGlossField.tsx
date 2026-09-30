@@ -1,12 +1,14 @@
 import { Slider, Typography } from "@mui/material";
+import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
-import { MINIMUM_GLOSS_POWER } from "@/applications/textures-editor/lib/texture-bump-gloss";
 import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface ITextureGlossFieldProps extends BaseComponentProps {
   value: number;
+  /** The mean gloss below which the backend reports a dark surface, or null before its vocabulary arrives. */
+  minimum: Nullable<number>;
   isDisabled?: boolean;
   onChange: (value: number) => void;
 }
@@ -23,6 +25,7 @@ export function TextureGlossField({
   id,
   className,
   value,
+  minimum,
   isDisabled = false,
   onChange,
 }: ITextureGlossFieldProps): ReactElement {
@@ -43,9 +46,9 @@ export function TextureGlossField({
         onChange={(_, next: number | Array<number>) => onChange(Array.isArray(next) ? (next[0] ?? 0) : next)}
       />
 
-      {value < MINIMUM_GLOSS_POWER ? (
+      {minimum !== null && value < minimum ? (
         <Typography variant={"caption"} color={"warning.main"}>
-          {`Below ${MINIMUM_GLOSS_POWER}, the surface shows almost no specular response. The pair is still written.`}
+          {`Below ${minimum}, the surface shows almost no specular response. The pair is still written.`}
         </Typography>
       ) : null}
     </div>

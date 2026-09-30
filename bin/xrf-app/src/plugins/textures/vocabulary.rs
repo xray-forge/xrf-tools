@@ -1,6 +1,7 @@
 //! The names the SDK gives the numbers a descriptor stores.
 
 use serde::Serialize;
+use xrf_texture::GenerateBumpResult;
 use xrf_thm::{ThmBumpMode, ThmFormat, ThmMaterial, ThmMipFilter, ThmTextureFlag, ThmTextureType};
 
 /// One value a descriptor field can take, under the name the SDK gives it.
@@ -26,7 +27,7 @@ pub struct TextureFlagEntry {
 
 /// Every named value the descriptor form's numeric fields can take.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TextureVocabulary {
   /// The gate `LoadTHM` reads before anything else.
@@ -40,6 +41,8 @@ pub struct TextureVocabulary {
   pub flags: Vec<TextureFlagEntry>,
   /// The bump mode that makes the engine bind a pair.
   pub bump_mode_use: u32,
+  /// The mean gloss below which a generated bump shows almost no specular response.
+  pub minimum_gloss_power: f32,
 }
 
 impl TextureVocabulary {
@@ -53,6 +56,7 @@ impl TextureVocabulary {
       bump_modes: to_entries(ThmBumpMode::NAMED, ThmBumpMode::label),
       flags: to_flag_entries(),
       bump_mode_use: ThmBumpMode::Use.into(),
+      minimum_gloss_power: GenerateBumpResult::MINIMUM_GLOSS_POWER,
     }
   }
 }

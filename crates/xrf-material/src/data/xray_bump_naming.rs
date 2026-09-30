@@ -9,6 +9,11 @@ impl XrayBumpNaming {
   /// bump (`NormalMapGen.cpp:831`).
   pub const BUMP_MARKER: &'static str = "_bump";
 
+  /// The bump the SDK's generator writes for `texture`, which a descriptor then names.
+  pub fn bump_of(texture: &str) -> String {
+    format!("{texture}{}", Self::BUMP_MARKER)
+  }
+
   /// The companion the engine binds beside `bump`.
   pub fn companion_of(bump: &str) -> String {
     format!("{bump}{}", Self::COMPANION_SUFFIX)

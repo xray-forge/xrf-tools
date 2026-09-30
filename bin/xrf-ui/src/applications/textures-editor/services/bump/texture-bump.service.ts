@@ -3,7 +3,7 @@ import { Computed, flowResult } from "@wirestate/mobx";
 import { Nullable } from "@xrf/types";
 
 import { describeTextureBumpOutcome } from "@/applications/textures-editor/lib/describe-texture-bump-outcome";
-import { toBumpReference, toBumpTarget } from "@/applications/textures-editor/lib/texture-bump-target";
+import { toBumpTarget } from "@/applications/textures-editor/lib/texture-bump-target";
 import { TextureEditorService } from "@/applications/textures-editor/services/editor";
 import { texturesCommands } from "@/core/ipc/commands/textures";
 import { EJobKind, TextureDescription, TextureMakeBumpOutcome } from "@/core/ipc/types/xrf-app";
@@ -93,8 +93,8 @@ export class TextureBumpService {
             gloss: sources.gloss,
             glossConstant: sources.glossConstant,
             height: sources.height,
-            // Box, because that is what the SDK's own generator leaves its parameters at.
-            mipFilter: "box",
+            // The backend's own chain, the Box the SDK's generator leaves its parameters at.
+            mipFilter: null,
             normalMap: sources.normalMap,
             quality: "slow",
             virtualHeight: sources.virtualHeight,
@@ -103,7 +103,11 @@ export class TextureBumpService {
           progress
         ),
       describe: (outcome: IJobOutcome<TextureMakeBumpOutcome>): IJobNotice =>
-        describeTextureBumpOutcome(description.reference, outcome),
+        describeTextureBumpOutcome(
+          description.reference,
+          outcome,
+          this.editorService.vocabulary.value?.minimumGlossPower ?? null
+        ),
     });
 
     if (error || result?.outcome === "cancelled") {
@@ -113,7 +117,7 @@ export class TextureBumpService {
     // The pair exists on disk and the descriptor does not name it yet, which is the one state this leaves behind.
     this.editorService.edit({
       bumpMode: this.editorService.bumpUseMode,
-      bumpName: toBumpReference(description),
+      bumpName: description.generatedBump.bump,
       virtualHeight: sources.virtualHeight,
     });
 

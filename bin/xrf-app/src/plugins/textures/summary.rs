@@ -1,6 +1,6 @@
 use rayon::prelude::*;
 use serde::Serialize;
-use xrf_material::{XrayBumpOutcome, XrayMaterialDescriptor, XrayMaterialResolver};
+use xrf_material::{XrayBumpNaming, XrayBumpOutcome, XrayMaterialDescriptor, XrayMaterialResolver};
 use xrf_vfs::{XrayAsset, XrayAssetType, XrayProbe, XrayRoots};
 
 use crate::core::assets::AssetMountState;
@@ -46,6 +46,18 @@ impl TextureBadges {
 pub struct TextureBumpPair {
   pub bump: String,
   pub companion: String,
+}
+
+impl TextureBumpPair {
+  /// The pair the SDK's generator writes for `texture`: its bump, and the companion the engine derives from it.
+  pub fn generated_for(texture: &str) -> Self {
+    let bump: String = XrayBumpNaming::bump_of(texture);
+
+    Self {
+      companion: XrayBumpNaming::companion_of(&bump),
+      bump,
+    }
+  }
 }
 
 /// One descriptor's contribution to the tree: its badges, and the pair it names so both halves fold under it.

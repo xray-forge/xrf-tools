@@ -140,6 +140,7 @@ export function mockTextureDescription(
     bump: null,
     companion: null,
     form: mockTextureDescriptorForm(),
+    generatedBump: { bump: `${reference}_bump`, companion: `${reference}_bump#` },
     hasDescriptor: false,
     material: mockFlatMaterial(),
     reference,
@@ -176,6 +177,7 @@ export function mockTextureVocabulary(overrides: Partial<TextureVocabulary> = {}
       { label: "Use", value: 2 },
     ],
     bumpModeUse: 2,
+    minimumGlossPower: 0.1,
     flags: [
       { bit: 1, label: "flGenerateMipMaps" },
       { bit: 1 << 25, label: "flHasAlpha" },

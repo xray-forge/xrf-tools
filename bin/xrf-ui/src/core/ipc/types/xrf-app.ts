@@ -2281,6 +2281,8 @@ export type TextureDescription = {
   form: TextureDescriptorForm;
   /** Where an edit of this texture would write, absent for a texture served out of an archive. */
   targets: TextureEditTargets | null;
+  /** The pair the bump generator writes for this texture, as the references a descriptor names. */
+  generatedBump: TextureBumpPair;
 };
 
 /** The descriptor fields the editor owns, read off a `.thm` and written back onto one. */
@@ -2516,6 +2518,8 @@ export type TextureVocabulary = {
   flags: Array<TextureFlagEntry>;
   /** The bump mode that makes the engine bind a pair. */
   bumpModeUse: number;
+  /** The mean gloss below which a generated bump shows almost no specular response. */
+  minimumGlossPower: number | null;
 };
 
 /** One value a descriptor field can take, under the name the SDK gives it. */

@@ -14,6 +14,7 @@ use crate::plugins::textures::descriptor_form::TextureDescriptorForm;
 use crate::plugins::textures::edit_targets::TextureEditTargets;
 use crate::plugins::textures::files::TextureFiles;
 use crate::plugins::textures::source::TextureSource;
+use crate::plugins::textures::summary::TextureBumpPair;
 
 /// Everything the inspection panels say about one texture, resolved in one call.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -41,6 +42,8 @@ pub struct TextureDescription {
   pub form: TextureDescriptorForm,
   /// Where an edit of this texture would write, absent for a texture served out of an archive.
   pub targets: Option<TextureEditTargets>,
+  /// The pair the bump generator writes for this texture, as the references a descriptor names.
+  pub generated_bump: TextureBumpPair,
 }
 
 impl TextureDescription {
@@ -94,6 +97,7 @@ impl TextureDescription {
       bump: material.bump.as_ref().and_then(|bump| describe_bound(&bump.bump)),
       companion: material.bump.as_ref().and_then(|bump| describe_bound(&bump.companion)),
       material: Some(material),
+      generated_bump: TextureBumpPair::generated_for(&reference),
       source,
       reference,
       roots,
@@ -132,6 +136,7 @@ impl TextureDescription {
       base: texture
         .as_ref()
         .and_then(|_| AssetTextureDescriptor::describe_path(&texture_path)),
+      generated_bump: TextureBumpPair::generated_for(&source.to_label()),
       reference: source.to_label(),
       material: None,
       bump: None,
