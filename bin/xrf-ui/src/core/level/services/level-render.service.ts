@@ -139,7 +139,24 @@ export class LevelRenderService extends RenderSurfaceService {
         () => this.viewService.hemiStrength,
         () => this.sendSettings()
       ),
-      // The level's weather is read once it opens, and played by the renderer once its skies are asked for.
+      ...this.watchWeather(),
+      reaction(() => this.viewService.camera, this.applyCamera),
+      // Whatever else the settings are made of; the options and the lighting configure as they apply.
+      reaction(
+        () => [this.viewService.lod, this.viewService.features],
+        () => this.sendSettings()
+      ),
+    ];
+  }
+
+  /**
+   * The level's weather, read once it opens and played by the renderer once its skies are asked for; how it plays and
+   * what the view shows of it, as either changes.
+   *
+   * @returns What stops watching.
+   */
+  private watchWeather(): Array<() => void> {
+    return [
       reaction(
         () => this.loadService.level.value?.selected ?? null,
         (selected) => void this.weatherService.open(selected),
@@ -165,12 +182,6 @@ export class LevelRenderService extends RenderSurfaceService {
       reaction(
         () => this.weatherService.effect,
         (effect: Nullable<ILevelWeatherEffectRequest>) => effect && this.client?.playWeatherEffect(effect.name)
-      ),
-      reaction(() => this.viewService.camera, this.applyCamera),
-      // Whatever else the settings are made of; the options and the lighting configure as they apply.
-      reaction(
-        () => [this.viewService.lod, this.viewService.features],
-        () => this.sendSettings()
       ),
     ];
   }
