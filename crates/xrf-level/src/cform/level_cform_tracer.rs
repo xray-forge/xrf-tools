@@ -61,7 +61,7 @@ impl LevelCformTracer {
       }
 
       if end - start > LEAF_TRIANGLES {
-        let middle: usize = (end - start) / 2;
+        let middle: usize = split(end - start);
 
         nodes.push(LevelCformTracerNode::inner());
         pending.push((start + middle, end, Some(index)));
@@ -186,7 +186,7 @@ impl LevelCformTracer {
       return;
     }
 
-    let middle: usize = entries.len() / 2;
+    let middle: usize = split(entries.len());
     let axis: usize = Self::widest_axis(entries);
 
     entries.select_nth_unstable_by(middle, |first, second| first.1[axis].total_cmp(&second.1[axis]));
@@ -217,6 +217,11 @@ impl LevelCformTracer {
       .max_by(|first, second| (max[*first] - min[*first]).total_cmp(&(max[*second] - min[*second])))
       .unwrap_or(0)
   }
+}
+
+/// Where a run of triangles is split, which both the ordering and the layout go by, so the tree matches the order.
+fn split(count: usize) -> usize {
+  count / 2
 }
 
 fn sub(first: &[f32; 3], second: &[f32; 3]) -> [f32; 3] {
