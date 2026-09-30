@@ -255,6 +255,13 @@ describe("three's internals, as the renderer reads them", () => {
     expect(uniforms).toContain("bufferCount > 0 && uniform.type === 'buffer'");
   });
 
+  it("names a buffer of no name of its own after its uniform's id, as its builder hands the uniform out", () => {
+    // `adoptStableBufferNames` names such a buffer again by its order in the shader, recognising it by this name.
+    const uniform: string = readThreeMethod("renderers/webgpu/nodes/WGSLNodeBuilder.js", "getUniformFromNode");
+
+    expect(uniform).toContain("uniformNode.name = name ? name : 'NodeBuffer_' + uniformNode.id;");
+  });
+
   it("sends a texture's bytes only as it first makes it or its version moves, and none while its source is not ready", () => {
     // `releaseTextureData` lets them go once it is up, and marks its source not ready for a texture made again.
     const update: string = readThreeMethod("renderers/common/Textures.js", "updateTexture");

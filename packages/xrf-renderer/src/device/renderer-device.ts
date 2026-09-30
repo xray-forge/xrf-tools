@@ -5,6 +5,7 @@ import { IRendererDevice } from "#/contract/renderer-device";
 import { RendererDeviceFailure } from "#/device/renderer-device-failure";
 import { getRendererDeviceLimits } from "#/device/renderer-device-limits";
 import { getRendererBackend, IRendererBackend, setRendererTimestamps } from "#/internals/renderer-backend";
+import { adoptStableBufferNames } from "#/internals/stable-buffer-names";
 import { RendererPassInspector } from "#/timing/renderer-pass-inspector";
 
 /**
@@ -17,6 +18,9 @@ export class RendererDevice {
    * @throws {RendererDeviceFailure} Where there is no WebGPU device to draw with.
    */
   public static async open(onLost: (reason: string) => void): Promise<RendererDevice> {
+    // Before anything builds a shader: what is built then is keyed by its text in the browser's pipeline cache.
+    adoptStableBufferNames();
+
     const limits: Nullable<Record<string, number>> = await getRendererDeviceLimits();
     let renderer: WebGPURenderer;
 
