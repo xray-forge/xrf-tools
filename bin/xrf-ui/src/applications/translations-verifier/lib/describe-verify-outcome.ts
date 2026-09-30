@@ -1,5 +1,5 @@
 import { TranslationVerifySummary } from "@/core/ipc/types/xrf-app";
-import { IJobNotice, IJobOutcome } from "@/core/jobs/lib";
+import { describeJobFailure, IJobNotice, IJobOutcome } from "@/core/jobs/lib";
 import { ENotificationSeverity } from "@/core/notifications/lib";
 
 /**
@@ -19,11 +19,7 @@ export function describeTranslationVerifyOutcome(
   const { result, error } = outcome;
 
   if (error) {
-    return {
-      details: [sources, error.message].join("\n"),
-      severity: ENotificationSeverity.ERROR,
-      title: "Could not check translations",
-    };
+    return describeJobFailure("Could not check translations", sources, error);
   }
 
   if (result?.outcome === "cancelled") {

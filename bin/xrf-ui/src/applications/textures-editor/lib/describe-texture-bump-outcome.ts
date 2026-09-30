@@ -1,7 +1,7 @@
 import { Nullable } from "@xrf/types";
 
 import { TextureMakeBumpOutcome } from "@/core/ipc/types/xrf-app";
-import { IJobNotice, IJobOutcome } from "@/core/jobs/lib";
+import { describeJobFailure, IJobNotice, IJobOutcome } from "@/core/jobs/lib";
 import { ENotificationSeverity } from "@/core/notifications/lib";
 
 /**
@@ -24,11 +24,7 @@ export function describeTextureBumpOutcome(
   const { result, error } = outcome;
 
   if (error) {
-    return {
-      details: [reference, error.message].join("\n"),
-      severity: ENotificationSeverity.ERROR,
-      title: "Could not generate the bump pair",
-    };
+    return describeJobFailure("Could not generate the bump pair", reference, error);
   }
 
   if (result?.outcome === "cancelled") {

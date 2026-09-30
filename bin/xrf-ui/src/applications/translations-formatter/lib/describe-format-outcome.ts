@@ -1,5 +1,5 @@
 import { TranslationFormatResult } from "@/core/ipc/types/xrf-translation";
-import { IJobNotice, IJobOutcome } from "@/core/jobs/lib";
+import { describeJobFailure, IJobNotice, IJobOutcome } from "@/core/jobs/lib";
 import { ENotificationSeverity } from "@/core/notifications/lib";
 
 /**
@@ -18,11 +18,11 @@ export function describeFormatOutcome(
   const { result, error } = outcome;
 
   if (error) {
-    return {
-      details: [directory, error.message].join("\n"),
-      severity: ENotificationSeverity.ERROR,
-      title: isCheck ? "Could not check translation formatting" : "Could not format translation sources",
-    };
+    return describeJobFailure(
+      isCheck ? "Could not check translation formatting" : "Could not format translation sources",
+      directory,
+      error
+    );
   }
 
   if (result?.outcome === "cancelled") {

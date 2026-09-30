@@ -1,5 +1,5 @@
 import { ArchiveUnpackResult } from "@/core/ipc/types/xrf-pack";
-import { IJobNotice, IJobOutcome } from "@/core/jobs/lib";
+import { describeJobFailure, IJobNotice, IJobOutcome } from "@/core/jobs/lib";
 import { ENotificationSeverity } from "@/core/notifications/lib";
 
 /**
@@ -24,11 +24,7 @@ export function describeUnpackOutcome(
   const { result, error } = outcome;
 
   if (error) {
-    return {
-      details: [source, error.message].join("\n"),
-      severity: ENotificationSeverity.ERROR,
-      title: "Could not unpack archives",
-    };
+    return describeJobFailure("Could not unpack archives", source, error);
   }
 
   if (result?.outcome === "cancelled") {

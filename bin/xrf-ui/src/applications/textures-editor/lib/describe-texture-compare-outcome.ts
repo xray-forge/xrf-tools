@@ -1,5 +1,5 @@
 import { TextureEncodingComparison } from "@/core/ipc/types/xrf-app";
-import { IJobNotice, IJobOutcome } from "@/core/jobs/lib";
+import { describeJobFailure, IJobNotice, IJobOutcome } from "@/core/jobs/lib";
 import { ENotificationSeverity } from "@/core/notifications/lib";
 
 /**
@@ -16,11 +16,7 @@ export function describeTextureCompareOutcome(
   const { result, error } = outcome;
 
   if (error) {
-    return {
-      details: [reference, error.message].join("\n"),
-      severity: ENotificationSeverity.ERROR,
-      title: "Could not compare texture formats",
-    };
+    return describeJobFailure("Could not compare texture formats", reference, error);
   }
 
   const count: number = result?.candidates.length ?? 0;

@@ -1,5 +1,5 @@
 import { ArchivePackConfig, ArchivePackResult } from "@/core/ipc/types/xrf-pack";
-import { IJobNotice, IJobOutcome } from "@/core/jobs/lib";
+import { describeJobFailure, IJobNotice, IJobOutcome } from "@/core/jobs/lib";
 import { ENotificationSeverity } from "@/core/notifications/lib";
 
 /**
@@ -13,11 +13,7 @@ export function describePackOutcome(config: ArchivePackConfig, outcome: IJobOutc
   const { result, error } = outcome;
 
   if (error) {
-    return {
-      details: [config.source, error.message].join("\n"),
-      severity: ENotificationSeverity.ERROR,
-      title: "Could not pack archives",
-    };
+    return describeJobFailure("Could not pack archives", config.source, error);
   }
 
   if (result?.outcome === "cancelled") {

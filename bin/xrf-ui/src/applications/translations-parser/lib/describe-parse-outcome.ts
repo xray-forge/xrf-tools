@@ -1,5 +1,5 @@
 import { TranslationParseSummary } from "@/core/ipc/types/xrf-app";
-import { IJobNotice, IJobOutcome } from "@/core/jobs/lib";
+import { describeJobFailure, IJobNotice, IJobOutcome } from "@/core/jobs/lib";
 import { ENotificationSeverity } from "@/core/notifications/lib";
 
 /**
@@ -19,11 +19,7 @@ export function describeTranslationParseOutcome(
   const { result, error } = outcome;
 
   if (error) {
-    return {
-      details: [output, error.message].join("\n"),
-      severity: ENotificationSeverity.ERROR,
-      title: "Could not import translations",
-    };
+    return describeJobFailure("Could not import translations", output, error);
   }
 
   if (result?.outcome === "cancelled") {

@@ -1,5 +1,5 @@
 import { TranslationBuildSummary } from "@/core/ipc/types/xrf-app";
-import { IJobNotice, IJobOutcome } from "@/core/jobs/lib";
+import { describeJobFailure, IJobNotice, IJobOutcome } from "@/core/jobs/lib";
 import { ENotificationSeverity } from "@/core/notifications/lib";
 
 /**
@@ -19,11 +19,7 @@ export function describeTranslationBuildOutcome(
   const { result, error } = outcome;
 
   if (error) {
-    return {
-      details: [output, error.message].join("\n"),
-      severity: ENotificationSeverity.ERROR,
-      title: "Could not build translations",
-    };
+    return describeJobFailure("Could not build translations", output, error);
   }
 
   if (result?.outcome === "cancelled") {

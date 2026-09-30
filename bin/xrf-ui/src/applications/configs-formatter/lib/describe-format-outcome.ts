@@ -1,5 +1,5 @@
 import { LtxProjectFormatResult } from "@/core/ipc/types/xrf-ltx";
-import { IJobNotice, IJobOutcome } from "@/core/jobs/lib";
+import { describeJobFailure, IJobNotice, IJobOutcome } from "@/core/jobs/lib";
 import { ENotificationSeverity } from "@/core/notifications/lib";
 
 /**
@@ -29,11 +29,7 @@ export function describeFormatOutcome(
   const { result, error } = outcome;
 
   if (error) {
-    return {
-      details: [directory, error.message].join("\n"),
-      severity: ENotificationSeverity.ERROR,
-      title: isCheck ? "Could not check formatting" : "Could not format configs",
-    };
+    return describeJobFailure(isCheck ? "Could not check formatting" : "Could not format configs", directory, error);
   }
 
   if (result?.outcome === "cancelled") {

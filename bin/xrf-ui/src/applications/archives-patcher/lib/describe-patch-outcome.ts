@@ -1,5 +1,5 @@
 import { ArchivePatchConfig, ArchivePatchResult } from "@/core/ipc/types/xrf-pack";
-import { IJobNotice, IJobOutcome } from "@/core/jobs/lib";
+import { describeJobFailure, IJobNotice, IJobOutcome } from "@/core/jobs/lib";
 import { ENotificationSeverity } from "@/core/notifications/lib";
 
 /**
@@ -15,11 +15,7 @@ export function describePatchOutcome(config: ArchivePatchConfig, outcome: IJobOu
   const { result, error } = outcome;
 
   if (error) {
-    return {
-      details: [config.target ?? config.input, error.message].join("\n"),
-      severity: ENotificationSeverity.ERROR,
-      title: "Could not build patch",
-    };
+    return describeJobFailure("Could not build patch", config.target ?? config.input, error);
   }
 
   if (!result) {

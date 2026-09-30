@@ -1,5 +1,5 @@
 import { ArchiveExtractDirectoryResult } from "@/core/ipc/types/xrf-pack";
-import { IJobNotice, IJobOutcome } from "@/core/jobs/lib";
+import { describeJobFailure, IJobNotice, IJobOutcome } from "@/core/jobs/lib";
 import { ENotificationSeverity } from "@/core/notifications/lib";
 
 /**
@@ -22,11 +22,7 @@ export function describeExtractOutcome(
   const from: string = prefix || "the archive root";
 
   if (error) {
-    return {
-      details: [destination, error.message].join("\n"),
-      severity: ENotificationSeverity.ERROR,
-      title: `Could not extract ${from}`,
-    };
+    return describeJobFailure(`Could not extract ${from}`, destination, error);
   }
 
   if (result?.outcome === "cancelled") {

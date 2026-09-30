@@ -1,5 +1,5 @@
 import { LtxProjectVerifyResult } from "@/core/ipc/types/xrf-ltx";
-import { IJobNotice, IJobOutcome } from "@/core/jobs/lib";
+import { describeJobFailure, IJobNotice, IJobOutcome } from "@/core/jobs/lib";
 import { ENotificationSeverity } from "@/core/notifications/lib";
 
 /**
@@ -16,11 +16,7 @@ export function describeVerifyOutcome(directory: string, outcome: IJobOutcome<Lt
   const { result, error } = outcome;
 
   if (error) {
-    return {
-      details: [directory, error.message].join("\n"),
-      severity: ENotificationSeverity.ERROR,
-      title: "Could not verify configs",
-    };
+    return describeJobFailure("Could not verify configs", directory, error);
   }
 
   if (result?.outcome === "cancelled") {

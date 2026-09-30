@@ -1,5 +1,5 @@
 import { ESpawnConversion, SpawnConversion, SpawnConversionResult } from "@/core/ipc/types/xrf-app";
-import { IJobNotice, IJobOutcome } from "@/core/jobs/lib";
+import { describeJobFailure, IJobNotice, IJobOutcome } from "@/core/jobs/lib";
 import { ENotificationSeverity } from "@/core/notifications/lib";
 
 /**
@@ -18,11 +18,7 @@ export function describeSpawnConversionOutcome(
   outcome: IJobOutcome<SpawnConversionResult>
 ): IJobNotice {
   if (outcome.error) {
-    return {
-      title: `Could not ${operation} spawn file`,
-      severity: ENotificationSeverity.ERROR,
-      details: [source, outcome.error.message].join("\n"),
-    };
+    return describeJobFailure(`Could not ${operation} spawn file`, source, outcome.error);
   }
 
   if (outcome.result?.outcome === "cancelled") {

@@ -1,5 +1,5 @@
 import { PackEquipmentResult } from "@/core/ipc/types/xrf-texture";
-import { IJobNotice, IJobOutcome } from "@/core/jobs/lib";
+import { describeJobFailure, IJobNotice, IJobOutcome } from "@/core/jobs/lib";
 import { ENotificationSeverity } from "@/core/notifications/lib";
 
 /**
@@ -17,11 +17,7 @@ export function describePackSpriteOutcome(output: string, outcome: IJobOutcome<P
   const { result, error } = outcome;
 
   if (error) {
-    return {
-      details: [output, error.message].join("\n"),
-      severity: ENotificationSeverity.ERROR,
-      title: "Could not pack equipment sprite",
-    };
+    return describeJobFailure("Could not pack equipment sprite", output, error);
   }
 
   if (result?.outcome === "cancelled") {
