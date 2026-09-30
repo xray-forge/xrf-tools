@@ -141,6 +141,7 @@ export function LevelPreviewLayout({
         id: "surfaces",
         label: "Surfaces",
         render: () => <LevelSurfacesPanel />,
+        side: "left",
       },
       {
         icon: <WarningIcon />,

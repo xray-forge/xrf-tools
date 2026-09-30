@@ -1,6 +1,6 @@
 import { useInjection } from "@wirestate/react";
-import { Maybe } from "@xrf/types";
-import { ReactElement, useMemo } from "react";
+import { Maybe, Nullable } from "@xrf/types";
+import { ReactElement, ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 
 import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
 import { ILevelSurfaceDressing } from "@/core/level/lib/surface/level-surface-dressing";
@@ -10,20 +10,31 @@ import {
   listLevelSurfaces,
   listNamedLevelSurfaces,
 } from "@/core/level/lib/surface/level-surface-summary";
-import { ILevelTextureReport, listLevelSurfaceDressing } from "@/core/level/lib/texture/level-texture-report";
-import { LevelLoadService, LevelRenderService, LevelViewportService } from "@/core/level/services";
 import {
-  EditorPanel,
-  EditorPanelEmpty,
-  EditorPanelProperty,
-  EditorPanelSection,
-} from "@/core/shell/editor/EditorPanel";
+  listLevelSurfaceGroupIds,
+  TLevelSurfaceTreeRow,
+  toLevelSurfaceEntryId,
+  toLevelSurfaceTree,
+} from "@/core/level/lib/surface/level-surface-tree";
+import { listLevelSurfaceDressing } from "@/core/level/lib/texture/level-texture-report";
+import { LevelLoadService, LevelRenderService, LevelViewportService } from "@/core/level/services";
+import { describeSurfaceOutcome } from "@/core/materials/lib";
+import { EditorPanelEmpty } from "@/core/shell/editor/EditorPanel";
+import { EditorSearchHeader } from "@/core/shell/editor/EditorSearchHeader";
+import { EmptyListing } from "@/core/ui/layout";
+import { ITreeNode } from "@/core/ui/tree/tree-node";
+import { TreeRowLabel } from "@/core/ui/tree/TreeRowLabel";
+import { IUseTreeState, useTreeState } from "@/core/ui/tree/use-tree-state";
+import { VirtualizedTree } from "@/core/ui/tree/VirtualizedTree";
+import { noop } from "@/lib/callbacks/noop";
+import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { LevelSurfaceRow } from "./LevelSurfaceRow";
 
 /**
- * How every surface of the open level is drawn, one row per entry of its shader table.
+ * How every surface of the open level is drawn: its shader table's entries by shader, found by shader, texture or id,
+ * and the one chosen described under them.
  */
 export function LevelSurfacesPanel({
   "data-testid": dataTestId = "level-surfaces-panel",
@@ -34,57 +45,125 @@ export function LevelSurfacesPanel({
   const renderService: LevelRenderService = useInjection(LevelRenderService);
   const viewportService: LevelViewportService = useInjection(LevelViewportService);
 
+  const tree: IUseTreeState = useTreeState();
+  const { expandAll } = tree;
+  const [filter, setFilter] = useState<string>("");
+
   const held: ReadonlyArray<number> = loadService.sectorReport.held;
-  const report: ILevelTextureReport = viewportService.textureReport;
   const surfaces: Maybe<ReadonlyArray<XraySurfaceDescriptor>> = loadService.level.value?.selected.value.surfaces;
 
-  const { named, total } = useMemo(() => {
-    const summaries: Array<ILevelSurfaceSummary> = listLevelSurfaces(surfaces ?? []);
-
-    return { named: listNamedLevelSurfaces(summaries), total: summaries.length };
-  }, [surfaces]);
-
-  const dressed: ReadonlyMap<number, Array<ILevelSurfaceDressing>> = useMemo(
+  const named: Array<ILevelSurfaceSummary> = useMemo(
+    () => listNamedLevelSurfaces(listLevelSurfaces(surfaces ?? [])),
+    [surfaces]
+  );
+  const items: Array<ITreeNode<TLevelSurfaceTreeRow>> = useMemo(
+    () => toLevelSurfaceTree(named, filter),
+    [named, filter]
+  );
+  const byId: ReadonlyMap<string, ILevelSurfaceSummary> = useMemo(
+    () => new Map(named.map((summary: ILevelSurfaceSummary) => [toLevelSurfaceEntryId(summary.shaderId), summary])),
+    [named]
+  );
+  const matched: number = useMemo(
     () =>
-      new Map(
-        named.map((summary: ILevelSurfaceSummary) => [
-          summary.shaderId,
-          listLevelSurfaceDressing(summary.textures, report),
-        ])
+      items.reduce(
+        (sum: number, it: ITreeNode<TLevelSurfaceTreeRow>) =>
+          sum + (it.payload?.kind === "shader" ? it.payload.count : 0),
+        0
       ),
-    [named, report]
+    [items]
   );
 
-  // Measured again as the sectors held change, which is what it samples: every draw of every one of them.
-  const drawn: ReadonlyMap<number, ILevelSurfaceGeometry> = useMemo(
-    () => renderService.measureSurfaceGeometry(),
+  const selected: Nullable<ILevelSurfaceSummary> = tree.selectedId ? (byId.get(tree.selectedId) ?? null) : null;
+  const dressing: Array<ILevelSurfaceDressing> = selected
+    ? listLevelSurfaceDressing(selected.textures, viewportService.textureReport)
+    : [];
+
+  // Measured for the entry chosen, again as the sectors held change: it samples every draw of every one of them.
+  const geometry: ILevelSurfaceGeometry = useMemo(
+    () =>
+      selected
+        ? (renderService.measureSurfaceGeometry().get(selected.shaderId) ?? NO_LEVEL_SURFACE_GEOMETRY)
+        : NO_LEVEL_SURFACE_GEOMETRY,
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [renderService, held]
+    [renderService, held, selected]
   );
+
+  // A filter that matched inside a shader opens it, because a closed shader answering a query looks like no answer.
+  useEffect(() => {
+    if (filter.trim()) {
+      expandAll(listLevelSurfaceGroupIds(items));
+    }
+  }, [expandAll, filter, items]);
+
+  const onSelect = useCallback((item: ITreeNode<TLevelSurfaceTreeRow>) => tree.select(item.id), [tree]);
+
+  const renderLabel = useCallback((item: ITreeNode<TLevelSurfaceTreeRow>): ReactNode => {
+    const row: Maybe<TLevelSurfaceTreeRow> = item.payload;
+
+    if (row?.kind === "shader") {
+      return <TreeRowLabel label={item.label} caption={String(row.count)} captionTitle={`${row.count} entries`} />;
+    }
+
+    return row ? (
+      <TreeRowLabel
+        label={item.label}
+        caption={describeSurfaceOutcome(row.summary.descriptor).label}
+        captionTitle={"Drawn as"}
+      />
+    ) : (
+      item.label
+    );
+  }, []);
 
   if (!loadService.level.value) {
     return (
-      <EditorPanel data-testid={dataTestId} id={id} className={className} title={"Surfaces"}>
-        <EditorPanelEmpty label={"No level open. Open one to see how its surfaces are drawn."} />
-      </EditorPanel>
+      <EditorPanelEmpty
+        data-testid={dataTestId}
+        id={id}
+        className={className}
+        label={"No level open. Open one to see how its surfaces are drawn."}
+      />
     );
   }
 
   return (
-    <EditorPanel data-testid={dataTestId} id={id} className={className} title={"Surfaces"}>
-      <EditorPanelSection title={"Table"} isFirst>
-        <EditorPanelProperty label={"Entries"} value={total} />
-        <EditorPanelProperty label={"Named"} value={named.length} />
-      </EditorPanelSection>
+    <div data-testid={dataTestId} id={id} className={cn("flex h-full min-h-0 flex-col", className)}>
+      <EditorSearchHeader
+        title={"Surfaces"}
+        count={matched}
+        query={filter}
+        placeholder={"Filter by shader, texture or id"}
+        ariaLabel={"Filter surfaces"}
+        onClear={() => setFilter("")}
+        onQueryChange={setFilter}
+      />
 
-      {named.map((summary: ILevelSurfaceSummary) => (
-        <LevelSurfaceRow
-          key={summary.shaderId}
-          summary={summary}
-          dressing={dressed.get(summary.shaderId) ?? []}
-          geometry={drawn.get(summary.shaderId) ?? NO_LEVEL_SURFACE_GEOMETRY}
+      {items.length ? (
+        <div className={"min-h-0 grow"}>
+          <VirtualizedTree<TLevelSurfaceTreeRow>
+            ariaLabel={"Shader table"}
+            className={"h-full"}
+            items={items}
+            expandedIds={tree.expandedIds}
+            selectedId={tree.selectedId}
+            renderLabel={renderLabel}
+            onToggleExpanded={tree.toggleExpanded}
+            onSelect={onSelect}
+            onActivate={noop}
+          />
+        </div>
+      ) : (
+        <EmptyListing
+          label={filter ? "No shader table entry matches that." : "The level's shader table names no shader."}
         />
-      ))}
-    </EditorPanel>
+      )}
+
+      {selected ? (
+        <div className={"max-h-1/2 shrink-0 overflow-y-auto border-t border-divider"}>
+          <LevelSurfaceRow summary={selected} dressing={dressing} geometry={geometry} isFirst />
+        </div>
+      ) : null}
+    </div>
   );
 }
