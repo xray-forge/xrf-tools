@@ -3,11 +3,9 @@ import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useEffect, useState } from "react";
 
 import { VerifierService } from "@/applications/configs-verifier/services/verifier";
-import { JobProgressView } from "@/core/jobs/components/JobProgressView";
-import { IJobState } from "@/core/jobs/lib";
+import { JobPickerForm } from "@/core/jobs/components/JobPickerForm";
 import { ConfigsDialectFormRow } from "@/core/ltx/components/configs-dialect/ConfigsDialectFormRow";
 import { EApplicationId } from "@/core/routing/application";
-import { PickerForm } from "@/core/shell/editor/PickerForm";
 import { IPathField, PathFormRow, usePathField } from "@/core/ui/form";
 import { Logger, useLogger } from "@/lib/logging";
 
@@ -20,7 +18,6 @@ export function ConfigsVerifierApplication(): ReactElement {
 
   // The run rather than this view's own flag: a verification survives the window being reloaded, so returning here
   // finds it again instead of showing an idle form over a project it is still reading.
-  const job: Nullable<IJobState> = verifierService.operation.job;
   const isRunning: boolean = verifierService.operation.isRunning;
 
   const configs: IPathField = usePathField({
@@ -50,17 +47,13 @@ export function ConfigsVerifierApplication(): ReactElement {
   }, [directory, isDltx, verifierService]);
 
   return (
-    <PickerForm
-      isLoading={isRunning}
+    <JobPickerForm
+      operation={verifierService.operation}
       isSubmitDisabled={!configs.isValid}
       title={"Verify LTX configs"}
       description={"Checks every LTX file in the directory. Nothing is written."}
-      error={verifierService.operation.error ?? undefined}
       submitLabel={"Verify"}
-      status={job ? <JobProgressView job={job} onCancel={verifierService.operation.cancel} /> : null}
-      result={
-        verifierService.operation.result ? <ConfigsVerifyResult result={verifierService.operation.result} /> : null
-      }
+      renderResult={(result) => <ConfigsVerifyResult result={result} />}
       onSubmit={onVerify}
     >
       <PathFormRow
@@ -71,6 +64,6 @@ export function ConfigsVerifierApplication(): ReactElement {
       />
 
       <ConfigsDialectFormRow isDltx={isDltx} isDisabled={isRunning} onChange={setDltx} />
-    </PickerForm>
+    </JobPickerForm>
   );
 }

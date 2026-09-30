@@ -1,14 +1,11 @@
 import { flowResult } from "@wirestate/mobx";
 import { useInjection } from "@wirestate/react";
-import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useEffect, useState } from "react";
 
 import { EXrayExtension } from "@/core/ipc/types/xrf-extension";
-import { JobProgressView } from "@/core/jobs/components/JobProgressView";
-import { IJobState } from "@/core/jobs/lib";
+import { JobPickerForm } from "@/core/jobs/components/JobPickerForm";
 import { ConfigsDialectFormRow } from "@/core/ltx/components/configs-dialect/ConfigsDialectFormRow";
 import { EApplicationId } from "@/core/routing/application";
-import { PickerForm } from "@/core/shell/editor/PickerForm";
 import { SpriteEquipmentPackerService } from "@/core/sprite-equipment/services/packer";
 import { IPathField, PathFormRow, usePathField } from "@/core/ui/form";
 import { Logger, useLogger } from "@/lib/logging";
@@ -21,7 +18,6 @@ export function SpriteEquipmentPackerApplication(): ReactElement {
   const packerService: SpriteEquipmentPackerService = useInjection(SpriteEquipmentPackerService);
 
   // Rediscover a running pack after reload so the form cannot offer a second pack against the same output.
-  const job: Nullable<IJobState> = packerService.operation.job;
 
   const isRunning: boolean = packerService.operation.isRunning;
 
@@ -74,15 +70,13 @@ export function SpriteEquipmentPackerApplication(): ReactElement {
   }, [source.value, output.value, systemLtx.value, isDltx, packerService]);
 
   return (
-    <PickerForm
-      isLoading={isRunning}
+    <JobPickerForm
+      operation={packerService.operation}
       isSubmitDisabled={!source.isValid || !output.isValid || !systemLtx.isValid}
       title={"Pack equipment sprite"}
       description={"Builds one sprite from a directory of icons. The output file is overwritten."}
-      error={packerService.operation.error ?? undefined}
       submitLabel={"Pack"}
-      status={job ? <JobProgressView job={job} onCancel={packerService.operation.cancel} /> : null}
-      result={packerService.operation.result ? <EquipmentPackResult result={packerService.operation.result} /> : null}
+      renderResult={(result) => <EquipmentPackResult result={result} />}
       onSubmit={onPackEquipmentClicked}
     >
       <PathFormRow
@@ -102,6 +96,6 @@ export function SpriteEquipmentPackerApplication(): ReactElement {
       />
 
       <ConfigsDialectFormRow isDltx={isDltx} isDisabled={isRunning} onChange={setDltx} />
-    </PickerForm>
+    </JobPickerForm>
   );
 }

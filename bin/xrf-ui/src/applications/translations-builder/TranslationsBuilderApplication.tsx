@@ -4,10 +4,8 @@ import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useEffect, useState } from "react";
 
 import { TranslationsBuilderService } from "@/applications/translations-builder/services/builder";
-import { JobProgressView } from "@/core/jobs/components/JobProgressView";
-import { IJobState } from "@/core/jobs/lib";
+import { JobPickerForm } from "@/core/jobs/components/JobPickerForm";
 import { EApplicationId } from "@/core/routing/application";
-import { PickerForm } from "@/core/shell/editor/PickerForm";
 import { TranslationLanguageField } from "@/core/translations/components/TranslationLanguageField";
 import { ALL_TRANSLATION_LANGUAGES, TRANSLATION_LANGUAGES_WITH_ALL } from "@/core/translations/translations.config";
 import { FormRow, IPathField, PathFormRow, usePathField, useRememberedValue } from "@/core/ui/form";
@@ -18,7 +16,6 @@ export function TranslationsBuilderApplication(): ReactElement {
   const builderService: TranslationsBuilderService = useInjection(TranslationsBuilderService);
 
   // The run rather than this view's own flag: a build survives the window being reloaded.
-  const job: Nullable<IJobState> = builderService.operation.job;
   const isRunning: boolean = builderService.operation.isRunning;
 
   const [isSorted, setIsSorted] = useState<boolean>(true);
@@ -63,19 +60,13 @@ export function TranslationsBuilderApplication(): ReactElement {
   }, [sourcesPath, outputPath, language, isSorted, builderService]);
 
   return (
-    <PickerForm
-      isLoading={isRunning}
+    <JobPickerForm
+      operation={builderService.operation}
       isSubmitDisabled={!sources.isValid || !destination.isValid}
       title={"Build translations"}
       description={"Compiles JSON sources into one X-Ray string table per language, in each language's code page."}
-      error={builderService.operation.error ?? undefined}
       submitLabel={"Build"}
-      status={job ? <JobProgressView job={job} onCancel={builderService.operation.cancel} /> : null}
-      result={
-        builderService.operation.result ? (
-          <TranslationsBuildResult result={builderService.operation.result} outputPath={outputPath} />
-        ) : null
-      }
+      renderResult={(result) => <TranslationsBuildResult result={result} outputPath={outputPath} />}
       onSubmit={onBuild}
     >
       <PathFormRow
@@ -118,6 +109,6 @@ export function TranslationsBuilderApplication(): ReactElement {
           />
         )}
       </FormRow>
-    </PickerForm>
+    </JobPickerForm>
   );
 }

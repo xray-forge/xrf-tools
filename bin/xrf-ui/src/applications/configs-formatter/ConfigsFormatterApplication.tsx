@@ -3,10 +3,8 @@ import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useEffect, useState } from "react";
 
 import { FormatterService } from "@/applications/configs-formatter/services/formatter";
-import { JobProgressView } from "@/core/jobs/components/JobProgressView";
-import { IJobState } from "@/core/jobs/lib";
+import { JobPickerForm } from "@/core/jobs/components/JobPickerForm";
 import { EApplicationId } from "@/core/routing/application";
-import { PickerForm } from "@/core/shell/editor/PickerForm";
 import { CheckboxFormRow, IPathField, PathFormRow, usePathField } from "@/core/ui/form";
 import { Logger, useLogger } from "@/lib/logging";
 
@@ -21,7 +19,6 @@ export function ConfigsFormatterApplication(): ReactElement {
 
   // The run rather than this view's own flag: it survives the window being reloaded, so returning here finds it again
   // instead of showing an idle form over files it is still rewriting.
-  const job: Nullable<IJobState> = formatterService.operation.job;
   const isRunning: boolean = formatterService.operation.isRunning;
 
   const configs: IPathField = usePathField({
@@ -49,8 +46,8 @@ export function ConfigsFormatterApplication(): ReactElement {
   }, [directory, isCheck, formatterService]);
 
   return (
-    <PickerForm
-      isLoading={isRunning}
+    <JobPickerForm
+      operation={formatterService.operation}
       isSubmitDisabled={!configs.isValid}
       title={isCheck ? "Check LTX formatting" : "Format LTX configs"}
       description={
@@ -58,14 +55,8 @@ export function ConfigsFormatterApplication(): ReactElement {
           ? "Reports which files are badly formatted. Nothing is written."
           : "Rewrites every badly formatted file in the directory in place."
       }
-      error={formatterService.operation.error ?? undefined}
       submitLabel={isCheck ? "Check" : "Format"}
-      status={job ? <JobProgressView job={job} onCancel={formatterService.operation.cancel} /> : null}
-      result={
-        formatterService.operation.result ? (
-          <ConfigsFormatResult isCheck={isCheck} result={formatterService.operation.result} />
-        ) : null
-      }
+      renderResult={(result) => <ConfigsFormatResult isCheck={isCheck} result={result} />}
       onSubmit={onFormat}
     >
       <PathFormRow
@@ -82,6 +73,6 @@ export function ConfigsFormatterApplication(): ReactElement {
         isDisabled={isRunning}
         onChange={setIsCheck}
       />
-    </PickerForm>
+    </JobPickerForm>
   );
 }

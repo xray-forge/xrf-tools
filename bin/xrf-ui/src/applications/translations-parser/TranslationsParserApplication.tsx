@@ -4,10 +4,8 @@ import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useEffect, useState } from "react";
 
 import { TranslationsParserService } from "@/applications/translations-parser/services/parser";
-import { JobProgressView } from "@/core/jobs/components/JobProgressView";
-import { IJobState } from "@/core/jobs/lib";
+import { JobPickerForm } from "@/core/jobs/components/JobPickerForm";
 import { EApplicationId } from "@/core/routing/application";
-import { PickerForm } from "@/core/shell/editor/PickerForm";
 import { TranslationLanguageField } from "@/core/translations/components/TranslationLanguageField";
 import { DEFAULT_TRANSLATION_LANGUAGE, TRANSLATION_LANGUAGES } from "@/core/translations/translations.config";
 import { FormRow, IPathField, PathFormRow, usePathField, useRememberedValue } from "@/core/ui/form";
@@ -18,7 +16,6 @@ export function TranslationsParserApplication(): ReactElement {
   const parserService: TranslationsParserService = useInjection(TranslationsParserService);
 
   // The run rather than this view's own flag: an import survives the window being reloaded.
-  const job: Nullable<IJobState> = parserService.operation.job;
   const isRunning: boolean = parserService.operation.isRunning;
 
   const [isOverwrite, setIsOverwrite] = useState<boolean>(false);
@@ -73,14 +70,13 @@ export function TranslationsParserApplication(): ReactElement {
   }, [sourcePath, outputPath, language, isOverwrite, parserService]);
 
   return (
-    <PickerForm
-      isLoading={isRunning}
+    <JobPickerForm
+      operation={parserService.operation}
       isSubmitDisabled={!source.isValid || !destination.isValid}
       title={"Parse translations"}
       description={
         "Reads one language's raw XML string tables and merges them into JSON sources, filling gaps with placeholders."
       }
-      error={parserService.operation.error ?? undefined}
       submitLabel={"Import"}
       secondaryActions={
         <Button
@@ -91,12 +87,7 @@ export function TranslationsParserApplication(): ReactElement {
           Preview
         </Button>
       }
-      status={job ? <JobProgressView job={job} onCancel={parserService.operation.cancel} /> : null}
-      result={
-        parserService.operation.result ? (
-          <TranslationsParseResult result={parserService.operation.result} outputPath={outputPath} />
-        ) : null
-      }
+      renderResult={(result) => <TranslationsParseResult result={result} outputPath={outputPath} />}
       onSubmit={onImportClicked}
     >
       <PathFormRow
@@ -138,6 +129,6 @@ export function TranslationsParserApplication(): ReactElement {
           />
         )}
       </FormRow>
-    </PickerForm>
+    </JobPickerForm>
   );
 }

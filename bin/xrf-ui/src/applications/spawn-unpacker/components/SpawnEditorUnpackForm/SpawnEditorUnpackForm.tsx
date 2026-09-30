@@ -2,10 +2,9 @@ import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useEffect } from "react";
 
 import { EXrayExtension } from "@/core/ipc/types/xrf-extension";
-import { JobProgressView } from "@/core/jobs/components/JobProgressView";
+import { JobPickerForm } from "@/core/jobs/components/JobPickerForm";
 import { EApplicationId } from "@/core/routing/application";
 import { resolveOutputPath } from "@/core/settings/lib/output-path";
-import { PickerForm } from "@/core/shell/editor/PickerForm";
 import { SpawnConversionOutcome } from "@/core/spawn/components/SpawnConversionOutcome";
 import { SpawnConversionService } from "@/core/spawn/services/spawn-conversion.service";
 import { IPathField, PathFormRow, usePathField } from "@/core/ui/form";
@@ -50,26 +49,16 @@ export function SpawnEditorUnpackForm(): ReactElement {
   }, [conversionService, source.value, destination.value]);
 
   return (
-    <PickerForm
-      isLoading={isLoading}
+    <JobPickerForm
+      operation={conversionService.operation}
       isSubmitDisabled={!source.isValid || !destination.isValid}
       title={"Unpack spawn file"}
       description={
         "Writes the file's chunks into the destination directory, replacing files of the same name. " +
         "Cancellation stops before writing; a write already started finishes."
       }
-      error={conversionService.operation.error ?? undefined}
       submitLabel={"Unpack"}
-      status={
-        conversionService.operation.job ? (
-          <JobProgressView job={conversionService.operation.job} onCancel={conversionService.operation.cancel} />
-        ) : null
-      }
-      result={
-        conversionService.operation.result ? (
-          <SpawnConversionOutcome result={conversionService.operation.result} />
-        ) : null
-      }
+      renderResult={(result) => <SpawnConversionOutcome result={result} />}
       onSubmit={onUnpack}
     >
       <PathFormRow
@@ -85,6 +74,6 @@ export function SpawnEditorUnpackForm(): ReactElement {
         description={"Directory the unpacked chunks are written to"}
         field={destination}
       />
-    </PickerForm>
+    </JobPickerForm>
   );
 }

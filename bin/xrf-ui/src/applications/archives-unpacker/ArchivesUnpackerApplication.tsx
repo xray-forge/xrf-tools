@@ -3,11 +3,9 @@ import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useEffect } from "react";
 
 import { UnpackerService } from "@/applications/archives-unpacker/services/unpacker";
-import { JobProgressView } from "@/core/jobs/components/JobProgressView";
-import { IJobState } from "@/core/jobs/lib";
+import { JobPickerForm } from "@/core/jobs/components/JobPickerForm";
 import { EApplicationId } from "@/core/routing/application";
 import { resolveOutputPath } from "@/core/settings/lib/output-path";
-import { PickerForm } from "@/core/shell/editor/PickerForm";
 import { IPathField, PathFormRow, usePathField } from "@/core/ui/form";
 import { Logger, useLogger } from "@/lib/logging";
 
@@ -18,7 +16,6 @@ export function ArchivesUnpackerApplication(): ReactElement {
 
   const unpackerService: UnpackerService = useInjection(UnpackerService);
 
-  const job: Nullable<IJobState> = unpackerService.operation.job;
   const isRunning: boolean = unpackerService.operation.isRunning;
 
   const source: IPathField = usePathField({
@@ -58,19 +55,13 @@ export function ArchivesUnpackerApplication(): ReactElement {
   }, [archivesPath, archivesUnpackPath, unpackerService]);
 
   return (
-    <PickerForm
-      isLoading={isRunning}
+    <JobPickerForm
+      operation={unpackerService.operation}
       isSubmitDisabled={!source.isValid || !destination.isValid}
       title={"Unpack game archives"}
       description={"Reads every archive in the source directory and writes its files into the output directory."}
-      error={unpackerService.operation.error ?? undefined}
       submitLabel={"Unpack"}
-      status={job ? <JobProgressView job={job} onCancel={unpackerService.operation.cancel} /> : null}
-      result={
-        unpackerService.operation.result ? (
-          <ArchivesUnpackResult result={unpackerService.operation.result} outputPath={archivesUnpackPath} />
-        ) : null
-      }
+      renderResult={(result) => <ArchivesUnpackResult result={result} outputPath={archivesUnpackPath} />}
       onSubmit={onUnpackArchivesPathClicked}
     >
       <PathFormRow
@@ -86,6 +77,6 @@ export function ArchivesUnpackerApplication(): ReactElement {
         description={"Directory the archives are unpacked into"}
         field={destination}
       />
-    </PickerForm>
+    </JobPickerForm>
   );
 }

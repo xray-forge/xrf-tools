@@ -3,11 +3,9 @@ import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useEffect, useState } from "react";
 
 import { GamedataVerifierService } from "@/applications/gamedata-verifier/services/verifier";
-import { JobProgressView } from "@/core/jobs/components/JobProgressView";
-import { IJobState } from "@/core/jobs/lib";
+import { JobPickerForm } from "@/core/jobs/components/JobPickerForm";
 import { EApplicationId } from "@/core/routing/application";
 import { SettingsService } from "@/core/settings/services/settings";
-import { PickerForm } from "@/core/shell/editor/PickerForm";
 import { CheckboxFormRow, IPathField, PathFormRow, usePathField } from "@/core/ui/form";
 import { Logger, useLogger } from "@/lib/logging";
 
@@ -23,7 +21,6 @@ export function GamedataVerifierApplication(): ReactElement {
 
   // The run rather than this view's own flag: a full pass takes minutes and survives the window being reloaded, so
   // returning here finds it again instead of offering to start a second one.
-  const job: Nullable<IJobState> = verifierService.operation.job;
   const isRunning: boolean = verifierService.operation.isRunning;
 
   const gamedata: IPathField = usePathField({
@@ -51,17 +48,13 @@ export function GamedataVerifierApplication(): ReactElement {
   }, [root, isStrict, verifierService]);
 
   return (
-    <PickerForm
-      isLoading={isRunning}
+    <JobPickerForm
+      operation={verifierService.operation}
       isSubmitDisabled={!gamedata.isValid}
       title={"Verify gamedata"}
       description={"Runs every check over a gamedata tree: configs, meshes, textures, sounds, scripts and the rest."}
-      error={verifierService.operation.error ?? undefined}
       submitLabel={"Verify"}
-      status={job ? <JobProgressView job={job} onCancel={verifierService.operation.cancel} /> : null}
-      result={
-        verifierService.operation.result ? <GamedataVerifyResult result={verifierService.operation.result} /> : null
-      }
+      renderResult={(result) => <GamedataVerifyResult result={result} />}
       onSubmit={onVerify}
     >
       <PathFormRow
@@ -78,6 +71,6 @@ export function GamedataVerifierApplication(): ReactElement {
         isDisabled={isRunning}
         onChange={setIsStrict}
       />
-    </PickerForm>
+    </JobPickerForm>
   );
 }

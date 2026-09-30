@@ -13,7 +13,7 @@ import { FormCommitContext, IFormCommitRegistry, useFormCommitRegistry } from "@
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Logger, useLogger } from "@/lib/logging";
 
-interface IPickerFormProps extends BaseComponentProps {
+export interface IPickerFormProps extends BaseComponentProps {
   title?: ReactNode;
   /** What the command reads and writes, in one line. Say it before it runs, not after. */
   description?: ReactNode;
