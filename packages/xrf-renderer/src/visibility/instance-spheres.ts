@@ -39,19 +39,31 @@ export function toInstanceSpheres(sphere: Sphere, transforms: Float32Array, plac
  * @param view - The view asking.
  * @param spheres - Every instance's sphere, four floats each.
  * @param into - Where the indices of the instances seen are written, in their order.
- * @param isInside - Whether the view sees all of them, so only their size on screen is tested.
  * @returns How many the view sees large enough to draw.
  */
-export function collectVisibleInstances(
-  view: CullView,
-  spheres: Float32Array,
-  into: Uint32Array,
-  isInside: boolean = false
-): number {
+export function collectVisibleInstances(view: CullView, spheres: Float32Array, into: Uint32Array): number {
+  return collect(view, spheres, into, false);
+}
+
+/**
+ * @param view - The view asking, which sees every instance whole.
+ * @param spheres - Every instance's sphere, four floats each.
+ * @param into - Where the indices of the instances large enough to draw are written, in their order.
+ * @returns How many are, which only their size on screen decides.
+ */
+export function collectShownInstances(view: CullView, spheres: Float32Array, into: Uint32Array): number {
+  return collect(view, spheres, into, true);
+}
+
+/** The instances kept, each tested for its size on screen and, unless the view sees them all, its visibility. */
+function collect(view: CullView, spheres: Float32Array, into: Uint32Array, isInside: boolean): number {
   let count: number = 0;
 
   for (let at: number = 0, index: number = 0; at < spheres.length; index += 1, at += FLOATS_PER_SPHERE) {
-    const [x, y, z, radius] = [spheres[at], spheres[at + 1], spheres[at + 2], spheres[at + 3]];
+    const x: number = spheres[at];
+    const y: number = spheres[at + 1];
+    const z: number = spheres[at + 2];
+    const radius: number = spheres[at + 3];
 
     if (!view.isDiscarded(x, y, z, radius) && (isInside || view.classify(x, y, z, radius) !== EVisibility.OUTSIDE)) {
       into[count] = index;

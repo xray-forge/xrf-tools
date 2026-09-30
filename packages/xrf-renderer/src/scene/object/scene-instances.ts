@@ -20,7 +20,12 @@ import { queueBufferUpload } from "#/scene/buffer-upload";
 import { GeometryReleases } from "#/scene/geometry/geometry-releases";
 import { SceneGeometry } from "#/scene/geometry/scene-geometry";
 import { CullView } from "#/visibility/cull-view";
-import { collectVisibleInstances, FLOATS_PER_SPHERE, toInstanceSpheres } from "#/visibility/instance-spheres";
+import {
+  collectShownInstances,
+  collectVisibleInstances,
+  FLOATS_PER_SPHERE,
+  toInstanceSpheres,
+} from "#/visibility/instance-spheres";
 import { EVisibility } from "#/visibility/visibility";
 
 /**
@@ -133,7 +138,7 @@ export class SceneInstances {
         return this.show(0);
 
       case EVisibility.INSIDE:
-        return this.show(collectVisibleInstances(view, this.spheres, this.seen, true));
+        return this.show(collectShownInstances(view, this.spheres, this.seen));
 
       case EVisibility.INTERSECTS:
         return this.show(collectVisibleInstances(view, this.spheres, this.seen));
