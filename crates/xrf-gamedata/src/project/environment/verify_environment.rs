@@ -4,9 +4,10 @@ use std::collections::{BTreeSet, HashMap};
 use std::path::PathBuf;
 use std::time::Instant;
 
+use xrf_engine_target::XrayEngine;
 use xrf_environment::{
   EnvironmentCatalog, EnvironmentFinding, EnvironmentReadOptions, EnvironmentReader, EnvironmentRule,
-  WeatherDescriptor, WeatherKey,
+  EnvironmentSection, WeatherDescriptor, WeatherKey,
 };
 use xrf_error::{XrfError, XrfResult};
 use xrf_vfs::XrayLogicalPath;
@@ -98,44 +99,16 @@ impl GamedataProject {
       let reported: PathBuf = self.ltx_project.path_of(&XrayLogicalPath::new(&cycle.file)?);
 
       for keyframe in &cycle.keyframes {
-        let section = &keyframe.section;
-        let sky: &str = section.get_text(WeatherKey::SkyTexture, catalog.engine);
-        let clouds: &str = section.get_text(WeatherKey::CloudsTexture, catalog.engine);
-        let environment: String = format!("{sky}{}", WeatherDescriptor::ENVIRONMENT_SUFFIX);
-        let references: [(&str, &str); 3] = [
-          ("sky texture", sky),
-          ("sky texture", if sky.is_empty() { "" } else { &environment }),
-          ("clouds texture", clouds),
-        ];
-
-        for (what, texture) in references {
-          // An empty name draws nothing rather than a missing texture: Anomaly's cycles have no clouds.
-          if texture.is_empty() {
-            continue;
-          }
-
-          let is_found: bool = match is_present.get(texture) {
-            Some(is_found) => *is_found,
-            None => {
-              let is_found: bool = self
-                .vfs()
-                .scoped(self.scope())
-                .dds_texture(texture)
-                .ok()
-                .flatten()
-                .is_some();
-
-              is_present.insert(texture.to_owned(), is_found);
-
-              is_found
-            }
-          };
+        for (what, texture) in Self::list_keyframe_textures(&keyframe.section, catalog.engine) {
+          let is_found: bool = *is_present
+            .entry(texture.clone())
+            .or_insert_with(|| self.has_texture(&texture));
 
           if !is_found {
             let message: String = format!(
               "{} [{}] references missing {what} [{texture}]",
               cycle.kind.get_subject(),
-              section.name
+              keyframe.section.name
             );
 
             findings.push((
@@ -148,6 +121,39 @@ impl GamedataProject {
     }
 
     Ok(findings)
+  }
+
+  /// The textures a keyframe draws, by what they are: its sky cube and the cube's `#small` twin, and its clouds. An
+  /// empty name draws nothing rather than a missing texture, as Anomaly's cycles name no clouds.
+  fn list_keyframe_textures(
+    section: &EnvironmentSection<WeatherKey>,
+    engine: XrayEngine,
+  ) -> Vec<(&'static str, String)> {
+    let sky: &str = section.get_text(WeatherKey::SkyTexture, engine);
+    let clouds: &str = section.get_text(WeatherKey::CloudsTexture, engine);
+    let mut textures: Vec<(&'static str, String)> = Vec::new();
+
+    if !sky.is_empty() {
+      textures.push(("sky texture", sky.to_owned()));
+      textures.push(("sky texture", format!("{sky}{}", WeatherDescriptor::ENVIRONMENT_SUFFIX)));
+    }
+
+    if !clouds.is_empty() {
+      textures.push(("clouds texture", clouds.to_owned()));
+    }
+
+    textures
+  }
+
+  /// Whether the game holds a texture, as the engine finds one.
+  fn has_texture(&self, texture: &str) -> bool {
+    self
+      .vfs()
+      .scoped(self.scope())
+      .dds_texture(texture)
+      .ok()
+      .flatten()
+      .is_some()
   }
 
   fn report_environment_finding(&self, finding: &EnvironmentFinding) -> XrfResult<Finding> {
