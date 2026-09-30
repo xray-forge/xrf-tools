@@ -1,3 +1,4 @@
+pub(crate) mod hemi_cube;
 pub(crate) mod light_animator_description;
 pub(crate) mod light_animator_key;
 pub(crate) mod light_description;

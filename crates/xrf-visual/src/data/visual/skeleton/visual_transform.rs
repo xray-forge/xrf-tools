@@ -39,4 +39,15 @@ impl VisualTransform {
 
     [i.x, i.y, i.z, j.x, j.y, j.z, k.x, k.y, k.z, c.x, c.y, c.z]
   }
+
+  /// A point of its own space where the transform stands it, `transform_tiny`.
+  pub fn apply_to_point(&self, point: &Vector3d) -> Vector3d {
+    let Self { i, j, k, c } = self;
+
+    Vector3d::new(
+      c.x + i.x * point.x + j.x * point.y + k.x * point.z,
+      c.y + i.y * point.x + j.y * point.y + k.y * point.z,
+      c.z + i.z * point.x + j.z * point.y + k.z * point.z,
+    )
+  }
 }

@@ -4,6 +4,7 @@ pub(crate) mod resolve;
 
 pub use crate::data::details::details_description::DetailsDescription;
 pub use crate::data::details::details_model::DetailsModel;
+pub use crate::data::lights::hemi_cube::HemiCube;
 pub use crate::data::lights::light_animator_description::LightAnimatorDescription;
 pub use crate::data::lights::light_animator_key::LightAnimatorKey;
 pub use crate::data::lights::light_description::LightDescription;
@@ -37,6 +38,7 @@ pub use crate::data::visual::skeleton::visual_transform::VisualTransform;
 pub use crate::data::visual::visual_description::VisualDescription;
 pub use crate::pack::details::details_package::DetailsPackage;
 pub use crate::pack::details::details_packer::DetailsPacker;
+pub use crate::pack::lights::hemi_estimator::HemiEstimator;
 pub use crate::pack::lights::lights_packer::LightsPacker;
 pub use crate::pack::sector::sector_package::SectorPackage;
 pub use crate::pack::sector::sector_packer::SectorPacker;
