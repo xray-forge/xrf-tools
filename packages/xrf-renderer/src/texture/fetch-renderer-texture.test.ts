@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, jest } from "@jest/globals";
+import { mockDdsFile, mockUndecodableDdsFile } from "@xrf/dds/fixtures";
 
 import { IRendererFetchRequest } from "#/contract/scene/renderer-fetch-request";
-import { mockDdsFile, mockUndecodableDdsFile } from "#/dds/dds-fixtures";
 import { fetchRendererTexture } from "#/texture/fetch-renderer-texture";
 import { IRendererTextureLoad } from "#/texture/renderer-texture-load";
 

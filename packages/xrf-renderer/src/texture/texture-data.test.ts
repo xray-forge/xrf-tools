@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
+import { mockDdsFile, mockUncompressedDdsFile } from "@xrf/dds/fixtures";
 import { Texture } from "three/webgpu";
 
-import { mockDdsFile, mockUncompressedDdsFile } from "#/dds/dds-fixtures";
 import { ITextureDeviceFixture, mockTextureDevice } from "#/internals/device-fixtures";
 import { createRendererRawTexture, createRendererTexture } from "#/texture/renderer-texture";
 import { hasTextureData, listTextureData, releaseTextureData } from "#/texture/texture-data";

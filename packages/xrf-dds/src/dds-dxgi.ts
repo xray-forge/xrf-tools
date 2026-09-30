@@ -1,8 +1,8 @@
 import { Nullable } from "@xrf/types";
 
-import { DDS_FULL_BLOCK_BYTES, DDS_HALF_BLOCK_BYTES, EDdsBlockFormat } from "#/dds/dds-block-format";
-import { EDdsChannels } from "#/dds/dds-channels";
-import { TDdsLayout, toDdsBlockLayout, toDdsTexelLayout } from "#/dds/dds-layout";
+import { DDS_FULL_BLOCK_BYTES, DDS_HALF_BLOCK_BYTES, EDdsBlockFormat } from "#/dds-block-format";
+import { EDdsChannels } from "#/dds-channels";
+import { TDdsLayout, toDdsBlockLayout, toDdsTexelLayout } from "#/dds-layout";
 
 /**
  * The layout a `DXGI_FORMAT` names, for a file carrying the `DX10` extended header.

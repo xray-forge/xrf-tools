@@ -1,4 +1,4 @@
-import { readDdsFile, toDdsPicture } from "@xrf/renderer";
+import { readDdsFile, toDdsPicture } from "@xrf/dds";
 import { Nullable, Optional } from "@xrf/types";
 
 import { transformError } from "@/core/error/lib";

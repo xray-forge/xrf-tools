@@ -1,10 +1,10 @@
 import { Nullable } from "@xrf/types";
 
-import { DDS_BLOCK_SIZE, EDdsBlockFormat } from "#/dds/dds-block-format";
-import { getDdsFourCcLayout } from "#/dds/dds-fourcc";
-import { IDdsHeader, readDdsHeader } from "#/dds/dds-header";
-import { EDdsLayout, TDdsLayout } from "#/dds/dds-layout";
-import { IDdsVolume } from "#/dds/dds-volume";
+import { DDS_BLOCK_SIZE, EDdsBlockFormat } from "#/dds-block-format";
+import { getDdsFourCcLayout } from "#/dds-fourcc";
+import { IDdsHeader, readDdsHeader } from "#/dds-header";
+import { EDdsLayout, TDdsLayout } from "#/dds-layout";
+import { IDdsVolume } from "#/dds-volume";
 
 /** The block formats a volume is decoded from: DXT1, DXT3 and DXT5. */
 const DECODED: ReadonlySet<EDdsBlockFormat> = new Set([EDdsBlockFormat.BC1, EDdsBlockFormat.BC2, EDdsBlockFormat.BC3]);

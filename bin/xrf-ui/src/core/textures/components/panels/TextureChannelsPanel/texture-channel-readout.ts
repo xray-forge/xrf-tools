@@ -1,5 +1,5 @@
+import { readDdsTexel } from "@xrf/dds";
 import { clamp } from "@xrf/math";
-import { readDdsTexel } from "@xrf/renderer";
 
 import { decodeXrayBumpTexel, IMaterialBumpTexel } from "@/core/materials/lib/material-bump-texel";
 import { ITextureBumpTexels } from "@/core/textures/lib/texture-surface";

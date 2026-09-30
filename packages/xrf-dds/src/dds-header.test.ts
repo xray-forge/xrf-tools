@@ -1,9 +1,9 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { mockDdsFile, mockDx10DdsFile, mockUncompressedDdsFile } from "#/dds/dds-fixtures";
-import { IDdsHeader, readDdsHeader } from "#/dds/dds-header";
-import { IDdsHeaderRead } from "#/dds/dds-header-read";
-import { EDdsRefusalReason } from "#/dds/dds-refusal-reason";
+import { mockDdsFile, mockDx10DdsFile, mockUncompressedDdsFile } from "#/dds-fixtures";
+import { IDdsHeader, readDdsHeader } from "#/dds-header";
+import { IDdsHeaderRead } from "#/dds-header-read";
+import { EDdsRefusalReason } from "#/dds-refusal-reason";
 
 /** The header a read produced, failing the case rather than the assertion when it was refused. */
 function readHeader(bytes: ArrayBuffer): IDdsHeader {

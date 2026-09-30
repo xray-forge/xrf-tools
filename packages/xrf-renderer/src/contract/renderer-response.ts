@@ -1,10 +1,10 @@
+import { IDdsRefusal } from "@xrf/dds";
 import { Nullable } from "@xrf/types";
 
 import { IRendererDevice } from "#/contract/renderer-device";
 import { IRendererReport } from "#/contract/renderer-report";
 import { IRendererHit } from "#/contract/scene/renderer-hit";
 import { IRendererTextureFetch } from "#/contract/scene/renderer-texture-fetch";
-import { IDdsRefusal } from "#/dds/dds-refusal";
 
 /**
  * What the renderer tells its consumer.

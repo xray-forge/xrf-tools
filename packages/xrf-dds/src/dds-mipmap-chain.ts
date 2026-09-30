@@ -1,4 +1,4 @@
-import { TDdsLayout } from "#/dds/dds-layout";
+import { TDdsLayout } from "#/dds-layout";
 
 /** What a mip walk needs to know about the file it is walking. */
 export interface IDdsMipmapChain {

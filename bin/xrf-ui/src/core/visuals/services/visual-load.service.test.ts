@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { flowResult, isComputedProp, isObservableProp } from "@wirestate/mobx";
-import { mockDdsFile, mockUndecodableDdsFile } from "@xrf/renderer/fixtures";
+import { mockDdsFile, mockUndecodableDdsFile } from "@xrf/dds/fixtures";
 import { Nullable } from "@xrf/types";
 
 import { createRoots } from "@/core/assets/lib";

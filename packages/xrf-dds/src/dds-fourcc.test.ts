@@ -1,8 +1,8 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { EDdsBlockFormat } from "#/dds/dds-block-format";
-import { getDdsFourCcLayout, toDdsFourCc } from "#/dds/dds-fourcc";
-import { EDdsLayout } from "#/dds/dds-layout";
+import { EDdsBlockFormat } from "#/dds-block-format";
+import { getDdsFourCcLayout, toDdsFourCc } from "#/dds-fourcc";
+import { EDdsLayout } from "#/dds-layout";
 
 describe("toDdsFourCc", () => {
   it("spells a tag low byte first", () => {

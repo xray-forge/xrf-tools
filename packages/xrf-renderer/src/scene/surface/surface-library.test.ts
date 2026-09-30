@@ -1,11 +1,11 @@
 import { describe, expect, it } from "@jest/globals";
+import { mockDdsFile } from "@xrf/dds/fixtures";
 import { Nullable } from "@xrf/types";
 import { WebGPURenderer } from "three/webgpu";
 
 import { ERendererDraw } from "#/contract/scene/renderer-draw";
 import { IRendererSurface } from "#/contract/scene/renderer-surface";
 import { ERendererTextureEncoding } from "#/contract/scene/renderer-texture-source";
-import { mockDdsFile } from "#/dds/dds-fixtures";
 import { ISurfaceMaterial } from "#/material/surface-material";
 import { SurfaceLibrary } from "#/scene/surface/surface-library";
 import { RendererTextures } from "#/texture/renderer-textures";

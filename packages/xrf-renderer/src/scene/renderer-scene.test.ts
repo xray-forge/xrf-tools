@@ -1,4 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
+import { mockDdsFile } from "@xrf/dds/fixtures";
 import { Nullable } from "@xrf/types";
 import {
   BufferAttribute,
@@ -16,7 +17,6 @@ import { IRendererGeometry } from "#/contract/scene/renderer-geometry";
 import { ERendererPass } from "#/contract/scene/renderer-pass";
 import { IRendererSurface } from "#/contract/scene/renderer-surface";
 import { ERendererTextureEncoding } from "#/contract/scene/renderer-texture-source";
-import { mockDdsFile } from "#/dds/dds-fixtures";
 import { ITextureDeviceCopy, ITextureDeviceFixture, mockTextureDevice } from "#/internals/device-fixtures";
 import { SurfaceNodeMaterial } from "#/material/surface-node-material";
 import { createFreeingRenderer, IFreeingRenderer } from "#/scene/geometry/geometry-fixtures";

@@ -1,8 +1,8 @@
 import { OnDeactivation } from "@wirestate/core";
 import { comparer, reaction, RefObservable, runInAction } from "@wirestate/mobx";
+import { IDdsRefusal } from "@xrf/dds";
 import {
   ERenderResolution,
-  IDdsRefusal,
   IRendererLighting,
   IRendererReport,
   IRendererSettings,

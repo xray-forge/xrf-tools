@@ -1,6 +1,6 @@
 import { Injectable, OnDeactivation } from "@wirestate/core";
 import { Observable, RefObservable, runInAction } from "@wirestate/mobx";
-import { IDdsFile, IDdsRead, IDdsTexels, readDdsFile, readDdsTexels, toDdsPicture } from "@xrf/renderer";
+import { IDdsFile, IDdsRead, IDdsTexels, readDdsFile, readDdsTexels, toDdsPicture } from "@xrf/dds";
 import { Nullable } from "@xrf/types";
 
 import { transformError } from "@/core/error/lib";

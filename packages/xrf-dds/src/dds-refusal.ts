@@ -1,4 +1,4 @@
-import { EDdsRefusalReason } from "#/dds/dds-refusal-reason";
+import { EDdsRefusalReason } from "#/dds-refusal-reason";
 
 /** Why one file was refused, in the terms whoever reports it needs. */
 export interface IDdsRefusal {

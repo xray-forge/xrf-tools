@@ -1,7 +1,7 @@
 import { Nullable } from "@xrf/types";
 
-import { EDdsChannels } from "#/dds/dds-channels";
-import { TDdsLayout, toDdsTexelLayout } from "#/dds/dds-layout";
+import { EDdsChannels } from "#/dds-channels";
+import { TDdsLayout, toDdsTexelLayout } from "#/dds-layout";
 
 /** Channel masks of one uncompressed pixel format, as the header stores them. */
 export interface IDdsChannelMasks {

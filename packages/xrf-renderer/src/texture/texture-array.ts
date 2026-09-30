@@ -1,3 +1,4 @@
+import { DDS_BLOCK_SIZE, DDS_FULL_BLOCK_BYTES, DDS_HALF_BLOCK_BYTES } from "@xrf/dds";
 import { Maybe, Nullable } from "@xrf/types";
 import {
   CompressedArrayTexture,
@@ -15,7 +16,6 @@ import {
   Wrapping,
 } from "three/webgpu";
 
-import { DDS_BLOCK_SIZE, DDS_FULL_BLOCK_BYTES, DDS_HALF_BLOCK_BYTES } from "#/dds/dds-block-format";
 import { ITextureCopy } from "#/internals/texture-copy";
 import { isTextureOnGpu } from "#/internals/texture-residency";
 import { markRendererTextureNew } from "#/texture/renderer-texture-version";

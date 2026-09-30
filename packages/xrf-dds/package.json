@@ -1,13 +1,12 @@
 {
-  "name": "@xrf/renderer",
+  "name": "@xrf/dds",
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "description": "The deferred renderer every xrf-tools viewer draws through.",
+  "description": "The DDS reader every xrf-tools TypeScript member shares: headers, layouts, mipmaps, volumes and texels.",
   "exports": {
     ".": "./src/index.ts",
-    "./fixtures": "./src/fixtures.ts",
-    "./worker": "./src/worker.ts"
+    "./fixtures": "./src/dds-fixtures.ts"
   },
   "imports": {
     "#/*": "./src/*.ts"
@@ -19,21 +18,17 @@
     "format": "prettier --write --ignore-path ../../.prettierignore \"**/*.(js|cjs|mjs|ts|md)\" && pnpm run lint --fix"
   },
   "dependencies": {
-    "three": "catalog:",
-    "@xrf/dds": "workspace:*",
     "@xrf/math": "workspace:*",
     "@xrf/types": "workspace:*"
   },
   "devDependencies": {
     "@jest/globals": "catalog:",
     "@types/node": "catalog:",
-    "@types/three": "catalog:",
     "@typescript/native": "catalog:",
-    "@xrf/toolchain": "workspace:*",
     "eslint": "catalog:",
     "jest": "catalog:",
-    "jest-environment-jsdom": "catalog:",
     "prettier": "catalog:",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "@xrf/toolchain": "workspace:*"
   }
 }

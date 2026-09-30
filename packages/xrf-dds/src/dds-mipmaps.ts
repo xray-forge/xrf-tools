@@ -1,9 +1,9 @@
 import { Nullable } from "@xrf/types";
 
-import { EDdsLayout, getDdsStoredLength } from "#/dds/dds-layout";
-import { IDdsMipmap } from "#/dds/dds-mipmap";
-import { IDdsMipmapChain } from "#/dds/dds-mipmap-chain";
-import { expandDdsTexels } from "#/dds/dds-texel-expansion";
+import { EDdsLayout, getDdsStoredLength } from "#/dds-layout";
+import { IDdsMipmap } from "#/dds-mipmap";
+import { IDdsMipmapChain } from "#/dds-mipmap-chain";
+import { expandDdsTexels } from "#/dds-texel-expansion";
 
 /**
  * Walks a mip chain, halving until the chain is spent.

@@ -1,3 +1,4 @@
+import { DDS_CUBE_FACES, EDdsBlockFormat, EDdsLayout, IDdsFile, IDdsMipmap, IDdsRead, readDdsFile } from "@xrf/dds";
 import {
   ClampToEdgeWrapping,
   CompressedCubeTexture,
@@ -25,11 +26,6 @@ import {
 } from "three/webgpu";
 
 import { IRendererTextureSize } from "#/contract/scene/renderer-texture-size";
-import { EDdsBlockFormat } from "#/dds/dds-block-format";
-import { DDS_CUBE_FACES, IDdsFile, readDdsFile } from "#/dds/dds-file";
-import { EDdsLayout } from "#/dds/dds-layout";
-import { IDdsMipmap } from "#/dds/dds-mipmap";
-import { IDdsRead } from "#/dds/dds-read";
 import { IRendererTextureUpload } from "#/texture/renderer-texture-upload";
 import { markRendererTextureNew } from "#/texture/renderer-texture-version";
 

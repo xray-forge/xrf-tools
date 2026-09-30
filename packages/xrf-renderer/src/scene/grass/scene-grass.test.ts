@@ -1,4 +1,5 @@
 import { describe, expect, it, jest } from "@jest/globals";
+import { mockDdsFile } from "@xrf/dds/fixtures";
 import { BufferAttribute, Mesh, PerspectiveCamera, WebGPURenderer } from "three/webgpu";
 
 import { DEFAULT_RENDERER_GRASS_SETTINGS, IRendererGrassSettings } from "#/contract/renderer-grass-settings";
@@ -6,7 +7,6 @@ import { ERendererDraw } from "#/contract/scene/renderer-draw";
 import { IRendererGrass, RENDERER_GRASS_SLOT_WORDS } from "#/contract/scene/renderer-grass";
 import { IRendererGrassModel } from "#/contract/scene/renderer-grass-model";
 import { ERendererTextureEncoding } from "#/contract/scene/renderer-texture-source";
-import { mockDdsFile } from "#/dds/dds-fixtures";
 import { adoptRendererConventions } from "#/internals/camera-conventions";
 import { IStorageDeviceFixture, mockStorageDevice } from "#/internals/device-fixtures";
 import { createStorageBuffer } from "#/internals/storage-buffers";

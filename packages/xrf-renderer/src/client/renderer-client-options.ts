@@ -1,8 +1,9 @@
+import { IDdsRefusal } from "@xrf/dds";
+
 import { IRendererDevice } from "#/contract/renderer-device";
 import { IRendererReport } from "#/contract/renderer-report";
 import { IRendererSettings } from "#/contract/renderer-settings";
 import { IRendererTextureFetch } from "#/contract/scene/renderer-texture-fetch";
-import { IDdsRefusal } from "#/dds/dds-refusal";
 
 /**
  * What a consumer hands the renderer, and what it is told back.

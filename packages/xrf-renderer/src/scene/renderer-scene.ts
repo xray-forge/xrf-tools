@@ -1,3 +1,4 @@
+import { IDdsRefusal } from "@xrf/dds";
 import { Maybe, Nullable } from "@xrf/types";
 import { Material, Mesh, Object3D, PerspectiveCamera, Scene, Texture, WebGPURenderer } from "three/webgpu";
 
@@ -14,7 +15,6 @@ import { IRendererSurface } from "#/contract/scene/renderer-surface";
 import { IRendererTextureFetch } from "#/contract/scene/renderer-texture-fetch";
 import { TRendererTextureSource } from "#/contract/scene/renderer-texture-source";
 import { IRendererWeather } from "#/contract/weather/renderer-weather";
-import { IDdsRefusal } from "#/dds/dds-refusal";
 import { SceneChangeQueue } from "#/scene/change/scene-change-queue";
 import { GeometryReleases } from "#/scene/geometry/geometry-releases";
 import { SceneGeometry } from "#/scene/geometry/scene-geometry";

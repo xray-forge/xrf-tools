@@ -5,7 +5,7 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "@jest/globals";
 
-import { readDdsVolume } from "#/dds/dds-volume-read";
+import { readDdsVolume } from "#/dds-volume-read";
 
 /** A volume `width` by `height` by `depth` of one repeated DXT5 block, its header as the game's tools write it. */
 function createVolume(width: number, height: number, depth: number, block: ReadonlyArray<number>): ArrayBuffer {
@@ -51,7 +51,7 @@ describe("readDdsVolume", () => {
     expect(readDdsVolume(createVolume(4, 4, 2, block).slice(0, 150))).toBeNull();
   });
 
-  const shipped: string = join(__dirname, "../../../../../gamedata/textures/water/water_sbumpvolume.dds");
+  const shipped: string = join(__dirname, "../../../../gamedata/textures/water/water_sbumpvolume.dds");
 
   // The game's own splash volume, where the workspace has it.
   (existsSync(shipped) ? it : it.skip)("reads the game's splash volume", () => {

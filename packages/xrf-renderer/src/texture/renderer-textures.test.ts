@@ -1,9 +1,9 @@
 import { describe, expect, it } from "@jest/globals";
+import { mockCubeDdsFile, mockDdsFile } from "@xrf/dds/fixtures";
 import { uv } from "three/tsl";
 import { Texture, TextureNode, WebGPURenderer } from "three/webgpu";
 
 import { ERendererTextureEncoding } from "#/contract/scene/renderer-texture-source";
-import { mockCubeDdsFile, mockDdsFile } from "#/dds/dds-fixtures";
 import { getPlaceholderSkyTexture, getWhiteTexture } from "#/texture/placeholder-textures";
 import { RendererTextures } from "#/texture/renderer-textures";
 import { ITextureTarget } from "#/texture/texture-target";

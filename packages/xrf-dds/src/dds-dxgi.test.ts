@@ -1,9 +1,9 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { EDdsBlockFormat } from "#/dds/dds-block-format";
-import { EDdsChannels } from "#/dds/dds-channels";
-import { getDdsDxgiLayout } from "#/dds/dds-dxgi";
-import { EDdsLayout } from "#/dds/dds-layout";
+import { EDdsBlockFormat } from "#/dds-block-format";
+import { EDdsChannels } from "#/dds-channels";
+import { getDdsDxgiLayout } from "#/dds-dxgi";
+import { EDdsLayout } from "#/dds-layout";
 
 describe("getDdsDxgiLayout", () => {
   // The single commonest layout the example loader refused: plain DXT5 wearing a DX10 header, which is 3,679 files of

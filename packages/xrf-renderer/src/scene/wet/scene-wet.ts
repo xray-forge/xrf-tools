@@ -1,10 +1,9 @@
+import { IDdsVolume, readDdsVolume } from "@xrf/dds";
 import { Maybe, Nullable } from "@xrf/types";
 import { Data3DTexture, Texture } from "three/webgpu";
 
 import { ERendererTextureEncoding, TRendererTextureSource } from "#/contract/scene/renderer-texture-source";
 import { IRendererWeather } from "#/contract/weather/renderer-weather";
-import { IDdsVolume } from "#/dds/dds-volume";
-import { readDdsVolume } from "#/dds/dds-volume-read";
 import { isSameDefinition } from "#/scene/same-definition";
 import { fetchRendererBytes } from "#/texture/fetch-renderer-bytes";
 import { getNeutralDetailTexture } from "#/texture/placeholder-textures";

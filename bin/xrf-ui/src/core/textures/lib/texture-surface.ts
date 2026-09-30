@@ -1,4 +1,4 @@
-import { IDdsTexels } from "@xrf/renderer";
+import { IDdsTexels } from "@xrf/dds";
 import { Nullable } from "@xrf/types";
 
 import { getLocatedAsset } from "@/core/assets/lib/resolution";

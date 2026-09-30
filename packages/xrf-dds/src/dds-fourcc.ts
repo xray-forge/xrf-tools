@@ -1,7 +1,7 @@
 import { Nullable } from "@xrf/types";
 
-import { DDS_FULL_BLOCK_BYTES, DDS_HALF_BLOCK_BYTES, EDdsBlockFormat } from "#/dds/dds-block-format";
-import { TDdsLayout, toDdsBlockLayout } from "#/dds/dds-layout";
+import { DDS_FULL_BLOCK_BYTES, DDS_HALF_BLOCK_BYTES, EDdsBlockFormat } from "#/dds-block-format";
+import { TDdsLayout, toDdsBlockLayout } from "#/dds-layout";
 
 /** The four character tag a `u32` spells, low byte first. */
 export function toDdsFourCc(value: number): string {

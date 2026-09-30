@@ -1,11 +1,11 @@
 import { describe, expect, it } from "@jest/globals";
+import { mockDdsFile, mockUncompressedDdsFile } from "@xrf/dds/fixtures";
 import { Nullable } from "@xrf/types";
 import { Material, MeshBasicNodeMaterial, Texture, WebGPURenderer } from "three/webgpu";
 
 import { ERendererDraw } from "#/contract/scene/renderer-draw";
 import { IRendererSurface } from "#/contract/scene/renderer-surface";
 import { ERendererTextureEncoding } from "#/contract/scene/renderer-texture-source";
-import { mockDdsFile, mockUncompressedDdsFile } from "#/dds/dds-fixtures";
 import { ITextureDeviceFixture, mockTextureDevice } from "#/internals/device-fixtures";
 import { TSurfaceArrayTargets } from "#/material/surface-array-targets";
 import { createOpaqueShadowMaterial, createSurfaceMaterial, ISurfaceMaterial } from "#/material/surface-material";

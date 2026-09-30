@@ -1,19 +1,19 @@
 import { Nullable } from "@xrf/types";
 
-import { DDS_BLOCK_SIZE } from "#/dds/dds-block-format";
-import { describeDdsMasks, getDdsMaskLayout } from "#/dds/dds-channel-masks";
-import { getDdsDxgiLayout } from "#/dds/dds-dxgi";
-import { DDS_DIMENSION_TEXTURE_3D } from "#/dds/dds-extended-header";
-import { getDdsFourCcLayout } from "#/dds/dds-fourcc";
-import { IDdsHeader, readDdsHeader } from "#/dds/dds-header";
-import { IDdsHeaderRead } from "#/dds/dds-header-read";
-import { EDdsLayout, TDdsLayout } from "#/dds/dds-layout";
-import { IDdsMipmap } from "#/dds/dds-mipmap";
-import { IDdsMipmapChain } from "#/dds/dds-mipmap-chain";
-import { readDdsMipmaps } from "#/dds/dds-mipmaps";
-import { IDdsRead } from "#/dds/dds-read";
-import { IDdsRefusal } from "#/dds/dds-refusal";
-import { EDdsRefusalReason } from "#/dds/dds-refusal-reason";
+import { DDS_BLOCK_SIZE } from "#/dds-block-format";
+import { describeDdsMasks, getDdsMaskLayout } from "#/dds-channel-masks";
+import { getDdsDxgiLayout } from "#/dds-dxgi";
+import { DDS_DIMENSION_TEXTURE_3D } from "#/dds-extended-header";
+import { getDdsFourCcLayout } from "#/dds-fourcc";
+import { IDdsHeader, readDdsHeader } from "#/dds-header";
+import { IDdsHeaderRead } from "#/dds-header-read";
+import { EDdsLayout, TDdsLayout } from "#/dds-layout";
+import { IDdsMipmap } from "#/dds-mipmap";
+import { IDdsMipmapChain } from "#/dds-mipmap-chain";
+import { readDdsMipmaps } from "#/dds-mipmaps";
+import { IDdsRead } from "#/dds-read";
+import { IDdsRefusal } from "#/dds-refusal";
+import { EDdsRefusalReason } from "#/dds-refusal-reason";
 
 /** Faces a cubemap stores, `+x -x +y -y +z -z`, which is also the order its layers upload in. */
 export const DDS_CUBE_FACES: number = 6;

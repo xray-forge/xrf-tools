@@ -1,3 +1,4 @@
+import { IDdsRefusal } from "@xrf/dds";
 import { Maybe, Nullable } from "@xrf/types";
 import { PerspectiveCamera, Vector2 } from "three/webgpu";
 
@@ -14,7 +15,6 @@ import { IRendererTextureFetch } from "#/contract/scene/renderer-texture-fetch";
 import { IRendererWeather } from "#/contract/weather/renderer-weather";
 import { TRendererWeatherChange } from "#/contract/weather/renderer-weather-change";
 import { ERendererWeatherTransition } from "#/contract/weather/renderer-weather-transition";
-import { IDdsRefusal } from "#/dds/dds-refusal";
 import { RendererDevice } from "#/device/renderer-device";
 import { RendererDeviceFailure } from "#/device/renderer-device-failure";
 import { RenderFrameLimiter } from "#/frame/render-frame-limiter";

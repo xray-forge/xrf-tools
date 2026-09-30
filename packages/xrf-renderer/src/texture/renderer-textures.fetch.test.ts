@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it } from "@jest/globals";
+import { mockDdsFile } from "@xrf/dds/fixtures";
 import { Texture, WebGPURenderer } from "three/webgpu";
 
 import { IRendererFetchRequest } from "#/contract/scene/renderer-fetch-request";
 import { IRendererTextureFetch } from "#/contract/scene/renderer-texture-fetch";
 import { ERendererTextureEncoding, TRendererTextureSource } from "#/contract/scene/renderer-texture-source";
-import { mockDdsFile } from "#/dds/dds-fixtures";
 import { ITextureDeviceFixture, mockTextureDevice } from "#/internals/device-fixtures";
 import { getWhiteTexture } from "#/texture/placeholder-textures";
 import { RendererTextures } from "#/texture/renderer-textures";

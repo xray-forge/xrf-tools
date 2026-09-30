@@ -1,10 +1,10 @@
+import { IDdsRefusal } from "@xrf/dds";
 import { Maybe, Nullable } from "@xrf/types";
 import { nodeObject } from "three/tsl";
 import { CubeTexture, Node, Texture, TextureNode, WebGPURenderer } from "three/webgpu";
 
 import { IRendererTextureFetch } from "#/contract/scene/renderer-texture-fetch";
 import { ERendererTextureEncoding, TRendererTextureSource } from "#/contract/scene/renderer-texture-source";
-import { IDdsRefusal } from "#/dds/dds-refusal";
 import { isTextureOnGpu } from "#/internals/texture-residency";
 import { fetchRendererTexture } from "#/texture/fetch-renderer-texture";
 import {

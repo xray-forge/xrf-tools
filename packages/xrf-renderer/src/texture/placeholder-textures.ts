@@ -1,3 +1,4 @@
+import { DDS_CUBE_FACES } from "@xrf/dds";
 import { Nullable } from "@xrf/types";
 import {
   DataArrayTexture,
@@ -11,7 +12,6 @@ import {
   UnsignedByteType,
 } from "three/webgpu";
 
-import { DDS_CUBE_FACES } from "#/dds/dds-file";
 import { createCubeTexture } from "#/texture/renderer-texture";
 import { markRendererTextureNew } from "#/texture/renderer-texture-version";
 

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
-import { mockDdsFile, mockDx10DdsFile, mockUndecodableDdsFile } from "@xrf/renderer/fixtures";
+import { mockDdsFile, mockDx10DdsFile, mockUndecodableDdsFile } from "@xrf/dds/fixtures";
 
 import { createRoots } from "@/core/assets/lib";
 import { SelectedVisualDescription } from "@/core/ipc/types/xrf-app";

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
-import { IDdsTexels } from "@xrf/renderer";
+import { IDdsTexels } from "@xrf/dds";
 
 import {
   describeTextureTexel,

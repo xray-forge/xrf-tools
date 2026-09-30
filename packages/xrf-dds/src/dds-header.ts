@@ -1,10 +1,10 @@
 import { Nullable } from "@xrf/types";
 
-import { IDdsChannelMasks } from "#/dds/dds-channel-masks";
-import { IDdsExtendedHeader } from "#/dds/dds-extended-header";
-import { toDdsFourCc } from "#/dds/dds-fourcc";
-import { IDdsHeaderRead } from "#/dds/dds-header-read";
-import { EDdsRefusalReason } from "#/dds/dds-refusal-reason";
+import { IDdsChannelMasks } from "#/dds-channel-masks";
+import { IDdsExtendedHeader } from "#/dds-extended-header";
+import { toDdsFourCc } from "#/dds-fourcc";
+import { IDdsHeaderRead } from "#/dds-header-read";
+import { EDdsRefusalReason } from "#/dds-refusal-reason";
 
 /** `DDS `, little endian. */
 const DDS_MAGIC: number = 0x20534444;
