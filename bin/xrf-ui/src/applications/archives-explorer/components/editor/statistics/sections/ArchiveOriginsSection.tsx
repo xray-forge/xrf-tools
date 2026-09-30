@@ -6,6 +6,7 @@ import { ArchiveOrigins, ArchiveSourceUsage } from "@/core/ipc/types/xrf-archive
 import { IStatBreakdownRow } from "@/core/ui/stats/StatBreakdownTable";
 import { StatFigure } from "@/core/ui/stats/StatFigure";
 import { BaseComponentProps } from "@/lib/dom/element-types";
+import { formatCount } from "@/lib/format/number";
 import { formatBytes } from "@/lib/memory/format";
 
 export interface IArchiveOriginsSectionProps extends BaseComponentProps {
@@ -48,12 +49,12 @@ export function ArchiveOriginsSection({
       <div className={"mb-4 flex flex-wrap gap-4"}>
         <StatFigure
           label={"Loose files"}
-          value={origins.loose.files.toLocaleString()}
+          value={formatCount(origins.loose.files)}
           hint={formatBytes(origins.loose.sizeReal)}
         />
         <StatFigure
           label={"Archived entries"}
-          value={origins.archived.files.toLocaleString()}
+          value={formatCount(origins.archived.files)}
           hint={formatBytes(origins.archived.sizeReal)}
         />
       </div>

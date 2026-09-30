@@ -13,7 +13,7 @@ import {
   TFrameRateLimit,
 } from "@xrf/renderer";
 
-import { formatNumber } from "@/lib/format/number";
+import { formatNumber, formatPercent } from "@/lib/format/number";
 
 /** One value a choice offers, in display order: what Settings and the toolbar popovers both list. */
 export interface IRenderChoiceOption<T extends string> {
@@ -68,7 +68,7 @@ export function formatShadowFilter(texels: number): string {
  * @returns It as the settings read it: a percentage, or the engine's hard switch for none.
  */
 export function formatCascadeBlend(blend: number): string {
-  return blend > 0 ? `${Math.round(blend * 100)}%` : "Hard";
+  return blend > 0 ? formatPercent(blend) : "Hard";
 }
 
 /** @returns A shadow's normal offset, in texels. */

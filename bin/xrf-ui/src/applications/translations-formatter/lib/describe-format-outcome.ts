@@ -1,6 +1,7 @@
 import { TranslationFormatResult } from "@/core/ipc/types/xrf-translation";
 import { describeJobFailure, IJobNotice, IJobOutcome } from "@/core/jobs/lib";
 import { ENotificationSeverity } from "@/core/notifications/lib";
+import { formatCount } from "@/lib/format/number";
 
 /**
  * What the notification centre says when a translations formatting run ends.
@@ -29,8 +30,8 @@ export function describeFormatOutcome(
     return {
       details: [
         isCheck
-          ? `Read ${result.totalFiles.toLocaleString()} source(s), ${result.invalidFiles} unformatted so far.`
-          : `Read ${result.totalFiles.toLocaleString()} source(s), of which ${result.invalidFiles} were rewritten.`,
+          ? `Read ${formatCount(result.totalFiles)} source(s), ${result.invalidFiles} unformatted so far.`
+          : `Read ${formatCount(result.totalFiles)} source(s), of which ${result.invalidFiles} were rewritten.`,
         isCheck
           ? "The rest of the tree was not read."
           : "The rest were left as they were; running it again finishes the job.",
@@ -49,7 +50,7 @@ export function describeFormatOutcome(
       details: directory,
       severity: invalid ? ENotificationSeverity.ERROR : ENotificationSeverity.SUCCESS,
       title: invalid
-        ? `${invalid.toLocaleString()} of ${total.toLocaleString()} translation source(s) are not formatted`
+        ? `${formatCount(invalid)} of ${formatCount(total)} translation source(s) are not formatted`
         : "All translation sources are in correct format",
     };
   }
@@ -57,6 +58,6 @@ export function describeFormatOutcome(
   return {
     details: directory,
     severity: ENotificationSeverity.SUCCESS,
-    title: `Formatted ${invalid.toLocaleString()} of ${total.toLocaleString()} translation source(s)`,
+    title: `Formatted ${formatCount(invalid)} of ${formatCount(total)} translation source(s)`,
   };
 }

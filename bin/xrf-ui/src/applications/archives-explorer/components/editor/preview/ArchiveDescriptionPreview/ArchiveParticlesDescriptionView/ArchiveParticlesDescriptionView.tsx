@@ -10,9 +10,9 @@ import {
 import { EditorFilterInput } from "@/core/shell/editor/EditorFilterInput";
 import { EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
+import { filterByName } from "@/lib/search/filter-by-name";
 
 import { ArchiveDescriptionLayout } from "../ArchiveDescriptionLayout";
-import { filterByName } from "../ArchiveDescriptionPreview.utils";
 import { ArchiveDescriptionRow } from "../ArchiveDescriptionRow";
 import { ArchiveParticlesEffectRow } from "./ArchiveParticlesEffectRow";
 import { ArchiveParticlesGroupRow } from "./ArchiveParticlesGroupRow";

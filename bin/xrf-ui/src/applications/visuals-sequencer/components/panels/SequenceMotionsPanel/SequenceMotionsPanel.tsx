@@ -9,6 +9,7 @@ import { SequencerService } from "@/applications/visuals-sequencer/services/sequ
 import { EditorFilterInput } from "@/core/shell/editor/EditorFilterInput";
 import { EditorPanel, EditorPanelEmpty } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
+import { filterByName } from "@/lib/search/filter-by-name";
 
 /** How many matches are drawn at once. */
 const SHOWN_LIMIT: number = 200;
@@ -30,9 +31,7 @@ export function SequenceMotionsPanel({
   const names: Array<string> = listed ?? [];
 
   const matched: Array<string> = useMemo(() => {
-    const needle: string = filter.trim().toLowerCase();
-
-    return needle ? (listed ?? []).filter((name: string) => name.toLowerCase().includes(needle)) : (listed ?? []);
+    return filterByName(listed ?? [], filter, (name: string) => name);
   }, [filter, listed]);
 
   /** How many clips already name each motion, so a track built by clicking the same row twice says so. */

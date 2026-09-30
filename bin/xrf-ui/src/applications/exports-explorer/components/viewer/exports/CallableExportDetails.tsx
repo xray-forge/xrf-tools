@@ -4,6 +4,7 @@ import { ReactElement } from "react";
 import { TCallableExportDescriptor } from "@/core/exports";
 import { ExportParameterDescriptor } from "@/core/ipc/types/xrf-export";
 import { BaseComponentProps } from "@/lib/dom/element-types";
+import { ABSENT_VALUE } from "@/lib/format/number";
 
 import { ExportSection } from "./ExportSection";
 
@@ -34,7 +35,7 @@ export function CallableExportDetails({ declaration }: ICallableExportDetailsPro
                   </TableCell>
 
                   <TableCell className={"monospace wrap-anywhere"}>{parameter.typing}</TableCell>
-                  <TableCell>{parameter.description ?? "—"}</TableCell>
+                  <TableCell>{parameter.description ?? ABSENT_VALUE}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

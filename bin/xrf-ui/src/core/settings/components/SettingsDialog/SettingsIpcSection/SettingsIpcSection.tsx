@@ -10,6 +10,7 @@ import { ChoiceFormRow, IChoiceFormRowOption } from "@/core/ui/form/ChoiceFormRo
 import { DetailSection } from "@/core/ui/layout/DetailSection";
 import { StatFigure } from "@/core/ui/stats/StatFigure";
 import { formatDuration } from "@/lib/format/duration";
+import { ABSENT_VALUE } from "@/lib/format/number";
 import { formatBytes } from "@/lib/memory/format";
 import { usePolledValue } from "@/lib/react";
 
@@ -103,7 +104,7 @@ export function SettingsIpcSection(): ReactElement {
                   </Typography>
 
                   <Typography className={"min-w-19 shrink-0 text-right"} variant={"body2"}>
-                    {it.calls ? formatCallDuration(it.duration / it.calls) : "—"}
+                    {it.calls ? formatCallDuration(it.duration / it.calls) : ABSENT_VALUE}
                   </Typography>
 
                   <Typography className={"min-w-19 shrink-0 text-right"} variant={"body2"}>
@@ -111,7 +112,7 @@ export function SettingsIpcSection(): ReactElement {
                   </Typography>
 
                   <div className={"min-w-19 shrink-0 text-right"}>
-                    <Typography variant={"body2"}>{it.weighed ? formatBytes(it.received) : "—"}</Typography>
+                    <Typography variant={"body2"}>{it.weighed ? formatBytes(it.received) : ABSENT_VALUE}</Typography>
 
                     {weighed ? (
                       <Typography className={"block text-text-secondary"} variant={"caption"}>

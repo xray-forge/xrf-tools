@@ -1,6 +1,7 @@
 import { ArchiveExtractDirectoryResult } from "@/core/ipc/types/xrf-pack";
 import { describeJobFailure, IJobNotice, IJobOutcome } from "@/core/jobs/lib";
 import { ENotificationSeverity } from "@/core/notifications/lib";
+import { formatCount } from "@/lib/format/number";
 
 /**
  * What the notification centre says when a directory extraction ends.
@@ -28,7 +29,7 @@ export function describeExtractOutcome(
   if (result?.outcome === "cancelled") {
     return {
       details: [
-        `Stopped after ${result.extractedCount.toLocaleString()} file(s).`,
+        `Stopped after ${formatCount(result.extractedCount)} file(s).`,
         "What was written was left in place:",
         destination,
       ].join("\n"),
@@ -42,6 +43,6 @@ export function describeExtractOutcome(
     severity: ENotificationSeverity.SUCCESS,
     // Reported without a count rather than not at all: a response the parser did not fill in is no reason to turn a
     // write that happened into silence.
-    title: result ? `Extracted ${result.extractedCount.toLocaleString()} file(s) from ${from}` : `Extracted ${from}`,
+    title: result ? `Extracted ${formatCount(result.extractedCount)} file(s) from ${from}` : `Extracted ${from}`,
   };
 }

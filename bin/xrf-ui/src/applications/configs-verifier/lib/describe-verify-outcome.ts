@@ -1,6 +1,7 @@
 import { LtxProjectVerifyResult } from "@/core/ipc/types/xrf-ltx";
 import { describeJobFailure, IJobNotice, IJobOutcome } from "@/core/jobs/lib";
 import { ENotificationSeverity } from "@/core/notifications/lib";
+import { formatCount } from "@/lib/format/number";
 
 /**
  * What the notification centre says when a configs verification ends.
@@ -22,7 +23,7 @@ export function describeVerifyOutcome(directory: string, outcome: IJobOutcome<Lt
   if (result?.outcome === "cancelled") {
     return {
       details: [
-        `Stopped after ${result.totalFiles.toLocaleString()} file(s).`,
+        `Stopped after ${formatCount(result.totalFiles)} file(s).`,
         `${result.errors.length} problem(s) found so far.`,
         "The rest of the project was not read.",
         directory,

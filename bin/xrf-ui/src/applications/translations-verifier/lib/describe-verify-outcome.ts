@@ -1,6 +1,7 @@
 import { TranslationVerifySummary } from "@/core/ipc/types/xrf-app";
 import { describeJobFailure, IJobNotice, IJobOutcome } from "@/core/jobs/lib";
 import { ENotificationSeverity } from "@/core/notifications/lib";
+import { formatCount } from "@/lib/format/number";
 
 /**
  * What the notification centre says when a translation check ends.
@@ -24,7 +25,7 @@ export function describeTranslationVerifyOutcome(
 
   if (result?.outcome === "cancelled") {
     return {
-      details: [`Checked ${result.checked.toLocaleString()} id(s) before stopping.`, sources].join("\n"),
+      details: [`Checked ${formatCount(result.checked)} id(s) before stopping.`, sources].join("\n"),
       severity: ENotificationSeverity.INFO,
       title: "Stopped checking translations",
     };

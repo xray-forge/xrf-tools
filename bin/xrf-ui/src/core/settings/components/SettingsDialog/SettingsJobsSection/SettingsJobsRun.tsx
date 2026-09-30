@@ -9,6 +9,7 @@ import { IJobPhase, IJobProfile } from "@/core/jobs/metrics";
 import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { formatDuration } from "@/lib/format/duration";
+import { ABSENT_VALUE } from "@/lib/format/number";
 
 import { describeJobOutcome, toPhaseShare } from "./SettingsJobsSection.utils";
 
@@ -82,7 +83,7 @@ export function SettingsJobsRun({
                   </Typography>
 
                   <Typography className={"w-11 shrink-0 text-right text-text-secondary"} variant={"caption"}>
-                    {share === null ? "—" : `${Math.round(share)}%`}
+                    {share === null ? ABSENT_VALUE : `${Math.round(share)}%`}
                   </Typography>
                 </div>
               );

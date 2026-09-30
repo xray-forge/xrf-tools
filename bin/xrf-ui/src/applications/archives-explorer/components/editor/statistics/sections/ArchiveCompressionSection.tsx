@@ -6,6 +6,7 @@ import { ArchiveCompression, ArchiveExtensionUsage } from "@/core/ipc/types/xrf-
 import { DetailSection } from "@/core/ui/layout/DetailSection";
 import { StatFigure } from "@/core/ui/stats/StatFigure";
 import { BaseComponentProps } from "@/lib/dom/element-types";
+import { formatCount } from "@/lib/format/number";
 import { formatBytes } from "@/lib/memory/format";
 
 /** One extension and what its payloads compressed to. */
@@ -66,7 +67,7 @@ export function ArchiveCompressionSection({
         <StatFigure label={"Unpacked"} value={formatBytes(compression.sizeReal)} />
         <StatFigure
           label={"Stored uncompressed"}
-          value={compression.storedUncompressed.toLocaleString()}
+          value={formatCount(compression.storedUncompressed)}
           hint={"entries"}
         />
       </div>

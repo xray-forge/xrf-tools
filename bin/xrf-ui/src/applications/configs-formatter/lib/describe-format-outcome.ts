@@ -1,6 +1,7 @@
 import { LtxProjectFormatResult } from "@/core/ipc/types/xrf-ltx";
 import { describeJobFailure, IJobNotice, IJobOutcome } from "@/core/jobs/lib";
 import { ENotificationSeverity } from "@/core/notifications/lib";
+import { formatCount } from "@/lib/format/number";
 
 /**
  * What the notification centre says when a configs formatting run ends.
@@ -36,8 +37,8 @@ export function describeFormatOutcome(
     return {
       details: [
         isCheck
-          ? `Read ${result.totalFiles.toLocaleString()} file(s), ${result.invalidFiles} badly formatted so far.`
-          : `Read ${result.totalFiles.toLocaleString()} file(s), of which ${result.invalidFiles} were rewritten.`,
+          ? `Read ${formatCount(result.totalFiles)} file(s), ${result.invalidFiles} badly formatted so far.`
+          : `Read ${formatCount(result.totalFiles)} file(s), of which ${result.invalidFiles} were rewritten.`,
         isCheck
           ? "The rest of the project was not read."
           : "The rest were left as they were; running it again finishes the job.",
@@ -56,7 +57,7 @@ export function describeFormatOutcome(
       details: directory,
       severity: invalid ? ENotificationSeverity.ERROR : ENotificationSeverity.SUCCESS,
       title: invalid
-        ? `${invalid.toLocaleString()} of ${total.toLocaleString()} config file(s) have invalid formatting`
+        ? `${formatCount(invalid)} of ${formatCount(total)} config file(s) have invalid formatting`
         : "All config files are in correct format",
     };
   }
@@ -64,6 +65,6 @@ export function describeFormatOutcome(
   return {
     details: directory,
     severity: ENotificationSeverity.SUCCESS,
-    title: `Formatted ${invalid.toLocaleString()} of ${total.toLocaleString()} config file(s)`,
+    title: `Formatted ${formatCount(invalid)} of ${formatCount(total)} config file(s)`,
   };
 }

@@ -4,6 +4,7 @@ import { ChangeEvent, ReactElement, useMemo, useState } from "react";
 import { IChoiceFormRowOption } from "@/core/ui/form/ChoiceFormRow";
 import { FormRow } from "@/core/ui/form/FormRow";
 import { BaseComponentProps } from "@/lib/dom/element-types";
+import { filterByName } from "@/lib/search/filter-by-name";
 
 export interface IChoiceListFormRowProps<T extends string> extends BaseComponentProps {
   label: string;
@@ -41,9 +42,7 @@ export function ChoiceListFormRow<T extends string>({
   const isFiltered: boolean = options.length >= filterFrom;
 
   const shown: ReadonlyArray<IChoiceFormRowOption<T>> = useMemo(() => {
-    const needle: string = query.trim().toLowerCase();
-
-    return needle ? options.filter((it) => it.label.toLowerCase().includes(needle)) : options;
+    return filterByName(options, query, (it) => it.label);
   }, [options, query]);
 
   return (

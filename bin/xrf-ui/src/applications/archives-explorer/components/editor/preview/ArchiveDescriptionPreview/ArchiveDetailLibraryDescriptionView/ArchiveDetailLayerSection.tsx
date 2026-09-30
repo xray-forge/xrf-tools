@@ -3,8 +3,8 @@ import { ReactElement } from "react";
 import { ArchiveDetailLibraryDescription } from "@/core/ipc/types/xrf-app";
 import { EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
+import { formatCount } from "@/lib/format/number";
 
-import { formatCount } from "../ArchiveDescriptionPreview.utils";
 import { ArchiveDescriptionRow } from "../ArchiveDescriptionRow";
 import { describeCoverage, describePlanting, DETAIL_SLOT_METERS } from "./ArchiveDetailLibraryDescriptionView.utils";
 

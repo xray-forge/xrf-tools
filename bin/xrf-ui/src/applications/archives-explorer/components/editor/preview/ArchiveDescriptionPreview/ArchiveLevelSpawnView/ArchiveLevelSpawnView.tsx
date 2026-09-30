@@ -5,10 +5,12 @@ import { ArchiveLevelSpawnDescription, ArchiveLevelSpawnSection } from "@/core/i
 import { EditorFilterInput } from "@/core/shell/editor/EditorFilterInput";
 import { EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
+import { formatCount } from "@/lib/format/number";
 import { formatBytes } from "@/lib/memory/format";
+import { filterByName } from "@/lib/search/filter-by-name";
 
 import { ArchiveDescriptionLayout } from "../ArchiveDescriptionLayout";
-import { filterByName, formatCount, formatLevelBounds } from "../ArchiveDescriptionPreview.utils";
+import { formatLevelBounds } from "../ArchiveDescriptionPreview.utils";
 import { ArchiveDescriptionRow } from "../ArchiveDescriptionRow";
 
 interface IArchiveLevelSpawnViewProps extends BaseComponentProps {

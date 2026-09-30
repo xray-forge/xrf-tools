@@ -1,6 +1,7 @@
 import { ArchiveUnpackResult } from "@/core/ipc/types/xrf-pack";
 import { describeJobFailure, IJobNotice, IJobOutcome } from "@/core/jobs/lib";
 import { ENotificationSeverity } from "@/core/notifications/lib";
+import { formatCount } from "@/lib/format/number";
 
 /**
  * What the notification centre says when an unpack ends.
@@ -30,7 +31,7 @@ export function describeUnpackOutcome(
   if (result?.outcome === "cancelled") {
     return {
       details: [
-        `Stopped after ${result.filesUnpacked.toLocaleString()} of ${result.filesTotal.toLocaleString()} entries.`,
+        `Stopped after ${formatCount(result.filesUnpacked)} of ${formatCount(result.filesTotal)} entries.`,
         "What was written was left in place:",
         destination,
       ].join("\n"),

@@ -5,8 +5,8 @@ import { ArchiveOmfMotion } from "@/core/ipc/types/xrf-app";
 import { EditorFilterInput } from "@/core/shell/editor/EditorFilterInput";
 import { EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
+import { filterByName } from "@/lib/search/filter-by-name";
 
-import { filterByName } from "../ArchiveDescriptionPreview.utils";
 import { ArchiveOmfMotionRow } from "./ArchiveOmfMotionRow";
 
 interface IArchiveOmfMotionsSectionProps extends BaseComponentProps {

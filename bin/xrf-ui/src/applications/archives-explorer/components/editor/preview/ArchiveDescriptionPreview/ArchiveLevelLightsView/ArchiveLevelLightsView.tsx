@@ -3,9 +3,10 @@ import { ReactElement } from "react";
 import { ArchiveLevelLightsDescription, ArchiveLevelLightsGroup } from "@/core/ipc/types/xrf-app";
 import { EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
+import { formatCount } from "@/lib/format/number";
 
 import { ArchiveDescriptionLayout } from "../ArchiveDescriptionLayout";
-import { formatCount, formatLevelBounds } from "../ArchiveDescriptionPreview.utils";
+import { formatLevelBounds } from "../ArchiveDescriptionPreview.utils";
 import { ArchiveDescriptionRow } from "../ArchiveDescriptionRow";
 import { describeGroupContents, describeGroupUse } from "./ArchiveLevelLightsView.utils";
 

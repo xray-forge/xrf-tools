@@ -3,10 +3,10 @@ import { ReactElement } from "react";
 import { ArchiveLevelGeomDescription, ArchiveLevelGeomLayout } from "@/core/ipc/types/xrf-app";
 import { EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
+import { formatCount } from "@/lib/format/number";
 import { formatBytes } from "@/lib/memory/format";
 
 import { ArchiveDescriptionLayout } from "../ArchiveDescriptionLayout";
-import { formatCount } from "../ArchiveDescriptionPreview.utils";
 import { ArchiveDescriptionRow } from "../ArchiveDescriptionRow";
 import { describeLayout, describeLayoutShare, describeProgressiveMeshes } from "./ArchiveLevelGeomView.utils";
 

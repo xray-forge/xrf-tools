@@ -1,6 +1,7 @@
 import { TranslationParseSummary } from "@/core/ipc/types/xrf-app";
 import { describeJobFailure, IJobNotice, IJobOutcome } from "@/core/jobs/lib";
 import { ENotificationSeverity } from "@/core/notifications/lib";
+import { formatCount } from "@/lib/format/number";
 
 /**
  * What the notification centre says when a translation import ends.
@@ -25,7 +26,7 @@ export function describeTranslationParseOutcome(
   if (result?.outcome === "cancelled") {
     return {
       details: [
-        `Read ${result.census.filesRead.toLocaleString()} table(s) before stopping.`,
+        `Read ${formatCount(result.census.filesRead)} table(s) before stopping.`,
         "What was written was left in place; running it again finishes the job.",
         output,
       ].join("\n"),

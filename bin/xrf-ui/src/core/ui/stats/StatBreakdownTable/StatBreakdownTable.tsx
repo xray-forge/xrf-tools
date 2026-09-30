@@ -6,6 +6,7 @@ import { EStatMeasure } from "@/core/ui/stats/stat-measure";
 import { StatBar } from "@/core/ui/stats/StatBar";
 import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
+import { formatCount } from "@/lib/format/number";
 import { formatBytes } from "@/lib/memory/format";
 
 export interface IStatBreakdownRow {
@@ -105,7 +106,7 @@ export function StatBreakdownTable({
             className={cn("w-18 text-right", isBytes ? "text-text-secondary" : "text-text-primary")}
             variant={"caption"}
           >
-            {row.files.toLocaleString()}
+            {formatCount(row.files)}
           </Typography>
 
           <Typography

@@ -11,6 +11,7 @@ import { VirtualizedTree } from "@/core/ui/tree/VirtualizedTree";
 import { VisualMotionService } from "@/core/visuals/services/visual-motion.service";
 import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
+import { filterByName } from "@/lib/search/filter-by-name";
 
 import { getMotionNodeName, groupMotionNames, listMotionGroupIds } from "./motion-groups";
 
@@ -38,9 +39,7 @@ export function VisualMotionList({
   const posed: Nullable<string> = service.posed.value?.bake.name ?? null;
 
   const matched: Array<string> = useMemo(() => {
-    const needle: string = filter.trim().toLowerCase();
-
-    return needle ? (listed ?? []).filter((name: string) => name.toLowerCase().includes(needle)) : (listed ?? []);
+    return filterByName(listed ?? [], filter, (name: string) => name);
   }, [filter, listed]);
 
   const nodes: Array<ITreeNode<string>> = useMemo(() => groupMotionNames(matched), [matched]);

@@ -5,9 +5,10 @@ import { ArchiveLightAnimDescription, ArchiveLightAnimItem } from "@/core/ipc/ty
 import { EditorFilterInput } from "@/core/shell/editor/EditorFilterInput";
 import { EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
+import { formatCount } from "@/lib/format/number";
+import { filterByName } from "@/lib/search/filter-by-name";
 
 import { ArchiveDescriptionLayout } from "../ArchiveDescriptionLayout";
-import { filterByName, formatCount } from "../ArchiveDescriptionPreview.utils";
 import { ArchiveDescriptionRow } from "../ArchiveDescriptionRow";
 import { describeTiming } from "./ArchiveLightAnimView.utils";
 

@@ -1,6 +1,7 @@
 import { ArchivePatchConfig, ArchivePatchResult } from "@/core/ipc/types/xrf-pack";
 import { describeJobFailure, IJobNotice, IJobOutcome } from "@/core/jobs/lib";
 import { ENotificationSeverity } from "@/core/notifications/lib";
+import { formatCount } from "@/lib/format/number";
 
 /**
  * Builds a notification for a finished comparison or patch.
@@ -36,7 +37,7 @@ export function describePatchOutcome(config: ArchivePatchConfig, outcome: IJobOu
     case "published":
       return {
         details: [
-          `${carried.toLocaleString()} entry(s) carried into ${result.publication.volumes.length} volume(s).`,
+          `${formatCount(carried)} entry(s) carried into ${result.publication.volumes.length} volume(s).`,
           ...result.publication.volumes,
         ].join("\n"),
         severity: ENotificationSeverity.SUCCESS,
@@ -52,7 +53,7 @@ export function describePatchOutcome(config: ArchivePatchConfig, outcome: IJobOu
 
     default:
       return {
-        details: `${carried.toLocaleString()} entry(s) would be carried.`,
+        details: `${formatCount(carried)} entry(s) would be carried.`,
         severity: ENotificationSeverity.INFO,
         title: "Compared archives",
       };

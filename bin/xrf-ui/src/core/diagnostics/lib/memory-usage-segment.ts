@@ -2,6 +2,7 @@ import { IMemoryFigures, sumWebviewMemory, toMemoryFigures } from "@/core/diagno
 import { EWebviewProcessKind, MemoryUsage, WebviewProcessKind, WebviewProcessMemory } from "@/core/ipc/types/xrf-app";
 import { IEditorStatusDetail } from "@/core/shell/editor-shell/editor-status-detail";
 import { IEditorStatusSegment } from "@/core/shell/editor-shell/editor-status-segment";
+import { ABSENT_VALUE } from "@/lib/format/number";
 import { formatBytes, formatBytesCompact } from "@/lib/memory/format";
 
 /** Names the memory segment across readings, so its hover stays open while the figures change. */
@@ -47,7 +48,7 @@ export function describeMemoryUsage(
       text: `B ${formatBytesCompact(backend.inUse)}`,
       details: [
         backendRow,
-        { label: "Webview", value: "—" },
+        { label: "Webview", value: ABSENT_VALUE },
         { label: "Committed", value: formatBytes(backend.committed) },
         ...details,
       ],

@@ -1,6 +1,7 @@
 import { Nullable } from "@xrf/types";
 
 import { EProgressUnit, JobProgress, ProgressLevel, ProgressUnit } from "@/core/ipc/types/xrf-job";
+import { formatCount } from "@/lib/format/number";
 import { formatBytes } from "@/lib/memory/format";
 
 /**
@@ -21,7 +22,7 @@ export const RENDERED_PROGRESS_LEVELS: number = 2;
  * @returns The count, formatted for its unit.
  */
 export function formatProgressUnits(value: number, unit: ProgressUnit): string {
-  return unit === EProgressUnit.BYTES ? formatBytes(value) : value.toLocaleString();
+  return unit === EProgressUnit.BYTES ? formatBytes(value) : formatCount(value);
 }
 
 /**

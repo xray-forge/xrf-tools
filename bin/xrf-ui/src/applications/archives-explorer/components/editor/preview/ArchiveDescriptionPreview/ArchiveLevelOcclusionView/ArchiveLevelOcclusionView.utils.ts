@@ -1,7 +1,7 @@
 import { ArchiveLevelSomDescription } from "@/core/ipc/types/xrf-app";
-import { formatNumber } from "@/lib/format/number";
+import { formatCount, formatNumber } from "@/lib/format/number";
 
-import { formatCount, NOTHING_TO_MEASURE } from "../ArchiveDescriptionPreview.utils";
+import { NOTHING_TO_MEASURE } from "../ArchiveDescriptionPreview.utils";
 
 /**
  * What the loader ends up with, which is not what the file holds wherever a triangle occludes both ways.

@@ -1,6 +1,7 @@
 import { TranslationBuildSummary } from "@/core/ipc/types/xrf-app";
 import { describeJobFailure, IJobNotice, IJobOutcome } from "@/core/jobs/lib";
 import { ENotificationSeverity } from "@/core/notifications/lib";
+import { formatCount } from "@/lib/format/number";
 
 /**
  * What the notification centre says when a translation build ends.
@@ -25,7 +26,7 @@ export function describeTranslationBuildOutcome(
   if (result?.outcome === "cancelled") {
     return {
       details: [
-        `Wrote ${result.files.toLocaleString()} string table(s) from ${result.sources.toLocaleString()} source(s).`,
+        `Wrote ${formatCount(result.files)} string table(s) from ${formatCount(result.sources)} source(s).`,
         "The rest were not compiled; running it again finishes the job.",
         output,
       ].join("\n"),

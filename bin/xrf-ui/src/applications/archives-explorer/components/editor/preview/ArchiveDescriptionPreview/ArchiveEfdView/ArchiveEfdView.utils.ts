@@ -1,7 +1,5 @@
 import { ArchiveEfdDescription, ArchiveEfdPattern } from "@/core/ipc/types/xrf-app";
-import { ABSENT_VALUE, formatNumber } from "@/lib/format/number";
-
-import { formatCount } from "../ArchiveDescriptionPreview.utils";
+import { ABSENT_VALUE, formatCount, formatNumber } from "@/lib/format/number";
 
 /**
  * The band the function's result is trained between.

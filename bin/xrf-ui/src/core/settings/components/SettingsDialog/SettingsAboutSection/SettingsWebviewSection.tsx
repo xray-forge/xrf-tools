@@ -4,6 +4,7 @@ import { ReactElement } from "react";
 import { DetailSection } from "@/core/ui/layout/DetailSection";
 import { StatFigure } from "@/core/ui/stats/StatFigure";
 import { formatDuration } from "@/lib/format/duration";
+import { ABSENT_VALUE, formatCount } from "@/lib/format/number";
 import { formatBytes, formatBytesPair } from "@/lib/memory/format";
 import { usePolledValue } from "@/lib/react";
 
@@ -34,10 +35,10 @@ export function SettingsWebviewSection(): ReactElement {
         />
         <StatFigure
           label={"Heap ceiling"}
-          value={stats?.heap ? formatBytes(stats.heap.limit) : "—"}
+          value={stats?.heap ? formatBytes(stats.heap.limit) : ABSENT_VALUE}
           hint={"before the engine gives up"}
         />
-        <StatFigure label={"Elements"} value={(stats?.nodes ?? 0).toLocaleString()} hint={"in the document"} />
+        <StatFigure label={"Elements"} value={formatCount(stats?.nodes ?? 0)} hint={"in the document"} />
         <StatFigure
           label={"Loaded in"}
           value={stats?.loadDuration ? formatDuration(stats.loadDuration) : "still loading"}

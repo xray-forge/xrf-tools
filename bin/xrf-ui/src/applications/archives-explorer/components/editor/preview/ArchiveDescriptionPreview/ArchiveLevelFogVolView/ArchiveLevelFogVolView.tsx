@@ -3,9 +3,9 @@ import { ReactElement } from "react";
 import { ArchiveDescribeScope, ArchiveLevelFogVolDescription, ArchiveLevelFogVolume } from "@/core/ipc/types/xrf-app";
 import { EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
+import { formatCount } from "@/lib/format/number";
 
 import { ArchiveDescriptionLayout } from "../ArchiveDescriptionLayout";
-import { formatCount } from "../ArchiveDescriptionPreview.utils";
 import { ArchiveDescriptionRow } from "../ArchiveDescriptionRow";
 import { ArchiveLevelFogVolumeRow } from "./ArchiveLevelFogVolumeRow";
 

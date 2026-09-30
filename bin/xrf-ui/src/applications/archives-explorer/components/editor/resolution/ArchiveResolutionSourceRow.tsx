@@ -7,6 +7,7 @@ import { ArchiveResolutionSource, ArchiveResolutionVolume } from "@/core/ipc/typ
 import { EXraySourceKind } from "@/core/ipc/types/xrf-vfs";
 import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
+import { formatCount } from "@/lib/format/number";
 
 import { ArchiveResolutionVolumeRow } from "./ArchiveResolutionVolumeRow";
 
@@ -64,7 +65,7 @@ export function ArchiveResolutionSourceRow({
         </Typography>
 
         <Typography className={"block text-text-secondary"} variant={"caption"}>
-          {`${source.entries.toLocaleString()} entries · reached through ${source.step}`}
+          {`${formatCount(source.entries)} entries · reached through ${source.step}`}
         </Typography>
 
         {source.volumes.length ? (
