@@ -24,6 +24,8 @@ export class SurfaceNodeMaterial extends MeshBasicNodeMaterial implements ISurfa
 
   /** Where a vertex stands in view space, for a surface placing its own vertices; null for every other. */
   public positionViewNode: Nullable<Node> = null;
+  /** What draws it into a pick, naming the draw it is; null for a material nothing picks. */
+  public pick: Nullable<SurfaceNodeMaterial> = null;
 
   private readonly staticDraws: StaticDrawBuffers;
   private readonly wind: TreeWindUniforms;

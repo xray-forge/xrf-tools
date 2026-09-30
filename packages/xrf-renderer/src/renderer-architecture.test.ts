@@ -26,7 +26,7 @@ const LAYERS: ReadonlyArray<ReadonlyArray<string>> = [
   ["material"],
   ["scene"],
   ["pass"],
-  ["capture", "graph"],
+  ["capture", "graph", "pick"],
   ["client", "host"],
 ];
 

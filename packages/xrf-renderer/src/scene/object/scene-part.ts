@@ -20,10 +20,12 @@ import { createPartGeometry } from "#/scene/geometry/part-geometry";
 import { ISceneClusterRun } from "#/scene/geometry/scene-cluster-run";
 import { SceneClusters } from "#/scene/geometry/scene-clusters";
 import { ISceneSection } from "#/scene/geometry/scene-section";
+import { IPickTexel } from "#/scene/object/pick-texel";
 import { createSceneMesh } from "#/scene/object/scene-mesh";
 import { EShadowCasterMotion } from "#/scene/static/shadow-caster-motion";
 import { StaticDraws } from "#/scene/static/static-draws";
 import { IStaticRange } from "#/scene/static/static-range";
+import { EPickKind } from "#/shader/pick-kind";
 import { STATIC_NO_BAND, toStaticBandWord } from "#/uniforms/static-draw-buffers";
 
 /** What a part narrowed to nothing draws: no clusters. */
@@ -95,6 +97,21 @@ export class ScenePart {
   /** Whether it is drawn statically. */
   public get isStatic(): boolean {
     return this.slots.length > 0;
+  }
+
+  /** Which of its object's surfaces draws it. */
+  public get surfaceSlot(): number {
+    return this.source.slot;
+  }
+
+  /**
+   * @param texel - What a pick read back.
+   * @returns Whether it names this part as it draws now: one of its slots, or its mesh while that is placed.
+   */
+  public isPicked(texel: IPickTexel): boolean {
+    return texel.kind === EPickKind.STATIC
+      ? this.slots.includes(texel.draw)
+      : this.currentMesh.id === texel.draw && this.currentMesh.parent !== null;
   }
 
   /**

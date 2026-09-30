@@ -9,6 +9,7 @@ import { ERendererPreset, RENDERER_PRESETS } from "#/contract/renderer-preset";
 import { ERendererRequest, TRendererRequest } from "#/contract/renderer-request";
 import { ERendererResponse, TRendererResponse } from "#/contract/renderer-response";
 import { IRendererSettings } from "#/contract/renderer-settings";
+import { IRendererHit } from "#/contract/scene/renderer-hit";
 import { IRendererTextureFetch } from "#/contract/scene/renderer-texture-fetch";
 import { IRendererWeather } from "#/contract/weather/renderer-weather";
 import { ERendererWeatherTransition } from "#/contract/weather/renderer-weather-transition";
@@ -64,7 +65,10 @@ function createWorker(): IFakeWorker {
   };
 }
 
-function listIds(posts: ReadonlyArray<TRendererRequest>, kind: ERendererRequest.SETTLE | ERendererRequest.CAPTURE) {
+function listIds(
+  posts: ReadonlyArray<TRendererRequest>,
+  kind: ERendererRequest.SETTLE | ERendererRequest.CAPTURE | ERendererRequest.PICK
+) {
   return posts
     .flatMap((post: TRendererRequest) => (post.kind === ERendererRequest.BATCH ? post.requests : [post]))
     .flatMap((request: TRendererRequest) => (request.kind === kind ? [request.id] : []));
@@ -181,6 +185,31 @@ describe("RendererClient", () => {
     expect(settled).toHaveBeenCalledTimes(1);
     // A picture nobody waits for any more is let go.
     expect(stray.close).toHaveBeenCalledTimes(1);
+  });
+
+  it("answers each pick by the id it asked under, and every one waiting with nothing once disposed", async () => {
+    const fake: IFakeWorker = createWorker();
+    const client: RendererClient = new RendererClient({ settings: SETTINGS, worker: fake.worker });
+    const hit: IRendererHit = { instance: 3, object: "rock", point: [1, 2, 3], surface: "stone" };
+    const first: Promise<Nullable<IRendererHit>> = client.pick({ x: 10, y: 20 });
+    const second: Promise<Nullable<IRendererHit>> = client.pick({ x: 30, y: 40 });
+
+    await flush();
+
+    const [firstId, secondId] = listIds(fake.posts, ERendererRequest.PICK);
+
+    fake.respond({ hit: null, id: secondId, kind: ERendererResponse.PICKED });
+    fake.respond({ hit, id: firstId, kind: ERendererResponse.PICKED });
+
+    await expect(first).resolves.toEqual(hit);
+    await expect(second).resolves.toBeNull();
+
+    const waiting: Promise<Nullable<IRendererHit>> = client.pick({ x: 1, y: 1 });
+
+    client.dispose();
+
+    await expect(waiting).resolves.toBeNull();
+    await expect(client.pick({ x: 1, y: 1 })).resolves.toBeNull();
   });
 
   it("refuses every settle and capture waiting once the renderer failed, and every later one at once", async () => {

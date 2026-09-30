@@ -1,6 +1,7 @@
 import { Maybe, Nullable } from "@xrf/types";
 import { BufferGeometry, Matrix4, Mesh, Scene, Skeleton, Sphere } from "three/webgpu";
 
+import { IRendererHit } from "#/contract/scene/renderer-hit";
 import { IRendererInstances } from "#/contract/scene/renderer-instances";
 import { IRendererObject } from "#/contract/scene/renderer-object";
 import { ISurfaceMaterial } from "#/material/surface-material";
@@ -8,12 +9,14 @@ import { GeometryReleases } from "#/scene/geometry/geometry-releases";
 import { SceneClusters } from "#/scene/geometry/scene-clusters";
 import { SceneGeometry } from "#/scene/geometry/scene-geometry";
 import { ISceneSection } from "#/scene/geometry/scene-section";
+import { IPickTexel } from "#/scene/object/pick-texel";
 import { SceneInstances } from "#/scene/object/scene-instances";
 import { ISceneObjectState, isStaticDraw } from "#/scene/object/scene-object-state";
 import { ScenePart } from "#/scene/object/scene-part";
 import { TPassRecord } from "#/scene/pass-record";
 import { StaticDraws } from "#/scene/static/static-draws";
 import { IStaticRange } from "#/scene/static/static-range";
+import { EPickKind } from "#/shader/pick-kind";
 import { STATIC_LOD_IMPOSTOR_ROW, STATIC_NO_LOD } from "#/uniforms/static-draw-buffers";
 import { CullView } from "#/visibility/cull-view";
 import { EVisibility } from "#/visibility/visibility";
@@ -191,9 +194,44 @@ export class SceneObject {
     }
   }
 
+  /**
+   * @param texel - What a pick read back.
+   * @returns What of this object it names, where it names one of its parts as they draw now; null otherwise.
+   */
+  public findHit(texel: IPickTexel): Nullable<Omit<IRendererHit, "point">> {
+    const part: Maybe<ScenePart> = this.parts.find((it: ScenePart) => it.isPicked(texel));
+
+    if (!part) {
+      return null;
+    }
+
+    return {
+      instance: this.toInstance(texel),
+      object: this.key,
+      surface: this.object.surfaces[part.surfaceSlot] ?? "",
+    };
+  }
+
   /** Lets everything it drew with go, for an object released. */
   public dispose(): void {
     this.clear();
+  }
+
+  /**
+   * @param texel - What a pick read back of one of its parts.
+   * @returns Which of its places the texel is: a static draw's place counted from its own first, a plain draw's instance
+   *   as it was drawn; null for an object its matrix places once.
+   */
+  private toInstance(texel: IPickTexel): Nullable<number> {
+    if (!this.instances) {
+      return null;
+    }
+
+    return texel.kind === EPickKind.STATIC
+      ? this.placeStart === null
+        ? null
+        : texel.place - this.placeStart
+      : this.instances.toPlace(texel.place);
   }
 
   /** Lets everything it drew with go, its places included, for an object released or whose geometry went. */

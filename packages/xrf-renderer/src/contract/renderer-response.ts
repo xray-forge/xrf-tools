@@ -2,6 +2,7 @@ import { Nullable } from "@xrf/types";
 
 import { IRendererDevice } from "#/contract/renderer-device";
 import { IRendererReport } from "#/contract/renderer-report";
+import { IRendererHit } from "#/contract/scene/renderer-hit";
 import { IRendererTextureFetch } from "#/contract/scene/renderer-texture-fetch";
 import { IDdsRefusal } from "#/dds/dds-refusal";
 
@@ -23,6 +24,8 @@ export enum ERendererResponse {
   CURSOR = "@renderer/cursor",
   /** The picture a capture asked for, or nothing where there was none to draw. */
   CAPTURED = "@renderer/captured",
+  /** What a pick found under its point, or nothing where nothing drawn is there or there was no view. */
+  PICKED = "@renderer/picked",
   /** A frame was drawn with everything asked for before a settle on the GPU and compiled. */
   SETTLED = "@renderer/settled",
 }
@@ -36,4 +39,5 @@ export type TRendererResponse =
   | { kind: ERendererResponse.TEXTURE_FETCHED; key: string; fetch: IRendererTextureFetch }
   | { kind: ERendererResponse.CURSOR; cursor: string }
   | { kind: ERendererResponse.CAPTURED; id: number; image: Nullable<ImageBitmap> }
+  | { kind: ERendererResponse.PICKED; id: number; hit: Nullable<IRendererHit> }
   | { kind: ERendererResponse.SETTLED; id: number };

@@ -4,6 +4,7 @@ import { Node } from "three/webgpu";
 import { ERendererPass } from "#/contract/scene/renderer-pass";
 import { toDeferredSurfaceShader } from "#/material/deferred-surface.tsl";
 import { toForwardSurfaceShader } from "#/material/forward-surface.tsl";
+import { toPickSurfaceShader } from "#/material/pick-surface.tsl";
 import { toShadowSurfaceShader } from "#/material/shadow-surface.tsl";
 import { ISurfaceInputs } from "#/material/surface-inputs";
 import { toSurfaceInputs } from "#/material/surface-inputs.tsl";
@@ -44,8 +45,11 @@ export class SurfacePrograms {
   private readonly shaders: Map<string, ISurfaceShader> = new Map();
   private readonly tabled: Map<string, ISurfaceShader> = new Map();
   private readonly tabledShadows: Map<string, ISurfaceShader> = new Map();
+  private readonly tabledPicks: Map<string, ISurfaceShader> = new Map();
   private cutOutShadow: Maybe<ISurfaceShader>;
   private opaqueShadow: Maybe<ISurfaceShader>;
+  private cutOutPick: Maybe<ISurfaceShader>;
+  private wholePick: Maybe<ISurfaceShader>;
 
   /**
    * @param uniforms - What the frame's shaders read.
@@ -131,13 +135,50 @@ export class SurfacePrograms {
     return this.opaqueShadow;
   }
 
+  /**
+   * @param arrayed - The slots a static batch's shared material samples from arrays, the base among them or not.
+   * @returns What draws a cut-out surface sharing a static batch into a pick, its cut read from the surface table.
+   */
+  public getTabledPick(arrayed: ReadonlyArray<ESurfaceSlot>): ISurfaceShader {
+    const key: string = arrayed.join(",");
+    let shader: Maybe<ISurfaceShader> = this.tabledPicks.get(key);
+
+    if (!shader) {
+      shader = toPickSurfaceShader(
+        toTabledSurfaceInputs(null, this.uniforms.surfaceTable, this.uniforms.staticDraws, arrayed, this.nodes)
+      );
+      this.tabledPicks.set(key, shader);
+    }
+
+    return shader;
+  }
+
+  /**
+   * @param isCutOut - Whether the surface is cut out, rather than drawn whole.
+   * @returns What draws it into a pick.
+   */
+  public getPick(isCutOut: boolean): ISurfaceShader {
+    if (isCutOut) {
+      this.cutOutPick ??= toPickSurfaceShader(this.inputs.unbiased());
+
+      return this.cutOutPick;
+    }
+
+    this.wholePick ??= toPickSurfaceShader(null);
+
+    return this.wholePick;
+  }
+
   /** Lets go of every sampler its shaders built, and the shaders with them. */
   public dispose(): void {
     this.nodes.clear();
     this.shaders.clear();
     this.tabled.clear();
     this.tabledShadows.clear();
+    this.tabledPicks.clear();
     this.cutOutShadow = undefined;
     this.opaqueShadow = undefined;
+    this.cutOutPick = undefined;
+    this.wholePick = undefined;
   }
 }

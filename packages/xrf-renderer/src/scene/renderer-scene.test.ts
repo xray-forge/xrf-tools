@@ -18,9 +18,12 @@ import { IRendererSurface } from "#/contract/scene/renderer-surface";
 import { ERendererTextureEncoding } from "#/contract/scene/renderer-texture-source";
 import { mockDdsFile } from "#/dds/dds-fixtures";
 import { ITextureDeviceCopy, ITextureDeviceFixture, mockTextureDevice } from "#/internals/device-fixtures";
+import { SurfaceNodeMaterial } from "#/material/surface-node-material";
 import { createFreeingRenderer, IFreeingRenderer } from "#/scene/geometry/geometry-fixtures";
+import { IPickTexel } from "#/scene/object/pick-texel";
 import { RendererScene } from "#/scene/renderer-scene";
 import { ISceneStaging } from "#/scene/staging/scene-staging";
+import { EPickKind } from "#/shader/pick-kind";
 import { RendererUniforms } from "#/uniforms/renderer-uniforms";
 
 /** One triangle, indexed. */
@@ -228,6 +231,30 @@ describe("RendererScene", () => {
     expect((scene.scenes[ERendererPass.DEFERRED].children as Array<Mesh>).map((it: Mesh) => it.material)).toEqual([
       material,
     ]);
+  });
+
+  // A pick names a draw by what it drew with, which only the scene can turn back into what was put.
+  it("finds the object, surface and place a pick's texel names, and nothing once the part is gone", () => {
+    const scene: RendererScene = new RendererScene(new RendererUniforms(), () => {});
+
+    scene.putGeometry("rock", createTriangle());
+    scene.putSurface("stone", { draw: ERendererDraw.OPAQUE, textures: {} });
+    scene.putObject("a", { geometry: "rock", surfaces: ["stone"] });
+    compile(scene);
+
+    const [part] = scene.scenes[ERendererPass.DEFERRED].children as Array<Mesh>;
+    const texel: IPickTexel = { distance: 3, draw: part.id, kind: EPickKind.PLAIN, place: 0 };
+
+    expect((part.material as SurfaceNodeMaterial).pick).toBeInstanceOf(SurfaceNodeMaterial);
+    expect(scene.pickedScenes).toContain(scene.scenes[ERendererPass.DEFERRED]);
+    expect(scene.pickedScenes).not.toContain(scene.scenes[ERendererPass.WALLMARK]);
+    expect(scene.findHit(texel)).toEqual({ instance: null, object: "a", surface: "stone" });
+    expect(scene.findHit({ ...texel, draw: part.id + 1000 })).toBeNull();
+    expect(scene.findHit({ ...texel, kind: EPickKind.STATIC })).toBeNull();
+
+    scene.releaseObject("a");
+
+    expect(scene.findHit(texel)).toBeNull();
   });
 
   // Marked ready while no water pass compiled it, a water material would build its pipelines on the frame water joins.

@@ -6,6 +6,7 @@ import { TRendererCameraCommand } from "#/contract/renderer-camera-command";
 import { TRendererCaptureSource } from "#/contract/renderer-capture-source";
 import { IRendererLighting } from "#/contract/renderer-lighting";
 import { IRendererSettings } from "#/contract/renderer-settings";
+import { IRendererViewPoint } from "#/contract/renderer-view-point";
 import { IRendererViewSize } from "#/contract/renderer-view-size";
 import { IRendererGeometry, listRendererGeometryTransfers } from "#/contract/scene/renderer-geometry";
 import { IRendererGrass, listRendererGrassTransfers } from "#/contract/scene/renderer-grass";
@@ -85,6 +86,8 @@ export enum ERendererRequest {
   INPUT = "@renderer/input",
   /** Draw a picture of the frame or of a texture, and hand it back. */
   CAPTURE = "@renderer/capture",
+  /** Say what is drawn under this point of the view. */
+  PICK = "@renderer/pick",
   /** Say when a frame has been drawn with everything asked for so far on the GPU and compiled. */
   SETTLE = "@renderer/settle",
   /** These requests, made in one page task, applied in one worker task so no frame shows half of them. */
@@ -132,6 +135,7 @@ export type TRendererRequest =
   | { kind: ERendererRequest.CAMERA_COMMAND; command: TRendererCameraCommand }
   | { kind: ERendererRequest.INPUT; event: IRenderInputEvent }
   | { kind: ERendererRequest.CAPTURE; id: number; source: TRendererCaptureSource }
+  | { kind: ERendererRequest.PICK; id: number; point: IRendererViewPoint }
   | { kind: ERendererRequest.SETTLE; id: number }
   | { kind: ERendererRequest.BATCH; requests: ReadonlyArray<TRendererRequest> };
 

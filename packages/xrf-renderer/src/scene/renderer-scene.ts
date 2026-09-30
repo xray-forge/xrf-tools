@@ -5,6 +5,7 @@ import { IRendererLighting } from "#/contract/renderer-lighting";
 import { IRendererStaticDrawReport } from "#/contract/renderer-static-draw-report";
 import { IRendererGeometry } from "#/contract/scene/renderer-geometry";
 import { IRendererGrass } from "#/contract/scene/renderer-grass";
+import { IRendererHit } from "#/contract/scene/renderer-hit";
 import { IRendererImpostors } from "#/contract/scene/renderer-impostors";
 import { IRendererLights } from "#/contract/scene/renderer-lights";
 import { IRendererObject } from "#/contract/scene/renderer-object";
@@ -21,6 +22,7 @@ import { SceneGrass } from "#/scene/grass/scene-grass";
 import { RendererImpostorSets } from "#/scene/impostor/renderer-impostor-sets";
 import { KeyedUsers } from "#/scene/keyed-users";
 import { SceneLights } from "#/scene/lights/scene-lights";
+import { IPickTexel } from "#/scene/object/pick-texel";
 import { createSceneRoot } from "#/scene/object/scene-mesh";
 import { SceneObject } from "#/scene/object/scene-object";
 import { SceneObjectResolver } from "#/scene/object/scene-object-resolver";
@@ -163,6 +165,37 @@ export class RendererScene {
   /** How full the static draws' pools are and what the last cull found occluded. */
   public get staticDrawReport(): IRendererStaticDrawReport {
     return this.staticDraws.report;
+  }
+
+  /**
+   * What a pick draws: every surface a point can land on, the static draws' both phases and the plain draws of every
+   * pass but the wall marks, which lie on the surfaces they mark.
+   */
+  public get pickedScenes(): ReadonlyArray<Scene> {
+    return [
+      this.staticDraws.early,
+      this.staticDraws.late,
+      this.scenes[ERendererPass.DEFERRED],
+      this.scenes[ERendererPass.WATER],
+      this.scenes[ERendererPass.FORWARD],
+    ];
+  }
+
+  /**
+   * @param texel - What a pick read back.
+   * @returns What it names, where an object drawn now answers to it; null where none does, as when what it named went
+   *   between the pick and its read.
+   */
+  public findHit(texel: IPickTexel): Nullable<Omit<IRendererHit, "point">> {
+    for (const entry of this.objects.values()) {
+      const hit: Nullable<Omit<IRendererHit, "point">> = entry.findHit(texel);
+
+      if (hit) {
+        return hit;
+      }
+    }
+
+    return null;
   }
 
   /** Layers the device allows a texture array, which the device says once it is open. */

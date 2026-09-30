@@ -83,6 +83,14 @@ export class SceneInstances {
     return this.count;
   }
 
+  /**
+   * @param drawn - One of the instances drawn now.
+   * @returns Which place it is, or null for none drawn.
+   */
+  public toPlace(drawn: number): Nullable<number> {
+    return drawn >= 0 && drawn < this.visibleCount ? this.drawn[drawn] : null;
+  }
+
   /** Every place's sphere in renderer space, four floats each, as its object's matrix last placed it. */
   public get placeSpheres(): Float32Array {
     return this.spheres;

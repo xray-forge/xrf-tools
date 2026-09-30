@@ -85,6 +85,18 @@ export function createSurfaceMaterial(
 
   const isCasting: boolean = variant.pass === ERendererPass.DEFERRED && !variant.isImpostor;
   const isCutOut: boolean = variant.draw === ERendererDraw.CUT_OUT;
+  // An impostor's texels are its atlas's, which the plain cut does not read.
+  const isPickCut: boolean = isCutOut && !variant.isImpostor;
+
+  material.pick = createPickMaterial({
+    programs,
+    shader: programs.getPick(isPickCut),
+    slots: isPickCut ? slots.targets : null,
+    source: material,
+    uniforms,
+    values: isPickCut ? values : null,
+  });
+
   const shadow: Nullable<MeshBasicNodeMaterial> = !isCasting
     ? null
     : isCutOut
@@ -94,6 +106,7 @@ export function createSurfaceMaterial(
   return {
     dispose: () => {
       slots.release();
+      material.pick?.dispose();
       material.dispose();
 
       // The opaque one is every opaque surface's, and goes with whatever made it.
@@ -157,6 +170,16 @@ export function createSurfaceBatchMaterial(
   const isCutOut: boolean = variant.draw === ERendererDraw.CUT_OUT && !variant.isImpostor;
   let shadow: Nullable<SurfaceNodeMaterial> = null;
 
+  material.pick = createPickMaterial({
+    programs,
+    shader: isCutOut ? programs.getTabledPick(arrayed) : programs.getPick(false),
+    slots: isCutOut ? slots.targets : null,
+    source: material,
+    uniforms,
+    values: null,
+  });
+  material.pick.surfaceArrays = arrays;
+
   if (isCutOut) {
     shadow = createSharedMaterial(programs, uniforms, slots.targets, null);
     shadow.surfaceArrays = arrays;
@@ -169,6 +192,7 @@ export function createSurfaceBatchMaterial(
   return {
     dispose: () => {
       slots.release();
+      material.pick?.dispose();
       material.dispose();
       shadow?.dispose();
     },
@@ -211,6 +235,36 @@ function createShadowMaterial(
   material.colorWrite = false;
   // Both faces: a card seen from the sun's side is its back as often as its front, and a wall casts either way.
   material.side = DoubleSide;
+
+  return material;
+}
+
+/** What a surface's pick twin is made from. */
+interface IPickMaterialInput {
+  programs: SurfacePrograms;
+  uniforms: RendererUniforms;
+  /** The material it is the twin of, whose vertices it stands where they stand and whose faces it draws. */
+  source: SurfaceNodeMaterial;
+  /** What draws it into a pick. */
+  shader: ISurfaceShader;
+  /** A cut-out surface's slots, shared with its G-buffer material, or null for any other. */
+  slots: Nullable<TSurfaceSlotTargets>;
+  /** Its numbers, likewise. */
+  values: Nullable<ISurfaceValues>;
+}
+
+/**
+ * @param input - What it is made from.
+ * @returns The material a pick draws a surface with in place of its own: standing its geometry as the source does, and
+ *   writing which draw it is rather than how it looks.
+ */
+function createPickMaterial(input: IPickMaterialInput): SurfaceNodeMaterial {
+  const { programs, uniforms, source, shader, slots, values } = input;
+  const material: SurfaceNodeMaterial = createSharedMaterial(programs, uniforms, slots, values);
+
+  material.fragmentNode = shader.fragmentNode ?? null;
+  material.positionViewNode = source.positionViewNode;
+  material.side = source.side;
 
   return material;
 }

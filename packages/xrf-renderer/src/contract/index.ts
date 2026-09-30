@@ -53,6 +53,7 @@ export * from "#/contract/renderer-temporal-antialiasing";
 export * from "#/contract/renderer-tree-wind";
 export * from "#/contract/renderer-upscaling-settings";
 export * from "#/contract/renderer-vector";
+export * from "#/contract/renderer-view-point";
 export * from "#/contract/renderer-view-size";
 export * from "#/contract/renderer-water-settings";
 export * from "#/contract/renderer-widths-field";

@@ -10,9 +10,11 @@ import { IRendererLighting } from "#/contract/renderer-lighting";
 import { ERendererRequest, listRendererTransfers, TRendererRequest } from "#/contract/renderer-request";
 import { ERendererResponse, TRendererResponse } from "#/contract/renderer-response";
 import { IRendererSettings } from "#/contract/renderer-settings";
+import { IRendererViewPoint } from "#/contract/renderer-view-point";
 import { IRendererViewSize } from "#/contract/renderer-view-size";
 import { IRendererGeometry } from "#/contract/scene/renderer-geometry";
 import { IRendererGrass } from "#/contract/scene/renderer-grass";
+import { IRendererHit } from "#/contract/scene/renderer-hit";
 import { IRendererImpostors } from "#/contract/scene/renderer-impostors";
 import { IRendererLights } from "#/contract/scene/renderer-lights";
 import { IRendererMotion } from "#/contract/scene/renderer-motion";
@@ -53,6 +55,7 @@ export class RendererClient {
   private readonly worker: Worker;
   private readonly onFailed: Maybe<(reason: string) => void>;
   private readonly captures: Map<number, IRendererClientAnswer<Nullable<ImageBitmap>>> = new Map();
+  private readonly picks: Map<number, IRendererClientAnswer<Nullable<IRendererHit>>> = new Map();
   private readonly settles: Map<number, IRendererClientAnswer<void>> = new Map();
   private view: Nullable<IRendererClientView> = null;
   /** Requests made since the queue was last posted, which is once the code making them yields: a microtask. */
@@ -61,6 +64,7 @@ export class RendererClient {
   private failure: Nullable<string> = null;
   private isDisposed: boolean = false;
   private captureId: number = 0;
+  private pickId: number = 0;
   private settleId: number = 0;
   /** The weather sent last, whose parts a later one hands over as the same objects are not sent again. */
   private sentWeather: Nullable<IRendererWeather> = null;
@@ -114,6 +118,14 @@ export class RendererClient {
           this.captures.delete(response.id);
 
           return answer ? answer.resolve(response.image) : response.image?.close();
+        }
+
+        case ERendererResponse.PICKED: {
+          const answer: Maybe<IRendererClientAnswer<Nullable<IRendererHit>>> = this.picks.get(response.id);
+
+          this.picks.delete(response.id);
+
+          return answer?.resolve(response.hit);
         }
 
         case ERendererResponse.SETTLED: {
@@ -376,6 +388,30 @@ export class RendererClient {
   }
 
   /**
+   * Says what is drawn under a point of the view, at the next frame drawn.
+   *
+   * @param point - Where in the view, in css pixels from the canvas's top left corner.
+   * @returns What is drawn there, or null where nothing is, no view is attached or the client is disposed; refused with
+   *   why once the renderer failed.
+   */
+  public pick(point: IRendererViewPoint): Promise<Nullable<IRendererHit>> {
+    if (this.failure !== null) {
+      return Promise.reject(new Error(this.failure));
+    }
+
+    if (this.isDisposed) {
+      return Promise.resolve(null);
+    }
+
+    const id: number = ++this.pickId;
+
+    return new Promise((resolve: (hit: Nullable<IRendererHit>) => void, reject: (error: Error) => void): void => {
+      this.picks.set(id, { reject, resolve });
+      this.post({ id, kind: ERendererRequest.PICK, point: { x: point.x, y: point.y } });
+    });
+  }
+
+  /**
    * Waits for a frame drawn with everything asked for so far: its textures on the GPU, its materials compiled and every
    * stage the features turned on in the frame. The
    * request follows every one before it, so a frame drawn before the last of them cannot answer it. Only a frame drawn
@@ -414,6 +450,8 @@ export class RendererClient {
     this.worker.terminate();
     this.captures.forEach((answer: IRendererClientAnswer<Nullable<ImageBitmap>>) => answer.resolve(null));
     this.captures.clear();
+    this.picks.forEach((answer: IRendererClientAnswer<Nullable<IRendererHit>>) => answer.resolve(null));
+    this.picks.clear();
     this.settles.forEach((answer: IRendererClientAnswer<void>) => answer.resolve());
     this.settles.clear();
   }
@@ -424,7 +462,7 @@ export class RendererClient {
   }
 
   /**
-   * The renderer stopped for good: every settle and capture waiting is refused with why, and the consumer told.
+   * The renderer stopped for good: every settle, capture and pick waiting is refused with why, and the consumer told.
    *
    * @param reason - Why it stopped.
    */
@@ -436,6 +474,8 @@ export class RendererClient {
     this.failure = reason;
     this.captures.forEach((answer: IRendererClientAnswer<Nullable<ImageBitmap>>) => answer.reject(new Error(reason)));
     this.captures.clear();
+    this.picks.forEach((answer: IRendererClientAnswer<Nullable<IRendererHit>>) => answer.reject(new Error(reason)));
+    this.picks.clear();
     this.settles.forEach((answer: IRendererClientAnswer<void>) => answer.reject(new Error(reason)));
     this.settles.clear();
     this.onFailed?.(reason);

@@ -7,6 +7,7 @@ export * from "#/contract/scene/renderer-geometry-group";
 export * from "#/contract/scene/renderer-geometry";
 export * from "#/contract/scene/renderer-grass-model";
 export * from "#/contract/scene/renderer-grass";
+export * from "#/contract/scene/renderer-hit";
 export * from "#/contract/scene/renderer-impostors";
 export * from "#/contract/scene/renderer-instance-impostors";
 export * from "#/contract/scene/renderer-instances";

@@ -67,6 +67,15 @@ describe("SceneInstances", () => {
     expect(columns.version).toBe(version);
   });
 
+  // A pick reads which instance it drew, which is a place only through the order the view last drew them in.
+  it("says which place each drawn instance is, and none past those drawn", () => {
+    const instances: SceneInstances = new SceneInstances(createGeometry(), { transforms });
+
+    instances.cull(createView());
+
+    expect([0, 1, 2].map((drawn: number) => instances.toPlace(drawn))).toEqual([0, 2, null]);
+  });
+
   it("carries each drawn place's hemisphere terms with it", () => {
     const instances: SceneInstances = new SceneInstances(createGeometry(), {
       hemi: new Float32Array([1, 0.1, 2, 0.2, 3, 0.3]),

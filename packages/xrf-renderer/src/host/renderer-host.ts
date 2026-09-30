@@ -9,6 +9,7 @@ import { ERendererRequest, TRendererRequest } from "#/contract/renderer-request"
 import { ERendererResponse } from "#/contract/renderer-response";
 import { IRendererSettings, toRendererSettings } from "#/contract/renderer-settings";
 import { IRendererViewSize } from "#/contract/renderer-view-size";
+import { IRendererHit } from "#/contract/scene/renderer-hit";
 import { IRendererTextureFetch } from "#/contract/scene/renderer-texture-fetch";
 import { IRendererWeather } from "#/contract/weather/renderer-weather";
 import { TRendererWeatherChange } from "#/contract/weather/renderer-weather-change";
@@ -30,6 +31,7 @@ import { RendererView } from "#/host/renderer-view";
 import { RenderProxyElement } from "#/input/render-proxy-element";
 import { toArrayLayerLimit, toStorageLimit, whenSubmittedWorkDone } from "#/internals/renderer-backend";
 import { DEFAULT_RENDERER_LIGHTING } from "#/lighting/default-lighting";
+import { RendererPicks } from "#/pick/renderer-picks";
 import { RendererOverlays } from "#/scene/overlay/renderer-overlays";
 import { RendererScene } from "#/scene/renderer-scene";
 import { RendererUniforms } from "#/uniforms/renderer-uniforms";
@@ -58,6 +60,7 @@ export class RendererHost {
   private readonly overlays: RendererOverlays;
   private readonly graph: RendererFrameGraph;
   private readonly captures: RendererCaptures;
+  private readonly picks: RendererPicks;
   /** Settles asked for since the last frame drawn with everything on the GPU and compiled. */
   private readonly settles: Array<number> = [];
   private readonly compiler: RendererSceneCompiler = new RendererSceneCompiler();
@@ -105,6 +108,9 @@ export class RendererHost {
       this.scene.textures,
       (id: number, image: Nullable<ImageBitmap>) =>
         this.reply({ id, image, kind: ERendererResponse.CAPTURED }, image ? [image] : [])
+    );
+    this.picks = new RendererPicks(this.scene, (id: number, hit: Nullable<IRendererHit>) =>
+      this.reply({ hit, id, kind: ERendererResponse.PICKED })
     );
     this.light(DEFAULT_RENDERER_LIGHTING);
   }
@@ -280,6 +286,11 @@ export class RendererHost {
 
         return this.ensureScheduled();
 
+      case ERendererRequest.PICK:
+        this.picks.push(request.id, request.point);
+
+        return this.ensureScheduled();
+
       case ERendererRequest.SETTLE:
         this.settles.push(request.id);
 
@@ -397,9 +408,12 @@ export class RendererHost {
     this.stats.restart();
   }
 
-  /** Keeps the loop running while there is a view to draw or a capture to answer, once the GPU is ready for a frame. */
+  /**
+   * Keeps the loop running while there is a view to draw or a capture or pick to answer, once the GPU is ready for a
+   * frame.
+   */
   private ensureScheduled(): void {
-    if (this.device && (this.view || this.captures.hasPending) && this.pacing.isReady) {
+    if (this.device && (this.view || this.captures.hasPending || this.picks.hasPending) && this.pacing.isReady) {
       this.loop.request();
     }
   }
@@ -428,9 +442,16 @@ export class RendererHost {
     this.scene.sky.update();
 
     let drawn: Nullable<Vector2> = null;
+    let isDrawn: boolean = false;
 
-    if (view && (this.captures.hasPending || this.limiter.take(now, settings.pacing.rateLimit))) {
+    if (
+      view &&
+      (this.captures.hasPending || this.picks.hasPending || this.limiter.take(now, settings.pacing.rateLimit))
+    ) {
       const isResized: boolean = this.draw(now, device, view, settings);
+
+      isDrawn = true;
+
       // Asked before the compiler may admit a pass joining the frame, which this frame was drawn without.
       const isJoined: boolean = !this.graph.isJoining;
 
@@ -450,6 +471,12 @@ export class RendererHost {
     }
 
     this.captures.answer(device.renderer, view !== null, drawn);
+
+    // At the frame just drawn, whose culls chose what its static draws draw; without a view, at nothing.
+    if (isDrawn || !view) {
+      this.picks.answer(device.renderer, view ? { camera: this.rig.camera, size: view.size } : null);
+    }
+
     this.ensureScheduled();
   }
 
@@ -623,6 +650,7 @@ export class RendererHost {
     this.settles.length = 0;
     this.graph.dispose();
     this.captures.dispose();
+    this.picks.dispose();
     this.overlays.dispose();
     this.weather.dispose();
     this.scene.dispose();
