@@ -20,6 +20,16 @@ pub struct AlifeObjectAbstract {
   pub spawn_story_id: u32,
 }
 
+impl AlifeObjectAbstract {
+  /// The story id an object without one carries (`INVALID_STORY_ID`, `xrServerEntities/alife_space.h`).
+  pub const INVALID_STORY_ID: u32 = u32::MAX;
+
+  /// The object's story id, `None` for one without.
+  pub fn get_story_id(&self) -> Option<u32> {
+    (self.story_id != Self::INVALID_STORY_ID).then_some(self.story_id)
+  }
+}
+
 impl ChunkReadWrite for AlifeObjectAbstract {
   /// Read generic ALife object base data from the chunk reader.
   fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
@@ -142,6 +152,26 @@ mod tests {
     assert_eq!(AlifeObjectAbstract::read::<XRayByteOrder, _>(&mut reader)?, original);
 
     Ok(())
+  }
+
+  #[test]
+  fn test_story_id() {
+    let mut object: AlifeObjectAbstract = AlifeObjectAbstract {
+      game_vertex_id: 0,
+      distance: 0.0,
+      direct_control: 0,
+      level_vertex_id: 0,
+      flags: 0,
+      custom_data: String::new(),
+      story_id: 400,
+      spawn_story_id: 0,
+    };
+
+    assert_eq!(object.get_story_id(), Some(400));
+
+    object.story_id = AlifeObjectAbstract::INVALID_STORY_ID;
+
+    assert_eq!(object.get_story_id(), None);
   }
 
   #[test]
