@@ -851,7 +851,7 @@ impl XrayVfs {
   /// # Errors
   ///
   /// Returns an error naming the kind when it has no single directory to resolve under.
-  fn get_rules_of(asset_type: XrayAssetType) -> XrfResult<XrayAssetRules> {
+  pub(crate) fn get_rules_of(asset_type: XrayAssetType) -> XrfResult<XrayAssetRules> {
     asset_type.get_rules().ok_or_else(|| {
       XrfError::new_asset_error(format!(
         "asset kind {asset_type:?} has no single directory to resolve under"

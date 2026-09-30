@@ -58,14 +58,8 @@ impl XrayTextureScope {
     asset_type: XrayAssetType,
     reference: &str,
   ) -> Option<XrayResolution> {
-    let beside: XrayLogicalPath = self
-      .level
-      .as_ref()
-      .zip(asset_type.get_rules())
-      .and_then(|(level, rules)| level.join(&rules.to_logical_path(reference)).ok())?;
-
     probe
-      .find(beside.as_str())
+      .find_beside(self.level.as_ref()?, asset_type, reference)
       .ok()
       .filter(|resolution| matches!(resolution, XrayResolution::Resolved { .. }))
   }

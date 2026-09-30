@@ -1,7 +1,9 @@
 use std::path::{Path, PathBuf};
 
 use crate::vfs::tests::fake_source::{FakeArchiveSource, directory};
-use crate::{XrayAssetType, XrayLookupScope, XrayMountId, XrayProbe, XrayResolution, XraySearchedSource, XrayVfs};
+use crate::{
+  XrayAssetType, XrayLogicalPath, XrayLookupScope, XrayMountId, XrayProbe, XrayResolution, XraySearchedSource, XrayVfs,
+};
 
 /// Two directory mounts, returned with the ids a scope selects them by.
 fn two_roots(case: &str, first: &[&str], second: &[&str]) -> (XrayVfs, XrayMountId, XrayMountId, PathBuf, PathBuf) {
@@ -247,6 +249,38 @@ fn finds_an_exact_logical_path_in_step_order() {
       XrayResolution::Missing { .. }
     ),
     "an exact path that no step holds is missing, not an error"
+  );
+}
+
+// A level's breakables are compiled beside it, `levels\l01_escape\meshes\brkbl#48.ogf`, which the engine's `$level$`
+// answers before the shared meshes do.
+#[test]
+fn finds_a_reference_of_a_kind_beside_a_directory() {
+  let (vfs, near_id, _, _, _) = two_roots(
+    "beside",
+    &["levels/l01_escape/meshes/brkbl#48.ogf", "meshes/brkbl#48.ogf"],
+    &[],
+  );
+  let probe: XrayProbe = vfs.probe().with_step("near", XrayLookupScope::only([near_id]));
+  let level: XrayLogicalPath = XrayLogicalPath::new("levels\\l01_escape").expect("a level path");
+
+  let beside: XrayResolution = probe
+    .find_beside(&level, XrayAssetType::Ogf, "meshes\\brkbl#48")
+    .expect("lookup succeeds");
+
+  assert_eq!(
+    beside.get_asset().map(|it| it.get_logical_path().as_str()),
+    Some("levels\\l01_escape\\meshes\\brkbl#48.ogf")
+  );
+  assert!(matches!(
+    probe
+      .find_beside(&level, XrayAssetType::Ogf, "meshes\\absent")
+      .expect("lookup succeeds"),
+    XrayResolution::Missing { .. }
+  ));
+  assert!(
+    probe.find_beside(&level, XrayAssetType::Level, "level").is_err(),
+    "a kind with no home has no path below it to join"
   );
 }
 

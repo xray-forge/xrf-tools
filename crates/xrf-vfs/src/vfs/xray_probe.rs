@@ -8,7 +8,8 @@ use crate::vfs::{
   XrayDirectoryListing, XrayMountedEntry, XrayResolution, XrayScopedVfs, XrayShadowedCopy, XrayShadowingEntry,
 };
 use crate::{
-  XrayAsset, XrayAssetType, XrayLookupScope, XrayMount, XrayMountId, XrayPathCollision, XraySkippedMount, XrayVfs,
+  XrayAsset, XrayAssetType, XrayLogicalPath, XrayLookupScope, XrayMount, XrayMountId, XrayPathCollision,
+  XraySkippedMount, XrayVfs,
 };
 
 /// One place a probe looks, and the name a report calls it by.
@@ -275,6 +276,25 @@ impl<'a> XrayProbe<'a> {
     Ok(XrayResolution::Missing {
       roots: self.list_roots(),
     })
+  }
+
+  /// Finds a reference of one kind beside a directory rather than under its kind's home: the directory joined with the
+  /// path the reference names below the home. The engine's `$level$` answers a level's own textures, descriptors and
+  /// models that way before the shared tree does.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the kind has no canonical home, or when the reference does not join the directory as an
+  /// X-Ray path.
+  pub fn find_beside(
+    &self,
+    directory: &XrayLogicalPath,
+    asset_type: XrayAssetType,
+    reference: &str,
+  ) -> XrfResult<XrayResolution> {
+    let path: XrayLogicalPath = directory.join(&XrayVfs::get_rules_of(asset_type)?.to_logical_path(reference))?;
+
+    self.find(path.as_str())
   }
 
   /// What sits directly inside one directory, merged across the steps this probe searches.

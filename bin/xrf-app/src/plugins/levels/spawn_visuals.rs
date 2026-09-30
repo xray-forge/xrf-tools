@@ -9,10 +9,10 @@ use xrf_chunk::XRayByteOrder;
 use xrf_error::XrfResult;
 use xrf_material::{XraySurfaceDescriptor, XraySurfaceResolver, XrayTextureScope};
 use xrf_ogf::OgfFile;
-use xrf_vfs::{XrayAssetType, XrayLogicalPath, XrayProbe};
+use xrf_vfs::{XrayAssetType, XrayLogicalPath, XrayProbe, XrayResolution};
 use xrf_visual::{VisualDependencies, VisualDescription, VisualPackage, VisualPacker, VisualRestPose, VisualSkeleton};
 
-use crate::core::assets::{read_located_asset, read_referenced_asset};
+use crate::core::assets::read_referenced_asset;
 use crate::plugins::levels::report::{report_bind_rest_pose, report_empty_rest_motion, report_undrawn_visual};
 use crate::plugins::levels::state::{LevelSpawnVisual, SelectedLevel};
 use crate::plugins::levels::textures::resolve_surface_textures;
@@ -98,17 +98,15 @@ impl<'probe, 'vfs> SpawnVisualReader<'probe, 'vfs> {
 
   /// `CModelPool::Instance_Load`: beside the level first, then the shared meshes.
   fn read_bytes(&self, name: &str) -> XrfResult<Vec<u8>> {
-    let beside: Option<XrayLogicalPath> = self
-      .level
-      .as_ref()
-      .zip(XrayAssetType::Ogf.get_rules())
-      .and_then(|(level, rules)| level.join(&rules.to_logical_path(name)).ok())
-      .filter(|path| self.probe.find(path.as_str()).is_ok_and(|it| it.get_asset().is_some()));
+    if let Some(level) = &self.level {
+      let beside: XrayResolution = self.probe.find_beside(level, XrayAssetType::Ogf, name)?;
 
-    match beside {
-      Some(path) => read_located_asset(self.probe, path.as_str()),
-      None => read_referenced_asset(self.probe, XrayAssetType::Ogf, name),
+      if let Some(asset) = beside.get_asset() {
+        return self.probe.read_asset_bytes(asset);
+      }
     }
+
+    read_referenced_asset(self.probe, XrayAssetType::Ogf, name)
   }
 }
 
