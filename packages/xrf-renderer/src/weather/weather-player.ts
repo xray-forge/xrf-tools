@@ -11,7 +11,7 @@ import { ERendererWeatherTransition } from "#/contract/weather/renderer-weather-
 import { RendererTextures } from "#/texture/renderer-textures";
 import { toWeatherTimeOfDay } from "#/weather/weather-day";
 import { IWeatherEffectTimeline, toWeatherEffectTimeline } from "#/weather/weather-effect-timeline";
-import { toFadedLighting } from "#/weather/weather-fade";
+import { WeatherFader } from "#/weather/weather-fader";
 import { listWeatherTextures } from "#/weather/weather-held-textures";
 import { TWeatherKeyframePair } from "#/weather/weather-keyframe-pair";
 import { toWeatherLighting, toWeatherMixedKeyframe } from "#/weather/weather-lighting";
@@ -46,9 +46,6 @@ const LONGEST_STEP: number = 1000;
 /** Metres the view moves before the modifiers are weighed again. */
 const VIEW_STEP: number = 0.5;
 
-/** Real milliseconds a fade waits for the skies it fades into before it starts without them. */
-const LONGEST_WAIT: number = 2000;
-
 /** Real milliseconds each transition takes. */
 const TRANSITION_TIME: Readonly<Record<ERendererWeatherTransition, number>> = {
   [ERendererWeatherTransition.CUT]: 0,
@@ -62,18 +59,6 @@ interface IPlayingEffect {
   remaining: number;
 }
 
-/** A fade from what was shown into what the weather shows now. */
-interface IWeatherFading {
-  from: IRendererLighting;
-  /** Milliseconds it was asked for at, or null until the frame after. */
-  askedAt: Nullable<number>;
-  /** Milliseconds it started at, or null while the skies it fades into are still going up. */
-  startedAt: Nullable<number>;
-  duration: number;
-  /** The textures what it fades from shows, held until it ends. */
-  held: ReadonlyArray<string>;
-}
-
 /**
  * The weather the renderer plays by itself: its clock, the engine's pair of keyframes kept from frame to frame, the
  * effect over it, the mix seen from the view, a fade from what was shown when the consumer hands over another weather,
@@ -83,6 +68,7 @@ export class WeatherPlayer {
   private readonly textures: WeatherTextures;
   private readonly pair: WeatherPair = new WeatherPair();
   private readonly thunder: WeatherThunder;
+  private readonly fader: WeatherFader;
   private weather: Nullable<IRendererWeather> = null;
   private control: IRendererWeatherControl = DEFAULT_CONTROL;
   private time: number = NOON;
@@ -91,7 +77,6 @@ export class WeatherPlayer {
   private mix: Nullable<IWeatherMix> = null;
   /** What was last drawn, which a fade starts from. */
   private shown: Nullable<IRendererLighting> = null;
-  private fading: Nullable<IWeatherFading> = null;
   private advancedAt: Nullable<number> = null;
   private isChanged: boolean = false;
   /** Whether the next change is forced, as a seek or a cut is, and shown at once. */
@@ -108,6 +93,7 @@ export class WeatherPlayer {
   public constructor(textures: RendererTextures, random: () => number = Math.random) {
     this.textures = new WeatherTextures(textures);
     this.thunder = new WeatherThunder(random);
+    this.fader = new WeatherFader(this.textures);
   }
 
   /** Whether a weather plays, lighting the scene in place of the consumer's lighting. */
@@ -141,7 +127,12 @@ export class WeatherPlayer {
   public take(weather: Nullable<IRendererWeather>, transition: ERendererWeatherTransition): void {
     const duration: number = TRANSITION_TIME[transition];
 
-    this.fading = weather && this.shown && duration > 0 ? this.toFading(this.shown, duration) : null;
+    if (weather && this.shown && duration > 0) {
+      this.fader.start(this.shown, duration);
+    } else {
+      this.fader.stop();
+    }
+
     this.isForced = duration === 0;
     this.weather = weather;
     this.effect = null;
@@ -220,7 +211,7 @@ export class WeatherPlayer {
    */
   public advance(now: number, view: TRendererVector): Nullable<IRendererLighting> {
     const step: number = this.advancedAt === null ? 0 : Math.min(Math.max(now - this.advancedAt, 0), LONGEST_STEP);
-    const { weather, control, fading } = this;
+    const { weather, control } = this;
 
     this.advancedAt = now;
 
@@ -240,12 +231,22 @@ export class WeatherPlayer {
       this.isChanged = true;
     }
 
-    if (fading) {
-      fading.askedAt ??= now;
+    if (this.fader.isFading) {
+      this.fader.ask(now);
       this.isChanged = true;
     }
 
     return this.flash(now, view, this.isChanged ? this.relight(now, weather) : null);
+  }
+
+  public dispose(): void {
+    this.textures.dispose();
+    this.weather = null;
+    this.effect = null;
+    this.mix = null;
+    this.shown = null;
+    this.fader.stop();
+    this.thunder.reset();
   }
 
   /**
@@ -273,17 +274,18 @@ export class WeatherPlayer {
     const target: IRendererLighting = toWeatherLighting({ control: this.control, mix: this.mix, pair, weather });
 
     // Faded over rather than cut to, as the skies of the engine's own blend never jump.
-    if (this.isJumped && !this.isForced && !this.fading && this.shown) {
-      this.fading = { ...this.toFading(this.shown, TRANSITION_TIME[ERendererWeatherTransition.FADE]), askedAt: now };
+    if (this.isJumped && !this.isForced && !this.fader.isFading && this.shown) {
+      this.fader.start(this.shown, TRANSITION_TIME[ERendererWeatherTransition.FADE]);
+      this.fader.ask(now);
     }
 
     this.isForced = false;
     this.isJumped = false;
 
     // Put before the fade asks whether they are up: a key never put reads as settled.
-    this.textures.keep([...listWeatherTextures({ keyframes, pair, weather }), ...(this.fading?.held ?? [])]);
+    this.textures.keep([...listWeatherTextures({ keyframes, pair, weather }), ...this.fader.held]);
 
-    const lighting: IRendererLighting = this.fade(now, target);
+    const lighting: IRendererLighting = this.fader.apply(now, target);
 
     this.shown = lighting;
 
@@ -321,48 +323,6 @@ export class WeatherPlayer {
     }
 
     return lighting;
-  }
-
-  /**
-   * @param now - Milliseconds, as the frame loop counts them.
-   * @param target - What the weather shows now.
-   * @returns What to draw: the fade playing, which starts once the skies it fades into are up, or the weather.
-   */
-  private fade(now: number, target: IRendererLighting): IRendererLighting {
-    const { fading } = this;
-
-    if (!fading) {
-      return target;
-    }
-
-    if (
-      fading.startedAt === null &&
-      (this.textures.isUploaded(WeatherPlayer.listSkyKeys(target)) || now - (fading.askedAt ?? now) >= LONGEST_WAIT)
-    ) {
-      fading.startedAt = now;
-    }
-
-    const progress: number = fading.startedAt === null ? 0 : (now - fading.startedAt) / fading.duration;
-
-    if (progress >= 1) {
-      this.fading = null;
-    }
-
-    return toFadedLighting({ from: fading.from, progress, to: target });
-  }
-
-  private toFading(from: IRendererLighting, duration: number): IWeatherFading {
-    return { askedAt: null, duration, from, held: this.textures.listHeld(), startedAt: null };
-  }
-
-  public dispose(): void {
-    this.textures.dispose();
-    this.weather = null;
-    this.effect = null;
-    this.mix = null;
-    this.shown = null;
-    this.fading = null;
-    this.thunder.reset();
   }
 
   /** Runs the clock on, and the effect playing with it, which gives the cycle back once it has run out. */
@@ -405,14 +365,5 @@ export class WeatherPlayer {
     );
 
     return toWeatherMixedKeyframe({ mix, pair, time: this.time });
-  }
-
-  /** Every key a lighting's sky draws. */
-  private static listSkyKeys(lighting: IRendererLighting): Array<string> {
-    const { sky } = lighting;
-
-    return [...sky.textures, ...sky.environments, ...(sky.clouds?.textures ?? [])].filter(
-      (key: Nullable<string>): key is string => key !== null
-    );
   }
 }
