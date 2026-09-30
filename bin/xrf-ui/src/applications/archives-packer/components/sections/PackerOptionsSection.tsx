@@ -1,10 +1,10 @@
-import { Stack, Switch } from "@mui/material";
+import { Stack } from "@mui/material";
 import { Nullable } from "@xrf/types";
-import { ChangeEvent, ReactElement } from "react";
+import { ReactElement } from "react";
 
 import { ArchiveVolumeOptionsFields } from "@/core/archive/components/ArchiveVolumeOptionsFields";
 import { ArchivePackConfig } from "@/core/ipc/types/xrf-pack";
-import { FormRow } from "@/core/ui/form";
+import { SwitchFormRow } from "@/core/ui/form";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IPackerOptionsSectionProps extends BaseComponentProps {
@@ -46,20 +46,14 @@ export function PackerOptionsSection({
         onChange={onChange}
       />
 
-      <FormRow
+      <SwitchFormRow
+        id={"packer-skip-list"}
         label={"Skip editor leftovers"}
         description={"Drops the sources and intermediates a game build never reads, as xrCompress does"}
-        controlId={"packer-skip-list"}
-        isInline
-      >
-        <Switch
-          id={"packer-skip-list"}
-          disabled={isDisabled}
-          checked={config.isWithSkipList}
-          slotProps={{ input: { "aria-label": "Skip editor and source leftovers" } }}
-          onChange={(event: ChangeEvent<HTMLInputElement>) => onChange({ isWithSkipList: event.target.checked })}
-        />
-      </FormRow>
+        isChecked={config.isWithSkipList}
+        isDisabled={isDisabled}
+        onChange={(isWithSkipList: boolean) => onChange({ isWithSkipList })}
+      />
     </Stack>
   );
 }

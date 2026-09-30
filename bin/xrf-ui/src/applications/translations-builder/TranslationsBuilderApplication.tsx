@@ -1,4 +1,3 @@
-import { Switch } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useEffect, useState } from "react";
@@ -8,7 +7,7 @@ import { JobPickerForm } from "@/core/jobs/components/JobPickerForm";
 import { EApplicationId } from "@/core/routing/application";
 import { TranslationLanguageField } from "@/core/translations/components/TranslationLanguageField";
 import { ALL_TRANSLATION_LANGUAGES, TRANSLATION_LANGUAGES_WITH_ALL } from "@/core/translations/translations.config";
-import { FormRow, IPathField, PathFormRow, usePathField, useRememberedValue } from "@/core/ui/form";
+import { IPathField, PathFormRow, SwitchFormRow, usePathField, useRememberedValue } from "@/core/ui/form";
 
 import { TranslationsBuildResult } from "./components/TranslationsBuildResult";
 
@@ -92,23 +91,15 @@ export function TranslationsBuilderApplication(): ReactElement {
         field={destination}
       />
 
-      <FormRow
+      <SwitchFormRow
+        id={"translations-builder-sort"}
         label={"Sort ids"}
         description={"Off preserves the order each source declares them in"}
-        controlId={"translations-builder-sort"}
+        isChecked={isSorted}
+        isDisabled={isRunning}
         isRequired={false}
-        isInline
-      >
-        {(props) => (
-          <Switch
-            slotProps={{ input: props }}
-            size={"small"}
-            checked={isSorted}
-            disabled={isRunning}
-            onChange={(event) => setIsSorted(event.target.checked)}
-          />
-        )}
-      </FormRow>
+        onChange={setIsSorted}
+      />
     </JobPickerForm>
   );
 }

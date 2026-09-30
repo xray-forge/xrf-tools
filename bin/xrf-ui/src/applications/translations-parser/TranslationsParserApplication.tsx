@@ -1,4 +1,4 @@
-import { Button, Switch } from "@mui/material";
+import { Button } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useEffect, useState } from "react";
@@ -8,7 +8,7 @@ import { JobPickerForm } from "@/core/jobs/components/JobPickerForm";
 import { EApplicationId } from "@/core/routing/application";
 import { TranslationLanguageField } from "@/core/translations/components/TranslationLanguageField";
 import { DEFAULT_TRANSLATION_LANGUAGE, TRANSLATION_LANGUAGES } from "@/core/translations/translations.config";
-import { FormRow, IPathField, PathFormRow, usePathField, useRememberedValue } from "@/core/ui/form";
+import { IPathField, PathFormRow, SwitchFormRow, usePathField, useRememberedValue } from "@/core/ui/form";
 
 import { TranslationsParseResult } from "./components/TranslationsParseResult";
 
@@ -112,23 +112,15 @@ export function TranslationsParserApplication(): ReactElement {
         field={destination}
       />
 
-      <FormRow
+      <SwitchFormRow
+        id={"translations-parser-overwrite"}
         label={"Replace existing text"}
         description={"Text already in the output is kept unless this is on"}
-        controlId={"translations-parser-overwrite"}
+        isChecked={isOverwrite}
+        isDisabled={isRunning}
         isRequired={false}
-        isInline
-      >
-        {(props) => (
-          <Switch
-            slotProps={{ input: props }}
-            size={"small"}
-            checked={isOverwrite}
-            disabled={isRunning}
-            onChange={(event) => setIsOverwrite(event.target.checked)}
-          />
-        )}
-      </FormRow>
+        onChange={setIsOverwrite}
+      />
     </JobPickerForm>
   );
 }

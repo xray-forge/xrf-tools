@@ -1,4 +1,4 @@
-import { Stack, Switch, TextField } from "@mui/material";
+import { Stack, TextField } from "@mui/material";
 import { Nullable } from "@xrf/types";
 import { ChangeEvent, ReactElement, useId } from "react";
 
@@ -12,7 +12,7 @@ import {
   writeHeaderFlag,
   writeHeaderValue,
 } from "@/core/archive/lib";
-import { FormRow } from "@/core/ui/form";
+import { FormRow, SwitchFormRow } from "@/core/ui/form";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IArchiveHeaderFieldsProps extends BaseComponentProps {
@@ -53,23 +53,14 @@ export function ArchiveHeaderFields({
         />
       </FormRow>
 
-      <FormRow
+      <SwitchFormRow
+        id={`${controlId}-auto-load`}
         label={"Mount at startup"}
         description={"Whether the engine loads these volumes on its own"}
-        controlId={`${controlId}-auto-load`}
-        isInline={true}
-      >
-        <Switch
-          id={`${controlId}-auto-load`}
-          size={"small"}
-          checked={isAutoLoad}
-          disabled={isDisabled}
-          slotProps={{ input: { "aria-label": "Mount at startup" } }}
-          onChange={(event: ChangeEvent<HTMLInputElement>) =>
-            onChange(writeHeaderFlag(header, HEADER_AUTO_LOAD, event.target.checked))
-          }
-        />
-      </FormRow>
+        isChecked={isAutoLoad}
+        isDisabled={isDisabled}
+        onChange={(isChecked: boolean) => onChange(writeHeaderFlag(header, HEADER_AUTO_LOAD, isChecked))}
+      />
 
       <ArchiveHeaderEntries header={header} isDisabled={isDisabled} onChange={onChange} />
     </Stack>

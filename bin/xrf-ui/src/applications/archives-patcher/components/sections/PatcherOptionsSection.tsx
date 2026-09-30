@@ -1,10 +1,10 @@
-import { Stack, Switch } from "@mui/material";
+import { Stack } from "@mui/material";
 import { Nullable } from "@xrf/types";
-import { ChangeEvent, ReactElement } from "react";
+import { ReactElement } from "react";
 
 import { ArchiveVolumeOptionsFields } from "@/core/archive/components/ArchiveVolumeOptionsFields";
 import { ArchivePatchConfig } from "@/core/ipc/types/xrf-pack";
-import { FormRow } from "@/core/ui/form";
+import { SwitchFormRow } from "@/core/ui/form";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IPatcherOptionsSectionProps extends BaseComponentProps {
@@ -50,20 +50,14 @@ export function PatcherOptionsSection({
         onChange={onChange}
       />
 
-      <FormRow
+      <SwitchFormRow
+        id={"patcher-verify-payload"}
         label={"Verify payloads"}
         description={"Confirm every checksum match by comparing the bytes, reading both sides in full"}
-        controlId={"patcher-verify-payload"}
-        isInline
-      >
-        <Switch
-          id={"patcher-verify-payload"}
-          disabled={isDisabled}
-          checked={isVerifyingPayload}
-          slotProps={{ input: { "aria-label": "Verify payloads" } }}
-          onChange={(event: ChangeEvent<HTMLInputElement>) => onVerifyingPayloadChange(event.target.checked)}
-        />
-      </FormRow>
+        isChecked={isVerifyingPayload}
+        isDisabled={isDisabled}
+        onChange={onVerifyingPayloadChange}
+      />
     </Stack>
   );
 }
