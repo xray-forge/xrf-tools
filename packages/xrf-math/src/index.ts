@@ -3,6 +3,7 @@ export * from "#/clamp";
 export * from "#/heading-pitch";
 export * from "#/math-constants";
 export * from "#/mix";
+export * from "#/rigid-transform";
 export * from "#/series";
 export * from "#/vector";
 export * from "#/wrap";

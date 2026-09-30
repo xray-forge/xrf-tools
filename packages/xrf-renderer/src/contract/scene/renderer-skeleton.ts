@@ -1,5 +1,7 @@
+import { RIGID_TRANSFORM_FLOATS } from "@xrf/math";
+
 /** Floats one bone's transform takes: a 3x4, the rotation columns then the translation. */
-export const RENDERER_FLOATS_PER_BONE: number = 12;
+export const RENDERER_FLOATS_PER_BONE: number = RIGID_TRANSFORM_FLOATS;
 
 /**
  * A skeleton skinned objects bind to, in its bind pose.

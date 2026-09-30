@@ -1,3 +1,5 @@
+import { RENDERER_FLOATS_PER_BONE } from "@xrf/renderer";
+
 import { createRoots } from "@/core/assets/lib";
 import { AssetTextureDescriptor, SelectedVisualDescription } from "@/core/ipc/types/xrf-app";
 import { XrayMaterialDescriptor, XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
@@ -15,7 +17,7 @@ import {
 } from "@/core/ipc/types/xrf-visual";
 import { OPAQUE_RENDERER_SURFACE_DRAW } from "@/core/render/lib/surface/renderer-surface-draw";
 import { MOTION_DEFAULT_SPEED, MOTION_SAMPLE_FPS } from "@/core/visuals/lib/visual-motion";
-import { FLOATS_PER_BONE, IVisualModelViews, IVisualSubmeshViews } from "@/core/visuals/lib/visual-views";
+import { IVisualModelViews, IVisualSubmeshViews } from "@/core/visuals/lib/visual-views";
 
 const ALIGNMENT: number = 4;
 
@@ -425,7 +427,7 @@ export function mockVisualMotionBake(overrides: Partial<VisualMotionBake> = {}):
     frameCount: 3,
     boneCount: 2,
     animatedBoneCount: 2,
-    floatsPerBone: FLOATS_PER_BONE,
+    floatsPerBone: RENDERER_FLOATS_PER_BONE,
     duration: 0,
     speed: MOTION_DEFAULT_SPEED,
     ...overrides,

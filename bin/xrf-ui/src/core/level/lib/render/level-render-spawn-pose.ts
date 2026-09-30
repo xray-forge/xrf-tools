@@ -1,10 +1,8 @@
-import { IRendererGeometry } from "@xrf/renderer";
+import { composeRigidTransforms, invertRigidTransform, rotateByRigidTransform } from "@xrf/math";
+import { IRendererGeometry, RENDERER_FLOATS_PER_BONE } from "@xrf/renderer";
 import { Nullable } from "@xrf/types";
 
 import { IVisualSubmeshViews } from "@/core/visuals/lib/visual-views";
-
-/** Floats one bone's transform takes: its basis, then its translation. */
-const FLOATS_PER_BONE: number = 12;
 
 /**
  * A submesh as its model stands still: every vertex moved by the bones it hangs from, from their bind to their rest,
@@ -55,57 +53,14 @@ export function toPosedGeometry(
 
 /** Each bone's rest transform after the inverse of its bind: what takes a bound vertex to where the bone rests. */
 function toSkinMatrices(binds: Float32Array, rest: ReadonlyArray<number>): Array<Float32Array> {
-  const count: number = Math.min(binds.length, rest.length) / FLOATS_PER_BONE;
+  const count: number = Math.min(binds.length, rest.length) / RENDERER_FLOATS_PER_BONE;
 
   return Array.from({ length: count }, (_, bone: number) =>
-    compose(
-      rest.slice(bone * FLOATS_PER_BONE, (bone + 1) * FLOATS_PER_BONE),
-      invert(binds.subarray(bone * FLOATS_PER_BONE, (bone + 1) * FLOATS_PER_BONE))
+    composeRigidTransforms(
+      rest.slice(bone * RENDERER_FLOATS_PER_BONE, (bone + 1) * RENDERER_FLOATS_PER_BONE),
+      invertRigidTransform(binds.subarray(bone * RENDERER_FLOATS_PER_BONE, (bone + 1) * RENDERER_FLOATS_PER_BONE))
     )
   );
-}
-
-/** A rigid transform's inverse: its basis transposed, its translation turned back through it. */
-function invert(transform: ArrayLike<number>): Float32Array {
-  const [ix, iy, iz, jx, jy, jz, kx, ky, kz, cx, cy, cz] = Array.from(transform);
-
-  return new Float32Array([
-    ix,
-    jx,
-    kx,
-    iy,
-    jy,
-    ky,
-    iz,
-    jz,
-    kz,
-    -(ix * cx + iy * cy + iz * cz),
-    -(jx * cx + jy * cy + jz * cz),
-    -(kx * cx + ky * cy + kz * cz),
-  ]);
-}
-
-/** `outer` after `inner`: a point through `inner`, then through `outer`. */
-function compose(outer: ArrayLike<number>, inner: ArrayLike<number>): Float32Array {
-  const result: Float32Array = new Float32Array(FLOATS_PER_BONE);
-
-  for (let axis: number = 0; axis < 3; axis += 1) {
-    rotate(outer, inner[axis * 3], inner[axis * 3 + 1], inner[axis * 3 + 2], result, axis * 3);
-  }
-
-  rotate(outer, inner[9], inner[10], inner[11], result, 9);
-  result[9] += outer[9];
-  result[10] += outer[10];
-  result[11] += outer[11];
-
-  return result;
-}
-
-/** A direction through a transform's basis, written at an offset. */
-function rotate(transform: ArrayLike<number>, x: number, y: number, z: number, out: Float32Array, at: number): void {
-  out[at] = transform[0] * x + transform[3] * y + transform[6] * z;
-  out[at + 1] = transform[1] * x + transform[4] * y + transform[7] * z;
-  out[at + 2] = transform[2] * x + transform[5] * y + transform[8] * z;
 }
 
 /** One vertex moved by its weighted bones, and its directions turned with it, summed in `moved`. */
@@ -130,13 +85,20 @@ function skinVertex(
       continue;
     }
 
-    rotate(skin, submesh.positions[at], submesh.positions[at + 1], submesh.positions[at + 2], scratch, 0);
+    rotateByRigidTransform(
+      skin,
+      submesh.positions[at],
+      submesh.positions[at + 1],
+      submesh.positions[at + 2],
+      scratch,
+      0
+    );
     moved[0] += (scratch[0] + skin[9]) * weight;
     moved[1] += (scratch[1] + skin[10]) * weight;
     moved[2] += (scratch[2] + skin[11]) * weight;
 
     directions.forEach((direction: Float32Array, index: number) => {
-      rotate(skin, direction[at], direction[at + 1], direction[at + 2], scratch, 0);
+      rotateByRigidTransform(skin, direction[at], direction[at + 1], direction[at + 2], scratch, 0);
       moved[3 + index * 3] += scratch[0] * weight;
       moved[3 + index * 3 + 1] += scratch[1] * weight;
       moved[3 + index * 3 + 2] += scratch[2] * weight;

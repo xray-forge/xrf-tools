@@ -1,5 +1,5 @@
 import { saturate } from "@xrf/math";
-import { IRendererClusters } from "@xrf/renderer";
+import { IRendererClusters, RENDERER_FLOATS_PER_BONE } from "@xrf/renderer";
 import { Nullable, Optional } from "@xrf/types";
 
 import { Vector3d } from "@/core/ipc/types/xrf-math";
@@ -13,9 +13,6 @@ import {
   VisualTransform,
 } from "@/core/ipc/types/xrf-visual";
 import { IRendererSurfaceDraw, OPAQUE_RENDERER_SURFACE_DRAW } from "@/core/render/lib/surface/renderer-surface-draw";
-
-/** Floats one bone transform occupies: three basis vectors and a translation. */
-export const FLOATS_PER_BONE: number = 12;
 
 /** Where a transform's translation starts within its floats, the basis occupying the nine before it. */
 export const TRANSLATION_OFFSET: number = 9;
@@ -218,7 +215,7 @@ export function createVisualViews(
 export function createVisualSkeleton(bones: Array<VisualBone>): IVisualSkeletonViews {
   const segments: Array<number> = [];
   const pairs: Array<number> = [];
-  const binds: Float32Array = new Float32Array(bones.length * FLOATS_PER_BONE);
+  const binds: Float32Array = new Float32Array(bones.length * RENDERER_FLOATS_PER_BONE);
 
   let placed: number = 0;
 
@@ -227,7 +224,7 @@ export function createVisualSkeleton(bones: Array<VisualBone>): IVisualSkeletonV
     const parent: Optional<VisualBone> = bone.parentIndex === null ? undefined : bones[bone.parentIndex];
 
     if (transform) {
-      binds.set(toTransformFloats(transform), index * FLOATS_PER_BONE);
+      binds.set(toTransformFloats(transform), index * RENDERER_FLOATS_PER_BONE);
       placed += 1;
     }
 
