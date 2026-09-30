@@ -2716,6 +2716,20 @@ export type VisualSource =
   /** An asset of the roots, loose or archived, named by its engine identity. */
   | { kind: "asset"; logicalPath: string };
 
+/** Which of the webview's optional browser capabilities the main window is built with, chosen in the settings. */
+export type WebviewOptions = {
+  /** Chromium's `AggressiveShaderCacheLimits`: the GPU process's pipeline cache doubled, 6 MB to 12 MB on desktop. */
+  isShaderCacheDoubled: boolean;
+  /** `--enable-webgpu-developer-features`: GPU timestamps unquantized, where WebView2 rounds them to 65.5 µs. */
+  isWebgpuDeveloper: boolean;
+};
+
+/** The webview options this run started with, and the ones the next start applies. */
+export type WebviewOptionsStatus = {
+  running: WebviewOptions;
+  chosen: WebviewOptions;
+};
+
 /** What a webview process does, as WebView2 names it (`COREWEBVIEW2_PROCESS_KIND`). */
 export enum EWebviewProcessKind {
   /** The browser process, which owns the others. */

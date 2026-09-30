@@ -6,6 +6,8 @@ import {
   PathDescription,
   ProcessMemory,
   RuntimeSnapshot,
+  WebviewOptions,
+  WebviewOptionsStatus,
   WebviewProcessMemory,
 } from "@/core/ipc/types/xrf-app";
 import { BuildInfo } from "@/core/ipc/types/xrf-build-info";
@@ -30,6 +32,11 @@ export const systemCommands = {
     } | null>("plugin:system|get_memory_usage"),
   /** Report what the application currently costs the machine, and how long it has been running. */
   getRuntimeSnapshot: () => __TAURI_INVOKE<RuntimeSnapshot>("plugin:system|get_runtime_snapshot"),
+  /** Report which browser options the webview runs with, and which the next start applies. */
+  getWebviewOptions: () => __TAURI_INVOKE<WebviewOptionsStatus>("plugin:system|get_webview_options"),
   /** Show a path in the desktop's own file manager. */
   revealPath: (path: string) => __TAURI_INVOKE<null>("plugin:system|reveal_path", { path }),
+  /** Keep browser options for the next start, which is when the webview's browser takes new ones. */
+  setWebviewOptions: (options: WebviewOptions) =>
+    __TAURI_INVOKE<WebviewOptionsStatus>("plugin:system|set_webview_options", { options }),
 };
