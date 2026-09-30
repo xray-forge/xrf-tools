@@ -5,10 +5,16 @@ import { ReactElement, useCallback, useEffect, useState } from "react";
 import { TranslationsFormatterService } from "@/applications/translations-formatter/services/formatter";
 import { JobPickerForm } from "@/core/jobs/components/JobPickerForm";
 import { EApplicationId } from "@/core/routing/application";
+import { FormatCommandResult, IFormatCommandNouns } from "@/core/ui/command-result/FormatCommandResult";
 import { CheckboxFormRow, IPathField, PathFormRow, usePathField } from "@/core/ui/form";
 import { Logger, useLogger } from "@/lib/logging";
 
-import { TranslationsFormatResult } from "./components/TranslationsFormatResult";
+/** What this formatter's items are called in its result. */
+const TRANSLATIONS_FORMAT_NOUNS: IFormatCommandNouns = {
+  column: "Source",
+  everything: "translation sources",
+  item: "source",
+};
 
 export function TranslationsFormatterApplication(): ReactElement {
   const log: Logger = useLogger(__MODULE_NAME__);
@@ -56,7 +62,9 @@ export function TranslationsFormatterApplication(): ReactElement {
           : "Rewrites every unformatted source in the directory in place."
       }
       submitLabel={isCheck ? "Check" : "Format"}
-      renderResult={(result) => <TranslationsFormatResult isCheck={isCheck} result={result} />}
+      renderResult={(result) => (
+        <FormatCommandResult isCheck={isCheck} nouns={TRANSLATIONS_FORMAT_NOUNS} result={result} />
+      )}
       onSubmit={onFormat}
     >
       <PathFormRow
