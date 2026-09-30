@@ -2,6 +2,7 @@ import { Injectable, OnDeprovision } from "@wirestate/core";
 import { BoundAction, RefObservable, runInAction } from "@wirestate/mobx";
 import { Nullable } from "@xrf/types";
 
+import { TMemoryDetailSource } from "@/core/diagnostics/lib/memory-detail-source";
 import { IEditorPanel } from "@/core/shell/editor-shell/editor-panel";
 import { isSameStatusSegment, TEditorStatusSegment } from "@/core/shell/editor-shell/editor-status-segment";
 import { EMPTY_ARRAY } from "@/lib/types/array";
@@ -18,6 +19,10 @@ export class EditorShellService {
   @RefObservable()
   private status: Nullable<IEditorShellRegistration<TEditorStatusSegment>> = null;
 
+  /** Rows the active editor adds to the memory hover, after the processes. */
+  @RefObservable()
+  private memoryDetails: Nullable<IEditorShellRegistration<TMemoryDetailSource>> = null;
+
   // Panel descriptors contain React elements and render closures; observe replacement without transforming them.
   @RefObservable()
   private panels: Nullable<IEditorShellRegistration<IEditorPanel>> = null;
@@ -26,6 +31,7 @@ export class EditorShellService {
   public onDeprovision(): void {
     runInAction(() => {
       this.status = null;
+      this.memoryDetails = null;
       this.panels = null;
     });
   }
@@ -33,6 +39,11 @@ export class EditorShellService {
   /** Returns status only for the application currently being rendered. */
   public getStatus(application: string): ReadonlyArray<TEditorStatusSegment> {
     return this.status?.application === application ? this.status.values : EMPTY_ARRAY;
+  }
+
+  /** Returns memory hover rows only for the application currently being rendered. */
+  public getMemoryDetails(application: string): ReadonlyArray<TMemoryDetailSource> {
+    return this.memoryDetails?.application === application ? this.memoryDetails.values : EMPTY_ARRAY;
   }
 
   /** Returns panels only for the application whose container can render them. */
@@ -62,6 +73,20 @@ export class EditorShellService {
   public releaseStatus(owner: string): void {
     if (this.status?.owner === owner) {
       this.status = null;
+    }
+  }
+
+  /** Publishes the rows an editor adds to the memory hover, each read as the memory is. */
+  @BoundAction()
+  public publishMemoryDetails(owner: string, application: string, sources: ReadonlyArray<TMemoryDetailSource>): void {
+    this.memoryDetails = { owner, application, values: [...sources] };
+  }
+
+  /** Releases only the memory hover rows published by this registration. */
+  @BoundAction()
+  public releaseMemoryDetails(owner: string): void {
+    if (this.memoryDetails?.owner === owner) {
+      this.memoryDetails = null;
     }
   }
 

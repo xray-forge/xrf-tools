@@ -28,7 +28,7 @@ describe("useMemoryUsageSegment", () => {
     ];
     const { result } = renderHook(() => useMemoryUsageSegment(sources));
 
-    await waitFor(() => expect(result.current?.text).toBe("Backend 260 MB"));
+    await waitFor(() => expect(result.current?.text).toBe("B 260MB"));
     expect(result.current?.details.slice(-2)).toEqual([
       { label: "First", value: "1 MB" },
       { label: "Second", value: "2 MB" },

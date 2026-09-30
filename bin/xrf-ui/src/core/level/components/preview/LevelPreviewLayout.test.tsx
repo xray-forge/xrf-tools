@@ -286,7 +286,7 @@ describe("LevelPreviewLayout", () => {
 
     const { view } = renderReporting();
 
-    expect(await view.findByText("Backend 260 MB · Webview 2 GB")).toBeInTheDocument();
+    expect(await view.findByText("B 260MB W 2GB")).toBeInTheDocument();
   });
 
   // With the settings timing the passes, the readout lists them as the renderer reports them.

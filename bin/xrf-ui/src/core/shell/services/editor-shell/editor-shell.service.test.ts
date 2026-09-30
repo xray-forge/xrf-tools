@@ -1,6 +1,7 @@
 import { describe, expect, it, jest } from "@jest/globals";
 
 import { IEditorPanel } from "@/core/shell/editor-shell/editor-panel";
+import { IEditorStatusDetail } from "@/core/shell/editor-shell/editor-status-detail";
 import { mockInjectedService } from "@/fixtures/utils/container";
 
 import { EditorShellService } from "./editor-shell.service";
@@ -119,5 +120,27 @@ describe("EditorShellService", () => {
 
     expect(service.getStatus(FIRST)).toEqual([]);
     expect(service.getPanels(FIRST)).toEqual([]);
+  });
+
+  // The status bar's memory hover is the shell's, and each application adds its own rows to it while it is shown.
+  it("holds the memory hover rows of the application shown alone, until their owner lets them go", () => {
+    const { service } = mockInjectedService(EditorShellService);
+
+    function row(): IEditorStatusDetail {
+      return { label: "Renderer copies", value: "1 MB" };
+    }
+
+    service.publishMemoryDetails("level", FIRST, [row]);
+
+    expect(service.getMemoryDetails(FIRST)).toEqual([row]);
+    expect(service.getMemoryDetails(SECOND)).toEqual([]);
+
+    service.releaseMemoryDetails("other");
+
+    expect(service.getMemoryDetails(FIRST)).toEqual([row]);
+
+    service.releaseMemoryDetails("level");
+
+    expect(service.getMemoryDetails(FIRST)).toEqual([]);
   });
 });

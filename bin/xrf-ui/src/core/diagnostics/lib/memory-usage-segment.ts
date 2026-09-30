@@ -2,7 +2,7 @@ import { IMemoryFigures, sumWebviewMemory, toMemoryFigures } from "@/core/diagno
 import { EWebviewProcessKind, MemoryUsage, WebviewProcessKind, WebviewProcessMemory } from "@/core/ipc/types/xrf-app";
 import { IEditorStatusDetail } from "@/core/shell/editor-shell/editor-status-detail";
 import { IEditorStatusSegment } from "@/core/shell/editor-shell/editor-status-segment";
-import { formatBytes } from "@/lib/memory/format";
+import { formatBytes, formatBytesCompact } from "@/lib/memory/format";
 
 /** Names the memory segment across readings, so its hover stays open while the figures change. */
 const MEMORY_USAGE_SEGMENT_ID: string = "memory-usage";
@@ -27,8 +27,8 @@ interface IWebviewProcessGroup {
 }
 
 /**
- * Describes a memory reading for the status bar: what the backend and the webview have in use, each webview process
- * kind under it, the commit of both, then the caller's rows.
+ * Describes a memory reading for the status bar: what the backend and the webview have in use, `B` and `W` for short,
+ * and in its hover each webview process kind under them, the commit of both, then the caller's rows.
  *
  * @param usage - One reading of the backend and the webview's processes.
  * @param details - Further hover rows, in order, after the commit.
@@ -44,7 +44,7 @@ export function describeMemoryUsage(
   if (!usage.webview.length) {
     return {
       id: MEMORY_USAGE_SEGMENT_ID,
-      text: `Backend ${formatBytes(backend.inUse)}`,
+      text: `B ${formatBytesCompact(backend.inUse)}`,
       details: [
         backendRow,
         { label: "Webview", value: "—" },
@@ -58,7 +58,7 @@ export function describeMemoryUsage(
 
   return {
     id: MEMORY_USAGE_SEGMENT_ID,
-    text: `Backend ${formatBytes(backend.inUse)} · Webview ${formatBytes(webview.inUse)}`,
+    text: `B ${formatBytesCompact(backend.inUse)} W ${formatBytesCompact(webview.inUse)}`,
     details: [
       backendRow,
       { label: "Webview", value: formatBytes(webview.inUse) },

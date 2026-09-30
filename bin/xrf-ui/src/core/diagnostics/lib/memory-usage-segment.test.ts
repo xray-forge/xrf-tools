@@ -32,7 +32,7 @@ describe("describeMemoryUsage", () => {
       []
     );
 
-    expect(segment.text).toBe("Backend 260 MB · Webview 2.8 GB");
+    expect(segment.text).toBe("B 260MB W 2.8GB");
   });
 
   it("lists the webview's kinds under it, most in use first, then the commit of both", () => {
@@ -73,7 +73,7 @@ describe("describeMemoryUsage", () => {
       []
     );
 
-    expect(segment.text).toBe("Backend 300 MB · Webview 500 MB");
+    expect(segment.text).toBe("B 300MB W 500MB");
   });
 
   it("adds the caller's rows after the commit, in order", () => {
@@ -94,7 +94,7 @@ describe("describeMemoryUsage", () => {
       { label: "Script heap", value: "42 MB / 4 GB" },
     ]);
 
-    expect(segment.text).toBe("Backend 260 MB");
+    expect(segment.text).toBe("B 260MB");
     expect(segment.details).toEqual([
       { label: "Backend", value: "260 MB" },
       { label: "Webview", value: "—" },
