@@ -1806,10 +1806,15 @@ export type LevelSpawnModelFailure = {
   reason: string;
 };
 
-/** The models of one batch of spawned visuals: each one read, and why each other one could not be. */
+/**
+ * The models of one batch of spawned visuals: each one read, why each other one could not be, and how the level
+ * lights each object standing as one read.
+ */
 export type LevelSpawnModelsDescription = {
   models: Array<LevelSpawnModelDescription>;
   failures: Array<LevelSpawnModelFailure>;
+  /** None where the level's collision form cannot be read, which lights every object as if under the open sky. */
+  hemi: Array<LevelSpawnObjectHemi>;
 };
 
 /** One spawned object the viewer draws: what it is, where it stands, and which visual it stands as. */
@@ -1826,6 +1831,14 @@ export type LevelSpawnObject = {
   visual: number;
   /** The object's `XFORM`, in renderer space. */
   transform: VisualTransform;
+};
+
+/** How much sky and light reach one spawned object from each way, as the game estimates it for a dynamic object. */
+export type LevelSpawnObjectHemi = {
+  /** The object, by its place among the level's spawned objects. */
+  index: number;
+  /** The faces toward `+x +y +z`, then toward `-x -y -z`, in renderer space. */
+  cube: [number | null, number | null, number | null, number | null, number | null, number | null];
 };
 
 /** The spawned objects the viewer draws, and the visuals they stand as, each named once. */

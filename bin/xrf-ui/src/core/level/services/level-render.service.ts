@@ -28,6 +28,7 @@ import {
 import { LEVEL_RENDER_KEYS } from "@/core/level/lib/render/level-render-keys";
 import { toLevelCameraAt, toLevelRendererSettings } from "@/core/level/lib/render/level-render-view";
 import { ILevelPoint } from "@/core/level/lib/residency/level-residency";
+import { toLevelSpawnVisibility } from "@/core/level/lib/spawn/level-spawn-categories";
 import { measureLevelStats } from "@/core/level/lib/stats/level-stats";
 import { ILevelSurfaceGeometry } from "@/core/level/lib/surface/level-surface-geometry";
 import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
@@ -256,6 +257,7 @@ export class LevelRenderService extends RenderSurfaceService {
   private applyOptions(): void {
     this.sendSettings();
     this.applyFrame();
+    this.content?.showSpawn(toLevelSpawnVisibility(this.viewService.options));
   }
 
   /**

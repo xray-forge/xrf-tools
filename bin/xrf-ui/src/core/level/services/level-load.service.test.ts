@@ -1186,6 +1186,7 @@ describe("LevelLoadService held reads", () => {
     setMockInvokeResponses({
       ["plugin:levels|describe_spawn_models"]: mockSessionResponse({
         failures: [],
+        hemi: [],
         models: [{ ...mockLevelSpawnModel("crate").description, textures: [mockLevelTextureReference("wood")] }],
       }),
       ["plugin:levels|open_level"]: mockSessionResponse(level),

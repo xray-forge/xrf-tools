@@ -14,8 +14,12 @@ export const LEVEL_RENDER_KEYS = {
   instance: (sector: number, index: number): string => `sector:${sector}:instance:${index}`,
   /** Everything a sector bakes in place, one geometry with a group per surface. */
   sector: (sector: number): string => `sector:${sector}`,
-  /** One submesh of a visual the level's spawned objects stand as: its geometry, surface and object share it. */
-  spawn: (visual: number, submesh: number): string => `spawn:${visual}:${submesh}`,
+  /** A visual the level's spawned objects stand as: its submeshes joined in one geometry, a group each. */
+  spawnGeometry: (visual: number): string => `spawn:${visual}`,
+  /** The objects of one category standing as a visual. */
+  spawnObject: (visual: number, category: string): string => `spawn:${visual}:${category}`,
+  /** One submesh's surface of a visual, which every category's objects of it draw with. */
+  spawnSurface: (visual: number, submesh: number): string => `spawn:${visual}:surface:${submesh}`,
   sun: "sun",
   /** One shader table entry, which every sector drawing it shares. */
   surface: (shaderId: number): string => `surface:${shaderId}`,

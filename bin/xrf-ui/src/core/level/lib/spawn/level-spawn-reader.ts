@@ -8,6 +8,7 @@ import {
   LevelSpawnModelDescription,
   LevelSpawnModelFailure,
   LevelSpawnModelsDescription,
+  LevelSpawnObjectHemi,
   LevelSpawnObjectsDescription,
   LevelTextureReference,
   SessionSnapshot,
@@ -39,6 +40,7 @@ export interface ILevelSpawnReaderHost {
 interface ILevelSpawnBatch {
   models: Array<ILevelSpawnModel>;
   failures: Array<LevelSpawnModelFailure>;
+  hemi: ReadonlyArray<LevelSpawnObjectHemi>;
 }
 
 /**
@@ -66,6 +68,7 @@ export class LevelSpawnReader {
 
     const indices: Map<string, number> = new Map(objects.visuals.map((name: string, index: number) => [name, index]));
     const models: Map<number, ILevelSpawnModel> = new Map();
+    const hemi: Map<number, ReadonlyArray<number>> = new Map();
     const textures: Array<LevelTextureReference> = [];
     const failures: Array<LevelSpawnModelFailure> = [];
     let report: ILevelSpawnReport = {
@@ -100,9 +103,16 @@ export class LevelSpawnReader {
         }
       }
 
+      for (const object of batch.hemi) {
+        hemi.set(
+          object.index,
+          object.cube.map((face: number | null) => face ?? 0)
+        );
+      }
+
       failures.push(...batch.failures);
       report = { ...report, failures: [...failures], read: start + names.length };
-      this.host.deliver({ models: new Map(models), objects });
+      this.host.deliver({ hemi: new Map(hemi), models: new Map(models), objects });
       this.host.note(report);
     }
 
@@ -121,7 +131,7 @@ export class LevelSpawnReader {
           fetchBulk(levelsBulkRoutes.readSpawnModel(sessionId, model.name))
         )
       );
-      const batch: ILevelSpawnBatch = { failures: value.failures, models: [] };
+      const batch: ILevelSpawnBatch = { failures: value.failures, hemi: value.hemi, models: [] };
 
       value.models.forEach((description: LevelSpawnModelDescription, index: number) => {
         const buffer: ArrayBuffer = buffers[index];
@@ -143,7 +153,7 @@ export class LevelSpawnReader {
     } catch (error: unknown) {
       const reason: string = transformError(error).message;
 
-      return { failures: names.map((name: string) => ({ name, reason })), models: [] };
+      return { failures: names.map((name: string) => ({ name, reason })), hemi: [], models: [] };
     }
   }
 }

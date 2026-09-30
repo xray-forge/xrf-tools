@@ -40,6 +40,14 @@ export interface ILevelViewOptions extends ILevelSurfaceOptions {
   isLamplit: boolean;
   /** Draws the water, while the settings draw it. */
   isWaterVisible: boolean;
+  /** Draws the spawned physics objects, breakables, boxes and vehicles. */
+  isSpawnedProps: boolean;
+  /** Draws the spawned items but weapons. */
+  isSpawnedItems: boolean;
+  /** Draws the spawned firearms and grenades. */
+  isSpawnedWeapons: boolean;
+  /** Draws the spawned hanging lamps' models, whatever lights them. */
+  isSpawnedLamps: boolean;
 }
 
 /** The baked hemisphere occlusion applied whole, as the engine applies it. */
@@ -61,6 +69,10 @@ export const DEFAULT_LEVEL_VIEW_OPTIONS: ILevelViewOptions = {
   isShadowed: true,
   isSkyHazed: false,
   isSkyVisible: true,
+  isSpawnedItems: true,
+  isSpawnedLamps: true,
+  isSpawnedProps: true,
+  isSpawnedWeapons: true,
   isWindy: true,
   isStatsVisible: true,
   isSunVisible: true,

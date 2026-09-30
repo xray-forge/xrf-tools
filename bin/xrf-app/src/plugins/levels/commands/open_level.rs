@@ -81,6 +81,7 @@ pub async fn levels_open_level(
       spawn: opened.spawn.into(),
       sections: OnceLock::new(),
       spawn_visuals: LevelSpawnVisuals::new(),
+      hemi: OnceLock::new(),
       geometry: opened.read.geometry,
       level: opened.read.level,
       outlines: opened.outlines,

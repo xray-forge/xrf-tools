@@ -1,17 +1,28 @@
-import { IRendererGeometry, IRendererObject, IRendererSurface, TRendererColor } from "@xrf/renderer";
-import { Nullable } from "@xrf/types";
+import {
+  IRendererClusters,
+  IRendererGeometry,
+  IRendererGeometryGroup,
+  IRendererObject,
+  IRendererSurface,
+  RENDERER_HEMI_CUBE_FLOATS_PER_INSTANCE,
+  TRendererColor,
+} from "@xrf/renderer";
+import { Maybe, Nullable, Optional } from "@xrf/types";
 
 import { LevelSpawnObject } from "@/core/ipc/types/xrf-app";
 import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
 import { VisualTransform } from "@/core/ipc/types/xrf-visual";
-import { LEVEL_RENDER_KEYS } from "@/core/level/lib/render/level-render-keys";
 import { ILevelSpawnModel } from "@/core/level/lib/render/level-render-protocol";
+import { toPosedGeometry } from "@/core/level/lib/render/level-render-spawn-pose";
 import { toLevelSurfaceColor } from "@/core/level/lib/render/level-render-surface";
 import { ILevelSurfaceRender, toLevelSurfaceRender } from "@/core/level/lib/surface/level-surface-render";
 import { createVisualViews, IVisualModelViews, IVisualSubmeshViews } from "@/core/visuals/lib/visual-views";
 
-/** Floats one bone's transform takes: its basis, then its translation. */
-const FLOATS_PER_BONE: number = 12;
+/** Unsigned integers one cluster's range takes: its first index, then three more. */
+const WORDS_PER_CLUSTER: number = 4;
+
+/** Vertices a sixteen-bit index can name. */
+const SHORT_INDEX_VERTICES: number = 65536;
 
 /** What a submesh is dressed as: its shader as it resolved, its base texture, and its colour without one. */
 export interface ILevelSpawnDressing {
@@ -21,97 +32,78 @@ export interface ILevelSpawnDressing {
   color: TRendererColor;
 }
 
-/** What one submesh of one model puts into the renderer, under one key. */
-export interface ILevelSpawnPart {
-  key: string;
+/** One visual as the renderer draws it: its submeshes posed as it stands still in one geometry, a group each. */
+export interface ILevelSpawnModelParts {
   geometry: IRendererGeometry;
-  dressing: ILevelSpawnDressing;
-  object: IRendererObject;
+  /** Each submesh's dressing, by the group slot it draws. */
+  dressings: ReadonlyArray<ILevelSpawnDressing>;
 }
 
 /**
- * The parts one visual of a level's spawned objects draws as: each submesh posed as the model stands still, once, and
- * drawn in every place an object of it stands.
+ * One visual of a level's spawned objects as the renderer draws it: every submesh posed as the model stands still,
+ * once, and joined into one geometry, so the model is bounded, and dropped when small on screen, as the engine does a
+ * visual.
  *
- * @param visual - The visual, by its index among the objects' visuals, which keys its parts.
+ * @param visual - The visual, by its index among the objects' visuals, which colours it.
  * @param model - Its model and pack.
- * @param standing - The objects standing as it.
- * @returns Every part, by its key; none for a visual no object stands as.
+ * @returns Its geometry and each group's dressing.
  */
-export function toLevelSpawnParts(
-  visual: number,
-  model: ILevelSpawnModel,
-  standing: ReadonlyArray<LevelSpawnObject>
-): Array<ILevelSpawnPart> {
-  if (!standing.length) {
-    return [];
-  }
-
-  const { description } = model;
-  const views: IVisualModelViews = createVisualViews(description.description, model.buffer);
-  const transforms: Float32Array = toInstanceTransforms(standing);
-
-  return views.submeshes.map((submesh: IVisualSubmeshViews) => {
-    const key: string = LEVEL_RENDER_KEYS.spawn(visual, submesh.index);
-
-    return {
-      dressing: {
-        color: toLevelSurfaceColor(visual),
-        descriptor: description.surfaces[submesh.index] ?? null,
-        texture: description.description.submeshes[submesh.index]?.textureName ?? null,
-      },
-      geometry: toPosedGeometry(submesh, views.skeletonBinds, description.rest?.map((it) => it ?? 0) ?? null),
-      key,
-      object: { geometry: key, instances: { transforms: transforms.slice() }, surfaces: [key] },
-    };
-  });
-}
-
-/**
- * A submesh as its model stands still: every vertex moved by the bones it hangs from, from their bind to their rest,
- * weighted as the skin weights it; a submesh without skin or a model without a rest pose stands as authored.
- *
- * @param submesh - The submesh's views.
- * @param binds - Every bone's bind transform, twelve floats each, or null.
- * @param rest - Every bone's rest transform, twelve floats each, or null.
- * @returns Its geometry, drawn plainly: the pose is baked in.
- */
-export function toPosedGeometry(
-  submesh: IVisualSubmeshViews,
-  binds: Nullable<Float32Array>,
-  rest: Nullable<ReadonlyArray<number>>
-): IRendererGeometry {
-  const positions: Float32Array = submesh.positions.slice();
-  const normals: Float32Array = submesh.normals.slice();
-  const tangents: Float32Array = submesh.tangents.slice();
-  const binormals: Float32Array = submesh.binormals.slice();
-
-  if (submesh.skinIndices && submesh.skinWeights && binds && rest) {
-    const skins: Array<Float32Array> = toSkinMatrices(binds, rest);
-    const directions: ReadonlyArray<Float32Array> = [normals, tangents, binormals];
-    // Reused by every vertex: a submesh can hold tens of thousands, and this runs on the page.
-    const moved: Float32Array = new Float32Array(3 + directions.length * 3);
-    const scratch: Float32Array = new Float32Array(3);
-
-    for (let vertex: number = 0; vertex < positions.length / 3; vertex += 1) {
-      skinVertex(vertex, submesh, skins, positions, directions, moved, scratch);
-    }
-  }
+export function toLevelSpawnModelParts(visual: number, model: ILevelSpawnModel): ILevelSpawnModelParts {
+  const { description, buffer } = model;
+  const views: IVisualModelViews = createVisualViews(description.description, buffer);
+  const rest: Nullable<Array<number>> = description.rest?.map((it) => it ?? 0) ?? null;
+  const submeshes: Array<IRendererGeometry> = views.submeshes.map((submesh: IVisualSubmeshViews) =>
+    toPosedGeometry(submesh, views.skeletonBinds, rest)
+  );
 
   return {
-    binormal: binormals,
-    // Cut from the vertices as stored, which a pose moves: a posed submesh is left for the renderer to cut.
-    clusters:
-      submesh.clusters && !submesh.skinIndices
-        ? { ranges: submesh.clusters.ranges.slice(), spheres: submesh.clusters.spheres.slice() }
-        : undefined,
-    groups: [{ count: submesh.indices.length, slot: 0, start: 0 }],
-    index: submesh.indices.slice(),
-    normal: normals,
-    position: positions,
-    tangent: tangents,
-    uv: submesh.uvs.slice(),
+    dressings: views.submeshes.map((submesh: IVisualSubmeshViews) => ({
+      color: toLevelSurfaceColor(visual),
+      descriptor: description.surfaces[submesh.index] ?? null,
+      texture: description.description.submeshes[submesh.index]?.textureName ?? null,
+    })),
+    geometry: joinGeometries(submeshes),
   };
+}
+
+/**
+ * The objects standing as one visual, drawn as its geometry in every place one stands, each lit by its hemisphere
+ * cube where the backend estimated one.
+ *
+ * @param geometry - The key its visual's geometry is put under.
+ * @param surfaces - The keys its groups' surfaces are put under, by slot.
+ * @param standing - The objects.
+ * @param hemi - Each object's hemisphere cube, by its index among the level's spawned objects.
+ * @returns What the renderer stands them as.
+ */
+export function toLevelSpawnObject(
+  geometry: string,
+  surfaces: ReadonlyArray<string>,
+  standing: ReadonlyArray<LevelSpawnObject>,
+  hemi: ReadonlyMap<number, ReadonlyArray<number>>
+): IRendererObject {
+  const cubes: Array<Maybe<ReadonlyArray<number>>> = standing.map((object: LevelSpawnObject) => hemi.get(object.index));
+
+  return {
+    geometry,
+    instances: {
+      // All or none: an object without a cube of its own would read the next one's.
+      hemiCube: cubes.every(Boolean) ? toHemiCubes(cubes as Array<ReadonlyArray<number>>) : undefined,
+      transforms: toInstanceTransforms(standing),
+    },
+    surfaces,
+  };
+}
+
+/** Six floats an object, its cube's faces in their order. */
+function toHemiCubes(cubes: ReadonlyArray<ReadonlyArray<number>>): Float32Array {
+  const faces: Float32Array = new Float32Array(cubes.length * RENDERER_HEMI_CUBE_FLOATS_PER_INSTANCE);
+
+  cubes.forEach((cube: ReadonlyArray<number>, index: number) =>
+    faces.set(cube.slice(0, RENDERER_HEMI_CUBE_FLOATS_PER_INSTANCE), index * RENDERER_HEMI_CUBE_FLOATS_PER_INSTANCE)
+  );
+
+  return faces;
 }
 
 /** Sixteen floats an object, column major: its basis and place, as the renderer stands instances. */
@@ -147,105 +139,91 @@ function toInstanceTransforms(objects: ReadonlyArray<LevelSpawnObject>): Float32
   return transforms;
 }
 
-/** Each bone's rest transform after the inverse of its bind: what takes a bound vertex to where the bone rests. */
-function toSkinMatrices(binds: Float32Array, rest: ReadonlyArray<number>): Array<Float32Array> {
-  const count: number = Math.min(binds.length, rest.length) / FLOATS_PER_BONE;
+/**
+ * The submeshes of one model as one geometry, a group a submesh by its slot, each one's indices moved past the
+ * vertices before it. Their clusters join too where every submesh has them; otherwise the renderer cuts its own.
+ */
+function joinGeometries(parts: ReadonlyArray<IRendererGeometry>): IRendererGeometry {
+  const vertices: number = parts.reduce((sum: number, part: IRendererGeometry) => sum + part.position.length / 3, 0);
+  const indices: number = parts.reduce((sum: number, part: IRendererGeometry) => sum + (part.index?.length ?? 0), 0);
+  const index: Uint16Array | Uint32Array =
+    vertices > SHORT_INDEX_VERTICES ? new Uint32Array(indices) : new Uint16Array(indices);
+  const groups: Array<IRendererGeometryGroup> = [];
+  let vertexStart: number = 0;
+  let indexStart: number = 0;
 
-  return Array.from({ length: count }, (_, bone: number) =>
-    compose(
-      rest.slice(bone * FLOATS_PER_BONE, (bone + 1) * FLOATS_PER_BONE),
-      invert(binds.subarray(bone * FLOATS_PER_BONE, (bone + 1) * FLOATS_PER_BONE))
-    )
-  );
-}
+  parts.forEach((part: IRendererGeometry, slot: number) => {
+    const count: number = part.index?.length ?? 0;
 
-/** A rigid transform's inverse: its basis transposed, its translation turned back through it. */
-function invert(transform: ArrayLike<number>): Float32Array {
-  const [ix, iy, iz, jx, jy, jz, kx, ky, kz, cx, cy, cz] = Array.from(transform);
-
-  return new Float32Array([
-    ix,
-    jx,
-    kx,
-    iy,
-    jy,
-    ky,
-    iz,
-    jz,
-    kz,
-    -(ix * cx + iy * cy + iz * cz),
-    -(jx * cx + jy * cy + jz * cz),
-    -(kx * cx + ky * cy + kz * cz),
-  ]);
-}
-
-/** `outer` after `inner`: a point through `inner`, then through `outer`. */
-function compose(outer: ArrayLike<number>, inner: ArrayLike<number>): Float32Array {
-  const result: Float32Array = new Float32Array(FLOATS_PER_BONE);
-
-  for (let axis: number = 0; axis < 3; axis += 1) {
-    rotate(outer, inner[axis * 3], inner[axis * 3 + 1], inner[axis * 3 + 2], result, axis * 3);
-  }
-
-  rotate(outer, inner[9], inner[10], inner[11], result, 9);
-  result[9] += outer[9];
-  result[10] += outer[10];
-  result[11] += outer[11];
-
-  return result;
-}
-
-/** A direction through a transform's basis, written at an offset. */
-function rotate(transform: ArrayLike<number>, x: number, y: number, z: number, out: Float32Array, at: number): void {
-  out[at] = transform[0] * x + transform[3] * y + transform[6] * z;
-  out[at + 1] = transform[1] * x + transform[4] * y + transform[7] * z;
-  out[at + 2] = transform[2] * x + transform[5] * y + transform[8] * z;
-}
-
-/** One vertex moved by its weighted bones, and its directions turned with it, summed in `moved`. */
-function skinVertex(
-  vertex: number,
-  submesh: IVisualSubmeshViews,
-  skins: ReadonlyArray<Float32Array>,
-  positions: Float32Array,
-  directions: ReadonlyArray<Float32Array>,
-  moved: Float32Array,
-  scratch: Float32Array
-): void {
-  const at: number = vertex * 3;
-
-  moved.fill(0);
-
-  for (let link: number = 0; link < 4; link += 1) {
-    const weight: number = (submesh.skinWeights as Float32Array)[vertex * 4 + link];
-    const skin: Float32Array | undefined = skins[(submesh.skinIndices as Uint16Array)[vertex * 4 + link]];
-
-    if (!weight || !skin) {
-      continue;
+    for (let at: number = 0; at < count; at += 1) {
+      index[indexStart + at] = (part.index as Uint16Array | Uint32Array)[at] + vertexStart;
     }
 
-    rotate(skin, submesh.positions[at], submesh.positions[at + 1], submesh.positions[at + 2], scratch, 0);
-    moved[0] += (scratch[0] + skin[9]) * weight;
-    moved[1] += (scratch[1] + skin[10]) * weight;
-    moved[2] += (scratch[2] + skin[11]) * weight;
+    groups.push({ count, slot, start: indexStart });
+    vertexStart += part.position.length / 3;
+    indexStart += count;
+  });
 
-    directions.forEach((direction: Float32Array, index: number) => {
-      rotate(skin, direction[at], direction[at + 1], direction[at + 2], scratch, 0);
-      moved[3 + index * 3] += scratch[0] * weight;
-      moved[3 + index * 3 + 1] += scratch[1] * weight;
-      moved[3 + index * 3 + 2] += scratch[2] * weight;
-    });
+  return {
+    binormal: joinAttribute(parts, "binormal"),
+    clusters: joinClusters(parts, groups),
+    groups,
+    index,
+    normal: joinAttribute(parts, "normal"),
+    position: joinAttribute(parts, "position") as Float32Array,
+    tangent: joinAttribute(parts, "tangent"),
+    uv: joinAttribute(parts, "uv"),
+  };
+}
+
+/** One float attribute of every part end to end, or none where a part lacks it. */
+function joinAttribute(
+  parts: ReadonlyArray<IRendererGeometry>,
+  name: "position" | "normal" | "tangent" | "binormal" | "uv"
+): Optional<Float32Array> {
+  if (parts.some((part: IRendererGeometry) => !part[name])) {
+    return undefined;
   }
 
-  positions.set(moved.subarray(0, 3), at);
-  directions.forEach((direction: Float32Array, index: number) => {
-    const x: number = moved[3 + index * 3];
-    const y: number = moved[3 + index * 3 + 1];
-    const z: number = moved[3 + index * 3 + 2];
-    const length: number = Math.hypot(x, y, z) || 1;
+  const joined: Float32Array = new Float32Array(
+    parts.reduce((sum: number, part: IRendererGeometry) => sum + (part[name] as Float32Array).length, 0)
+  );
+  let at: number = 0;
 
-    direction.set([x / length, y / length, z / length], at);
+  for (const part of parts) {
+    joined.set(part[name] as Float32Array, at);
+    at += (part[name] as Float32Array).length;
+  }
+
+  return joined;
+}
+
+/** Every part's clusters, each range's first index moved to where its group now starts. */
+function joinClusters(
+  parts: ReadonlyArray<IRendererGeometry>,
+  groups: ReadonlyArray<IRendererGeometryGroup>
+): Optional<IRendererClusters> {
+  if (!parts.length || parts.some((part: IRendererGeometry) => !part.clusters)) {
+    return undefined;
+  }
+
+  const clusters: Array<IRendererClusters> = parts.map((part: IRendererGeometry) => part.clusters as IRendererClusters);
+  const ranges: Uint32Array = new Uint32Array(clusters.reduce((sum: number, it) => sum + it.ranges.length, 0));
+  const spheres: Float32Array = new Float32Array(clusters.reduce((sum: number, it) => sum + it.spheres.length, 0));
+  let at: number = 0;
+
+  clusters.forEach((cluster: IRendererClusters, part: number) => {
+    ranges.set(cluster.ranges, at);
+    spheres.set(cluster.spheres, at);
+
+    for (let word: number = at; word < at + cluster.ranges.length; word += WORDS_PER_CLUSTER) {
+      ranges[word] += groups[part].start;
+    }
+
+    at += cluster.ranges.length;
   });
+
+  return { ranges, spheres };
 }
 
 /**

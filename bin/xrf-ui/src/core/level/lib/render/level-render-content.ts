@@ -2,7 +2,7 @@ import { toMean } from "@xrf/math";
 import { IRendererTextureFetch, RendererClient } from "@xrf/renderer";
 import { Maybe, Nullable } from "@xrf/types";
 
-import { LevelLightsDescription } from "@/core/ipc/types/xrf-app";
+import { LevelLightsDescription, LevelSpawnCategory } from "@/core/ipc/types/xrf-app";
 import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
 import { SectorSurface } from "@/core/ipc/types/xrf-visual";
 import { toLevelRendererGrass } from "@/core/level/lib/render/level-render-grass";
@@ -143,6 +143,13 @@ export class LevelRenderContent {
    */
   public stand(spawn: Nullable<ILevelSpawnDelivery>): void {
     this.spawn.stand(spawn);
+  }
+
+  /**
+   * @param visible - The categories of spawned objects shown from now on.
+   */
+  public showSpawn(visible: ReadonlySet<LevelSpawnCategory>): void {
+    this.spawn.show(visible);
   }
 
   /**

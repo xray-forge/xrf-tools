@@ -14,6 +14,7 @@ import { LevelOverlaysAction } from "@/core/level/components/preview/LevelOverla
 import { LevelRainAction } from "@/core/level/components/preview/LevelRainAction";
 import { LevelShadowAction } from "@/core/level/components/preview/LevelShadowAction";
 import { LevelSkyAction } from "@/core/level/components/preview/LevelSkyAction";
+import { LevelSpawnAction } from "@/core/level/components/preview/LevelSpawnAction";
 import { LevelSunAction } from "@/core/level/components/preview/LevelSunAction";
 import { LevelSurfacesAction } from "@/core/level/components/preview/LevelSurfacesAction";
 import { LevelWaterAction } from "@/core/level/components/preview/LevelWaterAction";
@@ -218,6 +219,8 @@ export function LevelPreviewToolbar({
             onToggle={() => onToggle("isWindy")}
             onEdit={onEditManual}
           />
+
+          <LevelSpawnAction options={options} onToggle={onToggle} />
 
           <EditorToolbarSeparator />
 

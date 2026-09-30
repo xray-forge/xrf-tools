@@ -24,7 +24,10 @@ import { SectorDescription } from "@/core/ipc/types/xrf-visual";
 export const levelsCommands = {
   /** Release only the openings owned by the departing viewer. */
   closeLevel: (sessionIds: Array<SessionId>) => __TAURI_INVOKE<null>("plugin:levels|close_level", { sessionIds }),
-  /** Describe the models of a batch of the visuals open_spawn_objects named, reading and packing each once. */
+  /**
+   * Describe the models of a batch of the visuals open_spawn_objects named, reading and packing each once, and how the
+   * level lights every object standing as one of them.
+   */
   describeSpawnModels: (sessionId: SessionId, names: Array<string>) =>
     __TAURI_INVOKE<SessionSnapshot<LevelSpawnModelsDescription>>("plugin:levels|describe_spawn_models", {
       sessionId,

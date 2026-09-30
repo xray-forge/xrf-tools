@@ -1,7 +1,7 @@
 //! What the level plugin says to the log, in one place rather than beside each command that says it.
 
 use std::fmt::Display;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use xrf_level::{LevelSectorComposition, LevelShaderEntry};
 use xrf_material::{XraySurfaceDeclaration, XraySurfaceDescriptor, XraySurfaceDraw};
@@ -299,6 +299,33 @@ pub fn report_spawn_objects(source: &LevelSource, objects: &LevelSpawnObjectsDes
     xrf_utils::format_duration(started.elapsed()),
     objects.objects.len(),
     objects.visuals.len()
+  );
+}
+
+/// What the estimate of how a level lights its spawned objects was built from, and how long its form took to read.
+pub fn report_hemi(source: &LevelSource, triangles: usize, lights: usize, read: Duration, started: Instant) {
+  log::info!(
+    "Built the spawned objects' lighting of {} in {} ({} reading the form): {triangles} collision triangles, {lights} \
+     compiled lights",
+    source.get_label(),
+    xrf_utils::format_duration(started.elapsed()),
+    xrf_utils::format_duration(read)
+  );
+}
+
+/// That the collision form could not be read, so every spawned object is lit as if under the open sky.
+pub fn report_missing_hemi(source: &LevelSource, error: &impl Display) {
+  log::warn!(
+    "Spawned objects of {} are lit as under the open sky: {error}",
+    source.get_label()
+  );
+}
+
+/// That the compiled lights could not be read, so they light no spawned object.
+pub fn report_unreadable_lights(source: &LevelSource, error: &impl Display) {
+  log::warn!(
+    "Compiled lights of {} light no spawned object: {error}",
+    source.get_label()
   );
 }
 

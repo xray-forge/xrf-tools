@@ -52,6 +52,7 @@ function armModels(objects: LevelSpawnObjectsDescription, failing: ReadonlyArray
 
       return {
         failures: names.filter((it) => failing.includes(it)).map((name) => ({ name, reason: "Malformed" })),
+        hemi: names.map((name) => ({ cube: [1, 1, 1, 1, 1, 1], index: Number(name.split("-")[1]) })),
         models: names
           .filter((it) => !failing.includes(it))
           .map((name): LevelSpawnModelDescription => ({
@@ -95,6 +96,9 @@ describe("LevelSpawnReader", () => {
       read: LEVEL_SPAWN_BATCH + 2,
       visuals: LEVEL_SPAWN_BATCH + 2,
     });
+    // Each object's cube arrives with its visual's batch, and is kept with every later one.
+    expect(host.delivered[0].hemi.size).toBe(LEVEL_SPAWN_BATCH);
+    expect(host.delivered.at(-1)?.hemi.get(LEVEL_SPAWN_BATCH + 1)).toEqual([1, 1, 1, 1, 1, 1]);
   });
 
   it("lists a visual the backend could not read, and holds the others", async () => {
@@ -131,7 +135,7 @@ describe("LevelSpawnReader", () => {
         throw new Error("The level's spawned visuals are unavailable");
       }
 
-      return { failures: [], models: [mockLevelSpawnModel(`visual-${LEVEL_SPAWN_BATCH}`).description] };
+      return { failures: [], hemi: [], models: [mockLevelSpawnModel(`visual-${LEVEL_SPAWN_BATCH}`).description] };
     });
 
     armModels(objects);

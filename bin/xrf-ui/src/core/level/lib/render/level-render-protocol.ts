@@ -59,6 +59,11 @@ export interface ILevelSpawnDelivery {
   objects: LevelSpawnObjectsDescription;
   /** By the index of their visual among the objects' visuals. */
   models: ReadonlyMap<number, ILevelSpawnModel>;
+  /**
+   * Each object's hemisphere cube, six faces, by its index among the level's spawned objects: how the level lights it,
+   * delivered with its visual's model. None for an object lit as if under the open sky.
+   */
+  hemi: ReadonlyMap<number, ReadonlyArray<number>>;
 }
 
 /** Told a held value, or null for none. */

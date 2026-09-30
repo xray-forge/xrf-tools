@@ -5,6 +5,7 @@ import { DEFAULT_RENDERER_AMBIENT_OCCLUSION_SETTINGS } from "@xrf/renderer";
 import { LevelCullingAction } from "@/core/level/components/preview/LevelCullingAction";
 import { LevelOcclusionAction } from "@/core/level/components/preview/LevelOcclusionAction";
 import { LevelOverlaysAction } from "@/core/level/components/preview/LevelOverlaysAction";
+import { LevelSpawnAction } from "@/core/level/components/preview/LevelSpawnAction";
 import { LevelSurfacesAction } from "@/core/level/components/preview/LevelSurfacesAction";
 import { ILevelFeatureOptions } from "@/core/level/lib/features";
 import { DEFAULT_LEVEL_LOD_OPTIONS } from "@/core/level/lib/lod/level-lod-options";
@@ -29,6 +30,28 @@ describe("level toolbar groups", () => {
     await userEvent.click(getByRole("checkbox", { name: "Bumps" }));
 
     expect(onToggle.mock.calls).toEqual([["isWireframe"], ["isBumped"]]);
+  });
+
+  it("names the spawned categories shown, and turns each over by its own checkbox", async () => {
+    const onToggle = jest.fn<TToggle>();
+    const { getByRole, findByRole } = renderWithProviders(
+      <LevelSpawnAction
+        options={{ ...DEFAULT_LEVEL_VIEW_OPTIONS, isSpawnedItems: false, isSpawnedWeapons: false }}
+        onToggle={onToggle}
+      />
+    );
+
+    expect(getByRole("button", { name: "Spawn" })).toHaveAccessibleDescription("Spawned props, lamps");
+
+    await userEvent.click(getByRole("button", { name: "Spawn" }));
+    await findByRole("dialog", { name: "Spawn" });
+
+    expect(getByRole("checkbox", { name: "Items" })).not.toBeChecked();
+
+    await userEvent.click(getByRole("checkbox", { name: "Items" }));
+    await userEvent.click(getByRole("checkbox", { name: "Lamps" }));
+
+    expect(onToggle.mock.calls).toEqual([["isSpawnedItems"], ["isSpawnedLamps"]]);
   });
 
   it("says why a culling the settings keep off cannot be turned on", async () => {

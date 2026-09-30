@@ -253,14 +253,17 @@ export function mockLevelSpawnObject(overrides: Partial<LevelSpawnObject> = {}):
 }
 
 /**
- * One visual spawned objects stand as, of one submesh dressed with a texture named as the visual.
+ * One visual spawned objects stand as, its submeshes dressed with a texture named as the visual.
  *
  * @param name - The visual's name.
+ * @param count - How many submeshes it has.
  * @returns A model fixture with its pack.
  */
-export function mockLevelSpawnModel(name: string): ILevelSpawnModel {
+export function mockLevelSpawnModel(name: string, count: number = 1): ILevelSpawnModel {
   const buffer: MockVisualBuffer = new MockVisualBuffer();
-  const submeshes: Array<VisualSubmesh> = [mockPackedSubmesh(buffer, { index: 0, textureName: name })];
+  const submeshes: Array<VisualSubmesh> = Array.from({ length: count }, (_: unknown, index: number) =>
+    mockPackedSubmesh(buffer, { index, textureName: name })
+  );
 
   return {
     buffer: buffer.toArrayBuffer(),
@@ -268,7 +271,7 @@ export function mockLevelSpawnModel(name: string): ILevelSpawnModel {
       description: mockVisualDescription({ bufferLength: buffer.byteLength, submeshes }),
       name,
       rest: null,
-      surfaces: [mockSurfaceDescriptor()],
+      surfaces: submeshes.map(() => mockSurfaceDescriptor()),
       textures: [],
     },
   };

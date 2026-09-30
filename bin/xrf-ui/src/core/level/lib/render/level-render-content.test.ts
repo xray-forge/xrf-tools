@@ -8,6 +8,7 @@ import {
 } from "@xrf/renderer";
 
 import { IBulkRequest } from "@/core/ipc/bulk";
+import { ELevelSpawnCategory } from "@/core/ipc/types/xrf-app";
 import { SectorDescription } from "@/core/ipc/types/xrf-visual";
 import { LevelRenderContent, TLevelRenderSink } from "@/core/level/lib/render/level-render-content";
 import { LEVEL_RENDER_KEYS } from "@/core/level/lib/render/level-render-keys";
@@ -87,6 +88,7 @@ function mockFetched(overrides: Partial<IRendererTextureFetch> = {}): IRendererT
 
 function mockSpawn(): ILevelSpawnDelivery {
   return {
+    hemi: new Map(),
     models: new Map([[0, mockLevelSpawnModel("lamp")]]),
     objects: { objects: [mockLevelSpawnObject()], visuals: ["lamp"] },
   };
@@ -282,10 +284,10 @@ describe("LevelRenderContent", () => {
     content.stand(mockSpawn());
     content.open([]);
 
-    expect(sink.releaseObject).not.toHaveBeenCalledWith(LEVEL_RENDER_KEYS.spawn(0, 0));
+    expect(sink.releaseObject).not.toHaveBeenCalledWith(LEVEL_RENDER_KEYS.spawnObject(0, ELevelSpawnCategory.PROPS));
 
     content.stand(null);
 
-    expect(sink.releaseObject).toHaveBeenCalledWith(LEVEL_RENDER_KEYS.spawn(0, 0));
+    expect(sink.releaseObject).toHaveBeenCalledWith(LEVEL_RENDER_KEYS.spawnObject(0, ELevelSpawnCategory.PROPS));
   });
 });

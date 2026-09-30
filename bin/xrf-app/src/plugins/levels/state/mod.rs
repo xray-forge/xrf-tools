@@ -29,6 +29,7 @@ pub(crate) use selection::level_spawn_model_description::LevelSpawnModelDescript
 pub(crate) use selection::level_spawn_model_failure::LevelSpawnModelFailure;
 pub(crate) use selection::level_spawn_models_description::LevelSpawnModelsDescription;
 pub(crate) use selection::level_spawn_object::LevelSpawnObject;
+pub(crate) use selection::level_spawn_object_hemi::LevelSpawnObjectHemi;
 pub(crate) use selection::level_spawn_objects_description::LevelSpawnObjectsDescription;
 pub(crate) use selection::level_start::LevelStart;
 pub(crate) use selection::level_start_origin::LevelStartOrigin;
@@ -49,6 +50,9 @@ pub const DETAILS_FILE: &str = "level.details";
 
 /// The collision form, which the grass is planted onto and which says whether a start is under the open sky.
 pub const COLLISION_FILE: &str = "level.cform";
+
+/// The compiled lights, whose point lights light the level's dynamic objects (`CLight_DB::LoadHemi`).
+pub const LIGHTS_FILE: &str = "build.lights";
 
 /// The directory every installation keeps its levels under.
 pub const LEVELS_DIRECTORY: &str = "levels";

@@ -1,6 +1,7 @@
 pub mod commands;
 pub mod configs;
 pub mod details;
+pub mod hemi;
 pub mod lights;
 pub mod plugin;
 pub mod read;

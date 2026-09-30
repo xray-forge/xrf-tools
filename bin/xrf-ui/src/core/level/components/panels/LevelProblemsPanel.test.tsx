@@ -42,7 +42,11 @@ async function renderProblems({ isPresent, unreadable }: IRenderProblemsOptions)
     ["plugin:levels|open_sector"]: mockSessionResponse(description),
     ...(unreadable
       ? {
-          ["plugin:levels|describe_spawn_models"]: mockSessionResponse({ failures: [unreadable], models: [] }),
+          ["plugin:levels|describe_spawn_models"]: mockSessionResponse({
+            failures: [unreadable],
+            hemi: [],
+            models: [],
+          }),
           ["plugin:levels|open_spawn_objects"]: mockSessionResponse({
             objects: [mockLevelSpawnObject()],
             visuals: [unreadable.name],

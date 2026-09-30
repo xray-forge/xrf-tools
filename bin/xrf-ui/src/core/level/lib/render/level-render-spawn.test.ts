@@ -3,7 +3,8 @@ import { ERendererDraw, IRendererGeometry, IRendererSurface, TRendererColor } fr
 
 import { EXrayBumpMode, XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
 import { EXrayResolution } from "@/core/ipc/types/xrf-vfs";
-import { toLevelSpawnSurface, toPosedGeometry } from "@/core/level/lib/render/level-render-spawn";
+import { toLevelSpawnSurface } from "@/core/level/lib/render/level-render-spawn";
+import { toPosedGeometry } from "@/core/level/lib/render/level-render-spawn-pose";
 import { IVisualSubmeshViews } from "@/core/visuals/lib/visual-views";
 import { mockSurfaceDescriptor } from "@/fixtures/mocks/visual.mocks";
 
