@@ -15,7 +15,7 @@ pub(crate) struct LevelsReadSpawnModelRequest {
   name: String,
 }
 
-/// Read the pack of one model open_spawn_models described, by the visual's name.
+/// Read the pack of one model describe_spawn_models described, by the visual's name.
 pub(crate) async fn levels_read_spawn_model(
   app: AppHandle,
   request: LevelsReadSpawnModelRequest,

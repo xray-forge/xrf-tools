@@ -5,6 +5,7 @@ import { ReactElement, useMemo } from "react";
 import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
 import { listLevelProblems } from "@/core/level/lib/problems";
 import { ILevelSectorReport } from "@/core/level/lib/sector/level-sector-report";
+import { ILevelSpawnReport } from "@/core/level/lib/spawn";
 import { ILevelTextureReport } from "@/core/level/lib/texture/level-texture-report";
 import { LevelLoadService, LevelViewportService } from "@/core/level/services";
 import { EditorPanel, EditorPanelEmpty } from "@/core/shell/editor/EditorPanel";
@@ -24,11 +25,18 @@ export function LevelProblemsPanel({
 
   const surfaces: Maybe<ReadonlyArray<XraySurfaceDescriptor>> = loadService.level.value?.selected.value.surfaces;
   const sectors: ILevelSectorReport = loadService.sectorReport;
+  const spawn: ILevelSpawnReport = loadService.spawnReport;
   const report: ILevelTextureReport = viewportService.textureReport;
 
   const problems: Array<IEditorProblem> = useMemo(
-    () => listLevelProblems(report.problems, surfaces ?? [], sectors.skipped),
-    [report, surfaces, sectors]
+    () =>
+      listLevelProblems({
+        skipped: sectors.skipped,
+        spawn: spawn.failures,
+        surfaces: surfaces ?? [],
+        textures: report.problems,
+      }),
+    [report, surfaces, sectors, spawn]
   );
 
   if (!loadService.level.value) {
@@ -46,8 +54,8 @@ export function LevelProblemsPanel({
       className={className}
       findings={problems}
       emptyDescription={
-        "Every texture this level names was read, every shader table entry was described, and every drawable of the " +
-        "resident sectors was packed."
+        "Every texture this level names was read, every shader table entry was described, every drawable of the " +
+        "resident sectors was packed, and every visual its spawned objects name was read."
       }
     />
   );

@@ -2,11 +2,14 @@ import { Nullable } from "@xrf/types";
 
 import { createRoots } from "@/core/assets/lib";
 import {
+  ELevelSpawnCategory,
   LevelDetailsDescription,
   LevelEntry,
+  LevelSpawnObject,
   LevelTextureReference,
   SelectedLevelDescription,
 } from "@/core/ipc/types/xrf-app";
+import { EClsId } from "@/core/ipc/types/xrf-spawn";
 import {
   DetailsDescription,
   DetailsModel,
@@ -17,11 +20,20 @@ import {
   SectorSection,
   SectorSurface,
   VisualSection,
+  VisualSubmesh,
 } from "@/core/ipc/types/xrf-visual";
 import { ILevelFeatureOptions } from "@/core/level/lib/features/level-feature-options";
+import { ILevelSpawnModel } from "@/core/level/lib/render/level-render-protocol";
 import { ELevelSurfaceDressing } from "@/core/level/lib/surface/level-surface-dressing";
 import { ILevelTextureReport } from "@/core/level/lib/texture/level-texture-report";
-import { mockSurfaceDescriptor, mockVisualBounds, MockVisualBuffer } from "@/fixtures/mocks/visual.mocks";
+import {
+  mockPackedSubmesh,
+  mockSurfaceDescriptor,
+  mockVisualBounds,
+  MockVisualBuffer,
+  mockVisualDescription,
+  mockVisualTransform,
+} from "@/fixtures/mocks/visual.mocks";
 
 /**
  * One packed mesh: positions and thirty-two bit indices written into the buffer.
@@ -218,6 +230,48 @@ export function mockLevelTextureReference(name: string, isPresent: boolean = tru
   // `\\` rather than `\`, which in a template literal escapes the interpolation and gave every reference the one
   // logical path `textures${name}.dds`.
   return { logicalPath: isPresent ? `textures\\${name}.dds` : null, reference: name };
+}
+
+/**
+ * One spawned object the viewer draws: a crate at the origin, standing as the first visual.
+ *
+ * @param overrides - Fields to replace on the object.
+ * @returns An object fixture.
+ */
+export function mockLevelSpawnObject(overrides: Partial<LevelSpawnObject> = {}): LevelSpawnObject {
+  return {
+    category: ELevelSpawnCategory.PROPS,
+    clsid: EClsId.O_PHYS_S,
+    index: 0,
+    name: "crate",
+    section: "physic_object",
+    storyId: null,
+    transform: mockVisualTransform({ x: 0, y: 0, z: 0 }),
+    visual: 0,
+    ...overrides,
+  };
+}
+
+/**
+ * One visual spawned objects stand as, of one submesh dressed with a texture named as the visual.
+ *
+ * @param name - The visual's name.
+ * @returns A model fixture with its pack.
+ */
+export function mockLevelSpawnModel(name: string): ILevelSpawnModel {
+  const buffer: MockVisualBuffer = new MockVisualBuffer();
+  const submeshes: Array<VisualSubmesh> = [mockPackedSubmesh(buffer, { index: 0, textureName: name })];
+
+  return {
+    buffer: buffer.toArrayBuffer(),
+    description: {
+      description: mockVisualDescription({ bufferLength: buffer.byteLength, submeshes }),
+      name,
+      rest: null,
+      surfaces: [mockSurfaceDescriptor()],
+      textures: [],
+    },
+  };
 }
 
 /**

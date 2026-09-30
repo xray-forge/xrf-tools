@@ -8,6 +8,7 @@ export * from "./level-render-lights";
 export * from "./level-render-protocol";
 export * from "./level-render-sector";
 export * from "./level-render-spawn";
+export * from "./level-render-spawn-set";
 export * from "./level-render-surface";
 export * from "./level-render-texture";
 export * from "./level-render-view";

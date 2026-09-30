@@ -10,16 +10,20 @@ import { SectorDescription, SectorOutline } from "@/core/ipc/types/xrf-visual";
 import {
   ILevelGrassDelivery,
   ILevelSectorDelivery,
+  ILevelSpawnDelivery,
   ILevelTextureDelivery,
   ILevelTextureSupplyChange,
 } from "@/core/level/lib/render/level-render-protocol";
 import { createLevelResidency } from "@/core/level/lib/residency/level-residency";
 import { ISectorTextureRequest } from "@/core/level/lib/sector/level-sector-textures";
+import { EMPTY_LEVEL_SPAWN_REPORT } from "@/core/level/lib/spawn";
 import { EMPTY_LEVEL_STREAM_SUMMARY } from "@/core/level/lib/stream/level-stream-profile";
 import { LevelTextureReader } from "@/core/level/lib/texture/level-texture-reader";
 import { listMockBulkCalls, setMockBulkResponses } from "@/fixtures/mocks/bulk.mocks";
 import {
   mockLevelDetailsDescription,
+  mockLevelSpawnModel,
+  mockLevelSpawnObject,
   mockLevelTextureReference,
   mockSectorDescription,
   mockSectorOutline,
@@ -1170,6 +1174,49 @@ describe("LevelLoadService held reads", () => {
 
     expect(told.every((it) => it === null)).toBe(true);
     expect(supply.delivered.map((it) => it.reference)).not.toContain("lamp");
+  });
+
+  // Its models' textures are claimed as they arrive, so a settle before the level is flown keeps them.
+  it("holds the spawned objects as their models arrive, the textures they bind kept, and lets them go", async () => {
+    const { level } = mockStreamable([outlineAt(0, 5)]);
+    const { service } = mockInjectedService(LevelLoadService);
+    const supply = recordSupply(service);
+    const told: Array<Nullable<ILevelSpawnDelivery>> = [];
+
+    setMockInvokeResponses({
+      ["plugin:levels|describe_spawn_models"]: mockSessionResponse({
+        failures: [],
+        models: [{ ...mockLevelSpawnModel("crate").description, textures: [mockLevelTextureReference("wood")] }],
+      }),
+      ["plugin:levels|open_level"]: mockSessionResponse(level),
+      ["plugin:levels|open_spawn_objects"]: mockSessionResponse({
+        objects: [mockLevelSpawnObject()],
+        visuals: ["crate"],
+      }),
+    });
+    setMockBulkResponses({ "levels/read_spawn_model": mockLevelSpawnModel("crate").buffer });
+    service.spawn.subscribe((spawn: Nullable<ILevelSpawnDelivery>) => told.push(spawn));
+
+    await service.load({
+      source: { kind: "asset", logicalPath: "levels\\zaton" },
+      roots: ROOTS,
+      isDltx: false,
+      engine: EXrayEngine.VANILLA,
+    });
+    await service.whenHeldRead();
+
+    expect(told.at(-1)?.models.get(0)?.description.name).toBe("crate");
+    expect(service.spawnReport).toMatchObject({ failures: [], objects: 1, read: 1, visuals: 1 });
+    expect(supply.delivered.map((it) => it.reference)).toContain("wood");
+
+    await service.stream(ORIGIN);
+
+    expect(Array.from(supply.retained.at(-1) ?? [])).toContain("wood");
+
+    service.clear();
+
+    expect(told.at(-1)).toBeNull();
+    expect(service.spawnReport).toEqual(EMPTY_LEVEL_SPAWN_REPORT);
   });
 
   function armGrass(level: SelectedLevelDescription, description: LevelDetailsDescription, buffer: ArrayBuffer): void {

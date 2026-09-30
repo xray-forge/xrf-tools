@@ -1,7 +1,11 @@
 import { Nullable } from "@xrf/types";
 
 import { IBulkRequest } from "@/core/ipc/bulk";
-import { LevelDetailsDescription } from "@/core/ipc/types/xrf-app";
+import {
+  LevelDetailsDescription,
+  LevelSpawnModelDescription,
+  LevelSpawnObjectsDescription,
+} from "@/core/ipc/types/xrf-app";
 import { SectorDescription } from "@/core/ipc/types/xrf-visual";
 
 /** One sector handed to whatever draws it: what the pack says, and the bytes it was packed into. */
@@ -38,6 +42,23 @@ export interface ILevelGrassDelivery {
   description: LevelDetailsDescription;
   /** The pack, kept by the loader: whoever draws it takes a copy, so a renderer started later gets it too. */
   buffer: ArrayBuffer;
+}
+
+/** One visual a level's spawned objects stand as: what the backend said of it, and its pack. */
+export interface ILevelSpawnModel {
+  description: LevelSpawnModelDescription;
+  /** The pack, kept by the loader: whoever draws it takes a copy, so a renderer started later gets it too. */
+  buffer: ArrayBuffer;
+}
+
+/**
+ * A level's spawned objects handed to whatever draws them: every object from the first delivery on, and the models
+ * read so far, which only grow while the objects stay the same.
+ */
+export interface ILevelSpawnDelivery {
+  objects: LevelSpawnObjectsDescription;
+  /** By the index of their visual among the objects' visuals. */
+  models: ReadonlyMap<number, ILevelSpawnModel>;
 }
 
 /** Told a held value, or null for none. */

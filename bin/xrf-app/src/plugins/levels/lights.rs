@@ -44,7 +44,7 @@ pub fn pack_lights(current: &SelectedLevel, probe: &XrayProbe, sections: Option<
       let visuals: SpawnVisualReader = SpawnVisualReader::new(current, probe);
 
       packer.add_objects(&spawn.objects, &mut |name| {
-        visuals.get(name).and_then(|it| it.rest.clone())
+        visuals.get(name).ok().and_then(|it| it.rest.clone())
       });
     }
     Err(error) => report_missing_spawned_lights(&current.source, &error),

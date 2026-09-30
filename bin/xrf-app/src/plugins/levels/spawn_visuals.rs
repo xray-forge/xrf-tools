@@ -6,13 +6,13 @@ use std::collections::BTreeSet;
 use std::sync::Arc;
 
 use xrf_chunk::XRayByteOrder;
+use xrf_error::XrfResult;
 use xrf_material::{XraySurfaceDescriptor, XraySurfaceResolver, XrayTextureScope};
 use xrf_ogf::OgfFile;
-use xrf_spawn::{AlifeObject, AlifeObjectInherited};
-use xrf_vfs::{XrayAssetType, XrayProbe};
+use xrf_vfs::{XrayAssetType, XrayLogicalPath, XrayProbe};
 use xrf_visual::{VisualDependencies, VisualDescription, VisualPackage, VisualPacker, VisualRestPose, VisualSkeleton};
 
-use crate::core::assets::read_referenced_asset;
+use crate::core::assets::{read_located_asset, read_referenced_asset};
 use crate::plugins::levels::report::{report_bind_rest_pose, report_empty_rest_motion, report_undrawn_visual};
 use crate::plugins::levels::state::{LevelSpawnVisual, SelectedLevel};
 use crate::plugins::levels::textures::resolve_surface_textures;
@@ -22,20 +22,13 @@ use crate::plugins::visuals::skeleton::SelectedSkeleton;
 /// The cycle a lamp plays from the moment it spawns (`CHangingLamp::net_Spawn`), whose first frame it stands in.
 const IDLE_MOTION: &str = "idle";
 
-/// The visual a spawned object is drawn as, or `None` for one the viewer draws no model of yet: only a hanging lamp
-/// the engine spawns on R2 is drawn today.
-pub fn get_drawn_visual(object: &AlifeObject) -> Option<&str> {
-  match &object.inherited {
-    AlifeObjectInherited::CseAlifeObjectHangingLamp(lamp) if lamp.is_spawned_on_r2() => object.inherited.get_visual(),
-    _ => None,
-  }
-}
-
 /// Reads a level's spawned visuals within one probe, opening the shader library once for all of them, and only if
 /// one is read at all.
 pub struct SpawnVisualReader<'probe, 'vfs> {
   current: &'probe SelectedLevel,
   probe: &'probe XrayProbe<'vfs>,
+  /// The level's own directory, the engine's `$level$`, where the level's breakables are compiled to.
+  level: Option<XrayLogicalPath>,
   scope: XrayTextureScope,
   resolver: OnceCell<XraySurfaceResolver<'probe, 'vfs>>,
 }
@@ -45,33 +38,30 @@ impl<'probe, 'vfs> SpawnVisualReader<'probe, 'vfs> {
     Self {
       current,
       probe,
+      level: current.source.get_logical_directory(),
       scope: current.source.get_texture_scope(),
       resolver: OnceCell::new(),
     }
   }
 
-  /// A spawned object's visual, read and packed the first time anything asks for it and kept with the level; `None`
-  /// for one that cannot be read, which is not asked again.
-  pub fn get(&self, name: &str) -> Option<Arc<LevelSpawnVisual>> {
-    self
-      .current
-      .spawn_visuals
-      .get_or_read(name, || match self.read(name) {
-        Ok(visual) => Some(Arc::new(visual)),
-        Err(error) => {
-          report_undrawn_visual(name, &error);
-
-          None
-        }
-      })
-      .inspect_err(|error| report_undrawn_visual(name, error))
-      .ok()
-      .flatten()
+  /// A spawned object's visual, read and packed the first time anything asks for it and kept with the level.
+  ///
+  /// # Errors
+  ///
+  /// Returns why it cannot be read, reported the once it is tried: it is not read again.
+  pub fn get(&self, name: &str) -> Result<Arc<LevelSpawnVisual>, String> {
+    self.current.spawn_visuals.get_or_read(name, || {
+      self
+        .read(name)
+        .map(Arc::new)
+        .inspect_err(|error| report_undrawn_visual(name, error))
+    })
   }
 
   fn read(&self, name: &str) -> Result<LevelSpawnVisual, String> {
     let probe: &XrayProbe = self.probe;
-    let file: OgfFile = read_referenced_asset(probe, XrayAssetType::Ogf, name)
+    let file: OgfFile = self
+      .read_bytes(name)
       .and_then(OgfFile::read_from_bytes::<XRayByteOrder>)
       .map_err(|error| format!("Failed to read visual '{name}': {error}"))?;
     let package: VisualPackage = VisualPacker::pack(&file);
@@ -104,6 +94,21 @@ impl<'probe, 'vfs> SpawnVisualReader<'probe, 'vfs> {
       rest,
       surfaces,
     })
+  }
+
+  /// `CModelPool::Instance_Load`: beside the level first, then the shared meshes.
+  fn read_bytes(&self, name: &str) -> XrfResult<Vec<u8>> {
+    let beside: Option<XrayLogicalPath> = self
+      .level
+      .as_ref()
+      .zip(XrayAssetType::Ogf.get_rules())
+      .and_then(|(level, rules)| level.join(&rules.to_logical_path(name)).ok())
+      .filter(|path| self.probe.find(path.as_str()).is_ok_and(|it| it.get_asset().is_some()));
+
+    match beside {
+      Some(path) => read_located_asset(self.probe, path.as_str()),
+      None => read_referenced_asset(self.probe, XrayAssetType::Ogf, name),
+    }
   }
 }
 

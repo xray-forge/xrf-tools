@@ -8,6 +8,7 @@ pub mod report;
 pub mod request;
 pub mod routes;
 pub mod spawn;
+pub mod spawn_objects;
 pub mod spawn_visuals;
 pub mod start;
 pub mod state;

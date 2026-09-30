@@ -1,22 +1,17 @@
 import { IRendererGeometry, IRendererObject, IRendererSurface, TRendererColor } from "@xrf/renderer";
 import { Nullable } from "@xrf/types";
 
-import { LevelSpawnModelDescription, LevelSpawnModelsDescription, LevelSpawnPlacement } from "@/core/ipc/types/xrf-app";
+import { LevelSpawnObject } from "@/core/ipc/types/xrf-app";
 import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
 import { VisualTransform } from "@/core/ipc/types/xrf-visual";
 import { LEVEL_RENDER_KEYS } from "@/core/level/lib/render/level-render-keys";
+import { ILevelSpawnModel } from "@/core/level/lib/render/level-render-protocol";
 import { toLevelSurfaceColor } from "@/core/level/lib/render/level-render-surface";
 import { ILevelSurfaceRender, toLevelSurfaceRender } from "@/core/level/lib/surface/level-surface-render";
 import { createVisualViews, IVisualModelViews, IVisualSubmeshViews } from "@/core/visuals/lib/visual-views";
 
 /** Floats one bone's transform takes: its basis, then its translation. */
 const FLOATS_PER_BONE: number = 12;
-
-/** A level's spawned models handed to whatever draws them: what the backend said, and each model's pack by its name. */
-export interface ILevelSpawnModelsDelivery {
-  description: LevelSpawnModelsDescription;
-  buffers: ReadonlyMap<string, ArrayBuffer>;
-}
 
 /** What a submesh is dressed as: its shader as it resolved, its base texture, and its colour without one. */
 export interface ILevelSpawnDressing {
@@ -35,40 +30,40 @@ export interface ILevelSpawnPart {
 }
 
 /**
- * The parts a level's spawned models draw as: each submesh of each model posed as the model stands still, once, and
+ * The parts one visual of a level's spawned objects draws as: each submesh posed as the model stands still, once, and
  * drawn in every place an object of it stands.
  *
- * @param delivery - The models and where they stand.
- * @returns Every part, by its key.
+ * @param visual - The visual, by its index among the objects' visuals, which keys its parts.
+ * @param model - Its model and pack.
+ * @param standing - The objects standing as it.
+ * @returns Every part, by its key; none for a visual no object stands as.
  */
-export function toLevelSpawnParts(delivery: ILevelSpawnModelsDelivery): Array<ILevelSpawnPart> {
-  const { models, placements } = delivery.description;
+export function toLevelSpawnParts(
+  visual: number,
+  model: ILevelSpawnModel,
+  standing: ReadonlyArray<LevelSpawnObject>
+): Array<ILevelSpawnPart> {
+  if (!standing.length) {
+    return [];
+  }
 
-  return models.flatMap((model: LevelSpawnModelDescription, index: number): Array<ILevelSpawnPart> => {
-    const buffer: ArrayBuffer | undefined = delivery.buffers.get(model.name);
-    const standing: Array<LevelSpawnPlacement> = placements.filter((it: LevelSpawnPlacement) => it.model === index);
+  const { description } = model;
+  const views: IVisualModelViews = createVisualViews(description.description, model.buffer);
+  const transforms: Float32Array = toInstanceTransforms(standing);
 
-    if (!buffer || !standing.length) {
-      return [];
-    }
+  return views.submeshes.map((submesh: IVisualSubmeshViews) => {
+    const key: string = LEVEL_RENDER_KEYS.spawn(visual, submesh.index);
 
-    const views: IVisualModelViews = createVisualViews(model.description, buffer);
-    const transforms: Float32Array = toInstanceTransforms(standing);
-
-    return views.submeshes.map((submesh: IVisualSubmeshViews) => {
-      const key: string = LEVEL_RENDER_KEYS.spawn(index, submesh.index);
-
-      return {
-        dressing: {
-          color: toLevelSurfaceColor(index),
-          descriptor: model.surfaces[submesh.index] ?? null,
-          texture: model.description.submeshes[submesh.index]?.textureName ?? null,
-        },
-        geometry: toPosedGeometry(submesh, views.skeletonBinds, model.rest?.map((it) => it ?? 0) ?? null),
-        key,
-        object: { geometry: key, instances: { transforms: transforms.slice() }, surfaces: [key] },
-      };
-    });
+    return {
+      dressing: {
+        color: toLevelSurfaceColor(visual),
+        descriptor: description.surfaces[submesh.index] ?? null,
+        texture: description.description.submeshes[submesh.index]?.textureName ?? null,
+      },
+      geometry: toPosedGeometry(submesh, views.skeletonBinds, description.rest?.map((it) => it ?? 0) ?? null),
+      key,
+      object: { geometry: key, instances: { transforms: transforms.slice() }, surfaces: [key] },
+    };
   });
 }
 
@@ -119,11 +114,11 @@ export function toPosedGeometry(
   };
 }
 
-/** Sixteen floats a placement, column major: the object's basis and place, as the renderer stands instances. */
-function toInstanceTransforms(placements: ReadonlyArray<LevelSpawnPlacement>): Float32Array {
-  const transforms: Float32Array = new Float32Array(placements.length * 16);
+/** Sixteen floats an object, column major: its basis and place, as the renderer stands instances. */
+function toInstanceTransforms(objects: ReadonlyArray<LevelSpawnObject>): Float32Array {
+  const transforms: Float32Array = new Float32Array(objects.length * 16);
 
-  placements.forEach(({ transform }: { transform: VisualTransform }, index: number) => {
+  objects.forEach(({ transform }: { transform: VisualTransform }, index: number) => {
     const { i, j, k, c } = transform;
 
     transforms.set(

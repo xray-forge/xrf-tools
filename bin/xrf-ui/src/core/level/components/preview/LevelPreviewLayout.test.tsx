@@ -358,4 +358,24 @@ describe("LevelPreviewLayout", () => {
     expect(await view.findByText("Streaming sector 20 of 24")).toBeInTheDocument();
     expect(renders).toBe(before);
   });
+
+  // Sectors come first: they are what is flown through, and the models stand in them.
+  it("says how far the spawned models are read once no sector is streaming", async () => {
+    const { loader, view } = renderReporting(() => undefined);
+
+    await view.findByTestId("stub-viewport");
+
+    act(() => {
+      runInAction(() => {
+        loader.spawnReport = { failures: [], objects: 900, read: 24, visuals: 300 };
+      });
+      setStreaming(loader, { loaded: 3, total: 24 });
+    });
+
+    expect(await view.findByText("Streaming sector 4 of 24")).toBeInTheDocument();
+
+    act(() => setStreaming(loader, IDLE_LEVEL_STREAM));
+
+    expect(await view.findByText("Reading spawned models, 24 of 300")).toBeInTheDocument();
+  });
 });

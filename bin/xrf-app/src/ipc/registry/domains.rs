@@ -95,13 +95,14 @@ macro_rules! for_each_tauri_command_domain {
       }
       levels => "levels" {
         close_level => crate::plugins::levels::commands::close_level::levels_close_level,
+        describe_spawn_models => crate::plugins::levels::commands::describe_spawn_models::levels_describe_spawn_models,
         get_level => crate::plugins::levels::commands::get_level::levels_get_level,
         list_levels => crate::plugins::levels::commands::list_levels::levels_list_levels,
         open_details => crate::plugins::levels::commands::open_details::levels_open_details,
         open_level => crate::plugins::levels::commands::open_level::levels_open_level,
         open_lights => crate::plugins::levels::commands::open_lights::levels_open_lights,
         open_sector => crate::plugins::levels::commands::open_sector::levels_open_sector,
-        open_spawn_models => crate::plugins::levels::commands::open_spawn_models::levels_open_spawn_models,
+        open_spawn_objects => crate::plugins::levels::commands::open_spawn_objects::levels_open_spawn_objects,
         read_level_cycle => crate::plugins::levels::commands::read_level_cycle::levels_read_level_cycle,
         read_level_weather => crate::plugins::levels::commands::read_level_weather::levels_read_level_weather,
         resolve_level_textures => crate::plugins::levels::commands::resolve_level_textures::levels_resolve_level_textures,

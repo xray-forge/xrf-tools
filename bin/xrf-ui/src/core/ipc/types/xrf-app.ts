@@ -18,7 +18,7 @@ import { LtxAnchoredFinding, LtxFileStructure, LtxFileText, LtxInventory } from 
 import { XrayMaterialDescriptor, XraySurfaceDescriptor, XraySurfaceDraw } from "@/core/ipc/types/xrf-material";
 import { Vector3d } from "@/core/ipc/types/xrf-math";
 import { ArchivePackConfig, ArchivePatchConfig } from "@/core/ipc/types/xrf-pack";
-import { SpawnHeaderChunk } from "@/core/ipc/types/xrf-spawn";
+import { ClsId, SpawnHeaderChunk } from "@/core/ipc/types/xrf-spawn";
 import { EquipmentSlotOccupant, ImageShape } from "@/core/ipc/types/xrf-texture";
 import {
   TranslationBuildLanguageSummary,
@@ -1769,6 +1769,21 @@ export type LevelSource =
   /** A level of the mounted roots, named by its engine identity. */
   | { kind: "asset"; logicalPath: string };
 
+/** What a spawned object is, by the engine class its spawn stores: what the viewer groups and toggles it by. */
+export enum ELevelSpawnCategory {
+  /** Physics objects, breakables, inventory boxes, vehicles, and zones drawn as a model. */
+  PROPS = "props",
+  /** Every inventory item but a weapon. */
+  ITEMS = "items",
+  /** Firearms and grenades. */
+  WEAPONS = "weapons",
+  /** Hanging lamps the engine spawns on R2. */
+  LAMPS = "lamps",
+}
+
+/** Every `ELevelSpawnCategory` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type LevelSpawnCategory = `${ELevelSpawnCategory}`;
+
 /** One visual spawned objects are drawn as: what its pack says, the pose it stands in, and what dresses it. */
 export type LevelSpawnModelDescription = {
   /** The visual as the objects name it, which its bytes are read by. */
@@ -1785,18 +1800,38 @@ export type LevelSpawnModelDescription = {
   textures: Array<LevelTextureReference>;
 };
 
-/** The models a level's spawned objects are drawn as, and where each object stands. */
-export type LevelSpawnModelsDescription = {
-  models: Array<LevelSpawnModelDescription>;
-  placements: Array<LevelSpawnPlacement>;
+/** A visual spawned objects name that could not be read, so none of them is drawn. */
+export type LevelSpawnModelFailure = {
+  name: string;
+  reason: string;
 };
 
-/** Where one spawned object stands, and which model it is drawn as. */
-export type LevelSpawnPlacement = {
-  /** The model, by its index among the description's models. */
-  model: number;
+/** The models of one batch of spawned visuals: each one read, and why each other one could not be. */
+export type LevelSpawnModelsDescription = {
+  models: Array<LevelSpawnModelDescription>;
+  failures: Array<LevelSpawnModelFailure>;
+};
+
+/** One spawned object the viewer draws: what it is, where it stands, and which visual it stands as. */
+export type LevelSpawnObject = {
+  /** Its place among the level's spawned objects, which names it to the backend. */
+  index: number;
+  name: string;
+  section: string;
+  clsid: ClsId;
+  /** Absent for an object without one (`INVALID_STORY_ID`). */
+  storyId: number | null;
+  category: LevelSpawnCategory;
+  /** The visual, by its index among the description's visuals. */
+  visual: number;
   /** The object's `XFORM`, in renderer space. */
   transform: VisualTransform;
+};
+
+/** The spawned objects the viewer draws, and the visuals they stand as, each named once. */
+export type LevelSpawnObjectsDescription = {
+  visuals: Array<string>;
+  objects: Array<LevelSpawnObject>;
 };
 
 /** Where a level opens, in renderer space: an actor's eye where the game puts one on the level. */

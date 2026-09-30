@@ -12,6 +12,7 @@ import {
   ILevelGrassDelivery,
   ILevelSectorChange,
   ILevelSectorDelivery,
+  ILevelSpawnDelivery,
   ILevelTextureDelivery,
   ILevelTextureSupplyChange,
 } from "@/core/level/lib/render/level-render-protocol";
@@ -24,12 +25,7 @@ import {
   toLevelSectorGeometry,
   toLevelSectorObject,
 } from "@/core/level/lib/render/level-render-sector";
-import {
-  ILevelSpawnModelsDelivery,
-  ILevelSpawnPart,
-  toLevelSpawnParts,
-  toLevelSpawnSurface,
-} from "@/core/level/lib/render/level-render-spawn";
+import { LevelRenderSpawnSet } from "@/core/level/lib/render/level-render-spawn-set";
 import { toLevelSurface } from "@/core/level/lib/render/level-render-surface";
 import { createLevelCheckerSource, toLevelTextureSource } from "@/core/level/lib/render/level-render-texture";
 import { createSectorViews, ISectorInstanceViews, ISectorViews } from "@/core/level/lib/sector/level-sector-views";
@@ -86,8 +82,8 @@ export class LevelRenderContent {
   private readonly sectors: Map<number, IHeldSector> = new Map();
   /** What became of each reference supplied, in the order they were. */
   private readonly textures: Map<string, ILevelSurfaceDressing> = new Map();
-  /** The spawned models' parts put. */
-  private spawnParts: ReadonlyArray<ILevelSpawnPart> = [];
+  /** The spawned objects put, which the loader alone lets go. */
+  private readonly spawn: LevelRenderSpawnSet;
   /** Whether the quad every impostor draws over is put. */
   private isImpostorQuadPut: boolean = false;
   /** What the recent arrivals cost to put, which is the half of a sector's arrival no read stage covers. */
@@ -95,6 +91,7 @@ export class LevelRenderContent {
 
   public constructor(sink: TLevelRenderSink) {
     this.sink = sink;
+    this.spawn = new LevelRenderSpawnSet(sink);
   }
 
   /**
@@ -142,17 +139,10 @@ export class LevelRenderContent {
   }
 
   /**
-   * @param models - The models the level's spawned objects stand as, or null for none; every part put before goes.
+   * @param spawn - The level's spawned objects and the models read so far, or null for none.
    */
-  public stand(models: Nullable<ILevelSpawnModelsDelivery>): void {
-    this.releaseSpawnParts();
-    this.spawnParts = models ? toLevelSpawnParts(models) : [];
-
-    for (const part of this.spawnParts) {
-      this.sink.putGeometry(part.key, part.geometry);
-      this.sink.putSurface(part.key, toLevelSpawnSurface(part.dressing));
-      this.sink.putObject(part.key, part.object);
-    }
+  public stand(spawn: Nullable<ILevelSpawnDelivery>): void {
+    this.spawn.stand(spawn);
   }
 
   /**
@@ -267,16 +257,6 @@ export class LevelRenderContent {
     Array.from(this.textures.keys()).forEach((reference: string) => this.releaseTexture(reference));
     this.table = [];
     this.added.length = 0;
-  }
-
-  private releaseSpawnParts(): void {
-    for (const { key } of this.spawnParts) {
-      this.sink.releaseObject(key);
-      this.sink.releaseSurface(key);
-      this.sink.releaseGeometry(key);
-    }
-
-    this.spawnParts = [];
   }
 
   private take(delivery: ILevelSectorDelivery): void {

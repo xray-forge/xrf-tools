@@ -7,6 +7,7 @@ import {
   LevelLightsDescription,
   LevelOpenRequest,
   LevelSpawnModelsDescription,
+  LevelSpawnObjectsDescription,
   LevelTextureReference,
   LevelWeatherCycle,
   LevelWeatherDescription,
@@ -23,6 +24,12 @@ import { SectorDescription } from "@/core/ipc/types/xrf-visual";
 export const levelsCommands = {
   /** Release only the openings owned by the departing viewer. */
   closeLevel: (sessionIds: Array<SessionId>) => __TAURI_INVOKE<null>("plugin:levels|close_level", { sessionIds }),
+  /** Describe the models of a batch of the visuals open_spawn_objects named, reading and packing each once. */
+  describeSpawnModels: (sessionId: SessionId, names: Array<string>) =>
+    __TAURI_INVOKE<SessionSnapshot<LevelSpawnModelsDescription>>("plugin:levels|describe_spawn_models", {
+      sessionId,
+      names,
+    }),
   /** Restore the committed level descriptor without reading the level again. */
   getLevel: () => __TAURI_INVOKE<SessionRestore<SelectedLevelDescription>>("plugin:levels|get_level"),
   /** Every compiled level the mounted roots hold, loose or archived alike. */
@@ -42,9 +49,9 @@ export const levelsCommands = {
   /** Pack one sector of the open level and report what it became. */
   openSector: (sessionId: SessionId, sectorId: SessionId, sector: number) =>
     __TAURI_INVOKE<SessionSnapshot<SectorDescription>>("plugin:levels|open_sector", { sessionId, sectorId, sector }),
-  /** Describe the models the open level's spawned objects are drawn as, and where each object stands. */
-  openSpawnModels: (sessionId: SessionId) =>
-    __TAURI_INVOKE<SessionSnapshot<LevelSpawnModelsDescription>>("plugin:levels|open_spawn_models", { sessionId }),
+  /** Describe the open level's spawned objects the viewer draws, and the visuals they stand as, reading no visual. */
+  openSpawnObjects: (sessionId: SessionId) =>
+    __TAURI_INVOKE<SessionSnapshot<LevelSpawnObjectsDescription>>("plugin:levels|open_spawn_objects", { sessionId }),
   /**
    * Read any cycle or effect of the game as the open level's engine loads it, for a viewer playing one the level does
    * not offer itself.

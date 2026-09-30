@@ -11,7 +11,8 @@ use xrf_visual::{
 };
 
 use crate::plugins::levels::state::{
-  LevelEntry, LevelSource, LevelSpawnModelsDescription, LevelStart, LevelTextureReference, SelectedLevel,
+  LevelEntry, LevelSource, LevelSpawnModelsDescription, LevelSpawnObjectsDescription, LevelStart,
+  LevelTextureReference, SelectedLevel,
 };
 
 /// How many names a log line about a set of them carries before it stops listing and starts counting.
@@ -290,14 +291,25 @@ pub fn report_bind_rest_pose(name: &str, error: &impl Display) {
   log::debug!("Spawned visual '{name}' stands in its bind pose: {error}");
 }
 
-/// What a level's spawned models came to.
-pub fn report_spawn_models(source: &LevelSource, models: &LevelSpawnModelsDescription, started: Instant) {
+/// What a level's spawned objects came to: how many are drawn, and how many visuals they stand as.
+pub fn report_spawn_objects(source: &LevelSource, objects: &LevelSpawnObjectsDescription, started: Instant) {
   log::info!(
-    "Described the spawned models of {} in {}: {} models, {} placed",
+    "Described the spawned objects of {} in {}: {} objects, {} visuals",
+    source.get_label(),
+    xrf_utils::format_duration(started.elapsed()),
+    objects.objects.len(),
+    objects.visuals.len()
+  );
+}
+
+/// What one batch of a level's spawned models came to.
+pub fn report_spawn_models(source: &LevelSource, models: &LevelSpawnModelsDescription, started: Instant) {
+  log::debug!(
+    "Described a batch of the spawned models of {} in {}: {} models, {} unreadable",
     source.get_label(),
     xrf_utils::format_duration(started.elapsed()),
     models.models.len(),
-    models.placements.len()
+    models.failures.len()
   );
 }
 

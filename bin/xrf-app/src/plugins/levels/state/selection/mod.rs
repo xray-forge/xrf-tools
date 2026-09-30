@@ -1,9 +1,12 @@
 pub(crate) mod level_details_description;
 pub(crate) mod level_lights_description;
 pub(crate) mod level_rain;
+pub(crate) mod level_spawn_category;
 pub(crate) mod level_spawn_model_description;
+pub(crate) mod level_spawn_model_failure;
 pub(crate) mod level_spawn_models_description;
-pub(crate) mod level_spawn_placement;
+pub(crate) mod level_spawn_object;
+pub(crate) mod level_spawn_objects_description;
 pub(crate) mod level_start;
 pub(crate) mod level_start_origin;
 pub(crate) mod level_sun_description;

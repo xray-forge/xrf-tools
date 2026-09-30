@@ -11,23 +11,22 @@ import { IBulkRequest } from "@/core/ipc/bulk";
 import { SectorDescription } from "@/core/ipc/types/xrf-visual";
 import { LevelRenderContent, TLevelRenderSink } from "@/core/level/lib/render/level-render-content";
 import { LEVEL_RENDER_KEYS } from "@/core/level/lib/render/level-render-keys";
-import { ILevelSectorDelivery, ILevelTextureDelivery } from "@/core/level/lib/render/level-render-protocol";
-import { ILevelSpawnModelsDelivery } from "@/core/level/lib/render/level-render-spawn";
+import {
+  ILevelSectorDelivery,
+  ILevelSpawnDelivery,
+  ILevelTextureDelivery,
+} from "@/core/level/lib/render/level-render-protocol";
 import { toLevelSurfaceColor } from "@/core/level/lib/render/level-render-surface";
 import { ELevelSurfaceDressing } from "@/core/level/lib/surface/level-surface-dressing";
 import {
+  mockLevelSpawnModel,
+  mockLevelSpawnObject,
   mockSectorDescription,
   mockSectorInstanceGroup,
   mockSectorSection,
   mockSectorSurface,
 } from "@/fixtures/mocks/level.mocks";
-import {
-  mockPackedSubmesh,
-  mockSurfaceDescriptor,
-  MockVisualBuffer,
-  mockVisualDescription,
-  mockVisualTransform,
-} from "@/fixtures/mocks/visual.mocks";
+import { mockSurfaceDescriptor, MockVisualBuffer } from "@/fixtures/mocks/visual.mocks";
 
 type TMockSink = { [K in keyof TLevelRenderSink]: jest.Mock<TLevelRenderSink[K]> };
 
@@ -86,28 +85,10 @@ function mockFetched(overrides: Partial<IRendererTextureFetch> = {}): IRendererT
   };
 }
 
-/** One lamp model of one submesh, standing in one place. */
-function mockSpawnModels(): ILevelSpawnModelsDelivery {
-  const buffer: MockVisualBuffer = new MockVisualBuffer();
-  const description = mockVisualDescription({
-    bufferLength: 0,
-    submeshes: [mockPackedSubmesh(buffer, { index: 0, textureName: "lamp" })],
-  });
-
+function mockSpawn(): ILevelSpawnDelivery {
   return {
-    buffers: new Map([["lamp", buffer.toArrayBuffer()]]),
-    description: {
-      models: [
-        {
-          description: { ...description, bufferLength: buffer.byteLength },
-          name: "lamp",
-          rest: null,
-          surfaces: [mockSurfaceDescriptor()],
-          textures: [],
-        },
-      ],
-      placements: [{ model: 0, transform: mockVisualTransform({ x: 1, y: 2, z: 3 }) }],
-    },
+    models: new Map([[0, mockLevelSpawnModel("lamp")]]),
+    objects: { objects: [mockLevelSpawnObject()], visuals: ["lamp"] },
   };
 }
 
@@ -294,24 +275,11 @@ describe("LevelRenderContent", () => {
     expect(content.held()).toEqual({ bytes: 0, sectors: 0 });
   });
 
-  it("dresses spawned models with their base and a colour of their own, as a sector's surface is", () => {
-    const { content, sink } = mockContent();
-    const key: string = LEVEL_RENDER_KEYS.spawn(0, 0);
-
-    content.stand(mockSpawnModels());
-
-    expect(sink.putGeometry.mock.calls.map(([it]) => it)).toEqual([key]);
-    expect(sink.putSurface.mock.calls.at(-1)).toEqual([
-      key,
-      expect.objectContaining({ color: toLevelSurfaceColor(0), textures: { base: "lamp" } }),
-    ]);
-  });
-
   // A renderer started after the models were read is handed them before the level's own reaction opens it.
   it("keeps spawned models held when a level opens, which the loader alone lets go", () => {
     const { content, sink } = mockContent();
 
-    content.stand(mockSpawnModels());
+    content.stand(mockSpawn());
     content.open([]);
 
     expect(sink.releaseObject).not.toHaveBeenCalledWith(LEVEL_RENDER_KEYS.spawn(0, 0));

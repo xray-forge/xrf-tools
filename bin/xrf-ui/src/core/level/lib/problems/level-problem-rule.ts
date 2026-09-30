@@ -8,4 +8,6 @@ export enum ELevelProblemRule {
   SURFACE = "surface",
   /** A drawable the packer could not read, so nothing of it is drawn at all. */
   DRAWABLE = "drawable",
+  /** A visual spawned objects name that could not be read, so none of them is drawn. */
+  SPAWN = "spawn",
 }

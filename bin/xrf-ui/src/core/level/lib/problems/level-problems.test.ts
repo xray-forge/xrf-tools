@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
 
 import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
-import { ELevelProblemRule, listLevelProblems } from "@/core/level/lib/problems";
+import { ELevelProblemRule, ILevelProblemSources, listLevelProblems } from "@/core/level/lib/problems";
 import { ILevelSectorSkip } from "@/core/level/lib/sector/level-sector-report";
 import { ISectorViews } from "@/core/level/lib/sector/level-sector-views";
 import { IEditorProblem } from "@/core/shell/editor/EditorProblemsPanel";
@@ -11,16 +11,18 @@ function sectorOf(sector: number, skipped: ISectorViews["skipped"]): ReadonlyArr
   return skipped.map((skip) => ({ sector, skip }));
 }
 
+function mockSources(overrides: Partial<ILevelProblemSources> = {}): ILevelProblemSources {
+  return { skipped: [], spawn: [], surfaces: [], textures: [], ...overrides };
+}
+
 describe("listLevelProblems", () => {
   it("says nothing about a level that read cleanly", () => {
-    expect(listLevelProblems([], [mockSurfaceDescriptor()], [])).toEqual([]);
+    expect(listLevelProblems(mockSources({ surfaces: [mockSurfaceDescriptor()] }))).toEqual([]);
   });
 
   it("names every texture the set could not answer for", () => {
     const problems: Array<IEditorProblem> = listLevelProblems(
-      [{ reason: "The file in the mounted roots is 2x2", reference: "trees\\frond" }],
-      [],
-      []
+      mockSources({ textures: [{ reason: "The file in the mounted roots is 2x2", reference: "trees\\frond" }] })
     );
 
     expect(problems).toEqual([
@@ -37,7 +39,7 @@ describe("listLevelProblems", () => {
   it("passes over a table entry that declares nothing", () => {
     const surfaces: Array<XraySurfaceDescriptor> = [mockSurfaceDescriptor({ declaration: { kind: "undeclared" } })];
 
-    expect(listLevelProblems([], surfaces, [])).toEqual([]);
+    expect(listLevelProblems(mockSources({ surfaces }))).toEqual([]);
   });
 
   it("names the table entry a class was not modelled for, by its index", () => {
@@ -45,7 +47,7 @@ describe("listLevelProblems", () => {
       mockSurfaceDescriptor(),
       mockSurfaceDescriptor({ declaration: { class: "S_SET", kind: "unmodelled" } }),
     ];
-    const problems: Array<IEditorProblem> = listLevelProblems([], surfaces, []);
+    const problems: Array<IEditorProblem> = listLevelProblems(mockSources({ surfaces }));
 
     expect(problems).toHaveLength(1);
     expect(problems[0].subject).toBe("shader table entry 1");
@@ -58,7 +60,7 @@ describe("listLevelProblems", () => {
       mockSurfaceDescriptor({ declaration: { kind: "unreadable", reason: "truncated chunk" } }),
     ];
 
-    expect(listLevelProblems([], surfaces, [])[0].message).toContain("truncated chunk");
+    expect(listLevelProblems(mockSources({ surfaces }))[0].message).toContain("truncated chunk");
   });
 
   // Geometry the packer could not read is simply absent from the picture, which is the hardest kind of wrong to
@@ -67,24 +69,40 @@ describe("listLevelProblems", () => {
     const sectors: ReadonlyArray<ILevelSectorSkip> = sectorOf(4, [
       { cause: "unsupported", drawable: 91, reason: "progressive geometry" },
     ]);
-    const problems: Array<IEditorProblem> = listLevelProblems([], [], sectors);
+    const problems: Array<IEditorProblem> = listLevelProblems(mockSources({ skipped: sectors }));
 
     expect(problems[0].subject).toBe("sector 4, visual 91");
     expect(problems[0].message).toContain("does not model");
     expect(problems[0].rule).toBe(ELevelProblemRule.DRAWABLE);
   });
 
-  it("orders the three sources, so one reading is always in the same place", () => {
+  it("names a spawned visual that could not be read, whose objects are absent", () => {
     const problems: Array<IEditorProblem> = listLevelProblems(
-      [{ reason: "missing", reference: "stone" }],
-      [mockSurfaceDescriptor({ declaration: { kind: "undefined" } })],
-      sectorOf(0, [{ cause: "malformed", drawable: 1, reason: "bad range" }])
+      mockSources({ spawn: [{ name: "physics\\box", reason: "Failed to read visual" }] })
     );
+
+    expect(problems).toEqual([
+      {
+        message: "Its objects are not drawn: Failed to read visual",
+        rule: ELevelProblemRule.SPAWN,
+        subject: "physics\\box",
+      },
+    ]);
+  });
+
+  it("orders the four sources, so one reading is always in the same place", () => {
+    const problems: Array<IEditorProblem> = listLevelProblems({
+      skipped: sectorOf(0, [{ cause: "malformed", drawable: 1, reason: "bad range" }]),
+      spawn: [{ name: "box", reason: "missing" }],
+      surfaces: [mockSurfaceDescriptor({ declaration: { kind: "undefined" } })],
+      textures: [{ reason: "missing", reference: "stone" }],
+    });
 
     expect(problems.map((it) => it.rule)).toEqual([
       ELevelProblemRule.TEXTURE,
       ELevelProblemRule.SURFACE,
       ELevelProblemRule.DRAWABLE,
+      ELevelProblemRule.SPAWN,
     ]);
   });
 });
