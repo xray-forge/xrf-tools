@@ -3,6 +3,9 @@ import { ERendererDraw } from "#/contract/scene/renderer-draw";
 import { IRendererSurfaceTextures } from "#/contract/scene/renderer-surface-textures";
 import { IRendererSurfaceWater } from "#/contract/scene/renderer-surface-water";
 
+/** The texture descriptor's default lighting model: Blinn, at full weight (`SH_Texture.cpp`). */
+export const RENDERER_DEFAULT_MATERIAL: number = 1;
+
 /**
  * One surface, as a level's shader table or a model's submesh describes it.
  */
@@ -13,7 +16,7 @@ export interface IRendererSurface {
   textures: IRendererSurfaceTextures;
   /** Detail texture repeats per base texture repeat. */
   detailScale?: number;
-  /** The texture descriptor's lighting model: its class plus its weight. The engine's default is one. */
+  /** The texture descriptor's lighting model: its class plus its weight, {@link RENDERER_DEFAULT_MATERIAL} left out. */
   material?: number;
   /** How many times the base and every other texture repeat across the surface. */
   tiling?: number;

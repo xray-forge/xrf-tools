@@ -24,9 +24,6 @@ import { SettingsUniforms } from "#/uniforms/settings-uniforms";
 /** `def_gloss`: what a surface without a bump reflects (`shaders/r3/common_defines.h`). */
 export const DEFAULT_GLOSS: number = 2 / 255;
 
-/** The texture descriptor's default lighting model: Blinn, at full weight. */
-export const DEFAULT_MATERIAL: number = 1;
-
 /** Lighting model slices the material lookup holds. */
 export const MATERIAL_SLICES: number = 4;
 

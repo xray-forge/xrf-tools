@@ -1,9 +1,10 @@
 import { default as PauseIcon } from "@mui/icons-material/Pause";
 import { default as PlayArrowIcon } from "@mui/icons-material/PlayArrow";
 import { IconButton, Slider, Tooltip, Typography } from "@mui/material";
+import { WEATHER_DAY_LENGTH } from "@xrf/renderer";
 import { ReactElement, useMemo } from "react";
 
-import { formatLevelWeatherTime, LEVEL_WEATHER_DAY } from "@/core/level/lib/weather/level-weather-time";
+import { formatLevelWeatherTime } from "@/core/level/lib/weather/level-weather-time";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { IThrottledDraft, useThrottledDraft } from "@/lib/react/use-throttled-draft";
 
@@ -62,7 +63,7 @@ export function LevelWeatherClock({
       <Slider
         size={"small"}
         min={0}
-        max={LEVEL_WEATHER_DAY - MINUTE}
+        max={WEATHER_DAY_LENGTH - MINUTE}
         step={MINUTE}
         marks={marks}
         value={draft.value}

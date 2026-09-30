@@ -1,4 +1,4 @@
-import { ERendererPass, toRendererPass } from "@xrf/renderer";
+import { ERendererPass, RENDERER_DEFAULT_MATERIAL, toRendererPass } from "@xrf/renderer";
 import { Maybe, Nullable } from "@xrf/types";
 
 import { EXraySurfaceDraw, XraySurfaceDescriptor, XraySurfaceSampler } from "@/core/ipc/types/xrf-material";
@@ -61,9 +61,6 @@ export interface ILevelSurfaceRender extends IRendererSurfaceDraw {
   waterTextures: Nullable<ILevelSurfaceWaterTextures>;
 }
 
-/** What a texture shades with until a descriptor sets otherwise (`SH_Texture.cpp`). */
-export const LEVEL_SURFACE_DEFAULT_MATERIAL: number = 1;
-
 /** The function whose pass is the surface itself, and the one drawing its distortion. */
 const BASE_ELEMENT: string = "normal";
 const DISTORTION_ELEMENT: string = "l_special";
@@ -103,7 +100,7 @@ export function toLevelSurfaceRender(descriptor: Nullable<XraySurfaceDescriptor>
           }
         : null,
     isWallmark: isWallmarkSurface(descriptor),
-    material: descriptor?.material ?? LEVEL_SURFACE_DEFAULT_MATERIAL,
+    material: descriptor?.material ?? RENDERER_DEFAULT_MATERIAL,
     waterTextures: descriptor?.draw.kind === EXraySurfaceDraw.WATER ? toWaterTextures(descriptor.samplers) : null,
   };
 }

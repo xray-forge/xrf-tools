@@ -1,7 +1,7 @@
 import { Vector3 } from "three/webgpu";
 
-import { IRendererSurface } from "#/contract/scene/renderer-surface";
-import { DEFAULT_MATERIAL, MATERIAL_SLICES } from "#/material/surface-texel.tsl";
+import { IRendererSurface, RENDERER_DEFAULT_MATERIAL } from "#/contract/scene/renderer-surface";
+import { MATERIAL_SLICES } from "#/material/surface-texel.tsl";
 import { DEFAULT_ALPHA_REFERENCE } from "#/shader/alpha-cut.tsl";
 
 /**
@@ -29,7 +29,7 @@ export function toSurfaceValues(surface: IRendererSurface): ISurfaceValues {
     alphaReference: surface.alphaReference ?? DEFAULT_ALPHA_REFERENCE,
     color: surface.color ? new Vector3(...surface.color) : new Vector3(1, 1, 1),
     detailScale: surface.detailScale ?? 1,
-    slice: ((surface.material ?? DEFAULT_MATERIAL) + 0.5) / MATERIAL_SLICES,
+    slice: ((surface.material ?? RENDERER_DEFAULT_MATERIAL) + 0.5) / MATERIAL_SLICES,
     tiling: surface.tiling ?? 1,
   };
 }

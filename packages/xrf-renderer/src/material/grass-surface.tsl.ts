@@ -15,10 +15,11 @@ import {
 } from "three/tsl";
 import { Node, TextureNode } from "three/webgpu";
 
+import { RENDERER_DEFAULT_MATERIAL } from "#/contract/scene/renderer-surface";
 import { IGrassSurfaceSource } from "#/material/grass-surface-source";
 import { MaterialSamplers } from "#/material/material-samplers";
 import { ISurfaceShader } from "#/material/surface-shader";
-import { DEFAULT_GLOSS, DEFAULT_MATERIAL, MATERIAL_SLICES } from "#/material/surface-texel.tsl";
+import { DEFAULT_GLOSS, MATERIAL_SLICES } from "#/material/surface-texel.tsl";
 import { toCoverageAlpha } from "#/shader/alpha-coverage.tsl";
 import { DEFAULT_ALPHA_REFERENCE, toHashedAlphaCut } from "#/shader/alpha-cut.tsl";
 import { toCyclic } from "#/shader/cyclic-wave.tsl";
@@ -91,7 +92,7 @@ export function toGrassSurfaceShader(
       normal,
       varying(look.y),
       varying(look.z),
-      uniform((DEFAULT_MATERIAL + 0.5) / MATERIAL_SLICES),
+      uniform((RENDERER_DEFAULT_MATERIAL + 0.5) / MATERIAL_SLICES),
       toPointMotion(uniforms.motion, current, previous)
     ),
     positionViewNode: cameraViewMatrix.mul(vec4(current, 1)).xyz,
