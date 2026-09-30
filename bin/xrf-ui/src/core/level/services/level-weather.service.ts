@@ -11,7 +11,6 @@ import { Maybe, Nullable } from "@xrf/types";
 import { transformError } from "@/core/error/lib";
 import { levelsCommands } from "@/core/ipc/commands/levels";
 import {
-  LevelTextureReference,
   LevelWeatherCycle,
   LevelWeatherDescription,
   SelectedLevelDescription,
@@ -22,12 +21,9 @@ import { EWeatherCycleKind } from "@/core/ipc/types/xrf-environment";
 import {
   DEFAULT_LEVEL_MANUAL_WEATHER,
   ILevelManualWeather,
-  listLevelManualWeatherTextures,
   toLevelManualWeather,
 } from "@/core/level/lib/weather/level-manual-weather";
-import { LevelManualWeatherBuilder } from "@/core/level/lib/weather/level-manual-weather-builder";
-import { toLevelRendererWeather, toLevelRendererWeatherBase } from "@/core/level/lib/weather/level-renderer-weather";
-import { TLevelRendererWeatherBase } from "@/core/level/lib/weather/level-renderer-weather-base";
+import { LevelWeatherBuilds } from "@/core/level/lib/weather/level-weather-builds";
 import {
   DEFAULT_LEVEL_WEATHER_CONTROL,
   ILevelWeatherControl,
@@ -120,19 +116,12 @@ export class LevelWeatherService {
   private memoryKey: Nullable<string> = null;
   /** The level open, which a cycle is read against. */
   private selected: Nullable<SessionSnapshot<SelectedLevelDescription>> = null;
-  /** What each texture the keyframe set by hand named came to, so an edit that names none new asks for nothing. */
-  private readonly located: Map<string, LevelTextureReference> = new Map();
+  /** What the open level's weathers are built into, one a level. */
+  private builds: Nullable<LevelWeatherBuilds> = null;
   /** The cycle the level was last played with, kept until one plays so a level left early forgets nothing. */
   private remembered: string = "";
   /** Bumped by every build of the keyframe set by hand, so only the latest is played. */
   private build: number = 0;
-  /** What every weather of the level plays with, built once for the description it was built from. */
-  private base: Nullable<{ description: LevelWeatherDescription; built: Promise<TLevelRendererWeatherBase> }> = null;
-  /** What builds the keyframe set by hand, for the description it plays over. */
-  private manualBuilder: Nullable<{
-    description: Nullable<LevelWeatherDescription>;
-    builder: LevelManualWeatherBuilder;
-  }> = null;
 
   public constructor(private readonly settingsService: SettingsService = inject(SettingsService)) {}
 
@@ -167,8 +156,7 @@ export class LevelWeatherService {
   }
 
   /**
-   * Reads a level's weather and plays the cycle it was last played with, or the first it offers, once per level; or
-   * the keyframe set by hand, where that is what it was lit by, or where its weather does not play.
+   * Opens a level's weather, once per level: how it was last played, then the weather itself, read and played.
    *
    * @param selected - The level open now, or null for none.
    */
@@ -191,18 +179,23 @@ export class LevelWeatherService {
     this.sessionId = selected.sessionId;
     this.memoryKey = memoryKey;
     this.selected = selected;
+    this.builds = new LevelWeatherBuilds(selected);
 
     if (memory) {
-      runInAction(() => {
-        this.source = memory.source;
-        this.control = memory.control;
-        this.time = memory.time;
-        this.manual = memory.manual;
-        this.seed = memory.seed;
-      });
-      this.remembered = memory.cycle;
+      this.restore(memory);
     }
 
+    await this.read(selected, memory?.cycle ?? "");
+  }
+
+  /**
+   * Reads the level's weather and plays the cycle it was last played with, or the first it offers; or the keyframe set
+   * by hand, where that is what it was lit by, or where its weather does not play.
+   *
+   * @param selected - The level open.
+   * @param remembered - The cycle it was last played with, empty for none.
+   */
+  private async read(selected: SessionSnapshot<SelectedLevelDescription>, remembered: string): Promise<void> {
     try {
       const { value: description }: SessionSnapshot<LevelWeatherDescription> = await levelsCommands.readLevelWeather(
         selected.sessionId
@@ -228,7 +221,7 @@ export class LevelWeatherService {
       }
 
       // A remembered cycle the game no longer has gives way to the level's own.
-      if (!memory?.cycle || !(await this.playRemembered(selected, memory.cycle))) {
+      if (!remembered || !(await this.playRemembered(selected, remembered))) {
         await this.play(selected, first.name);
       }
     } catch (error: unknown) {
@@ -368,10 +361,8 @@ export class LevelWeatherService {
     this.memoryKey = null;
     this.selected = null;
     this.remembered = "";
-    this.located.clear();
+    this.builds = null;
     this.build += 1;
-    this.base = null;
-    this.manualBuilder = null;
     this.description = null;
     this.cycle = null;
     this.playable = null;
@@ -387,6 +378,19 @@ export class LevelWeatherService {
     this.source = ELevelWeatherSource.WEATHER;
     this.control = DEFAULT_LEVEL_WEATHER_CONTROL;
     this.time = LEVEL_WEATHER_NOON;
+  }
+
+  /**
+   * @param memory - How the level's weather was last played, which it plays from again.
+   */
+  @BoundAction()
+  private restore(memory: ILevelWeatherMemory): void {
+    this.source = memory.source;
+    this.control = memory.control;
+    this.time = memory.time;
+    this.manual = memory.manual;
+    this.seed = memory.seed;
+    this.remembered = memory.cycle;
   }
 
   /** A keyframe set by hand from what is shown, noon of `default_clear` where the weather shows nothing yet. */
@@ -405,7 +409,7 @@ export class LevelWeatherService {
    * @param transition - How it takes over from what is shown.
    */
   private async buildManual(transition: ERendererWeatherTransition): Promise<void> {
-    const { selected } = this;
+    const { builds } = this;
     const build: number = ++this.build;
 
     runInAction(() => {
@@ -414,32 +418,19 @@ export class LevelWeatherService {
 
     const manual: Nullable<ILevelManualWeather> = this.manual;
 
-    if (!selected || !manual) {
+    if (!builds || !manual) {
       return;
     }
 
     try {
-      const references: Array<string> = listLevelManualWeatherTextures(manual);
-      const unknown: Array<string> = references.filter((it: string) => !this.located.has(it));
-
-      if (unknown.length) {
-        const { value } = await levelsCommands.resolveLevelTextures(selected.sessionId, unknown);
-
-        // Found in the level asked about: another level open since finds its textures in its own roots.
-        if (this.sessionId !== selected.sessionId) {
-          return;
-        }
-
-        value.forEach((it: LevelTextureReference) => this.located.set(it.reference, it));
-      }
-
-      const builder: LevelManualWeatherBuilder = await this.toManualBuilder(selected);
-      const weather: IRendererWeather = await builder.build(
+      const weather: IRendererWeather = await builds.buildManual({
+        description: this.description,
+        engine: this.engine,
         manual,
-        references.flatMap((it: string) => this.located.get(it) ?? [])
-      );
+      });
 
-      if (build === this.build && this.sessionId === selected.sessionId) {
+      // Built for the level still open, and the latest edit of it.
+      if (build === this.build && builds === this.builds) {
         runInAction(() => {
           const shown: Nullable<IRendererWeather> = this.weather;
 
@@ -485,19 +476,15 @@ export class LevelWeatherService {
     const cycle: LevelWeatherCycle =
       this.description?.offered.find((it: LevelWeatherCycle) => it.name === name) ??
       (await levelsCommands.readLevelCycle(selected.sessionId, { kind: EWeatherCycleKind.CYCLE, name })).value;
-    const description: Nullable<LevelWeatherDescription> = this.description;
+    const { description, builds } = this;
 
-    if (!description) {
+    if (!description || !builds) {
       return;
     }
 
-    const playable: IRendererWeather = await toLevelRendererWeather({
-      base: await this.toBase(selected, description),
-      cycle,
-      roots: selected.value.roots,
-    });
+    const playable: IRendererWeather = await builds.buildCycle({ cycle, description });
 
-    if (this.sessionId !== selected.sessionId || this.reading !== name) {
+    if (builds !== this.builds || this.reading !== name) {
       return;
     }
 
@@ -510,56 +497,6 @@ export class LevelWeatherService {
       this.reading = null;
       this.noteShown(shown, ERendererWeatherTransition.FADE);
     });
-  }
-
-  /**
-   * What every weather of the level plays with, built the first time it is asked for; one that failed is built again.
-   *
-   * @param selected - The level open.
-   * @param description - Its weather.
-   * @returns The base.
-   */
-  private toBase(
-    selected: SessionSnapshot<SelectedLevelDescription>,
-    description: LevelWeatherDescription
-  ): Promise<TLevelRendererWeatherBase> {
-    if (this.base?.description !== description) {
-      const built: Promise<TLevelRendererWeatherBase> = toLevelRendererWeatherBase({
-        description,
-        roots: selected.value.roots,
-      });
-
-      this.base = { built, description };
-      built.catch(() => {
-        if (this.base?.built === built) {
-          this.base = null;
-        }
-      });
-    }
-
-    return this.base.built;
-  }
-
-  /**
-   * @param selected - The level open.
-   * @returns What builds the keyframe set by hand over the level's weather as it reads now.
-   */
-  private async toManualBuilder(
-    selected: SessionSnapshot<SelectedLevelDescription>
-  ): Promise<LevelManualWeatherBuilder> {
-    const { description } = this;
-
-    if (!this.manualBuilder || this.manualBuilder.description !== description) {
-      const builder: LevelManualWeatherBuilder = new LevelManualWeatherBuilder({
-        base: description ? await this.toBase(selected, description) : null,
-        engine: this.engine,
-        roots: selected.value.roots,
-      });
-
-      this.manualBuilder = { builder, description };
-    }
-
-    return this.manualBuilder.builder;
   }
 
   /**
