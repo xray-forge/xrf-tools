@@ -74,27 +74,7 @@ impl WeatherMixer<'_> {
         }
       }
     };
-    let mut sun_color: [f32; 3] = to_array(&vector(&a.sun_color, &b.sun_color));
-    let sun_direction: [f32; 3] = match self.sun {
-      WeatherSunSource::Authored => {
-        let down: [f32; 3] = [0.0, -1.0, 0.0];
-
-        normalise(to_array(&vector(
-          &a.sun_direction.unwrap_or(down),
-          &b.sun_direction.unwrap_or(down),
-        )))
-      }
-      // The engine passes the mixed `exec_time`, which runs backwards across midnight; the time of day it stands for
-      // is the same everywhere else.
-      WeatherSunSource::Dynamic => {
-        let (direction, blend) = WeatherSunSource::dynamic(time, scalar(a.sun_azimuth, b.sun_azimuth));
-
-        sun_color = sun_color.map(|channel| channel * blend);
-
-        direction
-      }
-      WeatherSunSource::Table(positions) => WeatherSunSource::table(positions, time),
-    };
+    let (sun_color, sun_direction) = self.mix_sun([a, b], time, f);
 
     Some(WeatherMix {
       ambient_color: modify_vector(
@@ -145,6 +125,33 @@ impl WeatherMixer<'_> {
       wind_velocity: scalar(a.wind_velocity, b.wind_velocity),
       weight: f,
     })
+  }
+
+  /// The sun a mix stands, its colour and the direction its light travels: the keyframes' own directions blended,
+  /// the astronomical sun, or Monolith's sun table.
+  fn mix_sun(&self, [a, b]: [&WeatherDescriptor; 2], time: f32, f: f32) -> ([f32; 3], [f32; 3]) {
+    let scalar = |a: f32, b: f32| (1.0 - f) * a + f * b;
+    let color: [f32; 3] = std::array::from_fn(|axis| scalar(a.sun_color[axis], b.sun_color[axis]));
+
+    match self.sun {
+      WeatherSunSource::Authored => {
+        let down: [f32; 3] = [0.0, -1.0, 0.0];
+        let [from, to] = [a.sun_direction.unwrap_or(down), b.sun_direction.unwrap_or(down)];
+
+        (
+          color,
+          normalise(std::array::from_fn(|axis| scalar(from[axis], to[axis]))),
+        )
+      }
+      // The engine passes the mixed `exec_time`, which runs backwards across midnight; the time of day it stands for
+      // is the same everywhere else.
+      WeatherSunSource::Dynamic => {
+        let (direction, blend) = WeatherSunSource::dynamic(time, scalar(a.sun_azimuth, b.sun_azimuth));
+
+        (color.map(|channel| channel * blend), direction)
+      }
+      WeatherSunSource::Table(positions) => (color, WeatherSunSource::table(positions, time)),
+    }
   }
 
   /// `SelectEnvs` on a forced start: the first keyframe at or after the time and the one before it, the last and the

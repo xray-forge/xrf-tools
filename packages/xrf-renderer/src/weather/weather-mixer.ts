@@ -4,18 +4,13 @@ import { Nullable } from "@xrf/types";
 import { ERendererEngine } from "#/contract/renderer-engine";
 import { TRendererVector } from "#/contract/renderer-vector";
 import { IRendererWeatherKeyframe } from "#/contract/weather/renderer-weather-keyframe";
-import { IDynamicSun, toDynamicSun } from "#/weather/dynamic-sun";
-import { toSunTableDirection } from "#/weather/sun-table-direction";
 import { IWeatherCycleMix } from "#/weather/weather-cycle-mix";
 import { toWeatherTimeOfDay, WEATHER_DAY_LENGTH } from "#/weather/weather-day";
 import { IWeatherMix } from "#/weather/weather-mix";
 import { IWeatherMixPoint } from "#/weather/weather-mix-point";
 import { IWeatherModifiersSum, toWeatherModifiersSum, WEATHER_MODIFIER_FLAGS } from "#/weather/weather-modifiers-sum";
 import { IWeatherPairMixer } from "#/weather/weather-pair-mixer";
-import { EWeatherSun } from "#/weather/weather-sun";
-
-/** Where an authored sun stands for a keyframe that stands none. */
-const DOWN: TRendererVector = [0, -1, 0];
+import { mixWeatherSun } from "#/weather/weather-sun-mix";
 
 /**
  * What a cycle is mixed from: `CEnvironment::lerp`, with the modifiers reaching the view.
@@ -96,28 +91,7 @@ export function mixWeatherPair(mixer: IWeatherPairMixer, point: IWeatherMixPoint
   );
   const fogDistance: number = toFogDistance(engine, scalar(a.fogDistance, b.fogDistance), farPlane);
 
-  let sunColor: TRendererVector = vector(a.sunColor, b.sunColor);
-  let sunDirection: TRendererVector;
-
-  switch (sun.kind) {
-    case EWeatherSun.AUTHORED:
-      sunDirection = normalise(vector(a.sunDirection ?? DOWN, b.sunDirection ?? DOWN));
-      break;
-
-    // The engine passes the mixed `exec_time`, which runs backwards across midnight; the time of day it stands for is
-    // the same everywhere else.
-    case EWeatherSun.DYNAMIC: {
-      const dynamic: IDynamicSun = toDynamicSun(time, scalar(a.sunAzimuth, b.sunAzimuth));
-
-      sunColor = [sunColor[0] * dynamic.blend, sunColor[1] * dynamic.blend, sunColor[2] * dynamic.blend];
-      sunDirection = dynamic.direction;
-      break;
-    }
-
-    case EWeatherSun.TABLE:
-      sunDirection = toSunTableDirection(sun.positions, time);
-      break;
-  }
+  const { color: sunColor, direction: sunDirection } = mixWeatherSun({ pair, sun, time, weight: f });
 
   return {
     ambientColor: modifyVector(
@@ -212,10 +186,4 @@ function toFogDistance(engine: ERendererEngine, distance: number, farPlane: numb
   }
 
   return distance < 1 ? 1 : Math.min(distance, farPlane - 10);
-}
-
-function normalise([x, y, z]: TRendererVector): TRendererVector {
-  const length: number = Math.hypot(x, y, z);
-
-  return length > 0 ? [x / length, y / length, z / length] : DOWN;
 }
