@@ -1,5 +1,5 @@
 import { inject, Injectable, OnDeactivation } from "@wirestate/core";
-import { BoundAction, RefObservable, runInAction } from "@wirestate/mobx";
+import { BoundAction, comparer, Computed, RefObservable, runInAction } from "@wirestate/mobx";
 import {
   ERendererWeatherTransition,
   IRendererWeather,
@@ -146,10 +146,11 @@ export class LevelWeatherService {
   }
 
   /** The keyframe on screen as one set by hand: the one set, or the weather's mix, which a first edit seeds it from. */
+  @Computed()
   public get shown(): ILevelManualWeather {
-    const current: Maybe<IRendererWeatherKeyframe> = this.report?.current;
+    const current: Maybe<IRendererWeatherKeyframe> = this.isManual ? undefined : this.report?.current;
 
-    return !this.isManual && current ? toLevelManualWeather(current) : (this.manual ?? DEFAULT_LEVEL_MANUAL_WEATHER);
+    return current ? toLevelManualWeather(current) : (this.manual ?? DEFAULT_LEVEL_MANUAL_WEATHER);
   }
 
   /** Whether the keyframe set by hand lights the level, by choice or because no cycle plays. */
@@ -336,11 +337,14 @@ export class LevelWeatherService {
   }
 
   /**
-   * @param report - Where the renderer's weather stood when it reported, or null while none plays.
+   * @param report - Where the renderer's weather stood when it reported, or null while none plays; one the same as the
+   *   last is dropped, so a paused clock redraws nothing that reads it.
    */
   @BoundAction()
   public noteReport(report: Nullable<IRendererWeatherReport>): void {
-    this.report = report;
+    if (!comparer.structural(report, this.report)) {
+      this.report = report;
+    }
 
     if (report && report.time !== this.time) {
       this.time = report.time;

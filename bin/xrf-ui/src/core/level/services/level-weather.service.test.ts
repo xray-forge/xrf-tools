@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it } from "@jest/globals";
+import { autorun } from "@wirestate/mobx";
 import { ERendererEngine, ERendererTextureEncoding, ERendererWeatherTransition, IRendererWeather } from "@xrf/renderer";
 import { Nullable, Optional } from "@xrf/types";
 
@@ -7,6 +8,7 @@ import { EXrayEngine } from "@/core/ipc/types/xrf-engine-target";
 import { WeatherCycleId } from "@/core/ipc/types/xrf-environment";
 import {
   DEFAULT_LEVEL_MANUAL_WEATHER,
+  ILevelManualWeather,
   listLevelManualWeatherTextures,
   toLevelManualWeather,
 } from "@/core/level/lib/weather/level-manual-weather";
@@ -269,6 +271,36 @@ describe("LevelWeatherService", () => {
 
     expect(fetched).toContain("other/sky");
     expect(fetched).not.toContain(`${SELECTED.sessionId}/`);
+  });
+
+  // The renderer reports four times a second, paused or not, and the level's toolbar is drawn from the keyframe shown.
+  it("shows the same keyframe for a report the same as the last, and reads no report lit by hand", async () => {
+    setMockInvokeResponses({
+      ["plugin:levels|read_level_weather"]: mockSessionResponse(mockLevelWeatherDescription()),
+      ...RESOLVE,
+    });
+
+    const service: LevelWeatherService = createService();
+
+    await service.open(SELECTED);
+
+    const shown: Array<ILevelManualWeather> = [];
+    const stop: () => void = autorun(() => void shown.push(service.shown));
+
+    service.noteReport(mockRendererWeatherReport());
+    service.noteReport(mockRendererWeatherReport());
+
+    expect(shown).toHaveLength(2);
+
+    service.setSource(ELevelWeatherSource.MANUAL);
+    await settle();
+
+    const seen: number = shown.length;
+
+    service.noteReport(mockRendererWeatherReport({ time: 50_000 }));
+    stop();
+
+    expect(shown).toHaveLength(seen);
   });
 
   it("hears the clock from the renderer, and seeks anew every time", () => {
