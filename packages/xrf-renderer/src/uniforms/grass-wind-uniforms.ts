@@ -1,3 +1,4 @@
+import { mix } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 import { renderGroup, uniform } from "three/tsl";
 import { UniformNode, Vector3, Vector4 } from "three/webgpu";
@@ -100,14 +101,4 @@ function mixSwing(wind: IRendererGrassWind, out: IRendererGrassSwing): IRenderer
   out.speed = mix(normal.speed, fast.speed, strength);
 
   return out;
-}
-
-/**
- * @param from - The value at none.
- * @param to - The value at one.
- * @param share - How far between them.
- * @returns The value that far between.
- */
-function mix(from: number, to: number, share: number): number {
-  return from + (to - from) * share;
 }

@@ -1,4 +1,4 @@
-import { EPS_L, saturate } from "@xrf/math";
+import { EPS_L, mix, normalise, saturate } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 
 import { IRendererClouds } from "#/contract/renderer-clouds";
@@ -33,7 +33,7 @@ export function toFadedLighting(step: IWeatherFadeStep): IRendererLighting {
   }
 
   function lerp(a: number, b: number): number {
-    return a + (b - a) * t;
+    return mix(a, b, t);
   }
 
   function triple(a: TRendererVector, b: TRendererVector): TRendererVector {
@@ -146,13 +146,9 @@ function fadeSky(from: IRendererSky, to: IRendererSky, t: number): IRendererSky 
   return {
     blend: skies.blend,
     clouds,
-    color: [
-      from.color[0] + (to.color[0] - from.color[0]) * t,
-      from.color[1] + (to.color[1] - from.color[1]) * t,
-      from.color[2] + (to.color[2] - from.color[2]) * t,
-    ],
+    color: [mix(from.color[0], to.color[0], t), mix(from.color[1], to.color[1], t), mix(from.color[2], to.color[2], t)],
     environments: environments.pair,
-    rotation: from.rotation + (to.rotation - from.rotation) * t,
+    rotation: mix(from.rotation, to.rotation, t),
     textures: skies.pair,
   };
 }
@@ -173,8 +169,8 @@ function fadeClouds(from: IRendererSky, to: IRendererSky, progress: IWeatherWalk
   const [a, b] = [from.clouds.color, to.clouds.color];
 
   return {
-    color: [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t, a[3] + (b[3] - a[3]) * t],
-    rotation: from.clouds.rotation + (to.clouds.rotation - from.clouds.rotation) * t,
+    color: [mix(a[0], b[0], t), mix(a[1], b[1], t), mix(a[2], b[2], t), mix(a[3], b[3], t)],
+    rotation: mix(from.clouds.rotation, to.clouds.rotation, t),
     textures: textures.pair,
   };
 }
@@ -194,7 +190,7 @@ function walk<T>(from: IWeatherSlots<T>, to: IWeatherSlots<T>, progress: IWeathe
   const { t, isWalked } = progress;
 
   if (!isWalked) {
-    return { blend: from.blend + (to.blend - from.blend) * t, pair: to.pair };
+    return { blend: mix(from.blend, to.blend, t), pair: to.pair };
   }
 
   const phase: number = t * 3;
@@ -202,22 +198,16 @@ function walk<T>(from: IWeatherSlots<T>, to: IWeatherSlots<T>, progress: IWeathe
   const toHeavier: number = to.blend >= 0.5 ? 1 : 0;
 
   if (phase < 1) {
-    return { blend: from.blend + (fromHeavier - from.blend) * phase, pair: from.pair };
+    return { blend: mix(from.blend, fromHeavier, phase), pair: from.pair };
   }
 
   if (phase < 2) {
     return { blend: phase - 1, pair: [from.pair[fromHeavier], to.pair[toHeavier]] };
   }
 
-  return { blend: toHeavier + (to.blend - toHeavier) * (phase - 2), pair: to.pair };
+  return { blend: mix(toHeavier, to.blend, phase - 2), pair: to.pair };
 }
 
 function isSamePair<T>(a: readonly [T, T], b: readonly [T, T]): boolean {
   return a[0] === b[0] && a[1] === b[1];
-}
-
-function normalise([x, y, z]: TRendererVector): TRendererVector {
-  const length: number = Math.hypot(x, y, z) || 1;
-
-  return [x / length, y / length, z / length];
 }

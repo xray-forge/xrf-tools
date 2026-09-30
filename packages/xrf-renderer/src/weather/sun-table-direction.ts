@@ -1,4 +1,4 @@
-import { toDirection, toRadians } from "@xrf/math";
+import { mix, toDirection, toRadians } from "@xrf/math";
 import { Maybe } from "@xrf/types";
 
 import { TRendererVector } from "#/contract/renderer-vector";
@@ -21,8 +21,8 @@ export function toSunTableDirection(positions: ReadonlyArray<IRendererSunPositio
 
   // `sun_altitude` is the heading and `sun_longitude` the pitch, whatever the names say.
   return toDirection({
-    heading: toRadians(from.altitude + (to.altitude - from.altitude) * weight),
-    pitch: toRadians(from.longitude + (to.longitude - from.longitude) * weight),
+    heading: toRadians(mix(from.altitude, to.altitude, weight)),
+    pitch: toRadians(mix(from.longitude, to.longitude, weight)),
   });
 }
 

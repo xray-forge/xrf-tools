@@ -1,3 +1,4 @@
+import { addVectors, normalise, scaleVector, toRadians } from "@xrf/math";
 import {
   ERendererCameraController,
   ERendererDraw,
@@ -134,21 +135,15 @@ export function toVisualSkeleton(views: IVisualModelViews): Nullable<IRendererSk
  */
 export function toVisualCamera(fit: IVisualCameraFit, config: IVisualPreviewSceneConfig): IRendererOrbitCamera {
   const { cameraFieldOfView, cameraFitMargin, cameraDirection } = config;
-  const distance: number = (fit.radius / Math.sin((cameraFieldOfView * Math.PI) / 360)) * cameraFitMargin;
-  const length: number = Math.hypot(...cameraDirection) || 1;
-  const [x, y, z] = fit.center;
+  const distance: number = (fit.radius / Math.sin(toRadians(cameraFieldOfView / 2))) * cameraFitMargin;
 
   return {
     far: distance * 100,
     fieldOfView: cameraFieldOfView,
     kind: ERendererCameraController.ORBIT,
     near: Math.max(distance / 1000, 0.0001),
-    position: [
-      x + (cameraDirection[0] / length) * distance,
-      y + (cameraDirection[1] / length) * distance,
-      z + (cameraDirection[2] / length) * distance,
-    ],
-    target: [x, y, z],
+    position: addVectors(fit.center, scaleVector(normalise(cameraDirection), distance)),
+    target: [...fit.center],
   };
 }
 

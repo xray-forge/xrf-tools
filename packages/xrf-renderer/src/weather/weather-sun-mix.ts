@@ -1,3 +1,5 @@
+import { normalise } from "@xrf/math";
+
 import { TRendererVector } from "#/contract/renderer-vector";
 import { IDynamicSun, toDynamicSun } from "#/weather/dynamic-sun";
 import { toSunTableDirection } from "#/weather/sun-table-direction";
@@ -27,7 +29,7 @@ export function mixWeatherSun(input: IWeatherSunMixInput): IWeatherMixedSun {
 
   switch (sun.kind) {
     case EWeatherSun.AUTHORED:
-      return { color, direction: normalise(lerp(a.sunDirection ?? DOWN, b.sunDirection ?? DOWN)) };
+      return { color, direction: toTravelled(lerp(a.sunDirection ?? DOWN, b.sunDirection ?? DOWN)) };
 
     // The engine passes the mixed `exec_time`, which runs backwards across midnight; the time of day it stands for is
     // the same everywhere else.
@@ -45,8 +47,7 @@ export function mixWeatherSun(input: IWeatherSunMixInput): IWeatherMixedSun {
   }
 }
 
-function normalise([x, y, z]: TRendererVector): TRendererVector {
-  const length: number = Math.hypot(x, y, z);
-
-  return length > 0 ? [x / length, y / length, z / length] : DOWN;
+/** The way the blended sun's light travels, straight down for a pair that cancels out. */
+function toTravelled(direction: TRendererVector): TRendererVector {
+  return Math.hypot(...direction) > 0 ? normalise(direction) : DOWN;
 }

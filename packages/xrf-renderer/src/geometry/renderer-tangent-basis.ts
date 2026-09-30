@@ -1,3 +1,5 @@
+import { crossProduct, dotProduct, normalise } from "@xrf/math";
+
 import { IRendererGeometry } from "#/contract/scene/renderer-geometry";
 
 /** Three components of a vector. */
@@ -61,20 +63,20 @@ export function withRendererTangentBasis(geometry: IRendererGeometry): IRenderer
   for (let vertex: number = 0; vertex < count; vertex += 1) {
     const n: TVector = toVector((axis: number) => normal[vertex * 3 + axis]);
     const sum: TVector = toVector((axis: number) => tangentSum[vertex * 3 + axis]);
-    const along: number = dot(n, sum);
+    const along: number = dotProduct(n, sum);
     let t: TVector = toVector((axis: number) => sum[axis] - n[axis] * along);
 
-    if (dot(t, t) < DEGENERATE) {
+    if (dotProduct(t, t) < DEGENERATE) {
       // Nothing accumulated here, or what did cancelled out, so any direction in the surface will do.
-      t = cross(Math.abs(n[0]) < 0.9 ? X_AXIS : Y_AXIS, n);
+      t = crossProduct(Math.abs(n[0]) < 0.9 ? X_AXIS : Y_AXIS, n);
     }
 
     t = normalise(t);
 
-    let b: TVector = cross(n, t);
+    let b: TVector = crossProduct(n, t);
 
     if (
-      dot(
+      dotProduct(
         b,
         toVector((axis: number) => binormalSum[vertex * 3 + axis])
       ) < 0
@@ -91,18 +93,4 @@ export function withRendererTangentBasis(geometry: IRendererGeometry): IRenderer
 
 function toVector(component: (axis: number) => number): TVector {
   return [component(0), component(1), component(2)];
-}
-
-function dot(a: TVector, b: TVector): number {
-  return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
-}
-
-function cross(a: TVector, b: TVector): TVector {
-  return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
-}
-
-function normalise(vector: TVector): TVector {
-  const length: number = Math.hypot(vector[0], vector[1], vector[2]) || 1;
-
-  return [vector[0] / length, vector[1] / length, vector[2] / length];
 }

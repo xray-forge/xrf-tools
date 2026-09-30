@@ -1,3 +1,4 @@
+import { mix } from "@xrf/math";
 import { renderGroup, storage, uniform } from "three/tsl";
 import { Node, StorageBufferAttribute, UniformNode, Vector2 } from "three/webgpu";
 
@@ -50,9 +51,9 @@ export class ExposureUniforms {
   public apply(settings: IRendererExposureSettings): void {
     const { amount, middleGray, lowLuminance } = settings;
 
-    this.target.value = 1 + (middleGray - 1) * amount;
+    this.target.value = mix(1, middleGray, amount);
     this.weight.value = amount;
-    this.floor.value = 1 + (lowLuminance - 1) * amount;
+    this.floor.value = mix(1, lowLuminance, amount);
   }
 
   /**

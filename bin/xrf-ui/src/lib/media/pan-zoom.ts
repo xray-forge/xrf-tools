@@ -1,4 +1,4 @@
-import { clamp } from "@xrf/math";
+import { clamp, mix } from "@xrf/math";
 
 /** A point, in whichever space the function taking it names. */
 export interface IPanZoomPoint {
@@ -217,8 +217,8 @@ export function zoomAround(camera: IPanZoomCamera, anchor: IPanZoomPoint, nextSc
 
   return {
     center: {
-      x: anchor.x + (camera.center.x - anchor.x) * ratio,
-      y: anchor.y + (camera.center.y - anchor.y) * ratio,
+      x: mix(anchor.x, camera.center.x, ratio),
+      y: mix(anchor.y, camera.center.y, ratio),
     },
     scale,
   };

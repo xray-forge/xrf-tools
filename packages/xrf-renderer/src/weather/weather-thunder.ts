@@ -1,4 +1,4 @@
-import { clamp, EPS_L, saturate, toDirection, toHeadingPitch, wrap } from "@xrf/math";
+import { addVectors, clamp, EPS_L, mix, saturate, scaleVector, toDirection, toHeadingPitch, wrap } from "@xrf/math";
 import { Maybe, Nullable } from "@xrf/types";
 
 import { TRendererVector } from "#/contract/renderer-vector";
@@ -132,7 +132,7 @@ export class WeatherThunder {
     );
     const distance: number = this.between(far * settings.minDistance, far * MAX_DISTANCE);
     const toward: TRendererVector = toDirection({ heading: longitude, pitch: altitude });
-    const position: TRendererVector = add(view, scale(toward, distance));
+    const position: TRendererVector = addVectors(view, scaleVector(toward, distance));
     const deviation: TRendererVector = [
       this.between(-settings.tilt, settings.tilt),
       this.between(0, Math.PI * 2),
@@ -140,7 +140,7 @@ export class WeatherThunder {
     ];
     // `setXYZi`, which is `setHPB(-y, -x, -z)`; the light falls down the matrix's second axis.
     const [i, j, k] = toRotationRows(-deviation[1], -deviation[0], -deviation[2]);
-    const down: TRendererVector = scale(j, -1);
+    const down: TRendererVector = scaleVector(j, -1);
     const size: number = toGround(position, down, far * 2);
 
     this.next =
@@ -149,10 +149,10 @@ export class WeatherThunder {
         : now + period + this.between(-period * 0.3, period * 0.3);
 
     return {
-      axes: [scale(i, size), scale(j, size), scale(k, size)],
+      axes: [scaleVector(i, size), scaleVector(j, size), scaleVector(k, size)],
       bolt,
-      center: add(position, scale(down, size * 0.5)),
-      direction: scale(toward, -1),
+      center: addVectors(position, scaleVector(down, size * 0.5)),
+      direction: scaleVector(toward, -1),
       life,
       position,
       size,
@@ -182,7 +182,7 @@ export class WeatherThunder {
       direction: strike.direction,
       strike: {
         // The model's `z` is negated into renderer space as its mesh is, so its third axis turns about too.
-        axes: [toRenderer(i), toRenderer(j), scale(toRenderer(k), -1)],
+        axes: [toRenderer(i), toRenderer(j), scaleVector(toRenderer(k), -1)],
         center: {
           extent: [bolt.center.radius[0] * size, bolt.center.radius[1] * size],
           opacity,
@@ -202,7 +202,7 @@ export class WeatherThunder {
 
   /** `Random.randF(min, max)`. */
   private between(min: number, max: number): number {
-    return min + (max - min) * this.random();
+    return mix(min, max, this.random());
   }
 
   /** The bolts of the collection the weather names now that the game has; none for no collection. */
@@ -248,12 +248,4 @@ function toGround(from: TRendererVector, down: TRendererVector, range: number): 
 /** Engine `z` negated into renderer space. */
 function toRenderer([x, y, z]: TRendererVector): TRendererVector {
   return [x, y, -z];
-}
-
-function add(a: TRendererVector, b: TRendererVector): TRendererVector {
-  return [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
-}
-
-function scale(a: TRendererVector, by: number): TRendererVector {
-  return [a[0] * by, a[1] * by, a[2] * by];
 }

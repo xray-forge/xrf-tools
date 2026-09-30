@@ -1,8 +1,7 @@
-import { EPS } from "@xrf/math";
+import { EPS, normalise } from "@xrf/math";
 
 import { TRendererColor } from "#/contract/renderer-color";
 import { IRendererLighting } from "#/contract/renderer-lighting";
-import { TRendererVector } from "#/contract/renderer-vector";
 import { IBaseLightingConstants } from "#/lighting/base-lighting-constants";
 
 /** `ps_r2_gloss_factor` (`Layers/xrRender/xrRender_console.cpp`). */
@@ -67,10 +66,4 @@ function toFogParams(distance: number, density: number): [number, number] {
 
 function scale(color: TRendererColor, by: (channel: number) => number): TRendererColor {
   return [by(color[0]), by(color[1]), by(color[2])];
-}
-
-function normalise(vector: TRendererVector): TRendererVector {
-  const length: number = Math.hypot(vector[0], vector[1], vector[2]) || 1;
-
-  return [vector[0] / length, vector[1] / length, vector[2] / length];
 }
