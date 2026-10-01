@@ -1,6 +1,7 @@
 import { Nullable } from "@xrf/types";
 import { Color, LinearSRGBColorSpace, Texture } from "three/webgpu";
 
+import { drawCleared } from "#/pass/cleared-draw";
 import { toCombinePassFragment } from "#/pass/combine-pass.tsl";
 import { FullScreenDraw } from "#/pass/full-screen-draw";
 import { createQuadMaterial } from "#/pass/quad-material";
@@ -64,9 +65,7 @@ export class CombinePass implements IRendererPass {
     // The hex is bytes the page shows, so it reaches the canvas as written rather than decoded from srgb.
     this.backdrop.setHex(settings.backdrop ?? 0, LinearSRGBColorSpace);
     renderer.setClearColor(this.backdrop, settings.backdrop === null ? 0 : 1);
-    renderer.setRenderTarget(this.targets.scene);
-    renderer.clear(true, false, false);
-    this.draw.render(renderer);
+    drawCleared(renderer, true, false, () => this.draw.render(renderer));
   }
 
   public dispose(): void {

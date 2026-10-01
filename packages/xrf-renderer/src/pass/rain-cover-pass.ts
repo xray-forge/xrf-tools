@@ -1,9 +1,12 @@
 import { Nullable } from "@xrf/types";
+import { Object3D, Scene } from "three/webgpu";
 
+import { drawCleared } from "#/pass/cleared-draw";
+import { drawTogether } from "#/pass/drawn-together";
 import { IRendererFrame } from "#/pass/renderer-frame";
 import { IRendererPass } from "#/pass/renderer-pass";
 import { IRendererPipelines } from "#/pass/renderer-pipelines";
-import { drawUnsorted } from "#/pass/unsorted-draw";
+import { createSceneRoot } from "#/scene/object/scene-mesh";
 import { StaticCull } from "#/scene/static/static-cull";
 import { IStaticShadowCasters } from "#/scene/static/static-shadow-casters";
 import { RainUniforms } from "#/uniforms/rain-uniforms";
@@ -20,6 +23,9 @@ export class RainCoverPass implements IRendererPass {
   private readonly casters: IStaticShadowCasters;
   private readonly cull: StaticCull;
   private readonly rain: RainUniforms;
+  /** What the cover is drawn from in one render call that clears it too, and what it draws. */
+  private readonly holder: Scene = createSceneRoot();
+  private readonly parts: Array<Object3D> = [];
   /** The casters' changes the cover was drawn at, or null before it was drawn at all. */
   private drawnVersion: Nullable<number> = null;
 
@@ -55,15 +61,18 @@ export class RainCoverPass implements IRendererPass {
     }
 
     this.drawnVersion = this.casters.shadowChanges.version;
-    renderer.setRenderTarget(this.rain.coverTarget);
-    renderer.clear(false, true, false);
-    drawUnsorted(renderer, () => {
-      renderer.render(this.casters.shadowScenes[STATIC_RAIN_VIEW], cover.camera);
 
-      if (this.casters.plainCasters.show(cover.planes)) {
-        renderer.render(this.casters.plainCasters.scene, cover.camera);
-      }
-    });
+    const { parts } = this;
+
+    parts.length = 0;
+    parts.push(this.casters.shadowScenes[STATIC_RAIN_VIEW]);
+
+    if (this.casters.plainCasters.show(cover.planes)) {
+      parts.push(this.casters.plainCasters.scene);
+    }
+
+    renderer.setRenderTarget(this.rain.coverTarget);
+    drawCleared(renderer, false, true, () => drawTogether(renderer, this.holder, parts, cover.camera));
     this.rain.commitCover();
   }
 

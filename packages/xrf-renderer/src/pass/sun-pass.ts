@@ -1,5 +1,6 @@
 import { RenderTarget } from "three/webgpu";
 
+import { drawCleared } from "#/pass/cleared-draw";
 import { FullScreenDraw } from "#/pass/full-screen-draw";
 import { createQuadMaterial } from "#/pass/quad-material";
 import { IRendererFrame } from "#/pass/renderer-frame";
@@ -15,11 +16,9 @@ import { RendererUniforms } from "#/uniforms/renderer-uniforms";
 export class SunPass implements IRendererPass {
   public readonly name: string = "sun";
 
-  private readonly targets: RendererTargets;
   private readonly draw: FullScreenDraw;
 
   public constructor(targets: RendererTargets, uniforms: RendererUniforms) {
-    this.targets = targets;
     this.draw = new FullScreenDraw(
       createQuadMaterial(
         toSunPassFragment(
@@ -38,9 +37,7 @@ export class SunPass implements IRendererPass {
 
   public render({ renderer }: IRendererFrame): void {
     renderer.setClearColor(0x000000, 0);
-    renderer.setRenderTarget(this.targets.light);
-    renderer.clear(true, false, false);
-    this.draw.render(renderer);
+    drawCleared(renderer, true, false, () => this.draw.render(renderer));
   }
 
   public dispose(): void {

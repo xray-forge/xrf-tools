@@ -1,11 +1,13 @@
 import { Nullable } from "@xrf/types";
-import { RenderTarget } from "three/webgpu";
+import { Object3D, RenderTarget, Scene } from "three/webgpu";
 
+import { drawCleared } from "#/pass/cleared-draw";
+import { drawTogether } from "#/pass/drawn-together";
 import { IRendererFrame } from "#/pass/renderer-frame";
 import { IRendererPass } from "#/pass/renderer-pass";
 import { IRendererPipelines } from "#/pass/renderer-pipelines";
 import { RendererTargets } from "#/pass/renderer-targets";
-import { drawUnsorted } from "#/pass/unsorted-draw";
+import { createSceneRoot } from "#/scene/object/scene-mesh";
 import { EShadowCasterMotion } from "#/scene/static/shadow-caster-motion";
 import { StaticCull } from "#/scene/static/static-cull";
 import { IStaticShadowCasters } from "#/scene/static/static-shadow-casters";
@@ -15,8 +17,9 @@ import { SunCascade } from "#/visibility/sun-cascade";
 
 /**
  * One cascade of the sun's shadow: its casters culled against its box, the cells it reaches shown, then drawn into
- * its map, depth alone. Drawn again only where the box moved or anything it casts from changed: a still camera over a
- * still level pays nothing for its shadow. In the frame only while shadows draw that many cascades.
+ * its map, depth alone, in one render call that clears it too. Drawn again only where the box moved or anything it
+ * casts from changed: a still camera over a still level pays nothing for its shadow. In the frame only while shadows
+ * draw that many cascades.
  */
 export class ShadowPass implements IRendererPass {
   public readonly name: string;
@@ -27,6 +30,9 @@ export class ShadowPass implements IRendererPass {
   private readonly cull: StaticCull;
   private readonly shadows: ShadowUniforms;
   private readonly wind: TreeWindUniforms;
+  /** What the map is drawn from in one render call, and what it draws, an array reused by every draw. */
+  private readonly holder: Scene = createSceneRoot();
+  private readonly parts: Array<Object3D> = [];
   /** The shadow changes' version its map was drawn at, or null before it was drawn at all. */
   private drawnVersion: Nullable<number> = null;
   /** Frames it has been in, which its staggered rate is counted by. */
@@ -90,15 +96,18 @@ export class ShadowPass implements IRendererPass {
 
     this.drawnVersion = this.casters.shadowChanges.version;
     this.shadows.commit(this.view);
-    renderer.setRenderTarget(this.target);
-    renderer.clear(false, true, false);
-    drawUnsorted(renderer, () => {
-      renderer.render(this.casters.shadowScenes[this.view], cascade.camera);
 
-      if (this.casters.plainCasters.show(cascade.planes)) {
-        renderer.render(this.casters.plainCasters.scene, cascade.camera);
-      }
-    });
+    const { parts } = this;
+
+    parts.length = 0;
+    parts.push(this.casters.shadowScenes[this.view]);
+
+    if (this.casters.plainCasters.show(cascade.planes)) {
+      parts.push(this.casters.plainCasters.scene);
+    }
+
+    renderer.setRenderTarget(this.target);
+    drawCleared(renderer, false, true, () => drawTogether(renderer, this.holder, parts, cascade.camera));
   }
 
   /** The fastest a caster in the cascade's box moves, found again once the box or what casts changed. */

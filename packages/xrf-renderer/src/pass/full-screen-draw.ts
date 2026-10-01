@@ -4,6 +4,7 @@ import {
   Float32BufferAttribute,
   Mesh,
   NodeMaterial,
+  Object3D,
   OrthographicCamera,
   RenderTarget,
   WebGPURenderer,
@@ -44,6 +45,11 @@ export class FullScreenDraw {
     this.target = target;
     this.mesh = new Mesh(geometry, material);
     this.mesh.frustumCulled = false;
+  }
+
+  /** The triangle as an object, for a pass drawing it among others in one call: its corners ignore the camera. */
+  public get object(): Object3D {
+    return this.mesh;
   }
 
   /**
