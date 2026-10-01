@@ -3,12 +3,20 @@ import { WebGPURenderer } from "three/webgpu";
 
 import { FrameCommands } from "#/internals/frame-commands";
 
-/** A pass, its methods on its prototype as WebGPU's are. */
+interface INamed {
+  name: string;
+}
+
+/** A pass, its methods on its prototype as WebGPU's are, logging into its encoder. */
 class FakePass {
-  public isEnded: boolean = false;
+  public constructor(private readonly log: Array<string>) {}
+
+  public draw(count: number): void {
+    this.log.push(`draw ${count}`);
+  }
 
   public end(): void {
-    this.isEnded = true;
+    this.log.push("end");
   }
 }
 
@@ -21,13 +29,23 @@ class FakeEncoder {
   public beginRenderPass(): FakePass {
     this.log.push("render");
 
-    return new FakePass();
+    return new FakePass(this.log);
   }
 
   public beginComputePass(): FakePass {
     this.log.push("compute");
 
-    return new FakePass();
+    return new FakePass(this.log);
+  }
+
+  public copyBufferToBuffer(
+    source: INamed,
+    sourceOffset: number,
+    target: INamed,
+    targetOffset: number,
+    size: number
+  ): void {
+    this.log.push(`copy ${source.name}@${sourceOffset} ${target.name}@${targetOffset} ${size}`);
   }
 
   public finish(): { from: FakeEncoder } {
@@ -35,58 +53,72 @@ class FakeEncoder {
   }
 }
 
-interface IFakeDevice {
-  encoders: Array<FakeEncoder>;
-  /** Each submit's command buffers, by the encoder each was finished from, and each write, in order. */
+interface IFake {
+  /** Each submit, as each command buffer's encoder logged it, and each write the queue took, in order. */
   timeline: Array<string>;
   device: {
     createCommandEncoder(descriptor?: { label?: string }): FakeEncoder;
+    createBuffer(descriptor: { label: string; size: number }): INamed & { destroy(): void };
     queue: {
       submit(buffers: Array<{ from: FakeEncoder }>): void;
-      writeBuffer(buffer: object): void;
+      writeBuffer(buffer: INamed, offset: number, data: BufferSource, dataOffset?: number, size?: number): void;
+      writeTexture(): void;
+      copyExternalImageToTexture(): void;
       onSubmittedWorkDone(): Promise<void>;
     };
   };
 }
 
-function createDevice(): { fake: IFakeDevice; commands: FrameCommands } {
-  const encoders: Array<FakeEncoder> = [];
+function createDevice(): { fake: IFake; commands: FrameCommands } {
   const timeline: Array<string> = [];
-  const device: IFakeDevice["device"] = {
-    createCommandEncoder: (descriptor?: { label?: string }): FakeEncoder => {
-      const encoder: FakeEncoder = new FakeEncoder(descriptor?.label ?? "");
-
-      encoders.push(encoder);
-
-      return encoder;
-    },
+  const device: IFake["device"] = {
+    createBuffer: (descriptor: { label: string; size: number }) => ({ destroy: () => {}, name: descriptor.label }),
+    createCommandEncoder: (descriptor?: { label?: string }): FakeEncoder => new FakeEncoder(descriptor?.label ?? ""),
     queue: {
+      copyExternalImageToTexture: (): void => {
+        timeline.push("image");
+      },
       onSubmittedWorkDone: (): Promise<void> => Promise.resolve(),
       submit: (buffers: Array<{ from: FakeEncoder }>): void => {
-        timeline.push(`submit ${buffers.map((it) => `${it.from.label}[${it.from.log.join(",")}]`).join(" ")}`);
+        timeline.push(`submit ${buffers.map((it) => `${it.from.label}[${it.from.log.join(", ")}]`).join(" ")}`);
       },
-      writeBuffer: (buffer: object): void => {
-        timeline.push(`write ${(buffer as { name: string }).name}`);
+      // The bytes sent: `dataOffset` and `size` count a typed array's elements.
+      writeBuffer: (
+        buffer: INamed,
+        offset: number,
+        data: BufferSource,
+        dataOffset: number = 0,
+        size?: number
+      ): void => {
+        const element: number = (data as { BYTES_PER_ELEMENT?: number }).BYTES_PER_ELEMENT ?? 1;
+
+        timeline.push(
+          `write ${buffer.name}@${offset} ${size === undefined ? data.byteLength - dataOffset * element : size * element}`
+        );
+      },
+      writeTexture: (): void => {
+        timeline.push("texture");
       },
     },
   };
   const renderer = { backend: { device } } as unknown as WebGPURenderer;
 
-  return { commands: FrameCommands.adopt(renderer), fake: { device, encoders, timeline } };
+  return { commands: FrameCommands.adopt(renderer), fake: { device, timeline } };
 }
 
-/** Records one render into its own encoder as three does: an encoder, a pass, its uniforms written, finished. */
-function render(fake: IFakeDevice, context: number, writes: Array<object> = []): void {
+/** Records one render as three does: an encoder, a pass, the uniforms it reads written, a draw, finished, submitted. */
+function render(fake: IFake, context: number, writes: Array<INamed> = []): void {
   const encoder: FakeEncoder = fake.device.createCommandEncoder({ label: `renderContext_${context}` });
   const pass: FakePass = encoder.beginRenderPass();
 
-  writes.forEach((buffer: object) => fake.device.queue.writeBuffer(buffer));
+  writes.forEach((buffer: INamed) => fake.device.queue.writeBuffer(buffer, 0, new Float32Array(4)));
+  pass.draw(context);
   pass.end();
-  fake.device.queue.submit([encoder.finish() as { from: FakeEncoder }]);
+  fake.device.queue.submit([encoder.finish()]);
 }
 
 describe("FrameCommands", () => {
-  // Each encoder, command buffer and pass is freed by the browser only at the worker's next major collection.
+  // Each submit is a cost of the GPU process's, and each encoder and command buffer an object it frees at a collection.
   it("records a frame's renders and computes into one encoder, submitted once as the frame ends", () => {
     const { commands, fake } = createDevice();
 
@@ -97,21 +129,20 @@ describe("FrameCommands", () => {
     const compute: FakeEncoder = fake.device.createCommandEncoder({ label: "computeGroup_7" });
 
     compute.beginComputePass().end();
-    fake.device.queue.submit([compute.finish() as { from: FakeEncoder }]);
+    fake.device.queue.submit([compute.finish()]);
 
     expect(fake.timeline).toEqual([]);
 
     commands.end();
 
-    expect(fake.encoders).toHaveLength(1);
-    expect(fake.timeline).toEqual(["submit frame[render,render,compute]"]);
+    expect(fake.timeline).toEqual(["submit frame[render, draw 1, end, render, draw 2, end, compute, end]"]);
     expect(commands.segments).toBe(1);
   });
 
-  // Three shares a render context's camera uniforms between its renders: the second's write would reach the first.
-  it("starts another segment where a render context is drawn again, so each reads its own uniforms", () => {
+  // Three shares a render context's camera uniforms between its renders: a queue write would reach the earlier one.
+  it("writes a buffer written once a pass was recorded by a copy, in front of the pass recording as it was written", () => {
     const { commands, fake } = createDevice();
-    const camera = { name: "camera" };
+    const camera: INamed = { name: "camera" };
 
     commands.begin();
     render(fake, 1, [camera]);
@@ -120,79 +151,86 @@ describe("FrameCommands", () => {
     commands.end();
 
     expect(fake.timeline).toEqual([
-      "write camera",
-      "submit frame[render,render]",
-      "write camera",
-      "submit frame[render]",
+      "write camera@0 16",
+      "write frame staging@0 16",
+      "submit frame[render, draw 1, end, render, draw 2, end, copy frame staging@0 camera@0 16, render, draw 1, end]",
     ]);
-    expect(commands.conflicts).toBe(0);
+    expect(commands).toMatchObject({ copies: 1, segments: 1 });
   });
 
-  it("submits what was recorded before a buffer read since is written again between renders", () => {
+  it("copies a buffer written between passes at once, in front of the next", () => {
     const { commands, fake } = createDevice();
-    const lights = { name: "lights" };
+    const lights: INamed = { name: "lights" };
 
     commands.begin();
-    fake.device.queue.writeBuffer(lights);
+    fake.device.queue.writeBuffer(lights, 8, new Uint32Array(2));
     render(fake, 1);
-    fake.device.queue.writeBuffer(lights);
+    fake.device.queue.writeBuffer(lights, 8, new Uint32Array(4), 1, 2);
     render(fake, 2);
     commands.end();
 
-    expect(fake.timeline).toEqual(["write lights", "submit frame[render]", "write lights", "submit frame[render]"]);
+    expect(fake.timeline).toEqual([
+      "write lights@8 8",
+      "write frame staging@0 8",
+      "submit frame[render, draw 1, end, copy frame staging@0 lights@8 8, render, draw 2, end]",
+    ]);
   });
 
-  it("counts a write it cannot order: again in a pass, after a pass of the segment read the first", () => {
+  it("leaves an encoder made inside one of its passes three's own, its writes sent at once ahead of it", () => {
     const { commands, fake } = createDevice();
-    const shared = { name: "shared" };
+    const flip: INamed = { name: "flip" };
 
     commands.begin();
-    render(fake, 1, [shared]);
-    render(fake, 2, [shared]);
-    commands.end();
+    render(fake, 1);
 
-    expect(commands.conflicts).toBe(1);
-  });
-
-  it("leaves an encoder made inside one of its passes three's own, submitted as three asks", () => {
-    const { commands, fake } = createDevice();
-
-    commands.begin();
-
-    const encoder: FakeEncoder = fake.device.createCommandEncoder({ label: "renderContext_1" });
+    const encoder: FakeEncoder = fake.device.createCommandEncoder({ label: "renderContext_2" });
     const pass: FakePass = encoder.beginRenderPass();
     const mipmaps: FakeEncoder = fake.device.createCommandEncoder({ label: "mipmaps" });
 
+    fake.device.queue.writeBuffer(flip, 0, new Uint32Array(1));
     mipmaps.beginRenderPass().end();
-    fake.device.queue.submit([mipmaps.finish() as { from: FakeEncoder }]);
+    fake.device.queue.submit([mipmaps.finish()]);
+    pass.draw(2);
     pass.end();
-    fake.device.queue.submit([encoder.finish() as { from: FakeEncoder }]);
+    fake.device.queue.submit([encoder.finish()]);
     commands.end();
 
-    expect(fake.timeline).toEqual(["submit mipmaps[render]", "submit frame[render]"]);
+    expect(fake.timeline).toEqual([
+      "write flip@0 4",
+      "submit mipmaps[render, end]",
+      "submit frame[render, draw 1, end, render, draw 2, end]",
+    ]);
   });
 
-  it("submits the frame's work before a wait on the GPU, which is to wait on it", async () => {
+  it("submits what was recorded before a texture is written, and before a wait on the GPU", async () => {
     const { commands, fake } = createDevice();
 
     commands.begin();
     render(fake, 1);
+    fake.device.queue.writeTexture();
+    render(fake, 2);
     await fake.device.queue.onSubmittedWorkDone();
-
-    expect(fake.timeline).toEqual(["submit frame[render]"]);
-
     commands.end();
 
-    expect(fake.timeline).toHaveLength(1);
+    expect(fake.timeline).toEqual([
+      "submit frame[render, draw 1, end]",
+      "texture",
+      "submit frame[render, draw 2, end]",
+    ]);
+    expect(commands.segments).toBe(2);
   });
 
-  it("hands out three's own encoders outside a frame", () => {
+  it("hands out three's own encoders, and sends its writes, outside a frame", () => {
     const { fake } = createDevice();
 
-    render(fake, 1);
-    render(fake, 1);
+    render(fake, 1, [{ name: "camera" }]);
+    render(fake, 1, [{ name: "camera" }]);
 
-    expect(fake.encoders.map((it: FakeEncoder) => it.label)).toEqual(["renderContext_1", "renderContext_1"]);
-    expect(fake.timeline).toHaveLength(2);
+    expect(fake.timeline).toEqual([
+      "write camera@0 16",
+      "submit renderContext_1[render, draw 1, end]",
+      "write camera@0 16",
+      "submit renderContext_1[render, draw 1, end]",
+    ]);
   });
 });
