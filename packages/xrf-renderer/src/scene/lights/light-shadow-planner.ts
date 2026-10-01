@@ -28,9 +28,17 @@ enum EFaceUrgency {
   UNDRAWN = 0,
   /** Out of date where something changed. */
   STALE = 1,
-  /** Over a caster that sways or moves, the ones drawn longest ago first. */
-  ANIMATED = 2,
+  /** Over a caster that moves, the ones drawn longest ago first. */
+  MOVING = 2,
+  /** Over a caster that sways in the wind and nothing that moves: each once an interval, the longest ago first. */
+  SWAYING = 3,
 }
+
+/** Seconds between a swaying face's draws, at most 60 a second: the sway is slow, and each face drawn costs passes. */
+export const LIGHT_SHADOW_SWAY_INTERVAL: number = 1 / 60;
+
+/** What owed draws are rounded up by: differences of seconds come out a hair below the whole they add to. */
+const SWAY_OWED_ROUNDING: number = 1e-6;
 
 /** A face wanting a draw this frame. */
 interface IFaceCandidate {
@@ -42,7 +50,8 @@ interface IFaceCandidate {
 
 /**
  * Plans the lights' shadows: a square of the atlas a face, sized as the engine sizes its maps, drawn once and kept
- * while nothing it casts from changes, a few faces a frame. A light lights only once its faces are drawn; one asked
+ * while nothing it casts from changes, a few faces a frame. A face over what sways alone is drawn again once an
+ * interval, those faces spread evenly over the frames between. A light lights only once its faces are drawn; one asked
  * at another size keeps its old faces until its new ones are. Room is made from the lights out of view longest; while
  * the lights in view want more than the atlas holds, every face is asked for smaller.
  */
@@ -66,6 +75,11 @@ export class LightShadowPlanner {
   private candidateCount: number = 0;
   private frame: number = 0;
   private isWindy: boolean = false;
+  /** The last frame's time, and the seconds since, at most an interval. */
+  private time: Nullable<number> = null;
+  private elapsed: number = 0;
+  /** The swaying faces owed a draw: grown by the time passed, spent a face at a time. */
+  private swayOwed: number = 0;
 
   /**
    * @param changes - Where what the shadow views draw changed, and what sways or moves.
@@ -93,10 +107,13 @@ export class LightShadowPlanner {
    * Brings the faces up to what changed since the last frame.
    *
    * @param isWindy - Whether the wind sways the trees this frame.
+   * @param time - Seconds, which the sway runs by.
    */
-  public begin(isWindy: boolean): void {
+  public begin(isWindy: boolean, time: number): void {
     this.frame += 1;
     this.isWindy = isWindy;
+    this.elapsed = Math.min(Math.max(time - (this.time ?? time), 0), LIGHT_SHADOW_SWAY_INTERVAL);
+    this.time = time;
     this.askCount = 0;
     this.queue.length = 0;
     this.tracker.update(this.slots);
@@ -281,16 +298,16 @@ export class LightShadowPlanner {
   }
 
   private addCandidate(face: ILightShadowFace, distance: number): void {
-    const isAnimated: boolean =
-      face.motion === EShadowCasterMotion.MOVING || (face.motion === EShadowCasterMotion.SWAYING && this.isWindy);
     let urgency: EFaceUrgency;
 
     if (!face.isDrawn) {
       urgency = EFaceUrgency.UNDRAWN;
     } else if (face.isStale) {
       urgency = EFaceUrgency.STALE;
-    } else if (isAnimated) {
-      urgency = EFaceUrgency.ANIMATED;
+    } else if (face.motion === EShadowCasterMotion.MOVING) {
+      urgency = EFaceUrgency.MOVING;
+    } else if (face.motion === EShadowCasterMotion.SWAYING && this.isWindy) {
+      urgency = EFaceUrgency.SWAYING;
     } else {
       return;
     }
@@ -304,7 +321,7 @@ export class LightShadowPlanner {
     this.candidateCount += 1;
     candidate.face = face;
     candidate.urgency = urgency;
-    candidate.order = urgency === EFaceUrgency.ANIMATED ? face.drawnAt : distance;
+    candidate.order = urgency >= EFaceUrgency.MOVING ? face.drawnAt : distance;
   }
 
   private fillQueue(budget: number): void {
@@ -315,8 +332,28 @@ export class LightShadowPlanner {
       byUrgency
     );
 
-    for (let index: number = 0; index < Math.min(budget, candidates.length); index += 1) {
-      this.queue.push(candidates[index].face);
+    let swaying: number = 0;
+
+    for (const { urgency } of candidates) {
+      swaying += urgency === EFaceUrgency.SWAYING ? 1 : 0;
+    }
+
+    // Each once an interval, a share a frame: a steady cost however fast the frames come, and never more than all.
+    this.swayOwed = swaying
+      ? Math.min(this.swayOwed + (swaying * this.elapsed) / LIGHT_SHADOW_SWAY_INTERVAL, swaying)
+      : 0;
+
+    for (const { face, urgency } of candidates) {
+      if (this.queue.length === budget) {
+        break;
+      }
+
+      if (urgency !== EFaceUrgency.SWAYING) {
+        this.queue.push(face);
+      } else if (this.swayOwed + SWAY_OWED_ROUNDING >= 1) {
+        this.queue.push(face);
+        this.swayOwed -= 1;
+      }
     }
   }
 }

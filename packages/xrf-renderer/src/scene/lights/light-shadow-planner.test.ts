@@ -12,7 +12,7 @@ import {
   LIGHT_SHADOW_POINT_FACES,
   toLightShadowScale,
 } from "#/scene/lights/light-shadow-faces";
-import { LightShadowPlanner } from "#/scene/lights/light-shadow-planner";
+import { LIGHT_SHADOW_SWAY_INTERVAL, LightShadowPlanner } from "#/scene/lights/light-shadow-planner";
 import { ILightShadowRequest } from "#/scene/lights/light-shadow-request";
 import { toLightShadowSize, toLightShadowTileSize } from "#/scene/lights/light-shadow-sizing";
 import { EShadowCasterMotion } from "#/scene/static/shadow-caster-motion";
@@ -39,13 +39,29 @@ function createBox(x: number, y: number, z: number): Box3 {
   return new Box3(new Vector3(x - 0.5, y - 0.5, z - 0.5), new Vector3(x + 0.5, y + 0.5, z + 0.5));
 }
 
+/** Each planner's clock, which a frame moves on by its step. */
+const clocks: WeakMap<LightShadowPlanner, number> = new WeakMap();
+
+/** Begins a frame of the planner a step after its last: an interval unless told otherwise. */
+function begin(planner: LightShadowPlanner, isWindy: boolean, step: number = LIGHT_SHADOW_SWAY_INTERVAL): void {
+  const time: number = (clocks.get(planner) ?? 0) + step;
+
+  clocks.set(planner, time);
+  planner.begin(isWindy, time);
+}
+
 /** One frame of the planner: begun, every light asked for, decided; each one's faces answered, then drawn. */
 function plan(
   planner: LightShadowPlanner,
   requests: ReadonlyArray<ILightShadowRequest>,
-  { budget = 8, isWindy = false, isDrawn = true }: { budget?: number; isWindy?: boolean; isDrawn?: boolean } = {}
+  {
+    budget = 8,
+    isWindy = false,
+    isDrawn = true,
+    step,
+  }: { budget?: number; isWindy?: boolean; isDrawn?: boolean; step?: number } = {}
 ): Array<Nullable<ILightShadowEntry>> {
-  planner.begin(isWindy);
+  begin(planner, isWindy, step);
   requests.forEach((request: ILightShadowRequest, index: number) => planner.request(index, request));
   planner.finish(budget);
 
@@ -150,17 +166,24 @@ describe("LightShadowPlanner", () => {
     expect(planner.queue).toEqual([(near as ILightShadowEntry).faces[0], (drawnFar as ILightShadowEntry).faces[0]]);
   });
 
-  it("draws a face a swaying caster stands in again every frame the wind blows, a moving one's every frame", () => {
+  it("draws a face a swaying caster stands in again once an interval the wind blows, a moving one's every frame", () => {
     const changes: StaticShadowChanges = new StaticShadowChanges();
     const planner: LightShadowPlanner = new LightShadowPlanner(changes);
+    const step: number = LIGHT_SHADOW_SWAY_INTERVAL / 2;
 
     changes.put(1, createBox(0, 0, 0), true, EShadowCasterMotion.SWAYING);
-    plan(planner, [createRequest()], { isWindy: true });
-    plan(planner, [createRequest()], { isDrawn: false, isWindy: true });
+    plan(planner, [createRequest()], { isWindy: true, step });
+    plan(planner, [createRequest()], { isDrawn: false, isWindy: true, step });
+
+    // Frames twice an interval's rate: half an interval since its draw, it waits a frame.
+    expect(planner.queue).toHaveLength(0);
+
+    plan(planner, [createRequest()], { isDrawn: false, isWindy: true, step });
 
     expect(planner.queue).toHaveLength(1);
 
     planner.markDrawn();
+    plan(planner, [createRequest()], { isDrawn: false });
     plan(planner, [createRequest()], { isDrawn: false });
 
     expect(planner.queue).toHaveLength(0);
@@ -171,6 +194,33 @@ describe("LightShadowPlanner", () => {
     plan(planner, [createRequest()], { isDrawn: false });
 
     expect(planner.queue).toHaveLength(1);
+  });
+
+  // Every one redrawn every frame, a village's lamps were the most passes and draws of any frame's work.
+  it("draws the faces over what sways a share a frame, the longest drawn ago first, each once an interval", () => {
+    const changes: StaticShadowChanges = new StaticShadowChanges();
+    const planner: LightShadowPlanner = new LightShadowPlanner(changes);
+    const everywhere: Box3 = new Box3(new Vector3(-1000, -1000, -1000), new Vector3(1000, 1000, 1000));
+    const lights: Array<ILightShadowRequest> = Array.from({ length: 6 }, (_, index: number) =>
+      createRequest({ distance: index, position: new Vector3(index * 50, 3, 0) })
+    );
+
+    changes.put(1, everywhere, true, EShadowCasterMotion.SWAYING);
+    // Drawn whole, and then nothing stale.
+    plan(planner, lights, { isWindy: true });
+    plan(planner, lights, { isWindy: true });
+
+    const turns: Array<Array<ILightShadowFace>> = [];
+
+    // Frames three times an interval's rate: two of the six a frame, each face every third frame.
+    for (let frame: number = 0; frame < 6; frame += 1) {
+      plan(planner, lights, { isWindy: true, step: LIGHT_SHADOW_SWAY_INTERVAL / 3 });
+      turns.push([...planner.queue]);
+    }
+
+    expect(turns.map((turn: Array<ILightShadowFace>) => turn.length)).toEqual([2, 2, 2, 2, 2, 2]);
+    expect(new Set([...turns[0], ...turns[1], ...turns[2]]).size).toBe(6);
+    expect(turns[3]).toEqual(turns[0]);
   });
 
   // A level arriving logs thousands of swaying casters in one frame: each face's motion is found once, not once each.
@@ -385,20 +435,20 @@ describe("LightShadowPlanner", () => {
     );
 
     // Lights 1..15 seen again: light 0 is now out of view the longest.
-    planner.begin(false);
+    begin(planner, false);
     Array.from({ length: 15 }, (_, index: number) => planner.request(index + 1, large));
     planner.finish(16);
     planner.markDrawn();
 
     // Light 16 alone in view takes light 0's room, the rest keeping theirs.
-    planner.begin(false);
+    begin(planner, false);
     planner.request(16, large);
     planner.finish(8);
 
     expect(planner.getEntry(16)?.size).toBe(1024);
     expect(planner.atlas.used).toBe(16 * 1024 * 1024);
 
-    planner.begin(false);
+    begin(planner, false);
     Array.from({ length: 15 }, (_, index: number) => planner.request(index + 1, large));
     planner.finish(0);
 

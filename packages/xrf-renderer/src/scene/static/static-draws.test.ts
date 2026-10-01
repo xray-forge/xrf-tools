@@ -5,7 +5,7 @@ import { ERendererPass } from "#/contract/scene/renderer-pass";
 import { ISurfaceMaterial, toOwnSurfaceDrawing } from "#/material/surface-material";
 import { ISceneClusterRun } from "#/scene/geometry/scene-cluster-run";
 import { SceneGeometry } from "#/scene/geometry/scene-geometry";
-import { LightShadowPlanner } from "#/scene/lights/light-shadow-planner";
+import { LIGHT_SHADOW_SWAY_INTERVAL, LightShadowPlanner } from "#/scene/lights/light-shadow-planner";
 import { ILightShadowRequest } from "#/scene/lights/light-shadow-request";
 import { StaticDraws } from "#/scene/static/static-draws";
 import { IStaticRange } from "#/scene/static/static-range";
@@ -169,8 +169,12 @@ describe("listed tree shadow invalidation", () => {
       ).toBe(true);
     }
 
+    let time: number = 0;
+
+    // Frames at twice the sway's rate: a face over what sways alone is drawn every other one.
     function frame(isWindy: boolean = true): number {
-      shadows.begin(isWindy);
+      time += LIGHT_SHADOW_SWAY_INTERVAL / 2;
+      shadows.begin(isWindy, time);
       shadows.request(0, light);
       shadows.finish(8);
 
@@ -192,8 +196,12 @@ describe("listed tree shadow invalidation", () => {
       expect(frame()).toBe(0);
       put();
       expect(frame()).toBe(1);
+      // Over what sways alone it is drawn once an interval: not the frame after its last.
+      expect(frame()).toBe(0);
       expect(frame()).toBe(1);
+      // A still frame owes nothing: the wind back, it waits its interval again.
       expect(frame(false)).toBe(0);
+      expect(frame()).toBe(0);
       expect(frame()).toBe(1);
 
       spheres[0] = -20;
@@ -208,6 +216,7 @@ describe("listed tree shadow invalidation", () => {
       expect(frame()).toBe(0);
       put();
       expect(frame()).toBe(1);
+      expect(frame()).toBe(0);
       expect(frame()).toBe(1);
 
       draws.free(slot);

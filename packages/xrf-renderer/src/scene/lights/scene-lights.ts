@@ -170,7 +170,7 @@ export class SceneLights {
       const inView: Array<IInViewLight> = this.findInView(this.lights.lights, frame);
 
       if (isShadowing) {
-        this.shadows.begin(frame.isWindy);
+        this.shadows.begin(frame.isWindy, frame.time);
 
         // Only the nearest the records could hold ask for faces.
         for (let at: number = 0; at < Math.min(inView.length, MAX_LIGHTS); at += 1) {
