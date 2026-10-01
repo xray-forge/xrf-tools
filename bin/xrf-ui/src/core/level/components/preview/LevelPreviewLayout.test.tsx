@@ -122,6 +122,15 @@ describe("LevelPreviewLayout", () => {
     expect(view.queryByTestId("level-stream-progress")).not.toBeInTheDocument();
   });
 
+  // Coming in with the open, the header would shrink the viewport and have the renderer size its targets again.
+  it("heads the viewport with the level being opened, and holds nothing open for it", () => {
+    const view: RenderResult = renderLayout({ isLoading: true, name: null, pending: "levels\\zaton" });
+
+    expect(view.getByTestId("level-file-header")).toHaveTextContent("levels\\zaton");
+    expect(view.getByRole("status")).toHaveTextContent("Opening level");
+    expect(view.queryByTestId("level-preview-pick")).not.toBeInTheDocument();
+  });
+
   // A level assembling in view is worse than a wait: until it has been drawn with everything it opens with, a cover
   // says what it is waiting for.
   it("covers a level being read until it has been drawn whole", () => {

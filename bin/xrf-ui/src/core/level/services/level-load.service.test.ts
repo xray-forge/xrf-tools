@@ -3,7 +3,7 @@ import { isObservableProp, reaction } from "@wirestate/mobx";
 import { Nullable } from "@xrf/types";
 
 import { createRoots } from "@/core/assets/lib";
-import { LevelDetailsDescription, SelectedLevelDescription } from "@/core/ipc/types/xrf-app";
+import { LevelDetailsDescription, LevelSource, SelectedLevelDescription } from "@/core/ipc/types/xrf-app";
 import { EXrayEngine } from "@/core/ipc/types/xrf-engine-target";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { SectorDescription, SectorOutline } from "@/core/ipc/types/xrf-visual";
@@ -313,6 +313,24 @@ describe("LevelLoadService", () => {
     expect(isObservableProp(service, "level")).toBe(true);
     expect(isObservableProp(service, "sectorReport")).toBe(true);
     expect(isObservableProp(service, "residency")).toBe(true);
+    expect(isObservableProp(service, "opening")).toBe(true);
+  });
+
+  // Named only once open, the level's header would come in with it and shrink the viewport the renderer just sized.
+  it("names the level it is opening until it is open", async () => {
+    const { level, description, buffer } = mockStreamable([outlineAt(0, 5)]);
+    const { service } = mockInjectedService(LevelLoadService);
+    const source: LevelSource = { kind: "asset", logicalPath: "levels\\zaton" };
+
+    armLevel(level, description, buffer);
+
+    const opened: unknown = service.load({ engine: EXrayEngine.VANILLA, isDltx: false, roots: ROOTS, source });
+
+    expect(service.opening).toEqual(source);
+
+    await opened;
+
+    expect(service.opening).toBeNull();
   });
 
   // The whole point of the open: a quarter of a gigabyte of geometry stays on disk until a camera asks for a piece.

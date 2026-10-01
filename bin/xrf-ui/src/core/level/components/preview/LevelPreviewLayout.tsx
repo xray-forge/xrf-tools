@@ -54,6 +54,11 @@ const EMPTY_COLLECTIONS: ReadonlyArray<ThunderboltCollection> = [];
 interface ILevelPreviewLayoutProps extends BaseComponentProps {
   /** What the open level is called. Its presence is what draws the file header over the viewport. */
   name?: Nullable<string>;
+  /**
+   * What the level being opened is called, which heads the viewport until it is open: the header comes in with the open
+   * otherwise, and the viewport shrinks by it, which sizes every target the renderer draws into again.
+   */
+  pending?: Nullable<string>;
   subtitle?: ReactNode;
   /** Whether the level itself is being opened, which is a different wait from streaming its sectors. */
   isLoading?: boolean;
@@ -73,6 +78,7 @@ export function LevelPreviewLayout({
   id = "level-preview-layout",
   className,
   name = null,
+  pending = null,
   subtitle,
   isLoading = false,
   error,
@@ -89,6 +95,7 @@ export function LevelPreviewLayout({
   const weatherService: LevelWeatherService = useInjection(LevelWeatherService);
 
   const isOpen: boolean = Boolean(name);
+  const heading: Nullable<string> = name ?? pending;
   const settings: IRendererFeatureSettings = settingsService.rendererFeatures;
   const features: ILevelFeatureOptions = viewService.features;
 
@@ -184,10 +191,10 @@ export function LevelPreviewLayout({
       }
     >
       <div className={"flex min-h-0 min-w-0 grow flex-col"}>
-        {name ? (
+        {heading ? (
           <EditorFileHeader
             data-testid={"level-file-header"}
-            name={name}
+            name={heading}
             closeLabel={"Close level"}
             closeDescription={"Clear the selection and close this level"}
             onClose={onDeselect ?? undefined}

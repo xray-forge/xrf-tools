@@ -45,6 +45,7 @@ export function LevelViewerApplication({
       id={id}
       className={className}
       name={description ? describeLevelSource(description.source) : null}
+      pending={loadService.opening ? describeLevelSource(loadService.opening) : null}
       isLoading={loadService.level.isLoading}
       error={loadService.level.error?.message}
       onBack={onBack}

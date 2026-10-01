@@ -177,6 +177,13 @@ export class LevelLoadService {
   @Observable()
   public level: AsyncState<IOpenLevel> = AsyncState.idle();
 
+  /** The level being opened, named before it is open: what a viewer heads its viewport with while it waits. */
+  @Observable()
+  public opening: Nullable<LevelSource> = null;
+
+  /** Opens begun, so one taken over by a later open leaves that one's name. */
+  private openings: number = 0;
+
   /** What is held, for a viewer to report: how many, how much, and what their packs could not read. */
   @Observable()
   public sectorReport: ILevelSectorReport = EMPTY_LEVEL_SECTOR_REPORT;
@@ -326,10 +333,12 @@ export class LevelLoadService {
   public *load(request: LevelOpenRequest): TFlow {
     const { source } = request;
     const timer: Timer = new Timer();
+    const opening: number = ++this.openings;
 
     this.log.info("Loading level:", describeLevelSource(source));
 
     try {
+      this.opening = source;
       this.level = this.level.asLoading();
 
       const selected: SessionSnapshot<SelectedLevelDescription> = yield* call(
@@ -357,6 +366,11 @@ export class LevelLoadService {
       );
 
       this.level = this.level.asFailed(transformed);
+    } finally {
+      // A later open took the flow over meanwhile, and names its own level.
+      if (opening === this.openings) {
+        this.opening = null;
+      }
     }
   }
 
