@@ -51,6 +51,7 @@ export function LevelSurfacesPanel({
   const { expandAll, select } = tree;
   const [filter, setFilter] = useState<string>("");
 
+  const picked: Nullable<TLevelPick> = viewportService.picked;
   const held: ReadonlyArray<number> = loadService.sectorReport.held;
   const surfaces: Maybe<ReadonlyArray<XraySurfaceDescriptor>> = loadService.level.value?.selected.value.surfaces;
 
@@ -91,11 +92,10 @@ export function LevelSurfacesPanel({
     [renderService, held, selected]
   );
 
+  const onSelect = useCallback((item: ITreeNode<TLevelSurfaceTreeRow>) => tree.select(item.id), [tree]);
+
   // Another level's table is numbered afresh, so what was chosen names some other entry now.
   useEffect(() => select(null), [named, select]);
-
-  // A surface clicked in the viewport chooses its entry here, its shader opened and any filter hiding it cleared.
-  const picked: Nullable<TLevelPick> = viewportService.picked;
 
   useEffect(() => {
     const summary: Maybe<ILevelSurfaceSummary> =
@@ -114,8 +114,6 @@ export function LevelSurfacesPanel({
       expandAll(listLevelSurfaceGroupIds(items));
     }
   }, [expandAll, filter, items]);
-
-  const onSelect = useCallback((item: ITreeNode<TLevelSurfaceTreeRow>) => tree.select(item.id), [tree]);
 
   const renderLabel = useCallback((item: ITreeNode<TLevelSurfaceTreeRow>): ReactNode => {
     const row: Maybe<TLevelSurfaceTreeRow> = item.payload;

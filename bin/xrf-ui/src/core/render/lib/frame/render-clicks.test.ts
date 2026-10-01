@@ -3,7 +3,6 @@ import { IRendererViewPoint } from "@xrf/renderer";
 
 import { listenRenderClicks, RENDER_CLICK_SLOP } from "@/core/render/lib/frame/render-clicks";
 
-/** A canvas standing at (100, 50) on the page. */
 function createElement(): HTMLElement {
   const element: HTMLElement = document.createElement("canvas");
 
@@ -12,7 +11,6 @@ function createElement(): HTMLElement {
   return element;
 }
 
-/** A pointer event as jsdom can make one: a mouse event carrying the pointer's own fields, which it has no class for. */
 function press(element: HTMLElement, type: string, x: number, y: number, init: MouseEventInit = {}): void {
   const event: MouseEvent = new MouseEvent(type, { button: 0, clientX: x, clientY: y, ...init });
 

@@ -24,7 +24,6 @@ import { renderWithProviders } from "@/fixtures/utils/render";
 
 import { LevelSpawnPanel } from "./LevelSpawnPanel";
 
-/** Two crates among the props and a medkit among the items. */
 const OBJECTS: LevelSpawnObjectsDescription = {
   objects: [
     mockLevelSpawnObject({
@@ -45,7 +44,6 @@ const OBJECTS: LevelSpawnObjectsDescription = {
   visuals: ["physics\\box", "dynamics\\medkit"],
 };
 
-/** Where the panel sent the camera, which the renderer this test starts none of would stand. */
 const sent: Array<ILevelGoTo> = [];
 
 @Injectable()

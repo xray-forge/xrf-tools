@@ -7,6 +7,7 @@ import { TREE } from "@/core/theme/tokens";
 import { IFlatTreeRow } from "@/core/ui/tree/flatten";
 import { ITreeNode } from "@/core/ui/tree/tree-node";
 import { ITreeIconDecoration } from "@/core/ui/tree/VirtualizedTree/VirtualizedTree";
+import { stopPropagation } from "@/lib/dom/event";
 
 /** A theme colour path as the variable the theme emits for it, since a plain element has no `sx` to resolve it. */
 function toPaletteColor(path: string): string {
@@ -87,7 +88,7 @@ export function VirtualizedTreeRow<T>({
             onToggleExpanded(item.id);
           }
         }}
-        onDoubleClick={(event: MouseEvent<HTMLElement>) => event.stopPropagation()}
+        onDoubleClick={stopPropagation}
       >
         {row.hasChildren ? row.isExpanded ? <ExpandMoreIcon /> : <ChevronRightIcon /> : null}
       </div>
@@ -115,8 +116,8 @@ export function VirtualizedTreeRow<T>({
         <div
           data-testid={"virtualized-tree-actions"}
           className={"ml-auto flex shrink-0 items-center"}
-          onClick={(event: MouseEvent<HTMLElement>) => event.stopPropagation()}
-          onDoubleClick={(event: MouseEvent<HTMLElement>) => event.stopPropagation()}
+          onClick={stopPropagation}
+          onDoubleClick={stopPropagation}
         >
           {actions}
         </div>

@@ -34,6 +34,25 @@ import { cn } from "@/lib/dom/dom-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /**
+ * What the panel says while it lists nothing: why the spawn could not be read, that it is being read, or that it
+ * places nothing the viewer draws.
+ */
+function toEmptyLabel(report: ILevelSpawnReport): string {
+  if (report.failure) {
+    return `The level's spawn could not be read: ${report.failure}`;
+  }
+
+  return isLevelSpawnReading(report)
+    ? "Reading the level's spawn."
+    : "The level's spawn places nothing the viewer draws.";
+}
+
+/** How many objects a row stands for: a group's count, or one. */
+function toCount(row: Maybe<TLevelSpawnTreeRow>): number {
+  return row && row.kind !== "object" ? row.count : 1;
+}
+
+/**
  * Every object the level's spawn places, `Category -> section -> object`: found by name, section or visual, shown or
  * hidden a category at a time, and gone to.
  */
@@ -78,29 +97,7 @@ export function LevelSpawnPanel({
     selected?.index ?? null
   );
 
-  // Another level's objects are numbered afresh, so what was chosen names some other object now.
-  useEffect(() => select(null), [description, select]);
-
-  // An object clicked in the viewport is chosen here, what stands above it opened and any filter hiding it cleared.
-  // The click opens the panel, so the spawn reaches it after the pick: chosen once it has, after the reset above.
-  useEffect(() => {
-    if (description && picked?.kind === ELevelPick.SPAWN) {
-      const { category, index, section } = picked.object;
-
-      setFilter("");
-      expandAll([toLevelSpawnCategoryId(category), toLevelSpawnSectionId(category, section)]);
-      select(toLevelSpawnObjectId(index));
-    }
-  }, [description, expandAll, picked, select]);
-
-  // A filter that matched inside a group opens it, because a closed group answering a query looks like no answer.
-  useEffect(() => {
-    if (filter.trim()) {
-      expandAll(listLevelSpawnGroupIds(items));
-    }
-  }, [expandAll, filter, items]);
-
-  const goTo = useCallback(
+  const onGoTo = useCallback(
     (object: LevelSpawnObject) =>
       renderService.goTo(
         toLevelFramedGoTo(
@@ -117,10 +114,10 @@ export function LevelSpawnPanel({
   const onActivate = useCallback(
     (item: ITreeNode<TLevelSpawnTreeRow>) => {
       if (item.payload?.kind === "object") {
-        goTo(item.payload.object);
+        onGoTo(item.payload.object);
       }
     },
-    [goTo]
+    [onGoTo]
   );
 
   const renderLabel = useCallback((item: ITreeNode<TLevelSpawnTreeRow>): ReactNode => {
@@ -153,6 +150,28 @@ export function LevelSpawnPanel({
     },
     [options, viewService]
   );
+
+  // Another level's objects are numbered afresh, so what was chosen names some other object now.
+  useEffect(() => select(null), [description, select]);
+
+  // An object clicked in the viewport is chosen here, what stands above it opened and any filter hiding it cleared.
+  // The click opens the panel, so the spawn reaches it after the pick: chosen once it has, after the reset above.
+  useEffect(() => {
+    if (description && picked?.kind === ELevelPick.SPAWN) {
+      const { category, index, section } = picked.object;
+
+      setFilter("");
+      expandAll([toLevelSpawnCategoryId(category), toLevelSpawnSectionId(category, section)]);
+      select(toLevelSpawnObjectId(index));
+    }
+  }, [description, expandAll, picked, select]);
+
+  // A filter that matched inside a group opens it, because a closed group answering a query looks like no answer.
+  useEffect(() => {
+    if (filter.trim()) {
+      expandAll(listLevelSpawnGroupIds(items));
+    }
+  }, [expandAll, filter, items]);
 
   if (!loadService.level.value) {
     return (
@@ -213,29 +232,10 @@ export function LevelSpawnPanel({
             object={selected}
             visual={description.visuals[selected.visual] ?? ""}
             details={details}
-            onGoTo={() => goTo(selected)}
+            onGoTo={() => onGoTo(selected)}
           />
         </div>
       ) : null}
     </div>
   );
-}
-
-/**
- * What the panel says while it lists nothing: why the spawn could not be read, that it is being read, or that it
- * places nothing the viewer draws.
- */
-function toEmptyLabel(report: ILevelSpawnReport): string {
-  if (report.failure) {
-    return `The level's spawn could not be read: ${report.failure}`;
-  }
-
-  return isLevelSpawnReading(report)
-    ? "Reading the level's spawn."
-    : "The level's spawn places nothing the viewer draws.";
-}
-
-/** How many objects a row stands for: a group's count, or one. */
-function toCount(row: Maybe<TLevelSpawnTreeRow>): number {
-  return row && row.kind !== "object" ? row.count : 1;
 }
