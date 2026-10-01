@@ -184,7 +184,8 @@ export class FrameCommands {
   private beginPass(isRender: boolean, descriptor: unknown): object {
     this.isPassOpen = true;
     this.isRenderPass = isRender;
-    this.descriptor = descriptor;
+    // Three resets the descriptor it shares between passes as soon as the pass begins, and the pass begins at its end.
+    this.descriptor = toDescriptorCopy(descriptor);
     this.pass.reset();
 
     return this.pass;
@@ -280,6 +281,40 @@ export class FrameCommands {
       return original.apply(this, args);
     };
   }
+}
+
+/** A pass's descriptor, as far as three fills one it shares between passes and resets field by field. */
+interface IPassDescriptor {
+  colorAttachments?: ReadonlyArray<Nullable<object>>;
+  depthStencilAttachment?: object;
+  timestampWrites?: object;
+}
+
+/**
+ * @returns A copy of a pass's descriptor as it stands, its attachments and timestamp writes copied with it: what three
+ *   resets is their fields, never the views, query sets and clear values they name.
+ */
+function toDescriptorCopy(descriptor: unknown): unknown {
+  if (!descriptor) {
+    return descriptor;
+  }
+
+  const { colorAttachments, depthStencilAttachment, timestampWrites } = descriptor as IPassDescriptor;
+  const copy: IPassDescriptor = { ...(descriptor as IPassDescriptor) };
+
+  if (colorAttachments) {
+    copy.colorAttachments = colorAttachments.map((attachment: Nullable<object>) => attachment && { ...attachment });
+  }
+
+  if (depthStencilAttachment) {
+    copy.depthStencilAttachment = { ...depthStencilAttachment };
+  }
+
+  if (timestampWrites) {
+    copy.timestampWrites = { ...timestampWrites };
+  }
+
+  return copy;
 }
 
 /**

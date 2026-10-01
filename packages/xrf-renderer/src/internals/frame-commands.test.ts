@@ -23,10 +23,13 @@ class FakePass {
 /** An encoder, likewise, recording what it was asked. */
 class FakeEncoder {
   public readonly log: Array<string> = [];
+  /** Each render pass's descriptor as the pass began. */
+  public readonly descriptors: Array<unknown> = [];
 
   public constructor(public readonly label: string) {}
 
-  public beginRenderPass(): FakePass {
+  public beginRenderPass(descriptor?: unknown): FakePass {
+    this.descriptors.push(JSON.parse(JSON.stringify(descriptor ?? null)));
     this.log.push("render");
 
     return new FakePass(this.log);
@@ -54,6 +57,7 @@ class FakeEncoder {
 }
 
 interface IFake {
+  encoders: Array<FakeEncoder>;
   /** Each submit, as each command buffer's encoder logged it, and each write the queue took, in order. */
   timeline: Array<string>;
   device: {
@@ -71,9 +75,16 @@ interface IFake {
 
 function createDevice(): { fake: IFake; commands: FrameCommands } {
   const timeline: Array<string> = [];
+  const encoders: Array<FakeEncoder> = [];
   const device: IFake["device"] = {
     createBuffer: (descriptor: { label: string; size: number }) => ({ destroy: () => {}, name: descriptor.label }),
-    createCommandEncoder: (descriptor?: { label?: string }): FakeEncoder => new FakeEncoder(descriptor?.label ?? ""),
+    createCommandEncoder: (descriptor?: { label?: string }): FakeEncoder => {
+      const encoder: FakeEncoder = new FakeEncoder(descriptor?.label ?? "");
+
+      encoders.push(encoder);
+
+      return encoder;
+    },
     queue: {
       copyExternalImageToTexture: (): void => {
         timeline.push("image");
@@ -103,7 +114,7 @@ function createDevice(): { fake: IFake; commands: FrameCommands } {
   };
   const renderer = { backend: { device } } as unknown as WebGPURenderer;
 
-  return { commands: FrameCommands.adopt(renderer), fake: { device, timeline } };
+  return { commands: FrameCommands.adopt(renderer), fake: { device, encoders, timeline } };
 }
 
 /** Records one render as three does: an encoder, a pass, the uniforms it reads written, a draw, finished, submitted. */
@@ -218,6 +229,36 @@ describe("FrameCommands", () => {
       "submit frame[render, draw 2, end]",
     ]);
     expect(commands.segments).toBe(2);
+  });
+
+  // Three's mipmap and compute passes share one descriptor each, reset the moment the pass begins.
+  it("begins a pass by its descriptor as it stood when three began it, though three reset it since", () => {
+    const { commands, fake } = createDevice();
+    const shared = {
+      colorAttachments: [{ loadOp: "clear", view: "mip 1" }],
+      label: "mipmap",
+      timestampWrites: { beginningOfPassWriteIndex: 0 },
+    };
+
+    commands.begin();
+
+    const encoder: FakeEncoder = fake.device.createCommandEncoder({ label: "mipmaps" });
+    const pass: FakePass = encoder.beginRenderPass(shared) as FakePass;
+
+    shared.label = "";
+    shared.colorAttachments[0].view = "";
+    shared.colorAttachments.length = 0;
+    shared.timestampWrites.beginningOfPassWriteIndex = -1;
+    pass.end();
+    commands.end();
+
+    expect(fake.encoders.find((it: FakeEncoder) => it.label === "frame")?.descriptors).toEqual([
+      {
+        colorAttachments: [{ loadOp: "clear", view: "mip 1" }],
+        label: "mipmap",
+        timestampWrites: { beginningOfPassWriteIndex: 0 },
+      },
+    ]);
   });
 
   it("hands out three's own encoders, and sends its writes, outside a frame", () => {
