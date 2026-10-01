@@ -46,18 +46,6 @@ interface INotificationRowProps {
 
 /**
  * One recorded outcome: the title, then the tool and the time it happened.
- *
- * The title wraps and the second line always states its tool. Neither is allowed to truncate - a title
- * cut to an ellipsis and a tool name that shrinks away are the two things a log cannot afford to lose,
- * whatever it buys in rows per screen.
- *
- * Severity is carried by the icon, and by the title colour for the two severities that have to compete
- * with a pile of routine successes. Nothing tints a row: a filled background costs more attention than
- * it buys, and a panel of dev traces would be one continuous block of it.
- *
- * `details` stays collapsed - a stack or a path list is what makes a record useful once you are already
- * reading it, and what makes the log unscannable before that - except for the first line of a failure,
- * which is usually the reason it failed.
  */
 export function NotificationRow({ entry, isExpanded, onToggleExpanded }: INotificationRowProps): ReactElement {
   const log: Logger = useLogger(__MODULE_NAME__);
@@ -86,6 +74,7 @@ export function NotificationRow({ entry, isExpanded, onToggleExpanded }: INotifi
   const body: string = isExpanded ? expandedBody : collapsedBody;
 
   const onCopyFailed = useCallback((error: unknown) => log.error("Failed to copy notification details:", error), [log]);
+
   const { copy }: ICopiedText = useCopiedText(onCopyFailed);
 
   const onCopyDetails = useCallback(() => copy(notification.details ?? ""), [copy, notification.details]);
