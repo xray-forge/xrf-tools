@@ -569,19 +569,27 @@ export class RendererHost {
       time,
       view: viewCamera,
     });
-    this.scene.cull(this.cullView, viewCamera);
-    this.graph.render(
-      {
-        camera,
-        jitter: this.graph.jitter,
-        renderer,
-        scenes: this.scene.scenes,
-        settings,
-        time,
-        viewCamera,
-      },
-      device.inspector
-    );
+    // Every cull and pass of the frame in as few command encoders as its uniforms allow, submitted as it ends.
+    device.commands.begin();
+
+    try {
+      this.scene.cull(this.cullView, viewCamera);
+      this.graph.render(
+        {
+          camera,
+          jitter: this.graph.jitter,
+          renderer,
+          scenes: this.scene.scenes,
+          settings,
+          time,
+          viewCamera,
+        },
+        device.inspector
+      );
+    } finally {
+      device.commands.end();
+    }
+
     if (Number.isFinite(this.pacing.limit)) {
       this.pacing.submitted(whenSubmittedWorkDone(renderer));
     }

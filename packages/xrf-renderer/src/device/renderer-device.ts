@@ -4,6 +4,7 @@ import { CanvasTarget, LinearSRGBColorSpace, NoToneMapping, WebGPURenderer } fro
 import { IRendererDevice } from "#/contract/renderer-device";
 import { RendererDeviceFailure } from "#/device/renderer-device-failure";
 import { getRendererDeviceLimits } from "#/device/renderer-device-limits";
+import { FrameCommands } from "#/internals/frame-commands";
 import { getRendererBackend, IRendererBackend, setRendererTimestamps } from "#/internals/renderer-backend";
 import { adoptStableBufferNames } from "#/internals/stable-buffer-names";
 import { adoptZeroedStorage } from "#/internals/zeroed-storage";
@@ -87,6 +88,8 @@ export class RendererDevice {
   public readonly inspector: RendererPassInspector = new RendererPassInspector();
   /** The canvas three was made with, drawn on by nothing, so a detached view leaves the device a target. */
   public readonly headless: CanvasTarget;
+  /** What records each frame's renders and computes into one command encoder, where their uniforms allow. */
+  public readonly commands: FrameCommands;
   /** Whether the device can time passes. */
   public readonly isGpuTimed: boolean;
   /** Whether it is timing them, which the features turn on and off. */
@@ -94,6 +97,7 @@ export class RendererDevice {
 
   private constructor(renderer: WebGPURenderer) {
     this.renderer = renderer;
+    this.commands = FrameCommands.adopt(renderer);
     this.headless = renderer.getCanvasTarget();
     this.isGpuTimed = renderer.hasFeature("timestamp-query");
     this.isTiming = this.isGpuTimed;
@@ -139,6 +143,7 @@ export class RendererDevice {
   }
 
   public dispose(): void {
+    this.commands.dispose();
     this.renderer.dispose();
   }
 }
