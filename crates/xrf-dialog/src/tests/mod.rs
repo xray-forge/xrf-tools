@@ -3,6 +3,7 @@ mod element;
 mod encoding;
 mod file;
 mod issue;
+mod partner;
 mod phrase;
 mod project;
 mod text;

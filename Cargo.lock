@@ -7138,6 +7138,7 @@ dependencies = [
  "colored",
  "embed-resource",
  "env_logger",
+ "indexmap 2.14.2",
  "log",
  "rayon",
  "serde",

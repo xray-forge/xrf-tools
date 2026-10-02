@@ -17,9 +17,6 @@ use crate::project::mode::DialogProjectMode;
 use crate::project::text_index::{DialogTextIndex, DialogTextLanguage};
 
 /// Filename prefix that marks a logical path as dialog data.
-///
-/// A gameplay directory holds `info_*.xml` and `npc_profile*.xml` beside the dialogs, so the
-/// extension alone would sweep files this reader does not model.
 const DIALOG_FILE_PREFIX: &str = "dialog";
 
 /// One file the project holds, parsed, with where the engine found it.
@@ -37,9 +34,6 @@ impl DialogProjectFile {
   }
 
   /// The host path, when the winning mount is a loose directory.
-  ///
-  /// Absent for an archived winner, and that absence is the write guard: bytes inside a `.db` volume
-  /// cannot be edited in place.
   pub fn get_physical_path(&self) -> Option<&Path> {
     self.physical_path.as_deref()
   }
@@ -55,14 +49,6 @@ impl DialogProjectFile {
 }
 
 /// An open dialog project: mounted roots, and every dialog file under its dialogs prefix.
-///
-/// Reads go through `xrf-vfs` rather than `std::fs`, because the engine does not see a disk. On a real
-/// installation `configs\gameplay\dialogs.xml` comes out of `db\configs`, and a reader reaching for
-/// the filesystem reports it absent instead of reading it.
-///
-/// The VFS is owned rather than borrowed, for the reason `LtxProject` owns its own: `XrayVfs` is not
-/// `Clone`, and the project outlives any one lookup. The parsed files are kept too, because their
-/// spans are what a later edit splices.
 pub struct DialogProject {
   roots: XrayRoots,
   mode: DialogProjectMode,
@@ -77,12 +63,6 @@ pub struct DialogProject {
 impl DialogProject {
   /// Open a project over roots, reading every dialog file it exposes under the layout prefix.
   ///
-  /// Two arguments, because opening answers two questions: roots say which trees are searched and
-  /// in what order, and a layout says where inside them this domain keeps its data.
-  ///
-  /// A file that cannot be read becomes a finding and the project still opens: refusing the whole
-  /// tree over one bad file would make the editor unable to reach the file you opened it to fix.
-  ///
   /// # Errors
   ///
   /// Returns an error when the roots cannot be mounted, and a not-found error when it exposes no
@@ -93,9 +73,6 @@ impl DialogProject {
   }
 
   /// Open a project over roots somebody else mounted.
-  ///
-  /// The spec is still required, because it is what the descriptor echoes back so a follow-up read
-  /// addresses the tree the open searched.
   ///
   /// # Errors
   ///
@@ -158,10 +135,6 @@ impl DialogProject {
   }
 
   /// Read the text tree the dialogs resolve their lines from, over the roots already mounted.
-  ///
-  /// A text tree that cannot be read becomes a finding and the project still opens, matching how one
-  /// unreadable dialog file is handled. An editor that refuses to open because the translations are
-  /// missing cannot show you the dialog structure you opened it to inspect.
   fn read_text(
     vfs: &XrayVfs,
     roots: &XrayRoots,
@@ -208,9 +181,6 @@ impl DialogProject {
   }
 
   /// Every dialog asset a scoped roots exposes, in logical-path order.
-  ///
-  /// Sorted because mount order is not name order, and an index is only comparable across runs and
-  /// machines if it depends on neither.
   pub fn list_dialog_assets(scoped: &XrayScopedVfs) -> Vec<XrayAsset> {
     let mut assets: Vec<XrayAsset> = scoped
       .list_entries()
@@ -224,9 +194,6 @@ impl DialogProject {
   }
 
   /// Whether a logical path names dialog data, by its file name.
-  ///
-  /// Takes the path type rather than a string so the last-component rule is the one `xrf-vfs` owns:
-  /// a `\`-separated identity split with `std::path` answers the whole path on Linux.
   pub fn is_dialog_logical_path(logical_path: &XrayLogicalPath) -> bool {
     logical_path.has_extension(XrayExtension::Xml) && logical_path.file_name().starts_with(DIALOG_FILE_PREFIX)
   }
@@ -270,12 +237,17 @@ impl DialogProject {
   }
 
   /// One dialog, addressed the way the project index lists it: by file, then by id.
-  ///
-  /// Both names are required rather than searching every file for the id, because ids are not unique
-  /// across a tree — a mod overlaying a dialog keeps the original's id on purpose — and answering
-  /// with whichever copy was read first would silently pick one.
   pub fn find_dialog(&self, logical_path: &str, id: &str) -> Option<&Dialog> {
     self.find_file(logical_path)?.get_file().find_dialog(id)
+  }
+
+  /// Every file declaring a dialog id, in logical-path order.
+  pub fn list_files_declaring(&self, id: &str) -> Vec<&DialogProjectFile> {
+    self
+      .files
+      .iter()
+      .filter(|file| file.get_file().find_dialog(id).is_some())
+      .collect()
   }
 
   /// The text tree this project resolves its phrase lines from.
@@ -289,18 +261,6 @@ impl DialogProject {
   }
 
   /// Describe one dialog with every phrase it declares, resolving its lines into one language.
-  ///
-  /// The counterpart to [`Self::describe`], which lists 502 dialogs as summaries: this is what a
-  /// selection fetches. Answers `None` for a file or an id the project does not hold, leaving the
-  /// caller to say which of the two was wrong.
-  ///
-  /// One language per call rather than every language per phrase. A caller shows one at a time, and a
-  /// dialog the size of `about_quests_dialog_stalkers` carried in nine would be nine times the payload
-  /// to display an eighth of it. Switching language is another call against the same resident index,
-  /// which costs a lookup and no I/O.
-  ///
-  /// `language` of `None` takes the tree's first, and a language the tree does not hold resolves
-  /// nothing rather than failing: the phrases still describe, showing their keys.
   pub fn describe_dialog(&self, logical_path: &str, id: &str, language: Option<&str>) -> Option<DialogDescriptor> {
     let file: &DialogProjectFile = self.find_file(logical_path)?;
     let dialog: &Dialog = file.get_file().find_dialog(id)?;
@@ -319,14 +279,6 @@ impl DialogProject {
   }
 
   /// Whether every file the project holds could be written back.
-  ///
-  /// False as soon as one winner is archived, which is what stops an editing session that could only
-  /// half succeed. `xrf-ltx` draws the same line between its rewrite and its read-only check.
-  ///
-  /// Also false for a project holding nothing, matching `TranslationProjectDescriptor`. `all` over an
-  /// empty set is vacuously true, and a surface that enables saving on that offers a save which can do
-  /// nothing. Opening already refuses an empty project, so this is unreachable today — stated anyway,
-  /// because the two crates answering one question differently is how it stops being unreachable.
   pub fn is_editable(&self) -> bool {
     !self.files.is_empty() && self.files.iter().all(DialogProjectFile::is_editable)
   }

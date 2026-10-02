@@ -2,7 +2,8 @@
 //!
 //! The tree follows the data: an `element` is one written child, a `phrase` is one line, a `dialog`
 //! is one conversation, a `file` is one document together with the text its ranges address, and
-//! `project` is a whole tree of them.
+//! `project` is a whole tree of them. A `partner` is who the actor talks to: the characters,
+//! profiles and info portions that decide which dialogs reach it.
 
 pub(crate) mod constants;
 pub(crate) mod dialog;
@@ -10,6 +11,7 @@ pub(crate) mod element;
 pub(crate) mod encoding;
 pub(crate) mod file;
 pub(crate) mod issue;
+pub(crate) mod partner;
 pub(crate) mod phrase;
 pub(crate) mod project;
 
@@ -17,6 +19,10 @@ pub use crate::dialog::Dialog;
 pub use crate::element::{DialogElement, DialogElementKind};
 pub use crate::file::DialogFile;
 pub use crate::issue::{DialogParseIssue, DialogParseIssueKind};
+pub use crate::partner::dialog_character::DialogCharacter;
+pub use crate::partner::dialog_offer::DialogOffer;
+pub use crate::partner::dialog_partners::DialogPartners;
+pub use crate::partner::dialog_profile::DialogProfile;
 pub use crate::phrase::DialogPhrase;
 pub use crate::project::descriptor::{
   DialogDescriptor, DialogElementDescriptor, DialogFileDescriptor, DialogFinding, DialogPhraseDescriptor,

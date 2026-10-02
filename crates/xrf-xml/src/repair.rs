@@ -26,6 +26,22 @@ pub(crate) fn repair_for_parsing(input: &str) -> String {
       continue;
     }
 
+    // A declaration has to open the document, and the engine's reader skips one anywhere else: shipped mods write
+    // banners above it. Blanking it with spaces keeps its line breaks, so positions still read the same.
+    if index > 0 && is_declaration_at(bytes, index) {
+      let end: usize = find(bytes, index, b"?>").map_or(bytes.len(), |end| end + 2);
+
+      for byte in &mut repaired[index..end] {
+        if !byte.is_ascii_whitespace() {
+          *byte = b' ';
+        }
+      }
+
+      index = end;
+
+      continue;
+    }
+
     // A bare ampersand is not a reference, and translation text is full of them.
     if bytes[index] == b'&' && !is_reference_at(bytes, index) {
       repaired[index] = b'~';
@@ -35,6 +51,11 @@ pub(crate) fn repair_for_parsing(input: &str) -> String {
   }
 
   String::from_utf8(repaired).unwrap_or_else(|_| input.to_owned())
+}
+
+/// Whether an XML declaration starts at `start`, rather than a processing instruction such as `<?xml-stylesheet`.
+fn is_declaration_at(bytes: &[u8], start: usize) -> bool {
+  bytes[start..].starts_with(b"<?xml") && bytes.get(start + 5).is_some_and(u8::is_ascii_whitespace)
 }
 
 /// Whether the ampersand at `start` begins something shaped like an entity reference.
@@ -77,6 +98,7 @@ mod tests {
       "<!-- ---- names ---- -->",
       "<text>Smith & Wesson</text>",
       "<text>a &amp; b</text>",
+      "<!-- banner -->\r\n<?xml version='1.0' encoding=\"windows-1251\"?>\r\n<root/>",
       "<root/>",
     ] {
       assert_eq!(repair_for_parsing(source).len(), source.len(), "for {source}");
@@ -108,6 +130,24 @@ mod tests {
   #[test]
   fn treats_an_unterminated_entity_as_a_bare_ampersand() {
     assert_eq!(repair_for_parsing("a &amp b"), "a ~amp b");
+  }
+
+  #[test]
+  fn blanks_a_declaration_that_does_not_open_the_document() {
+    assert_eq!(
+      repair_for_parsing("<!-- banner -->\n<?xml version=\"1.0\"?>\n<root/>"),
+      "<!-- banner -->\n                     \n<root/>"
+    );
+  }
+
+  #[test]
+  fn leaves_an_opening_declaration_and_other_processing_instructions_alone() {
+    for source in [
+      "<?xml version=\"1.0\"?><root/>",
+      "<root><?xml-stylesheet href=\"a\"?></root>",
+    ] {
+      assert_eq!(repair_for_parsing(source), source);
+    }
   }
 
   #[test]

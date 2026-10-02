@@ -37,7 +37,11 @@ pub fn setup_command_groups() -> Vec<CommandGroup> {
       slug: "dialog",
       label: "Dialog",
       about: "Dialog inspection tools",
-      commands: vec![dialog::info::InfoCommand::new_box()],
+      commands: vec![
+        dialog::info::InfoCommand::new_box(),
+        dialog::inspect::InspectCommand::new_box(),
+        dialog::list::ListCommand::new_box(),
+      ],
     },
     CommandGroup {
       slug: "docs",
