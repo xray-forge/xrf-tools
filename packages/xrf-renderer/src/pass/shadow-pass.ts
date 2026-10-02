@@ -7,6 +7,7 @@ import { IRendererFrame } from "#/pass/renderer-frame";
 import { IRendererPass } from "#/pass/renderer-pass";
 import { IRendererPipelines } from "#/pass/renderer-pipelines";
 import { RendererTargets } from "#/pass/renderer-targets";
+import { isShadowCascadeRedrawn } from "#/pass/shadow-cascade-redraw";
 import { createSceneRoot } from "#/scene/object/scene-mesh";
 import { EShadowCasterMotion } from "#/scene/static/shadow-caster-motion";
 import { StaticCull } from "#/scene/static/static-cull";
@@ -18,8 +19,9 @@ import { SunCascade } from "#/visibility/sun-cascade";
 /**
  * One cascade of the sun's shadow: its casters culled against its box, the cells it reaches shown, then drawn into
  * its map, depth alone, in one render call that clears it too. Drawn again only where the box moved or anything it
- * casts from changed: a still camera over a still level pays nothing for its shadow. In the frame only while shadows
- * draw that many cascades.
+ * casts from changed: a still camera over a still level pays nothing for its shadow. Over what sways and nothing that
+ * moves, at most once a sway interval, however fast the frames come: the trees are most of a cascade's draw. In the
+ * frame only while shadows draw that many cascades.
  */
 export class ShadowPass implements IRendererPass {
   public readonly name: string;
@@ -35,6 +37,8 @@ export class ShadowPass implements IRendererPass {
   private readonly parts: Array<Object3D> = [];
   /** The shadow changes' version its map was drawn at, or null before it was drawn at all. */
   private drawnVersion: Nullable<number> = null;
+  /** Seconds it was last drawn at, which a draw for what sways alone waits an interval from. */
+  private drawnAt: number = -Infinity;
   /** Frames it has been in, which its staggered rate is counted by. */
   private frames: number = 0;
   /** How the fastest caster in its box moves, and the box's and the changes' versions that was found at. */
@@ -75,7 +79,7 @@ export class ShadowPass implements IRendererPass {
     pipelines.compute(this.cull.getViewKernels(this.view));
   }
 
-  public render({ renderer }: IRendererFrame): void {
+  public render({ renderer, time }: IRendererFrame): void {
     const cascade: SunCascade = this.shadows.cascades[this.view];
 
     this.frames += 1;
@@ -86,14 +90,20 @@ export class ShadowPass implements IRendererPass {
 
     const isCulled: boolean = this.cull.cullView(renderer, this.view, cascade);
     const motion: EShadowCasterMotion = this.findMotion(cascade);
-    // A skinned part moves, and a tree sways while the wind blows: both with no version saying so.
-    const isMoving: boolean =
-      motion === EShadowCasterMotion.MOVING || (motion === EShadowCasterMotion.SWAYING && this.wind.isSwaying);
 
-    if (!isCulled && !isMoving && this.drawnVersion === this.casters.shadowChanges.version) {
+    if (
+      !isShadowCascadeRedrawn({
+        isChanged: isCulled || this.drawnVersion !== this.casters.shadowChanges.version,
+        // A skinned part moves, and a tree sways while the wind blows: both with no version saying so.
+        isMoving: motion === EShadowCasterMotion.MOVING,
+        isSwaying: motion === EShadowCasterMotion.SWAYING && this.wind.isSwaying,
+        sinceDrawn: time - this.drawnAt,
+      })
+    ) {
       return;
     }
 
+    this.drawnAt = time;
     this.drawnVersion = this.casters.shadowChanges.version;
     this.shadows.commit(this.view);
 

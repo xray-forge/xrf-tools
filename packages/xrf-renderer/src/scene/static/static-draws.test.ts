@@ -5,8 +5,9 @@ import { ERendererPass } from "#/contract/scene/renderer-pass";
 import { ISurfaceMaterial, toOwnSurfaceDrawing } from "#/material/surface-material";
 import { ISceneClusterRun } from "#/scene/geometry/scene-cluster-run";
 import { SceneGeometry } from "#/scene/geometry/scene-geometry";
-import { LIGHT_SHADOW_SWAY_INTERVAL, LightShadowPlanner } from "#/scene/lights/light-shadow-planner";
+import { LightShadowPlanner } from "#/scene/lights/light-shadow-planner";
 import { ILightShadowRequest } from "#/scene/lights/light-shadow-request";
+import { SHADOW_SWAY_INTERVAL } from "#/scene/static/shadow-sway-interval";
 import { StaticDraws } from "#/scene/static/static-draws";
 import { IStaticRange } from "#/scene/static/static-range";
 import { IStaticUpcoming } from "#/scene/static/static-upcoming";
@@ -173,7 +174,7 @@ describe("listed tree shadow invalidation", () => {
 
     // Frames at twice the sway's rate: a face over what sways alone is drawn every other one.
     function frame(isWindy: boolean = true): number {
-      time += LIGHT_SHADOW_SWAY_INTERVAL / 2;
+      time += SHADOW_SWAY_INTERVAL / 2;
       shadows.begin(isWindy, time);
       shadows.request(0, light);
       shadows.finish(8);

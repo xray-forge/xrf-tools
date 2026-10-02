@@ -12,10 +12,11 @@ import {
   LIGHT_SHADOW_POINT_FACES,
   toLightShadowScale,
 } from "#/scene/lights/light-shadow-faces";
-import { LIGHT_SHADOW_SWAY_INTERVAL, LightShadowPlanner } from "#/scene/lights/light-shadow-planner";
+import { LightShadowPlanner } from "#/scene/lights/light-shadow-planner";
 import { ILightShadowRequest } from "#/scene/lights/light-shadow-request";
 import { toLightShadowSize, toLightShadowTileSize } from "#/scene/lights/light-shadow-sizing";
 import { EShadowCasterMotion } from "#/scene/static/shadow-caster-motion";
+import { SHADOW_SWAY_INTERVAL } from "#/scene/static/shadow-sway-interval";
 import { StaticShadowChanges } from "#/scene/static/static-shadow-changes";
 
 function createRequest(part: Partial<ILightShadowRequest> = {}): ILightShadowRequest {
@@ -43,7 +44,7 @@ function createBox(x: number, y: number, z: number): Box3 {
 const clocks: WeakMap<LightShadowPlanner, number> = new WeakMap();
 
 /** Begins a frame of the planner a step after its last: an interval unless told otherwise. */
-function begin(planner: LightShadowPlanner, isWindy: boolean, step: number = LIGHT_SHADOW_SWAY_INTERVAL): void {
+function begin(planner: LightShadowPlanner, isWindy: boolean, step: number = SHADOW_SWAY_INTERVAL): void {
   const time: number = (clocks.get(planner) ?? 0) + step;
 
   clocks.set(planner, time);
@@ -169,7 +170,7 @@ describe("LightShadowPlanner", () => {
   it("draws a face a swaying caster stands in again once an interval the wind blows, a moving one's every frame", () => {
     const changes: StaticShadowChanges = new StaticShadowChanges();
     const planner: LightShadowPlanner = new LightShadowPlanner(changes);
-    const step: number = LIGHT_SHADOW_SWAY_INTERVAL / 2;
+    const step: number = SHADOW_SWAY_INTERVAL / 2;
 
     changes.put(1, createBox(0, 0, 0), true, EShadowCasterMotion.SWAYING);
     plan(planner, [createRequest()], { isWindy: true, step });
@@ -214,7 +215,7 @@ describe("LightShadowPlanner", () => {
 
     // Frames three times an interval's rate: two of the six a frame, each face every third frame.
     for (let frame: number = 0; frame < 6; frame += 1) {
-      plan(planner, lights, { isWindy: true, step: LIGHT_SHADOW_SWAY_INTERVAL / 3 });
+      plan(planner, lights, { isWindy: true, step: SHADOW_SWAY_INTERVAL / 3 });
       turns.push([...planner.queue]);
     }
 

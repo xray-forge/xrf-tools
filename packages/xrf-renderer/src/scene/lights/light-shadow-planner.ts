@@ -20,6 +20,7 @@ import { LightShadowSlots } from "#/scene/lights/light-shadow-slots";
 import { ILightShadowTile } from "#/scene/lights/light-shadow-tile";
 import { byDistance, takeSorted } from "#/scene/lights/light-sorting";
 import { EShadowCasterMotion } from "#/scene/static/shadow-caster-motion";
+import { SHADOW_SWAY_INTERVAL } from "#/scene/static/shadow-sway-interval";
 import { StaticShadowChanges } from "#/scene/static/static-shadow-changes";
 
 /** How urgently a face is drawn: what it wants, then within that, which first. */
@@ -33,9 +34,6 @@ enum EFaceUrgency {
   /** Over a caster that sways in the wind and nothing that moves: each once an interval, the longest ago first. */
   SWAYING = 3,
 }
-
-/** Seconds between a swaying face's draws, at most 60 a second: the sway is slow, and each face drawn costs passes. */
-export const LIGHT_SHADOW_SWAY_INTERVAL: number = 1 / 60;
 
 /** What owed draws are rounded up by: differences of seconds come out a hair below the whole they add to. */
 const SWAY_OWED_ROUNDING: number = 1e-6;
@@ -112,7 +110,7 @@ export class LightShadowPlanner {
   public begin(isWindy: boolean, time: number): void {
     this.frame += 1;
     this.isWindy = isWindy;
-    this.elapsed = Math.min(Math.max(time - (this.time ?? time), 0), LIGHT_SHADOW_SWAY_INTERVAL);
+    this.elapsed = Math.min(Math.max(time - (this.time ?? time), 0), SHADOW_SWAY_INTERVAL);
     this.time = time;
     this.askCount = 0;
     this.queue.length = 0;
@@ -339,9 +337,7 @@ export class LightShadowPlanner {
     }
 
     // Each once an interval, a share a frame: a steady cost however fast the frames come, and never more than all.
-    this.swayOwed = swaying
-      ? Math.min(this.swayOwed + (swaying * this.elapsed) / LIGHT_SHADOW_SWAY_INTERVAL, swaying)
-      : 0;
+    this.swayOwed = swaying ? Math.min(this.swayOwed + (swaying * this.elapsed) / SHADOW_SWAY_INTERVAL, swaying) : 0;
 
     for (const { face, urgency } of candidates) {
       if (this.queue.length === budget) {
