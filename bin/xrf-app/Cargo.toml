@@ -31,7 +31,7 @@ specta-serde = { workspace = true, optional = true }
 specta-typescript = { workspace = true, optional = true }
 specta-util = { workspace = true, optional = true }
 sysinfo = { workspace = true }
-tauri = { version = "2.11.5", features = [] }
+tauri = { version = "2.12.0", features = [] }
 tauri-specta = { workspace = true, optional = true }
 tauri-plugin-dialog = "2.7.3"
 tauri-plugin-fs = "2.5.2"
@@ -84,8 +84,8 @@ xrf-particles = { workspace = true }
 
 # Both already in the tree through wry, at the versions it resolves: the memory reading asks WebView2 for its processes.
 [target.'cfg(windows)'.dependencies]
-webview2-com = "0.38.2"
-windows = { version = "0.61.3", features = [
+webview2-com = "0.39.1"
+windows = { version = "0.62.2", features = [
   "Win32_Foundation",
   "Win32_System_ProcessStatus",
   "Win32_System_Threading"
@@ -93,7 +93,7 @@ windows = { version = "0.61.3", features = [
 
 [dev-dependencies]
 # The mock runtime, which dispatches a command the way a webview would without one.
-tauri = { version = "2.11.5", features = ["test"] }
+tauri = { version = "2.12.0", features = ["test"] }
 xrf-material = { workspace = true, features = ["fixtures"] }
 xrf-test-utils = { workspace = true }
 

@@ -10,7 +10,7 @@ specta = { workspace = true }
 specta-serde = { workspace = true }
 specta-typescript = { workspace = true }
 specta-util = { workspace = true }
-tauri = { version = "2.11.5", features = [] }
+tauri = { version = "2.12.0", features = [] }
 tauri-specta = { workspace = true, features = ["typescript"] }
 xrf-typescript = { workspace = true, features = ["codegen"] }
 xrf-utils = { workspace = true }
