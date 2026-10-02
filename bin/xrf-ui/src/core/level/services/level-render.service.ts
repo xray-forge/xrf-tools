@@ -12,8 +12,10 @@ import {
   ERendererRenderScale,
   ERenderResolution,
   IRendererFlyCamera,
+  IRendererLightsReport,
   IRendererPassTimings,
   IRendererSettings,
+  IRendererStaticDrawReport,
   IRendererViewPoint,
   IRenderFrameCost,
   TRendererOverlay,
@@ -41,9 +43,11 @@ import {
   RenderCameraPose,
   RenderFrameReport,
   RenderLevelHit,
+  RenderLightsReport,
   RenderLoadReport,
   RenderOverlay,
   RenderPassCost,
+  RenderStaticReport,
   RenderSurfaceGeometry,
   RenderSurfaceSpan,
   RenderTextureReport,
@@ -134,14 +138,14 @@ const LIGHT_SHADOW_FILTERS: Record<ERendererLightShadowFilter, ERenderLightShado
 
 /**
  * @param report - What a native viewport's recent frames cost.
- * @returns The same, as the level's readouts count a frame: each visible cluster a draw.
+ * @returns The same, as the level's readouts count a frame: the static batches' indirect draws its draw calls.
  */
 export function toLevelFrameCost(report: RenderFrameReport): IRenderFrameCost {
   const cpuTime: number = report.cpuTime ?? 0;
 
   return {
     ...EMPTY_RENDER_FRAME_COST,
-    draws: report.clusters,
+    draws: report.staticDraws.commands,
     drawnHeight: report.height,
     drawnWidth: report.width,
     drawTime: cpuTime,
@@ -190,6 +194,41 @@ export function toLevelOverlays(
     .filter((overlay: Nullable<RenderOverlay>): overlay is RenderOverlay => overlay !== null);
 }
 
+/**
+ * @param report - What a native viewport's static draws came to.
+ * @returns The same, as the stream panel reads it: shadow lists are the lights' own and not counted.
+ */
+export function toLevelStaticDrawReport(report: RenderStaticReport): IRendererStaticDrawReport {
+  return {
+    ...EMPTY_RENDERER_STATIC_DRAW_REPORT,
+    clusters: report.clusters,
+    commands: report.commands,
+    kept: { clusters: report.keptClusters, triangles: report.keptTriangles },
+    lists: { ...EMPTY_RENDERER_STATIC_DRAW_REPORT.lists, surfaces: report.surfaceList },
+    lods: report.lods,
+    occluded: { clusters: report.occludedClusters, triangles: report.occludedTriangles },
+    places: report.places,
+    rows: report.rows,
+    slots: report.slots,
+  };
+}
+
+/**
+ * @param report - What a native viewport's local lights came to.
+ * @returns The same, as the stream panel reads it: a light asked at a smaller square says so by its size alone.
+ */
+export function toLevelLightsReport(report: RenderLightsReport): IRendererLightsReport {
+  return {
+    atlas: report.atlas,
+    droppedLights: report.dropped,
+    excessLights: report.excess,
+    fullClusters: report.fullClusters,
+    inView: report.inView,
+    shadowScale: 1,
+    shadowed: report.shadowed,
+  };
+}
+
 /** What the toolbar switches of the view: the weather, the grass, the wall marks and the spawned objects' groups. */
 export type TLevelViewSwitches = Pick<
   ILevelViewOptions,
@@ -222,7 +261,7 @@ export function toLevelViewOptions(
   look: ILevelLook,
   renderHeight: Nullable<number> = null
 ): RenderViewOptions {
-  const { ambientOcclusion, grass, lights, shadows, water } = settings.features;
+  const { ambientOcclusion, grass, lights, lod, shadows, water } = settings.features;
   const { corrections, exposure, lightScales } = look;
 
   return {
@@ -252,7 +291,6 @@ export function toLevelViewOptions(
       sharpening: settings.features.upscaling.sharpening,
     },
     debugView: DEBUG_VIEWS[settings.debugView],
-    geometryLod: settings.features.lod.geometryLod,
     grass: {
       density: grass.density,
       height: grass.height,
@@ -263,7 +301,6 @@ export function toLevelViewOptions(
     isBumped: settings.isBumped,
     isClouded: switches.isClouded,
     isFogged: switches.isFogged,
-    isImpostors: settings.features.lod.isImpostors,
     isLit: settings.isLit,
     isOcclusionCulled: settings.features.isOcclusionCulled,
     isRainy: switches.isRainy,
@@ -278,6 +315,15 @@ export function toLevelViewOptions(
     isWallmarked: switches.isWallmarked,
     isWindy: switches.isWindy,
     isWireframe: settings.isWireframe,
+    lod: {
+      geometryLod: lod.geometryLod,
+      isImpostors: lod.isImpostors,
+      ssaA: lod.ssaA,
+      ssaB: lod.ssaB,
+      ssaDiscard: lod.ssaDiscard,
+      ssaGlodEnd: lod.ssaGlodEnd,
+      ssaGlodStart: lod.ssaGlodStart,
+    },
     lights: {
       isEnabled: lights.isEnabled,
       isLevelLights: lights.isLevelLights,
@@ -427,6 +473,10 @@ export class LevelRenderService extends NativeRenderSurfaceService {
   private pose: Nullable<RenderCameraPose> = null;
   private frame: IRenderFrameCost = EMPTY_RENDER_FRAME_COST;
   private timings: IRendererPassTimings = EMPTY_RENDERER_PASS_TIMINGS;
+  private staticDraws: IRendererStaticDrawReport = EMPTY_RENDERER_STATIC_DRAW_REPORT;
+  /** Milliseconds the last sector taken in took to put into the scene. */
+  private sectorTime: number = 0;
+  private lights: IRendererLightsReport = EMPTY_RENDERER_LIGHTS_REPORT;
   /** What the viewport holds of the level, as it last said. */
   private load: Nullable<RenderLoadReport> = null;
   /** Bumped by every level opened or closed, so a pick asked of one since replaced notes nothing. */
@@ -582,11 +632,17 @@ export class LevelRenderService extends NativeRenderSurfaceService {
     this.load = null;
     this.frame = EMPTY_RENDER_FRAME_COST;
     this.timings = EMPTY_RENDERER_PASS_TIMINGS;
+    this.staticDraws = EMPTY_RENDERER_STATIC_DRAW_REPORT;
+    this.sectorTime = 0;
+    this.lights = EMPTY_RENDERER_LIGHTS_REPORT;
   }
 
   protected onFrame(report: RenderFrameReport): void {
     this.frame = toLevelFrameCost(report);
     this.timings = toLevelPassTimings(report);
+    this.staticDraws = toLevelStaticDrawReport(report.staticDraws);
+    this.sectorTime = report.sectorTime ?? 0;
+    this.lights = toLevelLightsReport(report.lights);
     this.publish();
   }
 
@@ -651,9 +707,9 @@ export class LevelRenderService extends NativeRenderSurfaceService {
       measureLevelStats(
         { bytes: this.load?.bytes ?? 0, sectors: this.load?.sectors ?? 0 },
         this.frame,
-        0,
-        EMPTY_RENDERER_STATIC_DRAW_REPORT,
-        EMPTY_RENDERER_LIGHTS_REPORT,
+        this.sectorTime,
+        this.staticDraws,
+        this.lights,
         0
       ),
       toLevelCameraReading({

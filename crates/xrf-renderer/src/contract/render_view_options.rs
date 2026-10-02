@@ -8,6 +8,7 @@ use crate::contract::render_grass_settings::RenderGrassSettings;
 use crate::contract::render_image_corrections::RenderImageCorrections;
 use crate::contract::render_light_scales::RenderLightScales;
 use crate::contract::render_lights_settings::RenderLightsSettings;
+use crate::contract::render_lod_settings::RenderLodSettings;
 use crate::contract::render_shadow_settings::RenderShadowSettings;
 use crate::contract::render_spawn_category::RenderSpawnCategory;
 use crate::contract::render_upscaling_settings::RenderUpscalingSettings;
@@ -30,10 +31,8 @@ pub struct RenderViewOptions {
   pub hemi_strength: f32,
   /// Whether what the last frame's depth hides is left undrawn.
   pub is_occlusion_culled: bool,
-  /// Whether distant trees are drawn as their impostors.
-  pub is_impostors: bool,
-  /// `r__geometry_lod`: every screen area threshold scales with it.
-  pub geometry_lod: f32,
+  /// How much of the static geometry draws at a distance.
+  pub lod: RenderLodSettings,
   /// What the tonemap multiplies by before the exposure's own scale.
   pub tonemap_scale: f32,
   /// Whether the weather's fog hides the distance.
@@ -87,8 +86,7 @@ impl Default for RenderViewOptions {
       is_bumped: true,
       hemi_strength: 1.0,
       is_occlusion_culled: true,
-      is_impostors: true,
-      geometry_lod: 0.75,
+      lod: RenderLodSettings::default(),
       tonemap_scale: 1.0,
       is_fogged: true,
       is_sky_visible: true,
