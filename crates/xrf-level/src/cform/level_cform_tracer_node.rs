@@ -39,10 +39,19 @@ impl LevelCformTracerNode {
     let mut far: f32 = range;
 
     for axis in 0..3 {
+      // A ray along the slab's planes meets it everywhere or nowhere, as its origin stands; the products would give NaN
+      // for an origin on a plane, which `min` and `max` drop for the infinity beside it, refusing a box the ray is on.
+      if inverse[axis].is_infinite() {
+        if origin[axis] < self.min[axis] || origin[axis] > self.max[axis] {
+          return false;
+        }
+
+        continue;
+      }
+
       let first: f32 = (self.min[axis] - origin[axis]) * inverse[axis];
       let second: f32 = (self.max[axis] - origin[axis]) * inverse[axis];
 
-      // A ray along a slab's plane gives NaN, which leaves the interval as it was.
       near = near.max(first.min(second));
       far = far.min(first.max(second));
     }
