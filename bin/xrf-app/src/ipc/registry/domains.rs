@@ -113,6 +113,16 @@ macro_rules! for_each_tauri_command_domain {
         read_sector(sessionId: "SessionId", sectorId: "SessionId") => crate::plugins::levels::routes::read_sector::levels_read_sector,
         read_spawn_model(sessionId: "SessionId", name: "string") => crate::plugins::levels::routes::read_spawn_model::levels_read_spawn_model,
       }
+      // Native viewports drawn by the renderer into the calling window, under its webview.
+      render => "render" {
+        attach_viewport => crate::plugins::render::commands::attach_viewport::render_attach_viewport,
+        command_camera => crate::plugins::render::commands::command_camera::render_command_camera,
+        configure => crate::plugins::render::commands::configure::render_configure,
+        detach_viewport => crate::plugins::render::commands::detach_viewport::render_detach_viewport,
+        send_input => crate::plugins::render::commands::send_input::render_send_input,
+        set_camera => crate::plugins::render::commands::set_camera::render_set_camera,
+        set_viewport_layout => crate::plugins::render::commands::set_viewport_layout::render_set_viewport_layout,
+      }
       spawn => "spawn" {
         save_unpacked_directory => crate::plugins::spawn::commands::save_unpacked_directory::spawn_save_unpacked_directory,
         close_file => crate::plugins::spawn::commands::close_file::spawn_close_file,

@@ -1,0 +1,142 @@
+import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals";
+
+import { ERenderInputKind, RenderInputEvent, RenderViewportLayout } from "@/core/ipc/types/xrf-renderer";
+import { NativeViewport } from "@/core/render/lib/native/native-viewport";
+import { NativeViewportTarget, toOpaqueColor } from "@/core/render/lib/native/native-viewport-target";
+
+interface IViewportSpy {
+  layouts: Array<RenderViewportLayout>;
+  inputs: Array<RenderInputEvent>;
+  viewport: NativeViewport;
+}
+
+function mockViewport(): IViewportSpy {
+  const layouts: Array<RenderViewportLayout> = [];
+  const inputs: Array<RenderInputEvent> = [];
+  const viewport = {
+    sendInput: (event: RenderInputEvent) => inputs.push(event),
+    setLayout: (layout: RenderViewportLayout) => layouts.push(layout),
+  } as unknown as NativeViewport;
+
+  return { inputs, layouts, viewport };
+}
+
+function mockTree(): { outer: HTMLElement; inner: HTMLElement; element: HTMLElement } {
+  const outer: HTMLElement = document.createElement("div");
+  const inner: HTMLElement = document.createElement("div");
+  const element: HTMLElement = document.createElement("div");
+
+  outer.style.backgroundColor = "rgb(10, 20, 30)";
+  inner.style.backgroundColor = "rgb(40, 50, 60)";
+  outer.appendChild(inner);
+  inner.appendChild(element);
+  document.body.appendChild(outer);
+  jest
+    .spyOn(element, "getBoundingClientRect")
+    .mockReturnValue({ bottom: 120, height: 100, left: 10, right: 210, top: 20, width: 200 } as DOMRect);
+
+  return { element, inner, outer };
+}
+
+function pointer(type: string, init: MouseEventInit): Event {
+  const event: Event = new MouseEvent(type, { bubbles: true, ...init });
+
+  // jsdom has no pointer events: the two fields a mouse event lacks are put on it.
+  Object.defineProperties(event, { isPrimary: { value: true }, pointerId: { value: 1 } });
+
+  return event;
+}
+
+describe("NativeViewportTarget", () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+    Object.defineProperty(window, "devicePixelRatio", { configurable: true, value: 1.5 });
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+    document.body.innerHTML = "";
+  });
+
+  it("opens a hole through every painted ancestor and closes it again", () => {
+    const { element, inner, outer } = mockTree();
+    const { layouts, viewport } = mockViewport();
+    const target: NativeViewportTarget = new NativeViewportTarget(element, viewport);
+
+    expect(inner.style.background).toBe("transparent");
+    expect(outer.style.background).toBe("transparent");
+    // The page showed the nearest painted colour around the viewport.
+    expect(layouts[0].clear).toEqual({ b: 60, g: 50, r: 40 });
+
+    target.dispose();
+
+    expect(inner.style.backgroundColor).toBe("rgb(40, 50, 60)");
+    expect(outer.style.backgroundColor).toBe("rgb(10, 20, 30)");
+  });
+
+  it("reports where the element is in device pixels, and only when it moved", () => {
+    const { element } = mockTree();
+    const { layouts, viewport } = mockViewport();
+    const target: NativeViewportTarget = new NativeViewportTarget(element, viewport);
+
+    jest.advanceTimersByTime(100);
+
+    expect(layouts).toHaveLength(1);
+    expect(layouts[0].rect).toEqual({ height: 150, width: 300, x: 15, y: 30 });
+    expect(layouts[0].scale).toBe(1.5);
+
+    target.dispose();
+  });
+
+  it("merges pointer moves into one a frame, sent before the release after them", () => {
+    const { element } = mockTree();
+    const { inputs, viewport } = mockViewport();
+    const target: NativeViewportTarget = new NativeViewportTarget(element, viewport);
+
+    element.dispatchEvent(pointer("pointerdown", { button: 0, clientX: 20, clientY: 30 }));
+    element.dispatchEvent(pointer("pointermove", { clientX: 25, clientY: 30 }));
+    element.dispatchEvent(pointer("pointermove", { clientX: 40, clientY: 35 }));
+
+    expect(inputs.map((it) => it.kind)).toEqual([ERenderInputKind.POINTER_DOWN]);
+    expect(element.style.cursor).toBe("grabbing");
+
+    element.dispatchEvent(pointer("pointerup", { button: 0, clientX: 40, clientY: 35 }));
+
+    expect(inputs.map((it) => it.kind)).toEqual([
+      ERenderInputKind.POINTER_DOWN,
+      ERenderInputKind.POINTER_MOVE,
+      ERenderInputKind.POINTER_UP,
+    ]);
+    // In css pixels from the element's own corner.
+    expect([inputs[1].x, inputs[1].y]).toEqual([30, 15]);
+    expect(element.style.cursor).toBe("");
+
+    target.dispose();
+  });
+
+  it("forwards keys once while held", () => {
+    const { element } = mockTree();
+    const { inputs, viewport } = mockViewport();
+    const target: NativeViewportTarget = new NativeViewportTarget(element, viewport);
+
+    element.dispatchEvent(new KeyboardEvent("keydown", { code: "KeyW" }));
+    element.dispatchEvent(new KeyboardEvent("keydown", { code: "KeyW", repeat: true }));
+    element.dispatchEvent(new KeyboardEvent("keyup", { code: "KeyW" }));
+
+    expect(inputs.map((it) => [it.kind, it.code])).toEqual([
+      [ERenderInputKind.KEY_DOWN, "KeyW"],
+      [ERenderInputKind.KEY_UP, "KeyW"],
+    ]);
+
+    target.dispose();
+  });
+});
+
+describe("toOpaqueColor", () => {
+  it("reads a painted colour and refuses a transparent one", () => {
+    expect(toOpaqueColor("rgb(1, 2, 3)")).toEqual({ b: 3, g: 2, r: 1 });
+    expect(toOpaqueColor("rgba(1, 2, 3, 0.5)")).toEqual({ b: 3, g: 2, r: 1 });
+    expect(toOpaqueColor("rgba(0, 0, 0, 0)")).toBeNull();
+    expect(toOpaqueColor("transparent")).toBeNull();
+  });
+});

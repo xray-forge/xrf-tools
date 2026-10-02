@@ -11,6 +11,7 @@ mod window_geometry_fit;
 mod window_geometry_restore;
 mod window_geometry_state;
 mod window_geometry_tracker;
+mod window_handles;
 mod window_reveal;
 
 #[cfg(test)]
@@ -20,3 +21,4 @@ pub use main_window::build_main_window;
 pub use webview_collection_pace::WebviewCollectionPace;
 pub use webview_options::WebviewOptions;
 pub use webview_options_state::WebviewOptionsState;
+pub use window_handles::WindowHandles;

@@ -1,0 +1,105 @@
+use std::collections::BTreeMap;
+use std::path::PathBuf;
+use std::time::SystemTime;
+
+use xrf_error::{XrfError, XrfResult};
+
+use crate::shader::shader_composer::compose_shader;
+
+/// Every WGSL module the renderer has, by the name an `#import` gives it: its path under `shaders/`, without the
+/// extension.
+const EMBEDDED: &[(&str, &str)] = &[
+  ("common/camera", include_str!("../../shaders/common/camera.wgsl")),
+  ("grid/grid", include_str!("../../shaders/grid/grid.wgsl")),
+];
+
+/// The renderer's WGSL modules: embedded in a release build, read from the crate's `shaders/` directory in a debug
+/// one so an edited file is drawn with on the next reload.
+#[derive(Clone, Debug)]
+pub struct ShaderLibrary {
+  modules: BTreeMap<&'static str, String>,
+  /// Bumped by every reload that changed a module, so a pass knows its pipelines are stale.
+  generation: u64,
+  /// When each module's file last changed, for a debug build's reload.
+  stamps: BTreeMap<&'static str, Option<SystemTime>>,
+}
+
+impl Default for ShaderLibrary {
+  fn default() -> Self {
+    let mut library: Self = Self {
+      modules: EMBEDDED
+        .iter()
+        .map(|(name, source)| (*name, source.to_string()))
+        .collect(),
+      generation: 0,
+      stamps: BTreeMap::new(),
+    };
+
+    if cfg!(debug_assertions) {
+      library.reload();
+    }
+
+    library
+  }
+}
+
+impl ShaderLibrary {
+  /// The names of every module.
+  pub fn list_modules(&self) -> impl Iterator<Item = &'static str> + '_ {
+    self.modules.keys().copied()
+  }
+
+  pub fn get_generation(&self) -> u64 {
+    self.generation
+  }
+
+  /// A module with its imports inlined and its `#if` blocks resolved against `defines`.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error for an unknown module or import, or an unbalanced `#if`.
+  pub fn compose(&self, entry: &str, defines: &[&str]) -> XrfResult<String> {
+    compose_shader(entry, defines, &|name: &str| {
+      self
+        .modules
+        .get(name)
+        .map(String::as_str)
+        .ok_or_else(|| XrfError::new_not_found_error(format!("No shader module '{name}'")))
+    })
+  }
+
+  /// Reads again every module whose file changed since it was last read, in a debug build; answers whether any did.
+  pub fn reload(&mut self) -> bool {
+    if !cfg!(debug_assertions) {
+      return false;
+    }
+
+    let root: PathBuf = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("shaders");
+    let mut is_changed: bool = false;
+
+    for (name, _) in EMBEDDED {
+      let path: PathBuf = root.join(format!("{name}.wgsl"));
+      let stamp: Option<SystemTime> = std::fs::metadata(&path).and_then(|it| it.modified()).ok();
+
+      if self.stamps.get(name) == Some(&stamp) {
+        continue;
+      }
+
+      self.stamps.insert(name, stamp);
+
+      if let Ok(source) = std::fs::read_to_string(&path)
+        && self.modules.get(name) != Some(&source)
+      {
+        log::info!("Shader module '{name}' changed on disk");
+        self.modules.insert(name, source);
+        is_changed = true;
+      }
+    }
+
+    if is_changed {
+      self.generation += 1;
+    }
+
+    is_changed
+  }
+}

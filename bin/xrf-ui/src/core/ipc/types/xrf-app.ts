@@ -1814,7 +1814,7 @@ export type LevelSpawnModelFailure = {
 export type LevelSpawnModelsDescription = {
   models: Array<LevelSpawnModelDescription>;
   failures: Array<LevelSpawnModelFailure>;
-  /** None where the level's collision form cannot be read, which lights every object as if under the open sky. */
+  /** Empty where the level's collision form cannot be read, which lights every object as if under the open sky. */
   hemi: Array<LevelSpawnObjectHemi>;
 };
 
@@ -1838,9 +1838,15 @@ export type LevelSpawnObject = {
 export type LevelSpawnObjectDetails = {
   /** Its ALife id in the spawn. */
   id: number;
-  /** The game graph vertex it stands at, which places it among the levels. */
+  /**
+   * The game graph vertex it stands at, which places it among the levels; the engine's invalid `u16::MAX` for an
+   * object without the abstract part that carries it.
+   */
   gameVertexId: number;
-  /** The level graph vertex it stands at, which places it on the level's AI map. */
+  /**
+   * The level graph vertex it stands at, which places it on the level's AI map; the engine's invalid `u32::MAX` where
+   * it has none.
+   */
   levelVertexId: number;
   /** Its `custom_data`, the logic and settings a script reads, empty where it has none. */
   customData: string;
@@ -2725,11 +2731,11 @@ export type VisualSource =
 
 /** How early V8 starts marking for its next major collection: earlier makes more collections, each freeing less at once. */
 export enum EWebviewCollectionPace {
-  /** V8's own pace. */
+  /** V8's own pace, under the name a choice made before `Frequent` became the default was kept by. */
   DEFAULT = "default",
   /** Marking starts at half V8's own point. */
   EARLIER = "earlier",
-  /** Marking starts at a quarter of it. */
+  /** Marking starts at a quarter of it, by default: collections come often and small, and their pauses do not show. */
   FREQUENT = "frequent",
 }
 

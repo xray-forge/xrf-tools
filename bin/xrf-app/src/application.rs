@@ -10,7 +10,7 @@ use crate::core::assets::AssetMountState;
 use crate::core::execution::ExecutionState;
 use crate::core::jobs::JobRegistry;
 use crate::core::transport::{TransportEndpoint, TransportOrigins, TransportServer, TransportToken};
-use crate::core::window::build_main_window;
+use crate::core::window::{WindowHandles, build_main_window};
 use crate::ipc::registry::transport_routes;
 use crate::plugins::registry::domain_plugins;
 
@@ -45,6 +45,7 @@ pub fn run() {
 /// Manage the state that outlives every command and belongs to no single domain.
 fn manage_shared_state(application: &mut App) -> Result<(), Box<dyn Error>> {
   application.manage(AssetMountState::new());
+  application.manage(WindowHandles::default());
 
   application.manage(Arc::new(JobRegistry::new()).start_reporting());
 

@@ -36,7 +36,10 @@ export const systemCommands = {
   getWebviewOptions: () => __TAURI_INVOKE<WebviewOptionsStatus>("plugin:system|get_webview_options"),
   /** Show a path in the desktop's own file manager. */
   revealPath: (path: string) => __TAURI_INVOKE<null>("plugin:system|reveal_path", { path }),
-  /** Keep browser options for the next start, which is when the webview's browser takes new ones. */
+  /**
+   * Keep browser options for the next start, which is when the webview's browser takes new ones: written to the disk
+   * off the window's thread.
+   */
   setWebviewOptions: (options: WebviewOptions) =>
     __TAURI_INVOKE<WebviewOptionsStatus>("plugin:system|set_webview_options", { options }),
 };

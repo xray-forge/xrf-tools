@@ -11,6 +11,7 @@ use crate::plugins::exports::plugin::ExportsPlugin;
 use crate::plugins::gamedata::plugin::GamedataPlugin;
 use crate::plugins::jobs::plugin::JobsPlugin;
 use crate::plugins::levels::plugin::LevelsPlugin;
+use crate::plugins::render::plugin::RenderPlugin;
 use crate::plugins::spawn::plugin::SpawnPlugin;
 use crate::plugins::sprite_equipment::plugin::SpriteEquipmentPlugin;
 use crate::plugins::system::plugin::SystemPlugin;
@@ -78,6 +79,12 @@ pub(crate) fn command_surfaces<R: tauri::Runtime>() -> Vec<IpcCommandSurface<R>>
       LevelsPlugin::specta_builder::<R>(),
       crate::ipc::registry::levels::RAW_COMMANDS,
       crate::ipc::registry::levels::BULK_ROUTES,
+    ),
+    IpcCommandSurface::new(
+      RenderPlugin::NAME,
+      RenderPlugin::specta_builder::<R>(),
+      crate::ipc::registry::render::RAW_COMMANDS,
+      crate::ipc::registry::render::BULK_ROUTES,
     ),
     IpcCommandSurface::new(
       SpawnPlugin::NAME,
