@@ -29,6 +29,7 @@ xrf-visual = { workspace = true }
 
 [dev-dependencies]
 naga = { workspace = true }
+serde_json = { workspace = true }
 
 [features]
 # Emits TypeScript mirrors of the serialized types. Nothing in a normal build turns this on.

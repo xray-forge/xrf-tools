@@ -14,6 +14,7 @@ use crate::pass::grid_pass::GridPass;
 use crate::pass::level_passes::LevelPasses;
 use crate::pass::lights_pass::LightsPass;
 use crate::pass::material_table::MaterialTable;
+use crate::pass::overlay_pass::OverlayPass;
 use crate::pass::present_pass::PresentPass;
 use crate::pass::rain_pass::RainPass;
 use crate::pass::sky_bindings::SkyBindings;
@@ -66,6 +67,7 @@ pub struct GpuState {
   pub combine: CombinePass,
   pub exposure: ExposurePass,
   pub present: PresentPass,
+  pub overlay: OverlayPass,
   pub table: MaterialTable,
   /// The grid pass for each target format drawn into.
   grids: HashMap<wgpu::TextureFormat, GridPass>,
@@ -130,6 +132,7 @@ impl GpuState {
       sky,
       exposure: ExposurePass::new(device, shaders)?,
       present: PresentPass::new(device, shaders, &view_layout),
+      overlay: OverlayPass::new(device, shaders, &view_layout),
       table: MaterialTable::new(device, &context.queue),
       windows: HashMap::new(),
       grids: HashMap::new(),
@@ -183,6 +186,7 @@ impl GpuState {
       upscale: &self.upscale,
       exposure: &self.exposure,
       present: &self.present,
+      overlay: &self.overlay,
       table: &self.table,
     }
   }
@@ -216,5 +220,6 @@ impl GpuState {
     self.upscale.refresh(device, shaders);
     self.exposure.refresh(device, shaders);
     self.present.refresh(shaders);
+    self.overlay.refresh(shaders);
   }
 }

@@ -4,6 +4,7 @@ mod grass;
 mod headless;
 mod light_geometry;
 mod lighting;
+mod overlays;
 mod shader_composer;
 mod shaders;
 mod shadow_tile_allocator;

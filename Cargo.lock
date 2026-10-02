@@ -7591,6 +7591,7 @@ dependencies = [
  "raw-window-handle",
  "rayon",
  "serde",
+ "serde_json",
  "specta",
  "wgpu",
  "xrf-dds",

@@ -8,6 +8,7 @@ import {
   RenderCamera,
   RenderCameraCommand,
   RenderInputEvent,
+  RenderOverlay,
   RenderSettings,
   RenderSurfaceGeometry,
   RenderTextureReport,
@@ -84,6 +85,9 @@ export const renderCommands = {
   /** Describe a viewport's camera; described again from the same start, it keeps where it has been moved. */
   setCamera: (viewport: RenderViewportId, camera: RenderCamera) =>
     __TAURI_INVOKE<void>("plugin:render|set_camera", { viewport, camera }),
+  /** Set the helpers drawn over one viewport's frame. */
+  setOverlays: (viewport: RenderViewportId, overlays: Array<RenderOverlay>) =>
+    __TAURI_INVOKE<void>("plugin:render|set_overlays", { viewport, overlays }),
   /** Set what one viewport draws its scene with. */
   setViewOptions: (viewport: RenderViewportId, options: RenderViewOptions) =>
     __TAURI_INVOKE<void>("plugin:render|set_view_options", { viewport, options }),

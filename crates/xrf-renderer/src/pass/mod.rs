@@ -24,6 +24,7 @@ pub(crate) mod lighting_uniform;
 pub(crate) mod lights_pass;
 pub(crate) mod lights_uniform;
 pub(crate) mod material_table;
+pub(crate) mod overlay_pass;
 pub(crate) mod present_pass;
 pub(crate) mod present_uniform;
 pub(crate) mod rain_bindings;

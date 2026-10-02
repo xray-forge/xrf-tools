@@ -13,6 +13,7 @@ import {
   RenderInputEvent,
   RenderLevelHit,
   RenderLoadReport,
+  RenderOverlay,
   RenderSurfaceGeometry,
   RenderTextureReport,
   RenderViewOptions,
@@ -115,6 +116,13 @@ export class NativeViewport {
 
   public setViewOptions(options: RenderViewOptions): void {
     this.call((id: RenderViewportId) => renderCommands.setViewOptions(id, options));
+  }
+
+  /**
+   * @param overlays - The helpers drawn over its frame from now on, in place of those before.
+   */
+  public setOverlays(overlays: Array<RenderOverlay>): void {
+    this.call((id: RenderViewportId) => renderCommands.setOverlays(id, overlays));
   }
 
   public playWeather(play: RenderWeatherPlay, transition: ERenderWeatherTransition): void {

@@ -23,9 +23,8 @@
 // The sky as drawn, clouds and all, blurred by bearing and height.
 @group(1) @binding(10) var haze_map: texture_2d<f32>;
 
-// What shows where nothing was drawn and neither the sky nor the fog is: the backdrop's colour overhead and around.
-const BACKDROP_ZENITH: vec3<f32> = vec3<f32>(0.13, 0.15, 0.19);
-const BACKDROP_HORIZON: vec3<f32> = vec3<f32>(0.32, 0.34, 0.37);
+// What shows where nothing was drawn and neither the sky nor the fog is: the level viewer's backdrop, #202428.
+const BACKDROP: vec3<f32> = vec3<f32>(32.0, 36.0, 40.0) / 255.0;
 
 // The world direction through a pixel of the viewport.
 fn pixel_direction(pixel: vec2<f32>) -> vec3<f32> {
@@ -75,7 +74,7 @@ fn fs_combine(in: FullscreenVarying) -> @location(0) vec4<f32> {
       return vec4<f32>(tonemap(lighting.fog_color.rgb, scale), 1.0);
     }
 
-    return vec4<f32>(mix(BACKDROP_HORIZON, BACKDROP_ZENITH, sqrt(saturate(direction.y))), 1.0);
+    return vec4<f32>(BACKDROP, 1.0);
   }
 
   let albedo: vec4<f32> = textureLoad(albedo_target, texel, 0);

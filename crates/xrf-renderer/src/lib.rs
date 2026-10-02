@@ -42,6 +42,7 @@ pub use crate::contract::render_light_scales::RenderLightScales;
 pub use crate::contract::render_light_shadow_filter::RenderLightShadowFilter;
 pub use crate::contract::render_lights_settings::RenderLightsSettings;
 pub use crate::contract::render_load_report::RenderLoadReport;
+pub use crate::contract::render_overlay::RenderOverlay;
 pub use crate::contract::render_pass_cost::RenderPassCost;
 pub use crate::contract::render_presentation::RenderPresentation;
 pub use crate::contract::render_rect::RenderRect;

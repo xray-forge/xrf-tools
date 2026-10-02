@@ -20,6 +20,8 @@ use crate::contract::render_water_settings::RenderWaterSettings;
 pub struct RenderViewOptions {
   /// Whether the scene is lit, else shown as its raw albedo.
   pub is_lit: bool,
+  /// Whether every static surface draws as its triangles' edges.
+  pub is_wireframe: bool,
   /// Whether surfaces wear their textures, else their flat colours.
   pub is_textured: bool,
   /// Whether bump textures bend the normal.
@@ -67,6 +69,9 @@ pub struct RenderViewOptions {
   pub antialiasing: RenderAntialiasing,
   /// What the scene is drawn at, and how its upscaled frame is sharpened.
   pub upscaling: RenderUpscalingSettings,
+  /// Device pixels the scene is drawn tall before its render scale, or `None` for the viewport's own; one taller than
+  /// the viewport draws at the viewport's.
+  pub render_height: Option<u32>,
   /// How the game's console scales the sun, the hemisphere and the ambient.
   pub light_scales: RenderLightScales,
   /// What the finished frame is corrected by.
@@ -77,6 +82,7 @@ impl Default for RenderViewOptions {
   fn default() -> Self {
     Self {
       is_lit: true,
+      is_wireframe: false,
       is_textured: true,
       is_bumped: true,
       hemi_strength: 1.0,
@@ -105,6 +111,7 @@ impl Default for RenderViewOptions {
       debug_view: RenderDebugView::Final,
       antialiasing: RenderAntialiasing::None,
       upscaling: RenderUpscalingSettings::default(),
+      render_height: None,
       light_scales: RenderLightScales::default(),
       corrections: RenderImageCorrections::default(),
     }

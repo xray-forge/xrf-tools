@@ -16,6 +16,7 @@ use crate::contract::render_image_corrections::RenderImageCorrections;
 use crate::contract::render_level_hit::RenderLevelHit;
 use crate::contract::render_lights_settings::RenderLightsSettings;
 use crate::contract::render_load_report::RenderLoadReport;
+use crate::contract::render_overlay::RenderOverlay;
 use crate::contract::render_pass_cost::RenderPassCost;
 use crate::contract::render_rect::RenderRect;
 use crate::contract::render_shadow_settings::RenderShadowSettings;
@@ -65,6 +66,7 @@ use crate::pass::wind_uniform::WindUniform;
 use crate::scene::level::level_grass::LevelGrass;
 use crate::scene::level::level_lights::LevelLights;
 use crate::scene::level::level_loader::LevelLoader;
+use crate::scene::level::level_overlays::LevelOverlays;
 use crate::scene::level::level_shadows::LevelShadows;
 use crate::scene::level::level_smoothing::LevelSmoothing;
 use crate::scene::level::rain_cover::RainCover;
@@ -175,6 +177,11 @@ pub struct LevelView {
   sorted_group: Option<((u64, u64), wgpu::BindGroup)>,
   sorted_epoch: u64,
   sorted_count: u32,
+  /// What it draws over its frame, and the overlay pass's bind group with the targets' epoch it binds.
+  overlays: Option<LevelOverlays>,
+  overlay_group: Option<(u64, wgpu::BindGroup)>,
+  /// Whether the static surfaces draw as their edges, which nothing composited or planted is drawn over.
+  is_wireframe: bool,
   /// The smoothing pass while one smooths the scene as drawn.
   smoothing: Option<LevelSmoothing>,
   /// What corrects this frame's finished image.
@@ -287,6 +294,9 @@ impl LevelView {
       upscale_uniform: uniform("upscale", size_of::<UpscaleUniform>()),
       present_group: None,
       smoothing: None,
+      is_wireframe: false,
+      overlays: None,
+      overlay_group: None,
       sorted_list: None,
       sorted_group: None,
       sorted_epoch: 0,
@@ -677,6 +687,7 @@ impl LevelView {
     self.output = output;
     self.upscaling = options.upscaling;
     self.frame_debug_view = options.debug_view;
+    self.is_wireframe = options.is_wireframe;
     self.frame_corrections = options.corrections;
     self.frame_occlusion = options.is_lit && options.ambient_occlusion.is_enabled;
     self.prepare_temporal(device, queue, passes, view);
@@ -955,10 +966,12 @@ impl LevelView {
     }
 
     self.stats.record(encoder, &self.scene.args, StaticScene::STATS_OFFSET);
-    self.grass.draw(encoder, passes.grass, (targets, view), texture_group);
-    timer.mark(encoder, "grass");
+    if !self.is_wireframe {
+      self.grass.draw(encoder, passes.grass, (targets, view), texture_group);
+      timer.mark(encoder, "grass");
+    }
 
-    if self.is_wallmarked {
+    if self.is_wallmarked && !self.is_wireframe {
       passes
         .composited
         .draw_wallmarks(encoder, targets, view, draw_groups, texture_group, &list_args);
@@ -1033,6 +1046,7 @@ impl LevelView {
       }
 
       if self.water_settings.is_enabled
+        && !self.is_wireframe
         && let Some((_, water_group)) = &self.water_group
       {
         passes.water.draw(
@@ -1047,7 +1061,9 @@ impl LevelView {
         timer.mark(encoder, "water");
       }
 
-      if let Some((_, sky_group)) = &self.sky_group {
+      if !self.is_wireframe
+        && let Some((_, sky_group)) = &self.sky_group
+      {
         passes.composited.draw(
           encoder,
           targets,
@@ -1223,10 +1239,10 @@ impl LevelView {
 
   /// Where the next frame's samples sit within their pixels, in drawn pixels, `y` down: jittered while it resolves
   /// frames temporally and shows the finished frame, still otherwise.
-  pub fn next_jitter(&mut self, options: &RenderViewOptions) -> Vec2 {
+  pub fn next_jitter(&mut self, options: &RenderViewOptions, ratio: f32) -> Vec2 {
     self.is_temporal = options.antialiasing.is_temporal() && options.debug_view == RenderDebugView::Final;
     self.frame_jitter = if self.is_temporal {
-      self.jitter.next(options.upscaling.scale.get_ratio())
+      self.jitter.next(ratio)
     } else {
       Vec2::ZERO
     };
@@ -1458,6 +1474,18 @@ impl LevelView {
       )),
     );
 
+    if self
+      .overlay_group
+      .as_ref()
+      .is_none_or(|(epoch, _)| *epoch != self.targets_epoch)
+    {
+      let group: wgpu::BindGroup = passes
+        .overlay
+        .create_bind_group(device, targets, &self.present, &self.lighting);
+
+      self.overlay_group = Some((self.targets_epoch, group));
+    }
+
     let shown: usize = usize::from(self.upscaling.is_sharpened());
     let key: (u64, u64, usize) = (
       self.targets_epoch,
@@ -1499,6 +1527,18 @@ impl LevelView {
   }
 
   /// What puts the level's finished scene into the window, once its targets are made.
+  /// Takes what its viewport draws over its frame, uploading a set once.
+  pub fn set_overlays(&mut self, device: &wgpu::Device, overlays: &[RenderOverlay], version: u64) {
+    if self.overlays.as_ref().is_none_or(|it| it.version != version) {
+      self.overlays = Some(LevelOverlays::new(device, overlays, version));
+    }
+  }
+
+  /// What it draws over its frame, with the bind group drawing it, once both are made.
+  pub fn get_overlays(&self) -> Option<(&wgpu::BindGroup, &LevelOverlays)> {
+    Some((&self.overlay_group.as_ref()?.1, self.overlays.as_ref()?))
+  }
+
   /// The size its scene is rendered at, once its targets are made.
   pub fn get_render_size(&self) -> Option<(u32, u32)> {
     self.targets.as_ref().map(|it| (it.width, it.height))

@@ -5,6 +5,7 @@ use crate::camera::camera_controller::CameraController;
 use crate::contract::render_camera_pose::RenderCameraPose;
 use crate::contract::render_frame_report::RenderFrameReport;
 use crate::contract::render_load_report::RenderLoadReport;
+use crate::contract::render_overlay::RenderOverlay;
 use crate::contract::render_rect::RenderRect;
 use crate::contract::render_view_options::RenderViewOptions;
 use crate::contract::render_viewport_event::RenderViewportEvent;
@@ -31,6 +32,9 @@ pub struct RenderViewport {
   pub layout: Option<RenderViewportLayout>,
   pub camera: CameraController,
   pub options: RenderViewOptions,
+  /// What it draws over its frame, and how many sets it has been given, which its level's vertices follow.
+  pub overlays: Vec<RenderOverlay>,
+  pub overlays_version: u64,
   /// The level it draws, as its source gives it.
   pub level: Option<Arc<dyn RenderLevelSource>>,
   /// The level as this viewport draws it, made once a GPU is there.
@@ -61,6 +65,8 @@ impl RenderViewport {
       layout: None,
       camera: CameraController::default(),
       options: RenderViewOptions::default(),
+      overlays: Vec::new(),
+      overlays_version: 0,
       level: None,
       level_view: None,
       weather: ViewportWeather::new(now),

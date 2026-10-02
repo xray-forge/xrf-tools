@@ -7,6 +7,7 @@ use crate::pass::fxaa_pass::FxaaPass;
 use crate::pass::grass_pass::GrassPass;
 use crate::pass::lights_pass::LightsPass;
 use crate::pass::material_table::MaterialTable;
+use crate::pass::overlay_pass::OverlayPass;
 use crate::pass::present_pass::PresentPass;
 use crate::pass::rain_pass::RainPass;
 use crate::pass::sky_bindings::SkyBindings;
@@ -47,5 +48,6 @@ pub struct LevelPasses<'a> {
   pub upscale: &'a UpscalePass,
   pub exposure: &'a ExposurePass,
   pub present: &'a PresentPass,
+  pub overlay: &'a OverlayPass,
   pub table: &'a MaterialTable,
 }

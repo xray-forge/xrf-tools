@@ -1,7 +1,9 @@
 import { ERendererOverlay, TRendererOverlay } from "@xrf/renderer";
+import { Nullable } from "@xrf/types";
 
 import { ILevelBox, toBoxFloor, toBoxReach, toOriginReach } from "@/core/level/lib/extent/level-extent";
 import { ILevelRenderConfig } from "@/core/level/lib/render/level-render-config";
+import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
 import { toRawColor } from "@/core/render/lib/scene/render-color";
 import {
   IRenderLines,
@@ -13,6 +15,40 @@ import { toRenderGridStep } from "@/core/render/lib/scene/render-grid-step";
 
 /** Cells of the grid the axis marker spans, so which way is which is legible without dwarfing the level. */
 const AXES_CELLS: number = 2;
+
+/**
+ * The grid, the extent, the axes and the sun, sized to the level and shown as the toolbar asks.
+ *
+ * @param box - The level's extent, or null while none is open.
+ * @param options - Which of them the toolbar shows.
+ * @param config - Their cells, colours and sizes.
+ * @returns The overlays, in the order drawn.
+ */
+export function toLevelFrameOverlays(
+  box: Nullable<ILevelBox>,
+  options: Pick<ILevelViewOptions, "isAxesVisible" | "isGridVisible" | "isSunVisible">,
+  config: ILevelRenderConfig
+): Array<TRendererOverlay> {
+  const overlays: Array<TRendererOverlay> = [];
+
+  if (box && options.isGridVisible) {
+    overlays.push(toLevelGridOverlay(box, config));
+
+    if (!box.isEmpty) {
+      overlays.push(toLevelExtentGridOverlay(box, config), toLevelExtentBoxOverlay(box, config));
+    }
+  }
+
+  if (box && options.isAxesVisible) {
+    overlays.push(toLevelAxesOverlay(box, config));
+  }
+
+  if (options.isSunVisible) {
+    overlays.push(toLevelSunOverlay(config));
+  }
+
+  return overlays;
+}
 
 /**
  * The ground grid, centred on the origin and reaching the level: a level lying a kilometre off zero needs a grid that

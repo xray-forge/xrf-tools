@@ -2,25 +2,10 @@
 #import "common/fullscreen"
 #import "common/occlusion"
 #import "common/octahedral"
+#import "common/present"
 
 // The viewport's finished scene put into its rectangle of the window, moved where the water distorts it; or, for a
 // debug view, one of the targets the scene was built from.
-
-struct Present {
-  // Which picture: the scene at zero, else a target, in `RenderDebugView`'s order.
-  view: u32,
-  // Whether the screen's occlusion was searched this frame.
-  is_occluded: u32,
-  // Whether the frame shown is the upscaled one, at the viewport's size, rather than the scene as drawn.
-  is_upscaled: u32,
-  pad: u32,
-  // The viewport's top left corner in the window and its size, in pixels; the scene is drawn at `camera.viewport.xy`.
-  origin: vec2<f32>,
-  size: vec2<f32>,
-  // `img_corrections`: x exposure, y gamma, z saturation; then the grading colour.
-  corrections: vec4<f32>,
-  grading: vec4<f32>,
-};
 
 @group(1) @binding(0) var scene: texture_2d<f32>;
 // How far the water moves what is seen through it, around what the target is cleared to.
@@ -134,9 +119,7 @@ fn corrected(color: vec3<f32>) -> vec3<f32> {
 
 // The drawn texel under a point of the viewport, in its pixels.
 fn drawn_texel(pixel: vec2<f32>) -> vec2<i32> {
-  let drawn: vec2<f32> = camera.viewport.xy;
-
-  return vec2<i32>(clamp(floor((pixel + 0.5) * drawn / present.size), vec2<f32>(0.0), drawn - 1.0));
+  return to_drawn_texel(pixel, camera.viewport.xy, present.size);
 }
 
 @fragment
