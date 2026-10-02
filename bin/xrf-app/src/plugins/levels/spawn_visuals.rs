@@ -9,7 +9,7 @@ use xrf_chunk::XRayByteOrder;
 use xrf_error::XrfResult;
 use xrf_material::{XraySurfaceDescriptor, XraySurfaceResolver, XrayTextureScope};
 use xrf_ogf::OgfFile;
-use xrf_vfs::{XrayAssetType, XrayLogicalPath, XrayProbe, XrayResolution};
+use xrf_vfs::{XrayAssetType, XrayLogicalPath, XrayProbe};
 use xrf_visual::{VisualDependencies, VisualDescription, VisualPackage, VisualPacker, VisualRestPose, VisualSkeleton};
 
 use crate::core::assets::read_referenced_asset;
@@ -96,14 +96,14 @@ impl<'probe, 'vfs> SpawnVisualReader<'probe, 'vfs> {
     })
   }
 
-  /// `CModelPool::Instance_Load`: beside the level first, then the shared meshes.
+  /// `CModelPool::Instance_Load`: beside the level first, then the shared meshes; a name no path beside the level can
+  /// spell is looked up in the shared meshes alone, as a texture's is.
   fn read_bytes(&self, name: &str) -> XrfResult<Vec<u8>> {
-    if let Some(level) = &self.level {
-      let beside: XrayResolution = self.probe.find_beside(level, XrayAssetType::Ogf, name)?;
-
-      if let Some(asset) = beside.get_asset() {
-        return self.probe.read_asset_bytes(asset);
-      }
+    if let Some(level) = &self.level
+      && let Ok(beside) = self.probe.find_beside(level, XrayAssetType::Ogf, name)
+      && let Some(asset) = beside.get_asset()
+    {
+      return self.probe.read_asset_bytes(asset);
     }
 
     read_referenced_asset(self.probe, XrayAssetType::Ogf, name)
