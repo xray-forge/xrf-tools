@@ -84,21 +84,21 @@ export function SettingsWebviewOptionsSection(): ReactElement {
           />
 
           <CheckboxFormRow
-            label={"Disable vsync"}
+            label={"Vsync"}
             description={
-              "Presents frames as soon as they are drawn instead of at the display's refresh, for measuring what a frame costs. May tear."
+              "Presents frames at the display's refresh. Off, frames are presented as soon as they are drawn, for measuring what a frame costs, and may tear."
             }
-            isChecked={status.chosen.isVsyncDisabled ?? false}
-            onChange={(isChecked: boolean) => onChange({ isVsyncDisabled: isChecked })}
+            isChecked={status.chosen.isVsync ?? true}
+            onChange={(isChecked: boolean) => onChange({ isVsync: isChecked })}
           />
 
           <CheckboxFormRow
-            label={"Disable frame rate limit"}
+            label={"Frame rate limit"}
             description={
-              "Lets the page draw past the display's refresh. With vsync disabled and the viewer's frame rate limit set to unlimited, the renderer runs as fast as it can."
+              "Keeps the page's frames to the display's refresh. With this and vsync off and the viewer's frame rate limit set to unlimited, the renderer runs as fast as it can."
             }
-            isChecked={status.chosen.isFrameRateUnlimited ?? false}
-            onChange={(isChecked: boolean) => onChange({ isFrameRateUnlimited: isChecked })}
+            isChecked={status.chosen.isFrameRateLimited ?? true}
+            onChange={(isChecked: boolean) => onChange({ isFrameRateLimited: isChecked })}
           />
 
           <ChoiceFormRow

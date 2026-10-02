@@ -2744,10 +2744,10 @@ export type WebviewOptions = {
   isWebgpuDeveloper: boolean;
   /** How early the webview's JavaScript starts marking for a major collection, for every page and worker alike. */
   collectionPace?: WebviewCollectionPace;
-  /** `--disable-gpu-vsync`: the compositor presents as frames come rather than at the display's refresh. */
-  isVsyncDisabled?: boolean;
-  /** `--disable-frame-rate-limit`: the page's animation frames run past the display's refresh. */
-  isFrameRateUnlimited?: boolean;
+  /** The compositor presents at the display's refresh; lifted, `--disable-gpu-vsync` presents frames as they come. */
+  isVsync?: boolean;
+  /** The page's animation frames keep to the display's refresh; lifted, `--disable-frame-rate-limit` runs them past it. */
+  isFrameRateLimited?: boolean;
 };
 
 /** The webview options this run started with, and the ones the next start applies. */

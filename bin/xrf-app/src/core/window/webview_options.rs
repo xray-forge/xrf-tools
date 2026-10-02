@@ -17,24 +17,29 @@ pub struct WebviewOptions {
   /// How early the webview's JavaScript starts marking for a major collection, for every page and worker alike.
   #[serde(default)]
   pub collection_pace: WebviewCollectionPace,
-  /// `--disable-gpu-vsync`: the compositor presents as frames come rather than at the display's refresh.
-  #[serde(default)]
-  pub is_vsync_disabled: bool,
-  /// `--disable-frame-rate-limit`: the page's animation frames run past the display's refresh.
-  #[serde(default)]
-  pub is_frame_rate_unlimited: bool,
+  /// The compositor presents at the display's refresh; lifted, `--disable-gpu-vsync` presents frames as they come.
+  #[serde(default = "is_on")]
+  pub is_vsync: bool,
+  /// The page's animation frames keep to the display's refresh; lifted, `--disable-frame-rate-limit` runs them past it.
+  #[serde(default = "is_on")]
+  pub is_frame_rate_limited: bool,
+}
+
+/// What an option kept on by default reads as where a choice stored before it existed leaves it out.
+fn is_on() -> bool {
+  true
 }
 
 impl Default for WebviewOptions {
-  /// A level's pipelines fit the doubled cache and not the default one; the developer features, a collection pace of
-  /// its own and frames past the display's refresh are opt-in.
+  /// A level's pipelines fit the doubled cache and not the default one, and frames keep to the display's refresh; the
+  /// developer features and a collection pace of its own are opt-in.
   fn default() -> Self {
     Self {
       is_shader_cache_doubled: true,
       is_webgpu_developer: false,
       collection_pace: WebviewCollectionPace::Default,
-      is_vsync_disabled: false,
-      is_frame_rate_unlimited: false,
+      is_vsync: true,
+      is_frame_rate_limited: true,
     }
   }
 }
@@ -52,11 +57,11 @@ impl WebviewOptions {
       args.push("--enable-webgpu-developer-features".to_owned());
     }
 
-    if self.is_vsync_disabled {
+    if !self.is_vsync {
       args.push("--disable-gpu-vsync".to_owned());
     }
 
-    if self.is_frame_rate_unlimited {
+    if !self.is_frame_rate_limited {
       args.push("--disable-frame-rate-limit".to_owned());
     }
 
