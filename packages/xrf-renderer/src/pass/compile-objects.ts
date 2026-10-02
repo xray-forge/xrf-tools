@@ -8,9 +8,8 @@ import { IObjectCompile } from "#/pass/object-compile";
 const COMPILE_LANES: number = 8;
 
 /**
- * Compiles objects side by side, each lane taking the next as it finishes one. Three compiles a scene one object at a
- * time and waits for each one's pipeline before the next, so the GPU process made a warm open's uncached pipelines one
- * after another on one of its threads: 3.4 s of Pripyat's opening.
+ * Compiles objects side by side, each lane taking the next as it finishes one: three compiles a scene one object at a
+ * time and waits for each one's pipeline before the next, which the GPU process then makes one after another.
  *
  * @param renderer - The renderer compiling.
  * @param compiles - What to compile, taken one at a time as lanes free: it may stop early, or read what changed since.

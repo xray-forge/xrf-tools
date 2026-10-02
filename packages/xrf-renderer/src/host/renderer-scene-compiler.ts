@@ -119,7 +119,7 @@ export class RendererSceneCompiler {
     }
 
     this.run(
-      async () => compileObjects(renderer, toCompiles(pass.target, staging.scenes[pass.scene], camera)),
+      async () => compileObjects(renderer, this.toHeld(pass, frame, staging.scenes[pass.scene], camera)),
       "A pass joining the frame failed to compile:",
       // Left or made again meanwhile, it is admitted to nothing, and what compiled stays compiled.
       (isCurrent: boolean) => {
@@ -186,19 +186,39 @@ export class RendererSceneCompiler {
       tried.add(pass);
       compiled.add(pass.scene);
 
-      for (const compile of toCompiles(pass.target, staging.scenes[pass.scene], camera)) {
-        if (this.isDisposed || !frame.compileTargets.passes.includes(pass)) {
-          break;
-        }
-
-        yield compile;
-      }
+      yield* this.toHeld(pass, frame, staging.scenes[pass.scene], camera);
     }
 
     if (!this.isDisposed && staging.shadows.children.length) {
       const { shadow }: IFrameCompileTargets = frame.compileTargets;
 
       yield* toCompiles(shadow.target, staging.shadows, shadow.camera);
+    }
+  }
+
+  /**
+   * A pass's objects, each taken only while the frame still holds the pass, joining or joined, and the compiler is not
+   * disposed: each object's compile allocates the pass's target as it starts, and one that left the frame has freed it.
+   *
+   * @param pass - The pass compiled for.
+   * @param frame - Where the frame draws it, read again before each object.
+   * @param scene - What the pass draws of the staging.
+   * @param camera - The drawing camera.
+   */
+  private *toHeld(
+    pass: IRendererScenePass,
+    frame: ICompilingFrame,
+    scene: Scene,
+    camera: PerspectiveCamera
+  ): Generator<IObjectCompile> {
+    for (const compile of toCompiles(pass.target, scene, camera)) {
+      const { passes, joining }: IFrameCompileTargets = frame.compileTargets;
+
+      if (this.isDisposed || (!passes.includes(pass) && !joining.includes(pass))) {
+        return;
+      }
+
+      yield compile;
     }
   }
 

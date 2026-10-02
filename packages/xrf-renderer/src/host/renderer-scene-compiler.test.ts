@@ -427,6 +427,28 @@ describe("RendererSceneCompiler", () => {
     expect(fake.calls).toHaveLength(1);
   });
 
+  // Each object's compile allocates the pass's target as it starts: one that left the frame has freed its target.
+  it("compiles no further object for a joining pass that leaves the frame while it compiles", async () => {
+    const fake: IFakeRenderer = createRenderer();
+    const fakeScene: IFakeScene = createScene();
+    const drawn: ISceneStaging = createStaging();
+    const water: IRendererScenePass = toPass(ERendererPass.WATER);
+    const fakeFrame: IFakeFrame = createFrame({ ...createTargets(), joining: [water] });
+    const compiler: RendererSceneCompiler = new RendererSceneCompiler();
+
+    for (let at: number = 0; at < LANES; at += 1) {
+      drawn.scenes[ERendererPass.WATER].add(new Mesh());
+    }
+
+    fakeScene.drawn = drawn;
+    compiler.compile(fake.renderer, fakeScene.scene, fakeFrame.frame, new PerspectiveCamera());
+    // Switched off while its first objects compile.
+    fakeFrame.targets = { ...fakeFrame.targets, joining: [] };
+    await finishAll(fake);
+
+    expect(fake.calls).toHaveLength(LANES);
+  });
+
   // Switched off and on, the water's pipelines are still three's: it joins without a compile.
   it("admits a pass joining with nothing drawn to compile for it at once, and goes on to the waiting objects", () => {
     const fake: IFakeRenderer = createRenderer();
