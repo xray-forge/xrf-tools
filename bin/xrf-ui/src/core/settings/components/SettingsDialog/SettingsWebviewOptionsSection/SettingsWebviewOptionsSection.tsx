@@ -104,10 +104,10 @@ export function SettingsWebviewOptionsSection(): ReactElement {
           <ChoiceFormRow
             label={"Garbage collection"}
             description={
-              "How early the webview's JavaScript starts collecting garbage. Earlier collects more often, so the renderer's pause after each is shorter, for a little throughput."
+              "How early the webview's JavaScript starts collecting garbage. Collecting more often keeps the pause after each short: at V8's own pace it shows as a 20-40 ms frame every few seconds of an uncapped flight, at frequent as none."
             }
             options={WEBVIEW_COLLECTION_PACE_OPTIONS}
-            value={status.chosen.collectionPace ?? EWebviewCollectionPace.DEFAULT}
+            value={status.chosen.collectionPace ?? EWebviewCollectionPace.FREQUENT}
             onChange={(collectionPace: WebviewCollectionPace) => onChange({ collectionPace })}
           />
         </div>

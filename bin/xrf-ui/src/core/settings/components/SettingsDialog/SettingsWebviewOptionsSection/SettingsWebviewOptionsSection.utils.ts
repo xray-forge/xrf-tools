@@ -16,9 +16,9 @@ export function isRestartPending(status: WebviewOptionsStatus): boolean {
   return (Object.keys(chosen) as Array<keyof WebviewOptions>).some((key) => chosen[key] !== running[key]);
 }
 
-/** The collection paces offered, V8's own first. */
+/** The collection paces offered, V8's own first; frequent is the backend's default. */
 export const WEBVIEW_COLLECTION_PACE_OPTIONS: ReadonlyArray<IChoiceFormRowOption<WebviewCollectionPace>> = [
-  { label: "Default", value: EWebviewCollectionPace.DEFAULT },
+  { label: "V8's own", value: EWebviewCollectionPace.DEFAULT },
   { label: "Earlier", value: EWebviewCollectionPace.EARLIER },
   { label: "Frequent", value: EWebviewCollectionPace.FREQUENT },
 ];

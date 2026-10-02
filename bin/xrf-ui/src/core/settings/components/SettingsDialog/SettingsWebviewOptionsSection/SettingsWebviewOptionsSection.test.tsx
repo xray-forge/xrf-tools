@@ -65,7 +65,7 @@ describe("SettingsWebviewOptionsSection", () => {
     const backend: { chosen: WebviewOptions } = mockBackend();
     const { findByRole, getByRole } = renderWithProviders(<SettingsWebviewOptionsSection />);
 
-    expect(await findByRole("button", { name: "Default" })).toHaveAttribute("aria-pressed", "true");
+    expect(await findByRole("button", { name: "V8's own" })).toHaveAttribute("aria-pressed", "true");
 
     await userEvent.click(getByRole("button", { name: "Earlier" }));
 

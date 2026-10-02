@@ -5,12 +5,13 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum WebviewCollectionPace {
-  /// V8's own pace.
-  #[default]
+  /// V8's own pace, under the name a choice made before `Frequent` became the default was kept by.
   Default,
   /// Marking starts at half V8's own point.
   Earlier,
-  /// Marking starts at a quarter of it.
+  /// Marking starts at a quarter of it: by default, since at V8's own pace a major collection's pause showed as a
+  /// 20 to 40 ms frame every few seconds of an uncapped flight, and at this one as none, for no frame rate measured.
+  #[default]
   Frequent,
 }
 

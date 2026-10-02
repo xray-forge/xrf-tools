@@ -31,13 +31,13 @@ fn is_on() -> bool {
 }
 
 impl Default for WebviewOptions {
-  /// A level's pipelines fit the doubled cache and not the default one, and frames keep to the display's refresh; the
-  /// developer features and a collection pace of its own are opt-in.
+  /// A level's pipelines fit the doubled cache and not the default one, frames keep to the display's refresh, and the
+  /// major collections come often and small; the developer features are opt-in.
   fn default() -> Self {
     Self {
       is_shader_cache_doubled: true,
       is_webgpu_developer: false,
-      collection_pace: WebviewCollectionPace::Default,
+      collection_pace: WebviewCollectionPace::Frequent,
       is_vsync: true,
       is_frame_rate_limited: true,
     }

@@ -3,10 +3,12 @@ use crate::core::window::{WebviewCollectionPace, WebviewOptions};
 const WRY_DEFAULT: &str = "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection";
 
 #[test]
-fn the_webview_starts_with_the_doubled_pipeline_cache_and_without_developer_features() {
+fn the_webview_starts_with_the_doubled_pipeline_cache_and_frequent_collections_without_developer_features() {
   assert_eq!(
     WebviewOptions::default().to_browser_args(),
-    format!("{WRY_DEFAULT} --enable-features=AggressiveShaderCacheLimits")
+    format!(
+      "{WRY_DEFAULT} --enable-features=AggressiveShaderCacheLimits --js-flags=--incremental-marking-soft-trigger=25"
+    )
   );
 }
 
@@ -102,7 +104,17 @@ fn a_choice_is_written_under_the_names_the_settings_read() {
 fn a_choice_kept_before_the_later_options_existed_reads_with_their_defaults() {
   let kept: WebviewOptions = serde_json::from_str(r#"{"isShaderCacheDoubled":true,"isWebgpuDeveloper":true}"#).unwrap();
 
-  assert_eq!(kept.collection_pace, WebviewCollectionPace::Default);
+  assert_eq!(kept.collection_pace, WebviewCollectionPace::Frequent);
   assert!(kept.is_vsync && kept.is_frame_rate_limited);
   assert!(kept.is_webgpu_developer);
+}
+
+#[test]
+fn a_choice_of_v8s_own_pace_made_before_frequent_became_the_default_is_kept() {
+  let kept: WebviewOptions =
+    serde_json::from_str(r#"{"isShaderCacheDoubled":true,"isWebgpuDeveloper":false,"collectionPace":"default"}"#)
+      .unwrap();
+
+  assert_eq!(kept.collection_pace, WebviewCollectionPace::Default);
+  assert_eq!(kept.collection_pace.soft_trigger(), None);
 }
