@@ -52,13 +52,13 @@ The repository is a Rust workspace with a Tauri desktop app and React UI.
 
 ### Install prerequisites
 
-The CLI needs Rust 1.98.1 and [Cargo Make](https://github.com/sagiegurari/cargo-make). The desktop app also needs
+The CLI needs Rust 1.99.0 and [Cargo Make](https://github.com/sagiegurari/cargo-make). The desktop app also needs
 Node.js 24.15 or later, pnpm 12.3.4, and the [Tauri CLI](https://v2.tauri.app/start/prerequisites/).
 
 After installing Rust, Node.js, and pnpm, install the project tools, then the locked TypeScript workspace at the root:
 
 ```powershell
-rustup toolchain install 1.98.1
+rustup toolchain install 1.99.0
 cargo install cargo-make --locked
 cargo install tauri-cli --locked
 pnpm install --frozen-lockfile

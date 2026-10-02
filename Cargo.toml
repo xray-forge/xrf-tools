@@ -55,7 +55,7 @@ members = [
 
 [workspace.package]
 edition = "2024"
-rust-version = "1.98.1"
+rust-version = "1.99.0"
 
 [workspace.dependencies]
 criterion = { version = "0.8.2", default-features = false, features = ["cargo_bench_support"] }
