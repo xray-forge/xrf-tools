@@ -5,6 +5,9 @@ import { IFetchPart } from "#/texture/fetch-part";
 /** Bytes of a part's header before its media type: index, status, media type's length, bytes' length. */
 const PART_HEADER_BYTES: number = 12;
 
+/** Bytes a part may say it holds, far past any texture: a header saying more is a broken answer, not one to allocate. */
+const MAXIMUM_PART_BYTES: number = 1 << 30;
+
 /**
  * Reads a batch's answer as it streams in, handing each part over as soon as its last byte comes, so a texture read
  * early is taken while the batch's slower ones are still read. Each part's bytes are read straight into a buffer of
@@ -20,18 +23,31 @@ export async function readFetchParts(
   const reader: ReadableStreamBYOBReader = stream.getReader({ mode: "byob" });
   const decoder: TextDecoder = new TextDecoder();
 
-  for (;;) {
-    const header: Nullable<ArrayBuffer> = await readFully(reader, new ArrayBuffer(PART_HEADER_BYTES), true);
+  try {
+    for (;;) {
+      const header: Nullable<ArrayBuffer> = await readFully(reader, new ArrayBuffer(PART_HEADER_BYTES), true);
 
-    if (!header) {
-      return;
+      if (!header) {
+        return;
+      }
+
+      const view: DataView = new DataView(header);
+      const length: number = view.getUint32(8, true);
+
+      if (length > MAXIMUM_PART_BYTES) {
+        throw new Error(`The batch's answer says a part holds ${length} bytes, past what one may`);
+      }
+
+      const media: ArrayBuffer = await readFully(reader, new ArrayBuffer(view.getUint16(6, true)));
+      const bytes: ArrayBuffer = await readFully(reader, new ArrayBuffer(length));
+
+      onPart({ bytes, index: view.getUint32(0, true), status: view.getUint16(4, true), type: decoder.decode(media) });
     }
+  } catch (error: unknown) {
+    // Nothing more of a broken answer is read: what the server still sends goes nowhere.
+    reader.cancel(error).catch(() => {});
 
-    const view: DataView = new DataView(header);
-    const media: ArrayBuffer = await readFully(reader, new ArrayBuffer(view.getUint16(6, true)));
-    const bytes: ArrayBuffer = await readFully(reader, new ArrayBuffer(view.getUint32(8, true)));
-
-    onPart({ bytes, index: view.getUint32(0, true), status: view.getUint16(4, true), type: decoder.decode(media) });
+    throw error;
   }
 }
 

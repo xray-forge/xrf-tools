@@ -35,4 +35,12 @@ describe("readFetchParts", () => {
       "The batch's answer ended inside a part"
     );
   });
+
+  it("refuses a part saying it holds more than any texture rather than allocating it", async () => {
+    const header: Uint8Array = new Uint8Array(12);
+
+    new DataView(header.buffer).setUint32(8, 0xffffffff, true);
+
+    await expect(readFetchParts(toStream(header, 12), () => {})).rejects.toThrow("past what one may");
+  });
 });

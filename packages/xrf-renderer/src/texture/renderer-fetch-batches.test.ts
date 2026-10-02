@@ -203,4 +203,15 @@ describe("RendererFetchBatches", () => {
     await settle();
     expect(posts).toHaveLength(0);
   });
+
+  it("aborts a batch whose answer breaks, so nothing more of it is read", async () => {
+    const { batches, posts } = mockServer();
+    const fetched: Promise<IRendererFetchedBytes> = batches.fetch(toBatch("a"), HEADERS, new AbortController().signal);
+
+    await settle();
+    posts[0].answer(toAnswer(toFetchPart(0, 200, "application/octet-stream", [1, 2, 3]).subarray(0, 14)));
+
+    await expect(fetched).rejects.toThrow("ended inside a part");
+    expect(posts[0].init.signal?.aborted).toBe(true);
+  });
 });

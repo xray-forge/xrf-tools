@@ -144,6 +144,8 @@ export class RendererFetchBatches {
       // Read to its end with a call unanswered: a server that dropped one would leave it waiting for good.
       calls.forEach((call: IBatchedFetch) => this.refuse(call, new Error("The batch ended without answering it")));
     } catch (error: unknown) {
+      // A broken or refused answer ends the request too, so nothing more of it is read or sent.
+      controller.abort(error);
       calls.forEach((call: IBatchedFetch) => this.refuse(call, error));
     } finally {
       this.inFlight -= 1;
