@@ -3,18 +3,27 @@ use std::sync::mpsc::{Receiver, RecvTimeoutError};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
+use glam::{Mat4, Vec2, Vec3, Vec4};
+
+use crate::camera::camera_view::CameraView;
 use crate::context::gpu_context::GpuContext;
 use crate::context::render_backend::RenderBackend;
 use crate::contract::render_rect::RenderRect;
 use crate::contract::render_settings::RenderSettings;
+use crate::contract::render_surface_geometry::RenderSurfaceGeometry;
+use crate::contract::render_texture_report::RenderTextureReport;
+use crate::contract::render_view_options::RenderViewOptions;
 use crate::contract::render_viewport_id::RenderViewportId;
+use crate::frame::frame_capture::capture_frame;
 use crate::host::render_window_host::RenderWindowHost;
 use crate::pass::camera_uniform::CameraUniform;
 use crate::pass::view_binding::ViewBinding;
+use crate::scene::level::level_view::LevelView;
 use crate::shader::shader_library::ShaderLibrary;
 use crate::thread::gpu_state::GpuState;
 use crate::thread::render_command::RenderCommand;
 use crate::thread::render_link::RenderLink;
+use crate::viewport::pending_pick::PendingPick;
 use crate::viewport::render_viewport::RenderViewport;
 use crate::window::render_window::RenderWindow;
 
@@ -157,6 +166,54 @@ impl RenderThread {
         }
       }
       RenderCommand::Settings { settings } => self.settings = settings,
+      RenderCommand::Options { id, options } => {
+        if let Some(viewport) = self.viewports.get_mut(&id) {
+          viewport.options = options;
+        }
+      }
+      RenderCommand::Pick { id, pick } => match self.viewports.get_mut(&id) {
+        Some(viewport) if viewport.level.is_some() => viewport.picks.push(pick),
+        // Nothing is drawn there to pick.
+        _ => {
+          let _ = pick.reply.send(Ok(None));
+        }
+      },
+      RenderCommand::MeasureSurfaces { id, reply } => {
+        let measured: Vec<RenderSurfaceGeometry> = self
+          .viewports
+          .get(&id)
+          .and_then(|viewport| viewport.level_view.as_ref())
+          .map(|level| level.measure_surfaces())
+          .unwrap_or_default();
+
+        let _ = reply.send(measured);
+      }
+      RenderCommand::DescribeTextures { id, reply } => {
+        let described: Vec<RenderTextureReport> = self
+          .gpu
+          .as_ref()
+          .zip(
+            self
+              .viewports
+              .get(&id)
+              .and_then(|viewport| viewport.level_view.as_ref()),
+          )
+          .map(|(gpu, level)| level.describe_textures(&gpu.textures))
+          .unwrap_or_default();
+
+        let _ = reply.send(described);
+      }
+      RenderCommand::Capture { id, reply } => {
+        if let Some(viewport) = self.viewports.get_mut(&id) {
+          viewport.captures.push(reply);
+        }
+      }
+      RenderCommand::Level { id, source } => {
+        if let Some(viewport) = self.viewports.get_mut(&id) {
+          viewport.level = source;
+          viewport.level_view = None;
+        }
+      }
     }
   }
 
@@ -214,6 +271,7 @@ impl RenderThread {
 
       for viewport in self.viewports.values_mut() {
         viewport.binding = None;
+        viewport.level_view = None;
       }
     }
 
@@ -221,9 +279,11 @@ impl RenderThread {
       return;
     }
 
-    match GpuContext::create(RenderBackend::from_environment()) {
-      Ok(context) => {
-        self.gpu = Some(GpuState::new(context));
+    match GpuContext::create(RenderBackend::from_environment())
+      .and_then(|context| GpuState::new(context, &self.shaders))
+    {
+      Ok(gpu) => {
+        self.gpu = Some(gpu);
         self.failure = None;
 
         for viewport in self.viewports.values_mut() {
@@ -266,6 +326,10 @@ impl RenderThread {
       }
     }
 
+    if let Some(gpu) = &mut self.gpu {
+      gpu.textures.update(&gpu.context.device, &gpu.context.queue);
+    }
+
     let windows: Vec<u64> = self.hosts.keys().copied().collect();
 
     for window in windows {
@@ -275,11 +339,21 @@ impl RenderThread {
     let Some(gpu) = &self.gpu else {
       return;
     };
+    // Delivers what earlier frames' reads asked for, without waiting on this frame's work.
+    let _ = gpu.context.device.poll(wgpu::PollType::Poll);
     let (backend, adapter) = (gpu.context.backend.get_label(), gpu.context.adapter_name.as_str());
 
     for viewport in self.viewports.values_mut() {
       viewport.report(now, backend, adapter);
       viewport.publish_pose(now);
+
+      if let Some(report) = viewport
+        .level_view
+        .as_mut()
+        .and_then(|level| level.take_report(&gpu.textures))
+      {
+        viewport.report_load(report);
+      }
     }
   }
 
@@ -341,24 +415,89 @@ impl RenderThread {
       .map(|layout| layout.clear.to_clear())
       .unwrap_or(wgpu::Color::BLACK);
 
+    let mut encoder: wgpu::CommandEncoder = gpu.context.device.create_command_encoder(&Default::default());
+    let mut is_lit: bool = false;
+    let mut picked: Vec<(RenderViewportId, PendingPick, Mat4, Vec2)> = Vec::new();
+
     for (id, rect) in &drawn {
-      let viewport: &mut RenderViewport = self.viewports.get_mut(id).expect("drawn viewport is attached");
+      let Some(viewport) = self.viewports.get_mut(id) else {
+        continue;
+      };
+      let device: &wgpu::Device = &gpu.context.device;
+      let queue: &wgpu::Queue = &gpu.context.queue;
+      let scale: f32 = viewport.get_scale();
       let binding: &ViewBinding = viewport
         .binding
-        .get_or_insert_with(|| ViewBinding::new(&gpu.context.device, &gpu.view_layout));
-      let aspect: f32 = rect.width as f32 / rect.height as f32;
+        .get_or_insert_with(|| ViewBinding::new(device, &gpu.view_layout));
+      let view: CameraView = viewport.camera.get_view(rect.width as f32 / rect.height as f32);
 
-      binding.write(
-        &gpu.context.queue,
-        &CameraUniform::new(&viewport.camera.get_view(aspect), rect.width, rect.height),
+      let options: RenderViewOptions = viewport.options;
+      let switches: Vec4 = Vec4::new(
+        options.is_textured as u32 as f32,
+        options.is_bumped as u32 as f32,
+        options.hemi_strength,
+        0.0,
       );
+
+      binding.write(queue, &CameraUniform::new(&view, *rect, switches));
+
+      let Some(source) = &viewport.level else {
+        continue;
+      };
+      let level: &mut LevelView = viewport
+        .level_view
+        .get_or_insert_with(|| LevelView::new(device, queue, Arc::clone(source)));
+
+      level.load(device, queue, &mut encoder, &mut gpu.textures);
+      level.prepare(
+        device,
+        queue,
+        &mut encoder,
+        gpu.get_level_passes(),
+        &view,
+        (rect.width, rect.height),
+        viewport.camera.get_field_of_view(),
+        &options,
+      );
+      level.record(&mut encoder, gpu.get_level_passes(), binding, &gpu.textures);
+      is_lit = true;
+
+      // One pick a frame, drawn from this frame's culled clusters.
+      if !viewport.picks.is_empty() {
+        let pick: PendingPick = viewport.picks.remove(0);
+        let ndc: Vec2 = Vec2::new(
+          (pick.x * scale + 0.5) / rect.width as f32 * 2.0 - 1.0,
+          1.0 - (pick.y * scale + 0.5) / rect.height as f32 * 2.0,
+        );
+        let narrowed: CameraView = view.narrow_to(ndc, Vec2::new(2.0 / rect.width as f32, 2.0 / rect.height as f32));
+        let pixel: RenderRect = RenderRect {
+          x: 0,
+          y: 0,
+          width: 1,
+          height: 1,
+        };
+
+        level.record_pick(
+          device,
+          queue,
+          &mut encoder,
+          &gpu.static_gbuffer,
+          &gpu.view_layout,
+          &gpu.textures,
+          &CameraUniform::new(&narrowed, pixel, switches),
+        );
+        picked.push((*id, pick, view.get_view_projection().inverse(), ndc));
+      }
+    }
+
+    if is_lit && let Err(error) = gpu.combine.prepare(&gpu.context.device, &self.shaders, format) {
+      log::error!("Level viewport cannot be lit: {error}");
     }
 
     let Some(grid) = gpu.get_grid(format) else {
       return;
     };
     let target: wgpu::TextureView = frame.texture.create_view(&Default::default());
-    let mut encoder: wgpu::CommandEncoder = gpu.context.device.create_command_encoder(&Default::default());
 
     {
       let mut pass: wgpu::RenderPass<'_> = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
@@ -376,7 +515,10 @@ impl RenderThread {
       });
 
       for (id, rect) in &drawn {
-        let Some(binding) = self.viewports.get(id).and_then(|it| it.binding.as_ref()) else {
+        let Some(viewport) = self.viewports.get(id) else {
+          continue;
+        };
+        let Some(binding) = viewport.binding.as_ref() else {
           continue;
         };
 
@@ -389,13 +531,46 @@ impl RenderThread {
           1.0,
         );
         pass.set_scissor_rect(rect.x as u32, rect.y as u32, rect.width, rect.height);
-        grid.draw(&mut pass, binding);
+
+        match viewport.level_view.as_ref().and_then(|level| level.get_combine_group()) {
+          Some(combine) => gpu.combine.draw(&mut pass, format, binding, combine),
+          None => grid.draw(&mut pass, binding),
+        }
       }
     }
 
     gpu.context.queue.submit([encoder.finish()]);
 
+    for (id, pick, inverse, ndc) in picked {
+      let Some(level) = self.viewports.get(&id).and_then(|it| it.level_view.as_ref()) else {
+        continue;
+      };
+      let unproject = |depth: f32| -> Vec3 { inverse.project_point3(ndc.extend(depth)) };
+
+      let _ = pick.reply.send(level.resolve_pick(&gpu.context.device, unproject));
+    }
+
+    for (id, _) in &drawn {
+      if let Some(level) = self.viewports.get(id).and_then(|it| it.level_view.as_ref()) {
+        level.request_stats();
+      }
+    }
+
     let cpu: Duration = started.elapsed();
+
+    // Read back before presenting, after which the frame is no longer the renderer's to copy.
+    for (id, rect) in &drawn {
+      if let Some(viewport) = self.viewports.get_mut(id) {
+        for reply in viewport.captures.drain(..) {
+          let _ = reply.send(capture_frame(
+            &gpu.context.device,
+            &gpu.context.queue,
+            &frame.texture,
+            *rect,
+          ));
+        }
+      }
+    }
 
     gpu.context.queue.present(frame);
 

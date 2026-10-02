@@ -118,10 +118,16 @@ macro_rules! for_each_tauri_command_domain {
         attach_viewport => crate::plugins::render::commands::attach_viewport::render_attach_viewport,
         command_camera => crate::plugins::render::commands::command_camera::render_command_camera,
         configure => crate::plugins::render::commands::configure::render_configure,
+        describe_textures => crate::plugins::render::commands::describe_textures::render_describe_textures,
         detach_viewport => crate::plugins::render::commands::detach_viewport::render_detach_viewport,
+        measure_surfaces => crate::plugins::render::commands::measure_surfaces::render_measure_surfaces,
+        pick => crate::plugins::render::commands::pick::render_pick,
+        save_capture => crate::plugins::render::commands::save_capture::render_save_capture,
         send_input => crate::plugins::render::commands::send_input::render_send_input,
         set_camera => crate::plugins::render::commands::set_camera::render_set_camera,
+        set_view_options => crate::plugins::render::commands::set_view_options::render_set_view_options,
         set_viewport_layout => crate::plugins::render::commands::set_viewport_layout::render_set_viewport_layout,
+        show_level => crate::plugins::render::commands::show_level::render_show_level,
       }
       spawn => "spawn" {
         save_unpacked_directory => crate::plugins::spawn::commands::save_unpacked_directory::spawn_save_unpacked_directory,

@@ -1,3 +1,14 @@
 pub(crate) mod camera_uniform;
+pub(crate) mod combine_pass;
+pub(crate) mod depth_pyramid_pass;
 pub(crate) mod grid_pass;
+pub(crate) mod layout_entries;
+pub(crate) mod level_passes;
+pub(crate) mod lighting_uniform;
+pub(crate) mod shader_pipelines;
+pub(crate) mod static_cull_params;
+pub(crate) mod static_cull_pass;
+pub(crate) mod static_draw_groups;
+pub(crate) mod static_gbuffer_pass;
+pub(crate) mod static_occlusion_uniform;
 pub(crate) mod view_binding;

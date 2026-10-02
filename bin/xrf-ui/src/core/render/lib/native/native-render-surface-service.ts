@@ -7,6 +7,7 @@ import {
   ERenderPresentation,
   RenderCameraPose,
   RenderFrameReport,
+  RenderLoadReport,
   RenderSettings,
 } from "@/core/ipc/types/xrf-renderer";
 import { NativeViewport } from "@/core/render/lib/native/native-viewport";
@@ -61,10 +62,12 @@ export abstract class NativeRenderSurfaceService implements IRenderSurfaceHost {
       onCamera: (pose: RenderCameraPose): void => this.onCamera(pose),
       onFailed: (message: string): void => this.fail(message),
       onFrame: (report: RenderFrameReport): void => this.onFrame(report),
+      onLoad: (report: RenderLoadReport): void => this.onLoad(report),
     });
 
     this.viewport = viewport;
     this.target = new NativeViewportTarget(container, viewport);
+    this.onAttached(container);
     this.reactions.push(
       reaction(
         () => toNativeRenderSettings(this.settingsService.sharedRenderSettings),
@@ -77,6 +80,10 @@ export abstract class NativeRenderSurfaceService implements IRenderSurfaceHost {
 
   /** Stops drawing and closes the element's hole. */
   public detach(): void {
+    if (this.viewport) {
+      this.onDetached();
+    }
+
     this.reactions.splice(0).forEach((stop: () => void) => stop());
     this.target?.dispose();
     this.target = null;
@@ -107,6 +114,21 @@ export abstract class NativeRenderSurfaceService implements IRenderSurfaceHost {
    * @param _pose - Where the viewport's camera stands now.
    */
   protected onCamera(_pose: RenderCameraPose): void {}
+
+  /**
+   * @param _report - How far the viewport's scene has loaded.
+   */
+  protected onLoad(_report: RenderLoadReport): void {}
+
+  /**
+   * Called once a viewport draws under an element.
+   *
+   * @param _container - The element it draws under.
+   */
+  protected onAttached(_container: HTMLElement): void {}
+
+  /** Called before the viewport goes. */
+  protected onDetached(): void {}
 
   /** Forgets what the subclass told the viewport, which went with it. */
   protected release(): void {}

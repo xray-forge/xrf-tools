@@ -1,15 +1,22 @@
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use crate::camera::camera_controller::CameraController;
 use crate::contract::render_camera_pose::RenderCameraPose;
 use crate::contract::render_frame_report::RenderFrameReport;
+use crate::contract::render_load_report::RenderLoadReport;
 use crate::contract::render_rect::RenderRect;
+use crate::contract::render_view_options::RenderViewOptions;
 use crate::contract::render_viewport_event::RenderViewportEvent;
 use crate::contract::render_viewport_id::RenderViewportId;
 use crate::contract::render_viewport_layout::RenderViewportLayout;
+use crate::frame::frame_capture::CaptureReply;
 use crate::frame::frame_statistics::{FrameStatistics, FrameSummary};
 use crate::host::render_event_sink::RenderEventSink;
+use crate::host::render_level_source::RenderLevelSource;
 use crate::pass::view_binding::ViewBinding;
+use crate::scene::level::level_view::LevelView;
+use crate::viewport::pending_pick::PendingPick;
 
 /// How often a moving camera's pose is published.
 const POSE_INTERVAL: Duration = Duration::from_millis(100);
@@ -22,6 +29,15 @@ pub struct RenderViewport {
   /// Where the page last laid it out, or `None` before it has.
   pub layout: Option<RenderViewportLayout>,
   pub camera: CameraController,
+  pub options: RenderViewOptions,
+  /// The level it draws, as its source gives it.
+  pub level: Option<Arc<dyn RenderLevelSource>>,
+  /// The level as this viewport draws it, made once a GPU is there.
+  pub level_view: Option<LevelView>,
+  /// Captures asked for, answered by the next frame presented.
+  pub captures: Vec<CaptureReply>,
+  /// Picks asked for, answered one a frame.
+  pub picks: Vec<PendingPick>,
   /// Its camera on the GPU, made once a GPU is there.
   pub binding: Option<ViewBinding>,
   sink: Box<dyn RenderEventSink>,
@@ -41,6 +57,11 @@ impl RenderViewport {
       window,
       layout: None,
       camera: CameraController::default(),
+      options: RenderViewOptions::default(),
+      level: None,
+      level_view: None,
+      captures: Vec::new(),
+      picks: Vec::new(),
       binding: None,
       sink,
       statistics: FrameStatistics::new(now),
@@ -54,6 +75,11 @@ impl RenderViewport {
   /// Where it is drawn in a window frame of the given size, or `None` when nothing of it shows.
   pub fn get_drawn_rect(&self, width: u32, height: u32) -> Option<RenderRect> {
     self.layout.and_then(|layout| layout.rect.clip(width, height))
+  }
+
+  /// Device pixels per CSS pixel.
+  pub fn get_scale(&self) -> f32 {
+    self.layout.map_or(1.0, |layout| layout.scale.max(0.1))
   }
 
   /// The viewport's height in CSS pixels, which drags are measured in.
@@ -73,6 +99,8 @@ impl RenderViewport {
 
   /// Reports the frames since the last report, once one is due.
   pub fn report(&mut self, now: Instant, backend: &str, adapter: &str) {
+    let (clusters, triangles): (u32, u32) = self.level_view.as_mut().map_or((0, 0), |level| level.take_stats());
+
     let Some(summary) = self.statistics.take(now) else {
       return;
     };
@@ -90,6 +118,8 @@ impl RenderViewport {
         frame_time,
         frame_time_max,
         cpu_time,
+        clusters,
+        triangles,
         width: rect.width,
         height: rect.height,
         backend: backend.to_string(),
@@ -112,6 +142,10 @@ impl RenderViewport {
       self.pose_due = now + POSE_INTERVAL;
       self.send(RenderViewportEvent::Camera { pose });
     }
+  }
+
+  pub fn report_load(&mut self, report: RenderLoadReport) {
+    self.send(RenderViewportEvent::Load { report });
   }
 
   /// Tells the page the renderer cannot draw, once until it can again.

@@ -7009,6 +7009,7 @@ dependencies = [
  "http-body-util",
  "hyper",
  "hyper-util",
+ "image",
  "indexmap 2.14.2",
  "log",
  "percent-encoding",
@@ -7586,10 +7587,15 @@ dependencies = [
  "naga",
  "pollster",
  "raw-window-handle",
+ "rayon",
  "serde",
  "specta",
  "wgpu",
+ "xrf-dds",
  "xrf-error",
+ "xrf-material",
+ "xrf-math",
+ "xrf-visual",
 ]
 
 [[package]]

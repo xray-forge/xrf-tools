@@ -8,6 +8,9 @@ import {
   RenderCameraCommand,
   RenderInputEvent,
   RenderSettings,
+  RenderSurfaceGeometry,
+  RenderTextureReport,
+  RenderViewOptions,
   RenderViewportEvent,
   RenderViewportId,
   RenderViewportLayout,
@@ -26,15 +29,45 @@ export const renderCommands = {
     __TAURI_INVOKE<void>("plugin:render|command_camera", { viewport, command }),
   /** Apply settings every native viewport draws with. */
   configure: (settings: RenderSettings) => __TAURI_INVOKE<void>("plugin:render|configure", { settings }),
+  /** Say what became of every texture a viewport's level samples. */
+  describeTextures: (viewport: RenderViewportId) =>
+    __TAURI_INVOKE<Array<RenderTextureReport>>("plugin:render|describe_textures", { viewport }),
   /** Stop drawing a viewport; the GPU goes a few seconds after the last one. */
   detachViewport: (viewport: RenderViewportId) => __TAURI_INVOKE<void>("plugin:render|detach_viewport", { viewport }),
+  /** Count what each shader table entry of a viewport's level draws across the sectors resident. */
+  measureSurfaces: (viewport: RenderViewportId) =>
+    __TAURI_INVOKE<Array<RenderSurfaceGeometry>>("plugin:render|measure_surfaces", { viewport }),
+  /** Name what a viewport's level draws under a point, css pixels from its corner, or nothing. */
+  pick: (viewport: RenderViewportId, x: number | null, y: number | null) =>
+    __TAURI_INVOKE<{
+      sector: number;
+      /** The shader table entry drawing it. */
+      shaderId: number;
+      /** The sector's instanced mesh it is one place of, or none for its baked geometry. */
+      mesh: number | null;
+      /** Which place of the mesh it is, or none for the baked geometry. */
+      place: number | null;
+      /** Whether it is a clump of trees drawn as its impostor. */
+      isImpostor: boolean;
+      /** Where the ray met it, in renderer space. */
+      point: [number | null, number | null, number | null];
+    } | null>("plugin:render|pick", { viewport, x, y }),
+  /** Write a viewport's next presented frame to a PNG file, as the renderer drew it rather than as the screen shows it. */
+  saveCapture: (viewport: RenderViewportId, path: string) =>
+    __TAURI_INVOKE<null>("plugin:render|save_capture", { viewport, path }),
   /** Hand a viewport one gesture the page heard over it. */
   sendInput: (viewport: RenderViewportId, event: RenderInputEvent) =>
     __TAURI_INVOKE<void>("plugin:render|send_input", { viewport, event }),
   /** Describe a viewport's camera; described again from the same start, it keeps where it has been moved. */
   setCamera: (viewport: RenderViewportId, camera: RenderCamera) =>
     __TAURI_INVOKE<void>("plugin:render|set_camera", { viewport, camera }),
+  /** Set what one viewport draws its scene with. */
+  setViewOptions: (viewport: RenderViewportId, options: RenderViewOptions) =>
+    __TAURI_INVOKE<void>("plugin:render|set_view_options", { viewport, options }),
   /** Place a viewport where its element now is, and say what the page shows around it. */
   setViewportLayout: (viewport: RenderViewportId, layout: RenderViewportLayout) =>
     __TAURI_INVOKE<void>("plugin:render|set_viewport_layout", { viewport, layout }),
+  /** Draw the open level in a viewport, its sectors and textures read by the renderer; no session draws none. */
+  showLevel: (viewport: RenderViewportId, sessionId: string | null) =>
+    __TAURI_INVOKE<null>("plugin:render|show_level", { viewport, sessionId }),
 };

@@ -19,7 +19,7 @@ import {
   toLevelSurfaceTree,
 } from "@/core/level/lib/surface/level-surface-tree";
 import { listLevelSurfaceDressing } from "@/core/level/lib/texture/level-texture-report";
-import { LevelLoadService, LevelRenderService, LevelViewportService } from "@/core/level/services";
+import { LevelLoadService, LevelViewportService } from "@/core/level/services";
 import { describeSurfaceOutcome } from "@/core/materials/lib";
 import { EditorPanelEmpty } from "@/core/shell/editor/EditorPanel";
 import { EditorSearchHeader } from "@/core/shell/editor/EditorSearchHeader";
@@ -44,7 +44,6 @@ export function LevelSurfacesPanel({
   className,
 }: BaseComponentProps): ReactElement {
   const loadService: LevelLoadService = useInjection(LevelLoadService);
-  const renderService: LevelRenderService = useInjection(LevelRenderService);
   const viewportService: LevelViewportService = useInjection(LevelViewportService);
 
   const tree: IUseTreeState = useTreeState();
@@ -52,7 +51,6 @@ export function LevelSurfacesPanel({
   const [filter, setFilter] = useState<string>("");
 
   const picked: Nullable<TLevelPick> = viewportService.picked;
-  const held: ReadonlyArray<number> = loadService.sectorReport.held;
   const surfaces: Maybe<ReadonlyArray<XraySurfaceDescriptor>> = loadService.level.value?.selected.value.surfaces;
 
   const named: Array<ILevelSurfaceSummary> = useMemo(
@@ -82,15 +80,9 @@ export function LevelSurfacesPanel({
     ? listLevelSurfaceDressing(selected.textures, viewportService.textureReport)
     : [];
 
-  // Measured for the entry chosen, again as the sectors held change: it samples every draw of every one of them.
-  const geometry: ILevelSurfaceGeometry = useMemo(
-    () =>
-      selected
-        ? (renderService.measureSurfaceGeometry().get(selected.shaderId) ?? NO_LEVEL_SURFACE_GEOMETRY)
-        : NO_LEVEL_SURFACE_GEOMETRY,
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [renderService, held, selected]
-  );
+  const geometry: ILevelSurfaceGeometry = selected
+    ? (viewportService.surfaceGeometry.get(selected.shaderId) ?? NO_LEVEL_SURFACE_GEOMETRY)
+    : NO_LEVEL_SURFACE_GEOMETRY;
 
   const onSelect = useCallback((item: ITreeNode<TLevelSurfaceTreeRow>) => select(item.id), [select]);
 

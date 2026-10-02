@@ -166,6 +166,10 @@ impl FlyCameraController {
     !self.held.is_empty() || self.dragged.is_some()
   }
 
+  pub fn get_description(&self) -> RenderCamera {
+    self.description
+  }
+
   pub fn get_pose(&self) -> RenderCameraPose {
     let target: Vec3 = self.position + self.get_rotation() * Vec3::NEG_Z;
 

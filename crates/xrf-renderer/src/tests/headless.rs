@@ -2,6 +2,7 @@ use crate::camera::fly_camera_controller::FlyCameraController;
 use crate::context::gpu_context::GpuContext;
 use crate::context::render_backend::RenderBackend;
 use crate::contract::render_camera::RenderCamera;
+use crate::contract::render_rect::RenderRect;
 use crate::pass::camera_uniform::CameraUniform;
 use crate::pass::grid_pass::GridPass;
 use crate::pass::view_binding::ViewBinding;
@@ -40,7 +41,19 @@ fn draws_sky_over_ground_offscreen() {
     sensitivity: 0.01,
   });
 
-  binding.write(&context.queue, &CameraUniform::new(&camera.get_view(1.0), SIZE, SIZE));
+  binding.write(
+    &context.queue,
+    &CameraUniform::new(
+      &camera.get_view(1.0),
+      RenderRect {
+        x: 0,
+        y: 0,
+        width: SIZE,
+        height: SIZE,
+      },
+      glam::Vec4::ONE,
+    ),
+  );
 
   let texture: wgpu::Texture = device.create_texture(&wgpu::TextureDescriptor {
     label: None,

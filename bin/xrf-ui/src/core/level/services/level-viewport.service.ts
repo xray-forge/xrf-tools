@@ -6,11 +6,14 @@ import { Nullable } from "@xrf/types";
 import { ILevelCamera } from "@/core/level/lib/camera/level-camera";
 import { TLevelPick } from "@/core/level/lib/pick/level-pick";
 import { EMPTY_LEVEL_STATS, ILevelStats } from "@/core/level/lib/stats/level-stats";
+import { ILevelSurfaceGeometry } from "@/core/level/lib/surface/level-surface-geometry";
 import { EMPTY_LEVEL_TEXTURE_REPORT, ILevelTextureReport } from "@/core/level/lib/texture/level-texture-report";
 
 /**
  * What the viewport reports about itself while it draws.
  */
+const NO_LEVEL_SURFACES_GEOMETRY: ReadonlyMap<number, ILevelSurfaceGeometry> = new Map();
+
 @Injectable()
 export class LevelViewportService {
   @RefObservable()
@@ -39,6 +42,10 @@ export class LevelViewportService {
   @RefObservable()
   public picked: Nullable<TLevelPick> = null;
 
+  /** What each shader table entry draws across the open level, keyed by shader id; empty until it is all resident. */
+  @RefObservable()
+  public surfaceGeometry: ReadonlyMap<number, ILevelSurfaceGeometry> = NO_LEVEL_SURFACES_GEOMETRY;
+
   /** Shows the level, drawn whole. */
   @BoundAction()
   public reveal(): void {
@@ -49,6 +56,16 @@ export class LevelViewportService {
   @BoundAction()
   public conceal(): void {
     this.isRevealed = false;
+    this.surfaceGeometry = NO_LEVEL_SURFACES_GEOMETRY;
+    this.textureReport = EMPTY_LEVEL_TEXTURE_REPORT;
+  }
+
+  /**
+   * @param geometry - What each shader table entry draws across the open level, keyed by shader id.
+   */
+  @BoundAction()
+  public noteSurfaceGeometry(geometry: ReadonlyMap<number, ILevelSurfaceGeometry>): void {
+    this.surfaceGeometry = geometry;
   }
 
   /**

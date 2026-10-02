@@ -1,11 +1,18 @@
-// What every pass drawing a viewport knows of its camera.
+// What every pass drawing a viewport knows of its camera and the frame's switches.
 struct Camera {
   view_projection: mat4x4<f32>,
   inverse_view_projection: mat4x4<f32>,
+  view: mat4x4<f32>,
+  projection: mat4x4<f32>,
+  inverse_projection: mat4x4<f32>,
   // xyz: the eye in renderer space.
   position: vec4<f32>,
-  // xy: the viewport's size in device pixels.
+  // xy: the viewport's size in device pixels; zw: its top left corner in the window.
   viewport: vec4<f32>,
+  // The frustum's six planes in renderer space, pointing inward.
+  planes: array<vec4<f32>, 6>,
+  // x: textured, y: bumped, z: the baked hemisphere's strength, w: unused.
+  switches: vec4<f32>,
 };
 
 @group(0) @binding(0) var<uniform> camera: Camera;
