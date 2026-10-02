@@ -29,9 +29,11 @@ allowBuilds:
   unrs-resolver: false
 
 # Minutes a version must have been public before it resolves: a week for a compromised release to be caught.
-# Our own libraries are published and consumed together, so they are exempt.
+# Our own libraries are published and consumed together, so they are exempt. Tauri's packages are too: its build refuses
+# npm packages a minor apart from the crates, which Cargo resolves with no such wait.
 minimumReleaseAge: 10080
 minimumReleaseAgeExclude:
+  - "@tauri-apps/*"
   - "@wirestate/*"
 
 peerDependencyRules:
