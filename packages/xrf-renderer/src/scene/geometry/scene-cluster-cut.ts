@@ -54,12 +54,13 @@ function toVertex(geometry: IRendererGeometry, at: number): number {
   return geometry.index ? geometry.index[at] : at;
 }
 
-function toDistance(positions: Float32Array, vertex: number, centre: ReadonlyArray<number>): number {
-  return Math.hypot(
-    positions[vertex * 3] - centre[0],
-    positions[vertex * 3 + 1] - centre[1],
-    positions[vertex * 3 + 2] - centre[2]
-  );
+/** A vertex's squared distance from a point, which orders vertices as their distance does without a root each. */
+function toDistanceSquared(positions: Float32Array, vertex: number, centre: ReadonlyArray<number>): number {
+  const x: number = positions[vertex * 3] - centre[0];
+  const y: number = positions[vertex * 3 + 1] - centre[1];
+  const z: number = positions[vertex * 3 + 2] - centre[2];
+
+  return x * x + y * y + z * z;
 }
 
 /** How far the farthest vertex of a run stands from a centre. */
@@ -67,10 +68,10 @@ function toReach(geometry: IRendererGeometry, start: number, length: number, cen
   let reach: number = 0;
 
   for (let at = start; at < start + length; at += 1) {
-    reach = Math.max(reach, toDistance(geometry.position, toVertex(geometry, at), centre));
+    reach = Math.max(reach, toDistanceSquared(geometry.position, toVertex(geometry, at), centre));
   }
 
-  return reach;
+  return Math.sqrt(reach);
 }
 
 /** The vertex of a run farthest from a point. */
@@ -80,7 +81,7 @@ function toFarthest(geometry: IRendererGeometry, start: number, length: number, 
 
   for (let at = start; at < start + length; at += 1) {
     const vertex: number = toVertex(geometry, at);
-    const it: number = toDistance(geometry.position, vertex, from);
+    const it: number = toDistanceSquared(geometry.position, vertex, from);
 
     if (it > distance) {
       distance = it;
@@ -121,13 +122,14 @@ function toSphere(geometry: IRendererGeometry, start: number, length: number): [
   const centre: Array<number> = farPoint.map(
     (value: number, axis: number) => (value + positions[other * 3 + axis]) / 2
   );
-  let radius: number = toDistance(positions, other, centre);
+  let radius: number = Math.sqrt(toDistanceSquared(positions, other, centre));
 
   for (let at = start; at < start + length; at += 1) {
     const vertex: number = toVertex(geometry, at);
-    const distance: number = toDistance(positions, vertex, centre);
+    const squared: number = toDistanceSquared(positions, vertex, centre);
 
-    if (distance > radius) {
+    if (squared > radius * radius) {
+      const distance: number = Math.sqrt(squared);
       const grown: number = (radius + distance) / 2;
       const shift: number = (grown - radius) / distance;
 
