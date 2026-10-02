@@ -81,6 +81,7 @@ xrf-thm = { workspace = true }
 xrf-shaders = { workspace = true }
 xrf-spawn = { workspace = true }
 xrf-particles = { workspace = true }
+xrf-renderer = { workspace = true }
 
 # Both already in the tree through wry, at the versions it resolves: the memory reading asks WebView2 for its processes.
 [target.'cfg(windows)'.dependencies]
@@ -88,7 +89,8 @@ webview2-com = "0.39.1"
 windows = { version = "0.62.2", features = [
   "Win32_Foundation",
   "Win32_System_ProcessStatus",
-  "Win32_System_Threading"
+  "Win32_System_Threading",
+  "Win32_UI_WindowsAndMessaging"
 ] }
 
 [dev-dependencies]
@@ -127,6 +129,7 @@ typescript-bindings = [
   "xrf-texture/typescript-bindings",
   "xrf-translation/typescript-bindings",
   "xrf-visual/typescript-bindings",
+  "xrf-renderer/typescript-bindings",
   "xrf-pack/typescript-bindings",
   "xrf-archive-stats/typescript-bindings",
 ]

@@ -37,6 +37,7 @@ members = [
   "crates/xrf-pack",
   "crates/xrf-particles",
   "crates/xrf-ppe",
+  "crates/xrf-renderer",
   "crates/xrf-report",
   "crates/xrf-shaders",
   "crates/xrf-skeleton",
@@ -60,10 +61,12 @@ rust-version = "1.99.0"
 [workspace.dependencies]
 criterion = { version = "0.8.2", default-features = false, features = ["cargo_bench_support"] }
 byteorder = "1.5.0"
+bytemuck = { version = "1.25.2", features = ["derive"] }
 bytes = "1.12.1"
 ddsfile = "0.5.2"
 derive_more = "2.1.1"
 env_logger = "0.11.11"
+glam = { version = "0.33.12", features = ["bytemuck"] }
 fileslice = { version = "0.8.0", default-features = false }
 getrandom = "0.4.3"
 http-body-util = "0.1.5"
@@ -73,7 +76,10 @@ image = { version = "0.25.10", default-features = false }
 image_dds = "0.7.2"
 indexmap = { version = "2.14.2", features = ["serde"] }
 log = "0.4.34"
+naga = { version = "30.0.1", features = ["wgsl-in"] }
 lzokay = { version = "2.0.1", default-features = false, features = ["std", "compress", "decompress"] }
+pollster = "0.4.0"
+raw-window-handle = "0.6.2"
 rayon = "1.12.0"
 regex = "1.13.1"
 serde = { version = "1.0.229", features = ["derive", "rc"] }
@@ -87,6 +93,7 @@ tauri-specta = { version = "=2.0.0-rc.25", features = ["typescript"] }
 tokio = { version = "1.53.1", features = ["net", "rt", "sync"] }
 uuid = "1.26.1"
 walkdir = "2.5.0"
+wgpu = { version = "30.0.1", default-features = false, features = ["std", "parking_lot", "dx12", "vulkan", "wgsl"] }
 xrf-animation-envelope = { path = "crates/xrf-animation-envelope" }
 xrf-anm = { path = "crates/xrf-anm" }
 xrf-archive = { path = "crates/xrf-archive" }
@@ -121,6 +128,7 @@ xrf-output = { path = "crates/xrf-output" }
 xrf-pack = { path = "crates/xrf-pack" }
 xrf-particles = { path = "crates/xrf-particles" }
 xrf-ppe = { path = "crates/xrf-ppe" }
+xrf-renderer = { path = "crates/xrf-renderer" }
 xrf-report = { path = "crates/xrf-report" }
 xrf-shaders = { path = "crates/xrf-shaders" }
 xrf-skeleton = { path = "crates/xrf-skeleton" }

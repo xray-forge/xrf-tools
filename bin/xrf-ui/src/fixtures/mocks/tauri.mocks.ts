@@ -48,6 +48,7 @@ const windowState: { isMaximized: boolean; listeners: Array<() => void> } = { is
 
 /** Provide the mocked Tauri window used by component tests. */
 export const mockAppWindow = {
+  label: "main",
   isMaximized: jest.fn(async (): Promise<boolean> => windowState.isMaximized),
   minimize: jest.fn(async (): Promise<void> => undefined),
   close: jest.fn(async (): Promise<void> => undefined),
