@@ -11,7 +11,9 @@ import { isRestartPending } from "./SettingsWebviewOptionsSection.utils";
 
 const STARTED: WebviewOptions = {
   collectionPace: EWebviewCollectionPace.DEFAULT,
+  isFrameRateUnlimited: false,
   isShaderCacheDoubled: true,
+  isVsyncDisabled: false,
   isWebgpuDeveloper: false,
 };
 
@@ -69,6 +71,20 @@ describe("SettingsWebviewOptionsSection", () => {
 
     await waitFor(() => expect(backend.chosen).toEqual({ ...STARTED, collectionPace: EWebviewCollectionPace.EARLIER }));
     expect(getByRole("button", { name: "Earlier" })).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("keeps vsync and the frame rate limit lifted each on its own for the next start", async () => {
+    const backend: { chosen: WebviewOptions } = mockBackend();
+    const { findByRole, getByRole } = renderWithProviders(<SettingsWebviewOptionsSection />);
+
+    await userEvent.click(await findByRole("checkbox", { name: "Disable vsync" }));
+    await waitFor(() => expect(backend.chosen).toEqual({ ...STARTED, isVsyncDisabled: true }));
+    expect(getByRole("checkbox", { name: "Disable frame rate limit" })).not.toBeChecked();
+
+    await userEvent.click(getByRole("checkbox", { name: "Disable frame rate limit" }));
+    await waitFor(() =>
+      expect(backend.chosen).toEqual({ ...STARTED, isVsyncDisabled: true, isFrameRateUnlimited: true })
+    );
   });
 
   it("waits for a restart only where a choice differs from what the webview started with", () => {

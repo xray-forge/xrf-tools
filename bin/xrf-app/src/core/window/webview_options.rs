@@ -17,16 +17,24 @@ pub struct WebviewOptions {
   /// How early the webview's JavaScript starts marking for a major collection, for every page and worker alike.
   #[serde(default)]
   pub collection_pace: WebviewCollectionPace,
+  /// `--disable-gpu-vsync`: the compositor presents as frames come rather than at the display's refresh.
+  #[serde(default)]
+  pub is_vsync_disabled: bool,
+  /// `--disable-frame-rate-limit`: the page's animation frames run past the display's refresh.
+  #[serde(default)]
+  pub is_frame_rate_unlimited: bool,
 }
 
 impl Default for WebviewOptions {
-  /// A level's pipelines fit the doubled cache and not the default one; the developer features and a collection pace of
-  /// its own are opt-in.
+  /// A level's pipelines fit the doubled cache and not the default one; the developer features, a collection pace of
+  /// its own and frames past the display's refresh are opt-in.
   fn default() -> Self {
     Self {
       is_shader_cache_doubled: true,
       is_webgpu_developer: false,
       collection_pace: WebviewCollectionPace::Default,
+      is_vsync_disabled: false,
+      is_frame_rate_unlimited: false,
     }
   }
 }
@@ -42,6 +50,14 @@ impl WebviewOptions {
 
     if self.is_webgpu_developer {
       args.push("--enable-webgpu-developer-features".to_owned());
+    }
+
+    if self.is_vsync_disabled {
+      args.push("--disable-gpu-vsync".to_owned());
+    }
+
+    if self.is_frame_rate_unlimited {
+      args.push("--disable-frame-rate-limit".to_owned());
     }
 
     if let Some(trigger) = self.collection_pace.soft_trigger() {

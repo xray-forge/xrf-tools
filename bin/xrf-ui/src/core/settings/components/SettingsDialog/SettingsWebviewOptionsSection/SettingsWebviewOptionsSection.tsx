@@ -83,6 +83,24 @@ export function SettingsWebviewOptionsSection(): ReactElement {
             onChange={(isChecked: boolean) => onChange({ isWebgpuDeveloper: isChecked })}
           />
 
+          <CheckboxFormRow
+            label={"Disable vsync"}
+            description={
+              "Presents frames as soon as they are drawn instead of at the display's refresh, for measuring what a frame costs. May tear."
+            }
+            isChecked={status.chosen.isVsyncDisabled ?? false}
+            onChange={(isChecked: boolean) => onChange({ isVsyncDisabled: isChecked })}
+          />
+
+          <CheckboxFormRow
+            label={"Disable frame rate limit"}
+            description={
+              "Lets the page draw past the display's refresh. With vsync disabled and the viewer's frame rate limit set to unlimited, the renderer runs as fast as it can."
+            }
+            isChecked={status.chosen.isFrameRateUnlimited ?? false}
+            onChange={(isChecked: boolean) => onChange({ isFrameRateUnlimited: isChecked })}
+          />
+
           <ChoiceFormRow
             label={"Garbage collection"}
             description={
