@@ -3,12 +3,19 @@ use std::collections::HashMap;
 use xrf_error::XrfResult;
 
 use crate::context::gpu_context::GpuContext;
+use crate::pass::ambient_occlusion_pass::AmbientOcclusionPass;
 use crate::pass::combine_pass::CombinePass;
 use crate::pass::depth_pyramid_pass::DepthPyramidPass;
+use crate::pass::exposure_pass::ExposurePass;
 use crate::pass::grid_pass::GridPass;
 use crate::pass::level_passes::LevelPasses;
+use crate::pass::lights_pass::LightsPass;
+use crate::pass::material_table::MaterialTable;
+use crate::pass::present_pass::PresentPass;
 use crate::pass::static_cull_pass::StaticCullPass;
 use crate::pass::static_gbuffer_pass::StaticGBufferPass;
+use crate::pass::static_shadow_pass::StaticShadowPass;
+use crate::pass::sun_pass::SunPass;
 use crate::pass::view_binding::ViewBinding;
 use crate::scene::texture::texture_cache::TextureCache;
 use crate::shader::shader_library::ShaderLibrary;
@@ -24,8 +31,15 @@ pub struct GpuState {
   pub textures: TextureCache,
   pub static_cull: StaticCullPass,
   pub static_gbuffer: StaticGBufferPass,
+  pub static_shadow: StaticShadowPass,
   pub pyramid: DepthPyramidPass,
+  pub sun: SunPass,
+  pub ambient_occlusion: AmbientOcclusionPass,
+  pub lights: LightsPass,
   pub combine: CombinePass,
+  pub exposure: ExposurePass,
+  pub present: PresentPass,
+  pub table: MaterialTable,
   /// The grid pass for each target format drawn into.
   grids: HashMap<wgpu::TextureFormat, GridPass>,
 }
@@ -38,12 +52,28 @@ impl GpuState {
     let device: &wgpu::Device = &context.device;
     let view_layout: wgpu::BindGroupLayout = ViewBinding::create_layout(device);
     let textures: TextureCache = TextureCache::new(device, &context.queue);
+    let static_gbuffer: StaticGBufferPass =
+      StaticGBufferPass::new(device, shaders, &view_layout, textures.get_layout())?;
+    let static_shadow: StaticShadowPass = StaticShadowPass::new(
+      device,
+      shaders,
+      &view_layout,
+      static_gbuffer.get_layout(),
+      textures.get_layout(),
+    )?;
 
     Ok(Self {
       static_cull: StaticCullPass::new(device, shaders, &view_layout)?,
-      static_gbuffer: StaticGBufferPass::new(device, shaders, &view_layout, textures.get_layout())?,
+      static_gbuffer,
+      static_shadow,
       pyramid: DepthPyramidPass::new(device, shaders)?,
-      combine: CombinePass::new(device, &context.queue, shaders, &view_layout),
+      sun: SunPass::new(device, shaders, &view_layout)?,
+      ambient_occlusion: AmbientOcclusionPass::new(device, shaders, &view_layout)?,
+      lights: LightsPass::new(device, shaders, &view_layout, textures.get_layout())?,
+      combine: CombinePass::new(device, shaders, &view_layout)?,
+      exposure: ExposurePass::new(device, shaders)?,
+      present: PresentPass::new(device, shaders, &view_layout),
+      table: MaterialTable::new(device, &context.queue),
       windows: HashMap::new(),
       grids: HashMap::new(),
       textures,
@@ -76,8 +106,15 @@ impl GpuState {
     LevelPasses {
       cull: &self.static_cull,
       gbuffer: &self.static_gbuffer,
+      shadow: &self.static_shadow,
       pyramid: &self.pyramid,
+      sun: &self.sun,
+      ambient_occlusion: &self.ambient_occlusion,
+      lights: &self.lights,
       combine: &self.combine,
+      exposure: &self.exposure,
+      present: &self.present,
+      table: &self.table,
     }
   }
 
@@ -91,7 +128,13 @@ impl GpuState {
 
     self.static_cull.refresh(device, shaders);
     self.static_gbuffer.refresh(device, shaders);
+    self.static_shadow.refresh(device, shaders);
     self.pyramid.refresh(device, shaders);
-    self.combine.refresh(shaders);
+    self.sun.refresh(device, shaders);
+    self.ambient_occlusion.refresh(device, shaders);
+    self.lights.refresh(device, shaders);
+    self.combine.refresh(device, shaders);
+    self.exposure.refresh(device, shaders);
+    self.present.refresh(shaders);
   }
 }

@@ -1,8 +1,11 @@
 mod cameras;
 mod frame_statistics;
 mod headless;
+mod light_geometry;
 mod lighting;
 mod shader_composer;
 mod shaders;
+mod shadow_tile_allocator;
+mod sun_cascade;
 mod surface_tally;
 mod texture_role;

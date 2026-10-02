@@ -3,4 +3,6 @@ pub(crate) mod frame_capture;
 pub(crate) mod frame_statistics;
 pub(crate) mod pick_target;
 pub(crate) mod stats_readback;
+pub(crate) mod sun_shadow_maps;
+pub(crate) mod view_exposure;
 pub(crate) mod view_targets;

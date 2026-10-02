@@ -1,6 +1,6 @@
 use xrf_error::XrfResult;
 use xrf_material::XraySurfaceDescriptor;
-use xrf_visual::SectorPackage;
+use xrf_visual::{LightsDescription, SectorPackage};
 
 use crate::host::render_asset_source::RenderAssetSource;
 
@@ -19,4 +19,12 @@ pub trait RenderLevelSource: RenderAssetSource {
 
   /// How each entry of the level's shader table is drawn, in its order: what a sector's surface names by id.
   fn get_surfaces(&self) -> &[XraySurfaceDescriptor];
+
+  /// The level's lights, its own and its spawned lamps', called once from a loader thread; their projectors are read
+  /// through [`RenderAssetSource::read_texture`] after.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when they cannot be collected.
+  fn read_lights(&self) -> XrfResult<LightsDescription>;
 }

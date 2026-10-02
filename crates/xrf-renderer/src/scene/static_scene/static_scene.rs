@@ -54,8 +54,12 @@ pub struct StaticScene {
   pub late: wgpu::Buffer,
   /// The late phase's dispatch, copied out of `late` so the dispatch reads no buffer it binds.
   pub late_dispatch: wgpu::Buffer,
+  /// Every batch's draw arguments as a cull starts them, copied into a view's own before each cull of it in a frame.
+  pub args_template: wgpu::Buffer,
   /// Entries the visible list and the candidates hold this frame.
   list_capacity: u32,
+  /// Every batch's draw arguments as a cull starts them, which a shadow's own arguments start from too.
+  initial_args: Vec<u32>,
   /// Vertices in each layout's arena, which a geometry's indices are offset by.
   vertex_counts: [u32; 2],
   index_count: u32,
@@ -129,6 +133,12 @@ impl StaticScene {
         usage: storage | wgpu::BufferUsages::INDIRECT | wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::COPY_SRC,
         mapped_at_creation: false,
       }),
+      args_template: device.create_buffer(&wgpu::BufferDescriptor {
+        label: Some("static draw arguments template"),
+        size: Self::IMPOSTOR_ARGS_OFFSET + 16,
+        usage: wgpu::BufferUsages::COPY_SRC | wgpu::BufferUsages::COPY_DST,
+        mapped_at_creation: false,
+      }),
       late_dispatch: device.create_buffer(&wgpu::BufferDescriptor {
         label: Some("static late dispatch"),
         size: 12,
@@ -136,6 +146,7 @@ impl StaticScene {
         mapped_at_creation: false,
       }),
       list_capacity: 0,
+      initial_args: Vec::new(),
       vertex_counts: [0; 2],
       index_count: 0,
       cluster_count: 0,
@@ -340,7 +351,14 @@ impl StaticScene {
       .reserve(device, encoder, (self.impostor_count.max(1) as u64) * 4);
     queue.write_buffer(&self.regions, 0, bytemuck::cast_slice(&regions));
     queue.write_buffer(&self.args, 0, bytemuck::cast_slice(&args));
+    queue.write_buffer(&self.args_template, 0, bytemuck::cast_slice(&args));
     queue.write_buffer(&self.late, 0, bytemuck::cast_slice(&late));
+    self.initial_args = args;
+  }
+
+  /// Every batch's draw arguments as this frame's culls start them.
+  pub fn get_initial_args(&self) -> &[u32] {
+    &self.initial_args
   }
 
   /// Entries the visible list holds, and the candidates as many.

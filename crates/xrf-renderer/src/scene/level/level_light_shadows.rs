@@ -1,0 +1,402 @@
+use std::collections::HashMap;
+
+use glam::{Vec3, Vec4};
+use xrf_math::EPS_S;
+use xrf_visual::{LightDescription, LightKind};
+
+use crate::camera::camera_view::CameraView;
+use crate::contract::render_rect::RenderRect;
+use crate::lighting::light_basis::{LightBasis, to_light_intensity};
+use crate::lighting::light_shadow_size::{
+  LIGHT_SHADOW_MIN_SIZE, LIGHT_SHADOW_POINT_CONE, LIGHT_SHADOW_POINT_FACES, LIGHT_SHADOW_WIDENING,
+  to_light_shadow_size, to_light_shadow_tile_size,
+};
+use crate::pass::camera_uniform::CameraUniform;
+use crate::pass::level_passes::LevelPasses;
+use crate::pass::view_binding::ViewBinding;
+use crate::scene::level::light_shadow_entry::LightShadowEntry;
+use crate::scene::level::light_shadow_face::LightShadowFace;
+use crate::scene::level::light_shadow_set::LightShadowSet;
+use crate::scene::level::shadow_frame::ShadowFrame;
+use crate::scene::level::shadow_tile::ShadowTile;
+use crate::scene::level::shadow_tile_allocator::ShadowTileAllocator;
+use crate::scene::static_scene::growable_buffer::GrowableBuffer;
+
+/// Texels the light shadow atlas is across.
+pub const LIGHT_SHADOW_ATLAS_SIZE: u32 = 4096;
+
+/// Shadow faces drawn at most in one frame, so a level opening fills the atlas over a few frames rather than in one.
+const FACE_BUDGET: usize = 8;
+
+/// How far a light's wanted size may stray from the square it was asked at before it is asked at another.
+const GROW: f32 = 1.5;
+const SHRINK: f32 = 0.66;
+
+/// Where a face's projection starts where the light gives none: `light::virtual_size`'s default.
+const DEFAULT_NEAR: f32 = 0.1;
+
+/// The local lights' shadows: a square of an atlas a face, sized as the engine sizes its maps, drawn once and kept
+/// while the scene it casts from stays, a few faces a frame, the nearest lights first. A light lights only once its
+/// faces are drawn; one asked at another size keeps its old faces until its new ones are. Room is made from the lights
+/// out of view longest, and where there is still none, a light is asked at smaller squares.
+pub struct LevelLightShadows {
+  atlas: wgpu::TextureView,
+  allocator: ShadowTileAllocator,
+  entries: HashMap<usize, LightShadowEntry>,
+  frame: u64,
+  /// The faces wanting a draw this frame, as their light, set and face, with their light's distance.
+  candidates: Vec<(f32, usize, bool, usize)>,
+  /// The faces drawn this frame, a camera each from the pool.
+  queue: Vec<(usize, bool, usize)>,
+  views: Vec<ViewBinding>,
+  lists: GrowableBuffer,
+  args: wgpu::Buffer,
+  cull_group: Option<((u64, u64, u64), wgpu::BindGroup)>,
+  draw_groups: Option<((u64, u64), [wgpu::BindGroup; 2])>,
+}
+
+impl LevelLightShadows {
+  pub fn new(device: &wgpu::Device, view_layout: &wgpu::BindGroupLayout, args_size: u64) -> Self {
+    let atlas: wgpu::TextureView = device
+      .create_texture(&wgpu::TextureDescriptor {
+        label: Some("light shadow atlas"),
+        size: wgpu::Extent3d {
+          width: LIGHT_SHADOW_ATLAS_SIZE,
+          height: LIGHT_SHADOW_ATLAS_SIZE,
+          depth_or_array_layers: 1,
+        },
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format: wgpu::TextureFormat::Depth32Float,
+        usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+        view_formats: &[],
+      })
+      .create_view(&Default::default());
+
+    Self {
+      atlas,
+      allocator: ShadowTileAllocator::new(LIGHT_SHADOW_ATLAS_SIZE, LIGHT_SHADOW_MIN_SIZE),
+      entries: HashMap::new(),
+      frame: 0,
+      candidates: Vec::new(),
+      queue: Vec::new(),
+      views: (0..FACE_BUDGET)
+        .map(|_| ViewBinding::new(device, view_layout))
+        .collect(),
+      lists: GrowableBuffer::new(device, "light shadow lists", wgpu::BufferUsages::STORAGE),
+      args: device.create_buffer(&wgpu::BufferDescriptor {
+        label: Some("light shadow draw arguments"),
+        size: args_size,
+        usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::INDIRECT | wgpu::BufferUsages::COPY_DST,
+        mapped_at_creation: false,
+      }),
+      cull_group: None,
+      draw_groups: None,
+    }
+  }
+
+  pub fn get_atlas(&self) -> &wgpu::TextureView {
+    &self.atlas
+  }
+
+  /// Starts a frame's asks.
+  pub fn begin(&mut self) {
+    self.frame += 1;
+    self.candidates.clear();
+    self.queue.clear();
+  }
+
+  /// Takes a shadowed light in view this frame, nearest first: gives it faces where it has none at the size it wants,
+  /// and puts forward those of its faces wanting a draw.
+  #[allow(clippy::too_many_arguments)]
+  pub fn ask(
+    &mut self,
+    index: usize,
+    light: &LightDescription,
+    basis: &LightBasis,
+    eye: Vec3,
+    forward: Vec3,
+    color: Vec3,
+    sectors: usize,
+  ) {
+    let is_spot: bool = matches!(light.kind, LightKind::Spot);
+    let spatial: Vec4 = basis.get_spatial_sphere(light);
+    let distance: f32 = (eye.distance(spatial.truncate()) - spatial.w).max(0.0);
+    let duel: f32 = if is_spot {
+      1.0 - 0.5 * forward.dot(basis.direction)
+    } else {
+      1.0
+    };
+    let cone: f32 = if is_spot { light.cone } else { LIGHT_SHADOW_POINT_CONE };
+    let wanted: f32 = to_light_shadow_size(light.range, distance, to_light_intensity(color), duel, cone);
+    let entry: &mut LightShadowEntry = self.entries.entry(index).or_default();
+
+    entry.seen = self.frame;
+
+    let current: Option<u32> = entry.next.as_ref().or(entry.shown.as_ref()).map(|set| set.size);
+    let asked: u32 = match current {
+      Some(size) if wanted <= size as f32 * GROW && wanted >= size as f32 * SHRINK => size,
+      _ => to_light_shadow_tile_size(wanted),
+    };
+
+    // Back at the size it shows while another was being drawn: the shown faces stand, and the other goes.
+    if entry.shown.as_ref().is_some_and(|set| set.size == asked) {
+      if let Some(next) = entry.next.take() {
+        release_set(&mut self.allocator, next);
+      }
+    } else if entry.next.as_ref().is_none_or(|set| set.size != asked) {
+      if let Some(next) = self.entries.get_mut(&index).and_then(|entry| entry.next.take()) {
+        release_set(&mut self.allocator, next);
+      }
+
+      let set: Option<LightShadowSet> = self.create_set(light, basis, asked);
+
+      if let Some(entry) = self.entries.get_mut(&index) {
+        entry.next = set;
+      }
+    }
+
+    let Some(entry) = self.entries.get(&index) else {
+      return;
+    };
+
+    for (is_next, set) in [(false, &entry.shown), (true, &entry.next)] {
+      if let Some(set) = set {
+        for (face, state) in set.faces.iter().enumerate() {
+          if state.drawn != Some(sectors) {
+            self.candidates.push((distance, index, is_next, face));
+          }
+        }
+      }
+    }
+  }
+
+  /// Queues the faces drawn this frame, the nearest lights' first, and takes a light's new faces in place of its old
+  /// ones once all are drawn.
+  pub fn finish(&mut self) {
+    self.candidates.sort_by(|a, b| a.0.total_cmp(&b.0));
+    self.queue = self
+      .candidates
+      .iter()
+      .take(FACE_BUDGET)
+      .map(|(_, index, is_next, face)| (*index, *is_next, *face))
+      .collect();
+  }
+
+  /// The faces a light lights with this frame, every one drawn, or none where it has none whole.
+  pub fn get_set(&self, index: usize) -> Option<&LightShadowSet> {
+    self.entries.get(&index)?.shown.as_ref().filter(|set| set.is_drawn())
+  }
+
+  /// Culls and draws the faces queued this frame into their squares of the atlas.
+  pub fn record(
+    &mut self,
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    encoder: &mut wgpu::CommandEncoder,
+    passes: LevelPasses<'_>,
+    frame: &ShadowFrame<'_>,
+  ) {
+    let scene = frame.scene;
+    let sectors: usize = scene.sectors.len();
+
+    if self.queue.is_empty() {
+      return;
+    }
+
+    self
+      .lists
+      .reserve(device, encoder, (scene.get_list_capacity().max(1) as u64) * 8);
+
+    let cull_key: (u64, u64, u64) = (scene.get_generation(), self.lists.get_generation(), frame.targets_epoch);
+
+    if self.cull_group.as_ref().is_none_or(|(key, _)| *key != cull_key) {
+      let group: wgpu::BindGroup = passes.cull.create_bind_group(
+        device,
+        scene,
+        frame.cull_params,
+        frame.pyramid,
+        frame.occlusion,
+        (self.lists.get_buffer(), &self.args),
+      );
+
+      self.cull_group = Some((cull_key, group));
+    }
+
+    let draw_key: (u64, u64) = (scene.get_generation(), self.lists.get_generation());
+
+    if self.draw_groups.as_ref().is_none_or(|(key, _)| *key != draw_key) {
+      self.draw_groups = Some((
+        draw_key,
+        passes
+          .gbuffer
+          .create_layout_groups(device, scene, self.lists.get_buffer()),
+      ));
+    }
+
+    let (Some((_, cull_group)), Some((_, draw_groups))) = (&self.cull_group, &self.draw_groups) else {
+      return;
+    };
+
+    for (slot, (index, is_next, face)) in self.queue.iter().enumerate() {
+      let Some(state) = self
+        .entries
+        .get_mut(index)
+        .and_then(|entry| {
+          if *is_next {
+            entry.next.as_mut()
+          } else {
+            entry.shown.as_mut()
+          }
+        })
+        .and_then(|set| set.faces.get_mut(*face))
+      else {
+        continue;
+      };
+      let view: &ViewBinding = &self.views[slot];
+
+      view.write(
+        queue,
+        &CameraUniform::new(
+          &state.view,
+          RenderRect {
+            x: 0,
+            y: 0,
+            width: state.tile.size,
+            height: state.tile.size,
+          },
+          Vec4::ZERO,
+        ),
+      );
+      // Each face's cull starts from the arguments a cull starts with, the face before it drawn already.
+      encoder.copy_buffer_to_buffer(&scene.args_template, 0, &self.args, 0, scene.args.size());
+      passes
+        .cull
+        .dispatch_shadow(encoder, view, cull_group, frame.params, true);
+      passes.shadow.draw_tile(
+        encoder,
+        &self.atlas,
+        state.tile,
+        view,
+        draw_groups,
+        frame.textures.get_bind_group(),
+        &self.args,
+      );
+      state.drawn = Some(sectors);
+    }
+
+    // A light's new faces, all drawn, take the place of its old.
+    for entry in self.entries.values_mut() {
+      if entry.next.as_ref().is_some_and(LightShadowSet::is_drawn) {
+        if let Some(shown) = entry.shown.take() {
+          release_set(&mut self.allocator, shown);
+        }
+
+        entry.shown = entry.next.take();
+      }
+    }
+  }
+
+  /// A light's faces at a size, room made from the lights out of view longest, and at smaller squares where there is
+  /// still none.
+  fn create_set(&mut self, light: &LightDescription, basis: &LightBasis, size: u32) -> Option<LightShadowSet> {
+    let is_spot: bool = matches!(light.kind, LightKind::Spot);
+    let count: usize = if is_spot { 1 } else { LIGHT_SHADOW_POINT_FACES.len() };
+    let near: f32 = if light.near > 0.0 { light.near } else { DEFAULT_NEAR };
+    let far: f32 = light.range + light.range_jitter + EPS_S;
+    let mut side: u32 = size;
+
+    loop {
+      if let Some(tiles) = self.allocate(count, side) {
+        let faces: Vec<LightShadowFace> = tiles
+          .into_iter()
+          .enumerate()
+          .map(|(face, tile)| LightShadowFace {
+            tile,
+            view: to_face_view(light, basis, face, near, far),
+            drawn: None,
+          })
+          .collect();
+
+        return Some(LightShadowSet { size, near, far, faces });
+      }
+
+      if !self.evict_oldest() {
+        if side <= LIGHT_SHADOW_MIN_SIZE {
+          return None;
+        }
+
+        side /= 2;
+      }
+    }
+  }
+
+  /// Squares for every face of a light, all or none.
+  fn allocate(&mut self, count: usize, side: u32) -> Option<Vec<ShadowTile>> {
+    let mut tiles: Vec<ShadowTile> = Vec::with_capacity(count);
+
+    for _ in 0..count {
+      match self.allocator.allocate(side) {
+        Some(tile) => tiles.push(tile),
+        None => {
+          tiles.into_iter().for_each(|tile| self.allocator.release(tile));
+
+          return None;
+        }
+      }
+    }
+
+    Some(tiles)
+  }
+
+  /// Lets the light out of view longest give its faces back; false where every light holding any is in view.
+  fn evict_oldest(&mut self) -> bool {
+    let Some(index) = self
+      .entries
+      .iter()
+      .filter(|(_, entry)| entry.seen < self.frame && (entry.shown.is_some() || entry.next.is_some()))
+      .min_by_key(|(_, entry)| entry.seen)
+      .map(|(index, _)| *index)
+    else {
+      return false;
+    };
+
+    if let Some(entry) = self.entries.remove(&index) {
+      entry
+        .shown
+        .into_iter()
+        .chain(entry.next)
+        .for_each(|set| release_set(&mut self.allocator, set));
+    }
+
+    true
+  }
+}
+
+fn release_set(allocator: &mut ShadowTileAllocator, set: LightShadowSet) {
+  set.faces.into_iter().for_each(|face| allocator.release(face.tile));
+}
+
+/// A face's camera, built as `compute_xf_spot` builds its own: at the light, down its direction or the face's axis,
+/// the cone widened, its depth reversed.
+fn to_face_view(light: &LightDescription, basis: &LightBasis, face: usize, near: f32, far: f32) -> CameraView {
+  let (direction, up, cone): (Vec3, Vec3, f32) = match light.kind {
+    LightKind::Spot => (basis.direction, basis.up, light.cone),
+    LightKind::Point => {
+      let (direction, up) = LIGHT_SHADOW_POINT_FACES[face];
+
+      (direction, up, LIGHT_SHADOW_POINT_CONE)
+    }
+  };
+  let view = glam::camera::rh::view::look_at_mat4(basis.position, basis.position + direction, up);
+
+  CameraView::new(
+    basis.position,
+    view,
+    (cone + LIGHT_SHADOW_WIDENING).to_degrees(),
+    1.0,
+    near,
+    far,
+  )
+}

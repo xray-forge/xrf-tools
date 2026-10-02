@@ -9,6 +9,14 @@
 // pyramid is reduced from their depth, the late phase tests the candidates again and appends those it now sees after
 // the early ones, for a second draw.
 
+// Whether the view culled is a shadow's: its casters drawn as trees whatever their impostor says, at the band and
+// discard the camera's distance picks, and never occluded.
+override IS_SHADOW: bool = false;
+
+// Whether the shadow is a light's face, kept while nothing it casts from changes: its trees cast at their finest band,
+// and nothing too small for the camera is dropped, so no move of the camera is drawn into it.
+override IS_FINEST: bool = false;
+
 struct CullParams {
   cluster_count: u32,
   row_count: u32,
@@ -27,6 +35,9 @@ struct CullParams {
   pad0: u32,
   pad1: u32,
   pad2: u32,
+  pad3: u32,
+  // xyz: the camera every view's levels of detail are measured from.
+  lod_origin: vec4<f32>,
 };
 
 // The view the pyramid was reduced through, which the early phase tests against.
@@ -78,9 +89,9 @@ fn is_in_frustum(sphere: vec4<f32>) -> bool {
   return true;
 }
 
-// `r / d²`, the engine's screen area of a sphere, without the screen it is compared against.
+// `r / d²`, the engine's screen area of a sphere from the camera, without the screen it is compared against.
 fn screen_area(sphere: vec4<f32>) -> f32 {
-  let offset: vec3<f32> = sphere.xyz - camera.position.xyz;
+  let offset: vec3<f32> = sphere.xyz - params.lod_origin.xyz;
 
   return sphere.w / (dot(offset, offset) + 1e-7);
 }
@@ -174,7 +185,7 @@ fn is_hidden_early(sphere: vec4<f32>) -> bool {
 
 // Appends a cluster the frustum keeps, or sets it aside for the late phase where last frame's depth hid it.
 fn keep(batch: u32, cluster: u32, place: u32, sphere: vec4<f32>) {
-  if (is_hidden_early(sphere)) {
+  if (!IS_SHADOW && is_hidden_early(sphere)) {
     set_aside(cluster, place);
   } else {
     append(batch, cluster, place);
@@ -298,15 +309,21 @@ fn cull_rows(@builtin(global_invocation_id) id: vec3<u32>) {
 
   let row: Row = rows[index];
 
-  // A tree its clump's impostor stands in for is drawn only while the clump is near enough.
-  if (row.lod != NO_LOD && (terms[row.lod].w & LOD_TREES) == 0u) {
+  // A tree its clump's impostor stands in for is drawn only while the clump is near enough; a shadow casts it always.
+  if (!IS_SHADOW && row.lod != NO_LOD && (terms[row.lod].w & LOD_TREES) == 0u) {
     return;
   }
 
   let area: f32 = screen_area(row.sphere);
 
-  // A place too small to see is dropped, as `r_ssaDISCARD` drops it.
-  if (area <= params.discard_below || !is_band_drawn(row.band, area) || !is_in_frustum(row.sphere)) {
+  let is_drawn: bool = select(
+    // A place too small to see is dropped, as `r_ssaDISCARD` drops it.
+    area > params.discard_below && is_band_drawn(row.band, area),
+    (row.band & 255u) == 0u,
+    IS_FINEST
+  );
+
+  if (!is_drawn || !is_in_frustum(row.sphere)) {
     return;
   }
 
@@ -329,6 +346,14 @@ fn cull_rows(@builtin(global_invocation_id) id: vec3<u32>) {
 @compute @workgroup_size(64)
 fn clamp_counts(@builtin(global_invocation_id) id: vec3<u32>) {
   let batch: u32 = id.x;
+
+  if (IS_SHADOW) {
+    if (batch < params.batch_count) {
+      atomicStore(&args[batch * 4u + 1u], min(atomicLoad(&args[batch * 4u + 1u]), regions[batch].capacity));
+    }
+
+    return;
+  }
 
   if (batch == 0u) {
     let candidates: u32 = min(atomicLoad(&late[late_at(3u)]), params.candidate_capacity);

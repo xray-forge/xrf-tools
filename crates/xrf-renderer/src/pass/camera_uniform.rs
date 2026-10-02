@@ -33,23 +33,8 @@ impl CameraUniform {
       inverse_projection: view.projection.inverse(),
       position: view.position.extend(1.0),
       viewport: Vec4::new(rect.width as f32, rect.height as f32, rect.x as f32, rect.y as f32),
-      planes: to_frustum_planes(view_projection),
+      planes: view.get_planes(),
       switches,
     }
   }
-}
-
-/// The six planes of a view projection into zero-to-one depth, each normalized so a sphere tests by its radius.
-fn to_frustum_planes(matrix: Mat4) -> [Vec4; 6] {
-  let rows: [Vec4; 4] = [matrix.row(0), matrix.row(1), matrix.row(2), matrix.row(3)];
-
-  [
-    rows[3] + rows[0],
-    rows[3] - rows[0],
-    rows[3] + rows[1],
-    rows[3] - rows[1],
-    rows[2],
-    rows[3] - rows[2],
-  ]
-  .map(|plane| plane / plane.truncate().length())
 }

@@ -1,10 +1,8 @@
+use crate::lighting::light_specular::to_light_specular;
 use glam::Vec3;
 use xrf_math::EPS;
 
 use crate::lighting::sun_direction::to_renderer_sun_direction;
-
-/// `ps_r2_gloss_factor`, the engine's default.
-const GLOSS_FACTOR: f32 = 4.0;
 
 /// The floor `phase_combine` keeps ambient above.
 const MINIMUM_AMBIENT: f32 = 0.001;
@@ -32,9 +30,7 @@ impl RenderLighting {
 
   /// `Ldynamic_color.w`: what the sun contributes to specular, `u_diffuse2s` of its colour (`r2_types.h`).
   pub fn get_sun_specular(&self) -> f32 {
-    let mean: f32 = self.sun_color.element_sum() / 3.0;
-
-    GLOSS_FACTOR * if mean < 1.0 { mean.powf(2.0 / 3.0) } else { mean }
+    to_light_specular(self.sun_color)
   }
 
   /// `L_ambient`.

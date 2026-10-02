@@ -1,3 +1,12 @@
+pub(crate) mod light_animation;
+pub(crate) mod light_basis;
+pub(crate) mod light_shadow_size;
+pub(crate) mod light_specular;
 pub(crate) mod material_lut;
 pub(crate) mod render_lighting;
+pub(crate) mod sun_cascade;
+pub(crate) mod sun_cascade_basis;
+pub(crate) mod sun_cascade_placement;
 pub(crate) mod sun_direction;
+pub(crate) mod sun_view_ray;
+pub(crate) mod sun_view_rays;

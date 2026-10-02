@@ -21,12 +21,18 @@ const ENTRIES: [&str; 6] = [
   "clamp_late",
 ];
 
+/// The override constants a sun cascade's cull is built with, and a light face's.
+const CASCADE: &[(&str, f64)] = &[("IS_SHADOW", 1.0)];
+const LIGHT_FACE: &[(&str, f64)] = &[("IS_SHADOW", 1.0), ("IS_FINEST", 1.0)];
+
 /// Decides each frame which clusters are drawn, into every batch's run of the visible list: an early phase before the
 /// first draw, and a late one testing what the early phase set aside against the depth that draw left.
 pub struct StaticCullPass {
   layout: wgpu::BindGroupLayout,
   view_layout: wgpu::BindGroupLayout,
   pipelines: [wgpu::ComputePipeline; 6],
+  /// The singles, the rows and the clamp again, for a sun cascade's view, then for a light face's.
+  shadow_pipelines: [[wgpu::ComputePipeline; 3]; 2],
   generation: u64,
 }
 
@@ -60,8 +66,11 @@ impl StaticCullPass {
       ],
     });
 
+    let (pipelines, shadow_pipelines) = Self::create_pipelines(device, shaders, view_layout, &layout)?;
+
     Ok(Self {
-      pipelines: Self::create_pipelines(device, shaders, view_layout, &layout)?,
+      pipelines,
+      shadow_pipelines,
       view_layout: view_layout.clone(),
       generation: shaders.get_generation(),
       layout,
@@ -73,7 +82,10 @@ impl StaticCullPass {
       self.generation = shaders.get_generation();
 
       match Self::create_pipelines(device, shaders, &self.view_layout, &self.layout) {
-        Ok(pipelines) => self.pipelines = pipelines,
+        Ok((pipelines, shadow_pipelines)) => {
+          self.pipelines = pipelines;
+          self.shadow_pipelines = shadow_pipelines;
+        }
         Err(error) => log::error!("Static cull rejected, culling with the last one: {error}"),
       }
     }
@@ -86,6 +98,7 @@ impl StaticCullPass {
     params: &wgpu::Buffer,
     pyramid: &wgpu::TextureView,
     occlusion: &wgpu::Buffer,
+    (lists, args): (&wgpu::Buffer, &wgpu::Buffer),
   ) -> wgpu::BindGroup {
     let buffers: [(u32, &wgpu::Buffer); 15] = [
       (0, scene.clusters.get_buffer()),
@@ -94,8 +107,8 @@ impl StaticCullPass {
       (3, scene.places.get_buffer()),
       (4, scene.rows.get_buffer()),
       (5, &scene.regions),
-      (6, scene.lists.get_buffer()),
-      (7, &scene.args),
+      (6, lists),
+      (7, args),
       (8, params),
       (9, scene.candidates.get_buffer()),
       (10, &scene.late),
@@ -154,6 +167,36 @@ impl StaticCullPass {
     }
   }
 
+  /// Culls every cluster and row into a shadow's view, its own lists bound, then clamps each batch's count to its run.
+  pub fn dispatch_shadow(
+    &self,
+    encoder: &mut wgpu::CommandEncoder,
+    view: &crate::pass::view_binding::ViewBinding,
+    bind_group: &wgpu::BindGroup,
+    params: &StaticCullParams,
+    is_light_face: bool,
+  ) {
+    let pipelines: &[wgpu::ComputePipeline; 3] = &self.shadow_pipelines[is_light_face as usize];
+    let mut pass: wgpu::ComputePass<'_> = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+      label: Some("static shadow cull"),
+      timestamp_writes: None,
+    });
+
+    pass.set_bind_group(0, &view.bind_group, &[]);
+    pass.set_bind_group(1, bind_group, &[]);
+
+    for (pipeline, count) in [
+      (&pipelines[0], params.cluster_count),
+      (&pipelines[1], params.row_count),
+      (&pipelines[2], StaticBatch::COUNT as u32),
+    ] {
+      if count > 0 {
+        pass.set_pipeline(pipeline);
+        pass.dispatch_workgroups(count.div_ceil(WORKGROUP), 1, 1);
+      }
+    }
+  }
+
   /// Tests what the early phase set aside again, as many workgroups as it set aside, then clamps the late counts.
   pub fn dispatch_late(
     &self,
@@ -188,21 +231,24 @@ impl StaticCullPass {
     shaders: &ShaderLibrary,
     view_layout: &wgpu::BindGroupLayout,
     layout: &wgpu::BindGroupLayout,
-  ) -> XrfResult<[wgpu::ComputePipeline; 6]> {
+  ) -> XrfResult<([wgpu::ComputePipeline; 6], [[wgpu::ComputePipeline; 3]; 2])> {
     let module: wgpu::ShaderModule = create_module(device, shaders, "static/cull")?;
     let pipeline_layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
       label: Some("static cull"),
       bind_group_layouts: &[Some(view_layout), Some(layout)],
       ..Default::default()
     });
-    let create = |entry: &str| -> XrfResult<wgpu::ComputePipeline> {
+    let create = |entry: &str, constants: &[(&str, f64)]| -> XrfResult<wgpu::ComputePipeline> {
       create_checked(device, entry, || {
         device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
           label: Some(entry),
           layout: Some(&pipeline_layout),
           module: &module,
           entry_point: Some(entry),
-          compilation_options: Default::default(),
+          compilation_options: wgpu::PipelineCompilationOptions {
+            constants,
+            ..Default::default()
+          },
           cache: None,
         })
       })
@@ -210,13 +256,27 @@ impl StaticCullPass {
 
     let [impostors, singles, rows, clamp, late, clamp_late] = ENTRIES;
 
-    Ok([
-      create(impostors)?,
-      create(singles)?,
-      create(rows)?,
-      create(clamp)?,
-      create(late)?,
-      create(clamp_late)?,
-    ])
+    Ok((
+      [
+        create(impostors, &[])?,
+        create(singles, &[])?,
+        create(rows, &[])?,
+        create(clamp, &[])?,
+        create(late, &[])?,
+        create(clamp_late, &[])?,
+      ],
+      [
+        [
+          create(singles, CASCADE)?,
+          create(rows, CASCADE)?,
+          create(clamp, CASCADE)?,
+        ],
+        [
+          create(singles, LIGHT_FACE)?,
+          create(rows, LIGHT_FACE)?,
+          create(clamp, LIGHT_FACE)?,
+        ],
+      ],
+    ))
   }
 }

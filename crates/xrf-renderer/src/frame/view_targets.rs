@@ -10,6 +10,13 @@ pub struct ViewTargets {
   pub material: wgpu::TextureView,
   /// Reversed: one at the near plane, zero where nothing was drawn.
   pub depth: wgpu::TextureView,
+  /// What the lights accumulate: diffuse in colour, specular in alpha.
+  pub light: wgpu::TextureView,
+  /// The scene combine finished, tonemapped, before it is put into the window.
+  pub scene: wgpu::TextureView,
+  /// The ambient occlusion at half the size, searched into the first and denoised through the second back into it:
+  /// visibility, then distance along the view.
+  pub occlusion: [wgpu::TextureView; 2],
 }
 
 impl ViewTargets {
@@ -17,9 +24,12 @@ impl ViewTargets {
   pub const NORMAL: wgpu::TextureFormat = wgpu::TextureFormat::Rg16Float;
   pub const MATERIAL: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
   pub const DEPTH: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
+  pub const LIGHT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
+  pub const SCENE: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
+  pub const OCCLUSION: wgpu::TextureFormat = wgpu::TextureFormat::Rg32Float;
 
   pub fn new(device: &wgpu::Device, width: u32, height: u32) -> Self {
-    let create = |label: &str, format: wgpu::TextureFormat| -> wgpu::TextureView {
+    let create_sized = |label: &str, format: wgpu::TextureFormat, (width, height): (u32, u32)| -> wgpu::TextureView {
       device
         .create_texture(&wgpu::TextureDescriptor {
           label: Some(label),
@@ -37,6 +47,9 @@ impl ViewTargets {
         })
         .create_view(&Default::default())
     };
+    let create =
+      |label: &str, format: wgpu::TextureFormat| -> wgpu::TextureView { create_sized(label, format, (width, height)) };
+    let half: (u32, u32) = (width.div_ceil(2), height.div_ceil(2));
 
     Self {
       width,
@@ -45,6 +58,12 @@ impl ViewTargets {
       normal: create("normal", Self::NORMAL),
       material: create("material", Self::MATERIAL),
       depth: create("depth", Self::DEPTH),
+      light: create("light", Self::LIGHT),
+      scene: create("scene", Self::SCENE),
+      occlusion: [
+        create_sized("ambient occlusion", Self::OCCLUSION, half),
+        create_sized("ambient occlusion denoised", Self::OCCLUSION, half),
+      ],
     }
   }
 

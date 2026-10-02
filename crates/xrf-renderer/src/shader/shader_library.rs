@@ -11,11 +11,36 @@ use crate::shader::shader_composer::compose_shader;
 const EMBEDDED: &[(&str, &str)] = &[
   ("common/camera", include_str!("../../shaders/common/camera.wgsl")),
   (
+    "common/fullscreen",
+    include_str!("../../shaders/common/fullscreen.wgsl"),
+  ),
+  (
+    "common/light_clusters",
+    include_str!("../../shaders/common/light_clusters.wgsl"),
+  ),
+  ("common/lighting", include_str!("../../shaders/common/lighting.wgsl")),
+  (
     "common/octahedral",
     include_str!("../../shaders/common/octahedral.wgsl"),
   ),
+  (
+    "frame/ambient_occlusion",
+    include_str!("../../shaders/frame/ambient_occlusion.wgsl"),
+  ),
   ("frame/combine", include_str!("../../shaders/frame/combine.wgsl")),
+  (
+    "frame/depth_clear",
+    include_str!("../../shaders/frame/depth_clear.wgsl"),
+  ),
+  ("frame/exposure", include_str!("../../shaders/frame/exposure.wgsl")),
+  (
+    "frame/light_binning",
+    include_str!("../../shaders/frame/light_binning.wgsl"),
+  ),
+  ("frame/lights", include_str!("../../shaders/frame/lights.wgsl")),
+  ("frame/present", include_str!("../../shaders/frame/present.wgsl")),
   ("frame/pyramid", include_str!("../../shaders/frame/pyramid.wgsl")),
+  ("frame/sun", include_str!("../../shaders/frame/sun.wgsl")),
   ("grid/grid", include_str!("../../shaders/grid/grid.wgsl")),
   ("static/cull", include_str!("../../shaders/static/cull.wgsl")),
   ("static/gbuffer", include_str!("../../shaders/static/gbuffer.wgsl")),

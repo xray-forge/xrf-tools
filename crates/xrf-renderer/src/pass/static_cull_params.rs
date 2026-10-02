@@ -1,3 +1,5 @@
+use glam::Vec4;
+
 /// What the cull is told besides the camera: how much there is to test and the level of detail's thresholds.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable)]
@@ -20,5 +22,7 @@ pub struct StaticCullParams {
   pub lod_b: f32,
   /// Whether impostors stand in for distant trees at all.
   pub is_impostors: u32,
-  pub pad: [u32; 3],
+  pub pad: [u32; 4],
+  /// The camera every view's levels of detail are measured from, a shadow's too.
+  pub lod_origin: Vec4,
 }

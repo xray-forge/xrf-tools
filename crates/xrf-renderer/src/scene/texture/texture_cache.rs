@@ -98,7 +98,7 @@ impl TextureCache {
     let checker: wgpu::TextureView = Self::create_checker(device, queue);
     let (sender, receiver) = channel();
     let views: Vec<wgpu::TextureView> = vec![missing];
-    let bind_group: wgpu::BindGroup = Self::create_bind_group(device, &layout, &sampler, &views, capacity);
+    let bind_group: wgpu::BindGroup = Self::create_bind_group(device, &layout, &sampler, &views);
 
     Self {
       layout,
@@ -226,7 +226,7 @@ impl TextureCache {
 
     if self.is_dirty {
       self.is_dirty = false;
-      self.bind_group = Self::create_bind_group(device, &self.layout, &self.sampler, &self.views, self.capacity);
+      self.bind_group = Self::create_bind_group(device, &self.layout, &self.sampler, &self.views);
     }
   }
 
@@ -358,11 +358,9 @@ impl TextureCache {
     layout: &wgpu::BindGroupLayout,
     sampler: &wgpu::Sampler,
     views: &[wgpu::TextureView],
-    capacity: u32,
   ) -> wgpu::BindGroup {
-    let mut bound: Vec<&wgpu::TextureView> = views.iter().collect();
-
-    bound.resize(capacity as usize, &views[MISSING_SLOT as usize]);
+    // Only the slots asked for: the array is partially bound, and every view bound is tracked by each pass binding it.
+    let bound: Vec<&wgpu::TextureView> = views.iter().collect();
 
     device.create_bind_group(&wgpu::BindGroupDescriptor {
       label: Some("textures"),
