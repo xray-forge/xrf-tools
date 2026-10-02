@@ -332,20 +332,26 @@ export class RendererTextures {
     let sent: number = 0;
 
     for (const key of this.queued) {
+      const entry: Maybe<ITextureEntry> = this.entries.get(key);
+      // One loading is queued again as its bytes come.
+      const isWaiting: boolean =
+        !entry?.texture || entry.isLoading || (entry.drawn === entry.texture && !entry.isEvicted);
+      const size: number =
+        !isWaiting && entry?.texture && hasTextureData(entry.texture) ? toDataBytes(entry.texture) : 0;
+
+      // Past the frame's bytes it waits, first in the queue, for the next frame: the first of a frame goes whatever it is.
+      if (sent > 0 && sent + size > bytes) {
+        return;
+      }
+
       this.queued.delete(key);
 
-      const entry: Maybe<ITextureEntry> = this.entries.get(key);
-
-      // One loading is queued again as its bytes come.
-      if (!entry?.texture || entry.isLoading || (entry.drawn === entry.texture && !entry.isEvicted)) {
+      if (isWaiting || !entry?.texture) {
         continue;
       }
 
       if (hasTextureData(entry.texture)) {
-        sent += listTextureData(entry.texture).reduce(
-          (total: number, data: ArrayBufferView) => total + data.byteLength,
-          0
-        );
+        sent += size;
         renderer.initTexture(entry.texture);
 
         // Sent: three reads the bytes of a texture it holds never again, so only one it can fetch again lets them go.
@@ -508,6 +514,11 @@ export class RendererTextures {
       this.queued.delete(key);
     }
   }
+}
+
+/** The bytes a texture sends as it goes up: its levels' and its image's. */
+function toDataBytes(texture: Texture): number {
+  return listTextureData(texture).reduce((total: number, data: ArrayBufferView) => total + data.byteLength, 0);
 }
 
 /**

@@ -76,6 +76,37 @@ describe("RendererTextures", () => {
     expect(sent).toHaveLength(4);
   });
 
+  // Checked after each, a frame just short of its bytes still sent the next texture whatever its size.
+  it("leaves a texture that would take the frame past its bytes for the next frame, first in the queue", () => {
+    const sent: Array<Texture> = [];
+    const renderer: WebGPURenderer = {
+      initTexture: (texture: Texture) => sent.push(texture),
+    } as unknown as WebGPURenderer;
+    const textures: RendererTextures = createTextures();
+    const small: number = (64 * 64) / 2;
+
+    textures.put("small", {
+      bytes: mockDdsFile({ height: 64, mipmapCount: 1, width: 64 }),
+      encoding: ERendererTextureEncoding.DDS,
+    });
+    textures.put("large", {
+      bytes: mockDdsFile({ height: 512, mipmapCount: 1, width: 512 }),
+      encoding: ERendererTextureEncoding.DDS,
+    });
+    textures.put("after", {
+      bytes: mockDdsFile({ height: 64, mipmapCount: 1, width: 64 }),
+      encoding: ERendererTextureEncoding.DDS,
+    });
+
+    textures.upload(renderer, Infinity, 2 * small);
+    expect(sent).toHaveLength(1);
+
+    // The large one goes first in the next frame, alone past the budget, and what queued after it waits on.
+    textures.upload(renderer, Infinity, 2 * small);
+    expect(sent).toHaveLength(2);
+    expect((sent[1].image as { width: number }).width).toBe(512);
+  });
+
   // Three uploads again whatever a sampler still holds once it went, from the bytes left on the CPU, and a pipeline
   // compiled over such a target is one such sampler.
   it("lets an evicted texture go, its targets drawing their placeholders, and uploads it again once held", () => {
