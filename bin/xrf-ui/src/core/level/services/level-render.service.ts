@@ -116,7 +116,7 @@ export class LevelRenderService extends RenderSurfaceService {
    * @returns Settles once the pick is noted: what it hit, or nothing.
    */
   public async pick(point: IRendererViewPoint): Promise<void> {
-    const { client, content } = this;
+    const { client, content, opening } = this;
 
     if (!client || !content || !this.level) {
       return;
@@ -131,8 +131,8 @@ export class LevelRenderService extends RenderSurfaceService {
       return;
     }
 
-    // Asked of a renderer or a level since replaced, it names something else now.
-    if (content !== this.content) {
+    // Asked of a renderer or a level since replaced, it names something else now: the content outlives a level.
+    if (content !== this.content || opening !== this.opening) {
       return;
     }
 
@@ -142,11 +142,9 @@ export class LevelRenderService extends RenderSurfaceService {
 
     // Opened here rather than as a view reacts: the panel mounts synchronously, which it cannot do mid-render.
     if (picked) {
-      this.commandBus.execute<void, IPanelSetActiveCommand>(
-        PANEL_SET_ACTIVE_COMMAND,
-        { panelId: LEVEL_PICK_PANELS[picked.kind], side: "left" },
-        { optional: true }
-      );
+      this.commandBus.execute<void, IPanelSetActiveCommand>(PANEL_SET_ACTIVE_COMMAND, LEVEL_PICK_PANELS[picked.kind], {
+        optional: true,
+      });
     }
   }
 

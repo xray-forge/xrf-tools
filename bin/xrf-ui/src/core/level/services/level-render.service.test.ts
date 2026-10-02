@@ -638,6 +638,33 @@ describe("LevelRenderService", () => {
     });
     expect(opened).toEqual([{ panelId: ELevelPanelId.SPAWN, side: "left" }]);
 
+    // A level opened while a pick waits numbers its objects afresh, so the answer names nothing of it.
+    press("pointerdown", 10);
+    press("pointerup", 11);
+    await stub.flush();
+
+    const stale = stub.take(ERendererRequest.PICK)[1];
+    const loadService: LevelLoadService = container.get(LevelLoadService);
+
+    loadService.clear();
+    await loadService.restore();
+    await loadService.whenHeldRead();
+    await stub.flush();
+    stub.respond({
+      hit: {
+        instance: 0,
+        object: LEVEL_RENDER_KEYS.spawnObject(0, ELevelSpawnCategory.PROPS),
+        point: [1, 2, 3],
+        surface: LEVEL_RENDER_KEYS.spawnSurface(0, 0),
+      },
+      id: stale.id,
+      kind: ERendererResponse.PICKED,
+    });
+    await stub.flush();
+
+    expect(container.get(LevelViewportService).picked).toBeNull();
+    expect(opened).toHaveLength(1);
+
     service.dispose();
   });
 
