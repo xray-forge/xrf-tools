@@ -27,6 +27,8 @@ import { ISceneStaging } from "#/scene/staging/scene-staging";
 interface ICompileCall {
   /** What compiled: a scene or object, or compute kernels. */
   scene: Object3D | ReadonlyArray<ComputeNode>;
+  /** The scene an object compiled in, which its materials build with. */
+  into: Nullable<Scene>;
   target: Nullable<RenderTarget>;
   finish: () => void;
 }
@@ -46,7 +48,7 @@ function createRenderer(): IFakeRenderer {
   let pending: number = 0;
   let most: number = 0;
 
-  function start(scene: Object3D | ReadonlyArray<ComputeNode>): Promise<void> {
+  function start(scene: Object3D | ReadonlyArray<ComputeNode>, into: Nullable<Scene> = null): Promise<void> {
     return new Promise((resolve: () => void) => {
       pending += 1;
       most = Math.max(most, pending);
@@ -55,6 +57,7 @@ function createRenderer(): IFakeRenderer {
           pending -= 1;
           resolve();
         },
+        into,
         scene,
         target: current,
       });
@@ -63,7 +66,7 @@ function createRenderer(): IFakeRenderer {
 
   const renderer = {
     _nodes: { getForCompute: (): void => {}, getForRender: (): void => {} },
-    compileAsync: (scene: Object3D, _camera: Camera): Promise<void> => start(scene),
+    compileAsync: (scene: Object3D, _camera: Camera, into: Nullable<Scene> = null): Promise<void> => start(scene, into),
     compileComputeAsync: (kernels: ReadonlyArray<ComputeNode>): Promise<void> => start(kernels),
     getRenderTarget: (): Nullable<RenderTarget> => current,
     setRenderTarget: (target: Nullable<RenderTarget>): void => {
@@ -91,15 +94,28 @@ interface IFakeScene {
   thunder: Nullable<ISceneBuildStaging>;
 }
 
-function createStaging(): ISceneStaging {
-  return {
-    materials: [],
-    scenes: toPassRecord(() => new Scene().add(new Mesh())),
-    shadows: new Scene().add(new Mesh()),
-  };
+/** Objects compiled at once, as the compiler runs them. */
+const LANES: number = 8;
+
+/**
+ * @param deferred - Objects the deferred pass draws, past the lanes to keep them busy while a test changes the frame.
+ */
+function createStaging(deferred: number = 1): ISceneStaging {
+  const scenes: ISceneStaging["scenes"] = toPassRecord(() => new Scene().add(new Mesh()));
+
+  for (let at: number = 1; at < deferred; at += 1) {
+    scenes[ERendererPass.DEFERRED].add(new Mesh());
+  }
+
+  return { materials: [], scenes, shadows: new Scene().add(new Mesh()) };
 }
 
-function createScene(grass: Nullable<ISceneBuildStaging> = null): IFakeScene {
+/** The one object a scene holds, which compiles in it. */
+function only(scene: Scene): Object3D {
+  return scene.children[0];
+}
+
+function createScene(grass: Nullable<ISceneBuildStaging> = null, deferred: number = 1): IFakeScene {
   const fake: IFakeScene = {
     commit: jest.fn((staging: object) => {
       if (staging === fake.drawn) {
@@ -110,7 +126,7 @@ function createScene(grass: Nullable<ISceneBuildStaging> = null): IFakeScene {
     grass,
     rain: null,
     scene: null as unknown as RendererScene,
-    staging: createStaging(),
+    staging: createStaging(deferred),
     thunder: null,
   };
   let isStaged: boolean = false;
@@ -198,7 +214,7 @@ function createFrame(targets: IFrameCompileTargets = createTargets()): IFakeFram
 }
 
 function createStagedBuild(kernels: ReadonlyArray<ComputeNode> = []): ISceneBuildStaging {
-  return { abandon: jest.fn(), commit: jest.fn(), kernels, scene: new Scene() };
+  return { abandon: jest.fn(), commit: jest.fn(), kernels, scene: new Scene().add(new Mesh()) };
 }
 
 function toKernel(): ComputeNode {
@@ -219,8 +235,8 @@ async function finishAll(fake: IFakeRenderer): Promise<void> {
 }
 
 describe("RendererSceneCompiler", () => {
-  // Two of three's asynchronous builds interleaved corrupt its bind groups.
-  it("compiles one pass after another, never two at once, each against its own target", async () => {
+  // Three waits for each object's pipeline before the next, so a scene compiled whole made them one at a time.
+  it("compiles every pass's objects side by side, each in the scene it is drawn in, against its pass's target", async () => {
     const fake: IFakeRenderer = createRenderer();
     const { scene, staging, commit }: IFakeScene = createScene();
     const { frame, targets }: IFakeFrame = createFrame();
@@ -230,23 +246,24 @@ describe("RendererSceneCompiler", () => {
     fake.renderer.setRenderTarget(previous);
     compiler.compile(fake.renderer, scene, frame, new PerspectiveCamera());
 
-    expect(fake.calls).toHaveLength(1);
+    expect(fake.calls).toHaveLength(4);
     expect(fake.current()).toBe(previous);
     expect(compiler.isCompiling).toBe(true);
 
     await finishAll(fake);
 
-    expect(fake.mostPending()).toBe(1);
     expect(fake.calls.map((call: ICompileCall) => call.target)).toEqual([
       ...targets.passes.map((pass: IRendererScenePass) => pass.target),
       targets.shadow.target,
     ]);
-    expect(fake.calls.map((call: ICompileCall) => call.scene)).toEqual([
-      staging.scenes[ERendererPass.DEFERRED],
-      staging.scenes[ERendererPass.FORWARD],
-      staging.scenes[ERendererPass.WATER],
-      staging.shadows,
-    ]);
+    expect(fake.calls.map((call: ICompileCall) => [call.scene, call.into])).toEqual(
+      [
+        staging.scenes[ERendererPass.DEFERRED],
+        staging.scenes[ERendererPass.FORWARD],
+        staging.scenes[ERendererPass.WATER],
+        staging.shadows,
+      ].map((into: Scene) => [only(into), into])
+    );
     expect(commit).toHaveBeenCalledWith(
       staging,
       new Set([ERendererPass.DEFERRED, ERendererPass.FORWARD, ERendererPass.WATER])
@@ -254,10 +271,29 @@ describe("RendererSceneCompiler", () => {
     expect(compiler.isCompiling).toBe(false);
   });
 
+  it("compiles no more objects at once than it has lanes, each lane taking the next as it finishes one", async () => {
+    const fake: IFakeRenderer = createRenderer();
+    const { scene, staging }: IFakeScene = createScene(null, 20);
+    const { frame }: IFakeFrame = createFrame();
+    const compiler: RendererSceneCompiler = new RendererSceneCompiler();
+
+    compiler.compile(fake.renderer, scene, frame, new PerspectiveCamera());
+
+    expect(fake.calls).toHaveLength(LANES);
+
+    await finishAll(fake);
+
+    expect(fake.mostPending()).toBe(LANES);
+    expect(fake.calls).toHaveLength(20 + 3);
+    expect(fake.calls.slice(0, 20).map((call: ICompileCall) => call.scene)).toEqual(
+      staging.scenes[ERendererPass.DEFERRED].children
+    );
+  });
+
   // Compiled into its freed target, a pass that left would have three allocate that target outside the frame's sizing.
   it("compiles the passes the frame holds at each step: none that left it meanwhile, and one that joined", async () => {
     const fake: IFakeRenderer = createRenderer();
-    const { scene, staging, commit }: IFakeScene = createScene();
+    const { scene, staging, commit }: IFakeScene = createScene(null, LANES + 1);
     const [deferred, wallmarks, forward, water] = [
       ERendererPass.DEFERRED,
       ERendererPass.WALLMARK,
@@ -273,7 +309,7 @@ describe("RendererSceneCompiler", () => {
     await finishAll(fake);
 
     expect(fake.calls.map((call: ICompileCall) => call.target)).toEqual([
-      deferred.target,
+      ...Array.from({ length: LANES + 1 }, () => deferred.target),
       wallmarks.target,
       forward.target,
       fakeFrame.targets.shadow.target,
@@ -293,9 +329,12 @@ describe("RendererSceneCompiler", () => {
     const compiler: RendererSceneCompiler = new RendererSceneCompiler();
 
     compiler.compile(fake.renderer, scene, frame, new PerspectiveCamera());
+
+    const started: number = fake.calls.length;
+
     compiler.compile(fake.renderer, scene, frame, new PerspectiveCamera());
 
-    expect(fake.calls).toHaveLength(1);
+    expect(fake.calls).toHaveLength(started);
   });
 
   it("compiles a grass build as a batch of its own, against where the grass draws, before the scene's", async () => {
@@ -307,7 +346,9 @@ describe("RendererSceneCompiler", () => {
 
     compiler.compile(fake.renderer, scene, frame, new PerspectiveCamera());
 
-    expect(fake.calls.map((call: ICompileCall) => [call.scene, call.target])).toEqual([[grass.scene, targets.grass]]);
+    expect(fake.calls.map((call: ICompileCall) => [call.scene, call.into, call.target])).toEqual([
+      [only(grass.scene), grass.scene, targets.grass],
+    ]);
 
     await finishAll(fake);
 
@@ -316,7 +357,6 @@ describe("RendererSceneCompiler", () => {
 
     compiler.compile(fake.renderer, scene, frame, new PerspectiveCamera());
 
-    expect(fake.calls).toHaveLength(2);
     expect(fake.calls[1].target).toBe(targets.passes[0].target);
   });
 
@@ -331,7 +371,9 @@ describe("RendererSceneCompiler", () => {
     fakeScene.rain = rain;
     compiler.compile(fake.renderer, fakeScene.scene, frame, new PerspectiveCamera());
 
-    expect(fake.calls.map((call: ICompileCall) => [call.scene, call.target])).toEqual([[rain.scene, targets.rain]]);
+    expect(fake.calls.map((call: ICompileCall) => [call.scene, call.target])).toEqual([
+      [only(rain.scene), targets.rain],
+    ]);
 
     await finishAll(fake);
 
@@ -351,7 +393,7 @@ describe("RendererSceneCompiler", () => {
     compiler.compile(fake.renderer, fakeScene.scene, frame, new PerspectiveCamera());
 
     expect(fake.calls.map((call: ICompileCall) => [call.scene, call.target])).toEqual([
-      [thunder.scene, targets.thunder],
+      [only(thunder.scene), targets.thunder],
     ]);
 
     await finishAll(fake);
@@ -373,7 +415,7 @@ describe("RendererSceneCompiler", () => {
     compiler.compile(fake.renderer, fakeScene.scene, fakeFrame.frame, new PerspectiveCamera());
 
     expect(fake.calls.map((call: ICompileCall) => [call.scene, call.target])).toEqual([
-      [drawn.scenes[ERendererPass.WATER], water.target],
+      [only(drawn.scenes[ERendererPass.WATER]), water.target],
     ]);
     expect(fakeFrame.admitted).toEqual([]);
 
@@ -396,12 +438,12 @@ describe("RendererSceneCompiler", () => {
     compiler.compile(fake.renderer, scene, fakeFrame.frame, new PerspectiveCamera());
 
     expect(fakeFrame.admitted).toEqual([water]);
-    expect(fake.calls.map((call: ICompileCall) => call.scene)).toEqual([staging.scenes[ERendererPass.DEFERRED]]);
+    expect(fake.calls[0].scene).toBe(only(staging.scenes[ERendererPass.DEFERRED]));
   });
 
   it("compiles the water for a batch it joined during, then what was drawn before it joined", async () => {
     const fake: IFakeRenderer = createRenderer();
-    const fakeScene: IFakeScene = createScene();
+    const fakeScene: IFakeScene = createScene(null, LANES + 1);
     const [deferred, forward, water] = [ERendererPass.DEFERRED, ERendererPass.FORWARD, ERendererPass.WATER].map(toPass);
     const fakeFrame: IFakeFrame = createFrame({ ...createTargets(), passes: [deferred, forward] });
     const compiler: RendererSceneCompiler = new RendererSceneCompiler();
@@ -414,7 +456,7 @@ describe("RendererSceneCompiler", () => {
     await finishAll(fake);
 
     expect(fake.calls.map((call: ICompileCall) => call.target)).toEqual([
-      deferred.target,
+      ...Array.from({ length: LANES + 1 }, () => deferred.target),
       water.target,
       forward.target,
       fakeFrame.targets.shadow.target,
@@ -428,7 +470,7 @@ describe("RendererSceneCompiler", () => {
     compiler.compile(fake.renderer, fakeScene.scene, fakeFrame.frame, new PerspectiveCamera());
     await finishAll(fake);
 
-    expect(fake.calls[fake.calls.length - 1].scene).toBe(drawn.scenes[ERendererPass.WATER]);
+    expect(fake.calls[fake.calls.length - 1].scene).toBe(only(drawn.scenes[ERendererPass.WATER]));
     expect(fakeFrame.admitted).toEqual([water]);
   });
 
@@ -455,7 +497,7 @@ describe("RendererSceneCompiler", () => {
     compiler.compile(fake.renderer, fakeScene.scene, fakeFrame.frame, new PerspectiveCamera());
 
     expect(fakeFrame.admitted).toEqual([first, second]);
-    expect(fake.calls[calls].scene).toBe(fakeScene.staging.scenes[ERendererPass.DEFERRED]);
+    expect(fake.calls[calls].scene).toBe(only(fakeScene.staging.scenes[ERendererPass.DEFERRED]));
   });
 
   // Built as the frame draws, a pass's own pipeline is made on the thread drawing the window.
@@ -488,7 +530,7 @@ describe("RendererSceneCompiler", () => {
 
     compiler.compile(fake.renderer, scene, frame, new PerspectiveCamera());
 
-    expect(fake.calls[4].scene).toBe(grass.scene);
+    expect(fake.calls[4].scene).toBe(only(grass.scene));
   });
 
   // Dispatched on their first frame, the planting's passes would build their pipelines there as the grass comes in.
@@ -504,7 +546,7 @@ describe("RendererSceneCompiler", () => {
     fake.calls[0].finish();
     await settle();
 
-    expect(fake.calls.map((call: ICompileCall) => call.scene)).toEqual([grass.scene, kernels]);
+    expect(fake.calls.map((call: ICompileCall) => call.scene)).toEqual([only(grass.scene), kernels]);
     expect(grass.commit).not.toHaveBeenCalled();
 
     fake.calls[1].finish();
@@ -526,7 +568,10 @@ describe("RendererSceneCompiler", () => {
     compiler.compile(fake.renderer, scene, frame, new PerspectiveCamera());
     await settle();
 
-    expect(commit).toHaveBeenCalledWith(staging, new Set([ERendererPass.DEFERRED]));
+    expect(commit).toHaveBeenCalledWith(
+      staging,
+      new Set([ERendererPass.DEFERRED, ERendererPass.FORWARD, ERendererPass.WATER])
+    );
     expect(error).toHaveBeenCalledTimes(1);
     expect(compiler.isCompiling).toBe(false);
 
@@ -592,9 +637,9 @@ describe("RendererSceneCompiler", () => {
     error.mockRestore();
   });
 
-  it("starts no further pass of a batch once disposed mid batch", async () => {
+  it("starts no further object of a batch once disposed mid batch", async () => {
     const fake: IFakeRenderer = createRenderer();
-    const { scene, commit }: IFakeScene = createScene();
+    const { scene, commit }: IFakeScene = createScene(null, LANES + 1);
     const { frame }: IFakeFrame = createFrame();
     const compiler: RendererSceneCompiler = new RendererSceneCompiler();
 
@@ -602,7 +647,7 @@ describe("RendererSceneCompiler", () => {
     compiler.dispose();
     await finishAll(fake);
 
-    expect(fake.calls).toHaveLength(1);
+    expect(fake.calls).toHaveLength(LANES);
     expect(commit).not.toHaveBeenCalled();
   });
 });

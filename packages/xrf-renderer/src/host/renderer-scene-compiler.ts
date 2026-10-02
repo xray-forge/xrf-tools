@@ -1,11 +1,12 @@
 import { Maybe, Nullable } from "@xrf/types";
-import { PerspectiveCamera, WebGPURenderer } from "three/webgpu";
+import { Camera, Object3D, PerspectiveCamera, RenderTarget, Scene, WebGPURenderer } from "three/webgpu";
 
 import { ERendererPass } from "#/contract/scene/renderer-pass";
 import { ICompilingFrame } from "#/graph/compiling-frame";
 import { IFrameCompileTargets } from "#/graph/frame-compile-targets";
 import { compileComputeAsync } from "#/internals/compute-compile";
-import { compileInto } from "#/pass/compile-into";
+import { compileObjects } from "#/pass/compile-objects";
+import { IObjectCompile } from "#/pass/object-compile";
 import { IRendererScenePass } from "#/pass/renderer-scene-pass";
 import { RendererScene } from "#/scene/renderer-scene";
 import { ISceneBuildStaging } from "#/scene/staging/scene-build-staging";
@@ -21,9 +22,9 @@ const STAGED_BUILDS = [
 /**
  * Compiles what the frame and the scene draw with, off the frame: three builds their pipelines asynchronously, off the
  * thread drawing the window. The frame's own passes come first, since the frame waits for them; until the rest are
- * ready every waiting object keeps drawing what it drew before. One compile is in flight at a time, a batch's passes one
- * after another: three's asynchronous builds share its node state, and two interleaved corrupt bind groups. A pass
- * joining the frame is compiled first for what the scene draws already, then admitted.
+ * ready every waiting object keeps drawing what it drew before. One batch is in flight at a time, its objects compiled
+ * side by side with each shader built whole: three's asynchronous builds share its node state, and two interleaved
+ * corrupt bind groups. A pass joining the frame is compiled first for what the scene draws already, then admitted.
  */
 export class RendererSceneCompiler {
   private isCompilingBatch: boolean = false;
@@ -69,7 +70,7 @@ export class RendererSceneCompiler {
       if (staging) {
         return this.run(
           async () => {
-            await compileInto(renderer, frame.compileTargets[source], staging.scene, camera);
+            await compileObjects(renderer, toCompiles(frame.compileTargets[source], staging.scene, camera));
 
             if (staging.kernels.length) {
               await compileComputeAsync(renderer, staging.kernels);
@@ -118,7 +119,7 @@ export class RendererSceneCompiler {
     }
 
     this.run(
-      async () => compileInto(renderer, pass.target, staging.scenes[pass.scene], camera),
+      async () => compileObjects(renderer, toCompiles(pass.target, staging.scenes[pass.scene], camera)),
       "A pass joining the frame failed to compile:",
       // Left or made again meanwhile, it is admitted to nothing, and what compiled stays compiled.
       (isCurrent: boolean) => {
@@ -149,25 +150,7 @@ export class RendererSceneCompiler {
     const compiled: Set<ERendererPass> = new Set();
 
     this.run(
-      async () => {
-        const tried: Set<IRendererScenePass> = new Set();
-
-        function next(): Maybe<IRendererScenePass> {
-          return frame.compileTargets.passes.find((pass: IRendererScenePass) => !tried.has(pass));
-        }
-
-        for (let pass: Maybe<IRendererScenePass> = next(); pass && !this.isDisposed; pass = next()) {
-          tried.add(pass);
-          compiled.add(pass.scene);
-          await compileInto(renderer, pass.target, staging.scenes[pass.scene], camera);
-        }
-
-        if (!this.isDisposed && staging.shadows.children.length) {
-          const { shadow }: IFrameCompileTargets = frame.compileTargets;
-
-          await compileInto(renderer, shadow.target, staging.shadows, shadow.camera);
-        }
-      },
+      async () => compileObjects(renderer, this.toWaiting(staging, frame, camera, compiled)),
       "Materials failed to compile:",
       (isCurrent: boolean) => {
         if (isCurrent) {
@@ -178,7 +161,49 @@ export class RendererSceneCompiler {
   }
 
   /**
-   * @param batch - Compiles the batch, one compile after another.
+   * Every pass's objects as the frame holds its passes when they are reached, then their shadow materials: the frame is
+   * read again as each pass is reached, so a pass that joined meanwhile is compiled too, and one that left is compiled
+   * no further into its freed target.
+   *
+   * @param staging - What waits.
+   * @param frame - Where the frame draws it.
+   * @param camera - The drawing camera.
+   * @param compiled - Takes each pass as it is reached.
+   */
+  private *toWaiting(
+    staging: ISceneStaging,
+    frame: ICompilingFrame,
+    camera: PerspectiveCamera,
+    compiled: Set<ERendererPass>
+  ): Generator<IObjectCompile> {
+    const tried: Set<IRendererScenePass> = new Set();
+
+    function next(): Maybe<IRendererScenePass> {
+      return frame.compileTargets.passes.find((pass: IRendererScenePass) => !tried.has(pass));
+    }
+
+    for (let pass: Maybe<IRendererScenePass> = next(); pass && !this.isDisposed; pass = next()) {
+      tried.add(pass);
+      compiled.add(pass.scene);
+
+      for (const compile of toCompiles(pass.target, staging.scenes[pass.scene], camera)) {
+        if (this.isDisposed || !frame.compileTargets.passes.includes(pass)) {
+          break;
+        }
+
+        yield compile;
+      }
+    }
+
+    if (!this.isDisposed && staging.shadows.children.length) {
+      const { shadow }: IFrameCompileTargets = frame.compileTargets;
+
+      yield* toCompiles(shadow.target, staging.shadows, shadow.camera);
+    }
+  }
+
+  /**
+   * @param batch - Compiles the batch.
    * @param failure - What a failure is logged under.
    * @param settle - Takes the batch, or lets it go where the compiler went first.
    */
@@ -198,5 +223,17 @@ export class RendererSceneCompiler {
       .finally(() => {
         this.isCompilingBatch = false;
       });
+  }
+}
+
+/**
+ * @param target - Where the scene draws.
+ * @param scene - What compiles.
+ * @param camera - What it draws with.
+ * @returns Each object the scene holds as a compile of its own, in the scene it is drawn in.
+ */
+function* toCompiles(target: Nullable<RenderTarget>, scene: Scene, camera: Camera): Generator<IObjectCompile> {
+  for (const object of [...scene.children] as Array<Object3D>) {
+    yield { camera, object, scene, target };
   }
 }
