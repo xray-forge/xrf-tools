@@ -33,9 +33,19 @@ pub fn object_type(properties: &[(String, String)]) -> String {
   format!("{{ {values} }}")
 }
 
+/// Strip the wrappers that keep a value's shape: `as const`, `satisfies` and parentheses.
+pub fn value_expression(expression: &Expr) -> &Expr {
+  match expression {
+    Expr::TsConstAssertion(assertion) => value_expression(assertion.expr.as_ref()),
+    Expr::TsSatisfies(satisfies) => value_expression(satisfies.expr.as_ref()),
+    Expr::Paren(parenthesized) => value_expression(parenthesized.expr.as_ref()),
+    _ => expression,
+  }
+}
+
 /// Derive a stable type string from a value expression.
 fn expression_type(expression: &Expr, source_map: &SourceMap) -> String {
-  match expression {
+  match value_expression(expression) {
     Expr::Arrow(arrow) => function_type(&arrow_signature(arrow, source_map)),
     Expr::Fn(function) => function_type(&function_signature(&function.function, source_map)),
     Expr::Object(object) => object_symbol(object, source_map)

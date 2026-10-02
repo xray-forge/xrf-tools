@@ -136,6 +136,34 @@ fn projects_complete_callable_and_value_contracts() {
 }
 
 #[test]
+fn types_object_values_declared_with_const_assertions() {
+  let root: PathBuf = create_test_root("const-assertions");
+
+  // `as const` keeps the object shape, so both the referenced object and a nested one are typed from their members.
+  write_source(
+    &root,
+    "declarations.ts",
+    r#"
+      export {};
+      const conditions = { isReady: (): boolean => true } as const;
+      const config = { limits: { count: 1 } as const };
+      /** Ready checks. */
+      extern("outro.conditions", conditions);
+      /** Configured limits. */
+      extern("outro.limits", config.limits);
+    "#,
+  );
+
+  let project = ExportsProjectParser::new().parse_project_from_path(&root).unwrap();
+  let json: Value = json!(project);
+
+  assert_eq!(json["declarations"][0]["kind"], "value");
+  assert_eq!(json["declarations"][0]["typing"], "{ isReady: () => boolean; }");
+  assert_eq!(json["declarations"][1]["kind"], "value");
+  assert_eq!(json["declarations"][1]["typing"], "{ count: number; }");
+}
+
+#[test]
 fn carries_the_manifest_its_declarations_were_projected_from() {
   let root: PathBuf = create_test_root("manifest");
 

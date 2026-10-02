@@ -1,6 +1,6 @@
 use super::callable_signature::function_signature;
 use super::symbol::TypeScriptSymbol;
-use super::value_inference::object_symbol;
+use super::value_inference::{object_symbol, value_expression};
 use crate::ast::canonical_ts_type_to_string;
 use crate::swc_common::SourceMap;
 use crate::swc_ecma_ast::{Decl, Expr, ModuleItem, Pat, Program, Stmt, VarDecl};
@@ -57,7 +57,9 @@ fn variable_symbol(variable: &VarDecl, export_name: &str, source_map: &SourceMap
       return None;
     }
 
-    match declaration.init.as_deref() {
+    let initializer: Option<&Expr> = declaration.init.as_deref().map(value_expression);
+
+    match initializer {
       Some(Expr::Arrow(arrow)) => Some(TypeScriptSymbol::Callable(super::callable_signature::arrow_signature(
         arrow, source_map,
       ))),
@@ -74,7 +76,7 @@ fn variable_symbol(variable: &VarDecl, export_name: &str, source_map: &SourceMap
               .unwrap_or_else(|_| String::from("unknown")),
           )
         })
-        .or_else(|| match declaration.init.as_deref() {
+        .or_else(|| match initializer {
           Some(Expr::Object(object)) => Some(object_symbol(object, source_map)),
           _ => None,
         }),
