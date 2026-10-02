@@ -69,10 +69,8 @@ pub fn build_main_window<R: Runtime>(application: &App<R>) -> Result<(), Box<dyn
 fn to_webview_options_store<R: Runtime>(preferences: Option<Preferences<R>>) -> TWebviewOptionsStore {
   match preferences {
     Some(preferences) => Box::new(move |options: &WebviewOptions| {
-      preferences.write(PreferenceKey::WebviewOptions, options);
-      preferences.flush();
-
-      Ok(())
+      preferences.write(PreferenceKey::WebviewOptions, options)?;
+      preferences.flush()
     }),
     None => Box::new(|_: &WebviewOptions| {
       Err("The preferences could not be opened this run, so the choice cannot be kept.".to_string())

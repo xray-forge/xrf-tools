@@ -64,17 +64,20 @@ impl<R: Runtime> Preferences<R> {
   }
 
   /// Write one preference, leaving the store to carry it to the disk.
-  pub fn write<T: Serialize>(&self, key: PreferenceKey, value: &T) {
-    match serde_json::to_value(value) {
-      Ok(value) => self.store.set(key.as_str(), value),
-      Err(error) => log::error!("Failed to write the '{}' preference: {error}", key.as_str()),
-    }
+  pub fn write<T: Serialize>(&self, key: PreferenceKey, value: &T) -> TauriResult<()> {
+    let value: Value = serde_json::to_value(value)
+      .map_err(|error| format!("Failed to write the '{}' preference: {error}", key.as_str()))?;
+
+    self.store.set(key.as_str(), value);
+
+    Ok(())
   }
 
   /// Put what is written on the disk now, for a caller that cannot wait for the debounce.
-  pub fn flush(&self) {
-    if let Err(error) = self.store.save() {
-      log::error!("Failed to save the preferences: {error}");
-    }
+  pub fn flush(&self) -> TauriResult<()> {
+    self
+      .store
+      .save()
+      .map_err(|error| format!("Failed to save the preferences: {error}"))
   }
 }

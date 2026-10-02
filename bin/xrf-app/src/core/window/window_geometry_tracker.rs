@@ -66,8 +66,10 @@ impl<R: Runtime> WindowGeometryTracker<R> {
     self.measure(window);
     self.write();
 
-    if self.lock().is_some_and(|mut state| state.take_unsaved()) {
-      self.preferences.flush();
+    if self.lock().is_some_and(|mut state| state.take_unsaved())
+      && let Err(error) = self.preferences.flush()
+    {
+      log::error!("{error}");
     }
   }
 
@@ -84,8 +86,10 @@ impl<R: Runtime> WindowGeometryTracker<R> {
   fn write(&self) {
     let geometry: Option<WindowGeometry> = self.lock().and_then(|mut state| state.take_unwritten());
 
-    if let Some(geometry) = geometry {
-      self.preferences.write(PreferenceKey::WindowGeometry, &geometry);
+    if let Some(geometry) = geometry
+      && let Err(error) = self.preferences.write(PreferenceKey::WindowGeometry, &geometry)
+    {
+      log::error!("{error}");
     }
   }
 
