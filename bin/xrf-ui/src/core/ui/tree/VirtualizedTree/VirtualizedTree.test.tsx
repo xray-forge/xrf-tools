@@ -278,6 +278,38 @@ describe("VirtualizedTree", () => {
     expect(onToggleExpanded).not.toHaveBeenCalled();
   });
 
+  // The tree reads its keys where they bubble to: Enter on a row's control opened the row as well as pressing it.
+  it("leaves the keys of a row's action to the action, the tree neither opening nor moving for them", async () => {
+    const onPress = jest.fn();
+    const onSelect = jest.fn();
+    const onActivate = jest.fn();
+    const onToggleExpanded = jest.fn();
+    const render_: RenderResult = renderWithProviders(
+      <VirtualizedTree<string>
+        ariaLabel={"Visuals"}
+        items={mockTree()}
+        expandedIds={new Set()}
+        selectedId={null}
+        renderActions={(item: ITreeNode<string>) => (
+          <button type={"button"} onClick={() => onPress(item.label)}>
+            {`Hide ${item.label}`}
+          </button>
+        )}
+        onSelect={onSelect}
+        onActivate={onActivate}
+        onToggleExpanded={onToggleExpanded}
+      />
+    );
+
+    render_.getByRole("button", { name: "Hide meshes" }).focus();
+    await userEvent.keyboard("{Enter}{ArrowDown}{ArrowRight}");
+
+    expect(onPress).toHaveBeenCalledWith("meshes");
+    expect(onSelect).not.toHaveBeenCalled();
+    expect(onActivate).not.toHaveBeenCalled();
+    expect(onToggleExpanded).not.toHaveBeenCalled();
+  });
+
   // A row chosen from outside in the same change that opens its directory lies past the content until the
   // virtualizer has grown it, and a browser clamps a scroll to the content it has.
   it("scrolls to a row chosen as its directory opens, once the content reaches it", async () => {

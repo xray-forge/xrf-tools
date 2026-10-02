@@ -1,6 +1,6 @@
-import { MouseEvent } from "react";
+import { MouseEvent, SyntheticEvent } from "react";
 
-export function stopPropagation(event: MouseEvent<HTMLElement>): void {
+export function stopPropagation(event: SyntheticEvent<HTMLElement>): void {
   event.stopPropagation();
 }
 

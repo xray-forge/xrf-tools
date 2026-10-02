@@ -118,6 +118,7 @@ export function VirtualizedTreeRow<T>({
           className={"ml-auto flex shrink-0 items-center"}
           onClick={stopPropagation}
           onDoubleClick={stopPropagation}
+          onKeyDown={stopPropagation}
         >
           {actions}
         </div>
