@@ -11,7 +11,8 @@ pub struct StaticRow {
   /// The impostor whose level of detail decides it, [`StaticRow::NO_LOD`] for none; the top bit marks the impostor's
   /// own row.
   pub lod: u32,
-  /// Its progressive band, the bands its mesh has and the windows they share: `band | bands << 8 | windows << 16`.
+  /// Its progressive band, the bands its mesh has, the windows they share and the visibility group showing it:
+  /// `band | bands << 8 | windows << 16 | group << 24`, a group of zero always shown.
   pub band: u32,
 }
 
@@ -20,5 +21,10 @@ impl StaticRow {
 
   pub const fn pack_band(band: u32, bands: u32, windows: u32) -> u32 {
     band | (bands << 8) | (windows << 16)
+  }
+
+  /// A visibility group's bits, from one; at most eight groups.
+  pub const fn pack_group(group: u32) -> u32 {
+    group << 24
   }
 }

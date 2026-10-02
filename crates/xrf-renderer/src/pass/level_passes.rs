@@ -1,7 +1,9 @@
 use crate::pass::ambient_occlusion_pass::AmbientOcclusionPass;
 use crate::pass::combine_pass::CombinePass;
+use crate::pass::composited_pass::CompositedPass;
 use crate::pass::depth_pyramid_pass::DepthPyramidPass;
 use crate::pass::exposure_pass::ExposurePass;
+use crate::pass::grass_pass::GrassPass;
 use crate::pass::lights_pass::LightsPass;
 use crate::pass::material_table::MaterialTable;
 use crate::pass::present_pass::PresentPass;
@@ -30,6 +32,8 @@ pub struct LevelPasses<'a> {
   pub sky_haze: &'a SkyHazePass,
   pub sky: &'a SkyBindings,
   pub water: &'a WaterPass,
+  pub composited: &'a CompositedPass,
+  pub grass: &'a GrassPass,
   pub rain: &'a RainPass,
   pub wet: &'a WetPass,
   pub thunder: &'a ThunderPass,

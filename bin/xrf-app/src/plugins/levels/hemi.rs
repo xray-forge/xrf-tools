@@ -13,9 +13,10 @@ use xrf_visual::{HemiEstimator, VisualSphere, VisualTransform};
 
 use crate::plugins::levels::read::{read_file, read_optional_file};
 use crate::plugins::levels::report::{report_hemi, report_missing_hemi, report_unreadable_lights};
+use crate::plugins::levels::spawn::get_level_spawn;
 use crate::plugins::levels::spawn_objects::get_drawn_visual;
 use crate::plugins::levels::state::{
-  COLLISION_FILE, LIGHTS_FILE, LevelSource, LevelSpawn, LevelSpawnObjectHemi, SelectedLevel,
+  COLLISION_FILE, LIGHTS_FILE, LevelSource, LevelSpawn, LevelSpawnObjectHemi, LevelSpawnVisual, SelectedLevel,
 };
 
 /// The open level's estimator, built the first time a batch asks and held until every visual is described.
@@ -46,14 +47,33 @@ pub fn estimate_spawn_hemi(
       // The visual's sphere is in renderer space, and so is where the object stands it; the form is the engine's.
       let centre: Vector3d =
         VisualTransform::of_spawn(&object.position, &object.direction).apply_to_point(&sphere.center);
-      let cube = estimator.estimate(&Vector3d::new(centre.x, centre.y, -centre.z), sphere.radius);
+      let estimate = estimator.estimate(&Vector3d::new(centre.x, centre.y, -centre.z), sphere.radius);
 
       Some(LevelSpawnObjectHemi {
-        cube: cube.to_renderer_space().faces,
+        cube: estimate.cube.to_renderer_space().faces,
+        sky: estimate.sky,
         index: index as u32,
       })
     })
     .collect()
+}
+
+/// How the level lights each object standing as one of the visuals read, none where its spawn cannot be read.
+pub fn estimate_visuals_hemi(
+  current: &SelectedLevel,
+  probe: &XrayProbe,
+  estimator: &HemiEstimator,
+  read: &[(&str, Arc<LevelSpawnVisual>)],
+) -> Vec<LevelSpawnObjectHemi> {
+  let Ok(spawn) = get_level_spawn(current, probe) else {
+    return Vec::new();
+  };
+  let spheres: HashMap<&str, &VisualSphere> = read
+    .iter()
+    .map(|(name, visual)| (*name, &visual.package.description.declared_bounds.bounding_sphere))
+    .collect();
+
+  estimate_spawn_hemi(estimator, &spawn, &spheres)
 }
 
 fn read_hemi(source: &LevelSource, probe: &XrayProbe) -> Result<Arc<HemiEstimator>, String> {

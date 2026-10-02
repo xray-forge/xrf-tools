@@ -144,6 +144,20 @@ export type RenderFrameReport = {
   adapter: string;
 };
 
+/**
+ * The grass (`CDetailManager`): planted on the GPU around the camera as the engine plants it, and drawn into the
+ * G-buffer. The engine's are 49 metres round at a density of 0.6 (`r__detail_radius`, `r__detail_density`).
+ */
+export type RenderGrassSettings = {
+  isEnabled: boolean;
+  /** How far apart a slot's candidates stand, from 0.1 (the densest) to 0.99 (the sparsest): `r__detail_density`. */
+  density: number | null;
+  /** Whole metres around the camera grass is planted to: `r__detail_radius`. */
+  radius: number | null;
+  /** What every planted tuft is scaled by: `r__detail_height`. */
+  height: number | null;
+};
+
 /** One gesture over a viewport, as much of the browser's event as crosses. */
 export type RenderInputEvent = {
   kind: RenderInputKind;
@@ -183,20 +197,37 @@ export enum ERenderInputKind {
 /** Every `ERenderInputKind` as the spelling it crosses IPC as, for a value no member has narrowed. */
 export type RenderInputKind = `${ERenderInputKind}`;
 
-/** What of a level is drawn under a point of a viewport, and where the ray from the eye met it. */
-export type RenderLevelHit = {
-  sector: number;
-  /** The shader table entry drawing it. */
-  shaderId: number;
-  /** The sector's instanced mesh it is one place of, or none for its baked geometry. */
-  mesh: number | null;
-  /** Which place of the mesh it is, or none for the baked geometry. */
-  place: number | null;
-  /** Whether it is a clump of trees drawn as its impostor. */
-  isImpostor: boolean;
-  /** Where the ray met it, in renderer space. */
-  point: [number | null, number | null, number | null];
-};
+/** Every `kind` the `RenderLevelHit` union is told apart by, so a switch or a comparison names one. */
+export enum ERenderLevelHit {
+  /** A surface the level compiled. */
+  SURFACE = "surface",
+  /** An object the level's spawn places. */
+  SPAWN = "spawn",
+}
+
+/** What of a level is drawn under a point of a viewport, and where the ray from the eye met it, in renderer space. */
+export type RenderLevelHit =
+  /** A surface the level compiled. */
+  | {
+      kind: "surface";
+      sector: number;
+      /** The shader table entry drawing it. */
+      shaderId: number;
+      /** The sector's instanced mesh it is one place of, or none for its baked geometry. */
+      mesh: number | null;
+      /** Which place of the mesh it is, or none for the baked geometry. */
+      place: number | null;
+      /** Whether it is a clump of trees drawn as its impostor. */
+      isImpostor: boolean;
+      point: [number | null, number | null, number | null];
+    }
+  /** An object the level's spawn places. */
+  | {
+      kind: "spawn";
+      /** Its index among the level's spawned objects. */
+      object: number;
+      point: [number | null, number | null, number | null];
+    };
 
 /** How a shadowed local light's map is compared. */
 export enum ERenderLightShadowFilter {
@@ -369,11 +400,19 @@ export type RenderViewOptions = {
   isThundering: boolean;
   /** Whether the weather's wind sways trees and grass. */
   isWindy: boolean;
+  /** Whether the level's wall marks are laid over its surfaces. */
+  isWallmarked: boolean;
+  /** Which groups of the level's spawned objects are drawn. */
+  isSpawnedProps: boolean;
+  isSpawnedItems: boolean;
+  isSpawnedWeapons: boolean;
+  isSpawnedLamps: boolean;
   exposure: RenderExposureSettings;
   shadows: RenderShadowSettings;
   ambientOcclusion: RenderAmbientOcclusionSettings;
   lights: RenderLightsSettings;
   water: RenderWaterSettings;
+  grass: RenderGrassSettings;
 };
 
 /** Every `kind` the `RenderViewportEvent` union is told apart by, so a switch or a comparison names one. */

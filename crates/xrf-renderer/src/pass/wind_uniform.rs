@@ -38,4 +38,9 @@ impl WindUniform {
   pub fn is_swaying(&self) -> bool {
     self.wind != Vec4::ZERO
   }
+
+  /// How far the trees lean for each metre of a vertex's rigid reach from its foot.
+  pub fn get_amplitude(&self) -> f32 {
+    self.wind.length()
+  }
 }

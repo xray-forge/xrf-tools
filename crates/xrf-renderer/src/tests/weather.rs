@@ -20,6 +20,7 @@ use crate::lighting::render_rainfall::RenderRainfall;
 use crate::lighting::render_tree_wind::RenderTreeWind;
 use crate::pass::rain_uniform::{RAIN_STREAKS, RainUniform};
 use crate::pass::wind_uniform::WindUniform;
+use crate::scene::level::shadow_sway::{SHADOW_SWAY_INTERVAL, ShadowSway};
 use crate::weather::played_weather::PlayedWeather;
 use crate::weather::weather_fade::to_faded_lighting;
 use crate::weather::weather_player::WeatherPlayer;
@@ -250,14 +251,7 @@ fn fogs_by_the_engine_ramp_and_ends_the_view_where_it_is_total() {
   assert!(amount(42.5) < 1e-5);
   assert!((amount(99.0) - 1.0).abs() < 1e-5);
   assert_eq!(fog.get_total_distance(), 99.0);
-  assert_eq!(
-    RenderFog {
-      far_plane: 50.0,
-      ..fog
-    }
-    .get_total_distance(),
-    50.0
-  );
+  assert_eq!(RenderFog { far_plane: 50.0, ..fog }.get_total_distance(), 50.0);
 }
 
 #[test]
@@ -302,6 +296,27 @@ fn sways_the_trees_by_the_wind_turning_and_stills_them_without_one() {
       < 1e-6
   );
   assert!(!WindUniform::new(None, 1.0).is_swaying());
+  assert!((wind.get_amplitude() - 0.01).abs() < 1e-7);
+}
+
+#[test]
+fn redraws_a_shadow_for_the_sway_where_the_lean_shows_once_an_interval() {
+  let sway = |amplitude: f32, time: f32| ShadowSway {
+    amplitude,
+    reach: 20.0,
+    time,
+    places: &[],
+  };
+
+  // Twenty metres of reach at a hundredth's amplitude lean a fifth of a metre: shown at a decimetre's texels, not a
+  // metre's.
+  assert!(sway(0.01, 1.0).is_redrawn(20.0, 0.1, 0.0));
+  assert!(!sway(0.01, 1.0).is_redrawn(20.0, 1.0, 0.0));
+  // Still trees never draw a map again.
+  assert!(!sway(0.0, 1.0).is_redrawn(20.0, 0.01, 0.0));
+  // Within an interval it waits; a hair short of one, it draws.
+  assert!(!sway(0.01, 1.0 + SHADOW_SWAY_INTERVAL * 0.5).is_redrawn(20.0, 0.1, 1.0));
+  assert!(sway(0.01, 1.0 + SHADOW_SWAY_INTERVAL * 0.95).is_redrawn(20.0, 0.1, 1.0));
 }
 
 fn thunder() -> RenderThunder {
@@ -395,5 +410,9 @@ fn strikes_a_bolt_of_the_collection_each_period_and_lights_by_its_colour() {
   // Turned off, nothing strikes.
   let mut quiet: WeatherThunder = WeatherThunder::new(7);
 
-  assert!((0..200).all(|step| quiet.advance(&thunder, &mix, false, step as f32 * 0.05, Vec3::ZERO).is_none()));
+  assert!((0..200).all(|step| {
+    quiet
+      .advance(&thunder, &mix, false, step as f32 * 0.05, Vec3::ZERO)
+      .is_none()
+  }));
 }

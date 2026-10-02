@@ -3,6 +3,7 @@ mod cluster_table;
 mod conversion;
 mod motion;
 mod packer;
+mod poser;
 pub(crate) mod reader;
 mod rest_pose;
 mod transform;

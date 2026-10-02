@@ -26,6 +26,17 @@ struct Lighting {
   params: vec4<f32>,
 };
 
+// The exposure's state as `frame/exposure.wgsl` adapts it, read from its head.
+struct Exposure {
+  // The scale the tonemap multiplies by, adapted on the GPU frame by frame.
+  adapted: f32,
+};
+
+// The scale this frame's tonemap multiplies by: the settings', times the adapted exposure where it adapts.
+fn frame_scale(state: Lighting, exposure: Exposure) -> f32 {
+  return state.params.x * select(1.0, exposure.adapted, state.params.z > 0.5);
+}
+
 // `fWhiteIntensity` of `tonemap`, squared.
 const WHITE_INTENSITY_SQUARED: f32 = 1.7 * 1.7;
 

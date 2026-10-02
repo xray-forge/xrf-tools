@@ -57,18 +57,6 @@ fn sky_blended_cubes(state: Lighting, lookup: vec3<f32>) -> vec3<f32> {
   );
 }
 
-// The two irradiance cubes along a world direction, blended, as `hmodel` samples `env_s0` and `env_s1`: unturned by
-// the sky's rotation, at their top level.
-fn sky_environment(state: Lighting, direction: vec3<f32>) -> vec3<f32> {
-  let lookup: vec3<f32> = vec3<f32>(direction.x, direction.y, -direction.z);
-
-  return mix(
-    textureSampleLevel(sky_environment_0, sky_clamp, lookup, 0.0).rgb,
-    textureSampleLevel(sky_environment_1, sky_clamp, lookup, 0.0).rgb,
-    state.sky.w,
-  );
-}
-
 // The two skies along a world direction, as a surface reflecting them reads the cube: straight, with no box between.
 fn sky_cubes(state: Lighting, direction: vec3<f32>) -> vec3<f32> {
   return sky_blended_cubes(state, sky_box_direction(direction, state.sky_params.x));

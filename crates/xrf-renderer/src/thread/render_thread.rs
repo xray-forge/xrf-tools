@@ -531,8 +531,8 @@ impl RenderThread {
         device,
         queue,
         &mut encoder,
-        &mut gpu.textures,
-        &mut gpu.weather_textures,
+        (&mut gpu.textures, &mut gpu.weather_textures),
+        &gpu.grass,
         (viewport.weather.get_lighting(), viewport.weather.get_level()),
         &options,
       );

@@ -5,6 +5,7 @@ import { Container } from "@wirestate/core";
 import {
   ERenderCamera,
   ERenderCameraCommand,
+  ERenderLevelHit,
   ERenderPresentation,
   ERenderViewportEvent,
   ERenderWeatherPlay,
@@ -17,11 +18,11 @@ import {
 } from "@/core/ipc/types/xrf-renderer";
 import { ELevelPick } from "@/core/level/lib/pick/level-pick";
 import { LevelLoadService } from "@/core/level/services/level-load.service";
-import { LevelRenderService } from "@/core/level/services/level-render.service";
+import { LevelRenderService, toLevelPick } from "@/core/level/services/level-render.service";
 import { LevelViewService } from "@/core/level/services/level-view.service";
 import { LevelViewportService } from "@/core/level/services/level-viewport.service";
 import { LevelWeatherService } from "@/core/level/services/level-weather.service";
-import { mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
+import { mockLevelSpawnObject, mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import {
   getMockChannels,
@@ -252,6 +253,7 @@ describe("LevelRenderService", () => {
     const { container, service } = await mockAttached();
     const hit: RenderLevelHit = {
       isImpostor: false,
+      kind: ERenderLevelHit.SURFACE,
       mesh: 2,
       place: 7,
       point: [1, 2, 3],
@@ -272,6 +274,21 @@ describe("LevelRenderService", () => {
       sector: 4,
       shaderId: 11,
     });
+  });
+
+  it("names a picked spawned object as the held spawn has it, and nothing for one not held", () => {
+    const crate = mockLevelSpawnObject({ index: 5, name: "crate_5", visual: 1 });
+    const spawn = { objects: [mockLevelSpawnObject(), crate], visuals: ["lamp", "crate"] };
+    const hit: RenderLevelHit = { kind: ERenderLevelHit.SPAWN, object: 5, point: [1, 2, 3] };
+
+    expect(toLevelPick(hit, spawn)).toEqual({
+      kind: ELevelPick.SPAWN,
+      object: crate,
+      point: { x: 1, y: 2, z: -3 },
+      visual: "crate",
+    });
+    expect(toLevelPick({ ...hit, object: 9 }, spawn)).toBeNull();
+    expect(toLevelPick(hit, null)).toBeNull();
   });
 
   it("states why the viewport cannot draw, and lets it go on detach", async () => {

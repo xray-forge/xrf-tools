@@ -4,7 +4,10 @@ use xrf_material::XraySurfaceDescriptor;
 use xrf_visual::{LightsDescription, SectorPackage};
 
 use crate::host::render_asset_source::RenderAssetSource;
+use crate::host::render_level_details::RenderLevelDetails;
+use crate::host::render_level_spawn::RenderLevelSpawn;
 use crate::host::render_level_weather::RenderLevelWeather;
+use crate::host::render_spawn_models::RenderSpawnModels;
 
 /// An open level as the renderer draws it: the application packs its sectors on demand, on the renderer's loader
 /// threads, and reads the files they name.
@@ -44,4 +47,28 @@ pub trait RenderLevelSource: RenderAssetSource {
   ///
   /// Returns an error for a cycle the game does not have, or configs that cannot be read.
   fn read_weather_cycle(&self, name: &str) -> XrfResult<Vec<WeatherDescriptor>>;
+
+  /// The objects of the level's spawn the viewer draws, called once from a loader thread.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the level's spawn cannot be read.
+  fn read_spawn(&self) -> XrfResult<RenderLevelSpawn>;
+
+  /// A batch of the visuals [`RenderLevelSource::read_spawn`] named, posed, and how the level lights the objects
+  /// standing as them, called from loader threads; a visual that cannot be read is left out, and reported by the
+  /// application.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when none of them can be read for a reason they share.
+  fn read_spawn_models(&self, names: &[String]) -> XrfResult<RenderSpawnModels>;
+
+  /// The level's grass, its slots planted onto its collision form and its models dressed, called once from a loader
+  /// thread; none for a level without a detail library.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the library or the collision form cannot be read.
+  fn read_details(&self) -> XrfResult<Option<RenderLevelDetails>>;
 }

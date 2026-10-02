@@ -235,6 +235,18 @@ pub fn report_spawn(level: &str, file: &str, read: &SpawnLevelObjects, started: 
   }
 }
 
+/// How many of a level's spawned objects are left out as a new game releases them.
+pub fn report_new_game_releases(level: &str, released: usize) {
+  if released > 0 {
+    log::info!("Left out {released} spawned objects of {level} that a new game releases");
+  }
+}
+
+/// That a list of the objects a new game releases could not be read, so they are drawn.
+pub fn report_unreadable_releases(file: &str, error: &impl Display) {
+  log::warn!("Objects '{file}' releases on a new game are kept, as it is unreadable: {error}");
+}
+
 /// How many of the resolved configs' sections a level keeps, which is the ones its spawned objects name.
 pub fn report_sections(source: &LevelSource, kept: usize, resolved: usize, started: Instant) {
   log::info!(

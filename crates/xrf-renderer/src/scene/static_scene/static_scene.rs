@@ -14,6 +14,8 @@ use crate::scene::static_scene::static_class::StaticClass;
 use crate::scene::static_scene::static_cluster::StaticCluster;
 use crate::scene::static_scene::static_impostor::StaticImpostor;
 use crate::scene::static_scene::static_layout::StaticLayout;
+use crate::scene::static_scene::static_model::StaticModel;
+use crate::scene::static_scene::static_model_place::StaticModelPlace;
 use crate::scene::static_scene::static_place::StaticPlace;
 use crate::scene::static_scene::static_region::StaticRegion;
 use crate::scene::static_scene::static_row::StaticRow;
@@ -22,8 +24,12 @@ use crate::scene::static_scene::static_slot::StaticSlot;
 use crate::scene::static_scene::static_slot_info::StaticSlotInfo;
 use crate::scene::static_scene::static_surface::StaticSurface;
 use crate::scene::static_scene::static_surface_build::{build_impostor_surface, build_static_surface};
-use crate::scene::static_scene::static_vertex_words::pack_vertex_words;
+use crate::scene::static_scene::static_surface_key::StaticSurfaceKey;
+use crate::scene::static_scene::static_vertex_words::{measure_sway_reach, pack_vertex_words};
 use crate::scene::texture::texture_cache::{MISSING_SLOT, TextureCache};
+
+/// Clusters a spawned model's row holds at most: the row cull walks a row's clusters on one thread.
+const MODEL_ROW_CLUSTERS: usize = 32;
 
 /// Triangles a cluster holds at most.
 const CLUSTER_TRIANGLES: u32 = VisualClusters::MAX_TRIANGLES;
@@ -31,7 +37,7 @@ const CLUSTER_TRIANGLES: u32 = VisualClusters::MAX_TRIANGLES;
 /// A level's static geometry on the GPU: arenas of vertices and indices every sector appends to, the clusters the cull
 /// tests, the slots, places and rows they are drawn as, and the surfaces they wear.
 pub struct StaticScene {
-  pub words: [GrowableBuffer; 2],
+  pub words: [GrowableBuffer; StaticLayout::COUNT],
   pub indices: GrowableBuffer,
   pub clusters: GrowableBuffer,
   pub spheres: GrowableBuffer,
@@ -64,7 +70,7 @@ pub struct StaticScene {
   /// Every batch's draw arguments as a cull starts them, which a shadow's own arguments start from too.
   initial_args: Vec<u32>,
   /// Vertices in each layout's arena, which a geometry's indices are offset by.
-  vertex_counts: [u32; 2],
+  vertex_counts: [u32; StaticLayout::COUNT],
   index_count: u32,
   cluster_count: u32,
   slot_count: u32,
@@ -75,8 +81,8 @@ pub struct StaticScene {
   impostor_infos: Vec<(u32, u16)>,
   /// Each impostor surface's row, by its shader table entry.
   impostor_rows: HashMap<u16, u32>,
-  /// Each shader table entry's surface row and class, once asked for; `None` for one the G-buffer does not draw.
-  surface_rows: HashMap<u16, Option<(u32, StaticClass)>>,
+  /// Each surface's row and class, once asked for; `None` for one no static draw draws.
+  surface_rows: HashMap<StaticSurfaceKey, Option<(u32, StaticClass)>>,
   /// Every texture slot the scene's surfaces sample, in the order they were first asked for.
   pub texture_slots: BTreeSet<u32>,
   surface_count: u32,
@@ -86,6 +92,14 @@ pub struct StaticScene {
   /// Each slot's part, and each cluster's slot, on the CPU: what turns a pick back into names.
   slot_infos: Vec<StaticSlotInfo>,
   cluster_slots: Vec<u32>,
+  /// The bounding sphere of every place that sways and its reach, which a light's shadow looks for in its range.
+  swaying: Vec<(Vec4, f32)>,
+  /// The farthest any swaying vertex reaches from its tree's foot, weighted by its rigidity and scaled by its place.
+  sway_reach: f32,
+  /// Sectors and models added, which a view drawn with fewer is drawn again for.
+  contents: usize,
+  /// The spawned object standing at each of the models' places, which a pick of one names.
+  place_objects: HashMap<u32, u32>,
 }
 
 impl StaticScene {
@@ -104,6 +118,7 @@ impl StaticScene {
       words: [
         GrowableBuffer::new(device, "static baked vertices", storage),
         GrowableBuffer::new(device, "static tree vertices", storage),
+        GrowableBuffer::new(device, "static model vertices", storage),
       ],
       indices: GrowableBuffer::new(device, "static indices", storage),
       clusters: GrowableBuffer::new(device, "static clusters", storage),
@@ -156,7 +171,7 @@ impl StaticScene {
       }),
       list_capacity: 0,
       initial_args: Vec::new(),
-      vertex_counts: [0; 2],
+      vertex_counts: [0; StaticLayout::COUNT],
       index_count: 0,
       cluster_count: 0,
       slot_count: 0,
@@ -172,6 +187,10 @@ impl StaticScene {
       sectors: Vec::new(),
       slot_infos: Vec::new(),
       cluster_slots: Vec::new(),
+      swaying: Vec::new(),
+      sway_reach: 0.0,
+      contents: 0,
+      place_objects: HashMap::new(),
     };
     let mut encoder: wgpu::CommandEncoder = device.create_command_encoder(&Default::default());
 
@@ -219,6 +238,11 @@ impl StaticScene {
     Some((info, info.mesh.map(|_| place.saturating_sub(info.first_place))))
   }
 
+  /// The spawned object a picked place is, where it is one.
+  pub fn resolve_spawn_pick(&self, place: u32) -> Option<u32> {
+    self.place_objects.get(&place).copied()
+  }
+
   /// Bytes of every pack put into the scene.
   pub fn get_bytes(&self) -> u64 {
     self.sectors.iter().map(|sector| sector.bytes).sum()
@@ -229,6 +253,7 @@ impl StaticScene {
     [
       &self.words[0],
       &self.words[1],
+      &self.words[2],
       &self.indices,
       &self.clusters,
       &self.spheres,
@@ -269,8 +294,12 @@ impl StaticScene {
       let base: GeometryBase = self.put_geometry(&mut writer, StaticLayout::Baked, &description.geometry, buffer);
 
       for section in &description.sections {
-        let Some((surface, class)) = self.resolve_surface(&mut writer, &section.surface, descriptors, textures, source)
-        else {
+        let Some((surface, class)) = self.resolve_surface(
+          &mut writer,
+          level_surface(&section.surface, descriptors),
+          textures,
+          source,
+        ) else {
           continue;
         };
         let batch: StaticBatch = StaticBatch {
@@ -280,9 +309,7 @@ impl StaticScene {
         let clusters: u32 = self.put_slot(
           &mut writer,
           &base,
-          &description.geometry,
-          buffer,
-          (section.draw.start, section.draw.count),
+          cut_clusters(&description.geometry, buffer, section.draw.start, section.draw.count),
           StaticSlot::SINGLE,
           batch,
           surface,
@@ -326,6 +353,105 @@ impl StaticScene {
       slots: first_slot..self.slot_count,
       bytes: buffer.len() as u64,
     });
+    self.contents += 1;
+  }
+
+  /// Puts a spawned model and every object standing as it: its geometry once, a slot a part, a place an object and a
+  /// row an object and part, each row shown by its object's group.
+  #[allow(clippy::too_many_arguments)]
+  pub fn add_model(
+    &mut self,
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    encoder: &mut wgpu::CommandEncoder,
+    textures: &mut TextureCache,
+    source: &Arc<dyn RenderAssetSource>,
+    model: &StaticModel,
+    places: &[StaticModelPlace],
+  ) {
+    let mut writer: SceneWriter = SceneWriter::default();
+    let base: GeometryBase = self.put_words(&mut writer, StaticLayout::Model, &model.words, &model.indices);
+    let first_place: u32 = self.place_count;
+    let mut slots: Vec<(u32, u32, StaticBatch)> = Vec::new();
+
+    for part in &model.parts {
+      let key: StaticSurfaceKey = StaticSurfaceKey::Model {
+        shader: part.surface.shader_name.clone(),
+        texture: part.surface.texture_name.clone(),
+      };
+      let Some((surface, class)) = self.resolve_surface(
+        &mut writer,
+        (key, &part.surface, part.descriptor.as_ref()),
+        textures,
+        source,
+      ) else {
+        continue;
+      };
+      let batch: StaticBatch = StaticBatch {
+        layout: StaticLayout::Model,
+        class,
+      };
+
+      // A row's clusters are culled one after another by one thread, so a large part is cut into several slots.
+      for clusters in part.clusters.chunks(MODEL_ROW_CLUSTERS) {
+        let slot: u32 = self.slot_count;
+        let count: u32 = self.put_slot(
+          &mut writer,
+          &base,
+          clusters.to_vec(),
+          StaticSlot::LISTED,
+          batch,
+          surface,
+          StaticSlotInfo {
+            sector: StaticSlotInfo::NO_SECTOR,
+            shader_id: part.surface.shader_id,
+            mesh: None,
+            first_place,
+          },
+        );
+
+        slots.push((slot, count, batch));
+      }
+    }
+
+    for place in places {
+      let matrix: Mat4 = place.transform;
+      let scale: f32 = [matrix.x_axis, matrix.y_axis, matrix.z_axis]
+        .iter()
+        .map(|axis| axis.truncate().length())
+        .fold(0.0, f32::max);
+      let index: u32 = self.place_count;
+
+      self.place_objects.insert(index, place.object);
+      writer.places.push(StaticPlace {
+        columns: [matrix.x_axis, matrix.y_axis, matrix.z_axis, matrix.w_axis],
+        info: Vec4::new(1.0, 0.0, -1.0, scale),
+        cube: place.lighting.map_or([0; 4], pack_cube),
+      });
+      self.place_count += 1;
+
+      for (slot, clusters, batch) in &slots {
+        writer.rows.push(StaticRow {
+          sphere: matrix
+            .transform_point3(model.sphere.truncate())
+            .extend(model.sphere.w * scale),
+          place: index,
+          slot: *slot,
+          lod: StaticRow::NO_LOD,
+          band: StaticRow::pack_band(0, 1, 1) | StaticRow::pack_group(place.group),
+        });
+        self.row_count += 1;
+        self.capacities[batch.get_index() as usize] += clusters;
+      }
+    }
+
+    self.flush(device, queue, encoder, writer);
+    self.contents += 1;
+  }
+
+  /// Sectors and models added so far, which a view drawn with fewer is drawn again for.
+  pub fn get_contents(&self) -> usize {
+    self.contents
   }
 
   /// Rewrites each batch's run of the visible list, and its draw arguments empty, for a frame's cull to fill.
@@ -375,6 +501,16 @@ impl StaticScene {
     self.list_capacity
   }
 
+  /// The bounding sphere of every place that sways, and how far it reaches from its foot, weighted by its rigidity.
+  pub fn list_swaying(&self) -> &[(Vec4, f32)] {
+    &self.swaying
+  }
+
+  /// What the wind's amplitude is multiplied by to give the farthest any tree leans, in metres.
+  pub fn get_sway_reach(&self) -> f32 {
+    self.sway_reach
+  }
+
   fn put_geometry(
     &mut self,
     writer: &mut SceneWriter,
@@ -382,19 +518,32 @@ impl StaticScene {
     geometry: &SectorGeometry,
     buffer: &[u8],
   ) -> GeometryBase {
-    let words: Vec<u32> = pack_vertex_words(layout, geometry, buffer);
+    self.put_words(
+      writer,
+      layout,
+      &pack_vertex_words(layout, geometry, buffer),
+      &read_pods::<u32>(buffer, &geometry.indices),
+    )
+  }
+
+  /// Appends a geometry's vertex words to its layout's arena and its indices to the shared one.
+  fn put_words(
+    &mut self,
+    writer: &mut SceneWriter,
+    layout: StaticLayout,
+    words: &[u32],
+    indices: &[u32],
+  ) -> GeometryBase {
     let base: GeometryBase = GeometryBase {
       layout,
       vertex_start: self.vertex_counts[layout.get_index()],
       index_start: self.index_count,
     };
 
-    self.vertex_counts[layout.get_index()] += geometry.vertex_count;
-    self.index_count += geometry.index_count;
-    writer.words[layout.get_index()].extend_from_slice(&words);
-    writer
-      .indices
-      .extend_from_slice(&read_pods::<u32>(buffer, &geometry.indices));
+    self.vertex_counts[layout.get_index()] += (words.len() / StaticLayout::STRIDE as usize) as u32;
+    self.index_count += indices.len() as u32;
+    writer.words[layout.get_index()].extend_from_slice(words);
+    writer.indices.extend_from_slice(indices);
 
     base
   }
@@ -402,17 +551,21 @@ impl StaticScene {
   fn resolve_surface(
     &mut self,
     writer: &mut SceneWriter,
-    surface: &SectorSurface,
-    descriptors: &[XraySurfaceDescriptor],
+    (key, surface, descriptor): (StaticSurfaceKey, &SectorSurface, Option<&XraySurfaceDescriptor>),
     textures: &mut TextureCache,
     source: &Arc<dyn RenderAssetSource>,
   ) -> Option<(u32, StaticClass)> {
-    if let Some(known) = self.surface_rows.get(&surface.shader_id) {
+    if let Some(known) = self.surface_rows.get(&key) {
       return *known;
     }
 
-    let built = build_static_surface(surface, descriptors.get(surface.shader_id as usize), textures, source);
-    let resolved: Option<(u32, StaticClass)> = built.map(|(row, class)| {
+    let is_model: bool = matches!(key, StaticSurfaceKey::Model { .. });
+    let built = build_static_surface(surface, descriptor, textures, source);
+    let resolved: Option<(u32, StaticClass)> = built.map(|(mut row, class)| {
+      if is_model {
+        row.flags |= StaticSurface::IS_MODEL;
+      }
+
       self
         .texture_slots
         .extend(row.textures.iter().filter(|slot| **slot != MISSING_SLOT));
@@ -422,7 +575,7 @@ impl StaticScene {
       (self.surface_count - 1, class)
     });
 
-    self.surface_rows.insert(surface.shader_id, resolved);
+    self.surface_rows.insert(key, resolved);
 
     resolved
   }
@@ -433,9 +586,7 @@ impl StaticScene {
     &mut self,
     writer: &mut SceneWriter,
     base: &GeometryBase,
-    geometry: &SectorGeometry,
-    buffer: &[u8],
-    (start, count): (u32, u32),
+    clusters: Vec<(u32, u32, Vec4)>,
     kind: u32,
     batch: StaticBatch,
     surface: u32,
@@ -444,7 +595,7 @@ impl StaticScene {
     let slot: u32 = self.slot_count;
     let first_cluster: u32 = self.cluster_count;
 
-    for (first_index, triangles, sphere) in cut_clusters(geometry, buffer, start, count) {
+    for (first_index, triangles, sphere) in clusters {
       writer.clusters.push(StaticCluster {
         first_index: base.index_start + first_index,
         triangles,
@@ -492,7 +643,9 @@ impl StaticScene {
       return;
     }
 
-    let Some((surface, class)) = self.resolve_surface(writer, &group.surface, descriptors, textures, source) else {
+    let Some((surface, class)) =
+      self.resolve_surface(writer, level_surface(&group.surface, descriptors), textures, source)
+    else {
       return;
     };
     let layout: StaticLayout = if geometry.uv_components >= 4 {
@@ -522,9 +675,7 @@ impl StaticScene {
         let clusters: u32 = self.put_slot(
           writer,
           &base,
-          geometry,
-          buffer,
-          *range,
+          cut_clusters(geometry, buffer, range.0, range.1),
           StaticSlot::LISTED,
           batch,
           surface,
@@ -544,6 +695,11 @@ impl StaticScene {
       .as_ref()
       .map_or_else(Vec::new, |it| read_pods(buffer, it));
     let instances: usize = (group.instance_count as usize).min(transforms.len() / 16);
+    let sway_reach: f32 = if layout == StaticLayout::Tree {
+      measure_sway_reach(geometry, buffer)
+    } else {
+      0.0
+    };
 
     for instance in 0..instances {
       let matrix: Mat4 = Mat4::from_cols_slice(&transforms[instance * 16..][..16]);
@@ -557,6 +713,11 @@ impl StaticScene {
       );
       let place: u32 = self.place_count;
       let center: Vec3 = matrix.transform_point3(local.truncate());
+
+      if sway_reach > 0.0 {
+        self.swaying.push((center.extend(local.w * scale), sway_reach * scale));
+        self.sway_reach = self.sway_reach.max(sway_reach * scale);
+      }
       let lod: u32 = lods
         .get(instance)
         .and_then(|it| u32::try_from(*it).ok())
@@ -571,7 +732,7 @@ impl StaticScene {
           if lod == StaticRow::NO_LOD { -1.0 } else { lod as f32 },
           scale,
         ),
-        cube: Vec4::ZERO,
+        cube: [0; 4],
       });
       self.place_count += 1;
 
@@ -716,10 +877,35 @@ struct GeometryBase {
   index_start: u32,
 }
 
+/// A spawned object's lighting as a place holds it: each cube face a byte, `+x +y +z -x` in `x`, `-y -z` in `y`, the
+/// sky share's bits in `z`, and `w` marking it.
+fn pack_cube((faces, sky): ([f32; 6], f32)) -> [u32; 4] {
+  let bytes: [u32; 6] = faces.map(|face| (face.clamp(0.0, 1.0) * 255.0).round() as u32);
+
+  [
+    bytes[0] | (bytes[1] << 8) | (bytes[2] << 16) | (bytes[3] << 24),
+    bytes[4] | (bytes[5] << 8),
+    sky.to_bits(),
+    1,
+  ]
+}
+
+/// A level's surface as `resolve_surface` takes one: its shader table entry, dressed by that entry's descriptor.
+fn level_surface<'a>(
+  surface: &'a SectorSurface,
+  descriptors: &'a [XraySurfaceDescriptor],
+) -> (StaticSurfaceKey, &'a SectorSurface, Option<&'a XraySurfaceDescriptor>) {
+  (
+    StaticSurfaceKey::Level(surface.shader_id),
+    surface,
+    descriptors.get(surface.shader_id as usize),
+  )
+}
+
 /// What one sector adds, gathered before it is written in one append a buffer.
 #[derive(Default)]
 struct SceneWriter {
-  words: [Vec<u32>; 2],
+  words: [Vec<u32>; StaticLayout::COUNT],
   indices: Vec<u32>,
   clusters: Vec<StaticCluster>,
   spheres: Vec<Vec4>,

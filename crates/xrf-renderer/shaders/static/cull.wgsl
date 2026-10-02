@@ -32,7 +32,8 @@ struct CullParams {
   lod_a: f32,
   lod_b: f32,
   is_impostors: u32,
-  pad0: u32,
+  // A bit a visibility group, from the lowest, set where the view hides it.
+  hidden_groups: u32,
   pad1: u32,
   pad2: u32,
   pad3: u32,
@@ -185,8 +186,8 @@ fn is_hidden_early(sphere: vec4<f32>) -> bool {
 
 // Appends a cluster the frustum keeps, or sets it aside for the late phase where last frame's depth hid it.
 fn keep(batch: u32, cluster: u32, place: u32, sphere: vec4<f32>) {
-  // Water casts no shadow.
-  if (IS_SHADOW && batch % CLASS_COUNT == WATER_CLASS) {
+  // Water, composited surfaces and wall marks cast no shadow.
+  if (IS_SHADOW && batch % CLASS_COUNT >= WATER_CLASS) {
     return;
   }
 
@@ -297,7 +298,7 @@ fn cull_impostors(@builtin(global_invocation_id) id: vec3<u32>) {
 fn is_band_drawn(band_word: u32, area: f32) -> bool {
   let band: u32 = band_word & 255u;
   let bands: u32 = (band_word >> 8u) & 255u;
-  let windows: u32 = band_word >> 16u;
+  let windows: u32 = (band_word >> 16u) & 255u;
   let detail: f32 = sqrt(clamp((area - params.glod_end) / (params.glod_start - params.glod_end), 0.0, 1.0));
   let window: u32 = u32(floor((1.0 - detail) * f32(max(windows, 1u) - 1u) + 0.5));
 
@@ -313,6 +314,12 @@ fn cull_rows(@builtin(global_invocation_id) id: vec3<u32>) {
   }
 
   let row: Row = rows[index];
+  let group: u32 = row.band >> 24u;
+
+  // A row of a visibility group the view hides.
+  if (group != 0u && (params.hidden_groups & (1u << (group - 1u))) != 0u) {
+    return;
+  }
 
   // A tree its clump's impostor stands in for is drawn only while the clump is near enough; a shadow casts it always.
   if (!IS_SHADOW && row.lod != NO_LOD && (terms[row.lod].w & LOD_TREES) == 0u) {

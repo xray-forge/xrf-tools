@@ -8,24 +8,30 @@ use xrf_level::{LevelSector, LevelSectorComposition};
 use xrf_ltx::Ltx;
 use xrf_material::XraySurfaceDescriptor;
 use xrf_renderer::{
-  RenderAssetSource, RenderLevelSource, RenderLevelWeather, RenderRain, RenderThunder, RenderThunderSettings,
-  RenderThunderbolt, RenderThunderboltGradient, RenderThunderboltModel, RenderWeatherModel, RenderWetSurfaces,
+  RenderAssetSource, RenderLevelDetails, RenderLevelSource, RenderLevelSpawn, RenderLevelWeather, RenderRain,
+  RenderSpawnCategory, RenderSpawnLighting, RenderSpawnModel, RenderSpawnModels, RenderSpawnObject, RenderThunder,
+  RenderThunderSettings, RenderThunderbolt, RenderThunderboltGradient, RenderThunderboltModel, RenderWeatherModel,
+  RenderWetSurfaces,
 };
-use xrf_visual::{LightsDescription, SectorPackage, SectorPacker};
+use xrf_visual::{LightsDescription, SectorPackage, SectorPacker, VisualPoser, VisualTransform};
 
 use crate::core::assets::{AssetMountState, read_located_asset};
 use crate::core::session::SessionSnapshot;
 use crate::plugins::levels::configs::get_level_sections;
+use crate::plugins::levels::details::{PackedLevelDetails, pack_details};
 use crate::plugins::levels::drawn_attributes::DRAWN_ATTRIBUTES;
+use crate::plugins::levels::hemi::{estimate_visuals_hemi, get_level_hemi};
 use crate::plugins::levels::lights::{PackedLevelLights, pack_lights};
 use crate::plugins::levels::report::report_missing_sections;
 use crate::plugins::levels::spawn::get_level_spawn;
+use crate::plugins::levels::spawn_objects::describe_spawn_objects;
+use crate::plugins::levels::spawn_visuals::SpawnVisualReader;
 use crate::plugins::levels::state::selection::level_rain::LevelRain;
 use crate::plugins::levels::state::selection::level_thunderbolt_gradient::LevelThunderboltGradient;
 use crate::plugins::levels::state::selection::level_thunderbolts::LevelThunderbolts;
 use crate::plugins::levels::state::selection::level_weather_model::LevelWeatherModel;
 use crate::plugins::levels::state::selection::level_wet_surfaces::LevelWetSurfaces;
-use crate::plugins::levels::state::{LevelEnvironment, SelectedLevel};
+use crate::plugins::levels::state::{LevelEnvironment, LevelSpawnCategory, LevelSpawnVisual, SelectedLevel};
 use crate::plugins::levels::textures::resolve_reference;
 
 /// The open level as the native renderer draws it: sectors packed when its loader asks, textures read from the roots
@@ -215,6 +221,119 @@ impl RenderLevelSource for LevelRenderSource {
 
     Ok(LevelEnvironment::list_keyframes(cycle, environment.catalog.engine))
   }
+
+  fn read_details(&self) -> XrfResult<Option<RenderLevelDetails>> {
+    let level: &SelectedLevel = &self.level;
+    let packed: Option<PackedLevelDetails> = self
+      .assets
+      .with_probe(&level.roots, |probe| pack_details(&level.source, probe))
+      .map_err(XrfError::new_asset_error)?
+      .map_err(XrfError::new_asset_error)?;
+    let Some(packed) = packed else {
+      return Ok(None);
+    };
+    let mut textures = self.textures.write().unwrap_or_else(PoisonError::into_inner);
+
+    for texture in packed.textures {
+      textures.insert(texture.reference, texture.logical_path);
+    }
+
+    Ok(Some(RenderLevelDetails {
+      package: packed.package,
+      surfaces: packed.surfaces,
+    }))
+  }
+
+  fn read_spawn(&self) -> XrfResult<RenderLevelSpawn> {
+    let level: &SelectedLevel = &self.level;
+    let spawn = self
+      .assets
+      .with_probe(&level.roots, |probe| get_level_spawn(level, probe))
+      .map_err(XrfError::new_asset_error)?
+      .map_err(XrfError::new_asset_error)?;
+    let described = describe_spawn_objects(&spawn);
+
+    Ok(RenderLevelSpawn {
+      objects: described
+        .objects
+        .iter()
+        .map(|object| RenderSpawnObject {
+          index: object.index,
+          category: to_render_category(object.category),
+          visual: object.visual,
+          transform: to_matrix(&object.transform),
+        })
+        .collect(),
+      visuals: described.visuals,
+    })
+  }
+
+  fn read_spawn_models(&self, names: &[String]) -> XrfResult<RenderSpawnModels> {
+    let level: &SelectedLevel = &self.level;
+    let (read, hemi) = self
+      .assets
+      .with_probe(&level.roots, |probe| {
+        let visuals: SpawnVisualReader = SpawnVisualReader::new(level, probe);
+        // A visual that cannot be read is reported by the reader, and left out.
+        let read: Vec<(&str, Arc<LevelSpawnVisual>)> = names
+          .iter()
+          .filter_map(|name| visuals.get(name).ok().map(|visual| (name.as_str(), visual)))
+          .collect();
+        let hemi = get_level_hemi(level, probe)
+          .map(|estimator| estimate_visuals_hemi(level, probe, &estimator, &read))
+          .unwrap_or_default();
+
+        level.spawn_lighting.note_described(names);
+
+        (read, hemi)
+      })
+      .map_err(XrfError::new_asset_error)?;
+    let mut textures = self.textures.write().unwrap_or_else(PoisonError::into_inner);
+
+    for (_, visual) in &read {
+      for texture in &visual.textures {
+        textures.insert(texture.reference.clone(), texture.logical_path.clone());
+      }
+    }
+
+    Ok(RenderSpawnModels {
+      models: read
+        .iter()
+        .map(|(name, visual)| RenderSpawnModel {
+          name: (*name).to_owned(),
+          package: VisualPoser::pose(&visual.package, visual.rest.as_deref()),
+          surfaces: visual.surfaces.clone(),
+        })
+        .collect(),
+      lighting: hemi
+        .into_iter()
+        .map(|object| RenderSpawnLighting {
+          object: object.index,
+          cube: object.cube,
+          sky: object.sky,
+        })
+        .collect(),
+    })
+  }
+}
+
+/// The group a spawn category's objects are shown in.
+fn to_render_category(category: LevelSpawnCategory) -> RenderSpawnCategory {
+  match category {
+    LevelSpawnCategory::Props => RenderSpawnCategory::Props,
+    LevelSpawnCategory::Items => RenderSpawnCategory::Items,
+    LevelSpawnCategory::Weapons => RenderSpawnCategory::Weapons,
+    LevelSpawnCategory::Lamps => RenderSpawnCategory::Lamps,
+  }
+}
+
+/// A transform's basis and place as a matrix's sixteen floats, column by column.
+fn to_matrix(transform: &VisualTransform) -> [f32; 16] {
+  let VisualTransform { i, j, k, c } = transform;
+
+  [
+    i.x, i.y, i.z, 0.0, j.x, j.y, j.z, 0.0, k.x, k.y, k.z, 0.0, c.x, c.y, c.z, 1.0,
+  ]
 }
 
 /// A model the weather draws as the renderer takes it, its texture by reference.

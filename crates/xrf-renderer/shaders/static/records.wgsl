@@ -25,7 +25,9 @@ struct Place {
   m3: vec4<f32>,
   // The hemisphere's scale and bias, the impostor or -1, the largest axis scale.
   info: vec4<f32>,
-  cube: vec4<f32>,
+  // A spawned object's hemisphere cube: its six faces, `+x +y +z -x -y -z`, as bytes in `x` and `y`; `w` one where it
+  // has one.
+  cube: vec4<u32>,
 };
 
 struct Row {
@@ -76,8 +78,9 @@ const LOD_IMPOSTOR: u32 = 2u;
 // A row no impostor decides.
 const NO_LOD: u32 = 0xffffffffu;
 
-// The shading classes a layout's batches run through, as `StaticClass` orders them, and the water's among them.
-const CLASS_COUNT: u32 = 3u;
+// The shading classes a layout's batches run through, as `StaticClass` orders them: the two the G-buffer draws and
+// shadows cast first, then water, composited surfaces and wall marks.
+const CLASS_COUNT: u32 = 5u;
 const WATER_CLASS: u32 = 2u;
 
 const SLOT_SINGLE: u32 = 1u;
@@ -88,6 +91,7 @@ const SURFACE_HAS_DETAIL: u32 = 2u;
 const SURFACE_HAS_BUMP: u32 = 4u;
 const SURFACE_HAS_DETAIL_BUMP: u32 = 8u;
 const SURFACE_HAS_HEMI: u32 = 16u;
+const SURFACE_IS_CUT_OUT: u32 = 32u;
 const SURFACE_IS_SOFT_WATER: u32 = 64u;
 const SURFACE_IS_ANOMALY_WATER: u32 = 128u;
 const SURFACE_IS_REFLECTING: u32 = 256u;
@@ -97,6 +101,12 @@ const SURFACE_IS_FOAMED: u32 = 2048u;
 const SURFACE_HAS_WATER_NORMAL: u32 = 4096u;
 const SURFACE_HAS_FOAM: u32 = 8192u;
 const SURFACE_HAS_DISTORTION: u32 = 16384u;
+const SURFACE_IS_ADDED: u32 = 32768u;
+const SURFACE_IS_WEIGHTED: u32 = 65536u;
+const SURFACE_IS_MULTIPLIED: u32 = 131072u;
+const SURFACE_IS_DOUBLED: u32 = 262144u;
+const SURFACE_IS_MODEL: u32 = 524288u;
+const SURFACE_IS_ENVIRONMENT_MAPPED: u32 = 1048576u;
 
 // Vertices one cluster's draw spans: 128 triangles, those past its own collapsed.
 const CLUSTER_VERTICES: u32 = 384u;

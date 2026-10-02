@@ -11,13 +11,19 @@ import {
   IRendererViewPoint,
   IRenderFrameCost,
 } from "@xrf/renderer";
-import { Nullable } from "@xrf/types";
+import { Maybe, Nullable } from "@xrf/types";
 
-import { SelectedLevelDescription, SessionSnapshot } from "@/core/ipc/types/xrf-app";
+import {
+  LevelSpawnObject,
+  LevelSpawnObjectsDescription,
+  SelectedLevelDescription,
+  SessionSnapshot,
+} from "@/core/ipc/types/xrf-app";
 import {
   ERenderAmbientOcclusionQuality,
   ERenderCamera,
   ERenderCameraCommand,
+  ERenderLevelHit,
   ERenderLightShadowFilter,
   ERenderTextureState,
   ERenderWeatherPlay,
@@ -43,6 +49,7 @@ import { LEVEL_PICK_PANELS } from "@/core/level/lib/panels/level-pick-panels";
 import { ELevelPick, TLevelPick } from "@/core/level/lib/pick/level-pick";
 import { DEFAULT_LEVEL_RENDER_CONFIG, ILevelRenderConfig } from "@/core/level/lib/render/level-render-config";
 import { toLevelCameraAt, toLevelRendererSettings } from "@/core/level/lib/render/level-render-view";
+import { ILevelPoint } from "@/core/level/lib/residency/level-residency";
 import { measureLevelStats } from "@/core/level/lib/stats/level-stats";
 import { ELevelSurfaceDressing, ILevelSurfaceDressing } from "@/core/level/lib/surface/level-surface-dressing";
 import { ILevelSurfaceGeometry, ILevelSurfaceSpan } from "@/core/level/lib/surface/level-surface-geometry";
@@ -99,19 +106,32 @@ export function toLevelFrameCost(report: RenderFrameReport): IRenderFrameCost {
   };
 }
 
-/** What the toolbar shows of the weather. */
-export type TLevelWeatherSwitches = Pick<
+/** What the toolbar switches of the view: the weather, the grass, the wall marks and the spawned objects' groups. */
+export type TLevelViewSwitches = Pick<
   ILevelViewOptions,
-  "isClouded" | "isFogged" | "isRainy" | "isSkyHazed" | "isSkyVisible" | "isThundering" | "isWaterVisible" | "isWindy"
+  | "isClouded"
+  | "isFogged"
+  | "isGrassy"
+  | "isRainy"
+  | "isSkyHazed"
+  | "isSkyVisible"
+  | "isSpawnedItems"
+  | "isSpawnedLamps"
+  | "isSpawnedProps"
+  | "isSpawnedWeapons"
+  | "isThundering"
+  | "isWallmarked"
+  | "isWaterVisible"
+  | "isWindy"
 >;
 
 /**
  * @param settings - What the level's toolbar and the application's settings come to.
- * @param switches - What the toolbar shows of the weather.
+ * @param switches - What the toolbar switches of the view.
  * @returns What a native viewport draws the level with.
  */
-export function toLevelViewOptions(settings: IRendererSettings, switches: TLevelWeatherSwitches): RenderViewOptions {
-  const { ambientOcclusion, exposure, lights, shadows, water } = settings.features;
+export function toLevelViewOptions(settings: IRendererSettings, switches: TLevelViewSwitches): RenderViewOptions {
+  const { ambientOcclusion, exposure, grass, lights, shadows, water } = settings.features;
 
   return {
     ambientOcclusion: {
@@ -128,6 +148,12 @@ export function toLevelViewOptions(settings: IRendererSettings, switches: TLevel
       middleGray: exposure.middleGray,
     },
     geometryLod: settings.features.lod.geometryLod,
+    grass: {
+      density: grass.density,
+      height: grass.height,
+      isEnabled: grass.isEnabled && switches.isGrassy,
+      radius: grass.radius,
+    },
     hemiStrength: settings.hemiStrength,
     isBumped: settings.isBumped,
     isClouded: switches.isClouded,
@@ -138,8 +164,13 @@ export function toLevelViewOptions(settings: IRendererSettings, switches: TLevel
     isRainy: switches.isRainy,
     isSkyHazed: switches.isSkyHazed,
     isSkyVisible: switches.isSkyVisible,
+    isSpawnedItems: switches.isSpawnedItems,
+    isSpawnedLamps: switches.isSpawnedLamps,
+    isSpawnedProps: switches.isSpawnedProps,
+    isSpawnedWeapons: switches.isSpawnedWeapons,
     isTextured: settings.isTextured,
     isThundering: switches.isThundering,
+    isWallmarked: switches.isWallmarked,
     isWindy: switches.isWindy,
     lights: {
       isEnabled: lights.isEnabled,
@@ -173,17 +204,25 @@ export function toLevelViewOptions(settings: IRendererSettings, switches: TLevel
 
 /**
  * @param hit - What a native viewport named under a point.
- * @returns It as the level names what is picked, in the level's own coordinates.
+ * @param spawn - The level's spawned objects as held, which a picked object is found among.
+ * @returns It as the level names what is picked, in the level's own coordinates; null for an object not held.
  */
-export function toLevelPick(hit: RenderLevelHit): TLevelPick {
+export function toLevelPick(hit: RenderLevelHit, spawn: Nullable<LevelSpawnObjectsDescription>): Nullable<TLevelPick> {
   const [x, y, z] = hit.point;
+  const point: ILevelPoint = toXraySpace({ x: x ?? 0, y: y ?? 0, z: z ?? 0 });
+
+  if (hit.kind === ERenderLevelHit.SPAWN) {
+    const object: Maybe<LevelSpawnObject> = spawn?.objects.find((it: LevelSpawnObject) => it.index === hit.object);
+
+    return object ? { kind: ELevelPick.SPAWN, object, point, visual: spawn?.visuals[object.visual] ?? "" } : null;
+  }
 
   return {
     isImpostor: hit.isImpostor,
     kind: ELevelPick.SURFACE,
     mesh: hit.mesh,
     place: hit.place,
-    point: toXraySpace({ x: x ?? 0, y: y ?? 0, z: z ?? 0 }),
+    point,
     sector: hit.sector,
     shaderId: hit.shaderId,
   };
@@ -328,7 +367,7 @@ export class LevelRenderService extends NativeRenderSurfaceService {
       return;
     }
 
-    const picked: Nullable<TLevelPick> = hit ? toLevelPick(hit) : null;
+    const picked: Nullable<TLevelPick> = hit ? toLevelPick(hit, this.loadService.spawn.held?.objects ?? null) : null;
 
     this.viewportService.notePicked(picked);
 

@@ -18,6 +18,8 @@ const EMBEDDED: &[(&str, &str)] = &[
     "common/light_clusters",
     include_str!("../../shaders/common/light_clusters.wgsl"),
   ),
+  ("common/cut_out", include_str!("../../shaders/common/cut_out.wgsl")),
+  ("common/hmodel", include_str!("../../shaders/common/hmodel.wgsl")),
   ("common/lighting", include_str!("../../shaders/common/lighting.wgsl")),
   (
     "common/octahedral",
@@ -28,6 +30,10 @@ const EMBEDDED: &[(&str, &str)] = &[
     include_str!("../../shaders/common/rain_cover.wgsl"),
   ),
   ("common/sky", include_str!("../../shaders/common/sky.wgsl")),
+  (
+    "common/sun_shadow",
+    include_str!("../../shaders/common/sun_shadow.wgsl"),
+  ),
   ("common/sky_box", include_str!("../../shaders/common/sky_box.wgsl")),
   (
     "frame/ambient_occlusion",
@@ -52,7 +58,14 @@ const EMBEDDED: &[(&str, &str)] = &[
   ("frame/thunder", include_str!("../../shaders/frame/thunder.wgsl")),
   ("frame/wet_apply", include_str!("../../shaders/frame/wet_apply.wgsl")),
   ("frame/wet_patch", include_str!("../../shaders/frame/wet_patch.wgsl")),
+  ("grass/grass", include_str!("../../shaders/grass/grass.wgsl")),
+  ("grass/planting", include_str!("../../shaders/grass/planting.wgsl")),
+  ("grass/records", include_str!("../../shaders/grass/records.wgsl")),
   ("grid/grid", include_str!("../../shaders/grid/grid.wgsl")),
+  (
+    "static/composited",
+    include_str!("../../shaders/static/composited.wgsl"),
+  ),
   ("static/cull", include_str!("../../shaders/static/cull.wgsl")),
   ("static/gbuffer", include_str!("../../shaders/static/gbuffer.wgsl")),
   ("static/impostor", include_str!("../../shaders/static/impostor.wgsl")),

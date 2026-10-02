@@ -22,7 +22,9 @@ pub struct StaticCullParams {
   pub lod_b: f32,
   /// Whether impostors stand in for distant trees at all.
   pub is_impostors: u32,
-  pub pad: [u32; 4],
+  /// A bit a visibility group, from the lowest, set where the view hides it.
+  pub hidden_groups: u32,
+  pub pad: [u32; 3],
   /// The camera every view's levels of detail are measured from, a shadow's too.
   pub lod_origin: Vec4,
 }

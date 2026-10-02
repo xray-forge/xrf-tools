@@ -21,6 +21,7 @@ use crate::pass::lights_uniform::LightsUniform;
 use crate::scene::level::level_light_shadows::{LIGHT_SHADOW_ATLAS_SIZE, LevelLightShadows};
 use crate::scene::level::light_shadow_set::LightShadowSet;
 use crate::scene::level::shadow_frame::ShadowFrame;
+use crate::scene::level::shadow_sway::ShadowSway;
 use crate::scene::texture::texture_cache::{MISSING_SLOT, TextureCache};
 use crate::scene::texture::texture_role::TextureRole;
 
@@ -141,15 +142,17 @@ impl LevelLights {
   /// Writes out the lights standing in view this frame, nearest first, animated and faded as the engine would, in the
   /// camera's view space; a shadowed one only once its faces are drawn, with their squares of the atlas.
   ///
-  /// `lod` is the progressive meshes' `start` and `end` screen areas, which a shadowed light fades between; `sectors`
-  /// is how many are resident, which a face drawn with fewer is drawn again for.
+  /// `lod` is the progressive meshes' `start` and `end` screen areas, which a shadowed light fades between; `contents`
+  /// counts what the scene holds, which a face drawn with less is drawn again for; `sway` has a face over swaying trees
+  /// drawn again.
   pub fn prepare(
     &mut self,
     queue: &wgpu::Queue,
     camera: &CameraView,
     settings: &RenderLightsSettings,
     lod: (f32, f32),
-    sectors: usize,
+    contents: usize,
+    sway: &ShadowSway<'_>,
   ) {
     self.records.clear();
     self.shadows.begin();
@@ -207,7 +210,8 @@ impl LevelLights {
             eye,
             forward,
             Vec3::from(light.color),
-            sectors,
+            contents,
+            sway,
           );
         }
 

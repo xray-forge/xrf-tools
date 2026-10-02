@@ -8,6 +8,7 @@ use crate::pass::level_passes::LevelPasses;
 use crate::pass::view_binding::ViewBinding;
 use crate::scene::level::shadow_frame::ShadowFrame;
 use crate::scene::static_scene::growable_buffer::GrowableBuffer;
+use crate::scene::static_scene::static_layout::StaticLayout;
 
 /// Metres the cover is across: every streak's column falls within it, however far the camera is from its centre, and
 /// every surface the rain wets, 25 metres out at most.
@@ -33,8 +34,8 @@ pub struct RainCover {
   args: wgpu::Buffer,
   view: ViewBinding,
   cull_group: Option<((u64, u64, u64), wgpu::BindGroup)>,
-  draw_groups: Option<((u64, u64), [wgpu::BindGroup; 2])>,
-  /// Where it was drawn, centred and seen from, and the sectors resident then, or none before it was.
+  draw_groups: Option<((u64, u64), [wgpu::BindGroup; StaticLayout::COUNT])>,
+  /// Where it was drawn, centred and seen from, and what the scene held then, or none before it was.
   drawn: Option<(Vec3, usize)>,
 }
 
@@ -96,7 +97,7 @@ impl RainCover {
       (position.z / STEP).round() * STEP,
     );
     let scene = frame.scene;
-    let state: (Vec3, usize) = (center, scene.sectors.len());
+    let state: (Vec3, usize) = (center, scene.get_contents());
 
     if self.drawn == Some(state) {
       return;
@@ -145,9 +146,10 @@ impl RainCover {
     let draw_key: (u64, u64) = (scene.get_generation(), self.lists.get_generation());
 
     if self.draw_groups.as_ref().is_none_or(|(key, _)| *key != draw_key) {
-      let groups: [wgpu::BindGroup; 2] = passes
-        .gbuffer
-        .create_layout_groups(device, scene, self.lists.get_buffer());
+      let groups: [wgpu::BindGroup; StaticLayout::COUNT] =
+        passes
+          .gbuffer
+          .create_layout_groups(device, scene, self.lists.get_buffer());
 
       self.draw_groups = Some((draw_key, groups));
     }
