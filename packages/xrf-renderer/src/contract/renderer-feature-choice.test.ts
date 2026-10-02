@@ -36,11 +36,11 @@ describe("renderer feature choices", () => {
     expect(isRendererFeatureChoiceCustom(choice)).toBe(true);
   });
 
-  // An override the preset already has is no change: choosing SMAA on Base is still Base.
+  // An override the preset already has is no change: choosing TAA on Base is still Base.
   it("calls a choice custom only where it differs from its preset", () => {
     expect(
       isRendererFeatureChoiceCustom({
-        overrides: { antialiasing: ERendererAntialiasing.SMAA, lod: { ssaA: 64 } },
+        overrides: { antialiasing: ERendererAntialiasing.TAA, lod: { ssaA: 64 } },
         preset: ERendererPreset.BASE,
       })
     ).toBe(false);
@@ -48,7 +48,7 @@ describe("renderer feature choices", () => {
 
   it("tells which feature groups differ from the preset, a group set to the preset's own not among them", () => {
     const choice = {
-      overrides: { antialiasing: ERendererAntialiasing.SMAA, isOcclusionCulled: false, lod: { ssaA: 80 } },
+      overrides: { antialiasing: ERendererAntialiasing.TAA, isOcclusionCulled: false, lod: { ssaA: 80 } },
       preset: ERendererPreset.BASE,
     };
 

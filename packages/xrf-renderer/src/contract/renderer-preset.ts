@@ -10,7 +10,8 @@ import { DEFAULT_RENDERER_UPSCALING_SETTINGS } from "#/contract/renderer-upscali
 import { DEFAULT_RENDERER_WATER_SETTINGS } from "#/contract/renderer-water-settings";
 
 /**
- * The named sets of features: `Base` the engine's defaults, `Editing` responsiveness before looks for an editor.
+ * The named sets of features: `Base` the engine's defaults, smoothed by TAA, `Editing` responsiveness before looks for
+ * an editor.
  */
 export enum ERendererPreset {
   BASE = "base",
@@ -21,7 +22,8 @@ export enum ERendererPreset {
 export const RENDERER_PRESETS: Readonly<Record<ERendererPreset, IRendererFeatureSettings>> = {
   [ERendererPreset.BASE]: {
     ambientOcclusion: DEFAULT_RENDERER_AMBIENT_OCCLUSION_SETTINGS,
-    antialiasing: ERendererAntialiasing.SMAA,
+    // The application's own choice over the engine's: the resolve the cut-outs' hashed alpha and the jitter are for.
+    antialiasing: ERendererAntialiasing.TAA,
     exposure: DEFAULT_RENDERER_EXPOSURE_SETTINGS,
     grass: DEFAULT_RENDERER_GRASS_SETTINGS,
     isOcclusionCulled: true,

@@ -19,8 +19,18 @@ function toFeatures(
 }
 
 describe("the frame plan", () => {
-  it("smooths `Base` with SMAA alone, at the output's size", () => {
+  it("resolves `Base` with TAA alone, at the output's size", () => {
     expect(toFramePlan(BASE)).toMatchObject({
+      isSpatial: false,
+      resolve: ERendererAntialiasing.TAA,
+      sharpen: null,
+      smoothing: null,
+      upscale: 1,
+    });
+  });
+
+  it("smooths with SMAA alone at the output's size, and resolves nothing", () => {
+    expect(toFramePlan(toFeatures(ERendererAntialiasing.SMAA))).toMatchObject({
       isSpatial: false,
       resolve: null,
       sharpen: null,

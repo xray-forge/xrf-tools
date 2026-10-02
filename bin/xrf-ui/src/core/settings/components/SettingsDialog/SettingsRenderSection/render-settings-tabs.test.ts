@@ -38,7 +38,7 @@ describe("render settings tabs", () => {
 
   it("marks a tab changed where what it sets differs from the preset, and not for a value the preset has", () => {
     const choice = {
-      overrides: { antialiasing: ERendererAntialiasing.SMAA, grass: { isEnabled: false } },
+      overrides: { antialiasing: ERendererAntialiasing.TAA, grass: { isEnabled: false } },
       preset: ERendererPreset.BASE,
     };
 

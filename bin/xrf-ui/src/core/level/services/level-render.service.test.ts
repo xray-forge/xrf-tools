@@ -235,7 +235,7 @@ describe("LevelRenderService", () => {
     }
 
     expect(features()?.shadows.isEnabled).toBe(true);
-    expect(features()?.antialiasing).toBe(ERendererAntialiasing.SMAA);
+    expect(features()?.antialiasing).toBe(ERendererAntialiasing.TAA);
 
     viewService.setFeatures({
       ambientOcclusion: { radius: 2 },
