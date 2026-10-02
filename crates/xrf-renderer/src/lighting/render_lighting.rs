@@ -2,6 +2,7 @@ use glam::{Vec3, Vec4};
 use xrf_engine_target::XrayEngine;
 use xrf_math::EPS;
 
+use crate::contract::render_light_scales::RenderLightScales;
 use crate::lighting::light_specular::to_light_specular;
 use crate::lighting::render_clouds::RenderClouds;
 use crate::lighting::render_fog::RenderFog;
@@ -52,21 +53,27 @@ impl RenderLighting {
     self.sun_direction.normalize_or_zero()
   }
 
-  /// `Ldynamic_color.w`: what the sun contributes to specular, `u_diffuse2s` of its colour (`r2_types.h`).
-  pub fn get_sun_specular(&self) -> f32 {
-    to_light_specular(self.sun_color)
+  /// The sun's colour as the sun and the forward passes are lit by it: the weather's, times `r2_sun_lumscale`.
+  pub fn get_sun_color(&self, scales: &RenderLightScales) -> Vec3 {
+    self.sun_color * scales.sun
   }
 
-  /// `L_ambient`.
-  pub fn get_ambient(&self) -> Vec3 {
-    (self.ambient_color * 2.0).max(Vec3::splat(MINIMUM_AMBIENT))
+  /// `Ldynamic_color.w`: what the sun contributes to specular, `u_diffuse2s` of its scaled colour (`r2_types.h`).
+  pub fn get_sun_specular(&self, scales: &RenderLightScales) -> f32 {
+    to_light_specular(self.get_sun_color(scales))
+  }
+
+  /// `L_ambient` as combine binds it: doubled, floored, times `r2_sun_lumscale_amb`.
+  pub fn get_ambient(&self, scales: &RenderLightScales) -> Vec3 {
+    (self.ambient_color * 2.0).max(Vec3::splat(MINIMUM_AMBIENT)) * scales.ambient
   }
 
   /// `env_color.rgb` as combine binds it.
   ///
-  /// `CEnvDescriptorMixer::lerp` adds `EPS` so a black hemisphere is never exactly zero, then `phase_combine` doubles it.
-  pub fn get_environment(&self) -> Vec3 {
-    (self.hemisphere_color * 2.0 + EPS) * 2.0
+  /// `CEnvDescriptorMixer::lerp` adds `EPS` so a black hemisphere is never exactly zero, then `phase_combine` doubles it
+  /// times `r2_sun_lumscale_hemi`.
+  pub fn get_environment(&self, scales: &RenderLightScales) -> Vec3 {
+    (self.hemisphere_color * 2.0 + EPS) * 2.0 * scales.hemi
   }
 }
 

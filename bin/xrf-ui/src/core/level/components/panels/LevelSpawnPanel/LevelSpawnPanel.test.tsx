@@ -10,6 +10,7 @@ import { ELevelPick } from "@/core/level/lib/pick/level-pick";
 import { EMPTY_LEVEL_SPAWN_REPORT } from "@/core/level/lib/spawn";
 import {
   LevelLoadService,
+  LevelLookService,
   LevelRenderService,
   LevelViewportService,
   LevelViewService,
@@ -85,6 +86,7 @@ async function renderPanel(
     LevelViewService,
     LevelViewportService,
     LevelWeatherService,
+    LevelLookService,
   ]);
   const service: LevelLoadService = container.get(LevelLoadService);
 

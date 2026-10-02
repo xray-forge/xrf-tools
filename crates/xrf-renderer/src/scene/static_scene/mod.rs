@@ -14,6 +14,7 @@ pub(crate) mod static_scene;
 pub(crate) mod static_sector;
 pub(crate) mod static_slot;
 pub(crate) mod static_slot_info;
+pub(crate) mod static_sorted_place;
 pub(crate) mod static_surface;
 pub(crate) mod static_surface_build;
 pub(crate) mod static_surface_key;

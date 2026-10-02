@@ -30,6 +30,9 @@ pub struct LightingUniform {
   pub engine: Vec4,
   /// The settings' tonemap scale, and ones where the scene is lit, the exposure adapts and the occlusion darkens.
   pub params: Vec4,
+  /// `L_ambient` and `L_hemi_color` as a forward pass binds them: the weather's own, neither doubled nor scaled.
+  pub forward_ambient: Vec4,
+  pub forward_hemi: Vec4,
 }
 
 impl LightingUniform {
@@ -44,9 +47,11 @@ impl LightingUniform {
 
     Self {
       to_sun: to_sun.extend(0.0),
-      sun: lighting.sun_color.extend(lighting.get_sun_specular()),
-      ambient: lighting.get_ambient().extend(0.0),
-      environment: lighting.get_environment().extend(0.0),
+      sun: lighting
+        .get_sun_color(&options.light_scales)
+        .extend(lighting.get_sun_specular(&options.light_scales)),
+      ambient: lighting.get_ambient(&options.light_scales).extend(0.0),
+      environment: lighting.get_environment(&options.light_scales).extend(0.0),
       sky_irradiance: lighting.sky_irradiance.extend(flag(frame.is_irradiance_up)),
       fog_color: fog.map_or(Vec3::ZERO, |fog| fog.color).extend(flag(fog.is_some())),
       fog: Vec4::new(offset, scale, flag(options.is_sky_hazed), flag(options.is_sky_visible)),
@@ -77,6 +82,8 @@ impl LightingUniform {
         flag(frame.is_adapting),
         flag(options.ambient_occlusion.is_enabled),
       ),
+      forward_ambient: lighting.ambient_color.extend(0.0),
+      forward_hemi: lighting.hemisphere_color.extend(0.0),
     }
   }
 }

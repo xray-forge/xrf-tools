@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use std::time::Instant;
 
-use glam::{Mat4, Vec2, Vec3};
+use glam::{Mat4, Vec2, Vec3, Vec4};
 use xrf_engine_target::XrayEngine;
 use xrf_error::XrfResult;
 use xrf_material::XraySurfaceDraw;
@@ -12,6 +12,7 @@ use crate::camera::camera_view::CameraView;
 use crate::contract::render_ambient_occlusion_settings::RenderAmbientOcclusionSettings;
 use crate::contract::render_antialiasing::RenderAntialiasing;
 use crate::contract::render_debug_view::RenderDebugView;
+use crate::contract::render_image_corrections::RenderImageCorrections;
 use crate::contract::render_level_hit::RenderLevelHit;
 use crate::contract::render_lights_settings::RenderLightsSettings;
 use crate::contract::render_load_report::RenderLoadReport;
@@ -75,6 +76,7 @@ use crate::scene::level::weather_model_buffers::WeatherModelBuffers;
 use crate::scene::static_scene::static_batch::StaticBatch;
 use crate::scene::static_scene::static_scene::StaticScene;
 use crate::scene::static_scene::static_slot_info::StaticSlotInfo;
+use crate::scene::static_scene::static_sorted_place::StaticSortedPlace;
 use crate::scene::texture::texture_cache::TextureCache;
 use crate::scene::texture::weather_texture_cache::WeatherTextureCache;
 use crate::scene::texture::weather_texture_kind::WeatherTextureKind;
@@ -167,8 +169,16 @@ pub struct LevelView {
   upscale_uniform: wgpu::Buffer,
   /// The present pass's bind group, with the targets' and the upscale's epochs and the frame it shows.
   present_group: Option<((u64, u64, usize), wgpu::BindGroup)>,
+  /// The models' composited clusters this frame, back to front, as `(cluster, place)` entries, with the bind group
+  /// drawing them, the scene generation and the buffer it binds, and how many entries the frame holds.
+  sorted_list: Option<wgpu::Buffer>,
+  sorted_group: Option<((u64, u64), wgpu::BindGroup)>,
+  sorted_epoch: u64,
+  sorted_count: u32,
   /// The smoothing pass while one smooths the scene as drawn.
   smoothing: Option<LevelSmoothing>,
+  /// What corrects this frame's finished image.
+  frame_corrections: RenderImageCorrections,
   /// What this frame's present shows, and whether its occlusion was searched.
   frame_debug_view: RenderDebugView,
   frame_occlusion: bool,
@@ -277,6 +287,11 @@ impl LevelView {
       upscale_uniform: uniform("upscale", size_of::<UpscaleUniform>()),
       present_group: None,
       smoothing: None,
+      sorted_list: None,
+      sorted_group: None,
+      sorted_epoch: 0,
+      sorted_count: 0,
+      frame_corrections: RenderImageCorrections::default(),
       frame_debug_view: RenderDebugView::Final,
       frame_occlusion: false,
       water_group: None,
@@ -662,6 +677,7 @@ impl LevelView {
     self.output = output;
     self.upscaling = options.upscaling;
     self.frame_debug_view = options.debug_view;
+    self.frame_corrections = options.corrections;
     self.frame_occlusion = options.is_lit && options.ambient_occlusion.is_enabled;
     self.prepare_temporal(device, queue, passes, view);
     self.prepare_smoothing(device, passes, options.antialiasing);
@@ -678,6 +694,7 @@ impl LevelView {
       )),
     );
     queue.write_buffer(&self.cull_params, 0, bytemuck::bytes_of(&self.params));
+    self.prepare_sorted(device, queue, passes, view, self.scene.get_generation());
 
     if let Some((pyramid, _)) = &self.pyramid {
       let (history_view, history_projection): (Mat4, Mat4) = self.history.unwrap_or(self.frame_view);
@@ -1039,6 +1056,7 @@ impl LevelView {
           texture_group,
           (&groups.composited, sky_group),
           &list_args,
+          (self.sorted_group.as_ref().map(|(_, group)| group), self.sorted_count),
         );
         timer.mark(encoder, "composited");
       }
@@ -1267,6 +1285,75 @@ impl LevelView {
     self.temporal_previous = Some((current, view.view));
   }
 
+  /// Lists the models' composited clusters in view, their places back to front by distance and each place's clusters in
+  /// their parts' order, as the engine draws its sorted blended objects; binds the list for the composited pass.
+  fn prepare_sorted(
+    &mut self,
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    passes: LevelPasses<'_>,
+    view: &CameraView,
+    generation: u64,
+  ) {
+    let planes: [Vec4; 6] = view.get_planes();
+    let hidden: u32 = self.params.hidden_groups;
+    let mut places: Vec<(f32, &StaticSortedPlace)> = self
+      .scene
+      .sorted_places
+      .iter()
+      .filter(|place| place.group == 0 || hidden & (1 << (place.group - 1)) == 0)
+      .filter(|place| place.is_in_view(&planes))
+      .map(|place| (place.get_distance(view.position), place))
+      .collect();
+
+    places.sort_by(|a, b| b.0.total_cmp(&a.0));
+
+    let entries: Vec<[u32; 2]> = places
+      .iter()
+      .flat_map(|(_, place)| {
+        place
+          .clusters
+          .iter()
+          .flat_map(|(first, count)| (*first..first + count).map(|cluster| [cluster, place.place]))
+      })
+      .collect();
+    let bytes: &[u8] = bytemuck::cast_slice(&entries);
+
+    self.sorted_count = entries.len() as u32;
+
+    if bytes.is_empty() {
+      return;
+    }
+
+    if self
+      .sorted_list
+      .as_ref()
+      .is_none_or(|buffer| buffer.size() < bytes.len() as u64)
+    {
+      self.sorted_list = Some(device.create_buffer(&wgpu::BufferDescriptor {
+        label: Some("sorted composited"),
+        size: (bytes.len() as u64).next_power_of_two(),
+        usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+        mapped_at_creation: false,
+      }));
+      self.sorted_epoch += 1;
+    }
+
+    let Some(buffer) = &self.sorted_list else {
+      return;
+    };
+
+    queue.write_buffer(buffer, 0, bytes);
+
+    let key: (u64, u64) = (generation, self.sorted_epoch);
+
+    if self.sorted_group.as_ref().is_none_or(|(it, _)| *it != key) {
+      let [_, _, model] = passes.gbuffer.create_layout_groups(device, &self.scene, buffer);
+
+      self.sorted_group = Some((key, model));
+    }
+  }
+
   /// Makes the smoothing pass's targets while one smooths the frame as drawn, dropping them otherwise.
   fn prepare_smoothing(&mut self, device: &wgpu::Device, passes: LevelPasses<'_>, mode: RenderAntialiasing) {
     let is_smoothed: bool = matches!(mode, RenderAntialiasing::Fxaa | RenderAntialiasing::Smaa);
@@ -1367,6 +1454,7 @@ impl LevelView {
         self.frame_occlusion,
         is_upscaled,
         output,
+        &self.frame_corrections,
       )),
     );
 

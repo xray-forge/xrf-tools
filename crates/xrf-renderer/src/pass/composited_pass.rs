@@ -10,6 +10,7 @@ use crate::pass::view_binding::ViewBinding;
 use crate::scene::level::level_shadows::LevelShadows;
 use crate::scene::static_scene::static_batch::StaticBatch;
 use crate::scene::static_scene::static_layout::StaticLayout;
+use crate::scene::static_scene::static_scene::StaticScene;
 use crate::shader::shader_library::ShaderLibrary;
 
 /// Reversed depth steps a composited surface is pulled towards the eye by, so a surface laid on a wall never loses
@@ -137,6 +138,7 @@ impl CompositedPass {
     textures: &wgpu::BindGroup,
     (composited_group, sky_group): (&wgpu::BindGroup, &wgpu::BindGroup),
     args: &[&wgpu::Buffer],
+    (sorted_group, sorted_count): (Option<&wgpu::BindGroup>, u32),
   ) {
     let mut pass: wgpu::RenderPass<'_> = begin_composite(encoder, "composited", &targets.scene, &targets.depth);
 
@@ -147,6 +149,19 @@ impl CompositedPass {
 
     for (batch, pipeline) in StaticBatch::list_composited().zip(&self.pipelines.0) {
       pass.set_pipeline(pipeline);
+
+      // The models' are drawn back to front from the view's sorted list rather than as the cull listed them.
+      if batch.layout == StaticLayout::Model {
+        if let Some(group) = sorted_group
+          && sorted_count > 0
+        {
+          pass.set_bind_group(1, group, &[]);
+          pass.draw(0..StaticScene::CLUSTER_VERTICES, 0..sorted_count);
+        }
+
+        continue;
+      }
+
       pass.set_bind_group(1, &bind_groups.layouts[batch.layout.get_index()], &[]);
 
       for args in args {

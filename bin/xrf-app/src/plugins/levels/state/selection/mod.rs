@@ -1,3 +1,4 @@
+pub(crate) mod level_console_defaults;
 pub(crate) mod level_details_description;
 pub(crate) mod level_lights_description;
 pub(crate) mod level_rain;

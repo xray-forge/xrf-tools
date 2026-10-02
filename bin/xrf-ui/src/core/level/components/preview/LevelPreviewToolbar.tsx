@@ -9,6 +9,7 @@ import { LevelCullingAction } from "@/core/level/components/preview/LevelCulling
 import { LevelFogAction } from "@/core/level/components/preview/LevelFogAction";
 import { LevelGrassAction } from "@/core/level/components/preview/LevelGrassAction";
 import { LevelLightsAction } from "@/core/level/components/preview/LevelLightsAction";
+import { LevelLookAction } from "@/core/level/components/preview/LevelLookAction";
 import { LevelOcclusionAction } from "@/core/level/components/preview/LevelOcclusionAction";
 import { LevelOverlaysAction } from "@/core/level/components/preview/LevelOverlaysAction";
 import { LevelRainAction } from "@/core/level/components/preview/LevelRainAction";
@@ -139,6 +140,8 @@ export function LevelPreviewToolbar({
           <EditorToolbarSeparator />
 
           <LevelWeatherAction />
+
+          <LevelLookAction />
 
           <LevelSunAction
             isOn={options.isSunVisible}

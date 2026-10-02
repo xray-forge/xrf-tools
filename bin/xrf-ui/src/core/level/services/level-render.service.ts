@@ -54,6 +54,7 @@ import { ILevelGoTo, toLevelGoToViewpoint } from "@/core/level/lib/camera/level-
 import { ILevelCameraOptions } from "@/core/level/lib/camera/level-camera-options";
 import { toLevelCameraReading } from "@/core/level/lib/camera/level-camera-reading";
 import { ILevelViewpoint, toLevelStartViewpoint } from "@/core/level/lib/camera/level-viewpoint";
+import { ILevelLook } from "@/core/level/lib/look";
 import { LEVEL_PICK_PANELS } from "@/core/level/lib/panels/level-pick-panels";
 import { ELevelPick, TLevelPick } from "@/core/level/lib/pick/level-pick";
 import { DEFAULT_LEVEL_RENDER_CONFIG, ILevelRenderConfig } from "@/core/level/lib/render/level-render-config";
@@ -67,6 +68,7 @@ import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
 import { ILevelWeatherEffectRequest } from "@/core/level/lib/weather/level-weather-effect-request";
 import { ILevelWeatherSeek } from "@/core/level/lib/weather/level-weather-seek";
 import { LevelLoadService } from "@/core/level/services/level-load.service";
+import { LevelLookService } from "@/core/level/services/level-look.service";
 import { LevelViewService } from "@/core/level/services/level-view.service";
 import { LevelViewportService } from "@/core/level/services/level-viewport.service";
 import { LevelWeatherService } from "@/core/level/services/level-weather.service";
@@ -180,10 +182,16 @@ export type TLevelViewSwitches = Pick<
 /**
  * @param settings - What the level's toolbar and the application's settings come to.
  * @param switches - What the toolbar switches of the view.
+ * @param look - How the level is exposed, lit and corrected.
  * @returns What a native viewport draws the level with.
  */
-export function toLevelViewOptions(settings: IRendererSettings, switches: TLevelViewSwitches): RenderViewOptions {
-  const { ambientOcclusion, exposure, grass, lights, shadows, water } = settings.features;
+export function toLevelViewOptions(
+  settings: IRendererSettings,
+  switches: TLevelViewSwitches,
+  look: ILevelLook
+): RenderViewOptions {
+  const { ambientOcclusion, grass, lights, shadows, water } = settings.features;
+  const { corrections, exposure, lightScales } = look;
 
   return {
     ambientOcclusion: {
@@ -200,6 +208,13 @@ export function toLevelViewOptions(settings: IRendererSettings, switches: TLevel
       middleGray: exposure.middleGray,
     },
     antialiasing: ANTIALIASING_MODES[settings.features.antialiasing],
+    corrections: {
+      exposure: corrections.exposure,
+      gamma: corrections.gamma,
+      grading: corrections.grading,
+      saturation: corrections.saturation,
+    },
+    lightScales: { ambient: lightScales.ambient, hemi: lightScales.hemi, sun: lightScales.sun },
     upscaling: {
       scale: RENDER_SCALES[settings.features.upscaling.scale],
       sharpening: settings.features.upscaling.sharpening,
@@ -390,6 +405,7 @@ export class LevelRenderService extends NativeRenderSurfaceService {
     private readonly viewService: LevelViewService = inject(LevelViewService),
     private readonly viewportService: LevelViewportService = inject(LevelViewportService),
     private readonly weatherService: LevelWeatherService = inject(LevelWeatherService),
+    private readonly lookService: LevelLookService = inject(LevelLookService),
     private readonly commandBus: CommandBus = inject(CommandBus),
     settingsService: SettingsService = inject(SettingsService)
   ) {
@@ -443,7 +459,12 @@ export class LevelRenderService extends NativeRenderSurfaceService {
       reaction(() => this.loadService.level.value?.selected ?? null, this.openLevel, { fireImmediately: true }),
       reaction(() => this.viewService.camera, this.applyCamera),
       reaction(
-        () => toLevelViewOptions(this.toSettings(), this.viewService.options),
+        () => this.loadService.level.value?.selected ?? null,
+        (selected) => void this.lookService.open(selected),
+        { fireImmediately: true }
+      ),
+      reaction(
+        () => toLevelViewOptions(this.toSettings(), this.viewService.options, this.lookService.look),
         (options: RenderViewOptions) => viewport.setViewOptions(options),
         { equals: comparer.structural, fireImmediately: true }
       ),

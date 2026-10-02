@@ -22,6 +22,7 @@ use crate::scene::static_scene::static_row::StaticRow;
 use crate::scene::static_scene::static_sector::StaticSector;
 use crate::scene::static_scene::static_slot::StaticSlot;
 use crate::scene::static_scene::static_slot_info::StaticSlotInfo;
+use crate::scene::static_scene::static_sorted_place::StaticSortedPlace;
 use crate::scene::static_scene::static_surface::StaticSurface;
 use crate::scene::static_scene::static_surface_build::{build_impostor_surface, build_static_surface};
 use crate::scene::static_scene::static_surface_key::StaticSurfaceKey;
@@ -100,9 +101,14 @@ pub struct StaticScene {
   contents: usize,
   /// The spawned object standing at each of the models' places, which a pick of one names.
   place_objects: HashMap<u32, u32>,
+  /// The models' places with composited surfaces, which a view draws back to front itself.
+  pub sorted_places: Vec<StaticSortedPlace>,
 }
 
 impl StaticScene {
+  /// Vertices one cluster's draw pulls: its triangles' corners, a short cluster's tail collapsed.
+  pub const CLUSTER_VERTICES: u32 = CLUSTER_TRIANGLES * 3;
+
   /// Where the cull's counts follow every batch's draw arguments in their buffer.
   pub const STATS_OFFSET: u64 = (StaticBatch::COUNT * 16) as u64;
 
@@ -191,6 +197,7 @@ impl StaticScene {
       sway_reach: 0.0,
       contents: 0,
       place_objects: HashMap::new(),
+      sorted_places: Vec::new(),
     };
     let mut encoder: wgpu::CommandEncoder = device.create_command_encoder(&Default::default());
 
@@ -373,6 +380,8 @@ impl StaticScene {
     let base: GeometryBase = self.put_words(&mut writer, StaticLayout::Model, &model.words, &model.indices);
     let first_place: u32 = self.place_count;
     let mut slots: Vec<(u32, u32, StaticBatch)> = Vec::new();
+    // The composited parts' clusters, which each place lists to be drawn sorted.
+    let mut sorted: Vec<(u32, u32)> = Vec::new();
 
     for part in &model.parts {
       let key: StaticSurfaceKey = StaticSurfaceKey::Model {
@@ -395,6 +404,7 @@ impl StaticScene {
       // A row's clusters are culled one after another by one thread, so a large part is cut into several slots.
       for clusters in part.clusters.chunks(MODEL_ROW_CLUSTERS) {
         let slot: u32 = self.slot_count;
+        let first_cluster: u32 = self.cluster_count;
         let count: u32 = self.put_slot(
           &mut writer,
           &base,
@@ -410,6 +420,10 @@ impl StaticScene {
           },
         );
 
+        if class == StaticClass::Composited {
+          sorted.push((first_cluster, count));
+        }
+
         slots.push((slot, count, batch));
       }
     }
@@ -423,6 +437,18 @@ impl StaticScene {
       let index: u32 = self.place_count;
 
       self.place_objects.insert(index, place.object);
+
+      if !sorted.is_empty() {
+        self.sorted_places.push(StaticSortedPlace {
+          sphere: matrix
+            .transform_point3(model.sphere.truncate())
+            .extend(model.sphere.w * scale),
+          place: index,
+          group: place.group,
+          clusters: sorted.clone(),
+        });
+      }
+
       writer.places.push(StaticPlace {
         columns: [matrix.x_axis, matrix.y_axis, matrix.z_axis, matrix.w_axis],
         info: Vec4::new(1.0, 0.0, -1.0, scale),

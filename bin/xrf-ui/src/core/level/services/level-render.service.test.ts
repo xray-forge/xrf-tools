@@ -18,6 +18,7 @@ import {
 } from "@/core/ipc/types/xrf-renderer";
 import { ELevelPick } from "@/core/level/lib/pick/level-pick";
 import { LevelLoadService } from "@/core/level/services/level-load.service";
+import { LevelLookService } from "@/core/level/services/level-look.service";
 import { LevelRenderService, toLevelPick } from "@/core/level/services/level-render.service";
 import { LevelViewService } from "@/core/level/services/level-view.service";
 import { LevelViewportService } from "@/core/level/services/level-viewport.service";
@@ -86,6 +87,7 @@ async function mockAttached(): Promise<{ container: Container; service: LevelRen
     LevelViewService,
     LevelViewportService,
     LevelWeatherService,
+    LevelLookService,
     LevelRenderService,
   ]);
 

@@ -1,6 +1,7 @@
 import {
   LevelListService,
   LevelLoadService,
+  LevelLookService,
   LevelRenderService,
   LevelViewportService,
   LevelViewService,
@@ -14,6 +15,7 @@ export const container: ContainerDefinition = {
   bindings: [
     LevelListService,
     LevelLoadService,
+    LevelLookService,
     LevelRenderService,
     LevelViewService,
     LevelViewportService,

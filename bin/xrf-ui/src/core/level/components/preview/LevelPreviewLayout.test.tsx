@@ -12,6 +12,7 @@ import {
   IDLE_LEVEL_STREAM,
   ILevelStreamProgress,
   LevelLoadService,
+  LevelLookService,
   LevelRenderService,
   LevelViewportService,
   LevelViewService,
@@ -44,6 +45,7 @@ function renderReporting(onRender: () => void = () => undefined): {
     LevelViewService,
     LevelViewportService,
     LevelWeatherService,
+    LevelLookService,
   ]);
 
   const view: RenderResult = renderWithProviders(
@@ -74,6 +76,7 @@ function renderLayout(
     LevelViewService,
     LevelViewportService,
     LevelWeatherService,
+    LevelLookService,
   ]);
 
   setStreaming(container.get(LevelLoadService), streaming);
@@ -149,6 +152,7 @@ describe("LevelPreviewLayout", () => {
       LevelViewService,
       LevelViewportService,
       LevelWeatherService,
+      LevelLookService,
     ]);
 
     container.get(LevelViewportService).reveal();
@@ -174,6 +178,7 @@ describe("LevelPreviewLayout", () => {
       LevelViewService,
       LevelViewportService,
       LevelWeatherService,
+      LevelLookService,
     ]);
 
     setStreaming(container.get(LevelLoadService), { loaded: 3, total: 24 });
@@ -323,6 +328,7 @@ describe("LevelPreviewLayout", () => {
       LevelViewService,
       LevelViewportService,
       LevelWeatherService,
+      LevelLookService,
     ]);
     const settings: SettingsService = container.get(SettingsService);
     const view: RenderResult = renderWithProviders(
