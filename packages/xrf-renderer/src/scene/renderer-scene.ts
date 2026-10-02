@@ -525,6 +525,9 @@ export class RendererScene {
 
   /** Queues an object in the running change, to draw as it is put now, holding what it will sample from now on. */
   private build(entry: SceneObject): void {
+    // Every change to what it resolves by comes through here, so what it came to before is forgotten here alone.
+    this.resolver.forget(entry);
+
     // Only an object still held draws: one released while it waited is gone for good.
     if (this.objects.get(entry.key) === entry) {
       this.changes.enlist(entry);

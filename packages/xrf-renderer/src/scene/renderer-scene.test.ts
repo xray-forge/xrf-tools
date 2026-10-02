@@ -1,4 +1,4 @@
-import { describe, expect, it } from "@jest/globals";
+import { describe, expect, it, jest } from "@jest/globals";
 import { mockDdsFile } from "@xrf/dds/fixtures";
 import { Nullable } from "@xrf/types";
 import {
@@ -21,6 +21,7 @@ import { ITextureDeviceCopy, ITextureDeviceFixture, mockTextureDevice } from "#/
 import { SurfaceNodeMaterial } from "#/material/surface-node-material";
 import { createFreeingRenderer, IFreeingRenderer } from "#/scene/geometry/geometry-fixtures";
 import { IPickTexel } from "#/scene/object/pick-texel";
+import { SceneObjectResolver } from "#/scene/object/scene-object-resolver";
 import { RendererScene } from "#/scene/renderer-scene";
 import { ISceneStaging } from "#/scene/staging/scene-staging";
 import { EPickKind } from "#/shader/pick-kind";
@@ -425,5 +426,43 @@ describe("RendererScene", () => {
 
     // The geometry's shared buffer once, its normals, and the file whole: its levels are views of it.
     expect(after - before).toBe(48 + 36 + mockDdsFile({ height: 8, width: 8 }).byteLength);
+  });
+
+  // Resolved on every frame it waited, a level's waiting objects cost the worker 0.3 s of an open.
+  it("resolves a waiting object once however many frames it waits, and again once it is built again", () => {
+    const scene: RendererScene = new RendererScene(new RendererUniforms(), () => {});
+    const resolved = jest.spyOn(SceneObjectResolver.prototype as unknown as { toState: () => unknown }, "toState");
+
+    scene.putGeometry("rock", createTriangle());
+    scene.putSurface("stone", { draw: ERendererDraw.OPAQUE, textures: {} });
+    scene.putObject("a", { geometry: "rock", surfaces: ["stone"] });
+
+    for (let frame: number = 0; frame < 5; frame += 1) {
+      scene.advance();
+    }
+
+    expect(scene.hasPending).toBe(true);
+    expect(resolved).toHaveBeenCalledTimes(1);
+
+    scene.putSurface("stone", { draw: ERendererDraw.BLENDED, textures: {} });
+    scene.advance();
+
+    expect(resolved).toHaveBeenCalledTimes(2);
+
+    resolved.mockRestore();
+  });
+
+  it("draws a waiting object by a surface put again while it waits, not by what it resolved to before", () => {
+    const scene: RendererScene = new RendererScene(new RendererUniforms(), () => {});
+
+    scene.putGeometry("rock", createTriangle());
+    scene.putSurface("stone", { draw: ERendererDraw.OPAQUE, textures: {} });
+    scene.putObject("a", { geometry: "rock", surfaces: ["stone"] });
+    scene.advance();
+    scene.putSurface("stone", { draw: ERendererDraw.BLENDED, textures: {} });
+    compile(scene);
+
+    expect(scene.scenes[ERendererPass.DEFERRED].children).toHaveLength(0);
+    expect(scene.scenes[ERendererPass.FORWARD].children).toHaveLength(1);
   });
 });

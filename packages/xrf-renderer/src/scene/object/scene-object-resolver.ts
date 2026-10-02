@@ -14,7 +14,9 @@ import { StaticDraws } from "#/scene/static/static-draws";
 import { SurfaceLibrary } from "#/scene/surface/surface-library";
 
 /**
- * Works out what an object draws from what it names: its geometry, its skeleton, its places and its surfaces.
+ * Works out what an object draws from what it names: its geometry, its skeleton, its places and its surfaces. What it
+ * names changes only through the scene building the object again, which forgets what it came to, so an object waiting
+ * to draw is resolved once rather than on every frame it waits.
  */
 export class SceneObjectResolver {
   private readonly geometries: ReadonlyMap<string, SceneGeometry>;
@@ -22,8 +24,10 @@ export class SceneObjectResolver {
   private readonly surfaces: SurfaceLibrary;
   private readonly impostors: RendererImpostorSets;
   private readonly draws: StaticDraws;
-  /** Each geometry's attribute names, sorted: resolved for every waiting object on every frame. */
+  /** Each geometry's attribute names, sorted. */
   private readonly attributeNames: WeakMap<BufferGeometry, string> = new WeakMap();
+  /** What each object came to since it was last built. */
+  private readonly resolved: WeakMap<SceneObject, Nullable<ISceneObjectState>> = new WeakMap();
 
   public constructor(
     geometries: ReadonlyMap<string, SceneGeometry>,
@@ -44,6 +48,26 @@ export class SceneObjectResolver {
    * @returns What it would draw now, or null for one whose geometry is missing.
    */
   public resolve(entry: SceneObject): Nullable<ISceneObjectState> {
+    let state: Maybe<Nullable<ISceneObjectState>> = this.resolved.get(entry);
+
+    if (state === undefined) {
+      state = this.toState(entry);
+      this.resolved.set(entry, state);
+    }
+
+    return state;
+  }
+
+  /**
+   * Forgets what an object came to, as the scene builds it again: what it names, or anything named, changed.
+   *
+   * @param entry - The object.
+   */
+  public forget(entry: SceneObject): void {
+    this.resolved.delete(entry);
+  }
+
+  private toState(entry: SceneObject): Nullable<ISceneObjectState> {
     const { object } = entry;
     const geometry: Maybe<SceneGeometry> = this.geometries.get(object.geometry);
 
