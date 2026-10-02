@@ -12,6 +12,10 @@ describe("requestBulk", () => {
     });
 
     expect(request).toEqual({
+      batch: {
+        call: JSON.stringify({ args: { logicalPath: "textures\\a.dds" }, route: "assets/read_asset" }),
+        url: `${MOCK_TRANSPORT_ENDPOINT.origin}/batch`,
+      },
       body: JSON.stringify({ logicalPath: "textures\\a.dds" }),
       headers: { Authorization: `Bearer ${MOCK_TRANSPORT_ENDPOINT.token}`, "Content-Type": "application/json" },
       url: `${MOCK_TRANSPORT_ENDPOINT.origin}/assets/read_asset`,

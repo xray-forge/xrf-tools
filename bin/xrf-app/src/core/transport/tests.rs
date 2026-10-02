@@ -105,12 +105,79 @@ fn send(stream: &mut TcpStream, method: &str, path: &str, headers: &[(&str, &str
     headers.insert(name.to_ascii_lowercase(), value.trim().to_string());
   }
 
-  let length: usize = headers.get("content-length").map_or(0, |it| it.parse().unwrap());
-  let mut body: Vec<u8> = vec![0; length];
+  let body: Vec<u8> = if headers.get("transfer-encoding").is_some_and(|it| it == "chunked") {
+    read_chunked(&mut reader)
+  } else {
+    let length: usize = headers.get("content-length").map_or(0, |it| it.parse().unwrap());
+    let mut body: Vec<u8> = vec![0; length];
 
-  reader.read_exact(&mut body).unwrap();
+    reader.read_exact(&mut body).unwrap();
+
+    body
+  };
 
   Answer { status, headers, body }
+}
+
+/// A chunked body, its chunks joined: what a batch is answered as, its parts sent as they come.
+fn read_chunked(reader: &mut BufReader<&mut TcpStream>) -> Vec<u8> {
+  let mut body: Vec<u8> = Vec::new();
+  let mut line: String = String::new();
+
+  loop {
+    line.clear();
+    reader.read_line(&mut line).unwrap();
+
+    let size: usize = usize::from_str_radix(line.trim_end(), 16).unwrap();
+    let mut chunk: Vec<u8> = vec![0; size + 2];
+
+    reader.read_exact(&mut chunk).unwrap();
+
+    if size == 0 {
+      return body;
+    }
+
+    body.extend_from_slice(&chunk[..size]);
+  }
+}
+
+/// One part of a batch's answer.
+#[derive(Debug, PartialEq, Eq)]
+struct Part {
+  status: u16,
+  media_type: String,
+  body: Vec<u8>,
+}
+
+/// A batch's parts, by the index of the call each answers.
+fn read_parts(mut body: &[u8]) -> HashMap<u32, Part> {
+  let mut parts: HashMap<u32, Part> = HashMap::new();
+
+  while !body.is_empty() {
+    let index: u32 = u32::from_le_bytes(body[0..4].try_into().unwrap());
+    let status: u16 = u16::from_le_bytes(body[4..6].try_into().unwrap());
+    let media_length: usize = usize::from(u16::from_le_bytes(body[6..8].try_into().unwrap()));
+    let length: usize = u32::from_le_bytes(body[8..12].try_into().unwrap()) as usize;
+    let media_type: String = String::from_utf8(body[12..12 + media_length].to_vec()).unwrap();
+    let start: usize = 12 + media_length;
+
+    assert!(
+      parts
+        .insert(
+          index,
+          Part {
+            status,
+            media_type,
+            body: body[start..start + length].to_vec(),
+          },
+        )
+        .is_none(),
+      "Call {index} answered twice"
+    );
+    body = &body[start + length..];
+  }
+
+  parts
 }
 
 fn connect(address: SocketAddr) -> TcpStream {
@@ -291,6 +358,74 @@ fn a_connection_is_kept_alive_across_requests() {
     send(&mut stream, "POST", "/assets/echo", &headers, r#"{"logicalPath":"b"}"#).body,
     b"read:b"
   );
+}
+
+#[test]
+fn a_batch_answers_each_call_by_its_part_and_a_refused_call_by_its_refusal() {
+  let (address, token) = serve();
+  let answer: Answer = post(
+    address,
+    "/batch",
+    Some(&bearer(&token)),
+    r#"[
+      {"route":"assets/echo","args":{"logicalPath":"a"}},
+      {"route":"assets/fail","args":{"logicalPath":"b"}},
+      {"route":"assets/echo","args":{"path":"c"}},
+      {"route":"assets/list","args":{}},
+      {"route":"assets/echo","args":{"logicalPath":"textures\\d.dds"}}
+    ]"#,
+  );
+  let parts: HashMap<u32, Part> = read_parts(&answer.body);
+  let message = |index: u32| -> String { serde_json::from_slice(&parts[&index].body).unwrap() };
+
+  assert_eq!(answer.status, 200);
+  assert_eq!(
+    answer.header("content-type"),
+    Some("application/vnd.xrf.transport-parts")
+  );
+  assert_eq!(answer.header("access-control-allow-origin"), Some(ORIGIN));
+  assert_eq!(parts.len(), 5);
+  assert_eq!(
+    parts[&0],
+    Part {
+      status: 200,
+      media_type: String::from("application/octet-stream"),
+      body: b"read:a".to_vec(),
+    }
+  );
+  assert_eq!(parts[&1].status, 500);
+  assert_eq!(parts[&1].media_type, "application/json");
+  assert_eq!(message(1), "The level sector session has changed or is closed");
+  assert_eq!(parts[&2].status, 400);
+  assert!(message(2).starts_with("Arguments of 'assets/echo' do not read"));
+  assert_eq!(parts[&3].status, 404);
+  assert_eq!(parts[&4].body, b"read:textures\\d.dds");
+}
+
+#[test]
+fn a_batch_of_nothing_is_answered_by_no_parts() {
+  let (address, token) = serve();
+  let answer: Answer = post(address, "/batch", Some(&bearer(&token)), "[]");
+
+  assert_eq!(answer.status, 200);
+  assert!(answer.body.is_empty());
+}
+
+#[test]
+fn a_batch_is_refused_whole_without_the_token_or_with_calls_that_do_not_read() {
+  let (address, token) = serve();
+  let authorization: String = bearer(&token);
+  let too_many: String = format!(
+    "[{}]",
+    vec![r#"{"route":"assets/echo","args":{"logicalPath":"a"}}"#; 257].join(",")
+  );
+
+  assert_eq!(post(address, "/batch", None, "[]").status, 401);
+  assert_eq!(
+    post(address, "/batch", Some(&authorization), r#"{"route":"a"}"#).status,
+    400
+  );
+  assert_eq!(post(address, "/batch", Some(&authorization), &too_many).status, 400);
 }
 
 #[test]

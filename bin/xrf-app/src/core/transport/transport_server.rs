@@ -5,7 +5,7 @@ use std::net::{Ipv4Addr, SocketAddr, TcpListener as StdTcpListener};
 use std::sync::Arc;
 
 use bytes::Bytes;
-use http_body_util::{BodyExt, Full, Limited};
+use http_body_util::{BodyExt, Limited};
 use hyper::body::Incoming;
 use hyper::header::{self, HeaderMap, HeaderName, HeaderValue};
 use hyper::server::conn::http1;
@@ -13,9 +13,11 @@ use hyper::service::service_fn;
 use hyper::{Method, Request, Response, StatusCode};
 use hyper_util::rt::TokioIo;
 use tokio::net::{TcpListener, TcpStream};
+use tokio::sync::mpsc::{self, Receiver, Sender};
 
 use crate::core::transport::{
-  TransportAnswer, TransportOrigins, TransportRefusal, TransportRoute, TransportRoutes, TransportToken,
+  TransportAnswer, TransportBatchCall, TransportBody, TransportOrigins, TransportPart, TransportRefusal,
+  TransportRoute, TransportRoutes, TransportToken,
 };
 
 /// The loopback HTTP/1.1 server the routes are served from, one connection kept alive per fetcher.
@@ -29,6 +31,24 @@ pub(crate) struct TransportServer<C> {
 impl<C: Clone + Send + Sync + 'static> TransportServer<C> {
   /// Largest request body read, far above any route's arguments.
   const MAXIMUM_BODY_SIZE: usize = 64 * 1024;
+
+  /// Where a batch is posted: a JSON array of calls, each a route and its arguments, answered by their parts.
+  pub(crate) const BATCH_PATH: &'static str = "batch";
+
+  /// Largest batch body read, its calls' arguments together.
+  const MAXIMUM_BATCH_BODY_SIZE: usize = 1024 * 1024;
+
+  /// Most calls a batch may carry.
+  pub(crate) const MAXIMUM_BATCH_CALLS: usize = 256;
+
+  /// A batch's parts finished and not yet sent, past which its calls wait to hand theirs over.
+  const BATCH_PARTS_IN_FLIGHT: usize = 8;
+
+  /// What a batch's body is served as: parts, as `TransportPart` frames them.
+  pub(crate) const PARTS: &'static str = "application/vnd.xrf.transport-parts";
+
+  /// What a refusal is served as: its message, as a JSON string.
+  const REFUSAL: &'static str = "application/json";
 
   /// Seconds a browser may keep a preflight's answer; Chromium holds none longer than two hours.
   const PREFLIGHT_MAXIMUM_AGE: &'static str = "7200";
@@ -97,7 +117,7 @@ impl<C: Clone + Send + Sync + 'static> TransportServer<C> {
     let service = service_fn(move |request: Request<Incoming>| {
       let server: Arc<Self> = Arc::clone(&self);
 
-      async move { Ok::<Response<Full<Bytes>>, Infallible>(server.answer(request).await) }
+      async move { Ok::<Response<TransportBody>, Infallible>(server.answer(request).await) }
     });
 
     if let Err(error) = http1::Builder::new()
@@ -109,7 +129,7 @@ impl<C: Clone + Send + Sync + 'static> TransportServer<C> {
     }
   }
 
-  async fn answer(&self, request: Request<Incoming>) -> Response<Full<Bytes>> {
+  async fn answer(self: &Arc<Self>, request: Request<Incoming>) -> Response<TransportBody> {
     // A browser names the page on every cross-origin request; nothing else is let through, and it is told so without
     // the headers that would let a page read why.
     let origin: Option<HeaderValue> = request
@@ -122,13 +142,13 @@ impl<C: Clone + Send + Sync + 'static> TransportServer<C> {
       return Self::refuse(&TransportRefusal::Forbidden);
     };
 
-    let mut response: Response<Full<Bytes>> = if request.method() == Method::OPTIONS {
+    let mut response: Response<TransportBody> = if request.method() == Method::OPTIONS {
       Self::preflight(request.headers())
     } else {
-      match self.dispatch(request).await {
-        Ok(answer) => Self::deliver(answer),
-        Err(refusal) => Self::refuse(&refusal),
-      }
+      self
+        .dispatch(request)
+        .await
+        .unwrap_or_else(|refusal| Self::refuse(&refusal))
     };
 
     response
@@ -138,7 +158,7 @@ impl<C: Clone + Send + Sync + 'static> TransportServer<C> {
     response
   }
 
-  async fn dispatch(&self, request: Request<Incoming>) -> Result<TransportAnswer, TransportRefusal> {
+  async fn dispatch(self: &Arc<Self>, request: Request<Incoming>) -> Result<Response<TransportBody>, TransportRefusal> {
     if !self.token.is_authorizing(request.headers().get(header::AUTHORIZATION)) {
       return Err(TransportRefusal::Unauthorized);
     }
@@ -147,22 +167,94 @@ impl<C: Clone + Send + Sync + 'static> TransportServer<C> {
       return Err(TransportRefusal::MethodNotAllowed);
     }
 
-    let route: &TransportRoute<C> = self
-      .routes
-      .get(request.uri().path())
-      .ok_or(TransportRefusal::NotFound)?;
-    let body: Bytes = Limited::new(request.into_body(), Self::MAXIMUM_BODY_SIZE)
-      .collect()
-      .await
-      .map_err(|error| TransportRefusal::BadRequest(format!("The request body could not be read: {error}")))?
-      .to_bytes();
+    let path: &str = request.uri().path();
 
-    route.call(self.context.clone(), body).await
+    if path.strip_prefix('/').unwrap_or(path) == Self::BATCH_PATH {
+      let body: Bytes = Self::read_body(request, Self::MAXIMUM_BATCH_BODY_SIZE).await?;
+
+      return Ok(self.batch(Self::read_batch(&body)?));
+    }
+
+    let route: &TransportRoute<C> = self.routes.get(path).ok_or(TransportRefusal::NotFound)?;
+    let body: Bytes = Self::read_body(request, Self::MAXIMUM_BODY_SIZE).await?;
+
+    route.call(self.context.clone(), body).await.map(Self::deliver)
+  }
+
+  async fn read_body(request: Request<Incoming>, limit: usize) -> Result<Bytes, TransportRefusal> {
+    Ok(
+      Limited::new(request.into_body(), limit)
+        .collect()
+        .await
+        .map_err(|error| TransportRefusal::BadRequest(format!("The request body could not be read: {error}")))?
+        .to_bytes(),
+    )
+  }
+
+  fn read_batch(body: &[u8]) -> Result<Vec<TransportBatchCall>, TransportRefusal> {
+    let calls: Vec<TransportBatchCall> = serde_json::from_slice(body)
+      .map_err(|error| TransportRefusal::BadRequest(format!("The batch's calls do not read: {error}")))?;
+
+    if calls.len() > Self::MAXIMUM_BATCH_CALLS {
+      return Err(TransportRefusal::BadRequest(format!(
+        "A batch carries at most {} calls, not {}",
+        Self::MAXIMUM_BATCH_CALLS,
+        calls.len()
+      )));
+    }
+
+    Ok(calls)
+  }
+
+  /// Answers a batch: every call runs at once, each answered by its part as it finishes, so one slow read holds up
+  /// none of the others. A call refused answers its refusal as its part; the batch itself is answered `200`.
+  fn batch(self: &Arc<Self>, calls: Vec<TransportBatchCall>) -> Response<TransportBody> {
+    let (sender, parts): (Sender<TransportPart>, Receiver<TransportPart>) = mpsc::channel(Self::BATCH_PARTS_IN_FLIGHT);
+
+    for (index, call) in calls.into_iter().enumerate() {
+      let server: Arc<Self> = Arc::clone(self);
+      let sender: Sender<TransportPart> = sender.clone();
+
+      tokio::spawn(async move {
+        let part: TransportPart = match server.call(call).await {
+          Ok(TransportAnswer { bytes, media_type }) => {
+            TransportPart::new(index, StatusCode::OK.as_u16(), media_type, Bytes::from(bytes))
+          }
+          Err(refusal) => TransportPart::new(
+            index,
+            refusal.get_status().as_u16(),
+            Self::REFUSAL,
+            Bytes::from(Self::to_refusal_message(&refusal)),
+          ),
+        };
+
+        // Gone only where the caller stopped reading, which leaves nobody to answer.
+        let _ = sender.send(part).await;
+      });
+    }
+
+    Self::respond(
+      StatusCode::OK,
+      TransportBody::parts(parts),
+      Some(HeaderValue::from_static(Self::PARTS)),
+    )
+  }
+
+  /// One call of a batch, answered as its route answers a request of its own.
+  async fn call(&self, call: TransportBatchCall) -> Result<TransportAnswer, TransportRefusal> {
+    let TransportBatchCall { route, args } = call;
+    let route: &TransportRoute<C> = self.routes.get(&route).ok_or(TransportRefusal::NotFound)?;
+    let body: Vec<u8> = serde_json::to_vec(&args).map_err(|error| {
+      TransportRefusal::BadRequest(format!("Arguments of '{}' do not write: {error}", route.get_path()))
+    })?;
+
+    route.call(self.context.clone(), Bytes::from(body)).await
   }
 
   /// The answer to a preflight, which carries no token: a browser sends none before it knows it may.
-  fn preflight(requested: &HeaderMap) -> Response<Full<Bytes>> {
-    let mut response: Response<Full<Bytes>> = Self::respond(StatusCode::NO_CONTENT, Bytes::new(), None);
+  fn preflight(requested: &HeaderMap) -> Response<TransportBody> {
+    let mut response: Response<TransportBody> =
+      Self::respond(StatusCode::NO_CONTENT, TransportBody::whole(Bytes::new()), None);
     let headers: &mut HeaderMap = response.headers_mut();
 
     headers.insert(
@@ -190,27 +282,29 @@ impl<C: Clone + Send + Sync + 'static> TransportServer<C> {
     response
   }
 
-  fn deliver(answer: TransportAnswer) -> Response<Full<Bytes>> {
+  fn deliver(answer: TransportAnswer) -> Response<TransportBody> {
     Self::respond(
       StatusCode::OK,
-      Bytes::from(answer.bytes),
+      TransportBody::whole(Bytes::from(answer.bytes)),
       Some(HeaderValue::from_static(answer.media_type)),
     )
   }
 
   /// A refusal, its message as the JSON string an IPC command rejects with.
-  fn refuse(refusal: &TransportRefusal) -> Response<Full<Bytes>> {
-    let message: Vec<u8> = serde_json::to_vec(&refusal.get_message()).unwrap_or_default();
-
+  fn refuse(refusal: &TransportRefusal) -> Response<TransportBody> {
     Self::respond(
       refusal.get_status(),
-      Bytes::from(message),
-      Some(HeaderValue::from_static("application/json")),
+      TransportBody::whole(Bytes::from(Self::to_refusal_message(refusal))),
+      Some(HeaderValue::from_static(Self::REFUSAL)),
     )
   }
 
-  fn respond(status: StatusCode, body: Bytes, media_type: Option<HeaderValue>) -> Response<Full<Bytes>> {
-    let mut response: Response<Full<Bytes>> = Response::new(Full::new(body));
+  fn to_refusal_message(refusal: &TransportRefusal) -> Vec<u8> {
+    serde_json::to_vec(&refusal.get_message()).unwrap_or_default()
+  }
+
+  fn respond(status: StatusCode, body: TransportBody, media_type: Option<HeaderValue>) -> Response<TransportBody> {
+    let mut response: Response<TransportBody> = Response::new(body);
 
     *response.status_mut() = status;
 

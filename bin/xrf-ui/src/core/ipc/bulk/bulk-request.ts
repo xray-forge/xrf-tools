@@ -4,4 +4,9 @@ export interface IBulkRequest {
   headers: Record<string, string>;
   /** The call's arguments as JSON. */
   body: string;
+  /**
+   * Where it may be posted together with other calls, and as what: the transport's batch route answers each call by
+   * its part as it finishes, framed as the renderer's `IRendererFetchBatch` says.
+   */
+  batch?: { url: string; call: string };
 }

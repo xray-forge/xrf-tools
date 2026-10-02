@@ -26,14 +26,29 @@ describe("LevelTextureReader", () => {
       Authorization: `Bearer ${MOCK_TRANSPORT_ENDPOINT.token}`,
       "Content-Type": "application/json",
     };
-    const body: string = JSON.stringify({ roots: ROOTS, logicalPath: reference.logicalPath });
+    const args = { roots: ROOTS, logicalPath: reference.logicalPath };
+    const body: string = JSON.stringify(args);
+
+    function batch(route: string): { call: string; url: string } {
+      return { call: JSON.stringify({ args, route }), url: `${MOCK_TRANSPORT_ENDPOINT.origin}/batch` };
+    }
 
     expect(delivery).toEqual({
       reason: null,
       reference: "stone",
       requests: {
-        file: { body, headers, url: `${MOCK_TRANSPORT_ENDPOINT.origin}/assets/read_asset` },
-        picture: { body, headers, url: `${MOCK_TRANSPORT_ENDPOINT.origin}/textures/read_texture` },
+        file: {
+          batch: batch("assets/read_asset"),
+          body,
+          headers,
+          url: `${MOCK_TRANSPORT_ENDPOINT.origin}/assets/read_asset`,
+        },
+        picture: {
+          batch: batch("textures/read_texture"),
+          body,
+          headers,
+          url: `${MOCK_TRANSPORT_ENDPOINT.origin}/textures/read_texture`,
+        },
       },
     });
     // The renderer fetches them: no byte of a level's textures crosses the page.

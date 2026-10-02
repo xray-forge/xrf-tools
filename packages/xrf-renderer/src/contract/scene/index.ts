@@ -2,6 +2,7 @@ export * from "#/contract/scene/renderer-anomaly-water";
 export * from "#/contract/scene/renderer-bounds";
 export * from "#/contract/scene/renderer-clusters";
 export * from "#/contract/scene/renderer-draw";
+export * from "#/contract/scene/renderer-fetch-batch";
 export * from "#/contract/scene/renderer-fetch-request";
 export * from "#/contract/scene/renderer-geometry-group";
 export * from "#/contract/scene/renderer-geometry";
