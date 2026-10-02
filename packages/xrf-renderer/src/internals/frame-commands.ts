@@ -15,6 +15,16 @@ interface IFrameEncoder {
   finish(descriptor?: unknown): unknown;
 }
 
+/** What the shared encoder records outside a pass, after which a queue write would land ahead of it. */
+const ENCODER_COMMANDS = [
+  "copyBufferToBuffer",
+  "copyBufferToTexture",
+  "copyTextureToBuffer",
+  "copyTextureToTexture",
+  "clearBuffer",
+  "resolveQuerySet",
+] as const;
+
 /** The queue, as far as the frame orders what reaches it. */
 interface IFrameQueue {
   submit(buffers: Iterable<unknown>): void;
@@ -45,9 +55,10 @@ let isMapGuarded: boolean = false;
  * what a render reads as it records it, through the queue, which lands ahead of everything one submit holds: so each
  * pass is recorded and replayed into the encoder as it ends, and a buffer written once a pass of the frame was recorded
  * is written by a copy from a staging buffer, in front of the pass open as it is written or of the next one. Each pass
- * reads what it read with a submit of its own. A buffer mapped, a texture written, or a wait on the GPU first submits
- * what was recorded; an encoder three makes while a pass of the frame's is open is its own, as before. Outside a frame
- * every encoder is three's own.
+ * reads what it read with a submit of its own. Between passes, a buffer mapped, a texture written, or a wait on the GPU
+ * first submits what was recorded; while a pass of the frame's records nothing can be, so none of them may come then.
+ * An encoder three makes while a pass of the frame's is open is its own, as before. Outside a frame every encoder is
+ * three's own.
  */
 export class FrameCommands {
   /**
@@ -58,9 +69,9 @@ export class FrameCommands {
     return new FrameCommands(getRendererBackend(renderer).device as unknown as IFrameDevice);
   }
 
-  /** Segments submitted: one a frame where nothing splits it. */
+  /** Segments submitted, one a frame where nothing splits it: a count for tests and diagnostics alone. */
   public segments: number = 0;
-  /** Writes made by a copy, in front of the pass reading them first. */
+  /** Writes made by a copy, in front of the pass reading them first: a count for tests and diagnostics alone. */
   public copies: number = 0;
 
   private readonly create: (descriptor?: { label?: string }) => IFrameEncoder;
@@ -78,10 +89,15 @@ export class FrameCommands {
   private descriptor: unknown = null;
   /** The copies to make in front of the pass recording, five values each: staging buffer and offset, target, size. */
   private readonly pending: Array<unknown> = [];
-  /** Passes the segment holds, ended: a write once one is, is made by a copy. */
-  private passes: number = 0;
-  /** Encoders three made of its own inside a pass of the frame's, not submitted yet: their writes are their own. */
-  private nested: number = 0;
+  /** Commands the segment holds, passes ended and the encoder's own copies: a write once any is, is made by a copy. */
+  private recorded: number = 0;
+  /**
+   * Encoders three made of its own inside a pass of the frame's, until their commands are submitted: their writes are
+   * their own.
+   */
+  private readonly nested: Set<object> = new Set();
+  /** Which nested encoder each command buffer three is handed came from. */
+  private readonly nestedBuffers: WeakMap<object, object> = new WeakMap();
 
   private constructor(device: IFrameDevice) {
     const queue: IFrameQueue = device.queue;
@@ -131,7 +147,7 @@ export class FrameCommands {
   public end(): void {
     this.flush();
     this.isOpen = false;
-    this.nested = 0;
+    this.nested.clear();
   }
 
   /** Submits the segment recorded so far, the next encoder asked for starting another; never with a pass open. */
@@ -143,7 +159,7 @@ export class FrameCommands {
     }
 
     this.encoder = null;
-    this.passes = 0;
+    this.recorded = 0;
     this.segments += 1;
     // The staging buffers' bytes go ahead of the copies reading them, which the queue keeps in its order.
     this.staged.upload(this.write);
@@ -164,21 +180,49 @@ export class FrameCommands {
     }
 
     if (this.isPassOpen) {
-      this.nested += 1;
-
-      return this.create(descriptor);
+      return this.toNestedEncoder(this.create(descriptor));
     }
 
     if (!this.encoder) {
       const encoder: IFrameEncoder = this.create({ label: "frame" });
+      const commands = encoder as unknown as Record<
+        (typeof ENCODER_COMMANDS)[number],
+        (...args: Array<unknown>) => void
+      >;
 
       encoder.beginRenderPass = (passDescriptor: unknown): object => this.beginPass(true, passDescriptor);
       encoder.beginComputePass = (passDescriptor?: unknown): object => this.beginPass(false, passDescriptor);
       encoder.finish = (): unknown => SHARED_COMMANDS;
+
+      for (const name of ENCODER_COMMANDS.filter((it) => typeof commands[it] === "function")) {
+        const command: (...args: Array<unknown>) => void = commands[name].bind(encoder);
+
+        commands[name] = (...args: Array<unknown>): void => {
+          this.recorded += 1;
+          command(...args);
+        };
+      }
+
       this.encoder = encoder;
     }
 
     return this.encoder;
+  }
+
+  /** An encoder of three's own made inside a pass of the frame's, followed to the commands it finishes as. */
+  private toNestedEncoder(encoder: IFrameEncoder): IFrameEncoder {
+    const finish: (descriptor?: unknown) => unknown = encoder.finish.bind(encoder);
+
+    this.nested.add(encoder);
+    encoder.finish = (descriptor?: unknown): unknown => {
+      const buffer: unknown = finish(descriptor);
+
+      this.nestedBuffers.set(buffer as object, encoder);
+
+      return buffer;
+    };
+
+    return encoder;
   }
 
   private beginPass(isRender: boolean, descriptor: unknown): object {
@@ -217,13 +261,13 @@ export class FrameCommands {
     (real as { end(): void }).end();
     this.descriptor = null;
     this.isPassOpen = false;
-    this.passes += 1;
+    this.recorded += 1;
   }
 
   private writeBuffer(buffer: object, offset: number, data: BufferSource, dataOffset?: number, size?: number): void {
-    // No pass recorded before the one it reaches: the queue's write lands in front of it as a submit of its own would.
-    // Or made for an encoder of three's own, submitted at once, ahead of the frame.
-    if (!this.isOpen || !this.encoder || this.passes === 0 || this.nested > 0) {
+    // Nothing recorded before what reaches it: the queue's write lands in front of it as a submit of its own would. Or
+    // made for an encoder of three's own, submitted at once, ahead of the frame.
+    if (!this.isOpen || !this.encoder || this.recorded === 0 || this.nested.size > 0) {
       this.write(buffer, offset, data, dataOffset, size);
 
       return;
@@ -252,14 +296,21 @@ export class FrameCommands {
 
     // Made inside a pass of the frame's, or before the frame: three's own, submitted as it asks.
     if (own.length) {
-      this.nested = Math.max(0, this.nested - own.length);
+      for (const buffer of own) {
+        const encoder: Optional<object> = this.nestedBuffers.get(buffer as object);
+
+        if (encoder) {
+          this.nested.delete(encoder);
+        }
+      }
+
       this.submitNow(own);
     }
   }
 
   /** Submits what was recorded where a pass of it was, for what the queue does at once to read it. */
   private flushRecorded(): void {
-    if (this.passes > 0) {
+    if (this.recorded > 0) {
       this.flush();
     }
   }

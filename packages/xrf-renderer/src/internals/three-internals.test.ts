@@ -19,6 +19,7 @@ import {
 } from "three/webgpu";
 
 import { adoptRendererConventions } from "#/internals/camera-conventions";
+import { RecordedPass } from "#/internals/recorded-pass";
 import { RenderObjectRefreshType } from "#/internals/render-object-refresh-type";
 import { getRendererBackend, IRendererBackend } from "#/internals/renderer-backend";
 
@@ -34,6 +35,19 @@ function readThreeMethod(file: string, method: string): string {
  * one fails here, before it fails on the GPU.
  */
 describe("three's internals, as the renderer reads them", () => {
+  // A command the frame's recorded pass lacks would throw at the first frame drawing it, ending the renderer for good.
+  it("calls nothing on a pass of the frame's that its recorded pass does not record", () => {
+    const source: string = readFileSync(require.resolve("three/src/renderers/webgpu/WebGPUBackend.js"), "utf8");
+    // The names its render and compute passes go by; a mipmap's pass and a bundle are its own encoders' alone.
+    const called: Set<string> = new Set(
+      [...source.matchAll(/\b(?:currentPass|passEncoderGPU|renderPass|pass)\.([a-zA-Z]+)\(/g)].map((it) => it[1])
+    );
+    const recorded = RecordedPass.prototype as unknown as Record<string, unknown>;
+
+    expect(called.size).toBeGreaterThan(10);
+    expect([...called].filter((method: string) => typeof recorded[method] !== "function")).toEqual([]);
+  });
+
   it("numbers its refresh types as the observer answers in them", () => {
     // `StaticDrawObserver.needsRefresh` answers in these.
     expect(RenderObjectRefreshType).toEqual({ FULL: 2, NONE: 0, SHARED: 1 });

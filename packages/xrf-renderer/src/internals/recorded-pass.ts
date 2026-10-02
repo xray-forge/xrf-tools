@@ -5,9 +5,11 @@ type TReplayedPass = Record<string, (...args: Array<unknown>) => unknown>;
  * What three records a pass of the frame's shared encoder into: each command kept, by its method's name and its
  * arguments, in one array kept between passes, and replayed into the real pass as it ends, once the writes it reads are
  * in front of it. A command's trailing `undefined` arguments are left off, as WebGPU's overloads leave them. One is open
- * at a time, so one serves every pass.
+ * at a time, so one serves every pass. An argument is kept as given, so one three reuses and changes between calls is
+ * copied as it is recorded.
  */
 export class RecordedPass {
+  /** What three may name the pass, as a pass encoder has; the real pass is named by its descriptor. */
   public label: string = "";
 
   private readonly ops: Array<unknown> = [];
@@ -116,8 +118,9 @@ export class RecordedPass {
     this.record("setScissorRect", x, y, width, height);
   }
 
+  /** Three passes one colour it changes before every call: copied, or every call of a pass replays the last. */
   public setBlendConstant(color: unknown): void {
-    this.record("setBlendConstant", color);
+    this.record("setBlendConstant", toColorCopy(color));
   }
 
   public setStencilReference(reference: unknown): void {
@@ -178,4 +181,19 @@ export class RecordedPass {
       ops.push(args[at]);
     }
   }
+}
+
+/** A `GPUColor` as it stands: a sequence or a dictionary of its four channels. */
+function toColorCopy(color: unknown): unknown {
+  if (Array.isArray(color)) {
+    return [...color];
+  }
+
+  if (color && typeof color === "object") {
+    const { r, g, b, a } = color as { r: number; g: number; b: number; a: number };
+
+    return { a, b, g, r };
+  }
+
+  return color;
 }

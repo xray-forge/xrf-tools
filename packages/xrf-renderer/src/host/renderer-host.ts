@@ -44,10 +44,7 @@ import { WeatherPlayer } from "#/weather/weather-player";
  */
 const TEXTURE_UPLOAD_BUDGET: number = 4;
 
-/**
- * Bytes of textures a frame may send: the GPU process copies each into an upload heap and records its copy, far more
- * work than the worker's hand-over, so a frame within the worker's milliseconds could still stall it for 45 ms.
- */
+/** Bytes of textures a frame may send, which the GPU process copies again where the worker's clock does not see it. */
 const TEXTURE_UPLOAD_BYTES: number = 8 * 1024 * 1024;
 
 /**
@@ -575,7 +572,7 @@ export class RendererHost {
       time,
       view: viewCamera,
     });
-    // Every cull and pass of the frame in as few command encoders as its uniforms allow, submitted as it ends.
+    // Every cull and pass of the frame in one command encoder, submitted as it ends.
     device.commands.begin();
 
     try {

@@ -88,7 +88,7 @@ export class RendererDevice {
   public readonly inspector: RendererPassInspector = new RendererPassInspector();
   /** The canvas three was made with, drawn on by nothing, so a detached view leaves the device a target. */
   public readonly headless: CanvasTarget;
-  /** What records each frame's renders and computes into one command encoder, where their uniforms allow. */
+  /** What records each frame's renders and computes into one command encoder. */
   public readonly commands: FrameCommands;
   /** Whether the device can time passes. */
   public readonly isGpuTimed: boolean;

@@ -39,4 +39,20 @@ describe("RecordedPass", () => {
     expect(ended).toBe(1);
     expect(calls).toEqual([]);
   });
+
+  // Three keeps one blend colour it sets before every call: kept as given, each call would replay the last colour.
+  it("keeps each blend constant as it was set, however three changes the colour it passed", () => {
+    const pass: RecordedPass = new RecordedPass(() => {});
+    const calls: Array<unknown> = [];
+    const color = { a: 1, b: 0, g: 0, r: 1 };
+
+    pass.setBlendConstant(color);
+    color.r = 0;
+    color.g = 1;
+    pass.setBlendConstant(color);
+    pass.setBlendConstant([0, 0, 1, 1]);
+    pass.replay({ setBlendConstant: (it: unknown) => calls.push(it) });
+
+    expect(calls).toEqual([{ a: 1, b: 0, g: 0, r: 1 }, { a: 1, b: 0, g: 1, r: 0 }, [0, 0, 1, 1]]);
+  });
 });

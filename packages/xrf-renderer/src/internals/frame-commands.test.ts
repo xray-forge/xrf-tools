@@ -213,6 +213,54 @@ describe("FrameCommands", () => {
     ]);
   });
 
+  // A copy three records on the encoder itself, outside a pass, would otherwise be overtaken by the queue's write.
+  it("copies a buffer written after the frame's encoder recorded a copy of its own, before any pass", () => {
+    const { commands, fake } = createDevice();
+    const source: INamed = { name: "source" };
+    const lights: INamed = { name: "lights" };
+
+    commands.begin();
+    fake.device.createCommandEncoder({ label: "copy" }).copyBufferToBuffer(source, 0, lights, 0, 8);
+    fake.device.queue.writeBuffer(lights, 0, new Uint32Array(2));
+    render(fake, 1);
+    commands.end();
+
+    expect(fake.timeline).toEqual([
+      "write frame staging@0 8",
+      "submit frame[copy source@0 lights@0 8, copy frame staging@0 lights@0 8, render, draw 1, end]",
+    ]);
+  });
+
+  it("keeps sending a nested encoder's writes at once until its own commands are submitted, whatever else is", () => {
+    const { commands, fake } = createDevice();
+    const flip: INamed = { name: "flip" };
+    const before: FakeEncoder = fake.device.createCommandEncoder({ label: "before" });
+
+    commands.begin();
+    render(fake, 1);
+
+    const encoder: FakeEncoder = fake.device.createCommandEncoder({ label: "renderContext_2" });
+    const pass: FakePass = encoder.beginRenderPass();
+    const mipmaps: FakeEncoder = fake.device.createCommandEncoder({ label: "mipmaps" });
+
+    // An encoder made before the frame is submitted meanwhile, which is none of the nested one's.
+    fake.device.queue.submit([before.finish()]);
+    fake.device.queue.writeBuffer(flip, 0, new Uint32Array(1));
+    mipmaps.beginRenderPass().end();
+    fake.device.queue.submit([mipmaps.finish()]);
+    pass.draw(2);
+    pass.end();
+    fake.device.queue.submit([encoder.finish()]);
+    commands.end();
+
+    expect(fake.timeline).toEqual([
+      "submit before[]",
+      "write flip@0 4",
+      "submit mipmaps[render, end]",
+      "submit frame[render, draw 1, end, render, draw 2, end]",
+    ]);
+  });
+
   it("submits what was recorded before a texture is written, and before a wait on the GPU", async () => {
     const { commands, fake } = createDevice();
 
