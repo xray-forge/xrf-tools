@@ -8,15 +8,15 @@ import { ELevelProblemRule } from "./level-problem-rule";
 const SPAWN_FILE: string = "spawns\\all.spawn";
 
 /**
- * The spawn itself where it could not be read, which leaves the level without a spawned object, then every visual the
- * spawned objects name that could not be read, so none of the objects standing as it is drawn.
+ * The spawn's read where it stopped, which leaves every visual not read by then undrawn, then every visual the spawned
+ * objects name that could not be read, so none of the objects standing as it is drawn.
  *
  * @param report - What the spawn's read came to.
  * @returns The rows, the spawn's first, each visual's by its path.
  */
 export function listSpawnProblems(report: ILevelSpawnReport): Array<IEditorProblem> {
   const spawn: Array<IEditorProblem> = report.failure
-    ? [{ message: `No spawned object is drawn: ${report.failure}`, rule: ELevelProblemRule.SPAWN, subject: SPAWN_FILE }]
+    ? [{ message: toStoppedMessage(report, report.failure), rule: ELevelProblemRule.SPAWN, subject: SPAWN_FILE }]
     : [];
 
   return [
@@ -27,4 +27,11 @@ export function listSpawnProblems(report: ILevelSpawnReport): Array<IEditorProbl
       subject: name,
     })),
   ];
+}
+
+/** What a read stopped by a failure leaves undrawn: nothing, or the visuals past those read by then. */
+function toStoppedMessage(report: ILevelSpawnReport, failure: string): string {
+  return report.read === 0
+    ? `No spawned object is drawn: ${failure}`
+    : `The objects of ${report.visuals - report.read} of ${report.visuals} visuals are not drawn: ${failure}`;
 }

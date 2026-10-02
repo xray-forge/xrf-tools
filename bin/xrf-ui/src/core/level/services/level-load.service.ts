@@ -530,6 +530,11 @@ export class LevelLoadService {
       }
     } catch (error: unknown) {
       this.log.error("Failed to read the level's spawned objects:", transformError(error));
+
+      // What was delivered before it stays drawn; the rest is not read, and is said to be.
+      if (this.isOpen(sessionId)) {
+        this.noteSpawn({ ...this.spawnReport, failure: transformError(error).message, isListed: true });
+      }
     }
   }
 

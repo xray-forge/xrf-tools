@@ -16,7 +16,7 @@ import {
 } from "@/core/level/lib/render/level-render-protocol";
 import { createLevelResidency } from "@/core/level/lib/residency/level-residency";
 import { ISectorTextureRequest } from "@/core/level/lib/sector/level-sector-textures";
-import { EMPTY_LEVEL_SPAWN_REPORT } from "@/core/level/lib/spawn";
+import { EMPTY_LEVEL_SPAWN_REPORT, isLevelSpawnReading } from "@/core/level/lib/spawn";
 import { EMPTY_LEVEL_STREAM_SUMMARY } from "@/core/level/lib/stream/level-stream-profile";
 import { LevelTextureReader } from "@/core/level/lib/texture/level-texture-reader";
 import { listMockBulkCalls, setMockBulkResponses } from "@/fixtures/mocks/bulk.mocks";
@@ -1236,6 +1236,42 @@ describe("LevelLoadService held reads", () => {
 
     expect(told.at(-1)).toBeNull();
     expect(service.spawnReport).toEqual(EMPTY_LEVEL_SPAWN_REPORT);
+  });
+
+  // Reported as still reading, the panel and the status bar said so for as long as the level stayed open.
+  it("ends the spawn's read where it fails part way, saying why", async () => {
+    const { level } = mockStreamable([outlineAt(0, 5)]);
+    const { service } = mockInjectedService(LevelLoadService);
+
+    setMockInvokeResponses({
+      ["plugin:levels|describe_spawn_models"]: mockSessionResponse({
+        failures: [],
+        hemi: [],
+        models: [mockLevelSpawnModel("crate").description],
+      }),
+      ["plugin:levels|open_level"]: mockSessionResponse(level),
+      ["plugin:levels|open_spawn_objects"]: mockSessionResponse({
+        objects: [mockLevelSpawnObject()],
+        visuals: ["crate"],
+      }),
+    });
+    setMockBulkResponses({ "levels/read_spawn_model": mockLevelSpawnModel("crate").buffer });
+    service.spawn.subscribe((spawn: Nullable<ILevelSpawnDelivery>) => {
+      if (spawn) {
+        throw new Error("lost");
+      }
+    });
+
+    await service.load({
+      source: { kind: "asset", logicalPath: "levels\\zaton" },
+      roots: ROOTS,
+      isDltx: false,
+      engine: EXrayEngine.VANILLA,
+    });
+    await service.whenHeldRead();
+
+    expect(service.spawnReport).toMatchObject({ failure: "lost", read: 0, visuals: 1 });
+    expect(isLevelSpawnReading(service.spawnReport)).toBe(false);
   });
 
   function armGrass(level: SelectedLevelDescription, description: LevelDetailsDescription, buffer: ArrayBuffer): void {

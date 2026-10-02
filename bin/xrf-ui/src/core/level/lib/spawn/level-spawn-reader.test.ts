@@ -3,7 +3,7 @@ import { describe, expect, it, jest } from "@jest/globals";
 import { LevelSpawnModelDescription, LevelSpawnObjectsDescription } from "@/core/ipc/types/xrf-app";
 import { ILevelSpawnDelivery } from "@/core/level/lib/render/level-render-protocol";
 import { LEVEL_SPAWN_BATCH, LevelSpawnReader } from "@/core/level/lib/spawn/level-spawn-reader";
-import { ILevelSpawnReport } from "@/core/level/lib/spawn/level-spawn-report";
+import { EMPTY_LEVEL_SPAWN_REPORT, ILevelSpawnReport } from "@/core/level/lib/spawn/level-spawn-report";
 import { setMockBulkResponses } from "@/fixtures/mocks/bulk.mocks";
 import { mockLevelSpawnModel, mockLevelSpawnObject, mockLevelTextureReference } from "@/fixtures/mocks/level.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
@@ -93,6 +93,7 @@ describe("LevelSpawnReader", () => {
     expect(report).toEqual({
       failure: null,
       failures: [],
+      isListed: true,
       objects: LEVEL_SPAWN_BATCH + 2,
       read: LEVEL_SPAWN_BATCH + 2,
       visuals: LEVEL_SPAWN_BATCH + 2,
@@ -187,13 +188,14 @@ describe("LevelSpawnReader", () => {
     expect(countDescribes()).toBe(0);
   });
 
-  it("reads nothing for a level drawing no object", async () => {
+  // Noted as listed, so what reports on it says the spawn places nothing rather than that it is still being read.
+  it("reads nothing for a level drawing no object, noting the spawn listed", async () => {
     const host: IMockHost = mockHost();
 
     armModels(mockObjects(0));
 
     expect(await host.reader.read("session")).toBeNull();
     expect(countDescribes()).toBe(0);
-    expect(host.notes).toEqual([]);
+    expect(host.notes).toEqual([{ ...EMPTY_LEVEL_SPAWN_REPORT, isListed: true }]);
   });
 });

@@ -24,6 +24,7 @@ describe("level render keys", () => {
     expect(readLevelObjectKey(LEVEL_RENDER_KEYS.grid)).toBeNull();
     expect(readLevelObjectKey(LEVEL_RENDER_KEYS.impostors(12))).toBeNull();
     expect(readLevelObjectKey(LEVEL_RENDER_KEYS.spawnSurface(7, 0))).toBeNull();
+    expect(readLevelObjectKey("spawn:7:anomalies")).toBeNull();
     expect(readLevelSurfaceKey(LEVEL_RENDER_KEYS.surface(99))).toBe(99);
     expect(readLevelSurfaceKey(LEVEL_RENDER_KEYS.spawnSurface(7, 0))).toBeNull();
   });

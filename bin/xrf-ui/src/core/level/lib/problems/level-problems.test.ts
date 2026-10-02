@@ -109,6 +109,14 @@ describe("listLevelProblems", () => {
     expect(problems[0].message).toBe("No spawned object is drawn: Failed to read 'spawns\\all.spawn': truncated chunk");
   });
 
+  it("says how much of the spawn is not drawn where its read stopped part way", () => {
+    const problems: Array<IEditorProblem> = listLevelProblems(
+      mockSources({ spawn: { ...EMPTY_LEVEL_SPAWN_REPORT, failure: "lost", objects: 90, read: 24, visuals: 30 } })
+    );
+
+    expect(problems.map((it) => it.message)).toEqual(["The objects of 6 of 30 visuals are not drawn: lost"]);
+  });
+
   it("orders the four sources, so one reading is always in the same place", () => {
     const problems: Array<IEditorProblem> = listLevelProblems({
       skipped: sectorOf(0, [{ cause: "malformed", drawable: 1, reason: "bad range" }]),

@@ -7,6 +7,7 @@ import { ELevelSpawnCategory, LevelSpawnObjectsDescription } from "@/core/ipc/ty
 import { EXrayEngine } from "@/core/ipc/types/xrf-engine-target";
 import { ILevelGoTo } from "@/core/level/lib/camera/level-camera-goto";
 import { ELevelPick } from "@/core/level/lib/pick/level-pick";
+import { EMPTY_LEVEL_SPAWN_REPORT } from "@/core/level/lib/spawn";
 import {
   LevelLoadService,
   LevelRenderService,
@@ -54,7 +55,8 @@ class TestLevelRenderService extends LevelRenderService {
 }
 
 async function renderPanel(
-  arrange?: (container: Container) => void
+  arrange?: (container: Container) => void,
+  objects: LevelSpawnObjectsDescription = OBJECTS
 ): Promise<{ container: Container; view: RenderResult }> {
   const level = mockSelectedLevelDescription({ sectors: [] });
 
@@ -71,7 +73,7 @@ async function renderPanel(
       levelVertexId: 3456,
     }),
     ["plugin:levels|open_level"]: mockSessionResponse(level),
-    ["plugin:levels|open_spawn_objects"]: mockSessionResponse(OBJECTS),
+    ["plugin:levels|open_spawn_objects"]: mockSessionResponse(objects),
   });
   setMockBulkResponses({
     "levels/read_spawn_model": (args: Record<string, unknown>) => mockLevelSpawnModel(String(args.name)).buffer,
@@ -115,7 +117,11 @@ describe("LevelSpawnPanel", () => {
   it("hides and shows a category from the eye on its row", async () => {
     const { container, view } = await renderPanel();
 
-    await userEvent.click(await view.findByRole("button", { name: "Hide props" }));
+    const eye: HTMLElement = await view.findByRole("button", { name: "Show props" });
+
+    expect(eye).toHaveAttribute("aria-pressed", "true");
+
+    await userEvent.click(eye);
 
     expect(container.get(LevelViewService).options.isSpawnedProps).toBe(false);
     expect(await view.findByRole("button", { name: "Show props" })).toHaveAttribute("aria-pressed", "false");
@@ -201,15 +207,32 @@ describe("LevelSpawnPanel", () => {
 
     expect(await view.findByTestId("level-spawn-details")).toBeInTheDocument();
 
-    await service.load({
-      source: { kind: "asset", logicalPath: "levels\\zaton" },
-      roots: mockSelectedLevelDescription().roots,
-      isDltx: false,
-      engine: EXrayEngine.VANILLA,
+    // The level opening again redraws the panel as each of its steps lands.
+    await act(async () => {
+      await service.load({
+        source: { kind: "asset", logicalPath: "levels\\zaton" },
+        roots: mockSelectedLevelDescription().roots,
+        isDltx: false,
+        engine: EXrayEngine.VANILLA,
+      });
+      await service.whenHeldRead();
     });
-    await service.whenHeldRead();
 
     await waitFor(() => expect(view.queryByTestId("level-spawn-details")).not.toBeInTheDocument());
     expect(await view.findByRole("tree", { name: "Spawned objects" })).toBeInTheDocument();
+  });
+
+  // Before the spawn's objects are listed the report is the empty one, which reads as a spawn placing nothing.
+  it("says the spawn is being read until its objects are listed, then that it places nothing", async () => {
+    const { container, view } = await renderPanel(undefined, { objects: [], visuals: [] });
+    const service: LevelLoadService = container.get(LevelLoadService);
+
+    expect(view.getByText("The level's spawn places nothing the viewer draws.")).toBeInTheDocument();
+
+    act(() => {
+      service.spawnReport = EMPTY_LEVEL_SPAWN_REPORT;
+    });
+
+    expect(view.getByText("Reading the level's spawn.")).toBeInTheDocument();
   });
 });

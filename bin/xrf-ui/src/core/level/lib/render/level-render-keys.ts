@@ -1,6 +1,6 @@
 import { Nullable } from "@xrf/types";
 
-import { LevelSpawnCategory } from "@/core/ipc/types/xrf-app";
+import { ELevelSpawnCategory, LevelSpawnCategory } from "@/core/ipc/types/xrf-app";
 
 /** The keys a level is put to the renderer under. */
 export const LEVEL_RENDER_KEYS = {
@@ -21,7 +21,7 @@ export const LEVEL_RENDER_KEYS = {
   /** A visual the level's spawned objects stand as: its submeshes joined in one geometry, a group each. */
   spawnGeometry: (visual: number): string => `spawn:${visual}`,
   /** The objects of one category standing as a visual. */
-  spawnObject: (visual: number, category: string): string => `spawn:${visual}:${category}`,
+  spawnObject: (visual: number, category: LevelSpawnCategory): string => `spawn:${visual}:${category}`,
   /** One submesh's surface of a visual, which every category's objects of it draw with. */
   spawnSurface: (visual: number, submesh: number): string => `spawn:${visual}:surface:${submesh}`,
   sun: "sun",
@@ -47,6 +47,9 @@ const SECTOR_OBJECT_KEY: RegExp = /^sector:(\d+)(?::(instance|impostors):(\d+))?
 /** The objects of one category standing as one visual. */
 const SPAWN_OBJECT_KEY: RegExp = /^spawn:(\d+):([a-z_]+)$/;
 
+/** Every category a spawn object key may name. */
+const SPAWN_CATEGORIES: ReadonlySet<string> = new Set(Object.values(ELevelSpawnCategory));
+
 /** One shader table entry. */
 const SURFACE_KEY: RegExp = /^surface:(\d+)$/;
 
@@ -70,7 +73,9 @@ export function readLevelObjectKey(key: string): Nullable<TLevelRenderObjectKey>
 
   const spawn: Nullable<RegExpExecArray> = SPAWN_OBJECT_KEY.exec(key);
 
-  return spawn ? { category: spawn[2] as LevelSpawnCategory, kind: "spawn", visual: Number(spawn[1]) } : null;
+  return spawn && SPAWN_CATEGORIES.has(spawn[2])
+    ? { category: spawn[2] as LevelSpawnCategory, kind: "spawn", visual: Number(spawn[1]) }
+    : null;
 }
 
 /**

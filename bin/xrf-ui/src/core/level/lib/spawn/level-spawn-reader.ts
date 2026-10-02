@@ -62,7 +62,13 @@ export class LevelSpawnReader {
   public async read(sessionId: string): Promise<Nullable<ILevelSpawnReport>> {
     const objects: Nullable<LevelSpawnObjectsDescription> = await this.readObjects(sessionId);
 
-    if (!objects?.visuals.length || !this.host.isOpen(sessionId)) {
+    if (!objects || !this.host.isOpen(sessionId)) {
+      return null;
+    }
+
+    if (!objects.visuals.length) {
+      this.host.note({ ...EMPTY_LEVEL_SPAWN_REPORT, isListed: true, objects: objects.objects.length });
+
       return null;
     }
 
@@ -74,6 +80,7 @@ export class LevelSpawnReader {
     let report: ILevelSpawnReport = {
       failure: null,
       failures,
+      isListed: true,
       objects: objects.objects.length,
       read: 0,
       visuals: objects.visuals.length,
@@ -126,7 +133,7 @@ export class LevelSpawnReader {
       return (await levelsCommands.openSpawnObjects(sessionId)).value;
     } catch (error: unknown) {
       if (this.host.isOpen(sessionId)) {
-        this.host.note({ ...EMPTY_LEVEL_SPAWN_REPORT, failure: transformError(error).message });
+        this.host.note({ ...EMPTY_LEVEL_SPAWN_REPORT, failure: transformError(error).message, isListed: true });
       }
 
       return null;

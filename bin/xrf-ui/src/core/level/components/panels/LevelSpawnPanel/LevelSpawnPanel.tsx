@@ -42,7 +42,7 @@ function toEmptyLabel(report: ILevelSpawnReport): string {
     return `The level's spawn could not be read: ${report.failure}`;
   }
 
-  return isLevelSpawnReading(report)
+  return !report.isListed || isLevelSpawnReading(report)
     ? "Reading the level's spawn."
     : "The level's spawn places nothing the viewer draws.";
 }
@@ -109,7 +109,7 @@ export function LevelSpawnPanel({
     [renderService, spawn, viewportService, viewService]
   );
 
-  const onSelect = useCallback((item: ITreeNode<TLevelSpawnTreeRow>) => tree.select(item.id), [tree]);
+  const onSelect = useCallback((item: ITreeNode<TLevelSpawnTreeRow>) => select(item.id), [select]);
 
   const onActivate = useCallback(
     (item: ITreeNode<TLevelSpawnTreeRow>) => {

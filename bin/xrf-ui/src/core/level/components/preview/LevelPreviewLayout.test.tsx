@@ -376,7 +376,7 @@ describe("LevelPreviewLayout", () => {
 
     act(() => {
       runInAction(() => {
-        loader.spawnReport = { failure: null, failures: [], objects: 900, read: 24, visuals: 300 };
+        loader.spawnReport = { failure: null, failures: [], isListed: true, objects: 900, read: 24, visuals: 300 };
       });
       setStreaming(loader, { loaded: 3, total: 24 });
     });
