@@ -10,6 +10,7 @@
 //! - `sun`, `thunderbolt`, `ambient` — the definitions a keyframe names.
 //! - `level` — which cycles a level plays.
 //! - `mixer` — a cycle mixed at a time of day.
+//! - `playback` — a weather played on: the pair of keyframes blended, and effects laid over the cycle.
 //! - `catalog` — reading all of it at once.
 
 pub(crate) mod ambient;
@@ -18,6 +19,7 @@ pub(crate) mod finding;
 pub(crate) mod key;
 pub(crate) mod level;
 pub(crate) mod mixer;
+pub(crate) mod playback;
 pub(crate) mod section;
 pub(crate) mod sun;
 pub(crate) mod thunderbolt;
@@ -36,8 +38,9 @@ pub use crate::level::{
   AtmosfearCycle, LevelWeather, LevelWeatherOption, WeatherGraph, WeatherGraphState, WeatherGraphs,
 };
 pub use crate::mixer::{
-  WeatherMix, WeatherMixPoint, WeatherMixer, WeatherModifier, WeatherModifiersSum, WeatherSunSource,
+  WeatherMix, WeatherMixKeyframe, WeatherMixPoint, WeatherMixer, WeatherModifier, WeatherModifiersSum, WeatherSunSource,
 };
+pub use crate::playback::{WeatherEffectStart, WeatherEffectTimeline, WeatherPair, WeatherPlayedKeyframe};
 pub use crate::section::{EnvironmentOrigin, EnvironmentSection};
 pub use crate::sun::{LensFlare, LensFlareKey, SunPosition, SunPositionKey, SunTable};
 pub use crate::thunderbolt::{

@@ -100,7 +100,10 @@ fn extended_day() -> String {
   .concat()
 }
 
-fn read_cycle(fixture: &EnvironmentFixture, engine: XrayEngine) -> (Vec<WeatherDescriptor>, Option<Vec<SunPosition>>) {
+pub(super) fn read_cycle(
+  fixture: &EnvironmentFixture,
+  engine: XrayEngine,
+) -> (Vec<WeatherDescriptor>, Option<Vec<SunPosition>>) {
   let catalog = fixture.read(engine);
 
   assert_eq!(catalog.findings, Vec::new());
@@ -127,7 +130,7 @@ fn at(time: f32) -> WeatherMixPoint {
   }
 }
 
-fn vanilla_fixture() -> EnvironmentFixture {
+pub(super) fn vanilla_fixture() -> EnvironmentFixture {
   EnvironmentFixture::new().with("environment\\weathers\\test.ltx", &vanilla_day())
 }
 
@@ -142,24 +145,27 @@ fn selects_the_keyframes_around_a_time_and_around_midnight() {
   let (keyframes, _) = read_cycle(&vanilla_fixture(), XrayEngine::Vanilla);
   let mixer = WeatherMixer {
     engine: XrayEngine::Vanilla,
-    keyframes: &keyframes,
     sun: WeatherSunSource::Authored,
     modifiers: &[],
   };
 
-  assert_eq!(mixer.select(0.0), Some([3, 0]));
-  assert_eq!(mixer.select(1.0), Some([0, 1]));
-  assert_eq!(mixer.select(21_600.0), Some([0, 1]));
-  assert_eq!(mixer.select(30_000.0), Some([1, 2]));
-  assert_eq!(mixer.select(80_000.0), Some([3, 0]));
+  assert_eq!(WeatherMixer::select(&keyframes, 0.0), Some([3, 0]));
+  assert_eq!(WeatherMixer::select(&keyframes, 1.0), Some([0, 1]));
+  assert_eq!(WeatherMixer::select(&keyframes, 21_600.0), Some([0, 1]));
+  assert_eq!(WeatherMixer::select(&keyframes, 30_000.0), Some([1, 2]));
+  assert_eq!(WeatherMixer::select(&keyframes, 80_000.0), Some([3, 0]));
 
   // From nine in the evening to midnight, weighed across it.
-  let late: WeatherMix = mixer.mix(at(81_000.0)).unwrap();
+  let late: WeatherMix = mixer.mix(&keyframes, at(81_000.0)).unwrap();
 
   assert!((late.weight - 5_400.0 / 10_800.0).abs() < 1e-6);
-  assert_eq!(mixer.mix(at(21_600.0)).unwrap().weight, 1.0);
+  assert_eq!(late.between, [75_600.0, 0.0]);
+  assert_eq!(mixer.mix(&keyframes, at(21_600.0)).unwrap().weight, 1.0);
   // A time outside the day wraps into it.
-  assert_eq!(mixer.mix(at(86_400.0 + 30_000.0)), mixer.mix(at(30_000.0)));
+  assert_eq!(
+    mixer.mix(&keyframes, at(86_400.0 + 30_000.0)),
+    mixer.mix(&keyframes, at(30_000.0))
+  );
 }
 
 #[test]
@@ -167,11 +173,10 @@ fn mixes_fog_as_the_engine_does() {
   let (keyframes, _) = read_cycle(&vanilla_fixture(), XrayEngine::Vanilla);
   let mix: WeatherMix = WeatherMixer {
     engine: XrayEngine::Vanilla,
-    keyframes: &keyframes,
     sun: WeatherSunSource::Authored,
     modifiers: &[],
   }
-  .mix(at(32_400.0))
+  .mix(&keyframes, at(32_400.0))
   .unwrap();
 
   // Halfway from six (450 at 0.25) to noon (850 at 0.1).
@@ -188,15 +193,14 @@ fn mixes_thunderbolts_as_the_engine_does() {
   let (keyframes, _) = read_cycle(&vanilla_fixture(), XrayEngine::Vanilla);
   let mixer = WeatherMixer {
     engine: XrayEngine::Vanilla,
-    keyframes: &keyframes,
     sun: WeatherSunSource::Authored,
     modifiers: &[],
   };
   // A quarter from six, which strikes with nothing, to noon; then three quarters.
-  let early: WeatherMix = mixer.mix(at(27_000.0)).unwrap();
-  let late: WeatherMix = mixer.mix(at(37_800.0)).unwrap();
+  let early: WeatherMix = mixer.mix(&keyframes, at(27_000.0)).unwrap();
+  let late: WeatherMix = mixer.mix(&keyframes, at(37_800.0)).unwrap();
   // Halfway from nine in the evening to midnight.
-  let night: WeatherMix = mixer.mix(at(81_000.0)).unwrap();
+  let night: WeatherMix = mixer.mix(&keyframes, at(81_000.0)).unwrap();
 
   assert_eq!(early.thunderbolt_collection, None);
   assert!((early.thunderbolt_period - 2.5).abs() < 1e-5);
@@ -211,11 +215,10 @@ fn keeps_monolith_fog_inside_its_far_plane() {
   let positions: Vec<SunPosition> = positions.expect("Monolith reads its sun table");
   let mix: WeatherMix = WeatherMixer {
     engine: XrayEngine::Extended,
-    keyframes: &keyframes,
     sun: WeatherSunSource::Table(&positions),
     modifiers: &[],
   }
-  .mix(at(28_800.0))
+  .mix(&keyframes, at(28_800.0))
   .unwrap();
 
   assert_eq!(mix.far_plane, 400.0);
@@ -282,16 +285,15 @@ fn weighs_the_modifiers_reaching_the_view() {
   let modifiers: Vec<WeatherModifier> = modifiers();
   let mixer = WeatherMixer {
     engine: XrayEngine::Vanilla,
-    keyframes: &keyframes,
     modifiers: &modifiers,
     sun: WeatherSunSource::Authored,
   };
-  let point = |view: [f32; 3]| mixer.mix(WeatherMixPoint { time: 43_200.0, view }).unwrap();
+  let point = |view: [f32; 3]| mixer.mix(&keyframes, WeatherMixPoint { time: 43_200.0, view }).unwrap();
   let plain: WeatherMix = WeatherMixer {
     modifiers: &[],
     ..mixer
   }
-  .mix(at(43_200.0))
+  .mix(&keyframes, at(43_200.0))
   .unwrap();
 
   // Out of every reach, nothing changes.
@@ -346,38 +348,39 @@ fn writes_the_renderer_golden_vectors() {
   let (extended, positions) = read_cycle(&extended_fixture(), XrayEngine::Extended);
   let positions: Vec<SunPosition> = positions.unwrap();
   let modifiers: Vec<WeatherModifier> = modifiers();
-  let case = |name: &'static str, mixer: WeatherMixer, views: &[[f32; 3]]| GoldenCase {
-    engine: mixer.engine,
-    keyframes: mixer.keyframes.to_vec(),
-    mixes: views
-      .iter()
-      .flat_map(|view| {
-        GOLDEN_TIMES.iter().map(|time| WeatherMixPoint {
-          time: *time,
-          view: *view,
+  let case =
+    |name: &'static str, keyframes: &[WeatherDescriptor], mixer: WeatherMixer, views: &[[f32; 3]]| GoldenCase {
+      engine: mixer.engine,
+      keyframes: keyframes.to_vec(),
+      mixes: views
+        .iter()
+        .flat_map(|view| {
+          GOLDEN_TIMES.iter().map(|time| WeatherMixPoint {
+            time: *time,
+            view: *view,
+          })
         })
-      })
-      .map(|point| mixer.mix(point).unwrap())
-      .collect(),
-    modifiers: mixer.modifiers.to_vec(),
-    name,
-    sun: match mixer.sun {
-      WeatherSunSource::Authored => "authored",
-      WeatherSunSource::Dynamic => "dynamic",
-      WeatherSunSource::Table(_) => "table",
-    },
-    sun_table: match mixer.sun {
-      WeatherSunSource::Table(positions) => Some(positions.to_vec()),
-      _ => None,
-    },
-  };
+        .map(|point| mixer.mix(keyframes, point).unwrap())
+        .collect(),
+      modifiers: mixer.modifiers.to_vec(),
+      name,
+      sun: match mixer.sun {
+        WeatherSunSource::Authored => "authored",
+        WeatherSunSource::Dynamic => "dynamic",
+        WeatherSunSource::Table(_) => "table",
+      },
+      sun_table: match mixer.sun {
+        WeatherSunSource::Table(positions) => Some(positions.to_vec()),
+        _ => None,
+      },
+    };
   let origin: &[[f32; 3]] = &GOLDEN_VIEWS[..1];
   let cases: Vec<GoldenCase> = vec![
     case(
       "vanilla, authored sun",
+      &vanilla,
       WeatherMixer {
         engine: XrayEngine::Vanilla,
-        keyframes: &vanilla,
         modifiers: &[],
         sun: WeatherSunSource::Authored,
       },
@@ -385,9 +388,9 @@ fn writes_the_renderer_golden_vectors() {
     ),
     case(
       "vanilla, dynamic sun",
+      &vanilla,
       WeatherMixer {
         engine: XrayEngine::Vanilla,
-        keyframes: &vanilla,
         modifiers: &[],
         sun: WeatherSunSource::Dynamic,
       },
@@ -395,9 +398,9 @@ fn writes_the_renderer_golden_vectors() {
     ),
     case(
       "extended, sun table",
+      &extended,
       WeatherMixer {
         engine: XrayEngine::Extended,
-        keyframes: &extended,
         modifiers: &[],
         sun: WeatherSunSource::Table(&positions),
       },
@@ -405,9 +408,9 @@ fn writes_the_renderer_golden_vectors() {
     ),
     case(
       "vanilla, modified",
+      &vanilla,
       WeatherMixer {
         engine: XrayEngine::Vanilla,
-        keyframes: &vanilla,
         modifiers: &modifiers,
         sun: WeatherSunSource::Authored,
       },
@@ -415,9 +418,9 @@ fn writes_the_renderer_golden_vectors() {
     ),
     case(
       "extended, modified",
+      &extended,
       WeatherMixer {
         engine: XrayEngine::Extended,
-        keyframes: &extended,
         modifiers: &modifiers,
         sun: WeatherSunSource::Table(&positions),
       },

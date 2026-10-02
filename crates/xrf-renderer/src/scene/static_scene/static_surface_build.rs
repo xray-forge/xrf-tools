@@ -6,6 +6,7 @@ use xrf_visual::SectorSurface;
 use crate::host::render_asset_source::RenderAssetSource;
 use crate::scene::static_scene::static_class::StaticClass;
 use crate::scene::static_scene::static_surface::StaticSurface;
+use crate::scene::static_scene::static_water_surface::build_water_surface;
 use crate::scene::texture::texture_cache::TextureCache;
 use crate::scene::texture::texture_role::TextureRole;
 
@@ -15,8 +16,8 @@ const DEFAULT_MATERIAL: f32 = 1.0;
 /// Turns of the golden angle between consecutive shader ids, which spreads their colours rather than grouping them.
 const HUE_STEP: f32 = 137.508;
 
-/// A shader table entry as the static draws wear it, asking for its textures; `None` for one the G-buffer does not
-/// draw: composited, water, invisible or a wall mark, drawn by passes of their own.
+/// A shader table entry as the static draws wear it, asking for its textures; `None` for one no static draw draws:
+/// composited, invisible or a wall mark, drawn by passes of their own.
 pub fn build_static_surface(
   surface: &SectorSurface,
   descriptor: Option<&XraySurfaceDescriptor>,
@@ -26,6 +27,15 @@ pub fn build_static_surface(
   let (class, reference): (StaticClass, u8) = match descriptor.map(|it| it.draw) {
     None | Some(XraySurfaceDraw::Opaque) => (StaticClass::Opaque, XraySurfaceDraw::DEFERRED_ALPHA_REFERENCE),
     Some(XraySurfaceDraw::AlphaTested { reference }) => (StaticClass::CutOut, reference),
+    Some(XraySurfaceDraw::Water { is_soft }) => {
+      let descriptor: &XraySurfaceDescriptor = descriptor?;
+      let color: [f32; 3] = to_surface_color(surface.shader_id);
+
+      return Some((
+        build_water_surface(surface, descriptor, is_soft, textures, source, color),
+        StaticClass::Water,
+      ));
+    }
     Some(_) => return None,
   };
 

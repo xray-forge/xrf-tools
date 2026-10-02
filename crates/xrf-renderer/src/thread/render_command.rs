@@ -10,6 +10,9 @@ use crate::contract::render_texture_report::RenderTextureReport;
 use crate::contract::render_view_options::RenderViewOptions;
 use crate::contract::render_viewport_id::RenderViewportId;
 use crate::contract::render_viewport_layout::RenderViewportLayout;
+use crate::contract::render_weather_control::RenderWeatherControl;
+use crate::contract::render_weather_play::RenderWeatherPlay;
+use crate::contract::render_weather_transition::RenderWeatherTransition;
 use crate::frame::frame_capture::CaptureReply;
 use crate::host::render_event_sink::RenderEventSink;
 use crate::host::render_level_source::RenderLevelSource;
@@ -73,5 +76,25 @@ pub enum RenderCommand {
   Level {
     id: RenderViewportId,
     source: Option<Arc<dyn RenderLevelSource>>,
+  },
+  /// Plays a weather in a viewport's level from now on.
+  Weather {
+    id: RenderViewportId,
+    play: RenderWeatherPlay,
+    transition: RenderWeatherTransition,
+  },
+  WeatherControl {
+    id: RenderViewportId,
+    control: RenderWeatherControl,
+  },
+  /// Plays a viewport's weather on from a time of day, ending the effect playing.
+  WeatherSeek {
+    id: RenderViewportId,
+    time: f32,
+  },
+  /// Plays a weather effect over a viewport's cycle, or ends the one playing for `None`.
+  WeatherEffect {
+    id: RenderViewportId,
+    name: Option<String>,
   },
 }

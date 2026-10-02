@@ -19,6 +19,8 @@ serde = { workspace = true }
 specta = { workspace = true, optional = true }
 wgpu = { workspace = true }
 xrf-dds = { workspace = true }
+xrf-engine-target = { workspace = true }
+xrf-environment = { workspace = true }
 xrf-error = { workspace = true }
 xrf-material = { workspace = true }
 xrf-math = { workspace = true }
@@ -29,7 +31,7 @@ naga = { workspace = true }
 
 [features]
 # Emits TypeScript mirrors of the serialized types. Nothing in a normal build turns this on.
-typescript-bindings = ["specta"]
+typescript-bindings = ["specta", "xrf-environment/typescript-bindings", "xrf-engine-target/typescript-bindings"]
 
 [lints]
 workspace = true

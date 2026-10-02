@@ -25,6 +25,18 @@ impl StaticSurface {
   /// A lightmap: hemisphere in alpha and sun in green, at the lightmap coordinate.
   pub const HAS_HEMI: u32 = 1 << 4;
   pub const IS_CUT_OUT: u32 = 1 << 5;
+  /// Water's: one blending over the depth behind it, as `water_soft` and every Anomaly program does.
+  pub const IS_SOFT_WATER: u32 = 1 << 6;
+  /// Water drawn by one of Anomaly's programs, and the switches it defines.
+  pub const IS_ANOMALY_WATER: u32 = 1 << 7;
+  pub const IS_REFLECTING: u32 = 1 << 8;
+  pub const IS_SPECULAR: u32 = 1 << 9;
+  pub const IS_TRANSPARENT: u32 = 1 << 10;
+  pub const IS_FOAMED: u32 = 1 << 11;
+  /// Water's normal map, foam and distortion, in the slots a bumped surface binds its detail and bump pair.
+  pub const HAS_WATER_NORMAL: u32 = 1 << 12;
+  pub const HAS_FOAM: u32 = 1 << 13;
+  pub const HAS_DISTORTION: u32 = 1 << 14;
 
   pub const BASE: usize = 0;
   pub const DETAIL: usize = 1;
@@ -33,4 +45,7 @@ impl StaticSurface {
   pub const DETAIL_BUMP: usize = 4;
   pub const DETAIL_BUMP_COMPANION: usize = 5;
   pub const HEMI: usize = 6;
+  pub const WATER_NORMAL: usize = 1;
+  pub const FOAM: usize = 2;
+  pub const DISTORTION: usize = 3;
 }

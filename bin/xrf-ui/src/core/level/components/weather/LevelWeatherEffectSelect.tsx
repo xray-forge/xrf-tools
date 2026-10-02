@@ -1,9 +1,9 @@
 import { ListItemText, MenuItem, TextField } from "@mui/material";
-import { IRendererWeatherEffectReport } from "@xrf/renderer";
 import { Nullable } from "@xrf/types";
 import { ChangeEvent, ReactElement } from "react";
 
 import { LevelWeatherCycle } from "@/core/ipc/types/xrf-app";
+import { RenderWeatherEffectReport } from "@/core/ipc/types/xrf-renderer";
 import { formatLevelWeatherTime } from "@/core/level/lib/weather/level-weather-time";
 import { CONTROL } from "@/core/theme/tokens";
 import { BaseComponentProps } from "@/lib/dom/element-types";
@@ -14,7 +14,7 @@ const NONE: string = "";
 interface ILevelWeatherEffectSelectProps extends BaseComponentProps {
   effects: ReadonlyArray<LevelWeatherCycle>;
   /** The effect playing, or null for none. */
-  playing: Nullable<IRendererWeatherEffectReport>;
+  playing: Nullable<RenderWeatherEffectReport>;
   isDisabled?: boolean;
   onPlay: (name: Nullable<string>) => void;
 }
@@ -42,7 +42,7 @@ export function LevelWeatherEffectSelect({
       label={"Effect"}
       value={playing?.name ?? NONE}
       disabled={isDisabled || !effects.length}
-      helperText={playing ? `${formatLevelWeatherTime(playing.remaining, true)} of game time left` : undefined}
+      helperText={playing ? `${formatLevelWeatherTime(playing.remaining ?? 0, true)} of game time left` : undefined}
       slotProps={{
         inputLabel: { shrink: true },
         select: {

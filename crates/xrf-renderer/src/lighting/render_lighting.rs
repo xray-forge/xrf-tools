@@ -1,14 +1,25 @@
-use crate::lighting::light_specular::to_light_specular;
-use glam::Vec3;
+use glam::{Vec3, Vec4};
+use xrf_engine_target::XrayEngine;
 use xrf_math::EPS;
 
+use crate::lighting::light_specular::to_light_specular;
+use crate::lighting::render_clouds::RenderClouds;
+use crate::lighting::render_fog::RenderFog;
+use crate::lighting::render_rainfall::RenderRainfall;
+use crate::lighting::render_sky::RenderSky;
+use crate::lighting::render_thunderbolt_strike::RenderThunderboltStrike;
+use crate::lighting::render_tree_wind::RenderTreeWind;
 use crate::lighting::sun_direction::to_renderer_sun_direction;
 
 /// The floor `phase_combine` keeps ambient above.
 const MINIMUM_AMBIENT: f32 = 0.001;
 
+/// The sky `default_clear` names at noon, and its irradiance cube.
+const DEFAULT_SKY: &str = "sky\\sky_7_cube";
+const DEFAULT_SKY_ENVIRONMENT: &str = "sky\\sky_7_cube#small";
+
 /// What a scene is lit by, in the terms a weather keyframe uses.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct RenderLighting {
   /// The direction sunlight travels, in renderer space, of length one.
   pub sun_direction: Vec3,
@@ -20,6 +31,19 @@ pub struct RenderLighting {
   pub ambient_color: Vec3,
   /// What the sky's irradiance cube returns, standing in for it while it is not up.
   pub sky_irradiance: Vec3,
+  /// Distance fog, or none.
+  pub fog: Option<RenderFog>,
+  pub sky: RenderSky,
+  /// How the trees sway, or none for trees standing still.
+  pub trees: Option<RenderTreeWind>,
+  /// `water_intensity`: how bright the depth of soft water and its foam are, one by a clear day.
+  pub water_intensity: f32,
+  /// How hard it rains, or none for a dry sky.
+  pub rain: Option<RenderRainfall>,
+  /// Whose shaders the scene is drawn by: its sky, and its surfaces' reflections.
+  pub engine: XrayEngine,
+  /// The bolt striking this frame, or none.
+  pub thunderbolt: Option<RenderThunderboltStrike>,
 }
 
 impl RenderLighting {
@@ -56,6 +80,27 @@ impl Default for RenderLighting {
       hemisphere_color: Vec3::new(0.470588, 0.368627, 0.329412),
       ambient_color: Vec3::splat(0.02),
       sky_irradiance: Vec3::new(0.5, 0.511, 0.548),
+      fog: None,
+      sky: RenderSky {
+        textures: [Some(DEFAULT_SKY.to_owned()), Some(DEFAULT_SKY.to_owned())],
+        environments: [
+          Some(DEFAULT_SKY_ENVIRONMENT.to_owned()),
+          Some(DEFAULT_SKY_ENVIRONMENT.to_owned()),
+        ],
+        blend: 0.0,
+        color: Vec3::splat(0.851001),
+        rotation: 0.0,
+        clouds: RenderClouds {
+          textures: [None, None],
+          color: Vec4::ZERO,
+          rotation: 0.0,
+        },
+      },
+      trees: Some(RenderTreeWind::default()),
+      water_intensity: 1.0,
+      rain: None,
+      engine: XrayEngine::Vanilla,
+      thunderbolt: None,
     }
   }
 }

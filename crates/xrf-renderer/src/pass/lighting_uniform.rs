@@ -1,11 +1,9 @@
 use glam::{Mat4, Vec3, Vec4};
+use xrf_engine_target::XrayEngine;
 
 use crate::contract::render_view_options::RenderViewOptions;
 use crate::lighting::render_lighting::RenderLighting;
-
-/// The sky's colour overhead and at the horizon, until the weather draws one.
-const SKY_ZENITH: Vec3 = Vec3::new(0.13, 0.15, 0.19);
-const SKY_HORIZON: Vec3 = Vec3::new(0.32, 0.34, 0.37);
+use crate::pass::lighting_frame::LightingFrame;
 
 /// The lighting as `shaders/common/lighting.wgsl` declares it: one viewport's, since the sun is given in its view space.
 #[repr(C)]
@@ -16,33 +14,68 @@ pub struct LightingUniform {
   pub sun: Vec4,
   pub ambient: Vec4,
   pub environment: Vec4,
+  /// The irradiance's stand-in, then one once both cubes are up.
   pub sky_irradiance: Vec4,
-  pub sky_zenith: Vec4,
-  pub sky_horizon: Vec4,
+  /// The fog's colour, then one where it fogs.
+  pub fog_color: Vec4,
+  /// `fog_params.x` and `.w`, then one where the sky's haze takes the fog, then one where the sky is drawn.
+  pub fog: Vec4,
+  /// `sky_color`, then the blend between the keyframes' skies.
+  pub sky: Vec4,
+  /// The sky's rotation, the clouds', the clouds' clock.
+  pub sky_params: Vec4,
+  /// The clouds' colour and cover; nothing where they are hidden.
+  pub clouds: Vec4,
+  /// One for Anomaly's shading, then the rain's density.
+  pub engine: Vec4,
   /// The settings' tonemap scale, and ones where the scene is lit, the exposure adapts and the occlusion darkens.
   pub params: Vec4,
 }
 
 impl LightingUniform {
-  pub fn new(lighting: &RenderLighting, view: Mat4, options: &RenderViewOptions, is_adapting: bool) -> Self {
+  pub fn new(lighting: &RenderLighting, view: Mat4, options: &RenderViewOptions, frame: &LightingFrame) -> Self {
     // The direction the light travels, turned to face the sun and into view space.
     let to_sun: Vec3 = view
       .transform_vector3(-lighting.get_sun_direction())
       .normalize_or_zero();
+    let fog = lighting.fog.filter(|_| options.is_fogged);
+    let (offset, scale) = fog.map_or((0.0, 0.0), |fog| fog.get_params());
+    let flag = |is: bool| is as u32 as f32;
 
     Self {
       to_sun: to_sun.extend(0.0),
       sun: lighting.sun_color.extend(lighting.get_sun_specular()),
       ambient: lighting.get_ambient().extend(0.0),
       environment: lighting.get_environment().extend(0.0),
-      sky_irradiance: lighting.sky_irradiance.extend(0.0),
-      sky_zenith: SKY_ZENITH.extend(1.0),
-      sky_horizon: SKY_HORIZON.extend(1.0),
+      sky_irradiance: lighting.sky_irradiance.extend(flag(frame.is_irradiance_up)),
+      fog_color: fog.map_or(Vec3::ZERO, |fog| fog.color).extend(flag(fog.is_some())),
+      fog: Vec4::new(offset, scale, flag(options.is_sky_hazed), flag(options.is_sky_visible)),
+      sky: lighting.sky.color.extend(frame.sky_blend),
+      sky_params: Vec4::new(
+        lighting.sky.rotation,
+        lighting.sky.clouds.rotation,
+        frame.clouds_time,
+        0.0,
+      ),
+      clouds: if options.is_clouded {
+        lighting.sky.clouds.color
+      } else {
+        Vec4::ZERO
+      },
+      engine: Vec4::new(
+        flag(lighting.engine == XrayEngine::Extended),
+        lighting
+          .rain
+          .filter(|_| options.is_rainy)
+          .map_or(0.0, |rain| rain.density),
+        0.0,
+        0.0,
+      ),
       params: Vec4::new(
         options.tonemap_scale,
-        options.is_lit as u32 as f32,
-        is_adapting as u32 as f32,
-        options.ambient_occlusion.is_enabled as u32 as f32,
+        flag(options.is_lit),
+        flag(frame.is_adapting),
+        flag(options.ambient_occlusion.is_enabled),
       ),
     }
   }

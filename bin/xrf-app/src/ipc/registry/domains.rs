@@ -122,11 +122,15 @@ macro_rules! for_each_tauri_command_domain {
         detach_viewport => crate::plugins::render::commands::detach_viewport::render_detach_viewport,
         measure_surfaces => crate::plugins::render::commands::measure_surfaces::render_measure_surfaces,
         pick => crate::plugins::render::commands::pick::render_pick,
+        play_weather => crate::plugins::render::commands::play_weather::render_play_weather,
+        play_weather_effect => crate::plugins::render::commands::play_weather_effect::render_play_weather_effect,
         save_capture => crate::plugins::render::commands::save_capture::render_save_capture,
+        seek_weather => crate::plugins::render::commands::seek_weather::render_seek_weather,
         send_input => crate::plugins::render::commands::send_input::render_send_input,
         set_camera => crate::plugins::render::commands::set_camera::render_set_camera,
         set_view_options => crate::plugins::render::commands::set_view_options::render_set_view_options,
         set_viewport_layout => crate::plugins::render::commands::set_viewport_layout::render_set_viewport_layout,
+        set_weather_control => crate::plugins::render::commands::set_weather_control::render_set_weather_control,
         show_level => crate::plugins::render::commands::show_level::render_show_level,
       }
       spawn => "spawn" {

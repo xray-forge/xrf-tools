@@ -1,5 +1,7 @@
 // Auto-generated rust bindings. Do not edit it manually.
 
+import { WeatherDescriptor } from "@/core/ipc/types/xrf-environment";
+
 /** How hard the ambient occlusion searches: XeGTAO's presets. */
 export enum ERenderAmbientOcclusionQuality {
   /** One direction, two steps each way. */
@@ -353,10 +355,25 @@ export type RenderViewOptions = {
   geometryLod: number | null;
   /** What the tonemap multiplies by before the exposure's own scale. */
   tonemapScale: number | null;
+  /** Whether the weather's fog hides the distance. */
+  isFogged: boolean;
+  /** Whether the weather's sky is drawn behind the level, rather than a plain backdrop. */
+  isSkyVisible: boolean;
+  /** Whether the distance fades into the sky's haze rather than into the sky itself. */
+  isSkyHazed: boolean;
+  /** Whether the weather's clouds cross the sky. */
+  isClouded: boolean;
+  /** Whether the weather's rain falls and wets surfaces. */
+  isRainy: boolean;
+  /** Whether the weather's bolts strike. */
+  isThundering: boolean;
+  /** Whether the weather's wind sways trees and grass. */
+  isWindy: boolean;
   exposure: RenderExposureSettings;
   shadows: RenderShadowSettings;
   ambientOcclusion: RenderAmbientOcclusionSettings;
   lights: RenderLightsSettings;
+  water: RenderWaterSettings;
 };
 
 /** Every `kind` the `RenderViewportEvent` union is told apart by, so a switch or a comparison names one. */
@@ -367,6 +384,8 @@ export enum ERenderViewportEvent {
   CAMERA = "camera",
   /** How far its scene has loaded, sent as it changes. */
   LOAD = "load",
+  /** Where its weather stands, sent as it changes, a few times a second at most; none while nothing plays. */
+  WEATHER = "weather",
   /** The renderer cannot draw this viewport, and why. */
   FAILURE = "failure",
 }
@@ -379,6 +398,8 @@ export type RenderViewportEvent =
   | { kind: "camera"; pose: RenderCameraPose }
   /** How far its scene has loaded, sent as it changes. */
   | { kind: "load"; report: RenderLoadReport }
+  /** Where its weather stands, sent as it changes, a few times a second at most; none while nothing plays. */
+  | { kind: "weather"; report: RenderWeatherReport | null }
   /** The renderer cannot draw this viewport, and why. */
   | { kind: "failure"; message: string };
 
@@ -397,3 +418,90 @@ export type RenderViewportLayout = {
    */
   clear: RenderColor;
 };
+
+/**
+ * The water (`water.vs`, `water.ps`, `waterd.ps`): rippled and reflecting the sky, blended over the depth behind it
+ * and distorting it. The engine's own look by default: its constants are `shared/waterconfig.h`'s and `def_distort`.
+ */
+export type RenderWaterSettings = {
+  /** Off, what lies under the water shows. */
+  isEnabled: boolean;
+  /** `r2_soft_water`: soft water fades by the depth behind it, darkens with it and lays foam in the shallows. */
+  isSoft: boolean;
+  /** Whether water moves what is seen through it, as the engine's distortion target does. */
+  isDistorted: boolean;
+  /** How high the waves lift the surface, in metres: `W_POSITION_SHIFT_HEIGHT`. */
+  waveHeight: number | null;
+  /** How fast they run: `W_POSITION_SHIFT_SPEED`. */
+  waveSpeed: number | null;
+  /** What the two normal layers' scroll is multiplied by, one as the engine scrolls them. */
+  ripple: number | null;
+  /** What the sky's reflection is multiplied by, one as the engine mixes it. */
+  reflection: number | null;
+  /** How far the distortion moves what is behind it, a share of the screen: `def_distort`. */
+  distortion: number | null;
+};
+
+/** How a viewport's weather clock runs. */
+export type RenderWeatherControl = {
+  /** Game seconds a real second, the engine's time factor. */
+  factor: number | null;
+  isPaused: boolean;
+  /** Whether a vanilla cycle stands the sun astronomically rather than by its keyframes. */
+  isDynamicSun: boolean;
+};
+
+/** The weather effect a viewport plays over its cycle. */
+export type RenderWeatherEffectReport = {
+  name: string;
+  /** Game seconds until the cycle takes over again. */
+  remaining: number | null;
+};
+
+/** Every `kind` the `RenderWeatherPlay` union is told apart by, so a switch or a comparison names one. */
+export enum ERenderWeatherPlay {
+  /** Nothing: the level is lit by noon of `default_clear`, standing still. */
+  NONE = "none",
+  /** A cycle of the level's game, by name, read through the level's source. */
+  CYCLE = "cycle",
+  /** One keyframe set by hand, played as a cycle of one: its sun stands by its own angles on either engine. */
+  KEYFRAME = "keyframe",
+}
+
+/** What a level viewport's weather plays. */
+export type RenderWeatherPlay =
+  /** Nothing: the level is lit by noon of `default_clear`, standing still. */
+  | { kind: "none" }
+  /** A cycle of the level's game, by name, read through the level's source. */
+  | { kind: "cycle"; name: string }
+  /** One keyframe set by hand, played as a cycle of one: its sun stands by its own angles on either engine. */
+  | { kind: "keyframe"; keyframe: WeatherDescriptor };
+
+/** Where a viewport's weather stands. */
+export type RenderWeatherReport = {
+  /** Seconds since midnight. */
+  time: number | null;
+  /** The times of the two keyframes blended between, the effect's own while one plays. */
+  between: [number | null, number | null];
+  /** How far from the first to the second. */
+  weight: number | null;
+  /** The effect playing, or none. */
+  effect: RenderWeatherEffectReport | null;
+  /** How many of the level's modifiers reach the camera. */
+  modifiers: number;
+  /** What is mixed now as one keyframe, without the modifiers: what a keyframe set by hand starts from. */
+  current: WeatherDescriptor;
+};
+
+/** How a weather handed to a viewport takes over from what it shows. */
+export enum ERenderWeatherTransition {
+  /** At once, as the first weather a level shows does. */
+  CUT = "cut",
+  /** Briefly, as an edit of a keyframe set by hand does. */
+  EASE = "ease",
+  /** Slowly, as another cycle chosen does. */
+  FADE = "fade",
+}
+
+/** Every `ERenderWeatherTransition` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type RenderWeatherTransition = `${ERenderWeatherTransition}`;

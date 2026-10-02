@@ -6,6 +6,7 @@ pub struct ViewLightGroups {
   /// The ambient occlusion's two, alternating.
   pub occlusion: [wgpu::BindGroup; 2],
   pub combine: wgpu::BindGroup,
+  pub haze: wgpu::BindGroup,
   pub exposure: wgpu::BindGroup,
   pub present: wgpu::BindGroup,
 }

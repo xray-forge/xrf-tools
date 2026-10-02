@@ -1,29 +1,19 @@
 import { describe, expect, it } from "@jest/globals";
-import { IRendererWeatherKeyframe } from "@xrf/renderer";
 
+import { WeatherDescriptor } from "@/core/ipc/types/xrf-environment";
 import {
   DEFAULT_LEVEL_MANUAL_WEATHER,
-  listLevelManualWeatherTextures,
   readLevelManualWeather,
-  toLevelManualKeyframe,
+  toLevelManualDescriptor,
   toLevelManualSun,
   toLevelManualWeather,
 } from "@/core/level/lib/weather/level-manual-weather";
 
 describe("level manual weather", () => {
-  it("draws with its sky, the sky's irradiance cube and its clouds, and no clouds where it names none", () => {
-    expect(listLevelManualWeatherTextures(DEFAULT_LEVEL_MANUAL_WEATHER)).toEqual([
-      "sky\\sky_7_cube",
-      "sky\\sky_7_cube#small",
-      "sky\\sky_oblaka",
-    ]);
-    expect(listLevelManualWeatherTextures({ ...DEFAULT_LEVEL_MANUAL_WEATHER, cloudsTexture: "" })).toHaveLength(2);
-  });
-
   // `default_clear`'s noon: `setHP(-69, -30)` stands the light travelling down at thirty degrees.
   it("stands the sun as setHP does, and reads the same angles back out of the direction", () => {
-    const keyframe: IRendererWeatherKeyframe = toLevelManualKeyframe(DEFAULT_LEVEL_MANUAL_WEATHER, 43_200);
-    const [x, y, z] = keyframe.sunDirection ?? [0, 0, 0];
+    const keyframe: WeatherDescriptor = toLevelManualDescriptor(DEFAULT_LEVEL_MANUAL_WEATHER, 43_200);
+    const [x, y, z] = (keyframe.sunDirection ?? [0, 0, 0]).map((it) => it ?? 0);
 
     expect(y).toBeCloseTo(-0.5, 5);
     expect(Math.hypot(x, y, z)).toBeCloseTo(1, 5);
@@ -42,15 +32,15 @@ describe("level manual weather", () => {
   });
 
   it("clamps the rain to a unit, as the engine does", () => {
-    expect(toLevelManualKeyframe({ ...DEFAULT_LEVEL_MANUAL_WEATHER, rainDensity: 3 }, 0).rainDensity).toBe(1);
+    expect(toLevelManualDescriptor({ ...DEFAULT_LEVEL_MANUAL_WEATHER, rainDensity: 3 }, 0).rainDensity).toBe(1);
   });
 
   it("stands a level's own sun by the angles its direction comes to", () => {
-    const direction: IRendererWeatherKeyframe["sunDirection"] = toLevelManualKeyframe(
+    const direction: WeatherDescriptor["sunDirection"] = toLevelManualDescriptor(
       DEFAULT_LEVEL_MANUAL_WEATHER,
       0
     ).sunDirection;
-    const [x, y, z] = direction ?? [0, 0, 0];
+    const [x, y, z] = (direction ?? [0, 0, 0]).map((it) => it ?? 0);
     const sun = toLevelManualSun({ x: x * 4, y: y * 4, z: z * 4 });
 
     expect(sun?.sunAltitude).toBeCloseTo(-69, 4);

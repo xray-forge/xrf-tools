@@ -15,6 +15,9 @@ use crate::contract::render_texture_report::RenderTextureReport;
 use crate::contract::render_view_options::RenderViewOptions;
 use crate::contract::render_viewport_id::RenderViewportId;
 use crate::contract::render_viewport_layout::RenderViewportLayout;
+use crate::contract::render_weather_control::RenderWeatherControl;
+use crate::contract::render_weather_play::RenderWeatherPlay;
+use crate::contract::render_weather_transition::RenderWeatherTransition;
 use crate::host::render_event_sink::RenderEventSink;
 use crate::host::render_level_source::RenderLevelSource;
 use crate::host::render_window_host::RenderWindowHost;
@@ -114,6 +117,26 @@ impl Renderer {
   /// Draws a level in a viewport, read from its source on the renderer's loader threads; `None` draws none.
   pub fn show_level(&self, id: RenderViewportId, source: Option<Arc<dyn RenderLevelSource>>) {
     self.send(RenderCommand::Level { id, source });
+  }
+
+  /// Plays a weather in a viewport's level from now on, a cycle read from the level's source on the loader threads;
+  /// one asked for before the level is shown plays once it is.
+  pub fn play_weather(&self, id: RenderViewportId, play: RenderWeatherPlay, transition: RenderWeatherTransition) {
+    self.send(RenderCommand::Weather { id, play, transition });
+  }
+
+  pub fn set_weather_control(&self, id: RenderViewportId, control: RenderWeatherControl) {
+    self.send(RenderCommand::WeatherControl { id, control });
+  }
+
+  /// Plays a viewport's weather on from a time of day, in seconds since midnight, ending the effect playing.
+  pub fn seek_weather(&self, id: RenderViewportId, time: f32) {
+    self.send(RenderCommand::WeatherSeek { id, time });
+  }
+
+  /// Plays a weather effect over a viewport's cycle from its clock's time, or ends the one playing for `None`.
+  pub fn play_weather_effect(&self, id: RenderViewportId, name: Option<String>) {
+    self.send(RenderCommand::WeatherEffect { id, name });
   }
 
   /// Applies settings to every viewport, now and in every thread started later.

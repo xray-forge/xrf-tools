@@ -4,6 +4,7 @@ use crate::contract::render_ambient_occlusion_settings::RenderAmbientOcclusionSe
 use crate::contract::render_exposure_settings::RenderExposureSettings;
 use crate::contract::render_lights_settings::RenderLightsSettings;
 use crate::contract::render_shadow_settings::RenderShadowSettings;
+use crate::contract::render_water_settings::RenderWaterSettings;
 
 /// What one viewport draws its scene with, as its viewer's toolbar sets it.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -26,10 +27,25 @@ pub struct RenderViewOptions {
   pub geometry_lod: f32,
   /// What the tonemap multiplies by before the exposure's own scale.
   pub tonemap_scale: f32,
+  /// Whether the weather's fog hides the distance.
+  pub is_fogged: bool,
+  /// Whether the weather's sky is drawn behind the level, rather than a plain backdrop.
+  pub is_sky_visible: bool,
+  /// Whether the distance fades into the sky's haze rather than into the sky itself.
+  pub is_sky_hazed: bool,
+  /// Whether the weather's clouds cross the sky.
+  pub is_clouded: bool,
+  /// Whether the weather's rain falls and wets surfaces.
+  pub is_rainy: bool,
+  /// Whether the weather's bolts strike.
+  pub is_thundering: bool,
+  /// Whether the weather's wind sways trees and grass.
+  pub is_windy: bool,
   pub exposure: RenderExposureSettings,
   pub shadows: RenderShadowSettings,
   pub ambient_occlusion: RenderAmbientOcclusionSettings,
   pub lights: RenderLightsSettings,
+  pub water: RenderWaterSettings,
 }
 
 impl Default for RenderViewOptions {
@@ -43,10 +59,18 @@ impl Default for RenderViewOptions {
       is_impostors: true,
       geometry_lod: 0.75,
       tonemap_scale: 1.0,
+      is_fogged: true,
+      is_sky_visible: true,
+      is_sky_hazed: false,
+      is_clouded: true,
+      is_rainy: true,
+      is_thundering: true,
+      is_windy: true,
       exposure: RenderExposureSettings::default(),
       shadows: RenderShadowSettings::default(),
       ambient_occlusion: RenderAmbientOcclusionSettings::default(),
       lights: RenderLightsSettings::default(),
+      water: RenderWaterSettings::default(),
     }
   }
 }

@@ -179,11 +179,19 @@ impl FlyCameraController {
     }
   }
 
-  pub fn get_view(&self, aspect: f32) -> CameraView {
+  /// The view through the lens, its far plane no farther than a limit.
+  pub fn get_view(&self, aspect: f32, far_limit: f32) -> CameraView {
     let (field_of_view, near, far) = self.description.get_lens();
     let world: Mat4 = Mat4::from_rotation_translation(self.get_rotation(), self.position);
 
-    CameraView::new(self.position, world.inverse(), field_of_view, aspect, near, far)
+    CameraView::new(
+      self.position,
+      world.inverse(),
+      field_of_view,
+      aspect,
+      near,
+      far.min(far_limit).max(near * 2.0),
+    )
   }
 
   /// Back to the start, looking at its target.

@@ -86,8 +86,8 @@ impl StaticShadowPass {
     pass.set_bind_group(0, &view.bind_group, &[]);
     pass.set_bind_group(2, textures, &[]);
 
-    for batch in StaticBatch::list() {
-      pass.set_pipeline(&self.pipelines[batch.get_index() as usize]);
+    for (batch, pipeline) in StaticBatch::list_deferred().zip(&self.pipelines) {
+      pass.set_pipeline(pipeline);
       pass.set_bind_group(1, &bind_groups[batch.layout.get_index()], &[]);
       pass.draw_indirect(args, batch.get_index() as u64 * 16);
     }
@@ -133,8 +133,8 @@ impl StaticShadowPass {
     pass.set_bind_group(0, &view.bind_group, &[]);
     pass.set_bind_group(2, textures, &[]);
 
-    for batch in StaticBatch::list() {
-      pass.set_pipeline(&self.pipelines[batch.get_index() as usize]);
+    for (batch, pipeline) in StaticBatch::list_deferred().zip(&self.pipelines) {
+      pass.set_pipeline(pipeline);
       pass.set_bind_group(1, &bind_groups[batch.layout.get_index()], &[]);
       pass.draw_indirect(args, batch.get_index() as u64 * 16);
     }
@@ -154,7 +154,7 @@ impl StaticShadowPass {
       ..Default::default()
     });
 
-    let pipelines: Vec<wgpu::RenderPipeline> = StaticBatch::list()
+    let pipelines: Vec<wgpu::RenderPipeline> = StaticBatch::list_deferred()
       .map(|batch| {
         let vertex: &str = match batch.layout {
           StaticLayout::Baked => "vs_baked",

@@ -1,7 +1,8 @@
 import { saturate, toDegrees, toDirection, toHeadingPitch, toRadians } from "@xrf/math";
-import { IRendererWeatherKeyframe, TRendererVector } from "@xrf/renderer";
+import { TRendererVector } from "@xrf/renderer";
 import { Nullable } from "@xrf/types";
 
+import { WeatherDescriptor } from "@/core/ipc/types/xrf-environment";
 import { Vector3d } from "@/core/ipc/types/xrf-math";
 
 /** What names a sky's irradiance cube after the sky's own reference. */
@@ -82,44 +83,68 @@ export const DEFAULT_LEVEL_MANUAL_WEATHER: ILevelManualWeather = {
   windVelocity: 0,
 };
 
-/**
- * @param manual - A keyframe set by hand.
- * @returns The references it draws with: its sky, the sky's irradiance cube, and its clouds where it names any.
- */
-export function listLevelManualWeatherTextures(manual: ILevelManualWeather): Array<string> {
-  return [manual.skyTexture, `${manual.skyTexture}${ENVIRONMENT_SUFFIX}`, manual.cloudsTexture].filter(Boolean);
-}
+/** What a keyframe set by hand reads as for every key it does not set: the engine's defaults where it reads them. */
+const MANUAL_DESCRIPTOR_REST: Pick<
+  WeatherDescriptor,
+  | "ambient"
+  | "sun"
+  | "isSunFixed"
+  | "sunAzimuth"
+  | "sunShaftsIntensity"
+  | "hemiVibrance"
+  | "hemiContrast"
+  | "wetSurfaceFactor"
+  | "volumetricIntensityFactor"
+  | "volumetricDistanceFactor"
+  | "bloomThreshold"
+  | "bloomExposure"
+  | "bloomSkyIntensity"
+> = {
+  ambient: null,
+  bloomExposure: 3,
+  bloomSkyIntensity: 0.6,
+  bloomThreshold: 3.5,
+  hemiContrast: 1,
+  hemiVibrance: 1,
+  isSunFixed: false,
+  sun: null,
+  sunAzimuth: 0,
+  sunShaftsIntensity: 0,
+  volumetricDistanceFactor: 1,
+  volumetricIntensityFactor: 1,
+  wetSurfaceFactor: 0,
+};
 
 /**
  * @param manual - A keyframe set by hand.
  * @param time - Seconds since midnight it stands at.
- * @returns It as the renderer mixes a keyframe: radians, the sun's direction built by `setHP`.
+ * @returns It as the engine holds a loaded keyframe: radians, the sun's direction built by `setHP`.
  */
-export function toLevelManualKeyframe(manual: ILevelManualWeather, time: number): IRendererWeatherKeyframe {
+export function toLevelManualDescriptor(manual: ILevelManualWeather, time: number): WeatherDescriptor {
   return {
-    ambientColor: manual.ambientColor,
-    cloudsColor: manual.cloudsColor,
+    ...MANUAL_DESCRIPTOR_REST,
+    ambientColor: [...manual.ambientColor],
+    cloudsColor: [...manual.cloudsColor],
     cloudsRotation: toRadians(manual.cloudsRotation),
     cloudsTexture: manual.cloudsTexture,
     farPlane: manual.farPlane,
-    fogColor: manual.fogColor,
+    fogColor: [...manual.fogColor],
     fogDensity: manual.fogDensity,
     fogDistance: manual.fogDistance,
-    hemiColor: manual.hemisphereColor,
-    rainColor: manual.rainColor,
+    hemiColor: [...manual.hemisphereColor],
+    rainColor: [...manual.rainColor],
     rainDensity: saturate(manual.rainDensity),
-    skyColor: manual.skyColor,
+    skyColor: [...manual.skyColor],
     skyRotation: toRadians(manual.skyRotation),
     skyTexture: manual.skyTexture,
     skyTextureEnv: `${manual.skyTexture}${ENVIRONMENT_SUFFIX}`,
-    sunAzimuth: 0,
-    sunColor: manual.sunColor,
+    sunColor: [...manual.sunColor],
     sunDirection: toDirection({ heading: toRadians(manual.sunAltitude), pitch: toRadians(manual.sunLongitude) }),
-    time,
+    time: Math.round(time),
     treeAmplitude: manual.treesAmplitude,
     treeRotation: manual.treesRotation,
     treeSpeed: manual.treesSpeed,
-    treeWave: manual.treesWave,
+    treeWave: [...manual.treesWave],
     // Zero without a collection, as the engine loads a keyframe that strikes with none.
     thunderboltCollection: manual.thunderboltCollection || null,
     thunderboltDuration: manual.thunderboltCollection ? manual.thunderboltDuration : 0,
@@ -135,36 +160,46 @@ export function toLevelManualKeyframe(manual: ILevelManualWeather, time: number)
  * however the weather stood it, the keyframe stands it the same.
  *
  * @param current - What the renderer mixes now, as one keyframe.
- * @returns The same as a keyframe set by hand.
+ * @returns The same as a keyframe set by hand, a number the renderer could not write as zero.
  */
-export function toLevelManualWeather(current: IRendererWeatherKeyframe): ILevelManualWeather {
+export function toLevelManualWeather(current: WeatherDescriptor): ILevelManualWeather {
   return {
-    ...toSunAngles(current.sunDirection ?? [0, -1, 0]),
-    ambientColor: current.ambientColor,
-    cloudsColor: current.cloudsColor,
-    cloudsRotation: toDegrees(current.cloudsRotation),
+    ...toSunAngles(current.sunDirection ? toTriple(current.sunDirection) : [0, -1, 0]),
+    ambientColor: toTriple(current.ambientColor),
+    cloudsColor: [
+      current.cloudsColor[0] ?? 0,
+      current.cloudsColor[1] ?? 0,
+      current.cloudsColor[2] ?? 0,
+      current.cloudsColor[3] ?? 0,
+    ],
+    cloudsRotation: toDegrees(current.cloudsRotation ?? 0),
     cloudsTexture: current.cloudsTexture,
-    farPlane: current.farPlane,
-    fogColor: current.fogColor,
-    fogDensity: current.fogDensity,
-    fogDistance: current.fogDistance,
-    hemisphereColor: current.hemiColor,
-    rainColor: current.rainColor,
-    rainDensity: current.rainDensity,
-    skyColor: current.skyColor,
-    skyRotation: toDegrees(current.skyRotation),
+    farPlane: current.farPlane ?? 0,
+    fogColor: toTriple(current.fogColor),
+    fogDensity: current.fogDensity ?? 0,
+    fogDistance: current.fogDistance ?? 0,
+    hemisphereColor: [
+      current.hemiColor[0] ?? 0,
+      current.hemiColor[1] ?? 0,
+      current.hemiColor[2] ?? 0,
+      current.hemiColor[3] ?? 0,
+    ],
+    rainColor: toTriple(current.rainColor),
+    rainDensity: current.rainDensity ?? 0,
+    skyColor: toTriple(current.skyColor),
+    skyRotation: toDegrees(current.skyRotation ?? 0),
     skyTexture: current.skyTexture,
-    sunColor: current.sunColor,
-    treesAmplitude: current.treeAmplitude,
-    treesRotation: current.treeRotation,
-    treesSpeed: current.treeSpeed,
-    treesWave: current.treeWave,
+    sunColor: toTriple(current.sunColor),
+    treesAmplitude: current.treeAmplitude ?? 0,
+    treesRotation: current.treeRotation ?? 0,
+    treesSpeed: current.treeSpeed ?? 0,
+    treesWave: toTriple(current.treeWave),
     thunderboltCollection: current.thunderboltCollection ?? "",
-    thunderboltDuration: current.thunderboltDuration,
-    thunderboltPeriod: current.thunderboltPeriod,
-    waterIntensity: current.waterIntensity,
-    windDirection: toDegrees(current.windDirection),
-    windVelocity: current.windVelocity,
+    thunderboltDuration: current.thunderboltDuration ?? 0,
+    thunderboltPeriod: current.thunderboltPeriod ?? 0,
+    waterIntensity: current.waterIntensity ?? 0,
+    windDirection: toDegrees(current.windDirection ?? 0),
+    windVelocity: current.windVelocity ?? 0,
   };
 }
 
@@ -224,6 +259,10 @@ function toSunAngles(direction: TRendererVector): Pick<ILevelManualWeather, "sun
   const { heading, pitch } = toHeadingPitch(direction);
 
   return { sunAltitude: toDegrees(heading), sunLongitude: toDegrees(pitch) };
+}
+
+function toTriple(value: readonly [Nullable<number>, Nullable<number>, Nullable<number>]): TRendererVector {
+  return [value[0] ?? 0, value[1] ?? 0, value[2] ?? 0];
 }
 
 function isFiniteNumber(value: unknown): boolean {

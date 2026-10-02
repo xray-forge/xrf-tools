@@ -83,10 +83,10 @@ impl CameraController {
     }
   }
 
-  pub fn get_view(&self, aspect: f32) -> CameraView {
+  pub fn get_view(&self, aspect: f32, far_limit: f32) -> CameraView {
     match self {
-      CameraController::Fly(controller) => controller.get_view(aspect),
-      CameraController::Orbit(controller) => controller.get_view(aspect),
+      CameraController::Fly(controller) => controller.get_view(aspect, far_limit),
+      CameraController::Orbit(controller) => controller.get_view(aspect, far_limit),
     }
   }
 }

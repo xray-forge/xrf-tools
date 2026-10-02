@@ -6,6 +6,7 @@ use xrf_material::XraySurfaceDescriptor;
 use xrf_visual::{SectorGeometry, SectorImpostors, SectorInstanceGroup, SectorPackage, SectorSurface, VisualClusters};
 
 use crate::host::render_asset_source::RenderAssetSource;
+use crate::pass::wind_uniform::WindUniform;
 use crate::scene::section_bytes::read_pods;
 use crate::scene::static_scene::growable_buffer::GrowableBuffer;
 use crate::scene::static_scene::static_batch::StaticBatch;
@@ -50,6 +51,8 @@ pub struct StaticScene {
   pub impostor_list: GrowableBuffer,
   pub regions: wgpu::Buffer,
   pub args: wgpu::Buffer,
+  /// How the trees sway this frame, which every draw of the scene reads.
+  pub wind: wgpu::Buffer,
   /// Each batch's late draw arguments, then the late phase's dispatch and the candidates' count.
   pub late: wgpu::Buffer,
   /// The late phase's dispatch, copied out of `late` so the dispatch reads no buffer it binds.
@@ -119,6 +122,12 @@ impl StaticScene {
         label: Some("static regions"),
         size: (StaticBatch::COUNT * size_of::<StaticRegion>()) as u64,
         usage: storage | wgpu::BufferUsages::COPY_DST,
+        mapped_at_creation: false,
+      }),
+      wind: device.create_buffer(&wgpu::BufferDescriptor {
+        label: Some("static wind"),
+        size: size_of::<WindUniform>() as u64,
+        usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         mapped_at_creation: false,
       }),
       args: device.create_buffer(&wgpu::BufferDescriptor {

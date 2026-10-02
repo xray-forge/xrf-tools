@@ -1,0 +1,172 @@
+use glam::{Vec3, Vec4};
+
+use crate::camera::camera_view::CameraView;
+use crate::contract::render_rect::RenderRect;
+use crate::frame::sun_shadow_maps::SunShadowMaps;
+use crate::pass::camera_uniform::CameraUniform;
+use crate::pass::level_passes::LevelPasses;
+use crate::pass::view_binding::ViewBinding;
+use crate::scene::level::shadow_frame::ShadowFrame;
+use crate::scene::static_scene::growable_buffer::GrowableBuffer;
+
+/// Metres the cover is across: every streak's column falls within it, however far the camera is from its centre, and
+/// every surface the rain wets, 25 metres out at most.
+pub const RAIN_COVER_WIDTH: f32 = 56.0;
+
+/// Texels it is across, some five centimetres each.
+pub const RAIN_COVER_RESOLUTION: u32 = 1024;
+
+/// Metres above the camera it is seen from, past where every streak starts, and how far down it reaches from there.
+const HEIGHT: f32 = 60.0;
+pub const RAIN_COVER_DEPTH: f32 = 120.0;
+
+/// Metres the cover moves by, so a camera moving less draws it again for nothing.
+const STEP: f32 = 4.0;
+
+/// What stands over the rain around the camera, seen straight down: a square of the level whose depth says, for each
+/// column, how high the first thing a drop lands on is. It moves a whole step at a time, and is drawn again where it
+/// moved or the scene grew, by the level's shadow casters.
+pub struct RainCover {
+  /// Reversed: one at the height it is seen from, nought where nothing stands.
+  pub depth: wgpu::TextureView,
+  lists: GrowableBuffer,
+  args: wgpu::Buffer,
+  view: ViewBinding,
+  cull_group: Option<((u64, u64, u64), wgpu::BindGroup)>,
+  draw_groups: Option<((u64, u64), [wgpu::BindGroup; 2])>,
+  /// Where it was drawn, centred and seen from, and the sectors resident then, or none before it was.
+  drawn: Option<(Vec3, usize)>,
+}
+
+impl RainCover {
+  pub fn new(device: &wgpu::Device, view_layout: &wgpu::BindGroupLayout, args_size: u64) -> Self {
+    Self {
+      depth: device
+        .create_texture(&wgpu::TextureDescriptor {
+          label: Some("rain cover"),
+          size: wgpu::Extent3d {
+            width: RAIN_COVER_RESOLUTION,
+            height: RAIN_COVER_RESOLUTION,
+            depth_or_array_layers: 1,
+          },
+          mip_level_count: 1,
+          sample_count: 1,
+          dimension: wgpu::TextureDimension::D2,
+          format: SunShadowMaps::FORMAT,
+          usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+          view_formats: &[],
+        })
+        .create_view(&Default::default()),
+      lists: GrowableBuffer::new(device, "rain cover lists", wgpu::BufferUsages::STORAGE),
+      args: device.create_buffer(&wgpu::BufferDescriptor {
+        label: Some("rain cover draw arguments"),
+        size: args_size,
+        usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::INDIRECT | wgpu::BufferUsages::COPY_DST,
+        mapped_at_creation: false,
+      }),
+      view: ViewBinding::new(device, view_layout),
+      cull_group: None,
+      draw_groups: None,
+      drawn: None,
+    }
+  }
+
+  /// Its centre in `x` and `z`, its half width, and the height it is seen from; seen from under everything before it
+  /// was drawn, so nothing is covered.
+  pub fn get_window(&self) -> Vec4 {
+    match self.drawn {
+      Some((center, _)) => Vec4::new(center.x, center.z, RAIN_COVER_WIDTH / 2.0, center.y),
+      None => Vec4::new(0.0, 0.0, RAIN_COVER_WIDTH / 2.0, -1e9),
+    }
+  }
+
+  /// Centres it over the camera, a whole step at a time, and draws it where it moved or the scene grew.
+  pub fn record(
+    &mut self,
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    encoder: &mut wgpu::CommandEncoder,
+    passes: LevelPasses<'_>,
+    frame: &ShadowFrame<'_>,
+  ) {
+    let position: Vec3 = frame.camera.position;
+    let center: Vec3 = Vec3::new(
+      (position.x / STEP).round() * STEP,
+      (position.y / STEP).round() * STEP + HEIGHT,
+      (position.z / STEP).round() * STEP,
+    );
+    let scene = frame.scene;
+    let state: (Vec3, usize) = (center, scene.sectors.len());
+
+    if self.drawn == Some(state) {
+      return;
+    }
+
+    let half: f32 = RAIN_COVER_WIDTH / 2.0;
+    let view: CameraView = CameraView {
+      position: center,
+      view: glam::camera::rh::view::look_at_mat4(center, center - Vec3::Y, -Vec3::Z),
+      projection: glam::camera::rh::proj::directx::orthographic(-half, half, -half, half, RAIN_COVER_DEPTH, 0.0),
+    };
+
+    self
+      .lists
+      .reserve(device, encoder, (scene.get_list_capacity().max(1) as u64) * 8);
+    queue.write_buffer(&self.args, 0, bytemuck::cast_slice(scene.get_initial_args()));
+    self.view.write(
+      queue,
+      &CameraUniform::new(
+        &view,
+        RenderRect {
+          x: 0,
+          y: 0,
+          width: RAIN_COVER_RESOLUTION,
+          height: RAIN_COVER_RESOLUTION,
+        },
+        Vec4::ZERO,
+      ),
+    );
+
+    let cull_key: (u64, u64, u64) = (scene.get_generation(), self.lists.get_generation(), frame.targets_epoch);
+
+    if self.cull_group.as_ref().is_none_or(|(key, _)| *key != cull_key) {
+      let group: wgpu::BindGroup = passes.cull.create_bind_group(
+        device,
+        scene,
+        frame.cull_params,
+        frame.pyramid,
+        frame.occlusion,
+        (self.lists.get_buffer(), &self.args),
+      );
+
+      self.cull_group = Some((cull_key, group));
+    }
+
+    let draw_key: (u64, u64) = (scene.get_generation(), self.lists.get_generation());
+
+    if self.draw_groups.as_ref().is_none_or(|(key, _)| *key != draw_key) {
+      let groups: [wgpu::BindGroup; 2] = passes
+        .gbuffer
+        .create_layout_groups(device, scene, self.lists.get_buffer());
+
+      self.draw_groups = Some((draw_key, groups));
+    }
+
+    let (Some((_, cull_group)), Some((_, draw_groups))) = (&self.cull_group, &self.draw_groups) else {
+      return;
+    };
+
+    passes
+      .cull
+      .dispatch_shadow(encoder, &self.view, cull_group, frame.params, false);
+    passes.shadow.draw(
+      encoder,
+      &self.depth,
+      &self.view,
+      draw_groups,
+      frame.textures.get_bind_group(),
+      &self.args,
+    );
+    self.drawn = Some(state);
+  }
+}

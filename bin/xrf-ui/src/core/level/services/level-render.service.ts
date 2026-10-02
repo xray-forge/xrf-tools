@@ -20,6 +20,7 @@ import {
   ERenderCameraCommand,
   ERenderLightShadowFilter,
   ERenderTextureState,
+  ERenderWeatherPlay,
   RenderCamera,
   RenderCameraPose,
   RenderFrameReport,
@@ -30,6 +31,9 @@ import {
   RenderTextureReport,
   RenderTextureState,
   RenderViewOptions,
+  RenderWeatherControl,
+  RenderWeatherPlay,
+  RenderWeatherReport,
 } from "@/core/ipc/types/xrf-renderer";
 import { ILevelGoTo, toLevelGoToViewpoint } from "@/core/level/lib/camera/level-camera-goto";
 import { ILevelCameraOptions } from "@/core/level/lib/camera/level-camera-options";
@@ -43,9 +47,13 @@ import { measureLevelStats } from "@/core/level/lib/stats/level-stats";
 import { ELevelSurfaceDressing, ILevelSurfaceDressing } from "@/core/level/lib/surface/level-surface-dressing";
 import { ILevelSurfaceGeometry, ILevelSurfaceSpan } from "@/core/level/lib/surface/level-surface-geometry";
 import { ILevelTextureProblem, ILevelTextureReport } from "@/core/level/lib/texture/level-texture-report";
+import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
+import { ILevelWeatherEffectRequest } from "@/core/level/lib/weather/level-weather-effect-request";
+import { ILevelWeatherSeek } from "@/core/level/lib/weather/level-weather-seek";
 import { LevelLoadService } from "@/core/level/services/level-load.service";
 import { LevelViewService } from "@/core/level/services/level-view.service";
 import { LevelViewportService } from "@/core/level/services/level-viewport.service";
+import { LevelWeatherService } from "@/core/level/services/level-weather.service";
 import { listenRenderClicks } from "@/core/render/lib/frame/render-clicks";
 import { NativeRenderSurfaceService } from "@/core/render/lib/native/native-render-surface-service";
 import { NativeViewport } from "@/core/render/lib/native/native-viewport";
@@ -91,12 +99,19 @@ export function toLevelFrameCost(report: RenderFrameReport): IRenderFrameCost {
   };
 }
 
+/** What the toolbar shows of the weather. */
+export type TLevelWeatherSwitches = Pick<
+  ILevelViewOptions,
+  "isClouded" | "isFogged" | "isRainy" | "isSkyHazed" | "isSkyVisible" | "isThundering" | "isWaterVisible" | "isWindy"
+>;
+
 /**
  * @param settings - What the level's toolbar and the application's settings come to.
+ * @param switches - What the toolbar shows of the weather.
  * @returns What a native viewport draws the level with.
  */
-export function toLevelViewOptions(settings: IRendererSettings): RenderViewOptions {
-  const { ambientOcclusion, exposure, lights, shadows } = settings.features;
+export function toLevelViewOptions(settings: IRendererSettings, switches: TLevelWeatherSwitches): RenderViewOptions {
+  const { ambientOcclusion, exposure, lights, shadows, water } = settings.features;
 
   return {
     ambientOcclusion: {
@@ -115,10 +130,17 @@ export function toLevelViewOptions(settings: IRendererSettings): RenderViewOptio
     geometryLod: settings.features.lod.geometryLod,
     hemiStrength: settings.hemiStrength,
     isBumped: settings.isBumped,
+    isClouded: switches.isClouded,
+    isFogged: switches.isFogged,
     isImpostors: settings.features.lod.isImpostors,
     isLit: settings.isLit,
     isOcclusionCulled: settings.features.isOcclusionCulled,
+    isRainy: switches.isRainy,
+    isSkyHazed: switches.isSkyHazed,
+    isSkyVisible: switches.isSkyVisible,
     isTextured: settings.isTextured,
+    isThundering: switches.isThundering,
+    isWindy: switches.isWindy,
     lights: {
       isEnabled: lights.isEnabled,
       isLevelLights: lights.isLevelLights,
@@ -136,6 +158,16 @@ export function toLevelViewOptions(settings: IRendererSettings): RenderViewOptio
       resolution: shadows.resolution,
     },
     tonemapScale: settings.tonemapScale,
+    water: {
+      distortion: water.distortion,
+      isDistorted: water.isDistorted,
+      isEnabled: water.isEnabled && switches.isWaterVisible,
+      isSoft: water.isSoft,
+      reflection: water.reflection,
+      ripple: water.ripple,
+      waveHeight: water.waveHeight,
+      waveSpeed: water.waveSpeed,
+    },
   };
 }
 
@@ -259,6 +291,7 @@ export class LevelRenderService extends NativeRenderSurfaceService {
     private readonly loadService: LevelLoadService = inject(LevelLoadService),
     private readonly viewService: LevelViewService = inject(LevelViewService),
     private readonly viewportService: LevelViewportService = inject(LevelViewportService),
+    private readonly weatherService: LevelWeatherService = inject(LevelWeatherService),
     private readonly commandBus: CommandBus = inject(CommandBus),
     settingsService: SettingsService = inject(SettingsService)
   ) {
@@ -312,9 +345,51 @@ export class LevelRenderService extends NativeRenderSurfaceService {
       reaction(() => this.loadService.level.value?.selected ?? null, this.openLevel, { fireImmediately: true }),
       reaction(() => this.viewService.camera, this.applyCamera),
       reaction(
-        () => toLevelViewOptions(this.toSettings()),
+        () => toLevelViewOptions(this.toSettings(), this.viewService.options),
         (options: RenderViewOptions) => viewport.setViewOptions(options),
         { equals: comparer.structural, fireImmediately: true }
+      ),
+      ...this.watchWeather(viewport),
+    ];
+  }
+
+  /**
+   * The level's weather, read once it opens and played by the viewport, and how it plays, as either changes.
+   *
+   * @param viewport - The viewport it plays in.
+   * @returns What stops watching.
+   */
+  private watchWeather(viewport: NativeViewport): Array<() => void> {
+    const { weatherService } = this;
+
+    return [
+      reaction(
+        () => this.loadService.level.value?.selected ?? null,
+        (selected) => void weatherService.open(selected),
+        { fireImmediately: true }
+      ),
+      reaction(
+        () => weatherService.weather,
+        (play: Nullable<RenderWeatherPlay>) =>
+          viewport.playWeather(play ?? { kind: ERenderWeatherPlay.NONE }, weatherService.transition),
+        { equals: comparer.structural, fireImmediately: true }
+      ),
+      reaction(
+        (): RenderWeatherControl => ({
+          ...weatherService.control,
+          // The keyframe set by hand stands its sun by its own angles.
+          isDynamicSun: weatherService.control.isDynamicSun && !weatherService.isManual,
+        }),
+        (control: RenderWeatherControl) => viewport.setWeatherControl(control),
+        { equals: comparer.structural, fireImmediately: true }
+      ),
+      reaction(
+        () => weatherService.seek,
+        (seek: Nullable<ILevelWeatherSeek>) => seek && viewport.seekWeather(seek.time)
+      ),
+      reaction(
+        () => weatherService.effect,
+        (effect: Nullable<ILevelWeatherEffectRequest>) => effect && viewport.playWeatherEffect(effect.name)
       ),
     ];
   }
@@ -345,6 +420,10 @@ export class LevelRenderService extends NativeRenderSurfaceService {
   protected onCamera(pose: RenderCameraPose): void {
     this.pose = pose;
     this.publish();
+  }
+
+  protected onWeather(report: Nullable<RenderWeatherReport>): void {
+    this.weatherService.noteReport(report);
   }
 
   protected onLoad(report: RenderLoadReport): void {

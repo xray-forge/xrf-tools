@@ -7,6 +7,8 @@ import {
   ERenderCameraCommand,
   ERenderPresentation,
   ERenderViewportEvent,
+  ERenderWeatherPlay,
+  ERenderWeatherTransition,
   RenderCamera,
   RenderFrameReport,
   RenderLevelHit,
@@ -18,6 +20,7 @@ import { LevelLoadService } from "@/core/level/services/level-load.service";
 import { LevelRenderService } from "@/core/level/services/level-render.service";
 import { LevelViewService } from "@/core/level/services/level-view.service";
 import { LevelViewportService } from "@/core/level/services/level-viewport.service";
+import { LevelWeatherService } from "@/core/level/services/level-weather.service";
 import { mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import {
@@ -28,6 +31,7 @@ import {
   resetMockInvoke,
   setMockInvokeResponses,
 } from "@/fixtures/mocks/tauri.mocks";
+import { mockLevelWeatherDescription, mockRendererWeatherReport } from "@/fixtures/mocks/weather.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 
 const VIEWPORT: number = 7;
@@ -65,6 +69,7 @@ async function mockAttached(): Promise<{ container: Container; service: LevelRen
     ["plugin:levels|get_level"]: mockSessionResponse(
       mockSelectedLevelDescription({ start: { direction: { x: 0, y: 0, z: -1 }, position: { x: 10, y: 2, z: -5 } } })
     ),
+    ["plugin:levels|read_level_weather"]: mockSessionResponse(mockLevelWeatherDescription()),
     ["plugin:render|attach_viewport"]: VIEWPORT,
   });
 
@@ -72,6 +77,7 @@ async function mockAttached(): Promise<{ container: Container; service: LevelRen
     LevelLoadService,
     LevelViewService,
     LevelViewportService,
+    LevelWeatherService,
     LevelRenderService,
   ]);
 
@@ -207,6 +213,39 @@ describe("LevelRenderService", () => {
     expect(sent("set_view_options")).toEqual([
       { options: expect.objectContaining({ isTextured: false }), viewport: VIEWPORT },
     ]);
+  });
+
+  it("plays the level's weather in its viewport, runs its clock as asked, and hears where it stands", async () => {
+    const { container } = await mockAttached();
+    const weather: LevelWeatherService = container.get(LevelWeatherService);
+
+    await waitFor(() =>
+      expect(sent("play_weather").at(-1)).toEqual({
+        play: { kind: ERenderWeatherPlay.CYCLE, name: "default_clear" },
+        transition: ERenderWeatherTransition.CUT,
+        viewport: VIEWPORT,
+      })
+    );
+    expect(sent("set_weather_control").at(-1)).toEqual({
+      control: { factor: 12, isDynamicSun: false, isPaused: true },
+      viewport: VIEWPORT,
+    });
+
+    mockInvoke.mockClear();
+    weather.setPlaying(true);
+    weather.seekTo(3_600);
+    weather.playEffect("fx_storm");
+    await flush();
+
+    expect(sent("set_weather_control")).toEqual([
+      { control: { factor: 12, isDynamicSun: false, isPaused: false }, viewport: VIEWPORT },
+    ]);
+    expect(sent("seek_weather")).toEqual([{ time: 3_600, viewport: VIEWPORT }]);
+    expect(sent("play_weather_effect")).toEqual([{ name: "fx_storm", viewport: VIEWPORT }]);
+
+    emit({ kind: ERenderViewportEvent.WEATHER, report: mockRendererWeatherReport({ time: 4_000 }) });
+    expect(weather.time).toBe(4_000);
+    expect(weather.report?.between).toEqual([0, 43_200]);
   });
 
   it("names what a pick hit in the level's own coordinates", async () => {

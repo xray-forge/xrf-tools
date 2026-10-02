@@ -1,11 +1,5 @@
 import { inject, Injectable, OnDeactivation } from "@wirestate/core";
 import { BoundAction, comparer, Computed, RefObservable, runInAction } from "@wirestate/mobx";
-import {
-  ERendererWeatherTransition,
-  IRendererWeather,
-  IRendererWeatherKeyframe,
-  IRendererWeatherReport,
-} from "@xrf/renderer";
 import { Maybe, Nullable } from "@xrf/types";
 
 import { transformError } from "@/core/error/lib";
@@ -17,13 +11,19 @@ import {
   SessionSnapshot,
 } from "@/core/ipc/types/xrf-app";
 import { XrayEngine } from "@/core/ipc/types/xrf-engine-target";
-import { EWeatherCycleKind } from "@/core/ipc/types/xrf-environment";
+import { EWeatherCycleKind, WeatherDescriptor } from "@/core/ipc/types/xrf-environment";
+import {
+  ERenderWeatherPlay,
+  ERenderWeatherTransition,
+  RenderWeatherPlay,
+  RenderWeatherReport,
+} from "@/core/ipc/types/xrf-renderer";
 import {
   DEFAULT_LEVEL_MANUAL_WEATHER,
   ILevelManualWeather,
+  toLevelManualDescriptor,
   toLevelManualWeather,
 } from "@/core/level/lib/weather/level-manual-weather";
-import { LevelWeatherBuilds } from "@/core/level/lib/weather/level-weather-builds";
 import {
   DEFAULT_LEVEL_WEATHER_CONTROL,
   ILevelWeatherControl,
@@ -44,9 +44,9 @@ import { SettingsService } from "@/core/settings/services/settings";
 import { Logger } from "@/lib/logging";
 
 /**
- * The open level's weather: what it plays, how, and where the renderer's clock stands. The renderer plays the cycle,
- * or the keyframe set by hand, by itself; this only says which and how, hears the time back, and remembers it per
- * level. The keyframe set by hand is also what lights a level whose weather does not play.
+ * The open level's weather: what it plays, how, and where the renderer's clock stands. The renderer reads the cycle
+ * and plays it, or the keyframe set by hand, by itself; this only says which and how, hears the time back, and
+ * remembers it per level. The keyframe set by hand is also what lights a level whose weather does not play.
  */
 @Injectable()
 export class LevelWeatherService {
@@ -56,13 +56,9 @@ export class LevelWeatherService {
   @RefObservable()
   public description: Nullable<LevelWeatherDescription> = null;
 
-  /** The cycle chosen, or null for none. */
+  /** The cycle played, or null for none. */
   @RefObservable()
   public cycle: Nullable<LevelWeatherCycle> = null;
-
-  /** The chosen cycle as the renderer plays it, or null while it is still being asked for or there is none. */
-  @RefObservable()
-  public playable: Nullable<IRendererWeather> = null;
 
   /** The keyframe set by hand, or null before one was. */
   @RefObservable()
@@ -72,13 +68,13 @@ export class LevelWeatherService {
   @RefObservable()
   public seed: Nullable<ILevelWeatherSeed> = null;
 
-  /** The keyframe set by hand as the renderer plays it, or null while it is being built or there is none. */
+  /** Whether the keyframe set by hand was handed to the renderer, as it is once it lights the level or none plays. */
   @RefObservable()
-  public manualPlayable: Nullable<IRendererWeather> = null;
+  public isManualPlayed: boolean = false;
 
   /** How the weather the renderer is handed next takes over from what it shows. */
   @RefObservable()
-  public transition: ERendererWeatherTransition = ERendererWeatherTransition.CUT;
+  public transition: ERenderWeatherTransition = ERenderWeatherTransition.CUT;
 
   /** Why the last cycle asked for does not play, or null. */
   @RefObservable()
@@ -108,7 +104,7 @@ export class LevelWeatherService {
 
   /** Where the renderer's weather stood when it last reported, or null before it has. */
   @RefObservable()
-  public report: Nullable<IRendererWeatherReport> = null;
+  public report: Nullable<RenderWeatherReport> = null;
 
   /** The level whose weather is held or being read. */
   private sessionId: Nullable<string> = null;
@@ -116,25 +112,28 @@ export class LevelWeatherService {
   private memoryKey: Nullable<string> = null;
   /** The level open, which a cycle is read against. */
   private selected: Nullable<SessionSnapshot<SelectedLevelDescription>> = null;
-  /** What the open level's weathers are built into, one a level. */
-  private builds: Nullable<LevelWeatherBuilds> = null;
   /** The cycle the level was last played with, kept until one plays so a level left early forgets nothing. */
   private remembered: string = "";
-  /** Bumped by every build of the keyframe set by hand, so only the latest is played. */
-  private build: number = 0;
 
   public constructor(private readonly settingsService: SettingsService = inject(SettingsService)) {}
 
   /**
-   * What the renderer plays: the keyframe set by hand once built while it lights the level, the cycle otherwise, and
-   * the keyframe again where no cycle plays; null while neither is ready.
+   * What the renderer plays: the keyframe set by hand while it lights the level, the cycle otherwise, and the keyframe
+   * again where no cycle plays; null while neither was handed over.
    */
-  public get weather(): Nullable<IRendererWeather> {
-    if (this.source === ELevelWeatherSource.MANUAL && this.manualPlayable) {
-      return this.manualPlayable;
+  public get weather(): Nullable<RenderWeatherPlay> {
+    const manual: Nullable<RenderWeatherPlay> = this.isManualPlayed
+      ? {
+          keyframe: toLevelManualDescriptor(this.manual ?? DEFAULT_LEVEL_MANUAL_WEATHER, 0),
+          kind: ERenderWeatherPlay.KEYFRAME,
+        }
+      : null;
+
+    if (this.source === ELevelWeatherSource.MANUAL && manual) {
+      return manual;
     }
 
-    return this.playable ?? this.manualPlayable;
+    return this.cycle ? { kind: ERenderWeatherPlay.CYCLE, name: this.cycle.name } : manual;
   }
 
   /** The engine the weather is read for: the level's, or the setting's where its weather does not read. */
@@ -145,14 +144,14 @@ export class LevelWeatherService {
   /** The keyframe on screen as one set by hand: the one set, or the weather's mix, which a first edit seeds it from. */
   @Computed()
   public get shown(): ILevelManualWeather {
-    const current: Maybe<IRendererWeatherKeyframe> = this.isManual ? undefined : this.report?.current;
+    const current: Maybe<WeatherDescriptor> = this.isManual ? undefined : this.report?.current;
 
     return current ? toLevelManualWeather(current) : (this.manual ?? DEFAULT_LEVEL_MANUAL_WEATHER);
   }
 
   /** Whether the keyframe set by hand lights the level, by choice or because no cycle plays. */
   public get isManual(): boolean {
-    return this.source === ELevelWeatherSource.MANUAL || !this.playable;
+    return this.source === ELevelWeatherSource.MANUAL || !this.cycle;
   }
 
   /**
@@ -179,7 +178,6 @@ export class LevelWeatherService {
     this.sessionId = selected.sessionId;
     this.memoryKey = memoryKey;
     this.selected = selected;
-    this.builds = new LevelWeatherBuilds(selected);
 
     if (memory) {
       this.restore(memory);
@@ -209,9 +207,9 @@ export class LevelWeatherService {
         this.description = description;
       });
 
-      // Lit by hand, the keyframe is built first, so the cycle is never shown before it.
+      // Lit by hand, the keyframe is handed over first, so the cycle is never shown before it.
       if (this.source === ELevelWeatherSource.MANUAL) {
-        await this.buildManual(ERendererWeatherTransition.CUT);
+        this.playManual(ERenderWeatherTransition.CUT);
       }
 
       const first: Maybe<LevelWeatherCycle> = description.offered[0];
@@ -224,12 +222,12 @@ export class LevelWeatherService {
       if (first) {
         await this.play(selected, first.name);
       } else if (this.source !== ELevelWeatherSource.MANUAL) {
-        await this.buildManual(ERendererWeatherTransition.CUT);
+        this.playManual(ERenderWeatherTransition.CUT);
       }
     } catch (error: unknown) {
       this.fail(selected.sessionId, error);
       // The keyframe set by hand is what lights a level whose weather does not play.
-      await this.buildManual(ERendererWeatherTransition.CUT);
+      this.playManual(ERenderWeatherTransition.CUT);
     }
   }
 
@@ -271,12 +269,12 @@ export class LevelWeatherService {
       return;
     }
 
-    this.transition = ERendererWeatherTransition.FADE;
+    this.transition = ERenderWeatherTransition.FADE;
     this.source = source;
 
     if (source === ELevelWeatherSource.MANUAL) {
       this.manual ??= this.seedManual();
-      void this.buildManual(ERendererWeatherTransition.FADE);
+      this.playManual(ERenderWeatherTransition.FADE);
     }
 
     this.persist();
@@ -295,8 +293,11 @@ export class LevelWeatherService {
       this.source = ELevelWeatherSource.MANUAL;
     }
 
+    const shown: Nullable<RenderWeatherPlay> = this.weather;
+
     this.manual = { ...(this.manual ?? DEFAULT_LEVEL_MANUAL_WEATHER), ...patch };
-    void this.buildManual(ERendererWeatherTransition.EASE);
+    this.isManualPlayed = true;
+    this.noteShown(shown, ERenderWeatherTransition.EASE);
     this.persist();
   }
 
@@ -344,13 +345,15 @@ export class LevelWeatherService {
    *   last is dropped, so a paused clock redraws nothing that reads it.
    */
   @BoundAction()
-  public noteReport(report: Nullable<IRendererWeatherReport>): void {
+  public noteReport(report: Nullable<RenderWeatherReport>): void {
     if (!comparer.structural(report, this.report)) {
       this.report = report;
     }
 
-    if (report && report.time !== this.time) {
-      this.time = report.time;
+    const time: Nullable<number> = report?.time ?? null;
+
+    if (time !== null && time !== this.time) {
+      this.time = time;
     }
   }
 
@@ -363,15 +366,12 @@ export class LevelWeatherService {
     this.memoryKey = null;
     this.selected = null;
     this.remembered = "";
-    this.builds = null;
-    this.build += 1;
     this.description = null;
     this.cycle = null;
-    this.playable = null;
     this.manual = null;
     this.seed = null;
-    this.manualPlayable = null;
-    this.transition = ERendererWeatherTransition.CUT;
+    this.isManualPlayed = false;
+    this.transition = ERenderWeatherTransition.CUT;
     this.failure = null;
     this.reading = null;
     this.seek = null;
@@ -405,44 +405,17 @@ export class LevelWeatherService {
   }
 
   /**
-   * Builds what the renderer plays of the keyframe set by hand, its textures resolved as the level resolves its own,
-   * only the latest build played.
+   * Hands the renderer the keyframe set by hand, the default one where none was set.
    *
    * @param transition - How it takes over from what is shown.
    */
-  private async buildManual(transition: ERendererWeatherTransition): Promise<void> {
-    const { builds } = this;
-    const build: number = ++this.build;
+  @BoundAction()
+  private playManual(transition: ERenderWeatherTransition): void {
+    const shown: Nullable<RenderWeatherPlay> = this.weather;
 
-    runInAction(() => {
-      this.manual ??= DEFAULT_LEVEL_MANUAL_WEATHER;
-    });
-
-    const manual: Nullable<ILevelManualWeather> = this.manual;
-
-    if (!builds || !manual) {
-      return;
-    }
-
-    try {
-      const weather: IRendererWeather = await builds.buildManual({
-        description: this.description,
-        engine: this.engine,
-        manual,
-      });
-
-      // Built for the level still open, and the latest edit of it.
-      if (build === this.build && builds === this.builds) {
-        runInAction(() => {
-          const shown: Nullable<IRendererWeather> = this.weather;
-
-          this.manualPlayable = weather;
-          this.noteShown(shown, transition);
-        });
-      }
-    } catch (error: unknown) {
-      this.log.warn("The keyframe set by hand is not played:", transformError(error).message);
-    }
+    this.manual ??= DEFAULT_LEVEL_MANUAL_WEATHER;
+    this.isManualPlayed = true;
+    this.noteShown(shown, transition);
   }
 
   /**
@@ -465,7 +438,7 @@ export class LevelWeatherService {
   }
 
   /**
-   * Reads a cycle and asks where its skies are fetched from, then plays it, for a level still open.
+   * Reads a cycle, for what the panels show of it, then plays it, for a level still open.
    *
    * @param selected - The level it plays in.
    * @param name - The cycle's name.
@@ -478,26 +451,18 @@ export class LevelWeatherService {
     const cycle: LevelWeatherCycle =
       this.description?.offered.find((it: LevelWeatherCycle) => it.name === name) ??
       (await levelsCommands.readLevelCycle(selected.sessionId, { kind: EWeatherCycleKind.CYCLE, name })).value;
-    const { description, builds } = this;
 
-    if (!description || !builds) {
-      return;
-    }
-
-    const playable: IRendererWeather = await builds.buildCycle({ cycle, description });
-
-    if (builds !== this.builds || this.reading !== name) {
+    if (this.sessionId !== selected.sessionId || this.reading !== name) {
       return;
     }
 
     runInAction(() => {
-      const shown: Nullable<IRendererWeather> = this.weather;
+      const shown: Nullable<RenderWeatherPlay> = this.weather;
 
       this.cycle = cycle;
-      this.playable = playable;
       this.failure = null;
       this.reading = null;
-      this.noteShown(shown, ERendererWeatherTransition.FADE);
+      this.noteShown(shown, ERenderWeatherTransition.FADE);
     });
   }
 
@@ -507,9 +472,9 @@ export class LevelWeatherService {
    * @param shown - What it played before.
    * @param transition - How anything after the first takes over.
    */
-  private noteShown(shown: Nullable<IRendererWeather>, transition: ERendererWeatherTransition): void {
-    if (this.weather !== shown) {
-      this.transition = shown ? transition : ERendererWeatherTransition.CUT;
+  private noteShown(shown: Nullable<RenderWeatherPlay>, transition: ERenderWeatherTransition): void {
+    if (!comparer.structural(this.weather, shown)) {
+      this.transition = shown ? transition : ERenderWeatherTransition.CUT;
     }
   }
 

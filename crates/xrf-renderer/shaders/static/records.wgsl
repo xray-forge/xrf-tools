@@ -76,6 +76,10 @@ const LOD_IMPOSTOR: u32 = 2u;
 // A row no impostor decides.
 const NO_LOD: u32 = 0xffffffffu;
 
+// The shading classes a layout's batches run through, as `StaticClass` orders them, and the water's among them.
+const CLASS_COUNT: u32 = 3u;
+const WATER_CLASS: u32 = 2u;
+
 const SLOT_SINGLE: u32 = 1u;
 const SLOT_LISTED: u32 = 2u;
 
@@ -84,6 +88,15 @@ const SURFACE_HAS_DETAIL: u32 = 2u;
 const SURFACE_HAS_BUMP: u32 = 4u;
 const SURFACE_HAS_DETAIL_BUMP: u32 = 8u;
 const SURFACE_HAS_HEMI: u32 = 16u;
+const SURFACE_IS_SOFT_WATER: u32 = 64u;
+const SURFACE_IS_ANOMALY_WATER: u32 = 128u;
+const SURFACE_IS_REFLECTING: u32 = 256u;
+const SURFACE_IS_SPECULAR: u32 = 512u;
+const SURFACE_IS_TRANSPARENT: u32 = 1024u;
+const SURFACE_IS_FOAMED: u32 = 2048u;
+const SURFACE_HAS_WATER_NORMAL: u32 = 4096u;
+const SURFACE_HAS_FOAM: u32 = 8192u;
+const SURFACE_HAS_DISTORTION: u32 = 16384u;
 
 // Vertices one cluster's draw spans: 128 triangles, those past its own collapsed.
 const CLUSTER_VERTICES: u32 = 384u;

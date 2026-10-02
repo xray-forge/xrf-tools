@@ -22,4 +22,14 @@ impl StaticBatch {
         .map(move |class| StaticBatch { layout, class })
     })
   }
+
+  /// The batches drawn into the G-buffer and into shadows.
+  pub fn list_deferred() -> impl Iterator<Item = StaticBatch> {
+    Self::list().filter(|batch| batch.class.is_deferred())
+  }
+
+  /// The batches the water pass draws.
+  pub fn list_water() -> impl Iterator<Item = StaticBatch> {
+    Self::list().filter(|batch| batch.class == StaticClass::Water)
+  }
 }

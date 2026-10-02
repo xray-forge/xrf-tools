@@ -9,6 +9,7 @@ import {
   RenderFrameReport,
   RenderLoadReport,
   RenderSettings,
+  RenderWeatherReport,
 } from "@/core/ipc/types/xrf-renderer";
 import { NativeViewport } from "@/core/render/lib/native/native-viewport";
 import { NativeViewportTarget } from "@/core/render/lib/native/native-viewport-target";
@@ -63,6 +64,7 @@ export abstract class NativeRenderSurfaceService implements IRenderSurfaceHost {
       onFailed: (message: string): void => this.fail(message),
       onFrame: (report: RenderFrameReport): void => this.onFrame(report),
       onLoad: (report: RenderLoadReport): void => this.onLoad(report),
+      onWeather: (report: Nullable<RenderWeatherReport>): void => this.onWeather(report),
     });
 
     this.viewport = viewport;
@@ -119,6 +121,11 @@ export abstract class NativeRenderSurfaceService implements IRenderSurfaceHost {
    * @param _report - How far the viewport's scene has loaded.
    */
   protected onLoad(_report: RenderLoadReport): void {}
+
+  /**
+   * @param _report - Where the viewport's weather stands, or null while none plays.
+   */
+  protected onWeather(_report: Nullable<RenderWeatherReport>): void {}
 
   /**
    * Called once a viewport draws under an element.

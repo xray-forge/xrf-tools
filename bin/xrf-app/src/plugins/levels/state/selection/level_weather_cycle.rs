@@ -3,6 +3,7 @@ use std::collections::BTreeSet;
 use serde::Serialize;
 use xrf_environment::{EnvironmentCatalog, EnvironmentFinding, WeatherCycle, WeatherCycleKind, WeatherDescriptor};
 
+use crate::plugins::levels::state::level_environment::LevelEnvironment;
 use crate::plugins::levels::state::selection::level_texture_reference::LevelTextureReference;
 use crate::plugins::levels::state::selection::level_weather_source::LevelWeatherSource;
 
@@ -24,12 +25,7 @@ pub struct LevelWeatherCycle {
 impl LevelWeatherCycle {
   pub fn of(cycle: &WeatherCycle, source: &LevelWeatherSource) -> Self {
     let catalog: &EnvironmentCatalog = source.catalog;
-    let keyframes: Vec<WeatherDescriptor> = cycle
-      .keyframes
-      .iter()
-      .filter(|keyframe| keyframe.time.is_some())
-      .map(|keyframe| WeatherDescriptor::new(keyframe, catalog.engine))
-      .collect();
+    let keyframes: Vec<WeatherDescriptor> = LevelEnvironment::list_keyframes(cycle, catalog.engine);
     // A keyframe without a sky names only the suffix of its irradiance cube, which nothing answers to.
     let references: BTreeSet<&str> = keyframes
       .iter()

@@ -5,6 +5,7 @@ import { Container } from "@wirestate/core";
 
 import { EXrayEngine } from "@/core/ipc/types/xrf-engine-target";
 import { EEnvironmentRule, WeatherCycleId } from "@/core/ipc/types/xrf-environment";
+import { ERenderWeatherPlay } from "@/core/ipc/types/xrf-renderer";
 import { ELevelWeatherSource } from "@/core/level/lib/weather/level-weather-source";
 import { LevelLoadService, LevelWeatherService } from "@/core/level/services";
 import { mockLevelTextureReference, mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
@@ -93,7 +94,7 @@ describe("LevelWeatherPanel", () => {
     await userEvent.click(getByRole("button", { name: "Manual" }));
 
     expect(weather.source).toBe(ELevelWeatherSource.MANUAL);
-    await waitFor(() => expect(weather.weather?.keyframes).toHaveLength(1));
+    await waitFor(() => expect(weather.weather?.kind).toBe(ERenderWeatherPlay.KEYFRAME));
     expect(getByTestId("level-weather-play-section").textContent).toContain("Seeded from");
     expect(getByRole("checkbox", { name: "Dynamic sun" })).toBeDisabled();
 
