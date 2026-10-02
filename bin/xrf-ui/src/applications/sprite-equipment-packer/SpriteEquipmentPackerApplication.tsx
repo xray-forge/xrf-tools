@@ -18,7 +18,6 @@ export function SpriteEquipmentPackerApplication(): ReactElement {
   const packerService: SpriteEquipmentPackerService = useInjection(SpriteEquipmentPackerService);
 
   // Rediscover a running pack after reload so the form cannot offer a second pack against the same output.
-
   const isRunning: boolean = packerService.operation.isRunning;
 
   // The source is the directory of loose icons and the output is the single dds built from them. The

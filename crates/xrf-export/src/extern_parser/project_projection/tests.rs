@@ -164,6 +164,35 @@ fn types_object_values_declared_with_const_assertions() {
 }
 
 #[test]
+fn types_object_values_declared_with_satisfies_or_parentheses() {
+  let root: PathBuf = create_test_root("satisfies-and-parentheses");
+
+  // Like `as const`, both wrap the object without changing its shape, so it is typed from its members.
+  write_source(
+    &root,
+    "declarations.ts",
+    r#"
+      export {};
+      interface IConditions { isReady(): boolean; }
+      const conditions = { isReady: (): boolean => true } satisfies IConditions;
+      const limits = ({ count: 1 });
+      /** Ready checks. */
+      extern("outro.conditions", conditions);
+      /** Configured limits. */
+      extern("outro.limits", limits);
+    "#,
+  );
+
+  let project = ExportsProjectParser::new().parse_project_from_path(&root).unwrap();
+  let json: Value = json!(project);
+
+  assert_eq!(json["declarations"][0]["kind"], "value");
+  assert_eq!(json["declarations"][0]["typing"], "{ isReady: () => boolean; }");
+  assert_eq!(json["declarations"][1]["kind"], "value");
+  assert_eq!(json["declarations"][1]["typing"], "{ count: number; }");
+}
+
+#[test]
 fn carries_the_manifest_its_declarations_were_projected_from() {
   let root: PathBuf = create_test_root("manifest");
 

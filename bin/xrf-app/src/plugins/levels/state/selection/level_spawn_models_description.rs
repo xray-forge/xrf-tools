@@ -12,6 +12,6 @@ use crate::plugins::levels::state::selection::level_spawn_object_hemi::LevelSpaw
 pub struct LevelSpawnModelsDescription {
   pub models: Vec<LevelSpawnModelDescription>,
   pub failures: Vec<LevelSpawnModelFailure>,
-  /// None where the level's collision form cannot be read, which lights every object as if under the open sky.
+  /// Empty where the level's collision form cannot be read, which lights every object as if under the open sky.
   pub hemi: Vec<LevelSpawnObjectHemi>,
 }

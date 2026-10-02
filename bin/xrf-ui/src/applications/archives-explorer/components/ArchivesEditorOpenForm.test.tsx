@@ -3,9 +3,9 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { RenderResult } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { Container } from "@wirestate/core";
+import { Maybe } from "@xrf/types";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
-import { VOLUME_INDEX_COUNT } from "@/core/archive/lib";
 import { AssetService } from "@/core/assets/services";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
@@ -79,17 +79,18 @@ describe("ArchivesEditorOpenForm", () => {
     expect(open).toHaveBeenCalledWith({
       title: "Select archive volume",
       filters: [
-        {
-          name: "Archive volume",
-          extensions: ["db", "xdb"].flatMap((stem: string) => [
-            stem,
-            ...Array.from({ length: VOLUME_INDEX_COUNT }, (_, index: number) => `${stem}${index}`),
-          ]),
-        },
+        { name: "Archive volume", extensions: expect.any(Array) },
         { name: "All files", extensions: ["*"] },
       ],
       directory: false,
     });
+
+    // Both stems unindexed and at every index a set is published with, and nothing past the last.
+    const extensions: Maybe<Array<string>> = jest.mocked(open).mock.calls[0][0]?.filters?.[0].extensions;
+
+    expect(extensions).toHaveLength(202);
+    expect(extensions).toEqual(expect.arrayContaining(["db", "db0", "db10", "db99", "xdb", "xdb0", "xdb99"]));
+    expect(extensions).not.toContain("db100");
   });
 
   it("opens the volume that was picked, not its directory", async () => {

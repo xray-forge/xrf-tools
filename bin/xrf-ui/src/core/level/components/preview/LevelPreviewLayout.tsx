@@ -52,7 +52,7 @@ const EMPTY_TEXTURES: ReadonlyArray<LevelWeatherTexture> = [];
 const EMPTY_COLLECTIONS: ReadonlyArray<ThunderboltCollection> = [];
 
 interface ILevelPreviewLayoutProps extends BaseComponentProps {
-  /** What the open level is called. Its presence is what draws the file header over the viewport. */
+  /** What the open level is called, which heads the viewport. Its presence is what offers go-to, stats and picks. */
   name?: Nullable<string>;
   /**
    * What the level being opened is called, which heads the viewport until it is open: the header comes in with the open

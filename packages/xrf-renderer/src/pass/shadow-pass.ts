@@ -53,7 +53,7 @@ export class ShadowPass implements IRendererPass {
    * @param casters - What the cascades draw.
    * @param cull - What culls the static draws, per cascade too.
    * @param shadows - The cascades, fitted for the frame.
-   * @param wind - How the trees sway, which has the map over a swaying caster drawn again every frame it is due.
+   * @param wind - How the trees sway, which has the map over a swaying caster drawn again once a sway interval.
    * @param resolution - Texels its map is across.
    */
   public constructor(

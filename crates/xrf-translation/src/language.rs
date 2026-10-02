@@ -105,7 +105,7 @@ impl TranslationLanguage {
   pub fn into_single(self) -> XrfResult<Self> {
     match self {
       Self::All => Err(XrfError::new_unknown_language_error(String::from(
-        "Unexpected language 'all' provided'",
+        "Unexpected language 'all' provided",
       ))),
       language => Ok(language),
     }

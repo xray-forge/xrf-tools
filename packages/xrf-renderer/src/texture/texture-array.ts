@@ -26,10 +26,7 @@ import { ITextureTarget } from "#/texture/texture-target";
 /** Layers an array holds before it first grows. */
 const INITIAL_LAYERS: number = 4;
 
-/**
- * How much an array grows by: each growth copies every layer and has what binds it record again, which a level's opening
- * did 131-143 times at 1.5. At most half a grown array is unused until it is fitted, once the level settles.
- */
+/** How much an array grows by: at most half a grown one is unused until it is fitted, once the level settles. */
 const GROWTH: number = 2;
 
 /** Milliseconds an array has to go unchanged before it is fitted: a level streaming in claims a layer at a time. */

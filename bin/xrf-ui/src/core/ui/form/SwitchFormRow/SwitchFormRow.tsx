@@ -9,7 +9,7 @@ export interface ISwitchFormRowProps extends BaseComponentProps {
   description?: string;
   isChecked: boolean;
   isDisabled?: boolean;
-  /** Whether the row is marked as a choice a run can do without. */
+  /** Whether a run needs the choice: a row that does not is marked optional. */
   isRequired?: boolean;
   onChange: (isChecked: boolean) => void;
 }
