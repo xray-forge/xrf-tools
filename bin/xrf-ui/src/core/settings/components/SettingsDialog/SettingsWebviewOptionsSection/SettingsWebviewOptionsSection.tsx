@@ -1,7 +1,8 @@
-import { Typography } from "@mui/material";
+import { Button, Typography } from "@mui/material";
 import { Nullable } from "@xrf/types";
-import { ReactElement, useCallback, useState } from "react";
+import { MutableRefObject, ReactElement, useCallback, useRef, useState } from "react";
 
+import { transformError } from "@/core/error/lib";
 import { systemCommands } from "@/core/ipc/commands/system";
 import {
   EWebviewCollectionPace,
@@ -24,13 +25,31 @@ export function SettingsWebviewOptionsSection(): ReactElement {
   const log: Logger = useLogger(__MODULE_NAME__);
 
   const [status, setStatus] = useState<Nullable<WebviewOptionsStatus>>(null);
+  const [failure, setFailure] = useState<Nullable<string>>(null);
+  // Only the latest request's answer is shown: an earlier one landing after it would undo a later choice.
+  const requests: MutableRefObject<number> = useRef(0);
+
+  const onAnswer = useCallback((request: number, answer: WebviewOptionsStatus) => {
+    if (request === requests.current) {
+      setStatus(answer);
+      setFailure(null);
+    }
+  }, []);
 
   const onRead = useCallback(() => {
+    const request: number = ++requests.current;
+
     systemCommands
       .getWebviewOptions()
-      .then(setStatus)
-      .catch((error: unknown) => log.error("Failed to read the webview options:", error));
-  }, [log]);
+      .then((answer: WebviewOptionsStatus) => onAnswer(request, answer))
+      .catch((error: unknown) => {
+        log.error("Failed to read the webview options:", error);
+
+        if (request === requests.current) {
+          setFailure(transformError(error).message);
+        }
+      });
+  }, [log, onAnswer]);
 
   // Shown chosen at once; what the backend kept replaces it, and a choice it could not keep is read back.
   const onChange = useCallback(
@@ -40,18 +59,22 @@ export function SettingsWebviewOptionsSection(): ReactElement {
       }
 
       const chosen: WebviewOptions = { ...status.chosen, ...change };
+      const request: number = ++requests.current;
 
       setStatus({ ...status, chosen });
 
       systemCommands
         .setWebviewOptions(chosen)
-        .then(setStatus)
+        .then((answer: WebviewOptionsStatus) => onAnswer(request, answer))
         .catch((error: unknown) => {
           log.error("Failed to keep the webview options:", error);
-          onRead();
+
+          if (request === requests.current) {
+            onRead();
+          }
         });
     },
-    [log, onRead, status]
+    [log, onAnswer, onRead, status]
   );
 
   useMountEffect(onRead);
@@ -110,6 +133,13 @@ export function SettingsWebviewOptionsSection(): ReactElement {
             value={status.chosen.collectionPace ?? EWebviewCollectionPace.FREQUENT}
             onChange={(collectionPace: WebviewCollectionPace) => onChange({ collectionPace })}
           />
+        </div>
+      ) : failure ? (
+        <div className={"mt-2 flex items-center gap-2"} role={"alert"}>
+          <Typography variant={"caption"}>The webview options could not be read: {failure}</Typography>
+          <Button size={"small"} variant={"outlined"} onClick={onRead}>
+            Retry
+          </Button>
         </div>
       ) : (
         <Typography variant={"caption"}>Reading the webview options...</Typography>

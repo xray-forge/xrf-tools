@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
-import { waitFor } from "@testing-library/react";
+import { act, waitFor } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 
 import { EWebviewCollectionPace, WebviewOptions, WebviewOptionsStatus } from "@/core/ipc/types/xrf-app";
@@ -83,6 +83,54 @@ describe("SettingsWebviewOptionsSection", () => {
 
     await userEvent.click(getByRole("checkbox", { name: "Frame rate limit" }));
     await waitFor(() => expect(backend.chosen).toEqual({ ...STARTED, isVsync: false, isFrameRateLimited: false }));
+  });
+
+  it("says the options could not be read, and reads them again on retry", async () => {
+    let isFailing: boolean = true;
+
+    setMockInvokeResponses({
+      ["plugin:system|get_webview_options"]: (): WebviewOptionsStatus => {
+        if (isFailing) {
+          throw new Error("No preferences");
+        }
+
+        return { running: STARTED, chosen: STARTED };
+      },
+    });
+
+    const { findByRole, findByText, getByRole } = renderWithProviders(<SettingsWebviewOptionsSection />);
+
+    expect(await findByText("The webview options could not be read: No preferences")).toBeInTheDocument();
+
+    isFailing = false;
+    await userEvent.click(getByRole("button", { name: "Retry" }));
+
+    expect(await findByRole("checkbox", { name: "Doubled shader cache" })).toBeChecked();
+  });
+
+  // Two choices made quickly are kept in turn, but their answers may land in either order.
+  it("shows the answer to the latest choice, whatever an earlier one answers after it", async () => {
+    const answers: Array<(status: WebviewOptionsStatus) => void> = [];
+
+    setMockInvokeResponses({
+      ["plugin:system|get_webview_options"]: (): WebviewOptionsStatus => ({ running: STARTED, chosen: STARTED }),
+      ["plugin:system|set_webview_options"]: () =>
+        new Promise((resolve: (status: WebviewOptionsStatus) => void) => answers.push(resolve)),
+    });
+
+    const { findByRole, getByRole } = renderWithProviders(<SettingsWebviewOptionsSection />);
+
+    await userEvent.click(await findByRole("checkbox", { name: "Vsync" }));
+    await userEvent.click(getByRole("checkbox", { name: "Frame rate limit" }));
+    await waitFor(() => expect(answers).toHaveLength(2));
+
+    const latest: WebviewOptions = { ...STARTED, isFrameRateLimited: false, isVsync: false };
+
+    await act(async () => answers[1]({ running: STARTED, chosen: latest }));
+    await act(async () => answers[0]({ running: STARTED, chosen: { ...STARTED, isVsync: false } }));
+
+    expect(getByRole("checkbox", { name: "Frame rate limit" })).not.toBeChecked();
+    expect(getByRole("checkbox", { name: "Vsync" })).not.toBeChecked();
   });
 
   it("waits for a restart only where a choice differs from what the webview started with", () => {
