@@ -41,7 +41,7 @@ fn describe_objects(current: &SelectedLevel, probe: &XrayProbe) -> TauriResult<L
   let described: LevelSpawnObjectsDescription = describe_spawn_objects(&spawn);
 
   // Every visual named is one a batch will describe, and the lighting is held until the last of them is.
-  current.spawn_lighting.expect(&described.visuals)?;
+  current.spawn_lighting.expect(&described.visuals);
   report_spawn_objects(&current.source, &described, started);
 
   Ok(described)

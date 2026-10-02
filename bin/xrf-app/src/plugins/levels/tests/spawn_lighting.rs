@@ -23,15 +23,15 @@ fn holds_the_estimator_until_every_expected_visual_is_described() -> Result<(), 
   let lighting: LevelSpawnLighting = LevelSpawnLighting::new();
   let built: Cell<u32> = Cell::new(0);
 
-  lighting.expect(&names(&["crate", "lamp"]))?;
+  lighting.expect(&names(&["crate", "lamp"]));
   lighting.get_or_build(|| estimator(&built))?;
   lighting.get_or_build(|| estimator(&built))?;
-  lighting.note_described(&names(&["crate"]))?;
+  lighting.note_described(&names(&["crate"]));
 
   assert_eq!(built.get(), 1);
   assert!(lighting.is_held());
 
-  lighting.note_described(&names(&["lamp"]))?;
+  lighting.note_described(&names(&["lamp"]));
 
   assert!(!lighting.is_held());
 
@@ -39,6 +39,24 @@ fn holds_the_estimator_until_every_expected_visual_is_described() -> Result<(), 
   lighting.get_or_build(|| estimator(&built))?;
 
   assert_eq!(built.get(), 2);
+
+  Ok(())
+}
+
+#[test]
+fn lets_go_of_an_estimator_built_again_after_every_visual_was_described() -> Result<(), String> {
+  let lighting: LevelSpawnLighting = LevelSpawnLighting::new();
+  let built: Cell<u32> = Cell::new(0);
+
+  lighting.expect(&names(&["crate"]));
+  lighting.get_or_build(|| estimator(&built))?;
+  lighting.note_described(&names(&["crate"]));
+  // A batch asked again, its visuals described before: built anew for it, and let go after it.
+  lighting.get_or_build(|| estimator(&built))?;
+  lighting.note_described(&names(&["crate"]));
+
+  assert_eq!(built.get(), 2);
+  assert!(!lighting.is_held());
 
   Ok(())
 }
@@ -53,7 +71,7 @@ fn keeps_a_failure_rather_than_trying_again_while_visuals_are_pending() -> Resul
     Err(String::from("no collision form"))
   };
 
-  lighting.expect(&names(&["crate"]))?;
+  lighting.expect(&names(&["crate"]));
 
   assert_eq!(
     lighting.get_or_build(fail).err(),

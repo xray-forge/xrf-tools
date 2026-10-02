@@ -1,5 +1,5 @@
 use std::collections::HashSet;
-use std::sync::{Arc, Mutex, MutexGuard};
+use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
 use xrf_visual::HemiEstimator;
 
@@ -25,60 +25,47 @@ impl LevelSpawnLighting {
   }
 
   /// Expects every visual the viewer draws to be described, the estimator kept until they have been.
-  ///
-  /// # Errors
-  ///
-  /// Returns an error when the lock is poisoned.
-  pub fn expect(&self, visuals: &[String]) -> Result<(), String> {
-    self.lock()?.pending = visuals.iter().cloned().collect();
-
-    Ok(())
+  pub fn expect(&self, visuals: &[String]) {
+    self.lock().pending = visuals.iter().cloned().collect();
   }
 
   /// The estimator, built by `build` where it has not been or has been let go; a failure is kept, not tried again.
   ///
   /// # Errors
   ///
-  /// Returns why the estimator cannot be built, or that the lock is poisoned.
+  /// Returns why the estimator cannot be built.
   pub fn get_or_build(
     &self,
     build: impl FnOnce() -> Result<Arc<HemiEstimator>, String>,
   ) -> Result<Arc<HemiEstimator>, String> {
-    let mut held: MutexGuard<Held> = self.lock()?;
+    let mut held: MutexGuard<Held> = self.lock();
 
     held.estimator.get_or_insert_with(build).clone()
   }
 
-  /// Notes visuals described, and lets the estimator go once none expected is left.
-  ///
-  /// # Errors
-  ///
-  /// Returns an error when the lock is poisoned.
-  pub fn note_described(&self, names: &[String]) -> Result<(), String> {
-    let mut held: MutexGuard<Held> = self.lock()?;
-    let was_pending: bool = !held.pending.is_empty();
+  /// Notes visuals described, and lets the estimator go once none expected is left: after the last, and after a batch
+  /// asked again once none was, which built it anew.
+  pub fn note_described(&self, names: &[String]) {
+    let mut held: MutexGuard<Held> = self.lock();
 
     for name in names {
       held.pending.remove(name);
     }
 
-    if was_pending && held.pending.is_empty() {
+    if held.pending.is_empty() {
       held.estimator = None;
     }
-
-    Ok(())
   }
 
   /// Whether an estimator is held, which is the memory it costs.
   #[cfg(test)]
   pub fn is_held(&self) -> bool {
-    self.held.lock().is_ok_and(|held| matches!(held.estimator, Some(Ok(_))))
+    matches!(self.lock().estimator, Some(Ok(_)))
   }
 
-  fn lock(&self) -> Result<MutexGuard<'_, Held>, String> {
-    self
-      .held
-      .lock()
-      .map_err(|error| format!("The level's spawned objects' lighting is unavailable: {error}"))
+  /// The state, taken back from a build that panicked holding it: it is a cache and a set of names, either of which a
+  /// later batch makes good, rather than lighting lost for the rest of the level.
+  fn lock(&self) -> MutexGuard<'_, Held> {
+    self.held.lock().unwrap_or_else(PoisonError::into_inner)
   }
 }

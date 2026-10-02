@@ -51,10 +51,8 @@ fn describe_models(current: &SelectedLevel, probe: &XrayProbe, names: &[String])
     described.hemi = describe_hemi(current, probe, &estimator, &read);
   }
 
-  // Told which visuals are described, the lighting is let go after the last; failing that, it lasts the level's life.
-  if let Err(error) = current.spawn_lighting.note_described(names) {
-    log::warn!("{error}");
-  }
+  // Told which visuals are described, the lighting is let go after the last.
+  current.spawn_lighting.note_described(names);
 
   report_spawn_models(&current.source, &described, started);
 
