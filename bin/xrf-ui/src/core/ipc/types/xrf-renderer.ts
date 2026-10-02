@@ -87,6 +87,10 @@ export type RenderFrameReport = {
   width: number;
   /** Drawn height, in device pixels. */
   height: number;
+  /** Clusters the last counted frame drew. */
+  clusters: number;
+  /** Triangles they hold, an instanced one counted for every place it stood. */
+  triangles: number;
   /** The graphics API drawn with. */
   backend: string;
   /** The GPU drawn on. */
@@ -132,6 +136,37 @@ export enum ERenderInputKind {
 /** Every `ERenderInputKind` as the spelling it crosses IPC as, for a value no member has narrowed. */
 export type RenderInputKind = `${ERenderInputKind}`;
 
+/** What of a level is drawn under a point of a viewport, and where the ray from the eye met it. */
+export type RenderLevelHit = {
+  sector: number;
+  /** The shader table entry drawing it. */
+  shaderId: number;
+  /** The sector's instanced mesh it is one place of, or none for its baked geometry. */
+  mesh: number | null;
+  /** Which place of the mesh it is, or none for the baked geometry. */
+  place: number | null;
+  /** Whether it is a clump of trees drawn as its impostor. */
+  isImpostor: boolean;
+  /** Where the ray met it, in renderer space. */
+  point: [number | null, number | null, number | null];
+};
+
+/** How far a viewport's scene has been read and put on the GPU. */
+export type RenderLoadReport = {
+  /** Sectors resident on the GPU. */
+  sectors: number;
+  /** Sectors the level has. */
+  sectorsTotal: number;
+  /** Bytes of the sectors resident, packed. */
+  bytes: number;
+  /** Textures uploaded or given up on. */
+  textures: number;
+  /** Textures the scene names. */
+  texturesTotal: number;
+  /** Whether everything is resident, so the scene draws as it will. */
+  isReady: boolean;
+};
+
 /** How often frames are presented. */
 export enum ERenderPresentation {
   /** One frame a refresh of the display. */
@@ -156,12 +191,85 @@ export type RenderSettings = {
   presentation: RenderPresentation;
 };
 
+/** How much geometry one shader table entry of a viewport's level draws, across the sectors resident. */
+export type RenderSurfaceGeometry = {
+  shaderId: number;
+  /** Drawables of the level's visuals naming the entry. */
+  drawables: number;
+  /** Triangles drawn at whole detail, a mesh's once for each place it stands in. */
+  triangles: number;
+  /** What its base coordinate covers over every draw together. */
+  span: RenderSurfaceSpan | null;
+  /** The narrowest range any single draw covers. */
+  narrowest: RenderSurfaceSpan | null;
+};
+
+/** The range a base texture coordinate covers over some of a level's geometry. */
+export type RenderSurfaceSpan = {
+  uMin: number | null;
+  uMax: number | null;
+  vMin: number | null;
+  vMax: number | null;
+};
+
+/** What became of one texture reference a viewport's scene samples. */
+export type RenderTextureReport = {
+  reference: string;
+  state: RenderTextureState;
+};
+
+/** Every `kind` the `RenderTextureState` union is told apart by, so a switch or a comparison names one. */
+export enum ERenderTextureState {
+  LOADING = "loading",
+  LOADED = "loaded",
+  /** Its reference resolved to no file. */
+  MISSING = "missing",
+  /** Its file could not be read or laid out, and why. */
+  FAILED = "failed",
+}
+
+/** Where one texture a viewport's scene samples stands. */
+export type RenderTextureState =
+  | { kind: "loading" }
+  | {
+      kind: "loaded";
+      width: number;
+      height: number;
+      levels: number;
+      /** The file's own layout, as the textures explorer names it. */
+      layout: string;
+      /** Whether it was expanded to eight bits a channel rather than uploaded as stored. */
+      isExpanded: boolean;
+    }
+  /** Its reference resolved to no file. */
+  | { kind: "missing" }
+  /** Its file could not be read or laid out, and why. */
+  | { kind: "failed"; reason: string };
+
+/** What one viewport draws its scene with, as its viewer's toolbar sets it. */
+export type RenderViewOptions = {
+  /** Whether surfaces wear their textures, else their flat colours. */
+  isTextured: boolean;
+  /** Whether bump textures bend the normal. */
+  isBumped: boolean;
+  /** How far the baked hemisphere darkens the ambient: zero for not at all. */
+  hemiStrength: number | null;
+  /** Whether what the last frame's depth hides is left undrawn. */
+  isOcclusionCulled: boolean;
+  /** Whether distant trees are drawn as their impostors. */
+  isImpostors: boolean;
+  /** `r__geometry_lod`: every screen area threshold scales with it. */
+  geometryLod: number | null;
+};
+
 /** Every `kind` the `RenderViewportEvent` union is told apart by, so a switch or a comparison names one. */
 export enum ERenderViewportEvent {
   /** What the recent frames cost. */
   FRAME = "frame",
   /** Where the camera stands, sent while it moves and once more after it stops. */
   CAMERA = "camera",
+  /** How far its scene has loaded, sent as it changes. */
+  LOAD = "load",
   /** The renderer cannot draw this viewport, and why. */
   FAILURE = "failure",
 }
@@ -172,6 +280,8 @@ export type RenderViewportEvent =
   | { kind: "frame"; report: RenderFrameReport }
   /** Where the camera stands, sent while it moves and once more after it stops. */
   | { kind: "camera"; pose: RenderCameraPose }
+  /** How far its scene has loaded, sent as it changes. */
+  | { kind: "load"; report: RenderLoadReport }
   /** The renderer cannot draw this viewport, and why. */
   | { kind: "failure"; message: string };
 

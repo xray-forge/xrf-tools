@@ -1,18 +1,27 @@
 use std::sync::atomic::{AtomicU32, Ordering};
-use std::sync::mpsc::{Sender, channel};
+use std::sync::mpsc::{Receiver, Sender, channel};
 use std::sync::{Arc, Mutex, MutexGuard};
+
+use xrf_error::XrfResult;
 
 use crate::contract::render_camera::RenderCamera;
 use crate::contract::render_camera_command::RenderCameraCommand;
+use crate::contract::render_capture::RenderCapture;
 use crate::contract::render_input_event::RenderInputEvent;
+use crate::contract::render_level_hit::RenderLevelHit;
 use crate::contract::render_settings::RenderSettings;
+use crate::contract::render_surface_geometry::RenderSurfaceGeometry;
+use crate::contract::render_texture_report::RenderTextureReport;
+use crate::contract::render_view_options::RenderViewOptions;
 use crate::contract::render_viewport_id::RenderViewportId;
 use crate::contract::render_viewport_layout::RenderViewportLayout;
 use crate::host::render_event_sink::RenderEventSink;
+use crate::host::render_level_source::RenderLevelSource;
 use crate::host::render_window_host::RenderWindowHost;
 use crate::thread::render_command::RenderCommand;
 use crate::thread::render_link::RenderLink;
 use crate::thread::render_thread::RenderThread;
+use crate::viewport::pending_pick::PendingPick;
 
 /// The renderer as an application holds it: cheap to make, and touching no GPU until a viewport is attached.
 ///
@@ -56,6 +65,55 @@ impl Renderer {
 
   pub fn command_camera(&self, id: RenderViewportId, command: RenderCameraCommand) {
     self.send(RenderCommand::CameraCommand { id, command });
+  }
+
+  /// What a viewport's level draws under a point, css pixels from its corner, answered after its next frame; the
+  /// answer never comes for a viewport the renderer does not draw.
+  pub fn pick(&self, id: RenderViewportId, x: f32, y: f32) -> Receiver<XrfResult<Option<RenderLevelHit>>> {
+    let (reply, answer) = channel();
+
+    self.send(RenderCommand::Pick {
+      id,
+      pick: PendingPick { x, y, reply },
+    });
+
+    answer
+  }
+
+  /// What each shader table entry of a viewport's level draws across the sectors resident, answered at once.
+  pub fn measure_surfaces(&self, id: RenderViewportId) -> Receiver<Vec<RenderSurfaceGeometry>> {
+    let (reply, answer) = channel();
+
+    self.send(RenderCommand::MeasureSurfaces { id, reply });
+
+    answer
+  }
+
+  /// What became of every texture a viewport's level samples, answered at once.
+  pub fn describe_textures(&self, id: RenderViewportId) -> Receiver<Vec<RenderTextureReport>> {
+    let (reply, answer) = channel();
+
+    self.send(RenderCommand::DescribeTextures { id, reply });
+
+    answer
+  }
+
+  /// A viewport's next presented frame, read back; the answer never comes for a viewport the renderer does not draw.
+  pub fn capture_viewport(&self, id: RenderViewportId) -> Receiver<XrfResult<RenderCapture>> {
+    let (reply, answer) = channel();
+
+    self.send(RenderCommand::Capture { id, reply });
+
+    answer
+  }
+
+  pub fn set_view_options(&self, id: RenderViewportId, options: RenderViewOptions) {
+    self.send(RenderCommand::Options { id, options });
+  }
+
+  /// Draws a level in a viewport, read from its source on the renderer's loader threads; `None` draws none.
+  pub fn show_level(&self, id: RenderViewportId, source: Option<Arc<dyn RenderLevelSource>>) {
+    self.send(RenderCommand::Level { id, source });
   }
 
   /// Applies settings to every viewport, now and in every thread started later.

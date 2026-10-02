@@ -14,10 +14,15 @@ glam = { workspace = true }
 log = { workspace = true }
 pollster = { workspace = true }
 raw-window-handle = { workspace = true }
+rayon = { workspace = true }
 serde = { workspace = true }
 specta = { workspace = true, optional = true }
 wgpu = { workspace = true }
+xrf-dds = { workspace = true }
 xrf-error = { workspace = true }
+xrf-material = { workspace = true }
+xrf-math = { workspace = true }
+xrf-visual = { workspace = true }
 
 [dev-dependencies]
 naga = { workspace = true }

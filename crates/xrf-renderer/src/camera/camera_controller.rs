@@ -66,6 +66,16 @@ impl CameraController {
     }
   }
 
+  /// The lens's vertical field of view, in degrees.
+  pub fn get_field_of_view(&self) -> f32 {
+    let description: RenderCamera = match self {
+      CameraController::Fly(controller) => controller.get_description(),
+      CameraController::Orbit(controller) => controller.get_description(),
+    };
+
+    description.get_lens().0
+  }
+
   pub fn get_pose(&self) -> RenderCameraPose {
     match self {
       CameraController::Fly(controller) => controller.get_pose(),

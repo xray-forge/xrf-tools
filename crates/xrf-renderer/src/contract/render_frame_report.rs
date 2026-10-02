@@ -17,6 +17,10 @@ pub struct RenderFrameReport {
   pub width: u32,
   /// Drawn height, in device pixels.
   pub height: u32,
+  /// Clusters the last counted frame drew.
+  pub clusters: u32,
+  /// Triangles they hold, an instanced one counted for every place it stood.
+  pub triangles: u32,
   /// The graphics API drawn with.
   pub backend: String,
   /// The GPU drawn on.

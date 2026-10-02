@@ -1,10 +1,12 @@
 pub mod commands;
 pub mod configs;
 pub mod details;
+pub mod drawn_attributes;
 pub mod hemi;
 pub mod lights;
 pub mod plugin;
 pub mod read;
+pub mod render_source;
 pub mod report;
 pub mod request;
 pub mod routes;

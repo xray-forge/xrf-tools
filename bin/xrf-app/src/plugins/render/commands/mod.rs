@@ -1,7 +1,13 @@
 pub mod attach_viewport;
 pub mod command_camera;
 pub mod configure;
+pub mod describe_textures;
 pub mod detach_viewport;
+pub mod measure_surfaces;
+pub mod pick;
+pub mod save_capture;
 pub mod send_input;
 pub mod set_camera;
+pub mod set_view_options;
 pub mod set_viewport_layout;
+pub mod show_level;

@@ -10,6 +10,11 @@ import {
   RenderCameraPose,
   RenderFrameReport,
   RenderInputEvent,
+  RenderLevelHit,
+  RenderLoadReport,
+  RenderSurfaceGeometry,
+  RenderTextureReport,
+  RenderViewOptions,
   RenderViewportEvent,
   RenderViewportId,
   RenderViewportLayout,
@@ -23,6 +28,8 @@ export interface INativeViewportListener {
   onFrame(report: RenderFrameReport): void;
   /** Where its camera stands, while it moves and once after. */
   onCamera(pose: RenderCameraPose): void;
+  /** How far its scene has loaded, as that changes. */
+  onLoad(report: RenderLoadReport): void;
   /** Why it cannot be drawn. */
   onFailed(message: string): void;
 }
@@ -50,6 +57,9 @@ export class NativeViewport {
 
         case ERenderViewportEvent.CAMERA:
           return listener.onCamera(event.pose);
+
+        case ERenderViewportEvent.LOAD:
+          return listener.onLoad(event.report);
 
         case ERenderViewportEvent.FAILURE:
           return listener.onFailed(event.message);
@@ -92,6 +102,78 @@ export class NativeViewport {
 
   public commandCamera(command: RenderCameraCommand): void {
     this.call((id: RenderViewportId) => renderCommands.commandCamera(id, command));
+  }
+
+  public setViewOptions(options: RenderViewOptions): void {
+    this.call((id: RenderViewportId) => renderCommands.setViewOptions(id, options));
+  }
+
+  /**
+   * Names what the viewport's level draws under a point.
+   *
+   * @param x - Css pixels from the viewport's left edge.
+   * @param y - Css pixels from its top edge.
+   * @returns What was hit, or null for nothing, a viewport not attached or a pick that failed.
+   */
+  public async pick(x: number, y: number): Promise<Nullable<RenderLevelHit>> {
+    const id: Nullable<RenderViewportId> = await this.attached;
+
+    if (id === null || this.isDisposed) {
+      return null;
+    }
+
+    try {
+      return await renderCommands.pick(id, x, y);
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Counts what each shader table entry of the viewport's level draws across the sectors resident.
+   *
+   * @returns Every entry something draws, or none for a viewport not attached or a measure that failed.
+   */
+  public async measureSurfaces(): Promise<Array<RenderSurfaceGeometry>> {
+    const id: Nullable<RenderViewportId> = await this.attached;
+
+    if (id === null || this.isDisposed) {
+      return [];
+    }
+
+    try {
+      return await renderCommands.measureSurfaces(id);
+    } catch {
+      return [];
+    }
+  }
+
+  /**
+   * Says what became of every texture the viewport's level samples.
+   *
+   * @returns Each texture's reference and state, or none for a viewport not attached or a description that failed.
+   */
+  public async describeTextures(): Promise<Array<RenderTextureReport>> {
+    const id: Nullable<RenderViewportId> = await this.attached;
+
+    if (id === null || this.isDisposed) {
+      return [];
+    }
+
+    try {
+      return await renderCommands.describeTextures(id);
+    } catch {
+      return [];
+    }
+  }
+
+  /**
+   * Draws an open level, or none.
+   *
+   * @param sessionId - The level's open session, as the backend holds it, or null for no level.
+   */
+  public showLevel(sessionId: Nullable<string>): void {
+    this.call((id: RenderViewportId) => renderCommands.showLevel(id, sessionId).then(() => undefined));
   }
 
   /** Stops drawing; the renderer lets its GPU go a few seconds after the last viewport. */

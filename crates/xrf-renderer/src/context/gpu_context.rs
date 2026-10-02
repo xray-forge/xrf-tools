@@ -50,8 +50,9 @@ impl GpuContext {
     let mut descriptor: wgpu::InstanceDescriptor = wgpu::InstanceDescriptor::new_without_display_handle();
 
     descriptor.backends = backend.to_backends();
-    // Validation in debug builds only, so a release frame pays nothing for it.
-    descriptor.flags = wgpu::InstanceFlags::from_build_config();
+    // Validation in debug builds only, so a release frame pays nothing for it; `WGPU_VALIDATION`, `WGPU_DEBUG` and the
+    // rest of wgpu's switches override it either way.
+    descriptor.flags = wgpu::InstanceFlags::from_build_config().with_env();
 
     let instance: wgpu::Instance = wgpu::Instance::new(descriptor);
     let adapter: wgpu::Adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {

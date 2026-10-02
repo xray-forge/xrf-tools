@@ -133,6 +133,10 @@ impl OrbitCameraController {
     self.dragged.is_some()
   }
 
+  pub fn get_description(&self) -> RenderCamera {
+    self.description
+  }
+
   pub fn get_pose(&self) -> RenderCameraPose {
     RenderCameraPose {
       position: self.position.to_array(),

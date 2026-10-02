@@ -132,6 +132,11 @@ impl DdsFile {
     DdsMetadata::from_dds(&self.dds, self.file_size, self.metadata_size)
   }
 
+  /// The payload as stored: every layer's mip chain, largest level first, as a GPU uploads compressed blocks.
+  pub fn get_data(&self) -> &[u8] {
+    &self.dds.data
+  }
+
   /// Decode one mip level to RGBA, for whatever wants pixels rather than the file.
   ///
   /// Two decoders, in order. `image_dds` owns every block compressed layout and the packings it has names for; what it

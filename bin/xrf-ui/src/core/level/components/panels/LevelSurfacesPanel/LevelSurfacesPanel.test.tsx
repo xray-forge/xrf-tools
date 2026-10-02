@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, jest } from "@jest/globals";
+import { beforeEach, describe, expect, it } from "@jest/globals";
 import { act, RenderResult, waitFor, within } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { Container } from "@wirestate/core";
@@ -199,22 +199,17 @@ describe("LevelSurfacesPanel", () => {
     expect(within(details).getByText("nothing resident draws it")).toBeInTheDocument();
   });
 
-  // Measuring what a surface draws samples the coordinates of every draw of every sector held, so it is asked of
-  // whoever holds them rather than published, and only once an entry is chosen.
-  it("shows what the renderer's content answers when asked what the chosen entry draws", async () => {
-    const measure = jest.fn(
-      () =>
-        new Map(
-          [0, 1, 2, 3].map((shaderId) => [shaderId, { drawables: 2, narrowest: null, span: null, triangles: 70 }])
-        )
-    );
+  // The renderer counts what every entry draws once the level is resident; the panel shows the chosen entry's count.
+  it("shows what the viewport counted the chosen entry drawing", async () => {
     const view: RenderResult = await renderPanel(undefined, (container: Container) => {
-      const render: LevelRenderService = container.get(LevelRenderService);
-
-      jest.spyOn(render, "measureSurfaceGeometry").mockImplementation(measure);
+      container
+        .get(LevelViewportService)
+        .noteSurfaceGeometry(
+          new Map(
+            [0, 1, 2, 3].map((shaderId) => [shaderId, { drawables: 2, narrowest: null, span: null, triangles: 70 }])
+          )
+        );
     });
-
-    expect(measure).not.toHaveBeenCalled();
 
     const details: HTMLElement = await choose(view, "poteki", "2 · decal\\decal_poteki");
 

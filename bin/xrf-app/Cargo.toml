@@ -82,6 +82,7 @@ xrf-shaders = { workspace = true }
 xrf-spawn = { workspace = true }
 xrf-particles = { workspace = true }
 xrf-renderer = { workspace = true }
+image = { workspace = true, features = ["png"] }
 
 # Both already in the tree through wry, at the versions it resolves: the memory reading asks WebView2 for its processes.
 [target.'cfg(windows)'.dependencies]

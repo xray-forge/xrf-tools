@@ -10,7 +10,17 @@ use crate::shader::shader_composer::compose_shader;
 /// extension.
 const EMBEDDED: &[(&str, &str)] = &[
   ("common/camera", include_str!("../../shaders/common/camera.wgsl")),
+  (
+    "common/octahedral",
+    include_str!("../../shaders/common/octahedral.wgsl"),
+  ),
+  ("frame/combine", include_str!("../../shaders/frame/combine.wgsl")),
+  ("frame/pyramid", include_str!("../../shaders/frame/pyramid.wgsl")),
   ("grid/grid", include_str!("../../shaders/grid/grid.wgsl")),
+  ("static/cull", include_str!("../../shaders/static/cull.wgsl")),
+  ("static/gbuffer", include_str!("../../shaders/static/gbuffer.wgsl")),
+  ("static/impostor", include_str!("../../shaders/static/impostor.wgsl")),
+  ("static/records", include_str!("../../shaders/static/records.wgsl")),
 ];
 
 /// The renderer's WGSL modules: embedded in a release build, read from the crate's `shaders/` directory in a debug

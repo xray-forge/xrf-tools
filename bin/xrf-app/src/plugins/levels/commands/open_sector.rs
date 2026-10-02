@@ -4,24 +4,14 @@ use std::time::Instant;
 use tauri::State;
 use xrf_chunk::XRayByteOrder;
 use xrf_level::{LevelSector, LevelSectorComposition};
-use xrf_visual::{SectorAttributes, SectorDescription, SectorPackage, SectorPacker};
+use xrf_visual::{SectorDescription, SectorPackage, SectorPacker};
 
 use crate::core::execution::ExecutionState;
 use crate::core::session::{SessionId, SessionSnapshot};
 use crate::core::types::TauriResult;
+use crate::plugins::levels::drawn_attributes::DRAWN_ATTRIBUTES;
 use crate::plugins::levels::report::{report_packed_sector, report_packing_sector};
 use crate::plugins::levels::state::{LevelState, PackedSector, SelectedLevel};
-
-/// What the viewer draws a level surface with, which is what a pack is worth carrying: the tangent frame too, whose
-/// fourth bytes are the low bytes of the base coordinate, and the vertex colour water is lit by.
-const DRAWN_ATTRIBUTES: SectorAttributes = SectorAttributes {
-  binormals: true,
-  colors: true,
-  lightmap_uvs: true,
-  normals: true,
-  tangents: true,
-  uvs: true,
-};
 
 /// Pack one sector of the open level and report what it became.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "open_sector"))]

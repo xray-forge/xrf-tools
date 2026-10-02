@@ -16,6 +16,7 @@ pub struct RenderWindow {
   surface: wgpu::Surface<'static>,
   format: wgpu::TextureFormat,
   present_modes: Vec<wgpu::PresentMode>,
+  usages: wgpu::TextureUsages,
   /// What the swapchain was last configured as: its size and presentation.
   configured: Option<(u32, u32, RenderPresentation)>,
 }
@@ -47,6 +48,7 @@ impl RenderWindow {
 
     Ok(Self {
       present_modes: capabilities.present_modes,
+      usages: capabilities.usages,
       configured: None,
       host,
       surface,
@@ -103,7 +105,8 @@ impl RenderWindow {
     self.surface.configure(
       &context.device,
       &wgpu::SurfaceConfiguration {
-        usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+        // Copied out of for captures where the platform allows it.
+        usage: wgpu::TextureUsages::RENDER_ATTACHMENT | (self.usages & wgpu::TextureUsages::COPY_SRC),
         format: self.format,
         width,
         height,

@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
+import { waitFor } from "@testing-library/react";
 import { Container } from "@wirestate/core";
 
 import {
@@ -8,8 +9,11 @@ import {
   ERenderViewportEvent,
   RenderCamera,
   RenderFrameReport,
+  RenderLevelHit,
+  RenderSurfaceSpan,
   RenderViewportEvent,
 } from "@/core/ipc/types/xrf-renderer";
+import { ELevelPick } from "@/core/level/lib/pick/level-pick";
 import { LevelLoadService } from "@/core/level/services/level-load.service";
 import { LevelRenderService } from "@/core/level/services/level-render.service";
 import { LevelViewService } from "@/core/level/services/level-view.service";
@@ -28,14 +32,18 @@ import { mockContainer } from "@/fixtures/utils/container";
 
 const VIEWPORT: number = 7;
 
+const SPAN: RenderSurfaceSpan = { uMax: 2, uMin: 0, vMax: 1, vMin: -1 };
+
 const REPORT: RenderFrameReport = {
   adapter: "Test GPU",
   backend: "D3D12",
+  clusters: 1200,
   cpuTime: 0.8,
   frameTime: 6.25,
   frameTimeMax: 9,
   framesPerSecond: 160,
   height: 600,
+  triangles: 90_000,
   width: 800,
 };
 
@@ -105,10 +113,43 @@ describe("LevelRenderService", () => {
     });
   });
 
-  it("reveals the level once it is open", async () => {
+  it("shows the open level in its viewport and reveals it once the renderer has it resident", async () => {
     const { container } = await mockAttached();
+    const viewport: LevelViewportService = container.get(LevelViewportService);
 
-    expect(container.get(LevelViewportService).isRevealed).toBe(true);
+    expect(sent("show_level")).toEqual([{ sessionId: expect.any(String), viewport: VIEWPORT }]);
+    expect(viewport.isRevealed).toBe(false);
+
+    emit({
+      kind: ERenderViewportEvent.LOAD,
+      report: { bytes: 10, isReady: false, sectors: 1, sectorsTotal: 2, textures: 0, texturesTotal: 3 },
+    });
+    expect(viewport.isRevealed).toBe(false);
+
+    setMockInvokeResponses({
+      ["plugin:render|describe_textures"]: [
+        {
+          reference: "terrain\\terrain_escape",
+          state: { height: 512, isExpanded: false, kind: "loaded", layout: "DXT1", levels: 10, width: 1024 },
+        },
+        { reference: "act\\act_none", state: { kind: "missing" } },
+      ],
+      ["plugin:render|measure_surfaces"]: [{ drawables: 3, narrowest: SPAN, shaderId: 7, span: SPAN, triangles: 40 }],
+    });
+    emit({
+      kind: ERenderViewportEvent.LOAD,
+      report: { bytes: 20, isReady: true, sectors: 2, sectorsTotal: 2, textures: 3, texturesTotal: 3 },
+    });
+    expect(viewport.isRevealed).toBe(true);
+
+    // Counted once everything is resident, so it counts the level whole.
+    await waitFor(() => expect(viewport.surfaceGeometry.get(7)?.triangles).toBe(40));
+    expect(viewport.surfaceGeometry.get(7)).toEqual({ drawables: 3, narrowest: SPAN, span: SPAN, triangles: 40 });
+    expect(viewport.textureReport.uploaded).toBe(2);
+    expect(viewport.textureReport.dressing.get("terrain\\terrain_escape")?.upload).toBe("1024×512 · DXT1 · 10 levels");
+    expect(viewport.textureReport.problems).toEqual([
+      { reason: "Nothing in the mounted roots answers to it", reference: "act\\act_none" },
+    ]);
   });
 
   it("reads frames and the camera into the readouts", async () => {
@@ -119,6 +160,8 @@ describe("LevelRenderService", () => {
     expect(viewport.stats.framesPerSecond).toBe(160);
     expect(viewport.stats.worstFrameTime).toBe(9);
     expect(viewport.stats.drawnWidth).toBe(800);
+    expect(viewport.stats.draws).toBe(1200);
+    expect(viewport.stats.triangles).toBe(90_000);
 
     emit({ kind: ERenderViewportEvent.CAMERA, pose: { position: [1, 2, 3], target: [1, 2, 2] } });
     // The readout states the engine's space, which mirrors renderer space along z.
@@ -146,6 +189,50 @@ describe("LevelRenderService", () => {
 
     expect(sent("set_camera")).toHaveLength(1);
     expect(sent("command_camera")).toHaveLength(0);
+  });
+
+  it("draws with what the toolbar and the settings come to", async () => {
+    const { container } = await mockAttached();
+    const view: LevelViewService = container.get(LevelViewService);
+
+    expect(sent("set_view_options").at(-1)).toEqual({
+      options: expect.objectContaining({ isBumped: true, isTextured: true }),
+      viewport: VIEWPORT,
+    });
+
+    mockInvoke.mockClear();
+    view.setOptions({ ...view.options, isTextured: false });
+    await flush();
+
+    expect(sent("set_view_options")).toEqual([
+      { options: expect.objectContaining({ isTextured: false }), viewport: VIEWPORT },
+    ]);
+  });
+
+  it("names what a pick hit in the level's own coordinates", async () => {
+    const { container, service } = await mockAttached();
+    const hit: RenderLevelHit = {
+      isImpostor: false,
+      mesh: 2,
+      place: 7,
+      point: [1, 2, 3],
+      sector: 4,
+      shaderId: 11,
+    };
+
+    setMockInvokeResponses({ ["plugin:render|pick"]: hit });
+    await service.pick({ x: 10, y: 20 });
+
+    expect(sent("pick").at(-1)).toEqual({ viewport: VIEWPORT, x: 10, y: 20 });
+    expect(container.get(LevelViewportService).picked).toEqual({
+      isImpostor: false,
+      kind: ELevelPick.SURFACE,
+      mesh: 2,
+      place: 7,
+      point: { x: 1, y: 2, z: -3 },
+      sector: 4,
+      shaderId: 11,
+    });
   });
 
   it("states why the viewport cannot draw, and lets it go on detach", async () => {
