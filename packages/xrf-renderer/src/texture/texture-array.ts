@@ -26,8 +26,11 @@ import { ITextureTarget } from "#/texture/texture-target";
 /** Layers an array holds before it first grows. */
 const INITIAL_LAYERS: number = 4;
 
-/** How much an array grows by, which leaves at most a third of a grown one unused. */
-const GROWTH: number = 1.5;
+/**
+ * How much an array grows by: each growth copies every layer and has what binds it record again, which a level's opening
+ * did 131-143 times at 1.5. At most half a grown array is unused until it is fitted, once the level settles.
+ */
+const GROWTH: number = 2;
 
 /** Milliseconds an array has to go unchanged before it is fitted: a level streaming in claims a layer at a time. */
 const COMPACT_IDLE: number = 3000;
@@ -82,7 +85,7 @@ const HALF_BLOCK_FORMATS: ReadonlySet<CompressedPixelFormat> = new Set<Compresse
 
 /**
  * Textures of one class as the layers of one array, each copied on the GPU from its key's own texture, which then goes.
- * Grown by half again, to the device's layer limit or `TEXTURE_ARRAY_BYTES`, and fitted to the layers it uses once it
+ * Grown twofold, to the device's layer limit or `TEXTURE_ARRAY_BYTES`, and fitted to the layers it uses once it
  * goes unchanged a while; a layer let go from the top is given up, and the lowest free layer is reused first, so the
  * top stays what can be given up.
  */

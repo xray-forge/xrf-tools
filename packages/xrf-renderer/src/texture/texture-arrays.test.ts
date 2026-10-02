@@ -103,8 +103,8 @@ describe("TextureArrays", () => {
 
     const before: CompressedArrayTexture = first.array.target.value as CompressedArrayTexture;
 
-    // Five of six, but only just claimed: a level streaming in is left alone.
-    expect(before.image.depth).toBe(6);
+    // Five of eight, but only just claimed: a level streaming in is left alone.
+    expect(before.image.depth).toBe(8);
 
     arrays.compact(performance.now());
 
@@ -120,7 +120,7 @@ describe("TextureArrays", () => {
     expect(disposals).toEqual([before]);
   });
 
-  it("grows an array by half again, copying every layer it held into the larger one, and says so", () => {
+  it("grows an array twofold, copying every layer it held into the larger one, and says so", () => {
     const replaced: Array<string> = [];
     const arrays: TextureArrays = new TextureArrays((key: string) => replaced.push(key));
     const held: Array<ITextureLayer> = ["a", "b", "c", "d"].map(
@@ -135,7 +135,7 @@ describe("TextureArrays", () => {
     const { copies, disposals }: ITextureArrayFlush = arrays.flush();
 
     expect(after).not.toBe(before);
-    expect(after.image.depth).toBe(6);
+    expect(after.image.depth).toBe(8);
     expect(replaced).toEqual([held[0].array.key]);
     expect(copies[0]).toMatchObject({ destination: after, destinationLayer: 0, layers: 4, source: before });
     expect(copies[1]).toMatchObject({ destinationLayer: 4, layers: 1 });
@@ -302,13 +302,13 @@ describe("TextureArrays", () => {
     const first: Texture = held[0].array.target.value;
 
     arrays.flush();
-    // Grown to six, then to nine.
-    ["e", "f", "g"].forEach((key: string) => arrays.claim(key, createTexture("DXT5", 8, 1)));
+    // Grown to eight, then to sixteen.
+    ["e", "f", "g", "h", "i"].forEach((key: string) => arrays.claim(key, createTexture("DXT5", 8, 1)));
 
     const last: CompressedArrayTexture = held[0].array.target.value as CompressedArrayTexture;
     const { copies, disposals, replaced }: ITextureArrayFlush = arrays.flush();
 
-    expect(last.image.depth).toBe(9);
+    expect(last.image.depth).toBe(16);
     expect(copies[0]).toMatchObject({ destination: last, layers: 4, source: first });
     expect(copies.slice(1).every((copy: ITextureCopy) => copy.destination === last)).toBe(true);
     expect(disposals).toHaveLength(2);
@@ -323,7 +323,7 @@ describe("TextureArrays", () => {
       (key: string) => arrays.claim(key, createTexture("DXT5", 8, 1)) as ITextureLayer
     );
 
-    // Grown to six and not flushed yet, then all but two let go and fitted.
+    // Grown to eight and not flushed yet, then all but two let go and fitted.
     ["c", "d", "e"].forEach((key: string, index: number) => arrays.release(key, held[index + 2]));
     arrays.compact(IDLE);
 
