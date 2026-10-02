@@ -36,6 +36,7 @@ impl PresentPass {
         texture_entry(7, fragment, unfiltered, flat),
         uniform_entry(8, fragment),
         texture_entry(9, fragment, unfiltered, flat),
+        texture_entry(10, fragment, unfiltered, flat),
       ],
     });
 
@@ -100,6 +101,7 @@ impl PresentPass {
         texture_binding(7, &targets.occlusion[0]),
         buffer_binding(8, uniform),
         texture_binding(9, upscaled.unwrap_or(&targets.scene)),
+        texture_binding(10, &targets.motion),
       ],
     })
   }

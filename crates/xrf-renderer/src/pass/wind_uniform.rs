@@ -14,6 +14,9 @@ pub struct WindUniform {
   pub wind: Vec4,
   /// The engine's `wave`: its direction through the level, and its phase in `w`, both over a turn.
   pub wave: Vec4,
+  /// The same two the frame before, which a swaying vertex's motion is measured from.
+  pub previous_wind: Vec4,
+  pub previous_wave: Vec4,
 }
 
 impl WindUniform {
@@ -28,10 +31,25 @@ impl WindUniform {
       0.0
     };
 
+    let wind: Vec4 = Vec4::new(rotation.sin(), 0.0, -rotation.cos(), 0.0) * trees.amplitude;
+    let wave: Vec4 = Vec4::new(trees.wave.x, trees.wave.y, -trees.wave.z, time * trees.speed) / TAU;
+
     Self {
-      wind: Vec4::new(rotation.sin(), 0.0, -rotation.cos(), 0.0) * trees.amplitude,
-      wave: Vec4::new(trees.wave.x, trees.wave.y, -trees.wave.z, time * trees.speed) / TAU,
+      wind,
+      wave,
+      previous_wind: wind,
+      previous_wave: wave,
     }
+  }
+
+  /// This sway after the one before it, or after itself for a first frame.
+  pub fn following(mut self, before: Option<&Self>) -> Self {
+    if let Some(before) = before {
+      self.previous_wind = before.wind;
+      self.previous_wave = before.wave;
+    }
+
+    self
   }
 
   /// Whether the trees move at all.

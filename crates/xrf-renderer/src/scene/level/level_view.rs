@@ -27,6 +27,7 @@ use crate::contract::render_upscaling_settings::RenderUpscalingSettings;
 use crate::contract::render_view_options::RenderViewOptions;
 use crate::contract::render_water_settings::RenderWaterSettings;
 use crate::frame::depth_pyramid::DepthPyramid;
+use crate::frame::fsr_targets::FsrTargets;
 use crate::frame::pass_timer::PassTimer;
 use crate::frame::pick_target::PickTarget;
 use crate::frame::smaa_targets::SmaaTargets;
@@ -44,6 +45,8 @@ use crate::host::render_rain::RenderRain;
 use crate::lighting::render_lighting::RenderLighting;
 use crate::pass::ambient_occlusion_uniform::AmbientOcclusionUniform;
 use crate::pass::camera_uniform::CameraUniform;
+use crate::pass::fsr_groups::FsrGroups;
+use crate::pass::fsr_uniform::FsrUniform;
 use crate::pass::grass_pass::GrassPass;
 use crate::pass::level_passes::LevelPasses;
 use crate::pass::lighting_frame::LightingFrame;
@@ -161,6 +164,16 @@ pub struct LevelView {
   temporal_uniform: wgpu::Buffer,
   /// The last resolved frame's view projection without its jitter, and its view.
   temporal_previous: Option<(Mat4, Mat4)>,
+  /// Whether FSR 2 resolves the frames rather than TAA, and how many places this frame's jitter cycles through.
+  is_fsr: bool,
+  frame_phases: u32,
+  /// FSR 2's targets and bind groups, while it resolves.
+  fsr: Option<(FsrTargets, FsrGroups)>,
+  fsr_uniform: wgpu::Buffer,
+  /// The last frame's unjittered view projection, which every surface's motion is measured from.
+  motion_previous: Option<Mat4>,
+  /// The trees' sway the last frame drew with.
+  last_wind: Option<WindUniform>,
   /// The viewport's rectangle in its window, which the frame is upscaled to where it is drawn smaller.
   output: RenderRect,
   upscaling: RenderUpscalingSettings,
@@ -287,6 +300,12 @@ impl LevelView {
       temporal: None,
       temporal_uniform: uniform("temporal", size_of::<TemporalUniform>()),
       temporal_previous: None,
+      is_fsr: false,
+      frame_phases: 1,
+      fsr: None,
+      fsr_uniform: uniform("fsr2", size_of::<FsrUniform>()),
+      motion_previous: None,
+      last_wind: None,
       output: RenderRect::default(),
       upscaling: RenderUpscalingSettings::default(),
       upscale: None,
@@ -466,6 +485,7 @@ impl LevelView {
       self.pyramid = Some((pyramid, groups));
       self.targets_epoch += 1;
       self.temporal = None;
+      self.fsr = None;
       // A pyramid of another size holds no depth this frame can be tested against.
       self.history = None;
       self.light_groups = None;
@@ -585,7 +605,10 @@ impl LevelView {
     }
 
     let sway_time: f32 = self.started.elapsed().as_secs_f32();
-    let wind: WindUniform = WindUniform::new(lighting.trees.as_ref().filter(|_| options.is_windy), sway_time);
+    let wind: WindUniform = WindUniform::new(lighting.trees.as_ref().filter(|_| options.is_windy), sway_time)
+      .following(self.last_wind.as_ref());
+
+    self.last_wind = Some(wind);
 
     self.frame_sway = (wind.get_amplitude(), sway_time);
     self.prepare_rain(device, queue, passes, (lighting, weather), options, weather_textures);
@@ -1045,6 +1068,15 @@ impl LevelView {
         timer.mark(encoder, "combine");
       }
 
+      // FSR 2's reactive mask is what the water and the blended surfaces change of the frame drawn so far.
+      if let Some((fsr, _)) = &self.fsr {
+        encoder.copy_texture_to_texture(
+          targets.scene_texture.as_image_copy(),
+          fsr.opaque_texture.as_image_copy(),
+          fsr.opaque_texture.size(),
+        );
+      }
+
       if self.water_settings.is_enabled
         && !self.is_wireframe
         && let Some((_, water_group)) = &self.water_group
@@ -1104,7 +1136,20 @@ impl LevelView {
       }
 
       // The resolved frame goes where the present pass reads it: the upscaled frame, or the scene drawn at its size.
-      if let Some((history, groups)) = &mut self.temporal {
+      if let Some((fsr, groups)) = &mut self.fsr {
+        let resolved: &wgpu::Texture = self
+          .upscale
+          .as_ref()
+          .map_or(&targets.scene_texture, |(upscale, _)| &upscale.textures[0]);
+        let history: &wgpu::Texture = &fsr.history_textures[fsr.index];
+
+        passes
+          .fsr
+          .draw(encoder, fsr, groups, &mut |encoder, name| timer.mark(encoder, name));
+        encoder.copy_texture_to_texture(history.as_image_copy(), resolved.as_image_copy(), history.size());
+        fsr.swap();
+        timer.mark(encoder, "fsr2 output");
+      } else if let Some((history, groups)) = &mut self.temporal {
         let index: usize = history.index;
         let resolved: &wgpu::Texture = self
           .upscale
@@ -1241,6 +1286,8 @@ impl LevelView {
   /// frames temporally and shows the finished frame, still otherwise.
   pub fn next_jitter(&mut self, options: &RenderViewOptions, ratio: f32) -> Vec2 {
     self.is_temporal = options.antialiasing.is_temporal() && options.debug_view == RenderDebugView::Final;
+    self.is_fsr = self.is_temporal && options.antialiasing == RenderAntialiasing::Fsr2;
+    self.frame_phases = TemporalJitter::get_phases(ratio);
     self.frame_jitter = if self.is_temporal {
       self.jitter.next(ratio)
     } else {
@@ -1248,6 +1295,12 @@ impl LevelView {
     };
 
     self.frame_jitter
+  }
+
+  /// This frame's unjittered view projection and the last one's, which the surfaces' motion is measured between; the
+  /// same twice for a first frame.
+  pub fn next_motion(&mut self, current: Mat4) -> (Mat4, Mat4) {
+    (current, self.motion_previous.replace(current).unwrap_or(current))
   }
 
   /// Makes the temporal resolve's histories while it resolves, dropping them otherwise, and writes what it reads: this
@@ -1259,12 +1312,15 @@ impl LevelView {
     passes: LevelPasses<'_>,
     view: &CameraView,
   ) {
-    let Some(targets) = self.targets.as_ref().filter(|_| self.is_temporal) else {
+    let Some(targets) = self.targets.as_ref().filter(|_| self.is_temporal && !self.is_fsr) else {
       self.temporal = None;
       self.temporal_previous = None;
+      self.prepare_fsr(device, queue, passes, view);
 
       return;
     };
+
+    self.fsr = None;
     let (width, height): (u32, u32) = (self.output.width.max(1), self.output.height.max(1));
 
     if self
@@ -1299,6 +1355,40 @@ impl LevelView {
       )),
     );
     self.temporal_previous = Some((current, view.view));
+  }
+
+  /// Makes FSR 2's targets while it resolves, dropping them otherwise, and writes its constants.
+  fn prepare_fsr(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, passes: LevelPasses<'_>, view: &CameraView) {
+    let Some(targets) = self.targets.as_ref().filter(|_| self.is_fsr) else {
+      self.fsr = None;
+
+      return;
+    };
+    let render: (u32, u32) = (targets.width, targets.height);
+    let display: (u32, u32) = (self.output.width.max(1), self.output.height.max(1));
+
+    if self.fsr.as_ref().is_some_and(|(fsr, _)| !fsr.is_sized(render, display)) {
+      self.fsr = None;
+    }
+
+    let (fsr, _) = self.fsr.get_or_insert_with(|| {
+      let fsr: FsrTargets = FsrTargets::new(device, render, display, ViewTargets::SCENE);
+      let groups: FsrGroups = passes.fsr.create_bind_groups(device, targets, &fsr, &self.fsr_uniform);
+
+      (fsr, groups)
+    });
+
+    queue.write_buffer(
+      &self.fsr_uniform,
+      0,
+      bytemuck::bytes_of(&FsrUniform::new(
+        (render, display),
+        self.frame_jitter,
+        view,
+        (FsrTargets::get_luma_mip_size(render), self.frame_phases),
+        fsr.frame_index,
+      )),
+    );
   }
 
   /// Lists the models' composited clusters in view, their places back to front by distance and each place's clusters in

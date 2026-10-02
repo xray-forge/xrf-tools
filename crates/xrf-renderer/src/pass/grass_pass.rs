@@ -205,6 +205,7 @@ impl GrassPass {
         attachment(&targets.albedo),
         attachment(&targets.normal),
         attachment(&targets.material),
+        attachment(&targets.motion),
       ],
       depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
         view: &targets.depth,
@@ -271,10 +272,11 @@ impl GrassPass {
       bind_group_layouts: &[Some(layouts[0]), Some(layouts[1]), Some(layouts[2])],
       immediate_size: size_of::<u32>() as u32,
     });
-    let targets: [Option<wgpu::ColorTargetState>; 3] = [
+    let targets: [Option<wgpu::ColorTargetState>; 4] = [
       Some(ViewTargets::ALBEDO.into()),
       Some(ViewTargets::NORMAL.into()),
       Some(ViewTargets::MATERIAL.into()),
+      Some(ViewTargets::MOTION.into()),
     ];
 
     create_checked(device, "grass", || {

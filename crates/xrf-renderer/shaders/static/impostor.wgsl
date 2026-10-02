@@ -44,12 +44,15 @@ struct ImpostorVarying {
   @location(4) @interpolate(flat) fade: f32,
   @location(5) @interpolate(flat) surface: u32,
   @location(6) @interpolate(flat) impostor: u32,
+  // Where the quad stands in the world, taken to stand still there, as the tree it stands for does.
+  @location(7) world: vec3<f32>,
 };
 
 struct GBufferOutput {
   @location(0) albedo: vec4<f32>,
   @location(1) normal: vec2<f32>,
   @location(2) material: vec4<f32>,
+  @location(3) motion: vec2<f32>,
 };
 
 @vertex
@@ -66,9 +69,11 @@ fn vs_impostor(@builtin(vertex_index) vertex_index: u32, @builtin(instance_index
   let best: vec4<f32> = corners[best_at];
   let sphere: vec4<f32> = impostor.sphere;
   let shift: vec3<f32> = normalize(sphere.xyz - camera.position.xyz) * (-0.5 * sphere.w);
+  let world: vec3<f32> = mix(next.xyz, best.xyz, factor) + shift;
   var out: ImpostorVarying;
 
-  out.clip = camera.view_projection * vec4<f32>(mix(next.xyz, best.xyz, factor) + shift, 1.0);
+  out.clip = camera.view_projection * vec4<f32>(world, 1.0);
+  out.world = world;
   out.next_uv = corners[next_at + 1u].xy;
   out.best_uv = corners[best_at + 1u].xy;
   out.hemi = mix(next.w, best.w, factor) * HEMI_SCALE;
@@ -112,6 +117,7 @@ fn fs_impostor(in: ImpostorVarying) -> GBufferOutput {
   out.normal = octahedral_encode(vec3<f32>(baked.xy, -baked.z));
   // No baked sun term, as a tree writes none.
   out.material = vec4<f32>(companion.a * in.hemi, 1.0, IMPOSTOR_SLICE, 0.0);
+  out.motion = camera_motion(in.world, in.world);
 
   return out;
 }

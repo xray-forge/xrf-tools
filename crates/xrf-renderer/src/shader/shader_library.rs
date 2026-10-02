@@ -51,6 +51,37 @@ const EMBEDDED: &[(&str, &str)] = &[
     "frame/light_binning",
     include_str!("../../shaders/frame/light_binning.wgsl"),
   ),
+  (
+    "frame/fsr/accumulate",
+    include_str!("../../shaders/frame/fsr/accumulate.wgsl"),
+  ),
+  ("frame/fsr/common", include_str!("../../shaders/frame/fsr/common.wgsl")),
+  (
+    "frame/fsr/depth_clip",
+    include_str!("../../shaders/frame/fsr/depth_clip.wgsl"),
+  ),
+  ("frame/fsr/dilate", include_str!("../../shaders/frame/fsr/dilate.wgsl")),
+  ("frame/fsr/lock", include_str!("../../shaders/frame/fsr/lock.wgsl")),
+  (
+    "frame/fsr/luma_first",
+    include_str!("../../shaders/frame/fsr/luma_first.wgsl"),
+  ),
+  (
+    "frame/fsr/luma_shading",
+    include_str!("../../shaders/frame/fsr/luma_shading.wgsl"),
+  ),
+  (
+    "frame/fsr/nearest",
+    include_str!("../../shaders/frame/fsr/nearest.wgsl"),
+  ),
+  (
+    "frame/fsr/reactive",
+    include_str!("../../shaders/frame/fsr/reactive.wgsl"),
+  ),
+  (
+    "frame/fsr/reconstruct",
+    include_str!("../../shaders/frame/fsr/reconstruct.wgsl"),
+  ),
   ("frame/fxaa", include_str!("../../shaders/frame/fxaa.wgsl")),
   ("frame/lights", include_str!("../../shaders/frame/lights.wgsl")),
   ("frame/overlay", include_str!("../../shaders/frame/overlay.wgsl")),

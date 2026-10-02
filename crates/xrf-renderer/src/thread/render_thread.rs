@@ -546,10 +546,17 @@ impl RenderThread {
         level.next_jitter(&options, rect.width as f32 / drawn_rect.width.max(1) as f32)
       });
       let drawn: CameraView = view.jittered(jitter, Vec2::new(drawn_rect.width as f32, drawn_rect.height as f32));
+      let unjittered: Mat4 = view.get_view_projection();
+      let motion: (Mat4, Mat4) = viewport
+        .level_view
+        .as_mut()
+        .map_or((unjittered, unjittered), |level| level.next_motion(unjittered));
 
       binding.write(
         queue,
-        &CameraUniform::new(&drawn, drawn_rect, switches).with_wireframe(options.is_wireframe),
+        &CameraUniform::new(&drawn, drawn_rect, switches)
+          .with_wireframe(options.is_wireframe)
+          .with_motion(motion),
       );
 
       let Some(source) = &viewport.level else {

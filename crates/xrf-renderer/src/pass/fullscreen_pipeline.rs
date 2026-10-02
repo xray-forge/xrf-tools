@@ -13,8 +13,18 @@ pub fn create_fullscreen_pipeline(
   layouts: &[Option<&wgpu::BindGroupLayout>],
   target: impl Into<wgpu::ColorTargetState>,
 ) -> XrfResult<wgpu::RenderPipeline> {
-  let target: wgpu::ColorTargetState = target.into();
+  create_fullscreen_pipeline_into(device, shaders, module, fragment, layouts, &[Some(target.into())])
+}
 
+/// The same, drawing into several targets at once.
+pub fn create_fullscreen_pipeline_into(
+  device: &wgpu::Device,
+  shaders: &ShaderLibrary,
+  module: &str,
+  fragment: &str,
+  layouts: &[Option<&wgpu::BindGroupLayout>],
+  targets: &[Option<wgpu::ColorTargetState>],
+) -> XrfResult<wgpu::RenderPipeline> {
   let shader: wgpu::ShaderModule = create_module(device, shaders, module)?;
   let pipeline_layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
     label: Some(module),
@@ -36,7 +46,7 @@ pub fn create_fullscreen_pipeline(
         module: &shader,
         entry_point: Some(fragment),
         compilation_options: Default::default(),
-        targets: &[Some(target.clone())],
+        targets,
       }),
       primitive: Default::default(),
       depth_stencil: None,

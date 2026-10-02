@@ -8,6 +8,7 @@ use crate::pass::combine_pass::CombinePass;
 use crate::pass::composited_pass::CompositedPass;
 use crate::pass::depth_pyramid_pass::DepthPyramidPass;
 use crate::pass::exposure_pass::ExposurePass;
+use crate::pass::fsr_pass::FsrPass;
 use crate::pass::fxaa_pass::FxaaPass;
 use crate::pass::grass_pass::GrassPass;
 use crate::pass::grid_pass::GridPass;
@@ -54,6 +55,7 @@ pub struct GpuState {
   pub wet: WetPass,
   pub thunder: ThunderPass,
   pub temporal: TemporalPass,
+  pub fsr: FsrPass,
   pub fxaa: FxaaPass,
   pub smaa: SmaaPass,
   pub upscale: UpscalePass,
@@ -116,6 +118,7 @@ impl GpuState {
       wet: WetPass::new(device, shaders, &view_layout)?,
       thunder: ThunderPass::new(device, shaders, &view_layout)?,
       temporal: TemporalPass::new(device, shaders, &view_layout)?,
+      fsr: FsrPass::new(device, shaders)?,
       fxaa: FxaaPass::new(device, shaders)?,
       smaa: SmaaPass::new(device, &context.queue, shaders)?,
       upscale: UpscalePass::new(device, shaders)?,
@@ -181,6 +184,7 @@ impl GpuState {
       wet: &self.wet,
       thunder: &self.thunder,
       temporal: &self.temporal,
+      fsr: &self.fsr,
       fxaa: &self.fxaa,
       smaa: &self.smaa,
       upscale: &self.upscale,
@@ -215,6 +219,7 @@ impl GpuState {
     self.wet.refresh(device, shaders);
     self.thunder.refresh(device, shaders);
     self.temporal.refresh(device, shaders);
+    self.fsr.refresh(device, shaders);
     self.fxaa.refresh(device, shaders);
     self.smaa.refresh(device, shaders);
     self.upscale.refresh(device, shaders);

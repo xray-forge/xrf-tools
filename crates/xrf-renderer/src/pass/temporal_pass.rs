@@ -38,6 +38,7 @@ impl TemporalPass {
           count: None,
         },
         uniform_entry(4, fragment),
+        texture_entry(5, fragment, wgpu::TextureSampleType::Float { filterable: false }, flat),
       ],
     });
 
@@ -87,6 +88,7 @@ impl TemporalPass {
             resource: wgpu::BindingResource::Sampler(&self.sampler),
           },
           buffer_binding(4, uniform),
+          texture_binding(5, &targets.motion),
         ],
       })
     })

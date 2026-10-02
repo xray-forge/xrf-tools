@@ -19,6 +19,7 @@
 @group(1) @binding(8) var<uniform> present: Present;
 // The frame upscaled to the viewport's size, or the scene again where it is drawn at that size.
 @group(1) @binding(9) var upscaled: texture_2d<f32>;
+@group(1) @binding(10) var motion_target: texture_2d<f32>;
 
 const VIEW_ALBEDO: u32 = 1u;
 const VIEW_GLOSS: u32 = 2u;
@@ -28,6 +29,9 @@ const VIEW_SUN: u32 = 5u;
 const VIEW_MATERIAL: u32 = 6u;
 const VIEW_DEPTH: u32 = 7u;
 const VIEW_LIGHT: u32 = 8u;
+const VIEW_MOTION: u32 = 10u;
+// Drawn pixels of motion the motion view spans from black to full colour on each axis.
+const MOTION_VIEW_RANGE: f32 = 16.0;
 
 // Metres the depth view spreads over, logarithmically, so a metre up close and a kilometre away both read.
 const DEPTH_VIEW_RANGE: f32 = 5000.0;
@@ -89,6 +93,11 @@ fn shown_target(texel: vec2<i32>) -> vec3<f32> {
     }
     case VIEW_LIGHT: {
       return textureLoad(light_target, texel, 0).rgb;
+    }
+    case VIEW_MOTION: {
+      let pixels: vec2<f32> = textureLoad(motion_target, texel, 0).xy * camera.viewport.xy;
+
+      return vec3<f32>(pixels / MOTION_VIEW_RANGE + 0.5, 0.5);
     }
     default: {
       let is_searched: bool = present.is_occluded != 0u && stored > 0.0;

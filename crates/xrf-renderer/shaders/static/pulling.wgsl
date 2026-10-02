@@ -18,6 +18,9 @@ struct Wind {
   wind: vec4<f32>,
   // The engine's `wave`: its direction through the level, and its phase in `w`, both over a turn.
   wave: vec4<f32>,
+  // The same, the frame before, which a swaying vertex's motion is measured from.
+  previous_wind: vec4<f32>,
+  previous_wave: vec4<f32>,
 };
 
 // `calc_cyclic`: a wave from minus one to one over each whole turn, a parabola rather than a sine.
@@ -30,8 +33,17 @@ fn cyclic(phase: f32) -> f32 {
 // `deffer_tree_*.vs`: a tree's vertex in the world moved across the ground by the wind, as far as its height over the
 // tree's foot times the wave at its place, and as much of that as its rigidity lets it.
 fn swayed(world: vec3<f32>, foot: f32, rigidity: f32) -> vec3<f32> {
-  let phase: f32 = cyclic(wind.wave.w + dot(world, wind.wave.xyz));
-  let lean: vec2<f32> = wind.wind.xz * (world.y - foot) * phase * rigidity;
+  return swayed_by(world, foot, rigidity, wind.wind, wind.wave);
+}
+
+// The same vertex as the frame before's wind swayed it.
+fn swayed_before(world: vec3<f32>, foot: f32, rigidity: f32) -> vec3<f32> {
+  return swayed_by(world, foot, rigidity, wind.previous_wind, wind.previous_wave);
+}
+
+fn swayed_by(world: vec3<f32>, foot: f32, rigidity: f32, lean_wind: vec4<f32>, wave: vec4<f32>) -> vec3<f32> {
+  let phase: f32 = cyclic(wave.w + dot(world, wave.xyz));
+  let lean: vec2<f32> = lean_wind.xz * (world.y - foot) * phase * rigidity;
 
   return world + vec3<f32>(lean.x, 0.0, lean.y);
 }

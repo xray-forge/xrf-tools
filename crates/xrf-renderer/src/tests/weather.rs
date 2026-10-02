@@ -416,3 +416,18 @@ fn strikes_a_bolt_of_the_collection_each_period_and_lights_by_its_colour() {
       .is_none()
   }));
 }
+
+#[test]
+fn carries_the_last_frames_sway_for_the_trees_motion() {
+  let trees: RenderTreeWind = RenderTreeWind {
+    amplitude: 0.01,
+    ..Default::default()
+  };
+  let first: WindUniform = WindUniform::new(Some(&trees), 0.0).following(None);
+  let second: WindUniform = WindUniform::new(Some(&trees), 2.5).following(Some(&first));
+
+  assert_eq!(first.previous_wind, first.wind);
+  assert_eq!(second.previous_wind, first.wind);
+  assert_eq!(second.previous_wave, first.wave);
+  assert_ne!(second.wind, first.wind);
+}

@@ -17,6 +17,11 @@ struct GrassWind {
   // Each wave's direction, and its phase in `w`, both over a turn.
   wave_1: vec4<f32>,
   wave_2: vec4<f32>,
+  // The same four, the frame before, which a tuft's motion is measured from.
+  previous_wind_1: vec4<f32>,
+  previous_wind_2: vec4<f32>,
+  previous_wave_1: vec4<f32>,
+  previous_wave_2: vec4<f32>,
 };
 
 @group(1) @binding(0) var<storage, read> sorted: array<vec4<f32>>;
@@ -48,12 +53,16 @@ struct GrassVarying {
   @location(1) uv: vec2<f32>,
   @location(2) hemi: f32,
   @location(3) sun: f32,
+  // Where the vertex stands in the world, and how far it stood from there the frame before.
+  @location(4) world: vec3<f32>,
+  @location(5) moved: vec3<f32>,
 };
 
 struct GrassOutput {
   @location(0) albedo: vec4<f32>,
   @location(1) normal: vec2<f32>,
   @location(2) material: vec4<f32>,
+  @location(3) motion: vec2<f32>,
 };
 
 // `calc_cyclic`: a wave from minus one to one over each whole turn, a parabola rather than a sine.
@@ -66,14 +75,16 @@ fn cyclic(phase: f32) -> f32 {
 // A waving tuft's vertex leant across the ground by its wave's wind, as far as its height over the foot times the wave
 // at its place, and as much of that as its own height in the model lets it. The wave runs through the engine's space,
 // so the place is read with `z` negated, and the lean carried back the same way.
-fn swayed(standing: vec3<f32>, foot: f32, wave: f32, share: f32) -> vec3<f32> {
+fn swayed(standing: vec3<f32>, foot: f32, wave: f32, share: f32, is_previous: bool) -> vec3<f32> {
   if (wave <= 0.5) {
     return standing;
   }
 
   let is_second: bool = wave > 1.5;
-  let lean_wind: vec4<f32> = select(wind.wind_1, wind.wind_2, is_second);
-  let phase: vec4<f32> = select(wind.wave_1, wind.wave_2, is_second);
+  let lean_wind: vec4<f32> = select(select(wind.wind_1, wind.wind_2, is_second),
+    select(wind.previous_wind_1, wind.previous_wind_2, is_second), is_previous);
+  let phase: vec4<f32> = select(select(wind.wave_1, wind.wave_2, is_second),
+    select(wind.previous_wave_1, wind.previous_wave_2, is_second), is_previous);
   let engine: vec3<f32> = vec3<f32>(standing.x, standing.y, -standing.z);
   let lean: f32 = (standing.y - foot) * cyclic(dot(engine, phase.xyz) + phase.w) * share;
 
@@ -91,7 +102,8 @@ fn vs_grass(@location(0) position: vec3<f32>, @location(1) uv: vec2<f32>,
   let c: f32 = cos(place.w);
   let s: f32 = sin(place.w);
   let standing: vec3<f32> = place.xyz + vec3<f32>(c * local.x - s * local.z, local.y, s * local.x + c * local.z);
-  let current: vec3<f32> = swayed(standing, place.y, look.w, position.y / max(model.shape.w, 0.0001));
+  let share: f32 = position.y / max(model.shape.w, 0.0001);
+  let current: vec3<f32> = swayed(standing, place.y, look.w, share, false);
   let view: mat3x3<f32> = mat3x3<f32>(camera.view[0].xyz, camera.view[1].xyz, camera.view[2].xyz);
   var out: GrassVarying;
 
@@ -102,6 +114,8 @@ fn vs_grass(@location(0) position: vec3<f32>, @location(1) uv: vec2<f32>,
   out.uv = uv;
   out.hemi = look.y;
   out.sun = look.z;
+  out.world = current;
+  out.moved = swayed(standing, place.y, look.w, share, true) - current;
 
   return out;
 }
@@ -123,6 +137,7 @@ fn fs_grass(in: GrassVarying) -> GrassOutput {
   out.albedo = vec4<f32>(mix(vec3<f32>(1.0), base.rgb, camera.switches.x), DEFAULT_GLOSS);
   out.normal = octahedral_encode(normalize(in.normal));
   out.material = vec4<f32>(in.hemi, in.sun, MATERIAL_SLICE, 0.0);
+  out.motion = camera_motion(in.world, in.world + in.moved);
 
   return out;
 }
