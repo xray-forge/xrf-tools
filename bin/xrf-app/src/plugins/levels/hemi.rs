@@ -69,11 +69,12 @@ fn read_hemi(source: &LevelSource, probe: &XrayProbe) -> Result<Arc<HemiEstimato
     )?;
   let read: Duration = started.elapsed();
   let tracer: LevelCformTracer = LevelCformTracer::new(&geometry);
-  let lights: Vec<LevelLight> = read_hemi_lights(source, probe);
+  let triangles: usize = tracer.get_triangle_count();
+  let estimator: HemiEstimator = HemiEstimator::new(tracer, &read_hemi_lights(source, probe));
 
-  report_hemi(source, tracer.get_triangle_count(), lights.len(), read, started);
+  report_hemi(source, triangles, estimator.get_light_count(), read, started);
 
-  Ok(Arc::new(HemiEstimator::new(tracer, &lights)))
+  Ok(Arc::new(estimator))
 }
 
 /// The compiled lights `CLight_DB::LoadHemi` reads, none for a level without `build.lights` or with one unreadable.

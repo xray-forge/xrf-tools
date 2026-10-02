@@ -63,6 +63,8 @@ const SEEN_LIGHT_SHARE: f32 = 0.5;
 pub struct HemiEstimator {
   tracer: LevelCformTracer,
   lights: Vec<LevelLight>,
+  /// The sampled directions, unit length, normalised once rather than for every object.
+  sky: [[f32; 3]; SKY_SAMPLES],
 }
 
 impl HemiEstimator {
@@ -70,8 +72,14 @@ impl HemiEstimator {
   pub fn new(tracer: LevelCformTracer, lights: &[LevelLight]) -> Self {
     Self {
       lights: lights.iter().filter(|light| light.is_point()).cloned().collect(),
+      sky: SKY_DIRECTIONS.map(|direction| normalize(&direction)),
       tracer,
     }
+  }
+
+  /// The compiled lights that light objects: the point ones.
+  pub fn get_light_count(&self) -> usize {
+    self.lights.len()
   }
 
   /// The cube of an object whose visual's sphere, where it stands, is centred at `centre`, in engine space.
@@ -80,15 +88,13 @@ impl HemiEstimator {
     let origin: Vector3d<f32> = Vector3d::new(position[0], position[1], position[2]);
     let mut cube: HemiCube = HemiCube::default();
 
-    for direction in &SKY_DIRECTIONS {
-      let direction: [f32; 3] = normalize(direction);
-
+    for direction in &self.sky {
       if !self.tracer.is_blocked(
         &origin,
         &Vector3d::new(direction[0], direction[1], direction[2]),
         SKY_RANGE,
       ) {
-        cube.accumulate(&direction, SKY_SCALE);
+        cube.accumulate(direction, SKY_SCALE);
       }
     }
 

@@ -306,7 +306,7 @@ pub fn report_spawn_objects(source: &LevelSource, objects: &LevelSpawnObjectsDes
 pub fn report_hemi(source: &LevelSource, triangles: usize, lights: usize, read: Duration, started: Instant) {
   log::info!(
     "Built the spawned objects' lighting of {} in {} ({} reading the form): {triangles} collision triangles, {lights} \
-     compiled lights",
+     compiled point lights",
     source.get_label(),
     xrf_utils::format_duration(started.elapsed()),
     xrf_utils::format_duration(read)
