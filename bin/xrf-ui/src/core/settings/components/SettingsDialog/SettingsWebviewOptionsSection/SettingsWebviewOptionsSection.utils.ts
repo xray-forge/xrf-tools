@@ -1,4 +1,10 @@
-import { WebviewOptions, WebviewOptionsStatus } from "@/core/ipc/types/xrf-app";
+import {
+  EWebviewCollectionPace,
+  WebviewCollectionPace,
+  WebviewOptions,
+  WebviewOptionsStatus,
+} from "@/core/ipc/types/xrf-app";
+import { IChoiceFormRowOption } from "@/core/ui/form";
 
 /**
  * @param status - The options the webview runs with, and those chosen for the next start.
@@ -9,3 +15,10 @@ export function isRestartPending(status: WebviewOptionsStatus): boolean {
 
   return (Object.keys(chosen) as Array<keyof WebviewOptions>).some((key) => chosen[key] !== running[key]);
 }
+
+/** The collection paces offered, V8's own first. */
+export const WEBVIEW_COLLECTION_PACE_OPTIONS: ReadonlyArray<IChoiceFormRowOption<WebviewCollectionPace>> = [
+  { label: "Default", value: EWebviewCollectionPace.DEFAULT },
+  { label: "Earlier", value: EWebviewCollectionPace.EARLIER },
+  { label: "Frequent", value: EWebviewCollectionPace.FREQUENT },
+];

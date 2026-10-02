@@ -2,6 +2,7 @@
 
 mod main_window;
 mod monitor_work_area;
+mod webview_collection_pace;
 mod webview_options;
 mod webview_options_state;
 mod window_build_kind;
@@ -16,5 +17,6 @@ mod window_reveal;
 mod tests;
 
 pub use main_window::build_main_window;
+pub use webview_collection_pace::WebviewCollectionPace;
 pub use webview_options::WebviewOptions;
 pub use webview_options_state::WebviewOptionsState;

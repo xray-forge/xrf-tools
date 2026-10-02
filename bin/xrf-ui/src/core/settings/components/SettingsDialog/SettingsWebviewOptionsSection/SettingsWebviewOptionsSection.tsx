@@ -3,13 +3,19 @@ import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useState } from "react";
 
 import { systemCommands } from "@/core/ipc/commands/system";
-import { WebviewOptions, WebviewOptionsStatus } from "@/core/ipc/types/xrf-app";
+import {
+  EWebviewCollectionPace,
+  WebviewCollectionPace,
+  WebviewOptions,
+  WebviewOptionsStatus,
+} from "@/core/ipc/types/xrf-app";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
+import { ChoiceFormRow } from "@/core/ui/form/ChoiceFormRow";
 import { DetailSection } from "@/core/ui/layout/DetailSection";
 import { Logger, useLogger } from "@/lib/logging";
 import { useMountEffect } from "@/lib/react";
 
-import { isRestartPending } from "./SettingsWebviewOptionsSection.utils";
+import { isRestartPending, WEBVIEW_COLLECTION_PACE_OPTIONS } from "./SettingsWebviewOptionsSection.utils";
 
 /**
  * The webview browser's optional capabilities, which the backend keeps and applies as the application next starts.
@@ -75,6 +81,16 @@ export function SettingsWebviewOptionsSection(): ReactElement {
             }
             isChecked={status.chosen.isWebgpuDeveloper}
             onChange={(isChecked: boolean) => onChange({ isWebgpuDeveloper: isChecked })}
+          />
+
+          <ChoiceFormRow
+            label={"Garbage collection"}
+            description={
+              "How early the webview's JavaScript starts collecting garbage. Earlier collects more often, so the renderer's pause after each is shorter, for a little throughput."
+            }
+            options={WEBVIEW_COLLECTION_PACE_OPTIONS}
+            value={status.chosen.collectionPace ?? EWebviewCollectionPace.DEFAULT}
+            onChange={(collectionPace: WebviewCollectionPace) => onChange({ collectionPace })}
           />
         </div>
       ) : (

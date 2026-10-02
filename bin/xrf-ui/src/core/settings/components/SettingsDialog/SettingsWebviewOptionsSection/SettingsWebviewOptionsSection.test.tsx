@@ -2,14 +2,18 @@ import { describe, expect, it } from "@jest/globals";
 import { waitFor } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 
-import { WebviewOptions, WebviewOptionsStatus } from "@/core/ipc/types/xrf-app";
+import { EWebviewCollectionPace, WebviewOptions, WebviewOptionsStatus } from "@/core/ipc/types/xrf-app";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
 import { SettingsWebviewOptionsSection } from "./SettingsWebviewOptionsSection";
 import { isRestartPending } from "./SettingsWebviewOptionsSection.utils";
 
-const STARTED: WebviewOptions = { isShaderCacheDoubled: true, isWebgpuDeveloper: false };
+const STARTED: WebviewOptions = {
+  collectionPace: EWebviewCollectionPace.DEFAULT,
+  isShaderCacheDoubled: true,
+  isWebgpuDeveloper: false,
+};
 
 function mockBackend(): { chosen: WebviewOptions } {
   const backend: { chosen: WebviewOptions } = { chosen: STARTED };
@@ -46,12 +50,25 @@ describe("SettingsWebviewOptionsSection", () => {
 
     await userEvent.click(developer);
 
-    await waitFor(() => expect(backend.chosen).toEqual({ isShaderCacheDoubled: true, isWebgpuDeveloper: true }));
+    await waitFor(() => expect(backend.chosen).toEqual({ ...STARTED, isWebgpuDeveloper: true }));
     expect(mockInvoke).toHaveBeenCalledWith("plugin:system|set_webview_options", {
-      options: { isShaderCacheDoubled: true, isWebgpuDeveloper: true },
+      options: { ...STARTED, isWebgpuDeveloper: true },
     });
     expect(developer).toBeChecked();
     expect(await findByText("Restart to apply")).toBeInTheDocument();
+  });
+
+  // The renderer's pause after each major collection follows what piled up since: collecting earlier shortens it.
+  it("keeps a garbage collection pace chosen for the next start", async () => {
+    const backend: { chosen: WebviewOptions } = mockBackend();
+    const { findByRole, getByRole } = renderWithProviders(<SettingsWebviewOptionsSection />);
+
+    expect(await findByRole("button", { name: "Default" })).toHaveAttribute("aria-pressed", "true");
+
+    await userEvent.click(getByRole("button", { name: "Earlier" }));
+
+    await waitFor(() => expect(backend.chosen).toEqual({ ...STARTED, collectionPace: EWebviewCollectionPace.EARLIER }));
+    expect(getByRole("button", { name: "Earlier" })).toHaveAttribute("aria-pressed", "true");
   });
 
   it("waits for a restart only where a choice differs from what the webview started with", () => {
