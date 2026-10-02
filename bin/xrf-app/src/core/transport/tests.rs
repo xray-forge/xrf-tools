@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 use std::io::{BufRead, BufReader, Read, Write};
 use std::net::{SocketAddr, TcpStream};
+use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 use hyper::header::HeaderValue;
 use serde::Deserialize;
@@ -16,6 +18,14 @@ const ORIGIN: &str = "http://tauri.localhost";
 #[derive(Clone)]
 struct TestContext {
   prefix: &'static str,
+  /// The slow route's calls running now, and the most that ever ran at once.
+  running: Arc<AtomicUsize>,
+  most: Arc<AtomicUsize>,
+}
+
+/// The batch path, as a request names it.
+fn batch_path() -> String {
+  format!("/{}", TransportServer::<TestContext>::BATCH_PATH)
 }
 
 #[derive(Deserialize)]
@@ -34,6 +44,25 @@ async fn fail(_: TestContext, _: EchoRequest) -> TauriResult<TransportAnswer> {
   Err(String::from("The level sector session has changed or is closed"))
 }
 
+async fn empty(_: TestContext, _: EchoRequest) -> TauriResult<TransportAnswer> {
+  Ok(TransportAnswer::octets(Vec::new()))
+}
+
+/// An echo that takes a while, other calls running meanwhile, counting how many run at once.
+async fn slow(context: TestContext, request: EchoRequest) -> TauriResult<TransportAnswer> {
+  let running: usize = context.running.fetch_add(1, Ordering::SeqCst) + 1;
+
+  context.most.fetch_max(running, Ordering::SeqCst);
+
+  for _ in 0..50 {
+    tokio::task::yield_now().await;
+  }
+
+  context.running.fetch_sub(1, Ordering::SeqCst);
+
+  echo(context, request).await
+}
+
 /// One answer as the client read it.
 struct Answer {
   status: u16,
@@ -47,24 +76,48 @@ impl Answer {
   }
 }
 
-/// A server on a real loopback port, serving the two test routes, and the token it expects.
-fn serve() -> (SocketAddr, TransportToken) {
+/// A server on a real loopback port, serving the test routes, the token it expects and the most slow calls at once.
+fn serve_counted() -> (SocketAddr, TransportToken, Arc<AtomicUsize>) {
   let token: TransportToken = TransportToken::generate().unwrap();
   let routes: TransportRoutes<TestContext> = TransportRoutes::new(vec![
     TransportRoute::new("assets", "echo", echo),
     TransportRoute::new("assets", "fail", fail),
+    TransportRoute::new("assets", "empty", empty),
+    TransportRoute::new("assets", "slow", slow),
   ]);
+  let most: Arc<AtomicUsize> = Arc::new(AtomicUsize::new(0));
   let server: TransportServer<TestContext> = TransportServer::new(
     routes,
     TransportOrigins::new(vec![String::from(ORIGIN)]),
     token.clone(),
-    TestContext { prefix: "read:" },
+    TestContext {
+      most: Arc::clone(&most),
+      prefix: "read:",
+      running: Arc::new(AtomicUsize::new(0)),
+    },
   );
   let (address, serving) = server.bind().unwrap();
 
   tauri::async_runtime::spawn(serving);
 
+  (address, token, most)
+}
+
+/// A server on a real loopback port, serving the test routes, and the token it expects.
+fn serve() -> (SocketAddr, TransportToken) {
+  let (address, token, _) = serve_counted();
+
   (address, token)
+}
+
+/// A batch body of one route called for each path.
+fn to_batch(route: &str, paths: &[String]) -> String {
+  let calls: Vec<String> = paths
+    .iter()
+    .map(|path| format!(r#"{{"route":"{route}","args":{{"logicalPath":"{path}"}}}}"#))
+    .collect();
+
+  format!("[{}]", calls.join(","))
 }
 
 /// Sends one request on an open connection and reads its whole answer, leaving the connection open.
@@ -365,7 +418,7 @@ fn a_batch_answers_each_call_by_its_part_and_a_refused_call_by_its_refusal() {
   let (address, token) = serve();
   let answer: Answer = post(
     address,
-    "/batch",
+    &batch_path(),
     Some(&bearer(&token)),
     r#"[
       {"route":"assets/echo","args":{"logicalPath":"a"}},
@@ -381,7 +434,7 @@ fn a_batch_answers_each_call_by_its_part_and_a_refused_call_by_its_refusal() {
   assert_eq!(answer.status, 200);
   assert_eq!(
     answer.header("content-type"),
-    Some("application/vnd.xrf.transport-parts")
+    Some(TransportServer::<TestContext>::PARTS)
   );
   assert_eq!(answer.header("access-control-allow-origin"), Some(ORIGIN));
   assert_eq!(parts.len(), 5);
@@ -405,7 +458,7 @@ fn a_batch_answers_each_call_by_its_part_and_a_refused_call_by_its_refusal() {
 #[test]
 fn a_batch_of_nothing_is_answered_by_no_parts() {
   let (address, token) = serve();
-  let answer: Answer = post(address, "/batch", Some(&bearer(&token)), "[]");
+  let answer: Answer = post(address, &batch_path(), Some(&bearer(&token)), "[]");
 
   assert_eq!(answer.status, 200);
   assert!(answer.body.is_empty());
@@ -417,15 +470,86 @@ fn a_batch_is_refused_whole_without_the_token_or_with_calls_that_do_not_read() {
   let authorization: String = bearer(&token);
   let too_many: String = format!(
     "[{}]",
-    vec![r#"{"route":"assets/echo","args":{"logicalPath":"a"}}"#; 257].join(",")
+    vec![
+      r#"{"route":"assets/echo","args":{"logicalPath":"a"}}"#;
+      TransportServer::<TestContext>::MAXIMUM_BATCH_CALLS + 1
+    ]
+    .join(",")
   );
 
-  assert_eq!(post(address, "/batch", None, "[]").status, 401);
+  assert_eq!(post(address, &batch_path(), None, "[]").status, 401);
   assert_eq!(
-    post(address, "/batch", Some(&authorization), r#"{"route":"a"}"#).status,
+    post(address, &batch_path(), Some(&authorization), r#"{"route":"a"}"#).status,
     400
   );
-  assert_eq!(post(address, "/batch", Some(&authorization), &too_many).status, 400);
+  assert_eq!(
+    post(address, &batch_path(), Some(&authorization), &too_many).status,
+    400
+  );
+}
+
+// Past the parts a batch keeps waiting, a call that finished waits to hand its part over rather than be dropped.
+#[test]
+fn a_batch_longer_than_the_parts_it_keeps_waiting_answers_every_call_and_reads_a_few_at_once() {
+  let (address, token, most) = serve_counted();
+  let paths: Vec<String> = (0..40).map(|index| format!("t{index}")).collect();
+  let answer: Answer = post(
+    address,
+    &batch_path(),
+    Some(&bearer(&token)),
+    &to_batch("assets/slow", &paths),
+  );
+  let parts: HashMap<u32, Part> = read_parts(&answer.body);
+
+  assert_eq!(parts.len(), 40);
+
+  for (index, path) in (0_u32..).zip(&paths) {
+    assert_eq!(parts[&index].body, format!("read:{path}").into_bytes());
+  }
+
+  assert!(
+    most.load(Ordering::SeqCst) <= 8,
+    "{} calls ran at once",
+    most.load(Ordering::SeqCst)
+  );
+}
+
+#[test]
+fn a_call_answering_nothing_is_a_part_of_no_bytes() {
+  let (address, token) = serve();
+  let answer: Answer = post(
+    address,
+    &batch_path(),
+    Some(&bearer(&token)),
+    &to_batch("assets/empty", &[String::from("a")]),
+  );
+  let parts: HashMap<u32, Part> = read_parts(&answer.body);
+
+  assert_eq!(parts[&0].status, 200);
+  assert!(parts[&0].body.is_empty());
+}
+
+// A page that stops reading a batch, as one does that aborted every call of it, leaves the server serving.
+#[test]
+fn a_caller_leaving_a_batch_unread_leaves_the_server_serving() {
+  let (address, token) = serve();
+  let authorization: String = bearer(&token);
+  let paths: Vec<String> = (0..200).map(|index| format!("{index}")).collect();
+  let body: String = to_batch("assets/echo", &paths);
+  let mut stream: TcpStream = connect(address);
+  let request: String = format!(
+    "POST {} HTTP/1.1\r\nHost: 127.0.0.1\r\nOrigin: {ORIGIN}\r\nAuthorization: {authorization}\r\nContent-Length: {}\r\n\r\n{body}",
+    batch_path(),
+    body.len()
+  );
+
+  stream.write_all(request.as_bytes()).unwrap();
+  drop(stream);
+
+  assert_eq!(
+    post(address, "/assets/echo", Some(&authorization), r#"{"logicalPath":"a"}"#).body,
+    b"read:a"
+  );
 }
 
 #[test]

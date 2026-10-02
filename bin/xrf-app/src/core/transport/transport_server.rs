@@ -13,6 +13,7 @@ use hyper::service::service_fn;
 use hyper::{Method, Request, Response, StatusCode};
 use hyper_util::rt::TokioIo;
 use tokio::net::{TcpListener, TcpStream};
+use tokio::sync::Semaphore;
 use tokio::sync::mpsc::{self, Receiver, Sender};
 
 use crate::core::transport::{
@@ -43,6 +44,10 @@ impl<C: Clone + Send + Sync + 'static> TransportServer<C> {
 
   /// A batch's parts finished and not yet sent, past which its calls wait to hand theirs over.
   const BATCH_PARTS_IN_FLIGHT: usize = 8;
+
+  /// A batch's calls read at once. Each holds its whole answer until its part is handed over, so with the parts waiting
+  /// this bounds what a batch holds however slowly its parts are taken, as the browser's six connections did before.
+  const BATCH_CALLS_AT_ONCE: usize = 8;
 
   /// What a batch's body is served as: parts, as `TransportPart` frames them.
   pub(crate) const PARTS: &'static str = "application/vnd.xrf.transport-parts";
@@ -206,30 +211,48 @@ impl<C: Clone + Send + Sync + 'static> TransportServer<C> {
     Ok(calls)
   }
 
-  /// Answers a batch: every call runs at once, each answered by its part as it finishes, so one slow read holds up
-  /// none of the others. A call refused answers its refusal as its part; the batch itself is answered `200`.
+  /// Answers a batch: its calls read a few at a time, each answered by its part as it finishes, so one slow read holds
+  /// up none of the others. A call refused answers its refusal as its part; the batch itself is answered `200`.
   fn batch(self: &Arc<Self>, calls: Vec<TransportBatchCall>) -> Response<TransportBody> {
     let (sender, parts): (Sender<TransportPart>, Receiver<TransportPart>) = mpsc::channel(Self::BATCH_PARTS_IN_FLIGHT);
+    let reading: Arc<Semaphore> = Arc::new(Semaphore::new(Self::BATCH_CALLS_AT_ONCE));
 
-    for (index, call) in calls.into_iter().enumerate() {
+    // At most `MAXIMUM_BATCH_CALLS` of them, so each index is a part's own.
+    for (index, call) in (0_u32..).zip(calls) {
       let server: Arc<Self> = Arc::clone(self);
       let sender: Sender<TransportPart> = sender.clone();
+      let reading: Arc<Semaphore> = Arc::clone(&reading);
 
       tokio::spawn(async move {
-        let part: TransportPart = match server.call(call).await {
-          Ok(TransportAnswer { bytes, media_type }) => {
-            TransportPart::new(index, StatusCode::OK.as_u16(), media_type, Bytes::from(bytes))
-          }
-          Err(refusal) => TransportPart::new(
-            index,
-            refusal.get_status().as_u16(),
-            Self::REFUSAL,
-            Bytes::from(Self::to_refusal_message(&refusal)),
-          ),
+        // Held until the part is handed over; a call whose caller stopped reading is not read at all.
+        let Ok(_permit) = reading.acquire_owned().await else {
+          return;
         };
 
-        // Gone only where the caller stopped reading, which leaves nobody to answer.
-        let _ = sender.send(part).await;
+        if sender.is_closed() {
+          return;
+        }
+
+        let answered: Result<TransportPart, TransportRefusal> = server
+          .call(call)
+          .await
+          .and_then(|TransportAnswer { bytes, media_type }| {
+            TransportPart::new(index, StatusCode::OK.as_u16(), media_type, Bytes::from(bytes))
+          })
+          .or_else(|refusal| {
+            TransportPart::new(
+              index,
+              refusal.get_status().as_u16(),
+              Self::REFUSAL,
+              Bytes::from(Self::to_refusal_message(&refusal)),
+            )
+          });
+
+        // A refusal past what a part carries leaves the call unanswered, which the reader tells as the batch ending
+        // without it; a send that fails means the caller stopped reading.
+        if let Ok(part) = answered {
+          let _ = sender.send(part).await;
+        }
       });
     }
 
@@ -244,11 +267,10 @@ impl<C: Clone + Send + Sync + 'static> TransportServer<C> {
   async fn call(&self, call: TransportBatchCall) -> Result<TransportAnswer, TransportRefusal> {
     let TransportBatchCall { route, args } = call;
     let route: &TransportRoute<C> = self.routes.get(&route).ok_or(TransportRefusal::NotFound)?;
-    let body: Vec<u8> = serde_json::to_vec(&args).map_err(|error| {
-      TransportRefusal::BadRequest(format!("Arguments of '{}' do not write: {error}", route.get_path()))
-    })?;
 
-    route.call(self.context.clone(), Bytes::from(body)).await
+    route
+      .call(self.context.clone(), Bytes::copy_from_slice(args.get().as_bytes()))
+      .await
   }
 
   /// The answer to a preflight, which carries no token: a browser sends none before it knows it may.
