@@ -178,6 +178,21 @@ impl ShaderBlenderFixture {
     self
   }
 
+  /// Names the cube an environment mapped class binds, under its own marker.
+  pub fn with_environment(mut self, texture: &str) -> Self {
+    let properties: &mut Vec<ShaderBlenderProperty> = &mut self.blender.properties;
+    let marker: usize = properties
+      .iter()
+      .position(|it| it.is_marker() && it.name == "Environment map")
+      .expect("an environment mapped class");
+
+    if let Some(property) = properties[marker..].iter_mut().find(|it| it.name == "Name") {
+      property.value = ShaderBlenderPropertyValue::Texture(String::from(texture));
+    }
+
+    self
+  }
+
   /// Drops one property, for the file a tool wrote without a knob its class defines.
   pub fn without_property(mut self, name: &str) -> Self {
     self.blender.properties.retain(|property| property.name != name);

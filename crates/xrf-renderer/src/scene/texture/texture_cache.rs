@@ -22,6 +22,9 @@ const UPLOAD_BYTES: u64 = 64 * 1024 * 1024;
 /// Slots a bindless array holds at most, below what any adapter meeting the baseline offers.
 const MAX_SLOTS: u32 = 16_384;
 
+/// Environment cubes the scenes' surfaces may mix toward, the first slot standing for none.
+pub const ENVIRONMENT_SLOTS: u32 = 16;
+
 /// What a texture load came to, sent from a loader thread.
 type TextureLoad = (u32, Result<Option<DecodedTexture>, String>);
 
@@ -49,13 +52,17 @@ pub struct TextureCache {
   uploads: VecDeque<(u32, DecodedTexture)>,
   capacity: u32,
   is_dirty: bool,
+  /// The cubes surfaces named as their environment, each slot past the first in turn; loaded as weather textures are.
+  environments: Vec<String>,
 }
 
 impl TextureCache {
   pub fn new(device: &wgpu::Device, queue: &wgpu::Queue) -> Self {
+    // The environment cubes a composited draw binds beside the array share the stage's budget.
     let capacity: u32 = device
       .limits()
       .max_binding_array_elements_per_shader_stage
+      .saturating_sub(ENVIRONMENT_SLOTS)
       .clamp(1, MAX_SLOTS);
     let layout: wgpu::BindGroupLayout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
       label: Some("textures"),
@@ -116,6 +123,7 @@ impl TextureCache {
       uploads: VecDeque::new(),
       capacity,
       is_dirty: false,
+      environments: Vec::new(),
     }
   }
 
@@ -173,6 +181,32 @@ impl TextureCache {
     });
 
     slot
+  }
+
+  /// The environment slot a cube reference is sampled from, `0` for none or for one past the slots there are.
+  pub fn request_environment(&mut self, reference: &str) -> u32 {
+    if reference.is_empty() {
+      return 0;
+    }
+
+    if let Some(index) = self.environments.iter().position(|it| it == reference) {
+      return index as u32 + 1;
+    }
+
+    if self.environments.len() as u32 + 1 >= ENVIRONMENT_SLOTS {
+      log::warn!("Environment '{reference}' exceeds the {ENVIRONMENT_SLOTS} the renderer binds at once");
+
+      return 0;
+    }
+
+    self.environments.push(reference.to_owned());
+
+    self.environments.len() as u32
+  }
+
+  /// The cubes asked for as environments, by slot from the second.
+  pub fn list_environments(&self) -> &[String] {
+    &self.environments
   }
 
   /// Of some slots, how many are uploaded or given up on.

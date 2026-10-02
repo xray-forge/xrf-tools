@@ -3,6 +3,7 @@ use crate::pass::combine_pass::CombinePass;
 use crate::pass::composited_pass::CompositedPass;
 use crate::pass::depth_pyramid_pass::DepthPyramidPass;
 use crate::pass::exposure_pass::ExposurePass;
+use crate::pass::fxaa_pass::FxaaPass;
 use crate::pass::grass_pass::GrassPass;
 use crate::pass::lights_pass::LightsPass;
 use crate::pass::material_table::MaterialTable;
@@ -10,11 +11,14 @@ use crate::pass::present_pass::PresentPass;
 use crate::pass::rain_pass::RainPass;
 use crate::pass::sky_bindings::SkyBindings;
 use crate::pass::sky_haze_pass::SkyHazePass;
+use crate::pass::smaa_pass::SmaaPass;
 use crate::pass::static_cull_pass::StaticCullPass;
 use crate::pass::static_gbuffer_pass::StaticGBufferPass;
 use crate::pass::static_shadow_pass::StaticShadowPass;
 use crate::pass::sun_pass::SunPass;
+use crate::pass::temporal_pass::TemporalPass;
 use crate::pass::thunder_pass::ThunderPass;
+use crate::pass::upscale_pass::UpscalePass;
 use crate::pass::water_pass::WaterPass;
 use crate::pass::wet_pass::WetPass;
 
@@ -37,6 +41,10 @@ pub struct LevelPasses<'a> {
   pub rain: &'a RainPass,
   pub wet: &'a WetPass,
   pub thunder: &'a ThunderPass,
+  pub temporal: &'a TemporalPass,
+  pub fxaa: &'a FxaaPass,
+  pub smaa: &'a SmaaPass,
+  pub upscale: &'a UpscalePass,
   pub exposure: &'a ExposurePass,
   pub present: &'a PresentPass,
   pub table: &'a MaterialTable,

@@ -259,6 +259,11 @@ export type XraySurfaceDescriptor = {
   bump: XrayMaterialBump | null;
   /** The lighting model its base texture's descriptor sets, `m_material`. */
   material: number | null;
+  /**
+   * The cube an environment-mapped class mixes its base toward where its alpha is thin, `oT2_Name`; `None` for a
+   * class binding none.
+   */
+  environment: string | null;
 };
 
 /** The detail texture a surface modulates its diffuse with, and how densely it is laid over it. */

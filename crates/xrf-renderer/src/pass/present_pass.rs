@@ -3,13 +3,13 @@ use std::collections::HashMap;
 use xrf_error::XrfResult;
 
 use crate::frame::view_targets::ViewTargets;
-use crate::pass::fullscreen_pipeline::{create_fullscreen_pipeline, texture_binding};
-use crate::pass::layout_entries::texture_entry;
+use crate::pass::fullscreen_pipeline::{buffer_binding, create_fullscreen_pipeline, texture_binding};
+use crate::pass::layout_entries::{texture_entry, uniform_entry};
 use crate::pass::view_binding::ViewBinding;
 use crate::shader::shader_library::ShaderLibrary;
 
 /// Puts a viewport's finished scene into its rectangle of the window, moved where the water distorts it and dithered to
-/// the window's eight bits.
+/// the window's eight bits; or, for a debug view, one of the targets the scene was built from.
 pub struct PresentPass {
   layout: wgpu::BindGroupLayout,
   view_layout: wgpu::BindGroupLayout,
@@ -29,6 +29,13 @@ impl PresentPass {
         texture_entry(0, fragment, unfiltered, flat),
         texture_entry(1, fragment, unfiltered, flat),
         texture_entry(2, fragment, wgpu::TextureSampleType::Depth, flat),
+        texture_entry(3, fragment, unfiltered, flat),
+        texture_entry(4, fragment, unfiltered, flat),
+        texture_entry(5, fragment, unfiltered, flat),
+        texture_entry(6, fragment, unfiltered, flat),
+        texture_entry(7, fragment, unfiltered, flat),
+        uniform_entry(8, fragment),
+        texture_entry(9, fragment, unfiltered, flat),
       ],
     });
 
@@ -70,7 +77,15 @@ impl PresentPass {
     Ok(())
   }
 
-  pub fn create_bind_group(&self, device: &wgpu::Device, targets: &ViewTargets) -> wgpu::BindGroup {
+  /// Binds the targets it shows, the uniform saying which, a `PresentUniform`, and the upscaled frame, or the scene
+  /// again where it is drawn at the viewport's size.
+  pub fn create_bind_group(
+    &self,
+    device: &wgpu::Device,
+    targets: &ViewTargets,
+    uniform: &wgpu::Buffer,
+    upscaled: Option<&wgpu::TextureView>,
+  ) -> wgpu::BindGroup {
     device.create_bind_group(&wgpu::BindGroupDescriptor {
       label: Some("present"),
       layout: &self.layout,
@@ -78,6 +93,13 @@ impl PresentPass {
         texture_binding(0, &targets.scene),
         texture_binding(1, &targets.distortion),
         texture_binding(2, &targets.depth),
+        texture_binding(3, &targets.albedo),
+        texture_binding(4, &targets.normal),
+        texture_binding(5, &targets.material),
+        texture_binding(6, &targets.light),
+        texture_binding(7, &targets.occlusion[0]),
+        buffer_binding(8, uniform),
+        texture_binding(9, upscaled.unwrap_or(&targets.scene)),
       ],
     })
   }

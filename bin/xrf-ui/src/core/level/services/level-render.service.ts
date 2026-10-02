@@ -3,10 +3,15 @@ import { BoundAction, comparer, reaction } from "@wirestate/mobx";
 import {
   EMPTY_RENDER_FRAME_COST,
   EMPTY_RENDERER_LIGHTS_REPORT,
+  EMPTY_RENDERER_PASS_TIMINGS,
   EMPTY_RENDERER_STATIC_DRAW_REPORT,
   ERendererAmbientOcclusionQuality,
+  ERendererAntialiasing,
+  ERendererDebugView,
   ERendererLightShadowFilter,
+  ERendererRenderScale,
   IRendererFlyCamera,
+  IRendererPassTimings,
   IRendererSettings,
   IRendererViewPoint,
   IRenderFrameCost,
@@ -21,10 +26,13 @@ import {
 } from "@/core/ipc/types/xrf-app";
 import {
   ERenderAmbientOcclusionQuality,
+  ERenderAntialiasing,
   ERenderCamera,
   ERenderCameraCommand,
+  ERenderDebugView,
   ERenderLevelHit,
   ERenderLightShadowFilter,
+  ERenderScale,
   ERenderTextureState,
   ERenderWeatherPlay,
   RenderCamera,
@@ -32,6 +40,7 @@ import {
   RenderFrameReport,
   RenderLevelHit,
   RenderLoadReport,
+  RenderPassCost,
   RenderSurfaceGeometry,
   RenderSurfaceSpan,
   RenderTextureReport,
@@ -77,6 +86,38 @@ const AMBIENT_OCCLUSION_QUALITIES: Record<ERendererAmbientOcclusionQuality, ERen
   [ERendererAmbientOcclusionQuality.ULTRA]: ERenderAmbientOcclusionQuality.ULTRA,
 };
 
+/** The debug views as the native renderer names them; motion has no target to show yet, so it shows the frame. */
+const DEBUG_VIEWS: Record<ERendererDebugView, ERenderDebugView> = {
+  [ERendererDebugView.FINAL]: ERenderDebugView.FINAL,
+  [ERendererDebugView.ALBEDO]: ERenderDebugView.ALBEDO,
+  [ERendererDebugView.GLOSS]: ERenderDebugView.GLOSS,
+  [ERendererDebugView.NORMAL]: ERenderDebugView.NORMAL,
+  [ERendererDebugView.HEMI]: ERenderDebugView.HEMI,
+  [ERendererDebugView.SUN]: ERenderDebugView.SUN,
+  [ERendererDebugView.MATERIAL]: ERenderDebugView.MATERIAL,
+  [ERendererDebugView.DEPTH]: ERenderDebugView.DEPTH,
+  [ERendererDebugView.LIGHT]: ERenderDebugView.LIGHT,
+  [ERendererDebugView.AMBIENT_OCCLUSION]: ERenderDebugView.AMBIENT_OCCLUSION,
+  [ERendererDebugView.MOTION]: ERenderDebugView.FINAL,
+};
+
+/** The settings' antialiasing as the native renderer draws it: the modes it has not yet, as the nearest it has. */
+const ANTIALIASING_MODES: Record<ERendererAntialiasing, ERenderAntialiasing> = {
+  [ERendererAntialiasing.NONE]: ERenderAntialiasing.NONE,
+  [ERendererAntialiasing.FXAA]: ERenderAntialiasing.FXAA,
+  [ERendererAntialiasing.SMAA]: ERenderAntialiasing.SMAA,
+  [ERendererAntialiasing.TAA]: ERenderAntialiasing.TAA,
+  [ERendererAntialiasing.FSR2]: ERenderAntialiasing.TAA,
+};
+
+/** The settings' render scales as the native renderer names them. */
+const RENDER_SCALES: Record<ERendererRenderScale, ERenderScale> = {
+  [ERendererRenderScale.NATIVE]: ERenderScale.NATIVE,
+  [ERendererRenderScale.QUALITY]: ERenderScale.QUALITY,
+  [ERendererRenderScale.BALANCED]: ERenderScale.BALANCED,
+  [ERendererRenderScale.PERFORMANCE]: ERenderScale.PERFORMANCE,
+};
+
 /** The settings' light shadow filters as the native renderer names them. */
 const LIGHT_SHADOW_FILTERS: Record<ERendererLightShadowFilter, ERenderLightShadowFilter> = {
   [ERendererLightShadowFilter.ENGINE]: ERenderLightShadowFilter.ENGINE,
@@ -98,11 +139,22 @@ export function toLevelFrameCost(report: RenderFrameReport): IRenderFrameCost {
     drawTime: cpuTime,
     frameTime: report.frameTime ?? 0,
     framesPerSecond: report.framesPerSecond ?? 0,
-    renderedHeight: report.height,
-    renderedWidth: report.width,
+    renderedHeight: report.renderHeight,
+    renderedWidth: report.renderWidth,
     triangles: report.triangles,
     worstDrawTime: cpuTime,
     worstFrameTime: report.frameTimeMax ?? 0,
+  };
+}
+
+/**
+ * @param report - What a native viewport's recent frames cost.
+ * @returns What each of its passes cost on the GPU, as the readout lists them.
+ */
+export function toLevelPassTimings(report: RenderFrameReport): IRendererPassTimings {
+  return {
+    isGpuTimed: report.isGpuTimed,
+    passes: report.passes.map((pass: RenderPassCost) => ({ gpuTime: pass.gpuTime ?? 0, name: pass.name })),
   };
 }
 
@@ -147,6 +199,12 @@ export function toLevelViewOptions(settings: IRendererSettings, switches: TLevel
       lowLuminance: exposure.lowLuminance,
       middleGray: exposure.middleGray,
     },
+    antialiasing: ANTIALIASING_MODES[settings.features.antialiasing],
+    upscaling: {
+      scale: RENDER_SCALES[settings.features.upscaling.scale],
+      sharpening: settings.features.upscaling.sharpening,
+    },
+    debugView: DEBUG_VIEWS[settings.debugView],
     geometryLod: settings.features.lod.geometryLod,
     grass: {
       density: grass.density,
@@ -319,6 +377,7 @@ export class LevelRenderService extends NativeRenderSurfaceService {
   /** Where the camera stands, as the viewport last said. */
   private pose: Nullable<RenderCameraPose> = null;
   private frame: IRenderFrameCost = EMPTY_RENDER_FRAME_COST;
+  private timings: IRendererPassTimings = EMPTY_RENDERER_PASS_TIMINGS;
   /** What the viewport holds of the level, as it last said. */
   private load: Nullable<RenderLoadReport> = null;
   /** Bumped by every level opened or closed, so a pick asked of one since replaced notes nothing. */
@@ -449,10 +508,12 @@ export class LevelRenderService extends NativeRenderSurfaceService {
     this.pose = null;
     this.load = null;
     this.frame = EMPTY_RENDER_FRAME_COST;
+    this.timings = EMPTY_RENDERER_PASS_TIMINGS;
   }
 
   protected onFrame(report: RenderFrameReport): void {
     this.frame = toLevelFrameCost(report);
+    this.timings = toLevelPassTimings(report);
     this.publish();
   }
 
@@ -496,6 +557,7 @@ export class LevelRenderService extends NativeRenderSurfaceService {
   private toSettings(): IRendererSettings {
     return toLevelRendererSettings({
       config: this.config,
+      debugView: this.viewService.debugView,
       hemiStrength: this.viewService.hemiStrength,
       lod: this.viewService.lod,
       options: this.viewService.options,
@@ -524,7 +586,8 @@ export class LevelRenderService extends NativeRenderSurfaceService {
       toLevelCameraReading({
         position: [pose.position[0] ?? 0, pose.position[1] ?? 0, pose.position[2] ?? 0],
         target: [pose.target[0] ?? 0, pose.target[1] ?? 0, pose.target[2] ?? 0],
-      })
+      }),
+      this.timings
     );
   }
 

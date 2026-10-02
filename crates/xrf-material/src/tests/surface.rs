@@ -171,6 +171,28 @@ fn an_environment_mapped_model_blends_against_nothing_or_stays_opaque() {
 }
 
 #[test]
+fn an_environment_mapped_model_names_the_cube_it_binds_and_another_class_none() {
+  let tree: FixtureTree = library(
+    "surface_model_ebb_cube",
+    &[
+      ShaderBlenderFixture::model_environment("models\\window")
+        .with_alpha_channel(true)
+        .with_environment("sky\\sky_cube_weapons"),
+      ShaderBlenderFixture::model_environment("models\\weapons"),
+      ShaderBlenderFixture::model("models\\model"),
+    ],
+  );
+
+  assert_eq!(
+    describe(&tree, "models\\window").environment.as_deref(),
+    Some("sky\\sky_cube_weapons")
+  );
+  // `$null`, the class's default, names no texture.
+  assert_eq!(describe(&tree, "models\\weapons").environment, None);
+  assert_eq!(describe(&tree, "models\\model").environment, None);
+}
+
+#[test]
 fn a_level_aref_surface_cuts_out_until_its_switch_asks_for_blending() {
   // The one class whose switch means the opposite of `B_MODEL`'s: off is the cut-out, on leaves the deferred path.
   let tree: FixtureTree = library(

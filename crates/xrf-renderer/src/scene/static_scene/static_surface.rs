@@ -55,6 +55,8 @@ impl StaticSurface {
   pub const DETAIL_BUMP: usize = 4;
   pub const DETAIL_BUMP_COMPANION: usize = 5;
   pub const HEMI: usize = 6;
+  /// An environment-mapped model's cube, in the environment slots rather than the textures'.
+  pub const ENVIRONMENT: usize = 7;
   pub const WATER_NORMAL: usize = 1;
   pub const FOAM: usize = 2;
   pub const DISTORTION: usize = 3;

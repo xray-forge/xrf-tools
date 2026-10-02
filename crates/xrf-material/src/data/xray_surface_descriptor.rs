@@ -33,6 +33,9 @@ pub struct XraySurfaceDescriptor {
   pub bump: Option<XrayMaterialBump>,
   /// The lighting model its base texture's descriptor sets, `m_material`.
   pub material: f32,
+  /// The cube an environment-mapped class mixes its base toward where its alpha is thin, `oT2_Name`; `None` for a
+  /// class binding none.
+  pub environment: Option<String>,
 }
 
 impl XraySurfaceDescriptor {
@@ -48,6 +51,7 @@ impl XraySurfaceDescriptor {
       samplers: Vec::new(),
       bump: None,
       material: XrayMaterialDescriptor::DEFAULT_MATERIAL,
+      environment: None,
     }
   }
 

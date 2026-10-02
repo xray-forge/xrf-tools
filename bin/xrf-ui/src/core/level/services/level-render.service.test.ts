@@ -48,6 +48,13 @@ const REPORT: RenderFrameReport = {
   frameTimeMax: 9,
   framesPerSecond: 160,
   height: 600,
+  isGpuTimed: true,
+  passes: [
+    { gpuTime: 1.25, name: "g-buffer" },
+    { gpuTime: 0.5, name: "sun" },
+  ],
+  renderHeight: 400,
+  renderWidth: 534,
   triangles: 90_000,
   width: 800,
 };
@@ -108,7 +115,7 @@ describe("LevelRenderService", () => {
     await mockAttached();
 
     expect(sent("attach_viewport")).toEqual([{ events: getMockChannels()[0], window: "main" }]);
-    expect(sent("configure")).toEqual([{ settings: { presentation: ERenderPresentation.VSYNC } }]);
+    expect(sent("configure")).toEqual([{ settings: { isGpuTimed: false, presentation: ERenderPresentation.VSYNC } }]);
 
     const camera: RenderCamera = sent("set_camera").at(-1)?.camera as RenderCamera;
 
@@ -159,7 +166,7 @@ describe("LevelRenderService", () => {
     ]);
   });
 
-  it("reads frames and the camera into the readouts", async () => {
+  it("reads frames, their pass timings and the camera into the readouts", async () => {
     const { container } = await mockAttached();
     const viewport: LevelViewportService = container.get(LevelViewportService);
 
@@ -167,8 +174,16 @@ describe("LevelRenderService", () => {
     expect(viewport.stats.framesPerSecond).toBe(160);
     expect(viewport.stats.worstFrameTime).toBe(9);
     expect(viewport.stats.drawnWidth).toBe(800);
+    expect(viewport.stats.renderedWidth).toBe(534);
     expect(viewport.stats.draws).toBe(1200);
     expect(viewport.stats.triangles).toBe(90_000);
+    expect(viewport.timings).toEqual({
+      isGpuTimed: true,
+      passes: [
+        { gpuTime: 1.25, name: "g-buffer" },
+        { gpuTime: 0.5, name: "sun" },
+      ],
+    });
 
     emit({ kind: ERenderViewportEvent.CAMERA, pose: { position: [1, 2, 3], target: [1, 2, 2] } });
     // The readout states the engine's space, which mirrors renderer space along z.

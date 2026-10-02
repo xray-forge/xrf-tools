@@ -52,6 +52,8 @@ export interface ILevelRendererSettingsInputs {
   shared: IRenderSharedSettings;
   /** The backdrop. */
   config: ILevelRenderConfig;
+  /** Which picture the viewport shows. */
+  debugView: ERendererDebugView;
 }
 
 /**
@@ -59,13 +61,13 @@ export interface ILevelRendererSettingsInputs {
  * @returns The renderer's settings.
  */
 export function toLevelRendererSettings(inputs: ILevelRendererSettingsInputs): IRendererSettings {
-  const { options, hemiStrength, lod, view, shared, config } = inputs;
+  const { options, hemiStrength, lod, view, shared, config, debugView } = inputs;
   const { features } = shared;
 
   return {
     // Fogged, the renderer draws the sky as total fog itself; this shows only where there is none.
     backdrop: config.backgroundColor,
-    debugView: ERendererDebugView.FINAL,
+    debugView,
     features: {
       ...features,
       ambientOcclusion: toLevelRendererFeature("ambientOcclusion", features, view, options.isOccluded),

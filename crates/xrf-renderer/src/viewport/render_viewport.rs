@@ -104,6 +104,10 @@ impl RenderViewport {
   /// Reports the frames since the last report, once one is due.
   pub fn report(&mut self, now: Instant, backend: &str, adapter: &str) {
     let (clusters, triangles): (u32, u32) = self.level_view.as_mut().map_or((0, 0), |level| level.take_stats());
+    let (is_gpu_timed, passes) = self
+      .level_view
+      .as_mut()
+      .map_or((false, Vec::new()), |level| level.take_timings());
 
     let Some(summary) = self.statistics.take(now) else {
       return;
@@ -115,6 +119,11 @@ impl RenderViewport {
       cpu_time,
     } = summary;
     let rect: RenderRect = self.layout.map(|layout| layout.rect).unwrap_or_default();
+    let (render_width, render_height): (u32, u32) = self
+      .level_view
+      .as_ref()
+      .and_then(LevelView::get_render_size)
+      .unwrap_or((rect.width, rect.height));
 
     self.send(RenderViewportEvent::Frame {
       report: RenderFrameReport {
@@ -126,8 +135,12 @@ impl RenderViewport {
         triangles,
         width: rect.width,
         height: rect.height,
+        render_width,
+        render_height,
         backend: backend.to_string(),
         adapter: adapter.to_string(),
+        is_gpu_timed,
+        passes,
       },
     });
   }

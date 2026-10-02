@@ -1,8 +1,14 @@
 pub(crate) mod depth_pyramid;
 pub(crate) mod frame_capture;
 pub(crate) mod frame_statistics;
+pub(crate) mod pass_timer;
 pub(crate) mod pick_target;
+pub(crate) mod smaa_targets;
+pub(crate) mod smoothing_target;
 pub(crate) mod stats_readback;
 pub(crate) mod sun_shadow_maps;
+pub(crate) mod temporal_history;
+pub(crate) mod temporal_jitter;
+pub(crate) mod upscale_targets;
 pub(crate) mod view_exposure;
 pub(crate) mod view_targets;

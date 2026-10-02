@@ -1,10 +1,26 @@
 import { default as GridOnIcon } from "@mui/icons-material/GridOn";
+import { ERendererDebugView } from "@xrf/renderer";
 import { ReactElement } from "react";
 
 import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
 import { RenderPassTimingFormRow } from "@/core/render/components/controls/RenderPassTimingFormRow";
 import { EditorPopoverGroup, EditorPopoverGroupSection } from "@/core/shell/editor/EditorPopoverGroup";
+import { ChoiceListFormRow, IChoiceFormRowOption } from "@/core/ui/form";
 import { BaseComponentProps } from "@/lib/dom/element-types";
+
+/** What the viewport can show instead of its frame, in the order the targets are built. */
+const DEBUG_VIEW_OPTIONS: ReadonlyArray<IChoiceFormRowOption<ERendererDebugView>> = [
+  { label: "Final frame", value: ERendererDebugView.FINAL },
+  { label: "Albedo", value: ERendererDebugView.ALBEDO },
+  { label: "Gloss", value: ERendererDebugView.GLOSS },
+  { label: "Normal", value: ERendererDebugView.NORMAL },
+  { label: "Baked hemisphere", value: ERendererDebugView.HEMI },
+  { label: "Baked sun", value: ERendererDebugView.SUN },
+  { label: "Material", value: ERendererDebugView.MATERIAL },
+  { label: "Depth", value: ERendererDebugView.DEPTH },
+  { label: "Accumulated light", value: ERendererDebugView.LIGHT },
+  { label: "Ambient occlusion", value: ERendererDebugView.AMBIENT_OCCLUSION },
+];
 
 interface ILevelOverlaysActionProps extends BaseComponentProps {
   options: ILevelViewOptions;
@@ -13,6 +29,9 @@ interface ILevelOverlaysActionProps extends BaseComponentProps {
   onToggle: (option: keyof ILevelViewOptions) => void;
   /** Sets in the settings whether every viewport times its passes. */
   onChangeGpuTimed: (isGpuTimed: boolean) => void;
+  /** Which picture the viewport shows: the frame, or one of the targets it was built from. */
+  debugView: ERendererDebugView;
+  onChangeDebugView: (debugView: ERendererDebugView) => void;
 }
 
 /**
@@ -26,6 +45,8 @@ export function LevelOverlaysAction({
   isGpuTimed,
   onToggle,
   onChangeGpuTimed,
+  debugView,
+  onChangeDebugView,
 }: ILevelOverlaysActionProps): ReactElement {
   const { isGridVisible, isAxesVisible, isStatsVisible } = options;
   const shown: Array<string> = [
@@ -66,6 +87,16 @@ export function LevelOverlaysAction({
       >
         <RenderPassTimingFormRow isChecked={isGpuTimed} onChange={onChangeGpuTimed} />
       </EditorPopoverGroupSection>
+
+      <ChoiceListFormRow
+        data-testid={"level-debug-view"}
+        label={"Show"}
+        description={"The finished frame, or one of the targets it was built from"}
+        options={DEBUG_VIEW_OPTIONS}
+        value={debugView}
+        filterFrom={DEBUG_VIEW_OPTIONS.length + 1}
+        onChange={onChangeDebugView}
+      />
     </EditorPopoverGroup>
   );
 }

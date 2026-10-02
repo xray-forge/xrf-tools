@@ -179,6 +179,7 @@ export function LevelPreviewLayout({
           featureView={featureView}
           settings={settings}
           isGpuTimed={settingsService.isGpuTimed}
+          debugView={viewService.debugView}
           actions={actions}
           onChangeOptions={viewService.setOptions}
           onChangeHemiStrength={viewService.setHemiStrength}
@@ -186,6 +187,7 @@ export function LevelPreviewLayout({
           onChangeLod={viewService.setLod}
           onChangeFeatures={viewService.setFeatures}
           onChangeGpuTimed={settingsService.setGpuTimed}
+          onChangeDebugView={viewService.setDebugView}
           onBack={onBack}
         />
       }

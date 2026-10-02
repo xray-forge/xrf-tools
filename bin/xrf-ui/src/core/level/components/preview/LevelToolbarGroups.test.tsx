@@ -1,6 +1,6 @@
 import { describe, expect, it, jest } from "@jest/globals";
 import { userEvent } from "@testing-library/user-event";
-import { DEFAULT_RENDERER_AMBIENT_OCCLUSION_SETTINGS } from "@xrf/renderer";
+import { DEFAULT_RENDERER_AMBIENT_OCCLUSION_SETTINGS, ERendererDebugView } from "@xrf/renderer";
 
 import { LevelCullingAction } from "@/core/level/components/preview/LevelCullingAction";
 import { LevelOcclusionAction } from "@/core/level/components/preview/LevelOcclusionAction";
@@ -109,8 +109,10 @@ describe("level toolbar groups", () => {
       <LevelOverlaysAction
         options={{ ...DEFAULT_LEVEL_VIEW_OPTIONS, isAxesVisible: true }}
         isGpuTimed={false}
+        debugView={ERendererDebugView.FINAL}
         onToggle={() => {}}
         onChangeGpuTimed={onChangeGpuTimed}
+        onChangeDebugView={() => {}}
       />
     );
 
@@ -120,5 +122,25 @@ describe("level toolbar groups", () => {
     await findByRole("dialog", { name: "Overlays" });
 
     expect(getByRole("checkbox", { name: "Grid" })).not.toBeChecked();
+  });
+
+  it("shows one of the frame's targets instead of the frame", async () => {
+    const onChangeDebugView = jest.fn<(debugView: ERendererDebugView) => void>();
+    const { getByRole, findByRole } = renderWithProviders(
+      <LevelOverlaysAction
+        options={DEFAULT_LEVEL_VIEW_OPTIONS}
+        isGpuTimed={false}
+        debugView={ERendererDebugView.FINAL}
+        onToggle={() => {}}
+        onChangeGpuTimed={() => {}}
+        onChangeDebugView={onChangeDebugView}
+      />
+    );
+
+    await userEvent.click(getByRole("button", { name: "Overlays" }));
+    await findByRole("dialog", { name: "Overlays" });
+    await userEvent.click(getByRole("option", { name: "Depth" }));
+
+    expect(onChangeDebugView).toHaveBeenCalledWith(ERendererDebugView.DEPTH);
   });
 });

@@ -118,11 +118,18 @@ pub fn build_static_surface(
     flags |= StaticSurface::IS_ENVIRONMENT_MAPPED;
   }
 
+  let environment: u32 = descriptor
+    .and_then(|it| it.environment.as_deref())
+    .filter(|_| flags & StaticSurface::IS_ENVIRONMENT_MAPPED != 0)
+    .map_or(0, |reference| textures.request_environment(reference));
+
   let mut texture_slots: [u32; 8] = [0; 8];
 
   for (index, slot) in slots.iter().enumerate() {
     texture_slots[index] = slot.unwrap_or(0);
   }
+
+  texture_slots[StaticSurface::ENVIRONMENT] = environment;
 
   let material: f32 = descriptor.map_or(DEFAULT_MATERIAL, |it| it.material);
 

@@ -9,10 +9,14 @@ use crate::pass::static_draw_groups::StaticDrawGroups;
 use crate::pass::view_binding::ViewBinding;
 use crate::scene::level::level_shadows::LevelShadows;
 use crate::scene::static_scene::static_batch::StaticBatch;
+use crate::scene::static_scene::static_layout::StaticLayout;
 use crate::shader::shader_library::ShaderLibrary;
 
 /// Reversed depth steps a composited surface is pulled towards the eye by, so a surface laid on a wall never loses
 /// to it, and the same scaled by its slope for one seen at a grazing angle.
+/// The fragment entry compositing surfaces over the lit frame.
+const COMPOSITED_FRAGMENT: &str = "fs_composited";
+
 const DEPTH_BIAS: i32 = 256;
 const SLOPE_BIAS: f32 = 1.0;
 
@@ -53,21 +57,23 @@ impl CompositedPass {
     sky_layout: &wgpu::BindGroupLayout,
   ) -> XrfResult<Self> {
     let fragment: wgpu::ShaderStages = wgpu::ShaderStages::FRAGMENT;
+    // A forward-drawn model is lit, and its sun read, per vertex.
+    let lit: wgpu::ShaderStages = wgpu::ShaderStages::VERTEX_FRAGMENT;
     let [table, sampler] = MaterialTable::get_layout_entries(2);
     let layout: wgpu::BindGroupLayout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
       label: Some("composited"),
       entries: &[
-        uniform_entry(0, fragment),
+        uniform_entry(0, lit),
         storage_entry(1, fragment, false),
         table,
         sampler,
         texture_entry(
           4,
-          fragment,
+          lit,
           wgpu::TextureSampleType::Depth,
           wgpu::TextureViewDimension::D2Array,
         ),
-        uniform_entry(5, fragment),
+        uniform_entry(5, lit),
       ],
     });
     let layouts: [wgpu::BindGroupLayout; 4] = [
@@ -200,7 +206,7 @@ impl CompositedPass {
     let composited = Self::create_batch_pipelines(
       device,
       &module,
-      (&composited_layout, "fs_composited"),
+      (&composited_layout, COMPOSITED_FRAGMENT),
       ViewTargets::SCENE,
       StaticBatch::list_composited(),
     )?;
@@ -230,7 +236,11 @@ impl CompositedPass {
 
     batches
       .map(|batch| {
-        let vertex: &str = batch.layout.get_vertex_entry();
+        // A model composited over the frame is lit by its vertices, as the engine's forward passes light it.
+        let vertex: &str = match batch.layout {
+          StaticLayout::Model if fragment == COMPOSITED_FRAGMENT => "vs_model_lit",
+          layout => layout.get_vertex_entry(),
+        };
 
         create_checked(device, fragment, || {
           device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
