@@ -320,13 +320,16 @@ export class RendererTextures {
   }
 
   /**
-   * Uploads queued textures, oldest first, until the budget is spent.
+   * Uploads queued textures, oldest first, until either budget is spent. The bytes bound what the GPU process copies a
+   * frame, which the worker's clock does not: it only hands the bytes over, and the GPU process copies them again.
    *
    * @param renderer - The renderer uploading.
-   * @param budget - Milliseconds to spend; at least one texture goes up whatever it costs.
+   * @param milliseconds - Worker time to spend; at least one texture goes up whatever it costs.
+   * @param bytes - Bytes to send; a copy back from an array's layer sends none.
    */
-  public upload(renderer: WebGPURenderer, budget: number): void {
+  public upload(renderer: WebGPURenderer, milliseconds: number, bytes: number = Infinity): void {
     const started: number = performance.now();
+    let sent: number = 0;
 
     for (const key of this.queued) {
       this.queued.delete(key);
@@ -339,6 +342,10 @@ export class RendererTextures {
       }
 
       if (hasTextureData(entry.texture)) {
+        sent += listTextureData(entry.texture).reduce(
+          (total: number, data: ArrayBufferView) => total + data.byteLength,
+          0
+        );
         renderer.initTexture(entry.texture);
 
         // Sent: three reads the bytes of a texture it holds never again, so only one it can fetch again lets them go.
@@ -357,7 +364,7 @@ export class RendererTextures {
 
       this.draw(key, entry, entry.texture);
 
-      if (performance.now() - started >= budget) {
+      if (sent >= bytes || performance.now() - started >= milliseconds) {
         return;
       }
     }

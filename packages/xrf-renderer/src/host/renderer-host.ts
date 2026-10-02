@@ -45,6 +45,12 @@ import { WeatherPlayer } from "#/weather/weather-player";
 const TEXTURE_UPLOAD_BUDGET: number = 4;
 
 /**
+ * Bytes of textures a frame may send: the GPU process copies each into an upload heap and records its copy, far more
+ * work than the worker's hand-over, so a frame within the worker's milliseconds could still stall it for 45 ms.
+ */
+const TEXTURE_UPLOAD_BYTES: number = 8 * 1024 * 1024;
+
+/**
  * The renderer, on its own thread: one device, one scene, and at most one canvas showing it.
  * It routes what the consumer says to the part it concerns, and runs the frame. Started once: a device that fails, or
  * a frame or request that throws, ends it for good, and a consumer that wants to draw again makes another.
@@ -438,7 +444,7 @@ export class RendererHost {
     this.uniforms.freeRetired(device.renderer);
     this.advanceWeather(now);
     // Before the frame, and whether or not one is drawn: a capture without a view waits on the same uploads.
-    this.scene.textures.upload(device.renderer, TEXTURE_UPLOAD_BUDGET);
+    this.scene.textures.upload(device.renderer, TEXTURE_UPLOAD_BUDGET, TEXTURE_UPLOAD_BYTES);
     this.scene.advance();
     this.scene.flush(device.renderer);
     this.scene.sky.update();

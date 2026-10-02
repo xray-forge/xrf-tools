@@ -51,6 +51,31 @@ describe("RendererTextures", () => {
     expect(flat.value).not.toBe(getWhiteTexture());
   });
 
+  // The GPU process copies every byte sent again, so a frame within the worker's milliseconds could still stall it.
+  it("sends textures until the frame's bytes are spent, at least one whatever its size", () => {
+    const sent: Array<Texture> = [];
+    const renderer: WebGPURenderer = {
+      initTexture: (texture: Texture) => sent.push(texture),
+    } as unknown as WebGPURenderer;
+    const textures: RendererTextures = createTextures();
+    const file: ArrayBuffer = mockDdsFile({ height: 64, mipmapCount: 1, width: 64 });
+    // Half a byte a texel, as DXT1 stores it.
+    const bytes: number = (64 * 64) / 2;
+
+    ["a", "b", "c", "d"].forEach((key: string) =>
+      textures.put(key, { bytes: file, encoding: ERendererTextureEncoding.DDS })
+    );
+
+    textures.upload(renderer, Infinity, 1);
+    expect(sent).toHaveLength(1);
+
+    textures.upload(renderer, Infinity, 2 * bytes);
+    expect(sent).toHaveLength(3);
+
+    textures.upload(renderer, Infinity);
+    expect(sent).toHaveLength(4);
+  });
+
   // Three uploads again whatever a sampler still holds once it went, from the bytes left on the CPU, and a pipeline
   // compiled over such a target is one such sampler.
   it("lets an evicted texture go, its targets drawing their placeholders, and uploads it again once held", () => {
