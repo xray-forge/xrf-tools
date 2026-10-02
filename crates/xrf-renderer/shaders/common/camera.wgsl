@@ -23,3 +23,12 @@ fn camera_unproject(ndc: vec2<f32>, depth: f32) -> vec3<f32> {
 
   return point.xyz / point.w;
 }
+
+// The view space point under a pixel of the viewport's own targets at a depth, reversed: one is the near plane.
+fn camera_view_position(pixel: vec2<f32>, depth: f32) -> vec3<f32> {
+  let size: vec2<f32> = camera.viewport.xy;
+  let ndc: vec2<f32> = vec2<f32>(pixel.x / size.x * 2.0 - 1.0, 1.0 - pixel.y / size.y * 2.0);
+  let point: vec4<f32> = camera.inverse_projection * vec4<f32>(ndc, depth, 1.0);
+
+  return point.xyz / point.w;
+}

@@ -1,93 +1,99 @@
 #import "common/camera"
 #import "common/octahedral"
+#import "common/lighting"
+#import "common/fullscreen"
 
-// The G-buffer lit by the sun and the hemisphere, as the engine's base lighting combines them, then tonemapped into
-// the viewport's rectangle of the window.
+// `hmodel` and `combine_1` over the light the frame accumulated, then the tonemap of `combine_2`, into the viewport's
+// scene. Unlit, a surface is its raw albedo.
 
-struct Lighting {
-  // xyz: towards the sun, in view space.
-  to_sun: vec4<f32>,
-  // rgb: the sun's colour; w: its specular weight.
-  sun: vec4<f32>,
-  ambient: vec4<f32>,
-  environment: vec4<f32>,
-  sky_irradiance: vec4<f32>,
-  sky_zenith: vec4<f32>,
-  sky_horizon: vec4<f32>,
-  // x: the tonemap's scale.
-  params: vec4<f32>,
+struct Exposure {
+  // The scale the tonemap multiplies by, adapted on the GPU frame by frame.
+  adapted: f32,
 };
 
 @group(1) @binding(0) var albedo_target: texture_2d<f32>;
 @group(1) @binding(1) var normal_target: texture_2d<f32>;
 @group(1) @binding(2) var material_target: texture_2d<f32>;
 @group(1) @binding(3) var depth_target: texture_depth_2d;
-@group(1) @binding(4) var material_lut: texture_3d<f32>;
-@group(1) @binding(5) var lut_sampler: sampler;
-@group(1) @binding(6) var<uniform> lighting: Lighting;
+@group(1) @binding(4) var light_target: texture_2d<f32>;
+@group(1) @binding(5) var material_lut: texture_3d<f32>;
+@group(1) @binding(6) var lut_sampler: sampler;
+@group(1) @binding(7) var<uniform> lighting: Lighting;
+@group(1) @binding(8) var<storage, read> exposure: Exposure;
+// Visibility, then distance along the view, at half the frame's size.
+@group(1) @binding(9) var occlusion_target: texture_2d<f32>;
 
-struct CombineVarying {
-  @builtin(position) clip: vec4<f32>,
-};
+// The occlusion searched at half resolution brought up to the frame's pixel: the four searched pixels around it by how
+// near each lies, and each by how near its distance lies to the pixel's, so an edge never takes the other side's.
+fn upsampled_occlusion(pixel: vec2<f32>, distance: f32) -> f32 {
+  let last: vec2<f32> = vec2<f32>(textureDimensions(occlusion_target)) - 1.0;
+  let base: vec2<f32> = floor(pixel / 2.0);
+  let fraction: vec2<f32> = (pixel - base * 2.0) * 0.5;
+  var sum: f32 = 0.0;
+  var weights: f32 = 0.0;
 
-@vertex
-fn vs_main(@builtin(vertex_index) index: u32) -> CombineVarying {
-  let uv: vec2<f32> = vec2<f32>(f32((index << 1u) & 2u), f32(index & 2u));
-  var out: CombineVarying;
+  for (var corner: u32 = 0u; corner < 4u; corner++) {
+    let offset: vec2<f32> = vec2<f32>(f32(corner & 1u), f32(corner >> 1u));
+    let texel: vec4<f32> = textureLoad(occlusion_target, vec2<i32>(clamp(base + offset, vec2<f32>(0.0), last)), 0);
+    let bilinear: f32 = mix(1.0 - fraction.x, fraction.x, offset.x) * mix(1.0 - fraction.y, fraction.y, offset.y);
+    let difference: f32 = abs(texel.y - distance) / max(distance, 1e-3);
 
-  out.clip = vec4<f32>(uv * 2.0 - 1.0, 0.0, 1.0);
+    sum += texel.x * bilinear / (difference * difference + 1e-3);
+    weights += bilinear / (difference * difference + 1e-3);
+  }
 
-  return out;
+  return sum / max(weights, 1e-6);
 }
 
-// The engine's filmic curve, `x * (1 + x / 1.7²) / (1 + x)`.
-fn tonemap(color: vec3<f32>) -> vec3<f32> {
-  let x: vec3<f32> = color * lighting.params.x;
-
-  return x * (1.0 + x / (1.7 * 1.7)) / (1.0 + x);
+fn lookup(x: f32, y: f32, slice: f32) -> vec4<f32> {
+  return textureSampleLevel(material_lut, lut_sampler, vec3<f32>(x, y, slice), 0.0);
 }
 
-fn lookup(n_dot_l: f32, n_dot_h: f32, slice: f32) -> vec4<f32> {
-  return textureSampleLevel(material_lut, lut_sampler, vec3<f32>(n_dot_l, n_dot_h, slice), 0.0);
+// `env_color * env_s0` squared, as `hmodel` squares it: the sky's irradiance until the weather draws its cubes.
+fn hemisphere_environment() -> vec3<f32> {
+  let environment: vec3<f32> = lighting.environment.rgb * lighting.sky_irradiance.rgb;
+
+  return environment * environment;
 }
 
 @fragment
-fn fs_main(in: CombineVarying) -> @location(0) vec4<f32> {
-  let size: vec2<f32> = camera.viewport.xy;
-  let pixel: vec2<f32> = in.clip.xy - camera.viewport.zw;
-  let texel: vec2<i32> = vec2<i32>(clamp(pixel, vec2<f32>(0.0), size - 1.0));
+fn fs_combine(in: FullscreenVarying) -> @location(0) vec4<f32> {
+  let texel: vec2<i32> = vec2<i32>(in.clip.xy);
   let depth: f32 = textureLoad(depth_target, texel, 0);
-  let ndc: vec2<f32> = vec2<f32>(pixel.x / size.x * 2.0 - 1.0, 1.0 - pixel.y / size.y * 2.0);
 
   // Nothing drawn: the sky, plain until the weather draws one.
   if (depth <= 0.0) {
-    let direction: vec3<f32> = normalize(camera_unproject(ndc, 0.5) - camera.position.xyz);
+    let toward: vec3<f32> = camera_view_position(in.clip.xy, 0.5);
+    let direction: vec3<f32> = normalize((transpose(camera.view) * vec4<f32>(toward, 0.0)).xyz);
     let sky: vec3<f32> = mix(lighting.sky_horizon.rgb, lighting.sky_zenith.rgb, sqrt(saturate(direction.y)));
 
     return vec4<f32>(sky, 1.0);
   }
 
   let albedo: vec4<f32> = textureLoad(albedo_target, texel, 0);
-  let material: vec4<f32> = textureLoad(material_target, texel, 0);
-  let normal: vec3<f32> = octahedral_decode(textureLoad(normal_target, texel, 0).xy);
-  let projected: vec4<f32> = camera.inverse_projection * vec4<f32>(ndc, depth, 1.0);
-  let to_eye: vec3<f32> = -normalize(projected.xyz / projected.w);
-  let to_sun: vec3<f32> = lighting.to_sun.xyz;
-  let half_way: vec3<f32> = normalize(to_sun + to_eye);
-  let slice: f32 = material.z;
-  let sun: vec4<f32> = lookup(dot(to_sun, normal), dot(half_way, normal), slice);
-  let sun_light: vec3<f32> = lighting.sun.rgb * sun.x;
-  let sun_specular: f32 = lighting.sun.w * sun.y;
-  let occlusion: f32 = mix(1.0, material.x, camera.switches.z);
-  let n_dot_v: f32 = dot(normal, to_eye);
-  // `dot(reflect(V, N), V)`, which is the same whichever way V points.
-  let hemi: vec4<f32> = lookup(occlusion, 0.5 + 0.5 * (1.0 - 2.0 * n_dot_v * n_dot_v), slice);
-  // todo: Sample the sky's cube for the environment once the weather draws a sky.
-  let environment: vec3<f32> = pow(lighting.environment.rgb * lighting.sky_irradiance.rgb, vec3<f32>(2.0));
-  let hemi_diffuse: vec3<f32> = environment * hemi.x + lighting.ambient.rgb;
-  let gloss: f32 = albedo.a;
-  let color: vec3<f32> = albedo.rgb * (sun_light + hemi_diffuse) + gloss * sun_specular
-    + environment * hemi.y * gloss;
 
-  return vec4<f32>(tonemap(color), 1.0);
+  if (lighting.params.y < 0.5) {
+    return vec4<f32>(albedo.rgb, 1.0);
+  }
+
+  let material: vec4<f32> = textureLoad(material_target, texel, 0);
+  let light: vec4<f32> = textureLoad(light_target, texel, 0);
+  let normal: vec3<f32> = octahedral_decode(textureLoad(normal_target, texel, 0).xy);
+  let position: vec3<f32> = camera_view_position(in.clip.xy, depth);
+  let to_point: vec3<f32> = normalize(position);
+  // How much of the hemisphere and ambient light reaches the point, as `combine_1` multiplies them by `occ`.
+  let visible: f32 = select(1.0, upsampled_occlusion(floor(in.clip.xy), -position.z), lighting.params.w > 0.5);
+  let slice: f32 = material.z;
+  let gloss: f32 = albedo.a;
+  let occlusion: f32 = mix(1.0, material.x, camera.switches.z);
+  // `hmodel`: the hemisphere looked up by occlusion and by how far the reflection turns from the view.
+  let hemisphere: vec4<f32> = lookup(occlusion, 0.5 + 0.5 * dot(reflect(to_point, normal), to_point), slice);
+  let environment: vec3<f32> = hemisphere_environment();
+  let hemisphere_diffuse: vec3<f32> = (environment * hemisphere.x + lighting.ambient.rgb) * visible;
+  let hemisphere_gloss: vec3<f32> = environment * hemisphere.y * gloss * visible;
+  // `C = D * light`: the lit albedo, the gloss times what the lights reflect, and the hemisphere's reflection.
+  let color: vec3<f32> = albedo.rgb * (light.rgb + hemisphere_diffuse) + gloss * light.a + hemisphere_gloss;
+  let scale: f32 = lighting.params.x * select(1.0, exposure.adapted, lighting.params.z > 0.5);
+
+  return vec4<f32>(tonemap(color, scale), 1.0);
 }

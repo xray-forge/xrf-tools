@@ -7,6 +7,7 @@ use crate::pass::camera_uniform::CameraUniform;
 use crate::pass::grid_pass::GridPass;
 use crate::pass::view_binding::ViewBinding;
 use crate::shader::shader_library::ShaderLibrary;
+use crate::thread::gpu_state::GpuState;
 
 const SIZE: u32 = 64;
 
@@ -135,4 +136,25 @@ fn draws_sky_over_ground_offscreen() {
   assert_ne!(ground, [255, 0, 0]);
   // The sky is bluer than the ground under it.
   assert!(sky[2] > ground[2], "sky {sky:?} ground {ground:?}");
+}
+
+/// Builds every pass a frame draws with, each pipeline checked by an error scope as it is made, so a layout or shader
+/// that no longer matches its pass fails here rather than in the app.
+#[test]
+fn builds_every_pass() {
+  let context: GpuContext = match GpuContext::create_headless(RenderBackend::D3d12)
+    .or_else(|_| GpuContext::create_headless(RenderBackend::Vulkan))
+  {
+    Ok(context) => context,
+    Err(error) => {
+      eprintln!("Skipped: no GPU to draw with ({error})");
+
+      return;
+    }
+  };
+  let shaders: ShaderLibrary = ShaderLibrary::default();
+
+  if let Err(error) = GpuState::new(context, &shaders) {
+    panic!("A pass cannot be built: {error}");
+  }
 }

@@ -4,6 +4,8 @@ import {
   EMPTY_RENDER_FRAME_COST,
   EMPTY_RENDERER_LIGHTS_REPORT,
   EMPTY_RENDERER_STATIC_DRAW_REPORT,
+  ERendererAmbientOcclusionQuality,
+  ERendererLightShadowFilter,
   IRendererFlyCamera,
   IRendererSettings,
   IRendererViewPoint,
@@ -13,8 +15,10 @@ import { Nullable } from "@xrf/types";
 
 import { SelectedLevelDescription, SessionSnapshot } from "@/core/ipc/types/xrf-app";
 import {
+  ERenderAmbientOcclusionQuality,
   ERenderCamera,
   ERenderCameraCommand,
+  ERenderLightShadowFilter,
   ERenderTextureState,
   RenderCamera,
   RenderCameraPose,
@@ -50,6 +54,20 @@ import { SettingsService } from "@/core/settings/services/settings";
 import { IPanelSetActiveCommand, PANEL_SET_ACTIVE_COMMAND } from "@/core/shell/panel/panel-messages";
 import { Logger } from "@/lib/logging";
 
+/** The settings' occlusion qualities as the native renderer names them. */
+const AMBIENT_OCCLUSION_QUALITIES: Record<ERendererAmbientOcclusionQuality, ERenderAmbientOcclusionQuality> = {
+  [ERendererAmbientOcclusionQuality.LOW]: ERenderAmbientOcclusionQuality.LOW,
+  [ERendererAmbientOcclusionQuality.MEDIUM]: ERenderAmbientOcclusionQuality.MEDIUM,
+  [ERendererAmbientOcclusionQuality.HIGH]: ERenderAmbientOcclusionQuality.HIGH,
+  [ERendererAmbientOcclusionQuality.ULTRA]: ERenderAmbientOcclusionQuality.ULTRA,
+};
+
+/** The settings' light shadow filters as the native renderer names them. */
+const LIGHT_SHADOW_FILTERS: Record<ERendererLightShadowFilter, ERenderLightShadowFilter> = {
+  [ERendererLightShadowFilter.ENGINE]: ERenderLightShadowFilter.ENGINE,
+  [ERendererLightShadowFilter.SOFT]: ERenderLightShadowFilter.SOFT,
+};
+
 /**
  * @param report - What a native viewport's recent frames cost.
  * @returns The same, as the level's readouts count a frame: each visible cluster a draw.
@@ -78,13 +96,46 @@ export function toLevelFrameCost(report: RenderFrameReport): IRenderFrameCost {
  * @returns What a native viewport draws the level with.
  */
 export function toLevelViewOptions(settings: IRendererSettings): RenderViewOptions {
+  const { ambientOcclusion, exposure, lights, shadows } = settings.features;
+
   return {
+    ambientOcclusion: {
+      isEnabled: ambientOcclusion.isEnabled,
+      quality: AMBIENT_OCCLUSION_QUALITIES[ambientOcclusion.quality],
+      radius: ambientOcclusion.radius,
+      strength: ambientOcclusion.strength,
+    },
+    exposure: {
+      adaptation: exposure.adaptation,
+      amount: exposure.amount,
+      isEnabled: exposure.isEnabled,
+      lowLuminance: exposure.lowLuminance,
+      middleGray: exposure.middleGray,
+    },
     geometryLod: settings.features.lod.geometryLod,
     hemiStrength: settings.hemiStrength,
     isBumped: settings.isBumped,
     isImpostors: settings.features.lod.isImpostors,
+    isLit: settings.isLit,
     isOcclusionCulled: settings.features.isOcclusionCulled,
     isTextured: settings.isTextured,
+    lights: {
+      isEnabled: lights.isEnabled,
+      isLevelLights: lights.isLevelLights,
+      isShadowed: lights.isShadowed,
+      shadowFilter: LIGHT_SHADOW_FILTERS[lights.shadowFilter],
+    },
+    shadows: {
+      bias: shadows.bias,
+      blend: shadows.blend,
+      cascades: [...shadows.cascades],
+      filter: shadows.filter,
+      isEnabled: shadows.isEnabled,
+      isStaggered: shadows.isStaggered,
+      reach: shadows.reach,
+      resolution: shadows.resolution,
+    },
+    tonemapScale: settings.tonemapScale,
   };
 }
 

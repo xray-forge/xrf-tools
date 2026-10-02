@@ -431,7 +431,7 @@ impl RenderThread {
         .get_or_insert_with(|| ViewBinding::new(device, &gpu.view_layout));
       let view: CameraView = viewport.camera.get_view(rect.width as f32 / rect.height as f32);
 
-      let options: RenderViewOptions = viewport.options;
+      let options: RenderViewOptions = viewport.options.clone();
       let switches: Vec4 = Vec4::new(
         options.is_textured as u32 as f32,
         options.is_bumped as u32 as f32,
@@ -446,7 +446,7 @@ impl RenderThread {
       };
       let level: &mut LevelView = viewport
         .level_view
-        .get_or_insert_with(|| LevelView::new(device, queue, Arc::clone(source)));
+        .get_or_insert_with(|| LevelView::new(device, queue, &gpu.view_layout, Arc::clone(source)));
 
       level.load(device, queue, &mut encoder, &mut gpu.textures);
       level.prepare(
@@ -459,7 +459,15 @@ impl RenderThread {
         viewport.camera.get_field_of_view(),
         &options,
       );
-      level.record(&mut encoder, gpu.get_level_passes(), binding, &gpu.textures);
+      level.record(
+        device,
+        queue,
+        &mut encoder,
+        gpu.get_level_passes(),
+        &gpu.view_layout,
+        binding,
+        &gpu.textures,
+      );
       is_lit = true;
 
       // One pick a frame, drawn from this frame's culled clusters.
@@ -490,8 +498,8 @@ impl RenderThread {
       }
     }
 
-    if is_lit && let Err(error) = gpu.combine.prepare(&gpu.context.device, &self.shaders, format) {
-      log::error!("Level viewport cannot be lit: {error}");
+    if is_lit && let Err(error) = gpu.present.prepare(&gpu.context.device, &self.shaders, format) {
+      log::error!("Level viewport cannot be presented: {error}");
     }
 
     let Some(grid) = gpu.get_grid(format) else {
@@ -532,8 +540,8 @@ impl RenderThread {
         );
         pass.set_scissor_rect(rect.x as u32, rect.y as u32, rect.width, rect.height);
 
-        match viewport.level_view.as_ref().and_then(|level| level.get_combine_group()) {
-          Some(combine) => gpu.combine.draw(&mut pass, format, binding, combine),
+        match viewport.level_view.as_ref().and_then(|level| level.get_present_group()) {
+          Some(present) => gpu.present.draw(&mut pass, format, binding, present),
           None => grid.draw(&mut pass, binding),
         }
       }

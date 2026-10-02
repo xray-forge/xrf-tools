@@ -94,23 +94,7 @@ impl StaticGBufferPass {
 
   /// The scene's buffers as each layout's draws and the impostors' read them.
   pub fn create_bind_groups(&self, device: &wgpu::Device, scene: &StaticScene) -> StaticDrawGroups {
-    let layouts: [wgpu::BindGroup; 2] = StaticLayout::ALL.map(|layout| {
-      let buffers: [&wgpu::Buffer; 7] = [
-        scene.clusters.get_buffer(),
-        scene.slots.get_buffer(),
-        scene.places.get_buffer(),
-        scene.surfaces.get_buffer(),
-        scene.indices.get_buffer(),
-        scene.lists.get_buffer(),
-        scene.words[layout.get_index()].get_buffer(),
-      ];
-
-      device.create_bind_group(&wgpu::BindGroupDescriptor {
-        label: Some("static draw"),
-        layout: &self.layout,
-        entries: &to_entries(&buffers),
-      })
-    });
+    let layouts: [wgpu::BindGroup; 2] = self.create_layout_groups(device, scene, scene.lists.get_buffer());
     let impostors: wgpu::BindGroup = device.create_bind_group(&wgpu::BindGroupDescriptor {
       label: Some("static impostors"),
       layout: &self.impostor_layout,
@@ -124,6 +108,37 @@ impl StaticGBufferPass {
     });
 
     StaticDrawGroups { layouts, impostors }
+  }
+
+  /// The scene's buffers as each layout's draws read them, by `StaticLayout::get_index`, drawing a view's own list.
+  pub fn create_layout_groups(
+    &self,
+    device: &wgpu::Device,
+    scene: &StaticScene,
+    lists: &wgpu::Buffer,
+  ) -> [wgpu::BindGroup; 2] {
+    StaticLayout::ALL.map(|layout| {
+      let buffers: [&wgpu::Buffer; 7] = [
+        scene.clusters.get_buffer(),
+        scene.slots.get_buffer(),
+        scene.places.get_buffer(),
+        scene.surfaces.get_buffer(),
+        scene.indices.get_buffer(),
+        lists,
+        scene.words[layout.get_index()].get_buffer(),
+      ];
+
+      device.create_bind_group(&wgpu::BindGroupDescriptor {
+        label: Some("static draw"),
+        layout: &self.layout,
+        entries: &to_entries(&buffers),
+      })
+    })
+  }
+
+  /// What every layout's draw binds its clusters by, which a shadow's draws share.
+  pub fn get_layout(&self) -> &wgpu::BindGroupLayout {
+    &self.layout
   }
 
   #[allow(clippy::too_many_arguments)]

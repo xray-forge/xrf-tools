@@ -1,16 +1,21 @@
 use std::collections::HashMap;
-use std::sync::Arc;
+use std::sync::{Arc, PoisonError, RwLock};
 
 use xrf_chunk::XRayByteOrder;
 use xrf_error::{XrfError, XrfResult};
 use xrf_level::{LevelSector, LevelSectorComposition};
+use xrf_ltx::Ltx;
 use xrf_material::XraySurfaceDescriptor;
 use xrf_renderer::{RenderAssetSource, RenderLevelSource};
-use xrf_visual::{SectorPackage, SectorPacker};
+use xrf_visual::{LightsDescription, SectorPackage, SectorPacker};
 
 use crate::core::assets::{AssetMountState, read_located_asset};
 use crate::core::session::SessionSnapshot;
+use crate::plugins::levels::configs::get_level_sections;
 use crate::plugins::levels::drawn_attributes::DRAWN_ATTRIBUTES;
+use crate::plugins::levels::lights::{PackedLevelLights, pack_lights};
+use crate::plugins::levels::report::report_missing_sections;
+use crate::plugins::levels::spawn::get_level_spawn;
 use crate::plugins::levels::state::SelectedLevel;
 
 /// The open level as the native renderer draws it: sectors packed when its loader asks, textures read from the roots
@@ -18,8 +23,9 @@ use crate::plugins::levels::state::SelectedLevel;
 pub struct LevelRenderSource {
   level: Arc<SessionSnapshot<SelectedLevel>>,
   assets: AssetMountState,
-  /// Where each texture reference the level's surfaces bind resolved to at open, `None` for one resolving to nothing.
-  textures: HashMap<String, Option<String>>,
+  /// Where each texture reference the level's surfaces bind resolved to at open, and each projector its lights name
+  /// once they are read, `None` for one resolving to nothing.
+  textures: RwLock<HashMap<String, Option<String>>>,
 }
 
 impl LevelRenderSource {
@@ -33,20 +39,26 @@ impl LevelRenderSource {
     Self {
       level,
       assets,
-      textures,
+      textures: RwLock::new(textures),
     }
   }
 }
 
 impl RenderAssetSource for LevelRenderSource {
   fn read_texture(&self, reference: &str) -> XrfResult<Option<Vec<u8>>> {
-    let Some(Some(logical_path)) = self.textures.get(reference) else {
+    let Some(Some(logical_path)) = self
+      .textures
+      .read()
+      .unwrap_or_else(PoisonError::into_inner)
+      .get(reference)
+      .cloned()
+    else {
       return Ok(None);
     };
 
     self
       .assets
-      .with_probe(&self.level.roots, |probe| read_located_asset(probe, logical_path))
+      .with_probe(&self.level.roots, |probe| read_located_asset(probe, &logical_path))
       .map_err(XrfError::new_asset_error)?
       .map(Some)
   }
@@ -77,5 +89,28 @@ impl RenderLevelSource for LevelRenderSource {
 
   fn get_surfaces(&self) -> &[XraySurfaceDescriptor] {
     &self.level.surfaces
+  }
+
+  fn read_lights(&self) -> XrfResult<LightsDescription> {
+    let level: &SelectedLevel = &self.level;
+    // The sections are read between two probes, as the configs mount a tree of their own.
+    let sections: Option<Arc<Ltx>> = self
+      .assets
+      .with_probe(&level.roots, |probe| get_level_spawn(level, probe))
+      .map_err(XrfError::new_asset_error)?
+      .and_then(|spawn| get_level_sections(level, &spawn))
+      .inspect_err(report_missing_sections)
+      .ok();
+    let packed: PackedLevelLights = self
+      .assets
+      .with_probe(&level.roots, |probe| pack_lights(level, probe, sections.as_deref()))
+      .map_err(XrfError::new_asset_error)?;
+    let mut textures = self.textures.write().unwrap_or_else(PoisonError::into_inner);
+
+    for projector in packed.projectors {
+      textures.insert(projector.reference, projector.logical_path);
+    }
+
+    Ok(packed.lights)
   }
 }

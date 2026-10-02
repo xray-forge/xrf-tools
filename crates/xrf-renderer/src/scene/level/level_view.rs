@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use std::time::Instant;
 
 use glam::{Mat4, Vec2, Vec3};
 use xrf_error::XrfResult;
@@ -6,18 +7,23 @@ use xrf_error::XrfResult;
 use xrf_math::EPS_S;
 
 use crate::camera::camera_view::CameraView;
+use crate::contract::render_ambient_occlusion_settings::RenderAmbientOcclusionSettings;
 use crate::contract::render_level_hit::RenderLevelHit;
+use crate::contract::render_lights_settings::RenderLightsSettings;
 use crate::contract::render_load_report::RenderLoadReport;
+use crate::contract::render_shadow_settings::RenderShadowSettings;
 use crate::contract::render_surface_geometry::RenderSurfaceGeometry;
 use crate::contract::render_texture_report::RenderTextureReport;
 use crate::contract::render_view_options::RenderViewOptions;
 use crate::frame::depth_pyramid::DepthPyramid;
 use crate::frame::pick_target::PickTarget;
 use crate::frame::stats_readback::StatsReadback;
+use crate::frame::view_exposure::ViewExposure;
 use crate::frame::view_targets::ViewTargets;
 use crate::host::render_asset_source::RenderAssetSource;
 use crate::host::render_level_source::RenderLevelSource;
 use crate::lighting::render_lighting::RenderLighting;
+use crate::pass::ambient_occlusion_uniform::AmbientOcclusionUniform;
 use crate::pass::camera_uniform::CameraUniform;
 use crate::pass::level_passes::LevelPasses;
 use crate::pass::lighting_uniform::LightingUniform;
@@ -26,7 +32,11 @@ use crate::pass::static_draw_groups::StaticDrawGroups;
 use crate::pass::static_gbuffer_pass::StaticGBufferPass;
 use crate::pass::static_occlusion_uniform::StaticOcclusionUniform;
 use crate::pass::view_binding::ViewBinding;
+use crate::pass::view_light_groups::ViewLightGroups;
+use crate::scene::level::level_lights::LevelLights;
 use crate::scene::level::level_loader::LevelLoader;
+use crate::scene::level::level_shadows::LevelShadows;
+use crate::scene::level::shadow_frame::ShadowFrame;
 use crate::scene::level::surface_tally::SurfaceTally;
 use crate::scene::static_scene::static_batch::StaticBatch;
 use crate::scene::static_scene::static_scene::StaticScene;
@@ -68,10 +78,20 @@ pub struct LevelView {
   history: Option<(Mat4, Mat4)>,
   /// This frame's view and projection, which become the history once its pyramid is reduced.
   frame_view: (Mat4, Mat4),
+  /// This frame's camera and shadow settings, which the shadow is fitted and drawn by.
+  frame_camera: CameraView,
+  shadow_settings: RenderShadowSettings,
   /// The cull's and the draws' bind groups, with the scene generation (and the cull, the targets epoch) they bind.
   cull_group: Option<((u64, u64), wgpu::BindGroup)>,
   draw_groups: Option<(u64, StaticDrawGroups)>,
-  combine_group: Option<wgpu::BindGroup>,
+  /// The lighting passes' bind groups, made again with the targets, and the shadow maps' epoch they bind.
+  light_groups: Option<(u64, ViewLightGroups)>,
+  shadows: LevelShadows,
+  lights: LevelLights,
+  lights_settings: RenderLightsSettings,
+  occlusion_uniform: wgpu::Buffer,
+  ambient_occlusion: RenderAmbientOcclusionSettings,
+  exposure: ViewExposure,
   params: StaticCullParams,
   stats: StatsReadback,
   pick_target: Option<PickTarget>,
@@ -82,7 +102,12 @@ pub struct LevelView {
 }
 
 impl LevelView {
-  pub fn new(device: &wgpu::Device, queue: &wgpu::Queue, source: Arc<dyn RenderLevelSource>) -> Self {
+  pub fn new(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    view_layout: &wgpu::BindGroupLayout,
+    source: Arc<dyn RenderLevelSource>,
+  ) -> Self {
     let uniform = |label: &str, size: usize| -> wgpu::Buffer {
       device.create_buffer(&wgpu::BufferDescriptor {
         label: Some(label),
@@ -92,9 +117,12 @@ impl LevelView {
       })
     };
 
+    let scene: StaticScene = StaticScene::new(device, queue);
+
     Self {
       loader: LevelLoader::start(Arc::clone(&source)),
-      scene: StaticScene::new(device, queue),
+      lights: LevelLights::new(device, view_layout, scene.args.size(), &source),
+      scene,
       targets: None,
       pyramid: None,
       targets_epoch: 0,
@@ -103,9 +131,20 @@ impl LevelView {
       lighting: uniform("lighting", size_of::<LightingUniform>()),
       history: None,
       frame_view: (Mat4::IDENTITY, Mat4::IDENTITY),
+      frame_camera: CameraView {
+        position: Vec3::ZERO,
+        view: Mat4::IDENTITY,
+        projection: Mat4::IDENTITY,
+      },
+      shadow_settings: RenderShadowSettings::default(),
       cull_group: None,
       draw_groups: None,
-      combine_group: None,
+      light_groups: None,
+      shadows: LevelShadows::new(device),
+      lights_settings: RenderLightsSettings::default(),
+      occlusion_uniform: uniform("ambient occlusion", size_of::<AmbientOcclusionUniform>()),
+      ambient_occlusion: RenderAmbientOcclusionSettings::default(),
+      exposure: ViewExposure::new(device, queue),
       params: StaticCullParams::default(),
       stats: StatsReadback::new(device),
       pick_target: None,
@@ -126,6 +165,8 @@ impl LevelView {
     textures: &mut TextureCache,
   ) {
     let assets: Arc<dyn RenderAssetSource> = Arc::clone(&self.source) as Arc<dyn RenderAssetSource>;
+
+    self.lights.poll(textures, &assets);
 
     for (_, package) in self.loader.take(SECTORS_PER_FRAME) {
       match package {
@@ -179,7 +220,7 @@ impl LevelView {
       self.targets_epoch += 1;
       // A pyramid of another size holds no depth this frame can be tested against.
       self.history = None;
-      self.combine_group = None;
+      self.light_groups = None;
     }
 
     self.scene.reset_draws(device, queue, encoder);
@@ -190,10 +231,14 @@ impl LevelView {
     if self.cull_group.as_ref().is_none_or(|(it, _)| *it != cull_key)
       && let Some((pyramid, _)) = &self.pyramid
     {
-      let group: wgpu::BindGroup =
-        passes
-          .cull
-          .create_bind_group(device, &self.scene, &self.cull_params, &pyramid.view, &self.occlusion);
+      let group: wgpu::BindGroup = passes.cull.create_bind_group(
+        device,
+        &self.scene,
+        &self.cull_params,
+        &pyramid.view,
+        &self.occlusion,
+        (self.scene.lists.get_buffer(), &self.scene.args),
+      );
 
       self.cull_group = Some((cull_key, group));
     }
@@ -202,11 +247,41 @@ impl LevelView {
       self.draw_groups = Some((generation, passes.gbuffer.create_bind_groups(device, &self.scene)));
     }
 
-    if self.combine_group.is_none()
+    self.shadows.prepare(device, options.shadows.resolution);
+
+    let shadow_epoch: u64 = self.shadows.get_epoch();
+
+    if self
+      .light_groups
+      .as_ref()
+      .is_none_or(|(epoch, _)| *epoch != shadow_epoch)
       && let Some(targets) = &self.targets
     {
-      self.combine_group = Some(passes.combine.create_bind_group(device, targets, &self.lighting));
+      let groups: ViewLightGroups = ViewLightGroups {
+        sun: passes
+          .sun
+          .create_bind_group(device, targets, passes.table, &self.lighting, &self.shadows),
+        lights: passes.lights.create_bind_groups(
+          device,
+          targets,
+          passes.table,
+          &self.lights.get_buffers(),
+          self.lights.get_shadow_atlas(),
+        ),
+        occlusion: passes
+          .ambient_occlusion
+          .create_bind_groups(device, targets, &self.occlusion_uniform),
+        combine: passes
+          .combine
+          .create_bind_group(device, targets, passes.table, &self.lighting, &self.exposure.state),
+        exposure: passes.exposure.create_bind_group(device, targets, &self.exposure),
+        present: passes.present.create_bind_group(device, targets),
+      };
+
+      self.light_groups = Some((shadow_epoch, groups));
     }
+
+    self.exposure.prepare(queue, &options.exposure, Instant::now());
 
     if !options.is_occlusion_culled {
       self.history = None;
@@ -230,9 +305,31 @@ impl LevelView {
       lod_a: threshold(SSA_LOD_A),
       lod_b: threshold(SSA_LOD_B),
       is_impostors: options.is_impostors as u32,
-      pad: [0; 3],
+      pad: [0; 4],
+      lod_origin: view.position.extend(1.0),
     };
     self.frame_view = (view.view, view.projection);
+    self.lights.prepare(
+      queue,
+      view,
+      &options.lights,
+      (self.params.glod_start, self.params.glod_end),
+      self.scene.sectors.len(),
+    );
+    self.frame_camera = *view;
+    self.shadow_settings = options.shadows.clone();
+    self.ambient_occlusion = options.ambient_occlusion;
+    self.lights_settings = options.lights;
+
+    queue.write_buffer(
+      &self.occlusion_uniform,
+      0,
+      bytemuck::bytes_of(&AmbientOcclusionUniform::new(
+        &options.ambient_occlusion,
+        view.projection,
+        (width.div_ceil(2), height.div_ceil(2)),
+      )),
+    );
     queue.write_buffer(&self.cull_params, 0, bytemuck::bytes_of(&self.params));
 
     if let Some((pyramid, _)) = &self.pyramid {
@@ -253,16 +350,25 @@ impl LevelView {
     queue.write_buffer(
       &self.lighting,
       0,
-      bytemuck::bytes_of(&LightingUniform::new(&RenderLighting::default(), view.view)),
+      bytemuck::bytes_of(&LightingUniform::new(
+        &RenderLighting::default(),
+        view.view,
+        options,
+        self.exposure.is_adapting(),
+      )),
     );
   }
 
   /// Culls the scene and draws it into the G-buffer: what last frame's depth does not hide, then, culling occlusion,
   /// what this frame's first draw does not hide of the rest, leaving this frame's depth reduced for the next.
+  #[allow(clippy::too_many_arguments)]
   pub fn record(
     &mut self,
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
     encoder: &mut wgpu::CommandEncoder,
     passes: LevelPasses<'_>,
+    view_layout: &wgpu::BindGroupLayout,
     view: &ViewBinding,
     textures: &TextureCache,
   ) {
@@ -271,23 +377,79 @@ impl LevelView {
     else {
       return;
     };
-    let textures: &wgpu::BindGroup = textures.get_bind_group();
+    let texture_group: &wgpu::BindGroup = textures.get_bind_group();
 
     passes.cull.dispatch_early(encoder, view, cull_group, &self.params);
-    passes
-      .gbuffer
-      .draw(encoder, targets, view, draw_groups, textures, &self.scene.args, true);
+    passes.gbuffer.draw(
+      encoder,
+      targets,
+      view,
+      draw_groups,
+      texture_group,
+      &self.scene.args,
+      true,
+    );
 
     if self.params.is_occluding != 0 {
       passes.pyramid.dispatch(encoder, pyramid, pyramid_groups);
       passes.cull.dispatch_late(encoder, view, cull_group, &self.scene);
-      passes
-        .gbuffer
-        .draw(encoder, targets, view, draw_groups, textures, &self.scene.late, false);
+      passes.gbuffer.draw(
+        encoder,
+        targets,
+        view,
+        draw_groups,
+        texture_group,
+        &self.scene.late,
+        false,
+      );
       self.history = Some(self.frame_view);
     }
 
     self.stats.record(encoder, &self.scene.args, StaticScene::STATS_OFFSET);
+
+    if let Some((pyramid, _)) = &self.pyramid {
+      let frame: ShadowFrame<'_> = ShadowFrame {
+        scene: &self.scene,
+        camera: &self.frame_camera,
+        settings: &self.shadow_settings,
+        sun_direction: RenderLighting::default().get_sun_direction(),
+        cull_params: &self.cull_params,
+        params: &self.params,
+        pyramid: &pyramid.view,
+        occlusion: &self.occlusion,
+        targets_epoch: self.targets_epoch,
+        textures,
+      };
+
+      self.shadows.record(device, queue, encoder, passes, view_layout, &frame);
+      self.lights.record_shadows(device, queue, encoder, passes, &frame);
+    }
+
+    if let Some((_, groups)) = &self.light_groups {
+      passes.sun.draw(encoder, targets, view, &groups.sun);
+
+      if self.lights.get_count() > 0 {
+        passes
+          .lights
+          .draw(encoder, targets, view, &groups.lights, textures.get_bind_group());
+      }
+
+      if self.ambient_occlusion.is_enabled {
+        passes.ambient_occlusion.draw(
+          encoder,
+          targets,
+          view,
+          &groups.occlusion,
+          self.ambient_occlusion.quality,
+        );
+      }
+
+      passes.combine.draw(encoder, targets, view, &groups.combine);
+
+      if self.exposure.is_adapting() {
+        passes.exposure.dispatch(encoder, &groups.exposure);
+      }
+    }
   }
 
   /// Draws the frame's visible clusters into a pick's texel, through the frame's camera narrowed to it.
@@ -380,8 +542,9 @@ impl LevelView {
     (clusters, triangles)
   }
 
-  pub fn get_combine_group(&self) -> Option<&wgpu::BindGroup> {
-    self.combine_group.as_ref()
+  /// What puts the level's finished scene into the window, once its targets are made.
+  pub fn get_present_group(&self) -> Option<&wgpu::BindGroup> {
+    self.light_groups.as_ref().map(|(_, groups)| &groups.present)
   }
 
   /// How far the level has loaded, when that changed since it was last asked.

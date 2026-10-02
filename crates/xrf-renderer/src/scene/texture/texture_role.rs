@@ -13,23 +13,26 @@ pub enum TextureRole {
   Hemi,
   /// An impostor's `_nm` companion, neutral facing the eye under the open sky.
   ImpostorCompanion,
+  /// A spot's projector, neutral at white: the light passing whole.
+  Projector,
 }
 
 impl TextureRole {
   /// Every role, in declaration order, so `role as usize` indexes what is kept a role.
-  pub const ALL: [TextureRole; 6] = [
+  pub const ALL: [TextureRole; 7] = [
     TextureRole::Base,
     TextureRole::Detail,
     TextureRole::Bump,
     TextureRole::BumpCompanion,
     TextureRole::Hemi,
     TextureRole::ImpostorCompanion,
+    TextureRole::Projector,
   ];
 
   /// The colour it is drawn as while its texture loads.
   pub const fn get_neutral(self) -> [u8; 4] {
     match self {
-      TextureRole::Base | TextureRole::Hemi => [255, 255, 255, 255],
+      TextureRole::Base | TextureRole::Hemi | TextureRole::Projector => [255, 255, 255, 255],
       TextureRole::Detail => [128, 128, 128, 128],
       TextureRole::Bump => [23, 255, 128, 128],
       TextureRole::BumpCompanion => [128, 128, 128, 0],

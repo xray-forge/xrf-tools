@@ -1,5 +1,33 @@
 // Auto-generated rust bindings. Do not edit it manually.
 
+/** How hard the ambient occlusion searches: XeGTAO's presets. */
+export enum ERenderAmbientOcclusionQuality {
+  /** One direction, two steps each way. */
+  LOW = "low",
+  /** Two directions, two steps. */
+  MEDIUM = "medium",
+  /** Three directions, three steps, `Base`'s choice. */
+  HIGH = "high",
+  /** Six directions, three steps. */
+  ULTRA = "ultra",
+}
+
+/** Every `ERenderAmbientOcclusionQuality` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type RenderAmbientOcclusionQuality = `${ERenderAmbientOcclusionQuality}`;
+
+/**
+ * Ambient occlusion from the depth of the frame, GTAO as XeGTAO computes it at half resolution: it darkens the
+ * hemisphere and ambient light over the baked hemisphere occlusion, as the engine's SSAO does.
+ */
+export type RenderAmbientOcclusionSettings = {
+  isEnabled: boolean;
+  /** Metres around a point that what stands there occludes it from. */
+  radius: number | null;
+  /** How dark the occlusion goes: one XeGTAO's own curve, zero none, two its square. */
+  strength: number | null;
+  quality: RenderAmbientOcclusionQuality;
+};
+
 /** Every `kind` the `RenderCamera` union is told apart by, so a switch or a comparison names one. */
 export enum ERenderCamera {
   /** Flies free, turned by a drag and moved by the keys, as a level is walked. */
@@ -71,6 +99,23 @@ export type RenderColor = {
   r: number;
   g: number;
   b: number;
+};
+
+/**
+ * The engine's exposure (`r2_tonemap`): the frame's average luminance measured every frame, and the scale the tonemap
+ * multiplies by moved towards `middle_gray / luminance` at the adaptation's rate.
+ */
+export type RenderExposureSettings = {
+  /** Off, the tonemap multiplies by one, the engine's answer at noon. */
+  isEnabled: boolean;
+  /** `r2_tonemap_amount`: how far from no adaptation towards the whole of it. */
+  amount: number | null;
+  /** `r2_tonemap_middlegray`: the luminance the frame is brought towards. */
+  middleGray: number | null;
+  /** `r2_tonemap_lowlum`: what the luminance is floored at, so a black frame is not brightened without end. */
+  lowLuminance: number | null;
+  /** `r2_tonemap_adaptation`: how fast the scale follows the frame. */
+  adaptation: number | null;
 };
 
 /** What a viewport's recent frames cost, reported a few times a second while it draws. */
@@ -151,6 +196,27 @@ export type RenderLevelHit = {
   point: [number | null, number | null, number | null];
 };
 
+/** How a shadowed local light's map is compared. */
+export enum ERenderLightShadowFilter {
+  /** `shadow_hw`: four bilinear comparisons 0.6 of a texel off the point, at `r2_ls_depth_bias` -0.0003, as vanilla. */
+  ENGINE = "engine",
+  /** Anomaly's `shadow_pcss`: a blocker search, then a penumbra of twelve comparisons, at its -0.001 bias. */
+  SOFT = "soft",
+}
+
+/** Every `ERenderLightShadowFilter` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type RenderLightShadowFilter = `${ERenderLightShadowFilter}`;
+
+/** The level's local lights: binned into clusters of the view, and accumulated after the sun in one pass. */
+export type RenderLightsSettings = {
+  isEnabled: boolean;
+  /** Whether the level file's own lights are drawn too, which the engine does only with `r2_allow_r1_lights`. */
+  isLevelLights: boolean;
+  /** Whether a light the engine shadows casts its shadows. */
+  isShadowed: boolean;
+  shadowFilter: RenderLightShadowFilter;
+};
+
 /** How far a viewport's scene has been read and put on the GPU. */
 export type RenderLoadReport = {
   /** Sectors resident on the GPU. */
@@ -189,6 +255,29 @@ export type RenderRect = {
 /** What every viewport of the renderer draws with. */
 export type RenderSettings = {
   presentation: RenderPresentation;
+};
+
+/**
+ * The sun's shadow: cascades of maps, each a square of the level seen from the sun, drawn through the static draws
+ * and sampled by the sun's light. The engine's are three, 20, 40 and 160 metres across, at 2048 texels
+ * (`render_phase_sun.cpp`, `r2_smap_size`).
+ */
+export type RenderShadowSettings = {
+  isEnabled: boolean;
+  /** Each cascade's width in metres, nearest first; as many cascades as widths, at most four. */
+  cascades: Array<number | null>;
+  /** Texels each cascade's map is across. */
+  resolution: number;
+  /** Texels the filter reaches from the one sampled, each way: zero for one comparison, one for a three by three. */
+  filter: number;
+  /** How far a point is moved along its normal before it is compared, in texels of its cascade. */
+  bias: number | null;
+  /** Metres towards the sun past a cascade that its casters may stand. */
+  reach: number | null;
+  /** How far in from a cascade's edge, as a share of its width, the next cascade is mixed in. */
+  blend: number | null;
+  /** Whether cascade `n` is drawn at most every `2^n` frames, the far ones sharing frames the near one does not. */
+  isStaggered: boolean;
 };
 
 /** How much geometry one shader table entry of a viewport's level draws, across the sectors resident. */
@@ -248,6 +337,8 @@ export type RenderTextureState =
 
 /** What one viewport draws its scene with, as its viewer's toolbar sets it. */
 export type RenderViewOptions = {
+  /** Whether the scene is lit, else shown as its raw albedo. */
+  isLit: boolean;
   /** Whether surfaces wear their textures, else their flat colours. */
   isTextured: boolean;
   /** Whether bump textures bend the normal. */
@@ -260,6 +351,12 @@ export type RenderViewOptions = {
   isImpostors: boolean;
   /** `r__geometry_lod`: every screen area threshold scales with it. */
   geometryLod: number | null;
+  /** What the tonemap multiplies by before the exposure's own scale. */
+  tonemapScale: number | null;
+  exposure: RenderExposureSettings;
+  shadows: RenderShadowSettings;
+  ambientOcclusion: RenderAmbientOcclusionSettings;
+  lights: RenderLightsSettings;
 };
 
 /** Every `kind` the `RenderViewportEvent` union is told apart by, so a switch or a comparison names one. */

@@ -269,3 +269,13 @@ fn fs_pick_cut_out(in: GBufferVarying) -> @location(0) vec4<u32> {
 
   return pick_texel(in);
 }
+
+// A cut-out caster in a shadow's map: depth alone, cut as the G-buffer cuts it, so light falls between its leaves.
+@fragment
+fn fs_shadow_cut_out(in: GBufferVarying) {
+  let at: Footprint = take_footprint(in);
+
+  if (is_cut(in, base_texel(in, at), at)) {
+    discard;
+  }
+}

@@ -1,12 +1,13 @@
 use glam::{Mat4, Vec3, Vec4};
 
+use crate::contract::render_view_options::RenderViewOptions;
 use crate::lighting::render_lighting::RenderLighting;
 
 /// The sky's colour overhead and at the horizon, until the weather draws one.
 const SKY_ZENITH: Vec3 = Vec3::new(0.13, 0.15, 0.19);
 const SKY_HORIZON: Vec3 = Vec3::new(0.32, 0.34, 0.37);
 
-/// The lighting as `shaders/frame/combine.wgsl` declares it: one viewport's, since the sun is given in its view space.
+/// The lighting as `shaders/common/lighting.wgsl` declares it: one viewport's, since the sun is given in its view space.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct LightingUniform {
@@ -18,12 +19,12 @@ pub struct LightingUniform {
   pub sky_irradiance: Vec4,
   pub sky_zenith: Vec4,
   pub sky_horizon: Vec4,
-  /// The tonemap's scale.
+  /// The settings' tonemap scale, and ones where the scene is lit, the exposure adapts and the occlusion darkens.
   pub params: Vec4,
 }
 
 impl LightingUniform {
-  pub fn new(lighting: &RenderLighting, view: Mat4) -> Self {
+  pub fn new(lighting: &RenderLighting, view: Mat4, options: &RenderViewOptions, is_adapting: bool) -> Self {
     // The direction the light travels, turned to face the sun and into view space.
     let to_sun: Vec3 = view
       .transform_vector3(-lighting.get_sun_direction())
@@ -37,7 +38,12 @@ impl LightingUniform {
       sky_irradiance: lighting.sky_irradiance.extend(0.0),
       sky_zenith: SKY_ZENITH.extend(1.0),
       sky_horizon: SKY_HORIZON.extend(1.0),
-      params: Vec4::new(1.0, 0.0, 0.0, 0.0),
+      params: Vec4::new(
+        options.tonemap_scale,
+        options.is_lit as u32 as f32,
+        is_adapting as u32 as f32,
+        options.ambient_occlusion.is_enabled as u32 as f32,
+      ),
     }
   }
 }

@@ -41,4 +41,28 @@ impl CameraView {
   pub fn get_view_projection(&self) -> Mat4 {
     self.projection * self.view
   }
+
+  /// The near and far distances a reversed perspective lens was made with, read back from its depth terms.
+  pub fn get_depth_range(&self) -> (f32, f32) {
+    let scale: f32 = self.projection.z_axis.z;
+    let far: f32 = self.projection.w_axis.z / scale;
+
+    (scale * far / (1.0 + scale), far)
+  }
+
+  /// The view's six planes in renderer space, pointing in, each normalized so a sphere tests by its radius.
+  pub fn get_planes(&self) -> [Vec4; 6] {
+    let matrix: Mat4 = self.get_view_projection();
+    let rows: [Vec4; 4] = [matrix.row(0), matrix.row(1), matrix.row(2), matrix.row(3)];
+
+    [
+      rows[3] + rows[0],
+      rows[3] - rows[0],
+      rows[3] + rows[1],
+      rows[3] - rows[1],
+      rows[2],
+      rows[3] - rows[2],
+    ]
+    .map(|plane| plane / plane.truncate().length())
+  }
 }
