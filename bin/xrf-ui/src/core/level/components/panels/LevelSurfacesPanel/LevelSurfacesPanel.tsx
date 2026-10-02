@@ -92,7 +92,7 @@ export function LevelSurfacesPanel({
     [renderService, held, selected]
   );
 
-  const onSelect = useCallback((item: ITreeNode<TLevelSurfaceTreeRow>) => tree.select(item.id), [tree]);
+  const onSelect = useCallback((item: ITreeNode<TLevelSurfaceTreeRow>) => select(item.id), [select]);
 
   // Another level's table is numbered afresh, so what was chosen names some other entry now.
   useEffect(() => select(null), [named, select]);

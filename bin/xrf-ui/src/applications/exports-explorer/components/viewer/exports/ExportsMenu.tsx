@@ -40,7 +40,7 @@ export function ExportsMenu({
   onSelect,
 }: IExportsMenuProps): ReactElement {
   const tree: IUseTreeState = useTreeState();
-  const { reveal } = tree;
+  const { reveal, select } = tree;
 
   const items: Array<IPathTreeItem<ExportDescriptor>> = useMemo(() => exportGroupsToTree(groups), [groups]);
 
@@ -53,7 +53,7 @@ export function ExportsMenu({
 
   const openItemId: Nullable<string> = selectedName ? toFileItemId(selectedName) : null;
 
-  const onSelectItem = useCallback((item: ITreeNode<ExportDescriptor>) => tree.select(item.id), [tree]);
+  const onSelectItem = useCallback((item: ITreeNode<ExportDescriptor>) => select(item.id), [select]);
 
   const onActivateItem = useCallback(
     (item: ITreeNode<ExportDescriptor>) => {

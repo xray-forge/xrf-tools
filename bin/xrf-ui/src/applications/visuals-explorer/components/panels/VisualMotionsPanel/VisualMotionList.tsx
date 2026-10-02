@@ -31,7 +31,7 @@ export function VisualMotionList({
 }: IVisualMotionListProps): ReactElement {
   const service: VisualMotionService = useInjection(VisualMotionService);
   const tree: IUseTreeState = useTreeState();
-  const { expandAll } = tree;
+  const { expandAll, select } = tree;
 
   // The async state's own value is what the memo depends on: a default of `[]` is a fresh array every render, which as a
   // dependency would regroup on each one.
@@ -61,7 +61,7 @@ export function VisualMotionList({
     [posed]
   );
 
-  const onSelect = useCallback((item: ITreeNode<string>) => tree.select(item.id), [tree]);
+  const onSelect = useCallback((item: ITreeNode<string>) => select(item.id), [select]);
 
   /** Posing reads and bakes a motion, which is work, so it waits for the gesture that means work. */
   const onActivate = useCallback(

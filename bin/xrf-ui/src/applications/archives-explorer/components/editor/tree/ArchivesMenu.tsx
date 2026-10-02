@@ -34,7 +34,7 @@ export function ArchivesMenu({
   const openItemId: Nullable<string> = toArchiveSelectionItemId(archivesService.selection);
 
   const tree: IUseTreeState = useTreeState();
-  const { reveal } = tree;
+  const { reveal, select } = tree;
 
   const items: Array<IArchiveTreeItem> = useMemo(() => parseTree(files, LOGICAL_PATH_SEPARATOR), [files]);
 
@@ -68,7 +68,7 @@ export function ArchivesMenu({
     );
   }, []);
 
-  const onSelectItem = useCallback((item: ITreeNode<IArchiveEntry>) => tree.select(item.id), [tree]);
+  const onSelectItem = useCallback((item: ITreeNode<IArchiveEntry>) => select(item.id), [select]);
 
   const onActivateItem = useCallback(
     (item: ITreeNode<IArchiveEntry>) => {

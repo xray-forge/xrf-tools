@@ -36,7 +36,7 @@ export function ConfigsMenu({
 }: IConfigsMenuProps): ReactElement {
   const tree: IUseTreeState = useTreeState();
   const openItemId: Nullable<string> = selected ? toFileItemId(selected) : null;
-  const { reveal } = tree;
+  const { reveal, select } = tree;
 
   const items: Array<IPathTreeItem<LtxInventoryFile>> = useMemo(
     () =>
@@ -60,7 +60,7 @@ export function ConfigsMenu({
     []
   );
 
-  const onSelectNode = useCallback((item: ITreeNode<LtxInventoryFile>) => tree.select(item.id), [tree]);
+  const onSelectNode = useCallback((item: ITreeNode<LtxInventoryFile>) => select(item.id), [select]);
 
   const onActivateNode = useCallback(
     (item: ITreeNode<LtxInventoryFile>) => {

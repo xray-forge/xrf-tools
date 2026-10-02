@@ -41,7 +41,7 @@ export function DialogsTreeMenu({
     : null;
 
   const tree: IUseTreeState = useTreeState();
-  const { reveal } = tree;
+  const { reveal, select } = tree;
 
   const items: Array<IPathTreeItem<IDialogTreeLeaf>> = useMemo(
     () => parsePathTree(entries, LOGICAL_PATH_SEPARATOR),
@@ -55,7 +55,7 @@ export function DialogsTreeMenu({
 
   const onOpenEntry = useCallback((entry: IDialogTreeEntry) => onOpenLeaf(entry.payload), [onOpenLeaf]);
 
-  const onSelectItem = useCallback((item: ITreeNode<IDialogTreeLeaf>) => tree.select(item.id), [tree]);
+  const onSelectItem = useCallback((item: ITreeNode<IDialogTreeLeaf>) => select(item.id), [select]);
 
   const onActivateItem = useCallback(
     (item: ITreeNode<IDialogTreeLeaf>) => {

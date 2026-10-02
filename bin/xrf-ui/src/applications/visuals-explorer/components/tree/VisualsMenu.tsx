@@ -41,7 +41,7 @@ export function VisualsMenu({
   const visualsService: VisualsService = useInjection(VisualsService);
 
   const tree: IUseTreeState = useTreeState();
-  const { reveal } = tree;
+  const { reveal, select } = tree;
 
   const visuals: ReadonlyArray<XrayAsset> = browseService.visuals.value ?? EMPTY_ARRAY;
 
@@ -82,7 +82,7 @@ export function VisualsMenu({
 
   const onOpenAsset = useCallback((asset: XrayAsset) => onOpenPath(asset.logicalPath), [onOpenPath]);
 
-  const onSelectAsset = useCallback((item: ITreeNode<XrayAsset>) => tree.select(item.id), [tree]);
+  const onSelectAsset = useCallback((item: ITreeNode<XrayAsset>) => select(item.id), [select]);
 
   const onActivateAsset = useCallback(
     (item: ITreeNode<XrayAsset>) => {

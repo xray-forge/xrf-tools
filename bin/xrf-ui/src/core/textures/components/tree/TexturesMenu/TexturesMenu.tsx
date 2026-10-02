@@ -61,7 +61,7 @@ export function TexturesMenu({
   const selectionService: TextureSelectionService = useInjection(TextureSelectionService);
 
   const tree: IUseTreeState = useTreeState();
-  const { reveal } = tree;
+  const { reveal, select } = tree;
 
   const [badges, setBadges] = useState<ReadonlySet<ETextureBadge>>(() => new Set());
 
@@ -107,7 +107,7 @@ export function TexturesMenu({
     [reveal, catalogService]
   );
 
-  const onSelectNode = useCallback((item: ITreeNode<ITextureNode>) => tree.select(item.id), [tree]);
+  const onSelectNode = useCallback((item: ITreeNode<ITextureNode>) => select(item.id), [select]);
 
   const onActivateNode = useCallback(
     (item: ITreeNode<ITextureNode>) => {
