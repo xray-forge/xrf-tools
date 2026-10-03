@@ -255,6 +255,7 @@ export function mockSelectedVisual(overrides: Partial<SelectedVisualDescription>
 export function mockSurfaceDescriptor(overrides: Partial<XraySurfaceDescriptor> = {}): XraySurfaceDescriptor {
   return {
     bump: null,
+    environment: null,
     material: 1,
     shader: "models\\model",
     textures: ["models\\model"],

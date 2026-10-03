@@ -8,4 +8,6 @@ use crate::contract::render_presentation::RenderPresentation;
 #[serde(rename_all = "camelCase")]
 pub struct RenderSettings {
   pub presentation: RenderPresentation,
+  /// Whether each pass of a frame is timed on the GPU, where the device writes timestamps between passes.
+  pub is_gpu_timed: bool,
 }

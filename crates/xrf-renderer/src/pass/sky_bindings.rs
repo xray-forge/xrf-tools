@@ -1,11 +1,15 @@
+use std::num::NonZeroU32;
+
 use crate::lighting::render_sky::RenderSky;
 use crate::pass::fullscreen_pipeline::texture_binding;
 use crate::pass::layout_entries::texture_entry;
+use crate::scene::texture::texture_cache::ENVIRONMENT_SLOTS;
 use crate::scene::texture::weather_texture_cache::WeatherTextureCache;
 use crate::scene::texture::weather_texture_kind::WeatherTextureKind;
 
 /// What every pass drawing the weather's sky binds as its third group, as `shaders/common/sky.wgsl` declares it: both
-/// keyframes' sky cubes, their irradiance cubes and their clouds, and the two samplers they are read through.
+/// keyframes' sky cubes, their irradiance cubes and their clouds, and the two samplers they are read through; and the
+/// cubes environment-mapped models mix toward, which are weather textures too and share a group without buffers.
 pub struct SkyBindings {
   layout: wgpu::BindGroupLayout,
   clamp: wgpu::Sampler,
@@ -35,6 +39,16 @@ impl SkyBindings {
         texture_entry(5, fragment, filtered, flat),
         sampler(6),
         sampler(7),
+        wgpu::BindGroupLayoutEntry {
+          binding: 8,
+          visibility: fragment,
+          ty: wgpu::BindingType::Texture {
+            sample_type: filtered,
+            view_dimension: cube,
+            multisampled: false,
+          },
+          count: NonZeroU32::new(ENVIRONMENT_SLOTS),
+        },
       ],
     });
 
@@ -68,14 +82,26 @@ impl SkyBindings {
     &self.clamp
   }
 
-  /// Binds a sky's textures as the cache holds them now, each slot its kind's placeholder until its file is up.
+  /// Binds a sky's textures and the environment cubes as the cache holds them now, each slot its kind's placeholder
+  /// until its file is up; the first environment slot, and every one past `environments`, stands for none.
   pub fn create_bind_group(
     &self,
     device: &wgpu::Device,
     cache: &WeatherTextureCache,
     sky: &RenderSky,
+    environments: &[String],
   ) -> wgpu::BindGroup {
     let view = |reference: &Option<String>, kind: WeatherTextureKind| cache.get_view(reference.as_deref(), kind);
+    let environment_views: Vec<&wgpu::TextureView> = (0..ENVIRONMENT_SLOTS as usize)
+      .map(|slot| {
+        let reference: Option<&str> = slot
+          .checked_sub(1)
+          .and_then(|index| environments.get(index))
+          .map(String::as_str);
+
+        cache.get_view(reference, WeatherTextureKind::Cube)
+      })
+      .collect();
 
     device.create_bind_group(&wgpu::BindGroupDescriptor {
       label: Some("sky"),
@@ -94,6 +120,10 @@ impl SkyBindings {
         wgpu::BindGroupEntry {
           binding: 7,
           resource: wgpu::BindingResource::Sampler(&self.repeat),
+        },
+        wgpu::BindGroupEntry {
+          binding: 8,
+          resource: wgpu::BindingResource::TextureViewArray(&environment_views),
         },
       ],
     })

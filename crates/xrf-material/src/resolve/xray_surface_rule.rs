@@ -36,6 +36,9 @@ impl XraySurfaceRule {
   const LEVEL_SWITCH: &'static str = "Alpha-blend";
   /// The environment mapped classes' alpha switch (`blenders/Blender_Model_EbB.cpp`), spelled with a capital B.
   const ENVIRONMENT_SWITCH: &'static str = "Alpha-Blend";
+  /// The environment mapped classes' cube, by its marker and name (`blenders/Blender_Model_EbB.cpp`).
+  const ENVIRONMENT_MARKER: &'static str = "Environment map";
+  const ENVIRONMENT_NAME: &'static str = "Name";
   /// The authored reference, for the classes that write one (`blenders/Blender_Model.cpp`).
   const REFERENCE: &'static str = "Alpha ref";
 
@@ -120,6 +123,15 @@ impl XraySurfaceRule {
       // Every rule whose switch is off, the classes that read no alpha at all, and the token rule `draw` answered.
       Self::Model | Self::EnvironmentMapped | Self::Tree | Self::ScreenSet | Self::Opaque => XraySurfaceDraw::Opaque,
     }
+  }
+
+  /// The cube an environment-mapped class binds as `s_env`, or `None` for another class or one naming no texture.
+  pub(crate) fn environment(self, blender: &ShaderBlender) -> Option<String> {
+    (self == Self::EnvironmentMapped)
+      .then(|| blender.texture(Self::ENVIRONMENT_MARKER, Self::ENVIRONMENT_NAME))
+      .flatten()
+      .filter(|name| !name.is_empty() && !name.starts_with('$'))
+      .map(str::to_owned)
   }
 
   /// The class's alpha switch, or `None` for a rule whose classes write none.

@@ -7,6 +7,7 @@ pub(crate) mod level_light_shadows;
 pub(crate) mod level_lights;
 pub(crate) mod level_loader;
 pub(crate) mod level_shadows;
+pub(crate) mod level_smoothing;
 pub(crate) mod level_view;
 pub(crate) mod light_shadow_entry;
 pub(crate) mod light_shadow_face;

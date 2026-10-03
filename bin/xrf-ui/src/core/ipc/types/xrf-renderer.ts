@@ -30,6 +30,21 @@ export type RenderAmbientOcclusionSettings = {
   quality: RenderAmbientOcclusionQuality;
 };
 
+/** How a viewport's finished frame has its edges smoothed. */
+export enum ERenderAntialiasing {
+  /** Every edge as drawn. */
+  NONE = "none",
+  /** One pass over the drawn frame's edges, softest and cheapest. */
+  FXAA = "fxaa",
+  /** Three passes over the drawn frame's edges, crisp and stable. */
+  SMAA = "smaa",
+  /** Temporal: every frame's samples jittered within the pixel and resolved with the frames before. */
+  TAA = "taa",
+}
+
+/** Every `ERenderAntialiasing` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type RenderAntialiasing = `${ERenderAntialiasing}`;
+
 /** Every `kind` the `RenderCamera` union is told apart by, so a switch or a comparison names one. */
 export enum ERenderCamera {
   /** Flies free, turned by a drag and moved by the keys, as a level is walked. */
@@ -103,6 +118,33 @@ export type RenderColor = {
   b: number;
 };
 
+/** Which picture a viewport shows: its finished frame, or one of the targets the frame was built from. */
+export enum ERenderDebugView {
+  /** The finished frame. */
+  FINAL = "final",
+  /** The G-buffer's albedo, raw. */
+  ALBEDO = "albedo",
+  /** The gloss the albedo target carries in its alpha. */
+  GLOSS = "gloss",
+  /** The view space normal, remapped to colour. */
+  NORMAL = "normal",
+  /** The baked hemisphere occlusion. */
+  HEMI = "hemi",
+  /** The baked sun occlusion. */
+  SUN = "sun",
+  /** The lighting model slice, `(class + 0.5) / 4`. */
+  MATERIAL = "material",
+  /** View distance, logarithmic: near dark, far light. */
+  DEPTH = "depth",
+  /** What the sun and the lights accumulated. */
+  LIGHT = "light",
+  /** The screen's occlusion, white where it is off. */
+  AMBIENT_OCCLUSION = "ambientOcclusion",
+}
+
+/** Every `ERenderDebugView` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type RenderDebugView = `${ERenderDebugView}`;
+
 /**
  * The engine's exposure (`r2_tonemap`): the frame's average luminance measured every frame, and the scale the tonemap
  * multiplies by moved towards `middle_gray / luminance` at the adaptation's rate.
@@ -134,6 +176,10 @@ export type RenderFrameReport = {
   width: number;
   /** Drawn height, in device pixels. */
   height: number;
+  /** The scene's width as rendered, smaller than the drawn one where it is upscaled. */
+  renderWidth: number;
+  /** And its height. */
+  renderHeight: number;
   /** Clusters the last counted frame drew. */
   clusters: number;
   /** Triangles they hold, an instanced one counted for every place it stood. */
@@ -142,6 +188,10 @@ export type RenderFrameReport = {
   backend: string;
   /** The GPU drawn on. */
   adapter: string;
+  /** Whether its passes were timed on the GPU over the span. */
+  isGpuTimed: boolean;
+  /** What each pass cost on the GPU, in frame order; none while untimed. */
+  passes: Array<RenderPassCost>;
 };
 
 /**
@@ -266,6 +316,14 @@ export type RenderLoadReport = {
   isReady: boolean;
 };
 
+/** What one pass of a viewport's frames cost on the GPU. */
+export type RenderPassCost = {
+  /** The pass, as the frame names it. */
+  name: string;
+  /** Mean GPU milliseconds over the report's span. */
+  gpuTime: number | null;
+};
+
 /** How often frames are presented. */
 export enum ERenderPresentation {
   /** One frame a refresh of the display. */
@@ -285,9 +343,28 @@ export type RenderRect = {
   height: number;
 };
 
+/**
+ * How much smaller than the viewport the scene is drawn and then upscaled: FSR's quality modes, by the ratio of the
+ * viewport's side to the drawing's.
+ */
+export enum ERenderScale {
+  NATIVE = "native",
+  /** 1.5: two thirds of each side. */
+  QUALITY = "quality",
+  /** 1.7. */
+  BALANCED = "balanced",
+  /** 2: half of each side. */
+  PERFORMANCE = "performance",
+}
+
+/** Every `ERenderScale` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type RenderScale = `${ERenderScale}`;
+
 /** What every viewport of the renderer draws with. */
 export type RenderSettings = {
   presentation: RenderPresentation;
+  /** Whether each pass of a frame is timed on the GPU, where the device writes timestamps between passes. */
+  isGpuTimed: boolean;
 };
 
 /**
@@ -368,6 +445,13 @@ export type RenderTextureState =
   /** Its file could not be read or laid out, and why. */
   | { kind: "failed"; reason: string };
 
+/** What the scene is drawn at, a share of the viewport upscaled to it, and how sharply the upscaled frame is finished. */
+export type RenderUpscalingSettings = {
+  scale: RenderScale;
+  /** RCAS's sharpness while upscaled, from none to its most. */
+  sharpening: number | null;
+};
+
 /** What one viewport draws its scene with, as its viewer's toolbar sets it. */
 export type RenderViewOptions = {
   /** Whether the scene is lit, else shown as its raw albedo. */
@@ -413,6 +497,12 @@ export type RenderViewOptions = {
   lights: RenderLightsSettings;
   water: RenderWaterSettings;
   grass: RenderGrassSettings;
+  /** Which picture the viewport shows: its frame, or one of the targets the frame was built from. */
+  debugView: RenderDebugView;
+  /** How the frame's edges are smoothed. */
+  antialiasing: RenderAntialiasing;
+  /** What the scene is drawn at, and how its upscaled frame is sharpened. */
+  upscaling: RenderUpscalingSettings;
 };
 
 /** Every `kind` the `RenderViewportEvent` union is told apart by, so a switch or a comparison names one. */

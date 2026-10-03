@@ -1,4 +1,4 @@
-import { IRendererFeatureSettings } from "@xrf/renderer";
+import { ERendererDebugView, IRendererFeatureSettings } from "@xrf/renderer";
 import { Nullable } from "@xrf/types";
 import { ReactElement, ReactNode, useCallback } from "react";
 
@@ -53,6 +53,8 @@ interface ILevelPreviewToolbarProps extends BaseComponentProps {
   settings: IRendererFeatureSettings;
   /** Whether the settings time every viewport's passes. */
   isGpuTimed: boolean;
+  /** Which picture the viewport shows. */
+  debugView: ERendererDebugView;
   /** Value pickers the surface contributes, drawn last, as every toolbar in this application orders them. */
   actions?: ReactNode;
   onChangeOptions: (options: ILevelViewOptions) => void;
@@ -63,6 +65,7 @@ interface ILevelPreviewToolbarProps extends BaseComponentProps {
   onChangeFeatures: (features: ILevelFeatureOptions) => void;
   /** Sets in the settings whether every viewport times its passes. */
   onChangeGpuTimed: (isGpuTimed: boolean) => void;
+  onChangeDebugView: (debugView: ERendererDebugView) => void;
   onBack?: () => void;
 }
 
@@ -87,6 +90,7 @@ export function LevelPreviewToolbar({
   featureView,
   settings,
   isGpuTimed,
+  debugView,
   actions,
   onChangeOptions,
   onChangeHemiStrength,
@@ -94,6 +98,7 @@ export function LevelPreviewToolbar({
   onChangeLod,
   onChangeFeatures,
   onChangeGpuTimed,
+  onChangeDebugView,
   onBack,
 }: ILevelPreviewToolbarProps): ReactElement {
   const onToggle = useCallback(
@@ -229,6 +234,8 @@ export function LevelPreviewToolbar({
             isGpuTimed={isGpuTimed}
             onToggle={onToggle}
             onChangeGpuTimed={onChangeGpuTimed}
+            debugView={debugView}
+            onChangeDebugView={onChangeDebugView}
           />
 
           {actions ? (

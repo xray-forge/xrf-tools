@@ -1,11 +1,14 @@
 use serde::{Deserialize, Serialize};
 
 use crate::contract::render_ambient_occlusion_settings::RenderAmbientOcclusionSettings;
+use crate::contract::render_antialiasing::RenderAntialiasing;
+use crate::contract::render_debug_view::RenderDebugView;
 use crate::contract::render_exposure_settings::RenderExposureSettings;
 use crate::contract::render_grass_settings::RenderGrassSettings;
 use crate::contract::render_lights_settings::RenderLightsSettings;
 use crate::contract::render_shadow_settings::RenderShadowSettings;
 use crate::contract::render_spawn_category::RenderSpawnCategory;
+use crate::contract::render_upscaling_settings::RenderUpscalingSettings;
 use crate::contract::render_water_settings::RenderWaterSettings;
 
 /// What one viewport draws its scene with, as its viewer's toolbar sets it.
@@ -56,6 +59,12 @@ pub struct RenderViewOptions {
   pub lights: RenderLightsSettings,
   pub water: RenderWaterSettings,
   pub grass: RenderGrassSettings,
+  /// Which picture the viewport shows: its frame, or one of the targets the frame was built from.
+  pub debug_view: RenderDebugView,
+  /// How the frame's edges are smoothed.
+  pub antialiasing: RenderAntialiasing,
+  /// What the scene is drawn at, and how its upscaled frame is sharpened.
+  pub upscaling: RenderUpscalingSettings,
 }
 
 impl Default for RenderViewOptions {
@@ -87,6 +96,9 @@ impl Default for RenderViewOptions {
       lights: RenderLightsSettings::default(),
       water: RenderWaterSettings::default(),
       grass: RenderGrassSettings::default(),
+      debug_view: RenderDebugView::Final,
+      antialiasing: RenderAntialiasing::None,
+      upscaling: RenderUpscalingSettings::default(),
     }
   }
 }

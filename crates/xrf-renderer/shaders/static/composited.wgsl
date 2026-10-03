@@ -5,10 +5,10 @@ enable dual_source_blending;
 #import "common/sun_shadow"
 
 // Static surfaces composited over the lit frame, as the engine's forward passes draw them after the deferred ones:
-// blended surfaces lit by the sun and the hemisphere, fogged and tonemapped, a spawned model's as `model_def_lq` or
-// `model_env_lq` lights it; added and multiplied ones as their texture reads, fading into the fog by leaving what is
-// behind them; and wall marks laid into the G-buffer's albedo before any light. Every blend is one equation, the surface's colour plus what is behind it times a second colour, so one
-// pipeline a target draws them all.
+// blended surfaces lit by the sun and the hemisphere, fogged and tonemapped, a spawned model's per vertex as
+// `model_def_lq` or `model_env_lq` lights it; added and multiplied ones as their texture reads, fading into the fog by
+// leaving what is behind them; and wall marks laid into the G-buffer's albedo before any light. Every blend is one
+// equation, the surface's colour plus what is behind it times a second colour, so one pipeline a target draws them all.
 
 @group(3) @binding(0) var<uniform> lighting: Lighting;
 @group(3) @binding(1) var<storage, read> exposure: Exposure;
@@ -22,6 +22,8 @@ enable dual_source_blending;
 @group(4) @binding(2) var sky_environment_0: texture_cube<f32>;
 @group(4) @binding(3) var sky_environment_1: texture_cube<f32>;
 @group(4) @binding(6) var sky_clamp: sampler;
+// The cubes environment-mapped models mix toward, `s_env`, by the slot a surface names; the first stands for none.
+@group(4) @binding(8) var environments: binding_array<texture_cube<f32>, 16>;
 
 struct CompositedOutput {
   // What the surface adds.
@@ -44,30 +46,62 @@ fn lit_color(shaded: GBufferOutput, position: vec3<f32>, fog: f32) -> vec3<f32> 
   return tonemap(mix(color, lighting.fog_color.rgb, fog), frame_scale(lighting, exposure));
 }
 
-// A blended model as the engine draws it forward, lit per vertex rather than by `hmodel`: by its object's sky share over
-// the up-facing hemisphere, the ambient, and the sun where it reaches, times its base, doubled. `model_env_lq` mixes the
-// base toward the sky's reflection where its alpha is thin; `model_def_lq` takes it as it is. The sun's reach is read
-// from the cascades at the pixel, where the engine casts one ray an object.
-fn model_color(in: GBufferVarying, texel: vec4<f32>, position: vec3<f32>, is_mirrored: bool) -> vec3<f32> {
-  let normal: vec3<f32> = normalize(in.normal);
+// A spawned model's vertex lit as the engine's forward model passes light theirs, per vertex: by its object's sky share
+// over the up-facing hemisphere, the ambient, and the sun where it reaches. The engine casts one ray an object toward
+// the sun; this reads the cascades at the vertex.
+@vertex
+fn vs_model_lit(@builtin(vertex_index) vertex_index: u32, @builtin(instance_index) instance_index: u32)
+  -> GBufferVarying {
+  let pulled: PulledVertex = pull(vertex_index, instance_index);
+  var out: GBufferVarying = model_vertex(pulled);
+  let world: vec3<f32> = (place_matrix(pulled.place) * vec4<f32>(model_position(pulled), 1.0)).xyz;
   let rotation: mat3x3<f32> = transpose(mat3x3<f32>(camera.view[0].xyz, camera.view[1].xyz, camera.view[2].xyz));
-  let normal_world: vec3<f32> = normalize(rotation * normal);
-  let world: vec3<f32> = rotation * position + camera.position.xyz;
-  let facing: f32 = dot(normal, lighting.to_sun.xyz);
+  let normal_world: vec3<f32> = normalize(rotation * out.normal);
+  let facing: f32 = dot(out.normal, lighting.to_sun.xyz);
   let sun: f32 = sun_shadow(shadow_maps, shadows, world, normal_world, facing);
-  let light: vec3<f32> = in.sky * max(0.0, normal_world.y) * lighting.environment.rgb + lighting.ambient.rgb
+
+  out.light = out.sky * max(0.0, normal_world.y) * lighting.environment.rgb + lighting.ambient.rgb
     + sun * lighting.sun.rgb * saturate(facing);
 
-  if (!is_mirrored) {
-    return light * texel.rgb * 2.0;
+  return out;
+}
+
+// A blended model as the engine draws it forward, into the frame already tonemapped: its light times its base, doubled.
+// `model_def_lq` takes the base as it is, unfogged; `model_env_lq` mixes it toward its class's cube, reflected, where
+// its alpha is thin (the sky's where it names none), fogs it, and fades its alpha by the fog's square.
+fn model_composited(in: GBufferVarying, surface: Surface, base: vec4<f32>) -> CompositedOutput {
+  // Both passes test alpha, against the reference or none, so what the texture leaves empty is never blended.
+  if (base.a <= surface.alpha_reference) {
+    discard;
   }
 
-  let reflected: vec3<f32> = reflect(normalize(rotation * position), normal_world);
+  let texel: vec3<f32> = mix(surface.color, base.rgb, camera.switches.x);
+
+  if ((surface.flags & SURFACE_IS_ENVIRONMENT_MAPPED) == 0u) {
+    return composite(surface.flags, texel, base.a, saturate(in.light * texel * 2.0), 0.0);
+  }
+
+  let position: vec3<f32> = camera_view_position(in.clip.xy, in.clip.z);
+  let fog: f32 = fog_amount(lighting, position);
+
+  if (fog >= 1.0) {
+    discard;
+  }
+
+  let rotation: mat3x3<f32> = transpose(mat3x3<f32>(camera.view[0].xyz, camera.view[1].xyz, camera.view[2].xyz));
+  let reflected: vec3<f32> = reflect(normalize(rotation * position), normalize(rotation * normalize(in.normal)));
   let lookup: vec3<f32> = vec3<f32>(reflected.x, reflected.y, -reflected.z);
-  let reflection: vec3<f32> = mix(textureSampleLevel(sky_cube_0, sky_clamp, lookup, 0.0).rgb,
+  var reflection: vec3<f32> = mix(textureSampleLevel(sky_cube_0, sky_clamp, lookup, 0.0).rgb,
     textureSampleLevel(sky_cube_1, sky_clamp, lookup, 0.0).rgb, lighting.sky.w);
 
-  return light * mix(reflection, texel.rgb, texel.a) * 2.0;
+  if (surface.environment != 0u) {
+    reflection = textureSampleLevel(environments[surface.environment], sky_clamp, lookup, 0.0).rgb;
+  }
+
+  let color: vec3<f32> = in.light * mix(reflection, texel, base.a) * 2.0;
+
+  return composite(surface.flags, texel, base.a * (1.0 - fog) * (1.0 - fog),
+    saturate(mix(color, lighting.fog_color.rgb, fog)), 0.0);
 }
 
 // A surface composited by its flags: multiplied into what is behind it, added to it, or laid over it by its alpha,
@@ -98,8 +132,14 @@ fn fs_composited(in: GBufferVarying) -> CompositedOutput {
   let at: Footprint = take_footprint(in);
   let base: vec4<f32> = base_texel(in, at);
   let surface: Surface = surfaces[in.surface];
-  let position: vec3<f32> = camera_view_position(in.clip.xy, in.clip.z);
   let is_lit: bool = lighting.params.y > 0.5;
+  let is_blended: bool = (surface.flags & (SURFACE_IS_ADDED | SURFACE_IS_MULTIPLIED)) == 0u;
+
+  if ((surface.flags & SURFACE_IS_MODEL) != 0u && is_blended && is_lit) {
+    return model_composited(in, surface, base);
+  }
+
+  let position: vec3<f32> = camera_view_position(in.clip.xy, in.clip.z);
   let fog: f32 = select(0.0, fog_amount(lighting, position), is_lit);
 
   // Its own reference where it has one; and past total fog, nothing, as the far plane ends there.
@@ -109,24 +149,6 @@ fn fs_composited(in: GBufferVarying) -> CompositedOutput {
 
   let shaded: GBufferOutput = shade(in, base, at);
   let texel: vec3<f32> = mix(surface.color, base.rgb, camera.switches.x);
-
-  let is_blended: bool = (surface.flags & (SURFACE_IS_ADDED | SURFACE_IS_MULTIPLIED)) == 0u;
-
-  if ((surface.flags & SURFACE_IS_MODEL) != 0u && is_blended && is_lit) {
-    let is_mirrored: bool = (surface.flags & SURFACE_IS_ENVIRONMENT_MAPPED) != 0u;
-    let color: vec3<f32> = model_color(in, vec4<f32>(texel, base.a), position, is_mirrored);
-    let scale: f32 = frame_scale(lighting, exposure);
-
-    // `model_env_lq` fogs, and fades by the fog's square in its alpha as well; `model_def_lq` does neither.
-    if (!is_mirrored) {
-      return composite(surface.flags, texel, base.a, tonemap(color, scale), 0.0);
-    }
-
-    let laid: vec3<f32> = tonemap(mix(color, lighting.fog_color.rgb, fog), scale);
-
-    return composite(surface.flags, texel, base.a * (1.0 - fog) * (1.0 - fog), laid, 0.0);
-  }
-
   let laid: vec3<f32> = select(shaded.albedo.rgb, lit_color(shaded, position, fog), is_lit);
 
   return composite(surface.flags, texel, base.a, laid, fog);

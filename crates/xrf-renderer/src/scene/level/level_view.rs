@@ -10,18 +10,29 @@ use xrf_math::EPS_S;
 
 use crate::camera::camera_view::CameraView;
 use crate::contract::render_ambient_occlusion_settings::RenderAmbientOcclusionSettings;
+use crate::contract::render_antialiasing::RenderAntialiasing;
+use crate::contract::render_debug_view::RenderDebugView;
 use crate::contract::render_level_hit::RenderLevelHit;
 use crate::contract::render_lights_settings::RenderLightsSettings;
 use crate::contract::render_load_report::RenderLoadReport;
+use crate::contract::render_pass_cost::RenderPassCost;
+use crate::contract::render_rect::RenderRect;
 use crate::contract::render_shadow_settings::RenderShadowSettings;
 use crate::contract::render_spawn_category::RenderSpawnCategory;
 use crate::contract::render_surface_geometry::RenderSurfaceGeometry;
 use crate::contract::render_texture_report::RenderTextureReport;
+use crate::contract::render_upscaling_settings::RenderUpscalingSettings;
 use crate::contract::render_view_options::RenderViewOptions;
 use crate::contract::render_water_settings::RenderWaterSettings;
 use crate::frame::depth_pyramid::DepthPyramid;
+use crate::frame::pass_timer::PassTimer;
 use crate::frame::pick_target::PickTarget;
+use crate::frame::smaa_targets::SmaaTargets;
+use crate::frame::smoothing_target::SmoothingTarget;
 use crate::frame::stats_readback::StatsReadback;
+use crate::frame::temporal_history::TemporalHistory;
+use crate::frame::temporal_jitter::TemporalJitter;
+use crate::frame::upscale_targets::UpscaleTargets;
 use crate::frame::view_exposure::ViewExposure;
 use crate::frame::view_targets::ViewTargets;
 use crate::host::render_asset_source::RenderAssetSource;
@@ -35,13 +46,16 @@ use crate::pass::grass_pass::GrassPass;
 use crate::pass::level_passes::LevelPasses;
 use crate::pass::lighting_frame::LightingFrame;
 use crate::pass::lighting_uniform::LightingUniform;
+use crate::pass::present_uniform::PresentUniform;
 use crate::pass::rain_bindings::RainBindings;
 use crate::pass::rain_uniform::RainUniform;
 use crate::pass::static_cull_params::StaticCullParams;
 use crate::pass::static_draw_groups::StaticDrawGroups;
 use crate::pass::static_gbuffer_pass::StaticGBufferPass;
 use crate::pass::static_occlusion_uniform::StaticOcclusionUniform;
+use crate::pass::temporal_uniform::TemporalUniform;
 use crate::pass::thunder_uniform::ThunderUniform;
+use crate::pass::upscale_uniform::UpscaleUniform;
 use crate::pass::view_binding::ViewBinding;
 use crate::pass::view_light_groups::ViewLightGroups;
 use crate::pass::water_uniform::WaterUniform;
@@ -51,6 +65,7 @@ use crate::scene::level::level_grass::LevelGrass;
 use crate::scene::level::level_lights::LevelLights;
 use crate::scene::level::level_loader::LevelLoader;
 use crate::scene::level::level_shadows::LevelShadows;
+use crate::scene::level::level_smoothing::LevelSmoothing;
 use crate::scene::level::rain_cover::RainCover;
 use crate::scene::level::shadow_frame::ShadowFrame;
 use crate::scene::level::shadow_sway::ShadowSway;
@@ -86,8 +101,9 @@ const SSA_LOD_B: f32 = 48.0;
 /// `r_ssaDISCARD`: an instanced place smaller on screen than this is not drawn.
 const SSA_DISCARD: f32 = 3.5;
 
-/// What a sky's bind group binds: the weather textures' generation, and the references of its six slots.
-type SkyGroupKey = (u64, [Option<String>; 6]);
+/// What a sky's bind group binds: the weather textures' generation, the references of its six slots, and how many
+/// environment cubes.
+type SkyGroupKey = (u64, [Option<String>; 6], usize);
 
 /// A level drawn in one viewport: read by its loader, held on the GPU, drawn into the viewport's G-buffer and lit.
 pub struct LevelView {
@@ -119,6 +135,8 @@ pub struct LevelView {
   draw_groups: Option<(u64, StaticDrawGroups)>,
   /// The lighting passes' bind groups, made again with the targets, and the shadow maps' epoch they bind.
   light_groups: Option<(u64, ViewLightGroups)>,
+  /// The cubes the scene's environment-mapped models mix toward, by environment slot from the second.
+  environments: Vec<String>,
   /// The sky's textures as bound, with the cache's generation and the references they bind.
   sky_group: Option<(SkyGroupKey, wgpu::BindGroup)>,
   /// Whether this frame blurs the sky into the haze map the distance fades into.
@@ -128,6 +146,32 @@ pub struct LevelView {
   /// Bumped whenever the sky's bind group is made again, which the water's follows.
   sky_version: u64,
   water: wgpu::Buffer,
+  /// What the present pass shows, a [`PresentUniform`].
+  present: wgpu::Buffer,
+  /// Where this frame's samples sit within their pixels, and whether a temporal resolve gathers them.
+  jitter: TemporalJitter,
+  frame_jitter: Vec2,
+  is_temporal: bool,
+  /// The temporal resolve's histories and its bind group writing each, while it resolves.
+  temporal: Option<(TemporalHistory, [wgpu::BindGroup; 2])>,
+  temporal_uniform: wgpu::Buffer,
+  /// The last resolved frame's view projection without its jitter, and its view.
+  temporal_previous: Option<(Mat4, Mat4)>,
+  /// The viewport's rectangle in its window, which the frame is upscaled to where it is drawn smaller.
+  output: RenderRect,
+  upscaling: RenderUpscalingSettings,
+  /// The frame at the viewport's size while it is drawn smaller, with its epoch, and the upscale passes' bind groups:
+  /// EASU reading the scene, RCAS reading the upscaled frame.
+  upscale: Option<(UpscaleTargets, [wgpu::BindGroup; 2])>,
+  upscale_epoch: u64,
+  upscale_uniform: wgpu::Buffer,
+  /// The present pass's bind group, with the targets' and the upscale's epochs and the frame it shows.
+  present_group: Option<((u64, u64, usize), wgpu::BindGroup)>,
+  /// The smoothing pass while one smooths the scene as drawn.
+  smoothing: Option<LevelSmoothing>,
+  /// What this frame's present shows, and whether its occlusion was searched.
+  frame_debug_view: RenderDebugView,
+  frame_occlusion: bool,
   /// The water's bind group, with the sky's version and the targets' epoch it binds.
   water_group: Option<((u64, u64), wgpu::BindGroup)>,
   water_settings: RenderWaterSettings,
@@ -160,6 +204,8 @@ pub struct LevelView {
   exposure: ViewExposure,
   params: StaticCullParams,
   stats: StatsReadback,
+  /// What each pass of its frames cost on the GPU, while timed.
+  timer: PassTimer,
   pick_target: Option<PickTarget>,
   pick_view: Option<ViewBinding>,
   surfaces: SurfaceTally,
@@ -211,11 +257,28 @@ impl LevelView {
       cull_group: None,
       draw_groups: None,
       light_groups: None,
+      environments: Vec::new(),
       sky_group: None,
       is_hazing: false,
       is_wallmarked: true,
       sky_version: 0,
       water: uniform("water", size_of::<WaterUniform>()),
+      present: uniform("present", size_of::<PresentUniform>()),
+      jitter: TemporalJitter::default(),
+      frame_jitter: Vec2::ZERO,
+      is_temporal: false,
+      temporal: None,
+      temporal_uniform: uniform("temporal", size_of::<TemporalUniform>()),
+      temporal_previous: None,
+      output: RenderRect::default(),
+      upscaling: RenderUpscalingSettings::default(),
+      upscale: None,
+      upscale_epoch: 0,
+      upscale_uniform: uniform("upscale", size_of::<UpscaleUniform>()),
+      present_group: None,
+      smoothing: None,
+      frame_debug_view: RenderDebugView::Final,
+      frame_occlusion: false,
       water_group: None,
       water_settings: RenderWaterSettings::default(),
       rain: uniform("rain", size_of::<RainUniform>()),
@@ -237,6 +300,7 @@ impl LevelView {
       exposure: ViewExposure::new(device, queue),
       params: StaticCullParams::default(),
       stats: StatsReadback::new(device),
+      timer: PassTimer::new(device, queue),
       pick_target: None,
       pick_view: None,
       surfaces: SurfaceTally::default(),
@@ -304,6 +368,14 @@ impl LevelView {
       }
     }
 
+    if self.environments.len() != textures.list_environments().len() {
+      self.environments = textures.list_environments().to_vec();
+    }
+
+    for reference in &self.environments {
+      weather_textures.request(reference, WeatherTextureKind::Cube, &assets);
+    }
+
     self.lights.poll(textures, &assets);
 
     if let Some(slots) = self.grass.poll(device, grass_pass, textures, &assets) {
@@ -354,7 +426,7 @@ impl LevelView {
     encoder: &mut wgpu::CommandEncoder,
     passes: LevelPasses<'_>,
     view: &CameraView,
-    (width, height): (u32, u32),
+    ((width, height), output): ((u32, u32), RenderRect),
     field_of_view: f32,
     options: &RenderViewOptions,
     (lighting, weather): (&RenderLighting, Option<&Arc<RenderLevelWeather>>),
@@ -368,6 +440,7 @@ impl LevelView {
       self.targets = Some(targets);
       self.pyramid = Some((pyramid, groups));
       self.targets_epoch += 1;
+      self.temporal = None;
       // A pyramid of another size holds no depth this frame can be tested against.
       self.history = None;
       self.light_groups = None;
@@ -434,7 +507,6 @@ impl LevelView {
           .sky_haze
           .create_bind_group(device, &self.lighting, &self.exposure.state),
         exposure: passes.exposure.create_bind_group(device, targets, &self.exposure),
-        present: passes.present.create_bind_group(device, targets),
       };
 
       self.light_groups = Some((shadow_epoch, groups));
@@ -453,10 +525,16 @@ impl LevelView {
         sky.clouds.textures[0].clone(),
         sky.clouds.textures[1].clone(),
       ],
+      self.environments.len(),
     );
 
     if self.sky_group.as_ref().is_none_or(|(key, _)| *key != sky_key) {
-      self.sky_group = Some((sky_key, passes.sky.create_bind_group(device, weather_textures, sky)));
+      self.sky_group = Some((
+        sky_key,
+        passes
+          .sky
+          .create_bind_group(device, weather_textures, sky, &self.environments),
+      ));
       self.sky_version += 1;
     }
 
@@ -581,6 +659,13 @@ impl LevelView {
     self.frame_sun = lighting.get_sun_direction();
     self.shadow_settings = options.shadows.clone();
     self.ambient_occlusion = options.ambient_occlusion;
+    self.output = output;
+    self.upscaling = options.upscaling;
+    self.frame_debug_view = options.debug_view;
+    self.frame_occlusion = options.is_lit && options.ambient_occlusion.is_enabled;
+    self.prepare_temporal(device, queue, passes, view);
+    self.prepare_smoothing(device, passes, options.antialiasing);
+    self.prepare_upscale(device, queue, passes);
     self.lights_settings = options.lights;
 
     queue.write_buffer(
@@ -813,9 +898,18 @@ impl LevelView {
       return;
     };
     let texture_group: &wgpu::BindGroup = textures.get_bind_group();
+    let list_args: Vec<&wgpu::Buffer> = if self.params.is_occluding != 0 {
+      vec![&self.scene.args, &self.scene.late]
+    } else {
+      vec![&self.scene.args]
+    };
+    let timer: &mut PassTimer = &mut self.timer;
 
+    timer.begin(encoder);
     self.grass.plant(encoder, passes.grass);
+    timer.mark(encoder, "grass planting");
     passes.cull.dispatch_early(encoder, view, cull_group, &self.params);
+    timer.mark(encoder, "cull");
     passes.gbuffer.draw(
       encoder,
       targets,
@@ -825,6 +919,7 @@ impl LevelView {
       &self.scene.args,
       true,
     );
+    timer.mark(encoder, "g-buffer");
 
     if self.params.is_occluding != 0 {
       passes.pyramid.dispatch(encoder, pyramid, pyramid_groups);
@@ -839,15 +934,18 @@ impl LevelView {
         false,
       );
       self.history = Some(self.frame_view);
+      timer.mark(encoder, "occlusion");
     }
 
     self.stats.record(encoder, &self.scene.args, StaticScene::STATS_OFFSET);
     self.grass.draw(encoder, passes.grass, (targets, view), texture_group);
+    timer.mark(encoder, "grass");
 
     if self.is_wallmarked {
       passes
         .composited
-        .draw_wallmarks(encoder, targets, view, draw_groups, texture_group, &self.list_args());
+        .draw_wallmarks(encoder, targets, view, draw_groups, texture_group, &list_args);
+      timer.mark(encoder, "wall marks");
     }
 
     if let Some((pyramid, _)) = &self.pyramid {
@@ -866,12 +964,15 @@ impl LevelView {
       };
 
       self.shadows.record(device, queue, encoder, passes, view_layout, &frame);
+      timer.mark(encoder, "sun shadows");
 
       if self.rain_draw.is_some() {
         self.rain_cover.record(device, queue, encoder, passes, &frame);
+        timer.mark(encoder, "rain cover");
       }
 
       self.lights.record_shadows(device, queue, encoder, passes, &frame);
+      timer.mark(encoder, "light shadows");
     }
 
     // The rain wets the G-buffer before any light is drawn over it.
@@ -879,15 +980,18 @@ impl LevelView {
       && let Some((_, wet_groups)) = &self.wet_groups
     {
       passes.wet.draw(encoder, targets, view, wet_groups);
+      timer.mark(encoder, "wet");
     }
 
     if let Some((_, groups)) = &self.light_groups {
       passes.sun.draw(encoder, targets, view, &groups.sun);
+      timer.mark(encoder, "sun");
 
       if self.lights.get_count() > 0 {
         passes
           .lights
           .draw(encoder, targets, view, &groups.lights, textures.get_bind_group());
+        timer.mark(encoder, "lights");
       }
 
       if self.ambient_occlusion.is_enabled {
@@ -898,14 +1002,17 @@ impl LevelView {
           &groups.occlusion,
           self.ambient_occlusion.quality,
         );
+        timer.mark(encoder, "ambient occlusion");
       }
 
       if let Some((_, sky_group)) = &self.sky_group {
         if self.is_hazing {
           passes.sky_haze.draw(encoder, targets, &groups.haze, sky_group);
+          timer.mark(encoder, "haze");
         }
 
         passes.combine.draw(encoder, targets, view, &groups.combine, sky_group);
+        timer.mark(encoder, "combine");
       }
 
       if self.water_settings.is_enabled
@@ -918,8 +1025,9 @@ impl LevelView {
           draw_groups,
           texture_group,
           water_group,
-          &self.list_args(),
+          &list_args,
         );
+        timer.mark(encoder, "water");
       }
 
       if let Some((_, sky_group)) = &self.sky_group {
@@ -930,22 +1038,74 @@ impl LevelView {
           draw_groups,
           texture_group,
           (&groups.composited, sky_group),
-          &self.list_args(),
+          &list_args,
         );
+        timer.mark(encoder, "composited");
       }
 
       if let (Some(counts), Some((_, rain_group))) = (self.rain_draw, &self.rain_group) {
         passes.rain.draw(encoder, targets, view, rain_group, counts);
+        timer.mark(encoder, "rain");
       }
 
       if let (Some(draws), Some((_, thunder_groups))) = (self.thunder_draw, &self.thunder_groups) {
         passes.thunder.draw(encoder, targets, view, thunder_groups, draws);
+        timer.mark(encoder, "thunder");
+      }
+
+      if let Some(smoothing) = &self.smoothing {
+        let target: &SmoothingTarget = &smoothing.target;
+
+        match &smoothing.smaa {
+          Some(smaa) => passes.smaa.draw(encoder, smaa, &smoothing.groups, &target.view),
+          None => passes.fxaa.draw(encoder, &smoothing.groups[0], &target.view),
+        }
+
+        encoder.copy_texture_to_texture(
+          target.texture.as_image_copy(),
+          targets.scene_texture.as_image_copy(),
+          target.texture.size(),
+        );
+        timer.mark(encoder, "smoothing");
+      }
+
+      // The resolved frame goes where the present pass reads it: the upscaled frame, or the scene drawn at its size.
+      if let Some((history, groups)) = &mut self.temporal {
+        let index: usize = history.index;
+        let resolved: &wgpu::Texture = self
+          .upscale
+          .as_ref()
+          .map_or(&targets.scene_texture, |(upscale, _)| &upscale.textures[0]);
+
+        passes
+          .temporal
+          .draw(encoder, view, &groups[index], &history.views[index]);
+        encoder.copy_texture_to_texture(
+          history.textures[index].as_image_copy(),
+          resolved.as_image_copy(),
+          history.textures[index].size(),
+        );
+        history.swap();
+        timer.mark(encoder, "temporal");
+      } else if let Some((upscale, groups)) = &self.upscale {
+        passes.upscale.draw_easu(encoder, upscale, &groups[0]);
+        timer.mark(encoder, "upscale");
+      }
+
+      if let Some((upscale, groups)) = &self.upscale
+        && self.upscaling.is_sharpened()
+      {
+        passes.upscale.draw_rcas(encoder, upscale, &groups[1]);
+        timer.mark(encoder, "sharpen");
       }
 
       if self.exposure.is_adapting() {
         passes.exposure.dispatch(encoder, &groups.exposure);
+        timer.mark(encoder, "exposure");
       }
     }
+
+    timer.finish(encoder);
   }
 
   /// Draws the frame's visible clusters into a pick's texel, through the frame's camera narrowed to it.
@@ -1043,9 +1203,204 @@ impl LevelView {
     }
   }
 
-  /// Asks for the counts recorded with the frame just submitted.
+  /// Where the next frame's samples sit within their pixels, in drawn pixels, `y` down: jittered while it resolves
+  /// frames temporally and shows the finished frame, still otherwise.
+  pub fn next_jitter(&mut self, options: &RenderViewOptions) -> Vec2 {
+    self.is_temporal = options.antialiasing.is_temporal() && options.debug_view == RenderDebugView::Final;
+    self.frame_jitter = if self.is_temporal {
+      self.jitter.next(options.upscaling.scale.get_ratio())
+    } else {
+      Vec2::ZERO
+    };
+
+    self.frame_jitter
+  }
+
+  /// Makes the temporal resolve's histories while it resolves, dropping them otherwise, and writes what it reads: this
+  /// frame's view projection, the last one's, and the jitter.
+  fn prepare_temporal(
+    &mut self,
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    passes: LevelPasses<'_>,
+    view: &CameraView,
+  ) {
+    let Some(targets) = self.targets.as_ref().filter(|_| self.is_temporal) else {
+      self.temporal = None;
+      self.temporal_previous = None;
+
+      return;
+    };
+    let (width, height): (u32, u32) = (self.output.width.max(1), self.output.height.max(1));
+
+    if self
+      .temporal
+      .as_ref()
+      .is_some_and(|(history, _)| !history.is_sized(width, height))
+    {
+      self.temporal = None;
+    }
+
+    let (history, _) = self.temporal.get_or_insert_with(|| {
+      let history: TemporalHistory = TemporalHistory::new(device, width, height);
+      let groups: [wgpu::BindGroup; 2] =
+        passes
+          .temporal
+          .create_bind_groups(device, targets, &history, &self.temporal_uniform);
+
+      (history, groups)
+    });
+    let current: Mat4 = view.get_view_projection();
+    let (previous, previous_view): (Mat4, Mat4) = self.temporal_previous.unwrap_or((current, view.view));
+
+    queue.write_buffer(
+      &self.temporal_uniform,
+      0,
+      bytemuck::bytes_of(&TemporalUniform::new(
+        current,
+        previous,
+        previous_view,
+        self.frame_jitter,
+        history.is_valid && self.temporal_previous.is_some(),
+      )),
+    );
+    self.temporal_previous = Some((current, view.view));
+  }
+
+  /// Makes the smoothing pass's targets while one smooths the frame as drawn, dropping them otherwise.
+  fn prepare_smoothing(&mut self, device: &wgpu::Device, passes: LevelPasses<'_>, mode: RenderAntialiasing) {
+    let is_smoothed: bool = matches!(mode, RenderAntialiasing::Fxaa | RenderAntialiasing::Smaa);
+    let Some(targets) = self
+      .targets
+      .as_ref()
+      .filter(|_| is_smoothed && self.frame_debug_view == RenderDebugView::Final)
+    else {
+      self.smoothing = None;
+
+      return;
+    };
+
+    if self
+      .smoothing
+      .as_ref()
+      .is_none_or(|it| it.epoch != self.targets_epoch || it.mode != mode)
+    {
+      let target: SmoothingTarget = SmoothingTarget::new(device, targets.width, targets.height, ViewTargets::SCENE);
+      let (smaa, groups): (Option<SmaaTargets>, Vec<wgpu::BindGroup>) = if mode == RenderAntialiasing::Smaa {
+        let smaa: SmaaTargets = SmaaTargets::new(device, targets.width, targets.height);
+        let groups: [wgpu::BindGroup; 3] = passes.smaa.create_bind_groups(device, targets, &smaa);
+
+        (Some(smaa), groups.into())
+      } else {
+        (None, vec![passes.fxaa.create_bind_group(device, targets)])
+      };
+
+      self.smoothing = Some(LevelSmoothing {
+        epoch: self.targets_epoch,
+        mode,
+        target,
+        smaa,
+        groups,
+      });
+    }
+  }
+
+  /// Makes the frame at the viewport's size while the scene is drawn smaller, dropping it otherwise; writes what the
+  /// upscale and present passes read, and binds the frame the present pass shows.
+  fn prepare_upscale(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, passes: LevelPasses<'_>) {
+    let Some(targets) = &self.targets else {
+      return;
+    };
+    let output: RenderRect = self.output;
+    let is_upscaled: bool = !targets.is_sized(output.width, output.height);
+
+    if !is_upscaled {
+      self.upscale = None;
+    } else if self
+      .upscale
+      .as_ref()
+      .is_none_or(|(upscale, _)| !upscale.is_sized(output.width, output.height))
+    {
+      let upscale: UpscaleTargets = UpscaleTargets::new(device, output.width, output.height);
+      let groups: [wgpu::BindGroup; 2] = [
+        passes
+          .upscale
+          .create_bind_group(device, &targets.scene, &self.upscale_uniform),
+        passes
+          .upscale
+          .create_bind_group(device, &upscale.views[0], &self.upscale_uniform),
+      ];
+
+      self.upscale = Some((upscale, groups));
+      self.upscale_epoch += 1;
+    }
+
+    // An upscale made before the targets were reads a scene since dropped.
+    if let Some((upscale, groups)) = &mut self.upscale
+      && self
+        .present_group
+        .as_ref()
+        .is_none_or(|(key, _)| key.0 != self.targets_epoch)
+    {
+      groups[0] = passes
+        .upscale
+        .create_bind_group(device, &targets.scene, &self.upscale_uniform);
+      groups[1] = passes
+        .upscale
+        .create_bind_group(device, &upscale.views[0], &self.upscale_uniform);
+    }
+
+    queue.write_buffer(
+      &self.upscale_uniform,
+      0,
+      bytemuck::bytes_of(&UpscaleUniform {
+        output_size: [output.width as f32, output.height as f32],
+        sharpness: self.upscaling.get_sharpness(),
+        pad: 0.0,
+      }),
+    );
+    queue.write_buffer(
+      &self.present,
+      0,
+      bytemuck::bytes_of(&PresentUniform::new(
+        self.frame_debug_view,
+        self.frame_occlusion,
+        is_upscaled,
+        output,
+      )),
+    );
+
+    let shown: usize = usize::from(self.upscaling.is_sharpened());
+    let key: (u64, u64, usize) = (
+      self.targets_epoch,
+      if is_upscaled { self.upscale_epoch } else { 0 },
+      shown,
+    );
+
+    if self.present_group.as_ref().is_none_or(|(it, _)| *it != key) {
+      let upscaled: Option<&wgpu::TextureView> = self.upscale.as_ref().map(|(upscale, _)| &upscale.views[shown]);
+      let group: wgpu::BindGroup = passes
+        .present
+        .create_bind_group(device, targets, &self.present, upscaled);
+
+      self.present_group = Some((key, group));
+    }
+  }
+
+  /// Asks for the counts and pass timestamps recorded with the frame just submitted.
   pub fn request_stats(&self) {
     self.stats.request();
+    self.timer.request();
+  }
+
+  /// Times each pass of its frames on the GPU, where the device can.
+  pub fn set_timed(&mut self, is_timed: bool) {
+    self.timer.set_enabled(is_timed);
+  }
+
+  /// Whether its passes are timed, and each one's mean GPU milliseconds since this was last asked.
+  pub fn take_timings(&mut self) -> (bool, Vec<RenderPassCost>) {
+    (self.timer.is_timing(), self.timer.take())
   }
 
   /// Clusters and triangles the latest counted frame drew.
@@ -1056,8 +1411,13 @@ impl LevelView {
   }
 
   /// What puts the level's finished scene into the window, once its targets are made.
+  /// The size its scene is rendered at, once its targets are made.
+  pub fn get_render_size(&self) -> Option<(u32, u32)> {
+    self.targets.as_ref().map(|it| (it.width, it.height))
+  }
+
   pub fn get_present_group(&self) -> Option<&wgpu::BindGroup> {
-    self.light_groups.as_ref().map(|(_, groups)| &groups.present)
+    self.present_group.as_ref().map(|(_, group)| group)
   }
 
   /// How far the level has loaded, when that changed since it was last asked.

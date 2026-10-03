@@ -8,6 +8,7 @@ use crate::pass::combine_pass::CombinePass;
 use crate::pass::composited_pass::CompositedPass;
 use crate::pass::depth_pyramid_pass::DepthPyramidPass;
 use crate::pass::exposure_pass::ExposurePass;
+use crate::pass::fxaa_pass::FxaaPass;
 use crate::pass::grass_pass::GrassPass;
 use crate::pass::grid_pass::GridPass;
 use crate::pass::level_passes::LevelPasses;
@@ -17,11 +18,14 @@ use crate::pass::present_pass::PresentPass;
 use crate::pass::rain_pass::RainPass;
 use crate::pass::sky_bindings::SkyBindings;
 use crate::pass::sky_haze_pass::SkyHazePass;
+use crate::pass::smaa_pass::SmaaPass;
 use crate::pass::static_cull_pass::StaticCullPass;
 use crate::pass::static_gbuffer_pass::StaticGBufferPass;
 use crate::pass::static_shadow_pass::StaticShadowPass;
 use crate::pass::sun_pass::SunPass;
+use crate::pass::temporal_pass::TemporalPass;
 use crate::pass::thunder_pass::ThunderPass;
+use crate::pass::upscale_pass::UpscalePass;
 use crate::pass::view_binding::ViewBinding;
 use crate::pass::water_pass::WaterPass;
 use crate::pass::wet_pass::WetPass;
@@ -48,6 +52,10 @@ pub struct GpuState {
   pub rain: RainPass,
   pub wet: WetPass,
   pub thunder: ThunderPass,
+  pub temporal: TemporalPass,
+  pub fxaa: FxaaPass,
+  pub smaa: SmaaPass,
+  pub upscale: UpscalePass,
   pub static_cull: StaticCullPass,
   pub static_gbuffer: StaticGBufferPass,
   pub static_shadow: StaticShadowPass,
@@ -105,6 +113,10 @@ impl GpuState {
       rain: RainPass::new(device, shaders, &view_layout)?,
       wet: WetPass::new(device, shaders, &view_layout)?,
       thunder: ThunderPass::new(device, shaders, &view_layout)?,
+      temporal: TemporalPass::new(device, shaders, &view_layout)?,
+      fxaa: FxaaPass::new(device, shaders)?,
+      smaa: SmaaPass::new(device, &context.queue, shaders)?,
+      upscale: UpscalePass::new(device, shaders)?,
       static_cull: StaticCullPass::new(device, shaders, &view_layout)?,
       static_gbuffer,
       static_shadow,
@@ -165,6 +177,10 @@ impl GpuState {
       rain: &self.rain,
       wet: &self.wet,
       thunder: &self.thunder,
+      temporal: &self.temporal,
+      fxaa: &self.fxaa,
+      smaa: &self.smaa,
+      upscale: &self.upscale,
       exposure: &self.exposure,
       present: &self.present,
       table: &self.table,
@@ -194,6 +210,10 @@ impl GpuState {
     self.rain.refresh(device, shaders);
     self.wet.refresh(device, shaders);
     self.thunder.refresh(device, shaders);
+    self.temporal.refresh(device, shaders);
+    self.fxaa.refresh(device, shaders);
+    self.smaa.refresh(device, shaders);
+    self.upscale.refresh(device, shaders);
     self.exposure.refresh(device, shaders);
     self.present.refresh(shaders);
   }

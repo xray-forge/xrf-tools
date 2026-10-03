@@ -25,6 +25,7 @@ import { Logger } from "@/lib/logging";
 export function toNativeRenderSettings(shared: IRenderSharedSettings): RenderSettings {
   // todo: Pace a native viewport to a rate below the display's, which only an unlimited rate skips today.
   return {
+    isGpuTimed: shared.isGpuTimed,
     presentation: shared.pacing.rateLimit === "unlimited" ? ERenderPresentation.UNCAPPED : ERenderPresentation.VSYNC,
   };
 }

@@ -11,6 +11,7 @@ path = "src/lib.rs"
 [dependencies]
 bytemuck = { workspace = true }
 glam = { workspace = true }
+image = { workspace = true, features = ["png"] }
 log = { workspace = true }
 pollster = { workspace = true }
 raw-window-handle = { workspace = true }
