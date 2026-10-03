@@ -1,4 +1,4 @@
-//! A cycle mixed at a time of day as the engine mixes it, which a viewer's own mixer is checked against.
+//! A cycle mixed at a time of day as the engine mixes it, which the renderer's weather plays.
 
 pub(crate) mod weather_mix;
 pub(crate) mod weather_mix_keyframe;

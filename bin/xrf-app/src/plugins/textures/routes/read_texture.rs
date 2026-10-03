@@ -14,7 +14,7 @@ pub(crate) struct TexturesReadTextureRequest {
   logical_path: String,
 }
 
-/// A texture the webview's own DDS loader refuses, decoded to png here instead.
+/// A texture decoded to png, as the texture preview shows it.
 pub(crate) async fn textures_read_texture(
   app: AppHandle,
   request: TexturesReadTextureRequest,

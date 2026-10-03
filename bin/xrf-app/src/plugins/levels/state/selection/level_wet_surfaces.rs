@@ -1,12 +1,8 @@
-use serde::Serialize;
-
 use crate::plugins::levels::state::selection::level_texture_reference::LevelTextureReference;
 use crate::plugins::levels::state::selection::level_weather_source::LevelWeatherSource;
 
 /// What rain wets surfaces with, as `CBlender_rain` binds it: the splashes' volume and the streaks down walls.
-#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Clone, Debug, PartialEq)]
 pub struct LevelWetSurfaces {
   /// `s_water`, a volume of rippling normals, a slice a moment.
   pub splash: LevelTextureReference,

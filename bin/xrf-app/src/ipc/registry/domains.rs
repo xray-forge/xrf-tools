@@ -175,7 +175,7 @@ macro_rules! for_each_tauri_command_domain {
         open => crate::plugins::textures::commands::open::textures_open,
         save => crate::plugins::textures::commands::save::textures_save,
       }
-      // The png fallback for a layout the webview's DDS loader refuses; stored bytes are the `assets/read_asset` route.
+      // Decoded images the page shows: a texture or a save candidate as png, and texels; stored bytes are `assets/read_asset`.
       @bulk {
         read_candidate(sessionId: "SessionId", format: "TextureEncodingFormat") => crate::plugins::textures::routes::read_candidate::textures_read_candidate,
         read_texels(roots: "XrayRoots", logicalPath: "string") => crate::plugins::textures::routes::read_texels::textures_read_texels,

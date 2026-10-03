@@ -1,8 +1,8 @@
 //! The loopback HTTP server bulk bytes cross by, so a response is never answered on the window's thread.
 //!
-//! Tauri answers every IPC call on the thread pumping the window's messages, and a level's textures and sectors are
-//! gigabytes: the window stopped answering Windows for seconds at a time. What returns bytes is a route here instead,
-//! fetched by the page with the token `transport|get_endpoint` hands out.
+//! Tauri answers every IPC call on the thread pumping the window's messages, and an archive's file or a texture's texels
+//! can be hundreds of megabytes: the window would stop answering Windows while they cross. What returns bytes is a
+//! route here instead, fetched by the page with the token `transport|get_endpoint` hands out.
 
 mod transport_answer;
 mod transport_endpoint;

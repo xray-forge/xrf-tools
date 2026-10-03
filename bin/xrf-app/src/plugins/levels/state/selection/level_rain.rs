@@ -1,13 +1,9 @@
-use serde::Serialize;
-
 use crate::plugins::levels::state::selection::level_texture_reference::LevelTextureReference;
 use crate::plugins::levels::state::selection::level_weather_model::LevelWeatherModel;
 use crate::plugins::levels::state::selection::level_weather_source::LevelWeatherSource;
 
 /// What rain is drawn with, as `dxRainRender` loads it: the streak's texture and the splash's model.
-#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Clone, Debug, PartialEq)]
 pub struct LevelRain {
   pub streak: LevelTextureReference,
   /// None where the model is not there or does not read, which draws no splashes.

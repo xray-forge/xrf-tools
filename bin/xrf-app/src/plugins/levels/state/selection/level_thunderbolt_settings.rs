@@ -1,11 +1,8 @@
-use serde::Serialize;
 use xrf_engine_target::XrayEngine;
 use xrf_environment::{ThunderboltSettings, ThunderboltSettingsKey};
 
 /// Where bolts strike and how far they light the scene, as `CEffect_Thunderbolt` loads them: angles in radians.
-#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Clone, Debug, PartialEq)]
 pub struct LevelThunderboltSettings {
   /// Above the horizon, the least and the most.
   pub altitude: [f32; 2],

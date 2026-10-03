@@ -1,11 +1,7 @@
-use serde::Serialize;
-
 use crate::plugins::levels::state::selection::level_thunderbolt_gradient::LevelThunderboltGradient;
 
 /// A `thunderbolts.ltx` section as `SThunderboltDesc` loads it.
-#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Clone, Debug, PartialEq)]
 pub struct LevelThunderbolt {
   pub name: String,
   /// Its `lightning_model`, by index among the bolts' models; none where the model does not read.
