@@ -25,6 +25,8 @@
 
 // What shows where nothing was drawn and neither the sky nor the fog is: the level viewer's backdrop, #202428.
 const BACKDROP: vec3<f32> = vec3<f32>(32.0, 36.0, 40.0) / 255.0;
+// How high over the horizon, as a height over the side, the sky as drawn takes over from its haze under it.
+const HAZE_BAND: f32 = 0.04;
 
 // The world direction through a pixel of the viewport.
 fn pixel_direction(pixel: vec2<f32>) -> vec3<f32> {
@@ -39,6 +41,19 @@ fn sky_haze(direction: vec3<f32>) -> vec3<f32> {
   let lifted: vec3<f32> = normalize(vec3<f32>(direction.x, max(direction.y, 0.0), direction.z));
 
   return textureSampleLevel(haze_map, sky_repeat, sky_haze_coordinates(lifted), 0.0).rgb;
+}
+
+// What stands behind the far plane: the sky as drawn; with the haze, its haze under the horizon in place of the
+// darker rim, so the level's distance and whatever is past it meet in one colour.
+fn sky_behind(direction: vec3<f32>, scale: f32, is_hazed: bool) -> vec3<f32> {
+  let shown: vec3<f32> = sky_shown(lighting, direction, scale);
+  let height: f32 = direction.y / max(length(direction.xz), 1e-6);
+
+  if (!is_hazed || height >= HAZE_BAND) {
+    return shown;
+  }
+
+  return mix(sky_haze(direction), shown, smoothstep(0.0, HAZE_BAND, height));
 }
 
 // `hmodel` over the G-buffer's view space normal and point.
@@ -78,10 +93,11 @@ fn fs_combine(in: FullscreenVarying) -> @location(0) vec4<f32> {
   let fog: f32 = select(0.0, fog_amount(lighting, position), is_fogged);
   // The far plane ends where fog is total: past it is what anything there would have come to, the sky or the fog.
   let is_empty: bool = depth <= 0.0 || fog >= 1.0;
+  let is_hazed: bool = is_sky_drawn && lighting.fog.z > 0.5;
 
   if (is_empty) {
     if (is_sky_drawn) {
-      return vec4<f32>(sky_shown(lighting, direction, scale), 1.0);
+      return vec4<f32>(sky_behind(direction, scale, is_hazed), 1.0);
     }
 
     if (is_fogged) {
@@ -112,14 +128,5 @@ fn fs_combine(in: FullscreenVarying) -> @location(0) vec4<f32> {
     return vec4<f32>(finished, 1.0);
   }
 
-  // The haze takes the place of both, by the engine's own two blends: the distance takes the colour of the sky behind
-  // it, no cloud's shape showing, the fog towards the haze's lit colour before the tonemap.
-  if (lighting.fog.z > 0.5) {
-    let haze: vec3<f32> = sky_haze(direction);
-    let fogged: vec3<f32> = tonemap(mix(shaded, untonemap(haze) / max(scale, 1e-6), fog), scale);
-
-    return vec4<f32>(mix(fogged, haze, fog * fog), 1.0);
-  }
-
-  return vec4<f32>(mix(finished, sky_shown(lighting, direction, scale), fog * fog), 1.0);
+  return vec4<f32>(mix(finished, sky_behind(direction, scale, is_hazed), fog * fog), 1.0);
 }
